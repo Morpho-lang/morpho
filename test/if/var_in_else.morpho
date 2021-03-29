@@ -1,0 +1,2 @@
+if (true) "ok" else var foo
+// expect error: 'ExpExpr'

@@ -1,0 +1,11 @@
+// Apply a closure to arguments
+
+fn f(x) {
+  fn g(y) {
+    return x+y
+  }
+  return g
+}
+
+print apply(apply(f, 2), 3)
+// expect: 5

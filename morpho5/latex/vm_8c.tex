@@ -1,0 +1,602 @@
+\hypertarget{vm_8c}{}\doxysection{vm/vm.c File Reference}
+\label{vm_8c}\index{vm/vm.c@{vm/vm.c}}
+
+
+Morpho virtual machine.  
+
+
+{\ttfamily \#include $<$stdarg.\+h$>$}\newline
+{\ttfamily \#include $<$time.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}vm.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}compile.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}morpho.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}object.\+h\char`\"{}}\newline
+\doxysubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{vm_8c_aaaa7b1c1e493ae79f74c415638b6ae90}{D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+WA}}~1
+\begin{DoxyCompactList}\small\item\em Disassembles a single A\+BC format instruction. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{vm_8c_ab13c230683460a204d72170484cba9f8}\label{vm_8c_ab13c230683460a204d72170484cba9f8}} 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+WB}~2
+\item 
+\mbox{\Hypertarget{vm_8c_a63a682493fcbbf570b010782abe1648c}\label{vm_8c_a63a682493fcbbf570b010782abe1648c}} 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+WC}~4
+\item 
+\mbox{\Hypertarget{vm_8c_aefd8fe6a818c9681856330a957f12469}\label{vm_8c_aefd8fe6a818c9681856330a957f12469}} 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+L\+I\+TC}~8
+\item 
+\#define \mbox{\hyperlink{vm_8c_aaaa7b1c1e493ae79f74c415638b6ae90}{D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+WA}}~1
+\begin{DoxyCompactList}\small\item\em Disassembles a single A\+BC format instruction. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{vm_8c_a75809b5e14cee14f727d8ed89513a7c3}\label{vm_8c_a75809b5e14cee14f727d8ed89513a7c3}} 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+W\+Bx}~2
+\item 
+\mbox{\Hypertarget{vm_8c_ad291bb5fd17be9da508a24c6622ee60e}\label{vm_8c_ad291bb5fd17be9da508a24c6622ee60e}} 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+Ws\+Bx}~4
+\item 
+\mbox{\Hypertarget{vm_8c_aad44ee077d212967a77fc5b55745266f}\label{vm_8c_aad44ee077d212967a77fc5b55745266f}} 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+WF}~8
+\item 
+\mbox{\Hypertarget{vm_8c_a4548e6286d2bf25eb0d2348aea103bf1}\label{vm_8c_a4548e6286d2bf25eb0d2348aea103bf1}} 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+WG}~16
+\item 
+\mbox{\Hypertarget{vm_8c_a25026a3fe7566c4a6f2de2bfb5cc0ce1}\label{vm_8c_a25026a3fe7566c4a6f2de2bfb5cc0ce1}} 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+OP}(op)~printf(\char`\"{}\%s\char`\"{}, op)
+\item 
+\mbox{\Hypertarget{vm_8c_a6fdb4238baf3b76f3b6e46f12fdfff2c}\label{vm_8c_a6fdb4238baf3b76f3b6e46f12fdfff2c}} 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+O\+PA}(op,  i)~disassemble\+\_\+\+A\+Bx(op, i, \mbox{\hyperlink{vm_8c_aaaa7b1c1e493ae79f74c415638b6ae90}{D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+WA}}, reg)
+\item 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+O\+P\+AB}(op,  i)
+\item 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+O\+P\+AcB}(op,  i)
+\item 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+O\+P\+A\+BC}(op,  i)
+\item 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+O\+PB}(op,  i)
+\item 
+\mbox{\Hypertarget{vm_8c_a14e6389dcea72a709ceb6832dce03d85}\label{vm_8c_a14e6389dcea72a709ceb6832dce03d85}} 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+O\+P\+A\+Bx}(op,  i)~disassemble\+\_\+\+A\+Bx(op, i, \mbox{\hyperlink{vm_8c_aaaa7b1c1e493ae79f74c415638b6ae90}{D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+WA}} $\vert$ D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+W\+Bx, reg)
+\item 
+\mbox{\Hypertarget{vm_8c_a05e2427fec944cac04654232e0a576eb}\label{vm_8c_a05e2427fec944cac04654232e0a576eb}} 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+O\+P\+Bx}(op,  i)~disassemble\+\_\+\+A\+Bx(op, i, D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+W\+Bx, reg)
+\item 
+\mbox{\Hypertarget{vm_8c_aad10a0272f208d6ed272dbbb74041f29}\label{vm_8c_aad10a0272f208d6ed272dbbb74041f29}} 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+O\+P\+As\+Bx}(op,  i)~disassemble\+\_\+\+A\+Bx(op, i, \mbox{\hyperlink{vm_8c_aaaa7b1c1e493ae79f74c415638b6ae90}{D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+WA}} $\vert$ D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+W\+Bx, reg)
+\item 
+\mbox{\Hypertarget{vm_8c_a53e5f8a72547b4dc173dc02704f23918}\label{vm_8c_a53e5f8a72547b4dc173dc02704f23918}} 
+\#define {\bfseries D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+O\+Ps\+Bx}(op,  i)~disassemble\+\_\+\+A\+Bx(op, i, D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+Ws\+Bx, reg)
+\item 
+\mbox{\Hypertarget{vm_8c_a5cd2d1e718c10ab5e0ae060849859e5e}\label{vm_8c_a5cd2d1e718c10ab5e0ae060849859e5e}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+I\+N\+S\+R\+U\+C\+T\+I\+ON}(bc,  pc,  k,  r)~;
+\item 
+\mbox{\Hypertarget{vm_8c_a61a2b640a48bf8e39787044fad11cf44}\label{vm_8c_a61a2b640a48bf8e39787044fad11cf44}} 
+\#define {\bfseries O\+P\+C\+O\+D\+E\+C\+NT}(p)
+\item 
+\mbox{\Hypertarget{vm_8c_a336bedf8dec60897670f2420dcf82241}\label{vm_8c_a336bedf8dec60897670f2420dcf82241}} 
+\#define {\bfseries O\+P\+O\+P\+C\+O\+D\+E\+C\+NT}(p,  bc)
+\item 
+\#define {\bfseries I\+N\+T\+E\+R\+P\+R\+E\+T\+\_\+\+L\+O\+OP}
+\item 
+\mbox{\Hypertarget{vm_8c_ae0340022d178768bdebdece874b7ee61}\label{vm_8c_ae0340022d178768bdebdece874b7ee61}} 
+\#define {\bfseries C\+A\+S\+E\+\_\+\+C\+O\+DE}(name)~case O\+P\+\_\+\#\#name
+\item 
+\mbox{\Hypertarget{vm_8c_a8297cddbebf50a1736914db65c5724ae}\label{vm_8c_a8297cddbebf50a1736914db65c5724ae}} 
+\#define {\bfseries D\+I\+S\+P\+A\+T\+CH}()~goto loop;
+\item 
+\mbox{\Hypertarget{vm_8c_a698439f36ec317f95ee2a8f2a9758fac}\label{vm_8c_a698439f36ec317f95ee2a8f2a9758fac}} 
+\#define {\bfseries E\+R\+R\+OR}(id)~\{ \mbox{\hyperlink{vm_8c_a8b1536ca5e5ad82e6694b32292286520}{vm\+\_\+runtimeerror}}(v, pc-\/instructions, id); goto vm\+\_\+error; \}
+\item 
+\mbox{\Hypertarget{vm_8c_ac1e93ca0e142514f2e59f45f9aa72f85}\label{vm_8c_ac1e93ca0e142514f2e59f45f9aa72f85}} 
+\#define {\bfseries V\+E\+R\+R\+OR}(id, ...)~\{ \mbox{\hyperlink{vm_8c_a8b1536ca5e5ad82e6694b32292286520}{vm\+\_\+runtimeerror}}(v, pc-\/instructions, id, \+\_\+\+\_\+\+V\+A\+\_\+\+A\+R\+G\+S\+\_\+\+\_\+); goto vm\+\_\+error; \}
+\item 
+\mbox{\Hypertarget{vm_8c_a23678b8243a750202f5bcb1a3fefae5f}\label{vm_8c_a23678b8243a750202f5bcb1a3fefae5f}} 
+\#define {\bfseries E\+R\+R\+O\+R\+C\+HK}()~if (v-\/$>$err.\+cat!=E\+R\+R\+O\+R\+\_\+\+N\+O\+NE) goto vm\+\_\+error;
+\item 
+\#define {\bfseries C\+H\+E\+C\+K\+C\+M\+P\+T\+Y\+PE}(l,  r)
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{vm_8c_ac43f88d0016dee57ad8edd8ce92215b0}\label{vm_8c_ac43f88d0016dee57ad8edd8ce92215b0}} 
+{\bfseries D\+E\+F\+I\+N\+E\+\_\+\+V\+A\+R\+R\+AY} (\mbox{\hyperlink{core_8h_a9ae6286de740e9f230d1a007e1b1cccd}{instruction}}, \mbox{\hyperlink{core_8h_a9ae6286de740e9f230d1a007e1b1cccd}{instruction}})
+\item 
+\mbox{\Hypertarget{vm_8c_a3c5575468a18a66146c8da345d990e0e}\label{vm_8c_a3c5575468a18a66146c8da345d990e0e}} 
+{\bfseries D\+E\+F\+I\+N\+E\+\_\+\+V\+A\+R\+R\+AY} (\mbox{\hyperlink{structdebuginfo}{debuginfo}}, \mbox{\hyperlink{structdebuginfo}{debuginfo}})
+\item 
+\mbox{\Hypertarget{vm_8c_a24a6ddbeab325f5fc559bb1e2727e750}\label{vm_8c_a24a6ddbeab325f5fc559bb1e2727e750}} 
+program $\ast$ \mbox{\hyperlink{vm_8c_a24a6ddbeab325f5fc559bb1e2727e750}{morpho\+\_\+newprogram}} (void)
+\begin{DoxyCompactList}\small\item\em Creates and initializes a new program. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{vm_8c_a09aa1da99cae60db6f618df832c36e0a}\label{vm_8c_a09aa1da99cae60db6f618df832c36e0a}} 
+void \mbox{\hyperlink{vm_8c_a09aa1da99cae60db6f618df832c36e0a}{morpho\+\_\+freeprogram}} (program $\ast$p)
+\begin{DoxyCompactList}\small\item\em Frees a program. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{vm_8c_a6e0448661c564765584850100a059167}{program\+\_\+setentry}} (program $\ast$p, \mbox{\hyperlink{core_8h_a107785ee96e2333686235ba7e0b869b6}{instructionindx}} entry)
+\item 
+\mbox{\hyperlink{core_8h_a107785ee96e2333686235ba7e0b869b6}{instructionindx}} \mbox{\hyperlink{vm_8c_a697b2aa1d5e4de37a67a9a0180773d20}{program\+\_\+getentry}} (program $\ast$p)
+\item 
+\mbox{\hyperlink{structdebuginfo}{debuginfo}} $\ast$ \mbox{\hyperlink{vm_8c_af3595b325e410fcd81329e55d530ea0c}{morpho\+\_\+getdebugfromindx}} (program $\ast$p, \mbox{\hyperlink{core_8h_a107785ee96e2333686235ba7e0b869b6}{instructionindx}} indx)
+\item 
+void \mbox{\hyperlink{vm_8c_a894f9f5a1ac6d741ce356c7b127f6374}{program\+\_\+bindobject}} (program $\ast$p, \mbox{\hyperlink{structsobject}{object}} $\ast$obj)
+\begin{DoxyCompactList}\small\item\em Binds an object to a program. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{vm_8c_aa8f2233eacb18097bfaab61da0504e6a}{program\+\_\+internsymbol}} (program $\ast$p, \mbox{\hyperlink{structvalue}{value}} symbol)
+\begin{DoxyCompactList}\small\item\em Interns a symbol into the programs symbol table. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{vm_8c_a273263cefc8f42e4a7d34bd96f168231}\label{vm_8c_a273263cefc8f42e4a7d34bd96f168231}} 
+void {\bfseries vm\+\_\+graylistinit} (\mbox{\hyperlink{structgraylist}{graylist}} $\ast$g)
+\item 
+\mbox{\Hypertarget{vm_8c_afaf8016c4a9ff9869053c566a7645eac}\label{vm_8c_afaf8016c4a9ff9869053c566a7645eac}} 
+void {\bfseries vm\+\_\+graylistclear} (\mbox{\hyperlink{structgraylist}{graylist}} $\ast$g)
+\item 
+\mbox{\Hypertarget{vm_8c_aad2428e8713e7f1d6797fb8e844e7fe4}\label{vm_8c_aad2428e8713e7f1d6797fb8e844e7fe4}} 
+void {\bfseries vm\+\_\+graylistadd} (\mbox{\hyperlink{structgraylist}{graylist}} $\ast$g, \mbox{\hyperlink{structsobject}{object}} $\ast$obj)
+\item 
+vm $\ast$ \mbox{\hyperlink{vm_8c_a593764a66070bd348674ccc0d3d84d4c}{morpho\+\_\+newvm}} (void)
+\item 
+void \mbox{\hyperlink{vm_8c_a83b5eecc90809fd05ab97d141e804284}{morpho\+\_\+freevm}} (vm $\ast$v)
+\item 
+void \mbox{\hyperlink{vm_8c_abc505c01f117f54f1abb728090fe06eb}{vm\+\_\+freeobjects}} (vm $\ast$v)
+\item 
+void \mbox{\hyperlink{vm_8c_ad1346d4f0fb42a66ce6031440f02d4ce}{vm\+\_\+collectgarbage}} (vm $\ast$v)
+\item 
+void \mbox{\hyperlink{vm_8c_afd7d339cc6f2a68c5a70665f3b78a568}{vm\+\_\+bindobject}} (vm $\ast$v, \mbox{\hyperlink{structvalue}{value}} obj)
+\begin{DoxyCompactList}\small\item\em Binds an object to a Virtual Machine. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{vm_8c_aa3d749832de80e3bfd286a7c7d921c11}{vm\+\_\+disassembleinstruction}} (\mbox{\hyperlink{core_8h_a9ae6286de740e9f230d1a007e1b1cccd}{instruction}} \mbox{\hyperlink{core_8h_a9ae6286de740e9f230d1a007e1b1cccd}{instruction}}, ptrdiff\+\_\+t indx, \mbox{\hyperlink{structvalue}{value}} $\ast$konst, \mbox{\hyperlink{structvalue}{value}} $\ast$reg)
+\begin{DoxyCompactList}\small\item\em Disassembles a single instruction, writing the output to the console. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{vm_8c_a9cc4ce66c6a5a2ad42aa9797e813a2bf}{morpho\+\_\+disassemble}} (program $\ast$code, unsigned int $\ast$matchline)
+\item 
+void \mbox{\hyperlink{vm_8c_a0f5afa59f99c6e1d1997cd141cfa5e13}{morpho\+\_\+stacktrace}} (vm $\ast$v)
+\item 
+void \mbox{\hyperlink{vm_8c_a3ee331f8b9d4c502428478e565ebebd7}{vm\+\_\+gcmarkobject}} (vm $\ast$v, \mbox{\hyperlink{structsobject}{object}} $\ast$obj)
+\item 
+void \mbox{\hyperlink{vm_8c_a6a35711215fcf5bbbe6bb7b9c72719fd}{vm\+\_\+gcmarkvalue}} (vm $\ast$v, \mbox{\hyperlink{structvalue}{value}} val)
+\item 
+void \mbox{\hyperlink{vm_8c_a10954f3a61a00aeca4880150a6a63ba1}{vm\+\_\+gcmarkdictionary}} (vm $\ast$v, \mbox{\hyperlink{structdictionary}{dictionary}} $\ast$dict)
+\item 
+void \mbox{\hyperlink{vm_8c_a7d7713ef7cbb1d0f87bd1af4f08dacc2}{vm\+\_\+gcmarkarray}} (vm $\ast$v, varray\+\_\+value $\ast$array)
+\item 
+void \mbox{\hyperlink{vm_8c_aceacb6e6c80510536e3a45131288e3e6}{vm\+\_\+gcmarkroots}} (vm $\ast$v)
+\item 
+\mbox{\Hypertarget{vm_8c_a38eae0736b9921aea04af2089812e766}\label{vm_8c_a38eae0736b9921aea04af2089812e766}} 
+void {\bfseries vm\+\_\+gcmarkretainobject} (vm $\ast$v, \mbox{\hyperlink{structsobject}{object}} $\ast$obj)
+\item 
+void \mbox{\hyperlink{vm_8c_a89a672fda35c4d4c1b81ab1dcbab8248}{vm\+\_\+gctrace}} (vm $\ast$v)
+\item 
+void \mbox{\hyperlink{vm_8c_af9256e99983329f7c073fd1bdad8ab93}{vm\+\_\+gcsweep}} (vm $\ast$v)
+\item 
+void \mbox{\hyperlink{vm_8c_a8b1536ca5e5ad82e6694b32292286520}{vm\+\_\+runtimeerror}} (vm $\ast$v, ptrdiff\+\_\+t iindx, \mbox{\hyperlink{error_8h_a86254d1fc4e410b785964f4396b5fece}{errorid}} id,...)
+\begin{DoxyCompactList}\small\item\em Raises a runtime error. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{vm_8c_a64225279e9f6e298dd4f566bafec558d}{morpho\+\_\+runtimeerror}} (vm $\ast$v, \mbox{\hyperlink{error_8h_a86254d1fc4e410b785964f4396b5fece}{errorid}} id,...)
+\begin{DoxyCompactList}\small\item\em Public interface to raise a runtime error. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{vm_8c_a00d9a012da406515082836c1ed227891}{morpho\+\_\+interpret}} (vm $\ast$v, program $\ast$code, \mbox{\hyperlink{structerror}{error}} $\ast$err)
+\begin{DoxyCompactList}\small\item\em Executes a sequence of code. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{vm_8c_a6ffb4b4424cecc24e3f5d052f24fa289}{morpho\+\_\+initialize}} (void)
+\item 
+void \mbox{\hyperlink{vm_8c_a607013ac2a41df103b0fccbeedf6cdf8}{morpho\+\_\+finalize}} (void)
+\end{DoxyCompactItemize}
+\doxysubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{vm_8c_a3496da2767630bd007704dc909bf101d}\label{vm_8c_a3496da2767630bd007704dc909bf101d}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries initselector} = \mbox{\hyperlink{value_8h_a6dcaf9f088af9da0c1411ec8cf3e3f8d}{M\+O\+R\+P\+H\+O\+\_\+\+N\+IL}}
+\item 
+\mbox{\Hypertarget{vm_8c_a9b58625913f7085d8a0677ec738f92ba}\label{vm_8c_a9b58625913f7085d8a0677ec738f92ba}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries indexselector} = \mbox{\hyperlink{value_8h_a6dcaf9f088af9da0c1411ec8cf3e3f8d}{M\+O\+R\+P\+H\+O\+\_\+\+N\+IL}}
+\item 
+\mbox{\Hypertarget{vm_8c_a13171c3eb95fa2d72ec7506b880b574a}\label{vm_8c_a13171c3eb95fa2d72ec7506b880b574a}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries setindexselector} = \mbox{\hyperlink{value_8h_a6dcaf9f088af9da0c1411ec8cf3e3f8d}{M\+O\+R\+P\+H\+O\+\_\+\+N\+IL}}
+\item 
+\mbox{\Hypertarget{vm_8c_a73b9072b26a349973b06ddb51033990c}\label{vm_8c_a73b9072b26a349973b06ddb51033990c}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries addselector} = \mbox{\hyperlink{value_8h_a6dcaf9f088af9da0c1411ec8cf3e3f8d}{M\+O\+R\+P\+H\+O\+\_\+\+N\+IL}}
+\item 
+\mbox{\Hypertarget{vm_8c_a6c92a59a841c79244cffd63a07bc3733}\label{vm_8c_a6c92a59a841c79244cffd63a07bc3733}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries subselector} = \mbox{\hyperlink{value_8h_a6dcaf9f088af9da0c1411ec8cf3e3f8d}{M\+O\+R\+P\+H\+O\+\_\+\+N\+IL}}
+\item 
+\mbox{\Hypertarget{vm_8c_aef58c171586836f3ddb0a8c01ce929f9}\label{vm_8c_aef58c171586836f3ddb0a8c01ce929f9}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries mulselector} = \mbox{\hyperlink{value_8h_a6dcaf9f088af9da0c1411ec8cf3e3f8d}{M\+O\+R\+P\+H\+O\+\_\+\+N\+IL}}
+\item 
+\mbox{\Hypertarget{vm_8c_acd3bcc231b73eed093897858b05ef4c3}\label{vm_8c_acd3bcc231b73eed093897858b05ef4c3}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries divselector} = \mbox{\hyperlink{value_8h_a6dcaf9f088af9da0c1411ec8cf3e3f8d}{M\+O\+R\+P\+H\+O\+\_\+\+N\+IL}}
+\item 
+\mbox{\Hypertarget{vm_8c_ac4bda81a6804e5a04b5172b66f5a10b2}\label{vm_8c_ac4bda81a6804e5a04b5172b66f5a10b2}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries printselector} = \mbox{\hyperlink{value_8h_a6dcaf9f088af9da0c1411ec8cf3e3f8d}{M\+O\+R\+P\+H\+O\+\_\+\+N\+IL}}
+\item 
+\mbox{\Hypertarget{vm_8c_a62fdacb7aa3b8cd53aae8f84517c1222}\label{vm_8c_a62fdacb7aa3b8cd53aae8f84517c1222}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries enumerateselector} = \mbox{\hyperlink{value_8h_a6dcaf9f088af9da0c1411ec8cf3e3f8d}{M\+O\+R\+P\+H\+O\+\_\+\+N\+IL}}
+\item 
+\mbox{\Hypertarget{vm_8c_ad4d8c8b6f22edeed98f7b8837a30397f}\label{vm_8c_ad4d8c8b6f22edeed98f7b8837a30397f}} 
+vm $\ast$ {\bfseries globalvm} =N\+U\+LL
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Morpho virtual machine. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Macro Definition Documentation}
+\mbox{\Hypertarget{vm_8c_a611eea3d237b1b535fa3b265566a59f2}\label{vm_8c_a611eea3d237b1b535fa3b265566a59f2}} 
+\index{vm.c@{vm.c}!CHECKCMPTYPE@{CHECKCMPTYPE}}
+\index{CHECKCMPTYPE@{CHECKCMPTYPE}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{CHECKCMPTYPE}{CHECKCMPTYPE}}
+{\footnotesize\ttfamily \#define C\+H\+E\+C\+K\+C\+M\+P\+T\+Y\+PE(\begin{DoxyParamCaption}\item[{}]{l,  }\item[{}]{r }\end{DoxyParamCaption})}
+
+{\bfseries Value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{            \textcolor{keywordflow}{if} (!morpho\_ofsametype(l, r)) \{ \(\backslash\)}
+\DoxyCodeLine{                if (MORPHO\_ISINTEGER(l) \&\& MORPHO\_ISFLOAT(r)) \{ \(\backslash\)}
+\DoxyCodeLine{                    l = \mbox{\hyperlink{value_8h_ab4fcd96a2f8077c2988c5649fc25773b}{MORPHO\_INTEGERTOFLOAT}}(l); \(\backslash\)}
+\DoxyCodeLine{                \} \textcolor{keywordflow}{else} \textcolor{keywordflow}{if} (MORPHO\_ISFLOAT(l) \&\& MORPHO\_ISINTEGER(r)) \{ \(\backslash\)}
+\DoxyCodeLine{                    r = \mbox{\hyperlink{value_8h_ab4fcd96a2f8077c2988c5649fc25773b}{MORPHO\_INTEGERTOFLOAT}}(right); \(\backslash\)}
+\DoxyCodeLine{                \} \(\backslash\)}
+\DoxyCodeLine{            \}}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{vm_8c_a125a9b982f3b39184e459bd3195bd61a}\label{vm_8c_a125a9b982f3b39184e459bd3195bd61a}} 
+\index{vm.c@{vm.c}!DISASSEMBLE\_OPAB@{DISASSEMBLE\_OPAB}}
+\index{DISASSEMBLE\_OPAB@{DISASSEMBLE\_OPAB}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{DISASSEMBLE\_OPAB}{DISASSEMBLE\_OPAB}}
+{\footnotesize\ttfamily \#define D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+O\+P\+AB(\begin{DoxyParamCaption}\item[{}]{op,  }\item[{}]{i }\end{DoxyParamCaption})}
+
+{\bfseries Value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{                                    disassemble\_ABC(op, i, \mbox{\hyperlink{vm_8c_aaaa7b1c1e493ae79f74c415638b6ae90}{DISASSEMBLE\_SHOWA}} | \(\backslash\)}
+\DoxyCodeLine{                                    DISASSEMBLE\_SHOWB, konst, reg)}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{vm_8c_a0b2bbc25ff05d121dec4616cc607d061}\label{vm_8c_a0b2bbc25ff05d121dec4616cc607d061}} 
+\index{vm.c@{vm.c}!DISASSEMBLE\_OPABC@{DISASSEMBLE\_OPABC}}
+\index{DISASSEMBLE\_OPABC@{DISASSEMBLE\_OPABC}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{DISASSEMBLE\_OPABC}{DISASSEMBLE\_OPABC}}
+{\footnotesize\ttfamily \#define D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+O\+P\+A\+BC(\begin{DoxyParamCaption}\item[{}]{op,  }\item[{}]{i }\end{DoxyParamCaption})}
+
+{\bfseries Value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{                                    disassemble\_ABC(op, i, \mbox{\hyperlink{vm_8c_aaaa7b1c1e493ae79f74c415638b6ae90}{DISASSEMBLE\_SHOWA}} | \(\backslash\)}
+\DoxyCodeLine{                                    DISASSEMBLE\_SHOWB | DISASSEMBLE\_SHOWC, \(\backslash\)}
+\DoxyCodeLine{                                    konst, reg)}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{vm_8c_ac550480f8ff5093106cb8dcc95b262dd}\label{vm_8c_ac550480f8ff5093106cb8dcc95b262dd}} 
+\index{vm.c@{vm.c}!DISASSEMBLE\_OPAcB@{DISASSEMBLE\_OPAcB}}
+\index{DISASSEMBLE\_OPAcB@{DISASSEMBLE\_OPAcB}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{DISASSEMBLE\_OPAcB}{DISASSEMBLE\_OPAcB}}
+{\footnotesize\ttfamily \#define D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+O\+P\+AcB(\begin{DoxyParamCaption}\item[{}]{op,  }\item[{}]{i }\end{DoxyParamCaption})}
+
+{\bfseries Value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{disassemble\_ABC(op, i, \mbox{\hyperlink{vm_8c_aaaa7b1c1e493ae79f74c415638b6ae90}{DISASSEMBLE\_SHOWA}} | \(\backslash\)}
+\DoxyCodeLine{DISASSEMBLE\_SHOWB | DISASSEMBLE\_SHOWAc, konst, reg)}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{vm_8c_a39feca6e8c2b24e53bc29427540d7140}\label{vm_8c_a39feca6e8c2b24e53bc29427540d7140}} 
+\index{vm.c@{vm.c}!DISASSEMBLE\_OPB@{DISASSEMBLE\_OPB}}
+\index{DISASSEMBLE\_OPB@{DISASSEMBLE\_OPB}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{DISASSEMBLE\_OPB}{DISASSEMBLE\_OPB}}
+{\footnotesize\ttfamily \#define D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+O\+PB(\begin{DoxyParamCaption}\item[{}]{op,  }\item[{}]{i }\end{DoxyParamCaption})}
+
+{\bfseries Value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{                                    disassemble\_ABC(op, i, DISASSEMBLE\_SHOWB, \(\backslash\)}
+\DoxyCodeLine{                                    konst, reg)}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{vm_8c_aaaa7b1c1e493ae79f74c415638b6ae90}\label{vm_8c_aaaa7b1c1e493ae79f74c415638b6ae90}} 
+\index{vm.c@{vm.c}!DISASSEMBLE\_SHOWA@{DISASSEMBLE\_SHOWA}}
+\index{DISASSEMBLE\_SHOWA@{DISASSEMBLE\_SHOWA}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{DISASSEMBLE\_SHOWA}{DISASSEMBLE\_SHOWA}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \#define D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+WA~1}
+
+
+
+Disassembles a single A\+BC format instruction. 
+
+Disassembles a single A\+Bx format instruction.
+
+
+\begin{DoxyParams}{Parameters}
+{\em op} & string to print to describe the op \\
+\hline
+{\em i} & the instruction \\
+\hline
+{\em show} & which operands to show \\
+\hline
+{\em konst} & current constant table \\
+\hline
+{\em reg} & current registers\\
+\hline
+{\em op} & string to print to describe the op \\
+\hline
+{\em i} & the instruction \\
+\hline
+{\em show} & which operands to show \\
+\hline
+{\em reg} & current registers \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{vm_8c_aaaa7b1c1e493ae79f74c415638b6ae90}\label{vm_8c_aaaa7b1c1e493ae79f74c415638b6ae90}} 
+\index{vm.c@{vm.c}!DISASSEMBLE\_SHOWA@{DISASSEMBLE\_SHOWA}}
+\index{DISASSEMBLE\_SHOWA@{DISASSEMBLE\_SHOWA}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{DISASSEMBLE\_SHOWA}{DISASSEMBLE\_SHOWA}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \#define D\+I\+S\+A\+S\+S\+E\+M\+B\+L\+E\+\_\+\+S\+H\+O\+WA~1}
+
+
+
+Disassembles a single A\+BC format instruction. 
+
+Disassembles a single A\+Bx format instruction.
+
+
+\begin{DoxyParams}{Parameters}
+{\em op} & string to print to describe the op \\
+\hline
+{\em i} & the instruction \\
+\hline
+{\em show} & which operands to show \\
+\hline
+{\em konst} & current constant table \\
+\hline
+{\em reg} & current registers\\
+\hline
+{\em op} & string to print to describe the op \\
+\hline
+{\em i} & the instruction \\
+\hline
+{\em show} & which operands to show \\
+\hline
+{\em reg} & current registers \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{vm_8c_a9a69cf14d06281e0f3c07961fd62368f}\label{vm_8c_a9a69cf14d06281e0f3c07961fd62368f}} 
+\index{vm.c@{vm.c}!INTERPRET\_LOOP@{INTERPRET\_LOOP}}
+\index{INTERPRET\_LOOP@{INTERPRET\_LOOP}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{INTERPRET\_LOOP}{INTERPRET\_LOOP}}
+{\footnotesize\ttfamily \#define I\+N\+T\+E\+R\+P\+R\+E\+T\+\_\+\+L\+O\+OP}
+
+{\bfseries Value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{        loop:                                                                \(\backslash\)}
+\DoxyCodeLine{        bc=*pc++;                                                            \(\backslash\)}
+\DoxyCodeLine{        OPOPCODECNT(pp, bc)                                                  \(\backslash\)}
+\DoxyCodeLine{        op=\mbox{\hyperlink{core_8h_a7f95f0dfa928fbd995c2ee0c4e5d1572}{DECODE\_OP}}(bc);                                                    \(\backslash\)}
+\DoxyCodeLine{        OPCODECNT(op)                                                        \(\backslash\)}
+\DoxyCodeLine{        MORPHO\_DISASSEMBLE\_INSRUCTION(bc,pc-\/instructions,konst, reg)         \(\backslash\)}
+\DoxyCodeLine{        switch (op)}
+
+\end{DoxyCode}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{vm_8c_a9cc4ce66c6a5a2ad42aa9797e813a2bf}\label{vm_8c_a9cc4ce66c6a5a2ad42aa9797e813a2bf}} 
+\index{vm.c@{vm.c}!morpho\_disassemble@{morpho\_disassemble}}
+\index{morpho\_disassemble@{morpho\_disassemble}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{morpho\_disassemble()}{morpho\_disassemble()}}
+{\footnotesize\ttfamily void morpho\+\_\+disassemble (\begin{DoxyParamCaption}\item[{program $\ast$}]{code,  }\item[{unsigned int $\ast$}]{matchline }\end{DoxyParamCaption})}
+
+Disassembles a program 
+\begin{DoxyParams}{Parameters}
+{\em code} & -\/ program to disassemble \\
+\hline
+{\em matchline} & -\/ optional line number to match \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{vm_8c_a607013ac2a41df103b0fccbeedf6cdf8}\label{vm_8c_a607013ac2a41df103b0fccbeedf6cdf8}} 
+\index{vm.c@{vm.c}!morpho\_finalize@{morpho\_finalize}}
+\index{morpho\_finalize@{morpho\_finalize}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{morpho\_finalize()}{morpho\_finalize()}}
+{\footnotesize\ttfamily void morpho\+\_\+finalize (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+Finalizes morpho \mbox{\Hypertarget{vm_8c_a83b5eecc90809fd05ab97d141e804284}\label{vm_8c_a83b5eecc90809fd05ab97d141e804284}} 
+\index{vm.c@{vm.c}!morpho\_freevm@{morpho\_freevm}}
+\index{morpho\_freevm@{morpho\_freevm}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{morpho\_freevm()}{morpho\_freevm()}}
+{\footnotesize\ttfamily void morpho\+\_\+freevm (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v }\end{DoxyParamCaption})}
+
+Frees a virtual machine \mbox{\Hypertarget{vm_8c_af3595b325e410fcd81329e55d530ea0c}\label{vm_8c_af3595b325e410fcd81329e55d530ea0c}} 
+\index{vm.c@{vm.c}!morpho\_getdebugfromindx@{morpho\_getdebugfromindx}}
+\index{morpho\_getdebugfromindx@{morpho\_getdebugfromindx}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{morpho\_getdebugfromindx()}{morpho\_getdebugfromindx()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structdebuginfo}{debuginfo}}$\ast$ morpho\+\_\+getdebugfromindx (\begin{DoxyParamCaption}\item[{program $\ast$}]{p,  }\item[{\mbox{\hyperlink{core_8h_a107785ee96e2333686235ba7e0b869b6}{instructionindx}}}]{indx }\end{DoxyParamCaption})}
+
+Finds the debugging info asssociated with instruction at indx \mbox{\Hypertarget{vm_8c_a6ffb4b4424cecc24e3f5d052f24fa289}\label{vm_8c_a6ffb4b4424cecc24e3f5d052f24fa289}} 
+\index{vm.c@{vm.c}!morpho\_initialize@{morpho\_initialize}}
+\index{morpho\_initialize@{morpho\_initialize}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{morpho\_initialize()}{morpho\_initialize()}}
+{\footnotesize\ttfamily void morpho\+\_\+initialize (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+Initializes morpho \mbox{\Hypertarget{vm_8c_a00d9a012da406515082836c1ed227891}\label{vm_8c_a00d9a012da406515082836c1ed227891}} 
+\index{vm.c@{vm.c}!morpho\_interpret@{morpho\_interpret}}
+\index{morpho\_interpret@{morpho\_interpret}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{morpho\_interpret()}{morpho\_interpret()}}
+{\footnotesize\ttfamily bool morpho\+\_\+interpret (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{program $\ast$}]{code,  }\item[{\mbox{\hyperlink{structerror}{error}} $\ast$}]{err }\end{DoxyParamCaption})}
+
+
+
+Executes a sequence of code. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em v} & The virtual machine to use \\
+\hline
+{\em code} & The program to execute \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+A morpho error 
+\end{DoxyReturn}
+\mbox{\Hypertarget{vm_8c_a593764a66070bd348674ccc0d3d84d4c}\label{vm_8c_a593764a66070bd348674ccc0d3d84d4c}} 
+\index{vm.c@{vm.c}!morpho\_newvm@{morpho\_newvm}}
+\index{morpho\_newvm@{morpho\_newvm}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{morpho\_newvm()}{morpho\_newvm()}}
+{\footnotesize\ttfamily vm$\ast$ morpho\+\_\+newvm (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+Creates a new virtual machine \mbox{\Hypertarget{vm_8c_a64225279e9f6e298dd4f566bafec558d}\label{vm_8c_a64225279e9f6e298dd4f566bafec558d}} 
+\index{vm.c@{vm.c}!morpho\_runtimeerror@{morpho\_runtimeerror}}
+\index{morpho\_runtimeerror@{morpho\_runtimeerror}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{morpho\_runtimeerror()}{morpho\_runtimeerror()}}
+{\footnotesize\ttfamily void morpho\+\_\+runtimeerror (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{\mbox{\hyperlink{error_8h_a86254d1fc4e410b785964f4396b5fece}{errorid}}}]{id,  }\item[{}]{... }\end{DoxyParamCaption})}
+
+
+
+Public interface to raise a runtime error. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em v} & the virtual machine \\
+\hline
+{\em id} & error id \\
+\hline
+{\em ...} & additional data for sprintf. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{vm_8c_a0f5afa59f99c6e1d1997cd141cfa5e13}\label{vm_8c_a0f5afa59f99c6e1d1997cd141cfa5e13}} 
+\index{vm.c@{vm.c}!morpho\_stacktrace@{morpho\_stacktrace}}
+\index{morpho\_stacktrace@{morpho\_stacktrace}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{morpho\_stacktrace()}{morpho\_stacktrace()}}
+{\footnotesize\ttfamily void morpho\+\_\+stacktrace (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v }\end{DoxyParamCaption})}
+
+Prints a stacktrace \mbox{\Hypertarget{vm_8c_a894f9f5a1ac6d741ce356c7b127f6374}\label{vm_8c_a894f9f5a1ac6d741ce356c7b127f6374}} 
+\index{vm.c@{vm.c}!program\_bindobject@{program\_bindobject}}
+\index{program\_bindobject@{program\_bindobject}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{program\_bindobject()}{program\_bindobject()}}
+{\footnotesize\ttfamily void program\+\_\+bindobject (\begin{DoxyParamCaption}\item[{program $\ast$}]{p,  }\item[{\mbox{\hyperlink{structsobject}{object}} $\ast$}]{obj }\end{DoxyParamCaption})}
+
+
+
+Binds an object to a program. 
+
+Objects bound to the program are freed with the program; use for static data (e.\+g. held in constant tables) \mbox{\Hypertarget{vm_8c_a697b2aa1d5e4de37a67a9a0180773d20}\label{vm_8c_a697b2aa1d5e4de37a67a9a0180773d20}} 
+\index{vm.c@{vm.c}!program\_getentry@{program\_getentry}}
+\index{program\_getentry@{program\_getentry}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{program\_getentry()}{program\_getentry()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{core_8h_a107785ee96e2333686235ba7e0b869b6}{instructionindx}} program\+\_\+getentry (\begin{DoxyParamCaption}\item[{program $\ast$}]{p }\end{DoxyParamCaption})}
+
+Gets the entry point of a program ~\newline
+ \mbox{\Hypertarget{vm_8c_aa8f2233eacb18097bfaab61da0504e6a}\label{vm_8c_aa8f2233eacb18097bfaab61da0504e6a}} 
+\index{vm.c@{vm.c}!program\_internsymbol@{program\_internsymbol}}
+\index{program\_internsymbol@{program\_internsymbol}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{program\_internsymbol()}{program\_internsymbol()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} program\+\_\+internsymbol (\begin{DoxyParamCaption}\item[{program $\ast$}]{p,  }\item[{\mbox{\hyperlink{structvalue}{value}}}]{symbol }\end{DoxyParamCaption})}
+
+
+
+Interns a symbol into the programs symbol table. 
+
+Note that the string is cloned if it does not exist already. Interning is used to accelerate dynamic lookups as the same string for a symbol will be used universally \mbox{\Hypertarget{vm_8c_a6e0448661c564765584850100a059167}\label{vm_8c_a6e0448661c564765584850100a059167}} 
+\index{vm.c@{vm.c}!program\_setentry@{program\_setentry}}
+\index{program\_setentry@{program\_setentry}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{program\_setentry()}{program\_setentry()}}
+{\footnotesize\ttfamily void program\+\_\+setentry (\begin{DoxyParamCaption}\item[{program $\ast$}]{p,  }\item[{\mbox{\hyperlink{core_8h_a107785ee96e2333686235ba7e0b869b6}{instructionindx}}}]{entry }\end{DoxyParamCaption})}
+
+Sets the entry point of a program \mbox{\Hypertarget{vm_8c_afd7d339cc6f2a68c5a70665f3b78a568}\label{vm_8c_afd7d339cc6f2a68c5a70665f3b78a568}} 
+\index{vm.c@{vm.c}!vm\_bindobject@{vm\_bindobject}}
+\index{vm\_bindobject@{vm\_bindobject}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{vm\_bindobject()}{vm\_bindobject()}}
+{\footnotesize\ttfamily void vm\+\_\+bindobject (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{\mbox{\hyperlink{structvalue}{value}}}]{obj }\end{DoxyParamCaption})}
+
+
+
+Binds an object to a Virtual Machine. 
+
+Any object created during execution should be bound to a VM; this object is then managed by the garbage collector. 
+\begin{DoxyParams}{Parameters}
+{\em v} & the virtual machine \\
+\hline
+{\em obj} & object to bind \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{vm_8c_ad1346d4f0fb42a66ce6031440f02d4ce}\label{vm_8c_ad1346d4f0fb42a66ce6031440f02d4ce}} 
+\index{vm.c@{vm.c}!vm\_collectgarbage@{vm\_collectgarbage}}
+\index{vm\_collectgarbage@{vm\_collectgarbage}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{vm\_collectgarbage()}{vm\_collectgarbage()}}
+{\footnotesize\ttfamily void vm\+\_\+collectgarbage (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v }\end{DoxyParamCaption})}
+
+Collects garbage \mbox{\Hypertarget{vm_8c_aa3d749832de80e3bfd286a7c7d921c11}\label{vm_8c_aa3d749832de80e3bfd286a7c7d921c11}} 
+\index{vm.c@{vm.c}!vm\_disassembleinstruction@{vm\_disassembleinstruction}}
+\index{vm\_disassembleinstruction@{vm\_disassembleinstruction}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{vm\_disassembleinstruction()}{vm\_disassembleinstruction()}}
+{\footnotesize\ttfamily void vm\+\_\+disassembleinstruction (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{core_8h_a9ae6286de740e9f230d1a007e1b1cccd}{instruction}}}]{instruction,  }\item[{ptrdiff\+\_\+t}]{indx,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{konst,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{reg }\end{DoxyParamCaption})}
+
+
+
+Disassembles a single instruction, writing the output to the console. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em instruction} & The instruction to disassemble \\
+\hline
+{\em indx} & Instruction index to display \\
+\hline
+{\em konst} & current constant table \\
+\hline
+{\em reg} & current registers \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{vm_8c_abc505c01f117f54f1abb728090fe06eb}\label{vm_8c_abc505c01f117f54f1abb728090fe06eb}} 
+\index{vm.c@{vm.c}!vm\_freeobjects@{vm\_freeobjects}}
+\index{vm\_freeobjects@{vm\_freeobjects}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{vm\_freeobjects()}{vm\_freeobjects()}}
+{\footnotesize\ttfamily void vm\+\_\+freeobjects (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v }\end{DoxyParamCaption})}
+
+Frees all objects bound to a virtual machine \mbox{\Hypertarget{vm_8c_a7d7713ef7cbb1d0f87bd1af4f08dacc2}\label{vm_8c_a7d7713ef7cbb1d0f87bd1af4f08dacc2}} 
+\index{vm.c@{vm.c}!vm\_gcmarkarray@{vm\_gcmarkarray}}
+\index{vm\_gcmarkarray@{vm\_gcmarkarray}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{vm\_gcmarkarray()}{vm\_gcmarkarray()}}
+{\footnotesize\ttfamily void vm\+\_\+gcmarkarray (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{varray\+\_\+value $\ast$}]{array }\end{DoxyParamCaption})}
+
+Marks all entries in an array \mbox{\Hypertarget{vm_8c_a10954f3a61a00aeca4880150a6a63ba1}\label{vm_8c_a10954f3a61a00aeca4880150a6a63ba1}} 
+\index{vm.c@{vm.c}!vm\_gcmarkdictionary@{vm\_gcmarkdictionary}}
+\index{vm\_gcmarkdictionary@{vm\_gcmarkdictionary}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{vm\_gcmarkdictionary()}{vm\_gcmarkdictionary()}}
+{\footnotesize\ttfamily void vm\+\_\+gcmarkdictionary (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{\mbox{\hyperlink{structdictionary}{dictionary}} $\ast$}]{dict }\end{DoxyParamCaption})}
+
+Marks all entries in a dictionary \mbox{\Hypertarget{vm_8c_a3ee331f8b9d4c502428478e565ebebd7}\label{vm_8c_a3ee331f8b9d4c502428478e565ebebd7}} 
+\index{vm.c@{vm.c}!vm\_gcmarkobject@{vm\_gcmarkobject}}
+\index{vm\_gcmarkobject@{vm\_gcmarkobject}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{vm\_gcmarkobject()}{vm\_gcmarkobject()}}
+{\footnotesize\ttfamily void vm\+\_\+gcmarkobject (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{\mbox{\hyperlink{structsobject}{object}} $\ast$}]{obj }\end{DoxyParamCaption})}
+
+Marks an object as reachable \mbox{\Hypertarget{vm_8c_aceacb6e6c80510536e3a45131288e3e6}\label{vm_8c_aceacb6e6c80510536e3a45131288e3e6}} 
+\index{vm.c@{vm.c}!vm\_gcmarkroots@{vm\_gcmarkroots}}
+\index{vm\_gcmarkroots@{vm\_gcmarkroots}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{vm\_gcmarkroots()}{vm\_gcmarkroots()}}
+{\footnotesize\ttfamily void vm\+\_\+gcmarkroots (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v }\end{DoxyParamCaption})}
+
+Searches a vm for all reachable objects Mark anything on the stack
+
+Mark closure objects in use\mbox{\Hypertarget{vm_8c_a6a35711215fcf5bbbe6bb7b9c72719fd}\label{vm_8c_a6a35711215fcf5bbbe6bb7b9c72719fd}} 
+\index{vm.c@{vm.c}!vm\_gcmarkvalue@{vm\_gcmarkvalue}}
+\index{vm\_gcmarkvalue@{vm\_gcmarkvalue}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{vm\_gcmarkvalue()}{vm\_gcmarkvalue()}}
+{\footnotesize\ttfamily void vm\+\_\+gcmarkvalue (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{\mbox{\hyperlink{structvalue}{value}}}]{val }\end{DoxyParamCaption})}
+
+Marks a value as reachable \mbox{\Hypertarget{vm_8c_af9256e99983329f7c073fd1bdad8ab93}\label{vm_8c_af9256e99983329f7c073fd1bdad8ab93}} 
+\index{vm.c@{vm.c}!vm\_gcsweep@{vm\_gcsweep}}
+\index{vm\_gcsweep@{vm\_gcsweep}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{vm\_gcsweep()}{vm\_gcsweep()}}
+{\footnotesize\ttfamily void vm\+\_\+gcsweep (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v }\end{DoxyParamCaption})}
+
+Go through the VM\textquotesingle{}s object list and free all unmarked objects \mbox{\Hypertarget{vm_8c_a89a672fda35c4d4c1b81ab1dcbab8248}\label{vm_8c_a89a672fda35c4d4c1b81ab1dcbab8248}} 
+\index{vm.c@{vm.c}!vm\_gctrace@{vm\_gctrace}}
+\index{vm\_gctrace@{vm\_gctrace}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{vm\_gctrace()}{vm\_gctrace()}}
+{\footnotesize\ttfamily void vm\+\_\+gctrace (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v }\end{DoxyParamCaption})}
+
+Trace all objects on the graylist \mbox{\Hypertarget{vm_8c_a8b1536ca5e5ad82e6694b32292286520}\label{vm_8c_a8b1536ca5e5ad82e6694b32292286520}} 
+\index{vm.c@{vm.c}!vm\_runtimeerror@{vm\_runtimeerror}}
+\index{vm\_runtimeerror@{vm\_runtimeerror}!vm.c@{vm.c}}
+\doxysubsubsection{\texorpdfstring{vm\_runtimeerror()}{vm\_runtimeerror()}}
+{\footnotesize\ttfamily void vm\+\_\+runtimeerror (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{ptrdiff\+\_\+t}]{iindx,  }\item[{\mbox{\hyperlink{error_8h_a86254d1fc4e410b785964f4396b5fece}{errorid}}}]{id,  }\item[{}]{... }\end{DoxyParamCaption})}
+
+
+
+Raises a runtime error. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em v} & the virtual machine \\
+\hline
+{\em id} & error id \\
+\hline
+{\em ...} & additional data for sprintf. \\
+\hline
+\end{DoxyParams}

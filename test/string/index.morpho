@@ -1,0 +1,17 @@
+var s = "Hello"
+
+print s[0]
+// expect: H
+print s[2]
+// expect: l
+
+s[2]="L"
+print s
+// expect: HeLlo
+
+s[2]="WW"
+print s
+// expect: HeWWo
+
+s[20]="E"
+// expect Error 'IndxBnds'

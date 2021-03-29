@@ -1,0 +1,55 @@
+/* Test relaxation problem */
+
+var m = Mesh("cube.mesh")
+var la = Area()
+var lv = VolumeEnclosed()
+
+var vtarget = 1
+var vtol = 1e-10
+
+var ftol = 1e-10
+var etol = 1e-16
+
+var stepsize = 0.1
+
+var v = m.vertexmatrix()
+var energy = la.total(m)
+
+for (i in 1..40) {
+  var fa = la.gradient(m)
+  var fv = lv.gradient(m)
+
+  // Subtract component of fa parallel to the constraint
+  var lambda=fa.inner(fv)/fv.inner(fv)
+  var ft=fa.clone()
+  ft.acc(-lambda, fv)
+
+  // Move downhill
+  v.acc(-stepsize, ft)
+
+  // Reproject onto volume constraint
+  var dv=vtarget-lv.total(m);
+  do {
+    fv=lv.gradient(m)
+    var normfv=fv.inner(fv)
+    v.acc(dv/normfv,fv)
+    dv=vtarget-lv.total(m)
+  } while (abs(dv)>vtol)
+
+  // Monitor energy, change in energy and the norm of the force
+  var newenergy=la.total(m)
+  var de = abs(newenergy-energy)
+  var fnorm = sqrt(ft.inner(ft))
+
+  // print "Iteration ${i}. Area: ${la.total(m)} Volume: ${lv.total(m)}"
+  // print "              delta E: ${de} |force|: ${fnorm}"
+
+  if (de<etol || fnorm<ftol) break
+
+  energy=newenergy
+}
+
+print (energy-5.11249)<1e-4
+// expect: true
+
+//m.save("cubeout.mesh")

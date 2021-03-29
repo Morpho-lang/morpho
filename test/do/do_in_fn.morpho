@@ -1,0 +1,16 @@
+// Do..while loop in a function
+
+fn f(N) {
+    var i=0
+    do {
+      print i
+      i+=1
+    } while (i<N)
+}
+
+f(5)
+// expect: 0
+// expect: 1
+// expect: 2
+// expect: 3
+// expect: 4

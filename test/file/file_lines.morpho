@@ -1,0 +1,20 @@
+/*
+ * File class
+ */
+
+var f=File("test.txt")
+var p=f.lines()
+f.close()
+
+for (var i=0; i<12; i=i+1) print p[i]
+// expect: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+// expect: Phasellus sit amet ligula in ante porta mattis.
+// expect: Duis fringilla dui nec tristique rhoncus.
+// expect: Curabitur gravida neque in neque sodales molestie.
+// expect: Fusce ut velit pellentesque lectus porttitor malesuada a pellentesque libero.
+// expect: Ut tristique leo quis ullamcorper ornare.
+// expect: Integer cursus nunc nibh, eu interdum nisl mattis quis.
+// expect: Phasellus in lectus id dolor rhoncus cursus.
+// expect: Maecenas dapibus tincidunt turpis, nec fermentum augue ultrices sed.
+// expect: Curabitur venenatis sem sed velit varius tristique.
+// expect error 'IndxBnds'

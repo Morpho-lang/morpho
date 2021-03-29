@@ -1,0 +1,168 @@
+\hypertarget{help_8c}{}\doxysection{interface/help.c File Reference}
+\label{help_8c}\index{interface/help.c@{interface/help.c}}
+
+
+Interactive help system.  
+
+
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include $<$ctype.\+h$>$}\newline
+{\ttfamily \#include $<$dirent.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}help.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}dictionary.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}parse.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}common.\+h\char`\"{}}\newline
+\doxysubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{help_8c_a385608568f7e07e477e19c8765006c5a}\label{help_8c_a385608568f7e07e477e19c8765006c5a}} 
+\#define {\bfseries H\+E\+L\+P\+\_\+\+L\+I\+N\+E\+L\+E\+N\+G\+TH}~2048
+\item 
+\mbox{\Hypertarget{help_8c_a0c0998e7e81a1eae05db543be26a48fc}\label{help_8c_a0c0998e7e81a1eae05db543be26a48fc}} 
+\#define {\bfseries H\+E\+L\+P\+\_\+\+M\+A\+X\+L\+E\+V\+EL}~6
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{structsobjecthelptopic}{objecthelptopic}} $\ast$ \mbox{\hyperlink{help_8c_a5debf840db0c39f8fc9a6eeb1cdce739}{help\+\_\+newtopic}} (char $\ast$topic, char $\ast$file, long int location, \mbox{\hyperlink{structsobjecthelptopic}{objecthelptopic}} $\ast$parent)
+\item 
+void \mbox{\hyperlink{help_8c_ada404465ad0db98c85046cc053bd1e2c}{help\+\_\+cleartopic}} (\mbox{\hyperlink{structsobjecthelptopic}{objecthelptopic}} $\ast$topic)
+\item 
+size\+\_\+t \mbox{\hyperlink{help_8c_aef9573a5c37905df99cdb4fecea3ade6}{help\+\_\+querylength}} (char $\ast$query, char $\ast$$\ast$s)
+\item 
+\mbox{\hyperlink{structsobjecthelptopic}{objecthelptopic}} $\ast$ \mbox{\hyperlink{help_8c_ad372957b394d91132e662578f21b0ec7}{help\+\_\+search}} (char $\ast$query)
+\item 
+void \mbox{\hyperlink{help_8c_a4879e3b1496408238d7f87955904dc74}{help\+\_\+display}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, \mbox{\hyperlink{structsobjecthelptopic}{objecthelptopic}} $\ast$topic)
+\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{help_8c_a757b26b723a74c0947cb20e00c4cc02e}{help\+\_\+parsetopicname}} (char $\ast$line)
+\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{help_8c_a5a539519d99b3f03b69b32e1bbcd1111}{help\+\_\+parsetag}} (char $\ast$line)
+\item 
+int \mbox{\hyperlink{help_8c_ae80b44e4ca107761479842dd0f85a4a8}{help\+\_\+parsetopiclevel}} (char $\ast$line)
+\item 
+bool \mbox{\hyperlink{help_8c_a08fd47bfcd8b4ab9733b2b57722c7454}{help\+\_\+load}} (char $\ast$file)
+\item 
+bool \mbox{\hyperlink{help_8c_a219fd009e218f859c00cfe7c59af9617}{help\+\_\+searchpath}} (char $\ast$path)
+\item 
+bool \mbox{\hyperlink{help_8c_a09014c446550cc087636ca3a1ef26f44}{help\+\_\+initialize}} (void)
+\item 
+void \mbox{\hyperlink{help_8c_ab9c802a151c34c16d23e7f6356b5e4c6}{help\+\_\+finalize}} (void)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Interactive help system. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{help_8c_ada404465ad0db98c85046cc053bd1e2c}\label{help_8c_ada404465ad0db98c85046cc053bd1e2c}} 
+\index{help.c@{help.c}!help\_cleartopic@{help\_cleartopic}}
+\index{help\_cleartopic@{help\_cleartopic}!help.c@{help.c}}
+\doxysubsubsection{\texorpdfstring{help\_cleartopic()}{help\_cleartopic()}}
+{\footnotesize\ttfamily void help\+\_\+cleartopic (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structsobjecthelptopic}{objecthelptopic}} $\ast$}]{topic }\end{DoxyParamCaption})}
+
+Free attached data from a help topic \mbox{\Hypertarget{help_8c_a4879e3b1496408238d7f87955904dc74}\label{help_8c_a4879e3b1496408238d7f87955904dc74}} 
+\index{help.c@{help.c}!help\_display@{help\_display}}
+\index{help\_display@{help\_display}!help.c@{help.c}}
+\doxysubsubsection{\texorpdfstring{help\_display()}{help\_display()}}
+{\footnotesize\ttfamily void help\+\_\+display (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{\mbox{\hyperlink{structsobjecthelptopic}{objecthelptopic}} $\ast$}]{topic }\end{DoxyParamCaption})}
+
+Displays a help topic \mbox{\Hypertarget{help_8c_ab9c802a151c34c16d23e7f6356b5e4c6}\label{help_8c_ab9c802a151c34c16d23e7f6356b5e4c6}} 
+\index{help.c@{help.c}!help\_finalize@{help\_finalize}}
+\index{help\_finalize@{help\_finalize}!help.c@{help.c}}
+\doxysubsubsection{\texorpdfstring{help\_finalize()}{help\_finalize()}}
+{\footnotesize\ttfamily void help\+\_\+finalize (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+Finalizes the help system \mbox{\Hypertarget{help_8c_a09014c446550cc087636ca3a1ef26f44}\label{help_8c_a09014c446550cc087636ca3a1ef26f44}} 
+\index{help.c@{help.c}!help\_initialize@{help\_initialize}}
+\index{help\_initialize@{help\_initialize}!help.c@{help.c}}
+\doxysubsubsection{\texorpdfstring{help\_initialize()}{help\_initialize()}}
+{\footnotesize\ttfamily bool help\+\_\+initialize (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+Initializes the help system \begin{DoxyReturn}{Returns}
+true if help is available 
+\end{DoxyReturn}
+\mbox{\Hypertarget{help_8c_a08fd47bfcd8b4ab9733b2b57722c7454}\label{help_8c_a08fd47bfcd8b4ab9733b2b57722c7454}} 
+\index{help.c@{help.c}!help\_load@{help\_load}}
+\index{help\_load@{help\_load}!help.c@{help.c}}
+\doxysubsubsection{\texorpdfstring{help\_load()}{help\_load()}}
+{\footnotesize\ttfamily bool help\+\_\+load (\begin{DoxyParamCaption}\item[{char $\ast$}]{file }\end{DoxyParamCaption})}
+
+Loads a help file 
+\begin{DoxyParams}{Parameters}
+{\em file} & file to load \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if any help entries were successfully loaded 
+\end{DoxyReturn}
+\mbox{\Hypertarget{help_8c_a5debf840db0c39f8fc9a6eeb1cdce739}\label{help_8c_a5debf840db0c39f8fc9a6eeb1cdce739}} 
+\index{help.c@{help.c}!help\_newtopic@{help\_newtopic}}
+\index{help\_newtopic@{help\_newtopic}!help.c@{help.c}}
+\doxysubsubsection{\texorpdfstring{help\_newtopic()}{help\_newtopic()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structsobjecthelptopic}{objecthelptopic}}$\ast$ help\+\_\+newtopic (\begin{DoxyParamCaption}\item[{char $\ast$}]{topic,  }\item[{char $\ast$}]{file,  }\item[{long int}]{location,  }\item[{\mbox{\hyperlink{structsobjecthelptopic}{objecthelptopic}} $\ast$}]{parent }\end{DoxyParamCaption})}
+
+Create a new help topic \mbox{\Hypertarget{help_8c_a5a539519d99b3f03b69b32e1bbcd1111}\label{help_8c_a5a539519d99b3f03b69b32e1bbcd1111}} 
+\index{help.c@{help.c}!help\_parsetag@{help\_parsetag}}
+\index{help\_parsetag@{help\_parsetag}!help.c@{help.c}}
+\doxysubsubsection{\texorpdfstring{help\_parsetag()}{help\_parsetag()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} help\+\_\+parsetag (\begin{DoxyParamCaption}\item[{char $\ast$}]{line }\end{DoxyParamCaption})}
+
+Parses a tag, returning it as a Morpho string converted to lower case. \begin{DoxyWarning}{Warning}
+the input line is modified in the process 
+\end{DoxyWarning}
+\mbox{\Hypertarget{help_8c_ae80b44e4ca107761479842dd0f85a4a8}\label{help_8c_ae80b44e4ca107761479842dd0f85a4a8}} 
+\index{help.c@{help.c}!help\_parsetopiclevel@{help\_parsetopiclevel}}
+\index{help\_parsetopiclevel@{help\_parsetopiclevel}!help.c@{help.c}}
+\doxysubsubsection{\texorpdfstring{help\_parsetopiclevel()}{help\_parsetopiclevel()}}
+{\footnotesize\ttfamily int help\+\_\+parsetopiclevel (\begin{DoxyParamCaption}\item[{char $\ast$}]{line }\end{DoxyParamCaption})}
+
+Determines the level of topic from the markdown header level \mbox{\Hypertarget{help_8c_a757b26b723a74c0947cb20e00c4cc02e}\label{help_8c_a757b26b723a74c0947cb20e00c4cc02e}} 
+\index{help.c@{help.c}!help\_parsetopicname@{help\_parsetopicname}}
+\index{help\_parsetopicname@{help\_parsetopicname}!help.c@{help.c}}
+\doxysubsubsection{\texorpdfstring{help\_parsetopicname()}{help\_parsetopicname()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} help\+\_\+parsetopicname (\begin{DoxyParamCaption}\item[{char $\ast$}]{line }\end{DoxyParamCaption})}
+
+Parses a topic name, returning it as a Morpho string converted to lower case. \begin{DoxyWarning}{Warning}
+the input line is modified in the process 
+\end{DoxyWarning}
+\mbox{\Hypertarget{help_8c_aef9573a5c37905df99cdb4fecea3ade6}\label{help_8c_aef9573a5c37905df99cdb4fecea3ade6}} 
+\index{help.c@{help.c}!help\_querylength@{help\_querylength}}
+\index{help\_querylength@{help\_querylength}!help.c@{help.c}}
+\doxysubsubsection{\texorpdfstring{help\_querylength()}{help\_querylength()}}
+{\footnotesize\ttfamily size\+\_\+t help\+\_\+querylength (\begin{DoxyParamCaption}\item[{char $\ast$}]{query,  }\item[{char $\ast$$\ast$}]{s }\end{DoxyParamCaption})}
+
+Determine starting point and length of a query 
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em query} & -\/ the query to examine \\
+\hline
+\mbox{\texttt{ out}}  & {\em s} & -\/ starting character of the query (optional) \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+length of the query (0 indicates no query present) 
+\end{DoxyReturn}
+\mbox{\Hypertarget{help_8c_ad372957b394d91132e662578f21b0ec7}\label{help_8c_ad372957b394d91132e662578f21b0ec7}} 
+\index{help.c@{help.c}!help\_search@{help\_search}}
+\index{help\_search@{help\_search}!help.c@{help.c}}
+\doxysubsubsection{\texorpdfstring{help\_search()}{help\_search()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structsobjecthelptopic}{objecthelptopic}}$\ast$ help\+\_\+search (\begin{DoxyParamCaption}\item[{char $\ast$}]{query }\end{DoxyParamCaption})}
+
+Searches for a given query in the help system \mbox{\Hypertarget{help_8c_a219fd009e218f859c00cfe7c59af9617}\label{help_8c_a219fd009e218f859c00cfe7c59af9617}} 
+\index{help.c@{help.c}!help\_searchpath@{help\_searchpath}}
+\index{help\_searchpath@{help\_searchpath}!help.c@{help.c}}
+\doxysubsubsection{\texorpdfstring{help\_searchpath()}{help\_searchpath()}}
+{\footnotesize\ttfamily bool help\+\_\+searchpath (\begin{DoxyParamCaption}\item[{char $\ast$}]{path }\end{DoxyParamCaption})}
+
+Searches for help files 
+\begin{DoxyParams}{Parameters}
+{\em path} & directory to search (recursively) \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if any help files were successfully processed. 
+\end{DoxyReturn}

@@ -1,0 +1,15 @@
+// Anonymous closure with assignment
+
+var a = 0.5
+var f = fn (x) a+=x
+
+print a
+// expect: 0.5
+f(0.5)
+
+print a
+// expect: 1
+
+f(0.5)
+print a
+// expect: 1.5

@@ -1,0 +1,10 @@
+// Transpose
+
+var a = Matrix(3,3)
+
+a.setcolumn(1, Matrix([1,2,3]))
+
+print a
+// expect: [ 0 1 0 ]
+// expect: [ 0 2 0 ]
+// expect: [ 0 3 0 ]

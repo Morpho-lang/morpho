@@ -1,0 +1,230 @@
+\hypertarget{matrix_8c}{}\doxysection{datastructures/matrix.c File Reference}
+\label{matrix_8c}\index{datastructures/matrix.c@{datastructures/matrix.c}}
+
+
+Veneer class over the objectmatrix type that interfaces with blas and lapack.  
+
+
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}object.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}matrix.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}sparse.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}morpho.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}builtin.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}common.\+h\char`\"{}}\newline
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$ \mbox{\hyperlink{matrix_8c_a094b83964e72df147be2402bfdb6a3d6}{object\+\_\+newmatrix}} (unsigned int nrows, unsigned int ncols, bool zero)
+\item 
+bool \mbox{\hyperlink{matrix_8c_ad384bf307afeb58a98872069e94ef345}{matrix\+\_\+getarraydimensions}} (\mbox{\hyperlink{structobjectarray}{objectarray}} $\ast$array, unsigned int dim\mbox{[}$\,$\mbox{]}, unsigned int maxdim, unsigned int $\ast$ndim)
+\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{matrix_8c_adcae60c60eeb724b70ff77c27f73e67f}{matrix\+\_\+getarrayelement}} (\mbox{\hyperlink{structobjectarray}{objectarray}} $\ast$array, unsigned int ndim, unsigned int $\ast$indx)
+\item 
+\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$ \mbox{\hyperlink{matrix_8c_aeb3d403b9a4c744520f8b11f1d5b0565}{object\+\_\+matrixfromarray}} (\mbox{\hyperlink{structobjectarray}{objectarray}} $\ast$array)
+\item 
+bool \mbox{\hyperlink{matrix_8c_a1f3b50c07a936fc76010ecec29a80a17}{matrix\+\_\+setelement}} (\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$matrix, unsigned int row, unsigned int col, double \mbox{\hyperlink{structvalue}{value}})
+\begin{DoxyCompactList}\small\item\em Sets a matrix element. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{matrix_8c_a10fb1e8b65ad30ea0caec2e7abb5d7c5}{matrix\+\_\+getelement}} (\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$matrix, unsigned int row, unsigned int col, double $\ast$\mbox{\hyperlink{structvalue}{value}})
+\begin{DoxyCompactList}\small\item\em Gets a matrix element. \end{DoxyCompactList}\item 
+objectmatrixerror \mbox{\hyperlink{matrix_8c_ae1fea99343e02a15ea61325038c811a1}{matrix\+\_\+add}} (\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$a, \mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$b, \mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$out)
+\item 
+objectmatrixerror \mbox{\hyperlink{matrix_8c_a666d83fb287ca9aadfd57a2ff32717f4}{matrix\+\_\+sub}} (\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$a, \mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$b, \mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$out)
+\item 
+objectmatrixerror \mbox{\hyperlink{matrix_8c_ad9e1a199f151b40adc826cf09b46a390}{matrix\+\_\+mul}} (\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$a, \mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$b, \mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$out)
+\item 
+objectmatrixerror \mbox{\hyperlink{matrix_8c_ac4376cde035d681171ad2c2578ed83a1}{matrix\+\_\+divs}} (\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$a, \mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$b, \mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$out)
+\item 
+objectmatrixerror \mbox{\hyperlink{matrix_8c_a7555b7ac5b1665fe8efed64914b7c8aa}{matrix\+\_\+divl}} (\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$a, \mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$b, \mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$out)
+\item 
+objectmatrixerror \mbox{\hyperlink{matrix_8c_a0b22e13bf7df0d59e5f4dcef7f29ea33}{matrix\+\_\+transpose}} (\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$a, \mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$out)
+\item 
+objectmatrixerror \mbox{\hyperlink{matrix_8c_a1b20be73598f3d60cb5ef7b4f54589a9}{matrix\+\_\+trace}} (\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$a, double $\ast$out)
+\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{matrix_8c_adef09d57cf2b47a9d52ed6c21b16b581}{matrix\+\_\+constructor}} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{matrix_8c_a5b4e270b07f9813e621a53e79c67eb42}\label{matrix_8c_a5b4e270b07f9813e621a53e79c67eb42}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries Matrix\+\_\+getindex} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{matrix_8c_a60b293db07b4aaead54b7fe5c206528a}\label{matrix_8c_a60b293db07b4aaead54b7fe5c206528a}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries Matrix\+\_\+setindex} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{matrix_8c_a40adc70b7591c541cb09220b290bdbef}\label{matrix_8c_a40adc70b7591c541cb09220b290bdbef}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries Matrix\+\_\+print} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{matrix_8c_ab8f34239b0ae59c5665b9e282020ab68}\label{matrix_8c_ab8f34239b0ae59c5665b9e282020ab68}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries Matrix\+\_\+add} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{matrix_8c_ad72a6af674c33671627eb50d4ed3de6f}\label{matrix_8c_ad72a6af674c33671627eb50d4ed3de6f}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries Matrix\+\_\+sub} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{matrix_8c_aca505815227833428200cb8affbac353}\label{matrix_8c_aca505815227833428200cb8affbac353}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries Matrix\+\_\+mul} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{matrix_8c_a3a39c8a3577c7b518725c87c164b1195}\label{matrix_8c_a3a39c8a3577c7b518725c87c164b1195}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries Matrix\+\_\+div} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{matrix_8c_a53bd927e0472415dda7f887f0d53fb82}\label{matrix_8c_a53bd927e0472415dda7f887f0d53fb82}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries Matrix\+\_\+transpose} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{matrix_8c_ab22180d5d6b5c0ff60006cdf66d55609}\label{matrix_8c_ab22180d5d6b5c0ff60006cdf66d55609}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries Matrix\+\_\+trace} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{matrix_8c_a9842d5fe04ace7189f2af1cd636a9445}\label{matrix_8c_a9842d5fe04ace7189f2af1cd636a9445}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries Matrix\+\_\+enumerate} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{matrix_8c_a758f5377b0347cdce91684666db35b67}\label{matrix_8c_a758f5377b0347cdce91684666db35b67}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (M\+O\+R\+P\+H\+O\+\_\+\+G\+E\+T\+I\+N\+D\+E\+X\+\_\+\+M\+E\+T\+H\+OD, Matrix\+\_\+getindex, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{matrix_8c_a80c7e8fcf7c248f04349c288ac6335a0}\label{matrix_8c_a80c7e8fcf7c248f04349c288ac6335a0}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (M\+O\+R\+P\+H\+O\+\_\+\+S\+E\+T\+I\+N\+D\+E\+X\+\_\+\+M\+E\+T\+H\+OD, Matrix\+\_\+setindex, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{matrix_8c_abb39c283058d75785eaa07cd0d708622}\label{matrix_8c_abb39c283058d75785eaa07cd0d708622}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (M\+O\+R\+P\+H\+O\+\_\+\+P\+R\+I\+N\+T\+\_\+\+M\+E\+T\+H\+OD, Matrix\+\_\+print, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{matrix_8c_a63241aac9a6e7f37122c5bb7181d9a0a}\label{matrix_8c_a63241aac9a6e7f37122c5bb7181d9a0a}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (M\+O\+R\+P\+H\+O\+\_\+\+A\+D\+D\+\_\+\+M\+E\+T\+H\+OD, Matrix\+\_\+add, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{matrix_8c_a95df92d30fc132011da61e36e910947e}\label{matrix_8c_a95df92d30fc132011da61e36e910947e}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (M\+O\+R\+P\+H\+O\+\_\+\+S\+U\+B\+\_\+\+M\+E\+T\+H\+OD, Matrix\+\_\+sub, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{matrix_8c_a42249baf14d81edcd7af1d193a38d5cb}\label{matrix_8c_a42249baf14d81edcd7af1d193a38d5cb}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (M\+O\+R\+P\+H\+O\+\_\+\+M\+U\+L\+\_\+\+M\+E\+T\+H\+OD, Matrix\+\_\+mul, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{matrix_8c_a9bcbac18ec31f089669ea8a6ebbb8c0c}\label{matrix_8c_a9bcbac18ec31f089669ea8a6ebbb8c0c}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (M\+O\+R\+P\+H\+O\+\_\+\+D\+I\+V\+\_\+\+M\+E\+T\+H\+OD, Matrix\+\_\+div, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{matrix_8c_a97d0ead3c5267b0579d581eeca5c2192}\label{matrix_8c_a97d0ead3c5267b0579d581eeca5c2192}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (M\+A\+T\+R\+I\+X\+\_\+\+T\+R\+A\+N\+S\+P\+O\+S\+E\+\_\+\+M\+E\+T\+H\+OD, Matrix\+\_\+transpose, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{matrix_8c_aa3cc3af5c62551d3b80d91adbe38258f}\label{matrix_8c_aa3cc3af5c62551d3b80d91adbe38258f}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (M\+A\+T\+R\+I\+X\+\_\+\+T\+R\+A\+C\+E\+\_\+\+M\+E\+T\+H\+OD, Matrix\+\_\+trace, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{matrix_8c_aa3539dae84646e1c3bf0b57a64eec9be}\label{matrix_8c_aa3539dae84646e1c3bf0b57a64eec9be}} 
+M\+O\+R\+P\+H\+O\+\_\+\+E\+N\+D\+C\+L\+A\+SS void {\bfseries matrix\+\_\+initialize} (void)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Veneer class over the objectmatrix type that interfaces with blas and lapack. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{matrix_8c_ae1fea99343e02a15ea61325038c811a1}\label{matrix_8c_ae1fea99343e02a15ea61325038c811a1}} 
+\index{matrix.c@{matrix.c}!matrix\_add@{matrix\_add}}
+\index{matrix\_add@{matrix\_add}!matrix.c@{matrix.c}}
+\doxysubsubsection{\texorpdfstring{matrix\_add()}{matrix\_add()}}
+{\footnotesize\ttfamily objectmatrixerror matrix\+\_\+add (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{a,  }\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{b,  }\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{out }\end{DoxyParamCaption})}
+
+Performs a + b -\/$>$ out. \mbox{\Hypertarget{matrix_8c_adef09d57cf2b47a9d52ed6c21b16b581}\label{matrix_8c_adef09d57cf2b47a9d52ed6c21b16b581}} 
+\index{matrix.c@{matrix.c}!matrix\_constructor@{matrix\_constructor}}
+\index{matrix\_constructor@{matrix\_constructor}!matrix.c@{matrix.c}}
+\doxysubsubsection{\texorpdfstring{matrix\_constructor()}{matrix\_constructor()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} matrix\+\_\+constructor (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{int}]{nargs,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{args }\end{DoxyParamCaption})}
+
+Constructs a Matrix object \mbox{\Hypertarget{matrix_8c_a7555b7ac5b1665fe8efed64914b7c8aa}\label{matrix_8c_a7555b7ac5b1665fe8efed64914b7c8aa}} 
+\index{matrix.c@{matrix.c}!matrix\_divl@{matrix\_divl}}
+\index{matrix\_divl@{matrix\_divl}!matrix.c@{matrix.c}}
+\doxysubsubsection{\texorpdfstring{matrix\_divl()}{matrix\_divl()}}
+{\footnotesize\ttfamily objectmatrixerror matrix\+\_\+divl (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{a,  }\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{b,  }\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{out }\end{DoxyParamCaption})}
+
+Solves the system a.\+x = b for large matrices (test with M\+A\+T\+R\+I\+X\+\_\+\+I\+S\+S\+M\+A\+LL) ~\newline
+ \mbox{\Hypertarget{matrix_8c_ac4376cde035d681171ad2c2578ed83a1}\label{matrix_8c_ac4376cde035d681171ad2c2578ed83a1}} 
+\index{matrix.c@{matrix.c}!matrix\_divs@{matrix\_divs}}
+\index{matrix\_divs@{matrix\_divs}!matrix.c@{matrix.c}}
+\doxysubsubsection{\texorpdfstring{matrix\_divs()}{matrix\_divs()}}
+{\footnotesize\ttfamily objectmatrixerror matrix\+\_\+divs (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{a,  }\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{b,  }\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{out }\end{DoxyParamCaption})}
+
+Solves the system a.\+x = b for small matrices (test with M\+A\+T\+R\+I\+X\+\_\+\+I\+S\+S\+M\+A\+LL) \begin{DoxyWarning}{Warning}
+Uses the C stack for storage, which avoids malloc but can cause stack overflow 
+\end{DoxyWarning}
+\mbox{\Hypertarget{matrix_8c_ad384bf307afeb58a98872069e94ef345}\label{matrix_8c_ad384bf307afeb58a98872069e94ef345}} 
+\index{matrix.c@{matrix.c}!matrix\_getarraydimensions@{matrix\_getarraydimensions}}
+\index{matrix\_getarraydimensions@{matrix\_getarraydimensions}!matrix.c@{matrix.c}}
+\doxysubsubsection{\texorpdfstring{matrix\_getarraydimensions()}{matrix\_getarraydimensions()}}
+{\footnotesize\ttfamily bool matrix\+\_\+getarraydimensions (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectarray}{objectarray}} $\ast$}]{array,  }\item[{unsigned int}]{dim\mbox{[}$\,$\mbox{]},  }\item[{unsigned int}]{maxdim,  }\item[{unsigned int $\ast$}]{ndim }\end{DoxyParamCaption})}
+
+Recurses into an objectarray to find the dimensions of the array and all child arrays 
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em array} & -\/ to search \\
+\hline
+\mbox{\texttt{ out}}  & {\em dim} & -\/ array of dimensions to be filled out (must be zero\textquotesingle{}d before initial call) \\
+\hline
+\mbox{\texttt{ in}}  & {\em maxdim} & -\/ maximum number of dimensions \\
+\hline
+\mbox{\texttt{ out}}  & {\em ndim} & -\/ number of dimensions of the array \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{matrix_8c_adcae60c60eeb724b70ff77c27f73e67f}\label{matrix_8c_adcae60c60eeb724b70ff77c27f73e67f}} 
+\index{matrix.c@{matrix.c}!matrix\_getarrayelement@{matrix\_getarrayelement}}
+\index{matrix\_getarrayelement@{matrix\_getarrayelement}!matrix.c@{matrix.c}}
+\doxysubsubsection{\texorpdfstring{matrix\_getarrayelement()}{matrix\_getarrayelement()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} matrix\+\_\+getarrayelement (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectarray}{objectarray}} $\ast$}]{array,  }\item[{unsigned int}]{ndim,  }\item[{unsigned int $\ast$}]{indx }\end{DoxyParamCaption})}
+
+Looks up an array element recursively if necessary \mbox{\Hypertarget{matrix_8c_a10fb1e8b65ad30ea0caec2e7abb5d7c5}\label{matrix_8c_a10fb1e8b65ad30ea0caec2e7abb5d7c5}} 
+\index{matrix.c@{matrix.c}!matrix\_getelement@{matrix\_getelement}}
+\index{matrix\_getelement@{matrix\_getelement}!matrix.c@{matrix.c}}
+\doxysubsubsection{\texorpdfstring{matrix\_getelement()}{matrix\_getelement()}}
+{\footnotesize\ttfamily bool matrix\+\_\+getelement (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{matrix,  }\item[{unsigned int}]{row,  }\item[{unsigned int}]{col,  }\item[{double $\ast$}]{value }\end{DoxyParamCaption})}
+
+
+
+Gets a matrix element. 
+
+\begin{DoxyReturn}{Returns}
+true if the element is in the range of the matrix, false otherwise 
+\end{DoxyReturn}
+\mbox{\Hypertarget{matrix_8c_ad9e1a199f151b40adc826cf09b46a390}\label{matrix_8c_ad9e1a199f151b40adc826cf09b46a390}} 
+\index{matrix.c@{matrix.c}!matrix\_mul@{matrix\_mul}}
+\index{matrix\_mul@{matrix\_mul}!matrix.c@{matrix.c}}
+\doxysubsubsection{\texorpdfstring{matrix\_mul()}{matrix\_mul()}}
+{\footnotesize\ttfamily objectmatrixerror matrix\+\_\+mul (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{a,  }\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{b,  }\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{out }\end{DoxyParamCaption})}
+
+Performs a $\ast$ b -\/$>$ out \mbox{\Hypertarget{matrix_8c_a1f3b50c07a936fc76010ecec29a80a17}\label{matrix_8c_a1f3b50c07a936fc76010ecec29a80a17}} 
+\index{matrix.c@{matrix.c}!matrix\_setelement@{matrix\_setelement}}
+\index{matrix\_setelement@{matrix\_setelement}!matrix.c@{matrix.c}}
+\doxysubsubsection{\texorpdfstring{matrix\_setelement()}{matrix\_setelement()}}
+{\footnotesize\ttfamily bool matrix\+\_\+setelement (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{matrix,  }\item[{unsigned int}]{row,  }\item[{unsigned int}]{col,  }\item[{double}]{value }\end{DoxyParamCaption})}
+
+
+
+Sets a matrix element. 
+
+\begin{DoxyReturn}{Returns}
+true if the element is in the range of the matrix, false otherwise 
+\end{DoxyReturn}
+\mbox{\Hypertarget{matrix_8c_a666d83fb287ca9aadfd57a2ff32717f4}\label{matrix_8c_a666d83fb287ca9aadfd57a2ff32717f4}} 
+\index{matrix.c@{matrix.c}!matrix\_sub@{matrix\_sub}}
+\index{matrix\_sub@{matrix\_sub}!matrix.c@{matrix.c}}
+\doxysubsubsection{\texorpdfstring{matrix\_sub()}{matrix\_sub()}}
+{\footnotesize\ttfamily objectmatrixerror matrix\+\_\+sub (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{a,  }\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{b,  }\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{out }\end{DoxyParamCaption})}
+
+Performs a -\/ b -\/$>$ out \mbox{\Hypertarget{matrix_8c_a1b20be73598f3d60cb5ef7b4f54589a9}\label{matrix_8c_a1b20be73598f3d60cb5ef7b4f54589a9}} 
+\index{matrix.c@{matrix.c}!matrix\_trace@{matrix\_trace}}
+\index{matrix\_trace@{matrix\_trace}!matrix.c@{matrix.c}}
+\doxysubsubsection{\texorpdfstring{matrix\_trace()}{matrix\_trace()}}
+{\footnotesize\ttfamily objectmatrixerror matrix\+\_\+trace (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{a,  }\item[{double $\ast$}]{out }\end{DoxyParamCaption})}
+
+Calculate the trace of a matrix \mbox{\Hypertarget{matrix_8c_a0b22e13bf7df0d59e5f4dcef7f29ea33}\label{matrix_8c_a0b22e13bf7df0d59e5f4dcef7f29ea33}} 
+\index{matrix.c@{matrix.c}!matrix\_transpose@{matrix\_transpose}}
+\index{matrix\_transpose@{matrix\_transpose}!matrix.c@{matrix.c}}
+\doxysubsubsection{\texorpdfstring{matrix\_transpose()}{matrix\_transpose()}}
+{\footnotesize\ttfamily objectmatrixerror matrix\+\_\+transpose (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{a,  }\item[{\mbox{\hyperlink{structobjectmatrix}{objectmatrix}} $\ast$}]{out }\end{DoxyParamCaption})}
+
+Transpose a matrix \mbox{\Hypertarget{matrix_8c_aeb3d403b9a4c744520f8b11f1d5b0565}\label{matrix_8c_aeb3d403b9a4c744520f8b11f1d5b0565}} 
+\index{matrix.c@{matrix.c}!object\_matrixfromarray@{object\_matrixfromarray}}
+\index{object\_matrixfromarray@{object\_matrixfromarray}!matrix.c@{matrix.c}}
+\doxysubsubsection{\texorpdfstring{object\_matrixfromarray()}{object\_matrixfromarray()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structobjectmatrix}{objectmatrix}}$\ast$ object\+\_\+matrixfromarray (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectarray}{objectarray}} $\ast$}]{array }\end{DoxyParamCaption})}
+
+Creates a new array from a list of values \mbox{\Hypertarget{matrix_8c_a094b83964e72df147be2402bfdb6a3d6}\label{matrix_8c_a094b83964e72df147be2402bfdb6a3d6}} 
+\index{matrix.c@{matrix.c}!object\_newmatrix@{object\_newmatrix}}
+\index{object\_newmatrix@{object\_newmatrix}!matrix.c@{matrix.c}}
+\doxysubsubsection{\texorpdfstring{object\_newmatrix()}{object\_newmatrix()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structobjectmatrix}{objectmatrix}}$\ast$ object\+\_\+newmatrix (\begin{DoxyParamCaption}\item[{unsigned int}]{nrows,  }\item[{unsigned int}]{ncols,  }\item[{bool}]{zero }\end{DoxyParamCaption})}
+
+Creates a matrix object 

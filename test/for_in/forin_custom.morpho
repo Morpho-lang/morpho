@@ -1,0 +1,20 @@
+// For in loops with a custom collection
+
+class Collection {
+  init (n) { self.count=n }
+
+  enumerate(k) {
+    if (k>=0) return (k+1)^2
+    else return self.count
+  }
+}
+
+var a=Collection(4)
+
+for (var x in a) {
+  print x
+}
+// expect: 1
+// expect: 4
+// expect: 9
+// expect: 16

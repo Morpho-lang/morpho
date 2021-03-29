@@ -1,0 +1,92 @@
+\hypertarget{mesh_8c}{}\doxysection{geometry/mesh.c File Reference}
+\label{mesh_8c}\index{geometry/mesh.c@{geometry/mesh.c}}
+
+
+Mesh class and associated functionality.  
+
+
+{\ttfamily \#include \char`\"{}object.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}builtin.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}mesh.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}file.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}varray.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}parse.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}sparse.\+h\char`\"{}}\newline
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{structobjectmesh}{objectmesh}} $\ast$ \mbox{\hyperlink{mesh_8c_a4f5c4240c8eba7cba0b3acc68879f99e}{object\+\_\+newmesh}} (unsigned int dim, unsigned int nv, double $\ast$v)
+\item 
+bool \mbox{\hyperlink{mesh_8c_a30b65bfa1a4eebaddc4a418ca0fe1ffa}{mesh\+\_\+checkconnectivity}} (\mbox{\hyperlink{structobjectmesh}{objectmesh}} $\ast$mesh)
+\item 
+\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$ \mbox{\hyperlink{mesh_8c_a8dd59831536ad4c07e3cc6431ea70e92}{mesh\+\_\+getconnectivityelement}} (\mbox{\hyperlink{structobjectmesh}{objectmesh}} $\ast$mesh, unsigned int row, unsigned int col, bool create)
+\item 
+bool \mbox{\hyperlink{mesh_8c_a34ec6176b51aa5f5ad8c3ff615587cee}{mesh\+\_\+addelementwithvertices}} (\mbox{\hyperlink{structobjectmesh}{objectmesh}} $\ast$mesh, grade g, vertexid $\ast$v)
+\item 
+\mbox{\hyperlink{structobjectmesh}{objectmesh}} $\ast$ \mbox{\hyperlink{mesh_8c_a77efa65b508712e115f5b7c2d1de2524}{mesh\+\_\+load}} (char $\ast$file)
+\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{mesh_8c_ac9d8725742b2dad0dfca11e908f8b223}{mesh\+\_\+constructor}} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{mesh_8c_aad3a68c347d1e3cab0bb3097f7fee485}\label{mesh_8c_aad3a68c347d1e3cab0bb3097f7fee485}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries Mesh\+\_\+print} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{mesh_8c_a170b4257b3949a9ba9ff7cbfe80c284b}\label{mesh_8c_a170b4257b3949a9ba9ff7cbfe80c284b}} 
+M\+O\+R\+P\+H\+O\+\_\+\+E\+N\+D\+C\+L\+A\+SS void {\bfseries mesh\+\_\+initialize} (void)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Mesh class and associated functionality. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{mesh_8c_a34ec6176b51aa5f5ad8c3ff615587cee}\label{mesh_8c_a34ec6176b51aa5f5ad8c3ff615587cee}} 
+\index{mesh.c@{mesh.c}!mesh\_addelementwithvertices@{mesh\_addelementwithvertices}}
+\index{mesh\_addelementwithvertices@{mesh\_addelementwithvertices}!mesh.c@{mesh.c}}
+\doxysubsubsection{\texorpdfstring{mesh\_addelementwithvertices()}{mesh\_addelementwithvertices()}}
+{\footnotesize\ttfamily bool mesh\+\_\+addelementwithvertices (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectmesh}{objectmesh}} $\ast$}]{mesh,  }\item[{grade}]{g,  }\item[{vertexid $\ast$}]{v }\end{DoxyParamCaption})}
+
+Adds an element to a mesh 
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em mesh} & the mesh \\
+\hline
+\mbox{\texttt{ in}}  & {\em g} & grade of the element \\
+\hline
+\mbox{\texttt{ in}}  & {\em v} & vertexids \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{mesh_8c_a30b65bfa1a4eebaddc4a418ca0fe1ffa}\label{mesh_8c_a30b65bfa1a4eebaddc4a418ca0fe1ffa}} 
+\index{mesh.c@{mesh.c}!mesh\_checkconnectivity@{mesh\_checkconnectivity}}
+\index{mesh\_checkconnectivity@{mesh\_checkconnectivity}!mesh.c@{mesh.c}}
+\doxysubsubsection{\texorpdfstring{mesh\_checkconnectivity()}{mesh\_checkconnectivity()}}
+{\footnotesize\ttfamily bool mesh\+\_\+checkconnectivity (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectmesh}{objectmesh}} $\ast$}]{mesh }\end{DoxyParamCaption})}
+
+Ensures a mesh has a valid connectivity matrix \mbox{\Hypertarget{mesh_8c_ac9d8725742b2dad0dfca11e908f8b223}\label{mesh_8c_ac9d8725742b2dad0dfca11e908f8b223}} 
+\index{mesh.c@{mesh.c}!mesh\_constructor@{mesh\_constructor}}
+\index{mesh\_constructor@{mesh\_constructor}!mesh.c@{mesh.c}}
+\doxysubsubsection{\texorpdfstring{mesh\_constructor()}{mesh\_constructor()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} mesh\+\_\+constructor (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{int}]{nargs,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{args }\end{DoxyParamCaption})}
+
+Constructs a Matrix object \mbox{\Hypertarget{mesh_8c_a8dd59831536ad4c07e3cc6431ea70e92}\label{mesh_8c_a8dd59831536ad4c07e3cc6431ea70e92}} 
+\index{mesh.c@{mesh.c}!mesh\_getconnectivityelement@{mesh\_getconnectivityelement}}
+\index{mesh\_getconnectivityelement@{mesh\_getconnectivityelement}!mesh.c@{mesh.c}}
+\doxysubsubsection{\texorpdfstring{mesh\_getconnectivityelement()}{mesh\_getconnectivityelement()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structobjectsparse}{objectsparse}}$\ast$ mesh\+\_\+getconnectivityelement (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectmesh}{objectmesh}} $\ast$}]{mesh,  }\item[{unsigned int}]{row,  }\item[{unsigned int}]{col,  }\item[{bool}]{create }\end{DoxyParamCaption})}
+
+Gets the connectivity matrix corresponding to (row, col); creates one if create is set \mbox{\Hypertarget{mesh_8c_a77efa65b508712e115f5b7c2d1de2524}\label{mesh_8c_a77efa65b508712e115f5b7c2d1de2524}} 
+\index{mesh.c@{mesh.c}!mesh\_load@{mesh\_load}}
+\index{mesh\_load@{mesh\_load}!mesh.c@{mesh.c}}
+\doxysubsubsection{\texorpdfstring{mesh\_load()}{mesh\_load()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structobjectmesh}{objectmesh}}$\ast$ mesh\+\_\+load (\begin{DoxyParamCaption}\item[{char $\ast$}]{file }\end{DoxyParamCaption})}
+
+Loads a .mesh file. \mbox{\Hypertarget{mesh_8c_a4f5c4240c8eba7cba0b3acc68879f99e}\label{mesh_8c_a4f5c4240c8eba7cba0b3acc68879f99e}} 
+\index{mesh.c@{mesh.c}!object\_newmesh@{object\_newmesh}}
+\index{object\_newmesh@{object\_newmesh}!mesh.c@{mesh.c}}
+\doxysubsubsection{\texorpdfstring{object\_newmesh()}{object\_newmesh()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structobjectmesh}{objectmesh}}$\ast$ object\+\_\+newmesh (\begin{DoxyParamCaption}\item[{unsigned int}]{dim,  }\item[{unsigned int}]{nv,  }\item[{double $\ast$}]{v }\end{DoxyParamCaption})}
+
+Creates a mesh object 

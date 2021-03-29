@@ -1,0 +1,17 @@
+
+var m = Mesh("line.mesh")
+var a = Length()
+
+print m
+// expect: <Mesh: 2 vertices>
+
+print a.total(m)
+// expect: 2.82843
+
+print a.integrand(m)
+// expect: [ 2.82843 ]
+
+print a.gradient(m)
+// expect: [ -0.707107 0.707107 ]
+// expect: [ -0.707107 0.707107 ]
+// expect: [ 0 0 ]

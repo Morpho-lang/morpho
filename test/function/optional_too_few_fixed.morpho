@@ -1,0 +1,10 @@
+// Optional arguments
+
+fn func(x, y=true, z=2) {
+  print x
+  print y
+  print z
+}
+
+func(y=false)
+// expect error 'InvldArgs'

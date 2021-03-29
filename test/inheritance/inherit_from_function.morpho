@@ -1,0 +1,3 @@
+fn foo() {}
+
+class Subclass < foo {} // expect error 'SprNtFnd'

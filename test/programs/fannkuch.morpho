@@ -1,0 +1,71 @@
+/* The Computer Language Benchmarks Game
+ *   http://benchmarksgame.alioth.debian.org/
+ *   reimplemented in morpho by T J Atherton
+ */
+
+// Swap elements of an array
+fn swap(x, i, j) {
+    var tmp=x[i]
+    x[i]=x[j]
+    x[j]=tmp
+}
+
+// Count the number of swaps
+fn countswaps(n, p, q) {
+    var swaps = 0
+
+    // Take the first element, X, and reverse the order of the first X elements.
+    // Do this repeatedly until X==1
+    for (i in 0..n-1) q[i]=p[i] // Start by copying the array
+    for (var q0=q[0]; q0!=1; q0=q[0]) {
+        for (i in 0..int(floor(q0/2))-1) { // Reverse first q0 elements
+            swap(q, i, q0-1-i)
+        }
+        swaps+=1
+    }
+    return swaps
+}
+
+// Fannkuch benchmark
+fn fannkuch(n) {
+    // Create a list of numbers 1..n
+    var p = List()
+    for (i in 1..n) p.append(i)
+    var q = p.clone()
+    var indx[n] // Used to keep track of the permutations
+    for (i in 0..n-1) indx[i]=0
+
+    var maxswaps = 0 // Track the maximum number of swaps needed
+
+    var i=0
+    var sign=1
+    while (i<n) {
+        var swaps=countswaps(n, p, q)
+        // Keep track of the maximum number of swaps
+        if (swaps>maxswaps) maxswaps=swaps
+
+        // Generate next permutation by Heap's algorithm
+        if (indx[i]<i) {
+            if (sign==1) {
+                swap(p, 0, i)
+            } else {
+                swap(p, indx[i], i)
+            }
+            indx[i]+=1
+            i=0
+            sign=1
+        } else {
+            indx[i]=0
+            i+=1
+            sign*=-1
+        }
+    }
+
+    return maxswaps
+}
+
+var n = 7
+var out = fannkuch(n)
+
+print "Pfannkuchen(${n}) = ${out}"
+// expect: Pfannkuchen(7) = 16

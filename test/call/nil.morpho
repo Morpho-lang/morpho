@@ -1,0 +1,3 @@
+// Check that calling nil generates an err
+
+nil() // expect error: 'Uncallable'

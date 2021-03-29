@@ -1,0 +1,73 @@
+\hypertarget{random_8c}{}\doxysection{utils/random.c File Reference}
+\label{random_8c}\index{utils/random.c@{utils/random.c}}
+
+
+Random number generation.  
+
+
+{\ttfamily \#include \char`\"{}random.\+h\char`\"{}}\newline
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{random_8c_a509e5d82b0243d6c70074308a058acba}{splitmix64\+\_\+seed}} (uint64\+\_\+t seed)
+\item 
+\mbox{\Hypertarget{random_8c_ab5f535bf7b22da97aa158e6d36a5c094}\label{random_8c_ab5f535bf7b22da97aa158e6d36a5c094}} 
+void {\bfseries xoshiro256pp\+\_\+jump} (void)
+\item 
+\mbox{\Hypertarget{random_8c_a0b24c48a064048734db73305c4af9801}\label{random_8c_a0b24c48a064048734db73305c4af9801}} 
+void {\bfseries xoshiro256pp\+\_\+longjump} (void)
+\item 
+\mbox{\Hypertarget{random_8c_af2b7d889ecb1f3a874cd9bb36ae38a58}\label{random_8c_af2b7d889ecb1f3a874cd9bb36ae38a58}} 
+void {\bfseries xoshiro256p\+\_\+jump} (void)
+\item 
+\mbox{\Hypertarget{random_8c_aaef2b6e1017ccc891cb40bd6697d74ee}\label{random_8c_aaef2b6e1017ccc891cb40bd6697d74ee}} 
+void {\bfseries xoshiro256p\+\_\+longjump} (void)
+\item 
+double \mbox{\hyperlink{random_8c_a2b678d17f5b3009682687bd4b886a336}{random\+\_\+double}} (void)
+\item 
+unsigned int \mbox{\hyperlink{random_8c_aee1c688f2ec1f98b9c552b73f02b751c}{random\+\_\+int}} (void)
+\item 
+void \mbox{\hyperlink{random_8c_a8a4a32dce9b999c092f8d0106bc7ab16}{random\+\_\+initialize}} (void)
+\end{DoxyCompactItemize}
+\doxysubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{random_8c_a8d5b4ec3c82533a8ef233824eb8bd1da}\label{random_8c_a8d5b4ec3c82533a8ef233824eb8bd1da}} 
+uint64\+\_\+t {\bfseries splitmix64\+\_\+state}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Random number generation. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton and others (see below) 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{random_8c_a2b678d17f5b3009682687bd4b886a336}\label{random_8c_a2b678d17f5b3009682687bd4b886a336}} 
+\index{random.c@{random.c}!random\_double@{random\_double}}
+\index{random\_double@{random\_double}!random.c@{random.c}}
+\doxysubsubsection{\texorpdfstring{random\_double()}{random\_double()}}
+{\footnotesize\ttfamily double random\+\_\+double (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+Generate a random double on the interval \mbox{[}0.\+0,1.\+0\mbox{]} \mbox{\Hypertarget{random_8c_a8a4a32dce9b999c092f8d0106bc7ab16}\label{random_8c_a8a4a32dce9b999c092f8d0106bc7ab16}} 
+\index{random.c@{random.c}!random\_initialize@{random\_initialize}}
+\index{random\_initialize@{random\_initialize}!random.c@{random.c}}
+\doxysubsubsection{\texorpdfstring{random\_initialize()}{random\_initialize()}}
+{\footnotesize\ttfamily void random\+\_\+initialize (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+Initialize the random number generator \mbox{\Hypertarget{random_8c_aee1c688f2ec1f98b9c552b73f02b751c}\label{random_8c_aee1c688f2ec1f98b9c552b73f02b751c}} 
+\index{random.c@{random.c}!random\_int@{random\_int}}
+\index{random\_int@{random\_int}!random.c@{random.c}}
+\doxysubsubsection{\texorpdfstring{random\_int()}{random\_int()}}
+{\footnotesize\ttfamily unsigned int random\+\_\+int (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+Generate a random 32 bit unsigned int \mbox{\Hypertarget{random_8c_a509e5d82b0243d6c70074308a058acba}\label{random_8c_a509e5d82b0243d6c70074308a058acba}} 
+\index{random.c@{random.c}!splitmix64\_seed@{splitmix64\_seed}}
+\index{splitmix64\_seed@{splitmix64\_seed}!random.c@{random.c}}
+\doxysubsubsection{\texorpdfstring{splitmix64\_seed()}{splitmix64\_seed()}}
+{\footnotesize\ttfamily void splitmix64\+\_\+seed (\begin{DoxyParamCaption}\item[{uint64\+\_\+t}]{seed }\end{DoxyParamCaption})}
+
+Set the seed for splitmix64 

@@ -1,0 +1,11 @@
+// Assignment to a global in an expression
+
+var a = "before"
+print a // expect: before
+
+a = "after"
+print a // expect: after
+
+// Make sure assignments evaluate to their rhs
+print a = "arg" // expect: arg
+print a // expect: arg

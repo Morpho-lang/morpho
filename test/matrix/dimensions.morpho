@@ -1,0 +1,10 @@
+// Solution of linear systems
+
+var a = Matrix([[0.8, -0.4], [0.4, 0.8]])
+var v = Matrix([0.2, 0.3])
+
+print a.dimensions()
+// expect: [ 2, 2 ]
+
+print v.dimensions()
+// expect: [ 2, 1 ]

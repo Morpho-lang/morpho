@@ -1,0 +1,25 @@
+// For loops with break and continue
+
+// Immediately stop a loop
+for (var i=0;i<6;i+=1) break
+
+// Do nothing with a continue
+for (var i=0;i<6;i+=1) continue
+
+// Conditionally terminate a loop early
+for (var i=1;i<6;i+=1) {
+  if (i>3) break
+  print i
+}
+// expect: 1
+// expect: 2
+// expect: 3
+
+// Conditionally skip early elements
+for (var i=0;i<6;i+=1) {
+  if (i<3) continue
+  print i
+}
+// expect: 3
+// expect: 4
+// expect: 5

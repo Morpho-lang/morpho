@@ -1,0 +1,11 @@
+// Ensure closures that are never created don't cause problems
+
+{
+  var a = "a"
+  if (false) {
+    fn foo() { a }
+  }
+}
+
+// If we get here, we didn't segfault when a went out of scope.
+print "ok" // expect: ok

@@ -1,0 +1,11 @@
+// Checks that a closure is not gazumped by an local variable declared after it
+var a = "outer"
+{
+  fn foo() {
+    print a
+  }
+
+  foo() // expect: outer
+  var a = "inner"
+  foo() // expect: outer
+}

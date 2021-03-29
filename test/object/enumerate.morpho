@@ -1,0 +1,28 @@
+// Check Object's compliance with enumerate
+
+var a = Object()
+
+a.foo = 1
+a.goo = 2
+a.hoo = 3
+
+print a.count()
+// expect: 3
+
+var q = []
+for (i in a) q.append(i)
+
+q.sort()
+print q
+// expect: [ foo, goo, hoo ]
+
+class Foo { }
+
+print Foo.count()
+// expect: 0
+
+print Foo.enumerate(-1)
+// expect: 0
+
+print Foo.enumerate(0)
+// expect: nil

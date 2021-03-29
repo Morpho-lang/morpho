@@ -1,0 +1,118 @@
+\hypertarget{file_8h}{}\doxysection{builtin/file.h File Reference}
+\label{file_8h}\index{builtin/file.h@{builtin/file.h}}
+
+
+Built in class to provide file input and output.  
+
+
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}morpho.\+h\char`\"{}}\newline
+\doxysubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{file_8h_a79e7602e2092979002bd07b392ce3f54}\label{file_8h_a79e7602e2092979002bd07b392ce3f54}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+C\+L\+A\+S\+S\+N\+A\+ME}~\char`\"{}File\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_ad5b8b804a4d7faeb35e0d634e19b8c66}\label{file_8h_ad5b8b804a4d7faeb35e0d634e19b8c66}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+F\+I\+L\+E\+P\+R\+O\+P\+E\+R\+TY}~\char`\"{}@file\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_ab6fc8dc83a4fe3f9ab456e055761470d}\label{file_8h_ab6fc8dc83a4fe3f9ab456e055761470d}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+C\+L\+O\+SE}~\char`\"{}close\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a915544e30c5591f5eb8e6862e842ab46}\label{file_8h_a915544e30c5591f5eb8e6862e842ab46}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+L\+I\+N\+ES}~\char`\"{}lines\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a7b1f7ed0fda40d3639eded0f5aa3aec7}\label{file_8h_a7b1f7ed0fda40d3639eded0f5aa3aec7}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+R\+E\+A\+D\+L\+I\+NE}~\char`\"{}readline\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a86bcf69f4afc41653b4e2344efcf27d9}\label{file_8h_a86bcf69f4afc41653b4e2344efcf27d9}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+R\+E\+A\+D\+C\+H\+AR}~\char`\"{}readchar\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_ace34e503254fa9004599ddf122264c8f}\label{file_8h_ace34e503254fa9004599ddf122264c8f}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+W\+R\+I\+TE}~\char`\"{}write\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a5c3e57ffeb3ed699c014536d9e147834}\label{file_8h_a5c3e57ffeb3ed699c014536d9e147834}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+E\+OF}~\char`\"{}eof\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a13988eab7a2f54eb5e61f60377031ec7}\label{file_8h_a13988eab7a2f54eb5e61f60377031ec7}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+R\+E\+A\+D\+M\+O\+DE}~\char`\"{}read\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a619231d94b619551c0b67593db202dc2}\label{file_8h_a619231d94b619551c0b67593db202dc2}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+W\+R\+I\+T\+E\+M\+O\+DE}~\char`\"{}write\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a1a12f88ab09adb36b071326ef1e06c03}\label{file_8h_a1a12f88ab09adb36b071326ef1e06c03}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+A\+P\+P\+E\+N\+D\+M\+O\+DE}~\char`\"{}append\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a3f4e5997f1958a895855e9d6ed74982b}\label{file_8h_a3f4e5997f1958a895855e9d6ed74982b}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+O\+P\+E\+N\+F\+A\+I\+L\+ED}~\char`\"{}Fl\+Opn\+Fld\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a251ee5ca65cda0bea31da2a15d586197}\label{file_8h_a251ee5ca65cda0bea31da2a15d586197}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+O\+P\+E\+N\+F\+A\+I\+L\+E\+D\+\_\+\+M\+SG}~\char`\"{}Couldn\textquotesingle{}t open file \textquotesingle{}\%s\textquotesingle{}.\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a2b43e4cce0cdaa6203697ac766bdefa5}\label{file_8h_a2b43e4cce0cdaa6203697ac766bdefa5}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+F\+I\+L\+E\+N\+A\+M\+E\+A\+RG}~\char`\"{}Fl\+Nm\+Args\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_ae3df12c253058d440b355367fadb8556}\label{file_8h_ae3df12c253058d440b355367fadb8556}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+F\+I\+L\+E\+N\+A\+M\+E\+A\+R\+G\+\_\+\+M\+SG}~\char`\"{}First argument to File must be a filename.\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a72b283bfcf69edb95c9bbf78e168f8a9}\label{file_8h_a72b283bfcf69edb95c9bbf78e168f8a9}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+N\+E\+E\+D\+S\+F\+I\+L\+E\+N\+A\+ME}~\char`\"{}Fl\+Nm\+Mssng\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a4dc4d64f3e65942dcfdc20df9f533c30}\label{file_8h_a4dc4d64f3e65942dcfdc20df9f533c30}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+N\+E\+E\+D\+S\+F\+I\+L\+E\+N\+A\+M\+E\+\_\+\+M\+SG}~\char`\"{}Filename missing.\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a0156511b6afae79b47bfbbe7398c0ab5}\label{file_8h_a0156511b6afae79b47bfbbe7398c0ab5}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+M\+O\+DE}~\char`\"{}Fl\+Mode\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a7f52d50480337e03d10ceca6587a66b2}\label{file_8h_a7f52d50480337e03d10ceca6587a66b2}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+M\+O\+D\+E\+\_\+\+M\+SG}~\char`\"{}Second argument to File should be \textquotesingle{}read\textquotesingle{}, \textquotesingle{}write\textquotesingle{} or \textquotesingle{}append\textquotesingle{}.\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a7c848722f8e17afd4745eb880d936498}\label{file_8h_a7c848722f8e17afd4745eb880d936498}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+W\+R\+I\+T\+E\+A\+R\+GS}~\char`\"{}Fl\+Wrt\+Args\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a187da3ff79076c460358a2a61c27de25}\label{file_8h_a187da3ff79076c460358a2a61c27de25}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+W\+R\+I\+T\+E\+A\+R\+G\+S\+\_\+\+M\+SG}~\char`\"{}Arguments to File.\+write must be strings.\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_a8bd20b0a7433154311083783b1757e9c}\label{file_8h_a8bd20b0a7433154311083783b1757e9c}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+W\+R\+I\+T\+E\+F\+A\+IL}~\char`\"{}Fl\+Wrt\+Fld\char`\"{}
+\item 
+\mbox{\Hypertarget{file_8h_ac9925f7efdb1094daa66d2a2b18e883a}\label{file_8h_ac9925f7efdb1094daa66d2a2b18e883a}} 
+\#define {\bfseries F\+I\+L\+E\+\_\+\+W\+R\+I\+T\+E\+F\+A\+I\+L\+\_\+\+M\+SG}~\char`\"{}Write to file failed.\char`\"{}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{file_8h_ad2ee7f27dffdf525ec0a91f85929a1ab}\label{file_8h_ad2ee7f27dffdf525ec0a91f85929a1ab}} 
+bool {\bfseries file\+\_\+getsize} (F\+I\+LE $\ast$f, size\+\_\+t $\ast$s)
+\item 
+int \mbox{\hyperlink{file_8h_a734c17de9d2b1a11778b47c9d3c3aff3}{file\+\_\+readlineintovarray}} (F\+I\+LE $\ast$f, varray\+\_\+char $\ast$string)
+\item 
+bool \mbox{\hyperlink{file_8h_a4eeef651dc3d1ecac69b0509482a728c}{file\+\_\+readintovarray}} (F\+I\+LE $\ast$f, varray\+\_\+char $\ast$string)
+\item 
+\mbox{\Hypertarget{file_8h_a3d36e7a79a0dd3de370905fec787a8e0}\label{file_8h_a3d36e7a79a0dd3de370905fec787a8e0}} 
+void {\bfseries file\+\_\+initialize} (void)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Built in class to provide file input and output. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{file_8h_a4eeef651dc3d1ecac69b0509482a728c}\label{file_8h_a4eeef651dc3d1ecac69b0509482a728c}} 
+\index{file.h@{file.h}!file\_readintovarray@{file\_readintovarray}}
+\index{file\_readintovarray@{file\_readintovarray}!file.h@{file.h}}
+\doxysubsubsection{\texorpdfstring{file\_readintovarray()}{file\_readintovarray()}}
+{\footnotesize\ttfamily bool file\+\_\+readintovarray (\begin{DoxyParamCaption}\item[{F\+I\+LE $\ast$}]{f,  }\item[{varray\+\_\+char $\ast$}]{string }\end{DoxyParamCaption})}
+
+Reads a whole file into a buffer \mbox{\Hypertarget{file_8h_a734c17de9d2b1a11778b47c9d3c3aff3}\label{file_8h_a734c17de9d2b1a11778b47c9d3c3aff3}} 
+\index{file.h@{file.h}!file\_readlineintovarray@{file\_readlineintovarray}}
+\index{file\_readlineintovarray@{file\_readlineintovarray}!file.h@{file.h}}
+\doxysubsubsection{\texorpdfstring{file\_readlineintovarray()}{file\_readlineintovarray()}}
+{\footnotesize\ttfamily int file\+\_\+readlineintovarray (\begin{DoxyParamCaption}\item[{F\+I\+LE $\ast$}]{f,  }\item[{varray\+\_\+char $\ast$}]{string }\end{DoxyParamCaption})}
+
+Reads a line using a given buffer 

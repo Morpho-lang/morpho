@@ -1,0 +1,22 @@
+// While loops with break and continue
+
+// Immediately stop a loop
+while (true) break
+
+// Use break and continue
+var k=0
+while (k<10) {
+  if (k==2) { k+=1; continue }
+  if (k>4) break
+  print k
+  k+=1
+  continue
+  print "You'll never see this!"
+}
+// expect: 0
+// expect: 1
+// expect: 3
+// expect: 4
+
+// A loop that shouldn't execute 
+while (false) continue

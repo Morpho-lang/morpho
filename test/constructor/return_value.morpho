@@ -1,0 +1,5 @@
+class Foo {
+  init() {
+    return "result" // expect error 'InitRtn'
+  }
+}

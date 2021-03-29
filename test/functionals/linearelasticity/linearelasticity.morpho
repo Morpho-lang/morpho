@@ -1,0 +1,31 @@
+
+var m = Mesh("stretchsquare.mesh")
+var mshear = Mesh("shearsquare.mesh")
+var mscale = Mesh("scalesquare.mesh")
+var mref = Mesh("square.mesh")
+
+var e = LinearElasticity(mref)
+
+e.poissonratio = 0.2
+
+print e.reference
+// expect: <Mesh: 4 vertices>
+print e.grade
+// expect: 2
+
+print e.integrand(m)
+// expect: [ 0.625 0.625 ]
+
+print e.total(m)
+// expect: 1.25
+
+print e.integrand(mshear)
+// expect: [ 0.0303819 0.0303819 ]
+
+print e.integrand(mscale)
+// expect: [ 1.5625 1.5625 ]
+
+print e.gradient(mscale)
+// expect: [ -2.08333 2.08333 -2.08333 2.08333 ]
+// expect: [ -2.08333 -2.08333 2.08333 2.08333 ]
+// expect: [ 0 0 0 0 ]

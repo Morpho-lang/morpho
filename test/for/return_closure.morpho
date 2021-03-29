@@ -1,0 +1,12 @@
+// Return a closure from within a loop
+
+fn f() {
+  for (;;) {
+    var i = "i"
+    fn g() { print i }
+    return g
+  }
+}
+
+var h = f()
+h() // expect: i

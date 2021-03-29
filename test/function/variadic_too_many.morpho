@@ -1,0 +1,7 @@
+// Can only have one variadic parameter
+
+fn bad(x, y, ...varg, ...warg) {
+
+}
+
+// expect Error: 'OneVarPr'

@@ -1,0 +1,30 @@
+import shapeopt
+
+var mstretch = Mesh("stretchsquare.mesh")
+var mshear = Mesh("shearsquare.mesh")
+var mscale = Mesh("scalesquare.mesh")
+var mref = Mesh("square.mesh")
+
+var e = LinearElasticity(mref)
+e.poissonratio = 0.4
+
+var s = ShapeOptimizer(mscale)
+s.addenergy(e)
+s.quiet = true
+
+// Relax the scaled square
+s.relax(100)
+print abs(e.total(mscale))<1e-8
+// expect: true
+
+// Relax the sheared square
+s.mesh = mshear
+s.relax(200)
+print abs(e.total(mshear))<1e-8
+// expect: true
+
+// Relax the stretched square
+s.mesh=mstretch
+s.relax(200)
+print abs(e.total(mstretch))<1e-8
+// expect: true

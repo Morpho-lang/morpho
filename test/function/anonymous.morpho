@@ -1,0 +1,9 @@
+// Anonymous functions
+
+print apply(fn (x) x^2, 0.5)
+// expect: 0.25
+
+var b = fn (x) 1-x^2
+
+print b(0.5)
+// expect: 0.75

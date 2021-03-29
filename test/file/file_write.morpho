@@ -1,0 +1,40 @@
+/*
+ * File class
+ */
+
+var file = "testout.txt"
+
+var f = File(file, "w")
+f.close()
+
+// Write some lines
+f = File(file, "w")
+for (var i=0; i<3; i=i+1) f.write("I have ${i} apples.")
+f.close()
+
+// Now read them back
+var g = File(file, "r")
+while (!g.eof()) {
+  var line = g.readline();
+  if (line) print line;
+}
+// expect: I have 0 apples.
+// expect: I have 1 apples.
+// expect: I have 2 apples.
+g.close()
+
+f = File(file, "append")
+for (var i=3; i<6; i=i+1) f.write("I have ${i} apples.")
+f.close()
+
+g = File(file)
+while (!g.eof()) {
+  var line = g.readline();
+  if (line) print line;
+}
+// expect: I have 0 apples.
+// expect: I have 1 apples.
+// expect: I have 2 apples.
+// expect: I have 3 apples.
+// expect: I have 4 apples.
+// expect: I have 5 apples.

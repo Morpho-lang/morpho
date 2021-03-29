@@ -1,0 +1,10 @@
+class A {
+  method() {}
+}
+
+class B < A {
+  method() {
+    // expect error 'ExpctDtSpr'
+    (super).method()
+  }
+}

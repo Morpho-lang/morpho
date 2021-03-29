@@ -1,0 +1,15 @@
+// Test that the nil literal works
+
+print nil // expect: nil
+
+if (!nil) {
+  print "True"
+}
+// expect: True
+
+if (nil) {
+  print "True"
+} else {
+  print "False"
+}
+// expect: False

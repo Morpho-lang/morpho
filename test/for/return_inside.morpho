@@ -1,0 +1,11 @@
+// Return a value inside a loop
+
+fn f() {
+  for (;;) {
+    var i = "i"
+    return i
+  }
+}
+
+print f()
+// expect: i

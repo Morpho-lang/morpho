@@ -1,0 +1,5 @@
+// Ensure symbols not included in a for clause are NOT imported
+import color for Color, HueMap
+
+print Red
+// expect error: 'SymblUndf'

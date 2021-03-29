@@ -1,0 +1,5 @@
+// This test works a bit differently to lox because classes are not dynamic in morpho
+// It still fails, because the symbol Nil doesn't denote a class.
+
+var Nil = nil
+class Foo < Nil {} // expect error: 'SprNtFnd'

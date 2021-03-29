@@ -1,0 +1,53 @@
+// Find the minimum of an enumerable object
+fn min(x) {
+  var mn=x[0]
+  for (i in x) {
+    if (i<mn) mn=i
+  }
+  return mn
+}
+
+// Find the maximum of an enumerable object
+fn max(x) {
+  var mx=x[0]
+  for (i in x) {
+    if (i>mx) mx=i
+  }
+  return mx
+}
+
+// Display a histogram
+fn histogram(lst, nbins) {
+  var cnt[nbins]
+  var bins[nbins+1]
+  // Calculate the bin bounds
+  var mx = max(lst), mn = min(lst)
+  for (i in 0..nbins) {
+    bins[i]=mn+i*(mx-mn)/(nbins)
+  }
+
+  // Assign each element of lst to a bin
+  for (x in lst) {
+    var k=0
+    while (x>bins[k+1]) k+=1
+    cnt[k]+=1
+  }
+
+  // Show histogram
+  for (i in 0..nbins-1) {
+    print "${bins[i]}-${bins[i+1]}: ${cnt[i]}"
+  }
+}
+
+// Construct a list of random numbers
+var N=1000000
+var a=Matrix(N)
+for (i in 0..N-1) a[i]=i
+
+// Show the histogram
+histogram(a, 5)
+// expect: 0-200000: 200000
+// expect: 200000-400000: 200000
+// expect: 400000-599999: 200000
+// expect: 599999-799999: 200000
+// expect: 799999-999999: 200000

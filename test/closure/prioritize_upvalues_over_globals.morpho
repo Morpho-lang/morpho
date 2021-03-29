@@ -1,0 +1,29 @@
+// Checks that upvalues are searched before globals
+
+// Create a global
+var a = "Hello"
+
+// This is a reference to an upvalue
+fn h(a) {
+  fn q() { return a }
+  return q
+}
+
+// Hence the returned value is a closure
+print h(1)
+// expect: <<fn q>>
+
+print h(1)()
+// expect: 1
+
+// This is a reference to a global
+fn g() {
+  fn q() { return a }
+  return q
+}
+
+print g()
+// expect: <fn q>
+
+print g()()
+// expect: Hello

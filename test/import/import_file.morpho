@@ -1,0 +1,7 @@
+fn f(x) { print x }
+
+// You can import a file
+import "importtest.m"
+
+f(cat("Hello","Goodbye"))
+// expect: HelloGoodbye

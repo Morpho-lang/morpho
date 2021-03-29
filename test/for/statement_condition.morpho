@@ -1,0 +1,4 @@
+// Loop condition can't be a block
+
+for (var a = 1; {}; a+=1) {}
+// expect error 'ExpExpr'

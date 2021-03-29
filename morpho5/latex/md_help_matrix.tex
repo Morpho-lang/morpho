@@ -1,0 +1,44 @@
+\mbox{[}comment\mbox{]}\+: \# Matrix class help \mbox{[}version\mbox{]}\+: \# 0.\+5
+
+\#\+Matrix \mbox{[}tag\mbox{]}\+: \# Matrix
+
+The Matrix class provides support for matrices. A matrix can be initialized with a given size, \begin{DoxyVerb}var a = Matrix(nrows,ncols)
+\end{DoxyVerb}
+
+
+where all elements are initially set to zero. Alternatively, a matrix can be created from an array, \begin{DoxyVerb}var a = Matrix([[1,2], [3,4]])
+\end{DoxyVerb}
+
+
+You can create a column vector like this, \begin{DoxyVerb}var v = Matrix([1,2])
+\end{DoxyVerb}
+
+
+Once a matrix is created, you can use all the regular arithmetic operators with matrix operands, e.\+g. \begin{DoxyVerb}a+b
+a*b
+\end{DoxyVerb}
+
+
+The division operator is used to solve a linear system, e.\+g. \begin{DoxyVerb}var a = Matrix([[1,2],[3,4]])
+var b = Matrix([1,2])
+
+print b/a
+\end{DoxyVerb}
+
+
+yields the solution to the system a$\ast$x = b.
+
+\#\+Mtrx\+Incmptbl \mbox{[}tag\mbox{]}\+: \# Mtrx\+Incmptbl
+
+This error occurs when an arithmetic operation is performed on two \textquotesingle{}incompatible\textquotesingle{} matrices. For example, two matrices must have the same dimensions, i.\+e. the same number of rows and columns, to be added or subtracted, \begin{DoxyVerb}var a = Matrix([[1,2],[3,4]])
+var b = Matrix([[1]])
+print a+b // generates a `MtrxIncmptbl` error.
+\end{DoxyVerb}
+
+
+Or to be multiplied together, the number of columns of the left hand matrix must equal the number of rows of the right hand matrix. \begin{DoxyVerb}var a = Matrix([[1,2],[3,4]])
+var b = Matrix([1,2])
+print a*b // ok
+print b*a // generates a `MtrxIncmptbl` error.
+\end{DoxyVerb}
+ 

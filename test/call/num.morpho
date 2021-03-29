@@ -1,0 +1,3 @@
+// Check that calling a number generates an err
+
+123() // expect error: 'Uncallable'

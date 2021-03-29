@@ -1,0 +1,5 @@
+
+var a = Mesh("square_spurious_vertex_ref.mesh")
+
+print a
+// expect error 'MshLdVrtNtFnd'

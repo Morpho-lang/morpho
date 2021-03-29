@@ -1,0 +1,297 @@
+\hypertarget{morpho_8h}{}\doxysection{morpho.\+h File Reference}
+\label{morpho_8h}\index{morpho.h@{morpho.h}}
+
+
+Define public interface to Morpho.  
+
+
+{\ttfamily \#include $<$stdbool.\+h$>$}\newline
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include $<$math.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}build.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}value.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}error.\+h\char`\"{}}\newline
+\doxysubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{morpho_8h_aec1d504951edcaea4f68491995d0ef26}\label{morpho_8h_aec1d504951edcaea4f68491995d0ef26}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+I\+N\+I\+T\+I\+A\+L\+I\+Z\+E\+R\+\_\+\+M\+E\+T\+H\+OD}~\char`\"{}init\char`\"{}
+\item 
+\mbox{\Hypertarget{morpho_8h_a5e8bc39f07c08e384f1390c7432ed347}\label{morpho_8h_a5e8bc39f07c08e384f1390c7432ed347}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+G\+E\+T\+I\+N\+D\+E\+X\+\_\+\+M\+E\+T\+H\+OD}~\char`\"{}index\char`\"{}
+\item 
+\mbox{\Hypertarget{morpho_8h_aec4773871267616f188c8f2b34eb48a4}\label{morpho_8h_aec4773871267616f188c8f2b34eb48a4}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+S\+E\+T\+I\+N\+D\+E\+X\+\_\+\+M\+E\+T\+H\+OD}~\char`\"{}setindex\char`\"{}
+\item 
+\mbox{\Hypertarget{morpho_8h_a67525c7f392b79045fcc52ea4c3b61ee}\label{morpho_8h_a67525c7f392b79045fcc52ea4c3b61ee}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+A\+D\+D\+\_\+\+M\+E\+T\+H\+OD}~\char`\"{}add\char`\"{}
+\item 
+\mbox{\Hypertarget{morpho_8h_a1cda3278a96536cd513ea3db47a38d9a}\label{morpho_8h_a1cda3278a96536cd513ea3db47a38d9a}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+S\+U\+B\+\_\+\+M\+E\+T\+H\+OD}~\char`\"{}sub\char`\"{}
+\item 
+\mbox{\Hypertarget{morpho_8h_a5464aae4d502d578cfed6dcd3e30a166}\label{morpho_8h_a5464aae4d502d578cfed6dcd3e30a166}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+U\+L\+\_\+\+M\+E\+T\+H\+OD}~\char`\"{}mul\char`\"{}
+\item 
+\mbox{\Hypertarget{morpho_8h_ae382289a56deafac65eae82d484dacc5}\label{morpho_8h_ae382289a56deafac65eae82d484dacc5}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+D\+I\+V\+\_\+\+M\+E\+T\+H\+OD}~\char`\"{}div\char`\"{}
+\item 
+\mbox{\Hypertarget{morpho_8h_a7800be970a1f6b191f09b5a7e53ad4da}\label{morpho_8h_a7800be970a1f6b191f09b5a7e53ad4da}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+E\+N\+U\+M\+E\+R\+A\+T\+E\+\_\+\+M\+E\+T\+H\+OD}~\char`\"{}enumerate\char`\"{}
+\item 
+\mbox{\Hypertarget{morpho_8h_a54bd2f93dd9ca9d8411f72c70b85135d}\label{morpho_8h_a54bd2f93dd9ca9d8411f72c70b85135d}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+P\+R\+I\+N\+T\+\_\+\+M\+E\+T\+H\+OD}~\char`\"{}prnt\char`\"{}
+\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{morpho_8h_abd2f50b4c9e1921584a0f042826122d9}\label{morpho_8h_abd2f50b4c9e1921584a0f042826122d9}} 
+typedef void {\bfseries vm}
+\item 
+\mbox{\Hypertarget{morpho_8h_a908098bdf286d97dcec6a1cb7ef91a1a}\label{morpho_8h_a908098bdf286d97dcec6a1cb7ef91a1a}} 
+typedef void {\bfseries program}
+\item 
+\mbox{\Hypertarget{morpho_8h_a9ba0cf11d3033262409e6ab532b2fdbd}\label{morpho_8h_a9ba0cf11d3033262409e6ab532b2fdbd}} 
+typedef void {\bfseries compiler}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{morpho_8h_ab97becbc055d73fdd895481471b0ff08}{morpho\+\_\+writeerrorwithid}} (\mbox{\hyperlink{structerror}{error}} $\ast$err, \mbox{\hyperlink{error_8h_a86254d1fc4e410b785964f4396b5fece}{errorid}} id, int line, int position,...)
+\begin{DoxyCompactList}\small\item\em Writes an error message to an error structure. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{morpho_8h_a81aaf003b95b2047c1b034c7560f57c8}{morpho\+\_\+defineerror}} (\mbox{\hyperlink{error_8h_a86254d1fc4e410b785964f4396b5fece}{errorid}} id, \mbox{\hyperlink{error_8h_a612031c0b1f54fb1f4536c7716a1e93a}{errorcategory}} cat, char $\ast$message)
+\item 
+\mbox{\hyperlink{error_8h_a86254d1fc4e410b785964f4396b5fece}{errorid}} \mbox{\hyperlink{morpho_8h_ac9dd0aa525fa8e00ad0d530756fffe2e}{morpho\+\_\+geterrorid}} (\mbox{\hyperlink{structerror}{error}} $\ast$err)
+\item 
+\mbox{\Hypertarget{morpho_8h_a24a6ddbeab325f5fc559bb1e2727e750}\label{morpho_8h_a24a6ddbeab325f5fc559bb1e2727e750}} 
+program $\ast$ \mbox{\hyperlink{morpho_8h_a24a6ddbeab325f5fc559bb1e2727e750}{morpho\+\_\+newprogram}} (void)
+\begin{DoxyCompactList}\small\item\em Creates and initializes a new program. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{morpho_8h_a09aa1da99cae60db6f618df832c36e0a}\label{morpho_8h_a09aa1da99cae60db6f618df832c36e0a}} 
+void \mbox{\hyperlink{morpho_8h_a09aa1da99cae60db6f618df832c36e0a}{morpho\+\_\+freeprogram}} (program $\ast$p)
+\begin{DoxyCompactList}\small\item\em Frees a program. \end{DoxyCompactList}\item 
+vm $\ast$ \mbox{\hyperlink{morpho_8h_a593764a66070bd348674ccc0d3d84d4c}{morpho\+\_\+newvm}} (void)
+\item 
+void \mbox{\hyperlink{morpho_8h_a83b5eecc90809fd05ab97d141e804284}{morpho\+\_\+freevm}} (vm $\ast$v)
+\item 
+void \mbox{\hyperlink{morpho_8h_a64225279e9f6e298dd4f566bafec558d}{morpho\+\_\+runtimeerror}} (vm $\ast$v, \mbox{\hyperlink{error_8h_a86254d1fc4e410b785964f4396b5fece}{errorid}} id,...)
+\begin{DoxyCompactList}\small\item\em Public interface to raise a runtime error. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{compile_8h_a0cd49f27b20f77368988551877e12c7a}{compiler}} $\ast$ \mbox{\hyperlink{morpho_8h_adfacabb0dd38a620ef91cc522482c91a}{morpho\+\_\+newcompiler}} (program $\ast$out)
+\item 
+void \mbox{\hyperlink{morpho_8h_a3ebbd0fec43c816fa0f89d0ed5dfd7ca}{morpho\+\_\+freecompiler}} (\mbox{\hyperlink{compile_8h_a0cd49f27b20f77368988551877e12c7a}{compiler}} $\ast$c)
+\item 
+bool \mbox{\hyperlink{morpho_8h_aff7562742695d8daffd7da3015135c15}{morpho\+\_\+compile}} (char $\ast$in, \mbox{\hyperlink{compile_8h_a0cd49f27b20f77368988551877e12c7a}{compiler}} $\ast$c, \mbox{\hyperlink{structerror}{error}} $\ast$err)
+\item 
+\mbox{\Hypertarget{morpho_8h_ae4b260dc5a180ca094cc1cb7f18d6208}\label{morpho_8h_ae4b260dc5a180ca094cc1cb7f18d6208}} 
+const char $\ast$ {\bfseries morpho\+\_\+compilerrestartpoint} (\mbox{\hyperlink{compile_8h_a0cd49f27b20f77368988551877e12c7a}{compiler}} $\ast$c)
+\item 
+\mbox{\Hypertarget{morpho_8h_a15c0be434ff0e4f3d876701342319f9d}\label{morpho_8h_a15c0be434ff0e4f3d876701342319f9d}} 
+void {\bfseries morpho\+\_\+resetentry} (program $\ast$p)
+\item 
+bool \mbox{\hyperlink{morpho_8h_a00d9a012da406515082836c1ed227891}{morpho\+\_\+interpret}} (vm $\ast$v, program $\ast$code, \mbox{\hyperlink{structerror}{error}} $\ast$err)
+\begin{DoxyCompactList}\small\item\em Executes a sequence of code. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{morpho_8h_a9cc4ce66c6a5a2ad42aa9797e813a2bf}{morpho\+\_\+disassemble}} (program $\ast$code, unsigned int $\ast$matchline)
+\item 
+void \mbox{\hyperlink{morpho_8h_a0f5afa59f99c6e1d1997cd141cfa5e13}{morpho\+\_\+stacktrace}} (vm $\ast$v)
+\item 
+void \mbox{\hyperlink{morpho_8h_a6ffb4b4424cecc24e3f5d052f24fa289}{morpho\+\_\+initialize}} (void)
+\item 
+void \mbox{\hyperlink{morpho_8h_a607013ac2a41df103b0fccbeedf6cdf8}{morpho\+\_\+finalize}} (void)
+\end{DoxyCompactItemize}
+\doxysubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{morpho_8h_a3496da2767630bd007704dc909bf101d}\label{morpho_8h_a3496da2767630bd007704dc909bf101d}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries initselector}
+\item 
+\mbox{\Hypertarget{morpho_8h_a9b58625913f7085d8a0677ec738f92ba}\label{morpho_8h_a9b58625913f7085d8a0677ec738f92ba}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries indexselector}
+\item 
+\mbox{\Hypertarget{morpho_8h_a13171c3eb95fa2d72ec7506b880b574a}\label{morpho_8h_a13171c3eb95fa2d72ec7506b880b574a}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries setindexselector}
+\item 
+\mbox{\Hypertarget{morpho_8h_a73b9072b26a349973b06ddb51033990c}\label{morpho_8h_a73b9072b26a349973b06ddb51033990c}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries addselector}
+\item 
+\mbox{\Hypertarget{morpho_8h_a6c92a59a841c79244cffd63a07bc3733}\label{morpho_8h_a6c92a59a841c79244cffd63a07bc3733}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries subselector}
+\item 
+\mbox{\Hypertarget{morpho_8h_aef58c171586836f3ddb0a8c01ce929f9}\label{morpho_8h_aef58c171586836f3ddb0a8c01ce929f9}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries mulselector}
+\item 
+\mbox{\Hypertarget{morpho_8h_acd3bcc231b73eed093897858b05ef4c3}\label{morpho_8h_acd3bcc231b73eed093897858b05ef4c3}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries divselector}
+\item 
+\mbox{\Hypertarget{morpho_8h_ac4bda81a6804e5a04b5172b66f5a10b2}\label{morpho_8h_ac4bda81a6804e5a04b5172b66f5a10b2}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries printselector}
+\item 
+\mbox{\Hypertarget{morpho_8h_a62fdacb7aa3b8cd53aae8f84517c1222}\label{morpho_8h_a62fdacb7aa3b8cd53aae8f84517c1222}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries enumerateselector}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Define public interface to Morpho. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{morpho_8h_aff7562742695d8daffd7da3015135c15}\label{morpho_8h_aff7562742695d8daffd7da3015135c15}} 
+\index{morpho.h@{morpho.h}!morpho\_compile@{morpho\_compile}}
+\index{morpho\_compile@{morpho\_compile}!morpho.h@{morpho.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_compile()}{morpho\_compile()}}
+{\footnotesize\ttfamily bool morpho\+\_\+compile (\begin{DoxyParamCaption}\item[{char $\ast$}]{in,  }\item[{\mbox{\hyperlink{compile_8h_a0cd49f27b20f77368988551877e12c7a}{compiler}} $\ast$}]{c,  }\item[{\mbox{\hyperlink{structerror}{error}} $\ast$}]{err }\end{DoxyParamCaption})}
+
+Interface to the compiler 
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em in} & A string to compile \\
+\hline
+\mbox{\texttt{ in}}  & {\em c} & The compiler \\
+\hline
+\mbox{\texttt{ out}}  & {\em err} & Pointer to error block on failure \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+A bool indicating success or failure 
+\end{DoxyReturn}
+\mbox{\Hypertarget{morpho_8h_a81aaf003b95b2047c1b034c7560f57c8}\label{morpho_8h_a81aaf003b95b2047c1b034c7560f57c8}} 
+\index{morpho.h@{morpho.h}!morpho\_defineerror@{morpho\_defineerror}}
+\index{morpho\_defineerror@{morpho\_defineerror}!morpho.h@{morpho.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_defineerror()}{morpho\_defineerror()}}
+{\footnotesize\ttfamily void morpho\+\_\+defineerror (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{error_8h_a86254d1fc4e410b785964f4396b5fece}{errorid}}}]{id,  }\item[{\mbox{\hyperlink{error_8h_a612031c0b1f54fb1f4536c7716a1e93a}{errorcategory}}}]{cat,  }\item[{char $\ast$}]{message }\end{DoxyParamCaption})}
+
+Defines an error 
+\begin{DoxyParams}{Parameters}
+{\em id} & Error struct to fill out \\
+\hline
+{\em cat} & The category of error \\
+\hline
+{\em message} & The message string \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{morpho_8h_a9cc4ce66c6a5a2ad42aa9797e813a2bf}\label{morpho_8h_a9cc4ce66c6a5a2ad42aa9797e813a2bf}} 
+\index{morpho.h@{morpho.h}!morpho\_disassemble@{morpho\_disassemble}}
+\index{morpho\_disassemble@{morpho\_disassemble}!morpho.h@{morpho.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_disassemble()}{morpho\_disassemble()}}
+{\footnotesize\ttfamily void morpho\+\_\+disassemble (\begin{DoxyParamCaption}\item[{program $\ast$}]{code,  }\item[{unsigned int $\ast$}]{matchline }\end{DoxyParamCaption})}
+
+Disassembles a program 
+\begin{DoxyParams}{Parameters}
+{\em code} & -\/ program to disassemble \\
+\hline
+{\em matchline} & -\/ optional line number to match \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{morpho_8h_a607013ac2a41df103b0fccbeedf6cdf8}\label{morpho_8h_a607013ac2a41df103b0fccbeedf6cdf8}} 
+\index{morpho.h@{morpho.h}!morpho\_finalize@{morpho\_finalize}}
+\index{morpho\_finalize@{morpho\_finalize}!morpho.h@{morpho.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_finalize()}{morpho\_finalize()}}
+{\footnotesize\ttfamily void morpho\+\_\+finalize (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+Finalizes morpho \mbox{\Hypertarget{morpho_8h_a3ebbd0fec43c816fa0f89d0ed5dfd7ca}\label{morpho_8h_a3ebbd0fec43c816fa0f89d0ed5dfd7ca}} 
+\index{morpho.h@{morpho.h}!morpho\_freecompiler@{morpho\_freecompiler}}
+\index{morpho\_freecompiler@{morpho\_freecompiler}!morpho.h@{morpho.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_freecompiler()}{morpho\_freecompiler()}}
+{\footnotesize\ttfamily void morpho\+\_\+freecompiler (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{compile_8h_a0cd49f27b20f77368988551877e12c7a}{compiler}} $\ast$}]{c }\end{DoxyParamCaption})}
+
+Frees a compiler \mbox{\Hypertarget{morpho_8h_a83b5eecc90809fd05ab97d141e804284}\label{morpho_8h_a83b5eecc90809fd05ab97d141e804284}} 
+\index{morpho.h@{morpho.h}!morpho\_freevm@{morpho\_freevm}}
+\index{morpho\_freevm@{morpho\_freevm}!morpho.h@{morpho.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_freevm()}{morpho\_freevm()}}
+{\footnotesize\ttfamily void morpho\+\_\+freevm (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v }\end{DoxyParamCaption})}
+
+Frees a virtual machine \mbox{\Hypertarget{morpho_8h_ac9dd0aa525fa8e00ad0d530756fffe2e}\label{morpho_8h_ac9dd0aa525fa8e00ad0d530756fffe2e}} 
+\index{morpho.h@{morpho.h}!morpho\_geterrorid@{morpho\_geterrorid}}
+\index{morpho\_geterrorid@{morpho\_geterrorid}!morpho.h@{morpho.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_geterrorid()}{morpho\_geterrorid()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{error_8h_a86254d1fc4e410b785964f4396b5fece}{errorid}} morpho\+\_\+geterrorid (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structerror}{error}} $\ast$}]{err }\end{DoxyParamCaption})}
+
+Gets the id of an error \mbox{\Hypertarget{morpho_8h_a6ffb4b4424cecc24e3f5d052f24fa289}\label{morpho_8h_a6ffb4b4424cecc24e3f5d052f24fa289}} 
+\index{morpho.h@{morpho.h}!morpho\_initialize@{morpho\_initialize}}
+\index{morpho\_initialize@{morpho\_initialize}!morpho.h@{morpho.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_initialize()}{morpho\_initialize()}}
+{\footnotesize\ttfamily void morpho\+\_\+initialize (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+Initializes morpho \mbox{\Hypertarget{morpho_8h_a00d9a012da406515082836c1ed227891}\label{morpho_8h_a00d9a012da406515082836c1ed227891}} 
+\index{morpho.h@{morpho.h}!morpho\_interpret@{morpho\_interpret}}
+\index{morpho\_interpret@{morpho\_interpret}!morpho.h@{morpho.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_interpret()}{morpho\_interpret()}}
+{\footnotesize\ttfamily bool morpho\+\_\+interpret (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{program $\ast$}]{code,  }\item[{\mbox{\hyperlink{structerror}{error}} $\ast$}]{err }\end{DoxyParamCaption})}
+
+
+
+Executes a sequence of code. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em v} & The virtual machine to use \\
+\hline
+{\em code} & The program to execute \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+A morpho error 
+\end{DoxyReturn}
+\mbox{\Hypertarget{morpho_8h_adfacabb0dd38a620ef91cc522482c91a}\label{morpho_8h_adfacabb0dd38a620ef91cc522482c91a}} 
+\index{morpho.h@{morpho.h}!morpho\_newcompiler@{morpho\_newcompiler}}
+\index{morpho\_newcompiler@{morpho\_newcompiler}!morpho.h@{morpho.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_newcompiler()}{morpho\_newcompiler()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{compile_8h_a0cd49f27b20f77368988551877e12c7a}{compiler}}$\ast$ morpho\+\_\+newcompiler (\begin{DoxyParamCaption}\item[{program $\ast$}]{out }\end{DoxyParamCaption})}
+
+Creates a new compiler \mbox{\Hypertarget{morpho_8h_a593764a66070bd348674ccc0d3d84d4c}\label{morpho_8h_a593764a66070bd348674ccc0d3d84d4c}} 
+\index{morpho.h@{morpho.h}!morpho\_newvm@{morpho\_newvm}}
+\index{morpho\_newvm@{morpho\_newvm}!morpho.h@{morpho.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_newvm()}{morpho\_newvm()}}
+{\footnotesize\ttfamily vm$\ast$ morpho\+\_\+newvm (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+Creates a new virtual machine \mbox{\Hypertarget{morpho_8h_a64225279e9f6e298dd4f566bafec558d}\label{morpho_8h_a64225279e9f6e298dd4f566bafec558d}} 
+\index{morpho.h@{morpho.h}!morpho\_runtimeerror@{morpho\_runtimeerror}}
+\index{morpho\_runtimeerror@{morpho\_runtimeerror}!morpho.h@{morpho.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_runtimeerror()}{morpho\_runtimeerror()}}
+{\footnotesize\ttfamily void morpho\+\_\+runtimeerror (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{\mbox{\hyperlink{error_8h_a86254d1fc4e410b785964f4396b5fece}{errorid}}}]{id,  }\item[{}]{... }\end{DoxyParamCaption})}
+
+
+
+Public interface to raise a runtime error. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em v} & the virtual machine \\
+\hline
+{\em id} & error id \\
+\hline
+{\em ...} & additional data for sprintf. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{morpho_8h_a0f5afa59f99c6e1d1997cd141cfa5e13}\label{morpho_8h_a0f5afa59f99c6e1d1997cd141cfa5e13}} 
+\index{morpho.h@{morpho.h}!morpho\_stacktrace@{morpho\_stacktrace}}
+\index{morpho\_stacktrace@{morpho\_stacktrace}!morpho.h@{morpho.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_stacktrace()}{morpho\_stacktrace()}}
+{\footnotesize\ttfamily void morpho\+\_\+stacktrace (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v }\end{DoxyParamCaption})}
+
+Prints a stacktrace \mbox{\Hypertarget{morpho_8h_ab97becbc055d73fdd895481471b0ff08}\label{morpho_8h_ab97becbc055d73fdd895481471b0ff08}} 
+\index{morpho.h@{morpho.h}!morpho\_writeerrorwithid@{morpho\_writeerrorwithid}}
+\index{morpho\_writeerrorwithid@{morpho\_writeerrorwithid}!morpho.h@{morpho.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_writeerrorwithid()}{morpho\_writeerrorwithid()}}
+{\footnotesize\ttfamily void morpho\+\_\+writeerrorwithid (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structerror}{error}} $\ast$}]{err,  }\item[{\mbox{\hyperlink{error_8h_a86254d1fc4e410b785964f4396b5fece}{errorid}}}]{id,  }\item[{int}]{line,  }\item[{int}]{posn,  }\item[{}]{... }\end{DoxyParamCaption})}
+
+
+
+Writes an error message to an error structure. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em err} & The error structure \\
+\hline
+{\em id} & The error id. \\
+\hline
+{\em line} & The line at which the error occurred, if identifiable. \\
+\hline
+{\em posn} & The position in the line at which the error occurred, if identifiable. \\
+\hline
+{\em ...} & Additional parameters (the data for the printf commands in the message) \\
+\hline
+\end{DoxyParams}

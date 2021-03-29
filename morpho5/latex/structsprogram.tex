@@ -1,0 +1,63 @@
+\hypertarget{structsprogram}{}\doxysection{sprogram Struct Reference}
+\label{structsprogram}\index{sprogram@{sprogram}}
+
+
+Morpho code program and associated data.  
+
+
+
+
+{\ttfamily \#include $<$core.\+h$>$}
+
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structsprogram_a53c745fac1613bae23bd9ed78dc18728}\label{structsprogram_a53c745fac1613bae23bd9ed78dc18728}} 
+varray\+\_\+instruction {\bfseries code}
+\item 
+varray\+\_\+debuginfo \mbox{\hyperlink{structsprogram_a5276267de0c47050f1a35e787d8b9a04}{info}}
+\item 
+\mbox{\hyperlink{object_8h_afc705d9d9f5fea954318f74974237600}{objectfunction}} $\ast$ \mbox{\hyperlink{structsprogram_a4a33b0ef4d610402d179e14015f22bdb}{global}}
+\item 
+unsigned int \mbox{\hyperlink{structsprogram_abbc534dfd345c77ce742f21a1117bd00}{nglobals}}
+\item 
+\mbox{\Hypertarget{structsprogram_ac33b66034b5c629a8e862df84b897a55}\label{structsprogram_ac33b66034b5c629a8e862df84b897a55}} 
+\mbox{\hyperlink{structsobject}{object}} $\ast$ {\bfseries boundlist}
+\item 
+\mbox{\hyperlink{structdictionary}{dictionary}} \mbox{\hyperlink{structsprogram_a9fe79bb25b77bcd2b31def21d0243ef3}{symboltable}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Morpho code program and associated data. 
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structsprogram_a4a33b0ef4d610402d179e14015f22bdb}\label{structsprogram_a4a33b0ef4d610402d179e14015f22bdb}} 
+\index{sprogram@{sprogram}!global@{global}}
+\index{global@{global}!sprogram@{sprogram}}
+\doxysubsubsection{\texorpdfstring{global}{global}}
+{\footnotesize\ttfamily \mbox{\hyperlink{object_8h_afc705d9d9f5fea954318f74974237600}{objectfunction}}$\ast$ sprogram\+::global}
+
+Information about how the code connects to the source \mbox{\Hypertarget{structsprogram_a5276267de0c47050f1a35e787d8b9a04}\label{structsprogram_a5276267de0c47050f1a35e787d8b9a04}} 
+\index{sprogram@{sprogram}!info@{info}}
+\index{info@{info}!sprogram@{sprogram}}
+\doxysubsubsection{\texorpdfstring{info}{info}}
+{\footnotesize\ttfamily varray\+\_\+debuginfo sprogram\+::info}
+
+Compiled instructions \mbox{\Hypertarget{structsprogram_abbc534dfd345c77ce742f21a1117bd00}\label{structsprogram_abbc534dfd345c77ce742f21a1117bd00}} 
+\index{sprogram@{sprogram}!nglobals@{nglobals}}
+\index{nglobals@{nglobals}!sprogram@{sprogram}}
+\doxysubsubsection{\texorpdfstring{nglobals}{nglobals}}
+{\footnotesize\ttfamily unsigned int sprogram\+::nglobals}
+
+Pseudofunction containing global data \mbox{\Hypertarget{structsprogram_a9fe79bb25b77bcd2b31def21d0243ef3}\label{structsprogram_a9fe79bb25b77bcd2b31def21d0243ef3}} 
+\index{sprogram@{sprogram}!symboltable@{symboltable}}
+\index{symboltable@{symboltable}!sprogram@{sprogram}}
+\doxysubsubsection{\texorpdfstring{symboltable}{symboltable}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structdictionary}{dictionary}} sprogram\+::symboltable}
+
+Linked list of static objects bound to this program 
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+vm/\mbox{\hyperlink{core_8h}{core.\+h}}\end{DoxyCompactItemize}

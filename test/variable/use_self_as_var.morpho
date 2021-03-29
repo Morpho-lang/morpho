@@ -1,0 +1,2 @@
+var self = "value"
+// expect error: 'VarExpct'

@@ -1,0 +1,3 @@
+// Check that calling a string generates an err.
+
+"str"() // expect error: 'Uncallable'

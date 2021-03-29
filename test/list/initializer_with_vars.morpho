@@ -1,0 +1,9 @@
+// Initialize a list with vars
+for (i in 1..3) {
+  var a = [ i-1, i, i+1]
+  print a
+}
+
+// expect: [ 0, 1, 2 ]
+// expect: [ 1, 2, 3 ]
+// expect: [ 2, 3, 4 ]

@@ -1,0 +1,269 @@
+\hypertarget{parse_8h}{}\doxysection{utils/parse.h File Reference}
+\label{parse_8h}\index{utils/parse.h@{utils/parse.h}}
+
+
+Lexer and parser.  
+
+
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}error.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}syntaxtree.\+h\char`\"{}}\newline
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structtoken}{token}}
+\item 
+struct \mbox{\hyperlink{structlexer}{lexer}}
+\begin{DoxyCompactList}\small\item\em Store the current configuration of a lexer. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structparser}{parser}}
+\begin{DoxyCompactList}\small\item\em A structure that defines the state of a parser. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structparserule}{parserule}}
+\begin{DoxyCompactList}\small\item\em A parse rule will be defined for each token, providing functions to parse the token if it is encountered in the prefix or infix positions. The parse rule also defines the precedence. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{parse_8h_a4f80890862179aaf18ff17d3fcaefb02}{T\+O\+K\+E\+N\+\_\+\+B\+L\+A\+NK}}~((\mbox{\hyperlink{structtoken}{token}}) \{.type=T\+O\+K\+E\+N\+\_\+\+N\+O\+NE, .start=N\+U\+LL, .length=0, .line=0, .posn=0\} )
+\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{parse_8h_a42087c0b7b0c695dcc4a64558e58df0e}\label{parse_8h_a42087c0b7b0c695dcc4a64558e58df0e}} 
+typedef syntaxtreeindx($\ast$ \mbox{\hyperlink{parse_8h_a42087c0b7b0c695dcc4a64558e58df0e}{parsefunction}}) (\mbox{\hyperlink{structparser}{parser}} $\ast$c)
+\begin{DoxyCompactList}\small\item\em Definition of a parse function. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{parse_8h_a262d1aca355a0381cce24f93101b6b69}{tokentype}} \{ \newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+N\+O\+NE}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+N\+E\+W\+L\+I\+NE}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+H\+E\+LP}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+S\+T\+R\+I\+NG}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+I\+N\+T\+E\+R\+P\+O\+L\+A\+T\+I\+ON}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+I\+N\+T\+E\+G\+ER}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+N\+U\+M\+B\+ER}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+S\+Y\+M\+B\+OL}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+T\+R\+UE}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+F\+A\+L\+SE}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+N\+IL}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+S\+E\+LF}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+S\+U\+P\+ER}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+L\+E\+F\+T\+P\+A\+R\+EN}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+R\+I\+G\+H\+T\+P\+A\+R\+EN}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+L\+E\+F\+T\+S\+Q\+B\+R\+A\+C\+K\+ET}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+R\+I\+G\+H\+T\+S\+Q\+B\+R\+A\+C\+K\+ET}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+L\+E\+F\+T\+C\+U\+R\+L\+Y\+B\+R\+A\+C\+K\+ET}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+R\+I\+G\+H\+T\+C\+U\+R\+L\+Y\+B\+R\+A\+C\+K\+ET}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+C\+O\+L\+ON}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+S\+E\+M\+I\+C\+O\+L\+ON}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+C\+O\+M\+MA}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+P\+L\+US}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+M\+I\+N\+US}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+S\+T\+AR}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+S\+L\+A\+SH}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+C\+I\+R\+C\+U\+M\+F\+L\+EX}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+P\+L\+U\+S\+P\+L\+US}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+M\+I\+N\+U\+S\+M\+I\+N\+US}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+P\+L\+U\+S\+EQ}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+M\+I\+N\+U\+S\+EQ}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+S\+T\+A\+R\+EQ}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+S\+L\+A\+S\+H\+EQ}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+D\+OT}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+D\+O\+T\+D\+OT}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+E\+X\+C\+L\+A\+M\+A\+T\+I\+ON}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+A\+MP}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+V\+B\+AR}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+D\+B\+L\+A\+MP}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+D\+B\+L\+V\+B\+AR}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+E\+Q\+U\+AL}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+EQ}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+N\+EQ}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+LT}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+GT}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+L\+T\+EQ}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+G\+T\+EQ}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+P\+R\+I\+NT}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+V\+AR}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+IF}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+E\+L\+SE}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+IN}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+W\+H\+I\+LE}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+F\+OR}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+F\+U\+N\+C\+T\+I\+ON}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+R\+E\+T\+U\+RN}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+C\+L\+A\+SS}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+I\+M\+P\+O\+RT}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+AS}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+I\+N\+C\+O\+M\+P\+L\+E\+TE}, 
+\newline
+{\bfseries T\+O\+K\+E\+N\+\_\+\+E\+R\+R\+OR}, 
+{\bfseries T\+O\+K\+E\+N\+\_\+\+E\+OF}
+ \}
+\item 
+\mbox{\Hypertarget{parse_8h_a7ba15b09f5921966959e0abb2e1d3e4a}\label{parse_8h_a7ba15b09f5921966959e0abb2e1d3e4a}} 
+enum \mbox{\hyperlink{parse_8h_a7ba15b09f5921966959e0abb2e1d3e4a}{precedence}} \{ \newline
+{\bfseries P\+R\+E\+C\+\_\+\+N\+O\+NE}, 
+{\bfseries P\+R\+E\+C\+\_\+\+L\+O\+W\+E\+ST}, 
+{\bfseries P\+R\+E\+C\+\_\+\+A\+S\+S\+I\+GN}, 
+{\bfseries P\+R\+E\+C\+\_\+\+OR}, 
+\newline
+{\bfseries P\+R\+E\+C\+\_\+\+A\+ND}, 
+{\bfseries P\+R\+E\+C\+\_\+\+E\+Q\+U\+A\+L\+I\+TY}, 
+{\bfseries P\+R\+E\+C\+\_\+\+C\+O\+M\+P\+A\+R\+I\+S\+ON}, 
+{\bfseries P\+R\+E\+C\+\_\+\+R\+A\+N\+GE}, 
+\newline
+{\bfseries P\+R\+E\+C\+\_\+\+T\+E\+RM}, 
+{\bfseries P\+R\+E\+C\+\_\+\+F\+A\+C\+T\+OR}, 
+{\bfseries P\+R\+E\+C\+\_\+\+P\+OW}, 
+{\bfseries P\+R\+E\+C\+\_\+\+U\+N\+A\+RY}, 
+\newline
+{\bfseries P\+R\+E\+C\+\_\+\+C\+A\+LL}, 
+{\bfseries P\+R\+E\+C\+\_\+\+H\+I\+G\+H\+E\+ST}
+ \}
+\begin{DoxyCompactList}\small\item\em an enumerated type that defines precedence order in Morpho. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{parse_8h_a5311aa3ae928b13c34358e8ce27fcc4b}{lex\+\_\+init}} (\mbox{\hyperlink{structlexer}{lexer}} $\ast$l, const char $\ast$start, int line)
+\begin{DoxyCompactList}\small\item\em Initializes a lexer with a given starting point. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{parse_8h_ac8fb025deb0f7d51621079f1f96b731c}{lex}} (\mbox{\hyperlink{structlexer}{lexer}} $\ast$l, \mbox{\hyperlink{structtoken}{token}} $\ast$tok, \mbox{\hyperlink{structerror}{error}} $\ast$err)
+\begin{DoxyCompactList}\small\item\em Identifies the next token. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{parse_8h_aac5bef93395aa1ffcab112e4162ffca0}{parse\+\_\+init}} (\mbox{\hyperlink{structparser}{parser}} $\ast$p, \mbox{\hyperlink{structlexer}{lexer}} $\ast$\mbox{\hyperlink{parse_8h_ac8fb025deb0f7d51621079f1f96b731c}{lex}}, \mbox{\hyperlink{structerror}{error}} $\ast$err, \mbox{\hyperlink{structsyntaxtree}{syntaxtree}} $\ast$tree)
+\begin{DoxyCompactList}\small\item\em Initialize a parser. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{parse_8h_afdaa5283996aadc641d89cb0c4ae0197}{parse}} (\mbox{\hyperlink{structparser}{parser}} $\ast$p)
+\item 
+bool \mbox{\hyperlink{parse_8h_a429a6b724cfbd4d1b0e8fe559c99077e}{parse\+\_\+stringtovaluearray}} (char $\ast$string, unsigned int nmax, \mbox{\hyperlink{structvalue}{value}} $\ast$v, unsigned int $\ast$n, \mbox{\hyperlink{structerror}{error}} $\ast$err)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Lexer and parser. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton and others (see below) 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Macro Definition Documentation}
+\mbox{\Hypertarget{parse_8h_a4f80890862179aaf18ff17d3fcaefb02}\label{parse_8h_a4f80890862179aaf18ff17d3fcaefb02}} 
+\index{parse.h@{parse.h}!TOKEN\_BLANK@{TOKEN\_BLANK}}
+\index{TOKEN\_BLANK@{TOKEN\_BLANK}!parse.h@{parse.h}}
+\doxysubsubsection{\texorpdfstring{TOKEN\_BLANK}{TOKEN\_BLANK}}
+{\footnotesize\ttfamily \#define T\+O\+K\+E\+N\+\_\+\+B\+L\+A\+NK~((\mbox{\hyperlink{structtoken}{token}}) \{.type=T\+O\+K\+E\+N\+\_\+\+N\+O\+NE, .start=N\+U\+LL, .length=0, .line=0, .posn=0\} )}
+
+Literal for a blank token 
+
+\doxysubsection{Enumeration Type Documentation}
+\mbox{\Hypertarget{parse_8h_a262d1aca355a0381cce24f93101b6b69}\label{parse_8h_a262d1aca355a0381cce24f93101b6b69}} 
+\index{parse.h@{parse.h}!tokentype@{tokentype}}
+\index{tokentype@{tokentype}!parse.h@{parse.h}}
+\doxysubsubsection{\texorpdfstring{tokentype}{tokentype}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{parse_8h_a262d1aca355a0381cce24f93101b6b69}{tokentype}}}
+
+The type of token. N.\+B. Each token will have a parserule in the parser 
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{parse_8h_ac8fb025deb0f7d51621079f1f96b731c}\label{parse_8h_ac8fb025deb0f7d51621079f1f96b731c}} 
+\index{parse.h@{parse.h}!lex@{lex}}
+\index{lex@{lex}!parse.h@{parse.h}}
+\doxysubsubsection{\texorpdfstring{lex()}{lex()}}
+{\footnotesize\ttfamily bool lex (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlexer}{lexer}} $\ast$}]{l,  }\item[{\mbox{\hyperlink{structtoken}{token}} $\ast$}]{tok,  }\item[{\mbox{\hyperlink{structerror}{error}} $\ast$}]{err }\end{DoxyParamCaption})}
+
+
+
+Identifies the next token. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em l} & The lexer in use \\
+\hline
+\mbox{\texttt{ out}}  & {\em err} & An error block to fill out on an error \\
+\hline
+\mbox{\texttt{ out}}  & {\em tok} & Token structure to fill out \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true on success or false on failure ~\newline
+ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{parse_8h_a5311aa3ae928b13c34358e8ce27fcc4b}\label{parse_8h_a5311aa3ae928b13c34358e8ce27fcc4b}} 
+\index{parse.h@{parse.h}!lex\_init@{lex\_init}}
+\index{lex\_init@{lex\_init}!parse.h@{parse.h}}
+\doxysubsubsection{\texorpdfstring{lex\_init()}{lex\_init()}}
+{\footnotesize\ttfamily void lex\+\_\+init (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlexer}{lexer}} $\ast$}]{l,  }\item[{const char $\ast$}]{start,  }\item[{int}]{line }\end{DoxyParamCaption})}
+
+
+
+Initializes a lexer with a given starting point. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em l} & The lexer to initialize \\
+\hline
+{\em start} & Starting point to lex from \\
+\hline
+{\em line} & The current line number \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{parse_8h_afdaa5283996aadc641d89cb0c4ae0197}\label{parse_8h_afdaa5283996aadc641d89cb0c4ae0197}} 
+\index{parse.h@{parse.h}!parse@{parse}}
+\index{parse@{parse}!parse.h@{parse.h}}
+\doxysubsubsection{\texorpdfstring{parse()}{parse()}}
+{\footnotesize\ttfamily bool parse (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structparser}{parser}} $\ast$}]{p }\end{DoxyParamCaption})}
+
+Entry point into the parser \mbox{\Hypertarget{parse_8h_aac5bef93395aa1ffcab112e4162ffca0}\label{parse_8h_aac5bef93395aa1ffcab112e4162ffca0}} 
+\index{parse.h@{parse.h}!parse\_init@{parse\_init}}
+\index{parse\_init@{parse\_init}!parse.h@{parse.h}}
+\doxysubsubsection{\texorpdfstring{parse\_init()}{parse\_init()}}
+{\footnotesize\ttfamily void parse\+\_\+init (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structparser}{parser}} $\ast$}]{p,  }\item[{\mbox{\hyperlink{structlexer}{lexer}} $\ast$}]{lex,  }\item[{\mbox{\hyperlink{structerror}{error}} $\ast$}]{err,  }\item[{\mbox{\hyperlink{structsyntaxtree}{syntaxtree}} $\ast$}]{tree }\end{DoxyParamCaption})}
+
+
+
+Initialize a parser. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em p} & the parser to initialize \\
+\hline
+{\em lex} & lexer to use \\
+\hline
+{\em err} & an error structure to fill out if necessary \\
+\hline
+{\em tree} & syntaxtree to fill out \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{parse_8h_a429a6b724cfbd4d1b0e8fe559c99077e}\label{parse_8h_a429a6b724cfbd4d1b0e8fe559c99077e}} 
+\index{parse.h@{parse.h}!parse\_stringtovaluearray@{parse\_stringtovaluearray}}
+\index{parse\_stringtovaluearray@{parse\_stringtovaluearray}!parse.h@{parse.h}}
+\doxysubsubsection{\texorpdfstring{parse\_stringtovaluearray()}{parse\_stringtovaluearray()}}
+{\footnotesize\ttfamily bool parse\+\_\+stringtovaluearray (\begin{DoxyParamCaption}\item[{char $\ast$}]{string,  }\item[{unsigned int}]{nmax,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{v,  }\item[{unsigned int $\ast$}]{n,  }\item[{\mbox{\hyperlink{structerror}{error}} $\ast$}]{err }\end{DoxyParamCaption})}
+
+Convenience function to parse a string into an array of values 
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em string} & -\/ string to parse \\
+\hline
+\mbox{\texttt{ in}}  & {\em nmax} & -\/ maximum number of values to read \\
+\hline
+\mbox{\texttt{ in}}  & {\em v} & -\/ value array, filled out on return \\
+\hline
+\mbox{\texttt{ out}}  & {\em n} & -\/ number of values read \\
+\hline
+\mbox{\texttt{ out}}  & {\em err} & -\/ error structure filled out if an error occurs \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if successful, false otherwise. 
+\end{DoxyReturn}

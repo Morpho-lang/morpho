@@ -1,0 +1,2 @@
+undefined1.bar // expect error 'SymblUndf'
+  = undefined2

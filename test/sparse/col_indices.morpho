@@ -1,0 +1,9 @@
+// Sparse matrices
+
+var a = Sparse([])
+
+for (i in 0..10:2) {
+  a[i,i]=1
+}
+print a.colindices()
+// expect: [ 0, 2, 4, 6, 8, 10 ]

@@ -1,0 +1,12 @@
+// Do..while loop syntax
+
+var i=0
+do {
+  print i
+  i+=1
+} while (i<5)
+// expect: 0
+// expect: 1
+// expect: 2
+// expect: 3
+// expect: 4

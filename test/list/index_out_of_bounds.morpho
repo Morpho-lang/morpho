@@ -1,0 +1,6 @@
+// Check indices out of bounds
+
+var lst = [ 1,2,3 ]
+print lst[0] // expect: 1
+print lst[1] // expect: 2
+print lst[6] // expect error 'IndxBnds'

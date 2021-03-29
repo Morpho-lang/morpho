@@ -1,0 +1,58 @@
+class Redirect {
+  add (x) {
+    print "Adding ${x}"
+  }
+
+  addr (x) {
+    print "Right adding ${x}"
+  }
+
+  sub (x) {
+    print "Subtracting ${x}"
+  }
+
+  subr (x) {
+    print "Right subtracting ${x}"
+  }
+
+  mul (x) {
+    print "Multiplying ${x}"
+  }
+
+  mulr (x) {
+    print "Right multiplying ${x}"
+  }
+
+  div (x) {
+    print "Dividing ${x}"
+  }
+
+  divr (x) {
+    print "Right dividing ${x}"
+  }
+}
+
+var r = Redirect()
+
+r + 1
+// expect: Adding 1
+1 + r
+// expect: Right adding 1
+
+r - 2
+// expect: Subtracting 2
+2 - r
+// expect: Right subtracting 2
+
+r * 3
+// expect: Multiplying 3
+3 * r
+// expect: Right multiplying 3
+
+r / 3
+// expect: Dividing 3
+3 / r
+// expect: Right dividing 3
+
+(-r)
+// expect: Right subtracting 0

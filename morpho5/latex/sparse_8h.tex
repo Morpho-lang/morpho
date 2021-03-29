@@ -1,0 +1,287 @@
+\hypertarget{sparse_8h}{}\doxysection{datastructures/sparse.h File Reference}
+\label{sparse_8h}\index{datastructures/sparse.h@{datastructures/sparse.h}}
+
+
+Veneer class over the objectsparse type that provides sparse matrices.  
+
+
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}object.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}morpho.\+h\char`\"{}}\newline
+\doxysubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{sparse_8h_a183c24f7044e2906e24d5bc0361330fd}\label{sparse_8h_a183c24f7044e2906e24d5bc0361330fd}} 
+\#define {\bfseries S\+P\+A\+R\+S\+E\+\_\+\+C\+L\+A\+S\+S\+N\+A\+ME}~\char`\"{}Sparse\char`\"{}
+\item 
+\mbox{\Hypertarget{sparse_8h_a642a18f8ab43b0eef950e5e1bfec6c6f}\label{sparse_8h_a642a18f8ab43b0eef950e5e1bfec6c6f}} 
+\#define {\bfseries S\+P\+A\+R\+S\+E\+\_\+\+C\+O\+N\+S\+T\+R\+U\+C\+T\+OR}~\char`\"{}Sprs\+Cns\char`\"{}
+\item 
+\mbox{\Hypertarget{sparse_8h_adaed7e015867e14d353637cee849d64a}\label{sparse_8h_adaed7e015867e14d353637cee849d64a}} 
+\#define {\bfseries S\+P\+A\+R\+S\+E\+\_\+\+C\+O\+N\+S\+T\+R\+U\+C\+T\+O\+R\+\_\+\+M\+SG}~\char`\"{}Sparse() should be called either with dimensions or an array initializer.\char`\"{}
+\item 
+\mbox{\Hypertarget{sparse_8h_aa3c54558818aeef5a7f6c7554bd014f9}\label{sparse_8h_aa3c54558818aeef5a7f6c7554bd014f9}} 
+\#define {\bfseries S\+P\+A\+R\+S\+E\+\_\+\+S\+E\+T\+F\+A\+I\+L\+ED}~\char`\"{}Sprs\+St\char`\"{}
+\item 
+\mbox{\Hypertarget{sparse_8h_a8b7c099ea6178d777f16e96b9e85bc48}\label{sparse_8h_a8b7c099ea6178d777f16e96b9e85bc48}} 
+\#define {\bfseries S\+P\+A\+R\+S\+E\+\_\+\+S\+E\+T\+F\+A\+I\+L\+E\+D\+\_\+\+M\+SG}~\char`\"{}Attempt to set sparse matrix element failed.\char`\"{}
+\item 
+\mbox{\Hypertarget{sparse_8h_aedfc6e8ab27f61572ba2b0886b29d2e8}\label{sparse_8h_aedfc6e8ab27f61572ba2b0886b29d2e8}} 
+\#define {\bfseries S\+P\+A\+R\+S\+E\+\_\+\+I\+N\+V\+L\+D\+A\+R\+R\+A\+Y\+I\+N\+IT}~\char`\"{}Sprs\+Invld\+Init\char`\"{}
+\item 
+\mbox{\Hypertarget{sparse_8h_ab08132baa012f1da6618d222f5ecd3d6}\label{sparse_8h_ab08132baa012f1da6618d222f5ecd3d6}} 
+\#define {\bfseries S\+P\+A\+R\+S\+E\+\_\+\+I\+N\+V\+L\+D\+A\+R\+R\+A\+Y\+I\+N\+I\+T\+\_\+\+M\+SG}~\char`\"{}Array initializer passed to Sparse() must be a 1 or 2 dimensional array.\char`\"{}
+\item 
+\mbox{\Hypertarget{sparse_8h_a925ee7ebdcf3b7a7c93d7da2f94b43e1}\label{sparse_8h_a925ee7ebdcf3b7a7c93d7da2f94b43e1}} 
+\#define {\bfseries S\+P\+A\+R\+S\+E\+\_\+\+C\+O\+N\+V\+F\+A\+I\+L\+E\+D\+E\+RR}~\char`\"{}Sprs\+Cnv\+Fld\char`\"{}
+\item 
+\mbox{\Hypertarget{sparse_8h_a96b800721d302534cd9db01307a43e26}\label{sparse_8h_a96b800721d302534cd9db01307a43e26}} 
+\#define {\bfseries S\+P\+A\+R\+S\+E\+\_\+\+C\+O\+N\+V\+F\+A\+I\+L\+E\+D\+E\+R\+R\+\_\+\+M\+SG}~\char`\"{}Sparse format conversion failed.\char`\"{}
+\item 
+\mbox{\Hypertarget{sparse_8h_a854127c3699dcd327fa9d740f5547564}\label{sparse_8h_a854127c3699dcd327fa9d740f5547564}} 
+\#define {\bfseries S\+P\+A\+R\+S\+E\+\_\+\+O\+P\+F\+A\+I\+L\+E\+D\+E\+RR}~\char`\"{}Sprs\+Op\+Fld\char`\"{}
+\item 
+\mbox{\Hypertarget{sparse_8h_a739a60ff0ea4369f94b526d4f13434b5}\label{sparse_8h_a739a60ff0ea4369f94b526d4f13434b5}} 
+\#define {\bfseries S\+P\+A\+R\+S\+E\+\_\+\+O\+P\+F\+A\+I\+L\+E\+D\+E\+R\+R\+\_\+\+M\+SG}~\char`\"{}Sparse matrix operation failed.\char`\"{}
+\end{DoxyCompactItemize}
+\doxysubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{sparse_8h_a12556b86136c112e163a767df9004707}\label{sparse_8h_a12556b86136c112e163a767df9004707}} 
+enum {\bfseries objectsparseformat} \{ {\bfseries S\+P\+A\+R\+S\+E\+\_\+\+D\+OK}, 
+{\bfseries S\+P\+A\+R\+S\+E\+\_\+\+C\+CS}
+ \}
+\item 
+\mbox{\Hypertarget{sparse_8h_aa6c9ab1ac980354aa3dae9e0e4e134d0}\label{sparse_8h_aa6c9ab1ac980354aa3dae9e0e4e134d0}} 
+enum {\bfseries objectsparseerror} \{ {\bfseries S\+P\+A\+R\+S\+E\+\_\+\+OK}, 
+{\bfseries S\+P\+A\+R\+S\+E\+\_\+\+I\+N\+C\+M\+P\+T\+B\+L\+D\+IM}, 
+{\bfseries S\+P\+A\+R\+S\+E\+\_\+\+C\+O\+N\+V\+F\+A\+I\+L\+ED}, 
+{\bfseries S\+P\+A\+R\+S\+E\+\_\+\+F\+A\+I\+L\+ED}
+ \}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{sparse_8h_adb75d99e3691195169a9cc9de6a8f7c0}{sparsedok\+\_\+init}} (\mbox{\hyperlink{structsparsedok}{sparsedok}} $\ast$dok)
+\item 
+void \mbox{\hyperlink{sparse_8h_abaa21dc001fb8d1d3374a12abf1f2c31}{sparsedok\+\_\+clear}} (\mbox{\hyperlink{structsparsedok}{sparsedok}} $\ast$dok)
+\item 
+bool \mbox{\hyperlink{sparse_8h_a8d44f42c8f3d854e8d9ab50e03b541c0}{sparsedok\+\_\+insert}} (\mbox{\hyperlink{structsparsedok}{sparsedok}} $\ast$dok, int i, int j, \mbox{\hyperlink{structvalue}{value}} val)
+\item 
+bool \mbox{\hyperlink{sparse_8h_a2e2ad82b908a23649da4c76eb232644b}{sparsedok\+\_\+get}} (\mbox{\hyperlink{structsparsedok}{sparsedok}} $\ast$dok, int i, int j, \mbox{\hyperlink{structvalue}{value}} $\ast$val)
+\item 
+bool \mbox{\hyperlink{sparse_8h_acb419eedb83a42b3f9d57118f524d087}{sparsedok\+\_\+remove}} (\mbox{\hyperlink{structsparsedok}{sparsedok}} $\ast$dok, int i, int j, \mbox{\hyperlink{structvalue}{value}} $\ast$val)
+\item 
+bool \mbox{\hyperlink{sparse_8h_a82c6c1bce540823752fc02629f163e78}{sparsedok\+\_\+setdimensions}} (\mbox{\hyperlink{structsparsedok}{sparsedok}} $\ast$dok, int nrows, int ncols)
+\item 
+void \mbox{\hyperlink{sparse_8h_a793cb029981cbf9b56c5e10c04650daf}{sparseccs\+\_\+init}} (\mbox{\hyperlink{structsparseccs}{sparseccs}} $\ast$ccs)
+\item 
+void \mbox{\hyperlink{sparse_8h_adceb92a5073e79d0dc30bae6e044f1f1}{sparseccs\+\_\+clear}} (\mbox{\hyperlink{structsparseccs}{sparseccs}} $\ast$ccs)
+\item 
+bool \mbox{\hyperlink{sparse_8h_afbc332389ad3fb13113e616d6ced1031}{sparseccs\+\_\+resize}} (\mbox{\hyperlink{structsparseccs}{sparseccs}} $\ast$ccs, int nrows, int ncols, unsigned int nentries, bool values)
+\item 
+bool \mbox{\hyperlink{sparse_8h_a2ff8b8fb8d3fbaa4baaa887cb7b8511e}{sparseccs\+\_\+get}} (\mbox{\hyperlink{structsparseccs}{sparseccs}} $\ast$ccs, int i, int j, double $\ast$val)
+\item 
+bool \mbox{\hyperlink{sparse_8h_a19e861bdada28b8d72716cc7e2aa01eb}{sparseccs\+\_\+getrowindices}} (\mbox{\hyperlink{structsparseccs}{sparseccs}} $\ast$ccs, int col, int $\ast$nentries, int $\ast$$\ast$entries)
+\item 
+bool \mbox{\hyperlink{sparse_8h_aad45875ecad3734e4dbea435e01fa3cd}{sparseccs\+\_\+doktoccs}} (\mbox{\hyperlink{structsparsedok}{sparsedok}} $\ast$in, \mbox{\hyperlink{structsparseccs}{sparseccs}} $\ast$out, bool copyvals)
+\item 
+bool \mbox{\hyperlink{sparse_8h_a770fae247c2afe0c12351582ff950500}{sparse\+\_\+setelement}} (\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$matrix, int row, int col, \mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{structvalue}{value}})
+\item 
+bool \mbox{\hyperlink{sparse_8h_ae6b5ceb41c9685e974021a61e9a24375}{sparse\+\_\+getelement}} (\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$matrix, int row, int col, \mbox{\hyperlink{structvalue}{value}} $\ast$\mbox{\hyperlink{structvalue}{value}})
+\item 
+objectsparseerror \mbox{\hyperlink{sparse_8h_a84f07bbf3d60b37730065cc238f3dca5}{sparse\+\_\+add}} (\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$a, \mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$b, double alpha, double beta, \mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$out)
+\item 
+objectsparseerror \mbox{\hyperlink{sparse_8h_a5bb3e19826a997a882ae509d1cb4145e}{sparse\+\_\+mul}} (\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$a, \mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$b, \mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$out)
+\item 
+void \mbox{\hyperlink{sparse_8h_a322118224c2010f29556eb7ff4922fa0}{sparse\+\_\+clear}} (\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$a)
+\item 
+size\+\_\+t \mbox{\hyperlink{sparse_8h_a1e5362bee82f5e6ea298d29552a9d545}{sparse\+\_\+size}} (\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$a)
+\item 
+\mbox{\Hypertarget{sparse_8h_aec88271526e84e0a8e0067f2b4c14fb0}\label{sparse_8h_aec88271526e84e0a8e0067f2b4c14fb0}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries Sparse\+\_\+divr} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{sparse_8h_a91cb9cc06d2f9be87f199fbc07d126ae}\label{sparse_8h_a91cb9cc06d2f9be87f199fbc07d126ae}} 
+void {\bfseries sparse\+\_\+initialize} (void)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Veneer class over the objectsparse type that provides sparse matrices. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{sparse_8h_a84f07bbf3d60b37730065cc238f3dca5}\label{sparse_8h_a84f07bbf3d60b37730065cc238f3dca5}} 
+\index{sparse.h@{sparse.h}!sparse\_add@{sparse\_add}}
+\index{sparse\_add@{sparse\_add}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparse\_add()}{sparse\_add()}}
+{\footnotesize\ttfamily objectsparseerror sparse\+\_\+add (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$}]{a,  }\item[{\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$}]{b,  }\item[{double}]{alpha,  }\item[{double}]{beta,  }\item[{\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$}]{out }\end{DoxyParamCaption})}
+
+Add two matrices 
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em a} & -\/ sparse matrix \\
+\hline
+\mbox{\texttt{ in}}  & {\em b} & -\/ sparse matrix \\
+\hline
+\mbox{\texttt{ in}}  & {\em alpha} & -\/ scale for a \\
+\hline
+\mbox{\texttt{ in}}  & {\em beta} & -\/ scale for b \\
+\hline
+\mbox{\texttt{ out}}  & {\em out} & -\/ alpha$\ast$a+beta$\ast$b. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{sparse_8h_a322118224c2010f29556eb7ff4922fa0}\label{sparse_8h_a322118224c2010f29556eb7ff4922fa0}} 
+\index{sparse.h@{sparse.h}!sparse\_clear@{sparse\_clear}}
+\index{sparse\_clear@{sparse\_clear}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparse\_clear()}{sparse\_clear()}}
+{\footnotesize\ttfamily void sparse\+\_\+clear (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$}]{a }\end{DoxyParamCaption})}
+
+Clears any data attached to a sparse matrix \mbox{\Hypertarget{sparse_8h_ae6b5ceb41c9685e974021a61e9a24375}\label{sparse_8h_ae6b5ceb41c9685e974021a61e9a24375}} 
+\index{sparse.h@{sparse.h}!sparse\_getelement@{sparse\_getelement}}
+\index{sparse\_getelement@{sparse\_getelement}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparse\_getelement()}{sparse\_getelement()}}
+{\footnotesize\ttfamily bool sparse\+\_\+getelement (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$}]{s,  }\item[{int}]{row,  }\item[{int}]{col,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{val }\end{DoxyParamCaption})}
+
+Get an element 
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em s} & the sparse object \\
+\hline
+\mbox{\texttt{ in}}  & {\em row} & the row \\
+\hline
+\mbox{\texttt{ in}}  & {\em col} & the column \\
+\hline
+\mbox{\texttt{ out}}  & {\em val} & the value; pass N\+U\+LL to check if an element exists \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{sparse_8h_a5bb3e19826a997a882ae509d1cb4145e}\label{sparse_8h_a5bb3e19826a997a882ae509d1cb4145e}} 
+\index{sparse.h@{sparse.h}!sparse\_mul@{sparse\_mul}}
+\index{sparse\_mul@{sparse\_mul}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparse\_mul()}{sparse\_mul()}}
+{\footnotesize\ttfamily objectsparseerror sparse\+\_\+mul (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$}]{a,  }\item[{\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$}]{b,  }\item[{\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$}]{out }\end{DoxyParamCaption})}
+
+Multiply two matrices 
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em a} & -\/ sparse matrix \\
+\hline
+\mbox{\texttt{ in}}  & {\em b} & -\/ sparse matrix \\
+\hline
+\mbox{\texttt{ out}}  & {\em out} & -\/ a$\ast$b. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{sparse_8h_a770fae247c2afe0c12351582ff950500}\label{sparse_8h_a770fae247c2afe0c12351582ff950500}} 
+\index{sparse.h@{sparse.h}!sparse\_setelement@{sparse\_setelement}}
+\index{sparse\_setelement@{sparse\_setelement}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparse\_setelement()}{sparse\_setelement()}}
+{\footnotesize\ttfamily bool sparse\+\_\+setelement (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$}]{s,  }\item[{int}]{row,  }\item[{int}]{col,  }\item[{\mbox{\hyperlink{structvalue}{value}}}]{val }\end{DoxyParamCaption})}
+
+Set an element \mbox{\Hypertarget{sparse_8h_a1e5362bee82f5e6ea298d29552a9d545}\label{sparse_8h_a1e5362bee82f5e6ea298d29552a9d545}} 
+\index{sparse.h@{sparse.h}!sparse\_size@{sparse\_size}}
+\index{sparse\_size@{sparse\_size}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparse\_size()}{sparse\_size()}}
+{\footnotesize\ttfamily size\+\_\+t sparse\+\_\+size (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structobjectsparse}{objectsparse}} $\ast$}]{a }\end{DoxyParamCaption})}
+
+Calculate the size of a sparse matrix structure \mbox{\Hypertarget{sparse_8h_adceb92a5073e79d0dc30bae6e044f1f1}\label{sparse_8h_adceb92a5073e79d0dc30bae6e044f1f1}} 
+\index{sparse.h@{sparse.h}!sparseccs\_clear@{sparseccs\_clear}}
+\index{sparseccs\_clear@{sparseccs\_clear}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparseccs\_clear()}{sparseccs\_clear()}}
+{\footnotesize\ttfamily void sparseccs\+\_\+clear (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structsparseccs}{sparseccs}} $\ast$}]{ccs }\end{DoxyParamCaption})}
+
+Clears all data structures associated with a sparseccs \mbox{\Hypertarget{sparse_8h_aad45875ecad3734e4dbea435e01fa3cd}\label{sparse_8h_aad45875ecad3734e4dbea435e01fa3cd}} 
+\index{sparse.h@{sparse.h}!sparseccs\_doktoccs@{sparseccs\_doktoccs}}
+\index{sparseccs\_doktoccs@{sparseccs\_doktoccs}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparseccs\_doktoccs()}{sparseccs\_doktoccs()}}
+{\footnotesize\ttfamily bool sparseccs\+\_\+doktoccs (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structsparsedok}{sparsedok}} $\ast$}]{in,  }\item[{\mbox{\hyperlink{structsparseccs}{sparseccs}} $\ast$}]{out,  }\item[{bool}]{copyvals }\end{DoxyParamCaption})}
+
+Converts a D\+OK matrix to a C\+CS matrix \mbox{\Hypertarget{sparse_8h_a2ff8b8fb8d3fbaa4baaa887cb7b8511e}\label{sparse_8h_a2ff8b8fb8d3fbaa4baaa887cb7b8511e}} 
+\index{sparse.h@{sparse.h}!sparseccs\_get@{sparseccs\_get}}
+\index{sparseccs\_get@{sparseccs\_get}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparseccs\_get()}{sparseccs\_get()}}
+{\footnotesize\ttfamily bool sparseccs\+\_\+get (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structsparseccs}{sparseccs}} $\ast$}]{ccs,  }\item[{int}]{i,  }\item[{int}]{j,  }\item[{double $\ast$}]{val }\end{DoxyParamCaption})}
+
+Retrieves a matrix element (i,j) from a sparseccs structure \begin{DoxyReturn}{Returns}
+true on success. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{sparse_8h_a19e861bdada28b8d72716cc7e2aa01eb}\label{sparse_8h_a19e861bdada28b8d72716cc7e2aa01eb}} 
+\index{sparse.h@{sparse.h}!sparseccs\_getrowindices@{sparseccs\_getrowindices}}
+\index{sparseccs\_getrowindices@{sparseccs\_getrowindices}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparseccs\_getrowindices()}{sparseccs\_getrowindices()}}
+{\footnotesize\ttfamily bool sparseccs\+\_\+getrowindices (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structsparseccs}{sparseccs}} $\ast$}]{ccs,  }\item[{int}]{col,  }\item[{int $\ast$}]{nentries,  }\item[{int $\ast$$\ast$}]{entries }\end{DoxyParamCaption})}
+
+Retrieves the row indices given a column 
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em ccs} & the matrix \\
+\hline
+\mbox{\texttt{ in}}  & {\em col} & column index \\
+\hline
+\mbox{\texttt{ out}}  & {\em nentries} & the number of entries \\
+\hline
+\mbox{\texttt{ out}}  & {\em entries} & the entries themselves \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{sparse_8h_a793cb029981cbf9b56c5e10c04650daf}\label{sparse_8h_a793cb029981cbf9b56c5e10c04650daf}} 
+\index{sparse.h@{sparse.h}!sparseccs\_init@{sparseccs\_init}}
+\index{sparseccs\_init@{sparseccs\_init}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparseccs\_init()}{sparseccs\_init()}}
+{\footnotesize\ttfamily void sparseccs\+\_\+init (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structsparseccs}{sparseccs}} $\ast$}]{ccs }\end{DoxyParamCaption})}
+
+Initializes an empty sparseccs \mbox{\Hypertarget{sparse_8h_afbc332389ad3fb13113e616d6ced1031}\label{sparse_8h_afbc332389ad3fb13113e616d6ced1031}} 
+\index{sparse.h@{sparse.h}!sparseccs\_resize@{sparseccs\_resize}}
+\index{sparseccs\_resize@{sparseccs\_resize}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparseccs\_resize()}{sparseccs\_resize()}}
+{\footnotesize\ttfamily bool sparseccs\+\_\+resize (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structsparseccs}{sparseccs}} $\ast$}]{ccs,  }\item[{int}]{nrows,  }\item[{int}]{ncols,  }\item[{unsigned int}]{nentries,  }\item[{bool}]{values }\end{DoxyParamCaption})}
+
+Resizes a sparseccs \mbox{\Hypertarget{sparse_8h_abaa21dc001fb8d1d3374a12abf1f2c31}\label{sparse_8h_abaa21dc001fb8d1d3374a12abf1f2c31}} 
+\index{sparse.h@{sparse.h}!sparsedok\_clear@{sparsedok\_clear}}
+\index{sparsedok\_clear@{sparsedok\_clear}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparsedok\_clear()}{sparsedok\_clear()}}
+{\footnotesize\ttfamily void sparsedok\+\_\+clear (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structsparsedok}{sparsedok}} $\ast$}]{dok }\end{DoxyParamCaption})}
+
+Clears a sparsedok structure \mbox{\Hypertarget{sparse_8h_a2e2ad82b908a23649da4c76eb232644b}\label{sparse_8h_a2e2ad82b908a23649da4c76eb232644b}} 
+\index{sparse.h@{sparse.h}!sparsedok\_get@{sparsedok\_get}}
+\index{sparsedok\_get@{sparsedok\_get}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparsedok\_get()}{sparsedok\_get()}}
+{\footnotesize\ttfamily bool sparsedok\+\_\+get (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structsparsedok}{sparsedok}} $\ast$}]{dok,  }\item[{int}]{i,  }\item[{int}]{j,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{val }\end{DoxyParamCaption})}
+
+Retrieves a matrix element (i,j) from a sparsedok structure \begin{DoxyReturn}{Returns}
+true on success. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{sparse_8h_adb75d99e3691195169a9cc9de6a8f7c0}\label{sparse_8h_adb75d99e3691195169a9cc9de6a8f7c0}} 
+\index{sparse.h@{sparse.h}!sparsedok\_init@{sparsedok\_init}}
+\index{sparsedok\_init@{sparsedok\_init}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparsedok\_init()}{sparsedok\_init()}}
+{\footnotesize\ttfamily void sparsedok\+\_\+init (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structsparsedok}{sparsedok}} $\ast$}]{dok }\end{DoxyParamCaption})}
+
+Initializes a sparsedok structure \mbox{\Hypertarget{sparse_8h_a8d44f42c8f3d854e8d9ab50e03b541c0}\label{sparse_8h_a8d44f42c8f3d854e8d9ab50e03b541c0}} 
+\index{sparse.h@{sparse.h}!sparsedok\_insert@{sparsedok\_insert}}
+\index{sparsedok\_insert@{sparsedok\_insert}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparsedok\_insert()}{sparsedok\_insert()}}
+{\footnotesize\ttfamily bool sparsedok\+\_\+insert (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structsparsedok}{sparsedok}} $\ast$}]{dok,  }\item[{int}]{i,  }\item[{int}]{j,  }\item[{\mbox{\hyperlink{structvalue}{value}}}]{val }\end{DoxyParamCaption})}
+
+Inserts a matrix element (i,j) -\/$>$ val into a sparsedok structure \begin{DoxyReturn}{Returns}
+true on success. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{sparse_8h_acb419eedb83a42b3f9d57118f524d087}\label{sparse_8h_acb419eedb83a42b3f9d57118f524d087}} 
+\index{sparse.h@{sparse.h}!sparsedok\_remove@{sparsedok\_remove}}
+\index{sparsedok\_remove@{sparsedok\_remove}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparsedok\_remove()}{sparsedok\_remove()}}
+{\footnotesize\ttfamily bool sparsedok\+\_\+remove (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structsparsedok}{sparsedok}} $\ast$}]{dok,  }\item[{int}]{i,  }\item[{int}]{j,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{val }\end{DoxyParamCaption})}
+
+Removes a matrix element (i,j) from a sparsedok \begin{DoxyReturn}{Returns}
+true on success. 
+\end{DoxyReturn}
+\begin{DoxyWarning}{Warning}
+Use sparingly as the deleted key is not recovered. 
+\end{DoxyWarning}
+\mbox{\Hypertarget{sparse_8h_a82c6c1bce540823752fc02629f163e78}\label{sparse_8h_a82c6c1bce540823752fc02629f163e78}} 
+\index{sparse.h@{sparse.h}!sparsedok\_setdimensions@{sparsedok\_setdimensions}}
+\index{sparsedok\_setdimensions@{sparsedok\_setdimensions}!sparse.h@{sparse.h}}
+\doxysubsubsection{\texorpdfstring{sparsedok\_setdimensions()}{sparsedok\_setdimensions()}}
+{\footnotesize\ttfamily bool sparsedok\+\_\+setdimensions (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structsparsedok}{sparsedok}} $\ast$}]{dok,  }\item[{int}]{nrows,  }\item[{int}]{ncols }\end{DoxyParamCaption})}
+
+Sets the dimensions of the matrix \begin{DoxyReturn}{Returns}
+true if successful, or false if the dimensions are incompatible with existing matrix entries  This function is intended for use in constructing matrix. 
+\end{DoxyReturn}

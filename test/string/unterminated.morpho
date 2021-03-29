@@ -1,0 +1,2 @@
+// expect error 'UntrmStrng'
+"this string has no close quote

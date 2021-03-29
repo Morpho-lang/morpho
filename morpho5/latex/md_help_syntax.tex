@@ -1,0 +1,47 @@
+\mbox{[}comment\mbox{]}\+: \# Morpho language help file \mbox{[}version\mbox{]}\+: \# 0.\+5
+
+\#\+Syntax \mbox{[}tag\mbox{]}\+: \# syntax
+
+Morpho provides a flexible object oriented language similar to other languages in the C family (like C++, Java and Javascript) with a simplified syntax.
+
+Morpho programs are stored as plain text with the .morpho file extension. A program can be run from the command line by typing \begin{DoxyVerb}morpho program.morpho
+\end{DoxyVerb}
+
+
+\#\+Comments \mbox{[}tag\mbox{]}\+: \# comment \mbox{[}tag\mbox{]}\+: \# Comments \mbox{[}tag\mbox{]}\+: \# // \mbox{[}tag\mbox{]}\+: \# /$\ast$ \mbox{[}tag\mbox{]}\+: \# $\ast$/ Two types of comment are available. The first type is called a \textquotesingle{}line comment\textquotesingle{} whereby text after {\ttfamily //} on the same line is ignored by the interpreter. \begin{DoxyVerb}a.dosomething() // A comment
+\end{DoxyVerb}
+
+
+Longer \textquotesingle{}block\textquotesingle{} comments can be created by placing text between {\ttfamily /$\ast$} and {\ttfamily $\ast$/}. Newlines are ignored \begin{DoxyVerb}/* This
+   is
+   a longer comment */
+\end{DoxyVerb}
+
+
+In contrast to C, these comments can be nested \begin{DoxyVerb}/* A nested /* comment */ */
+\end{DoxyVerb}
+
+
+enabling the programmer to quickly comment out a section of code.
+
+\#\+Symbols \mbox{[}tag\mbox{]}\+: \# symbols \mbox{[}tag\mbox{]}\+: \# names
+
+Symbols are used to refer to named entities, including variables, classes, functions etc. Symbols must begin with a letter or underscore \+\_\+ as the first character and may include letters or numbers as the remainder. Symbols are case sensitive. \begin{DoxyVerb}asymbol
+_alsoasymbol
+another_symbol
+EvenThis123
+YET_ANOTHER_SYMBOL
+\end{DoxyVerb}
+
+
+Classes are typically given names with an initial capital letter. Variable names are usually all lower case.
+
+\#\+Newlines \mbox{[}tag\mbox{]}\+: \# newlines
+
+Morpho accepts newlines in place of a semicolon to end a statement. \begin{DoxyVerb}var a = 1; // 
+\end{DoxyVerb}
+
+
+\#\+Blocks
+
+\#\+Precedence 

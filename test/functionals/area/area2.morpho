@@ -1,0 +1,14 @@
+
+var m = Mesh("square.mesh")
+var a = Area()
+
+print m
+// expect: <Mesh: 4 vertices>
+
+print a.integrand(m)
+// expect: [ 0.5 0.5 ]
+
+print a.gradient(m)
+// expect: [ -0.5 0.5 -0.5 0.5 ]
+// expect: [ -0.5 -0.5 0.5 0.5 ]
+// expect: [ 0 0 0 0 ]

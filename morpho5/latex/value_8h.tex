@@ -1,0 +1,227 @@
+\hypertarget{value_8h}{}\doxysection{datastructures/value.h File Reference}
+\label{value_8h}\index{datastructures/value.h@{datastructures/value.h}}
+
+
+Fundamental data type for morpho.  
+
+
+{\ttfamily \#include $<$stdint.\+h$>$}\newline
+{\ttfamily \#include $<$stdbool.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}build.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}varray.\+h\char`\"{}}\newline
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structvalue}{value}}
+\begin{DoxyCompactList}\small\item\em The unboxed value type. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{value_8h_ac8f738e1b10e3c3ff83023b5c48e5108}{M\+O\+R\+P\+H\+O\+\_\+\+G\+E\+T\+T\+Y\+PE}}(v)~((v).type)
+\item 
+\#define \mbox{\hyperlink{value_8h_aeb027a1cd59d661b9c9a1e7bb8de8636}{M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+N\+IL}}(v)~((v).type==V\+A\+L\+U\+E\+\_\+\+N\+IL)
+\item 
+\mbox{\Hypertarget{value_8h_a573a709199a364cef43b20ffbbe0ff83}\label{value_8h_a573a709199a364cef43b20ffbbe0ff83}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+I\+N\+T\+E\+G\+ER}(v)~((v).type==V\+A\+L\+U\+E\+\_\+\+I\+N\+T\+E\+G\+ER)
+\item 
+\mbox{\Hypertarget{value_8h_a5f143ba2fa9951f89021bfe18e634090}\label{value_8h_a5f143ba2fa9951f89021bfe18e634090}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+F\+L\+O\+AT}(v)~((v).type==V\+A\+L\+U\+E\+\_\+\+D\+O\+U\+B\+LE)
+\item 
+\mbox{\Hypertarget{value_8h_a7b2caf67da99e4a7c18f95c53ca3ac0c}\label{value_8h_a7b2caf67da99e4a7c18f95c53ca3ac0c}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+B\+O\+OL}(v)~((v).type==V\+A\+L\+U\+E\+\_\+\+B\+O\+OL)
+\item 
+\mbox{\Hypertarget{value_8h_a79db1d5a423182c547dc15fddb6f3cae}\label{value_8h_a79db1d5a423182c547dc15fddb6f3cae}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+O\+B\+J\+E\+CT}(v)~((v).type==V\+A\+L\+U\+E\+\_\+\+O\+B\+J\+E\+CT)
+\item 
+\#define \mbox{\hyperlink{value_8h_a6dcaf9f088af9da0c1411ec8cf3e3f8d}{M\+O\+R\+P\+H\+O\+\_\+\+N\+IL}}~((\mbox{\hyperlink{structvalue}{value}}) \{ V\+A\+L\+U\+E\+\_\+\+N\+IL, .as.\+integer = (int) 0 \})
+\item 
+\mbox{\Hypertarget{value_8h_acaeecc9382a10ba3796867b334542aae}\label{value_8h_acaeecc9382a10ba3796867b334542aae}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+I\+N\+T\+E\+G\+ER}(x)~((\mbox{\hyperlink{structvalue}{value}}) \{ V\+A\+L\+U\+E\+\_\+\+I\+N\+T\+E\+G\+ER, .as.\+integer = (int) (x) \})
+\item 
+\mbox{\Hypertarget{value_8h_a1a072f9f6617826e21968852c29176e2}\label{value_8h_a1a072f9f6617826e21968852c29176e2}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+F\+L\+O\+AT}(x)~((\mbox{\hyperlink{structvalue}{value}}) \{ V\+A\+L\+U\+E\+\_\+\+D\+O\+U\+B\+LE, .as.\+real = (double) x \})
+\item 
+\mbox{\Hypertarget{value_8h_ad9236b845ed41a63c4cae1bcc52568e7}\label{value_8h_ad9236b845ed41a63c4cae1bcc52568e7}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+B\+O\+OL}(x)~((\mbox{\hyperlink{structvalue}{value}}) \{ V\+A\+L\+U\+E\+\_\+\+B\+O\+OL, .as.\+boolean = (bool) x \})
+\item 
+\mbox{\Hypertarget{value_8h_a64776be340cea68ee4937bced8dea355}\label{value_8h_a64776be340cea68ee4937bced8dea355}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+O\+B\+J\+E\+CT}(x)~((\mbox{\hyperlink{structvalue}{value}}) \{ V\+A\+L\+U\+E\+\_\+\+O\+B\+J\+E\+CT, .as.\+obj = (\mbox{\hyperlink{structsobject}{object}} $\ast$) x \})
+\item 
+\mbox{\Hypertarget{value_8h_ae2c6f456082ca9bf40a6f1f073f6fbbc}\label{value_8h_ae2c6f456082ca9bf40a6f1f073f6fbbc}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+T\+R\+UE}~M\+O\+R\+P\+H\+O\+\_\+\+B\+O\+OL(true)
+\item 
+\mbox{\Hypertarget{value_8h_a698be6c2bb337d2852c1e3e86ba9be7f}\label{value_8h_a698be6c2bb337d2852c1e3e86ba9be7f}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+F\+A\+L\+SE}~M\+O\+R\+P\+H\+O\+\_\+\+B\+O\+OL(false)
+\item 
+\#define \mbox{\hyperlink{value_8h_a54a04cda6adf5558239d21453e28401b}{M\+O\+R\+P\+H\+O\+\_\+\+G\+E\+T\+I\+N\+T\+E\+G\+E\+R\+V\+A\+L\+UE}}(v)~((v).as.\+integer)
+\item 
+\mbox{\Hypertarget{value_8h_a85904d50c5a7ebf291b5431d468af648}\label{value_8h_a85904d50c5a7ebf291b5431d468af648}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+G\+E\+T\+F\+L\+O\+A\+T\+V\+A\+L\+UE}(v)~((v).as.\+real)
+\item 
+\mbox{\Hypertarget{value_8h_af65bdcd3a9ce852adca836d648f70ac5}\label{value_8h_af65bdcd3a9ce852adca836d648f70ac5}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+G\+E\+T\+B\+O\+O\+L\+V\+A\+L\+UE}(v)~((v).as.\+boolean)
+\item 
+\mbox{\Hypertarget{value_8h_a6a684465f7326b55cbb6c82e8db3c06b}\label{value_8h_a6a684465f7326b55cbb6c82e8db3c06b}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+G\+E\+T\+O\+B\+J\+E\+CT}(v)~((v).as.\+obj)
+\item 
+\mbox{\Hypertarget{value_8h_a3e15652443f68f8d542cc7ddc83485ba}\label{value_8h_a3e15652443f68f8d542cc7ddc83485ba}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+N\+U\+M\+B\+ER}(v)~(morpho\+\_\+isnumber(v))
+\item 
+\#define \mbox{\hyperlink{value_8h_ab4fcd96a2f8077c2988c5649fc25773b}{M\+O\+R\+P\+H\+O\+\_\+\+I\+N\+T\+E\+G\+E\+R\+T\+O\+F\+L\+O\+AT}}(x)~(M\+O\+R\+P\+H\+O\+\_\+\+F\+L\+O\+AT((double) \mbox{\hyperlink{value_8h_a54a04cda6adf5558239d21453e28401b}{M\+O\+R\+P\+H\+O\+\_\+\+G\+E\+T\+I\+N\+T\+E\+G\+E\+R\+V\+A\+L\+UE}}((x))))
+\item 
+\mbox{\Hypertarget{value_8h_a12a1848c53f84f8e4d3591635b3f153c}\label{value_8h_a12a1848c53f84f8e4d3591635b3f153c}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+F\+A\+L\+SE}(x)~(morpho\+\_\+isfalse(x))
+\item 
+\mbox{\Hypertarget{value_8h_a39bfb68fa90f1750a392adc6ab117bab}\label{value_8h_a39bfb68fa90f1750a392adc6ab117bab}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+T\+R\+UE}(x)~(!morpho\+\_\+isfalse(x))
+\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{value_8h_afb65b6f09dbdcffb87c5f94c924e0823}\label{value_8h_afb65b6f09dbdcffb87c5f94c924e0823}} 
+typedef struct \mbox{\hyperlink{structsobject}{sobject}} {\bfseries object}
+\end{DoxyCompactItemize}
+\doxysubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{value_8h_a61b7d043a5d76b5b81854e89b99c8638}{valuetype}} \{ \newline
+{\bfseries V\+A\+L\+U\+E\+\_\+\+N\+IL}, 
+{\bfseries V\+A\+L\+U\+E\+\_\+\+I\+N\+T\+E\+G\+ER}, 
+{\bfseries V\+A\+L\+U\+E\+\_\+\+D\+O\+U\+B\+LE}, 
+{\bfseries V\+A\+L\+U\+E\+\_\+\+B\+O\+OL}, 
+\newline
+{\bfseries V\+A\+L\+U\+E\+\_\+\+O\+B\+J\+E\+CT}
+ \}
+\begin{DoxyCompactList}\small\item\em A Morpho value. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{value_8h_a9ec326e50b90b6a9e771e6e8fa0bee79}\label{value_8h_a9ec326e50b90b6a9e771e6e8fa0bee79}} 
+{\bfseries D\+E\+C\+L\+A\+R\+E\+\_\+\+V\+A\+R\+R\+AY} (\mbox{\hyperlink{structvalue}{value}}, \mbox{\hyperlink{structvalue}{value}})
+\item 
+bool \mbox{\hyperlink{value_8h_af7e0ab25ea9c25deb470f772446b9107}{varray\+\_\+valuefind}} (varray\+\_\+value $\ast$varray, \mbox{\hyperlink{structvalue}{value}} v, unsigned int $\ast$out)
+\begin{DoxyCompactList}\small\item\em Finds a value in an varray using a loose equality test (M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+E\+Q\+U\+AL) \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{value_8h_ad88ae257392185df353bb2221a86c879}{varray\+\_\+valuefindsame}} (varray\+\_\+value $\ast$varray, \mbox{\hyperlink{structvalue}{value}} v, unsigned int $\ast$out)
+\begin{DoxyCompactList}\small\item\em Finds a value in an varray using strict equality test (M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+S\+A\+ME) \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{value_8h_a10ac42f8893fdc9205f9057f6f54c514}{value\+\_\+promotenumberlist}} (unsigned int nv, \mbox{\hyperlink{structvalue}{value}} $\ast$v)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Fundamental data type for morpho. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Macro Definition Documentation}
+\mbox{\Hypertarget{value_8h_a54a04cda6adf5558239d21453e28401b}\label{value_8h_a54a04cda6adf5558239d21453e28401b}} 
+\index{value.h@{value.h}!MORPHO\_GETINTEGERVALUE@{MORPHO\_GETINTEGERVALUE}}
+\index{MORPHO\_GETINTEGERVALUE@{MORPHO\_GETINTEGERVALUE}!value.h@{value.h}}
+\doxysubsubsection{\texorpdfstring{MORPHO\_GETINTEGERVALUE}{MORPHO\_GETINTEGERVALUE}}
+{\footnotesize\ttfamily \#define M\+O\+R\+P\+H\+O\+\_\+\+G\+E\+T\+I\+N\+T\+E\+G\+E\+R\+V\+A\+L\+UE(\begin{DoxyParamCaption}\item[{}]{v }\end{DoxyParamCaption})~((v).as.\+integer)}
+
+Get a value \mbox{\Hypertarget{value_8h_ac8f738e1b10e3c3ff83023b5c48e5108}\label{value_8h_ac8f738e1b10e3c3ff83023b5c48e5108}} 
+\index{value.h@{value.h}!MORPHO\_GETTYPE@{MORPHO\_GETTYPE}}
+\index{MORPHO\_GETTYPE@{MORPHO\_GETTYPE}!value.h@{value.h}}
+\doxysubsubsection{\texorpdfstring{MORPHO\_GETTYPE}{MORPHO\_GETTYPE}}
+{\footnotesize\ttfamily \#define M\+O\+R\+P\+H\+O\+\_\+\+G\+E\+T\+T\+Y\+PE(\begin{DoxyParamCaption}\item[{}]{v }\end{DoxyParamCaption})~((v).type)}
+
+This macro gets the type of the value. \begin{DoxyWarning}{Warning}
+Not intended for broad use. 
+\end{DoxyWarning}
+\mbox{\Hypertarget{value_8h_ab4fcd96a2f8077c2988c5649fc25773b}\label{value_8h_ab4fcd96a2f8077c2988c5649fc25773b}} 
+\index{value.h@{value.h}!MORPHO\_INTEGERTOFLOAT@{MORPHO\_INTEGERTOFLOAT}}
+\index{MORPHO\_INTEGERTOFLOAT@{MORPHO\_INTEGERTOFLOAT}!value.h@{value.h}}
+\doxysubsubsection{\texorpdfstring{MORPHO\_INTEGERTOFLOAT}{MORPHO\_INTEGERTOFLOAT}}
+{\footnotesize\ttfamily \#define M\+O\+R\+P\+H\+O\+\_\+\+I\+N\+T\+E\+G\+E\+R\+T\+O\+F\+L\+O\+AT(\begin{DoxyParamCaption}\item[{}]{x }\end{DoxyParamCaption})~(M\+O\+R\+P\+H\+O\+\_\+\+F\+L\+O\+AT((double) \mbox{\hyperlink{value_8h_a54a04cda6adf5558239d21453e28401b}{M\+O\+R\+P\+H\+O\+\_\+\+G\+E\+T\+I\+N\+T\+E\+G\+E\+R\+V\+A\+L\+UE}}((x))))}
+
+Conversion \mbox{\Hypertarget{value_8h_aeb027a1cd59d661b9c9a1e7bb8de8636}\label{value_8h_aeb027a1cd59d661b9c9a1e7bb8de8636}} 
+\index{value.h@{value.h}!MORPHO\_ISNIL@{MORPHO\_ISNIL}}
+\index{MORPHO\_ISNIL@{MORPHO\_ISNIL}!value.h@{value.h}}
+\doxysubsubsection{\texorpdfstring{MORPHO\_ISNIL}{MORPHO\_ISNIL}}
+{\footnotesize\ttfamily \#define M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+N\+IL(\begin{DoxyParamCaption}\item[{}]{v }\end{DoxyParamCaption})~((v).type==V\+A\+L\+U\+E\+\_\+\+N\+IL)}
+
+Test for the type of a value \mbox{\Hypertarget{value_8h_a6dcaf9f088af9da0c1411ec8cf3e3f8d}\label{value_8h_a6dcaf9f088af9da0c1411ec8cf3e3f8d}} 
+\index{value.h@{value.h}!MORPHO\_NIL@{MORPHO\_NIL}}
+\index{MORPHO\_NIL@{MORPHO\_NIL}!value.h@{value.h}}
+\doxysubsubsection{\texorpdfstring{MORPHO\_NIL}{MORPHO\_NIL}}
+{\footnotesize\ttfamily \#define M\+O\+R\+P\+H\+O\+\_\+\+N\+IL~((\mbox{\hyperlink{structvalue}{value}}) \{ V\+A\+L\+U\+E\+\_\+\+N\+IL, .as.\+integer = (int) 0 \})}
+
+Create a literal 
+
+\doxysubsection{Enumeration Type Documentation}
+\mbox{\Hypertarget{value_8h_a61b7d043a5d76b5b81854e89b99c8638}\label{value_8h_a61b7d043a5d76b5b81854e89b99c8638}} 
+\index{value.h@{value.h}!valuetype@{valuetype}}
+\index{valuetype@{valuetype}!value.h@{value.h}}
+\doxysubsubsection{\texorpdfstring{valuetype}{valuetype}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{value_8h_a61b7d043a5d76b5b81854e89b99c8638}{valuetype}}}
+
+
+
+A Morpho value. 
+
+A enumerated type defining the different types available in Morpho. 
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{value_8h_a10ac42f8893fdc9205f9057f6f54c514}\label{value_8h_a10ac42f8893fdc9205f9057f6f54c514}} 
+\index{value.h@{value.h}!value\_promotenumberlist@{value\_promotenumberlist}}
+\index{value\_promotenumberlist@{value\_promotenumberlist}!value.h@{value.h}}
+\doxysubsubsection{\texorpdfstring{value\_promotenumberlist()}{value\_promotenumberlist()}}
+{\footnotesize\ttfamily bool value\+\_\+promotenumberlist (\begin{DoxyParamCaption}\item[{unsigned int}]{nv,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{v }\end{DoxyParamCaption})}
+
+Promotes a list of numbers to floats if any are floating point. 
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em nv} & -\/ number of values \\
+\hline
+\mbox{\texttt{ in}}  & {\em v} & -\/ list of values \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if successful, false if any values are not numbers 
+\end{DoxyReturn}
+\mbox{\Hypertarget{value_8h_af7e0ab25ea9c25deb470f772446b9107}\label{value_8h_af7e0ab25ea9c25deb470f772446b9107}} 
+\index{value.h@{value.h}!varray\_valuefind@{varray\_valuefind}}
+\index{varray\_valuefind@{varray\_valuefind}!value.h@{value.h}}
+\doxysubsubsection{\texorpdfstring{varray\_valuefind()}{varray\_valuefind()}}
+{\footnotesize\ttfamily bool varray\+\_\+valuefind (\begin{DoxyParamCaption}\item[{varray\+\_\+value $\ast$}]{varray,  }\item[{\mbox{\hyperlink{structvalue}{value}}}]{v,  }\item[{unsigned int $\ast$}]{out }\end{DoxyParamCaption})}
+
+
+
+Finds a value in an varray using a loose equality test (M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+E\+Q\+U\+AL) 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em varray} & the array to search \\
+\hline
+\mbox{\texttt{ in}}  & {\em v} & value to find \\
+\hline
+\mbox{\texttt{ out}}  & {\em out} & index of the match \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+whether the value was found or not. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{value_8h_ad88ae257392185df353bb2221a86c879}\label{value_8h_ad88ae257392185df353bb2221a86c879}} 
+\index{value.h@{value.h}!varray\_valuefindsame@{varray\_valuefindsame}}
+\index{varray\_valuefindsame@{varray\_valuefindsame}!value.h@{value.h}}
+\doxysubsubsection{\texorpdfstring{varray\_valuefindsame()}{varray\_valuefindsame()}}
+{\footnotesize\ttfamily bool varray\+\_\+valuefindsame (\begin{DoxyParamCaption}\item[{varray\+\_\+value $\ast$}]{varray,  }\item[{\mbox{\hyperlink{structvalue}{value}}}]{v,  }\item[{unsigned int $\ast$}]{out }\end{DoxyParamCaption})}
+
+
+
+Finds a value in an varray using strict equality test (M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+S\+A\+ME) 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em varray} & the array to search \\
+\hline
+\mbox{\texttt{ in}}  & {\em v} & value to find \\
+\hline
+\mbox{\texttt{ out}}  & {\em out} & index of the match \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+whether the value was found or not. 
+\end{DoxyReturn}

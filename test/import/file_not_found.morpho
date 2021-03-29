@@ -1,0 +1,3 @@
+
+import "madeupfile.morpho"
+// expect error: 'FlNtFnd'

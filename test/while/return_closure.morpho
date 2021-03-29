@@ -1,0 +1,12 @@
+// Checks that returning a closure inside a while loop works
+
+fn f() {
+  while (true) {
+    var i = "i"
+    fn g() { print i }
+    return g
+  }
+}
+
+var h = f()
+h() // expect: i

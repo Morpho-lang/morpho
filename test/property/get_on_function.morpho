@@ -1,0 +1,3 @@
+fn foo() {}
+
+foo.bar // expect error 'NotAnObj'

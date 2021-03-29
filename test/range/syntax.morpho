@@ -1,0 +1,23 @@
+// Ranges
+
+var a = 1..2
+print a
+// expect: 1..2
+
+for (i in a) print i
+// expect: 1
+// expect: 2
+
+var b = 1..2:2
+print b
+// expect: 1..2:2
+
+var n=2
+a = n..2*n:2
+print a
+// expect: 2..4:2
+
+for (i in 1..5:2) print i
+// expect: 1
+// expect: 3
+// expect: 5

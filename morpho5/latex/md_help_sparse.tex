@@ -1,0 +1,26 @@
+\mbox{[}comment\mbox{]}\+: \# Sparse class help \mbox{[}version\mbox{]}\+: \# 0.\+5
+
+\#\+Sparse \mbox{[}tag\mbox{]}\+: \# Sparse
+
+The Sparse class provides support for sparse matrices. An empty sparse matrix can be initialized with a given size, \begin{DoxyVerb}var a = Sparse(nrows,ncols)
+\end{DoxyVerb}
+
+
+Alternatively, a matrix can be created from an array of triplets, ~\newline
+ \begin{DoxyVerb}var a = Matrix([[row, col, value] ...])
+\end{DoxyVerb}
+
+
+For example \begin{DoxyVerb}var a = Matrix([[0,0,2], [1,1,-2]])
+\end{DoxyVerb}
+
+
+creates the matrix \begin{DoxyVerb}[ 2 0 ]
+[ 0 -2 ]
+\end{DoxyVerb}
+
+
+Once a sparse matrix is created, you can use all the regular arithmetic operators with matrix operands, e.\+g. \begin{DoxyVerb}a+b
+a*b
+\end{DoxyVerb}
+ 

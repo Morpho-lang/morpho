@@ -1,0 +1,219 @@
+\hypertarget{parse_8c}{}\doxysection{utils/parse.c File Reference}
+\label{parse_8c}\index{utils/parse.c@{utils/parse.c}}
+
+
+Lexer and parser.  
+
+
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}parse.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}object.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}common.\+h\char`\"{}}\newline
+\doxysubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{parse_8c_addf5ec070e9499d36b7f2009ce736076}{U\+N\+U\+S\+ED}}~\{ N\+U\+LL,    N\+U\+LL,      P\+R\+E\+C\+\_\+\+N\+O\+NE \}
+\begin{DoxyCompactList}\small\item\em Parse table. Each line in the table defines the \mbox{\hyperlink{structparserule}{parserule(s)}} for a specific token type. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{parse_8c_a4d3f766a087c68a45bac40c274896e15}\label{parse_8c_a4d3f766a087c68a45bac40c274896e15}} 
+\#define {\bfseries P\+R\+E\+F\+IX}(fn)~\{ fn,      N\+U\+LL,      P\+R\+E\+C\+\_\+\+N\+O\+NE \}
+\item 
+\mbox{\Hypertarget{parse_8c_a4bcd393ef4e40cd83e387f0be344f45c}\label{parse_8c_a4bcd393ef4e40cd83e387f0be344f45c}} 
+\#define {\bfseries I\+N\+F\+IX}(fn,  prec)~\{ N\+U\+LL,    fn,        prec      \}
+\item 
+\mbox{\Hypertarget{parse_8c_a9a1aba4e2462fadeeab6df64ef9c0cdc}\label{parse_8c_a9a1aba4e2462fadeeab6df64ef9c0cdc}} 
+\#define {\bfseries M\+I\+X\+F\+IX}(unaryfn,  infixfn,  prec)~\{ unaryfn, infixfn,   prec      \}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{parse_8c_a5311aa3ae928b13c34358e8ce27fcc4b}{lex\+\_\+init}} (\mbox{\hyperlink{structlexer}{lexer}} $\ast$l, const char $\ast$start, int line)
+\begin{DoxyCompactList}\small\item\em Initializes a lexer with a given starting point. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{parse_8c_ae6f54f752e3f9ac7548e56157004ad76}{lex\+\_\+recordtoken}} (\mbox{\hyperlink{structlexer}{lexer}} $\ast$l, \mbox{\hyperlink{parse_8h_a262d1aca355a0381cce24f93101b6b69}{tokentype}} type, \mbox{\hyperlink{structtoken}{token}} $\ast$tok)
+\begin{DoxyCompactList}\small\item\em Records a token. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{parse_8c_a9a36835762dc2e0e5e49d09c12e76180}\label{parse_8c_a9a36835762dc2e0e5e49d09c12e76180}} 
+\mbox{\hyperlink{parse_8h_a262d1aca355a0381cce24f93101b6b69}{tokentype}} \mbox{\hyperlink{parse_8c_a9a36835762dc2e0e5e49d09c12e76180}{lex\+\_\+symboltype}} (\mbox{\hyperlink{structlexer}{lexer}} $\ast$l)
+\begin{DoxyCompactList}\small\item\em Determines if a token matches any of the reserved words. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{parse_8c_ac8fb025deb0f7d51621079f1f96b731c}{lex}} (\mbox{\hyperlink{structlexer}{lexer}} $\ast$l, \mbox{\hyperlink{structtoken}{token}} $\ast$tok, \mbox{\hyperlink{structerror}{error}} $\ast$err)
+\begin{DoxyCompactList}\small\item\em Identifies the next token. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{parse_8c_aac5bef93395aa1ffcab112e4162ffca0}{parse\+\_\+init}} (\mbox{\hyperlink{structparser}{parser}} $\ast$p, \mbox{\hyperlink{structlexer}{lexer}} $\ast$\mbox{\hyperlink{parse_8h_ac8fb025deb0f7d51621079f1f96b731c}{lex}}, \mbox{\hyperlink{structerror}{error}} $\ast$err, \mbox{\hyperlink{structsyntaxtree}{syntaxtree}} $\ast$tree)
+\begin{DoxyCompactList}\small\item\em Initialize a parser. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{parse_8c_acab06c688186a9b2e794a9558c1e75a0}{parse\+\_\+synchronize}} (\mbox{\hyperlink{structparser}{parser}} $\ast$p)
+\item 
+syntaxtreeindx \mbox{\hyperlink{parse_8c_a7af009ad1fc675899c9a548f9f71a0a2}{syntaxtree\+\_\+addnode}} (\mbox{\hyperlink{structsyntaxtree}{syntaxtree}} $\ast$tree, \mbox{\hyperlink{syntaxtree_8h_a4535e6414c177fcd0125c9b7ff1d5f86}{syntaxtreenodetype}} type, \mbox{\hyperlink{structvalue}{value}} content, int line, int posn, syntaxtreeindx left, syntaxtreeindx right)
+\begin{DoxyCompactList}\small\item\em Adds a node to the syntax tree. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{parse_8c_afdaa5283996aadc641d89cb0c4ae0197}{parse}} (\mbox{\hyperlink{structparser}{parser}} $\ast$p)
+\item 
+bool \mbox{\hyperlink{parse_8c_a429a6b724cfbd4d1b0e8fe559c99077e}{parse\+\_\+stringtovaluearray}} (char $\ast$string, unsigned int nmax, \mbox{\hyperlink{structvalue}{value}} $\ast$v, unsigned int $\ast$n, \mbox{\hyperlink{structerror}{error}} $\ast$err)
+\end{DoxyCompactItemize}
+\doxysubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{parse_8c_ad404923b1008b0e1b0b2563508f5b679}\label{parse_8c_ad404923b1008b0e1b0b2563508f5b679}} 
+\mbox{\hyperlink{structparserule}{parserule}} {\bfseries rules} \mbox{[}$\,$\mbox{]}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Lexer and parser. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Macro Definition Documentation}
+\mbox{\Hypertarget{parse_8c_addf5ec070e9499d36b7f2009ce736076}\label{parse_8c_addf5ec070e9499d36b7f2009ce736076}} 
+\index{parse.c@{parse.c}!UNUSED@{UNUSED}}
+\index{UNUSED@{UNUSED}!parse.c@{parse.c}}
+\doxysubsubsection{\texorpdfstring{UNUSED}{UNUSED}}
+{\footnotesize\ttfamily \#define U\+N\+U\+S\+ED~\{ N\+U\+LL,    N\+U\+LL,      P\+R\+E\+C\+\_\+\+N\+O\+NE \}}
+
+
+
+Parse table. Each line in the table defines the \mbox{\hyperlink{structparserule}{parserule(s)}} for a specific token type. 
+
+\begin{DoxyWarning}{Warning}
+It is imperative that this table be in the same order as the tokentype enum 
+\end{DoxyWarning}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{parse_8c_ac8fb025deb0f7d51621079f1f96b731c}\label{parse_8c_ac8fb025deb0f7d51621079f1f96b731c}} 
+\index{parse.c@{parse.c}!lex@{lex}}
+\index{lex@{lex}!parse.c@{parse.c}}
+\doxysubsubsection{\texorpdfstring{lex()}{lex()}}
+{\footnotesize\ttfamily bool lex (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlexer}{lexer}} $\ast$}]{l,  }\item[{\mbox{\hyperlink{structtoken}{token}} $\ast$}]{tok,  }\item[{\mbox{\hyperlink{structerror}{error}} $\ast$}]{err }\end{DoxyParamCaption})}
+
+
+
+Identifies the next token. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em l} & The lexer in use \\
+\hline
+\mbox{\texttt{ out}}  & {\em err} & An error block to fill out on an error \\
+\hline
+\mbox{\texttt{ out}}  & {\em tok} & Token structure to fill out \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true on success or false on failure ~\newline
+ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{parse_8c_a5311aa3ae928b13c34358e8ce27fcc4b}\label{parse_8c_a5311aa3ae928b13c34358e8ce27fcc4b}} 
+\index{parse.c@{parse.c}!lex\_init@{lex\_init}}
+\index{lex\_init@{lex\_init}!parse.c@{parse.c}}
+\doxysubsubsection{\texorpdfstring{lex\_init()}{lex\_init()}}
+{\footnotesize\ttfamily void lex\+\_\+init (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlexer}{lexer}} $\ast$}]{l,  }\item[{const char $\ast$}]{start,  }\item[{int}]{line }\end{DoxyParamCaption})}
+
+
+
+Initializes a lexer with a given starting point. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em l} & The lexer to initialize \\
+\hline
+{\em start} & Starting point to lex from \\
+\hline
+{\em line} & The current line number \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{parse_8c_ae6f54f752e3f9ac7548e56157004ad76}\label{parse_8c_ae6f54f752e3f9ac7548e56157004ad76}} 
+\index{parse.c@{parse.c}!lex\_recordtoken@{lex\_recordtoken}}
+\index{lex\_recordtoken@{lex\_recordtoken}!parse.c@{parse.c}}
+\doxysubsubsection{\texorpdfstring{lex\_recordtoken()}{lex\_recordtoken()}}
+{\footnotesize\ttfamily void lex\+\_\+recordtoken (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlexer}{lexer}} $\ast$}]{l,  }\item[{\mbox{\hyperlink{parse_8h_a262d1aca355a0381cce24f93101b6b69}{tokentype}}}]{type,  }\item[{\mbox{\hyperlink{structtoken}{token}} $\ast$}]{tok }\end{DoxyParamCaption})}
+
+
+
+Records a token. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em l} & The lexer in use \\
+\hline
+\mbox{\texttt{ in}}  & {\em type} & Type of token to record \\
+\hline
+\mbox{\texttt{ out}}  & {\em tok} & Token structure to fill out \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{parse_8c_afdaa5283996aadc641d89cb0c4ae0197}\label{parse_8c_afdaa5283996aadc641d89cb0c4ae0197}} 
+\index{parse.c@{parse.c}!parse@{parse}}
+\index{parse@{parse}!parse.c@{parse.c}}
+\doxysubsubsection{\texorpdfstring{parse()}{parse()}}
+{\footnotesize\ttfamily bool parse (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structparser}{parser}} $\ast$}]{p }\end{DoxyParamCaption})}
+
+Entry point into the parser \mbox{\Hypertarget{parse_8c_aac5bef93395aa1ffcab112e4162ffca0}\label{parse_8c_aac5bef93395aa1ffcab112e4162ffca0}} 
+\index{parse.c@{parse.c}!parse\_init@{parse\_init}}
+\index{parse\_init@{parse\_init}!parse.c@{parse.c}}
+\doxysubsubsection{\texorpdfstring{parse\_init()}{parse\_init()}}
+{\footnotesize\ttfamily void parse\+\_\+init (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structparser}{parser}} $\ast$}]{p,  }\item[{\mbox{\hyperlink{structlexer}{lexer}} $\ast$}]{lex,  }\item[{\mbox{\hyperlink{structerror}{error}} $\ast$}]{err,  }\item[{\mbox{\hyperlink{structsyntaxtree}{syntaxtree}} $\ast$}]{tree }\end{DoxyParamCaption})}
+
+
+
+Initialize a parser. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em p} & the parser to initialize \\
+\hline
+{\em lex} & lexer to use \\
+\hline
+{\em err} & an error structure to fill out if necessary \\
+\hline
+{\em tree} & syntaxtree to fill out \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{parse_8c_a429a6b724cfbd4d1b0e8fe559c99077e}\label{parse_8c_a429a6b724cfbd4d1b0e8fe559c99077e}} 
+\index{parse.c@{parse.c}!parse\_stringtovaluearray@{parse\_stringtovaluearray}}
+\index{parse\_stringtovaluearray@{parse\_stringtovaluearray}!parse.c@{parse.c}}
+\doxysubsubsection{\texorpdfstring{parse\_stringtovaluearray()}{parse\_stringtovaluearray()}}
+{\footnotesize\ttfamily bool parse\+\_\+stringtovaluearray (\begin{DoxyParamCaption}\item[{char $\ast$}]{string,  }\item[{unsigned int}]{nmax,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{v,  }\item[{unsigned int $\ast$}]{n,  }\item[{\mbox{\hyperlink{structerror}{error}} $\ast$}]{err }\end{DoxyParamCaption})}
+
+Convenience function to parse a string into an array of values 
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em string} & -\/ string to parse \\
+\hline
+\mbox{\texttt{ in}}  & {\em nmax} & -\/ maximum number of values to read \\
+\hline
+\mbox{\texttt{ in}}  & {\em v} & -\/ value array, filled out on return \\
+\hline
+\mbox{\texttt{ out}}  & {\em n} & -\/ number of values read \\
+\hline
+\mbox{\texttt{ out}}  & {\em err} & -\/ error structure filled out if an error occurs \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if successful, false otherwise. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{parse_8c_acab06c688186a9b2e794a9558c1e75a0}\label{parse_8c_acab06c688186a9b2e794a9558c1e75a0}} 
+\index{parse.c@{parse.c}!parse\_synchronize@{parse\_synchronize}}
+\index{parse\_synchronize@{parse\_synchronize}!parse.c@{parse.c}}
+\doxysubsubsection{\texorpdfstring{parse\_synchronize()}{parse\_synchronize()}}
+{\footnotesize\ttfamily void parse\+\_\+synchronize (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structparser}{parser}} $\ast$}]{p }\end{DoxyParamCaption})}
+
+Keep parsing til the end of a statement boundary. Align\mbox{\Hypertarget{parse_8c_a7af009ad1fc675899c9a548f9f71a0a2}\label{parse_8c_a7af009ad1fc675899c9a548f9f71a0a2}} 
+\index{parse.c@{parse.c}!syntaxtree\_addnode@{syntaxtree\_addnode}}
+\index{syntaxtree\_addnode@{syntaxtree\_addnode}!parse.c@{parse.c}}
+\doxysubsubsection{\texorpdfstring{syntaxtree\_addnode()}{syntaxtree\_addnode()}}
+{\footnotesize\ttfamily syntaxtreeindx syntaxtree\+\_\+addnode (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structsyntaxtree}{syntaxtree}} $\ast$}]{tree,  }\item[{\mbox{\hyperlink{syntaxtree_8h_a4535e6414c177fcd0125c9b7ff1d5f86}{syntaxtreenodetype}}}]{type,  }\item[{\mbox{\hyperlink{structvalue}{value}}}]{content,  }\item[{int}]{line,  }\item[{int}]{posn,  }\item[{syntaxtreeindx}]{left,  }\item[{syntaxtreeindx}]{right }\end{DoxyParamCaption})}
+
+
+
+Adds a node to the syntax tree. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em tree} & tree to add to. \\
+\hline
+{\em type} & type of node to add \\
+\hline
+{\em content} & a value to add \\
+\hline
+{\em left} & \} left ... \\
+\hline
+{\em right} & \} ...and right branches of the node. \\
+\hline
+\end{DoxyParams}

@@ -1,0 +1,44 @@
+// Newlines as statement terminators
+
+/* *************************
+ * Variables and expressions
+ * ************************* */
+
+var a
+=
+1
+2 // Note this is parsed as a separate expression statement
+
+var b
+=a
++
+1 // End of statement
+a // This is also a separate statement
+
+print a
++
+(1)
+// expect: 2
+
+// Variable declaration without initializer
+var c
+
+// Ambiguity: If we have a negation operation on the following line
+// then it is c
+print b-a
+// expect: 1
+
+print b
+-a
+// expect: 1
+
+print (b
+-a)
+// expect: 1
+
+// Ambiguity: Is this two statements or a function call?
+a = b
+(a)
+
+print a
+// expect: 2

@@ -1,0 +1,161 @@
+\hypertarget{compile_8h}{}\doxysection{vm/compile.h File Reference}
+\label{compile_8h}\index{vm/compile.h@{vm/compile.h}}
+
+
+Compiles raw input to Morpho instructions.  
+
+
+{\ttfamily \#include \char`\"{}core.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}syntaxtree.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}parse.\+h\char`\"{}}\newline
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structregisteralloc}{registeralloc}}
+\item 
+struct \mbox{\hyperlink{structfunctionstate}{functionstate}}
+\item 
+struct \mbox{\hyperlink{structscompilerlist}{scompilerlist}}
+\item 
+struct \mbox{\hyperlink{structscompiler}{scompiler}}
+\begin{DoxyCompactList}\small\item\em A structure that stores the state of a compiler. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structcodeinfo}{codeinfo}}
+\item 
+struct \mbox{\hyperlink{structcompilenoderule}{compilenoderule}}
+\begin{DoxyCompactList}\small\item\em A compilenoderule rule will be defined for each syntax tree node type, providing a function to compile the node. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{compile_8h_a3442cda78850731668a2412880c28721}\label{compile_8h_a3442cda78850731668a2412880c28721}} 
+\#define {\bfseries M\+O\+R\+P\+H\+O\+\_\+\+C\+O\+RE}
+\item 
+\mbox{\Hypertarget{compile_8h_a184d0da81e117c86291b1fc2ba7c979f}\label{compile_8h_a184d0da81e117c86291b1fc2ba7c979f}} 
+\#define \mbox{\hyperlink{compile_8h_a184d0da81e117c86291b1fc2ba7c979f}{G\+L\+O\+B\+A\+L\+\_\+\+U\+N\+A\+L\+L\+O\+C\+A\+T\+ED}}~-\/1
+\begin{DoxyCompactList}\small\item\em Value to indicate a global has not been allocated. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{compile_8h_aafadfbb30075a300091eb393749712a1}\label{compile_8h_aafadfbb30075a300091eb393749712a1}} 
+\#define \mbox{\hyperlink{compile_8h_aafadfbb30075a300091eb393749712a1}{R\+E\+G\+I\+S\+T\+E\+R\+\_\+\+U\+N\+A\+L\+L\+O\+C\+A\+T\+ED}}~-\/1
+\begin{DoxyCompactList}\small\item\em Value to indicate a register has not been allocated. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{compile_8h_a66535be402127c787c6ff5493f93d6be}\label{compile_8h_a66535be402127c787c6ff5493f93d6be}} 
+\#define {\bfseries F\+U\+N\+C\+T\+I\+O\+N\+T\+Y\+P\+E\+\_\+\+I\+S\+M\+E\+T\+H\+OD}(f)~(f==F\+U\+N\+C\+T\+I\+ON ? false \+: true)
+\item 
+\mbox{\Hypertarget{compile_8h_a5d8ad28c2c15f1ddaaccfbf5dddad0e9}\label{compile_8h_a5d8ad28c2c15f1ddaaccfbf5dddad0e9}} 
+\#define {\bfseries F\+U\+N\+C\+T\+I\+O\+N\+T\+Y\+P\+E\+\_\+\+I\+S\+I\+N\+I\+T\+I\+A\+L\+I\+Z\+ER}(f)~(f==I\+N\+I\+T\+I\+A\+L\+I\+Z\+ER)
+\item 
+\mbox{\Hypertarget{compile_8h_ad6b736e1b18f904b217dfef0dc56157d}\label{compile_8h_ad6b736e1b18f904b217dfef0dc56157d}} 
+\#define {\bfseries C\+O\+D\+E\+I\+N\+F\+O\+\_\+\+I\+S\+R\+E\+G\+I\+S\+T\+ER}(info)~(info.\+returntype==R\+E\+G\+I\+S\+T\+ER)
+\item 
+\mbox{\Hypertarget{compile_8h_af450e2561629ebfa86764e01495cb40f}\label{compile_8h_af450e2561629ebfa86764e01495cb40f}} 
+\#define {\bfseries C\+O\+D\+E\+I\+N\+F\+O\+\_\+\+I\+S\+C\+O\+N\+S\+T\+A\+NT}(info)~(info.\+returntype==C\+O\+N\+S\+T\+A\+NT)
+\item 
+\mbox{\Hypertarget{compile_8h_a823fb7c809738cd20370492ad4d5ba94}\label{compile_8h_a823fb7c809738cd20370492ad4d5ba94}} 
+\#define {\bfseries C\+O\+D\+E\+I\+N\+F\+O\+\_\+\+I\+S\+U\+P\+V\+A\+L\+UE}(info)~(info.\+returntype==U\+P\+V\+A\+L\+UE)
+\item 
+\mbox{\Hypertarget{compile_8h_af21df7e3031880786786527c1cca95aa}\label{compile_8h_af21df7e3031880786786527c1cca95aa}} 
+\#define {\bfseries C\+O\+D\+E\+I\+N\+F\+O\+\_\+\+I\+S\+G\+L\+O\+B\+AL}(info)~(info.\+returntype==G\+L\+O\+B\+AL)
+\item 
+\mbox{\Hypertarget{compile_8h_ac6ae1f15dd907e50483c333806a0c249}\label{compile_8h_ac6ae1f15dd907e50483c333806a0c249}} 
+\#define {\bfseries C\+O\+D\+E\+I\+N\+FO}(c,  d,  n)~((\mbox{\hyperlink{structcodeinfo}{codeinfo}}) \{ .returntype=(c), .dest=(d), .ninstructions=(n)\})
+\item 
+\mbox{\Hypertarget{compile_8h_ad27895add03e5ce74a0d8e4ea02fe6cd}\label{compile_8h_ad27895add03e5ce74a0d8e4ea02fe6cd}} 
+\#define {\bfseries C\+O\+D\+E\+I\+N\+F\+O\+\_\+\+E\+M\+P\+TY}~C\+O\+D\+E\+I\+N\+FO(R\+E\+G\+I\+S\+T\+ER, \mbox{\hyperlink{compile_8h_aafadfbb30075a300091eb393749712a1}{R\+E\+G\+I\+S\+T\+E\+R\+\_\+\+U\+N\+A\+L\+L\+O\+C\+A\+T\+ED}}, 0)
+\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{compile_8h_abbe5fa59384dcc484f400a028378e9e9}\label{compile_8h_abbe5fa59384dcc484f400a028378e9e9}} 
+typedef int \mbox{\hyperlink{compile_8h_abbe5fa59384dcc484f400a028378e9e9}{globalindx}}
+\begin{DoxyCompactList}\small\item\em Index of a global. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{compile_8h_a0fe25182b36e27b82d5613718e7be86e}\label{compile_8h_a0fe25182b36e27b82d5613718e7be86e}} 
+typedef int \mbox{\hyperlink{compile_8h_a0fe25182b36e27b82d5613718e7be86e}{registerindx}}
+\begin{DoxyCompactList}\small\item\em Index of a register. \end{DoxyCompactList}\item 
+typedef struct \mbox{\hyperlink{structscompilerlist}{scompilerlist}} \mbox{\hyperlink{compile_8h_a594ea3548ad332b59d3d10b2eee1a156}{compilerlist}}
+\item 
+\mbox{\Hypertarget{compile_8h_a0cd49f27b20f77368988551877e12c7a}\label{compile_8h_a0cd49f27b20f77368988551877e12c7a}} 
+typedef struct \mbox{\hyperlink{structscompiler}{scompiler}} \mbox{\hyperlink{compile_8h_a0cd49f27b20f77368988551877e12c7a}{compiler}}
+\begin{DoxyCompactList}\small\item\em A structure that stores the state of a compiler. \end{DoxyCompactList}\item 
+typedef \mbox{\hyperlink{structcodeinfo}{codeinfo}}($\ast$ \mbox{\hyperlink{compile_8h_a4e27fba0d7864eed5e41db28b1086e17}{compiler\+\_\+nodefn}}) (\mbox{\hyperlink{compile_8h_a0cd49f27b20f77368988551877e12c7a}{compiler}} $\ast$c, \mbox{\hyperlink{syntaxtree_8h_afe78904a4fbaac7596e0c00e52702b63}{syntaxtreenode}} $\ast$node, \mbox{\hyperlink{compile_8h_a0fe25182b36e27b82d5613718e7be86e}{registerindx}} reg)
+\end{DoxyCompactItemize}
+\doxysubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{compile_8h_aa7c9498e1664b6773fd8f9d850921e20}{functiontype}} \{ {\bfseries F\+U\+N\+C\+T\+I\+ON}, 
+{\bfseries M\+E\+T\+H\+OD}, 
+{\bfseries I\+N\+I\+T\+I\+A\+L\+I\+Z\+ER}
+ \}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{compile_8h_a4243089be0388eee483e85a5cef19bee}{compiler\+\_\+init}} (const char $\ast$source, program $\ast$out, \mbox{\hyperlink{compile_8h_a0cd49f27b20f77368988551877e12c7a}{compiler}} $\ast$c)
+\begin{DoxyCompactList}\small\item\em Initialize a compiler. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{compile_8h_a375d8ca7beacde2bfaa191a33d679081}{compiler\+\_\+clear}} (\mbox{\hyperlink{compile_8h_a0cd49f27b20f77368988551877e12c7a}{compiler}} $\ast$c)
+\begin{DoxyCompactList}\small\item\em Clear attached data structures from a compiler. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Compiles raw input to Morpho instructions. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Typedef Documentation}
+\mbox{\Hypertarget{compile_8h_a4e27fba0d7864eed5e41db28b1086e17}\label{compile_8h_a4e27fba0d7864eed5e41db28b1086e17}} 
+\index{compile.h@{compile.h}!compiler\_nodefn@{compiler\_nodefn}}
+\index{compiler\_nodefn@{compiler\_nodefn}!compile.h@{compile.h}}
+\doxysubsubsection{\texorpdfstring{compiler\_nodefn}{compiler\_nodefn}}
+{\footnotesize\ttfamily typedef \mbox{\hyperlink{structcodeinfo}{codeinfo}}($\ast$ compiler\+\_\+nodefn) (\mbox{\hyperlink{compile_8h_a0cd49f27b20f77368988551877e12c7a}{compiler}} $\ast$c, \mbox{\hyperlink{syntaxtree_8h_afe78904a4fbaac7596e0c00e52702b63}{syntaxtreenode}} $\ast$node, \mbox{\hyperlink{compile_8h_a0fe25182b36e27b82d5613718e7be86e}{registerindx}} reg)}
+
+A compiler\+\_\+nodefn takes a syntax tree node and compiles it to bytecode \mbox{\Hypertarget{compile_8h_a594ea3548ad332b59d3d10b2eee1a156}\label{compile_8h_a594ea3548ad332b59d3d10b2eee1a156}} 
+\index{compile.h@{compile.h}!compilerlist@{compilerlist}}
+\index{compilerlist@{compilerlist}!compile.h@{compile.h}}
+\doxysubsubsection{\texorpdfstring{compilerlist}{compilerlist}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structscompilerlist}{scompilerlist}} \mbox{\hyperlink{compile_8h_a594ea3548ad332b59d3d10b2eee1a156}{compilerlist}}}
+
+This structure holds a list as it is being created 
+
+\doxysubsection{Enumeration Type Documentation}
+\mbox{\Hypertarget{compile_8h_aa7c9498e1664b6773fd8f9d850921e20}\label{compile_8h_aa7c9498e1664b6773fd8f9d850921e20}} 
+\index{compile.h@{compile.h}!functiontype@{functiontype}}
+\index{functiontype@{functiontype}!compile.h@{compile.h}}
+\doxysubsubsection{\texorpdfstring{functiontype}{functiontype}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{compile_8h_aa7c9498e1664b6773fd8f9d850921e20}{functiontype}}}
+
+The type of the current function 
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{compile_8h_a375d8ca7beacde2bfaa191a33d679081}\label{compile_8h_a375d8ca7beacde2bfaa191a33d679081}} 
+\index{compile.h@{compile.h}!compiler\_clear@{compiler\_clear}}
+\index{compiler\_clear@{compiler\_clear}!compile.h@{compile.h}}
+\doxysubsubsection{\texorpdfstring{compiler\_clear()}{compiler\_clear()}}
+{\footnotesize\ttfamily void compiler\+\_\+clear (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{compile_8h_a0cd49f27b20f77368988551877e12c7a}{compiler}} $\ast$}]{c }\end{DoxyParamCaption})}
+
+
+
+Clear attached data structures from a compiler. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em c} & compiler to clear \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{compile_8h_a4243089be0388eee483e85a5cef19bee}\label{compile_8h_a4243089be0388eee483e85a5cef19bee}} 
+\index{compile.h@{compile.h}!compiler\_init@{compiler\_init}}
+\index{compiler\_init@{compiler\_init}!compile.h@{compile.h}}
+\doxysubsubsection{\texorpdfstring{compiler\_init()}{compiler\_init()}}
+{\footnotesize\ttfamily void compiler\+\_\+init (\begin{DoxyParamCaption}\item[{const char $\ast$}]{source,  }\item[{program $\ast$}]{out,  }\item[{\mbox{\hyperlink{compile_8h_a0cd49f27b20f77368988551877e12c7a}{compiler}} $\ast$}]{c }\end{DoxyParamCaption})}
+
+
+
+Initialize a compiler. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em source} & source code to compile \\
+\hline
+\mbox{\texttt{ in}}  & {\em out} & destination program to compile to \\
+\hline
+\mbox{\texttt{ out}}  & {\em c} & compiler structure is filled out \\
+\hline
+\end{DoxyParams}

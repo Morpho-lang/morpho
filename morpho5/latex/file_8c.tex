@@ -1,0 +1,158 @@
+\hypertarget{file_8c}{}\doxysection{builtin/file.c File Reference}
+\label{file_8c}\index{builtin/file.c@{builtin/file.c}}
+
+
+Built in class to provide file input and output.  
+
+
+{\ttfamily \#include \char`\"{}file.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}builtin.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}error.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}object.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}morpho.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}common.\+h\char`\"{}}\newline
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$limits.\+h$>$}\newline
+{\ttfamily \#include $<$errno.\+h$>$}\newline
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{file_8c_ad2ee7f27dffdf525ec0a91f85929a1ab}\label{file_8c_ad2ee7f27dffdf525ec0a91f85929a1ab}} 
+bool {\bfseries file\+\_\+getsize} (F\+I\+LE $\ast$f, size\+\_\+t $\ast$s)
+\item 
+\mbox{\Hypertarget{file_8c_af01a55d3b93d5018edfe80c1d18b1181}\label{file_8c_af01a55d3b93d5018edfe80c1d18b1181}} 
+F\+I\+LE $\ast$ {\bfseries file\+\_\+getfile} (\mbox{\hyperlink{structvalue}{value}} obj)
+\item 
+\mbox{\Hypertarget{file_8c_aad0c4506750549949d9533d17a3760bc}\label{file_8c_aad0c4506750549949d9533d17a3760bc}} 
+void {\bfseries file\+\_\+setfile} (\mbox{\hyperlink{structvalue}{value}} obj, F\+I\+LE $\ast$f)
+\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{file_8c_a4ab32ce5b70d560f1b2f661c5da3849d}{File\+\_\+init}} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{file_8c_adac5e9b00e5b8870e14c710f15e43108}{File\+\_\+close}} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+int \mbox{\hyperlink{file_8c_a734c17de9d2b1a11778b47c9d3c3aff3}{file\+\_\+readlineintovarray}} (F\+I\+LE $\ast$f, varray\+\_\+char $\ast$string)
+\item 
+bool \mbox{\hyperlink{file_8c_a4eeef651dc3d1ecac69b0509482a728c}{file\+\_\+readintovarray}} (F\+I\+LE $\ast$f, varray\+\_\+char $\ast$string)
+\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{file_8c_a8118f1491848f28630c3394f66ef38e1}{file\+\_\+readlineusingvarray}} (F\+I\+LE $\ast$f, varray\+\_\+char $\ast$string)
+\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{file_8c_a9d320b48e05d99fdd35bb8181e097bd1}{File\+\_\+readline}} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{file_8c_a67ef9401fb0ab16827c35a635a915f05}{File\+\_\+lines}} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{file_8c_a87a21bf090f802f1c56706d15440c0a2}{File\+\_\+readchar}} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{file_8c_a4a9b5e84ad48d2392f9d105a26a0ce1f}{File\+\_\+write}} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{file_8c_a598c861d62350b54b7609cc8857a2fc9}{File\+\_\+eof}} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\hyperlink{structvalue}{value}} \mbox{\hyperlink{file_8c_a8fc2ce15625e50b6d9e835c75c2bdcbf}{File\+\_\+free}} (vm $\ast$v, int nargs, \mbox{\hyperlink{structvalue}{value}} $\ast$args)
+\item 
+\mbox{\Hypertarget{file_8c_a840eb57d38536b11987ad913d478e2e4}\label{file_8c_a840eb57d38536b11987ad913d478e2e4}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (M\+O\+R\+P\+H\+O\+\_\+\+I\+N\+I\+T\+I\+A\+L\+I\+Z\+E\+R\+\_\+\+M\+E\+T\+H\+OD, \mbox{\hyperlink{file_8c_a4ab32ce5b70d560f1b2f661c5da3849d}{File\+\_\+init}}, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{file_8c_a53513f94ee8f22dd3e29d635a8061841}\label{file_8c_a53513f94ee8f22dd3e29d635a8061841}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (F\+I\+L\+E\+\_\+\+C\+L\+O\+SE, \mbox{\hyperlink{file_8c_adac5e9b00e5b8870e14c710f15e43108}{File\+\_\+close}}, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{file_8c_a4f1737bd1e60de4779a6a67d60155644}\label{file_8c_a4f1737bd1e60de4779a6a67d60155644}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (F\+I\+L\+E\+\_\+\+L\+I\+N\+ES, \mbox{\hyperlink{file_8c_a67ef9401fb0ab16827c35a635a915f05}{File\+\_\+lines}}, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{file_8c_ad0586ccf2df5a73828e311acc69c5a38}\label{file_8c_ad0586ccf2df5a73828e311acc69c5a38}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (F\+I\+L\+E\+\_\+\+R\+E\+A\+D\+L\+I\+NE, \mbox{\hyperlink{file_8c_a9d320b48e05d99fdd35bb8181e097bd1}{File\+\_\+readline}}, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{file_8c_ae0c1ffaa2971401ebe1863f341604106}\label{file_8c_ae0c1ffaa2971401ebe1863f341604106}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (F\+I\+L\+E\+\_\+\+R\+E\+A\+D\+C\+H\+AR, \mbox{\hyperlink{file_8c_a87a21bf090f802f1c56706d15440c0a2}{File\+\_\+readchar}}, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{file_8c_a98b51f8d83230fe8fac7713a4eeeefe2}\label{file_8c_a98b51f8d83230fe8fac7713a4eeeefe2}} 
+{\bfseries M\+O\+R\+P\+H\+O\+\_\+\+M\+E\+T\+H\+OD} (F\+I\+L\+E\+\_\+\+W\+R\+I\+TE, \mbox{\hyperlink{file_8c_a4a9b5e84ad48d2392f9d105a26a0ce1f}{File\+\_\+write}}, B\+U\+I\+L\+T\+I\+N\+\_\+\+F\+L\+A\+G\+S\+E\+M\+P\+TY)
+\item 
+\mbox{\Hypertarget{file_8c_a312c2531218a64c121a5a8a01e4f5687}\label{file_8c_a312c2531218a64c121a5a8a01e4f5687}} 
+M\+O\+R\+P\+H\+O\+\_\+\+E\+N\+D\+C\+L\+A\+SS void {\bfseries file\+\_\+initialize} (void)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Built in class to provide file input and output. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{file_8c_adac5e9b00e5b8870e14c710f15e43108}\label{file_8c_adac5e9b00e5b8870e14c710f15e43108}} 
+\index{file.c@{file.c}!File\_close@{File\_close}}
+\index{File\_close@{File\_close}!file.c@{file.c}}
+\doxysubsubsection{\texorpdfstring{File\_close()}{File\_close()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} File\+\_\+close (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{int}]{nargs,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{args }\end{DoxyParamCaption})}
+
+Close a file ~\newline
+ \mbox{\Hypertarget{file_8c_a598c861d62350b54b7609cc8857a2fc9}\label{file_8c_a598c861d62350b54b7609cc8857a2fc9}} 
+\index{file.c@{file.c}!File\_eof@{File\_eof}}
+\index{File\_eof@{File\_eof}!file.c@{file.c}}
+\doxysubsubsection{\texorpdfstring{File\_eof()}{File\_eof()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} File\+\_\+eof (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{int}]{nargs,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{args }\end{DoxyParamCaption})}
+
+Detects whether we\textquotesingle{}re at the end of the file ~\newline
+ \mbox{\Hypertarget{file_8c_a8fc2ce15625e50b6d9e835c75c2bdcbf}\label{file_8c_a8fc2ce15625e50b6d9e835c75c2bdcbf}} 
+\index{file.c@{file.c}!File\_free@{File\_free}}
+\index{File\_free@{File\_free}!file.c@{file.c}}
+\doxysubsubsection{\texorpdfstring{File\_free()}{File\_free()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} File\+\_\+free (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{int}]{nargs,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{args }\end{DoxyParamCaption})}
+
+Called when the file object is freed ~\newline
+ \mbox{\Hypertarget{file_8c_a4ab32ce5b70d560f1b2f661c5da3849d}\label{file_8c_a4ab32ce5b70d560f1b2f661c5da3849d}} 
+\index{file.c@{file.c}!File\_init@{File\_init}}
+\index{File\_init@{File\_init}!file.c@{file.c}}
+\doxysubsubsection{\texorpdfstring{File\_init()}{File\_init()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} File\+\_\+init (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{int}]{nargs,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{args }\end{DoxyParamCaption})}
+
+Initializer In\+: 1. a file name
+\begin{DoxyEnumerate}
+\item (optional) a string giving the requested status, e.\+g. \char`\"{}wr+\char`\"{} 
+\end{DoxyEnumerate}\mbox{\Hypertarget{file_8c_a67ef9401fb0ab16827c35a635a915f05}\label{file_8c_a67ef9401fb0ab16827c35a635a915f05}} 
+\index{file.c@{file.c}!File\_lines@{File\_lines}}
+\index{File\_lines@{File\_lines}!file.c@{file.c}}
+\doxysubsubsection{\texorpdfstring{File\_lines()}{File\_lines()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} File\+\_\+lines (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{int}]{nargs,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{args }\end{DoxyParamCaption})}
+
+Get the contents of a file as an array \mbox{\Hypertarget{file_8c_a87a21bf090f802f1c56706d15440c0a2}\label{file_8c_a87a21bf090f802f1c56706d15440c0a2}} 
+\index{file.c@{file.c}!File\_readchar@{File\_readchar}}
+\index{File\_readchar@{File\_readchar}!file.c@{file.c}}
+\doxysubsubsection{\texorpdfstring{File\_readchar()}{File\_readchar()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} File\+\_\+readchar (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{int}]{nargs,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{args }\end{DoxyParamCaption})}
+
+Reads a single character ~\newline
+ \mbox{\Hypertarget{file_8c_a4eeef651dc3d1ecac69b0509482a728c}\label{file_8c_a4eeef651dc3d1ecac69b0509482a728c}} 
+\index{file.c@{file.c}!file\_readintovarray@{file\_readintovarray}}
+\index{file\_readintovarray@{file\_readintovarray}!file.c@{file.c}}
+\doxysubsubsection{\texorpdfstring{file\_readintovarray()}{file\_readintovarray()}}
+{\footnotesize\ttfamily bool file\+\_\+readintovarray (\begin{DoxyParamCaption}\item[{F\+I\+LE $\ast$}]{f,  }\item[{varray\+\_\+char $\ast$}]{string }\end{DoxyParamCaption})}
+
+Reads a whole file into a buffer \mbox{\Hypertarget{file_8c_a9d320b48e05d99fdd35bb8181e097bd1}\label{file_8c_a9d320b48e05d99fdd35bb8181e097bd1}} 
+\index{file.c@{file.c}!File\_readline@{File\_readline}}
+\index{File\_readline@{File\_readline}!file.c@{file.c}}
+\doxysubsubsection{\texorpdfstring{File\_readline()}{File\_readline()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} File\+\_\+readline (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{int}]{nargs,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{args }\end{DoxyParamCaption})}
+
+Read a line ~\newline
+ \mbox{\Hypertarget{file_8c_a734c17de9d2b1a11778b47c9d3c3aff3}\label{file_8c_a734c17de9d2b1a11778b47c9d3c3aff3}} 
+\index{file.c@{file.c}!file\_readlineintovarray@{file\_readlineintovarray}}
+\index{file\_readlineintovarray@{file\_readlineintovarray}!file.c@{file.c}}
+\doxysubsubsection{\texorpdfstring{file\_readlineintovarray()}{file\_readlineintovarray()}}
+{\footnotesize\ttfamily int file\+\_\+readlineintovarray (\begin{DoxyParamCaption}\item[{F\+I\+LE $\ast$}]{f,  }\item[{varray\+\_\+char $\ast$}]{string }\end{DoxyParamCaption})}
+
+Reads a line using a given buffer \mbox{\Hypertarget{file_8c_a8118f1491848f28630c3394f66ef38e1}\label{file_8c_a8118f1491848f28630c3394f66ef38e1}} 
+\index{file.c@{file.c}!file\_readlineusingvarray@{file\_readlineusingvarray}}
+\index{file\_readlineusingvarray@{file\_readlineusingvarray}!file.c@{file.c}}
+\doxysubsubsection{\texorpdfstring{file\_readlineusingvarray()}{file\_readlineusingvarray()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} file\+\_\+readlineusingvarray (\begin{DoxyParamCaption}\item[{F\+I\+LE $\ast$}]{f,  }\item[{varray\+\_\+char $\ast$}]{string }\end{DoxyParamCaption})}
+
+Reads a line using a given buffer \mbox{\Hypertarget{file_8c_a4a9b5e84ad48d2392f9d105a26a0ce1f}\label{file_8c_a4a9b5e84ad48d2392f9d105a26a0ce1f}} 
+\index{file.c@{file.c}!File\_write@{File\_write}}
+\index{File\_write@{File\_write}!file.c@{file.c}}
+\doxysubsubsection{\texorpdfstring{File\_write()}{File\_write()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}} File\+\_\+write (\begin{DoxyParamCaption}\item[{vm $\ast$}]{v,  }\item[{int}]{nargs,  }\item[{\mbox{\hyperlink{structvalue}{value}} $\ast$}]{args }\end{DoxyParamCaption})}
+
+Write to a file ~\newline
+ 

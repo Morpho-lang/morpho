@@ -1,0 +1,4 @@
+fn foo(arg,
+        arg) { // expect error: 'VblDcl'
+  "body"
+}

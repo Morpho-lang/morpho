@@ -1,0 +1,4 @@
+// Can't have a function as the body of a while loop
+
+while (true) fn foo() {}
+// expect error 'ExpExpr'

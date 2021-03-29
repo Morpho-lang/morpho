@@ -1,0 +1,9 @@
+// Check semicolons aren't needed at the end of blocks
+
+fn f(x) { return x*x }
+print f(2)
+// expect: 4
+
+for (var i=0; i<2; i+=1) { print i }
+// expect: 0
+// expect: 1

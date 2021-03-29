@@ -1,0 +1,669 @@
+\hypertarget{linedit_8c}{}\doxysection{interface/linedit.c File Reference}
+\label{linedit_8c}\index{interface/linedit.c@{interface/linedit.c}}
+
+
+A line editor with history, autocomplete and syntax highlighting.  
+
+
+{\ttfamily \#include \char`\"{}linedit.\+h\char`\"{}}\newline
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structkeypress}{keypress}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{linedit_8c_a2832ebdae6024a4976cad3af8e8aad47}\label{linedit_8c_a2832ebdae6024a4976cad3af8e8aad47}} 
+\#define {\bfseries linedit\+\_\+\+M\+I\+N\+I\+M\+U\+M\+S\+T\+R\+I\+N\+G\+S\+I\+ZE}~8
+\item 
+\#define \mbox{\hyperlink{linedit_8c_a3572887c7106767ab034e854219e7c7d}{L\+I\+N\+E\+D\+I\+T\+\_\+\+C\+O\+D\+E\+S\+T\+R\+I\+N\+G\+S\+I\+ZE}}~24
+\item 
+\#define \mbox{\hyperlink{linedit_8c_a4425a6785c0230a83534f988febb1435}{L\+I\+N\+E\+D\+I\+T\+\_\+\+D\+E\+B\+U\+G\+K\+E\+Y\+P\+R\+E\+SS}}
+\item 
+\#define \mbox{\hyperlink{linedit_8c_a47b2ffac3d45e0a7d6be73454b729ef7}{L\+I\+N\+E\+D\+I\+T\+\_\+\+U\+N\+S\+U\+P\+P\+O\+R\+T\+E\+D\+B\+U\+F\+F\+ER}}~4096
+\end{DoxyCompactItemize}
+\doxysubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{linedit_8c_a41daddc55f14b699705a78e3e7f0b6d2}{keytype}} \{ \newline
+{\bfseries U\+N\+K\+N\+O\+WN}, 
+{\bfseries C\+H\+A\+R\+A\+C\+T\+ER}, 
+{\bfseries R\+E\+T\+U\+RN}, 
+{\bfseries T\+AB}, 
+\newline
+{\bfseries D\+E\+L\+E\+TE}, 
+{\bfseries UP}, 
+{\bfseries D\+O\+WN}, 
+{\bfseries L\+E\+FT}, 
+\newline
+{\bfseries R\+I\+G\+HT}, 
+{\bfseries H\+O\+ME}, 
+{\bfseries E\+ND}, 
+{\bfseries S\+H\+I\+F\+T\+\_\+\+L\+E\+FT}, 
+\newline
+{\bfseries S\+H\+I\+F\+T\+\_\+\+R\+I\+G\+HT}, 
+{\bfseries C\+T\+RL}
+ \}
+\item 
+\mbox{\Hypertarget{linedit_8c_ae652c5a9d0b6b28435f64d425825c5d6}\label{linedit_8c_ae652c5a9d0b6b28435f64d425825c5d6}} 
+enum {\bfseries linedit\+\_\+terminaltype} \{ {\bfseries L\+I\+N\+E\+D\+I\+T\+\_\+\+N\+O\+T\+T\+TY}, 
+{\bfseries L\+I\+N\+E\+D\+I\+T\+\_\+\+U\+N\+S\+U\+P\+P\+O\+R\+T\+ED}, 
+{\bfseries L\+I\+N\+E\+D\+I\+T\+\_\+\+S\+U\+P\+P\+O\+R\+T\+ED}
+ \}
+\item 
+enum \mbox{\hyperlink{linedit_8c_a69877ab2ad01f176a4e2f2095fd3213b}{keycodes}} \{ {\bfseries T\+A\+B\+\_\+\+C\+O\+DE} = 9, 
+{\bfseries R\+E\+T\+U\+R\+N\+\_\+\+C\+O\+DE} = 13, 
+{\bfseries E\+S\+C\+\_\+\+C\+O\+DE} = 27, 
+{\bfseries D\+E\+L\+E\+T\+E\+\_\+\+C\+O\+DE} = 127
+ \}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{linedit_8c_a8b5ebc09d456bb8844bf4bb6aedc5b33}{linedit\+\_\+stringinit}} (\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$string)
+\item 
+void \mbox{\hyperlink{linedit_8c_ae192030c56f1148c7cb7d311a369f916}{linedit\+\_\+stringclear}} (\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$string)
+\item 
+bool \mbox{\hyperlink{linedit_8c_a8328d5eef6c57fbe0d0f2e6641b641d1}{linedit\+\_\+stringresize}} (\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$string, size\+\_\+t size)
+\item 
+void \mbox{\hyperlink{linedit_8c_a076c7e36ede170acb6c385b48d72c8d6}{linedit\+\_\+stringaddcharacter}} (\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$string, char $\ast$c, size\+\_\+t n)
+\item 
+void \mbox{\hyperlink{linedit_8c_ae48abe67a95eafc763595ae2147843cc}{linedit\+\_\+stringinsert}} (\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$string, size\+\_\+t posn, char $\ast$c, size\+\_\+t n)
+\begin{DoxyCompactList}\small\item\em Inserts characters at a given position. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{linedit_8c_a803e7f2e5709f3b21139c52ba70f16d6}\label{linedit_8c_a803e7f2e5709f3b21139c52ba70f16d6}} 
+void \mbox{\hyperlink{linedit_8c_a803e7f2e5709f3b21139c52ba70f16d6}{linedit\+\_\+stringdelete}} (\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$string, size\+\_\+t posn, size\+\_\+t n)
+\begin{DoxyCompactList}\small\item\em Deletes characters at a given position. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{linedit_8c_a28fe0ae9e35e7facec69fd7d01a84721}{linedit\+\_\+stringaddcstring}} (\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$string, char $\ast$s)
+\item 
+char $\ast$ \mbox{\hyperlink{linedit_8c_ad766774cea5f43ebdbce229297d70647}{linedit\+\_\+cstring}} (\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$string)
+\item 
+\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$ \mbox{\hyperlink{linedit_8c_a0d309e7c1b71da5d1a09e289c7937eb4}{linedit\+\_\+newstring}} (char $\ast$string)
+\item 
+void \mbox{\hyperlink{linedit_8c_a672fd228057437f3d865b81f4d0bea27}{linedit\+\_\+stringlistadd}} (\mbox{\hyperlink{structlinedit__stringlist}{linedit\+\_\+stringlist}} $\ast$list, char $\ast$string)
+\item 
+void \mbox{\hyperlink{linedit_8c_aac89adcd193a37465f6c33287f4ba964}{linedit\+\_\+stringlistinit}} (\mbox{\hyperlink{structlinedit__stringlist}{linedit\+\_\+stringlist}} $\ast$list)
+\item 
+void \mbox{\hyperlink{linedit_8c_aef372f2f2d2ca957297e43fc089244ab}{linedit\+\_\+stringlistclear}} (\mbox{\hyperlink{structlinedit__stringlist}{linedit\+\_\+stringlist}} $\ast$list)
+\item 
+void \mbox{\hyperlink{linedit_8c_a1ea4dd32eb71929a931656a1a8c7dbc5}{linedit\+\_\+stringlistremove}} (\mbox{\hyperlink{structlinedit__stringlist}{linedit\+\_\+stringlist}} $\ast$list, \mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$string)
+\item 
+\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$ \mbox{\hyperlink{linedit_8c_a92a9d38b3a69f7b63bcd1e8ca169d54c}{linedit\+\_\+stringlistselect}} (\mbox{\hyperlink{structlinedit__stringlist}{linedit\+\_\+stringlist}} $\ast$list, unsigned int n, unsigned int $\ast$m)
+\item 
+void \mbox{\hyperlink{linedit_8c_a4afe3810d9ab09ccedcfcbd3616d3e8f}{linedit\+\_\+historyadd}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, char $\ast$string)
+\item 
+void \mbox{\hyperlink{linedit_8c_a40a9c486144455f3ead4ff2a77b88240}{linedit\+\_\+historyclear}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit)
+\item 
+unsigned int \mbox{\hyperlink{linedit_8c_aa5a3f87b183c24eafc8b1f6efeabdea2}{linedit\+\_\+historyselect}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, unsigned int n)
+\item 
+void \mbox{\hyperlink{linedit_8c_af917016f67c5c13c6eeb1393775a7d88}{linedit\+\_\+historyadvance}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, unsigned int n)
+\item 
+bool \mbox{\hyperlink{linedit_8c_ad0e44c06e1cc24cbb6a2a8530b942388}{lineedit\+\_\+atendofline}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit)
+\item 
+void \mbox{\hyperlink{linedit_8c_afe6b77510b0a8461b6d7f17ea21f4f4b}{linedit\+\_\+generatesuggestions}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit)
+\item 
+bool \mbox{\hyperlink{linedit_8c_ac8114dc3a4c3b4a0dad607e4d80dc659}{linedit\+\_\+aresuggestionsavailable}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit)
+\item 
+char $\ast$ \mbox{\hyperlink{linedit_8c_af2e18293a4ebb058e5337076bab2cf09}{linedit\+\_\+currentsuggestion}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit)
+\item 
+void \mbox{\hyperlink{linedit_8c_a44411fac2bee9369648c3b586fb5c726}{linedit\+\_\+advancesuggestions}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, unsigned int n)
+\item 
+void \mbox{\hyperlink{linedit_8c_a34e730239b044ec970faa19072986d68}{linedit\+\_\+enablerawmode}} (void)
+\begin{DoxyCompactList}\small\item\em Enables \textquotesingle{}raw\textquotesingle{} mode in the terminal. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{linedit_8c_a98f19b70503df11e2100933f69401d56}{linedit\+\_\+disablerawmode}} (void)
+\begin{DoxyCompactList}\small\item\em Restore terminal state to normal. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{linedit_8c_a14d3d2872ba5decf87bc6e07f1b4be3a}{linedit\+\_\+cstrcasecmp}} (char $\ast$str1, char $\ast$str2)
+\begin{DoxyCompactList}\small\item\em Compares two c strings independently of case. \end{DoxyCompactList}\item 
+linedit\+\_\+terminaltype \mbox{\hyperlink{linedit_8c_aa720d4e7a9ee879b0afb0f0a183403b0}{linedit\+\_\+checksupport}} (void)
+\item 
+\mbox{\Hypertarget{linedit_8c_ae5bf4936fbff09e1c3cf8b7ca8436333}\label{linedit_8c_ae5bf4936fbff09e1c3cf8b7ca8436333}} 
+void \mbox{\hyperlink{linedit_8c_ae5bf4936fbff09e1c3cf8b7ca8436333}{linedit\+\_\+write}} (char $\ast$string)
+\begin{DoxyCompactList}\small\item\em Writes a string to the terminal. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{linedit_8c_a166387697aa0f5b43e1f1bd110e3a616}\label{linedit_8c_a166387697aa0f5b43e1f1bd110e3a616}} 
+void \mbox{\hyperlink{linedit_8c_a166387697aa0f5b43e1f1bd110e3a616}{linedit\+\_\+writechar}} (char c)
+\begin{DoxyCompactList}\small\item\em Writes a character to the terminal. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{linedit_8c_ae244597fff7082e3cf96c35a1889d13c}{linedit\+\_\+readkey}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, \mbox{\hyperlink{structkeypress}{keypress}} $\ast$out)
+\begin{DoxyCompactList}\small\item\em Read and decode a single keypress from the terminal. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{linedit_8c_af54938c754f2a4600fb03ad1d67e2f08}\label{linedit_8c_af54938c754f2a4600fb03ad1d67e2f08}} 
+void \mbox{\hyperlink{linedit_8c_af54938c754f2a4600fb03ad1d67e2f08}{linedit\+\_\+move}} (\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$out, int posn)
+\begin{DoxyCompactList}\small\item\em Writes a control sequence to move to a given position. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{linedit_8c_a94aa40edabd4c7bb969770807a7c695e}\label{linedit_8c_a94aa40edabd4c7bb969770807a7c695e}} 
+void \mbox{\hyperlink{linedit_8c_a94aa40edabd4c7bb969770807a7c695e}{linedit\+\_\+setdefaulttext}} (\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$out)
+\begin{DoxyCompactList}\small\item\em Writes a control sequence to reset default text. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{linedit_8c_a8ced2eeb1564acbe60968cc3d5ab4398}\label{linedit_8c_a8ced2eeb1564acbe60968cc3d5ab4398}} 
+void \mbox{\hyperlink{linedit_8c_a8ced2eeb1564acbe60968cc3d5ab4398}{linedit\+\_\+setcolor}} (\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$out, \mbox{\hyperlink{linedit_8h_aaef1cefcd4bbbb5de0283d0290f5df16}{linedit\+\_\+color}} col)
+\begin{DoxyCompactList}\small\item\em Writes a control sequence to set a given color. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{linedit_8c_a8b7ca01628ac6d08bf0d11e80c21c491}\label{linedit_8c_a8b7ca01628ac6d08bf0d11e80c21c491}} 
+void \mbox{\hyperlink{linedit_8c_a8b7ca01628ac6d08bf0d11e80c21c491}{linedit\+\_\+setemphasis}} (\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$out, linedit\+\_\+emphasis emph)
+\begin{DoxyCompactList}\small\item\em Writes a control sequence to set a given emphasis. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{linedit_8c_a5c6dfbd408dce3b7b5a3883a652e6c18}\label{linedit_8c_a5c6dfbd408dce3b7b5a3883a652e6c18}} 
+void \mbox{\hyperlink{linedit_8c_a5c6dfbd408dce3b7b5a3883a652e6c18}{linedit\+\_\+erasetoendofline}} (\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$out)
+\begin{DoxyCompactList}\small\item\em Writes a control sequence to erase the rest of the line. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{linedit_8c_a0fa0d09df90c1334e706f3e83992a0bd}\label{linedit_8c_a0fa0d09df90c1334e706f3e83992a0bd}} 
+void \mbox{\hyperlink{linedit_8c_a0fa0d09df90c1334e706f3e83992a0bd}{linedit\+\_\+eraseline}} (\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$out)
+\begin{DoxyCompactList}\small\item\em Writes a control sequence to erase the whole line. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{linedit_8c_aa5cbda5c6fb481d22c0f0a0612e059e2}\label{linedit_8c_aa5cbda5c6fb481d22c0f0a0612e059e2}} 
+void {\bfseries linedit\+\_\+addcstringwithselection} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, char $\ast$in, size\+\_\+t offset, size\+\_\+t length, \mbox{\hyperlink{linedit_8h_aaef1cefcd4bbbb5de0283d0290f5df16}{linedit\+\_\+color}} $\ast$col, \mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$out)
+\item 
+void \mbox{\hyperlink{linedit_8c_adffb03bf526bacd6af3b033745bdb8ce}{linedit\+\_\+syntaxcolorstring}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, \mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$in, \mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$out)
+\item 
+void \mbox{\hyperlink{linedit_8c_a03ab12e1548de756f92eb3dbb575a977}{linedit\+\_\+showstring}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, \mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$in, \mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$out)
+\item 
+void \mbox{\hyperlink{linedit_8c_a795eba4e5841a88ef3b8b2ead05b923d}{linedit\+\_\+refreshline}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit)
+\item 
+void \mbox{\hyperlink{linedit_8c_a455120e08e9e8315c099055c6d544f41}{linedit\+\_\+setmode}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, \mbox{\hyperlink{linedit_8h_aac488588c54ea74107b850095ba9ab80}{lineditormode}} mode)
+\item 
+\mbox{\hyperlink{linedit_8h_aac488588c54ea74107b850095ba9ab80}{lineditormode}} \mbox{\hyperlink{linedit_8c_a4abe9ea0e06b98997785653cd8905a30}{linedit\+\_\+getmode}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit)
+\item 
+void \mbox{\hyperlink{linedit_8c_ade89c14db4a869da6b01df0b92243332}{linedit\+\_\+setposition}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, int posn)
+\item 
+void \mbox{\hyperlink{linedit_8c_affc3a249e45efdaf37ac386a42962ee8}{linedit\+\_\+advanceposition}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, int delta)
+\begin{DoxyCompactList}\small\item\em Advances the position by delta. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{linedit_8c_a4efdc18241fa043125e7b000bf2d126c}{linedit\+\_\+processkeypress}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit)
+\item 
+void \mbox{\hyperlink{linedit_8c_a5d234f36219e208d586eb07d868c5a2f}{linedit\+\_\+noterminal}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit)
+\item 
+\mbox{\Hypertarget{linedit_8c_a931a132aaaff5272e73890b028ba6082}\label{linedit_8c_a931a132aaaff5272e73890b028ba6082}} 
+void {\bfseries linedit\+\_\+unsupported} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit)
+\item 
+void \mbox{\hyperlink{linedit_8c_a23e77a6a66075ea635829d3421890528}{linedit\+\_\+supported}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit)
+\item 
+char $\ast$ \mbox{\hyperlink{linedit_8c_aefde71eb6eb304ebdfc5ac60ff8da158}{linedit}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit)
+\item 
+void \mbox{\hyperlink{linedit_8c_acf61dede3ce74bce104689eedda60a4d}{linedit\+\_\+syntaxcolor}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, \mbox{\hyperlink{linedit_8h_a812bc895ecfe5e460352923744ea58cb}{linedit\+\_\+tokenizer}} tokenizer, \mbox{\hyperlink{linedit_8h_aaef1cefcd4bbbb5de0283d0290f5df16}{linedit\+\_\+color}} $\ast$cols, unsigned int ncols)
+\begin{DoxyCompactList}\small\item\em Configures syntax coloring. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{linedit_8c_a65f32a0df2da0fd4a8719101bf802b70}{linedit\+\_\+autocomplete}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, \mbox{\hyperlink{linedit_8h_a4ea0eecb098eff09034b4628f6998a7b}{linedit\+\_\+completer}} completer)
+\begin{DoxyCompactList}\small\item\em Configures autocomplete. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{linedit_8c_ac36fe15cca44a17bd66d0adec50f5e1b}{linedit\+\_\+addsuggestion}} (\mbox{\hyperlink{structlinedit__stringlist}{linedit\+\_\+stringlist}} $\ast$completion, char $\ast$string)
+\begin{DoxyCompactList}\small\item\em Adds a completion suggestion. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{linedit_8c_ae91ac09ffbe0f8919d31e575ddffdc5f}{linedit\+\_\+setprompt}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, char $\ast$prompt)
+\begin{DoxyCompactList}\small\item\em Sets the prompt. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{linedit_8c_ad257e9cb2c0024d93b353f142178129f}{linedit\+\_\+displaywithstyle}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, char $\ast$string, \mbox{\hyperlink{linedit_8h_aaef1cefcd4bbbb5de0283d0290f5df16}{linedit\+\_\+color}} col, linedit\+\_\+emphasis emph)
+\begin{DoxyCompactList}\small\item\em Displays a string with a given color and emphasis. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{linedit_8c_a82bbfae02785246934cede1839780581}{linedit\+\_\+displaywithsyntaxcoloring}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, char $\ast$string)
+\begin{DoxyCompactList}\small\item\em Displays a string with syntax coloring. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{linedit_8c_a36a8e2ba6fa87aedacb29b528a8487be}{linedit\+\_\+init}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit)
+\item 
+void \mbox{\hyperlink{linedit_8c_ae841de06bdb4a67a87432877d25c4ad3}{linedit\+\_\+clear}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit)
+\end{DoxyCompactItemize}
+\doxysubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+struct termios \mbox{\hyperlink{linedit_8c_afa32a65a692b649a0ebbcaccca83fafe}{terminit}}
+\item 
+\mbox{\Hypertarget{linedit_8c_ab4112df59c0c4355546a346ce19955d0}\label{linedit_8c_ab4112df59c0c4355546a346ce19955d0}} 
+bool {\bfseries termexitregistered} =false
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+A line editor with history, autocomplete and syntax highlighting. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Macro Definition Documentation}
+\mbox{\Hypertarget{linedit_8c_a3572887c7106767ab034e854219e7c7d}\label{linedit_8c_a3572887c7106767ab034e854219e7c7d}} 
+\index{linedit.c@{linedit.c}!LINEDIT\_CODESTRINGSIZE@{LINEDIT\_CODESTRINGSIZE}}
+\index{LINEDIT\_CODESTRINGSIZE@{LINEDIT\_CODESTRINGSIZE}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{LINEDIT\_CODESTRINGSIZE}{LINEDIT\_CODESTRINGSIZE}}
+{\footnotesize\ttfamily \#define L\+I\+N\+E\+D\+I\+T\+\_\+\+C\+O\+D\+E\+S\+T\+R\+I\+N\+G\+S\+I\+ZE~24}
+
+Maximum escape code size \mbox{\Hypertarget{linedit_8c_a4425a6785c0230a83534f988febb1435}\label{linedit_8c_a4425a6785c0230a83534f988febb1435}} 
+\index{linedit.c@{linedit.c}!LINEDIT\_DEBUGKEYPRESS@{LINEDIT\_DEBUGKEYPRESS}}
+\index{LINEDIT\_DEBUGKEYPRESS@{LINEDIT\_DEBUGKEYPRESS}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{LINEDIT\_DEBUGKEYPRESS}{LINEDIT\_DEBUGKEYPRESS}}
+{\footnotesize\ttfamily \#define L\+I\+N\+E\+D\+I\+T\+\_\+\+D\+E\+B\+U\+G\+K\+E\+Y\+P\+R\+E\+SS}
+
+Enable this macro to get reports on unhandled keypresses \mbox{\Hypertarget{linedit_8c_a47b2ffac3d45e0a7d6be73454b729ef7}\label{linedit_8c_a47b2ffac3d45e0a7d6be73454b729ef7}} 
+\index{linedit.c@{linedit.c}!LINEDIT\_UNSUPPORTEDBUFFER@{LINEDIT\_UNSUPPORTEDBUFFER}}
+\index{LINEDIT\_UNSUPPORTEDBUFFER@{LINEDIT\_UNSUPPORTEDBUFFER}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{LINEDIT\_UNSUPPORTEDBUFFER}{LINEDIT\_UNSUPPORTEDBUFFER}}
+{\footnotesize\ttfamily \#define L\+I\+N\+E\+D\+I\+T\+\_\+\+U\+N\+S\+U\+P\+P\+O\+R\+T\+E\+D\+B\+U\+F\+F\+ER~4096}
+
+If the terminal is unsupported, default to fgets with a fixed buffer 
+
+\doxysubsection{Enumeration Type Documentation}
+\mbox{\Hypertarget{linedit_8c_a69877ab2ad01f176a4e2f2095fd3213b}\label{linedit_8c_a69877ab2ad01f176a4e2f2095fd3213b}} 
+\index{linedit.c@{linedit.c}!keycodes@{keycodes}}
+\index{keycodes@{keycodes}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{keycodes}{keycodes}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{linedit_8c_a69877ab2ad01f176a4e2f2095fd3213b}{keycodes}}}
+
+Raw codes produced by the terminal \mbox{\Hypertarget{linedit_8c_a41daddc55f14b699705a78e3e7f0b6d2}\label{linedit_8c_a41daddc55f14b699705a78e3e7f0b6d2}} 
+\index{linedit.c@{linedit.c}!keytype@{keytype}}
+\index{keytype@{keytype}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{keytype}{keytype}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{linedit_8c_a41daddc55f14b699705a78e3e7f0b6d2}{keytype}}}
+
+Identifies the type of keypress 
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{linedit_8c_aefde71eb6eb304ebdfc5ac60ff8da158}\label{linedit_8c_aefde71eb6eb304ebdfc5ac60ff8da158}} 
+\index{linedit.c@{linedit.c}!linedit@{linedit}}
+\index{linedit@{linedit}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit()}{linedit()}}
+{\footnotesize\ttfamily char$\ast$ linedit (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit }\end{DoxyParamCaption})}
+
+Public interface to the line editor. 
+\begin{DoxyParams}{Parameters}
+{\em edit} & -\/ a line editor that has been initialized with linedit\+\_\+init. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+the string input by the user, or N\+U\+LL if nothing entered. 
+\end{DoxyReturn}
+Ensure we are not passed a N\+U\+LL pointer\mbox{\Hypertarget{linedit_8c_ac36fe15cca44a17bd66d0adec50f5e1b}\label{linedit_8c_ac36fe15cca44a17bd66d0adec50f5e1b}} 
+\index{linedit.c@{linedit.c}!linedit\_addsuggestion@{linedit\_addsuggestion}}
+\index{linedit\_addsuggestion@{linedit\_addsuggestion}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_addsuggestion()}{linedit\_addsuggestion()}}
+{\footnotesize\ttfamily void linedit\+\_\+addsuggestion (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlinedit__stringlist}{linedit\+\_\+stringlist}} $\ast$}]{completion,  }\item[{char $\ast$}]{string }\end{DoxyParamCaption})}
+
+
+
+Adds a completion suggestion. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em completion} & completion data structure \\
+\hline
+{\em string} & string to add \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{linedit_8c_affc3a249e45efdaf37ac386a42962ee8}\label{linedit_8c_affc3a249e45efdaf37ac386a42962ee8}} 
+\index{linedit.c@{linedit.c}!linedit\_advanceposition@{linedit\_advanceposition}}
+\index{linedit\_advanceposition@{linedit\_advanceposition}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_advanceposition()}{linedit\_advanceposition()}}
+{\footnotesize\ttfamily void linedit\+\_\+advanceposition (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{int}]{delta }\end{DoxyParamCaption})}
+
+
+
+Advances the position by delta. 
+
+We ensure that the current position also lies within the string. \mbox{\Hypertarget{linedit_8c_a44411fac2bee9369648c3b586fb5c726}\label{linedit_8c_a44411fac2bee9369648c3b586fb5c726}} 
+\index{linedit.c@{linedit.c}!linedit\_advancesuggestions@{linedit\_advancesuggestions}}
+\index{linedit\_advancesuggestions@{linedit\_advancesuggestions}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_advancesuggestions()}{linedit\_advancesuggestions()}}
+{\footnotesize\ttfamily void linedit\+\_\+advancesuggestions (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{unsigned int}]{n }\end{DoxyParamCaption})}
+
+Advance through the suggestions \mbox{\Hypertarget{linedit_8c_ac8114dc3a4c3b4a0dad607e4d80dc659}\label{linedit_8c_ac8114dc3a4c3b4a0dad607e4d80dc659}} 
+\index{linedit.c@{linedit.c}!linedit\_aresuggestionsavailable@{linedit\_aresuggestionsavailable}}
+\index{linedit\_aresuggestionsavailable@{linedit\_aresuggestionsavailable}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_aresuggestionsavailable()}{linedit\_aresuggestionsavailable()}}
+{\footnotesize\ttfamily bool linedit\+\_\+aresuggestionsavailable (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit }\end{DoxyParamCaption})}
+
+Check whether any suggestions are available \mbox{\Hypertarget{linedit_8c_a65f32a0df2da0fd4a8719101bf802b70}\label{linedit_8c_a65f32a0df2da0fd4a8719101bf802b70}} 
+\index{linedit.c@{linedit.c}!linedit\_autocomplete@{linedit\_autocomplete}}
+\index{linedit\_autocomplete@{linedit\_autocomplete}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_autocomplete()}{linedit\_autocomplete()}}
+{\footnotesize\ttfamily void linedit\+\_\+autocomplete (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{\mbox{\hyperlink{linedit_8h_a4ea0eecb098eff09034b4628f6998a7b}{linedit\+\_\+completer}}}]{completer }\end{DoxyParamCaption})}
+
+
+
+Configures autocomplete. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em edit} & Line editor to configure \\
+\hline
+{\em completer} & a function \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{linedit_8c_aa720d4e7a9ee879b0afb0f0a183403b0}\label{linedit_8c_aa720d4e7a9ee879b0afb0f0a183403b0}} 
+\index{linedit.c@{linedit.c}!linedit\_checksupport@{linedit\_checksupport}}
+\index{linedit\_checksupport@{linedit\_checksupport}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_checksupport()}{linedit\_checksupport()}}
+{\footnotesize\ttfamily linedit\+\_\+terminaltype linedit\+\_\+checksupport (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+Checks whether the terminal is supported \mbox{\Hypertarget{linedit_8c_ae841de06bdb4a67a87432877d25c4ad3}\label{linedit_8c_ae841de06bdb4a67a87432877d25c4ad3}} 
+\index{linedit.c@{linedit.c}!linedit\_clear@{linedit\_clear}}
+\index{linedit\_clear@{linedit\_clear}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_clear()}{linedit\_clear()}}
+{\footnotesize\ttfamily void linedit\+\_\+clear (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit }\end{DoxyParamCaption})}
+
+Finalize a line editor \mbox{\Hypertarget{linedit_8c_a14d3d2872ba5decf87bc6e07f1b4be3a}\label{linedit_8c_a14d3d2872ba5decf87bc6e07f1b4be3a}} 
+\index{linedit.c@{linedit.c}!linedit\_cstrcasecmp@{linedit\_cstrcasecmp}}
+\index{linedit\_cstrcasecmp@{linedit\_cstrcasecmp}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_cstrcasecmp()}{linedit\_cstrcasecmp()}}
+{\footnotesize\ttfamily int linedit\+\_\+cstrcasecmp (\begin{DoxyParamCaption}\item[{char $\ast$}]{str1,  }\item[{char $\ast$}]{str2 }\end{DoxyParamCaption})}
+
+
+
+Compares two c strings independently of case. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em str1} & -\/ \} strings to compare \\
+\hline
+\mbox{\texttt{ in}}  & {\em str2} & -\/ \} \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 if the strings are identical, otherwise a positive or negative number indicating their lexographic order 
+\end{DoxyReturn}
+\mbox{\Hypertarget{linedit_8c_ad766774cea5f43ebdbce229297d70647}\label{linedit_8c_ad766774cea5f43ebdbce229297d70647}} 
+\index{linedit.c@{linedit.c}!linedit\_cstring@{linedit\_cstring}}
+\index{linedit\_cstring@{linedit\_cstring}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_cstring()}{linedit\_cstring()}}
+{\footnotesize\ttfamily char$\ast$ linedit\+\_\+cstring (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$}]{string }\end{DoxyParamCaption})}
+
+Returns a C string from a string \mbox{\Hypertarget{linedit_8c_af2e18293a4ebb058e5337076bab2cf09}\label{linedit_8c_af2e18293a4ebb058e5337076bab2cf09}} 
+\index{linedit.c@{linedit.c}!linedit\_currentsuggestion@{linedit\_currentsuggestion}}
+\index{linedit\_currentsuggestion@{linedit\_currentsuggestion}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_currentsuggestion()}{linedit\_currentsuggestion()}}
+{\footnotesize\ttfamily char$\ast$ linedit\+\_\+currentsuggestion (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit }\end{DoxyParamCaption})}
+
+Get the current suggestion \mbox{\Hypertarget{linedit_8c_a98f19b70503df11e2100933f69401d56}\label{linedit_8c_a98f19b70503df11e2100933f69401d56}} 
+\index{linedit.c@{linedit.c}!linedit\_disablerawmode@{linedit\_disablerawmode}}
+\index{linedit\_disablerawmode@{linedit\_disablerawmode}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_disablerawmode()}{linedit\_disablerawmode()}}
+{\footnotesize\ttfamily void linedit\+\_\+disablerawmode (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Restore terminal state to normal. 
+
+Print a carriage return to ensure we\textquotesingle{}re back on the left hand side\mbox{\Hypertarget{linedit_8c_ad257e9cb2c0024d93b353f142178129f}\label{linedit_8c_ad257e9cb2c0024d93b353f142178129f}} 
+\index{linedit.c@{linedit.c}!linedit\_displaywithstyle@{linedit\_displaywithstyle}}
+\index{linedit\_displaywithstyle@{linedit\_displaywithstyle}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_displaywithstyle()}{linedit\_displaywithstyle()}}
+{\footnotesize\ttfamily void linedit\+\_\+displaywithstyle (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{char $\ast$}]{string,  }\item[{\mbox{\hyperlink{linedit_8h_aaef1cefcd4bbbb5de0283d0290f5df16}{linedit\+\_\+color}}}]{col,  }\item[{linedit\+\_\+emphasis}]{emph }\end{DoxyParamCaption})}
+
+
+
+Displays a string with a given color and emphasis. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em edit} & Line editor in use \\
+\hline
+{\em string} & String to display \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{linedit_8c_a82bbfae02785246934cede1839780581}\label{linedit_8c_a82bbfae02785246934cede1839780581}} 
+\index{linedit.c@{linedit.c}!linedit\_displaywithsyntaxcoloring@{linedit\_displaywithsyntaxcoloring}}
+\index{linedit\_displaywithsyntaxcoloring@{linedit\_displaywithsyntaxcoloring}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_displaywithsyntaxcoloring()}{linedit\_displaywithsyntaxcoloring()}}
+{\footnotesize\ttfamily void linedit\+\_\+displaywithsyntaxcoloring (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{char $\ast$}]{string }\end{DoxyParamCaption})}
+
+
+
+Displays a string with syntax coloring. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em edit} & Line editor in use \\
+\hline
+{\em string} & String to display \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{linedit_8c_a34e730239b044ec970faa19072986d68}\label{linedit_8c_a34e730239b044ec970faa19072986d68}} 
+\index{linedit.c@{linedit.c}!linedit\_enablerawmode@{linedit\_enablerawmode}}
+\index{linedit\_enablerawmode@{linedit\_enablerawmode}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_enablerawmode()}{linedit\_enablerawmode()}}
+{\footnotesize\ttfamily void linedit\+\_\+enablerawmode (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Enables \textquotesingle{}raw\textquotesingle{} mode in the terminal. 
+
+In raw mode key presses are passed directly to us rather than being buffered. Get the original state\mbox{\Hypertarget{linedit_8c_afe6b77510b0a8461b6d7f17ea21f4f4b}\label{linedit_8c_afe6b77510b0a8461b6d7f17ea21f4f4b}} 
+\index{linedit.c@{linedit.c}!linedit\_generatesuggestions@{linedit\_generatesuggestions}}
+\index{linedit\_generatesuggestions@{linedit\_generatesuggestions}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_generatesuggestions()}{linedit\_generatesuggestions()}}
+{\footnotesize\ttfamily void linedit\+\_\+generatesuggestions (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit }\end{DoxyParamCaption})}
+
+Regenerates the list of autocomplete suggestions \mbox{\Hypertarget{linedit_8c_a4abe9ea0e06b98997785653cd8905a30}\label{linedit_8c_a4abe9ea0e06b98997785653cd8905a30}} 
+\index{linedit.c@{linedit.c}!linedit\_getmode@{linedit\_getmode}}
+\index{linedit\_getmode@{linedit\_getmode}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_getmode()}{linedit\_getmode()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{linedit_8h_aac488588c54ea74107b850095ba9ab80}{lineditormode}} linedit\+\_\+getmode (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit }\end{DoxyParamCaption})}
+
+Gets the current mode \mbox{\Hypertarget{linedit_8c_a4afe3810d9ab09ccedcfcbd3616d3e8f}\label{linedit_8c_a4afe3810d9ab09ccedcfcbd3616d3e8f}} 
+\index{linedit.c@{linedit.c}!linedit\_historyadd@{linedit\_historyadd}}
+\index{linedit\_historyadd@{linedit\_historyadd}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_historyadd()}{linedit\_historyadd()}}
+{\footnotesize\ttfamily void linedit\+\_\+historyadd (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{char $\ast$}]{string }\end{DoxyParamCaption})}
+
+Adds an entry to the history list \mbox{\Hypertarget{linedit_8c_af917016f67c5c13c6eeb1393775a7d88}\label{linedit_8c_af917016f67c5c13c6eeb1393775a7d88}} 
+\index{linedit.c@{linedit.c}!linedit\_historyadvance@{linedit\_historyadvance}}
+\index{linedit\_historyadvance@{linedit\_historyadvance}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_historyadvance()}{linedit\_historyadvance()}}
+{\footnotesize\ttfamily void linedit\+\_\+historyadvance (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{unsigned int}]{n }\end{DoxyParamCaption})}
+
+Advances the history list \mbox{\Hypertarget{linedit_8c_a40a9c486144455f3ead4ff2a77b88240}\label{linedit_8c_a40a9c486144455f3ead4ff2a77b88240}} 
+\index{linedit.c@{linedit.c}!linedit\_historyclear@{linedit\_historyclear}}
+\index{linedit\_historyclear@{linedit\_historyclear}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_historyclear()}{linedit\_historyclear()}}
+{\footnotesize\ttfamily void linedit\+\_\+historyclear (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit }\end{DoxyParamCaption})}
+
+Frees the history list \mbox{\Hypertarget{linedit_8c_aa5a3f87b183c24eafc8b1f6efeabdea2}\label{linedit_8c_aa5a3f87b183c24eafc8b1f6efeabdea2}} 
+\index{linedit.c@{linedit.c}!linedit\_historyselect@{linedit\_historyselect}}
+\index{linedit\_historyselect@{linedit\_historyselect}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_historyselect()}{linedit\_historyselect()}}
+{\footnotesize\ttfamily unsigned int linedit\+\_\+historyselect (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{unsigned int}]{n }\end{DoxyParamCaption})}
+
+Makes a particular history entry current \mbox{\Hypertarget{linedit_8c_a36a8e2ba6fa87aedacb29b528a8487be}\label{linedit_8c_a36a8e2ba6fa87aedacb29b528a8487be}} 
+\index{linedit.c@{linedit.c}!linedit\_init@{linedit\_init}}
+\index{linedit\_init@{linedit\_init}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_init()}{linedit\_init()}}
+{\footnotesize\ttfamily void linedit\+\_\+init (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit }\end{DoxyParamCaption})}
+
+Initialize a line editor \mbox{\Hypertarget{linedit_8c_a0d309e7c1b71da5d1a09e289c7937eb4}\label{linedit_8c_a0d309e7c1b71da5d1a09e289c7937eb4}} 
+\index{linedit.c@{linedit.c}!linedit\_newstring@{linedit\_newstring}}
+\index{linedit\_newstring@{linedit\_newstring}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_newstring()}{linedit\_newstring()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}}$\ast$ linedit\+\_\+newstring (\begin{DoxyParamCaption}\item[{char $\ast$}]{string }\end{DoxyParamCaption})}
+
+Creates a new string from a C string \mbox{\Hypertarget{linedit_8c_a5d234f36219e208d586eb07d868c5a2f}\label{linedit_8c_a5d234f36219e208d586eb07d868c5a2f}} 
+\index{linedit.c@{linedit.c}!linedit\_noterminal@{linedit\_noterminal}}
+\index{linedit\_noterminal@{linedit\_noterminal}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_noterminal()}{linedit\_noterminal()}}
+{\footnotesize\ttfamily void linedit\+\_\+noterminal (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit }\end{DoxyParamCaption})}
+
+If we\textquotesingle{}re not attached to a terminal, e.\+g. a pipe, simply read the file in. \mbox{\Hypertarget{linedit_8c_a4efdc18241fa043125e7b000bf2d126c}\label{linedit_8c_a4efdc18241fa043125e7b000bf2d126c}} 
+\index{linedit.c@{linedit.c}!linedit\_processkeypress@{linedit\_processkeypress}}
+\index{linedit\_processkeypress@{linedit\_processkeypress}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_processkeypress()}{linedit\_processkeypress()}}
+{\footnotesize\ttfamily bool linedit\+\_\+processkeypress (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit }\end{DoxyParamCaption})}
+
+Obtain and process a single keypress \mbox{\Hypertarget{linedit_8c_ae244597fff7082e3cf96c35a1889d13c}\label{linedit_8c_ae244597fff7082e3cf96c35a1889d13c}} 
+\index{linedit.c@{linedit.c}!linedit\_readkey@{linedit\_readkey}}
+\index{linedit\_readkey@{linedit\_readkey}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_readkey()}{linedit\_readkey()}}
+{\footnotesize\ttfamily bool linedit\+\_\+readkey (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{\mbox{\hyperlink{structkeypress}{keypress}} $\ast$}]{out }\end{DoxyParamCaption})}
+
+
+
+Read and decode a single keypress from the terminal. 
+
+Decode the escape sequence\mbox{\Hypertarget{linedit_8c_a795eba4e5841a88ef3b8b2ead05b923d}\label{linedit_8c_a795eba4e5841a88ef3b8b2ead05b923d}} 
+\index{linedit.c@{linedit.c}!linedit\_refreshline@{linedit\_refreshline}}
+\index{linedit\_refreshline@{linedit\_refreshline}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_refreshline()}{linedit\_refreshline()}}
+{\footnotesize\ttfamily void linedit\+\_\+refreshline (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit }\end{DoxyParamCaption})}
+
+Refreshes a single line \mbox{\Hypertarget{linedit_8c_a455120e08e9e8315c099055c6d544f41}\label{linedit_8c_a455120e08e9e8315c099055c6d544f41}} 
+\index{linedit.c@{linedit.c}!linedit\_setmode@{linedit\_setmode}}
+\index{linedit\_setmode@{linedit\_setmode}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_setmode()}{linedit\_setmode()}}
+{\footnotesize\ttfamily void linedit\+\_\+setmode (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{\mbox{\hyperlink{linedit_8h_aac488588c54ea74107b850095ba9ab80}{lineditormode}}}]{mode }\end{DoxyParamCaption})}
+
+Sets the current mode, setting/clearing any state dependent data ~\newline
+ \mbox{\Hypertarget{linedit_8c_ade89c14db4a869da6b01df0b92243332}\label{linedit_8c_ade89c14db4a869da6b01df0b92243332}} 
+\index{linedit.c@{linedit.c}!linedit\_setposition@{linedit\_setposition}}
+\index{linedit\_setposition@{linedit\_setposition}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_setposition()}{linedit\_setposition()}}
+{\footnotesize\ttfamily void linedit\+\_\+setposition (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{int}]{posn }\end{DoxyParamCaption})}
+
+Sets the current position 
+\begin{DoxyParams}{Parameters}
+{\em edit} & -\/ the editor \\
+\hline
+{\em posn} & -\/ position to set, or negative to move to end \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{linedit_8c_ae91ac09ffbe0f8919d31e575ddffdc5f}\label{linedit_8c_ae91ac09ffbe0f8919d31e575ddffdc5f}} 
+\index{linedit.c@{linedit.c}!linedit\_setprompt@{linedit\_setprompt}}
+\index{linedit\_setprompt@{linedit\_setprompt}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_setprompt()}{linedit\_setprompt()}}
+{\footnotesize\ttfamily void linedit\+\_\+setprompt (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{char $\ast$}]{prompt }\end{DoxyParamCaption})}
+
+
+
+Sets the prompt. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em edit} & Line editor to configure \\
+\hline
+{\em prompt} & prompt string to use \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{linedit_8c_a03ab12e1548de756f92eb3dbb575a977}\label{linedit_8c_a03ab12e1548de756f92eb3dbb575a977}} 
+\index{linedit.c@{linedit.c}!linedit\_showstring@{linedit\_showstring}}
+\index{linedit\_showstring@{linedit\_showstring}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_showstring()}{linedit\_showstring()}}
+{\footnotesize\ttfamily void linedit\+\_\+showstring (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$}]{in,  }\item[{\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$}]{out }\end{DoxyParamCaption})}
+
+Print a string without syntax coloring \mbox{\Hypertarget{linedit_8c_a076c7e36ede170acb6c385b48d72c8d6}\label{linedit_8c_a076c7e36ede170acb6c385b48d72c8d6}} 
+\index{linedit.c@{linedit.c}!linedit\_stringaddcharacter@{linedit\_stringaddcharacter}}
+\index{linedit\_stringaddcharacter@{linedit\_stringaddcharacter}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_stringaddcharacter()}{linedit\_stringaddcharacter()}}
+{\footnotesize\ttfamily void linedit\+\_\+stringaddcharacter (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$}]{string,  }\item[{char $\ast$}]{c,  }\item[{size\+\_\+t}]{n }\end{DoxyParamCaption})}
+
+Adds a character to a string \mbox{\Hypertarget{linedit_8c_a28fe0ae9e35e7facec69fd7d01a84721}\label{linedit_8c_a28fe0ae9e35e7facec69fd7d01a84721}} 
+\index{linedit.c@{linedit.c}!linedit\_stringaddcstring@{linedit\_stringaddcstring}}
+\index{linedit\_stringaddcstring@{linedit\_stringaddcstring}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_stringaddcstring()}{linedit\_stringaddcstring()}}
+{\footnotesize\ttfamily void linedit\+\_\+stringaddcstring (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$}]{string,  }\item[{char $\ast$}]{s }\end{DoxyParamCaption})}
+
+Adds a c string to a string \mbox{\Hypertarget{linedit_8c_ae192030c56f1148c7cb7d311a369f916}\label{linedit_8c_ae192030c56f1148c7cb7d311a369f916}} 
+\index{linedit.c@{linedit.c}!linedit\_stringclear@{linedit\_stringclear}}
+\index{linedit\_stringclear@{linedit\_stringclear}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_stringclear()}{linedit\_stringclear()}}
+{\footnotesize\ttfamily void linedit\+\_\+stringclear (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$}]{string }\end{DoxyParamCaption})}
+
+Clears a string, deallocating memory if necessary \mbox{\Hypertarget{linedit_8c_a8b5ebc09d456bb8844bf4bb6aedc5b33}\label{linedit_8c_a8b5ebc09d456bb8844bf4bb6aedc5b33}} 
+\index{linedit.c@{linedit.c}!linedit\_stringinit@{linedit\_stringinit}}
+\index{linedit\_stringinit@{linedit\_stringinit}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_stringinit()}{linedit\_stringinit()}}
+{\footnotesize\ttfamily void linedit\+\_\+stringinit (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$}]{string }\end{DoxyParamCaption})}
+
+Initializes a string, clearing all fields \mbox{\Hypertarget{linedit_8c_ae48abe67a95eafc763595ae2147843cc}\label{linedit_8c_ae48abe67a95eafc763595ae2147843cc}} 
+\index{linedit.c@{linedit.c}!linedit\_stringinsert@{linedit\_stringinsert}}
+\index{linedit\_stringinsert@{linedit\_stringinsert}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_stringinsert()}{linedit\_stringinsert()}}
+{\footnotesize\ttfamily void linedit\+\_\+stringinsert (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$}]{string,  }\item[{size\+\_\+t}]{posn,  }\item[{char $\ast$}]{c,  }\item[{size\+\_\+t}]{n }\end{DoxyParamCaption})}
+
+
+
+Inserts characters at a given position. 
+
+If the position is after the length of the string the new characters are instead appended. \mbox{\Hypertarget{linedit_8c_a672fd228057437f3d865b81f4d0bea27}\label{linedit_8c_a672fd228057437f3d865b81f4d0bea27}} 
+\index{linedit.c@{linedit.c}!linedit\_stringlistadd@{linedit\_stringlistadd}}
+\index{linedit\_stringlistadd@{linedit\_stringlistadd}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_stringlistadd()}{linedit\_stringlistadd()}}
+{\footnotesize\ttfamily void linedit\+\_\+stringlistadd (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlinedit__stringlist}{linedit\+\_\+stringlist}} $\ast$}]{list,  }\item[{char $\ast$}]{string }\end{DoxyParamCaption})}
+
+Adds an entry to a string list \mbox{\Hypertarget{linedit_8c_aef372f2f2d2ca957297e43fc089244ab}\label{linedit_8c_aef372f2f2d2ca957297e43fc089244ab}} 
+\index{linedit.c@{linedit.c}!linedit\_stringlistclear@{linedit\_stringlistclear}}
+\index{linedit\_stringlistclear@{linedit\_stringlistclear}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_stringlistclear()}{linedit\_stringlistclear()}}
+{\footnotesize\ttfamily void linedit\+\_\+stringlistclear (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlinedit__stringlist}{linedit\+\_\+stringlist}} $\ast$}]{list }\end{DoxyParamCaption})}
+
+Frees the contents of a string list \mbox{\Hypertarget{linedit_8c_aac89adcd193a37465f6c33287f4ba964}\label{linedit_8c_aac89adcd193a37465f6c33287f4ba964}} 
+\index{linedit.c@{linedit.c}!linedit\_stringlistinit@{linedit\_stringlistinit}}
+\index{linedit\_stringlistinit@{linedit\_stringlistinit}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_stringlistinit()}{linedit\_stringlistinit()}}
+{\footnotesize\ttfamily void linedit\+\_\+stringlistinit (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlinedit__stringlist}{linedit\+\_\+stringlist}} $\ast$}]{list }\end{DoxyParamCaption})}
+
+Initializes a string list \mbox{\Hypertarget{linedit_8c_a1ea4dd32eb71929a931656a1a8c7dbc5}\label{linedit_8c_a1ea4dd32eb71929a931656a1a8c7dbc5}} 
+\index{linedit.c@{linedit.c}!linedit\_stringlistremove@{linedit\_stringlistremove}}
+\index{linedit\_stringlistremove@{linedit\_stringlistremove}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_stringlistremove()}{linedit\_stringlistremove()}}
+{\footnotesize\ttfamily void linedit\+\_\+stringlistremove (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlinedit__stringlist}{linedit\+\_\+stringlist}} $\ast$}]{list,  }\item[{\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$}]{string }\end{DoxyParamCaption})}
+
+Removes a string from a list \mbox{\Hypertarget{linedit_8c_a92a9d38b3a69f7b63bcd1e8ca169d54c}\label{linedit_8c_a92a9d38b3a69f7b63bcd1e8ca169d54c}} 
+\index{linedit.c@{linedit.c}!linedit\_stringlistselect@{linedit\_stringlistselect}}
+\index{linedit\_stringlistselect@{linedit\_stringlistselect}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_stringlistselect()}{linedit\_stringlistselect()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}}$\ast$ linedit\+\_\+stringlistselect (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlinedit__stringlist}{linedit\+\_\+stringlist}} $\ast$}]{list,  }\item[{unsigned int}]{n,  }\item[{unsigned int $\ast$}]{m }\end{DoxyParamCaption})}
+
+Chooses an element of a stringlist 
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em list} & the list to select from \\
+\hline
+\mbox{\texttt{ in}}  & {\em n} & entry number to select @parma\mbox{[}out\mbox{]} $\ast$m entry number actually selected \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+the selected element 
+\end{DoxyReturn}
+\mbox{\Hypertarget{linedit_8c_a8328d5eef6c57fbe0d0f2e6641b641d1}\label{linedit_8c_a8328d5eef6c57fbe0d0f2e6641b641d1}} 
+\index{linedit.c@{linedit.c}!linedit\_stringresize@{linedit\_stringresize}}
+\index{linedit\_stringresize@{linedit\_stringresize}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_stringresize()}{linedit\_stringresize()}}
+{\footnotesize\ttfamily bool linedit\+\_\+stringresize (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$}]{string,  }\item[{size\+\_\+t}]{size }\end{DoxyParamCaption})}
+
+Resizes a string 
+\begin{DoxyParams}{Parameters}
+{\em string} & -\/ the string to grow \\
+\hline
+{\em size} & -\/ requested size \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true on success, false on failure 
+\end{DoxyReturn}
+\mbox{\Hypertarget{linedit_8c_a23e77a6a66075ea635829d3421890528}\label{linedit_8c_a23e77a6a66075ea635829d3421890528}} 
+\index{linedit.c@{linedit.c}!linedit\_supported@{linedit\_supported}}
+\index{linedit\_supported@{linedit\_supported}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_supported()}{linedit\_supported()}}
+{\footnotesize\ttfamily void linedit\+\_\+supported (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit }\end{DoxyParamCaption})}
+
+Normal interface used if terminal is present \mbox{\Hypertarget{linedit_8c_acf61dede3ce74bce104689eedda60a4d}\label{linedit_8c_acf61dede3ce74bce104689eedda60a4d}} 
+\index{linedit.c@{linedit.c}!linedit\_syntaxcolor@{linedit\_syntaxcolor}}
+\index{linedit\_syntaxcolor@{linedit\_syntaxcolor}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_syntaxcolor()}{linedit\_syntaxcolor()}}
+{\footnotesize\ttfamily void linedit\+\_\+syntaxcolor (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{\mbox{\hyperlink{linedit_8h_a812bc895ecfe5e460352923744ea58cb}{linedit\+\_\+tokenizer}}}]{tokenizer,  }\item[{\mbox{\hyperlink{linedit_8h_aaef1cefcd4bbbb5de0283d0290f5df16}{linedit\+\_\+color}} $\ast$}]{cols,  }\item[{unsigned int}]{ncols }\end{DoxyParamCaption})}
+
+
+
+Configures syntax coloring. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em edit} & Line editor to configure \\
+\hline
+{\em tokenizer} & A function to be called that will find the next token from a string \\
+\hline
+{\em cols} & An array of colors, one entry for each token type \\
+\hline
+{\em ncols} & Number of entries in the color array \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{linedit_8c_adffb03bf526bacd6af3b033745bdb8ce}\label{linedit_8c_adffb03bf526bacd6af3b033745bdb8ce}} 
+\index{linedit.c@{linedit.c}!linedit\_syntaxcolorstring@{linedit\_syntaxcolorstring}}
+\index{linedit\_syntaxcolorstring@{linedit\_syntaxcolorstring}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{linedit\_syntaxcolorstring()}{linedit\_syntaxcolorstring()}}
+{\footnotesize\ttfamily void linedit\+\_\+syntaxcolorstring (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$}]{in,  }\item[{\mbox{\hyperlink{linedit_8h_aec4a42c4b0a308cf5efaa6b6bc8d4219}{linedit\+\_\+string}} $\ast$}]{out }\end{DoxyParamCaption})}
+
+Print a string with syntax coloring \mbox{\Hypertarget{linedit_8c_ad0e44c06e1cc24cbb6a2a8530b942388}\label{linedit_8c_ad0e44c06e1cc24cbb6a2a8530b942388}} 
+\index{linedit.c@{linedit.c}!lineedit\_atendofline@{lineedit\_atendofline}}
+\index{lineedit\_atendofline@{lineedit\_atendofline}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{lineedit\_atendofline()}{lineedit\_atendofline()}}
+{\footnotesize\ttfamily bool lineedit\+\_\+atendofline (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit }\end{DoxyParamCaption})}
+
+Checks if we\textquotesingle{}re at the end of the line 
+
+\doxysubsection{Variable Documentation}
+\mbox{\Hypertarget{linedit_8c_afa32a65a692b649a0ebbcaccca83fafe}\label{linedit_8c_afa32a65a692b649a0ebbcaccca83fafe}} 
+\index{linedit.c@{linedit.c}!terminit@{terminit}}
+\index{terminit@{terminit}!linedit.c@{linedit.c}}
+\doxysubsubsection{\texorpdfstring{terminit}{terminit}}
+{\footnotesize\ttfamily struct termios terminit}
+
+Holds the original terminal state 

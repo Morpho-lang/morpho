@@ -1,0 +1,258 @@
+// Mesh creation and visualization tools
+
+import constants
+import graphics
+
+/** Creates a mesh from a parametric function.
+ * @param[in] f - a function that returns the vertex position as a list
+ * @param[in] range - parameter range to use
+ * @param[in] closed - whether to close the mesh  */
+fn linemesh(f, range, closed=false) {
+  var list = []
+
+  for (t in range) list.append(f(t))
+
+  var vertices = Matrix(list).transpose()
+  var mesh = Mesh()
+  mesh.setvertexmatrix(vertices)
+
+  var np = range.count() // How many points
+  var nlines = np-1
+
+  var conn = Sparse(np,nlines)
+  for (i in 0...nlines) {
+    conn[i,i]=1
+    conn[i+1,i]=1
+  }
+  if (closed) {
+    conn[0,nlines]=1
+    conn[np-1,nlines]=1
+  }
+
+  mesh.addgrade(1, conn)
+
+  return mesh
+}
+
+
+/** Creates a mesh from a polyhedron specified as
+  @param[in] list - a list of vertices
+  @param[in] faces - list of lists of vertices corresponding to each face
+  @returns a mesh */
+fn polyhedronmesh(list, faces) {
+  var v = Matrix(list).transpose()
+  var nv=list.count() // Number of vertices in polyhedron
+  var nmp=faces.count() // Number of faces
+  var nt=0
+  var midpoints = []
+
+  /* Find midpoints of the faces */
+  for (f in faces) {
+    var pt = Matrix(3)
+    for (i in f) pt.acc(1, v.column(i))
+    midpoints.append(pt/f.count())
+    nt+=f.count()
+  }
+
+  var mesh = Mesh()
+
+  /* Create the vertex matrix */
+  var vertices = Matrix(3, list.count()+midpoints.count())
+  for (i in 0...nv) vertices.setcolumn(i, Matrix(list[i]))
+  for (i in 0...nmp) vertices.setcolumn(nv+i, midpoints[i])
+  mesh.setvertexmatrix(vertices)
+
+  /* Create the connectivity matrix */
+  var conn = Sparse(nv+nmp,nt)
+  var t=0
+  for (k in 0...faces.count()) { // Loop over faces
+    var face = faces[k]
+    var fv = face.count()
+    for (i in 0...fv) { // Loop over the vertex indices and create a triangle for every pair
+      conn[face[i],t]=1
+      if (i<fv-1) conn[face[i+1],t]=1 else conn[face[0],t]=1
+      conn[k+nv,t]=1
+      t+=1
+    }
+  }
+  mesh.addgrade(2, conn)
+
+  return mesh
+}
+
+fn cross3d(a, b) {
+  return Matrix([ a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0] ])
+}
+
+/** Plots elements of a mesh
+ * @param[in] mesh - mesh to plot
+ * @param[in] sel - selection
+ * @param[in] grade - Grade to show */
+fn plotmesh(mesh, sel, grade) {
+  var g = Graphics([])
+  var glist = []
+  if (islist(grade)) for (q in grade) glist.append(q)
+  else glist.append(grade)
+
+  var vert = mesh.vertexmatrix()
+
+  if (glist.ismember(1)) { // Show lines as cylinders
+    var lines=mesh.connectivitymatrix(0,1)
+    if (issparse(lines)) {
+      var nl = lines.dimensions()[1]
+
+      for (i in 0...nl) {
+        if (isselection(sel) && !sel.isselected(1, i)) continue // Skip unselected components
+        var el = lines.rowindices(i)
+        g.display(cylinder(vert.column(el[0]), vert.column(el[1]), 0.05, 10))
+      }
+    }
+  }
+
+  if (glist.ismember(2)) { // Show faces
+    var faces=mesh.connectivitymatrix(0,2)
+    if (issparse(faces)) {
+      var nf = faces.dimensions()[1]
+      var nnv = 0, nnt = nf // Count number of triangles and vertices generated
+      if (isselection(sel)) nnt=sel.idlistforgrade(2).count()
+
+      var nvert = Matrix(3, 3*nnt) // New array of vertices
+      var norm = Matrix(3, 3*nnt) // New array of normals
+      var tri = Sparse(3*nnt, nnt) // Connectivity
+
+      nnt=0
+      for (i in 0...nf) { // Draw a triangle for each face
+        if (isselection(sel) && !sel.isselected(2, i)) continue // Skip unselected components
+
+        var el = faces.rowindices(i)
+        var v[3]
+        for (p, i in el) v[i]=vert.column(p)
+        var normal=cross3d(v[2]-v[1], v[1]-v[0])
+        if (normal.inner(v[0])<0) {
+          normal=-normal
+        }
+
+        for (j in 0...3) {
+          tri[nnv,nnt]=1
+          nvert.setcolumn(nnv, v[j])
+          norm.setcolumn(nnv, normal)
+          nnv+=1
+        }
+        nnt+=1
+      }
+
+      g.display(TriangleComplex(nvert, norm, [0.5, 0.5, 0.5], tri))
+    }
+
+  }
+
+  return g
+}
+
+/* ********************************
+ * Refinement
+ ******************************** */
+
+// Calculate the midpoint of an edge
+fn midpoint(vertices, edges, i) {
+  var edge = edges.rowindices(i)
+  return 0.5*(vertices.column(edge[0])+vertices.column(edge[1]))
+}
+
+// Swaps elements of an indexable object
+fn swap(e, i, j) {
+  var swp = e[i]; e[i] = e[j]; e[j]=swp
+}
+
+/** Refines a mesh */
+fn refinemesh(m) {
+  var vertices = m.vertexmatrix()
+  var edges = m.connectivitymatrix(0, 1)
+  if (isnil(edges)) { // If no edges are present, we should try to add them
+    m.addgrade(1)
+    edges = m.connectivitymatrix(0, 1)
+    if (isnil(edges)) { print "Failed to add edges"; return }
+  }
+  var faces = m.connectivitymatrix(0, 2)
+
+  // Identify number of vertices, edges and faces in the old mesh
+  var dim = vertices.dimensions()[0]
+  var nv = vertices.dimensions()[1]
+  var nl = edges.dimensions()[1]
+  var nf = faces.dimensions()[1]
+
+  var new = Mesh()
+
+  // Each refined edge contributes a new vertex
+  var newvertices = Matrix(dim, nv+nl)
+  for (i in 0...nv) newvertices.setcolumn(i, vertices.column(i))
+  for (i in 0...nl) {
+    newvertices.setcolumn(nv+i, midpoint(vertices, edges, i))
+  }
+  new.setvertexmatrix(newvertices)
+
+  // Each edge becomes two edges
+  var newedges = Sparse(nv+nl, nl) // Size is automatically updated
+  var iedge = nl
+  for (i in 0...nl) {
+    var edge = edges.rowindices(i)
+    newedges[edge[0], i]=1   // ] Edge 0
+    newedges[nv+i, i]=1      // ]
+
+    newedges[nv+i, iedge]=1     // ] Edge 1
+    newedges[edge[1], iedge]=1  // ]
+    iedge+=1
+  }
+
+  // Refine faces if present. Creates a canonical order for the face
+  /*         a (e0[0])
+           /   \
+    e0   x ---  y  e1
+        /  \ /  \
+e0[1] b --- z -- c
+            e2
+  */
+  var newfaces = Sparse(nv+nl, 4*nf)
+  var iface = nf // Count over new triangles
+  if (!isnil(faces)) {
+    var faceedge = m.connectivitymatrix(1,2)
+
+    for (i in 0...nf) {
+      var fvert = faces.rowindices(i) // Vertices in this face
+      var fedge = faceedge.rowindices(i) // Edges in this face
+
+      var evert[3] // Vertices for each edge
+      for (f, i in fedge) evert[i]=edges.rowindices(f)
+      // evert 0 defines vertices a and b
+      var va=evert[0][0], vb=evert[0][1], vc=evert[1][0]
+      if (evert[0].ismember(vc)) vc = evert[1][1]
+      // The vertices are now in canonical order
+
+      // does edge 1 connect with a? if not swap
+      if (!evert[1].ismember(va)) swap(fedge, 1, 2)
+      // The edges are now in a canonical order, so that evert[1] connects to the first element of evert[0]
+      var vx = nv+fedge[0], vy = nv+fedge[1], vz = nv+fedge[2]
+
+      // Triangle a-x-y
+      newfaces[va,i]=1; newfaces[vx,i]=1; newfaces[vy,i]=1
+      // Triangle b-x-z
+      newfaces[vb,iface]=1; newfaces[vx,iface]=1; newfaces[vz,iface]=1; iface+=1
+      // Triangle c-y-z
+      newfaces[vc,iface]=1; newfaces[vy,iface]=1; newfaces[vz,iface]=1; iface+=1
+      // Triangle x-y-z
+      newfaces[vx,iface]=1; newfaces[vy,iface]=1; newfaces[vz,iface]=1; iface+=1
+
+      // Edge x-y
+      newedges[vx, iedge]=1; newedges[vy, iedge]=1; iedge+=1
+      // Edge x-z
+      newedges[vx, iedge]=1; newedges[vz, iedge]=1; iedge+=1
+      // Edge y-z
+      newedges[vy, iedge]=1; newedges[vz, iedge]=1; iedge+=1
+    }
+  }
+
+  new.addgrade(1, newedges)
+  new.addgrade(2, newfaces)
+
+  return new
+}

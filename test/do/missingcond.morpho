@@ -1,0 +1,5 @@
+// Missing condition
+
+var i=0
+do { } while
+// expect error 'WhlMssngLftPrn'

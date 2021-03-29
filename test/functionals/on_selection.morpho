@@ -1,0 +1,42 @@
+// Test functional calculations on a selection
+
+var m = Mesh("square.mesh")
+
+fn f(x,y,z) {
+  return y>0.5
+}
+
+var s = Selection(m, f)
+print s // expect: <Selection>
+
+fn phi(x,y,z) {
+  return x+y+z
+}
+
+fn gradphi(x,y,z) {
+  return Matrix([1,1,1])
+}
+
+var lp = ScalarPotential(phi, gradphi)
+
+print lp.integrand(m)
+// expect: [ 0 1 1 2 ]
+
+print lp.integrand(m, s)
+// expect: [ 0 0 1 2 ]
+
+print lp.total(m)
+// expect: 4
+
+print lp.total(m, s)
+// expect: 3
+
+print lp.gradient(m)
+// expect: [ 1 1 1 1 ]
+// expect: [ 1 1 1 1 ]
+// expect: [ 1 1 1 1 ]
+
+print lp.gradient(m, s)
+// expect: [ 0 0 1 1 ]
+// expect: [ 0 0 1 1 ]
+// expect: [ 0 0 1 1 ]

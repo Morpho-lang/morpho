@@ -1,0 +1,12 @@
+// Multiple variable declarations with one var
+
+var a=1,b=2,c[3]=[1,2,3]
+
+print a
+// expect: 1
+
+print b
+// expect: 2
+
+print c[2]
+// expect: 3

@@ -1,0 +1,155 @@
+\hypertarget{common_8h}{}\doxysection{utils/common.h File Reference}
+\label{common_8h}\index{utils/common.h@{utils/common.h}}
+
+
+Morpho virtual machine.  
+
+
+{\ttfamily \#include $<$stddef.\+h$>$}\newline
+{\ttfamily \#include $<$stdarg.\+h$>$}\newline
+{\ttfamily \#include $<$math.\+h$>$}\newline
+{\ttfamily \#include $<$float.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}value.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}object.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}error.\+h\char`\"{}}\newline
+\doxysubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{common_8h_ab9d9a1a371e13099b5288c7d3bc7544f}\label{common_8h_ab9d9a1a371e13099b5288c7d3bc7544f}} 
+\#define {\bfseries C\+O\+M\+M\+O\+N\+\_\+\+N\+I\+L\+S\+T\+R\+I\+NG}~\char`\"{}nil\char`\"{}
+\item 
+\mbox{\Hypertarget{common_8h_a1ef0f3e8b0d4aff1abe2aa73c6046c6e}\label{common_8h_a1ef0f3e8b0d4aff1abe2aa73c6046c6e}} 
+\#define {\bfseries C\+O\+M\+M\+O\+N\+\_\+\+T\+R\+U\+E\+S\+T\+R\+I\+NG}~\char`\"{}true\char`\"{}
+\item 
+\mbox{\Hypertarget{common_8h_a5f3d9ec4cacfa05b9e04824e49930a8f}\label{common_8h_a5f3d9ec4cacfa05b9e04824e49930a8f}} 
+\#define {\bfseries C\+O\+M\+M\+O\+N\+\_\+\+F\+A\+L\+S\+E\+S\+T\+R\+I\+NG}~\char`\"{}false\char`\"{}
+\item 
+\#define \mbox{\hyperlink{common_8h_a214c717b2e51e1993a749ac99df7de58}{E\+Q\+U\+AL}}~0
+\begin{DoxyCompactList}\small\item\em Compares two values. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{common_8h_a15627a08ed52bf7684467fa15c44a97e}\label{common_8h_a15627a08ed52bf7684467fa15c44a97e}} 
+\#define {\bfseries N\+O\+T\+E\+Q\+U\+AL}~1
+\item 
+\mbox{\Hypertarget{common_8h_af6d52ec1a7a4fa3eedd581f39bd0b006}\label{common_8h_af6d52ec1a7a4fa3eedd581f39bd0b006}} 
+\#define {\bfseries B\+I\+G\+G\+ER}~1
+\item 
+\mbox{\Hypertarget{common_8h_aac275767d3931bb4649e508153721044}\label{common_8h_aac275767d3931bb4649e508153721044}} 
+\#define {\bfseries S\+M\+A\+L\+L\+ER}~-\/1
+\item 
+\#define \mbox{\hyperlink{common_8h_ae1d894154e2ffdea8f30a803fc67597e}{M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+E\+Q\+U\+AL}}(a,  b)~(!morpho\+\_\+comparevalue(a,b))
+\item 
+\#define \mbox{\hyperlink{common_8h_a42c8b8cc13bfc29bc54d0f06d67cf548}{M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+S\+A\+ME}}(a,  b)~(morpho\+\_\+comparevaluesame(a,b))
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{common_8h_a8aece40ee6e0b37625c431605ecbd378}{morpho\+\_\+printvalue}} (\mbox{\hyperlink{structvalue}{value}} v)
+\begin{DoxyCompactList}\small\item\em Prints a value. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{common_8h_a614723b11d9104c019790a13ab80f1e8}\label{common_8h_a614723b11d9104c019790a13ab80f1e8}} 
+\mbox{\hyperlink{structvalue}{value}} {\bfseries morpho\+\_\+concatenatestringvalues} (int nval, \mbox{\hyperlink{structvalue}{value}} $\ast$v)
+\item 
+char $\ast$ \mbox{\hyperlink{common_8h_a57e5f9871e5969ca10cbdeef9d7a95bb}{morpho\+\_\+strdup}} (char $\ast$string)
+\begin{DoxyCompactList}\small\item\em Duplicates a string. \end{DoxyCompactList}\item 
+unsigned int \mbox{\hyperlink{common_8h_a8171750768fef3627fb2c84f5e7f3e14}{morpho\+\_\+powerof2ceiling}} (unsigned int n)
+\begin{DoxyCompactList}\small\item\em Computes the nearest power of 2 above an integer. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{common_8h_ab814f9027e350c71b4286bb14b00a96a}\label{common_8h_ab814f9027e350c71b4286bb14b00a96a}} 
+bool {\bfseries morpho\+\_\+isdirectory} (const char $\ast$path)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Morpho virtual machine. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Macro Definition Documentation}
+\mbox{\Hypertarget{common_8h_a214c717b2e51e1993a749ac99df7de58}\label{common_8h_a214c717b2e51e1993a749ac99df7de58}} 
+\index{common.h@{common.h}!EQUAL@{EQUAL}}
+\index{EQUAL@{EQUAL}!common.h@{common.h}}
+\doxysubsubsection{\texorpdfstring{EQUAL}{EQUAL}}
+{\footnotesize\ttfamily \#define E\+Q\+U\+AL~0}
+
+
+
+Compares two values. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em a} & value to compare \\
+\hline
+{\em b} & value to compare \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 if a and b are equal, a positive number if b$>$a and a negative number if a$<$b 
+\end{DoxyReturn}
+\mbox{\Hypertarget{common_8h_ae1d894154e2ffdea8f30a803fc67597e}\label{common_8h_ae1d894154e2ffdea8f30a803fc67597e}} 
+\index{common.h@{common.h}!MORPHO\_ISEQUAL@{MORPHO\_ISEQUAL}}
+\index{MORPHO\_ISEQUAL@{MORPHO\_ISEQUAL}!common.h@{common.h}}
+\doxysubsubsection{\texorpdfstring{MORPHO\_ISEQUAL}{MORPHO\_ISEQUAL}}
+{\footnotesize\ttfamily \#define M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+E\+Q\+U\+AL(\begin{DoxyParamCaption}\item[{}]{a,  }\item[{}]{b }\end{DoxyParamCaption})~(!morpho\+\_\+comparevalue(a,b))}
+
+Macros to compare values ~\newline
+ Use this one to carefully compare the values in each object \mbox{\Hypertarget{common_8h_a42c8b8cc13bfc29bc54d0f06d67cf548}\label{common_8h_a42c8b8cc13bfc29bc54d0f06d67cf548}} 
+\index{common.h@{common.h}!MORPHO\_ISSAME@{MORPHO\_ISSAME}}
+\index{MORPHO\_ISSAME@{MORPHO\_ISSAME}!common.h@{common.h}}
+\doxysubsubsection{\texorpdfstring{MORPHO\_ISSAME}{MORPHO\_ISSAME}}
+{\footnotesize\ttfamily \#define M\+O\+R\+P\+H\+O\+\_\+\+I\+S\+S\+A\+ME(\begin{DoxyParamCaption}\item[{}]{a,  }\item[{}]{b }\end{DoxyParamCaption})~(morpho\+\_\+comparevaluesame(a,b))}
+
+Use this one where we want to check the values refer to the same object 
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{common_8h_a8171750768fef3627fb2c84f5e7f3e14}\label{common_8h_a8171750768fef3627fb2c84f5e7f3e14}} 
+\index{common.h@{common.h}!morpho\_powerof2ceiling@{morpho\_powerof2ceiling}}
+\index{morpho\_powerof2ceiling@{morpho\_powerof2ceiling}!common.h@{common.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_powerof2ceiling()}{morpho\_powerof2ceiling()}}
+{\footnotesize\ttfamily unsigned int morpho\+\_\+powerof2ceiling (\begin{DoxyParamCaption}\item[{unsigned int}]{n }\end{DoxyParamCaption})}
+
+
+
+Computes the nearest power of 2 above an integer. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em n} & An integer \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Nearest power of 2 above n See\+: \href{http://graphics.stanford.edu/~seander/bithacks.html\#RoundUpPowerOf2Float}{\texttt{ http\+://graphics.\+stanford.\+edu/$\sim$seander/bithacks.\+html\#\+Round\+Up\+Power\+Of2\+Float}} 
+\end{DoxyReturn}
+\mbox{\Hypertarget{common_8h_a8aece40ee6e0b37625c431605ecbd378}\label{common_8h_a8aece40ee6e0b37625c431605ecbd378}} 
+\index{common.h@{common.h}!morpho\_printvalue@{morpho\_printvalue}}
+\index{morpho\_printvalue@{morpho\_printvalue}!common.h@{common.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_printvalue()}{morpho\_printvalue()}}
+{\footnotesize\ttfamily void morpho\+\_\+printvalue (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structvalue}{value}}}]{v }\end{DoxyParamCaption})}
+
+
+
+Prints a value. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em v} & The value to print \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{common_8h_a57e5f9871e5969ca10cbdeef9d7a95bb}\label{common_8h_a57e5f9871e5969ca10cbdeef9d7a95bb}} 
+\index{common.h@{common.h}!morpho\_strdup@{morpho\_strdup}}
+\index{morpho\_strdup@{morpho\_strdup}!common.h@{common.h}}
+\doxysubsubsection{\texorpdfstring{morpho\_strdup()}{morpho\_strdup()}}
+{\footnotesize\ttfamily char$\ast$ morpho\+\_\+strdup (\begin{DoxyParamCaption}\item[{char $\ast$}]{string }\end{DoxyParamCaption})}
+
+
+
+Duplicates a string. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em string} & String to duplicate \\
+\hline
+\end{DoxyParams}
+\begin{DoxyWarning}{Warning}
+Caller should call M\+A\+L\+L\+O\+C\+\_\+\+F\+R\+EE on the allocated string 
+\end{DoxyWarning}

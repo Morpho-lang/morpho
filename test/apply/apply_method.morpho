@@ -1,0 +1,23 @@
+// Apply a method
+
+class Blob {
+  init(x) {
+    self.a = x
+  }
+
+  blip(x) {
+    return self.a+x^2
+  }
+}
+
+var a = Blob(0.5)
+
+print a.blip(0.5)
+// expect: 0.75
+
+print apply(a.blip, 0.1)
+// expect: 0.51
+
+var p = a.blip
+print apply(p, 0.1)
+// expect: 0.51

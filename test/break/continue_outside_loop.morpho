@@ -1,0 +1,4 @@
+// Continue outside of loop
+
+continue
+// expect error 'CntOtsdLp'

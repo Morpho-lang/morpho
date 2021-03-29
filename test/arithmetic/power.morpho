@@ -1,0 +1,20 @@
+// Test power operator
+print 2^2
+// expect: 4
+
+print 2^3^2
+// expect: 512
+
+// Check both integer and float operands work
+print 2.0^3.0
+// expect: 8
+
+print 2.0^3
+// expect: 8
+
+print 2^3.0
+// expect: 8
+
+// Check precedence relative to unary operator
+print -1^2
+// expect: 1

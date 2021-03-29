@@ -1,0 +1,14 @@
+// Dictionary literals
+
+var mass = { "Capital" : "Boston", "Population" : 6892503 }
+
+print mass // expect: { Population : 6892503 , Capital : Boston }
+
+print mass["Capital"] // expect: Boston
+print mass["Population"] // expect: 6892503
+
+var shft = { 1: 2, 2: 3, 3: 4}
+
+print shft[1] // expect: 2
+print shft[2] // expect: 3
+print shft[3] // expect: 4

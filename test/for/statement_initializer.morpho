@@ -1,0 +1,4 @@
+// Initializer must be a statement
+for ({}; a < 2; a = a + 1) {}
+
+// expect error 'ExpExpr'

@@ -1,0 +1,96 @@
+\hypertarget{cli_8c}{}\doxysection{interface/cli.c File Reference}
+\label{cli_8c}\index{interface/cli.c@{interface/cli.c}}
+
+
+Command line interface.  
+
+
+{\ttfamily \#include $<$time.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}cli.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}parse.\+h\char`\"{}}\newline
+\doxysubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{cli_8c_ac82647b356c87cf1dc9538843731c427}\label{cli_8c_ac82647b356c87cf1dc9538843731c427}} 
+\#define {\bfseries C\+L\+I\+\_\+\+B\+U\+F\+F\+E\+R\+S\+I\+ZE}~1024
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{cli_8c_a51ec6e3dedad09823acc96ce9a7a82bf}{cli\+\_\+reporterror}} (\mbox{\hyperlink{structerror}{error}} $\ast$err, vm $\ast$v)
+\item 
+bool \mbox{\hyperlink{cli_8c_a333d0bdf111e94209707a57160a0fc6d}{cli\+\_\+lex}} (char $\ast$in, void $\ast$$\ast$ref, \mbox{\hyperlink{structlinedit__token}{linedit\+\_\+token}} $\ast$out)
+\item 
+bool \mbox{\hyperlink{cli_8c_a384fc6feca8cd6208df68f3d4223c846}{cli\+\_\+complete}} (char $\ast$in, \mbox{\hyperlink{structlinedit__stringlist}{linedit\+\_\+stringlist}} $\ast$c)
+\item 
+void \mbox{\hyperlink{cli_8c_ab3a0ecc52ad22167d0acef0eef05eaa1}{cli\+\_\+help}} (\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$edit, char $\ast$query, \mbox{\hyperlink{structerror}{error}} $\ast$err, bool avail)
+\item 
+\mbox{\Hypertarget{cli_8c_ad282f105a492315d7872a3edf70b38cb}\label{cli_8c_ad282f105a492315d7872a3edf70b38cb}} 
+void \mbox{\hyperlink{cli_8c_ad282f105a492315d7872a3edf70b38cb}{cli}} (clioptions opt)
+\begin{DoxyCompactList}\small\item\em Provide a command line interface. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{cli_8c_a695f3de173d5304fb73e1c953348ac6e}{cli\+\_\+disassemblewithsrc}} (program $\ast$p, char $\ast$src)
+\item 
+void \mbox{\hyperlink{cli_8c_a7487236f0558ba21876c4e9969c8ba02}{cli\+\_\+run}} (const char $\ast$in, clioptions opt)
+\end{DoxyCompactItemize}
+\doxysubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{linedit_8h_aaef1cefcd4bbbb5de0283d0290f5df16}{linedit\+\_\+color}} \mbox{\hyperlink{cli_8c_a5234a8dd9a15a6d5229516cff9051b84}{cli\+\_\+tokencolors}} \mbox{[}$\,$\mbox{]}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Command line interface. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{cli_8c_a384fc6feca8cd6208df68f3d4223c846}\label{cli_8c_a384fc6feca8cd6208df68f3d4223c846}} 
+\index{cli.c@{cli.c}!cli\_complete@{cli\_complete}}
+\index{cli\_complete@{cli\_complete}!cli.c@{cli.c}}
+\doxysubsubsection{\texorpdfstring{cli\_complete()}{cli\_complete()}}
+{\footnotesize\ttfamily bool cli\+\_\+complete (\begin{DoxyParamCaption}\item[{char $\ast$}]{in,  }\item[{\mbox{\hyperlink{structlinedit__stringlist}{linedit\+\_\+stringlist}} $\ast$}]{c }\end{DoxyParamCaption})}
+
+Autocomplete function \mbox{\Hypertarget{cli_8c_a695f3de173d5304fb73e1c953348ac6e}\label{cli_8c_a695f3de173d5304fb73e1c953348ac6e}} 
+\index{cli.c@{cli.c}!cli\_disassemblewithsrc@{cli\_disassemblewithsrc}}
+\index{cli\_disassemblewithsrc@{cli\_disassemblewithsrc}!cli.c@{cli.c}}
+\doxysubsubsection{\texorpdfstring{cli\_disassemblewithsrc()}{cli\_disassemblewithsrc()}}
+{\footnotesize\ttfamily void cli\+\_\+disassemblewithsrc (\begin{DoxyParamCaption}\item[{program $\ast$}]{p,  }\item[{char $\ast$}]{src }\end{DoxyParamCaption})}
+
+Disassembles the program showing syntax colored lines of source \mbox{\Hypertarget{cli_8c_ab3a0ecc52ad22167d0acef0eef05eaa1}\label{cli_8c_ab3a0ecc52ad22167d0acef0eef05eaa1}} 
+\index{cli.c@{cli.c}!cli\_help@{cli\_help}}
+\index{cli\_help@{cli\_help}!cli.c@{cli.c}}
+\doxysubsubsection{\texorpdfstring{cli\_help()}{cli\_help()}}
+{\footnotesize\ttfamily void cli\+\_\+help (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structlineditor}{lineditor}} $\ast$}]{edit,  }\item[{char $\ast$}]{query,  }\item[{\mbox{\hyperlink{structerror}{error}} $\ast$}]{err,  }\item[{bool}]{avail }\end{DoxyParamCaption})}
+
+Interactive help \mbox{\Hypertarget{cli_8c_a333d0bdf111e94209707a57160a0fc6d}\label{cli_8c_a333d0bdf111e94209707a57160a0fc6d}} 
+\index{cli.c@{cli.c}!cli\_lex@{cli\_lex}}
+\index{cli\_lex@{cli\_lex}!cli.c@{cli.c}}
+\doxysubsubsection{\texorpdfstring{cli\_lex()}{cli\_lex()}}
+{\footnotesize\ttfamily bool cli\+\_\+lex (\begin{DoxyParamCaption}\item[{char $\ast$}]{in,  }\item[{void $\ast$$\ast$}]{ref,  }\item[{\mbox{\hyperlink{structlinedit__token}{linedit\+\_\+token}} $\ast$}]{out }\end{DoxyParamCaption})}
+
+A tokenizer for syntax coloring that leverages the parser\textquotesingle{}s lexer \mbox{\Hypertarget{cli_8c_a51ec6e3dedad09823acc96ce9a7a82bf}\label{cli_8c_a51ec6e3dedad09823acc96ce9a7a82bf}} 
+\index{cli.c@{cli.c}!cli\_reporterror@{cli\_reporterror}}
+\index{cli\_reporterror@{cli\_reporterror}!cli.c@{cli.c}}
+\doxysubsubsection{\texorpdfstring{cli\_reporterror()}{cli\_reporterror()}}
+{\footnotesize\ttfamily void cli\+\_\+reporterror (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structerror}{error}} $\ast$}]{err,  }\item[{vm $\ast$}]{v }\end{DoxyParamCaption})}
+
+Report an error if one has occurred. \mbox{\Hypertarget{cli_8c_a7487236f0558ba21876c4e9969c8ba02}\label{cli_8c_a7487236f0558ba21876c4e9969c8ba02}} 
+\index{cli.c@{cli.c}!cli\_run@{cli\_run}}
+\index{cli\_run@{cli\_run}!cli.c@{cli.c}}
+\doxysubsubsection{\texorpdfstring{cli\_run()}{cli\_run()}}
+{\footnotesize\ttfamily void cli\+\_\+run (\begin{DoxyParamCaption}\item[{const char $\ast$}]{in,  }\item[{clioptions}]{opt }\end{DoxyParamCaption})}
+
+Loads and runs a file. 
+
+\doxysubsection{Variable Documentation}
+\mbox{\Hypertarget{cli_8c_a5234a8dd9a15a6d5229516cff9051b84}\label{cli_8c_a5234a8dd9a15a6d5229516cff9051b84}} 
+\index{cli.c@{cli.c}!cli\_tokencolors@{cli\_tokencolors}}
+\index{cli\_tokencolors@{cli\_tokencolors}!cli.c@{cli.c}}
+\doxysubsubsection{\texorpdfstring{cli\_tokencolors}{cli\_tokencolors}}
+{\footnotesize\ttfamily \mbox{\hyperlink{linedit_8h_aaef1cefcd4bbbb5de0283d0290f5df16}{linedit\+\_\+color}} cli\+\_\+tokencolors\mbox{[}$\,$\mbox{]}}
+
+Define colors for different token types 

@@ -1,0 +1,29 @@
+// Check that assignment works within closures
+
+var f
+var g
+
+{
+  var local = "local" // A local variable
+  fn f_() { // Set the value of the local variable
+    print local
+    local = "after f"
+    print local
+  }
+  f = f_
+
+  fn g_() {
+    print local
+    local = "after g"
+    print local
+  }
+  g = g_
+}
+
+f()
+// expect: local
+// expect: after f
+
+g()
+// expect: after f
+// expect: after g

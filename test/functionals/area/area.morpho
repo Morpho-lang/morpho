@@ -1,0 +1,14 @@
+
+var m = Mesh("triangle.mesh")
+var a = Area()
+
+print m
+// expect: <Mesh: 3 vertices>
+
+print a.integrand(m)
+// expect: [ 1.29904 ]
+
+print a.gradient(m)
+// expect: [ 0.866025 -0.433013 -0.433013 ]
+// expect: [ 0 0.75 -0.75 ]
+// expect: [ 0 0 0 ]

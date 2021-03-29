@@ -1,0 +1,9 @@
+// Selectively import symbols from a module
+import color for Color, HueMap
+
+var gray = Color(0.5,0.5,0.5)
+
+print gray // expect: <Color>
+print gray.red(0.1) // expect: 0.5
+print gray.green(0.1) // expect: 0.5
+print gray.blue(0.1) // expect: 0.5

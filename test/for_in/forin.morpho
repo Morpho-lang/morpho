@@ -1,0 +1,17 @@
+// For in loops
+
+var a = Matrix([1,2,3,4])
+
+for (var x in a) {
+  print x
+}
+// expect: 1
+// expect: 2
+// expect: 3
+// expect: 4
+
+for (var x in a) print 2*x
+// expect: 2
+// expect: 4
+// expect: 6
+// expect: 8

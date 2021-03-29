@@ -1,0 +1,265 @@
+\hypertarget{core_8h}{}\doxysection{vm/core.h File Reference}
+\label{core_8h}\index{vm/core.h@{vm/core.h}}
+
+
+Data types for core Morpho components.  
+
+
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$stddef.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}error.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}random.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}varray.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}value.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}object.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}common.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}dictionary.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}builtin.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}opcodes.\+h\char`\"{}}\newline
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structcallframe}{callframe}}
+\item 
+struct \mbox{\hyperlink{structdebuginfo}{debuginfo}}
+\item 
+struct \mbox{\hyperlink{structsprogram}{sprogram}}
+\begin{DoxyCompactList}\small\item\em Morpho code program and associated data. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structgraylist}{graylist}}
+\item 
+struct \mbox{\hyperlink{structsvm}{svm}}
+\begin{DoxyCompactList}\small\item\em A Morpho virtual machine and its current state. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{core_8h_a111abdf925176c1cdbcb1e9c3861e069}{E\+N\+C\+O\+DE}}(op,  A,  B,  C)~( ((((unsigned) op) \& 0xff) $<$$<$ 26) $\vert$ ((A \& 0xff) $<$$<$ 18) $\vert$ ((B \& 0xff) $<$$<$ 9) $\vert$ (C \& 0xff) )
+\item 
+\#define \mbox{\hyperlink{core_8h_a7ccf784cce5505a7a1beec60cb87aeed}{E\+N\+C\+O\+D\+EC}}(op,  A,  Bc,  B,  Cc,  C)~( ((((unsigned) op) \& 0xff) $<$$<$ 26) $\vert$ ((A \& 0xff) $<$$<$ 18) $\vert$ ((Bc \& 0x1) $<$$<$ 17) $\vert$ ((B \& 0xff) $<$$<$ 9) $\vert$ ((Cc \& 0x1) $<$$<$ 8) $\vert$ (C \& 0xff) )
+\item 
+\#define \mbox{\hyperlink{core_8h_a129ed4b778c360d6efca1eb66c89a76f}{E\+N\+C\+O\+D\+E\+\_\+\+L\+O\+NG}}(op,  A,  Bx)~( ((((unsigned) op) \& 0xff) $<$$<$ 26) $\vert$ ((A \& 0xff) $<$$<$ 18) $\vert$ (Bx \& 0xffff) )
+\item 
+\#define \mbox{\hyperlink{core_8h_aec1168ed06eb5b4ca80f20d55cfb62e7}{E\+N\+C\+O\+D\+E\+\_\+\+L\+O\+N\+G\+F\+L\+A\+GS}}(op,  A,  f,  g,  Bx)~( ((((unsigned) op) \& 0xff) $<$$<$ 26) $\vert$ ((A \& 0xff) $<$$<$ 18) $\vert$ ((f \& 0x1) $<$$<$ 17) $\vert$ ((g \& 0x1) $<$$<$ 16) $\vert$ (Bx \& 0xffff) )
+\item 
+\#define \mbox{\hyperlink{core_8h_a642dbaaf3eb6ae057e0731346509c2b7}{E\+N\+C\+O\+D\+E\+\_\+\+S\+I\+N\+G\+LE}}(op,  A)~( ((((unsigned) op) \& 0xff) $<$$<$ 26) $\vert$ ((A \& 0xff) $<$$<$ 18))
+\item 
+\#define \mbox{\hyperlink{core_8h_a3c39c109220797db7354d77b94c47afd}{E\+N\+C\+O\+D\+E\+\_\+\+D\+O\+U\+B\+LE}}(op,  A,  Bc,  B)~( ((((unsigned) op) \& 0xff) $<$$<$ 26) $\vert$ ((A \& 0xff) $<$$<$ 18) $\vert$ ((Bc \& 0x1) $<$$<$ 17) $\vert$ ((B \& 0xff) $<$$<$ 9) )
+\item 
+\#define \mbox{\hyperlink{core_8h_accbb311cba3fd4c27634ed5fb7024ca1}{E\+N\+C\+O\+D\+E\+\_\+\+B\+Y\+TE}}(op)~((((unsigned) op) \& 0xff) $<$$<$ 26)
+\item 
+\#define \mbox{\hyperlink{core_8h_a10e72c52b59622fc96d324ed37676b6e}{E\+N\+C\+O\+D\+E\+\_\+\+E\+M\+P\+T\+Y\+O\+P\+E\+R\+A\+ND}}~0
+\item 
+\#define \mbox{\hyperlink{core_8h_a7f95f0dfa928fbd995c2ee0c4e5d1572}{D\+E\+C\+O\+D\+E\+\_\+\+OP}}(x)~(x $>$$>$ 26)
+\item 
+\#define \mbox{\hyperlink{core_8h_a77f39d2bbf959a273ecb1977a2931570}{D\+E\+C\+O\+D\+E\+\_\+A}}(x)~((x$>$$>$18) \& (0xff))
+\item 
+\#define \mbox{\hyperlink{core_8h_aee403e3f4fe820e9c2bfb8ac747e2195}{D\+E\+C\+O\+D\+E\+\_\+B}}(x)~((x$>$$>$9) \& (0xff))
+\item 
+\#define \mbox{\hyperlink{core_8h_a07601f041e0c0beb5f94e1f0f65ab544}{D\+E\+C\+O\+D\+E\+\_\+C}}(x)~(x \& 0xff)
+\item 
+\#define \mbox{\hyperlink{core_8h_aff19964c2a0cc7251b055979c0983eb1}{D\+E\+C\+O\+D\+E\+\_\+\+I\+S\+B\+C\+O\+N\+S\+T\+A\+NT}}(x)~((x$>$$>$17) \& (0x1))
+\item 
+\#define \mbox{\hyperlink{core_8h_a78142911797bf48827fca94bea2d0d2e}{D\+E\+C\+O\+D\+E\+\_\+\+I\+S\+C\+C\+O\+N\+S\+T\+A\+NT}}(x)~((x$>$$>$8) \& (0x1))
+\item 
+\#define \mbox{\hyperlink{core_8h_ad732f67ce60f3bc2bae95f0e9804b551}{D\+E\+C\+O\+D\+E\+\_\+\+Bx}}(x)~(x \& 0xffff)
+\item 
+\#define \mbox{\hyperlink{core_8h_aa8ae400e468cc100e2f6f8436106da91}{D\+E\+C\+O\+D\+E\+\_\+s\+Bx}}(x)~((short) (x \& 0xffff))
+\item 
+\#define \mbox{\hyperlink{core_8h_a1a7b63899eb9bead87941433752705dc}{D\+E\+C\+O\+D\+E\+\_\+F}}(x)~((bool) ((x$>$$>$17) \& (0x1)))
+\item 
+\mbox{\Hypertarget{core_8h_afdaf29e02440087a0c8ef4ae3dc12872}\label{core_8h_afdaf29e02440087a0c8ef4ae3dc12872}} 
+\#define {\bfseries D\+E\+C\+O\+D\+E\+\_\+G}(x)~((bool) ((x$>$$>$16) \& (0x1)))
+\item 
+\mbox{\Hypertarget{core_8h_ac5a5309d70ae64b3012891eee2be0666}\label{core_8h_ac5a5309d70ae64b3012891eee2be0666}} 
+\#define {\bfseries O\+P\+C\+O\+DE}(name)~O\+P\+\_\+\#\#name,
+\item 
+\mbox{\Hypertarget{core_8h_a28f5933fe84811cb2214195302c9d1c1}\label{core_8h_a28f5933fe84811cb2214195302c9d1c1}} 
+\#define \mbox{\hyperlink{core_8h_a28f5933fe84811cb2214195302c9d1c1}{M\+O\+R\+P\+H\+O\+\_\+\+M\+A\+X\+R\+E\+G\+I\+S\+T\+E\+RS}}~255
+\begin{DoxyCompactList}\small\item\em Maximum number of registers per call frame. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{core_8h_a6dc3df23a9dd55dbdeb4f273ec320802}\label{core_8h_a6dc3df23a9dd55dbdeb4f273ec320802}} 
+\#define \mbox{\hyperlink{core_8h_a6dc3df23a9dd55dbdeb4f273ec320802}{V\+M\+\_\+\+M\+A\+X\+I\+M\+U\+M\+R\+E\+G\+I\+S\+T\+E\+R\+N\+U\+M\+B\+ER}}~255
+\begin{DoxyCompactList}\small\item\em Highest register addressable in a window. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{core_8h_a1857e7fabd57d5c6372d5f59743a86a5}\label{core_8h_a1857e7fabd57d5c6372d5f59743a86a5}} 
+typedef struct \mbox{\hyperlink{structsprogram}{sprogram}} {\bfseries program}
+\item 
+\mbox{\Hypertarget{core_8h_a3dc34c9c6f748a796b7d5a6d8977c2f1}\label{core_8h_a3dc34c9c6f748a796b7d5a6d8977c2f1}} 
+typedef struct \mbox{\hyperlink{structsvm}{svm}} {\bfseries vm}
+\item 
+typedef unsigned int \mbox{\hyperlink{core_8h_a9ae6286de740e9f230d1a007e1b1cccd}{instruction}}
+\begin{DoxyCompactList}\small\item\em A Morpho instruction. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{core_8h_a107785ee96e2333686235ba7e0b869b6}\label{core_8h_a107785ee96e2333686235ba7e0b869b6}} 
+typedef indx \mbox{\hyperlink{core_8h_a107785ee96e2333686235ba7e0b869b6}{instructionindx}}
+\begin{DoxyCompactList}\small\item\em Index into instructions. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{core_8h_a299fc707c775371e0b2b0495ccb6158e}\label{core_8h_a299fc707c775371e0b2b0495ccb6158e}} 
+enum {\bfseries opcode} 
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{core_8h_a87f0bc27ee64006e024507db646c2a76}\label{core_8h_a87f0bc27ee64006e024507db646c2a76}} 
+{\bfseries D\+E\+C\+L\+A\+R\+E\+\_\+\+V\+A\+R\+R\+AY} (\mbox{\hyperlink{core_8h_a9ae6286de740e9f230d1a007e1b1cccd}{instruction}}, \mbox{\hyperlink{core_8h_a9ae6286de740e9f230d1a007e1b1cccd}{instruction}})
+\item 
+void \mbox{\hyperlink{core_8h_a95e859e0cd6b4781223c3c2cc5c227d3}{compile\+\_\+initialize}} (void)
+\item 
+void \mbox{\hyperlink{core_8h_a38742fac5498809cee23aaba47b16ee3}{compile\+\_\+finalize}} (void)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Data types for core Morpho components. 
+
+\begin{DoxyAuthor}{Author}
+T J Atherton 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Macro Definition Documentation}
+\mbox{\Hypertarget{core_8h_a77f39d2bbf959a273ecb1977a2931570}\label{core_8h_a77f39d2bbf959a273ecb1977a2931570}} 
+\index{core.h@{core.h}!DECODE\_A@{DECODE\_A}}
+\index{DECODE\_A@{DECODE\_A}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{DECODE\_A}{DECODE\_A}}
+{\footnotesize\ttfamily \#define D\+E\+C\+O\+D\+E\+\_\+A(\begin{DoxyParamCaption}\item[{}]{x }\end{DoxyParamCaption})~((x$>$$>$18) \& (0xff))}
+
+Decode operand A \mbox{\Hypertarget{core_8h_aee403e3f4fe820e9c2bfb8ac747e2195}\label{core_8h_aee403e3f4fe820e9c2bfb8ac747e2195}} 
+\index{core.h@{core.h}!DECODE\_B@{DECODE\_B}}
+\index{DECODE\_B@{DECODE\_B}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{DECODE\_B}{DECODE\_B}}
+{\footnotesize\ttfamily \#define D\+E\+C\+O\+D\+E\+\_\+B(\begin{DoxyParamCaption}\item[{}]{x }\end{DoxyParamCaption})~((x$>$$>$9) \& (0xff))}
+
+Decode operand B \mbox{\Hypertarget{core_8h_ad732f67ce60f3bc2bae95f0e9804b551}\label{core_8h_ad732f67ce60f3bc2bae95f0e9804b551}} 
+\index{core.h@{core.h}!DECODE\_Bx@{DECODE\_Bx}}
+\index{DECODE\_Bx@{DECODE\_Bx}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{DECODE\_Bx}{DECODE\_Bx}}
+{\footnotesize\ttfamily \#define D\+E\+C\+O\+D\+E\+\_\+\+Bx(\begin{DoxyParamCaption}\item[{}]{x }\end{DoxyParamCaption})~(x \& 0xffff)}
+
+Decode long operand Bx \mbox{\Hypertarget{core_8h_a07601f041e0c0beb5f94e1f0f65ab544}\label{core_8h_a07601f041e0c0beb5f94e1f0f65ab544}} 
+\index{core.h@{core.h}!DECODE\_C@{DECODE\_C}}
+\index{DECODE\_C@{DECODE\_C}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{DECODE\_C}{DECODE\_C}}
+{\footnotesize\ttfamily \#define D\+E\+C\+O\+D\+E\+\_\+C(\begin{DoxyParamCaption}\item[{}]{x }\end{DoxyParamCaption})~(x \& 0xff)}
+
+Decode operand C \mbox{\Hypertarget{core_8h_a1a7b63899eb9bead87941433752705dc}\label{core_8h_a1a7b63899eb9bead87941433752705dc}} 
+\index{core.h@{core.h}!DECODE\_F@{DECODE\_F}}
+\index{DECODE\_F@{DECODE\_F}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{DECODE\_F}{DECODE\_F}}
+{\footnotesize\ttfamily \#define D\+E\+C\+O\+D\+E\+\_\+F(\begin{DoxyParamCaption}\item[{}]{x }\end{DoxyParamCaption})~((bool) ((x$>$$>$17) \& (0x1)))}
+
+Decode flags F and G \mbox{\Hypertarget{core_8h_aff19964c2a0cc7251b055979c0983eb1}\label{core_8h_aff19964c2a0cc7251b055979c0983eb1}} 
+\index{core.h@{core.h}!DECODE\_ISBCONSTANT@{DECODE\_ISBCONSTANT}}
+\index{DECODE\_ISBCONSTANT@{DECODE\_ISBCONSTANT}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{DECODE\_ISBCONSTANT}{DECODE\_ISBCONSTANT}}
+{\footnotesize\ttfamily \#define D\+E\+C\+O\+D\+E\+\_\+\+I\+S\+B\+C\+O\+N\+S\+T\+A\+NT(\begin{DoxyParamCaption}\item[{}]{x }\end{DoxyParamCaption})~((x$>$$>$17) \& (0x1))}
+
+Is Operand B a constant or a register? \mbox{\Hypertarget{core_8h_a78142911797bf48827fca94bea2d0d2e}\label{core_8h_a78142911797bf48827fca94bea2d0d2e}} 
+\index{core.h@{core.h}!DECODE\_ISCCONSTANT@{DECODE\_ISCCONSTANT}}
+\index{DECODE\_ISCCONSTANT@{DECODE\_ISCCONSTANT}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{DECODE\_ISCCONSTANT}{DECODE\_ISCCONSTANT}}
+{\footnotesize\ttfamily \#define D\+E\+C\+O\+D\+E\+\_\+\+I\+S\+C\+C\+O\+N\+S\+T\+A\+NT(\begin{DoxyParamCaption}\item[{}]{x }\end{DoxyParamCaption})~((x$>$$>$8) \& (0x1))}
+
+Is Operand C a constant or a register? \mbox{\Hypertarget{core_8h_a7f95f0dfa928fbd995c2ee0c4e5d1572}\label{core_8h_a7f95f0dfa928fbd995c2ee0c4e5d1572}} 
+\index{core.h@{core.h}!DECODE\_OP@{DECODE\_OP}}
+\index{DECODE\_OP@{DECODE\_OP}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{DECODE\_OP}{DECODE\_OP}}
+{\footnotesize\ttfamily \#define D\+E\+C\+O\+D\+E\+\_\+\+OP(\begin{DoxyParamCaption}\item[{}]{x }\end{DoxyParamCaption})~(x $>$$>$ 26)}
+
+Decode the opcode \mbox{\Hypertarget{core_8h_aa8ae400e468cc100e2f6f8436106da91}\label{core_8h_aa8ae400e468cc100e2f6f8436106da91}} 
+\index{core.h@{core.h}!DECODE\_sBx@{DECODE\_sBx}}
+\index{DECODE\_sBx@{DECODE\_sBx}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{DECODE\_sBx}{DECODE\_sBx}}
+{\footnotesize\ttfamily \#define D\+E\+C\+O\+D\+E\+\_\+s\+Bx(\begin{DoxyParamCaption}\item[{}]{x }\end{DoxyParamCaption})~((short) (x \& 0xffff))}
+
+Decode signed long operand Bx \mbox{\Hypertarget{core_8h_a111abdf925176c1cdbcb1e9c3861e069}\label{core_8h_a111abdf925176c1cdbcb1e9c3861e069}} 
+\index{core.h@{core.h}!ENCODE@{ENCODE}}
+\index{ENCODE@{ENCODE}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{ENCODE}{ENCODE}}
+{\footnotesize\ttfamily \#define E\+N\+C\+O\+DE(\begin{DoxyParamCaption}\item[{}]{op,  }\item[{}]{A,  }\item[{}]{B,  }\item[{}]{C }\end{DoxyParamCaption})~( ((((unsigned) op) \& 0xff) $<$$<$ 26) $\vert$ ((A \& 0xff) $<$$<$ 18) $\vert$ ((B \& 0xff) $<$$<$ 9) $\vert$ (C \& 0xff) )}
+
+Encodes an instruction with operands A, B and C. \mbox{\Hypertarget{core_8h_accbb311cba3fd4c27634ed5fb7024ca1}\label{core_8h_accbb311cba3fd4c27634ed5fb7024ca1}} 
+\index{core.h@{core.h}!ENCODE\_BYTE@{ENCODE\_BYTE}}
+\index{ENCODE\_BYTE@{ENCODE\_BYTE}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{ENCODE\_BYTE}{ENCODE\_BYTE}}
+{\footnotesize\ttfamily \#define E\+N\+C\+O\+D\+E\+\_\+\+B\+Y\+TE(\begin{DoxyParamCaption}\item[{}]{op }\end{DoxyParamCaption})~((((unsigned) op) \& 0xff) $<$$<$ 26)}
+
+Encodes an instruction with no operands \mbox{\Hypertarget{core_8h_a3c39c109220797db7354d77b94c47afd}\label{core_8h_a3c39c109220797db7354d77b94c47afd}} 
+\index{core.h@{core.h}!ENCODE\_DOUBLE@{ENCODE\_DOUBLE}}
+\index{ENCODE\_DOUBLE@{ENCODE\_DOUBLE}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{ENCODE\_DOUBLE}{ENCODE\_DOUBLE}}
+{\footnotesize\ttfamily \#define E\+N\+C\+O\+D\+E\+\_\+\+D\+O\+U\+B\+LE(\begin{DoxyParamCaption}\item[{}]{op,  }\item[{}]{A,  }\item[{}]{Bc,  }\item[{}]{B }\end{DoxyParamCaption})~( ((((unsigned) op) \& 0xff) $<$$<$ 26) $\vert$ ((A \& 0xff) $<$$<$ 18) $\vert$ ((Bc \& 0x1) $<$$<$ 17) $\vert$ ((B \& 0xff) $<$$<$ 9) )}
+
+Encodes an instruction with operands A and B \mbox{\Hypertarget{core_8h_a10e72c52b59622fc96d324ed37676b6e}\label{core_8h_a10e72c52b59622fc96d324ed37676b6e}} 
+\index{core.h@{core.h}!ENCODE\_EMPTYOPERAND@{ENCODE\_EMPTYOPERAND}}
+\index{ENCODE\_EMPTYOPERAND@{ENCODE\_EMPTYOPERAND}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{ENCODE\_EMPTYOPERAND}{ENCODE\_EMPTYOPERAND}}
+{\footnotesize\ttfamily \#define E\+N\+C\+O\+D\+E\+\_\+\+E\+M\+P\+T\+Y\+O\+P\+E\+R\+A\+ND~0}
+
+Encodes an empty operand \mbox{\Hypertarget{core_8h_a129ed4b778c360d6efca1eb66c89a76f}\label{core_8h_a129ed4b778c360d6efca1eb66c89a76f}} 
+\index{core.h@{core.h}!ENCODE\_LONG@{ENCODE\_LONG}}
+\index{ENCODE\_LONG@{ENCODE\_LONG}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{ENCODE\_LONG}{ENCODE\_LONG}}
+{\footnotesize\ttfamily \#define E\+N\+C\+O\+D\+E\+\_\+\+L\+O\+NG(\begin{DoxyParamCaption}\item[{}]{op,  }\item[{}]{A,  }\item[{}]{Bx }\end{DoxyParamCaption})~( ((((unsigned) op) \& 0xff) $<$$<$ 26) $\vert$ ((A \& 0xff) $<$$<$ 18) $\vert$ (Bx \& 0xffff) )}
+
+Encodes an instruction with operand A and long operand Bx \mbox{\Hypertarget{core_8h_aec1168ed06eb5b4ca80f20d55cfb62e7}\label{core_8h_aec1168ed06eb5b4ca80f20d55cfb62e7}} 
+\index{core.h@{core.h}!ENCODE\_LONGFLAGS@{ENCODE\_LONGFLAGS}}
+\index{ENCODE\_LONGFLAGS@{ENCODE\_LONGFLAGS}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{ENCODE\_LONGFLAGS}{ENCODE\_LONGFLAGS}}
+{\footnotesize\ttfamily \#define E\+N\+C\+O\+D\+E\+\_\+\+L\+O\+N\+G\+F\+L\+A\+GS(\begin{DoxyParamCaption}\item[{}]{op,  }\item[{}]{A,  }\item[{}]{f,  }\item[{}]{g,  }\item[{}]{Bx }\end{DoxyParamCaption})~( ((((unsigned) op) \& 0xff) $<$$<$ 26) $\vert$ ((A \& 0xff) $<$$<$ 18) $\vert$ ((f \& 0x1) $<$$<$ 17) $\vert$ ((g \& 0x1) $<$$<$ 16) $\vert$ (Bx \& 0xffff) )}
+
+Encodes an instruction with operand A and long operand Bx \mbox{\Hypertarget{core_8h_a642dbaaf3eb6ae057e0731346509c2b7}\label{core_8h_a642dbaaf3eb6ae057e0731346509c2b7}} 
+\index{core.h@{core.h}!ENCODE\_SINGLE@{ENCODE\_SINGLE}}
+\index{ENCODE\_SINGLE@{ENCODE\_SINGLE}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{ENCODE\_SINGLE}{ENCODE\_SINGLE}}
+{\footnotesize\ttfamily \#define E\+N\+C\+O\+D\+E\+\_\+\+S\+I\+N\+G\+LE(\begin{DoxyParamCaption}\item[{}]{op,  }\item[{}]{A }\end{DoxyParamCaption})~( ((((unsigned) op) \& 0xff) $<$$<$ 26) $\vert$ ((A \& 0xff) $<$$<$ 18))}
+
+Encodes an instruction with operand A \mbox{\Hypertarget{core_8h_a7ccf784cce5505a7a1beec60cb87aeed}\label{core_8h_a7ccf784cce5505a7a1beec60cb87aeed}} 
+\index{core.h@{core.h}!ENCODEC@{ENCODEC}}
+\index{ENCODEC@{ENCODEC}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{ENCODEC}{ENCODEC}}
+{\footnotesize\ttfamily \#define E\+N\+C\+O\+D\+EC(\begin{DoxyParamCaption}\item[{}]{op,  }\item[{}]{A,  }\item[{}]{Bc,  }\item[{}]{B,  }\item[{}]{Cc,  }\item[{}]{C }\end{DoxyParamCaption})~( ((((unsigned) op) \& 0xff) $<$$<$ 26) $\vert$ ((A \& 0xff) $<$$<$ 18) $\vert$ ((Bc \& 0x1) $<$$<$ 17) $\vert$ ((B \& 0xff) $<$$<$ 9) $\vert$ ((Cc \& 0x1) $<$$<$ 8) $\vert$ (C \& 0xff) )}
+
+Encodes an instruction with operands A, B and C also setting the constant flags Bc and Cc 
+
+\doxysubsection{Typedef Documentation}
+\mbox{\Hypertarget{core_8h_a9ae6286de740e9f230d1a007e1b1cccd}\label{core_8h_a9ae6286de740e9f230d1a007e1b1cccd}} 
+\index{core.h@{core.h}!instruction@{instruction}}
+\index{instruction@{instruction}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{instruction}{instruction}}
+{\footnotesize\ttfamily typedef unsigned int \mbox{\hyperlink{core_8h_a9ae6286de740e9f230d1a007e1b1cccd}{instruction}}}
+
+
+
+A Morpho instruction. 
+
+Each instruction fits into a 32 bit unsigned int with the following arrangement 
+\begin{DoxyPre}
+        24      16      8       0
+ .......|.......|.......|.......|
+ **op**                           Opcode (gives 64 instructions)
+       ***A****                   Operand A
+               *        *         Select Constant (set) or Register for operands B \& C
+                ***B**** ***C**** \} Operands B \& C
+               fg**Bx************ \} Operand Bx with two boolean flags f \& g
+               fg*sBx************ \} Signed operand Bx with two boolean flags f \& g
+\end{DoxyPre}
+
+
+Morpho instructions 
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{core_8h_a38742fac5498809cee23aaba47b16ee3}\label{core_8h_a38742fac5498809cee23aaba47b16ee3}} 
+\index{core.h@{core.h}!compile\_finalize@{compile\_finalize}}
+\index{compile\_finalize@{compile\_finalize}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{compile\_finalize()}{compile\_finalize()}}
+{\footnotesize\ttfamily void compile\+\_\+finalize (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+Finalizes the compiler \mbox{\Hypertarget{core_8h_a95e859e0cd6b4781223c3c2cc5c227d3}\label{core_8h_a95e859e0cd6b4781223c3c2cc5c227d3}} 
+\index{core.h@{core.h}!compile\_initialize@{compile\_initialize}}
+\index{compile\_initialize@{compile\_initialize}!core.h@{core.h}}
+\doxysubsubsection{\texorpdfstring{compile\_initialize()}{compile\_initialize()}}
+{\footnotesize\ttfamily void compile\+\_\+initialize (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+Initializes the error handling system 

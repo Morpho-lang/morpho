@@ -1,0 +1,106 @@
+\hypertarget{structsvm}{}\doxysection{svm Struct Reference}
+\label{structsvm}\index{svm@{svm}}
+
+
+A Morpho virtual machine and its current state.  
+
+
+
+
+{\ttfamily \#include $<$core.\+h$>$}
+
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structsvm_a9e12ffe1dabbc1d8a3e61008766bf6a9}\label{structsvm_a9e12ffe1dabbc1d8a3e61008766bf6a9}} 
+program $\ast$ {\bfseries current}
+\item 
+varray\+\_\+value \mbox{\hyperlink{structsvm_a257905339e756ec1f570ae8c42ac5ed3}{globals}}
+\item 
+varray\+\_\+value \mbox{\hyperlink{structsvm_a06e6ba8f81a8415813db35d2084531d2}{stack}}
+\item 
+\mbox{\hyperlink{structcallframe}{callframe}} \mbox{\hyperlink{structsvm_aae6925163d5567b76f5b3b125ac41b2c}{frame}} \mbox{[}\mbox{\hyperlink{build_8h_aa5c1e94e510b989a4c5153c1fcf96e75}{M\+O\+R\+P\+H\+O\+\_\+\+C\+A\+L\+L\+F\+R\+A\+M\+E\+S\+T\+A\+C\+K\+S\+I\+ZE}}\mbox{]}
+\item 
+\mbox{\hyperlink{structvalue}{value}} $\ast$ \mbox{\hyperlink{structsvm_a960ac5056a3152d719109282bb82645e}{sp}}
+\item 
+\mbox{\Hypertarget{structsvm_a8eb7e33cdc1950f6366f7404bb20ac08}\label{structsvm_a8eb7e33cdc1950f6366f7404bb20ac08}} 
+\mbox{\hyperlink{structcallframe}{callframe}} $\ast$ {\bfseries fp}
+\item 
+\mbox{\Hypertarget{structsvm_a79d39ad50f6baee82cfebcd1861d8705}\label{structsvm_a79d39ad50f6baee82cfebcd1861d8705}} 
+\mbox{\hyperlink{structerror}{error}} {\bfseries err}
+\item 
+\mbox{\hyperlink{structsobject}{object}} $\ast$ \mbox{\hyperlink{structsvm_acbeff316b80c3c5080c1cccfb7df7498}{objects}}
+\item 
+\mbox{\hyperlink{structgraylist}{graylist}} \mbox{\hyperlink{structsvm_a91975f27a763f7eda5eb7ff234264d70}{gray}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structsvm_a696403b57d47497fd744bb7a23d7b0d3}{bound}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structsvm_a63b7b768be067541954115e56c50c20d}{nextgc}}
+\item 
+\mbox{\hyperlink{structsobjectupvalue}{objectupvalue}} $\ast$ \mbox{\hyperlink{structsvm_a5f49f0ad3b46b896dac42e72d2c16849}{openupvalues}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+A Morpho virtual machine and its current state. 
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structsvm_a696403b57d47497fd744bb7a23d7b0d3}\label{structsvm_a696403b57d47497fd744bb7a23d7b0d3}} 
+\index{svm@{svm}!bound@{bound}}
+\index{bound@{bound}!svm@{svm}}
+\doxysubsubsection{\texorpdfstring{bound}{bound}}
+{\footnotesize\ttfamily size\+\_\+t svm\+::bound}
+
+Graylist for garbage collection \mbox{\Hypertarget{structsvm_aae6925163d5567b76f5b3b125ac41b2c}\label{structsvm_aae6925163d5567b76f5b3b125ac41b2c}} 
+\index{svm@{svm}!frame@{frame}}
+\index{frame@{frame}!svm@{svm}}
+\doxysubsubsection{\texorpdfstring{frame}{frame}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structcallframe}{callframe}} svm\+::frame\mbox{[}\mbox{\hyperlink{build_8h_aa5c1e94e510b989a4c5153c1fcf96e75}{M\+O\+R\+P\+H\+O\+\_\+\+C\+A\+L\+L\+F\+R\+A\+M\+E\+S\+T\+A\+C\+K\+S\+I\+ZE}}\mbox{]}}
+
+The stack \mbox{\Hypertarget{structsvm_a257905339e756ec1f570ae8c42ac5ed3}\label{structsvm_a257905339e756ec1f570ae8c42ac5ed3}} 
+\index{svm@{svm}!globals@{globals}}
+\index{globals@{globals}!svm@{svm}}
+\doxysubsubsection{\texorpdfstring{globals}{globals}}
+{\footnotesize\ttfamily varray\+\_\+value svm\+::globals}
+
+The current program being executed \mbox{\Hypertarget{structsvm_a91975f27a763f7eda5eb7ff234264d70}\label{structsvm_a91975f27a763f7eda5eb7ff234264d70}} 
+\index{svm@{svm}!gray@{gray}}
+\index{gray@{gray}!svm@{svm}}
+\doxysubsubsection{\texorpdfstring{gray}{gray}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structgraylist}{graylist}} svm\+::gray}
+
+Linked list of objects \mbox{\Hypertarget{structsvm_a63b7b768be067541954115e56c50c20d}\label{structsvm_a63b7b768be067541954115e56c50c20d}} 
+\index{svm@{svm}!nextgc@{nextgc}}
+\index{nextgc@{nextgc}!svm@{svm}}
+\doxysubsubsection{\texorpdfstring{nextgc}{nextgc}}
+{\footnotesize\ttfamily size\+\_\+t svm\+::nextgc}
+
+Estimated size of bound bytes \mbox{\Hypertarget{structsvm_acbeff316b80c3c5080c1cccfb7df7498}\label{structsvm_acbeff316b80c3c5080c1cccfb7df7498}} 
+\index{svm@{svm}!objects@{objects}}
+\index{objects@{objects}!svm@{svm}}
+\doxysubsubsection{\texorpdfstring{objects}{objects}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structsobject}{object}}$\ast$ svm\+::objects}
+
+An error struct that will be filled out when an error occurs \mbox{\Hypertarget{structsvm_a5f49f0ad3b46b896dac42e72d2c16849}\label{structsvm_a5f49f0ad3b46b896dac42e72d2c16849}} 
+\index{svm@{svm}!openupvalues@{openupvalues}}
+\index{openupvalues@{openupvalues}!svm@{svm}}
+\doxysubsubsection{\texorpdfstring{openupvalues}{openupvalues}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structsobjectupvalue}{objectupvalue}}$\ast$ svm\+::openupvalues}
+
+Next garbage collection threshold \mbox{\Hypertarget{structsvm_a960ac5056a3152d719109282bb82645e}\label{structsvm_a960ac5056a3152d719109282bb82645e}} 
+\index{svm@{svm}!sp@{sp}}
+\index{sp@{sp}!svm@{svm}}
+\doxysubsubsection{\texorpdfstring{sp}{sp}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structvalue}{value}}$\ast$ svm\+::sp}
+
+The call frame stack \mbox{\Hypertarget{structsvm_a06e6ba8f81a8415813db35d2084531d2}\label{structsvm_a06e6ba8f81a8415813db35d2084531d2}} 
+\index{svm@{svm}!stack@{stack}}
+\index{stack@{stack}!svm@{svm}}
+\doxysubsubsection{\texorpdfstring{stack}{stack}}
+{\footnotesize\ttfamily varray\+\_\+value svm\+::stack}
+
+Global variables 
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+vm/\mbox{\hyperlink{core_8h}{core.\+h}}\end{DoxyCompactItemize}

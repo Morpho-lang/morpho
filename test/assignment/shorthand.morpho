@@ -1,0 +1,36 @@
+// Tests the shorthand operators +=, -=, *=, /=
+
+var a = 1
+print a*=2
+// expect: 2
+print a
+// expect: 2
+
+a+=1
+print a
+// expect: 3
+
+a-=2
+print a
+// expect: 1
+
+a/=2
+print a
+// expect: 0.5
+
+var b = "He"
+b+="llo"
+print b
+// expect: Hello
+
+// Improves traditional loop readability
+for (var i=1; i<3; i+=1) {
+  print i
+}
+// expect: 1
+// expect: 2
+
+var c=8
+c+=c
+print c
+// expect: 16

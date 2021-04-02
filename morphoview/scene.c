@@ -101,7 +101,6 @@ DEFINE_VARRAY(gobject, gobject);
 DEFINE_VARRAY(gelement, gelement);
 DEFINE_VARRAY(gdraw, gdraw);
 DEFINE_VARRAY(float, float);
-DEFINE_VARRAY(int, int);
 
 /* -------------------------------------------------------
  * Initialize/Finalize

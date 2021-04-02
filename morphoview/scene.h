@@ -12,7 +12,6 @@
 
 #define SCENE_EMPTY -1
 DECLARE_VARRAY(float, float);
-DECLARE_VARRAY(int, int);
 
 typedef enum {
     POINTS,

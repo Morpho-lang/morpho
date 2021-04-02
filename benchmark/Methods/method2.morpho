@@ -1,0 +1,31 @@
+class klass {
+	method() {
+
+	}
+}
+
+fn func() {
+
+}
+
+var a = klass();
+var M = 10000;
+var N = 300*M;
+
+print "Method call";
+
+var start = clock();
+for (var i=0; i<N; i=i+1) a.method();
+var end = clock();
+
+print (end-start);
+print (end-start)/N;
+
+print "Function call";
+
+start = clock();
+for (var i=0; i<N; i=i+1) func();
+end = clock();
+
+print (end-start);
+print (end-start)/N;

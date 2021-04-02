@@ -80,7 +80,7 @@ bool builtin_options(vm *v, int nargs, value *args, int *nfixed, int noptions, .
     
     va_end(optlist);
     
-    return false;
+    return true;
 }
 
 /** Tests whether an object is callable */

@@ -250,8 +250,12 @@ class ShapeOptimizer {
       if (cons.onesided) {
         var integrand = self.integrand(cons)
         var sel = Selection(self.mesh, fn (q) q<self.ctol, integrand)
+        if (cons.selection) sel=sel.intersection(cons.selection)
         self.lcactive.append(sel)
-      } else self.lcactive.append(true)
+      } else {
+        if (cons.selection) self.lcactive.append(cons.selection)
+        else self.lcactive.append(true)
+      }
     }
   }
 
@@ -325,6 +329,7 @@ class ShapeOptimizer {
           }
         }
 
+        var nactive = 0
         // Loop over vertices
         for (k in 0...nv) {
           // Find the discrepencies of each force at the vertex
@@ -351,14 +356,16 @@ class ShapeOptimizer {
               newv.acc(sol[i], fa[i])
             }
             v.setcolumn(k,newv)
+            nactive+=1
           }
         }
 
         dv=self.testlocalconstraints()
         residual=self.lcnorm(dv)
+        if (nactive>0) residual/=nactive
         iter+=1
-        if (iter>self.maxconstraintsteps) {
-          print "Warning: Too many steps in local constraint satisfaction"
+        if (iter>self.maxconstraintsteps && residual>self.ctol) {
+          print "Warning: Too many steps in local constraint satisfaction. (Try increasing maxconstraintsteps or set ctol to a number greater than ${residual})."
           return
         }
 
@@ -398,7 +405,7 @@ class ShapeOptimizer {
       if (!self.quiet) print "Iteration ${i}. Energy: ${energy[i+1]} delta E: ${de}"
 
       // Test for convergence
-      if (abs(energy[i+1])<self.etol || de/energy[i+1]<self.etol) break
+      if (abs(energy[i+1])<self.etol || de/abs(energy[i+1])<self.etol) break
     }
     return energy
   }
@@ -467,12 +474,12 @@ class ShapeOptimizer {
       }
 
       var de = abs(step[1]-energy[-1])
-      if (!self.quiet) print "Iteration ${i}. Energy: ${energy[-1]} delta E: ${de} stepsize: ${self.stepsize}"
-      if (abs(energy[-1])<self.etol || de/step[1]<self.etol) break
       energy.append(step[1])
+      if (!self.quiet) print "Iteration ${i}. Energy: ${energy[-1]} delta E: ${de} stepsize: ${self.stepsize}"
+
 
       // Test for convergence
-      if (abs(energy[i+1])<self.etol || de/energy[i+1]<self.etol) break
+      if (abs(energy[i+1])<self.etol || de/abs(energy[i+1])<self.etol) break
     }
     return energy
   }

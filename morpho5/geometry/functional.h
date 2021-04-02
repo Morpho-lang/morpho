@@ -16,6 +16,7 @@
 #define SCALARPOTENTIAL_GRADFUNCTION_PROPERTY     "gradfunction"
 #define LINEARELASTICITY_REFERENCE_PROPERTY     "reference"
 #define LINEARELASTICITY_POISSON_PROPERTY     "poissonratio"
+#define EQUIELEMENT_WEIGHT_PROPERTY     "weight"
 
 /* Functional methods */
 #define FUNCTIONAL_INTEGRAND_METHOD    "integrand"
@@ -30,6 +31,7 @@
 #define VOLUMEENCLOSED_CLASSNAME       "VolumeEnclosed"
 #define SCALARPOTENTIAL_CLASSNAME      "ScalarPotential"
 #define LINEARELASTICITY_CLASSNAME     "LinearElasticity"
+#define EQUIELEMENT_CLASSNAME          "EquiElement"
 
 /* Errors */
 #define FUNC_INTEGRAND_MESH            "FnctlIntMsh"
@@ -46,6 +48,10 @@
 
 #define LINEARELASTICITY_PRP           "LnElstctyPrp"
 #define LINEARELASTICITY_PRP_MSG       "LinearElasticity requires properties 'reference' to be a mesh, 'grade' to be an integer grade and 'poissonratio' to be a number."
+
+#define EQUIELEMENT_ARGS               "EquiElArgs"
+#define EQUIELEMENT_ARGS_MSG           "EquiElement allows 'grade' and 'weight' as optional arguments."
+
 
 void functional_initialize(void);
 

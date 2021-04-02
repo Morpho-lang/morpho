@@ -362,6 +362,20 @@ void functional_veccross(double *a, double *b, double *out) {
     out[2]=a[0]*b[1]-a[1]*b[0];
 }
 
+bool length_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out);
+bool area_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out);
+bool volume_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out);
+
+/** Calculate element size */
+bool functional_elementsize(vm *v, objectmesh *mesh, grade g, elementid id, int nv, int *vid, double *out) {
+    switch (g) {
+        case 1: return length_integrand(v, mesh, id, nv, vid, NULL, out);
+        case 2: return area_integrand(v, mesh, id, nv, vid, NULL, out);
+        case 3: return volume_integrand(v, mesh, id, nv, vid, NULL, out);
+    }
+    return false;
+}
+
 /* **********************************************************************
  * Functionals
  * ********************************************************************** */
@@ -789,7 +803,6 @@ value ScalarPotential_total(vm *v, int nargs, value *args) {
             } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
         } else morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, SCALARPOTENTIAL_FUNCTION_PROPERTY);
     }
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     return out;
 }
 
@@ -856,11 +869,7 @@ bool linearelasticity_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
     matrix_mul(&cg, &cg, &r);
     matrix_trace(&r, &trcgcg);
     
-    switch (info->grade) {
-        case 1: length_integrand(v, info->refmesh, id, nv, vid, NULL, &weight); break;
-        case 2: area_integrand(v, info->refmesh, id, nv, vid, NULL, &weight); break;
-        case 3: volume_integrand(v, info->refmesh, id, nv, vid, NULL, &weight); break;
-    }
+    if (!functional_elementsize(v, info->refmesh, info->grade, id, nv, vid, &weight)) return false;
     
     *out=weight*(info->mu*trcgcg + 0.5*info->lambda*trcg*trcg);
     
@@ -930,7 +939,7 @@ value LinearElasticity_integrand(vm *v, int nargs, value *args) {
     return out;
 }
 
-/** Integrand function */
+/** Total function */
 value LinearElasticity_total(vm *v, int nargs, value *args) {
     objectmesh *mesh=NULL;
     objectselection *sel=NULL;
@@ -942,7 +951,6 @@ value LinearElasticity_total(vm *v, int nargs, value *args) {
             functional_sumintegrand(v, mesh, sel, ref.grade, linearelasticity_integrand, &ref, &out);
         } else morpho_runtimeerror(v, LINEARELASTICITY_PRP);
     }
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     return out;
 }
 
@@ -969,6 +977,111 @@ MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LinearElasticity_total, BUILTIN_FLAGSEMPT
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LinearElasticity_gradient, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
+/* ----------------------------------------------
+ * Equielement
+ * ---------------------------------------------- */
+
+static value equielement_weightproperty;
+
+typedef struct {
+    grade grade;
+    objectsparse *vtoel; // Connect vertices to elements
+    objectsparse *eltov; // Connect elements to vertices
+} equielementref;
+
+/** Prepares the reference structure from the LinearElasticity object's properties */
+bool equielement_prepareref(objectinstance *self, objectmesh *mesh, equielementref *ref) {
+    bool success=false;
+    value grade=MORPHO_NIL;
+    
+    if (objectinstance_getproperty(self, functional_gradeproperty, &grade) &&
+        MORPHO_ISINTEGER(grade) ) {
+        ref->grade=MORPHO_GETINTEGERVALUE(grade);
+        
+        int maxgrade=mesh_maxgrade(mesh);
+        if (ref->grade<0 || ref->grade>maxgrade) ref->grade = maxgrade;
+        
+        ref->vtoel=mesh_addconnectivityelement(mesh, ref->grade, 0);
+        ref->eltov=mesh_addconnectivityelement(mesh, 0, ref->grade);
+        
+        if (ref->vtoel && ref->eltov) success=true;
+    }
+    
+    return success;
+}
+
+/** Calculate the linear elastic energy */
+bool equielement_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *r, double *out) {
+    equielementref *ref = (equielementref *) r;
+    int nconn, *conn;
+    
+    if (sparseccs_getrowindices(&ref->vtoel->ccs, id, &nconn, &conn)) {
+        if (nconn==1) { *out = 0; return true; }
+        
+        double size[nconn], mean=0.0, total=0.0;
+        
+        for (int i=0; i<nconn; i++) {
+            int nv, *vid;
+            sparseccs_getrowindices(&ref->eltov->ccs, conn[i], &nv, &vid);
+            functional_elementsize(v, mesh, ref->grade, conn[i], nv, vid, &size[i]);
+            mean+=size[i];
+        }
+        
+        mean /= ((double) nconn);
+        
+        if (fabs(mean)<MORPHO_EPS) return false;
+        
+        /* Now evaluate the functional at this vertex */
+        for (unsigned int i=0; i<nconn; i++) total+=(1.0-size[i]/mean)*(1.0-size[i]/mean);
+        
+        *out = total;
+    }
+    
+    return true;
+}
+
+value EquiElement_init(vm *v, int nargs, value *args) {
+    objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+    int nfixed;
+    value grade=MORPHO_INTEGER(-1);
+    value weight=MORPHO_NIL;
+    
+    if (builtin_options(v, nargs, args, &nfixed, 2, EQUIELEMENT_WEIGHT_PROPERTY, &weight, FUNCTIONAL_GRADE_PROPERTY, &grade)) {
+        objectinstance_setproperty(self, equielement_weightproperty, weight);
+        objectinstance_setproperty(self, functional_gradeproperty, grade);
+    } else morpho_runtimeerror(v, EQUIELEMENT_ARGS);
+    
+    return MORPHO_NIL;
+}
+
+#define EQUIELEMENT_METHOD(class, name, grade, prepare, integrandfn, err) value class##_##name(vm *v, int nargs, value *args) { \
+    objectmesh *mesh=NULL; \
+    objectselection *sel=NULL; \
+    equielementref ref; \
+    value out=MORPHO_NIL; \
+    \
+    if (functional_validateargs(v, nargs, args, &mesh, &sel)) { \
+        if (prepare(MORPHO_GETINSTANCE(MORPHO_SELF(args)), mesh, &ref)) { \
+            integrandfn(v, mesh, sel, grade,  equielement_integrand, &ref, &out); \
+        } else morpho_runtimeerror(v, LINEARELASTICITY_PRP); \
+    } \
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
+    return out; \
+}
+
+EQUIELEMENT_METHOD(EquiElement, integrand, MESH_GRADE_VERTEX, equielement_prepareref, functional_mapintegrand, EQUIELEMENT_ARGS)
+
+EQUIELEMENT_METHOD(EquiElement, total, MESH_GRADE_VERTEX, equielement_prepareref, functional_sumintegrand, EQUIELEMENT_ARGS)
+
+EQUIELEMENT_METHOD(EquiElement, gradient, MESH_GRADE_VERTEX, equielement_prepareref, functional_mapnumericalgradient, EQUIELEMENT_ARGS)
+
+MORPHO_BEGINCLASS(EquiElement)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, EquiElement_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, EquiElement_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, EquiElement_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, EquiElement_gradient, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
 /* **********************************************************************
  * Initialization
  * ********************************************************************** */
@@ -979,6 +1092,7 @@ void functional_initialize(void) {
     scalarpotential_gradfunctionproperty=builtin_internsymbolascstring(SCALARPOTENTIAL_GRADFUNCTION_PROPERTY);
     linearelasticity_referenceproperty=builtin_internsymbolascstring(LINEARELASTICITY_REFERENCE_PROPERTY);
     linearelasticity_poissonproperty=builtin_internsymbolascstring(LINEARELASTICITY_POISSON_PROPERTY);
+    equielement_weightproperty=builtin_internsymbolascstring(LINEARELASTICITY_POISSON_PROPERTY);
     
     builtin_addclass(LENGTH_CLASSNAME, MORPHO_GETCLASSDEFINITION(Length), MORPHO_NIL);
     builtin_addclass(AREA_CLASSNAME, MORPHO_GETCLASSDEFINITION(Area), MORPHO_NIL);
@@ -987,12 +1101,13 @@ void functional_initialize(void) {
     builtin_addclass(VOLUME_CLASSNAME, MORPHO_GETCLASSDEFINITION(Volume), MORPHO_NIL);
     
     builtin_addclass(SCALARPOTENTIAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(ScalarPotential), MORPHO_NIL);
-    
     builtin_addclass(LINEARELASTICITY_CLASSNAME, MORPHO_GETCLASSDEFINITION(LinearElasticity), MORPHO_NIL);
+    builtin_addclass(EQUIELEMENT_CLASSNAME, MORPHO_GETCLASSDEFINITION(EquiElement), MORPHO_NIL);
     
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
     morpho_defineerror(FUNC_ELNTFND, ERROR_HALT, FUNC_ELNTFND_MSG);
     morpho_defineerror(SCALARPOTENTIAL_FNCLLBL, ERROR_HALT, SCALARPOTENTIAL_FNCLLBL_MSG);
     morpho_defineerror(LINEARELASTICITY_REF, ERROR_HALT, LINEARELASTICITY_REF_MSG);
     morpho_defineerror(LINEARELASTICITY_PRP, ERROR_HALT, LINEARELASTICITY_PRP_MSG);
+    morpho_defineerror(EQUIELEMENT_ARGS, ERROR_HALT, EQUIELEMENT_ARGS_MSG);
 }

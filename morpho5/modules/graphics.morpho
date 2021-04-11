@@ -1,6 +1,7 @@
 /* Graphics */
 
 import constants
+import meshtools
 
 /* **************************************
  * Utility functions
@@ -21,7 +22,7 @@ fn rotation(theta, axis) {
   )
 }
 
-/** Generates a vector nornal to a given vector but of arbitrary orientation */
+/** Generates a vector normal to a given vector but of arbitrary orientation */
 fn normalvector(vec) {
   var order = [abs(vec[0]), abs(vec[1]), abs(vec[2])].order()
   var out=vec.clone()
@@ -58,9 +59,14 @@ class TriangleComplex {
     var x = self.position
     var n = self.normals
     var col = self.colors
+    var localcolor = false
     var dimensions=x.dimensions()
     var dim = dimensions[0]
     var nv = dimensions[1]
+
+    if (ismatrix(col)) {
+      if (col.dimensions()[1]>1) localcolor = true
+    } else if (isobject(col) && !islist(col)) col = col.rgb(0)
 
     out.write("v \"xnc\"")
     for (i in 0...nv) {
@@ -71,8 +77,10 @@ class TriangleComplex {
       for (j in 0...dim) {
         line+="${n[j,i]} "
       }
-      for (j in 0...self.colors.count()) {
-        line+="${col[j]} "
+      if (localcolor) {
+        for (j in 0...3) line+="${col[j,i]} "
+      } else {
+        for (j in 0...self.colors.count()) line+="${col[j]} "
       }
       out.write(line)
     }
@@ -100,14 +108,19 @@ class TriangleComplex {
 /** Draws an arrow
   @param[in] start - start point
   @param[in] end - end point
+  @param[in] aspectratio - aspect ratio of the arrow
   @param[in] n - number of faces to use
+  @param[in] color - Color of the sphere
 */
-fn arrow(start, end, ar, n) {
+fn Arrow(start, end, aspectratio=0.1, n=10, color=nil) {
+  var col = color
+  if (isnil(col)) col = [0.5,0.5,0.5]
+
   var np=3*n+2 // 2 points at the end plus 3*n point
   var nt=6*n
   var dim=start.count()
-  var vertices=Matrix(dim, np);
-  var normals=Matrix(dim, np);
+  var vertices=Matrix(dim, np)
+  var normals=Matrix(dim, np)
 
   var x1=Matrix(start), x2=Matrix(end)
   var dx=x2-x1 // Vector from x1 to x2
@@ -117,7 +130,7 @@ fn arrow(start, end, ar, n) {
   var px=normalvector(dx)
   var pxnorm=px.norm()
   if (abs(pxnorm)<1e-15) return
-  px=0.5*length*ar*px/pxnorm
+  px=0.5*length*aspectratio*px/pxnorm
 
   // Head and base of the arrow
   vertices.setcolumn(0, x1)
@@ -133,7 +146,7 @@ fn arrow(start, end, ar, n) {
          |               \
          0<----- u --->   1 3n+1
          <------ dx ------> */
-  var u=(1-ar)*dx
+  var u=(1-aspectratio)*dx
   for (i in 1..n) {
       var theta = 2*Pi*(i-1)/n
       var qx = rotation(theta, ndx)*px
@@ -183,15 +196,20 @@ fn arrow(start, end, ar, n) {
     conn[2*n+i+1,5*n+i]=1
   }
 
-  return TriangleComplex(vertices, normals, [0.5,0.5,0.5], conn)
+  return TriangleComplex(vertices, normals, col, conn)
 }
 
 /** Draws a cylinder
   @param[in] start - start point
   @param[in] end - end point
+  @param[in] aspectratio - aspect ratio
   @param[in] n - number of faces to use
+  @param[in] color - Color of the sphere
 */
-fn cylinder(start, end, ar, n) {
+fn Cylinder(start, end, aspectratio=0.1, n=10, color=nil) {
+  var col = color
+  if (isnil(col)) col = [0.5,0.5,0.5]
+
   var np=2*n+2 // 2 points at the end plus 2*n point
   var nt=4*n
   var dim=start.count()
@@ -207,7 +225,7 @@ fn cylinder(start, end, ar, n) {
   var px=normalvector(dx)
   var pxnorm=px.norm()
   if (abs(pxnorm)<1e-15) return
-  px=0.5*length*ar*px/pxnorm
+  px=0.5*length*aspectratio*px/pxnorm
 
   // Head and base of the arrow
   vertices.setcolumn(0, x1)
@@ -260,7 +278,7 @@ fn cylinder(start, end, ar, n) {
     conn[n+i+1,3*n+i]=1
   }
 
-  return TriangleComplex(vertices, normals, [0.5,0.5,0.5], conn)
+  return TriangleComplex(vertices, normals, col, conn)
 }
 
 /** Draws a tube
@@ -268,8 +286,21 @@ fn cylinder(start, end, ar, n) {
   @param[in] rad - radius
   @param[in] n - number of faces to use per point
   @param[in] closed - whether to treat the point list as closed or not
+  @param[in] color - Color of the sphere
 */
-fn tube(pts, rad, n, closed) {
+fn Tube(pts, rad, n=10, color=nil, closed=false) {
+  fn normalvector(vec) { // Musn't take the abs for Tube
+    var order = [vec[0], vec[1], vec[2]].order()
+    var out=vec.clone()
+    out[order[0]]=0
+    out[order[1]]=vec[order[2]]
+    out[order[2]]=-vec[order[1]]
+    return out
+  }
+
+  var col = color
+  if (isnil(col)) col = [0.5,0.5,0.5]
+
   var mat = pts
   if (islist(pts)) mat = Matrix(pts).transpose();
 
@@ -375,37 +406,77 @@ fn tube(pts, rad, n, closed) {
 		}
 	}
 
-  return TriangleComplex(vertices, normals, [0.5,0.5,0.5], conn)
+  return TriangleComplex(vertices, normals, col, conn)
 }
 
+var sphere = [ PolyhedronMesh(
+  [[-0.982247, 0.0, 0.187592], [0.982247,
+    0.0, -0.187592], [-0.303531, -0.934172, 0.187592], [-0.303531,
+    0.934172, 0.187592], [0.794654, -0.57735, 0.187592], [0.794654,
+    0.57735, 0.187592], [-0.187592, -0.57735, 0.794654], [-0.187592,
+    0.57735, 0.794654], [-0.491123, -0.356822, -0.794654], [-0.491123,
+    0.356822, -0.794654], [0.491123, -0.356822, 0.794654], [0.491123,
+    0.356822, 0.794654], [0.607062,
+    0.0, -0.794654], [-0.794654, -0.57735, -0.187592], [-0.794654,
+    0.57735, -0.187592], [-0.607062, 0.0,
+    0.794654], [0.187592, -0.57735, -0.794654], [0.187592,
+    0.57735, -0.794654], [0.303531, -0.934172, -0.187592], [0.303531,
+    0.934172, -0.187592]]
+  ,
+  [[14, 9, 8, 13, 0], [1, 5, 11, 10, 4], [4, 10, 6, 2, 18], [10, 11, 7,
+    15, 6], [11, 5, 19, 3, 7], [5, 1, 12, 17, 19], [1, 4, 18, 16,
+    12], [3, 19, 17, 9, 14], [17, 12, 16, 8, 9], [16, 18, 2, 13, 8], [2,
+     6, 15, 0, 13], [15, 7, 3, 14, 0]]
+) ]
 
+/** Draws a sphere
+  @param[in] center - the center of the sphere
+  @param[in] r - radius
+  @param[in] color - Color of the sphere
+*/
+fn Sphere(center, r, color=nil, maxrefine = 3) {
+  var col = color
+  if (isnil(col)) col = [0.5,0.5,0.5]
+  var n = 0
+
+  // Find the necessary refined sphere
+  while (r/(2^n)>=0.1 && n<maxrefine) {
+    if (n>=sphere.count()-1) {
+      sphere.append(refinemesh(sphere[-1]))
+    }
+    n += 1;
+  }
+
+  var v = sphere[n].vertexmatrix().clone()
+  var normals = sphere[n].vertexmatrix().clone()
+  var conn = sphere[n].connectivitymatrix(0,2) // Should clone!
+  var nv = v.dimensions()[1]
+
+  var x0=center
+  if (islist(center)) x0=Matrix(center)
+
+  for (i in 0...nv) { // Normalize, scale and translate
+    var x = v.column(i)
+    var nn = x/x.norm()
+    normals.setcolumn(i, nn)
+    v.setcolumn(i, x0 + r*nn)
+  }
+
+  return TriangleComplex(v, normals, col, conn)
+}
 
 /* **************************************
  * Graphics class
  **************************************** */
 
 class Graphics {
-  init(m) {
+  init() {
     self.displaylist = [] // A collection of primitives to display
     self.title = "Morpho" // Title to show
-    if (ismesh(m)) self.drawmesh(m)
   }
 
   display(item) {
     if (isobject(item)) self.displaylist.append(item)
-  }
-
-  drawmesh(mesh) {
-    var vertices = mesh.vertexmatrix()
-    var f = mesh.connectivitymatrix(0,2)
-
-    if (issparse(f)) {
-      // Estimate the normal from the gradient of the area
-      var a = Area()
-      var normal=a.gradient(mesh)
-
-      self.display(TriangleComplex(vertices, normal, [0.5, 0.5, 0.5], f))
-    }
   }
 
   view(out) {
@@ -419,6 +490,13 @@ class Graphics {
       out.write("i")
       out.write("d ${i}")
     }
+  }
+
+  add(right) { // Create a union of two graphics objects
+    var g = Graphics()
+    for (el in self.displaylist) g.displaylist.append(el)
+    for (el in right.displaylist) g.displaylist.append(el)
+    return g
   }
 }
 
@@ -438,6 +516,6 @@ class Show {
     g.view(out)
 
     out.close()
-    system("morphoview ${tempfolder}/morpho${fname}.draw &")
+    system("morphoview -t ${tempfolder}/morpho${fname}.draw &")
   }
 }

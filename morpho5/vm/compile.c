@@ -770,7 +770,7 @@ static inline void compiler_addoptionalarg(compiler *c, syntaxtreenode *node, va
     if (f) {
         value sym=program_internsymbol(c->out, symbol);
         registerindx reg = compiler_addlocal(c, node, symbol);
-        registerindx val = compiler_addconstant(c, node, def, false, false);
+        registerindx val = compiler_addconstant(c, node, def, false, true);
         
         optionalparam param = {.symbol=sym, .def=val, .reg=reg};
         

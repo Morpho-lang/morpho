@@ -494,7 +494,7 @@ void object_arrayinit(objectarray *array, unsigned int ndim, unsigned int *dim) 
     /* Store the size of the object for convenient access */
     array->nelements=nel;
  
-    /* Arrays are initialized to zero. */
+    /* Arrays are initialized to nil. */
 #ifdef MORPHO_NAN_BOXING
     memset(array->data+ndim, 0, sizeof(value)*nel);
 #else

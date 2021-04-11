@@ -24,6 +24,16 @@ bool command_getfilesize(FILE *f, size_t *s) {
     return true;
 }
 
+/** Removes a command file (for temporary files)
+ *  @param[in] in file name */
+void command_removefile(const char *in) {
+    size_t len = strlen(in);
+    char remove[len+4];
+    strcpy(remove, "rm ");
+    strcpy(remove+3, in);
+    system(remove);
+}
+
 /** Returns the contents of a file as a string
  *  @param[in] in file name
  *  @param[out] out a string with the contents of the file. Call MORPHO_FREE on this once done.

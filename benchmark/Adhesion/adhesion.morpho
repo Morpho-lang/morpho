@@ -21,7 +21,7 @@ bnd.addgrade(0)
 var s = ShapeOptimizer(m)
 s.addenergy(le)
 
-var levelset=s.addlocalconstraint(lf, false)
+var levelset=s.addlocalconstraint(lf)
 
 s.stepsize=0.1
 

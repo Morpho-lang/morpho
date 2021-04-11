@@ -1,0 +1,11 @@
+// Check get and set index
+
+var a = Object()
+
+a["Foo"] = 4
+
+print a["Foo"]
+// expect: 4
+
+print a.Foo
+// expect: 4

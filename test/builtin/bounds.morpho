@@ -1,0 +1,20 @@
+// Calculate bounds of enumerable objects
+
+var a = [ 4, 5, 3, 1, 2 ]
+
+print bounds(a)
+// expect: [ 1, 5 ]
+
+print min(a)
+// expect: 1
+
+print max(a)
+// expect: 5
+
+var b = Matrix([[-1,0],[0, 1]])
+
+print min(b)
+// expect: -1
+
+print bounds()
+// expect Error 'InvldArgs'

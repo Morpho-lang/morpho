@@ -20,8 +20,12 @@ void functions_initialize(void);
 #define FUNCTION_INT           "int"
 #define FUNCTION_FLOAT         "float"
 #define FUNCTION_BOOL          "bool"
+#define FUNCTION_MOD           "mod"
 #define FUNCTION_ABS           "abs"
 #define FUNCTION_ISCALLABLE    "iscallable"
+#define FUNCTION_MIN           "min"
+#define FUNCTION_MAX           "max"
+#define FUNCTION_BOUNDS        "bounds"
 
 #define FUNCTION_APPLY         "apply"
 

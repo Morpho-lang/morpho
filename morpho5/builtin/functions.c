@@ -9,6 +9,7 @@
 #include "functions.h"
 #include "random.h"
 #include "builtin.h"
+#include "common.h"
 
 /* **********************************************************************
  * Built in functions
@@ -173,6 +174,15 @@ BUILTIN_TYPECHECK(isselection, MORPHO_ISSELECTION)
 
 #undef BUILTIN_TYPECHECK
 
+/** Check if something is callable */
+value builtin_iscallablefunction(vm *v, int nargs, value *args) {
+    if (nargs==1) {
+        if (builtin_iscallable(MORPHO_GETARG(args, 0))) return MORPHO_TRUE;
+    } else morpho_runtimeerror(v, TYPE_NUMARGS, FUNCTION_ISCALLABLE);
+    return MORPHO_FALSE;
+}
+
+/** Convert something to an integer */
 value builtin_int(vm *v, int nargs, value *args) {
     if (nargs==1) {
         if (MORPHO_ISFLOAT(MORPHO_GETARG(args, 0))) {
@@ -183,14 +193,6 @@ value builtin_int(vm *v, int nargs, value *args) {
     }
     morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_INT);
     return MORPHO_NIL;
-}
-
-/** Check if something is callable */
-value builtin_iscallablefunction(vm *v, int nargs, value *args) {
-    if (nargs==1) {
-        if (builtin_iscallable(MORPHO_GETARG(args, 0))) return MORPHO_TRUE;
-    } else morpho_runtimeerror(v, TYPE_NUMARGS, FUNCTION_ISCALLABLE);
-    return MORPHO_FALSE;
 }
 
 /** Convert to a floating point number */
@@ -213,6 +215,95 @@ value builtin_bool(vm *v, int nargs, value *args) {
     }
     morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_BOOL);
     return MORPHO_NIL;
+}
+
+/** Remainder */
+value builtin_mod(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    if (nargs==2) {
+        value a = MORPHO_GETARG(args, 0);
+        value b = MORPHO_GETARG(args, 1);
+        
+        if (MORPHO_ISINTEGER(a) && MORPHO_ISINTEGER(b)) {
+            out=MORPHO_INTEGER(MORPHO_GETINTEGERVALUE(a) % MORPHO_GETINTEGERVALUE(b));
+        } else {
+            if (MORPHO_ISINTEGER(a)) a=MORPHO_INTEGERTOFLOAT(a);
+            if (MORPHO_ISINTEGER(b)) b=MORPHO_INTEGERTOFLOAT(b);
+            
+            if (MORPHO_ISFLOAT(a) && MORPHO_ISFLOAT(b)) {
+                out=MORPHO_FLOAT(fmod(MORPHO_GETFLOATVALUE(a), MORPHO_GETFLOATVALUE(b)));
+            } else morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_INT);
+        }
+    } else morpho_runtimeerror(v, VM_INVALIDARGS, 2, nargs);
+    return out;
+}
+
+
+/** Find the minimum and maximum values in an enumerable object */
+typedef struct {
+    value min;
+    value max;
+} minmaxstruct;
+
+static bool minmaxfn(vm *v, indx i, value val, void *ref) {
+    minmaxstruct *m=(minmaxstruct *) ref;
+    
+    if (i==0 || morpho_comparevalue(m->min, val)<0) m->min=val;
+    if (i==0 || morpho_comparevalue(m->max, val)>0) m->max=val;
+    
+    return true;
+}
+
+static bool builtin_minmax(vm *v, value obj, value *min, value *max) {
+    minmaxstruct m;
+    
+    if (!builtin_enumerateloop(v, obj, minmaxfn, &m)) return false;
+        
+    if (min) *min = m.min;
+    if (max) *max = m.max;
+    
+    return true;
+}
+
+/** Find the minimum and maximum values in an enumerable object */
+static value builtin_bounds(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    
+    if (nargs==1) {
+        value bounds[2];
+        
+        if (builtin_minmax(v, MORPHO_GETARG(args, 0), &bounds[0], &bounds[1])) {
+            objectlist *list = object_newlist(2, bounds);
+            if (list) {
+                out = MORPHO_OBJECT(list);
+                morpho_bindobjects(v, 1, &out);
+            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        }
+    } else morpho_runtimeerror(v, VM_INVALIDARGS, 1, nargs);
+    
+    return out;
+}
+
+/** Find the minimum value in an enumerable object */
+static value builtin_min(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    
+    if (nargs==1) {
+        builtin_minmax(v, MORPHO_GETARG(args, 0), &out, NULL);
+    } else morpho_runtimeerror(v, VM_INVALIDARGS, 1, nargs);
+    
+    return out;
+}
+
+/** Find the maximum value in an enumerable object */
+static value builtin_max(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    
+    if (nargs==1) {
+        builtin_minmax(v, MORPHO_GETARG(args, 0), NULL, &out);
+    } else morpho_runtimeerror(v, VM_INVALIDARGS, 1, nargs);
+    
+    return out;
 }
 
 /* ************************************
@@ -306,6 +397,12 @@ void functions_initialize(void) {
     builtin_addfunction(FUNCTION_INT, builtin_int, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(FUNCTION_FLOAT, builtin_float, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(FUNCTION_BOOL, builtin_bool, BUILTIN_FLAGSEMPTY);
+    
+    builtin_addfunction(FUNCTION_MOD, builtin_mod, BUILTIN_FLAGSEMPTY);
+    
+    builtin_addfunction(FUNCTION_BOUNDS, builtin_bounds, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FUNCTION_MIN, builtin_min, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FUNCTION_MAX, builtin_max, BUILTIN_FLAGSEMPTY);
     
     builtin_addfunction(FUNCTION_APPLY, builtin_apply, BUILTIN_FLAGSEMPTY);
     

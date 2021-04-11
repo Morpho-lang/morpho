@@ -2,7 +2,7 @@
  * Color
  */
 
-var Pi = 3.14159265358979
+import constants
 
 class Color {
   init(r,g,b) {
@@ -31,13 +31,16 @@ var Blue = Color(0,0,1)
 var White = Color(1,1,1)
 var Black = Color(0,0,0)
 
+fn Gray(x) {
+  return Color(x,x,x)
+}
+
 /*
  * Color maps
  */
 
 class HueMap < Color {
   init() {
-
   }
   red(x) {
     return 0.29+0.04*x+0.66*x^2
@@ -47,6 +50,21 @@ class HueMap < Color {
   }
   blue(x) {
     return 0.46-0.55*x+x^2
+  }
+}
+
+class GrayMap < Color {
+  init() {
+
+  }
+  red(x) {
+    return x
+  }
+  green(x) {
+    return x
+  }
+  blue(x) {
+    return x
   }
 }
 

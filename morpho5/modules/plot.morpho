@@ -1,0 +1,165 @@
+import graphics
+import color
+
+fn cross3d(a, b) {
+  return Matrix([ a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0] ])
+}
+
+/** Deduces the plot color for a given grade */
+fn plotcolorforgrade(grade, color) {
+  if (isnil(color)) return Gray(0.5) // No color provided, so use a default color
+  if (islist(color) || isarray(color)) {
+      if (color.count()==3 && isnumber(color[0]) && isnumber(color[1]) && isnumber(color[2])) return color // Color was given as a simple list
+
+      // Different colors for each grade
+      if (isobject(color[grade]) ||
+          islist(color[grade]) ||
+          ismatrix(color[grade])) return color[grade]
+
+      if (isnil(color[grade])) return Gray(0.5)
+  }
+  if (isobject(color)) return color
+  print "Color specification for plotmesh should be either a color, a list of [r,g,b] values or a list of colors for each grade."
+}
+
+/** Finds the appropriate color for a given element */
+fn plotcolorforelement(color, element) {
+  var col=color
+  if (ismatrix(col)) col=color.column(element)
+  return col
+}
+
+/** Converts a color to a matrix */
+fn plotcolortomatrix(color) {
+  if (ismatrix(color)) return color
+  if (islist(color)) return Matrix(color)
+  if (isobject(color)) return Matrix(color.rgb(0))
+  print "Could not convert color to matrix."
+  return nil
+}
+
+/** Plots elements of a mesh
+ * @param[in] mesh - mesh to plot
+ * @param[in] selection - selection
+ * @param[in] grade - Grade to show
+ * @param[in] color - How to color elements:
+                      can be a single color
+                      a matrix with columns corresponding to elements
+                      a list of such matrices for each grade */
+fn plotmesh(mesh, selection=nil, grade=nil, color=nil) {
+  var g = Graphics()
+  var glist = []
+  if (isnil(grade)) glist.append(mesh.maxgrade())
+  if (islist(grade)) for (q in grade) glist.append(q)
+  if (isnumber(grade)) glist.append(grade)
+
+  var vert = mesh.vertexmatrix()
+
+  if (glist.ismember(0)) { // Show points as spheres
+    var vcol=plotcolorforgrade(0, color) // Will either be a color or a matrix
+    var np = mesh.count(0)
+    for (i in 0...np) {
+      if (isselection(selection) && !selection.isselected(0, i)) continue // Skip unselected components
+
+      g.display(Sphere(vert.column(i), 0.025, color=plotcolorforelement(vcol, i)))
+    }
+  }
+
+  if (glist.ismember(1)) { // Show lines as cylinders
+    var lcol=plotcolorforgrade(1, color) // Will either be a color or a matrix
+    var lines=mesh.connectivitymatrix(0,1)
+    if (issparse(lines)) {
+      var nl = mesh.count(1)
+      for (i in 0...nl) {
+        if (isselection(selection) && !selection.isselected(1, i)) continue // Skip unselected components
+        var el = lines.rowindices(i)
+        g.display(Cylinder(vert.column(el[0]), vert.column(el[1]),
+                          aspectratio=0.05, color=plotcolorforelement(lcol, i)))
+      }
+    }
+  }
+
+  if (glist.ismember(2)) { // Show faces
+    var fcol=plotcolorforgrade(2, color) // Will either be a color or a matrix
+    var faces=mesh.connectivitymatrix(0,2)
+    if (issparse(faces)) {
+      var nf = mesh.count(2)
+      var nnv = 0, nnt = nf // Count number of triangles and vertices generated
+      if (isselection(selection)) nnt=selection.idlistforgrade(2).count()
+
+      var nvert = Matrix(3, 3*nnt) // New array of vertices
+      var norm = Matrix(3, 3*nnt) // New array of normals
+      var ncol = Matrix(3, 3*nnt) // New array of normals
+      var tri = Sparse(3*nnt, nnt) // Connectivity
+
+      nnt=0
+      for (i in 0...nf) { // Draw a triangle for each face
+        if (isselection(selection) && !selection.isselected(2, i)) continue // Skip unselected components
+
+        var el = faces.rowindices(i)
+        var v[3]
+        for (p, i in el) v[i]=vert.column(p)
+        var normal=cross3d(v[2]-v[1], v[1]-v[0])
+        if (normal.inner(v[0])<0) {
+          normal=-normal
+        }
+
+        var tcol = plotcolortomatrix(plotcolorforelement(fcol, i))
+        for (j in 0...3) {
+          tri[nnv,nnt]=1
+          nvert.setcolumn(nnv, v[j])
+          norm.setcolumn(nnv, normal)
+          ncol.setcolumn(nnv, tcol)
+          nnv+=1
+        }
+        nnt+=1
+      }
+
+      g.display(TriangleComplex(nvert, norm, ncol, tri))
+    }
+
+  }
+
+  return g
+}
+
+/** Visualizes a selection
+ * @param[in] mesh - mesh to plot
+ * @param[in] selection - selection
+ * @param[in] grade - Grades to show */
+fn plotselection(mesh, selection, grade=nil) {
+  var ngrades = mesh.maxgrade()
+  var col[ngrades+1]
+
+  for (g in 0..ngrades) {
+    col[g]=nil
+    if (islist(grade) && !grade.ismember(g)) continue // Skip over grades
+    else if (isint(grade) && grade!=g) continue
+
+    var selected = selection.idlistforgrade(g)
+    if (selected.count()==0) continue                 // Skip over empty grade
+
+    var nel = mesh.count(g)                           // Make a color matrix
+    var cmat = Matrix(3, nel)
+    for (i in 0...nel) {
+      cmat.setcolumn(i, Matrix([0.5,0.5,0.5]))
+    }
+
+    for (i in selected) {                             // Highlight selected
+      cmat.setcolumn(i, Matrix([1,0,0]))
+    }
+
+    col[g]=cmat
+  }
+
+  return plotmesh(mesh, grade=grade, color=col)
+}
+
+/** Visualizes a field
+ * @param[in] mesh - mesh to plot
+ * @param[in] selection - selection
+ * @param[in] grade - Grade to show */
+fn plotfield(mesh, field, colorfunction=nil) {
+
+
+}

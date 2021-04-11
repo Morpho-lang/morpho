@@ -82,6 +82,13 @@ typedef struct {
                                 return MORPHO_NIL; }
 
 /* ---------------------------
+ * Loop functions
+ * --------------------------- */
+
+/** Type of C function that implements a built in Morpho function */
+typedef bool (*builtin_loopfunction) (vm *v, indx i, value item, void *ref);
+
+/* ---------------------------
  * Prototypes
  * --------------------------- */
 
@@ -102,6 +109,8 @@ objectclass *builtin_getveneerclass(objecttype type);
 
 bool builtin_options(vm *v, int nargs, value *args, int *nfixed, int noptions, ...);
 bool builtin_iscallable(value val);
+
+bool builtin_enumerateloop(vm *v, value obj, builtin_loopfunction fn, void *ref);
 
 void builtin_initialize(void);
 void builtin_finalize(void);

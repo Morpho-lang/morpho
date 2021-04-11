@@ -13,6 +13,35 @@
  * Object
  * ********************************************************************** */
 
+/** Sets an object property */
+value Object_getindex(vm *v, int nargs, value *args) {
+    value self=MORPHO_SELF(args);
+    value out=MORPHO_NIL;
+    
+    if (nargs==1 &&
+        MORPHO_ISSTRING(MORPHO_GETARG(args, 0)) &&
+        MORPHO_ISINSTANCE(self)) {
+        if (!dictionary_get(&MORPHO_GETINSTANCE(self)->fields, MORPHO_GETARG(args, 0), &out)) {
+            morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)));
+        }
+    }
+    
+    return out;
+}
+
+/** Gets an object property */
+value Object_setindex(vm *v, int nargs, value *args) {
+    value self=MORPHO_SELF(args);
+    
+    if (nargs==2 &&
+        MORPHO_ISSTRING(MORPHO_GETARG(args, 0)) &&
+        MORPHO_ISINSTANCE(self)) {
+        dictionary_insert(&MORPHO_GETINSTANCE(self)->fields, MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1));
+    } else morpho_runtimeerror(v, SETINDEX_ARGS);
+    
+    return MORPHO_NIL;
+}
+
 /** Find the object's class */
 value Object_class(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
@@ -116,18 +145,32 @@ value Object_enumerate(vm *v, int nargs, value *args) {
      return out;
 }
 
-/** Generic initializer */
+/** Generic serializer */
 value Object_serialize(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-/** Generic initializer */
+/** Generic clone */
 value Object_clone(vm *v, int nargs, value *args) {
+    value self = MORPHO_SELF(args);
+    value out = MORPHO_NIL;
     
-    return MORPHO_NIL;
+    if (MORPHO_ISINSTANCE(self)) {
+        objectinstance *instance = MORPHO_GETINSTANCE(self);
+        objectinstance *new = object_newinstance(instance->klass);
+        if (new) {
+            dictionary_copy(&instance->fields, &new->fields);
+            out = MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        }
+    }
+    
+    return out;
 }
 
 MORPHO_BEGINCLASS(Object)
+MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Object_getindex, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Object_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLASS_METHOD, Object_class, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUPER_METHOD, Object_super, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
@@ -543,14 +586,44 @@ objectlist *list_clone(objectlist *list) {
     return object_newlist(list->val.count, list->val.data);
 }
 
+/** Concatenates two lists */
+objectlist *list_concatenate(objectlist *a, objectlist *b) {
+    objectlist *new=object_newlist(a->val.count+b->val.count, NULL);
+    
+    if (new) {
+        memcpy(new->val.data, a->val.data, sizeof(value)*a->val.count);
+        memcpy(new->val.data+a->val.count, b->val.data, sizeof(value)*b->val.count);
+        new->val.count=a->val.count+b->val.count;
+    }
+    
+    return new;
+}
+
+/** Loop function for enumerable initializers */
+static bool list_enumerableinitializer(vm *v, indx i, value val, void *ref) {
+    objectlist *list = (objectlist *) ref;
+    list_append(list, val);
+    return true;
+}
+
 /** Create a list */
 value list_constructor(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
-    objectlist *new=object_newlist(nargs, args+1);
+    value init=MORPHO_NIL;
+    objectlist *new=NULL;
+    
+    if (nargs==1 && MORPHO_ISRANGE(MORPHO_GETARG(args, 0))) {
+        init = MORPHO_GETARG(args, 0);
+        new = object_newlist(0, NULL);
+    } else new = object_newlist(nargs, args+1);
     
     if (new) {
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
+        
+        if (!MORPHO_ISNIL(init)) {
+            builtin_enumerateloop(v, init, list_enumerableinitializer, new);
+        }
     }
     
     return out;
@@ -699,13 +772,32 @@ value List_ismember(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-/** Get number of entries */
+/** Clones a list */
 value List_clone(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     objectlist *new = list_clone(slf);
     if (!new) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     value out = MORPHO_OBJECT(new);
     morpho_bindobjects(v, 1, &out);
+    return out;
+}
+
+/** Joins two lists together  */
+value List_add(vm *v, int nargs, value *args) {
+    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+    
+    if (nargs==1 && MORPHO_ISLIST(MORPHO_GETARG(args, 0))) {
+        objectlist *operand = MORPHO_GETLIST(MORPHO_GETARG(args, 0));
+        objectlist *new = list_concatenate(slf, operand);
+        
+        if (new) {
+            out = MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        }
+        
+    } else morpho_runtimeerror(v, LIST_ADDARGS);
+    
     return out;
 }
 
@@ -719,6 +811,7 @@ MORPHO_METHOD(MORPHO_PRINT_METHOD, List_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, List_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, List_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, List_clone, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_ADD_METHOD, List_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_SORT_METHOD, List_sort, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_ORDER_METHOD, List_order, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_ISMEMBER_METHOD, List_ismember, BUILTIN_FLAGSEMPTY)
@@ -1075,5 +1168,5 @@ void veneer_initialize(void) {
     morpho_defineerror(ISMEMBER_ARG, ERROR_HALT, ISMEMBER_ARG_MSG);
     morpho_defineerror(CLASS_INVK, ERROR_HALT, CLASS_INVK_MSG);
     morpho_defineerror(LIST_ENTRYNTFND, ERROR_HALT, LIST_ENTRYNTFND_MSG);
-    
+    morpho_defineerror(LIST_ADDARGS, ERROR_HALT, LIST_ADDARGS_MSG);
 }

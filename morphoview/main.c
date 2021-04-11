@@ -5,6 +5,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "command.h"
 #include "display.h"
@@ -12,12 +13,18 @@
 int main(int argc, const char * argv[]) {
     scene_initialize();
     display_initialize();
+    bool temp = false;
     
     // Process arguments
     const char *file=NULL;
     for (unsigned int i=1; i<argc; i++) {
         const char *option = argv[i];
         if (argv[i] && option[0]=='-') {
+            switch (option[1]) {
+                case 't': /* Temporary file; delete after */
+                    temp=true;
+                    break;
+            }
         } else {
             file = option;
         }
@@ -36,7 +43,9 @@ int main(int argc, const char * argv[]) {
     }
     
     display_loop();
-
+    
     display_finalize();
     scene_finalize();
+    
+    if (temp && file) command_removefile(file);
 }

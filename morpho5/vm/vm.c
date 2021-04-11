@@ -616,9 +616,9 @@ static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsign
     /* Identify the optional arguments by searching back from the end */
     for (n=0; 2*n<nargs; n+=1) {
         unsigned int k=0;
-        for (; k<nopt; k++) if (MORPHO_ISSAME(func->opt.data[k].symbol, reg[nargs-1-2*n])) break;
+        for (; k<nopt; k++) if (MORPHO_ISSAME(func->opt.data[k].symbol, reg[shift+nargs-1-2*n])) break;
         if (k>=nopt) break; // If we didn't find a match, we're done with optional arguments
-        res[k]=reg[nargs-2*n];
+        res[k]=reg[shift+nargs-2*n];
     }
     
     if (nargs-2*n!=nfixed) { // Verify number of fixed args is correct 
@@ -671,6 +671,7 @@ static inline bool vm_call(vm *v, value fn, unsigned int shift, unsigned int nar
     v->fp->ret=false; /* Interpreter should not return from this frame */
     v->fp->function=func; /* Store the function */
     
+    /* Handle optional args */
     if (func->opt.count>0) {
         if (!vm_vargs(v, (*pc) - v->instructions, func, shift, nargs, *reg)) return false;
     } else if (func->nargs!=nargs) {
@@ -1349,6 +1350,7 @@ callfunction: // Jump here if an instruction becomes a call
                         reg[a]=MORPHO_OBJECT(bound);
                         vm_bindobject(v, reg[a]);
                     }
+                } else if (dictionary_get(&instance->fields, right, &reg[a])) {
                 } else {
                     /* Otherwise, raise an error */
                     char *p = (MORPHO_ISSTRING(right) ? MORPHO_GETCSTRING(right) : "");

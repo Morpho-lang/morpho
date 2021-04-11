@@ -847,6 +847,34 @@ value Mesh_addsymmetry(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/* Returns the highest grade present */
+value Mesh_maxgrade(vm *v, int nargs, value *args) {
+    objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
+    
+    return MORPHO_INTEGER(mesh_maxgrade(m));
+}
+
+/** Counts the number of elements for a given grade, or returns the number of vertices if no argument is supplied. */
+value Mesh_count(vm *v, int nargs, value *args) {
+    objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
+    grade g=0;
+    value out=MORPHO_INTEGER(0);
+    
+    if (nargs>0 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+        g = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    }
+    
+    if (g==0) {
+        out = MORPHO_INTEGER(m->vert->ncols);
+    } else {
+        objectsparse *s = mesh_getconnectivityelement(m, 0, g);
+        if (s) out = MORPHO_INTEGER(s->ccs.ncols);
+    }
+    
+    return out;
+}
+
+
 MORPHO_BEGINCLASS(Mesh)
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Mesh_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SAVE_METHOD, Mesh_save, BUILTIN_FLAGSEMPTY),
@@ -856,7 +884,9 @@ MORPHO_METHOD(MESH_VERTEXPOSITION_METHOD, Mesh_vertexposition, BUILTIN_FLAGSEMPT
 MORPHO_METHOD(MESH_SETVERTEXPOSITION_METHOD, Mesh_setvertexposition, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_CONNECTIVITYMATRIX_METHOD, Mesh_connectivitymatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_ADDGRADE_METHOD, Mesh_addgrade, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MESH_ADDSYMMETRY_METHOD, Mesh_addsymmetry, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MESH_ADDSYMMETRY_METHOD, Mesh_addsymmetry, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MESH_MAXGRADE_METHOD, Mesh_maxgrade, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_COUNT_METHOD, Mesh_count, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

@@ -1,0 +1,5 @@
+
+var a = Mesh("tetrahedron.mesh")
+
+print a.maxgrade()
+// expect: 2

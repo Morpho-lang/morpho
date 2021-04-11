@@ -2,7 +2,7 @@
 import meshtools
 
 var np = 40
-var m=linemesh(fn (t) [cos(t), sin(t), 0], 0...2*Pi:2*Pi/np, closed=true)
+var m=LineMesh(fn (t) [cos(t), sin(t), 0], 0...2*Pi:2*Pi/np, closed=true)
 
 var a = AreaEnclosed()
 

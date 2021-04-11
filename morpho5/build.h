@@ -97,9 +97,6 @@
 /** @brief Avoid using global variables (suitable for small programs only) */
 //#define MORPHO_NOGLOBALS
 
-/** @brief Use reuse pool (a prototype) */
-//#define MORPHO_REUSEPOOL
-
 /* **********************************************************************
  * Libraries
  * ********************************************************************** */

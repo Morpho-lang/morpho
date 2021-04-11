@@ -55,6 +55,33 @@ inline objectclass *builtin_getveneerclass(objecttype type) {
     return objectveneer[type];
 }
 
+/** @brief An enumerate loop.
+    @details Successively calls enumerate on obj, passing the result to the supplied function.
+    @param[in] v - the virtual machine
+    @param[in] obj - object to enumerate over
+    @param[in] fn - function to call
+    @param[in] ref - reference to pass to the function
+    @returns true on success */
+bool builtin_enumerateloop(vm *v, value obj, builtin_loopfunction fn, void *ref) {
+    value enumerate=MORPHO_NIL;
+    value count=MORPHO_NIL, in=MORPHO_INTEGER(-1), val=MORPHO_NIL;
+    
+    if (morpho_lookupmethod(v, obj, enumerateselector, &enumerate)) {
+        if (!morpho_invoke(v, obj, enumerate, 1, &in, &count)) return false;
+        if (!MORPHO_ISINTEGER(count)) return false;
+        
+        for (indx i=0; i<MORPHO_GETINTEGERVALUE(count); i++) {
+            in=MORPHO_INTEGER(i);
+            
+            if (!morpho_invoke(v, obj, enumerate, 1, &in, &val)) return false;
+            
+            if (!(*fn) (v, i, val, ref)) return false;
+        }
+    }
+    
+    return true;
+}
+
 /* **********************************************************************
  * Optional arguments
  * ********************************************************************** */

@@ -32,7 +32,7 @@
 #define RANGE_ARGS_MSG                    "Range expects numerical arguments: a start, an end and an optional stepsize."
 
 #define SETINDEX_ARGS                     "SetIndxArgs"
-#define SETINDEX_ARGS_MSG                 "Setindex method expects an integer index and a value as arguments."
+#define SETINDEX_ARGS_MSG                 "Setindex method expects an index and a value as arguments."
 
 #define ENUMERATE_ARGS                    "EnmrtArgs"
 #define ENUMERATE_ARGS_MSG                "Enumerate method expects a single integer argument."
@@ -54,6 +54,9 @@
 
 #define LIST_ENTRYNTFND                   "EntryNtFnd"
 #define LIST_ENTRYNTFND_MSG               "Entry not found."
+
+#define LIST_ADDARGS                      "LstAddArgs"
+#define LIST_ADDARGS_MSG                  "Add method requires a list."
 
 /* Public interfaces to various data structures */
 typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_NONNUMERICALINDX, ARRAY_OUTOFBOUNDS } objectarrayerror;

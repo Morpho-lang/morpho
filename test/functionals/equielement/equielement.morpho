@@ -3,7 +3,7 @@
 import meshtools
 import shapeopt
 
-var m = linemesh(fn (t) [t, 0, 0], 0..1:0.5)
+var m = LineMesh(fn (t) [t, 0, 0], 0..1:0.5)
 
 var le = EquiElement()
 

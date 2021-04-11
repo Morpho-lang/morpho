@@ -23,6 +23,7 @@
 
 #define MESH_CONNECTIVITYMATRIX_METHOD     "connectivitymatrix"
 #define MESH_ADDGRADE_METHOD               "addgrade"
+#define MESH_MAXGRADE_METHOD               "maxgrade"
 #define MESH_ADDSYMMETRY_METHOD            "addsymmetry"
 
 #define MESH_TRANSFORM_METHOD              "transform"

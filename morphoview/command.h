@@ -90,6 +90,7 @@ typedef bool (*parsefunction) (parser *p);
 
 bool command_getfilesize(FILE *f, size_t *s);
 bool command_loadinput(const char *in, char **out);
+void command_removefile(const char *in);
 
 void command_lexinit(lexer *l, const char *start);
 bool command_lex(lexer *l, token *tok);

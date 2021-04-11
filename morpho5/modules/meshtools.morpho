@@ -1,13 +1,12 @@
 // Mesh creation and visualization tools
 
 import constants
-import graphics
 
 /** Creates a mesh from a parametric function.
  * @param[in] f - a function that returns the vertex position as a list
  * @param[in] range - parameter range to use
  * @param[in] closed - whether to close the mesh  */
-fn linemesh(f, range, closed=false) {
+fn LineMesh(f, range, closed=false) {
   var list = []
 
   for (t in range) list.append(f(t))
@@ -39,7 +38,7 @@ fn linemesh(f, range, closed=false) {
  * @param[in] range - parameter range to use
  * @param[in] range - parameter range to use
  * @param[in] closed - whether to close the mesh  */
-fn areamesh(f, r1, r2, closed=false) {
+fn AreaMesh(f, r1, r2, closed=false) {
   var list = []
 
   for (v in r2) for (u in r1) list.append(f(u, v))
@@ -101,7 +100,7 @@ fn areamesh(f, r1, r2, closed=false) {
   @param[in] list - a list of vertices
   @param[in] faces - list of lists of vertices corresponding to each face
   @returns a mesh */
-fn polyhedronmesh(list, faces) {
+fn PolyhedronMesh(list, faces) {
   var v = Matrix(list).transpose()
   var nv=list.count() // Number of vertices in polyhedron
   var nmp=faces.count() // Number of faces
@@ -140,75 +139,6 @@ fn polyhedronmesh(list, faces) {
   mesh.addgrade(2, conn)
 
   return mesh
-}
-
-fn cross3d(a, b) {
-  return Matrix([ a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0] ])
-}
-
-/** Plots elements of a mesh
- * @param[in] mesh - mesh to plot
- * @param[in] sel - selection
- * @param[in] grade - Grade to show */
-fn plotmesh(mesh, sel, grade) {
-  var g = Graphics([])
-  var glist = []
-  if (islist(grade)) for (q in grade) glist.append(q)
-  else glist.append(grade)
-
-  var vert = mesh.vertexmatrix()
-
-  if (glist.ismember(1)) { // Show lines as cylinders
-    var lines=mesh.connectivitymatrix(0,1)
-    if (issparse(lines)) {
-      var nl = lines.dimensions()[1]
-
-      for (i in 0...nl) {
-        if (isselection(sel) && !sel.isselected(1, i)) continue // Skip unselected components
-        var el = lines.rowindices(i)
-        g.display(cylinder(vert.column(el[0]), vert.column(el[1]), 0.05, 10))
-      }
-    }
-  }
-
-  if (glist.ismember(2)) { // Show faces
-    var faces=mesh.connectivitymatrix(0,2)
-    if (issparse(faces)) {
-      var nf = faces.dimensions()[1]
-      var nnv = 0, nnt = nf // Count number of triangles and vertices generated
-      if (isselection(sel)) nnt=sel.idlistforgrade(2).count()
-
-      var nvert = Matrix(3, 3*nnt) // New array of vertices
-      var norm = Matrix(3, 3*nnt) // New array of normals
-      var tri = Sparse(3*nnt, nnt) // Connectivity
-
-      nnt=0
-      for (i in 0...nf) { // Draw a triangle for each face
-        if (isselection(sel) && !sel.isselected(2, i)) continue // Skip unselected components
-
-        var el = faces.rowindices(i)
-        var v[3]
-        for (p, i in el) v[i]=vert.column(p)
-        var normal=cross3d(v[2]-v[1], v[1]-v[0])
-        if (normal.inner(v[0])<0) {
-          normal=-normal
-        }
-
-        for (j in 0...3) {
-          tri[nnv,nnt]=1
-          nvert.setcolumn(nnv, v[j])
-          norm.setcolumn(nnv, normal)
-          nnv+=1
-        }
-        nnt+=1
-      }
-
-      g.display(TriangleComplex(nvert, norm, [0.5, 0.5, 0.5], tri))
-    }
-
-  }
-
-  return g
 }
 
 /* ********************************

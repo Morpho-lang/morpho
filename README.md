@@ -17,6 +17,7 @@ Morpho can be installed as follows:
 2. Install dependencies. Open the Terminal application and type:
 
     brew update
+
     brew install glfw suite-sparse
 
 3. Obtain the source by cloning this repository:
@@ -26,11 +27,13 @@ Morpho can be installed as follows:
 4. Navigate to the `morpho5` folder and build the application:
 
     cd morpho/morpho5
+
     make install
 
 5. Navigate to the `morpho5` folder and build the viewer application:
 
     cd ../morphoview
+
     make install
 
 6. Check that the application works by typing
@@ -42,6 +45,7 @@ Morpho can be installed as follows:
 2. Install morpho's dependencies using your distribution's package manager (or manually if you prefer). For example, on Ubuntu you would type
 
     apt-get glfw
+
     apt-get suite-sparse
 
 3. Obtain the source by cloning this repository:
@@ -51,11 +55,13 @@ Morpho can be installed as follows:
 4. Navigate to the `morpho5` folder and build the application:
 
     cd morpho/morpho5
+
     sudo make -f Makefile.linux install
 
 5. Navigate to the `morphoview` folder and build the viewer application:
 
     cd ../morphoview
+    
     sudo make -f Makefile.linux install
 
 6. Check that the application works by typing

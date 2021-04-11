@@ -1,10 +1,10 @@
-# morpho
+# Morpho
 The Morpho language. Morpho is a programmable environment for shape optimization. Morpho aims to be:
 
-* Familiar. Morpho uses syntax similar to other C-family languages. The syntax fits on a postcard, so it's easy to learn.
-* Fast. Morpho programs run as or more efficiently than other well-implemented dynamic languages like wren or lua (Morpho is significantly faster than Python). Morpho leverages numerical libraries like BLAS, LAPACK and SUITE-SPARSE to provide high performance.
-* Class-based. A morpho program involves creating and manipulating objects, which greatly simplifies operation.
-* Extendable. Morpho is, in effect, an embeddable language oriented for scientific applications. Functionality is easy to add via packages.
+* **Familiar**. Morpho uses syntax similar to other C-family languages. The syntax fits on a postcard, so it's easy to learn.
+* **Fast**. Morpho programs run as efficiently as other well-implemented dynamic languages like *wren* or *lua* (Morpho is significantly faster than Python, for example). Morpho leverages numerical libraries like BLAS, LAPACK and SUITE-SPARSE to provide high performance.
+* **Class-based**. A morpho program involves creating and manipulating objects, which greatly simplifies operation.
+* **Extendable**. Morpho is, in effect, an embeddable language oriented for scientific applications. Functionality is easy to add via packages.
 
 ## Installation
 
@@ -62,4 +62,4 @@ Morpho can be installed as follows:
 
     morpho5
 
-Note that the build script places morpho5 and morphoview in /usr/local/
+Note that the build script places morpho5 and morphoview in `/usr/local/`; this can easily be changed if a different location is preferred.

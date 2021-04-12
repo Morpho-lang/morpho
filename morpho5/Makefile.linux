@@ -18,18 +18,18 @@ clean:
 
 .PHONY: help
 help:
-    mkdir -p $(HELPDIR)
-    cp $(help) $(HELPDIR)
+	mkdir -p $(HELPDIR)
+	cp $(help) $(HELPDIR)
 
 .PHONY: modules
 modules:
-    mkdir -p $(MODULESDIR)
-    cp -R $(modules) $(MODULESDIR)
+	mkdir -p $(MODULESDIR)
+	cp -R $(modules) $(MODULESDIR)
 
 .PHONY: install
 install: morpho5
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp $< $(DESTDIR)$(PREFIX)/bin/morpho5
-    make modules
-    make help
+	make modules
+	make help
 	make clean

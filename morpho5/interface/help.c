@@ -23,7 +23,7 @@
  *
  *  Link definitions are used to include metadata:
  *
- *  [tag]: # <TAG>      is used to define additional synonyms for the topic.
+ *  [tag]: # (<TAG>)      is used to define additional synonyms for the topic.
  *
  *  The help system also recognizes code blocks etc.
  */
@@ -347,7 +347,13 @@ value help_parsetag(char *line) {
     /* Now skip everything until the tag */
     while (isspace(*start) && *start!='\0') start++;
     
-    while (!iscntrl(start[length]) && !isspace(start[length])) {
+    /* Skip opening bracket if present */
+    if (*start=='(') start++;
+    
+    while (!iscntrl(start[length]) &&
+           !isspace(start[length]) &&
+           start[length]!=')' // Skip closing bracket
+           ) {
         start[length]=tolower(start[length]);
         length++;
     }
@@ -373,6 +379,7 @@ bool help_load(char *file) {
     objecthelptopic *topic[HELP_MAXLEVEL];
     for (unsigned int i=0; i<HELP_MAXLEVEL; i++) topic[i]=NULL;
     int level = 0;
+    bool toplevel = false;
     
 #ifdef MORPHO_DEBUG_LOGHELPFILES
     printf("Loading help file '%s'\n",file);
@@ -402,18 +409,21 @@ bool help_load(char *file) {
 #endif
                         }
                     }
-                } else if (strncmp(line, "[tag]", 5)==0) {
-                    /* Unused links called 'tag' define additional search terms */
+                } else if (strncmp(line, "[tag", 4)==0) {
+                    /* Unused links that start with 'tag' define additional search terms */
                     value key = help_parsetag(line);
                     if (MORPHO_ISOBJECT(key)) {
                         /* Insert the topic... */
                         dictionary *dict = &helpdict; /* ... either into the global dictionary */
-                        if (level>0) dict=&topic[level-1]->subtopics; /* or into the parent's dictionary */
+                        if (!toplevel && level>0) dict=&topic[level-1]->subtopics; /* or into the parent's dictionary */
                         dictionary_insert(dict, key, MORPHO_OBJECT(topic[level]));
 #ifdef MORPHO_DEBUG_LOGHELPFILES
                         printf("Parsed tag '%s' level %i\n", MORPHO_GETCSTRING(key), level);
 #endif
                     }
+                } else if (strncmp(line, "[toplevel]", 10)==0) {
+                    /* Toggles insertion into top level dictionary */
+                    toplevel = !toplevel;
                 }
             }
         }

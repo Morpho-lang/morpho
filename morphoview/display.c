@@ -84,7 +84,7 @@ static void display_keycallback(windowref *window, int key, int scancode, int ac
             break;
         case GLFW_KEY_TAB:
         { /* Reset the view */
-            d->ox=0.0; d->oy=0.0; d->tx=0.0; d->ty=0.0; d->scr=0.0;
+            d->ox=0.0; d->oy=0.0; d->tx=0.0; d->ty=0.0; 
             mat3d_identity4x4(d->view);
         }
             break;
@@ -124,6 +124,8 @@ static void display_keycallback(windowref *window, int key, int scancode, int ac
             mat3d_rotate(d->view, a, +0.1, d->view);
         }
             break;
+        case GLFW_KEY_EQUAL: mat3d_scale(d->view, 1.05, d->view); break;
+        case GLFW_KEY_MINUS: mat3d_scale(d->view, 0.95, d->view); break;
     }
     
 }
@@ -160,9 +162,7 @@ static void display_cursorposncallback(windowref *window, double x, double y) {
 static void display_scrollcallback(windowref *window, double x, double y) {
     display *d=display_fromwindow(window);
     
-    d->scr +=0.25*(float) y;
-    if (d->scr<-10.0) d->scr=-10.0;
-    if (d->scr>10.0) d->scr=10.0;
+    mat3d_scale(d->view, 1.0-0.25*y, d->view);
 }
 
 /* -------------------------------------------------------
@@ -178,7 +178,6 @@ void display_init(display *d, scene *s) {
     d->oy=0.0;
     d->tx=0.0;
     d->ty=0.0;
-    d->scr=0.0;
     d->state=NORMAL;
     d->window=NULL;
     mat3d_identity4x4(d->view);

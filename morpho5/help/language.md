@@ -1,10 +1,14 @@
 [comment]: # Morpho language help file
 [version]: # 0.5
 
-#Functions
-[tag]: # fn
-[tag]: # fun
-[tag]: # function
+# Language
+
+[toplevel]: #
+
+## Functions
+[tagfn]: # (fn)
+[tagfun]: # (fun)
+[tagfunction]: # (function)
 
 A function in morpho is defined with the `fn` keyword, followed by the function's name, a list of parameters enclosed in parentheses, and the body of the function in curly braces. This example computes the square of a number:
 
@@ -16,8 +20,8 @@ Once a function has been defined you can evaluate it like any other morpho funct
 
     print sqr(2)
 
-#Return
-[tag]: # return
+## Return
+[tagreturn]: # (return)
 
 The `return` keyword is used to exit from a function, optionally passing a given value back to the caller. `return` can be used anywhere within a function. The below example calculates the `n` th Fibonacci number,
 
@@ -28,8 +32,8 @@ The `return` keyword is used to exit from a function, optionally passing a given
 
 by returning early if `n<2`, otherwise returning the result by recursively calling itself.
 
-#Variables
-[tag]: # var
+## Variables
+[tagvar]: # (var)
 
 Variables are defined using the `var` keyword followed by the variable name:
 
@@ -59,8 +63,8 @@ Multiple variables can be defined at once by separating them with commas
 
 where each can have its own initializer (or not).
 
-#Classes
-[tag]: # class
+## Classes
+[tagclass]: # (class)
 
 Classes are defined using the `class` keyword followed by the name of the class.
 The definition includes methods  that the class responds to. The special `init` method
@@ -84,8 +88,8 @@ Methods are called using the . operator:
 
     c.eat()
 
-#Super
-[tag]: # super
+## Super
+[tagsuper]: # (super)
 
 The keyword `super` allows you to access methods provided by an object's superclass rather than its own. This is particularly useful when the programmer wants a class to extend the functionality of a parent class, but needs to make sure the old behavior is still maintained.
 
@@ -104,9 +108,9 @@ For example, consider the following pair of classes:
 
 The subclass Soup uses `super` to call the original initializer.
 
-#If
-[tag]: # if
-[tag]: # else
+## If
+[tagif]: # (if)
+[tagelse]: # (else)
 
 If allows you to selectively execute a section of code depending on whether a condition is met. The simplest version looks like this:
 
@@ -136,8 +140,8 @@ You can even chain multiple tests together like this:
         // something else
     }
 
-#While
-[tag]: # while
+## While
+[tagwhile]: # (while)
 
 While loops repeat a section of code while a condition is true. For example,
 
@@ -158,9 +162,9 @@ Where `while` loops can be very useful is where the state of an object is being 
 
 which prints 4,3,2,1.
 
-#For
-[tag]: # for
-[tag]: # in
+## For
+[tagfor]: # (for)
+[tagin]: # (in)
 
 For loops allow you to repeatedly execute a section of code. They come in two versions: the simpler version looks like this,
 
@@ -204,8 +208,8 @@ which is executed as follows:
 
 You can include any code that you like in each of the sections.
 
-#Break
-[tag]: # break
+## Break
+[tagbreak]: # (break)
 
 Break is used inside loops to finish the loop early. For example
 
@@ -219,8 +223,8 @@ would only print 1,2 and 3. Once the condition `i>3` is true, the `break` statem
 
 Both `for` and `while` loops support break.
 
-#Continue
-[tag]: # continue
+## Continue
+[tagcontinue]: # (continue)
 
 Continue is used inside loops to skip over the rest of an iteration. For example
 
@@ -253,11 +257,11 @@ Use of `continue` with `while` loops is possible but isn't recommended as it can
 
 In this example, when the condition `i==2` is `true`, execution skips back to the start, but `i` *isn't* incremented. The loop gets stuck in the iteration `i==2`.
 
-#Indexing
-[tag]: # [
-[tag]: # ]
-[tag]: # index
-[tag]: # subscript
+## Indexing
+[taglb]: # ([)
+[tagrb]: # (])
+[tagindex]: # (index)
+[tagsub]: # (subscript)
 
 Morpho provides a number of collection objects, such as `List`, `Range`, `Array`, `Dictionary`, `Matrix` and `Sparse`, that can contain more than one value. Index notation is used to access elements of these objects.
 

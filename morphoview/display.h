@@ -41,7 +41,6 @@ typedef struct sdisplay {
     float width; /** Width of the window */
     float aspectRatio; /** Aspect ratio for the window */
     
-    float scr; /** Scroll counter */
     double ox, oy; /** Previous mouse x,y positions */
     double tx, ty; /** Previous translate x,y positions */
     

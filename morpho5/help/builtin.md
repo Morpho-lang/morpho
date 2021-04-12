@@ -2,14 +2,14 @@
 [version]: # 0.5
 
 #isnil
-[tag]: # isnil
+[tag1]: # (isnil)
 
-Returns `true` if a value is `nil` or `false` otherwise. 
+Returns `true` if a value is `nil` or `false` otherwise.
 
 #isint
 [tag]: # isint
 
-Returns `true` if a value is an integer or `false` otherwise. 
+Returns `true` if a value is an integer or `false` otherwise.
 
 #isfloat
 [tag]: # isfloat

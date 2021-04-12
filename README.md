@@ -48,9 +48,11 @@ Morpho can be installed as follows:
 
 2. Install morpho's dependencies using your distribution's package manager (or manually if you prefer). For example, on Ubuntu you would type
 
-    apt install libglfw3
+    sudo apt install libglfw3
 
-    apt install libsuitesparse-dev
+    sudo apt install libsuitesparse-dev
+
+    sudo apt install liblapacke
 
 3. Obtain the source by cloning this repository:
 

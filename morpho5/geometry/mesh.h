@@ -8,6 +8,8 @@
 #ifndef mesh_h
 #define mesh_h
 
+#include "varray.h"
+
 #define MESH_CLASSNAME "Mesh"
 
 #define MESH_VERTSECTION "vertices"
@@ -30,6 +32,8 @@
 
 typedef int grade;
 typedef int elementid;
+
+DECLARE_VARRAY(elementid, elementid);
 
 #define MESH_GRADE_VERTEX 0
 #define MESH_GRADE_LINE 1
@@ -91,6 +95,7 @@ typedef int elementid;
 
 elementid mesh_nvertices(objectmesh *mesh);
 elementid mesh_nelements(objectsparse *conn);
+elementid mesh_nelementsforgrade(objectmesh *mesh, grade g);
 grade mesh_maxgrade(objectmesh *mesh);
 
 bool mesh_checkconnectivity(objectmesh *mesh);
@@ -103,7 +108,10 @@ bool mesh_getconnectivity(objectsparse *conn, elementid id, int *nentries, int *
 void mesh_freezeconnectivity(objectmesh *mesh);
 
 bool mesh_getvertexcoordinates(objectmesh *mesh, elementid id, double *val);
+bool mesh_getvertexcoordinatesaslist(objectmesh *mesh, elementid id, double **out);
 bool mesh_getvertexcoordinatesasvalues(objectmesh *mesh, elementid id, value *val);
+
+int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, varray_elementid *neighbors);
 
 void mesh_initialize(void);
 

@@ -14,11 +14,13 @@
 #include "matrix.h"
 #include "sparse.h"
 #include "mesh.h"
+#include "field.h"
 
 static value functional_gradeproperty;
+static value functional_fieldproperty;
 
 /* **********************************************************************
- * Common functional routines
+ * Utility functions
  * ********************************************************************** */
 
 /** Validates the arguments provided to a functional
@@ -47,6 +49,15 @@ typedef bool (functional_integrand) (vm *v, objectmesh *mesh, elementid id, int 
 /** Gradient function */
 typedef bool (functional_gradient) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc);
 
+/** Symmetry behaviors */
+typedef enum {
+    SYMMETRY_NONE,
+    SYMMETRY_ADD
+} symmetrybhvr;
+
+/* **********************************************************************
+ * Common routines
+ * ********************************************************************** */
 
 /** Internal function to count the number of elements */
 static bool functional_countelements(vm *v, objectmesh *mesh, grade g, int *n, objectsparse **s) {
@@ -65,6 +76,58 @@ static bool functional_countelements(vm *v, objectmesh *mesh, grade g, int *n, o
     return true;
 }
 
+static int functional_symmetryimagelistfn(const void *a, const void *b) {
+    elementid i=*(elementid *) a; elementid j=*(elementid *) b;
+    return (int) i-j;
+}
+
+/** Gets a list of all image elements (those that map onto a target element)
+ * @param[in] mesh - the mesh
+ * @param[in] g - grade to look up
+ * @param[in] sort - whether to sort othe results
+ * @param[out] ids - varray is filled with image element ids */
+void functional_symmetryimagelist(objectmesh *mesh, grade g, bool sort, varray_elementid *ids) {
+    objectsparse *conn=mesh_getconnectivityelement(mesh, g, g);
+    
+    ids->count=0; // Initialize the varray
+    
+    if (conn) {
+        int i,j;
+        void *ctr=sparsedok_loopstart(&conn->dok);
+        
+        while (sparsedok_loop(&conn->dok, &ctr, &i, &j)) {
+            varray_elementidwrite(ids, j);
+        }
+        
+        if (sort) qsort(ids->data, ids->count, sizeof(elementid), functional_symmetryimagelistfn);
+    }
+}
+
+/** Sums forces on symmetry vertices
+ * @param[in] mesh - mesh object
+ * @param frc - force object; updated if symmetries are present. */
+bool functional_symmetrysumforces(objectmesh *mesh, objectmatrix *frc) {
+    objectsparse *s=mesh_getconnectivityelement(mesh, 0, 0); // Checking for vertex symmetries
+    
+    if (s) {
+        int i,j;
+        void *ctr = sparsedok_loopstart(&s->dok);
+        double *fi, *fj, fsum[mesh->dim];
+        
+        while (sparsedok_loop(&s->dok, &ctr, &i, &j)) {
+            if (matrix_getcolumn(frc, i, &fi) &&
+                matrix_getcolumn(frc, j, &fj)) {
+                
+                for (unsigned int k=0; k<mesh->dim; k++) fsum[k]=fi[k]+fj[k];
+                matrix_setcolumn(frc, i, fsum);
+                matrix_setcolumn(frc, j, fsum);
+            }
+        }
+    }
+    
+    return s;
+}
+
 /** Sums an integrand
  * @param[in] v - virtual machine in use
  * @param[in] mesh - mesh to calculate integrand over
@@ -74,41 +137,53 @@ static bool functional_countelements(vm *v, objectmesh *mesh, grade g, int *n, o
  * @param[in] ref - a reference
  * @param[out] out - a matrix of integrand values
  * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_sumintegrand(vm *v, objectmesh *mesh, objectselection *sel, grade g, functional_integrand *integrand, void *ref, value *out) {
+bool functional_sumintegrand(vm *v, objectmesh *mesh, objectselection *sel, grade g, functional_integrand *integrand, void *ref, symmetrybhvr sym, value *out) {
     objectsparse *s=mesh_getconnectivityelement(mesh, 0, g);
     int n=0;
     
     if (!functional_countelements(v, mesh, g, &n, &s)) return false;
     
+    /* Find any image elements so we can skip over them */
+    varray_elementid imageids;
+    varray_elementidinit(&imageids);
+    functional_symmetryimagelist(mesh, g, true, &imageids);
+    
     if (n>0) {
         int vertexid; // Use this if looping over grade 0
         int *vid=(g==0 ? &vertexid : NULL),
             nv=(g==0 ? 1 : 0); // The vertex indices
+        int sindx=0; // Index into imageids array
         double sum=0.0, c=0.0, y, t, result;
         
         if (sel) { // Loop over selection
             if (sel->selected[g].count>0) for (unsigned int k=0; k<sel->selected[g].capacity; k++) {
                 if (!MORPHO_ISINTEGER(sel->selected[g].contents[k].key)) continue;
                 elementid i = MORPHO_GETINTEGERVALUE(sel->selected[g].contents[k].key);
-            
+                
+                // Skip this element if it's an image element:
+                if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
+                
                 if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
                 else vertexid=i;
             
                 if (vid && nv>0) {
                     if ((*integrand) (v, mesh, i, nv, vid, ref, &result)) {
                         y=result-c; t=sum+y; c=(t-sum)-y; sum=t; // Kahan summation
-                    } else return false;
+                    } else goto functional_sumintegrand_cleanup;
                 }
             }
         } else { // Loop over elements
             for (elementid i=0; i<n; i++) {
+                // Skip this element if it's an image element
+                if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
+                
                 if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
                 else vertexid=i;
 
                 if (vid && nv>0) {
                     if ((*integrand) (v, mesh, i, nv, vid, ref, &result)) {
                         y=result-c; t=sum+y; c=(t-sum)-y; sum=t; // Kahan summation
-                    } else return false;
+                    } else goto functional_sumintegrand_cleanup;
                 }
             }
         }
@@ -116,6 +191,10 @@ bool functional_sumintegrand(vm *v, objectmesh *mesh, objectselection *sel, grad
         *out=MORPHO_FLOAT(sum);
     }
     
+    return true;
+    
+functional_sumintegrand_cleanup:
+    varray_elementidclear(&imageids);
     return false;
 }
 
@@ -128,7 +207,7 @@ bool functional_sumintegrand(vm *v, objectmesh *mesh, objectselection *sel, grad
  * @param[in] ref - a reference
  * @param[out] out - a matrix of integrand values
  * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_mapintegrand(vm *v, objectmesh *mesh, objectselection *sel, grade g, functional_integrand *integrand, void *ref, value *out) {
+bool functional_mapintegrand(vm *v, objectmesh *mesh, objectselection *sel, grade g, functional_integrand *integrand, void *ref, symmetrybhvr sym, value *out) {
     objectsparse *s=NULL;
     objectmatrix *new=NULL;
     bool ret=false;
@@ -136,6 +215,11 @@ bool functional_mapintegrand(vm *v, objectmesh *mesh, objectselection *sel, grad
         
     /* How many elements? */
     if (!functional_countelements(v, mesh, g, &n, &s)) return false;
+    
+    /* Find any image elements so we can skip over them */
+    varray_elementid imageids;
+    varray_elementidinit(&imageids);
+    functional_symmetryimagelist(mesh, g, true, &imageids);
     
     /* Create the output matrix */
     if (n>0) {
@@ -147,6 +231,7 @@ bool functional_mapintegrand(vm *v, objectmesh *mesh, objectselection *sel, grad
         int vertexid; // Use this if looping over grade 0
         int *vid=(g==0 ? &vertexid : NULL),
             nv=(g==0 ? 1 : 0); // The vertex indices
+        int sindx=0; // Index into imageids array
         double result;
         
         if (sel) { // Loop over selection
@@ -154,24 +239,30 @@ bool functional_mapintegrand(vm *v, objectmesh *mesh, objectselection *sel, grad
                 if (!MORPHO_ISINTEGER(sel->selected[g].contents[k].key)) continue;
                 elementid i = MORPHO_GETINTEGERVALUE(sel->selected[g].contents[k].key);
                 
+                // Skip this element if it's an image element
+                if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
+                
                 if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
                 else vertexid=i;
             
                 if (vid && nv>0) {
                     if ((*integrand) (v, mesh, i, nv, vid, ref, &result)) {
                         matrix_setelement(new, 0, i, result);
-                    } else return false;
+                    } else goto functional_mapintegrand_cleanup;
                 }
             }
         } else { // Loop over elements
             for (elementid i=0; i<n; i++) {
+                // Skip this element if it's an image element
+                if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
+                
                 if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
                 else vertexid=i;
 
                 if (vid && nv>0) {
                     if ((*integrand) (v, mesh, i, nv, vid, ref, &result)) {
                         matrix_setelement(new, 0, i, result);
-                    } else return false;
+                    } else goto functional_mapintegrand_cleanup;
                 }
             }
         }
@@ -179,7 +270,13 @@ bool functional_mapintegrand(vm *v, objectmesh *mesh, objectselection *sel, grad
         ret=true;
     }
     
+    varray_elementidclear(&imageids);
     return ret;
+    
+functional_mapintegrand_cleanup:
+    object_free((object *) new);
+    varray_elementidclear(&imageids);
+    return false;
 }
 
 /** Calculate gradient
@@ -189,9 +286,10 @@ bool functional_mapintegrand(vm *v, objectmesh *mesh, objectselection *sel, grad
  * @param[in] g - grade of the functional
  * @param[in] grad - function to compute gradient for the element
  * @param[in] ref - a reference
+ * @param[in] sym - whether to add components on symmetry vertices
  * @param[out] out - a matrix of integrand values
  * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_mapgradient(vm *v, objectmesh *mesh, objectselection *sel, grade g, functional_gradient *grad, void *ref, value *out) {
+bool functional_mapgradient(vm *v, objectmesh *mesh, objectselection *sel, grade g, functional_gradient *grad, void *ref, symmetrybhvr sym, value *out) {
     objectsparse *s=NULL;
     objectmatrix *frc=NULL;
     bool ret=false;
@@ -234,6 +332,8 @@ bool functional_mapgradient(vm *v, objectmesh *mesh, objectselection *sel, grade
                 }
             }
         }
+        
+        if (sym==SYMMETRY_ADD) functional_symmetrysumforces(mesh, frc);
         
         *out = MORPHO_OBJECT(frc);
         ret=true;
@@ -275,9 +375,10 @@ static bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, i
  * @param[in] g - grade of the functional
  * @param[in] integrand - function to compute integrand for the element
  * @param[in] ref - a reference
+ * @param[in] sym - whether to add components on symmetry vertices
  * @param[out] out - a matrix of integrand values
  * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_mapnumericalgradient(vm *v, objectmesh *mesh, objectselection *sel, grade g, functional_integrand *integrand, void *ref, value *out) {
+bool functional_mapnumericalgradient(vm *v, objectmesh *mesh, objectselection *sel, grade g, functional_integrand *integrand, void *ref, symmetrybhvr sym, value *out) {
     objectsparse *s=NULL;
     objectmatrix *frc=NULL;
     bool ret=false;
@@ -320,6 +421,8 @@ bool functional_mapnumericalgradient(vm *v, objectmesh *mesh, objectselection *s
             }
         }
         
+        if (sym==SYMMETRY_ADD) functional_symmetrysumforces(mesh, frc);
+        
         *out = MORPHO_OBJECT(frc);
         ret=true;
     }
@@ -330,6 +433,10 @@ functional_numericalgradient_cleanup:
     return ret;
 }
 
+bool functional_mapnumericalfieldgradient(vm *v, objectmesh *mesh, objectselection *sel, grade g, objectfield *field, functional_integrand *integrand, void *ref, symmetrybhvr sym, value *out) {
+    
+    return false;
+}
 
 /* **********************************************************************
  * Common library functions
@@ -340,9 +447,19 @@ void functional_vecadd(unsigned int n, double *a, double *b, double *out) {
     for (unsigned int i=0; i<n; i++) out[i]=a[i]+b[i];
 }
 
+/** Add with scale */
+void functional_vecaddscale(unsigned int n, double *a, double lambda, double *b, double *out) {
+    for (unsigned int i=0; i<n; i++) out[i]=a[i]+lambda*b[i];
+}
+
 /** Calculate the difference of two vectors */
 void functional_vecsub(unsigned int n, double *a, double *b, double *out) {
     for (unsigned int i=0; i<n; i++) out[i]=a[i]-b[i];
+}
+
+/** Scale a vector */
+void functional_vecscale(unsigned int n, double lambda, double *a, double *out) {
+    for (unsigned int i=0; i<n; i++) out[i]=lambda*a[i];
 }
 
 /** Calculate the norm of a vector */
@@ -393,21 +510,21 @@ bool functional_elementsize(vm *v, objectmesh *mesh, grade g, elementid id, int 
     value out=MORPHO_NIL; \
     \
     if (functional_validateargs(v, nargs, args, &mesh, &sel)) { \
-        functional_mapintegrand(v, mesh, sel, grade, integrandfn, NULL, &out); \
+        functional_mapintegrand(v, mesh, sel, grade, integrandfn, NULL, SYMMETRY_NONE, &out); \
     } \
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
     return out; \
 }
 
 /** Evaluate a gradient */
-#define FUNCTIONAL_GRADIENT(name, grade, gradientfn) \
+#define FUNCTIONAL_GRADIENT(name, grade, gradientfn, sym) \
 value name##_gradient(vm *v, int nargs, value *args) { \
     objectmesh *mesh=NULL; \
     objectselection *sel=NULL; \
     value out=MORPHO_NIL; \
     \
     if (functional_validateargs(v, nargs, args, &mesh, &sel)) { \
-        functional_mapgradient(v, mesh, sel, grade, gradientfn, NULL, &out); \
+        functional_mapgradient(v, mesh, sel, grade, gradientfn, NULL, sym, &out); \
     } \
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
     \
@@ -422,9 +539,25 @@ value name##_total(vm *v, int nargs, value *args) { \
     value out=MORPHO_NIL; \
     \
     if (functional_validateargs(v, nargs, args, &mesh, &sel)) { \
-        functional_sumintegrand(v, mesh, sel, grade, totalfn, NULL, &out); \
+        functional_sumintegrand(v, mesh, sel, grade, totalfn, NULL, SYMMETRY_NONE, &out); \
     } \
     \
+    return out; \
+}
+
+/* Alternative way of defining methods that use a reference */
+#define FUNCTIONAL_METHOD(class, name, grade, reftype, prepare, integrandfn, integrandmapfn, err, sym) value class##_##name(vm *v, int nargs, value *args) { \
+    objectmesh *mesh=NULL; \
+    objectselection *sel=NULL; \
+    reftype ref; \
+    value out=MORPHO_NIL; \
+    \
+    if (functional_validateargs(v, nargs, args, &mesh, &sel)) { \
+        if (prepare(MORPHO_GETINSTANCE(MORPHO_SELF(args)), mesh, grade, &ref)) { \
+            integrandfn(v, mesh, sel, grade, integrandmapfn, &ref, sym, &out); \
+        } else morpho_runtimeerror(v, err); \
+    } \
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
     return out; \
 }
 
@@ -460,7 +593,7 @@ bool length_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, vo
 
 FUNCTIONAL_INIT(Length, MESH_GRADE_LINE)
 FUNCTIONAL_INTEGRAND(Length, MESH_GRADE_LINE, length_integrand)
-FUNCTIONAL_GRADIENT(Length, MESH_GRADE_LINE, length_gradient)
+FUNCTIONAL_GRADIENT(Length, MESH_GRADE_LINE, length_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(Length, MESH_GRADE_LINE, length_integrand)
 
 MORPHO_BEGINCLASS(Length)
@@ -506,7 +639,7 @@ bool areaenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *v
 
 FUNCTIONAL_INIT(AreaEnclosed, MESH_GRADE_LINE)
 FUNCTIONAL_INTEGRAND(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
-FUNCTIONAL_GRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_gradient)
+FUNCTIONAL_GRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 
 MORPHO_BEGINCLASS(AreaEnclosed)
@@ -562,7 +695,7 @@ bool area_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void
 
 FUNCTIONAL_INIT(Area, MESH_GRADE_AREA)
 FUNCTIONAL_INTEGRAND(Area, MESH_GRADE_AREA, area_integrand)
-FUNCTIONAL_GRADIENT(Area, MESH_GRADE_AREA, area_gradient)
+FUNCTIONAL_GRADIENT(Area, MESH_GRADE_AREA, area_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(Area, MESH_GRADE_AREA, area_integrand)
 
 MORPHO_BEGINCLASS(Area)
@@ -609,7 +742,7 @@ bool volumeenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int 
 
 FUNCTIONAL_INIT(VolumeEnclosed, MESH_GRADE_AREA)
 FUNCTIONAL_INTEGRAND(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
-FUNCTIONAL_GRADIENT(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_gradient)
+FUNCTIONAL_GRADIENT(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
 
 MORPHO_BEGINCLASS(VolumeEnclosed)
@@ -670,7 +803,7 @@ bool volume_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, vo
 
 FUNCTIONAL_INIT(Volume, MESH_GRADE_VOLUME)
 FUNCTIONAL_INTEGRAND(Volume, MESH_GRADE_VOLUME, volume_integrand)
-FUNCTIONAL_GRADIENT(Volume, MESH_GRADE_VOLUME, volume_gradient)
+FUNCTIONAL_GRADIENT(Volume, MESH_GRADE_VOLUME, volume_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(Volume, MESH_GRADE_VOLUME, volume_integrand)
 
 MORPHO_BEGINCLASS(Volume)
@@ -758,7 +891,7 @@ value ScalarPotential_integrand(vm *v, int nargs, value *args) {
         value fn;
         if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
             if (MORPHO_ISCALLABLE(fn)) {
-                functional_mapintegrand(v, mesh, sel, MESH_GRADE_VERTEX, scalarpotential_integrand, &fn, &out);
+                functional_mapintegrand(v, mesh, sel, MESH_GRADE_VERTEX, scalarpotential_integrand, &fn, SYMMETRY_NONE, &out);
             } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
         } else morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, SCALARPOTENTIAL_FUNCTION_PROPERTY);
     }
@@ -777,7 +910,7 @@ value ScalarPotential_gradient(vm *v, int nargs, value *args) {
         // Check if a gradient function is available
         if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_gradfunctionproperty, &fn)) {
             if (MORPHO_ISCALLABLE(fn)) {
-                functional_mapgradient(v, mesh, sel, MESH_GRADE_VERTEX, scalarpotential_gradient, &fn, &out);
+                functional_mapgradient(v, mesh, sel, MESH_GRADE_VERTEX, scalarpotential_gradient, &fn, SYMMETRY_NONE, &out);
             } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
         } else if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
             // Otherwise try to use the regular scalar function
@@ -799,7 +932,7 @@ value ScalarPotential_total(vm *v, int nargs, value *args) {
         value fn;
         if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
             if (MORPHO_ISCALLABLE(fn)) {
-                functional_sumintegrand(v, mesh, sel, MESH_GRADE_VERTEX, scalarpotential_integrand, &fn, &out);
+                functional_sumintegrand(v, mesh, sel, MESH_GRADE_VERTEX, scalarpotential_integrand, &fn, SYMMETRY_NONE, &out);
             } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
         } else morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, SCALARPOTENTIAL_FUNCTION_PROPERTY);
     }
@@ -932,7 +1065,7 @@ value LinearElasticity_integrand(vm *v, int nargs, value *args) {
     
     if (functional_validateargs(v, nargs, args, &mesh, &sel)) {
         if (linearelasticity_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), &ref)) {
-            functional_mapintegrand(v, mesh, sel, ref.grade, linearelasticity_integrand, &ref, &out);
+            functional_mapintegrand(v, mesh, sel, ref.grade, linearelasticity_integrand, &ref, SYMMETRY_NONE, &out);
         } else morpho_runtimeerror(v, LINEARELASTICITY_PRP);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
@@ -948,7 +1081,7 @@ value LinearElasticity_total(vm *v, int nargs, value *args) {
     
     if (functional_validateargs(v, nargs, args, &mesh, &sel)) {
         if (linearelasticity_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), &ref)) {
-            functional_sumintegrand(v, mesh, sel, ref.grade, linearelasticity_integrand, &ref, &out);
+            functional_sumintegrand(v, mesh, sel, ref.grade, linearelasticity_integrand, &ref, SYMMETRY_NONE, &out);
         } else morpho_runtimeerror(v, LINEARELASTICITY_PRP);
     }
     return out;
@@ -963,7 +1096,7 @@ value LinearElasticity_gradient(vm *v, int nargs, value *args) {
     
     if (functional_validateargs(v, nargs, args, &mesh, &sel)) {
         if (linearelasticity_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), &ref)) {
-            functional_mapnumericalgradient(v, mesh, sel, ref.grade, linearelasticity_integrand, &ref, &out);
+            functional_mapnumericalgradient(v, mesh, sel, ref.grade, linearelasticity_integrand, &ref, SYMMETRY_ADD, &out);
         } else morpho_runtimeerror(v, LINEARELASTICITY_PRP);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
@@ -990,7 +1123,7 @@ typedef struct {
 } equielementref;
 
 /** Prepares the reference structure from the LinearElasticity object's properties */
-bool equielement_prepareref(objectinstance *self, objectmesh *mesh, equielementref *ref) {
+bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, equielementref *ref) {
     bool success=false;
     value grade=MORPHO_NIL;
     
@@ -1054,26 +1187,11 @@ value EquiElement_init(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-#define EQUIELEMENT_METHOD(class, name, grade, prepare, integrandfn, err) value class##_##name(vm *v, int nargs, value *args) { \
-    objectmesh *mesh=NULL; \
-    objectselection *sel=NULL; \
-    equielementref ref; \
-    value out=MORPHO_NIL; \
-    \
-    if (functional_validateargs(v, nargs, args, &mesh, &sel)) { \
-        if (prepare(MORPHO_GETINSTANCE(MORPHO_SELF(args)), mesh, &ref)) { \
-            integrandfn(v, mesh, sel, grade,  equielement_integrand, &ref, &out); \
-        } else morpho_runtimeerror(v, LINEARELASTICITY_PRP); \
-    } \
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
-    return out; \
-}
+FUNCTIONAL_METHOD(EquiElement, integrand, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapintegrand, equielement_integrand, EQUIELEMENT_ARGS, SYMMETRY_NONE)
 
-EQUIELEMENT_METHOD(EquiElement, integrand, MESH_GRADE_VERTEX, equielement_prepareref, functional_mapintegrand, EQUIELEMENT_ARGS)
+FUNCTIONAL_METHOD(EquiElement, total, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_sumintegrand, equielement_integrand, EQUIELEMENT_ARGS, SYMMETRY_NONE)
 
-EQUIELEMENT_METHOD(EquiElement, total, MESH_GRADE_VERTEX, equielement_prepareref, functional_sumintegrand, EQUIELEMENT_ARGS)
-
-EQUIELEMENT_METHOD(EquiElement, gradient, MESH_GRADE_VERTEX, equielement_prepareref, functional_mapnumericalgradient, EQUIELEMENT_ARGS)
+FUNCTIONAL_METHOD(EquiElement, gradient, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapnumericalgradient, equielement_integrand, EQUIELEMENT_ARGS, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(EquiElement)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, EquiElement_init, BUILTIN_FLAGSEMPTY),
@@ -1083,11 +1201,195 @@ MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, EquiElement_gradient, BUILTIN_FLAGSEMP
 MORPHO_ENDCLASS
 
 /* **********************************************************************
+ * Curvatures
+ * ********************************************************************** */
+
+/* ----------------------------------------------
+ * LineCurvatureSq
+ * ---------------------------------------------- */
+
+/** Calculate area enclosed */
+bool linecurvsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    varray_elementid nbrs;
+    
+    if (mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, &nbrs)>0) {
+        
+    }
+    
+    return true;
+}
+
+/** Calculate gradient */
+bool linecurvsq_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
+    
+    return true;
+}
+
+
+FUNCTIONAL_INIT(LineCurvatureSq, MESH_GRADE_VERTEX)
+FUNCTIONAL_INTEGRAND(LineCurvatureSq, MESH_GRADE_VERTEX, linecurvsq_integrand)
+//FUNCTIONAL_GRADIENT(LineCurvatureSq, MESH_GRADE_VERTEX, areaenclosed_gradient, SYMMETRY_ADD)
+FUNCTIONAL_TOTAL(LineCurvatureSq, MESH_GRADE_VERTEX, linecurvsq_integrand)
+
+MORPHO_BEGINCLASS(LineCurvatureSq)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineCurvatureSq_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LineCurvatureSq_integrand, BUILTIN_FLAGSEMPTY),
+//MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, AreaEnclosed_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineCurvatureSq_total, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
+/* **********************************************************************
+ * Pairwise functionals
+ * ********************************************************************** */
+
+/* **********************************************************************
+ * Fields
+ * ********************************************************************** */
+
+/* ----------------------------------------------
+ * GradSq
+ * ---------------------------------------------- */
+
+bool gradsq_computeperpendicular(unsigned int n, double *s1, double *s2, double *out) {
+    double s1s2, s2s2, sout;
+    
+    /* Compute s1 - (s1.s2) s2 / (s2.2) */
+    s1s2 = functional_vecdot(n, s1, s2);
+    s2s2 = functional_vecdot(n, s2, s2);
+    if (fabs(s2s2)<MORPHO_EPS) return false; // Check for side of zero weight
+    
+    double temp[n];
+    functional_vecscale(n, s1s2/s2s2, s2, temp);
+    functional_vecsub(n, s1, temp, out);
+    
+    /* Scale by 1/|t|^2 */
+    sout = functional_vecnorm(n, out);
+    if (fabs(sout)<MORPHO_EPS) return false; // Check for side of zero weight
+    
+    functional_vecscale(n, 1/(sout*sout), out, out);
+    return true;
+}
+
+/** Evaluates the gradient of a field quantity
+ @param[in] mesh - object to use
+ @param[in] field - field to compute gradient of
+ @param[in] nv - number of vertices
+ @param[in] vid - vertex ids
+ @param[out] out - should be field->psize * mesh->dim units of storage */
+bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *vid, double *out) {
+    double *f[nv]; // Field value lists
+    double *x[nv]; // Vertex coordinates
+    unsigned int nentries=0;
+    
+    // Get field values and vertex coordinates
+    for (unsigned int i=0; i<nv; i++) {
+        if (!mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i])) return false;
+        if (!field_getelementaslist(field, MESH_GRADE_VERTEX, vid[i], 0, &nentries, &f[i])) return false;
+    }
+    
+    double s[3][mesh->dim], t[3][mesh->dim];
+    
+    /* Vector sides */
+    functional_vecsub(mesh->dim, x[1], x[0], s[0]);
+    functional_vecsub(mesh->dim, x[2], x[1], s[1]);
+    functional_vecsub(mesh->dim, x[0], x[2], s[2]);
+    
+    /* Perpendicular vectors */
+    gradsq_computeperpendicular(mesh->dim, s[2], s[1], t[0]);
+    gradsq_computeperpendicular(mesh->dim, s[0], s[2], t[1]);
+    gradsq_computeperpendicular(mesh->dim, s[1], s[0], t[2]);
+    
+    /* Compute the gradient */
+    for (unsigned int i=0; i<mesh->dim*nentries; i++) out[i]=0;
+    for (unsigned int j=0; j<mesh->dim; j++) {
+        for (unsigned int i=0; i<nentries; i++) {
+            functional_vecaddscale(mesh->dim, &out[i*mesh->dim], f[j][i], t[j], &out[i*mesh->dim]);
+        }
+    }
+    
+    return true;
+}
+
+typedef struct {
+    objectfield *field;
+} gradsqref;
+
+/** Prepares the gradsq reference */
+bool gradsq_prepareref(objectinstance *self, objectmesh *mesh, grade g, gradsqref *ref) {
+    bool success=false;
+    value field=MORPHO_NIL;
+    
+    if (objectinstance_getproperty(self, functional_fieldproperty, &field) &&
+        MORPHO_ISFIELD(field)) {
+        ref->field=MORPHO_GETFIELD(field);
+        success=true;
+    }
+    return success;
+}
+
+/** Calculate the |grad q|^2 energy */
+bool gradsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    gradsqref *eref = ref;
+    double size=0; // Length area or volume of the element
+    double grad[eref->field->psize*mesh->dim];
+    
+    if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &size)) return false;
+    
+    if (!gradsq_evaluategradient(mesh, eref->field, nv, vid, grad)) return false;
+    
+    double gradnrm=functional_vecnorm(eref->field->psize*mesh->dim, grad);
+    *out = gradnrm*gradnrm*size;
+    
+    return true;
+}
+
+/** Initialize a GradSq object */
+value GradSq_init(vm *v, int nargs, value *args) {
+    objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+    
+    if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
+        objectinstance_setproperty(self, functional_fieldproperty, MORPHO_GETARG(args, 0));
+    } else morpho_runtimeerror(v, VM_INVALIDARGS);
+    
+    return MORPHO_NIL;
+}
+
+FUNCTIONAL_METHOD(GradSq, integrand, MESH_GRADE_AREA, gradsqref, gradsq_prepareref, functional_mapintegrand, gradsq_integrand, GRADSQ_ARGS, SYMMETRY_NONE);
+
+FUNCTIONAL_METHOD(GradSq, total, MESH_GRADE_AREA, gradsqref, gradsq_prepareref, functional_sumintegrand, gradsq_integrand, GRADSQ_ARGS, SYMMETRY_NONE);
+
+FUNCTIONAL_METHOD(GradSq, gradient, MESH_GRADE_AREA, gradsqref, gradsq_prepareref, functional_mapnumericalgradient, gradsq_integrand, GRADSQ_ARGS, SYMMETRY_ADD);
+
+value GradSq_fieldgradient(vm *v, int nargs, value *args) {
+    objectmesh *mesh=NULL;
+    objectselection *sel=NULL;
+    gradsqref ref;
+    value out=MORPHO_NIL;
+    
+    if (functional_validateargs(v, nargs, args, &mesh, &sel)) {
+        if (gradsq_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), mesh, MESH_GRADE_AREA, &ref)) {
+            functional_mapnumericalfieldgradient(v, mesh, sel, MESH_GRADE_AREA, ref.field, gradsq_integrand, &ref, SYMMETRY_NONE, &out);
+        } else morpho_runtimeerror(v, GRADSQ_ARGS);
+    }
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+    return out;
+}
+
+MORPHO_BEGINCLASS(GradSq)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, GradSq_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, GradSq_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, GradSq_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, GradSq_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, GradSq_fieldgradient, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
+/* **********************************************************************
  * Initialization
  * ********************************************************************** */
 
 void functional_initialize(void) {
     functional_gradeproperty=builtin_internsymbolascstring(FUNCTIONAL_GRADE_PROPERTY);
+    functional_fieldproperty=builtin_internsymbolascstring(FUNCTIONAL_FIELD_PROPERTY);
     scalarpotential_functionproperty=builtin_internsymbolascstring(SCALARPOTENTIAL_FUNCTION_PROPERTY);
     scalarpotential_gradfunctionproperty=builtin_internsymbolascstring(SCALARPOTENTIAL_GRADFUNCTION_PROPERTY);
     linearelasticity_referenceproperty=builtin_internsymbolascstring(LINEARELASTICITY_REFERENCE_PROPERTY);
@@ -1103,6 +1405,8 @@ void functional_initialize(void) {
     builtin_addclass(SCALARPOTENTIAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(ScalarPotential), MORPHO_NIL);
     builtin_addclass(LINEARELASTICITY_CLASSNAME, MORPHO_GETCLASSDEFINITION(LinearElasticity), MORPHO_NIL);
     builtin_addclass(EQUIELEMENT_CLASSNAME, MORPHO_GETCLASSDEFINITION(EquiElement), MORPHO_NIL);
+    builtin_addclass(LINECURVATURESQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineCurvatureSq), MORPHO_NIL);
+    builtin_addclass(GRADSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(GradSq), MORPHO_NIL);
     
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
     morpho_defineerror(FUNC_ELNTFND, ERROR_HALT, FUNC_ELNTFND_MSG);
@@ -1110,4 +1414,5 @@ void functional_initialize(void) {
     morpho_defineerror(LINEARELASTICITY_REF, ERROR_HALT, LINEARELASTICITY_REF_MSG);
     morpho_defineerror(LINEARELASTICITY_PRP, ERROR_HALT, LINEARELASTICITY_PRP_MSG);
     morpho_defineerror(EQUIELEMENT_ARGS, ERROR_HALT, EQUIELEMENT_ARGS_MSG);
+    morpho_defineerror(GRADSQ_ARGS, ERROR_HALT, GRADSQ_ARGS_MSG);
 }

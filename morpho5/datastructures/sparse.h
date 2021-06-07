@@ -46,6 +46,9 @@ bool sparsedok_insert(sparsedok *dok, int i, int j, value val);
 bool sparsedok_get(sparsedok *dok, int i, int j, value *val);
 bool sparsedok_remove(sparsedok *dok, int i, int j, value *val);
 bool sparsedok_setdimensions(sparsedok *dok, int nrows, int ncols);
+unsigned int sparsedok_count(sparsedok *dok);
+void *sparsedok_loopstart(sparsedok *dok);
+bool sparsedok_loop(sparsedok *dok, void **cntr, int *i, int *j);
 
 /* ***************************************
  * Compressed Column Storage Format

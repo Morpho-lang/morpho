@@ -15,6 +15,7 @@
 #include "mesh.h"
 #include "selection.h"
 #include "functional.h"
+#include "field.h"
 #include "veneer.h"
 
 /* **********************************************************************
@@ -47,6 +48,9 @@ static void builtin_init(objectbuiltinfunction *func) {
 
 /** @brief Sets the veneer class for a particular object type */
 void builtin_setveneerclass(objecttype type, value class) {
+    if (objectveneer[type]!=NULL) {
+        UNREACHABLE("Veneer class redefined.\n");
+    }
     objectveneer[type]=MORPHO_GETCLASS(class);
 }
 
@@ -250,6 +254,7 @@ void builtin_initialize(void) {
     sparse_initialize();
     mesh_initialize();
     selection_initialize();
+    field_initialize();
     functional_initialize();
     
     veneer_initialize(); 

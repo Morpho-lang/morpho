@@ -20,6 +20,7 @@ void program_setentry(program *p, instructionindx entry);
 instructionindx program_getentry(program *p);
 varray_value *program_getconstanttable(program *p);
 void program_bindobject(program *p, object *obj);
+
 value program_internsymbol(program *p, value symbol);
 
 void vm_freeobjects(vm *v);

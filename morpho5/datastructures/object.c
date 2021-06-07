@@ -121,6 +121,14 @@ void object_free(object *obj) {
             objectselection *s = (objectselection *) obj;
             selection_clear(s);
         }
+            break;
+        case OBJECT_FIELD: {
+            objectfield *f = (objectfield *) obj;
+            
+            if (f->dof) MORPHO_FREE(f->dof);
+            if (f->offset) MORPHO_FREE(f->offset);
+            if (f->pool) MORPHO_FREE(f->pool);
+        }
         default:
             break;
     }
@@ -612,6 +620,9 @@ void object_print(value v) {
         case OBJECT_SELECTION:
             printf("<Selection>");
             break;
+        case OBJECT_FIELD:
+            printf("<Field>");
+            break;
         case OBJECT_LIST:
             printf("<List>");
             break;
@@ -674,6 +685,8 @@ size_t object_size(object *obj) {
             return sizeof(objectmesh);
         case OBJECT_SELECTION:
             return sizeof(objectselection)+sizeof(objectsparse *)*((objectselection *) obj)->ngrades;
+        case OBJECT_FIELD:
+            return sizeof(objectfield)+(((objectfield *) obj)->ngrades * sizeof(int));
         case OBJECT_EXTERN:
             return sizeof(object);
     }

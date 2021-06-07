@@ -41,6 +41,7 @@ typedef enum {
     /* Geometry classes */
     OBJECT_MESH,
     OBJECT_SELECTION,
+    OBJECT_FIELD,
     
     OBJECT_EXTERN /* Intended for objects that are only visible to morpho and not involved in the runtime e.g. the help system.  */
 } objecttype;
@@ -508,10 +509,39 @@ typedef struct {
 /** Tests whether an object is a selection */
 #define MORPHO_ISSELECTION(val) object_istype(val, OBJECT_SELECTION)
 
-/** Gets the object as a mesh */
+/** Gets the object as a selection */
 #define MORPHO_GETSELECTION(val)   ((objectselection *) MORPHO_GETOBJECT(val))
 
 /** Creates an empty selection object */
 objectselection *object_newselection(objectmesh *mesh);
+
+/* -------------------------------------------------------
+ * Field
+ * ------------------------------------------------------- */
+
+typedef struct {
+    object obj;
+    objectmesh *mesh; /** The mesh the selection is referring to */
+    
+    unsigned int ngrades; /** Number of grades */
+    unsigned int *dof; /** number of degrees of freedom per entry in each grade */
+    unsigned int *offset; /** Offsets into the store for each grade */
+    
+    value prototype; /** Prototype object */
+    unsigned int psize; /** Number of dofs per copy of the prototype */
+    unsigned int nelements; /** Total number of elements in the fireld */
+    void *pool; /** Pool of statically allocated objects */
+    
+    objectmatrix data; /** Underlying data store */
+} objectfield;
+
+/** Tests whether an object is a field */
+#define MORPHO_ISFIELD(val) object_istype(val, OBJECT_FIELD)
+
+/** Gets the object as a field */
+#define MORPHO_GETFIELD(val)   ((objectfield *) MORPHO_GETOBJECT(val))
+
+/** Creates an empty field object */
+objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *dof, bool zero);
 
 #endif /* object_h */

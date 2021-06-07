@@ -97,6 +97,7 @@ class ShapeOptimizer {
     self.energies = []
     self.constraints = []
     self.localconstraints = []
+    self.fixed = nil
     self.stepsize = 0.1
     self.steplimit = 0.5
     self.etol = 1e-8 // Energy convergence criterion
@@ -149,12 +150,26 @@ class ShapeOptimizer {
   }
 
   /* Calculate the gradient for a functional */
-  gradient(obj) {
-    if (obj.selection) {
-      return obj.functional.gradient(self.mesh, obj.selection)
+  gradient(obj, selection=nil) {
+    var grad
+    var sel=obj.selection // Use the object's selection by default
+    if (selection) sel=selection // If we're passed a selection use it
+
+    if (isselection(sel)) {
+      grad=obj.functional.gradient(self.mesh, sel)
     } else {
-      return obj.functional.gradient(self.mesh)
+      grad=obj.functional.gradient(self.mesh)
     }
+
+    // Zero fixed vertices
+    if (islist(self.fixed)) {
+      var zero = Matrix(grad.dimensions()[0], 1)
+      for (i in self.fixed) {
+        grad.setcolumn(i, zero)
+      }
+    }
+
+    return grad
   }
 
   /* Calculates the total energy for a problem */
@@ -173,6 +188,34 @@ class ShapeOptimizer {
       f+=self.gradient(en)
     }
     return f
+  }
+
+  /* Fix vertices */
+  fix(s) {
+    if (isnil(self.fixed)) self.fixed=[]
+
+    var lst = s
+    if (isselection(s)) lst = s.idlistforgrade(0)
+
+    if (islist(lst)) { // Add these to the list if they're not already in it
+      for (i in lst) {
+        if (!(self.fixed.ismember(i))) self.fixed.append(i)
+      }
+    }
+  }
+
+  /* Unfix vertices */
+  unfix(s) {
+    if (isnil(self.fixed)) return
+
+    var lst = s
+    if (isselection(s)) lst = s.idlistforgrade(0)
+
+    if (islist(lst)) { // Add these to the list if they're not already in it
+      for (i in lst) {
+        if (self.fixed.ismember(i)) self.fixed.remove(i)
+      }
+    }
   }
 
   /* Subtract constraint forces from a given force */
@@ -278,12 +321,7 @@ class ShapeOptimizer {
   /* Subtracts local constraints */
   subtractlocalconstraints(f) {
     for (cons, i in self.localconstraints) {
-      var g
-      if (isselection(self.lcactive[i])) {
-        g=cons.functional.gradient(self.mesh, self.lcactive[i])
-      } else {
-        g=self.gradient(cons)
-      }
+      var g=self.gradient(cons, selection=self.lcactive[i])
       self.sublocal(f,g)
     }
   }
@@ -322,11 +360,7 @@ class ShapeOptimizer {
 
         // Calculate constraint forces
         for (cons, i in self.localconstraints) {
-          if (isselection(self.lcactive[i])) {
-            fv.append(cons.functional.gradient(self.mesh, self.lcactive[i]))
-          } else {
-            fv.append(self.gradient(cons))
-          }
+          fv.append(self.gradient(cons, selection=self.lcactive[i]))
         }
 
         var nactive = 0

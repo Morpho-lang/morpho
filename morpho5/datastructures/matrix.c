@@ -898,13 +898,15 @@ value Matrix_dimensions(vm *v, int nargs, value *args) {
     return out;
 }
 
-/** Number of matrix elements */
+/** Clones a matrix */
 value Matrix_clone(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
     objectmatrix *new=object_clonematrix(a);
-    if (!new) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    value out=MORPHO_OBJECT(new);
-    morpho_bindobjects(v, 1, &out);
+    if (new) {
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     return out;
 }
 

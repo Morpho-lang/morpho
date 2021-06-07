@@ -249,7 +249,7 @@ static bool help_displayline(objecthelptopic *topic, lineditor *edit, char *line
     if (line[0]=='#') {
         if (allowheader) {
             char *s = line;
-            while (*s=='#') s++;
+            while (*s=='#' || isspace(*s)) s++; // Skip leading space
             linedit_displaywithstyle(edit, s, LINEDIT_DEFAULTCOLOR, LINEDIT_UNDERLINE);
         } else {
             return true;

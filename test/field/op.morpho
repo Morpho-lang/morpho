@@ -1,0 +1,15 @@
+// Operations on Field elements
+
+var m = Mesh("square.mesh")
+print m
+// expect: <Mesh: 4 vertices>
+
+var f = Field(m, Matrix([2,0,0]), grade = [1,0,1])
+
+var g = f.op(fn (x) x.norm())
+print g.inner(g)
+// expect: 24
+
+var h = f.op(fn (x,y) x.inner(y), f)
+print h.inner(h)
+// expect: 96

@@ -16,6 +16,8 @@
 
 void mesh_link(objectmesh *mesh, object *obj);
 
+DEFINE_VARRAY(elementid, elementid);
+
 /* **********************************************************************
  * Create mesh objects
  * ********************************************************************** */
@@ -81,6 +83,15 @@ bool mesh_getvertexcoordinates(objectmesh *mesh, elementid id, double *out) {
         return true;
     }
     return false;
+}
+
+/** Gets vertex coordinates as a list */
+bool mesh_getvertexcoordinatesaslist(objectmesh *mesh, elementid id, double **out) {
+    double *coords=NULL;
+    if (matrix_getcolumn(mesh->vert, id, &coords)) {
+        *out=coords;
+    }
+    return coords;
 }
 
 /** Gets vertex coordinates */
@@ -195,6 +206,18 @@ elementid mesh_nvertices(objectmesh *mesh) {
 /** How many elements are in a connectivity matrix? */
 elementid mesh_nelements(objectsparse *conn) {
     return conn->ccs.ncols;
+}
+
+/** How many elements exist in a given grade? */
+elementid mesh_nelementsforgrade(objectmesh *mesh, grade g) {
+    elementid count=0;
+    if (g==MESH_GRADE_VERTEX) {
+        count=mesh_nvertices(mesh);
+    } else {
+        objectsparse *conn = mesh_getconnectivityelement(mesh, 0, g);
+        if (conn) count=mesh_nelements(conn);
+    }
+    return count;
 }
 
 /** Maximum grade in the mesh */
@@ -472,6 +495,10 @@ bool mesh_addsymmetry(vm *v, objectmesh *mesh, value symmetry, objectselection *
     } else morpho_runtimeerror(v, MESH_ADDSYMMSNGTRNSFRM);
     
     return false;
+}
+
+int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, varray_elementid *neighbors) {
+    return 0;
 }
 
 /* **********************************************************************

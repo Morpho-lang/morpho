@@ -161,6 +161,29 @@ unsigned int sparsedok_count(sparsedok *dok) {
     return dok->dict.count;
 }
 
+/** Loop over dok keys - initializer
+ * @param[in] dok - the dictionary of keys to loop over
+ * @returns Initial value for the loop counter */
+void *sparsedok_loopstart(sparsedok *dok) {
+    return dok->keys;
+}
+
+/** Loop over dok keys
+ * @param[in] dok - the dictionary of keys to loop over
+ * @param[in] cntr - Pointer to loop counter of type (void *) [initialize this to NULL before first call].
+ * @param[out] i - row index.
+ * @param[out] j - column index
+ * @returns true if i, j contain valid data; cntri is updated */
+bool sparsedok_loop(sparsedok *dok, void **cntr, int *i, int *j) {
+    objectdokkey *key = *cntr;
+    if (key) {
+        *i = key->row;
+        *j = key->col;
+        *cntr=key->obj.next;
+    }
+    return key;
+}
+
 /* ***************************************
  * Compressed Column Storage Format
  * *************************************** */

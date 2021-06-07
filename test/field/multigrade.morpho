@@ -1,0 +1,18 @@
+// Multiple grades
+
+var m = Mesh("square.mesh")
+print m
+// expect: <Mesh: 4 vertices>
+
+var f = Field(m, Matrix([1,2]), grade = [1,0,1])
+
+for (i in 0...4) f[0,i]=Matrix([i,-1])
+for (i in 0...2) f[2,i]=Matrix([1/2,-2])
+
+print f[0,1]
+// expect: [ 1 ]
+// expect: [ -1 ]
+
+print f[2,1]
+// expect: [ 0.5 ]
+// expect: [ -2 ]

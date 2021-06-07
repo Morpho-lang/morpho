@@ -1,0 +1,14 @@
+// Test grad sq with a simple integral
+// f = x^2 + y^2 -> |grad f|^2 = 4 (x^2+y^2) -> integral over unit disk is 2 pi
+
+import meshtools
+import shapeopt
+
+var m = Mesh("disk.mesh")
+
+var phi = Field(m, fn (x,y,z) x^2 + y^2)
+
+var lel = GradSq(phi)
+
+print lel.total(m)
+// expect: 6.21862

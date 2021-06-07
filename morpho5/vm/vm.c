@@ -402,6 +402,11 @@ void vm_gcmarkretainobject(vm *v, object *obj) {
             //objectselection *c = (objectselection *) obj;
         }
             break;
+        case OBJECT_FIELD: {
+            objectfield *c = (objectfield *) obj;
+            vm_gcmarkvalue(v, c->prototype);
+        }
+            break;
         case OBJECT_EXTERN: {
         }
             break;
@@ -1135,10 +1140,10 @@ callfunction: // Jump here if an instruction becomes a call
                 objectbuiltinfunction *f = MORPHO_GETBUILTINFUNCTION(left);
                 
                 value ret = (f->function) (v, c, reg+a);
+                ERRORCHK();
                 reg=v->stack.data+v->fp->roffset; /* Ensure register pointer is correct */
                 reg[a]=ret;
                 
-                ERRORCHK();
             } else if (MORPHO_ISCLASS(left)) {
                 /* A function call on a class instantiates it */
                 objectclass *klass = MORPHO_GETCLASS(left);
@@ -1602,6 +1607,24 @@ void morpho_bindobjects(vm *v, int nobj, value *obj) {
         /* Restore globals count */
         v->globals.count=gcount;
     }
+}
+
+/** @brief Temporarily retain objects across multiple reentrant calls to the VM.
+ *  @param v      the virtual machine
+ *  @param nobj  number of objects to retain
+ *  @param obj    objects to retain
+ *  @returns an integer handle to pass to releaseobjects */
+int morpho_retainobjects(vm *v, int nobj, value *obj) {
+    int gcount=v->globals.count;
+    varray_valueadd(&v->globals, obj, nobj);
+    return gcount;
+}
+
+/** @brief Relese objects temporarily retained by the VM.
+ *  @param v      the virtual machine
+ *  @param handle a handle returned by morpho_retainobjects. */
+void morpho_releaseobjects(vm *v, int handle) {
+    if (handle>=0) v->globals.count=handle;
 }
 
 /** Runs a program

@@ -99,6 +99,10 @@ void morpho_freevm(vm *v);
 /* Bind new objects to the virtual machine */
 void morpho_bindobjects(vm *v, int nobj, value *obj);
 
+/* Temporarily retain objects across multiple calls into the VM */
+int morpho_retainobjects(vm *v, int nobj, value *obj);
+void morpho_releaseobjects(vm *v, int handle);
+
 /* Raise runtime errors */
 void morpho_runtimeerror(vm *v, errorid id, ...);
 

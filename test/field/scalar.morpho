@@ -1,0 +1,53 @@
+// Scalar field
+
+var m = Mesh("square.mesh")
+print m
+// expect: <Mesh: 4 vertices>
+
+var f = Field(m)
+var g = Field(m)
+
+// Create a convenient function for output
+fn write(f) { print "[${f[0]}, ${f[1]}, ${f[2]}, ${f[3]}]" }
+
+write(f)
+// expect: [0, 0, 0, 0]
+
+print f[0]
+// expect: 0
+
+// Set elements
+for (i in 0...4) f[i]=i
+for (i in 0...4) g[i]=i/2
+
+write(f)
+// expect: [0, 1, 2, 3]
+
+// Arithmetic operations
+write(f + g)
+// expect: [0, 1.5, 3, 4.5]
+
+write(f - g)
+// expect: [0, 0.5, 1, 1.5]
+
+// Clone
+var h = f.clone()
+
+// Accumulate
+f.acc(-1, f)
+
+write(f)
+// expect: [0, 0, 0, 0]
+
+write(h)
+// expect: [0, 1, 2, 3]
+
+// Construct by mapping a function over the vertices
+var q = Field(m, fn (x,y,z) x )
+
+write(q)
+// expect: [0, 1, 0, 1]
+
+// f.op(fn (a,b) a.inner(b), g)
+
+// f.op(fn (a) a.norm())

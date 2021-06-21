@@ -63,9 +63,8 @@ unsigned int field_size(objectmesh *mesh, value prototype, unsigned int ngrades,
 /** Creates a new field
  * @param[in] mesh - Mesh the field is attached to
  * @param[in] prototype - a prototype object
- * @param[in] dof -  umber of degrees of freedom per entry in each grade (should be maxgrade entries)
- * @param[in] zero - zero the field */
-objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *dof, bool zero) {
+ * @param[in] dof -  umber of degrees of freedom per entry in each grade (should be maxgrade entries) */
+objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *dof) {
     int ngrades=mesh_maxgrade(mesh)+1;
     
     unsigned int offset[ngrades+1];
@@ -110,7 +109,8 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *do
             for (unsigned int i=0; i<new->nelements; i++) {
                 memcpy(new->data.elements+i*mel, mat->elements, sizeof(double)*mel);
             }
-        } else if (zero) memset(new->data.elements, 0, sizeof(double)*size);
+        } else memset(new->data.elements, 0, sizeof(double)*size);
+        
     } else { // Cleanup partially allocated structure
         if (noffset) MORPHO_FREE(noffset);
         if (ndof) MORPHO_FREE(ndof);
@@ -138,7 +138,7 @@ objectfield *field_newwithfunction(vm *v, objectmesh *mesh, value fn) {
         if (MORPHO_ISOBJECT(ret)) handle=morpho_retainobjects(v, 1, &ret);
     }
     
-    new=object_newfield(mesh, ret, NULL, false);
+    new=object_newfield(mesh, ret, NULL);
     
     if (new) {
         for (elementid i=0; i<nv; i++) {
@@ -156,6 +156,11 @@ field_newwithfunction_cleanup:
     if (new) object_free((object *) new);
     if (handle>=0) morpho_releaseobjects(v, handle);
     return NULL;
+}
+
+/** Zeros a field */
+void field_zero(objectfield *f) {
+    memset(f->data.elements, 0, sizeof(double)*(f->data.nrows));
 }
 
 /** Adds the object pool. This is a collection of statically allocated objects */
@@ -180,7 +185,7 @@ bool field_addpool(objectfield *f) {
 
 /** Clones a field */
 objectfield *field_clone(objectfield *f) {
-    objectfield *new = object_newfield(f->mesh, f->prototype, f->dof, false);
+    objectfield *new = object_newfield(f->mesh, f->prototype, f->dof);
     if (new) memcpy(new->data.elements, f->data.elements, f->data.nrows*sizeof(double));
     return new;
 }
@@ -357,7 +362,7 @@ bool field_op(vm *v, value fn, objectfield *f, int nargs, objectfield **args, va
         if (morpho_call(v, fn, nargs+1, fargs, &ret)) {
             if (!fld) {
                 if (field_checkprototype(ret)) {
-                    fld=object_newfield(f->mesh, ret, f->dof, false);
+                    fld=object_newfield(f->mesh, ret, f->dof);
                     if (!fld) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
                 } else {
                     morpho_runtimeerror(v, FIELD_OPRETURN); return false;
@@ -411,7 +416,7 @@ value field_constructor(vm *v, int nargs, value *args) {
     }
     
     if (MORPHO_ISNIL(fn)) {
-        new = object_newfield(mesh, prototype, (MORPHO_ISNIL(grd) ? NULL: dof), true);
+        new = object_newfield(mesh, prototype, (MORPHO_ISNIL(grd) ? NULL: dof));
     } else {
         new = field_newwithfunction(v, mesh, fn);
     }
@@ -495,6 +500,21 @@ value Field_count(vm *v, int nargs, value *args) {
     return MORPHO_INTEGER(f->nelements);
 }
 
+/** Field assign */
+value Field_assign(vm *v, int nargs, value *args) {
+    objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
+ 
+    if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
+        objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
+        
+        if (field_compareshape(a, b)) {
+            matrix_copy(&b->data, &a->data);
+        } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
+    } else morpho_runtimeerror(v, FIELD_ARITHARGS);
+    
+    return MORPHO_NIL;
+}
+
 /** Field add */
 value Field_add(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
@@ -504,7 +524,7 @@ value Field_add(vm *v, int nargs, value *args) {
         objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
         
         if (field_compareshape(a, b)) {
-            objectfield *new = object_newfield(a->mesh, a->prototype, a->dof, false);
+            objectfield *new = object_newfield(a->mesh, a->prototype, a->dof);
             
             if (new) {
                 out=MORPHO_OBJECT(new);
@@ -513,6 +533,24 @@ value Field_add(vm *v, int nargs, value *args) {
             }
         } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
     } else morpho_runtimeerror(v, FIELD_ARITHARGS);
+    
+    return out;
+}
+
+/** Right add */
+value Field_addr(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+ 
+    if (nargs==1 && (MORPHO_ISNIL(MORPHO_GETARG(args, 0)) ||
+                     MORPHO_ISNUMBER(MORPHO_GETARG(args, 0)))) {
+        int i=0;
+        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        if (MORPHO_ISFLOAT(MORPHO_GETARG(args, 0))) i=(fabs(MORPHO_GETFLOATVALUE(MORPHO_GETARG(args, 0)))<MORPHO_EPS ? 0 : 1);
+        
+        if (i==0) {
+            out=MORPHO_SELF(args);
+        } else UNREACHABLE("Right addition to non-zero value.");
+    } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
     
     return out;
 }
@@ -526,7 +564,7 @@ value Field_sub(vm *v, int nargs, value *args) {
         objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
         
         if (field_compareshape(a, b)) {
-            objectfield *new = object_newfield(a->mesh, a->prototype, a->dof, false);
+            objectfield *new = object_newfield(a->mesh, a->prototype, a->dof);
             
             if (new) {
                 out=MORPHO_OBJECT(new);
@@ -548,7 +586,7 @@ value Field_acc(vm *v, int nargs, value *args) {
         objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 1));
         
         if (field_compareshape(a, b)) {
-            objectfield *new = object_newfield(a->mesh, a->prototype, a->dof, false);
+            objectfield *new = object_newfield(a->mesh, a->prototype, a->dof);
             
             if (new) {
                 double lambda=1.0;
@@ -559,6 +597,26 @@ value Field_acc(vm *v, int nargs, value *args) {
     } else morpho_runtimeerror(v, FIELD_ARITHARGS);
     
     return MORPHO_NIL;
+}
+
+/** Field multiply by a scalar */
+value Field_mul(vm *v, int nargs, value *args) {
+    objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+ 
+    if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+        double scale=1.0;
+        if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale)) {
+            objectfield *new = field_clone(a);
+            if (new) {
+                out=MORPHO_OBJECT(new);
+                matrix_scale(&new->data, scale);
+                morpho_bindobjects(v, 1, &out);
+            }
+        }
+    } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
+    
+    return out;
 }
 
 /** Frobenius inner product */
@@ -649,9 +707,12 @@ MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Field_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Field_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Field_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Field_count, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_ASSIGN_METHOD, Field_assign, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADD_METHOD, Field_add, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_ADDR_METHOD, Field_addr, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUB_METHOD, Field_sub, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ACC_METHOD, Field_acc, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_MUL_METHOD, Field_mul, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_INNER_METHOD, Field_inner, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_OP_METHOD, Field_op, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Field_print, BUILTIN_FLAGSEMPTY),

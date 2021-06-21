@@ -39,7 +39,7 @@ fn Gray(x) {
  * Color maps
  */
 
-class HueMap < Color {
+class GradientMap < Color {
   init() {
   }
   red(x) {
@@ -68,7 +68,9 @@ class GrayMap < Color {
   }
 }
 
-/*class HueMap {
+class HueMap < Color {
+  init() {
+  }
   red(x) {
     return (sin(2*Pi*(x+1/4))+1)/2
   }
@@ -79,4 +81,3 @@ class GrayMap < Color {
     return (sin(2*Pi*(x-0.4))+1)/2
   }
 }
-*/

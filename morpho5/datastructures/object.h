@@ -542,6 +542,6 @@ typedef struct {
 #define MORPHO_GETFIELD(val)   ((objectfield *) MORPHO_GETOBJECT(val))
 
 /** Creates an empty field object */
-objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *dof, bool zero);
+objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *dof);
 
 #endif /* object_h */

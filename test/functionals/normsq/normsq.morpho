@@ -1,0 +1,34 @@
+// Test norm sq
+
+import meshtools
+import shapeopt
+
+var m = Mesh("triangle.mesh")
+
+var nn = Field(m, Matrix([1,1,1/2]))
+
+var lnn = NormSq(nn)
+
+print lnn.integrand(m)
+// expect: [ 2.25 2.25 2.25 ]
+
+print lnn.total(m)
+// expect: 6.75
+
+print lnn.gradient(m)
+// expect: [ 0 0 0 ]
+// expect: [ 0 0 0 ]
+// expect: [ 0 0 0 ]
+
+var fg = lnn.fieldgradient(m)
+
+for (f in fg) print f
+// expect: [ 2 ]
+// expect: [ 2 ]
+// expect: [ 1 ]
+// expect: [ 2 ]
+// expect: [ 2 ]
+// expect: [ 1 ]
+// expect: [ 2 ]
+// expect: [ 2 ]
+// expect: [ 1 ]

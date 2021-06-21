@@ -42,6 +42,8 @@
 #define FIELD_OPRETURN                   "FldOpFn"
 #define FIELD_OPRETURN_MSG               "Could not construct a Field from the return value of the function passed to 'op'."
 
+void field_zero(objectfield *field);
+
 bool field_getelement(objectfield *field, grade grade, elementid el, int indx, value *out);
 bool field_getelementwithindex(objectfield *field, int indx, value *out);
 bool field_getelementaslist(objectfield *field, grade grade, elementid el, int indx, unsigned int *nentries, double **out);

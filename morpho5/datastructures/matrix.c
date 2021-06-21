@@ -262,6 +262,14 @@ bool matrix_addtocolumn(objectmatrix *m, unsigned int col, double alpha, double 
  * Matrix arithmetic
  * ********************************************************************* */
 
+objectmatrixerror matrix_copy(objectmatrix *a, objectmatrix *out) {
+    if (a->ncols==out->ncols && a->nrows==out->nrows) {
+        cblas_dcopy(a->ncols * a->nrows, a->elements, 1, out->elements, 1);
+        return MATRIX_OK;
+    }
+    return MATRIX_INCMPTBLDIM;
+}
+
 /** Performs a + b -> out. */
 objectmatrixerror matrix_add(objectmatrix *a, objectmatrix *b, objectmatrix *out) {
     if (a->ncols==b->ncols && a->ncols==out->ncols &&

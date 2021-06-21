@@ -7,6 +7,8 @@
 #ifndef selection_h
 #define selection_h
 
+#include "mesh.h"
+
 #define SELECTION_CLASSNAME "Selection"
 #define SELECTION_ISSELECTEDMETHOD "isselected"
 #define SELECTION_IDLISTFORGRADEMETHOD "idlistforgrade"
@@ -35,6 +37,7 @@
 
 void selection_clear(objectselection *s);
 
+bool selection_isselected(objectselection *sel, grade g, elementid id);
 void selection_initialize(void);
 
 #endif /* selection_h */

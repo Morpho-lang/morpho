@@ -1,0 +1,359 @@
+/* ************************************
+ * Optimization
+ ************************************** */
+
+// Minimize a 1-d function by Brent's algorithm
+fn brent(bracket, func, tol, itermax) {
+ var zeps = 1e-10, cgold = 0.3819660
+
+ fn sign(x, y) { // Returns sign(y)*|x|
+   if (y<0) return -abs(x)
+   if (y>0) return abs(x)
+   return 0.0
+ }
+
+ var iter
+ var a, b // Minimum lies between a and b
+ if (bracket[0]<bracket[2]) a=bracket[0] else a=bracket[2]
+ if (bracket[0]>bracket[2]) b=bracket[0] else b=bracket[2]
+ var d=0.0, e=0.0
+ var xm
+
+ var v=bracket[1], w=v, x=v // Initialize
+ var fv=func(x), fw=fv, fx=fv
+
+ for (iter in 0...itermax) {
+   xm=0.5*(a+b)
+   var tol1=tol*abs(x)+zeps, tol2=2*tol1
+
+   // Check if converged
+   if (abs(x-xm) <= (tol2-0.5*(b-a))) return [x, fx]
+
+   if (abs(e) > tol1) { // Model the function by a parabola
+     var r = (x-w)*(fx-fv),
+         q = (x-v)*(fx-fw),
+         p = (x-v)*q-(x-w)*r
+     q=2*(q-r)
+     if (q>0) p = -p
+     q=abs(q)
+     var etemp = e
+     e=d
+
+     // Check if the parabolic fit is acceptable
+     if (abs(p) >= abs(0.5*q*etemp) || p<= q*(a-x) ||
+         p>= q*(b-x)) { // Bad: Take golden section step
+       if (x>=xm) e=a-x else e=b-x
+       d = cgold*e
+     } else { // Good: Use parabolic step
+       d=p/q
+       var u=x+d
+       if (u-a < tol2 || b-u < tol2) d = sign(tol1, xm-x)
+     }
+   } else {
+     if (x>=xm) e=a-x else e=b-x
+     d = cgold*e
+   }
+
+   var u
+   if (abs(d)>=tol1) u=x+d else u=x+sign(tol1, d)
+   var fu = func(u) // Evaluate function
+
+   // Update bracket
+   if (fu<=fx) {
+     if (u>=x) a=x else b=x
+     v=w; w=x; x=u
+     fv=fw; fw=fx; fx=fu
+   } else {
+     if (u<x) a=u else b=u
+     if (fu <= fw || w==x) {
+       v=w; w=u; fv=fw; fw=fu
+     } else if (fu<=fv || v==x || v==w) {
+       v=u; fv=fu
+     }
+   }
+ }
+ return [x, fx]
+}
+
+class Constraint {
+  init (func, target) {
+    self.functional = func
+    self.target = target
+    self.selection = nil
+    self.onesided = false
+  }
+}
+
+class Energy {
+  init (func) {
+    self.functional = func
+    self.selection = nil
+    self.prefactor = nil
+  }
+}
+
+/* Defines an optimization problem */
+class OptimizationProblem {
+  init (m) {
+    self.mesh = m
+    self.fields = []
+    self.energies = []
+    self.constraints = []
+    self.localconstraints = []
+    self.fixed = nil
+  }
+
+  /* Adds an energy to the problem */
+  addenergy(functional, selection=nil, prefactor=nil) {
+    var en = Energy(functional)
+    en.selection = selection
+    en.prefactor = prefactor
+    self.energies.append(en)
+    return en
+  }
+
+  /* Adds a field to the problem */
+  addfield(field) {
+    self.fields.append(field)
+  }
+
+  /* Adds a constraint to the problem */
+  addconstraint(functional, selection=nil) {
+    var target = functional.total(self.mesh)
+    var cons = Constraint(functional, target)
+    en.selection = selection
+    self.constraints.append(cons)
+    return cons
+  }
+
+  /* Adds a local constraint to the problem */
+  addlocalconstraint(functional, selection=nil, onesided=false) {
+    var cons = Constraint(functional, 0)
+    en.selection = selection
+    cons.onesided = onesided
+    self.localconstraints.append(cons)
+    return cons
+  }
+}
+
+
+class Optimizer {
+  init (problem, target) {
+    self.problem = problem
+    self.target = target
+    self.stepsize = 0.1
+    self.steplimit = 0.5
+    self.etol = 1e-8 // Energy convergence criterion
+    self.ctol = 1e-10 // Constraint satisfaction criterion
+    self.linmintol = 0.001 // Convergence tolerance for line minimizations
+    self.linminmax = 10 // Maximum number of iterations for line minimizations
+    self.maxconstraintsteps = 10 // Maximum number of constraint steps
+    self.quiet = false // Whether to report
+  }
+
+  /* Calculate the total energy from a functional */
+  total(func) {
+    var prefactor = 1
+    if (func.prefactor) prefactor = func.prefactor
+    if (func.selection) {
+      return prefactor*func.functional.total(self.problem.mesh, func.selection)
+    } else {
+      return prefactor*func.functional.total(self.problem.mesh)
+    }
+  }
+
+  /* Calculate the integrand for a functional */
+  integrand(func) {
+    var val
+    if (func.selection) {
+      val=func.functional.integrand(self.mesh, func.selection)
+    } else {
+      val=func.functional.integrand(self.mesh)
+    }
+    if (func.prefactor) val*=func.prefactor
+    return val
+  }
+
+  /* Calculate the gradient of the functional */
+  gradient(func, selection=nil) {
+    var sel=func.selection // Use the object's selection by default
+    if (selection) sel=selection // If we're passed a selection use it
+
+    var grad=self.evalgradient(func, sel)
+
+    if (func.prefactor) grad*=func.prefactor
+    return grad
+  }
+
+  /* Calculates the total energy for a problem */
+  totalenergy() {
+    var energy=0
+    for (en in self.problem.energies) {
+      energy+=self.total(en)
+    }
+    return energy
+  }
+
+  /* Calculates the total force on the vertices */
+  totalforce() {
+    var f
+    for (en in self.problem.energies) {
+      f+=self.gradient(en)
+    }
+    return f
+  }
+
+  /* Take a step */
+  step(stepsize) {
+    var target = self.gettarget()
+    var frc = self.force // Compute the total force
+
+    //self.initlocalconstraints() // Find which local constraints are active
+    //self.subtractlocalconstraints(frc) // Remove projections onto local constraints
+
+    //self.subtractconstraints(frc) // Remove projections onto constraint directions
+
+    target.acc(-stepsize, frc) // Take a step
+
+    //self.initlocalconstraints()
+    //self.reprojectlocalconstraints() // Reproject onto local constraints
+
+    //self.reprojectconstraints() // Push back onto constraints
+  }
+
+  /* Adaptive stepsize */
+  energywithstepsize(size) {
+    var target = self.gettarget()
+    var vsave = target.clone()
+
+    self.step(size) // Take the step
+    var energy=self.totalenergy()
+
+    self.settarget(vsave)
+
+    return energy
+  }
+
+
+  /* Perform relaxation at fixed scale */
+  relax(n) {
+    var energy = [ self.totalenergy() ]
+
+    for (i in 0...n) {
+      self.force = self.totalforce()
+      self.step(self.stepsize)
+
+      energy.append(self.totalenergy()) // Track the total energy
+      var de = abs(energy[i+1]-energy[i]) // How has it changed?
+
+      if (!self.quiet) print "Iteration ${i}. Energy: ${energy[i+1]} delta E: ${de}"
+
+      // Test for convergence
+      if (abs(energy[i+1])<self.etol || de/abs(energy[i+1])<self.etol) break
+    }
+    return energy
+  }
+
+  /* Bracket the stepsize */
+  bracketstepsize() {
+    var s = [ 0, self.stepsize, 2*self.stepsize ]
+    var bracket = [ self.totalenergy(), self.energywithstepsize(s[1]), self.energywithstepsize(s[2]) ]
+
+    var iter = 0
+
+    while (!(bracket[1]<bracket[0] && bracket[1]<bracket[2])) {
+      if (bracket[2]<bracket[1]) { // Step size is too small
+        s[1]=s[2]
+        s[2]=2*s[2]
+        bracket[1]=bracket[2]
+        bracket[2]=self.energywithstepsize(s[2])
+      } else if (bracket[1]>bracket[0]) { // Step size is too big
+        s[1]=s[1]/2
+        bracket[1]=self.energywithstepsize(s[1])
+      } else {
+        print "Cannot resolve bracket. Current stepsizes ${s} and bracket ${bracket}"
+        return nil
+      }
+      if (iter>10) {
+        print "Couldn't bracket stepsize. Adjust stepsize and retry."
+        return nil
+      }
+      iter+=1
+    }
+
+    return [s, bracket]
+  }
+
+  /* Perform relaxation at fixed scale */
+  linesearch(n) {
+    //var nv = v.dimensions()[1]
+    var energy = [ self.totalenergy() ]
+
+    for (i in 0...n) {
+      self.force = self.totalforce()
+      var brack=self.bracketstepsize()
+
+      if (!islist(brack)) return
+
+      var step = brent(brack[0], self.energywithstepsize, self.linmintol, self.linminmax)
+      if (isnil(step)) break
+
+      self.stepsize = step[0]
+
+      if (self.stepsize > self.steplimit) {
+        self.stepsize = self.steplimit
+      }
+
+      self.step(self.stepsize)
+
+      step[1]=self.totalenergy()
+      var de = abs(step[1]-energy[-1])
+
+      energy.append(step[1])
+      if (!self.quiet) print "Iteration ${i}. Energy: ${energy[-1]} delta E: ${de} stepsize: ${self.stepsize}"
+
+      // Test for convergence
+      if (abs(energy[i+1])<self.etol || de/abs(energy[i+1])<self.etol) break
+    }
+    return energy
+  }
+
+}
+
+/* Optimize meshes */
+class ShapeOptimizer < Optimizer {
+  gettarget() {
+    return self.mesh.vertexmatrix()
+  }
+
+  settarget(v) {
+    self.mesh.setvertexmatrix(v)
+  }
+
+  evalgradient(func, sel) {
+    if (isselection(sel)) {
+      grad=func.functional.gradient(self.target, sel)
+    } else {
+      grad=func.functional.gradient(self.target)
+    }
+  }
+}
+
+/* Optimize fields */
+class FieldOptimizer < Optimizer {
+  gettarget() {
+    return self.target
+  }
+
+  settarget(val) {
+    self.target.assign(val)
+  }
+
+  evalgradient(func, sel) {
+    if (isselection(sel)) {
+      return func.functional.fieldgradient(self.target, self.problem.mesh, sel)
+    } else {
+      return func.functional.fieldgradient(self.target, self.problem.mesh)
+    }
+  }
+}

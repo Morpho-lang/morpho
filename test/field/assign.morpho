@@ -1,0 +1,24 @@
+// Scalar field
+
+var m = Mesh("square.mesh")
+print m
+// expect: <Mesh: 4 vertices>
+
+var f = Field(m)
+var g = Field(m)
+
+// Create a convenient function for output
+fn write(f) { print "[${f[0]}, ${f[1]}, ${f[2]}, ${f[3]}]" }
+
+// Set elements
+for (i in 0...4) f[i]=i
+
+write(f)
+// expect: [0, 1, 2, 3]
+
+write(g)
+// expect: [0, 0, 0, 0]
+
+g.assign(f)
+write(g)
+// expect: [0, 1, 2, 3]

@@ -36,7 +36,9 @@
 #define EQUIELEMENT_CLASSNAME          "EquiElement"
 #define LINECURVATURESQ_CLASSNAME      "LineCurvatureSq"
 #define LINETORSIONSQ_CLASSNAME        "LineTorsionSq"
-#define GRADSQ_CLASSNAME               "GradSq"    
+#define GRADSQ_CLASSNAME               "GradSq"
+#define NORMSQ_CLASSNAME               "NormSq"
+#define LINEINTEGRAL_CLASSNAME         "LineIntegral"
 
 /* Errors */
 #define FUNC_INTEGRAND_MESH            "FnctlIntMsh"

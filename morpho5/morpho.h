@@ -36,6 +36,7 @@ typedef void compiler;
 #define MORPHO_GETINDEX_METHOD "index"
 #define MORPHO_SETINDEX_METHOD "setindex"
 
+#define MORPHO_ASSIGN_METHOD "assign"
 #define MORPHO_ADD_METHOD "add"
 #define MORPHO_ADDR_METHOD "addr" 
 #define MORPHO_SUB_METHOD "sub"

@@ -6,6 +6,6 @@ print Red.red(0.1) // expect: 1
 print Red.green(0.1) // expect: 0
 print Red.blue(0.1) // expect: 0
 
-var a = HueMap()
+var a = GradientMap()
 
 print a.red(0.5) // expect: 0.475

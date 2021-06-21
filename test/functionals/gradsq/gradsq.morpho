@@ -21,4 +21,8 @@ print lel.gradient(m)
 // expect: [ 0.333333 -0.333335 5.55112e-07 ]
 // expect: [ 0 0 0 ]
 
-print lel.fieldgradient(m, phi)
+var grd=lel.fieldgradient(m, phi)
+for (x in grd) print x
+// expect: -0.57735
+// expect: 1.1547
+// expect: -0.57735

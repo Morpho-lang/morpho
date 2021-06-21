@@ -1,8 +1,17 @@
 import graphics
 import color
 
+/* 3d cross product */
 fn cross3d(a, b) {
   return Matrix([ a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0] ])
+}
+
+/* Bounding box */
+fn bbox(m) {
+  var col = m.transpose()
+  var bnds = []
+  for (i in 0...col.dimensions()[1]) bnds.append(bounds(col.column(i)))
+  return bnds
 }
 
 /** Deduces the plot color for a given grade */
@@ -54,6 +63,14 @@ fn plotmesh(mesh, selection=nil, grade=nil, color=nil) {
   if (isnumber(grade)) glist.append(grade)
 
   var vert = mesh.vertexmatrix()
+  var flat = nil
+
+  var bb = bbox(vert)
+  var size[bb.count()]
+  for (x, i in bb) {
+    size[i]=x[1]-x[0]
+    if (abs(size[i])<1e-10) flat = i
+  }
 
   if (glist.ismember(0)) { // Show points as spheres
     var vcol=plotcolorforgrade(0, color) // Will either be a color or a matrix
@@ -82,10 +99,16 @@ fn plotmesh(mesh, selection=nil, grade=nil, color=nil) {
   if (glist.ismember(2)) { // Show faces
     var fcol=plotcolorforgrade(2, color) // Will either be a color or a matrix
     var faces=mesh.connectivitymatrix(0,2)
+    var interpolate=false
+
     if (issparse(faces)) {
       var nf = mesh.count(2)
       var nnv = 0, nnt = nf // Count number of triangles and vertices generated
       if (isselection(selection)) nnt=selection.idlistforgrade(2).count()
+
+      if (ismatrix(fcol) &&
+          fcol.dimensions()[1]!=nf &&
+          fcol.dimensions()[1]==mesh.count(0)) interpolate = true
 
       var nvert = Matrix(3, 3*nnt) // New array of vertices
       var norm = Matrix(3, 3*nnt) // New array of normals
@@ -99,16 +122,24 @@ fn plotmesh(mesh, selection=nil, grade=nil, color=nil) {
         var el = faces.rowindices(i)
         var v[3]
         for (p, i in el) v[i]=vert.column(p)
-        var normal=cross3d(v[2]-v[1], v[1]-v[0])
-        if (normal.inner(v[0])<0) {
-          normal=-normal
+        var normal
+        if (flat) {
+          normal=Matrix(bb.count())
+          normal[flat]=1
+        } else {
+          normal=cross3d(v[2]-v[1], v[1]-v[0])
+          if (normal.inner(v[0])<0) {
+            normal=-normal
+          }
         }
 
-        var tcol = plotcolortomatrix(plotcolorforelement(fcol, i))
+        var tcol
+        if (!interpolate) tcol = plotcolortomatrix(plotcolorforelement(fcol, i))
         for (j in 0...3) {
           tri[nnv,nnt]=1
           nvert.setcolumn(nnv, v[j])
           norm.setcolumn(nnv, normal)
+          if (interpolate) tcol = plotcolortomatrix(plotcolorforelement(fcol, el[j]))
           ncol.setcolumn(nnv, tcol)
           nnv+=1
         }
@@ -156,10 +187,55 @@ fn plotselection(mesh, selection, grade=nil) {
 }
 
 /** Visualizes a field
- * @param[in] mesh - mesh to plot
- * @param[in] selection - selection
- * @param[in] grade - Grade to show */
-fn plotfield(mesh, field, colorfunction=nil) {
+ * @param[in] field - the field
+ * @param[in] grade - Grade to show
+ * @param[in] colormap - Colormap to use
+ * @param[in] style - style to use
+ * @param[in] scale - whether or not to scale values */
+fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true) {
+  var mesh = field.mesh()
+  var shape = field.shape()
 
+  var ngrades = shape.count()
+  var showgrades = [] // Grades to show
+  var col[ngrades+1]
 
+  var cm=colormap
+  if (cm==nil) cm = HueMap()    // Default color map
+
+  var bnd=bounds(field)         // Find bounds for the field
+  var sc = bnd[1]-bnd[0]
+  if (abs(sc)>1e-16) sc=1/sc else sc = 1
+
+  if (style=="interpolate") { // Interpolate scalar field onto areas
+    var nv=mesh.count(0)       // Number of elements in this grade
+    var cmat = Matrix(3, nv)   // Make a color matrix
+
+    for (i in 0...nv) {
+      var val = field[0, i]
+      if (scale) val=(val-bnd[0])*sc
+      cmat.setcolumn(i, Matrix(cm.rgb(val)))
+    }
+
+    col[2]=cmat
+    showgrades.append(2)
+  } else {
+    for (g in 0...ngrades) {
+      if (shape[g]==0) continue
+
+      var nel=mesh.count(g)       // Number of elements in this grade
+      var cmat = Matrix(3, nel)   // Make a color matrix
+
+      for (i in 0...nel) {
+        var val = field[g, i]
+        if (scale) val=(val-bnd[0])*sc
+        cmat.setcolumn(i, Matrix(cm.rgb(val)))
+      }
+
+      col[g]=cmat
+      showgrades.append(g)
+    }
+  }
+
+  return plotmesh(mesh, grade=showgrades, color=col)
 }

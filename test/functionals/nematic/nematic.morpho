@@ -1,0 +1,43 @@
+// Test nematic
+
+import meshtools
+import optimize
+
+var m = Mesh("square.mesh")
+
+var nn = Field(m, Matrix([1,0,0]))
+
+//var psi = 0.2
+//nn[2]=Matrix([cos(psi),0,sin(psi)])
+//nn[3]=Matrix([cos(psi),0,sin(psi)])
+nn[0]=Matrix([1/sqrt(2),1/sqrt(2),0])
+nn[2]=Matrix([1/sqrt(2),1/sqrt(2),0])
+nn[3]=Matrix([0,1,0])
+
+var lnn = Nematic(nn)
+
+print lnn.integrand(m)
+// expect: [ 0.288706 0.288706 ]
+
+print lnn.total(m)
+// expect: 0.577411
+
+print lnn.gradient(m)
+// expect: [ -0.288705 -0.288706 0.288705 0.288706 ]
+// expect: [ -0.288705 0.288706 0.288705 -0.288706 ]
+// expect: [ 0 0 0 0 ]
+
+var fg=lnn.fieldgradient(nn,m)
+for (x in fg) print x
+// expect: [ -0.275634 ]
+// expect: [ -0.275635 ]
+// expect: [ 0 ]
+// expect: [ 0.337521 ]
+// expect: [ -0.676777 ]
+// expect: [ 0 ]
+// expect: [ 0.724366 ]
+// expect: [ 0.724366 ]
+// expect: [ 0 ]
+// expect: [ -0.676777 ]
+// expect: [ 0.337521 ]
+// expect: [ 0 ]

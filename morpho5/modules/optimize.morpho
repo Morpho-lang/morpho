@@ -79,6 +79,7 @@ class Constraint {
   init (func, target) {
     self.functional = func
     self.target = target
+    self.field = nil
     self.selection = nil
     self.onesided = false
   }
@@ -118,19 +119,23 @@ class OptimizationProblem {
   }
 
   /* Adds a constraint to the problem */
-  addconstraint(functional, selection=nil) {
+  addconstraint(functional, selection=nil, field=nil) {
     var target = functional.total(self.mesh)
     var cons = Constraint(functional, target)
-    en.selection = selection
+    cons.selection = selection
+    cons.field = field
+    cons.prefactor = nil
     self.constraints.append(cons)
     return cons
   }
 
   /* Adds a local constraint to the problem */
-  addlocalconstraint(functional, selection=nil, onesided=false) {
-    var cons = Constraint(functional, 0)
-    en.selection = selection
+  addlocalconstraint(functional, selection=nil, field=nil, onesided=false, target=0) {
+    var cons = Constraint(functional, target)
+    cons.selection = selection
     cons.onesided = onesided
+    cons.field = field
+    cons.prefactor = nil
     self.localconstraints.append(cons)
     return cons
   }
@@ -147,7 +152,7 @@ class Optimizer {
     self.ctol = 1e-10 // Constraint satisfaction criterion
     self.linmintol = 0.001 // Convergence tolerance for line minimizations
     self.linminmax = 10 // Maximum number of iterations for line minimizations
-    self.maxconstraintsteps = 10 // Maximum number of constraint steps
+    self.maxconstraintsteps = 20 // Maximum number of constraint steps
     self.quiet = false // Whether to report
   }
 
@@ -166,9 +171,9 @@ class Optimizer {
   integrand(func) {
     var val
     if (func.selection) {
-      val=func.functional.integrand(self.mesh, func.selection)
+      val=func.functional.integrand(self.target, func.selection)
     } else {
-      val=func.functional.integrand(self.mesh)
+      val=func.functional.integrand(self.target)
     }
     if (func.prefactor) val*=func.prefactor
     return val
@@ -188,7 +193,7 @@ class Optimizer {
   /* Calculates the total energy for a problem */
   totalenergy() {
     var energy=0
-    for (en in self.problem.energies) {
+    for (en in self.energies()) {
       energy+=self.total(en)
     }
     return energy
@@ -197,28 +202,219 @@ class Optimizer {
   /* Calculates the total force on the vertices */
   totalforce() {
     var f
-    for (en in self.problem.energies) {
+    for (en in self.energies()) {
       f+=self.gradient(en)
     }
     return f
   }
 
+  /* Subtract constraint forces from a given force */
+  subtractconstraints(f) {
+    for (cons in self.constraints()) {
+      var g = self.gradient(cons)
+      self.subtractlocalconstraints(g)
+      // Todo Should use Gram=Schmidt to properly enforce multiple global constraints
+
+      var lambda=f.inner(g)/g.inner(g)
+      f.acc(-lambda, g)
+    }
+  }
+
+  totalforcewithconstraints() {
+    var f = self.totalforce()
+    self.initlocalconstraints() // Find which local constraints are active
+    self.subtractlocalconstraints(f) // Remove projections onto local constraints
+    self.subtractconstraints(f) // Remove projections onto constraint directions
+    return f
+  }
+
+  /* Test how closely constraints are satisfied.
+     Returns a vector of residuals */
+  testconstraints() {
+    var dv = []
+    for (cons in self.constraints()) {
+      dv.append(cons.target-self.total(cons))
+    }
+    return Matrix(dv)
+  }
+
+  /* Calculate matrix of force inner products */
+  forceinnerproducts(fv) {
+    var nc=fv.count()
+    var m=Matrix(nc,nc)
+
+    for (i in 0...nc) {
+      for (j in i...nc) {
+        m[i,j]=fv[i].inner(fv[j])
+        m[j,i]=m[i,j]
+      }
+    }
+    return m
+  }
+
+  /* Reproject onto constrained subspace */
+  reprojectconstraints() {
+    var v = self.gettarget()
+    var acons = self.constraints()
+    var nc = acons.count()
+    if (nc>0) {
+      var residual, i=0
+      do {
+        var dv = self.testconstraints(), fv = []
+
+        for (cons in acons) {
+          var ff = self.gradient(cons)
+          self.subtractlocalconstraints(ff)
+          fv.append(ff)
+        }
+
+        var m=self.forceinnerproducts(fv)
+
+        var sol = dv/m
+        for (i in 0...nc) {
+          v.acc(sol[i],fv[i])
+        }
+
+        residual=self.testconstraints().norm()
+        i+=1
+        if (i>self.maxconstraintsteps) {
+          print "Warning: Too many steps in constraint satisfaction"
+          return
+        }
+      } while (residual>self.ctol)
+    }
+  }
+
+  /* Find which local constraints are active */
+  initlocalconstraints() {
+    self.lcactive = []
+    for (cons in self.localconstraints()) {
+      if (cons.onesided) {
+        var integrand = self.integrand(cons)
+        var sel = Selection(self.mesh, fn (q) q<self.ctol, integrand)
+        if (cons.selection) sel=sel.intersection(cons.selection)
+        self.lcactive.append(sel)
+      } else {
+        if (cons.selection) self.lcactive.append(cons.selection)
+        else self.lcactive.append(true)
+      }
+    }
+  }
+
+  /* Subtracts local constraints */
+  subtractlocalconstraints(f) {
+    for (cons, i in self.localconstraints()) {
+      var g=self.gradient(cons, selection=self.lcactive[i])
+      self.sublocal(f,g)
+    }
+  }
+
+  /* Test how closely local constraints are satisfied.
+     Returns a list of vectors of residuals */
+  testlocalconstraints() {
+    var dv = []
+    for (cons, i in self.localconstraints()) {
+      if (isselection(self.lcactive[i])) {
+        dv.append(cons.functional.integrand(self.target, self.lcactive[i])-cons.target)
+      } else {
+        dv.append(self.integrand(cons)-cons.target)
+      }
+    }
+    return dv
+  }
+
+  lcnorm(dv) {
+    var norm = 0
+    for (v in dv) norm+=v.norm()
+    return norm
+  }
+
+  /* Reproject local constraints */
+  reprojectlocalconstraints() {
+    var v = self.target
+    var msh = ismesh(v)
+    var nv = v.count()
+    if (msh) {
+      v=v.vertexmatrix()
+      nv=v.dimensions()[1]
+    }
+
+    var localconstraints = self.localconstraints()
+    var nc = localconstraints.count()
+    if (nc>0) {
+      var residual, iter=0
+      var dv = self.testlocalconstraints()
+
+      if (self.lcnorm(dv)>self.ctol) do {
+        var fv = []
+
+        // Calculate constraint forces
+        for (cons, i in localconstraints) {
+          fv.append(self.gradient(cons, selection=self.lcactive[i]))
+        }
+
+        var nactive = 0
+        // Loop over vertices
+        for (k in 0...nv) {
+          // Find the discrepencies of each force at the vertex
+          var vv = Matrix(nc)
+          for (i in 0...nc) vv[i] = -dv[i][0,k] // Note minus sign
+
+          if (vv.norm()>self.ctol/nv) {
+            // Identify constraints active on this vertex
+            var va = [], fa = []
+            for (i in 0...nc) {
+              if (abs(vv[i])>self.ctol/nv) {
+                va.append(vv[i])
+                if (msh) fa.append(fv[i].column(k))
+                else fa.append(fv[i][k])
+              }
+            }
+
+            // Now solve for the necessary motion
+            var m=self.forceinnerproducts(fa)
+            var sol = Matrix(va)/m
+
+            if (msh) { // Move the vertex
+              var newv=v.column(k)
+              for (i in 0...sol.count()) {
+                newv.acc(sol[i], fa[i])
+              }
+              v.setcolumn(k,newv)
+            } else {
+              for (i in 0...sol.count()) {
+                v[k].acc(sol[i], fa[i])
+              }
+            }
+
+            nactive+=1
+          }
+        }
+
+        dv=self.testlocalconstraints()
+        residual=self.lcnorm(dv)
+        if (nactive>0) residual/=nactive
+        iter+=1
+        if (iter>self.maxconstraintsteps && residual>self.ctol) {
+          print "Warning: Too many steps in local constraint satisfaction. (Try increasing maxconstraintsteps or set ctol to a number greater than ${residual})."
+          return
+        }
+
+      } while (residual>self.ctol)
+    }
+  }
+
   /* Take a step */
   step(stepsize) {
     var target = self.gettarget()
-    var frc = self.force // Compute the total force
-
-    //self.initlocalconstraints() // Find which local constraints are active
-    //self.subtractlocalconstraints(frc) // Remove projections onto local constraints
-
-    //self.subtractconstraints(frc) // Remove projections onto constraint directions
+    var frc = self.force // Use the force
 
     target.acc(-stepsize, frc) // Take a step
 
-    //self.initlocalconstraints()
-    //self.reprojectlocalconstraints() // Reproject onto local constraints
+    self.initlocalconstraints()
+    self.reprojectlocalconstraints() // Reproject onto local constraints
 
-    //self.reprojectconstraints() // Push back onto constraints
+    self.reprojectconstraints() // Push back onto constraints
   }
 
   /* Adaptive stepsize */
@@ -240,7 +436,8 @@ class Optimizer {
     var energy = [ self.totalenergy() ]
 
     for (i in 0...n) {
-      self.force = self.totalforce()
+      self.force = self.totalforcewithconstraints()
+
       self.step(self.stepsize)
 
       energy.append(self.totalenergy()) // Track the total energy
@@ -290,7 +487,7 @@ class Optimizer {
     var energy = [ self.totalenergy() ]
 
     for (i in 0...n) {
-      self.force = self.totalforce()
+      self.force = self.totalforcewithconstraints()
       var brack=self.bracketstepsize()
 
       if (!islist(brack)) return
@@ -323,18 +520,52 @@ class Optimizer {
 /* Optimize meshes */
 class ShapeOptimizer < Optimizer {
   gettarget() {
-    return self.mesh.vertexmatrix()
+    return self.problem.mesh.vertexmatrix()
   }
 
   settarget(v) {
-    self.mesh.setvertexmatrix(v)
+    self.problem.mesh.setvertexmatrix(v)
+  }
+
+  energies() {
+    return self.problem.energies
+  }
+
+  constraints() {
+    var sc = []
+    for (c in self.problem.constraints) {
+      if (c.field==nil) sc.append(c)
+    }
+    return sc
+  }
+
+  localconstraints() {
+    var sc = []
+    for (c in self.problem.localconstraints) {
+      if (c.field==nil) sc.append(c)
+    }
+    return sc
   }
 
   evalgradient(func, sel) {
     if (isselection(sel)) {
-      grad=func.functional.gradient(self.target, sel)
+      return func.functional.gradient(self.target, sel)
     } else {
-      grad=func.functional.gradient(self.target)
+      return func.functional.gradient(self.target)
+    }
+  }
+
+  sublocal(f, g) {
+    var nv = f.dimensions()[1]
+    for (var i=0; i<nv; i+=1) {
+      var gc=g.column(i)
+      var gg=gc.inner(gc)
+      if (abs(gg)>self.ctol) {
+        var fc=f.column(i) // Note we only retrieve the column of f if needed
+        var lambda=fc.inner(gc)/gg
+        fc.acc(-lambda, gc)
+        f.setcolumn(i, fc)
+      }
     }
   }
 }
@@ -349,11 +580,52 @@ class FieldOptimizer < Optimizer {
     self.target.assign(val)
   }
 
+  checkfield(fld) {
+    if (islist(fld)) return fld.ismember(self.target)
+    return (fld==self.target)
+  }
+
+  energies() { // Selects which energies are pertinent to the optimization problem
+    var en = []
+    for (e in self.problem.energies) {
+      if (e.functional.has("field")) {
+        if (self.checkfield(e.functional.field)) en.append(e)
+      }
+    }
+    return en
+  }
+
+  constraints() {
+    var sc = []
+    for (c in self.problem.constraints) {
+      if (c.field==self.target) sc.append(c)
+    }
+    return sc
+  }
+
+  localconstraints() {
+    var sc = []
+    for (c in self.problem.localconstraints) {
+      if (c.field==self.target) sc.append(c)
+    }
+    return sc
+  }
+
   evalgradient(func, sel) {
     if (isselection(sel)) {
       return func.functional.fieldgradient(self.target, self.problem.mesh, sel)
     } else {
       return func.functional.fieldgradient(self.target, self.problem.mesh)
+    }
+  }
+
+  sublocal(f, g) {
+    for (gi, i in g) {
+      var gg=gi.inner(gi)
+      if (abs(gg)>self.ctol) {
+        var lambda=f[i].inner(gi)/gg
+        f[i].acc(-lambda, gi)
+      }
     }
   }
 }

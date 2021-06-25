@@ -55,6 +55,7 @@ typedef void compiler;
 #define MORPHO_CLASS_METHOD "clss"
 #define MORPHO_SUPER_METHOD "superclass"
 #define MORPHO_SERIALIZE_METHOD "serialize"
+#define MORPHO_HAS_METHOD "has"
 #define MORPHO_RESPONDSTO_METHOD "respondsto"
 #define MORPHO_INVOKE_METHOD "invoke"
 #define MORPHO_CLONE_METHOD "clone"

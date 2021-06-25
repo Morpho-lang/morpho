@@ -6,6 +6,7 @@
 
 #include "functional.h"
 #include "builtin.h"
+#include "veneer.h"
 #include "common.h"
 #include "error.h"
 #include "value.h"
@@ -1450,6 +1451,176 @@ MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, GradSq_fieldgradient, BUILTIN_FLA
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
+ * Nematic
+ * ---------------------------------------------- */
+
+static value nematic_ksplayproperty;
+static value nematic_ktwistproperty;
+static value nematic_kbendproperty;
+static value nematic_pitchproperty;
+
+typedef struct {
+    double ksplay,ktwist,kbend,pitch;
+    objectfield *field;
+} nematicref;
+
+/** Prepares the gradsq reference */
+bool nematic_prepareref(objectinstance *self, objectmesh *mesh, grade g, nematicref *ref) {
+    bool success=false;
+    value field=MORPHO_NIL;
+    value val=MORPHO_NIL;
+    ref->ksplay=1.0; ref->ktwist=1.0; ref->kbend=1.0; ref->pitch=0.0;
+    
+    if (objectinstance_getproperty(self, functional_fieldproperty, &field) &&
+        MORPHO_ISFIELD(field)) {
+        ref->field=MORPHO_GETFIELD(field);
+        success=true;
+    }
+    if (objectinstance_getproperty(self, nematic_ksplayproperty, &val) && MORPHO_ISNUMBER(val)) {
+        morpho_valuetofloat(val, &ref->ksplay);
+    }
+    if (objectinstance_getproperty(self, nematic_ktwistproperty, &val) && MORPHO_ISNUMBER(val)) {
+        morpho_valuetofloat(val, &ref->ktwist);
+    }
+    if (objectinstance_getproperty(self, nematic_kbendproperty, &val) && MORPHO_ISNUMBER(val)) {
+        morpho_valuetofloat(val, &ref->kbend);
+    }
+    if (objectinstance_getproperty(self, nematic_pitchproperty, &val) && MORPHO_ISNUMBER(val)) {
+        morpho_valuetofloat(val, &ref->pitch);
+    }
+    return success;
+}
+
+/* Integrates two linear functions with values at vertices f[0]...f[2] and g[0]...g[2] */
+double nematic_bcint(double *f, double *g) {
+    return (f[0]*(2*g[0]+g[1]+g[2]) + f[1]*(g[0]+2*g[1]+g[2]) + f[2]*(g[0]+g[1]+2*g[2]))/12;
+}
+
+/** Calculate the |grad q|^2 energy */
+bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    nematicref *eref = ref;
+    double size=0; // Length area or volume of the element
+    double gradnn[eref->field->psize*mesh->dim];
+    double divnn, curlnn[mesh->dim];
+    
+    if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &size)) return false;
+    
+    // Get nematic director components
+    double *nn[nv]; // Field value lists
+    unsigned int nentries=0;
+    for (unsigned int i=0; i<nv; i++) {
+        if (!field_getelementaslist(eref->field, MESH_GRADE_VERTEX, vid[i], 0, &nentries, &nn[i])) return false;
+    }
+    
+    // Evaluate gradients of the director
+    if (!gradsq_evaluategradient(mesh, eref->field, nv, vid, gradnn)) return false;
+    // Output of this is the matrix:
+    // [ nx,x ny,x nz,x ] [ 0 3 6 ] <- indices
+    // [ nx,y ny,y nz,y ] [ 1 4 7 ]
+    // [ nx,z ny,z nz,z ] [ 2 5 8 ]
+    objectmatrix gradnnmat = MORPHO_STATICMATRIX(gradnn, mesh->dim, mesh->dim);
+    
+    matrix_trace(&gradnnmat, &divnn);
+    curlnn[0]=gradnn[7]-gradnn[5]; // nz,y - ny,z
+    curlnn[1]=gradnn[2]-gradnn[6]; // nx,z - nz,x
+    curlnn[2]=gradnn[3]-gradnn[1]; // ny,x - nx,y
+    
+    /* From components of the curl, construct the coefficients that go in front of integrals of
+           nx^2, ny^2, nz^2, nx*ny, ny*nz, and nz*nx over the element. */
+    double ctwst[6] = { curlnn[0]*curlnn[0], curlnn[1]*curlnn[1], curlnn[2]*curlnn[2],
+                        2*curlnn[0]*curlnn[1], 2*curlnn[1]*curlnn[2], 2*curlnn[2]*curlnn[0]};
+
+    double cbnd[6] = { ctwst[1] + ctwst[2], ctwst[0] + ctwst[2], ctwst[0] + ctwst[1],
+                       -ctwst[3], -ctwst[4], -ctwst[5] };
+    
+    /* Calculate integrals of nx^2, ny^2, nz^2, nx*ny, ny*nz, and nz*nx over the element */
+    double nnt[mesh->dim][nv]; // The transpose of nn
+    for (unsigned int i=0; i<nv; i++)
+        for (unsigned int j=0; j<mesh->dim; j++) nnt[j][i]=nn[i][j];
+    
+    double integrals[6] = { nematic_bcint(nnt[0], nnt[0]),
+                            nematic_bcint(nnt[1], nnt[1]),
+                            nematic_bcint(nnt[2], nnt[2]),
+                            nematic_bcint(nnt[0], nnt[1]),
+                            nematic_bcint(nnt[1], nnt[2]),
+                            nematic_bcint(nnt[2], nnt[0]) };
+    
+    /* Now we can calculate the components of splay, twist and bend */
+    double splay=0.0, twist=0.0, bend=0.0;
+
+    /* Evaluate the three contributions to the integral */
+    splay = eref->ksplay*0.5*size*divnn*divnn;
+    for (unsigned int i=0; i<6; i++) {
+        twist += ctwst[i]*integrals[i];
+        bend += cbnd[i]*integrals[i];
+    }
+    twist *= eref->ktwist*0.5*size;
+    bend *= eref->kbend*0.5*size;
+    
+    *out = splay+twist+bend;
+    
+    return true;
+}
+
+/** Initialize a Nematic object */
+value Nematic_init(vm *v, int nargs, value *args) {
+    objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+
+    int nfixed=nargs;
+    value ksplay=MORPHO_FLOAT(1.0),
+          ktwist=MORPHO_FLOAT(1.0),
+          kbend=MORPHO_FLOAT(1.0);
+    value pitch=MORPHO_NIL;
+    
+    if (builtin_options(v, nargs, args, &nfixed, 2,
+                        NEMATIC_KSPLAY_PROPERTY, &ksplay,
+                        NEMATIC_KTWIST_PROPERTY, &ktwist,
+                        NEMATIC_KBEND_PROPERTY, &kbend,
+                        NEMATIC_PITCH_PROPERTY, &pitch)) {
+        objectinstance_setproperty(self, nematic_ksplayproperty, ksplay);
+        objectinstance_setproperty(self, nematic_ktwistproperty, ktwist);
+        objectinstance_setproperty(self, nematic_kbendproperty, kbend);
+        objectinstance_setproperty(self, nematic_pitchproperty, pitch);
+    } else morpho_runtimeerror(v, NEMATIC_ARGS);
+    
+    if (nfixed==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
+        objectinstance_setproperty(self, functional_fieldproperty, MORPHO_GETARG(args, 0));
+    } else morpho_runtimeerror(v, NEMATIC_ARGS);
+    
+    return MORPHO_NIL;
+}
+
+FUNCTIONAL_METHOD(Nematic, integrand, MESH_GRADE_AREA, nematicref, nematic_prepareref, functional_mapintegrand, nematic_integrand, NEMATIC_ARGS, SYMMETRY_NONE);
+
+FUNCTIONAL_METHOD(Nematic, total, MESH_GRADE_AREA, nematicref, nematic_prepareref, functional_sumintegrand, nematic_integrand, NEMATIC_ARGS, SYMMETRY_NONE);
+
+FUNCTIONAL_METHOD(Nematic, gradient, MESH_GRADE_AREA, nematicref, nematic_prepareref, functional_mapnumericalgradient, nematic_integrand, NEMATIC_ARGS, SYMMETRY_NONE);
+
+value Nematic_fieldgradient(vm *v, int nargs, value *args) {
+    objectmesh *mesh=NULL;
+    objectselection *sel=NULL;
+    objectfield *field=NULL;
+    nematicref ref;
+    value out=MORPHO_NIL;
+    
+    if (functional_validateargs(v, nargs, args, &mesh, &sel, &field)) {
+        if (nematic_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), mesh, MESH_GRADE_AREA, &ref)) {
+             functional_mapnumericalfieldgradient(v, mesh, sel, MESH_GRADE_AREA, field, nematic_integrand, &ref, SYMMETRY_NONE, &out);
+        } else morpho_runtimeerror(v, GRADSQ_ARGS);
+    }
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+    return out;
+}
+
+MORPHO_BEGINCLASS(Nematic)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Nematic_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Nematic_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Nematic_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Nematic_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Nematic_fieldgradient, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
+/* ----------------------------------------------
  * NormSq
  * ---------------------------------------------- */
 
@@ -1499,6 +1670,20 @@ MORPHO_ENDCLASS
 /* **********************************************************************
  * Integrals
  * ********************************************************************** */
+
+/* ----------------------------------------------
+ * Integrand functions
+ * ---------------------------------------------- */
+
+value tangent;
+
+static value functional_tangent(vm *v, int nargs, value *args) {
+    return tangent;
+}
+
+/* ----------------------------------------------
+ * LineIntegral
+ * ---------------------------------------------- */
 
 typedef struct {
     value integrand;
@@ -1557,6 +1742,14 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     for (unsigned int i=0; i<nv; i++) {
         mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
     }
+    
+    /* Set up tangent vector... (temporary code here) */
+    double tangentdata[mesh->dim], tnorm=0.0;
+    functional_vecsub(mesh->dim, x[1], x[0], tangentdata);
+    tnorm=functional_vecnorm(mesh->dim, tangentdata);
+    if (fabs(tnorm)>MORPHO_EPS) functional_vecscale(mesh->dim, 1.0/tnorm, tangentdata, tangentdata);
+    objectmatrix mtangent = MORPHO_STATICMATRIX(tangentdata, mesh->dim, 1);
+    tangent = MORPHO_OBJECT(&mtangent);
     
     value q0[iref->nfields+1], q1[iref->nfields+1];
     value *q[2] = { q0, q1 };
@@ -1636,20 +1829,29 @@ void functional_initialize(void) {
     linearelasticity_referenceproperty=builtin_internsymbolascstring(LINEARELASTICITY_REFERENCE_PROPERTY);
     linearelasticity_poissonproperty=builtin_internsymbolascstring(LINEARELASTICITY_POISSON_PROPERTY);
     equielement_weightproperty=builtin_internsymbolascstring(LINEARELASTICITY_POISSON_PROPERTY);
+    nematic_ksplayproperty=builtin_internsymbolascstring(NEMATIC_KSPLAY_PROPERTY);
+    nematic_ktwistproperty=builtin_internsymbolascstring(NEMATIC_KTWIST_PROPERTY);
+    nematic_kbendproperty=builtin_internsymbolascstring(NEMATIC_KBEND_PROPERTY);
+    nematic_pitchproperty=builtin_internsymbolascstring(NEMATIC_PITCH_PROPERTY);
     
-    builtin_addclass(LENGTH_CLASSNAME, MORPHO_GETCLASSDEFINITION(Length), MORPHO_NIL);
-    builtin_addclass(AREA_CLASSNAME, MORPHO_GETCLASSDEFINITION(Area), MORPHO_NIL);
-    builtin_addclass(AREAENCLOSED_CLASSNAME, MORPHO_GETCLASSDEFINITION(AreaEnclosed), MORPHO_NIL);
-    builtin_addclass(VOLUMEENCLOSED_CLASSNAME, MORPHO_GETCLASSDEFINITION(VolumeEnclosed), MORPHO_NIL);
-    builtin_addclass(VOLUME_CLASSNAME, MORPHO_GETCLASSDEFINITION(Volume), MORPHO_NIL);
+    objectstring objclassname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+    value objclass = builtin_findclass(MORPHO_OBJECT(&objclassname));
     
-    builtin_addclass(SCALARPOTENTIAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(ScalarPotential), MORPHO_NIL);
-    builtin_addclass(LINEARELASTICITY_CLASSNAME, MORPHO_GETCLASSDEFINITION(LinearElasticity), MORPHO_NIL);
-    builtin_addclass(EQUIELEMENT_CLASSNAME, MORPHO_GETCLASSDEFINITION(EquiElement), MORPHO_NIL);
-    builtin_addclass(LINECURVATURESQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineCurvatureSq), MORPHO_NIL);
-    builtin_addclass(GRADSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(GradSq), MORPHO_NIL);
-    builtin_addclass(NORMSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(NormSq), MORPHO_NIL);
-    builtin_addclass(LINEINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineIntegral), MORPHO_NIL);
+    builtin_addclass(LENGTH_CLASSNAME, MORPHO_GETCLASSDEFINITION(Length), objclass);
+    builtin_addclass(AREA_CLASSNAME, MORPHO_GETCLASSDEFINITION(Area), objclass);
+    builtin_addclass(AREAENCLOSED_CLASSNAME, MORPHO_GETCLASSDEFINITION(AreaEnclosed), objclass);
+    builtin_addclass(VOLUMEENCLOSED_CLASSNAME, MORPHO_GETCLASSDEFINITION(VolumeEnclosed), objclass);
+    builtin_addclass(VOLUME_CLASSNAME, MORPHO_GETCLASSDEFINITION(Volume), objclass);
+    builtin_addclass(SCALARPOTENTIAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(ScalarPotential), objclass);
+    builtin_addclass(LINEARELASTICITY_CLASSNAME, MORPHO_GETCLASSDEFINITION(LinearElasticity), objclass);
+    builtin_addclass(EQUIELEMENT_CLASSNAME, MORPHO_GETCLASSDEFINITION(EquiElement), objclass);
+    builtin_addclass(LINECURVATURESQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineCurvatureSq), objclass);
+    builtin_addclass(GRADSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(GradSq), objclass);
+    builtin_addclass(NORMSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(NormSq), objclass);
+    builtin_addclass(LINEINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineIntegral), objclass);
+    builtin_addclass(NEMATIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(Nematic), objclass);
+    
+    builtin_addfunction(TANGENT_FUNCTION, functional_tangent, BUILTIN_FLAGSEMPTY);
     
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
     morpho_defineerror(FUNC_ELNTFND, ERROR_HALT, FUNC_ELNTFND_MSG);
@@ -1658,4 +1860,6 @@ void functional_initialize(void) {
     morpho_defineerror(LINEARELASTICITY_PRP, ERROR_HALT, LINEARELASTICITY_PRP_MSG);
     morpho_defineerror(EQUIELEMENT_ARGS, ERROR_HALT, EQUIELEMENT_ARGS_MSG);
     morpho_defineerror(GRADSQ_ARGS, ERROR_HALT, GRADSQ_ARGS_MSG);
+    morpho_defineerror(NEMATIC_ARGS, ERROR_HALT, NEMATIC_ARGS_MSG);
 }
+ 

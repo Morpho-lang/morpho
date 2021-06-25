@@ -281,6 +281,18 @@ objectmatrixerror matrix_add(objectmatrix *a, objectmatrix *b, objectmatrix *out
     return MATRIX_INCMPTBLDIM;
 }
 
+/** Performs lambda*a + beta -> out. */
+objectmatrixerror matrix_addscalar(objectmatrix *a, double lambda, double beta, objectmatrix *out) {
+    if (a->ncols==out->ncols && a->nrows==out->nrows) {
+        for (unsigned int i=0; i<out->nrows*out->ncols; i++) {
+            out->elements[i]=lambda*a->elements[i]+beta;
+        }
+        return MATRIX_OK;
+    }
+
+    return MATRIX_INCMPTBLDIM;
+}
+
 /** Performs a + lambda*b -> a. */
 objectmatrixerror matrix_accumulate(objectmatrix *a, double lambda, objectmatrix *b) {
     if (a->ncols==b->ncols && a->nrows==b->nrows ) {
@@ -611,10 +623,20 @@ value Matrix_add(vm *v, int nargs, value *args) {
             if (new) {
                 out=MORPHO_OBJECT(new);
                 matrix_add(a, b, new);
-                morpho_bindobjects(v, 1, &out);
             }
         } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    } else if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+        double val;
+        if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
+            objectmatrix *new = object_newmatrix(a->nrows, a->ncols, false);
+            if (new) {
+                out=MORPHO_OBJECT(new);
+                matrix_addscalar(a, 1.0, val, new);
+            }
+        }
     } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
+    
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
     return out;
 }
@@ -655,10 +677,20 @@ value Matrix_sub(vm *v, int nargs, value *args) {
             if (new) {
                 out=MORPHO_OBJECT(new);
                 matrix_sub(a, b, new);
-                morpho_bindobjects(v, 1, &out);
             }
         } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    } else if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+        double val;
+        if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
+            objectmatrix *new = object_newmatrix(a->nrows, a->ncols, false);
+            if (new) {
+                out=MORPHO_OBJECT(new);
+                matrix_addscalar(a, 1.0, -val, new);
+            }
+        }
     } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
+    
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
     return out;
 }

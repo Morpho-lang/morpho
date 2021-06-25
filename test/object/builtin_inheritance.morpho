@@ -1,0 +1,12 @@
+// Check inheritance of builtin objects
+
+var a = Length()
+
+print a.clss()
+// expect: @Length
+
+print a.respondsto("invoke")
+// expect: true
+
+print a.respondsto("squiggle")
+// expect: false

@@ -179,6 +179,11 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
     
     if (!new) return MORPHO_NIL;
     
+    /** Copy methods from superclass */
+    if (MORPHO_ISCLASS(superclass)) {
+        dictionary_copy(&MORPHO_GETCLASS(superclass)->methods, &new->methods);
+    }
+    
     for (unsigned int i=0; desc[i].name!=NULL; i++) {
         if (desc[i].type==BUILTIN_METHOD) {
             value selector = object_stringfromcstring(desc[i].name, strlen(desc[i].name));
@@ -247,6 +252,7 @@ void builtin_initialize(void) {
     dictionary_init(&builtin_symboltable);
     
     functions_initialize();
+    veneer_initialize(); 
     
     /* Initialize builtin classes and functions */
     file_initialize();
@@ -256,8 +262,6 @@ void builtin_initialize(void) {
     selection_initialize();
     field_initialize();
     functional_initialize();
-    
-    veneer_initialize(); 
 }
 
 void builtin_finalize(void) {

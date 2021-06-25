@@ -70,6 +70,19 @@ value Object_respondsto(vm *v, int nargs, value *args) {
     return MORPHO_FALSE;
 }
 
+/** Checks if an object has a property */
+value Object_has(vm *v, int nargs, value *args) {
+    value self = MORPHO_SELF(args);
+
+    if (nargs==1 &&
+        MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
+        return MORPHO_BOOL(dictionary_get(&MORPHO_GETINSTANCE(self)->fields, MORPHO_GETARG(args, 0), NULL));
+        
+    } else MORPHO_RAISE(v, RESPONDSTO_ARG);
+    
+    return MORPHO_FALSE;
+}
+
 /** Invoke a method */
 value Object_invoke(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
@@ -175,6 +188,7 @@ MORPHO_METHOD(MORPHO_CLASS_METHOD, Object_class, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUPER_METHOD, Object_super, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_RESPONDSTO_METHOD, Object_respondsto, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_HAS_METHOD, Object_has, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_INVOKE_METHOD, Object_invoke, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Object_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Object_enumerate, BUILTIN_FLAGSEMPTY),

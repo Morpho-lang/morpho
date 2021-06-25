@@ -19,11 +19,19 @@
 #define LINEARELASTICITY_POISSON_PROPERTY     "poissonratio"
 #define EQUIELEMENT_WEIGHT_PROPERTY           "weight"
 
+#define NEMATIC_KSPLAY_PROPERTY               "ksplay"
+#define NEMATIC_KTWIST_PROPERTY               "ktwist"
+#define NEMATIC_KBEND_PROPERTY                "kbend"
+#define NEMATIC_PITCH_PROPERTY                "pitch"
+
 /* Functional methods */
 #define FUNCTIONAL_INTEGRAND_METHOD    "integrand"
 #define FUNCTIONAL_TOTAL_METHOD        "total"
 #define FUNCTIONAL_GRADIENT_METHOD     "gradient"
 #define FUNCTIONAL_FIELDGRADIENT_METHOD     "fieldgradient"
+
+/* Special functions that can be used in integrands */
+#define TANGENT_FUNCTION               "tangent"
 
 /* Functional names */
 #define LENGTH_CLASSNAME               "Length"
@@ -39,6 +47,7 @@
 #define GRADSQ_CLASSNAME               "GradSq"
 #define NORMSQ_CLASSNAME               "NormSq"
 #define LINEINTEGRAL_CLASSNAME         "LineIntegral"
+#define NEMATIC_CLASSNAME              "Nematic"
 
 /* Errors */
 #define FUNC_INTEGRAND_MESH            "FnctlIntMsh"
@@ -61,6 +70,9 @@
 
 #define GRADSQ_ARGS                    "GradSqArgs"
 #define GRADSQ_ARGS_MSG                "GradSq requires a field as the argument."
+
+#define NEMATIC_ARGS                   "NmtcArgs"
+#define NEMATIC_ARGS_MSG               "Nematic requires a field as the argument."
 
 void functional_initialize(void);
 

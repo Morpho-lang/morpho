@@ -117,7 +117,7 @@ assemblyrule assemblyrules[] ={
     { OP_CALL, "call", "rA, B" }, // b literal
     { OP_INVOKE, "invoke", "rA, ?B, C" }, // c literal
     
-    { OP_RETURN, "return", "rA" }, // c literal
+    { OP_RETURN, "return", "rB" }, // c literal
 
     { OP_CALL, "closure", "rA, pB" }, // b prototype
     

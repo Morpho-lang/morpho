@@ -240,6 +240,21 @@ bool sparseccs_getrowindices(sparseccs *ccs, int col, int *nentries, int **entri
     return true;
 }
 
+/** Sets the row indices given a column
+ * @param[in] ccs   the matrix
+ * @param[in] col  column index
+ * @param[out] nentries  the number of entries
+ * @param[out] entries  the entries themselves
+ * @warning Use with caution */
+bool sparseccs_setrowindices(sparseccs *ccs, int col, int nentries, int *entries) {
+    if (col>=ccs->ncols) return false;
+    if (nentries!=ccs->cptr[col+1]-ccs->cptr[col]) return false;
+    int *e=ccs->rix+ccs->cptr[col];
+    for (unsigned int i=0; i<nentries; i++) e[i]=entries[i];
+    
+    return true;
+}
+
 /** Retrieves the indices of non-zero columns
  * @param[in] ccs   the matrix
  * @param[out] nentries  the number of entries
@@ -920,6 +935,39 @@ value Sparse_rowindices(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Get the row indices given a column */
+value Sparse_setrowindices(vm *v, int nargs, value *args) {
+    objectsparse *s=MORPHO_GETSPARSE(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+ 
+    if (nargs==2 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
+        MORPHO_ISLIST(MORPHO_GETARG(args, 1))) {
+        if (sparse_checkformat(s, SPARSE_CCS, true, true)) {
+            int col = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+            objectlist *list = MORPHO_GETLIST(MORPHO_GETARG(args, 1));
+            int nentries=list_length(list);
+            int entries[nentries];
+            
+            if (col<s->ccs.ncols) {
+                for (int i=0; i<nentries; i++) {
+                    value entry;
+                    if (list_getelement(list, i, &entry) &&
+                        MORPHO_ISINTEGER(entry)) {
+                        entries[i]=MORPHO_GETINTEGERVALUE(entry);
+                    } else { morpho_runtimeerror(v, MATRIX_INVLDINDICES); return MORPHO_NIL; }
+                }
+                
+                if (!sparseccs_setrowindices(&s->ccs, col, nentries, entries)) {
+                    morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+                }
+                
+            } else morpho_runtimeerror(v, MATRIX_INDICESOUTSIDEBOUNDS);
+        }
+    }
+    
+    return out;
+}
+
 /** Get the column indices */
 value Sparse_colindices(vm *v, int nargs, value *args) {
     objectsparse *s=MORPHO_GETSPARSE(MORPHO_SELF(args));
@@ -985,6 +1033,7 @@ MORPHO_METHOD(MATRIX_TRANSPOSE_METHOD, Sparse_transpose, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Sparse_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_DIMENSIONS_METHOD, Sparse_dimensions, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SPARSE_ROWINDICES_METHOD, Sparse_rowindices, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SPARSE_SETROWINDICES_METHOD, Sparse_setrowindices, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SPARSE_COLINDICES_METHOD, Sparse_colindices, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SPARSE_INDICES_METHOD, Sparse_indices, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS

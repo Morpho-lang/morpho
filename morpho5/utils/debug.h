@@ -25,6 +25,8 @@ void debug_disassemble(program *code, int *matchline);
 
 bool debug_infofromindx(program *code, instructionindx indx, int *line, int *posn, objectfunction **func, objectclass **klass);
 
+void debug_showstack(vm *v);
+
 void debugger(vm *v);
 
 #endif /* debug_h */

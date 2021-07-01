@@ -146,6 +146,7 @@ class Optimizer {
   init (problem, target) {
     self.problem = problem
     self.target = target
+    self.fixed = nil
     self.stepsize = 0.1
     self.steplimit = 0.5
     self.etol = 1e-8 // Energy convergence criterion
@@ -186,6 +187,7 @@ class Optimizer {
 
     var grad=self.evalgradient(func, sel)
 
+    if (self.fixed) self.fixgrad(grad)
     if (func.prefactor) grad*=func.prefactor
     return grad
   }
@@ -201,10 +203,13 @@ class Optimizer {
 
   /* Calculates the total force on the vertices */
   totalforce() {
+    var energies = self.energies()
     var f
-    for (en in self.energies()) {
+    if (!islist(energies) || energies.count()==0) print "Warning: Problem has no active functionals."
+    for (en in energies) {
       f+=self.gradient(en)
     }
+
     return f
   }
 
@@ -259,6 +264,7 @@ class Optimizer {
     var nc = acons.count()
     if (nc>0) {
       var residual, i=0
+
       do {
         var dv = self.testconstraints(), fv = []
 
@@ -281,6 +287,7 @@ class Optimizer {
           print "Warning: Too many steps in constraint satisfaction"
           return
         }
+
       } while (residual>self.ctol)
     }
   }
@@ -409,6 +416,8 @@ class Optimizer {
     var target = self.gettarget()
     var frc = self.force // Use the force
 
+    if (!frc) return
+
     target.acc(-stepsize, frc) // Take a step
 
     self.initlocalconstraints()
@@ -468,7 +477,7 @@ class Optimizer {
         s[1]=s[1]/2
         bracket[1]=self.energywithstepsize(s[1])
       } else {
-        print "Cannot resolve bracket. Current stepsizes ${s} and bracket ${bracket}"
+        print "Cannot resolve bracket. Current stepsizes [${s[0]},${s[1]},${s[2]}] and bracket [${bracket[0]},${bracket[1]},${bracket[2]}]"
         return nil
       }
       if (iter>10) {
@@ -565,6 +574,41 @@ class ShapeOptimizer < Optimizer {
         var lambda=fc.inner(gc)/gg
         fc.acc(-lambda, gc)
         f.setcolumn(i, fc)
+      }
+    }
+  }
+
+  fixgrad(grad) {
+    if (islist(self.fixed)) {
+      var zero = Matrix(grad.dimensions()[0], 1)
+      for (i in self.fixed) {
+        grad.setcolumn(i, zero)
+      }
+    }
+  }
+
+  fix(s) {
+    if (isnil(self.fixed)) self.fixed=[]
+
+    var lst = s
+    if (isselection(s)) lst = s.idlistforgrade(0)
+
+    if (islist(lst)) { // Add these to the list if they're not already in it
+      for (i in lst) {
+        if (!(self.fixed.ismember(i))) self.fixed.append(i)
+      }
+    }
+  }
+
+  unfix(s) {
+    if (isnil(self.fixed)) return
+
+    var lst = s
+    if (isselection(s)) lst = s.idlistforgrade(0)
+
+    if (islist(lst)) { // Add these to the list if they're not already in it
+      for (i in lst) {
+        if (self.fixed.ismember(i)) self.fixed.remove(i)
       }
     }
   }

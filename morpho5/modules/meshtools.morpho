@@ -248,3 +248,63 @@ e0[1] b --- z -- c
 
   return new
 }
+
+/* Tests whether to flip an edge
+   @param[in] v - vertex matrix of edge
+   @param[in] ev - vertex indices of the edge
+   @param[in] cv - vertex indices of the vertices in the two triangles not
+                   present in the edge
+   @returns true if the edge should be flipped */
+fn equiangulatetest (v, ev, cv) {
+  var a = (v.column(ev[0])-v.column(ev[1])).norm(), // Length of common edge
+      b = (v.column(ev[0])-v.column(cv[0])).norm(), // Edges of face 1
+      c = (v.column(ev[1])-v.column(cv[0])).norm(),
+      d = (v.column(ev[0])-v.column(cv[1])).norm(), // Edges of face 2
+      e = (v.column(ev[1])-v.column(cv[1])).norm()
+
+   return ((b*b + c*c - a*a)*d*e + (d*d + e*e - a*a)*b*c) < 0
+}
+
+/* Finds vertices in a pair of triangles not in a common edge
+   @param[in] ev - list of two vertex ids
+   @param[in] faces - faces definition matrix
+   @param[in] ef - ids of two adjacent faces
+   @returns a list of vertices present in triangles ef but not part of ev */
+fn cvert(ev, faces, ef) {
+  var cv = []
+  for (i in 0..1) for (v in faces.rowindices(ef[i])) if (!ev.ismember(v)) cv.append(v)
+  return cv
+}
+
+/* Flip the edge */
+fn edgeflip(m, iedge, edges, faces, ev, cv, ef) {
+  edges.setrowindices(iedge, cv)
+  faces.setrowindices(ef[0], [ev[0], cv[0], cv[1]])
+  faces.setrowindices(ef[1], [ev[1], cv[0], cv[1]])
+  m.resetconnectivity()
+}
+
+fn equiangulate(m, quiet=false) {
+  var vert = m.vertexmatrix()
+  var edges = m.connectivitymatrix(0,1)
+  var faces = m.connectivitymatrix(0,2)
+  var edgetoface = m.connectivitymatrix(2,1)
+  var ne = edges.dimensions()[1]
+  var nflip = 0
+
+  for (iedge in 0...ne) {
+    var ev=edges.rowindices(iedge) // vertices for this edge
+    var ef=edgetoface.rowindices(iedge) // faces attached to this edge
+    if (ef.count()!=2) continue  // Only edges that are connected to two triangles
+    var cv=cvert(ev, faces, ef)
+    if (equiangulatetest(vert, ev, cv)) {
+      edgeflip(m, iedge, edges, faces, ev, cv, ef)
+      edgetoface = m.connectivitymatrix(2,1) // Recalculate connectivity
+      nflip+=1
+    }
+  }
+
+  if (!quiet) print "Equiangulate: ${nflip} edges flipped."
+
+  return nil
+}

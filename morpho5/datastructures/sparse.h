@@ -18,6 +18,7 @@
 #define SPARSE_CLASSNAME "Sparse"
 
 #define SPARSE_ROWINDICES_METHOD "rowindices"
+#define SPARSE_SETROWINDICES_METHOD "setrowindices"
 #define SPARSE_COLINDICES_METHOD "colindices"
 #define SPARSE_INDICES_METHOD "indices"
 
@@ -60,6 +61,7 @@ bool sparseccs_resize(sparseccs *ccs, int nrows, int ncols, unsigned int nentrie
 bool sparseccs_get(sparseccs *ccs, int i, int j, double *val);
 
 bool sparseccs_getrowindices(sparseccs *ccs, int col, int *nentries, int **entries);
+bool sparseccs_setrowindices(sparseccs *ccs, int col, int nentries, int *entries);
 bool sparseccs_getcolindices(sparseccs *ccs, int *nentries, int *entries);
 bool sparseccs_doktoccs(sparsedok *in, sparseccs *out, bool copyvals);
 

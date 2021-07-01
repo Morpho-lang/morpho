@@ -512,6 +512,11 @@ void list_append(objectlist *list, value v) {
     varray_valuewrite(&list->val, v);
 }
 
+/** Appends an item to a list */
+unsigned int list_length(objectlist *list) {
+    return list->val.count;
+}
+
 /** Removes an element from a list
  * @param[in] list a list object
  * @param[in] val the entry to remove

@@ -43,7 +43,7 @@
 #define MATRIX_INDICESOUTSIDEBOUNDS_MSG   "Matrix index out of bounds."
 
 #define MATRIX_INVLDINDICES               "MtrxInvldIndx"
-#define MATRIX_INVLDINDICES_MSG           "Matrix indices must be numerical."
+#define MATRIX_INVLDINDICES_MSG           "Matrix indices must be integers."
 
 #define MATRIX_CONSTRUCTOR                "MtrxCns"
 #define MATRIX_CONSTRUCTOR_MSG            "Matrix() constructor should be called either with dimensions or an array, list or matrix initializer."

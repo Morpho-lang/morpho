@@ -23,6 +23,7 @@
 #define MESH_VERTEXPOSITION_METHOD         "vertexposition"
 #define MESH_SETVERTEXPOSITION_METHOD      "setvertexposition"
 
+#define MESH_RESETCONNECTIVITY_METHOD      "resetconnectivity"
 #define MESH_CONNECTIVITYMATRIX_METHOD     "connectivitymatrix"
 #define MESH_ADDGRADE_METHOD               "addgrade"
 #define MESH_MAXGRADE_METHOD               "maxgrade"

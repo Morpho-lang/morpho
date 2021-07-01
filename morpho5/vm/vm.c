@@ -293,7 +293,17 @@ void vm_gcmarkroots(vm *v) {
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
     printf("> Stack.\n");
 #endif
-    for (value *s=v->stack.data+v->fp->roffset+v->fp->function->nregs-1; s>=v->stack.data; s--) {
+    value *stacktop = v->stack.data+v->fp->roffset+v->fp->function->nregs-1;
+    
+    /* Find the largest stack position currently in play */
+    /*for (callframe *f=v->frame; f<v->fp; f++) {
+        value *ftop = v->stack.data+f->roffset+f->function->nregs-1;
+        if (ftop>stacktop) stacktop=ftop;
+    }*/
+    
+    //debug_showstack(v);
+    
+    for (value *s=stacktop; s>=v->stack.data; s--) {
         if (MORPHO_ISOBJECT(*s)) vm_gcmarkvalue(v, *s);
     }
 
@@ -1266,10 +1276,14 @@ callfunction: // Jump here if an instruction becomes a call
             
             if (v->fp>v->frame) {
                 bool shouldreturn = (v->fp->ret);
+                value *or = reg + v->fp->function->nargs;
                 v->fp--;
                 v->konst=v->fp->function->konst.data; /* Restore the constant table */
                 reg=v->fp->roffset+v->stack.data; /* Restore registers */
                 v->stack.count=v->fp->stackcount; /* Restore the stack size */
+                
+                for (value *r = reg + v->fp->function->nregs-1; r > or; r--) *r = MORPHO_INTEGER(0);
+                
                 pc=v->fp->pc; /* Jump back */
                 if (shouldreturn) return true;
                 DISPATCH();

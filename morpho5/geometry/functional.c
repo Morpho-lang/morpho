@@ -1187,16 +1187,19 @@ typedef struct {
     grade grade;
     objectsparse *vtoel; // Connect vertices to elements
     objectsparse *eltov; // Connect elements to vertices
+    objectfield *weight; // Weight field
 } equielementref;
 
-/** Prepares the reference structure from the LinearElasticity object's properties */
+/** Prepares the reference structure from the Equielement object's properties */
 bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, equielementref *ref) {
     bool success=false;
     value grade=MORPHO_NIL;
+    value weight=MORPHO_NIL;
     
     if (objectinstance_getproperty(self, functional_gradeproperty, &grade) &&
         MORPHO_ISINTEGER(grade) ) {
         ref->grade=MORPHO_GETINTEGERVALUE(grade);
+        ref->weight=NULL;
         
         int maxgrade=mesh_maxgrade(mesh);
         if (ref->grade<0 || ref->grade>maxgrade) ref->grade = maxgrade;
@@ -1205,6 +1208,11 @@ bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, equ
         ref->eltov=mesh_addconnectivityelement(mesh, 0, ref->grade);
         
         if (ref->vtoel && ref->eltov) success=true;
+    }
+    
+    if (objectinstance_getproperty(self, equielement_weightproperty, &weight) &&
+        MORPHO_ISFIELD(weight) ) {
+        ref->weight=MORPHO_GETFIELD(weight);
     }
     
     return success;
@@ -1232,7 +1240,29 @@ bool equielement_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *v
         if (fabs(mean)<MORPHO_EPS) return false;
         
         /* Now evaluate the functional at this vertex */
-        for (unsigned int i=0; i<nconn; i++) total+=(1.0-size[i]/mean)*(1.0-size[i]/mean);
+        if (!ref->weight) {
+            for (unsigned int i=0; i<nconn; i++) total+=(1.0-size[i]/mean)*(1.0-size[i]/mean);
+        } else {
+            double weight[nconn], wmean=0.0;
+            
+            for (int i=0; i<nconn; i++) {
+                value val;
+                weight[i]=1.0;
+                if (field_getelement(ref->weight, ref->grade, conn[i], 0, &val) &&
+                    MORPHO_ISNUMBER(val)) {
+                    morpho_valuetofloat(val, &weight[i]);
+                }
+                wmean+=weight[i];
+            }
+            
+            wmean /= ((double) nconn);
+            if (fabs(wmean)<MORPHO_EPS) return false;
+            
+            for (unsigned int i=0; i<nconn; i++) {
+                double term = (1.0-weight[i]*size[i]/mean/wmean);
+                total+=term*term;
+            }
+        }
         
         *out = total;
     }
@@ -1246,7 +1276,7 @@ value EquiElement_init(vm *v, int nargs, value *args) {
     value grade=MORPHO_INTEGER(-1);
     value weight=MORPHO_NIL;
     
-    if (builtin_options(v, nargs, args, &nfixed, 2, EQUIELEMENT_WEIGHT_PROPERTY, &weight, FUNCTIONAL_GRADE_PROPERTY, &grade)) {
+    if (builtin_options(v, nargs, args, &nfixed, 2, equielement_weightproperty, &weight, functional_gradeproperty, &grade)) {
         objectinstance_setproperty(self, equielement_weightproperty, weight);
         objectinstance_setproperty(self, functional_gradeproperty, grade);
     } else morpho_runtimeerror(v, EQUIELEMENT_ARGS);
@@ -1573,10 +1603,10 @@ value Nematic_init(vm *v, int nargs, value *args) {
     value pitch=MORPHO_NIL;
     
     if (builtin_options(v, nargs, args, &nfixed, 2,
-                        NEMATIC_KSPLAY_PROPERTY, &ksplay,
-                        NEMATIC_KTWIST_PROPERTY, &ktwist,
-                        NEMATIC_KBEND_PROPERTY, &kbend,
-                        NEMATIC_PITCH_PROPERTY, &pitch)) {
+                        nematic_ksplayproperty, &ksplay,
+                        nematic_ktwistproperty, &ktwist,
+                        nematic_kbendproperty, &kbend,
+                        nematic_pitchproperty, &pitch)) {
         objectinstance_setproperty(self, nematic_ksplayproperty, ksplay);
         objectinstance_setproperty(self, nematic_ktwistproperty, ktwist);
         objectinstance_setproperty(self, nematic_kbendproperty, kbend);
@@ -1828,7 +1858,7 @@ void functional_initialize(void) {
     scalarpotential_gradfunctionproperty=builtin_internsymbolascstring(SCALARPOTENTIAL_GRADFUNCTION_PROPERTY);
     linearelasticity_referenceproperty=builtin_internsymbolascstring(LINEARELASTICITY_REFERENCE_PROPERTY);
     linearelasticity_poissonproperty=builtin_internsymbolascstring(LINEARELASTICITY_POISSON_PROPERTY);
-    equielement_weightproperty=builtin_internsymbolascstring(LINEARELASTICITY_POISSON_PROPERTY);
+    equielement_weightproperty=builtin_internsymbolascstring(EQUIELEMENT_WEIGHT_PROPERTY);
     nematic_ksplayproperty=builtin_internsymbolascstring(NEMATIC_KSPLAY_PROPERTY);
     nematic_ktwistproperty=builtin_internsymbolascstring(NEMATIC_KTWIST_PROPERTY);
     nematic_kbendproperty=builtin_internsymbolascstring(NEMATIC_KBEND_PROPERTY);

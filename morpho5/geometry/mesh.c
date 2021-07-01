@@ -446,6 +446,17 @@ bool mesh_addelementwithvertices(objectmesh *mesh, grade g, elementid *v) {
     return success;
 }
 
+/** Resets connectivity elements other than the first row */
+void mesh_resetconnectivity(objectmesh *m) {
+    grade max = mesh_maxgrade(m);
+    for (grade i=1; i<=max; i++) {
+        for (grade j=0; j<=max; j++) {
+            value indx[2] = { MORPHO_INTEGER(i), MORPHO_INTEGER(j) };
+            if (i!=j) array_setelement(m->conn, 2, indx, MORPHO_NIL);
+        }
+    }
+}
+
 /* **********************************************************************
  * Symmetries
  * ********************************************************************** */
@@ -829,6 +840,15 @@ value Mesh_connectivitymatrix(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Clears any connectivity matrices */
+value Mesh_resetconnectivity(vm *v, int nargs, value *args) {
+    objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
+    
+    mesh_resetconnectivity(m);
+    
+    return MORPHO_NIL;
+}
+
 /** Adds a grade to a mesh */
 value Mesh_addgrade(vm *v, int nargs, value *args) {
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
@@ -909,6 +929,7 @@ MORPHO_METHOD(MESH_VERTEXMATRIX_METHOD, Mesh_vertexmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_SETVERTEXMATRIX_METHOD, Mesh_setvertexmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_VERTEXPOSITION_METHOD, Mesh_vertexposition, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_SETVERTEXPOSITION_METHOD, Mesh_setvertexposition, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MESH_RESETCONNECTIVITY_METHOD, Mesh_resetconnectivity, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_CONNECTIVITYMATRIX_METHOD, Mesh_connectivitymatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_ADDGRADE_METHOD, Mesh_addgrade, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_ADDSYMMETRY_METHOD, Mesh_addsymmetry, BUILTIN_FLAGSEMPTY),

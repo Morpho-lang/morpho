@@ -134,6 +134,7 @@ value morpho_concatenatestringvalues(int nval, value *v);
 
 char *morpho_strdup(char *string);
 
+int morpho_utf8numberofbytes(uint8_t *string);
 unsigned int morpho_powerof2ceiling(unsigned int n);
 
 bool morpho_isdirectory(const char *path);

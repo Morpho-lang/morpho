@@ -20,6 +20,9 @@
 #define DICTIONARY_CLASSNAME "Dictionary"
 #define RANGE_CLASSNAME "Range"
 
+#define STRING_SPLIT_METHOD "split"
+#define ARRAY_DIMENSIONS_METHOD "dimensions"
+
 #define LIST_ISMEMBER_METHOD "ismember"
 #define LIST_SORT_METHOD "sort"
 #define LIST_ORDER_METHOD "order"
@@ -58,8 +61,17 @@
 #define LIST_ADDARGS                      "LstAddArgs"
 #define LIST_ADDARGS_MSG                  "Add method requires a list."
 
+#define STRING_IMMTBL                     "StrngImmtbl"
+#define STRING_IMMTBL_MSG                 "Strings are immutable."
+
+#define ARRAY_ARGS                        "ArrayArgs"
+#define ARRAY_ARGS_MSG                    "Array much be called with integer arguments."
+
 /* Public interfaces to various data structures */
 typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_NONNUMERICALINDX, ARRAY_OUTOFBOUNDS } objectarrayerror;
+
+int string_countchars(objectstring *s);
+char *string_index(objectstring *s, int i);
 
 errorid array_error(objectarrayerror err);
 

@@ -211,7 +211,8 @@ bool field_getelement(objectfield *field, grade grade, elementid el, int indx, v
     } else if (MORPHO_ISMATRIX(field->prototype)) {
         if (!field->pool) field_addpool(field);
         if (field->pool) {
-            *out = MORPHO_OBJECT(((objectmatrix *) field->pool)+ix);
+            objectmatrix *mpool = (objectmatrix *) field->pool;
+            *out = MORPHO_OBJECT(&mpool[ix]);
             return true;
         }
     }
@@ -230,7 +231,8 @@ bool field_getelementwithindex(objectfield *field, int indx, value *out) {
     } else if (MORPHO_ISMATRIX(field->prototype)) {
         if (!field->pool) field_addpool(field);
         if (field->pool) {
-            *out = MORPHO_OBJECT(((objectmatrix *) field->pool)+indx);
+            objectmatrix *mpool = (objectmatrix *) field->pool;
+            *out = MORPHO_OBJECT(&mpool[indx]);
             return true;
         }
     }
@@ -586,13 +588,9 @@ value Field_acc(vm *v, int nargs, value *args) {
         objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 1));
         
         if (field_compareshape(a, b)) {
-            objectfield *new = object_newfield(a->mesh, a->prototype, a->dof);
-            
-            if (new) {
-                double lambda=1.0;
-                morpho_valuetofloat(MORPHO_GETARG(args, 0), &lambda);
-                field_accumulate(a, lambda, b);
-            }
+            double lambda=1.0;
+            morpho_valuetofloat(MORPHO_GETARG(args, 0), &lambda);
+            field_accumulate(a, lambda, b);
         } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
     } else morpho_runtimeerror(v, FIELD_ARITHARGS);
     

@@ -875,6 +875,7 @@ value Matrix_transpose(vm *v, int nargs, value *args) {
     if (new) {
         matrix_transpose(a, new);
         out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
     }
     
     return out;

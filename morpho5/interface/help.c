@@ -192,9 +192,12 @@ void help_topiclist(dictionary *dict, lineditor *edit) {
 static void help_show(objecthelptopic *topic, lineditor *edit, char *command) {
     char *c=command;
     for (; isspace(*c); c++);
+    if (*c=='(') c++;
     if (strncmp(c, "topics", 6)==0) {
+        linedit_displaywithstyle(edit, HELP_TOPICS, LINEDIT_DEFAULTCOLOR, LINEDIT_UNDERLINE);
         help_topiclist(&helpdict, edit);
     } else if (strncmp(c, "subtopics", 9)==0) {
+        linedit_displaywithstyle(edit, HELP_SUBTOPICS, LINEDIT_DEFAULTCOLOR, LINEDIT_UNDERLINE);
         help_topiclist(&topic->subtopics, edit);
     }
 }

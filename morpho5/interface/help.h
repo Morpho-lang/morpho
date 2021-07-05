@@ -23,7 +23,9 @@ typedef struct sobjecthelptopic {
     dictionary subtopics; // Subtopics
 } objecthelptopic;
 
-#define HELP_INDEXPAGE "help" 
+#define HELP_INDEXPAGE "help"
+#define HELP_TOPICS "Topics:\n"
+#define HELP_SUBTOPICS "Subtopics:\n"
 
 size_t help_querylength(char *query, char **s);
 objecthelptopic *help_search(char *query);

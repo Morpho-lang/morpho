@@ -28,6 +28,18 @@ objectselection *object_newselection(objectmesh *mesh) {
     return new;
 }
 
+/** Clones a selection */
+objectselection *selection_clone(objectselection *sel) {
+    objectselection *new=object_newselection(sel->mesh);
+    
+    if (new) {
+        new->mode=sel->mode;
+        for (unsigned int i=0; i<sel->ngrades; i++) dictionary_copy(&sel->selected[i], &new->selected[i]);
+    }
+    
+    return new;
+}
+
 /** Clears all data structures associated with a selection */
 void selection_clear(objectselection *s) {
     for (grade i=0; i<s->ngrades; i++) {
@@ -408,6 +420,18 @@ value Selection_print(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Clones a selection */
+value Selection_clone(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+    objectselection *a=MORPHO_GETSELECTION(MORPHO_SELF(args));
+    objectselection *new=selection_clone(a);
+    if (new) {
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    return out;
+}
+
 #define SELECTION_SETOP(op) \
 value Selection_##op(vm *v, int nargs, value *args) { \
     objectselection *slf = MORPHO_GETSELECTION(MORPHO_SELF(args)); \
@@ -439,7 +463,8 @@ MORPHO_METHOD(MORPHO_DIFFERENCE_METHOD, Selection_difference, BUILTIN_FLAGSEMPTY
 MORPHO_METHOD(MORPHO_ADD_METHOD, Selection_union, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUB_METHOD, Selection_difference, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SELECTION_ADDGRADEMETHOD, Selection_addgrade, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SELECTION_REMOVEGRADEMETHOD, Selection_removegrade, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(SELECTION_REMOVEGRADEMETHOD, Selection_removegrade, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_CLONE_METHOD, Selection_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

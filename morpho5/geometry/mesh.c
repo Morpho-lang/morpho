@@ -177,7 +177,20 @@ objectsparse *mesh_newconnectivityelement(objectmesh *mesh, unsigned int row, un
 bool mesh_setconnectivityelement(objectmesh *mesh, unsigned int row, unsigned int col, objectsparse *el) {
     value indx[2]={MORPHO_INTEGER(row),MORPHO_INTEGER(col)};
     if (mesh_checkconnectivity(mesh)) {
-        return (array_setelement(mesh->conn, 2, indx, MORPHO_OBJECT(el)) == ARRAY_OK);
+        value old = MORPHO_NIL;
+        if (array_getelement(mesh->conn, 2, indx, &old) &&
+            MORPHO_ISOBJECT(old)) {
+            object *oel = MORPHO_GETOBJECT(old);
+            mesh_delink(mesh, oel);
+            if (oel->status==OBJECT_ISUNMANAGED) object_free(oel);
+        }
+        
+        value val = MORPHO_NIL;
+        if (el) val = MORPHO_OBJECT(el);
+        
+        if (array_setelement(mesh->conn, 2, indx, val) == ARRAY_OK) {
+            if (el && el->obj.status==OBJECT_ISUNMANAGED) mesh_link(mesh, (object *) el);
+        }
     }
     return false;
 }
@@ -451,10 +464,39 @@ void mesh_resetconnectivity(objectmesh *m) {
     grade max = mesh_maxgrade(m);
     for (grade i=1; i<=max; i++) {
         for (grade j=0; j<=max; j++) {
-            value indx[2] = { MORPHO_INTEGER(i), MORPHO_INTEGER(j) };
-            if (i!=j) array_setelement(m->conn, 2, indx, MORPHO_NIL);
+            mesh_setconnectivityelement(m, i, j, NULL);
         }
     }
+}
+
+/* **********************************************************************
+ * Clone
+ * ********************************************************************** */
+
+/** Clones a mesh object */
+objectmesh *mesh_clone(objectmesh *mesh) {
+    objectmesh *new = object_newmesh(mesh->dim, mesh->vert->ncols, mesh->vert->elements);
+    
+    if (new) {
+        if (mesh->conn &&
+            mesh_checkconnectivity(new)) {
+            
+            grade max = mesh_maxgrade(mesh);
+            for (grade i=0; i<=max; i++) {
+                for (grade j=0; j<=max; j++) {
+                    objectsparse *conn=mesh_getconnectivityelement(mesh, i, j);
+                    
+                    if (conn) {
+                        objectsparse *cl=sparse_clone(conn);
+                        if (cl) mesh_setconnectivityelement(new, i, j, cl);
+                    }
+                }
+            }
+            
+        }
+    }
+    
+    return new;
 }
 
 /* **********************************************************************
@@ -921,6 +963,17 @@ value Mesh_count(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Clones a mesh */
+value Mesh_clone(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+    objectmesh *a=MORPHO_GETMESH(MORPHO_SELF(args));
+    objectmesh *new=mesh_clone(a);
+    if (new) {
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    return out;
+}
 
 MORPHO_BEGINCLASS(Mesh)
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Mesh_print, BUILTIN_FLAGSEMPTY),
@@ -934,7 +987,8 @@ MORPHO_METHOD(MESH_CONNECTIVITYMATRIX_METHOD, Mesh_connectivitymatrix, BUILTIN_F
 MORPHO_METHOD(MESH_ADDGRADE_METHOD, Mesh_addgrade, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_ADDSYMMETRY_METHOD, Mesh_addsymmetry, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_MAXGRADE_METHOD, Mesh_maxgrade, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_COUNT_METHOD, Mesh_count, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_COUNT_METHOD, Mesh_count, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_CLONE_METHOD, Mesh_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

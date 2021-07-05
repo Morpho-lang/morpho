@@ -106,10 +106,18 @@ value Object_print(vm *v, int nargs, value *args) {
     objectclass *klass=NULL;
     if (MORPHO_ISCLASS(self)) {
         klass=MORPHO_GETCLASS(self);
+#ifndef MORPHO_LOXCOMPATIBILITY
         printf("@%s", (MORPHO_ISSTRING(klass->name) ? MORPHO_GETCSTRING(klass->name): "Object"));
+#else
+        printf("%s", (MORPHO_ISSTRING(klass->name) ? MORPHO_GETCSTRING(klass->name): "Object"));
+#endif
     } else if (MORPHO_ISINSTANCE(self)) {
         klass=MORPHO_GETINSTANCE(self)->klass;
+#ifndef MORPHO_LOXCOMPATIBILITY
         if (klass) printf("<%s>", (MORPHO_ISSTRING(klass->name) ? MORPHO_GETCSTRING(klass->name): "Object") );
+#else
+        if (klass) printf("%s instance", (MORPHO_ISSTRING(klass->name) ? MORPHO_GETCSTRING(klass->name): "Object") );
+#endif
     }
     return MORPHO_NIL;
 }
@@ -200,6 +208,27 @@ MORPHO_ENDCLASS
  * String
  * ********************************************************************** */
 
+/** Count number of characters in a string */
+int string_countchars(objectstring *s) {
+    int n=0;
+    for (uint8_t *c = (uint8_t *) s->string; *c!='\0'; ) {
+        c+=morpho_utf8numberofbytes(c);
+        n++;
+    }
+    return n;
+}
+
+/** Get a pointer to the i'th character of a string */
+char *string_index(objectstring *s, int i) {
+    int n=0;
+    for (uint8_t *c = (uint8_t *) s->string; *c!='\0'; ) {
+        if (i==n) return (char *) c;
+        c+=morpho_utf8numberofbytes(c);
+        n++;
+    }
+    return NULL;
+}
+
 /** Constructor */
 value string_constructor(vm *v, int nargs, value *args) {
     value out=morpho_concatenatestringvalues(nargs, args+1);
@@ -211,7 +240,7 @@ value string_constructor(vm *v, int nargs, value *args) {
 value String_count(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
     
-    return MORPHO_INTEGER(slf->length);
+    return MORPHO_INTEGER(string_countchars(slf));
 }
 
 /** Prints a string */
@@ -231,8 +260,10 @@ value String_clone(vm *v, int nargs, value *args) {
 }
 
 /** Sets an index */
-value String_setindex(vm *v, int nargs, value *args) {
+/*value String_setindex(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
+    
+    morpho_runtimeerror(v, STRING_IMMTBL);
     
     if (nargs==2 &&
         MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
@@ -248,7 +279,7 @@ value String_setindex(vm *v, int nargs, value *args) {
     } else morpho_runtimeerror(v, SETINDEX_ARGS);
     
     return MORPHO_NIL;
-}
+}*/
 
 /** Enumerate members of a string */
 value String_enumerate(vm *v, int nargs, value *args) {
@@ -259,11 +290,50 @@ value String_enumerate(vm *v, int nargs, value *args) {
         int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         
         if (n<0) {
-            out=MORPHO_INTEGER(slf->length);
-        } else if (n<slf->length) {
-            out=object_stringfromcstring(slf->stringdata+n, 1);
-        } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+            out=MORPHO_INTEGER(string_countchars(slf));
+        } else {
+            char *c=string_index(slf, n);
+            if (c) {
+                out=object_stringfromcstring(c, morpho_utf8numberofbytes((uint8_t *) c));
+            } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+        }
     } else MORPHO_RAISE(v, ENUMERATE_ARGS);
+    
+    return out;
+}
+
+value String_split(vm *v, int nargs, value *args) {
+    objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    
+    if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
+        objectstring *split = MORPHO_GETSTRING(MORPHO_GETARG(args, 0));
+        objectlist *new = object_newlist(0, NULL);
+        
+        if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
+        
+        char *last = slf->string;
+        for (char *c = slf->string; *c!='\0'; c+=morpho_utf8numberofbytes((uint8_t *) c)) { // Loop over string
+            for (char *s = split->string; *s!='\0';) { // Loop over split chars
+                int nbytes = morpho_utf8numberofbytes((uint8_t *) s);
+                if (strncmp(c, s, nbytes)==0) {
+                    value newstring = object_stringfromcstring(last, c-last);
+                    if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+                    list_append(new, newstring);
+                    last=c+nbytes;
+                }
+                s+=nbytes;
+            }
+        }
+        
+        value newstring = object_stringfromcstring(last, slf->string+slf->length-last);
+        if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        list_append(new, newstring);
+        
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+        morpho_bindobjects(v, new->val.count, new->val.data);
+    }
     
     return out;
 }
@@ -273,8 +343,9 @@ MORPHO_METHOD(MORPHO_COUNT_METHOD, String_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, String_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, String_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, String_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SETINDEX_METHOD, String_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, String_enumerate, BUILTIN_FLAGSEMPTY)
+//MORPHO_METHOD(MORPHO_SETINDEX_METHOD, String_setindex, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, String_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(STRING_SPLIT_METHOD, String_split, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -426,6 +497,29 @@ errorid array_error(objectarrayerror err) {
     return VM_OUTOFBOUNDS;
 }
 
+
+/** Create an array */
+value array_constructor(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+    unsigned int dim[nargs];
+    
+    if (nargs==0) { morpho_runtimeerror(v, ARRAY_ARGS); return MORPHO_NIL; }
+    for (unsigned int i=0; i<nargs; i++) {
+        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, i))) dim[i]=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, i));
+        else { morpho_runtimeerror(v, ARRAY_ARGS); return MORPHO_NIL; }
+    }
+        
+    objectarray *new = object_newarray(nargs, dim);
+        
+    if (new) {
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    }
+    
+    return out;
+}
+
+
 /** Gets the array element with given indices */
 value Array_getindex(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
@@ -455,6 +549,20 @@ value Array_count(vm *v, int nargs, value *args) {
     objectarray *slf = MORPHO_GETARRAY(MORPHO_SELF(args));
     
     return MORPHO_INTEGER(slf->nelements);
+}
+
+/** Array dimensions */
+value Array_dimensions(vm *v, int nargs, value *args) {
+    objectarray *a=MORPHO_GETARRAY(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    objectlist *new=object_newlist(a->dimensions, a->data);
+    
+    if (new) {
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    
+    return out;
 }
 
 /** Enumerate members of an array */
@@ -492,6 +600,7 @@ value Array_clone(vm *v, int nargs, value *args) {
 MORPHO_BEGINCLASS(Array)
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Array_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Array_count, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(ARRAY_DIMENSIONS_METHOD, Array_dimensions, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Array_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Array_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Array_enumerate, BUILTIN_FLAGSEMPTY),
@@ -1159,7 +1268,7 @@ void veneer_initialize(void) {
     builtin_setveneerclass(OBJECT_STRING, stringclass);
 
     /* Array */
-    //builtin_addfunction(ARRAY_CLASSNAME, list_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(ARRAY_CLASSNAME, array_constructor, BUILTIN_FLAGSEMPTY);
     value arrayclass=builtin_addclass(ARRAY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Array), MORPHO_NIL);
     builtin_setveneerclass(OBJECT_ARRAY, arrayclass);
     
@@ -1178,6 +1287,8 @@ void veneer_initialize(void) {
     value rangeclass=builtin_addclass(RANGE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Range), MORPHO_NIL);
     builtin_setveneerclass(OBJECT_RANGE, rangeclass);
     
+    morpho_defineerror(ARRAY_ARGS, ERROR_HALT, ARRAY_ARGS_MSG);
+    morpho_defineerror(STRING_IMMTBL, ERROR_HALT, STRING_IMMTBL_MSG);
     morpho_defineerror(RANGE_ARGS, ERROR_HALT, RANGE_ARGS_MSG);
     morpho_defineerror(ENUMERATE_ARGS, ERROR_HALT, ENUMERATE_ARGS_MSG);
     morpho_defineerror(DICT_DCTKYNTFND, ERROR_HALT, DICT_DCTKYNTFND_MSG);

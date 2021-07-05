@@ -75,6 +75,7 @@ typedef enum { SPARSE_OK, SPARSE_INCMPTBLDIM, SPARSE_CONVFAILED, SPARSE_FAILED }
 
 bool sparse_checkformat(objectsparse *sparse, objectsparseformat format, bool force, bool copyvals);
 
+objectsparse *sparse_clone(objectsparse *s);
 bool sparse_setelement(objectsparse *matrix, int row, int col, value value);
 bool sparse_getelement(objectsparse *matrix, int row, int col, value *value);
 

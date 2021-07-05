@@ -87,6 +87,20 @@ char *morpho_strdup(char *string) {
     return output;
 }
 
+/** @brief Returns the number of bytes in the next character of a given utf8 string
+    @returns number of bytes */
+int morpho_utf8numberofbytes(uint8_t *string) {
+    uint8_t byte = * string;
+    
+    if ((byte & 0xc0) == 0x80) return 0; // In the middle of a utf8 string
+    
+    // Get the number of bytes from the first character
+    if ((byte & 0xf8) == 0xf0) return 4;
+    if ((byte & 0xf0) == 0xe0) return 3;
+    if ((byte & 0xe0) == 0xc0) return 2;
+    return 1;
+}
+
 /** @brief Computes the nearest power of 2 above an integer
  * @param   n An integer
  * @returns Nearest power of 2 above n

@@ -170,7 +170,7 @@ void *sparsedok_loopstart(sparsedok *dok) {
 
 /** Loop over dok keys
  * @param[in] dok - the dictionary of keys to loop over
- * @param[in] cntr - Pointer to loop counter of type (void *) [initialize this to NULL before first call].
+ * @param[in] cntr - Pointer to loop counter of type (void *)
  * @param[out] i - row index.
  * @param[out] j - column index
  * @returns true if i, j contain valid data; cntri is updated */
@@ -182,6 +182,23 @@ bool sparsedok_loop(sparsedok *dok, void **cntr, int *i, int *j) {
         *cntr=key->obj.next;
     }
     return key;
+}
+
+/* Copies a sparsedok object */
+bool sparsedok_copy(sparsedok *src, sparsedok *dest) {
+    int i, j;
+    void *ctr = sparsedok_loopstart(src);
+    value entry;
+    
+    if (!sparsedok_setdimensions(dest, src->nrows, src->ncols)) return false;
+    
+    while (sparsedok_loop(src, &ctr, &i, &j)) {
+        if (sparsedok_get(src, i, j, &entry)) {
+            if (!sparsedok_insert(dest, i, j, entry)) return false;
+        }
+    }
+
+    return true;
 }
 
 /* ***************************************
@@ -387,6 +404,18 @@ unsigned int sparseccs_count(sparseccs *ccs) {
     return ccs->nentries;
 }
 
+/** Copies one sparseccs matrix to another, reallocating as necessary */
+bool sparseccs_copy(sparseccs *src, sparseccs *dest) {
+    bool success=false;
+    if (sparseccs_resize(dest, src->nrows, src->ncols, src->nentries, src->values)) {
+        memcpy(dest->cptr, src->cptr, sizeof(int)*(src->ncols+1));
+        memcpy(dest->rix, src->rix, sizeof(int)*(src->nentries));
+        if (src->values) memcpy(dest->values, src->values, sizeof(double)*src->nentries);
+        success=true;
+    }
+    return success;
+}
+
 /* ***************************************
  * Object sparse interface
  * *************************************** */
@@ -520,6 +549,18 @@ objectsparse *object_sparsefromlist(objectlist *list) {
     return new;
 }
 
+/** Clones a sparse matrix */
+objectsparse *sparse_clone(objectsparse *s) {
+    objectsparse *new = object_newsparse(NULL, NULL);
+ 
+    if (new) {
+        sparsedok_copy(&s->dok, &new->dok);
+        sparseccs_copy(&s->ccs, &new->ccs);
+    }
+    
+    return new;
+}
+
 /** Set an element */
 bool sparse_setelement(objectsparse *s, int row, int col, value val) {
     if (sparsedok_insert(&s->dok, row, col, val)) {
@@ -544,6 +585,24 @@ bool sparse_getelement(objectsparse *s, int row, int col, value *val) {
             if (val) *val = MORPHO_FLOAT(v);
         }
     }
+    return false;
+}
+
+/** Enumerate values in a sparse matrix */
+bool sparse_enumerate(objectsparse *s, int i, value *out) {
+    if (sparse_checkformat(s, SPARSE_CCS, false, false)) {
+        if (i<0) { *out=MORPHO_INTEGER(s->ccs.nentries); return true; }
+        if (i<s->ccs.nentries) { *out=MORPHO_FLOAT(s->ccs.values[i]); return true; }
+    } else if (sparse_checkformat(s, SPARSE_DOK, false, false)) {
+        if (i<0) { *out=MORPHO_INTEGER(s->dok.dict.count); return true; }
+        if (i<s->dok.dict.count) {
+            objectdokkey *key = s->dok.keys;
+            for (int k=0; k<i; k++) if (key) key=(objectdokkey *) key->obj.next;
+            
+            if (key) return dictionary_get(&s->dok.dict, MORPHO_OBJECT(key), out);
+        }
+    }
+    
     return false;
 }
 
@@ -742,6 +801,22 @@ value Sparse_setindex(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Enumerate protocol */
+value Sparse_enumerate(vm *v, int nargs, value *args) {
+    objectsparse *s=MORPHO_GETSPARSE(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    
+    if (nargs==1) {
+        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+            int i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+            
+            sparse_enumerate(s, i, &out);
+        }
+    }
+    
+    return out;
+}
+
 /** Print a sparse matrix */
 value Sparse_print(vm *v, int nargs, value *args) {
     objectsparse *s=MORPHO_GETSPARSE(MORPHO_SELF(args));
@@ -867,6 +942,20 @@ value Sparse_transpose(vm *v, int nargs, value *args) {
             sparse_raiseerror(v, err);
         }
     } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    
+    return out;
+}
+
+/** Clone a sparse matrix */
+value Sparse_clone(vm *v, int nargs, value *args) {
+    objectsparse *s=MORPHO_GETSPARSE(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+    objectsparse *new=sparse_clone(s);
+    
+    if (new) {
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    }
     
     return out;
 }
@@ -1024,6 +1113,7 @@ value Sparse_indices(vm *v, int nargs, value *args) {
 MORPHO_BEGINCLASS(Sparse)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Sparse_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Sparse_setindex, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Sparse_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Sparse_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADD_METHOD, Sparse_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUB_METHOD, Sparse_sub, BUILTIN_FLAGSEMPTY),
@@ -1035,6 +1125,7 @@ MORPHO_METHOD(MATRIX_DIMENSIONS_METHOD, Sparse_dimensions, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SPARSE_ROWINDICES_METHOD, Sparse_rowindices, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SPARSE_SETROWINDICES_METHOD, Sparse_setrowindices, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SPARSE_COLINDICES_METHOD, Sparse_colindices, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_CLONE_METHOD, Sparse_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SPARSE_INDICES_METHOD, Sparse_indices, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 

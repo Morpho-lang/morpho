@@ -1,0 +1,14 @@
+// Clone
+
+var m = Mesh("square.mesh")
+
+var s = Selection(m, fn (x,y,z) y>0.5)
+print s // expect: <Selection>
+
+var t = s.clone()
+
+print t.isselected(0, 0) // expect: false
+print t.isselected(0, 1) // expect: false
+print t.isselected(0, 2) // expect: true
+
+print t.idlistforgrade(0) // expect: [ 2, 3 ]

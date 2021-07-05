@@ -1,0 +1,12 @@
+/*
+ * Arrays
+ */
+
+// Initialize variable with a list
+var a = Array(3,3)
+
+print a
+// expect: <Array>
+
+print a.dimensions()
+// expect: [ 3, 3 ]

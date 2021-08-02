@@ -591,7 +591,7 @@ static registerindx compiler_addconstant(compiler *c, syntaxtreenode *node, valu
         
         /* No, so create a new one */
         if (out==REGISTER_UNALLOCATED) {
-            if (konst->count>=MORPHO_MAXREGISTERS) {
+            if (konst->count>=MORPHO_MAXCONSTANTS) {
                 compiler_error(c, node, COMPILE_TOOMANYCONSTANTS);
                 return REGISTER_UNALLOCATED;
             } else {
@@ -911,7 +911,7 @@ static codeinfo compiler_movetoupvalue(compiler *c, syntaxtreenode *node, codein
     codeinfo out = CODEINFO_EMPTY;
     bool tmp=false;
     
-    if (!(CODEINFO_ISREGISTER(in) || CODEINFO_ISCONSTANT(in))) {
+    if (!(CODEINFO_ISREGISTER(in) || CODEINFO_ISSHORTCONSTANT(in))) {
         use=compiler_movetoregister(c, node, in, REGISTER_UNALLOCATED);
         out.ninstructions+=use.ninstructions;
         tmp=true;
@@ -1299,7 +1299,7 @@ static codeinfo compiler_negate(compiler *c, syntaxtreenode *node, registerindx 
         out = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
         unsigned int ninstructions=out.ninstructions;
         
-        if (!(CODEINFO_ISREGISTER(out) || CODEINFO_ISCONSTANT(out))) {
+        if (!(CODEINFO_ISREGISTER(out) || CODEINFO_ISSHORTCONSTANT(out))) {
             /* Ensure we're working with a register or a constant */
             out=compiler_movetoregister(c, node, out, REGISTER_UNALLOCATED);
             ninstructions+=out.ninstructions;
@@ -1322,7 +1322,7 @@ static codeinfo compiler_not(compiler *c, syntaxtreenode *node, registerindx req
     unsigned int ninstructions=left.ninstructions;
     registerindx out = compiler_regtemp(c, reqout);
     
-    if (!(CODEINFO_ISREGISTER(left) || CODEINFO_ISCONSTANT(left))) {
+    if (!(CODEINFO_ISREGISTER(left) || CODEINFO_ISSHORTCONSTANT(left))) {
         /* Ensure we're working with a register or a constant */
         left=compiler_movetoregister(c, node, left, REGISTER_UNALLOCATED);
         ninstructions+=left.ninstructions;
@@ -1339,7 +1339,7 @@ static codeinfo compiler_not(compiler *c, syntaxtreenode *node, registerindx req
 static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo left = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
     unsigned int ninstructions=left.ninstructions;
-    if (!(CODEINFO_ISREGISTER(left) || CODEINFO_ISCONSTANT(left))) {
+    if (!(CODEINFO_ISREGISTER(left) || CODEINFO_ISSHORTCONSTANT(left))) {
         /* Ensure we're working with a register or a constant */
         left=compiler_movetoregister(c, node, left, REGISTER_UNALLOCATED);
         ninstructions+=left.ninstructions;
@@ -1347,7 +1347,7 @@ static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx 
     
     codeinfo right = compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
     ninstructions+=right.ninstructions;
-    if (!(CODEINFO_ISREGISTER(right) || CODEINFO_ISCONSTANT(right))) {
+    if (!(CODEINFO_ISREGISTER(right) || CODEINFO_ISSHORTCONSTANT(right))) {
         /* Ensure we're working with a register or a constant */
         right=compiler_movetoregister(c, node, right, REGISTER_UNALLOCATED);
         ninstructions+=right.ninstructions;
@@ -1507,7 +1507,7 @@ static codeinfo compiler_print(compiler *c, syntaxtreenode *node, registerindx r
     codeinfo left=compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
     unsigned int ninstructions=left.ninstructions;
     
-    if (!(CODEINFO_ISREGISTER(left) || CODEINFO_ISCONSTANT(left))) {
+    if (!(CODEINFO_ISREGISTER(left) || CODEINFO_ISSHORTCONSTANT(left))) {
         left=compiler_movetoregister(c, node, left, REGISTER_UNALLOCATED);
         ninstructions+=left.ninstructions;
     } else if (c->err.cat==ERROR_NONE &&  left.dest==REGISTER_UNALLOCATED) {
@@ -2107,6 +2107,9 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         {
             compiler_addinstruction(c, ENCODEC(OP_RETURN, 1, false, 0, false, REGISTER_UNALLOCATED), node); /* Add a return */
         } else if (isanonymous) {
+            if (CODEINFO_ISCONSTANT(bodyinfo) && !CODEINFO_ISCONSTANT(bodyinfo)) {
+                UNREACHABLE("Compiler internal error in compiler_function.");
+            }
             compiler_addinstruction(c, ENCODEC(OP_RETURN, 1, CODEINFO_ISCONSTANT(bodyinfo), bodyinfo.dest, false, REGISTER_UNALLOCATED), node);
         } else {
             compiler_addinstruction(c, ENCODE_BYTE(OP_RETURN), node); /* Add a return */
@@ -2648,13 +2651,19 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
             indxnode=varnode;
             varnode=compiler_getnode(c, varnode->left);
             var = varnode->content;
+            
+            if (varnode->type==NODE_DOT) {
+                codeinfo mv=compiler_nodetobytecode(c, indxnode->left, reg);
+                ninstructions+=mv.ninstructions;
+                reg=mv.dest;
+            }
         }
     }
     
-    if (!MORPHO_ISNIL(var) || mode==ASSIGN_OBJ) {
+    if (!MORPHO_ISNIL(var) || mode==ASSIGN_OBJ || mode==ASSIGN_INDEX) {
         if (mode!=ASSIGN_OBJ) {
             /* Find the local variable and get the assigned register */
-            reg=compiler_getlocal(c, var);
+            if (reg==REGISTER_UNALLOCATED) reg=compiler_getlocal(c, var);
             
             /* Perhaps it's an upvalue? */
             if (reg==REGISTER_UNALLOCATED) {
@@ -2679,7 +2688,7 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
             
             /* Still couldn't resolve it, so generate an error */
             if (reg==REGISTER_UNALLOCATED) {
-                compiler_error(c, node, COMPILE_SYMBOLNOTDEFINED, MORPHO_GETCSTRING(var));
+                compiler_error(c, node, COMPILE_SYMBOLNOTDEFINED, (MORPHO_ISSTRING(var) ? MORPHO_GETCSTRING(var) : ""));
                 return CODEINFO_EMPTY;
             }
         }
@@ -2756,7 +2765,7 @@ static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerind
     left = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
     unsigned int ninstructions=left.ninstructions;
     
-    if (!(CODEINFO_ISREGISTER(left) || CODEINFO_ISCONSTANT(left))) {
+    if (!(CODEINFO_ISREGISTER(left) || CODEINFO_ISSHORTCONSTANT(left))) {
         /* Ensure we're working with a register or a constant */
         left=compiler_movetoregister(c, node, left, REGISTER_UNALLOCATED);
         ninstructions+=left.ninstructions;
@@ -2788,7 +2797,7 @@ static codeinfo compiler_movetoproperty(compiler *c, syntaxtreenode *node, codei
     codeinfo left = compiler_nodetobytecode(c, obj->left, REGISTER_UNALLOCATED);
     unsigned int ninstructions=left.ninstructions;
     
-    if (!(CODEINFO_ISREGISTER(left) || CODEINFO_ISCONSTANT(left))) {
+    if (!(CODEINFO_ISREGISTER(left) || CODEINFO_ISSHORTCONSTANT(left))) {
         /* Ensure we're working with a register or a constant */
         left=compiler_movetoregister(c, node, left, REGISTER_UNALLOCATED);
         ninstructions+=left.ninstructions;
@@ -2804,7 +2813,7 @@ static codeinfo compiler_movetoproperty(compiler *c, syntaxtreenode *node, codei
     }
     
     codeinfo store = in;
-    if (!(CODEINFO_ISREGISTER(in) || CODEINFO_ISCONSTANT(in))) {
+    if (!(CODEINFO_ISREGISTER(in) || CODEINFO_ISSHORTCONSTANT(in))) {
         /* Ensure we're working with a register or a constant */
         store=compiler_movetoregister(c, node, store, REGISTER_UNALLOCATED);
         ninstructions+=store.ninstructions;

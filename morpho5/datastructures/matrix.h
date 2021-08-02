@@ -97,6 +97,7 @@ objectmatrixerror matrix_transpose(objectmatrix *a, objectmatrix *out);
 objectmatrixerror matrix_trace(objectmatrix *a, double *out);
 objectmatrixerror matrix_scale(objectmatrix *a, double scale);
 objectmatrixerror matrix_identity(objectmatrix *a);
+double matrix_sum(objectmatrix *a);
 //objectmatrixerror matrix_det(objectmatrix *a, double *out);
 //objectmatrixerror matrix_eigensystem(objectmatrix *a, double *val, objectmatrix *vec);
 

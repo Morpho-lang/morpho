@@ -45,6 +45,8 @@ objectmesh *object_newmesh(unsigned int dim, unsigned int nv, double *v) {
 
 /** Links an object to the mesh; used to keep track of unbound child objects */
 void mesh_link(objectmesh *mesh, object *obj) {
+    for (object *e = mesh->link; e!=NULL; e=e->next) if (e==obj) return; 
+    
     if (obj->status==OBJECT_ISUNMANAGED && obj->next==NULL) {
         obj->next=mesh->link;
         mesh->link=obj;
@@ -398,6 +400,10 @@ static objectsparse *mesh_addlowermatrix(objectmesh *mesh, unsigned int row, uns
             /* Get the associated connectivity */
             if (mesh_getconnectivity(tlower, rid, &nentries, &entries)) {
                 if (mesh_matchelements(traise, row, nentries, entries, maxmatches, &nmatches, matches)) {
+                    if (nmatches>=maxmatches) {
+                        UNREACHABLE("Too many connections.");
+                    }
+                    
                     for (unsigned int i=0; i<nmatches; i++) {
                         sparsedok_insert(&new->dok, matches[i], rid, MORPHO_NIL);
                     }
@@ -423,7 +429,7 @@ objectsparse *mesh_addconnectivityelement(objectmesh *mesh, unsigned int row, un
         /* Can't add a missing grade; use addgrade instead*/
     } else if (row<col) { /* A grade lowering element */
         el=mesh_addlowermatrix(mesh, row, col);
-    } else { /* A grade raising element */
+    } else if (row!=col) { /* A grade raising element */
         /* Try to obtain the transpose */
         objectsparse *tlow=mesh_getconnectivityelement(mesh, col, row);
         if (!tlow) tlow=mesh_addconnectivityelement(mesh, col, row);
@@ -871,7 +877,7 @@ value Mesh_connectivitymatrix(vm *v, int nargs, value *args) {
         unsigned int col=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
         
         objectsparse *s=mesh_getconnectivityelement(m, row, col);
-        if (!s && row>0) s=mesh_addconnectivityelement(m, row, col);
+        if (!s && row>0 && row!=col) s=mesh_addconnectivityelement(m, row, col);
         if (s) {
             mesh_delink(m, (object *) s);
             out=MORPHO_OBJECT(s);

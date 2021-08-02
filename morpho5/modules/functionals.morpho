@@ -1,0 +1,78 @@
+/* ***************************************************************
+ * Functionals
+ * ===========
+ * This module provides a class that helps implement new
+ * functionals in morpho, as well as some less common functionals
+ **************************************************************** */
+
+class Functional {
+  init(grade) {
+    self.grade = grade
+  }
+
+  integrand(mesh) {
+    var conn=mesh.connectivitymatrix(0, self.grade)
+    var vert=mesh.vertexmatrix()
+    var nel = conn.dimensions()[1]
+
+    var out = Matrix(nel)
+
+    for (i in 0...nel) {
+      var el = conn.rowindices(i)
+      out[i]=self.integrandfn(mesh, vert, i, el)
+    }
+
+    return out
+  }
+
+  gradient(mesh) {
+    var conn=mesh.connectivitymatrix(0, self.grade)
+    var vert=mesh.vertexmatrix()
+    var nel = conn.dimensions()[1]
+
+    var dim=vert.dimensions()[0]
+    var nv=vert.dimensions()[1]
+    var out = Matrix(dim,nv)
+
+    for (i in 0...nel) {
+      var el = conn.rowindices(i)
+      self.gradientfn(mesh, vert, i, el, out)
+    }
+
+    return out
+  }
+
+  total(mesh) {
+    var a = self.integrand(mesh)
+    return a.sum()
+  }
+}
+
+/** Hookean elasticity:
+  F = 1/2 ((L-L0)/L0)^2
+  Construct with a field of reference lengths */
+class HookeElasticity < Functional {
+  init(field) {
+    self.ref = field
+    super.init(1)
+  }
+
+  integrandfn(mesh, vert, id, el) {
+    var len = (vert.column(el[0])-vert.column(el[1])).norm()
+    var len0 = self.ref[self.grade, id]
+    return ((len-len0)/len0)^2/2
+  }
+
+  gradientfn(mesh, vert, id, el, grd) {
+    var x0 = vert.column(el[0])
+    var x1 = vert.column(el[1])
+    var dx = x0-x1
+
+    var len = dx.norm()
+    var len0 = self.ref[self.grade, id]
+    var g = dx*(len-len0)/(len0^2*len)
+
+    grd.setcolumn(el[0], g+grd.column(el[0]))
+    grd.setcolumn(el[1], -g+grd.column(el[1]))
+  }
+}

@@ -192,7 +192,27 @@ void selection_selectboundary(vm *v, objectselection *sel) {
             }
         }
     }
+}
+
+/** Selects an element */
+void selection_selectwithid(objectselection *sel, grade g, elementid id, bool selected) {
+    if (selected && (sel->mode==SELECT_NONE || sel->mode==SELECT_SOME)) {
+        if (g<sel->ngrades) {
+            dictionary_insert(&sel->selected[g], MORPHO_INTEGER(id), MORPHO_NIL);
+        }
+        
+        sel->mode=SELECT_SOME;
+    } else if (!selected && (sel->mode==SELECT_SOME)) {
+        if (g<sel->ngrades) {
+            dictionary_remove(&sel->selected[g], MORPHO_INTEGER(id));
+        }
+        
+        sel->mode=SELECT_SOME;
+    }
     
+    if (sel->mode==SELECT_ALL) {
+        UNREACHABLE("Unimplemented modification to SELECTALL not implemented.");
+    }
     
 }
 
@@ -351,6 +371,20 @@ value selection_constructor(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Select an element by id */
+value Selection_setindex(vm *v, int nargs, value *args) {
+    objectselection *sel = MORPHO_GETSELECTION(MORPHO_SELF(args));
+    
+    if (nargs==3 &&
+        MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
+        MORPHO_ISINTEGER(MORPHO_GETARG(args, 1))) {
+    
+        selection_selectwithid(sel, MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)), MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1)), MORPHO_ISTRUE(MORPHO_GETARG(args, 2)));
+    } else morpho_runtimeerror(v, SELECTION_ISSLCTDARG);
+    
+    return MORPHO_NIL;
+}
+
 /** Tests if something is selected */
 value Selection_isselected(vm *v, int nargs, value *args) {
     objectselection *sel = MORPHO_GETSELECTION(MORPHO_SELF(args));
@@ -420,6 +454,19 @@ value Selection_print(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Counts number of elements selected in each grade  */
+value Selection_count(vm *v, int nargs, value *args) {
+    objectselection *sel = MORPHO_GETSELECTION(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+
+    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+        grade g = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        out = MORPHO_INTEGER(sel->selected[g].count);
+    } else morpho_runtimeerror(v, SELECTION_GRADEARG);
+    
+    return out;
+}
+
 /** Clones a selection */
 value Selection_clone(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
@@ -455,7 +502,10 @@ SELECTION_SETOP(difference)
 
 MORPHO_BEGINCLASS(Selection)
 MORPHO_METHOD(SELECTION_ISSELECTEDMETHOD, Selection_isselected, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Selection_isselected, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Selection_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SELECTION_IDLISTFORGRADEMETHOD, Selection_idlistforgrade, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_COUNT_METHOD, Selection_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Selection_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_UNION_METHOD, Selection_union, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_INTERSECTION_METHOD, Selection_intersection, BUILTIN_FLAGSEMPTY),

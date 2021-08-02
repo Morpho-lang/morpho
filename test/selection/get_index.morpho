@@ -1,0 +1,14 @@
+// Test selections
+
+var m = Mesh("square.mesh")
+
+fn f(x,y,z) {
+  return y>0.5
+}
+
+var s = Selection(m, f)
+print s // expect: <Selection>
+
+print s[0,0] // expect: false
+print s[0,1] // expect: false
+print s[0,2] // expect: true

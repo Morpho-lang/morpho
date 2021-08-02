@@ -1,36 +1,76 @@
 // Mesh creation and visualization tools
 
 import constants
+import kdtree
+
+class MeshBuilder {
+  init(dimension=3) {
+    self.vertices = []
+    self.dimension = dimension
+    self.elements = Array(dimension)
+    for (i in 0...dimension) {
+      self.elements[i]=[]
+    }
+  }
+
+  addvertex(v) {
+    var x = v
+    if (islist(v)) x = Matrix(v)
+    self.vertices.append(x)
+    return self.vertices.count()-1
+  }
+
+  addelement(grade, el) {
+    self.elements[grade-1].append(el)
+    return self.elements[grade-1].count()-1
+  }
+
+  addedge(el) { return self.addelement(1, el) }
+
+  addface(el) { return self.addelement(2, el) }
+
+  makeconnectivity(el) {
+    if (el.count()==0) return nil
+    var s = Sparse(0,0)
+    for (lst, id in el) for (v in lst) s[v,id]=1
+    return s
+  }
+
+  build() {
+    var m = Mesh();
+
+    var nv = self.vertices.count()
+
+    var vert = Matrix(self.dimension, nv)
+    for (x, i in self.vertices) vert.setcolumn(i, x)
+
+    m.setvertexmatrix(vert)
+
+    for (el, i in self.elements) {
+        var s = self.makeconnectivity(el)
+        if (s) m.addgrade(i+1, s)
+    }
+
+    return m
+  }
+}
 
 /** Creates a mesh from a parametric function.
  * @param[in] f - a function that returns the vertex position as a list
  * @param[in] range - parameter range to use
  * @param[in] closed - whether to close the mesh  */
 fn LineMesh(f, range, closed=false) {
-  var list = []
+  var dim = f(range[0]).count()
+  var mb = MeshBuilder(dimension=dim)
 
-  for (t in range) list.append(f(t))
+  for (t in range) mb.addvertex(f(t))
 
-  var vertices = Matrix(list).transpose()
-  var mesh = Mesh()
-  mesh.setvertexmatrix(vertices)
+  var nlines = range.count()-1
 
-  var np = range.count() // How many points
-  var nlines = np-1
+  for (i in 0...nlines) mb.addedge([i,i+1])
+  if (closed) mb.addedge([0,nlines])
 
-  var conn = Sparse(np,nlines)
-  for (i in 0...nlines) {
-    conn[i,i]=1
-    conn[i+1,i]=1
-  }
-  if (closed) {
-    conn[0,nlines]=1
-    conn[np-1,nlines]=1
-  }
-
-  mesh.addgrade(1, conn)
-
-  return mesh
+  return mb.build()
 }
 
 /** Creates a mesh from a parametric function.
@@ -39,26 +79,19 @@ fn LineMesh(f, range, closed=false) {
  * @param[in] range - parameter range to use
  * @param[in] closed - whether to close the mesh  */
 fn AreaMesh(f, r1, r2, closed=false) {
-  var list = []
+  var dim = f(r1[0],r2[0]).count()
+  var mb = MeshBuilder(dimension=dim)
 
-  for (v in r2) for (u in r1) list.append(f(u, v))
-  var vertices = Matrix(list).transpose()
-
-  var mesh = Mesh()
-  mesh.setvertexmatrix(vertices)
+  for (v in r2) for (u in r1) mb.addvertex(f(u,v))
 
   var nu = r1.count(), nv = r2.count() // How many points
   var np = nu*nv
   var nfaces = (nu-1)*(nv-1)
 
-  var conn = Sparse(np,1)
-  var nt = 0
   for (j in 0...nv-1) {
     for (i in 0...nu-1) {
-      conn[i+j*nu, nt]=1; conn[i+1+j*nu, nt]=1; conn[i+nu+j*nu, nt]=1
-      nt+=1
-      conn[i+1+j*nu, nt]=1; conn[i+nu+j*nu, nt]=1; conn[i+1+nu+j*nu, nt]=1
-      nt+=1
+      mb.addface([i+j*nu, i+1+j*nu, i+nu+j*nu])
+      mb.addface([i+1+j*nu, i+nu+j*nu, i+1+nu+j*nu])
     }
   }
 
@@ -69,31 +102,23 @@ fn AreaMesh(f, r1, r2, closed=false) {
   if (cu) {
     var n=nu-1 // Connect right column to left column
     for (j in 0...nv-1) {
-      conn[n+j*nu, nt]=1; conn[n+1+j*nu, nt]=1; conn[0+j*nu, nt]=1
-      nt+=1
-      conn[n+j*nu, nt]=1; conn[0+nu+j*nu, nt]=1; conn[n+nu+j*nu, nt]=1
-      nt+=1
+      mb.addface([n+j*nu, n+1+j*nu, 0+j*nu])
+      mb.addface([n+j*nu, 0+nu+j*nu, n+nu+j*nu])
     }
   }
   if (cv) {
     var n=nv-1 // Connect top row to bottom row
     for (i in 0...nu-1) {
-      conn[i+n*nu, nt]=1; conn[i+1+n*nu, nt]=1; conn[i, nt]=1
-      nt+=1
-      conn[i+1+n*nu, nt]=1; conn[i, nt]=1; conn[i+1, nt]=1
-      nt+=1
+      mb.addface([i+n*nu, i+1+n*nu, i])
+      mb.addface([i+1+n*nu, i, i+1])
     }
   }
   if (cu && cv) {  // For toroidal geometry, connect top right to bottom left
-    conn[nu*nv-1, nt]=1; conn[(nv-1)*nu, nt]=1; conn[nu-1, nt]=1
-    nt+=1
-    conn[0, nt]=1; conn[(nv-1)*nu, nt]=1; conn[nu-1, nt]=1
-    nt+=1
+    mb.addface([nu*nv-1, (nv-1)*nu, nu-1])
+    mb.addface([0, (nv-1)*nu, nu-1])
   }
 
-  mesh.addgrade(2, conn)
-
-  return mesh
+  return mb.build()
 }
 
 /** Creates a mesh from a polyhedron specified as
@@ -101,44 +126,97 @@ fn AreaMesh(f, r1, r2, closed=false) {
   @param[in] faces - list of lists of vertices corresponding to each face
   @returns a mesh */
 fn PolyhedronMesh(list, faces) {
-  var v = Matrix(list).transpose()
+  var dim=list[0].count()
+  var mb=MeshBuilder(dimension=dim)
   var nv=list.count() // Number of vertices in polyhedron
-  var nmp=faces.count() // Number of faces
-  var nt=0
-  var midpoints = []
 
-  /* Find midpoints of the faces */
-  for (f in faces) {
+  // Vertices
+  for (x in list) mb.addvertex(x)
+  for (f in faces) { // Add midpoints
     var pt = Matrix(3)
-    for (i in f) pt.acc(1, v.column(i))
-    midpoints.append(pt/f.count())
-    nt+=f.count()
+    for (i in f) pt.acc(1, Matrix(list[i]))
+    mb.addvertex(pt/f.count())
   }
 
-  var mesh = Mesh()
-
-  /* Create the vertex matrix */
-  var vertices = Matrix(3, list.count()+midpoints.count())
-  for (i in 0...nv) vertices.setcolumn(i, Matrix(list[i]))
-  for (i in 0...nmp) vertices.setcolumn(nv+i, midpoints[i])
-  mesh.setvertexmatrix(vertices)
-
-  /* Create the connectivity matrix */
-  var conn = Sparse(nv+nmp,nt)
-  var t=0
-  for (k in 0...faces.count()) { // Loop over faces
-    var face = faces[k]
+  // Faces
+  for (face, k in faces) { // Loop over faces
     var fv = face.count()
     for (i in 0...fv) { // Loop over the vertex indices and create a triangle for every pair
-      conn[face[i],t]=1
-      if (i<fv-1) conn[face[i+1],t]=1 else conn[face[0],t]=1
-      conn[k+nv,t]=1
-      t+=1
+      var v1 = face[0]
+      if (i<fv-1) v1=face[i+1]
+      mb.addface([face[i], v1, k+nv])
     }
   }
-  mesh.addgrade(2, conn)
 
-  return mesh
+  return mb.build()
+}
+
+/* Equiangulation */
+
+/* Tests whether to flip an edge
+   @param[in] v - vertex matrix of edge
+   @param[in] ev - vertex indices of the edge
+   @param[in] cv - vertex indices of the vertices in the two triangles not
+                   present in the edge
+   @returns true if the edge should be flipped */
+fn equiangulatetest (v, ev, cv) {
+  var a = (v.column(ev[0])-v.column(ev[1])).norm(), // Length of common edge
+      b = (v.column(ev[0])-v.column(cv[0])).norm(), // Edges of face 1
+      c = (v.column(ev[1])-v.column(cv[0])).norm(),
+      d = (v.column(ev[0])-v.column(cv[1])).norm(), // Edges of face 2
+      e = (v.column(ev[1])-v.column(cv[1])).norm()
+
+   return ((b*b + c*c - a*a)*d*e + (d*d + e*e - a*a)*b*c) < 0
+}
+
+/* Finds vertices in a pair of triangles not in a common edge
+   @param[in] ev - list of two vertex ids
+   @param[in] faces - faces definition matrix
+   @param[in] ef - ids of two adjacent faces
+   @returns a list of vertices present in triangles ef but not part of ev */
+fn cvert(ev, faces, ef) {
+  var cv = []
+  for (i in 0..1) for (v in faces.rowindices(ef[i])) if (!ev.ismember(v)) cv.append(v)
+  return cv
+}
+
+/* Flip the edge */
+fn edgeflip(m, iedge, edges, faces, ev, cv, ef) {
+  edges.setrowindices(iedge, cv)
+  faces.setrowindices(ef[0], [ev[0], cv[0], cv[1]])
+  faces.setrowindices(ef[1], [ev[1], cv[0], cv[1]])
+  m.resetconnectivity()
+}
+
+fn equiangulate(m, quiet=false) {
+  var vert = m.vertexmatrix()
+  var edges = m.connectivitymatrix(0,1)
+  var faces = m.connectivitymatrix(0,2)
+  var edgetoface = m.connectivitymatrix(2,1)
+  var verttoedge = m.connectivitymatrix(1,0)
+  var ne = edges.dimensions()[1]
+  var nflip = 0
+
+  for (iedge in 0...ne) {
+    var ev=edges.rowindices(iedge) // vertices for this edge
+    if (verttoedge.rowindices(ev[0]).count()<4 ||
+        verttoedge.rowindices(ev[1]).count()<4) continue // skip if connectivity deficient
+
+    var ef=edgetoface.rowindices(iedge) // faces attached to this edge
+    if (ef.count()!=2) continue  // Only edges that are connected to two triangles
+
+    var cv=cvert(ev, faces, ef)
+    if (equiangulatetest(vert, ev, cv)) {
+      edgeflip(m, iedge, edges, faces, ev, cv, ef)
+      edgetoface = m.connectivitymatrix(2,1) // Recalculate connectivity
+      verttoedge = m.connectivitymatrix(1,0) // Recalculate connectivity
+      nflip+=1
+    }
+  }
+
+  if (!quiet) print "Equiangulate: ${nflip} edges flipped."
+
+  return nil
 }
 
 /* ********************************
@@ -249,62 +327,233 @@ e0[1] b --- z -- c
   return new
 }
 
-/* Tests whether to flip an edge
-   @param[in] v - vertex matrix of edge
-   @param[in] ev - vertex indices of the edge
-   @param[in] cv - vertex indices of the vertices in the two triangles not
-                   present in the edge
-   @returns true if the edge should be flipped */
-fn equiangulatetest (v, ev, cv) {
-  var a = (v.column(ev[0])-v.column(ev[1])).norm(), // Length of common edge
-      b = (v.column(ev[0])-v.column(cv[0])).norm(), // Edges of face 1
-      c = (v.column(ev[1])-v.column(cv[0])).norm(),
-      d = (v.column(ev[0])-v.column(cv[1])).norm(), // Edges of face 2
-      e = (v.column(ev[1])-v.column(cv[1])).norm()
+/* Refinement */
 
-   return ((b*b + c*c - a*a)*d*e + (d*d + e*e - a*a)*b*c) < 0
-}
+class MeshRefiner {
+  init (target) {
+    self.target = target
+    self.refinemap = nil
+    self.new = nil
+  }
 
-/* Finds vertices in a pair of triangles not in a common edge
-   @param[in] ev - list of two vertex ids
-   @param[in] faces - faces definition matrix
-   @param[in] ef - ids of two adjacent faces
-   @returns a list of vertices present in triangles ef but not part of ev */
-fn cvert(ev, faces, ef) {
-  var cv = []
-  for (i in 0..1) for (v in faces.rowindices(ef[i])) if (!ev.ismember(v)) cv.append(v)
-  return cv
-}
+  mesh() {
+    if (ismesh(self.target)) return self.target
+    else if (islist(self.target)) {
+      for (m in self.target) if (ismesh(m)) return m
+    }
+    return nil
+  }
 
-/* Flip the edge */
-fn edgeflip(m, iedge, edges, faces, ev, cv, ef) {
-  edges.setrowindices(iedge, cv)
-  faces.setrowindices(ef[0], [ev[0], cv[0], cv[1]])
-  faces.setrowindices(ef[1], [ev[1], cv[0], cv[1]])
-  m.resetconnectivity()
-}
-
-fn equiangulate(m, quiet=false) {
-  var vert = m.vertexmatrix()
-  var edges = m.connectivitymatrix(0,1)
-  var faces = m.connectivitymatrix(0,2)
-  var edgetoface = m.connectivitymatrix(2,1)
-  var ne = edges.dimensions()[1]
-  var nflip = 0
-
-  for (iedge in 0...ne) {
-    var ev=edges.rowindices(iedge) // vertices for this edge
-    var ef=edgetoface.rowindices(iedge) // faces attached to this edge
-    if (ef.count()!=2) continue  // Only edges that are connected to two triangles
-    var cv=cvert(ev, faces, ef)
-    if (equiangulatetest(vert, ev, cv)) {
-      edgeflip(m, iedge, edges, faces, ev, cv, ef)
-      edgetoface = m.connectivitymatrix(2,1) // Recalculate connectivity
-      nflip+=1
+  split(id, el, vert, mb, tree, dict) { // split elements
+    var nv = el.count()
+    for (i in 0...nv) {
+      for (j in i+1...nv) {
+        var midpoint = (vert.column(el[i])+vert.column(el[j]))/2
+        if (!tree.ismember(midpoint)) {
+          var id = mb.addvertex(midpoint)
+          tree.insert(midpoint).id = id
+          dict[id]=[el[i],el[j]]
+        }
+      }
     }
   }
 
-  if (!quiet) print "Equiangulate: ${nflip} edges flipped."
+  refine1(id, el, vert, nel, mb, tree, dict) { // refine edges
+    var midpoint = (vert.column(el[0])+vert.column(el[1]))/2
+    var mp = tree.ismember(midpoint)
+    if (mp) {
+      dict[mb.addedge([el[0], mp.id])] = id
+      dict[mb.addedge([mp.id, el[1]])] = id
+    }
+    return isobject(mp)
+  }
 
-  return nil
+  refine2(id, el, vert, nel, mb, tree, dict) { // refine faces
+    var nv = el.count()
+    var refedge = []
+
+    for (i in 0...nv) { // Generate midpoints
+      for (j in i+1...nv) {
+        var midpoint = (vert.column(el[i])+vert.column(el[j]))/2
+        var node = tree.ismember(midpoint)
+        if (node) {
+          refedge.append([el[i], el[j], node.id])
+        }
+      }
+    }
+
+    /* Three possible outcomes of refinement:
+            .            .            .
+          / | \        / | \        /   \
+         /  |  \      /  |  *      * --- *
+        /   |   \    /   | / \    /  \  /  \
+      . --- * -- . . --- * -- . . --- * -- . */
+
+    var nref = refedge.count()
+    var newel = []
+
+    if (nref==1) {
+      var tid
+      for (id in el) if (!refedge[0].ismember(id)) tid = id
+
+      newel.append(mb.addface([refedge[0][0], refedge[0][2], tid]))
+      newel.append(mb.addface([refedge[0][2], refedge[0][1], tid]))
+      if (nel[1]>0) {
+        mb.addedge([refedge[0][2], tid])
+      }
+    } else if (nref==2) {
+      var shareid, xid, yid
+      for (id in el) {
+        if (refedge[0].ismember(id) && refedge[1].ismember(id)) shareid = id
+        if (refedge[0].ismember(id) && !refedge[1].ismember(id)) xid = id
+        if (!refedge[0].ismember(id) && refedge[1].ismember(id)) yid = id
+      }
+
+      newel.append(mb.addface([shareid, refedge[0][2], refedge[1][2]]))
+      newel.append(mb.addface([xid, refedge[0][2], refedge[1][2]]))
+      newel.append(mb.addface([xid, yid, refedge[1][2]]))
+
+      if (nel[1]>0) {
+        mb.addedge([refedge[1][2], xid])
+        mb.addedge([refedge[0][2], refedge[1][2]])
+      }
+    } else if (nref==3) {
+      newel.append(mb.addface([el[0], refedge[0][2], refedge[1][2]]))
+      newel.append(mb.addface([el[1], refedge[0][2], refedge[2][2]]))
+      newel.append(mb.addface([el[2], refedge[1][2], refedge[2][2]]))
+      newel.append(mb.addface([refedge[0][2], refedge[1][2], refedge[2][2]]))
+      if (nel[1]>0) {
+        mb.addedge([refedge[0][2], refedge[1][2]])
+        mb.addedge([refedge[1][2], refedge[2][2]])
+        mb.addedge([refedge[2][2], refedge[0][2]])
+      }
+    }
+    if (newel.count()>0) {
+      for (i in newel) {
+        dict[i] = id
+      }
+    }
+
+    return (newel.count()>0)
+  }
+
+  refinemesh(selection=nil) {
+    var m = self.mesh()
+    var mb = MeshBuilder()
+    var vertices = m.vertexmatrix()
+    var dim = vertices.dimensions()[0]
+    var nv = vertices.dimensions()[1]
+    var refmap = [ ] // Dictionary describing how element ids are mapped over
+    var nel[dim+1] // Number of elements in each grade
+
+    for (g in 0..dim) nel[g]=m.count(g)
+    var vlist = []
+    var vdict = Dictionary()
+    for (i in 0...nv) {
+      var v = vertices.column(i)
+      vlist.append(v)
+      vdict[i] = mb.addvertex(v)
+    }
+
+    var tree=KDTree(vlist)
+
+    // Create new vertices
+    for (g in 1..dim) {
+      var el = m.connectivitymatrix(0, g)
+
+      for (i in 0...nel[g]) { // Loop over elements
+        if (selection && !selection.isselected(g, i)) continue
+        //print "Split grade ${g} element ${i}"
+        self.split(i, el.rowindices(i), vertices, mb, tree, vdict)
+      }
+    }
+    refmap.append(vdict)
+
+    // Now loop over all elements and either copy or refine them
+    for (g in 1..dim) {
+      var refinemethod = "refine${g}"
+      var el = m.connectivitymatrix(0, g)
+      var dict = Dictionary()
+
+      for (i in 0...nel[g]) { // Loop over elements
+        //print "Refine grade ${g} element ${i}"
+        var eind = el.rowindices(i)
+        if (!self.invoke(refinemethod, i, eind, vertices, nel, mb, tree, dict)) {
+          var id = mb.addelement(g, eind)
+          dict[id] = i // Just copy the element across
+        }
+      }
+
+      refmap.append(dict)
+    }
+
+    self.refinemap = refmap
+
+    return (self.new=mb.build())
+  }
+
+  refinefield(field) {
+    var mesh = self.mesh()
+    var prototype = field.enumerate(0).clone()
+    var shape = field.shape()
+    var result
+
+    if (self.refinemap && prototype) {
+      result = Field(self.new, prototype, grade=shape)
+
+      for (g in 0...shape.count()) {
+        if (shape[g]==0) continue
+        var dict = self.refinemap[g]
+
+        for (id in dict) {
+          var map = dict[id]
+          if (islist(map)) {
+            var sum, nn = map.count()
+            if (nn==0) continue
+            for (i in 0...nn) sum+=field[g, map[i]]
+            sum/=map.count()
+            result[g, id] = sum
+          } else {
+            result[g, id] = field[g, map]
+          }
+        }
+      }
+    }
+
+    return result
+  }
+
+  refineselection(sel) {
+    var result
+
+    if (self.refinemap) {
+      result = Selection(self.new)
+
+      for (g in 0..self.new.maxgrade()) {
+        var dict = self.refinemap[g]
+        if (sel.count(g)==0) continue
+
+        for (id in dict.keys()) {
+          if (isint(dict[id]) && sel[g, dict[id]]) result[g, id]=true
+        }
+      }
+    }
+
+    return result
+  }
+
+  refine(selection=nil) {
+    var newmesh = self.refinemesh(selection=selection)
+
+    var dict = { self.mesh() : self.new}
+
+    if (islist(self.target)) {
+      for (el in self.target) {
+        if (isfield(el)) dict[el] = self.refinefield(el)
+        if (isselection(el)) dict[el] = self.refineselection(el)
+      }
+    }
+
+    return dict
+  }
 }

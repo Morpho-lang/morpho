@@ -68,6 +68,9 @@
 /** @brief Maximum number of arguments */
 #define MORPHO_MAXARGS 255
 
+/** @brief Maximum number of constants */
+#define MORPHO_MAXCONSTANTS 65536
+
 /* **********************************************************************
 * Performance
 * ********************************************************************** */

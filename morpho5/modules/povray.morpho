@@ -1,0 +1,141 @@
+
+class POVRaytracer {
+  init(graphic, antialias = true, width = 2048, height = 1536, viewangle = 24, viewpoint = nil) {
+    self.graphic = graphic
+    self.antialias = antialias
+    self.width = width
+    self.height = height
+    self.viewangle = viewangle
+    self.viewpoint = viewpoint
+    self.light = nil
+    if (!self.viewpoint) self.viewpoint = Matrix([0,0,-5])
+  }
+
+  vector(v) {
+    return "<${v[0]}, ${v[1]}, ${v[2]}>"
+  }
+
+  color(c) {
+    if (ismatrix(c)) return self.vector(c)
+    else return self.vector(c.rgb(0))
+  }
+
+  visitsphere(item, out) {
+    print self.color(item.color)
+    out.write("sphere {"+
+              " ${self.vector(item.center)}, ${item.r}"+
+              " texture { "+
+              " pigment { rgb ${self.color(item.color)}"+
+              "} } }")
+  }
+
+  visitcylinder(item, out) {
+    var radius = 0.5*(item.end - item.start).norm()*item.aspectratio
+    out.write("cylinder {"+
+              " ${self.vector(item.start)}, ${self.vector(item.end)}, ${radius}"+
+              " texture { "+
+              " pigment { rgb ${self.color(item.color)} "+
+              "} } }")
+  }
+
+  visitarrow(item, out) {
+    var dx = (item.end - item.start).norm()
+    var radius = 0.5*dx*item.aspectratio
+    var cylend = item.start + (item.end - item.start)*(1-item.aspectratio)
+    out.write("cylinder {"+
+              " ${self.vector(item.start)}, ${self.vector(cylend)}, ${radius}"+
+              " texture { "+
+              " pigment { rgb ${self.color(item.color)} "+
+              "} } }")
+    out.write("cone {"+
+              " ${self.vector(cylend)}, ${2*radius}, ${self.vector(item.end)}, 0"+
+              " texture { "+
+              " pigment { rgb ${self.color(item.color)} "+
+              "} } }")
+  }
+
+  visittube(item, out) {
+    self.visittrianglecomplex(item.totrianglecomplex(), out)
+  }
+
+  visittrianglecomplex(item, out) {
+    out.write("mesh2 {");
+
+    var nv=item.position.dimensions()[1]
+
+    out.write("vertex_vectors { ${nv}, ")
+    for (i in 0...nv) {
+      var s = self.vector(item.position.column(i))
+      if (i<nv-1) s+=", "
+      out.write(s)
+    }
+    out.write("}");
+
+    out.write("normal_vectors { ${nv}, ")
+    for (i in 0...nv) {
+      var s = self.vector(item.normals.column(i))
+      if (i<nv-1) s+=", "
+      out.write(s)
+    }
+    out.write("}");
+
+    var individualcolors = ismatrix(item.colors)
+    if (individualcolors) {
+      out.write("texture_list { ${nv}, ")
+      for (i in 0...nv) {
+        var s = "texture{ pigment{ rgb ${self.vector(item.colors.column(i))} } }"
+        if (i<nv-1) s+=", "
+        out.write(s)
+      }
+      out.write("}");
+    }
+
+    var nfaces=item.connectivity.dimensions()[1]
+    out.write("face_indices { ${nfaces}, ")
+    for (i in 0...nfaces) {
+      var indx = item.connectivity.rowindices(i)
+      var s = self.vector(indx)
+      if (individualcolors) s += ",${indx[0]},${indx[1]},${indx[2]}"
+      if (i<nv-1) s+=", "
+      out.write(s)
+    }
+    out.write("}");
+
+    if (!individualcolors) {
+      out.write(" texture { "+
+                " pigment { rgb ${self.color(item.colors)} "+
+                "} }")
+    }
+
+    out.write("}");
+
+  }
+
+  write(file) {
+    var out = File(file, "write")
+
+    out.write("#include \"colors.inc\"")
+    out.write("background { rgb ${self.vector(self.graphic.background.rgb(0))} }")
+    out.write("camera {"+
+              "location ${self.vector(-self.viewpoint)}"+
+              "up <0,1,0> right <-1.33,0,0> angle ${self.viewangle}"+
+              "look_at <0, 0, 0> }")
+
+    for (item in self.graphic.displaylist) item.accept(self, out)
+
+    if (self.light) {
+      for (light in self.light) {
+        out.write("light_source {${self.vector(light)} color White}")
+      }
+    } else out.write("light_source {<-5, -5, 8> color White}")
+
+    out.close()
+  }
+
+  render(file) {
+    self.write(file)
+    system("povray ${file} +A +W${self.width} +H${self.height}")
+    var out = file.split(".")[0]
+    system("open ${out}.png")
+  }
+}

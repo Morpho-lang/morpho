@@ -18,6 +18,7 @@ Morpho
    :caption: Data Types
    :maxdepth: 1
 
+   array
    dictionary
    list
    matrix

@@ -21,7 +21,7 @@
 
 static value functional_gradeproperty;
 static value functional_fieldproperty;
-static value functional_functionproperty;
+//static value functional_functionproperty;
 
 /* **********************************************************************
  * Utility functions
@@ -1187,7 +1187,8 @@ typedef struct {
     grade grade;
     objectsparse *vtoel; // Connect vertices to elements
     objectsparse *eltov; // Connect elements to vertices
-    objectfield *weight; // Weight field
+    objectmatrix *weight; // Weight field
+    double mean;
 } equielementref;
 
 /** Prepares the reference structure from the Equielement object's properties */
@@ -1211,8 +1212,12 @@ bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, equ
     }
     
     if (objectinstance_getproperty(self, equielement_weightproperty, &weight) &&
-        MORPHO_ISFIELD(weight) ) {
-        ref->weight=MORPHO_GETFIELD(weight);
+        MORPHO_ISMATRIX(weight) ) {
+        ref->weight=MORPHO_GETMATRIX(weight);
+        if (ref->weight) {
+            ref->mean=matrix_sum(ref->weight);
+            ref->mean/=ref->weight->ncols;
+        }
     }
     
     return success;
@@ -1240,23 +1245,19 @@ bool equielement_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *v
         if (fabs(mean)<MORPHO_EPS) return false;
         
         /* Now evaluate the functional at this vertex */
-        if (!ref->weight) {
+        if (!ref->weight || fabs(ref->mean)<MORPHO_EPS) {
             for (unsigned int i=0; i<nconn; i++) total+=(1.0-size[i]/mean)*(1.0-size[i]/mean);
         } else {
             double weight[nconn], wmean=0.0;
             
             for (int i=0; i<nconn; i++) {
-                value val;
                 weight[i]=1.0;
-                if (field_getelement(ref->weight, ref->grade, conn[i], 0, &val) &&
-                    MORPHO_ISNUMBER(val)) {
-                    morpho_valuetofloat(val, &weight[i]);
-                }
+                matrix_getelement(ref->weight, 0, conn[i], &weight[i]);
                 wmean+=weight[i];
             }
             
             wmean /= ((double) nconn);
-            if (fabs(wmean)<MORPHO_EPS) return false;
+            if (fabs(wmean)<MORPHO_EPS) wmean = 1.0;
             
             for (unsigned int i=0; i<nconn; i++) {
                 double term = (1.0-weight[i]*size[i]/mean/wmean);
@@ -1602,7 +1603,7 @@ value Nematic_init(vm *v, int nargs, value *args) {
           kbend=MORPHO_FLOAT(1.0);
     value pitch=MORPHO_NIL;
     
-    if (builtin_options(v, nargs, args, &nfixed, 2,
+    if (builtin_options(v, nargs, args, &nfixed, 4,
                         nematic_ksplayproperty, &ksplay,
                         nematic_ktwistproperty, &ktwist,
                         nematic_kbendproperty, &kbend,

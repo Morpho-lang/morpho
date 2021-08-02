@@ -2,6 +2,7 @@
 
 import constants
 import meshtools
+import color
 
 /* **************************************
  * Utility functions
@@ -99,104 +100,17 @@ class TriangleComplex {
     }
 
   }
+
+  accept(visitor, out) {
+    visitor.visittrianglecomplex(self, out)
+  }
 }
 
-/* **************************************
- * Construct objects from primitives
- **************************************** */
-
-/** Draws an arrow
-  @param[in] start - start point
-  @param[in] end - end point
-  @param[in] aspectratio - aspect ratio of the arrow
-  @param[in] n - number of faces to use
-  @param[in] color - Color of the sphere
-*/
-fn Arrow(start, end, aspectratio=0.1, n=10, color=nil) {
-  var col = color
-  if (isnil(col)) col = [0.5,0.5,0.5]
-
-  var np=3*n+2 // 2 points at the end plus 3*n point
-  var nt=6*n
-  var dim=start.count()
-  var vertices=Matrix(dim, np)
-  var normals=Matrix(dim, np)
-
-  var x1=Matrix(start), x2=Matrix(end)
-  var dx=x2-x1 // Vector from x1 to x2
-  var length = dx.norm()
-  var ndx=dx/length
-
-  var px=normalvector(dx)
-  var pxnorm=px.norm()
-  if (abs(pxnorm)<1e-15) return
-  px=0.5*length*aspectratio*px/pxnorm
-
-  // Head and base of the arrow
-  vertices.setcolumn(0, x1)
-  vertices.setcolumn(np-1, x2)
-  normals.setcolumn(0, -1*dx)
-  normals.setcolumn(np-1, dx)
-
-  /* The arrow is structured like so:
-
-         [n+1...2n]   C--[2n+1...3n]
-                    \ |\
-  [1..n] A------------B \
-         |               \
-         0<----- u --->   1 3n+1
-         <------ dx ------> */
-  var u=(1-aspectratio)*dx
-  for (i in 1..n) {
-      var theta = 2*Pi*(i-1)/n
-      var qx = rotation(theta, ndx)*px
-      var nn=qx/qx.norm()
-      var pt = qx+x1
-      // Find vertex ring A by rotating px about ndx, to obtain qx, and then adding x1
-      vertices.setcolumn(i, pt)
-      // Vertex ring B is obtained by simply translating the first circle by dx*(1-ar)
-      vertices.setcolumn(n+i, pt+u)
-      // Vertex ring C is obtained by simply adding qx to the point in vertex ring B
-      vertices.setcolumn(2*n+i, pt+u+qx)
-
-      // Normals
-      normals.setcolumn(i, nn)
-      normals.setcolumn(n+i, nn)
-      normals.setcolumn(2*n+i, nn)
+class GraphicsPrimitive {
+  view(out) {
+    var tri = self.totrianglecomplex()
+    tri.view(out)
   }
-
-  var conn=Sparse(np,nt)
-  for (i in 0...n) {
-    // Layer 0-A
-    conn[0,i]=1
-    conn[i+1,i]=1
-    if (i<n-1) conn[i+2,i]=1 else conn[1,i]=1
-
-    // C-1
-    conn[np-1,n+i]=1
-    conn[2*n+i+1,n+i]=1
-    if (i<n-1) conn[2*n+i+2,n+i]=1 else conn[2*n+1,n+i]=1
-
-    // Layer A-B
-    conn[i+1,2*n+i]=1
-    conn[n+i+1,2*n+i]=1
-    if (i<n-1) conn[i+2,2*n+i]=1 else conn[1,2*n+i]=1
-
-    if (i<n-1) conn[i+2,3*n+i]=1 else conn[1,3*n+i]=1
-    if (i<n-1) conn[n+i+2,3*n+i]=1 else conn[n+1,3*n+i]=1
-    conn[n+i+1,3*n+i]=1
-
-    // Layer B-C
-    conn[n+i+1,4*n+i]=1
-    if (i<n-1) conn[n+i+2,4*n+i]=1 else conn[n+1,4*n+i]=1
-    conn[2*n+i+1,4*n+i]=1
-
-    if (i<n-1) conn[n+i+2,5*n+i]=1 else conn[n+1,5*n+i]=1
-    if (i<n-1) conn[2*n+i+2,5*n+i]=1 else conn[2*n+1,5*n+i]=1
-    conn[2*n+i+1,5*n+i]=1
-  }
-
-  return TriangleComplex(vertices, normals, col, conn)
 }
 
 /** Draws a cylinder
@@ -204,209 +118,97 @@ fn Arrow(start, end, aspectratio=0.1, n=10, color=nil) {
   @param[in] end - end point
   @param[in] aspectratio - aspect ratio
   @param[in] n - number of faces to use
-  @param[in] color - Color of the sphere
-*/
-fn Cylinder(start, end, aspectratio=0.1, n=10, color=nil) {
-  var col = color
-  if (isnil(col)) col = [0.5,0.5,0.5]
-
-  var np=2*n+2 // 2 points at the end plus 2*n point
-  var nt=4*n
-  var dim=start.count()
-  var vertices=Matrix(dim, np);
-  var normals=Matrix(dim, np);
-
-  var x1=Matrix(start), x2=Matrix(end)
-  var dx=x2-x1 // Vector from x1 to x2
-  var length = dx.norm()
-  if (abs(length)<1e-8) return nil
-  var ndx=dx/length
-
-  var px=normalvector(dx)
-  var pxnorm=px.norm()
-  if (abs(pxnorm)<1e-15) return
-  px=0.5*length*aspectratio*px/pxnorm
-
-  // Head and base of the arrow
-  vertices.setcolumn(0, x1)
-  vertices.setcolumn(np-1, x2)
-  normals.setcolumn(0, -1*dx)
-  normals.setcolumn(np-1, dx)
-
-  /* The cylinder is structured like so:
-
-         [n+1...2n]
-                    \
-  [1..n] A------------B
-         |            |
-         0            1 2n+1
-         <---- dx ----> */
-  for (i in 1..n) {
-      var theta = 2*Pi*(i-1)/n
-      var qx = rotation(theta, ndx)*px
-      var nn=qx/qx.norm()
-      var pt = qx+x1
-      // Find vertex ring A by rotating px about ndx, to obtain qx, and then adding x1
-      vertices.setcolumn(i, pt)
-      // Vertex ring B is obtained by simply translating the first circle by dx*(1-ar)
-      vertices.setcolumn(n+i, pt+dx)
-
-      // Normals
-      normals.setcolumn(i, nn)
-      normals.setcolumn(n+i, nn)
+  @param[in] color - Color of the sphere */
+class Cylinder < GraphicsPrimitive {
+  init(start, end, aspectratio=0.1, n=10, color=nil) {
+    self.start = Matrix(start)
+    self.end = Matrix(end)
+    self.aspectratio = aspectratio
+    self.n = n
+    self.color = color
   }
 
-  var conn=Sparse(np,nt)
-  for (i in 0...n) {
-    // Layer 0-A
-    conn[0,i]=1
-    conn[i+1,i]=1
-    if (i<n-1) conn[i+2,i]=1 else conn[1,i]=1
+  totrianglecomplex() {
+    var aspectratio = self.aspectratio
+    var n = self.n
 
-    // C-1
-    conn[np-1,n+i]=1
-    conn[n+i+1,n+i]=1
-    if (i<n-1) conn[n+i+2,n+i]=1 else conn[n+1,n+i]=1
+    var col = self.color
+    if (isnil(col)) col = [0.5,0.5,0.5]
 
-    // Layer A-B
-    conn[i+1,2*n+i]=1
-    conn[n+i+1,2*n+i]=1
-    if (i<n-1) conn[i+2,2*n+i]=1 else conn[1,2*n+i]=1
+    var np=2*n+2 // 2 points at the end plus 2*n point
+    var nt=4*n
+    var dim=self.start.count()
+    var vertices=Matrix(dim, np);
+    var normals=Matrix(dim, np);
 
-    if (i<n-1) conn[i+2,3*n+i]=1 else conn[1,3*n+i]=1
-    if (i<n-1) conn[n+i+2,3*n+i]=1 else conn[n+1,3*n+i]=1
-    conn[n+i+1,3*n+i]=1
+    var x1=self.start, x2=self.end
+    var dx=x2-x1 // Vector from x1 to x2
+    var length = dx.norm()
+    if (abs(length)<1e-8) return nil
+    var ndx=dx/length
+
+    var px=normalvector(dx)
+    var pxnorm=px.norm()
+    if (abs(pxnorm)<1e-15) return
+    px=0.5*length*aspectratio*px/pxnorm
+
+    // Head and base of the arrow
+    vertices.setcolumn(0, x1)
+    vertices.setcolumn(np-1, x2)
+    normals.setcolumn(0, -1*dx)
+    normals.setcolumn(np-1, dx)
+
+    /* The cylinder is structured like so:
+
+           [n+1...2n]
+                      \
+    [1..n] A------------B
+           |            |
+           0            1 2n+1
+           <---- dx ----> */
+    for (i in 1..n) {
+        var theta = 2*Pi*(i-1)/n
+        var qx = rotation(theta, ndx)*px
+        var nn=qx/qx.norm()
+        var pt = qx+x1
+        // Find vertex ring A by rotating px about ndx, to obtain qx, and then adding x1
+        vertices.setcolumn(i, pt)
+        // Vertex ring B is obtained by simply translating the first circle by dx*(1-ar)
+        vertices.setcolumn(n+i, pt+dx)
+
+        // Normals
+        normals.setcolumn(i, nn)
+        normals.setcolumn(n+i, nn)
+    }
+
+    var conn=Sparse(np,nt)
+    for (i in 0...n) {
+      // Layer 0-A
+      conn[0,i]=1
+      conn[i+1,i]=1
+      if (i<n-1) conn[i+2,i]=1 else conn[1,i]=1
+
+      // C-1
+      conn[np-1,n+i]=1
+      conn[n+i+1,n+i]=1
+      if (i<n-1) conn[n+i+2,n+i]=1 else conn[n+1,n+i]=1
+
+      // Layer A-B
+      conn[i+1,2*n+i]=1
+      conn[n+i+1,2*n+i]=1
+      if (i<n-1) conn[i+2,2*n+i]=1 else conn[1,2*n+i]=1
+
+      if (i<n-1) conn[i+2,3*n+i]=1 else conn[1,3*n+i]=1
+      if (i<n-1) conn[n+i+2,3*n+i]=1 else conn[n+1,3*n+i]=1
+      conn[n+i+1,3*n+i]=1
+    }
+
+    return TriangleComplex(vertices, normals, col, conn)
   }
 
-  return TriangleComplex(vertices, normals, col, conn)
-}
-
-/** Draws a tube
-  @param[in] pts - list of points or a matrix with points as the columns
-  @param[in] rad - radius
-  @param[in] n - number of faces to use per point
-  @param[in] closed - whether to treat the point list as closed or not
-  @param[in] color - Color of the sphere
-*/
-fn Tube(pts, rad, n=10, color=nil, closed=false) {
-  fn normalvector(vec) { // Musn't take the abs for Tube
-    var order = [vec[0], vec[1], vec[2]].order()
-    var out=vec.clone()
-    out[order[0]]=0
-    out[order[1]]=vec[order[2]]
-    out[order[2]]=-vec[order[1]]
-    return out
+  accept(visitor, out) {
+    visitor.visitcylinder(self, out)
   }
-
-  var col = color
-  if (isnil(col)) col = [0.5,0.5,0.5]
-
-  var mat = pts
-  if (islist(pts)) mat = Matrix(pts).transpose();
-
-  var np=mat.dimensions()[1]
-	var dim=mat.dimensions()[0]
-  var nv=n*np
-	var nt=n*(2*(np-1))
-  if (!closed) {
-		nv+=2 // Two points for the caps
-		nt+=2*n // n triangles for each cap
-	}
-
-  var vertices=Matrix(dim, nv);
-  var normals=Matrix(dim, nv);
-
-	var sep[np], ndx[np]
-
-	// Loop over line segments to calculate separation vectors
-	for (k in 0..np-2) {
-		var dx=mat.column(k+1)-mat.column(k)
-		sep[k]=dx/dx.norm()
-		ndx[k]+=sep[k]
-		ndx[k+1]+=sep[k]
-	}
-
-	// Correct ends if closed
-	if (closed) {
-		var dx=mat.column(0)-mat.column(np-1)
-		sep[np-1]=dx/dx.norm()
-		ndx[np-1]+=sep[np-1]
-		ndx[0]+=sep[np-1]
-	}
-
-	// Now generate vertices
- 	for (k in 0...np) {
-		var px // Vertices are generated from a point plus this displacement
- 		if (k==0) {
-			px=normalvector(ndx[k])
-		} else { // This aligns vertices generated from successive points
-			var dx=vertices.column((k-1)*n)-mat.column(k-1)
-			px=dx-dx.inner(ndx[k])*ndx[k]/ndx[k].norm()
-		}
-		px=rad*px/px.norm()
-
-		var x1 = mat.column(k)
-		for (i in 0...n) {
-			/* Find vertex ring at point k by rotating px about ndx, to obtain qx, and then adding x1 */
-      var theta = i*2*Pi/n
-			var qx = rotation(theta, ndx[k])*px
-			vertices.setcolumn(k*n+i, x1+qx)
-
-			normals.setcolumn(k*n+i, qx/qx.norm())
-		}
- 	}
-
-	/* Loop over segments again to create the triangles */
-	var conn=Sparse(nv,nt)
-
-	var m=0
-	for (k in 0..np-2) {
-		for (i in 0...n) {
-			conn[k*n+i,m]=1
-			if (i==n-1) conn[k*n,m]=1 else conn[k*n+i+1,m]=1
-			conn[((k+1)*n+i),m]=1
-			m+=1
-			if (i==n-1) conn[k*n,m]=1 else conn[k*n+i+1,m]=1
-			if (i==n-1) conn[(k+1)*n,m]=1 else conn[((k+1)*n+i)+1,m]=1
-			conn[((k+1)*n+i),m]=1
-			m+=1
-		}
-	}
-
-	if (closed) {
-		// Connect first and last points
-		var k=np-1
-		for (i in 0...n) {
-			conn[k*n+i,m]=1
-			if (i==n-1) conn[k*n,m]=1 else conn[k*n+i+1,m]=1
-			conn[i,m]=1
-			m+=1
-			if (i==n-1) conn[k*n,m]=1 else conn[k*n+i+1,m]=1
-			if (i==n-1) conn[0,m]=1 else conn[i+1,m]=1
-			conn[i,m]=1
-			m+=1
-		}
-	} else {
-		// End caps
-		vertices.setcolumn(nv-2, mat.column(0))
-		vertices.setcolumn(nv-1, mat.column(np-1))
-
-		normals.setcolumn(nv-2, -sep[0]/sep[0].norm())
-		normals.setcolumn(nv-1, sep[np-2]/sep[np-2].norm())
-
-		for (i in 0...n) {
-			conn[i,m]=1
-			if (i==n-1) conn[0,m]=1 else conn[i+1,m]=1
-			conn[nv-2,m]=1
-			m+=1
-			conn[((np-1)*n+i),m]=1
-			if (i==n-1) conn[(np-1)*n,m]=1 else conn[((np-1)*n+i)+1,m]=1
-			conn[nv-1,m]=1
-			m+=1
-		}
-	}
-
-  return TriangleComplex(vertices, normals, col, conn)
 }
 
 var sphere = [ PolyhedronMesh(
@@ -432,37 +234,302 @@ var sphere = [ PolyhedronMesh(
 /** Draws a sphere
   @param[in] center - the center of the sphere
   @param[in] r - radius
-  @param[in] color - Color of the sphere
-*/
-fn Sphere(center, r, color=nil, maxrefine = 3) {
-  var col = color
-  if (isnil(col)) col = [0.5,0.5,0.5]
-  var n = 0
+  @param[in] color - Color of the sphere */
+class Sphere < GraphicsPrimitive {
+  init(center, r, color=nil, maxrefine = 3) {
+    self.center = center
+    self.r = r
+    self.color = color
+    self.maxrefine = maxrefine
+  }
 
-  // Find the necessary refined sphere
-  while (r/(2^n)>=0.1 && n<maxrefine) {
-    if (n>=sphere.count()-1) {
-      sphere.append(refinemesh(sphere[-1]))
+  totrianglecomplex () {
+    var center = self.center, r = self.r
+    var col = self.color
+    if (isnil(col)) col = [0.5,0.5,0.5]
+    var n = 0
+
+    // Find the necessary refined sphere
+    while (r/(2^n)>=0.1 && n<self.maxrefine) {
+      if (n>=sphere.count()-1) {
+        sphere.append(refinemesh(sphere[-1]))
+      }
+      n += 1;
     }
-    n += 1;
+
+    var v = sphere[n].vertexmatrix().clone()
+    var normals = sphere[n].vertexmatrix().clone()
+    var conn = sphere[n].connectivitymatrix(0,2) // Should clone!
+    var nv = v.dimensions()[1]
+
+    var x0=center
+    if (islist(center)) x0=Matrix(center)
+
+    for (i in 0...nv) { // Normalize, scale and translate
+      var x = v.column(i)
+      var nn = x/x.norm()
+      normals.setcolumn(i, nn)
+      v.setcolumn(i, x0 + r*nn)
+    }
+
+    return TriangleComplex(v, normals, col, conn)
   }
 
-  var v = sphere[n].vertexmatrix().clone()
-  var normals = sphere[n].vertexmatrix().clone()
-  var conn = sphere[n].connectivitymatrix(0,2) // Should clone!
-  var nv = v.dimensions()[1]
+  accept(visitor, out) {
+    visitor.visitsphere(self, out)
+  }
+}
 
-  var x0=center
-  if (islist(center)) x0=Matrix(center)
-
-  for (i in 0...nv) { // Normalize, scale and translate
-    var x = v.column(i)
-    var nn = x/x.norm()
-    normals.setcolumn(i, nn)
-    v.setcolumn(i, x0 + r*nn)
+/** Draws an arrow
+  @param[in] start - start point
+  @param[in] end - end point
+  @param[in] aspectratio - aspect ratio of the arrow
+  @param[in] n - number of faces to use
+  @param[in] color - Color of the sphere */
+class Arrow < GraphicsPrimitive {
+  init(start, end, aspectratio=0.1, n=10, color=nil) {
+    self.start = Matrix(start)
+    self.end = Matrix(end)
+    self.aspectratio = aspectratio
+    self.n = n
+    self.color = color
   }
 
-  return TriangleComplex(v, normals, col, conn)
+  totrianglecomplex () {
+    var aspectratio = self.aspectratio
+    var n = self.n
+
+    var col = self.color
+    if (isnil(col)) col = [0.5,0.5,0.5]
+
+    var np=3*n+2 // 2 points at the end plus 3*n point
+    var nt=6*n
+    var dim=self.start.count()
+    var vertices=Matrix(dim, np)
+    var normals=Matrix(dim, np)
+
+    var x1=self.start, x2=self.end
+    var dx=x2-x1 // Vector from x1 to x2
+    var length = dx.norm()
+    var ndx=dx/length
+
+    var px=normalvector(dx)
+    var pxnorm=px.norm()
+    if (abs(pxnorm)<1e-15) return
+    px=0.5*length*aspectratio*px/pxnorm
+
+    // Head and base of the arrow
+    vertices.setcolumn(0, x1)
+    vertices.setcolumn(np-1, x2)
+    normals.setcolumn(0, -1*dx)
+    normals.setcolumn(np-1, dx)
+
+    /* The arrow is structured like so:
+
+           [n+1...2n]   C--[2n+1...3n]
+                      \ |\
+    [1..n] A------------B \
+           |               \
+           0<----- u --->   1 3n+1
+           <------ dx ------> */
+    var u=(1-aspectratio)*dx
+    for (i in 1..n) {
+        var theta = 2*Pi*(i-1)/n
+        var qx = rotation(theta, ndx)*px
+        var nn=qx/qx.norm()
+        var pt = qx+x1
+        // Find vertex ring A by rotating px about ndx, to obtain qx, and then adding x1
+        vertices.setcolumn(i, pt)
+        // Vertex ring B is obtained by simply translating the first circle by dx*(1-ar)
+        vertices.setcolumn(n+i, pt+u)
+        // Vertex ring C is obtained by simply adding qx to the point in vertex ring B
+        vertices.setcolumn(2*n+i, pt+u+qx)
+
+        // Normals
+        normals.setcolumn(i, nn)
+        normals.setcolumn(n+i, nn)
+        normals.setcolumn(2*n+i, nn)
+    }
+
+    var conn=Sparse(np,nt)
+    for (i in 0...n) {
+      // Layer 0-A
+      conn[0,i]=1
+      conn[i+1,i]=1
+      if (i<n-1) conn[i+2,i]=1 else conn[1,i]=1
+
+      // C-1
+      conn[np-1,n+i]=1
+      conn[2*n+i+1,n+i]=1
+      if (i<n-1) conn[2*n+i+2,n+i]=1 else conn[2*n+1,n+i]=1
+
+      // Layer A-B
+      conn[i+1,2*n+i]=1
+      conn[n+i+1,2*n+i]=1
+      if (i<n-1) conn[i+2,2*n+i]=1 else conn[1,2*n+i]=1
+
+      if (i<n-1) conn[i+2,3*n+i]=1 else conn[1,3*n+i]=1
+      if (i<n-1) conn[n+i+2,3*n+i]=1 else conn[n+1,3*n+i]=1
+      conn[n+i+1,3*n+i]=1
+
+      // Layer B-C
+      conn[n+i+1,4*n+i]=1
+      if (i<n-1) conn[n+i+2,4*n+i]=1 else conn[n+1,4*n+i]=1
+      conn[2*n+i+1,4*n+i]=1
+
+      if (i<n-1) conn[n+i+2,5*n+i]=1 else conn[n+1,5*n+i]=1
+      if (i<n-1) conn[2*n+i+2,5*n+i]=1 else conn[2*n+1,5*n+i]=1
+      conn[2*n+i+1,5*n+i]=1
+    }
+
+    return TriangleComplex(vertices, normals, col, conn)
+  }
+
+  accept(visitor, out) {
+    visitor.visitarrow(self, out)
+  }
+}
+
+/** Draws a tube
+  @param[in] pts - list of points or a matrix with points as the columns
+  @param[in] rad - radius
+  @param[in] n - number of faces to use per point
+  @param[in] closed - whether to treat the point list as closed or not
+  @param[in] color - Color of the sphere */
+class Tube < GraphicsPrimitive {
+  normalvector(vec) { // Musn't take the abs for Tube
+    var order = [vec[0], vec[1], vec[2]].order()
+    var out=vec.clone()
+    out[order[0]]=0
+    out[order[1]]=vec[order[2]]
+    out[order[2]]=-vec[order[1]]
+    return out
+  }
+
+  init(pts, rad, n=10, color=nil, closed=false) {
+    self.pts = pts
+    self.radius = rad
+    self.n = n
+    self.closed = closed
+    self.color = color
+  }
+
+  totrianglecomplex() {
+    var n = self.n
+    var col = self.color
+    if (isnil(col)) col = [0.5,0.5,0.5]
+
+    var mat = self.pts
+    if (islist(self.pts)) mat = Matrix(self.pts).transpose();
+
+    var np=mat.dimensions()[1]
+  	var dim=mat.dimensions()[0]
+    var nv=n*np
+  	var nt=n*(2*(np-1))
+    if (!self.closed) {
+  		nv+=2 // Two points for the caps
+  		nt+=2*n // n triangles for each cap
+  	}
+
+    var vertices=Matrix(dim, nv);
+    var normals=Matrix(dim, nv);
+
+  	var sep[np], ndx[np]
+
+  	// Loop over line segments to calculate separation vectors
+  	for (k in 0..np-2) {
+  		var dx=mat.column(k+1)-mat.column(k)
+  		sep[k]=dx/dx.norm()
+  		ndx[k]+=sep[k]
+  		ndx[k+1]+=sep[k]
+  	}
+
+  	// Correct ends if closed
+  	if (self.closed) {
+  		var dx=mat.column(0)-mat.column(np-1)
+  		sep[np-1]=dx/dx.norm()
+  		ndx[np-1]+=sep[np-1]
+  		ndx[0]+=sep[np-1]
+  	}
+
+  	// Now generate vertices
+   	for (k in 0...np) {
+  		var px // Vertices are generated from a point plus this displacement
+   		if (k==0) {
+  			px=self.normalvector(ndx[k])
+  		} else { // This aligns vertices generated from successive points
+  			var dx=vertices.column((k-1)*n)-mat.column(k-1)
+  			px=dx-dx.inner(ndx[k])*ndx[k]/ndx[k].norm()
+  		}
+  		px=self.radius*px/px.norm()
+
+  		var x1 = mat.column(k)
+  		for (i in 0...n) {
+  			/* Find vertex ring at point k by rotating px about ndx, to obtain qx, and then adding x1 */
+        var theta = i*2*Pi/n
+  			var qx = rotation(theta, ndx[k])*px
+  			vertices.setcolumn(k*n+i, x1+qx)
+
+  			normals.setcolumn(k*n+i, qx/qx.norm())
+  		}
+   	}
+
+  	/* Loop over segments again to create the triangles */
+  	var conn=Sparse(nv,nt)
+
+  	var m=0
+  	for (k in 0..np-2) {
+  		for (i in 0...n) {
+  			conn[k*n+i,m]=1
+  			if (i==n-1) conn[k*n,m]=1 else conn[k*n+i+1,m]=1
+  			conn[((k+1)*n+i),m]=1
+  			m+=1
+  			if (i==n-1) conn[k*n,m]=1 else conn[k*n+i+1,m]=1
+  			if (i==n-1) conn[(k+1)*n,m]=1 else conn[((k+1)*n+i)+1,m]=1
+  			conn[((k+1)*n+i),m]=1
+  			m+=1
+  		}
+  	}
+
+  	if (self.closed) {
+  		// Connect first and last points
+  		var k=np-1
+  		for (i in 0...n) {
+  			conn[k*n+i,m]=1
+  			if (i==n-1) conn[k*n,m]=1 else conn[k*n+i+1,m]=1
+  			conn[i,m]=1
+  			m+=1
+  			if (i==n-1) conn[k*n,m]=1 else conn[k*n+i+1,m]=1
+  			if (i==n-1) conn[0,m]=1 else conn[i+1,m]=1
+  			conn[i,m]=1
+  			m+=1
+  		}
+  	} else {
+  		// End caps
+  		vertices.setcolumn(nv-2, mat.column(0))
+  		vertices.setcolumn(nv-1, mat.column(np-1))
+
+  		normals.setcolumn(nv-2, -sep[0]/sep[0].norm())
+  		normals.setcolumn(nv-1, sep[np-2]/sep[np-2].norm())
+
+  		for (i in 0...n) {
+  			conn[i,m]=1
+  			if (i==n-1) conn[0,m]=1 else conn[i+1,m]=1
+  			conn[nv-2,m]=1
+  			m+=1
+  			conn[((np-1)*n+i),m]=1
+  			if (i==n-1) conn[(np-1)*n,m]=1 else conn[((np-1)*n+i)+1,m]=1
+  			conn[nv-1,m]=1
+  			m+=1
+  		}
+  	}
+
+    return TriangleComplex(vertices, normals, col, conn)
+  }
+
+  accept(visitor, out) {
+    visitor.visittube(self, out)
+  }
 }
 
 /* **************************************
@@ -470,26 +537,16 @@ fn Sphere(center, r, color=nil, maxrefine = 3) {
  **************************************** */
 
 class Graphics {
-  init() {
+  init(title = nil, background = nil) {
     self.displaylist = [] // A collection of primitives to display
-    self.title = "Morpho" // Title to show
+    self.title = title
+    if (!self.title) self.title="Morpho" // Title to show
+    self.background = background
+    if (!self.background) self.background = Black
   }
 
   display(item) {
     if (isobject(item)) self.displaylist.append(item)
-  }
-
-  view(out) {
-    // Define the objects
-    for (i in 0...self.displaylist.count()) {
-      out.write("o ${i}")
-      self.displaylist[i].view(out)
-    }
-    // Draw the objects
-    for (i in 0...self.displaylist.count()) {
-      out.write("i")
-      out.write("d ${i}")
-    }
   }
 
   add(right) { // Create a union of two graphics objects
@@ -510,12 +567,24 @@ class Show {
     var fname = randomalphanumstring(10)
     var out = File("${tempfolder}/morpho${fname}.draw", "w")
 
-    out.write("S 1 3")
-    out.write("W \"${g.title}\"")
-
-    g.view(out)
+    self.write(g, out)
 
     out.close()
     system("morphoview -t ${tempfolder}/morpho${fname}.draw &")
+  }
+
+  write(graphic, out) {
+    out.write("S 1 3")
+    out.write("W \"${graphic.title}\"")
+    // Define the objects
+    for (i in 0...graphic.displaylist.count()) {
+      out.write("o ${i}")
+      graphic.displaylist[i].view(out)
+    }
+    // Draw the objects
+    for (i in 0...graphic.displaylist.count()) {
+      out.write("i")
+      out.write("d ${i}")
+    }
   }
 }

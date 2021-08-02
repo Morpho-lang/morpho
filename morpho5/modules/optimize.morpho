@@ -139,6 +139,44 @@ class OptimizationProblem {
     self.localconstraints.append(cons)
     return cons
   }
+
+  updatelist(lst, dict) {
+    if (islist(lst)) for (en in lst) {
+      if (en.has("selection") && dict.contains(en.selection)) en.selection = dict[en.selection]
+      if (en.has("field") && dict.contains(en.field)) en.field = dict[en.field]
+      //if (en.has("target") && dict.contains(en.target)) en.target = dict[en.target]
+
+      if (en.functional.has("field")) {
+        var f = en.functional.field
+
+        if (isfield(f) && dict.contains(f)) {
+          en.functional.field = dict[f]
+        } else if (islist(f)) {
+          var newlist = []
+          for (fel in f) {
+            if (dict.contains(fel)) newlist.append(dict[fel])
+            else newlist.append(fel)
+          }
+          en.functional.field = newlist
+        }
+      }
+    }
+  }
+
+  update(dict) {
+    if (dict.contains(self.mesh)) self.mesh = dict[self.mesh]
+
+    var newfields = []
+    for (f in self.fields) {
+      if (dict.contains(f)) newfields.append(dict[f])
+      else newfields.append(f)
+    }
+    self.fields = newfields
+
+    self.updatelist(self.energies, dict)
+    self.updatelist(self.constraints, dict)
+    self.updatelist(self.localconstraints, dict)
+  }
 }
 
 
@@ -298,7 +336,7 @@ class Optimizer {
     for (cons in self.localconstraints()) {
       if (cons.onesided) {
         var integrand = self.integrand(cons)
-        var sel = Selection(self.mesh, fn (q) q<self.ctol, integrand)
+        var sel = Selection(self.target, fn (q) q<self.ctol, integrand)
         if (cons.selection) sel=sel.intersection(cons.selection)
         self.lcactive.append(sel)
       } else {
@@ -522,6 +560,10 @@ class Optimizer {
       if (abs(energy[i+1])<self.etol || de/abs(energy[i+1])<self.etol) break
     }
     return energy
+  }
+
+  update(dict) {
+    if (dict.contains(self.target)) self.target = dict[self.target]
   }
 
 }

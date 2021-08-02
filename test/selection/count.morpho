@@ -1,0 +1,11 @@
+// Test selections
+
+var m = Mesh("square.mesh")
+
+fn f(x,y,z) {
+  return y>0.5
+}
+
+var s = Selection(m, f)
+
+print s.count(0) // expect: 2

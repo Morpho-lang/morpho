@@ -171,6 +171,7 @@ BUILTIN_TYPECHECK(ismatrix, MORPHO_ISMATRIX)
 BUILTIN_TYPECHECK(issparse, MORPHO_ISSPARSE)
 BUILTIN_TYPECHECK(ismesh, MORPHO_ISMESH)
 BUILTIN_TYPECHECK(isselection, MORPHO_ISSELECTION)
+BUILTIN_TYPECHECK(isfield, MORPHO_ISFIELD)
 
 #undef BUILTIN_TYPECHECK
 
@@ -391,6 +392,7 @@ void functions_initialize(void) {
     BUILTIN_TYPECHECK(issparse)
     BUILTIN_TYPECHECK(ismesh)
     BUILTIN_TYPECHECK(isselection)
+    BUILTIN_TYPECHECK(isfield)
     
     builtin_addfunction(FUNCTION_ISCALLABLE, builtin_iscallablefunction, BUILTIN_FLAGSEMPTY);
     

@@ -665,6 +665,33 @@ void list_sort(objectlist *list) {
     qsort(list->val.data, list->val.count, sizeof(value), list_sortfunction);
 }
 
+static vm *list_sortwithfn_vm;
+static value list_sortwithfn_fn;
+static bool list_sortwithfn_err;
+
+/** Sort function for list_sort */
+int list_sortfunctionwfn(const void *a, const void *b) {
+    value args[2] = {*(value *) a, *(value *) b};
+    value ret;
+    
+    if (morpho_call(list_sortwithfn_vm, list_sortwithfn_fn, 2, args, &ret)) {
+        if (MORPHO_ISINTEGER(ret)) return MORPHO_GETINTEGERVALUE(ret);
+        if (MORPHO_ISFLOAT(ret)) return morpho_comparevalue(MORPHO_FLOAT(0), ret);
+    }
+    
+    list_sortwithfn_err=true;
+    return 0;
+}
+
+/** Sort the contents of a list */
+bool list_sortwithfn(vm *v, value fn, objectlist *list) {
+    list_sortwithfn_vm=v;
+    list_sortwithfn_fn=fn;
+    list_sortwithfn_err=false;
+    qsort(list->val.data, list->val.count, sizeof(value), list_sortfunctionwfn);
+    return !list_sortwithfn_err;
+}
+
 /** Sort function for list_order */
 typedef struct {
     unsigned int indx;
@@ -870,7 +897,13 @@ value List_enumerate(vm *v, int nargs, value *args) {
 value List_sort(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     
-    list_sort(slf);
+    if (nargs==0) {
+        list_sort(slf);
+    } else if (nargs==1 && MORPHO_ISCALLABLE(MORPHO_GETARG(args, 0))) {
+        if (!list_sortwithfn(v, MORPHO_GETARG(args, 0), slf)) {
+            morpho_runtimeerror(v, LIST_SRTFN);
+        }
+    }
     
     return MORPHO_NIL;
 }
@@ -992,6 +1025,18 @@ value Dictionary_setindex(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Sets a dictionary entry */
+value Dictionary_contains(vm *v, int nargs, value *args) {
+    objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
+    value out=MORPHO_FALSE;
+    
+    if (nargs==1) {
+        if (dictionary_get(&slf->dict, MORPHO_GETARG(args, 0), &out)) out=MORPHO_TRUE;
+    }
+    
+    return out;
+}
+
 /** Prints a dictionary */
 value Dictionary_print(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
@@ -1104,6 +1149,7 @@ DICTIONARY_SETOP(difference)
 MORPHO_BEGINCLASS(Dictionary)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Dictionary_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Dictionary_setindex, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(DICTIONARY_CONTAINS_METHOD, Dictionary_contains, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Dictionary_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Dictionary_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Dictionary_enumerate, BUILTIN_FLAGSEMPTY),
@@ -1299,4 +1345,5 @@ void veneer_initialize(void) {
     morpho_defineerror(CLASS_INVK, ERROR_HALT, CLASS_INVK_MSG);
     morpho_defineerror(LIST_ENTRYNTFND, ERROR_HALT, LIST_ENTRYNTFND_MSG);
     morpho_defineerror(LIST_ADDARGS, ERROR_HALT, LIST_ADDARGS_MSG);
+    morpho_defineerror(LIST_SRTFN, ERROR_HALT, LIST_SRTFN_MSG);
 }

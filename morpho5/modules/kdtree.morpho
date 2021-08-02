@@ -1,0 +1,159 @@
+/* ***************************************************************
+ * KDTree
+ * ======
+ * This module implements the KDTree class for spatial search
+ **************************************************************** */
+
+class KDTreeNode {
+  init (location, left, right) {
+    self.location = location
+    self.left = left
+    self.right = right
+  }
+}
+
+class KDTree {
+  init(pts) {
+    self.dimension = pts[0].dimensions()[0]
+    self.head=self.build(pts.clone(), 0)
+    self.tol=1e-15
+  }
+
+  build(pts, depth) { // Build a tree or subtree from a list of points
+    var np = pts.count()
+    if (np==0) return nil
+
+    var axis = mod(depth, self.dimension)
+
+    // Sort points to find median along current axis
+    pts.sort(fn (a, b) a[axis]-b[axis])
+    var ipivot=int((np-1)/2)
+
+    // Identify points on the left and right of this plane
+    var left = [], right = []
+    for (i in 0...ipivot) left.append(pts[i])
+    for (i in ipivot+1...np) right.append(pts[i])
+
+    var node = KDTreeNode(pts[ipivot], self.build(left, depth+1), self.build(right, depth+1))
+
+    return node
+  }
+
+  donearest(pt, start, cdepth, bst, bdst) {
+    var depth = cdepth
+    var list = []
+
+    // Search the tree and track the nodes selected
+    for (var node = start; !isnil(node); ) {
+      list.append(node)
+      var pivot = mod(depth, self.dimension)
+      if (abs(pt[pivot] - node.location[pivot])<self.tol &&
+                (pt-node.location).norm()<self.tol) {
+        return node
+      } if (pt[pivot] < node.location[pivot]) {
+        node = node.left;
+      } else {
+        node = node.right;
+      }
+      depth+=1
+    }
+
+    // Unwind search and check whether a closer neighbor could exist
+    var best=bst, bdist=bdst
+    while (list.count()>0) {
+      depth-=1
+      var node = list.pop()
+      var dist = (pt-node.location).norm()
+      // If this point is closer, it becomes the best point
+      if (dist<bdist) { best = node; bdist = dist }
+
+      // Decide if we need to check the subtree on the other side of the split
+      var pivot = mod(depth, self.dimension)
+      var splitdist=pt[pivot]-node.location[pivot]
+
+      if (abs(splitdist)<bdist) { // We do
+        var alt
+        if (splitdist<0 && node.right) alt=self.donearest(pt, node.right, depth+1, best, bdist)
+        else if (node.left) alt=self.donearest(pt, node.left, depth+1, best, bdist)
+        if (alt) { // Check if this new point is even better
+          var adist = (pt-alt.location).norm()
+          if (adist<bdist) { best = alt; bdist = adist; }
+        }
+      }
+    }
+
+    return best
+  }
+
+  domaxdepth(node, startdepth) {
+    if (!node) return startdepth
+    return max([ self.domaxdepth(node.left, startdepth+1), self.domaxdepth(node.right, startdepth+1) ])
+  }
+
+  doprint(node, depth) {
+    var s = "${depth}:"
+    for (i in 0...depth) s+=" "
+    s+=" [${node.location[0]}, ${node.location[1]}, ${node.location[2]}]"
+    print s
+    if (node.left) self.doprint(node.left, depth+1)
+    if (node.right) self.doprint(node.right, depth+1)
+  }
+
+  insert(pt) { // Inserts a point into the tree
+    var depth = 0
+
+    for (var node = self.head, next; node!=nil; node=next) {
+      var pivot = mod(depth, self.dimension)
+
+      if (abs(pt[pivot] - node.location[pivot])<self.tol &&
+                (pt-node.location).norm()<self.tol) {
+        print "Warning: duplicate node"
+        return node
+      } else if (pt[pivot] < node.location[pivot]) {
+        next = node.left
+        if (!next) {
+          node.left = KDTreeNode(pt, nil, nil)
+          return node.left
+        }
+      } else {
+        next = node.right
+        if (!next) {
+          node.right = KDTreeNode(pt, nil, nil)
+          return node.right
+        }
+      }
+      depth+=1
+    }
+  }
+
+  ismember(pt) { // Tests if a point is in the tree.
+    var depth = 0
+
+    for (var node = self.head, next; !isnil(node); ) {
+      var pivot = mod(depth, self.dimension)
+      if (abs(pt[pivot] - node.location[pivot])<self.tol &&
+                (pt-node.location).norm()<self.tol) {
+        return node
+      } else if (pt[pivot] < node.location[pivot]) {
+        node = node.left
+      } else {
+        node = node.right
+      }
+      depth+=1
+    }
+    return false
+  }
+
+  maxdepth() { // Finds the maximum depth of the tree
+    return self.domaxdepth(self.head, 0)
+  }
+
+  nearest(pt) {
+    return self.donearest(pt, self.head, 0, nil, 1e255)
+  }
+
+  prnt() {
+    self.doprint(self.head, 0)
+  }
+
+}

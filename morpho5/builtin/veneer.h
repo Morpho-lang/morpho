@@ -30,6 +30,7 @@
 #define LIST_REMOVE_METHOD "remove"
 
 #define DICTIONARY_KEYS_METHOD "keys"
+#define DICTIONARY_CONTAINS_METHOD "contains"
 
 #define RANGE_ARGS                        "RngArgs"
 #define RANGE_ARGS_MSG                    "Range expects numerical arguments: a start, an end and an optional stepsize."
@@ -60,6 +61,9 @@
 
 #define LIST_ADDARGS                      "LstAddArgs"
 #define LIST_ADDARGS_MSG                  "Add method requires a list."
+
+#define LIST_SRTFN                        "LstSrtFn"
+#define LIST_SRTFN_MSG                    "List sort function must return an integer."
 
 #define STRING_IMMTBL                     "StrngImmtbl"
 #define STRING_IMMTBL_MSG                 "Strings are immutable."

@@ -210,6 +210,7 @@ typedef struct {
 
 #define CODEINFO_ISREGISTER(info) (info.returntype==REGISTER)
 #define CODEINFO_ISCONSTANT(info) (info.returntype==CONSTANT)
+#define CODEINFO_ISSHORTCONSTANT(info) (info.returntype==CONSTANT && info.dest<MORPHO_MAXREGISTERS)
 #define CODEINFO_ISUPVALUE(info) (info.returntype==UPVALUE)
 #define CODEINFO_ISGLOBAL(info) (info.returntype==GLOBAL)
 

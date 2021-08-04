@@ -16,12 +16,12 @@ class POVRaytracer {
   }
 
   color(c) {
+    if (isnil(c)) return "<0.5, 0.5, 0.5>"
     if (ismatrix(c)) return self.vector(c)
     else return self.vector(c.rgb(0))
   }
 
   visitsphere(item, out) {
-    print self.color(item.color)
     out.write("sphere {"+
               " ${self.vector(item.center)}, ${item.r}"+
               " texture { "+

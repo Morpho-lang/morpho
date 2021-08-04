@@ -63,6 +63,8 @@ value morpho_concatenatestringvalues(int nval, value *v) {
                 case VALUE_OBJECT:
                     object_printtobuffer(v[i], &buffer);
                     break;
+                case VALUE_NIL:
+                    break; 
                 default:
                     UNREACHABLE("Unhandled type in morpho_tostring.");
             }

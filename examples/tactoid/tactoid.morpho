@@ -1,7 +1,7 @@
 import meshtools
 import optimize
-import graphics
 import plot
+import povray
 
 // Create mesh and director field
 var m = Mesh("disk.mesh")
@@ -129,7 +129,8 @@ fn visualize(m, nn, dl) {
 // Visualize the result
 var g=plotmesh(m, grade=1)
 var gnn=visualize(m, nn, 0.2/itermax)
-Show(g+gnn)
+var gdisp = g+gnn
+Show(gdisp)
 
 // Visualize the elastic energy density
 var fe = lf.integrand(nn)
@@ -139,3 +140,12 @@ for (i in 0...m.count(2)) {
 }
 
 Show(plotfield(ff, colormap=GrayMap()))
+
+/*
+gdisp.background = White
+var pov = POVRaytracer(gdisp)
+pov.viewpoint = Matrix([0,0,-10])
+pov.background = White
+pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]
+pov.render("out.pov")
+*/

@@ -757,6 +757,19 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
     return out;
 }
 
+/** Write a symbol to the constant table, performing interning and checking the result fits into a register definition
+ * @param c        the compiler
+ * @param node     current syntaxtree node
+ *  @param symbol the constant to add */
+codeinfo compiler_addsymbolwithsizecheck(compiler *c, syntaxtreenode *node, value symbol) {
+    codeinfo out = CODEINFO(CONSTANT, 0, 0);
+    out.dest = compiler_addsymbol(c, node, symbol);
+    if (out.dest>MORPHO_MAXREGISTERS) {
+        out = compiler_movetoregister(c, node, out, REGISTER_UNALLOCATED);
+    }
+    return out;
+}
+
 /* ------------------------------------------
  * Optional and variadic args
  * ------------------------------------------- */
@@ -1752,14 +1765,16 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     ninstructions+=coll.ninstructions;
     
     /* Now obtain the maximum value for the counter by invoking enumerate on the collection */
+    codeinfo method=compiler_addsymbolwithsizecheck(c, node, enumerateselector);
+    ninstructions+=method.ninstructions;
+    
     registerindx rmax=compiler_regalloctop(c);
     registerindx rmone=compiler_regalloctop(c);
-    registerindx method=compiler_addsymbol(c, node, enumerateselector);
     registerindx cmone = compiler_addconstant(c, node, MORPHO_INTEGER(-1), false, false);
     codeinfo mv=compiler_movetoregister(c, collnode, coll, rmax);
     ninstructions+=mv.ninstructions;
     compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rmone, cmone), node);
-    compiler_addinstruction(c, ENCODEC(OP_INVOKE, rmax, true, method, false, 1), collnode);
+    compiler_addinstruction(c, ENCODEC(OP_INVOKE, rmax, CODEINFO_ISCONSTANT(method), method.dest, false, 1), collnode);
     ninstructions+=2;
     compiler_regfreetemp(c, rmone);
     
@@ -1776,7 +1791,7 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     ninstructions+=mv.ninstructions;
     registerindx rarg=compiler_regalloctop(c);
     compiler_addinstruction(c, ENCODEC(OP_MOV, rarg, false, rcount, false, 0), node);
-    compiler_addinstruction(c, ENCODEC(OP_INVOKE, rval, true, method, false, 1), collnode);
+    compiler_addinstruction(c, ENCODEC(OP_INVOKE, rval, CODEINFO_ISCONSTANT(method), method.dest, false, 1), collnode);
     ninstructions+=2;
     compiler_regsetsymbol(c, rval, initnode->content);
     if (indxnode) compiler_regsetsymbol(c, rcount, indxnode->content);
@@ -1803,6 +1818,8 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     compiler_setinstruction(c, condindx, ENCODE_LONG(OP_BIF, rcond, (add-tst) ));
     
     compiler_fixloop(c, tst, add, end+1);
+    
+    if (CODEINFO_ISREGISTER(method)) compiler_regfreetemp(c, method.dest);
     
     compiler_endscope(c);
     
@@ -2307,7 +2324,6 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
 
 /** Compiles a method invocation */
 static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx reqout) {
-    registerindx top=compiler_regtop(c);
     unsigned int ninstructions=0;
     codeinfo object;
     
@@ -2316,9 +2332,15 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     
     compiler_beginargs(c);
     
+    syntaxtreenode *methodnode=compiler_getnode(c, selector->right);
+    codeinfo method=compiler_addsymbolwithsizecheck(c, methodnode, methodnode->content);
+    ninstructions+=method.ninstructions;
+    
+    registerindx top=compiler_regtop(c);
+    
     /* Fetch the object */
     object=compiler_nodetobytecode(c, selector->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
-    ninstructions=object.ninstructions;
+    ninstructions+=object.ninstructions;
     
     /* Move object into a temporary register unless we already have one
        that's at the top of the stack */
@@ -2326,9 +2348,6 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
         object=compiler_movetoregister(c, node, object, (reqout<top ? REGISTER_UNALLOCATED : reqout));
            ninstructions+=object.ninstructions;
     }
-    
-    syntaxtreenode *methodnode=compiler_getnode(c, selector->right);
-    registerindx method=compiler_addsymbol(c, methodnode, methodnode->content);
     
     /* Compile the arguments */
     codeinfo args = CODEINFO_EMPTY;
@@ -2347,7 +2366,7 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     compiler_endargs(c);
     
     /* Generate the call instruction */
-    compiler_addinstruction(c, ENCODEC(OP_INVOKE, object.dest, true, method, false, lastarg-object.dest), node);
+    compiler_addinstruction(c, ENCODEC(OP_INVOKE, object.dest, CODEINFO_ISCONSTANT(method), method.dest, false, lastarg-object.dest), node);
     ninstructions++;
     
     /* Free all the registers used for the call */
@@ -2360,6 +2379,8 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
         compiler_regfreetemp(c, object.dest);
         object.dest=reqout;
     }
+    
+    if (CODEINFO_ISREGISTER(method)) compiler_regfreetemp(c, method.dest);
     
     return CODEINFO(REGISTER, object.dest, ninstructions);
 }
@@ -2757,9 +2778,8 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
 
 /* Compiles property lookup */
 static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerindx reqout) {
-    codeinfo left;
-    registerindx prop=REGISTER_UNALLOCATED,
-                 out = compiler_regtemp(c, reqout);
+    codeinfo left = CODEINFO_EMPTY, prop = CODEINFO_EMPTY;
+    registerindx out = compiler_regtemp(c, reqout);
     
     /* The left hand side should evaluate to the object in question */
     left = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
@@ -2774,16 +2794,18 @@ static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerind
     /* The right hand side should be a method name */
     syntaxtreenode *selector = compiler_getnode(c, node->right);
     if (selector->type==NODE_SYMBOL) {
-        prop=compiler_addsymbol(c, selector, selector->content);
+        prop=compiler_addsymbolwithsizecheck(c, selector, selector->content);
+        ninstructions+=prop.ninstructions;
     } else {
         compiler_error(c, selector, COMPILE_PROPERTYNAMERQD);
         return CODEINFO_EMPTY;
     }
     
-    if (prop!=REGISTER_UNALLOCATED && out !=REGISTER_UNALLOCATED) {
-        compiler_addinstruction(c, ENCODEC(OP_LPR, out, CODEINFO_ISCONSTANT(left), left.dest, true, prop), node);
+    if (out !=REGISTER_UNALLOCATED) {
+        compiler_addinstruction(c, ENCODEC(OP_LPR, out, CODEINFO_ISCONSTANT(left), left.dest, CODEINFO_ISCONSTANT(prop), prop.dest), node);
         ninstructions++;
         compiler_releaseoperand(c, left);
+        if (CODEINFO_ISREGISTER(prop)) compiler_releaseoperand(c, prop);
     }
     
     return CODEINFO(REGISTER, out, ninstructions);
@@ -2791,7 +2813,7 @@ static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerind
 
 /* Moves the result of a calculation to an object property */
 static codeinfo compiler_movetoproperty(compiler *c, syntaxtreenode *node, codeinfo in, syntaxtreenode *obj) {
-    registerindx prop = REGISTER_UNALLOCATED;
+    codeinfo prop = CODEINFO_EMPTY;
 
     /* The left hand side of obj should evaluate to the object in question */
     codeinfo left = compiler_nodetobytecode(c, obj->left, REGISTER_UNALLOCATED);
@@ -2806,7 +2828,8 @@ static codeinfo compiler_movetoproperty(compiler *c, syntaxtreenode *node, codei
     /* The right hand side of obj should be a property name */
     syntaxtreenode *selector = compiler_getnode(c, obj->right);
     if (selector->type==NODE_SYMBOL) {
-        prop=compiler_addsymbol(c, selector, selector->content);
+        prop=compiler_addsymbolwithsizecheck(c, selector, selector->content);
+        ninstructions+=prop.ninstructions;
     } else {
         compiler_error(c, selector, COMPILE_PROPERTYNAMERQD);
         return CODEINFO_EMPTY;
@@ -2820,10 +2843,10 @@ static codeinfo compiler_movetoproperty(compiler *c, syntaxtreenode *node, codei
         compiler_releaseoperand(c, store);
     }
     
-    if (prop!=REGISTER_UNALLOCATED) {
-        compiler_addinstruction(c, ENCODEC(OP_SPR, left.dest, true, prop, CODEINFO_ISCONSTANT(store), store.dest), node);
-        ninstructions++;
-    }
+    compiler_addinstruction(c, ENCODEC(OP_SPR, left.dest, CODEINFO_ISCONSTANT(prop), prop.dest, CODEINFO_ISCONSTANT(store), store.dest), node);
+    ninstructions++;
+    
+    if (CODEINFO_ISREGISTER(prop)) compiler_releaseoperand(c, prop);
     
     return CODEINFO(CODEINFO_ISCONSTANT(in), in.dest, ninstructions);
 }
@@ -3095,6 +3118,12 @@ bool morpho_compile(char *in, compiler *c, error *err) {
 #ifdef MORPHO_DEBUG_DISPLAYSYNTAXTREE
         syntaxtree_print(&c->tree);
 #endif
+#ifdef MORPHO_DEBUG_FILLGLOBALCONSTANTTABLE
+        if (out->global->konst.count<255) {
+            for (unsigned int i=0; i<256; i++) compiler_addconstant(c, NULL, MORPHO_INTEGER(i), false, false);
+        }
+#endif
+        
         compiler_tobytecode(c, out);
         if (ERROR_SUCCEEDED(c->err)) {
             compiler_setfunctionregistercount(c);

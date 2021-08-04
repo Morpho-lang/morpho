@@ -153,6 +153,7 @@ total=0   # total number of tests
 files=glob.glob('**/**.'+ext, recursive=True)
 
 for f in files:
+    print(f)
     success+=test(f)
     total+=1
 

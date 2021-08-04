@@ -1421,7 +1421,8 @@ callfunction: // Jump here if an instruction becomes a call
             
             if (MORPHO_ISINSTANCE(left)) {
                 objectinstance *instance = MORPHO_GETINSTANCE(left);
-                dictionary_insertintern(&instance->fields, v->konst[b], right);
+                left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
+                dictionary_insertintern(&instance->fields, left, right);
             } else {
                 ERROR(VM_NOTANOBJECT);
             }

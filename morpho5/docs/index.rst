@@ -48,6 +48,7 @@ Morpho
    graphics
    kdtree
    meshtools
+   povray
 
 .. toctree::
    :caption: Error messages

@@ -29,8 +29,7 @@ As a shorthand, it's possible to omit the grade and index; these are then both a
 
     print f[2]
 
-_Subtopics:_
-[show]: # subtopics
+[showsubtopics]: # (subtopics)
 
 ## Grade
 [taggrade]: # (grade)

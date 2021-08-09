@@ -1479,7 +1479,7 @@ callfunction: // Jump here if an instruction becomes a call
         
         CASE_CODE(CAT):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
-            reg[a]=morpho_concatenatestringvalues(c-b+1, reg+b);
+            reg[a]=morpho_concatenate(v, c-b+1, reg+b);
             vm_bindobject(v, reg[a]);
             DISPATCH();
         
@@ -1750,17 +1750,32 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
     return success;
 }
 
-/** Finds a method */
-bool morpho_lookupmethod(vm *v, value obj, value label, value *method) {
+/** Find the class associated with a value */
+objectclass *morpho_lookupclass(value obj) {
+    objectclass *out = NULL;
     if (MORPHO_ISINSTANCE(obj)) {
         objectinstance *instance=MORPHO_GETINSTANCE(obj);
-        return dictionary_get(&instance->klass->methods, label, method);
+        out=instance->klass;
+    } else {
+        out = builtin_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
+    }
+    return out;
+}
+
+/** Finds a method */
+bool morpho_lookupmethod(value obj, value label, value *method) {
+    objectclass *klass = morpho_lookupclass(obj);
+    if (klass) return dictionary_get(&klass->methods, label, method);
+    
+   /* if (MORPHO_ISINSTANCE(obj)) {
+        objectinstance *instance=MORPHO_GETINSTANCE(obj);
+        
     } else {
         objectclass *klass = builtin_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
         if (klass) {
             return dictionary_get(&klass->methods, label, method);
         }
-    }
+    }*/
     
     return false;
 }

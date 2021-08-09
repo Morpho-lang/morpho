@@ -1306,33 +1306,84 @@ MORPHO_ENDCLASS
  * LineCurvatureSq
  * ---------------------------------------------- */
 
-/** Calculate area enclosed */
-bool linecurvsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
-    varray_elementid nbrs;
+typedef struct {
+    objectsparse *lineel; // Lines
+} curvatureref;
+
+bool curvature_prepareref(objectinstance *self, objectmesh *mesh, grade g, curvatureref *ref) {
+    bool success = true;
+    ref->lineel = mesh_getconnectivityelement(mesh, MESH_GRADE_VERTEX, MESH_GRADE_LINE);
+    if (ref->lineel) success=sparse_checkformat(ref->lineel, SPARSE_CCS, true, false);
     
-    if (mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, &nbrs)>0) {
-        
+    if (success) {
+        objectsparse *s = mesh_getconnectivityelement(mesh, MESH_GRADE_LINE, MESH_GRADE_VERTEX);
+        if (!s) s=mesh_addconnectivityelement(mesh, MESH_GRADE_LINE, MESH_GRADE_VERTEX);
+        success=s;
     }
     
-    return true;
+    return success;
 }
 
-/** Calculate gradient */
-bool linecurvsq_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
+/** Calculate area enclosed */
+bool linecurvsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    curvatureref *cref = (curvatureref *) ref;
+    double result = 0.0;
+    varray_elementid nbrs;
+    varray_elementid synid;
+    varray_elementidinit(&nbrs);
+    varray_elementidinit(&synid);
+    
+    double s0[mesh->dim], s1[mesh->dim], *s[2] = { s0, s1}, sgn=-1.0;
+    
+    if (mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_LINE, &nbrs, &synid)>0) {
+        if (nbrs.count<2) goto linecurvsq_integrand_cleanup; 
+        
+        for (unsigned int i=0; i<nbrs.count; i++) {
+            int nentries, *entries; // Get the vertices for this edge
+            if (!sparseccs_getrowindices(&cref->lineel->ccs, nbrs.data[i], &nentries, &entries)) break;
+            
+            double *x0, *x1;
+            if (mesh_getvertexcoordinatesaslist(mesh, entries[0], &x0) &&
+                mesh_getvertexcoordinatesaslist(mesh, entries[1], &x1)) {
+                functional_vecsub(mesh->dim, x0, x1, s[i]);
+            }
+            if (entries[0]!=id) sgn*=-1;
+        }
+        
+        double s0s0=functional_vecdot(mesh->dim, s0, s0),
+               s0s1=functional_vecdot(mesh->dim, s0, s1),
+               s1s1=functional_vecdot(mesh->dim, s1, s1);
+        
+        s0s0=sqrt(s0s0); s1s1=sqrt(s1s1);
+        
+        if (s0s0<MORPHO_EPS || s1s1<MORPHO_EPS) return false;
+
+        double u=sgn*s0s1/s0s0/s1s1,
+               len=0.5*(s0s0+s1s1);
+
+        if (u<1) u=acos(u); else u=0;
+        
+        result = u*u/len;
+    }
+    
+linecurvsq_integrand_cleanup:
+    
+    *out = result;
+    varray_elementidclear(&nbrs);
+    varray_elementidclear(&synid);
     
     return true;
 }
 
-
 FUNCTIONAL_INIT(LineCurvatureSq, MESH_GRADE_VERTEX)
-FUNCTIONAL_INTEGRAND(LineCurvatureSq, MESH_GRADE_VERTEX, linecurvsq_integrand)
-//FUNCTIONAL_GRADIENT(LineCurvatureSq, MESH_GRADE_VERTEX, areaenclosed_gradient, SYMMETRY_ADD)
-FUNCTIONAL_TOTAL(LineCurvatureSq, MESH_GRADE_VERTEX, linecurvsq_integrand)
+FUNCTIONAL_METHOD(LineCurvatureSq, integrand, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapintegrand, linecurvsq_integrand, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(LineCurvatureSq, total, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_sumintegrand, linecurvsq_integrand, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(LineCurvatureSq, gradient, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapnumericalgradient, linecurvsq_integrand, FUNCTIONAL_ARGS, SYMMETRY_NONE)
 
 MORPHO_BEGINCLASS(LineCurvatureSq)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineCurvatureSq_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LineCurvatureSq_integrand, BUILTIN_FLAGSEMPTY),
-//MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, AreaEnclosed_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, AreaEnclosed_gradient, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineCurvatureSq_total, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
@@ -1892,5 +1943,6 @@ void functional_initialize(void) {
     morpho_defineerror(EQUIELEMENT_ARGS, ERROR_HALT, EQUIELEMENT_ARGS_MSG);
     morpho_defineerror(GRADSQ_ARGS, ERROR_HALT, GRADSQ_ARGS_MSG);
     morpho_defineerror(NEMATIC_ARGS, ERROR_HALT, NEMATIC_ARGS_MSG);
+    morpho_defineerror(FUNCTIONAL_ARGS, ERROR_HALT, FUNCTIONAL_ARGS_MSG);
 }
  

@@ -112,7 +112,7 @@ bool mesh_getvertexcoordinates(objectmesh *mesh, elementid id, double *val);
 bool mesh_getvertexcoordinatesaslist(objectmesh *mesh, elementid id, double **out);
 bool mesh_getvertexcoordinatesasvalues(objectmesh *mesh, elementid id, value *val);
 
-int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, varray_elementid *neighbors);
+int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, varray_elementid *neighbors, varray_elementid *synonymids);
 
 void mesh_initialize(void);
 

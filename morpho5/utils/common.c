@@ -42,33 +42,65 @@ void morpho_printvalue(value v) {
     }
 }
 
-/** @brief Concatenates a sequence of values as a string */
+/** @brief Prints a value to a buffer */
 #define MORPHO_TOSTRINGTMPBUFFERSIZE   64
-value morpho_concatenatestringvalues(int nval, value *v) {
-    varray_char buffer;
-    varray_charinit(&buffer);
+void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
     char tmp[MORPHO_TOSTRINGTMPBUFFERSIZE];
     int nv;
     
-    for (unsigned int i=0; i<nval; i++) {
-        if (MORPHO_ISFLOAT(v[i])) {
-            nv=sprintf(tmp, "%g", MORPHO_GETFLOATVALUE(v[i]));
-            varray_charadd(&buffer, tmp, nv);
-        } else {
-            switch (MORPHO_GETTYPE(v[i])) {
-                case VALUE_INTEGER:
-                    nv=sprintf(tmp, "%i", MORPHO_GETINTEGERVALUE(v[i]));
-                    varray_charadd(&buffer, tmp, nv);
-                    break;
-                case VALUE_OBJECT:
-                    object_printtobuffer(v[i], &buffer);
-                    break;
-                case VALUE_NIL:
-                    break; 
-                default:
-                    UNREACHABLE("Unhandled type in morpho_tostring.");
+    if (MORPHO_ISSTRING(val)) {
+        objectstring *s = MORPHO_GETSTRING(val);
+        varray_charadd(buffer, s->string, (int) s->length);
+    } else if (MORPHO_ISOBJECT(val)) {
+        objectclass *klass = morpho_lookupclass(val);
+        
+        if (klass) {
+            objectstring str = MORPHO_STATICSTRING(MORPHO_TOSTRING_METHOD);
+            value label = MORPHO_OBJECT(&str);
+            value method, ret;
+            
+            if (morpho_lookupmethod(val, label, &method) &&
+                morpho_invoke(v, val, method, 0, NULL, &ret)) {
+                if (MORPHO_ISSTRING(ret)) {
+                    varray_charadd(buffer, MORPHO_GETCSTRING(ret), (int) MORPHO_GETSTRINGLENGTH(ret));
+                }
+            } else {
+                varray_charwrite(buffer, '<');
+                morpho_printtobuffer(v, klass->name, buffer);
+                varray_charwrite(buffer, '>');
             }
+        } else if (MORPHO_ISFUNCTION(val)) {
+            objectfunction *fn = MORPHO_GETFUNCTION(val);
+            varray_charadd(buffer, "<fn ", 4);
+            morpho_printtobuffer(v, fn->name, buffer);
+            varray_charwrite(buffer, '>');
+        } else if (MORPHO_ISCLASS(val)) {
+            objectclass *klass = MORPHO_GETCLASS(val);
+            varray_charwrite(buffer, '@');
+            morpho_printtobuffer(v, klass->name, buffer);
         }
+    } else if (MORPHO_ISFLOAT(val)) {
+        nv=sprintf(tmp, "%g", MORPHO_GETFLOATVALUE(val));
+        varray_charadd(buffer, tmp, nv);
+    } else if (MORPHO_ISINTEGER(val)) {
+        nv=sprintf(tmp, "%i", MORPHO_GETINTEGERVALUE(val));
+        varray_charadd(buffer, tmp, nv);
+    } else if (MORPHO_ISBOOL(val)) {
+        nv=sprintf(tmp, "%s", (MORPHO_ISTRUE(val) ? COMMON_TRUESTRING : COMMON_FALSESTRING));
+        varray_charadd(buffer, tmp, nv);
+    } else if (MORPHO_ISNIL(val)) {
+        nv=sprintf(tmp, "%s", COMMON_NILSTRING);
+        varray_charadd(buffer, tmp, nv);
+    }
+}
+
+/** @brief Concatenates a sequence of values as a string */
+value morpho_concatenate(vm *v, int nval, value *val) {
+    varray_char buffer;
+    varray_charinit(&buffer);
+    
+    for (unsigned int i=0; i<nval; i++) {
+        morpho_printtobuffer(v, val[i], &buffer);
     }
     
     value out=object_stringfromcstring(buffer.data, buffer.count);

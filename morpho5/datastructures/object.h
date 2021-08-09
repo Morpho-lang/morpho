@@ -237,6 +237,8 @@ typedef struct sobjectclass {
 
 objectclass *object_newclass(value name);
 
+objectclass *morpho_lookupclass(value obj);
+
 /* ---------------------------
  * Instances
  * --------------------------- */

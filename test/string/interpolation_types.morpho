@@ -1,0 +1,28 @@
+// Check interpolation types
+
+var i = 1
+var x = 0.5
+var tr = true
+var fl = false
+var n = nil
+
+print "${i} ${x} ${tr} ${fl} ${n}" // expect: 1 0.5 true false nil
+
+var lst = [ 1, 2, 3 ]
+print "${lst}" // expect: [ 1, 2, 3 ]
+
+fn fun() { return x }
+
+print "${fun}" // expect: <fn fun>
+
+class Klass {}
+
+print "${Klass}" // expect: @Klass
+
+class Chatty {
+  init(x) { self.name = x }
+  tostring() { return "@#%!"+self.name+"*&^" }
+}
+
+var s = Chatty("hello")
+print "${s}" // expect: @#%!hello*&^

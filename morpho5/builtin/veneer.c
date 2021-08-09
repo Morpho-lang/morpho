@@ -231,7 +231,7 @@ char *string_index(objectstring *s, int i) {
 
 /** Constructor */
 value string_constructor(vm *v, int nargs, value *args) {
-    value out=morpho_concatenatestringvalues(nargs, args+1);
+    value out=morpho_concatenate(v, nargs, args+1);
     if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
     return out; 
 }
@@ -872,6 +872,30 @@ value List_print(vm *v, int nargs, value *args) {
     
     return MORPHO_NIL;
 }
+
+/** Convert a list to a string */
+value List_tostring(vm *v, int nargs, value *args) {
+    objectlist *lst=MORPHO_GETLIST(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+    
+    varray_char buffer;
+    varray_charinit(&buffer);
+    
+    varray_charadd(&buffer, "[ ", 2);
+    for (unsigned int i=0; i<lst->val.count; i++) {
+        morpho_printtobuffer(v, lst->val.data[i], &buffer);
+        if (i<lst->val.count-1) varray_charadd(&buffer, ", ", 2);
+    }
+    varray_charadd(&buffer, " ]", 2);
+    
+    out = object_stringfromvarraychar(&buffer);
+    if (MORPHO_ISSTRING(out)) {
+        morpho_bindobjects(v, 1, &out);
+    }
+    varray_charclear(&buffer);
+    
+    return out;
+}
     
 /** Enumerate members of a list */
 value List_enumerate(vm *v, int nargs, value *args) {
@@ -969,6 +993,7 @@ MORPHO_METHOD(LIST_POP_METHOD, List_pop, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, List_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, List_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, List_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, List_tostring, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, List_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, List_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, List_clone, BUILTIN_FLAGSEMPTY),

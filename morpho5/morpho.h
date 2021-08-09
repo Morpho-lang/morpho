@@ -35,6 +35,7 @@ typedef void compiler;
 
 #define MORPHO_GETINDEX_METHOD "index"
 #define MORPHO_SETINDEX_METHOD "setindex"
+#define MORPHO_TOSTRING_METHOD "tostring"
 
 #define MORPHO_ASSIGN_METHOD "assign"
 #define MORPHO_ADD_METHOD "add"
@@ -120,7 +121,7 @@ void morpho_resetentry(program *p);
 
 /* Interpreting */
 bool morpho_run(vm *v, program *p);
-bool morpho_lookupmethod(vm *v, value obj, value label, value *method);
+bool morpho_lookupmethod(value obj, value label, value *method);
 bool morpho_call(vm *v, value fn, int nargs, value *args, value *ret);
 bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value *ret);
 error *morpho_geterror(vm *v);

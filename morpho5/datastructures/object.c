@@ -631,19 +631,6 @@ void object_print(value v) {
     }
 }
 
-/** Prints an object to a string buffer
- *  @param[in] v    Object to convert to a buffer
- *  @param[in] buffer   Buffer to output to */
-void object_printtobuffer(value v, varray_char *buffer) {
-    switch(MORPHO_GETOBJECTTYPE(v)) {
-        case OBJECT_STRING:
-            varray_charadd(buffer, MORPHO_GETCSTRING(v), (int) MORPHO_GETSTRINGLENGTH(v));
-            break;
-        default:
-            UNREACHABLE("unhandled object type [Check object_printtobuffer()]");
-    }
-}
-
 /** Gets the total size of an object */
 size_t object_size(object *obj) {
     switch (obj->type) {

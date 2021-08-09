@@ -130,7 +130,8 @@ static inline bool morpho_iscallable(value a) {
 
 #define MORPHO_ISCALLABLE(x) (morpho_iscallable(x))
 
-value morpho_concatenatestringvalues(int nval, value *v);
+void morpho_printtobuffer(vm *v, value val, varray_char *buffer);
+value morpho_concatenate(vm *v, int nval, value *val);
 
 char *morpho_strdup(char *string);
 

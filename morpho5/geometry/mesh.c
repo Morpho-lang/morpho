@@ -524,7 +524,7 @@ bool mesh_addsymmetry(vm *v, objectmesh *mesh, value symmetry, objectselection *
     value arg = MORPHO_OBJECT(&posn);
     value ret = MORPHO_NIL;
     
-    if (morpho_lookupmethod(v, symmetry, MORPHO_OBJECT(&s), &method)) {
+    if (morpho_lookupmethod(symmetry, MORPHO_OBJECT(&s), &method)) {
         /* Loop over vertices */
         for (elementid i=0; i<nv; i++) {
             /* Read the vertex coordinates into x */
@@ -556,8 +556,22 @@ bool mesh_addsymmetry(vm *v, objectmesh *mesh, value symmetry, objectselection *
     return false;
 }
 
-int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, varray_elementid *neighbors) {
-    return 0;
+int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, varray_elementid *neighbors, varray_elementid *synonymids) {
+    objectsparse *conn = mesh_getconnectivityelement(mesh, target, g);
+    int nids=0, *entries;
+    
+    if (conn && sparse_checkformat(conn, SPARSE_CCS, true, false)) {
+        if (sparseccs_getrowindices(&conn->ccs, id, &nids, &entries)) {
+            for (unsigned int i=0; i<nids; i++) varray_elementidwrite(neighbors, entries[i]);
+        }
+    }
+    
+    objectsparse *sym = mesh_getconnectivityelement(mesh, g, g);
+    if (sym && sparse_checkformat(sym, SPARSE_CCS, true, false)) {
+        
+    }
+    
+    return nids;
 }
 
 /* **********************************************************************

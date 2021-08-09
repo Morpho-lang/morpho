@@ -99,6 +99,23 @@ class KDTree {
     if (node.right) self.doprint(node.right, depth+1)
   }
 
+  dosearch(query, node, depth, result) {
+    // Check if this point satisfies the query
+    var include = true
+    for (i in 0...self.dimension) {
+      include = include && (node.location[i]>=query[i][0] && node.location[i]<=query[i][1])
+    }
+    if (include) result.append(node)
+
+    // Now check the subnodes
+    var pivot = mod(depth, self.dimension)
+    var aq = query[pivot]
+    var x = node.location[pivot]
+
+    if (x>=aq[0] && node.left) self.dosearch(query, node.left, depth+1, result)
+    if (x<=aq[1] && node.right) self.dosearch(query, node.right, depth+1, result)
+  }
+
   insert(pt) { // Inserts a point into the tree
     var depth = 0
 
@@ -150,6 +167,12 @@ class KDTree {
 
   nearest(pt) {
     return self.donearest(pt, self.head, 0, nil, 1e255)
+  }
+
+  search(query) {
+    var result = []
+    self.dosearch(query, self.head, 0, result)
+    return result
   }
 
   prnt() {

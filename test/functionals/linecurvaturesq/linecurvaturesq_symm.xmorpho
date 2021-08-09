@@ -1,0 +1,23 @@
+// Symmetries
+import constants
+import meshtools
+import plot
+import "symmetry.xmorpho"
+
+var np=10
+var L=1
+
+var m = LineMesh(fn (t) [t, cos(Pi*t), 0], -L..L:2/np)
+//Show(plotmesh(m))
+
+// Add translational symmetry to the exterior vertices
+var s = Selection(m, fn (x,y,z) abs(x+L)<1e-10 || abs(x-L)<1e-10)
+var t = Translate(Matrix([2*L,0,0]))
+m.addsymmetry(t, s)
+
+//print m.connectivitymatrix(0,0)
+
+// Create the manifold
+var lc = LineCurvatureSq()
+
+print lc.integrand(m)

@@ -70,7 +70,7 @@ bool builtin_enumerateloop(vm *v, value obj, builtin_loopfunction fn, void *ref)
     value enumerate=MORPHO_NIL;
     value count=MORPHO_NIL, in=MORPHO_INTEGER(-1), val=MORPHO_NIL;
     
-    if (morpho_lookupmethod(v, obj, enumerateselector, &enumerate)) {
+    if (morpho_lookupmethod(obj, enumerateselector, &enumerate)) {
         if (!morpho_invoke(v, obj, enumerate, 1, &in, &count)) return false;
         if (!MORPHO_ISINTEGER(count)) return false;
         

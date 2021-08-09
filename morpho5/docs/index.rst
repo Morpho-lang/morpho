@@ -43,7 +43,10 @@ Morpho
    :caption: Modules
    :maxdepth: 1
 
+   color
+   constants
    graphics
+   kdtree
    meshtools
 
 .. toctree::

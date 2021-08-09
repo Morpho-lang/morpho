@@ -74,6 +74,9 @@
 #define NEMATIC_ARGS                   "NmtcArgs"
 #define NEMATIC_ARGS_MSG               "Nematic requires a field as the argument."
 
+#define FUNCTIONAL_ARGS                "FnctlArgs"
+#define FUNCTIONAL_ARGS_MSG            "Invalid args passed to method."
+
 void functional_initialize(void);
 
 #endif /* functional_h */

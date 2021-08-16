@@ -24,6 +24,8 @@
 #define NEMATIC_KBEND_PROPERTY                "kbend"
 #define NEMATIC_PITCH_PROPERTY                "pitch"
 
+#define CURVATURE_INTEGRANDONLY_PROPERTY      "integrandonly"
+
 /* Functional methods */
 #define FUNCTIONAL_INTEGRAND_METHOD    "integrand"
 #define FUNCTIONAL_TOTAL_METHOD        "total"

@@ -628,6 +628,26 @@ unsigned int list_length(objectlist *list) {
 
 /** Removes an element from a list
  * @param[in] list a list object
+ * @param[in] indx position to insert
+ * @param[in] nval number of values to insert
+ * @param[in] vals the entries to insert
+ * @returns true on success */
+bool list_insert(objectlist *list, int indx, int nval, value *vals) {
+    int i = indx;
+    while (i<0) i+=list->val.count+1;
+    if (i>list->val.count) return false;
+    if (nval>list->val.capacity-list->val.count) if (!list_resize(list, list->val.count+nval)) return false;
+    
+    memmove(list->val.data+i+nval, list->val.data+i, sizeof(value)*(list->val.count-i));
+    memcpy(list->val.data+i, vals, sizeof(value)*nval);
+
+    list->val.count+=nval;
+    
+    return true;
+}
+
+/** Removes an element from a list
+ * @param[in] list a list object
  * @param[in] val the entry to remove
  * @returns true on success */
 bool list_remove(objectlist *list, value val) {
@@ -799,11 +819,31 @@ value List_pop(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     
     if (slf->val.count>0) {
+        if (nargs>0 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+            int indx = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+            out=slf->val.data[indx];
+            memmove(slf->val.data+indx, slf->val.data+indx+1, sizeof(value)*(slf->val.count-indx-1));
+        } else {
+            out=slf->val.data[slf->val.count-1];
+        }
         slf->val.count--;
-        out=slf->val.data[slf->val.count];
     }
     
     return out;
+}
+
+/** inserts an element */
+value List_insert(vm *v, int nargs, value *args) {
+    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    
+    if (nargs>=2) {
+        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+            int indx = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+            if (!list_insert(slf, indx, nargs-1, &MORPHO_GETARG(args, 1))) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        }
+    } else morpho_runtimeerror(v, VM_INVALIDARGS, 2, nargs);
+    
+    return MORPHO_NIL;
 }
 
 /** Get an element */
@@ -989,6 +1029,7 @@ value List_add(vm *v, int nargs, value *args) {
 MORPHO_BEGINCLASS(List)
 MORPHO_METHOD(MORPHO_APPEND_METHOD, List_append, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_REMOVE_METHOD, List_remove, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(LIST_INSERT_METHOD, List_insert, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_POP_METHOD, List_pop, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, List_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, List_setindex, BUILTIN_FLAGSEMPTY),

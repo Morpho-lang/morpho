@@ -27,6 +27,7 @@
 #define LIST_SORT_METHOD "sort"
 #define LIST_ORDER_METHOD "order"
 #define LIST_POP_METHOD "pop"
+#define LIST_INSERT_METHOD "insert"
 #define LIST_REMOVE_METHOD "remove"
 
 #define DICTIONARY_KEYS_METHOD "keys"

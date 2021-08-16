@@ -62,7 +62,8 @@ bool sparseccs_get(sparseccs *ccs, int i, int j, double *val);
 
 bool sparseccs_getrowindices(sparseccs *ccs, int col, int *nentries, int **entries);
 bool sparseccs_setrowindices(sparseccs *ccs, int col, int nentries, int *entries);
-bool sparseccs_getcolindices(sparseccs *ccs, int *nentries, int *entries);
+bool sparseccs_getcolindices(sparseccs *ccs, int maxentries, int *nentries, int *entries);
+bool sparseccs_getcolindicesforrow(sparseccs *ccs, int row, int maxentries, int *nentries, int *entries);
 bool sparseccs_doktoccs(sparsedok *in, sparseccs *out, bool copyvals);
 
 /* ***************************************

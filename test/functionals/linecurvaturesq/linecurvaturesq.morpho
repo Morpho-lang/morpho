@@ -1,13 +1,18 @@
+// Line curvature Sq
 import constants
 import meshtools
 
-// Symmetries
 var np=10
+var R=1
 
-var m = LineMesh(fn (t) [0.5*cos(t), 0.5*sin(t),0], 0...2*Pi:2*Pi/np, closed=true)
-print m
+var m = LineMesh(fn (t) [R*cos(t), R*sin(t),0], 0...2*Pi:2*Pi/np, closed=true)
 
 // Create the manifold
 var lc = LineCurvatureSq()
 
-print lc.integrand(m)
+//print lc.integrand(m)
+print lc.total(m)
+// expect: 6.38774
+
+print 2*Pi*R*(1/R)^2
+// expect: 6.28319

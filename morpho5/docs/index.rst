@@ -31,6 +31,7 @@ Morpho
    :maxdepth: 1
 
    field
+   mesh
    selection
 
 .. toctree::
@@ -46,6 +47,7 @@ Morpho
    color
    constants
    graphics
+   implicitmesh
    kdtree
    meshtools
    povray

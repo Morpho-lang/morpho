@@ -274,19 +274,41 @@ bool sparseccs_setrowindices(sparseccs *ccs, int col, int nentries, int *entries
 
 /** Retrieves the indices of non-zero columns
  * @param[in] ccs   the matrix
+ * @param[in] maxentries maximum number of entries
  * @param[out] nentries  the number of entries
  * @param[out] entries  the entries themselves (call with NULL to get the size of the required array) */
-bool sparseccs_getcolindices(sparseccs *ccs, int *nentries, int *entries) {
+bool sparseccs_getcolindices(sparseccs *ccs, int maxentries, int *nentries, int *entries) {
     int k=0;
     
     for (int i=0; i<ccs->ncols; i++) {
         if (ccs->cptr[i+1]!=ccs->cptr[i]) {
-            if (entries) entries[k]=i;
+            if (entries && k<maxentries) entries[k]=i;
             k++;
         }
     }
     *nentries=k;
     
+    return true;
+}
+
+/** Retrieves the indices of all columns that contain a nonzero entry on a particular row.
+ * @param[in] ccs   the matrix
+ * @param[in] row  the row to index
+ * @param[in] maxentries maximum number of entries
+ * @param[out] nentries  the number of entries
+ * @param[out] entries  the entries themselves (call with NULL to get the size of the required array) */
+bool sparseccs_getcolindicesforrow(sparseccs *ccs, int row, int maxentries, int *nentries,  int *entries) {
+    int col=0, k=0;
+    
+    for (unsigned int i=0; i<ccs->nentries; i++) {
+        while (ccs->cptr[col+1]<=i) col++;
+        if (ccs->rix[i]==row) {
+            if (entries && k<maxentries) entries[k]=col;
+            k++;
+        }
+    }
+    
+    *nentries=k;
     return true;
 }
 
@@ -1067,7 +1089,7 @@ value Sparse_colindices(vm *v, int nargs, value *args) {
         varray_int cols;
         varray_intinit(&cols);
         varray_intresize(&cols, s->ccs.ncols);
-        if (sparseccs_getcolindices(&s->ccs, &ncols, cols.data)) {
+        if (sparseccs_getcolindices(&s->ccs, s->ccs.ncols, &ncols, cols.data)) {
             objectlist *new=object_newlist(ncols, NULL);
             if (new) {
                 for (int i=0; i<ncols; i++) new->val.data[i]=MORPHO_INTEGER(cols.data[i]);

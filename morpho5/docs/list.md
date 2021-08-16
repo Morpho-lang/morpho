@@ -36,12 +36,27 @@ Adds an element to the end of a list:
     list = []
     list.append("Foo")
 
+## Insert
+[taginsert]: # (Insert)
+
+Inserts an element into a list at a specified index:
+
+    list = [1,2,3]
+    list.insert(1, "Foo")
+    print list // prints [ 1, Foo, 2, 3 ]
+
 ## Pop
 [tagpop]: # (pop)
 
 Remove the last element from a list, returning the element removed:
 
     print list.pop()
+
+If an integer argument is supplied, returns and removes that element:
+
+    var a = [1,2,3]
+    print a.pop(1) // prints '2'
+    print a        // prints [ 1, 3 ]
 
 ## Sort
 [tagsort]: # (sort)

@@ -65,9 +65,9 @@ static instructionindx compiler_currentinstructionindex(compiler *c) {
 }
 
 /** Adds an instruction to the current program */
-static instruction compiler_previousinstruction(compiler *c) {
+/*static instruction compiler_previousinstruction(compiler *c) {
     return c->out->code.data[c->out->code.count-1];
-}
+}*/
 
 /** Finds the current instruction index */
 /*static instructionindx compiler_currentinstruction(compiler *c) {
@@ -2113,7 +2113,8 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     ninstructions+=bodyinfo.ninstructions;
     
     /* Add a return instruction if necessary */
-    if (DECODE_OP(compiler_previousinstruction(c))!=OP_RETURN) {
+    //if (DECODE_OP(compiler_previousinstruction(c))!=OP_RETURN) { // 8/11/21 -> fix for final return in if
+    if (true) {
         /* Methods automatically return self unless another argument is specified */
 
 #ifndef MORPHO_LOXCOMPATIBILITY

@@ -556,22 +556,43 @@ bool mesh_addsymmetry(vm *v, objectmesh *mesh, value symmetry, objectselection *
     return false;
 }
 
+static void varray_elementidwriteunique(varray_elementid *list, elementid id) {
+    for (unsigned int i=0; i<list->count; i++) if (list->data[i]==id) return;
+    varray_elementidwrite(list, id);
+}
+
+#define MAX_NEIGHBORS 64
 int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, varray_elementid *neighbors, varray_elementid *synonymids) {
     objectsparse *conn = mesh_getconnectivityelement(mesh, target, g);
     int nids=0, *entries;
     
     if (conn && sparse_checkformat(conn, SPARSE_CCS, true, false)) {
         if (sparseccs_getrowindices(&conn->ccs, id, &nids, &entries)) {
-            for (unsigned int i=0; i<nids; i++) varray_elementidwrite(neighbors, entries[i]);
+            for (unsigned int i=0; i<nids; i++) varray_elementidwriteunique(neighbors, entries[i]);
         }
     }
     
     objectsparse *sym = mesh_getconnectivityelement(mesh, g, g);
     if (sym && sparse_checkformat(sym, SPARSE_CCS, true, false)) {
+        int nentries, *entries;
+        if (sparseccs_getrowindices(&sym->ccs, id, &nentries, &entries)) {
+            for (unsigned int i=0; i<nentries; i++) varray_elementidwriteunique(synonymids, (elementid) entries[i]);
+        }
         
+        int rids[MAX_NEIGHBORS];
+        if (sparseccs_getcolindicesforrow(&sym->ccs, id, MAX_NEIGHBORS, &nentries, rids)) {
+            for (unsigned int i=0; i<nentries; i++) varray_elementidwriteunique(synonymids, (elementid) rids[i]);
+        }
+        if (nentries>=MAX_NEIGHBORS) UNREACHABLE("Too many neighbors.");
+        
+        for (unsigned int i=0; i<synonymids->count; i++) {
+            if (sparseccs_getrowindices(&conn->ccs, synonymids->data[i], &nids, &entries)) {
+                for (unsigned int i=0; i<nids; i++) varray_elementidwriteunique(neighbors, entries[i]);
+            }
+        }
     }
     
-    return nids;
+    return (neighbors->count);
 }
 
 /* **********************************************************************

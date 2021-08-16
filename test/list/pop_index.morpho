@@ -1,0 +1,23 @@
+// Check pop method with index on a list
+
+var a = [ 1, 2, 3, 4, 5, 6 ]
+
+print a.pop(0) // expect: 1
+print a // expect: [ 2, 3, 4, 5, 6 ]
+
+print a.pop(2) // expect: 4
+print a // expect: [ 2, 3, 5, 6 ]
+
+print a.pop(3) // expect: 6
+print a // expect: [ 2, 3, 5 ]
+
+print a.pop(1) // expect: 3
+print a // expect: [ 2, 5 ]
+
+print a.pop() // expect: 5
+print a // expect: [ 2 ]
+
+print a.pop() // expect: 2
+print a // expect: [  ]
+
+print a.pop() // expect: nil

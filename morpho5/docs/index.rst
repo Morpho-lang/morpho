@@ -50,6 +50,7 @@ Morpho
    implicitmesh
    kdtree
    meshtools
+   optimize
    povray
 
 .. toctree::

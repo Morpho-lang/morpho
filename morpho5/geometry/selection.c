@@ -278,7 +278,7 @@ objectselection *selection_union(objectselection *a, objectselection *b) {
     } else {
         for (grade g=0; g<a->ngrades && g<b->ngrades; g++) {
             dictionary_union(&a->selected[g], &b->selected[g], &new->selected[g]);
-            if (new->selected->count>0) new->mode=SELECT_SOME;
+            if (new->selected[g].count>0) new->mode=SELECT_SOME;
         }
     }
     
@@ -294,7 +294,7 @@ objectselection *selection_intersection(objectselection *a, objectselection *b) 
     } else if (a->mode!=SELECT_NONE && b->mode!=SELECT_NONE) {
         for (grade g=0; g<a->ngrades && g<b->ngrades; g++) {
             dictionary_intersection(&a->selected[g], &b->selected[g], &new->selected[g]);
-            if (new->selected->count>0) new->mode=SELECT_SOME;
+            if (new->selected[g].count>0) new->mode=SELECT_SOME;
         }
     }
     
@@ -312,7 +312,7 @@ objectselection *selection_difference(objectselection *a, objectselection *b) {
     } else if (a->mode!=SELECT_NONE) {
         for (grade g=0; g<a->ngrades && g<b->ngrades; g++) {
             dictionary_difference(&a->selected[g], &b->selected[g], &new->selected[g]);
-            if (new->selected->count>0) new->mode=SELECT_SOME;
+            if (new->selected[g].count>0) new->mode=SELECT_SOME;
         }
     }
     

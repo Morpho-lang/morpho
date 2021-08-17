@@ -494,7 +494,8 @@ class MeshRefiner {
 
   refinefield(field) {
     var mesh = self.mesh()
-    var prototype = field.enumerate(0).clone()
+    var prototype = field.enumerate(0)
+    if (isobject(prototype)) prototype=prototype.clone()
     var shape = field.shape()
     var result
 
@@ -509,6 +510,7 @@ class MeshRefiner {
           var map = dict[id]
           if (islist(map)) {
             var sum, nn = map.count()
+            if (isfloat(prototype)) sum = 0
             if (nn==0) continue
             for (i in 0...nn) sum+=field[g, map[i]]
             sum/=map.count()

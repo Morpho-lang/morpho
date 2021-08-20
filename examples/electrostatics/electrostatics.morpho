@@ -39,7 +39,7 @@ problem.addenergy(lt2, selection=bnd2, prefactor=100)
 var opt = FieldOptimizer(problem, phi)
 opt.linesearch(100)
 
-for (i in 1..6) {
+for (i in 1..10) {
   // Select elements that have an above average contribution to the energy
   var en = le.integrand(phi) // energy in each element
   var mean = en.sum()/en.count() // mean energy per element

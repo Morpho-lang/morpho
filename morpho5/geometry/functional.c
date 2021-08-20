@@ -35,16 +35,24 @@ typedef bool (functional_integrand) (vm *v, objectmesh *mesh, elementid id, int 
 /** Gradient function */
 typedef bool (functional_gradient) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc);
 
-typedef struct {
+struct s_functional_mapinfo; // Resolve circular typedef dependency
+
+/** Dependencies function */
+typedef bool (functional_dependencies) (struct s_functional_mapinfo *info, elementid id, varray_elementid *out);
+
+typedef struct s_functional_mapinfo {
     objectmesh *mesh; // Mesh to use
     objectselection *sel; // Selection, if any
     objectfield *field; // Field, if any
     grade g; // Grade to use
     functional_integrand *integrand; // Integrand function
     functional_gradient *grad; // Gradient
+    functional_dependencies *dependencies; // Dependencies
     symmetrybhvr sym; // Symmetry behavior
     void *ref; // Reference to pass on
 } functional_mapinfo;
+
+
 
 /* **********************************************************************
  * Utility functions
@@ -57,6 +65,7 @@ static void functional_clearmapinfo(functional_mapinfo *info) {
     info->g=0;
     info->integrand=NULL;
     info->grad=NULL;
+    info->dependencies=NULL;
     info->ref=NULL;
     info->sym=SYMMETRY_NONE;
 }
@@ -406,6 +415,37 @@ static bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, i
     return true;
 }
 
+/* Calculates a numerical gradient for a remote element */
+static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
+    objectmesh *mesh = info->mesh;
+    double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
+    
+    int *rvid=(info->g==0 ? &remoteid : NULL),
+        rnv=(info->g==0 ? 1 : 0); // The vertex indices
+    
+    if (conn) sparseccs_getrowindices(&conn->ccs, remoteid, &rnv, &rvid);
+    
+    // Loop over vertices in element
+    for (unsigned int j=0; j<nv; j++) {
+        // Loop over coordinates
+        for (unsigned int k=0; k<mesh->dim; k++) {
+            matrix_getelement(frc, k, vid[j], &f0);
+            
+            matrix_getelement(mesh->vert, k, vid[j], &x0);
+            matrix_setelement(mesh->vert, k, vid[j], x0+eps);
+            if (!(*info->integrand) (v, mesh, remoteid, rnv, rvid, info->ref, &fp)) return false;
+            matrix_setelement(mesh->vert, k, vid[j], x0-eps);
+            if (!(*info->integrand) (v, mesh, remoteid, rnv, rvid, info->ref, &fm)) return false;
+            matrix_setelement(mesh->vert, k, vid[j], x0);
+            
+            matrix_setelement(frc, k, vid[j], f0+(fp-fm)/(2*eps));
+        }
+    }
+    
+    return true;
+}
+
+
 /** Map numerical gradient over the elements
  * @param[in] v - virtual machine in use
  * @param[in] info - map info
@@ -422,6 +462,9 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
     objectmatrix *frc=NULL;
     bool ret=false;
     int n=0;
+    
+    varray_elementid dependencies;
+    if (info->dependencies) varray_elementidinit(&dependencies);
     
     /* How many elements? */
     if (!functional_countelements(v, mesh, g, &n, &s)) return false;
@@ -447,6 +490,14 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
             
                 if (vid && nv>0) {
                     if (!functional_numericalgradient(v, mesh, i, nv, vid, integrand, ref, frc)) goto functional_numericalgradient_cleanup;
+                    
+                    if (info->dependencies && // Loop over dependencies if there are any
+                        (info->dependencies) (info, i, &dependencies)) {
+                        for (int j=0; j<dependencies.count; j++) {
+                            if (!functional_numericalremotegradient(v, info, s, dependencies.data[j], i, nv, vid, frc)) goto functional_numericalgradient_cleanup;
+                        }
+                        dependencies.count=0;
+                    }
                 }
             }
         } else { // Loop over elements
@@ -456,6 +507,14 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
 
                 if (vid && nv>0) {
                     if (!functional_numericalgradient(v, mesh, i, nv, vid, integrand, ref, frc)) goto functional_numericalgradient_cleanup;
+                
+                    if (info->dependencies && // Loop over dependencies if there are any
+                        (info->dependencies) (info, i, &dependencies)) {
+                        for (int j=0; j<dependencies.count; j++) {
+                            if (!functional_numericalremotegradient(v, info, s, dependencies.data[j], i, nv, vid, frc)) goto functional_numericalgradient_cleanup;
+                        }
+                        dependencies.count=0;
+                    }
                 }
             }
         }
@@ -467,6 +526,7 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
     }
 
 functional_numericalgradient_cleanup:
+    if (info->dependencies) varray_elementidclear(&dependencies);
     if (!ret) object_free((object *) frc);
     
     return ret;
@@ -650,7 +710,7 @@ value name##_total(vm *v, int nargs, value *args) { \
 }
 
 /* Alternative way of defining methods that use a reference */
-#define FUNCTIONAL_METHOD(class, name, grade, reftype, prepare, integrandfn, integrandmapfn, err, symbhvr) value class##_##name(vm *v, int nargs, value *args) { \
+#define FUNCTIONAL_METHOD(class, name, grade, reftype, prepare, integrandfn, integrandmapfn, deps, err, symbhvr) value class##_##name(vm *v, int nargs, value *args) { \
     functional_mapinfo info; \
     reftype ref; \
     value out=MORPHO_NIL; \
@@ -658,6 +718,7 @@ value name##_total(vm *v, int nargs, value *args) { \
     if (functional_validateargs(v, nargs, args, &info)) { \
         if (prepare(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, grade, info.sel, &ref)) { \
             info.integrand = integrandmapfn; \
+            info.dependencies = deps, \
             info.sym = symbhvr; \
             info.g = grade; \
             info.ref = &ref; \
@@ -1338,11 +1399,11 @@ value EquiElement_init(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD(EquiElement, integrand, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapintegrand, equielement_integrand, EQUIELEMENT_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(EquiElement, integrand, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapintegrand, equielement_integrand, NULL, EQUIELEMENT_ARGS, SYMMETRY_NONE)
 
-FUNCTIONAL_METHOD(EquiElement, total, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_sumintegrand, equielement_integrand, EQUIELEMENT_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(EquiElement, total, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_sumintegrand, equielement_integrand, NULL, EQUIELEMENT_ARGS, SYMMETRY_NONE)
 
-FUNCTIONAL_METHOD(EquiElement, gradient, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapnumericalgradient, equielement_integrand, EQUIELEMENT_ARGS, SYMMETRY_ADD)
+FUNCTIONAL_METHOD(EquiElement, gradient, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapnumericalgradient, equielement_integrand, NULL, EQUIELEMENT_ARGS, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(EquiElement)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, EquiElement_init, BUILTIN_FLAGSEMPTY),
@@ -1396,7 +1457,9 @@ bool functional_inlist(varray_elementid *list, elementid id) {
 }
 
 /** Finds the points that a point depends on  */
-bool linecurvsq_dependencies(objectmesh *mesh, elementid id, curvatureref *cref, varray_elementid *out) {
+bool linecurvsq_dependencies(functional_mapinfo *info, elementid id, varray_elementid *out) {
+    objectmesh *mesh = info->mesh;
+    curvatureref *cref = info->ref;
     bool success=false;
     varray_elementid nbrs;
     varray_elementid synid;
@@ -1475,14 +1538,14 @@ linecurvsq_integrand_cleanup:
 }
 
 FUNCTIONAL_INIT(LineCurvatureSq, MESH_GRADE_VERTEX)
-FUNCTIONAL_METHOD(LineCurvatureSq, integrand, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapintegrand, linecurvsq_integrand, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-FUNCTIONAL_METHOD(LineCurvatureSq, total, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_sumintegrand, linecurvsq_integrand, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-FUNCTIONAL_METHOD(LineCurvatureSq, gradient, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapnumericalgradient, linecurvsq_integrand, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(LineCurvatureSq, integrand, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapintegrand, linecurvsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(LineCurvatureSq, total, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_sumintegrand, linecurvsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(LineCurvatureSq, gradient, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapnumericalgradient, linecurvsq_integrand, linecurvsq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_NONE)
 
 MORPHO_BEGINCLASS(LineCurvatureSq)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineCurvatureSq_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LineCurvatureSq_integrand, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, AreaEnclosed_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineCurvatureSq_gradient, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineCurvatureSq_total, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
@@ -1598,11 +1661,11 @@ value GradSq_init(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD(GradSq, integrand, MESH_GRADE_AREA, fieldref, gradsq_prepareref, functional_mapintegrand, gradsq_integrand, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(GradSq, integrand, MESH_GRADE_AREA, fieldref, gradsq_prepareref, functional_mapintegrand, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(GradSq, total, MESH_GRADE_AREA, fieldref, gradsq_prepareref, functional_sumintegrand, gradsq_integrand, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(GradSq, total, MESH_GRADE_AREA, fieldref, gradsq_prepareref, functional_sumintegrand, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(GradSq, gradient, MESH_GRADE_AREA, fieldref, gradsq_prepareref, functional_mapnumericalgradient, gradsq_integrand, GRADSQ_ARGS, SYMMETRY_ADD);
+FUNCTIONAL_METHOD(GradSq, gradient, MESH_GRADE_AREA, fieldref, gradsq_prepareref, functional_mapnumericalgradient, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_ADD);
 
 value GradSq_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
@@ -1641,6 +1704,7 @@ static value nematic_pitchproperty;
 
 typedef struct {
     double ksplay,ktwist,kbend,pitch;
+    bool haspitch;
     objectfield *field;
 } nematicref;
 
@@ -1650,6 +1714,7 @@ bool nematic_prepareref(objectinstance *self, objectmesh *mesh, grade g, objects
     value field=MORPHO_NIL;
     value val=MORPHO_NIL;
     ref->ksplay=1.0; ref->ktwist=1.0; ref->kbend=1.0; ref->pitch=0.0;
+    ref->haspitch=false;
     
     if (objectinstance_getproperty(self, functional_fieldproperty, &field) &&
         MORPHO_ISFIELD(field)) {
@@ -1667,6 +1732,7 @@ bool nematic_prepareref(objectinstance *self, objectmesh *mesh, grade g, objects
     }
     if (objectinstance_getproperty(self, nematic_pitchproperty, &val) && MORPHO_ISNUMBER(val)) {
         morpho_valuetofloat(val, &ref->pitch);
+        ref->haspitch=true;
     }
     return success;
 }
@@ -1674,6 +1740,11 @@ bool nematic_prepareref(objectinstance *self, objectmesh *mesh, grade g, objects
 /* Integrates two linear functions with values at vertices f[0]...f[2] and g[0]...g[2] */
 double nematic_bcint(double *f, double *g) {
     return (f[0]*(2*g[0]+g[1]+g[2]) + f[1]*(g[0]+2*g[1]+g[2]) + f[2]*(g[0]+g[1]+2*g[2]))/12;
+}
+
+/* Integrates a linear vector function with values at vertices f[0]...f[2] */
+double nematic_bcint1(double *f) {
+    return (f[0] + f[1] + f[2])/3;
 }
 
 /** Calculate the |grad q|^2 energy */
@@ -1718,26 +1789,36 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     for (unsigned int i=0; i<nv; i++)
         for (unsigned int j=0; j<mesh->dim; j++) nnt[j][i]=nn[i][j];
     
-    double integrals[6] = { nematic_bcint(nnt[0], nnt[0]),
+    double integrals[] = {  nematic_bcint(nnt[0], nnt[0]),
                             nematic_bcint(nnt[1], nnt[1]),
                             nematic_bcint(nnt[2], nnt[2]),
                             nematic_bcint(nnt[0], nnt[1]),
                             nematic_bcint(nnt[1], nnt[2]),
-                            nematic_bcint(nnt[2], nnt[0]) };
+                            nematic_bcint(nnt[2], nnt[0])
+    };
     
     /* Now we can calculate the components of splay, twist and bend */
-    double splay=0.0, twist=0.0, bend=0.0;
+    double splay=0.0, twist=0.0, bend=0.0, chol=0.0;
 
     /* Evaluate the three contributions to the integral */
-    splay = eref->ksplay*0.5*size*divnn*divnn;
+    splay = 0.5*eref->ksplay*size*divnn*divnn;
     for (unsigned int i=0; i<6; i++) {
         twist += ctwst[i]*integrals[i];
         bend += cbnd[i]*integrals[i];
     }
-    twist *= eref->ktwist*0.5*size;
-    bend *= eref->kbend*0.5*size;
+    twist *= 0.5*eref->ktwist*size;
+    bend *= 0.5*eref->kbend*size;
     
-    *out = splay+twist+bend;
+    if (eref->haspitch) {
+        /* Cholesteric terms: 0.5 * k22 * [- 2 q (cx <nx> + cy <ny> + cz <nz>) + q^2] */
+        for (unsigned i=0; i<3; i++) {
+            chol += -2*curlnn[i]*nematic_bcint1(nnt[i])*eref->pitch;
+        }
+        chol += (eref->pitch*eref->pitch);
+        chol *= 0.5*eref->ktwist*size;
+    }
+    
+    *out = splay+twist+bend+chol;
     
     return true;
 }
@@ -1770,11 +1851,11 @@ value Nematic_init(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD(Nematic, integrand, MESH_GRADE_AREA, nematicref, nematic_prepareref, functional_mapintegrand, nematic_integrand, NEMATIC_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(Nematic, integrand, MESH_GRADE_AREA, nematicref, nematic_prepareref, functional_mapintegrand, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(Nematic, total, MESH_GRADE_AREA, nematicref, nematic_prepareref, functional_sumintegrand, nematic_integrand, NEMATIC_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(Nematic, total, MESH_GRADE_AREA, nematicref, nematic_prepareref, functional_sumintegrand, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(Nematic, gradient, MESH_GRADE_AREA, nematicref, nematic_prepareref, functional_mapnumericalgradient, nematic_integrand, NEMATIC_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(Nematic, gradient, MESH_GRADE_AREA, nematicref, nematic_prepareref, functional_mapnumericalgradient, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
 
 value Nematic_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
@@ -1820,11 +1901,11 @@ bool normsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
     return false;
 }
 
-FUNCTIONAL_METHOD(NormSq, integrand, MESH_GRADE_VERTEX, fieldref, gradsq_prepareref, functional_mapintegrand, normsq_integrand, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(NormSq, integrand, MESH_GRADE_VERTEX, fieldref, gradsq_prepareref, functional_mapintegrand, normsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(NormSq, total, MESH_GRADE_VERTEX, fieldref, gradsq_prepareref, functional_sumintegrand, normsq_integrand, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(NormSq, total, MESH_GRADE_VERTEX, fieldref, gradsq_prepareref, functional_sumintegrand, normsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(NormSq, gradient, MESH_GRADE_AREA, fieldref, gradsq_prepareref, functional_mapnumericalgradient, normsq_integrand, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(NormSq, gradient, MESH_GRADE_AREA, fieldref, gradsq_prepareref, functional_mapnumericalgradient, normsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
 value NormSq_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
@@ -1950,11 +2031,11 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     return success;
 }
 
-FUNCTIONAL_METHOD(LineIntegral, integrand, MESH_GRADE_LINE, integralref, integral_prepareref, functional_mapintegrand, lineintegral_integrand, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(LineIntegral, integrand, MESH_GRADE_LINE, integralref, integral_prepareref, functional_mapintegrand, lineintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(LineIntegral, total, MESH_GRADE_LINE, integralref, integral_prepareref, functional_sumintegrand, lineintegral_integrand, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(LineIntegral, total, MESH_GRADE_LINE, integralref, integral_prepareref, functional_sumintegrand, lineintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(LineIntegral, gradient, MESH_GRADE_LINE, integralref, integral_prepareref, functional_mapnumericalgradient, lineintegral_integrand, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(LineIntegral, gradient, MESH_GRADE_LINE, integralref, integral_prepareref, functional_mapnumericalgradient, lineintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
 /** Initialize a LineIntegral object */
 value LineIntegral_init(vm *v, int nargs, value *args) {

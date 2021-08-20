@@ -2,7 +2,7 @@
 import constants
 import meshtools
 import plot
-import "symmetry.xmorpho"
+import symmetry
 
 var np=50
 var L=1

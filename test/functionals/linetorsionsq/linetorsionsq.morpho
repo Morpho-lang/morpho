@@ -1,0 +1,15 @@
+// Line torsion Sq
+import constants
+import meshtools
+
+var np=10
+var R=1
+
+var m = LineMesh(fn (t) [R*cos(t), R*sin(t),t], 0...2*Pi:2*Pi/np, closed=true)
+
+// Create the manifold
+var lc = LineTorsionSq()
+
+//print lc.integrand(m)
+print lc.integrand(m)
+// expect: 6.38774

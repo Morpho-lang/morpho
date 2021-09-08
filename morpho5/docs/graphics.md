@@ -1,8 +1,6 @@
 [comment]: # (Graphics module help)
 [version]: # (0.5)
 
-[toplevel]: #
-
 # Graphics
 [taggraphics]: # (graphics)
 
@@ -30,7 +28,7 @@ To combine graphics objects, use the add operator:
     // ...
     Show(g1+g2)
 
-[show]: # (subtopics) 
+[show]: # (subtopics)
 
 ## Show
 [tagshow]: # (Show)

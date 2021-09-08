@@ -5,20 +5,24 @@
  * functionals in morpho, as well as some less common functionals
  **************************************************************** */
 
+import kdtree
+
 class Functional {
   init(grade) {
     self.grade = grade
   }
 
   integrand(mesh) {
-    var conn=mesh.connectivitymatrix(0, self.grade)
+    var conn
+    if (self.grade>0) mesh.connectivitymatrix(0, self.grade)
     var vert=mesh.vertexmatrix()
-    var nel = conn.dimensions()[1]
+    var nel = mesh.count(self.grade)
 
     var out = Matrix(nel)
 
     for (i in 0...nel) {
-      var el = conn.rowindices(i)
+      var el
+      if (conn) el=conn.rowindices(i)
       out[i]=self.integrandfn(mesh, vert, i, el)
     }
 
@@ -26,16 +30,18 @@ class Functional {
   }
 
   gradient(mesh) {
-    var conn=mesh.connectivitymatrix(0, self.grade)
+    var conn
+    if (self.grade>0) conn=mesh.connectivitymatrix(0, self.grade)
     var vert=mesh.vertexmatrix()
-    var nel = conn.dimensions()[1]
+    var nel = mesh.count(self.grade)
 
     var dim=vert.dimensions()[0]
     var nv=vert.dimensions()[1]
     var out = Matrix(dim,nv)
 
     for (i in 0...nel) {
-      var el = conn.rowindices(i)
+      var el
+      if (conn) el=conn.rowindices(i)
       self.gradientfn(mesh, vert, i, el, out)
     }
 
@@ -75,4 +81,62 @@ class HookeElasticity < Functional {
     grd.setcolumn(el[0], g+grd.column(el[0]))
     grd.setcolumn(el[1], -g+grd.column(el[1]))
   }
+}
+
+/* Pairwise potential */
+class PairwisePotential < Functional {
+  init (func, grad, cutoff=nil) {
+    self.func = func
+    self.grad = grad
+    self.cutoff = cutoff
+    super.init(0)
+  }
+
+  buildtree(mesh) {
+    var vert = mesh.vertexmatrix()
+    var nv = mesh.count()
+    var pts = []
+    for (i in 0...nv) {
+      pts.append(vert.column(i))
+    }
+    return KDTree(pts)
+  }
+
+  integrand(mesh) {
+    var nv = mesh.count()
+    var out = Matrix(nv)
+    var vert = mesh.vertexmatrix()
+
+    for (i in 0...nv) {
+      var x = vert.column(i)
+      for (j in i+1...nv) {
+        var r = (x-vert.column(j)).norm()
+        if (self.cutoff && r>self.cutoff) continue
+        var f = self.func(r)
+        out[i]+=0.5*f
+        out[j]+=0.5*f
+      }
+    }
+    return out
+  }
+
+  gradient(mesh) {
+    var nv = mesh.count()
+    var vert = mesh.vertexmatrix()
+    var dim = vert.dimensions()[0]
+    var out = Matrix(dim, nv)
+
+    for (i in 0...nv) {
+      for (j in i+1...nv) {
+        var dx = vert.column(i)-vert.column(j)
+        var r = dx.norm()
+        if (self.cutoff && r>self.cutoff) continue
+        var df = self.grad(r)/r
+        out.setcolumn(i, df*dx+out.column(i))
+        out.setcolumn(j, -df*dx+out.column(j))
+      }
+    }
+    return out
+  }
+
 }

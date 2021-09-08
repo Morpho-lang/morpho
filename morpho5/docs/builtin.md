@@ -1,11 +1,25 @@
 [comment]: # (Builtin function help)
 [version]: # (0.5)
 
-[toplevel]: #
-
 # Builtin functions
+[tagarctan]: # (builtin)
 
-Morpho provides a number of built-in functions.
+Morpho provides a number of built-in functions. 
+
+[showsubtopics]: # (subtopics)
+
+## arctan
+[tagarctan]: # (arctan)
+
+Returns the arctangent of an input angle. You can use one argument:
+
+    print arctan(0) // expect: 0
+
+or to get the angle in the correct quadrant, use two arguments:
+
+    print arctan(x, y)
+
+Note the order `x`, `y` differs from some other languages.
 
 ## isnil
 [tagisnil]: # (isnil)

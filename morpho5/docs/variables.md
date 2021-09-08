@@ -4,6 +4,7 @@
 [toplevel]: #
 
 # Variables
+[tagvariables]: # (variables)
 [tagvar]: # (var)
 
 Variables are defined using the `var` keyword followed by the variable name:

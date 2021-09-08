@@ -64,6 +64,7 @@ typedef errorcategory morphoerror;
 typedef struct {
     errorcategory cat;
     errorid id;
+    char *module; 
     int line, posn;
     char msg[MORPHO_ERRORSTRINGSIZE];
 } error;

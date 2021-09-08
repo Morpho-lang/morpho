@@ -45,6 +45,7 @@ static void error_printf(error *err, errorcategory cat, int line, int posn, char
 void error_clear(error *err) {
     err->cat=ERROR_NONE;
     err->id=NULL;
+    err->module=NULL;
     err->line=ERROR_POSNUNIDENTIFIABLE; err->posn=ERROR_POSNUNIDENTIFIABLE;
 }
 

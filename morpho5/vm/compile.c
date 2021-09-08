@@ -32,6 +32,7 @@ static objectclass *baseclass;
  * @param id       error id
  * @param ...      additional data for sprintf. */
 static void compiler_error(compiler *c, syntaxtreenode *node, errorid id, ... ) {
+    if (c->err.cat!=ERROR_NONE) return; // Ensure errors are not overwritten.
     va_list args;
     int line = (node ? node->line : ERROR_POSNUNIDENTIFIABLE);
     int posn = (node ? node->posn : ERROR_POSNUNIDENTIFIABLE);
@@ -3020,6 +3021,8 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             if (ERROR_SUCCEEDED(c->err)) {
                 compiler_stripend(c);
                 compiler_copyglobals(&cc, c, (fordict.count>0 ? &fordict : NULL));
+            } else {
+                c->err.module = MORPHO_GETCSTRING(modname);
             }
             
             compiler_clear(&cc);

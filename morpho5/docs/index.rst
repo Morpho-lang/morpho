@@ -31,6 +31,7 @@ Morpho
    :maxdepth: 1
 
    field
+   functionals
    mesh
    selection
 

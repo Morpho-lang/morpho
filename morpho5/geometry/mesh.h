@@ -94,6 +94,8 @@ DECLARE_VARRAY(elementid, elementid);
 /** This controls how close two points can be before they're indistinct */
 #define MESH_NEARESTPOINTEPS 1e-10
 
+void varray_elementidwriteunique(varray_elementid *list, elementid id);
+
 elementid mesh_nvertices(objectmesh *mesh);
 elementid mesh_nelements(objectsparse *conn);
 elementid mesh_nelementsforgrade(objectmesh *mesh, grade g);

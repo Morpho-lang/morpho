@@ -67,6 +67,21 @@ Where `while` loops can be very useful is where the state of an object is being 
 
 which prints 4,3,2,1.
 
+## Do
+[tagdo]: # (do)
+
+A `do`...`while` loop repeats code while a condition is true---similar to a `while` loop---but the test happens at the end:
+
+    var k=1
+    do {
+      print k;
+      k+=1
+    } while (k<5)
+
+which prints 1,2,3,4
+
+Hence this type of loop executes at least one interation
+
 ## For
 [tagfor]: # (for)
 [tagin]: # (in)

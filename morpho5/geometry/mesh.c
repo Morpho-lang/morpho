@@ -556,19 +556,34 @@ bool mesh_addsymmetry(vm *v, objectmesh *mesh, value symmetry, objectselection *
     return false;
 }
 
-static void varray_elementidwriteunique(varray_elementid *list, elementid id) {
+void varray_elementidwriteunique(varray_elementid *list, elementid id) {
     for (unsigned int i=0; i<list->count; i++) if (list->data[i]==id) return;
     varray_elementidwrite(list, id);
 }
 
 #define MAX_NEIGHBORS 64
 int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, varray_elementid *neighbors, varray_elementid *synonymids) {
-    objectsparse *conn = mesh_getconnectivityelement(mesh, target, g);
+    int nvert, *vids, vvid=id; // List of vertices in the element
+    
+    /* If the element is not a point, find all vertices associated with that point */
+    if (g>0) {
+        objectsparse *down = mesh_getconnectivityelement(mesh, 0, g);
+        sparseccs_getrowindices(&down->ccs, id, &nvert, &vids);
+    } else {
+        nvert = 1; vids=&vvid;
+    }
+    
+    objectsparse *conn = mesh_getconnectivityelement(mesh, target, 0);
     int nids=0, *entries;
     
+    // Now find the neighboring elements
     if (conn && sparse_checkformat(conn, SPARSE_CCS, true, false)) {
-        if (sparseccs_getrowindices(&conn->ccs, id, &nids, &entries)) {
-            for (unsigned int i=0; i<nids; i++) varray_elementidwriteunique(neighbors, entries[i]);
+        for (unsigned int k=0; k<nvert; k++) {
+            if (sparseccs_getrowindices(&conn->ccs, vids[k], &nids, &entries)) {
+                for (unsigned int i=0; i<nids; i++) {
+                    if (g!=target || entries[i]!=id) varray_elementidwriteunique(neighbors, entries[i]);
+                }
+            }
         }
     }
     

@@ -23,6 +23,7 @@
 #define NEMATIC_KTWIST_PROPERTY               "ktwist"
 #define NEMATIC_KBEND_PROPERTY                "kbend"
 #define NEMATIC_PITCH_PROPERTY                "pitch"
+#define NEMATIC_DIRECTOR_PROPERTY             "director"
 
 #define CURVATURE_INTEGRANDONLY_PROPERTY      "integrandonly"
 
@@ -49,7 +50,9 @@
 #define GRADSQ_CLASSNAME               "GradSq"
 #define NORMSQ_CLASSNAME               "NormSq"
 #define LINEINTEGRAL_CLASSNAME         "LineIntegral"
+#define AREAINTEGRAL_CLASSNAME         "AreaIntegral"
 #define NEMATIC_CLASSNAME              "Nematic"
+#define NEMATICELECTRIC_CLASSNAME      "NematicElectric"
 
 /* Errors */
 #define FUNC_INTEGRAND_MESH            "FnctlIntMsh"
@@ -75,6 +78,9 @@
 
 #define NEMATIC_ARGS                   "NmtcArgs"
 #define NEMATIC_ARGS_MSG               "Nematic requires a field as the argument."
+
+#define NEMATICELECTRIC_ARGS           "NmtcElArgs"
+#define NEMATICELECTRIC_ARGS_MSG       "NematicElectric requires the director and electric field or potential as arguments (in that order)."
 
 #define FUNCTIONAL_ARGS                "FnctlArgs"
 #define FUNCTIONAL_ARGS_MSG            "Invalid args passed to method."

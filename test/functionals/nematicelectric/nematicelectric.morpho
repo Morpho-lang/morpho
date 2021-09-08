@@ -1,0 +1,54 @@
+// Nematic-Electric coupling
+
+import meshtools
+import plot
+
+var L = 1
+var np = 10
+
+// Create mesh and fields
+
+var b = MeshBuilder()
+b.addvertex(Matrix([0,0,0]))
+b.addvertex(Matrix([1,0,0]))
+b.addvertex(Matrix([0,1,0]))
+b.addface([0,1,2])
+
+var m = b.build()
+
+var nn = Field(m, Matrix([1/sqrt(2),1/sqrt(2),0])) // Nematic director
+var phi = Field(m, 0) // Electric potential
+phi[0,0] = 0
+phi[0,1] = 1
+phi[0,2] = 0
+
+var lne = NematicElectric(nn, phi)
+
+print lne.integrand(m)
+// expect: [ 0.25 ]
+
+print lne.total(m)
+// expect: 0.25
+
+print lne.gradient(m)
+// expect: [ 0.75 -0.25 -0.5 ]
+// expect: [ -0.25 0 0.25 ]
+// expect: [ 0 0 0 ]
+
+print lne.fieldgradient(nn)
+// expect: <Field>
+// expect: [ 0.235702 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0.235702 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0.235702 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+
+print lne.fieldgradient(phi)
+// expect: <Field>
+// expect: [ -1 ]
+// expect: [ 0.5 ]
+// expect: [ 0.5 ]

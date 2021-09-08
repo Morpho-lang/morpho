@@ -1549,6 +1549,50 @@ MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineCurvatureSq_gradient, BUILTIN_FLAG
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineCurvatureSq_total, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
+/* ----------------------------------------------
+ * LineTorsionSq
+ * ---------------------------------------------- */
+
+/** Calculate the integral of the torsion squared  */
+bool linetorsionsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    curvatureref *cref = (curvatureref *) ref;
+    //double result = 0.0;
+    varray_elementid nbrs;
+    varray_elementid synid;
+    varray_elementid vlist; // List of vertices in order
+    varray_elementidinit(&nbrs);
+    varray_elementidinit(&synid);
+    varray_elementidinit(&vlist);
+    
+    if (mesh_findneighbors(mesh, MESH_GRADE_LINE, id, MESH_GRADE_LINE, &nbrs, &synid)>0) {
+        if (nbrs.count<2) goto linecurvsq_torsion_cleanup;
+        
+        for (unsigned int i=0; i<nbrs.count; i++) {
+            int nentries, *entries; // Get the vertices for this edge
+            if (!sparseccs_getrowindices(&cref->lineel->ccs, nbrs.data[i], &nentries, &entries)) break;
+            
+            
+        }
+    }
+    
+linecurvsq_torsion_cleanup:
+    varray_elementidclear(&nbrs);
+    varray_elementidclear(&synid);
+    varray_elementidclear(&vlist);
+    
+    return false;
+}
+
+FUNCTIONAL_INIT(LineTorsionSq, MESH_GRADE_VERTEX)
+FUNCTIONAL_METHOD(LineTorsionSq, integrand, MESH_GRADE_LINE, curvatureref, curvature_prepareref, functional_mapintegrand, linetorsionsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+
+MORPHO_BEGINCLASS(LineTorsionSq)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineTorsionSq_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LineTorsionSq_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineCurvatureSq_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineCurvatureSq_total, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
 /* **********************************************************************
  * Fields
  * ********************************************************************** */
@@ -1708,7 +1752,7 @@ typedef struct {
     objectfield *field;
 } nematicref;
 
-/** Prepares the gradsq reference */
+/** Prepares the nematic reference */
 bool nematic_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel,  nematicref *ref) {
     bool success=false;
     value field=MORPHO_NIL;
@@ -1747,7 +1791,7 @@ double nematic_bcint1(double *f) {
     return (f[0] + f[1] + f[2])/3;
 }
 
-/** Calculate the |grad q|^2 energy */
+/** Calculate the nematic energy */
 bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     nematicref *eref = ref;
     double size=0; // Length area or volume of the element
@@ -1867,7 +1911,6 @@ value Nematic_fieldgradient(vm *v, int nargs, value *args) {
             info.g=MESH_GRADE_AREA;
             info.integrand=nematic_integrand;
             info.ref=&ref;
-            info.field=ref.field;
             functional_mapnumericalfieldgradient(v, &info, &out);
         } else morpho_runtimeerror(v, GRADSQ_ARGS);
     }
@@ -1881,6 +1924,122 @@ MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Nematic_integrand, BUILTIN_FLAGSEMPTY
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Nematic_total, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Nematic_gradient, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Nematic_fieldgradient, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
+/* ----------------------------------------------
+ * NematicElectric
+ * ---------------------------------------------- */
+
+typedef struct {
+    objectfield *director;
+    value field;
+} nematicelectricref;
+
+/** Prepares the nematicelectric reference */
+bool nematicelectric_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, nematicelectricref *ref) {
+    bool success=false;
+    ref->field=MORPHO_NIL;
+    value fieldlist=MORPHO_NIL;
+    
+    if (objectinstance_getproperty(self, functional_fieldproperty, &fieldlist) &&
+        MORPHO_ISLIST(fieldlist)) {
+        objectlist *lst = MORPHO_GETLIST(fieldlist);
+        value director = MORPHO_NIL;
+        list_getelement(lst, 0, &director);
+        list_getelement(lst, 1, &ref->field);
+        
+        if (MORPHO_ISFIELD(director)) ref->director=MORPHO_GETFIELD(director);
+        
+        if (MORPHO_ISFIELD(ref->field) || MORPHO_ISMATRIX(ref->field)) success=true;
+    }
+    
+    return success;
+}
+
+/** Calculate the integral (n.E)^2 energy, where E is calculated from the electric potential */
+bool nematicelectric_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    nematicelectricref *eref = ref;
+    double size=0; // Length area or volume of the element
+    
+    if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &size)) return false;
+    
+    // Get nematic director components
+    double *nn[nv]; // Field value lists
+    unsigned int nentries=0;
+    for (unsigned int i=0; i<nv; i++) {
+        if (!field_getelementaslist(eref->director, MESH_GRADE_VERTEX, vid[i], 0, &nentries, &nn[i])) return false;
+    }
+    
+    // The electric field ends up being constant over the element
+    double ee[mesh->dim];
+    if (MORPHO_ISFIELD(eref->field)) {
+        if (!gradsq_evaluategradient(mesh, MORPHO_GETFIELD(eref->field), nv, vid, ee)) return false;
+    }
+    
+    /* Calculate integrals of nx^2, ny^2, nz^2, nx*ny, ny*nz, and nz*nx over the element */
+    double nnt[mesh->dim][nv]; // The transpose of nn
+    for (unsigned int i=0; i<nv; i++)
+        for (unsigned int j=0; j<mesh->dim; j++) nnt[j][i]=nn[i][j];
+    
+    /* Calculate integral (n.e)^2 using the above results */
+    double total = ee[0]*ee[0]*nematic_bcint(nnt[0], nnt[0])+
+                   ee[1]*ee[1]*nematic_bcint(nnt[1], nnt[1])+
+                   ee[2]*ee[2]*nematic_bcint(nnt[2], nnt[2])+
+                   2*ee[0]*ee[1]*nematic_bcint(nnt[0], nnt[1])+
+                   2*ee[1]*ee[2]*nematic_bcint(nnt[1], nnt[2])+
+                   2*ee[2]*ee[0]*nematic_bcint(nnt[2], nnt[0]);
+    
+    *out = size*total;
+    
+    return true;
+}
+
+/** Initialize a NematicElectric object */
+value NematicElectric_init(vm *v, int nargs, value *args) {
+    objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+    
+    if (nargs==2 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0)) &&
+        MORPHO_ISFIELD(MORPHO_GETARG(args, 1))) {
+        objectlist *new = object_newlist(2, &MORPHO_GETARG(args, 0));
+        if (new) {
+            value lst = MORPHO_OBJECT(new);
+            objectinstance_setproperty(self, functional_fieldproperty, lst);
+            morpho_bindobjects(v, 1, &lst);
+        }
+    } else morpho_runtimeerror(v, NEMATICELECTRIC_ARGS);
+    
+    return MORPHO_NIL;
+}
+
+FUNCTIONAL_METHOD(NematicElectric, integrand, MESH_GRADE_AREA, nematicelectricref, nematicelectric_prepareref, functional_mapintegrand, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
+
+FUNCTIONAL_METHOD(NematicElectric, total, MESH_GRADE_AREA, nematicelectricref, nematicelectric_prepareref, functional_sumintegrand, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
+
+FUNCTIONAL_METHOD(NematicElectric, gradient, MESH_GRADE_AREA, nematicelectricref, nematicelectric_prepareref, functional_mapnumericalgradient, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
+
+value NematicElectric_fieldgradient(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    nematicelectricref ref;
+    value out=MORPHO_NIL;
+    
+    if (functional_validateargs(v, nargs, args, &info)) {
+        if (nematicelectric_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_AREA, info.sel, &ref)) {
+            info.g=MESH_GRADE_AREA;
+            info.integrand=nematicelectric_integrand;
+            info.ref=&ref;
+            functional_mapnumericalfieldgradient(v, &info, &out);
+        } else morpho_runtimeerror(v, GRADSQ_ARGS);
+    }
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+    return out;
+}
+
+MORPHO_BEGINCLASS(NematicElectric)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, NematicElectric_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, NematicElectric_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, NematicElectric_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, NematicElectric_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, NematicElectric_fieldgradient, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -2084,6 +2243,18 @@ MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineIntegral_gradient, BUILTIN_FLAGSEM
 MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, LineIntegral_fieldgradient, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
+/* ----------------------------------------------
+ * AreaIntegral
+ * ---------------------------------------------- */
+
+MORPHO_BEGINCLASS(AreaIntegral)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineIntegral_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LineIntegral_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineIntegral_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineIntegral_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, LineIntegral_fieldgradient, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
 /* **********************************************************************
  * Initialization
  * ********************************************************************** */
@@ -2115,10 +2286,13 @@ void functional_initialize(void) {
     builtin_addclass(LINEARELASTICITY_CLASSNAME, MORPHO_GETCLASSDEFINITION(LinearElasticity), objclass);
     builtin_addclass(EQUIELEMENT_CLASSNAME, MORPHO_GETCLASSDEFINITION(EquiElement), objclass);
     builtin_addclass(LINECURVATURESQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineCurvatureSq), objclass);
+    builtin_addclass(LINETORSIONSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineTorsionSq), objclass);
     builtin_addclass(GRADSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(GradSq), objclass);
     builtin_addclass(NORMSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(NormSq), objclass);
     builtin_addclass(LINEINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineIntegral), objclass);
+    builtin_addclass(AREAINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(AreaIntegral), objclass);
     builtin_addclass(NEMATIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(Nematic), objclass);
+    builtin_addclass(NEMATICELECTRIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(NematicElectric), objclass);
     
     builtin_addfunction(TANGENT_FUNCTION, functional_tangent, BUILTIN_FLAGSEMPTY);
     
@@ -2130,6 +2304,7 @@ void functional_initialize(void) {
     morpho_defineerror(EQUIELEMENT_ARGS, ERROR_HALT, EQUIELEMENT_ARGS_MSG);
     morpho_defineerror(GRADSQ_ARGS, ERROR_HALT, GRADSQ_ARGS_MSG);
     morpho_defineerror(NEMATIC_ARGS, ERROR_HALT, NEMATIC_ARGS_MSG);
+    morpho_defineerror(NEMATICELECTRIC_ARGS, ERROR_HALT, NEMATICELECTRIC_ARGS_MSG);
     morpho_defineerror(FUNCTIONAL_ARGS, ERROR_HALT, FUNCTIONAL_ARGS_MSG);
 }
  

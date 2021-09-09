@@ -1,0 +1,25 @@
+import constants
+import meshtools
+
+var m = AreaMesh(fn (x,y) [x,y,0], 0..1:0.5, 0..1:0.5)
+
+var f = Field(m, fn (x,y,z) Matrix([x,y,z]))
+
+// A line integral with only spatial dependence
+print AreaIntegral(fn (x) x[0]*x[1]).total(m)
+// expect: 0.25
+
+print AreaIntegral(fn (x) x[0]^2*(1-x[1]^2)).total(m)
+// expect: 0.222222
+
+print AreaIntegral(fn (x) (x[0]-1/2)^4*(x[1]-1/2)^4).total(m)
+// expect: 0.00015625
+
+print AreaIntegral(fn (x) x[0]^6*x[1]^6).total(m)
+// expect: 0.0204082
+
+print AreaIntegral(fn (x, n) n[0]*n[1], f).total(m)
+// expect: 0.25
+
+print AreaIntegral(fn (x, n) n[0]^2*(1-n[1]^2), f).total(m)
+// expect: 0.222222

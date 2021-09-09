@@ -24,6 +24,6 @@
  */
 typedef double (integrandfunction) (unsigned int dim, double *lambda, double *x, unsigned int nquantity, value *quantity, void *ref);
 
-bool integrate_lineintegrate(integrandfunction *integrand, unsigned int dim, double *x[2], unsigned int nquantity, value *quantity[2], void *ref, double *out);
+bool integrate_integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out);
 
 #endif /* integration_h */

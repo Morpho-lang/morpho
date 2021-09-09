@@ -2280,12 +2280,31 @@ FUNCTIONAL_METHOD(AreaIntegral, total, MESH_GRADE_AREA, integralref, integral_pr
 
 FUNCTIONAL_METHOD(AreaIntegral, gradient, MESH_GRADE_AREA, integralref, integral_prepareref, functional_mapnumericalgradient, areaintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
+/** Field gradients for Area Integrals */
+value AreaIntegral_fieldgradient(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    integralref ref;
+    value out=MORPHO_NIL;
+    
+    if (functional_validateargs(v, nargs, args, &info)) {
+        // Should check whether the field is known about here...
+        if (integral_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_AREA, info.sel, &ref)) {
+            info.g=MESH_GRADE_AREA;
+            info.integrand=areaintegral_integrand;
+            info.ref=&ref;
+            functional_mapnumericalfieldgradient(v, &info, &out);
+        } else morpho_runtimeerror(v, GRADSQ_ARGS);
+    }
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+    return out;
+}
+
 MORPHO_BEGINCLASS(AreaIntegral)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineIntegral_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, AreaIntegral_integrand, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, AreaIntegral_total, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, AreaIntegral_gradient, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, LineIntegral_fieldgradient, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, AreaIntegral_fieldgradient, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

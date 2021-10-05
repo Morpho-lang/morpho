@@ -5,7 +5,7 @@ import plot
 import optimize
 import functionals
 
-var Np = 20
+var Np = 100
 
 var build = MeshBuilder()
 for (i in 1..Np) {

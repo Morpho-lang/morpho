@@ -156,3 +156,18 @@ You can also integrate functions that involve fields:
     var la=LineIntegral(fn (x, n) n.inner(tangent()), n)
 
 where `n` is a vector field. The local interpolated value of this field is passed to your integrand function. More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `LineIntegrand`.
+
+## AreaIntegral
+[tagareaintegral]: # (areaintegral)
+
+The `AreaIntegral` functional computes the area integral of a function. You supply an integrand function that takes a position matrix as an argument.
+
+To compute integral(x*y) over an area element:
+
+    var la=AreaIntegral(fn (x) x[0]*x[1])
+
+You can also integrate functions that involve fields:
+
+    var la=AreaIntegral(fn (x, phi) phi^2, phi)
+
+More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `AreaIntegrand`.

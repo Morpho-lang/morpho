@@ -2,14 +2,13 @@
 import constants
 import meshtools
 
-var np=10
+var np=20
 var R=1
 
-var m = LineMesh(fn (t) [R*cos(t), R*sin(t),t], 0...2*Pi:2*Pi/np, closed=true)
+var m = LineMesh(fn (t) [R*cos(t), R*sin(t), t], 0..2*Pi:2*Pi/np, closed=false)
 
 // Create the manifold
 var lc = LineTorsionSq()
 
-//print lc.integrand(m)
-print lc.integrand(m)
-// expect: 6.38774
+print lc.total(m)
+// expect: 2.0282

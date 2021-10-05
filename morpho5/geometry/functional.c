@@ -168,6 +168,16 @@ bool functional_symmetrysumforces(objectmesh *mesh, objectmatrix *frc) {
     return s;
 }
 
+bool functional_inlist(varray_elementid *list, elementid id) {
+    for (unsigned int i=0; i<list->count; i++) if (list->data[i]==id) return true;
+    return false;
+}
+
+bool functional_containsvertex(int nv, int *vid, elementid id) {
+    for (unsigned int i=0; i<nv; i++) if (vid[i]==id) return true;
+    return false;
+}
+
 /* **********************************************************************
  * Map functions
  * ********************************************************************** */
@@ -415,8 +425,8 @@ static bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, i
     return true;
 }
 
-/* Calculates a numerical gradient for a remote element */
-static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
+/* Calculates a numerical gradient for a remote vertex */
+static bool functional_numericalremotegradientold(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
     objectmesh *mesh = info->mesh;
     double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
     
@@ -445,6 +455,26 @@ static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, 
     return true;
 }
 
+static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
+    objectmesh *mesh = info->mesh;
+    double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
+    
+    // Loop over coordinates
+    for (unsigned int k=0; k<mesh->dim; k++) {
+        matrix_getelement(frc, k, remoteid, &f0);
+        
+        matrix_getelement(mesh->vert, k, remoteid, &x0);
+        matrix_setelement(mesh->vert, k, remoteid, x0+eps);
+        if (!(*info->integrand) (v, mesh, i, nv, vid, info->ref, &fp)) return false;
+        matrix_setelement(mesh->vert, k, remoteid, x0-eps);
+        if (!(*info->integrand) (v, mesh, i, nv, vid, info->ref, &fm)) return false;
+        matrix_setelement(mesh->vert, k, remoteid, x0);
+        
+        matrix_setelement(frc, k, remoteid, f0+(fp-fm)/(2*eps));
+    }
+    
+    return true;
+}
 
 /** Map numerical gradient over the elements
  * @param[in] v - virtual machine in use
@@ -466,6 +496,11 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
     varray_elementid dependencies;
     if (info->dependencies) varray_elementidinit(&dependencies);
     
+    /* Find any image elements so we can skip over them */
+    varray_elementid imageids;
+    varray_elementidinit(&imageids);
+    functional_symmetryimagelist(mesh, g, true, &imageids);
+    
     /* How many elements? */
     if (!functional_countelements(v, mesh, g, &n, &s)) return false;
     
@@ -479,6 +514,7 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
         int vertexid; // Use this if looping over grade 0
         int *vid=(g==0 ? &vertexid : NULL),
             nv=(g==0 ? 1 : 0); // The vertex indices
+        int sindx=0; // Index into imageids array
         
         if (sel) { // Loop over selection
             if (sel->selected[g].count>0) for (unsigned int k=0; k<sel->selected[g].capacity; k++) {
@@ -487,6 +523,9 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
                 elementid i = MORPHO_GETINTEGERVALUE(sel->selected[g].contents[k].key);
                 if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
                 else vertexid=i;
+                
+                // Skip this element if it's an image element
+                if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
             
                 if (vid && nv>0) {
                     if (!functional_numericalgradient(v, mesh, i, nv, vid, integrand, ref, frc)) goto functional_numericalgradient_cleanup;
@@ -502,15 +541,20 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
             }
         } else { // Loop over elements
             for (elementid i=0; i<n; i++) {
+                // Skip this element if it's an image element
+                if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
+                
                 if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
                 else vertexid=i;
 
                 if (vid && nv>0) {
+                    
                     if (!functional_numericalgradient(v, mesh, i, nv, vid, integrand, ref, frc)) goto functional_numericalgradient_cleanup;
                 
                     if (info->dependencies && // Loop over dependencies if there are any
                         (info->dependencies) (info, i, &dependencies)) {
                         for (int j=0; j<dependencies.count; j++) {
+                            if (functional_containsvertex(nv, vid, dependencies.data[j])) continue;
                             if (!functional_numericalremotegradient(v, info, s, dependencies.data[j], i, nv, vid, frc)) goto functional_numericalgradient_cleanup;
                         }
                         dependencies.count=0;
@@ -526,6 +570,7 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
     }
 
 functional_numericalgradient_cleanup:
+    varray_elementidclear(&imageids);
     if (info->dependencies) varray_elementidclear(&dependencies);
     if (!ret) object_free((object *) frc);
     
@@ -1451,36 +1496,31 @@ bool curvature_prepareref(objectinstance *self, objectmesh *mesh, grade g, objec
     return success;
 }
 
-bool functional_inlist(varray_elementid *list, elementid id) {
-    for (unsigned int i=0; i<list->count; i++) if (list->data[i]==id) return true;
-    return false;
-}
-
 /** Finds the points that a point depends on  */
 bool linecurvsq_dependencies(functional_mapinfo *info, elementid id, varray_elementid *out) {
     objectmesh *mesh = info->mesh;
     curvatureref *cref = info->ref;
     bool success=false;
     varray_elementid nbrs;
-    varray_elementid synid;
     varray_elementidinit(&nbrs);
-    varray_elementidinit(&synid);
     
-    if (mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_LINE, &nbrs, &synid)>0) {
+    if (mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_LINE, &nbrs)>0) {
         for (unsigned int i=0; i<nbrs.count; i++) {
             int nentries, *entries; // Get the vertices for this edge
             if (!sparseccs_getrowindices(&cref->lineel->ccs, nbrs.data[i], &nentries, &entries)) goto linecurvsq_dependencies_cleanup;
             for (unsigned int j=0; j<nentries; j++) {
-                if (entries[j]==id || functional_inlist(&synid, entries[j])) continue;
+                if (entries[j]==id) continue;
                 varray_elementidwrite(out, entries[j]);
             }
         }
     }
     success=true;
+    /*printf("Vertex %u: ", id);
+    for (int k=0; k<out->count; k++) printf("%u ", out->data[k]);
+    printf("\n");*/
     
 linecurvsq_dependencies_cleanup:
     varray_elementidclear(&nbrs);
-    varray_elementidclear(&synid);
     
     return success;
 }
@@ -1496,7 +1536,8 @@ bool linecurvsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vi
     
     double s0[mesh->dim], s1[mesh->dim], *s[2] = { s0, s1}, sgn=-1.0;
     
-    if (mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_LINE, &nbrs, &synid)>0) {
+    if (mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_LINE, &nbrs)>0 &&
+        mesh_getsynonyms(mesh, MESH_GRADE_VERTEX, id, &synid)) {
         if (nbrs.count<2) goto linecurvsq_integrand_cleanup; 
         
         for (unsigned int i=0; i<nbrs.count; i++) {
@@ -1540,7 +1581,7 @@ linecurvsq_integrand_cleanup:
 FUNCTIONAL_INIT(LineCurvatureSq, MESH_GRADE_VERTEX)
 FUNCTIONAL_METHOD(LineCurvatureSq, integrand, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapintegrand, linecurvsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
 FUNCTIONAL_METHOD(LineCurvatureSq, total, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_sumintegrand, linecurvsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-FUNCTIONAL_METHOD(LineCurvatureSq, gradient, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapnumericalgradient, linecurvsq_integrand, linecurvsq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(LineCurvatureSq, gradient, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapnumericalgradient, linecurvsq_integrand, linecurvsq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(LineCurvatureSq)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineCurvatureSq_init, BUILTIN_FLAGSEMPTY),
@@ -1553,44 +1594,139 @@ MORPHO_ENDCLASS
  * LineTorsionSq
  * ---------------------------------------------- */
 
+/** Return a list of vertices that an element depends on  */
+bool linetorsionsq_dependencies(functional_mapinfo *info, elementid id, varray_elementid *out) {
+    objectmesh *mesh = info->mesh;
+    curvatureref *cref = info->ref;
+    bool success=false;
+    varray_elementid nbrs;
+    varray_elementid synid;
+    
+    varray_elementidinit(&nbrs);
+    varray_elementidinit(&synid);
+    
+    if (mesh_findneighbors(mesh, MESH_GRADE_LINE, id, MESH_GRADE_LINE, &nbrs)>0) {
+        for (unsigned int i=0; i<nbrs.count; i++) {
+            int nentries, *entries; // Get the vertices for this edge
+            if (!sparseccs_getrowindices(&cref->lineel->ccs, nbrs.data[i], &nentries, &entries)) goto linetorsionsq_dependencies_cleanup;
+            for (unsigned int j=0; j<nentries; j++) {
+                varray_elementidwriteunique(out, entries[j]);
+            }
+        }
+    }
+    success=true;
+    
+linetorsionsq_dependencies_cleanup:
+    varray_elementidclear(&nbrs);
+    varray_elementidclear(&synid);
+    
+    return success;
+}
+
+
 /** Calculate the integral of the torsion squared  */
 bool linetorsionsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     curvatureref *cref = (curvatureref *) ref;
+    int tmpi; elementid tmpid;
+    bool success=false;
+    
     //double result = 0.0;
     varray_elementid nbrs;
     varray_elementid synid;
-    varray_elementid vlist; // List of vertices in order
     varray_elementidinit(&nbrs);
     varray_elementidinit(&synid);
-    varray_elementidinit(&vlist);
+    elementid vlist[6]; // List of vertices in order  n
+    int type[6];
+    for (unsigned int i=0; i<6; i++) type[i]=-1;
     
-    if (mesh_findneighbors(mesh, MESH_GRADE_LINE, id, MESH_GRADE_LINE, &nbrs, &synid)>0) {
-        if (nbrs.count<2) goto linecurvsq_torsion_cleanup;
+    /* We want an ordered list of vertex indices:
+     *               v the element
+     *    0 --- 1/2 --- 3/4 --- 5
+     * Where 1/2 and 3/4 are the same vertex, but could have different indices due to symmetries */
+     vlist[2] = vid[0]; vlist[3] = vid[1]; // Copy the current element into place
+    
+    /* First identify neighbors and get the vertex ids for each element */
+    if (mesh_findneighbors(mesh, MESH_GRADE_LINE, id, MESH_GRADE_LINE, &nbrs)>0) {
+        if (nbrs.count<2) {
+            *out = 0; success=true;
+            goto linecurvsq_torsion_cleanup;
+        }
         
         for (unsigned int i=0; i<nbrs.count; i++) {
             int nentries, *entries; // Get the vertices for this edge
-            if (!sparseccs_getrowindices(&cref->lineel->ccs, nbrs.data[i], &nentries, &entries)) break;
-            
-            
+            if (!sparseccs_getrowindices(&cref->lineel->ccs, nbrs.data[i], &nentries, &entries)) goto linecurvsq_torsion_cleanup;
+            for (unsigned int j=0; j<nentries; j++) { // Copy the vertexids
+                vlist[4*i+j] = entries[j];
+            }
         }
     }
+    
+    /* The vertex ids are not yet in the right order. Let's identify which vertex is which */
+    for (int i=0; i<2; i++) {
+        if (mesh_getsynonyms(mesh, 0, vid[i], &synid)) {
+            for (int j=0; j<6; j++) if (vlist[j]==vid[i] || functional_inlist(&synid, vlist[j])) type[j]=i;
+        }
+    }
+    /* The type array now contains either 0,1 depending on which vertex we have, or -1 if the vertex is not a synonym for the element's vertices */
+#define SWAP(var, i, j, tmp) { tmp=var[i]; var[i]=var[j]; var[j]=tmp; }
+    if (type[0]==1 || type[1]==1) { // Make sure the first segment corresponds to the first vertex
+        SWAP(vlist, 0, 4, tmpid); SWAP(vlist, 1, 5, tmpid);
+        SWAP(type, 0, 4, tmpi); SWAP(type, 1, 5, tmpi);
+    }
+    
+    if (type[1]==-1) { // Check order of first segment
+        SWAP(vlist, 0, 1, tmpid);
+        SWAP(type, 0, 1, tmpi);
+    }
+    
+    if (type[4]==-1) { // Check order of first segment
+        SWAP(vlist, 4, 5, tmpid);
+        SWAP(type, 4, 5, tmpi);
+    }
+#undef SWAP
+    
+    /* We now have an ordered list of vertices.
+       Get the vertex positions */
+    double *x[6];
+    for (int i=0; i<6; i++) matrix_getcolumn(mesh->vert, vlist[i], &x[i]);
+    
+    double A[3], B[3], C[3], crossAB[3], crossBC[3];
+    functional_vecsub(3, x[1], x[0], A);
+    functional_vecsub(3, x[3], x[2], B);
+    functional_vecsub(3, x[5], x[4], C);
+    
+    functional_veccross(A, B, crossAB);
+    functional_veccross(B, C, crossBC);
+    
+    double normB=functional_vecnorm(3, B),
+           normAB=functional_vecnorm(3, crossAB),
+           normBC=functional_vecnorm(3, crossBC);
+    
+    double S = functional_vecdot(3, A, crossBC)*normB;
+    if (normAB>MORPHO_EPS) S/=normAB;
+    if (normBC>MORPHO_EPS) S/=normBC;
+    
+    S=asin(S);
+    *out=S*S/normB;
+    success=true;
     
 linecurvsq_torsion_cleanup:
     varray_elementidclear(&nbrs);
     varray_elementidclear(&synid);
-    varray_elementidclear(&vlist);
     
-    return false;
+    return success;
 }
 
-FUNCTIONAL_INIT(LineTorsionSq, MESH_GRADE_VERTEX)
+FUNCTIONAL_INIT(LineTorsionSq, MESH_GRADE_LINE)
 FUNCTIONAL_METHOD(LineTorsionSq, integrand, MESH_GRADE_LINE, curvatureref, curvature_prepareref, functional_mapintegrand, linetorsionsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(LineTorsionSq, total, MESH_GRADE_LINE, curvatureref, curvature_prepareref, functional_sumintegrand, linetorsionsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(LineTorsionSq, gradient, MESH_GRADE_LINE, curvatureref, curvature_prepareref, functional_mapnumericalgradient, linetorsionsq_integrand, linetorsionsq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(LineTorsionSq)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineTorsionSq_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LineTorsionSq_integrand, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineCurvatureSq_gradient, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineCurvatureSq_total, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineTorsionSq_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineTorsionSq_total, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

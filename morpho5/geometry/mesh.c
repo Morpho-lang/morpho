@@ -556,13 +556,40 @@ bool mesh_addsymmetry(vm *v, objectmesh *mesh, value symmetry, objectselection *
     return false;
 }
 
+/* Get a list of synonymous elements for a given element */
+bool mesh_getsynonyms(objectmesh *mesh, grade g, elementid id, varray_elementid *synonymids) {
+    objectsparse *sym = mesh_getconnectivityelement(mesh, g, g);
+    synonymids->count=0;
+    if (sym) {
+        int nel, *elids;
+        if (!sparseccs_getrowindices(&sym->ccs, id, &nel, &elids)) return false;
+        for (unsigned int i=0; i<nel; i++) varray_elementidwrite(synonymids, elids[i]);
+    }
+    return true;
+}
+
 void varray_elementidwriteunique(varray_elementid *list, elementid id) {
     for (unsigned int i=0; i<list->count; i++) if (list->data[i]==id) return;
     varray_elementidwrite(list, id);
 }
 
+/** Insert ids for a given element
+ * @param[in] conn - Connectivity matrix
+ * @param[in] id - id to insert
+ * @param[in] ignoreid - whether or not to include id if it is found
+ * @param[out] out - varray to hold output */
+void mesh_insertidsforelement(objectsparse *conn, elementid id, bool ignore, elementid ignoreid, varray_elementid *out) {
+    int nids, *entries;
+    if (sparseccs_getrowindices(&conn->ccs, id, &nids, &entries)) {
+        for (unsigned int i=0; i<nids; i++) {
+            if (ignore && entries[i]==ignoreid) continue;
+            varray_elementidwriteunique(out, entries[i]);
+        }
+    }
+}
+
 #define MAX_NEIGHBORS 64
-int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, varray_elementid *neighbors, varray_elementid *synonymids) {
+int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, varray_elementid *neighbors) {
     int nvert, *vids, vvid=id; // List of vertices in the element
     
     /* If the element is not a point, find all vertices associated with that point */
@@ -574,36 +601,35 @@ int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, va
     }
     
     objectsparse *conn = mesh_getconnectivityelement(mesh, target, 0);
-    int nids=0, *entries;
-    
     // Now find the neighboring elements
     if (conn && sparse_checkformat(conn, SPARSE_CCS, true, false)) {
         for (unsigned int k=0; k<nvert; k++) {
-            if (sparseccs_getrowindices(&conn->ccs, vids[k], &nids, &entries)) {
-                for (unsigned int i=0; i<nids; i++) {
-                    if (g!=target || entries[i]!=id) varray_elementidwriteunique(neighbors, entries[i]);
-                }
-            }
+            mesh_insertidsforelement(conn, vids[k], g==target, id, neighbors);
         }
     }
     
-    objectsparse *sym = mesh_getconnectivityelement(mesh, g, g);
+    /* Now find any vertices that are related to an element vertex through symmetries */
+    objectsparse *sym = mesh_getconnectivityelement(mesh, 0, 0);
+    int nsymids=0, *symids;
+    
     if (sym && sparse_checkformat(sym, SPARSE_CCS, true, false)) {
-        int nentries, *entries;
-        if (sparseccs_getrowindices(&sym->ccs, id, &nentries, &entries)) {
-            for (unsigned int i=0; i<nentries; i++) varray_elementidwriteunique(synonymids, (elementid) entries[i]);
-        }
-        
-        int rids[MAX_NEIGHBORS];
-        if (sparseccs_getcolindicesforrow(&sym->ccs, id, MAX_NEIGHBORS, &nentries, rids)) {
-            for (unsigned int i=0; i<nentries; i++) varray_elementidwriteunique(synonymids, (elementid) rids[i]);
-        }
-        if (nentries>=MAX_NEIGHBORS) UNREACHABLE("Too many neighbors.");
-        
-        for (unsigned int i=0; i<synonymids->count; i++) {
-            if (sparseccs_getrowindices(&conn->ccs, synonymids->data[i], &nids, &entries)) {
-                for (unsigned int i=0; i<nids; i++) varray_elementidwriteunique(neighbors, entries[i]);
+        for (unsigned int k=0; k<nvert; k++) { // Loop over vertices in the element
+            // Is this vertex an image vertex of another element?
+            if (sparseccs_getrowindices(&sym->ccs, vids[k], &nsymids, &symids)) {
+                for (unsigned int k=0; k<nsymids; k++) {
+                    mesh_insertidsforelement(conn, symids[k], g==target, id, neighbors);
+                }
             }
+            
+            // Is this vertex a target vertex of any image vertices
+            int nrids=0, rids[MAX_NEIGHBORS];
+            if (sparseccs_getcolindicesforrow(&sym->ccs, id, MAX_NEIGHBORS, &nrids, rids)) {
+                for (unsigned int k=0; k<nrids; k++) {
+                    mesh_insertidsforelement(conn, rids[k], g==target, id, neighbors);
+                }
+            }
+            if (nrids>=MAX_NEIGHBORS) UNREACHABLE("Too many neighbors.");
+            
         }
     }
     

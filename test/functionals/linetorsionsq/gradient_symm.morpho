@@ -1,22 +1,22 @@
-// Line curvature Sq gradient
+// Line torsion Sq
 import constants
 import meshtools
-import plot
 import symmetry
 
 var np=10
-var L=1
+var R=1
+var L=2
 
-var m = LineMesh(fn (t) [t, 0.2*cos(2*Pi*t), 0], -L..L:2/np)
-//Show(plotmesh(m))
+var m = LineMesh(fn (t) [R*cos(2*Pi*t), R*sin(2*Pi*t), t], 0..L:L/np, closed=false)
+// Show(plotmesh(m, grade=1))
 
 // Add translational symmetry to the exterior vertices
-var s = Selection(m, fn (x,y,z) abs(x+L)<1e-10 || abs(x-L)<1e-10)
-var t = Translate(Matrix([2*L,0,0]))
+var s = Selection(m, fn (x,y,z) abs(z)<1e-10 || abs(z-L)<1e-10)
+var t = Translate(Matrix([0,0,L]))
 m.addsymmetry(t, s)
 
 // Create the manifold
-var lc = LineCurvatureSq()
+var lc = LineTorsionSq()
 
 var grad = lc.gradient(m)
 
@@ -25,8 +25,7 @@ var ngrad = Matrix(dim[0], dim[1])
 
 // Manually calculate the gradient
 var vert = m.vertexmatrix()
-
-var eps = 1e-10
+var eps = 1e-8
 
 for (i in 0...dim[0]) {
   for (j in 0...dim[1]) {
@@ -39,10 +38,9 @@ for (i in 0...dim[0]) {
   }
 }
 
+// Account for symmetry
 var sym=ngrad.column(0)+ngrad.column(np)
 ngrad.setcolumn(0, sym)
 ngrad.setcolumn(np, sym)
 
-//print (grad-ngrad).norm()
-
-print (grad-ngrad).norm()/grad.count() < 1e-5 // expect: true
+print (grad-ngrad).norm()/grad.count() < 1e-6 // expect: true

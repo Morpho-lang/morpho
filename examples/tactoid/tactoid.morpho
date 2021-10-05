@@ -5,7 +5,7 @@ import povray
 
 // Create mesh and director field
 var m = Mesh("disk.mesh")
-var nn = Field(m, fn (x,y,z) Matrix([1,0,0]))
+var nn = Field(m, Matrix([1,0,0]))
 
 // Create functionals
 var lf=Nematic(nn, kbend=1)
@@ -115,9 +115,12 @@ for (iter in 1..itermax) {
 }
 
 // Function to visualize a director field
+// m - the mesh
+// nn - the director Field to visualize
+// dl - scale the director
 fn visualize(m, nn, dl) {
   var v = m.vertexmatrix()
-  var nv = v.dimensions()[1]
+  var nv = m.count()
   var g = Graphics()
   for (i in 0...nv) {
     var x = v.column(i)
@@ -141,11 +144,9 @@ for (i in 0...m.count(2)) {
 
 Show(plotfield(ff, colormap=GrayMap()))
 
-/*
 gdisp.background = White
 var pov = POVRaytracer(gdisp)
 pov.viewpoint = Matrix([0,0,-10])
 pov.background = White
 pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]
 pov.render("out.pov")
-*/

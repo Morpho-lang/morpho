@@ -170,6 +170,7 @@ void cli_help (lineditor *edit, char *query, error *err, bool avail) {
     if (help_querylength(q, NULL)==0) {
         if (err->cat!=ERROR_NONE) {
             q=err->id;
+	    error_clear(err);
         } else {
             q=HELP_INDEXPAGE;
         }

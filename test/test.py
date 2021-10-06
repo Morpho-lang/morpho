@@ -113,9 +113,10 @@ def getoutput(filepath):
     return list(filter(lambda x: x!=stk, lines))
 
 # Test a file
-def test(file):
+def test(file,testLog):
     ret = 0;
-    print(file+":", end =" ")
+    print(file+":", end=" ")
+    
 
     # Create a temporary file in the same directory
     tmp = file + '.out'
@@ -133,29 +134,54 @@ def test(file):
 
         # Was it expected?
         if(expected==out):
+            print(file+":", end=" ")
             print(stylize("Passed",colored.fg("green")))
             ret = 1
         else:
             print(stylize("Failed",colored.fg("red")))
             print("  Expected: ", expected)
-            print("  Output: ", out)
+            print("    Output: ", out)
+            
+            
+            #also print to the test log
+            print(file+":", end=" ",file = testLog)
+            print("Failed", file = testLog)
+            
+            if len(out) == len(expected):
+                failedTests = list(i for i in range(len(out)) if expected[i] != out[i])
+                print("Tests " + str(failedTests) + " did not match expected results.", file = testLog)
+                for testNum in failedTests:
+                    print("Test "+str(testNum))
+                    print("  Expected: ", expected[testNum], file = testLog)
+                    print("    Output: ", out[testNum], file = testLog)
+            else:
+                print("  Expected: ", expected, file = testLog)
+                print("    Output: ", out, file = testLog)
+
+                
+            print("\n",file = testLog)
+
+            
         # Delete the temporary file
         os.system('rm ' + tmp)
 
     return ret
 
-
 print('--Begin testing---------------------')
 
+# open a test log
+# write failures to log
 success=0 # number of successful tests
 total=0   # total number of tests
 
+    
 files=glob.glob('**/**.'+ext, recursive=True)
+with open("FailedTests.txt",'w') as testLog:
 
-for f in files:
-    # print(f)
-    success+=test(f)
-    total+=1
+    for f in files:
+        # print(f)
+        success+=test(f,testLog)
+        total+=1
 
 print('--End testing-----------------------')
 print(success, 'out of', total, 'tests passed.')

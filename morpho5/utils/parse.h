@@ -268,8 +268,8 @@ typedef enum {
     PREC_RANGE,
     PREC_TERM,
     PREC_FACTOR,
-    PREC_POW,
     PREC_UNARY,
+    PREC_POW,
     PREC_CALL,
     PREC_HIGHEST
 } precedence;

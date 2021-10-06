@@ -17,4 +17,11 @@ print 2^3.0
 
 // Check precedence relative to unary operator
 print -1^2
+// expect: -1
+
+var x = -1
+print x^2
+// expect: 1
+
+print (-1)^2
 // expect: 1

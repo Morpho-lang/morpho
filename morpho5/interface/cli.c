@@ -113,6 +113,17 @@ linedit_color cli_tokencolors[] = {
     LINEDIT_DEFAULTCOLOR,                          // TOKEN_ERROR
     LINEDIT_DEFAULTCOLOR                           // TOKEN_EOF
 };
+/** Determine weather the rest of a string is white space */
+bool white_space_remainder(const char *s, int start){
+	s += start;
+	while (*s){
+		if (!isspace(*s)){
+			return false;
+		}
+		s++;
+	}
+	return true;
+}
 
 /** A tokenizer for syntax coloring that leverages the parser's lexer */
 bool cli_lex(char *in, void **ref, linedit_token *out) {
@@ -170,7 +181,7 @@ void cli_help (lineditor *edit, char *query, error *err, bool avail) {
     if (help_querylength(q, NULL)==0) {
         if (err->cat!=ERROR_NONE) {
             q=err->id;
-	    error_clear(err);
+			error_clear(err);
         } else {
             q=HELP_INDEXPAGE;
         }
@@ -224,8 +235,8 @@ void cli(clioptions opt) {
         
         /* Check for CLI commands. */
         /* Let the user quit by typing 'quit'. */
-        if (strncmp(input, CLI_QUIT, 4)==0) {
-            break;
+        if (strncmp(input, CLI_QUIT, 4)==0 && white_space_remainder(input,4)) {
+			break;
         } else if (strncmp(input, CLI_HELP, strlen(CLI_HELP))==0) {
             cli_help(&edit, input+strlen(CLI_HELP), &err, help); continue;
         } else if (strncmp(input, CLI_SHORT_HELP, strlen(CLI_SHORT_HELP))==0) {
@@ -409,3 +420,4 @@ void cli_list(const char *in, int start, int end) {
         MORPHO_FREE(src);
     }
 }
+

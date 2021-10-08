@@ -113,17 +113,6 @@ linedit_color cli_tokencolors[] = {
     LINEDIT_DEFAULTCOLOR,                          // TOKEN_ERROR
     LINEDIT_DEFAULTCOLOR                           // TOKEN_EOF
 };
-/** Determine weather the rest of a string is white space */
-bool white_space_remainder(const char *s, int start){
-	s += start;
-	while (*s){
-		if (!isspace(*s)){
-			return false;
-		}
-		s++;
-	}
-	return true;
-}
 
 /** A tokenizer for syntax coloring that leverages the parser's lexer */
 bool cli_lex(char *in, void **ref, linedit_token *out) {

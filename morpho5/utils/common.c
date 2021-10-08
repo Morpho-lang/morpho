@@ -158,3 +158,15 @@ bool morpho_isdirectory(const char *path) {
        return 0;
    return (bool) S_ISDIR(statbuf.st_mode);
 }
+
+/** Determine weather the rest of a string is white space */
+bool white_space_remainder(const char *s, int start){
+	s += start;
+	while (*s){
+		if (!isspace(*s)){
+			return false;
+		}
+		s++;
+	}
+	return true;
+}

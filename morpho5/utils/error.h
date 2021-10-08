@@ -169,6 +169,10 @@ void morpho_unreachable(const char *explanation);
 #define VM_DVZR                           "DvZr"
 #define VM_DVZR_MSG                       "Division by zero."
 
+#define VM_GETINDEXARGS                   "NonintIndex"
+#define VM_GETINDEXARGS_MSG               "Noninteger array index."
+
+
 /* **********************************************************************
  * Prototypes
  * ********************************************************************** */

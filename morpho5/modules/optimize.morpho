@@ -120,7 +120,12 @@ class OptimizationProblem {
 
   /* Adds a constraint to the problem */
   addconstraint(functional, selection=nil, field=nil) {
-    var target = functional.total(self.mesh)
+    var target
+    if (selection) {
+      target=functional.total(self.mesh, selection)
+    } else {
+      target=functional.total(self.mesh)
+    }
     var cons = Constraint(functional, target)
     cons.selection = selection
     cons.field = field

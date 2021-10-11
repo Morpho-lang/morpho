@@ -2,9 +2,9 @@
 [version]: # (0.5)
 
 # Builtin functions
-[tagarctan]: # (builtin)
+[tagbuiltin]: # (builtin)
 
-Morpho provides a number of built-in functions. 
+Morpho provides a number of built-in functions.
 
 [showsubtopics]: # (subtopics)
 

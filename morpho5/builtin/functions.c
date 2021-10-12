@@ -54,6 +54,11 @@ BUILTIN_MATH(sqrt)
 
 BUILTIN_MATH(floor)
 BUILTIN_MATH(ceil)
+
+BUILTIN_MATH(isfinite)
+BUILTIN_MATH(isinf)
+BUILTIN_MATH(isnan)
+
 #undef BUILTIN_MATH
 
 /** The arctan function is special; it can either take one or two arguments */
@@ -266,6 +271,7 @@ static bool builtin_minmax(vm *v, value obj, value *min, value *max) {
     return true;
 }
 
+
 /** Find the minimum and maximum values in an enumerable object */
 static value builtin_bounds(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
@@ -375,6 +381,11 @@ void functions_initialize(void) {
 
     BUILTIN_MATH(floor)
     BUILTIN_MATH(ceil)
+
+    BUILTIN_MATH(isfinite)
+    BUILTIN_MATH(isinf)
+    BUILTIN_MATH(isnan)
+
     
     BUILTIN_TYPECHECK(isnil)
     BUILTIN_TYPECHECK(isint)

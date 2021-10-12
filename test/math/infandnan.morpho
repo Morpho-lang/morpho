@@ -1,0 +1,28 @@
+print isinf(1/0)
+// expect: 1
+
+print isinf(1.0)
+// expect: 0
+
+print isinf(0/0)
+// expect: 0
+
+
+print isfinite(1/0)
+// expect: 0
+
+print isfinite(1.0)
+// expect: 1
+
+print isfinite(0/0)
+// expect: 0
+
+
+print isnan(1/0)
+// expect: 0
+
+print isnan(1.0)
+// expect: 0
+
+print isnan(0/0)
+// expect: 1

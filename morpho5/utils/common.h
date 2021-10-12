@@ -139,6 +139,7 @@ int morpho_utf8numberofbytes(uint8_t *string);
 unsigned int morpho_powerof2ceiling(unsigned int n);
 
 bool morpho_isdirectory(const char *path);
+bool white_space_remainder(const char *s, int start);
 
 #ifdef MORPHO_DEBUG
 void morpho_unreachable(const char *explanation);

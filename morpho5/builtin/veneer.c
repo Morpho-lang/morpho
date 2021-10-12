@@ -870,7 +870,7 @@ value List_getindex(vm *v, int nargs, value *args) {
                 morpho_runtimeerror(v, VM_OUTOFBOUNDS);
             }
         } else {
-            UNREACHABLE("getindex called with noninteger args!");
+	        morpho_runtimeerror(v, VM_GETINDEXARGS);
         }
     }
     

@@ -12,6 +12,7 @@
 #include "error.h"
 #include "linedit.h"
 #include "help.h"
+#include "common.h"
 
 #define CLI_PROMPT ">"
 #define CLI_CONTINUATIONPROMPT "~"

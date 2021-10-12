@@ -170,6 +170,7 @@ void cli_help (lineditor *edit, char *query, error *err, bool avail) {
     if (help_querylength(q, NULL)==0) {
         if (err->cat!=ERROR_NONE) {
             q=err->id;
+			error_clear(err);
         } else {
             q=HELP_INDEXPAGE;
         }
@@ -223,8 +224,8 @@ void cli(clioptions opt) {
         
         /* Check for CLI commands. */
         /* Let the user quit by typing 'quit'. */
-        if (strncmp(input, CLI_QUIT, 4)==0) {
-            break;
+        if (strncmp(input, CLI_QUIT, 4)==0 && white_space_remainder(input,4)) {
+			break;
         } else if (strncmp(input, CLI_HELP, strlen(CLI_HELP))==0) {
             cli_help(&edit, input+strlen(CLI_HELP), &err, help); continue;
         } else if (strncmp(input, CLI_SHORT_HELP, strlen(CLI_SHORT_HELP))==0) {
@@ -408,3 +409,4 @@ void cli_list(const char *in, int start, int end) {
         MORPHO_FREE(src);
     }
 }
+

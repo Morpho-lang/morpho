@@ -1729,6 +1729,168 @@ MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineTorsionSq_gradient, BUILTIN_FLAGSE
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineTorsionSq_total, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
+/* ----------------------------------------------
+ * MeanCurvatureSq
+ * ---------------------------------------------- */
+
+typedef struct {
+    objectsparse *areael; // Areas
+    objectselection *selection; // Selection
+    bool integrandonly; // Output integrated curvature or 'bare' curvature.
+} areacurvatureref;
+
+bool areacurvature_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, areacurvatureref *ref) {
+    bool success = true;
+    
+    ref->selection=sel;
+    
+    ref->areael = mesh_getconnectivityelement(mesh, MESH_GRADE_VERTEX, MESH_GRADE_AREA);
+    if (ref->areael) success=sparse_checkformat(ref->areael, SPARSE_CCS, true, false);
+    
+    if (success) {
+        objectsparse *s = mesh_getconnectivityelement(mesh, MESH_GRADE_AREA, MESH_GRADE_VERTEX);
+        if (!s) s=mesh_addconnectivityelement(mesh, MESH_GRADE_AREA, MESH_GRADE_VERTEX);
+        success=s;
+    }
+    
+    if (success) {
+        value integrandonly=MORPHO_FALSE;
+        objectinstance_getproperty(self, curvature_integrandonlyproperty, &integrandonly);
+        ref->integrandonly=MORPHO_ISTRUE(integrandonly);
+    }
+    
+    return success;
+}
+
+/** Return a list of vertices that an element depends on  */
+bool meancurvaturesq_dependencies(functional_mapinfo *info, elementid id, varray_elementid *out) {
+    objectmesh *mesh = info->mesh;
+    areacurvatureref *cref = info->ref;
+    bool success=false;
+    varray_elementid nbrs;
+    varray_elementid synid;
+    
+    varray_elementidinit(&nbrs);
+    varray_elementidinit(&synid);
+    
+    mesh_getsynonyms(mesh, MESH_GRADE_VERTEX, id, &synid);
+    varray_elementidwriteunique(&synid, id);
+    
+    /* Loop over synonyms of the element id */
+    mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_AREA, &nbrs);
+    
+    for (unsigned int i=0; i<nbrs.count; i++) { /* Loop over adjacent triangles */
+        int nvert, *vids;
+        if (!sparseccs_getrowindices(&cref->areael->ccs, nbrs.data[i], &nvert, &vids)) goto meancurvsq_dependencies_cleanup;
+        
+        for (unsigned int j=0; j<nvert; j++) {
+            if (vids[j]==id) continue;
+            varray_elementidwriteunique(out, vids[j]);
+        }
+    }
+    success=true;
+    
+meancurvsq_dependencies_cleanup:
+    varray_elementidclear(&nbrs);
+    varray_elementidclear(&synid);
+    
+    return success;
+}
+
+/** Orders the vertices in the list vids so that the vertex in synid is first */
+bool curvature_ordervertices(varray_elementid *synid, int nv, int *vids) {
+    int posn=-1;
+    for (unsigned int i=0; i<nv && posn<0; i++) {
+        for (unsigned int k=0; k<synid->count; k++) if (synid->data[k]==vids[i]) { posn = i; break; }
+    }
+    
+    if (posn>0) { // If the desired vertex isn't in first position, move it there.
+        int tmp=vids[posn];
+        vids[posn]=vids[0]; vids[0]=tmp;
+    }
+    
+    return (posn>=0);
+}
+
+/** Calculate the integral of the mean curvature squared  */
+bool meancurvaturesq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    areacurvatureref *cref = (areacurvatureref *) ref;
+    double areasum = 0;
+    bool success=false;
+    
+    varray_elementid nbrs;
+    varray_elementid synid;
+    varray_elementidinit(&nbrs);
+    varray_elementidinit(&synid);
+    
+    mesh_getsynonyms(mesh, MESH_GRADE_VERTEX, id, &synid);
+    varray_elementidwriteunique(&synid, id);
+    
+    double frc[mesh->dim]; // This will hold the total force due to the triangles present
+    for (unsigned int i=0; i<mesh->dim; i++) frc[i]=0.0;
+    
+    mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_AREA, &nbrs);
+    
+    for (unsigned int i=0; i<nbrs.count; i++) { /* Loop over adjacent triangles */
+        int nvert, *vids;
+        if (!sparseccs_getrowindices(&cref->areael->ccs, nbrs.data[i], &nvert, &vids)) goto meancurvsq_cleanup;
+        
+        /* Order the vertices */
+        if (!curvature_ordervertices(&synid, nvert, vids)) goto meancurvsq_cleanup;
+        
+        double *x[3], s0[3], s1[3], s01[3], s101[3];
+        double norm;
+        for (int j=0; j<3; j++) matrix_getcolumn(mesh->vert, vids[j], &x[j]);
+        
+        /* s0 = x1-x0; s1 = x2-x1 */
+        functional_vecsub(mesh->dim, x[1], x[0], s0);
+        functional_vecsub(mesh->dim, x[2], x[1], s1);
+        
+        /* F(v0) = (s1 x s0 x s1)/|s0 x x1|/2 */
+        functional_veccross(s0, s1, s01);
+        norm=functional_vecnorm(mesh->dim, s01);
+        if (norm<MORPHO_EPS) goto meancurvsq_cleanup;
+        
+        areasum+=norm/2;
+        functional_veccross(s1, s01, s101);
+        
+        functional_vecaddscale(mesh->dim, frc, 0.5/norm, s101, frc);
+    }
+    
+    *out = functional_vecdot(mesh->dim, frc, frc)/(areasum/3.0)/4.0;
+    if (cref->integrandonly) *out /= (areasum/3.0);
+    success=true;
+    
+meancurvsq_cleanup:
+    varray_elementidclear(&nbrs);
+    varray_elementidclear(&synid);
+    
+    return success;
+}
+
+FUNCTIONAL_INIT(MeanCurvatureSq, MESH_GRADE_VERTEX)
+FUNCTIONAL_METHOD(MeanCurvatureSq, integrand, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_mapintegrand, meancurvaturesq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(MeanCurvatureSq, total, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_sumintegrand, meancurvaturesq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(MeanCurvatureSq, gradient, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_mapnumericalgradient, meancurvaturesq_integrand, meancurvaturesq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
+
+MORPHO_BEGINCLASS(MeanCurvatureSq)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, MeanCurvatureSq_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, MeanCurvatureSq_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, MeanCurvatureSq_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, MeanCurvatureSq_total, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
+/* ----------------------------------------------
+ * GaussCurvature
+ * ---------------------------------------------- */
+
+MORPHO_BEGINCLASS(GaussCurvature)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineTorsionSq_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LineTorsionSq_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineTorsionSq_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineTorsionSq_total, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
 /* **********************************************************************
  * Fields
  * ********************************************************************** */
@@ -2475,6 +2637,8 @@ void functional_initialize(void) {
     builtin_addclass(EQUIELEMENT_CLASSNAME, MORPHO_GETCLASSDEFINITION(EquiElement), objclass);
     builtin_addclass(LINECURVATURESQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineCurvatureSq), objclass);
     builtin_addclass(LINETORSIONSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineTorsionSq), objclass);
+    builtin_addclass(MEANCURVATURESQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(MeanCurvatureSq), objclass);
+    builtin_addclass(GAUSSCURVATURE_CLASSNAME, MORPHO_GETCLASSDEFINITION(GaussCurvature), objclass);
     builtin_addclass(GRADSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(GradSq), objclass);
     builtin_addclass(NORMSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(NormSq), objclass);
     builtin_addclass(LINEINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineIntegral), objclass);

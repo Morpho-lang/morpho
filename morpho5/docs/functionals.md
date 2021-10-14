@@ -103,6 +103,21 @@ The `EquiElement` functional measures the discrepency between the size of elemen
 
 The `LineCurvatureSq` functional measures the integrated curvature squared of a sequence of line elements.
 
+## LineTorsionSq
+[taglinetorsionsq]: # (linetorsionsq)
+
+The `LineTorsionSq` functional measures the integrated torsion squared of a sequence of line elements.
+
+## MeanCurvatureSq
+[tagmeancurvsq]: # (meancurvaturesq)
+
+The `MeanCurvatureSq` functional computes the integrated mean curvature over a surface.
+
+## GaussCurvature
+[taggausscurv]: # (gausscurvature)
+
+The `GaussCurvature` computes the integrated gaussian curvature over a surface.
+
 ## GradSq
 [taggradsq]: # (gradsq)
 

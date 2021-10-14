@@ -19,6 +19,8 @@
 #include "selection.h"
 #include "integrate.h"
 
+#include <math.h>
+
 static value functional_gradeproperty;
 static value functional_fieldproperty;
 //static value functional_functionproperty;
@@ -1884,11 +1886,67 @@ MORPHO_ENDCLASS
  * GaussCurvature
  * ---------------------------------------------- */
 
+/** Calculate the integral of the gaussian curvature  */
+bool gausscurvature_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    areacurvatureref *cref = (areacurvatureref *) ref;
+    double anglesum = 0, areasum = 0;
+    bool success=false;
+    
+    varray_elementid nbrs;
+    varray_elementid synid;
+    varray_elementidinit(&nbrs);
+    varray_elementidinit(&synid);
+    
+    mesh_getsynonyms(mesh, MESH_GRADE_VERTEX, id, &synid);
+    varray_elementidwriteunique(&synid, id);
+    
+    double frc[mesh->dim]; // This will hold the total force due to the triangles present
+    for (unsigned int i=0; i<mesh->dim; i++) frc[i]=0.0;
+    
+    mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_AREA, &nbrs);
+    
+    for (unsigned int i=0; i<nbrs.count; i++) { /* Loop over adjacent triangles */
+        int nvert, *vids;
+        if (!sparseccs_getrowindices(&cref->areael->ccs, nbrs.data[i], &nvert, &vids)) goto gausscurv_cleanup;
+        
+        /* Order the vertices */
+        if (!curvature_ordervertices(&synid, nvert, vids)) goto gausscurv_cleanup;
+        
+        double *x[3], s0[3], s1[3], s01[3];
+        for (int j=0; j<3; j++) matrix_getcolumn(mesh->vert, vids[j], &x[j]);
+        
+        /* s0 = x1-x0; s1 = x2-x0 */
+        functional_vecsub(mesh->dim, x[1], x[0], s0);
+        functional_vecsub(mesh->dim, x[2], x[0], s1);
+        
+        functional_veccross(s0, s1, s01);
+        double area = functional_vecnorm(mesh->dim, s01);
+        anglesum+=atan2(area, functional_vecdot(mesh->dim, s0, s1));
+        
+        areasum+=area/2;
+    }
+
+    *out = 2*M_PI-anglesum;
+    if (cref->integrandonly) *out /= (areasum/3.0);
+    success=true;
+    
+gausscurv_cleanup:
+    varray_elementidclear(&nbrs);
+    varray_elementidclear(&synid);
+    
+    return success;
+}
+
+FUNCTIONAL_INIT(GaussCurvature, MESH_GRADE_VERTEX)
+FUNCTIONAL_METHOD(GaussCurvature, integrand, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_mapintegrand, gausscurvature_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(GaussCurvature, total, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_sumintegrand, gausscurvature_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(GaussCurvature, gradient, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_mapnumericalgradient, gausscurvature_integrand, meancurvaturesq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
+
 MORPHO_BEGINCLASS(GaussCurvature)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineTorsionSq_init, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LineTorsionSq_integrand, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineTorsionSq_gradient, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineTorsionSq_total, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, GaussCurvature_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, GaussCurvature_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, GaussCurvature_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, GaussCurvature_total, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

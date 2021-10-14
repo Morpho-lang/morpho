@@ -1,0 +1,18 @@
+// Gaussian curvature with torus
+import constants
+import implicitmesh
+import plot
+
+// Make a sphere
+// Torus
+var r=1
+var a=0.35
+
+var impl = ImplicitMeshBuilder(fn (x,y,z) (x^2+y^2+z^2+r^2-a^2)^2 - 4*r^2*(x^2+y^2))
+var mesh = impl.build(start=Matrix([1,0,0.5]), stepsize=0.25, maxiterations=400)
+
+// Mean Squared curvature
+var lmc = GaussCurvature()
+
+print abs(lmc.total(mesh))<1e-6
+// expect: true

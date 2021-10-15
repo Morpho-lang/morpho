@@ -42,6 +42,9 @@
 #define FIELD_OPRETURN                   "FldOpFn"
 #define FIELD_OPRETURN_MSG               "Could not construct a Field from the return value of the function passed to 'op'."
 
+#define FIELD_MESHARG                    "FldMshArg"
+#define FIELD_MESHARG_MSG                "Field expects a mesh as its first argurment"
+
 void field_zero(objectfield *field);
 
 bool field_getelement(objectfield *field, grade grade, elementid el, int indx, value *out);

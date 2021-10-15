@@ -64,6 +64,9 @@
 #define SCALARPOTENTIAL_FNCLLBL        "SclrPtFnCllbl"
 #define SCALARPOTENTIAL_FNCLLBL_MSG    "ScalarPotential function is not callable."
 
+#define LINEINTEGRAL_ARGS              "LnIntArgs"
+#define LINEINTEGRAL_ARGS_MSG          "LineIntegral requires a field as the argument."
+
 #define LINEARELASTICITY_REF           "LnElstctyRef"
 #define LINEARELASTICITY_REF_MSG       "LinearElasticity requires a mesh as the argument."
 

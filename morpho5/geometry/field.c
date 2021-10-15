@@ -142,9 +142,18 @@ objectfield *field_newwithfunction(vm *v, objectmesh *mesh, value fn) {
     
     if (new) {
         for (elementid i=0; i<nv; i++) {
+            // for each element in the field
             if (mesh_getvertexcoordinatesasvalues(mesh, i, coords)) {
-                if (!morpho_call(v, fn, mesh->dim, coords, &ret)) goto field_newwithfunction_cleanup;
-                if (!field_setelement(new, MESH_GRADE_VERTEX, i, 0, ret)) goto field_newwithfunction_cleanup;
+                //get the vertex coordinates
+                if (!morpho_call(v, fn, mesh->dim, coords, &ret)){
+                     // if the fn call fails go to clean up this should throw an error from morpho_call
+                     goto field_newwithfunction_cleanup;
+                     }
+                if (!field_setelement(new, MESH_GRADE_VERTEX, i, 0, ret)) {
+                    // if we can't set the field value to the ouptut of the function clean up
+                    morpho_runtimeerror(v,FIELD_OPRETURN);
+                    goto field_newwithfunction_cleanup;
+                }
             }
         }
     }
@@ -399,12 +408,16 @@ value field_constructor(vm *v, int nargs, value *args) {
         morpho_runtimeerror(v, FIELD_ARGS);
     
     for (unsigned int i=0; i<nfixed; i++) {
-        if (MORPHO_ISMESH(MORPHO_GETARG(args, i))) mesh = MORPHO_GETMESH(MORPHO_GETARG(args, i));
-        else if (morpho_iscallable(MORPHO_GETARG(args, i))) fn = MORPHO_GETARG(args, i);
-        else if (field_checkprototype(MORPHO_GETARG(args, i))) prototype = MORPHO_GETARG(args, i);
+        if (MORPHO_ISMESH(MORPHO_GETARG(args, i))) mesh = MORPHO_GETMESH(MORPHO_GETARG(args, i)); // if the ith argument is a mesh get that mesh and assign it
+        else if (morpho_iscallable(MORPHO_GETARG(args, i))) fn = MORPHO_GETARG(args, i); // if the ith argurment is a function to call put that in the fn spot
+        else if (field_checkprototype(MORPHO_GETARG(args, i))) prototype = MORPHO_GETARG(args, i); //if the ith argument is a prototype put that in the prototype spot
     }
     
-    if (!mesh) return MORPHO_NIL;
+    if (!mesh) {
+        // if we don't have a mesh return a nil and thorw and error
+        morpho_runtimeerror(v,FIELD_MESHARG);
+        return MORPHO_NIL;
+    } 
     unsigned int ngrades = mesh_maxgrade(mesh)+1;
     unsigned int dof[ngrades];
     for (unsigned int i=0; i<ngrades; i++) dof[i]=0;
@@ -739,4 +752,5 @@ void field_initialize(void) {
     morpho_defineerror(FIELD_ARGS, ERROR_HALT, FIELD_ARGS_MSG);
     morpho_defineerror(FIELD_OP, ERROR_HALT, FIELD_OP_MSG);
     morpho_defineerror(FIELD_OPRETURN, ERROR_HALT, FIELD_OPRETURN_MSG);
+    morpho_defineerror(FIELD_MESHARG, ERROR_HALT, FIELD_MESHARG_MSG);
 }

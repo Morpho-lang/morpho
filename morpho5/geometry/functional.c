@@ -88,6 +88,7 @@ bool functional_validateargs(vm *v, int nargs, value *args, functional_mapinfo *
             if (info->field) info->mesh = (info->field->mesh); // Retrieve the mesh from the field
         }
     }
+
     
     if (info->mesh) return true;
     morpho_runtimeerror(v, FUNC_INTEGRAND_MESH);
@@ -2344,6 +2345,10 @@ value LineIntegral_init(vm *v, int nargs, value *args) {
         /* Remaining arguments should be fields */
         objectlist *list = object_newlist(nargs-1, & MORPHO_GETARG(args, 1));
         if (!list) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
+        if (!MORPHO_ISFIELD(MORPHO_GETARG(args, 1))){
+            // if one remaining arguments in not a field throw an error
+            morpho_runtimeerror(v,LINEINTEGRAL_ARGS);
+        }
         value field = MORPHO_OBJECT(list);
         objectinstance_setproperty(self, functional_fieldproperty, field);
         morpho_bindobjects(v, 1, &field);
@@ -2494,5 +2499,6 @@ void functional_initialize(void) {
     morpho_defineerror(NEMATIC_ARGS, ERROR_HALT, NEMATIC_ARGS_MSG);
     morpho_defineerror(NEMATICELECTRIC_ARGS, ERROR_HALT, NEMATICELECTRIC_ARGS_MSG);
     morpho_defineerror(FUNCTIONAL_ARGS, ERROR_HALT, FUNCTIONAL_ARGS_MSG);
+    morpho_defineerror(LINEINTEGRAL_ARGS, ERROR_HALT, LINEINTEGRAL_ARGS_MSG);
 }
  

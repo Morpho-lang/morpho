@@ -32,7 +32,7 @@ Retrieves the position of a vertex given an id:
 
     print m.vertexposition(id)
 
-## Setertexposition
+## Setvertexposition
 [tagsetvertexposition]: # (setvertexposition)
 
 Sets the position of a vertex given an id and a position vector:

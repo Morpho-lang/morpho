@@ -14,6 +14,7 @@
 #include <limits.h>
 
 static value file_fileproperty;
+static value file_filenameproperty;
 
 /** Store the current working directory (relative to the filing systems cwd) */
 static varray_char workingdir;
@@ -70,22 +71,27 @@ void file_setworkingdirectory(const char *path) {
     }
 }
 
-/** Open a file relative to the current working directory (usually the script directory) */
-FILE *file_openrelative(const char *fname, const char *mode) {
-    varray_char name;
-    varray_charinit(&name);
-
+/** Gets the relative path for a given file */
+void file_relativepath(const char *fname, varray_char *name) {
     /* Check the fname passed isn't a global file reference (i.e. starts with / or ~) */
     if (fname[0]!='~' && fname[0]!='/') {
         if (workingdir.count>0) {
             for (unsigned int i=0; i<workingdir.count && workingdir.data[i]!='\0'; i++) {
-                varray_charwrite(&name, workingdir.data[i]);
+                varray_charwrite(name, workingdir.data[i]);
             }
-            varray_charwrite(&name, '/');
+            varray_charwrite(name, '/');
         }
     }
-    varray_charadd(&name, (char *) fname, (int) strlen(fname));
-    varray_charwrite(&name, '\0');
+    varray_charadd(name, (char *) fname, (int) strlen(fname));
+    varray_charwrite(name, '\0'); // Ensure string is null terminated.
+}
+
+/** Open a file relative to the current working directory (usually the script directory) */
+FILE *file_openrelative(const char *fname, const char *mode) {
+    varray_char name;
+    varray_charinit(&name);
+    
+    file_relativepath(fname, &name);
     
     FILE *out=fopen(name.data, mode);
     
@@ -125,6 +131,12 @@ value File_init(vm *v, int nargs, value *args) {
         if (!f) MORPHO_RAISEVARGS(v, FILE_OPENFAILED, fname);
         
         file_setfile(MORPHO_SELF(args), f);
+        
+        value filename = object_stringfromcstring(fname, strlen(fname));
+        
+        objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), file_filenameproperty, filename);
+        
+        morpho_bindobjects(v, 1, &filename);
     }
     
     return MORPHO_NIL;
@@ -254,6 +266,24 @@ value File_write(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Get the path of a file relative to the CWD */
+value File_relativepath(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    value fname = MORPHO_NIL;
+    varray_char path;
+    varray_charinit(&path);
+    
+    if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), file_filenameproperty, &fname)) {
+        file_relativepath(MORPHO_GETCSTRING(fname), &path);
+        
+        out = object_stringfromvarraychar(&path);
+        morpho_bindobjects(v, 1, &out);
+    }
+    
+    varray_charclear(&path);
+    return out;
+}
+
 /** Detects whether we're at the end of the file  */
 value File_eof(vm *v, int nargs, value *args) {
     FILE *f=file_getfile(MORPHO_SELF(args));
@@ -274,6 +304,7 @@ MORPHO_METHOD(FILE_LINES, File_lines, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_READLINE, File_readline, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_READCHAR, File_readchar, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_WRITE, File_write, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FILE_RELATIVEPATH, File_relativepath, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_EOF, File_eof, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
@@ -282,6 +313,7 @@ void file_initialize(void) {
     
     builtin_addclass(FILE_CLASSNAME, MORPHO_GETCLASSDEFINITION(File), MORPHO_NIL);
     file_fileproperty=builtin_internsymbolascstring(FILE_FILEPROPERTY);
+    file_filenameproperty=builtin_internsymbolascstring(FILE_FILENAMEPROPERTY);
     
     morpho_defineerror(FILE_OPENFAILED, ERROR_HALT, FILE_OPENFAILED_MSG);
     morpho_defineerror(FILE_NEEDSFILENAME, ERROR_HALT, FILE_NEEDSFILENAME_MSG);

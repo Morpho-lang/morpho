@@ -172,7 +172,7 @@ value object_stringfromcstring(const char *in, size_t length) {
         new->string=new->stringdata;
         new->string[length] = '\0'; /* Zero terminate the string to be compatible with C */
         memcpy(new->string, in, length);
-        new->length=length;
+        new->length=strlen(new->string);
         out = MORPHO_OBJECT(new);
     }
     return out;

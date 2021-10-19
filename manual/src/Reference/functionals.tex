@@ -1,0 +1,254 @@
+\hypertarget{functionals}{%
+\section{Functionals}\label{functionals}}
+
+A number of \texttt{functionals} are available in Morpho. Each of these
+represents an integral over some \texttt{Mesh} and \texttt{Field}
+objects (on a particular \texttt{Selection}) and are used to define
+energies and constraints in an \texttt{OptimizationProblem} provided by
+the \texttt{optimize} module.
+
+Many functionals are built in. Additional functionals are available by
+importing the \texttt{functionals} module:
+
+\begin{lstlisting}
+import `functionals`
+\end{lstlisting}
+
+Functionals provide a number of standard methods:
+
+\begin{itemize}
+
+\item
+  \texttt{total}(mesh) - returns the value of the integral with a
+  provided mesh, selection and fields
+\item
+  \texttt{integrand}(mesh) - returns the contribution to the integral
+  from each element
+\item
+  \texttt{gradient}(mesh) - returns the gradient of the functional with
+  respect to vertex motions.
+\item
+  \texttt{fieldgradient}(mesh, field) - returns the gradient of the
+  functional with respect to components of the field
+\end{itemize}
+
+Each of these may be called with a mesh, a field and a selection.
+
+\hypertarget{length}{%
+\section{Length}\label{length}}
+
+A \texttt{Length} functional calculates the length of a line elements in
+a mesh.
+
+Evaluate the length of a circular loop: import constants import
+meshtools var m = LineMesh(fn (t) {[}cos(t), sin(t), 0{]},
+0\ldots2*Pi:Pi/20, closed=true) var le = Length() print le.total(m)
+
+\hypertarget{areaenclosed}{%
+\section{AreaEnclosed}\label{areaenclosed}}
+
+An \texttt{AreaEnclosed} functional calculates the area enclosed by a
+loop of line elements.
+
+\begin{lstlisting}
+var la = AreaEnclosed()
+\end{lstlisting}
+
+\hypertarget{area}{%
+\section{Area}\label{area}}
+
+An \texttt{Area} functional calculates the area of a area elements in a
+mesh:
+
+\begin{lstlisting}
+var la = Area()
+print la.total(mesh)
+\end{lstlisting}
+
+\hypertarget{volumeenclosed}{%
+\section{VolumeEnclosed}\label{volumeenclosed}}
+
+An \texttt{VolumeEnclosed} functional calculates the volume enclosed by
+a surface of line elements. Note that this estimate may be inaccurate
+for highly deformed surfaces.
+
+\begin{lstlisting}
+var lv = VolumeEnclosed()
+\end{lstlisting}
+
+\hypertarget{volume}{%
+\section{Volume}\label{volume}}
+
+An \texttt{Volume} functional calculates the volume of volume elements.
+
+\begin{lstlisting}
+var lv = Volume()
+\end{lstlisting}
+
+\hypertarget{scalarpotential}{%
+\section{ScalarPotential}\label{scalarpotential}}
+
+The \texttt{ScalarPotential} functional is applied to point elements.
+
+\begin{lstlisting}
+var ls = ScalarPotential(potential, gradient)
+\end{lstlisting}
+
+You must supply two functions (which may be anonymous) that return the
+potential and gradient respectively.
+
+This functional is often used to implement level set constraints. For
+example, to confine a set of points to a sphere:
+
+\begin{lstlisting}
+import optimize
+fn sphere(x,y,z) { return x^2+y^2+z^2-1 }
+fn grad(x,y,z) { return Matrix([2*x, 2*y, 2*z]) }
+var lsph = ScalarPotential(sphere, grad)
+problem.addlocalconstraint(lsph)
+\end{lstlisting}
+
+See the thomson example.
+
+\hypertarget{linearelasticity}{%
+\section{LinearElasticity}\label{linearelasticity}}
+
+The \texttt{LinearElasticity} functional measures the linear elastic
+energy away from a reference state.
+
+You must initialize with a reference mesh: var le =
+LinearElasticity(mref)
+
+Manually set the poisson's ratio and grade to operate on:
+le.poissonratio = 0.2 le.grade = 2
+
+\hypertarget{equielement}{%
+\section{EquiElement}\label{equielement}}
+
+The \texttt{EquiElement} functional measures the discrepency between the
+size of elements adjacent to each vertex. It can be used to equalize
+elements for regularization purposes.
+
+\hypertarget{linecurvaturesq}{%
+\section{LineCurvatureSq}\label{linecurvaturesq}}
+
+The \texttt{LineCurvatureSq} functional measures the integrated
+curvature squared of a sequence of line elements.
+
+\hypertarget{linetorsionsq}{%
+\section{LineTorsionSq}\label{linetorsionsq}}
+
+The \texttt{LineTorsionSq} functional measures the integrated torsion
+squared of a sequence of line elements.
+
+\hypertarget{meancurvaturesq}{%
+\section{MeanCurvatureSq}\label{meancurvaturesq}}
+
+The \texttt{MeanCurvatureSq} functional computes the integrated mean
+curvature over a surface.
+
+\hypertarget{gausscurvature}{%
+\section{GaussCurvature}\label{gausscurvature}}
+
+The \texttt{GaussCurvature} computes the integrated gaussian curvature
+over a surface.
+
+\hypertarget{gradsq}{%
+\section{GradSq}\label{gradsq}}
+
+The \texttt{GradSq} functional measures the integral of the gradient
+squared of a field. The field can be a scalar, vector or matrix
+function.
+
+Initialize with the required field: var le=GradSq(phi)
+
+\hypertarget{nematic}{%
+\section{Nematic}\label{nematic}}
+
+The \texttt{Nematic} functional measures the elastic energy of a nematic
+liquid crystal.
+
+\begin{lstlisting}
+var lf=Nematic(nn)
+\end{lstlisting}
+
+There are a number of optional parameters that can be used to set the
+splay, twist and bend constants:
+
+\begin{lstlisting}
+var lf=Nematic(nn, ksplay=1, ktwist=0.5, kbend=1.5, pitch=0.1)
+\end{lstlisting}
+
+These are stored as properties of the object and can be retrieved as
+follows: print lf.ksplay
+
+\hypertarget{nematicelectric}{%
+\section{NematicElectric}\label{nematicelectric}}
+
+The \texttt{NematicElectric} functional measures the integral of a
+nematic and electric coupling term integral((n.E)\^{}2) where the
+electric field E may be computed from a scalar potential or supplied as
+a vector.
+
+Initialize with a director field \texttt{nn} and a scalar potential
+\texttt{phi}: var lne = NematicElectric(nn, phi)
+
+\hypertarget{normsq}{%
+\section{NormSq}\label{normsq}}
+
+The \texttt{NormSq} functional measures the elementwise L2 norm squared
+of a field.
+
+\hypertarget{lineintegral}{%
+\section{LineIntegral}\label{lineintegral}}
+
+The \texttt{LineIntegral} functional computes the line integral of a
+function. You supply an integrand function that takes a position matrix
+as an argument.
+
+To compute integral(x\textsuperscript{2+y}2) over a line element:
+
+\begin{lstlisting}
+var la=LineIntegral(fn (x) x[0]^2+x[1]^2)
+\end{lstlisting}
+
+The function \texttt{tangent()} returns a unit vector tangent to the
+current element:
+
+\begin{lstlisting}
+var la=LineIntegral(fn (x) x.inner(tangent()))
+\end{lstlisting}
+
+You can also integrate functions that involve fields:
+
+\begin{lstlisting}
+var la=LineIntegral(fn (x, n) n.inner(tangent()), n)
+\end{lstlisting}
+
+where \texttt{n} is a vector field. The local interpolated value of this
+field is passed to your integrand function. More than one field can be
+used; they are passed as arguments to the integrand function in the
+order you supply them to \texttt{LineIntegrand}.
+
+\hypertarget{areaintegral}{%
+\section{AreaIntegral}\label{areaintegral}}
+
+The \texttt{AreaIntegral} functional computes the area integral of a
+function. You supply an integrand function that takes a position matrix
+as an argument.
+
+To compute integral(x*y) over an area element:
+
+\begin{lstlisting}
+var la=AreaIntegral(fn (x) x[0]*x[1])
+\end{lstlisting}
+
+You can also integrate functions that involve fields:
+
+\begin{lstlisting}
+var la=AreaIntegral(fn (x, phi) phi^2, phi)
+\end{lstlisting}
+
+More than one field can be used; they are passed as arguments to the
+integrand function in the order you supply them to
+\texttt{AreaIntegrand}.

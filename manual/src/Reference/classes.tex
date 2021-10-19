@@ -1,0 +1,69 @@
+\hypertarget{classes}{%
+\section{Classes}\label{classes}}
+
+Classes are defined using the \texttt{class} keyword followed by the
+name of the class. The definition includes methods that the class
+responds to. The special \texttt{init} method is called whenever an
+object is created.
+
+\begin{lstlisting}
+class Cake {
+    init(type) {
+        self.type = type
+    }
+
+    eat() {
+        print "A delicious "+type+" cake"
+    }
+}
+\end{lstlisting}
+
+Objects are created by calling the class as if it was a function:
+
+\begin{lstlisting}
+var c = Cake("carrot")
+\end{lstlisting}
+
+Methods are called using the . operator:
+
+\begin{lstlisting}
+c.eat()
+\end{lstlisting}
+
+\hypertarget{self}{%
+\section{Self}\label{self}}
+
+The \texttt{self} keyword is used to access an object's properties and
+methods from within its definition.
+
+\begin{lstlisting}
+class Vehicle {
+  init (type) { self.type = type }
+}
+\end{lstlisting}
+
+\hypertarget{super}{%
+\section{Super}\label{super}}
+
+The keyword \texttt{super} allows you to access methods provided by an
+object's superclass rather than its own. This is particularly useful
+when the programmer wants a class to extend the functionality of a
+parent class, but needs to make sure the old behavior is still
+maintained.
+
+For example, consider the following pair of classes:
+
+\begin{lstlisting}
+class Lunch {
+    init(type) { self.type=type }
+}
+
+class Soup < Lunch {
+    init(type) {
+        print "Delicious soup!"
+        super.init(type)
+    }
+}
+\end{lstlisting}
+
+The subclass Soup uses \texttt{super} to call the original initializer.

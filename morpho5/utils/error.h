@@ -119,7 +119,7 @@ void morpho_unreachable(const char *explanation);
 * ********************************************************************** */
 
 #define VM_INVLDOP                        "InvldOp"
-#define VM_INVLDOP_MSG                    "Invalid operands."
+#define VM_INVLDOP_MSG                    "Invalid operands. Failed to %s %s and %s"
 
 #define VM_CNCTFLD                        "CnctFld"
 #define VM_CNCTFLD_MSG                    "Concatenation failed."

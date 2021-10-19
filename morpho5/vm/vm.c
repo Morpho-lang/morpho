@@ -928,7 +928,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                     DISPATCH();
                 }
             }
-            OPERROR("add");
+            OPERROR("Add");
             DISPATCH();
         
         CASE_CODE(SUB):
@@ -1074,7 +1074,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                 }
             } 
         
-            OPERROR("Expoentiate")
+            OPERROR("Exponentiate")
             DISPATCH();
         
         

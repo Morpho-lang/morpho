@@ -526,6 +526,37 @@ void vm_runtimeerror(vm *v, ptrdiff_t iindx, errorid id, ...) {
     va_end(args);
 }
 
+/** @brief Raises a BadOp error
+ * @param v        the virtual machine
+ * @param id       error id
+ * @param op       the opertion that went bad in (human readable)
+ * @param left     the left hand side of the bad operation
+ * @param right    the right hand side of the bad operation */
+void vm_throwOpError(vm *v, ptrdiff_t iindx, errorid id, char* op, value left, value right){
+    varray_char left_buffer;
+    varray_char right_buffer;
+    varray_charinit(&left_buffer);
+    varray_charinit(&right_buffer);
+    morpho_printtobuffer(v, left, &left_buffer);
+    morpho_printtobuffer(v, right, &right_buffer);
+    varray_charresize(&left_buffer,left_buffer.count);
+    varray_charresize(&right_buffer,right_buffer.count);
+
+    // ensure the the rest of the alocated data is empty
+    for (int i = left_buffer.count; i<left_buffer.capacity; i++ ){
+        varray_charwrite(&left_buffer,'\0');
+    }
+
+    for (int i = right_buffer.count; i<right_buffer.capacity; i++ ){
+        varray_charwrite(&right_buffer,'\0');
+    }
+
+    vm_runtimeerror(v,iindx,id,op,left_buffer.data,right_buffer.data);
+    varray_charclear(&left_buffer);
+    varray_charclear(&right_buffer);
+    }
+
+
 /** @brief Captures an upvalue
  *  @param v        the virtual machine
  *  @param reg      register to capture
@@ -835,6 +866,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
     
 #define ERROR(id) { vm_runtimeerror(v, pc-v->instructions, id); goto vm_error; }
 #define VERROR(id, ...) { vm_runtimeerror(v, pc-v->instructions, id, __VA_ARGS__); goto vm_error; }
+#define OPERROR(op){vm_throwOpError(v,pc-v->instructions,VM_INVLDOP,op,left,right); goto vm_error; }
 #define ERRORCHK() if (v->err.cat!=ERROR_NONE) goto vm_error;
     
     INTERPRET_LOOP
@@ -896,8 +928,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                     DISPATCH();
                 }
             }
-        
-            ERROR(VM_INVLDOP);
+            OPERROR("add");
             DISPATCH();
         
         CASE_CODE(SUB):
@@ -937,7 +968,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                 }
             }
         
-            ERROR(VM_INVLDOP);
+            OPERROR("Subtract")
             DISPATCH();
         
         CASE_CODE(MUL):
@@ -977,7 +1008,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                 }
             }
         
-            ERROR(VM_INVLDOP);
+            OPERROR("Multiply")
             DISPATCH();
         
         CASE_CODE(DIV):
@@ -1017,7 +1048,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                 }
             }
         
-            ERROR(VM_INVLDOP);
+            OPERROR("Divide");
             DISPATCH();
         
         CASE_CODE(POW):
@@ -1043,7 +1074,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                 }
             } 
         
-            ERROR(VM_INVLDOP);
+            OPERROR("Expoentiate")
             DISPATCH();
         
         
@@ -1092,7 +1123,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
         
             if ( !( (MORPHO_ISFLOAT(left) || MORPHO_ISINTEGER(left)) &&
                    (MORPHO_ISFLOAT(right) || MORPHO_ISINTEGER(right)) ) ) {
-                ERROR(VM_INVLDOP);
+                OPERROR("Compare");
             }
         
             CHECKCMPTYPE(left,right);
@@ -1106,7 +1137,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 
             if ( !( (MORPHO_ISFLOAT(left) || MORPHO_ISINTEGER(left)) &&
                    (MORPHO_ISFLOAT(right) || MORPHO_ISINTEGER(right)) ) ) {
-                ERROR(VM_INVLDOP);
+                OPERROR("Compare");
             }
         
             CHECKCMPTYPE(left,right);

@@ -1,0 +1,38 @@
+\hypertarget{functions}{%
+\section{Functions}\label{functions}}
+
+A function in morpho is defined with the \texttt{fn} keyword, followed
+by the function's name, a list of parameters enclosed in parentheses,
+and the body of the function in curly braces. This example computes the
+square of a number:
+
+\begin{lstlisting}
+fn sqr(x) {
+  return x*x
+}
+\end{lstlisting}
+
+Once a function has been defined you can evaluate it like any other
+morpho function.
+
+\begin{lstlisting}
+print sqr(2)
+\end{lstlisting}
+
+\hypertarget{return}{%
+\section{Return}\label{return}}
+
+The \texttt{return} keyword is used to exit from a function, optionally
+passing a given value back to the caller. \texttt{return} can be used
+anywhere within a function. The below example calculates the \texttt{n}
+th Fibonacci number,
+
+\begin{lstlisting}
+fn fib(n) {
+  if (n<2) return n
+  return fib(n-1) + fib(n-2)
+}
+\end{lstlisting}
+
+by returning early if \texttt{n\textless{}2}, otherwise returning the
+result by recursively calling itself.

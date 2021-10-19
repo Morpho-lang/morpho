@@ -1,0 +1,239 @@
+\hypertarget{graphics}{%
+\section{Graphics}\label{graphics}}
+
+The \texttt{graphics} module provides a number of classes to provide
+simple visualization capabilities. To use it, you first need to import
+the module:
+
+\begin{lstlisting}
+import graphics
+\end{lstlisting}
+
+The \texttt{Graphics} class acts as an abstract container for graphical
+information; to actually launch the display see the \texttt{Show} class.
+You can create an empty scene like this,
+
+\begin{lstlisting}
+var g = Graphics()
+\end{lstlisting}
+
+Additional elements can be added using the \texttt{display} method.
+
+\begin{lstlisting}
+g.display(element)
+\end{lstlisting}
+
+Morpho provides the following fundamental Graphical element classes:
+
+\begin{lstlisting}
+TriangleComplex
+\end{lstlisting}
+
+You can also use functions like \texttt{Arrow}, \texttt{Tube} and
+\texttt{Cylinder} to create these elements conveniently.
+
+To combine graphics objects, use the add operator:
+
+\begin{lstlisting}
+var g1 = Graphics(), g2 = Graphics()
+// ...
+Show(g1+g2)
+\end{lstlisting}
+
+\hypertarget{show}{%
+\section{Show}\label{show}}
+
+\texttt{Show} is used to launch an interactive graphical display using
+the external \texttt{morphoview} application. \texttt{Show} takes a
+\texttt{Graphics} object as an argument:
+
+\begin{lstlisting}
+var g = Graphics()
+Show(g)
+\end{lstlisting}
+
+\hypertarget{trianglecomplex}{%
+\section{TriangleComplex}\label{trianglecomplex}}
+
+A \texttt{TriangleComplex} is a graphical element that can be used as
+part of a graphical display. It consists of a list of vertices and a
+connectivity matrix that selects which vertices are used in each
+triangle.
+
+To create one, call the constructor with the following arguments:
+
+\begin{lstlisting}
+TriangleComplex(position, normals, colors, connectivity)
+\end{lstlisting}
+
+\begin{itemize}
+
+\item
+  \texttt{position} is a \texttt{Matrix} containing vertex positions as
+  \emph{columns}.
+\item
+  \texttt{normals} is a \texttt{Matrix} with a normal for each vertex.
+\item
+  \texttt{colors} is the color of the object.
+\item
+  \texttt{connectivity} is a \texttt{Sparse} matrix where each column
+  represents a triangle and rows correspond to vertices.
+\end{itemize}
+
+Add to a \texttt{Graphics} object using the \texttt{display} method.
+
+\hypertarget{arrow}{%
+\section{Arrow}\label{arrow}}
+
+The \texttt{Arrow} function creates an arrow. It takes two arguments:
+
+\begin{lstlisting}
+arrow(start, end)
+\end{lstlisting}
+
+\begin{itemize}
+
+\item
+  \texttt{start} and \texttt{end} are the two vertices. The arrow points
+  \texttt{start} -\textgreater{} \texttt{end}.
+\end{itemize}
+
+You can also provide optional arguments:
+
+\begin{itemize}
+
+\item
+  \texttt{aspectratio} controls the width of the arrow relative to its
+  length
+\item
+  \texttt{n} is an integer that controls the quality of the display.
+  Higher \texttt{n} leads to a rounder arrow.
+\item
+  \texttt{color} is the color of the arrow. This can be a list of RGB
+  values or a \texttt{Color} object
+\end{itemize}
+
+Display an arrow:
+
+\begin{lstlisting}
+var g = Graphics([])
+g.display(Arrow([-1/2,-1/2,-1/2], [1/2,1/2,1/2], aspectratio=0.05, n=10))
+Show(g)
+\end{lstlisting}
+
+\hypertarget{cylinder}{%
+\section{Cylinder}\label{cylinder}}
+
+The \texttt{Cylinder} function creates a cylinder. It takes two required
+arguments:
+
+\begin{lstlisting}
+cylinder(start, end)
+\end{lstlisting}
+
+\begin{itemize}
+
+\item
+  \texttt{start} and \texttt{end} are the two vertices.
+\end{itemize}
+
+You can also provide optional arguments:
+
+\begin{itemize}
+
+\item
+  \texttt{aspectratio} controls the width of the cylinder relative to
+  its length.
+\item
+  \texttt{n} is an integer that controls the quality of the display.
+  Higher \texttt{n} leads to a rounder cylinder.
+\item
+  \texttt{color} is the color of the cylinder. This can be a list of RGB
+  values or a \texttt{Color} object.
+\end{itemize}
+
+Display an cylinder:
+
+\begin{lstlisting}
+var g = Graphics()
+g.display(Cylinder([-1/2,-1/2,-1/2], [1/2,1/2,1/2], aspectratio=0.1, n=10))
+Show(g)
+\end{lstlisting}
+
+\hypertarget{tube}{%
+\section{Tube}\label{tube}}
+
+The \texttt{Tube} function connects a sequence of points to form a tube.
+
+\begin{lstlisting}
+Tube(points, radius)
+\end{lstlisting}
+
+\begin{itemize}
+
+\item
+  \texttt{points} is a list of points; this can be a list of lists or a
+  \texttt{Matrix} with the positions as columns.
+\item
+  \texttt{radius} is the radius of the tube.
+\end{itemize}
+
+You can also provide optional arguments:
+
+\begin{itemize}
+
+\item
+  \texttt{n} is an integer that controls the quality of the display.
+  Higher \texttt{n} leads to a rounder tube.
+\item
+  \texttt{color} is the color of the tube. This can be a list of RGB
+  values or a \texttt{Color} object.
+\item
+  \texttt{closed} is a \texttt{bool} that indicates whether the tube
+  should be closed to form a loop.
+\end{itemize}
+
+Draw a square:
+
+\begin{lstlisting}
+var a = Tube([[-1/2,-1/2,0],[1/2,-1/2,0],[1/2,1/2,0],[-1/2,1/2,0]], 0.1, closed=true)
+var g = Graphics()
+g.display(a)
+\end{lstlisting}
+
+\hypertarget{sphere}{%
+\section{Sphere}\label{sphere}}
+
+The \texttt{Sphere} function creates a sphere.
+
+\begin{lstlisting}
+Sphere(center, radius)
+\end{lstlisting}
+
+\begin{itemize}
+
+\item
+  \texttt{center} is the position of the center of the sphere; this can
+  be a list or column \texttt{Matrix}.
+\item
+  \texttt{radius} is the radius of the sphere
+\end{itemize}
+
+You can also provide an optional argument:
+
+\begin{itemize}
+
+\item
+  \texttt{color} is the color of the sphere. This can be a list of RGB
+  values or a \texttt{Color} object.
+\end{itemize}
+
+Draw some randomly sized spheres:
+
+\begin{lstlisting}
+var g = Graphics()
+for (i in 0...10) {
+  g.display(Sphere([random()-1/2, random()-1/2, random()-1/2], 0.1*(1+random()),       color=Gray(random())))
+}
+Show(g)
+\end{lstlisting}

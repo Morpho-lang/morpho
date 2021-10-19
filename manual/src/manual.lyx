@@ -1,0 +1,3384 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass book
+\begin_preamble
+\usepackage{titlesec}
+\titleformat{\part}
+  {\normalfont\sffamily\huge}
+  {\partname\ \thepart}{1em}{}
+\titleformat{\chapter}[display]
+  {\normalfont\sffamily\huge}
+  {\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titleformat{\section}
+  {\normalfont\sffamily\Large}
+  {\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\sffamily\large}
+  {\thesection}{1em}{}
+\titleformat{\subsubsection}
+  {\normalfont\sffamily\normalsize}
+  {\thesection}{1em}{}
+
+\usepackage{newtxtext}
+\usepackage{titletoc}
+
+\setcounter{tocdepth}{0}
+
+\contentsmargin[1cm]{0cm}
+
+\titlecontents{part}[0em]{\vskip12pt\bfseries\sffamily}
+{\thecontentslabel\enspace}
+{\hspace{1.05em}}
+{ \hfill\contentspage}[\vskip 6pt]
+
+\titlecontents{chapter}[0em]{\vskip12pt\bfseries\sffamily}
+{\thecontentslabel\enspace}
+{\hspace{1.05em}}
+{ \hfill\contentspage}[\vskip 6pt]
+
+\titlecontents{section}[1em]{\sffamily}
+{\thecontentslabel\enspace}
+{}
+{\titlerule*[1pc]{.}\quad\contentspage}[\vskip 4pt]
+
+\titlecontents{subsection}[2.7em]{\sffamily}
+{\thecontentslabel\enspace}
+{}
+{\titlerule*[1pc]{.}\quad\contentspage}[\vskip 3pt]
+
+\usepackage{listings}
+\usepackage{color}
+\definecolor{ltgry}{rgb}{0.95,0.95,0.95}
+\lstset{backgroundcolor=\color{ltgry}}
+
+\lstset{columns=fixed, basicstyle=\ttfamily, basewidth=0.55em}
+
+\usepackage{pifont}
+\newcommand{\xmark}{\ding{55}}
+\end_preamble
+\use_default_options true
+\begin_modules
+theorems-ams
+eqs-within-sections
+figs-within-sections
+\end_modules
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "Baskerville"
+\font_sans "default" "Helvetica"
+\font_typewriter "default" "Andale Mono"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 80 80
+\use_microtype false
+\use_dash_ligatures false
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize 11
+\spacing single
+\use_hyperref true
+\pdf_bookmarks true
+\pdf_bookmarksnumbered false
+\pdf_bookmarksopen false
+\pdf_bookmarksopenlevel 1
+\pdf_breaklinks false
+\pdf_pdfborder true
+\pdf_colorlinks false
+\pdf_backref false
+\pdf_pdfusetitle true
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 1in
+\topmargin 1in
+\rightmargin 1in
+\bottommargin 1in
+\secnumdepth 2
+\tocdepth 2
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+
+\family sans
+\emph on
+Morpho
+\begin_inset Newline newline
+\end_inset
+
+0.5
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset toc
+LatexCommand tableofcontents
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Chapter
+Overview
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ aims to solve the following class of problems.
+ Consider a functional,
+\begin_inset Formula 
+\[
+F=\int_{C}f(q,\nabla q,\nabla^{2}q,...)d^{n}x+\int_{\partial C}g(q,\nabla q,\nabla^{2}q,...)d^{n-1}x,
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $q$
+\end_inset
+
+ represents a set of fields defined on a manifold 
+\begin_inset Formula $C$
+\end_inset
+
+ that could include scalar, vector, tensor or other quantities and their
+ derivatives 
+\begin_inset Formula $\nabla^{n}q$
+\end_inset
+
+.
+ The functional includes terms in the bulk and on the boundary 
+\begin_inset Formula $\partial C$
+\end_inset
+
+ and might also include geometric properties of the manifold such as local
+ curvatures.
+ This functional is to be minimized from an initial guess 
+\begin_inset Formula $\left\{ C_{0},q_{0}\right\} $
+\end_inset
+
+ with respect to the fields 
+\begin_inset Formula $q$
+\end_inset
+
+ and the shape of the manifold 
+\begin_inset Formula $C$
+\end_inset
+
+.
+ Global and local constraints may be imposed both on 
+\begin_inset Formula $C$
+\end_inset
+
+ and 
+\begin_inset Formula $q$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ is an object-oriented environment: all components of the problem, including
+ the computational domain, fields, functionals etc.
+ are all represented as objects that interact with one another.
+ Much of the effort in writing a 
+\emph on
+morpho
+\emph default
+ program involves creating and manipulating these objects.
+ The environment is flexible, modular, and users can easily create new kinds
+ of object, or entirely change how 
+\emph on
+morpho
+\emph default
+ works.
+ 
+\end_layout
+
+\begin_layout Chapter
+Installing 
+\emph on
+Morpho
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ is hosted on a publicly available github repository 
+\begin_inset Flex URL
+status open
+
+\begin_layout Plain Layout
+
+https://github.com/Morpho-lang/morpho
+\end_layout
+
+\end_inset
+
+.
+ 
+\emph on
+Morpho
+\emph default
+ is presently installed from source; streamlined installation will be provided
+ in future releases.
+ Instructions for different platforms are provided below.
+ 
+\end_layout
+
+\begin_layout Section
+Dependencies
+\end_layout
+
+\begin_layout Standard
+Morpho leverages a few libraries to provide certain functionality:
+\end_layout
+
+\begin_layout Description
+glfw is used to provide gui functionality for an interactive visualization
+ application, 
+\family typewriter
+morphoview
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Description
+blas/lapack are used for dense linear algebra.
+\end_layout
+
+\begin_layout Description
+suitesparse is used for sparse linear algebra.
+ 
+\end_layout
+
+\begin_layout Section
+MacOS
+\end_layout
+
+\begin_layout Enumerate
+Install the 
+\begin_inset CommandInset href
+LatexCommand href
+name "Homebrew"
+target "https://brew.sh"
+literal "false"
+
+\end_inset
+
+ package manager, following instructions on the homebrew site.
+\end_layout
+
+\begin_layout Enumerate
+Install dependencies.
+ Open the Terminal application and type:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+brew update
+\end_layout
+
+\begin_layout Plain Layout
+
+brew install glfw suite-sparse
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Obtain the source by cloning the github public repository:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+git clone https://github.com/Morpho-lang/morpho.git
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Navigate to the 
+\family typewriter
+morpho5
+\family default
+ folder within the downloaded repository and build the application
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+Some users may need to use 
+\family typewriter
+sudo make install
+\end_layout
+
+\end_inset
+
+
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+cd morpho/morpho5
+\end_layout
+
+\begin_layout Plain Layout
+
+make install
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Navigate to the 
+\family typewriter
+morphoview
+\family default
+ folder and build the viewer application
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+cd morpho/morpho5
+\end_layout
+
+\begin_layout Plain Layout
+
+make install
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Check that the application works by typing
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+morpho5
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Linux
+\end_layout
+
+\begin_layout Standard
+Note that the build script places 
+\family typewriter
+morpho5
+\family default
+ and 
+\family typewriter
+morphoview
+\family default
+ in the 
+\family typewriter
+/usr/local
+\family default
+ file structure; this can easily be changed if a different location is preferred.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Install morpho's dependencies using your distribution's package manager
+ (or manually if you prefer).
+ For example, on Ubuntu you would type:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+sudo apt install libglfw3
+\end_layout
+
+\begin_layout Plain Layout
+
+sudo apt install libsuitesparse-dev
+\end_layout
+
+\begin_layout Plain Layout
+
+sudo apt install liblapacke
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Obtain the source by cloning the github public repository:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+git clone https://github.com/Morpho-lang/morpho.git
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Navigate to the 
+\family typewriter
+morpho5
+\family default
+ folder within the downloaded repository and build the application:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+cd morpho/morpho5
+\end_layout
+
+\begin_layout Plain Layout
+
+sudo make -f Makefile.linux install
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Navigate to the 
+\family typewriter
+morphoview
+\family default
+ folder and build the viewer application:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+cd ../morphoview
+\end_layout
+
+\begin_layout Plain Layout
+
+sudo make -f Makefile.linux install
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Check that the application works by typing
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+morpho5
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Chapter
+Using 
+\emph on
+Morpho
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ is a command line application, like 
+\family typewriter
+python
+\family default
+ or 
+\family typewriter
+lua
+\family default
+.
+ It can be used to run scripts or programs, which are generally given the
+ 
+\emph on
+.morpho
+\emph default
+ file extension, or run interactively responding to user commands.
+ 
+\end_layout
+
+\begin_layout Section
+Running a program
+\end_layout
+
+\begin_layout Standard
+To run a program, simply run morpho with the name of the file, 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+morpho5 script.morpho
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Interactive mode
+\end_layout
+
+\begin_layout Standard
+To use 
+\emph on
+morpho
+\emph default
+ interactively, simply load the 
+\emph on
+Terminal
+\emph default
+ application (or equivalent on your system) and type
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+morpho5
+\end_layout
+
+\end_inset
+
+As shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:CommandLine"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, you'll be greeted by a brief welcome and a prompt > inviting you to enter
+ 
+\emph on
+morpho
+\emph default
+ commands.
+ For now, try a classic:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+print 
+\begin_inset Quotes eld
+\end_inset
+
+Hello World
+\begin_inset Quotes erd
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+which will display 
+\family typewriter
+Hello World
+\family default
+ as output.
+ More information about the 
+\emph on
+morpho
+\emph default
+ language is provided in the Reference section, especially chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:Language"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+; if you're familiar with C-like languages such as C, C++, Java, Javascript,
+ etc.
+ things should be quite familiar.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Figures/commandline.jpg
+	lyxscale 20
+	width 3.5in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:CommandLine"
+
+\end_inset
+
+Using 
+\emph on
+morpho
+\emph default
+ interactively from the command line.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To assist the user, the contents of the reference manual are available to
+ the user in interactive mode as online help.
+ To get help, simply type:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+help
+\end_layout
+
+\end_inset
+
+or even more briefly,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+?
+\end_layout
+
+\end_inset
+
+to see the list of main topics.
+ To find help on a particular topic, for example 
+\family typewriter
+for
+\family default
+ loops, simply type the topic name afterwards: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+? for
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Once you're done using 
+\emph on
+morpho
+\emph default
+, simply type 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+quit
+\end_layout
+
+\end_inset
+
+to exit the program and return to the shell.
+ 
+\end_layout
+
+\begin_layout Standard
+The interactive environment has a few other useful features to assist the
+ user: 
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Autocomplete.
+
+\series default
+ As you type, 
+\emph on
+morpho
+\emph default
+ will show you any suggested commands that it thinks you're trying to enter.
+ For example, if you type 
+\family typewriter
+v
+\family default
+ the command line will show the 
+\family typewriter
+var
+\family default
+ keyword.
+ To accept the suggestion, press the tab key.
+ Multiple suggestions may be available; use the up and down arrow keys to
+ rotate through them.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Command history.
+
+\series default
+ Use the arrow keys to retrieve previously entered commands.
+ You may then edit them before running them.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Line editing.
+
+\series default
+ As you're typing a command, use the left and right arrows to move the cursor
+ around; you can insert new characters at the cursor just by typing them
+ or delete characters with the 
+\family typewriter
+delete
+\family default
+ key.
+ Hold down the 
+\family typewriter
+shift
+\family default
+ key as you use the left and right arrow keys to select text; you can then
+ use
+\family typewriter
+ Ctrl-C
+\family default
+ to copy and 
+\family typewriter
+Ctrl-V
+\family default
+ to paste.
+ 
+\family typewriter
+Ctrl-A
+\family default
+ moves to the start of the line and 
+\family typewriter
+Ctrl-E
+\family default
+ the end.
+ 
+\end_layout
+
+\begin_layout Chapter
+Tutorial
+\end_layout
+
+\begin_layout Standard
+To illustrate how to use 
+\emph on
+morpho
+\emph default
+, we will solve a problem involving nematic liquid crystals (NLCs), fluids
+ composed of long, rigid molecules that possess a local average molecular
+ orientation described by a unit vector field 
+\begin_inset Formula $\mathbf{\hat{n}}$
+\end_inset
+
+.
+ Droplets of NLC immersed in a host isotropic fluid such as water are called
+ 
+\emph on
+tactoids
+\emph default
+ and, unlike droplets of, say, oil in water that form spheres, tactoids
+ can adopt elongated shapes.
+ 
+\end_layout
+
+\begin_layout Standard
+The functional to be minimized, the free energy of the system, is quite
+ complex,
+\begin_inset Formula 
+\begin{equation}
+\begin{array}{c}
+F=\\
+\\
+\end{array}\begin{array}{c}
+\underbrace{\frac{1}{2}\int_{C}K_{11}\left(\nabla\cdot\mathbf{n}\right)^{2}+K_{22}(\mathbf{n}\cdot\nabla\times\mathbf{n})^{2}+K_{33}\left|\mathbf{n}\times\nabla\times\mathbf{n}\right|^{2}dA}\\
+\text{Liquid crystal elastic energy}
+\end{array}\begin{array}{c}
++\\
+\\
+\end{array}\begin{array}{c}
+\underbrace{\sigma\int dl}\\
+s.t.
+\end{array}\begin{array}{c}
+-\\
+\\
+\end{array}\begin{array}{c}
+\underbrace{\frac{W}{2}\int\left(\mathbf{n}\cdot\mathbf{t}\right)^{2}dl}\\
+\text{anchoring}
+\end{array}\label{eq:free}
+\end{equation}
+
+\end_inset
+
+where the three terms include 
+\series bold
+liquid crystal elasticity
+\series default
+ that drives elongation of the droplet,
+\series bold
+ surface tension
+\series default
+ (s.t.) that opposes lengthening of the boundary and an 
+\series bold
+anchoring term
+\series default
+ that imposes a preferred orientation at the boundary.
+ We need a local constraint, 
+\begin_inset Formula $\mathbf{n}\cdot\mathbf{n}=1$
+\end_inset
+
+, and will also impose a constraint on the volume of the droplet.
+ For simplicity, we'll solve this problem in 2D.
+ The complete code for this tutorial example is contained in the 
+\family typewriter
+examples/tactoid
+\family default
+ folder in the repository.
+ 
+\end_layout
+
+\begin_layout Section
+Importing modules
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:Importing-modules"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ is a modular system and hence we typically begin our program by telling
+ 
+\emph on
+morpho
+\emph default
+ the modules we need so that they're available for us to use.
+ To do so, we use the 
+\family typewriter
+import
+\family default
+ keyword followed by the name of the module: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+import meshtools
+\end_layout
+
+\begin_layout Plain Layout
+
+import optimize
+\end_layout
+
+\begin_layout Plain Layout
+
+import plot
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We can also use the 
+\family typewriter
+import
+\family default
+ keyword to import additional program files to assist in modularizing large
+ programs.
+ These are the modules we'll use for this example: 
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="4" columns="2">
+<features tabularvalignment="middle">
+<column alignment="left" valignment="top">
+<column alignment="left" valignment="top">
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Module
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Purpose
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+meshtools
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Utility code to create and refine meshes
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+optimize
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Perform optimization 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+plot
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Visualize results
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Creating the initial mesh
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Tutorial/0ExampleMesh/meshgrade0.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename Tutorial/0ExampleMesh/meshgrade1.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename Tutorial/0ExampleMesh/meshgrade2.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Mesh"
+
+\end_inset
+
+A 
+\emph on
+Mesh
+\emph default
+ object contains different kinds of element.
+ In this example, the mesh contains points, lines and area elements referred
+ to by their 
+\emph on
+grade
+\emph default
+.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Meshes are discretized regions of space.
+ The very simplest region we can imagine is a 
+\emph on
+point
+\emph default
+ or 
+\emph on
+vertex
+\emph default
+ described by a set of coordinates 
+\begin_inset Formula $(x_{1},x_{2},....,x_{D})$
+\end_inset
+
+ where the number of coordinates 
+\begin_inset Formula $D$
+\end_inset
+
+ defines the dimensionality of the space that the manifold is said to be
+ 
+\emph on
+embedded
+\emph default
+ in.
+ From more than one point, we can start constructing more complex regions.
+ First, between two points we can imagine fixing an imaginary ruler and
+ drawing a straight line or 
+\emph on
+edge
+\emph default
+ between them.
+ Three points define a plane, and also a triangle; we can therefore identify
+ the two dimensional area of the plane bounded by the triangle as a 
+\emph on
+face
+\emph default
+, as in the face of a polyhedron.
+ Using four points, we can define the volume bounded by a tetrahedron.
+ Each of these 
+\series bold
+elements
+\series default
+ has a different dimensionality—called a 
+\emph on
+grade
+\emph default
+—and a complete 
+\family typewriter
+Mesh
+\family default
+ may contain elements of many different grades as shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Mesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ provides a number of ways of creating a mesh.
+ One can load a mesh from a file, build one manually from a set of points,
+ create one from a polyhedron, or from the level set (contours) of a function.
+ 
+\end_layout
+
+\begin_layout Standard
+For this example, we'll use a predefined mesh file 
+\family typewriter
+disk.mesh
+\family default
+.
+ To create a Mesh object from this file, we call the 
+\emph on
+Mesh
+\emph default
+ function with the file name: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var m = Mesh("disk.mesh")
+\end_layout
+
+\end_inset
+
+Here, the 
+\series bold
+var
+\series default
+ keyword tells morpho to create a new variable 
+\emph on
+m
+\emph default
+, which now refers to the newly created 
+\emph on
+Mesh
+\emph default
+ object.
+ The initial mesh is depicted in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:InitialMesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+; we'll provide the code to perform the visualization in section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:Visualizing-results"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Tutorial/1Mesh/mesh.png
+	lyxscale 20
+	width 3.5in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:InitialMesh"
+
+\end_inset
+
+The initial mesh, loaded from 
+\family typewriter
+disk.mesh
+\family default
+.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+If you open the file 
+\family typewriter
+disk.mesh
+\family default
+, which you can find in the same folder as 
+\family typewriter
+tactoid.morpho
+\family default
+, you'll find it has a simple human readable format: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+vertices
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+1 -1.
+ 0.
+ 0 
+\end_layout
+
+\begin_layout Plain Layout
+
+2 -0.951057 -0.309017 0
+\end_layout
+
+\begin_layout Plain Layout
+
+...
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+edges
+\end_layout
+
+\begin_layout Plain Layout
+
+1 8 2 
+\end_layout
+
+\begin_layout Plain Layout
+
+2 2 4
+\end_layout
+
+\begin_layout Plain Layout
+
+...
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+faces
+\end_layout
+
+\begin_layout Plain Layout
+
+1 8 2 4 
+\end_layout
+
+\begin_layout Plain Layout
+
+2 8 4 6
+\end_layout
+
+\begin_layout Plain Layout
+
+...
+\end_layout
+
+\end_inset
+
+The file is broken into sections, each describing elements of a different
+ grade.
+ Each line begins either with a section delimiter such as 
+\emph on
+vertices
+\emph default
+, 
+\emph on
+edges
+\emph default
+ or 
+\emph on
+faces
+\emph default
+, or with an id.
+ Vertices are then defined by a set of coordinates; edges and faces are
+ defined by providing the respective vertex ids.
+ 
+\end_layout
+
+\begin_layout Section
+Selections
+\end_layout
+
+\begin_layout Standard
+Sometimes, we want to refer to specific parts of a 
+\family typewriter
+Mesh
+\family default
+ object: elements that match some criterion, for example.
+ 
+\family typewriter
+Selection
+\family default
+ objects enable us to do this.
+ Because selecting the boundary is a very common activity, the 
+\family typewriter
+Selection
+\family default
+ constructor function takes an optional argument to do this:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// Initial boundary selection
+\end_layout
+
+\begin_layout Plain Layout
+
+var bnd=Selection(m, boundary=true)
+\end_layout
+
+\end_inset
+
+By default, only the boundary elements are included in the 
+\family typewriter
+Selection
+\family default
+.
+ For a mesh with at most grade 2 elements (facets), the boundaries are grade
+ 1 elements (lines); for a mesh with grade 3 elements (volumes), the boundaries
+ are grade 2 elements (facets).
+ Quite often we want the vertices themselves as well, so we can call a method
+ to achieve that: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+bnd.addgrade(0)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Once a 
+\family typewriter
+Selection
+\family default
+ has been created, it can be helpful to visualize it to ensure the correct
+ elements are selected.
+ We'll talk more about visualization in section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:Visualizing-results"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, but for now the line 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+Show(plotselection(m, bnd, grade=1))
+\end_layout
+
+\end_inset
+
+shows a visualization of the mesh with the selected grade 1 elements shaded
+ red as displayed in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Boundary"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Tutorial/2Visualize/selection.png
+	lyxscale 20
+	width 3.5in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Boundary"
+
+\end_inset
+
+ Selecting the boundary of the mesh.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Fields
+\end_layout
+
+\begin_layout Standard
+Having created our initial the computational domain, we will now create
+ a 
+\family typewriter
+Field
+\family default
+ object representing the director field 
+\begin_inset Formula $\mathbf{n}$
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var nn = Field(m, Matrix([1,0,0]))
+\end_layout
+
+\end_inset
+
+As with the 
+\family typewriter
+Mesh
+\family default
+ object earlier, we declare a variable, 
+\emph on
+nn
+\emph default
+, to refer to the 
+\family typewriter
+Field
+\family default
+ object.
+ We have to provide two arguments to 
+\family typewriter
+Field
+\family default
+: the 
+\family typewriter
+Mesh
+\family default
+ object on which the 
+\family typewriter
+Field
+\family default
+ is defined, and something to initialize it.
+ Here, we want the initial director to have a spatially uniform value, so
+ we can just provide 
+\family typewriter
+Field
+\family default
+ a constant 
+\family typewriter
+Matrix
+\family default
+ object.
+ By default, 
+\emph on
+morpho
+\emph default
+ stores a copy of this matrix on each vertex in the mesh; Fields can however
+ store information on elements of any grade (and store both more than one
+ quantity per grade and information on multiple grades at the same time).
+ 
+\end_layout
+
+\begin_layout Standard
+It's possible to initialize a 
+\family typewriter
+Field
+\family default
+ with spatially varying values by providing an 
+\emph on
+anonymous function
+\emph default
+ to 
+\family typewriter
+Field
+\family default
+ like this: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var phi = Field(m, fn (x,y,z) x^2+y^2)
+\end_layout
+
+\end_inset
+
+Here, 
+\emph on
+phi
+\emph default
+ is a scalar field that takes on the value 
+\begin_inset Formula $x^{2}+y^{2}$
+\end_inset
+
+.
+ The 
+\series bold
+fn
+\series default
+ keyword is used to define functions.
+ 
+\end_layout
+
+\begin_layout Section
+Defining the problem
+\end_layout
+
+\begin_layout Standard
+We now turn to setting up the problem.
+ Each term in the energy functional 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:free"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ is represented by a corresponding 
+\emph on
+functional
+\emph default
+ object, which acts on a 
+\family typewriter
+Mesh
+\family default
+ (and possibly a 
+\family typewriter
+Field
+\family default
+) to calculate an integral quantity such as an energy; Functional objects
+ are also responsible for calculating gradients of the energy with respect
+ to vertex positions and components of Fields.
+ 
+\end_layout
+
+\begin_layout Standard
+Let's take the terms in 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:free"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ one by one: To represent the nematic elasticity we create a 
+\family typewriter
+Nematic
+\family default
+ object: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var lf=Nematic(nn)
+\end_layout
+
+\end_inset
+
+The surface tension term involves the length of the boundary, so we need
+ a 
+\family typewriter
+Length
+\family default
+ object: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var lt=Length()
+\end_layout
+
+\end_inset
+
+The anchoring term doesn't have a simple built in object type, but we can
+ use a general 
+\family typewriter
+LineIntegral
+\family default
+ object to achieve the correct result.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var la=LineIntegral(fn (x, n) n.inner(tangent())^2, nn)
+\end_layout
+
+\end_inset
+
+Notice that we have to supply a function—the integrand—which will be called
+ by 
+\family typewriter
+LineIntegral
+\family default
+ when it evaluates the integral.
+ Integrand functions are called with the local coordinates first (as a 
+\family typewriter
+Matrix
+\family default
+ object representing a column vector) and then the local interpolated value
+ of any number of 
+\family typewriter
+Fields
+\family default
+.
+ We also make use of the special function 
+\family typewriter
+tangent()
+\family default
+ that locally returns a local tangent to the line.
+ 
+\end_layout
+
+\begin_layout Standard
+We also need to impose constraints.
+ Any 
+\emph on
+functional
+\emph default
+ object can be used equally well as an energy or a constraint, and hence
+ we create a 
+\family typewriter
+NormSq
+\family default
+ (norm-squared) object that will be used to implement the local unit vector
+ constraint on the director field: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var ln=NormSq(nn)
+\end_layout
+
+\end_inset
+
+and an 
+\family typewriter
+Area
+\family default
+ object for the global constraint: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var laa=Area()
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Now we have a collection of functional objects that we can use to define
+ the problem.
+ So far, we haven't specified which functionals are energies and which are
+ constraints; nor have we specified which parts of the mesh the functionals
+ are to be evaluated over.
+ All that information is collected in an 
+\family typewriter
+OptimizationProblem
+\family default
+ object, which we will now create: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// Set up the optimization problem
+\end_layout
+
+\begin_layout Plain Layout
+
+var W = 1
+\end_layout
+
+\begin_layout Plain Layout
+
+var sigma = 1
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+var problem = OptimizationProblem(m)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addenergy(lf)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addenergy(la, selection=bnd, prefactor=-W/2)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addenergy(lt, selection=bnd, prefactor=sigma)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addconstraint(laa)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addlocalconstraint(ln, field=nn, target=1)
+\end_layout
+
+\end_inset
+
+Notice that some of these functionals only act on a selection such as the
+ boundary and hence we use the optional 
+\emph on
+selection 
+\emph default
+parameter to specify this.
+ We can also specify the prefactor of the functional.
+ 
+\end_layout
+
+\begin_layout Section
+Performing the optimization
+\end_layout
+
+\begin_layout Standard
+We're now ready to perform the optimization, for which we need an 
+\family typewriter
+Optimizer
+\family default
+ object.
+ These come in two flavors: a 
+\family typewriter
+ShapeOptimizer
+\family default
+ and a 
+\family typewriter
+FieldOptimizer
+\family default
+ that respectively act on the shape and a field.
+ We create them with the problem and quantity they're supposed to act on:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// Create shape and field optimizers
+\end_layout
+
+\begin_layout Plain Layout
+
+var sopt = ShapeOptimizer(problem, m)
+\end_layout
+
+\begin_layout Plain Layout
+
+var fopt = FieldOptimizer(problem, nn)
+\end_layout
+
+\end_inset
+
+Having created these, we can perform the optimizion by calling the 
+\family typewriter
+linesearch
+\family default
+ method with a specified number of iterations for each:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// Optimization loop
+\end_layout
+
+\begin_layout Plain Layout
+
+for (i in 1..100) {  
+\end_layout
+
+\begin_layout Plain Layout
+
+	fopt.linesearch(20)
+\end_layout
+
+\begin_layout Plain Layout
+
+	sopt.linesearch(20)
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+Each iteration of a linesearch evolves the field (or shape) down the gradient
+ of the target functional, subject to constraints, and finds an optimal
+ stepsize to reduce the value of the functional.
+ Here, we alternate between optimizing the field and optimizing the shape,
+ performing twenty iterations of each, and overall do this one hundred times.
+ These numbers have been chosen rather arbitrarily, and if you look at the
+ output you will notice that 
+\emph on
+morpho
+\emph default
+ doesn't always execute twenty iterations of each.
+ Rather, at each iteration it checks to see if the change in energy satisfies,
+ 
+\begin_inset Formula 
+\[
+|E|<\epsilon,
+\]
+
+\end_inset
+
+or,
+\begin_inset Formula 
+\[
+\left|\frac{\Delta E}{E}\right|<\epsilon
+\]
+
+\end_inset
+
+where the value of 
+\begin_inset Formula $\epsilon$
+\end_inset
+
+, the convergence tolerance can be changed by setting the 
+\family typewriter
+etol
+\family default
+ property of the Optimizer object: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+sopt.etol = 1e-7 // default value is 1e-8
+\end_layout
+
+\end_inset
+
+Some other properties of an Optimizer that may be useful for the user to
+ adjust are as follows:
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="7" columns="3">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="left" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Property
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Default value
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Purpose
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+etol
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $1\times10^{-8}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Energy tolerance (relative error)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+ctol
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $1\times10^{-10}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Constraint tolerance (how well are constraints satisfied)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+stepsize
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Stepsize for relax (changed by linesearch)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+steplimit
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.5
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Largest stepsize a linesearch can take
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+maxconstraintsteps
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+20
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Number of steps the optimizer may take to ensure constraints are satisfied
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+quiet
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+false
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Whether to print output as the optimization happens
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Visualizing results
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:Visualizing-results"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ provides a highly flexible graphics system, with an external viewer application
+ 
+\emph on
+morphoview
+\emph default
+, to enable rich visualizations of results.
+ Visualizations typically involve one or more Graphics objects, which act
+ as a container for graphical elements to be displayed.
+ Various 
+\emph on
+graphics primitives
+\emph default
+, such as spheres, cylinders, arrows, tubes, etc.
+ can be added to a Graphics object to make a drawing.
+ 
+\end_layout
+
+\begin_layout Standard
+We are now ready to visualize the results of the optimization.
+ First, we'll draw the mesh.
+ Because we're interested in seeing the mesh structure, we'll draw the edges
+ (i.e.
+ the grade 1 elements).
+ The function to do this is provided as part of the plot module that we
+ imported in section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:Importing-modules"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var g=plotmesh(m, grade=1)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Next, we'll create a separate Graphics object that contains the director.
+ Since the director 
+\begin_inset Formula $\mathbf{n}$
+\end_inset
+
+ is a unit vector field, and the sign is not significant (the nematic elastic
+ energy is actually invariant under 
+\begin_inset Formula $\mathbf{n}\to-\mathbf{n}$
+\end_inset
+
+), an appropriate way to display a single director is as a cylinder oriented
+ along 
+\begin_inset Formula $\mathbf{n}$
+\end_inset
+
+.
+ We will therefore make a helper function that creates a Graphics object
+ and draws such a cylinder at every mesh point:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// Function to visualize a director field
+\end_layout
+
+\begin_layout Plain Layout
+
+// m - the mesh 
+\end_layout
+
+\begin_layout Plain Layout
+
+// nn - the director Field to visualize
+\end_layout
+
+\begin_layout Plain Layout
+
+// dl - scale the director 
+\end_layout
+
+\begin_layout Plain Layout
+
+fn visualize(m, nn, dl) { 
+\end_layout
+
+\begin_layout Plain Layout
+
+  var v = m.vertexmatrix()
+\end_layout
+
+\begin_layout Plain Layout
+
+  var nv = m.count() // Number of vertices
+\end_layout
+
+\begin_layout Plain Layout
+
+  var g = Graphics() // Create a graphics object
+\end_layout
+
+\begin_layout Plain Layout
+
+  for (i in 0...nv) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    var x = v.column(i) // Get the ith vertex
+\end_layout
+
+\begin_layout Plain Layout
+
+	// Draw a cylinder aligned with nn at this vertex
+\end_layout
+
+\begin_layout Plain Layout
+
+    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.3))
+\end_layout
+
+\begin_layout Plain Layout
+
+  }
+\end_layout
+
+\begin_layout Plain Layout
+
+  return g
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+Once we've defined this function, we can use it: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var gnn=visualize(m, nn, 0.2)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The variables 
+\begin_inset Formula $g$
+\end_inset
+
+ and 
+\begin_inset Formula $gnn$
+\end_inset
+
+ now refer to two separate Graphics objects.
+ We can combine them using the 
+\begin_inset Formula $+$
+\end_inset
+
+ operator, and display them with 
+\emph on
+morphoview
+\emph default
+ like so: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var gdisp = g+gnn
+\end_layout
+
+\begin_layout Plain Layout
+
+Show(gdisp)
+\end_layout
+
+\end_inset
+
+The resulting visualization is shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:FinalResult"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Tutorial/2Visualize/out.png
+	lyxscale 20
+	width 3.5in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:FinalResult"
+
+\end_inset
+
+Optimized mesh and director field.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Refinement
+\end_layout
+
+\begin_layout Standard
+We have now solved our first shape optimization problem, and the complete
+ problem script is provided in the 
+\family typewriter
+examples/tutorial
+\family default
+ folder inside the git repository as 
+\family typewriter
+tutorial1.morpho
+\family default
+.
+ The result we have obtained in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:FinalResult"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ is, however, a very coarse, low resolution solution comprising only a relativel
+y small number of elements.
+ To gain an improved solution, we need to 
+\emph on
+refine
+\emph default
+ our mesh.
+ Because modifying the mesh also requires us to update other data structures
+ like fields and selections, a special 
+\family typewriter
+MeshRefiner
+\family default
+ object is used to perform the refinement.
+ 
+\end_layout
+
+\begin_layout Standard
+To perform refinement we:
+\end_layout
+
+\begin_layout Enumerate
+Create a MeshRefiner object, providing it a list of all the 
+\family typewriter
+Mesh
+\family default
+, 
+\family typewriter
+Field
+\family default
+ and 
+\family typewriter
+Selection
+\family default
+ objects (i.e.
+ the mesh and objects that directly depend on it) that need to be updated:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var mr=MeshRefiner([m, nn, bnd]) // Set the refiner up
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Call the 
+\family typewriter
+refine
+\family default
+ method on the 
+\family typewriter
+MeshRefiner
+\family default
+ object to actually perform the refinement.
+ This method returns a 
+\family typewriter
+Dictionary
+\family default
+ object that maps the old objects to potentially newly created ones.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var refmap=mr.refine() // Perform the refinement
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Tell any other objects that refer to the mesh, fields or selections to update
+ their references using 
+\family typewriter
+refmap
+\family default
+.
+ For example, 
+\family typewriter
+OptimizationProblem
+\family default
+ and 
+\family typewriter
+Optimizer
+\family default
+ objects are typically updated at this step.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+for (el in [problem, sopt, fopt]) el.update(refmap) // Update the problem
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Update our own references
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+m=refmap[m]; nn=refmap[nn]; bnd=refmap[bnd] // Update variables
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Tutorial/3Refine/out1.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename Tutorial/3Refine/out2.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename Tutorial/3Refine/out3.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Refinement"
+
+\end_inset
+
+Optimized mesh and director field at three successive levels of refinement.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We insert this code after our optimization section, which causes 
+\emph on
+morpho
+\emph default
+ to successively optimize and refine
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+The complete code including refinement is in 
+\family typewriter
+examples/tutorial
+\family default
+ folder inside the git repository as 
+\family typewriter
+tutorial2.morpho
+\end_layout
+
+\end_inset
+
+.
+ The resulting optimized shapes are displayed in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Refinement"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// Optimization loop
+\end_layout
+
+\begin_layout Plain Layout
+
+var refmax = 3
+\end_layout
+
+\begin_layout Plain Layout
+
+for (refiter in 1..refmax) {
+\end_layout
+
+\begin_layout Plain Layout
+
+  print "===Refinement level ${refiter}==="
+\end_layout
+
+\begin_layout Plain Layout
+
+  for (i in 1..100) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    fopt.linesearch(20)     
+\end_layout
+
+\begin_layout Plain Layout
+
+    sopt.linesearch(20)   
+\end_layout
+
+\begin_layout Plain Layout
+
+  }
+\end_layout
+
+\begin_layout Plain Layout
+
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+  if (refiter==refmax) break
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+  // Refinement
+\end_layout
+
+\begin_layout Plain Layout
+
+  var mr=MeshRefiner([m, nn, bnd]) // Set the refiner up
+\end_layout
+
+\begin_layout Plain Layout
+
+  var refmap=mr.refine() // Perform the refinement
+\end_layout
+
+\begin_layout Plain Layout
+
+  for (el in [problem, sopt, fopt])
+\end_layout
+
+\begin_layout Plain Layout
+
+  el.update(refmap) // Update the problem
+\end_layout
+
+\begin_layout Plain Layout
+
+  m=refmap[m]; nn=refmap[nn]; bnd=refmap[bnd] // Update variables
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Next steps
+\end_layout
+
+\begin_layout Standard
+Having completed this tutorial, you may wish to explore the effect of changing
+ some of the parameters in the file.
+ What happens if you change 
+\family typewriter
+sigma
+\family default
+ and W, the coefficients in front of the terms in the energy? What happens
+ if you take a different number of steps? Or change properties of the Optimizers
+ like 
+\family typewriter
+stepsize
+\family default
+ and 
+\family typewriter
+steplimit
+\family default
+? 
+\end_layout
+
+\begin_layout Standard
+You should look at other example files provided in the 
+\family typewriter
+examples
+\family default
+ folder of the git repository.
+ The remainder of the manual provides a detailed reference for 
+\emph on
+morpho
+\emph default
+ functionality, and a complete description of the scripting language.
+ 
+\end_layout
+
+\begin_layout Part*
+Reference
+\end_layout
+
+\begin_layout Chapter
+Language
+\begin_inset CommandInset label
+LatexCommand label
+name "chap:Language"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/syntax.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/variables.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/controlflow.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/functions.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/classes.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/modules.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/help.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/builtin.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Chapter
+Data Types
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/array.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/dictionary.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/list.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/matrix.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/range.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/sparse.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+\begin_inset CommandInset include
+LatexCommand input
+filename "string.tex"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Chapter
+Computational Geometry
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/field.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/functionals.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/mesh.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/selection.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Chapter
+I/O
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/file.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Chapter
+Modules
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/color.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/constants.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/graphics.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/implicitmesh.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/kdtree.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/meshtools.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/optimize.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/povray.tex"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

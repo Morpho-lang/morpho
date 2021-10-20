@@ -26,10 +26,10 @@
  *  This will define:
  *  1. A type called varray_NAME (where NAME is the name you gave).
  *  2. Functions
- *     varray_NAME_init(v)               - Initializes the varray
- *     varray_NAME_add(v, data[], count) - Adds elements to the varray
- *     varray_NAME_write(v, data)        - Writes a single element to the varray, returning the index
- *     varray_NAME_clear(v)              - Clears the varray, freeing memory
+ *     varray_NAMEinit(v)               - Initializes the varray
+ *     varray_NAMEadd(v, data[], count) - Adds elements to the varray
+ *     varray_NAMEwrite(v, data)        - Writes a single element to the varray, returning the index
+ *     varray_NAMEclear(v)              - Clears the varray, freeing memory
  *  Then, call DEFINE_VARRAY(NAME,TYPE) in your .c file to define the appropriate functions
  */
 #define DECLARE_VARRAY(name, type) \

@@ -1,0 +1,138 @@
+\hypertarget{meshtools}{%
+\section{Meshtools}\label{meshtools}}
+
+The Meshtools package contains a number of functions and classes to
+assist with creating and manipulating meshes.
+
+\hypertarget{areamesh}{%
+\section{AreaMesh}\label{areamesh}}
+
+This function creates a mesh composed of triangles from a parametric
+function. To use it:
+
+\begin{lstlisting}
+var m = LineMesh(function, range1, range2, closed=boolean)
+\end{lstlisting}
+
+where
+
+\begin{itemize}
+
+\item
+  \texttt{function} is a parametric function that has one parameter. It
+  should return a list of coordinates or a column matrix corresponding
+  to this parameter.
+\item
+  \texttt{range1} is the Range to use for the first parameter of the
+  parametric function.
+\item
+  \texttt{range2} is the Range to use for the second parameter of the
+  parametric function.
+\item
+  \texttt{closed} is an optional parameter indicating whether to create
+  a closed loop or not. You can supply a list where each element
+  indicates whether the relevant parameter is closed or not.
+\end{itemize}
+
+To use \texttt{AreaMesh}, import the \texttt{meshtools} module:
+
+\begin{lstlisting}
+import meshtools
+\end{lstlisting}
+
+Create a square:
+
+\begin{lstlisting}
+var m = LineMesh(fn (u,v) [u, v, 0], 0..1:0.1, 0..1:0.1)
+\end{lstlisting}
+
+Create a tube:
+
+\begin{lstlisting}
+var m = AreaMesh(fn (u, v) [v, cos(u), sin(u)], -Pi...Pi:Pi/4, -1..1:0.1, closed=[true, false])
+\end{lstlisting}
+
+Create a torus: var c=0.5, a=0.2 var m = AreaMesh(fn (u, v) {[}(c +
+a\emph{cos(v))}cos(u), (c + a\emph{cos(v))}sin(u), a*sin(v){]},
+0\ldots2\emph{Pi:Pi/16, 0\ldots2}Pi:Pi/8, closed=true)
+
+\hypertarget{linemesh}{%
+\section{LineMesh}\label{linemesh}}
+
+This function creates a mesh composed of line elements from a parametric
+function. To use it:
+
+\begin{lstlisting}
+var m = LineMesh(function, range, closed=boolean)
+\end{lstlisting}
+
+where
+
+\begin{itemize}
+
+\item
+  \texttt{function} is a parametric function that has one parameter. It
+  should return a list of coordinates or a column matrix corresponding
+  to this parameter.
+\item
+  \texttt{range} is the Range to use for the parametric function.
+\item
+  \texttt{closed} is an optional parameter indicating whether to create
+  a closed loop or not.
+\end{itemize}
+
+To use \texttt{LineMesh}, import the \texttt{meshtools} module:
+
+\begin{lstlisting}
+import meshtools
+\end{lstlisting}
+
+Create a circle:
+
+\begin{lstlisting}
+import constants
+var m = LineMesh(fn (t) [sin(t), cos(t), 0], 0...2*Pi:2*Pi/50, closed=true)
+\end{lstlisting}
+
+\hypertarget{polyhedronmesh}{%
+\section{PolyhedronMesh}\label{polyhedronmesh}}
+
+This function creates a mesh from a polyhedron specification.
+
+\hypertarget{equiangulate}{%
+\section{Equiangulate}\label{equiangulate}}
+
+Attempts to equiangulate a mesh.
+
+\hypertarget{meshbuilder}{%
+\section{MeshBuilder}\label{meshbuilder}}
+
+The \texttt{MeshBuilder} class simplifies user creation of meshes. To
+use this class, begin by creating a \texttt{MeshBuilder} object:
+
+\begin{lstlisting}
+var build = MeshBuilder()
+\end{lstlisting}
+
+You can then add vertices, edges, etc. one by one using
+\texttt{addvertex}, \texttt{addedge} and \texttt{addtriangle}. Each of
+these returns an element id:
+
+\begin{lstlisting}
+var id1=build.addvertex(Matrix([0,0,0]))
+var id2=build.addvertex(Matrix([1,1,1]))
+build.addedge([id1, id2])
+\end{lstlisting}
+
+Once the mesh is ready, call the \texttt{build} method to construct the
+\texttt{Mesh}:
+
+\begin{lstlisting}
+var m = build.build()
+\end{lstlisting}
+
+\hypertarget{meshrefiner}{%
+\section{MeshRefiner}\label{meshrefiner}}
+
+The \texttt{MeshRefiner} class is used to refine meshes, and to correct
+associated data structures that depend on the mesh.

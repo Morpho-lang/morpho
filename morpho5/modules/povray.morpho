@@ -130,12 +130,15 @@ class POVRaytracer {
     } else out.write("light_source {<-5, -5, 8> color White}")
 
     out.close()
+    return out.relativepath()
   }
 
-  render(file) {
-    self.write(file)
-    system("povray ${file} +A +W${self.width} +H${self.height}")
-    var out = file.split(".")[0]
-    system("open ${out}.png")
+  render(file, quiet=false) {
+    var path = self.write(file)
+    var silent = ""
+    if (quiet) silent = "&> /dev/null"
+    system("povray ${path} +A +W${self.width} +H${self.height} ${silent}")
+    var out = path.split(".")[0]
+    if (!quiet) system("open ${out}.png")
   }
 }

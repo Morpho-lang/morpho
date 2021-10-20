@@ -1,0 +1,46 @@
+// Mean Sq curvature with a translational symmetry
+import constants
+import meshtools
+import plot
+import symmetry
+
+var L = 2
+
+var m = AreaMesh(fn (t, x) [x, cos(t), sin(t)], 0...2*Pi:2*Pi/10, -L..L:0.5, closed=[true,false])
+
+// Add translational symmetry to the exterior vertices
+var s = Selection(m, fn (x,y,z) abs(x-L)<1e-10 || abs(x+L)<1e-10)
+
+var t = Translate(Matrix([2*L,0,0]))
+m.addsymmetry(t, s)
+
+// Mean Squared curvature
+var lc = MeanCurvatureSq()
+var grad = lc.gradient(m)
+
+var dim = grad.dimensions()
+var ngrad = Matrix(dim[0], dim[1])
+
+// Manually calculate the gradient
+var vert = m.vertexmatrix()
+var eps = 1e-8
+
+for (i in 0...dim[0]) {
+  for (j in 0...dim[1]) {
+    var v = vert[i, j]
+    vert[i, j] = v + eps
+    var fp = lc.total(m)
+    vert[i, j] = v - eps
+    var fm = lc.total(m)
+    ngrad[i,j] = (fp-fm)/(2*eps)
+  }
+}
+
+// Correct for symmetry vertices
+for (i in 0..9) {
+  var sym=ngrad.column(i)+ngrad.column(80+i)
+  ngrad.setcolumn(i, sym)
+  ngrad.setcolumn(80+i, sym)
+}
+
+print (grad-ngrad).norm()/grad.count() < 1e-4 // expect: true

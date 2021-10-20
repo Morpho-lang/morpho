@@ -14,12 +14,15 @@
 
 #define FILE_FILEPROPERTY "@file"
 
+#define FILE_FILENAMEPROPERTY "filename"
+
 #define FILE_CLOSE        "close"
 #define FILE_LINES        "lines"
 #define FILE_READLINE     "readline"
 #define FILE_READCHAR     "readchar"
 #define FILE_WRITE        "write"
 #define FILE_EOF          "eof"
+#define FILE_RELATIVEPATH "relativepath"
 
 #define FILE_READMODE     "read"
 #define FILE_WRITEMODE    "write"

@@ -1,0 +1,45 @@
+\hypertarget{povray}{%
+\section{POVRay}\label{povray}}
+
+The \texttt{povray} module provides integration with POVRay, a popular
+open source ray-tracing package for high quality graphical rendering. To
+use the module, first import it:
+
+\begin{lstlisting}
+import povray
+\end{lstlisting}
+
+To raytrace a graphic, begin by creating a \texttt{POVRaytracer} object:
+
+\begin{lstlisting}
+var pov = POVRaytracer(graphic)
+\end{lstlisting}
+
+Create a .pov file that can be run with POVRay:
+
+\begin{lstlisting}
+pov.write("out.pov")
+\end{lstlisting}
+
+Create, render and display a scene using POVRay:
+
+\begin{lstlisting}
+pov.render("out.pov")
+\end{lstlisting}
+
+The \texttt{POVRaytracer} constructor supports a number of optional
+arguments:
+
+\begin{itemize}
+
+\item
+  \texttt{antialias} - whether to antialias the output or not
+\item
+  \texttt{width} - image width
+\item
+  \texttt{height} - image height
+\item
+  \texttt{viewangle} - camera angle (higher means wider view)
+\item
+  \texttt{viewpoint} - position of camera
+\end{itemize}

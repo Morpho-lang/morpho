@@ -1,0 +1,198 @@
+\hypertarget{syntax}{%
+\section{Syntax}\label{syntax}}
+
+Morpho provides a flexible object oriented language similar to other
+languages in the C family (like C++, Java and Javascript) with a
+simplified syntax.
+
+Morpho programs are stored as plain text with the .morpho file
+extension. A program can be run from the command line by typing
+
+\begin{lstlisting}
+morpho program.morpho
+\end{lstlisting}
+
+\hypertarget{comments}{%
+\section{Comments}\label{comments}}
+
+Two types of comment are available. The first type is called a `line
+comment' whereby text after \texttt{//} on the same line is ignored by
+the interpreter.
+
+\begin{lstlisting}
+a.dosomething() // A comment
+\end{lstlisting}
+
+Longer `block' comments can be created by placing text between
+\texttt{/*} and \texttt{*/}. Newlines are ignored
+
+\begin{lstlisting}
+/* This
+   is
+   a longer comment */
+\end{lstlisting}
+
+In contrast to C, these comments can be nested
+
+\begin{lstlisting}
+/* A nested /* comment */ */
+\end{lstlisting}
+
+enabling the programmer to quickly comment out a section of code.
+
+\hypertarget{symbols}{%
+\section{Symbols}\label{symbols}}
+
+Symbols are used to refer to named entities, including variables,
+classes, functions etc. Symbols must begin with a letter or underscore
+\_ as the first character and may include letters or numbers as the
+remainder. Symbols are case sensitive.
+
+\begin{lstlisting}
+asymbol
+_alsoasymbol
+another_symbol
+EvenThis123
+YET_ANOTHER_SYMBOL
+\end{lstlisting}
+
+Classes are typically given names with an initial capital letter.
+Variable names are usually all lower case.
+
+\hypertarget{newlines}{%
+\section{Newlines}\label{newlines}}
+
+Strictly, morpho ends statements with semicolons like C, but in practice
+these are usually optional and you can just start a new line instead.
+For example, instead of
+
+\begin{lstlisting}
+var a = 1; // The ; is optional
+\end{lstlisting}
+
+you can simply use
+
+\begin{lstlisting}
+var a = 1
+\end{lstlisting}
+
+If you want to put several statements on the same line, you can separate
+them with semicolons:
+
+\begin{lstlisting}
+var a = 1; print a
+\end{lstlisting}
+
+There are a few edge cases to be aware of: The morpho parser works by
+accepting a newline anywhere it expects to find a semicolon. To split a
+statement over multiple lines, signal to morpho that you plan to
+continue by leaving the statement unfinished. Hence, do this:
+
+\begin{lstlisting}
+print a +
+      1
+\end{lstlisting}
+
+rather than this:
+
+\begin{lstlisting}
+print a   // < Morpho thinks this is a complete statement
+      + 1 // < and so this line will cause a syntax error
+\end{lstlisting}
+
+\hypertarget{booleans}{%
+\section{Booleans}\label{booleans}}
+
+Comparison operations like \texttt{==}, \texttt{\textless{}} and
+\texttt{\textgreater{}=} return \texttt{true} or \texttt{false}
+depending on the result of the comparison. For example,
+
+\begin{lstlisting}
+print 1==2
+\end{lstlisting}
+
+prints \texttt{false}. The constants \texttt{true} or \texttt{false} are
+provided for you to use in your own code:
+
+\begin{lstlisting}
+return true
+\end{lstlisting}
+
+\hypertarget{nil}{%
+\section{Nil}\label{nil}}
+
+The keyword \texttt{nil} is used to represent the absence of an object
+or value.
+
+Note that in \texttt{if} statements, a value of \texttt{nil} is treated
+like \texttt{false}.
+
+\begin{lstlisting}
+if (nil) {
+    // Never executed.
+}
+\end{lstlisting}
+
+\hypertarget{blocks}{%
+\section{Blocks}\label{blocks}}
+
+Code is divided into \emph{blocks}, which are delimited by curly
+brackets like this:
+
+\begin{lstlisting}
+{
+  var a = "Hello"
+  print a
+}
+\end{lstlisting}
+
+This syntax is used in function declarations, loops and conditional
+statements.
+
+Any variables declared within a block become \emph{local} to that block,
+and cannot be seen outside of it. For example,
+
+\begin{lstlisting}
+var a = "Foo"
+{
+  var a = "Bar"
+  print a
+}
+print a
+\end{lstlisting}
+
+would print ``Bar'' then ``Foo''; the version of \texttt{a} inside the
+code block is said to \emph{shadow} the outer version.
+
+\hypertarget{precedence}{%
+\section{Precedence}\label{precedence}}
+
+Precedence refers to the order in which morpho evaluates operations. For
+example,
+
+\begin{lstlisting}
+print 1+2*3
+\end{lstlisting}
+
+prints \texttt{7} because \texttt{2*3} is evaluated before the addition;
+the operator \texttt{*} is said to have higher precedence than
+\texttt{+}.
+
+You can always modify the order of evaluation by using brackets:
+
+\begin{lstlisting}
+print (1+2)*3 // prints 9
+\end{lstlisting}
+
+\hypertarget{print}{%
+\section{Print}\label{print}}
+
+The \texttt{print} keyword is used to print information to the console.
+It can be followed by any value, e.g.
+
+\begin{lstlisting}
+print 1
+print true
+print a
+print "Hello"
+\end{lstlisting}

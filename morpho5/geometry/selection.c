@@ -351,7 +351,10 @@ value selection_constructor(vm *v, int nargs, value *args) {
     
     if (mesh) {
         new=object_newselection(mesh);
-    } else morpho_runtimeerror(v, SELECTION_NOMESH);
+    } else {
+        morpho_runtimeerror(v, SELECTION_NOMESH);
+        return out;
+    }
     
     if (new) {
         if (!MORPHO_ISNIL(fn)) {

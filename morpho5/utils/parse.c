@@ -327,6 +327,7 @@ tokentype lex_symboltype(lexer *l) {
         case 'i': {
             tokentype type = lex_checksymbol(l, 1, 1, "f", TOKEN_IF);
             if (type==TOKEN_SYMBOL) type = lex_checksymbol(l, 1, 1, "n", TOKEN_IN);
+            if (type==TOKEN_SYMBOL) type = lex_checksymbol(l, 1, 1, "s", TOKEN_IS);
             if (type==TOKEN_SYMBOL) type = lex_checksymbol(l, 1, 5, "mport", TOKEN_IMPORT);
             return type;
         }
@@ -1142,7 +1143,7 @@ static syntaxtreeindx parse_classdeclaration(parser *p) {
     } else parse_error(p, false, COMPILE_EXPECTCLASSNAME);
     
     /* Extract a superclass name */
-    if (parse_matchtoken(p, TOKEN_LT)) {
+    if (parse_matchtoken(p, TOKEN_LT) || parse_matchtoken(p, TOKEN_IS)) {
         parse_consume(p, TOKEN_SYMBOL, COMPILE_EXPECTSUPER);
         sname=parse_symbolasvalue(p);
         sclass=parse_addnode(p, NODE_SYMBOL, sname, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
@@ -1542,6 +1543,7 @@ parserule rules[] = {
     UNUSED,                                            // TOKEN_CLASS
     UNUSED,                                            // TOKEN_IMPORT
     UNUSED,                                            // TOKEN_AS
+    UNUSED,                                            // TOKEN_IS
     
     UNUSED,                                            // TOKEN_INCOMPLETE
     UNUSED,                                            // TOKEN_ERROR

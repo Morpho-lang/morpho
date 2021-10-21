@@ -108,6 +108,7 @@ linedit_color cli_tokencolors[] = {
     LINEDIT_MAGENTA,                               // TOKEN_CLASS
     LINEDIT_MAGENTA,                               // TOKEN_IMPORT
     LINEDIT_MAGENTA,                               // TOKEN_AS
+    LINEDIT_MAGENTA,                               // TOKEN_IS
     
     LINEDIT_DEFAULTCOLOR,                          // TOKEN_INCOMPLETE
     LINEDIT_DEFAULTCOLOR,                          // TOKEN_ERROR

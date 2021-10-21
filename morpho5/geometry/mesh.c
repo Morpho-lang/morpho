@@ -276,7 +276,12 @@ objectsparse *mesh_addgrade(objectmesh *mesh, grade g) {
     for (h=g+1; (h<mesh->dim) && (!el); h++) {
         el=mesh_getconnectivityelement(mesh, 0, h);
     }
-    
+    /* if this grade doesn't exist
+    and we can't find the next available grade above it return NULL */
+    if (!el){
+        return NULL;
+    }
+
     /* Create a new sparse matrix */
     objectsparse *new=object_newsparse(NULL, NULL);
     if (!new) return NULL;
@@ -982,7 +987,15 @@ value Mesh_addgrade(vm *v, int nargs, value *args) {
         unsigned int g=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         
         objectsparse *s=mesh_getconnectivityelement(m, 0, g);
-        if (!s) s=mesh_addgrade(m, g);
+        if (!s) {
+            s=mesh_addgrade(m, g);
+            if(!s){
+                morpho_runtimeerror(v, MESH_ADDGRDOOB,g,mesh_maxgrade(m));
+                return MORPHO_NIL;
+
+            }
+        }
+
     } else if (nargs==2 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
                MORPHO_ISSPARSE(MORPHO_GETARG(args, 1))) {
         unsigned int grade=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
@@ -1098,6 +1111,8 @@ void mesh_initialize(void) {
     morpho_defineerror(MESH_INVLDID, ERROR_HALT, MESH_INVLDID_MSG);
     morpho_defineerror(MESH_CNNMTXARGS, ERROR_HALT, MESH_CNNMTXARGS_MSG);
     morpho_defineerror(MESH_ADDGRDARGS, ERROR_HALT, MESH_ADDGRDARGS_MSG);
+    morpho_defineerror(MESH_ADDGRDOOB, ERROR_HALT, MESH_ADDGRDOOB_MSG);
     morpho_defineerror(MESH_ADDSYMARGS, ERROR_HALT, MESH_ADDSYMARGS_MSG);
     morpho_defineerror(MESH_ADDSYMMSNGTRNSFRM, ERROR_HALT, MESH_ADDSYMMSNGTRNSFRM_MSG);
+
 }

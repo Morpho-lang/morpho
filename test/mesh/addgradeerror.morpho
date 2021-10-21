@@ -1,0 +1,8 @@
+
+var a = Mesh("tetrahedron.mesh")
+
+import meshtools
+var m = LineMesh(fn (t) [cos(t), sin(t), 0], 0..2*Pi:0.2, closed=true)
+m.addgrade(2)
+
+// expect error 'MshAddGrdOutOfBnds'

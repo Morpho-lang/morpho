@@ -1,0 +1,21 @@
+// Gaussian curvature with symmetry
+import constants
+import implicitmesh
+import plot
+import symmetry
+
+var L = 2
+
+var m = AreaMesh(fn (t, x) [x, cos(t), sin(t)], 0...2*Pi:2*Pi/40, -L..L:0.125, closed=[true,false])
+
+// Add translational symmetry to the exterior vertices
+var s = Selection(m, fn (x,y,z) abs(x-L)<1e-10 || abs(x+L)<1e-10)
+
+var t = Translate(Matrix([2*L,0,0]))
+m.addsymmetry(t, s)
+
+// Mean Squared curvature
+var lmc = GaussCurvature()
+
+print abs(lmc.total(m))<1e-6
+// expect: true

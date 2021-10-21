@@ -1,0 +1,40 @@
+\hypertarget{dictionary}{%
+\section{Dictionary}\label{dictionary}}
+
+Dictionaries are collection objects that associate a unique \emph{key}
+with a particular \emph{value}. Keys can be any kind of morpho value,
+including numbers, strings and objects.
+
+An example dictionary mapping states to capitals:
+
+\begin{lstlisting}
+var dict = { "Massachusetts" : "Boston",
+             "New York" : "Albany",
+             "Vermont" : "Montpelier" }
+\end{lstlisting}
+
+Lookup values by a given key with index notation:
+
+\begin{lstlisting}
+print dict["Vermont"]
+\end{lstlisting}
+
+You can change the value associated with a key, or add new elements to
+the dictionary like this:
+
+\begin{lstlisting}
+dict["Maine"]="Augusta"
+\end{lstlisting}
+
+Create an empty dictionary using the \texttt{Dictionary} constructor
+function:
+
+\begin{lstlisting}
+var d = Dictionary()
+\end{lstlisting}
+
+Loop over keys in a dictionary:
+
+\begin{lstlisting}
+for (k in dict) print k
+\end{lstlisting}

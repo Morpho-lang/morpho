@@ -47,6 +47,8 @@
 #define EQUIELEMENT_CLASSNAME          "EquiElement"
 #define LINECURVATURESQ_CLASSNAME      "LineCurvatureSq"
 #define LINETORSIONSQ_CLASSNAME        "LineTorsionSq"
+#define MEANCURVATURESQ_CLASSNAME      "MeanCurvatureSq"
+#define GAUSSCURVATURE_CLASSNAME       "GaussCurvature"
 #define GRADSQ_CLASSNAME               "GradSq"
 #define NORMSQ_CLASSNAME               "NormSq"
 #define LINEINTEGRAL_CLASSNAME         "LineIntegral"

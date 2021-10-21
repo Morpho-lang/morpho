@@ -54,3 +54,4 @@ dkms.conf
 .DS_Store
 .entitlements
 
+test/FailedTests.txt

@@ -1,0 +1,57 @@
+\hypertarget{color}{%
+\section{Color}\label{color}}
+
+The \texttt{color} module provides support for working with color.
+Colors are represented in morpho by \texttt{Color} objects. The module
+predefines some colors including \texttt{Red}, \texttt{Green},
+\texttt{Blue}, \texttt{Black}, \texttt{White}.
+
+To use the module, use import as usual:
+
+\begin{lstlisting}
+import color
+\end{lstlisting}
+
+Create a Color object from an RGB pair:
+
+\begin{lstlisting}
+var col = Color(0.5,0.5,0.5) // A 50% gray
+\end{lstlisting}
+
+The module also provides \texttt{ColorMap}s which are subclasses of
+color that map a single parameter in the range 0..1 onto a continuum of
+colors. These include \texttt{GradientMap}, \texttt{GrayMap} and
+\texttt{HueMap}. \texttt{Color}s and \texttt{Colormap}s have the same
+interface.
+
+Get the red, green or blue components of a color or colormap:
+
+\begin{lstlisting}
+var col = HueMap()
+print col.red(0.5) // argument can be in range 0..1
+\end{lstlisting}
+
+Get all three components as a list:
+
+\begin{lstlisting}
+col.rgb(0)
+\end{lstlisting}
+
+Create a grayscale:
+
+\begin{lstlisting}
+var c = Gray(0.2) // 20% gray
+\end{lstlisting}
+
+\hypertarget{rgb}{%
+\section{rgb}\label{rgb}}
+
+Gets the rgb components of a \texttt{Color} or \texttt{ColorMap} object
+as a list. Takes a single argument in the range 0..1, although the
+result will only depend on this argument if the object is a
+\texttt{ColorMap}.
+
+\begin{lstlisting}
+var col = Color(0.1,0.5,0.7)
+print col.rgb(0)
+\end{lstlisting}

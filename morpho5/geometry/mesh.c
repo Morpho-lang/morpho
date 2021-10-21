@@ -564,12 +564,16 @@ bool mesh_addsymmetry(vm *v, objectmesh *mesh, value symmetry, objectselection *
 /* Get a list of synonymous elements for a given element */
 bool mesh_getsynonyms(objectmesh *mesh, grade g, elementid id, varray_elementid *synonymids) {
     objectsparse *sym = mesh_getconnectivityelement(mesh, g, g);
-    synonymids->count=0;
     if (sym) {
-        int nel, *elids;
-        if (!sparseccs_getrowindices(&sym->ccs, id, &nel, &elids)) return false;
-        for (unsigned int i=0; i<nel; i++) varray_elementidwrite(synonymids, elids[i]);
+        synonymids->count=0;
+        void *ctr=sparsedok_loopstart(&sym->dok);
+        int row, col;
+        while (sparsedok_loop(&sym->dok, &ctr, &row, &col)) {
+            if (id==row) varray_elementidwriteunique(synonymids, col);
+            if (id==col) varray_elementidwriteunique(synonymids, row);
+        }
     }
+    
     return true;
 }
 

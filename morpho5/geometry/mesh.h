@@ -77,6 +77,9 @@ DECLARE_VARRAY(elementid, elementid);
 #define MESH_ADDGRDARGS                      "MshAddGrdArgs"
 #define MESH_ADDGRDARGS_MSG                  "Method 'addgrade' expects either an integer grade and, optionally, a sparse connectivity matrix."
 
+#define MESH_ADDGRDOOB                       "MshAddGrdOutOfBnds"
+#define MESH_ADDGRDOOB_MSG                   "Cannot add elements of grade %d to mesh with max grade %d"
+
 #define MESH_INVLDID                         "MshInvldId"
 #define MESH_INVLDID_MSG                     "Invalid element id."
 

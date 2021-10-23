@@ -559,3 +559,68 @@ class MeshRefiner {
     return dict
   }
 }
+
+/* Merging meshes */
+class MeshMerge is MeshBuilder {
+  init (meshes) {
+    self.meshes = meshes
+    self.tree = nil
+    self.tol = 1e-12 // Tolerance below which vertices will be considered identical
+    self.nv = 0
+    super.init()
+  }
+
+  addmesh(msh) {
+    if (!islist(self.meshes)) self.meshes = []
+    if (islist(msh)) for (el in msh) self.meshes.append(el)
+    else self.meshes.append(msh)
+  }
+
+  addvertex(x) {
+    if (self.tree) {
+      // Does this vertex already exist?
+      var nrst = self.tree.nearest(x)
+      if ((nrst.location - x).norm() > self.tol) {
+        // No, so create a new one
+        var new = self.tree.insert(x)
+        new.indx = super.addvertex(x)
+        return new.indx
+      } else { // Yes, so just return the index
+        return nrst.indx
+      }
+    } else { // If the tree wasn't created yet, create it and add the vertex
+      self.tree = KDTree([x])
+      self.tree.head.indx = super.addvertex(x)
+      return self.tree.head.indx
+    }
+  }
+
+  mergevertices(m) { // Merges vertices into the mesh
+    var vert = m.vertexmatrix()
+    var vdict = Dictionary()
+    for (vid in 0...m.count()) {
+      vdict[vid] = self.addvertex(vert.column(vid))
+    }
+    return vdict
+  }
+
+  mergegrade(m, g, dict) { // Merges elements of grade g into the mesh
+    var conn = m.connectivitymatrix(0, g)
+    for (id in 0...m.count(g)) {
+        var newel = [] // Convert the indices into new vertex indices
+        for (elid in conn.rowindices(id)) newel.append(dict[elid])
+        self.addelement(g, newel)
+    }
+  }
+
+  merge() {
+    for (m in self.meshes) {
+      var vdict = self.mergevertices(m) // First merge the vertices
+      for (grade in 1..m.maxgrade()) { // Then merge all higher grades
+        self.mergegrade(m, grade, vdict)
+      }
+    }
+
+    return self.build() // Build the mesh
+  }
+}

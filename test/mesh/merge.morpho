@@ -1,0 +1,21 @@
+import meshtools
+
+var m1 = LineMesh(fn (t) [cos(t), sin(t), 0], 0..Pi:Pi/5)
+var m2 = LineMesh(fn (t) [cos(t), sin(t), 0], Pi..2*Pi:Pi/5)
+
+var merge = MeshMerge([m1])
+merge.addmesh([m2])
+var m = merge.merge()
+
+var lines = m.connectivitymatrix(0,1)
+for (elid in 0...m.count(1)) print lines.rowindices(elid)
+// expect: [ 0, 1 ]
+// expect: [ 1, 2 ]
+// expect: [ 2, 3 ]
+// expect: [ 3, 4 ]
+// expect: [ 4, 5 ]
+// expect: [ 5, 6 ]
+// expect: [ 6, 7 ]
+// expect: [ 7, 8 ]
+// expect: [ 8, 9 ]
+// expect: [ 0, 9 ]

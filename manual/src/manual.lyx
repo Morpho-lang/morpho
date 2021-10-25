@@ -162,6 +162,325 @@ Morpho
 \end_layout
 
 \begin_layout Standard
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset space \hspace{}
+\length 0bp
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace vfill
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Box Frameless
+position "c"
+hor_pos "c"
+has_inner_box 1
+inner_pos "c"
+use_parbox 0
+use_makebox 0
+width "4.5in"
+special "none"
+height "1in"
+height_special "totalheight"
+thickness "0.4pt"
+separation "3pt"
+shadowsize "4pt"
+framecolor "black"
+backgroundcolor "none"
+status open
+
+\begin_layout Quotation
+
+\emph on
+In nova fert animus mutatas dicere formas 
+\end_layout
+
+\begin_layout Quotation
+
+\emph on
+corpora; di, coeptis (nam vos mutastis et illas)
+\end_layout
+
+\begin_layout Quotation
+
+\emph on
+adspirate meis primaque ab origine mundi
+\end_layout
+
+\begin_layout Quotation
+
+\emph on
+ad mea perpetuum deducite tempora carmen!
+\end_layout
+
+\begin_layout Quotation
+\begin_inset VSpace defskip
+\end_inset
+
+
+\end_layout
+
+\begin_layout Quotation
+\begin_inset space \qquad{}
+\end_inset
+
+—Ovid, 
+\emph on
+Metamorphoses
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace vfill
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset space \hspace{}
+\length 0bp
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Chapter*
+Acknowledgements
+\end_layout
+
+\begin_layout Standard
+The principal architect of 
+\emph on
+morpho
+\emph default
+, T J Atherton, wishes to thank the many people who have used various versions
+ of the program or otherwise contributed to the project:
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace defskip
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace defskip
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="7" columns="2">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Andrew DeBenedictis
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Danny Goldstein
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Ian Hunter
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Chaitanya Joshi
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Cole Wennerholm
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Eoghan Downey
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Allison Culbert
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Abigail Wilson
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Zhaoyu Xie
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Mathew Peterson
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Chris Burke
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Badel Mbanga
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Anca Andrei
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Mathew Giso
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace defskip
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace defskip
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\noindent
+
+\emph on
+This material is based upon work supported by the National Science Foundation
+ under grants DMR-1654283 and OAC-2003820.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
 \begin_inset CommandInset toc
 LatexCommand tableofcontents
 
@@ -971,7 +1290,11 @@ liquid crystal elasticity
 \series bold
  surface tension
 \series default
- (s.t.) that opposes lengthening of the boundary and an 
+ 
+\emph on
+(s.t.)
+\emph default
+ that opposes lengthening of the boundary and an 
 \series bold
 anchoring term
 \series default
@@ -1142,6 +1465,197 @@ Visualize results
 </cell>
 </row>
 </lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Morpho language
+\end_layout
+
+\begin_layout Standard
+The 
+\emph on
+morpho
+\emph default
+ language is simple but expressive.
+ If you're familiar with C-like languages (C, C++, Java, Javascript) you'll
+ find it very natural.
+ A much more detailed description is provided in Chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:Language"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, but a brief overview of key ideas to help you follow the tutorial: 
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Comments.
+
+\series default
+ Any text after 
+\family typewriter
+//
+\family default
+ or surrounded by 
+\family typewriter
+/*
+\family default
+ and 
+\family typewriter
+*/
+\family default
+ is a comment and not processed by morpho: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// This is a comment
+\end_layout
+
+\begin_layout Plain Layout
+
+/* This too! */
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Variables.
+ 
+\series default
+To create a variable, use the 
+\family typewriter
+var
+\family default
+ keyword; you can then assign and use the variable arbitrarily:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var a = 1
+\end_layout
+
+\begin_layout Plain Layout
+
+print a
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Functions.
+ 
+\series default
+Functions may take parameters, and you call them like this: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+print sin(x)
+\end_layout
+
+\end_inset
+
+and declare them like this:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+fn f(x,y) {
+\end_layout
+
+\begin_layout Plain Layout
+
+	return x^2+y^2
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+Some functions take optional arguments, which look like this:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var a = foo(quiet=true)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Objects.
+
+\series default
+ Morpho is deeply object-oriented.
+ Most things in morpho are represented as objects, which provide 
+\emph on
+methods
+\emph default
+ that you can use to control them.
+ Objects are made by 
+\emph on
+constructor functions
+\emph default
+ that begin with a capital letter (and may take arguments):
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var a = Object()
+\end_layout
+
+\end_inset
+
+Method calls then look like this:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+a.foo()
+\end_layout
 
 \end_inset
 
@@ -1541,11 +2055,6 @@ status open
 
 \begin_layout Plain Layout
 
-// Initial boundary selection
-\end_layout
-
-\begin_layout Plain Layout
-
 var bnd=Selection(m, boundary=true)
 \end_layout
 
@@ -1665,8 +2174,7 @@ Fields
 \end_layout
 
 \begin_layout Standard
-Having created our initial the computational domain, we will now create
- a 
+Having created our initial computational domain, we will now create a 
 \family typewriter
 Field
 \family default
@@ -1937,7 +2445,9 @@ and an
 \family typewriter
 Area
 \family default
- object for the global constraint: 
+ object for the global constraint.
+ This is really a constraint fixing the volume of fluid in the droplet,
+ but since we're in 2D that becomes a constraint on the area of the mesh:
 \end_layout
 
 \begin_layout Standard
@@ -2023,8 +2533,11 @@ problem.addlocalconstraint(ln, field=nn, target=1)
 
 Notice that some of these functionals only act on a selection such as the
  boundary and hence we use the optional 
+\family typewriter
+selection
+\family default
 \emph on
-selection 
+ 
 \emph default
 parameter to specify this.
  We can also specify the prefactor of the functional.
@@ -2114,9 +2627,13 @@ for (i in 1..100) {
 
 \end_inset
 
-Each iteration of a linesearch evolves the field (or shape) down the gradient
- of the target functional, subject to constraints, and finds an optimal
- stepsize to reduce the value of the functional.
+Each iteration of a 
+\family typewriter
+linesearch
+\family default
+ evolves the field (or shape) down the gradient of the target functional,
+ subject to constraints, and finds an optimal stepsize to reduce the value
+ of the functional.
  Here, we alternate between optimizing the field and optimizing the shape,
  performing twenty iterations of each, and overall do this one hundred times.
  These numbers have been chosen rather arbitrarily, and if you look at the
@@ -2296,7 +2813,11 @@ stepsize
 \begin_inset Text
 
 \begin_layout Plain Layout
-Stepsize for relax (changed by linesearch)
+Stepsize for 
+\family typewriter
+relax
+\family default
+ (changed by linesearch)
 \end_layout
 
 \end_inset
@@ -2327,7 +2848,11 @@ steplimit
 \begin_inset Text
 
 \begin_layout Plain Layout
-Largest stepsize a linesearch can take
+Largest stepsize a 
+\family typewriter
+linesearch
+\family default
+ can take
 \end_layout
 
 \end_inset
@@ -2424,14 +2949,21 @@ Morpho
 morphoview
 \emph default
 , to enable rich visualizations of results.
- Visualizations typically involve one or more Graphics objects, which act
- as a container for graphical elements to be displayed.
+ Visualizations typically involve one or more 
+\family typewriter
+Graphics
+\family default
+ objects, which act as a container for graphical elements to be displayed.
  Various 
 \emph on
 graphics primitives
 \emph default
 , such as spheres, cylinders, arrows, tubes, etc.
- can be added to a Graphics object to make a drawing.
+ can be added to a 
+\family typewriter
+Graphics
+\family default
+ object to make a drawing.
  
 \end_layout
 
@@ -2441,8 +2973,11 @@ We are now ready to visualize the results of the optimization.
  Because we're interested in seeing the mesh structure, we'll draw the edges
  (i.e.
  the grade 1 elements).
- The function to do this is provided as part of the plot module that we
- imported in section 
+ The function to do this is provided as part of the 
+\family typewriter
+plot
+\family default
+ module that we imported in section 
 \begin_inset CommandInset ref
 LatexCommand ref
 reference "sec:Importing-modules"
@@ -2471,7 +3006,11 @@ var g=plotmesh(m, grade=1)
 \end_layout
 
 \begin_layout Standard
-Next, we'll create a separate Graphics object that contains the director.
+Next, we'll create a separate 
+\family typewriter
+Graphics
+\family default
+ object that contains the director.
  Since the director 
 \begin_inset Formula $\mathbf{n}$
 \end_inset
@@ -2487,8 +3026,11 @@ Next, we'll create a separate Graphics object that contains the director.
 \end_inset
 
 .
- We will therefore make a helper function that creates a Graphics object
- and draws such a cylinder at every mesh point:
+ We will therefore make a helper function that creates a 
+\family typewriter
+Graphics
+\family default
+ object and draws such a cylinder at every mesh point:
 \end_layout
 
 \begin_layout Standard
@@ -2605,11 +3147,7 @@ The variables
 \begin_inset Formula $+$
 \end_inset
 
- operator, and display them with 
-\emph on
-morphoview
-\emph default
- like so: 
+ operator, and display them like so: 
 \end_layout
 
 \begin_layout Standard
@@ -2696,7 +3234,7 @@ examples/tutorial
 \family default
  folder inside the git repository as 
 \family typewriter
-tutorial1.morpho
+tutorial.morpho
 \family default
 .
  The result we have obtained in Fig.
@@ -2731,7 +3269,11 @@ To perform refinement we:
 \end_layout
 
 \begin_layout Enumerate
-Create a MeshRefiner object, providing it a list of all the 
+Create a 
+\family typewriter
+MeshRefiner
+\family default
+ object, providing it a list of all the 
 \family typewriter
 Mesh
 \family default

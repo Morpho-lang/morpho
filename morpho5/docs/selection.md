@@ -7,15 +7,19 @@
 The Selection class enables you to select components of a mesh for later use. You can supply a function that is applied to the coordinates of every vertex in the mesh, or select components like boundaries.
 
 Create an empty selection:
+
     var s = Selection(mesh)
 
 Select vertices above the z=0 plane using an anonymous function:
+
     var s = Selection(mesh, fn (x,y,z) z>0)
 
 Select the boundary of a mesh:
+
     var s = Selection(mesh, boundary=true)
 
 Selection objects can be composed using set operations:
+
     var s = s1.union(s2)
 
 or
@@ -51,6 +55,7 @@ Note that this method modifies the existing selection, and does not generate a n
 Returns a list of element ids included in the selection.
 
 To find out which edges are selected:
+
     var edges = s.idlistforgrade(1)
 
 ## isselected
@@ -58,4 +63,5 @@ To find out which edges are selected:
 Checks if an element id is selected, returning `true` or `false` accordingly.
 
 To check if edge number 5 is selected:
+
     var f = s.isselected(1, 5))

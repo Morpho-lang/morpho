@@ -5,15 +5,29 @@ The Selection class enables you to select components of a mesh for later
 use. You can supply a function that is applied to the coordinates of
 every vertex in the mesh, or select components like boundaries.
 
-Create an empty selection: var s = Selection(mesh)
+Create an empty selection:
 
-Select vertices above the z=0 plane using an anonymous function: var s =
-Selection(mesh, fn (x,y,z) z\textgreater0)
+\begin{lstlisting}
+var s = Selection(mesh)
+\end{lstlisting}
 
-Select the boundary of a mesh: var s = Selection(mesh, boundary=true)
+Select vertices above the z=0 plane using an anonymous function:
 
-Selection objects can be composed using set operations: var s =
-s1.union(s2)
+\begin{lstlisting}
+var s = Selection(mesh, fn (x,y,z) z>0)
+\end{lstlisting}
+
+Select the boundary of a mesh:
+
+\begin{lstlisting}
+var s = Selection(mesh, boundary=true)
+\end{lstlisting}
+
+Selection objects can be composed using set operations:
+
+\begin{lstlisting}
+var s = s1.union(s2)
+\end{lstlisting}
 
 or var s = s1.intersection(s2)
 
@@ -60,7 +74,11 @@ generate a new Selection object.
 
 Returns a list of element ids included in the selection.
 
-To find out which edges are selected: var edges = s.idlistforgrade(1)
+To find out which edges are selected:
+
+\begin{lstlisting}
+var edges = s.idlistforgrade(1)
+\end{lstlisting}
 
 \hypertarget{isselected}{%
 \section{isselected}\label{isselected}}
@@ -68,4 +86,8 @@ To find out which edges are selected: var edges = s.idlistforgrade(1)
 Checks if an element id is selected, returning \texttt{true} or
 \texttt{false} accordingly.
 
-To check if edge number 5 is selected: var f = s.isselected(1, 5))
+To check if edge number 5 is selected:
+
+\begin{lstlisting}
+var f = s.isselected(1, 5))
+\end{lstlisting}

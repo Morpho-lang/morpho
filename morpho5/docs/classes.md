@@ -16,7 +16,7 @@ is called whenever an object is created.
         }
 
         eat() {
-            print "A delicious "+type+" cake"
+            print "A delicious "+self.type+" cake"
         }
     }
 
@@ -35,6 +35,8 @@ The `self` keyword is used to access an object's properties and methods from wit
 
     class Vehicle {
       init (type) { self.type = type }
+
+      drive () { print "Driving my ${self.type}." }
     }
 
 ## Super

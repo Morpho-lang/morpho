@@ -13,7 +13,7 @@ class Cake {
     }
 
     eat() {
-        print "A delicious "+type+" cake"
+        print "A delicious "+self.type+" cake"
     }
 }
 \end{lstlisting}
@@ -39,6 +39,8 @@ methods from within its definition.
 \begin{lstlisting}
 class Vehicle {
   init (type) { self.type = type }
+
+  drive () { print "Driving my ${self.type}." }
 }
 \end{lstlisting}
 

@@ -40,9 +40,15 @@ Each of these may be called with a mesh, a field and a selection.
 A \texttt{Length} functional calculates the length of a line elements in
 a mesh.
 
-Evaluate the length of a circular loop: import constants import
-meshtools var m = LineMesh(fn (t) {[}cos(t), sin(t), 0{]},
-0\ldots2*Pi:Pi/20, closed=true) var le = Length() print le.total(m)
+Evaluate the length of a circular loop:
+
+\begin{lstlisting}
+import constants
+import meshtools
+var m = LineMesh(fn (t) [cos(t), sin(t), 0], 0...2*Pi:Pi/20, closed=true)
+var le = Length()
+print le.total(m)
+\end{lstlisting}
 
 \hypertarget{areaenclosed}{%
 \section{AreaEnclosed}\label{areaenclosed}}
@@ -57,8 +63,8 @@ var la = AreaEnclosed()
 \hypertarget{area}{%
 \section{Area}\label{area}}
 
-An \texttt{Area} functional calculates the area of a area elements in a
-mesh:
+An \texttt{Area} functional calculates the area of the area elements in
+a mesh:
 
 \begin{lstlisting}
 var la = Area()
@@ -116,11 +122,18 @@ See the thomson example.
 The \texttt{LinearElasticity} functional measures the linear elastic
 energy away from a reference state.
 
-You must initialize with a reference mesh: var le =
-LinearElasticity(mref)
+You must initialize with a reference mesh:
+
+\begin{lstlisting}
+var le = LinearElasticity(mref)
+\end{lstlisting}
 
 Manually set the poisson's ratio and grade to operate on:
-le.poissonratio = 0.2 le.grade = 2
+
+\begin{lstlisting}
+le.poissonratio = 0.2
+le.grade = 2
+\end{lstlisting}
 
 \hypertarget{equielement}{%
 \section{EquiElement}\label{equielement}}
@@ -160,7 +173,11 @@ The \texttt{GradSq} functional measures the integral of the gradient
 squared of a field. The field can be a scalar, vector or matrix
 function.
 
-Initialize with the required field: var le=GradSq(phi)
+Initialize with the required field:
+
+\begin{lstlisting}
+var le=GradSq(phi)
+\end{lstlisting}
 
 \hypertarget{nematic}{%
 \section{Nematic}\label{nematic}}
@@ -180,7 +197,11 @@ var lf=Nematic(nn, ksplay=1, ktwist=0.5, kbend=1.5, pitch=0.1)
 \end{lstlisting}
 
 These are stored as properties of the object and can be retrieved as
-follows: print lf.ksplay
+follows:
+
+\begin{lstlisting}
+print lf.ksplay
+\end{lstlisting}
 
 \hypertarget{nematicelectric}{%
 \section{NematicElectric}\label{nematicelectric}}
@@ -206,7 +227,7 @@ The \texttt{LineIntegral} functional computes the line integral of a
 function. You supply an integrand function that takes a position matrix
 as an argument.
 
-To compute integral(x\textsuperscript{2+y}2) over a line element:
+To compute \texttt{integral(x\^{}2+y\^{}2)} over a line element:
 
 \begin{lstlisting}
 var la=LineIntegral(fn (x) x[0]^2+x[1]^2)

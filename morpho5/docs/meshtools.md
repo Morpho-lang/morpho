@@ -13,7 +13,7 @@ The Meshtools package contains a number of functions and classes to assist with 
 
 This function creates a mesh composed of triangles from a parametric function. To use it:
 
-    var m = LineMesh(function, range1, range2, closed=boolean)
+    var m = AreaMesh(function, range1, range2, closed=boolean)
 
 where
 
@@ -28,13 +28,15 @@ To use `AreaMesh`, import the `meshtools` module:
 
 Create a square:
 
-    var m = LineMesh(fn (u,v) [u, v, 0], 0..1:0.1, 0..1:0.1)
+    var m = AreaMesh(fn (u,v) [u, v, 0], 0..1:0.1, 0..1:0.1)
 
 Create a tube:
 
-    var m = AreaMesh(fn (u, v) [v, cos(u), sin(u)], -Pi...Pi:Pi/4, -1..1:0.1, closed=[true, false])
+    var m = AreaMesh(fn (u, v) [v, cos(u), sin(u)], -Pi...Pi:Pi/4,
+                     -1..1:0.1, closed=[true, false])
 
 Create a torus:
+
     var c=0.5, a=0.2
     var m = AreaMesh(fn (u, v) [(c + a*cos(v))*cos(u),
                                 (c + a*cos(v))*sin(u),

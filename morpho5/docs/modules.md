@@ -6,7 +6,7 @@
 # Modules
 [tagmodules]: # (modules)
 
-Morpho is extensible and provides a convenient module system that works like standadrd libraries in other languages. Modules may define useful variables, functions and classes, and can be made available using the `import` keyword. For example,
+Morpho is extensible and provides a convenient module system that works like standard libraries in other languages. Modules may define useful variables, functions and classes, and can be made available using the `import` keyword. For example,
 
     import color
 

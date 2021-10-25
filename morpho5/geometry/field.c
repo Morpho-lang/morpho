@@ -109,6 +109,12 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *do
             for (unsigned int i=0; i<new->nelements; i++) {
                 memcpy(new->data.elements+i*mel, mat->elements, sizeof(double)*mel);
             }
+        } else if(MORPHO_ISNUMBER(prototype)){
+            // if we have a number for our prototype set all the elements equal to it
+            for (elementid i=0; i<mesh->vert->ncols; i++) {
+                field_setelement(new, MESH_GRADE_VERTEX, i, 0, prototype);          
+            }
+
         } else memset(new->data.elements, 0, sizeof(double)*size);
         
     } else { // Cleanup partially allocated structure

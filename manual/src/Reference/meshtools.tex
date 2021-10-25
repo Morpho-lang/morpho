@@ -11,7 +11,7 @@ This function creates a mesh composed of triangles from a parametric
 function. To use it:
 
 \begin{lstlisting}
-var m = LineMesh(function, range1, range2, closed=boolean)
+var m = AreaMesh(function, range1, range2, closed=boolean)
 \end{lstlisting}
 
 where
@@ -43,18 +43,24 @@ import meshtools
 Create a square:
 
 \begin{lstlisting}
-var m = LineMesh(fn (u,v) [u, v, 0], 0..1:0.1, 0..1:0.1)
+var m = AreaMesh(fn (u,v) [u, v, 0], 0..1:0.1, 0..1:0.1)
 \end{lstlisting}
 
 Create a tube:
 
 \begin{lstlisting}
-var m = AreaMesh(fn (u, v) [v, cos(u), sin(u)], -Pi...Pi:Pi/4, -1..1:0.1, closed=[true, false])
+var m = AreaMesh(fn (u, v) [v, cos(u), sin(u)], -Pi...Pi:Pi/4,
+                 -1..1:0.1, closed=[true, false])
 \end{lstlisting}
 
-Create a torus: var c=0.5, a=0.2 var m = AreaMesh(fn (u, v) {[}(c +
-a\emph{cos(v))}cos(u), (c + a\emph{cos(v))}sin(u), a*sin(v){]},
-0\ldots2\emph{Pi:Pi/16, 0\ldots2}Pi:Pi/8, closed=true)
+Create a torus:
+
+\begin{lstlisting}
+var c=0.5, a=0.2
+var m = AreaMesh(fn (u, v) [(c + a*cos(v))*cos(u),
+                            (c + a*cos(v))*sin(u),
+                            a*sin(v)], 0...2*Pi:Pi/16, 0...2*Pi:Pi/8, closed=true)
+\end{lstlisting}
 
 \hypertarget{linemesh}{%
 \section{LineMesh}\label{linemesh}}

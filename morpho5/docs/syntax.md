@@ -10,7 +10,7 @@ Morpho provides a flexible object oriented language similar to other languages i
 
 Morpho programs are stored as plain text with the .morpho file extension. A program can be run from the command line by typing
 
-    morpho program.morpho
+    morpho5 program.morpho
 
 ## Comments
 [tagcomment]: # (comment)

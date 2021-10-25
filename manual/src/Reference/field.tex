@@ -80,7 +80,8 @@ each facet.
 \section{Op}\label{op}}
 
 The \texttt{op} method applies a function to every item stored in a
-\texttt{Field}. For example,
+\texttt{Field}, returning the result as elements of a new \texttt{Field}
+object. For example,
 
 \begin{lstlisting}
 f.op(fn (x) x.norm())
@@ -99,5 +100,4 @@ f.op(fn (x,y) x.inner(y), g)
 \end{lstlisting}
 
 calculates an elementwise inner product between the elements of Fields
-\texttt{f} and \texttt{g}, returning the result as elements of a new
-\texttt{Field} object.
+\texttt{f} and \texttt{g}.

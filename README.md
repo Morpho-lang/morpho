@@ -6,7 +6,9 @@ The Morpho language. Morpho is a programmable environment for shape optimization
 * **Class-based**. A morpho program involves creating and manipulating objects, which greatly simplifies operation.
 * **Extendable**. Morpho is, in effect, an embeddable language oriented for scientific applications. Functionality is easy to add via packages.
 
-Documentation is available on [readthedocs](https://morpho-lang.readthedocs.io/en/latest/)
+Documentation is available on [readthedocs](https://morpho-lang.readthedocs.io/en/latest/) and via an extensive [user manual](https://github.com/Morpho-lang/morpho/blob/main/manual/manual.pdf).
+
+*This material is based upon work supported by the National Science Foundation under grants DMR-1654283 and OAC-2003820.*
 
 ## Installation
 

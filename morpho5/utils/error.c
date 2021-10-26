@@ -160,6 +160,7 @@ void error_initialize(void) {
 
 /** Finalizes the error handling system */
 void error_finalize(void) {
+    dictionary_freecontents(&error_table, true, false);
     dictionary_clear(&error_table);
     varray_errordefinitionclear(&error_messages);
 }

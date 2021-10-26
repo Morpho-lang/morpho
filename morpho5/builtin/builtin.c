@@ -187,6 +187,7 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
     for (unsigned int i=0; desc[i].name!=NULL; i++) {
         if (desc[i].type==BUILTIN_METHOD) {
             value selector = object_stringfromcstring(desc[i].name, strlen(desc[i].name));
+            
             objectbuiltinfunction *method = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
             builtin_init(method);
             method->function=desc[i].function;
@@ -266,7 +267,8 @@ void builtin_initialize(void) {
 
 void builtin_finalize(void) {
     dictionary_freecontents(&builtin_functiontable, false, true);
-    dictionary_freecontents(&builtin_classtable, false, true);
+    dictionary_freecontents(&builtin_classtable, true, true);
+    dictionary_freecontents(&builtin_symboltable, false, true);
     dictionary_clear(&builtin_functiontable);
     dictionary_clear(&builtin_classtable);
     dictionary_clear(&builtin_symboltable);

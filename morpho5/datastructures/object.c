@@ -59,7 +59,8 @@ void object_free(object *obj) {
             break;
         case OBJECT_BUILTINFUNCTION: {
             objectbuiltinfunction *func = (objectbuiltinfunction *) obj;
-            morpho_freeobject(func->name);
+            // The name is stored in the symbol table
+            //morpho_freeobject(func->name);
         }
             break;
         case OBJECT_CLASS: {

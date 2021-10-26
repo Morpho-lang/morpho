@@ -31,6 +31,9 @@ static dictionary builtin_classtable;
 /** A table of symbols used by built in classes */
 static dictionary builtin_symboltable;
 
+/** A list of builtin methods */
+static dictionary builtin_methodtable;
+
 /** Core object types can be provided with a 'veneer' class enabling the user to call methods
     on it, e.g. <string>.length(). This list provides easy access. */
 objectclass *objectveneer[OBJECT_EXTERN+1];
@@ -136,11 +139,15 @@ value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags
     value out = MORPHO_NIL;
     
     if (new) {
+        value selector = object_stringfromcstring(name, strlen(name));
         builtin_init(new);
         new->function=func;
-        new->name=object_stringfromcstring(name, strlen(name));
+        new->name=dictionary_intern(&builtin_symboltable, selector);
         new->flags=flags;
         out = MORPHO_OBJECT(new);
+        
+        /* If interning the symbol changed it, we should free the selector */
+        if (!MORPHO_ISSAME(selector, new->name)) object_free(MORPHO_GETOBJECT(selector));
         
         if (dictionary_get(&builtin_functiontable, new->name, NULL)) {
             UNREACHABLE("redefinition of builtin function (check builtin.c)");
@@ -202,6 +209,7 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
             }
             
             dictionary_insert(&new->methods, method->name, MORPHO_OBJECT(method));
+            dictionary_insert(&builtin_methodtable, MORPHO_OBJECT(method), MORPHO_FALSE);
         }
     }
     
@@ -251,6 +259,7 @@ void builtin_initialize(void) {
     dictionary_init(&builtin_functiontable);
     dictionary_init(&builtin_classtable);
     dictionary_init(&builtin_symboltable);
+    dictionary_init(&builtin_methodtable);
     
     functions_initialize();
     veneer_initialize(); 
@@ -268,10 +277,12 @@ void builtin_initialize(void) {
 void builtin_finalize(void) {
     dictionary_freecontents(&builtin_functiontable, false, true);
     dictionary_freecontents(&builtin_classtable, true, true);
+    dictionary_freecontents(&builtin_methodtable, true, false);
     dictionary_freecontents(&builtin_symboltable, false, true);
     dictionary_clear(&builtin_functiontable);
     dictionary_clear(&builtin_classtable);
     dictionary_clear(&builtin_symboltable);
+    dictionary_clear(&builtin_methodtable);
     
     file_finalize();
 }

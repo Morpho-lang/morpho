@@ -275,7 +275,7 @@ void builtin_initialize(void) {
 }
 
 void builtin_finalize(void) {
-    dictionary_freecontents(&builtin_functiontable, false, true);
+    dictionary_freecontents(&builtin_functiontable, true, true);
     dictionary_freecontents(&builtin_classtable, true, true);
     dictionary_freecontents(&builtin_methodtable, true, false);
     dictionary_freecontents(&builtin_symboltable, false, true);

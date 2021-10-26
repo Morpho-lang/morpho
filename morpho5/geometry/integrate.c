@@ -107,13 +107,19 @@ bool integrate_lineint(integrandfunction *function, unsigned int dim, double *x[
     double af=pow(0.5, (double) recursiondepth); // Length of whole line from recursion depth
     unsigned int i;
     bool success=false;
+    double fout = 0;
     
     /* Try low order method for rapid results on low order functions */
     for (unsigned int i=0; i<gknpts; i++) {
         double tt=0.5*(1.0+gk[3*i]); // Convert [-1,1] to [0,1]
         integrate_interpolatepositionline(dim, x, tt, xx);
         if (nquantity)  integrate_interpolatequantitiesline(dim, tt, nquantity, quantity, q);
-        r[i] = (*function) (dim, &tt, xx, nquantity, q, ref);
+        if ((*function) (dim, &tt, xx, nquantity, q, ref,&fout)){
+            r[i] = fout;
+        }
+        else {
+            return false;
+        }
     }
     
     for (i=0; i<gk1; i++) {
@@ -273,13 +279,18 @@ bool integrate_areaint(integrandfunction *function, unsigned int dim, double *x[
     double xx[dim], gest=ge;
     double af=pow(0.25, (double) recursiondepth); // Area of total triangle covered from recursion depth
     bool success=false;
-    
+    double fout = 0;
     /* Try low order method for rapid results on low order functions */
     for (unsigned int i=0; i<npts1; i++) {
         double *lambda=pts+3*i;
         integrate_interpolatepositiontri(dim, x, lambda, xx);
         if (nquantity)  integrate_interpolatequantitiestri(dim, lambda, nquantity, quantity, q);
-        r[i] = (*function) (dim, lambda, xx, nquantity, q, ref);
+        if ((*function) (dim, lambda, xx, nquantity, q, ref, &fout)){
+            r[i] = fout;
+        } else{
+            return false;
+        }
+        
     }
     rr=(r[1]+r[2]+r[3]);
     rr2=(r[4]+r[5]+r[6]+r[7]+r[8]+r[9]);
@@ -302,7 +313,11 @@ bool integrate_areaint(integrandfunction *function, unsigned int dim, double *x[
         double *lambda=pts+3*i;
         integrate_interpolatepositiontri(dim, x, lambda, xx);
         if (nquantity)  integrate_interpolatequantitiestri(dim, lambda, nquantity, quantity, q);
-        r[i] = (*function) (dim, lambda, xx, nquantity, q, ref);
+        if ((*function) (dim, lambda, xx, nquantity, q, ref, &fout)){
+            r[i] = fout;
+        } else{
+            return false;
+        }
     }
     rr3=(r[10]+r[11]+r[12]+r[13]+r[14]+r[15]+r[16]+r[17]+r[18]+r[19]);
     r3 = wts3[0]*r[0] + wts3[1]*rr + wts3[2]*rr2 + wts3[3]*rr3;

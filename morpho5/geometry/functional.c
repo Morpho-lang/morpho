@@ -2499,20 +2499,20 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
     return success;
 }
 
-double integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *ref) {
+bool integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *ref, double *fout) {
     integralref *iref = ref;
     objectmatrix posn = MORPHO_STATICMATRIX(x, dim, 1);
     value args[nquantity+1], out;
-    double ret = 0;
-    
+        
     args[0]=MORPHO_OBJECT(&posn);
     for (unsigned int i=0; i<nquantity; i++) args[i+1]=quantity[i];
     
     if (morpho_call(iref->v, iref->integrand, nquantity+1, args, &out)) {
-        morpho_valuetofloat(out, &ret);
+        morpho_valuetofloat(out,fout);
+        return true;
     }
     
-    return ret;
+    return false;
 }
 
 /** Integrate a function over a line */

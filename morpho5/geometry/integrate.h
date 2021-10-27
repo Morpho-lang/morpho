@@ -22,7 +22,7 @@
  * @param[in] ref             - A reference passed by the caller (typically things constant over the domain
  * @returns value of the integrand at the appropriate point with interpolated quantities.
  */
-typedef double (integrandfunction) (unsigned int dim, double *lambda, double *x, unsigned int nquantity, value *quantity, void *ref);
+typedef bool (integrandfunction) (unsigned int dim, double *lambda, double *x, unsigned int nquantity, value *quantity, void *ref, double *fout);
 
 bool integrate_integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out);
 

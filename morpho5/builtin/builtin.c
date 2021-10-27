@@ -181,6 +181,7 @@ void builtin_printfunction(objectbuiltinfunction *f) {
  * @returns the class object */
 value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
     value label = object_stringfromcstring(name, strlen(name));
+    varray_valuewrite(&builtin_objects, label);
     objectclass *new = object_newclass(label);
     varray_valuewrite(&builtin_objects, MORPHO_OBJECT(new));
     

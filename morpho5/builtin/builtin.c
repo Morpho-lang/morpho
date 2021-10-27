@@ -241,8 +241,8 @@ value builtin_internsymbol(value symbol) {
 /** Interns a symbo given as a C string. */
 value builtin_internsymbolascstring(char *symbol) {
     value selector = object_stringfromcstring(symbol, strlen(symbol));
+    varray_valuewrite(&builtin_objects, selector);
     value internselector = builtin_internsymbol(selector);
-    if (!MORPHO_ISSAME(selector, internselector)) object_free(MORPHO_GETOBJECT(selector));
     return internselector;
 }
 

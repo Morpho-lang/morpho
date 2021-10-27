@@ -69,9 +69,9 @@ static void vm_programclear(program *p) {
 /** @brief Creates and initializes a new program */
 program *morpho_newprogram(void) {
     program *new = MORPHO_MALLOC(sizeof(program));
-        
+
     if (new) vm_programinit(new);
-        
+
     return new;
 }
 
@@ -101,7 +101,7 @@ void program_bindobject(program *p, object *obj) {
         obj->type!=OBJECT_BUILTINFUNCTION && /* Object is not a built in function that is freed separately */
         (p->boundlist!=obj->next && p->boundlist!=NULL) /* To handle the case where the object is the only object */
         ) {
-        
+
         obj->next=p->boundlist;
         p->boundlist=obj;
     }
@@ -151,7 +151,7 @@ void vm_graylistadd(graylist *g, object *obj) {
         if (g->graycapacity<8) g->graycapacity=8;
         g->list=realloc(g->list, g->graycapacity*sizeof(object *));
     }
-    
+
     if (g->list) {
         g->list[g->graycount]=obj;
         g->graycount++;
@@ -168,7 +168,7 @@ vm *globalvm=NULL;
 static void vm_init(vm *v) {
     globalvm=v;
     v->current=NULL;
-    v->instructions=NULL; 
+    v->instructions=NULL;
     v->objects=NULL;
     v->openupvalues=NULL;
     v->fp=NULL;
@@ -202,7 +202,7 @@ void vm_freeobjects(vm *v) {
         object_free(e);
         k++;
     }
-    
+
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
     printf("--- Freed %li objects bound to VM ---\n", k);
 #endif
@@ -226,9 +226,9 @@ static void vm_bindobject(vm *v, value obj) {
 #ifdef MORPHO_DEBUG_GCSIZETRACKING
     dictionary_insert(&sizecheck, obj, MORPHO_INTEGER(size));
 #endif
-    
+
     v->bound+=size;
-    
+
 #ifdef MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
     vm_collectgarbage(v);
 #else
@@ -252,14 +252,14 @@ size_t vm_gcrecalculatesize(vm *v) {
 /** Marks an object as reachable */
 void vm_gcmarkobject(vm *v, object *obj) {
     if (!obj || obj->status!=OBJECT_ISUNMARKED) return;
-    
+
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
         printf("Marking %p ", obj);
         object_print(MORPHO_OBJECT(obj));
         printf("\n");
 #endif
     obj->status=OBJECT_ISMARKED;
-    
+
     vm_graylistadd(&v->gray, obj);
 }
 
@@ -294,15 +294,15 @@ void vm_gcmarkroots(vm *v) {
     printf("> Stack.\n");
 #endif
     value *stacktop = v->stack.data+v->fp->roffset+v->fp->function->nregs-1;
-    
+
     /* Find the largest stack position currently in play */
     /*for (callframe *f=v->frame; f<v->fp; f++) {
         value *ftop = v->stack.data+f->roffset+f->function->nregs-1;
         if (ftop>stacktop) stacktop=ftop;
     }*/
-    
+
     //debug_showstack(v);
-    
+
     for (value *s=stacktop; s>=v->stack.data; s--) {
         if (MORPHO_ISOBJECT(*s)) vm_gcmarkvalue(v, *s);
     }
@@ -313,7 +313,7 @@ void vm_gcmarkroots(vm *v) {
     for (unsigned int i=0; i<v->globals.count; i++) {
         vm_gcmarkvalue(v, v->globals.data[i]);
     }
-    
+
     /** Mark closure objects in use */
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
     printf("> Closures.\n");
@@ -321,7 +321,7 @@ void vm_gcmarkroots(vm *v) {
     for (callframe *f=v->frame; f && v->fp && f<=v->fp; f++) {
         if (f->closure) vm_gcmarkobject(v, (object *) f->closure);
     }
-    
+
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
     printf("> Open upvalues.\n");
 #endif
@@ -454,9 +454,9 @@ void vm_gcsweep(vm *v) {
                 }
             }
 #endif
-            
+
             v->bound-=size;
-            
+
             /* Delink */
             obj=obj->next;
             if (prev!=NULL) {
@@ -464,7 +464,7 @@ void vm_gcsweep(vm *v) {
             } else {
                 v->objects=obj;
             }
-            
+
 #ifndef MORPHO_DEBUG_GCSIZETRACKING
             object_free(unreached);
 #endif
@@ -479,7 +479,7 @@ void vm_collectgarbage(vm *v) {
 #endif
     vm *vc = (v!=NULL ? v : globalvm);
     if (!vc) return;
-    
+
     if (vc && vc->bound>0) {
         size_t init=vc->bound;
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
@@ -488,7 +488,7 @@ void vm_collectgarbage(vm *v) {
         vm_gcmarkroots(vc);
         vm_gctrace(vc);
         vm_gcsweep(vc);
-        
+
         if (vc->bound>init) {
 #ifdef MORPHO_DEBUG_GCSIZETRACKING
             printf("GC collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->bound*MORPHO_GCGROWTHFACTOR);
@@ -498,9 +498,9 @@ void vm_collectgarbage(vm *v) {
             vc->bound=vm_gcrecalculatesize(v);
 #endif
         }
-        
+
         vc->nextgc=vc->bound*MORPHO_GCGROWTHFACTOR;
-        
+
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
         printf("--- end garbage collection ---\n");
         if (vc) printf("    collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->nextgc);
@@ -520,7 +520,7 @@ void vm_runtimeerror(vm *v, ptrdiff_t iindx, errorid id, ...) {
     va_list args;
     int line=ERROR_POSNUNIDENTIFIABLE, posn=ERROR_POSNUNIDENTIFIABLE;
     debug_infofromindx(v->current, iindx, &line, &posn, NULL, NULL);
-    
+
     va_start(args, id);
     morpho_writeerrorwithidvalist(&v->err, id, line, posn, args);
     va_end(args);
@@ -565,18 +565,18 @@ static inline objectupvalue *vm_captureupvalue(vm *v, value *reg) {
     objectupvalue *prev = NULL;
     objectupvalue *up = v->openupvalues;
     objectupvalue *new = NULL;
-    
+
     /* Is there an existing open upvalue that points to the same location? */
     for (;up!=NULL && up->location>reg;up=up->next) {
         prev=up;
     }
-    
+
     /* If so, return it */
     if (up != NULL && up->location==reg) return up;
-    
+
     /* If not create a new one */
     new=object_newupvalue(reg);
-    
+
     if (new) {
         /* And link it into the list */
         new->next=up;
@@ -587,7 +587,7 @@ static inline objectupvalue *vm_captureupvalue(vm *v, value *reg) {
         }
         vm_bindobject(v, MORPHO_OBJECT(new));
     }
-    
+
     return new;
 }
 
@@ -597,7 +597,7 @@ static inline objectupvalue *vm_captureupvalue(vm *v, value *reg) {
 static inline void vm_closeupvalues(vm *v, value *reg) {
     while (v->openupvalues!=NULL && v->openupvalues->location>=reg) {
         objectupvalue *up = v->openupvalues;
-        
+
         up->closed=*up->location; /* Store closed value */
         up->location=&up->closed; /* Point to closed value */
         v->openupvalues=up->next; /* Delink from openupvalues list */
@@ -614,32 +614,32 @@ static inline void vm_expandstack(vm *v, value **reg, unsigned int n) {
         /* Calculate new size */
         unsigned int newsize=MORPHO_STACKGROWTHFACTOR*v->stack.capacity;
         if (newsize<morpho_powerof2ceiling(n)) newsize=morpho_powerof2ceiling(n);
-        
+
         /* Preserve the offset of the old stack pointer into the stack */
         ptrdiff_t roffset=*reg-v->stack.data;
-        
+
         varray_ptrdiff diff;
         varray_ptrdiffinit(&diff);
-        
+
         /* Preserve open upvalue offsets */
         for (objectupvalue *u=v->openupvalues; u!=NULL; u=u->next) {
             ptrdiff_t p=u->location-v->stack.data;
             varray_ptrdiffadd(&diff, &p, 1);
         }
-        
+
         /* Resize the stack */
         varray_valueresize(&v->stack, newsize);
-        
+
         /* Recalculate upvalues */
         unsigned int k=0;
         for (objectupvalue *u=v->openupvalues; u!=NULL; u=u->next) {
             u->location=v->stack.data+diff.data[k];
             k++;
         }
-        
+
         /* Free our varray of ptrdiffs */
         varray_ptrdiffclear(&diff);
-        
+
         /* Correct the stack pointer */
         *reg = v->stack.data+roffset;
     }
@@ -653,12 +653,12 @@ static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsign
                  roffset = shift+nfixed+1, // Position of first optional parameter in output
                  n=0;
     value res[nopt];
-    
+
     /* Copy across default values */
     for (unsigned int i=0; i<nopt; i++) {
         res[i]=func->konst.data[func->opt.data[i].def];
     }
-    
+
     /* Identify the optional arguments by searching back from the end */
     for (n=0; 2*n<nargs; n+=1) {
         unsigned int k=0;
@@ -666,15 +666,15 @@ static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsign
         if (k>=nopt) break; // If we didn't find a match, we're done with optional arguments
         res[k]=reg[shift+nargs-2*n];
     }
-    
-    if (nargs-2*n!=nfixed) { // Verify number of fixed args is correct 
+
+    if (nargs-2*n!=nfixed) { // Verify number of fixed args is correct
         vm_runtimeerror(v, iindx, VM_INVALIDARGS, nfixed, nargs-2*n);
         return false;
     }
-    
+
     /* Copy across the arguments */
     for (unsigned int i=0; i<nopt; i++) reg[roffset+i]=res[i];
-    
+
     return true;
 }
 
@@ -696,16 +696,16 @@ static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsign
  * @param[out] reg                     register/stack pointer, updated */
 static inline bool vm_call(vm *v, value fn, unsigned int shift, unsigned int nargs, instruction **pc, value **reg) {
     objectfunction *func = MORPHO_GETFUNCTION(fn);
-    
+
     /* In the old frame... */
     v->fp->pc=*pc; /* Save the program counter */
     v->fp->stackcount=v->fp->function->nregs+(unsigned int) v->fp->roffset; /* Store the stacksize */
     unsigned int oldnregs = v->fp->function->nregs; /* Get the old number of registers */
-    
+
     v->fp++; /* Advance frame pointer */
     v->fp->pc=*pc; /* We will also store the program counter in the new frame;
                       this will be used to detect whether the VM should return on OP_RETURN */
-    
+
     if (MORPHO_ISCLOSURE(fn)) {
         objectclosure *closure=MORPHO_GETCLOSURE(fn); /* Closure object in use */
         func=closure->func;
@@ -713,10 +713,10 @@ static inline bool vm_call(vm *v, value fn, unsigned int shift, unsigned int nar
     } else {
         v->fp->closure=NULL;
     }
-    
+
     v->fp->ret=false; /* Interpreter should not return from this frame */
     v->fp->function=func; /* Store the function */
-    
+
     /* Handle optional args */
     if (func->opt.count>0) {
         if (!vm_vargs(v, (*pc) - v->instructions, func, shift, nargs, *reg)) return false;
@@ -724,7 +724,7 @@ static inline bool vm_call(vm *v, value fn, unsigned int shift, unsigned int nar
         vm_runtimeerror(v, (*pc) - v->instructions, VM_INVALIDARGS, func->nargs, nargs);
         return false;
     }
-    
+
     /* Do we need to expand the stack? */
     if (shift+func->nregs > oldnregs) {
         /* We check this explicitly to avoid an unnecessary function call to vm_expandstack */
@@ -740,11 +740,11 @@ static inline bool vm_call(vm *v, value fn, unsigned int shift, unsigned int nar
     *reg += shift; /* Shift the register frame so
                that the register a becomes r0 */
     v->fp->roffset=*reg-v->stack.data; /* Store the register index */
-    
+
     /* Zero out registers beyond args up to the top of the stack
        This has to be fast: memset was too slow. Zero seems to be faster than MORPHO_NIL */
     for (value *r = *reg + func->nregs-1; r > *reg + func->nargs; r--) *r = MORPHO_INTEGER(0);
-    
+
     *pc=v->instructions+func->entry; /* Jump to the function */
     return true;
 }
@@ -791,21 +791,21 @@ static inline bool vm_invoke(vm *v, value obj, value method, int nargs, value *a
 bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
     /* Set the register pointer to the bottom of the stack */
     value *reg = rstart;
-    
+
     /* Set the program counter to start */
     instruction *pc=v->instructions+istart; /* Pointer to the next instruction to be executed */
-    
+
     /* Temporary variables to */
     int op=OP_NOP, a, b, c; /* Opcode and operands a, b, c */
     instruction bc; /* The current bytecode */
     value left, right;
-    
+
 #ifdef MORPHO_DEBUG_PRINT_INSTRUCTIONS
 #define MORPHO_DISASSEMBLE_INSRUCTION(bc,pc,k,r) { printf("  "); debug_disassembleinstruction(bc, pc-1, k, r); printf("\n"); }
 #else
 #define MORPHO_DISASSEMBLE_INSRUCTION(bc,pc,k,r);
 #endif
-    
+
 #ifdef MORPHO_OPCODE_USAGE
     unsigned long opcount[OP_END+1];
     unsigned long opopcount[OP_END+1][OP_END+1];
@@ -819,7 +819,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
     #define OPCODECNT(p)
     #define OPOPCODECNT(p, bc)
 #endif
-    
+
 /* Define the interpreter loop. Computed gotos or regular switch statements can be used here. */
 #ifdef MORPHO_COMPUTED_GOTO
     /* The dispatch table, containing the entry points for each opcode */
@@ -828,13 +828,13 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
       #include "opcodes.h"
       #undef OPCODE
     };
-    
+
     /* The interpret loop begins by dispatching an instruction */
     #define INTERPRET_LOOP    DISPATCH();
-    
+
     /* Create a label corresponding to each opcode */
     #define CASE_CODE(name)   code_##name
-    
+
     /* Dispatch here means fetch the next instruction, decode and jump */
     #define DISPATCH()                                                       \
         do {                                                                 \
@@ -845,7 +845,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             MORPHO_DISASSEMBLE_INSRUCTION(bc,pc-v->instructions,v->konst, reg)     \
             goto *dispatchtable[op];                                         \
         } while(false);
-    
+
 #else
     /* Every iteration of the interpret loop we fetch, decode and switch */
     #define INTERPRET_LOOP                                                   \
@@ -856,39 +856,39 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
         OPCODECNT(op)                                                        \
         MORPHO_DISASSEMBLE_INSRUCTION(bc,pc-v->instructions,v->konst, reg)         \
         switch (op)
-    
+
     /* Each opcode generates a case statement */
     #define CASE_CODE(name)  case OP_##name
-    
+
     /* Dispatch means return to the beginning of the loop */
     #define DISPATCH() goto loop;
 #endif
-    
+
 #define ERROR(id) { vm_runtimeerror(v, pc-v->instructions, id); goto vm_error; }
 #define VERROR(id, ...) { vm_runtimeerror(v, pc-v->instructions, id, __VA_ARGS__); goto vm_error; }
 #define OPERROR(op){vm_throwOpError(v,pc-v->instructions,VM_INVLDOP,op,left,right); goto vm_error; }
 #define ERRORCHK() if (v->err.cat!=ERROR_NONE) goto vm_error;
-    
+
     INTERPRET_LOOP
     {
         CASE_CODE(NOP):
             DISPATCH();
-        
+
         CASE_CODE(MOV):
             a=DECODE_A(bc); b=DECODE_B(bc);
             reg[a] = reg[b];
             DISPATCH();
-        
+
         CASE_CODE(LCT):
             a=DECODE_A(bc); b=DECODE_Bx(bc);
             reg[a] = v->konst[b];
             DISPATCH();
-        
+
         CASE_CODE(ADD):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
             right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
-            
+
             if (MORPHO_ISFLOAT(left)) {
                 if (MORPHO_ISFLOAT(right)) {
                     reg[a] = MORPHO_FLOAT( MORPHO_GETFLOATVALUE(left) + MORPHO_GETFLOATVALUE(right));
@@ -914,14 +914,14 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                     ERROR(VM_CNCTFLD);
                 }
             }
-            
+
             if (MORPHO_ISOBJECT(left)) {
                 if (vm_invoke(v, left, addselector, 1, &right, &reg[a])) {
                     ERRORCHK();
                     DISPATCH();
                 }
             }
-        
+
             if (MORPHO_ISOBJECT(right)) {
                 if (vm_invoke(v, right, addrselector, 1, &left, &reg[a])) {
                     ERRORCHK();
@@ -930,12 +930,12 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             }
             OPERROR("Add");
             DISPATCH();
-        
+
         CASE_CODE(SUB):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
             right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
-            
+
             if (MORPHO_ISFLOAT(left)) {
                 if (MORPHO_ISFLOAT(right)) {
                     reg[a] = MORPHO_FLOAT( MORPHO_GETFLOATVALUE(left) - MORPHO_GETFLOATVALUE(right));
@@ -953,29 +953,29 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                     DISPATCH();
                 }
             }
-        
+
             if (MORPHO_ISOBJECT(left)) {
                 if (vm_invoke(v, left, subselector, 1, &right, &reg[a])) {
                     ERRORCHK();
                     DISPATCH();
                 }
             }
-        
+
             if (MORPHO_ISOBJECT(right)) {
                 if (vm_invoke(v, right, subrselector, 1, &left, &reg[a])) {
                     ERRORCHK();
                     DISPATCH();
                 }
             }
-        
+
             OPERROR("Subtract")
             DISPATCH();
-        
+
         CASE_CODE(MUL):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
             right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
-            
+
             if (MORPHO_ISFLOAT(left)) {
                 if (MORPHO_ISFLOAT(right)) {
                     reg[a] = MORPHO_FLOAT( MORPHO_GETFLOATVALUE(left) * MORPHO_GETFLOATVALUE(right));
@@ -993,29 +993,29 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                     DISPATCH();
                 }
             }
-        
+
             if (MORPHO_ISOBJECT(left)) {
                 if (vm_invoke(v, left, mulselector, 1, &right, &reg[a])) {
                     ERRORCHK();
                     DISPATCH();
                 }
             }
-        
+
             if (MORPHO_ISOBJECT(right)) {
                 if (vm_invoke(v, right, mulrselector, 1, &left, &reg[a])) {
                     ERRORCHK();
                     DISPATCH();
                 }
             }
-        
+
             OPERROR("Multiply")
             DISPATCH();
-        
+
         CASE_CODE(DIV):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
             right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
-            
+
             if (MORPHO_ISFLOAT(left)) {
                 if (MORPHO_ISFLOAT(right)) {
                     reg[a] = MORPHO_FLOAT( MORPHO_GETFLOATVALUE(left) / MORPHO_GETFLOATVALUE(right));
@@ -1033,29 +1033,29 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                     DISPATCH();
                 }
             }
-        
+
             if (MORPHO_ISOBJECT(left)) {
                 if (vm_invoke(v, left, divselector, 1, &right, &reg[a])) {
                     ERRORCHK();
                     DISPATCH();
                 }
             }
-        
+
             if (MORPHO_ISOBJECT(right)) {
                 if (vm_invoke(v, right, divrselector, 1, &left, &reg[a])) {
                     ERRORCHK();
                     DISPATCH();
                 }
             }
-        
+
             OPERROR("Divide");
             DISPATCH();
-        
+
         CASE_CODE(POW):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
             right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
-            
+
             if (MORPHO_ISFLOAT(left)) {
                 if (MORPHO_ISFLOAT(right)) {
                     reg[a] = MORPHO_FLOAT( pow(MORPHO_GETFLOATVALUE(left), MORPHO_GETFLOATVALUE(right)) );
@@ -1072,12 +1072,12 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                     reg[a] = MORPHO_FLOAT( pow((double) MORPHO_GETINTEGERVALUE(left), (double) MORPHO_GETINTEGERVALUE(right)) );
                     DISPATCH();
                 }
-            } 
-        
+            }
+
             OPERROR("Exponentiate")
             DISPATCH();
-        
-        
+
+
         CASE_CODE(NOT):
             a=DECODE_A(bc); b=DECODE_B(bc);
             left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
@@ -1087,7 +1087,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                 reg[a] = MORPHO_BOOL(MORPHO_ISNIL(left));
             }
             DISPATCH();
-        
+
         CASE_CODE(EQ):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
@@ -1103,33 +1103,33 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             }
 
             CHECKCMPTYPE(left,right);
-        
+
             reg[a] = (morpho_comparevalue(left, right)==0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
-        
+
         CASE_CODE(NEQ):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
             right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
-        
+
             CHECKCMPTYPE(left,right);
             reg[a] = (morpho_comparevalue(left, right)!=0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
-        
+
         CASE_CODE(LT):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
             right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
-        
+
             if ( !( (MORPHO_ISFLOAT(left) || MORPHO_ISINTEGER(left)) &&
                    (MORPHO_ISFLOAT(right) || MORPHO_ISINTEGER(right)) ) ) {
                 OPERROR("Compare");
             }
-        
+
             CHECKCMPTYPE(left,right);
             reg[a] = (morpho_comparevalue(left, right)>0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
-        
+
         CASE_CODE(LE):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
@@ -1139,30 +1139,30 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                    (MORPHO_ISFLOAT(right) || MORPHO_ISINTEGER(right)) ) ) {
                 OPERROR("Compare");
             }
-        
+
             CHECKCMPTYPE(left,right);
             reg[a] = (morpho_comparevalue(left, right)>=0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
-        
+
         CASE_CODE(B):
             b=DECODE_sBx(bc);
             pc+=b;
             DISPATCH();
-        
+
         CASE_CODE(BIF):
             a=DECODE_A(bc);
             b=DECODE_sBx(bc);
             left=reg[a];
-        
+
             if ((MORPHO_ISTRUE(left) ? true : false) == (DECODE_F(bc) ? true : false)) pc+=b;
-        
+
             DISPATCH();
-        
+
         CASE_CODE(CALL):
             a=DECODE_A(bc);
             left=reg[a];
             c=DECODE_B(bc); // We use c for consistency between call and invoke...
-        
+
 callfunction: // Jump here if an instruction becomes a call
             if (MORPHO_ISINVOCATION(left)) {
                 /* An method invocation */
@@ -1170,21 +1170,21 @@ callfunction: // Jump here if an instruction becomes a call
                 left=inv->method;
                 reg[a]=inv->receiver;
             }
-            
+
             if (MORPHO_ISFUNCTION(left) || MORPHO_ISCLOSURE(left)) {
                 if (!vm_call(v, left, a, c, &pc, &reg)) goto vm_error;
-                
+
             } else if (MORPHO_ISBUILTINFUNCTION(left)) {
                 /* Save program counter in the old callframe */
                 v->fp->pc=pc;
-                
+
                 objectbuiltinfunction *f = MORPHO_GETBUILTINFUNCTION(left);
-                
+
                 value ret = (f->function) (v, c, reg+a);
                 ERRORCHK();
                 reg=v->stack.data+v->fp->roffset; /* Ensure register pointer is correct */
                 reg[a]=ret;
-                
+
             } else if (MORPHO_ISCLASS(left)) {
                 /* A function call on a class instantiates it */
                 objectclass *klass = MORPHO_GETCLASS(left);
@@ -1192,7 +1192,7 @@ callfunction: // Jump here if an instruction becomes a call
                 if (instance) {
                     reg[a] = MORPHO_OBJECT(instance);
                     vm_bindobject(v, reg[a]);
-                    
+
                     /* Call the initializer if class provides one */
                     value ifunc;
                     if (dictionary_getintern(&klass->methods, initselector, &ifunc)) {
@@ -1215,18 +1215,18 @@ callfunction: // Jump here if an instruction becomes a call
                 ERROR(VM_UNCALLABLE);
             }
             DISPATCH();
-        
+
         CASE_CODE(INVOKE):
             a=DECODE_A(bc);
             b=DECODE_B(bc);
             c=DECODE_C(bc);
             left=reg[a];
             right=(DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
-        
+
             if (MORPHO_ISINSTANCE(left)) {
                 objectinstance *instance = MORPHO_GETINSTANCE(left);
                 value ifunc;
-                
+
                 /* Check if we have this method */
                 if (dictionary_getintern(&instance->klass->methods, right, &ifunc)) {
                     /* If so, call it */
@@ -1252,11 +1252,11 @@ callfunction: // Jump here if an instruction becomes a call
             } else if (MORPHO_ISCLASS(left)) {
                 objectclass *klass = MORPHO_GETCLASS(left);
                 value ifunc;
-                
+
                 if (dictionary_getintern(&klass->methods, right, &ifunc)) {
                     /* If we're not in the global context, invoke the method on self which is in r0 */
                     if (v->fp>v->frame) reg[a]=reg[0]; /* Copy self into r[a] and call */
-                    
+
                     if (MORPHO_ISFUNCTION(ifunc)) {
                         if (!vm_call(v, ifunc, a, c, &pc, &reg)) goto vm_error;
                     } else if (MORPHO_ISBUILTINFUNCTION(ifunc)) {
@@ -1288,23 +1288,23 @@ callfunction: // Jump here if an instruction becomes a call
             } else {
                 ERROR(VM_NOTANINSTANCE);
             }
-        
+
             DISPATCH();
-        
+
         CASE_CODE(RETURN):
             a=DECODE_A(bc);
-        
+
             if (v->openupvalues) { /* Close upvalues */
                 vm_closeupvalues(v, reg);
             }
-        
+
             if (a>0) {
                 b=DECODE_B(bc);
                 reg[0] = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
             } else {
                 reg[0] = MORPHO_NIL; /* No return value; returns nil */
             }
-            
+
             if (v->fp>v->frame) {
                 bool shouldreturn = (v->fp->ret);
                 value *or = reg + v->fp->function->nargs;
@@ -1312,16 +1312,16 @@ callfunction: // Jump here if an instruction becomes a call
                 v->konst=v->fp->function->konst.data; /* Restore the constant table */
                 reg=v->fp->roffset+v->stack.data; /* Restore registers */
                 v->stack.count=v->fp->stackcount; /* Restore the stack size */
-                
+
                 for (value *r = reg + v->fp->function->nregs-1; r > or; r--) *r = MORPHO_INTEGER(0);
-                
+
                 pc=v->fp->pc; /* Jump back */
                 if (shouldreturn) return true;
                 DISPATCH();
             } else {
                 ERROR(VM_GLBLRTRN);
             }
-        
+
         CASE_CODE(CLOSURE):
         {
             a=DECODE_A(bc);
@@ -1337,13 +1337,13 @@ callfunction: // Jump here if an instruction becomes a call
                         if (v->fp->closure) closure->upvalues[i]=v->fp->closure->upvalues[up->reg];
                     }
                 }
-                
+
                 reg[a] = MORPHO_OBJECT(closure);
                 vm_bindobject(v, MORPHO_OBJECT(closure));
             }
         }
             DISPATCH();
-        
+
         CASE_CODE(LUP):
             a=DECODE_A(bc);
             b=DECODE_B(bc);
@@ -1353,7 +1353,7 @@ callfunction: // Jump here if an instruction becomes a call
                 UNREACHABLE("Closure unavailable");
             }
             DISPATCH();
-        
+
         CASE_CODE(SUP):
             a=DECODE_A(bc);
             b=DECODE_B(bc);
@@ -1364,30 +1364,30 @@ callfunction: // Jump here if an instruction becomes a call
                 UNREACHABLE("Closure unavailable");
             }
             DISPATCH();
-        
+
         CASE_CODE(LGL):
             a=DECODE_A(bc);
             b=DECODE_Bx(bc);
             reg[a]=v->globals.data[b];
-        
+
             DISPATCH();
-        
+
         CASE_CODE(SGL):
             a=DECODE_A(bc);
             b=DECODE_Bx(bc);
             v->globals.data[b]=reg[a];
             DISPATCH();
-        
+
         CASE_CODE(CLOSEUP):
             a=DECODE_A(bc);
             vm_closeupvalues(v, &reg[a]);
             DISPATCH();
-        
+
         CASE_CODE(LPR): /* Load property */
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
             right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
-        
+
             if (MORPHO_ISINSTANCE(left)) {
                 objectinstance *instance = MORPHO_GETINSTANCE(left);
                 /* Is there a property with this id? */
@@ -1444,12 +1444,12 @@ callfunction: // Jump here if an instruction becomes a call
                 ERROR(VM_NOTANOBJECT);
             }
             DISPATCH();
-        
+
         CASE_CODE(SPR):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = reg[a];
             right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
-            
+
             if (MORPHO_ISINSTANCE(left)) {
                 objectinstance *instance = MORPHO_GETINSTANCE(left);
                 left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
@@ -1457,13 +1457,13 @@ callfunction: // Jump here if an instruction becomes a call
             } else {
                 ERROR(VM_NOTANOBJECT);
             }
-        
+
             DISPATCH();
-        
+
         CASE_CODE(LIX):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = reg[a];
-        
+
             if (MORPHO_ISARRAY(left)) {
                 objectarrayerror err=array_getelement(MORPHO_GETARRAY(left), c-b+1, &reg[b], &reg[b]);
                 if (err!=ARRAY_OK) ERROR( array_error(err) );
@@ -1473,13 +1473,13 @@ callfunction: // Jump here if an instruction becomes a call
                 }
                 ERRORCHK();
             }
-        
+
             DISPATCH();
-        
+
         CASE_CODE(SIX):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = reg[a];
-        
+
             if (MORPHO_ISARRAY(left)) {
                 objectarrayerror err=array_setelement(MORPHO_GETARRAY(left), c-b, &reg[b], reg[c]);
                 if (err!=ARRAY_OK) ERROR( array_error(err) );
@@ -1489,13 +1489,13 @@ callfunction: // Jump here if an instruction becomes a call
                 }
                 ERRORCHK();
             }
-        
+
             DISPATCH();
-        
+
         CASE_CODE(ARRAY):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             if (DECODE_ISBCONSTANT(bc)) {
-                    
+
             } else {
                 objectarray *new = object_arrayfromvalueindices((unsigned int) c-b+1, &reg[b]);
                 if (new) {
@@ -1505,15 +1505,15 @@ callfunction: // Jump here if an instruction becomes a call
                     ERROR(ERROR_ALLOCATIONFAILED);
                 }
             }
-            
+
             DISPATCH();
-        
+
         CASE_CODE(CAT):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             reg[a]=morpho_concatenate(v, c-b+1, reg+b);
             vm_bindobject(v, reg[a]);
             DISPATCH();
-        
+
         CASE_CODE(PRINT):
             b=DECODE_B(bc);
             left=(DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
@@ -1528,14 +1528,14 @@ callfunction: // Jump here if an instruction becomes a call
 #endif
             printf("\n");
             DISPATCH();
-        
+
         CASE_CODE(RAISE):
             a=DECODE_A(bc);
             if (MORPHO_ISSTRING(reg[a])) {
                 ERROR(MORPHO_GETCSTRING(reg[a]));
             }
             DISPATCH();
-        
+
         CASE_CODE(BREAK):
             if (v->debug) {
                 v->fp->pc=pc;
@@ -1544,7 +1544,7 @@ callfunction: // Jump here if an instruction becomes a call
                 ERRORCHK();
             }
             DISPATCH();
-        
+
         CASE_CODE(END):
             #ifdef MORPHO_OPCODE_USAGE
             {
@@ -1557,11 +1557,11 @@ callfunction: // Jump here if an instruction becomes a call
                 for (unsigned int i=0; i<OP_END; i++) {
                     printf("%s:\t\t%lu\n", opname[i], opcount[i]);
                 }
-                
+
                 printf(",");
                 for (unsigned int i=0; i<OP_END; i++) printf("%s, ", opname[i]);
                 printf("\n");
-                
+
                 for (unsigned int i=0; i<OP_END; i++) {
                     printf("%s, ", opname[i]);
                     for (unsigned int j=0; j<OP_END; j++) {
@@ -1578,7 +1578,7 @@ callfunction: // Jump here if an instruction becomes a call
 #undef INTERPRET_LOOP
 #undef CASE_CODE
 #undef DISPATCH
-    
+
 vm_error:
     v->fp->pc=pc;
     return false;
@@ -1591,9 +1591,9 @@ vm_error:
 /** Creates a new virtual machine */
 vm *morpho_newvm(void) {
     vm *new = MORPHO_MALLOC(sizeof(vm));
-    
+
     if (new) vm_init(new);
-    
+
     return new;
 }
 
@@ -1614,7 +1614,7 @@ error *morpho_geterror(vm *v) {
  * @param ...      additional data for sprintf. */
 void morpho_runtimeerror(vm *v, errorid id, ...) {
     va_list args;
-    
+
     va_start(args, id);
     morpho_writeerrorwithidvalist(&v->err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
     va_end(args);
@@ -1639,7 +1639,7 @@ void morpho_bindobjects(vm *v, int nobj, value *obj) {
 #endif
         }
     }
-    
+
     /* Check if size triggers garbage collection */
 #ifndef MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
     if (v->bound>v->nextgc)
@@ -1648,7 +1648,7 @@ void morpho_bindobjects(vm *v, int nobj, value *obj) {
         /* Temporarily store these objects at the top of the globals array */
         int gcount=v->globals.count;
         varray_valueadd(&v->globals, obj, nobj);
-        
+
         vm_collectgarbage(v);
         /* Restore globals count */
         v->globals.count=gcount;
@@ -1680,7 +1680,7 @@ void morpho_releaseobjects(vm *v, int handle) {
 bool morpho_run(vm *v, program *p) {
     /* Set the current program */
     v->current=p;
-    
+
     /* Clear current error state */
     error_clear(&v->err);
 
@@ -1689,34 +1689,34 @@ bool morpho_run(vm *v, program *p) {
     v->fp->function=p->global;
     v->fp->closure=NULL;
     v->fp->roffset=0;
-    
+
     /* Initialize global variables */
     int oldsize = v->globals.count;
     varray_valueresize(&v->globals, p->nglobals);
     v->globals.count=p->nglobals;
     for (int i=oldsize; i<p->nglobals; i++) v->globals.data[i]=MORPHO_NIL; /* Zero out globals */
-    
+
     /* Set instruction base */
     v->instructions = p->code.data;
     if (!v->instructions) return false;
-    
+
     /* Set up the constant table */
     varray_value *konsttable=object_functiongetconstanttable(p->global);
     if (!konsttable) return false;
     v->konst = konsttable->data;
-    
+
     /* and initially set the register pointer to the bottom of the stack */
     value *reg = v->stack.data;
-    
+
     /* Expand and clear the stack if necessary */
     if (v->fp->function->nregs>v->stack.count) {
         unsigned int oldcount=v->stack.count;
         vm_expandstack(v, &reg, v->fp->function->nregs-v->stack.count);
         for (unsigned int i=oldcount; i<v->stack.count; i++) v->stack.data[i]=MORPHO_NIL;
     }
-    
+
     instructionindx start = program_getentry(p);
-    
+
     return morpho_interpret(v, reg, start);
 }
 
@@ -1725,59 +1725,59 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
     bool success=false;
     value fn=f;
     value r0=f;
-    
+
     if (MORPHO_ISINVOCATION(fn)) {
         /* An method invocation */
         objectinvocation *inv = MORPHO_GETINVOCATION(f);
         fn=inv->method;
         r0=inv->receiver;
     }
-    
+
     if (MORPHO_ISBUILTINFUNCTION(fn)) {
         objectbuiltinfunction *f = MORPHO_GETBUILTINFUNCTION(fn);
-        
+
         /* Copy arguments across to comply with call standard */
         value xargs[nargs+1];
         xargs[0]=r0;
         for (unsigned int i=0; i<nargs; i++) xargs[i+1]=args[i];
-        
+
         *ret=(f->function) (v, nargs, xargs);
         success=true;
     } else if (MORPHO_ISFUNCTION(fn) || MORPHO_ISCLOSURE(fn)) {
         ptrdiff_t aoffset=0;
         value *xargs=args;
-        
+
         /* If the arguments are on the stack, we need to keep to track of this */
         bool argsonstack=(args>v->stack.data && args<v->stack.data+v->stack.capacity);
         if (argsonstack) aoffset=args-v->stack.data;
-        
+
         value *reg=v->stack.data+v->fp->roffset;
         instruction *pc=v->fp->pc;
-        
+
         /* Set up the function call, advancing the frame pointer and expanding the stack if necessary */
         if (vm_call(v, fn, v->fp->function->nregs, nargs, &pc, &reg)) {
             if (argsonstack) xargs=v->stack.data+aoffset;
-            
+
             /* Now place the function (or self) and arguments on the stack */
             reg[0]=r0;
             for (unsigned int i=0; i<nargs; i++) reg[i+1]=xargs[i];
-            
+
             /* Set return to true in this callframe */
             v->fp->ret=true;
-            
+
             /* Keep track of the stack in case it is reallocated */
             value *stackbase=v->stack.data;
             ptrdiff_t roffset=reg-v->stack.data;
-            
+
             success=morpho_interpret(v, reg, pc-v->instructions);
-            
+
             /* Restore reg if stack has expanded */
             if (v->stack.data!=stackbase) reg=v->stack.data+roffset;
-            
+
             if (success) *ret=reg[0]; /* Return value */
         }
     }
-    
+
     return success;
 }
 
@@ -1797,17 +1797,17 @@ objectclass *morpho_lookupclass(value obj) {
 bool morpho_lookupmethod(value obj, value label, value *method) {
     objectclass *klass = morpho_lookupclass(obj);
     if (klass) return dictionary_get(&klass->methods, label, method);
-    
+
    /* if (MORPHO_ISINSTANCE(obj)) {
         objectinstance *instance=MORPHO_GETINSTANCE(obj);
-        
+
     } else {
         objectclass *klass = builtin_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
         if (klass) {
             return dictionary_get(&klass->methods, label, method);
         }
     }*/
-    
+
     return false;
 }
 
@@ -1824,7 +1824,7 @@ bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value
     object_init((object *) &inv, OBJECT_INVOCATION);
     inv.receiver=obj;
     inv.method=method;
-    
+
     return morpho_call(v, MORPHO_OBJECT(&inv), nargs, args, ret);
 }
 
@@ -1844,11 +1844,11 @@ void morpho_initialize(void) {
     random_initialize();
     compile_initialize();
     builtin_initialize();
-    
+
 #ifdef MORPHO_DEBUG_GCSIZETRACKING
     dictionary_init(&sizecheck);
 #endif
-    
+
     morpho_defineerror(VM_INVLDOP, ERROR_HALT, VM_INVLDOP_MSG);
     morpho_defineerror(VM_CNCTFLD, ERROR_HALT, VM_CNCTFLD_MSG);
     morpho_defineerror(VM_UNCALLABLE, ERROR_HALT, VM_UNCALLABLE_MSG);
@@ -1868,13 +1868,13 @@ void morpho_initialize(void) {
 	morpho_defineerror(VM_GETINDEXARGS, ERROR_HALT, VM_GETINDEXARGS_MSG);
 
     morpho_defineerror(VM_DBGQUIT, ERROR_HALT, VM_DBGQUIT_MSG);
-    
+
     /* Selector for initializers */
     initselector=builtin_internsymbolascstring(MORPHO_INITIALIZER_METHOD);
-    
+
     indexselector=builtin_internsymbolascstring(MORPHO_GETINDEX_METHOD);
     setindexselector=builtin_internsymbolascstring(MORPHO_SETINDEX_METHOD);
-    
+
     addselector=builtin_internsymbolascstring(MORPHO_ADD_METHOD);
     addrselector=builtin_internsymbolascstring(MORPHO_ADDR_METHOD);
     subselector=builtin_internsymbolascstring(MORPHO_SUB_METHOD);
@@ -1883,18 +1883,16 @@ void morpho_initialize(void) {
     mulrselector=builtin_internsymbolascstring(MORPHO_MULR_METHOD);
     divselector=builtin_internsymbolascstring(MORPHO_DIV_METHOD);
     divrselector=builtin_internsymbolascstring(MORPHO_DIVR_METHOD);
-    
+
     enumerateselector=builtin_internsymbolascstring(MORPHO_ENUMERATE_METHOD);
     countselector=builtin_internsymbolascstring(MORPHO_COUNT_METHOD);
     cloneselector=builtin_internsymbolascstring(MORPHO_CLONE_METHOD);
-    
+
     printselector=builtin_internsymbolascstring(MORPHO_PRINT_METHOD);
 }
 
 /** Finalizes morpho */
 void morpho_finalize(void) {
-    morpho_freeobject(initselector);
-    
     error_finalize();
     compile_finalize();
     builtin_finalize();

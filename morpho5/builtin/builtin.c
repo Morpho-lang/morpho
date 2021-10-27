@@ -31,6 +31,9 @@ static dictionary builtin_classtable;
 /** A table of symbols used by built in classes */
 static dictionary builtin_symboltable;
 
+/** Keep a list of objects created by builtin */
+varray_value builtin_objects;
+
 /** Core object types can be provided with a 'veneer' class enabling the user to call methods
     on it, e.g. <string>.length(). This list provides easy access. */
 objectclass *objectveneer[OBJECT_EXTERN+1];
@@ -134,6 +137,7 @@ bool builtin_iscallable(value val) {
 value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags flags) {
     objectbuiltinfunction *new = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
     value out = MORPHO_NIL;
+    varray_valuewrite(&builtin_objects, MORPHO_OBJECT(new));
     
     if (new) {
         builtin_init(new);
@@ -142,11 +146,13 @@ value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags
         new->flags=flags;
         out = MORPHO_OBJECT(new);
         
+        value selector = dictionary_intern(&builtin_symboltable, new->name);
+        
         if (dictionary_get(&builtin_functiontable, new->name, NULL)) {
             UNREACHABLE("redefinition of builtin function (check builtin.c)");
         }
         
-        dictionary_insert(&builtin_functiontable, new->name, out);
+        dictionary_insert(&builtin_functiontable, selector, out);
     }
     
     return out;
@@ -175,7 +181,9 @@ void builtin_printfunction(objectbuiltinfunction *f) {
  * @returns the class object */
 value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
     value label = object_stringfromcstring(name, strlen(name));
+    varray_valuewrite(&builtin_objects, label);
     objectclass *new = object_newclass(label);
+    varray_valuewrite(&builtin_objects, MORPHO_OBJECT(new));
     
     if (!new) return MORPHO_NIL;
     
@@ -186,21 +194,21 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
     
     for (unsigned int i=0; desc[i].name!=NULL; i++) {
         if (desc[i].type==BUILTIN_METHOD) {
-            value selector = object_stringfromcstring(desc[i].name, strlen(desc[i].name));
             objectbuiltinfunction *method = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
             builtin_init(method);
             method->function=desc[i].function;
-            method->name=dictionary_intern(&builtin_symboltable, selector);
+            method->name=object_stringfromcstring(desc[i].name, strlen(desc[i].name));
             method->flags=desc[i].flags;
             
-            /* If interning the symbol changed it, we should free the selector */
-            if (!MORPHO_ISSAME(selector, method->name)) object_free(MORPHO_GETOBJECT(selector));
+            value selector = dictionary_intern(&builtin_symboltable, method->name);
+            
+            varray_valuewrite(&builtin_objects, MORPHO_OBJECT(method));
             
             if (dictionary_get(&new->methods, method->name, NULL)) {
                 UNREACHABLE("redefinition of method in builtin class (check builtin.c)");
             }
             
-            dictionary_insert(&new->methods, method->name, MORPHO_OBJECT(method));
+            dictionary_insert(&new->methods, selector, MORPHO_OBJECT(method));
         }
     }
     
@@ -233,8 +241,8 @@ value builtin_internsymbol(value symbol) {
 /** Interns a symbo given as a C string. */
 value builtin_internsymbolascstring(char *symbol) {
     value selector = object_stringfromcstring(symbol, strlen(symbol));
+    varray_valuewrite(&builtin_objects, selector);
     value internselector = builtin_internsymbol(selector);
-    if (!MORPHO_ISSAME(selector, internselector)) object_free(MORPHO_GETOBJECT(selector));
     return internselector;
 }
 
@@ -250,6 +258,7 @@ void builtin_initialize(void) {
     dictionary_init(&builtin_functiontable);
     dictionary_init(&builtin_classtable);
     dictionary_init(&builtin_symboltable);
+    varray_valueinit(&builtin_objects);
     
     functions_initialize();
     veneer_initialize(); 
@@ -265,11 +274,13 @@ void builtin_initialize(void) {
 }
 
 void builtin_finalize(void) {
-    dictionary_freecontents(&builtin_functiontable, false, true);
-    dictionary_freecontents(&builtin_classtable, false, true);
+    for (unsigned int i=0; i<builtin_objects.count; i++) {
+        morpho_freeobject(builtin_objects.data[i]);
+    }
     dictionary_clear(&builtin_functiontable);
     dictionary_clear(&builtin_classtable);
     dictionary_clear(&builtin_symboltable);
+    varray_valueclear(&builtin_objects);
     
     file_finalize();
 }

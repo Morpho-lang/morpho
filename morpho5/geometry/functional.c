@@ -194,6 +194,7 @@ bool functional_containsvertex(int nv, int *vid, elementid id) {
  * @param[out] out - a matrix of integrand values
  * @returns true on success, false otherwise. Error reporting through VM. */
 bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
+    bool success=false;
     objectmesh *mesh = info->mesh;
     objectselection *sel = info->sel;
     grade g = info->g;
@@ -252,11 +253,11 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
         *out=MORPHO_FLOAT(sum);
     }
     
-    return true;
+    success=true;
     
 functional_sumintegrand_cleanup:
     varray_elementidclear(&imageids);
-    return false;
+    return success;
 }
 
 /** Calculate an integrand

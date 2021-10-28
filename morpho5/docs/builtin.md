@@ -85,3 +85,13 @@ Returns `true` if a value is a matrix or `false` otherwise.
 [tagissparse]: # (issparse)
 
 Returns `true` if a value is a sparse matrix or `false` otherwise.
+
+## isinf
+[tagisinf]: # (isinf)
+
+Returns `true` if a value is infinite or `false` otherwise.
+
+## issparse
+[tagisnan]: # (isnan)
+
+Returns `true` if a value is a Not a Number or `false` otherwise.

@@ -1,0 +1,14 @@
+// Test 'is'
+class A {
+  a() {
+    return "Foo"
+  }
+}
+
+class B is A {
+
+}
+
+var b = B()
+
+print b.a() // expect: Foo

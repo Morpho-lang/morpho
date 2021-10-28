@@ -27,6 +27,7 @@ Each of these may be called with a mesh, a field and a selection.
 A `Length` functional calculates the length of a line elements in a mesh.
 
 Evaluate the length of a circular loop:
+
     import constants
     import meshtools
     var m = LineMesh(fn (t) [cos(t), sin(t), 0], 0...2*Pi:Pi/20, closed=true)
@@ -43,7 +44,7 @@ An `AreaEnclosed` functional calculates the area enclosed by a loop of line elem
 ## Area
 [tagarea]: # (area)
 
-An `Area` functional calculates the area of a area elements in a mesh:
+An `Area` functional calculates the area of the area elements in a mesh:
 
     var la = Area()
     print la.total(mesh)
@@ -87,9 +88,11 @@ See the thomson example.
 The `LinearElasticity` functional measures the linear elastic energy away from a reference state.
 
 You must initialize with a reference mesh:
+
     var le = LinearElasticity(mref)
 
 Manually set the poisson's ratio and grade to operate on:
+
     le.poissonratio = 0.2
     le.grade = 2
 
@@ -124,6 +127,7 @@ The `GaussCurvature` computes the integrated gaussian curvature over a surface.
 The `GradSq` functional measures the integral of the gradient squared of a field. The field can be a scalar, vector or matrix function.
 
 Initialize with the required field:
+
     var le=GradSq(phi)
 
 ## Nematic
@@ -138,6 +142,7 @@ There are a number of optional parameters that can be used to set the splay, twi
     var lf=Nematic(nn, ksplay=1, ktwist=0.5, kbend=1.5, pitch=0.1)
 
 These are stored as properties of the object and can be retrieved as follows:
+
     print lf.ksplay
 
 ## NematicElectric
@@ -158,7 +163,7 @@ The `NormSq` functional measures the elementwise L2 norm squared of a field.
 
 The `LineIntegral` functional computes the line integral of a function. You supply an integrand function that takes a position matrix as an argument.
 
-To compute integral(x^2+y^2) over a line element:
+To compute `integral(x^2+y^2)` over a line element:
 
     var la=LineIntegral(fn (x) x[0]^2+x[1]^2)
 

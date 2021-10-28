@@ -42,6 +42,9 @@
 *.idb
 *.pdb
 
+# POVray files
+*.pov
+
 # Kernel Module Compile Results
 *.mod*
 *.cmd

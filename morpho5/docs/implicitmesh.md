@@ -4,7 +4,7 @@
 # ImplicitMesh
 [tagimplicitmesh]: # (implicitmesh)
 
-The `implicitmesh` module allows you to build meshes from implicit functions. For example, the unit sphere could be specified using the function x^2+y^2+z^2-1 == 0.
+The `implicitmesh` module allows you to build meshes from implicit functions. For example, the unit sphere could be specified using the function `x^2+y^2+z^2-1 == 0`.
 
 To use the module, first import it:
 

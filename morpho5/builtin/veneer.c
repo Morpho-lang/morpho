@@ -295,6 +295,7 @@ value String_enumerate(vm *v, int nargs, value *args) {
             char *c=string_index(slf, n);
             if (c) {
                 out=object_stringfromcstring(c, morpho_utf8numberofbytes((uint8_t *) c));
+                morpho_bindobjects(v, 1, &out);
             } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
         }
     } else MORPHO_RAISE(v, ENUMERATE_ARGS);

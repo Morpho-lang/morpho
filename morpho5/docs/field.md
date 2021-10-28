@@ -58,7 +58,7 @@ would indicate one item stored on each vertex and two items stored on each facet
 ## Op
 [tagop]: # (op)
 
-The `op` method applies a function to every item stored in a `Field`. For example,
+The `op` method applies a function to every item stored in a `Field`, returning the result as elements of a new `Field` object. For example,
 
     f.op(fn (x) x.norm())
 
@@ -68,4 +68,4 @@ Additional `Field` objects may supplied as extra arguments to `op`. These must h
 
     f.op(fn (x,y) x.inner(y), g)
 
-calculates an elementwise inner product between the elements of Fields `f` and `g`, returning the result as elements of a new `Field` object.
+calculates an elementwise inner product between the elements of Fields `f` and `g`.

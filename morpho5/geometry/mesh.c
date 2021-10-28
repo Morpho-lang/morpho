@@ -30,13 +30,13 @@ objectmesh *object_newmesh(unsigned int dim, unsigned int nv, double *v) {
         
         new->dim=dim;
         new->conn=NULL;
-        new->vert=NULL;
+        new->vert=object_newmatrix(dim, nv, false);
         new->link=NULL;
-        
-        if (dim>0) new->vert=object_newmatrix(dim, nv, false);
         if (new->vert) {
             mesh_link(new, (object *) new->vert);
-            memcpy(new->vert->elements, v, sizeof(double)*dim*nv);
+            if (dim>0){
+                memcpy(new->vert->elements, v, sizeof(double)*dim*nv);
+            }
         }
     }
     
@@ -852,8 +852,12 @@ value mesh_constructor(vm *v, int nargs, value *args) {
     
     if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         new=mesh_load(v, MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)));
-    } else {
+    } else if (nargs==0) {
+        // empty mesh constructor
         new=object_newmesh(0, 0, NULL);
+    }
+    else {
+        morpho_runtimeerror(v,MESH_CONSTRUCTORARGS);
     }
     
     if (new) {
@@ -903,10 +907,10 @@ value Mesh_setvertexmatrix(vm *v, int nargs, value *args) {
     if (nargs==1 && MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
         objectmatrix *mat = MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
         
-        if (m->vert && (mesh_nvertices(m)!=mat->ncols || m->vert->nrows!=mat->nrows)) {
+        if (m->dim>0 && (mesh_nvertices(m)!=mat->ncols || m->vert->nrows!=mat->nrows)) {
             morpho_runtimeerror(v, MESH_VERTMTRXDIM);
         } else {
-            if (!m->vert) m->dim=mat->nrows;
+            if (!m->dim>0) m->dim=mat->nrows;
             m->vert=mat;
         }
     }
@@ -1118,5 +1122,6 @@ void mesh_initialize(void) {
     morpho_defineerror(MESH_ADDGRDOOB, ERROR_HALT, MESH_ADDGRDOOB_MSG);
     morpho_defineerror(MESH_ADDSYMARGS, ERROR_HALT, MESH_ADDSYMARGS_MSG);
     morpho_defineerror(MESH_ADDSYMMSNGTRNSFRM, ERROR_HALT, MESH_ADDSYMMSNGTRNSFRM_MSG);
+    morpho_defineerror(MESH_CONSTRUCTORARGS, ERROR_HALT, MESH_CONSTRUCTORARGS_MSG);
 
 }

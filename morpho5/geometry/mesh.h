@@ -92,6 +92,9 @@ DECLARE_VARRAY(elementid, elementid);
 #define MESH_ADDSYMNOMTCH                    "MshAddSymNoMtch"
 #define MESH_ADDSYMNOMTCH_MSG                "Addsymmetry found no matching vertices."
 
+#define MESH_CONSTRUCTORARGS                  "MshArgs"
+#define MESH_CONSTRUCTORARGS_MSG              "Mesh expects either a single file name or no argurments"
+
 /* Tolerances */
 
 /** This controls how close two points can be before they're indistinct */

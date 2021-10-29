@@ -151,6 +151,9 @@ void morpho_unreachable(const char *explanation);
 #define VM_INVALIDARGS                    "InvldArgs"
 #define VM_INVALIDARGS_MSG                "Expected %u arguments but got %u."
 
+#define VM_INVALIDARGSDETAIL              "InvldArgsBltn"
+#define VM_INVALIDARGSDETAIL_MSG          "Function %s expects %u arguments of type %s."
+
 #define VM_NOTINDEXABLE                   "NotIndxbl"
 #define VM_NOTINDEXABLE_MSG               "Value or object not indexable."
 

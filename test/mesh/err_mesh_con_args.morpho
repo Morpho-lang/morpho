@@ -1,0 +1,6 @@
+import meshtools
+var m = LineMesh(fn (t) [t,0,0], -1..1:0.2)
+print m 
+// expect: <Mesh: 11 vertices>
+var m2 = Mesh(m)
+// expect error 'MshArgs'

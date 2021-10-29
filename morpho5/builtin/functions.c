@@ -113,8 +113,9 @@ value builtin_randomint(vm *v, int nargs, value *args) {
     
     /* Otherwise, generate a number in range. */
     int r=0;
-    if (!morpho_valuetoint(MORPHO_GETARG(args, 0), &r)) {
-        UNREACHABLE("randomint was passed a type it couldn't handle.");
+    if (!morpho_valuetoint(MORPHO_GETARG(args, 0), &r)||r<0) {
+
+        morpho_runtimeerror(v, VM_INVALIDARGSDETAIL,FUNCTION_RANDOMINT, 1, "positive integer");
     }
     
     uint32_t range=(uint32_t) r;
@@ -262,7 +263,10 @@ static bool minmaxfn(vm *v, indx i, value val, void *ref) {
 
 static bool builtin_minmax(vm *v, value obj, value *min, value *max) {
     minmaxstruct m;
-    
+    // intialize the minmaxstuct
+    m.max = MORPHO_NIL;
+    m.min = MORPHO_NIL;
+
     if (!builtin_enumerateloop(v, obj, minmaxfn, &m)) return false;
         
     if (min) *min = m.min;
@@ -294,10 +298,11 @@ static value builtin_bounds(vm *v, int nargs, value *args) {
 /** Find the minimum value in an enumerable object */
 static value builtin_min(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
-    
-    if (nargs==1) {
-        builtin_minmax(v, MORPHO_GETARG(args, 0), &out, NULL);
-    } else morpho_runtimeerror(v, VM_INVALIDARGS, 1, nargs);
+    // ensure we have 1 argument and that it is a list or a matrix
+    if (nargs==1 && (MORPHO_ISLIST(MORPHO_GETARG(args, 0)) || \
+                    MORPHO_ISMATRIX(MORPHO_GETARG(args, 0)))) {
+            builtin_minmax(v, MORPHO_GETARG(args, 0), &out, NULL);
+    } else morpho_runtimeerror(v, VM_INVALIDARGSDETAIL,FUNCTION_MIN, 1, "list or matrix");
     
     return out;
 }
@@ -305,10 +310,11 @@ static value builtin_min(vm *v, int nargs, value *args) {
 /** Find the maximum value in an enumerable object */
 static value builtin_max(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
-    
-    if (nargs==1) {
+    // ensure we have 1 argument and that it is a list or a matrix
+    if (nargs==1 && (MORPHO_ISLIST(MORPHO_GETARG(args, 0)) || \
+                    MORPHO_ISMATRIX(MORPHO_GETARG(args, 0)))) {
         builtin_minmax(v, MORPHO_GETARG(args, 0), NULL, &out);
-    } else morpho_runtimeerror(v, VM_INVALIDARGS, 1, nargs);
+    } else morpho_runtimeerror(v, VM_INVALIDARGSDETAIL,FUNCTION_MAX, 1, "list or matrix");
     
     return out;
 }

@@ -1,0 +1,152 @@
+import meshtools
+import optimize
+import plot
+import povray
+
+var refine_adaptively = false
+// Define physical parameters
+
+var rho = 1.3 // Deep in the nematic phase
+var EA = 3 // Anchoring strength
+var K = 1.0 // Bending modulus
+
+var a2 = (1-rho)
+var a4 = (1+rho)/rho^2
+
+// Import disk mesh
+
+var m = Mesh("disk.mesh")
+var m = refinemesh(m) // Refining for a better result
+
+// Select boundary
+var bnd = Selection(m, boundary=true)
+bnd.addgrade(0) // add point elements
+
+// Create director field
+
+/* Since a 2D Q-tensor for a uniaxial nematic is symmetric and 
+traceless, there are only two independent components, Qxx and Qxy*/
+
+var q_tensor = Field(m, fn(x,y,z) Matrix([0.01*random(1), 0.01*random(1)]))
+
+// Define bulk free energy
+
+fn landau(x, q) {
+  var qt = q.norm()
+  var qt2=qt*qt
+  return a2*qt2 + a4*qt2*qt2
+}
+
+// Define anchoring energy at the boundary
+fn anchoring(x, q) {
+  var t = tangent()
+  var wxx = t[0]*t[0]-0.5
+  var wxy = t[0]*t[1]
+  return (q[0]-wxx)^2+(q[1]-wxy)^2
+}
+
+var bulk = AreaIntegral(landau, q_tensor)
+var anchor = LineIntegral(anchoring, q_tensor)
+var elastic = GradSq(q_tensor)
+
+var problem = OptimizationProblem(m)
+problem.addenergy(bulk)
+problem.addenergy(elastic, prefactor = K)
+problem.addenergy(anchor, selection=bnd, prefactor = EA)
+
+var opt = FieldOptimizer(problem, q_tensor)
+// Minimize the free energy!
+opt.linesearch(500)
+
+
+// Refine the mesh based on the elastic energy density/
+// This for loop can be commented out 
+if (refine_adaptively){
+  for (i in 1..4){
+  
+    // Select elements that have a large contribution to the energy
+    var en = elastic.integrand(q_tensor)
+    var mean = en.sum()/en.count()
+    var srefine = Selection(m) // Start with an empty selection
+    for (id in 0...en.count()) if (en[0,id]>1.5*mean) srefine[2,id]=true // Identify high energy elements
+  
+    // Show(plotselection(m, srefine, grade=2))
+  
+    // Create a mesh refiner
+    var mr=MeshRefiner([m, q_tensor, bnd])
+  
+    // Perform the refinement
+    var refmap = mr.refine(selection=srefine)
+  
+    // Show(plotmesh(m, grade=1))
+  
+    // Now refinement is done update the problems and optimizers
+    for (el in [problem, opt]) el.update(refmap)
+  
+    // Use the new mesh and field
+    m = refmap[m]
+    q_tensor = refmap[q_tensor]
+    bnd = refmap[bnd]
+  
+    equiangulate(m)
+    // Show(plotmesh(m, grade=1))
+  
+    opt.linesearch(500)
+  }
+}
+// Define some helper functions to plot the result
+  
+fn sign(x) {
+  if (x<0.0){
+    return -1.0
+  } else if (x>0.0){
+    return 1.0
+  } else{
+  return 0.0
+  }
+}
+
+fn qtodirector(q) {
+  var S = 2*q.norm()
+  var Q = q/S
+  var nx = sqrt(Q[0]+0.5)
+  var ny = abs(Q[1]/nx)
+  nx = nx*sign(Q[1])
+  return Matrix([nx,ny,0])
+}
+
+fn qtoorder(q) {
+  var S = 2*q.norm()
+  return S
+}
+  
+// Convert the q-tensor to the director and order
+
+var nn = Field(m, Matrix([1,0,0]))
+for (i in 0...m.count()) nn[i]=qtodirector(q_tensor[i])
+
+var S = Field(m, 0)
+for (i in 0...m.count()) S[i]=qtoorder(q_tensor[i])
+
+// Function to visualize a director field
+fn visualize(m, nn, dl) {
+  var v = m.vertexmatrix()
+  var nv = v.dimensions()[1]
+  var g = Graphics()
+  for (i in 0...nv) {
+    var x = v.column(i)
+    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.3))
+  }
+  return g
+}
+
+// Visualize the result
+// var g=plotmesh(m, grade=1)
+var splot = plotfield(S, style="interpolate")
+var gnn=visualize(m, nn, 0.05)
+var gdisp = splot+gnn
+// Show(gdisp)
+var pov = POVRaytracer(gdisp)
+pov.viewangle=35
+pov.render("Qtensor_K_${K}.pov")
+Show(gdisp)

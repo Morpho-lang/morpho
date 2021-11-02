@@ -91,8 +91,8 @@ static inline double valuetodouble(value v) {
 #define MORPHO_GETOBJECT(v)         ((object *) (uintptr_t) ((v) & ~(TAG_OBJ | QNAN)))
 
 static inline bool morpho_ofsametype(value a, value b) {
-    if (MORPHO_ISFLOAT(a)) {
-        return MORPHO_ISFLOAT(b);
+    if (MORPHO_ISFLOAT(a) || MORPHO_ISFLOAT(b)) {
+        return MORPHO_ISFLOAT(a) && MORPHO_ISFLOAT(b);
     } else {
         if ((a & TYPE_BITS)==(b & TYPE_BITS)) {
             return true;

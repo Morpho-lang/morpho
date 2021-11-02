@@ -55,11 +55,38 @@ BUILTIN_MATH(sqrt)
 BUILTIN_MATH(floor)
 BUILTIN_MATH(ceil)
 
-BUILTIN_MATH(isfinite)
-BUILTIN_MATH(isinf)
-BUILTIN_MATH(isnan)
-
 #undef BUILTIN_MATH
+
+/** Boolean output function need to output morpho true or false **/
+
+#define BUILTIN_MATH_BOOL(function) \
+value builtin_##function(vm *v, int nargs, value *args) { \
+        if (nargs==1) { \
+            value arg = MORPHO_GETARG(args, 0); \
+            if (MORPHO_ISFLOAT(arg)) { \
+                if (MORPHO_FLOAT(function(MORPHO_GETFLOATVALUE(arg)))) \
+                    return MORPHO_TRUE; \
+                else \
+                    return MORPHO_FALSE;\
+            } else if (MORPHO_ISINTEGER(arg)) { \
+                if( MORPHO_FLOAT(function((double) MORPHO_GETINTEGERVALUE(arg)))) \
+                    return MORPHO_TRUE;\
+                else return MORPHO_FALSE;\
+            } else { \
+                morpho_runtimeerror(v, MATH_ARGS, #function);\
+            } \
+        } \
+        morpho_runtimeerror(v, MATH_NUMARGS, #function);\
+        return MORPHO_NIL; \
+        }
+
+
+BUILTIN_MATH_BOOL(isfinite)
+BUILTIN_MATH_BOOL(isinf)
+BUILTIN_MATH_BOOL(isnan)
+
+#undef BUILTIN_MATH_BOOL
+
 
 /** The arctan function is special; it can either take one or two arguments */
 value builtin_arctan(vm *v, int nargs, value *args) {
@@ -318,6 +345,40 @@ static value builtin_max(vm *v, int nargs, value *args) {
     
     return out;
 }
+/*
+#define MORPHO_GETINTEGERVALUE(v) ((v).as.integer)
+#define MORPHO_GETFLOATVALUE(v) ((v).as.real)
+
+/** find the sign of a number **/
+static value builtin_sign(vm *v, int nargs, value *args){
+    if (nargs==1) { 
+        value arg = MORPHO_GETARG(args, 0); 
+        if (MORPHO_ISFLOAT(arg)) { 
+
+            if (MORPHO_GETFLOATVALUE(arg)>0) {
+                return MORPHO_FLOAT(1); 
+            }
+            else if (MORPHO_GETFLOATVALUE(arg)<0){
+                return MORPHO_FLOAT(-1); 
+            }
+            else return MORPHO_FLOAT(0);
+
+        } else if (MORPHO_ISINTEGER(arg)) { 
+            if (MORPHO_GETINTEGERVALUE(arg)>0) {
+                return MORPHO_FLOAT(1); 
+            }
+            else if (MORPHO_GETINTEGERVALUE(arg)<0){
+                return MORPHO_FLOAT(-1); 
+            }
+            else return MORPHO_FLOAT(0);
+        } else { 
+            morpho_runtimeerror(v, MATH_ARGS,FUNCTION_SIGN);
+        } 
+    } 
+    morpho_runtimeerror(v, MATH_NUMARGS,FUNCTION_SIGN);
+    return MORPHO_NIL; 
+}
+
 
 /* ************************************
  * Apply
@@ -356,6 +417,9 @@ value builtin_clock(vm *v, int nargs, value *args) {
 #define BUILTIN_MATH(function) \
     builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
 
+#define BUILTIN_MATH_BOOL(function) \
+    builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
+
 #define BUILTIN_TYPECHECK(function) \
     builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
 
@@ -388,9 +452,9 @@ void functions_initialize(void) {
     BUILTIN_MATH(floor)
     BUILTIN_MATH(ceil)
 
-    BUILTIN_MATH(isfinite)
-    BUILTIN_MATH(isinf)
-    BUILTIN_MATH(isnan)
+    BUILTIN_MATH_BOOL(isfinite)
+    BUILTIN_MATH_BOOL(isinf)
+    BUILTIN_MATH_BOOL(isnan)
 
     
     BUILTIN_TYPECHECK(isnil)
@@ -423,6 +487,8 @@ void functions_initialize(void) {
     builtin_addfunction(FUNCTION_MIN, builtin_min, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(FUNCTION_MAX, builtin_max, BUILTIN_FLAGSEMPTY);
     
+    builtin_addfunction(FUNCTION_SIGN, builtin_sign, BUILTIN_FLAGSEMPTY);
+
     builtin_addfunction(FUNCTION_APPLY, builtin_apply, BUILTIN_FLAGSEMPTY);
     
     morpho_defineerror(MATH_ARGS, ERROR_HALT, MATH_ARGS_MSG);
@@ -432,3 +498,4 @@ void functions_initialize(void) {
 }
 
 #undef BUILTIN_MATH
+#undef BUILTIN_MATH_BOOL

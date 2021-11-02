@@ -27,6 +27,8 @@ void functions_initialize(void);
 #define FUNCTION_MAX           "max"
 #define FUNCTION_BOUNDS        "bounds"
 
+#define FUNCTION_SIGN           "sign"
+
 #define FUNCTION_APPLY         "apply"
 
 #define FUNCTION_ARCTAN        "arctan"

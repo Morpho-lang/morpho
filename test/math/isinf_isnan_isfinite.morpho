@@ -1,0 +1,27 @@
+print isnan(1) // expect: false
+print isnan(0/0) // expect: true
+print isnan(1.0) // expect: false
+print isnan(-1.0) // expect: false
+print isnan(0) // expect: false
+print isnan(1/0) // expect: false
+
+print isinf(1/0)
+// expect: true
+print isinf(-(1/0))
+// expect: true
+print isinf(0)
+// expect: false
+print isinf(0.0)
+// expect: false
+print isinf(2)
+// expect: false
+print isinf(0/0)
+// expect: false
+
+
+print isfinite(1/0) // expect: false
+print isfinite(-(1/0)) // expect: false
+print isfinite(0) // expect: true
+print isfinite(0.0) // expect: true
+print isfinite(2) // expect: true
+print isfinite(0/0) // expect: false

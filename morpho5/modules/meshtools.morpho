@@ -571,7 +571,8 @@ class MeshMerge is MeshBuilder {
   }
 
   addmesh(msh) {
-    if (!islist(self.meshes)) self.meshes = []
+    if (isnil(self.meshes)) self.meshes = []
+    if (!islist(self.meshes)) self.meshes = [self.meshes]
     if (islist(msh)) for (el in msh) self.meshes.append(el)
     else self.meshes.append(msh)
   }

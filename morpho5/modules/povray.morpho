@@ -141,6 +141,6 @@ class POVRaytracer {
     if (!display) disp = "-D"
     system("povray ${path} ${disp} +A +W${self.width} +H${self.height} ${silent}")
     var out = path.split(".")[0]
-    if (!quiet) system("open ${out}.png")
+    if (!quiet && display) system("open ${out}.png")
   }
 }

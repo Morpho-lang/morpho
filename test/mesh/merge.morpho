@@ -23,7 +23,7 @@ for (elid in 0...m.count(1)) print lines.rowindices(elid)
 var merge2 = MeshMerge(m1)
 merge2.addmesh(m2)
 print merge2.meshes
-// expect: [<Mesh>, <Mesh>]
+// expect: [ <Mesh>, <Mesh> ]
 
 var merger2 = merge2.merge()
 var v1 = m.vertexmatrix()

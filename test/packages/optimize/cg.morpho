@@ -1,0 +1,53 @@
+// Test conjugate gradient on a function
+
+import optimize
+
+var L = 5
+
+fn f(x) {
+  return (x[0]/L)^2 + x[1]^2 + 1
+}
+
+fn df(x) {
+  return Matrix([2*x[0]/L^2, 2*x[1]])
+}
+
+// We create subclass of Optimizer to optimize the function
+class FunctionOptimizer is Optimizer {
+  init (f, df, x0) {
+    self.f = f
+    self.grad = df
+    super.init(f, x0)
+  }
+
+  gettarget() {
+    return self.target
+  }
+
+  settarget(val) {
+    self.target=val
+  }
+
+  totalenergy() {
+    return self.f(self.target)
+  }
+
+  totalforce() {
+    return self.grad(self.target)
+  }
+
+  initlocalconstraints() {}
+  subtractlocalconstraints(g) {}
+  subtractconstraints(g) {}
+  reprojectlocalconstraints() {}
+  reprojectconstraints() {}
+}
+
+var opt = FunctionOptimizer(f, df, Matrix([0.2,3]))
+
+opt.steplimit=2
+opt.quiet = true
+
+opt.conjugategradient(20)
+
+print (opt.energy[-1]-1)<1e-8 // expect: true

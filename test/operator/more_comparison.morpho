@@ -6,6 +6,8 @@ print 1==2 // expect: false
 print 1.0==1 // expect: true
 print 1==1.000000001 // expect: false
 print 1==1.000000000000001 // expect: false
+print 0==0.4 // expect: false
+print 0.4==0 // expect: false
 print "Eggs"=="Eggs" // expect: true
 print "Eggs"=="Bacon" // expect: false
 
@@ -14,6 +16,8 @@ print "-" // expect: -
 // Neq
 print 1!=1 // expect: false
 print 1!=2 // expect: true
+print 0!=0.4 // expect: true
+print 0.4!=0 // expect: true
 print "Eggs"!="Eggs" // expect: false
 print "Eggs"!="Bacon" // expect: true
 
@@ -26,6 +30,8 @@ print 2<1 // expect: false
 print 1<1.000000001 // expect: true
 print 1.000000001<1.000000001 // expect: false
 print 1.000000002<1.000000001 // expect: false
+print 0<0.4 // expect: true
+print 0.4<0 // expect: false
 
 print "-" // expect: -
 
@@ -36,6 +42,8 @@ print 2<=1 // expect: false
 print 1<=1.000000001 // expect: true
 print 1.000000001<=1.000000001 // expect: true
 print 1.000000002<=1.000000001 // expect: false
+print 0<=0.4 // expect: true
+print 0.4<=0 // expect: false
 
 print "-" // expect: -
 
@@ -46,6 +54,8 @@ print 2>1 // expect: true
 print 1>1.000000001 // expect: false
 print 1.000000001>1.000000001 // expect: false
 print 1.000000002>1.000000001 // expect: true
+print 0>0.4 // expect: false
+print 0.4>0 // expect: true
 
 print "-" // expect: -
 
@@ -57,3 +67,5 @@ print 1>=1.000000001 // expect: false
 print 1.000000001>=1.000000001 // expect: true
 print 1.000000002>=1.000000001 // expect: true
 print 1.000000001>=1.000000002 // expect: false
+print 0>=0.4 // expect: false
+print 0.4>=0 // expect: true

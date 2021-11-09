@@ -59,11 +59,15 @@ Linesearch down the gradient:
 
     sopt.linesearch(5) // Performs five linesearches
 
+Perform conjugate gradient (usually gives faster convergence):
+
+    sopt.conjugategradient(5) // Performs five conjugate gradient steps.
+
 Control a number of properties of the optimizer:
 
     sopt.stepsize=0.1 // The stepsize to take
     sopt.steplimit=0.5 // Maximum stepsize for optimizing methods
-    sopt.etol = 1e-8 // Energy convergence tolerance 
+    sopt.etol = 1e-8 // Energy convergence tolerance
     sopt.ctol = 1e-9 // Tolerance to which constraints are satisfied
     sopt.maxconstraintsteps = 20 // Maximum number of constraint steps to use
 

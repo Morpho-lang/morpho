@@ -24,10 +24,10 @@ DEFINE_VARRAY(elementid, elementid);
 
 objectmesh *object_newmesh(unsigned int dim, unsigned int nv, double *v) {
     objectmesh *new = MORPHO_MALLOC(sizeof(objectmesh));
-    
+
     if (new) {
         object_init((object *) new, OBJECT_MESH);
-        
+
         new->dim=dim;
         new->conn=NULL;
         new->vert=object_newmatrix(dim, nv, false);
@@ -39,14 +39,14 @@ objectmesh *object_newmesh(unsigned int dim, unsigned int nv, double *v) {
             }
         }
     }
-    
+
     return new;
 }
 
 /** Links an object to the mesh; used to keep track of unbound child objects */
 void mesh_link(objectmesh *mesh, object *obj) {
-    for (object *e = mesh->link; e!=NULL; e=e->next) if (e==obj) return; 
-    
+    for (object *e = mesh->link; e!=NULL; e=e->next) if (e==obj) return;
+
     if (obj->status==OBJECT_ISUNMANAGED && obj->next==NULL) {
         obj->next=mesh->link;
         mesh->link=obj;
@@ -59,7 +59,7 @@ void mesh_delink(objectmesh *mesh, object *obj) {
         mesh->link=obj->next;
         return;
     }
-    
+
     // Otherwise, search and delink once the object is found
     for (object *e = mesh->link; e!=NULL; e=e->next) {
         if (e->next==obj) {
@@ -104,13 +104,13 @@ bool mesh_setvertexcoordinates(objectmesh *mesh, elementid id, double *x) {;
 /** Gets vertex coordinates as a value list */
 bool mesh_getvertexcoordinatesasvalues(objectmesh *mesh, elementid id, value *val) {
     double *x=NULL; // The vertex positions
-    
+
     bool success=matrix_getcolumn(mesh->vert, id, &x);
-    
+
     if (success) {
         for (unsigned int i=0; i<mesh->dim; i++) val[i]=MORPHO_FLOAT(x[i]);
     }
-    
+
     return success;
 }
 
@@ -124,7 +124,7 @@ bool mesh_nearestvertex(objectmesh *mesh, double *x, elementid *id, double *sepa
     double *vx;
     double best=0, sep=0;
     elementid bestid=0;
-    
+
     for (elementid i=0; i<mesh_nvertices(mesh); i++) {
         if (!matrix_getcolumn(mesh->vert, i, &vx)) return false;
         sep=0;
@@ -146,14 +146,14 @@ bool mesh_checkconnectivity(objectmesh *mesh) {
     if (mesh->conn) return true;
     unsigned int dim[2]={mesh->dim+1, mesh->dim+1};
     mesh->conn=object_newarray(2, dim);
-    
+
     return (mesh->conn);
 }
 
 /** Freezes mesh connectivity, converting subsidiary data structures to fixed but efficient versions */
 void mesh_freezeconnectivity(objectmesh *mesh) {
     if (!mesh_checkconnectivity(mesh)) return;
-    
+
     for (unsigned int i=0; i<mesh->dim+1; i++) {
         for (unsigned int j=0; j<mesh->dim+1; j++) {
             objectsparse *s=mesh_getconnectivityelement(mesh, i, j);
@@ -166,12 +166,12 @@ void mesh_freezeconnectivity(objectmesh *mesh) {
 objectsparse *mesh_newconnectivityelement(objectmesh *mesh, unsigned int row, unsigned int col) {
     objectsparse *out=NULL;
     value indx[2]={MORPHO_INTEGER(row),MORPHO_INTEGER(col)};
-    
+
     out=object_newsparse(NULL, NULL);
     if (out) array_setelement(mesh->conn, 2, indx, MORPHO_OBJECT(out));
-    
+
     if (out) mesh_link(mesh, (object *) out);
-    
+
     return out;
 }
 
@@ -186,10 +186,10 @@ bool mesh_setconnectivityelement(objectmesh *mesh, unsigned int row, unsigned in
             mesh_delink(mesh, oel);
             if (oel->status==OBJECT_ISUNMANAGED) object_free(oel);
         }
-        
+
         value val = MORPHO_NIL;
         if (el) val = MORPHO_OBJECT(el);
-        
+
         if (array_setelement(mesh->conn, 2, indx, val) == ARRAY_OK) {
             if (el && el->obj.status==OBJECT_ISUNMANAGED) mesh_link(mesh, (object *) el);
         }
@@ -202,12 +202,12 @@ objectsparse *mesh_getconnectivityelement(objectmesh *mesh, unsigned int row, un
     objectsparse *out=NULL;
     value indx[2]={MORPHO_INTEGER(row),MORPHO_INTEGER(col)};
     value matrix=MORPHO_NIL;
-    
+
     if (mesh->conn) array_getelement(mesh->conn, 2, indx, &matrix);
     if (MORPHO_ISSPARSE(matrix)) {
         out=MORPHO_GETSPARSE(matrix);
     }
-    
+
     return out;
 }
 
@@ -240,7 +240,7 @@ grade mesh_maxgrade(objectmesh *mesh) {
     for (grade g=mesh->dim; g>0; g--) {
         if (mesh_getconnectivityelement(mesh, 0, g)) return g;
     }
-    
+
     return 0;
 }
 
@@ -252,11 +252,11 @@ grade mesh_maxgrade(objectmesh *mesh) {
  * @returns true on success, false otherwise */
 bool mesh_getconnectivity(objectsparse *conn, elementid id, int *nentries, int **entries) {
     sparse_checkformat(conn, SPARSE_CCS, true, false);
-    
+
     if (conn) {
         return sparseccs_getrowindices(&conn->ccs, id, nentries, entries);
     }
-    
+
     return false;
 }
 
@@ -270,7 +270,6 @@ objectsparse *mesh_addgrade(objectmesh *mesh, grade g) {
     /* Does the grade already exist? */
     objectsparse *el=mesh_getconnectivityelement(mesh, 0, g);
     if (el) return el;
-    
     grade maxG = mesh_maxgrade(mesh);
     grade h;
     /* Otherwise, find the next available grade above it */
@@ -286,14 +285,14 @@ objectsparse *mesh_addgrade(objectmesh *mesh, grade g) {
     /* Create a new sparse matrix */
     objectsparse *new=object_newsparse(NULL, NULL);
     if (!new) return NULL;
-    
+
     /* Create a temporary sparse matrix to hold connectivity information */
     objectsparse *temp=object_newsparse(NULL, NULL);
     if (!temp) {
         object_free((object *) new);
         return NULL;
     }
-    
+
     int nentries, *entries;
     elementid newid=0;
     /* Loop over elements in the higher grade */
@@ -307,7 +306,7 @@ objectsparse *mesh_addgrade(objectmesh *mesh, grade g) {
                     /* Sort the indices */
                     int l=(entries[j]<entries[k] ? entries[j] : entries[k]);
                     int m=(entries[j]<entries[k] ? entries[k] : entries[j]);
-                    
+
                     /* Does this pair already exist? */
                     if (!sparse_getelement(temp, l, m, NULL)) {
                         /* Add the element to our new matrix */
@@ -319,16 +318,16 @@ objectsparse *mesh_addgrade(objectmesh *mesh, grade g) {
                     }
                 }
             }
-            
+
         }
     }
-    
+
     if (temp) object_free((object *) temp);
-    
+
     mesh_setconnectivityelement(mesh, 0, g, new);
     mesh_link(mesh, (object *) new);
     mesh_freezeconnectivity(mesh);
-    
+
     return new;
 }
 
@@ -348,26 +347,26 @@ static int mesh_compareid(const void *a, const void *b) {
  * @returns true on success, false otherwise */
 static bool mesh_matchelements(objectsparse *vmatrix, grade g, int nids, int *ids, int maxmatches, int *nmatches, int *matches) {
     int nentries[nids], *entries[nids], length=0, k=0;
-    
+
     /* Obtain connectivity information from the columns of vertex connectivity matrix */
     for (unsigned int i=0; i<nids; i++) {
         if (!mesh_getconnectivity(vmatrix, ids[i], &nentries[i], &entries[i])) return false;
         length+=nentries[i];
     }
-    
+
     /* Copy ids a single list */
     int sids[length+1]; sids[length]=-1;
     for (unsigned int i=0; i<nids; i++) {
         memcpy(sids+k, entries[i], nentries[i]*sizeof(int));
         k+=nentries[i];
     }
-    
+
     /* and sort it */
     qsort(sids, length, sizeof(int), mesh_compareid);
-    
+
     //for (unsigned int i=0; i<length; i++) printf("%u ", sids[i]);
     //printf("\n");
-    
+
     /* Now look for repeated ids */
     k=0; *nmatches=0;
     for (unsigned int i=0; i<length; i++) {
@@ -378,29 +377,29 @@ static bool mesh_matchelements(objectsparse *vmatrix, grade g, int nids, int *id
         }
         k=0; // Reset counter
     }
-    
+
     return true;
 }
 
 /** Adds a missing grade lowering element */
 static objectsparse *mesh_addlowermatrix(objectmesh *mesh, unsigned int row, unsigned int col) {
     objectsparse *new=NULL;
-    
+
     /* Try to obtain the (row, 0) element (i.e. the grade raising matrix for the row) */
     objectsparse *traise=mesh_getconnectivityelement(mesh, row, 0);
     if (!traise) traise=mesh_addconnectivityelement(mesh, row, 0);
-    
+
     /* Also need to obtain the (0, col) element (i.e. the grade definition) */
     objectsparse *tlower=mesh_getconnectivityelement(mesh, 0, col);
-    
+
     if (traise && tlower) {
         /* Create a new sparse matrix */
         new=object_newsparse(NULL, NULL);
         if (!new) return NULL;
-        
+
         int maxmatches = (col+1)*(col+2)/2+1; // Maximum number of elements for a given grade
         int nentries, *entries, nmatches, matches[maxmatches];
-        
+
         /* Loop over elements in the higher grade */
         for (elementid rid=0; rid<tlower->ccs.ncols; rid++) {
             /* Get the associated connectivity */
@@ -409,18 +408,18 @@ static objectsparse *mesh_addlowermatrix(objectmesh *mesh, unsigned int row, uns
                     if (nmatches>=maxmatches) {
                         UNREACHABLE("Too many connections.");
                     }
-                    
+
                     for (unsigned int i=0; i<nmatches; i++) {
                         sparsedok_insert(&new->dok, matches[i], rid, MORPHO_NIL);
                     }
                 }
             }
         }
-        
+
         mesh_setconnectivityelement(mesh, row, col, new);
         mesh_freezeconnectivity(mesh);
     }
-    
+
     return new;
 }
 
@@ -429,7 +428,7 @@ objectsparse *mesh_addconnectivityelement(objectmesh *mesh, unsigned int row, un
     /** Does the element already exist? */
     objectsparse *el=mesh_getconnectivityelement(mesh, row, col);
     if (el) return el;
-    
+
     /* If not, what kind of element is it? */
     if (row==0) { /* First row */
         /* Can't add a missing grade; use addgrade instead*/
@@ -439,13 +438,13 @@ objectsparse *mesh_addconnectivityelement(objectmesh *mesh, unsigned int row, un
         /* Try to obtain the transpose */
         objectsparse *tlow=mesh_getconnectivityelement(mesh, col, row);
         if (!tlow) tlow=mesh_addconnectivityelement(mesh, col, row);
-        
+
         if (tlow) {
             el=mesh_newconnectivityelement(mesh, row, col);
             sparse_transpose(tlow, el);
         }
     }
-    
+
     return el;
 }
 
@@ -456,18 +455,18 @@ objectsparse *mesh_addconnectivityelement(objectmesh *mesh, unsigned int row, un
  * @param[in] v elementids */
 bool mesh_addelementwithvertices(objectmesh *mesh, grade g, elementid *v) {
     if (!mesh_checkconnectivity(mesh)) return false;
-    
+
     objectsparse *m=mesh_getconnectivityelement(mesh, 0, g);
     if (!m) m=mesh_newconnectivityelement(mesh, 0, g);
     if (!m) return false;
 
     int eid=m->dok.ncols; // The new element is one after the last element
-    
+
     bool success=true;
     for (unsigned int i=0; i<g+1; i++) {
         if (!sparsedok_insert(&m->dok, (int) v[i], eid, MORPHO_NIL)) success=false;
     }
-    
+
     return success;
 }
 
@@ -488,26 +487,26 @@ void mesh_resetconnectivity(objectmesh *m) {
 /** Clones a mesh object */
 objectmesh *mesh_clone(objectmesh *mesh) {
     objectmesh *new = object_newmesh(mesh->dim, mesh->vert->ncols, mesh->vert->elements);
-    
+
     if (new) {
         if (mesh->conn &&
             mesh_checkconnectivity(new)) {
-            
+
             grade max = mesh_maxgrade(mesh);
             for (grade i=0; i<=max; i++) {
                 for (grade j=0; j<=max; j++) {
                     objectsparse *conn=mesh_getconnectivityelement(mesh, i, j);
-                    
+
                     if (conn) {
                         objectsparse *cl=sparse_clone(conn);
                         if (cl) mesh_setconnectivityelement(new, i, j, cl);
                     }
                 }
             }
-            
+
         }
     }
-    
+
     return new;
 }
 
@@ -519,17 +518,17 @@ objectmesh *mesh_clone(objectmesh *mesh) {
 bool mesh_addsymmetry(vm *v, objectmesh *mesh, value symmetry, objectselection *sel) {
     value method=MORPHO_NIL;
     objectstring s = MORPHO_STATICSTRING(MESH_TRANSFORM_METHOD);
-    
+
     objectsparse *sym=mesh_getconnectivityelement(mesh, MESH_GRADE_VERTEX, MESH_GRADE_VERTEX);
-    
+
     double x[mesh->dim];
     objectmatrix posn = MORPHO_STATICMATRIX(x, mesh->dim, 1);
-    
+
     elementid nv = mesh_nvertices(mesh);
-    
+
     value arg = MORPHO_OBJECT(&posn);
     value ret = MORPHO_NIL;
-    
+
     if (morpho_lookupmethod(symmetry, MORPHO_OBJECT(&s), &method)) {
         /* Loop over vertices */
         for (elementid i=0; i<nv; i++) {
@@ -537,13 +536,13 @@ bool mesh_addsymmetry(vm *v, objectmesh *mesh, value symmetry, objectselection *
             if (!mesh_getvertexcoordinates(mesh, i, x)) return false;
             /* Call transformation */
             if (!morpho_invoke(v, symmetry, method, 1, &arg, &ret)) return false;
-            
+
             if (MORPHO_ISMATRIX(ret)) {
                 objectmatrix *newvert=MORPHO_GETMATRIX(ret);
                 elementid nearest;
                 double sep;
                 if (!mesh_nearestvertex(mesh, newvert->elements, &nearest, &sep)) return false;
-                
+
                 if (sep<MESH_NEARESTPOINTEPS) {
                     /* Only add a symmetry matrix if we have a match */
                     if (!sym) {
@@ -551,14 +550,14 @@ bool mesh_addsymmetry(vm *v, objectmesh *mesh, value symmetry, objectselection *
                         sparsedok_setdimensions(&sym->dok, nv, nv);
                     }
                     if (!sym) return false;
-                    
+
                     sparse_setelement(sym, i, nearest, symmetry);
                 }
             }
         }
-        
+
     } else morpho_runtimeerror(v, MESH_ADDSYMMSNGTRNSFRM);
-    
+
     return false;
 }
 
@@ -574,7 +573,7 @@ bool mesh_getsynonyms(objectmesh *mesh, grade g, elementid id, varray_elementid 
             if (id==col) varray_elementidwriteunique(synonymids, row);
         }
     }
-    
+
     return true;
 }
 
@@ -601,7 +600,7 @@ void mesh_insertidsforelement(objectsparse *conn, elementid id, bool ignore, ele
 #define MAX_NEIGHBORS 64
 int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, varray_elementid *neighbors) {
     int nvert, *vids, vvid=id; // List of vertices in the element
-    
+
     /* If the element is not a point, find all vertices associated with that point */
     if (g>0) {
         objectsparse *down = mesh_getconnectivityelement(mesh, 0, g);
@@ -609,7 +608,7 @@ int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, va
     } else {
         nvert = 1; vids=&vvid;
     }
-    
+
     objectsparse *conn = mesh_getconnectivityelement(mesh, target, 0);
     // Now find the neighboring elements
     if (conn && sparse_checkformat(conn, SPARSE_CCS, true, false)) {
@@ -617,11 +616,11 @@ int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, va
             mesh_insertidsforelement(conn, vids[k], g==target, id, neighbors);
         }
     }
-    
+
     /* Now find any vertices that are related to an element vertex through symmetries */
     objectsparse *sym = mesh_getconnectivityelement(mesh, 0, 0);
     int nsymids=0, *symids;
-    
+
     if (sym && sparse_checkformat(sym, SPARSE_CCS, true, false)) {
         for (unsigned int k=0; k<nvert; k++) { // Loop over vertices in the element
             // Is this vertex an image vertex of another element?
@@ -630,7 +629,7 @@ int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, va
                     mesh_insertidsforelement(conn, symids[k], g==target, id, neighbors);
                 }
             }
-            
+
             // Is this vertex a target vertex of any image vertices
             int nrids=0, rids[MAX_NEIGHBORS];
             if (sparseccs_getcolindicesforrow(&sym->ccs, id, MAX_NEIGHBORS, &nrids, rids)) {
@@ -639,10 +638,10 @@ int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, va
                 }
             }
             if (nrids>=MAX_NEIGHBORS) UNREACHABLE("Too many neighbors.");
-            
+
         }
     }
-    
+
     return (neighbors->count);
 }
 
@@ -666,7 +665,7 @@ static bool mesh_checksection(char *line, grade *g) {
             *g=i; return true;
         }
     }
-    
+
     return false;
 }
 
@@ -674,37 +673,37 @@ static bool mesh_checksection(char *line, grade *g) {
 objectmesh *mesh_load(vm *v, char *file) {
     objectmesh *out = NULL;
     error err;
-    
+
     /* Open the file */
     FILE *f = file_openrelative(file, "r");
     if (!f) {
         morpho_runtimeerror(v, MESH_FILENOTFOUND, file);
-        return NULL; 
+        return NULL;
     }
-    
+
     grade g=-1; /* The current grade we're loading */
     int ndim=-1; /* Dimensionality of the mesh */
     int nv=0; /* Number of vertices */
     int fline=0;
-    
+
     value val[5]; /* Values to read in per line */
     unsigned int n; /* Number of values read */
-    
+
     dictionary vdict; // Record how the file's vertex ids map to ours.
     dictionary_init(&vdict);
-    
+
     varray_double vert; // Hold the vertex positions
     varray_doubleinit(&vert);
 
     varray_char line; // Buffer to hold a line from the file
     varray_charinit(&line);
-    
+
     /* Load vertices */
     do {
         line.count=0; // Reset buffer contents.
         file_readlineintovarray(f, &line);
         fline++;
-        
+
         if (!mesh_checksection(line.data, &g)) {
             /* Convert the string to an array of values */
             if (parse_stringtovaluearray(line.data, 5, val, &n, &err)) {
@@ -715,7 +714,7 @@ objectmesh *mesh_load(vm *v, char *file) {
                         morpho_runtimeerror(v, MESH_LOADVERTEXDIM, fline);
                         goto meshload_cleanup;
                     }
-                    
+
                     /* Add the vertex */
                     for (unsigned int k=0; k<ndim; k++) {
                         double coord;
@@ -725,7 +724,7 @@ objectmesh *mesh_load(vm *v, char *file) {
                         }
                         varray_doubleadd(&vert, &coord, 1);
                     }
-                    
+
                     /* Keey a record of the id in the file */
                     dictionary_insert(&vdict, val[0], MORPHO_INTEGER(nv));
                     nv++;
@@ -736,10 +735,10 @@ objectmesh *mesh_load(vm *v, char *file) {
             }
         }
     } while (!feof(f) && g<1);
-    
+
     /* Create the mesh */
     out=object_newmesh(ndim, nv, vert.data);
-    
+
     /* Now continue to parse the file for the remaining elements */
     while (!feof(f)) {
         line.count=0; // Reset buffer contents.
@@ -757,7 +756,7 @@ objectmesh *mesh_load(vm *v, char *file) {
                         morpho_runtimeerror(v, MESH_LOADVERTEXNUM, fline);
                         goto meshload_cleanup;
                     }
-                    
+
                     for (unsigned int i=0; i<g+1; i++) {
                         /* Look up our corresponding vertex id */
                         value vx;
@@ -773,23 +772,23 @@ objectmesh *mesh_load(vm *v, char *file) {
                             goto meshload_cleanup;
                         }
                     }
-                    
+
                     mesh_addelementwithvertices(out, g, vid);
                 }
             }
         }
-        
+
     }
     fclose(f);
-    
+
     mesh_freezeconnectivity(out);
-    
+
 meshload_cleanup:
-    
+
     varray_charclear(&line);
     dictionary_clear(&vdict);
     varray_doubleclear(&vert);
-    
+
     return out;
 }
 
@@ -801,12 +800,12 @@ bool mesh_save(objectmesh *m, char *file) {
     /* Open the file */
     FILE *f = file_openrelative(file, "w");
     if (!f) return false;
-    
+
     /* Export vertices */
     fprintf(f, "%s\n\n", MESH_VERTSECTION);
     for (unsigned int i=0; i<mesh_nvertices(m); i++) {
         fprintf(f, "%i ", i+1); // Keep the mesh files 1-indexed
-        
+
         for (unsigned int j=0; j<m->vert->nrows; j++) {
             double x;
             if (matrix_getelement(m->vert, j, i, &x)) {
@@ -815,17 +814,17 @@ bool mesh_save(objectmesh *m, char *file) {
         }
         fprintf(f, "\n");
     }
-    
+
     fprintf(f, "\n");
-    
+
     for (grade g=1; g<m->dim; g++) {
         objectsparse *conn=mesh_getconnectivityelement(m, 0, g);
-        
+
         if (conn) {
             fprintf(f, "%s\n\n", mesh_sections[g]);
             int nentries=0, *entries=NULL;
             int nel = mesh_nelements(conn);
-            
+
             for (elementid id=0; id<nel; id++) {
                 if (mesh_getconnectivity(conn, id, &nentries, &entries)) {
                     fprintf(f, "%i ", id+1);
@@ -837,7 +836,7 @@ bool mesh_save(objectmesh *m, char *file) {
             }
         }
     }
-    
+
     fclose(f);
     return true;
 }
@@ -850,7 +849,7 @@ bool mesh_save(objectmesh *m, char *file) {
 value mesh_constructor(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     objectmesh *new=NULL;
-    
+
     if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         new=mesh_load(v, MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)));
     } else if (nargs==0) {
@@ -860,23 +859,23 @@ value mesh_constructor(vm *v, int nargs, value *args) {
     else {
         morpho_runtimeerror(v,MESH_CONSTRUCTORARGS);
     }
-    
+
     if (new) {
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
     }
-    
+
     return out;
 }
 
 /** Print the mesh */
 value Mesh_save(vm *v, int nargs, value *args) {
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
-    
+
     if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         mesh_save(m, MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)));
     }
-    
+
     return MORPHO_NIL;
 }
 
@@ -893,29 +892,29 @@ value Mesh_print(vm *v, int nargs, value *args) {
 value Mesh_vertexmatrix(vm *v, int nargs, value *args) {
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    
+
     if (m->vert) out=MORPHO_OBJECT(m->vert);
     mesh_delink(m, (object *) m->vert);
     morpho_bindobjects(v, 1, &out);
-    
+
     return out;
 }
 
 /** Set the vertex matrix */
 value Mesh_setvertexmatrix(vm *v, int nargs, value *args) {
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
-    
+
     if (nargs==1 && MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
         objectmatrix *mat = MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
-        
+
         if (m->dim>0 && (mesh_nvertices(m)!=mat->ncols || m->vert->nrows!=mat->nrows)) {
             morpho_runtimeerror(v, MESH_VERTMTRXDIM);
         } else {
-            if (!m->dim>0) m->dim=mat->nrows;
+            if (m->dim==0) m->dim=mat->nrows;
             m->vert=mat;
         }
     }
-    
+
     return MORPHO_NIL;
 }
 
@@ -923,11 +922,11 @@ value Mesh_setvertexmatrix(vm *v, int nargs, value *args) {
 value Mesh_vertexposition(vm *v, int nargs, value *args) {
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
     value out = MORPHO_NIL;
-    
+
     if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         unsigned int id=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         double *vals;
-        
+
         if (matrix_getcolumn(m->vert, id, &vals)) {
             objectmatrix *new=object_newmatrix(m->dim, 1, true);
             if (new) {
@@ -937,22 +936,22 @@ value Mesh_vertexposition(vm *v, int nargs, value *args) {
             }
         } else morpho_runtimeerror(v, MESH_INVLDID);
     } else morpho_runtimeerror(v, MESH_VRTPSNARGS);
-    
+
     return out;
 }
 
 /** Set position of a vertex */
 value Mesh_setvertexposition(vm *v, int nargs, value *args) {
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
-    
+
     if (nargs==2 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
         MORPHO_ISMATRIX(MORPHO_GETARG(args, 1))) {
         unsigned int id=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         objectmatrix *mat = MORPHO_GETMATRIX(MORPHO_GETARG(args, 1));
-        
+
         if (!matrix_setcolumn(m->vert, id, mat->elements)) morpho_runtimeerror(v, MESH_INVLDID);
     } else morpho_runtimeerror(v, MESH_STVRTPSNARGS);
-    
+
     return MORPHO_NIL;
 }
 
@@ -960,12 +959,12 @@ value Mesh_setvertexposition(vm *v, int nargs, value *args) {
 value Mesh_connectivitymatrix(vm *v, int nargs, value *args) {
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
     value out = MORPHO_NIL;
-    
+
     if (nargs==2 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
         MORPHO_ISINTEGER(MORPHO_GETARG(args, 1))) {
         unsigned int row=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         unsigned int col=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
-        
+
         objectsparse *s=mesh_getconnectivityelement(m, row, col);
         if (!s && row>0 && row!=col) s=mesh_addconnectivityelement(m, row, col);
         if (s) {
@@ -974,16 +973,16 @@ value Mesh_connectivitymatrix(vm *v, int nargs, value *args) {
             morpho_bindobjects(v, 1, &out);
         }
     } else morpho_runtimeerror(v, MESH_CNNMTXARGS);
-    
+
     return out;
 }
 
 /** Clears any connectivity matrices */
 value Mesh_resetconnectivity(vm *v, int nargs, value *args) {
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
-    
+
     mesh_resetconnectivity(m);
-    
+
     return MORPHO_NIL;
 }
 
@@ -991,10 +990,10 @@ value Mesh_resetconnectivity(vm *v, int nargs, value *args) {
 value Mesh_addgrade(vm *v, int nargs, value *args) {
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
     value out = MORPHO_NIL;
-    
+
     if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         unsigned int g=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        
+
         objectsparse *s=mesh_getconnectivityelement(m, 0, g);
         if (!s) {
             s=mesh_addgrade(m, g);
@@ -1009,11 +1008,11 @@ value Mesh_addgrade(vm *v, int nargs, value *args) {
                MORPHO_ISSPARSE(MORPHO_GETARG(args, 1))) {
         unsigned int grade=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         objectsparse *s=MORPHO_GETSPARSE(MORPHO_GETARG(args, 1));
-        
+
         if (s && grade>0) mesh_setconnectivityelement(m, 0, grade, s);
         mesh_freezeconnectivity(m);
     } else morpho_runtimeerror(v, MESH_ADDGRDARGS);
-    
+
     return out;
 }
 
@@ -1022,28 +1021,28 @@ value Mesh_addsymmetry(vm *v, int nargs, value *args) {
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
     value obj = MORPHO_NIL;
     objectselection *sel = NULL;
-    
+
     if (nargs>0 && MORPHO_ISOBJECT(MORPHO_GETARG(args, 0))) {
         obj=MORPHO_GETARG(args, 0);
     } else morpho_runtimeerror(v, MESH_ADDSYMARGS);
-    
+
     if (nargs>1) {
         if (MORPHO_ISSELECTION(MORPHO_GETARG(args, 1))) {
             sel = MORPHO_GETSELECTION(MORPHO_GETARG(args, 1));
         } else morpho_runtimeerror(v, MESH_ADDSYMARGS);
     }
-    
+
     if (!MORPHO_ISNIL(obj)) {
         mesh_addsymmetry(v, m, obj, sel);
     }
-    
+
     return MORPHO_NIL;
 }
 
 /* Returns the highest grade present */
 value Mesh_maxgrade(vm *v, int nargs, value *args) {
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
-    
+
     return MORPHO_INTEGER(mesh_maxgrade(m));
 }
 
@@ -1052,18 +1051,18 @@ value Mesh_count(vm *v, int nargs, value *args) {
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
     grade g=0;
     value out=MORPHO_INTEGER(0);
-    
+
     if (nargs>0 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         g = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     }
-    
+
     if (g==0) {
         out = MORPHO_INTEGER(m->vert->ncols);
     } else {
         objectsparse *s = mesh_getconnectivityelement(m, 0, g);
         if (s) out = MORPHO_INTEGER(s->ccs.ncols);
     }
-    
+
     return out;
 }
 
@@ -1103,10 +1102,10 @@ void mesh_initialize(void) {
     for (unsigned int i=0; i<mesh_nsections; i++) mesh_slength[i]=strlen(mesh_sections[i]);
 
     builtin_addfunction(MESH_CLASSNAME, mesh_constructor, BUILTIN_FLAGSEMPTY);
-    
+
     value meshclass=builtin_addclass(MESH_CLASSNAME, MORPHO_GETCLASSDEFINITION(Mesh), MORPHO_NIL);
     builtin_setveneerclass(OBJECT_MESH, meshclass);
-    
+
     morpho_defineerror(MESH_FILENOTFOUND, ERROR_HALT, MESH_FILENOTFOUND_MSG);
     morpho_defineerror(MESH_VERTMTRXDIM, ERROR_HALT, MESH_VERTMTRXDIM_MSG);
     morpho_defineerror(MESH_LOADVERTEXDIM, ERROR_HALT, MESH_LOADVERTEXDIM_MSG);

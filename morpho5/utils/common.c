@@ -74,6 +74,11 @@ void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
             varray_charadd(buffer, "<fn ", 4);
             morpho_printtobuffer(v, fn->name, buffer);
             varray_charwrite(buffer, '>');
+        } else if (MORPHO_ISBUILTINFUNCTION(val)) {
+            objectbuiltinfunction *fn = MORPHO_GETBUILTINFUNCTION(val);
+            varray_charadd(buffer, "<fn ", 4);
+            morpho_printtobuffer(v, fn->name, buffer);
+            varray_charwrite(buffer, '>');
         } else if (MORPHO_ISCLASS(val)) {
             objectclass *klass = MORPHO_GETCLASS(val);
             varray_charwrite(buffer, '@');

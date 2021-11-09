@@ -15,6 +15,9 @@ fn fun() { return x }
 
 print "${fun}" // expect: <fn fun>
 
+// built in functions
+print "${cos}" // expect: <fn cos>
+
 class Klass {}
 
 print "${Klass}" // expect: @Klass

@@ -711,7 +711,7 @@ value Matrix_subr(vm *v, int nargs, value *args) {
                 matrix_scale(new, -1.0);
                 morpho_bindobjects(v, 1, &out);
             }
-        }
+        } else morpho_runtimeerror(v, VM_INVALIDARGS);
     } else morpho_runtimeerror(v, VM_INVALIDARGS);
     
     return out;

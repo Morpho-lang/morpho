@@ -1,0 +1,13 @@
+// Negate a field
+
+var m = Mesh("square.mesh")
+print m
+// expect: <Mesh: 4 vertices>
+
+var f = Field(m, Matrix([[1,0],[0,1]]))
+
+var g = -f
+
+print g[0]
+// expect: [ -1 0 ]
+// expect: [ 0 -1 ]

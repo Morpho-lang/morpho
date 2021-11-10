@@ -16,6 +16,9 @@ for (i in 0...4) f[i]=i
 write(f*2)
 // expect: [0, 2, 4, 6]
 
+write(2*f)
+// expect: [0, 2, 4, 6]
+
 f*=2
 
 write(f)

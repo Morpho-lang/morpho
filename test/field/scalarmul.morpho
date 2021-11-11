@@ -19,6 +19,9 @@ write(f*2)
 write(2*f)
 // expect: [0, 2, 4, 6]
 
+write(f/2)
+// expect: [0, 0.5, 1, 1.5]
+
 f*=2
 
 write(f)

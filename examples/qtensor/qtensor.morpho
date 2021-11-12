@@ -67,7 +67,7 @@ var bulk = AreaIntegral(landau, q_tensor)
 // Similarly, the anchoring free energy is now the line-integral of the anchoring functional with the field input being q_tensor
 var anchor = LineIntegral(anchoring, q_tensor)
 
-// The elastic energy in the grad-squared of the q-tensor
+// The elastic energy is the grad-squared of the q-tensor
 var elastic = GradSq(q_tensor)
 
 // Specify the problem

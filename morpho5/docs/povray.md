@@ -20,6 +20,8 @@ Create, render and display a scene using POVRay:
 
     pov.render("out.pov")
 
+This also creates the .png file for the scene.
+
 The `POVRaytracer` constructor supports a number of optional arguments:
 
 * `antialias` - whether to antialias the output or not
@@ -27,3 +29,8 @@ The `POVRaytracer` constructor supports a number of optional arguments:
 * `height` - image height
 * `viewangle` - camera angle (higher means wider view)
 * `viewpoint` - position of camera
+
+The `render` method supports two optional boolean arguments:
+
+* `quiet` - whether to suppress the parser and render statistics from `povray` or not (`false` by default)
+* `display` - whether to turn on the graphic display while rendering or not (`true` by default) 

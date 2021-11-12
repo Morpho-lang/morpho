@@ -188,7 +188,7 @@ fn edgeflip(m, iedge, edges, faces, ev, cv, ef) {
   m.resetconnectivity()
 }
 
-fn equiangulate(m, quiet=false) {
+fn equiangulate(m, quiet=false, fix=nil) {
   var vert = m.vertexmatrix()
   var edges = m.connectivitymatrix(0,1)
   var faces = m.connectivitymatrix(0,2)
@@ -198,6 +198,7 @@ fn equiangulate(m, quiet=false) {
   var nflip = 0
 
   for (iedge in 0...ne) {
+    if (fix && fix[1,iedge]) continue
     var ev=edges.rowindices(iedge) // vertices for this edge
     if (verttoedge.rowindices(ev[0]).count()<4 ||
         verttoedge.rowindices(ev[1]).count()<4) continue // skip if connectivity deficient
@@ -571,7 +572,8 @@ class MeshMerge is MeshBuilder {
   }
 
   addmesh(msh) {
-    if (!islist(self.meshes)) self.meshes = []
+    if (isnil(self.meshes)) self.meshes = []
+    if (!islist(self.meshes)) self.meshes = [self.meshes]
     if (islist(msh)) for (el in msh) self.meshes.append(el)
     else self.meshes.append(msh)
   }

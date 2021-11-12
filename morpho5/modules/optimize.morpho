@@ -617,7 +617,7 @@ class Optimizer {
 }
 
 /* Optimize meshes */
-class ShapeOptimizer < Optimizer {
+class ShapeOptimizer is Optimizer {
   gettarget() {
     return self.problem.mesh.vertexmatrix()
   }
@@ -705,7 +705,7 @@ class ShapeOptimizer < Optimizer {
 }
 
 /* Optimize fields */
-class FieldOptimizer < Optimizer {
+class FieldOptimizer is Optimizer {
   gettarget() {
     return self.target
   }
@@ -761,5 +761,39 @@ class FieldOptimizer < Optimizer {
         f[i].acc(-lambda, gi)
       }
     }
+  }
+
+  fixgrad(grad) {
+    var sel=self.fixed
+
+    var zero = 0
+    var prototype = grad[0]
+    if (ismatrix(prototype)) {
+      var dim = prototype.dimensions()
+      zero=Matrix(dim[0], dim[1])
+    }
+
+    if (isselection(sel)) {
+      var shape = grad.shape()
+      for (g in 0...shape.count()) {
+        if (shape[g]==0 || sel.count(g)==0) continue // skip empty grades
+
+        for (id in sel.idlistforgrade(g)) {
+          for (k in 0...shape[g]) grad[g, id, k]=zero
+        }
+      }
+    }
+  }
+
+  fix(s) {
+    if (isnil(self.fixed)) self.fixed=Selection(self.target.mesh())
+    if (isselection(s)) self.fixed=self.fixed.union(s)
+    else print "fix() requires a selection"
+  }
+
+  unfix(s) {
+    if (isnil(self.fixed)) return
+    if (isselection(s)) self.fixed=self.fixed.difference(s)
+    else print "unfix() requires a selection"
   }
 }

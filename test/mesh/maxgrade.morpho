@@ -1,5 +1,20 @@
-
+import meshtools
 var a = Mesh("tetrahedron.mesh")
+
+
 
 print a.maxgrade()
 // expect: 2
+
+
+var L = 0.5
+var dx = 0.1
+
+var m = AreaMesh(fn (u, v) [u, v], -L..L:dx, -L..L:dx)
+print m.count(0) // expect: 121
+print m.count(1) // expect: 0
+print m.count(2) // expect: 200
+m.addgrade(1)
+print m.count(0) // expect: 121
+print m.count(1) // expect: 320
+print m.count(2) // expect: 200

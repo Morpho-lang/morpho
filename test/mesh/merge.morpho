@@ -19,3 +19,21 @@ for (elid in 0...m.count(1)) print lines.rowindices(elid)
 // expect: [ 7, 8 ]
 // expect: [ 8, 9 ]
 // expect: [ 0, 9 ]
+
+var merge2 = MeshMerge(m1)
+merge2.addmesh(m2)
+print merge2.meshes
+// expect: [ <Mesh>, <Mesh> ]
+
+var merger2 = merge2.merge()
+var v1 = m.vertexmatrix()
+var v2 = merger2.vertexmatrix()
+var Equal= true
+var d = v1.dimensions()
+for ( d1 in 0...d[0]){
+		for (d2 in 0...d[1]){
+			Equal = Equal && v1[d1,d2]==v2[d1,d2]
+		}
+}
+print Equal
+// expect: true

@@ -74,6 +74,11 @@ void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
             varray_charadd(buffer, "<fn ", 4);
             morpho_printtobuffer(v, fn->name, buffer);
             varray_charwrite(buffer, '>');
+        } else if (MORPHO_ISBUILTINFUNCTION(val)) {
+            objectbuiltinfunction *fn = MORPHO_GETBUILTINFUNCTION(val);
+            varray_charadd(buffer, "<fn ", 4);
+            morpho_printtobuffer(v, fn->name, buffer);
+            varray_charwrite(buffer, '>');
         } else if (MORPHO_ISCLASS(val)) {
             objectclass *klass = MORPHO_GETCLASS(val);
             varray_charwrite(buffer, '@');
@@ -169,4 +174,34 @@ bool white_space_remainder(const char *s, int start){
 		s++;
 	}
 	return true;
+}
+
+/** Count the number of fixed parameters in a callable object
+ * @param[in] f - the function or callable object
+ * @param[out] nparams - number of parameters; -1 if unknown
+ * @returns true on success, false if f is not callable*/
+bool morpho_countparameters(value f, int *nparams) {
+    value g = f;
+    bool success=false;
+    
+    if (MORPHO_ISINVOCATION(g)) { // Unpack invocation
+        objectinvocation *inv = MORPHO_GETINVOCATION(g);
+        g=inv->method;
+    }
+    
+    if (MORPHO_ISCLOSURE(g)) { // Unpack closure
+        objectclosure *cl = MORPHO_GETCLOSURE(g);
+        g=MORPHO_OBJECT(cl->func);
+    }
+    
+    if (MORPHO_ISFUNCTION(g)) {
+        objectfunction *fun = MORPHO_GETFUNCTION(f);
+        *nparams=fun->nargs;
+        success=true;
+    } else if (MORPHO_ISBUILTINFUNCTION(f)) {
+        *nparams = -1;
+        success=true;
+    }
+
+    return success;
 }

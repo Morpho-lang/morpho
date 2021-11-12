@@ -270,10 +270,10 @@ objectsparse *mesh_addgrade(objectmesh *mesh, grade g) {
     /* Does the grade already exist? */
     objectsparse *el=mesh_getconnectivityelement(mesh, 0, g);
     if (el) return el;
-
+    grade maxG = mesh_maxgrade(mesh);
     grade h;
     /* Otherwise, find the next available grade above it */
-    for (h=g+1; (h<mesh->dim) && (!el); h++) {
+    for (h=g+1; (h<=maxG) && (!el); h++) {
         el=mesh_getconnectivityelement(mesh, 0, h);
     }
     /* if this grade doesn't exist

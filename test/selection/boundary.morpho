@@ -10,7 +10,6 @@ lst.sort()
 print lst
 // expect: [ 0, 1, 3, 4 ]
 
-s.addgrade(0)
 lst = s.idlistforgrade(0)
 lst.sort()
 

@@ -175,3 +175,33 @@ bool white_space_remainder(const char *s, int start){
 	}
 	return true;
 }
+
+/** Count the number of fixed parameters in a callable object
+ * @param[in] f - the function or callable object
+ * @param[out] nparams - number of parameters; -1 if unknown
+ * @returns true on success, false if f is not callable*/
+bool morpho_countparameters(value f, int *nparams) {
+    value g = f;
+    bool success=false;
+    
+    if (MORPHO_ISINVOCATION(g)) { // Unpack invocation
+        objectinvocation *inv = MORPHO_GETINVOCATION(g);
+        g=inv->method;
+    }
+    
+    if (MORPHO_ISCLOSURE(g)) { // Unpack closure
+        objectclosure *cl = MORPHO_GETCLOSURE(g);
+        g=MORPHO_OBJECT(cl->func);
+    }
+    
+    if (MORPHO_ISFUNCTION(g)) {
+        objectfunction *fun = MORPHO_GETFUNCTION(f);
+        *nparams=fun->nargs;
+        success=true;
+    } else if (MORPHO_ISBUILTINFUNCTION(f)) {
+        *nparams = -1;
+        success=true;
+    }
+
+    return success;
+}

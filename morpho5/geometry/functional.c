@@ -2560,19 +2560,37 @@ FUNCTIONAL_METHOD(LineIntegral, gradient, MESH_GRADE_LINE, integralref, integral
 /** Initialize a LineIntegral object */
 value LineIntegral_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+    int nparams = -1, nfields = 0;
     
-    if (nargs>0 && MORPHO_ISFUNCTION(MORPHO_GETARG(args, 0))) {
-        objectinstance_setproperty(self, scalarpotential_functionproperty, MORPHO_GETARG(args, 0));
+    if (nargs>0) {
+        value f = MORPHO_GETARG(args, 0);
+        
+        if (morpho_countparameters(f, &nparams)) {
+            objectinstance_setproperty(self, scalarpotential_functionproperty, MORPHO_GETARG(args, 0));
+        } else {
+            morpho_runtimeerror(v, LINEINTEGRAL_ARGS);
+            return MORPHO_NIL;
+        }
+    }
+    
+    if (nparams!=nargs) {
+        morpho_runtimeerror(v, LINEINTEGRAL_NFLDS);
+        return MORPHO_NIL;
     }
     
     if (nargs>1) {
         /* Remaining arguments should be fields */
         objectlist *list = object_newlist(nargs-1, & MORPHO_GETARG(args, 1));
         if (!list) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
-        if (!MORPHO_ISFIELD(MORPHO_GETARG(args, 1))){
-            // if one remaining arguments in not a field throw an error
-            morpho_runtimeerror(v,LINEINTEGRAL_ARGS);
+        
+        for (unsigned int i=1; i<nargs; i++) {
+            if (!MORPHO_ISFIELD(MORPHO_GETARG(args, i))) {
+                morpho_runtimeerror(v, LINEINTEGRAL_ARGS);
+                object_free((object *) list);
+                return MORPHO_NIL;
+            }
         }
+        
         value field = MORPHO_OBJECT(list);
         objectinstance_setproperty(self, functional_fieldproperty, field);
         morpho_bindobjects(v, 1, &field);
@@ -2726,5 +2744,6 @@ void functional_initialize(void) {
     morpho_defineerror(NEMATICELECTRIC_ARGS, ERROR_HALT, NEMATICELECTRIC_ARGS_MSG);
     morpho_defineerror(FUNCTIONAL_ARGS, ERROR_HALT, FUNCTIONAL_ARGS_MSG);
     morpho_defineerror(LINEINTEGRAL_ARGS, ERROR_HALT, LINEINTEGRAL_ARGS_MSG);
+    morpho_defineerror(LINEINTEGRAL_NFLDS, ERROR_HALT, LINEINTEGRAL_NFLDS_MSG);
 }
  

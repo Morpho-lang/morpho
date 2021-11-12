@@ -24,4 +24,4 @@ print lcf.total(m)
 // expect: 0.0333333
 
 var badLiField = LineIntegral(fn (x,f) (f*(1-f))^2, nil)
-// expect error 'LnIntArgs'
+// expect error 'IntArgs'

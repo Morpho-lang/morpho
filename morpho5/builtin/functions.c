@@ -340,11 +340,8 @@ static value builtin_max(vm *v, int nargs, value *args) {
     
     return out;
 }
-/*
-#define MORPHO_GETINTEGERVALUE(v) ((v).as.integer)
-#define MORPHO_GETFLOATVALUE(v) ((v).as.real)
 
-/** find the sign of a number **/
+/** find the sign of a number */
 static value builtin_sign(vm *v, int nargs, value *args){
     if (nargs==1) { 
         value arg = MORPHO_GETARG(args, 0); 

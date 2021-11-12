@@ -598,6 +598,28 @@ value Field_sub(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Right subtract */
+value Field_subr(vm *v, int nargs, value *args) {
+    objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+ 
+    if (nargs==1 && (MORPHO_ISNIL(MORPHO_GETARG(args, 0)) ||
+                     MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)))) {
+        int i=(MORPHO_ISNIL(MORPHO_GETARG(args, 0)) ? 0 : MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)));
+        
+        if (i==0) {
+            objectfield *new=field_clone(a);
+            if (new) {
+                out=MORPHO_OBJECT(new);
+                matrix_scale(&new->data, -1.0);
+                morpho_bindobjects(v, 1, &out);
+            }
+        } else morpho_runtimeerror(v, VM_INVALIDARGS);
+    } else morpho_runtimeerror(v, VM_INVALIDARGS);
+    
+    return out;
+}
+
 /** Field accumulate */
 value Field_acc(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
@@ -728,6 +750,7 @@ MORPHO_METHOD(MORPHO_ASSIGN_METHOD, Field_assign, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADD_METHOD, Field_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADDR_METHOD, Field_addr, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUB_METHOD, Field_sub, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_SUBR_METHOD, Field_subr, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ACC_METHOD, Field_acc, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_MUL_METHOD, Field_mul, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_INNER_METHOD, Field_inner, BUILTIN_FLAGSEMPTY),

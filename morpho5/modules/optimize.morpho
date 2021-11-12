@@ -192,6 +192,7 @@ class Optimizer {
     self.fixed = nil
     self.stepsize = 0.1
     self.steplimit = 0.5
+    self.energy = [] // History of energies
     self.etol = 1e-8 // Energy convergence criterion
     self.ctol = 1e-10 // Constraint satisfaction criterion
     self.linmintol = 0.001 // Convergence tolerance for line minimizations
@@ -482,27 +483,6 @@ class Optimizer {
     return energy
   }
 
-
-  /* Perform relaxation at fixed scale */
-  relax(n) {
-    var energy = [ self.totalenergy() ]
-
-    for (i in 0...n) {
-      self.force = self.totalforcewithconstraints()
-
-      self.step(self.stepsize)
-
-      energy.append(self.totalenergy()) // Track the total energy
-      var de = abs(energy[i+1]-energy[i]) // How has it changed?
-
-      if (!self.quiet) print "Iteration ${i}. Energy: ${energy[i+1]} delta E: ${de}"
-
-      // Test for convergence
-      if (abs(energy[i+1])<self.etol || de/abs(energy[i+1])<self.etol) break
-    }
-    return energy
-  }
-
   /* Bracket the stepsize */
   bracketstepsize() {
     var s = [ 0, self.stepsize, 2*self.stepsize ]
@@ -533,44 +513,107 @@ class Optimizer {
     return [s, bracket]
   }
 
-  /* Perform relaxation at fixed scale */
-  linesearch(n) {
-    //var nv = v.dimensions()[1]
-    var energy = [ self.totalenergy() ]
+  /* Test for convergence */
+  hasconverged() {
+    var energy = self.energy
+    if (energy.count()>1) {
+      var de = abs(energy[-1]-energy[-2])
+      if (abs(energy[-1])<self.etol || de/abs(energy[-1])<self.etol) return true
+    }
+    return false
+  }
+
+  /* Report progress */
+  report(iter) {
+    if (self.energy.count()<2) return
+    var de = abs(self.energy[-1]-self.energy[-2])
+    if (!self.quiet) print "Iteration ${iter}. Energy: ${self.energy[-1]} delta E: ${de} stepsize: ${self.stepsize}"
+  }
+
+  /* Perform relaxation at fixed stepsize */
+  relax(n) {
+    if (self.energy.count()==0) self.energy.append(self.totalenergy())
 
     for (i in 0...n) {
       self.force = self.totalforcewithconstraints()
-      var brack=self.bracketstepsize()
+      self.step(self.stepsize)
+      self.energy.append(self.totalenergy()) // Track the total energy
+      self.report(i)
+      if (self.hasconverged()) break
+    }
+    return self.energy
+  }
 
-      if (!islist(brack)) return
+  /* Bracket and descend.
+     If successful, self.stepsize is set to the optimal stepsize and
+     returns true */
+  dolinesearch() {
+    var brack=self.bracketstepsize()
+    if (!islist(brack)) return false
 
-      var step = brent(brack[0], self.energywithstepsize, self.linmintol, self.linminmax)
-      if (isnil(step)) break
+    var step = brent(brack[0], self.energywithstepsize, self.linmintol, self.linminmax)
+    if (step) self.stepsize = step[0]
+    return step
+  }
 
-      self.stepsize = step[0]
+  /* Gradient descent with linesearches */
+  linesearch(n) {
+    if (self.energy.count()==0) self.energy.append(self.totalenergy())
 
-      if (self.stepsize > self.steplimit) {
-        self.stepsize = self.steplimit
-      }
+    for (i in 0...n) {
+      self.force = self.totalforcewithconstraints()
+
+      if (!self.dolinesearch()) break
+      if (self.stepsize > self.steplimit) self.stepsize = self.steplimit
 
       self.step(self.stepsize)
-
-      step[1]=self.totalenergy()
-      var de = abs(step[1]-energy[-1])
-
-      energy.append(step[1])
-      if (!self.quiet) print "Iteration ${i}. Energy: ${energy[-1]} delta E: ${de} stepsize: ${self.stepsize}"
-
-      // Test for convergence
-      if (abs(energy[i+1])<self.etol || de/abs(energy[i+1])<self.etol) break
+      self.energy.append(self.totalenergy())
+      self.report(i)
+      if (self.hasconverged()) break
     }
-    return energy
+    return self.energy
+  }
+
+  /* Conjugate gradient */
+  conjugategradient(n) {
+    if (self.energy.count()==0) self.energy.append(self.totalenergy())
+    var oforce, dk
+
+    for (i in 0...n) {
+      var force = self.totalforcewithconstraints()
+
+      if (oforce) {
+        // Fletcher-Reeves formula
+        //var beta = force.inner(force)/oforce.inner(oforce)
+
+        // Hager and Zhang formula
+        var yk = (oforce-force)
+        var dkyk = dk.inner(yk)
+        var beta = (yk - 2*dk*yk.inner(yk)/dkyk).inner(force)/dkyk
+
+        dk=-force+beta*dk
+        self.force = -dk
+      } else {
+        self.force = force
+        dk = -force
+      }
+
+      if (!self.dolinesearch()) break
+      if (self.stepsize > self.steplimit) self.stepsize = self.steplimit
+
+      self.step(self.stepsize)
+      self.energy.append(self.totalenergy())
+      self.report(i)
+      if (self.hasconverged()) break
+
+      oforce = force
+    }
+    return self.energy
   }
 
   update(dict) {
     if (dict.contains(self.target)) self.target = dict[self.target]
   }
-
 }
 
 /* Optimize meshes */

@@ -64,14 +64,9 @@ value builtin_##function(vm *v, int nargs, value *args) { \
         if (nargs==1) { \
             value arg = MORPHO_GETARG(args, 0); \
             if (MORPHO_ISFLOAT(arg)) { \
-                if (MORPHO_FLOAT(function(MORPHO_GETFLOATVALUE(arg)))) \
-                    return MORPHO_TRUE; \
-                else \
-                    return MORPHO_FALSE;\
+                    return MORPHO_BOOL(function(MORPHO_GETFLOATVALUE(arg))); \
             } else if (MORPHO_ISINTEGER(arg)) { \
-                if( MORPHO_FLOAT(function((double) MORPHO_GETINTEGERVALUE(arg)))) \
-                    return MORPHO_TRUE;\
-                else return MORPHO_FALSE;\
+                return MORPHO_BOOL(function((double) MORPHO_GETINTEGERVALUE(arg))); \
             } else { \
                 morpho_runtimeerror(v, MATH_ARGS, #function);\
             } \

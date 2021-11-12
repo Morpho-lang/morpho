@@ -1,18 +1,24 @@
 /* Problem of a 2D nematic confined to a disk with parallel anchoring boundary condition, modeled by a Q-tensor free energy.
 Showcases: AreaIntegral, LineIntegral, MeshRefiner, POVRaytracer, Graphics
-This script showcases a few good aspects of Morpho:
+This example demonstrates the following features of morpho:
 * It uses AreaIntegral to define the polynomial form of free energy. 
 * It uses mesh refinement to get a better resolution for the solution at the nematic defect locations, where there is more distortion in the field value.
-* To visualize the Q-tensor, we need to see both the director (orientations) and the scalar order parameter (degree of order) together. This script shows how that can be done easily by just adding the graphics together.
+* To visualize the Q-tensor, we need to see both the director (orientations) and the scalar order parameter (degree of order) together. This script shows how that can be done by adding the graphics together.
 */
 import meshtools
 import optimize
 import plot
 import povray
 
+// Define parameters that control the script options
+
+/* The flag `refine_adaptively` is set to decide whether to refine our mesh in regions of high elastic energy. In comparison to refining everywhere, this method gives a speed up while still giving an accurate result. When this flag is `true`, the script performs `refine_iters` (defined below) number of steps of successive adaptive refinement and relaxation. While running this script for the first time, it's ideal to set this to `false`. After getting the result, the user can then turn on adaptive refinement and compare.
+The flag `visualize_refinement`, when `true`, gives further visual insight into the refinement by displaying the regions it selects for refinement, superimposed with the director. It also displays the refined mesh at each stage.
+*/
 var refine_adaptively = false // Flag to turn mesh-refinement on/off
-var visualize_refinement = false // Flag to turn plotting the refinement regions and refined meshes on/off
 var refine_iters = 4 // Number of iterations of refimenent
+var visualize_refinement = false // Flag to turn plotting the refinement regions and refined meshes on/off
+
 // Define physical parameters
 
 var rho = 1.3 // Density. rho>1 results in the nematic phase
@@ -24,8 +30,7 @@ var a4 = (1+rho)/rho^2 // Coefficient of (Tr(Q^2))^2 in the Free energy
 
 // Import disk mesh
 
-var m = Mesh("disk.mesh")
-var m = refinemesh(m) // Refining for a better result
+var m = Mesh("dense_disk.mesh")
 
 // Select boundary
 var bnd = Selection(m, boundary=true)
@@ -62,7 +67,7 @@ var bulk = AreaIntegral(landau, q_tensor)
 // Similarly, the anchoring free energy is now the line-integral of the anchoring functional with the field input being q_tensor
 var anchor = LineIntegral(anchoring, q_tensor)
 
-// The elastic energy in just the grad-squared of the q-tensor
+// The elastic energy in the grad-squared of the q-tensor
 var elastic = GradSq(q_tensor)
 
 // Specify the problem
@@ -78,14 +83,52 @@ problem.addenergy(elastic, prefactor = K)
 // Set up the optimizer to optimize this problem wrt the Field values.
 var opt = FieldOptimizer(problem, q_tensor)
 
+// `iters` specifies the number of iterations for the linelearch. From emperical observation, iters=500 works well. 
+var iters = 500 
 // Minimize the free energy!
-opt.linesearch(500)
+opt.linesearch(iters)
 
+// Define some helper functions to plot the result
 
-// Refine the mesh based on the elastic energy density/
-// This for loop can be commented out 
+// Function to get the director (unit vector n) from the Q-tensor
+fn qtodirector(q) {
+  var S = 2*q.norm()
+  var Q = q/S
+  var nx = sqrt(Q[0]+0.5)
+  var ny = abs(Q[1]/nx)
+  nx = nx*sign(Q[1])
+  return Matrix([nx,ny,0])
+}
+
+// Function to get the scalar order parameter S from the Q-tensor
+fn qtoorder(q) {
+  var S = 2*q.norm()
+  return S
+}
+
+/* Function to visualize a director field
+This function returns a `Graphics()` object that has the director field visualized in the form of cylinders. Here,
+1. m is the mesh
+2. nn is the director field and
+3. dl is the half-length of the cylinders to be drawn. 
+4. aspectratio (optional argument) is the aspect ratio of the cylinders. (default is 0.3 here)
+*/
+fn visualize(m, nn, dl, aspectratio=0.3) {
+  var v = m.vertexmatrix()
+  var nv = v.dimensions()[1]
+  var g = Graphics()
+  for (i in 0...nv) {
+    var x = v.column(i)
+    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=aspectratio))
+  }
+  return g
+}
+
+/* Adaptive mesh refinement
+Here, we refine the mesh based on the elastic energy density and linesearch successively.
+*/
 if (refine_adaptively){
-  for (i in 1..refine_iters){ // 
+  for (i in 1..refine_iters){
   
     // Select elements that have a large contribution to the elastic energy
     var en = elastic.integrand(q_tensor)
@@ -95,7 +138,13 @@ if (refine_adaptively){
   
     // Visualize the selected region for refimenemt 
     
-    if (visualize_refinement) Show(plotselection(m, srefine, grade=2))
+    if (visualize_refinement){
+      var gs = plotselection(m, srefine, grade=2)
+      var nn = Field(m, Matrix([1,0,0])) // Initialize to some vector
+      for (i in 0...m.count()) nn[i]=qtodirector(q_tensor[i])
+      var gnn=visualize(m, nn, 0.05)
+      Show(gs+gnn)
+    }
   
     // Create a mesh refiner
     var mr=MeshRefiner([m, q_tensor, bnd])
@@ -117,58 +166,23 @@ if (refine_adaptively){
     // Visualize the refined mesh at each stage
     if (visualize_refinement) Show(plotmesh(m, grade=1))
   
-    opt.linesearch(500)
+    opt.linesearch(iters)
   }
-}
-// Define some helper functions to plot the result
-
-// Function to get the director (unit vector n) from the Q-tensor
-fn qtodirector(q) {
-  var S = 2*q.norm()
-  var Q = q/S
-  var nx = sqrt(Q[0]+0.5)
-  var ny = abs(Q[1]/nx)
-  nx = nx*sign(Q[1])
-  return Matrix([nx,ny,0])
-}
-
-// Function to get the scalar order parameter S from the Q-tensor
-fn qtoorder(q) {
-  var S = 2*q.norm()
-  return S
-}
-  
-// Convert the q-tensor to the director and order
-
-var nn = Field(m, Matrix([1,0,0]))
-for (i in 0...m.count()) nn[i]=qtodirector(q_tensor[i])
-
-var S = Field(m, 0)
-for (i in 0...m.count()) S[i]=qtoorder(q_tensor[i])
-
-/* Function to visualize a director field
-This function returns a `Graphics()` object that has the director field visualized in the form of cylinders. Here,
-1. m is the mesh
-2. nn is the director field and
-3. dl is the half-length of the cylinders to be drawn. 
-4. aspectratio (optional argument) is the aspect ratio of the cylinders. (default is 0.3 here)
-*/
-fn visualize(m, nn, dl, aspectratio=0.3) {
-  var v = m.vertexmatrix()
-  var nv = v.dimensions()[1]
-  var g = Graphics()
-  for (i in 0...nv) {
-    var x = v.column(i)
-    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=aspectratio))
-  }
-  return g
 }
 
 // Visualize the result
 
+  
+// Convert the q-tensor to the director and order
+
+var nn = Field(m, Matrix([1,0,0])) // Initialize to some vector
+for (i in 0...m.count()) nn[i]=qtodirector(q_tensor[i])
+
+var S = Field(m, 0) // Initialize to a scalar
+for (i in 0...m.count()) S[i]=qtoorder(q_tensor[i])
+
 // Plot the scalar order field
 var splot = plotfield(S, style="interpolate")
-
 // Plot the director using the visualize function we wrote above
 var gnn=visualize(m, nn, 0.05)
 

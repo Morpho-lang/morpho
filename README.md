@@ -80,9 +80,9 @@ Morpho can be installed as follows:
 
 Note that the build script places morpho5 and morphoview in the `/usr/local` file structure; this can easily be changed if a different location is preferred.
 
-## Windows via Windows Subsystem for Linux (WSL)
+### Windows via Windows Subsystem for Linux (WSL)
 
-### Install WSL
+#### Install WSL
 
 The instructions to install the Ubuntu App are [here](https://ubuntu.com/tutorials/ubuntu-on-windows#1-overview).
 
@@ -90,7 +90,7 @@ Once the Ubuntu terminal is working in Windows, you can install Morpho through i
 
 Unless mentioned otherwise, all the commands below are run in the Ubuntu terminal.
 
-### Install Morpho
+#### Install Morpho
 
 1\. Install the dependencies
 

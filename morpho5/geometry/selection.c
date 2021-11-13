@@ -192,6 +192,8 @@ void selection_selectboundary(vm *v, objectselection *sel) {
             }
         }
     }
+    // Add vertices if the boundary elements are higher in grade than vertices
+    if (bnd!=0) {selection_addgradelower(sel, 0); }
 }
 
 /** Selects an element */

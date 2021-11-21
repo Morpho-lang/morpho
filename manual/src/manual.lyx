@@ -898,6 +898,308 @@ morpho5
 
 \end_layout
 
+\begin_layout Section
+Windows via Windows Subsystem for Linux (WSL)
+\end_layout
+
+\begin_layout Subsection
+Install WSL
+\end_layout
+
+\begin_layout Standard
+The instructions to install the Ubuntu App are 
+\begin_inset CommandInset href
+LatexCommand href
+name "here"
+target "https://ubuntu.com/tutorials/ubuntu-on-windows#1-overview"
+literal "false"
+
+\end_inset
+
+.
+ Once the Ubuntu terminal is working in Windows, you can install 
+\emph on
+morpho
+\emph default
+ through it in almost the same way as a Linux system, with the addition
+ of an X windows manager to handle visualizations.
+ Unless mentioned otherwise, all the commands below are run in the Ubuntu
+ terminal.
+\end_layout
+
+\begin_layout Subsection
+Install Morpho
+\end_layout
+
+\begin_layout Enumerate
+Install the dependencies.
+ You can install the dependencies using the Advanced Package Tool or apt.
+ First update the apt package list and then update existing packages.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+sudo apt update
+\end_layout
+
+\begin_layout Plain Layout
+
+sudo apt upgrade
+\end_layout
+
+\end_inset
+
+The dependencies for morpho can be then installed as follows:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+sudo apt install libglfw3-dev
+\end_layout
+
+\begin_layout Plain Layout
+
+sudo apt install libsuitesparse-dev
+\end_layout
+
+\begin_layout Plain Layout
+
+sudo apt install liblapacke-dev
+\end_layout
+
+\begin_layout Plain Layout
+
+sudo apt install povray
+\end_layout
+
+\end_inset
+
+To build the code you will also need to install build-essentials:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+sudo apt install build-essential
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Obtain the morpho source by cloning the Morpho repository:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+git clone https://github.com/Morpho-lang/morpho.git
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Navigate to the morpho5 folder within the downloaded repository and build
+ the application:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+cd morpho/morpho5
+\end_layout
+
+\begin_layout Plain Layout
+
+sudo make -f Makefile.linux install
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Navigate to the morphoview folder and build the viewer application:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+cd ../morphoview
+\end_layout
+
+\begin_layout Plain Layout
+
+sudo make -f Makefile.linux install 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Check that the application works by typing:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+morpho5
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Get visualization working in WSL
+\end_layout
+
+\begin_layout Enumerate
+A window manager must be installed so that the WSL can create windows.
+ On Windows, install 
+\begin_inset CommandInset href
+LatexCommand href
+name "VcXsrv"
+target "https://sourceforge.net/projects/vcxsrv/"
+literal "false"
+
+\end_inset
+
+.
+ It shows up as XLaunch in the Windows start menu.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Open Xlaunch.
+ Then, 
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+choose 'Multiple windows', set display number to 0, and hit 'Next' 
+\end_layout
+
+\begin_layout Enumerate
+choose `start no client' and hit 'Next' 
+\end_layout
+
+\begin_layout Enumerate
+
+\series bold
+Unselect
+\series default
+ 'native opengl' and hit 'Next' 
+\end_layout
+
+\begin_layout Enumerate
+Hit 'Finish'
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+In Ubuntu download a package containing a full suite of desktop utilities
+ that allows for the use of windows.
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+sudo apt install ubuntu-desktop mesa-utils
+\end_layout
+
+\end_inset
+
+Tell ubuntu which display to use
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+export DISPLAY=localhost:0
+\end_layout
+
+\end_inset
+
+To set the DISPLAY variable on launch add the line 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+DISPLAY=localhost:0 
+\end_layout
+
+\end_inset
+
+ to 
+\family typewriter
+~/.bashrc
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Test that the window system is working by running 
+\family typewriter
+glxgears
+\family default
+.
+\end_layout
+
+\begin_layout Enumerate
+Test the thomson example program! Navigate to the thomson example in the
+ examples directory and run it.
+ If you are in the 
+\family typewriter
+morphoview
+\family default
+ directory.
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+cd ../examples/thomson
+\end_layout
+
+\begin_layout Plain Layout
+
+morpho5 thomson.morpho
+\end_layout
+
+\end_inset
+
+This example starts with randomly distributed charges on a sphere and minimizing
+ electric potential.
+ It should generate an interactive figure of points on a sphere.
+ 
+\end_layout
+
 \begin_layout Chapter
 Using 
 \emph on

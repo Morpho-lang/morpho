@@ -102,6 +102,9 @@ void morpho_freevm(vm *v);
 /* Bind new objects to the virtual machine */
 void morpho_bindobjects(vm *v, int nobj, value *obj);
 
+/* Tell the VM that the size of an object has changed */
+void morpho_resizeobject(vm *v, object *obj, size_t oldsize, size_t newsize);
+
 /* Temporarily retain objects across multiple calls into the VM */
 int morpho_retainobjects(vm *v, int nobj, value *obj);
 void morpho_releaseobjects(vm *v, int handle);

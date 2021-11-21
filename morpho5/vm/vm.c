@@ -1673,6 +1673,18 @@ void morpho_releaseobjects(vm *v, int handle) {
     if (handle>=0) v->globals.count=handle;
 }
 
+/** @brief Inform the VM that the size of an object has changed
+ *  @param v      the virtual machine
+ *  @param obj  the object to resize
+ *  @param oldsize old size
+ *  @param newsize new size
+ */
+void morpho_resizeobject(vm *v, object *obj, size_t oldsize, size_t newsize) {
+    if (obj->status==OBJECT_ISUNMANAGED) return;
+    v->bound-=oldsize;
+    v->bound+=newsize;
+}
+
 /** Runs a program
  * @param[in] v - the virtual machine to use
  * @param[in] p - program to run

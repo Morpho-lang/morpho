@@ -11,6 +11,16 @@
 
 #define CLI_BUFFERSIZE 1024
 
+#define RED   "\x1B[31m"
+#define GRN   "\x1B[32m"
+#define YEL   "\x1B[33m"
+#define BLU   "\x1B[34m"
+#define MAG   "\x1B[35m"
+#define CYN   "\x1B[36m"
+#define WHT   "\x1B[37m"
+#define GRY   "\x1B[38;2;128;128;128m"
+#define RESET "\x1B[0m"
+
 /** Report an error if one has occurred. */
 void cli_reporterror(error *err, vm *v) {
     if (err->cat!=ERROR_NONE) {
@@ -188,8 +198,15 @@ void cli_help (lineditor *edit, char *query, error *err, bool avail) {
 
 /** @brief Provide a command line interface */
 void cli(clioptions opt) {
-    printf("\U0001F98B morpho 0.5.0  | \U0001F44B Type 'help' or '?' for help\n");
-    
+    #ifdef MORPHO_LONG_BANNER
+        printf(BLU " ___   ___ \n" RESET);
+        printf(BLU "(" CYN " @ " GRY"\\Y/" CYN " @ " BLU ") " RESET "  |  morpho 0.5.0  | \U0001F44B Type 'help' or '?' for help\n");
+        printf(BLU " \\" CYN"__" GRY"+|+" CYN"__" BLU"/  " RESET "  |  Documentation: https://morpho-lang.readthedocs.io/en/latest/ \n");
+        printf(BLU"  {" CYN"_" BLU "/ \\" CYN "_" BLU"}   " RESET "  |  Code: https://github.com/Morpho-lang/morpho \n\n");
+    #else
+        printf("\U0001F98B morpho 0.5.0  | \U0001F44B Type 'help' or '?' for help\n");
+    #endif
+    // Original ASCII art source - https://www.asciiart.eu/animals/insects/butterflies
     cli_file=NULL;
     
     /* Set up program and compiler */

@@ -152,3 +152,10 @@
 
 /** @brief Diagnose opcode usage */
 //#define MORPHO_OPCODE_USAGE
+
+/* **********************************************************************
+* UI
+* ********************************************************************** */
+
+/** @brief Full welcome message in CLI */
+// #define MORPHO_LONG_BANNER

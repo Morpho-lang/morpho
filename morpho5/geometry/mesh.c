@@ -177,6 +177,7 @@ objectsparse *mesh_newconnectivityelement(objectmesh *mesh, unsigned int row, un
 
 /** Sets a connectivity element */
 bool mesh_setconnectivityelement(objectmesh *mesh, unsigned int row, unsigned int col, objectsparse *el) {
+    if (row==col) return false;
     value indx[2]={MORPHO_INTEGER(row),MORPHO_INTEGER(col)};
     if (mesh_checkconnectivity(mesh)) {
         value old = MORPHO_NIL;
@@ -993,7 +994,7 @@ value Mesh_addgrade(vm *v, int nargs, value *args) {
 
     if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         unsigned int g=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
+        if (g==0) return MORPHO_NIL;
         objectsparse *s=mesh_getconnectivityelement(m, 0, g);
         if (!s) {
             s=mesh_addgrade(m, g);

@@ -809,7 +809,11 @@ value list_constructor(vm *v, int nargs, value *args) {
 value List_append(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     
+    unsigned int capacity = slf->val.capacity;
+    
     varray_valueadd(&slf->val, args+1, nargs);
+    
+    if (slf->val.capacity!=capacity) morpho_resizeobject(v, (object *) slf, capacity*sizeof(value), slf->val.capacity*sizeof(value));
     
     return MORPHO_SELF(args);
 }
@@ -1086,7 +1090,11 @@ value Dictionary_setindex(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
     
     if (nargs==2) {
+        unsigned int capacity = slf->dict.capacity;
+        
         dictionary_insert(&slf->dict, MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1));
+        
+        if (slf->dict.capacity!=capacity) morpho_resizeobject(v, (object *) slf, capacity*sizeof(value), slf->dict.capacity*sizeof(value));
     } else morpho_runtimeerror(v, SETINDEX_ARGS);
     
     return MORPHO_NIL;

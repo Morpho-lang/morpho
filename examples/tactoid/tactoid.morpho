@@ -64,16 +64,16 @@ for (iter in 1..itermax) {
       if (iter<itermax) {
         print "-Regularize"
         leq.weight=lf.integrand(nn)
-        ropt.stepsize=0.0001
-        ropt.steplimit=0.0001
+        ropt.stepsize=0.0001/iter
+        ropt.steplimit=0.0001/iter
         ropt.linesearch(2)
         equiangulate(m)
       }
 
       print "-Field"
-      fopt.linesearch(200)
+      fopt.conjugategradient(200)
       print "-Shape"
-      sopt.linesearch(50)
+      sopt.conjugategradient(50)
   }
 
   // Check each contribution to the energy
@@ -103,6 +103,7 @@ for (iter in 1..itermax) {
     nn = refmap[nn]
     bnd = refmap[bnd]
     // Must ensure boundary remains correctly fixed
+    ropt.fixed=[]
     ropt.fix(Selection(m, boundary=true))
 
     // Equiangulate

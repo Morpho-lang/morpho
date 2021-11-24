@@ -86,7 +86,7 @@ Note that the build script places morpho5 and morphoview in the `/usr/local` fil
 
 The instructions to install the Ubuntu App are [here](https://ubuntu.com/tutorials/ubuntu-on-windows#1-overview).
 
-Once the Ubuntu terminal is working in Windows, you can install Morpho through it in almost the same way as a Linux system, with the addition of an X windows manager to handle visualizations. 
+Once the Ubuntu terminal is working in Windows, you can install Morpho through it in almost the same way as a Linux system, with the addition of an X windows manager to handle visualizations.
 
 Unless mentioned otherwise, all the commands below are run in the Ubuntu terminal.
 
@@ -94,9 +94,9 @@ Unless mentioned otherwise, all the commands below are run in the Ubuntu termina
 
 1\. Install the dependencies
 
-You can install the dependencies using the Advanced Package Tool or apt. 
+You can install the dependencies using the Advanced Package Tool or apt.
 
-First update the apt package list and then update existing packages. 
+First update the apt package list and then update existing packages.
 
 ```
 sudo apt update
@@ -121,7 +121,7 @@ To build the code you will also need to install build-essentials:
 sudo apt install build-essential
 ```
 
-2\. Obtain the morhpo source by cloning the Morpho repository:
+2\. Obtain the morpho source by cloning the Morpho repository:
 ```
 git clone https://github.com/Morpho-lang/morpho.git
 ```

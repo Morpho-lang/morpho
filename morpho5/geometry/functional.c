@@ -1344,6 +1344,123 @@ MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LinearElasticity_gradient, BUILTIN_FLA
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
+ * Flory-Huggins
+ * ---------------------------------------------- */
+
+static value floryhuggins_aproperty;
+static value floryhuggins_bproperty;
+static value floryhuggins_cproperty;
+static value floryhuggins_phi0property;
+
+typedef struct {
+    objectmesh *refmesh;
+    grade grade;
+    double a,b,c;   // Flory-Huggins coefficients
+    value phi0; // Can be a number or a field
+} floryhugginsref;
+
+/** Prepares the reference structure from the object's properties */
+bool floryhuggins_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, floryhugginsref *ref) {
+    bool success=false;
+    value refmesh=MORPHO_NIL, grade=MORPHO_NIL, phi0=MORPHO_NIL;
+    value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL;
+    
+    if (objectinstance_getproperty(self, linearelasticity_referenceproperty, &refmesh) &&
+        objectinstance_getproperty(self, functional_gradeproperty, &grade) &&
+        MORPHO_ISINTEGER(grade) &&
+        objectinstance_getproperty(self, floryhuggins_aproperty, &a) &&
+        MORPHO_ISNUMBER(a) &&
+        objectinstance_getproperty(self, floryhuggins_bproperty, &b) &&
+        MORPHO_ISNUMBER(b) &&
+        objectinstance_getproperty(self, floryhuggins_cproperty, &c) &&
+        MORPHO_ISNUMBER(c) &&
+        objectinstance_getproperty(self, floryhuggins_phi0property, &phi0) &&
+        (MORPHO_ISNUMBER(phi0) || MORPHO_ISFIELD(phi0))) {
+        ref->refmesh=MORPHO_GETMESH(refmesh);
+        ref->grade=MORPHO_GETINTEGERVALUE(grade);
+        
+        if (ref->grade<0) ref->grade=mesh_maxgrade(mesh);
+        
+        if (morpho_valuetofloat(a, &ref->a) &&
+            morpho_valuetofloat(b, &ref->b) &&
+            morpho_valuetofloat(c, &ref->c)) {
+            ref->phi0 = phi0;
+            success=true;
+        }
+    }
+    return success;
+}
+
+/** Calculate the Flory-Huggins energy */
+bool floryhuggins_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    floryhugginsref *info = (floryhugginsref *) ref;
+    value vphi0 = info->phi0;
+    double V=0.0, V0=0.0, phi0=0.0;
+    
+    if (!functional_elementsize(v, info->refmesh, info->grade, id, nv, vid, &V0)) return false;
+    if (!functional_elementsize(v, mesh, info->grade, id, nv, vid, &V)) return false;
+    
+    if (fabs(V)<MORPHO_EPS) return false;
+    
+    // Determine phi0 either as a number or by looking up something in a field
+    if (MORPHO_ISFIELD(info->phi0)) {
+        objectfield *p = MORPHO_GETFIELD(info->phi0);
+        field_getelement(p, info->grade, id, 0, &vphi0);
+    }
+    if (MORPHO_ISNUMBER(vphi0)) {
+        if (!morpho_valuetofloat(vphi0, &phi0)) return false; 
+    }
+    
+    double phi = phi0/(V/V0);
+    
+    *out = info->a * phi*log(phi) +
+           info->b * (1-phi)*log(1-phi) +
+           info->c * phi*(1-phi);
+    
+    return true;
+}
+
+value FloryHuggins_init(vm *v, int nargs, value *args) {
+    objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+    int nfixed;
+    value grade=MORPHO_INTEGER(-1);
+    value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL, phi0=MORPHO_NIL;
+    
+    if (builtin_options(v, nargs, args, &nfixed, 5,
+                        floryhuggins_aproperty, &a,
+                        floryhuggins_bproperty, &b,
+                        floryhuggins_cproperty, &c,
+                        floryhuggins_phi0property, &phi0,
+                        functional_gradeproperty, &grade)) {
+        
+        objectinstance_setproperty(self, floryhuggins_aproperty, a);
+        objectinstance_setproperty(self, floryhuggins_bproperty, b);
+        objectinstance_setproperty(self, floryhuggins_cproperty, c);
+        objectinstance_setproperty(self, floryhuggins_phi0property, phi0);
+        objectinstance_setproperty(self, functional_gradeproperty, grade);
+        
+        if (nfixed==1 && MORPHO_ISMESH(MORPHO_GETARG(args, 0))) {
+            objectinstance_setproperty(self, linearelasticity_referenceproperty, MORPHO_GETARG(args, 0));
+        } else morpho_runtimeerror(v, FLORYHUGGINS_ARGS);
+    } else morpho_runtimeerror(v, FLORYHUGGINS_ARGS);
+    
+    return MORPHO_NIL;
+}
+
+FUNCTIONAL_METHOD(FloryHuggins, integrand, (ref.grade), floryhugginsref, floryhuggins_prepareref, functional_mapintegrand, floryhuggins_integrand, NULL, FLORYHUGGINS_PRP, SYMMETRY_NONE)
+
+FUNCTIONAL_METHOD(FloryHuggins, total, (ref.grade), floryhugginsref, floryhuggins_prepareref, functional_sumintegrand, floryhuggins_integrand, NULL, FLORYHUGGINS_PRP, SYMMETRY_NONE)
+
+FUNCTIONAL_METHOD(FloryHuggins, gradient, (ref.grade), floryhugginsref, floryhuggins_prepareref, functional_mapnumericalgradient, floryhuggins_integrand, NULL, FLORYHUGGINS_PRP, SYMMETRY_ADD)
+
+MORPHO_BEGINCLASS(FloryHuggins)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, FloryHuggins_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, FloryHuggins_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, FloryHuggins_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, FloryHuggins_gradient, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
+/* ----------------------------------------------
  * Equielement
  * ---------------------------------------------- */
 
@@ -2701,6 +2818,10 @@ void functional_initialize(void) {
     scalarpotential_gradfunctionproperty=builtin_internsymbolascstring(SCALARPOTENTIAL_GRADFUNCTION_PROPERTY);
     linearelasticity_referenceproperty=builtin_internsymbolascstring(LINEARELASTICITY_REFERENCE_PROPERTY);
     linearelasticity_poissonproperty=builtin_internsymbolascstring(LINEARELASTICITY_POISSON_PROPERTY);
+    floryhuggins_aproperty=builtin_internsymbolascstring(FLORYHUGGINS_A_PROPERTY);
+    floryhuggins_bproperty=builtin_internsymbolascstring(FLORYHUGGINS_B_PROPERTY);
+    floryhuggins_cproperty=builtin_internsymbolascstring(FLORYHUGGINS_C_PROPERTY);
+    floryhuggins_phi0property=builtin_internsymbolascstring(FLORYHUGGINS_PHI0_PROPERTY);
     equielement_weightproperty=builtin_internsymbolascstring(EQUIELEMENT_WEIGHT_PROPERTY);
     nematic_ksplayproperty=builtin_internsymbolascstring(NEMATIC_KSPLAY_PROPERTY);
     nematic_ktwistproperty=builtin_internsymbolascstring(NEMATIC_KTWIST_PROPERTY);
@@ -2719,6 +2840,7 @@ void functional_initialize(void) {
     builtin_addclass(VOLUME_CLASSNAME, MORPHO_GETCLASSDEFINITION(Volume), objclass);
     builtin_addclass(SCALARPOTENTIAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(ScalarPotential), objclass);
     builtin_addclass(LINEARELASTICITY_CLASSNAME, MORPHO_GETCLASSDEFINITION(LinearElasticity), objclass);
+    builtin_addclass(FLORYHUGGINS_CLASSNAME, MORPHO_GETCLASSDEFINITION(FloryHuggins), objclass);
     builtin_addclass(EQUIELEMENT_CLASSNAME, MORPHO_GETCLASSDEFINITION(EquiElement), objclass);
     builtin_addclass(LINECURVATURESQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineCurvatureSq), objclass);
     builtin_addclass(LINETORSIONSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineTorsionSq), objclass);
@@ -2738,6 +2860,8 @@ void functional_initialize(void) {
     morpho_defineerror(SCALARPOTENTIAL_FNCLLBL, ERROR_HALT, SCALARPOTENTIAL_FNCLLBL_MSG);
     morpho_defineerror(LINEARELASTICITY_REF, ERROR_HALT, LINEARELASTICITY_REF_MSG);
     morpho_defineerror(LINEARELASTICITY_PRP, ERROR_HALT, LINEARELASTICITY_PRP_MSG);
+    morpho_defineerror(FLORYHUGGINS_ARGS, ERROR_HALT, FLORYHUGGINS_ARGS_MSG);
+    morpho_defineerror(FLORYHUGGINS_PRP, ERROR_HALT, FLORYHUGGINS_PRP_MSG);
     morpho_defineerror(EQUIELEMENT_ARGS, ERROR_HALT, EQUIELEMENT_ARGS_MSG);
     morpho_defineerror(GRADSQ_ARGS, ERROR_HALT, GRADSQ_ARGS_MSG);
     morpho_defineerror(NEMATIC_ARGS, ERROR_HALT, NEMATIC_ARGS_MSG);

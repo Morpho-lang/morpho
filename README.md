@@ -20,63 +20,82 @@ Morpho can be installed as follows:
 
 2. Install dependencies. Open the Terminal application and type:
 
-    brew update
+```
+brew update
 
-    brew install glfw suite-sparse
+brew install glfw suite-sparse
+```
 
 3. Obtain the source by cloning this repository:
 
-    git clone https://github.com/Morpho-lang/morpho.git
+```
+git clone https://github.com/Morpho-lang/morpho.git
+```
 
 4. Navigate to the `morpho5` folder within the downloaded repository and build the application:
 
-    cd morpho/morpho5
+```
+cd morpho/morpho5
 
-    make install
+make install
+```
 
 (Some users may need to use `sudo make install`)
 
 5. Navigate to the `morphoview` folder and build the viewer application:
 
-    cd ../morphoview
+```
+cd ../morphoview
 
-    make install
+make install
+```
 
 (Some users may need to use `sudo make install`)
 
 6. Check that the application works by typing
 
-    morpho5
+```
+morpho5
+```
 
 ### Unix and Linux
 
 2. Install morpho's dependencies using your distribution's package manager (or manually if you prefer). For example, on Ubuntu you would type
+```
+sudo apt install libglfw3
 
-    sudo apt install libglfw3
+sudo apt install libsuitesparse-dev
 
-    sudo apt install libsuitesparse-dev
-
-    sudo apt install liblapacke
+sudo apt install liblapacke
+```
 
 3. Obtain the source by cloning this repository:
 
-    git clone https://github.com/Morpho-lang/morpho.git
+```
+git clone https://github.com/Morpho-lang/morpho.git
+```
 
 4. Navigate to the `morpho5` folder within the downloaded repository and build the application:
 
-    cd morpho/morpho5
+```
+cd morpho/morpho5
 
-    sudo make -f Makefile.linux install
+sudo make -f Makefile.linux install
+```
 
 5. Navigate to the `morphoview` folder and build the viewer application:
 
-    cd ../morphoview
+```
+cd ../morphoview
 
-    sudo make -f Makefile.linux install
+sudo make -f Makefile.linux install
+```
 
 6. Check that the application works by typing
 
-    morpho5
+```
+morpho5
+```
 
 Note that the build script places morpho5 and morphoview in the `/usr/local` file structure; this can easily be changed if a different location is preferred.
 
@@ -100,6 +119,7 @@ First update the apt package list and then update existing packages.
 
 ```
 sudo apt update
+
 sudo apt upgrade
 ```
 
@@ -122,6 +142,7 @@ sudo apt install build-essential
 ```
 
 2\. Obtain the morpho source by cloning the Morpho repository:
+
 ```
 git clone https://github.com/Morpho-lang/morpho.git
 ```
@@ -196,6 +217,7 @@ If you are in the `morphoview` directory
 
 ```
 cd ../examples/thomson
+
 morpho5 thomson.morpho
 ```
 

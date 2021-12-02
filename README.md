@@ -66,7 +66,7 @@ sudo apt install libglfw3
 
 sudo apt install libsuitesparse-dev
 
-sudo apt install liblapacke
+sudo apt install liblapacke-dev
 ```
 
 3. Obtain the source by cloning this repository:

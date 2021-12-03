@@ -1400,6 +1400,8 @@ bool floryhuggins_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     if (!functional_elementsize(v, info->refmesh, info->grade, id, nv, vid, &V0)) return false;
     if (!functional_elementsize(v, mesh, info->grade, id, nv, vid, &V)) return false;
 
+    if (V0<1e-8) printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
+
     if (fabs(V)<MORPHO_EPS) return false;
 
     // Determine phi0 either as a number or by looking up something in a field
@@ -1413,14 +1415,17 @@ bool floryhuggins_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
 
     double phi = phi0/(V/V0);
 
+    if (phi<0) printf("Warning: phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
+    if (1-phi<0) printf("Warning: 1-phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
+
+    if (phi>1-MORPHO_EPS) phi = 1-MORPHO_EPS;
+    if (phi<MORPHO_EPS) phi = MORPHO_EPS;
+
     *out = (info->a * phi*log(phi) +
            info->b * (1-phi)*log(1-phi) +
            info->c * phi*(1-phi))*V;
 
-    //printf("V=%g, V0=%g, phi=%g\n", V, V0, phi);
-    //if (phi<0) printf("phi<0 at element %u\n", id);
-    //if (1-phi<0) printf("1-phi<0 at element %u\n", id);
-    if (phi<0 || 1-phi<0) return false; 
+    if (phi<0 || 1-phi<0) return false;
 
     return true;
 }

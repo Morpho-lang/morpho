@@ -8,8 +8,13 @@
  * Paths and file system
  * ********************************************************************** */
 
+#ifndef MORPHO_HELPDIRECTORY
 #define MORPHO_HELPDIRECTORY "/usr/local/share/morpho/help"
+#endif
+
+#ifndef MORPHO_MODULEDIRECTORY
 #define MORPHO_MODULEDIRECTORY "/usr/local/share/morpho/modules"
+#endif
 
 #define MORPHO_SEPARATOR "/"
 
@@ -118,7 +123,9 @@
 * ********************************************************************** */
 
 /** @brief Include debugging features */
+#ifndef MORPHO_NODEBUG
 #define MORPHO_DEBUG
+#endif
 
 /** @brief Print each instruction executed by the VM. */
 //#define MORPHO_DEBUG_PRINT_INSTRUCTIONS

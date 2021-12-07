@@ -22,10 +22,12 @@ print lnn.integrand(m)
 print lnn.total(m)
 // expect: 0.577411
 
-print lnn.gradient(m)
-// expect: [ -0.288705 -0.288706 0.288705 0.288706 ]
-// expect: [ -0.288705 0.288706 0.288705 -0.288706 ]
-// expect: [ 0 0 0 0 ]
+
+var grad = lnn.gradient(m)
+var value = Matrix([[ -0.288705, -0.288706, 0.288705, 0.288706], [ -0.288705, 0.288706, 0.288705, -0.288706], [ 0, 0, 0, 0]])
+var diff = grad-value
+print diff.norm()<1e-5
+// expect: true
 
 var fg=lnn.fieldgradient(nn,m)
 for (x in fg) print x

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3 
 # Simple automated testing
 # T J Atherton Sept 2020
 #
@@ -7,7 +8,7 @@
 # Expectations are coded into comments in the input file as follows:
 
 # import necessary modules
-import os, glob
+import os, glob, sys
 import regex as rx
 from functools import reduce
 import operator
@@ -113,7 +114,7 @@ def getoutput(filepath):
     return list(filter(lambda x: x!=stk, lines))
 
 # Test a file
-def test(file,testLog):
+def test(file,testLog,CI):
     ret = 0;
     print(file+":", end=" ")
     
@@ -134,13 +135,17 @@ def test(file,testLog):
 
         # Was it expected?
         if(expected==out):
-            print(file+":", end=" ")
-            print(stylize("Passed",colored.fg("green")))
+            if not CI:
+                print(file+":", end=" ")
+                print(stylize("Passed",colored.fg("green")))
             ret = 1
         else:
-            print(stylize("Failed",colored.fg("red")))
-            print("  Expected: ", expected)
-            print("    Output: ", out)
+            if not CI:
+                print(stylize("Failed",colored.fg("red")))
+                print("  Expected: ", expected)
+                print("    Output: ", out)
+            else:
+                print("::error file = {",file,"}::{",file," Failed}")
             
             
             #also print to the test log
@@ -174,14 +179,22 @@ print('--Begin testing---------------------')
 success=0 # number of successful tests
 total=0   # total number of tests
 
-    
+# look for a command line arguement that says 
+# this is being run for continous integration
+CI = sys.argv == '-c'
+
 files=glob.glob('**/**.'+ext, recursive=True)
 with open("FailedTests.txt",'w') as testLog:
 
     for f in files:
         # print(f)
-        success+=test(f,testLog)
+        success+=test(f,testLog,CI)
         total+=1
+
+if not success == total:
+    os.system("emacs FailedTests.txt &")
 
 print('--End testing-----------------------')
 print(success, 'out of', total, 'tests passed.')
+if CI and success<total:
+    exit(-1)

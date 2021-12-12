@@ -1,0 +1,40 @@
+// Test nematic
+
+import meshtools
+import optimize
+
+var m = Mesh("tetrahedron.mesh")
+
+var nn = Field(m, Matrix([1,0,0]))
+
+nn[0]=Matrix([1/sqrt(2),1/sqrt(2),0])
+nn[2]=Matrix([1/sqrt(2),0,1/sqrt(2)])
+nn[3]=Matrix([0,1,0])
+
+var lnn = Nematic(nn)
+
+print lnn.integrand(m)
+// expect: [ 0.192873 ]
+
+print lnn.total(m)
+// expect: 0.192873
+
+print lnn.gradient(m)
+// expect: [ 0.00681066 -0.0122614 0.127771 -0.122321 ]
+// expect: [ 0.146216 -0.187767 0.104294 -0.0627433 ]
+// expect: [ 0.184703 -0.13233 0.0545992 -0.106972 ]
+
+var fg=lnn.fieldgradient(nn,m)
+for (x in fg) print x
+// expect: [ 0.100994 ]
+// expect: [ 0.0116086 ]
+// expect: [ -0.173546 ]
+// expect: [ 0.231387 ]
+// expect: [ 0.117958 ]
+// expect: [ 0.0782424 ]
+// expect: [ 0.00116726 ]
+// expect: [ -0.182391 ]
+// expect: [ 0.127534 ]
+// expect: [ -0.156362 ]
+// expect: [ 0.178114 ]
+// expect: [ 0.0196655 ]

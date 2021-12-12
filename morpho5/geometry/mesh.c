@@ -266,8 +266,137 @@ bool mesh_getconnectivity(objectsparse *conn, elementid id, int *nentries, int *
  * Functions to modify the connectivity array
  * ------------------------------------------ */
 
-/** Adds a missing grade */
+/* Data structure to store ntuples of elementids and determine if a
+   particular ntuple is already present. */
+typedef struct {
+    int n; // number of elements in a tuple
+    elementid maxval; // Maximum elementid that will be used
+    int *elementoffset; // Offset to tuples based on first element of the tuple
+    varray_elementid tuples; // data store
+} ntuplelist;
+
+/* Initialize an ntuplelist data structure */
+void ntuplelist_init(ntuplelist *list, int n, elementid maxval) {
+    list->n=n;
+    list->maxval=maxval;
+    list->elementoffset=MORPHO_MALLOC(sizeof(int)*(maxval+1));
+    if (list->elementoffset) for (unsigned int i=0; i<=maxval; i++) list->elementoffset[i]=-1;
+    varray_elementidinit(&list->tuples);
+}
+
+/* Clear ntuplelist data structure */
+void ntuplelist_clear(ntuplelist *list) {
+    if (list->elementoffset) MORPHO_FREE(list->elementoffset);
+    varray_elementidclear(&list->tuples);
+}
+
+/* Add a tuple */
+void ntuplelist_add(ntuplelist *list, elementid *tuple) {
+    unsigned int posn = list->tuples.count;
+    if (posn>INT_MAX) UNREACHABLE("Overflow in ntuplelist_add");
+    varray_elementidadd(&list->tuples, tuple, list->n);
+    if (list->elementoffset) { // Store an offset to the first
+        varray_elementidwrite(&list->tuples, list->elementoffset[tuple[0]]);
+        list->elementoffset[tuple[0]]=posn;
+    }
+}
+
+/* Compare two tuples */
+bool ntuplelist_compare(int n, elementid *t1, elementid *t2) {
+    for (unsigned int i=0; i<n; i++) if (t1[i]!=t2[i]) return false;
+    return true;
+}
+
+/* Determine whether a tuple is present in an ntuplelist */
+bool ntuplelist_find(ntuplelist *list, elementid *tuple) {
+    if (list->elementoffset) {
+        for (int i=list->elementoffset[tuple[0]]; i>=0; ) {
+            if (ntuplelist_compare(list->n, &list->tuples.data[i], tuple)) return true;
+            i=list->tuples.data[i+list->n];
+        }
+    } else {
+        for (unsigned int i=0; i<list->tuples.count; i+=list->n) {
+            if (ntuplelist_compare(list->n, &list->tuples.data[i], tuple)) return true;
+        }
+    }
+    return false;
+}
+
 objectsparse *mesh_addgrade(objectmesh *mesh, grade g) {
+    /* Does the grade already exist? */
+    objectsparse *el=mesh_getconnectivityelement(mesh, 0, g);
+    if (el) return el;
+    grade maxG = mesh_maxgrade(mesh);
+    grade h;
+    /* Otherwise, find the next available grade above it */
+    for (h=g+1; (h<=maxG) && (!el); h++) {
+        el=mesh_getconnectivityelement(mesh, 0, h);
+    }
+    /* if this grade doesn't exist and we can't find the next available
+       grade above it return NULL */
+    if (!el) return NULL;
+
+    /* Create a new sparse matrix */
+    objectsparse *new=object_newsparse(NULL, NULL);
+    if (!new) return NULL;
+
+    /* Create an ntuplelist to keep track of elements already created */
+    ntuplelist list;
+    int n = g+1; // Number of elements in the tuple
+    elementid maxvid = mesh_nvertices(mesh)-1; // Highest vertexid
+    ntuplelist_init(&list, n, maxvid);
+
+    int nel, *entries;
+    elementid newid = 0;
+    /* Loop over elements in the higher grade */
+    for (elementid id=0; id<el->ccs.ncols; id++) {
+        /* Get the associated connectivity */
+        if (!mesh_getconnectivity(el, id, &nel, &entries)) break;
+        
+        // Initialize n-tuple and counters with [0,1,2...]
+        elementid tuple[n]; // Store the tuple
+        int counter[n], cmax[n]; // Counters
+        for (unsigned int i=0; i<n; i++) {
+            counter[i]=i; tuple[i]=entries[i]; cmax[i]=nel-n+i;
+        }
+        
+        if (!ntuplelist_find(&list, tuple)) { // Check if the first tuple exists
+            ntuplelist_add(&list, tuple);
+            for (unsigned int i=0; i<n; i++) sparsedok_insert(&new->dok, tuple[i], newid, MORPHO_NIL);
+            newid++;
+        }
+        
+        /* Generate tuples */
+        int k;
+        while (counter[0]<cmax[0]) {
+            counter[n-1]++; // Increment last counter
+            for (k=n-1; k>=0 && counter[k]>cmax[k]; k--) counter[k-1]++; // Carry
+            if (k<n-1) for (unsigned int i=k+1; i<n; i++) counter[i]=counter[i-1]+1;
+         
+            // Set up tuple from counter
+            for (unsigned int i=0; i<n; i++) tuple[i]=entries[counter[i]];
+            
+            if (!ntuplelist_find(&list, tuple)) { // Check if we have the tuple
+                ntuplelist_add(&list, tuple);
+                for (unsigned int i=0; i<n; i++) sparsedok_insert(&new->dok, tuple[i], newid, MORPHO_NIL);
+                newid++;
+            }
+        }
+        
+    }
+
+    ntuplelist_clear(&list);
+    
+    mesh_setconnectivityelement(mesh, 0, g, new);
+    mesh_link(mesh, (object *) new);
+    mesh_freezeconnectivity(mesh);
+
+    return new;
+}
+
+/** Adds a missing grade */
+objectsparse *mesh_addgradeold(objectmesh *mesh, grade g) {
+    if (g>1) UNREACHABLE("mesh_addgrade only supports adding grade 1.");
     /* Does the grade already exist? */
     objectsparse *el=mesh_getconnectivityelement(mesh, 0, g);
     if (el) return el;
@@ -331,6 +460,7 @@ objectsparse *mesh_addgrade(objectmesh *mesh, grade g) {
 
     return new;
 }
+
 
 /** Internal function used for sorting ids */
 static int mesh_compareid(const void *a, const void *b) {

@@ -1,0 +1,9 @@
+import constants
+import meshtools
+
+var m = AreaMesh(fn (x,y) [x,y,0], 0..1:0.5, 0..1:0.5)
+
+var f = Field(m, fn (x,y,z) Matrix([0,0,1]))
+
+print AreaIntegral(fn (x, n) n.inner(normal())^2 , f).total(m)
+// expect: 1

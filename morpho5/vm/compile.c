@@ -181,6 +181,14 @@ static varray_value *compiler_getcurrentconstanttable(compiler *c) {
     return &f->konst;
 }
 
+/** Gets constant i from the current constant table */
+static value compiler_getconstant(compiler *c, unsigned int i) {
+    value ret = MORPHO_NIL;
+    objectfunction *f = compiler_getcurrentfunction(c);
+    if (f && i<f->konst.count) ret = f->konst.data[i];
+    return ret;
+}
+
 /** Gets the most recently compiled function */
 static objectfunction *compiler_getpreviousfunction(compiler *c) {
     return c->prevfunction;
@@ -1561,10 +1569,14 @@ static codeinfo compiler_print(compiler *c, syntaxtreenode *node, registerindx r
  */
 static codeinfo compiler_if(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
+    bool unreachable=false;
     
     /* The left node is the condition; compile it already */
     codeinfo cond = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
     ninstructions+=cond.ninstructions;
+    
+    if (CODEINFO_ISCONSTANT(cond) &&
+        MORPHO_ISFALSE(compiler_getconstant(c, cond.dest)) ) unreachable=true;
     
     /* And make sure it's in a register */
     if (!CODEINFO_ISREGISTER(cond)) {
@@ -1578,7 +1590,7 @@ static codeinfo compiler_if(compiler *c, syntaxtreenode *node, registerindx reqo
     syntaxtreenode *right = compiler_getnode(c, node->right);
     
     /* Hold the position of the then and else statements */
-    codeinfo then, els=CODEINFO_EMPTY;
+    codeinfo then=CODEINFO_EMPTY, els=CODEINFO_EMPTY;
     
     /* Remember where the if conditional branch is located */
     instructionindx ifindx=REGISTER_UNALLOCATED, elsindx=REGISTER_UNALLOCATED;
@@ -1592,7 +1604,9 @@ static codeinfo compiler_if(compiler *c, syntaxtreenode *node, registerindx reqo
     
     if (right->type==NODE_THEN) {
         /* If the right node is a THEN node, the then/else statements are located off it. */
-        then = compiler_nodetobytecode(c, right->left, REGISTER_UNALLOCATED);
+        if (!unreachable) {
+            then = compiler_nodetobytecode(c, right->left, REGISTER_UNALLOCATED);
+        }
         ninstructions+=then.ninstructions;
         
         /* Create a blank instruction */
@@ -1605,7 +1619,9 @@ static codeinfo compiler_if(compiler *c, syntaxtreenode *node, registerindx reqo
         ninstructions+=els.ninstructions;
     } else {
         /* Otherwise, the then statement is just the right operand */
-        then = compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
+        if (!unreachable) {
+            then = compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
+        }
         ninstructions+=then.ninstructions;
     }
     

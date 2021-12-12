@@ -1,6 +1,6 @@
 // Break outside of loop but in if statement
 
-if (false) {
+if (true) {
   break
 }
 // expect error 'BrkOtsdLp'

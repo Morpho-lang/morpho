@@ -1,0 +1,12 @@
+// Code included in an unreachable block should be ignored
+if (false) {
+  print notDefined
+}
+
+if (false) {
+  print stillNotDefined
+} else {
+  print "foo" // expect: foo
+}
+
+print "ok" // expect: ok

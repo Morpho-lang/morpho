@@ -82,7 +82,7 @@ static void functional_clearmapinfo(functional_mapinfo *info) {
  * @param[out] info - mapinfo block  */
 bool functional_validateargs(vm *v, int nargs, value *args, functional_mapinfo *info) {
     functional_clearmapinfo(info);
-    
+
     for (unsigned int i=0; i<nargs; i++) {
         if (MORPHO_ISMESH(MORPHO_GETARG(args,i))) {
             info->mesh = MORPHO_GETMESH(MORPHO_GETARG(args,i));
@@ -94,7 +94,7 @@ bool functional_validateargs(vm *v, int nargs, value *args, functional_mapinfo *
         }
     }
 
-    
+
     if (info->mesh) return true;
     morpho_runtimeerror(v, FUNC_INTEGRAND_MESH);
     return false;
@@ -134,17 +134,17 @@ static int functional_symmetryimagelistfn(const void *a, const void *b) {
  * @param[out] ids - varray is filled with image element ids */
 void functional_symmetryimagelist(objectmesh *mesh, grade g, bool sort, varray_elementid *ids) {
     objectsparse *conn=mesh_getconnectivityelement(mesh, g, g);
-    
+
     ids->count=0; // Initialize the varray
-    
+
     if (conn) {
         int i,j;
         void *ctr=sparsedok_loopstart(&conn->dok);
-        
+
         while (sparsedok_loop(&conn->dok, &ctr, &i, &j)) {
             varray_elementidwrite(ids, j);
         }
-        
+
         if (sort) qsort(ids->data, ids->count, sizeof(elementid), functional_symmetryimagelistfn);
     }
 }
@@ -154,23 +154,23 @@ void functional_symmetryimagelist(objectmesh *mesh, grade g, bool sort, varray_e
  * @param frc - force object; updated if symmetries are present. */
 bool functional_symmetrysumforces(objectmesh *mesh, objectmatrix *frc) {
     objectsparse *s=mesh_getconnectivityelement(mesh, 0, 0); // Checking for vertex symmetries
-    
+
     if (s) {
         int i,j;
         void *ctr = sparsedok_loopstart(&s->dok);
         double *fi, *fj, fsum[mesh->dim];
-        
+
         while (sparsedok_loop(&s->dok, &ctr, &i, &j)) {
             if (matrix_getcolumn(frc, i, &fi) &&
                 matrix_getcolumn(frc, j, &fj)) {
-                
+
                 for (unsigned int k=0; k<mesh->dim; k++) fsum[k]=fi[k]+fj[k];
                 matrix_setcolumn(frc, i, fsum);
                 matrix_setcolumn(frc, j, fsum);
             }
         }
     }
-    
+
     return s;
 }
 
@@ -202,32 +202,32 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
     void *ref = info->ref;
     objectsparse *s=NULL;
     int n=0;
-    
+
     if (!functional_countelements(v, mesh, g, &n, &s)) return false;
-    
+
     /* Find any image elements so we can skip over them */
     varray_elementid imageids;
     varray_elementidinit(&imageids);
     functional_symmetryimagelist(mesh, g, true, &imageids);
-    
+
     if (n>0) {
         int vertexid; // Use this if looping over grade 0
         int *vid=(g==0 ? &vertexid : NULL),
             nv=(g==0 ? 1 : 0); // The vertex indices
         int sindx=0; // Index into imageids array
         double sum=0.0, c=0.0, y, t, result;
-        
+
         if (sel) { // Loop over selection
             if (sel->selected[g].count>0) for (unsigned int k=0; k<sel->selected[g].capacity; k++) {
                 if (!MORPHO_ISINTEGER(sel->selected[g].contents[k].key)) continue;
                 elementid i = MORPHO_GETINTEGERVALUE(sel->selected[g].contents[k].key);
-                
+
                 // Skip this element if it's an image element:
                 if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
-                
+
                 if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
                 else vertexid=i;
-            
+
                 if (vid && nv>0) {
                     if ((*integrand) (v, mesh, i, nv, vid, ref, &result)) {
                         y=result-c; t=sum+y; c=(t-sum)-y; sum=t; // Kahan summation
@@ -238,7 +238,7 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
             for (elementid i=0; i<n; i++) {
                 // Skip this element if it's an image element
                 if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
-                
+
                 if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
                 else vertexid=i;
 
@@ -249,12 +249,12 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
                 }
             }
         }
-        
+
         *out=MORPHO_FLOAT(sum);
     }
-    
+
     success=true;
-    
+
 functional_sumintegrand_cleanup:
     varray_elementidclear(&imageids);
     return success;
@@ -275,39 +275,39 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
     objectmatrix *new=NULL;
     bool ret=false;
     int n=0;
-        
+
     /* How many elements? */
     if (!functional_countelements(v, mesh, g, &n, &s)) return false;
-    
+
     /* Find any image elements so we can skip over them */
     varray_elementid imageids;
     varray_elementidinit(&imageids);
     functional_symmetryimagelist(mesh, g, true, &imageids);
-    
+
     /* Create the output matrix */
     if (n>0) {
         new=object_newmatrix(1, n, true);
         if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
     }
-    
+
     if (new) {
         int vertexid; // Use this if looping over grade 0
         int *vid=(g==0 ? &vertexid : NULL),
             nv=(g==0 ? 1 : 0); // The vertex indices
         int sindx=0; // Index into imageids array
         double result;
-        
+
         if (sel) { // Loop over selection
             if (sel->selected[g].count>0) for (unsigned int k=0; k<sel->selected[g].capacity; k++) {
                 if (!MORPHO_ISINTEGER(sel->selected[g].contents[k].key)) continue;
                 elementid i = MORPHO_GETINTEGERVALUE(sel->selected[g].contents[k].key);
-                
+
                 // Skip this element if it's an image element
                 if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
-                
+
                 if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
                 else vertexid=i;
-            
+
                 if (vid && nv>0) {
                     if ((*integrand) (v, mesh, i, nv, vid, ref, &result)) {
                         matrix_setelement(new, 0, i, result);
@@ -318,7 +318,7 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
             for (elementid i=0; i<n; i++) {
                 // Skip this element if it's an image element
                 if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
-                
+
                 if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
                 else vertexid=i;
 
@@ -332,10 +332,10 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
         *out = MORPHO_OBJECT(new);
         ret=true;
     }
-    
+
     varray_elementidclear(&imageids);
     return ret;
-    
+
 functional_mapintegrand_cleanup:
     object_free((object *) new);
     varray_elementidclear(&imageids);
@@ -358,30 +358,30 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
     objectmatrix *frc=NULL;
     bool ret=false;
     int n=0;
-    
+
     /* How many elements? */
     if (!functional_countelements(v, mesh, g, &n, &s)) return false;
-    
+
     /* Create the output matrix */
     if (n>0) {
         frc=object_newmatrix(mesh->vert->nrows, mesh->vert->ncols, true);
         if (!frc)  { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
     }
-    
+
     if (frc) {
         int vertexid; // Use this if looping over grade 0
         int *vid=(g==0 ? &vertexid : NULL),
             nv=(g==0 ? 1 : 0); // The vertex indices
-            
-        
+
+
         if (sel) { // Loop over selection
             if (sel->selected[g].count>0) for (unsigned int k=0; k<sel->selected[g].capacity; k++) {
                 if (!MORPHO_ISINTEGER(sel->selected[g].contents[k].key)) continue;
-                
+
                 elementid i = MORPHO_GETINTEGERVALUE(sel->selected[g].contents[k].key);
                 if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
                 else vertexid=i;
-            
+
                 if (vid && nv>0) {
                     if (!(*grad) (v, mesh, i, nv, vid, ref, frc)) goto functional_mapgradient_cleanup;
                 }
@@ -396,36 +396,36 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
                 }
             }
         }
-        
+
         if (sym==SYMMETRY_ADD) functional_symmetrysumforces(mesh, frc);
-        
+
         *out = MORPHO_OBJECT(frc);
         ret=true;
     }
-    
+
 functional_mapgradient_cleanup:
     if (!ret) object_free((object *) frc);
-    
+
     return ret;
 }
 
 /* Calculates a numerical gradient */
 static bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectmatrix *frc) {
     double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
-    
+
     // Loop over vertices in element
     for (unsigned int j=0; j<nv; j++) {
         // Loop over coordinates
         for (unsigned int k=0; k<mesh->dim; k++) {
             matrix_getelement(frc, k, vid[j], &f0);
-            
+
             matrix_getelement(mesh->vert, k, vid[j], &x0);
             matrix_setelement(mesh->vert, k, vid[j], x0+eps);
             if (!(*integrand) (v, mesh, i, nv, vid, ref, &fp)) return false;
             matrix_setelement(mesh->vert, k, vid[j], x0-eps);
             if (!(*integrand) (v, mesh, i, nv, vid, ref, &fm)) return false;
             matrix_setelement(mesh->vert, k, vid[j], x0);
-            
+
             matrix_setelement(frc, k, vid[j], f0+(fp-fm)/(2*eps));
         }
     }
@@ -436,50 +436,50 @@ static bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, i
 static bool functional_numericalremotegradientold(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
     objectmesh *mesh = info->mesh;
     double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
-    
+
     int *rvid=(info->g==0 ? &remoteid : NULL),
         rnv=(info->g==0 ? 1 : 0); // The vertex indices
-    
+
     if (conn) sparseccs_getrowindices(&conn->ccs, remoteid, &rnv, &rvid);
-    
+
     // Loop over vertices in element
     for (unsigned int j=0; j<nv; j++) {
         // Loop over coordinates
         for (unsigned int k=0; k<mesh->dim; k++) {
             matrix_getelement(frc, k, vid[j], &f0);
-            
+
             matrix_getelement(mesh->vert, k, vid[j], &x0);
             matrix_setelement(mesh->vert, k, vid[j], x0+eps);
             if (!(*info->integrand) (v, mesh, remoteid, rnv, rvid, info->ref, &fp)) return false;
             matrix_setelement(mesh->vert, k, vid[j], x0-eps);
             if (!(*info->integrand) (v, mesh, remoteid, rnv, rvid, info->ref, &fm)) return false;
             matrix_setelement(mesh->vert, k, vid[j], x0);
-            
+
             matrix_setelement(frc, k, vid[j], f0+(fp-fm)/(2*eps));
         }
     }
-    
+
     return true;
 }
 
 static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
     objectmesh *mesh = info->mesh;
     double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
-    
+
     // Loop over coordinates
     for (unsigned int k=0; k<mesh->dim; k++) {
         matrix_getelement(frc, k, remoteid, &f0);
-        
+
         matrix_getelement(mesh->vert, k, remoteid, &x0);
         matrix_setelement(mesh->vert, k, remoteid, x0+eps);
         if (!(*info->integrand) (v, mesh, i, nv, vid, info->ref, &fp)) return false;
         matrix_setelement(mesh->vert, k, remoteid, x0-eps);
         if (!(*info->integrand) (v, mesh, i, nv, vid, info->ref, &fm)) return false;
         matrix_setelement(mesh->vert, k, remoteid, x0);
-        
+
         matrix_setelement(frc, k, remoteid, f0+(fp-fm)/(2*eps));
     }
-    
+
     return true;
 }
 
@@ -499,44 +499,44 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
     objectmatrix *frc=NULL;
     bool ret=false;
     int n=0;
-    
+
     varray_elementid dependencies;
     if (info->dependencies) varray_elementidinit(&dependencies);
-    
+
     /* Find any image elements so we can skip over them */
     varray_elementid imageids;
     varray_elementidinit(&imageids);
     functional_symmetryimagelist(mesh, g, true, &imageids);
-    
+
     /* How many elements? */
     if (!functional_countelements(v, mesh, g, &n, &s)) return false;
-    
+
     /* Create the output matrix */
     if (n>0) {
         frc=object_newmatrix(mesh->vert->nrows, mesh->vert->ncols, true);
         if (!frc)  { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
     }
-    
+
     if (frc) {
         int vertexid; // Use this if looping over grade 0
         int *vid=(g==0 ? &vertexid : NULL),
             nv=(g==0 ? 1 : 0); // The vertex indices
         int sindx=0; // Index into imageids array
-        
+
         if (sel) { // Loop over selection
             if (sel->selected[g].count>0) for (unsigned int k=0; k<sel->selected[g].capacity; k++) {
                 if (!MORPHO_ISINTEGER(sel->selected[g].contents[k].key)) continue;
-                
+
                 elementid i = MORPHO_GETINTEGERVALUE(sel->selected[g].contents[k].key);
                 if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
                 else vertexid=i;
-                
+
                 // Skip this element if it's an image element
                 if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
-            
+
                 if (vid && nv>0) {
                     if (!functional_numericalgradient(v, mesh, i, nv, vid, integrand, ref, frc)) goto functional_numericalgradient_cleanup;
-                    
+
                     if (info->dependencies && // Loop over dependencies if there are any
                         (info->dependencies) (info, i, &dependencies)) {
                         for (int j=0; j<dependencies.count; j++) {
@@ -550,14 +550,14 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
             for (elementid i=0; i<n; i++) {
                 // Skip this element if it's an image element
                 if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
-                
+
                 if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
                 else vertexid=i;
 
                 if (vid && nv>0) {
-                    
+
                     if (!functional_numericalgradient(v, mesh, i, nv, vid, integrand, ref, frc)) goto functional_numericalgradient_cleanup;
-                
+
                     if (info->dependencies && // Loop over dependencies if there are any
                         (info->dependencies) (info, i, &dependencies)) {
                         for (int j=0; j<dependencies.count; j++) {
@@ -569,9 +569,9 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
                 }
             }
         }
-        
+
         if (sym==SYMMETRY_ADD) functional_symmetrysumforces(mesh, frc);
-        
+
         *out = MORPHO_OBJECT(frc);
         ret=true;
     }
@@ -580,7 +580,7 @@ functional_numericalgradient_cleanup:
     varray_elementidclear(&imageids);
     if (info->dependencies) varray_elementidclear(&dependencies);
     if (!ret) object_free((object *) frc);
-    
+
     return ret;
 }
 
@@ -592,27 +592,27 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
     functional_integrand *integrand = info->integrand;
     void *ref = info->ref;
     //symmetrybhvr sym = info->sym;
-    
+
     double eps=1e-10;
     bool ret=false;
     objectsparse *conn=mesh_getconnectivityelement(mesh, 0, grd); // Connectivity for the element
-    
+
     /* Create the output field */
     objectfield *grad=object_newfield(mesh, field->prototype, field->dof);
     if (!grad) return false;
-    
+
     field_zero(grad);
-    
+
     /* Loop over elements in the field */
     for (grade g=0; g<field->ngrades; g++) {
         if (field->dof[g]==0) continue;
         int nentries=1, *entries, nv, *vid;
         double fr,fl;
         objectsparse *rconn=mesh_addconnectivityelement(mesh, grd, g); // Find dependencies for the grade
-        
+
         for (elementid id=0; id<mesh_nelementsforgrade(mesh, g); id++) {
             entries = &id; // if there's no connectivity matrix, we'll just use the id itself
-            
+
             if ((!rconn) || mesh_getconnectivity(rconn, id, &nentries, &entries)) {
                 for (int i=0; i<nentries; i++) {
                     if (conn) {
@@ -621,36 +621,36 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
                         sparseccs_getrowindices(&conn->ccs, entries[i], &nv, &vid);
                     } else {
                         if (sel) if (!selection_isselected(sel, grd, id)) continue;
-                        nv=1; vid=&id; 
+                        nv=1; vid=&id;
                     }
-                    
+
                     /* Loop over dofs in field entry */
                     for (int j=0; j<field->psize*field->dof[g]; j++) {
                         int k=field->offset[g]+id*field->psize*field->dof[g]+j;
                         double fld=field->data.elements[k];
                         field->data.elements[k]+=eps;
-                        
+
                         if (!(*integrand) (v, mesh, id, nv, vid, ref, &fr)) goto functional_mapnumericalfieldgradient_cleanup;
-                        
+
                         field->data.elements[k]=fld-eps;
-                        
+
                         if (!(*integrand) (v, mesh, id, nv, vid, ref, &fl)) goto functional_mapnumericalfieldgradient_cleanup;
-                        
+
                         field->data.elements[k]=fld;
-                        
+
                         grad->data.elements[k]+=(fr-fl)/(2*eps);
                     }
                 }
             }
         }
-        
+
         *out = MORPHO_OBJECT(grad);
         ret=true;
     }
-    
+
 functional_mapnumericalfieldgradient_cleanup:
     if (!ret) object_free((object *) grad);
-    
+
     return ret;
 }
 
@@ -789,9 +789,9 @@ value name##_total(vm *v, int nargs, value *args) { \
 bool length_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     double *x[nv], s0[mesh->dim];
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
-    
+
     functional_vecsub(mesh->dim, x[1], x[0], s0);
-    
+
     *out=functional_vecnorm(mesh->dim, s0);
     return true;
 }
@@ -800,14 +800,14 @@ bool length_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
 bool length_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
     double *x[nv], s0[mesh->dim], norm;
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
-    
+
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     norm=functional_vecnorm(mesh->dim, s0);
     if (norm<MORPHO_EPS) return false;
-    
+
     matrix_addtocolumn(frc, vid[0], -1.0/norm, s0);
     matrix_addtocolumn(frc, vid[1], 1./norm, s0);
-    
+
     return true;
 }
 
@@ -831,9 +831,9 @@ MORPHO_ENDCLASS
 bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     double *x[nv], cx[mesh->dim];
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
-    
+
     functional_veccross(x[0], x[1], cx);
-    
+
     *out=0.5*functional_vecnorm(mesh->dim, cx);
     return true;
 }
@@ -843,17 +843,17 @@ bool areaenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *v
     double *x[nv], cx[mesh->dim], s[mesh->dim];
     double norm;
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
-    
+
     functional_veccross(x[0], x[1], cx);
     norm=functional_vecnorm(mesh->dim, cx);
     if (norm<MORPHO_EPS) return false;
-    
+
     functional_veccross(x[1], cx, s);
     matrix_addtocolumn(frc, vid[0], 0.5/norm, s);
-    
+
     functional_veccross(cx, x[0], s);
     matrix_addtocolumn(frc, vid[1], 0.5/norm, s);
-    
+
     return true;
 }
 
@@ -877,12 +877,12 @@ MORPHO_ENDCLASS
 bool area_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     double *x[nv], s0[mesh->dim], s1[mesh->dim], cx[mesh->dim];
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
-    
+
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     functional_vecsub(mesh->dim, x[2], x[1], s1);
-    
+
     functional_veccross(s0, s1, cx);
-    
+
     *out=0.5*functional_vecnorm(mesh->dim, cx);
     return true;
 }
@@ -892,24 +892,24 @@ bool area_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void
     double *x[nv], s0[3], s1[3], s01[3], s010[3], s011[3];
     double norm;
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
-    
+
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     functional_vecsub(mesh->dim, x[2], x[1], s1);
-    
+
     functional_veccross(s0, s1, s01);
     norm=functional_vecnorm(mesh->dim, s01);
     if (norm<MORPHO_EPS) return false;
-    
+
     functional_veccross(s01, s0, s010);
     functional_veccross(s01, s1, s011);
-    
+
     matrix_addtocolumn(frc, vid[0], 0.5/norm, s011);
     matrix_addtocolumn(frc, vid[2], 0.5/norm, s010);
-    
+
     functional_vecadd(mesh->dim, s010, s011, s0);
-    
+
     matrix_addtocolumn(frc, vid[1], -0.5/norm, s0);
-    
+
     return true;
 }
 
@@ -933,9 +933,9 @@ MORPHO_ENDCLASS
 bool volumeenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     double *x[nv], cx[mesh->dim];
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
-    
+
     functional_veccross(x[0], x[1], cx);
-    
+
     *out=fabs(functional_vecdot(mesh->dim, cx, x[2]))/6.0;
     return true;
 }
@@ -944,19 +944,19 @@ bool volumeenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
 bool volumeenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
     double *x[nv], cx[mesh->dim], dot;
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
-    
+
     functional_veccross(x[0], x[1], cx);
     dot=functional_vecdot(mesh->dim, cx, x[2]);
     dot/=fabs(dot);
-    
+
     matrix_addtocolumn(frc, vid[2], dot/6.0, cx);
-    
+
     functional_veccross(x[1], x[2], cx);
     matrix_addtocolumn(frc, vid[0], dot/6.0, cx);
-    
+
     functional_veccross(x[2], x[0], cx);
     matrix_addtocolumn(frc, vid[1], dot/6.0, cx);
-    
+
     return true;
 }
 
@@ -980,13 +980,13 @@ MORPHO_ENDCLASS
 bool volume_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     double *x[nv], s10[mesh->dim], s20[mesh->dim], s30[mesh->dim], cx[mesh->dim];
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
-    
+
     functional_vecsub(mesh->dim, x[1], x[0], s10);
     functional_vecsub(mesh->dim, x[2], x[0], s20);
     functional_vecsub(mesh->dim, x[3], x[0], s30);
-    
+
     functional_veccross(s20, s30, cx);
-    
+
     *out=fabs(functional_vecdot(mesh->dim, s10, cx))/6.0;
     return true;
 }
@@ -996,28 +996,28 @@ bool volume_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, vo
     double *x[nv], s10[mesh->dim], s20[mesh->dim], s30[mesh->dim];
     double s31[mesh->dim], s21[mesh->dim], cx[mesh->dim], uu;
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
-    
+
     functional_vecsub(mesh->dim, x[1], x[0], s10);
     functional_vecsub(mesh->dim, x[2], x[0], s20);
     functional_vecsub(mesh->dim, x[3], x[0], s30);
     functional_vecsub(mesh->dim, x[3], x[1], s31);
     functional_vecsub(mesh->dim, x[2], x[1], s21);
-    
+
     functional_veccross(s20, s30, cx);
     uu=functional_vecdot(mesh->dim, s10, cx);
     uu=(uu>0 ? 1.0 : -1.0);
-    
+
     matrix_addtocolumn(frc, vid[1], uu/6.0, cx);
-    
+
     functional_veccross(s31, s21, cx);
     matrix_addtocolumn(frc, vid[0], uu/6.0, cx);
-    
+
     functional_veccross(s30, s10, cx);
     matrix_addtocolumn(frc, vid[2], uu/6.0, cx);
-    
+
     functional_veccross(s10, s20, cx);
     matrix_addtocolumn(frc, vid[3], uu/6.0, cx);
-    
+
     return true;
 }
 
@@ -1046,14 +1046,14 @@ bool scalarpotential_integrand(vm *v, objectmesh *mesh, elementid id, int nv, in
     value fn = *(value *) ref;
     value args[mesh->dim];
     value ret;
-    
+
     matrix_getcolumn(mesh->vert, id, &x);
     for (int i=0; i<mesh->dim; i++) args[i]=MORPHO_FLOAT(x[i]);
-    
+
     if (morpho_call(v, fn, mesh->dim, args, &ret)) {
         return morpho_valuetofloat(ret, out);
     }
-    
+
     return false;
 }
 
@@ -1063,20 +1063,20 @@ bool scalarpotential_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int
     value fn = *(value *) ref;
     value args[mesh->dim];
     value ret;
-    
+
     matrix_getcolumn(mesh->vert, id, &x);
     for (int i=0; i<mesh->dim; i++) args[i]=MORPHO_FLOAT(x[i]);
-    
+
     if (morpho_call(v, fn, mesh->dim, args, &ret)) {
         if (MORPHO_ISMATRIX(ret)) {
             objectmatrix *vf=MORPHO_GETMATRIX(ret);
-            
+
             if (vf->nrows*vf->ncols==frc->nrows) {
                 return matrix_addtocolumn(frc, id, 1.0, vf->elements);
             }
         }
     }
-    
+
     return false;
 }
 
@@ -1084,7 +1084,7 @@ bool scalarpotential_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int
 /** Initialize a scalar potential */
 value ScalarPotential_init(vm *v, int nargs, value *args) {
     objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), functional_gradeproperty, MORPHO_INTEGER(MESH_GRADE_VERTEX));
-    
+
     /* First argument is the potential function */
     if (nargs>0) {
         if (MORPHO_ISCALLABLE(MORPHO_GETARG(args, 0))) {
@@ -1097,7 +1097,7 @@ value ScalarPotential_init(vm *v, int nargs, value *args) {
             objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_gradfunctionproperty, MORPHO_GETARG(args, 1));
         } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
     }
-    
+
     return MORPHO_NIL;
 }
 
@@ -1105,7 +1105,7 @@ value ScalarPotential_init(vm *v, int nargs, value *args) {
 value ScalarPotential_integrand(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     value out=MORPHO_NIL;
-    
+
     if (functional_validateargs(v, nargs, args, &info)) {
         value fn;
         if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
@@ -1125,7 +1125,7 @@ value ScalarPotential_integrand(vm *v, int nargs, value *args) {
 value ScalarPotential_gradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     value out=MORPHO_NIL;
-    
+
     if (functional_validateargs(v, nargs, args, &info)) {
         value fn;
         // Check if a gradient function is available
@@ -1142,7 +1142,7 @@ value ScalarPotential_gradient(vm *v, int nargs, value *args) {
         } else morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, SCALARPOTENTIAL_FUNCTION_PROPERTY);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-    
+
     return out;
 }
 
@@ -1150,7 +1150,7 @@ value ScalarPotential_gradient(vm *v, int nargs, value *args) {
 value ScalarPotential_total(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     value out=MORPHO_NIL;
-    
+
     if (functional_validateargs(v, nargs, args, &info)) {
         value fn;
         if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
@@ -1191,7 +1191,7 @@ void linearelasticity_calculategram(objectmatrix *vert, int dim, int nv, int *vi
     int gdim=nv-1; // Dimension of Gram matrix
     double *x[nv], // Positions of vertices
             s[gdim][nv]; // Side vectors
-    
+
     for (int j=0; j<nv; j++) matrix_getcolumn(vert, vid[j], &x[j]); // Get vertices
     for (int j=1; j<nv; j++) functional_vecsub(dim, x[j], x[0], s[j-1]); // u_i = X_i - X_0
     // <u_i, u_j>
@@ -1203,7 +1203,7 @@ bool linearelasticity_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
     double weight=0.0;
     linearelasticityref *info = (linearelasticityref *) ref;
     int gdim=nv-1; // Dimension of Gram matrix
-    
+
     /* Construct static matrices */
     double gramrefel[gdim*gdim], gramdefel[gdim*gdim], qel[gdim*gdim], rel[gdim*gdim], cgel[gdim*gdim];
     objectmatrix gramref = MORPHO_STATICMATRIX(gramrefel, gdim, gdim); // Gram matrices
@@ -1211,27 +1211,27 @@ bool linearelasticity_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
     objectmatrix q = MORPHO_STATICMATRIX(qel, gdim, gdim); // Inverse of Gram in source domain
     objectmatrix r = MORPHO_STATICMATRIX(rel, gdim, gdim); // Intermediate calculations
     objectmatrix cg = MORPHO_STATICMATRIX(cgel, gdim, gdim); // Cauchy-Green strain tensor
-    
+
     linearelasticity_calculategram(info->refmesh->vert, mesh->dim, nv, vid, &gramref);
     linearelasticity_calculategram(mesh->vert, mesh->dim, nv, vid, &gramdef);
-    
+
     if (matrix_inverse(&gramref, &q)!=MATRIX_OK) return false;
     if (matrix_mul(&gramdef, &q, &r)!=MATRIX_OK) return false;
-    
+
     matrix_identity(&cg);
     matrix_scale(&cg, -0.5);
     matrix_accumulate(&cg, 0.5, &r);
-    
+
     double trcg=0.0, trcgcg=0.0;
     matrix_trace(&cg, &trcg);
-    
+
     matrix_mul(&cg, &cg, &r);
     matrix_trace(&r, &trcgcg);
-    
+
     if (!functional_elementsize(v, info->refmesh, info->grade, id, nv, vid, &weight)) return false;
-    
+
     *out=weight*(info->mu*trcgcg + 0.5*info->lambda*trcg*trcg);
-    
+
     return true;
 }
 
@@ -1241,7 +1241,7 @@ bool linearelasticity_prepareref(objectinstance *self, linearelasticityref *ref)
     value refmesh=MORPHO_NIL;
     value grade=MORPHO_NIL;
     value poisson=MORPHO_NIL;
-    
+
     if (objectinstance_getproperty(self, linearelasticity_referenceproperty, &refmesh) &&
         objectinstance_getproperty(self, functional_gradeproperty, &grade) &&
         MORPHO_ISINTEGER(grade) &&
@@ -1249,9 +1249,9 @@ bool linearelasticity_prepareref(objectinstance *self, linearelasticityref *ref)
         MORPHO_ISNUMBER(poisson)) {
         ref->refmesh=MORPHO_GETMESH(refmesh);
         ref->grade=MORPHO_GETINTEGERVALUE(grade);
-        
+
         double nu = MORPHO_GETFLOATVALUE(poisson);
-        
+
         ref->mu=0.5/(1+nu);
         ref->lambda=nu/(1+nu)/(1-2*nu);
         success=true;
@@ -1266,19 +1266,19 @@ value LinearElasticity_init(vm *v, int nargs, value *args) {
         if (MORPHO_ISMESH(MORPHO_GETARG(args, 0))) {
             objectinstance_setproperty(self, linearelasticity_referenceproperty, MORPHO_GETARG(args, 0));
             objectmesh *mesh = MORPHO_GETMESH(MORPHO_GETARG(args, 0));
-            
+
             objectinstance_setproperty(self, functional_gradeproperty, MORPHO_INTEGER(mesh_maxgrade(mesh)));
             objectinstance_setproperty(self, linearelasticity_poissonproperty, MORPHO_FLOAT(0.3));
         } else morpho_runtimeerror(v, LINEARELASTICITY_REF);
     } else morpho_runtimeerror(v, LINEARELASTICITY_REF);
-    
+
     /* Second (optional) argument is the grade to act on */
     if (nargs>1) {
         if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 1))) {
             objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), functional_gradeproperty, MORPHO_GETARG(args, 1));
         }
     }
-    
+
     return MORPHO_NIL;
 }
 
@@ -1287,7 +1287,7 @@ value LinearElasticity_integrand(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     linearelasticityref ref;
     value out=MORPHO_NIL;
-    
+
     if (functional_validateargs(v, nargs, args, &info)) {
         if (linearelasticity_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), &ref)) {
             info.g = ref.grade;
@@ -1305,7 +1305,7 @@ value LinearElasticity_total(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     linearelasticityref ref;
     value out=MORPHO_NIL;
-    
+
     if (functional_validateargs(v, nargs, args, &info)) {
         if (linearelasticity_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), &ref)) {
             info.g = ref.grade;
@@ -1322,7 +1322,7 @@ value LinearElasticity_gradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     linearelasticityref ref;
     value out=MORPHO_NIL;
-    
+
     if (functional_validateargs(v, nargs, args, &info)) {
         if (linearelasticity_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), &ref)) {
             info.g = ref.grade;
@@ -1344,6 +1344,133 @@ MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LinearElasticity_gradient, BUILTIN_FLA
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
+ * Flory-Huggins
+ * ---------------------------------------------- */
+
+static value floryhuggins_aproperty;
+static value floryhuggins_bproperty;
+static value floryhuggins_cproperty;
+static value floryhuggins_phi0property;
+
+typedef struct {
+    objectmesh *refmesh;
+    grade grade;
+    double a,b,c;   // Flory-Huggins coefficients
+    value phi0; // Can be a number or a field
+} floryhugginsref;
+
+/** Prepares the reference structure from the object's properties */
+bool floryhuggins_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, floryhugginsref *ref) {
+    bool success=false;
+    value refmesh=MORPHO_NIL, grade=MORPHO_NIL, phi0=MORPHO_NIL;
+    value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL;
+
+    if (objectinstance_getproperty(self, linearelasticity_referenceproperty, &refmesh) &&
+        objectinstance_getproperty(self, functional_gradeproperty, &grade) &&
+        MORPHO_ISINTEGER(grade) &&
+        objectinstance_getproperty(self, floryhuggins_aproperty, &a) &&
+        MORPHO_ISNUMBER(a) &&
+        objectinstance_getproperty(self, floryhuggins_bproperty, &b) &&
+        MORPHO_ISNUMBER(b) &&
+        objectinstance_getproperty(self, floryhuggins_cproperty, &c) &&
+        MORPHO_ISNUMBER(c) &&
+        objectinstance_getproperty(self, floryhuggins_phi0property, &phi0) &&
+        (MORPHO_ISNUMBER(phi0) || MORPHO_ISFIELD(phi0))) {
+        ref->refmesh=MORPHO_GETMESH(refmesh);
+        ref->grade=MORPHO_GETINTEGERVALUE(grade);
+
+        if (ref->grade<0) ref->grade=mesh_maxgrade(mesh);
+
+        if (morpho_valuetofloat(a, &ref->a) &&
+            morpho_valuetofloat(b, &ref->b) &&
+            morpho_valuetofloat(c, &ref->c)) {
+            ref->phi0 = phi0;
+            success=true;
+        }
+    }
+    return success;
+}
+
+/** Calculate the Flory-Huggins energy */
+bool floryhuggins_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    floryhugginsref *info = (floryhugginsref *) ref;
+    value vphi0 = info->phi0;
+    double V=0.0, V0=0.0, phi0=0.0;
+
+    if (!functional_elementsize(v, info->refmesh, info->grade, id, nv, vid, &V0)) return false;
+    if (!functional_elementsize(v, mesh, info->grade, id, nv, vid, &V)) return false;
+
+    if (V0<1e-8) printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
+
+    if (fabs(V)<MORPHO_EPS) return false;
+
+    // Determine phi0 either as a number or by looking up something in a field
+    if (MORPHO_ISFIELD(info->phi0)) {
+        objectfield *p = MORPHO_GETFIELD(info->phi0);
+        field_getelement(p, info->grade, id, 0, &vphi0);
+    }
+    if (MORPHO_ISNUMBER(vphi0)) {
+        if (!morpho_valuetofloat(vphi0, &phi0)) return false;
+    }
+
+    double phi = phi0/(V/V0);
+
+    if (phi<0) printf("Warning: phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
+    if (1-phi<0) printf("Warning: 1-phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
+
+    if (phi>1-MORPHO_EPS) phi = 1-MORPHO_EPS;
+    if (phi<MORPHO_EPS) phi = MORPHO_EPS;
+
+    *out = (info->a * phi*log(phi) +
+           info->b * (1-phi)*log(1-phi) +
+           info->c * phi*(1-phi))*V;
+
+    if (phi<0 || 1-phi<0) return false;
+
+    return true;
+}
+
+value FloryHuggins_init(vm *v, int nargs, value *args) {
+    objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+    int nfixed;
+    value grade=MORPHO_INTEGER(-1);
+    value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL, phi0=MORPHO_NIL;
+
+    if (builtin_options(v, nargs, args, &nfixed, 5,
+                        floryhuggins_aproperty, &a,
+                        floryhuggins_bproperty, &b,
+                        floryhuggins_cproperty, &c,
+                        floryhuggins_phi0property, &phi0,
+                        functional_gradeproperty, &grade)) {
+
+        objectinstance_setproperty(self, floryhuggins_aproperty, a);
+        objectinstance_setproperty(self, floryhuggins_bproperty, b);
+        objectinstance_setproperty(self, floryhuggins_cproperty, c);
+        objectinstance_setproperty(self, floryhuggins_phi0property, phi0);
+        objectinstance_setproperty(self, functional_gradeproperty, grade);
+
+        if (nfixed==1 && MORPHO_ISMESH(MORPHO_GETARG(args, 0))) {
+            objectinstance_setproperty(self, linearelasticity_referenceproperty, MORPHO_GETARG(args, 0));
+        } else morpho_runtimeerror(v, FLORYHUGGINS_ARGS);
+    } else morpho_runtimeerror(v, FLORYHUGGINS_ARGS);
+
+    return MORPHO_NIL;
+}
+
+FUNCTIONAL_METHOD(FloryHuggins, integrand, (ref.grade), floryhugginsref, floryhuggins_prepareref, functional_mapintegrand, floryhuggins_integrand, NULL, FLORYHUGGINS_PRP, SYMMETRY_NONE)
+
+FUNCTIONAL_METHOD(FloryHuggins, total, (ref.grade), floryhugginsref, floryhuggins_prepareref, functional_sumintegrand, floryhuggins_integrand, NULL, FLORYHUGGINS_PRP, SYMMETRY_NONE)
+
+FUNCTIONAL_METHOD(FloryHuggins, gradient, (ref.grade), floryhugginsref, floryhuggins_prepareref, functional_mapnumericalgradient, floryhuggins_integrand, NULL, FLORYHUGGINS_PRP, SYMMETRY_ADD)
+
+MORPHO_BEGINCLASS(FloryHuggins)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, FloryHuggins_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, FloryHuggins_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, FloryHuggins_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, FloryHuggins_gradient, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
+/* ----------------------------------------------
  * Equielement
  * ---------------------------------------------- */
 
@@ -1362,21 +1489,21 @@ bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
     bool success=false;
     value grade=MORPHO_NIL;
     value weight=MORPHO_NIL;
-    
+
     if (objectinstance_getproperty(self, functional_gradeproperty, &grade) &&
         MORPHO_ISINTEGER(grade) ) {
         ref->grade=MORPHO_GETINTEGERVALUE(grade);
         ref->weight=NULL;
-        
+
         int maxgrade=mesh_maxgrade(mesh);
         if (ref->grade<0 || ref->grade>maxgrade) ref->grade = maxgrade;
-        
+
         ref->vtoel=mesh_addconnectivityelement(mesh, ref->grade, 0);
         ref->eltov=mesh_addconnectivityelement(mesh, 0, ref->grade);
-        
+
         if (ref->vtoel && ref->eltov) success=true;
     }
-    
+
     if (objectinstance_getproperty(self, equielement_weightproperty, &weight) &&
         MORPHO_ISMATRIX(weight) ) {
         ref->weight=MORPHO_GETMATRIX(weight);
@@ -1385,7 +1512,7 @@ bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
             ref->mean/=ref->weight->ncols;
         }
     }
-    
+
     return success;
 }
 
@@ -1393,47 +1520,47 @@ bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
 bool equielement_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *r, double *out) {
     equielementref *ref = (equielementref *) r;
     int nconn, *conn;
-    
+
     if (sparseccs_getrowindices(&ref->vtoel->ccs, id, &nconn, &conn)) {
         if (nconn==1) { *out = 0; return true; }
-        
+
         double size[nconn], mean=0.0, total=0.0;
-        
+
         for (int i=0; i<nconn; i++) {
             int nv, *vid;
             sparseccs_getrowindices(&ref->eltov->ccs, conn[i], &nv, &vid);
             functional_elementsize(v, mesh, ref->grade, conn[i], nv, vid, &size[i]);
             mean+=size[i];
         }
-        
+
         mean /= ((double) nconn);
-        
+
         if (fabs(mean)<MORPHO_EPS) return false;
-        
+
         /* Now evaluate the functional at this vertex */
         if (!ref->weight || fabs(ref->mean)<MORPHO_EPS) {
             for (unsigned int i=0; i<nconn; i++) total+=(1.0-size[i]/mean)*(1.0-size[i]/mean);
         } else {
             double weight[nconn], wmean=0.0;
-            
+
             for (int i=0; i<nconn; i++) {
                 weight[i]=1.0;
                 matrix_getelement(ref->weight, 0, conn[i], &weight[i]);
                 wmean+=weight[i];
             }
-            
+
             wmean /= ((double) nconn);
             if (fabs(wmean)<MORPHO_EPS) wmean = 1.0;
-            
+
             for (unsigned int i=0; i<nconn; i++) {
                 double term = (1.0-weight[i]*size[i]/mean/wmean);
                 total+=term*term;
             }
         }
-        
+
         *out = total;
     }
-    
+
     return true;
 }
 
@@ -1442,12 +1569,12 @@ value EquiElement_init(vm *v, int nargs, value *args) {
     int nfixed;
     value grade=MORPHO_INTEGER(-1);
     value weight=MORPHO_NIL;
-    
+
     if (builtin_options(v, nargs, args, &nfixed, 2, equielement_weightproperty, &weight, functional_gradeproperty, &grade)) {
         objectinstance_setproperty(self, equielement_weightproperty, weight);
         objectinstance_setproperty(self, functional_gradeproperty, grade);
     } else morpho_runtimeerror(v, EQUIELEMENT_ARGS);
-    
+
     return MORPHO_NIL;
 }
 
@@ -1482,24 +1609,24 @@ typedef struct {
 
 bool curvature_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, curvatureref *ref) {
     bool success = true;
-    
+
     ref->selection=sel;
-    
+
     ref->lineel = mesh_getconnectivityelement(mesh, MESH_GRADE_VERTEX, MESH_GRADE_LINE);
     if (ref->lineel) success=sparse_checkformat(ref->lineel, SPARSE_CCS, true, false);
-    
+
     if (success) {
         objectsparse *s = mesh_getconnectivityelement(mesh, MESH_GRADE_LINE, MESH_GRADE_VERTEX);
         if (!s) s=mesh_addconnectivityelement(mesh, MESH_GRADE_LINE, MESH_GRADE_VERTEX);
         success=s;
     }
-    
+
     if (success) {
         value integrandonly=MORPHO_FALSE;
         objectinstance_getproperty(self, curvature_integrandonlyproperty, &integrandonly);
         ref->integrandonly=MORPHO_ISTRUE(integrandonly);
     }
-    
+
     return success;
 }
 
@@ -1510,7 +1637,7 @@ bool linecurvsq_dependencies(functional_mapinfo *info, elementid id, varray_elem
     bool success=false;
     varray_elementid nbrs;
     varray_elementidinit(&nbrs);
-    
+
     if (mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_LINE, &nbrs)>0) {
         for (unsigned int i=0; i<nbrs.count; i++) {
             int nentries, *entries; // Get the vertices for this edge
@@ -1525,10 +1652,10 @@ bool linecurvsq_dependencies(functional_mapinfo *info, elementid id, varray_elem
     /*printf("Vertex %u: ", id);
     for (int k=0; k<out->count; k++) printf("%u ", out->data[k]);
     printf("\n");*/
-    
+
 linecurvsq_dependencies_cleanup:
     varray_elementidclear(&nbrs);
-    
+
     return success;
 }
 
@@ -1540,17 +1667,17 @@ bool linecurvsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vi
     varray_elementid synid;
     varray_elementidinit(&nbrs);
     varray_elementidinit(&synid);
-    
+
     double s0[mesh->dim], s1[mesh->dim], *s[2] = { s0, s1}, sgn=-1.0;
-    
+
     if (mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_LINE, &nbrs)>0 &&
         mesh_getsynonyms(mesh, MESH_GRADE_VERTEX, id, &synid)) {
-        if (nbrs.count<2) goto linecurvsq_integrand_cleanup; 
-        
+        if (nbrs.count<2) goto linecurvsq_integrand_cleanup;
+
         for (unsigned int i=0; i<nbrs.count; i++) {
             int nentries, *entries; // Get the vertices for this edge
             if (!sparseccs_getrowindices(&cref->lineel->ccs, nbrs.data[i], &nentries, &entries)) break;
-            
+
             double *x0, *x1;
             if (mesh_getvertexcoordinatesaslist(mesh, entries[0], &x0) &&
                 mesh_getvertexcoordinatesaslist(mesh, entries[1], &x1)) {
@@ -1558,30 +1685,30 @@ bool linecurvsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vi
             }
             if (!(entries[0]==id || functional_inlist(&synid, entries[0]))) sgn*=-1;
         }
-        
+
         double s0s0=functional_vecdot(mesh->dim, s0, s0),
                s0s1=functional_vecdot(mesh->dim, s0, s1),
                s1s1=functional_vecdot(mesh->dim, s1, s1);
-        
+
         s0s0=sqrt(s0s0); s1s1=sqrt(s1s1);
-        
+
         if (s0s0<MORPHO_EPS || s1s1<MORPHO_EPS) return false;
 
         double u=sgn*s0s1/s0s0/s1s1,
                len=0.5*(s0s0+s1s1);
 
         if (u<1) u=acos(u); else u=0;
-        
+
         result = u*u/len;
         if (cref->integrandonly) result /= len; // Get the bare curvature.
     }
-    
+
 linecurvsq_integrand_cleanup:
-    
+
     *out = result;
     varray_elementidclear(&nbrs);
     varray_elementidclear(&synid);
-    
+
     return true;
 }
 
@@ -1608,10 +1735,10 @@ bool linetorsionsq_dependencies(functional_mapinfo *info, elementid id, varray_e
     bool success=false;
     varray_elementid nbrs;
     varray_elementid synid;
-    
+
     varray_elementidinit(&nbrs);
     varray_elementidinit(&synid);
-    
+
     if (mesh_findneighbors(mesh, MESH_GRADE_LINE, id, MESH_GRADE_LINE, &nbrs)>0) {
         for (unsigned int i=0; i<nbrs.count; i++) {
             int nentries, *entries; // Get the vertices for this edge
@@ -1622,11 +1749,11 @@ bool linetorsionsq_dependencies(functional_mapinfo *info, elementid id, varray_e
         }
     }
     success=true;
-    
+
 linetorsionsq_dependencies_cleanup:
     varray_elementidclear(&nbrs);
     varray_elementidclear(&synid);
-    
+
     return success;
 }
 
@@ -1636,7 +1763,7 @@ bool linetorsionsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int 
     curvatureref *cref = (curvatureref *) ref;
     int tmpi; elementid tmpid;
     bool success=false;
-    
+
     //double result = 0.0;
     varray_elementid nbrs;
     varray_elementid synid;
@@ -1645,20 +1772,20 @@ bool linetorsionsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int 
     elementid vlist[6]; // List of vertices in order  n
     int type[6];
     for (unsigned int i=0; i<6; i++) type[i]=-1;
-    
+
     /* We want an ordered list of vertex indices:
      *               v the element
      *    0 --- 1/2 --- 3/4 --- 5
      * Where 1/2 and 3/4 are the same vertex, but could have different indices due to symmetries */
      vlist[2] = vid[0]; vlist[3] = vid[1]; // Copy the current element into place
-    
+
     /* First identify neighbors and get the vertex ids for each element */
     if (mesh_findneighbors(mesh, MESH_GRADE_LINE, id, MESH_GRADE_LINE, &nbrs)>0) {
         if (nbrs.count<2) {
             *out = 0; success=true;
             goto linecurvsq_torsion_cleanup;
         }
-        
+
         for (unsigned int i=0; i<nbrs.count; i++) {
             int nentries, *entries; // Get the vertices for this edge
             if (!sparseccs_getrowindices(&cref->lineel->ccs, nbrs.data[i], &nentries, &entries)) goto linecurvsq_torsion_cleanup;
@@ -1667,7 +1794,7 @@ bool linetorsionsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int 
             }
         }
     }
-    
+
     /* The vertex ids are not yet in the right order. Let's identify which vertex is which */
     for (int i=0; i<2; i++) {
         if (mesh_getsynonyms(mesh, 0, vid[i], &synid)) {
@@ -1680,47 +1807,47 @@ bool linetorsionsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int 
         SWAP(vlist, 0, 4, tmpid); SWAP(vlist, 1, 5, tmpid);
         SWAP(type, 0, 4, tmpi); SWAP(type, 1, 5, tmpi);
     }
-    
+
     if (type[1]==-1) { // Check order of first segment
         SWAP(vlist, 0, 1, tmpid);
         SWAP(type, 0, 1, tmpi);
     }
-    
+
     if (type[4]==-1) { // Check order of first segment
         SWAP(vlist, 4, 5, tmpid);
         SWAP(type, 4, 5, tmpi);
     }
 #undef SWAP
-    
+
     /* We now have an ordered list of vertices.
        Get the vertex positions */
     double *x[6];
     for (int i=0; i<6; i++) matrix_getcolumn(mesh->vert, vlist[i], &x[i]);
-    
+
     double A[3], B[3], C[3], crossAB[3], crossBC[3];
     functional_vecsub(3, x[1], x[0], A);
     functional_vecsub(3, x[3], x[2], B);
     functional_vecsub(3, x[5], x[4], C);
-    
+
     functional_veccross(A, B, crossAB);
     functional_veccross(B, C, crossBC);
-    
+
     double normB=functional_vecnorm(3, B),
            normAB=functional_vecnorm(3, crossAB),
            normBC=functional_vecnorm(3, crossBC);
-    
+
     double S = functional_vecdot(3, A, crossBC)*normB;
     if (normAB>MORPHO_EPS) S/=normAB;
     if (normBC>MORPHO_EPS) S/=normBC;
-    
+
     S=asin(S);
     *out=S*S/normB;
     success=true;
-    
+
 linecurvsq_torsion_cleanup:
     varray_elementidclear(&nbrs);
     varray_elementidclear(&synid);
-    
+
     return success;
 }
 
@@ -1748,24 +1875,24 @@ typedef struct {
 
 bool areacurvature_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, areacurvatureref *ref) {
     bool success = true;
-    
+
     ref->selection=sel;
-    
+
     ref->areael = mesh_getconnectivityelement(mesh, MESH_GRADE_VERTEX, MESH_GRADE_AREA);
     if (ref->areael) success=sparse_checkformat(ref->areael, SPARSE_CCS, true, false);
-    
+
     if (success) {
         objectsparse *s = mesh_getconnectivityelement(mesh, MESH_GRADE_AREA, MESH_GRADE_VERTEX);
         if (!s) s=mesh_addconnectivityelement(mesh, MESH_GRADE_AREA, MESH_GRADE_VERTEX);
         success=s;
     }
-    
+
     if (success) {
         value integrandonly=MORPHO_FALSE;
         objectinstance_getproperty(self, curvature_integrandonlyproperty, &integrandonly);
         ref->integrandonly=MORPHO_ISTRUE(integrandonly);
     }
-    
+
     return success;
 }
 
@@ -1776,31 +1903,31 @@ bool meancurvaturesq_dependencies(functional_mapinfo *info, elementid id, varray
     bool success=false;
     varray_elementid nbrs;
     varray_elementid synid;
-    
+
     varray_elementidinit(&nbrs);
     varray_elementidinit(&synid);
-    
+
     mesh_getsynonyms(mesh, MESH_GRADE_VERTEX, id, &synid);
     varray_elementidwriteunique(&synid, id);
-    
+
     /* Loop over synonyms of the element id */
     mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_AREA, &nbrs);
-    
+
     for (unsigned int i=0; i<nbrs.count; i++) { /* Loop over adjacent triangles */
         int nvert, *vids;
         if (!sparseccs_getrowindices(&cref->areael->ccs, nbrs.data[i], &nvert, &vids)) goto meancurvsq_dependencies_cleanup;
-        
+
         for (unsigned int j=0; j<nvert; j++) {
             if (vids[j]==id) continue;
             varray_elementidwriteunique(out, vids[j]);
         }
     }
     success=true;
-    
+
 meancurvsq_dependencies_cleanup:
     varray_elementidclear(&nbrs);
     varray_elementidclear(&synid);
-    
+
     return success;
 }
 
@@ -1810,12 +1937,12 @@ bool curvature_ordervertices(varray_elementid *synid, int nv, int *vids) {
     for (unsigned int i=0; i<nv && posn<0; i++) {
         for (unsigned int k=0; k<synid->count; k++) if (synid->data[k]==vids[i]) { posn = i; break; }
     }
-    
+
     if (posn>0) { // If the desired vertex isn't in first position, move it there.
         int tmp=vids[posn];
         vids[posn]=vids[0]; vids[0]=tmp;
     }
-    
+
     return (posn>=0);
 }
 
@@ -1824,54 +1951,54 @@ bool meancurvaturesq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, in
     areacurvatureref *cref = (areacurvatureref *) ref;
     double areasum = 0;
     bool success=false;
-    
+
     varray_elementid nbrs;
     varray_elementid synid;
     varray_elementidinit(&nbrs);
     varray_elementidinit(&synid);
-    
+
     mesh_getsynonyms(mesh, MESH_GRADE_VERTEX, id, &synid);
     varray_elementidwriteunique(&synid, id);
-    
+
     double frc[mesh->dim]; // This will hold the total force due to the triangles present
     for (unsigned int i=0; i<mesh->dim; i++) frc[i]=0.0;
-    
+
     mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_AREA, &nbrs);
-    
+
     for (unsigned int i=0; i<nbrs.count; i++) { /* Loop over adjacent triangles */
         int nvert, *vids;
         if (!sparseccs_getrowindices(&cref->areael->ccs, nbrs.data[i], &nvert, &vids)) goto meancurvsq_cleanup;
-        
+
         /* Order the vertices */
         if (!curvature_ordervertices(&synid, nvert, vids)) goto meancurvsq_cleanup;
-        
+
         double *x[3], s0[3], s1[3], s01[3], s101[3];
         double norm;
         for (int j=0; j<3; j++) matrix_getcolumn(mesh->vert, vids[j], &x[j]);
-        
+
         /* s0 = x1-x0; s1 = x2-x1 */
         functional_vecsub(mesh->dim, x[1], x[0], s0);
         functional_vecsub(mesh->dim, x[2], x[1], s1);
-        
+
         /* F(v0) = (s1 x s0 x s1)/|s0 x x1|/2 */
         functional_veccross(s0, s1, s01);
         norm=functional_vecnorm(mesh->dim, s01);
         if (norm<MORPHO_EPS) goto meancurvsq_cleanup;
-        
+
         areasum+=norm/2;
         functional_veccross(s1, s01, s101);
-        
+
         functional_vecaddscale(mesh->dim, frc, 0.5/norm, s101, frc);
     }
-    
+
     *out = functional_vecdot(mesh->dim, frc, frc)/(areasum/3.0)/4.0;
     if (cref->integrandonly) *out /= (areasum/3.0);
     success=true;
-    
+
 meancurvsq_cleanup:
     varray_elementidclear(&nbrs);
     varray_elementidclear(&synid);
-    
+
     return success;
 }
 
@@ -1896,49 +2023,49 @@ bool gausscurvature_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
     areacurvatureref *cref = (areacurvatureref *) ref;
     double anglesum = 0, areasum = 0;
     bool success=false;
-    
+
     varray_elementid nbrs;
     varray_elementid synid;
     varray_elementidinit(&nbrs);
     varray_elementidinit(&synid);
-    
+
     mesh_getsynonyms(mesh, MESH_GRADE_VERTEX, id, &synid);
     varray_elementidwriteunique(&synid, id);
-    
+
     double frc[mesh->dim]; // This will hold the total force due to the triangles present
     for (unsigned int i=0; i<mesh->dim; i++) frc[i]=0.0;
-    
+
     mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_AREA, &nbrs);
-    
+
     for (unsigned int i=0; i<nbrs.count; i++) { /* Loop over adjacent triangles */
         int nvert, *vids;
         if (!sparseccs_getrowindices(&cref->areael->ccs, nbrs.data[i], &nvert, &vids)) goto gausscurv_cleanup;
-        
+
         /* Order the vertices */
         if (!curvature_ordervertices(&synid, nvert, vids)) goto gausscurv_cleanup;
-        
+
         double *x[3], s0[3], s1[3], s01[3];
         for (int j=0; j<3; j++) matrix_getcolumn(mesh->vert, vids[j], &x[j]);
-        
+
         /* s0 = x1-x0; s1 = x2-x0 */
         functional_vecsub(mesh->dim, x[1], x[0], s0);
         functional_vecsub(mesh->dim, x[2], x[0], s1);
-        
+
         functional_veccross(s0, s1, s01);
         double area = functional_vecnorm(mesh->dim, s01);
         anglesum+=atan2(area, functional_vecdot(mesh->dim, s0, s1));
-        
+
         areasum+=area/2;
     }
 
     *out = 2*M_PI-anglesum;
     if (cref->integrandonly) *out /= (areasum/3.0);
     success=true;
-    
+
 gausscurv_cleanup:
     varray_elementidclear(&nbrs);
     varray_elementidclear(&synid);
-    
+
     return success;
 }
 
@@ -1968,20 +2095,20 @@ typedef struct {
 
 bool gradsq_computeperpendicular(unsigned int n, double *s1, double *s2, double *out) {
     double s1s2, s2s2, sout;
-    
+
     /* Compute s1 - (s1.s2) s2 / (s2.2) */
     s1s2 = functional_vecdot(n, s1, s2);
     s2s2 = functional_vecdot(n, s2, s2);
     if (fabs(s2s2)<MORPHO_EPS) return false; // Check for side of zero weight
-    
+
     double temp[n];
     functional_vecscale(n, s1s2/s2s2, s2, temp);
     functional_vecsub(n, s1, temp, out);
-    
+
     /* Scale by 1/|t|^2 */
     sout = functional_vecnorm(n, out);
     if (fabs(sout)<MORPHO_EPS) return false; // Check for side of zero weight
-    
+
     functional_vecscale(n, 1/(sout*sout), out, out);
     return true;
 }
@@ -1996,25 +2123,25 @@ bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *
     double *f[nv]; // Field value lists
     double *x[nv]; // Vertex coordinates
     unsigned int nentries=0;
-    
+
     // Get field values and vertex coordinates
     for (unsigned int i=0; i<nv; i++) {
         if (!mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i])) return false;
         if (!field_getelementaslist(field, MESH_GRADE_VERTEX, vid[i], 0, &nentries, &f[i])) return false;
     }
-    
+
     double s[3][mesh->dim], t[3][mesh->dim];
-    
+
     /* Vector sides */
     functional_vecsub(mesh->dim, x[1], x[0], s[0]);
     functional_vecsub(mesh->dim, x[2], x[1], s[1]);
     functional_vecsub(mesh->dim, x[0], x[2], s[2]);
-    
+
     /* Perpendicular vectors */
     gradsq_computeperpendicular(mesh->dim, s[2], s[1], t[0]);
     gradsq_computeperpendicular(mesh->dim, s[0], s[2], t[1]);
     gradsq_computeperpendicular(mesh->dim, s[1], s[0], t[2]);
-    
+
     /* Compute the gradient */
     for (unsigned int i=0; i<mesh->dim*nentries; i++) out[i]=0;
     for (unsigned int j=0; j<mesh->dim; j++) {
@@ -2022,7 +2149,7 @@ bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *
             functional_vecaddscale(mesh->dim, &out[i*mesh->dim], f[j][i], t[j], &out[i*mesh->dim]);
         }
     }
-    
+
     return true;
 }
 
@@ -2030,7 +2157,7 @@ bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *
 bool gradsq_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, fieldref *ref) {
     bool success=false;
     value field=MORPHO_NIL;
-    
+
     if (objectinstance_getproperty(self, functional_fieldproperty, &field) &&
         MORPHO_ISFIELD(field)) {
         ref->field=MORPHO_GETFIELD(field);
@@ -2044,25 +2171,25 @@ bool gradsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
     fieldref *eref = ref;
     double size=0; // Length area or volume of the element
     double grad[eref->field->psize*mesh->dim];
-    
+
     if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &size)) return false;
-    
+
     if (!gradsq_evaluategradient(mesh, eref->field, nv, vid, grad)) return false;
-    
+
     double gradnrm=functional_vecnorm(eref->field->psize*mesh->dim, grad);
     *out = gradnrm*gradnrm*size;
-    
+
     return true;
 }
 
 /** Initialize a GradSq object */
 value GradSq_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
-    
+
     if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
         objectinstance_setproperty(self, functional_fieldproperty, MORPHO_GETARG(args, 0));
     } else morpho_runtimeerror(v, VM_INVALIDARGS);
-    
+
     return MORPHO_NIL;
 }
 
@@ -2076,7 +2203,7 @@ value GradSq_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     fieldref ref;
     value out=MORPHO_NIL;
-    
+
     if (functional_validateargs(v, nargs, args, &info)) {
         if (gradsq_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_AREA, info.sel, &ref)) {
             info.g = MESH_GRADE_AREA;
@@ -2120,7 +2247,7 @@ bool nematic_prepareref(objectinstance *self, objectmesh *mesh, grade g, objects
     value val=MORPHO_NIL;
     ref->ksplay=1.0; ref->ktwist=1.0; ref->kbend=1.0; ref->pitch=0.0;
     ref->haspitch=false;
-    
+
     if (objectinstance_getproperty(self, functional_fieldproperty, &field) &&
         MORPHO_ISFIELD(field)) {
         ref->field=MORPHO_GETFIELD(field);
@@ -2158,16 +2285,16 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     double size=0; // Length area or volume of the element
     double gradnn[eref->field->psize*mesh->dim];
     double divnn, curlnn[mesh->dim];
-    
+
     if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &size)) return false;
-    
+
     // Get nematic director components
     double *nn[nv]; // Field value lists
     unsigned int nentries=0;
     for (unsigned int i=0; i<nv; i++) {
         if (!field_getelementaslist(eref->field, MESH_GRADE_VERTEX, vid[i], 0, &nentries, &nn[i])) return false;
     }
-    
+
     // Evaluate gradients of the director
     if (!gradsq_evaluategradient(mesh, eref->field, nv, vid, gradnn)) return false;
     // Output of this is the matrix:
@@ -2175,12 +2302,12 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     // [ nx,y ny,y nz,y ] [ 1 4 7 ]
     // [ nx,z ny,z nz,z ] [ 2 5 8 ]
     objectmatrix gradnnmat = MORPHO_STATICMATRIX(gradnn, mesh->dim, mesh->dim);
-    
+
     matrix_trace(&gradnnmat, &divnn);
     curlnn[0]=gradnn[7]-gradnn[5]; // nz,y - ny,z
     curlnn[1]=gradnn[2]-gradnn[6]; // nx,z - nz,x
     curlnn[2]=gradnn[3]-gradnn[1]; // ny,x - nx,y
-    
+
     /* From components of the curl, construct the coefficients that go in front of integrals of
            nx^2, ny^2, nz^2, nx*ny, ny*nz, and nz*nx over the element. */
     double ctwst[6] = { curlnn[0]*curlnn[0], curlnn[1]*curlnn[1], curlnn[2]*curlnn[2],
@@ -2188,12 +2315,12 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
 
     double cbnd[6] = { ctwst[1] + ctwst[2], ctwst[0] + ctwst[2], ctwst[0] + ctwst[1],
                        -ctwst[3], -ctwst[4], -ctwst[5] };
-    
+
     /* Calculate integrals of nx^2, ny^2, nz^2, nx*ny, ny*nz, and nz*nx over the element */
     double nnt[mesh->dim][nv]; // The transpose of nn
     for (unsigned int i=0; i<nv; i++)
         for (unsigned int j=0; j<mesh->dim; j++) nnt[j][i]=nn[i][j];
-    
+
     double integrals[] = {  nematic_bcint(nnt[0], nnt[0]),
                             nematic_bcint(nnt[1], nnt[1]),
                             nematic_bcint(nnt[2], nnt[2]),
@@ -2201,7 +2328,7 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
                             nematic_bcint(nnt[1], nnt[2]),
                             nematic_bcint(nnt[2], nnt[0])
     };
-    
+
     /* Now we can calculate the components of splay, twist and bend */
     double splay=0.0, twist=0.0, bend=0.0, chol=0.0;
 
@@ -2213,7 +2340,7 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     }
     twist *= 0.5*eref->ktwist*size;
     bend *= 0.5*eref->kbend*size;
-    
+
     if (eref->haspitch) {
         /* Cholesteric terms: 0.5 * k22 * [- 2 q (cx <nx> + cy <ny> + cz <nz>) + q^2] */
         for (unsigned i=0; i<3; i++) {
@@ -2222,9 +2349,9 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
         chol += (eref->pitch*eref->pitch);
         chol *= 0.5*eref->ktwist*size;
     }
-    
+
     *out = splay+twist+bend+chol;
-    
+
     return true;
 }
 
@@ -2237,7 +2364,7 @@ value Nematic_init(vm *v, int nargs, value *args) {
           ktwist=MORPHO_FLOAT(1.0),
           kbend=MORPHO_FLOAT(1.0);
     value pitch=MORPHO_NIL;
-    
+
     if (builtin_options(v, nargs, args, &nfixed, 4,
                         nematic_ksplayproperty, &ksplay,
                         nematic_ktwistproperty, &ktwist,
@@ -2248,11 +2375,11 @@ value Nematic_init(vm *v, int nargs, value *args) {
         objectinstance_setproperty(self, nematic_kbendproperty, kbend);
         objectinstance_setproperty(self, nematic_pitchproperty, pitch);
     } else morpho_runtimeerror(v, NEMATIC_ARGS);
-    
+
     if (nfixed==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
         objectinstance_setproperty(self, functional_fieldproperty, MORPHO_GETARG(args, 0));
     } else morpho_runtimeerror(v, NEMATIC_ARGS);
-    
+
     return MORPHO_NIL;
 }
 
@@ -2266,7 +2393,7 @@ value Nematic_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     nematicref ref;
     value out=MORPHO_NIL;
-    
+
     if (functional_validateargs(v, nargs, args, &info)) {
         if (nematic_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_AREA, info.sel, &ref)) {
             info.g=MESH_GRADE_AREA;
@@ -2301,19 +2428,19 @@ bool nematicelectric_prepareref(objectinstance *self, objectmesh *mesh, grade g,
     bool success=false;
     ref->field=MORPHO_NIL;
     value fieldlist=MORPHO_NIL;
-    
+
     if (objectinstance_getproperty(self, functional_fieldproperty, &fieldlist) &&
         MORPHO_ISLIST(fieldlist)) {
         objectlist *lst = MORPHO_GETLIST(fieldlist);
         value director = MORPHO_NIL;
         list_getelement(lst, 0, &director);
         list_getelement(lst, 1, &ref->field);
-        
+
         if (MORPHO_ISFIELD(director)) ref->director=MORPHO_GETFIELD(director);
-        
+
         if (MORPHO_ISFIELD(ref->field) || MORPHO_ISMATRIX(ref->field)) success=true;
     }
-    
+
     return success;
 }
 
@@ -2321,27 +2448,27 @@ bool nematicelectric_prepareref(objectinstance *self, objectmesh *mesh, grade g,
 bool nematicelectric_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     nematicelectricref *eref = ref;
     double size=0; // Length area or volume of the element
-    
+
     if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &size)) return false;
-    
+
     // Get nematic director components
     double *nn[nv]; // Field value lists
     unsigned int nentries=0;
     for (unsigned int i=0; i<nv; i++) {
         if (!field_getelementaslist(eref->director, MESH_GRADE_VERTEX, vid[i], 0, &nentries, &nn[i])) return false;
     }
-    
+
     // The electric field ends up being constant over the element
     double ee[mesh->dim];
     if (MORPHO_ISFIELD(eref->field)) {
         if (!gradsq_evaluategradient(mesh, MORPHO_GETFIELD(eref->field), nv, vid, ee)) return false;
     }
-    
+
     /* Calculate integrals of nx^2, ny^2, nz^2, nx*ny, ny*nz, and nz*nx over the element */
     double nnt[mesh->dim][nv]; // The transpose of nn
     for (unsigned int i=0; i<nv; i++)
         for (unsigned int j=0; j<mesh->dim; j++) nnt[j][i]=nn[i][j];
-    
+
     /* Calculate integral (n.e)^2 using the above results */
     double total = ee[0]*ee[0]*nematic_bcint(nnt[0], nnt[0])+
                    ee[1]*ee[1]*nematic_bcint(nnt[1], nnt[1])+
@@ -2349,16 +2476,16 @@ bool nematicelectric_integrand(vm *v, objectmesh *mesh, elementid id, int nv, in
                    2*ee[0]*ee[1]*nematic_bcint(nnt[0], nnt[1])+
                    2*ee[1]*ee[2]*nematic_bcint(nnt[1], nnt[2])+
                    2*ee[2]*ee[0]*nematic_bcint(nnt[2], nnt[0]);
-    
+
     *out = size*total;
-    
+
     return true;
 }
 
 /** Initialize a NematicElectric object */
 value NematicElectric_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
-    
+
     if (nargs==2 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0)) &&
         MORPHO_ISFIELD(MORPHO_GETARG(args, 1))) {
         objectlist *new = object_newlist(2, &MORPHO_GETARG(args, 0));
@@ -2368,7 +2495,7 @@ value NematicElectric_init(vm *v, int nargs, value *args) {
             morpho_bindobjects(v, 1, &lst);
         }
     } else morpho_runtimeerror(v, NEMATICELECTRIC_ARGS);
-    
+
     return MORPHO_NIL;
 }
 
@@ -2382,7 +2509,7 @@ value NematicElectric_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     nematicelectricref ref;
     value out=MORPHO_NIL;
-    
+
     if (functional_validateargs(v, nargs, args, &info)) {
         if (nematicelectric_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_AREA, info.sel, &ref)) {
             info.g=MESH_GRADE_AREA;
@@ -2412,12 +2539,12 @@ bool normsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
     fieldref *eref = ref;
     unsigned int nentries;
     double *entries;
-    
+
     if (field_getelementaslist(eref->field, MESH_GRADE_VERTEX, id, 0, &nentries, &entries)) {
         *out = functional_vecdot(nentries, entries, entries);
         return true;
     }
-    
+
     return false;
 }
 
@@ -2431,7 +2558,7 @@ value NormSq_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     fieldref ref;
     value out=MORPHO_NIL;
-    
+
     if (functional_validateargs(v, nargs, args, &info)) {
         if (gradsq_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_VERTEX, info.sel, &ref)) {
             info.g=MESH_GRADE_VERTEX;
@@ -2485,7 +2612,7 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
     value field=MORPHO_NIL;
     ref->v=NULL;
     ref->nfields=0;
-    
+
     if (objectinstance_getproperty(self, scalarpotential_functionproperty, &func) &&
         MORPHO_ISCALLABLE(func)) {
         ref->integrand=func;
@@ -2504,15 +2631,15 @@ bool integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int n
     integralref *iref = ref;
     objectmatrix posn = MORPHO_STATICMATRIX(x, dim, 1);
     value args[nquantity+1], out;
-        
+
     args[0]=MORPHO_OBJECT(&posn);
     for (unsigned int i=0; i<nquantity; i++) args[i+1]=quantity[i];
-    
+
     if (morpho_call(iref->v, iref->integrand, nquantity+1, args, &out)) {
         morpho_valuetofloat(out,fout);
         return true;
     }
-    
+
     return false;
 }
 
@@ -2521,14 +2648,14 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     integralref *iref = ref;
     double *x[2], size;
     bool success;
-    
+
     if (!functional_elementsize(v, mesh, MESH_GRADE_LINE, id, nv, vid, &size)) return false;
-    
-    iref->v=v; 
+
+    iref->v=v;
     for (unsigned int i=0; i<nv; i++) {
         mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
     }
-    
+
     /* Set up tangent vector... (temporary code here) */
     double tangentdata[mesh->dim], tnorm=0.0;
     functional_vecsub(mesh->dim, x[1], x[0], tangentdata);
@@ -2536,7 +2663,7 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     if (fabs(tnorm)>MORPHO_EPS) functional_vecscale(mesh->dim, 1.0/tnorm, tangentdata, tangentdata);
     objectmatrix mtangent = MORPHO_STATICMATRIX(tangentdata, mesh->dim, 1);
     tangent = MORPHO_OBJECT(&mtangent);
-    
+
     value q0[iref->nfields+1], q1[iref->nfields+1];
     value *q[2] = { q0, q1 };
     for (unsigned int k=0; k<iref->nfields; k++) {
@@ -2544,10 +2671,10 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
             field_getelement(MORPHO_GETFIELD(iref->fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
         }
     }
-    
+
     success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_LINE, x, iref->nfields, q, iref, out);
     if (success) *out *=size;
-    
+
     return success;
 }
 
@@ -2561,10 +2688,10 @@ FUNCTIONAL_METHOD(LineIntegral, gradient, MESH_GRADE_LINE, integralref, integral
 value LineIntegral_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
     int nparams = -1, nfields = 0;
-    
+
     if (nargs>0) {
         value f = MORPHO_GETARG(args, 0);
-        
+
         if (morpho_countparameters(f, &nparams)) {
             objectinstance_setproperty(self, scalarpotential_functionproperty, MORPHO_GETARG(args, 0));
         } else {
@@ -2572,17 +2699,17 @@ value LineIntegral_init(vm *v, int nargs, value *args) {
             return MORPHO_NIL;
         }
     }
-    
+
     if (nparams!=nargs) {
         morpho_runtimeerror(v, LINEINTEGRAL_NFLDS);
         return MORPHO_NIL;
     }
-    
+
     if (nargs>1) {
         /* Remaining arguments should be fields */
         objectlist *list = object_newlist(nargs-1, & MORPHO_GETARG(args, 1));
         if (!list) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
-        
+
         for (unsigned int i=1; i<nargs; i++) {
             if (!MORPHO_ISFIELD(MORPHO_GETARG(args, i))) {
                 morpho_runtimeerror(v, LINEINTEGRAL_ARGS);
@@ -2590,12 +2717,12 @@ value LineIntegral_init(vm *v, int nargs, value *args) {
                 return MORPHO_NIL;
             }
         }
-        
+
         value field = MORPHO_OBJECT(list);
         objectinstance_setproperty(self, functional_fieldproperty, field);
         morpho_bindobjects(v, 1, &field);
     }
-    
+
     return MORPHO_NIL;
 }
 
@@ -2604,7 +2731,7 @@ value LineIntegral_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     integralref ref;
     value out=MORPHO_NIL;
-    
+
     if (functional_validateargs(v, nargs, args, &info)) {
         // Should check whether the field is known about here...
         if (integral_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_LINE, info.sel, &ref)) {
@@ -2635,14 +2762,14 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     integralref *iref = ref;
     double *x[3], size;
     bool success;
-    
+
     if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &size)) return false;
-    
+
     iref->v=v;
     for (unsigned int i=0; i<nv; i++) {
         mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
     }
-    
+
     value q0[iref->nfields+1], q1[iref->nfields+1], q2[iref->nfields+1];
     value *q[3] = { q0, q1, q2 };
     for (unsigned int k=0; k<iref->nfields; k++) {
@@ -2650,10 +2777,10 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
             field_getelement(MORPHO_GETFIELD(iref->fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
         }
     }
-    
+
     success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_AREA, x, iref->nfields, q, iref, out);
     if (success) *out *=size;
-    
+
     return success;
 }
 
@@ -2668,7 +2795,7 @@ value AreaIntegral_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     integralref ref;
     value out=MORPHO_NIL;
-    
+
     if (functional_validateargs(v, nargs, args, &info)) {
         // Should check whether the field is known about here...
         if (integral_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_AREA, info.sel, &ref)) {
@@ -2701,17 +2828,21 @@ void functional_initialize(void) {
     scalarpotential_gradfunctionproperty=builtin_internsymbolascstring(SCALARPOTENTIAL_GRADFUNCTION_PROPERTY);
     linearelasticity_referenceproperty=builtin_internsymbolascstring(LINEARELASTICITY_REFERENCE_PROPERTY);
     linearelasticity_poissonproperty=builtin_internsymbolascstring(LINEARELASTICITY_POISSON_PROPERTY);
+    floryhuggins_aproperty=builtin_internsymbolascstring(FLORYHUGGINS_A_PROPERTY);
+    floryhuggins_bproperty=builtin_internsymbolascstring(FLORYHUGGINS_B_PROPERTY);
+    floryhuggins_cproperty=builtin_internsymbolascstring(FLORYHUGGINS_C_PROPERTY);
+    floryhuggins_phi0property=builtin_internsymbolascstring(FLORYHUGGINS_PHI0_PROPERTY);
     equielement_weightproperty=builtin_internsymbolascstring(EQUIELEMENT_WEIGHT_PROPERTY);
     nematic_ksplayproperty=builtin_internsymbolascstring(NEMATIC_KSPLAY_PROPERTY);
     nematic_ktwistproperty=builtin_internsymbolascstring(NEMATIC_KTWIST_PROPERTY);
     nematic_kbendproperty=builtin_internsymbolascstring(NEMATIC_KBEND_PROPERTY);
     nematic_pitchproperty=builtin_internsymbolascstring(NEMATIC_PITCH_PROPERTY);
-    
+
     curvature_integrandonlyproperty=builtin_internsymbolascstring(CURVATURE_INTEGRANDONLY_PROPERTY);
-    
+
     objectstring objclassname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objclassname));
-    
+
     builtin_addclass(LENGTH_CLASSNAME, MORPHO_GETCLASSDEFINITION(Length), objclass);
     builtin_addclass(AREA_CLASSNAME, MORPHO_GETCLASSDEFINITION(Area), objclass);
     builtin_addclass(AREAENCLOSED_CLASSNAME, MORPHO_GETCLASSDEFINITION(AreaEnclosed), objclass);
@@ -2719,6 +2850,7 @@ void functional_initialize(void) {
     builtin_addclass(VOLUME_CLASSNAME, MORPHO_GETCLASSDEFINITION(Volume), objclass);
     builtin_addclass(SCALARPOTENTIAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(ScalarPotential), objclass);
     builtin_addclass(LINEARELASTICITY_CLASSNAME, MORPHO_GETCLASSDEFINITION(LinearElasticity), objclass);
+    builtin_addclass(FLORYHUGGINS_CLASSNAME, MORPHO_GETCLASSDEFINITION(FloryHuggins), objclass);
     builtin_addclass(EQUIELEMENT_CLASSNAME, MORPHO_GETCLASSDEFINITION(EquiElement), objclass);
     builtin_addclass(LINECURVATURESQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineCurvatureSq), objclass);
     builtin_addclass(LINETORSIONSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineTorsionSq), objclass);
@@ -2730,14 +2862,16 @@ void functional_initialize(void) {
     builtin_addclass(AREAINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(AreaIntegral), objclass);
     builtin_addclass(NEMATIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(Nematic), objclass);
     builtin_addclass(NEMATICELECTRIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(NematicElectric), objclass);
-    
+
     builtin_addfunction(TANGENT_FUNCTION, functional_tangent, BUILTIN_FLAGSEMPTY);
-    
+
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
     morpho_defineerror(FUNC_ELNTFND, ERROR_HALT, FUNC_ELNTFND_MSG);
     morpho_defineerror(SCALARPOTENTIAL_FNCLLBL, ERROR_HALT, SCALARPOTENTIAL_FNCLLBL_MSG);
     morpho_defineerror(LINEARELASTICITY_REF, ERROR_HALT, LINEARELASTICITY_REF_MSG);
     morpho_defineerror(LINEARELASTICITY_PRP, ERROR_HALT, LINEARELASTICITY_PRP_MSG);
+    morpho_defineerror(FLORYHUGGINS_ARGS, ERROR_HALT, FLORYHUGGINS_ARGS_MSG);
+    morpho_defineerror(FLORYHUGGINS_PRP, ERROR_HALT, FLORYHUGGINS_PRP_MSG);
     morpho_defineerror(EQUIELEMENT_ARGS, ERROR_HALT, EQUIELEMENT_ARGS_MSG);
     morpho_defineerror(GRADSQ_ARGS, ERROR_HALT, GRADSQ_ARGS_MSG);
     morpho_defineerror(NEMATIC_ARGS, ERROR_HALT, NEMATIC_ARGS_MSG);
@@ -2746,4 +2880,3 @@ void functional_initialize(void) {
     morpho_defineerror(LINEINTEGRAL_ARGS, ERROR_HALT, LINEINTEGRAL_ARGS_MSG);
     morpho_defineerror(LINEINTEGRAL_NFLDS, ERROR_HALT, LINEINTEGRAL_NFLDS_MSG);
 }
- 

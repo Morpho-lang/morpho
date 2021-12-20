@@ -1,0 +1,15 @@
+// Flory-Huggins mixing energy
+var m = Mesh("tetrahedron.mesh")
+var m0 = Mesh("tetrahedron.mesh")
+var lfh = FloryHuggins(m0, a=1, b=1, c=1, phi0=0.5)
+
+print lfh.integrand(m)
+// expect: [ -0.0522253 ]
+
+print lfh.total(m)
+// expect: -0.0522253
+
+print lfh.gradient(m)
+// expect: [ 0 0.0301523 0.0301523 -0.0603047 ]
+// expect: [ 0 0.0522254 -0.0522253 -3.46945e-08 ]
+// expect: [ -0.0639627 0.0213209 0.0213209 0.0213209 ]

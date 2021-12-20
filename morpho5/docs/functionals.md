@@ -191,3 +191,19 @@ You can also integrate functions that involve fields:
     var la=AreaIntegral(fn (x, phi) phi^2, phi)
 
 More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `AreaIntegrand`.
+
+## FloryHuggins
+[tagfloryhuggins]: # (floryhuggins)
+
+The `FloryHuggins` functional computes the Flory-Huggins mixing energy over an element:
+
+    a*phi*log(phi) + b*(1-phi)+log(1-phi) + c*phi*(1-phi)
+
+where a, b and c are parameters you can supply. The value of phi is calculated from a reference mesh that you provide on initializing the Functional: 
+
+    var lfh = FloryHuggins(mref)
+
+Manually set the coefficients and grade to operate on:
+
+    lfh.a = 1; lfh.b = 1; lfh.c = 1;
+    lfh.grade = 2

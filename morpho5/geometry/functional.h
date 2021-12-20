@@ -17,6 +17,10 @@
 #define SCALARPOTENTIAL_GRADFUNCTION_PROPERTY "gradfunction"
 #define LINEARELASTICITY_REFERENCE_PROPERTY   "reference"
 #define LINEARELASTICITY_POISSON_PROPERTY     "poissonratio"
+#define FLORYHUGGINS_A_PROPERTY               "a"
+#define FLORYHUGGINS_B_PROPERTY               "b"
+#define FLORYHUGGINS_C_PROPERTY               "c"
+#define FLORYHUGGINS_PHI0_PROPERTY            "phi0"
 #define EQUIELEMENT_WEIGHT_PROPERTY           "weight"
 
 #define NEMATIC_KSPLAY_PROPERTY               "ksplay"
@@ -44,6 +48,7 @@
 #define VOLUMEENCLOSED_CLASSNAME       "VolumeEnclosed"
 #define SCALARPOTENTIAL_CLASSNAME      "ScalarPotential"
 #define LINEARELASTICITY_CLASSNAME     "LinearElasticity"
+#define FLORYHUGGINS_CLASSNAME         "FloryHuggins"
 #define EQUIELEMENT_CLASSNAME          "EquiElement"
 #define LINECURVATURESQ_CLASSNAME      "LineCurvatureSq"
 #define LINETORSIONSQ_CLASSNAME        "LineTorsionSq"
@@ -80,6 +85,12 @@
 
 #define EQUIELEMENT_ARGS               "EquiElArgs"
 #define EQUIELEMENT_ARGS_MSG           "EquiElement allows 'grade' and 'weight' as optional arguments."
+
+#define FLORYHUGGINS_ARGS               "FlryHggnsArgs"
+#define FLORYHUGGINS_ARGS_MSG           "FloryHuggins requires a reference mesh and allows 'grade', 'a', 'b', 'c' and 'phi0' as optional arguments."
+
+#define FLORYHUGGINS_PRP                "FlryHggnsPrp"
+#define FLORYHUGGINS_PRP_MSG            "FloryHuggins requires properties 'reference' to be a mesh, 'grade' to be an integer grade, 'a', 'b' and 'c' to be numbers and 'phi0' as either a number or a field."
 
 #define GRADSQ_ARGS                    "GradSqArgs"
 #define GRADSQ_ARGS_MSG                "GradSq requires a field as the argument."

@@ -32,7 +32,7 @@ print diff.norm()<1e-5
 var fg=lnn.fieldgradient(nn,m)
 for (x in fg) print x
 // expect: [ -0.275634 ]
-// expect: [ -0.275635 ]
+// expect: [ -0.275634 ]
 // expect: [ 0 ]
 // expect: [ 0.337521 ]
 // expect: [ -0.676777 ]

@@ -14,6 +14,8 @@
 #include "sparse.h"
 #include "matrix.h"
 
+#include <limits.h>
+
 void mesh_link(objectmesh *mesh, object *obj);
 
 DEFINE_VARRAY(elementid, elementid);
@@ -352,41 +354,41 @@ objectsparse *mesh_addgrade(objectmesh *mesh, grade g) {
     for (elementid id=0; id<el->ccs.ncols; id++) {
         /* Get the associated connectivity */
         if (!mesh_getconnectivity(el, id, &nel, &entries)) break;
-        
+
         // Initialize n-tuple and counters with [0,1,2...]
         elementid tuple[n]; // Store the tuple
         int counter[n], cmax[n]; // Counters
         for (unsigned int i=0; i<n; i++) {
             counter[i]=i; tuple[i]=entries[i]; cmax[i]=nel-n+i;
         }
-        
+
         if (!ntuplelist_find(&list, tuple)) { // Check if the first tuple exists
             ntuplelist_add(&list, tuple);
             for (unsigned int i=0; i<n; i++) sparsedok_insert(&new->dok, tuple[i], newid, MORPHO_NIL);
             newid++;
         }
-        
+
         /* Generate tuples */
         int k;
         while (counter[0]<cmax[0]) {
             counter[n-1]++; // Increment last counter
             for (k=n-1; k>=0 && counter[k]>cmax[k]; k--) counter[k-1]++; // Carry
             if (k<n-1) for (unsigned int i=k+1; i<n; i++) counter[i]=counter[i-1]+1;
-         
+
             // Set up tuple from counter
             for (unsigned int i=0; i<n; i++) tuple[i]=entries[counter[i]];
-            
+
             if (!ntuplelist_find(&list, tuple)) { // Check if we have the tuple
                 ntuplelist_add(&list, tuple);
                 for (unsigned int i=0; i<n; i++) sparsedok_insert(&new->dok, tuple[i], newid, MORPHO_NIL);
                 newid++;
             }
         }
-        
+
     }
 
     ntuplelist_clear(&list);
-    
+
     mesh_setconnectivityelement(mesh, 0, g, new);
     mesh_link(mesh, (object *) new);
     mesh_freezeconnectivity(mesh);

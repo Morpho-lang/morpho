@@ -119,7 +119,7 @@ assemblyrule assemblyrules[] ={
     
     { OP_RETURN, "return", "rB" }, // c literal
 
-    { OP_CALL, "closure", "rA, pB" }, // b prototype
+    { OP_CLOSURE, "closure", "rA, pB" }, // b prototype
     
     { OP_LUP, "lup", "rA, uB" }, // b 'u'
     { OP_SUP, "sup", "uA, ?B" }, // a 'u', b c|r

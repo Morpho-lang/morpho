@@ -1,0 +1,3 @@
+// Try to call an undefined function in global scope
+
+print isOdd(4) // expect error 'SymblUndf'

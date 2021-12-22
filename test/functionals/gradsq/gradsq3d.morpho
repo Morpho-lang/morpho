@@ -1,0 +1,44 @@
+// Test gradsq on a single tetrahedron
+import meshtools
+import shapeopt
+import plot
+
+var mb = MeshBuilder()
+mb.addvertex(Matrix([0,0,0]))
+mb.addvertex(Matrix([2,3,0]))
+mb.addvertex(Matrix([-1,2,1]))
+mb.addvertex(Matrix([1,4,5]))
+mb.addelement(3,[0,1,2,3])
+
+var m = mb.build()
+m.addgrade(1)
+
+var phi = Field(m, Matrix(2))
+phi[0]=Matrix([0,1])
+phi[1]=Matrix([8,2])
+phi[2]=Matrix([7/2,3])
+phi[3]=Matrix([23/2,4])
+
+var lel = GradSq(phi)
+
+print lel.integrand(m)
+// expect: [ 29.8611 ]
+
+print lel.total(m)
+// expect: 29.8611
+
+print lel.gradient(m)
+// expect: [ 10.6944 0.972271 -13.5417 1.87502 ]
+// expect: [ 1.9908 -4.0278 5.3241 -3.28704 ]
+// expect: [ 7.96296 -8.47221 -6.13422 6.64349 ]
+
+var grd=lel.fieldgradient(m, phi)
+for (x in grd) print x
+// expect: [ -6.66663 ]
+// expect: [ -3.88891 ]
+// expect: [ 5.00007 ]
+// expect: [ 0 ]
+// expect: [ 0.833325 ]
+// expect: [ 4.44448 ]
+// expect: [ 0.833325 ]
+// expect: [ -0.555556 ]

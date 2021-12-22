@@ -2087,6 +2087,7 @@ MORPHO_ENDCLASS
 
 typedef struct {
     objectfield *field;
+    grade grade;
 } fieldref;
 
 /* ----------------------------------------------
@@ -2153,16 +2154,70 @@ bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *
     return true;
 }
 
+/** Evaluates the gradient of a field quantity in 3D
+ @param[in] mesh - object to use
+ @param[in] field - field to compute gradient of
+ @param[in] nv - number of vertices
+ @param[in] vid - vertex ids
+ @param[out] out - should be field->psize * mesh->dim units of storage */
+bool gradsq_evaluategradient3d(objectmesh *mesh, objectfield *field, int nv, int *vid, double *out) {
+    double *f[nv]; // Field value lists
+    double *x[nv]; // Vertex coordinates
+    double xarray[nv*mesh->dim]; // Vertex coordinates
+    double xtarray[nv*mesh->dim]; // Vertex coordinates
+    unsigned int nentries=0;
+
+    // Get field values and vertex coordinates
+    for (unsigned int i=0; i<nv; i++) {
+        if (!mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i])) return false;
+        if (!field_getelementaslist(field, MESH_GRADE_VERTEX, vid[i], 0, &nentries, &f[i])) return false;
+    }
+
+    // Build a matrix such that the columns are x_i - x_0
+    for (unsigned int i=1; i<nv; i++) {
+        functional_vecsub(mesh->dim, x[i], x[0], &xarray[(i-1)*mesh->dim]);
+    }
+    
+    for (unsigned int i=0; i<mesh->dim*nentries; i++) out[i]=0;
+    
+    objectmatrix M = MORPHO_STATICMATRIX(xarray, mesh->dim, mesh->dim);
+    objectmatrix Mt = MORPHO_STATICMATRIX(xtarray, mesh->dim, mesh->dim);
+    matrix_transpose(&M, &Mt);
+    
+    double farray[nentries*mesh->dim]; // Field elements
+    objectmatrix frhs = MORPHO_STATICMATRIX(farray, mesh->dim, nentries);
+    objectmatrix grad = MORPHO_STATICMATRIX(out, mesh->dim, nentries);
+    
+    // Loop over elements of the field
+    for (unsigned int i=0; i<nentries; i++) {
+        // Copy across the field values to form the rhs
+        for (unsigned int j=0; j<mesh->dim; j++) farray[i*mesh->dim+j] = f[j+1][i]-f[0][i];
+    }
+    
+    // Solve to obtain the gradient of each element
+    matrix_divs(&Mt, &frhs, &grad);
+    
+    return true;
+}
+
 /** Prepares the gradsq reference */
 bool gradsq_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, fieldref *ref) {
-    bool success=false;
-    value field=MORPHO_NIL;
-
+    bool success=false, grdset=false;
+    value field=MORPHO_NIL, grd=MORPHO_NIL;
+    
     if (objectinstance_getproperty(self, functional_fieldproperty, &field) &&
         MORPHO_ISFIELD(field)) {
         ref->field=MORPHO_GETFIELD(field);
         success=true;
     }
+    
+    if (objectinstance_getproperty(self, functional_gradeproperty, &grd) &&
+        MORPHO_ISINTEGER(grd)) {
+        ref->grade=MORPHO_GETINTEGERVALUE(grd);
+        if (ref->grade>0) grdset=true;
+    }
+    if (!grdset) ref->grade=mesh_maxgrade(mesh);
+    
     return success;
 }
 
@@ -2172,10 +2227,16 @@ bool gradsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
     double size=0; // Length area or volume of the element
     double grad[eref->field->psize*mesh->dim];
 
-    if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &size)) return false;
+    if (!functional_elementsize(v, mesh, eref->grade, id, nv, vid, &size)) return false;
 
-    if (!gradsq_evaluategradient(mesh, eref->field, nv, vid, grad)) return false;
-
+    if (eref->grade==2) {
+        if (!gradsq_evaluategradient(mesh, eref->field, nv, vid, grad)) return false;
+    } else if (eref->grade==3) {
+        if (!gradsq_evaluategradient3d(mesh, eref->field, nv, vid, grad)) return false;
+    } else {
+        return false;
+    }
+    
     double gradnrm=functional_vecnorm(eref->field->psize*mesh->dim, grad);
     *out = gradnrm*gradnrm*size;
 
@@ -2186,18 +2247,28 @@ bool gradsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
 value GradSq_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
 
-    if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
+    if (nargs>0 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
         objectinstance_setproperty(self, functional_fieldproperty, MORPHO_GETARG(args, 0));
-    } else morpho_runtimeerror(v, VM_INVALIDARGS);
+    } else {
+        morpho_runtimeerror(v, VM_INVALIDARGS);
+        return MORPHO_FALSE;
+    }
+    
+    /* Second (optional) argument is the grade to act on */
+    if (nargs>1) {
+        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 1))) {
+            objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), functional_gradeproperty, MORPHO_GETARG(args, 1));
+        }
+    }
 
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD(GradSq, integrand, MESH_GRADE_AREA, fieldref, gradsq_prepareref, functional_mapintegrand, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(GradSq, integrand, (ref.grade), fieldref, gradsq_prepareref, functional_mapintegrand, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(GradSq, total, MESH_GRADE_AREA, fieldref, gradsq_prepareref, functional_sumintegrand, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(GradSq, total, (ref.grade), fieldref, gradsq_prepareref, functional_sumintegrand, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(GradSq, gradient, MESH_GRADE_AREA, fieldref, gradsq_prepareref, functional_mapnumericalgradient, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_ADD);
+FUNCTIONAL_METHOD(GradSq, gradient, (ref.grade), fieldref, gradsq_prepareref, functional_mapnumericalgradient, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_ADD);
 
 value GradSq_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
@@ -2206,7 +2277,7 @@ value GradSq_fieldgradient(vm *v, int nargs, value *args) {
 
     if (functional_validateargs(v, nargs, args, &info)) {
         if (gradsq_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_AREA, info.sel, &ref)) {
-            info.g = MESH_GRADE_AREA;
+            info.g = ref.grade;
             info.field = ref.field;
             info.integrand = gradsq_integrand;
             info.ref = &ref;
@@ -2238,12 +2309,13 @@ typedef struct {
     double ksplay,ktwist,kbend,pitch;
     bool haspitch;
     objectfield *field;
+    grade grade;
 } nematicref;
 
 /** Prepares the nematic reference */
-bool nematic_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel,  nematicref *ref) {
-    bool success=false;
-    value field=MORPHO_NIL;
+bool nematic_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, nematicref *ref) {
+    bool success=false, grdset=false;
+    value field=MORPHO_NIL, grd=MORPHO_NIL;
     value val=MORPHO_NIL;
     ref->ksplay=1.0; ref->ktwist=1.0; ref->kbend=1.0; ref->pitch=0.0;
     ref->haspitch=false;
@@ -2266,6 +2338,14 @@ bool nematic_prepareref(objectinstance *self, objectmesh *mesh, grade g, objects
         morpho_valuetofloat(val, &ref->pitch);
         ref->haspitch=true;
     }
+    
+    if (objectinstance_getproperty(self, functional_gradeproperty, &grd) &&
+        MORPHO_ISINTEGER(grd)) {
+        ref->grade=MORPHO_GETINTEGERVALUE(grd);
+        if (ref->grade>0) grdset=true;
+    }
+    if (!grdset) ref->grade=mesh_maxgrade(mesh);
+    
     return success;
 }
 
@@ -2279,6 +2359,26 @@ double nematic_bcint1(double *f) {
     return (f[0] + f[1] + f[2])/3;
 }
 
+/* Integrates a linear vector function with values at vertices f[0]...f[n]
+   Works for dimensions 1-3 at least */
+double nematic_bcintf(unsigned int n, double *f) {
+    double sum = 0;
+    for (unsigned int i=0; i<n; i++) sum+=f[i];
+    return sum/n;
+}
+
+/* Integrates a product of two linear functions with values at vertices
+   f[0]...f[n] and g[0]...g[n].
+   Works for dimensions 1-3 at least */
+double nematic_bcintfg(unsigned int n, double *f, double *g) {
+    double sum = 0;
+    for (unsigned int i=0; i<n; i++) {
+        for (unsigned int j=0; j<n; j++) sum+=f[i]*g[j];
+        sum+=f[i]*g[i];
+    }
+    return sum/(n*(n+1));
+}
+
 /** Calculate the nematic energy */
 bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     nematicref *eref = ref;
@@ -2286,7 +2386,7 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     double gradnn[eref->field->psize*mesh->dim];
     double divnn, curlnn[mesh->dim];
 
-    if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &size)) return false;
+    if (!functional_elementsize(v, mesh, eref->grade, id, nv, vid, &size)) return false;
 
     // Get nematic director components
     double *nn[nv]; // Field value lists
@@ -2296,7 +2396,13 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     }
 
     // Evaluate gradients of the director
-    if (!gradsq_evaluategradient(mesh, eref->field, nv, vid, gradnn)) return false;
+    if (eref->grade==2) {
+        if (!gradsq_evaluategradient(mesh, eref->field, nv, vid, gradnn)) return
+            false;
+    } else if (eref->grade==3) {
+        if (!gradsq_evaluategradient3d(mesh, eref->field, nv, vid, gradnn)) return
+            false;
+    }
     // Output of this is the matrix:
     // [ nx,x ny,x nz,x ] [ 0 3 6 ] <- indices
     // [ nx,y ny,y nz,y ] [ 1 4 7 ]
@@ -2321,12 +2427,12 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     for (unsigned int i=0; i<nv; i++)
         for (unsigned int j=0; j<mesh->dim; j++) nnt[j][i]=nn[i][j];
 
-    double integrals[] = {  nematic_bcint(nnt[0], nnt[0]),
-                            nematic_bcint(nnt[1], nnt[1]),
-                            nematic_bcint(nnt[2], nnt[2]),
-                            nematic_bcint(nnt[0], nnt[1]),
-                            nematic_bcint(nnt[1], nnt[2]),
-                            nematic_bcint(nnt[2], nnt[0])
+    double integrals[] = {  nematic_bcintfg(nv, nnt[0], nnt[0]),
+                            nematic_bcintfg(nv, nnt[1], nnt[1]),
+                            nematic_bcintfg(nv, nnt[2], nnt[2]),
+                            nematic_bcintfg(nv, nnt[0], nnt[1]),
+                            nematic_bcintfg(nv, nnt[1], nnt[2]),
+                            nematic_bcintfg(nv, nnt[2], nnt[0])
     };
 
     /* Now we can calculate the components of splay, twist and bend */
@@ -2344,7 +2450,7 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     if (eref->haspitch) {
         /* Cholesteric terms: 0.5 * k22 * [- 2 q (cx <nx> + cy <ny> + cz <nz>) + q^2] */
         for (unsigned i=0; i<3; i++) {
-            chol += -2*curlnn[i]*nematic_bcint1(nnt[i])*eref->pitch;
+            chol += -2*curlnn[i]*nematic_bcintf(nv, nnt[i])*eref->pitch;
         }
         chol += (eref->pitch*eref->pitch);
         chol *= 0.5*eref->ktwist*size;
@@ -2383,11 +2489,11 @@ value Nematic_init(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD(Nematic, integrand, MESH_GRADE_AREA, nematicref, nematic_prepareref, functional_mapintegrand, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(Nematic, integrand, (ref.grade), nematicref, nematic_prepareref, functional_mapintegrand, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(Nematic, total, MESH_GRADE_AREA, nematicref, nematic_prepareref, functional_sumintegrand, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(Nematic, total, (ref.grade), nematicref, nematic_prepareref, functional_sumintegrand, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(Nematic, gradient, MESH_GRADE_AREA, nematicref, nematic_prepareref, functional_mapnumericalgradient, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(Nematic, gradient, (ref.grade), nematicref, nematic_prepareref, functional_mapnumericalgradient, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
 
 value Nematic_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
@@ -2396,7 +2502,7 @@ value Nematic_fieldgradient(vm *v, int nargs, value *args) {
 
     if (functional_validateargs(v, nargs, args, &info)) {
         if (nematic_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_AREA, info.sel, &ref)) {
-            info.g=MESH_GRADE_AREA;
+            info.g=ref.grade;
             info.integrand=nematic_integrand;
             info.ref=&ref;
             functional_mapnumericalfieldgradient(v, &info, &out);
@@ -2421,13 +2527,14 @@ MORPHO_ENDCLASS
 typedef struct {
     objectfield *director;
     value field;
+    grade grade;
 } nematicelectricref;
 
 /** Prepares the nematicelectric reference */
 bool nematicelectric_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, nematicelectricref *ref) {
-    bool success=false;
+    bool success=false, grdset=false;
     ref->field=MORPHO_NIL;
-    value fieldlist=MORPHO_NIL;
+    value fieldlist=MORPHO_NIL, grd=MORPHO_NIL;
 
     if (objectinstance_getproperty(self, functional_fieldproperty, &fieldlist) &&
         MORPHO_ISLIST(fieldlist)) {
@@ -2441,6 +2548,13 @@ bool nematicelectric_prepareref(objectinstance *self, objectmesh *mesh, grade g,
         if (MORPHO_ISFIELD(ref->field) || MORPHO_ISMATRIX(ref->field)) success=true;
     }
 
+    if (objectinstance_getproperty(self, functional_gradeproperty, &grd) &&
+        MORPHO_ISINTEGER(grd)) {
+        ref->grade=MORPHO_GETINTEGERVALUE(grd);
+        if (ref->grade>0) grdset=true;
+    }
+    if (!grdset) ref->grade=mesh_maxgrade(mesh);
+    
     return success;
 }
 
@@ -2449,7 +2563,7 @@ bool nematicelectric_integrand(vm *v, objectmesh *mesh, elementid id, int nv, in
     nematicelectricref *eref = ref;
     double size=0; // Length area or volume of the element
 
-    if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &size)) return false;
+    if (!functional_elementsize(v, mesh, eref->grade, id, nv, vid, &size)) return false;
 
     // Get nematic director components
     double *nn[nv]; // Field value lists
@@ -2461,7 +2575,11 @@ bool nematicelectric_integrand(vm *v, objectmesh *mesh, elementid id, int nv, in
     // The electric field ends up being constant over the element
     double ee[mesh->dim];
     if (MORPHO_ISFIELD(eref->field)) {
-        if (!gradsq_evaluategradient(mesh, MORPHO_GETFIELD(eref->field), nv, vid, ee)) return false;
+        if (eref->grade==2) {
+            if (!gradsq_evaluategradient(mesh, MORPHO_GETFIELD(eref->field), nv, vid, ee)) return false;
+        } else if (eref->grade==3) {
+            if (!gradsq_evaluategradient3d(mesh, MORPHO_GETFIELD(eref->field), nv, vid, ee)) return false;
+        }
     }
 
     /* Calculate integrals of nx^2, ny^2, nz^2, nx*ny, ny*nz, and nz*nx over the element */
@@ -2470,12 +2588,12 @@ bool nematicelectric_integrand(vm *v, objectmesh *mesh, elementid id, int nv, in
         for (unsigned int j=0; j<mesh->dim; j++) nnt[j][i]=nn[i][j];
 
     /* Calculate integral (n.e)^2 using the above results */
-    double total = ee[0]*ee[0]*nematic_bcint(nnt[0], nnt[0])+
-                   ee[1]*ee[1]*nematic_bcint(nnt[1], nnt[1])+
-                   ee[2]*ee[2]*nematic_bcint(nnt[2], nnt[2])+
-                   2*ee[0]*ee[1]*nematic_bcint(nnt[0], nnt[1])+
-                   2*ee[1]*ee[2]*nematic_bcint(nnt[1], nnt[2])+
-                   2*ee[2]*ee[0]*nematic_bcint(nnt[2], nnt[0]);
+    double total = ee[0]*ee[0]*nematic_bcintfg(nv, nnt[0], nnt[0])+
+                   ee[1]*ee[1]*nematic_bcintfg(nv, nnt[1], nnt[1])+
+                   ee[2]*ee[2]*nematic_bcintfg(nv, nnt[2], nnt[2])+
+                   2*ee[0]*ee[1]*nematic_bcintfg(nv, nnt[0], nnt[1])+
+                   2*ee[1]*ee[2]*nematic_bcintfg(nv, nnt[1], nnt[2])+
+                   2*ee[2]*ee[0]*nematic_bcintfg(nv, nnt[2], nnt[0]);
 
     *out = size*total;
 
@@ -2499,11 +2617,11 @@ value NematicElectric_init(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD(NematicElectric, integrand, MESH_GRADE_AREA, nematicelectricref, nematicelectric_prepareref, functional_mapintegrand, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(NematicElectric, integrand, (ref.grade), nematicelectricref, nematicelectric_prepareref, functional_mapintegrand, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(NematicElectric, total, MESH_GRADE_AREA, nematicelectricref, nematicelectric_prepareref, functional_sumintegrand, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(NematicElectric, total, (ref.grade), nematicelectricref, nematicelectric_prepareref, functional_sumintegrand, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(NematicElectric, gradient, MESH_GRADE_AREA, nematicelectricref, nematicelectric_prepareref, functional_mapnumericalgradient, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(NematicElectric, gradient, (ref.grade), nematicelectricref, nematicelectric_prepareref, functional_mapnumericalgradient, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
 
 value NematicElectric_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
@@ -2512,7 +2630,7 @@ value NematicElectric_fieldgradient(vm *v, int nargs, value *args) {
 
     if (functional_validateargs(v, nargs, args, &info)) {
         if (nematicelectric_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_AREA, info.sel, &ref)) {
-            info.g=MESH_GRADE_AREA;
+            info.g=ref.grade;
             info.integrand=nematicelectric_integrand;
             info.ref=&ref;
             functional_mapnumericalfieldgradient(v, &info, &out);
@@ -2592,6 +2710,12 @@ value tangent;
 
 static value functional_tangent(vm *v, int nargs, value *args) {
     return tangent;
+}
+
+value norml;
+
+static value functional_normal(vm *v, int nargs, value *args) {
+    return norml;
 }
 
 /* ----------------------------------------------
@@ -2770,6 +2894,16 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
         mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
     }
 
+    /* Set up normal vector... (temporary code here) */
+    double s0[mesh->dim], s1[mesh->dim], normaldata[mesh->dim], nnorm=0.0;
+    functional_vecsub(mesh->dim, x[1], x[0], s0);
+    functional_vecsub(mesh->dim, x[2], x[1], s1);
+    functional_veccross(s0, s1, normaldata);
+    nnorm=functional_vecnorm(mesh->dim, normaldata);
+    if (fabs(nnorm)>MORPHO_EPS) functional_vecscale(mesh->dim, 1.0/nnorm, normaldata, normaldata);
+    objectmatrix mnormal = MORPHO_STATICMATRIX(normaldata, mesh->dim, 1);
+    norml = MORPHO_OBJECT(&mnormal);
+    
     value q0[iref->nfields+1], q1[iref->nfields+1], q2[iref->nfields+1];
     value *q[3] = { q0, q1, q2 };
     for (unsigned int k=0; k<iref->nfields; k++) {
@@ -2864,6 +2998,7 @@ void functional_initialize(void) {
     builtin_addclass(NEMATICELECTRIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(NematicElectric), objclass);
 
     builtin_addfunction(TANGENT_FUNCTION, functional_tangent, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(NORMAL_FUNCTION, functional_normal, BUILTIN_FLAGSEMPTY);
 
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
     morpho_defineerror(FUNC_ELNTFND, ERROR_HALT, FUNC_ELNTFND_MSG);

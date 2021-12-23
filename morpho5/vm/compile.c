@@ -43,6 +43,19 @@ static void compiler_error(compiler *c, syntaxtreenode *node, errorid id, ... ) 
     va_end(args);
 }
 
+/** @brief Catches a compiler error, resetting the errror state to none.
+ * @param c        the compiler
+ * @param id       error id to match
+ * @returns true if the error was matched
+ */
+static bool compiler_catch(compiler *c, errorid id) {
+    if (morpho_matcherror(&c->err, id)) {
+        error_clear(&c->err);
+        return true;
+    }
+    return false;
+}
+
 /** Gets a node given an index */
 static inline syntaxtreenode *compiler_getnode(compiler *c, syntaxtreeindx indx) {
     if (indx==SYNTAXTREE_UNCONNECTED) return NULL;
@@ -85,6 +98,7 @@ static void compiler_setinstruction(compiler *c, instructionindx indx,  instruct
  * ------------------------------------------- */
 
 DEFINE_VARRAY(registeralloc, registeralloc);
+DEFINE_VARRAY(forwardreference, forwardreference);
 
 /** Initializes a functionstate structure */
 static void compiler_functionstateinit(functionstate *state) {
@@ -96,6 +110,7 @@ static void compiler_functionstateinit(functionstate *state) {
     state->type=FUNCTION;
     state->varg=REGISTER_UNALLOCATED;
     varray_registerallocinit(&state->registers);
+    varray_forwardreferenceinit(&state->forwardref);
     varray_upvalueinit(&state->upvalues);
 }
 
@@ -106,6 +121,7 @@ static void compiler_functionstateclear(functionstate *state) {
     state->loopdepth=0;
     state->nreg=0;
     varray_registerallocclear(&state->registers);
+    varray_forwardreferenceclear(&state->forwardref);
     varray_upvalueclear(&state->upvalues);
 }
 
@@ -128,6 +144,12 @@ void compiler_fstackclear(compiler *c) {
 /** Gets the current functionstate structure */
 static inline functionstate *compiler_currentfunctionstate(compiler *c) {
     return c->fstack+c->fstackp;
+}
+
+/** The parent functionstate */
+static inline functionstate *compiler_parentfunctionstate(compiler *c) {
+    if (c->fstackp==0) return NULL;
+    return c->fstack+c->fstackp-1;
 }
 
 /** Detect if we're currently compiling an initializer */
@@ -179,6 +201,14 @@ static varray_value *compiler_getcurrentconstanttable(compiler *c) {
     }
     
     return &f->konst;
+}
+
+/** Gets constant i from the current constant table */
+static value compiler_getconstant(compiler *c, unsigned int i) {
+    value ret = MORPHO_NIL;
+    objectfunction *f = compiler_getcurrentfunction(c);
+    if (f && i<f->konst.count) ret = f->konst.data[i];
+    return ret;
 }
 
 /** Gets the most recently compiled function */
@@ -289,8 +319,7 @@ static bool compiler_inloop(compiler *c) {
  * ------------------------------------------- */
 
 /** Finds a free register in the current function state and claims it */
-static registerindx compiler_regalloc(compiler *c, value symbol) {
-    functionstate *f = compiler_currentfunctionstate(c);
+static registerindx compiler_regallocwithstate(compiler *c, functionstate *f, value symbol) {
     registeralloc r = (registeralloc) {.isallocated=true, .iscaptured=false, .scopedepth=f->scopedepth, .symbol=symbol};
     registerindx i = REGISTER_UNALLOCATED;
     
@@ -324,6 +353,12 @@ regalloc_end:
     if (!MORPHO_ISNIL(symbol)) debug_setreg(&c->out->annotations, i, symbol);
     
     return i;
+}
+
+static registerindx compiler_regalloc(compiler *c, value symbol) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    
+    return compiler_regallocwithstate(c, f, symbol);
 }
 
 /** Sets the symbol associated with a register */
@@ -558,7 +593,7 @@ void compiler_endscope(compiler *c) {
     f->scopedepth--;
 }
 
-/** Decrements the scope counter in the current functionstate */
+/** Gets the scope counter in the current functionstate */
 unsigned int compiler_currentscope(compiler *c) {
     functionstate *f=compiler_currentfunctionstate(c);
     return f->scopedepth;
@@ -1001,6 +1036,71 @@ static registerindx compiler_resolveself(compiler *c) {
     }
     
     return indx;
+}
+
+/* ------------------------------------------
+ * Forward references
+ * ------------------------------------------- */
+
+/** Adds a forward reference
+ * @param[in] c            the compiler
+ * @param[in] symbol symbol corresponding to forward reference */
+static codeinfo compiler_addforwardreference(compiler *c, syntaxtreenode *node, value symbol) {
+    codeinfo ret = CODEINFO_EMPTY;
+    functionstate *fparent = compiler_parentfunctionstate(c);
+    
+    if (!fparent) { // If in global scope, generate symbol not defined
+        char *label = MORPHO_GETCSTRING(node->content);
+        compiler_error(c, node, COMPILE_SYMBOLNOTDEFINED, label);
+        return ret;
+    }
+    
+    forwardreference ref = { .symbol = symbol,
+                             .node = node,
+                             .returntype=REGISTER,
+                             .dest=compiler_regallocwithstate(c, fparent, symbol),
+                             .scopedepth = fparent->scopedepth
+    };
+    
+    ret.returntype = UPVALUE;
+    ret.dest=compiler_addupvalue(fparent, true, ref.dest);
+    
+    varray_forwardreferencewrite(&fparent->forwardref, ref);
+    
+    return ret;
+}
+
+/** Checks if a function definition resolves a forward reference */
+static bool compiler_resolveforwardreference(compiler *c, objectfunction *func, codeinfo *out) {
+    bool success=false;
+    functionstate *f = compiler_currentfunctionstate(c);
+    
+    for (unsigned int i=0; i<f->forwardref.count; i++) {
+        forwardreference *ref = f->forwardref.data+i;
+        if (MORPHO_ISEQUAL(func->name, ref->symbol) &&
+            ref->scopedepth==compiler_currentscope(c)) {
+            out->returntype=ref->returntype;
+            out->dest=ref->dest;
+            ref->symbol=MORPHO_NIL; // Forward reference was successfully resolved
+            success=true;
+        }
+    }
+    
+    return success;
+}
+
+/** Check for outstanding forward references  */
+bool compiler_checkoutstandingforwardreference(compiler *c) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    
+    for (unsigned int i=0; i<f->forwardref.count; i++) {
+        forwardreference *ref = f->forwardref.data+i;
+        if (!MORPHO_ISNIL(ref->symbol)) {
+            compiler_error(c, ref->node, COMPILE_FORWARDREF, MORPHO_GETCSTRING(ref->symbol));
+            return false;
+        }
+    }
+    return true;
 }
 
 /* ------------------------------------------
@@ -1561,10 +1661,14 @@ static codeinfo compiler_print(compiler *c, syntaxtreenode *node, registerindx r
  */
 static codeinfo compiler_if(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
+    bool unreachable=false;
     
     /* The left node is the condition; compile it already */
     codeinfo cond = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
     ninstructions+=cond.ninstructions;
+    
+    if (CODEINFO_ISCONSTANT(cond) &&
+        MORPHO_ISFALSE(compiler_getconstant(c, cond.dest)) ) unreachable=true;
     
     /* And make sure it's in a register */
     if (!CODEINFO_ISREGISTER(cond)) {
@@ -1578,7 +1682,7 @@ static codeinfo compiler_if(compiler *c, syntaxtreenode *node, registerindx reqo
     syntaxtreenode *right = compiler_getnode(c, node->right);
     
     /* Hold the position of the then and else statements */
-    codeinfo then, els=CODEINFO_EMPTY;
+    codeinfo then=CODEINFO_EMPTY, els=CODEINFO_EMPTY;
     
     /* Remember where the if conditional branch is located */
     instructionindx ifindx=REGISTER_UNALLOCATED, elsindx=REGISTER_UNALLOCATED;
@@ -1592,7 +1696,9 @@ static codeinfo compiler_if(compiler *c, syntaxtreenode *node, registerindx reqo
     
     if (right->type==NODE_THEN) {
         /* If the right node is a THEN node, the then/else statements are located off it. */
-        then = compiler_nodetobytecode(c, right->left, REGISTER_UNALLOCATED);
+        if (!unreachable) {
+            then = compiler_nodetobytecode(c, right->left, REGISTER_UNALLOCATED);
+        }
         ninstructions+=then.ninstructions;
         
         /* Create a blank instruction */
@@ -1605,7 +1711,9 @@ static codeinfo compiler_if(compiler *c, syntaxtreenode *node, registerindx reqo
         ninstructions+=els.ninstructions;
     } else {
         /* Otherwise, the then statement is just the right operand */
-        then = compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
+        if (!unreachable) {
+            then = compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
+        }
         ninstructions+=then.ninstructions;
     }
     
@@ -2154,7 +2262,10 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
             fvar.dest=compiler_regtemp(c, reqout);
             fvar.returntype=REGISTER;
         } else {
-            fvar=compiler_addvariable(c, node, node->content);
+            /* Check if this resolves a forward reference */
+            if (!compiler_resolveforwardreference(c, func, &fvar)) {
+                fvar=compiler_addvariable(c, node, node->content);
+            }
         }
         reg=fvar.dest;
         
@@ -2272,6 +2383,8 @@ static bool compiler_isinvocation(compiler *c, syntaxtreenode *call) {
 
 /** Compiles a function call */
 static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx reqout) {
+    unsigned int ninstructions=0;
+    
     if (compiler_isinvocation(c, node)) {
         return compiler_invoke(c, node, reqout);
     }
@@ -2281,7 +2394,12 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     
     /* Compile the function selector */
     codeinfo func = compiler_nodetobytecode(c, node->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
-    unsigned int ninstructions=func.ninstructions;
+    // Detect possible forward reference
+    if (compiler_catch(c, COMPILE_SYMBOLNOTDEFINED)) {
+        syntaxtreenode *symbol=compiler_getnode(c, node->left);
+        func=compiler_addforwardreference(c, symbol, symbol->content);
+    }
+    ninstructions+=func.ninstructions;
     
     /* Move selector into a temporary register unless we already have one
        that's at the top of the stack */
@@ -2890,6 +3008,7 @@ static bool compiler_tobytecode(compiler *c, program *out) {
         codeinfo info=compiler_nodetobytecode(c, c->tree.entry, REGISTER_UNALLOCATED);
         compiler_releaseoperand(c, info);
     }
+    compiler_checkoutstandingforwardreference(c);
     if (c->tree.entry>=0) compiler_addinstruction(c, ENCODE_BYTE(OP_END), syntaxtree_nodefromindx(&c->tree, c->tree.entry));
 
     return true;
@@ -3241,6 +3360,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_BRKOTSDLP, ERROR_COMPILE, COMPILE_BRKOTSDLP_MSG);
     morpho_defineerror(COMPILE_CNTOTSDLP, ERROR_COMPILE, COMPILE_CNTOTSDLP_MSG);
     morpho_defineerror(COMPILE_OPTPRMDFLT, ERROR_COMPILE, COMPILE_OPTPRMDFLT_MSG);
+    morpho_defineerror(COMPILE_FORWARDREF, ERROR_COMPILE, COMPILE_FORWARDREF_MSG);
 }
 
 /** Finalizes the compiler */

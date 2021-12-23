@@ -81,6 +81,9 @@
 #define COMPILE_OPTPRMDFLT                "OptPrmDflt"
 #define COMPILE_OPTPRMDFLT_MSG            "Optional parameter default values must be constants."
 
+#define COMPILE_FORWARDREF                "UnrslvdFrwdRf"
+#define COMPILE_FORWARDREF_MSG            "Function '%s' is called but not defined in the same scope."
+
 /* **********************************************************************
  * Compiler typedefs
  * ********************************************************************** */
@@ -117,6 +120,46 @@ typedef struct {
 DECLARE_VARRAY(registeralloc, registeralloc)
 
 /* -------------------------------------------------------
+ * Codeinfo
+ * ------------------------------------------------------- */
+
+typedef enum {
+    REGISTER,
+    CONSTANT,
+    UPVALUE,
+    GLOBAL
+} returntype;
+
+typedef struct {
+    returntype returntype;
+    registerindx dest;
+    unsigned int ninstructions;
+} codeinfo;
+
+#define CODEINFO_ISREGISTER(info) (info.returntype==REGISTER)
+#define CODEINFO_ISCONSTANT(info) (info.returntype==CONSTANT)
+#define CODEINFO_ISSHORTCONSTANT(info) (info.returntype==CONSTANT && info.dest<MORPHO_MAXREGISTERS)
+#define CODEINFO_ISUPVALUE(info) (info.returntype==UPVALUE)
+#define CODEINFO_ISGLOBAL(info) (info.returntype==GLOBAL)
+
+#define CODEINFO(c, d, n) ((codeinfo) { .returntype=(c), .dest=(d), .ninstructions=(n)})
+#define CODEINFO_EMPTY CODEINFO(REGISTER, REGISTER_UNALLOCATED, 0)
+
+/* -------------------------------------------------------
+ * Forward function references
+ * ------------------------------------------------------- */
+
+typedef struct {
+    value symbol; /** Symbol associated with the reference */
+    syntaxtreenode *node; /** Syntax tree node associated with the forward reference */
+    returntype returntype; /** Return type */
+    registerindx dest; /** Index into constant table */
+    unsigned int scopedepth; /** Scope depth at which the function with the forward reference occurred */
+} forwardreference;
+
+DECLARE_VARRAY(forwardreference, forwardreference)
+
+/* -------------------------------------------------------
  * Function types
  * ------------------------------------------------------- */
 
@@ -137,12 +180,14 @@ typedef struct {
     functiontype type;
     varray_registeralloc registers;
     varray_upvalue upvalues;
-    registerindx varg; 
+    varray_forwardreference forwardref;
+    registerindx varg;
     unsigned int nreg; /* Largest number of registers used */
     unsigned int scopedepth;
     unsigned int loopdepth; /* Count number of nesting depths of a loop */
     bool inargs; /* Set while compiling function calls to ensure allocations are at the top of the stack */
 } functionstate;
+
 
 /* -------------------------------------------------------
  * Lists
@@ -196,26 +241,6 @@ typedef struct scompiler {
 /* -------------------------------------------------------
  * AST nodes are now compiled by the bytecode compiler
  * ------------------------------------------------------- */
-
-typedef struct {
-    enum {
-        REGISTER,
-        CONSTANT,
-        UPVALUE,
-        GLOBAL
-    } returntype;
-    registerindx dest;
-    unsigned int ninstructions;
-} codeinfo;
-
-#define CODEINFO_ISREGISTER(info) (info.returntype==REGISTER)
-#define CODEINFO_ISCONSTANT(info) (info.returntype==CONSTANT)
-#define CODEINFO_ISSHORTCONSTANT(info) (info.returntype==CONSTANT && info.dest<MORPHO_MAXREGISTERS)
-#define CODEINFO_ISUPVALUE(info) (info.returntype==UPVALUE)
-#define CODEINFO_ISGLOBAL(info) (info.returntype==GLOBAL)
-
-#define CODEINFO(c, d, n) ((codeinfo) { .returntype=(c), .dest=(d), .ninstructions=(n)})
-#define CODEINFO_EMPTY CODEINFO(REGISTER, REGISTER_UNALLOCATED, 0)
 
 /** A compiler_nodefn takes a syntax tree node and compiles it to bytecode */
 typedef codeinfo (*compiler_nodefn) (compiler *c, syntaxtreenode *node, registerindx reg);

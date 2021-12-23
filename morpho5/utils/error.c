@@ -132,6 +132,13 @@ errorid morpho_geterrorid(error *err) {
     return err->id;
 }
 
+/** Tests if an error struct is showing error id
+ * @returns true if the match succeeds and false otherwise */
+bool morpho_matcherror(error *err, errorid id) {
+    if (err->cat==ERROR_NONE) return false; 
+    return (strcmp(err->id, id)==0);
+}
+
 /* **********************************************************************
 * Unreachable code
 * ********************************************************************** */

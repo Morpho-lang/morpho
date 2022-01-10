@@ -21,20 +21,38 @@ class POVRaytracer {
     else return self.vector(c.rgb(0))
   }
 
+  optionalarg(item){
+    
+    var arg = ""
+  
+    if(isnil(item.filter) && !isnil(item.transmit)){
+      arg = "transmit ${item.transmit}"
+    }
+    else if(!isnil(item.filter) && isnil(item.transmit)){
+      arg = "filter ${item.filter}"
+    }
+    else if(!isnil(item.filter) && !isnil(item.transmit)){
+      arg = "filter ${item.filter} transmit ${item.transmit}"
+    }
+    return arg
+  }
+
   visitsphere(item, out) {
+    var arg = self.optionalarg(item)
     out.write("sphere {"+
               " ${self.vector(item.center)}, ${item.r}"+
               " texture { "+
-              " pigment { rgb ${self.color(item.color)}"+
+              " pigment { rgb ${self.color(item.color)} ${arg}"+
               "} } }")
   }
 
   visitcylinder(item, out) {
     var radius = 0.5*(item.end - item.start).norm()*item.aspectratio
+    var arg = self.optionalarg(item)
     out.write("cylinder {"+
               " ${self.vector(item.start)}, ${self.vector(item.end)}, ${radius}"+
               " texture { "+
-              " pigment { rgb ${self.color(item.color)} "+
+              " pigment { rgb ${self.color(item.color)} ${arg}"+
               "} } }")
   }
 
@@ -42,15 +60,16 @@ class POVRaytracer {
     var dx = (item.end - item.start).norm()
     var radius = 0.5*dx*item.aspectratio
     var cylend = item.start + (item.end - item.start)*(1-item.aspectratio)
+    var arg = self.optionalarg(item)
     out.write("cylinder {"+
               " ${self.vector(item.start)}, ${self.vector(cylend)}, ${radius}"+
               " texture { "+
-              " pigment { rgb ${self.color(item.color)} "+
+              " pigment { rgb ${self.color(item.color)} ${arg} "+
               "} } }")
     out.write("cone {"+
               " ${self.vector(cylend)}, ${2*radius}, ${self.vector(item.end)}, 0"+
               " texture { "+
-              " pigment { rgb ${self.color(item.color)} "+
+              " pigment { rgb ${self.color(item.color)} ${arg} "+
               "} } }")
   }
 
@@ -59,6 +78,9 @@ class POVRaytracer {
   }
 
   visittrianglecomplex(item, out) {
+
+    var arg = self.optionalarg(item)
+
     out.write("mesh2 {");
 
     var nv=item.position.dimensions()[1]
@@ -83,7 +105,7 @@ class POVRaytracer {
     if (individualcolors) {
       out.write("texture_list { ${nv}, ")
       for (i in 0...nv) {
-        var s = "texture{ pigment{ rgb ${self.vector(item.colors.column(i))} } }"
+        var s = "texture{ pigment{ rgb ${self.vector(item.colors.column(i))} ${arg} } }"
         if (i<nv-1) s+=", "
         out.write(s)
       }
@@ -103,7 +125,7 @@ class POVRaytracer {
 
     if (!individualcolors) {
       out.write(" texture { "+
-                " pigment { rgb ${self.color(item.colors)} "+
+                " pigment { rgb ${self.color(item.colors)} ${arg} "+
                 "} }")
     }
 

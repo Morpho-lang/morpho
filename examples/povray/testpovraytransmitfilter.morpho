@@ -6,48 +6,44 @@ import constants
 import color
 import plot
 import povray
+import meshtools
 
 var transmit = 0.5
 var filter = 0.5
 
-var icos = [[-0.688191, 0, 0.131433], [0.688191,
-    0, -0.131433], [-0.212663, -0.654508, 0.131433], [-0.212663,
-    0.654508, 0.131433], [0.556758, -0.404508, 0.131433], [0.556758,
-    0.404508, 0.131433], [-0.131433, -0.404508, 0.556758], [-0.131433,
-    0.404508, 0.556758], [-0.344095, -0.25, -0.556758], [-0.344095,
-    0.25, -0.556758], [0.344095, -0.25, 0.556758], [0.344095, 0.25,
-    0.556758], [0.425325,
-    0, -0.556758], [-0.556758, -0.404508, -0.131433], [-0.556758,
-    0.404508, -0.131433], [-0.425325, 0.,
-    0.556758], [0.131433, -0.404508, -0.556758], [0.131433,
-    0.404508, -0.556758], [0.212663, -0.654508, -0.131433], [0.212663,
-    0.654508, -0.131433]]
-
-var faces = [[14, 9, 8, 13, 0], [1, 5, 11, 10, 4], [4, 10, 6, 2, 18], [10, 11, 7,
-    15, 6], [11, 5, 19, 3, 7], [5, 1, 12, 17, 19], [1, 4, 18, 16,
-    12], [3, 19, 17, 9, 14], [17, 12, 16, 8, 9], [16, 18, 2, 13, 8], [2,
-    6, 15, 0, 13], [15, 7, 3, 14, 0]]
-
-
 fn demo() {
-    var p = PolyhedronMesh(icos, faces)
-    var f = Field(p, fn(x, y, z) x)
-    var g = plotfield(f, style = "interpolate")
 
-    for (i in 0...30) {
-        var xx = Matrix([2 * (random() - 1 / 2), 2 * (random() - 1 / 2), 2 * (random() - 1 / 2)])
-        while (xx.norm() < 0.7) xx = Matrix([2 * (random() - 1 / 2), 2 * (random() - 1 / 2), 2 * (random() - 1 / 2)])
-        g.display(Sphere(xx, 0.05 * (1 + random()), color = Color(random(), random(), random()), transmit = transmit, filter = filter))
-    }
-    g.display(Cylinder([-1, -1, -1], [1, 1, 1], aspectratio = 0.01, color = Gray(0.3), transmit = 0.5))
-    g.display(Arrow([-1, -1, -1], [-0.5, -1, -1], aspectratio = 0.05, color = Red, transmit = transmit, filter = filter))
-    g.display(Arrow([-1, -1, -1], [-1, -0.5, -1], aspectratio = 0.05, color = Green, transmit = transmit, filter = filter))
-    g.display(Arrow([-1, -1, -1], [-1, -1, -0.5], aspectratio = 0.05, color = Blue, transmit = transmit, filter = filter))
+    var m1 = AreaMesh(fn (u,v) [u,v,-1], -1..1:0.5, -1..1:0.5)
+    var m2 = AreaMesh(fn (u,v) [u,1,v], -1..1:0.2, -1..1:0.2)
 
-    var c = []
-    for (t in 0...2 * Pi: 2 * Pi / 40) c.append([cos(t), sin(t), 0])
-    g.display(Tube(c, 0.05, color = Gray(0.5), closed = true, transmit = transmit, filter = filter))
+    var gauss = Field(m2, fn(x,y,z) exp(-x^2-z^2))
+    var g = plotmesh(m1)
+    g = g + plotfield(gauss, style="interpolate")
 
+    // Plot Blue spheres with increasing transmit values
+    g.display(Sphere(Matrix([-0.45,0.8,-0.8]), 0.1, color=Blue))
+    g.display(Sphere(Matrix([-0.15,0.8,-0.8]), 0.1, color=Blue, transmit=0.1))
+    g.display(Sphere(Matrix([0.15,0.8,-0.8]), 0.1, color = Blue, transmit = 0.4))
+    g.display(Sphere(Matrix([0.45, 0.8, -0.8]), 0.1, color = Blue, transmit = 0.7))
+    
+    // Plot Blue spheres with increasing filter values.
+    // Note the difference in the color of the shadow from the transmit ones.
+    g.display(Sphere(Matrix([-0.45,0.4,-0.8]), 0.1, color=Red))
+    g.display(Sphere(Matrix([-0.15,0.4,-0.8]), 0.1, color=Red, filter = 0.1))
+    g.display(Sphere(Matrix([0.15,0.4,-0.8]), 0.1, color = Red, filter = 0.4))
+    g.display(Sphere(Matrix([0.45, 0.4, -0.8]), 0.1, color = Red, filter = 0.7))
+    
+    // Test all the other Graphics objects with transmit and filter
+    g.display(Arrow([-0.5, 0.0, -0.8], [-0.1, 0.0, -0.8], color = Blue, transmit = 0.75))
+    g.display(Arrow([0.1, 0.0, -0.8], [0.5, 0.0, -0.8], color = Red, filter = 0.75))
+    
+    g.display(Cylinder([-0.5, -0.4, -0.8], [-0.1, -0.4, -0.8], color = Blue, transmit = 0.75))
+    g.display(Cylinder([0.1, -0.4, -0.8], [0.5, -0.4, -0.8], color = Red, filter = 0.75))
+        
+    var pts1 = [[-0.3, -0.75, -0.8], [-0.4, -0.85, -0.8], [-0.2, -0.85, -0.8], [-0.3, -0.75, -0.8]]
+    var pts2 = [[0.3, -0.75, -0.8], [0.2, -0.85, -0.8], [0.4, -0.85, -0.8], [0.3, -0.75, -0.8]]
+    g.display(Tube(pts1, 0.02, color=Blue, transmit = 0.75) )
+    g.display(Tube(pts2, 0.02, color=Red, filter = 0.75) )
     g.background = White
 
     return g
@@ -56,9 +52,10 @@ fn demo() {
 var g = demo()
 
 var pov = POVRaytracer(g)
-pov.viewpoint = Matrix([0, 0, -5])
+pov.viewpoint = Matrix([1.2, 6, -3.6])
 pov.viewangle = 35
-pov.light = [Matrix([10, 10, 10]), Matrix([-10, -10, 10])]
+// pov.light = [Matrix([10, 10, 10]), Matrix([-10, -10, 10])]
+pov.light =[Matrix([-10, -10, 10])]
 pov.render("out.pov")
 
 Show(g)

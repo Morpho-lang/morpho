@@ -544,7 +544,7 @@ class Tube < GraphicsPrimitive {
   		}
   	}
 
-      return TriangleComplex(vertices, normals, col, conn, filter=nil, transmit=nil)
+      return TriangleComplex(vertices, normals, col, conn, filter=self.filter, transmit=self.transmit)
   }
 
   accept(visitor, out) {

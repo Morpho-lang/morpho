@@ -8,7 +8,7 @@
 
 # TODO: Make this more robust in the future. This doesn't check the version
 #       or for any dependencies, it just finds headers and library files. It
-#       doesn't look at optional component either!
+#       doesn't look at optional components either!
 
 include(FindPackageHandleStandardArgs)
 
@@ -94,7 +94,7 @@ find_package_handle_standard_args(SuiteSparse
     HANDLE_COMPONENTS
 )
 
-if(NOT TARGET SuiteSparse::SuiteSparse)
+if(SuiteSparse_FOUND AND NOT TARGET SuiteSparse::SuiteSparse)
     add_library(SuiteSparse::SuiteSparse INTERFACE IMPORTED)
     target_include_directories(SuiteSparse::SuiteSparse INTERFACE ${SUITESPARSE_CONFIG_INCLUDE_DIR})
     target_link_libraries(SuiteSparse::SuiteSparse INTERFACE ${SUITESPARSE_CONFIG_LIBRARY})

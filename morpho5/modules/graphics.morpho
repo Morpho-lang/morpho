@@ -48,11 +48,15 @@ fn randomalphanumstring(n) {
 /** TriangleComplexes are a basic graphical unit that draw a set of triangles
    from a given set of vertices. */
 class TriangleComplex {
-  init(position, normals, colors, connectivity) {
+  init(position, normals, colors, connectivity, filter=nil, transmit=nil) {
     self.position=position /* Vertex position matrix */
     self.normals=normals /* Matrix of normal vectors */
     self.colors=colors /* Color */
     self.connectivity=connectivity /* Connectivity matrix; columns are triangles */
+    
+    /* Optional arguments to be used by povray*/
+    self.filter = filter 
+    self.transmit = transmit
   }
 
 	/* Serialize the triangle complex to morphoview format */
@@ -120,12 +124,16 @@ class GraphicsPrimitive {
   @param[in] n - number of faces to use
   @param[in] color - Color of the sphere */
 class Cylinder < GraphicsPrimitive {
-  init(start, end, aspectratio=0.1, n=10, color=nil) {
+  init(start, end, aspectratio=0.1, n=10, color=nil, filter=nil, transmit=nil) {
     self.start = Matrix(start)
     self.end = Matrix(end)
     self.aspectratio = aspectratio
     self.n = n
     self.color = color
+
+    /* Optional arguments to be used by povray*/
+    self.filter = filter 
+    self.transmit = transmit
   }
 
   totrianglecomplex() {
@@ -203,7 +211,7 @@ class Cylinder < GraphicsPrimitive {
       conn[n+i+1,3*n+i]=1
     }
 
-    return TriangleComplex(vertices, normals, col, conn)
+      return TriangleComplex(vertices, normals, col, conn)
   }
 
   accept(visitor, out) {
@@ -236,11 +244,15 @@ var sphere = [ PolyhedronMesh(
   @param[in] r - radius
   @param[in] color - Color of the sphere */
 class Sphere < GraphicsPrimitive {
-  init(center, r, color=nil, maxrefine = 3) {
+  init(center, r, color=nil, maxrefine = 3, filter=nil, transmit=nil) {
     self.center = center
     self.r = r
     self.color = color
     self.maxrefine = maxrefine
+
+    /* Optional arguments to be used by povray*/
+    self.filter = filter 
+    self.transmit = transmit
   }
 
   totrianglecomplex () {
@@ -287,12 +299,16 @@ class Sphere < GraphicsPrimitive {
   @param[in] n - number of faces to use
   @param[in] color - Color of the sphere */
 class Arrow < GraphicsPrimitive {
-  init(start, end, aspectratio=0.1, n=10, color=nil) {
+  init(start, end, aspectratio=0.1, n=10, color=nil, filter=nil, transmit=nil) {
     self.start = Matrix(start)
     self.end = Matrix(end)
     self.aspectratio = aspectratio
     self.n = n
     self.color = color
+
+    /* Optional arguments to be used by povray*/
+    self.filter = filter 
+    self.transmit = transmit
   }
 
   totrianglecomplex () {
@@ -406,12 +422,16 @@ class Tube < GraphicsPrimitive {
     return out
   }
 
-  init(pts, rad, n=10, color=nil, closed=false) {
+    init(pts, rad, n=10, color=nil, closed=false, filter=nil, transmit=nil) {
     self.pts = pts
     self.radius = rad
     self.n = n
     self.closed = closed
     self.color = color
+
+    /* Optional arguments to be used by povray*/
+    self.filter = filter
+    self.transmit = transmit
   }
 
   totrianglecomplex() {
@@ -524,7 +544,7 @@ class Tube < GraphicsPrimitive {
   		}
   	}
 
-    return TriangleComplex(vertices, normals, col, conn)
+      return TriangleComplex(vertices, normals, col, conn, filter=self.filter, transmit=self.transmit)
   }
 
   accept(visitor, out) {

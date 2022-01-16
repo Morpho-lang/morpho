@@ -55,7 +55,7 @@ fn plotcolortomatrix(color) {
                       can be a single color
                       a matrix with columns corresponding to elements
                       a list of such matrices for each grade */
-fn plotmesh(mesh, selection=nil, grade=nil, color=nil) {
+fn plotmesh(mesh, selection=nil, grade=nil, color=nil,  filter=nil, transmit=nil) {
   var g = Graphics()
   var glist = []
   if (isnil(grade)) glist.append(mesh.maxgrade())
@@ -78,7 +78,7 @@ fn plotmesh(mesh, selection=nil, grade=nil, color=nil) {
     for (i in 0...np) {
       if (isselection(selection) && !selection.isselected(0, i)) continue // Skip unselected components
 
-      g.display(Sphere(vert.column(i), 0.025, color=plotcolorforelement(vcol, i)))
+      g.display(Sphere(vert.column(i), 0.025, color=plotcolorforelement(vcol, i), filter=filter, transmit=transmit))
     }
   }
 
@@ -91,7 +91,7 @@ fn plotmesh(mesh, selection=nil, grade=nil, color=nil) {
         if (isselection(selection) && !selection.isselected(1, i)) continue // Skip unselected components
         var el = lines.rowindices(i)
         g.display(Cylinder(vert.column(el[0]), vert.column(el[1]),
-                          aspectratio=0.05, color=plotcolorforelement(lcol, i)))
+                          aspectratio=0.05, color=plotcolorforelement(lcol, i), filter=filter, transmit=transmit))
       }
     }
   }
@@ -146,7 +146,7 @@ fn plotmesh(mesh, selection=nil, grade=nil, color=nil) {
         nnt+=1
       }
 
-      g.display(TriangleComplex(nvert, norm, ncol, tri))
+      g.display(TriangleComplex(nvert, norm, ncol, tri, filter=filter, transmit=transmit))
     }
 
   }
@@ -158,7 +158,7 @@ fn plotmesh(mesh, selection=nil, grade=nil, color=nil) {
  * @param[in] mesh - mesh to plot
  * @param[in] selection - selection
  * @param[in] grade - Grades to show */
-fn plotselection(mesh, selection, grade=nil) {
+fn plotselection(mesh, selection, grade=nil, filter=nil, transmit=nil) {
   var ngrades = mesh.maxgrade()
   var col[ngrades+1]
 
@@ -183,7 +183,7 @@ fn plotselection(mesh, selection, grade=nil) {
     col[g]=cmat
   }
 
-  return plotmesh(mesh, grade=grade, color=col)
+  return plotmesh(mesh, grade=grade, color=col, filter=filter, transmit=transmit)
 }
 
 /** Visualizes a field
@@ -192,7 +192,7 @@ fn plotselection(mesh, selection, grade=nil) {
  * @param[in] colormap - Colormap to use
  * @param[in] style - style to use
  * @param[in] scale - whether or not to scale values */
-fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true) {
+fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, transmit=nil) {
   var mesh = field.mesh()
   var shape = field.shape()
 
@@ -237,5 +237,5 @@ fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true) {
     }
   }
 
-  return plotmesh(mesh, grade=showgrades, color=col)
+  return plotmesh(mesh, grade=showgrades, color=col, filter=filter, transmit=transmit)
 }

@@ -52,6 +52,15 @@ To create one, call the constructor with the following arguments:
 * `colors` is the color of the object.
 * `connectivity` is a `Sparse` matrix where each column represents a triangle and rows correspond to vertices.
 
+You can also provide optional arguments:
+
+* `transmit` sets the transparency of the object. This parameter is only
+used by the povray module as of now. Default is 0.
+* `filter` sets the transparency of the object using a filter effect.
+This parameter is only used by the povray module as of now. Default is 0. For the difference between `transmit` and `filter`, checkout the 
+[POVRay documentation](http://xahlee.info/3d/povray-glassy.html).
+
+
 Add to a `Graphics` object using the `display` method.
 
 ## Arrow
@@ -68,6 +77,11 @@ You can also provide optional arguments:
 * `aspectratio` controls the width of the arrow relative to its length
 * `n` is an integer that controls the quality of the display. Higher `n` leads to a rounder arrow.
 * `color` is the color of the arrow. This can be a list of RGB values or a `Color` object
+* `transmit` sets the transparency of the arrow. This parameter is only
+used by the povray module as of now. Default is 0.
+* `filter` sets the transparency of the arrow using a filter effect.
+This parameter is only used by the povray module as of now. Default is 0. For the difference between `transmit` and `filter`, checkout the 
+[POVRay documentation](http://xahlee.info/3d/povray-glassy.html).
 
 Display an arrow:
 
@@ -89,6 +103,11 @@ You can also provide optional arguments:
 * `aspectratio` controls the width of the cylinder relative to its length.
 * `n` is an integer that controls the quality of the display. Higher `n` leads to a rounder cylinder.
 * `color` is the color of the cylinder. This can be a list of RGB values or a `Color` object.
+* `transmit` sets the transparency of the cylinder. This parameter is only
+used by the povray module as of now. Default is 0.
+* `filter` sets the transparency of the cylinder using a filter effect.
+This parameter is only used by the povray module as of now. Default is 0. For the difference between `transmit` and `filter`, checkout the 
+[POVRay documentation](http://xahlee.info/3d/povray-glassy.html).
 
 Display an cylinder:
 
@@ -111,6 +130,11 @@ You can also provide optional arguments:
 * `n` is an integer that controls the quality of the display. Higher `n` leads to a rounder tube.
 * `color` is the color of the tube. This can be a list of RGB values or a `Color` object.
 * `closed` is a `bool` that indicates whether the tube should be closed to form a loop.
+* `transmit` sets the transparency of the tube. This parameter is only
+used by the povray module as of now. Default is 0.
+* `filter` sets the transparency of the tube using a filter effect.
+This parameter is only used by the povray module as of now. Default is 0. For the difference between `transmit` and `filter`, checkout the 
+[POVRay documentation](http://xahlee.info/3d/povray-glassy.html).
 
 Draw a square:
 
@@ -131,6 +155,11 @@ The `Sphere` function creates a sphere.
 You can also provide an optional argument:
 
 * `color` is the color of the sphere. This can be a list of RGB values or a `Color` object.
+* `transmit` sets the transparency of the sphere. This parameter is only
+used by the povray module as of now. Default is 0.
+* `filter` sets the transparency of the sphere using a filter effect.
+This parameter is only used by the povray module as of now. Default is 0. For the difference between `transmit` and `filter`, checkout the 
+[POVRay documentation](http://xahlee.info/3d/povray-glassy.html).
 
 Draw some randomly sized spheres:
 

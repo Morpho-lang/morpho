@@ -14,7 +14,7 @@ class Functional {
 
   integrand(mesh) {
     var conn
-    if (self.grade>0) mesh.connectivitymatrix(0, self.grade)
+    if (self.grade>0) conn=mesh.connectivitymatrix(0, self.grade)
     var vert=mesh.vertexmatrix()
     var nel = mesh.count(self.grade)
 

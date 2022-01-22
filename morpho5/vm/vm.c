@@ -172,6 +172,7 @@ static void vm_init(vm *v) {
     v->objects=NULL;
     v->openupvalues=NULL;
     v->fp=NULL;
+    v->ehp=NULL;
     v->bound=0;
     v->nextgc=MORPHO_GCINITIAL;
     v->debug=false;
@@ -1492,10 +1493,16 @@ callfunction: // Jump here if an instruction becomes a call
 
             DISPATCH();
         
-        CASE_CODE(PUSHERR):        
+        CASE_CODE(PUSHERR):
+            b=DECODE_Bx(bc);
+            if (!v->ehp) v->ehp=v->errorhandlers; else v->ehp++;
+            v->ehp->fp=v->fp;
+            v->ehp->dict=v->konst[b];
             DISPATCH();
 
         CASE_CODE(POPERR):
+            v->ehp--;
+            if (v->ehp<v->errorhandlers) v->ehp=NULL;
             DISPATCH();
         
         CASE_CODE(ARRAY):
@@ -1579,13 +1586,30 @@ callfunction: // Jump here if an instruction becomes a call
             }
             #endif
             return true;
+        vm_error:
+        {
+            objectstring erridstring=MORPHO_STATICSTRING(v->err.id);
+            value errid = MORPHO_OBJECT(&erridstring);
+            
+            for (errorhandler *eh=v->ehp; eh && eh>=v->errorhandlers; eh--) {
+                if (MORPHO_ISDICTIONARY(eh->dict)) {
+                    value branchto = MORPHO_NIL;
+                    objectdictionary *dict = MORPHO_GETDICTIONARY(eh->dict);
+                    if (dictionary_get(&dict->dict, errid, &branchto)) {
+                        v->fp=eh->fp;
+                        v->fp->pc=v->instructions+MORPHO_GETINTEGERVALUE(branchto);
+                        v->ehp=eh--; // Remove the error handler that caught the error from the eh stack
+                        if (v->ehp<v->errorhandlers) v->ehp=NULL;
+                        DISPATCH()
+                    }
+                }
+            }
+        }
     }
-
+    
 #undef INTERPRET_LOOP
 #undef CASE_CODE
 #undef DISPATCH
-
-vm_error:
     v->fp->pc=pc;
     return false;
 }
@@ -1715,7 +1739,7 @@ bool morpho_run(vm *v, program *p) {
     v->fp->function=p->global;
     v->fp->closure=NULL;
     v->fp->roffset=0;
-
+    
     /* Initialize global variables */
     int oldsize = v->globals.count;
     varray_valueresize(&v->globals, p->nglobals);

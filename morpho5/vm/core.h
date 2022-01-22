@@ -135,7 +135,7 @@ typedef struct {
 
 typedef struct {
     callframe *fp;
-    dictionary *dict;
+    value dict;
 } errorhandler;
 
 /* **********************************************************************
@@ -210,11 +210,12 @@ struct svm {
     varray_value globals; /** Global variables */
     varray_value stack; /** The stack */
     callframe frame[MORPHO_CALLFRAMESTACKSIZE]; /** The call frame stack */
-    callframe errorhandlers[MORPHO_ERRORHANDLERSTACKSIZE]; /** Error handler stack */
+    errorhandler errorhandlers[MORPHO_ERRORHANDLERSTACKSIZE]; /** Error handler stack */
     
     instruction *instructions; /* Base of instructions */
     value *konst; /* Current constant table */
     callframe *fp; /* Frame pointer saved on exit */
+    errorhandler *ehp; /* Error handler pointer */
     
     error err; /** An error struct that will be filled out when an error occurs */
     

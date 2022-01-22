@@ -108,6 +108,21 @@ void morpho_writeerrorwithid(error *err, errorid id, int line, int posn, ...) {
     va_end(args);
 }
 
+/** @brief Writes a user error to an error structure
+ *  @param err  The error structure
+ *  @param id   The error id.
+ *  @param message Additional parameters (the data for the printf commands in the message) */
+void morpho_writeusererror(error *err, errorid id, char *message) {
+    err->line=ERROR_POSNUNIDENTIFIABLE;
+    err->posn=ERROR_POSNUNIDENTIFIABLE;
+    err->cat=ERROR_USER;
+    err->id=id;
+    size_t length = strlen(message);
+    if (length>MORPHO_ERRORSTRINGSIZE-1) length = MORPHO_ERRORSTRINGSIZE-1;
+    strncpy(err->msg, message, length);
+    err->msg[length]='\0'; // Ensure null termination
+}
+
 /** Defines an error
  * @param id       Error struct to fill out
  * @param cat      The category of error

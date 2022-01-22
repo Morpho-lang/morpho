@@ -1620,6 +1620,14 @@ void morpho_runtimeerror(vm *v, errorid id, ...) {
     va_end(args);
 }
 
+/** @brief Public interface to raise a user error
+ * @param v        the virtual machine
+ * @param id       error id
+ * @param message error message */
+void morpho_usererror(vm *v, errorid id, char *message) {
+    morpho_writeusererror(&v->err, id, message);
+}
+
 /** @brief Binds a set of objects to a Virtual Machine; public interface.
  *  @details Any object created during execution should be bound to a VM; this object is then managed by the garbage collector.
  *  @param v      the virtual machine

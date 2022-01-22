@@ -29,9 +29,14 @@ void cli_reporterror(error *err, vm *v) {
             printf("%s: %s%s\n", CLI_ERRORCOLOR, err->msg, CLI_NORMALTEXT);
             morpho_stacktrace(v);
         } else {
-            printf("%s [line %u char %u", CLI_ERRORCOLOR, err->line, err->posn);
-            if (err->module) printf(" in module %s", err->module);
-            printf("] : %s%s\n", err->msg, CLI_NORMALTEXT);
+            printf("%s", CLI_ERRORCOLOR);
+            if (err->line!=ERROR_POSNUNIDENTIFIABLE && err->posn!=ERROR_POSNUNIDENTIFIABLE) {
+                printf("[line %u char %u", err->line, err->posn);
+                if (err->module) printf(" in module %s", err->module);
+                printf("] ");
+            }
+            
+            printf(": %s%s\n", err->msg, CLI_NORMALTEXT);
         }
     }
 }

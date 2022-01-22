@@ -309,6 +309,7 @@ tokentype lex_symboltype(lexer *l) {
         case 'c': {
             tokentype type = lex_checksymbol(l, 1, 4, "lass", TOKEN_CLASS);
             if (type==TOKEN_SYMBOL) type = lex_checksymbol(l, 1, 7, "ontinue", TOKEN_CONTINUE);
+            if (type==TOKEN_SYMBOL) type = lex_checksymbol(l, 1, 4, "atch", TOKEN_CATCH);
             return type;
         }
         case 'd': return lex_checksymbol(l, 1, 1, "o", TOKEN_DO);
@@ -342,6 +343,7 @@ tokentype lex_symboltype(lexer *l) {
         }
         case 't': {
             tokentype type = lex_checksymbol(l, 1, 3, "rue", TOKEN_TRUE);
+            if (type==TOKEN_SYMBOL) type = lex_checksymbol(l, 1, 2, "ry", TOKEN_TRY);
 #ifdef MORPHO_LOXCOMPATIBILITY
             if (type==TOKEN_SYMBOL) type = lex_checksymbol(l, 1, 3, "his", TOKEN_SELF);
 #endif
@@ -503,7 +505,7 @@ static syntaxtreeindx parse_precedence(parser *p, precedence precendence);
 static syntaxtreeindx parse_expression(parser *p);
 static syntaxtreeindx parse_statement(parser *p);
 static syntaxtreeindx parse_declaration(parser *p);
-static syntaxtreeindx parse_declarationmulti(parser *p, tokentype end);
+static syntaxtreeindx parse_declarationmulti(parser *p, int n, tokentype *end);
 
 static syntaxtreeindx parse_integer(parser *p);
 static syntaxtreeindx parse_number(parser *p);
@@ -525,6 +527,7 @@ static syntaxtreeindx parse_call(parser *p);
 static syntaxtreeindx parse_index(parser *p);
 static syntaxtreeindx parse_list(parser *p);
 static syntaxtreeindx parse_anonymousfunction(parser *p);
+static syntaxtreeindx parse_switch(parser *p);
 
 static syntaxtreeindx parse_vardeclaration(parser *p);
 static syntaxtreeindx parse_functiondeclaration(parser *p);
@@ -540,6 +543,7 @@ static syntaxtreeindx parse_forstatement(parser *p);
 static syntaxtreeindx parse_dostatement(parser *p);
 static syntaxtreeindx parse_breakstatement(parser *p);
 static syntaxtreeindx parse_returnstatement(parser *p);
+static syntaxtreeindx parse_trystatement(parser *p);
 static syntaxtreeindx parse_breakpointstatement(parser *p);
 
 static syntaxtreeindx parse_statementterminator(parser *p);
@@ -560,6 +564,15 @@ static inline syntaxtreeindx parse_addnode(parser *p, syntaxtreenodetype type, v
 /** Checks whether the current token matches a specified tokentype */
 static bool parse_checktoken(parser *p, tokentype type) {
     return p->current.type==type;
+}
+
+/** Checks whether the current token matches any of the specified tokentypes */
+static bool parse_checktokenmulti(parser *p, int n, tokentype *type) {
+    for (int i=0; i<n; i++) {
+        if (p->current.type==type[i]) return true;
+    }
+    
+    return false;
 }
 
 /** Checks whether the current token matches a given type and advances if so. */
@@ -630,6 +643,8 @@ syntaxtreeindx parse_statement(parser *p) {
         return parse_breakstatement(p);
     } else if (parse_matchtoken(p, TOKEN_RETURN)) {
         return parse_returnstatement(p);
+    } else if (parse_matchtoken(p, TOKEN_TRY)) {
+        return parse_trystatement(p);
     } else if (parse_matchtoken(p, TOKEN_LEFTCURLYBRACKET)) {
         return parse_blockstatement(p);
     } else if (parse_matchtoken(p, TOKEN_AT)) {
@@ -668,11 +683,11 @@ syntaxtreeindx parse_declaration(parser *p) {
  *  @param p    the parser
  *  @param end  token type to terminate on [use TOKEN_EOF if no special terminator]
  *  @returns    the syntaxtreeindx of the parsed expression */
-static syntaxtreeindx parse_declarationmulti(parser *p, tokentype end) {
+static syntaxtreeindx parse_declarationmulti(parser *p, int n, tokentype *end) {
     syntaxtreeindx last=SYNTAXTREE_UNCONNECTED, current=SYNTAXTREE_UNCONNECTED;
     token start = p->current;
     
-    while (!parse_checktoken(p, end) && !parse_checktoken(p, TOKEN_EOF)) {
+    while (!parse_checktokenmulti(p, n, end) && !parse_checktoken(p, TOKEN_EOF)) {
         current=parse_declaration(p);
         
         /* If we now have more than one node, insert a sequence node */
@@ -1071,6 +1086,31 @@ static syntaxtreeindx parse_anonymousfunction(parser *p) {
     return parse_addnode(p, NODE_FUNCTION, MORPHO_NIL, &start, args, body);
 }
 
+/** @brief: Parses a switch block
+ * @details Switch blocks are key/statement pairs. Each pair is stored in a NODE_DICTIONARY list */
+static syntaxtreeindx parse_switch(parser *p) {
+    syntaxtreeindx last=SYNTAXTREE_UNCONNECTED;
+    do {
+        syntaxtreeindx key, statements, pair;
+        token tok=p->current; // Keep track of the token that corresponds to each key/value pair
+        
+        /* Parse the key/value pair */
+        key=parse_expression(p);
+        if (!parse_consume(p, TOKEN_COLON, PARSE_SWTCHSPRTR)) break;
+        tokentype terminators[] = { TOKEN_STRING, TOKEN_INTEGER, TOKEN_NUMBER, TOKEN_TRUE, TOKEN_FALSE, TOKEN_NIL, TOKEN_RIGHTCURLYBRACKET };
+        statements=parse_declarationmulti(p, 7, terminators);
+        
+        /* Create an entry node */
+        pair=parse_addnode(p, NODE_DICTENTRY, MORPHO_NIL, &tok, key, statements);
+        
+        /* These are linked into a chain of sequence nodes */
+        last=parse_addnode(p, NODE_DICTIONARY, MORPHO_NIL, &tok, last, pair);
+        
+    } while(!parse_matchtoken(p, TOKEN_RIGHTCURLYBRACKET) && !parse_checktoken(p, TOKEN_EOF));
+    
+    return last;
+}
+
 /* -------------------------------
  * Declarations
  * ------------------------------- */
@@ -1240,8 +1280,9 @@ static syntaxtreeindx parse_blockstatement(parser *p) {
     syntaxtreeindx body = SYNTAXTREE_UNCONNECTED,
                    scope = SYNTAXTREE_UNCONNECTED;
     token start = p->previous;
+    tokentype terminator[] = { TOKEN_RIGHTCURLYBRACKET };
     
-    body = parse_declarationmulti(p, TOKEN_RIGHTCURLYBRACKET);
+    body = parse_declarationmulti(p, 1, terminator);
     if (parse_checktoken(p, TOKEN_EOF)) {
         parse_error(p, false, COMPILE_INCOMPLETEEXPRESSION);
     } else {
@@ -1424,6 +1465,30 @@ static syntaxtreeindx parse_returnstatement(parser *p) {
     return parse_addnode(p, NODE_RETURN, MORPHO_NIL, &start, left, SYNTAXTREE_UNCONNECTED);
 }
 
+/** Parse a try/catch statement */
+static syntaxtreeindx parse_trystatement(parser *p) {
+    syntaxtreeindx try=SYNTAXTREE_UNCONNECTED, // Try block
+                   catch=SYNTAXTREE_UNCONNECTED; // Catch dictionary
+    syntaxtreeindx out=SYNTAXTREE_UNCONNECTED;
+    token start = p->current;
+    
+    try=parse_statement(p);
+    
+    parse_consume(p, TOKEN_CATCH, PARSE_EXPCTCTCH);
+    parse_consume(p, TOKEN_LEFTCURLYBRACKET, PARSE_CATCHLEFTCURLYMISSING);
+    
+    catch=parse_switch(p);
+    
+    /* Optional statement terminator */
+    if (parse_checkstatementterminator(p)) {
+        parse_statementterminator(p);
+    }
+    
+    out=parse_addnode(p, NODE_TRY, MORPHO_NIL, &start, try, catch);
+    
+    return out;
+}
+
 /** Parse a breakpoint statement */
 static syntaxtreeindx parse_breakpointstatement(parser *p) {
     token start = p->previous;
@@ -1544,6 +1609,8 @@ parserule rules[] = {
     UNUSED,                                            // TOKEN_IMPORT
     UNUSED,                                            // TOKEN_AS
     UNUSED,                                            // TOKEN_IS
+    UNUSED,                                            // TOKEN_TRY
+    UNUSED,                                            // TOKEN_CATCH
     
     UNUSED,                                            // TOKEN_INCOMPLETE
     UNUSED,                                            // TOKEN_ERROR
@@ -1656,8 +1723,9 @@ static syntaxtreeindx parse_precedence(parser *p, precedence precendence) {
 /** Entry point into the parser */
 bool parse(parser *p) {
     parse_advance(p);
+    tokentype terminator[] = { TOKEN_EOF };
     
-    p->tree->entry = parse_declarationmulti(p, TOKEN_EOF);
+    p->tree->entry = parse_declarationmulti(p, 1, terminator);
     
     return (p->err->cat==ERROR_NONE);
 }

@@ -1205,6 +1205,7 @@ compilenoderule noderules[] = {
     { NODE_NORULE            },      // NODE_IN
     { compiler_break         },      // NODE_BREAK
     { compiler_break         },      // NODE_CONTINUE
+    { NODE_NORULE            },      // NODE_TRY
     
     NODE_UNDEFINED,                  // NODE_STATEMENT
     
@@ -3332,10 +3333,13 @@ void compile_initialize(void) {
     
     morpho_defineerror(PARSE_UNRECGNZEDTOK, ERROR_PARSE, PARSE_UNRECGNZEDTOK_MSG);
     morpho_defineerror(PARSE_DCTSPRTR, ERROR_PARSE, PARSE_DCTSPRTR_MSG);
+    morpho_defineerror(PARSE_SWTCHSPRTR, ERROR_PARSE, PARSE_SWTCHSPRTR_MSG);
     morpho_defineerror(PARSE_DCTENTRYSPRTR, ERROR_PARSE, PARSE_DCTENTRYSPRTR_MSG);
     morpho_defineerror(PARSE_EXPCTWHL, ERROR_PARSE, PARSE_EXPCTWHL_MSG);
+    morpho_defineerror(PARSE_EXPCTCTCH, ERROR_PARSE, PARSE_EXPCTCTCH_MSG);
     morpho_defineerror(PARSE_ONEVARPR, ERROR_PARSE, PARSE_ONEVARPR_MSG);
     morpho_defineerror(PARSE_VARPRLST, ERROR_PARSE, PARSE_VARPRLST_MSG);
+    morpho_defineerror(PARSE_CATCHLEFTCURLYMISSING, ERROR_PARSE, PARSE_CATCHLEFTCURLYMISSING_MSG);
     
     /* Compile errors */
     morpho_defineerror(COMPILE_SYMBOLNOTDEFINED, ERROR_COMPILE, COMPILE_SYMBOLNOTDEFINED_MSG);

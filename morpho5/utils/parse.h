@@ -121,11 +121,20 @@
 #define PARSE_DCTSPRTR                    "DctSprtr"
 #define PARSE_DCTSPRTR_MSG                "Expected a colon separating a key/value pair in dictionary."
 
+#define PARSE_SWTCHSPRTR                  "SwtchSprtr"
+#define PARSE_SWTCHSPRTR_MSG              "Expected a colon after label."
+
 #define PARSE_DCTENTRYSPRTR               "DctEntrySprtr"
 #define PARSE_DCTENTRYSPRTR_MSG           "Expected a comma or '}'."
 
 #define PARSE_EXPCTWHL                    "ExpctWhl"
 #define PARSE_EXPCTWHL_MSG                "Expected while after loop body."
+
+#define PARSE_EXPCTCTCH                   "ExpctCtch"
+#define PARSE_EXPCTCTCH_MSG               "Expected catch after try statement."
+
+#define PARSE_CATCHLEFTCURLYMISSING       "ExpctHndlr"
+#define PARSE_CATCHLEFTCURLYMISSING_MSG   "Expected block of error handlers after catch."
 
 #define PARSE_VARPRLST                    "VarPrLst"
 #define PARSE_VARPRLST_MSG                "Variadic parameter must be last."
@@ -190,7 +199,8 @@ typedef enum {
     TOKEN_IF, TOKEN_ELSE, TOKEN_IN, 
     TOKEN_WHILE, TOKEN_FOR, TOKEN_DO, TOKEN_BREAK, TOKEN_CONTINUE,
     TOKEN_FUNCTION, TOKEN_RETURN, TOKEN_CLASS,
-    TOKEN_IMPORT, TOKEN_AS, TOKEN_IS, 
+    TOKEN_IMPORT, TOKEN_AS, TOKEN_IS,
+    TOKEN_TRY, TOKEN_CATCH,
     
     /* Errors and other statuses */
     TOKEN_INCOMPLETE,

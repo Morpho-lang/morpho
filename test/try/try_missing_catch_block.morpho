@@ -1,0 +1,15 @@
+/* **********************************
+ * morpho test suite
+ * try.morpho
+ * Catch statement
+ * ********************************** */
+
+var err = Error("Foo", "A Foo occurred")
+
+try {
+  err.throw()
+} catch
+
+print "hi"
+
+// expect error 'ExpctHndlr'

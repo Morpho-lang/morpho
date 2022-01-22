@@ -24,7 +24,7 @@
 /** Report an error if one has occurred. */
 void cli_reporterror(error *err, vm *v) {
     if (err->cat!=ERROR_NONE) {
-        printf("%sError '%s'%s", CLI_ERRORCOLOR, err->id , CLI_NORMALTEXT);
+        printf("%sError '%s' %s", CLI_ERRORCOLOR, err->id , CLI_NORMALTEXT);
         if (ERROR_ISRUNTIMEERROR(*err)) {
             printf("%s: %s%s\n", CLI_ERRORCOLOR, err->msg, CLI_NORMALTEXT);
             morpho_stacktrace(v);
@@ -124,6 +124,8 @@ linedit_color cli_tokencolors[] = {
     LINEDIT_MAGENTA,                               // TOKEN_IMPORT
     LINEDIT_MAGENTA,                               // TOKEN_AS
     LINEDIT_MAGENTA,                               // TOKEN_IS
+    LINEDIT_MAGENTA,                               // TOKEN_TRY
+    LINEDIT_MAGENTA,                               // TOKEN_CATCH
     
     LINEDIT_DEFAULTCOLOR,                          // TOKEN_INCOMPLETE
     LINEDIT_DEFAULTCOLOR,                          // TOKEN_ERROR
@@ -166,7 +168,7 @@ bool cli_complete(char *in, linedit_stringlist *c) {
     
     /* Now try to match the token against a library of words */
     len=strlen(tok);
-    char *words[] = {"as", "and", "break", "class", "continue", "do", "else", "for", "false", "fn", "help", "if", "in", "import", "nil", "or", "print", "return", "true", "var", "while", "quit", "self", "super", "this", NULL};
+    char *words[] = {"as", "and", "break", "class", "continue", "do", "else", "for", "false", "fn", "help", "if", "in", "import", "nil", "or", "print", "return", "true", "var", "while", "quit", "self", "super", "this", "try", "catch", NULL};
     int success=false;
     
     for (unsigned int i=0; words[i]!=NULL; i++) {

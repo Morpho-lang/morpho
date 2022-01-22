@@ -1,0 +1,20 @@
+/* **********************************
+ * morpho test suite
+ * try.morpho
+ * Test try/catch statement
+ * ********************************** */
+
+var err = Error("Foo", "A Foo occurred")
+
+try {
+  err.throw()
+} catch {
+  "Foo":
+    print "Caught the foo"
+    print "(boohoo)"
+  "Bar":
+    print "Caught the bar"
+}
+
+// expect: Caught the foo
+// expect: (boohoo)

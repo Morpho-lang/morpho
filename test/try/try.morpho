@@ -7,14 +7,24 @@
 var err = Error("Foo", "A Foo occurred")
 
 try {
+  print "No error here!" // expect: No error here!
+} catch {
+  "Foo" :
+    print "Caught the hoo"
+}
+print "landed" // expect: landed
+
+
+try {
   err.throw()
 } catch {
-  "Foo":
-    print "Caught the foo"
-    print "(boohoo)"
-  "Bar":
+  "Foo" :
+    print "Caught the foo" // expect: Caught the foo
+    print "(boohoo)" // expect: (boohoo)
+  "Bar" :
     print "Caught the bar"
 }
 
-// expect: Caught the foo
-// expect: (boohoo)
+// Now for an uncaught error
+err.throw()
+// expect error 'Foo'

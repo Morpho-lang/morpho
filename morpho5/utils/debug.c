@@ -135,7 +135,7 @@ assemblyrule assemblyrules[] ={
     { OP_SGL, "sgl", "rA, gX" }, // label b with 'g'
     
     { OP_PUSHERR, "pusherr", "cX" },
-    { OP_POPERR, "poperr", "" },
+    { OP_POPERR, "poperr", "+" },
     
     { OP_ARRAY, "array", "rA, ?B, ?C" },
     { OP_CAT, "cat", "rA, ?B, ?C" },

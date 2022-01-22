@@ -1465,7 +1465,10 @@ static syntaxtreeindx parse_returnstatement(parser *p) {
     return parse_addnode(p, NODE_RETURN, MORPHO_NIL, &start, left, SYNTAXTREE_UNCONNECTED);
 }
 
-/** Parse a try/catch statement */
+/** Parse a try/catch statement
+        try
+      /          \
+    body        catch block */
 static syntaxtreeindx parse_trystatement(parser *p) {
     syntaxtreeindx try=SYNTAXTREE_UNCONNECTED, // Try block
                    catch=SYNTAXTREE_UNCONNECTED; // Catch dictionary

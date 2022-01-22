@@ -149,9 +149,14 @@ typedef struct {
         DEBUG_CLASS, // Set the current class
         DEBUG_MODULE, // Set the current module
         DEBUG_REGISTER, // Associates a symbol with a register
-        DEBUG_ELEMENT // Associates a sequence of instructions with a code element
+        DEBUG_ELEMENT, // Associates a sequence of instructions with a code element
+        DEBUG_PUSHERR, // Push an error handler
+        DEBUG_POPERR // Pop an error handler
     } type;
     union {
+        struct {
+            objectdictionary *handler;
+        } errorhandler;
         struct {
             objectfunction *function;
         } function;

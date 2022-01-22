@@ -127,7 +127,7 @@
 //#define MORPHO_DEBUG_PRINT_INSTRUCTIONS
 
 /** @brief Display syntax tree after parsing */
-#define MORPHO_DEBUG_DISPLAYSYNTAXTREE
+//#define MORPHO_DEBUG_DISPLAYSYNTAXTREE
 
 /** @brief Display register allocations during compilation */
 //#define MORPHO_DEBUG_DISPLAYREGISTERALLOCATION

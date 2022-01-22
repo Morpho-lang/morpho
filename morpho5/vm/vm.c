@@ -1501,6 +1501,8 @@ callfunction: // Jump here if an instruction becomes a call
             DISPATCH();
 
         CASE_CODE(POPERR):
+            b=DECODE_sBx(bc);
+            pc+=b;
             v->ehp--;
             if (v->ehp<v->errorhandlers) v->ehp=NULL;
             DISPATCH();
@@ -1597,8 +1599,8 @@ callfunction: // Jump here if an instruction becomes a call
                     objectdictionary *dict = MORPHO_GETDICTIONARY(eh->dict);
                     if (dictionary_get(&dict->dict, errid, &branchto)) {
                         v->fp=eh->fp;
-                        v->fp->pc=v->instructions+MORPHO_GETINTEGERVALUE(branchto);
-                        v->ehp=eh--; // Remove the error handler that caught the error from the eh stack
+                        pc=v->instructions+MORPHO_GETINTEGERVALUE(branchto);
+                        v->ehp--; // Remove the error handler that caught the error from the eh stack
                         if (v->ehp<v->errorhandlers) v->ehp=NULL;
                         DISPATCH()
                     }

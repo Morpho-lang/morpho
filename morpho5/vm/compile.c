@@ -1126,6 +1126,7 @@ static codeinfo compiler_while(compiler *c, syntaxtreenode *node, registerindx o
 static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_do(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_break(compiler *c, syntaxtreenode *node, registerindx reqout);
+static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_logical(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerindx out);
@@ -1205,7 +1206,7 @@ compilenoderule noderules[] = {
     { NODE_NORULE            },      // NODE_IN
     { compiler_break         },      // NODE_BREAK
     { compiler_break         },      // NODE_CONTINUE
-    { NODE_NORULE            },      // NODE_TRY
+    { compiler_try           },      // NODE_TRY
     
     NODE_UNDEFINED,                  // NODE_STATEMENT
     
@@ -2012,6 +2013,83 @@ static codeinfo compiler_break(compiler *c, syntaxtreenode *node, registerindx r
         compiler_addinstruction(c, ENCODE(OP_NOP, (node->type==NODE_BREAK ? 'b' : 'c'), 0, 0), node);
         out.ninstructions++;
     } else compiler_error(c, node, (node->type==NODE_BREAK ? COMPILE_BRKOTSDLP : COMPILE_CNTOTSDLP));
+    
+    return out;
+}
+
+/** @brief Compiles a try/catch block.
+ *  @details Break and continue statements are inserted as NOP instructions with the a register set to a marker.
+ *  */
+static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx reqout) {
+    codeinfo out = CODEINFO_EMPTY;
+    
+    objectdictionary *cdict = object_newdictionary();
+    if (!cdict) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return out; }
+    
+    registerindx cdictindx = compiler_addconstant(c, node, MORPHO_OBJECT(cdict), false, false);
+    
+    compiler_addinstruction(c, ENCODE_LONG(OP_PUSHERR, 0, cdictindx), node);
+    out.ninstructions++;
+    
+    /* Compile the body */
+    if (node->left!=SYNTAXTREE_UNCONNECTED) {
+        codeinfo body = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
+        out.ninstructions+=body.ninstructions;
+        compiler_releaseoperand(c, body);
+    }
+    
+    instructionindx popindx = compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
+    out.ninstructions++;
+    
+    /* Compile the catch dictionary */
+    varray_syntaxtreeindx switchnodes;
+    varray_syntaxtreeindx labelnodes;
+    varray_syntaxtreeindxinit(&switchnodes);
+    varray_syntaxtreeindxinit(&labelnodes);
+    
+    syntaxtreenodetype match[] = { NODE_DICTIONARY };
+    syntaxtree_flatten(compiler_getsyntaxtree(c), node->right, 1, match, &switchnodes);
+    
+    for (unsigned int i=0; i<switchnodes.count; i++) {
+        syntaxtreenode *entry = compiler_getnode(c, switchnodes.data[i]);
+        instructionindx entryindx = compiler_currentinstructionindex(c);
+        
+        codeinfo entrybody = compiler_nodetobytecode(c, entry->right, REGISTER_UNALLOCATED);
+        out.ninstructions+=entrybody.ninstructions;
+        compiler_releaseoperand(c, entrybody);
+        
+        // Add a break instruction after each entry body except for the last
+        if (i!=switchnodes.count-1) {
+            compiler_addinstruction(c, ENCODE(OP_NOP, 'b', 0, 0), node);
+            out.ninstructions++;
+        }
+        
+        /* Now flatten the label nodes */
+        labelnodes.count=0;
+        syntaxtreenodetype labelmatch[] = { NODE_SEQUENCE };
+        syntaxtree_flatten(compiler_getsyntaxtree(c), entry->left, 1, labelmatch, &labelnodes);
+        
+        for (unsigned int j=0; j<labelnodes.count; j++) {
+            syntaxtreenode *label=compiler_getnode(c, labelnodes.data[j]);
+            
+            if (label->type!=NODE_STRING) UNREACHABLE("Not a string!");
+            
+            registerindx labelsymbol=compiler_addsymbol(c, entry, label->content);
+            value symbolkey = compiler_getconstant(c, labelsymbol);
+            
+            dictionary_insert(&cdict->dict, symbolkey, MORPHO_INTEGER(entryindx));
+        }
+    }
+    
+    instructionindx endindx = compiler_currentinstructionindex(c);
+    
+    /* Fix the poperr instruction that jumps around the switch block */
+    compiler_setinstruction(c, popindx, ENCODE_LONG(OP_POPERR, 0, endindx-popindx-1));
+    
+    compiler_fixloop(c, popindx, popindx, endindx);
+    
+    varray_syntaxtreeindxclear(&switchnodes);
+    varray_syntaxtreeindxclear(&labelnodes);
     
     return out;
 }

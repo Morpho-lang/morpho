@@ -46,6 +46,18 @@ void debug_setclass(varray_debugannotation *list, objectclass *klass) {
     debug_addannotation(list, &ann);
 }
 
+/** Pushes an error handler onto the stack */
+void debug_pusherr(varray_debugannotation *list, objectdictionary *dict) {
+    debugannotation ann = { .type = DEBUG_PUSHERR, .content.errorhandler.handler = dict};
+    debug_addannotation(list, &ann);
+}
+
+/** Pops an error handler from the stack */
+void debug_poperr(varray_debugannotation *list) {
+    debugannotation ann = { .type = DEBUG_POPERR };
+    debug_addannotation(list, &ann);
+}
+
 /** Associates a register with a symbol */
 void debug_setreg(varray_debugannotation *list, indx reg, value symbol) {
     if (!MORPHO_ISSTRING(symbol)) return;
@@ -223,6 +235,22 @@ void debug_disassembleinstruction(instruction instruction, instructionindx indx,
     }
 }
 
+/** Checks if an instruction matches a label in the current error dictionary, and if so print it. */
+void debug_errorlabel(varray_value *errorstack, instructionindx i) {
+    objectdictionary *dict = MORPHO_GETDICTIONARY(errorstack->data[errorstack->count-1]);
+    
+    /* Search the current error handler to see if this line corresponds to a label */
+    for (unsigned int k=0; k<dict->dict.capacity; k++) {
+        value label = dict->dict.contents[k].key;
+        if (label!=MORPHO_NIL) {
+            if (MORPHO_GETINTEGERVALUE(dict->dict.contents[k].val)==i) {
+                object_print(label);
+                printf(":\n");
+            }
+        }
+    }
+}
+
 /** Disassembles a program
  *  @param code - program to disassemble
  *  @param matchline - optional line number to match */
@@ -231,6 +259,9 @@ void debug_disassemble(program *code, int *matchline) {
     instructionindx i=0;
     value *konst=(code->global ? code->global->konst.data : NULL);
     bool silent = matchline;
+    
+    varray_value errorstack;
+    varray_valueinit(&errorstack);
     
     /* Loop over debugging information */
     for (unsigned int j=0; j<code->annotations.count; j++) {
@@ -245,6 +276,8 @@ void debug_disassemble(program *code, int *matchline) {
                             break;
                         }
                         if (ann->content.element.line>(*matchline)) return;
+                    } else if (errorstack.count>0) {
+                        debug_errorlabel(&errorstack, i);
                     }
                     
                     for (unsigned int k=0; k<ann->content.element.ninstr; k++, i++) {
@@ -277,10 +310,23 @@ void debug_disassemble(program *code, int *matchline) {
                     }
                 }
                 break;
+            case DEBUG_PUSHERR:
+                {
+                    objectdictionary *errdict = ann->content.errorhandler.handler;
+                    varray_valuewrite(&errorstack, MORPHO_OBJECT(errdict));
+                }
+                break;
+            case DEBUG_POPERR:
+                {
+                    if (errorstack.count>0) errorstack.count--;
+                }
+                break;
             default:
                 break;
         }
     }
+    
+    varray_valueclear(&errorstack);
 }
 
 /** Wrapper onto debug_disassemble */

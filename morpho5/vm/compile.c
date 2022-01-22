@@ -2031,6 +2031,8 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
     compiler_addinstruction(c, ENCODE_LONG(OP_PUSHERR, 0, cdictindx), node);
     out.ninstructions++;
     
+    debug_pusherr(&c->out->annotations, cdict);
+    
     /* Compile the body */
     if (node->left!=SYNTAXTREE_UNCONNECTED) {
         codeinfo body = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
@@ -2085,11 +2087,13 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
     
     /* Fix the poperr instruction that jumps around the switch block */
     compiler_setinstruction(c, popindx, ENCODE_LONG(OP_POPERR, 0, endindx-popindx-1));
-    
+    /* Fix the nop instructions in the switch block to jump to the end of block */
     compiler_fixloop(c, popindx, popindx, endindx);
     
     varray_syntaxtreeindxclear(&switchnodes);
     varray_syntaxtreeindxclear(&labelnodes);
+    
+    debug_poperr(&c->out->annotations);
     
     return out;
 }

@@ -90,6 +90,12 @@ OPCODE(LGL)
 /** Store global */
 OPCODE(SGL)
 
+/** Push error handler */
+OPCODE(PUSHERR)
+
+/** Pop error handler */
+OPCODE(POPERR)
+
 /** Creates an array */
 OPCODE(ARRAY)
 

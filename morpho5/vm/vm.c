@@ -1491,7 +1491,13 @@ callfunction: // Jump here if an instruction becomes a call
             }
 
             DISPATCH();
+        
+        CASE_CODE(PUSHERR):        
+            DISPATCH();
 
+        CASE_CODE(POPERR):
+            DISPATCH();
+        
         CASE_CODE(ARRAY):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             if (DECODE_ISBCONSTANT(bc)) {
@@ -1817,16 +1823,6 @@ objectclass *morpho_lookupclass(value obj) {
 bool morpho_lookupmethod(value obj, value label, value *method) {
     objectclass *klass = morpho_lookupclass(obj);
     if (klass) return dictionary_get(&klass->methods, label, method);
-
-   /* if (MORPHO_ISINSTANCE(obj)) {
-        objectinstance *instance=MORPHO_GETINSTANCE(obj);
-
-    } else {
-        objectclass *klass = builtin_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
-        if (klass) {
-            return dictionary_get(&klass->methods, label, method);
-        }
-    }*/
 
     return false;
 }

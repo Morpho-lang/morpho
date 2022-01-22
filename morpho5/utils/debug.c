@@ -93,6 +93,7 @@ typedef struct {
     char *display;
 } assemblyrule;
 
+/* Order is not significant here */
 assemblyrule assemblyrules[] ={
     { OP_NOP, "nop", "" },
     { OP_MOV, "mov", "rA, rB" },
@@ -132,6 +133,9 @@ assemblyrule assemblyrules[] ={
     
     { OP_LGL, "lgl", "rA, gX" }, //
     { OP_SGL, "sgl", "rA, gX" }, // label b with 'g'
+    
+    { OP_PUSHERR, "pusherr", "cX" },
+    { OP_POPERR, "poperr", "" },
     
     { OP_ARRAY, "array", "rA, ?B, ?C" },
     { OP_CAT, "cat", "rA, ?B, ?C" },

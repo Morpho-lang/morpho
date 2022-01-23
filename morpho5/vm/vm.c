@@ -1598,7 +1598,9 @@ callfunction: // Jump here if an instruction becomes a call
                     value branchto = MORPHO_NIL;
                     objectdictionary *dict = MORPHO_GETDICTIONARY(eh->dict);
                     if (dictionary_get(&dict->dict, errid, &branchto)) {
+                        error_clear(&v->err);
                         v->fp=eh->fp;
+                        v->konst=v->fp->function->konst.data;
                         pc=v->instructions+MORPHO_GETINTEGERVALUE(branchto);
                         v->ehp--; // Remove the error handler that caught the error from the eh stack
                         if (v->ehp<v->errorhandlers) v->ehp=NULL;

@@ -26,6 +26,10 @@ static objectclass *baseclass;
  * Utility functions
  * ------------------------------------------- */
 
+static bool compiler_haserror(compiler *c) {
+    return (c->err.cat!=ERROR_NONE);
+}
+
 /** @brief Fills out the error record
  * @param c        the compiler
  * @param node     the node the error occurred at
@@ -2056,9 +2060,13 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
         syntaxtreenode *entry = compiler_getnode(c, switchnodes.data[i]);
         instructionindx entryindx = compiler_currentinstructionindex(c);
         
-        codeinfo entrybody = compiler_nodetobytecode(c, entry->right, REGISTER_UNALLOCATED);
-        out.ninstructions+=entrybody.ninstructions;
-        compiler_releaseoperand(c, entrybody);
+        syntaxtreenode *body=compiler_getnode(c, entry->right);
+        
+        if (body) {
+            codeinfo entrybody = compiler_nodetobytecode(c, entry->right, REGISTER_UNALLOCATED);
+            out.ninstructions+=entrybody.ninstructions;
+            compiler_releaseoperand(c, entrybody);
+        }
         
         // Add a break instruction after each entry body except for the last
         if (i!=switchnodes.count-1) {
@@ -2467,6 +2475,7 @@ static bool compiler_isinvocation(compiler *c, syntaxtreenode *call) {
 /** Compiles a function call */
 static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
+    if (compiler_haserror(c)) return CODEINFO_EMPTY;
     
     if (compiler_isinvocation(c, node)) {
         return compiler_invoke(c, node, reqout);
@@ -2476,9 +2485,11 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     compiler_beginargs(c);
     
     /* Compile the function selector */
+    syntaxtreenode *selnode=compiler_getnode(c, node->left);
     codeinfo func = compiler_nodetobytecode(c, node->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
+    
     // Detect possible forward reference
-    if (compiler_catch(c, COMPILE_SYMBOLNOTDEFINED)) {
+    if (selnode->type==NODE_SYMBOL && compiler_catch(c, COMPILE_SYMBOLNOTDEFINED)) {
         syntaxtreenode *symbol=compiler_getnode(c, node->left);
         func=compiler_addforwardreference(c, symbol, symbol->content);
     }

@@ -176,3 +176,17 @@ Use of `continue` with `while` loops is possible but isn't recommended as it can
     }
 
 In this example, when the condition `i==2` is `true`, execution skips back to the start, but `i` *isn't* incremented. The loop gets stuck in the iteration `i==2`.
+
+## Try
+[tagtry]: # (try)
+[tagcatch]: # (catch)
+
+A `try` and `catch` statement allow you handle errors. For example
+
+    try {
+      // Do something
+    } catch {
+      "Tag" : // Handle the error
+    }
+
+Code within the block after the `try` keyword is executed. If an error is generated then Morpho looks to see if the tag associated with the error matches any of the labels in the `catch` block. If it does, the code after the matching label is executed. If no error occurs, the catch block is skipped entirely.

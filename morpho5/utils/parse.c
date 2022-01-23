@@ -1090,7 +1090,8 @@ static syntaxtreeindx parse_anonymousfunction(parser *p) {
  * @details Switch blocks are key/statement pairs. Each pair is stored in a NODE_DICTIONARY list */
 static syntaxtreeindx parse_switch(parser *p) {
     syntaxtreeindx last=SYNTAXTREE_UNCONNECTED;
-    do {
+    
+    while(!parse_matchtoken(p, TOKEN_RIGHTCURLYBRACKET) && !parse_checktoken(p, TOKEN_EOF)) {
         syntaxtreeindx key, statements, pair;
         token tok=p->current; // Keep track of the token that corresponds to each key/value pair
         
@@ -1106,7 +1107,7 @@ static syntaxtreeindx parse_switch(parser *p) {
         /* These are linked into a chain of sequence nodes */
         last=parse_addnode(p, NODE_DICTIONARY, MORPHO_NIL, &tok, last, pair);
         
-    } while(!parse_matchtoken(p, TOKEN_RIGHTCURLYBRACKET) && !parse_checktoken(p, TOKEN_EOF));
+    };
     
     return last;
 }

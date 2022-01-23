@@ -242,7 +242,7 @@ void debug_errorlabel(varray_value *errorstack, instructionindx i) {
     /* Search the current error handler to see if this line corresponds to a label */
     for (unsigned int k=0; k<dict->dict.capacity; k++) {
         value label = dict->dict.contents[k].key;
-        if (label!=MORPHO_NIL) {
+        if (!MORPHO_ISNIL(label)) {
             if (MORPHO_GETINTEGERVALUE(dict->dict.contents[k].val)==i) {
                 object_print(label);
                 printf(":\n");

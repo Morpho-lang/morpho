@@ -1588,40 +1588,59 @@ callfunction: // Jump here if an instruction becomes a call
             }
             #endif
             return true;
-        vm_error:
-        {
-            objectstring erridstring=MORPHO_STATICSTRING(v->err.id);
-            value errid = MORPHO_OBJECT(&erridstring);
+    }
+    
+vm_error:
+    {
+        objectstring erridstring=MORPHO_STATICSTRING(v->err.id);
+        value errid = MORPHO_OBJECT(&erridstring);
+        
+        /* Find the most recent callframe that requires us to return */
+        callframe *retfp=NULL;
+        for (retfp=v->fp; retfp>v->frame && !retfp->ret; retfp--);
+        
+        /* Search down the error stack for an error handler that can handle the error  */
+        for (errorhandler *eh=v->ehp; eh && eh>=v->errorhandlers; eh--) {
+            /* Abort if we pass an intermediate frame that requires us to return */
+            if (eh->fp<retfp) {
+                v->ehp=eh; // Pop off all earlier error handlers
+                break;
+            }
             
-            for (errorhandler *eh=v->ehp; eh && eh>=v->errorhandlers; eh--) {
-                if (MORPHO_ISDICTIONARY(eh->dict)) {
-                    value branchto = MORPHO_NIL;
-                    objectdictionary *dict = MORPHO_GETDICTIONARY(eh->dict);
-                    if (dictionary_get(&dict->dict, errid, &branchto)) {
-                        error_clear(&v->err);
-                        
-                        v->fp=eh->fp;
-                        v->konst=v->fp->function->konst.data;
-                        pc=v->instructions+MORPHO_GETINTEGERVALUE(branchto);
-                        reg=v->stack.data+v->fp->roffset;
-                        
-                        if (v->openupvalues) { /* Close upvalues */
-                            vm_closeupvalues(v, reg+v->fp->function->nregs);
-                        }
-                        
-                        v->ehp=eh-1; // Remove the error handler that caught the error from the eh stack
-                        if (v->ehp<v->errorhandlers) v->ehp=NULL;
-                        DISPATCH()
+            if (MORPHO_ISDICTIONARY(eh->dict)) {
+                value branchto = MORPHO_NIL;
+                objectdictionary *dict = MORPHO_GETDICTIONARY(eh->dict);
+                if (dictionary_get(&dict->dict, errid, &branchto)) {
+                    error_clear(&v->err);
+                    
+                    // Jump to the error handler
+                    v->fp=eh->fp;
+                    v->konst=v->fp->function->konst.data;
+                    pc=v->instructions+MORPHO_GETINTEGERVALUE(branchto);
+                    reg=v->stack.data+v->fp->roffset;
+                    
+                    if (v->openupvalues) { /* Close any upvalues */
+                        vm_closeupvalues(v, reg+v->fp->function->nregs);
                     }
+                    
+                    v->ehp=eh-1; // Unwind the error handler stack
+                    if (v->ehp<v->errorhandlers) v->ehp=NULL;
+                    DISPATCH()
                 }
             }
         }
+        
+        /* The error was not caught; unwind the stack to the point where we have to return  */
+        v->fp=retfp-1;
+        
     }
     
 #undef INTERPRET_LOOP
 #undef CASE_CODE
 #undef DISPATCH
-    v->fp->pc=pc;
+    
+    //v->fp->pc=pc;
+    
     return false;
 }
 

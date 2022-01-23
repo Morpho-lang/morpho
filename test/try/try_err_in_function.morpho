@@ -1,7 +1,7 @@
 /* **********************************
  * morpho test suite
  * try_err_in_function.morpho
- * Throw the error in a called function
+ * Throw the err in a called function
  * ********************************** */
 
 fn foo() {

@@ -1602,6 +1602,8 @@ callfunction: // Jump here if an instruction becomes a call
                         v->fp=eh->fp;
                         v->konst=v->fp->function->konst.data;
                         pc=v->instructions+MORPHO_GETINTEGERVALUE(branchto);
+                        reg=v->stack.data+v->fp->roffset;
+                        //vm_closeupvalues(v, reg+v->fp->function->nregs);
                         v->ehp--; // Remove the error handler that caught the error from the eh stack
                         if (v->ehp<v->errorhandlers) v->ehp=NULL;
                         DISPATCH()

@@ -124,7 +124,7 @@
 #define MORPHO_DEBUG
 
 /** @brief Print each instruction executed by the VM. */
-#define MORPHO_DEBUG_PRINT_INSTRUCTIONS
+//#define MORPHO_DEBUG_PRINT_INSTRUCTIONS
 
 /** @brief Display syntax tree after parsing */
 //#define MORPHO_DEBUG_DISPLAYSYNTAXTREE

@@ -1,0 +1,9 @@
+// Empty dictionary literal
+
+var dict = {}
+
+print dict.contains(1) // expect: false
+
+dict[1]=1
+
+print dict.contains(1) // expect: true

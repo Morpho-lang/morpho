@@ -758,7 +758,9 @@ static syntaxtreeindx parse_string(parser *p) {
  * @details Dictionaries are a list of key/value pairs,  { key : value, key: value } */
 static syntaxtreeindx parse_dictionary(parser *p) {
     syntaxtreeindx last=SYNTAXTREE_UNCONNECTED;
-    do {
+    last=parse_addnode(p, NODE_DICTIONARY, MORPHO_NIL, &p->current, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
+    
+    while(!parse_matchtoken(p, TOKEN_RIGHTCURLYBRACKET) && !parse_checktoken(p, TOKEN_EOF)) {
         syntaxtreeindx key, val, pair;
         token tok=p->current; // Keep track of the token that corresponds to each key/value pair
         
@@ -776,7 +778,7 @@ static syntaxtreeindx parse_dictionary(parser *p) {
         if (!parse_checktoken(p, TOKEN_RIGHTCURLYBRACKET)) {
             if (!parse_consume(p, TOKEN_COMMA, PARSE_DCTENTRYSPRTR)) break;
         }
-    } while(!parse_matchtoken(p, TOKEN_RIGHTCURLYBRACKET) && !parse_checktoken(p, TOKEN_EOF));
+    };
     
     return last;
 }

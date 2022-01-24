@@ -811,14 +811,7 @@ value Sparse_setindex(vm *v, int nargs, value *args) {
     unsigned int indx[2]={0,0};
     
     if (array_valuestoindices(nargs-1, args+1, indx)) {
-        value entry = MORPHO_NIL;
-        double val=0.0;
-        if (MORPHO_ISFLOAT(args[nargs])) val=MORPHO_GETFLOATVALUE(args[nargs]);
-        if (MORPHO_ISINTEGER(args[nargs])) val=(double) MORPHO_GETINTEGERVALUE(args[nargs]);
-        entry = MORPHO_FLOAT(val);
-        if (MORPHO_ISOBJECT(args[nargs])) entry=args[nargs];
-
-        if (!sparse_setelement(s, indx[0], indx[1], entry)) {
+        if (!sparse_setelement(s, indx[0], indx[1], args[nargs])) {
             morpho_runtimeerror(v, SPARSE_SETFAILED);
         }
     } else morpho_runtimeerror(v, MATRIX_INVLDINDICES);

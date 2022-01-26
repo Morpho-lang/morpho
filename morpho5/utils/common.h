@@ -26,9 +26,22 @@
  * ----------------------------------------- */
 
 /** @brief Compares two values
+ * @param l value to compare
+ * @param r value to compare */
+#define MORPHO_CHECKCMPTYPE(l, r) \
+    if (!morpho_ofsametype(l, r)) { \
+        if (MORPHO_ISINTEGER(l) && MORPHO_ISFLOAT(r)) { \
+            l = MORPHO_INTEGERTOFLOAT(l); \
+        } else if (MORPHO_ISFLOAT(l) && MORPHO_ISINTEGER(r)) { \
+            r = MORPHO_INTEGERTOFLOAT(r); \
+        } \
+    }
+
+/** @brief Compares two values
  * @param a value to compare
  * @param b value to compare
- * @returns 0 if a and b are equal, a positive number if b\>a and a negative number if a\<b */
+ * @returns 0 if a and b are equal, a positive number if b\>a and a negative number if a\<b
+ * @warning does not work if a and b are not the same type (use MORPHO_CHECKCMPTYPE to promote types if ordering is important) */
 #define EQUAL 0
 #define NOTEQUAL 1
 #define BIGGER 1

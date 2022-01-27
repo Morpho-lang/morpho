@@ -393,8 +393,8 @@ void vm_gcmarkretainobject(vm *v, object *obj) {
             break;
         case OBJECT_ARRAY: {
             objectarray *c = (objectarray *) obj;
-            for (unsigned int i=0; i<c->nelements+c->ndim; i++) {
-                vm_gcmarkvalue(v, c->data[i]);
+            for (unsigned int i=0; i<c->nelements; i++) {
+                vm_gcmarkvalue(v, c->values[i]);
             }
         }
             break;

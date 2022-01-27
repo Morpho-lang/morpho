@@ -1,7 +1,7 @@
 /** @file veneer.c
  *  @author T J Atherton
  *
- *  @brief Veneer classes over built in objects 
+ *  @brief Veneer classes over built in objects
  */
 
 #include "morpho.h"
@@ -18,7 +18,7 @@
 value Object_getindex(vm *v, int nargs, value *args) {
     value self=MORPHO_SELF(args);
     value out=MORPHO_NIL;
-    
+
     if (nargs==1 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0)) &&
         MORPHO_ISINSTANCE(self)) {
@@ -26,27 +26,27 @@ value Object_getindex(vm *v, int nargs, value *args) {
             morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)));
         }
     }
-    
+
     return out;
 }
 
 /** Gets an object property */
 value Object_setindex(vm *v, int nargs, value *args) {
     value self=MORPHO_SELF(args);
-    
+
     if (nargs==2 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0)) &&
         MORPHO_ISINSTANCE(self)) {
         dictionary_insert(&MORPHO_GETINSTANCE(self)->fields, MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1));
     } else morpho_runtimeerror(v, SETINDEX_ARGS);
-    
+
     return MORPHO_NIL;
 }
 
 /** Find the object's class */
 value Object_class(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
-    
+
     return MORPHO_OBJECT(MORPHO_GETINSTANCE(self)->klass);
 }
 
@@ -54,7 +54,7 @@ value Object_class(vm *v, int nargs, value *args) {
 value Object_super(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     objectclass *klass=MORPHO_GETINSTANCE(self)->klass;
-    
+
     return (klass->superclass ? MORPHO_OBJECT(klass->superclass) : MORPHO_NIL);
 }
 
@@ -67,7 +67,7 @@ value Object_respondsto(vm *v, int nargs, value *args) {
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         return MORPHO_BOOL(dictionary_get(&klass->methods, MORPHO_GETARG(args, 0), NULL));
     } else MORPHO_RAISE(v, RESPONDSTO_ARG);
-    
+
     return MORPHO_FALSE;
 }
 
@@ -78,9 +78,9 @@ value Object_has(vm *v, int nargs, value *args) {
     if (nargs==1 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         return MORPHO_BOOL(dictionary_get(&MORPHO_GETINSTANCE(self)->fields, MORPHO_GETARG(args, 0), NULL));
-        
+
     } else MORPHO_RAISE(v, RESPONDSTO_ARG);
-    
+
     return MORPHO_FALSE;
 }
 
@@ -89,7 +89,7 @@ value Object_invoke(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     objectclass *klass=MORPHO_GETINSTANCE(self)->klass;
     value out=MORPHO_NIL;
-    
+
     if (nargs>0 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         value fn;
@@ -97,7 +97,7 @@ value Object_invoke(vm *v, int nargs, value *args) {
             morpho_invoke(v, self, fn, nargs-1, &MORPHO_GETARG(args, 1), &out);
         } else morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)));
     } else morpho_runtimeerror(v, VM_INVALIDARGS, 1, 0);
-    
+
     return out;
 }
 
@@ -126,14 +126,14 @@ value Object_print(vm *v, int nargs, value *args) {
 /** Count number of properties */
 value Object_count(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
-    
+
     if (MORPHO_ISINSTANCE(self)) {
         objectinstance *obj = MORPHO_GETINSTANCE(self);
         return MORPHO_INTEGER(obj->fields.count);
     } else if (MORPHO_ISCLASS(self)) {
         return MORPHO_INTEGER(0);
     }
-    
+
     return MORPHO_NIL;
 }
 
@@ -141,13 +141,13 @@ value Object_count(vm *v, int nargs, value *args) {
 value Object_enumerate(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     value out = MORPHO_NIL;
-    
+
     if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-       
+
         if (MORPHO_ISINSTANCE(self)) {
             dictionary *dict= &MORPHO_GETINSTANCE(self)->fields;
-            
+
             if (n<0) {
                 out=MORPHO_INTEGER(dict->count);
             } else if (n<dict->count) {
@@ -163,7 +163,7 @@ value Object_enumerate(vm *v, int nargs, value *args) {
             if (n<0) out = MORPHO_INTEGER(0);
         }
     } else MORPHO_RAISE(v, ENUMERATE_ARGS);
-    
+
      return out;
 }
 
@@ -176,7 +176,7 @@ value Object_serialize(vm *v, int nargs, value *args) {
 value Object_clone(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     value out = MORPHO_NIL;
-    
+
     if (MORPHO_ISINSTANCE(self)) {
         objectinstance *instance = MORPHO_GETINSTANCE(self);
         objectinstance *new = object_newinstance(instance->klass);
@@ -186,7 +186,7 @@ value Object_clone(vm *v, int nargs, value *args) {
             morpho_bindobjects(v, 1, &out);
         }
     }
-    
+
     return out;
 }
 
@@ -216,7 +216,7 @@ bool string_tonumber(objectstring *string, value *out) {
     token tok;
     error err;
     lex_init(&l, string->string, 0);
-    
+
     if (lex(&l, &tok, &err)) {
         if (tok.type==TOKEN_MINUS) { // Check for leading minus
             minus=true;
@@ -224,7 +224,7 @@ bool string_tonumber(objectstring *string, value *out) {
         } else if (tok.type==TOKEN_PLUS) { // or plus
             if (!lex(&l, &tok, &err)) return false;
         }
-        
+
         if (tok.type==TOKEN_INTEGER) {
             long i = strtol(tok.start, NULL, 10);
             if (minus) i=-i;
@@ -266,20 +266,20 @@ char *string_index(objectstring *s, int i) {
 value string_constructor(vm *v, int nargs, value *args) {
     value out=morpho_concatenate(v, nargs, args+1);
     if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
-    return out; 
+    return out;
 }
 
 /** Find a string's length */
 value String_count(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
-    
+
     return MORPHO_INTEGER(string_countchars(slf));
 }
 
 /** Prints a string */
 value String_print(vm *v, int nargs, value *args) {
     morpho_printvalue(MORPHO_SELF(args));
-    
+
     return MORPHO_SELF(args);
 }
 
@@ -295,22 +295,22 @@ value String_clone(vm *v, int nargs, value *args) {
 /** Sets an index */
 /*value String_setindex(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
-    
+
     morpho_runtimeerror(v, STRING_IMMTBL);
-    
+
     if (nargs==2 &&
         MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 1))) {
         int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         objectstring *set = MORPHO_GETSTRING(MORPHO_GETARG(args, 1));
-        
+
         if (n>=0 && n<slf->length) {
             for (unsigned int i=0; i<set->length && n+i<slf->length; i++) {
                 slf->stringdata[n+i]=set->stringdata[i];
             }
         } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
     } else morpho_runtimeerror(v, SETINDEX_ARGS);
-    
+
     return MORPHO_NIL;
 }*/
 
@@ -318,10 +318,10 @@ value String_clone(vm *v, int nargs, value *args) {
 value String_enumerate(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    
+
     if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        
+
         if (n<0) {
             out=MORPHO_INTEGER(string_countchars(slf));
         } else {
@@ -332,29 +332,29 @@ value String_enumerate(vm *v, int nargs, value *args) {
             } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
         }
     } else MORPHO_RAISE(v, ENUMERATE_ARGS);
-    
+
     return out;
 }
 
 value String_isnumber(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    
-    if (string_tonumber(slf, &out)) return MORPHO_TRUE; 
-    
+
+    if (string_tonumber(slf, &out)) return MORPHO_TRUE;
+
     return MORPHO_FALSE;
 }
 
 value String_split(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    
+
     if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         objectstring *split = MORPHO_GETSTRING(MORPHO_GETARG(args, 0));
         objectlist *new = object_newlist(0, NULL);
-        
+
         if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
-        
+
         char *last = slf->string;
         for (char *c = slf->string; *c!='\0'; c+=morpho_utf8numberofbytes((uint8_t *) c)) { // Loop over string
             for (char *s = split->string; *s!='\0';) { // Loop over split chars
@@ -368,17 +368,17 @@ value String_split(vm *v, int nargs, value *args) {
                 s+=nbytes;
             }
         }
-        
+
         value newstring = object_stringfromcstring(last, slf->string+slf->length-last);
         if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
         list_append(new, newstring);
-        
+
         out=MORPHO_OBJECT(new);
         list_append(new, out);
         morpho_bindobjects(v, new->val.count, new->val.data);
         new->val.count-=1;
     }
-    
+
     return out;
 }
 
@@ -399,22 +399,22 @@ MORPHO_ENDCLASS
 
 /** Converts a list of values to a list of integers */
 inline bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out) {
-    
+
     for (unsigned int i=0; i<ndim; i++) {
         if (MORPHO_ISINTEGER(in[i])) out[i]=MORPHO_GETINTEGERVALUE(in[i]);
         else if(MORPHO_ISFLOAT(in[i])) out[i]=round(MORPHO_GETFLOATVALUE(in[i]));
         else return false;
     }
-    
+
     return true;
 }
 
 /** Creates a new 1D array from a list of values */
 objectarray *object_arrayfromvaluelist(unsigned int n, value *v) {
     objectarray *new = object_newarray(1, &n);
-    
+
     if (new) memcpy(new->values, v, sizeof(value)*n);
-    
+
     return new;
 }
 
@@ -435,9 +435,9 @@ objectarray *object_arrayfromvalueindices(unsigned int ndim, value *dim) {
 /** Clones an array. Does *not* clone the contents. */
 objectarray *object_clonearray(objectarray *array) {
     objectarray *new = object_arrayfromvalueindices(array->ndim, array->data);
-    
+
     if (new) memcpy(new->data, array->data, sizeof(value)*(array->nelements+2*array->ndim));
-    
+
     return new;
 }
 
@@ -445,7 +445,7 @@ objectarray *object_clonearray(objectarray *array) {
 bool array_print_recurse(vm *v, objectarray *a, unsigned int *indx, unsigned int dim, varray_char *out) {
     unsigned int bnd = MORPHO_GETINTEGERVALUE(a->dimensions[dim]);
     value val=MORPHO_NIL;
-    
+
     varray_charadd(out, "[ ", 2);
     for (indx[dim]=0; indx[dim]<bnd; indx[dim]++) {
         if (dim==a->ndim-1) { // Print if innermost element
@@ -453,7 +453,7 @@ bool array_print_recurse(vm *v, objectarray *a, unsigned int *indx, unsigned int
                 morpho_printtobuffer(v, val, out);
             } else return false;
         } else if (!array_print_recurse(v, a, indx, dim+1, out)) return false; // Otherwise recurse
-        
+
         if (indx[dim]<bnd-1) { // Separators between items
             varray_charadd(out, ", ", 2);
         }
@@ -467,13 +467,13 @@ bool array_print_recurse(vm *v, objectarray *a, unsigned int *indx, unsigned int
 void array_print(vm *v, objectarray *a) {
     varray_char out;
     varray_charinit(&out);
-    
+
     unsigned int indx[a->ndim];
     if (array_print_recurse(v, a, indx, 0, &out)) {
         varray_charwrite(&out, '\0'); // Ensure zero terminated
         printf("%s", out.data);
     }
-    
+
     varray_charclear(&out);
 }
 
@@ -515,14 +515,14 @@ errorid array_to_list_error(objectarrayerror err) {
 /** Gets an array element */
 objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned int *indx, value *out) {
     unsigned int k=0;
-    
+
     if (ndim!=a->ndim) return ARRAY_WRONGDIM;
-    
+
     for (unsigned int i=0; i<ndim; i++) {
         if (indx[i]>=MORPHO_GETINTEGERVALUE(a->dimensions[i])) return ARRAY_OUTOFBOUNDS;
         k+=indx[i]*MORPHO_GETINTEGERVALUE(a->multipliers[i]);
     }
-        
+
     *out = a->values[k];
     return ARRAY_OK;
 }
@@ -629,14 +629,14 @@ objectarrayerror setslicerecursive(value* a, value* out,objectarrayerror copy(va
 /** Sets an array element */
 objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned int *indx, value in) {
     unsigned int k=0;
-    
+
     if (ndim!=a->ndim) return ARRAY_WRONGDIM;
-    
+
     for (unsigned int i=0; i<ndim; i++) {
         if (indx[i]>=MORPHO_GETINTEGERVALUE(a->dimensions[i])) return ARRAY_OUTOFBOUNDS;
         k+=indx[i]*MORPHO_GETINTEGERVALUE(a->multipliers[i]);
     }
-        
+
     a->values[k]=in;
     return ARRAY_OK;
 }
@@ -689,15 +689,15 @@ objectarray *array_constructfromlist(unsigned int ndim, unsigned int *dim, objec
     unsigned int ldim[nldim];
     for (unsigned int i=0; i<nldim; i++) ldim[i]=0;
     list_nestingdepth(initializer, ldim);
-    
+
     if (ndim>0) { // Check compatibility
         if (ndim!=nldim) return NULL;
         for (unsigned int i=0; i<ndim; i++) if (ldim[i]!=dim[i]) return NULL;
     }
-    
+
     objectarray *new = object_newarray(nldim, ldim);
     array_copyfromnestedlist(initializer, new);
-    
+
     return new;
 }
 
@@ -709,7 +709,7 @@ objectarray *array_constructfromarray(unsigned int ndim, unsigned int *dim, obje
             if (dim[i]!=MORPHO_GETINTEGERVALUE(initializer->dimensions[i])) return NULL;
         }
     }
-    
+
     return object_clonearray(initializer);
 }
 
@@ -718,21 +718,21 @@ value array_constructor(vm *v, int nargs, value *args) {
     unsigned int ndim; // Number of dimensions
     unsigned int dim[nargs+1]; // Size of each dimension
     value initializer=MORPHO_NIL; // An initializer if provided
-    
+
     // Check that args are present
     if (nargs==0) { morpho_runtimeerror(v, ARRAY_ARGS); return MORPHO_NIL; }
-    
+
     for (ndim=0; ndim<nargs; ndim++) { // Loop over arguments
         if (!MORPHO_ISNUMBER(MORPHO_GETARG(args, ndim))) break; // Stop once a non-numerical argument is encountered
     }
-    
+
     // Get dimensions
     if (ndim>0) array_valuelisttoindices(ndim, &MORPHO_GETARG(args, 0), dim);
     // Initializer is the first non-numerical argument; anything after is ignored
     if (ndim<nargs) initializer=MORPHO_GETARG(args, ndim);
-    
+
     objectarray *new=NULL;
-    
+
     // Now construct the array
     if (MORPHO_ISNIL(initializer)) {
         new = object_newarray(ndim, dim);
@@ -745,14 +745,14 @@ value array_constructor(vm *v, int nargs, value *args) {
     } else {
         morpho_runtimeerror(v, ARRAY_ARGS);
     }
-    
+
     // Bind the new array to the VM
     value out=MORPHO_NIL;
     if (new) {
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
     }
-    
+
     return out;
 }
 
@@ -785,7 +785,7 @@ value Array_getindex(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     objectarray *array=MORPHO_GETARRAY(MORPHO_SELF(args));
     unsigned int indx[nargs];
-    
+
     if (array_valuelisttoindices(nargs, &MORPHO_GETARG(args, 0), indx)) {
         objectarrayerror err=array_getelement(array, nargs, indx, &out);
         if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
@@ -806,26 +806,26 @@ value Array_getindex(vm *v, int nargs, value *args) {
 value Array_setindex(vm *v, int nargs, value *args) {
     objectarray *array=MORPHO_GETARRAY(MORPHO_SELF(args));
     unsigned int indx[nargs-1];
-    
+
     if (array_valuelisttoindices(nargs-1, &MORPHO_GETARG(args, 0), indx)) {
         objectarrayerror err=array_setelement(array, nargs-1, indx, MORPHO_GETARG(args, nargs-1));
         if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
     } else MORPHO_RAISE(v, VM_NONNUMINDX);
-    
+
     return MORPHO_NIL;
 }
 
 /** Print an array */
 value Array_print(vm *v, int nargs, value *args) {
     array_print(v, MORPHO_GETARRAY(MORPHO_SELF(args)));
-    
+
     return MORPHO_NIL;
 }
 
 /** Find an array's size */
 value Array_count(vm *v, int nargs, value *args) {
     objectarray *slf = MORPHO_GETARRAY(MORPHO_SELF(args));
-    
+
     return MORPHO_INTEGER(slf->nelements);
 }
 
@@ -834,12 +834,12 @@ value Array_dimensions(vm *v, int nargs, value *args) {
     objectarray *a=MORPHO_GETARRAY(MORPHO_SELF(args));
     value out=MORPHO_NIL;
     objectlist *new=object_newlist(a->ndim, a->data);
-    
+
     if (new) {
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
     } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    
+
     return out;
 }
 
@@ -847,17 +847,17 @@ value Array_dimensions(vm *v, int nargs, value *args) {
 value Array_enumerate(vm *v, int nargs, value *args) {
     objectarray *slf = MORPHO_GETARRAY(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    
+
     if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-       
+
         if (n<0) {
             out=MORPHO_INTEGER(slf->nelements);
         } else if (n<slf->nelements) {
             out=slf->values[n];
         } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
     } else MORPHO_RAISE(v, ENUMERATE_ARGS);
-    
+
     return out;
 }
 
@@ -865,13 +865,13 @@ value Array_enumerate(vm *v, int nargs, value *args) {
 value Array_clone(vm *v, int nargs, value *args) {
     objectarray *slf = MORPHO_GETARRAY(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    
+
     objectarray *new = object_clonearray(slf);
     if (new) {
         out = MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
     }
-    
+
     return out;
 }
 
@@ -915,12 +915,12 @@ bool list_insert(objectlist *list, int indx, int nval, value *vals) {
     while (i<0) i+=list->val.count+1;
     if (i>list->val.count) return false;
     if (nval>list->val.capacity-list->val.count) if (!list_resize(list, list->val.count+nval)) return false;
-    
+
     memmove(list->val.data+i+nval, list->val.data+i, sizeof(value)*(list->val.count-i));
     memcpy(list->val.data+i, vals, sizeof(value)*nval);
 
     list->val.count+=nval;
-    
+
     return true;
 }
 
@@ -937,7 +937,7 @@ bool list_remove(objectlist *list, value val) {
             return true;
         }
     }
-    
+
     return false;
 }
 
@@ -973,12 +973,12 @@ static bool list_sortwithfn_err;
 int list_sortfunctionwfn(const void *a, const void *b) {
     value args[2] = {*(value *) a, *(value *) b};
     value ret;
-    
+
     if (morpho_call(list_sortwithfn_vm, list_sortwithfn_fn, 2, args, &ret)) {
         if (MORPHO_ISINTEGER(ret)) return MORPHO_GETINTEGERVALUE(ret);
         if (MORPHO_ISFLOAT(ret)) return morpho_comparevalue(MORPHO_FLOAT(0), ret);
     }
-    
+
     list_sortwithfn_err=true;
     return 0;
 }
@@ -1007,14 +1007,14 @@ int list_orderfunction(const void *a, const void *b) {
 objectlist *list_order(objectlist *list) {
     listorderstruct *order = MORPHO_MALLOC(list->val.count*sizeof(listorderstruct));
     objectlist *new = NULL;
-    
+
     if (order) {
         for (unsigned int i=0; i<list->val.count; i++) {
             order[i].indx=i;
             order[i].val=list->val.data[i];
         }
         qsort(order, list->val.count, sizeof(listorderstruct), list_orderfunction);
-        
+
         new=object_newlist(list->val.count, NULL);
         if (new) {
             for (unsigned int i=0; i<list->val.count; i++) {
@@ -1022,7 +1022,7 @@ objectlist *list_order(objectlist *list) {
             }
             new->val.count=list->val.count;
         }
-        
+
         MORPHO_FREE(order);
     }
     return new;
@@ -1033,7 +1033,7 @@ bool list_ismember(objectlist *list, value v) {
     for (unsigned int i=0; i<list->val.count; i++) {
         if (MORPHO_ISEQUAL(list->val.data[i], v)) return true;
     }
-    return false; 
+    return false;
 }
 
 /** Clones a list */
@@ -1046,21 +1046,21 @@ objectarrayerror list_slicecopy(value * a,value * out, unsigned int ndim, unsign
 	objectlist *outList = MORPHO_GETLIST(*out);
 
 	if (list_getelement(MORPHO_GETLIST(*a),indx[0],&data)){
-		outList->val.data[newindx[0]] = data;			
-	} else return ARRAY_OUTOFBOUNDS; 
+		outList->val.data[newindx[0]] = data;
+	} else return ARRAY_OUTOFBOUNDS;
 	return ARRAY_OK;
 }
 
 /** Concatenates two lists */
 objectlist *list_concatenate(objectlist *a, objectlist *b) {
     objectlist *new=object_newlist(a->val.count+b->val.count, NULL);
-    
+
     if (new) {
         memcpy(new->val.data, a->val.data, sizeof(value)*a->val.count);
         memcpy(new->val.data+a->val.count, b->val.data, sizeof(value)*b->val.count);
         new->val.count=a->val.count+b->val.count;
     }
-    
+
     return new;
 }
 
@@ -1076,21 +1076,21 @@ value list_constructor(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     value init=MORPHO_NIL;
     objectlist *new=NULL;
-    
+
     if (nargs==1 && MORPHO_ISRANGE(MORPHO_GETARG(args, 0))) {
         init = MORPHO_GETARG(args, 0);
         new = object_newlist(0, NULL);
     } else new = object_newlist(nargs, args+1);
-    
+
     if (new) {
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
-        
+
         if (!MORPHO_ISNIL(init)) {
             builtin_enumerateloop(v, init, list_enumerableinitializer, new);
         }
     }
-    
+
     return out;
 }
 
@@ -1109,13 +1109,13 @@ bool list_slicedim(value * a, unsigned int ndim){
 /** Get an element */
 value List_append(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-    
+
     unsigned int capacity = slf->val.capacity;
-    
+
     varray_valueadd(&slf->val, args+1, nargs);
-    
+
     if (slf->val.capacity!=capacity) morpho_resizeobject(v, (object *) slf, capacity*sizeof(value), slf->val.capacity*sizeof(value));
-    
+
     return MORPHO_SELF(args);
 }
 
@@ -1123,7 +1123,7 @@ value List_append(vm *v, int nargs, value *args) {
 value List_pop(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    
+
     if (slf->val.count>0) {
         if (nargs>0 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
             int indx = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
@@ -1134,32 +1134,32 @@ value List_pop(vm *v, int nargs, value *args) {
         }
         slf->val.count--;
     }
-    
+
     return out;
 }
 
 /** inserts an element */
 value List_insert(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-    
+
     if (nargs>=2) {
         if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
             int indx = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
             if (!list_insert(slf, indx, nargs-1, &MORPHO_GETARG(args, 1))) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
         }
     } else morpho_runtimeerror(v, VM_INVALIDARGS, 2, nargs);
-    
+
     return MORPHO_NIL;
 }
 
 /** Get an element */
 value List_remove(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-    
+
     if (nargs==1) {
         if (!list_remove(slf, MORPHO_GETARG(args, 0))) morpho_runtimeerror(v, LIST_ENTRYNTFND);
     } else morpho_runtimeerror(v, VM_INVALIDARGS, 1, nargs);
-    
+
     return MORPHO_NIL;
 }
 
@@ -1167,11 +1167,11 @@ value List_remove(vm *v, int nargs, value *args) {
 value List_getindex(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    
+
     if (nargs==1) {
         if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
             int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-            
+
             if (!list_getelement(slf, i, &out)) {
                 morpho_runtimeerror(v, VM_OUTOFBOUNDS);
             }
@@ -1184,7 +1184,7 @@ value List_getindex(vm *v, int nargs, value *args) {
 
 		}
     } else MORPHO_RAISE(v, LIST_NUMARGS)
-    
+
     return out;
 }
 
@@ -1192,7 +1192,7 @@ value List_getindex(vm *v, int nargs, value *args) {
 /** Get an element */
 value List_setindex(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-    
+
     if (nargs==2) {
         if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
             int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
@@ -1200,28 +1200,28 @@ value List_setindex(vm *v, int nargs, value *args) {
             else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
         } else morpho_runtimeerror(v, SETINDEX_ARGS);
     } else morpho_runtimeerror(v, SETINDEX_ARGS);
-    
+
     return MORPHO_SELF(args);
 }
 
 /** Get number of entries */
 value List_count(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-    
+
     return MORPHO_INTEGER(slf->val.count);
 }
 
 /** Print a list */
 value List_print(vm *v, int nargs, value *args) {
     objectlist *lst=MORPHO_GETLIST(MORPHO_SELF(args));
-    
+
     printf("[ ");
     for (unsigned int i=0; i<lst->val.count; i++) {
         morpho_printvalue(lst->val.data[i]);
         if (i<lst->val.count-1) printf(", ");
     }
     printf(" ]");
-    
+
     return MORPHO_NIL;
 }
 
@@ -1229,34 +1229,34 @@ value List_print(vm *v, int nargs, value *args) {
 value List_tostring(vm *v, int nargs, value *args) {
     objectlist *lst=MORPHO_GETLIST(MORPHO_SELF(args));
     value out = MORPHO_NIL;
-    
+
     varray_char buffer;
     varray_charinit(&buffer);
-    
+
     varray_charadd(&buffer, "[ ", 2);
     for (unsigned int i=0; i<lst->val.count; i++) {
         morpho_printtobuffer(v, lst->val.data[i], &buffer);
         if (i<lst->val.count-1) varray_charadd(&buffer, ", ", 2);
     }
     varray_charadd(&buffer, " ]", 2);
-    
+
     out = object_stringfromvarraychar(&buffer);
     if (MORPHO_ISSTRING(out)) {
         morpho_bindobjects(v, 1, &out);
     }
     varray_charclear(&buffer);
-    
+
     return out;
 }
-    
+
 /** Enumerate members of a list */
 value List_enumerate(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    
+
     if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        
+
         if (n<0) {
             out=MORPHO_INTEGER(slf->val.count);
         } else if (n<slf->val.count) {
@@ -1265,14 +1265,14 @@ value List_enumerate(vm *v, int nargs, value *args) {
             morpho_runtimeerror(v, VM_OUTOFBOUNDS);
         }
     } else MORPHO_RAISE(v, ENUMERATE_ARGS);
-    
+
     return out;
 }
 
 /** Enumerate members of a list */
 value List_sort(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-    
+
     if (nargs==0) {
         list_sort(slf);
     } else if (nargs==1 && MORPHO_ISCALLABLE(MORPHO_GETARG(args, 0))) {
@@ -1280,7 +1280,7 @@ value List_sort(vm *v, int nargs, value *args) {
             morpho_runtimeerror(v, LIST_SRTFN);
         }
     }
-    
+
     return MORPHO_NIL;
 }
 
@@ -1288,24 +1288,24 @@ value List_sort(vm *v, int nargs, value *args) {
 value List_order(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    
+
     objectlist *new=list_order(slf);
     if (new) {
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
     } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    
+
     return out;
 }
 
 /** Tests if a list has a value as a member */
 value List_ismember(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-    
+
     if (nargs==1) {
         return MORPHO_BOOL(list_ismember(slf, MORPHO_GETARG(args, 0)));
     } else morpho_runtimeerror(v, VM_INVALIDARGS, 1, nargs);
-    
+
     return MORPHO_NIL;
 }
 
@@ -1317,7 +1317,7 @@ value list_generatetuples(vm *v, objectlist *list, unsigned int n, tuplemode mod
     morpho_tuplesinit(list->val.count, n, work, mode);
     objectlist *new = object_newlist(0, NULL);
     if (!new) goto list_generatetuples_cleanup;
-    
+
     while (morpho_tuples(nval, list->val.data, n, work, mode, tuple)) {
         objectlist *el = object_newlist(n, tuple);
         if (el) {
@@ -1326,16 +1326,16 @@ value list_generatetuples(vm *v, objectlist *list, unsigned int n, tuplemode mod
             goto list_generatetuples_cleanup;
         }
     }
-    
+
     list_append(new, MORPHO_OBJECT(new));
     morpho_bindobjects(v, new->val.count, new->val.data);
     new->val.count--; // And pop it back off
-    
+
     return MORPHO_OBJECT(new);
-    
+
 list_generatetuples_cleanup:
     morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    
+
     if (new) { // Deallocate partially created list
         for (unsigned int i=0; i<new->val.count; i++) {
             value el=new->val.data[i];
@@ -1343,7 +1343,7 @@ list_generatetuples_cleanup:
         }
         object_free((object *) new);
     }
-    
+
     return MORPHO_NIL;
 }
 
@@ -1351,12 +1351,12 @@ list_generatetuples_cleanup:
 value List_tuples(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     unsigned int n=2;
-    
+
     if (nargs>0 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         if (n<2) n=2;
     }
-    
+
     return list_generatetuples(v, slf, n, MORPHO_TUPLEMODE);
 }
 
@@ -1364,13 +1364,13 @@ value List_tuples(vm *v, int nargs, value *args) {
 value List_sets(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     unsigned int n=2;
-    
+
     if (nargs>0 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         if (n<2) n=2;
     	if (n>slf->val.capacity) n = slf->val.capacity;
     }
-    
+
     return list_generatetuples(v, slf, n, MORPHO_SETMODE);
 }
 
@@ -1388,18 +1388,18 @@ value List_clone(vm *v, int nargs, value *args) {
 value List_add(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     value out = MORPHO_NIL;
-    
+
     if (nargs==1 && MORPHO_ISLIST(MORPHO_GETARG(args, 0))) {
         objectlist *operand = MORPHO_GETLIST(MORPHO_GETARG(args, 0));
         objectlist *new = list_concatenate(slf, operand);
-        
+
         if (new) {
             out = MORPHO_OBJECT(new);
             morpho_bindobjects(v, 1, &out);
         }
-        
+
     } else morpho_runtimeerror(v, LIST_ADDARGS);
-    
+
     return out;
 }
 
@@ -1431,17 +1431,17 @@ MORPHO_ENDCLASS
 value dictionary_constructor(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     objectdictionary *new=object_newdictionary();
-    
+
     if (new) {
         out=MORPHO_OBJECT(new);
-        
+
         for (unsigned int i=0; i+1<nargs; i+=2) {
             dictionary_insert(&new->dict, MORPHO_GETARG(args, i), MORPHO_GETARG(args, i+1));
         }
-        
+
         morpho_bindobjects(v, 1, &out);
     }
-    
+
     return out;
 }
 
@@ -1449,28 +1449,28 @@ value dictionary_constructor(vm *v, int nargs, value *args) {
 value Dictionary_getindex(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    
+
     if (nargs==1) {
         if(!dictionary_get(&slf->dict, MORPHO_GETARG(args, 0), &out)) {
             morpho_runtimeerror(v, DICT_DCTKYNTFND);
         }
     }
-    
+
     return out;
 }
 
 /** Gets a dictionary entry */
 value Dictionary_setindex(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
-    
+
     if (nargs==2) {
         unsigned int capacity = slf->dict.capacity;
-        
+
         dictionary_insert(&slf->dict, MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1));
-        
+
         if (slf->dict.capacity!=capacity) morpho_resizeobject(v, (object *) slf, capacity*sizeof(value), slf->dict.capacity*sizeof(value));
     } else morpho_runtimeerror(v, SETINDEX_ARGS);
-    
+
     return MORPHO_NIL;
 }
 
@@ -1478,18 +1478,18 @@ value Dictionary_setindex(vm *v, int nargs, value *args) {
 value Dictionary_contains(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
     value out=MORPHO_FALSE;
-    
+
     if (nargs==1) {
         if (dictionary_get(&slf->dict, MORPHO_GETARG(args, 0), &out)) out=MORPHO_TRUE;
     }
-    
+
     return out;
 }
 
 /** Prints a dictionary */
 value Dictionary_print(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
-    
+
     printf("{ ");
     unsigned int k=0;
     for (unsigned int i=0; i<slf->dict.capacity; i++) {
@@ -1502,14 +1502,14 @@ value Dictionary_print(vm *v, int nargs, value *args) {
         }
     }
     printf(" }");
-    
+
     return MORPHO_NIL;
 }
 
 /** Counts number of items in dictionary */
 value Dictionary_count(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
-    
+
     return MORPHO_INTEGER(slf->dict.count);
 }
 
@@ -1529,14 +1529,14 @@ value dictionary_iterate(objectdictionary *dict, unsigned int n) {
 value Dictionary_enumerate(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    
+
     if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        
+
         if (n<0) out=MORPHO_INTEGER(slf->dict.count);
         else out=dictionary_iterate(slf, n);
     } else MORPHO_RAISE(v, ENUMERATE_ARGS);
-    
+
     return out;
 }
 
@@ -1545,7 +1545,7 @@ value Dictionary_keys(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
     objectlist *list = object_newlist(slf->dict.count, NULL);
     value out=MORPHO_NIL;
-    
+
     if (list) {
         for (unsigned int i=0; i<slf->dict.capacity; i++) {
             if (!MORPHO_ISNIL(slf->dict.contents[i].key)) {
@@ -1555,7 +1555,7 @@ value Dictionary_keys(vm *v, int nargs, value *args) {
         out=MORPHO_OBJECT(list);
         morpho_bindobjects(v, 1, &out);
     }
-    
+
     return out;
 }
 
@@ -1565,10 +1565,10 @@ value Dictionary_clone(vm *v, int nargs, value *args) {
     objectdictionary *new = object_newdictionary();
     if (!new) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     value out=MORPHO_OBJECT(new);
-    
+
     dictionary_copy(&slf->dict, &new->dict);
     morpho_bindobjects(v, 1, &out);
-    
+
     return out;
 }
 
@@ -1645,46 +1645,46 @@ value range_iterate(objectrange *range, unsigned int i) {
 value range_constructor(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     objectrange *new=NULL;
-    
+
     /* Check args are numerical */
     for (unsigned int i=0; i<nargs; i++) {
         if (!(MORPHO_ISINTEGER(MORPHO_GETARG(args, i)) || MORPHO_ISFLOAT(MORPHO_GETARG(args, i)))) {
             MORPHO_RAISE(v, RANGE_ARGS);
         }
     }
-    
+
     if (nargs==2) {
         new=object_newrange(MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1), MORPHO_NIL);
     } else if (nargs==3) {
         new=object_newrange(MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1), MORPHO_GETARG(args, 2));
     } else MORPHO_RAISE(v, RANGE_ARGS);
-    
+
     if (new) {
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
     }
-    
+
     return out;
 }
 
 /** Print ranges */
 value Range_getindex(vm *v, int nargs, value *args) {
     objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
-    
+
     if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        
+
         if (n<slf->nsteps) return range_iterate(slf, n);
         else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
     }
-    
+
     return MORPHO_SELF(args);
 }
 
 /** Print ranges */
 value Range_print(vm *v, int nargs, value *args) {
     object_print(MORPHO_SELF(args));
-    
+
     return MORPHO_SELF(args);
 }
 
@@ -1692,21 +1692,21 @@ value Range_print(vm *v, int nargs, value *args) {
 value Range_enumerate(vm *v, int nargs, value *args) {
     objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    
+
     if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        
+
         if (n<0) return MORPHO_INTEGER(slf->nsteps);
         else return range_iterate(slf, n);
     } else MORPHO_RAISE(v, ENUMERATE_ARGS);
-    
+
     return out;
 }
 
 /** Count number of items in a range */
 value Range_count(vm *v, int nargs, value *args) {
     objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
-    
+
     return MORPHO_INTEGER(slf->nsteps);
 }
 
@@ -1738,16 +1738,16 @@ static value error_messageproperty;
  *   2. Default error message
  */
 value Error_init(vm *v, int nargs, value *args) {
-    
+
     if ((nargs==2) &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0)) &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 1))) {
-        
+
         objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), error_tagproperty, MORPHO_GETARG(args, 0));
         objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), error_messageproperty, MORPHO_GETARG(args, 1));
-        
+
     } else MORPHO_RAISE(v, ERROR_ARGS);
-    
+
     return MORPHO_NIL;
 }
 
@@ -1755,7 +1755,7 @@ value Error_init(vm *v, int nargs, value *args) {
 value Error_throw(vm *v, int nargs, value *args) {
     objectinstance *slf = MORPHO_GETINSTANCE(MORPHO_SELF(args));
     value tag=MORPHO_NIL, msg=MORPHO_NIL;
-                                             
+
     if (slf) {
         objectinstance_getproperty(slf, error_tagproperty, &tag);
         if (nargs==0) {
@@ -1763,17 +1763,17 @@ value Error_throw(vm *v, int nargs, value *args) {
         } else {
             msg=MORPHO_GETARG(args, 0);
         }
-        
+
         morpho_usererror(v, MORPHO_GETCSTRING(tag), MORPHO_GETCSTRING(msg));
     }
-    
+
     return MORPHO_NIL;
 }
 
 /** Print errors */
 value Error_print(vm *v, int nargs, value *args) {
     object_print(MORPHO_SELF(args));
-    
+
     return MORPHO_SELF(args);
 }
 
@@ -1791,7 +1791,7 @@ void veneer_initialize(void) {
     /* Object */
     value objclass=builtin_addclass(OBJECT_CLASSNAME, MORPHO_GETCLASSDEFINITION(Object), MORPHO_NIL);
     morpho_setbaseclass(objclass);
-    
+
     /* String */
     builtin_addfunction(STRING_CLASSNAME, string_constructor, BUILTIN_FLAGSEMPTY);
     value stringclass=builtin_addclass(STRING_CLASSNAME, MORPHO_GETCLASSDEFINITION(String), MORPHO_NIL);
@@ -1801,27 +1801,27 @@ void veneer_initialize(void) {
     builtin_addfunction(ARRAY_CLASSNAME, array_constructor, BUILTIN_FLAGSEMPTY);
     value arrayclass=builtin_addclass(ARRAY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Array), MORPHO_NIL);
     object_setveneerclass(OBJECT_ARRAY, arrayclass);
-    
+
     /* List */
     builtin_addfunction(LIST_CLASSNAME, list_constructor, BUILTIN_FLAGSEMPTY);
     value listclass=builtin_addclass(LIST_CLASSNAME, MORPHO_GETCLASSDEFINITION(List), MORPHO_NIL);
     object_setveneerclass(OBJECT_LIST, listclass);
-    
+
     /* Dictionary */
     builtin_addfunction(DICTIONARY_CLASSNAME, dictionary_constructor, BUILTIN_FLAGSEMPTY);
     value dictionaryclass=builtin_addclass(DICTIONARY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Dictionary), MORPHO_NIL);
     object_setveneerclass(OBJECT_DICTIONARY, dictionaryclass);
-    
+
     /* Range */
     builtin_addfunction(RANGE_CLASSNAME, range_constructor, BUILTIN_FLAGSEMPTY);
     value rangeclass=builtin_addclass(RANGE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Range), MORPHO_NIL);
     object_setveneerclass(OBJECT_RANGE, rangeclass);
-    
+
     /* Error */
     builtin_addclass(ERROR_CLASSNAME, MORPHO_GETCLASSDEFINITION(Error), MORPHO_NIL);
     error_tagproperty=builtin_internsymbolascstring(ERROR_TAG_PROPERTY);
     error_messageproperty=builtin_internsymbolascstring(ERROR_MESSAGE_PROPERTY);
-    
+
     morpho_defineerror(ARRAY_ARGS, ERROR_HALT, ARRAY_ARGS_MSG);
     morpho_defineerror(ARRAY_INIT, ERROR_HALT, ARRAY_INIT_MSG);
     morpho_defineerror(ARRAY_CMPT, ERROR_HALT, ARRAY_CMPT_MSG);

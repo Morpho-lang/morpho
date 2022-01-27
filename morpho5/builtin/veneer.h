@@ -80,17 +80,16 @@
 #define ERROR_ARGS_MSG                    "Error much be called with a tag and a default message as arguments."
 
 /* Public interfaces to various data structures */
-typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_NONNUMERICALINDX, ARRAY_OUTOFBOUNDS } objectarrayerror;
+typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_OUTOFBOUNDS } objectarrayerror;
 
 int string_countchars(objectstring *s);
 char *string_index(objectstring *s, int i);
 
 errorid array_error(objectarrayerror err);
 
-bool array_valuestoindices(unsigned int ndim, value *indx, unsigned int *iout);
-bool array_indicestoelement(objectarray *array, unsigned int ndim, unsigned int *indx, unsigned int *ixout);
-objectarrayerror array_getelement(objectarray *array, unsigned int ndim, value *indx, value *out);
-objectarrayerror array_setelement(objectarray *array, unsigned int ndim, value *indx, value set);
+bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out);
+objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned int *indx, value *out);
+objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned int *indx, value in);
 
 bool list_resize(objectlist *list, int size);
 void list_append(objectlist *list, value v);

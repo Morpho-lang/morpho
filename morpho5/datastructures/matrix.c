@@ -45,14 +45,14 @@ objectmatrix *object_newmatrix(unsigned int nrows, unsigned int ncols, bool zero
  * @param[out] ndim - number of dimensions of the array */
 bool matrix_getarraydimensions(objectarray *array, unsigned int dim[], unsigned int maxdim, unsigned int *ndim) {
     unsigned int n=0, m=0;
-    for (n=0; n<maxdim && n<array->dimensions; n++) {
+    for (n=0; n<maxdim && n<array->ndim; n++) {
         int k=MORPHO_GETINTEGERVALUE(array->data[n]);
         if (k>dim[n]) dim[n]=k;
     }
     
-    if (maxdim<array->dimensions) return false;
+    if (maxdim<array->ndim) return false;
     
-    for (unsigned int i=array->dimensions; i<array->dimensions+array->nelements; i++) {
+    for (unsigned int i=array->ndim; i<array->ndim+array->nelements; i++) {
         if (MORPHO_ISARRAY(array->data[i])) {
             if (!matrix_getarraydimensions(MORPHO_GETARRAY(array->data[i]), dim+n, maxdim-n, &m)) return false;
         }
@@ -64,13 +64,13 @@ bool matrix_getarraydimensions(objectarray *array, unsigned int dim[], unsigned 
 
 /** Looks up an array element recursively if necessary */
 value matrix_getarrayelement(objectarray *array, unsigned int ndim, unsigned int *indx) {
-    unsigned int na=array->dimensions, iel;
-        
-    if (array_indicestoelement(array, na, indx, &iel)) {
-        value vout = array->data[iel];
-        if (ndim==na) return vout;
-        if (MORPHO_ISARRAY(vout)) {
-            return matrix_getarrayelement(MORPHO_GETARRAY(vout), ndim-na, indx+na);
+    unsigned int na=array->ndim;
+    value out;
+    
+    if (array_getelement(array, na, indx, &out)==ARRAY_OK) {
+        if (ndim==na) return out;
+        if (MORPHO_ISARRAY(out)) {
+            return matrix_getarrayelement(MORPHO_GETARRAY(out), ndim-na, indx+na);
         }
     }
     
@@ -529,7 +529,7 @@ value Matrix_getindex(vm *v, int nargs, value *args) {
     unsigned int indx[2]={0,0};
     value out = MORPHO_NIL;
     
-    if (array_valuestoindices(nargs, args+1, indx)) {
+    if (array_valuelisttoindices(nargs, args+1, indx)) {
         double outval;
         if (!matrix_getelement(m, indx[0], indx[1], &outval)) {
             morpho_runtimeerror(v, MATRIX_INDICESOUTSIDEBOUNDS);
@@ -546,7 +546,7 @@ value Matrix_setindex(vm *v, int nargs, value *args) {
     objectmatrix *m=MORPHO_GETMATRIX(MORPHO_SELF(args));
     unsigned int indx[2]={0,0};
     
-    if (array_valuestoindices(nargs-1, args+1, indx)) {
+    if (array_valuelisttoindices(nargs-1, args+1, indx)) {
         double value=0.0;
         if (MORPHO_ISFLOAT(args[nargs])) value=MORPHO_GETFLOATVALUE(args[nargs]);
         if (MORPHO_ISINTEGER(args[nargs])) value=(double) MORPHO_GETINTEGERVALUE(args[nargs]);

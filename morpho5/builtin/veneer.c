@@ -353,13 +353,21 @@ MORPHO_ENDCLASS
  * Array
  * ********************************************************************** */
 
+/** Converts a list of values to a list of integers */
+inline bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out) {
+    for (unsigned int i=0; i<ndim; i++) {
+        if (MORPHO_ISINTEGER(in[i])) out[i]=MORPHO_GETINTEGERVALUE(in[i]);
+        else if(MORPHO_ISFLOAT(in[i])) out[i]=round(MORPHO_GETFLOATVALUE(in[i]));
+        else return false;
+    }
+    return true;
+}
+
 /** Creates a new 1D array from a list of values */
 objectarray *object_arrayfromvaluelist(unsigned int n, value *v) {
     objectarray *new = object_newarray(1, &n);
     
-    if (new) {
-        memcpy(new->data+1, v, sizeof(value)*n);
-    }
+    if (new) memcpy(new->values, v, sizeof(value)*n);
     
     return new;
 }
@@ -372,7 +380,7 @@ objectarray *object_arrayfromvarrayvalue(varray_value *v) {
 /** Creates a new array object with the dimensions given as a list of values */
 objectarray *object_arrayfromvalueindices(unsigned int ndim, value *dim) {
     unsigned int indx[ndim];
-    if (array_valuestoindices(ndim, dim, indx)) {
+    if (array_valuelisttoindices(ndim, dim, indx)) {
         return object_newarray(ndim, indx);
     }
     return NULL;
@@ -380,110 +388,11 @@ objectarray *object_arrayfromvalueindices(unsigned int ndim, value *dim) {
 
 /** Clones an array. Does *not* clone the contents. */
 objectarray *object_clonearray(objectarray *array) {
-    objectarray *new = object_arrayfromvalueindices(array->dimensions, array->data);
+    objectarray *new = object_arrayfromvalueindices(array->ndim, array->data);
     
-    if (new) memcpy(new->data, array->data, sizeof(value)*(array->nelements+array->dimensions));
+    if (new) memcpy(new->data, array->data, sizeof(value)*(array->nelements+2*array->ndim));
     
     return new;
-}
-
-/** Converts a list of indices into a list of unsigned ints
- *  @param ndim - number of dimensions
- *  @param indx - the indices to evaluate
- *  @param iout - the indices as integers
- *  @returns true on success, or false if an unexpected type was encountered */
-inline bool array_valuestoindices(unsigned int ndim, value *indx, unsigned int *iout) {
-    for (unsigned int i=0; i<ndim; i++) {
-        if (MORPHO_ISINTEGER(indx[i])) {
-            iout[i] = (unsigned int) MORPHO_GETINTEGERVALUE(indx[i]);
-        } else if (MORPHO_ISFLOAT(indx[i])) {
-            iout[i] = (unsigned int) MORPHO_GETFLOATVALUE(indx[i]);
-        } else {
-            return false;
-        }
-    }
-    return true;
-}
-
-/** @brief Calculates the correct element from a set of array indices
- *  @param[in] array - the array
- *  @param[in] ndim   - number of dimensions
- *  @param[in] indx   - list of indices
- *  @param[out] ixout - the element number to use
- *  @returns true on success, false if indices are out of bounds */
-inline bool array_indicestoelement(objectarray *array, unsigned int ndim, unsigned int *indx, unsigned int *ixout) {
-    unsigned int ix=0, mul=1;
-    
-    for (unsigned int i=0; i<ndim; i++) {
-        int dim = MORPHO_GETINTEGERVALUE(array->data[i]);
-        if (indx[i]<dim) {
-            ix+=mul*indx[i];
-        } else return false;
-        mul*=dim;
-    }
-    if (ixout) *ixout = ndim+ix;
-    return true;
-}
-
-/** Gets an array element */
-objectarrayerror array_getelement(objectarray *array, unsigned int ndim, value *indx, value *out) {
-    if (ndim!=array->dimensions) return ARRAY_WRONGDIM;
-    
-    if (ndim==1 && MORPHO_ISINTEGER(*indx)) {
-        int val = MORPHO_GETINTEGERVALUE(*indx);
-        if (val>=MORPHO_GETINTEGERVALUE(array->data[0])) return ARRAY_OUTOFBOUNDS;
-        *out=array->data[ndim+val];
-        return ARRAY_OK;
-    } else if (ndim==2 && MORPHO_ISINTEGER(indx[0]) && MORPHO_ISINTEGER(indx[1])) {
-        int i1 = MORPHO_GETINTEGERVALUE(indx[0]);
-        int i2 = MORPHO_GETINTEGERVALUE(indx[1]);
-        int nrows = MORPHO_GETINTEGERVALUE(array->data[0]);
-        if (i1<0 || i1>=nrows) return ARRAY_OUTOFBOUNDS;
-        if (i2<0 || i2>=MORPHO_GETINTEGERVALUE(array->data[1])) return ARRAY_OUTOFBOUNDS;
-        *out=array->data[ndim+i1+i2*nrows];
-        return ARRAY_OK;
-    }
-    
-    unsigned int ix[ndim], iel;
-    if (array_valuestoindices(ndim, indx, ix)) {
-        if (array_indicestoelement(array, ndim, ix, &iel)) {
-            *out=array->data[iel];
-            return ARRAY_OK;
-        } else return ARRAY_OUTOFBOUNDS;
-    }
-    
-    return ARRAY_NONNUMERICALINDX;
-}
-
-/** Sets an array element */
-objectarrayerror array_setelement(objectarray *array, unsigned int ndim, value *indx, value set) {
-    if (ndim!=array->dimensions) return ARRAY_WRONGDIM;
-    
-    if (ndim==1 && MORPHO_ISINTEGER(*indx)) {
-        int val = MORPHO_GETINTEGERVALUE(*indx);
-        if (val>=MORPHO_GETINTEGERVALUE(array->data[0])) return ARRAY_OUTOFBOUNDS;
-        array->data[ndim+val]=set;
-
-        return ARRAY_OK;
-    } else if (ndim==2 && MORPHO_ISINTEGER(indx[0]) && MORPHO_ISINTEGER(indx[1])) {
-        int i1 = MORPHO_GETINTEGERVALUE(indx[0]);
-        int i2 = MORPHO_GETINTEGERVALUE(indx[1]);
-        int nrows = MORPHO_GETINTEGERVALUE(array->data[0]);
-        if (i1<0 || i1>=nrows) return ARRAY_OUTOFBOUNDS;
-        if (i2<0 || i2>=MORPHO_GETINTEGERVALUE(array->data[1])) return ARRAY_OUTOFBOUNDS;
-        array->data[ndim+i1+i2*nrows]=set;
-        return ARRAY_OK;
-    }
-    
-    unsigned int ix[ndim], iel;
-    if (array_valuestoindices(ndim, indx, ix)) {
-        if (array_indicestoelement(array, ndim, ix, &iel)) {
-            array->data[iel]=set;
-            return ARRAY_OK;
-        } else return ARRAY_OUTOFBOUNDS;
-    }
-    
-    return ARRAY_NONNUMERICALINDX;
 }
 
 /** Converts an array error into an error code */
@@ -491,13 +400,39 @@ errorid array_error(objectarrayerror err) {
     switch (err) {
         case ARRAY_OUTOFBOUNDS: return VM_OUTOFBOUNDS;
         case ARRAY_WRONGDIM: return VM_ARRAYWRONGDIM;
-        case ARRAY_NONNUMERICALINDX: return VM_NONNUMINDX;
         case ARRAY_OK: UNREACHABLE("array_error called incorrectly.");
     }
     UNREACHABLE("Unhandled array error.");
     return VM_OUTOFBOUNDS;
 }
 
+/** Gets an array element */
+objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned int *indx, value *out) {
+    unsigned int k=0;
+    
+    if (ndim!=a->ndim) return ARRAY_WRONGDIM;
+    for (unsigned int i=0; i<ndim; i++) {
+        if (indx[i]>=MORPHO_GETINTEGERVALUE(a->dimensions[i])) return ARRAY_OUTOFBOUNDS;
+        k+=indx[i]*MORPHO_GETINTEGERVALUE(a->multipliers[i]);
+    }
+        
+    *out = a->values[k];
+    return ARRAY_OK;
+}
+
+/** Gets an array element */
+objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned int *indx, value in) {
+    unsigned int k=0;
+    
+    if (ndim!=a->ndim) return ARRAY_WRONGDIM;
+    for (unsigned int i=0; i<ndim; i++) {
+        if (indx[i]>=MORPHO_GETINTEGERVALUE(a->dimensions[i])) return ARRAY_OUTOFBOUNDS;
+        k+=indx[i]*MORPHO_GETINTEGERVALUE(a->multipliers[i]);
+    }
+        
+    a->values[k]=in;
+    return ARRAY_OK;
+}
 
 /** Create an array */
 value array_constructor(vm *v, int nargs, value *args) {
@@ -505,11 +440,11 @@ value array_constructor(vm *v, int nargs, value *args) {
     unsigned int dim[nargs];
     
     if (nargs==0) { morpho_runtimeerror(v, ARRAY_ARGS); return MORPHO_NIL; }
-    for (unsigned int i=0; i<nargs; i++) {
-        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, i))) dim[i]=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, i));
-        else { morpho_runtimeerror(v, ARRAY_ARGS); return MORPHO_NIL; }
+    
+    if (!array_valuelisttoindices(nargs, &MORPHO_GETARG(args, 0), dim)) {
+        morpho_runtimeerror(v, ARRAY_ARGS); return MORPHO_NIL;
     }
-        
+    
     objectarray *new = object_newarray(nargs, dim);
         
     if (new) {
@@ -520,20 +455,29 @@ value array_constructor(vm *v, int nargs, value *args) {
     return out;
 }
 
-
 /** Gets the array element with given indices */
 value Array_getindex(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
-    objectarrayerror err=array_getelement(MORPHO_GETARRAY(MORPHO_SELF(args)), nargs, &MORPHO_GETARG(args, 0), &out);
-    if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
+    objectarray *array=MORPHO_GETARRAY(MORPHO_SELF(args));
+    unsigned int indx[nargs];
+    
+    if (array_valuelisttoindices(nargs, &MORPHO_GETARG(args, 0), indx)) {
+        objectarrayerror err=array_getelement(array, nargs, indx, &out);
+        if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
+    } else MORPHO_RAISE(v, VM_NONNUMINDX);
     
     return out;
 }
 
 /** Sets the matrix element with given indices */
 value Array_setindex(vm *v, int nargs, value *args) {
-    objectarrayerror err=array_setelement(MORPHO_GETARRAY(MORPHO_SELF(args)), nargs-1, &MORPHO_GETARG(args, 0), MORPHO_GETARG(args, nargs-1));
-    if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
+    objectarray *array=MORPHO_GETARRAY(MORPHO_SELF(args));
+    unsigned int indx[nargs-1];
+    
+    if (array_valuelisttoindices(nargs-1, &MORPHO_GETARG(args, 0), indx)) {
+        objectarrayerror err=array_setelement(array, nargs-1, indx, MORPHO_GETARG(args, nargs-1));
+        if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
+    } else MORPHO_RAISE(v, VM_NONNUMINDX);
     
     return MORPHO_NIL;
 }
@@ -556,7 +500,7 @@ value Array_count(vm *v, int nargs, value *args) {
 value Array_dimensions(vm *v, int nargs, value *args) {
     objectarray *a=MORPHO_GETARRAY(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    objectlist *new=object_newlist(a->dimensions, a->data);
+    objectlist *new=object_newlist(a->ndim, a->data);
     
     if (new) {
         out=MORPHO_OBJECT(new);
@@ -577,7 +521,7 @@ value Array_enumerate(vm *v, int nargs, value *args) {
         if (n<0) {
             out=MORPHO_INTEGER(slf->nelements);
         } else if (n<slf->nelements) {
-            out=slf->data[n+slf->dimensions];
+            out=slf->values[n];
         } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
     } else MORPHO_RAISE(v, ENUMERATE_ARGS);
     

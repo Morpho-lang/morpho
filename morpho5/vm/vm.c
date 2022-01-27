@@ -393,7 +393,7 @@ void vm_gcmarkretainobject(vm *v, object *obj) {
             break;
         case OBJECT_ARRAY: {
             objectarray *c = (objectarray *) obj;
-            for (unsigned int i=0; i<c->nelements+c->dimensions; i++) {
+            for (unsigned int i=0; i<c->nelements+c->ndim; i++) {
                 vm_gcmarkvalue(v, c->data[i]);
             }
         }
@@ -1456,7 +1456,10 @@ callfunction: // Jump here if an instruction becomes a call
             left = reg[a];
 
             if (MORPHO_ISARRAY(left)) {
-                objectarrayerror err=array_getelement(MORPHO_GETARRAY(left), c-b+1, &reg[b], &reg[b]);
+                unsigned int ndim = c-b+1;
+                unsigned int indx[ndim];
+                if (!array_valuelisttoindices(ndim, &reg[b], indx)) ERROR(VM_NONNUMINDX);
+                objectarrayerror err=array_getelement(MORPHO_GETARRAY(left), ndim, indx, &reg[b]);
                 if (err!=ARRAY_OK) ERROR( array_error(err) );
             } else {
                 if (!vm_invoke(v, left, indexselector, c-b+1, &reg[b], &reg[b])) {
@@ -1472,7 +1475,10 @@ callfunction: // Jump here if an instruction becomes a call
             left = reg[a];
 
             if (MORPHO_ISARRAY(left)) {
-                objectarrayerror err=array_setelement(MORPHO_GETARRAY(left), c-b, &reg[b], reg[c]);
+                unsigned int ndim = c-b;
+                unsigned int indx[ndim];
+                if (!array_valuelisttoindices(ndim, &reg[b], indx)) ERROR(VM_NONNUMINDX);
+                objectarrayerror err=array_setelement(MORPHO_GETARRAY(left), ndim, indx, reg[c]);
                 if (err!=ARRAY_OK) ERROR( array_error(err) );
             } else {
                 if (!vm_invoke(v, left, setindexselector, c-b+1, &reg[b], &right)) {

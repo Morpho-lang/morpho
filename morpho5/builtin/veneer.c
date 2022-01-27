@@ -355,11 +355,18 @@ MORPHO_ENDCLASS
 
 /** Converts a list of values to a list of integers */
 inline bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out) {
-    for (unsigned int i=0; i<ndim; i++) {
+    
+    // Unroll first dimension for performance reasons
+    if (MORPHO_ISINTEGER(*in)) *out=MORPHO_GETINTEGERVALUE(*in);
+    else if(MORPHO_ISFLOAT(*in)) *out=round(MORPHO_GETFLOATVALUE(*in));
+    else return false;
+    
+    for (unsigned int i=1; i<ndim; i++) {
         if (MORPHO_ISINTEGER(in[i])) out[i]=MORPHO_GETINTEGERVALUE(in[i]);
         else if(MORPHO_ISFLOAT(in[i])) out[i]=round(MORPHO_GETFLOATVALUE(in[i]));
         else return false;
     }
+    
     return true;
 }
 
@@ -411,7 +418,11 @@ objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned in
     unsigned int k=0;
     
     if (ndim!=a->ndim) return ARRAY_WRONGDIM;
-    for (unsigned int i=0; i<ndim; i++) {
+    
+    // Unroll first element for performance reasons
+    if (*indx>=MORPHO_GETINTEGERVALUE(*a->dimensions)) return ARRAY_OUTOFBOUNDS;
+    k+=indx[0];
+    for (unsigned int i=1; i<ndim; i++) {
         if (indx[i]>=MORPHO_GETINTEGERVALUE(a->dimensions[i])) return ARRAY_OUTOFBOUNDS;
         k+=indx[i]*MORPHO_GETINTEGERVALUE(a->multipliers[i]);
     }
@@ -425,7 +436,11 @@ objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned in
     unsigned int k=0;
     
     if (ndim!=a->ndim) return ARRAY_WRONGDIM;
-    for (unsigned int i=0; i<ndim; i++) {
+    
+    // Unroll first element for performance reasons
+    if (*indx>=MORPHO_GETINTEGERVALUE(*a->dimensions)) return ARRAY_OUTOFBOUNDS;
+    k+=indx[0];
+    for (unsigned int i=1; i<ndim; i++) {
         if (indx[i]>=MORPHO_GETINTEGERVALUE(a->dimensions[i])) return ARRAY_OUTOFBOUNDS;
         k+=indx[i]*MORPHO_GETINTEGERVALUE(a->multipliers[i]);
     }

@@ -397,6 +397,42 @@ objectarray *object_clonearray(objectarray *array) {
     return new;
 }
 
+/** Recursively print a slice of an array */
+bool array_print_recurse(vm *v, objectarray *a, unsigned int *indx, unsigned int dim, varray_char *out) {
+    unsigned int bnd = MORPHO_GETINTEGERVALUE(a->dimensions[dim]);
+    value val=MORPHO_NIL;
+    
+    varray_charadd(out, "[ ", 2);
+    for (indx[dim]=0; indx[dim]<bnd; indx[dim]++) {
+        if (dim==a->ndim-1) { // Print if innermost element
+            if (array_getelement(a, a->ndim, indx, &val)==ARRAY_OK) {
+                morpho_printtobuffer(v, val, out);
+            } else return false;
+        } else if (!array_print_recurse(v, a, indx, dim+1, out)) return false; // Otherwise recurse
+        
+        if (indx[dim]<bnd-1) { // Separators between items
+            varray_charadd(out, ", ", 2);
+        }
+    }
+    varray_charadd(out, " ]", 2);
+
+    return true;
+}
+
+/* Print the contents of an array */
+void array_print(vm *v, objectarray *a) {
+    varray_char out;
+    varray_charinit(&out);
+    
+    unsigned int indx[a->ndim];
+    if (array_print_recurse(v, a, indx, 0, &out)) {
+        varray_charwrite(&out, '\0'); // Ensure zero terminated
+        printf("%s", out.data);
+    }
+    
+    varray_charclear(&out);
+}
+
 /** Converts an array error into an error code */
 errorid array_error(objectarrayerror err) {
     switch (err) {
@@ -423,7 +459,7 @@ objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned in
     return ARRAY_OK;
 }
 
-/** Gets an array element */
+/** Sets an array element */
 objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned int *indx, value in) {
     unsigned int k=0;
     
@@ -488,7 +524,7 @@ value Array_setindex(vm *v, int nargs, value *args) {
 
 /** Print an array */
 value Array_print(vm *v, int nargs, value *args) {
-    printf("<%s>", ARRAY_CLASSNAME);
+    array_print(v, MORPHO_GETARRAY(MORPHO_SELF(args)));
     
     return MORPHO_NIL;
 }

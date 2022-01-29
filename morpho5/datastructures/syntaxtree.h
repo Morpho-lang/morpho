@@ -71,6 +71,7 @@ typedef enum {
     NODE_IN,
     NODE_BREAK,
     NODE_CONTINUE,
+    NODE_TRY,
     
     NODE_STATEMENT, /* ^ All statements should be above this enum value */
     

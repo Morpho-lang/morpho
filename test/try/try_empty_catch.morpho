@@ -1,0 +1,13 @@
+/* **********************************
+ * morpho test suite
+ * try.morpho
+ * Empty catch block
+ * ********************************** */
+
+var err = Error("Foo", "A Foo occurred")
+
+try {
+  print "foo" // expect: foo
+} catch {
+
+}

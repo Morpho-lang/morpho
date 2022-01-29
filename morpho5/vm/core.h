@@ -130,6 +130,15 @@ typedef struct {
 } callframe;
 
 /* **********************************************************************
+ * Error handlers
+ * ********************************************************************** */
+
+typedef struct {
+    callframe *fp;
+    value dict;
+} errorhandler;
+
+/* **********************************************************************
  * Debug info
  * ********************************************************************** */
 
@@ -140,9 +149,14 @@ typedef struct {
         DEBUG_CLASS, // Set the current class
         DEBUG_MODULE, // Set the current module
         DEBUG_REGISTER, // Associates a symbol with a register
-        DEBUG_ELEMENT // Associates a sequence of instructions with a code element
+        DEBUG_ELEMENT, // Associates a sequence of instructions with a code element
+        DEBUG_PUSHERR, // Push an error handler
+        DEBUG_POPERR // Pop an error handler
     } type;
     union {
+        struct {
+            objectdictionary *handler;
+        } errorhandler;
         struct {
             objectfunction *function;
         } function;
@@ -201,10 +215,12 @@ struct svm {
     varray_value globals; /** Global variables */
     varray_value stack; /** The stack */
     callframe frame[MORPHO_CALLFRAMESTACKSIZE]; /** The call frame stack */
+    errorhandler errorhandlers[MORPHO_ERRORHANDLERSTACKSIZE]; /** Error handler stack */
     
     instruction *instructions; /* Base of instructions */
     value *konst; /* Current constant table */
     callframe *fp; /* Frame pointer saved on exit */
+    errorhandler *ehp; /* Error handler pointer */
     
     error err; /** An error struct that will be filled out when an error occurs */
     

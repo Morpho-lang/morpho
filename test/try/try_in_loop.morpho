@@ -1,0 +1,21 @@
+/* **********************************
+ * morpho test suite
+ * try_in_function.morpho
+ * Test try/catch in a loop
+ * ********************************** */
+
+var err = Error("Foo", "foo")
+
+for (i in 1..5) {
+  try {
+    err.throw()
+  } catch {
+    "Foo": print "Catching ${i}"
+  }
+}
+
+// expect: Catching 1
+// expect: Catching 2
+// expect: Catching 3
+// expect: Catching 4
+// expect: Catching 5

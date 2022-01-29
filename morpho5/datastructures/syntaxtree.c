@@ -93,6 +93,7 @@ static char * nodedisplay[] = {
     "in",      // NODE_IN
     "break",   // NODE_BREAK
     "continue",// NODE_CONTINUE
+    "try",     // NODE_TRY
     
     "",        // NODE_STATEMENT
     

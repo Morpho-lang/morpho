@@ -172,6 +172,7 @@ static void vm_init(vm *v) {
     v->objects=NULL;
     v->openupvalues=NULL;
     v->fp=NULL;
+    v->ehp=NULL;
     v->bound=0;
     v->nextgc=MORPHO_GCINITIAL;
     v->debug=false;
@@ -1491,7 +1492,21 @@ callfunction: // Jump here if an instruction becomes a call
             }
 
             DISPATCH();
+        
+        CASE_CODE(PUSHERR):
+            b=DECODE_Bx(bc);
+            if (!v->ehp) v->ehp=v->errorhandlers; else v->ehp++; // Add new error handler to the error stack
+            v->ehp->fp=v->fp; // Store the current frame pointer
+            v->ehp->dict=v->konst[b]; // Store the error handler dictionary from the constant table
+            DISPATCH();
 
+        CASE_CODE(POPERR):
+            b=DECODE_sBx(bc); // Optional branch
+            pc+=b;            // Advance program counter
+            v->ehp--;         // Pull error handler off error stack
+            if (v->ehp<v->errorhandlers) v->ehp=NULL; // If the stack is empty rest to NULL
+            DISPATCH();
+        
         CASE_CODE(ARRAY):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             if (DECODE_ISBCONSTANT(bc)) {
@@ -1574,13 +1589,58 @@ callfunction: // Jump here if an instruction becomes a call
             #endif
             return true;
     }
-
+    
+vm_error:
+    {
+        objectstring erridstring=MORPHO_STATICSTRING(v->err.id);
+        value errid = MORPHO_OBJECT(&erridstring);
+        
+        /* Find the most recent callframe that requires us to return */
+        callframe *retfp=NULL;
+        for (retfp=v->fp; retfp>v->frame && !retfp->ret; retfp--);
+        
+        /* Search down the error stack for an error handler that can handle the error  */
+        for (errorhandler *eh=v->ehp; eh && eh>=v->errorhandlers; eh--) {
+            /* Abort if we pass an intermediate frame that requires us to return */
+            if (eh->fp<retfp) {
+                v->ehp=eh; // Pop off all earlier error handlers
+                break;
+            }
+            
+            if (MORPHO_ISDICTIONARY(eh->dict)) {
+                value branchto = MORPHO_NIL;
+                objectdictionary *dict = MORPHO_GETDICTIONARY(eh->dict);
+                if (dictionary_get(&dict->dict, errid, &branchto)) {
+                    error_clear(&v->err);
+                    
+                    // Jump to the error handler
+                    v->fp=eh->fp;
+                    v->konst=v->fp->function->konst.data;
+                    pc=v->instructions+MORPHO_GETINTEGERVALUE(branchto);
+                    reg=v->stack.data+v->fp->roffset;
+                    
+                    if (v->openupvalues) { /* Close any upvalues */
+                        vm_closeupvalues(v, reg+v->fp->function->nregs);
+                    }
+                    
+                    v->ehp=eh-1; // Unwind the error handler stack
+                    if (v->ehp<v->errorhandlers) v->ehp=NULL;
+                    DISPATCH()
+                }
+            }
+        }
+        
+        /* The error was not caught; unwind the stack to the point where we have to return  */
+        v->fp=retfp-1;
+        
+    }
+    
 #undef INTERPRET_LOOP
 #undef CASE_CODE
 #undef DISPATCH
-
-vm_error:
-    v->fp->pc=pc;
+    
+    //v->fp->pc=pc;
+    
     return false;
 }
 
@@ -1618,6 +1678,14 @@ void morpho_runtimeerror(vm *v, errorid id, ...) {
     va_start(args, id);
     morpho_writeerrorwithidvalist(&v->err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
     va_end(args);
+}
+
+/** @brief Public interface to raise a user error
+ * @param v        the virtual machine
+ * @param id       error id
+ * @param message error message */
+void morpho_usererror(vm *v, errorid id, char *message) {
+    morpho_writeusererror(&v->err, id, message);
 }
 
 /** @brief Binds a set of objects to a Virtual Machine; public interface.
@@ -1701,7 +1769,7 @@ bool morpho_run(vm *v, program *p) {
     v->fp->function=p->global;
     v->fp->closure=NULL;
     v->fp->roffset=0;
-
+    
     /* Initialize global variables */
     int oldsize = v->globals.count;
     varray_valueresize(&v->globals, p->nglobals);
@@ -1809,16 +1877,6 @@ objectclass *morpho_lookupclass(value obj) {
 bool morpho_lookupmethod(value obj, value label, value *method) {
     objectclass *klass = morpho_lookupclass(obj);
     if (klass) return dictionary_get(&klass->methods, label, method);
-
-   /* if (MORPHO_ISINSTANCE(obj)) {
-        objectinstance *instance=MORPHO_GETINSTANCE(obj);
-
-    } else {
-        objectclass *klass = builtin_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
-        if (klass) {
-            return dictionary_get(&klass->methods, label, method);
-        }
-    }*/
 
     return false;
 }

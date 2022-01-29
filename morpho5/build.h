@@ -65,6 +65,9 @@
 /** @brief Size of the call frame stack. */
 #define MORPHO_CALLFRAMESTACKSIZE 64
 
+/** @brief Size of the error handler stack. */
+#define MORPHO_ERRORHANDLERSTACKSIZE 64
+
 /** @brief Maximum number of arguments */
 #define MORPHO_MAXARGS 255
 

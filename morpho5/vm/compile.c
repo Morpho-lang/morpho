@@ -26,6 +26,10 @@ static objectclass *baseclass;
  * Utility functions
  * ------------------------------------------- */
 
+static bool compiler_haserror(compiler *c) {
+    return (c->err.cat!=ERROR_NONE);
+}
+
 /** @brief Fills out the error record
  * @param c        the compiler
  * @param node     the node the error occurred at
@@ -1126,6 +1130,7 @@ static codeinfo compiler_while(compiler *c, syntaxtreenode *node, registerindx o
 static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_do(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_break(compiler *c, syntaxtreenode *node, registerindx reqout);
+static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_logical(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerindx out);
@@ -1205,6 +1210,7 @@ compilenoderule noderules[] = {
     { NODE_NORULE            },      // NODE_IN
     { compiler_break         },      // NODE_BREAK
     { compiler_break         },      // NODE_CONTINUE
+    { compiler_try           },      // NODE_TRY
     
     NODE_UNDEFINED,                  // NODE_STATEMENT
     
@@ -2015,6 +2021,91 @@ static codeinfo compiler_break(compiler *c, syntaxtreenode *node, registerindx r
     return out;
 }
 
+/** @brief Compiles a try/catch block.
+ *  @details Break and continue statements are inserted as NOP instructions with the a register set to a marker.
+ *  */
+static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx reqout) {
+    codeinfo out = CODEINFO_EMPTY;
+    
+    objectdictionary *cdict = object_newdictionary();
+    if (!cdict) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return out; }
+    
+    registerindx cdictindx = compiler_addconstant(c, node, MORPHO_OBJECT(cdict), false, false);
+    
+    compiler_addinstruction(c, ENCODE_LONG(OP_PUSHERR, 0, cdictindx), node);
+    out.ninstructions++;
+    
+    debug_pusherr(&c->out->annotations, cdict);
+    
+    /* Compile the body */
+    if (node->left!=SYNTAXTREE_UNCONNECTED) {
+        codeinfo body = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
+        out.ninstructions+=body.ninstructions;
+        compiler_releaseoperand(c, body);
+    }
+    
+    instructionindx popindx = compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
+    out.ninstructions++;
+    
+    /* Compile the catch dictionary */
+    varray_syntaxtreeindx switchnodes;
+    varray_syntaxtreeindx labelnodes;
+    varray_syntaxtreeindxinit(&switchnodes);
+    varray_syntaxtreeindxinit(&labelnodes);
+    
+    syntaxtreenodetype match[] = { NODE_DICTIONARY };
+    syntaxtree_flatten(compiler_getsyntaxtree(c), node->right, 1, match, &switchnodes);
+    
+    for (unsigned int i=0; i<switchnodes.count; i++) {
+        syntaxtreenode *entry = compiler_getnode(c, switchnodes.data[i]);
+        instructionindx entryindx = compiler_currentinstructionindex(c);
+        
+        syntaxtreenode *body=compiler_getnode(c, entry->right);
+        
+        if (body) {
+            codeinfo entrybody = compiler_nodetobytecode(c, entry->right, REGISTER_UNALLOCATED);
+            out.ninstructions+=entrybody.ninstructions;
+            compiler_releaseoperand(c, entrybody);
+        }
+        
+        // Add a break instruction after each entry body except for the last
+        if (i!=switchnodes.count-1) {
+            compiler_addinstruction(c, ENCODE(OP_NOP, 'b', 0, 0), node);
+            out.ninstructions++;
+        }
+        
+        /* Now flatten the label nodes */
+        labelnodes.count=0;
+        syntaxtreenodetype labelmatch[] = { NODE_SEQUENCE };
+        syntaxtree_flatten(compiler_getsyntaxtree(c), entry->left, 1, labelmatch, &labelnodes);
+        
+        for (unsigned int j=0; j<labelnodes.count; j++) {
+            syntaxtreenode *label=compiler_getnode(c, labelnodes.data[j]);
+            
+            if (label->type!=NODE_STRING) UNREACHABLE("Not a string!");
+            
+            registerindx labelsymbol=compiler_addsymbol(c, entry, label->content);
+            value symbolkey = compiler_getconstant(c, labelsymbol);
+            
+            dictionary_insert(&cdict->dict, symbolkey, MORPHO_INTEGER(entryindx));
+        }
+    }
+    
+    instructionindx endindx = compiler_currentinstructionindex(c);
+    
+    /* Fix the poperr instruction that jumps around the switch block */
+    compiler_setinstruction(c, popindx, ENCODE_LONG(OP_POPERR, 0, endindx-popindx-1));
+    /* Fix the nop instructions in the switch block to jump to the end of block */
+    compiler_fixloop(c, popindx, popindx, endindx);
+    
+    varray_syntaxtreeindxclear(&switchnodes);
+    varray_syntaxtreeindxclear(&labelnodes);
+    
+    debug_poperr(&c->out->annotations);
+    
+    return out;
+}
+
 /** @brief   Compiles logical operators */
 static codeinfo compiler_logical(compiler *c, syntaxtreenode *node, registerindx reqout) {
     /* An AND operator must branch if the first operand is false,
@@ -2384,6 +2475,7 @@ static bool compiler_isinvocation(compiler *c, syntaxtreenode *call) {
 /** Compiles a function call */
 static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
+    if (compiler_haserror(c)) return CODEINFO_EMPTY;
     
     if (compiler_isinvocation(c, node)) {
         return compiler_invoke(c, node, reqout);
@@ -2393,9 +2485,11 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     compiler_beginargs(c);
     
     /* Compile the function selector */
+    syntaxtreenode *selnode=compiler_getnode(c, node->left);
     codeinfo func = compiler_nodetobytecode(c, node->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
+    
     // Detect possible forward reference
-    if (compiler_catch(c, COMPILE_SYMBOLNOTDEFINED)) {
+    if (selnode->type==NODE_SYMBOL && compiler_catch(c, COMPILE_SYMBOLNOTDEFINED)) {
         syntaxtreenode *symbol=compiler_getnode(c, node->left);
         func=compiler_addforwardreference(c, symbol, symbol->content);
     }
@@ -3332,10 +3426,13 @@ void compile_initialize(void) {
     
     morpho_defineerror(PARSE_UNRECGNZEDTOK, ERROR_PARSE, PARSE_UNRECGNZEDTOK_MSG);
     morpho_defineerror(PARSE_DCTSPRTR, ERROR_PARSE, PARSE_DCTSPRTR_MSG);
+    morpho_defineerror(PARSE_SWTCHSPRTR, ERROR_PARSE, PARSE_SWTCHSPRTR_MSG);
     morpho_defineerror(PARSE_DCTENTRYSPRTR, ERROR_PARSE, PARSE_DCTENTRYSPRTR_MSG);
     morpho_defineerror(PARSE_EXPCTWHL, ERROR_PARSE, PARSE_EXPCTWHL_MSG);
+    morpho_defineerror(PARSE_EXPCTCTCH, ERROR_PARSE, PARSE_EXPCTCTCH_MSG);
     morpho_defineerror(PARSE_ONEVARPR, ERROR_PARSE, PARSE_ONEVARPR_MSG);
     morpho_defineerror(PARSE_VARPRLST, ERROR_PARSE, PARSE_VARPRLST_MSG);
+    morpho_defineerror(PARSE_CATCHLEFTCURLYMISSING, ERROR_PARSE, PARSE_CATCHLEFTCURLYMISSING_MSG);
     
     /* Compile errors */
     morpho_defineerror(COMPILE_SYMBOLNOTDEFINED, ERROR_COMPILE, COMPILE_SYMBOLNOTDEFINED_MSG);

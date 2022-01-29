@@ -1,4 +1,4 @@
-#!/usr/bin/env python3 
+#!/usr/bin/env python3
 # Simple automated testing
 # T J Atherton Sept 2020
 #
@@ -47,7 +47,7 @@ def findvalue(str):
 # Find an expected error
 def finderror(str):
     #return rx.findall(r'\/\/ expect ?(.*) error', str)
-    return rx.findall(r'.*[E|e]rror.*?(.*)', str)
+    return rx.findall(r'.*[E|e]rror[ :].*?(.*)', str)
 
 # Find an expected error
 def iserror(str):
@@ -117,7 +117,7 @@ def getoutput(filepath):
 def test(file,testLog,CI):
     ret = 0;
     print(file+":", end=" ")
-    
+
 
     # Create a temporary file in the same directory
     tmp = file + '.out'
@@ -146,12 +146,12 @@ def test(file,testLog,CI):
                 print("    Output: ", out)
             else:
                 print("::error file = {",file,"}::{",file," Failed}")
-            
-            
+
+
             #also print to the test log
             print(file+":", end=" ",file = testLog)
             print("Failed", file = testLog)
-            
+
             if len(out) == len(expected):
                 failedTests = list(i for i in range(len(out)) if expected[i] != out[i])
                 print("Tests " + str(failedTests) + " did not match expected results.", file = testLog)
@@ -163,10 +163,10 @@ def test(file,testLog,CI):
                 print("  Expected: ", expected, file = testLog)
                 print("    Output: ", out, file = testLog)
 
-                
+
             print("\n",file = testLog)
 
-            
+
         # Delete the temporary file
         os.system('rm ' + tmp)
 
@@ -179,7 +179,7 @@ print('--Begin testing---------------------')
 success=0 # number of successful tests
 total=0   # total number of tests
 
-# look for a command line arguement that says 
+# look for a command line arguement that says
 # this is being run for continous integration
 CI = sys.argv == '-c'
 

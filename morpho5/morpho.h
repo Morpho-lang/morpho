@@ -66,6 +66,7 @@ typedef void compiler;
 #define MORPHO_CLONE_METHOD "clone"
 #define MORPHO_PRINT_METHOD "prnt"
 #define MORPHO_SAVE_METHOD "save"
+#define MORPHO_THROW_METHOD "throw"
 
 /* Non-standard methods */
 #define MORPHO_APPEND_METHOD "append"
@@ -111,6 +112,7 @@ void morpho_releaseobjects(vm *v, int handle);
 
 /* Raise runtime errors */
 void morpho_runtimeerror(vm *v, errorid id, ...);
+void morpho_usererror(vm *v, errorid id, char *message);
 
 /* Activate/deactivate the debugger */
 void morpho_setdebug(vm *v, bool active);

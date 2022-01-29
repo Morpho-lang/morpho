@@ -19,6 +19,10 @@
 #define LIST_CLASSNAME "List"
 #define DICTIONARY_CLASSNAME "Dictionary"
 #define RANGE_CLASSNAME "Range"
+#define ERROR_CLASSNAME "Error"
+
+#define ERROR_TAG_PROPERTY "tag"
+#define ERROR_MESSAGE_PROPERTY "message"
 
 #define STRING_SPLIT_METHOD "split"
 #define ARRAY_DIMENSIONS_METHOD "dimensions"
@@ -71,6 +75,9 @@
 
 #define ARRAY_ARGS                        "ArrayArgs"
 #define ARRAY_ARGS_MSG                    "Array much be called with integer arguments."
+
+#define ERROR_ARGS                        "ErrorArgs"
+#define ERROR_ARGS_MSG                    "Error much be called with a tag and a default message as arguments."
 
 /* Public interfaces to various data structures */
 typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_NONNUMERICALINDX, ARRAY_OUTOFBOUNDS } objectarrayerror;

@@ -1,0 +1,15 @@
+/* **********************************
+ * morpho test suite
+ * try_err_in_function.morpho
+ * Throw the err in a called function
+ * ********************************** */
+
+fn foo() {
+  Error("Foo", "foo").throw()
+}
+
+try {
+  foo()
+} catch {
+  "Foo": print "Caught" // expect: Caught
+}

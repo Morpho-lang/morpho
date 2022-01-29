@@ -76,3 +76,8 @@ Write the contents of a list to a file:
 [tagclose]: # (close)
 
 Closes an open file.
+
+## eof
+[tageof]: # (eof)
+
+Returns true if at the end of the file; false otherwise

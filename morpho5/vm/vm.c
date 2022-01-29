@@ -1495,16 +1495,16 @@ callfunction: // Jump here if an instruction becomes a call
         
         CASE_CODE(PUSHERR):
             b=DECODE_Bx(bc);
-            if (!v->ehp) v->ehp=v->errorhandlers; else v->ehp++;
-            v->ehp->fp=v->fp;
-            v->ehp->dict=v->konst[b];
+            if (!v->ehp) v->ehp=v->errorhandlers; else v->ehp++; // Add new error handler to the error stack
+            v->ehp->fp=v->fp; // Store the current frame pointer
+            v->ehp->dict=v->konst[b]; // Store the error handler dictionary from the constant table
             DISPATCH();
 
         CASE_CODE(POPERR):
-            b=DECODE_sBx(bc);
-            pc+=b;
-            v->ehp--;
-            if (v->ehp<v->errorhandlers) v->ehp=NULL;
+            b=DECODE_sBx(bc); // Optional branch
+            pc+=b;            // Advance program counter
+            v->ehp--;         // Pull error handler off error stack
+            if (v->ehp<v->errorhandlers) v->ehp=NULL; // If the stack is empty rest to NULL
             DISPATCH();
         
         CASE_CODE(ARRAY):

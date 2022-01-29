@@ -678,7 +678,9 @@ bool list_getelement(objectlist *list, int i, value *out) {
 
 /** Sort function for list_sort */
 int list_sortfunction(const void *a, const void *b) {
-    return -morpho_comparevalue(*(value *) a, *(value *) b);
+    value l=*(value *) a, r=*(value *) b;
+    MORPHO_CHECKCMPTYPE(l, r)
+    return -morpho_comparevalue(l, r);
 }
 
 /** Sort the contents of a list */

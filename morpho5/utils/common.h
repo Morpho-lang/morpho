@@ -25,10 +25,10 @@
  * Functions and macros for comparing values
  * ----------------------------------------- */
 
-/** @brief Compares two values
+/** @brief Promotes l and r to types that can be compared
  * @param l value to compare
  * @param r value to compare */
-#define MORPHO_CHECKCMPTYPE(l, r) \
+#define MORPHO_CMPPROMOTETYPE(l, r) \
     if (!morpho_ofsametype(l, r)) { \
         if (MORPHO_ISINTEGER(l) && MORPHO_ISFLOAT(r)) { \
             l = MORPHO_INTEGERTOFLOAT(l); \

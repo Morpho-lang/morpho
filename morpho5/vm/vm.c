@@ -1094,7 +1094,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
             right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
 
-            MORPHO_CHECKCMPTYPE(left,right);
+            MORPHO_CMPPROMOTETYPE(left,right);
             reg[a] = (morpho_comparevalue(left, right)==0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
 
@@ -1103,7 +1103,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
             right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
 
-            MORPHO_CHECKCMPTYPE(left,right);
+            MORPHO_CMPPROMOTETYPE(left,right);
             reg[a] = (morpho_comparevalue(left, right)!=0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
 
@@ -1117,7 +1117,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                 OPERROR("Compare");
             }
 
-            MORPHO_CHECKCMPTYPE(left,right);
+            MORPHO_CMPPROMOTETYPE(left,right);
             reg[a] = (morpho_comparevalue(left, right)>0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
 
@@ -1131,7 +1131,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                 OPERROR("Compare");
             }
 
-            MORPHO_CHECKCMPTYPE(left,right);
+            MORPHO_CMPPROMOTETYPE(left,right);
             reg[a] = (morpho_comparevalue(left, right)>=0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
 

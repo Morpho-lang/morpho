@@ -1,0 +1,4 @@
+// Initialize array with incompatible list
+
+var b = Array(3, 3, [[1,2], [3, 4]])
+// expect error: 'ArrayCmpt'

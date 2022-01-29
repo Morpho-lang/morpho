@@ -1,0 +1,8 @@
+// Initialize array with incompatible dimensions
+
+var a[2,2]
+print a
+// expect: [ [ 0, 0 ], [ 0, 0 ] ]
+
+var b = Array(3,3,a)
+// expect error 'ArrayCmpt'

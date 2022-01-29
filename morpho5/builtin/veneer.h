@@ -74,7 +74,13 @@
 #define STRING_IMMTBL_MSG                 "Strings are immutable."
 
 #define ARRAY_ARGS                        "ArrayArgs"
-#define ARRAY_ARGS_MSG                    "Array much be called with integer arguments."
+#define ARRAY_ARGS_MSG                    "Array must be called with integer dimensions as arguments."
+
+#define ARRAY_INIT                        "ArrayInit"
+#define ARRAY_INIT_MSG                    "Array initializer must be another array or a list."
+
+#define ARRAY_CMPT                        "ArrayCmpt"
+#define ARRAY_CMPT_MSG                    "Array initializer is not compatible with the requested dimensions."
 
 #define ERROR_ARGS                        "ErrorArgs"
 #define ERROR_ARGS_MSG                    "Error much be called with a tag and a default message as arguments."

@@ -474,19 +474,113 @@ objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned in
     return ARRAY_OK;
 }
 
-/** Create an array */
-value array_constructor(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
-    unsigned int dim[nargs];
+/* ---------------------------
+ * Array constructor functions
+ * --------------------------- */
+
+/** Returns the maximum nesting depth in a list, including this one.
+ * @param[in] list - the list to examine
+ * @param[out] out - optionally return the dimensions of the nested lists.
+ * To get dimension information:
+ * Call list_nestingdepth with out set to NULL; this returns the size of the array needed.
+ * Initialize the dimension array to zero.
+ * Call list_nestingdepth again with out set to an output array */
+unsigned int list_nestingdepth(objectlist *list, unsigned int *out) {
+    unsigned int dim=0;
+    for (unsigned int i=0; i<list->val.count; i++) {
+        if (MORPHO_ISLIST(list->val.data[i])) {
+            unsigned int sdim=list_nestingdepth(MORPHO_GETLIST(list->val.data[i]), ( out ? out+1 : NULL));
+            if (sdim>dim) dim=sdim;
+        }
+    }
+    if (out && list->val.count>*out) *out=list->val.count;
+    return dim+1;
+}
+
+/* Internal function that recursively copied a nested list into an array.
+   Use public interface array_copyfromnestedlist */
+static void array_copyfromnestedlistrecurse(objectlist *list, unsigned int ndim, unsigned int *indx, unsigned int depth, objectarray *out) {
+    for (unsigned int i=0; i<list->val.count; i++) {
+        indx[depth] = i;
+        value val = list->val.data[i];
+        if (MORPHO_ISLIST(val)) array_copyfromnestedlistrecurse(MORPHO_GETLIST(val), ndim, indx, depth+1, out);
+        else array_setelement(out, ndim, indx, val);
+    }
+}
+
+/** Copies a nested list into an array.*/
+void array_copyfromnestedlist(objectlist *in, objectarray *out) {
+    unsigned int indx[out->ndim];
+    for (unsigned int i=0; i<out->ndim; i++) indx[i]=0;
+    array_copyfromnestedlistrecurse(in, out->ndim, indx, 0, out);
+}
+
+/** Constructs an array from a list initializer or returns NULL if the initializer isn't compatible with the requested array */
+objectarray *array_constructfromlist(unsigned int ndim, unsigned int *dim, objectlist *initializer) {
+    // Establish the dimensions of the nested list
+    unsigned int nldim = list_nestingdepth(initializer, NULL);
+    unsigned int ldim[nldim];
+    for (unsigned int i=0; i<nldim; i++) ldim[i]=0;
+    list_nestingdepth(initializer, ldim);
     
-    if (nargs==0) { morpho_runtimeerror(v, ARRAY_ARGS); return MORPHO_NIL; }
-    
-    if (!array_valuelisttoindices(nargs, &MORPHO_GETARG(args, 0), dim)) {
-        morpho_runtimeerror(v, ARRAY_ARGS); return MORPHO_NIL;
+    if (ndim>0) { // Check compatibility
+        if (ndim!=nldim) return NULL;
+        for (unsigned int i=0; i<ndim; i++) if (ldim[i]!=dim[i]) return NULL;
     }
     
-    objectarray *new = object_newarray(nargs, dim);
-        
+    objectarray *new = object_newarray(nldim, ldim);
+    array_copyfromnestedlist(initializer, new);
+    
+    return new;
+}
+
+/** Constructs an array from an initializer or returns NULL if the initializer isn't compatible with the requested array */
+objectarray *array_constructfromarray(unsigned int ndim, unsigned int *dim, objectarray *initializer) {
+    if (ndim>0) { // Check compatibility
+        if (ndim!=initializer->ndim) return NULL;
+        for (unsigned int i=0; i<ndim; i++) {
+            if (dim[i]!=MORPHO_GETINTEGERVALUE(initializer->dimensions[i])) return NULL;
+        }
+    }
+    
+    return object_clonearray(initializer);
+}
+
+/** Array constructor function */
+value array_constructor(vm *v, int nargs, value *args) {
+    unsigned int ndim; // Number of dimensions
+    unsigned int dim[nargs+1]; // Size of each dimension
+    value initializer=MORPHO_NIL; // An initializer if provided
+    
+    // Check that args are present
+    if (nargs==0) { morpho_runtimeerror(v, ARRAY_ARGS); return MORPHO_NIL; }
+    
+    for (ndim=0; ndim<nargs; ndim++) { // Loop over arguments
+        if (!MORPHO_ISNUMBER(MORPHO_GETARG(args, ndim))) break; // Stop once a non-numerical argument is encountered
+    }
+    
+    // Get dimensions
+    if (ndim>0) array_valuelisttoindices(ndim, &MORPHO_GETARG(args, 0), dim);
+    // Initializer is the first non-numerical argument; anything after is ignored
+    if (ndim<nargs) initializer=MORPHO_GETARG(args, ndim);
+    
+    objectarray *new=NULL;
+    
+    // Now construct the array
+    if (MORPHO_ISNIL(initializer)) {
+        new = object_newarray(ndim, dim);
+    } else if (MORPHO_ISARRAY(initializer)) {
+        new = array_constructfromarray(ndim, dim, MORPHO_GETARRAY(initializer));
+        if (!new) morpho_runtimeerror(v, ARRAY_CMPT);
+    } else if (MORPHO_ISLIST(initializer)) {
+        new = array_constructfromlist(ndim, dim, MORPHO_GETLIST(initializer));
+        if (!new) morpho_runtimeerror(v, ARRAY_CMPT);
+    } else {
+        morpho_runtimeerror(v, ARRAY_ARGS);
+    }
+    
+    // Bind the new array to the VM
+    value out=MORPHO_NIL;
     if (new) {
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
@@ -1455,6 +1549,8 @@ void veneer_initialize(void) {
     error_messageproperty=builtin_internsymbolascstring(ERROR_MESSAGE_PROPERTY);
     
     morpho_defineerror(ARRAY_ARGS, ERROR_HALT, ARRAY_ARGS_MSG);
+    morpho_defineerror(ARRAY_INIT, ERROR_HALT, ARRAY_INIT_MSG);
+    morpho_defineerror(ARRAY_CMPT, ERROR_HALT, ARRAY_CMPT_MSG);
     morpho_defineerror(STRING_IMMTBL, ERROR_HALT, STRING_IMMTBL_MSG);
     morpho_defineerror(RANGE_ARGS, ERROR_HALT, RANGE_ARGS_MSG);
     morpho_defineerror(ENUMERATE_ARGS, ERROR_HALT, ENUMERATE_ARGS_MSG);

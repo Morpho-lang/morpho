@@ -1503,7 +1503,7 @@ callfunction: // Jump here if an instruction becomes a call
             if (v->ehp<v->errorhandlers) v->ehp=NULL;
             DISPATCH();
         
-        CASE_CODE(ARRAY):
+        /*CASE_CODE(ARRAY):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             if (DECODE_ISBCONSTANT(bc)) {
 
@@ -1517,7 +1517,7 @@ callfunction: // Jump here if an instruction becomes a call
                 }
             }
 
-            DISPATCH();
+            DISPATCH();*/
 
         CASE_CODE(CAT):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
@@ -1540,12 +1540,12 @@ callfunction: // Jump here if an instruction becomes a call
             printf("\n");
             DISPATCH();
 
-        CASE_CODE(RAISE):
+/*        CASE_CODE(RAISE):
             a=DECODE_A(bc);
             if (MORPHO_ISSTRING(reg[a])) {
                 ERROR(MORPHO_GETCSTRING(reg[a]));
             }
-            DISPATCH();
+            DISPATCH();*/
 
         CASE_CODE(BREAK):
             if (v->debug) {

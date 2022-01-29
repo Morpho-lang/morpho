@@ -97,7 +97,7 @@ OPCODE(PUSHERR)
 OPCODE(POPERR)
 
 /** Creates an array */
-OPCODE(ARRAY)
+//OPCODE(ARRAY)
 
 /** Converts a sequence of registers to strings if necessary and concatenates them */
 OPCODE(CAT)
@@ -106,7 +106,7 @@ OPCODE(CAT)
 OPCODE(PRINT)
 
 /** Raise error */
-OPCODE(RAISE)
+//OPCODE(RAISE)
 
 /** Breakpoint */
 OPCODE(BREAK)

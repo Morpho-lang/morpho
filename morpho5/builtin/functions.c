@@ -277,11 +277,11 @@ typedef struct {
 static bool minmaxfn(vm *v, indx i, value val, void *ref) {
     minmaxstruct *m=(minmaxstruct *) ref;
     value l=m->min, r=val;
-    MORPHO_CHECKCMPTYPE(l, r)
+    MORPHO_CMPPROMOTETYPE(l, r);
     if (i==0 || morpho_comparevalue(l, r)<0) m->min=val;
     
     l=m->max; r=val;
-    MORPHO_CHECKCMPTYPE(l, r)
+    MORPHO_CMPPROMOTETYPE(l, r);
     if (i==0 || morpho_comparevalue(l, r)>0) m->max=val;
     
     return true;

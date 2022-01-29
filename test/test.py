@@ -33,7 +33,7 @@ def remove_control_characters(str):
 
 # Simplify error reports
 def simplify_errors(str):
-    # this monster regex extraxts NAM from error messages of the form error ... 'NAME'
+    # this monster regex extraxts NAME from error messages of the form error ... 'NAME'
     return rx.sub('.*[E|e]rror[ :]*\'([A-z;a-z]*)\'.*', err+'[\\1]', str.rstrip())
 
 # Simplify stacktrace

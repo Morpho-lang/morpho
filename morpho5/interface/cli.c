@@ -259,7 +259,7 @@ void cli(clioptions opt) {
         }
         
         /* Compile code */
-        success=morpho_compile(input, c, &err);
+        success=morpho_compile(input, c, false, &err);
         
         if (success) {
             /* If compilation was successful, and we're in interactive mode, execute... */
@@ -309,7 +309,7 @@ void cli_run(const char *in, clioptions opt) {
     
     if (src) {
         /* Compile code */
-        success=morpho_compile(src, c, &err);
+        success=morpho_compile(src, c, true, &err);
         
         /* Run code if successful */
         if (success) {

@@ -21,10 +21,11 @@ typedef struct {
 /** Optimizer data structure */
 typedef struct {
     program *out;
-    instructionindx next; // Index to next instruction
+    instructionindx next;    // Index to next instruction
     
-    instruction current;  // Current instruction
-    registerindx overwrites;       // Keep check of any register overwritten
+    instruction current;     // Current instruction
+    int op;                  // Current opcode
+    registerindx overwrites; // Keep check of any register overwritten
     
     reginfo reg[MORPHO_MAXARGS];
 } optimizer;

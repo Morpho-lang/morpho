@@ -136,7 +136,7 @@ typedef struct {
     instruction *pc;
     unsigned int stackcount;
     unsigned int returnreg; // Stores where any return value should be placed
-    bool ret; // Should the interpreter return from this frame? 
+    bool ret; // Should the interpreter return from this frame?
 } callframe;
 
 /* **********************************************************************
@@ -221,28 +221,28 @@ typedef struct {
 /** @brief A Morpho virtual machine and its current state */
 struct svm {
     program *current; /** The current program being executed */
-    
+
     varray_value globals; /** Global variables */
     varray_value stack; /** The stack */
     callframe frame[MORPHO_CALLFRAMESTACKSIZE]; /** The call frame stack */
     errorhandler errorhandlers[MORPHO_ERRORHANDLERSTACKSIZE]; /** Error handler stack */
-    
+
     instruction *instructions; /* Base of instructions */
     value *konst; /* Current constant table */
     callframe *fp; /* Frame pointer saved on exit */
     callframe *fpmax; /* Maximum value of the frame pointer */
     errorhandler *ehp; /* Error handler pointer */
-    
+
     error err; /** An error struct that will be filled out when an error occurs */
     callframe *errfp; /** Record frame pointer when an error occured */
-    
+
     object *objects; /** Linked list of objects */
     graylist gray; /** Graylist for garbage collection */
     size_t bound; /** Estimated size of bound bytes */
     size_t nextgc; /** Next garbage collection threshold */
-    
+
     bool debug; /** Is the debugger active or not */
-    
+
     objectupvalue *openupvalues; /** Linked list of open upvalues */
 };
 

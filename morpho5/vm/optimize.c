@@ -68,6 +68,11 @@ static inline void optimize_nooverwrite(optimizer *opt) {
     opt->overwrites=REGISTER_UNALLOCATED;
 }
 
+/** Fetches an instruction at a given indx */
+instruction optimize_fetchinstructionat(optimizer *opt, indx ix) {
+    return opt->out->code.data[ix];
+}
+
 /** Replaces an instruction at a given indx */
 void optimize_replaceinstructionat(optimizer *opt, indx ix, instruction inst) {
     opt->out->code.data[ix]=inst;
@@ -135,6 +140,26 @@ bool optimize_register_replacement(optimizer *opt) {
     
     optimize_replaceinstruction(opt, ENCODEC(opt->op, a, Bc, b, Cc, c));
     
+    
+    return false;
+}
+
+/** Searches to see if an expression has already been calculated  */
+bool optimize_subexpression_elimination(optimizer *opt) {
+    if (opt->op<OP_ADD || opt->op>OP_LE) return false; // Quickly eliminate non-arithmetic instructions
+    static instruction mask = (MASK_OP | MASK_B | MASK_Bc | MASK_C | MASK_Cc);
+    
+    // Find if another register contains the same calculated value.
+    for (registerindx i=0; i<MORPHO_MAXARGS; i++) {
+        if (opt->reg[i].contains==VALUE) {
+            instruction comp = optimize_fetchinstructionat(opt, opt->reg[i].iix);
+            
+            if ((comp & mask)==(opt->current & mask)) {
+                optimize_replaceinstruction(opt, ENCODE_DOUBLE(OP_MOV, DECODE_A(opt->current), false, i));
+                return true;
+            }
+        }
+    }
     return false;
 }
 
@@ -179,32 +204,48 @@ bool optimize_unused_global(optimizer *opt) {
     return false;
 }
 
+/** Removes expressions generating an unused expression at the end */
+bool optimize_eliminate_unused_at_end(optimizer *opt) {
+    for (registerindx i=0; i<MORPHO_MAXARGS; i++) {
+        if (opt->reg[i].contains!=NOTHING &&
+            opt->reg[i].used==0) {
+            // Should check for side effects!
+            optimize_replaceinstructionat(opt, opt->reg[i].iix, ENCODE_BYTE(OP_NOP));
+        }
+    }
+    return false;
+}
+
 /* --------------------------
  * Table of strategies
  * -------------------------- */
 
 #define OP_ANY -1
+#define OP_LAST OP_END+1
 
 optimizationstrategy firstpass[] = {
     { OP_ANY, optimize_register_replacement },
+    { OP_ANY, optimize_subexpression_elimination },
     { OP_ANY, optimize_constant_folding },
     { OP_LGL, optimize_duplicate_load },
     { OP_B, optimize_branch_optimization },
-    { OP_END, NULL }
+    { OP_END, optimize_eliminate_unused_at_end },
+    { OP_LAST, NULL }
 };
 
 optimizationstrategy secondpass[] = {
     { OP_ANY, optimize_register_replacement },
-    { OP_ANY, optimize_constant_folding },
+    { OP_ANY, optimize_subexpression_elimination },
     { OP_LGL, optimize_duplicate_load },
     { OP_SGL, optimize_unused_global },
-    { OP_END, NULL }
+    { OP_END, optimize_eliminate_unused_at_end },
+    { OP_LAST, NULL }
 };
 
 /** Apply optimization strategies to the current instruction */
 void optimize_optimizeinstruction(optimizer *opt, optimizationstrategy *strategies) {
-    if (opt->op==OP_NOP) return; 
-    for (optimizationstrategy *s = strategies; s->match!=OP_END; s++) {
+    if (opt->op==OP_NOP) return;
+    for (optimizationstrategy *s = strategies; s->match!=OP_LAST; s++) {
         if (s->match==OP_ANY || s->match==opt->op) {
             if ((*s->fn) (opt)) return;
         }
@@ -218,7 +259,6 @@ void optimize_overwrite(optimizer *opt) {
     // Detect unused expression
     if (opt->overwriteprev.contains!=NOTHING &&
         opt->overwriteprev.used==0) {
-        printf("Unused expression.\n");
         
         optimize_replaceinstructionat(opt, opt->reg[opt->overwrites].iix, ENCODE_BYTE(OP_NOP));
     }

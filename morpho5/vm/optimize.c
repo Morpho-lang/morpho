@@ -85,6 +85,37 @@ void optimize_replaceinstruction(optimizer *opt, instruction inst) {
     opt->op=DECODE_OP(inst);
 }
 
+/** Trace back through duplicate registers */
+registerindx optimize_findoriginalregister(optimizer *opt, registerindx reg) {
+    registerindx out=reg;
+    while (opt->reg[out].contains==REGISTER) out=(registerindx) opt->reg[out].id;
+    return out;
+}
+
+/** Finds if a given register, or one that it duplicates, contains a constant. If so returns the constant indx and returns true */
+bool optimize_findconstant(optimizer *opt, registerindx reg, indx *out) {
+    registerindx r = optimize_findoriginalregister(opt, reg);
+    
+    if (opt->reg[r].contains==CONSTANT) {
+        *out = opt->reg[r].id;
+        return true;
+    }
+    return false;
+}
+
+/** Adds a constant to the current constant table*/
+bool optimize_addconstant(optimizer *opt, value val, indx *out) {
+    unsigned int k;
+    // Does the constant already exist?
+    if (varray_valuefindsame(&opt->func->konst, val, &k)) {
+        *out=k; return true;
+    }
+    varray_valuewrite(&opt->func->konst, val);
+    *out=opt->func->konst.count-1;
+    
+    return true;
+}
+
 /* **********************************************************************
  * Evaluation using the VM
  * ********************************************************************** */
@@ -143,13 +174,6 @@ bool optimize_duplicate_load(optimizer *opt) {
     return false;
 }
 
-/** Trace back through duplicate registers */
-registerindx optimize_findoriginalregister(optimizer *opt, registerindx reg) {
-    registerindx out=reg;
-    while (opt->reg[out].contains==REGISTER) out=(registerindx) opt->reg[out].id;
-    return out;
-}
-
 /** Replaces duplicate registers  */
 bool optimize_register_replacement(optimizer *opt) {
     if (opt->op<OP_ADD || opt->op>OP_LE) return false; // Quickly eliminate non-arithmetic instructions
@@ -197,30 +221,6 @@ bool optimize_branch_optimization(optimizer *opt) {
     }
     
     return false;
-}
-
-/** Finds if a given register, or one that it duplicates, contains a constant. If so returns the constant indx and returns true */
-bool optimize_findconstant(optimizer *opt, registerindx reg, indx *out) {
-    registerindx r = optimize_findoriginalregister(opt, reg);
-    
-    if (opt->reg[r].contains==CONSTANT) {
-        *out = opt->reg[r].id;
-        return true;
-    }
-    return false;
-}
-
-/** Adds a constant to the current constant table*/
-bool optimize_addconstant(optimizer *opt, value val, indx *out) {
-    unsigned int k;
-    // Does the constant already exist?
-    if (varray_valuefindsame(&opt->func->konst, val, &k)) {
-        *out=k; return true;
-    }
-    varray_valuewrite(&opt->func->konst, val);
-    *out=opt->func->konst.count-1;
-    
-    return true;
 }
 
 /** Replaces duplicate registers  */

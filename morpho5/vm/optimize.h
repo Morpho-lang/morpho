@@ -13,9 +13,10 @@
 
 /** Keep track of register contents */
 typedef struct {
-    returntype contains; // What does the register contain?
-    indx id;             // Which global,
-    int used;            // Count how many times this has been used
+    returntype contains;  // What does the register contain?
+    indx id;              // index of global, register, constant etc.
+    int used;             // Count how many times this has been used
+    instructionindx iix;  // Instruction that last wrote to this register
 } reginfo;
 
 /** Optimizer data structure */

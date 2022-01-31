@@ -68,6 +68,11 @@ static inline void optimize_nooverwrite(optimizer *opt) {
     opt->overwrites=REGISTER_UNALLOCATED;
 }
 
+/** Replaces an instruction at a given indx */
+void optimize_replaceinstructionat(optimizer *opt, indx ix, instruction inst) {
+    opt->out->code.data[ix]=inst;
+}
+
 /** Replaces the current instruction */
 void optimize_replaceinstruction(optimizer *opt, instruction inst) {
     opt->out->code.data[opt->next]=inst;
@@ -198,6 +203,7 @@ optimizationstrategy secondpass[] = {
 
 /** Apply optimization strategies to the current instruction */
 void optimize_optimizeinstruction(optimizer *opt, optimizationstrategy *strategies) {
+    if (opt->op==OP_NOP) return; 
     for (optimizationstrategy *s = strategies; s->match!=OP_END; s++) {
         if (s->match==OP_ANY || s->match==opt->op) {
             if ((*s->fn) (opt)) return;
@@ -213,9 +219,12 @@ void optimize_overwrite(optimizer *opt) {
     if (opt->overwriteprev.contains!=NOTHING &&
         opt->overwriteprev.used==0) {
         printf("Unused expression.\n");
+        
+        optimize_replaceinstructionat(opt, opt->reg[opt->overwrites].iix, ENCODE_BYTE(OP_NOP));
     }
     
     opt->reg[opt->overwrites].used=0;
+    opt->reg[opt->overwrites].iix=opt->next;
 }
 
 /* **********************************************************************
@@ -304,6 +313,7 @@ void optimize_regclear(optimizer *opt) {
         opt->reg[i].contains=NOTHING;
         opt->reg[i].id=0;
         opt->reg[i].used=0;
+        opt->reg[i].iix=0;
     }
 }
 

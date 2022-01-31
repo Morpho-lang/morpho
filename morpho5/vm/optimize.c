@@ -14,7 +14,7 @@
 /** Show the contents of a register */
 void optimize_regshow(optimizer *opt) {
     unsigned int regmax = 0;
-    for (unsigned int i=0; i<MORPHO_MAXARGS; i++) if (opt->reg[i].contains!=NOTHING) regmax=i;
+    for (unsigned int i=0; i<opt->maxreg; i++) if (opt->reg[i].contains!=NOTHING) regmax=i;
     
     for (unsigned int i=0; i<=regmax; i++) {
         printf("|\tr%u : ", i);
@@ -86,6 +86,31 @@ void optimize_replaceinstruction(optimizer *opt, instruction inst) {
 }
 
 /* **********************************************************************
+ * Evaluation using the VM
+ * ********************************************************************** */
+
+bool optimize_evaluateprogram(optimizer *opt, instruction *list, registerindx dest, value *out) {
+    bool success=false;
+    objectfunction *storeglobal=opt->temp->global; // Retain the old global function
+    opt->temp->global=opt->func; // Patch in function
+    
+    varray_instruction *code = &opt->temp->code;
+    code->count=0; // Clear the program
+    for (instruction *ins = list; ; ins++) { // Load the list of instructions into the program
+        varray_instructionwrite(code, *ins);
+        if (DECODE_OP(*ins)==OP_END) break;
+    }
+    
+    if (morpho_run(opt->v, opt->temp)) { // Run the program and extract output
+        if (out && dest< opt->v->stack.count) *out = opt->v->stack.data[dest];
+        success=true;
+    }
+    opt->temp->global=storeglobal; // Restore the global function
+    
+    return success;
+}
+
+/* **********************************************************************
 * Optimization strategies
 * ********************************************************************** */
 
@@ -102,7 +127,7 @@ bool optimize_duplicate_load(optimizer *opt) {
     indx global = DECODE_Bx(opt->current);
     
     // Find if another register contains this global
-    for (registerindx i=0; i<MORPHO_MAXARGS; i++) {
+    for (registerindx i=0; i<opt->maxreg; i++) {
         if (opt->reg[i].contains==GLOBAL &&
             opt->reg[i].id==global) {
             
@@ -140,8 +165,7 @@ bool optimize_register_replacement(optimizer *opt) {
     
     optimize_replaceinstruction(opt, ENCODEC(opt->op, a, Bc, b, Cc, c));
     
-    
-    return false;
+    return false; // This allows other optimization strategies to intervene after
 }
 
 /** Searches to see if an expression has already been calculated  */
@@ -150,7 +174,7 @@ bool optimize_subexpression_elimination(optimizer *opt) {
     static instruction mask = (MASK_OP | MASK_B | MASK_Bc | MASK_C | MASK_Cc);
     
     // Find if another register contains the same calculated value.
-    for (registerindx i=0; i<MORPHO_MAXARGS; i++) {
+    for (registerindx i=0; i<opt->maxreg; i++) {
         if (opt->reg[i].contains==VALUE) {
             instruction comp = optimize_fetchinstructionat(opt, opt->reg[i].iix);
             
@@ -175,20 +199,60 @@ bool optimize_branch_optimization(optimizer *opt) {
     return false;
 }
 
+/** Finds if a given register, or one that it duplicates, contains a constant. If so returns the constant indx and returns true */
+bool optimize_findconstant(optimizer *opt, registerindx reg, indx *out) {
+    registerindx r = optimize_findoriginalregister(opt, reg);
+    
+    if (opt->reg[r].contains==CONSTANT) {
+        *out = opt->reg[r].id;
+        return true;
+    }
+    return false;
+}
+
+/** Adds a constant to the current constant table*/
+bool optimize_addconstant(optimizer *opt, value val, indx *out) {
+    unsigned int k;
+    // Does the constant already exist?
+    if (varray_valuefindsame(&opt->func->konst, val, &k)) {
+        *out=k; return true;
+    }
+    varray_valuewrite(&opt->func->konst, val);
+    *out=opt->func->konst.count-1;
+    
+    return true;
+}
+
 /** Replaces duplicate registers  */
 bool optimize_constant_folding(optimizer *opt) {
     if (opt->op<OP_ADD || opt->op>OP_LE) return false; // Quickly eliminate non-arithmetic instructions
     
     instruction instr=opt->current;
     bool Bc=DECODE_ISBCONSTANT(instr), Cc=DECODE_ISCCONSTANT(instr);
+    indx left=DECODE_B(instr), right=DECODE_C(instr);
     
-    if (Bc && Cc) {
-        /*registerindx a=DECODE_A(instr),
-                     b=DECODE_B(instr),
-                     c=DECODE_C(instr);*/
+    if (!Bc) Bc=optimize_findconstant(opt, DECODE_B(instr), &left);
+    if (!Bc) return false;
+    if (!Cc) Cc=optimize_findconstant(opt, DECODE_C(instr), &right);
+    
+    if (Cc) {
+        // A program that evaluates the required op with the selected constants.
+        instruction ilist[] = {
+            ENCODE_LONG(OP_LCT, 0, left),
+            ENCODE_LONG(OP_LCT, 1, right),
+            ENCODE(opt->op, 0, 0, 1),
+            ENCODE_BYTE(OP_END)
+        };
         
-        //optimize_replaceinstruction(opt, ENCODEC(opt->op, a, Bc, b, Cc, c));
-        return true;
+        value out;
+        if (optimize_evaluateprogram(opt, ilist, 0, &out)) {
+            indx nkonst;
+            if (MORPHO_ISOBJECT(out)) UNREACHABLE("Optimizer encountered object while constant folding");
+            if (optimize_addconstant(opt, out, &nkonst)) {
+                optimize_replaceinstruction(opt, ENCODE_LONG(OP_LCT, DECODE_A(instr), nkonst));
+                return true;
+            }
+        }
     }
     
     return false;
@@ -206,7 +270,7 @@ bool optimize_unused_global(optimizer *opt) {
 
 /** Removes expressions generating an unused expression at the end */
 bool optimize_eliminate_unused_at_end(optimizer *opt) {
-    for (registerindx i=0; i<MORPHO_MAXARGS; i++) {
+    for (registerindx i=0; i<opt->maxreg; i++) {
         if (opt->reg[i].contains!=NOTHING &&
             opt->reg[i].used==0) {
             // Should check for side effects!
@@ -236,6 +300,7 @@ optimizationstrategy firstpass[] = {
 optimizationstrategy secondpass[] = {
     { OP_ANY, optimize_register_replacement },
     { OP_ANY, optimize_subexpression_elimination },
+    { OP_ANY, optimize_constant_folding },
     { OP_LGL, optimize_duplicate_load },
     { OP_SGL, optimize_unused_global },
     { OP_END, optimize_eliminate_unused_at_end },
@@ -363,20 +428,34 @@ void optimizer_restart(optimizer *opt) {
     opt->next=0;
 }
 
+/** Sets the current function */
+void optimizer_setfunction(optimizer *opt, objectfunction *func) {
+    opt->maxreg=func->nregs;
+    opt->func=func;
+}
+
 /** Initializes optimizer data structure */
 void optimize_init(optimizer *opt, program *prog) {
     opt->out=prog;
-    opt->globals=malloc(sizeof(reginfo)*(opt->out->nglobals+1));
+    opt->globals=MORPHO_MALLOC(sizeof(reginfo)*(opt->out->nglobals+1));
     for (unsigned int i=0; i<opt->out->nglobals; i++) {
         opt->globals[i].contains=NOTHING;
         opt->globals[i].used=0;
     }
+    opt->maxreg=MORPHO_MAXARGS;
+    optimizer_setfunction(opt, prog->global);
     optimizer_restart(opt);
+    
+    opt->v=morpho_newvm();
+    opt->temp=morpho_newprogram();
 }
 
 /** Clears optimizer data structure */
 void optimize_clear(optimizer *opt) {
-    if (opt->globals) free(opt->globals);
+    if (opt->globals) MORPHO_FREE(opt->globals);
+    
+    if (opt->v) morpho_freevm(opt->v);
+    if (opt->temp) morpho_freeprogram(opt->temp);
 }
 
 /* **********************************************************************
@@ -390,15 +469,15 @@ bool optimize(program *prog) {
     
     optimize_init(&opt, prog);
     
-    for (int iter=0; iter<2; iter++) { // Two pass optimization with different strategies
+    for (int iter=0; iter<2; iter++) { // Two pass optimization that may use different strategies
         while (!optimize_atend(&opt)) {
             optimize_fetch(&opt);
             optimize_optimizeinstruction(&opt, pass[iter]);
             
             optimize_track(&opt);
-            optimize_regshow(&opt);
-            
             optimize_overwrite(&opt);
+            
+            optimize_regshow(&opt);
             optimize_advance(&opt);
         }
         optimizer_restart(&opt);

@@ -10,6 +10,7 @@
 #define MORPHO_CORE
 #include "core.h"
 #include "compile.h"
+#include "morpho.h"
 
 /** Keep track of register contents */
 typedef struct {
@@ -29,10 +30,14 @@ typedef struct {
     registerindx overwrites; // Keep check of any register overwritten
     reginfo overwriteprev;   // Keep track of register contents before overwrite
     
+    int maxreg;              // Maximum number of registers to track
+    objectfunction *func;    // Current function
+    
     reginfo reg[MORPHO_MAXARGS];
-    
-    
     reginfo *globals;
+    
+    vm *v;                   // We keep a VM to do things like constant folding etc.
+    program *temp;           // Temporary program 
 } optimizer;
 
 bool optimize(program *prog);

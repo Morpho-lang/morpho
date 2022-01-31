@@ -26,8 +26,12 @@ typedef struct {
     instruction current;     // Current instruction
     int op;                  // Current opcode
     registerindx overwrites; // Keep check of any register overwritten
+    reginfo overwriteprev;   // Keep track of register contents before overwrite
     
     reginfo reg[MORPHO_MAXARGS];
+    
+    
+    reginfo *globals;
 } optimizer;
 
 bool optimize(program *prog);

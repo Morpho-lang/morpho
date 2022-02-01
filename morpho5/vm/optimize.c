@@ -333,6 +333,54 @@ void optimize_overwrite(optimizer *opt) {
 }
 
 /* **********************************************************************
+* Handling code annotations
+* ********************************************************************** */
+
+void optimize_advanceannotationtoelement(optimizer *opt) {
+    while (opt->a<opt->amax && opt->a->type!=DEBUG_ELEMENT) opt->a++;
+    if (opt->a>=opt->amax) opt->a=NULL;
+}
+
+/** Start annotation */
+void optimize_restartannotation(optimizer *opt) {
+    opt->a=opt->out->annotations.data;
+    opt->amax=opt->out->annotations.data+opt->out->annotations.count;
+    opt->ai=0;
+    opt->adel=0;
+    optimize_advanceannotationtoelement(opt);
+}
+
+/** Reset annotation instruction counter */
+void optimize_resetannotationinstructioncounter(optimizer *opt) {
+    opt->ai=0;
+    opt->adel=0;
+}
+
+/** Mark instruction for deletion */
+void optimize_annotationdeleteinstruction(optimizer *opt) {
+    opt->adel+=1;
+}
+
+/** Advance annotation by one instruction */
+void optimize_advanceannotation(optimizer *opt) {
+    if (!opt->a) return;
+
+    opt->ai++; // Advance instruction counter for annotations
+    
+    /* Check if we need to advance to the next annotation */
+    if (opt->ai>=opt->a->content.element.ninstr) {
+        opt->a->content.element.ninstr-=opt->adel;
+        opt->a++;
+        
+        optimize_resetannotationinstructioncounter(opt);
+        
+        optimize_advanceannotationtoelement(opt);
+    }
+    
+    return;
+}
+
+/* **********************************************************************
 * Decode instructions
 * ********************************************************************** */
 
@@ -346,15 +394,18 @@ void optimize_fetch(optimizer *opt) {
 
 /** Advance to next instruction */
 void optimize_advance(optimizer *opt) {
+    optimize_advanceannotation(opt);
     opt->next++;
 }
 
 /** Track contents of registers etc*/
 void optimize_track(optimizer *opt) {
     instruction instr=opt->current;
-    
+
+#ifdef MORPHO_DEBUG_LOGOPTIMIZER
     debug_disassembleinstruction(instr, opt->next, NULL, NULL);
     printf("\n");
+#endif
     
     int op=DECODE_OP(instr);
     switch (op) {
@@ -423,13 +474,16 @@ void optimize_regclear(optimizer *opt) {
 }
 
 /** Restart from the beginning */
-void optimizer_restart(optimizer *opt) {
+void optimize_restart(optimizer *opt) {
     optimize_regclear(opt);
     opt->next=0;
+    
+    opt->a=NULL;
+    opt->amax=NULL;
 }
 
 /** Sets the current function */
-void optimizer_setfunction(optimizer *opt, objectfunction *func) {
+void optimize_setfunction(optimizer *opt, objectfunction *func) {
     opt->maxreg=func->nregs;
     opt->func=func;
 }
@@ -443,8 +497,11 @@ void optimize_init(optimizer *opt, program *prog) {
         opt->globals[i].used=0;
     }
     opt->maxreg=MORPHO_MAXARGS;
-    optimizer_setfunction(opt, prog->global);
-    optimizer_restart(opt);
+    optimize_setfunction(opt, prog->global);
+    optimize_restart(opt);
+    
+    opt->a=NULL;
+    opt->amax=NULL;
     
     opt->v=morpho_newvm();
     opt->temp=morpho_newprogram();
@@ -456,6 +513,29 @@ void optimize_clear(optimizer *opt) {
     
     if (opt->v) morpho_freevm(opt->v);
     if (opt->temp) morpho_freeprogram(opt->temp);
+}
+
+
+/* **********************************************************************
+* Finalize, clearing nops and fixing debug info
+* ********************************************************************** */
+
+void optimize_compactify(optimizer *opt) {
+    unsigned int write=0; // Keep track of where we're writing to
+    
+    optimize_restart(opt);
+    optimize_restartannotation(opt);
+    
+    while (!optimize_atend(opt)) {
+        optimize_fetch(opt);
+        optimize_replaceinstructionat(opt, write, opt->current); // Copy this instruction down
+        
+        if (opt->op==OP_NOP) {
+            optimize_annotationdeleteinstruction(opt); // Mark this instruction for deletion
+        } else write++; // otherwise continue
+        optimize_advance(opt);
+    }
+    opt->out->code.count=write; // Set length of code
 }
 
 /* **********************************************************************
@@ -477,11 +557,15 @@ bool optimize(program *prog) {
             optimize_track(&opt);
             optimize_overwrite(&opt);
             
+#ifdef MORPHO_DEBUG_LOGOPTIMIZER
             optimize_regshow(&opt);
+#endif
             optimize_advance(&opt);
         }
-        optimizer_restart(&opt);
+        optimize_restart(&opt);
     }
+    
+    optimize_compactify(&opt);
     
     optimize_clear(&opt);
     

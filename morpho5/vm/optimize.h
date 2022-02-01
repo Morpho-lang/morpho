@@ -37,7 +37,12 @@ typedef struct {
     reginfo *globals;
     
     vm *v;                   // We keep a VM to do things like constant folding etc.
-    program *temp;           // Temporary program 
+    program *temp;           // Temporary program
+    
+    debugannotation *a;      // Current annotation
+    debugannotation *amax;   // Last annotation
+    unsigned int ai;         // Counter for current annotation
+    unsigned int adel;       // Count number of deletions
 } optimizer;
 
 bool optimize(program *prog);

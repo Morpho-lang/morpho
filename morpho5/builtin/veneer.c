@@ -365,6 +365,7 @@ inline bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int 
     return true;
 }
 
+
 /** Creates a new 1D array from a list of values */
 objectarray *object_arrayfromvaluelist(unsigned int n, value *v) {
     objectarray *new = object_newarray(1, &n);
@@ -438,6 +439,7 @@ errorid array_error(objectarrayerror err) {
     switch (err) {
         case ARRAY_OUTOFBOUNDS: return VM_OUTOFBOUNDS;
         case ARRAY_WRONGDIM: return VM_ARRAYWRONGDIM;
+		case ARRAY_NONINTINDX: return VM_NONNUMINDX;
         case ARRAY_OK: UNREACHABLE("array_error called incorrectly.");
     }
     UNREACHABLE("Unhandled array error.");
@@ -458,6 +460,88 @@ objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned in
     *out = a->values[k];
     return ARRAY_OK;
 }
+
+objectarrayerror array_getslice(objectarray *a, unsigned int ndim, value *slices, objectarray *out){
+	// for each dimention we're creating a list of ints to then copy to out from a
+	// first determine how big we need out to be
+	unsigned int slicesize[ndim];
+
+	if (ndim!=a->ndim) return ARRAY_WRONGDIM;
+
+	for (unsigned int i=0; i<ndim; i++){
+		if (MORPHO_ISINTEGER(slices[i])||MORPHO_ISFLOAT(slices[i])){// if this is an number
+			slicesize[i] = 1; // it only has one element
+		}
+		else if (MORPHO_ISLIST(slices[i])){ // if this is a list
+			objectlist * s = MORPHO_GETLIST(slices[i]);
+			slicesize[i] = s->val.count; // get the number of elements
+		}
+		else if (MORPHO_ISRANGE(slices[i])){ //if its a range
+			objectrange * s = MORPHO_GETRANGE(slices[i]);
+			slicesize[i] = range_count(s);
+		}
+		return ARRAY_NONINTINDX; // by returning array a VM_NONNUMIDX will be thrown
+	}
+
+	// initalize out with the right size
+	out = object_newarray(ndim,slicesize);
+
+	// fill it out recurivly
+	unsigned int indx[ndim];
+	return array_setslicerecurive(a, out, ndim, 0, indx, slices);
+
+}
+
+objectarrayerror array_setslicerecurive(objectarray* a, objectarray* out,unsigned int ndim, unsigned int curdim, unsigned int *indx, value *slices){
+	// this gets given an array and out and a list of slices,
+	// we resolve the top slice to a number and add it to a list
+	objectarrayerror arrayerr;
+
+	if (curdim == ndim-1){ // we've resolved all the indices we can now use the list
+		value data;	
+		arrayerr =array_getelement(a,ndim,indx,&data); // read the data
+		if (arrayerr!=ARRAY_OK) return arrayerr;
+
+		arrayerr=array_setelement(a, ndim, indx, data); // write the data
+		if (arrayerr!=ARRAY_OK) return arrayerr;
+	}
+	else{ // we need to iterate though the current object
+		if (MORPHO_ISINTEGER(slices[curdim])){
+			indx[curdim] = MORPHO_GETINTEGERVALUE(slices[curdim]);
+			arrayerr = array_setslicerecurive(a, out, ndim,	curdim-1, indx, slices);
+			if (arrayerr!=ARRAY_OK) return arrayerr;
+
+		}
+		else if (MORPHO_ISLIST(slices[curdim])){ // if this is a list
+
+			objectlist * s = MORPHO_GETLIST(slices[curdim]);
+			for (unsigned int  i = 0; i<s->val.count; i++ ){ // iterate through the list
+				if (MORPHO_ISINTEGER(s->val.data[i])){
+					indx[curdim] = MORPHO_GETINTEGERVALUE(s->val.data[i]);
+				} else return ARRAY_NONINTINDX;
+
+				arrayerr = array_setslicerecurive(a, out, ndim,	curdim-1, indx, slices);
+				if (arrayerr!=ARRAY_OK) return arrayerr;
+
+			}
+		}
+		else if (MORPHO_ISRANGE(slices[curdim])){ //if its a range
+			objectrange * s = MORPHO_GETRANGE(slices[curdim]);
+			value rangeValue;
+			for (unsigned int  i = 0; i<range_count(s); i++ ){
+				rangeValue=range_iterate(s,i);
+				if (MORPHO_ISINTEGER(rangeValue)){
+					indx[curdim] = MORPHO_GETINTEGERVALUE(rangeValue);
+				} else return ARRAY_NONINTINDX;
+				arrayerr = array_setslicerecurive(a, out, ndim,	curdim-1, indx, slices);
+				if (arrayerr!=ARRAY_OK) return arrayerr;
+			}
+		}
+	}
+}
+
+
+
 
 /** Sets an array element */
 objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned int *indx, value in) {
@@ -598,8 +682,19 @@ value Array_getindex(vm *v, int nargs, value *args) {
     if (array_valuelisttoindices(nargs, &MORPHO_GETARG(args, 0), indx)) {
         objectarrayerror err=array_getelement(array, nargs, indx, &out);
         if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
-    } else MORPHO_RAISE(v, VM_NONNUMINDX);
-    
+
+    } 
+	else {// we failed to make simple indices, lets try to make a slice
+		
+		objectarray *new = NULL;
+		objectarrayerror err = array_getslice(array,nargs,&MORPHO_GETARG(args, 0),new);
+		if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
+		if (new){
+			out = MORPHO_OBJECT(new);
+			morpho_bindobjects(v,1,&out);
+		} else MORPHO_RAISE(v, VM_NONNUMINDX);
+	}
+
     return out;
 }
 
@@ -752,6 +847,34 @@ bool list_getelement(objectlist *list, int i, value *out) {
     if (i>=0) *out=list->val.data[i];
     else *out=list->val.data[list->val.count+i];
     return true;
+}
+
+objectlist* list_getslicelist(objectlist *list, objectlist *slice){
+	//create a new list object
+	objectlist *new = object_newlist(slice->val.count, NULL);
+	// loop though the slice and append
+	for (int i = 0; i<slice->val.count; i++){
+		if (MORPHO_ISINTEGER(slice->val.data[i])){
+			int j = MORPHO_GETINTEGERVALUE(slice->val.data[i]);
+			new->val.data[i] = list->val.data[j];
+		}
+		else return NULL;
+	}
+	new->val.count=slice->val.count;
+	return new;
+
+}
+objectlist* list_getslicerange(objectlist *list, objectrange *slice){
+	objectlist *new = object_newlist(range_count(slice), NULL);
+	for (int i = 0; i<range_count(slice); i++){
+		value index = range_iterate(slice,i);
+		if MORPHO_ISINTEGER(index){
+			int j = MORPHO_GETINTEGERVALUE(index);
+			new->val.data[i] = list->val.data[j];
+		} else return NULL;
+	}
+	new->val.count=range_count(slice);
+	return new;
 }
 
 /** Sort function for list_sort */
@@ -954,13 +1077,29 @@ value List_getindex(vm *v, int nargs, value *args) {
             if (!list_getelement(slf, i, &out)) {
                 morpho_runtimeerror(v, VM_OUTOFBOUNDS);
             }
-        } else {
-	        morpho_runtimeerror(v, VM_GETINDEXARGS);
-        }
+        } else if (MORPHO_ISLIST(MORPHO_GETARG(args, 0))){
+			objectlist *slice = MORPHO_GETLIST(MORPHO_GETARG(args,0));
+			objectlist *new = list_getslicelist(slf,slice);
+			if (new){
+				out = MORPHO_OBJECT(new);
+				morpho_bindobjects(v,1,&out);
+			} else morpho_runtimeerror(v, VM_GETINDEXARGS);
+
+		} else if (MORPHO_ISRANGE(MORPHO_GETARG(args, 0))){
+			objectrange *range = MORPHO_GETRANGE(MORPHO_GETARG(args,0));
+			objectlist *new = list_getslicerange(slf,range);
+			if (new){
+				out = MORPHO_OBJECT(new);
+				morpho_bindobjects(v,1,&out);
+			} else morpho_runtimeerror(v, VM_GETINDEXARGS);
+
+		} else morpho_runtimeerror(v, VM_GETINDEXARGS);
+    
     }
     
     return out;
 }
+
 
 /** Get an element */
 value List_setindex(vm *v, int nargs, value *args) {

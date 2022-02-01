@@ -86,7 +86,7 @@
 #define ERROR_ARGS_MSG                    "Error much be called with a tag and a default message as arguments."
 
 /* Public interfaces to various data structures */
-typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_OUTOFBOUNDS } objectarrayerror;
+typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_OUTOFBOUNDS,ARRAY_NONINTINDX } objectarrayerror;
 
 int string_countchars(objectstring *s);
 char *string_index(objectstring *s, int i);
@@ -96,6 +96,7 @@ errorid array_error(objectarrayerror err);
 bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out);
 objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned int *indx, value *out);
 objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned int *indx, value in);
+objectarrayerror array_setslicerecurive(objectarray* a, objectarray* out,unsigned int ndim, unsigned int curdim, unsigned int *indx, value *slices);
 
 bool list_resize(objectlist *list, int size);
 void list_append(objectlist *list, value v);
@@ -105,5 +106,6 @@ void list_sort(objectlist *list);
 objectlist *list_clone(objectlist *list);
 
 void veneer_initialize(void);
-
+value range_iterate(objectrange *range, unsigned int i);
+int range_count(objectrange *range);
 #endif /* veneer_h */

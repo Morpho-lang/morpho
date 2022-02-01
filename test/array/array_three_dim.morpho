@@ -1,4 +1,4 @@
-// Two dimensional arrays
+// Three dimensional arrays
 
 var N=2
 var a[N,N,N]

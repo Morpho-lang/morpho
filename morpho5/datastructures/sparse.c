@@ -798,7 +798,7 @@ value Sparse_getindex(vm *v, int nargs, value *args) {
     unsigned int indx[2]={0,0};
     value out = MORPHO_FLOAT(0.0);
     
-    if (array_valuestoindices(nargs, args+1, indx)) {
+    if (array_valuelisttoindices(nargs, args+1, indx)) {
         sparse_getelement(s, indx[0], indx[1], &out);
     } else morpho_runtimeerror(v, MATRIX_INVLDINDICES);
     
@@ -810,7 +810,7 @@ value Sparse_setindex(vm *v, int nargs, value *args) {
     objectsparse *s=MORPHO_GETSPARSE(MORPHO_SELF(args));
     unsigned int indx[2]={0,0};
     
-    if (array_valuestoindices(nargs-1, args+1, indx)) {
+    if (array_valuelisttoindices(nargs-1, args+1, indx)) {
         if (!sparse_setelement(s, indx[0], indx[1], args[nargs])) {
             morpho_runtimeerror(v, SPARSE_SETFAILED);
         }

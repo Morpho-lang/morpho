@@ -53,7 +53,9 @@ write(q)
 // f.op(fn (a) a.norm())
 
 import meshtools
+
 var sm = LineMesh(fn (t) [t,0,0], 0..1:0.2)
+
 var sf = Field(sm, 2.0)
 print sf
 // expect: <Field>

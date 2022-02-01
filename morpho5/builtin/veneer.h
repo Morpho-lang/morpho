@@ -74,23 +74,28 @@
 #define STRING_IMMTBL_MSG                 "Strings are immutable."
 
 #define ARRAY_ARGS                        "ArrayArgs"
-#define ARRAY_ARGS_MSG                    "Array much be called with integer arguments."
+#define ARRAY_ARGS_MSG                    "Array must be called with integer dimensions as arguments."
+
+#define ARRAY_INIT                        "ArrayInit"
+#define ARRAY_INIT_MSG                    "Array initializer must be another array or a list."
+
+#define ARRAY_CMPT                        "ArrayCmpt"
+#define ARRAY_CMPT_MSG                    "Array initializer is not compatible with the requested dimensions."
 
 #define ERROR_ARGS                        "ErrorArgs"
 #define ERROR_ARGS_MSG                    "Error much be called with a tag and a default message as arguments."
 
 /* Public interfaces to various data structures */
-typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_NONNUMERICALINDX, ARRAY_OUTOFBOUNDS } objectarrayerror;
+typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_OUTOFBOUNDS } objectarrayerror;
 
 int string_countchars(objectstring *s);
 char *string_index(objectstring *s, int i);
 
 errorid array_error(objectarrayerror err);
 
-bool array_valuestoindices(unsigned int ndim, value *indx, unsigned int *iout);
-bool array_indicestoelement(objectarray *array, unsigned int ndim, unsigned int *indx, unsigned int *ixout);
-objectarrayerror array_getelement(objectarray *array, unsigned int ndim, value *indx, value *out);
-objectarrayerror array_setelement(objectarray *array, unsigned int ndim, value *indx, value set);
+bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out);
+objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned int *indx, value *out);
+objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned int *indx, value in);
 
 bool list_resize(objectlist *list, int size);
 void list_append(objectlist *list, value v);

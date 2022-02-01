@@ -2174,6 +2174,8 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
     if (!MORPHO_ISNIL(var)) {
         /* Create the variable */
         codeinfo vloc = compiler_addvariable(c, varnode, var);
+        codeinfo array = CODEINFO_EMPTY;
+        
         if (vloc.returntype==REGISTER) {
             reg=vloc.dest; /* The variable was assigned to a register, so we can use it directly */
         } else {
@@ -2183,19 +2185,38 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
         
         /* If this is an array, we must create it */
         if (indxnode) {
+            /* Set up a call to the Array() function */
+            array=compiler_findbuiltin(c, node, ARRAY_CLASSNAME, reqout);
+            ninstructions+=array.ninstructions;
+            
+            // Dimensions
             registerindx istart=REGISTER_UNALLOCATED, iend=REGISTER_UNALLOCATED;
             codeinfo indxinfo=compiler_compileindexlist(c, indxnode, &istart, &iend);
             ninstructions+=indxinfo.ninstructions;
             
-            compiler_addinstruction(c, ENCODEC(OP_ARRAY, reg, false, istart, false, iend), node);
+            // Initializer
+            if (node->right!=SYNTAXTREE_UNCONNECTED) {
+                iend=compiler_regalloctop(c);
+                
+                right = compiler_nodetobytecode(c, node->right, iend);
+                ninstructions+=right.ninstructions;
+                
+                right=compiler_movetoregister(c, node, right, iend); // Ensure in register
+                ninstructions+=right.ninstructions;
+            }
+            
+            // Call Array()
+            compiler_addinstruction(c, ENCODE_DOUBLE(OP_CALL, array.dest, false, iend-istart+1), node);
             ninstructions++;
             
-            /* Free all the registers used for the index */
             compiler_regfreetoend(c, istart);
-        }
-        
-        /* Evaluate the initializer if any */
-        if (node->right!=SYNTAXTREE_UNCONNECTED) {
+            
+            if (vloc.returntype==REGISTER && array.dest!=vloc.dest) { // Move to correct register
+                codeinfo move=compiler_movetoregister(c, node, array, vloc.dest);
+                ninstructions+=move.ninstructions;
+            } else reg=array.dest;
+            
+        } else if (node->right!=SYNTAXTREE_UNCONNECTED) { /* Not an array, but has an initializer */
             right = compiler_nodetobytecode(c, node->right, reg);
             ninstructions+=right.ninstructions;
             
@@ -2204,8 +2225,7 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
             ninstructions+=right.ninstructions;
             
             compiler_releaseoperand(c, right);
-        } else if (!indxnode) {
-            /* Otherwise, we should zero out the register */
+        } else { /* Otherwise, we should zero out the register */
             registerindx cnil = compiler_addconstant(c, node, MORPHO_NIL, false, false);
             compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, cnil), node);
             ninstructions++;
@@ -2214,6 +2234,8 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
         if (vloc.returntype!=REGISTER) {
             codeinfo mv=compiler_movefromregister(c, node, vloc, reg);
             ninstructions+=mv.ninstructions;
+            
+            compiler_regfreetemp(c, reg);
         }
     }
     

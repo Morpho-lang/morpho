@@ -350,8 +350,11 @@ objectdictionary *object_newdictionary(void);
 
 typedef struct {
     object obj;
-    unsigned int dimensions;
+    unsigned int ndim;
     unsigned int nelements;
+    value *values;
+    value *dimensions;
+    value *multipliers;
     value data[];
 } objectarray;
 

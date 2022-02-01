@@ -167,7 +167,7 @@ void mesh_freezeconnectivity(objectmesh *mesh) {
 /** Creates a new blank connectivity element */
 objectsparse *mesh_newconnectivityelement(objectmesh *mesh, unsigned int row, unsigned int col) {
     objectsparse *out=NULL;
-    value indx[2]={MORPHO_INTEGER(row),MORPHO_INTEGER(col)};
+    unsigned int indx[2] = {row, col};
 
     out=object_newsparse(NULL, NULL);
     if (out) array_setelement(mesh->conn, 2, indx, MORPHO_OBJECT(out));
@@ -180,7 +180,7 @@ objectsparse *mesh_newconnectivityelement(objectmesh *mesh, unsigned int row, un
 /** Sets a connectivity element */
 bool mesh_setconnectivityelement(objectmesh *mesh, unsigned int row, unsigned int col, objectsparse *el) {
     if (row==col) return false;
-    value indx[2]={MORPHO_INTEGER(row),MORPHO_INTEGER(col)};
+    unsigned int indx[2]={row,col};
     if (mesh_checkconnectivity(mesh)) {
         value old = MORPHO_NIL;
         if (array_getelement(mesh->conn, 2, indx, &old) &&
@@ -203,7 +203,7 @@ bool mesh_setconnectivityelement(objectmesh *mesh, unsigned int row, unsigned in
 /** Gets the connectivity matrix corresponding to (row, col) */
 objectsparse *mesh_getconnectivityelement(objectmesh *mesh, unsigned int row, unsigned int col) {
     objectsparse *out=NULL;
-    value indx[2]={MORPHO_INTEGER(row),MORPHO_INTEGER(col)};
+    unsigned int indx[2]={row,col};
     value matrix=MORPHO_NIL;
 
     if (mesh->conn) array_getelement(mesh->conn, 2, indx, &matrix);

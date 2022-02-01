@@ -492,10 +492,16 @@ void object_arrayinit(objectarray *array, unsigned int ndim, unsigned int *dim) 
     object_init((object *) array, OBJECT_ARRAY);
     unsigned int nel = (ndim==0 ? 0 : 1);
     
+    /* Store pointers into the data array */
+    array->dimensions=array->data;
+    array->multipliers=array->data+ndim;
+    array->values=array->data+2*ndim;
+    
     /* Store the description of array dimensions */
-    array->dimensions=ndim;
+    array->ndim=ndim;
     for (unsigned int i=0; i<ndim; i++) {
-        array->data[i]=MORPHO_INTEGER(dim[i]);
+        array->dimensions[i]=MORPHO_INTEGER(dim[i]);
+        array->multipliers[i]=MORPHO_INTEGER(nel);
         nel*=dim[i];
     }
 
@@ -504,9 +510,9 @@ void object_arrayinit(objectarray *array, unsigned int ndim, unsigned int *dim) 
  
     /* Arrays are initialized to nil. */
 #ifdef MORPHO_NAN_BOXING
-    memset(array->data+ndim, 0, sizeof(value)*nel);
+    memset(array->values, 0, sizeof(value)*nel);
 #else
-    for (unsigned int i=0; i<nel; i++) array->data[ndim+i]=MORPHO_FLOAT(0.0);
+    for (unsigned int i=0; i<nel; i++) array->values[i]=MORPHO_FLOAT(0.0);
 #endif
 }
 
@@ -514,25 +520,23 @@ void object_arrayinit(objectarray *array, unsigned int ndim, unsigned int *dim) 
  * @details Arrays are stored in memory as follows:
  *          objectarray structure with flexible array member value
  *          value [0..dim-1] the dimensions of the array
- *          value [dim..] array elements in column major order, i.e. the matrix
+ *          value [dim..2*dim-1] stores multipliers for each dimension to translate to the index
+ *          value [2*dim..] array elements in column major order, i.e. the matrix
  *          [ [ 1, 2],
  *           [ 3, 4] ] is stored as:
  *          <structure> // the structure
  *          2, 2, // the dimensions
+ *          1, 2, // multipliers for each index to access elements
  *          1, 3, 2, 4 // the elements in column major order */
 objectarray *object_newarray(unsigned int ndim, unsigned int *dim) {
     /* Calculate the number of elements */
     unsigned int nel=(ndim==0 ? 0 : dim[0]);
     for (unsigned int i=1; i<ndim; i++) nel*=dim[i];
     
-    /* Hence determine the memory required */
-    size_t size = sizeof(objectarray)+sizeof(value)*(ndim + nel);
+    size_t size = sizeof(objectarray)+sizeof(value)*(2*ndim + nel);
         
     objectarray *new = (objectarray *) object_new(size, OBJECT_ARRAY);
-    
-    if (new) {
-        object_arrayinit(new, ndim, dim);
-    }
+    if (new) object_arrayinit(new, ndim, dim);
     
     return new;
 }
@@ -656,7 +660,7 @@ size_t object_size(object *obj) {
             return sizeof(objectdictionary)+(((objectdictionary *) obj)->dict.capacity)*sizeof(dictionaryentry); 
         case OBJECT_ARRAY:
             return sizeof(objectarray) +
-            sizeof(value) * ( ((objectarray *) obj)->nelements+((objectarray *) obj)->dimensions );
+            sizeof(value) * ( ((objectarray *) obj)->nelements+2*((objectarray *) obj)->ndim );
         case OBJECT_LIST:
             return sizeof(objectlist)+sizeof(value) *
                     ((objectlist *) obj)->val.capacity;

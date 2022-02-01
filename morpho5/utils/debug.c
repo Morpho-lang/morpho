@@ -149,9 +149,9 @@ assemblyrule assemblyrules[] ={
     { OP_PUSHERR, "pusherr", "cX" },
     { OP_POPERR, "poperr", "+" },
     
-    { OP_ARRAY, "array", "rA, ?B, ?C" },
+   // { OP_ARRAY, "array", "rA, ?B, ?C" },
     { OP_CAT, "cat", "rA, ?B, ?C" },
-    { OP_RAISE, "raise", "rA" },
+   // { OP_RAISE, "raise", "rA" },
     { OP_BREAK, "break", "" },
     { OP_END, "end", "" },
     { 0, NULL, "" } // Null terminate the list

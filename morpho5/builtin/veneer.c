@@ -353,13 +353,23 @@ MORPHO_ENDCLASS
  * Array
  * ********************************************************************** */
 
+/** Converts a list of values to a list of integers */
+inline bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out) {
+    
+    for (unsigned int i=0; i<ndim; i++) {
+        if (MORPHO_ISINTEGER(in[i])) out[i]=MORPHO_GETINTEGERVALUE(in[i]);
+        else if(MORPHO_ISFLOAT(in[i])) out[i]=round(MORPHO_GETFLOATVALUE(in[i]));
+        else return false;
+    }
+    
+    return true;
+}
+
 /** Creates a new 1D array from a list of values */
 objectarray *object_arrayfromvaluelist(unsigned int n, value *v) {
     objectarray *new = object_newarray(1, &n);
     
-    if (new) {
-        memcpy(new->data+1, v, sizeof(value)*n);
-    }
+    if (new) memcpy(new->values, v, sizeof(value)*n);
     
     return new;
 }
@@ -372,7 +382,7 @@ objectarray *object_arrayfromvarrayvalue(varray_value *v) {
 /** Creates a new array object with the dimensions given as a list of values */
 objectarray *object_arrayfromvalueindices(unsigned int ndim, value *dim) {
     unsigned int indx[ndim];
-    if (array_valuestoindices(ndim, dim, indx)) {
+    if (array_valuelisttoindices(ndim, dim, indx)) {
         return object_newarray(ndim, indx);
     }
     return NULL;
@@ -380,110 +390,47 @@ objectarray *object_arrayfromvalueindices(unsigned int ndim, value *dim) {
 
 /** Clones an array. Does *not* clone the contents. */
 objectarray *object_clonearray(objectarray *array) {
-    objectarray *new = object_arrayfromvalueindices(array->dimensions, array->data);
+    objectarray *new = object_arrayfromvalueindices(array->ndim, array->data);
     
-    if (new) memcpy(new->data, array->data, sizeof(value)*(array->nelements+array->dimensions));
+    if (new) memcpy(new->data, array->data, sizeof(value)*(array->nelements+2*array->ndim));
     
     return new;
 }
 
-/** Converts a list of indices into a list of unsigned ints
- *  @param ndim - number of dimensions
- *  @param indx - the indices to evaluate
- *  @param iout - the indices as integers
- *  @returns true on success, or false if an unexpected type was encountered */
-inline bool array_valuestoindices(unsigned int ndim, value *indx, unsigned int *iout) {
-    for (unsigned int i=0; i<ndim; i++) {
-        if (MORPHO_ISINTEGER(indx[i])) {
-            iout[i] = (unsigned int) MORPHO_GETINTEGERVALUE(indx[i]);
-        } else if (MORPHO_ISFLOAT(indx[i])) {
-            iout[i] = (unsigned int) MORPHO_GETFLOATVALUE(indx[i]);
-        } else {
-            return false;
+/** Recursively print a slice of an array */
+bool array_print_recurse(vm *v, objectarray *a, unsigned int *indx, unsigned int dim, varray_char *out) {
+    unsigned int bnd = MORPHO_GETINTEGERVALUE(a->dimensions[dim]);
+    value val=MORPHO_NIL;
+    
+    varray_charadd(out, "[ ", 2);
+    for (indx[dim]=0; indx[dim]<bnd; indx[dim]++) {
+        if (dim==a->ndim-1) { // Print if innermost element
+            if (array_getelement(a, a->ndim, indx, &val)==ARRAY_OK) {
+                morpho_printtobuffer(v, val, out);
+            } else return false;
+        } else if (!array_print_recurse(v, a, indx, dim+1, out)) return false; // Otherwise recurse
+        
+        if (indx[dim]<bnd-1) { // Separators between items
+            varray_charadd(out, ", ", 2);
         }
     }
+    varray_charadd(out, " ]", 2);
+
     return true;
 }
 
-/** @brief Calculates the correct element from a set of array indices
- *  @param[in] array - the array
- *  @param[in] ndim   - number of dimensions
- *  @param[in] indx   - list of indices
- *  @param[out] ixout - the element number to use
- *  @returns true on success, false if indices are out of bounds */
-inline bool array_indicestoelement(objectarray *array, unsigned int ndim, unsigned int *indx, unsigned int *ixout) {
-    unsigned int ix=0, mul=1;
+/* Print the contents of an array */
+void array_print(vm *v, objectarray *a) {
+    varray_char out;
+    varray_charinit(&out);
     
-    for (unsigned int i=0; i<ndim; i++) {
-        int dim = MORPHO_GETINTEGERVALUE(array->data[i]);
-        if (indx[i]<dim) {
-            ix+=mul*indx[i];
-        } else return false;
-        mul*=dim;
-    }
-    if (ixout) *ixout = ndim+ix;
-    return true;
-}
-
-/** Gets an array element */
-objectarrayerror array_getelement(objectarray *array, unsigned int ndim, value *indx, value *out) {
-    if (ndim!=array->dimensions) return ARRAY_WRONGDIM;
-    
-    if (ndim==1 && MORPHO_ISINTEGER(*indx)) {
-        int val = MORPHO_GETINTEGERVALUE(*indx);
-        if (val>=MORPHO_GETINTEGERVALUE(array->data[0])) return ARRAY_OUTOFBOUNDS;
-        *out=array->data[ndim+val];
-        return ARRAY_OK;
-    } else if (ndim==2 && MORPHO_ISINTEGER(indx[0]) && MORPHO_ISINTEGER(indx[1])) {
-        int i1 = MORPHO_GETINTEGERVALUE(indx[0]);
-        int i2 = MORPHO_GETINTEGERVALUE(indx[1]);
-        int nrows = MORPHO_GETINTEGERVALUE(array->data[0]);
-        if (i1<0 || i1>=nrows) return ARRAY_OUTOFBOUNDS;
-        if (i2<0 || i2>=MORPHO_GETINTEGERVALUE(array->data[1])) return ARRAY_OUTOFBOUNDS;
-        *out=array->data[ndim+i1+i2*nrows];
-        return ARRAY_OK;
+    unsigned int indx[a->ndim];
+    if (array_print_recurse(v, a, indx, 0, &out)) {
+        varray_charwrite(&out, '\0'); // Ensure zero terminated
+        printf("%s", out.data);
     }
     
-    unsigned int ix[ndim], iel;
-    if (array_valuestoindices(ndim, indx, ix)) {
-        if (array_indicestoelement(array, ndim, ix, &iel)) {
-            *out=array->data[iel];
-            return ARRAY_OK;
-        } else return ARRAY_OUTOFBOUNDS;
-    }
-    
-    return ARRAY_NONNUMERICALINDX;
-}
-
-/** Sets an array element */
-objectarrayerror array_setelement(objectarray *array, unsigned int ndim, value *indx, value set) {
-    if (ndim!=array->dimensions) return ARRAY_WRONGDIM;
-    
-    if (ndim==1 && MORPHO_ISINTEGER(*indx)) {
-        int val = MORPHO_GETINTEGERVALUE(*indx);
-        if (val>=MORPHO_GETINTEGERVALUE(array->data[0])) return ARRAY_OUTOFBOUNDS;
-        array->data[ndim+val]=set;
-
-        return ARRAY_OK;
-    } else if (ndim==2 && MORPHO_ISINTEGER(indx[0]) && MORPHO_ISINTEGER(indx[1])) {
-        int i1 = MORPHO_GETINTEGERVALUE(indx[0]);
-        int i2 = MORPHO_GETINTEGERVALUE(indx[1]);
-        int nrows = MORPHO_GETINTEGERVALUE(array->data[0]);
-        if (i1<0 || i1>=nrows) return ARRAY_OUTOFBOUNDS;
-        if (i2<0 || i2>=MORPHO_GETINTEGERVALUE(array->data[1])) return ARRAY_OUTOFBOUNDS;
-        array->data[ndim+i1+i2*nrows]=set;
-        return ARRAY_OK;
-    }
-    
-    unsigned int ix[ndim], iel;
-    if (array_valuestoindices(ndim, indx, ix)) {
-        if (array_indicestoelement(array, ndim, ix, &iel)) {
-            array->data[iel]=set;
-            return ARRAY_OK;
-        } else return ARRAY_OUTOFBOUNDS;
-    }
-    
-    return ARRAY_NONNUMERICALINDX;
+    varray_charclear(&out);
 }
 
 /** Converts an array error into an error code */
@@ -491,27 +438,149 @@ errorid array_error(objectarrayerror err) {
     switch (err) {
         case ARRAY_OUTOFBOUNDS: return VM_OUTOFBOUNDS;
         case ARRAY_WRONGDIM: return VM_ARRAYWRONGDIM;
-        case ARRAY_NONNUMERICALINDX: return VM_NONNUMINDX;
         case ARRAY_OK: UNREACHABLE("array_error called incorrectly.");
     }
     UNREACHABLE("Unhandled array error.");
     return VM_OUTOFBOUNDS;
 }
 
-
-/** Create an array */
-value array_constructor(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
-    unsigned int dim[nargs];
+/** Gets an array element */
+objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned int *indx, value *out) {
+    unsigned int k=0;
     
-    if (nargs==0) { morpho_runtimeerror(v, ARRAY_ARGS); return MORPHO_NIL; }
-    for (unsigned int i=0; i<nargs; i++) {
-        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, i))) dim[i]=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, i));
-        else { morpho_runtimeerror(v, ARRAY_ARGS); return MORPHO_NIL; }
+    if (ndim!=a->ndim) return ARRAY_WRONGDIM;
+    
+    for (unsigned int i=0; i<ndim; i++) {
+        if (indx[i]>=MORPHO_GETINTEGERVALUE(a->dimensions[i])) return ARRAY_OUTOFBOUNDS;
+        k+=indx[i]*MORPHO_GETINTEGERVALUE(a->multipliers[i]);
     }
         
-    objectarray *new = object_newarray(nargs, dim);
+    *out = a->values[k];
+    return ARRAY_OK;
+}
+
+/** Sets an array element */
+objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned int *indx, value in) {
+    unsigned int k=0;
+    
+    if (ndim!=a->ndim) return ARRAY_WRONGDIM;
+    
+    for (unsigned int i=0; i<ndim; i++) {
+        if (indx[i]>=MORPHO_GETINTEGERVALUE(a->dimensions[i])) return ARRAY_OUTOFBOUNDS;
+        k+=indx[i]*MORPHO_GETINTEGERVALUE(a->multipliers[i]);
+    }
         
+    a->values[k]=in;
+    return ARRAY_OK;
+}
+
+/* ---------------------------
+ * Array constructor functions
+ * --------------------------- */
+
+/** Returns the maximum nesting depth in a list, including this one.
+ * @param[in] list - the list to examine
+ * @param[out] out - optionally return the dimensions of the nested lists.
+ * To get dimension information:
+ * Call list_nestingdepth with out set to NULL; this returns the size of the array needed.
+ * Initialize the dimension array to zero.
+ * Call list_nestingdepth again with out set to an output array */
+unsigned int list_nestingdepth(objectlist *list, unsigned int *out) {
+    unsigned int dim=0;
+    for (unsigned int i=0; i<list->val.count; i++) {
+        if (MORPHO_ISLIST(list->val.data[i])) {
+            unsigned int sdim=list_nestingdepth(MORPHO_GETLIST(list->val.data[i]), ( out ? out+1 : NULL));
+            if (sdim>dim) dim=sdim;
+        }
+    }
+    if (out && list->val.count>*out) *out=list->val.count;
+    return dim+1;
+}
+
+/* Internal function that recursively copied a nested list into an array.
+   Use public interface array_copyfromnestedlist */
+static void array_copyfromnestedlistrecurse(objectlist *list, unsigned int ndim, unsigned int *indx, unsigned int depth, objectarray *out) {
+    for (unsigned int i=0; i<list->val.count; i++) {
+        indx[depth] = i;
+        value val = list->val.data[i];
+        if (MORPHO_ISLIST(val)) array_copyfromnestedlistrecurse(MORPHO_GETLIST(val), ndim, indx, depth+1, out);
+        else array_setelement(out, ndim, indx, val);
+    }
+}
+
+/** Copies a nested list into an array.*/
+void array_copyfromnestedlist(objectlist *in, objectarray *out) {
+    unsigned int indx[out->ndim];
+    for (unsigned int i=0; i<out->ndim; i++) indx[i]=0;
+    array_copyfromnestedlistrecurse(in, out->ndim, indx, 0, out);
+}
+
+/** Constructs an array from a list initializer or returns NULL if the initializer isn't compatible with the requested array */
+objectarray *array_constructfromlist(unsigned int ndim, unsigned int *dim, objectlist *initializer) {
+    // Establish the dimensions of the nested list
+    unsigned int nldim = list_nestingdepth(initializer, NULL);
+    unsigned int ldim[nldim];
+    for (unsigned int i=0; i<nldim; i++) ldim[i]=0;
+    list_nestingdepth(initializer, ldim);
+    
+    if (ndim>0) { // Check compatibility
+        if (ndim!=nldim) return NULL;
+        for (unsigned int i=0; i<ndim; i++) if (ldim[i]!=dim[i]) return NULL;
+    }
+    
+    objectarray *new = object_newarray(nldim, ldim);
+    array_copyfromnestedlist(initializer, new);
+    
+    return new;
+}
+
+/** Constructs an array from an initializer or returns NULL if the initializer isn't compatible with the requested array */
+objectarray *array_constructfromarray(unsigned int ndim, unsigned int *dim, objectarray *initializer) {
+    if (ndim>0) { // Check compatibility
+        if (ndim!=initializer->ndim) return NULL;
+        for (unsigned int i=0; i<ndim; i++) {
+            if (dim[i]!=MORPHO_GETINTEGERVALUE(initializer->dimensions[i])) return NULL;
+        }
+    }
+    
+    return object_clonearray(initializer);
+}
+
+/** Array constructor function */
+value array_constructor(vm *v, int nargs, value *args) {
+    unsigned int ndim; // Number of dimensions
+    unsigned int dim[nargs+1]; // Size of each dimension
+    value initializer=MORPHO_NIL; // An initializer if provided
+    
+    // Check that args are present
+    if (nargs==0) { morpho_runtimeerror(v, ARRAY_ARGS); return MORPHO_NIL; }
+    
+    for (ndim=0; ndim<nargs; ndim++) { // Loop over arguments
+        if (!MORPHO_ISNUMBER(MORPHO_GETARG(args, ndim))) break; // Stop once a non-numerical argument is encountered
+    }
+    
+    // Get dimensions
+    if (ndim>0) array_valuelisttoindices(ndim, &MORPHO_GETARG(args, 0), dim);
+    // Initializer is the first non-numerical argument; anything after is ignored
+    if (ndim<nargs) initializer=MORPHO_GETARG(args, ndim);
+    
+    objectarray *new=NULL;
+    
+    // Now construct the array
+    if (MORPHO_ISNIL(initializer)) {
+        new = object_newarray(ndim, dim);
+    } else if (MORPHO_ISARRAY(initializer)) {
+        new = array_constructfromarray(ndim, dim, MORPHO_GETARRAY(initializer));
+        if (!new) morpho_runtimeerror(v, ARRAY_CMPT);
+    } else if (MORPHO_ISLIST(initializer)) {
+        new = array_constructfromlist(ndim, dim, MORPHO_GETLIST(initializer));
+        if (!new) morpho_runtimeerror(v, ARRAY_CMPT);
+    } else {
+        morpho_runtimeerror(v, ARRAY_ARGS);
+    }
+    
+    // Bind the new array to the VM
+    value out=MORPHO_NIL;
     if (new) {
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
@@ -520,27 +589,36 @@ value array_constructor(vm *v, int nargs, value *args) {
     return out;
 }
 
-
 /** Gets the array element with given indices */
 value Array_getindex(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
-    objectarrayerror err=array_getelement(MORPHO_GETARRAY(MORPHO_SELF(args)), nargs, &MORPHO_GETARG(args, 0), &out);
-    if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
+    objectarray *array=MORPHO_GETARRAY(MORPHO_SELF(args));
+    unsigned int indx[nargs];
+    
+    if (array_valuelisttoindices(nargs, &MORPHO_GETARG(args, 0), indx)) {
+        objectarrayerror err=array_getelement(array, nargs, indx, &out);
+        if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
+    } else MORPHO_RAISE(v, VM_NONNUMINDX);
     
     return out;
 }
 
 /** Sets the matrix element with given indices */
 value Array_setindex(vm *v, int nargs, value *args) {
-    objectarrayerror err=array_setelement(MORPHO_GETARRAY(MORPHO_SELF(args)), nargs-1, &MORPHO_GETARG(args, 0), MORPHO_GETARG(args, nargs-1));
-    if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
+    objectarray *array=MORPHO_GETARRAY(MORPHO_SELF(args));
+    unsigned int indx[nargs-1];
+    
+    if (array_valuelisttoindices(nargs-1, &MORPHO_GETARG(args, 0), indx)) {
+        objectarrayerror err=array_setelement(array, nargs-1, indx, MORPHO_GETARG(args, nargs-1));
+        if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
+    } else MORPHO_RAISE(v, VM_NONNUMINDX);
     
     return MORPHO_NIL;
 }
 
 /** Print an array */
 value Array_print(vm *v, int nargs, value *args) {
-    printf("<%s>", ARRAY_CLASSNAME);
+    array_print(v, MORPHO_GETARRAY(MORPHO_SELF(args)));
     
     return MORPHO_NIL;
 }
@@ -556,7 +634,7 @@ value Array_count(vm *v, int nargs, value *args) {
 value Array_dimensions(vm *v, int nargs, value *args) {
     objectarray *a=MORPHO_GETARRAY(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-    objectlist *new=object_newlist(a->dimensions, a->data);
+    objectlist *new=object_newlist(a->ndim, a->data);
     
     if (new) {
         out=MORPHO_OBJECT(new);
@@ -577,7 +655,7 @@ value Array_enumerate(vm *v, int nargs, value *args) {
         if (n<0) {
             out=MORPHO_INTEGER(slf->nelements);
         } else if (n<slf->nelements) {
-            out=slf->data[n+slf->dimensions];
+            out=slf->values[n];
         } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
     } else MORPHO_RAISE(v, ENUMERATE_ARGS);
     
@@ -1471,6 +1549,8 @@ void veneer_initialize(void) {
     error_messageproperty=builtin_internsymbolascstring(ERROR_MESSAGE_PROPERTY);
     
     morpho_defineerror(ARRAY_ARGS, ERROR_HALT, ARRAY_ARGS_MSG);
+    morpho_defineerror(ARRAY_INIT, ERROR_HALT, ARRAY_INIT_MSG);
+    morpho_defineerror(ARRAY_CMPT, ERROR_HALT, ARRAY_CMPT_MSG);
     morpho_defineerror(STRING_IMMTBL, ERROR_HALT, STRING_IMMTBL_MSG);
     morpho_defineerror(RANGE_ARGS, ERROR_HALT, RANGE_ARGS_MSG);
     morpho_defineerror(ENUMERATE_ARGS, ERROR_HALT, ENUMERATE_ARGS_MSG);

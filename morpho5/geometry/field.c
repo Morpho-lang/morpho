@@ -433,7 +433,7 @@ value field_constructor(vm *v, int nargs, value *args) {
         dof[MORPHO_GETINTEGERVALUE(grd)]=1;
     } else if (MORPHO_ISLIST(grd)) {
         objectlist *list = MORPHO_GETLIST(grd);
-        if (!array_valuestoindices(list->val.count, list->val.data, dof)) return MORPHO_NIL;
+        if (!array_valuelisttoindices(list->val.count, list->val.data, dof)) return MORPHO_NIL;
     }
     
     if (MORPHO_ISNIL(fn)) {
@@ -456,7 +456,7 @@ value Field_getindex(vm *v, int nargs, value *args) {
     unsigned int indx[nargs];
     value out = MORPHO_NIL;
     
-    if (array_valuestoindices(nargs, args+1, indx)) {
+    if (array_valuelisttoindices(nargs, args+1, indx)) {
         grade g = (nargs>1 ? indx[0] : MESH_GRADE_VERTEX);
         elementid el = (nargs>1 ? indx[1] : indx[0]);
         int elindx = (nargs>2 ? indx[2] : 0);
@@ -477,7 +477,7 @@ value Field_setindex(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
     int nindices = nargs-1;
     
-    if (array_valuestoindices(nindices, args+1, indx)) {
+    if (array_valuelisttoindices(nindices, args+1, indx)) {
         grade g = (nindices>1 ? indx[0] : MESH_GRADE_VERTEX);
         elementid el = (nindices>1 ? indx[1] : indx[0]);
         int elindx = (nindices>2 ? indx[2] : 0);

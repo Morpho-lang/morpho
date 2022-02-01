@@ -6,7 +6,7 @@
 var a = Array(3,3)
 
 print a
-// expect: <Array>
+// expect: [ [ 0, 0, 0 ], [ 0, 0, 0 ], [ 0, 0, 0 ] ]
 
 print a.dimensions()
 // expect: [ 3, 3 ]

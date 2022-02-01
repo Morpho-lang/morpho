@@ -429,15 +429,34 @@ void optimize_track(optimizer *opt) {
         case OP_SUB:
         case OP_MUL:
         case OP_DIV:
+        case OP_POW:
+        case OP_EQ:
+        case OP_NEQ:
+        case OP_LT:
+        case OP_LE:
             if (!DECODE_ISBCONSTANT(instr)) optimize_reguse(opt, DECODE_B(instr));
             if (!DECODE_ISCCONSTANT(instr)) optimize_reguse(opt, DECODE_C(instr));
             optimize_regoverwrite(opt, DECODE_A(instr));
             optimize_regcontents(opt, DECODE_A(instr), VALUE, NOTHING);
             break;
-        case OP_CALL:
-            optimize_reguse(opt, DECODE_A(instr));
+        case OP_NOT:
+            if (!DECODE_ISBCONSTANT(instr)) optimize_reguse(opt, DECODE_B(instr));
             optimize_regoverwrite(opt, DECODE_A(instr));
             optimize_regcontents(opt, DECODE_A(instr), VALUE, NOTHING);
+            break;
+        case OP_BIF:
+            optimize_reguse(opt, DECODE_A(instr));
+            UNREACHABLE("Branches ouch!");
+            break;
+        case OP_CALL:
+        {
+            registerindx a = DECODE_A(instr);
+            registerindx b = DECODE_B(instr);
+            optimize_reguse(opt, a);
+            for (unsigned int i=0; i<b; i++) opt->reg[a+i+1].contains=NOTHING; // call uses and overwrites arguments.
+            optimize_regoverwrite(opt, DECODE_A(instr));
+            optimize_regcontents(opt, DECODE_A(instr), VALUE, NOTHING);
+        }
             break;
         case OP_RETURN:
             if (DECODE_A(instr)>0) optimize_reguse(opt, DECODE_B(instr));
@@ -515,7 +534,6 @@ void optimize_clear(optimizer *opt) {
     if (opt->temp) morpho_freeprogram(opt->temp);
 }
 
-
 /* **********************************************************************
 * Finalize, clearing nops and fixing debug info
 * ********************************************************************** */
@@ -529,6 +547,11 @@ void optimize_compactify(optimizer *opt) {
     while (!optimize_atend(opt)) {
         optimize_fetch(opt);
         optimize_replaceinstructionat(opt, write, opt->current); // Copy this instruction down
+        
+#ifdef MORPHO_DEBUG_LOGOPTIMIZER
+        debug_disassembleinstruction(opt->current, opt->next, NULL, NULL);
+        printf("\n");
+#endif
         
         if (opt->op==OP_NOP) {
             optimize_annotationdeleteinstruction(opt); // Mark this instruction for deletion

@@ -536,8 +536,13 @@ value Matrix_getindex(vm *v, int nargs, value *args) {
         } else {
             out = MORPHO_FLOAT(outval);
         }
-    } else morpho_runtimeerror(v, MATRIX_INVLDINDICES);
-    
+    } else{ // now try to get a slice
+		objectarrayerror err = getslice(&MORPHO_SELF(args), nargs, &MORPHO_GETARG(args,0), &out);
+		if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
+		if (out){
+			morpho_bindobjects(v,1,&out);
+		}else morpho_runtimeerror(v, MATRIX_INVLDINDICES);
+	}
     return out;
 }
 

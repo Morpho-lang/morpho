@@ -1458,9 +1458,20 @@ callfunction: // Jump here if an instruction becomes a call
             if (MORPHO_ISARRAY(left)) {
                 unsigned int ndim = c-b+1;
                 unsigned int indx[ndim];
-                if (!array_valuelisttoindices(ndim, &reg[b], indx)) ERROR(VM_NONNUMINDX);
-                objectarrayerror err=array_getelement(MORPHO_GETARRAY(left), ndim, indx, &reg[b]);
-                if (err!=ARRAY_OK) ERROR( array_error(err) );
+				if (array_valuelisttoindices(ndim, &reg[b], indx)){
+					objectarrayerror err=array_getelement(MORPHO_GETARRAY(left), ndim, indx, &reg[b]);
+					if (err!=ARRAY_OK) ERROR( array_error(err) );
+				} else{
+					value newVal = MORPHO_NIL;
+					objectarrayerror err = getslice(&left,ndim,&reg[b],&newVal);
+					if (err!=ARRAY_OK) ERROR(array_error(err));
+					
+					if (newVal){
+						reg[b] = newVal;
+						vm_bindobject(v, reg[b]);
+					}
+					else  ERROR(VM_NONNUMINDX);
+				}
             } else {
                 if (!vm_invoke(v, left, indexselector, c-b+1, &reg[b], &reg[b])) {
                     ERROR(VM_NOTINDEXABLE);

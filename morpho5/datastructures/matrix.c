@@ -530,6 +530,7 @@ value Matrix_getindex(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
 	if (nargs>2){
 		morpho_runtimeerror(v, MATRIX_INVLDNUMINDICES);
+		return out;
 	}
     
     if (array_valuelisttoindices(nargs, args+1, indx)) {

@@ -118,3 +118,9 @@ try{
 	"MtrxInvldIndx": print "MtrxInvldIndx"
 // expect: MtrxInvldIndx
 }
+try{
+	A[1,2,3,4,5]
+} catch{
+	"MtrxInvldNumIndx": print "MtrxInvldNumIndx"
+// expect: MtrxInvldNumIndx
+}

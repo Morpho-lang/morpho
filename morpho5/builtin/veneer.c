@@ -445,6 +445,27 @@ errorid array_error(objectarrayerror err) {
     UNREACHABLE("Unhandled array error.");
     return VM_OUTOFBOUNDS;
 }
+errorid array_to_matrix_error(objectarrayerror err) {
+    switch (err) {
+        case ARRAY_OUTOFBOUNDS: return MATRIX_INDICESOUTSIDEBOUNDS;
+        case ARRAY_WRONGDIM: return MATRIX_INVLDNUMINDICES;
+		case ARRAY_NONINTINDX: return MATRIX_INVLDINDICES;
+        case ARRAY_OK: UNREACHABLE("array_to_matrix_error called incorrectly.");
+    }
+    UNREACHABLE("Unhandled array error.");
+    return VM_OUTOFBOUNDS;
+}
+errorid array_to_list_error(objectarrayerror err) {
+    switch (err) {
+        case ARRAY_OUTOFBOUNDS: return VM_OUTOFBOUNDS;
+        case ARRAY_WRONGDIM: return LIST_NUMARGS;
+		case ARRAY_NONINTINDX: return LIST_ARGS;
+        case ARRAY_OK: UNREACHABLE("array_to_list_error called incorrectly.");
+    }
+    UNREACHABLE("Unhandled array error.");
+    return VM_OUTOFBOUNDS;
+}
+
 
 /** Gets an array element */
 objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned int *indx, value *out) {
@@ -884,34 +905,6 @@ bool list_getelement(objectlist *list, int i, value *out) {
     return true;
 }
 
-objectlist* list_getslicelist(objectlist *list, objectlist *slice){
-	//create a new list object
-	objectlist *new = object_newlist(slice->val.count, NULL);
-	// loop though the slice and append
-	for (int i = 0; i<slice->val.count; i++){
-		if (MORPHO_ISINTEGER(slice->val.data[i])){
-			int j = MORPHO_GETINTEGERVALUE(slice->val.data[i]);
-			new->val.data[i] = list->val.data[j];
-		}
-		else return NULL;
-	}
-	new->val.count=slice->val.count;
-	return new;
-
-}
-objectlist* list_getslicerange(objectlist *list, objectrange *slice){
-	objectlist *new = object_newlist(range_count(slice), NULL);
-	for (int i = 0; i<range_count(slice); i++){
-		value index = range_iterate(slice,i);
-		if MORPHO_ISINTEGER(index){
-			int j = MORPHO_GETINTEGERVALUE(index);
-			new->val.data[i] = list->val.data[j];
-		} else return NULL;
-	}
-	new->val.count=range_count(slice);
-	return new;
-}
-
 /** Sort function for list_sort */
 int list_sortfunction(const void *a, const void *b) {
     value l=*(value *) a, r=*(value *) b;
@@ -1114,7 +1107,7 @@ value List_getindex(vm *v, int nargs, value *args) {
             }
         } else {
 			objectarrayerror err = getslice(&MORPHO_SELF(args),nargs,&MORPHO_GETARG(args, 0),&out);
-			if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
+			if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_list_error(err) );
 			if (out!=MORPHO_NIL){
 				morpho_bindobjects(v,1,&out);
 			} else MORPHO_RAISE(v, VM_NONNUMINDX);
@@ -1727,6 +1720,7 @@ void veneer_initialize(void) {
     morpho_defineerror(LIST_ENTRYNTFND, ERROR_HALT, LIST_ENTRYNTFND_MSG);
     morpho_defineerror(LIST_ADDARGS, ERROR_HALT, LIST_ADDARGS_MSG);
     morpho_defineerror(LIST_SRTFN, ERROR_HALT, LIST_SRTFN_MSG);
+	morpho_defineerror(LIST_ARGS, ERROR_HALT, LIST_ARGS_MSG);
     morpho_defineerror(LIST_NUMARGS, ERROR_HALT, LIST_NUMARGS_MSG);
     morpho_defineerror(ERROR_ARGS, ERROR_HALT, ERROR_ARGS_MSG);
 }

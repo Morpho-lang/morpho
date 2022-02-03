@@ -8,7 +8,7 @@
 #define matrix_h
 
 #include <stdio.h>
-
+#include "veneer.h"
 /** Use Apple's Accelerate library for LAPACK and BLAS */
 #ifdef __APPLE__
 #ifdef MORPHO_LINALG_USE_ACCELERATE
@@ -44,6 +44,9 @@
 
 #define MATRIX_INVLDINDICES               "MtrxInvldIndx"
 #define MATRIX_INVLDINDICES_MSG           "Matrix indices must be integers."
+
+#define MATRIX_INVLDNUMINDICES            "MtrxInvldNumIndx"
+#define MATRIX_INVLDNUMINDICES_MSG        "Matrix expects two arguments for indexing."
 
 #define MATRIX_CONSTRUCTOR                "MtrxCns"
 #define MATRIX_CONSTRUCTOR_MSG            "Matrix() constructor should be called either with dimensions or an array, list or matrix initializer."
@@ -100,6 +103,7 @@ objectmatrixerror matrix_identity(objectmatrix *a);
 double matrix_sum(objectmatrix *a);
 //objectmatrixerror matrix_det(objectmatrix *a, double *out);
 //objectmatrixerror matrix_eigensystem(objectmatrix *a, double *val, objectmatrix *vec);
+
 
 void matrix_print(objectmatrix *m);
 

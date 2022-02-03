@@ -71,8 +71,11 @@
 #define LIST_SRTFN                        "LstSrtFn"
 #define LIST_SRTFN_MSG                    "List sort function must return an integer."
 
+#define LIST_ARGS                         "LstArgs"
+#define LIST_ARGS_MSG                     "Lists must be called with integer dimensions as arguments."
+
 #define LIST_NUMARGS                      "LstNumArgs"
-#define LIST_NUMARGS_MSG                  "List can only be indexed with one argument."
+#define LIST_NUMARGS_MSG                  "Lists can only be indexed with one argument."
 
 #define STRING_IMMTBL                     "StrngImmtbl"
 #define STRING_IMMTBL_MSG                 "Strings are immutable."
@@ -96,6 +99,8 @@ int string_countchars(objectstring *s);
 char *string_index(objectstring *s, int i);
 
 errorid array_error(objectarrayerror err);
+errorid array_to_matrix_error(objectarrayerror err);
+errorid array_to_list_error(objectarrayerror err);
 
 bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out);
 objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned int *indx, value *out);

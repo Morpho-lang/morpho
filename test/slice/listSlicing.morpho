@@ -24,8 +24,8 @@ try{
 try{
 	print A[0.0..2] 
 } catch{
-	"NonNmIndx": print "NonNmIndx"
-// expect: NonNmIndx
+	"LstArgs": print "LstArgs"
+// expect: LstArgs
 }
 
 // list is out of bounds
@@ -43,14 +43,14 @@ try{
 try{
 	print A[[0.2,0.1]] 
 } catch{
-	"NonNmIndx": print "NonNmIndx"
-// expect: NonNmIndx
+	"LstArgs": print "LstArgs"
+// expect: LstArgs
 }
 try{
 	print A[[[1]]] 
 } catch{
-	"NonNmIndx": print "NonNmIndx"
-// expect: NonNmIndx
+	"LstArgs": print "LstArgs"
+// expect: LstArgs
 }
 
 //wrong dim
@@ -67,12 +67,12 @@ try{
 try{
 	print A[A] 
 } catch{
-	"NonNmIndx": print "NonNmIndx"
-// expect: NonNmIndx
+	"LstArgs": print "LstArgs"
+// expect: LstArgs
 }
 try{
 	print A[nil] 
 } catch{
-	"NonNmIndx": print "NonNmIndx"
-// expect: NonNmIndx
+	"LstArgs": print "LstArgs"
+// expect: LstArgs
 }

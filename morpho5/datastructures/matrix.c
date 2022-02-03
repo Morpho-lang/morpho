@@ -528,6 +528,9 @@ value Matrix_getindex(vm *v, int nargs, value *args) {
     objectmatrix *m=MORPHO_GETMATRIX(MORPHO_SELF(args));
     unsigned int indx[2]={0,0};
     value out = MORPHO_NIL;
+	if (nargs>2){
+		morpho_runtimeerror(v, MATRIX_INVLDNUMINDICES);
+	}
     
     if (array_valuelisttoindices(nargs, args+1, indx)) {
         double outval;
@@ -538,8 +541,8 @@ value Matrix_getindex(vm *v, int nargs, value *args) {
         }
     } else{ // now try to get a slice
 		objectarrayerror err = getslice(&MORPHO_SELF(args), nargs, &MORPHO_GETARG(args,0), &out);
-		if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
-		if (out){
+		if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_matrix_error(err) );
+		if (out!=MORPHO_NIL){
 			morpho_bindobjects(v,1,&out);
 		}else morpho_runtimeerror(v, MATRIX_INVLDINDICES);
 	}
@@ -944,6 +947,8 @@ value Matrix_dimensions(vm *v, int nargs, value *args) {
     return out;
 }
 
+
+
 /** Clones a matrix */
 value Matrix_clone(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
@@ -993,6 +998,7 @@ void matrix_initialize(void) {
     
     morpho_defineerror(MATRIX_INDICESOUTSIDEBOUNDS, ERROR_HALT, MATRIX_INDICESOUTSIDEBOUNDS_MSG);
     morpho_defineerror(MATRIX_INVLDINDICES, ERROR_HALT, MATRIX_INVLDINDICES_MSG);
+    morpho_defineerror(MATRIX_INVLDNUMINDICES, ERROR_HALT, MATRIX_INVLDNUMINDICES_MSG);
     morpho_defineerror(MATRIX_CONSTRUCTOR, ERROR_HALT, MATRIX_CONSTRUCTOR_MSG);
     morpho_defineerror(MATRIX_INVLDARRAYINIT, ERROR_HALT, MATRIX_INVLDARRAYINIT_MSG);
     morpho_defineerror(MATRIX_ARITHARGS, ERROR_HALT, MATRIX_ARITHARGS_MSG);

@@ -518,18 +518,22 @@ objectarrayerror setslicerecursive(value* a, value* out,unsigned int ndim, unsig
 			objectlist *outList = MORPHO_GETLIST(*out);
 			if (list_getelement(MORPHO_GETLIST(*a),indx[0],&data)){
 				outList->val.data[newindx[0]] = data;			
-			} else return ARRAY_NONINTINDX; 
+			} else return ARRAY_OUTOFBOUNDS; 
+
+
 		} else if (MORPHO_ISARRAY(*a)){
 			arrayerr = array_getelement(MORPHO_GETARRAY(*a),ndim,indx,&data); // read the data
 			if (arrayerr!=ARRAY_OK) return arrayerr;
 
 			arrayerr=array_setelement(MORPHO_GETARRAY(*out), ndim, newindx, data); // write the data
 			if (arrayerr!=ARRAY_OK) return arrayerr;
+
+
 		} else if (MORPHO_ISMATRIX(*a)){
 			double num; // matrices only store doubles not values
 			if (!(matrix_getelement(MORPHO_GETMATRIX(*a),indx[0],indx[1],&num)&&
 				matrix_setelement(MORPHO_GETMATRIX(*out),newindx[0],newindx[1],num))){
-				return ARRAY_NONINTINDX;
+				return ARRAY_OUTOFBOUNDS;
 			}
 		} 
 
@@ -569,7 +573,7 @@ objectarrayerror setslicerecursive(value* a, value* out,unsigned int ndim, unsig
 				arrayerr = setslicerecursive(a, out, ndim,	curdim+1, indx, newindx, slices);
 				if (arrayerr!=ARRAY_OK) return arrayerr;
 			}
-		}
+		} else return ARRAY_NONINTINDX;
 	}
 	return ARRAY_OK;
 }
@@ -721,7 +725,7 @@ value Array_getindex(vm *v, int nargs, value *args) {
 	else {// we failed to make simple indices, lets try to make a slice
 		objectarrayerror err = getslice(&MORPHO_SELF(args),nargs,&MORPHO_GETARG(args, 0),&out);
 		if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
-		if (out){
+		if (out!=MORPHO_NIL){
 			morpho_bindobjects(v,1,&out);
 		} else MORPHO_RAISE(v, VM_NONNUMINDX);
 	}
@@ -1111,12 +1115,12 @@ value List_getindex(vm *v, int nargs, value *args) {
         } else {
 			objectarrayerror err = getslice(&MORPHO_SELF(args),nargs,&MORPHO_GETARG(args, 0),&out);
 			if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
-			if (out){
+			if (out!=MORPHO_NIL){
 				morpho_bindobjects(v,1,&out);
 			} else MORPHO_RAISE(v, VM_NONNUMINDX);
 
 		}
-    }
+    } else MORPHO_RAISE(v, LIST_NUMARGS)
     
     return out;
 }
@@ -1723,5 +1727,6 @@ void veneer_initialize(void) {
     morpho_defineerror(LIST_ENTRYNTFND, ERROR_HALT, LIST_ENTRYNTFND_MSG);
     morpho_defineerror(LIST_ADDARGS, ERROR_HALT, LIST_ADDARGS_MSG);
     morpho_defineerror(LIST_SRTFN, ERROR_HALT, LIST_SRTFN_MSG);
+    morpho_defineerror(LIST_NUMARGS, ERROR_HALT, LIST_NUMARGS_MSG);
     morpho_defineerror(ERROR_ARGS, ERROR_HALT, ERROR_ARGS_MSG);
 }

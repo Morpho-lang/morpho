@@ -71,6 +71,9 @@
 #define LIST_SRTFN                        "LstSrtFn"
 #define LIST_SRTFN_MSG                    "List sort function must return an integer."
 
+#define LIST_NUMARGS                      "LstNumArgs"
+#define LIST_NUMARGS_MSG                  "List can only be indexed with one argument."
+
 #define STRING_IMMTBL                     "StrngImmtbl"
 #define STRING_IMMTBL_MSG                 "Strings are immutable."
 

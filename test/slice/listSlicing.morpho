@@ -1,0 +1,78 @@
+var A = [[0,1,2,3],4,5,6,7,8,9,10,11]
+// ranges
+print A[0..1] 
+// expect: [ <List>, 4 ]
+
+// lists
+print A[[1,2,0,1]]
+// expect: [ 4, 5, <List>, 4 ]
+
+print A[-1..2] 
+// expect: [ 11, <List>, 4, 5 ]
+
+
+// range out of bounds
+try{
+	print A[0..100] 
+} catch{
+	"IndxBnds": print "IndxBnds"
+// expect: IndxBnds
+}
+
+
+// range is not int
+try{
+	print A[0.0..2] 
+} catch{
+	"NonNmIndx": print "NonNmIndx"
+// expect: NonNmIndx
+}
+
+// list is out of bounds
+	print A[[-1,2,-1]] 
+// expect: [ 11, 5, 11 ]
+
+try{
+	print A[[100]] 
+} catch{
+	"IndxBnds": print "IndxBnds"
+// expect: IndxBnds
+}
+
+// list is not int
+try{
+	print A[[0.2,0.1]] 
+} catch{
+	"NonNmIndx": print "NonNmIndx"
+// expect: NonNmIndx
+}
+try{
+	print A[[[1]]] 
+} catch{
+	"NonNmIndx": print "NonNmIndx"
+// expect: NonNmIndx
+}
+
+//wrong dim
+try{
+	print A[[1],[2]] 
+} catch{
+	"LstNumArgs": print "LstNumArgs"
+// expect: LstNumArgs
+}
+
+
+// garbage in 
+
+try{
+	print A[A] 
+} catch{
+	"NonNmIndx": print "NonNmIndx"
+// expect: NonNmIndx
+}
+try{
+	print A[nil] 
+} catch{
+	"NonNmIndx": print "NonNmIndx"
+// expect: NonNmIndx
+}

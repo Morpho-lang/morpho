@@ -1,4 +1,4 @@
-print min([]) 
+print min([])
 // expect: nil
-print min(-120) 
-// expect error 'InvldArgsBltn'
+print min(-120)
+// expect: -120

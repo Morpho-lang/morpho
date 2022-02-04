@@ -57,3 +57,27 @@ bool value_promotenumberlist(unsigned int nv, value *v) {
     }
     return true;
 }
+
+/* Finds the maximum and minimum of a list of values */
+bool value_minmax(unsigned int nval, value *list, value *min, value *max) {
+    if (nval==0) return false;
+    
+    if (min) *min=list[0];
+    if (max) *max=list[0];
+    
+    for (unsigned int i=1; i<nval; i++) {
+        if (min) {
+            value l=*min, r=list[i];
+            MORPHO_CMPPROMOTETYPE(l, r);
+            if (morpho_comparevalue(l, r)<0) *min = list[i];
+        }
+        
+        if (max) {
+            value l=*max, r=list[i];
+            MORPHO_CMPPROMOTETYPE(l, r);
+            if (morpho_comparevalue(l, r)>0) *max = list[i];
+        }
+    }
+    
+    return true;
+}

@@ -181,6 +181,7 @@ static void vm_init(vm *v) {
     varray_valueinit(&v->globals);
     varray_valueresize(&v->stack, MORPHO_STACKINITIALSIZE);
     error_init(&v->err);
+    v->errfp=NULL;
 }
 
 /** Clears a virtual machine */
@@ -1627,6 +1628,7 @@ vm_error:
         }
         
         /* The error was not caught; unwind the stack to the point where we have to return  */
+        if (!v->errfp) v->errfp=v->fp; // Record frame pointer for stacktrace
         v->fp=retfp-1;
         
     }
@@ -1759,6 +1761,7 @@ bool morpho_run(vm *v, program *p) {
 
     /* Clear current error state */
     error_clear(&v->err);
+    v->errfp=NULL;
 
     /* Set up the callframe stack */
     v->fp=v->frame; /* Set the frame pointer to the bottom of the stack */

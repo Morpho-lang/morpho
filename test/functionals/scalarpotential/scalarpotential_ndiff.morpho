@@ -11,18 +11,23 @@ fn gradphi(x,y,z) {
 
 var a = ScalarPotential(phi)
 
-var int = Matrix(4)
-for (x, k in m.vertexmatrix()) {
-  int[k]=phi(x[0], x[1], x[2])
+var mc = Matrix([ 0.374999, 0.375, 0.375, 0.375 ])
+var mi = Matrix(4)
+
+for (k in 0...m.count()) {
+  var x = m.vertexposition(k)
+  mi[k]=phi(x[0], x[1], x[2])
 }
 
-print a.integrand(m)
-// expect: [ 0.374999 0.375 0.375 0.375 ]
+print (mi-mc).norm()<1e-5
+// expect: true
 
 print a.total(m)
 // expect: 1.5
 
-print a.gradient(m)
-// expect: [ 0 -0.57735 -0.57735 1.1547 ]
-// expect: [ 0 -1 1 0 ]
-// expect: [ 1.22474 -0.408248 -0.408248 -0.408248 ]
+var ngrad = [[ 0, -0.57735, -0.57735, 1.1547 ],
+             [ 0, -1, 1, 0 ],
+             [ 1.22474, -0.408248, -0.408248, -0.408248 ]]
+
+print (a.gradient(m)-Matrix(Array(ngrad))).norm() < 1e-5
+// expect: true

@@ -405,7 +405,19 @@ static value builtin_sign(vm *v, int nargs, value *args){
 /** Apply a function to a list of arguments */
 value builtin_apply(vm *v, int nargs, value *args) {
     value ret = MORPHO_NIL;
-    morpho_call(v, MORPHO_GETARG(args, 0), nargs-1, &MORPHO_GETARG(args, 1), &ret);
+    
+    if (nargs<2) morpho_runtimeerror(v, APPLY_ARGS);
+        
+    value fn =  MORPHO_GETARG(args, 0);
+    value x =  MORPHO_GETARG(args, 1);
+    
+    if (nargs==2 && MORPHO_ISLIST(x)) {
+        objectlist *lst = MORPHO_GETLIST(x);
+        
+        morpho_call(v, fn, lst->val.count, lst->val.data, &ret);
+    } else {
+        morpho_call(v, fn, nargs-1, &MORPHO_GETARG(args, 1), &ret);
+    }
     
     return ret;
 }
@@ -514,6 +526,7 @@ void functions_initialize(void) {
     morpho_defineerror(MATH_ATANARGS, ERROR_HALT, MATH_ATANARGS_MSG);
     morpho_defineerror(TYPE_NUMARGS, ERROR_HALT, TYPE_NUMARGS_MSG);
     morpho_defineerror(MAX_ARGS, ERROR_HALT, MAX_ARGS_MSG);
+    morpho_defineerror(APPLY_ARGS, ERROR_HALT, APPLY_ARGS_MSG);
 }
 
 #undef BUILTIN_MATH

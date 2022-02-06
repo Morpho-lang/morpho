@@ -48,4 +48,7 @@ void functions_initialize(void);
 #define MAX_ARGS                     "MnMxArgs"
 #define MAX_ARGS_MSG                 "Function '%s' expects at least one numerical argument, list or matrix."
 
+#define APPLY_ARGS                   "ApplyArgs"
+#define APPLY_ARGS_MSG               "Function 'apply' expects at least two arguments."
+
 #endif /* functions_h */

@@ -17,7 +17,7 @@ var tst=Matrix(check.count(),vals.count())
 
 for (i in 0..vals.count()-1) {
   for (j in 0..vals.count()-1) {
-    if (apply(check[i], vals[j])) tst[i,j]=1
+    if (apply(check[i], [].append(vals[j]))) tst[i,j]=1
   }
 }
 

@@ -2347,9 +2347,11 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         {
             compiler_addinstruction(c, ENCODEC(OP_RETURN, 1, false, 0, false, REGISTER_UNALLOCATED), node); /* Add a return */
         } else if (isanonymous) {
-            if (CODEINFO_ISCONSTANT(bodyinfo) && !CODEINFO_ISCONSTANT(bodyinfo)) {
-                UNREACHABLE("Compiler internal error in compiler_function.");
+            if (!CODEINFO_ISREGISTER(bodyinfo) && !CODEINFO_ISCONSTANT(bodyinfo)) {
+                bodyinfo=compiler_movetoregister(c, node, bodyinfo, REGISTER_UNALLOCATED);
+                ninstructions+=bodyinfo.ninstructions;
             }
+            
             compiler_addinstruction(c, ENCODEC(OP_RETURN, 1, CODEINFO_ISCONSTANT(bodyinfo), bodyinfo.dest, false, REGISTER_UNALLOCATED), node);
         } else {
             compiler_addinstruction(c, ENCODE_BYTE(OP_RETURN), node); /* Add a return */

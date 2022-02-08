@@ -223,6 +223,7 @@ struct svm {
     errorhandler *ehp; /* Error handler pointer */
     
     error err; /** An error struct that will be filled out when an error occurs */
+    callframe *errfp; /** Record frame pointer when an error occured */
     
     object *objects; /** Linked list of objects */
     graylist gray; /** Graylist for garbage collection */

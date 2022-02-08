@@ -195,10 +195,10 @@ bool morpho_countparameters(value f, int *nparams) {
     }
     
     if (MORPHO_ISFUNCTION(g)) {
-        objectfunction *fun = MORPHO_GETFUNCTION(f);
+        objectfunction *fun = MORPHO_GETFUNCTION(g);
         *nparams=fun->nargs;
         success=true;
-    } else if (MORPHO_ISBUILTINFUNCTION(f)) {
+    } else if (MORPHO_ISBUILTINFUNCTION(g)) {
         *nparams = -1;
         success=true;
     }

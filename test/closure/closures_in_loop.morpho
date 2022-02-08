@@ -1,0 +1,12 @@
+var mesh = Mesh()
+
+while (true) {
+	var L = 1
+
+	var a=Selection(mesh, fn (x,y,z) x+L<0.01)
+
+	var b=LineIntegral(fn (x) x)
+	break
+}
+
+print "ok" // expect: ok

@@ -406,7 +406,7 @@ bool debug_symbolsforfunction(program *code, objectfunction *func, instructionin
 
 /** Prints a stacktrace */
 void morpho_stacktrace(vm *v) {
-    for (callframe *f = v->fp; f!=NULL && f>=v->frame; f--) {
+    for (callframe *f = (v->errfp ? v->errfp : v->fp); f!=NULL && f>=v->frame; f--) {
         instructionindx indx = f->pc-v->current->code.data;
         if (indx>0) indx--; /* Becuase the pc always points to the NEXT instr. */
         

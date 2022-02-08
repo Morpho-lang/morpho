@@ -1138,7 +1138,17 @@ value ScalarPotential_gradient(vm *v, int nargs, value *args) {
             } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
         } else if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
             // Otherwise try to use the regular scalar function
-            UNREACHABLE("Numerical derivative not implemented");
+            
+            value fn;
+            if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
+                info.g = MESH_GRADE_VERTEX;
+                info.integrand = scalarpotential_integrand;
+                info.ref = &fn;
+                if (MORPHO_ISCALLABLE(fn)) {
+                    functional_mapnumericalgradient(v, &info, &out);
+                } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
+            } else morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, SCALARPOTENTIAL_FUNCTION_PROPERTY);
+            
         } else morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, SCALARPOTENTIAL_FUNCTION_PROPERTY);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);

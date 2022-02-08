@@ -91,7 +91,29 @@ Returns `true` if a value is a sparse matrix or `false` otherwise.
 
 Returns `true` if a value is infinite or `false` otherwise.
 
-## issparse
+## isnan
 [tagisnan]: # (isnan)
 
 Returns `true` if a value is a Not a Number or `false` otherwise.
+
+## iscallable
+[tagiscallable]: # (iscallable)
+
+Returns `true` if a value is callable or `false` otherwise.
+
+## Apply
+[tagapply]: # (apply)
+
+Apply calls a function with the arguments provided as a list:
+
+    apply(f, [0.5, 0.5]) // calls f(0.5, 0.5) 
+    
+It's often useful where a function or method and/or the number of parameters isn't known ahead of time. The first parameter to apply can be any callable object, including a method invocation or a closure. 
+
+You may also instead omit the list and use apply with multiple arguments: 
+
+    apply(f, 0.5, 0.5) // calls f(0.5, 0.5)
+    
+There is one edge case that occurs when you want to call a function that accepts a single list as a parameter. In this case, enclose the list in another list: 
+
+    apply(f, [[1,2]]) // equivalent to f([1,2])

@@ -1,4 +1,4 @@
-print max([]) 
+print max([])
 // expect: nil
-print max(-120) 
-// expect error 'InvldArgsBltn'
+print max(-120)
+// expect: -120

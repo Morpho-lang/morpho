@@ -1628,7 +1628,11 @@ vm_error:
         }
         
         /* The error was not caught; unwind the stack to the point where we have to return  */
-        if (!v->errfp) v->errfp=v->fp; // Record frame pointer for stacktrace
+        if (!v->errfp) {
+            v->errfp=v->fp; // Record frame pointer for stacktrace
+            v->errfp->pc=pc;
+        }
+        
         v->fp=retfp-1;
         
     }

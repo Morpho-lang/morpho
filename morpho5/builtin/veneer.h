@@ -33,6 +33,8 @@
 #define LIST_POP_METHOD "pop"
 #define LIST_INSERT_METHOD "insert"
 #define LIST_REMOVE_METHOD "remove"
+#define LIST_TUPLES_METHOD "tuples"
+#define LIST_SETS_METHOD "sets"
 
 #define DICTIONARY_KEYS_METHOD "keys"
 #define DICTIONARY_CONTAINS_METHOD "contains"

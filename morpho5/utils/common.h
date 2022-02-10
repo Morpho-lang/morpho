@@ -170,4 +170,12 @@ bool white_space_remainder(const char *s, int start);
 void morpho_unreachable(const char *explanation);
 #endif
 
+typedef enum {
+    MORPHO_TUPLEMODE, // Generates tuples (all combinations of n elements)
+    MORPHO_SETMODE // Generates sets (unique elements and indep of order)
+} tuplemode;
+
+void morpho_tuplesinit(unsigned int nval, unsigned int n, unsigned int *c, tuplemode mode);
+bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int *c, tuplemode mode, value *tuple);
+
 #endif /* common_h */

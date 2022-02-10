@@ -522,7 +522,23 @@ value matrix_constructor(vm *v, int nargs, value *args) {
     
     return out;
 }
+bool matrixSliceDimentionCheck(value * a, unsigned int ndim){
+	if (ndim>2||ndim<0) return false;
+	return true;
+}
 
+
+void matrixSliceConstructor(unsigned int *slicesize,unsigned int ndim,value* out){
+	*out = MORPHO_OBJECT(object_newmatrix(slicesize[0],slicesize[1],false));
+}
+objectarrayerror matrixSliceCopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx){
+	double num; // matrices only store doubles not values
+	if (!(matrix_getelement(MORPHO_GETMATRIX(*a),indx[0],indx[1],&num)&&
+		matrix_setelement(MORPHO_GETMATRIX(*out),newindx[0],newindx[1],num))){
+		return ARRAY_OUTOFBOUNDS;
+	}
+	return ARRAY_OK;
+}
 /** Gets the matrix element with given indices */
 value Matrix_getindex(vm *v, int nargs, value *args) {
     objectmatrix *m=MORPHO_GETMATRIX(MORPHO_SELF(args));
@@ -541,7 +557,7 @@ value Matrix_getindex(vm *v, int nargs, value *args) {
             out = MORPHO_FLOAT(outval);
         }
     } else{ // now try to get a slice
-		objectarrayerror err = getslice(&MORPHO_SELF(args), nargs, &MORPHO_GETARG(args,0), &out);
+		objectarrayerror err = getslice(&MORPHO_SELF(args), &matrixSliceDimentionCheck, &matrixSliceConstructor, &matrixSliceCopy, nargs, &MORPHO_GETARG(args,0), &out);
 		if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_matrix_error(err) );
 		if (out!=MORPHO_NIL){
 			morpho_bindobjects(v,1,&out);

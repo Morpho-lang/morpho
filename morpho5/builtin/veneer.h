@@ -105,14 +105,25 @@ errorid array_to_list_error(objectarrayerror err);
 bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out);
 objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned int *indx, value *out);
 objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned int *indx, value in);
-objectarrayerror setslicerecursive(value* a, value* out,unsigned int ndim, unsigned int curdim, unsigned int *indx,unsigned int *newindx, value *slices);
-objectarrayerror getslice(value *a, unsigned int ndim, value *slices, value *out);
+objectarrayerror setslicerecursive(value* a, value* out,objectarrayerror *copy(value * ,value *,\
+									unsigned int, unsigned int *,unsigned int *),unsigned int ndim,\
+									unsigned int curdim, unsigned int *indx,unsigned int *newindx, value *slices);
+objectarrayerror getslice(value *a, bool *dimFcn(value *,unsigned int),\
+						  value *constuctor(unsigned int *,unsigned int,value *),\
+						  objectarrayerror* copy(value * ,value *, unsigned int, unsigned int *,unsigned int *),\
+						  unsigned int ndim, value *slices, value *out);
+objectarrayerror arraySliceCopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx);
+void arraySliceConstructor(unsigned int *slicesize,unsigned int ndim,value* out);
+bool arraySliceDimentionCheck(value * a, unsigned int ndim);
+
 bool list_resize(objectlist *list, int size);
 void list_append(objectlist *list, value v);
 unsigned int list_length(objectlist *list);
 bool list_getelement(objectlist *list, int i, value *out);
 void list_sort(objectlist *list);
 objectlist *list_clone(objectlist *list);
+
+
 
 void veneer_initialize(void);
 value range_iterate(objectrange *range, unsigned int i);

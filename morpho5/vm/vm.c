@@ -1461,17 +1461,16 @@ callfunction: // Jump here if an instruction becomes a call
 				if (array_valuelisttoindices(ndim, &reg[b], indx)){
 					objectarrayerror err=array_getelement(MORPHO_GETARRAY(left), ndim, indx, &reg[b]);
 					if (err!=ARRAY_OK) ERROR( array_error(err) );
-				} else{
+				} else {
 					value newVal = MORPHO_NIL;
 					objectarrayerror err = getslice(&left,&arraySliceDimentionCheck,\
 													&arraySliceConstructor,&arraySliceCopy,ndim,&reg[b],&newVal);
 					if (err!=ARRAY_OK) ERROR(array_error(err));
 					
-					if (newVal){
+					if (newVal) {
 						reg[b] = newVal;
 						vm_bindobject(v, reg[b]);
-					}
-					else  ERROR(VM_NONNUMINDX);
+					} else  ERROR(VM_NONNUMINDX);
 				}
             } else {
                 if (!vm_invoke(v, left, indexselector, c-b+1, &reg[b], &reg[b])) {

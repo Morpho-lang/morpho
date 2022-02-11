@@ -968,8 +968,6 @@ value Matrix_dimensions(vm *v, int nargs, value *args) {
     return out;
 }
 
-
-
 /** Clones a matrix */
 value Matrix_clone(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;

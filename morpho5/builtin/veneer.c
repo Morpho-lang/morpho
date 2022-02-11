@@ -1746,7 +1746,7 @@ void veneer_initialize(void) {
     morpho_defineerror(LIST_ENTRYNTFND, ERROR_HALT, LIST_ENTRYNTFND_MSG);
     morpho_defineerror(LIST_ADDARGS, ERROR_HALT, LIST_ADDARGS_MSG);
     morpho_defineerror(LIST_SRTFN, ERROR_HALT, LIST_SRTFN_MSG);
-	morpho_defineerror(LIST_ARGS, ERROR_HALT, LIST_ARGS_MSG);
+    morpho_defineerror(LIST_ARGS, ERROR_HALT, LIST_ARGS_MSG);
     morpho_defineerror(LIST_NUMARGS, ERROR_HALT, LIST_NUMARGS_MSG);
     morpho_defineerror(ERROR_ARGS, ERROR_HALT, ERROR_ARGS_MSG);
 }

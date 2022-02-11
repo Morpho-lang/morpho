@@ -531,13 +531,25 @@ bool matrix_slicedim(value * a, unsigned int ndim){
 
 /** Constucts a new matrix with a generic interface */
 void matrix_sliceconstructor(unsigned int *slicesize,unsigned int ndim,value* out){
-	*out = MORPHO_OBJECT(object_newmatrix(slicesize[0],slicesize[1],false));
+	unsigned int numcol = 1;
+	if (ndim == 2) {
+		numcol = slicesize[1];
+	}
+	*out = MORPHO_OBJECT(object_newmatrix(slicesize[0],numcol,false));
 }
 /** Copies data from a at indx to out at newindx with a generic interface */
 objectarrayerror matrix_slicecopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx){
-	double num; // matrices only store doubles not values
-	if (!(matrix_getelement(MORPHO_GETMATRIX(*a),indx[0],indx[1],&num)&&
-		matrix_setelement(MORPHO_GETMATRIX(*out),newindx[0],newindx[1],num))){
+	double num; // matrices store doubles;
+	unsigned int colindx = 0;
+	unsigned int colnewindx = 0;	
+	
+	if (ndim == 2) {
+		colindx = indx[1];
+		colnewindx = newindx[1];
+	}
+
+	if (!(matrix_getelement(MORPHO_GETMATRIX(*a),indx[0],colindx,&num)&&
+		matrix_setelement(MORPHO_GETMATRIX(*out),newindx[0],colnewindx,num))){
 		return ARRAY_OUTOFBOUNDS;
 	}
 	return ARRAY_OK;

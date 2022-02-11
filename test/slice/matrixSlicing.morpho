@@ -26,6 +26,10 @@ print A[0..1,3]
 print A[2,[0,1,2,1,2]]
 // expect: [ 8 9 10 9 10 ]
 
+print A[0..1]
+// expect: [ 0 ]
+// expect: [ 4 ]
+
 // range out of bounds
 try{
 	print A[-1..2,1..2] 

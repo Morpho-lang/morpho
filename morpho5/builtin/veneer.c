@@ -504,9 +504,9 @@ objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned in
  * @param[in] slices - a set of indices that can be lists ranges or ints.
  * @param[out] out - returns the requeted slice of a.
 */
-objectarrayerror getslice(value *a, bool *dimFcn(value *,unsigned int),\
-						  value *constuctor(unsigned int *,unsigned int,value *),\
-						  objectarrayerror* copy(value * ,value *, unsigned int, unsigned int *,unsigned int *),\
+objectarrayerror getslice(value *a, bool dimFcn(value *,unsigned int),\
+						  void constuctor(unsigned int *,unsigned int,value *),\
+						  objectarrayerror copy(value * ,value *, unsigned int, unsigned int *,unsigned int *),\
 						  unsigned int ndim, value *slices, value *out){
 	//dimenation checking
 	if (!(*dimFcn)(a,ndim)) return ARRAY_WRONGDIM;
@@ -544,7 +544,7 @@ objectarrayerror getslice(value *a, bool *dimFcn(value *,unsigned int),\
  * @param[in] newindx - the place in out to put the data copied from a
  * @param[in] slices - a set of indices that can be lists ranges or ints.
 */
-objectarrayerror setslicerecursive(value* a, value* out,objectarrayerror *copy(value * ,value *, unsigned int, unsigned int *,unsigned int *),\
+objectarrayerror setslicerecursive(value* a, value* out,objectarrayerror copy(value * ,value *, unsigned int, unsigned int *,unsigned int *),\
 								   unsigned int ndim, unsigned int curdim, unsigned int *indx,unsigned int *newindx, value *slices){
 	// this gets given an array and out and a list of slices,
 	// we resolve the top slice to a number and add it to a list
@@ -741,20 +741,6 @@ objectarrayerror arraySliceCopy(value * a,value * out, unsigned int ndim, unsign
 	return arrayerr;
 
 }
-// objectarrayerror arraySliceSet(value *a,value *in, unsigned int ndim, unsigned int *indx,unsigned int *newindx){
-// 	value data;
-// 	objectarrayerror arrayerr;
-// 	if (MORPHO_ISFLOAT(*in)||MORPHO_ISINTEGER(*in)){
-// 		arrayerr=array_setelement(MORPHO_GETARRAY(*a), ndim, newindx, *in); // write the data
-
-// 	} else {
-// 		arrayerr = array_getelement(MORPHO_GETARRAY(*in),ndim,indx,&data); // read the data
-// 		if (arrayerr!=ARRAY_OK) return arrayerr;
-
-// 		arrayerr=array_setelement(MORPHO_GETARRAY(*a), ndim, newindx, data); // write the data
-// 	}
-// 	return arrayerr;
-// }
 
 
 /** Gets the array element with given indices */

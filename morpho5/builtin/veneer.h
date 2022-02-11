@@ -105,12 +105,12 @@ errorid array_to_list_error(objectarrayerror err);
 bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out);
 objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned int *indx, value *out);
 objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned int *indx, value in);
-objectarrayerror setslicerecursive(value* a, value* out,objectarrayerror *copy(value * ,value *,\
+objectarrayerror setslicerecursive(value* a, value* out,objectarrayerror copy(value * ,value *,\
 									unsigned int, unsigned int *,unsigned int *),unsigned int ndim,\
 									unsigned int curdim, unsigned int *indx,unsigned int *newindx, value *slices);
-objectarrayerror getslice(value *a, bool *dimFcn(value *,unsigned int),\
-						  value *constuctor(unsigned int *,unsigned int,value *),\
-						  objectarrayerror* copy(value * ,value *, unsigned int, unsigned int *,unsigned int *),\
+objectarrayerror getslice(value *a, bool dimFcn(value *,unsigned int),\
+						  void constuctor(unsigned int *,unsigned int,value *),\
+						  objectarrayerror copy(value * ,value *, unsigned int, unsigned int *,unsigned int *),\
 						  unsigned int ndim, value *slices, value *out);
 objectarrayerror arraySliceCopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx);
 void arraySliceConstructor(unsigned int *slicesize,unsigned int ndim,value* out);

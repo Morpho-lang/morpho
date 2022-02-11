@@ -365,7 +365,6 @@ inline bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int 
     return true;
 }
 
-
 /** Creates a new 1D array from a list of values */
 objectarray *object_arrayfromvaluelist(unsigned int n, value *v) {
     objectarray *new = object_newarray(1, &n);
@@ -445,6 +444,7 @@ errorid array_error(objectarrayerror err) {
     UNREACHABLE("Unhandled array error.");
     return VM_OUTOFBOUNDS;
 }
+/** Converts an array error into an matrix error code for use in slices*/
 errorid array_to_matrix_error(objectarrayerror err) {
     switch (err) {
         case ARRAY_OUTOFBOUNDS: return MATRIX_INDICESOUTSIDEBOUNDS;
@@ -455,6 +455,8 @@ errorid array_to_matrix_error(objectarrayerror err) {
     UNREACHABLE("Unhandled array error.");
     return VM_OUTOFBOUNDS;
 }
+
+/** Converts an array error into an list error code for use in slices*/
 errorid array_to_list_error(objectarrayerror err) {
     switch (err) {
         case ARRAY_OUTOFBOUNDS: return VM_OUTOFBOUNDS;
@@ -465,7 +467,6 @@ errorid array_to_list_error(objectarrayerror err) {
     UNREACHABLE("Unhandled array error.");
     return VM_OUTOFBOUNDS;
 }
-
 
 /** Gets an array element */
 objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned int *indx, value *out) {
@@ -481,19 +482,6 @@ objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned in
     *out = a->values[k];
     return ARRAY_OK;
 }
-
-// objectarrayerror setslice(value *a, bool *dimFcn(value *,unsigned int),\
-// 						  objectarrayerror* copy(value * ,value *, unsigned int, unsigned int *,unsigned int *),\
-// 						  unsigned int ndim, value *slices, value *rhs){
-// //dimetion checking
-// 	if (!(*dimFcn)(a,ndim)) return ARRAY_WRONGDIM;
-
-// 	unsigned int indx[ndim];
-// 	unsigned int newindx[ndim];
-
-// 	return setslicerecursive(a, rhs, copy, ndim, 0, indx, newindx, slices);
-
-// }
 
 /** Creates a slice from a slicable object A.
  * @param[in] a - the sliceable object (array, list, matrix, etc..).
@@ -723,15 +711,21 @@ value array_constructor(vm *v, int nargs, value *args) {
     
     return out;
 }
-bool arraySliceDimentionCheck(value * a, unsigned int ndim){
+
+/** Checks that an array is being indexed with the correct number of indices with a generic interface */
+bool array_slicedim(value * a, unsigned int ndim){
 	objectarray * array= MORPHO_GETARRAY(*a);
 	if (ndim>array->ndim) return false;
 	return true;
 }
-void arraySliceConstructor(unsigned int *slicesize,unsigned int ndim,value* out){
+
+/** Constructsan array is with a generic interface */
+void array_sliceconstructor(unsigned int *slicesize,unsigned int ndim,value* out){
 	*out = MORPHO_OBJECT(object_newarray(ndim,slicesize));
 }
-objectarrayerror arraySliceCopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx){
+
+/** Copies data from array a to array out with a generic interface */
+objectarrayerror array_slicecopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx){
 	value data;
 	objectarrayerror arrayerr;
 	arrayerr = array_getelement(MORPHO_GETARRAY(*a),ndim,indx,&data); // read the data
@@ -742,10 +736,9 @@ objectarrayerror arraySliceCopy(value * a,value * out, unsigned int ndim, unsign
 
 }
 
-
 /** Gets the array element with given indices */
 value Array_getindex(vm *v, int nargs, value *args) {
-    value out = MORPHO_NIL;
+    value out=MORPHO_NIL;
     objectarray *array=MORPHO_GETARRAY(MORPHO_SELF(args));
     unsigned int indx[nargs];
     
@@ -753,9 +746,9 @@ value Array_getindex(vm *v, int nargs, value *args) {
         objectarrayerror err=array_getelement(array, nargs, indx, &out);
         if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
 
-    } 
-	else {// we failed to make simple indices, lets try to make a slice
-		objectarrayerror err = getslice(&MORPHO_SELF(args),&arraySliceDimentionCheck,&arraySliceConstructor,&arraySliceCopy,nargs,&MORPHO_GETARG(args, 0),&out);
+    } else {
+		// these aren't simple indices, lets try to make a slice
+		objectarrayerror err = getslice(&MORPHO_SELF(args),&array_slicedim,&array_sliceconstructor,&array_slicecopy,nargs,&MORPHO_GETARG(args, 0),&out);
 		if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
 		if (out!=MORPHO_NIL){
 			morpho_bindobjects(v,1,&out);
@@ -773,7 +766,9 @@ value Array_setindex(vm *v, int nargs, value *args) {
     if (array_valuelisttoindices(nargs-1, &MORPHO_GETARG(args, 0), indx)) {
         objectarrayerror err=array_setelement(array, nargs-1, indx, MORPHO_GETARG(args, nargs-1));
         if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
-	} else return MORPHO_NIL;
+	} else MORPHO_RAISE(v, VM_NONNUMINDX);
+	
+	return MORPHO_NIL;
 }
 
 /** Print an array */
@@ -1001,7 +996,8 @@ bool list_ismember(objectlist *list, value v) {
 objectlist *list_clone(objectlist *list) {
     return object_newlist(list->val.count, list->val.data);
 }
-objectarrayerror listSliceCopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx){
+/* Copies data from list a at position indx to list out at position newindx with a generic interface */
+objectarrayerror list_slicecopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx){
 	value data;
 	objectlist *outList = MORPHO_GETLIST(*out);
 
@@ -1010,17 +1006,6 @@ objectarrayerror listSliceCopy(value * a,value * out, unsigned int ndim, unsigne
 	} else return ARRAY_OUTOFBOUNDS; 
 	return ARRAY_OK;
 }
-// objectarrayerror listSliceSet(value * a,value * in, unsigned int ndim, unsigned int *indx,unsigned int *newindx){
-// 	value data;
-// 	if MORPHO_IS
-
-// 	objectlist *inList = MORPHO_GETLIST(*in);
-
-// 	if (list_getelement(MORPHO_GETLIST(*a),indx[0],&data)){
-// 		outList->val.data[newindx[0]] = data;			
-// 	} else return ARRAY_OUTOFBOUNDS; 
-// 	return ARRAY_OK;
-// }
 
 /** Concatenates two lists */
 objectlist *list_concatenate(objectlist *a, objectlist *b) {
@@ -1063,17 +1048,19 @@ value list_constructor(vm *v, int nargs, value *args) {
     }
     
     return out;
-}void listSliceConstructor(unsigned int *slicesize,unsigned int ndim,value* out){
+}
+
+/* Constructs a new list of a given size with a generic interface */
+void list_sliceconstructor(unsigned int *slicesize,unsigned int ndim,value* out){
 	objectlist *list = object_newlist(slicesize[0], NULL);
 	list->val.count = slicesize[0];
 	*out = MORPHO_OBJECT(list);
 }
-bool listSliceDimentionCheck(value * a, unsigned int ndim){
+/* Checks that a list is indexed with only one value with a generic interface */
+bool list_slicedim(value * a, unsigned int ndim){
 	if (ndim>1||ndim<0) return false;
 	return true;
 }
-
-
 
 /** Get an element */
 value List_append(vm *v, int nargs, value *args) {
@@ -1145,7 +1132,7 @@ value List_getindex(vm *v, int nargs, value *args) {
                 morpho_runtimeerror(v, VM_OUTOFBOUNDS);
             }
         } else {
-			objectarrayerror err = getslice(&MORPHO_SELF(args),&listSliceDimentionCheck,&listSliceConstructor,&listSliceCopy,nargs,&MORPHO_GETARG(args, 0),&out);
+			objectarrayerror err = getslice(&MORPHO_SELF(args),&list_slicedim,&list_sliceconstructor,&list_slicecopy,nargs,&MORPHO_GETARG(args, 0),&out);
 			if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_list_error(err) );
 			if (out!=MORPHO_NIL){
 				morpho_bindobjects(v,1,&out);

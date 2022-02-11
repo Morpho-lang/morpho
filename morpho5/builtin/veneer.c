@@ -766,9 +766,9 @@ value Array_setindex(vm *v, int nargs, value *args) {
     if (array_valuelisttoindices(nargs-1, &MORPHO_GETARG(args, 0), indx)) {
         objectarrayerror err=array_setelement(array, nargs-1, indx, MORPHO_GETARG(args, nargs-1));
         if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
-	} else MORPHO_RAISE(v, VM_NONNUMINDX);
-	
-	return MORPHO_NIL;
+    } else MORPHO_RAISE(v, VM_NONNUMINDX);
+    
+    return MORPHO_NIL;
 }
 
 /** Print an array */

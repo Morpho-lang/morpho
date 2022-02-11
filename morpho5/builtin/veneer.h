@@ -112,18 +112,18 @@ objectarrayerror getslice(value *a, bool dimFcn(value *,unsigned int),\
 						  void constuctor(unsigned int *,unsigned int,value *),\
 						  objectarrayerror copy(value * ,value *, unsigned int, unsigned int *,unsigned int *),\
 						  unsigned int ndim, value *slices, value *out);
-objectarrayerror arraySliceCopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx);
-void arraySliceConstructor(unsigned int *slicesize,unsigned int ndim,value* out);
-bool arraySliceDimentionCheck(value * a, unsigned int ndim);
-
+objectarrayerror array_slicecopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx);
+void array_sliceconstructor(unsigned int *slicesize,unsigned int ndim,value* out);
+bool array_slicedim(value * a, unsigned int ndim);
 bool list_resize(objectlist *list, int size);
 void list_append(objectlist *list, value v);
 unsigned int list_length(objectlist *list);
 bool list_getelement(objectlist *list, int i, value *out);
 void list_sort(objectlist *list);
 objectlist *list_clone(objectlist *list);
-
-void veneer_initialize(void);
 value range_iterate(objectrange *range, unsigned int i);
 int range_count(objectrange *range);
+
+void veneer_initialize(void);
+
 #endif /* veneer_h */

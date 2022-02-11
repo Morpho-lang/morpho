@@ -1463,8 +1463,8 @@ callfunction: // Jump here if an instruction becomes a call
 					if (err!=ARRAY_OK) ERROR( array_error(err) );
 				} else {
 					value newVal = MORPHO_NIL;
-					objectarrayerror err = getslice(&left,&arraySliceDimentionCheck,\
-													&arraySliceConstructor,&arraySliceCopy,ndim,&reg[b],&newVal);
+					objectarrayerror err = getslice(&left,&array_slicedim,&array_sliceconstructor,\
+													&array_slicecopy,ndim,&reg[b],&newVal);
 					if (err!=ARRAY_OK) ERROR(array_error(err));
 					
 					if (newVal) {

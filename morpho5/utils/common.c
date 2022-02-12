@@ -236,7 +236,7 @@ bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int 
     
     // Increment counters
     counter[n-1]++; // Increment last counter
-    for (k=n-1; k>=0 && counter[k]>cmax[k]; k--) counter[k-1]++; // Carry
+    for (k=n-1; k>0 && counter[k]>cmax[k]; k--) counter[k-1]++; // Carry
     
     if (k<n-1) {
         if (mode==MORPHO_TUPLEMODE) for (unsigned int i=k+1; i<n; i++) counter[i]=0;

@@ -47,6 +47,11 @@ static void compiler_error(compiler *c, syntaxtreenode *node, errorid id, ... ) 
     va_end(args);
 }
 
+/** Returns true if the compiler has encountered an error */
+static bool compiler_checkerror(compiler *c) {
+    return (c->err.cat!=ERROR_NONE); // Ensure errors are not overwritten.
+}
+
 /** @brief Catches a compiler error, resetting the errror state to none.
  * @param c        the compiler
  * @param id       error id to match
@@ -3195,6 +3200,8 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
     
     dictionary_init(&fordict);
     varray_charinit(&filename);
+    
+    if (compiler_checkerror(c)) return CODEINFO_EMPTY;
     
     if (qual) {
         if (qual->type==NODE_FOR) {

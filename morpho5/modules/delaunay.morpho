@@ -1,0 +1,209 @@
+/* Delaunay - Generates Delaunay simplices of a point set
+ * Using a sweepline algorithm */
+
+import meshtools
+
+// Compute the Circumsphere of a set of points
+class Circumsphere {
+  init (vertices, indx) {
+    var n = indx.count()-1
+    var b = Matrix(n)
+    var M = Matrix(n,n)
+
+    var x0 = vertices[indx[0]] // Make x0 the origin
+    for (var i=0; i<n; i+=1) { // Build the linear system
+      var xi = vertices[indx[i+1]]-x0
+      b[i] = xi.inner(xi)/2
+      M.setcolumn(i,xi)
+    }
+
+    var xc=b/M.transpose() // Solve the linear system
+
+    self.i=indx
+    self.r=xc.norm()
+    self.x=xc+x0
+  }
+
+  pointinsphere(pt) {
+    return (pt-self.x).norm() < self.r
+  }
+}
+
+var errDlnyInit = Error("DlnyInit", "You must initialize Delaunay with a list of points to triangulate.")
+
+// Generates simplices for a point cloud with the Delaunay property
+// that no simplex's circumsphere contains another point
+class Delaunay {
+  init (pts) {
+    if (!islist(pts) || pts.count()==0) errDlnyInit.throw()
+    var dim = pts[0].count()
+    if (pts.count()<dim+1) Error("DlnyDim", "You must supply at least ${dim+1} points in ${dim} dimensions.").throw()
+
+    self.dim = dim
+    self.pts = pts.clone()
+    self.n = pts.count()
+    self.bbox = self.calcbbox()
+    self.eps = 1e-8 // Tolerance for distance calculations
+  }
+
+  calcbbox() { // Calculate a bounding box for the point cloud
+    var min = self.pts[0].clone(), max = min.clone()
+
+    for (x in self.pts) {
+      for (var i=0; i<self.dim; i+=1) {
+        if (x[i]<min[i]) min[i]=x[i]
+        if (x[i]>max[i]) max[i]=x[i]
+      }
+    }
+
+    return [min, max]
+  }
+
+  picksweep() { // Pick sweep axis as the dimension with greatest extent
+    var extent = (self.bbox[1]-self.bbox[0])
+    var lext = []
+    for (dx in extent) lext.append(dx)
+
+    return lext.order()[-1]
+  }
+
+  supersimplex() { // Create a supersimplex that encloses the point cloud
+    // We create a simplex with vertices x0, x0 + lamda*[1,0,0..], x0 + lambda*[0,1,0..]...
+    // Where x0 and lambda are computed from a sphere that encloses the bounding box
+    var extent = (self.bbox[1]-self.bbox[0])
+    var xc = (self.bbox[0]+self.bbox[1])/2 // Center of the cloud
+    var r = (self.bbox[1]-xc).norm() // Radius of a ball that encloses the cloud
+    var lambda = 2*(self.dim+sqrt(self.dim))*r // Scale factor
+    for (i in 0...self.dim) xc[i]-=r // Shift by r in all coordinate directions
+
+    var pts = [xc] // Vertices
+    for (i in 0...self.dim) {
+      var xi = Matrix(self.dim)
+      xi[i]=lambda // Create a vector that lies in the i'th coordinate axis
+      pts.append(xc+xi) // Add the vertex to the list
+    }
+
+    return pts
+  }
+
+  dedup(ext) { // Removes exterior simplices that appear twice from a list
+    var newext = []
+    var ignore = []
+    var n = ext.count()
+
+    fn issame(l1, l2) {
+      var c = 0 // Count number of elements in common with el
+      for (q in l1) if (l2.ismember(q)) c+=1
+      return (c==l1.count()) // i.e. were all of them in common?
+    }
+
+    for (i in 0...n) {
+      if (ignore.ismember(i)) continue
+      var copy = true
+      for (j in i+1...n) { // Check this simplex against all the remaining ones
+        if (issame(ext[i], ext[j])) {
+          copy=false
+          ignore.append(j)
+        }
+      }
+
+      if (copy) newext.append(ext[i])
+    }
+
+    return newext
+  }
+
+  triangulate() { // Create Delaunay triangulation
+    var sweep=self.picksweep() // Pick sweep dimension
+
+    var pts = self.pts
+    var n = self.n
+    var indices = List(0...n) // Create an array of indices into the vertex array
+
+    // Sort points along sweep axis
+    fn cmp (i, j) {
+      var diff = pts[i][sweep] - pts[j][sweep]
+      if (diff!=0) return diff
+      return i-j
+    }
+    indices.sort(cmp)
+
+    // Create supersimplex
+    var ssmplx = self.supersimplex()
+    for (x in ssmplx) pts.append(x) // And add to the point cloud
+
+    var open = [Circumsphere(pts, List(n..n+self.dim))], // List of open simplices
+        closed = [] // List of finalized simplices
+
+    // Incrementally add each point to the mesh
+    for (ix in indices) {
+      var ext = [] // Exterior (n-1) simplices
+
+      // For each open simplex, check to see if the current point is
+      // inside its circumsphere. If it is, remove the triangle and add
+      // its edges to an edge list.
+      var newopen = []
+      for (smplx in open) {
+        var dx = pts[ix][sweep] - smplx.x[sweep]
+
+        // If this point is to the right of this simplex's circumcircle,
+        // then this simplex shouldn't get checked again. Add it to the
+        // closed list and don't retain.
+        if (dx > 0.0 && dx > smplx.r) {
+          closed.append(smplx)
+          continue
+        }
+
+        // If we're outside the circumsphere, skip this simplex.
+        if ((pts[ix] - smplx.x).norm() - smplx.r > self.eps) {
+          newopen.append(smplx)
+          continue
+        }
+
+        // Add the simplex's exterior to the exterior list and don't retain.
+        // sets() generates sets of order dim from the element e.g. triangles use order 2
+        for (e in smplx.i.sets(self.dim)) ext.append(e)
+      }
+      open = newopen
+
+      ext=self.dedup(ext) // remove any duplicate exterior simplices
+
+      // Add a new simplex for each exterior (n-1) simplex.
+      for (e in ext) {
+        e.append(ix) // Include the vertex being added
+        open.append(Circumsphere(pts, e))
+      }
+    }
+
+    // Copy any remaining open triangles to the closed list
+    for (smplx in open) closed.append(smplx)
+
+    // Select all simplices that don't have a vertex from the supersimplex
+    open = []
+    for (smplx in closed) {
+      var record = true
+      for (ix in smplx.i) if (ix>=n) record = false
+      if (record) open.append(smplx.i)
+    }
+
+    return open
+  }
+}
+
+// Constructs a mesh from a point cloud
+fn DelaunayMesh(pts, outputdim=3) {
+  var del = Delaunay(pts)
+  var mb = MeshBuilder()
+
+  for (x in del.pts) {
+    var p = Matrix(outputdim)
+    for (xi,i in x) p[i]=xi
+    mb.addvertex(p)
+  }
+
+  for (tri in del.triangulate()) {
+    mb.addelement(del.dim, tri)
+  }
+
+  return mb.build()
+}

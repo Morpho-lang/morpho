@@ -48,6 +48,7 @@ Morpho
 
    color
    constants
+   delaunay
    graphics
    implicitmesh
    kdtree

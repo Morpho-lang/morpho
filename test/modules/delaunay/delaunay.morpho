@@ -1,0 +1,43 @@
+// Demonstrate use of the Delaunay module
+
+import delaunay
+
+var N = 100 // Number of points 
+
+// Explicitly check that all triangles have the property that no other point is in their circumcircle
+fn checkTriangulation(pts, tri, quiet=false) {
+    var success = true
+    for (t, k in tri) {
+        var sph = Circumsphere(pts, t)
+
+        for (i in 0...pts.count()) {
+            if (t.ismember(i)) continue // Skip the vertices of the triangle
+
+            if (sph.pointinsphere(pts[i])) {
+                if (!quiet) print "Point ${i} is in triangle ${k}."
+                success=false; 
+            }
+        }
+    }
+    return success
+}
+
+// 2D random point distribution 
+var a = []
+for (i in 1..N) a.append(Matrix([2*random()-1, 2*(2*random()-1)]))
+
+var del = Delaunay(a)
+var tri = del.triangulate() // Returns a list of triangles [ [i, j, k], ... ]
+
+print checkTriangulation(a, tri)
+// expect: true
+
+// 3D random point distribution 
+var b = []
+for (i in 1..N) b.append(Matrix([2*random()-1, 2*(2*random()-1), 2*random()-1]))
+
+del = Delaunay(b)
+tri = del.triangulate()
+
+print checkTriangulation(b, tri)
+// expect: true

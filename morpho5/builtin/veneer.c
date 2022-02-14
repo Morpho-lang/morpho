@@ -8,6 +8,7 @@
 #include "veneer.h"
 #include "object.h"
 #include "common.h"
+#include "parse.h"
 
 /* **********************************************************************
  * Object
@@ -208,6 +209,38 @@ MORPHO_ENDCLASS
  * String
  * ********************************************************************** */
 
+/** Convert a string to a number */
+bool string_tonumber(objectstring *string, value *out) {
+    bool minus=false;
+    lexer l;
+    token tok;
+    error err;
+    lex_init(&l, string->string, 0);
+    
+    if (lex(&l, &tok, &err)) {
+        if (tok.type==TOKEN_MINUS) { // Check for leading minus
+            minus=true;
+            if (!lex(&l, &tok, &err)) return false;
+        } else if (tok.type==TOKEN_PLUS) { // or plus
+            if (!lex(&l, &tok, &err)) return false;
+        }
+        
+        if (tok.type==TOKEN_INTEGER) {
+            long i = strtol(tok.start, NULL, 10);
+            if (minus) i=-i;
+            *out = MORPHO_INTEGER((int) i);
+            return true;
+        } else if (tok.type==TOKEN_NUMBER) {
+            double f = strtod(tok.start, NULL);
+            if (minus) f=-f;
+            *out = MORPHO_FLOAT(f);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /** Count number of characters in a string */
 int string_countchars(objectstring *s) {
     int n=0;
@@ -303,6 +336,15 @@ value String_enumerate(vm *v, int nargs, value *args) {
     return out;
 }
 
+value String_isnumber(vm *v, int nargs, value *args) {
+    objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    
+    if (string_tonumber(slf, &out)) return MORPHO_TRUE; 
+    
+    return MORPHO_FALSE;
+}
+
 value String_split(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
     value out=MORPHO_NIL;
@@ -346,6 +388,7 @@ MORPHO_METHOD(MORPHO_CLONE_METHOD, String_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, String_enumerate, BUILTIN_FLAGSEMPTY),
 //MORPHO_METHOD(MORPHO_SETINDEX_METHOD, String_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, String_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(STRING_ISNUMBER_METHOD, String_isnumber, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(STRING_SPLIT_METHOD, String_split, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 

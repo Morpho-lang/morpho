@@ -25,6 +25,7 @@
 #define ERROR_MESSAGE_PROPERTY "message"
 
 #define STRING_SPLIT_METHOD "split"
+#define STRING_ISNUMBER_METHOD "isnumber"
 #define ARRAY_DIMENSIONS_METHOD "dimensions"
 
 #define LIST_ISMEMBER_METHOD "ismember"
@@ -90,6 +91,7 @@
 /* Public interfaces to various data structures */
 typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_OUTOFBOUNDS } objectarrayerror;
 
+bool string_tonumber(objectstring *string, value *out);
 int string_countchars(objectstring *s);
 char *string_index(objectstring *s, int i);
 

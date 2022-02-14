@@ -27,7 +27,7 @@ class KDTree {
 
     // Sort points to find median along current axis
     pts.sort(fn (a, b) a[axis]-b[axis])
-    var ipivot=int((np-1)/2)
+    var ipivot=Int((np-1)/2)
 
     // Identify points on the left and right of this plane
     var left = [], right = []

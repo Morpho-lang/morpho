@@ -37,7 +37,7 @@ fn normalvector(vec) {
 fn randomalphanumstring(n) {
   var alpha="abcdefghijklmnopqrstuvwxyz0123456789"
   var name=""
-  for (i in 1..n) name+=alpha[int(random()*(alpha.count()-1))]
+  for (i in 1..n) name+=alpha[Int(random()*(alpha.count()-1))]
   return name
 }
 

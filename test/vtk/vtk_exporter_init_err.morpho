@@ -1,0 +1,6 @@
+import vtk
+import meshtools 
+
+var a = 3.0
+
+var vtkE = VTKExporter(a) // Expect: Error 'InitErr' : Expected a Mesh or a Field object, but received `3`.

@@ -1,0 +1,253 @@
+import meshtools 
+
+class VTKExporter {
+
+    init(obj, fieldname=nil) {
+        
+        // Initialize empty lists to optionally store fields later 
+        self.fields = []
+        self.fieldnames = []
+
+        if (ismesh(obj)) {
+
+            self.mesh = obj
+
+        } else if (isfield(obj)) {
+            
+            self.mesh = obj.mesh()
+            self.addfield(obj, fieldname=fieldname)
+        } else {
+            self.err = Error("InitErr", "Expected a Mesh or a Field object, but received `${obj}`.")
+            self.err.throw()
+        }
+
+        self.maxg = self.mesh.maxgrade()
+
+    }
+
+    preamble(file) {
+
+        file.write("# vtk DataFile Version 3.0 ")
+        file.write("Exported using Morpho https://github.com/Morpho-lang/morpho ")
+        file.write("ASCII ")
+        file.write("DATASET UNSTRUCTURED_GRID \n")
+    }
+
+    postamble(file) {}
+
+    exportvector(file, v) {
+        
+        file.write("${v[0]} ${v[1]} ${v[2]} ")
+    }
+
+    exportvertices(file) {
+        self.nvertices = self.mesh.count(0)
+
+        file.write("POINTS ${self.nvertices} float ")
+        
+        for (id in 0...self.mesh.count()) {
+            self.exportvector(file, self.mesh.vertexposition(id))
+        }
+
+        file.write("\n")
+
+    }
+
+    /* Add higher grade elements */
+    /*
+    In the VTK legacy file for unstructured grid, the CELLS keyword
+    requires two arguments, `n` and `size`. `n` is the total number of
+    cells, and `size` is the total number of integers that follow,
+    including the numPoints line, which tells the number of points in
+    each cell. The numPoints adds one more number per cell. For example,
+    here is how a single triangle will be represented:
+    CELLS 4 13 
+    2 0 1 
+    2 1 2 
+    2 2 0 
+    3 0 1 2 
+    Here, 4 is the total number of cells including the
+    three edges and one triangle. The 13 is the total number of entries,
+    which is (2+1)*3 + (3+1)*1. In general, the n and size for Morpho
+    meshes become: n = sum_{g=1}^{g_max} n_g, where n_g is the number of
+    elements of grade g
+
+    and size = sum_{g=1}^{g_max} (g+2) * n_g
+    */
+
+    cellskwargs(file) {
+
+        self.n = 0
+        self.size = 0 
+        self.ng = 0
+        for (g in 1..self.maxg) {
+            self.ng = self.mesh.count(g)
+            self.n = self.n + self.ng
+            self.size = self.size + (g + 2) * self.ng
+        }
+
+        file.write("CELLS ${self.n} ${self.size} ")
+
+    }
+
+    exportcell(file, g, conn, id) {
+
+        var vids = conn.rowindices(id) // vertex ids for the element
+        var cellstr = "${g+1} "       
+        for (v in 0..g) {
+            cellstr += "${vids[v]} "
+        }
+        file.write("${cellstr}")
+    
+    }
+
+    exportcells(file) {
+
+        self.cellskwargs(file)
+
+        for (g in 1..self.maxg) {
+            var conn = self.mesh.connectivitymatrix(0, g)
+            var nv = g+1 // number of vertices in a grade g element   
+            for (id in 0...self.mesh.count(g)) {
+                
+                self.exportcell(file, g, conn, id)
+
+            }
+        }
+
+        file.write("\n")
+
+    }
+
+    exportcelltypes(file) {
+        
+        /* The preamble for CELL_TYPES requires the kewyord argument
+        `n`, which we already evaluated in the cellskwargs function */
+        file.write("CELL_TYPES ${self.n}") 
+
+        /* Now, the VTK cell IDs are:
+        `3` for edges 
+        `5` for triangles and 
+        `10` for tetrahedra */
+        self.vtkIDs = Matrix([3, 5, 10])
+        for (g in 1..self.maxg) {
+            for (id in 0...self.mesh.count(g)){
+                file.write("${self.vtkIDs[g-1]} ")
+            }
+        }
+
+        file.write("\n")
+        
+    }
+    writemesh(file) {
+
+        self.exportvertices(file)
+        self.exportcells(file)
+        self.exportcelltypes(file)
+
+    }
+    
+    writefield(file, field, fieldname) {
+        /* For now, let's assume that the field has a shape [1,0,0],
+        meaning is only one item on the vertices, and no items on any
+        other grade. */
+
+        // Figure out the quantity sitting on the field 
+        var f0 = field[0,0,0]
+
+        if ( isfloat(f0) ) {
+            self.dof = 1
+        } else {
+            self.dof = f0.count()
+        }
+
+        // Handle the scalar case first
+        if (self.dof == 1) {
+            
+            if ( isnil(fieldname) ) fieldname = "scalars"
+
+            file.write("SCALARS ${fieldname} float 1 ")
+            file.write("LOOKUP_TABLE default ")
+            for (id in 0...self.mesh.count()) {
+                file.write("${field[0,id]} ")
+            }
+        } else {
+
+            if ( isnil(fieldname) ) fieldname = "vectors"
+
+            file.write("VECTORS ${fieldname} float")
+            for (id in 0...self.mesh.count()) {
+                self.exportvector(file, field[0,id])
+                
+            }
+        
+        }
+
+        file.write("\n")
+
+    }
+
+    checkfield(field) {
+
+        // Check whether the first argument is a field
+        if (!isfield(field)) {
+            self.err = Error("ObjNotFieldErr", "Expected a Field object, but received `${field}`.")
+            self.err.throw()
+        }
+    
+    }
+
+    checkfieldname(fieldname) {
+
+        // Check the fieldname
+        if (!isnil(fieldname)) {
+            // If not nil, first check whether the fieldname is a string
+            if (!isstring(fieldname)) {
+                self.err = Error("FnameNotStrErr", "Expected a string, but received `${fieldname}`.")
+                self.err.throw()
+            }
+            // print "split: ${fieldname.split(" ")}"
+            // print "fieldname after checkfieldname->isstring: ${fieldname}"
+            if (fieldname.split(" ").count() > 1) { 
+                // Now that it's a string, checking for embedded whitespaces
+                self.err = Error("InvalidFnameErr", "fieldname (`${fieldname}`) cannot have embedded whitespaces.")
+                self.err.throw()
+            }
+
+        }
+
+    }
+
+    addfield(field, fieldname=nil) {
+
+        self.checkfield(field)
+        // If above is passed, add field to the fields list!
+        self.fields.append(field)
+
+        self.checkfieldname(fieldname)
+        // If above is passed, add to the fieldnames list!
+        self.fieldnames.append(fieldname)
+    
+    }
+
+    export(filename) {
+        
+        var f = File(filename, "write")
+
+        self.preamble(f)
+        self.writemesh(f)
+        self.nf = self.fields.count() // Number of fields added so far
+        if (self.nf > 0) {
+            f.write("POINT_DATA ${self.nvertices} ")
+            for (i in 0...self.nf) {
+                self.writefield(f, self.fields[i], self.fieldnames[i])
+            }
+
+        }
+        self.postamble(f)
+
+        f.close()
+
+    }
+
+}

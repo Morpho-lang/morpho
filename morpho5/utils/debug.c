@@ -587,7 +587,7 @@ static bool debug_parsesymbol(char *in, varray_char *out) {
     char *input=in;
     while (*input!='\0' && isspace(*input)) input++; // Skip space
     
-    while (*input!='\0' && (isalpha(*input) || isnumber(*input) || *input=='_')) {
+    while (*input!='\0' && (isalpha(*input) || isdigit(*input) || *input=='_')) {
         varray_charwrite(out, *input);
         input++;
     }

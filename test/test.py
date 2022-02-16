@@ -115,8 +115,9 @@ def getoutput(filepath):
 
 # Test a file
 def test(file,testLog,CI):
-    ret = 0;
-    print(file+":", end=" ")
+    ret = 0
+    if not CI:
+        print(file+":", end=" ")
 
 
     # Create a temporary file in the same directory
@@ -156,7 +157,7 @@ def test(file,testLog,CI):
                 failedTests = list(i for i in range(len(out)) if expected[i] != out[i])
                 print("Tests " + str(failedTests) + " did not match expected results.", file = testLog)
                 for testNum in failedTests:
-                    print("Test "+str(testNum))
+                    print("Test "+str(testNum), file = testLog)
                     print("  Expected: ", expected[testNum], file = testLog)
                     print("    Output: ", out[testNum], file = testLog)
             else:
@@ -181,7 +182,9 @@ total=0   # total number of tests
 
 # look for a command line arguement that says
 # this is being run for continous integration
-CI = sys.argv[1] == '-c'
+CI = False
+if (len(sys.argv) > 1):
+    CI = sys.argv[1] == '-c'
 
 files=glob.glob('**/**.'+ext, recursive=True)
 with open("FailedTests.txt",'w') as testLog:
@@ -197,4 +200,4 @@ if (not CI) and (not success == total):
 print('--End testing-----------------------')
 print(success, 'out of', total, 'tests passed.')
 if CI and success<total:
-    exit(0)
+    exit(-1)

@@ -3,6 +3,8 @@ import meshtools
 import shapeopt
 import plot
 
+var tol = 2e-4
+
 var mb = MeshBuilder()
 mb.addvertex(Matrix([0,0,0]))
 mb.addvertex(Matrix([2,3,0]))
@@ -27,18 +29,30 @@ print lel.integrand(m)
 print lel.total(m)
 // expect: 29.8611
 
-print lel.gradient(m)
-// expect: [ 10.6944 0.972271 -13.5417 1.87502 ]
-// expect: [ 1.9908 -4.0278 5.3241 -3.28704 ]
-// expect: [ 7.96296 -8.47221 -6.13422 6.64349 ]
+var Grad = lel.gradient(m)
+var GradExpected = Matrix([[ 10.6944, 0.972271, -13.5417, 1.87502 ],[ 1.9908, -4.0278, 5.3241, -3.28704 ],[ 7.96296, -8.47221, -6.13422, 6.64349 ]])
+var err = Grad - GradExpected
+var maxerr = max([max(err),max(-err)])
 
+if (maxerr<tol) {
+    print "ok"
+} else {
+    print("Outside Tolerance")
+    print maxerr
+}
+// expect: ok
 var grd=lel.fieldgradient(m, phi)
-for (x in grd) print x
-// expect: [ -6.66663 ]
-// expect: [ -3.88891 ]
-// expect: [ 5.00007 ]
-// expect: [ 0 ]
-// expect: [ 0.833325 ]
-// expect: [ 4.44448 ]
-// expect: [ 0.833325 ]
-// expect: [ -0.555556 ]
+var fexpected = Field(m,Matrix([1,0]))
+fexpected[0] = Matrix([-6.66663  ,-3.88891])
+fexpected[1] = Matrix([5.00007 ,0])
+fexpected[2] = Matrix([0.833325 ,4.44448])
+fexpected[3] = Matrix([0.833325 ,-0.555556])
+
+for (i in 0..3) {
+    err = grd[i]-fexpected[i]
+    if (max([max(err),max(-err)])<tol)  print "ok"
+}
+// expect: ok
+// expect: ok
+// expect: ok
+// expect: ok

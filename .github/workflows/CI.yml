@@ -27,7 +27,9 @@ jobs:
       run: (cd test; python3 test.py -c)
     
     - name: configureMorphoView
-      run: sudo apt install povray
+      run: |
+        sudo apt install povray
+        sudo apt install libglfw3 libglfw3-dev
     - name: makeMorphoview
       run: (cd morphoview; sudo make -f Makefile.linux install)
     - name: testExamples

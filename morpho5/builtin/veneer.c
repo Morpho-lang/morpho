@@ -332,8 +332,9 @@ value String_split(vm *v, int nargs, value *args) {
         list_append(new, newstring);
         
         out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
+        list_append(new, out);
         morpho_bindobjects(v, new->val.count, new->val.data);
+        new->val.count-=1;
     }
     
     return out;

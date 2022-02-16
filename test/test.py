@@ -145,7 +145,7 @@ def test(file,testLog,CI):
                 print("  Expected: ", expected)
                 print("    Output: ", out)
             else:
-                print("::error file = {",file,"}::{",file," Failed}")
+                print("\n::error file = {",file,"}::{",file," Failed}")
 
 
             #also print to the test log
@@ -197,4 +197,4 @@ if (not CI) and (not success == total):
 print('--End testing-----------------------')
 print(success, 'out of', total, 'tests passed.')
 if CI and success<total:
-    exit(-1)
+    exit(0)

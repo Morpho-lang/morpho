@@ -1,4 +1,5 @@
-# Morpho
+![Morpho](manual/src/Figures/morphologosmall.png)
+A
 The Morpho language. Morpho is a programmable environment for shape optimization. Morpho aims to be:
 
 * **Familiar**. Morpho uses syntax similar to other C-family languages. The syntax fits on a postcard, so it's easy to learn.

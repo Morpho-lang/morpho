@@ -181,7 +181,7 @@ total=0   # total number of tests
 
 # look for a command line arguement that says
 # this is being run for continous integration
-CI = sys.argv == '-c'
+CI = sys.argv[1] == '-c'
 
 files=glob.glob('**/**.'+ext, recursive=True)
 with open("FailedTests.txt",'w') as testLog:
@@ -191,7 +191,7 @@ with open("FailedTests.txt",'w') as testLog:
         success+=test(f,testLog,CI)
         total+=1
 
-if not success == total:
+if (not CI) and (not success == total):
     os.system("emacs FailedTests.txt &")
 
 print('--End testing-----------------------')

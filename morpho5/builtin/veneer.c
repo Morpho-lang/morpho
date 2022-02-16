@@ -750,7 +750,7 @@ value Array_getindex(vm *v, int nargs, value *args) {
 		// these aren't simple indices, lets try to make a slice
 		objectarrayerror err = getslice(&MORPHO_SELF(args),&array_slicedim,&array_sliceconstructor,&array_slicecopy,nargs,&MORPHO_GETARG(args, 0),&out);
 		if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
-		if (out!=MORPHO_NIL){
+		if (!MORPHO_ISNIL(out)){
 			morpho_bindobjects(v,1,&out);
 		} else MORPHO_RAISE(v, VM_NONNUMINDX);
 	}
@@ -1134,7 +1134,7 @@ value List_getindex(vm *v, int nargs, value *args) {
         } else {
 			objectarrayerror err = getslice(&MORPHO_SELF(args),&list_slicedim,&list_sliceconstructor,&list_slicecopy,nargs,&MORPHO_GETARG(args, 0),&out);
 			if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_list_error(err) );
-			if (out!=MORPHO_NIL){
+			if (!MORPHO_ISNIL(out)){
 				morpho_bindobjects(v,1,&out);
 			} else MORPHO_RAISE(v, VM_NONNUMINDX);
 

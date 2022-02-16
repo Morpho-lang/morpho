@@ -25,3 +25,21 @@ jobs:
       run: (cd morpho5; sudo make -f Makefile.linux install)
     - name: test
       run: (cd test; python3 test.py -c)
+    
+    - name: configureMorphoView
+      run: |
+      sudo apt install povray
+    - name: makeMorphoview
+      run: (cd morphoview; sudo make -f Makefile.linux install)
+    - name: testExamples
+      run: (cd examples; python3 examples.py -c)
+
+    - name: makeNoNanBoxing
+      run: (cd morpho5; sudo make -f Makefile.linux nonanboxing)
+    - name: testNoNanBoxing
+      run: (cd test; python3 test.py -c)
+
+    - name: makeGarbageCollectorTest
+      run: (cd morpho5; sudo make -f Makefile.linux garbagecollectortest)
+    - name: testGarbageCollectorTest
+      run: (cd test; python3 test.py -c)

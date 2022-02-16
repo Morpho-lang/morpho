@@ -1467,7 +1467,7 @@ callfunction: // Jump here if an instruction becomes a call
 													&array_slicecopy,ndim,&reg[b],&newVal);
 					if (err!=ARRAY_OK) ERROR(array_error(err));
 					
-					if (newVal) {
+					if (!MORPHO_ISNIL(newVal)) {
 						reg[b] = newVal;
 						vm_bindobject(v, reg[b]);
 					} else  ERROR(VM_NONNUMINDX);

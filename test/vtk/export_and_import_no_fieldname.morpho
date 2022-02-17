@@ -1,0 +1,43 @@
+// Testing whether exporting and importing a field with no field name
+// works. In this case, the fieldname will be either "scalars" or "vectors"
+
+import vtk
+import meshtools
+
+var m1 = LineMesh(fn (t) [t,0,0], -1..1:2)
+
+var f1 = Field(m1, fn(x,y,z) x)
+
+var g1 = Field(m1, fn(x,y,z) Matrix([x,2*x,3*x]))
+
+var vtkE = VTKExporter(f1)
+vtkE.addfield(g1)
+
+var filename = "data.vtk"
+
+vtkE.export(filename)
+
+var vtkI = VTKImporter(filename)
+
+var m2 = vtkI.getmesh()
+
+var f2 = vtkI.getfield("scalars")
+
+var g2 = vtkI.getfield("vectors")
+
+print m2
+// Expect: <Mesh: 2 vertices>
+
+print f2
+// Expect: <Field>
+// Expect: [ -1 ]
+// Expect: [ 1 ]
+
+print g2
+// Expect: <Field>
+// Expect: [ -1 ]
+// Expect: [ -2 ]
+// Expect: [ -3 ]
+// Expect: [ 1 ]
+// Expect: [ 2 ]
+// Expect: [ 3 ]

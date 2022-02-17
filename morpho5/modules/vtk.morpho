@@ -1,5 +1,21 @@
-import meshtools 
+/* The VTK Module for Morpho (https://github.com/Morpho-lang/morpho) 
 
+This module provides support for I/O of Meshes and Fields using the VTK
+File Format.
+
+The data is stored in the Legacy VTK format, using the `Unstructured
+Grid` Dataset Format. See here for the format documentation:
+https://kitware.github.io/vtk-examples/site/VTKFileFormats/  
+
+By convention, the methods in the classes that have a name starting with
+a "_" are helper functions and are not meant to be used by the end user.
+
+Contact: chaitanya.joshi@tufts.edu */
+
+import meshtools 
+import parser
+
+// VTKExporter: Exports Fields and / or Meshes to a .vtk file
 class VTKExporter {
 
     init(obj, fieldname=nil) {
@@ -8,14 +24,19 @@ class VTKExporter {
         self.fields = []
         self.fieldnames = []
 
+        // Check whether the object is a Mesh or a Field or none of them
         if (ismesh(obj)) {
 
             self.mesh = obj
 
         } else if (isfield(obj)) {
             
+            // If the object is a Field, then use its mesh for exporting
             self.mesh = obj.mesh()
+            
+            // Add this field to the list
             self.addfield(obj, fieldname=fieldname)
+
         } else {
             self.err = Error("InitErr", "Expected a Mesh or a Field object, but received `${obj}`.")
             self.err.throw()
@@ -25,28 +46,29 @@ class VTKExporter {
 
     }
 
-    preamble(file) {
+    // Write the preamble for the file. 
+    _preamble(file) {
 
-        file.write("# vtk DataFile Version 3.0 ")
-        file.write("Exported using Morpho https://github.com/Morpho-lang/morpho ")
+        file.write("# vtk DataFile Version 3.0 ") 
+        file.write("Exported using Morpho https://github.com/Morpho-lang/morpho ") // This line can be anything the user wants.
         file.write("ASCII ")
         file.write("DATASET UNSTRUCTURED_GRID \n")
     }
-
-    postamble(file) {}
-
-    exportvector(file, v) {
+    
+    // Writes a vector to the file 
+    _writevector(file, v) {
         
         file.write("${v[0]} ${v[1]} ${v[2]} ")
     }
 
-    exportvertices(file) {
+    // Writes all the vertices to the file
+    _writevertices(file) {
         self.nvertices = self.mesh.count(0)
 
         file.write("POINTS ${self.nvertices} float ")
         
         for (id in 0...self.mesh.count()) {
-            self.exportvector(file, self.mesh.vertexposition(id))
+            self._writevector(file, self.mesh.vertexposition(id))
         }
 
         file.write("\n")
@@ -75,7 +97,8 @@ class VTKExporter {
     and size = sum_{g=1}^{g_max} (g+2) * n_g
     */
 
-    cellskwargs(file) {
+    // Function to compute and write the CELLS keyword arguments as above
+    _cellskwargs(file) {
 
         self.n = 0
         self.size = 0 
@@ -90,7 +113,8 @@ class VTKExporter {
 
     }
 
-    exportcell(file, g, conn, id) {
+    // Write an individual cell (edge or face) to the file
+    _writecell(file, g, conn, id) {
 
         var vids = conn.rowindices(id) // vertex ids for the element
         var cellstr = "${g+1} "       
@@ -101,16 +125,17 @@ class VTKExporter {
     
     }
 
-    exportcells(file) {
+    // Write all the cells (edges and faces) to the file
+    _writecells(file) {
 
-        self.cellskwargs(file)
+        self._cellskwargs(file)
 
         for (g in 1..self.maxg) {
             var conn = self.mesh.connectivitymatrix(0, g)
             var nv = g+1 // number of vertices in a grade g element   
             for (id in 0...self.mesh.count(g)) {
                 
-                self.exportcell(file, g, conn, id)
+                self._writecell(file, g, conn, id)
 
             }
         }
@@ -119,10 +144,11 @@ class VTKExporter {
 
     }
 
-    exportcelltypes(file) {
+    // Export the CELL_TYPES data corresponding to the cells. This is essentially th VTK ID of each cell (see the VTK documentation)
+    _writecelltypes(file) {
         
         /* The preamble for CELL_TYPES requires the kewyord argument
-        `n`, which we already evaluated in the cellskwargs function */
+        `n`, which we already evaluated in the _cellskwargs function */
         file.write("CELL_TYPES ${self.n}") 
 
         /* Now, the VTK cell IDs are:
@@ -139,15 +165,18 @@ class VTKExporter {
         file.write("\n")
         
     }
-    writemesh(file) {
 
-        self.exportvertices(file)
-        self.exportcells(file)
-        self.exportcelltypes(file)
+    // Write the whole mesh to the file
+    _writemesh(file) {
+
+        self._writevertices(file)
+        self._writecells(file)
+        self._writecelltypes(file)
 
     }
     
-    writefield(file, field, fieldname) {
+    // Write a field to the file
+    _writefield(file, field, fieldname) {
         /* For now, let's assume that the field has a shape [1,0,0],
         meaning is only one item on the vertices, and no items on any
         other grade. */
@@ -177,7 +206,7 @@ class VTKExporter {
 
             file.write("VECTORS ${fieldname} float")
             for (id in 0...self.mesh.count()) {
-                self.exportvector(file, field[0,id])
+                self._writevector(file, field[0,id])
                 
             }
         
@@ -187,67 +216,275 @@ class VTKExporter {
 
     }
 
-    checkfield(field) {
+    // Check whether `field` is a Field object, and throw error otherwise
+    _checkfield(field) {
 
         // Check whether the first argument is a field
         if (!isfield(field)) {
-            self.err = Error("ObjNotFieldErr", "Expected a Field object, but received `${field}`.")
+            self.err = Error("ObjNotField", "Expected a Field object, but received `${field}`.")
             self.err.throw()
         }
     
     }
 
-    checkfieldname(fieldname) {
+    // Check whether `fieldname` is a a string is free of whitespaces (a VTK file requirement)
+    _checkfieldname(fieldname) {
 
         // Check the fieldname
         if (!isnil(fieldname)) {
             // If not nil, first check whether the fieldname is a string
             if (!isstring(fieldname)) {
-                self.err = Error("FnameNotStrErr", "Expected a string, but received `${fieldname}`.")
+                self.err = Error("FnameNotStr", "Expected a string, but received `${fieldname}`.")
                 self.err.throw()
             }
-            // print "split: ${fieldname.split(" ")}"
-            // print "fieldname after checkfieldname->isstring: ${fieldname}"
-            if (fieldname.split(" ").count() > 1) { 
-                // Now that it's a string, checking for embedded whitespaces
-                self.err = Error("InvalidFnameErr", "fieldname (`${fieldname}`) cannot have embedded whitespaces.")
-                self.err.throw()
+            // Now that it's a string, checking for embedded whitespaces
+            for (c in fieldname) {
+                if (c==" ") {
+                    self.err = Error("InvalidFname", "fieldname (`${fieldname}`) cannot have embedded whitespaces.")
+                    self.err.throw()
+                }
             }
-
         }
 
     }
 
+    // Function to add a field to the exporter.
+    // Here, `field` is the Field object to be added, and `fieldname` is the name the user wishes to designate the field with. This `fieldname` cannot have embedded whitespaces in it.
+    // Both the field and the fieldname get added to their respective lists 
     addfield(field, fieldname=nil) {
 
-        self.checkfield(field)
+        self._checkfield(field)
         // If above is passed, add field to the fields list!
         self.fields.append(field)
 
-        self.checkfieldname(fieldname)
+        self._checkfieldname(fieldname)
         // If above is passed, add to the fieldnames list!
         self.fieldnames.append(fieldname)
     
     }
 
+    // Ensure that `filename` ends in ".vtk"
+    _ensurevtk() {
+        
+        if (!isstring(self.filename)) {
+            self.err = Error("FnameNotStr", "Expected a string, but received `${self.filename}`.")
+            self.err.throw()
+        }
+        var fl = self.filename.split(".")
+
+        var n = fl.count()
+
+        if (n == 0) { // No extension
+            self.filename = "${self.filename}.vtk"
+        }
+        else if (fl[n-1] != "vtk") {
+            // Either a wrong extension has been provided, or the
+            // filename itself is expected to contain a period, like
+            // mesh.2.vtk. We again add ".vtk" at the end in this case.
+            self.filename = "${self.filename}.vtk"
+        }
+
+    }
+    
+    // Function to export the fields and / or meshes to a file with the name `filename`. This name has to include the ".vtk" extension
     export(filename) {
         
-        var f = File(filename, "write")
+        self.filename = filename
+        self._ensurevtk()
 
-        self.preamble(f)
-        self.writemesh(f)
+        // Open file for writing
+        var f = File(self.filename, "write")
+
+        // Add the preamble
+        self._preamble(f)
+
+        // Add the mesh
+        self._writemesh(f)
+
+        // Add fields if any
         self.nf = self.fields.count() // Number of fields added so far
         if (self.nf > 0) {
             f.write("POINT_DATA ${self.nvertices} ")
             for (i in 0...self.nf) {
-                self.writefield(f, self.fields[i], self.fieldnames[i])
+                self._writefield(f, self.fields[i], self.fieldnames[i])
             }
 
         }
-        self.postamble(f)
 
+        // Close the file
         f.close()
 
     }
+
+}
+
+// VTKImporter: Imports Fields and / or Meshes from a .vtk file
+class VTKImporter {
+
+    // Initialize with the filename
+    init(filename) {
+        
+        self.filename = filename
+        // Ensure filename ends with ".vtk"
+        self._ensurevtk()
+
+        // Start a mesh builder
+        self.mb = MeshBuilder(dimension=3)
+        self.mesh = nil
+
+        // Create a Dictionary for possible fields to be imported. The keys for the fields in this Dictionary will be the names given to those fields in the VTK file.
+        self.fields = Dictionary()
+
+        // Open the file
+        self.f = File(self.filename)
+
+        // Start the tokenizer
+        self.tok = Tokenizer(self.f)
+        
+        // Go through the whole file
+        while (!self.f.eof()) {
+            self.t = self.tok.next()
+
+            // The mesh vertices start with `POINTS`
+            if (self.t=="POINTS") {
+                // Number after `POINTS` is the number of vertices
+                self.nvertices = Int(self.tok.next()) 
+                // The word after that is `float`. Let's skip that!
+                self.t = self.tok.next()
+                for (i in 0...self.nvertices) {
+                    self._addvertex()
+                    
+                }
+
+            }
+            // Higher order elements start with `CELLS`
+            if (self.t=="CELLS") {
+                // The number after `CELLS` is the number of cells
+                self.ncells = Int(self.tok.next())
+                // The number after that is for memory purposes and we
+                // can ignore that
+                self.t = self.tok.next()
+                for (i in 0...self.ncells) {
+                    self._addcell()
+                }
+
+            }
+
+            // If we get to POINT_DATA, that means mesh is ready
+            // We can build it now.
+            if (self.t=="POINT_DATA") self.mesh = self.mb.build()
+
+            if (self.t=="SCALARS") {
+
+                // The first word after SCALARS is the name of the field
+                self.fieldname = self.tok.next()
+                // The next 4 words are `float`, `1`, `LOOKUP_TABLE` and
+                // `default`. Skipping those...
+                for (j in 1..4) self.t = self.tok.next()
+                // Initialize a scalar field
+                self.field = Field(self.mesh, 0.0)
+                // The following works ONLY when the fields are on the vertices
+                for (i in 0...self.nvertices) {
+                    self.field[i] = Float(self.tok.next())
+                }
+                self.fields[self.fieldname] = self.field
+            }
+
+            
+            if (self.t=="VECTORS") {
+
+                // The first word after VECTORS is the name of the field
+                self.fieldname = self.tok.next()
+                // The next word is float. Skipping that one...
+                self.t = self.tok.next()
+                // Initialize a vector field
+                self.field = Field(self.mesh, Matrix([0,0,0]))
+                // The following works ONLY when the fields are on the vertices
+                for (i in 0...self.nvertices) {
+                    self.field[i] = self._getvector()
+                }
+                self.fields[self.fieldname] = self.field
+            }
+
+        }
+
+        // If there are no fields, then `POINT_DATA` would never be reached. In that case, build the mesh now.
+        if (isnil(self.mesh)) self.mesh = self.mb.build()
+                
+    }
+
+    // Ensure that `filename` ends in ".vtk"
+    _ensurevtk() {
+
+        var fl = self.filename.split(".")
+
+        var n = fl.count()
+
+        if (n == 0) { // No extension
+            self.filename = "${self.filename}.vtk"
+        }
+        else if (fl[n-1] != "vtk") {
+            // Either a wrong extension has been provided, or the
+            // filename itself is expected to contain a period, like
+            // mesh.2.vtk. We again add ".vtk" at the end in this case.
+            self.filename = "${self.filename}.vtk"
+        }
+
+    }
+
+    
+    // Generate a vector out of the next three characters
+    _getvector() {
+
+        self.vx = Float(self.tok.next())
+        self.vy = Float(self.tok.next())
+        self.vz = Float(self.tok.next())
+        return Matrix([self.vx, self.vy, self.vz])
+    
+    }
+
+    // Add a vertex from a given point in the file to the MeshBuilder object 
+    _addvertex() {
+        
+        self.v = self._getvector()
+        self.mb.addvertex(self.v)
+    
+    }
+
+    // Add a higher order element from a given point in the file to the MeshBuilder object
+    _addcell() {
+        self.numPoints = Int(self.tok.next())
+        
+        if (self.numPoints==2) {
+        
+            self.e1 = Int(self.tok.next())
+            self.e2 = Int(self.tok.next())
+            self.mb.addedge([self.e1, self.e2])
+        
+        } else if (self.numPoints==3) {
+
+            self.f1 = Int(self.tok.next())
+            self.f2 = Int(self.tok.next())
+            self.f3 = Int(self.tok.next())
+            self.mb.addface([self.f1, self.f2, self.f3])
+            
+        }
+    }
+
+    // Method that returns the mesh
+    getmesh() {
+        return self.mesh
+    }
+
+    // Method that returns the field named `fieldname`
+    getfield(fieldname) {
+        try {
+            return self.fields[fieldname]
+        } catch {
+            "DctKyNtFnd":
+                self.err = Error("FieldNotFound", "Couldn't find the field `${fieldname}` in the file.")
+                
+        }
+    } 
 
 }

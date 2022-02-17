@@ -1,3 +1,5 @@
+// Testing whether initializing VTKExporter with an object that is
+// neither a Mesh nor a Field produces the right error
 import vtk
 import meshtools 
 

@@ -1,7 +1,10 @@
+// Testing whether initializing VTKExporter with a field, but giving a
+// fieldname that has an embedded whitespace in it, produces the right
+// error 
 import vtk
 import meshtools 
 
 var m = AreaMesh(fn (u,v) [u,v,0], -1..1:2, -1..1:2)
 var f = Field(m, fn(x,y,z) x)
 
-var vtkE = VTKExporter(f, fieldname="x y") // Expect: Error 'InvalidFnameErr' : fieldname (`x y`) cannot have embedded whitespaces.
+var vtkE = VTKExporter(f, fieldname="x y") // Expect: Error 'InvalidFname' : fieldname (`x y`) cannot have embedded whitespaces.

@@ -12,7 +12,7 @@ the VTK Legacy Format.
 ## VTKExporter
 [tagvtkexporter]: # (VTKExporter)
 
-This class can be used to export the mesh and field(s) at a given state
+This class can be used to export the field(s) and/or at a given state
 to a single .vtk file. To use it, import the `vtk` module:
 
     import vtk
@@ -47,3 +47,59 @@ where,
 ** Note that this currently only supports scalar or vector (column
 matrix) fields that live on the vertices ( shape `[1,0,0]`). Support for
 tensorial fields and fields on cells coming soon.
+
+Minimal example:
+
+    import vtk
+    import meshtools
+
+    var m1 = LineMesh(fn (t) [t,0,0], -1..1:2)
+
+    var vtkE = VTKExporter(m1) // Export just the mesh 
+    
+    vtkE.export("mesh.vtk")
+
+    var f1 = Field(m1, fn(x,y,z) x)
+
+    var g1 = Field(m1, fn(x,y,z) Matrix([x,2*x,3*x]))
+
+    vtkE = VTKExporter(f1, fieldname="f") // Export fields
+
+    vtkE.addfield(g1, fieldname="g")
+
+    vtkE.export("data.vtk")
+
+## VTKImporter
+[tagvtkimporter]: # (VTKImporter)
+
+This class can be used to import the field(s) and/or the  mesh at a
+given state from a single .vtk file. To use it, import the `vtk` module:
+
+    import vtk
+
+Initialize the `VTKImporter` with the filename
+
+    var vtkI = VTKImporter("output.vtk")
+
+Use the `getmesh` method to get the mesh:
+
+    var mesh = vtkI.getmesh()
+
+Use the `getfield` method to get the field:
+
+    var f = vtkI.getfield(fieldname)
+
+where `fieldname` is the name assigned to the field in the .vtk file
+
+Minimal example:
+
+    import vtk
+    import meshtools 
+
+    var vtkI = VTKImporter("data.vtk")
+
+    var m = vtkI.getmesh()
+
+    var f = vtkI.getfield("f")
+
+    var g = vtkI.getfield("g")

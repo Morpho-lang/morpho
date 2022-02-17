@@ -523,11 +523,47 @@ value matrix_constructor(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Checks that a matrix is indexed with 2 indices with a generic interface */
+bool matrix_slicedim(value * a, unsigned int ndim){
+	if (ndim>2||ndim<0) return false;
+	return true;
+}
+
+/** Constucts a new matrix with a generic interface */
+void matrix_sliceconstructor(unsigned int *slicesize,unsigned int ndim,value* out){
+	unsigned int numcol = 1;
+	if (ndim == 2) {
+		numcol = slicesize[1];
+	}
+	*out = MORPHO_OBJECT(object_newmatrix(slicesize[0],numcol,false));
+}
+/** Copies data from a at indx to out at newindx with a generic interface */
+objectarrayerror matrix_slicecopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx){
+	double num; // matrices store doubles;
+	unsigned int colindx = 0;
+	unsigned int colnewindx = 0;	
+	
+	if (ndim == 2) {
+		colindx = indx[1];
+		colnewindx = newindx[1];
+	}
+
+	if (!(matrix_getelement(MORPHO_GETMATRIX(*a),indx[0],colindx,&num)&&
+		matrix_setelement(MORPHO_GETMATRIX(*out),newindx[0],colnewindx,num))){
+		return ARRAY_OUTOFBOUNDS;
+	}
+	return ARRAY_OK;
+}
+
 /** Gets the matrix element with given indices */
 value Matrix_getindex(vm *v, int nargs, value *args) {
     objectmatrix *m=MORPHO_GETMATRIX(MORPHO_SELF(args));
     unsigned int indx[2]={0,0};
     value out = MORPHO_NIL;
+	if (nargs>2){
+		morpho_runtimeerror(v, MATRIX_INVLDNUMINDICES);
+		return out;
+	}
     
     if (array_valuelisttoindices(nargs, args+1, indx)) {
         double outval;
@@ -536,8 +572,13 @@ value Matrix_getindex(vm *v, int nargs, value *args) {
         } else {
             out = MORPHO_FLOAT(outval);
         }
-    } else morpho_runtimeerror(v, MATRIX_INVLDINDICES);
-    
+    } else { // now try to get a slice
+		objectarrayerror err = getslice(&MORPHO_SELF(args), &matrix_slicedim, &matrix_sliceconstructor, &matrix_slicecopy, nargs, &MORPHO_GETARG(args,0), &out);
+		if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_matrix_error(err) );
+		if (out!=MORPHO_NIL){
+			morpho_bindobjects(v,1,&out);
+		} else morpho_runtimeerror(v, MATRIX_INVLDINDICES);
+	}
     return out;
 }
 
@@ -988,6 +1029,7 @@ void matrix_initialize(void) {
     
     morpho_defineerror(MATRIX_INDICESOUTSIDEBOUNDS, ERROR_HALT, MATRIX_INDICESOUTSIDEBOUNDS_MSG);
     morpho_defineerror(MATRIX_INVLDINDICES, ERROR_HALT, MATRIX_INVLDINDICES_MSG);
+    morpho_defineerror(MATRIX_INVLDNUMINDICES, ERROR_HALT, MATRIX_INVLDNUMINDICES_MSG);
     morpho_defineerror(MATRIX_CONSTRUCTOR, ERROR_HALT, MATRIX_CONSTRUCTOR_MSG);
     morpho_defineerror(MATRIX_INVLDARRAYINIT, ERROR_HALT, MATRIX_INVLDARRAYINIT_MSG);
     morpho_defineerror(MATRIX_ARITHARGS, ERROR_HALT, MATRIX_ARITHARGS_MSG);

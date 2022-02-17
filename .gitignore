@@ -58,3 +58,4 @@ dkms.conf
 .entitlements
 
 test/FailedTests.txt
+*.png

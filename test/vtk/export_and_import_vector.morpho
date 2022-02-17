@@ -1,4 +1,5 @@
-// Testing whether exporting and importing a vector field works
+// Testing whether exporting and importing a vector field works 
+
 import vtk
 import meshtools
 
@@ -18,14 +19,12 @@ var m2 = vtkI.getmesh()
 
 var g2 = vtkI.getfield("g")
 
-print m2
-// Expect: <Mesh: 2 vertices>
+print m2 // expect: <Mesh: 2 vertices>
 
-print g2
-// Expect: <Field>
-// Expect: [ -1 ]
-// Expect: [ -2 ]
-// Expect: [ -3 ]
-// Expect: [ 1 ]
-// Expect: [ 2 ]
-// Expect: [ 3 ]
+print g2 // expect: <Field>
+// expect: [ -1 ]
+// expect: [ -2 ]
+// expect: [ -3 ]
+// expect: [ 1 ]
+// expect: [ 2 ]
+// expect: [ 3 ]

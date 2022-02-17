@@ -1,6 +1,7 @@
 // Testing whether importing / exporting files with filenames that don't
-//end in a ".vtk" works. The expected behavior is to append the filename
-//with a ".vtk" in case it doesn't end that way
+// end in a ".vtk" works. The desired behavior is to append the filename
+// with a ".vtk" in case it doesn't end that way
+
 import vtk 
 import meshtools
 
@@ -19,9 +20,11 @@ for (filename in filenames) {
 
     vtkI = VTKImporter(filename)
 
-    var m2 = vtkI.mesh
+    var m2 = vtkI.getmesh()
 
-    print m2
-    // Expect: <Mesh: 2 vertices>
+    print m2 
 }
+// expect: <Mesh: 2 vertices>
+// expect: <Mesh: 2 vertices>
+// expect: <Mesh: 2 vertices>
 

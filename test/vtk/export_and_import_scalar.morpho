@@ -1,4 +1,5 @@
-// Testing whether exporting and importing a scalar field works
+// Testing whether exporting and importing a scalar field works 
+
 import vtk
 import meshtools
 
@@ -18,10 +19,8 @@ var m2 = vtkI.getmesh()
 
 var f2 = vtkI.getfield("f")
 
-print m2
-// Expect: <Mesh: 2 vertices>
+print m2 // expect: <Mesh: 2 vertices>
 
-print f2
-// Expect: <Field>
-// Expect: [ -1 ]
-// Expect: [ 1 ]
+print f2 // expect: <Field>
+// expect: [ -1 ]
+// expect: [ 1 ]

@@ -1,5 +1,3 @@
-// Testing whether exporting a mesh to a ".vtk" file and importing it
-// back works
 import vtk 
 import meshtools
 
@@ -15,5 +13,4 @@ var vtkI = VTKImporter(filename)
 
 var m2 = vtkI.getmesh()
 
-print m2
-// Expect: <Mesh: 2 vertices>
+print m2 // expect: <Mesh: 2 vertices>

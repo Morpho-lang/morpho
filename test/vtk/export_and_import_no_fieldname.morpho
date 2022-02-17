@@ -25,19 +25,16 @@ var f2 = vtkI.getfield("scalars")
 
 var g2 = vtkI.getfield("vectors")
 
-print m2
-// Expect: <Mesh: 2 vertices>
+print m2 // expect: <Mesh: 2 vertices>
 
-print f2
-// Expect: <Field>
-// Expect: [ -1 ]
-// Expect: [ 1 ]
+print f2 // expect: <Field>
+// expect: [ -1 ]
+// expect: [ 1 ]
 
-print g2
-// Expect: <Field>
-// Expect: [ -1 ]
-// Expect: [ -2 ]
-// Expect: [ -3 ]
-// Expect: [ 1 ]
-// Expect: [ 2 ]
-// Expect: [ 3 ]
+print g2 // expect: <Field>
+// expect: [ -1 ]
+// expect: [ -2 ]
+// expect: [ -3 ]
+// expect: [ 1 ]
+// expect: [ 2 ]
+// expect: [ 3 ]

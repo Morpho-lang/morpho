@@ -14,6 +14,10 @@ Lookup values using index notation:
 
     list[0]
 
+Indexing can also be done with slices:
+	list[0..2]
+	list[[0,1,3]]
+
 You can change list entries like this:
 
     list[0] = "Hello"

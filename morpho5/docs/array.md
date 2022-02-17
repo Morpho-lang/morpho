@@ -14,6 +14,11 @@ Values can be retrieved with appropriate indices:
 
     print a[0,0]
 
+Array can be indexed with slices:
+
+	print a[[0,2,4],2]
+	print a[1,0..2]
+
 Any morpho value can be stored in an array element
 
     a[0,0] = [1,2,3]

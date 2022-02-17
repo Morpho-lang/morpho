@@ -59,5 +59,3 @@ dkms.conf
 
 test/FailedTests.txt
 *.png
-examples/qtensor/Qtensor_K_0.01.png
-*.png

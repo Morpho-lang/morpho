@@ -2457,7 +2457,7 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
             ninstructions+=arginfo.ninstructions;
         }
         
-        if (compiler_regtop(c)!=reg) {
+        if (!compiler_haserror(c) && compiler_regtop(c)!=reg) {
             compiler_regshow(c);
             UNREACHABLE("Incorrectly freed registers in compiling argument list.");
         }
@@ -3041,7 +3041,7 @@ static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerind
         ninstructions+=prop.ninstructions;
     } else {
         compiler_error(c, selector, COMPILE_PROPERTYNAMERQD);
-        return CODEINFO_EMPTY;
+        //return CODEINFO_EMPTY;
     }
     
     if (out !=REGISTER_UNALLOCATED) {

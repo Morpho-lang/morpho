@@ -1,0 +1,18 @@
+// Ensure garbage collector and string split are interacting properly
+
+var str = "a b c d f g"
+var w
+//var c
+for (i in 1..10){
+    print str.split(" ")
+}
+// expect: [ a, b, c, d, f, g ]
+// expect: [ a, b, c, d, f, g ]
+// expect: [ a, b, c, d, f, g ]
+// expect: [ a, b, c, d, f, g ]
+// expect: [ a, b, c, d, f, g ]
+// expect: [ a, b, c, d, f, g ]
+// expect: [ a, b, c, d, f, g ]
+// expect: [ a, b, c, d, f, g ]
+// expect: [ a, b, c, d, f, g ]
+// expect: [ a, b, c, d, f, g ]

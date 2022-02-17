@@ -10,6 +10,7 @@
 #include "random.h"
 #include "builtin.h"
 #include "common.h"
+#include "veneer.h"
 
 /* **********************************************************************
  * Built in functions
@@ -214,10 +215,16 @@ value builtin_iscallablefunction(vm *v, int nargs, value *args) {
 /** Convert something to an integer */
 value builtin_int(vm *v, int nargs, value *args) {
     if (nargs==1) {
-        if (MORPHO_ISFLOAT(MORPHO_GETARG(args, 0))) {
-            return MORPHO_FLOATTOINTEGER(MORPHO_GETARG(args, 0));
-        } else if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-            return MORPHO_GETARG(args, 0);
+        value arg = MORPHO_GETARG(args, 0);
+        
+        if (MORPHO_ISSTRING(arg)) {
+            string_tonumber(MORPHO_GETSTRING(arg), &arg);
+        }
+        
+        if (MORPHO_ISFLOAT(arg)) {
+            return MORPHO_FLOATTOINTEGER(arg);
+        } else if (MORPHO_ISINTEGER(arg)) {
+            return arg;
         }
     }
     morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_INT);
@@ -227,10 +234,16 @@ value builtin_int(vm *v, int nargs, value *args) {
 /** Convert to a floating point number */
 value builtin_float(vm *v, int nargs, value *args) {
     if (nargs==1) {
-        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-            return MORPHO_INTEGERTOFLOAT(MORPHO_GETARG(args, 0));
-        } else {
-            return MORPHO_GETARG(args, 0);
+        value arg = MORPHO_GETARG(args, 0);
+        
+        if (MORPHO_ISSTRING(arg)) {
+            string_tonumber(MORPHO_GETSTRING(arg), &arg);
+        }
+        
+        if (MORPHO_ISINTEGER(arg)) {
+            return MORPHO_INTEGERTOFLOAT(arg);
+        } else if (MORPHO_ISFLOAT(arg)){
+            return arg;
         }
     }
     morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_FLOAT);
@@ -304,9 +317,8 @@ static bool builtin_minmax(vm *v, value obj, value *min, value *max) {
 bool builtin_minmaxargs(vm *v, int nargs, value *args, value *min, value *max, char *fname) {
     for (unsigned int i=0; i<nargs; i++) {
         value arg = MORPHO_GETARG(args, i);
-        if (MORPHO_ISLIST(arg) ||
-            MORPHO_ISMATRIX(arg)) {
-            builtin_minmax(v, arg, (min ? &min[i] : NULL), (max ? &max[i]: NULL));
+        if (MORPHO_ISOBJECT(arg)) {
+            if (!builtin_minmax(v, arg, (min ? &min[i] : NULL), (max ? &max[i]: NULL))) return false;
         } else if (morpho_isnumber(arg)) {
             if (min) min[i]=arg;
             if (max) max[i]=arg;
@@ -396,7 +408,6 @@ static value builtin_sign(vm *v, int nargs, value *args){
     morpho_runtimeerror(v, MATH_NUMARGS,FUNCTION_SIGN);
     return MORPHO_NIL; 
 }
-
 
 /* ************************************
  * Apply

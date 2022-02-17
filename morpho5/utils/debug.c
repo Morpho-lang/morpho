@@ -452,9 +452,7 @@ void debug_showregisters(vm *v, callframe *frame) {
 }
 
 /** Shows current symbols */
-void debug_showsymbol(vm *v, char *match) {
-    //objectstring string = MORPHO_STATICSTRING((match ? match : ""));
-    
+void debug_showsymbols(vm *v) {
     for (callframe *f=v->fp; f>=v->frame; f--) {
         printf("in %s", (f==v->frame ? "global" : ""));
         if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(f->function->name);
@@ -475,6 +473,44 @@ void debug_showsymbol(vm *v, char *match) {
             }
         }
         
+    }
+}
+
+/** Prints a specified symbol */
+void debug_printsymbol(vm *v, char *match) {
+    objectstring str = MORPHO_STATICSTRING((match ? match : ""));
+    value matchstr = MORPHO_OBJECT(&str);
+    
+    objectstring prntlabel = MORPHO_STATICSTRING(MORPHO_PRINT_METHOD);
+    
+    for (callframe *f=v->fp; f>=v->frame; f--) {
+        value symbols[f->function->nregs];
+        instructionindx indx = f->pc-v->current->code.data;
+        
+        debug_symbolsforfunction(v->current, f->function, &indx, symbols);
+        
+        for (int i=0; i<f->function->nregs; i++) {
+            if (!MORPHO_ISNIL(symbols[i]) && MORPHO_ISEQUAL(symbols[i], matchstr)) {
+                morpho_printvalue(symbols[i]);
+                
+                printf(" (in %s", (f==v->frame ? "global" : ""));
+                if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(f->function->name);
+                printf(") ");
+                
+                printf("= ");
+                value val = v->stack.data[f->roffset+i];
+
+                if (MORPHO_ISOBJECT(val)) {
+                    value printmethod, out;
+                    if (morpho_lookupmethod(val, MORPHO_OBJECT(&prntlabel), &printmethod)) {
+                        morpho_invoke(v, val, printmethod, 0, NULL, &out);
+                    }
+                } else {
+                    morpho_printvalue(val);
+                }
+                printf("\n");
+            }
+        }
     }
 }
 
@@ -544,6 +580,21 @@ static bool debug_parseint(char *in, int *out) {
     if (*input=='\0') return false;
     if (out) *out=atoi(input);
     return true;
+}
+
+/** Parses a symbol */
+static bool debug_parsesymbol(char *in, varray_char *out) {
+    char *input=in;
+    while (*input!='\0' && isspace(*input)) input++; // Skip space
+    
+    while (*input!='\0' && (isalpha(*input) || isdigit(*input) || *input=='_')) {
+        varray_charwrite(out, *input);
+        input++;
+    }
+    
+    if (out->count>0) varray_charwrite(out, '\0'); // Ensure null terminated.
+    
+    return (out->count>0);
 }
 
 /** Morpho debugger */
@@ -621,8 +672,18 @@ void debugger(vm *v) {
                 case 'T': case 't': // Trace
                     morpho_stacktrace(v);
                     break;
-                case '.':
-                    debug_showsymbol(v, NULL);
+                case '.': {
+                    varray_char symbol;
+                    varray_charinit(&symbol);
+                    
+                    if (debug_parsesymbol(input+1, &symbol)) {
+                        debug_printsymbol(v, symbol.data);
+                    } else {
+                        debug_showsymbols(v);
+                    }
+                    
+                    varray_charclear(&symbol);
+                }
                     break;
                 case '=':
                     printf("Not implemented...\n");

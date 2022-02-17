@@ -6,6 +6,7 @@ Morpho
    :maxdepth: 1
 
    syntax
+   values
    variables
    controlflow
    functions
@@ -47,6 +48,7 @@ Morpho
 
    color
    constants
+   delaunay
    graphics
    implicitmesh
    kdtree

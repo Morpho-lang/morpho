@@ -108,3 +108,23 @@ Join two lists together:
 
     var l1 = [1,2,3], l2 = [4, 5, 6]
     print l1+l2 // expect: [1,2,3,4,5,6]
+
+## Tuples
+[tagtuples]: # (tuples)
+
+Generate all possible n-tuples from a list:
+
+    var t = [ 1, 2, 3].tuples(2)
+    
+produces `[ [ 1, 1 ], [ 1, 2 ], [ 1, 3 ] ... ]`.
+    
+## Sets
+[tagtuples]: # (sets)
+
+Generate all possible sets of order n from a list. 
+
+    var t = [ 1, 2, 3 ].tuples(2)
+    
+produces `[ [ 1, 2 ], [ 1, 3 ], [ 2, 3 ] ]`.
+
+Note that sets include only distinct elements from the list (no element is repeated) and ordering is unimportant, hence only one of  `[ 1, 2 ]` and `[ 2, 1 ]` is returned. 

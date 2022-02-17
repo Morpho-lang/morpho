@@ -26,6 +26,7 @@
 #define ERROR_MESSAGE_PROPERTY "message"
 
 #define STRING_SPLIT_METHOD "split"
+#define STRING_ISNUMBER_METHOD "isnumber"
 #define ARRAY_DIMENSIONS_METHOD "dimensions"
 
 #define LIST_ISMEMBER_METHOD "ismember"
@@ -34,6 +35,8 @@
 #define LIST_POP_METHOD "pop"
 #define LIST_INSERT_METHOD "insert"
 #define LIST_REMOVE_METHOD "remove"
+#define LIST_TUPLES_METHOD "tuples"
+#define LIST_SETS_METHOD "sets"
 
 #define DICTIONARY_KEYS_METHOD "keys"
 #define DICTIONARY_CONTAINS_METHOD "contains"
@@ -95,6 +98,7 @@
 /* Public interfaces to various data structures */
 typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_OUTOFBOUNDS,ARRAY_NONINTINDX } objectarrayerror;
 
+bool string_tonumber(objectstring *string, value *out);
 int string_countchars(objectstring *s);
 char *string_index(objectstring *s, int i);
 

@@ -205,3 +205,45 @@ bool morpho_countparameters(value f, int *nparams) {
 
     return success;
 }
+
+/** Initialize tuple generator
+ @param[in] nval - number of values
+ @param[in] n - n-tuples to generate
+ @param[in] c - workspace: supply an unsigned integer array of size 2xn  */
+void morpho_tuplesinit(unsigned int nval, unsigned int n, unsigned int *c, tuplemode mode) {
+    unsigned int *counter=c, *cmax=c+n; // Counters
+    for (unsigned int i=0; i<n; i++) {
+        counter[i]=(mode == MORPHO_SETMODE ? i : 0 );
+        cmax[i]=(mode == MORPHO_SETMODE ? nval-n+i : nval-1);
+    }
+}
+
+/** Generate n-tuples of unique elements indep of ordering from a list of values
+ @param[in] nval - number of values
+ @param[in] list - list of values
+ @param[in] n - n-tuples to generate
+ @param[in] c - workspace: supply an unsigned integer array of size 2xn;
+ @param[out] tuple - generated tuple
+ @returns true if we returned a valid tuple; false if we're done */
+bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int *c, tuplemode mode, value *tuple) {
+    unsigned int *counter=c, *cmax=c+n; // Counters
+    int k;
+    
+    if (counter[0]>cmax[0]) return false; // Done
+    
+    // Generate tuple from counter
+    for (unsigned int i=0; i<n; i++) tuple[i]=list[counter[i]];
+    
+    // Increment counters
+    counter[n-1]++; // Increment last counter
+    for (k=n-1; k>0 && counter[k]>cmax[k]; k--) counter[k-1]++; // Carry
+    
+    if (k<n-1) {
+        if (mode==MORPHO_TUPLEMODE) for (unsigned int i=k+1; i<n; i++) counter[i]=0;
+        if (mode==MORPHO_SETMODE) for (unsigned int i=k+1; i<n; i++) counter[i]=counter[i-1]+1;
+    }
+    
+    return true;
+}
+
+

@@ -1,0 +1,32 @@
+// Convert strings to numbers
+
+var a = "123"
+var b = "baa"
+
+print a.isnumber() 
+// expect: true
+
+print b.isnumber() 
+// expect: false
+
+print "+1.23e-12".isnumber() 
+// expect: true
+
+print Int("122")+1
+// expect: 123
+
+print Int("125x + 3 #@#@")+1 
+// expect: 126
+
+print Int("12.343")+1 
+// expect: 13
+
+print Float("1.1")
+// expect: 1.1
+
+print Float("-1.1")
+// expect: -1.1
+
+print Float("+1e-3")
+// expect: 0.001
+

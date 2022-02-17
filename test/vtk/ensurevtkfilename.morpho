@@ -20,7 +20,7 @@ for (filename in filenames) {
 
     vtkI = VTKImporter(filename)
 
-    var m2 = vtkI.getmesh()
+    var m2 = vtkI.mesh()
 
     print m2 
 }

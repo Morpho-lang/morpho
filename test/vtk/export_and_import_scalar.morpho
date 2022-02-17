@@ -15,9 +15,9 @@ vtkE.export(filename)
 
 var vtkI = VTKImporter(filename)
 
-var m2 = vtkI.getmesh()
+var m2 = vtkI.mesh()
 
-var f2 = vtkI.getfield("f")
+var f2 = vtkI.field("f")
 
 print m2 // expect: <Mesh: 2 vertices>
 

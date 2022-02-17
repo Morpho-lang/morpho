@@ -15,8 +15,62 @@ Contact: chaitanya.joshi@tufts.edu */
 import meshtools 
 import parser
 
+// Defining a VTK class that contains methods common to both the importer and the exporter
+class VTK {
+    init() {}
+
+    // Check whether `fieldname` is a a string is free of whitespaces (a VTK file requirement)
+    _checkfieldname(fieldname) {
+
+        // Check the fieldname
+        if (!isnil(fieldname)) {
+            // If not nil, first check whether the fieldname is a string
+            if (!isstring(fieldname)) {
+                self.err = Error("FnameNotStr", "Expected a string, but received `${fieldname}`.")
+                self.err.throw()
+            }
+            // Now that it's a string, checking for embedded whitespaces
+            for (c in fieldname) {
+                if (c==" ") {
+                    self.err = Error("InvalidFname", "fieldname (`${fieldname}`) cannot have embedded whitespaces.")
+                    self.err.throw()
+                }
+            }
+        }
+
+    }
+
+    
+    // Ensure that `filename` ends in ".vtk"
+    _ensurevtk(filename) {
+        
+        if (!isstring(filename)) {
+            self.err = Error("FnameNotStr", "Expected a string, but received `${filename}`.")
+            self.err.throw()
+        }
+        var fl = filename.split(".")
+
+        var n = fl.count()
+
+        if (n == 0) { // No extension
+            return "${filename}.vtk"
+        }
+        else if (fl[n-1] != "vtk") {
+            // Either a wrong extension has been provided, or the
+            // filename itself is expected to contain a period, like
+            // mesh.2.vtk. We again add ".vtk" at the end in this case.
+            return "${filename}.vtk"
+        }
+        else {
+            return filename
+        }
+
+    }
+
+}
+
 // VTKExporter: Exports Fields and / or Meshes to a .vtk file
-class VTKExporter {
+class VTKExporter is VTK {
 
     init(obj, fieldname=nil) {
         
@@ -227,27 +281,6 @@ class VTKExporter {
     
     }
 
-    // Check whether `fieldname` is a a string is free of whitespaces (a VTK file requirement)
-    _checkfieldname(fieldname) {
-
-        // Check the fieldname
-        if (!isnil(fieldname)) {
-            // If not nil, first check whether the fieldname is a string
-            if (!isstring(fieldname)) {
-                self.err = Error("FnameNotStr", "Expected a string, but received `${fieldname}`.")
-                self.err.throw()
-            }
-            // Now that it's a string, checking for embedded whitespaces
-            for (c in fieldname) {
-                if (c==" ") {
-                    self.err = Error("InvalidFname", "fieldname (`${fieldname}`) cannot have embedded whitespaces.")
-                    self.err.throw()
-                }
-            }
-        }
-
-    }
-
     // Function to add a field to the exporter.
     // Here, `field` is the Field object to be added, and `fieldname` is the name the user wishes to designate the field with. This `fieldname` cannot have embedded whitespaces in it.
     // Both the field and the fieldname get added to their respective lists 
@@ -257,40 +290,17 @@ class VTKExporter {
         // If above is passed, add field to the fields list!
         self.fields.append(field)
 
-        self._checkfieldname(fieldname)
+        super._checkfieldname(fieldname)
         // If above is passed, add to the fieldnames list!
         self.fieldnames.append(fieldname)
     
-    }
-
-    // Ensure that `filename` ends in ".vtk"
-    _ensurevtk() {
-        
-        if (!isstring(self.filename)) {
-            self.err = Error("FnameNotStr", "Expected a string, but received `${self.filename}`.")
-            self.err.throw()
-        }
-        var fl = self.filename.split(".")
-
-        var n = fl.count()
-
-        if (n == 0) { // No extension
-            self.filename = "${self.filename}.vtk"
-        }
-        else if (fl[n-1] != "vtk") {
-            // Either a wrong extension has been provided, or the
-            // filename itself is expected to contain a period, like
-            // mesh.2.vtk. We again add ".vtk" at the end in this case.
-            self.filename = "${self.filename}.vtk"
-        }
-
     }
     
     // Function to export the fields and / or meshes to a file with the name `filename`. This name has to include the ".vtk" extension
     export(filename) {
         
-        self.filename = filename
-        self._ensurevtk()
+        // Ensure filename ends with ".vtk"
+        self.filename = super._ensurevtk(filename)
 
         // Open file for writing
         var f = File(self.filename, "write")
@@ -319,14 +329,14 @@ class VTKExporter {
 }
 
 // VTKImporter: Imports Fields and / or Meshes from a .vtk file
-class VTKImporter {
+class VTKImporter is VTK {
 
     // Initialize with the filename
     init(filename) {
         
-        self.filename = filename
         // Ensure filename ends with ".vtk"
-        self._ensurevtk()
+        self.filename = super._ensurevtk(filename)
+        
 
         // Start a mesh builder
         self.mb = MeshBuilder(dimension=3)
@@ -413,26 +423,6 @@ class VTKImporter {
                 
     }
 
-    // Ensure that `filename` ends in ".vtk"
-    _ensurevtk() {
-
-        var fl = self.filename.split(".")
-
-        var n = fl.count()
-
-        if (n == 0) { // No extension
-            self.filename = "${self.filename}.vtk"
-        }
-        else if (fl[n-1] != "vtk") {
-            // Either a wrong extension has been provided, or the
-            // filename itself is expected to contain a period, like
-            // mesh.2.vtk. We again add ".vtk" at the end in this case.
-            self.filename = "${self.filename}.vtk"
-        }
-
-    }
-
-    
     // Generate a vector out of the next three characters
     _getvector() {
 
@@ -471,20 +461,35 @@ class VTKImporter {
         }
     }
 
-    // Method that returns the mesh
-    getmesh() {
+    // returns the mesh
+    mesh() {
         return self.mesh
     }
 
-    // Method that returns the field named `fieldname`
-    getfield(fieldname) {
+    // Returns the field named `fieldname`
+    field(fieldname) {
+
+        super._checkfieldname(fieldname)
         try {
             return self.fields[fieldname]
         } catch {
             "DctKyNtFnd":
-                self.err = Error("FieldNotFound", "Couldn't find the field `${fieldname}` in the file.")
+                Error("FieldNotFound", "Couldn't find the field `${fieldname}` in the file.").throw()
                 
         }
-    } 
+    }
+
+    // Returns a list of the names of the fields present in the file
+    fieldlist() {
+        return self.fields.keys()
+    }
+
+    // Checks whether the file contains a field by a given fieldname 
+    containsfield(fieldname) {
+
+        super._checkfieldname(fieldname)
+        return self.fields.contains(fieldname)
+
+    }
 
 }

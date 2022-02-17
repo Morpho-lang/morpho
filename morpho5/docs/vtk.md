@@ -81,13 +81,23 @@ Initialize the `VTKImporter` with the filename
 
     var vtkI = VTKImporter("output.vtk")
 
-Use the `getmesh` method to get the mesh:
+Use the `mesh` method to get the mesh:
 
-    var mesh = vtkI.getmesh()
+    var mesh = vtkI.mesh()
 
-Use the `getfield` method to get the field:
+Use the `field` method to get the field:
 
-    var f = vtkI.getfield(fieldname)
+    var f = vtkI.field(fieldname)
+
+Use the `fieldlist` method to get the list of the names of the fields contained in the file:
+
+    print vtkI.fieldlist()
+
+Use the `containsfield` method to check whether the file contains a field by a given `fieldname`:
+
+    if (tkI.containsfield(fieldname)) {
+        ... 
+    }
 
 where `fieldname` is the name assigned to the field in the .vtk file
 

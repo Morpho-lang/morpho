@@ -9,6 +9,7 @@
 #include "vm.h"
 #include "compile.h"
 #include "veneer.h"
+#include "builtin.h"
 #include "morpho.h"
 #include "debug.h"
 
@@ -98,7 +99,7 @@ instructionindx program_getentry(program *p) {
 void program_bindobject(program *p, object *obj) {
     if (!obj->next && /* Object is not already bound to the program (or something else) */
         obj->status==OBJECT_ISUNMANAGED && /* Object is unmanaged */
-        obj->type!=OBJECT_BUILTINFUNCTION && /* Object is not a built in function that is freed separately */
+        (!MORPHO_ISBUILTINFUNCTION(MORPHO_OBJECT(obj))) && /* Object is not a built in function that is freed separately */
         (p->boundlist!=obj->next && p->boundlist!=NULL) /* To handle the case where the object is the only object */
         ) {
 
@@ -787,7 +788,7 @@ static inline bool vm_invoke(vm *v, value obj, value method, int nargs, value *a
         }
     } else if (MORPHO_ISOBJECT(obj)) {
         /* If it's an object, it may have a veneer class */
-        objectclass *klass = builtin_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
+        objectclass *klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
         if (klass) {
             value ifunc;
             if (dictionary_getintern(&klass->methods, method, &ifunc)) {
@@ -1281,7 +1282,7 @@ callfunction: // Jump here if an instruction becomes a call
                 }
             } else if (MORPHO_ISOBJECT(left)) {
                 /* If it's an object, it may have a veneer class */
-                objectclass *klass = builtin_getveneerclass(MORPHO_GETOBJECTTYPE(left));
+                objectclass *klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
                 if (klass) {
                     value ifunc;
                     if (dictionary_getintern(&klass->methods, right, &ifunc)) {
@@ -1434,7 +1435,7 @@ callfunction: // Jump here if an instruction becomes a call
                 }
             } else if (MORPHO_ISOBJECT(left)) {
                 /* If it's an object, it may have a veneer class */
-                objectclass *klass = builtin_getveneerclass(MORPHO_GETOBJECTTYPE(left));
+                objectclass *klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
                 if (klass) {
                     value ifunc;
                     if (dictionary_get(&klass->methods, right, &ifunc)) {
@@ -1901,7 +1902,7 @@ objectclass *morpho_lookupclass(value obj) {
         objectinstance *instance=MORPHO_GETINSTANCE(obj);
         out=instance->klass;
     } else {
-        out = builtin_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
+        out = object_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
     }
     return out;
 }
@@ -1924,7 +1925,7 @@ bool morpho_lookupmethod(value obj, value label, value *method) {
  @returns true on success, false otherwise */
 bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value *ret) {
     objectinvocation inv;
-    object_init((object *) &inv, OBJECT_INVOCATION);
+    object_init((object *) &inv, object_invocationtype);
     inv.receiver=obj;
     inv.method=method;
 

@@ -796,7 +796,7 @@ void field_initialize(void) {
     builtin_addfunction(FIELD_CLASSNAME, field_constructor, BUILTIN_FLAGSEMPTY);
     
     value fieldclass=builtin_addclass(FIELD_CLASSNAME, MORPHO_GETCLASSDEFINITION(Field), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_FIELD, fieldclass);
+    object_setveneerclass(OBJECT_FIELD, fieldclass);
     
     morpho_defineerror(FIELD_INDICESOUTSIDEBOUNDS, ERROR_HALT, FIELD_INDICESOUTSIDEBOUNDS_MSG);
     morpho_defineerror(FIELD_INVLDINDICES, ERROR_HALT, FIELD_INVLDINDICES_MSG);

@@ -38,7 +38,7 @@ static objecthelptopic *topics = NULL;
 
 /** Create a new help topic */
 objecthelptopic *help_newtopic(char *topic, char *file, long int location, objecthelptopic *parent) {
-    objecthelptopic *new = (objecthelptopic *) object_new(sizeof(objecthelptopic), OBJECT_EXTERN);
+    objecthelptopic *new = (objecthelptopic *) object_new(sizeof(objecthelptopic), OBJECT_HELPTOPIC);
     
     if (new) {
         new->topic=morpho_strdup(topic);

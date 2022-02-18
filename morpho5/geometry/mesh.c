@@ -1237,7 +1237,7 @@ void mesh_initialize(void) {
     builtin_addfunction(MESH_CLASSNAME, mesh_constructor, BUILTIN_FLAGSEMPTY);
 
     value meshclass=builtin_addclass(MESH_CLASSNAME, MORPHO_GETCLASSDEFINITION(Mesh), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_MESH, meshclass);
+    object_setveneerclass(OBJECT_MESH, meshclass);
 
     morpho_defineerror(MESH_FILENOTFOUND, ERROR_HALT, MESH_FILENOTFOUND_MSG);
     morpho_defineerror(MESH_VERTMTRXDIM, ERROR_HALT, MESH_VERTMTRXDIM_MSG);

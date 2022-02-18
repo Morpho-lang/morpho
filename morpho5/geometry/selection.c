@@ -533,7 +533,7 @@ void selection_initialize(void) {
     builtin_addfunction(SELECTION_CLASSNAME, selection_constructor, BUILTIN_FLAGSEMPTY);
     
     value selectionclass=builtin_addclass(SELECTION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Selection), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_SELECTION, selectionclass);
+    object_setveneerclass(OBJECT_SELECTION, selectionclass);
     
     morpho_defineerror(SELECTION_NOMESH, ERROR_HALT, SELECTION_NOMESH_MSG);
     morpho_defineerror(SELECTION_ISSLCTDARG, ERROR_HALT, SELECTION_ISSLCTDARG_MSG);

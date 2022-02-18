@@ -20,8 +20,11 @@ void object_finalize(void);
  * Generic objects
  * --------------------------- */
 
+/** Categorizes the type of an object */
+typedef int objecttype;
+
 /** The type of an object */
-typedef enum {
+/*typedef enum {
     OBJECT_STRING,
     OBJECT_FUNCTION,
     OBJECT_BUILTINFUNCTION,
@@ -38,13 +41,13 @@ typedef enum {
     OBJECT_SPARSE,
     OBJECT_DOKKEY,
     
-    /* Geometry classes */
+    // Geometry classes
     OBJECT_MESH,
     OBJECT_SELECTION,
     OBJECT_FIELD,
     
-    OBJECT_EXTERN /* Intended for objects that are only visible to morpho and not involved in the runtime e.g. the help system.  */
-} objecttype;
+    OBJECT_EXTERN  Intended for objects that are only visible to morpho and not involved in the runtime e.g. the help system.
+} objecttype; */
 
 /** Simplest object */
 struct sobject {
@@ -92,9 +95,6 @@ static inline void morpho_freeobject(value val) {
  * by providing a few interface functions
  * -------------------------------------- */
 
-/** Categorizes the type of an object */
-//typedef objecttype int;
-
 /** Prints a short identifier for the object */
 typedef void (*objectprintfn) (object *obj);
 
@@ -109,6 +109,7 @@ typedef size_t (*objectsizefn) (object *obj);
 
 /** Define a custom object type */
 typedef struct {
+    object *veneer; // Veneer class
     objectfreefn freefn;
     objectmarkfn markfn;
     objectsizefn sizefn;
@@ -132,6 +133,7 @@ objecttypedefn *object_getdefn(object *obj);
  * --------------------------- */
 
 extern objecttype object_stringtype;
+#define OBJECT_STRING object_stringtype
 
 /** A string object */
 typedef struct {
@@ -146,7 +148,7 @@ typedef struct {
 #define MORPHO_GETSTRINGLENGTH(val)       (((objectstring *) MORPHO_GETOBJECT(val))->length)
 
 /** Tests whether an object is a string */
-#define MORPHO_ISSTRING(val) object_istype(val, object_stringtype)
+#define MORPHO_ISSTRING(val) object_istype(val, OBJECT_STRING)
 
 /** Use to create static strings on the C stack */
 #define MORPHO_STATICSTRING(cstring)      { .obj.type=object_stringtype, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=strlen(cstring) }
@@ -184,6 +186,7 @@ DECLARE_VARRAY(varray_upvalue, varray_upvalue)
  * --------------------------- */
 
 extern objecttype object_functiontype;
+#define OBJECT_FUNCTION object_functiontype
 
 typedef struct {
     value symbol; /** Symbol associated with the variable */
@@ -211,7 +214,7 @@ typedef struct sobjectfunction {
 #define MORPHO_GETFUNCTION(val)   ((objectfunction *) MORPHO_GETOBJECT(val))
 
 /** Tests whether an object is a function */
-#define MORPHO_ISFUNCTION(val) object_istype(val, object_functiontype)
+#define MORPHO_ISFUNCTION(val) object_istype(val, OBJECT_FUNCTION)
 
 void object_functioninit(objectfunction *func);
 void object_functionclear(objectfunction *func);
@@ -224,6 +227,9 @@ objectfunction *object_newfunction(indx entry, value name, objectfunction *paren
 /* ---------------------------
  * Upvalue objects
  * --------------------------- */
+
+extern objecttype object_upvaluetype;
+#define OBJECT_UPVALUE object_upvaluetype
 
 typedef struct sobjectupvalue {
     object obj;
@@ -239,11 +245,14 @@ objectupvalue *object_newupvalue(value *reg);
 #define MORPHO_GETUPVALUE(val)   ((objectupvalue *) MORPHO_GETOBJECT(val))
 
 /** Tests whether an object is a function */
-#define MORPHO_ISUPVALUE(val) object_istype(val, OBJECT_UPVALUE)
+#define MORPHO_ISUPVALUE(val) object_istype(val, object_upvaluetype)
 
 /* ---------------------------
  * Closures
  * --------------------------- */
+
+extern objecttype object_closuretype;
+#define OBJECT_CLOSURE object_closuretype
 
 typedef struct {
     object obj;
@@ -266,6 +275,9 @@ objectclosure *object_newclosure(objectfunction *sf, objectfunction *func, indx 
 /* ---------------------------
  * Classes
  * --------------------------- */
+
+extern objecttype object_classtype;
+#define OBJECT_CLASS object_classtype
 
 typedef struct sobjectclass {
     object obj;
@@ -291,6 +303,9 @@ objectclass *morpho_lookupclass(value obj);
  * Instances
  * --------------------------- */
 
+extern objecttype object_instancetype;
+#define OBJECT_INSTANCE object_instancetype
+
 typedef struct {
     object obj;
     objectclass *klass;
@@ -311,6 +326,9 @@ bool objectinstance_getproperty(objectinstance *obj, value key, value *val);
 /* ---------------------------
  * Bound methods
  * --------------------------- */
+
+extern objecttype object_invocationtype;
+#define OBJECT_INVOCATION object_invocationtype
 
 typedef struct {
     object obj;
@@ -334,6 +352,9 @@ bool objectinstance_getpropertybycstring(objectinstance *obj, char *property, va
  * Ranges
  * ------------------------------------------------------- */
 
+extern objecttype object_rangetype;
+#define OBJECT_RANGE object_rangetype
+
 typedef struct {
     object obj;
     unsigned int nsteps; 
@@ -354,6 +375,9 @@ objectrange *object_newrange(value start, value end, value step);
  * Lists
  * ------------------------------------------------------- */
 
+extern objecttype object_listtype;
+#define OBJECT_LIST object_listtype
+
 typedef struct {
     object obj;
     varray_value val;
@@ -373,6 +397,9 @@ objectlist *object_newlist(unsigned int nval, value *val);
 /* -------------------------------------------------------
  * Dictionaries
  * ------------------------------------------------------- */
+
+extern objecttype object_dictionarytype;
+#define OBJECT_DICTIONARY object_dictionarytype
 
 typedef struct {
     object obj;
@@ -395,6 +422,9 @@ objectdictionary *object_newdictionary(void);
 /* -------------------------------------------------------
  * Arrays
  * ------------------------------------------------------- */
+
+extern objecttype object_arraytype;
+#define OBJECT_ARRAY object_arraytype
 
 typedef struct {
     object obj;
@@ -428,6 +458,9 @@ objectarray *object_arrayfromvalueindices(unsigned int ndim, value *dim);
  * Matrices
  * ------------------------------------------------------- */
 
+extern objecttype object_matrixtype;
+#define OBJECT_MATRIX object_matrixtype
+
 /** Matrices are a purely numerical collection type oriented toward linear algebra.
     Elements are stored in column-major format, i.e.
         [ 1 2 ]
@@ -459,11 +492,14 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 
 /** @brief Use to create static matrices on the C stack
     @details Intended for small matrices; Caller needs to supply a double array of size nr*nc. */
-#define MORPHO_STATICMATRIX(darray, nr, nc)      { .obj.type=OBJECT_MATRIX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .elements=darray, .nrows=nr, .ncols=nc }
+#define MORPHO_STATICMATRIX(darray, nr, nc)      { .obj.type=object_matrixtype, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .elements=darray, .nrows=nr, .ncols=nc }
 
 /* -------------------------------------------------------
  * Sparse matrices
  * ------------------------------------------------------- */
+
+extern objecttype object_dokkeytype;
+#define OBJECT_DOKKEY object_dokkeytype
 
 /** The dictionary of keys format uses this special object type to store indices, enabling use of the existing dictionary type.
     @warning These are for internal use only and should never be  returned to user code */
@@ -507,6 +543,9 @@ typedef struct {
     double *values; // Values
 } sparseccs;
 
+extern objecttype object_sparsetype;
+#define OBJECT_SPARSE object_sparsetype
+
 typedef struct {
     object obj;
     sparsedok dok;
@@ -526,6 +565,9 @@ objectsparse *sparse_sparsefromarray(objectarray *array);
  * Mesh
  * ------------------------------------------------------- */
 
+extern objecttype object_meshtype;
+#define OBJECT_MESH object_meshtype
+
 typedef struct {
     object obj;
     unsigned int dim;
@@ -535,7 +577,7 @@ typedef struct {
 } objectmesh;
 
 /** Tests whether an object is a mesh */
-#define MORPHO_ISMESH(val) object_istype(val, OBJECT_MESH)
+#define MORPHO_ISMESH(val) object_istype(val, object_meshtype)
 
 /** Gets the object as a mesh */
 #define MORPHO_GETMESH(val)   ((objectmesh *) MORPHO_GETOBJECT(val))
@@ -546,6 +588,9 @@ objectmesh *object_newmesh(unsigned int dim, unsigned int nv, double *v);
 /* -------------------------------------------------------
  * Selection
  * ------------------------------------------------------- */
+
+extern objecttype object_selectiontype;
+#define OBJECT_SELECTION object_selectiontype
 
 typedef struct {
     object obj;
@@ -571,6 +616,9 @@ objectselection *object_newselection(objectmesh *mesh);
 /* -------------------------------------------------------
  * Field
  * ------------------------------------------------------- */
+
+extern objecttype object_fieldtype;
+#define OBJECT_FIELD object_fieldtype
 
 typedef struct {
     object obj;
@@ -598,3 +646,10 @@ typedef struct {
 objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *dof);
 
 #endif /* object_h */
+
+/* -------------------------------------------------------
+ * Veneer classes
+ * ------------------------------------------------------- */
+
+void object_setveneerclass(objecttype type, value class);
+objectclass *object_getveneerclass(objecttype type);

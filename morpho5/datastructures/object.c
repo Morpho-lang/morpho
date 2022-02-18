@@ -44,6 +44,7 @@ objecttype object_addtype(objecttypedefn *def) {
     }
     
     objectdefns[objectdefnnext]=*def;
+    objectdefns[objectdefnnext].veneer = NULL; 
     objectdefnnext+=1;
     
     return objectdefnnext-1;
@@ -52,6 +53,19 @@ objecttype object_addtype(objecttypedefn *def) {
 /** Gets the appropriate definition given an object */
 objecttypedefn *object_getdefn(object *obj) {
     return &objectdefns[obj->type];
+}
+
+/** @brief Sets the veneer class for a particular object type */
+void object_setveneerclass(objecttype type, value class) {
+    if (objectdefns[type].veneer!=NULL) {
+        UNREACHABLE("Veneer class redefined.\n");
+    }
+    objectdefns[type].veneer=(object *) MORPHO_GETCLASS(class);
+}
+
+/** @brief Gets the veneer for a particular object type */
+objectclass *object_getveneerclass(objecttype type) {
+    return (objectclass *) objectdefns[type].veneer;
 }
 
 /* **********************************************************************
@@ -773,14 +787,6 @@ objectarray *object_newarray(unsigned int ndim, unsigned int *dim) {
  * Printing
  * --------------------------- */
 
-static void object_printstring(value v) {
-    printf("%s", MORPHO_GETCSTRING(v));
-}
-
-static void object_printfunction(objectfunction *f) {
-    if (f) printf("<fn %s>", (MORPHO_ISNIL(f->name) ? "" : MORPHO_GETCSTRING(f->name)));
-}
-
 /** Prints an object */
 void object_print(value v) {
     object *obj = MORPHO_GETOBJECT(v);
@@ -924,6 +930,19 @@ objecttype object_closuretype;
 objecttype object_classtype;
 objecttype object_instancetype;
 objecttype object_invocationtype;
+
+objecttype object_arraytype;
+objecttype object_listtype;
+objecttype object_matrixtype;
+objecttype object_sparsetype;
+objecttype object_dictionarytype;
+objecttype object_fieldtype;
+objecttype object_helptopictype;
+objecttype object_meshtype;
+objecttype object_rangetype;
+objecttype object_selectiontype;
+objecttype object_dokkeytype;
+objecttype object_builtinfunctiontype;
 
 void object_initialize(void) {
 #ifdef MORPHO_REUSEPOOL

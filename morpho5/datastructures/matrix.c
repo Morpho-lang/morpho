@@ -1025,7 +1025,7 @@ void matrix_initialize(void) {
     builtin_addfunction(MATRIX_CLASSNAME, matrix_constructor, BUILTIN_FLAGSEMPTY);
     
     value matrixclass=builtin_addclass(MATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(Matrix), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_MATRIX, matrixclass);
+    object_setveneerclass(OBJECT_MATRIX, matrixclass);
     
     morpho_defineerror(MATRIX_INDICESOUTSIDEBOUNDS, ERROR_HALT, MATRIX_INDICESOUTSIDEBOUNDS_MSG);
     morpho_defineerror(MATRIX_INVLDINDICES, ERROR_HALT, MATRIX_INVLDINDICES_MSG);

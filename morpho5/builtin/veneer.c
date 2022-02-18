@@ -1705,27 +1705,27 @@ void veneer_initialize(void) {
     /* String */
     builtin_addfunction(STRING_CLASSNAME, string_constructor, BUILTIN_FLAGSEMPTY);
     value stringclass=builtin_addclass(STRING_CLASSNAME, MORPHO_GETCLASSDEFINITION(String), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_STRING, stringclass);
+    object_setveneerclass(OBJECT_STRING, stringclass);
 
     /* Array */
     builtin_addfunction(ARRAY_CLASSNAME, array_constructor, BUILTIN_FLAGSEMPTY);
     value arrayclass=builtin_addclass(ARRAY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Array), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_ARRAY, arrayclass);
+    object_setveneerclass(OBJECT_ARRAY, arrayclass);
     
     /* List */
     builtin_addfunction(LIST_CLASSNAME, list_constructor, BUILTIN_FLAGSEMPTY);
     value listclass=builtin_addclass(LIST_CLASSNAME, MORPHO_GETCLASSDEFINITION(List), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_LIST, listclass);
+    object_setveneerclass(OBJECT_LIST, listclass);
     
     /* Dictionary */
     builtin_addfunction(DICTIONARY_CLASSNAME, dictionary_constructor, BUILTIN_FLAGSEMPTY);
     value dictionaryclass=builtin_addclass(DICTIONARY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Dictionary), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_DICTIONARY, dictionaryclass);
+    object_setveneerclass(OBJECT_DICTIONARY, dictionaryclass);
     
     /* Range */
     builtin_addfunction(RANGE_CLASSNAME, range_constructor, BUILTIN_FLAGSEMPTY);
     value rangeclass=builtin_addclass(RANGE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Range), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_RANGE, rangeclass);
+    object_setveneerclass(OBJECT_RANGE, rangeclass);
     
     /* Error */
     builtin_addclass(ERROR_CLASSNAME, MORPHO_GETCLASSDEFINITION(Error), MORPHO_NIL);

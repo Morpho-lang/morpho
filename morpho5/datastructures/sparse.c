@@ -1155,7 +1155,7 @@ void sparse_initialize(void) {
     builtin_addfunction(SPARSE_CLASSNAME, sparse_constructor, BUILTIN_FLAGSEMPTY);
     
     value sparseclass=builtin_addclass(SPARSE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Sparse), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_SPARSE, sparseclass);
+    object_setveneerclass(OBJECT_SPARSE, sparseclass);
     
     morpho_defineerror(SPARSE_CONSTRUCTOR, ERROR_HALT, SPARSE_CONSTRUCTOR_MSG);
     morpho_defineerror(SPARSE_SETFAILED, ERROR_HALT, SPARSE_SETFAILED_MSG);

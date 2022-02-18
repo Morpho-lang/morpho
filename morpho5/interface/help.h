@@ -13,6 +13,9 @@
 #include "object.h"
 #include "linedit.h"
 
+extern objecttype object_helptopictype;
+#define OBJECT_HELPTOPIC object_helptopictype
+
 typedef struct sobjecthelptopic {
     object obj;
     char *topic; // Topic name

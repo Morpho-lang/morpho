@@ -103,6 +103,11 @@ void morpho_freevm(vm *v);
 /* Bind new objects to the virtual machine */
 void morpho_bindobjects(vm *v, int nobj, value *obj);
 
+/* Interact with the garbage collector in an object definition */
+void morpho_markobject(void *v, object *obj);
+void morpho_markvalue(void *v, value val);
+void morpho_markvarrayvalue(void *v, varray_value *array);
+
 /* Tell the VM that the size of an object has changed */
 void morpho_resizeobject(vm *v, object *obj, size_t oldsize, size_t newsize);
 

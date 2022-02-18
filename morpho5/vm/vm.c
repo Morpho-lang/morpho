@@ -289,6 +289,23 @@ void vm_gcmarkarray(vm *v, varray_value *array) {
     }
 }
 
+/** Public veneers */
+void morpho_markobject(void *v, object *obj) {
+    vm_gcmarkobject((vm *) v, obj);
+}
+
+void morpho_markvalue(void *v, value val) {
+    vm_gcmarkvalue((vm *) v, val);
+}
+
+void morpho_markdictionary(void *v, dictionary *dict) {
+    vm_gcmarkdictionary((vm *) v, dict);
+}
+
+void morpho_markvarrayvalue(void *v, varray_value *array) {
+    vm_gcmarkarray((vm *) v, array);
+}
+
 /** Searches a vm for all reachable objects */
 void vm_gcmarkroots(vm *v) {
     /** Mark anything on the stack */
@@ -341,7 +358,9 @@ void vm_gcmarkretainobject(vm *v, object *obj) {
     morpho_printvalue(MORPHO_OBJECT(obj));
     printf("\n");
 #endif
-    switch (obj->type) {
+    objecttypedefn *defn=object_getdefn(obj);
+    if (defn->markfn) defn->markfn(obj, v);
+    /*switch (obj->type) {
         case OBJECT_BUILTINFUNCTION:
         case OBJECT_MATRIX:
         case OBJECT_DOKKEY:
@@ -422,7 +441,7 @@ void vm_gcmarkretainobject(vm *v, object *obj) {
         case OBJECT_EXTERN: {
         }
             break;
-    }
+    }*/
 }
 
 /** Trace all objects on the graylist */

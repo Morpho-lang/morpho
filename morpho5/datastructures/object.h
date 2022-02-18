@@ -66,6 +66,10 @@ struct sobject {
 /** Sets an objects key */
 #define MORPHO_SETOBJECTHASH(val, newhash)  (MORPHO_GETOBJECT(val)->hsh = newhash)
 
+/* ---------------------------
+ * Generic object functions
+ * --------------------------- */
+
 /** Tests whether an object is of a specified type */
 static inline bool object_istype(value val, objecttype type) {
     return (MORPHO_ISOBJECT(val) && MORPHO_GETOBJECTTYPE(val)==type);
@@ -83,9 +87,51 @@ static inline void morpho_freeobject(value val) {
     if (MORPHO_ISOBJECT(val)) object_free(MORPHO_GETOBJECT(val));
 }
 
+/* --------------------------------------
+ * Custom object types can be defined
+ * by providing a few interface functions
+ * -------------------------------------- */
+
+/** Categorizes the type of an object */
+//typedef objecttype int;
+
+/** Prints a short identifier for the object */
+typedef void (*objectprintfn) (object *obj);
+
+/** Mark the contents of an object */
+typedef void (*objectmarkfn) (object *obj, void *v);
+
+/** Frees any unmanaged subsidiary data structures for an object */
+typedef void (*objectfreefn) (object *obj);
+
+/** Returns the size of an object and allocated data */
+typedef size_t (*objectsizefn) (object *obj);
+
+/** Define a custom object type */
+typedef struct {
+    objectfreefn freefn;
+    objectmarkfn markfn;
+    objectsizefn sizefn;
+    objectprintfn printfn;
+} objecttypedefn;
+
+DECLARE_VARRAY(objecttypedefn, objecttypedefn)
+
+void object_nullfn(object *obj);
+
+objecttype object_addtype(objecttypedefn *def);
+
+objecttypedefn *object_getdefn(object *obj);
+
+/* *************************************
+ * We now define essential object types
+ * ************************************* */
+
 /* ---------------------------
  * Strings
  * --------------------------- */
+
+extern objecttype object_stringtype;
 
 /** A string object */
 typedef struct {
@@ -100,13 +146,13 @@ typedef struct {
 #define MORPHO_GETSTRINGLENGTH(val)       (((objectstring *) MORPHO_GETOBJECT(val))->length)
 
 /** Tests whether an object is a string */
-#define MORPHO_ISSTRING(val) object_istype(val, OBJECT_STRING)
+#define MORPHO_ISSTRING(val) object_istype(val, object_stringtype)
 
 /** Use to create static strings on the C stack */
-#define MORPHO_STATICSTRING(cstring)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=strlen(cstring) }
+#define MORPHO_STATICSTRING(cstring)      { .obj.type=object_stringtype, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=strlen(cstring) }
 
 /** Use to create static strings on the C stack */
-#define MORPHO_STATICSTRINGWITHLENGTH(cstring, len)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=len }
+#define MORPHO_STATICSTRINGWITHLENGTH(cstring, len)      { .obj.type=object_stringtype, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=len }
 
 
 #define OBJECT_STRINGLABEL "string"
@@ -118,7 +164,7 @@ value object_clonestring(value val);
 value object_concatenatestring(value a, value b);
 
 /* -------------------------------------------------------
- * Upvalues
+ * Upvalue structure
  * ------------------------------------------------------- */
 
 /** Each upvalue */
@@ -136,6 +182,8 @@ DECLARE_VARRAY(varray_upvalue, varray_upvalue)
 /* ---------------------------
  * Functions
  * --------------------------- */
+
+extern objecttype object_functiontype;
 
 typedef struct {
     value symbol; /** Symbol associated with the variable */
@@ -163,7 +211,7 @@ typedef struct sobjectfunction {
 #define MORPHO_GETFUNCTION(val)   ((objectfunction *) MORPHO_GETOBJECT(val))
 
 /** Tests whether an object is a function */
-#define MORPHO_ISFUNCTION(val) object_istype(val, OBJECT_FUNCTION)
+#define MORPHO_ISFUNCTION(val) object_istype(val, object_functiontype)
 
 void object_functioninit(objectfunction *func);
 void object_functionclear(objectfunction *func);

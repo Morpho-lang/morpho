@@ -74,6 +74,9 @@
 /** @brief Maximum number of constants */
 #define MORPHO_MAXCONSTANTS 65536
 
+/** @brief Maximum number of object types */
+#define MORPHO_MAXIMUMOBJECTDEFNS 64
+
 /* **********************************************************************
 * Performance
 * ********************************************************************** */
@@ -136,7 +139,7 @@
 //#define MORPHO_DEBUG_DISABLEGARBAGECOLLECTOR
 
 /** @brief Stress test garbage collector */
-//#define MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
+#define MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
 
 /** @brief Log garbage collector */
 //#define MORPHO_DEBUG_LOGGARBAGECOLLECTOR

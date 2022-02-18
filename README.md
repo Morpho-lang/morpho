@@ -1,4 +1,4 @@
-![Morpho](manual/src/Figures/morphologosmall.png)
+![Morpho](manual/src/Figures/morphologosmall.png#gh-light-mode-only)![Morpho](manual/src/Figures/morphologosmall-white.png#gh-dark-mode-only)
 
 The Morpho language. Morpho is a programmable environment for shape optimization. Morpho aims to be:
 

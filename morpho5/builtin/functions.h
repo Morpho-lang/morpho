@@ -17,9 +17,9 @@ void functions_initialize(void);
 #define FUNCTION_CLOCK         "clock"
 #define FUNCTION_SYSTEM        "system"
 
-#define FUNCTION_INT           "int"
-#define FUNCTION_FLOAT         "float"
-#define FUNCTION_BOOL          "bool"
+#define FUNCTION_INT           "Int"
+#define FUNCTION_FLOAT         "Float"
+#define FUNCTION_BOOL          "Bool"
 #define FUNCTION_MOD           "mod"
 #define FUNCTION_ABS           "abs"
 #define FUNCTION_ISCALLABLE    "iscallable"

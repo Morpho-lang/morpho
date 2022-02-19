@@ -18,7 +18,7 @@ fn countswaps(n, p, q) {
     // Do this repeatedly until X==1
     for (i in 0..n-1) q[i]=p[i] // Start by copying the array
     for (var q0=q[0]; q0!=1; q0=q[0]) {
-        for (i in 0..int(floor(q0/2))-1) { // Reverse first q0 elements
+        for (i in 0..Int(floor(q0/2))-1) { // Reverse first q0 elements
             swap(q, i, q0-1-i)
         }
         swaps+=1

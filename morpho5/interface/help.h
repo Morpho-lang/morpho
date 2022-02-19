@@ -13,8 +13,8 @@
 #include "object.h"
 #include "linedit.h"
 
-extern objecttype object_helptopictype;
-#define OBJECT_HELPTOPIC object_helptopictype
+extern objecttype objecthelptopictype;
+#define OBJECT_HELPTOPIC objecthelptopictype
 
 typedef struct sobjecthelptopic {
     object obj;

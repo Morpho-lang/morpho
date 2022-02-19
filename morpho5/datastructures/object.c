@@ -411,7 +411,7 @@ objecttypedefn objectupvaluedefn = {
     .printfn=objectupvalue_printfn,
     .markfn=objectupvalue_markfn,
     .freefn=NULL,
-    .sizefn=objectupvalue_sizefn,
+    .sizefn=objectupvalue_sizefn
 };
 
 
@@ -463,7 +463,7 @@ objecttypedefn objectclosuredefn = {
     .printfn=objectclosure_printfn,
     .markfn=objectclosure_markfn,
     .freefn=NULL,
-    .sizefn=objectclosure_sizefn,
+    .sizefn=objectclosure_sizefn
 };
 
 /** Closure functions */
@@ -590,7 +590,7 @@ objecttypedefn objectinstancedefn = {
     .printfn=objectinstance_printfn,
     .markfn=objectinstance_markfn,
     .freefn=objectinstance_freefn,
-    .sizefn=objectinstance_sizefn,
+    .sizefn=objectinstance_sizefn
 };
 
 /** Create an instance */
@@ -671,7 +671,7 @@ objecttypedefn objectinvocationdefn = {
     .printfn=objectinvocation_printfn,
     .markfn=objectinvocation_markfn,
     .freefn=NULL,
-    .sizefn=objectinvocation_sizefn,
+    .sizefn=objectinvocation_sizefn
 };
 
 /** Create a new invocation */
@@ -689,6 +689,32 @@ objectinvocation *object_newinvocation(value receiver, value method) {
 /* **********************************************************************
  * Dictionaries
  * ********************************************************************** */
+
+/** Instance object definitions */
+void objectdictionary_printfn(object *obj) {
+    printf("<Dictionary>");
+}
+
+void objectdictionary_freefn(object *obj) {
+    objectdictionary *dict = (objectdictionary *) obj;
+    dictionary_clear(&dict->dict);
+}
+
+void objectdictionary_markfn(object *obj, void *v) {
+    objectdictionary *c = (objectdictionary *) obj;
+    morpho_markdictionary(v, &c->dict);
+}
+
+size_t objectdictionary_sizefn(object *obj) {
+    return sizeof(objectdictionary)+(((objectdictionary *) obj)->dict.capacity)*sizeof(dictionaryentry);
+}
+
+objecttypedefn objectdictionarydefn = {
+    .printfn=objectdictionary_printfn,
+    .markfn=objectdictionary_markfn,
+    .freefn=objectdictionary_freefn,
+    .sizefn=objectdictionary_sizefn
+};
 
 /** Creates a new dictionary */
 objectdictionary *object_newdictionary(void) {
@@ -708,6 +734,33 @@ dictionary *object_dictionary(objectdictionary *dict) {
  * Lists
  * ********************************************************************** */
 
+/** Instance object definitions */
+void objectlist_printfn(object *obj) {
+    printf("<List>");
+}
+
+void objectlist_freefn(object *obj) {
+    objectlist *list = (objectlist *) obj;
+    varray_valueclear(&list->val);
+}
+
+void objectlist_markfn(object *obj, void *v) {
+    objectlist *c = (objectlist *) obj;
+    morpho_markvarrayvalue(v, &c->val);
+}
+
+size_t objectlist_sizefn(object *obj) {
+    return sizeof(objectlist)+sizeof(value) *
+            ((objectlist *) obj)->val.capacity;
+}
+
+objecttypedefn objectlistdefn = {
+    .printfn=objectlist_printfn,
+    .markfn=objectlist_markfn,
+    .freefn=objectlist_freefn,
+    .sizefn=objectlist_sizefn
+};
+
 /** Creates a new list */
 objectlist *object_newlist(unsigned int nval, value *val) {
     objectlist *new = (objectlist *) object_new(sizeof(objectlist), OBJECT_LIST);
@@ -724,6 +777,30 @@ objectlist *object_newlist(unsigned int nval, value *val) {
 /* **********************************************************************
  * Arrays
  * ********************************************************************** */
+
+/** Instance object definitions */
+void objectarray_printfn(object *obj) {
+    printf("<Array>");
+}
+
+void objectarray_markfn(object *obj, void *v) {
+    objectarray *c = (objectarray *) obj;
+    for (unsigned int i=0; i<c->nelements; i++) {
+        morpho_markvalue(v, c->values[i]);
+    }
+}
+
+size_t objectarray_sizefn(object *obj) {
+    return sizeof(objectarray) +
+        sizeof(value) * ( ((objectarray *) obj)->nelements+2*((objectarray *) obj)->ndim );
+}
+
+objecttypedefn objectarraydefn = {
+    .printfn=objectarray_printfn,
+    .markfn=objectarray_markfn,
+    .freefn=NULL,
+    .sizefn=objectarray_sizefn
+};
 
 /** Initializes an array given the size */
 void object_arrayinit(objectarray *array, unsigned int ndim, unsigned int *dim) {
@@ -923,26 +1000,26 @@ size_t object_size(object *obj) {
  * Initialization
  * ********************************************************************** */
 
-objecttype object_stringtype;
-objecttype object_functiontype;
-objecttype object_upvaluetype;
-objecttype object_closuretype;
-objecttype object_classtype;
-objecttype object_instancetype;
-objecttype object_invocationtype;
+objecttype objectstringtype;
+objecttype objectfunctiontype;
+objecttype objectupvaluetype;
+objecttype objectclosuretype;
+objecttype objectclasstype;
+objecttype objectinstancetype;
+objecttype objectinvocationtype;
 
-objecttype object_arraytype;
-objecttype object_listtype;
-objecttype object_matrixtype;
-objecttype object_sparsetype;
-objecttype object_dictionarytype;
-objecttype object_fieldtype;
-objecttype object_helptopictype;
-objecttype object_meshtype;
-objecttype object_rangetype;
-objecttype object_selectiontype;
-objecttype object_dokkeytype;
-objecttype object_builtinfunctiontype;
+objecttype objectdictionarytype;
+objecttype objectarraytype;
+objecttype objectlisttype;
+
+objecttype objectmatrixtype;
+objecttype objectsparsetype;
+
+objecttype objectfieldtype;
+objecttype objectmeshtype;
+objecttype objectrangetype;
+objecttype objectselectiontype;
+objecttype objectdokkeytype;
 
 void object_initialize(void) {
 #ifdef MORPHO_REUSEPOOL
@@ -950,13 +1027,26 @@ void object_initialize(void) {
     npool=0;
 #endif
     
-    object_stringtype=object_addtype(&objectstringdefn);
-    object_functiontype=object_addtype(&objectfunctiondefn);
-    object_upvaluetype=object_addtype(&objectupvaluedefn);
-    object_closuretype=object_addtype(&objectclosuredefn);
-    object_classtype=object_addtype(&objectclassdefn);
-    object_instancetype=object_addtype(&objectinstancedefn);
-    object_invocationtype=object_addtype(&objectinvocationdefn);
+    objectstringtype=object_addtype(&objectstringdefn);
+    objectfunctiontype=object_addtype(&objectfunctiondefn);
+    objectupvaluetype=object_addtype(&objectupvaluedefn);
+    objectclosuretype=object_addtype(&objectclosuredefn);
+    objectclasstype=object_addtype(&objectclassdefn);
+    objectinstancetype=object_addtype(&objectinstancedefn);
+    objectinvocationtype=object_addtype(&objectinvocationdefn);
+    
+    objectarraytype=object_addtype(&objectarraydefn);
+    objectlisttype=object_addtype(&objectlistdefn);
+    objectdictionarytype=object_addtype(&objectdictionarydefn);
+    
+    objectmatrixtype=object_addtype(&objectinvocationdefn);
+    objectsparsetype=object_addtype(&objectinvocationdefn);
+    
+    objectfieldtype=object_addtype(&objectinvocationdefn);
+    objectmeshtype=object_addtype(&objectinvocationdefn);
+    objectrangetype=object_addtype(&objectinvocationdefn);
+    objectselectiontype=object_addtype(&objectinvocationdefn);
+    objectdokkeytype=object_addtype(&objectinvocationdefn);
 }
 
 void object_finalize(void) {

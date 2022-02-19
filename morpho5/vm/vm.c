@@ -1925,7 +1925,7 @@ bool morpho_lookupmethod(value obj, value label, value *method) {
  @returns true on success, false otherwise */
 bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value *ret) {
     objectinvocation inv;
-    object_init((object *) &inv, object_invocationtype);
+    object_init((object *) &inv, OBJECT_INVOCATION);
     inv.receiver=obj;
     inv.method=method;
 

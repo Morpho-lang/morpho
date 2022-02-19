@@ -113,6 +113,35 @@ bool builtin_iscallable(value val) {
 }
 
 /* **********************************************************************
+ * object_builtinfunction definition
+ * ********************************************************************** */
+
+objecttype objectbuiltinfunctiontype;
+
+/** Instance object definitions */
+void objectbuiltinfunction_printfn(object *obj) {
+    objectbuiltinfunction *f = (objectbuiltinfunction *) obj;
+    if (f) printf("<fn %s>", (MORPHO_ISNIL(f->name) ? "" : MORPHO_GETCSTRING(f->name)));
+}
+
+void objectbuiltinfunction_freefn(object *obj) {
+    objectbuiltinfunction *func = (objectbuiltinfunction *) obj;
+    morpho_freeobject(func->name);
+}
+
+size_t objectbuiltinfunction_sizefn(object *obj) {
+    return sizeof(objectbuiltinfunction);
+}
+
+objecttypedefn objectbuiltinfunctiondefn = {
+    .printfn=objectbuiltinfunction_printfn,
+    .markfn=NULL,
+    .freefn=objectbuiltinfunction_freefn,
+    .sizefn=objectbuiltinfunction_sizefn
+};
+
+
+/* **********************************************************************
  * Create and find builtin functions
  * ********************************************************************** */
 
@@ -238,6 +267,8 @@ value builtin_internsymbolascstring(char *symbol) {
  * ********************************************************************** */
 
 void builtin_initialize(void) {
+    objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
+    
     dictionary_init(&builtin_functiontable);
     dictionary_init(&builtin_classtable);
     dictionary_init(&builtin_symboltable);

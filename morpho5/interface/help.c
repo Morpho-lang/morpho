@@ -36,6 +36,23 @@ static objecthelptopic *topics = NULL;
  * Help topics
  * ********************************************************************** */
 
+objecttype objecthelptopictype;
+
+/** Help topic object definitions */
+void objecthelptopic_printfn(object *obj) {
+}
+
+size_t objecthelptopic_sizefn(object *obj) {
+    return sizeof(objecthelptopic);
+}
+
+objecttypedefn objecthelptopicdefn = {
+    .printfn = objecthelptopic_printfn,
+    .markfn = NULL,
+    .freefn = NULL,
+    .sizefn = objecthelptopic_sizefn
+};
+
 /** Create a new help topic */
 objecthelptopic *help_newtopic(char *topic, char *file, long int location, objecthelptopic *parent) {
     objecthelptopic *new = (objecthelptopic *) object_new(sizeof(objecthelptopic), OBJECT_HELPTOPIC);
@@ -477,6 +494,8 @@ bool help_searchpath(char *path) {
 /** Initializes the help system
  *  @returns true if help is available */
 bool help_initialize(void) {
+    objecthelptopictype=object_addtype(&objecthelptopicdefn);
+    
     dictionary_init(&helpdict);
     
     return help_searchpath(MORPHO_HELPDIRECTORY);

@@ -26,8 +26,8 @@ typedef unsigned int builtinfunctionflags;
 typedef value (*builtinfunction) (vm *v, int nargs, value *args);
 
 /** Object type for built in function */
-extern objecttype object_builtinfunctiontype;
-#define OBJECT_BUILTINFUNCTION object_builtinfunctiontype
+extern objecttype objectbuiltinfunctiontype;
+#define OBJECT_BUILTINFUNCTION objectbuiltinfunctiontype
 
 /** A built in function object */
 typedef struct  {

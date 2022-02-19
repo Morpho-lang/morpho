@@ -35,7 +35,7 @@ void objectmesh_printfn(object *obj) {
 void objectmesh_markfn(object *obj, void *v) {
     objectmesh *c = (objectmesh *) obj;
     if (c->vert) morpho_markobject(v, (object *) c->vert);
-    if (c->conn) morpho_markobject(v, (object *) c->conn);
+    if (c->conn) morpho_searchunmanagedobject(v, (object *) c->conn);
 }
 
 void objectmesh_freefn(object *obj) {

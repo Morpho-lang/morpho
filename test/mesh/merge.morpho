@@ -8,6 +8,18 @@ merge.addmesh([m2])
 var m = merge.merge()
 
 var lines = m.connectivitymatrix(0,1)
+print lines
+// expect: [ 1 0 0 0 0 0 0 0 0 1 ]
+// expect: [ 1 1 0 0 0 0 0 0 0 0 ]
+// expect: [ 0 1 1 0 0 0 0 0 0 0 ]
+// expect: [ 0 0 1 1 0 0 0 0 0 0 ]
+// expect: [ 0 0 0 1 1 0 0 0 0 0 ]
+// expect: [ 0 0 0 0 1 1 0 0 0 0 ]
+// expect: [ 0 0 0 0 0 1 1 0 0 0 ]
+// expect: [ 0 0 0 0 0 0 1 1 0 0 ]
+// expect: [ 0 0 0 0 0 0 0 1 1 0 ]
+// expect: [ 0 0 0 0 0 0 0 0 1 1 ]
+
 for (elid in 0...m.count(1)) print lines.rowindices(elid)
 // expect: [ 0, 1 ]
 // expect: [ 1, 2 ]

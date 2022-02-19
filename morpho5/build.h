@@ -139,7 +139,7 @@
 //#define MORPHO_DEBUG_DISABLEGARBAGECOLLECTOR
 
 /** @brief Stress test garbage collector */
-#define MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
+//#define MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
 
 /** @brief Log garbage collector */
 //#define MORPHO_DEBUG_LOGGARBAGECOLLECTOR

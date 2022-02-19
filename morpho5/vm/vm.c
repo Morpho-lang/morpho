@@ -445,6 +445,11 @@ void vm_gcmarkretainobject(vm *v, object *obj) {
     }*/
 }
 
+/** Forces the GC to search an unmanaged object */
+void morpho_searchunmanagedobject(void *v, object *obj) {
+    vm_gcmarkretainobject((vm *) v, obj);
+}
+
 /** Trace all objects on the graylist */
 void vm_gctrace(vm *v) {
     while (v->gray.graycount>0) {
@@ -1483,13 +1488,13 @@ callfunction: // Jump here if an instruction becomes a call
 					objectarrayerror err=array_getelement(MORPHO_GETARRAY(left), ndim, indx, &reg[b]);
 					if (err!=ARRAY_OK) ERROR( array_error(err) );
 				} else {
-					value newVal = MORPHO_NIL;
+					value newval = MORPHO_NIL;
 					objectarrayerror err = getslice(&left,&array_slicedim,&array_sliceconstructor,\
-													&array_slicecopy,ndim,&reg[b],&newVal);
+													&array_slicecopy,ndim,&reg[b],&newval);
 					if (err!=ARRAY_OK) ERROR(array_error(err));
 					
-					if (newVal) {
-						reg[b] = newVal;
+					if (!MORPHO_ISNIL(newval)) {
+						reg[b] = newval;
 						vm_bindobject(v, reg[b]);
 					} else  ERROR(VM_NONNUMINDX);
 				}

@@ -599,7 +599,7 @@ value Matrix_getindex(vm *v, int nargs, value *args) {
     } else { // now try to get a slice
 		objectarrayerror err = getslice(&MORPHO_SELF(args), &matrix_slicedim, &matrix_sliceconstructor, &matrix_slicecopy, nargs, &MORPHO_GETARG(args,0), &out);
 		if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_matrix_error(err) );
-		if (out!=MORPHO_NIL){
+		if (MORPHO_ISOBJECT(out)){
 			morpho_bindobjects(v,1,&out);
 		} else morpho_runtimeerror(v, MATRIX_INVLDINDICES);
 	}

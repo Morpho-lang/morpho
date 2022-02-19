@@ -92,6 +92,7 @@ void object_free(object *obj) {
     }
 #endif
     if (object_getdefn(obj)->freefn) object_getdefn(obj)->freefn(obj);
+    MORPHO_FREE(obj);
     
     /* We must free any private unmanaged data */
     /*switch (obj->type) {
@@ -177,8 +178,6 @@ void object_free(object *obj) {
         default:
             break;
     }*/
-    
-    MORPHO_FREE(obj);
 }
 
 /** Free an object if it is unmanaged */

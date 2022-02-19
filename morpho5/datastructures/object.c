@@ -93,96 +93,22 @@ void object_free(object *obj) {
 #endif
     if (object_getdefn(obj)->freefn) object_getdefn(obj)->freefn(obj);
     MORPHO_FREE(obj);
-    
-    /* We must free any private unmanaged data */
-    /*switch (obj->type) {
-        case OBJECT_FUNCTION: {
-            objectfunction *func = (objectfunction *) obj;
-            morpho_freeobject(func->name);
-            varray_optionalparamclear(&func->opt);
-            object_functionclear(func);
-        }
-            break;
-        case OBJECT_BUILTINFUNCTION: {
-            objectbuiltinfunction *func = (objectbuiltinfunction *) obj;
-            morpho_freeobject(func->name);
-        }
-            break;
-        case OBJECT_CLASS: {
-            objectclass *klass = (objectclass *) obj;
-            morpho_freeobject(klass->name);
-            dictionary_clear(&klass->methods);
-        }
-            break;
-        case OBJECT_INSTANCE: {
-            objectinstance *instance = (objectinstance *) obj;
-            
-#ifdef MORPHO_REUSEPOOL
-            if (npool<POOLMAX) {
-                obj->next=pool;
-                pool=obj;
-                npool++;
-                return;
-            }
-#endif
-        
-            dictionary_clear(&instance->fields);
-        }
-            break;
-        case OBJECT_ARRAY: {
-            // Should free children of unmanaged arrays
-        }
-            break;
-        case OBJECT_DICTIONARY: {
-            objectdictionary *dict = (objectdictionary *) obj;
-            dictionary_clear(&dict->dict);
-        }
-            break;
-        case OBJECT_LIST: {
-            objectlist *list = (objectlist *) obj;
-            varray_valueclear(&list->val);
-        }
-            break;
-        case OBJECT_MATRIX: {
-        }
-            break;
-        case OBJECT_SPARSE: {
-            objectsparse *s = (objectsparse *) obj;
-            sparse_clear(s);
-        }
-            break;
-        case OBJECT_MESH: {
-            objectmesh *m = (objectmesh *) obj;
-            if (m->link) {
-                object *next=NULL;
-                for (object *obj=m->link; obj!=NULL; obj=next) {
-                    next=obj->next;
-                    object_free(obj);
-                }
-            }
-            if (m->conn) object_free((object *) m->conn);
-        }
-            break;
-        case OBJECT_SELECTION: {
-            objectselection *s = (objectselection *) obj;
-            selection_clear(s);
-        }
-            break;
-        case OBJECT_FIELD: {
-            objectfield *f = (objectfield *) obj;
-            
-            if (f->dof) MORPHO_FREE(f->dof);
-            if (f->offset) MORPHO_FREE(f->offset);
-            if (f->pool) MORPHO_FREE(f->pool);
-        }
-        default:
-            break;
-    }*/
 }
 
 /** Free an object if it is unmanaged */
 void object_freeunmanaged(object *obj) {
     if (obj->status==OBJECT_ISUNMANAGED) object_free(obj);
+}
+
+/** Prints an object */
+void object_print(value v) {
+    object *obj = MORPHO_GETOBJECT(v);
+    object_getdefn(obj)->printfn(obj);
+}
+
+/** Gets the total size of an object */
+size_t object_size(object *obj) {
+    return object_getdefn(obj)->sizefn(obj);
 }
 
 /** @brief Allocates an object
@@ -899,146 +825,6 @@ objectrange *object_newrange(value start, value end, value step) {
     }
     
     return new;
-}
-
-/* **********************************************************************
- * Utility functions
- * ********************************************************************** */
-
-/* ---------------------------
- * Printing
- * --------------------------- */
-
-/** Prints an object */
-void object_print(value v) {
-    object *obj = MORPHO_GETOBJECT(v);
-    object_getdefn(obj)->printfn(obj);
-    
-    /*
-    switch(MORPHO_GETOBJECTTYPE(v)) {
-        case OBJECT_STRING: object_printstring(v); break;
-        case OBJECT_FUNCTION: object_printfunction(MORPHO_GETFUNCTION(v)); break;
-        case OBJECT_BUILTINFUNCTION: builtin_printfunction(MORPHO_GETBUILTINFUNCTION(v)); break;
-        case OBJECT_CLOSURE:
-            printf("<");
-            object_printfunction(MORPHO_GETCLOSUREFUNCTION(v));
-            printf(">");
-            break;
-        case OBJECT_UPVALUE:
-            printf("upvalue");
-            break;
-        case OBJECT_CLASS:
-#ifndef MORPHO_LOXCOMPATIBILITY
-            printf("@");
-#endif
-            object_printstring(MORPHO_GETCLASS(v)->name);
-            break;
-        case OBJECT_INSTANCE:
-#ifndef MORPHO_LOXCOMPATIBILITY
-            printf("<");
-#endif
-            object_printstring(MORPHO_GETINSTANCE(v)->klass->name);
-#ifndef MORPHO_LOXCOMPATIBILITY
-            printf(">");
-#else
-            printf(" instance");
-#endif
-            break;
-        case OBJECT_INVOCATION:
-#ifndef MORPHO_LOXCOMPATIBILITY
-            object_print(MORPHO_GETINVOCATION(v)->receiver);
-            printf(".");
-#endif
-            object_print(MORPHO_GETINVOCATION(v)->method);
-            break;
-        case OBJECT_RANGE: {
-            objectrange *r = MORPHO_GETRANGE(v);
-            morpho_printvalue(r->start);
-            printf("..");
-            morpho_printvalue(r->end);
-            if (!MORPHO_ISNIL(r->step)) {
-                printf(":");
-                morpho_printvalue(r->step);
-            }
-        }
-            break;
-        case OBJECT_ARRAY:
-            printf("<Array>");
-            break;
-        case OBJECT_MATRIX:
-            printf("<Matrix>");
-            break;
-        case OBJECT_SPARSE:
-            printf("<Sparse>");
-            break;
-        case OBJECT_DICTIONARY:
-            printf("<Dictionary>");
-            break;
-        case OBJECT_MESH:
-            printf("<Mesh>");
-            break;
-        case OBJECT_SELECTION:
-            printf("<Selection>");
-            break;
-        case OBJECT_FIELD:
-            printf("<Field>");
-            break;
-        case OBJECT_LIST:
-            printf("<List>");
-            break;
-        default:
-            UNREACHABLE("unhandled object type [Check object_print()]");
-    }*/
-}
-
-/** Gets the total size of an object */
-size_t object_size(object *obj) {
-    return object_getdefn(obj)->sizefn(obj);
-    
-    /*switch (obj->type) {
-        case OBJECT_STRING:
-            return sizeof(objectstring)+((objectstring *) obj)->length+1;
-        case OBJECT_CLOSURE:
-            return sizeof(objectclosure)+ sizeof(objectupvalue *)*((objectclosure *) obj)->nupvalues;
-        case OBJECT_UPVALUE:
-            return sizeof(objectupvalue);
-        case OBJECT_FUNCTION:
-            return sizeof(objectfunction);
-        case OBJECT_BUILTINFUNCTION:
-            return sizeof(objectbuiltinfunction);
-        case OBJECT_CLASS:
-            return sizeof(objectclass);
-        case OBJECT_INSTANCE:
-            return sizeof(objectinstance);
-        case OBJECT_INVOCATION:
-            return sizeof(objectinvocation);
-        case OBJECT_RANGE:
-            return sizeof(objectrange);
-        case OBJECT_DICTIONARY:
-            return sizeof(objectdictionary)+(((objectdictionary *) obj)->dict.capacity)*sizeof(dictionaryentry); 
-        case OBJECT_ARRAY:
-            return sizeof(objectarray) +
-            sizeof(value) * ( ((objectarray *) obj)->nelements+2*((objectarray *) obj)->ndim );
-        case OBJECT_LIST:
-            return sizeof(objectlist)+sizeof(value) *
-                    ((objectlist *) obj)->val.capacity;
-        case OBJECT_MATRIX:
-            return sizeof(objectmatrix)+sizeof(double) *
-                    ((objectmatrix *) obj)->ncols *
-                    ((objectmatrix *) obj)->nrows;
-        case OBJECT_DOKKEY:
-            return sizeof(objectdokkey);
-        case OBJECT_SPARSE:
-            return sparse_size((objectsparse *) obj);
-        case OBJECT_MESH:
-            return sizeof(objectmesh);
-        case OBJECT_SELECTION:
-            return sizeof(objectselection)+sizeof(objectsparse *)*((objectselection *) obj)->ngrades;
-        case OBJECT_FIELD:
-            return sizeof(objectfield)+(((objectfield *) obj)->ngrades * sizeof(int));
-        case OBJECT_EXTERN:
-            return sizeof(object);
-    }*/
 }
 
 /* **********************************************************************

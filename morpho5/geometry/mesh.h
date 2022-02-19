@@ -10,6 +10,7 @@
 
 #include "varray.h"
 #include "matrix.h"
+#include "sparse.h"
 
 /* -------------------------------------------------------
  * Mesh object

@@ -647,7 +647,7 @@ bool objectinstance_getproperty(objectinstance *obj, value key, value *val) {
  * Invocations
  * ********************************************************************** */
 
-/** Instance object definitions */
+/** Invocation object definitions */
 void objectinvocation_printfn(object *obj) {
     objectinvocation *c = (objectinvocation *) obj;
 #ifndef MORPHO_LOXCOMPATIBILITY
@@ -690,7 +690,7 @@ objectinvocation *object_newinvocation(value receiver, value method) {
  * Dictionaries
  * ********************************************************************** */
 
-/** Instance object definitions */
+/** Dictionary object definitions */
 void objectdictionary_printfn(object *obj) {
     printf("<Dictionary>");
 }
@@ -734,7 +734,7 @@ dictionary *object_dictionary(objectdictionary *dict) {
  * Lists
  * ********************************************************************** */
 
-/** Instance object definitions */
+/** List object definitions */
 void objectlist_printfn(object *obj) {
     printf("<List>");
 }
@@ -778,7 +778,7 @@ objectlist *object_newlist(unsigned int nval, value *val) {
  * Arrays
  * ********************************************************************** */
 
-/** Instance object definitions */
+/** Array object definitions */
 void objectarray_printfn(object *obj) {
     printf("<Array>");
 }
@@ -855,6 +855,12 @@ objectarray *object_newarray(unsigned int ndim, unsigned int *dim) {
     
     return new;
 }
+
+/* **********************************************************************
+ * Ranges
+ * ********************************************************************** */
+
+
 
 /* **********************************************************************
  * Utility functions
@@ -1012,8 +1018,6 @@ objecttype objectdictionarytype;
 objecttype objectarraytype;
 objecttype objectlisttype;
 
-objecttype objectdokkeytype;
-objecttype objectsparsetype;
 objecttype objectrangetype;
 
 void object_initialize(void) {
@@ -1033,11 +1037,8 @@ void object_initialize(void) {
     objectarraytype=object_addtype(&objectarraydefn);
     objectlisttype=object_addtype(&objectlistdefn);
     objectdictionarytype=object_addtype(&objectdictionarydefn);
-    
-    objectsparsetype=object_addtype(&objectinvocationdefn);
 
     objectrangetype=object_addtype(&objectinvocationdefn);
-    objectdokkeytype=object_addtype(&objectinvocationdefn);
 }
 
 void object_finalize(void) {

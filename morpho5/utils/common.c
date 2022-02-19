@@ -11,10 +11,69 @@
 #include <sys/stat.h>
 #include "common.h"
 #include "object.h"
+#include "sparse.h"
 
 /* **********************************************************************
 * Utility functions 
 * ********************************************************************** */
+
+/** @brief Compares two values
+ * @param a value to compare
+ * @param b value to compare
+ * @returns 0 if a and b are equal, a positive number if b\>a and a negative number if a\<b
+ * @warning does not work if a and b are not the same type (use MORPHO_CHECKCMPTYPE to promote types if ordering is important) */
+#define EQUAL 0
+#define NOTEQUAL 1
+#define BIGGER 1
+#define SMALLER -1
+int morpho_comparevalue (value a, value b) {
+    if (!morpho_ofsametype(a, b)) return NOTEQUAL;
+    
+    if (MORPHO_ISFLOAT(a)) {
+        double x = MORPHO_GETFLOATVALUE(b) - MORPHO_GETFLOATVALUE(a);
+        if (x>DBL_EPSILON) return BIGGER; /* Fast way out for clear cut cases */
+        if (x<-DBL_EPSILON) return SMALLER;
+        /* Assumes absolute tolerance is the same as relative tolerance. */
+        if (fabs(x)<=DBL_EPSILON*fmax(1.0, fmax(MORPHO_GETFLOATVALUE(a), MORPHO_GETFLOATVALUE(b)))) return EQUAL;
+        return (x>0 ? BIGGER : SMALLER);
+    } else {
+        switch (MORPHO_GETTYPE(a)) {
+            case VALUE_NIL:
+                return EQUAL; /** Nones are always the same */
+            case VALUE_INTEGER:
+                return (MORPHO_GETINTEGERVALUE(b) - MORPHO_GETINTEGERVALUE(a));
+            case VALUE_BOOL:
+                return (MORPHO_GETBOOLVALUE(b) != MORPHO_GETBOOLVALUE(a));
+            case VALUE_OBJECT:
+                {
+                    if (MORPHO_GETOBJECTTYPE(a)!=MORPHO_GETOBJECTTYPE(b)) {
+                        return 1; /* Objects of different type are always different */
+                    } else if (MORPHO_ISSTRING(a)) {
+                        objectstring *astring = MORPHO_GETSTRING(a);
+                        objectstring *bstring = MORPHO_GETSTRING(b);
+                        size_t len = (astring->length > bstring->length ? astring->length : bstring->length);
+                        
+                        return -strncmp(astring->string, bstring->string, len);
+                    } else if (MORPHO_ISDOKKEY(a) && MORPHO_ISDOKKEY(b)) {
+                        objectdokkey *akey = MORPHO_GETDOKKEY(a);
+                        objectdokkey *bkey = MORPHO_GETDOKKEY(b);
+                        
+                        return ((MORPHO_GETDOKKEYCOL(akey)==MORPHO_GETDOKKEYCOL(bkey) &&
+                                 MORPHO_GETDOKKEYROW(akey)==MORPHO_GETDOKKEYROW(bkey)) ? EQUAL : NOTEQUAL);
+                    } else {
+                        return (MORPHO_GETOBJECT(a) == MORPHO_GETOBJECT(b)? EQUAL: NOTEQUAL);
+                    }
+                }
+            default:
+                UNREACHABLE("unhandled value type for comparison [Check morpho_comparevalue]");
+        }
+    }
+    return NOTEQUAL;
+}
+#undef EQUAL
+#undef NOTEQUAL
+#undef BIGGER
+#undef SMALLER
 
 /** @brief Prints a value
  * @param v The value to print */

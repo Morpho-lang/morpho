@@ -50,6 +50,25 @@ void sparse_csparsetoccs(cs *in, sparseccs *out) {
  * Dictionary of keys format
  * *************************************** */
 
+objecttype objectdokkeytype;
+
+/** DOK key object definitions */
+void objectdokkey_printfn(object *obj) {
+    printf("<DOK key>");
+}
+
+size_t objectdokkey_sizefn(object *obj) {
+    return sizeof(objectdokkey);
+}
+
+objecttypedefn objectdokkeydefn = {
+    .printfn=objectdokkey_printfn,
+    .markfn=NULL,
+    .freefn=NULL,
+    .sizefn=objectdokkey_sizefn
+};
+
+
 DEFINE_VARRAY(dokkey, objectdokkey);
 
 /** Initializes a sparsedok structure */
@@ -499,6 +518,37 @@ void sparse_test(void) {
     sparsedok_clear(&dok);
     sparseccs_clear(&ccs);
 }
+
+/* ***************************************
+ * objectsparse definition
+ * *************************************** */
+
+objecttype objectsparsetype;
+
+/** Sparse object definitions */
+void objectsparse_printfn(object *obj) {
+    printf("<Sparse>");
+}
+
+void objectsparse_markfn(object *obj, void *v) {
+    objectsparse *c = (objectsparse *) obj;
+    morpho_markdictionary(v, &c->dok.dict);}
+
+void objectsparse_freefn(object *obj) {
+    objectsparse *s = (objectsparse *) obj;
+    sparse_clear(s);
+}
+
+size_t objectsparse_sizefn(object *obj) {
+    return sparse_size((objectsparse *) obj);
+}
+
+objecttypedefn objectsparsedefn = {
+    .printfn=objectsparse_printfn,
+    .markfn=objectsparse_markfn,
+    .freefn=objectsparse_freefn,
+    .sizefn=objectsparse_sizefn
+};
 
 /* ***************************************
  * objectsparse objects
@@ -1152,6 +1202,9 @@ MORPHO_ENDCLASS
  * *************************************** */
 
 void sparse_initialize(void) {
+    objectdokkeytype=object_addtype(&objectdokkeydefn);
+    objectsparsetype=object_addtype(&objectsparsedefn);
+    
     builtin_addfunction(SPARSE_CLASSNAME, sparse_constructor, BUILTIN_FLAGSEMPTY);
     
     value sparseclass=builtin_addclass(SPARSE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Sparse), MORPHO_NIL);

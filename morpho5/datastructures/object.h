@@ -23,32 +23,6 @@ void object_finalize(void);
 /** Categorizes the type of an object */
 typedef int objecttype;
 
-/** The type of an object */
-/*typedef enum {
-    OBJECT_STRING,
-    OBJECT_FUNCTION,
-    OBJECT_BUILTINFUNCTION,
-    OBJECT_CLOSURE,
-    OBJECT_UPVALUE,
-    OBJECT_CLASS,
-    OBJECT_INSTANCE,
-    OBJECT_INVOCATION,
-    OBJECT_RANGE,
-    OBJECT_LIST,
-    OBJECT_DICTIONARY,
-    OBJECT_ARRAY,
-    OBJECT_MATRIX,
-    OBJECT_SPARSE,
-    OBJECT_DOKKEY,
-    
-    // Geometry classes
-    OBJECT_MESH,
-    OBJECT_SELECTION,
-    OBJECT_FIELD,
-    
-    OBJECT_EXTERN  Intended for objects that are only visible to morpho and not involved in the runtime e.g. the help system.
-} objecttype; */
-
 /** Simplest object */
 struct sobject {
     objecttype type;

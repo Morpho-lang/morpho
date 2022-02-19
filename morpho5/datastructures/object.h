@@ -455,46 +455,6 @@ objectarray *object_arrayfromvarrayvalue(varray_value *v);
 objectarray *object_arrayfromvalueindices(unsigned int ndim, value *dim);
 
 /* -------------------------------------------------------
- * Matrices
- * ------------------------------------------------------- */
-
-extern objecttype objectmatrixtype;
-#define OBJECT_MATRIX objectmatrixtype
-
-/** Matrices are a purely numerical collection type oriented toward linear algebra.
-    Elements are stored in column-major format, i.e.
-        [ 1 2 ]
-        [ 3 4 ]
-    is stored ( 1, 3, 2, 4 ) in memory. This is for compatibility with standard linear algebra packages */
-
-typedef struct {
-    object obj;
-    unsigned int nrows;
-    unsigned int ncols;
-    double *elements;
-    double matrixdata[];
-} objectmatrix;
-
-/** Tests whether an object is a matrix */
-#define MORPHO_ISMATRIX(val) object_istype(val, OBJECT_MATRIX)
-
-/** Gets the object as an matrix */
-#define MORPHO_GETMATRIX(val)   ((objectmatrix *) MORPHO_GETOBJECT(val))
-
-/** Creates a matrix object */
-objectmatrix *object_newmatrix(unsigned int nrows, unsigned int ncols, bool zero);
-
-/** Creates a new matrix from an array */
-objectmatrix *object_matrixfromarray(objectarray *array);
-
-/** Creates a new matrix from an existing matrix */
-objectmatrix *object_clonematrix(objectmatrix *array);
-
-/** @brief Use to create static matrices on the C stack
-    @details Intended for small matrices; Caller needs to supply a double array of size nr*nc. */
-#define MORPHO_STATICMATRIX(darray, nr, nc)      { .obj.type=OBJECT_MATRIX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .elements=darray, .nrows=nr, .ncols=nc }
-
-/* -------------------------------------------------------
  * Sparse matrices
  * ------------------------------------------------------- */
 
@@ -562,94 +522,10 @@ objectsparse *object_newsparse(int *nrows, int *ncols);
 objectsparse *sparse_sparsefromarray(objectarray *array);
 
 /* -------------------------------------------------------
- * Mesh
- * ------------------------------------------------------- */
-
-extern objecttype objectmeshtype;
-#define OBJECT_MESH objectmeshtype
-
-typedef struct {
-    object obj;
-    unsigned int dim;
-    objectmatrix *vert;
-    objectarray *conn;
-    object *link; 
-} objectmesh;
-
-/** Tests whether an object is a mesh */
-#define MORPHO_ISMESH(val) object_istype(val, OBJECT_MESH)
-
-/** Gets the object as a mesh */
-#define MORPHO_GETMESH(val)   ((objectmesh *) MORPHO_GETOBJECT(val))
-
-/** Creates a mesh object */
-objectmesh *object_newmesh(unsigned int dim, unsigned int nv, double *v);
-
-/* -------------------------------------------------------
- * Selection
- * ------------------------------------------------------- */
-
-extern objecttype objectselectiontype;
-#define OBJECT_SELECTION objectselectiontype
-
-typedef struct {
-    object obj;
-    objectmesh *mesh; /** The mesh the selection is referring to */
-    
-    enum {
-        SELECT_ALL, SELECT_NONE, SELECT_SOME
-    } mode; /** What is selected? */
-    
-    unsigned int ngrades; /** Number of grades */
-    dictionary selected[]; /** Selections */
-} objectselection;
-
-/** Tests whether an object is a selection */
-#define MORPHO_ISSELECTION(val) object_istype(val, OBJECT_SELECTION)
-
-/** Gets the object as a selection */
-#define MORPHO_GETSELECTION(val)   ((objectselection *) MORPHO_GETOBJECT(val))
-
-/** Creates an empty selection object */
-objectselection *object_newselection(objectmesh *mesh);
-
-/* -------------------------------------------------------
- * Field
- * ------------------------------------------------------- */
-
-extern objecttype objectfieldtype;
-#define OBJECT_FIELD objectfieldtype
-
-typedef struct {
-    object obj;
-    objectmesh *mesh; /** The mesh the selection is referring to */
-    
-    unsigned int ngrades; /** Number of grades */
-    unsigned int *dof; /** number of degrees of freedom per entry in each grade */
-    unsigned int *offset; /** Offsets into the store for each grade */
-    
-    value prototype; /** Prototype object */
-    unsigned int psize; /** Number of dofs per copy of the prototype */
-    unsigned int nelements; /** Total number of elements in the fireld */
-    void *pool; /** Pool of statically allocated objects */
-    
-    objectmatrix data; /** Underlying data store */
-} objectfield;
-
-/** Tests whether an object is a field */
-#define MORPHO_ISFIELD(val) object_istype(val, OBJECT_FIELD)
-
-/** Gets the object as a field */
-#define MORPHO_GETFIELD(val)   ((objectfield *) MORPHO_GETOBJECT(val))
-
-/** Creates an empty field object */
-objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *dof);
-
-#endif /* object_h */
-
-/* -------------------------------------------------------
  * Veneer classes
  * ------------------------------------------------------- */
 
 void object_setveneerclass(objecttype type, value class);
 objectclass *object_getveneerclass(objecttype type);
+
+#endif /* object_h */

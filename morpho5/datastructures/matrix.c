@@ -14,8 +14,28 @@
 #include "common.h"
 
 /* **********************************************************************
- * Constructors
+ * Matrix objects
  * ********************************************************************** */
+
+objecttype objectmatrixtype;
+
+/** Function object definitions */
+size_t objectmatrix_sizefn(object *obj) {
+    return sizeof(objectmatrix)+sizeof(double) *
+            ((objectmatrix *) obj)->ncols *
+            ((objectmatrix *) obj)->nrows;
+}
+
+void objectmatrix_printfn(object *obj) {
+    printf("<Matrix>");
+}
+
+objecttypedefn objectmatrixdefn = {
+    .printfn=objectmatrix_printfn,
+    .markfn=NULL,
+    .freefn=NULL,
+    .sizefn=objectmatrix_sizefn
+};
 
 /** Creates a matrix object */
 objectmatrix *object_newmatrix(unsigned int nrows, unsigned int ncols, bool zero) {
@@ -33,6 +53,10 @@ objectmatrix *object_newmatrix(unsigned int nrows, unsigned int ncols, bool zero
     
     return new;
 }
+
+/* **********************************************************************
+ * Other constructors
+ * ********************************************************************** */
 
 /*
  * Create matrices from array objects
@@ -1022,6 +1046,8 @@ MORPHO_ENDCLASS
  * ********************************************************************* */
 
 void matrix_initialize(void) {
+    objectmatrixtype=object_addtype(&objectmatrixdefn);
+    
     builtin_addfunction(MATRIX_CLASSNAME, matrix_constructor, BUILTIN_FLAGSEMPTY);
     
     value matrixclass=builtin_addclass(MATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(Matrix), MORPHO_NIL);

@@ -9,6 +9,38 @@
 
 #include "mesh.h"
 
+/* -------------------------------------------------------
+ * Selection objects
+ * ------------------------------------------------------- */
+
+extern objecttype objectselectiontype;
+#define OBJECT_SELECTION objectselectiontype
+
+typedef struct {
+    object obj;
+    objectmesh *mesh; /** The mesh the selection is referring to */
+    
+    enum {
+        SELECT_ALL, SELECT_NONE, SELECT_SOME
+    } mode; /** What is selected? */
+    
+    unsigned int ngrades; /** Number of grades */
+    dictionary selected[]; /** Selections */
+} objectselection;
+
+/** Tests whether an object is a selection */
+#define MORPHO_ISSELECTION(val) object_istype(val, OBJECT_SELECTION)
+
+/** Gets the object as a selection */
+#define MORPHO_GETSELECTION(val)   ((objectselection *) MORPHO_GETOBJECT(val))
+
+/** Creates an empty selection object */
+objectselection *object_newselection(objectmesh *mesh);
+
+/* -------------------------------------------------------
+ * Selection class
+ * ------------------------------------------------------- */
+
 #define SELECTION_CLASSNAME "Selection"
 #define SELECTION_ISSELECTEDMETHOD "isselected"
 #define SELECTION_IDLISTFORGRADEMETHOD "idlistforgrade"

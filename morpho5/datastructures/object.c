@@ -1012,14 +1012,9 @@ objecttype objectdictionarytype;
 objecttype objectarraytype;
 objecttype objectlisttype;
 
-objecttype objectmatrixtype;
-objecttype objectsparsetype;
-
-objecttype objectfieldtype;
-objecttype objectmeshtype;
-objecttype objectrangetype;
-objecttype objectselectiontype;
 objecttype objectdokkeytype;
+objecttype objectsparsetype;
+objecttype objectrangetype;
 
 void object_initialize(void) {
 #ifdef MORPHO_REUSEPOOL
@@ -1039,13 +1034,9 @@ void object_initialize(void) {
     objectlisttype=object_addtype(&objectlistdefn);
     objectdictionarytype=object_addtype(&objectdictionarydefn);
     
-    objectmatrixtype=object_addtype(&objectinvocationdefn);
     objectsparsetype=object_addtype(&objectinvocationdefn);
-    
-    objectfieldtype=object_addtype(&objectinvocationdefn);
-    objectmeshtype=object_addtype(&objectinvocationdefn);
+
     objectrangetype=object_addtype(&objectinvocationdefn);
-    objectselectiontype=object_addtype(&objectinvocationdefn);
     objectdokkeytype=object_addtype(&objectinvocationdefn);
 }
 

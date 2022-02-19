@@ -128,43 +128,6 @@ objecttypedefn *object_getdefn(object *obj);
  * We now define essential object types
  * ************************************* */
 
-/* ---------------------------
- * Strings
- * --------------------------- */
-
-extern objecttype objectstringtype;
-#define OBJECT_STRING objectstringtype
-
-/** A string object */
-typedef struct {
-    object obj;
-    size_t length;
-    char *string; 
-    char stringdata[];
-} objectstring;
-
-#define MORPHO_GETSTRING(val)             ((objectstring *) MORPHO_GETOBJECT(val))
-#define MORPHO_GETCSTRING(val)            (((objectstring *) MORPHO_GETOBJECT(val))->string)
-#define MORPHO_GETSTRINGLENGTH(val)       (((objectstring *) MORPHO_GETOBJECT(val))->length)
-
-/** Tests whether an object is a string */
-#define MORPHO_ISSTRING(val) object_istype(val, OBJECT_STRING)
-
-/** Use to create static strings on the C stack */
-#define MORPHO_STATICSTRING(cstring)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=strlen(cstring) }
-
-/** Use to create static strings on the C stack */
-#define MORPHO_STATICSTRINGWITHLENGTH(cstring, len)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=len }
-
-
-#define OBJECT_STRINGLABEL "string"
-#define OBJECT_SYMBOLLABEL "symbol"
-
-value object_stringfromcstring(const char *in, size_t length);
-value object_stringfromvarraychar(varray_char *in);
-value object_clonestring(value val);
-value object_concatenatestring(value a, value b);
-
 /* -------------------------------------------------------
  * Upvalue structure
  * ------------------------------------------------------- */
@@ -348,28 +311,42 @@ bool objectinstance_insertpropertybycstring(objectinstance *obj, char *property,
 
 bool objectinstance_getpropertybycstring(objectinstance *obj, char *property, value *val);
 
-/* -------------------------------------------------------
- * Ranges
- * ------------------------------------------------------- */
+/* ---------------------------
+ * Strings
+ * --------------------------- */
 
-extern objecttype objectrangetype;
-#define OBJECT_RANGE objectrangetype
+extern objecttype objectstringtype;
+#define OBJECT_STRING objectstringtype
 
+/** A string object */
 typedef struct {
     object obj;
-    unsigned int nsteps; 
-    value start;
-    value end;
-    value step;
-} objectrange;
+    size_t length;
+    char *string;
+    char stringdata[];
+} objectstring;
 
-/** Tests whether an object is a range */
-#define MORPHO_ISRANGE(val) object_istype(val, OBJECT_RANGE)
+#define MORPHO_GETSTRING(val)             ((objectstring *) MORPHO_GETOBJECT(val))
+#define MORPHO_GETCSTRING(val)            (((objectstring *) MORPHO_GETOBJECT(val))->string)
+#define MORPHO_GETSTRINGLENGTH(val)       (((objectstring *) MORPHO_GETOBJECT(val))->length)
 
-/** Gets the object as a range */
-#define MORPHO_GETRANGE(val)   ((objectrange *) MORPHO_GETOBJECT(val))
+/** Tests whether an object is a string */
+#define MORPHO_ISSTRING(val) object_istype(val, OBJECT_STRING)
 
-objectrange *object_newrange(value start, value end, value step);
+/** Use to create static strings on the C stack */
+#define MORPHO_STATICSTRING(cstring)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=strlen(cstring) }
+
+/** Use to create static strings on the C stack */
+#define MORPHO_STATICSTRINGWITHLENGTH(cstring, len)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=len }
+
+
+#define OBJECT_STRINGLABEL "string"
+#define OBJECT_SYMBOLLABEL "symbol"
+
+value object_stringfromcstring(const char *in, size_t length);
+value object_stringfromvarraychar(varray_char *in);
+value object_clonestring(value val);
+value object_concatenatestring(value a, value b);
 
 /* -------------------------------------------------------
  * Dictionaries
@@ -453,6 +430,29 @@ objectarray *object_arrayfromvarrayvalue(varray_value *v);
 
 /** Creates a new array object with the dimensions given as a list of values */
 objectarray *object_arrayfromvalueindices(unsigned int ndim, value *dim);
+
+/* -------------------------------------------------------
+ * Ranges
+ * ------------------------------------------------------- */
+
+extern objecttype objectrangetype;
+#define OBJECT_RANGE objectrangetype
+
+typedef struct {
+    object obj;
+    unsigned int nsteps;
+    value start;
+    value end;
+    value step;
+} objectrange;
+
+/** Tests whether an object is a range */
+#define MORPHO_ISRANGE(val) object_istype(val, OBJECT_RANGE)
+
+/** Gets the object as a range */
+#define MORPHO_GETRANGE(val)   ((objectrange *) MORPHO_GETOBJECT(val))
+
+objectrange *object_newrange(value start, value end, value step);
 
 /* -------------------------------------------------------
  * Veneer classes

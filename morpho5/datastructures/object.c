@@ -202,86 +202,6 @@ object *object_new(size_t size, objecttype type) {
 }
 
 /* **********************************************************************
- * Strings
- * ********************************************************************** */
-
-/** String object definitions */
-void objectstring_printfn(object *obj) {
-    printf("%s", ((objectstring *) obj)->string);
-}
-
-size_t objectstring_sizefn(object *obj) {
-    return sizeof(objectstring)+((objectstring *) obj)->length+1;
-}
-
-objecttypedefn objectstringdefn = {
-    .printfn = objectstring_printfn,
-    .markfn = NULL,
-    .freefn = NULL,
-    .sizefn = objectstring_sizefn
-};
-
-/** @brief Creates a string from an existing character array with given length
- *  @param in     the string to copy
- *  @param length length of string to copy
- *  @returns the object (as a value) which will be MORPHO_NIL on failure */
-value object_stringfromcstring(const char *in, size_t length) {
-    value out = MORPHO_NIL;
-    objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
-    
-    if (new) {
-        new->string=new->stringdata;
-        new->string[length] = '\0'; /* Zero terminate the string to be compatible with C */
-        memcpy(new->string, in, length);
-        new->length=strlen(new->string);
-        out = MORPHO_OBJECT(new);
-    }
-    return out;
-}
-
-/** @brief Converts a varray_char into a string.
- *  @param in  the varray to convert
- *  @returns the object (as a value) which will be MORPHO_NIL on failure */
-value object_stringfromvarraychar(varray_char *in) {
-    return object_stringfromcstring(in->data, in->count);
-}
-
-
-/* Clones a string object */
-value object_clonestring(value val) {
-    value out = MORPHO_NIL;
-    if (MORPHO_ISSTRING(val)) {
-        objectstring *s = MORPHO_GETSTRING(val);
-        out=object_stringfromcstring(s->string, s->length);
-    }
-    return out;
-}
-
-/** @brief Concatenates strings together
- *  @param a      first string
- *  @param b      second string
- *  @returns the object (as a value) which will be MORPHO_NIL on failure  */
-value object_concatenatestring(value a, value b) {
-    objectstring *astring = MORPHO_GETSTRING(a);
-    objectstring *bstring = MORPHO_GETSTRING(b);
-    size_t length = (astring ? astring->length : 0) + (bstring ? bstring->length : 0);
-    value out = MORPHO_NIL;
-    
-    objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
-    
-    if (new) {
-        new->string=new->stringdata;
-        new->length=length;
-        /* Copy across old strings */
-        if (astring) memcpy(new->string, astring->string, astring->length);
-        if (bstring) memcpy(new->string+(astring ? astring->length : 0), bstring->string, bstring->length);
-        new->string[length]='\0';
-        out = MORPHO_OBJECT(new);
-    }
-    return out;
-}
-
-/* **********************************************************************
  * Functions
  * ********************************************************************** */
 
@@ -687,6 +607,86 @@ objectinvocation *object_newinvocation(value receiver, value method) {
 }
 
 /* **********************************************************************
+ * Strings
+ * ********************************************************************** */
+
+/** String object definitions */
+void objectstring_printfn(object *obj) {
+    printf("%s", ((objectstring *) obj)->string);
+}
+
+size_t objectstring_sizefn(object *obj) {
+    return sizeof(objectstring)+((objectstring *) obj)->length+1;
+}
+
+objecttypedefn objectstringdefn = {
+    .printfn = objectstring_printfn,
+    .markfn = NULL,
+    .freefn = NULL,
+    .sizefn = objectstring_sizefn
+};
+
+/** @brief Creates a string from an existing character array with given length
+ *  @param in     the string to copy
+ *  @param length length of string to copy
+ *  @returns the object (as a value) which will be MORPHO_NIL on failure */
+value object_stringfromcstring(const char *in, size_t length) {
+    value out = MORPHO_NIL;
+    objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
+    
+    if (new) {
+        new->string=new->stringdata;
+        new->string[length] = '\0'; /* Zero terminate the string to be compatible with C */
+        memcpy(new->string, in, length);
+        new->length=strlen(new->string);
+        out = MORPHO_OBJECT(new);
+    }
+    return out;
+}
+
+/** @brief Converts a varray_char into a string.
+ *  @param in  the varray to convert
+ *  @returns the object (as a value) which will be MORPHO_NIL on failure */
+value object_stringfromvarraychar(varray_char *in) {
+    return object_stringfromcstring(in->data, in->count);
+}
+
+
+/* Clones a string object */
+value object_clonestring(value val) {
+    value out = MORPHO_NIL;
+    if (MORPHO_ISSTRING(val)) {
+        objectstring *s = MORPHO_GETSTRING(val);
+        out=object_stringfromcstring(s->string, s->length);
+    }
+    return out;
+}
+
+/** @brief Concatenates strings together
+ *  @param a      first string
+ *  @param b      second string
+ *  @returns the object (as a value) which will be MORPHO_NIL on failure  */
+value object_concatenatestring(value a, value b) {
+    objectstring *astring = MORPHO_GETSTRING(a);
+    objectstring *bstring = MORPHO_GETSTRING(b);
+    size_t length = (astring ? astring->length : 0) + (bstring ? bstring->length : 0);
+    value out = MORPHO_NIL;
+    
+    objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
+    
+    if (new) {
+        new->string=new->stringdata;
+        new->length=length;
+        /* Copy across old strings */
+        if (astring) memcpy(new->string, astring->string, astring->length);
+        if (bstring) memcpy(new->string+(astring ? astring->length : 0), bstring->string, bstring->length);
+        new->string[length]='\0';
+        out = MORPHO_OBJECT(new);
+    }
+    return out;
+}
+
+/* **********************************************************************
  * Dictionaries
  * ********************************************************************** */
 
@@ -860,7 +860,47 @@ objectarray *object_newarray(unsigned int ndim, unsigned int *dim) {
  * Ranges
  * ********************************************************************** */
 
+/** Array object definitions */
+void objectrange_printfn(object *obj) {
+    objectrange *r = (objectrange *) obj;
+    morpho_printvalue(r->start);
+    printf("..");
+    morpho_printvalue(r->end);
+    if (!MORPHO_ISNIL(r->step)) {
+        printf(":");
+        morpho_printvalue(r->step);
+    }
+}
 
+size_t objectrange_sizefn(object *obj) {
+    return sizeof(objectrange);
+}
+
+objecttypedefn objectrangedefn = {
+    .printfn=objectrange_printfn,
+    .markfn=NULL,
+    .freefn=NULL,
+    .sizefn=objectrange_sizefn
+};
+
+/** Create a new range. Step may be set to MORPHO_NIL to use the default value of 1 */
+objectrange *object_newrange(value start, value end, value step) {
+    value v[3]={start, end, step};
+    
+    /* Ensure all three values are either integer or floating point */
+    if (!value_promotenumberlist((MORPHO_ISNIL(step) ? 2 : 3), v)) return NULL;
+    
+    objectrange *new = (objectrange *) object_new(sizeof(objectrange), OBJECT_RANGE);
+    
+    if (new) {
+        new->start=v[0];
+        new->end=v[1];
+        new->step=v[2];
+        new->nsteps=range_count(new);
+    }
+    
+    return new;
+}
 
 /* **********************************************************************
  * Utility functions
@@ -1026,7 +1066,6 @@ void object_initialize(void) {
     npool=0;
 #endif
     
-    objectstringtype=object_addtype(&objectstringdefn);
     objectfunctiontype=object_addtype(&objectfunctiondefn);
     objectupvaluetype=object_addtype(&objectupvaluedefn);
     objectclosuretype=object_addtype(&objectclosuredefn);
@@ -1034,11 +1073,11 @@ void object_initialize(void) {
     objectinstancetype=object_addtype(&objectinstancedefn);
     objectinvocationtype=object_addtype(&objectinvocationdefn);
     
+    objectstringtype=object_addtype(&objectstringdefn);
     objectarraytype=object_addtype(&objectarraydefn);
     objectlisttype=object_addtype(&objectlistdefn);
     objectdictionarytype=object_addtype(&objectdictionarydefn);
-
-    objectrangetype=object_addtype(&objectinvocationdefn);
+    objectrangetype=object_addtype(&objectrangedefn);
 }
 
 void object_finalize(void) {

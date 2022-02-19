@@ -1532,25 +1532,6 @@ value range_iterate(objectrange *range, unsigned int i) {
     }
 }
 
-/** Create a new range. Step may be set to MORPHO_NIL to use the default value of 1 */
-objectrange *object_newrange(value start, value end, value step) {
-    value v[3]={start, end, step};
-    
-    /* Ensure all three values are either integer or floating point */
-    if (!value_promotenumberlist((MORPHO_ISNIL(step) ? 2 : 3), v)) return NULL;
-    
-    objectrange *new = (objectrange *) object_new(sizeof(objectrange), OBJECT_RANGE);
-    
-    if (new) {
-        new->start=v[0];
-        new->end=v[1];
-        new->step=v[2];
-        new->nsteps=range_count(new);
-    }
-    
-    return new;
-}
-
 /** Constructor function for ranges */
 value range_constructor(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;

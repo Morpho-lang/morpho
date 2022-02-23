@@ -54,6 +54,7 @@ Morpho
    kdtree
    meshtools
    optimize
+   plot
    povray
 
 .. toctree::

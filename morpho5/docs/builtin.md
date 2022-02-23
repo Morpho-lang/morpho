@@ -11,11 +11,11 @@ Morpho provides a number of built-in functions.
 ## arctan
 [tagarctan]: # (arctan)
 
-Returns the arctangent of an input angle. You can use one argument:
+Returns the arctangent of an input value that lies from `-Inf` to `Inf`. You can use one argument:
 
     print arctan(0) // expect: 0
 
-or to get the angle in the correct quadrant, use two arguments:
+or use two arguments to return the angle in the correct quadrant:
 
     print arctan(x, y)
 

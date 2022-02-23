@@ -18,11 +18,14 @@ Create a Color object from an RGB pair:
 var col = Color(0.5,0.5,0.5) // A 50% gray
 \end{lstlisting}
 
-The module also provides \texttt{ColorMap}s which are subclasses of
-color that map a single parameter in the range 0..1 onto a continuum of
-colors. These include \texttt{GradientMap}, \texttt{GrayMap} and
-\texttt{HueMap}. \texttt{Color}s and \texttt{Colormap}s have the same
-interface.
+\hypertarget{colormap}{%
+\section{Colormap}\label{colormap}}
+
+The \texttt{color} module provides \texttt{ColorMap}s which are
+subclasses of \texttt{Color} that map a single parameter in the range
+0..1 onto a continuum of colors. These include \texttt{GradientMap},
+\texttt{GrayMap} and \texttt{HueMap}. \texttt{Color}s and
+\texttt{Colormap}s have the same interface.
 
 Get the red, green or blue components of a color or colormap:
 
@@ -44,7 +47,7 @@ var c = Gray(0.2) // 20% gray
 \end{lstlisting}
 
 \hypertarget{rgb}{%
-\section{rgb}\label{rgb}}
+\section{RGB}\label{rgb}}
 
 Gets the rgb components of a \texttt{Color} or \texttt{ColorMap} object
 as a list. Takes a single argument in the range 0..1, although the

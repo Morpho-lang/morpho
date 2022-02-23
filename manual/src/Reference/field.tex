@@ -58,7 +58,7 @@ var f = Field(mesh, 1.0, grade=[0,2,1])
 \end{lstlisting}
 
 stores two numbers on the line (grade 1) elements and one number on the
-facets (grade 2 elements). Each number in the field is initialized to
+facets (grade 2) elements. Each number in the field is initialized to
 the value \texttt{1.0}.
 
 \hypertarget{shape}{%
@@ -89,7 +89,7 @@ f.op(fn (x) x.norm())
 
 calls the \texttt{norm} method on each element stored in \texttt{f}.
 
-Additional \texttt{Field} objects may supplied as extra arguments to
+Additional \texttt{Field} objects may be supplied as extra arguments to
 \texttt{op}. These must have the same shape (the same number of items
 stored on each grade). The function supplied to \texttt{op} will now be
 called with the corresponding element from each field as arguments. For

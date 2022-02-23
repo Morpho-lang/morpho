@@ -132,7 +132,7 @@ Precedence refers to the order in which morpho evaluates operations. For example
 
 prints `7` because `2*3` is evaluated before the addition; the operator `*` is said to have higher precedence than `+`.
 
-You can always modify the order of evaluation by using brackets:  
+You can always modify the order of evaluation by using parentheses:  
 
     print (1+2)*3 // prints 9
 

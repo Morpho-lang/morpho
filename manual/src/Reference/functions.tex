@@ -36,3 +36,37 @@ fn fib(n) {
 
 by returning early if \texttt{n\textless{}2}, otherwise returning the
 result by recursively calling itself.
+
+\hypertarget{closures}{%
+\section{Closures}\label{closures}}
+
+Functions in morpho can form \emph{closures}, i.e.~they can enclose
+information from their local context. In this example,
+
+\begin{lstlisting}
+fn foo(a) {
+    fn g() { return a } 
+    return g
+}
+\end{lstlisting}
+
+the function \texttt{foo} returns a function that captures the value of
+\texttt{a}. If we now try calling \texttt{foo} and then calling the
+returned functions,
+
+\begin{lstlisting}
+var p=foo(1), q=foo(2) 
+print p() // expect: 1 
+print q() // expect: 2
+\end{lstlisting}
+
+we can see that \texttt{p} and \texttt{q} seem to contain different
+copies of \texttt{g} that encapsulate the value that \texttt{foo} was
+called with.
+
+Morpho hints that a returned function is actually a closure by
+displaying it with double brackets:
+
+\begin{lstlisting}
+print foo(1) // expect: <<fn g>> 
+\end{lstlisting}

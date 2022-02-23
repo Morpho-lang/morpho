@@ -8,7 +8,7 @@ A number of `functionals` are available in Morpho. Each of these represents an i
 
 Many functionals are built in. Additional functionals are available by importing the `functionals` module:
 
-    import `functionals`
+    import functionals
 
 Functionals provide a number of standard methods:
 
@@ -24,7 +24,7 @@ Each of these may be called with a mesh, a field and a selection.
 ## Length
 [taglength]: # (length)
 
-A `Length` functional calculates the length of a line elements in a mesh.
+A `Length` functional calculates the length of a line element in a mesh.
 
 Evaluate the length of a circular loop:
 
@@ -52,14 +52,14 @@ An `Area` functional calculates the area of the area elements in a mesh:
 ## VolumeEnclosed
 [tagvolumeenclosed]: # (volumeenclosed)
 
-An `VolumeEnclosed` functional calculates the volume enclosed by a surface of line elements. Note that this estimate may be inaccurate for highly deformed surfaces.
+A `VolumeEnclosed` functional is used to calculate the volume enclosed by a surface. Note that this estimate may become inaccurate for highly deformed surfaces.
 
     var lv = VolumeEnclosed()
 
 ## Volume
 [tagvolume]: # (volume)
 
-An `Volume` functional calculates the volume of volume elements.
+A `Volume` functional calculates the volume of volume elements.
 
     var lv = Volume()
 
@@ -72,7 +72,7 @@ The `ScalarPotential` functional is applied to point elements.
 
 You must supply two functions (which may be anonymous) that return the potential and gradient respectively.
 
-This functional is often used to implement level set constraints. For example, to confine a set of points to a sphere:
+This functional is often used to constrain the mesh to the level set of a function. For example, to confine a set of points to a sphere:
 
     import optimize
     fn sphere(x,y,z) { return x^2+y^2+z^2-1 }
@@ -80,7 +80,7 @@ This functional is often used to implement level set constraints. For example, t
     var lsph = ScalarPotential(sphere, grad)
     problem.addlocalconstraint(lsph)
 
-See the thomson example.
+See the thomson example for use of this technique.
 
 ## LinearElasticity
 [taglinearelasticity]: # (linearelasticity)

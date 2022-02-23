@@ -80,6 +80,21 @@ TriangleComplex(position, normals, colors, connectivity)
   represents a triangle and rows correspond to vertices.
 \end{itemize}
 
+You can also provide optional arguments:
+
+\begin{itemize}
+
+\item
+  \texttt{transmit} sets the transparency of the object. This parameter
+  is only used by the povray module as of now. Default is 0.
+\item
+  \texttt{filter} sets the transparency of the object using a filter
+  effect. This parameter is only used by the povray module as of now.
+  Default is 0. For the difference between \texttt{transmit} and
+  \texttt{filter}, checkout the
+  \href{http://xahlee.info/3d/povray-glassy.html}{POVRay documentation}.
+\end{itemize}
+
 Add to a \texttt{Graphics} object using the \texttt{display} method.
 
 \hypertarget{arrow}{%
@@ -111,6 +126,15 @@ You can also provide optional arguments:
 \item
   \texttt{color} is the color of the arrow. This can be a list of RGB
   values or a \texttt{Color} object
+\item
+  \texttt{transmit} sets the transparency of the arrow. This parameter
+  is only used by the povray module as of now. Default is 0.
+\item
+  \texttt{filter} sets the transparency of the arrow using a filter
+  effect. This parameter is only used by the povray module as of now.
+  Default is 0. For the difference between \texttt{transmit} and
+  \texttt{filter}, checkout the
+  \href{http://xahlee.info/3d/povray-glassy.html}{POVRay documentation}.
 \end{itemize}
 
 Display an arrow:
@@ -150,6 +174,15 @@ You can also provide optional arguments:
 \item
   \texttt{color} is the color of the cylinder. This can be a list of RGB
   values or a \texttt{Color} object.
+\item
+  \texttt{transmit} sets the transparency of the cylinder. This
+  parameter is only used by the povray module as of now. Default is 0.
+\item
+  \texttt{filter} sets the transparency of the cylinder using a filter
+  effect. This parameter is only used by the povray module as of now.
+  Default is 0. For the difference between \texttt{transmit} and
+  \texttt{filter}, checkout the
+  \href{http://xahlee.info/3d/povray-glassy.html}{POVRay documentation}.
 \end{itemize}
 
 Display an cylinder:
@@ -191,6 +224,15 @@ You can also provide optional arguments:
 \item
   \texttt{closed} is a \texttt{bool} that indicates whether the tube
   should be closed to form a loop.
+\item
+  \texttt{transmit} sets the transparency of the tube. This parameter is
+  only used by the povray module as of now. Default is 0.
+\item
+  \texttt{filter} sets the transparency of the tube using a filter
+  effect. This parameter is only used by the povray module as of now.
+  Default is 0. For the difference between \texttt{transmit} and
+  \texttt{filter}, checkout the
+  \href{http://xahlee.info/3d/povray-glassy.html}{POVRay documentation}.
 \end{itemize}
 
 Draw a square:
@@ -226,6 +268,15 @@ You can also provide an optional argument:
 \item
   \texttt{color} is the color of the sphere. This can be a list of RGB
   values or a \texttt{Color} object.
+\item
+  \texttt{transmit} sets the transparency of the sphere. This parameter
+  is only used by the povray module as of now. Default is 0.
+\item
+  \texttt{filter} sets the transparency of the sphere using a filter
+  effect. This parameter is only used by the povray module as of now.
+  Default is 0. For the difference between \texttt{transmit} and
+  \texttt{filter}, checkout the
+  \href{http://xahlee.info/3d/povray-glassy.html}{POVRay documentation}.
 \end{itemize}
 
 Draw some randomly sized spheres:

@@ -10,19 +10,14 @@ Create a list like this:
 var list = [1, 2, 3]
 \end{lstlisting}
 
-Lookup values using index notation:
+Look up values using index notation:
 
 \begin{lstlisting}
 list[0]
 \end{lstlisting}
 
-Indexing can also be done with slices:
-
-\begin{lstlisting}
-list[0..2]
-list[[0,1,3]]
-\end{lstlisting}
-	
+Indexing can also be done with slices: list{[}0..2{]}
+list{[}{[}0,1,3{]}{]}
 
 You can change list entries like this:
 
@@ -48,7 +43,7 @@ for (i in list) print i
 Adds an element to the end of a list:
 
 \begin{lstlisting}
-list = []
+var list = []
 list.append("Foo")
 \end{lstlisting}
 
@@ -58,7 +53,7 @@ list.append("Foo")
 Inserts an element into a list at a specified index:
 
 \begin{lstlisting}
-list = [1,2,3]
+var list = [1,2,3]
 list.insert(1, "Foo")
 print list // prints [ 1, Foo, 2, 3 ]
 \end{lstlisting}
@@ -83,11 +78,14 @@ print a        // prints [ 1, 3 ]
 \hypertarget{sort}{%
 \section{Sort}\label{sort}}
 
-Sorts a list:
+Sorts the contents of a list into ascending order:
 
 \begin{lstlisting}
 list.sort()
 \end{lstlisting}
+
+Note that this sorts the list ``in place'' (i.e.~it modifies the order
+of the list on which it is invoked) and hence returns \texttt{nil}.
 
 You can provide your own function to use to compare values in the list
 
@@ -141,3 +139,31 @@ Join two lists together:
 var l1 = [1,2,3], l2 = [4, 5, 6]
 print l1+l2 // expect: [1,2,3,4,5,6]
 \end{lstlisting}
+
+\hypertarget{tuples}{%
+\section{Tuples}\label{tuples}}
+
+Generate all possible n-tuples from a list:
+
+\begin{lstlisting}
+var t = [ 1, 2, 3].tuples(2)
+\end{lstlisting}
+
+produces
+\texttt{{[}\ {[}\ 1,\ 1\ {]},\ {[}\ 1,\ 2\ {]},\ {[}\ 1,\ 3\ {]}\ ...\ {]}}.
+
+\hypertarget{sets}{%
+\section{Sets}\label{sets}}
+
+Generate all possible sets of order n from a list.
+
+\begin{lstlisting}
+var t = [ 1, 2, 3 ].tuples(2)
+\end{lstlisting}
+
+produces
+\texttt{{[}\ {[}\ 1,\ 2\ {]},\ {[}\ 1,\ 3\ {]},\ {[}\ 2,\ 3\ {]}\ {]}}.
+
+Note that sets include only distinct elements from the list (no element
+is repeated) and ordering is unimportant, hence only one of
+\texttt{{[}\ 1,\ 2\ {]}} and \texttt{{[}\ 2,\ 1\ {]}} is returned.

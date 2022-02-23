@@ -12,7 +12,7 @@ An example dictionary mapping states to capitals:
                  "New York" : "Albany",
                  "Vermont" : "Montpelier" }
 
-Lookup values by a given key with index notation:
+Look up values by a given key with index notation:
 
     print dict["Vermont"]
 

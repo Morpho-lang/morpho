@@ -1,0 +1,12 @@
+// Testing whether initializing VTKExporter with a field, but giving a
+// fieldname that's not a string, produces the right error
+
+import vtk
+import meshtools 
+
+var a = 3.0
+
+var m = AreaMesh(fn (u,v) [u,v,0], -1..1:2, -1..1:2)
+var f = Field(m, fn(x,y,z) x)
+
+var vtkE = VTKExporter(f, fieldname=a) // expect: Error 'FnameNotStr' : Expected a string, but received `3`.

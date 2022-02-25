@@ -1,0 +1,7 @@
+// Trying to get a field that is not in the file
+import vtk
+import meshtools
+
+var vtkI = VTKImporter("mesh_scalar.vtk")
+
+var f = vtkI.field("h") // expect: Error 'FieldNotFound' : Couldn't find the field `h` in the file. 

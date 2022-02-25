@@ -1,0 +1,16 @@
+import vtk 
+import meshtools
+
+var m1 = LineMesh(fn (t) [t,0,0], -1..1:2)
+
+var filename = "data.vtk"
+
+var vtkE = VTKExporter(m1)
+
+vtkE.export(filename)
+
+var vtkI = VTKImporter(filename)
+
+var m2 = vtkI.mesh()
+
+print m2 // expect: <Mesh: 2 vertices>

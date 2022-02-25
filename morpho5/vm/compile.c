@@ -2299,7 +2299,10 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     bool ismethod = (c->currentmethod==node);
     bool isanonymous = MORPHO_ISNIL(node->content);
     bool isinitializer = false;
-    if (!isanonymous) isinitializer=(memcmp(MORPHO_GETCSTRING(node->content), MORPHO_INITIALIZER_METHOD, 4)==0);
+    
+    objectstring initlabel = MORPHO_STATICSTRING(MORPHO_INITIALIZER_METHOD);
+    
+    if (!isanonymous) isinitializer=MORPHO_ISEQUAL(MORPHO_OBJECT(&initlabel), node->content);
     
     /* We preface the function code with a branch;
        for now simply create a blank instruction and store the indx */
@@ -2365,6 +2368,9 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         ninstructions++;
     }
 
+    /* Verify if we have any outstanding forward references */
+    compiler_checkoutstandingforwardreference(c);
+    
     /* Correct the branch instruction before the function definition code */
     compiler_setinstruction(c, bindx, ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, ninstructions));
     ninstructions++;

@@ -25,6 +25,53 @@
 #define MATRIX_LAPACK_PRESENT
 #endif
 
+/* -------------------------------------------------------
+ * Matrix objects
+ * ------------------------------------------------------- */
+
+extern objecttype objectmatrixtype;
+#define OBJECT_MATRIX objectmatrixtype
+
+/** Matrices are a purely numerical collection type oriented toward linear algebra.
+    Elements are stored in column-major format, i.e.
+        [ 1 2 ]
+        [ 3 4 ]
+    is stored ( 1, 3, 2, 4 ) in memory. This is for compatibility with standard linear algebra packages */
+
+typedef struct {
+    object obj;
+    unsigned int nrows;
+    unsigned int ncols;
+    double *elements;
+    double matrixdata[];
+} objectmatrix;
+
+/** Tests whether an object is a matrix */
+#define MORPHO_ISMATRIX(val) object_istype(val, OBJECT_MATRIX)
+
+/** Gets the object as an matrix */
+#define MORPHO_GETMATRIX(val)   ((objectmatrix *) MORPHO_GETOBJECT(val))
+
+/** Creates a matrix object */
+objectmatrix *object_newmatrix(unsigned int nrows, unsigned int ncols, bool zero);
+
+/** Creates a new matrix from an array */
+objectmatrix *object_matrixfromarray(objectarray *array);
+
+/** Creates a new matrix from an existing matrix */
+objectmatrix *object_clonematrix(objectmatrix *array);
+
+/** @brief Use to create static matrices on the C stack
+    @details Intended for small matrices; Caller needs to supply a double array of size nr*nc. */
+#define MORPHO_STATICMATRIX(darray, nr, nc)      { .obj.type=OBJECT_MATRIX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .elements=darray, .nrows=nr, .ncols=nc }
+
+/** Macro to decide if a matrix is 'small' or 'large' and hence static or dynamic allocation should be used. */
+#define MATRIX_ISSMALL(m) (m->nrows*m->ncols<MORPHO_MAXIMUMSTACKALLOC)
+
+/* -------------------------------------------------------
+ * Matrix class
+ * ------------------------------------------------------- */
+
 #define MATRIX_CLASSNAME "Matrix"
 
 #define MATRIX_TRANSPOSE_METHOD "transpose"
@@ -69,10 +116,15 @@
 #define MATRIX_SETCOLARGS                 "MtrxStClArgs"
 #define MATRIX_SETCOLARGS_MSG             "Method setcolumn expects an integer column index and a column matrix as arguments."
 
-/** Macro to decide if a matrix is 'small' or 'large' and hence static or dynamic allocation should be used. */
-#define MATRIX_ISSMALL(m) (m->nrows*m->ncols<MORPHO_MAXIMUMSTACKALLOC)
+/* -------------------------------------------------------
+ * Matrix errors
+ * ------------------------------------------------------- */
 
 typedef enum { MATRIX_OK, MATRIX_INCMPTBLDIM, MATRIX_SING, MATRIX_INVLD, MATRIX_BNDS, MATRIX_NSQ, MATRIX_ALLOC } objectmatrixerror;
+
+/* -------------------------------------------------------
+ * Matrix interface
+ * ------------------------------------------------------- */
 
 bool matrix_getarraydimensions(objectarray *array, unsigned int dim[], unsigned int maxdim, unsigned int *ndim);
 value matrix_getarrayelement(objectarray *array, unsigned int ndim, unsigned int *indx);
@@ -103,7 +155,6 @@ objectmatrixerror matrix_identity(objectmatrix *a);
 double matrix_sum(objectmatrix *a);
 //objectmatrixerror matrix_det(objectmatrix *a, double *out);
 //objectmatrixerror matrix_eigensystem(objectmatrix *a, double *val, objectmatrix *vec);
-
 
 void matrix_print(objectmatrix *m);
 

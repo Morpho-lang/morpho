@@ -794,7 +794,7 @@ value Array_getindex(vm *v, int nargs, value *args) {
 		// these aren't simple indices, lets try to make a slice
 		objectarrayerror err = getslice(&MORPHO_SELF(args),&array_slicedim,&array_sliceconstructor,&array_slicecopy,nargs,&MORPHO_GETARG(args, 0),&out);
 		if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
-		if (out!=MORPHO_NIL){
+		if (!MORPHO_ISNIL(out)){
 			morpho_bindobjects(v,1,&out);
 		} else MORPHO_RAISE(v, VM_NONNUMINDX);
 	}
@@ -1178,7 +1178,7 @@ value List_getindex(vm *v, int nargs, value *args) {
         } else {
 			objectarrayerror err = getslice(&MORPHO_SELF(args),&list_slicedim,&list_sliceconstructor,&list_slicecopy,nargs,&MORPHO_GETARG(args, 0),&out);
 			if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_list_error(err) );
-			if (out!=MORPHO_NIL){
+			if (MORPHO_ISOBJECT(out)){
 				morpho_bindobjects(v,1,&out);
 			} else MORPHO_RAISE(v, VM_NONNUMINDX);
 
@@ -1641,25 +1641,6 @@ value range_iterate(objectrange *range, unsigned int i) {
     }
 }
 
-/** Create a new range. Step may be set to MORPHO_NIL to use the default value of 1 */
-objectrange *object_newrange(value start, value end, value step) {
-    value v[3]={start, end, step};
-    
-    /* Ensure all three values are either integer or floating point */
-    if (!value_promotenumberlist((MORPHO_ISNIL(step) ? 2 : 3), v)) return NULL;
-    
-    objectrange *new = (objectrange *) object_new(sizeof(objectrange), OBJECT_RANGE);
-    
-    if (new) {
-        new->start=v[0];
-        new->end=v[1];
-        new->step=v[2];
-        new->nsteps=range_count(new);
-    }
-    
-    return new;
-}
-
 /** Constructor function for ranges */
 value range_constructor(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
@@ -1814,27 +1795,27 @@ void veneer_initialize(void) {
     /* String */
     builtin_addfunction(STRING_CLASSNAME, string_constructor, BUILTIN_FLAGSEMPTY);
     value stringclass=builtin_addclass(STRING_CLASSNAME, MORPHO_GETCLASSDEFINITION(String), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_STRING, stringclass);
+    object_setveneerclass(OBJECT_STRING, stringclass);
 
     /* Array */
     builtin_addfunction(ARRAY_CLASSNAME, array_constructor, BUILTIN_FLAGSEMPTY);
     value arrayclass=builtin_addclass(ARRAY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Array), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_ARRAY, arrayclass);
+    object_setveneerclass(OBJECT_ARRAY, arrayclass);
     
     /* List */
     builtin_addfunction(LIST_CLASSNAME, list_constructor, BUILTIN_FLAGSEMPTY);
     value listclass=builtin_addclass(LIST_CLASSNAME, MORPHO_GETCLASSDEFINITION(List), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_LIST, listclass);
+    object_setveneerclass(OBJECT_LIST, listclass);
     
     /* Dictionary */
     builtin_addfunction(DICTIONARY_CLASSNAME, dictionary_constructor, BUILTIN_FLAGSEMPTY);
     value dictionaryclass=builtin_addclass(DICTIONARY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Dictionary), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_DICTIONARY, dictionaryclass);
+    object_setveneerclass(OBJECT_DICTIONARY, dictionaryclass);
     
     /* Range */
     builtin_addfunction(RANGE_CLASSNAME, range_constructor, BUILTIN_FLAGSEMPTY);
     value rangeclass=builtin_addclass(RANGE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Range), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_RANGE, rangeclass);
+    object_setveneerclass(OBJECT_RANGE, rangeclass);
     
     /* Error */
     builtin_addclass(ERROR_CLASSNAME, MORPHO_GETCLASSDEFINITION(Error), MORPHO_NIL);

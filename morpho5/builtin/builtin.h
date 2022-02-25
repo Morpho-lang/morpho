@@ -25,6 +25,10 @@ typedef unsigned int builtinfunctionflags;
 /** Type of C function that implements a built in Morpho function */
 typedef value (*builtinfunction) (vm *v, int nargs, value *args);
 
+/** Object type for built in function */
+extern objecttype objectbuiltinfunctiontype;
+#define OBJECT_BUILTINFUNCTION objectbuiltinfunctiontype
+
 /** A built in function object */
 typedef struct  {
     object obj;
@@ -103,9 +107,6 @@ void builtin_copysymboltable(dictionary *out);
 
 value builtin_internsymbol(value symbol);
 value builtin_internsymbolascstring(char *symbol);
-
-void builtin_setveneerclass(objecttype type, value class);
-objectclass *builtin_getveneerclass(objecttype type);
 
 bool builtin_options(vm *v, int nargs, value *args, int *nfixed, int noptions, ...);
 bool builtin_iscallable(value val);

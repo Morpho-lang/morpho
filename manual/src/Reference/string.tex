@@ -8,11 +8,7 @@ this:
 var a = "hello world"
 \end{lstlisting}
 
-Unicode characters including emoji are supported:
-
-\begin{lstlisting}
-print "🦋 morpho"
-\end{lstlisting}
+Unicode characters including emoji are supported.
 
 You can also create strings using the constructor function
 \texttt{String}, which takes any number of parameters:
@@ -33,19 +29,19 @@ print "${i}: ${func(i)}"
 To get an individual character, use index notatation
 
 \begin{lstlisting}
-print "🦋 morpho"[0]
+print "morpho"[0]
 \end{lstlisting}
 
 You can loop over each character like this:
 
 \begin{lstlisting}
-for (c in "🦋 morpho") print c
+for (c in "morpho") print c
 \end{lstlisting}
 
 Note that strings are immutable, and hence
 
 \begin{lstlisting}
-var a = "🦋 morpho"
+var a = "morpho"
 a[0] = 4
 \end{lstlisting}
 

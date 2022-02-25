@@ -47,4 +47,6 @@ void dictionary_inspect(dictionary *dict);
 void dictionary_test(void);
 #endif
 
+void morpho_markdictionary(void *v, dictionary *dict);
+
 #endif /* dictionary_h */

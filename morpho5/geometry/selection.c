@@ -13,6 +13,37 @@
 #include "mesh.h"
 #include "selection.h"
 
+/* **********************************************************************
+ * Selection object definitions
+ * ********************************************************************** */
+
+objecttype objectselectiontype;
+
+/** Selection object definitions */
+void objectselection_printfn(object *obj) {
+    printf("<Selection>");
+}
+
+void objectselection_freefn(object *obj) {
+    objectselection *s = (objectselection *) obj;
+    selection_clear(s);
+}
+
+size_t objectselection_sizefn(object *obj) {
+    return sizeof(objectselection)+sizeof(objectsparse *)*((objectselection *) obj)->ngrades;
+}
+
+objecttypedefn objectselectiondefn = {
+    .printfn=objectselection_printfn,
+    .markfn=NULL,
+    .freefn=objectselection_freefn,
+    .sizefn=objectselection_sizefn
+};
+
+/* **********************************************************************
+ * Selection object constructor
+ * ********************************************************************** */
+
 /** Create a new empty selection object */
 objectselection *object_newselection(objectmesh *mesh) {
     unsigned int ngrades = mesh->dim+1;
@@ -527,13 +558,15 @@ MORPHO_ENDCLASS
  * ********************************************************************** */
 
 void selection_initialize(void) {
+    objectselectiontype=object_addtype(&objectselectiondefn);
+    
     selection_boundaryoption=builtin_internsymbolascstring(SELECTION_BOUNDARYOPTION);
     selection_partialsoption=builtin_internsymbolascstring(SELECTION_PARTIALSOPTION);
     
     builtin_addfunction(SELECTION_CLASSNAME, selection_constructor, BUILTIN_FLAGSEMPTY);
     
     value selectionclass=builtin_addclass(SELECTION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Selection), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_SELECTION, selectionclass);
+    object_setveneerclass(OBJECT_SELECTION, selectionclass);
     
     morpho_defineerror(SELECTION_NOMESH, ERROR_HALT, SELECTION_NOMESH_MSG);
     morpho_defineerror(SELECTION_ISSLCTDARG, ERROR_HALT, SELECTION_ISSLCTDARG_MSG);

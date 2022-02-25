@@ -154,11 +154,17 @@ figs-within-sections
 
 \family sans
 \emph on
-Morpho
+\begin_inset Graphics
+	filename Figures/morphologo.pdf
+	width 3.5in
+
+\end_inset
+
+
 \begin_inset Newline newline
 \end_inset
 
-0.5
+Version 0.5.2
 \end_layout
 
 \begin_layout Standard
@@ -612,7 +618,11 @@ Dependencies
 \end_layout
 
 \begin_layout Standard
-Morpho leverages a few libraries to provide certain functionality:
+
+\emph on
+Morpho
+\emph default
+ leverages a few libraries to provide certain functionality:
 \end_layout
 
 \begin_layout Description
@@ -789,8 +799,12 @@ morphoview
 \end_layout
 
 \begin_layout Enumerate
-Install morpho's dependencies using your distribution's package manager
- (or manually if you prefer).
+Install 
+\emph on
+morpho
+\emph default
+'s dependencies using your distribution's package manager (or manually if
+ you prefer).
  For example, on Ubuntu you would type:
 \begin_inset listings
 inline false
@@ -1778,6 +1792,55 @@ Morpho language
 \end_layout
 
 \begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Figures/postcard.pdf
+	width 6in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Postcard"
+
+\end_inset
+
+Postcard-sized summary of the 
+\emph on
+morpho
+\emph default
+ language.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
 The 
 \emph on
 morpho
@@ -1795,7 +1858,19 @@ noprefix "false"
 
 \end_inset
 
-, but a brief overview of key ideas to help you follow the tutorial: 
+, but a brief summary is provided in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Postcard"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ and we provide an overview of key ideas to help you follow the tutorial:
+ 
 \end_layout
 
 \begin_layout Itemize
@@ -1927,7 +2002,11 @@ var a = foo(quiet=true)
 Objects.
 
 \series default
- Morpho is deeply object-oriented.
+ 
+\emph on
+Morpho
+\emph default
+ is deeply object-oriented.
  Most things in morpho are represented as objects, which provide 
 \emph on
 methods
@@ -1962,6 +2041,89 @@ a.foo()
 \end_inset
 
 
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Collections.
+
+\series default
+ 
+\emph on
+Morpho
+\emph default
+ provides a number of collection types—all of which are objects—including
+ Lists,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var a = [1,2,3]
+\end_layout
+
+\end_inset
+
+and Dictionaries:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var b = { 
+\begin_inset Quotes eld
+\end_inset
+
+Massachusetts
+\begin_inset Quotes erd
+\end_inset
+
+: 
+\begin_inset Quotes eld
+\end_inset
+
+Boston
+\begin_inset Quotes erd
+\end_inset
+
+, 
+\begin_inset Quotes eld
+\end_inset
+
+California
+\begin_inset Quotes erd
+\end_inset
+
+: 
+\begin_inset Quotes eld
+\end_inset
+
+Sacramento
+\begin_inset Quotes erd
+\end_inset
+
+ }
+\end_layout
+
+\end_inset
+
+and Ranges (often used in loops):
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var a = 0..10:2 # all even numbers 0-10 inclusive
+\end_layout
+
+\end_inset
+
+There are many others, including Matrices, Sparse matrices, etc.
+ 
 \end_layout
 
 \begin_layout Section
@@ -3843,12 +4005,7 @@ for (refiter in 1..refmax) {
 
 \begin_layout Plain Layout
 
-  for (el in [problem, sopt, fopt])
-\end_layout
-
-\begin_layout Plain Layout
-
-  el.update(refmap) // Update the problem
+  for (el in [problem, sopt, fopt]) el.update(refmap) // Update the problem
 \end_layout
 
 \begin_layout Plain Layout
@@ -3923,6 +4080,16 @@ name "chap:Language"
 \begin_inset CommandInset include
 LatexCommand input
 filename "Reference/syntax.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/values.tex"
 
 \end_inset
 
@@ -4064,18 +4231,9 @@ filename "Reference/sparse.tex"
 \end_layout
 
 \begin_layout Standard
-\begin_inset Note Note
-status open
-
-\begin_layout Plain Layout
 \begin_inset CommandInset include
 LatexCommand input
-filename "string.tex"
-
-\end_inset
-
-
-\end_layout
+filename "Reference/string.tex"
 
 \end_inset
 
@@ -4167,6 +4325,16 @@ filename "Reference/constants.tex"
 \begin_layout Standard
 \begin_inset CommandInset include
 LatexCommand input
+filename "Reference/delaunay.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
 filename "Reference/graphics.tex"
 
 \end_inset
@@ -4208,6 +4376,16 @@ filename "Reference/meshtools.tex"
 \begin_inset CommandInset include
 LatexCommand input
 filename "Reference/optimize.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/plot.tex"
 
 \end_inset
 

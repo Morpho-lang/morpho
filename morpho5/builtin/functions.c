@@ -10,7 +10,10 @@
 #include "random.h"
 #include "builtin.h"
 #include "common.h"
-#include "veneer.h"
+#include "matrix.h"
+#include "mesh.h"
+#include "field.h"
+#include "selection.h"
 
 /* **********************************************************************
  * Built in functions

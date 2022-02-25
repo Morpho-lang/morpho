@@ -9,6 +9,7 @@
 #include "vm.h"
 #include "compile.h"
 #include "veneer.h"
+#include "builtin.h"
 #include "morpho.h"
 #include "debug.h"
 
@@ -98,7 +99,7 @@ instructionindx program_getentry(program *p) {
 void program_bindobject(program *p, object *obj) {
     if (!obj->next && /* Object is not already bound to the program (or something else) */
         obj->status==OBJECT_ISUNMANAGED && /* Object is unmanaged */
-        obj->type!=OBJECT_BUILTINFUNCTION && /* Object is not a built in function that is freed separately */
+        (!MORPHO_ISBUILTINFUNCTION(MORPHO_OBJECT(obj))) && /* Object is not a built in function that is freed separately */
         (p->boundlist!=obj->next && p->boundlist!=NULL) /* To handle the case where the object is the only object */
         ) {
 
@@ -289,6 +290,23 @@ void vm_gcmarkarray(vm *v, varray_value *array) {
     }
 }
 
+/** Public veneers */
+void morpho_markobject(void *v, object *obj) {
+    vm_gcmarkobject((vm *) v, obj);
+}
+
+void morpho_markvalue(void *v, value val) {
+    vm_gcmarkvalue((vm *) v, val);
+}
+
+void morpho_markdictionary(void *v, dictionary *dict) {
+    vm_gcmarkdictionary((vm *) v, dict);
+}
+
+void morpho_markvarrayvalue(void *v, varray_value *array) {
+    vm_gcmarkarray((vm *) v, array);
+}
+
 /** Searches a vm for all reachable objects */
 void vm_gcmarkroots(vm *v) {
     /** Mark anything on the stack */
@@ -341,88 +359,13 @@ void vm_gcmarkretainobject(vm *v, object *obj) {
     morpho_printvalue(MORPHO_OBJECT(obj));
     printf("\n");
 #endif
-    switch (obj->type) {
-        case OBJECT_BUILTINFUNCTION:
-        case OBJECT_MATRIX:
-        case OBJECT_DOKKEY:
-        case OBJECT_STRING:
-        case OBJECT_RANGE:
-            break;
-        case OBJECT_UPVALUE:
-            vm_gcmarkvalue(v, ((objectupvalue *) obj)->closed);
-            break;
-        case OBJECT_FUNCTION: {
-            objectfunction *f = (objectfunction *) obj;
-            vm_gcmarkvalue(v, f->name);
-            vm_gcmarkarray(v, &f->konst);
-        }
-            break;
-        case OBJECT_CLOSURE: {
-            objectclosure *c = (objectclosure *) obj;
-            vm_gcmarkobject(v, (object *) c->func);
-            for (unsigned int i=0; i<c->nupvalues; i++) {
-                vm_gcmarkobject(v, (object *) c->upvalues[i]);
-            }
-        }
-            break;
-        case OBJECT_CLASS: {
-            objectclass *c = (objectclass *) obj;
-            vm_gcmarkvalue(v, c->name);
-            vm_gcmarkdictionary(v, &c->methods);
-        }
-            break;
-        case OBJECT_INSTANCE: {
-            objectinstance *c = (objectinstance *) obj;
-            vm_gcmarkdictionary(v, &c->fields);
-        }
-            break;
-        case OBJECT_INVOCATION: {
-            objectinvocation *c = (objectinvocation *) obj;
-            vm_gcmarkvalue(v, c->receiver);
-            vm_gcmarkvalue(v, c->method);
-        }
-            break;
-        case OBJECT_DICTIONARY: {
-            objectdictionary *c = (objectdictionary *) obj;
-            vm_gcmarkdictionary(v, &c->dict);
-        }
-            break;
-        case OBJECT_LIST: {
-            objectlist *c = (objectlist *) obj;
-            vm_gcmarkarray(v, &c->val);
-        }
-            break;
-        case OBJECT_ARRAY: {
-            objectarray *c = (objectarray *) obj;
-            for (unsigned int i=0; i<c->nelements; i++) {
-                vm_gcmarkvalue(v, c->values[i]);
-            }
-        }
-            break;
-        case OBJECT_SPARSE: {
-            objectsparse *c = (objectsparse *) obj;
-            vm_gcmarkdictionary(v, &c->dok.dict);
-        }
-            break;
-        case OBJECT_MESH: {
-            objectmesh *c = (objectmesh *) obj;
-            if (c->vert) vm_gcmarkobject(v, (object *) c->vert);
-            if (c->conn) vm_gcmarkretainobject(v, (object *) c->conn);
-        }
-            break;
-        case OBJECT_SELECTION: {
-            //objectselection *c = (objectselection *) obj;
-        }
-            break;
-        case OBJECT_FIELD: {
-            objectfield *c = (objectfield *) obj;
-            vm_gcmarkvalue(v, c->prototype);
-        }
-            break;
-        case OBJECT_EXTERN: {
-        }
-            break;
-    }
+    objecttypedefn *defn=object_getdefn(obj);
+    if (defn->markfn) defn->markfn(obj, v);
+}
+
+/** Forces the GC to search an unmanaged object */
+void morpho_searchunmanagedobject(void *v, object *obj) {
+    vm_gcmarkretainobject((vm *) v, obj);
 }
 
 /** Trace all objects on the graylist */
@@ -768,7 +711,7 @@ static inline bool vm_invoke(vm *v, value obj, value method, int nargs, value *a
         }
     } else if (MORPHO_ISOBJECT(obj)) {
         /* If it's an object, it may have a veneer class */
-        objectclass *klass = builtin_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
+        objectclass *klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
         if (klass) {
             value ifunc;
             if (dictionary_getintern(&klass->methods, method, &ifunc)) {
@@ -1262,7 +1205,7 @@ callfunction: // Jump here if an instruction becomes a call
                 }
             } else if (MORPHO_ISOBJECT(left)) {
                 /* If it's an object, it may have a veneer class */
-                objectclass *klass = builtin_getveneerclass(MORPHO_GETOBJECTTYPE(left));
+                objectclass *klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
                 if (klass) {
                     value ifunc;
                     if (dictionary_getintern(&klass->methods, right, &ifunc)) {
@@ -1415,7 +1358,7 @@ callfunction: // Jump here if an instruction becomes a call
                 }
             } else if (MORPHO_ISOBJECT(left)) {
                 /* If it's an object, it may have a veneer class */
-                objectclass *klass = builtin_getveneerclass(MORPHO_GETOBJECTTYPE(left));
+                objectclass *klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
                 if (klass) {
                     value ifunc;
                     if (dictionary_get(&klass->methods, right, &ifunc)) {
@@ -1463,13 +1406,13 @@ callfunction: // Jump here if an instruction becomes a call
 					objectarrayerror err=array_getelement(MORPHO_GETARRAY(left), ndim, indx, &reg[b]);
 					if (err!=ARRAY_OK) ERROR( array_error(err) );
 				} else {
-					value newVal = MORPHO_NIL;
+					value newval = MORPHO_NIL;
 					objectarrayerror err = getslice(&left,&array_slicedim,&array_sliceconstructor,\
-													&array_slicecopy,ndim,&reg[b],&newVal);
+													&array_slicecopy,ndim,&reg[b],&newval);
 					if (err!=ARRAY_OK) ERROR(array_error(err));
 					
-					if (newVal) {
-						reg[b] = newVal;
+					if (!MORPHO_ISNIL(newval)) {
+						reg[b] = newval;
 						vm_bindobject(v, reg[b]);
 					} else  ERROR(VM_NONNUMINDX);
 				}
@@ -1882,7 +1825,7 @@ objectclass *morpho_lookupclass(value obj) {
         objectinstance *instance=MORPHO_GETINSTANCE(obj);
         out=instance->klass;
     } else {
-        out = builtin_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
+        out = object_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
     }
     return out;
 }

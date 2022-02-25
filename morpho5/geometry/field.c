@@ -14,6 +14,41 @@
 static value field_gradeoption;
 
 /* **********************************************************************
+ * Field objects
+ * ********************************************************************** */
+
+objecttype objectfieldtype;
+
+/** Field object definitions */
+void objectfield_printfn(object *obj) {
+    printf("<Field>");
+}
+
+void objectfield_markfn(object *obj, void *v) {
+    objectfield *c = (objectfield *) obj;
+    morpho_markvalue(v, c->prototype);
+}
+
+void objectfield_freefn(object *obj) {
+    objectfield *f = (objectfield *) obj;
+    
+    if (f->dof) MORPHO_FREE(f->dof);
+    if (f->offset) MORPHO_FREE(f->offset);
+    if (f->pool) MORPHO_FREE(f->pool);
+}
+
+size_t objectfield_sizefn(object *obj) {
+    return sizeof(objectfield)+(((objectfield *) obj)->ngrades * sizeof(int));
+}
+
+objecttypedefn objectfielddefn = {
+    .printfn=objectfield_printfn,
+    .markfn=objectfield_markfn,
+    .freefn=objectfield_freefn,
+    .sizefn=objectfield_sizefn
+};
+
+/* **********************************************************************
  * Constructors
  * ********************************************************************** */
 
@@ -791,12 +826,14 @@ MORPHO_ENDCLASS
  * ********************************************************************* */
 
 void field_initialize(void) {
+    objectfieldtype=object_addtype(&objectfielddefn);
+    
     field_gradeoption=builtin_internsymbolascstring(FIELD_GRADEOPTION);
     
     builtin_addfunction(FIELD_CLASSNAME, field_constructor, BUILTIN_FLAGSEMPTY);
     
     value fieldclass=builtin_addclass(FIELD_CLASSNAME, MORPHO_GETCLASSDEFINITION(Field), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_FIELD, fieldclass);
+    object_setveneerclass(OBJECT_FIELD, fieldclass);
     
     morpho_defineerror(FIELD_INDICESOUTSIDEBOUNDS, ERROR_HALT, FIELD_INDICESOUTSIDEBOUNDS_MSG);
     morpho_defineerror(FIELD_INVLDINDICES, ERROR_HALT, FIELD_INVLDINDICES_MSG);

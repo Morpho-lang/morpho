@@ -14,8 +14,28 @@
 #include "common.h"
 
 /* **********************************************************************
- * Constructors
+ * Matrix objects
  * ********************************************************************** */
+
+objecttype objectmatrixtype;
+
+/** Function object definitions */
+size_t objectmatrix_sizefn(object *obj) {
+    return sizeof(objectmatrix)+sizeof(double) *
+            ((objectmatrix *) obj)->ncols *
+            ((objectmatrix *) obj)->nrows;
+}
+
+void objectmatrix_printfn(object *obj) {
+    printf("<Matrix>");
+}
+
+objecttypedefn objectmatrixdefn = {
+    .printfn=objectmatrix_printfn,
+    .markfn=NULL,
+    .freefn=NULL,
+    .sizefn=objectmatrix_sizefn
+};
 
 /** Creates a matrix object */
 objectmatrix *object_newmatrix(unsigned int nrows, unsigned int ncols, bool zero) {
@@ -33,6 +53,10 @@ objectmatrix *object_newmatrix(unsigned int nrows, unsigned int ncols, bool zero
     
     return new;
 }
+
+/* **********************************************************************
+ * Other constructors
+ * ********************************************************************** */
 
 /*
  * Create matrices from array objects
@@ -575,7 +599,7 @@ value Matrix_getindex(vm *v, int nargs, value *args) {
     } else { // now try to get a slice
 		objectarrayerror err = getslice(&MORPHO_SELF(args), &matrix_slicedim, &matrix_sliceconstructor, &matrix_slicecopy, nargs, &MORPHO_GETARG(args,0), &out);
 		if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_matrix_error(err) );
-		if (out!=MORPHO_NIL){
+		if (MORPHO_ISOBJECT(out)){
 			morpho_bindobjects(v,1,&out);
 		} else morpho_runtimeerror(v, MATRIX_INVLDINDICES);
 	}
@@ -1022,10 +1046,12 @@ MORPHO_ENDCLASS
  * ********************************************************************* */
 
 void matrix_initialize(void) {
+    objectmatrixtype=object_addtype(&objectmatrixdefn);
+    
     builtin_addfunction(MATRIX_CLASSNAME, matrix_constructor, BUILTIN_FLAGSEMPTY);
     
     value matrixclass=builtin_addclass(MATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(Matrix), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_MATRIX, matrixclass);
+    object_setveneerclass(OBJECT_MATRIX, matrixclass);
     
     morpho_defineerror(MATRIX_INDICESOUTSIDEBOUNDS, ERROR_HALT, MATRIX_INDICESOUTSIDEBOUNDS_MSG);
     morpho_defineerror(MATRIX_INVLDINDICES, ERROR_HALT, MATRIX_INVLDINDICES_MSG);

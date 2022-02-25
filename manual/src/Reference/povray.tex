@@ -27,6 +27,8 @@ Create, render and display a scene using POVRay:
 pov.render("out.pov")
 \end{lstlisting}
 
+This also creates the .png file for the scene.
+
 The \texttt{POVRaytracer} constructor supports a number of optional
 arguments:
 
@@ -42,4 +44,16 @@ arguments:
   \texttt{viewangle} - camera angle (higher means wider view)
 \item
   \texttt{viewpoint} - position of camera
+\end{itemize}
+
+The \texttt{render} method supports two optional boolean arguments:
+
+\begin{itemize}
+
+\item
+  \texttt{quiet} - whether to suppress the parser and render statistics
+  from \texttt{povray} or not (\texttt{false} by default)
+\item
+  \texttt{display} - whether to turn on the graphic display while
+  rendering or not (\texttt{true} by default)
 \end{itemize}

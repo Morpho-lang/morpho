@@ -74,6 +74,9 @@
 /** @brief Maximum number of constants */
 #define MORPHO_MAXCONSTANTS 65536
 
+/** @brief Maximum number of object types */
+#define MORPHO_MAXIMUMOBJECTDEFNS 64
+
 /* **********************************************************************
 * Performance
 * ********************************************************************** */

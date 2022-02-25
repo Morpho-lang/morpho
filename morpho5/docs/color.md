@@ -14,7 +14,11 @@ Create a Color object from an RGB pair:
 
     var col = Color(0.5,0.5,0.5) // A 50% gray
 
-The module also provides `ColorMap`s which are subclasses of color that map a single parameter in the range 0..1 onto a continuum of colors. These include `GradientMap`,  `GrayMap` and `HueMap`. `Color`s and `Colormap`s have the same interface.
+[showsubtopics]: # (subtopics)
+
+## Colormap
+[tagcolormap]: # (colormap)
+The `color` module provides `ColorMap`s which are subclasses of `Color` that map a single parameter in the range 0..1 onto a continuum of colors. These include `GradientMap`,  `GrayMap` and `HueMap`. `Color`s and `Colormap`s have the same interface.
 
 Get the red, green or blue components of a color or colormap:
 
@@ -29,9 +33,7 @@ Create a grayscale:
 
     var c = Gray(0.2) // 20% gray
 
-[showsubtopics]: # (subtopics)
-
-## rgb
+## RGB
 [tagrgb]: # (rgb)
 
 Gets the rgb components of a `Color` or `ColorMap` object as a list. Takes a single argument in the range 0..1, although the result will only depend on this argument if the object is a `ColorMap`. 

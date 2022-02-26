@@ -23,7 +23,7 @@ bnd.addgrade(0)
 var sigma=5.0*0.04 // Surface tension
 var W=3.0  // Anchoring
 
-var itermax = 8
+var itermax = 4
 
 // Set up the optimization problem
 var problem = OptimizationProblem(m)

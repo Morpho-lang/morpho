@@ -44,19 +44,25 @@ There are also a number of properties of a `MeshGen` object that can be set prio
 
 [showsubtopics]: # (subtopics)
 
-## Domain 
+## Domain
 [tagdomain]: # (domain)
 
-The `Domain` class is used to conveniently build a
+The `Domain` class is used to conveniently build a domain by composing simpler elements. 
 
-var a = CircularDomain([-0.5,0], 1)
-var b = CircularDomain([0.5,0], 1)
+Create a `Domain` from a scalar function that is positive in the region of interest:
 
-var dom = a.union(b).difference(c)
+    var dom = Domain(fn (x) -(x[0]^2+x[1]^2-1))
+
+You can pass it to `MeshGen` to specify the region to mesh: 
+
+    var mg = MeshGen(dom, [-1..1:0.2, -1..1:0.2])
 
 You can combine `Domain` objects using set operations `union`, `intersection` and `difference`: 
 
-    var a = (s1.intersection(s2)).union(s3)
+    var a = CircularDomain(Matrix([-0.5,0]), 1)
+    var b = CircularDomain(Matrix([0.5,0]), 1)
+    var c = CircularDomain(Matrix([0,0]), 0.3)
+    var dom = a.union(b).difference(c)
 
 ## CircularDomain
 [tagcirculardomain]: # (circulardomain)

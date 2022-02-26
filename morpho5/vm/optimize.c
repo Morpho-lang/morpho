@@ -392,10 +392,26 @@ void optimize_fetch(optimizer *opt) {
     opt->op=DECODE_OP(opt->current);
 }
 
+/** Returns the index of the instruction currently decoded */
+instructionindx optimizer_currentindx(optimizer *opt) {
+    return opt->next;
+}
+
 /** Advance to next instruction */
 void optimize_advance(optimizer *opt) {
     optimize_advanceannotation(opt);
     opt->next++;
+}
+
+/** Move to next instruction; ignore annotations */
+void optimize_next(optimizer *opt) {
+    opt->next++;
+}
+
+/** Move to a different instruction. */
+void optimize_moveto(optimizer *opt, instructionindx indx) {
+    opt->next=indx;
+    optimize_fetch(opt);
 }
 
 /** Track contents of registers etc*/
@@ -519,6 +535,8 @@ void optimize_init(optimizer *opt, program *prog) {
     optimize_setfunction(opt, prog->global);
     optimize_restart(opt);
     
+    varray_codeblockinit(&opt->cfgraph);
+    
     opt->a=NULL;
     opt->amax=NULL;
     
@@ -530,9 +548,135 @@ void optimize_init(optimizer *opt, program *prog) {
 void optimize_clear(optimizer *opt) {
     if (opt->globals) MORPHO_FREE(opt->globals);
     
+    varray_codeblockclear(&opt->cfgraph);
+    
     if (opt->v) morpho_freevm(opt->v);
     if (opt->temp) morpho_freeprogram(opt->temp);
 }
+
+/* **********************************************************************
+* Control Flow graph
+* ********************************************************************** */
+
+DEFINE_VARRAY(codeblock, codeblock);
+DEFINE_VARRAY(codeblockindx, codeblockindx);
+
+/** Initialize a code block */
+void optimize_initcodeblock(codeblock *block, instructionindx start) {
+    block->start=start;
+    block->end=start;
+    block->inbound=0;
+    block->dest[0]=CODEBLOCKDEST_EMPTY;
+    block->dest[1]=CODEBLOCKDEST_EMPTY;
+}
+
+/** Add a code block to the graph */
+void optimize_addblock(optimizer *opt, codeblock *block) {
+    varray_codeblockadd(&opt->cfgraph, block, 1);
+}
+
+/** Create a new block that starts at a given index and add it to the control flow graph; returns a handle to this block */
+codeblockindx optimize_newblock(optimizer *opt, instructionindx start) {
+    codeblock new;
+    optimize_initcodeblock(&new, start);
+    optimize_addblock(opt, &new);
+    return opt->cfgraph.count-1;
+}
+
+/** Get the starting point */
+instructionindx optimize_getstart(optimizer *opt, codeblockindx handle) {
+    return opt->cfgraph.data[handle].start;
+}
+
+/** Set the end point */
+void optimize_setend(optimizer *opt, codeblockindx handle, instructionindx end) {
+    opt->cfgraph.data[handle].end=end;
+}
+
+/** Adds a destination */
+void optimize_adddest(optimizer *opt, codeblockindx handle, codeblockindx dest) {
+    codeblock *block = &opt->cfgraph.data[handle];
+    int i;
+    for (i=0; i<2; i++) {
+        if (block->dest[i]==CODEBLOCKDEST_EMPTY) {
+            block->dest[i]=dest;
+            opt->cfgraph.data[dest].inbound++; // Increment inbound counter in destination
+            return;
+        }
+    }
+    
+    UNREACHABLE("Too many destinations in code block.");
+}
+
+void optimize_block(optimizer *opt, codeblockindx block, varray_codeblockindx *worklist) {
+    optimize_moveto(opt, optimize_getstart(opt, block));
+    
+    while (!optimize_atend(opt)) {
+        optimize_fetch(opt);
+        optimize_setend(opt, block, optimizer_currentindx(opt));
+     
+        debug_disassembleinstruction(opt->current, opt->next, NULL, NULL);
+        printf("\n");
+        
+        switch (opt->op) {
+            case OP_B:
+            {
+                int branchby = DECODE_sBx(opt->current);
+                if (branchby<0) UNREACHABLE("Backwards branch.");
+                
+                codeblockindx dest = optimize_newblock(opt, optimizer_currentindx(opt)+1+branchby);
+                optimize_adddest(opt, block, dest);
+                varray_codeblockindxwrite(worklist, dest); // Add to worklist
+                
+                printf("Unconditional Branch\n");
+            }
+                return; // Terminates the block
+            case OP_BIF:
+            {
+                int branchby = DECODE_sBx(opt->current);
+                
+                // Create two new blocks, one for each possible destination
+                codeblockindx cont = optimize_newblock(opt, optimizer_currentindx(opt)+1);
+                codeblockindx dest = optimize_newblock(opt, optimizer_currentindx(opt)+1+branchby);
+                
+                optimize_adddest(opt, block, cont);
+                optimize_adddest(opt, block, dest);
+                
+                varray_codeblockindxwrite(worklist, cont); // Add these to the worklist
+                varray_codeblockindxwrite(worklist, dest);
+                
+                printf("Conditional Branch\n");
+            }
+                return; // Terminates the block
+            case OP_END:
+                return; // Terminates the block
+            default:
+                break;
+        }
+        
+        optimize_next(opt);
+    }
+}
+
+void optimize_buildcontrolflowgraph(optimizer *opt) {
+    varray_codeblockindx worklist; // Worklist of blocks to analyze
+    varray_codeblockindxinit(&worklist);
+    
+    codeblockindx first = optimize_newblock(opt, opt->func->entry); // Start at the entry point of the program
+    varray_codeblockindxwrite(&worklist, first);
+    
+    while (worklist.count>0) {
+        codeblockindx current;
+        if (!varray_codeblockindxpop(&worklist, &current)) UNREACHABLE("Unexpectedly empty worklist in control flow graph");
+        
+        optimize_block(opt, current, &worklist);
+    }
+    
+    varray_codeblockindxclear(&worklist);
+    
+    optimize_restart(opt);
+}
+
 
 /* **********************************************************************
 * Finalize, clearing nops and fixing debug info
@@ -571,6 +715,8 @@ bool optimize(program *prog) {
     optimizationstrategy *pass[2] = { firstpass, secondpass};
     
     optimize_init(&opt, prog);
+    
+    optimize_buildcontrolflowgraph(&opt);
     
     for (int iter=0; iter<2; iter++) { // Two pass optimization that may use different strategies
         while (!optimize_atend(&opt)) {

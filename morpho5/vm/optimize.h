@@ -20,6 +20,20 @@ typedef struct {
     instructionindx iix;  // Instruction that last wrote to this register
 } reginfo;
 
+#define CODEBLOCKDEST_EMPTY -1
+typedef int codeblockindx;
+
+/** Basic blocks for control flow graph */
+typedef struct scodeblock {
+    instructionindx start; /** First instruction in the block */
+    instructionindx end; /** Last instruction in the block */
+    codeblockindx dest[2]; /** Indices of destination blocks */
+    int inbound; /** Count inbound */
+} codeblock;
+
+DECLARE_VARRAY(codeblock, codeblock)
+DECLARE_VARRAY(codeblockindx, codeblockindx)
+
 /** Optimizer data structure */
 typedef struct {
     program *out;
@@ -32,6 +46,8 @@ typedef struct {
     
     int maxreg;              // Maximum number of registers to track
     objectfunction *func;    // Current function
+    
+    varray_codeblock cfgraph; // Control flow graph
     
     reginfo reg[MORPHO_MAXARGS];
     reginfo *globals;

@@ -33,8 +33,8 @@ void optimize_regshow(optimizer *opt) {
 }
 
 /* **********************************************************************
-* Utility functions
-* ********************************************************************** */
+ * Utility functions
+ * ********************************************************************** */
 
 /** Checks if we're at the end of the program */
 bool optimize_atend(optimizer *opt) {
@@ -142,8 +142,8 @@ bool optimize_evaluateprogram(optimizer *opt, instruction *list, registerindx de
 }
 
 /* **********************************************************************
-* Optimization strategies
-* ********************************************************************** */
+ * Optimization strategies
+ * ********************************************************************** */
 
 typedef bool (*optimizationstrategyfn) (optimizer *opt);
 
@@ -333,8 +333,8 @@ void optimize_overwrite(optimizer *opt) {
 }
 
 /* **********************************************************************
-* Handling code annotations
-* ********************************************************************** */
+ * Handling code annotations
+ * ********************************************************************** */
 
 void optimize_advanceannotationtoelement(optimizer *opt) {
     while (opt->a<opt->amax && opt->a->type!=DEBUG_ELEMENT) opt->a++;
@@ -791,8 +791,8 @@ void optimize_buildcontrolflowgraph(optimizer *opt) {
 }
 
 /* **********************************************************************
-* Finalize, clearing nops and fixing debug info
-* ********************************************************************** */
+ * Finalize, clearing nops and fixing debug info
+ * ********************************************************************** */
 
 void optimize_compactify(optimizer *opt) {
     unsigned int write=0; // Keep track of where we're writing to
@@ -818,8 +818,8 @@ void optimize_compactify(optimizer *opt) {
 }
 
 /* **********************************************************************
-* Optimize a block
-* ********************************************************************** */
+ * Optimize a block
+ * ********************************************************************** */
 
 void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstrategy *strategies) {
     instructionindx start=optimize_getstart(opt, block),
@@ -841,8 +841,55 @@ void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstr
 }
 
 /* **********************************************************************
-* Public interface
-* ********************************************************************** */
+ * Block layout and final processing
+ * ********************************************************************** */
+
+codeblock *blocklist;
+
+/** Sort blocks */
+int optimize_blocksortfn(const void *a, const void *b) {
+    codeblockindx ia = *(codeblockindx *) a,
+                  ib = *(codeblockindx *) b;
+    
+    instructionindx starta = blocklist[ia].start,
+                    startb = blocklist[ib].start;
+
+    return (startb>starta ? -1 : (startb==starta ? 0 : 1 ) );
+}
+
+/** Construct and sort a list of block indices */
+void optimize_sortblocks(optimizer *opt, varray_codeblockindx *out) {
+    codeblockindx nblocks = opt->cfgraph.count;
+    
+    // Sort blocks by position
+    for (codeblockindx i=0; i<nblocks; i++) {
+        varray_codeblockindxwrite(out, i);
+    }
+    
+    blocklist = opt->cfgraph.data;
+    qsort(out->data, nblocks, sizeof(codeblockindx), optimize_blocksortfn);
+}
+
+/** Layout blocks */
+void optimize_layoutblocks(optimizer *opt) {
+    codeblockindx nblocks = opt->cfgraph.count;
+    varray_codeblockindx sorted;
+    varray_codeblockindxinit(&sorted);
+    
+    optimize_sortblocks(opt,&sorted);
+    
+    for (unsigned int i=0; i<nblocks; i++) {
+        codeblock *block = &opt->cfgraph.data[sorted.data[i]];
+        
+        block->start;
+    }
+    
+    varray_codeblockindxclear(&sorted);
+}
+
+/* **********************************************************************
+ * Public interface
+ * ********************************************************************** */
 
 /** Public interface to optimizer */
 bool optimize(program *prog) {
@@ -871,18 +918,16 @@ bool optimize(program *prog) {
     }
     
     varray_codeblockindxclear(&worklist);
-    optimize_clear(&opt);
+    optimize_layoutblocks(&opt);
     
-    /*
-    optimize_compactify(&opt);
-    */
+    optimize_clear(&opt);
     
     return true;
 }
 
 /* **********************************************************************
-* Initialization/Finalization
-* ********************************************************************** */
+ * Initialization/Finalization
+ * ********************************************************************** */
 
 /** Initializes the optimizer */
 void optimize_initialize(void) {

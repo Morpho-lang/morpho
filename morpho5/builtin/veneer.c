@@ -1100,6 +1100,7 @@ void list_sliceconstructor(unsigned int *slicesize,unsigned int ndim,value* out)
 	list->val.count = slicesize[0];
 	*out = MORPHO_OBJECT(list);
 }
+
 /* Checks that a list is indexed with only one value with a generic interface */
 bool list_slicedim(value * a, unsigned int ndim){
 	if (ndim>1||ndim<0) return false;

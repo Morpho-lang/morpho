@@ -567,18 +567,14 @@ void optimize_initcodeblock(codeblock *block, instructionindx start) {
     block->inbound=0;
     block->dest[0]=CODEBLOCKDEST_EMPTY;
     block->dest[1]=CODEBLOCKDEST_EMPTY;
-}
-
-/** Add a code block to the graph */
-void optimize_addblock(optimizer *opt, codeblock *block) {
-    varray_codeblockadd(&opt->cfgraph, block, 1);
+    block->visited=0;
 }
 
 /** Create a new block that starts at a given index and add it to the control flow graph; returns a handle to this block */
 codeblockindx optimize_newblock(optimizer *opt, instructionindx start) {
     codeblock new;
     optimize_initcodeblock(&new, start);
-    optimize_addblock(opt, &new);
+    varray_codeblockwrite(&opt->cfgraph, new);
     return opt->cfgraph.count-1;
 }
 
@@ -597,6 +593,26 @@ void optimize_setend(optimizer *opt, codeblockindx handle, instructionindx end) 
     opt->cfgraph.data[handle].end=end;
 }
 
+/** Get a block's visited index */
+int optimize_getvisited(optimizer *opt, codeblockindx handle) {
+    return opt->cfgraph.data[handle].visited;
+}
+
+/** Increment the inbound counter on a block */
+void optimize_incinbound(optimizer *opt, codeblockindx handle) {
+    opt->cfgraph.data[handle].inbound+=1;
+}
+
+/** Get how many blocks link to this one */
+int optimize_getinbound(optimizer *opt, codeblockindx handle) {
+    return opt->cfgraph.data[handle].inbound;
+}
+
+/** Mark the code block as visited */
+void optimize_visit(optimizer *opt, codeblockindx handle) {
+    opt->cfgraph.data[handle].visited+=1;
+}
+
 /** Adds a destination
  * @param[in] opt - optimizer
  * @param[in] handle - block to add the destination to
@@ -607,7 +623,7 @@ void optimize_adddest(optimizer *opt, codeblockindx handle, codeblockindx dest) 
     for (i=0; i<2; i++) {
         if (block->dest[i]==CODEBLOCKDEST_EMPTY) {
             block->dest[i]=dest;
-            opt->cfgraph.data[dest].inbound++; // Increment inbound counter in destination
+            optimize_incinbound(opt, dest);
             return;
         }
     }
@@ -746,6 +762,7 @@ void optimize_buildcontrolflowgraph(optimizer *opt) {
     
     codeblockindx first = optimize_newblock(opt, opt->func->entry); // Start at the entry point of the program
     varray_codeblockindxwrite(&worklist, first);
+    optimize_incinbound(opt, first);
     
     while (worklist.count>0) {
         codeblockindx current;
@@ -829,7 +846,7 @@ bool optimize(program *prog) {
     
     optimize_buildcontrolflowgraph(&opt);
     
-    // Now optimize blocks 
+    // Now optimize blocks
     varray_codeblockindx worklist;
     varray_codeblockindxinit(&worklist);
     varray_codeblockindxwrite(&worklist, 0);
@@ -838,7 +855,10 @@ bool optimize(program *prog) {
         codeblockindx current;
         if (!varray_codeblockindxpop(&worklist, &current)) UNREACHABLE("Unexpectedly empty worklist in optimizer");
         
+        if (optimize_getvisited(&opt, current)>=optimize_getinbound(&opt, current)) continue;
+        
         optimize_optimizeblock(&opt, current, firstpass);
+        optimize_visit(&opt, current);
         optimize_desttoworklist(&opt, current, &worklist);
     }
     

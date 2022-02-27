@@ -29,6 +29,7 @@ typedef struct scodeblock {
     instructionindx end; /** Last instruction in the block */
     codeblockindx dest[2]; /** Indices of destination blocks */
     int inbound; /** Count inbound */
+    int visited; /** Count how many times optimizer has visited the block */
 } codeblock;
 
 DECLARE_VARRAY(codeblock, codeblock)

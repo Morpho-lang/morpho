@@ -583,17 +583,25 @@ codeblockindx optimize_newblock(optimizer *opt, instructionindx start) {
     return opt->cfgraph.count-1;
 }
 
-/** Get the starting point */
+/** Get a block's starting point */
 instructionindx optimize_getstart(optimizer *opt, codeblockindx handle) {
     return opt->cfgraph.data[handle].start;
 }
 
-/** Set the end point */
+/** Get a block's end point */
+instructionindx optimize_getend(optimizer *opt, codeblockindx handle) {
+    return opt->cfgraph.data[handle].end;
+}
+
+/** Set a block's end point */
 void optimize_setend(optimizer *opt, codeblockindx handle, instructionindx end) {
     opt->cfgraph.data[handle].end=end;
 }
 
-/** Adds a destination */
+/** Adds a destination
+ * @param[in] opt - optimizer
+ * @param[in] handle - block to add the destination to
+ * @param[in] dest - destination block to add */
 void optimize_adddest(optimizer *opt, codeblockindx handle, codeblockindx dest) {
     codeblock *block = &opt->cfgraph.data[handle];
     int i;
@@ -608,48 +616,114 @@ void optimize_adddest(optimizer *opt, codeblockindx handle, codeblockindx dest) 
     UNREACHABLE("Too many destinations in code block.");
 }
 
+/** Clear block destination */
+void optimize_cleardest(optimizer *opt, codeblockindx handle) {
+    opt->cfgraph.data[handle].dest[0]=CODEBLOCKDEST_EMPTY;
+    opt->cfgraph.data[handle].dest[1]=CODEBLOCKDEST_EMPTY;
+}
+
+/** Copy block destination */
+void optimize_copydest(optimizer *opt, codeblockindx src, codeblockindx dest) {
+    opt->cfgraph.data[dest].dest[0]=opt->cfgraph.data[src].dest[0];
+    opt->cfgraph.data[dest].dest[1]=opt->cfgraph.data[src].dest[1];
+}
+
+/** Splits a block into two
+ * @param[in] opt - optimizer
+ * @param[in] handle - block to split
+ * @param[in] split - instruction index to split at
+ * @returns handle of new block */
+codeblockindx optimize_splitblock(optimizer *opt, codeblockindx handle, instructionindx split) {
+    instructionindx start = optimize_getstart(opt, handle),
+                    end = optimize_getend(opt, handle);
+    
+    if (split==start) return handle;
+    if (split<start || split>end) UNREACHABLE("Splitting an invalid block");
+    
+    codeblockindx new = optimize_newblock(opt, split);
+    optimize_setend(opt, new, end);
+    optimize_setend(opt, handle, split-1);
+    optimize_copydest(opt, handle, new); // New block carries over destinations
+    optimize_cleardest(opt, handle);    // } Old block points to new block
+    optimize_adddest(opt, handle, new); // }
+    
+    return new;
+}
+
+/** Finds a block with instruction indx inside
+ * @param[in] opt - optimizer
+ * @param[in] indx - index to find
+ * @param[out] handle - block handle if found
+ * @returns true if found, false otherwise */
+bool optimize_findblock(optimizer *opt, instructionindx indx, codeblockindx *handle) {
+    for (codeblockindx i=0; i<opt->cfgraph.count; i++) {
+        if (indx>=opt->cfgraph.data[i].start &&
+            indx<=opt->cfgraph.data[i].end) {
+            *handle=i;
+            return true;
+        }
+    }
+    return false;
+}
+
+/** Processes a branch instruction.
+ * @details Finds whether the branch points to or wthin an existing block and either splits it as necessary or creates a new block
+ * @param[in] opt - optimizer
+ * @param[in] handle - handle of block where the branch is from.
+ * @param[out] dest - block handle if found
+ * @returns handle for destination branch */
+codeblockindx optimize_branchto(optimizer *opt, codeblockindx handle, instructionindx dest, varray_codeblockindx *worklist) {
+    codeblockindx existing = CODEBLOCKDEST_EMPTY;
+    codeblockindx out;
+    
+    if (optimize_findblock(opt, dest, &existing)) {
+        out = optimize_splitblock(opt, existing, dest);
+    } else {
+        out = optimize_newblock(opt, dest);
+        varray_codeblockindxwrite(worklist, out); // Add to worklist
+    }
+    optimize_adddest(opt, handle, out);
+    
+    return out;
+}
+
+/** Processes a branch instruction.
+ * @param[in] opt - optimizer
+ * @param[in] block - block to process
+ * @param[out] worklist - worklist of blocks to process; updated */
 void optimize_block(optimizer *opt, codeblockindx block, varray_codeblockindx *worklist) {
     optimize_moveto(opt, optimize_getstart(opt, block));
     
     while (!optimize_atend(opt)) {
         optimize_fetch(opt);
+        
+        // If we have come upon an existing block terminate this one
+        codeblockindx next;
+        if (optimize_findblock(opt, optimizer_currentindx(opt), &next) && next!=block) {
+            optimize_adddest(opt, block, next); // and link this block to the existing one
+            return; // Terminate block
+        }
+        
         optimize_setend(opt, block, optimizer_currentindx(opt));
-     
-        debug_disassembleinstruction(opt->current, opt->next, NULL, NULL);
-        printf("\n");
         
         switch (opt->op) {
             case OP_B:
             {
                 int branchby = DECODE_sBx(opt->current);
-                if (branchby<0) UNREACHABLE("Backwards branch.");
-                
-                codeblockindx dest = optimize_newblock(opt, optimizer_currentindx(opt)+1+branchby);
-                optimize_adddest(opt, block, dest);
-                varray_codeblockindxwrite(worklist, dest); // Add to worklist
-                
-                printf("Unconditional Branch\n");
+                optimize_branchto(opt, block, optimizer_currentindx(opt)+1+branchby, worklist);
             }
-                return; // Terminates the block
+                return; // Terminate current block
             case OP_BIF:
             {
                 int branchby = DECODE_sBx(opt->current);
                 
                 // Create two new blocks, one for each possible destination
-                codeblockindx cont = optimize_newblock(opt, optimizer_currentindx(opt)+1);
-                codeblockindx dest = optimize_newblock(opt, optimizer_currentindx(opt)+1+branchby);
-                
-                optimize_adddest(opt, block, cont);
-                optimize_adddest(opt, block, dest);
-                
-                varray_codeblockindxwrite(worklist, cont); // Add these to the worklist
-                varray_codeblockindxwrite(worklist, dest);
-                
-                printf("Conditional Branch\n");
+                optimize_branchto(opt, block, optimizer_currentindx(opt)+1, worklist);
+                optimize_branchto(opt, block, optimizer_currentindx(opt)+1+branchby, worklist);
             }
-                return; // Terminates the block
+                return; // Terminate current block
             case OP_END:
-                return; // Terminates the block
+                return; // Terminate current block
             default:
                 break;
         }
@@ -658,6 +732,7 @@ void optimize_block(optimizer *opt, codeblockindx block, varray_codeblockindx *w
     }
 }
 
+/** Builds the control flow graph from the source */
 void optimize_buildcontrolflowgraph(optimizer *opt) {
     varray_codeblockindx worklist; // Worklist of blocks to analyze
     varray_codeblockindxinit(&worklist);
@@ -671,12 +746,20 @@ void optimize_buildcontrolflowgraph(optimizer *opt) {
         
         optimize_block(opt, current, &worklist);
     }
-    
     varray_codeblockindxclear(&worklist);
+    
+#ifdef MORPHO_DEBUG_LOGOPTIMIZER
+    for (codeblockindx i=0; i<opt->cfgraph.count; i++) {
+        codeblock *block = opt->cfgraph.data+i;
+        printf("Block %u [%td, %td]", i, block->start, block->end);
+        if (block->dest[0]>=0) printf(" -> %u", block->dest[0]);
+        if (block->dest[1]>=0) printf(" -> %u", block->dest[1]);
+        printf(" (inbound: %u)\n", block->inbound);
+    }
+#endif
     
     optimize_restart(opt);
 }
-
 
 /* **********************************************************************
 * Finalize, clearing nops and fixing debug info
@@ -717,6 +800,8 @@ bool optimize(program *prog) {
     optimize_init(&opt, prog);
     
     optimize_buildcontrolflowgraph(&opt);
+    
+    return true;
     
     for (int iter=0; iter<2; iter++) { // Two pass optimization that may use different strategies
         while (!optimize_atend(&opt)) {

@@ -568,6 +568,19 @@ void optimize_initcodeblock(codeblock *block, instructionindx start) {
     block->dest[0]=CODEBLOCKDEST_EMPTY;
     block->dest[1]=CODEBLOCKDEST_EMPTY;
     block->visited=0;
+    block->nreg=0;
+    block->reg=NULL;
+}
+
+/** Show the current code blocks*/
+void optimize_showcodeblocks(optimizer *opt) {
+    for (codeblockindx i=0; i<opt->cfgraph.count; i++) {
+        codeblock *block = opt->cfgraph.data+i;
+        printf("Block %u [%td, %td]", i, block->start, block->end);
+        if (block->dest[0]>=0) printf(" -> %u", block->dest[0]);
+        if (block->dest[1]>=0) printf(" -> %u", block->dest[1]);
+        printf(" (inbound: %u)\n", block->inbound);
+    }
 }
 
 /** Create a new block that starts at a given index and add it to the control flow graph; returns a handle to this block */
@@ -773,13 +786,7 @@ void optimize_buildcontrolflowgraph(optimizer *opt) {
     varray_codeblockindxclear(&worklist);
     
 #ifdef MORPHO_DEBUG_LOGOPTIMIZER
-    for (codeblockindx i=0; i<opt->cfgraph.count; i++) {
-        codeblock *block = opt->cfgraph.data+i;
-        printf("Block %u [%td, %td]", i, block->start, block->end);
-        if (block->dest[0]>=0) printf(" -> %u", block->dest[0]);
-        if (block->dest[1]>=0) printf(" -> %u", block->dest[1]);
-        printf(" (inbound: %u)\n", block->inbound);
-    }
+    optimize_showcodeblocks(opt);
 #endif
 }
 
@@ -855,6 +862,7 @@ bool optimize(program *prog) {
         codeblockindx current;
         if (!varray_codeblockindxpop(&worklist, &current)) UNREACHABLE("Unexpectedly empty worklist in optimizer");
         
+        // Make sure we didn't already finalize this block
         if (optimize_getvisited(&opt, current)>=optimize_getinbound(&opt, current)) continue;
         
         optimize_optimizeblock(&opt, current, firstpass);

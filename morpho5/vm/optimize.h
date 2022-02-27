@@ -30,6 +30,8 @@ typedef struct scodeblock {
     codeblockindx dest[2]; /** Indices of destination blocks */
     int inbound; /** Count inbound */
     int visited; /** Count how many times optimizer has visited the block */
+    int nreg; /** Size of register state */
+    reginfo *reg; /** Register state at end */
 } codeblock;
 
 DECLARE_VARRAY(codeblock, codeblock)

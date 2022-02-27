@@ -627,6 +627,14 @@ void optimize_copydest(optimizer *opt, codeblockindx src, codeblockindx dest) {
     opt->cfgraph.data[dest].dest[1]=opt->cfgraph.data[src].dest[1];
 }
 
+/** Copy block destinations to work list */
+void optimize_desttoworklist(optimizer *opt, codeblockindx src, varray_codeblockindx *worklist) {
+    for (int i=0; i<2; i++) {
+        codeblockindx dest = opt->cfgraph.data[src].dest[i];
+        if (dest!=CODEBLOCKDEST_EMPTY) varray_codeblockindxwrite(worklist, dest);
+    }
+}
+
 /** Splits a block into two
  * @param[in] opt - optimizer
  * @param[in] handle - block to split
@@ -789,27 +797,22 @@ void optimize_compactify(optimizer *opt) {
 * Optimize a block
 * ********************************************************************** */
 
-void optimize_optimizeblock(optimizer *opt, codeblockindx block) {
+void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstrategy *strategies) {
     instructionindx start=optimize_getstart(opt, block),
                     end=optimize_getend(opt, block);
-    
-    static optimizationstrategy *pass[2] = { firstpass, secondpass};
-    
-    for (int iter=0; iter<2; iter++) { // Two pass optimization that may use different strategies
+            
+    for (optimize_restart(opt, start);
+         opt->iindx<=end;
+         optimize_next(opt)) {
         
-        for (optimize_restart(opt, start);
-             opt->iindx<=end;
-             optimize_next(opt)) {
-            
-            optimize_fetch(opt);
-            optimize_optimizeinstruction(opt, pass[iter]);
-            optimize_track(opt); // Track contents of registers
-            optimize_overwrite(opt); //
-            
+        optimize_fetch(opt);
+        optimize_optimizeinstruction(opt, strategies);
+        optimize_track(opt); // Track contents of registers
+        optimize_overwrite(opt); //
+        
 #ifdef MORPHO_DEBUG_LOGOPTIMIZER
-            optimize_regshow(opt);
+        optimize_regshow(opt);
 #endif
-        }
     }
 }
 
@@ -820,48 +823,31 @@ void optimize_optimizeblock(optimizer *opt, codeblockindx block) {
 /** Public interface to optimizer */
 bool optimize(program *prog) {
     optimizer opt;
-    optimizationstrategy *pass[2] = { firstpass, secondpass};
+    //optimizationstrategy *pass[2] = { firstpass, secondpass};
     
     optimize_init(&opt, prog);
     
     optimize_buildcontrolflowgraph(&opt);
     
+    // Now optimize blocks 
     varray_codeblockindx worklist;
     varray_codeblockindxinit(&worklist);
-
     varray_codeblockindxwrite(&worklist, 0);
     
     while (worklist.count>0) {
         codeblockindx current;
         if (!varray_codeblockindxpop(&worklist, &current)) UNREACHABLE("Unexpectedly empty worklist in optimizer");
         
-        optimize_optimizeblock(&opt, current);
-        
+        optimize_optimizeblock(&opt, current, firstpass);
+        optimize_desttoworklist(&opt, current, &worklist);
     }
     
     varray_codeblockindxclear(&worklist);
-    
-    return true;
-    
-    for (int iter=0; iter<2; iter++) { // Two pass optimization that may use different strategies
-        while (!optimize_atend(&opt)) {
-            optimize_fetch(&opt);
-            optimize_optimizeinstruction(&opt, pass[iter]);
-            
-            optimize_track(&opt);
-            optimize_overwrite(&opt);
-            
-#ifdef MORPHO_DEBUG_LOGOPTIMIZER
-            optimize_regshow(&opt);
-#endif
-            optimize_advance(&opt);
-        }
-        optimize_restart(&opt, 0);
-    }
-    
-    optimize_compactify(&opt);
-    
     optimize_clear(&opt);
+    
+    /*
+    optimize_compactify(&opt);
+    */
     
     return true;
 }

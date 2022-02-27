@@ -38,7 +38,7 @@ void optimize_regshow(optimizer *opt) {
 
 /** Checks if we're at the end of the program */
 bool optimize_atend(optimizer *opt) {
-    return (opt->next >= opt->out->code.count);
+    return (opt->iindx >= opt->out->code.count);
 }
 
 /** Sets the contents of a register */
@@ -80,7 +80,7 @@ void optimize_replaceinstructionat(optimizer *opt, indx ix, instruction inst) {
 
 /** Replaces the current instruction */
 void optimize_replaceinstruction(optimizer *opt, instruction inst) {
-    opt->out->code.data[opt->next]=inst;
+    opt->out->code.data[opt->iindx]=inst;
     opt->current=inst;
     opt->op=DECODE_OP(inst);
 }
@@ -329,7 +329,7 @@ void optimize_overwrite(optimizer *opt) {
     }
     
     opt->reg[opt->overwrites].used=0;
-    opt->reg[opt->overwrites].iix=opt->next;
+    opt->reg[opt->overwrites].iix=opt->iindx;
 }
 
 /* **********************************************************************
@@ -388,29 +388,29 @@ void optimize_advanceannotation(optimizer *opt) {
 void optimize_fetch(optimizer *opt) {
     optimize_nooverwrite(opt);
     
-    opt->current=opt->out->code.data[opt->next];
+    opt->current=opt->out->code.data[opt->iindx];
     opt->op=DECODE_OP(opt->current);
 }
 
 /** Returns the index of the instruction currently decoded */
 instructionindx optimizer_currentindx(optimizer *opt) {
-    return opt->next;
+    return opt->iindx;
 }
 
 /** Advance to next instruction */
 void optimize_advance(optimizer *opt) {
     optimize_advanceannotation(opt);
-    opt->next++;
+    opt->iindx++;
 }
 
 /** Move to next instruction; ignore annotations */
 void optimize_next(optimizer *opt) {
-    opt->next++;
+    opt->iindx++;
 }
 
 /** Move to a different instruction. */
 void optimize_moveto(optimizer *opt, instructionindx indx) {
-    opt->next=indx;
+    opt->iindx=indx;
     optimize_fetch(opt);
 }
 
@@ -419,7 +419,7 @@ void optimize_track(optimizer *opt) {
     instruction instr=opt->current;
 
 #ifdef MORPHO_DEBUG_LOGOPTIMIZER
-    debug_disassembleinstruction(instr, opt->next, NULL, NULL);
+    debug_disassembleinstruction(instr, opt->iindx, NULL, NULL);
     printf("\n");
 #endif
     
@@ -462,7 +462,6 @@ void optimize_track(optimizer *opt) {
             break;
         case OP_BIF:
             optimize_reguse(opt, DECODE_A(instr));
-            UNREACHABLE("Branches ouch!");
             break;
         case OP_CALL:
         {
@@ -508,10 +507,10 @@ void optimize_regclear(optimizer *opt) {
     }
 }
 
-/** Restart from the beginning */
-void optimize_restart(optimizer *opt) {
+/** Restart from a designated instruction */
+void optimize_restart(optimizer *opt, instructionindx start) {
     optimize_regclear(opt);
-    opt->next=0;
+    opt->iindx=start;
     
     opt->a=NULL;
     opt->amax=NULL;
@@ -533,7 +532,7 @@ void optimize_init(optimizer *opt, program *prog) {
     }
     opt->maxreg=MORPHO_MAXARGS;
     optimize_setfunction(opt, prog->global);
-    optimize_restart(opt);
+    optimize_restart(opt, 0);
     
     varray_codeblockinit(&opt->cfgraph);
     
@@ -687,11 +686,11 @@ codeblockindx optimize_branchto(optimizer *opt, codeblockindx handle, instructio
     return out;
 }
 
-/** Processes a branch instruction.
+/** Build a code block from the current starting point
  * @param[in] opt - optimizer
  * @param[in] block - block to process
  * @param[out] worklist - worklist of blocks to process; updated */
-void optimize_block(optimizer *opt, codeblockindx block, varray_codeblockindx *worklist) {
+void optimize_buildblock(optimizer *opt, codeblockindx block, varray_codeblockindx *worklist) {
     optimize_moveto(opt, optimize_getstart(opt, block));
     
     while (!optimize_atend(opt)) {
@@ -744,7 +743,7 @@ void optimize_buildcontrolflowgraph(optimizer *opt) {
         codeblockindx current;
         if (!varray_codeblockindxpop(&worklist, &current)) UNREACHABLE("Unexpectedly empty worklist in control flow graph");
         
-        optimize_block(opt, current, &worklist);
+        optimize_buildblock(opt, current, &worklist);
     }
     varray_codeblockindxclear(&worklist);
     
@@ -757,8 +756,6 @@ void optimize_buildcontrolflowgraph(optimizer *opt) {
         printf(" (inbound: %u)\n", block->inbound);
     }
 #endif
-    
-    optimize_restart(opt);
 }
 
 /* **********************************************************************
@@ -768,7 +765,7 @@ void optimize_buildcontrolflowgraph(optimizer *opt) {
 void optimize_compactify(optimizer *opt) {
     unsigned int write=0; // Keep track of where we're writing to
     
-    optimize_restart(opt);
+    optimize_restart(opt, 0);
     optimize_restartannotation(opt);
     
     while (!optimize_atend(opt)) {
@@ -776,7 +773,7 @@ void optimize_compactify(optimizer *opt) {
         optimize_replaceinstructionat(opt, write, opt->current); // Copy this instruction down
         
 #ifdef MORPHO_DEBUG_LOGOPTIMIZER
-        debug_disassembleinstruction(opt->current, opt->next, NULL, NULL);
+        debug_disassembleinstruction(opt->current, opt->iindx, NULL, NULL);
         printf("\n");
 #endif
         
@@ -786,6 +783,34 @@ void optimize_compactify(optimizer *opt) {
         optimize_advance(opt);
     }
     opt->out->code.count=write; // Set length of code
+}
+
+/* **********************************************************************
+* Optimize a block
+* ********************************************************************** */
+
+void optimize_optimizeblock(optimizer *opt, codeblockindx block) {
+    instructionindx start=optimize_getstart(opt, block),
+                    end=optimize_getend(opt, block);
+    
+    static optimizationstrategy *pass[2] = { firstpass, secondpass};
+    
+    for (int iter=0; iter<2; iter++) { // Two pass optimization that may use different strategies
+        
+        for (optimize_restart(opt, start);
+             opt->iindx<=end;
+             optimize_next(opt)) {
+            
+            optimize_fetch(opt);
+            optimize_optimizeinstruction(opt, pass[iter]);
+            optimize_track(opt); // Track contents of registers
+            optimize_overwrite(opt); //
+            
+#ifdef MORPHO_DEBUG_LOGOPTIMIZER
+            optimize_regshow(opt);
+#endif
+        }
+    }
 }
 
 /* **********************************************************************
@@ -800,6 +825,21 @@ bool optimize(program *prog) {
     optimize_init(&opt, prog);
     
     optimize_buildcontrolflowgraph(&opt);
+    
+    varray_codeblockindx worklist;
+    varray_codeblockindxinit(&worklist);
+
+    varray_codeblockindxwrite(&worklist, 0);
+    
+    while (worklist.count>0) {
+        codeblockindx current;
+        if (!varray_codeblockindxpop(&worklist, &current)) UNREACHABLE("Unexpectedly empty worklist in optimizer");
+        
+        optimize_optimizeblock(&opt, current);
+        
+    }
+    
+    varray_codeblockindxclear(&worklist);
     
     return true;
     
@@ -816,7 +856,7 @@ bool optimize(program *prog) {
 #endif
             optimize_advance(&opt);
         }
-        optimize_restart(&opt);
+        optimize_restart(&opt, 0);
     }
     
     optimize_compactify(&opt);

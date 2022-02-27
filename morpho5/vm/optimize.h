@@ -37,7 +37,7 @@ DECLARE_VARRAY(codeblockindx, codeblockindx)
 /** Optimizer data structure */
 typedef struct {
     program *out;
-    instructionindx next;    // Index to next instruction
+    instructionindx iindx;    // Index to current instruction
     
     instruction current;     // Current instruction
     int op;                  // Current opcode

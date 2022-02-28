@@ -60,10 +60,11 @@ typedef struct {
     vm *v;                   // We keep a VM to do things like constant folding etc.
     program *temp;           // Temporary program
     
-    debugannotation *a;      // Current annotation
-    debugannotation *amax;   // Last annotation
-    unsigned int ai;         // Counter for current annotation
-    unsigned int adel;       // Count number of deletions
+    indx a;                  // Current annotation
+    indx ai;                 // Count instructions within given annotation
+    int acopied;             // Count number of copied instructions
+    instructionindx aindx;   // Instruction counter for annotations
+    varray_debugannotation aout; // Annotations out
 } optimizer;
 
 bool optimize(program *prog);

@@ -7,6 +7,9 @@
 #include "optimize.h"
 #include "debug.h"
 
+DEFINE_VARRAY(codeblock, codeblock);
+DEFINE_VARRAY(codeblockindx, codeblockindx);
+
 /* **********************************************************************
  * Display
  * ********************************************************************** */
@@ -336,48 +339,101 @@ void optimize_overwrite(optimizer *opt) {
  * Handling code annotations
  * ********************************************************************** */
 
-void optimize_advanceannotationtoelement(optimizer *opt) {
+/*void optimize_advanceannotationtoelement(optimizer *opt) {
     while (opt->a<opt->amax && opt->a->type!=DEBUG_ELEMENT) opt->a++;
     if (opt->a>=opt->amax) opt->a=NULL;
-}
+}*/
 
 /** Start annotation */
-void optimize_restartannotation(optimizer *opt) {
+/*void optimize_restartannotation(optimizer *opt) {
     opt->a=opt->out->annotations.data;
     opt->amax=opt->out->annotations.data+opt->out->annotations.count;
     opt->ai=0;
-    opt->adel=0;
     optimize_advanceannotationtoelement(opt);
-}
+}*/
 
 /** Reset annotation instruction counter */
-void optimize_resetannotationinstructioncounter(optimizer *opt) {
+/*void optimize_resetannotationinstructioncounter(optimizer *opt) {
     opt->ai=0;
-    opt->adel=0;
-}
-
-/** Mark instruction for deletion */
-void optimize_annotationdeleteinstruction(optimizer *opt) {
-    opt->adel+=1;
-}
+}*/
 
 /** Advance annotation by one instruction */
-void optimize_advanceannotation(optimizer *opt) {
+/*void optimize_advanceannotation(optimizer *opt) {
     if (!opt->a) return;
 
     opt->ai++; // Advance instruction counter for annotations
     
-    /* Check if we need to advance to the next annotation */
+    // Check if we need to advance to the next annotation
     if (opt->ai>=opt->a->content.element.ninstr) {
         opt->a->content.element.ninstr-=opt->adel;
         opt->a++;
         
         optimize_resetannotationinstructioncounter(opt);
-        
         optimize_advanceannotationtoelement(opt);
     }
     
     return;
+}*/
+
+/** Gets the current annotation */
+debugannotation *optimize_currentannotation(optimizer *opt) {
+    return &opt->out->annotations.data[opt->a];
+}
+
+/** Are we at the end of annotations */
+bool optimize_annotationatend(optimizer *opt) {
+    return !(opt->a < opt->out->annotations.count);
+}
+
+/** Reset element counters */
+void optimize_annotationresetelementcounters(optimizer *opt) {
+    opt->ai=0;
+    opt->acopied=0;
+}
+
+/** Processes a DEBUG_ELEMENT record */
+void optimize_annotationprocesselement(optimizer *opt, bool copy) {
+    debugannotation *ann = optimize_currentannotation(opt);
+    opt->ai++;
+    if (copy) opt->acopied++;
+    if (opt->ai==ann->content.element.ninstr) {
+        if (opt->acopied>0) {
+            varray_debugannotationadd(&opt->aout, ann, 1);
+            // Fix the number of instructions
+            opt->aout.data[opt->aout.count-1].content.element.ninstr=opt->acopied;
+        }
+        opt->a++; // Move to next record
+        optimize_annotationresetelementcounters(opt);
+    }
+}
+
+/** Advance annotation system by one instruction. Copies annotations associated with the instruction if copy is set */
+void optimize_annotationadvance(optimizer *opt, bool copy) {
+    // Advance through the annotations
+    while (!optimize_annotationatend(opt)) {
+        debugannotation *ann = optimize_currentannotation(opt);
+        if (ann->type==DEBUG_ELEMENT) { // Until we get to a DEBUG_ELEMENT record
+            optimize_annotationprocesselement(opt, copy);
+            break;
+        }
+        if (copy) varray_debugannotationadd(&opt->aout, ann, 1);
+        opt->a++;
+    }
+    opt->aindx++;
+}
+
+/** Advances annotation system to current instruction */
+void optimize_annotationmoveto(optimizer *opt) {
+    while (opt->aindx<opt->iindx) {
+        optimize_annotationadvance(opt, false);
+    }
+}
+
+/** Restarts annotations */
+void optimize_restartannotation(optimizer *opt) {
+    opt->a=0;
+    opt->aindx=0;
+    optimize_annotationresetelementcounters(opt);
 }
 
 /* **********************************************************************
@@ -399,16 +455,10 @@ instructionindx optimizer_currentindx(optimizer *opt) {
 
 /** Advance to next instruction */
 void optimize_advance(optimizer *opt) {
-    optimize_advanceannotation(opt);
     opt->iindx++;
 }
 
-/** Move to next instruction; ignore annotations */
-void optimize_next(optimizer *opt) {
-    opt->iindx++;
-}
-
-/** Move to a different instruction. */
+/** Move to a different instruction. Does not move annotations */
 void optimize_moveto(optimizer *opt, instructionindx indx) {
     opt->iindx=indx;
     optimize_fetch(opt);
@@ -512,8 +562,7 @@ void optimize_restart(optimizer *opt, instructionindx start) {
     optimize_regclear(opt);
     opt->iindx=start;
     
-    opt->a=NULL;
-    opt->amax=NULL;
+    //optimize_restartannotation(opt);
 }
 
 /** Sets the current function */
@@ -535,9 +584,7 @@ void optimize_init(optimizer *opt, program *prog) {
     optimize_restart(opt, 0);
     
     varray_codeblockinit(&opt->cfgraph);
-    
-    opt->a=NULL;
-    opt->amax=NULL;
+    varray_debugannotationinit(&opt->aout);
     
     opt->v=morpho_newvm();
     opt->temp=morpho_newprogram();
@@ -548,6 +595,7 @@ void optimize_clear(optimizer *opt) {
     if (opt->globals) MORPHO_FREE(opt->globals);
     
     varray_codeblockclear(&opt->cfgraph);
+    varray_debugannotationclear(&opt->aout);
     
     if (opt->v) morpho_freevm(opt->v);
     if (opt->temp) morpho_freeprogram(opt->temp);
@@ -556,9 +604,6 @@ void optimize_clear(optimizer *opt) {
 /* **********************************************************************
 * Control Flow graph
 * ********************************************************************** */
-
-DEFINE_VARRAY(codeblock, codeblock);
-DEFINE_VARRAY(codeblockindx, codeblockindx);
 
 /** Initialize a code block */
 void optimize_initcodeblock(codeblock *block, instructionindx start) {
@@ -766,7 +811,7 @@ void optimize_buildblock(optimizer *opt, codeblockindx block, varray_codeblockin
                 break;
         }
         
-        optimize_next(opt);
+        optimize_advance(opt);
     }
 }
 
@@ -796,7 +841,7 @@ void optimize_buildcontrolflowgraph(optimizer *opt) {
  * Finalize, clearing nops and fixing debug info
  * ********************************************************************** */
 
-void optimize_compactify(optimizer *opt) {
+/*void optimize_compactify(optimizer *opt) {
     unsigned int write=0; // Keep track of where we're writing to
     
     optimize_restart(opt, 0);
@@ -817,7 +862,7 @@ void optimize_compactify(optimizer *opt) {
         optimize_advance(opt);
     }
     opt->out->code.count=write; // Set length of code
-}
+}*/
 
 /* **********************************************************************
  * Optimize a block
@@ -829,7 +874,7 @@ void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstr
             
     for (optimize_restart(opt, start);
          opt->iindx<=end;
-         optimize_next(opt)) {
+        optimize_advance(opt)) {
         
         optimize_fetch(opt);
         optimize_optimizeinstruction(opt, strategies);
@@ -843,7 +888,7 @@ void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstr
 }
 
 /* **********************************************************************
- * Block layout and final processing
+ * Final processing and layout of final program
  * ********************************************************************** */
 
 codeblock *blocklist;
@@ -876,6 +921,7 @@ void optimize_sortblocks(optimizer *opt, varray_codeblockindx *out) {
 int optimize_compactifyblock(optimizer *opt, codeblock *block, varray_instruction *dest) {
     int count=0; // Count number of copied instructions
     optimize_moveto(opt, block->start);
+    optimize_annotationmoveto(opt);
     
     do {
         optimize_fetch(opt);
@@ -886,6 +932,7 @@ int optimize_compactifyblock(optimizer *opt, codeblock *block, varray_instructio
         }
         
         optimize_advance(opt);
+        optimize_annotationadvance(opt, opt->op!=OP_NOP);
     } while (optimizer_currentindx(opt)<=block->end);
     
     return count;
@@ -936,15 +983,13 @@ void optimize_layoutblocks(optimizer *opt) {
         optimize_fixbranch(opt, block, &out);
     }
     
-    for (instructionindx i=0; i<out.count; i++) {
-        debug_disassembleinstruction(out.data[i], i, NULL, NULL);
-        printf("\n");
-    }
-    
     /** Patch instructions into program */
     varray_instructionclear(&opt->out->code);
     opt->out->code=out;
-    opt->out->annotations.count=0;
+    /** Patch new annotations into program */
+    varray_debugannotationclear(&opt->out->annotations);
+    opt->out->annotations=opt->aout;
+    varray_debugannotationinit(&opt->aout); // Reinitialize optimizers annotation record
     
     varray_codeblockindxclear(&sorted);
 }
@@ -965,7 +1010,7 @@ bool optimize(program *prog) {
     // Now optimize blocks
     varray_codeblockindx worklist;
     varray_codeblockindxinit(&worklist);
-    varray_codeblockindxwrite(&worklist, 0);
+    varray_codeblockindxwrite(&worklist, 0); // Start with first block
     
     while (worklist.count>0) {
         codeblockindx current;

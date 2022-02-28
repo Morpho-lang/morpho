@@ -32,6 +32,8 @@ typedef struct scodeblock {
     int visited; /** Count how many times optimizer has visited the block */
     int nreg; /** Size of register state */
     reginfo *reg; /** Register state at end */
+    instructionindx ostart; /** First instruction in output */
+    instructionindx oend; /** Last instruction in output */
 } codeblock;
 
 DECLARE_VARRAY(codeblock, codeblock)

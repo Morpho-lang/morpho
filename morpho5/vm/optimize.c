@@ -570,6 +570,8 @@ void optimize_initcodeblock(codeblock *block, instructionindx start) {
     block->visited=0;
     block->nreg=0;
     block->reg=NULL;
+    block->ostart=0;
+    block->oend=0;
 }
 
 /** Show the current code blocks*/
@@ -870,19 +872,79 @@ void optimize_sortblocks(optimizer *opt, varray_codeblockindx *out) {
     qsort(out->data, nblocks, sizeof(codeblockindx), optimize_blocksortfn);
 }
 
+/** Compactifies a block, writing the results to dest*/
+int optimize_compactifyblock(optimizer *opt, codeblock *block, varray_instruction *dest) {
+    int count=0; // Count number of copied instructions
+    optimize_moveto(opt, block->start);
+    
+    do {
+        optimize_fetch(opt);
+        
+        if (opt->op!=OP_NOP) {
+            varray_instructionwrite(dest, opt->current);
+            count++;
+        }
+        
+        optimize_advance(opt);
+    } while (optimizer_currentindx(opt)<=block->end);
+    
+    return count;
+}
+
+/** Fix branch instructions */
+void optimize_fixbranch(optimizer *opt, codeblock *block, varray_instruction *dest) {
+    instruction last = dest->data[block->oend];
+    
+    if (DECODE_OP(last)==OP_B) {
+        codeblock *destblock = &opt->cfgraph.data[block->dest[0]];
+        dest->data[block->oend] = ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, destblock->ostart-block->oend-1);
+    } else if (DECODE_OP(last)==OP_BIF) {
+        codeblock *destblock = &opt->cfgraph.data[block->dest[1]];
+        dest->data[block->oend] = ENCODE_LONGFLAGS(OP_BIF, DECODE_A(last), DECODE_F(last), false, destblock->ostart-block->oend-1);
+    }
+}
+
 /** Layout blocks */
 void optimize_layoutblocks(optimizer *opt) {
     codeblockindx nblocks = opt->cfgraph.count;
-    varray_codeblockindx sorted;
+    varray_codeblockindx sorted; // Sorted block indices
+    varray_instruction out; // Destination program
+    
     varray_codeblockindxinit(&sorted);
+    varray_instructioninit(&out);
     
     optimize_sortblocks(opt,&sorted);
+    optimize_restart(opt, 0);
     
+    instructionindx iout=0; // Track instruction count
+    
+    /** Copy and compactify blocks */
     for (unsigned int i=0; i<nblocks; i++) {
         codeblock *block = &opt->cfgraph.data[sorted.data[i]];
         
-        block->start;
+        int ninstructions=optimize_compactifyblock(opt, block, &out);
+        
+        block->ostart=iout; // Record block's new start and end point
+        block->oend=iout+ninstructions-1;
+        
+        iout+=ninstructions;
     }
+    
+    /** Fix branch instructions */
+    for (unsigned int i=0; i<nblocks; i++) {
+        codeblock *block = &opt->cfgraph.data[sorted.data[i]];
+        optimize_fixbranch(opt, block, &out);
+    }
+    
+    for (instructionindx i=0; i<out.count; i++) {
+        debug_disassembleinstruction(out.data[i], i, NULL, NULL);
+        printf("\n");
+    }
+    
+    /** Patch instructions into program */
+    varray_instructionclear(&opt->out->code);
+    opt->out->code=out;
+    opt->out->annotations.count=0;
     
     varray_codeblockindxclear(&sorted);
 }

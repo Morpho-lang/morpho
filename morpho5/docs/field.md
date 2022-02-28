@@ -44,7 +44,7 @@ You can store more than one item per element by supplying a list to the `grade` 
 
     var f = Field(mesh, 1.0, grade=[0,2,1])
 
-stores two numbers on the line (grade 1) elements and one number on the facets (grade 2 elements). Each number in the field is initialized to the value `1.0`.
+stores two numbers on the line (grade 1) elements and one number on the facets (grade 2) elements. Each number in the field is initialized to the value `1.0`.
 
 ## Shape
 [tagshape]: # (shape)
@@ -64,7 +64,7 @@ The `op` method applies a function to every item stored in a `Field`, returning 
 
 calls the `norm` method on each element stored in `f`.
 
-Additional `Field` objects may supplied as extra arguments to `op`. These must have the same shape (the same number of items stored on each grade). The function supplied to `op` will now be called with the corresponding element from each field as arguments. For example,
+Additional `Field` objects may be supplied as extra arguments to `op`. These must have the same shape (the same number of items stored on each grade). The function supplied to `op` will now be called with the corresponding element from each field as arguments. For example,
 
     f.op(fn (x,y) x.inner(y), g)
 

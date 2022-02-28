@@ -1,0 +1,15 @@
+// Import a file containing a mesh and a scalar field
+import vtk
+import meshtools
+
+var vtkI = VTKImporter("mesh_scalar.vtk")
+
+var m = vtkI.mesh()
+
+print m // expect: <Mesh: 2 vertices>
+
+var f = vtkI.field("f")
+
+print f // expect: <Field>
+// expect: [ -1 ]
+// expect: [ 1 ]

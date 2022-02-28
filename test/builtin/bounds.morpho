@@ -17,4 +17,4 @@ print min(b)
 // expect: -1
 
 print bounds()
-// expect Error 'InvldArgs'
+// expect Error 'MnMxArgs'

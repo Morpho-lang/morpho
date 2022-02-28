@@ -10,6 +10,10 @@
 #include "random.h"
 #include "builtin.h"
 #include "common.h"
+#include "matrix.h"
+#include "mesh.h"
+#include "field.h"
+#include "selection.h"
 
 /* **********************************************************************
  * Built in functions
@@ -214,10 +218,16 @@ value builtin_iscallablefunction(vm *v, int nargs, value *args) {
 /** Convert something to an integer */
 value builtin_int(vm *v, int nargs, value *args) {
     if (nargs==1) {
-        if (MORPHO_ISFLOAT(MORPHO_GETARG(args, 0))) {
-            return MORPHO_FLOATTOINTEGER(MORPHO_GETARG(args, 0));
-        } else if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-            return MORPHO_GETARG(args, 0);
+        value arg = MORPHO_GETARG(args, 0);
+        
+        if (MORPHO_ISSTRING(arg)) {
+            string_tonumber(MORPHO_GETSTRING(arg), &arg);
+        }
+        
+        if (MORPHO_ISFLOAT(arg)) {
+            return MORPHO_FLOATTOINTEGER(arg);
+        } else if (MORPHO_ISINTEGER(arg)) {
+            return arg;
         }
     }
     morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_INT);
@@ -227,10 +237,16 @@ value builtin_int(vm *v, int nargs, value *args) {
 /** Convert to a floating point number */
 value builtin_float(vm *v, int nargs, value *args) {
     if (nargs==1) {
-        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-            return MORPHO_INTEGERTOFLOAT(MORPHO_GETARG(args, 0));
-        } else {
-            return MORPHO_GETARG(args, 0);
+        value arg = MORPHO_GETARG(args, 0);
+        
+        if (MORPHO_ISSTRING(arg)) {
+            string_tonumber(MORPHO_GETSTRING(arg), &arg);
+        }
+        
+        if (MORPHO_ISINTEGER(arg)) {
+            return MORPHO_INTEGERTOFLOAT(arg);
+        } else if (MORPHO_ISFLOAT(arg)){
+            return arg;
         }
     }
     morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_FLOAT);
@@ -301,46 +317,67 @@ static bool builtin_minmax(vm *v, value obj, value *min, value *max) {
     return true;
 }
 
+bool builtin_minmaxargs(vm *v, int nargs, value *args, value *min, value *max, char *fname) {
+    for (unsigned int i=0; i<nargs; i++) {
+        value arg = MORPHO_GETARG(args, i);
+        if (MORPHO_ISOBJECT(arg)) {
+            if (!builtin_minmax(v, arg, (min ? &min[i] : NULL), (max ? &max[i]: NULL))) return false;
+        } else if (morpho_isnumber(arg)) {
+            if (min) min[i]=arg;
+            if (max) max[i]=arg;
+        } else {
+            morpho_runtimeerror(v, MAX_ARGS, fname);
+            return false;
+        }
+    }
+    return true;
+}
 
 /** Find the minimum and maximum values in an enumerable object */
 static value builtin_bounds(vm *v, int nargs, value *args) {
+    value minlist[nargs+1],maxlist[nargs+1];
     value out = MORPHO_NIL;
     
-    if (nargs==1) {
-        value bounds[2];
-        
-        if (builtin_minmax(v, MORPHO_GETARG(args, 0), &bounds[0], &bounds[1])) {
+    if (builtin_minmaxargs(v, nargs, args, minlist, maxlist, FUNCTION_BOUNDS)) {
+        if (nargs>0) {
+            value bounds[2];
+            value_minmax(nargs, minlist, &bounds[0], NULL);
+            value_minmax(nargs, maxlist, NULL, &bounds[1]);
+            
             objectlist *list = object_newlist(2, bounds);
             if (list) {
                 out = MORPHO_OBJECT(list);
                 morpho_bindobjects(v, 1, &out);
             } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-        }
-    } else morpho_runtimeerror(v, VM_INVALIDARGS, 1, nargs);
+            
+        } else morpho_runtimeerror(v, MAX_ARGS, FUNCTION_BOUNDS);
+    }
     
     return out;
 }
 
 /** Find the minimum value in an enumerable object */
 static value builtin_min(vm *v, int nargs, value *args) {
+    value m[nargs+1];
     value out = MORPHO_NIL;
-    // ensure we have 1 argument and that it is a list or a matrix
-    if (nargs==1 && (MORPHO_ISLIST(MORPHO_GETARG(args, 0)) || \
-                    MORPHO_ISMATRIX(MORPHO_GETARG(args, 0)))) {
-            builtin_minmax(v, MORPHO_GETARG(args, 0), &out, NULL);
-    } else morpho_runtimeerror(v, VM_INVALIDARGSDETAIL,FUNCTION_MIN, 1, "list or matrix");
+    
+    if (builtin_minmaxargs(v, nargs, args, m, NULL, FUNCTION_MIN)) {
+        if (nargs>0) value_minmax(nargs, m, &out, NULL);
+        else morpho_runtimeerror(v, MAX_ARGS, FUNCTION_MIN);
+    }
     
     return out;
 }
 
 /** Find the maximum value in an enumerable object */
 static value builtin_max(vm *v, int nargs, value *args) {
+    value m[nargs+1];
     value out = MORPHO_NIL;
-    // ensure we have 1 argument and that it is a list or a matrix
-    if (nargs==1 && (MORPHO_ISLIST(MORPHO_GETARG(args, 0)) || \
-                    MORPHO_ISMATRIX(MORPHO_GETARG(args, 0)))) {
-        builtin_minmax(v, MORPHO_GETARG(args, 0), NULL, &out);
-    } else morpho_runtimeerror(v, VM_INVALIDARGSDETAIL,FUNCTION_MAX, 1, "list or matrix");
+    
+    if (builtin_minmaxargs(v, nargs, args, NULL, m, FUNCTION_MAX)) {
+        if (nargs>0) value_minmax(nargs, m, NULL, &out);
+        else morpho_runtimeerror(v, MAX_ARGS, FUNCTION_MAX);
+    }
     
     return out;
 }
@@ -375,7 +412,6 @@ static value builtin_sign(vm *v, int nargs, value *args){
     return MORPHO_NIL; 
 }
 
-
 /* ************************************
  * Apply
  * *************************************/
@@ -383,7 +419,19 @@ static value builtin_sign(vm *v, int nargs, value *args){
 /** Apply a function to a list of arguments */
 value builtin_apply(vm *v, int nargs, value *args) {
     value ret = MORPHO_NIL;
-    morpho_call(v, MORPHO_GETARG(args, 0), nargs-1, &MORPHO_GETARG(args, 1), &ret);
+    
+    if (nargs<2) morpho_runtimeerror(v, APPLY_ARGS);
+        
+    value fn =  MORPHO_GETARG(args, 0);
+    value x =  MORPHO_GETARG(args, 1);
+    
+    if (nargs==2 && MORPHO_ISLIST(x)) {
+        objectlist *lst = MORPHO_GETLIST(x);
+        
+        morpho_call(v, fn, lst->val.count, lst->val.data, &ret);
+    } else {
+        morpho_call(v, fn, nargs-1, &MORPHO_GETARG(args, 1), &ret);
+    }
     
     return ret;
 }
@@ -490,7 +538,9 @@ void functions_initialize(void) {
     morpho_defineerror(MATH_ARGS, ERROR_HALT, MATH_ARGS_MSG);
     morpho_defineerror(MATH_NUMARGS, ERROR_HALT, MATH_NUMARGS_MSG);
     morpho_defineerror(MATH_ATANARGS, ERROR_HALT, MATH_ATANARGS_MSG);
-    morpho_defineerror(TYPE_NUMARGS, ERROR_HALT, TYPE_NUMARGS_MSG);   
+    morpho_defineerror(TYPE_NUMARGS, ERROR_HALT, TYPE_NUMARGS_MSG);
+    morpho_defineerror(MAX_ARGS, ERROR_HALT, MAX_ARGS_MSG);
+    morpho_defineerror(APPLY_ARGS, ERROR_HALT, APPLY_ARGS_MSG);
 }
 
 #undef BUILTIN_MATH

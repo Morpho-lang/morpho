@@ -251,7 +251,8 @@ static bool lex_number(lexer *l, token *tok, error *err) {
     while (lex_isdigit(lex_peek(l))) lex_advance(l);
     
     /* Fractional part */
-    char next = lex_peekahead(l, 1);
+    char next = '\0';
+    if (lex_peek(l)!='\0') next=lex_peekahead(l, 1); // Prevent looking beyond buffer
     if (lex_peek(l) == '.' && (lex_isnumber(next)
 #ifndef MORPHO_LOXCOMPATIBILITY
                                || lex_isspace(next) || next=='\0'

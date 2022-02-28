@@ -9,7 +9,44 @@
 
 #include "object.h"
 #include "mesh.h"
+#include "matrix.h"
 #include <stdio.h>
+
+/* -------------------------------------------------------
+ * Field objects
+ * ------------------------------------------------------- */
+
+extern objecttype objectfieldtype;
+#define OBJECT_FIELD objectfieldtype
+
+typedef struct {
+    object obj;
+    objectmesh *mesh; /** The mesh the selection is referring to */
+    
+    unsigned int ngrades; /** Number of grades */
+    unsigned int *dof; /** number of degrees of freedom per entry in each grade */
+    unsigned int *offset; /** Offsets into the store for each grade */
+    
+    value prototype; /** Prototype object */
+    unsigned int psize; /** Number of dofs per copy of the prototype */
+    unsigned int nelements; /** Total number of elements in the fireld */
+    void *pool; /** Pool of statically allocated objects */
+    
+    objectmatrix data; /** Underlying data store */
+} objectfield;
+
+/** Tests whether an object is a field */
+#define MORPHO_ISFIELD(val) object_istype(val, OBJECT_FIELD)
+
+/** Gets the object as a field */
+#define MORPHO_GETFIELD(val)   ((objectfield *) MORPHO_GETOBJECT(val))
+
+/** Creates an empty field object */
+objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *dof);
+
+/* -------------------------------------------------------
+ * Field class
+ * ------------------------------------------------------- */
 
 #define FIELD_CLASSNAME "Field"
 

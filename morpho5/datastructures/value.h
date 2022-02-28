@@ -206,5 +206,6 @@ bool varray_valuefind(varray_value *varray, value v, unsigned int *out);
 bool varray_valuefindsame(varray_value *varray, value v, unsigned int *out);
 
 bool value_promotenumberlist(unsigned int nv, value *v);
+bool value_minmax(unsigned int nval, value *list, value *min, value *max);
 
 #endif /* value_h */

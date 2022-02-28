@@ -17,9 +17,9 @@ void functions_initialize(void);
 #define FUNCTION_CLOCK         "clock"
 #define FUNCTION_SYSTEM        "system"
 
-#define FUNCTION_INT           "int"
-#define FUNCTION_FLOAT         "float"
-#define FUNCTION_BOOL          "bool"
+#define FUNCTION_INT           "Int"
+#define FUNCTION_FLOAT         "Float"
+#define FUNCTION_BOOL          "Bool"
 #define FUNCTION_MOD           "mod"
 #define FUNCTION_ABS           "abs"
 #define FUNCTION_ISCALLABLE    "iscallable"
@@ -44,5 +44,11 @@ void functions_initialize(void);
 
 #define TYPE_NUMARGS                 "TypArgNm"
 #define TYPE_NUMARGS_MSG             "Function '%s' expects one argument."
+
+#define MAX_ARGS                     "MnMxArgs"
+#define MAX_ARGS_MSG                 "Function '%s' expects at least one numerical argument, list or matrix."
+
+#define APPLY_ARGS                   "ApplyArgs"
+#define APPLY_ARGS_MSG               "Function 'apply' expects at least two arguments."
 
 #endif /* functions_h */

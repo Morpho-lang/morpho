@@ -36,7 +36,7 @@ varray_value builtin_objects;
 
 /** Core object types can be provided with a 'veneer' class enabling the user to call methods
     on it, e.g. <string>.length(). This list provides easy access. */
-objectclass *objectveneer[OBJECT_EXTERN+1];
+//objectclass *objectveneer[OBJECT_EXTERN+1];
 
 /* **********************************************************************
  * Utility functions
@@ -47,19 +47,6 @@ static void builtin_init(objectbuiltinfunction *func) {
     func->flags=BUILTIN_FLAGSEMPTY;
     func->function=NULL;
     func->name=MORPHO_NIL;
-}
-
-/** @brief Sets the veneer class for a particular object type */
-void builtin_setveneerclass(objecttype type, value class) {
-    if (objectveneer[type]!=NULL) {
-        UNREACHABLE("Veneer class redefined.\n");
-    }
-    objectveneer[type]=MORPHO_GETCLASS(class);
-}
-
-/** @brief Gets the veneer for a particular object type */
-inline objectclass *builtin_getveneerclass(objecttype type) {
-    return objectveneer[type];
 }
 
 /** @brief An enumerate loop.
@@ -124,6 +111,35 @@ bool builtin_iscallable(value val) {
                                      MORPHO_ISINVOCATION(val) ||
                                      MORPHO_ISBUILTINFUNCTION(val)));
 }
+
+/* **********************************************************************
+ * object_builtinfunction definition
+ * ********************************************************************** */
+
+objecttype objectbuiltinfunctiontype;
+
+/** Instance object definitions */
+void objectbuiltinfunction_printfn(object *obj) {
+    objectbuiltinfunction *f = (objectbuiltinfunction *) obj;
+    if (f) printf("<fn %s>", (MORPHO_ISNIL(f->name) ? "" : MORPHO_GETCSTRING(f->name)));
+}
+
+void objectbuiltinfunction_freefn(object *obj) {
+    objectbuiltinfunction *func = (objectbuiltinfunction *) obj;
+    morpho_freeobject(func->name);
+}
+
+size_t objectbuiltinfunction_sizefn(object *obj) {
+    return sizeof(objectbuiltinfunction);
+}
+
+objecttypedefn objectbuiltinfunctiondefn = {
+    .printfn=objectbuiltinfunction_printfn,
+    .markfn=NULL,
+    .freefn=objectbuiltinfunction_freefn,
+    .sizefn=objectbuiltinfunction_sizefn
+};
+
 
 /* **********************************************************************
  * Create and find builtin functions
@@ -251,9 +267,7 @@ value builtin_internsymbolascstring(char *symbol) {
  * ********************************************************************** */
 
 void builtin_initialize(void) {
-    for (objecttype i=0; i<OBJECT_EXTERN+1; i++) {
-        objectveneer[i]=NULL;
-    }
+    objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
     
     dictionary_init(&builtin_functiontable);
     dictionary_init(&builtin_classtable);

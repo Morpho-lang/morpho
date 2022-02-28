@@ -10,6 +10,7 @@
 #include "common.h"
 #include "memory.h"
 #include "object.h"
+#include "sparse.h"
 
 /*
  * Macros that control the behavior of the dictionary.
@@ -135,13 +136,12 @@ static hash dictionary_hash(value key, bool intern) {
         if (intern) {
             return MORPHO_GETOBJECTHASH(key);
         } else {
-            switch (MORPHO_GETOBJECTTYPE(key)) {
-                case OBJECT_STRING:
-                    return dictionary_hashstring(MORPHO_GETCSTRING(key), MORPHO_GETSTRINGLENGTH(key));
-                case OBJECT_DOKKEY:
-                    return dictionary_hashdokkey(MORPHO_GETDOKKEY(key));
-                default:
-                    return dictionary_hashpointer(MORPHO_GETOBJECT(key));
+            if (MORPHO_ISSTRING(key)) {
+                return dictionary_hashstring(MORPHO_GETCSTRING(key), MORPHO_GETSTRINGLENGTH(key));
+            } else if (MORPHO_ISDOKKEY(key)) {
+                return dictionary_hashdokkey(MORPHO_GETDOKKEY(key));
+            } else {
+                return dictionary_hashpointer(MORPHO_GETOBJECT(key));
             }
         }
     }

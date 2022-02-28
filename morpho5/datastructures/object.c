@@ -26,6 +26,49 @@ object *pool;
 #endif
 
 /* **********************************************************************
+ * Object definitions
+ * ********************************************************************** */
+
+/** Hold the object type definitions as they're created */
+objecttypedefn objectdefns[MORPHO_MAXIMUMOBJECTDEFNS];
+objecttype objectdefnnext = 0; /** Type of the next object definition */
+
+/** Adds a new object type */
+objecttype object_addtype(objecttypedefn *def) {
+    if (!def->printfn || !def->sizefn) {
+        UNREACHABLE("Object definition must provide a print and size function.");
+    }
+    
+    if (objectdefnnext>=MORPHO_MAXIMUMOBJECTDEFNS) {
+        UNREACHABLE("Too many object definitions (increase MORPHO_MAXIMUMOBJECTDEFNS).");
+    }
+    
+    objectdefns[objectdefnnext]=*def;
+    objectdefns[objectdefnnext].veneer = NULL; 
+    objectdefnnext+=1;
+    
+    return objectdefnnext-1;
+}
+
+/** Gets the appropriate definition given an object */
+objecttypedefn *object_getdefn(object *obj) {
+    return &objectdefns[obj->type];
+}
+
+/** @brief Sets the veneer class for a particular object type */
+void object_setveneerclass(objecttype type, value class) {
+    if (objectdefns[type].veneer!=NULL) {
+        UNREACHABLE("Veneer class redefined.\n");
+    }
+    objectdefns[type].veneer=(object *) MORPHO_GETCLASS(class);
+}
+
+/** @brief Gets the veneer for a particular object type */
+objectclass *object_getveneerclass(objecttype type) {
+    return (objectclass *) objectdefns[type].veneer;
+}
+
+/* **********************************************************************
  * Objects
  * ********************************************************************** */
 
@@ -48,97 +91,24 @@ void object_free(object *obj) {
         printf("\n");
     }
 #endif
-    /* We must free any private unmanaged data */
-    switch (obj->type) {
-        case OBJECT_FUNCTION: {
-            objectfunction *func = (objectfunction *) obj;
-            morpho_freeobject(func->name);
-            varray_optionalparamclear(&func->opt);
-            object_functionclear(func);
-        }
-            break;
-        case OBJECT_BUILTINFUNCTION: {
-            objectbuiltinfunction *func = (objectbuiltinfunction *) obj;
-            morpho_freeobject(func->name);
-        }
-            break;
-        case OBJECT_CLASS: {
-            objectclass *klass = (objectclass *) obj;
-            morpho_freeobject(klass->name);
-            dictionary_clear(&klass->methods);
-        }
-            break;
-        case OBJECT_INSTANCE: {
-            objectinstance *instance = (objectinstance *) obj;
-            
-#ifdef MORPHO_REUSEPOOL
-            if (npool<POOLMAX) {
-                obj->next=pool;
-                pool=obj;
-                npool++;
-                return;
-            }
-#endif
-        
-            dictionary_clear(&instance->fields);
-        }
-            break;
-        case OBJECT_ARRAY: {
-            // Should free children of unmanaged arrays
-        }
-            break;
-        case OBJECT_DICTIONARY: {
-            objectdictionary *dict = (objectdictionary *) obj;
-            dictionary_clear(&dict->dict);
-        }
-            break;
-        case OBJECT_LIST: {
-            objectlist *list = (objectlist *) obj;
-            varray_valueclear(&list->val);
-        }
-            break;
-        case OBJECT_MATRIX: {
-        }
-            break;
-        case OBJECT_SPARSE: {
-            objectsparse *s = (objectsparse *) obj;
-            sparse_clear(s);
-        }
-            break;
-        case OBJECT_MESH: {
-            objectmesh *m = (objectmesh *) obj;
-            if (m->link) {
-                object *next=NULL;
-                for (object *obj=m->link; obj!=NULL; obj=next) {
-                    next=obj->next;
-                    object_free(obj);
-                }
-            }
-            if (m->conn) object_free((object *) m->conn);
-        }
-            break;
-        case OBJECT_SELECTION: {
-            objectselection *s = (objectselection *) obj;
-            selection_clear(s);
-        }
-            break;
-        case OBJECT_FIELD: {
-            objectfield *f = (objectfield *) obj;
-            
-            if (f->dof) MORPHO_FREE(f->dof);
-            if (f->offset) MORPHO_FREE(f->offset);
-            if (f->pool) MORPHO_FREE(f->pool);
-        }
-        default:
-            break;
-    }
-    
+    if (object_getdefn(obj)->freefn) object_getdefn(obj)->freefn(obj);
     MORPHO_FREE(obj);
 }
 
 /** Free an object if it is unmanaged */
 void object_freeunmanaged(object *obj) {
     if (obj->status==OBJECT_ISUNMANAGED) object_free(obj);
+}
+
+/** Prints an object */
+void object_print(value v) {
+    object *obj = MORPHO_GETOBJECT(v);
+    object_getdefn(obj)->printfn(obj);
+}
+
+/** Gets the total size of an object */
+size_t object_size(object *obj) {
+    return object_getdefn(obj)->sizefn(obj);
 }
 
 /** @brief Allocates an object
@@ -157,76 +127,41 @@ object *object_new(size_t size, objecttype type) {
 }
 
 /* **********************************************************************
- * Strings
- * ********************************************************************** */
-
-/** @brief Creates a string from an existing character array with given length
- *  @param in     the string to copy
- *  @param length length of string to copy
- *  @returns the object (as a value) which will be MORPHO_NIL on failure */
-value object_stringfromcstring(const char *in, size_t length) {
-    value out = MORPHO_NIL;
-    objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
-    
-    if (new) {
-        new->string=new->stringdata;
-        new->string[length] = '\0'; /* Zero terminate the string to be compatible with C */
-        memcpy(new->string, in, length);
-        new->length=strlen(new->string);
-        out = MORPHO_OBJECT(new);
-    }
-    return out;
-}
-
-/** @brief Converts a varray_char into a string.
- *  @param in  the varray to convert
- *  @returns the object (as a value) which will be MORPHO_NIL on failure */
-value object_stringfromvarraychar(varray_char *in) {
-    return object_stringfromcstring(in->data, in->count);
-}
-
-
-/* Clones a string object */
-value object_clonestring(value val) {
-    value out = MORPHO_NIL;
-    if (MORPHO_ISSTRING(val)) {
-        objectstring *s = MORPHO_GETSTRING(val);
-        out=object_stringfromcstring(s->string, s->length);
-    }
-    return out;
-}
-
-/** @brief Concatenates strings together
- *  @param a      first string
- *  @param b      second string
- *  @returns the object (as a value) which will be MORPHO_NIL on failure  */
-value object_concatenatestring(value a, value b) {
-    objectstring *astring = MORPHO_GETSTRING(a);
-    objectstring *bstring = MORPHO_GETSTRING(b);
-    size_t length = (astring ? astring->length : 0) + (bstring ? bstring->length : 0);
-    value out = MORPHO_NIL;
-    
-    objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
-    
-    if (new) {
-        new->string=new->stringdata;
-        new->length=length;
-        /* Copy across old strings */
-        if (astring) memcpy(new->string, astring->string, astring->length);
-        if (bstring) memcpy(new->string+(astring ? astring->length : 0), bstring->string, bstring->length);
-        new->string[length]='\0';
-        out = MORPHO_OBJECT(new);
-    }
-    return out;
-}
-
-/* **********************************************************************
  * Functions
  * ********************************************************************** */
 
 DEFINE_VARRAY(upvalue, upvalue);
-
 DEFINE_VARRAY(varray_upvalue, varray_upvalue);
+
+/** Function object definitions */
+void objectfunction_freefn(object *obj) {
+    objectfunction *func = (objectfunction *) obj;
+    morpho_freeobject(func->name);
+    varray_optionalparamclear(&func->opt);
+    object_functionclear(func);
+}
+
+void objectfunction_markfn(object *obj, void *v) {
+    objectfunction *f = (objectfunction *) obj;
+    morpho_markvalue(v, f->name);
+    morpho_markvarrayvalue(v, &f->konst);
+}
+
+size_t objectfunction_sizefn(object *obj) {
+    return sizeof(objectfunction);
+}
+
+void objectfunction_printfn(object *obj) {
+    objectfunction *f = (objectfunction *) obj;
+    if (f) printf("<fn %s>", (MORPHO_ISNIL(f->name) ? "" : MORPHO_GETCSTRING(f->name)));
+}
+
+objecttypedefn objectfunctiondefn = {
+    .printfn=objectfunction_printfn,
+    .markfn=objectfunction_markfn,
+    .freefn=objectfunction_freefn,
+    .sizefn=objectfunction_sizefn
+};
 
 /** @brief Initializes a new function */
 void object_functioninit(objectfunction *func) {
@@ -301,15 +236,88 @@ bool object_functionaddprototype(objectfunction *func, varray_upvalue *v, indx *
 }
 
 /* **********************************************************************
+ * Upvalues
+ * ********************************************************************** */
+
+/** Upvalue object definitions */
+void objectupvalue_printfn(object *obj) {
+    printf("upvalue");
+}
+
+void objectupvalue_markfn(object *obj, void *v) {
+    morpho_markvalue(v, ((objectupvalue *) obj)->closed);
+}
+
+size_t objectupvalue_sizefn(object *obj) {
+    return sizeof(objectupvalue);
+}
+
+objecttypedefn objectupvaluedefn = {
+    .printfn=objectupvalue_printfn,
+    .markfn=objectupvalue_markfn,
+    .freefn=NULL,
+    .sizefn=objectupvalue_sizefn
+};
+
+
+/** Initializes a new upvalue object. */
+void object_upvalueinit(objectupvalue *c) {
+    object_init(&c->obj, OBJECT_UPVALUE);
+    c->location=NULL;
+    c->closed=MORPHO_NIL;
+    c->next=NULL;
+}
+
+/** Creates a new upvalue for the register pointed to by reg. */
+objectupvalue *object_newupvalue(value *reg) {
+    objectupvalue *new = (objectupvalue *) object_new(sizeof(objectupvalue), OBJECT_UPVALUE);
+    
+    if (new) {
+        object_upvalueinit(new);
+        new->location=reg;
+    }
+    
+    return new;
+}
+
+/* **********************************************************************
  * Closures
  * ********************************************************************** */
 
+/** Closure object definitions */
+void objectclosure_printfn(object *obj) {
+    objectclosure *f = (objectclosure *) obj;
+    printf("<");
+    objectfunction_printfn((object *) f->func);
+    printf(">");
+}
+
+void objectclosure_markfn(object *obj, void *v) {
+    objectclosure *c = (objectclosure *) obj;
+    morpho_markobject(v, (object *) c->func);
+    for (unsigned int i=0; i<c->nupvalues; i++) {
+        morpho_markobject(v, (object *) c->upvalues[i]);
+    }
+}
+
+size_t objectclosure_sizefn(object *obj) {
+    return sizeof(objectclosure)+sizeof(objectupvalue *)*((objectclosure *) obj)->nupvalues;
+}
+
+objecttypedefn objectclosuredefn = {
+    .printfn=objectclosure_printfn,
+    .markfn=objectclosure_markfn,
+    .freefn=NULL,
+    .sizefn=objectclosure_sizefn
+};
+
+/** Closure functions */
 void object_closureinit(objectclosure *c) {
     c->func=NULL;
 }
 
 /** @brief Creates a new closure
- *  @param sf       the objectfunction of the current environment 
+ *  @param sf       the objectfunction of the current environment
  *  @param func     a function object to enclose
  *  @param np       the prototype number to use */
 objectclosure *object_newclosure(objectfunction *sf, objectfunction *func, indx np) {
@@ -336,32 +344,39 @@ objectclosure *object_newclosure(objectfunction *sf, objectfunction *func, indx 
 }
 
 /* **********************************************************************
- * Upvalues
- * ********************************************************************** */
-
-/** Initializes a new upvalue object. */
-void object_upvalueinit(objectupvalue *c) {
-    object_init(&c->obj, OBJECT_UPVALUE);
-    c->location=NULL;
-    c->closed=MORPHO_NIL;
-    c->next=NULL;
-}
-
-/** Creates a new upvalue for the register pointed to by reg. */
-objectupvalue *object_newupvalue(value *reg) {
-    objectupvalue *new = (objectupvalue *) object_new(sizeof(objectupvalue), OBJECT_UPVALUE);
-    
-    if (new) {
-        object_upvalueinit(new);
-        new->location=reg;
-    }
-    
-    return new;
-}
-
-/* **********************************************************************
  * Classes
  * ********************************************************************** */
+
+/** Class object definitions */
+void objectclass_printfn(object *obj) {
+#ifndef MORPHO_LOXCOMPATIBILITY
+    printf("@");
+#endif
+    printf("%s", MORPHO_GETCSTRING(((objectclass *) obj)->name));
+}
+
+void objectclass_markfn(object *obj, void *v) {
+    objectclass *c = (objectclass *) obj;
+    morpho_markvalue(v, c->name);
+    morpho_markdictionary(v, &c->methods);
+}
+
+void objectclass_freefn(object *obj) {
+    objectclass *klass = (objectclass *) obj;
+    morpho_freeobject(klass->name);
+    dictionary_clear(&klass->methods);
+}
+
+size_t objectclass_sizefn(object *obj) {
+    return sizeof(objectclass);
+}
+
+objecttypedefn objectclassdefn = {
+    .printfn=objectclass_printfn,
+    .markfn=objectclass_markfn,
+    .freefn=objectclass_freefn,
+    .sizefn=objectclass_sizefn,
+};
 
 objectclass *object_newclass(value name) {
     objectclass *newclass = (objectclass *) object_new(sizeof(objectclass), OBJECT_CLASS);
@@ -379,6 +394,51 @@ objectclass *object_newclass(value name) {
  * Instances
  * ********************************************************************** */
 
+/** Instance object definitions */
+void objectinstance_printfn(object *obj) {
+#ifndef MORPHO_LOXCOMPATIBILITY
+    printf("<");
+#endif
+    printf("%s", MORPHO_GETCSTRING(((objectinstance *) obj)->klass->name));
+#ifndef MORPHO_LOXCOMPATIBILITY
+    printf(">");
+#else
+    printf(" instance");
+#endif
+}
+
+void objectinstance_markfn(object *obj, void *v) {
+    objectinstance *c = (objectinstance *) obj;
+    morpho_markdictionary(v, &c->fields);
+}
+
+void objectinstance_freefn(object *obj) {
+    objectinstance *instance = (objectinstance *) obj;
+    
+#ifdef MORPHO_REUSEPOOL
+    if (npool<POOLMAX) {
+        obj->next=pool;
+        pool=obj;
+        npool++;
+        return;
+    }
+#endif
+
+    dictionary_clear(&instance->fields);
+}
+
+size_t objectinstance_sizefn(object *obj) {
+    return sizeof(objectinstance);
+}
+
+objecttypedefn objectinstancedefn = {
+    .printfn=objectinstance_printfn,
+    .markfn=objectinstance_markfn,
+    .freefn=objectinstance_freefn,
+    .sizefn=objectinstance_sizefn
+};
+
+/** Create an instance */
 objectinstance *object_newinstance(objectclass *klass) {
     objectinstance *new;
     
@@ -432,6 +492,33 @@ bool objectinstance_getproperty(objectinstance *obj, value key, value *val) {
  * Invocations
  * ********************************************************************** */
 
+/** Invocation object definitions */
+void objectinvocation_printfn(object *obj) {
+    objectinvocation *c = (objectinvocation *) obj;
+#ifndef MORPHO_LOXCOMPATIBILITY
+    object_print(c->receiver);
+    printf(".");
+#endif
+    object_print(c->method);
+}
+
+void objectinvocation_markfn(object *obj, void *v) {
+    objectinvocation *c = (objectinvocation *) obj;
+    morpho_markvalue(v, c->receiver);
+    morpho_markvalue(v, c->method);
+}
+
+size_t objectinvocation_sizefn(object *obj) {
+    return sizeof(objectinvocation);
+}
+
+objecttypedefn objectinvocationdefn = {
+    .printfn=objectinvocation_printfn,
+    .markfn=objectinvocation_markfn,
+    .freefn=NULL,
+    .sizefn=objectinvocation_sizefn
+};
+
 /** Create a new invocation */
 objectinvocation *object_newinvocation(value receiver, value method) {
     objectinvocation *new = (objectinvocation *) object_new(sizeof(objectinvocation), OBJECT_INVOCATION);
@@ -445,12 +532,114 @@ objectinvocation *object_newinvocation(value receiver, value method) {
 }
 
 /* **********************************************************************
- * Ranges
+ * Strings
  * ********************************************************************** */
+
+/** String object definitions */
+void objectstring_printfn(object *obj) {
+    printf("%s", ((objectstring *) obj)->string);
+}
+
+size_t objectstring_sizefn(object *obj) {
+    return sizeof(objectstring)+((objectstring *) obj)->length+1;
+}
+
+objecttypedefn objectstringdefn = {
+    .printfn = objectstring_printfn,
+    .markfn = NULL,
+    .freefn = NULL,
+    .sizefn = objectstring_sizefn
+};
+
+/** @brief Creates a string from an existing character array with given length
+ *  @param in     the string to copy
+ *  @param length length of string to copy
+ *  @returns the object (as a value) which will be MORPHO_NIL on failure */
+value object_stringfromcstring(const char *in, size_t length) {
+    value out = MORPHO_NIL;
+    objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
+    
+    if (new) {
+        new->string=new->stringdata;
+        new->string[length] = '\0'; /* Zero terminate the string to be compatible with C */
+        memcpy(new->string, in, length);
+        new->length=strlen(new->string);
+        out = MORPHO_OBJECT(new);
+    }
+    return out;
+}
+
+/** @brief Converts a varray_char into a string.
+ *  @param in  the varray to convert
+ *  @returns the object (as a value) which will be MORPHO_NIL on failure */
+value object_stringfromvarraychar(varray_char *in) {
+    return object_stringfromcstring(in->data, in->count);
+}
+
+
+/* Clones a string object */
+value object_clonestring(value val) {
+    value out = MORPHO_NIL;
+    if (MORPHO_ISSTRING(val)) {
+        objectstring *s = MORPHO_GETSTRING(val);
+        out=object_stringfromcstring(s->string, s->length);
+    }
+    return out;
+}
+
+/** @brief Concatenates strings together
+ *  @param a      first string
+ *  @param b      second string
+ *  @returns the object (as a value) which will be MORPHO_NIL on failure  */
+value object_concatenatestring(value a, value b) {
+    objectstring *astring = MORPHO_GETSTRING(a);
+    objectstring *bstring = MORPHO_GETSTRING(b);
+    size_t length = (astring ? astring->length : 0) + (bstring ? bstring->length : 0);
+    value out = MORPHO_NIL;
+    
+    objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
+    
+    if (new) {
+        new->string=new->stringdata;
+        new->length=length;
+        /* Copy across old strings */
+        if (astring) memcpy(new->string, astring->string, astring->length);
+        if (bstring) memcpy(new->string+(astring ? astring->length : 0), bstring->string, bstring->length);
+        new->string[length]='\0';
+        out = MORPHO_OBJECT(new);
+    }
+    return out;
+}
 
 /* **********************************************************************
  * Dictionaries
  * ********************************************************************** */
+
+/** Dictionary object definitions */
+void objectdictionary_printfn(object *obj) {
+    printf("<Dictionary>");
+}
+
+void objectdictionary_freefn(object *obj) {
+    objectdictionary *dict = (objectdictionary *) obj;
+    dictionary_clear(&dict->dict);
+}
+
+void objectdictionary_markfn(object *obj, void *v) {
+    objectdictionary *c = (objectdictionary *) obj;
+    morpho_markdictionary(v, &c->dict);
+}
+
+size_t objectdictionary_sizefn(object *obj) {
+    return sizeof(objectdictionary)+(((objectdictionary *) obj)->dict.capacity)*sizeof(dictionaryentry);
+}
+
+objecttypedefn objectdictionarydefn = {
+    .printfn=objectdictionary_printfn,
+    .markfn=objectdictionary_markfn,
+    .freefn=objectdictionary_freefn,
+    .sizefn=objectdictionary_sizefn
+};
 
 /** Creates a new dictionary */
 objectdictionary *object_newdictionary(void) {
@@ -470,6 +659,33 @@ dictionary *object_dictionary(objectdictionary *dict) {
  * Lists
  * ********************************************************************** */
 
+/** List object definitions */
+void objectlist_printfn(object *obj) {
+    printf("<List>");
+}
+
+void objectlist_freefn(object *obj) {
+    objectlist *list = (objectlist *) obj;
+    varray_valueclear(&list->val);
+}
+
+void objectlist_markfn(object *obj, void *v) {
+    objectlist *c = (objectlist *) obj;
+    morpho_markvarrayvalue(v, &c->val);
+}
+
+size_t objectlist_sizefn(object *obj) {
+    return sizeof(objectlist)+sizeof(value) *
+            ((objectlist *) obj)->val.capacity;
+}
+
+objecttypedefn objectlistdefn = {
+    .printfn=objectlist_printfn,
+    .markfn=objectlist_markfn,
+    .freefn=objectlist_freefn,
+    .sizefn=objectlist_sizefn
+};
+
 /** Creates a new list */
 objectlist *object_newlist(unsigned int nval, value *val) {
     objectlist *new = (objectlist *) object_new(sizeof(objectlist), OBJECT_LIST);
@@ -486,6 +702,30 @@ objectlist *object_newlist(unsigned int nval, value *val) {
 /* **********************************************************************
  * Arrays
  * ********************************************************************** */
+
+/** Array object definitions */
+void objectarray_printfn(object *obj) {
+    printf("<Array>");
+}
+
+void objectarray_markfn(object *obj, void *v) {
+    objectarray *c = (objectarray *) obj;
+    for (unsigned int i=0; i<c->nelements; i++) {
+        morpho_markvalue(v, c->values[i]);
+    }
+}
+
+size_t objectarray_sizefn(object *obj) {
+    return sizeof(objectarray) +
+        sizeof(value) * ( ((objectarray *) obj)->nelements+2*((objectarray *) obj)->ndim );
+}
+
+objecttypedefn objectarraydefn = {
+    .printfn=objectarray_printfn,
+    .markfn=objectarray_markfn,
+    .freefn=NULL,
+    .sizefn=objectarray_sizefn
+};
 
 /** Initializes an array given the size */
 void object_arrayinit(objectarray *array, unsigned int ndim, unsigned int *dim) {
@@ -542,152 +782,87 @@ objectarray *object_newarray(unsigned int ndim, unsigned int *dim) {
 }
 
 /* **********************************************************************
- * Utility functions
+ * Ranges
  * ********************************************************************** */
 
-/* ---------------------------
- * Printing
- * --------------------------- */
-
-static void object_printstring(value v) {
-    printf("%s", MORPHO_GETCSTRING(v));
-}
-
-static void object_printfunction(objectfunction *f) {
-    if (f) printf("<fn %s>", (MORPHO_ISNIL(f->name) ? "" : MORPHO_GETCSTRING(f->name)));
-}
-
-/** Prints an object */
-void object_print(value v) {
-    switch(MORPHO_GETOBJECTTYPE(v)) {
-        case OBJECT_STRING: object_printstring(v); break;
-        case OBJECT_FUNCTION: object_printfunction(MORPHO_GETFUNCTION(v)); break;
-        case OBJECT_BUILTINFUNCTION: builtin_printfunction(MORPHO_GETBUILTINFUNCTION(v)); break;
-        case OBJECT_CLOSURE:
-            printf("<");
-            object_printfunction(MORPHO_GETCLOSUREFUNCTION(v));
-            printf(">");
-            break;
-        case OBJECT_UPVALUE:
-            printf("upvalue");
-            break;
-        case OBJECT_CLASS:
-#ifndef MORPHO_LOXCOMPATIBILITY
-            printf("@");
-#endif
-            object_printstring(MORPHO_GETCLASS(v)->name);
-            break;
-        case OBJECT_INSTANCE:
-#ifndef MORPHO_LOXCOMPATIBILITY
-            printf("<");
-#endif
-            object_printstring(MORPHO_GETINSTANCE(v)->klass->name);
-#ifndef MORPHO_LOXCOMPATIBILITY
-            printf(">");
-#else
-            printf(" instance");
-#endif
-            break;
-        case OBJECT_INVOCATION:
-#ifndef MORPHO_LOXCOMPATIBILITY
-            object_print(MORPHO_GETINVOCATION(v)->receiver);
-            printf(".");
-#endif
-            object_print(MORPHO_GETINVOCATION(v)->method);
-            break;
-        case OBJECT_RANGE: {
-            objectrange *r = MORPHO_GETRANGE(v);
-            morpho_printvalue(r->start);
-            printf("..");
-            morpho_printvalue(r->end);
-            if (!MORPHO_ISNIL(r->step)) {
-                printf(":");
-                morpho_printvalue(r->step);
-            }
-        }
-            break;
-        case OBJECT_ARRAY:
-            printf("<Array>");
-            break;
-        case OBJECT_MATRIX:
-            printf("<Matrix>");
-            break;
-        case OBJECT_SPARSE:
-            printf("<Sparse>");
-            break;
-        case OBJECT_DICTIONARY:
-            printf("<Dictionary>");
-            break;
-        case OBJECT_MESH:
-            printf("<Mesh>");
-            break;
-        case OBJECT_SELECTION:
-            printf("<Selection>");
-            break;
-        case OBJECT_FIELD:
-            printf("<Field>");
-            break;
-        case OBJECT_LIST:
-            printf("<List>");
-            break;
-        default:
-            UNREACHABLE("unhandled object type [Check object_print()]");
+/** Array object definitions */
+void objectrange_printfn(object *obj) {
+    objectrange *r = (objectrange *) obj;
+    morpho_printvalue(r->start);
+    printf("..");
+    morpho_printvalue(r->end);
+    if (!MORPHO_ISNIL(r->step)) {
+        printf(":");
+        morpho_printvalue(r->step);
     }
 }
 
-/** Gets the total size of an object */
-size_t object_size(object *obj) {
-    switch (obj->type) {
-        case OBJECT_STRING:
-            return sizeof(objectstring)+((objectstring *) obj)->length+1;
-        case OBJECT_CLOSURE:
-            return sizeof(objectclosure)+ sizeof(objectupvalue *)*((objectclosure *) obj)->nupvalues;
-        case OBJECT_UPVALUE:
-            return sizeof(objectupvalue);
-        case OBJECT_FUNCTION:
-            return sizeof(objectfunction);
-        case OBJECT_BUILTINFUNCTION:
-            return sizeof(objectbuiltinfunction);
-        case OBJECT_CLASS:
-            return sizeof(objectclass);
-        case OBJECT_INSTANCE:
-            return sizeof(objectinstance);
-        case OBJECT_INVOCATION:
-            return sizeof(objectinvocation);
-        case OBJECT_RANGE:
-            return sizeof(objectrange);
-        case OBJECT_DICTIONARY:
-            return sizeof(objectdictionary)+(((objectdictionary *) obj)->dict.capacity)*sizeof(dictionaryentry); 
-        case OBJECT_ARRAY:
-            return sizeof(objectarray) +
-            sizeof(value) * ( ((objectarray *) obj)->nelements+2*((objectarray *) obj)->ndim );
-        case OBJECT_LIST:
-            return sizeof(objectlist)+sizeof(value) *
-                    ((objectlist *) obj)->val.capacity;
-        case OBJECT_MATRIX:
-            return sizeof(objectmatrix)+sizeof(double) *
-                    ((objectmatrix *) obj)->ncols *
-                    ((objectmatrix *) obj)->nrows;
-        case OBJECT_DOKKEY:
-            return sizeof(objectdokkey);
-        case OBJECT_SPARSE:
-            return sparse_size((objectsparse *) obj);
-        case OBJECT_MESH:
-            return sizeof(objectmesh);
-        case OBJECT_SELECTION:
-            return sizeof(objectselection)+sizeof(objectsparse *)*((objectselection *) obj)->ngrades;
-        case OBJECT_FIELD:
-            return sizeof(objectfield)+(((objectfield *) obj)->ngrades * sizeof(int));
-        case OBJECT_EXTERN:
-            return sizeof(object);
-    }
+size_t objectrange_sizefn(object *obj) {
+    return sizeof(objectrange);
 }
+
+objecttypedefn objectrangedefn = {
+    .printfn=objectrange_printfn,
+    .markfn=NULL,
+    .freefn=NULL,
+    .sizefn=objectrange_sizefn
+};
+
+/** Create a new range. Step may be set to MORPHO_NIL to use the default value of 1 */
+objectrange *object_newrange(value start, value end, value step) {
+    value v[3]={start, end, step};
+    
+    /* Ensure all three values are either integer or floating point */
+    if (!value_promotenumberlist((MORPHO_ISNIL(step) ? 2 : 3), v)) return NULL;
+    
+    objectrange *new = (objectrange *) object_new(sizeof(objectrange), OBJECT_RANGE);
+    
+    if (new) {
+        new->start=v[0];
+        new->end=v[1];
+        new->step=v[2];
+        new->nsteps=range_count(new);
+    }
+    
+    return new;
+}
+
+/* **********************************************************************
+ * Initialization
+ * ********************************************************************** */
+
+objecttype objectstringtype;
+objecttype objectfunctiontype;
+objecttype objectupvaluetype;
+objecttype objectclosuretype;
+objecttype objectclasstype;
+objecttype objectinstancetype;
+objecttype objectinvocationtype;
+
+objecttype objectdictionarytype;
+objecttype objectarraytype;
+objecttype objectlisttype;
+
+objecttype objectrangetype;
 
 void object_initialize(void) {
 #ifdef MORPHO_REUSEPOOL
     pool=NULL;
     npool=0;
 #endif
+    
+    objectfunctiontype=object_addtype(&objectfunctiondefn);
+    objectupvaluetype=object_addtype(&objectupvaluedefn);
+    objectclosuretype=object_addtype(&objectclosuredefn);
+    objectclasstype=object_addtype(&objectclassdefn);
+    objectinstancetype=object_addtype(&objectinstancedefn);
+    objectinvocationtype=object_addtype(&objectinvocationdefn);
+    
+    objectstringtype=object_addtype(&objectstringdefn);
+    objectarraytype=object_addtype(&objectarraydefn);
+    objectlisttype=object_addtype(&objectlistdefn);
+    objectdictionarytype=object_addtype(&objectdictionarydefn);
+    objectrangetype=object_addtype(&objectrangedefn);
 }
 
 void object_finalize(void) {

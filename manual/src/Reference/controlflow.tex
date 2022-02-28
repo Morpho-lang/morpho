@@ -22,8 +22,9 @@ a selected piece of code is executed. These include:
 \hypertarget{if}{%
 \section{If}\label{if}}
 
-If allows you to selectively execute a section of code depending on
-whether a condition is met. The simplest version looks like this:
+\texttt{If} allows you to selectively execute a section of code
+depending on whether a condition is met. The simplest version looks like
+this:
 
 \begin{lstlisting}
 if (x<1) print x
@@ -188,7 +189,8 @@ You can include any code that you like in each of the sections.
 \hypertarget{break}{%
 \section{Break}\label{break}}
 
-Break is used inside loops to finish the loop early. For example
+\texttt{Break} is used inside loops to finish the loop early. For
+example
 
 \begin{lstlisting}
 for (i in 1..5) {
@@ -198,17 +200,17 @@ for (i in 1..5) {
 ...                // <-'
 \end{lstlisting}
 
-would only print 1,2 and 3. Once the condition \texttt{i\textgreater{}3}
-is true, the \texttt{break} statement causes execution to continue after
-the loop body.
+would only print 1, 2 and 3. Once the condition
+\texttt{i\textgreater{}3} is true, the \texttt{break} statement causes
+execution to continue after the loop body.
 
 Both \texttt{for} and \texttt{while} loops support break.
 
 \hypertarget{continue}{%
 \section{Continue}\label{continue}}
 
-Continue is used inside loops to skip over the rest of an iteration. For
-example
+\texttt{Continue} is used inside loops to skip over the rest of an
+iteration. For example
 
 \begin{lstlisting}
 for (i in 1..5) {     // <-.
@@ -218,7 +220,7 @@ for (i in 1..5) {     // <-.
 }                     
 \end{lstlisting}
 
-prints ``Hello'' five times but only prints 1,2 and 3. Once the
+prints ``Hello'' five times but only prints 1, 2 and 3. Once the
 condition \texttt{i\textgreater{}3} is true, the \texttt{continue}
 statement causes execution to transfer to the start of the loop body.
 
@@ -251,3 +253,23 @@ while (i<5) {
 In this example, when the condition \texttt{i==2} is \texttt{true},
 execution skips back to the start, but \texttt{i} \emph{isn't}
 incremented. The loop gets stuck in the iteration \texttt{i==2}.
+
+\hypertarget{try}{%
+\section{Try}\label{try}}
+
+A \texttt{try} and \texttt{catch} statement allow you handle errors. For
+example
+
+\begin{lstlisting}
+try {
+  // Do something
+} catch {
+  "Tag" : // Handle the error
+}
+\end{lstlisting}
+
+Code within the block after the \texttt{try} keyword is executed. If an
+error is generated then Morpho looks to see if the tag associated with
+the error matches any of the labels in the \texttt{catch} block. If it
+does, the code after the matching label is executed. If no error occurs,
+the catch block is skipped entirely.

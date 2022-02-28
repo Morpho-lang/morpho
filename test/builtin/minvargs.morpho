@@ -1,0 +1,13 @@
+// Use min/max on varargs
+
+print min(0.1, 0.5, 1, 0.001, 2)
+// expect: 0.001
+
+print min(0.1, [0.5, 1], [2, 0.003])
+// expect: 0.003
+
+print max(0.1, 0.5, 1, 0.001, 2)
+// expect: 2
+
+print max(0.1, [0.5, 3], [2, 0.003])
+// expect: 3

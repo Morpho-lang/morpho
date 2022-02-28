@@ -9,6 +9,36 @@
 #define mesh_h
 
 #include "varray.h"
+#include "matrix.h"
+#include "sparse.h"
+
+/* -------------------------------------------------------
+ * Mesh object
+ * ------------------------------------------------------- */
+
+extern objecttype objectmeshtype;
+#define OBJECT_MESH objectmeshtype
+
+typedef struct {
+    object obj;
+    unsigned int dim;
+    objectmatrix *vert;
+    objectarray *conn;
+    object *link;
+} objectmesh;
+
+/** Tests whether an object is a mesh */
+#define MORPHO_ISMESH(val) object_istype(val, OBJECT_MESH)
+
+/** Gets the object as a mesh */
+#define MORPHO_GETMESH(val)   ((objectmesh *) MORPHO_GETOBJECT(val))
+
+/** Creates a mesh object */
+objectmesh *object_newmesh(unsigned int dim, unsigned int nv, double *v);
+
+/* -------------------------------------------------------
+ * Mesh class
+ * ------------------------------------------------------- */
 
 #define MESH_CLASSNAME "Mesh"
 

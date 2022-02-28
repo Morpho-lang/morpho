@@ -8,6 +8,7 @@
 #include "veneer.h"
 #include "object.h"
 #include "common.h"
+#include "parse.h"
 
 /* **********************************************************************
  * Object
@@ -208,6 +209,38 @@ MORPHO_ENDCLASS
  * String
  * ********************************************************************** */
 
+/** Convert a string to a number */
+bool string_tonumber(objectstring *string, value *out) {
+    bool minus=false;
+    lexer l;
+    token tok;
+    error err;
+    lex_init(&l, string->string, 0);
+    
+    if (lex(&l, &tok, &err)) {
+        if (tok.type==TOKEN_MINUS) { // Check for leading minus
+            minus=true;
+            if (!lex(&l, &tok, &err)) return false;
+        } else if (tok.type==TOKEN_PLUS) { // or plus
+            if (!lex(&l, &tok, &err)) return false;
+        }
+        
+        if (tok.type==TOKEN_INTEGER) {
+            long i = strtol(tok.start, NULL, 10);
+            if (minus) i=-i;
+            *out = MORPHO_INTEGER((int) i);
+            return true;
+        } else if (tok.type==TOKEN_NUMBER) {
+            double f = strtod(tok.start, NULL);
+            if (minus) f=-f;
+            *out = MORPHO_FLOAT(f);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /** Count number of characters in a string */
 int string_countchars(objectstring *s) {
     int n=0;
@@ -303,6 +336,15 @@ value String_enumerate(vm *v, int nargs, value *args) {
     return out;
 }
 
+value String_isnumber(vm *v, int nargs, value *args) {
+    objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    
+    if (string_tonumber(slf, &out)) return MORPHO_TRUE; 
+    
+    return MORPHO_FALSE;
+}
+
 value String_split(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
     value out=MORPHO_NIL;
@@ -332,8 +374,9 @@ value String_split(vm *v, int nargs, value *args) {
         list_append(new, newstring);
         
         out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
+        list_append(new, out);
         morpho_bindobjects(v, new->val.count, new->val.data);
+        new->val.count-=1;
     }
     
     return out;
@@ -346,6 +389,7 @@ MORPHO_METHOD(MORPHO_CLONE_METHOD, String_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, String_enumerate, BUILTIN_FLAGSEMPTY),
 //MORPHO_METHOD(MORPHO_SETINDEX_METHOD, String_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, String_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(STRING_ISNUMBER_METHOD, String_isnumber, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(STRING_SPLIT_METHOD, String_split, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
@@ -1134,7 +1178,7 @@ value List_getindex(vm *v, int nargs, value *args) {
         } else {
 			objectarrayerror err = getslice(&MORPHO_SELF(args),&list_slicedim,&list_sliceconstructor,&list_slicecopy,nargs,&MORPHO_GETARG(args, 0),&out);
 			if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_list_error(err) );
-			if (!MORPHO_ISNIL(out)){
+			if (MORPHO_ISOBJECT(out)){
 				morpho_bindobjects(v,1,&out);
 			} else MORPHO_RAISE(v, VM_NONNUMINDX);
 
@@ -1265,6 +1309,70 @@ value List_ismember(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Generate sets/tuples and return as a list of lists */
+value list_generatetuples(vm *v, objectlist *list, unsigned int n, tuplemode mode) {
+    unsigned int nval=list->val.count;
+    unsigned int work[2*n];
+    value tuple[n];
+    morpho_tuplesinit(list->val.count, n, work, mode);
+    objectlist *new = object_newlist(0, NULL);
+    if (!new) goto list_generatetuples_cleanup;
+    
+    while (morpho_tuples(nval, list->val.data, n, work, mode, tuple)) {
+        objectlist *el = object_newlist(n, tuple);
+        if (el) {
+            list_append(new, MORPHO_OBJECT(el));
+        } else {
+            goto list_generatetuples_cleanup;
+        }
+    }
+    
+    list_append(new, MORPHO_OBJECT(new));
+    morpho_bindobjects(v, new->val.count, new->val.data);
+    new->val.count--; // And pop it back off
+    
+    return MORPHO_OBJECT(new);
+    
+list_generatetuples_cleanup:
+    morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    
+    if (new) { // Deallocate partially created list
+        for (unsigned int i=0; i<new->val.count; i++) {
+            value el=new->val.data[i];
+            if (MORPHO_ISOBJECT(el)) object_free(MORPHO_GETOBJECT(el));
+        }
+        object_free((object *) new);
+    }
+    
+    return MORPHO_NIL;
+}
+
+/** Generate a list of n-tuples from a list  */
+value List_tuples(vm *v, int nargs, value *args) {
+    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    unsigned int n=2;
+    
+    if (nargs>0 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+        n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        if (n<2) n=2;
+    }
+    
+    return list_generatetuples(v, slf, n, MORPHO_TUPLEMODE);
+}
+
+/** Generate a list of n-tuples from a list  */
+value List_sets(vm *v, int nargs, value *args) {
+    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    unsigned int n=2;
+    
+    if (nargs>0 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+        n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        if (n<2) n=2;
+    }
+    
+    return list_generatetuples(v, slf, n, MORPHO_SETMODE);
+}
+
 /** Clones a list */
 value List_clone(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
@@ -1305,6 +1413,8 @@ MORPHO_METHOD(MORPHO_PRINT_METHOD, List_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_TOSTRING_METHOD, List_tostring, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, List_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, List_count, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(LIST_TUPLES_METHOD, List_tuples, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(LIST_SETS_METHOD, List_sets, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, List_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADD_METHOD, List_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_SORT_METHOD, List_sort, BUILTIN_FLAGSEMPTY),
@@ -1531,25 +1641,6 @@ value range_iterate(objectrange *range, unsigned int i) {
     }
 }
 
-/** Create a new range. Step may be set to MORPHO_NIL to use the default value of 1 */
-objectrange *object_newrange(value start, value end, value step) {
-    value v[3]={start, end, step};
-    
-    /* Ensure all three values are either integer or floating point */
-    if (!value_promotenumberlist((MORPHO_ISNIL(step) ? 2 : 3), v)) return NULL;
-    
-    objectrange *new = (objectrange *) object_new(sizeof(objectrange), OBJECT_RANGE);
-    
-    if (new) {
-        new->start=v[0];
-        new->end=v[1];
-        new->step=v[2];
-        new->nsteps=range_count(new);
-    }
-    
-    return new;
-}
-
 /** Constructor function for ranges */
 value range_constructor(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
@@ -1704,27 +1795,27 @@ void veneer_initialize(void) {
     /* String */
     builtin_addfunction(STRING_CLASSNAME, string_constructor, BUILTIN_FLAGSEMPTY);
     value stringclass=builtin_addclass(STRING_CLASSNAME, MORPHO_GETCLASSDEFINITION(String), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_STRING, stringclass);
+    object_setveneerclass(OBJECT_STRING, stringclass);
 
     /* Array */
     builtin_addfunction(ARRAY_CLASSNAME, array_constructor, BUILTIN_FLAGSEMPTY);
     value arrayclass=builtin_addclass(ARRAY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Array), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_ARRAY, arrayclass);
+    object_setveneerclass(OBJECT_ARRAY, arrayclass);
     
     /* List */
     builtin_addfunction(LIST_CLASSNAME, list_constructor, BUILTIN_FLAGSEMPTY);
     value listclass=builtin_addclass(LIST_CLASSNAME, MORPHO_GETCLASSDEFINITION(List), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_LIST, listclass);
+    object_setveneerclass(OBJECT_LIST, listclass);
     
     /* Dictionary */
     builtin_addfunction(DICTIONARY_CLASSNAME, dictionary_constructor, BUILTIN_FLAGSEMPTY);
     value dictionaryclass=builtin_addclass(DICTIONARY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Dictionary), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_DICTIONARY, dictionaryclass);
+    object_setveneerclass(OBJECT_DICTIONARY, dictionaryclass);
     
     /* Range */
     builtin_addfunction(RANGE_CLASSNAME, range_constructor, BUILTIN_FLAGSEMPTY);
     value rangeclass=builtin_addclass(RANGE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Range), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_RANGE, rangeclass);
+    object_setveneerclass(OBJECT_RANGE, rangeclass);
     
     /* Error */
     builtin_addclass(ERROR_CLASSNAME, MORPHO_GETCLASSDEFINITION(Error), MORPHO_NIL);

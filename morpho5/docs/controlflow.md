@@ -17,7 +17,7 @@ Control flow statements are used to determine whether and how many times a selec
 [tagif]: # (if)
 [tagelse]: # (else)
 
-If allows you to selectively execute a section of code depending on whether a condition is met. The simplest version looks like this:
+`If` allows you to selectively execute a section of code depending on whether a condition is met. The simplest version looks like this:
 
     if (x<1) print x
 
@@ -131,7 +131,7 @@ You can include any code that you like in each of the sections.
 ## Break
 [tagbreak]: # (break)
 
-Break is used inside loops to finish the loop early. For example
+`Break` is used inside loops to finish the loop early. For example
 
     for (i in 1..5) {
         if (i>3) break // --.
@@ -139,14 +139,14 @@ Break is used inside loops to finish the loop early. For example
     }                  //   |
     ...                // <-'
 
-would only print 1,2 and 3. Once the condition `i>3` is true, the `break` statement causes execution to continue after the loop body.
+would only print 1, 2 and 3. Once the condition `i>3` is true, the `break` statement causes execution to continue after the loop body.
 
 Both `for` and `while` loops support break.
 
 ## Continue
 [tagcontinue]: # (continue)
 
-Continue is used inside loops to skip over the rest of an iteration. For example
+`Continue` is used inside loops to skip over the rest of an iteration. For example
 
     for (i in 1..5) {     // <-.
         print "Hello"          |
@@ -154,7 +154,7 @@ Continue is used inside loops to skip over the rest of an iteration. For example
         print i
     }                     
 
-prints "Hello" five times but only prints 1,2 and 3. Once the condition `i>3` is true, the `continue` statement causes execution to transfer to the start of the loop body.
+prints "Hello" five times but only prints 1, 2 and 3. Once the condition `i>3` is true, the `continue` statement causes execution to transfer to the start of the loop body.
 
 Traditional `for` loops also support `continue`:
 

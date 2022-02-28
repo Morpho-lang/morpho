@@ -13,12 +13,53 @@
 #include "veneer.h"
 #include "sparse.h"
 #include "matrix.h"
+#include "selection.h"
 
 #include <limits.h>
 
 void mesh_link(objectmesh *mesh, object *obj);
 
 DEFINE_VARRAY(elementid, elementid);
+
+/* **********************************************************************
+ * Mesh object definitions
+ * ********************************************************************** */
+
+objecttype objectmeshtype;
+
+/** Mesh object definitions */
+void objectmesh_printfn(object *obj) {
+    printf("<Mesh>");
+}
+
+void objectmesh_markfn(object *obj, void *v) {
+    objectmesh *c = (objectmesh *) obj;
+    if (c->vert) morpho_markobject(v, (object *) c->vert);
+    if (c->conn) morpho_searchunmanagedobject(v, (object *) c->conn);
+}
+
+void objectmesh_freefn(object *obj) {
+    objectmesh *m = (objectmesh *) obj;
+    if (m->link) {
+        object *next=NULL;
+        for (object *obj=m->link; obj!=NULL; obj=next) {
+            next=obj->next;
+            object_free(obj);
+        }
+    }
+    if (m->conn) object_free((object *) m->conn);
+}
+
+size_t objectmesh_sizefn(object *obj) {
+    return sizeof(objectmesh);
+}
+
+objecttypedefn objectmeshdefn = {
+    .printfn=objectmesh_printfn,
+    .markfn=objectmesh_markfn,
+    .freefn=objectmesh_freefn,
+    .sizefn=objectmesh_sizefn
+};
 
 /* **********************************************************************
  * Create mesh objects
@@ -1232,12 +1273,14 @@ MORPHO_ENDCLASS
  * ********************************************************************** */
 
 void mesh_initialize(void) {
+    objectmeshtype=object_addtype(&objectmeshdefn);
+    
     for (unsigned int i=0; i<mesh_nsections; i++) mesh_slength[i]=strlen(mesh_sections[i]);
 
     builtin_addfunction(MESH_CLASSNAME, mesh_constructor, BUILTIN_FLAGSEMPTY);
 
     value meshclass=builtin_addclass(MESH_CLASSNAME, MORPHO_GETCLASSDEFINITION(Mesh), MORPHO_NIL);
-    builtin_setveneerclass(OBJECT_MESH, meshclass);
+    object_setveneerclass(OBJECT_MESH, meshclass);
 
     morpho_defineerror(MESH_FILENOTFOUND, ERROR_HALT, MESH_FILENOTFOUND_MSG);
     morpho_defineerror(MESH_VERTMTRXDIM, ERROR_HALT, MESH_VERTMTRXDIM_MSG);
@@ -1256,5 +1299,4 @@ void mesh_initialize(void) {
     morpho_defineerror(MESH_ADDSYMARGS, ERROR_HALT, MESH_ADDSYMARGS_MSG);
     morpho_defineerror(MESH_ADDSYMMSNGTRNSFRM, ERROR_HALT, MESH_ADDSYMMSNGTRNSFRM_MSG);
     morpho_defineerror(MESH_CONSTRUCTORARGS, ERROR_HALT, MESH_CONSTRUCTORARGS_MSG);
-
 }

@@ -8,9 +8,7 @@ Strings represent textual information. They are written in Morpho like this:
 
     var a = "hello world"
 
-Unicode characters including emoji are supported:
-
-    print "🦋 morpho"
+Unicode characters including emoji are supported.
 
 You can also create strings using the constructor function `String`, which takes any number of parameters:
 
@@ -22,15 +20,15 @@ A very useful feature, called *string interpolation*, enables the results of any
 
 To get an individual character, use index notatation
 
-    print "🦋 morpho"[0]
+    print "morpho"[0]
 
 You can loop over each character like this:
 
-    for (c in "🦋 morpho") print c
+    for (c in "morpho") print c
 
 Note that strings are immutable, and hence
 
-    var a = "🦋 morpho"
+    var a = "morpho"
     a[0] = 4
 
 raises an error.

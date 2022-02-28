@@ -11,10 +11,69 @@
 #include <sys/stat.h>
 #include "common.h"
 #include "object.h"
+#include "sparse.h"
 
 /* **********************************************************************
 * Utility functions 
 * ********************************************************************** */
+
+/** @brief Compares two values
+ * @param a value to compare
+ * @param b value to compare
+ * @returns 0 if a and b are equal, a positive number if b\>a and a negative number if a\<b
+ * @warning does not work if a and b are not the same type (use MORPHO_CHECKCMPTYPE to promote types if ordering is important) */
+#define EQUAL 0
+#define NOTEQUAL 1
+#define BIGGER 1
+#define SMALLER -1
+int morpho_comparevalue (value a, value b) {
+    if (!morpho_ofsametype(a, b)) return NOTEQUAL;
+    
+    if (MORPHO_ISFLOAT(a)) {
+        double x = MORPHO_GETFLOATVALUE(b) - MORPHO_GETFLOATVALUE(a);
+        if (x>DBL_EPSILON) return BIGGER; /* Fast way out for clear cut cases */
+        if (x<-DBL_EPSILON) return SMALLER;
+        /* Assumes absolute tolerance is the same as relative tolerance. */
+        if (fabs(x)<=DBL_EPSILON*fmax(1.0, fmax(MORPHO_GETFLOATVALUE(a), MORPHO_GETFLOATVALUE(b)))) return EQUAL;
+        return (x>0 ? BIGGER : SMALLER);
+    } else {
+        switch (MORPHO_GETTYPE(a)) {
+            case VALUE_NIL:
+                return EQUAL; /** Nones are always the same */
+            case VALUE_INTEGER:
+                return (MORPHO_GETINTEGERVALUE(b) - MORPHO_GETINTEGERVALUE(a));
+            case VALUE_BOOL:
+                return (MORPHO_GETBOOLVALUE(b) != MORPHO_GETBOOLVALUE(a));
+            case VALUE_OBJECT:
+                {
+                    if (MORPHO_GETOBJECTTYPE(a)!=MORPHO_GETOBJECTTYPE(b)) {
+                        return 1; /* Objects of different type are always different */
+                    } else if (MORPHO_ISSTRING(a)) {
+                        objectstring *astring = MORPHO_GETSTRING(a);
+                        objectstring *bstring = MORPHO_GETSTRING(b);
+                        size_t len = (astring->length > bstring->length ? astring->length : bstring->length);
+                        
+                        return -strncmp(astring->string, bstring->string, len);
+                    } else if (MORPHO_ISDOKKEY(a) && MORPHO_ISDOKKEY(b)) {
+                        objectdokkey *akey = MORPHO_GETDOKKEY(a);
+                        objectdokkey *bkey = MORPHO_GETDOKKEY(b);
+                        
+                        return ((MORPHO_GETDOKKEYCOL(akey)==MORPHO_GETDOKKEYCOL(bkey) &&
+                                 MORPHO_GETDOKKEYROW(akey)==MORPHO_GETDOKKEYROW(bkey)) ? EQUAL : NOTEQUAL);
+                    } else {
+                        return (MORPHO_GETOBJECT(a) == MORPHO_GETOBJECT(b)? EQUAL: NOTEQUAL);
+                    }
+                }
+            default:
+                UNREACHABLE("unhandled value type for comparison [Check morpho_comparevalue]");
+        }
+    }
+    return NOTEQUAL;
+}
+#undef EQUAL
+#undef NOTEQUAL
+#undef BIGGER
+#undef SMALLER
 
 /** @brief Prints a value
  * @param v The value to print */
@@ -195,13 +254,55 @@ bool morpho_countparameters(value f, int *nparams) {
     }
     
     if (MORPHO_ISFUNCTION(g)) {
-        objectfunction *fun = MORPHO_GETFUNCTION(f);
+        objectfunction *fun = MORPHO_GETFUNCTION(g);
         *nparams=fun->nargs;
         success=true;
-    } else if (MORPHO_ISBUILTINFUNCTION(f)) {
+    } else if (MORPHO_ISBUILTINFUNCTION(g)) {
         *nparams = -1;
         success=true;
     }
 
     return success;
 }
+
+/** Initialize tuple generator
+ @param[in] nval - number of values
+ @param[in] n - n-tuples to generate
+ @param[in] c - workspace: supply an unsigned integer array of size 2xn  */
+void morpho_tuplesinit(unsigned int nval, unsigned int n, unsigned int *c, tuplemode mode) {
+    unsigned int *counter=c, *cmax=c+n; // Counters
+    for (unsigned int i=0; i<n; i++) {
+        counter[i]=(mode == MORPHO_SETMODE ? i : 0 );
+        cmax[i]=(mode == MORPHO_SETMODE ? nval-n+i : nval-1);
+    }
+}
+
+/** Generate n-tuples of unique elements indep of ordering from a list of values
+ @param[in] nval - number of values
+ @param[in] list - list of values
+ @param[in] n - n-tuples to generate
+ @param[in] c - workspace: supply an unsigned integer array of size 2xn;
+ @param[out] tuple - generated tuple
+ @returns true if we returned a valid tuple; false if we're done */
+bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int *c, tuplemode mode, value *tuple) {
+    unsigned int *counter=c, *cmax=c+n; // Counters
+    int k;
+    
+    if (counter[0]>cmax[0]) return false; // Done
+    
+    // Generate tuple from counter
+    for (unsigned int i=0; i<n; i++) tuple[i]=list[counter[i]];
+    
+    // Increment counters
+    counter[n-1]++; // Increment last counter
+    for (k=n-1; k>0 && counter[k]>cmax[k]; k--) counter[k-1]++; // Carry
+    
+    if (k<n-1) {
+        if (mode==MORPHO_TUPLEMODE) for (unsigned int i=k+1; i<n; i++) counter[i]=0;
+        if (mode==MORPHO_SETMODE) for (unsigned int i=k+1; i<n; i++) counter[i]=counter[i-1]+1;
+    }
+    
+    return true;
+}
+
+

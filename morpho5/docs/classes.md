@@ -28,6 +28,8 @@ Methods are called using the . operator:
 
     c.eat()
 
+[showsubtopics]: # (subtopics)
+
 ## Self
 [tagself]: # (self)
 

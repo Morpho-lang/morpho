@@ -6,13 +6,14 @@ Morpho provides a number of built-in functions.
 \hypertarget{arctan}{%
 \section{arctan}\label{arctan}}
 
-Returns the arctangent of an input angle. You can use one argument:
+Returns the arctangent of an input value that lies from \texttt{-Inf} to
+\texttt{Inf}. You can use one argument:
 
 \begin{lstlisting}
 print arctan(0) // expect: 0
 \end{lstlisting}
 
-or to get the angle in the correct quadrant, use two arguments:
+or use two arguments to return the angle in the correct quadrant:
 
 \begin{lstlisting}
 print arctan(x, y)
@@ -101,8 +102,42 @@ otherwise.
 Returns \texttt{true} if a value is infinite or \texttt{false}
 otherwise.
 
-\hypertarget{issparse-1}{%
-\section{issparse}\label{issparse-1}}
+\hypertarget{isnan}{%
+\section{isnan}\label{isnan}}
 
 Returns \texttt{true} if a value is a Not a Number or \texttt{false}
 otherwise.
+
+\hypertarget{iscallable}{%
+\section{iscallable}\label{iscallable}}
+
+Returns \texttt{true} if a value is callable or \texttt{false}
+otherwise.
+
+\hypertarget{apply}{%
+\section{Apply}\label{apply}}
+
+Apply calls a function with the arguments provided as a list:
+
+\begin{lstlisting}
+apply(f, [0.5, 0.5]) // calls f(0.5, 0.5) 
+\end{lstlisting}
+
+It's often useful where a function or method and/or the number of
+parameters isn't known ahead of time. The first parameter to apply can
+be any callable object, including a method invocation or a closure.
+
+You may also instead omit the list and use apply with multiple
+arguments:
+
+\begin{lstlisting}
+apply(f, 0.5, 0.5) // calls f(0.5, 0.5)
+\end{lstlisting}
+
+There is one edge case that occurs when you want to call a function that
+accepts a single list as a parameter. In this case, enclose the list in
+another list:
+
+\begin{lstlisting}
+apply(f, [[1,2]]) // equivalent to f([1,2])
+\end{lstlisting}

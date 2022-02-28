@@ -47,6 +47,11 @@ static void compiler_error(compiler *c, syntaxtreenode *node, errorid id, ... ) 
     va_end(args);
 }
 
+/** Returns true if the compiler has encountered an error */
+static bool compiler_checkerror(compiler *c) {
+    return (c->err.cat!=ERROR_NONE); // Ensure errors are not overwritten.
+}
+
 /** @brief Catches a compiler error, resetting the errror state to none.
  * @param c        the compiler
  * @param id       error id to match
@@ -2294,7 +2299,10 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     bool ismethod = (c->currentmethod==node);
     bool isanonymous = MORPHO_ISNIL(node->content);
     bool isinitializer = false;
-    if (!isanonymous) isinitializer=(memcmp(MORPHO_GETCSTRING(node->content), MORPHO_INITIALIZER_METHOD, 4)==0);
+    
+    objectstring initlabel = MORPHO_STATICSTRING(MORPHO_INITIALIZER_METHOD);
+    
+    if (!isanonymous) isinitializer=MORPHO_ISEQUAL(MORPHO_OBJECT(&initlabel), node->content);
     
     /* We preface the function code with a branch;
        for now simply create a blank instruction and store the indx */
@@ -2347,9 +2355,11 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         {
             compiler_addinstruction(c, ENCODEC(OP_RETURN, 1, false, 0, false, REGISTER_UNALLOCATED), node); /* Add a return */
         } else if (isanonymous) {
-            if (CODEINFO_ISCONSTANT(bodyinfo) && !CODEINFO_ISCONSTANT(bodyinfo)) {
-                UNREACHABLE("Compiler internal error in compiler_function.");
+            if (!CODEINFO_ISREGISTER(bodyinfo) && !CODEINFO_ISCONSTANT(bodyinfo)) {
+                bodyinfo=compiler_movetoregister(c, node, bodyinfo, REGISTER_UNALLOCATED);
+                ninstructions+=bodyinfo.ninstructions;
             }
+            
             compiler_addinstruction(c, ENCODEC(OP_RETURN, 1, CODEINFO_ISCONSTANT(bodyinfo), bodyinfo.dest, false, REGISTER_UNALLOCATED), node);
         } else {
             compiler_addinstruction(c, ENCODE_BYTE(OP_RETURN), node); /* Add a return */
@@ -2358,6 +2368,9 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         ninstructions++;
     }
 
+    /* Verify if we have any outstanding forward references */
+    compiler_checkoutstandingforwardreference(c);
+    
     /* Correct the branch instruction before the function definition code */
     compiler_setinstruction(c, bindx, ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, ninstructions));
     ninstructions++;
@@ -2450,7 +2463,7 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
             ninstructions+=arginfo.ninstructions;
         }
         
-        if (compiler_regtop(c)!=reg) {
+        if (!compiler_haserror(c) && compiler_regtop(c)!=reg) {
             compiler_regshow(c);
             UNREACHABLE("Incorrectly freed registers in compiling argument list.");
         }
@@ -3034,7 +3047,7 @@ static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerind
         ninstructions+=prop.ninstructions;
     } else {
         compiler_error(c, selector, COMPILE_PROPERTYNAMERQD);
-        return CODEINFO_EMPTY;
+        //return CODEINFO_EMPTY;
     }
     
     if (out !=REGISTER_UNALLOCATED) {
@@ -3193,6 +3206,8 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
     
     dictionary_init(&fordict);
     varray_charinit(&filename);
+    
+    if (compiler_checkerror(c)) return CODEINFO_EMPTY;
     
     if (qual) {
         if (qual->type==NODE_FOR) {

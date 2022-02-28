@@ -20,31 +20,8 @@ void object_finalize(void);
  * Generic objects
  * --------------------------- */
 
-/** The type of an object */
-typedef enum {
-    OBJECT_STRING,
-    OBJECT_FUNCTION,
-    OBJECT_BUILTINFUNCTION,
-    OBJECT_CLOSURE,
-    OBJECT_UPVALUE,
-    OBJECT_CLASS,
-    OBJECT_INSTANCE,
-    OBJECT_INVOCATION,
-    OBJECT_RANGE,
-    OBJECT_LIST,
-    OBJECT_DICTIONARY,
-    OBJECT_ARRAY,
-    OBJECT_MATRIX,
-    OBJECT_SPARSE,
-    OBJECT_DOKKEY,
-    
-    /* Geometry classes */
-    OBJECT_MESH,
-    OBJECT_SELECTION,
-    OBJECT_FIELD,
-    
-    OBJECT_EXTERN /* Intended for objects that are only visible to morpho and not involved in the runtime e.g. the help system.  */
-} objecttype;
+/** Categorizes the type of an object */
+typedef int objecttype;
 
 /** Simplest object */
 struct sobject {
@@ -66,6 +43,10 @@ struct sobject {
 /** Sets an objects key */
 #define MORPHO_SETOBJECTHASH(val, newhash)  (MORPHO_GETOBJECT(val)->hsh = newhash)
 
+/* ---------------------------
+ * Generic object functions
+ * --------------------------- */
+
 /** Tests whether an object is of a specified type */
 static inline bool object_istype(value val, objecttype type) {
     return (MORPHO_ISOBJECT(val) && MORPHO_GETOBJECTTYPE(val)==type);
@@ -83,42 +64,46 @@ static inline void morpho_freeobject(value val) {
     if (MORPHO_ISOBJECT(val)) object_free(MORPHO_GETOBJECT(val));
 }
 
-/* ---------------------------
- * Strings
- * --------------------------- */
+/* --------------------------------------
+ * Custom object types can be defined
+ * by providing a few interface functions
+ * -------------------------------------- */
 
-/** A string object */
+/** Prints a short identifier for the object */
+typedef void (*objectprintfn) (object *obj);
+
+/** Mark the contents of an object */
+typedef void (*objectmarkfn) (object *obj, void *v);
+
+/** Frees any unmanaged subsidiary data structures for an object */
+typedef void (*objectfreefn) (object *obj);
+
+/** Returns the size of an object and allocated data */
+typedef size_t (*objectsizefn) (object *obj);
+
+/** Define a custom object type */
 typedef struct {
-    object obj;
-    size_t length;
-    char *string; 
-    char stringdata[];
-} objectstring;
+    object *veneer; // Veneer class
+    objectfreefn freefn;
+    objectmarkfn markfn;
+    objectsizefn sizefn;
+    objectprintfn printfn;
+} objecttypedefn;
 
-#define MORPHO_GETSTRING(val)             ((objectstring *) MORPHO_GETOBJECT(val))
-#define MORPHO_GETCSTRING(val)            (((objectstring *) MORPHO_GETOBJECT(val))->string)
-#define MORPHO_GETSTRINGLENGTH(val)       (((objectstring *) MORPHO_GETOBJECT(val))->length)
+DECLARE_VARRAY(objecttypedefn, objecttypedefn)
 
-/** Tests whether an object is a string */
-#define MORPHO_ISSTRING(val) object_istype(val, OBJECT_STRING)
+void object_nullfn(object *obj);
 
-/** Use to create static strings on the C stack */
-#define MORPHO_STATICSTRING(cstring)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=strlen(cstring) }
+objecttype object_addtype(objecttypedefn *def);
 
-/** Use to create static strings on the C stack */
-#define MORPHO_STATICSTRINGWITHLENGTH(cstring, len)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=len }
+objecttypedefn *object_getdefn(object *obj);
 
-
-#define OBJECT_STRINGLABEL "string"
-#define OBJECT_SYMBOLLABEL "symbol"
-
-value object_stringfromcstring(const char *in, size_t length);
-value object_stringfromvarraychar(varray_char *in);
-value object_clonestring(value val);
-value object_concatenatestring(value a, value b);
+/* *************************************
+ * We now define essential object types
+ * ************************************* */
 
 /* -------------------------------------------------------
- * Upvalues
+ * Upvalue structure
  * ------------------------------------------------------- */
 
 /** Each upvalue */
@@ -136,6 +121,9 @@ DECLARE_VARRAY(varray_upvalue, varray_upvalue)
 /* ---------------------------
  * Functions
  * --------------------------- */
+
+extern objecttype objectfunctiontype;
+#define OBJECT_FUNCTION objectfunctiontype
 
 typedef struct {
     value symbol; /** Symbol associated with the variable */
@@ -177,6 +165,9 @@ objectfunction *object_newfunction(indx entry, value name, objectfunction *paren
  * Upvalue objects
  * --------------------------- */
 
+extern objecttype objectupvaluetype;
+#define OBJECT_UPVALUE objectupvaluetype
+
 typedef struct sobjectupvalue {
     object obj;
     value* location; /** Pointer to the location of the upvalue */
@@ -191,11 +182,14 @@ objectupvalue *object_newupvalue(value *reg);
 #define MORPHO_GETUPVALUE(val)   ((objectupvalue *) MORPHO_GETOBJECT(val))
 
 /** Tests whether an object is a function */
-#define MORPHO_ISUPVALUE(val) object_istype(val, OBJECT_UPVALUE)
+#define MORPHO_ISUPVALUE(val) object_istype(val, object_upvaluetype)
 
 /* ---------------------------
  * Closures
  * --------------------------- */
+
+extern objecttype objectclosuretype;
+#define OBJECT_CLOSURE objectclosuretype
 
 typedef struct {
     object obj;
@@ -218,6 +212,9 @@ objectclosure *object_newclosure(objectfunction *sf, objectfunction *func, indx 
 /* ---------------------------
  * Classes
  * --------------------------- */
+
+extern objecttype objectclasstype;
+#define OBJECT_CLASS objectclasstype
 
 typedef struct sobjectclass {
     object obj;
@@ -243,6 +240,9 @@ objectclass *morpho_lookupclass(value obj);
  * Instances
  * --------------------------- */
 
+extern objecttype objectinstancetype;
+#define OBJECT_INSTANCE objectinstancetype
+
 typedef struct {
     object obj;
     objectclass *klass;
@@ -264,6 +264,9 @@ bool objectinstance_getproperty(objectinstance *obj, value key, value *val);
  * Bound methods
  * --------------------------- */
 
+extern objecttype objectinvocationtype;
+#define OBJECT_INVOCATION objectinvocationtype
+
 typedef struct {
     object obj;
     value receiver;
@@ -282,49 +285,49 @@ bool objectinstance_insertpropertybycstring(objectinstance *obj, char *property,
 
 bool objectinstance_getpropertybycstring(objectinstance *obj, char *property, value *val);
 
-/* -------------------------------------------------------
- * Ranges
- * ------------------------------------------------------- */
+/* ---------------------------
+ * Strings
+ * --------------------------- */
 
+extern objecttype objectstringtype;
+#define OBJECT_STRING objectstringtype
+
+/** A string object */
 typedef struct {
     object obj;
-    unsigned int nsteps; 
-    value start;
-    value end;
-    value step;
-} objectrange;
+    size_t length;
+    char *string;
+    char stringdata[];
+} objectstring;
 
-/** Tests whether an object is a range */
-#define MORPHO_ISRANGE(val) object_istype(val, OBJECT_RANGE)
+#define MORPHO_GETSTRING(val)             ((objectstring *) MORPHO_GETOBJECT(val))
+#define MORPHO_GETCSTRING(val)            (((objectstring *) MORPHO_GETOBJECT(val))->string)
+#define MORPHO_GETSTRINGLENGTH(val)       (((objectstring *) MORPHO_GETOBJECT(val))->length)
 
-/** Gets the object as a range */
-#define MORPHO_GETRANGE(val)   ((objectrange *) MORPHO_GETOBJECT(val))
+/** Tests whether an object is a string */
+#define MORPHO_ISSTRING(val) object_istype(val, OBJECT_STRING)
 
-objectrange *object_newrange(value start, value end, value step);
+/** Use to create static strings on the C stack */
+#define MORPHO_STATICSTRING(cstring)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=strlen(cstring) }
 
-/* -------------------------------------------------------
- * Lists
- * ------------------------------------------------------- */
+/** Use to create static strings on the C stack */
+#define MORPHO_STATICSTRINGWITHLENGTH(cstring, len)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=len }
 
-typedef struct {
-    object obj;
-    varray_value val;
-} objectlist;
 
-/** Tests whether an object is a list */
-#define MORPHO_ISLIST(val) object_istype(val, OBJECT_LIST)
+#define OBJECT_STRINGLABEL "string"
+#define OBJECT_SYMBOLLABEL "symbol"
 
-/** Gets the object as a list */
-#define MORPHO_GETLIST(val)   ((objectlist *) MORPHO_GETOBJECT(val))
-
-/** Create a static list - you must initialize the list separately */
-#define MORPHO_STATICLIST      { .obj.type=OBJECT_LIST, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .val.count=0, .val.capacity=0, .val.data=NULL }
-
-objectlist *object_newlist(unsigned int nval, value *val);
+value object_stringfromcstring(const char *in, size_t length);
+value object_stringfromvarraychar(varray_char *in);
+value object_clonestring(value val);
+value object_concatenatestring(value a, value b);
 
 /* -------------------------------------------------------
  * Dictionaries
  * ------------------------------------------------------- */
+
+extern objecttype objectdictionarytype;
+#define OBJECT_DICTIONARY objectdictionarytype
 
 typedef struct {
     object obj;
@@ -345,8 +348,34 @@ typedef struct {
 objectdictionary *object_newdictionary(void);
 
 /* -------------------------------------------------------
+ * Lists
+ * ------------------------------------------------------- */
+
+extern objecttype objectlisttype;
+#define OBJECT_LIST objectlisttype
+
+typedef struct {
+    object obj;
+    varray_value val;
+} objectlist;
+
+/** Tests whether an object is a list */
+#define MORPHO_ISLIST(val) object_istype(val, OBJECT_LIST)
+
+/** Gets the object as a list */
+#define MORPHO_GETLIST(val)   ((objectlist *) MORPHO_GETOBJECT(val))
+
+/** Create a static list - you must initialize the list separately */
+#define MORPHO_STATICLIST      { .obj.type=OBJECT_LIST, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .val.count=0, .val.capacity=0, .val.data=NULL }
+
+objectlist *object_newlist(unsigned int nval, value *val);
+
+/* -------------------------------------------------------
  * Arrays
  * ------------------------------------------------------- */
+
+extern objecttype objectarraytype;
+#define OBJECT_ARRAY objectarraytype
 
 typedef struct {
     object obj;
@@ -377,176 +406,33 @@ objectarray *object_arrayfromvarrayvalue(varray_value *v);
 objectarray *object_arrayfromvalueindices(unsigned int ndim, value *dim);
 
 /* -------------------------------------------------------
- * Matrices
+ * Ranges
  * ------------------------------------------------------- */
 
-/** Matrices are a purely numerical collection type oriented toward linear algebra.
-    Elements are stored in column-major format, i.e.
-        [ 1 2 ]
-        [ 3 4 ]
-    is stored ( 1, 3, 2, 4 ) in memory. This is for compatibility with standard linear algebra packages */
+extern objecttype objectrangetype;
+#define OBJECT_RANGE objectrangetype
 
 typedef struct {
     object obj;
-    unsigned int nrows;
-    unsigned int ncols;
-    double *elements;
-    double matrixdata[];
-} objectmatrix;
+    unsigned int nsteps;
+    value start;
+    value end;
+    value step;
+} objectrange;
 
-/** Tests whether an object is a matrix */
-#define MORPHO_ISMATRIX(val) object_istype(val, OBJECT_MATRIX)
+/** Tests whether an object is a range */
+#define MORPHO_ISRANGE(val) object_istype(val, OBJECT_RANGE)
 
-/** Gets the object as an matrix */
-#define MORPHO_GETMATRIX(val)   ((objectmatrix *) MORPHO_GETOBJECT(val))
+/** Gets the object as a range */
+#define MORPHO_GETRANGE(val)   ((objectrange *) MORPHO_GETOBJECT(val))
 
-/** Creates a matrix object */
-objectmatrix *object_newmatrix(unsigned int nrows, unsigned int ncols, bool zero);
-
-/** Creates a new matrix from an array */
-objectmatrix *object_matrixfromarray(objectarray *array);
-
-/** Creates a new matrix from an existing matrix */
-objectmatrix *object_clonematrix(objectmatrix *array);
-
-/** @brief Use to create static matrices on the C stack
-    @details Intended for small matrices; Caller needs to supply a double array of size nr*nc. */
-#define MORPHO_STATICMATRIX(darray, nr, nc)      { .obj.type=OBJECT_MATRIX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .elements=darray, .nrows=nr, .ncols=nc }
+objectrange *object_newrange(value start, value end, value step);
 
 /* -------------------------------------------------------
- * Sparse matrices
+ * Veneer classes
  * ------------------------------------------------------- */
 
-/** The dictionary of keys format uses this special object type to store indices, enabling use of the existing dictionary type.
-    @warning These are for internal use only and should never be  returned to user code */
-typedef struct {
-    object obj;
-    unsigned int row;
-    unsigned int col;
-} objectdokkey;
-
-/** Create */
-#define MORPHO_STATICDOKKEY(i,j)      { .obj.type=OBJECT_DOKKEY, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .row=i, .col=j }
-
-/** Tests whether an object is a dok key */
-#define MORPHO_ISDOKKEY(val) object_istype(val, OBJECT_DOKKEY)
-
-/** Gets the object as a dok key */
-#define MORPHO_GETDOKKEY(val)   ((objectdokkey *) MORPHO_GETOBJECT(val))
-
-/** Gets the row and column from a objectdokkey */
-#define MORPHO_GETDOKKEYROW(objptr)    ((unsigned int) (objptr)->row)
-#define MORPHO_GETDOKKEYCOL(objptr)    ((unsigned int) (objptr)->col)
-
-#define MORPHO_GETDOKROWWVAL(val)    ((unsigned int) (MORPHO_GETDOKKEY(val)->row))
-#define MORPHO_GETDOKCOLWVAL(val)    ((unsigned int) (MORPHO_GETDOKKEY(val)->col))
-
-DECLARE_VARRAY(dokkey, objectdokkey);
-
-typedef struct {
-    int nrows;
-    int ncols;
-    dictionary dict;
-    objectdokkey *keys;
-} sparsedok;
-
-typedef struct {
-    int nentries;
-    int nrows;
-    int ncols;
-    int *cptr; // Pointers to column entries
-    int *rix; // Row indices
-    double *values; // Values
-} sparseccs;
-
-typedef struct {
-    object obj;
-    sparsedok dok;
-    sparseccs ccs;
-} objectsparse;
-
-/** Tests whether an object is a sparse matrix */
-#define MORPHO_ISSPARSE(val) object_istype(val, OBJECT_SPARSE)
-
-/** Gets the object as a sparse matrix */
-#define MORPHO_GETSPARSE(val)   ((objectsparse *) MORPHO_GETOBJECT(val))
-
-objectsparse *object_newsparse(int *nrows, int *ncols);
-objectsparse *sparse_sparsefromarray(objectarray *array);
-
-/* -------------------------------------------------------
- * Mesh
- * ------------------------------------------------------- */
-
-typedef struct {
-    object obj;
-    unsigned int dim;
-    objectmatrix *vert;
-    objectarray *conn;
-    object *link; 
-} objectmesh;
-
-/** Tests whether an object is a mesh */
-#define MORPHO_ISMESH(val) object_istype(val, OBJECT_MESH)
-
-/** Gets the object as a mesh */
-#define MORPHO_GETMESH(val)   ((objectmesh *) MORPHO_GETOBJECT(val))
-
-/** Creates a mesh object */
-objectmesh *object_newmesh(unsigned int dim, unsigned int nv, double *v);
-
-/* -------------------------------------------------------
- * Selection
- * ------------------------------------------------------- */
-
-typedef struct {
-    object obj;
-    objectmesh *mesh; /** The mesh the selection is referring to */
-    
-    enum {
-        SELECT_ALL, SELECT_NONE, SELECT_SOME
-    } mode; /** What is selected? */
-    
-    unsigned int ngrades; /** Number of grades */
-    dictionary selected[]; /** Selections */
-} objectselection;
-
-/** Tests whether an object is a selection */
-#define MORPHO_ISSELECTION(val) object_istype(val, OBJECT_SELECTION)
-
-/** Gets the object as a selection */
-#define MORPHO_GETSELECTION(val)   ((objectselection *) MORPHO_GETOBJECT(val))
-
-/** Creates an empty selection object */
-objectselection *object_newselection(objectmesh *mesh);
-
-/* -------------------------------------------------------
- * Field
- * ------------------------------------------------------- */
-
-typedef struct {
-    object obj;
-    objectmesh *mesh; /** The mesh the selection is referring to */
-    
-    unsigned int ngrades; /** Number of grades */
-    unsigned int *dof; /** number of degrees of freedom per entry in each grade */
-    unsigned int *offset; /** Offsets into the store for each grade */
-    
-    value prototype; /** Prototype object */
-    unsigned int psize; /** Number of dofs per copy of the prototype */
-    unsigned int nelements; /** Total number of elements in the fireld */
-    void *pool; /** Pool of statically allocated objects */
-    
-    objectmatrix data; /** Underlying data store */
-} objectfield;
-
-/** Tests whether an object is a field */
-#define MORPHO_ISFIELD(val) object_istype(val, OBJECT_FIELD)
-
-/** Gets the object as a field */
-#define MORPHO_GETFIELD(val)   ((objectfield *) MORPHO_GETOBJECT(val))
-
-/** Creates an empty field object */
-objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *dof);
+void object_setveneerclass(objecttype type, value class);
+objectclass *object_getveneerclass(objecttype type);
 
 #endif /* object_h */

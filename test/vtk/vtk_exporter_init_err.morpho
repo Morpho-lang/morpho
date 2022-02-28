@@ -1,0 +1,9 @@
+// Testing whether initializing VTKExporter with an object that is
+// neither a Mesh nor a Field produces the right error
+
+import vtk
+import meshtools 
+
+var a = 3.0
+
+var vtkE = VTKExporter(a) // expect: Error 'InitErr' : Expected a Mesh or a Field object, but received `3`.

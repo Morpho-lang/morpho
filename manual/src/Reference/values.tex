@@ -1,0 +1,53 @@
+\hypertarget{values}{%
+\section{Values}\label{values}}
+
+Values are the basic unit of information in morpho: All functions in
+morpho accept values as arguments and return values.
+
+\hypertarget{int}{%
+\section{Int}\label{int}}
+
+Morpho provides integers, which work as you would expect in other
+languages, although you rarely need to worry about the distinction
+between floats and integers.
+
+Convert a floating point number to an Integer:
+
+\begin{lstlisting}
+print Int(1.3) // expect: 1
+\end{lstlisting}
+
+Convert a string to an integer:
+
+\begin{lstlisting}
+print Int("10")+1 // expect: 11
+\end{lstlisting}
+
+\hypertarget{float}{%
+\section{Float}\label{float}}
+
+Morpho provides double precision floating point numbers.
+
+Convert a string to an floating point number:
+
+\begin{lstlisting}
+print Float("1.2e2")+1 // expect: 121
+\end{lstlisting}
+
+\hypertarget{ceil}{%
+\section{Ceil}\label{ceil}}
+
+Returns the smallest integer larger than or equal to its argument:
+
+\begin{lstlisting}
+print ceil(1.3) // expect: 2
+\end{lstlisting}
+
+\hypertarget{floor}{%
+\section{Floor}\label{floor}}
+
+Returns the largest integer smaller than or equal to its argument:
+
+\begin{lstlisting}
+print floor(1.3) // expect: 1
+\end{lstlisting}

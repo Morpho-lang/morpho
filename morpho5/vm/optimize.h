@@ -23,21 +23,27 @@ typedef struct {
 #define CODEBLOCKDEST_EMPTY -1
 typedef int codeblockindx;
 
+DECLARE_VARRAY(codeblockindx, codeblockindx)
+
 /** Basic blocks for control flow graph */
 typedef struct scodeblock {
     instructionindx start; /** First instruction in the block */
     instructionindx end; /** Last instruction in the block */
+    
     codeblockindx dest[2]; /** Indices of destination blocks */
+    varray_codeblockindx src; /** Indices of source blocks */
+    
     int inbound; /** Count inbound */
     int visited; /** Count how many times optimizer has visited the block */
-    int nreg; /** Size of register state */
+    
+    int nreg; /** Size of register file */
     reginfo *reg; /** Register state at end */
+    
     instructionindx ostart; /** First instruction in output */
     instructionindx oend; /** Last instruction in output */
 } codeblock;
 
 DECLARE_VARRAY(codeblock, codeblock)
-DECLARE_VARRAY(codeblockindx, codeblockindx)
 
 /** Optimizer data structure */
 typedef struct {

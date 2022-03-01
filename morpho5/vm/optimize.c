@@ -15,24 +15,29 @@ DEFINE_VARRAY(codeblockindx, codeblockindx);
  * ********************************************************************** */
 
 /** Show the contents of a register */
-void optimize_regshow(optimizer *opt) {
-    unsigned int regmax = 0;
-    for (unsigned int i=0; i<opt->maxreg; i++) if (opt->reg[i].contains!=NOTHING) regmax=i;
-    
-    for (unsigned int i=0; i<=regmax; i++) {
+void optimize_showreginfo(unsigned int regmax, reginfo *reg) {
+    for (unsigned int i=0; i<regmax; i++) {
         printf("|\tr%u : ", i);
-        switch (opt->reg[i].contains) {
+        switch (reg[i].contains) {
             case NOTHING: break;
-            case REGISTER: printf("r%td", opt->reg[i].id); break;
-            case GLOBAL: printf("g%td", opt->reg[i].id); break;
-            case CONSTANT: printf("c%td", opt->reg[i].id); break;
-            case UPVALUE: printf("u%td", opt->reg[i].id); break;
+            case REGISTER: printf("r%td", reg[i].id); break;
+            case GLOBAL: printf("g%td", reg[i].id); break;
+            case CONSTANT: printf("c%td", reg[i].id); break;
+            case UPVALUE: printf("u%td", reg[i].id); break;
             case VALUE: printf("value"); break;
         }
-        if (opt->reg[i].contains!=NOTHING) printf(" : %u", opt->reg[i].used);
+        if (reg[i].contains!=NOTHING) printf(" : %u", reg[i].used);
         printf("\n");
     }
     printf("\n");
+}
+
+/** Show register contents */
+void optimize_regshow(optimizer *opt) {
+    unsigned int regmax = opt->maxreg;
+    for (unsigned int i=0; i<opt->maxreg; i++) if (opt->reg[i].contains!=NOTHING) regmax=i;
+    
+    optimize_showreginfo(opt->maxreg, opt->reg);
 }
 
 /* **********************************************************************
@@ -297,7 +302,7 @@ optimizationstrategy firstpass[] = {
     { OP_ANY, optimize_constant_folding },
     { OP_LGL, optimize_duplicate_load },
     { OP_B, optimize_branch_optimization },
-    { OP_END, optimize_eliminate_unused_at_end },
+    //{ OP_END, optimize_eliminate_unused_at_end },
     { OP_LAST, NULL }
 };
 
@@ -307,7 +312,7 @@ optimizationstrategy secondpass[] = {
     { OP_ANY, optimize_constant_folding },
     { OP_LGL, optimize_duplicate_load },
     { OP_SGL, optimize_unused_global },
-    { OP_END, optimize_eliminate_unused_at_end },
+    //{ OP_END, optimize_eliminate_unused_at_end },
     { OP_LAST, NULL }
 };
 
@@ -534,6 +539,26 @@ void optimize_setfunction(optimizer *opt, objectfunction *func) {
     opt->func=func;
 }
 
+/** Initialize a code block */
+void optimize_initcodeblock(codeblock *block, instructionindx start) {
+    block->start=start;
+    block->end=start;
+    block->inbound=0;
+    block->dest[0]=CODEBLOCKDEST_EMPTY;
+    block->dest[1]=CODEBLOCKDEST_EMPTY;
+    varray_codeblockindxinit(&block->src);
+    block->visited=0;
+    block->nreg=0;
+    block->reg=NULL;
+    block->ostart=0;
+    block->oend=0;
+}
+
+/** Clear a code block */
+void optimize_clearcodeblock(codeblock *block) {
+    varray_codeblockindxclear(&block->src);
+}
+
 /** Initializes optimizer data structure */
 void optimize_init(optimizer *opt, program *prog) {
     opt->out=prog;
@@ -557,6 +582,10 @@ void optimize_init(optimizer *opt, program *prog) {
 void optimize_clear(optimizer *opt) {
     if (opt->globals) MORPHO_FREE(opt->globals);
     
+    for (int i=0; i<opt->cfgraph.count; i++) {
+        optimize_clearcodeblock(opt->cfgraph.data+i);
+    }
+    
     varray_codeblockclear(&opt->cfgraph);
     varray_debugannotationclear(&opt->aout);
     
@@ -567,20 +596,6 @@ void optimize_clear(optimizer *opt) {
 /* **********************************************************************
 * Control Flow graph
 * ********************************************************************** */
-
-/** Initialize a code block */
-void optimize_initcodeblock(codeblock *block, instructionindx start) {
-    block->start=start;
-    block->end=start;
-    block->inbound=0;
-    block->dest[0]=CODEBLOCKDEST_EMPTY;
-    block->dest[1]=CODEBLOCKDEST_EMPTY;
-    block->visited=0;
-    block->nreg=0;
-    block->reg=NULL;
-    block->ostart=0;
-    block->oend=0;
-}
 
 /** Show the current code blocks*/
 void optimize_showcodeblocks(optimizer *opt) {
@@ -601,6 +616,11 @@ codeblockindx optimize_newblock(optimizer *opt, instructionindx start) {
     return opt->cfgraph.count-1;
 }
 
+/** Gets the code block from the handle */
+codeblock *optimize_getblock(optimizer *opt, codeblockindx handle) {
+    return &opt->cfgraph.data[handle];
+}
+
 /** Get a block's starting point */
 instructionindx optimize_getstart(optimizer *opt, codeblockindx handle) {
     return opt->cfgraph.data[handle].start;
@@ -616,7 +636,7 @@ void optimize_setend(optimizer *opt, codeblockindx handle, instructionindx end) 
     opt->cfgraph.data[handle].end=end;
 }
 
-/** Get a block's visited index */
+/** Has the block been visited? */
 int optimize_getvisited(optimizer *opt, codeblockindx handle) {
     return opt->cfgraph.data[handle].visited;
 }
@@ -634,6 +654,26 @@ int optimize_getinbound(optimizer *opt, codeblockindx handle) {
 /** Mark the code block as visited */
 void optimize_visit(optimizer *opt, codeblockindx handle) {
     opt->cfgraph.data[handle].visited+=1;
+}
+
+/** Save reginfo to the block */
+void optimize_saveregisterstatetoblock(optimizer *opt, codeblockindx handle) {
+    codeblock *block = &opt->cfgraph.data[handle];
+    
+    if (!block->reg || opt->maxreg>block->nreg) block->reg=MORPHO_REALLOC(block->reg, opt->maxreg*sizeof(reginfo));
+    block->nreg=opt->maxreg;
+    
+    if (block->reg) for (unsigned int i=0; i<opt->maxreg; i++) block->reg[i]=opt->reg[i];
+}
+
+/** Adds a source to a block */
+void optimize_addsrc(optimizer *opt, codeblockindx dest, codeblockindx src) {
+    codeblock *block = &opt->cfgraph.data[dest];
+    
+    for (int i=0; i<block->src.count; i++) { // Is the src already part of the block?
+        if (block->src.data[i]==src) return;
+    }
+    varray_codeblockindxwrite(&block->src, src);
 }
 
 /** Adds a destination
@@ -778,6 +818,13 @@ void optimize_buildblock(optimizer *opt, codeblockindx block, varray_codeblockin
     }
 }
 
+void optimize_addsrcrefs(optimizer *opt) {
+    for (codeblockindx i=0; i<opt->cfgraph.count; i++) {
+        codeblock *block = optimize_getblock(opt, i);
+        for (int j=0; j<2; j++) if (block->dest[j]!=CODEBLOCKDEST_EMPTY) optimize_addsrc(opt, block->dest[j], i);
+    }
+}
+
 /** Builds the control flow graph from the source */
 void optimize_buildcontrolflowgraph(optimizer *opt) {
     varray_codeblockindx worklist; // Worklist of blocks to analyze
@@ -795,6 +842,8 @@ void optimize_buildcontrolflowgraph(optimizer *opt) {
     }
     varray_codeblockindxclear(&worklist);
     
+    optimize_addsrcrefs(opt);
+    
 #ifdef MORPHO_DEBUG_LOGOPTIMIZER
     optimize_showcodeblocks(opt);
 #endif
@@ -804,25 +853,74 @@ void optimize_buildcontrolflowgraph(optimizer *opt) {
  * Optimize a block
  * ********************************************************************** */
 
+/** Restores register info from the parents of a block */
+void optimize_restoreregisterstate(optimizer *opt, codeblockindx handle) {
+    codeblock *block = optimize_getblock(opt, handle);
+    
+    // Check if all parents have been visited.
+    for (unsigned int i=0; i<block->src.count; i++) if (!optimize_getvisited(opt, block->src.data[i])) return;
+    
+    for (unsigned int i=0; i<block->src.count; i++) {
+        codeblock *src = optimize_getblock(opt, block->src.data[i]);
+        
+        optimize_showreginfo(src->nreg, src->reg);
+        
+        for (unsigned int j=0; j<src->nreg; j++) {
+            switch (opt->reg[j].contains) {
+                case NOTHING:
+                    opt->reg[j]=src->reg[j];
+                    break;
+                case REGISTER:
+                case CONSTANT:
+                case UPVALUE:
+                case GLOBAL:
+                    // Check if they refer to the same thing
+                    if (opt->reg[j].contains!=src->reg[j].contains ||
+                        opt->reg[j].id!=src->reg[j].id) {
+                        opt->reg[j].contains=VALUE; // If not, just becomes a value
+                    }
+                    break;
+                case VALUE: // Do not change a value
+                    break;
+            }
+        }
+        
+        if (src->nreg>opt->maxreg) opt->maxreg=src->nreg;
+    }
+    
+    optimize_showreginfo(opt->maxreg, opt->reg);
+}
+
 void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstrategy *strategies) {
     instructionindx start=optimize_getstart(opt, block),
                     end=optimize_getend(opt, block);
+    
+#ifdef MORPHO_DEBUG_LOGOPTIMIZER
+    printf("Optimizing block %u.\n", block);
+#endif
+    
     do {
         opt->nchanged=0;
-        for (optimize_restart(opt, start);
-             opt->iindx<=end;
+        optimize_restart(opt, start);
+        optimize_restoreregisterstate(opt, block); // Load registers
+        
+        for (;
+            opt->iindx<=end;
             optimize_advance(opt)) {
             
             optimize_fetch(opt);
             optimize_optimizeinstruction(opt, strategies);
             optimize_track(opt); // Track contents of registers
-            optimize_overwrite(opt); //
+            optimize_overwrite(opt);
             
     #ifdef MORPHO_DEBUG_LOGOPTIMIZER
             optimize_regshow(opt);
     #endif
         }
     } while (opt->nchanged>0);
+    
+    optimize_saveregisterstatetoblock(opt, block);
+    optimize_showreginfo(opt->maxreg, opt->reg);
 }
 
 /* **********************************************************************
@@ -881,10 +979,10 @@ void optimize_fixbranch(optimizer *opt, codeblock *block, varray_instruction *de
     instruction last = dest->data[block->oend];
     
     if (DECODE_OP(last)==OP_B) {
-        codeblock *destblock = &opt->cfgraph.data[block->dest[0]];
+        codeblock *destblock = optimize_getblock(opt, block->dest[0]);
         dest->data[block->oend] = ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, destblock->ostart-block->oend-1);
     } else if (DECODE_OP(last)==OP_BIF) {
-        codeblock *destblock = &opt->cfgraph.data[block->dest[1]];
+        codeblock *destblock = optimize_getblock(opt, block->dest[1]);
         dest->data[block->oend] = ENCODE_LONGFLAGS(OP_BIF, DECODE_A(last), DECODE_F(last), false, destblock->ostart-block->oend-1);
     }
 }
@@ -905,7 +1003,7 @@ void optimize_layoutblocks(optimizer *opt) {
     
     /** Copy and compactify blocks */
     for (unsigned int i=0; i<nblocks; i++) {
-        codeblock *block = &opt->cfgraph.data[sorted.data[i]];
+        codeblock *block = optimize_getblock(opt, sorted.data[i]);
         
         int ninstructions=optimize_compactifyblock(opt, block, &out);
         
@@ -917,7 +1015,7 @@ void optimize_layoutblocks(optimizer *opt) {
     
     /** Fix branch instructions */
     for (unsigned int i=0; i<nblocks; i++) {
-        codeblock *block = &opt->cfgraph.data[sorted.data[i]];
+        codeblock *block = optimize_getblock(opt, sorted.data[i]);
         optimize_fixbranch(opt, block, &out);
     }
     

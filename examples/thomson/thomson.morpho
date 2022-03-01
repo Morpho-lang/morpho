@@ -41,7 +41,7 @@ opt.stepsize=0.01/sqrt(Np)
 // condition. [This helps condition the problem]
 opt.relax(5)
 // Now perform gradient descent
-opt.linesearch(1000) // Perform up to 1000 iterations of direct gradient descent
+opt.conjugategradient(1000) // Perform up to 1000 iterations of direct gradient descent
 
 // Visualize the results
 var g = Graphics()

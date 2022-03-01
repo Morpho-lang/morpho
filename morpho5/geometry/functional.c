@@ -1682,9 +1682,9 @@ bool linecurvsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vi
 
     if (mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_LINE, &nbrs)>0 &&
         mesh_getsynonyms(mesh, MESH_GRADE_VERTEX, id, &synid)) {
-        if (nbrs.count<2) goto linecurvsq_integrand_cleanup;
+        if (nbrs.count!=2) goto linecurvsq_integrand_cleanup;
 
-        for (unsigned int i=0; i<nbrs.count; i++) {
+        for (unsigned int i=0; i<2; i++) {
             int nentries, *entries; // Get the vertices for this edge
             if (!sparseccs_getrowindices(&cref->lineel->ccs, nbrs.data[i], &nentries, &entries)) break;
 
@@ -1714,7 +1714,7 @@ bool linecurvsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vi
     }
 
 linecurvsq_integrand_cleanup:
-
+    
     *out = result;
     varray_elementidclear(&nbrs);
     varray_elementidclear(&synid);

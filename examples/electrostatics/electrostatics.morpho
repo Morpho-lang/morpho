@@ -37,7 +37,7 @@ problem.addenergy(lt2, selection=bnd2, prefactor=100)
 
 // Create the optimizer and perform optimization
 var opt = FieldOptimizer(problem, phi)
-opt.linesearch(100)
+opt.conjugategradient(100)
 
 for (i in 1..10) {
   // Select elements that have an above average contribution to the energy
@@ -58,7 +58,7 @@ for (i in 1..10) {
   equiangulate(mesh)
 
   // Reminimize
-  opt.linesearch(1000)
+  opt.conjugategradient(1000)
 }
 
 print "Final mesh has ${mesh.count(2)} elements"

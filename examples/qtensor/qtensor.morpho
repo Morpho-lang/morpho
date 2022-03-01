@@ -86,7 +86,7 @@ var opt = FieldOptimizer(problem, q_tensor)
 // `iters` specifies the number of iterations for the linelearch. From emperical observation, iters=500 works well. 
 var iters = 500 
 // Minimize the free energy!
-opt.linesearch(iters)
+opt.conjugategradient(iters)
 
 // Define some helper functions to plot the result
 
@@ -166,7 +166,7 @@ if (refine_adaptively){
     // Visualize the refined mesh at each stage
     if (visualize_refinement) Show(plotmesh(m, grade=1))
   
-    opt.linesearch(iters)
+    opt.conjugategradient(iters)
   }
 }
 

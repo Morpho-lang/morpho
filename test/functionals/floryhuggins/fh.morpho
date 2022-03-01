@@ -3,13 +3,17 @@ var m = Mesh("tetrahedron.mesh")
 var m0 = Mesh("tetrahedron.mesh")
 var lfh = FloryHuggins(m0, a=1, b=1, c=1, phi0=0.5)
 
-print lfh.integrand(m)
-// expect: [ -0.0522253 ]
+var expected = -0.0522253
+var tol = 1e-6
+print abs(lfh.integrand(m)[0]-expected)<tol
+// expect: true
 
-print lfh.total(m)
-// expect: -0.0522253
+print abs(lfh.total(m)-expected)<tol
+// expect: true
 
-print lfh.gradient(m)
-// expect: [ 0 0.0301523 0.0301523 -0.0603047 ]
-// expect: [ 0 0.0522254 -0.0522253 -3.46945e-08 ]
-// expect: [ -0.0639627 0.0213209 0.0213209 0.0213209 ]
+expected = Matrix([ [ 0, 0.0301523, 0.0301523, -0.0603047 ],
+                    [ 0, 0.0522254, -0.0522253, -3.46945e-08 ],
+                    [ -0.0639627, 0.0213209, 0.0213209, 0.0213209 ] ])
+
+print (lfh.gradient(m)-expected).norm()<tol
+// expect: true

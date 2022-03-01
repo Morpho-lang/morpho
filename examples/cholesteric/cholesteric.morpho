@@ -29,7 +29,7 @@ problem.addlocalconstraint(ln, field=nn, target=1)
 lnem.pitch = Pi/2
 
 var opt = FieldOptimizer(problem, nn)
-opt.linesearch(1000)
+opt.conjugategradient(1000)
 
 // Function to visualize a director field
 fn visualize(m, nn, dl) {

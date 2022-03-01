@@ -78,6 +78,7 @@ instruction optimize_fetchinstructionat(optimizer *opt, indx ix) {
 
 /** Replaces an instruction at a given indx */
 void optimize_replaceinstructionat(optimizer *opt, indx ix, instruction inst) {
+    opt->nchanged+=1;
     opt->out->code.data[ix]=inst;
 }
 
@@ -339,42 +340,6 @@ void optimize_overwrite(optimizer *opt) {
  * Handling code annotations
  * ********************************************************************** */
 
-/*void optimize_advanceannotationtoelement(optimizer *opt) {
-    while (opt->a<opt->amax && opt->a->type!=DEBUG_ELEMENT) opt->a++;
-    if (opt->a>=opt->amax) opt->a=NULL;
-}*/
-
-/** Start annotation */
-/*void optimize_restartannotation(optimizer *opt) {
-    opt->a=opt->out->annotations.data;
-    opt->amax=opt->out->annotations.data+opt->out->annotations.count;
-    opt->ai=0;
-    optimize_advanceannotationtoelement(opt);
-}*/
-
-/** Reset annotation instruction counter */
-/*void optimize_resetannotationinstructioncounter(optimizer *opt) {
-    opt->ai=0;
-}*/
-
-/** Advance annotation by one instruction */
-/*void optimize_advanceannotation(optimizer *opt) {
-    if (!opt->a) return;
-
-    opt->ai++; // Advance instruction counter for annotations
-    
-    // Check if we need to advance to the next annotation
-    if (opt->ai>=opt->a->content.element.ninstr) {
-        opt->a->content.element.ninstr-=opt->adel;
-        opt->a++;
-        
-        optimize_resetannotationinstructioncounter(opt);
-        optimize_advanceannotationtoelement(opt);
-    }
-    
-    return;
-}*/
-
 /** Gets the current annotation */
 debugannotation *optimize_currentannotation(optimizer *opt) {
     return &opt->out->annotations.data[opt->a];
@@ -561,8 +526,6 @@ void optimize_regclear(optimizer *opt) {
 void optimize_restart(optimizer *opt, instructionindx start) {
     optimize_regclear(opt);
     opt->iindx=start;
-    
-    //optimize_restartannotation(opt);
 }
 
 /** Sets the current function */
@@ -838,53 +801,28 @@ void optimize_buildcontrolflowgraph(optimizer *opt) {
 }
 
 /* **********************************************************************
- * Finalize, clearing nops and fixing debug info
- * ********************************************************************** */
-
-/*void optimize_compactify(optimizer *opt) {
-    unsigned int write=0; // Keep track of where we're writing to
-    
-    optimize_restart(opt, 0);
-    optimize_restartannotation(opt);
-    
-    while (!optimize_atend(opt)) {
-        optimize_fetch(opt);
-        optimize_replaceinstructionat(opt, write, opt->current); // Copy this instruction down
-        
-#ifdef MORPHO_DEBUG_LOGOPTIMIZER
-        debug_disassembleinstruction(opt->current, opt->iindx, NULL, NULL);
-        printf("\n");
-#endif
-        
-        if (opt->op==OP_NOP) {
-            optimize_annotationdeleteinstruction(opt); // Mark this instruction for deletion
-        } else write++; // otherwise continue
-        optimize_advance(opt);
-    }
-    opt->out->code.count=write; // Set length of code
-}*/
-
-/* **********************************************************************
  * Optimize a block
  * ********************************************************************** */
 
 void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstrategy *strategies) {
     instructionindx start=optimize_getstart(opt, block),
                     end=optimize_getend(opt, block);
+    do {
+        opt->nchanged=0;
+        for (optimize_restart(opt, start);
+             opt->iindx<=end;
+            optimize_advance(opt)) {
             
-    for (optimize_restart(opt, start);
-         opt->iindx<=end;
-        optimize_advance(opt)) {
-        
-        optimize_fetch(opt);
-        optimize_optimizeinstruction(opt, strategies);
-        optimize_track(opt); // Track contents of registers
-        optimize_overwrite(opt); //
-        
-#ifdef MORPHO_DEBUG_LOGOPTIMIZER
-        optimize_regshow(opt);
-#endif
-    }
+            optimize_fetch(opt);
+            optimize_optimizeinstruction(opt, strategies);
+            optimize_track(opt); // Track contents of registers
+            optimize_overwrite(opt); //
+            
+    #ifdef MORPHO_DEBUG_LOGOPTIMIZER
+            optimize_regshow(opt);
+    #endif
+        }
+    } while (opt->nchanged>0);
 }
 
 /* **********************************************************************

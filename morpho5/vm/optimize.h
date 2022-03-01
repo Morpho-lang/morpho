@@ -48,6 +48,7 @@ typedef struct {
     int op;                  // Current opcode
     registerindx overwrites; // Keep check of any register overwritten
     reginfo overwriteprev;   // Keep track of register contents before overwrite
+    int nchanged;            // Count number of instructions changed in this block
     
     int maxreg;              // Maximum number of registers to track
     objectfunction *func;    // Current function

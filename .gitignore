@@ -60,3 +60,8 @@ dkms.conf
 test/FailedTests.txt
 *.png
 manual/src/manual.lyx~
+test/vtk/data.case2.vtk
+test/vtk/data.case3.0.vtk
+examples/qtensor/Qtensor_K_0.01.png
+examples/qtensor/Qtensor_K_0.01.png
+test/vtk/data.vtk

@@ -16,7 +16,7 @@
 int main(int argc, const char * argv[]) {
     morpho_initialize();
     
-    clioptions opt = CLI_RUN;
+    clioptions opt = CLI_RUN | CLI_OPTIMIZE;
     const char *file = NULL;
     
     /* Process command line arguments */
@@ -36,6 +36,11 @@ int main(int argc, const char * argv[]) {
                             /* Show lines of source alongside disassembly */
                             opt |= CLI_DISASSEMBLESHOWSRC;
                         }
+                    }
+                    break;
+                case 'n':
+                    if (strncmp(option+1, "nooptimize", strlen("nooptimize"))==0) {
+                        opt^=CLI_OPTIMIZE;
                     }
                     break;
             }

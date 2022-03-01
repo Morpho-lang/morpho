@@ -309,7 +309,7 @@ void cli_run(const char *in, clioptions opt) {
     
     if (src) {
         /* Compile code */
-        success=morpho_compile(src, c, true, &err);
+        success=morpho_compile(src, c, (opt & CLI_OPTIMIZE), &err);
         
         /* Run code if successful */
         if (success) {

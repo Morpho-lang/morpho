@@ -19,7 +19,7 @@ typedef int codeblockindx;
 typedef struct {
     returntype contains;  // What does the register contain?
     indx id;              // index of global, register, constant etc.
-    int used;             // Count how many times this has been used
+    int used;             // Count how many times this has been used in the block
     instructionindx iix;  // Instruction that last wrote to this register
     codeblockindx block; // Which block was responsible for the write? 
 } reginfo;
@@ -33,6 +33,7 @@ typedef struct scodeblock {
     
     codeblockindx dest[2]; /** Indices of destination blocks */
     varray_codeblockindx src; /** Indices of source blocks */
+    dictionary retain; /** Registers retained by other blocks */
     
     int inbound; /** Count inbound */
     int visited; /** Count how many times optimizer has visited the block */

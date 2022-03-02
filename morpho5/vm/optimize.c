@@ -44,9 +44,30 @@ void optimize_regshow(optimizer *opt) {
  * Utility functions
  * ********************************************************************** */
 
-/** Checks if we're at the end of the program */
-bool optimize_atend(optimizer *opt) {
-    return (opt->iindx >= opt->out->code.count);
+/* -----------
+ * Code blocks
+ * ----------- */
+
+/** Initialize a code block */
+void optimize_initcodeblock(codeblock *block, instructionindx start) {
+    block->start=start;
+    block->end=start;
+    block->inbound=0;
+    block->dest[0]=CODEBLOCKDEST_EMPTY;
+    block->dest[1]=CODEBLOCKDEST_EMPTY;
+    varray_codeblockindxinit(&block->src);
+    dictionary_init(&block->retain);
+    block->visited=0;
+    block->nreg=0;
+    block->reg=NULL;
+    block->ostart=0;
+    block->oend=0;
+}
+
+/** Clear a code block */
+void optimize_clearcodeblock(codeblock *block) {
+    varray_codeblockindxclear(&block->src);
+    dictionary_clear(&block->retain);
 }
 
 /** Sets the current block */
@@ -64,6 +85,43 @@ codeblock *optimize_getblock(optimizer *opt, codeblockindx handle) {
     return &opt->cfgraph.data[handle];
 }
 
+/** Indicate that register `reg` in block `handle` is used by a subsequent block */
+void optimize_retain(optimizer *opt, codeblockindx handle, registerindx reg) {
+    codeblock *block=optimize_getblock(opt, handle);
+    dictionary_insert(&block->retain, MORPHO_INTEGER(reg), MORPHO_TRUE);
+}
+
+/** Check if a register  `reg` in block `handle` has been marked as retained */
+bool optimize_isretained(optimizer *opt, codeblockindx handle, registerindx reg) {
+    value val;
+    codeblock *block=optimize_getblock(opt, handle);
+    return dictionary_get(&block->retain, MORPHO_INTEGER(reg), &val);
+}
+
+/** Marks reg as retained in parents of the current code block */
+void optimize_retaininparents(optimizer *opt, registerindx reg) {
+    codeblock *block=optimize_getblock(opt, optimize_getcurrentblock(opt));
+    
+    for (unsigned int i=0; i<block->src.count; i++) {
+        codeblockindx dest = block->src.data[i];
+        if (dest!=CODEBLOCKDEST_EMPTY) optimize_retain(opt, dest, reg);
+    }
+}
+
+/* -----------
+ * Reginfo
+ * ----------- */
+
+/** Clears the reginfo structure */
+void optimize_regclear(optimizer *opt) {
+    for (unsigned int i=0; i<MORPHO_MAXARGS; i++) {
+        opt->reg[i].contains=NOTHING;
+        opt->reg[i].id=0;
+        opt->reg[i].used=0;
+        opt->reg[i].iix=0;
+        opt->reg[i].block=CODEBLOCKDEST_EMPTY;
+    }
+}
 
 /** Sets the contents of a register */
 static inline void optimize_regcontents(optimizer *opt, registerindx reg, returntype type, indx id) {
@@ -72,10 +130,9 @@ static inline void optimize_regcontents(optimizer *opt, registerindx reg, return
 }
 
 /** Indicates an instruction uses a register */
-static inline void optimize_reguse(optimizer *opt, registerindx reg) {
-    if (opt->reg[reg].block!=optimize_getcurrentblock(opt)) {
-        codeblock *block=optimize_getblock(opt, opt->reg[reg].block);
-        block->reg[reg].used++;
+void optimize_reguse(optimizer *opt, registerindx reg) {
+    if (opt->reg[reg].block!=CODEBLOCKDEST_EMPTY && opt->reg[reg].block!=optimize_getcurrentblock(opt)) {
+        optimize_retaininparents(opt, reg);
     }
     opt->reg[reg].used++;
 }
@@ -96,6 +153,10 @@ static inline void optimize_nooverwrite(optimizer *opt) {
     opt->overwrites=REGISTER_UNALLOCATED;
 }
 
+/* ------------
+ * Instructions
+ * ------------ */
+
 /** Fetches an instruction at a given indx */
 instruction optimize_fetchinstructionat(optimizer *opt, indx ix) {
     return opt->out->code.data[ix];
@@ -113,6 +174,10 @@ void optimize_replaceinstruction(optimizer *opt, instruction inst) {
     opt->current=inst;
     opt->op=DECODE_OP(inst);
 }
+
+/* ------------
+ * Search
+ * ------------ */
 
 /** Trace back through duplicate registers */
 registerindx optimize_findoriginalregister(optimizer *opt, registerindx reg) {
@@ -146,24 +211,18 @@ bool optimize_addconstant(optimizer *opt, value val, indx *out) {
 }
 
 /* **********************************************************************
-* Data structures
+* Optimizer data structure
 * ********************************************************************** */
-
-/** Clears the reginfo structure */
-void optimize_regclear(optimizer *opt) {
-    for (unsigned int i=0; i<MORPHO_MAXARGS; i++) {
-        opt->reg[i].contains=NOTHING;
-        opt->reg[i].id=0;
-        opt->reg[i].used=0;
-        opt->reg[i].iix=0;
-        opt->reg[i].block=CODEBLOCKDEST_EMPTY;
-    }
-}
 
 /** Restart from a designated instruction */
 void optimize_restart(optimizer *opt, instructionindx start) {
     optimize_regclear(opt);
     opt->iindx=start;
+}
+
+/** Checks if we're at the end of the program */
+bool optimize_atend(optimizer *opt) {
+    return (opt->iindx >= opt->out->code.count);
 }
 
 /** Sets the current function */
@@ -172,25 +231,30 @@ void optimize_setfunction(optimizer *opt, objectfunction *func) {
     opt->func=func;
 }
 
-/** Initialize a code block */
-void optimize_initcodeblock(codeblock *block, instructionindx start) {
-    block->start=start;
-    block->end=start;
-    block->inbound=0;
-    block->dest[0]=CODEBLOCKDEST_EMPTY;
-    block->dest[1]=CODEBLOCKDEST_EMPTY;
-    varray_codeblockindxinit(&block->src);
-    block->visited=0;
-    block->nreg=0;
-    block->reg=NULL;
-    block->ostart=0;
-    block->oend=0;
+/** Fetches the instruction  */
+void optimize_fetch(optimizer *opt) {
+    optimize_nooverwrite(opt);
+    
+    opt->current=opt->out->code.data[opt->iindx];
+    opt->op=DECODE_OP(opt->current);
 }
 
-/** Clear a code block */
-void optimize_clearcodeblock(codeblock *block) {
-    varray_codeblockindxclear(&block->src);
+/** Returns the index of the instruction currently decoded */
+instructionindx optimizer_currentindx(optimizer *opt) {
+    return opt->iindx;
 }
+
+/** Advance to next instruction */
+void optimize_advance(optimizer *opt) {
+    opt->iindx++;
+}
+
+/** Move to a different instruction. Does not move annotations */
+void optimize_moveto(optimizer *opt, instructionindx indx) {
+    opt->iindx=indx;
+    optimize_fetch(opt);
+}
+
 
 /** Initializes optimizer data structure */
 void optimize_init(optimizer *opt, program *prog) {
@@ -294,30 +358,6 @@ void optimize_restartannotation(optimizer *opt) {
 /* **********************************************************************
 * Decode instructions
 * ********************************************************************** */
-
-/** Fetches the instruction  */
-void optimize_fetch(optimizer *opt) {
-    optimize_nooverwrite(opt);
-    
-    opt->current=opt->out->code.data[opt->iindx];
-    opt->op=DECODE_OP(opt->current);
-}
-
-/** Returns the index of the instruction currently decoded */
-instructionindx optimizer_currentindx(optimizer *opt) {
-    return opt->iindx;
-}
-
-/** Advance to next instruction */
-void optimize_advance(optimizer *opt) {
-    opt->iindx++;
-}
-
-/** Move to a different instruction. Does not move annotations */
-void optimize_moveto(optimizer *opt, instructionindx indx) {
-    opt->iindx=indx;
-    optimize_fetch(opt);
-}
 
 /** Track contents of registers etc*/
 void optimize_track(optimizer *opt) {
@@ -935,12 +975,14 @@ void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstr
 
 /** Check all blocks for unused instructions */
 void optimize_checkunused(optimizer *opt) {
+    //return;
     for (codeblockindx i=0; i<opt->cfgraph.count; i++) {
         codeblock *block=optimize_getblock(opt, i);
         
         for (registerindx j=0; j<block->nreg; j++) {
             if (block->reg[j].contains!=NOTHING &&
-                block->reg[j].used==0) {
+                block->reg[j].used==0 &&
+                !optimize_isretained(opt, i, j)) {
                 // Should check for side effects!
                 optimize_replaceinstructionat(opt, block->reg[j].iix, ENCODE_BYTE(OP_NOP));
             }

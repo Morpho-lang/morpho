@@ -11,37 +11,7 @@ DEFINE_VARRAY(codeblock, codeblock);
 DEFINE_VARRAY(codeblockindx, codeblockindx);
 
 /* **********************************************************************
- * Display
- * ********************************************************************** */
-
-/** Show the contents of a register */
-void optimize_showreginfo(unsigned int regmax, reginfo *reg) {
-    for (unsigned int i=0; i<regmax; i++) {
-        printf("|\tr%u : ", i);
-        switch (reg[i].contains) {
-            case NOTHING: break;
-            case REGISTER: printf("r%td", reg[i].id); break;
-            case GLOBAL: printf("g%td", reg[i].id); break;
-            case CONSTANT: printf("c%td", reg[i].id); break;
-            case UPVALUE: printf("u%td", reg[i].id); break;
-            case VALUE: printf("value"); break;
-        }
-        if (reg[i].contains!=NOTHING) printf(" [%u] : %u", reg[i].block, reg[i].used);
-        printf("\n");
-    }
-    printf("\n");
-}
-
-/** Show register contents */
-void optimize_regshow(optimizer *opt) {
-    unsigned int regmax = opt->maxreg;
-    for (unsigned int i=0; i<opt->maxreg; i++) if (opt->reg[i].contains!=NOTHING) regmax=i;
-    
-    optimize_showreginfo(opt->maxreg, opt->reg);
-}
-
-/* **********************************************************************
- * Utility functions
+ * Data structures
  * ********************************************************************** */
 
 /* -----------
@@ -143,14 +113,30 @@ static inline void optimize_regoverwrite(optimizer *opt, registerindx reg) {
     opt->overwrites=reg;
 }
 
-/** Indicates an instruction uses a global */
-static inline void optimize_loadglobal(optimizer *opt, indx ix) {
-    if (opt->globals) opt->globals[ix].used++;
+/** Show the contents of a register */
+void optimize_showreginfo(unsigned int regmax, reginfo *reg) {
+    for (unsigned int i=0; i<regmax; i++) {
+        printf("|\tr%u : ", i);
+        switch (reg[i].contains) {
+            case NOTHING: break;
+            case REGISTER: printf("r%td", reg[i].id); break;
+            case GLOBAL: printf("g%td", reg[i].id); break;
+            case CONSTANT: printf("c%td", reg[i].id); break;
+            case UPVALUE: printf("u%td", reg[i].id); break;
+            case VALUE: printf("value"); break;
+        }
+        if (reg[i].contains!=NOTHING) printf(" [%u] : %u", reg[i].block, reg[i].used);
+        printf("\n");
+    }
+    printf("\n");
 }
 
-/** Indicates no overwrite takes place */
-static inline void optimize_nooverwrite(optimizer *opt) {
-    opt->overwrites=REGISTER_UNALLOCATED;
+/** Show register contents */
+void optimize_regshow(optimizer *opt) {
+    unsigned int regmax = opt->maxreg;
+    for (unsigned int i=0; i<opt->maxreg; i++) if (opt->reg[i].contains!=NOTHING) regmax=i;
+    
+    optimize_showreginfo(opt->maxreg, opt->reg);
 }
 
 /* ------------
@@ -229,6 +215,16 @@ bool optimize_atend(optimizer *opt) {
 void optimize_setfunction(optimizer *opt, objectfunction *func) {
     opt->maxreg=func->nregs;
     opt->func=func;
+}
+
+/** Indicates an instruction uses a global */
+static inline void optimize_loadglobal(optimizer *opt, indx ix) {
+    if (opt->globals) opt->globals[ix].used++;
+}
+
+/** Indicates no overwrite takes place */
+static inline void optimize_nooverwrite(optimizer *opt) {
+    opt->overwrites=REGISTER_UNALLOCATED;
 }
 
 /** Fetches the instruction  */
@@ -658,6 +654,7 @@ void optimize_buildblock(optimizer *opt, codeblockindx block, varray_codeblockin
     }
 }
 
+/** Add cross references to the sources of each block; done at the end of building the CF graph */
 void optimize_addsrcrefs(optimizer *opt) {
     for (codeblockindx i=0; i<opt->cfgraph.count; i++) {
         codeblock *block = optimize_getblock(opt, i);
@@ -913,8 +910,6 @@ void optimize_restoreregisterstate(optimizer *opt, codeblockindx handle) {
         
         if (src->nreg>opt->maxreg) opt->maxreg=src->nreg;
     }
-    
-    //optimize_showreginfo(opt->maxreg, opt->reg);
 }
 
 /** Process overwrite */

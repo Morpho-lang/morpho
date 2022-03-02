@@ -49,6 +49,22 @@ bool optimize_atend(optimizer *opt) {
     return (opt->iindx >= opt->out->code.count);
 }
 
+/** Sets the current block */
+void optimize_setcurrentblock(optimizer *opt, codeblockindx handle) {
+    opt->currentblock=handle;
+}
+
+/** Gets the current block */
+codeblockindx optimize_getcurrentblock(optimizer *opt) {
+    return opt->currentblock;
+}
+
+/** Gets the code block from the handle */
+codeblock *optimize_getblock(optimizer *opt, codeblockindx handle) {
+    return &opt->cfgraph.data[handle];
+}
+
+
 /** Sets the contents of a register */
 static inline void optimize_regcontents(optimizer *opt, registerindx reg, returntype type, indx id) {
     opt->reg[reg].contains=type;
@@ -57,6 +73,10 @@ static inline void optimize_regcontents(optimizer *opt, registerindx reg, return
 
 /** Indicates an instruction uses a register */
 static inline void optimize_reguse(optimizer *opt, registerindx reg) {
+    if (opt->reg[reg].block!=optimize_getcurrentblock(opt)) {
+        codeblock *block=optimize_getblock(opt, opt->reg[reg].block);
+        block->reg[reg].used++;
+    }
     opt->reg[reg].used++;
 }
 
@@ -126,204 +146,84 @@ bool optimize_addconstant(optimizer *opt, value val, indx *out) {
 }
 
 /* **********************************************************************
- * Evaluation using the VM
- * ********************************************************************** */
+* Data structures
+* ********************************************************************** */
 
-bool optimize_evaluateprogram(optimizer *opt, instruction *list, registerindx dest, value *out) {
-    bool success=false;
-    objectfunction *storeglobal=opt->temp->global; // Retain the old global function
-    opt->temp->global=opt->func; // Patch in function
-    
-    varray_instruction *code = &opt->temp->code;
-    code->count=0; // Clear the program
-    for (instruction *ins = list; ; ins++) { // Load the list of instructions into the program
-        varray_instructionwrite(code, *ins);
-        if (DECODE_OP(*ins)==OP_END) break;
+/** Clears the reginfo structure */
+void optimize_regclear(optimizer *opt) {
+    for (unsigned int i=0; i<MORPHO_MAXARGS; i++) {
+        opt->reg[i].contains=NOTHING;
+        opt->reg[i].id=0;
+        opt->reg[i].used=0;
+        opt->reg[i].iix=0;
+        opt->reg[i].block=CODEBLOCKDEST_EMPTY;
     }
-    
-    if (morpho_run(opt->v, opt->temp)) { // Run the program and extract output
-        if (out && dest< opt->v->stack.count) *out = opt->v->stack.data[dest];
-        success=true;
-    }
-    opt->temp->global=storeglobal; // Restore the global function
-    
-    return success;
 }
 
-/* **********************************************************************
- * Optimization strategies
- * ********************************************************************** */
-
-typedef bool (*optimizationstrategyfn) (optimizer *opt);
-
-typedef struct {
-    int match;
-    optimizationstrategyfn fn;
-} optimizationstrategy;
-
-/** Identifies duplicate load instructions */
-bool optimize_duplicate_load(optimizer *opt) {
-    registerindx out = DECODE_A(opt->current);
-    indx global = DECODE_Bx(opt->current);
-    
-    // Find if another register contains this global
-    for (registerindx i=0; i<opt->maxreg; i++) {
-        if (opt->reg[i].contains==GLOBAL &&
-            opt->reg[i].id==global) {
-            
-            if (i!=out) { // Replace with a move instruction and note the duplication
-                optimize_replaceinstruction(opt, ENCODE_DOUBLE(OP_MOV, out, false, i));
-            } else { // Register already contains this global
-                optimize_replaceinstruction(opt, ENCODE_BYTE(OP_NOP));
-            }
-            return true;
-        }
-    }
-    
-    return false;
+/** Restart from a designated instruction */
+void optimize_restart(optimizer *opt, instructionindx start) {
+    optimize_regclear(opt);
+    opt->iindx=start;
 }
 
-/** Replaces duplicate registers  */
-bool optimize_register_replacement(optimizer *opt) {
-    if (opt->op<OP_ADD || opt->op>OP_LE) return false; // Quickly eliminate non-arithmetic instructions
-    
-    instruction instr=opt->current;
-    registerindx a=DECODE_A(instr),
-                 b=DECODE_B(instr),
-                 c=DECODE_C(instr);
-    bool Bc=DECODE_ISBCONSTANT(instr), Cc=DECODE_ISCCONSTANT(instr);
-    
-    if (!Bc) b=optimize_findoriginalregister(opt, b);
-    if (!Cc) c=optimize_findoriginalregister(opt, c);
-    
-    optimize_replaceinstruction(opt, ENCODEC(opt->op, a, Bc, b, Cc, c));
-    
-    return false; // This allows other optimization strategies to intervene after
+/** Sets the current function */
+void optimize_setfunction(optimizer *opt, objectfunction *func) {
+    opt->maxreg=func->nregs;
+    opt->func=func;
 }
 
-/** Searches to see if an expression has already been calculated  */
-bool optimize_subexpression_elimination(optimizer *opt) {
-    if (opt->op<OP_ADD || opt->op>OP_LE) return false; // Quickly eliminate non-arithmetic instructions
-    static instruction mask = (MASK_OP | MASK_B | MASK_Bc | MASK_C | MASK_Cc);
-    
-    // Find if another register contains the same calculated value.
-    for (registerindx i=0; i<opt->maxreg; i++) {
-        if (opt->reg[i].contains==VALUE) {
-            instruction comp = optimize_fetchinstructionat(opt, opt->reg[i].iix);
-            
-            if ((comp & mask)==(opt->current & mask)) {
-                optimize_replaceinstruction(opt, ENCODE_DOUBLE(OP_MOV, DECODE_A(opt->current), false, i));
-                return true;
-            }
-        }
-    }
-    return false;
+/** Initialize a code block */
+void optimize_initcodeblock(codeblock *block, instructionindx start) {
+    block->start=start;
+    block->end=start;
+    block->inbound=0;
+    block->dest[0]=CODEBLOCKDEST_EMPTY;
+    block->dest[1]=CODEBLOCKDEST_EMPTY;
+    varray_codeblockindxinit(&block->src);
+    block->visited=0;
+    block->nreg=0;
+    block->reg=NULL;
+    block->ostart=0;
+    block->oend=0;
 }
 
-/** Optimize unconditional branches */
-bool optimize_branch_optimization(optimizer *opt) {
-    int sbx=DECODE_sBx(opt->current);
-    
-    if (sbx==0) {
-        optimize_replaceinstruction(opt, ENCODE_BYTE(OP_NOP));
-        return true;
-    }
-    
-    return false;
+/** Clear a code block */
+void optimize_clearcodeblock(codeblock *block) {
+    varray_codeblockindxclear(&block->src);
 }
 
-/** Replaces duplicate registers  */
-bool optimize_constant_folding(optimizer *opt) {
-    if (opt->op<OP_ADD || opt->op>OP_LE) return false; // Quickly eliminate non-arithmetic instructions
-    
-    instruction instr=opt->current;
-    bool Bc=DECODE_ISBCONSTANT(instr), Cc=DECODE_ISCCONSTANT(instr);
-    indx left=DECODE_B(instr), right=DECODE_C(instr);
-    
-    if (!Bc) Bc=optimize_findconstant(opt, DECODE_B(instr), &left);
-    if (!Bc) return false;
-    if (!Cc) Cc=optimize_findconstant(opt, DECODE_C(instr), &right);
-    
-    if (Cc) {
-        // A program that evaluates the required op with the selected constants.
-        instruction ilist[] = {
-            ENCODE_LONG(OP_LCT, 0, left),
-            ENCODE_LONG(OP_LCT, 1, right),
-            ENCODE(opt->op, 0, 0, 1),
-            ENCODE_BYTE(OP_END)
-        };
-        
-        value out;
-        if (optimize_evaluateprogram(opt, ilist, 0, &out)) {
-            indx nkonst;
-            if (MORPHO_ISOBJECT(out)) UNREACHABLE("Optimizer encountered object while constant folding");
-            if (optimize_addconstant(opt, out, &nkonst)) {
-                optimize_replaceinstruction(opt, ENCODE_LONG(OP_LCT, DECODE_A(instr), nkonst));
-                return true;
-            }
-        }
+/** Initializes optimizer data structure */
+void optimize_init(optimizer *opt, program *prog) {
+    opt->out=prog;
+    opt->globals=MORPHO_MALLOC(sizeof(reginfo)*(opt->out->nglobals+1));
+    for (unsigned int i=0; i<opt->out->nglobals; i++) {
+        opt->globals[i].contains=NOTHING;
+        opt->globals[i].used=0;
     }
+    opt->maxreg=MORPHO_MAXARGS;
+    optimize_setfunction(opt, prog->global);
+    optimize_restart(opt, 0);
     
-    return false;
+    varray_codeblockinit(&opt->cfgraph);
+    varray_debugannotationinit(&opt->aout);
+    
+    opt->v=morpho_newvm();
+    opt->temp=morpho_newprogram();
 }
 
-/** Deletes unused globals  */
-bool optimize_unused_global(optimizer *opt) {
-    indx gid=DECODE_Bx(opt->current);
-    if (!opt->globals[gid].used) { // If the global is unused, do not store to it
-        optimize_replaceinstruction(opt, ENCODE_BYTE(OP_NOP));
+/** Clears optimizer data structure */
+void optimize_clear(optimizer *opt) {
+    if (opt->globals) MORPHO_FREE(opt->globals);
+    
+    for (int i=0; i<opt->cfgraph.count; i++) {
+        optimize_clearcodeblock(opt->cfgraph.data+i);
     }
     
-    return false;
-}
-
-/** Removes expressions generating an unused expression at the end */
-bool optimize_eliminate_unused_at_end(optimizer *opt) {
-    for (registerindx i=0; i<opt->maxreg; i++) {
-        if (opt->reg[i].contains!=NOTHING &&
-            opt->reg[i].used==0) {
-            // Should check for side effects!
-            optimize_replaceinstructionat(opt, opt->reg[i].iix, ENCODE_BYTE(OP_NOP));
-        }
-    }
-    return false;
-}
-
-/* --------------------------
- * Table of strategies
- * -------------------------- */
-
-#define OP_ANY -1
-#define OP_LAST OP_END+1
-
-optimizationstrategy firstpass[] = {
-    { OP_ANY, optimize_register_replacement },
-    { OP_ANY, optimize_subexpression_elimination },
-    { OP_ANY, optimize_constant_folding },
-    { OP_LGL, optimize_duplicate_load },
-    { OP_B, optimize_branch_optimization },
-    //{ OP_END, optimize_eliminate_unused_at_end },
-    { OP_LAST, NULL }
-};
-
-optimizationstrategy secondpass[] = {
-    { OP_ANY, optimize_register_replacement },
-    { OP_ANY, optimize_subexpression_elimination },
-    { OP_ANY, optimize_constant_folding },
-    { OP_LGL, optimize_duplicate_load },
-    { OP_SGL, optimize_unused_global },
-    //{ OP_END, optimize_eliminate_unused_at_end },
-    { OP_LAST, NULL }
-};
-
-/** Apply optimization strategies to the current instruction */
-void optimize_optimizeinstruction(optimizer *opt, optimizationstrategy *strategies) {
-    if (opt->op==OP_NOP) return;
-    for (optimizationstrategy *s = strategies; s->match!=OP_LAST; s++) {
-        if (s->match==OP_ANY || s->match==opt->op) {
-            if ((*s->fn) (opt)) return;
-        }
-    }
+    varray_codeblockclear(&opt->cfgraph);
+    varray_debugannotationclear(&opt->aout);
+    
+    if (opt->v) morpho_freevm(opt->v);
+    if (opt->temp) morpho_freeprogram(opt->temp);
 }
 
 /* **********************************************************************
@@ -406,16 +306,6 @@ void optimize_fetch(optimizer *opt) {
 /** Returns the index of the instruction currently decoded */
 instructionindx optimizer_currentindx(optimizer *opt) {
     return opt->iindx;
-}
-
-/** Sets the current block */
-void optimize_setcurrentblock(optimizer *opt, codeblockindx handle) {
-    opt->currentblock=handle;
-}
-
-/** Gets the current block */
-codeblockindx optimize_getcurrentblock(optimizer *opt) {
-    return opt->currentblock;
 }
 
 /** Advance to next instruction */
@@ -509,87 +399,6 @@ void optimize_track(optimizer *opt) {
 }
 
 /* **********************************************************************
-* Data structures
-* ********************************************************************** */
-
-/** Clears the reginfo structure */
-void optimize_regclear(optimizer *opt) {
-    for (unsigned int i=0; i<MORPHO_MAXARGS; i++) {
-        opt->reg[i].contains=NOTHING;
-        opt->reg[i].id=0;
-        opt->reg[i].used=0;
-        opt->reg[i].iix=0;
-        opt->reg[i].block=CODEBLOCKDEST_EMPTY;
-    }
-}
-
-/** Restart from a designated instruction */
-void optimize_restart(optimizer *opt, instructionindx start) {
-    optimize_regclear(opt);
-    opt->iindx=start;
-}
-
-/** Sets the current function */
-void optimize_setfunction(optimizer *opt, objectfunction *func) {
-    opt->maxreg=func->nregs;
-    opt->func=func;
-}
-
-/** Initialize a code block */
-void optimize_initcodeblock(codeblock *block, instructionindx start) {
-    block->start=start;
-    block->end=start;
-    block->inbound=0;
-    block->dest[0]=CODEBLOCKDEST_EMPTY;
-    block->dest[1]=CODEBLOCKDEST_EMPTY;
-    varray_codeblockindxinit(&block->src);
-    block->visited=0;
-    block->nreg=0;
-    block->reg=NULL;
-    block->ostart=0;
-    block->oend=0;
-}
-
-/** Clear a code block */
-void optimize_clearcodeblock(codeblock *block) {
-    varray_codeblockindxclear(&block->src);
-}
-
-/** Initializes optimizer data structure */
-void optimize_init(optimizer *opt, program *prog) {
-    opt->out=prog;
-    opt->globals=MORPHO_MALLOC(sizeof(reginfo)*(opt->out->nglobals+1));
-    for (unsigned int i=0; i<opt->out->nglobals; i++) {
-        opt->globals[i].contains=NOTHING;
-        opt->globals[i].used=0;
-    }
-    opt->maxreg=MORPHO_MAXARGS;
-    optimize_setfunction(opt, prog->global);
-    optimize_restart(opt, 0);
-    
-    varray_codeblockinit(&opt->cfgraph);
-    varray_debugannotationinit(&opt->aout);
-    
-    opt->v=morpho_newvm();
-    opt->temp=morpho_newprogram();
-}
-
-/** Clears optimizer data structure */
-void optimize_clear(optimizer *opt) {
-    if (opt->globals) MORPHO_FREE(opt->globals);
-    
-    for (int i=0; i<opt->cfgraph.count; i++) {
-        optimize_clearcodeblock(opt->cfgraph.data+i);
-    }
-    
-    varray_codeblockclear(&opt->cfgraph);
-    varray_debugannotationclear(&opt->aout);
-    
-    if (opt->v) morpho_freevm(opt->v);
-    if (opt->temp) morpho_freeprogram(opt->temp);
-}
-
-/* **********************************************************************
 * Control Flow graph
 * ********************************************************************** */
 
@@ -610,11 +419,6 @@ codeblockindx optimize_newblock(optimizer *opt, instructionindx start) {
     optimize_initcodeblock(&new, start);
     varray_codeblockwrite(&opt->cfgraph, new);
     return opt->cfgraph.count-1;
-}
-
-/** Gets the code block from the handle */
-codeblock *optimize_getblock(optimizer *opt, codeblockindx handle) {
-    return &opt->cfgraph.data[handle];
 }
 
 /** Get a block's starting point */
@@ -846,6 +650,193 @@ void optimize_buildcontrolflowgraph(optimizer *opt) {
 }
 
 /* **********************************************************************
+ * Evaluation using the VM
+ * ********************************************************************** */
+
+bool optimize_evaluateprogram(optimizer *opt, instruction *list, registerindx dest, value *out) {
+    bool success=false;
+    objectfunction *storeglobal=opt->temp->global; // Retain the old global function
+    opt->temp->global=opt->func; // Patch in function
+    
+    varray_instruction *code = &opt->temp->code;
+    code->count=0; // Clear the program
+    for (instruction *ins = list; ; ins++) { // Load the list of instructions into the program
+        varray_instructionwrite(code, *ins);
+        if (DECODE_OP(*ins)==OP_END) break;
+    }
+    
+    if (morpho_run(opt->v, opt->temp)) { // Run the program and extract output
+        if (out && dest< opt->v->stack.count) *out = opt->v->stack.data[dest];
+        success=true;
+    }
+    opt->temp->global=storeglobal; // Restore the global function
+    
+    return success;
+}
+
+/* **********************************************************************
+ * Optimization strategies
+ * ********************************************************************** */
+
+typedef bool (*optimizationstrategyfn) (optimizer *opt);
+
+typedef struct {
+    int match;
+    optimizationstrategyfn fn;
+} optimizationstrategy;
+
+/** Identifies duplicate load instructions */
+bool optimize_duplicate_load(optimizer *opt) {
+    registerindx out = DECODE_A(opt->current);
+    indx global = DECODE_Bx(opt->current);
+    
+    // Find if another register contains this global
+    for (registerindx i=0; i<opt->maxreg; i++) {
+        if (opt->reg[i].contains==GLOBAL &&
+            opt->reg[i].id==global) {
+            
+            if (i!=out) { // Replace with a move instruction and note the duplication
+                optimize_replaceinstruction(opt, ENCODE_DOUBLE(OP_MOV, out, false, i));
+            } else { // Register already contains this global
+                optimize_replaceinstruction(opt, ENCODE_BYTE(OP_NOP));
+            }
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/** Replaces duplicate registers  */
+bool optimize_register_replacement(optimizer *opt) {
+    if (opt->op<OP_ADD || opt->op>OP_LE) return false; // Quickly eliminate non-arithmetic instructions
+    
+    instruction instr=opt->current;
+    registerindx a=DECODE_A(instr),
+                 b=DECODE_B(instr),
+                 c=DECODE_C(instr);
+    bool Bc=DECODE_ISBCONSTANT(instr), Cc=DECODE_ISCCONSTANT(instr);
+    
+    if (!Bc) b=optimize_findoriginalregister(opt, b);
+    if (!Cc) c=optimize_findoriginalregister(opt, c);
+    
+    optimize_replaceinstruction(opt, ENCODEC(opt->op, a, Bc, b, Cc, c));
+    
+    return false; // This allows other optimization strategies to intervene after
+}
+
+/** Searches to see if an expression has already been calculated  */
+bool optimize_subexpression_elimination(optimizer *opt) {
+    if (opt->op<OP_ADD || opt->op>OP_LE) return false; // Quickly eliminate non-arithmetic instructions
+    static instruction mask = (MASK_OP | MASK_B | MASK_Bc | MASK_C | MASK_Cc);
+    
+    // Find if another register contains the same calculated value.
+    for (registerindx i=0; i<opt->maxreg; i++) {
+        if (opt->reg[i].contains==VALUE) {
+            instruction comp = optimize_fetchinstructionat(opt, opt->reg[i].iix);
+            
+            if ((comp & mask)==(opt->current & mask)) {
+                optimize_replaceinstruction(opt, ENCODE_DOUBLE(OP_MOV, DECODE_A(opt->current), false, i));
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/** Optimize unconditional branches */
+bool optimize_branch_optimization(optimizer *opt) {
+    int sbx=DECODE_sBx(opt->current);
+    
+    if (sbx==0) {
+        optimize_replaceinstruction(opt, ENCODE_BYTE(OP_NOP));
+        return true;
+    }
+    
+    return false;
+}
+
+/** Replaces duplicate registers  */
+bool optimize_constant_folding(optimizer *opt) {
+    if (opt->op<OP_ADD || opt->op>OP_LE) return false; // Quickly eliminate non-arithmetic instructions
+    
+    instruction instr=opt->current;
+    bool Bc=DECODE_ISBCONSTANT(instr), Cc=DECODE_ISCCONSTANT(instr);
+    indx left=DECODE_B(instr), right=DECODE_C(instr);
+    
+    if (!Bc) Bc=optimize_findconstant(opt, DECODE_B(instr), &left);
+    if (!Bc) return false;
+    if (!Cc) Cc=optimize_findconstant(opt, DECODE_C(instr), &right);
+    
+    if (Cc) {
+        // A program that evaluates the required op with the selected constants.
+        instruction ilist[] = {
+            ENCODE_LONG(OP_LCT, 0, left),
+            ENCODE_LONG(OP_LCT, 1, right),
+            ENCODE(opt->op, 0, 0, 1),
+            ENCODE_BYTE(OP_END)
+        };
+        
+        value out;
+        if (optimize_evaluateprogram(opt, ilist, 0, &out)) {
+            indx nkonst;
+            if (MORPHO_ISOBJECT(out)) UNREACHABLE("Optimizer encountered object while constant folding");
+            if (optimize_addconstant(opt, out, &nkonst)) {
+                optimize_replaceinstruction(opt, ENCODE_LONG(OP_LCT, DECODE_A(instr), nkonst));
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+/** Deletes unused globals  */
+bool optimize_unused_global(optimizer *opt) {
+    indx gid=DECODE_Bx(opt->current);
+    if (!opt->globals[gid].used) { // If the global is unused, do not store to it
+        optimize_replaceinstruction(opt, ENCODE_BYTE(OP_NOP));
+    }
+    
+    return false;
+}
+
+/* --------------------------
+ * Table of strategies
+ * -------------------------- */
+
+#define OP_ANY -1
+#define OP_LAST OP_END+1
+
+optimizationstrategy firstpass[] = {
+    { OP_ANY, optimize_register_replacement },
+    { OP_ANY, optimize_subexpression_elimination },
+    { OP_ANY, optimize_constant_folding },
+    { OP_LGL, optimize_duplicate_load },
+    { OP_B, optimize_branch_optimization },
+    { OP_LAST, NULL }
+};
+
+optimizationstrategy secondpass[] = {
+    { OP_ANY, optimize_register_replacement },
+    { OP_ANY, optimize_subexpression_elimination },
+    { OP_ANY, optimize_constant_folding },
+    { OP_LGL, optimize_duplicate_load },
+    { OP_SGL, optimize_unused_global },
+    { OP_LAST, NULL }
+};
+
+/** Apply optimization strategies to the current instruction */
+void optimize_optimizeinstruction(optimizer *opt, optimizationstrategy *strategies) {
+    if (opt->op==OP_NOP) return;
+    for (optimizationstrategy *s = strategies; s->match!=OP_LAST; s++) {
+        if (s->match==OP_ANY || s->match==opt->op) {
+            if ((*s->fn) (opt)) return;
+        }
+    }
+}
+
+/* **********************************************************************
  * Optimize a block
  * ********************************************************************** */
 
@@ -858,7 +849,6 @@ void optimize_restoreregisterstate(optimizer *opt, codeblockindx handle) {
     
     for (unsigned int i=0; i<block->src.count; i++) {
         codeblock *src = optimize_getblock(opt, block->src.data[i]);
-        
         optimize_showreginfo(src->nreg, src->reg);
         
         for (unsigned int j=0; j<src->nreg; j++) {
@@ -884,7 +874,7 @@ void optimize_restoreregisterstate(optimizer *opt, codeblockindx handle) {
         if (src->nreg>opt->maxreg) opt->maxreg=src->nreg;
     }
     
-    optimize_showreginfo(opt->maxreg, opt->reg);
+    //optimize_showreginfo(opt->maxreg, opt->reg);
 }
 
 /** Process overwrite */
@@ -937,6 +927,25 @@ void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstr
     
     optimize_saveregisterstatetoblock(opt, block);
     optimize_showreginfo(opt->maxreg, opt->reg);
+}
+
+/* **********************************************************************
+ * Check for unused instructions
+ * ********************************************************************** */
+
+/** Check all blocks for unused instructions */
+void optimize_checkunused(optimizer *opt) {
+    for (codeblockindx i=0; i<opt->cfgraph.count; i++) {
+        codeblock *block=optimize_getblock(opt, i);
+        
+        for (registerindx j=0; j<block->nreg; j++) {
+            if (block->reg[j].contains!=NOTHING &&
+                block->reg[j].used==0) {
+                // Should check for side effects!
+                optimize_replaceinstructionat(opt, block->reg[j].iix, ENCODE_BYTE(OP_NOP));
+            }
+        }
+    }
 }
 
 /* **********************************************************************
@@ -1075,6 +1084,8 @@ bool optimize(program *prog) {
         optimize_visit(&opt, current);
         optimize_desttoworklist(&opt, current, &worklist);
     }
+    
+    optimize_checkunused(&opt);
     
     varray_codeblockindxclear(&worklist);
     optimize_layoutblocks(&opt);

@@ -12,16 +12,17 @@
 #include "compile.h"
 #include "morpho.h"
 
+#define CODEBLOCKDEST_EMPTY -1
+typedef int codeblockindx;
+
 /** Keep track of register contents */
 typedef struct {
     returntype contains;  // What does the register contain?
     indx id;              // index of global, register, constant etc.
     int used;             // Count how many times this has been used
     instructionindx iix;  // Instruction that last wrote to this register
+    codeblockindx block; // Which block was responsible for the write? 
 } reginfo;
-
-#define CODEBLOCKDEST_EMPTY -1
-typedef int codeblockindx;
 
 DECLARE_VARRAY(codeblockindx, codeblockindx)
 
@@ -50,6 +51,7 @@ typedef struct {
     program *out;
     instructionindx iindx;    // Index to current instruction
     
+    codeblockindx currentblock; // Current code block
     instruction current;     // Current instruction
     int op;                  // Current opcode
     registerindx overwrites; // Keep check of any register overwritten

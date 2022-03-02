@@ -26,7 +26,7 @@ void optimize_showreginfo(unsigned int regmax, reginfo *reg) {
             case UPVALUE: printf("u%td", reg[i].id); break;
             case VALUE: printf("value"); break;
         }
-        if (reg[i].contains!=NOTHING) printf(" : %u", reg[i].used);
+        if (reg[i].contains!=NOTHING) printf(" [%u] : %u", reg[i].block, reg[i].used);
         printf("\n");
     }
     printf("\n");
@@ -326,21 +326,6 @@ void optimize_optimizeinstruction(optimizer *opt, optimizationstrategy *strategi
     }
 }
 
-/** Process overwrite */
-void optimize_overwrite(optimizer *opt) {
-    if (opt->overwrites==REGISTER_UNALLOCATED) return;
-    
-    // Detect unused expression
-    if (opt->overwriteprev.contains!=NOTHING &&
-        opt->overwriteprev.used==0) {
-        
-        optimize_replaceinstructionat(opt, opt->reg[opt->overwrites].iix, ENCODE_BYTE(OP_NOP));
-    }
-    
-    opt->reg[opt->overwrites].used=0;
-    opt->reg[opt->overwrites].iix=opt->iindx;
-}
-
 /* **********************************************************************
  * Handling code annotations
  * ********************************************************************** */
@@ -421,6 +406,16 @@ void optimize_fetch(optimizer *opt) {
 /** Returns the index of the instruction currently decoded */
 instructionindx optimizer_currentindx(optimizer *opt) {
     return opt->iindx;
+}
+
+/** Sets the current block */
+void optimize_setcurrentblock(optimizer *opt, codeblockindx handle) {
+    opt->currentblock=handle;
+}
+
+/** Gets the current block */
+codeblockindx optimize_getcurrentblock(optimizer *opt) {
+    return opt->currentblock;
 }
 
 /** Advance to next instruction */
@@ -524,6 +519,7 @@ void optimize_regclear(optimizer *opt) {
         opt->reg[i].id=0;
         opt->reg[i].used=0;
         opt->reg[i].iix=0;
+        opt->reg[i].block=CODEBLOCKDEST_EMPTY;
     }
 }
 
@@ -891,9 +887,29 @@ void optimize_restoreregisterstate(optimizer *opt, codeblockindx handle) {
     optimize_showreginfo(opt->maxreg, opt->reg);
 }
 
+/** Process overwrite */
+void optimize_overwrite(optimizer *opt) {
+    if (opt->overwrites==REGISTER_UNALLOCATED) return;
+    
+    // Detect unused expression
+    if (opt->overwriteprev.contains!=NOTHING &&
+        opt->overwriteprev.used==0 &&
+        opt->overwriteprev.block==optimize_getcurrentblock(opt)) {
+        
+        optimize_replaceinstructionat(opt, opt->reg[opt->overwrites].iix, ENCODE_BYTE(OP_NOP));
+    }
+    
+    opt->reg[opt->overwrites].used=0;
+    opt->reg[opt->overwrites].iix=opt->iindx;
+    opt->reg[opt->overwrites].block=optimize_getcurrentblock(opt);
+}
+
+/** Optimize a block */
 void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstrategy *strategies) {
     instructionindx start=optimize_getstart(opt, block),
                     end=optimize_getend(opt, block);
+    
+    optimize_setcurrentblock(opt, block);
     
 #ifdef MORPHO_DEBUG_LOGOPTIMIZER
     printf("Optimizing block %u.\n", block);

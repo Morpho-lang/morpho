@@ -877,6 +877,14 @@ void optimize_optimizeinstruction(optimizer *opt, optimizationstrategy *strategi
  * Optimize a block
  * ********************************************************************** */
 
+void optimize_showregisterstateforblock(optimizer *opt, codeblockindx handle) {
+    codeblock *block = optimize_getblock(opt, handle);
+#ifdef MORPHO_DEBUG_LOGOPTIMIZER
+    printf("Register state from block %u\n", handle);
+    optimize_showreginfo(block->nreg, block->reg);
+#endif
+}
+
 /** Restores register info from the parents of a block */
 void optimize_restoreregisterstate(optimizer *opt, codeblockindx handle) {
     codeblock *block = optimize_getblock(opt, handle);
@@ -884,32 +892,41 @@ void optimize_restoreregisterstate(optimizer *opt, codeblockindx handle) {
     // Check if all parents have been visited.
     for (unsigned int i=0; i<block->src.count; i++) if (!optimize_getvisited(opt, block->src.data[i])) return;
     
-    for (unsigned int i=0; i<block->src.count; i++) {
+    // Copy across the first block
+    if (block->src.count>0) {
+        codeblock *src = optimize_getblock(opt, block->src.data[0]);
+        for (unsigned int j=0; j<src->nreg; j++) opt->reg[j]=src->reg[j];
+        optimize_showregisterstateforblock(opt, block->src.data[0]);
+    }
+    
+    /** Now update based on subsequent blocks */
+    for (unsigned int i=1; i<block->src.count; i++) {
         codeblock *src = optimize_getblock(opt, block->src.data[i]);
-        optimize_showreginfo(src->nreg, src->reg);
+        optimize_showregisterstateforblock(opt, block->src.data[i]);
         
         for (unsigned int j=0; j<src->nreg; j++) {
-            switch (opt->reg[j].contains) {
-                case NOTHING:
-                    opt->reg[j]=src->reg[j];
-                    break;
-                case REGISTER:
-                case CONSTANT:
-                case UPVALUE:
-                case GLOBAL:
-                    // Check if they refer to the same thing
-                    if (opt->reg[j].contains!=src->reg[j].contains ||
-                        opt->reg[j].id!=src->reg[j].id) {
-                        opt->reg[j].contains=VALUE; // If not, just becomes a value
-                    }
-                    break;
-                case VALUE: // Do not change a value
-                    break;
+            // If it doesn't match the type, we mark it as a VALUE
+            if (opt->reg[j].contains!=src->reg[j].contains ||
+                opt->reg[j].id!=src->reg[j].id) {
+                
+                opt->reg[j].contains=VALUE;
+                
+                // Mark block creator
+                if (opt->reg[j].contains==NOTHING || opt->reg[j].block==CODEBLOCKDEST_EMPTY) {
+                    opt->reg[j].block=src->reg[j].block;
+                }
+                // Copy usage information
+                if (src->reg[j].used>opt->reg[j].used)  opt->reg[j].used=src->reg[j].used;
             }
         }
         
         if (src->nreg>opt->maxreg) opt->maxreg=src->nreg;
     }
+    
+#ifdef MORPHO_DEBUG_LOGOPTIMIZER
+        printf("Combined register state:\n");
+        optimize_regshow(opt);
+#endif
 }
 
 /** Process overwrite */

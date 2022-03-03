@@ -50,6 +50,10 @@ print 1 + Z
 // expect: 2 + 2im
 print C + 1.2 
 // expect: 4.4 - 1.1im
+var A = 1;
+A += Complex(2,3)
+print A
+// expect: 3 + 3im
 
 
 // subtraction
@@ -59,6 +63,11 @@ print 1 - Z
 // expect: 0 - 2im
 print C - 1.2 
 // expect: 2 - 1.1im
+var A = 1;
+A -= Complex(2,3)
+print A
+// expect: -1 - 3im
+
 
 
 // multiplication
@@ -70,6 +79,12 @@ print Z * -3
 
 print 0.2 * C
 // expect: 0.64 - 0.22im
+var A = 2;
+A *= Complex(2,3)
+print A
+// expect: 4 + 6im
+
+
 
 // division
 print Complex(1,1)/Complex(2,2)
@@ -83,6 +98,10 @@ print 2/C
 // expect: 0.558952 + 0.19214im
 print 1/Complex(3,4)
 // expect: 0.12 - 0.16im
+var A = 2;
+A /= Complex(3,4)
+print A
+// expect: 0.24 - 0.32im
 
 
 // powers

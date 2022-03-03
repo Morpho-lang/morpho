@@ -43,9 +43,11 @@ objectcomplex *object_clonecomplex(objectcomplex *array);
 
 #define COMPLEX_CONJUGATE_METHOD "conj"
 #define COMPLEX_ABS_METHOD "abs"
+#define COMPLEX_REAL_METHOD "real"
+#define COMPLEX_IMAG_METHOD "imag"
 
 #define COMPLEX_CONSTRUCTOR                "CmplxCns"
-#define COMPLEX_CONSTRUCTOR_MSG            "Complex() constructor should be called either two floats"
+#define COMPLEX_CONSTRUCTOR_MSG            "Complex() constructor should be called with two floats"
 
 #define COMPLEX_ARITHARGS                  "CmplxInvldArg"
 #define COMPLEX_ARITHARGS_MSG              "Complex arithmetic methods expect a complex or number as their argument."

@@ -434,6 +434,23 @@ void optimize_track(optimizer *opt) {
     }
 }
 
+/** Process overwrite */
+void optimize_overwrite(optimizer *opt, bool detectunused) {
+    if (opt->overwrites==REGISTER_UNALLOCATED) return;
+    
+    // Detect unused expression
+    if (detectunused && opt->overwriteprev.contains!=NOTHING &&
+        opt->overwriteprev.used==0 &&
+        opt->overwriteprev.block==optimize_getcurrentblock(opt)) {
+        
+        optimize_replaceinstructionat(opt, opt->reg[opt->overwrites].iix, ENCODE_BYTE(OP_NOP));
+    }
+    
+    opt->reg[opt->overwrites].used=0;
+    opt->reg[opt->overwrites].iix=opt->iindx;
+    opt->reg[opt->overwrites].block=optimize_getcurrentblock(opt);
+}
+
 /* **********************************************************************
 * Control Flow graph
 * ********************************************************************** */
@@ -644,12 +661,20 @@ void optimize_buildblock(optimizer *opt, codeblockindx block, varray_codeblockin
                 optimize_branchto(opt, block, optimizer_currentindx(opt)+1+branchby, worklist);
             }
                 return; // Terminate current block
+            case OP_CALL:
+            {
+                
+            }
+                break;
+            case OP_RETURN:
             case OP_END:
                 return; // Terminate current block
             default:
                 break;
         }
         
+        optimize_track(opt); // Track register contents
+        optimize_overwrite(opt, false);
         optimize_advance(opt);
     }
 }
@@ -929,23 +954,6 @@ void optimize_restoreregisterstate(optimizer *opt, codeblockindx handle) {
 #endif
 }
 
-/** Process overwrite */
-void optimize_overwrite(optimizer *opt) {
-    if (opt->overwrites==REGISTER_UNALLOCATED) return;
-    
-    // Detect unused expression
-    if (opt->overwriteprev.contains!=NOTHING &&
-        opt->overwriteprev.used==0 &&
-        opt->overwriteprev.block==optimize_getcurrentblock(opt)) {
-        
-        optimize_replaceinstructionat(opt, opt->reg[opt->overwrites].iix, ENCODE_BYTE(OP_NOP));
-    }
-    
-    opt->reg[opt->overwrites].used=0;
-    opt->reg[opt->overwrites].iix=opt->iindx;
-    opt->reg[opt->overwrites].block=optimize_getcurrentblock(opt);
-}
-
 /** Optimize a block */
 void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstrategy *strategies) {
     instructionindx start=optimize_getstart(opt, block),
@@ -969,7 +977,7 @@ void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstr
             optimize_fetch(opt);
             optimize_optimizeinstruction(opt, strategies);
             optimize_track(opt); // Track contents of registers
-            optimize_overwrite(opt);
+            optimize_overwrite(opt, true);
             
     #ifdef MORPHO_DEBUG_LOGOPTIMIZER
             optimize_regshow(opt);

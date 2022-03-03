@@ -47,6 +47,23 @@ fn plotcolortomatrix(color) {
   return nil
 }
 
+/** Converts a vertex matrix to a list of 3D points */
+fn vertto3d(vert) {
+  var out = []
+  var dim = vert.dimensions()[0]
+  var nv = vert.dimensions()[1]
+  if (dim>3) dim=3
+
+  for (i in 0...nv) {
+    var pt = Matrix(3)
+    var v = vert.column(i)
+    for (j in 0...dim) pt[j]=v[j]
+    out.append(pt)
+  }
+
+  return out
+}
+
 /** Plots elements of a mesh
  * @param[in] mesh - mesh to plot
  * @param[in] selection - selection
@@ -62,10 +79,10 @@ fn plotmesh(mesh, selection=nil, grade=nil, color=nil,  filter=nil, transmit=nil
   if (islist(grade)) for (q in grade) glist.append(q)
   if (isnumber(grade)) glist.append(grade)
 
-  var vert = mesh.vertexmatrix()
+  var vert = vertto3d(mesh.vertexmatrix())
   var flat = nil
 
-  var bb = bbox(vert)
+  var bb = bbox(mesh.vertexmatrix())
   var size[bb.count()]
   for (x, i in bb) {
     size[i]=x[1]-x[0]
@@ -78,7 +95,7 @@ fn plotmesh(mesh, selection=nil, grade=nil, color=nil,  filter=nil, transmit=nil
     for (i in 0...np) {
       if (isselection(selection) && !selection.isselected(0, i)) continue // Skip unselected components
 
-      g.display(Sphere(vert.column(i), 0.025, color=plotcolorforelement(vcol, i), filter=filter, transmit=transmit))
+      g.display(Sphere(vert[i], 0.025, color=plotcolorforelement(vcol, i), filter=filter, transmit=transmit))
     }
   }
 
@@ -90,7 +107,7 @@ fn plotmesh(mesh, selection=nil, grade=nil, color=nil,  filter=nil, transmit=nil
       for (i in 0...nl) {
         if (isselection(selection) && !selection.isselected(1, i)) continue // Skip unselected components
         var el = lines.rowindices(i)
-        g.display(Cylinder(vert.column(el[0]), vert.column(el[1]),
+        g.display(Cylinder(vert[el[0]], vert[el[1]],
                           aspectratio=0.05, color=plotcolorforelement(lcol, i), filter=filter, transmit=transmit))
       }
     }
@@ -121,7 +138,7 @@ fn plotmesh(mesh, selection=nil, grade=nil, color=nil,  filter=nil, transmit=nil
 
         var el = faces.rowindices(i)
         var v[3]
-        for (p, i in el) v[i]=vert.column(p)
+        for (p, i in el) v[i]=vert[p]
         var normal
         if (flat) {
           normal=Matrix(bb.count())

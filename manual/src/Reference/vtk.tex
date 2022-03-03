@@ -1,0 +1,148 @@
+\hypertarget{vtk}{%
+\section{VTK}\label{vtk}}
+
+The vtk module contains classes to allow I/O of meshes and fields using
+the VTK Legacy Format.
+
+\hypertarget{vtkexporter}{%
+\section{VTKExporter}\label{vtkexporter}}
+
+This class can be used to export the field(s) and/or at a given state to
+a single .vtk file. To use it, import the \texttt{vtk} module:
+
+\begin{lstlisting}
+import vtk
+\end{lstlisting}
+
+Initialize the \texttt{VTKExporter}
+
+\begin{lstlisting}
+var vtkE = VTKExporter(obj)
+\end{lstlisting}
+
+where \texttt{obj} can either be
+
+\begin{itemize}
+
+\item
+  A \texttt{Mesh} object: This prepares the Mesh for exporting.
+\item
+  A \texttt{Field} object: This prepares both the Field and the Mesh
+  associated with it for exporting.
+\end{itemize}
+
+Use the \texttt{export} method to export to a VTK file.
+
+\begin{lstlisting}
+vtkE.export("output.vtk")
+\end{lstlisting}
+
+Optionally, use the \texttt{addfield} method to add one or more fields
+before exporting:
+
+\begin{lstlisting}
+vtkE.addfield(f, fieldname="f")
+\end{lstlisting}
+
+where,
+
+\begin{itemize}
+
+\item
+  \texttt{f} is the field object to be exported
+\item
+  \texttt{fieldname} is an optional argument that assigns a name to the
+  field in the VTK file. This name is required to be a character string
+  without embedded whitespace. If not provided, the name would be either
+  ``scalars'' or ``vectors'' depending on the field type**.
+\end{itemize}
+
+** Note that this currently only supports scalar or vector (column
+matrix) fields that live on the vertices ( shape \texttt{{[}1,0,0{]}}).
+Support for tensorial fields and fields on cells coming soon.
+
+Minimal example:
+
+\begin{lstlisting}
+import vtk
+import meshtools
+
+var m1 = LineMesh(fn (t) [t,0,0], -1..1:2)
+
+var vtkE = VTKExporter(m1) // Export just the mesh 
+
+vtkE.export("mesh.vtk")
+
+var f1 = Field(m1, fn(x,y,z) x)
+
+var g1 = Field(m1, fn(x,y,z) Matrix([x,2*x,3*x]))
+
+vtkE = VTKExporter(f1, fieldname="f") // Export fields
+
+vtkE.addfield(g1, fieldname="g")
+
+vtkE.export("data.vtk")
+\end{lstlisting}
+
+\hypertarget{vtkimporter}{%
+\section{VTKImporter}\label{vtkimporter}}
+
+This class can be used to import the field(s) and/or the mesh at a given
+state from a single .vtk file. To use it, import the \texttt{vtk}
+module:
+
+\begin{lstlisting}
+import vtk
+\end{lstlisting}
+
+Initialize the \texttt{VTKImporter} with the filename
+
+\begin{lstlisting}
+var vtkI = VTKImporter("output.vtk")
+\end{lstlisting}
+
+Use the \texttt{mesh} method to get the mesh:
+
+\begin{lstlisting}
+var mesh = vtkI.mesh()
+\end{lstlisting}
+
+Use the \texttt{field} method to get the field:
+
+\begin{lstlisting}
+var f = vtkI.field(fieldname)
+\end{lstlisting}
+
+Use the \texttt{fieldlist} method to get the list of the names of the
+fields contained in the file:
+
+\begin{lstlisting}
+print vtkI.fieldlist()
+\end{lstlisting}
+
+Use the \texttt{containsfield} method to check whether the file contains
+a field by a given \texttt{fieldname}:
+
+\begin{lstlisting}
+if (tkI.containsfield(fieldname)) {
+    ... 
+}
+\end{lstlisting}
+
+where \texttt{fieldname} is the name assigned to the field in the .vtk
+file
+
+Minimal example:
+
+\begin{lstlisting}
+import vtk
+import meshtools 
+
+var vtkI = VTKImporter("data.vtk")
+
+var m = vtkI.getmesh()
+
+var f = vtkI.getfield("f")
+
+var g = vtkI.getfield("g")
+\end{lstlisting}

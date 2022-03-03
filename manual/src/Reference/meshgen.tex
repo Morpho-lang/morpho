@@ -1,0 +1,167 @@
+\hypertarget{meshgen}{%
+\section{Meshgen}\label{meshgen}}
+
+The \texttt{meshgen} module is used to create \texttt{Mesh} objects
+corresponding to a specified domain. It provides the \texttt{MeshGen}
+class to perform the meshing, which are created with the following
+arguments:
+
+\begin{lstlisting}
+MeshGen(domain, boundingbox)
+\end{lstlisting}
+
+Domains are specified by a scalar function that is positive in the
+region to be meshed and locally smooth. For example, to mesh the unit
+disk:
+
+\begin{lstlisting}
+var dom = fn (x) -(x[0]^2+x[1]^2-1)
+\end{lstlisting}
+
+A \texttt{MeshGen} object is then created and then used to build the
+\texttt{Mesh} like this:
+
+\begin{lstlisting}
+var mg = MeshGen(dom, [-1..1:0.2, -1..1:0.2])
+var m = mg.build()
+\end{lstlisting}
+
+A bounding box for the mesh must be specified as a \texttt{List} of
+\texttt{Range} objects, one for each dimension. The increment on each
+\texttt{Range} gives an approximate scale for the size of elements
+generated.
+
+To facilitate convenient creation of domains, a \texttt{Domain} class is
+provided that provides set operations \texttt{union},
+\texttt{intersection} and \texttt{difference}.
+
+\texttt{MeshGen} accepts a number of optional arguments:
+
+\begin{itemize}
+
+\item
+  \texttt{weight} A scalar weight function that controls mesh density.
+\item
+  \texttt{quiet} Set to \texttt{true} to suppress \texttt{MeshGen}
+  output.
+\item
+  \texttt{method} a list of options that controls the method used.
+\end{itemize}
+
+Some method choices that are available include:
+
+\begin{itemize}
+
+\item
+  \texttt{"FixedStepSize"} Use a fixed step size in optimization.
+\item
+  \texttt{"StartGrid"} Start from a regular grid of points (the
+  default).
+\item
+  \texttt{"StartRandom"} Start from a randomly generated collection of
+  points.
+\end{itemize}
+
+There are also a number of properties of a \texttt{MeshGen} object that
+can be set prior to calling \texttt{build} to control the operation of
+the mesh generation:
+
+\begin{itemize}
+
+\item
+  \texttt{stepsize}, \texttt{steplimit} Stepsize used internally by the
+  \texttt{Optimizer}
+\item
+  \texttt{fscale} an internal ``pressure''
+\item
+  \texttt{ttol} how far the vertices are allowed to move before
+  retriangulation
+\item
+  \texttt{etol} energy tolerance for optimization problem
+\end{itemize}
+
+\texttt{MeshGen} picks default values that cover a reasonable range of
+uses.
+
+\hypertarget{domain}{%
+\section{Domain}\label{domain}}
+
+The \texttt{Domain} class is used to conveniently build a domain by
+composing simpler elements.
+
+Create a \texttt{Domain} from a scalar function that is positive in the
+region of interest:
+
+\begin{lstlisting}
+var dom = Domain(fn (x) -(x[0]^2+x[1]^2-1))
+\end{lstlisting}
+
+You can pass it to \texttt{MeshGen} to specify the region to mesh:
+
+\begin{lstlisting}
+var mg = MeshGen(dom, [-1..1:0.2, -1..1:0.2])
+\end{lstlisting}
+
+You can combine \texttt{Domain} objects using set operations
+\texttt{union}, \texttt{intersection} and \texttt{difference}:
+
+\begin{lstlisting}
+var a = CircularDomain(Matrix([-0.5,0]), 1)
+var b = CircularDomain(Matrix([0.5,0]), 1)
+var c = CircularDomain(Matrix([0,0]), 0.3)
+var dom = a.union(b).difference(c)
+\end{lstlisting}
+
+\hypertarget{circulardomain}{%
+\section{CircularDomain}\label{circulardomain}}
+
+Conveniently constructs a \texttt{Domain} object correspondiong to a
+disk. Requires the position of the center and a radius as arguments.
+
+Create a domain corresponding to the unit disk:
+
+\begin{lstlisting}
+var c = CircularDomain([0,0], 1)
+\end{lstlisting}
+
+\hypertarget{halfspacedomain}{%
+\section{HalfSpaceDomain}\label{halfspacedomain}}
+
+Conveniently constructs a \texttt{Domain} object correspondiong to a
+half space defined by a plane at \texttt{x0} and a normal \texttt{n}:
+
+\begin{lstlisting}
+var hs = HalfSpaceDomain(x0, n)
+\end{lstlisting}
+
+Note \texttt{n} is an ``outward'' normal, so points into the
+\emph{excluded} region.
+
+Half space corresponding to the allowed region \texttt{x\textless{}0}:
+
+\begin{lstlisting}
+var hs = HalfSpaceDomain(Matrix([0,0,0]), Matrix([1,0,0]))
+\end{lstlisting}
+
+Note that \texttt{HalfSpaceDomain}s cannot be meshed directly as they
+correspond to an infinite region. They are useful, however, for
+combining with other domains.
+
+Create half a disk by cutting a \texttt{HalfSpaceDomain} from a
+\texttt{CircularDomain}:
+
+\begin{lstlisting}
+var c = CircularDomain([0,0], 1)
+var hs = HalfSpaceDomain(Matrix([0,0]), Matrix([-1,0]))
+var dom = c.difference(hs) 
+var mg = MeshGen(dom, [-1..1:0.2, -1..1:0.2], quiet=false)
+var m = mg.build()
+\end{lstlisting}
+
+\hypertarget{mshgndim}{%
+\section{MshGnDim}\label{mshgndim}}
+
+The \texttt{MeshGen} module currently supports 2 and 3 dimensional
+meshes. Higher dimensional meshing will be available in a future
+release; please contact the developer if you are interested in this
+functionality.

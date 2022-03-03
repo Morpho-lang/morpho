@@ -1,0 +1,109 @@
+// Complex number testing
+import constants
+// constuctor
+var Z = Complex(1,2);
+print Z
+// expect: 1 + 2im
+var C = Complex(3.2,-1.1);
+print C 
+// expect: 3.2 - 1.1im
+
+
+// constuctor error
+
+try {
+    var X = Complex(1)    
+} catch {
+    "CmplxCns" : print "ok"
+// expect: ok
+}    
+try {
+    var C = Complex(1,"text")    
+} catch {
+    "CmplxCns" : print "ok"
+// expect: ok
+}    
+
+
+// clone
+var X = Z
+print X
+// expect: 1 + 2im
+
+// abs
+print Z.abs()
+// expect: 2.23607
+print C.abs()
+// expect: 3.38378
+
+
+// conj
+print Z.conj()
+// expect: 1 - 2im
+print C.conj()
+// expect: 3.2 + 1.1im
+
+// addition
+print Z+C
+// expect: 4.2 + 0.9im
+print 1 + Z
+// expect: 2 + 2im
+print C + 1.2 
+// expect: 4.4 - 1.1im
+
+
+// subtraction
+print Z - C
+// expect: -2.2 + 3.1im
+print 1 - Z
+// expect: 0 - 2im
+print C - 1.2 
+// expect: 2 - 1.1im
+
+
+// multiplication
+print Z * C
+// expect: 5.4 + 5.3im
+
+print Z * -3
+// expect: -3 - 6im
+
+print 0.2 * C
+// expect: 0.64 - 0.22im
+
+// division
+print Complex(1,1)/Complex(2,2)
+// expect: 0.5 + 0im
+
+print Z/C
+// expect: 0.0873362 + 0.655022im
+print Z/3
+// expect: 0.333333 + 0.666667im
+print 2/C
+// expect: 0.558952 + 0.19214im
+print 1/Complex(3,4)
+// expect: 0.12 - 0.16im
+
+
+// powers
+print Z^2
+// expect: -3 + 4im
+
+print C^2.3
+// expect: 11.9464 - 11.3891im
+
+print Complex(3,4)^-1
+// expect: 0.12 - 0.16im
+
+print C^Z
+// expect: -3.35141 + 5.6408im
+
+print 2^Complex(1,1)
+// expect: 1.53848 + 1.27792im
+
+print E^Complex(0,Pi) + 1
+// expect: 0 + 0im
+
+
+
+

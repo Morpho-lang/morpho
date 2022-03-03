@@ -11,6 +11,7 @@
 #include "file.h"
 #include "builtin.h"
 #include "matrix.h"
+#include "complex.h"
 #include "sparse.h"
 #include "mesh.h"
 #include "selection.h"
@@ -285,6 +286,7 @@ void builtin_initialize(void) {
     selection_initialize();
     field_initialize();
     functional_initialize();
+    complex_initialize();
 }
 
 void builtin_finalize(void) {

@@ -24,6 +24,8 @@ value mulselector = MORPHO_NIL;
 value mulrselector = MORPHO_NIL;
 value divselector = MORPHO_NIL;
 value divrselector = MORPHO_NIL;
+value powselector = MORPHO_NIL;
+value powrselector = MORPHO_NIL;
 value printselector = MORPHO_NIL;
 value enumerateselector = MORPHO_NIL;
 value countselector = MORPHO_NIL;
@@ -1017,7 +1019,22 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                     reg[a] = MORPHO_FLOAT( pow((double) MORPHO_GETINTEGERVALUE(left), (double) MORPHO_GETINTEGERVALUE(right)) );
                     DISPATCH();
                 }
+            } 
+                
+            if (MORPHO_ISOBJECT(left)) {
+                if (vm_invoke(v, left, powselector, 1, &right, &reg[a])) {
+                    ERRORCHK();
+                    DISPATCH();
+                }
             }
+
+            if (MORPHO_ISOBJECT(right)) {
+                if (vm_invoke(v, right, powrselector, 1, &left, &reg[a])) {
+                    ERRORCHK();
+                    DISPATCH();
+                }
+            }
+
 
             OPERROR("Exponentiate")
             DISPATCH();
@@ -1911,6 +1928,9 @@ void morpho_initialize(void) {
     mulrselector=builtin_internsymbolascstring(MORPHO_MULR_METHOD);
     divselector=builtin_internsymbolascstring(MORPHO_DIV_METHOD);
     divrselector=builtin_internsymbolascstring(MORPHO_DIVR_METHOD);
+    powselector=builtin_internsymbolascstring(MORPHO_POW_METHOD);
+    powrselector=builtin_internsymbolascstring(MORPHO_POWR_METHOD);
+
 
     enumerateselector=builtin_internsymbolascstring(MORPHO_ENUMERATE_METHOD);
     countselector=builtin_internsymbolascstring(MORPHO_COUNT_METHOD);

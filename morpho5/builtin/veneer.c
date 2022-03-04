@@ -1368,7 +1368,6 @@ value List_sets(vm *v, int nargs, value *args) {
     if (nargs>0 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         if (n<2) n=2;
-        if (n>slf->val.capacity) n = slf->val.capacity;
     }
     
     return list_generatetuples(v, slf, n, MORPHO_SETMODE);

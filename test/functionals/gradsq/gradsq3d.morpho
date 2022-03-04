@@ -22,7 +22,7 @@ phi[3]=Matrix([23/2,4])
 var lel = GradSq(phi)
 
 var expected = 29.8611
-var tol = 1e-4
+var tol = 2e-4
 
 print abs(lel.integrand(m)[0]-expected)<tol
 // expect: true

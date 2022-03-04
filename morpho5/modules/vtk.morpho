@@ -458,6 +458,14 @@ class VTKImporter is VTK {
             self.f3 = Int(self.tok.next())
             self.mb.addface([self.f1, self.f2, self.f3])
             
+        } else if (self.numPoints==4) {
+
+            self.f1 = Int(self.tok.next())
+            self.f2 = Int(self.tok.next())
+            self.f3 = Int(self.tok.next())
+            self.f4 = Int(self.tok.next())
+            self.mb.addvolume([self.f1, self.f2, self.f3, self.f4])
+            
         }
     }
 

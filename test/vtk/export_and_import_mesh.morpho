@@ -13,4 +13,10 @@ var vtkI = VTKImporter(filename)
 
 var m2 = vtkI.mesh()
 
-print m2 // expect: <Mesh: 2 vertices>
+print m1.vertexmatrix() // expect: [ -1 1 ]
+// expect: [ 0 0 ]
+// expect: [ 0 0 ]
+
+print m2.vertexmatrix() // expect: [ -1 1 ]
+// expect: [ 0 0 ]
+// expect: [ 0 0 ]

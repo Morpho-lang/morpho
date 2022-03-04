@@ -14,6 +14,7 @@
 #include "mesh.h"
 #include "field.h"
 #include "selection.h"
+#include "complexobj.h"
 
 /* **********************************************************************
  * Built in functions
@@ -31,6 +32,8 @@ value builtin_##function(vm *v, int nargs, value *args) { \
                 return MORPHO_FLOAT(function(MORPHO_GETFLOATVALUE(arg))); \
             } else if (MORPHO_ISINTEGER(arg)) { \
                 return MORPHO_FLOAT(function((double) MORPHO_GETINTEGERVALUE(arg))); \
+            } else if (MORPHO_ISCOMPLEX(arg)){\
+                return complex_builtin##function(v,MORPHO_GETCOMPLEX(arg));\
             } else { \
                 morpho_runtimeerror(v, MATH_ARGS, #function);\
             } \
@@ -71,6 +74,8 @@ value builtin_##function(vm *v, int nargs, value *args) { \
                     return MORPHO_BOOL(function(MORPHO_GETFLOATVALUE(arg))); \
             } else if (MORPHO_ISINTEGER(arg)) { \
                 return MORPHO_BOOL(function((double) MORPHO_GETINTEGERVALUE(arg))); \
+            } else if (MORPHO_ISCOMPLEX(arg)){\
+                return complex_builtin##function(MORPHO_GETCOMPLEX(arg));\
             } else { \
                 morpho_runtimeerror(v, MATH_ARGS, #function);\
             } \
@@ -191,6 +196,7 @@ BUILTIN_TYPECHECK(isnil, MORPHO_ISNIL)
 BUILTIN_TYPECHECK(isint, MORPHO_ISINTEGER)
 BUILTIN_TYPECHECK(isfloat, MORPHO_ISFLOAT)
 BUILTIN_TYPECHECK(isnumber, MORPHO_ISNUMBER)
+BUILTIN_TYPECHECK(iscomplex, MORPHO_ISCOMPLEX)
 BUILTIN_TYPECHECK(isbool, MORPHO_ISBOOL)
 BUILTIN_TYPECHECK(isobject, MORPHO_ISOBJECT)
 BUILTIN_TYPECHECK(isstring, MORPHO_ISSTRING)

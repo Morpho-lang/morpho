@@ -7,6 +7,14 @@ print Z
 var C = Complex(3.2,-1.1);
 print C 
 // expect: 3.2 - 1.1im
+print Z.real()
+// expect: 1
+print Z.imag()
+// expect: 2
+print C.real()
+// expect: 3.2
+print C.imag()
+// expect: 1.1
 
 
 // constuctor error
@@ -29,12 +37,6 @@ try {
 var X = Z
 print X
 // expect: 1 + 2im
-
-// abs
-print Z.abs()
-// expect: 2.23607
-print C.abs()
-// expect: 3.38378
 
 
 // conj

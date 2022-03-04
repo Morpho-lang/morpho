@@ -4,11 +4,14 @@
  *  @brief Veneer class over the objectcomplex type
  */
 
-#ifndef complex_h
-#define complex_h
+#ifndef complexobj_h
+#define complexobj_h
 
 #include <stdio.h>
 #include "veneer.h"
+#include <complex.h>
+
+
 
 /* -------------------------------------------------------
  * Complex objects
@@ -19,8 +22,7 @@ extern objecttype objectcomplextype;
 
 typedef struct {
     object obj;
-    double real;
-    double imag;
+    double complex Z;
 } objectcomplex;
 
 /** Tests whether an object is a complex */
@@ -69,9 +71,31 @@ void complex_div(objectcomplex *a, objectcomplex *b, objectcomplex *out);
 void complex_conj(objectcomplex *a, objectcomplex *out);
 void complex_abs(objectcomplex *a, double *out);
 void complex_angle(objectcomplex *a, double *out);
-
 void complex_print(objectcomplex *m);
-
 void complex_initialize(void);
 
+/* Built-in fucntions */
+value complex_builtinexp(vm * v, objectcomplex* c);
+value complex_builtinfabs(vm * v, objectcomplex* c);
+value complex_builtinexp(vm * v, objectcomplex* c);
+value complex_builtinlog(vm * v, objectcomplex* c);
+value complex_builtinlog10(vm * v, objectcomplex* c);
+
+value complex_builtinsin(vm * v, objectcomplex* c);
+value complex_builtincos(vm * v, objectcomplex* c);
+value complex_builtintan(vm * v, objectcomplex* c);
+value complex_builtinasin(vm * v, objectcomplex* c);
+value complex_builtinacos(vm * v, objectcomplex* c);
+
+value complex_builtinsinh(vm * v, objectcomplex* c);
+value complex_builtincosh(vm * v, objectcomplex* c);
+value complex_builtintanh(vm * v, objectcomplex* c);
+value complex_builtinsqrt(vm * v, objectcomplex* c);
+
+value complex_builtinfloor(vm * v, objectcomplex* c);
+value complex_builtinceil(vm * v, objectcomplex* c);
+
+value complex_builtinisfinite(objectcomplex* c);
+value complex_builtinisinf(objectcomplex* c);
+value complex_builtinisnan(objectcomplex* c);
 #endif /* complex_h */

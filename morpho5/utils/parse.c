@@ -9,6 +9,7 @@
 #include "parse.h"
 #include "object.h"
 #include "common.h"
+#include "complexobj.h"
 
 /* **********************************************************************
  * Lexer
@@ -274,6 +275,14 @@ static bool lex_number(lexer *l, token *tok, error *err) {
         /* Exponent digits */
         while (lex_isdigit(lex_peek(l))) lex_advance(l);
     }
+    
+    // /* Imaginary Numbers */
+    // if (lex_peek(l) =='i' && lex_peekahead(l, 1) == 'm'){
+    //     /* mark this as an imaginary number*/
+    //     type = TOKEN_IMAG;
+    //     lex_advance(l); /* Consume the 'i' */
+    //     lex_advance(l); /* Consume the 'm' */
+    // }
     
     lex_recordtoken(l, type, tok);
     
@@ -713,6 +722,11 @@ syntaxtreeindx parse_number(parser *p) {
     double f = strtod(p->previous.start, NULL);
     return parse_addnode(p, NODE_FLOAT, MORPHO_FLOAT(f), &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
 }
+// syntaxtreeindx parse_complex(parser *p) {
+//     double f = strtod(p->previous.start,NULL);//subtract 2 to get rid of the im
+//     value c = MORPHO_OBJECT(object_newcomplex(0,f));
+//     return parse_addnode(p, NODE_COMPLEX, c, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
+// }
 
 /** Parses a bool */
 static syntaxtreeindx parse_bool(parser *p) {
@@ -1556,6 +1570,7 @@ parserule rules[] = {
     PREFIX(parse_interpolation),                       // TOKEN_INTERPOLATION
     PREFIX(parse_integer),                             // TOKEN_INTEGER
     PREFIX(parse_number),                              // TOKEN_NUMBER
+    // PREFIX(parse_complex),                              // TOKEN_NUMBER
     PREFIX(parse_symbol),                              // TOKEN_SYMBOL
     PREFIX(parse_bool),                                // TOKEN_TRUE
     PREFIX(parse_bool),                                // TOKEN_FALSE

@@ -11,7 +11,7 @@
 #include "file.h"
 #include "builtin.h"
 #include "matrix.h"
-#include "complex.h"
+#include "complexobj.h"
 #include "sparse.h"
 #include "mesh.h"
 #include "selection.h"

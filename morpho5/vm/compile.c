@@ -14,6 +14,7 @@
 #include "object.h"
 #include "veneer.h"
 #include "builtin.h"
+#include "complexobj.h"
 
 /** Base class for instances */
 static objectclass *baseclass;
@@ -1168,6 +1169,7 @@ compilenoderule noderules[] = {
     { compiler_constant      },      // NODE_BOOL,
     { compiler_constant      },      // NODE_FLOAT
     { compiler_constant      },      // NODE_INTEGER
+//    { compiler_constant      },      // NODE_IMAG
     { compiler_constant      },      // NODE_STRING
     { compiler_symbol        },      // NODE_SYMBOL
     { compiler_self          },      // NODE_SELF

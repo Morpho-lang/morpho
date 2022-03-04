@@ -43,6 +43,7 @@ static char * nodedisplay[] = {
     "",        // NODE_BOOL
     "",        // NODE_FLOAT,
     "",        // NODE_INTEGER,
+//    "",        // NODE_IMAG,
     "",        // NODE_STRING,
     "",        // NODE_SYMBOL,
     "self",    // NODE_SELF,

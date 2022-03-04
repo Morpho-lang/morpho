@@ -782,8 +782,7 @@ value Matrix_subr(vm *v, int nargs, value *args) {
                 morpho_bindobjects(v, 1, &out);
             }
         } else if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
-            // we aren't doing a -= so lets try and subtract like normal
-
+            // try and subtract like normal
             double val;
             if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
                 objectmatrix *new = object_newmatrix(a->nrows, a->ncols, false);

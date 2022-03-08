@@ -1,0 +1,37 @@
+import meshtools
+
+var file = "tetrahedron2.mesh"
+
+var mb = MeshBuilder() 
+
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([0,0,1])
+
+mb.addedge([0,1])
+mb.addedge([0,2])
+mb.addedge([0,3])
+mb.addedge([1,2])
+mb.addedge([1,3])
+mb.addedge([2,3])
+
+mb.addface([0,1,2])
+mb.addface([0,1,3])
+mb.addface([0,2,3])
+mb.addface([1,2,3])
+
+mb.addvolume([0,1,2,3])
+
+var m = mb.build() 
+
+print m
+// expect: <Mesh: 4 vertices>
+m.save(file)
+
+var m2 = Mesh(file)
+for (g in 0..3) print m.count(g)==m2.count(g)
+// expect: true
+// expect: true
+// expect: true
+// expect: true

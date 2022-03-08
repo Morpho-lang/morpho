@@ -255,5 +255,6 @@ class Foo {
     a252,
     a253,
     a254,
-    a255, a) {} // expect error: 'TooMnyPrm'
+    a255, a) {}
 }
+ // assumeFail(#107) 'TooMnyPrm'

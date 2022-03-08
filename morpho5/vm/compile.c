@@ -1265,6 +1265,7 @@ static codeinfo compiler_list(compiler *c, syntaxtreenode *node, registerindx re
         out.ninstructions+=val.ninstructions;
         if (!(CODEINFO_ISREGISTER(val) && (val.dest==reg))) {
             compiler_releaseoperand(c, val);
+            compiler_regtempwithindx(c, reg);
             val=compiler_movetoregister(c, entry, val, reg);
             out.ninstructions+=val.ninstructions;
         }

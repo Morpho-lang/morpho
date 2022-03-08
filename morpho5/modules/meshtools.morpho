@@ -3,9 +3,18 @@
 import constants
 import kdtree
 
+var _errMshBldDimIncnstnt = Error("MshBldDimIncnstnt", "Vertex dimension inconsistent with mesh dimension.")
+var _errMshBldDimUnknwn = Error("MshBldDimUnknwn", "Cannot add elements until a vertex has been added or MeshBuilder initialized with a specified dimension.")
+
 class MeshBuilder {
-  init(dimension=3) {
+  init(dimension=nil) {
     self.vertices = []
+    self.dimension = dimension
+    self.elements = nil 
+    if (isnumber(dimension)) self.initdim(dimension)
+  }
+
+  initdim(dimension) {
     self.dimension = dimension
     self.elements = Array(dimension)
     for (i in 0...dimension) {
@@ -16,11 +25,15 @@ class MeshBuilder {
   addvertex(v) {
     var x = v
     if (islist(v)) x = Matrix(v)
+    if (self.dimension==nil) self.initdim(x.count())
+
+    if (x.count()!=self.dimension) _errMshBldDimIncnstnt.throw()
     self.vertices.append(x)
     return self.vertices.count()-1
   }
 
   addelement(grade, el) {
+    if (!self.elements) _errMshBldDimUnknwn.throw()
     self.elements[grade-1].append(el)
     return self.elements[grade-1].count()-1
   }
@@ -28,6 +41,8 @@ class MeshBuilder {
   addedge(el) { return self.addelement(1, el) }
 
   addface(el) { return self.addelement(2, el) }
+
+  addvolume(el) { return self.addelement(3, el) }
 
   makeconnectivity(el) {
     if (el.count()==0) return nil

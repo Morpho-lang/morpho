@@ -81,7 +81,7 @@ The `MeshBuilder` class simplifies user creation of meshes. To use this class, b
 
     var build = MeshBuilder()
 
-You can then add vertices, edges, etc. one by one using `addvertex`, `addedge` and `addtriangle`. Each of these returns an element id:
+You can then add vertices, edges, etc. one by one using `addvertex`, `addedge`, `addface` and `addelement`. Each of these returns an element id:
 
     var id1=build.addvertex(Matrix([0,0,0]))
     var id2=build.addvertex(Matrix([1,1,1]))
@@ -90,6 +90,35 @@ You can then add vertices, edges, etc. one by one using `addvertex`, `addedge` a
 Once the mesh is ready, call the `build` method to construct the `Mesh`:
 
     var m = build.build()
+
+You can specify the dimension of the `Mesh` explicitly when initializing the `MeshBuilder`: 
+
+    var mb = MeshBuilder(dimension=2)
+
+or implicitly when adding the first vertex:
+
+    var mb = MeshBuilder() 
+    mb.addvertex([0,1]) // A 2D mesh
+
+## MshBldDimIncnstnt
+[tagmshblddimincnstnt]: # (mshblddimincnstnt)
+
+This error is produced if you try to add a vertex that is inconsistent with the mesh dimension, e.g. 
+
+    var mb = MeshBuilder(dimension=2) 
+    mb.addvertex([1,0,0]) // Throws an error! 
+
+To fix this ensure all vertices have the correct dimension. 
+
+## MshBldDimUnknwn
+[tagmshblddimunknwn]: # (mshblddimunknwn)
+
+This error is produced if you try to add an element to a `MeshBuilder` object but haven't yet specified the dimension (at initialization) or by adding a vertex. 
+
+    var mb = MeshBuiler() 
+    mb.addedge([0,1]) // No vertices have been added 
+
+To fix this add the vertices first.
 
 ## MeshRefiner
 [tagmeshrefiner]: # (meshrefiner)

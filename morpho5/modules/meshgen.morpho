@@ -60,11 +60,11 @@ fn CircularDomain(x0, r) {
 // n is an "outward" normal, so points into the excluded region
 fn HalfSpaceDomain(x0, n) {
   var xx0 = x0 
-  if (islist(xx0)) xx0=Matrix(x0)
+  if (islist(x0)) xx0=Matrix(x0)
   var nn = n
-  if (islist(nn)) xx0=Matrix(nn)
+  if (islist(nn)) nn=Matrix(n)
 
-  return Domain(fn (x) -(x-x0).inner(n))
+  return Domain(fn (x) -(x-xx0).inner(nn))
 }
 
 /* ********************************************************
@@ -294,7 +294,7 @@ class MeshGen {
       mp/=t.count()
 
       if (self.func(mp)>0) {
-        mb.addface(t)
+        mb.addelement(self.dim, t)
       }
     }
 
@@ -326,7 +326,6 @@ class MeshGen {
       return sum^(1/n)
     }
 
-    //var lscale=self.fscale*(lengths.inner(lengths)/hbar.inner(hbar))^(1/2)
     var lscale=self.fscale*(lnorm(lengths, self.dim)/lnorm(hbar, self.dim))
     for (id in 0...self.mesh.count(1)) len0[id]=lscale*hbar[id]
 
@@ -352,7 +351,7 @@ class MeshGen {
     opt.etol = self.etol // Use a fairly loose convergence criterion
     opt.quiet = self.quiet
     if (self.method.ismember("FixedStepSize")) {
-      opt.relax(1)
+      opt.relax(100)
     } else {
       opt.linesearch(1)
       opt.conjugategradient(100)
@@ -374,8 +373,6 @@ class MeshGen {
 
       self.retriangulate(self.vertices())
     }
-
-    //if (self.dim<outputdim) self.fixdim(outputdim)
 
     return self.mesh
   }

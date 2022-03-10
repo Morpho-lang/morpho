@@ -21,12 +21,11 @@ typedef enum {
     NODE_BOOL,
     NODE_FLOAT,
     NODE_INTEGER,
-    // NODE_IMAG,
-    // NODE_COMPLEX,
     NODE_STRING,
     NODE_SYMBOL,
     NODE_SELF,
     NODE_SUPER, 
+    NODE_IMAG,
     
     NODE_LEAF, /* ^ All leafs should be above this enum value */
     

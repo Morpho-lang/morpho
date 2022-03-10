@@ -12,6 +12,7 @@
 #include "veneer.h"
 #include "common.h"
 
+
 /* **********************************************************************
  * Complex objects
  * ********************************************************************** */
@@ -49,23 +50,18 @@ objectcomplex *object_newcomplex(double real,double imag) {
  * Other constructors
  * ********************************************************************** */
 
-/*
- * Create complex number from a float
- */
 
-/** Creates a new array from a float */
+/** Create complex number from a float */
 objectcomplex *object_complexfromfloat(double val) {
     objectcomplex *ret=object_newcomplex(val,0.0);
     return ret;
 }
+
+/** Create complex number from a complex */
 objectcomplex *object_complexfromcomplex(double complex val) {
     objectcomplex *ret=object_newcomplex(creal(val),cimag(val));
     return ret;
 }
-
-/*
- * Clone complex
- */
 
 /** Clone a complex */
 objectcomplex *object_clonecomplex(objectcomplex *in) {
@@ -73,18 +69,19 @@ objectcomplex *object_clonecomplex(objectcomplex *in) {
     return new;
 }
 
+/** Clone a Complex Stored in a value*/
+value object_clonecomplexvalue(value val) {
+    value out = MORPHO_NIL;
+    if (MORPHO_ISCOMPLEX(val)) {
+        objectcomplex *c = MORPHO_GETCOMPLEX(val);
+        out=MORPHO_OBJECT(object_clonecomplex(c));
+    }
+    return out;
+}
+
 /* **********************************************************************
  * Complex operations
  * ********************************************************************* */
-
-// /** @brief Sets the real part of a complex number.*/
-// void complex_setreal(objectcomplex *c, double value) {
-//     c->real = value;
-// }
-// /** @brief Sets the imaginary part of a complex number.*/
-// void complex_setimag(objectcomplex *c, double value) {
-//     c->imag = value;
-// }
 
 /** @brief Gets a complex numbers real part */
 void complex_getreal(objectcomplex *c, double *value) {
@@ -96,6 +93,20 @@ void complex_getimag(objectcomplex *c, double *value) {
     *value = cimag(c->Z);
 }
 
+/** @brief checks equality on two complex numbers */
+bool complex_equality(objectcomplex *a, objectcomplex *b){
+    return (a->Z == b->Z);
+}
+
+/** Prints a complex */
+void complex_print(objectcomplex *a) {
+    char sign = '+';
+    if (cimag(a->Z)<0) {
+        sign = '-';
+    }
+
+    printf("%g %c %gim",(fabs(creal(a->Z))<2*MORPHO_EPS ? 0 : creal(a->Z)),sign,(fabs(cimag(a->Z))<2*MORPHO_EPS ? 0 : fabs(cimag(a->Z))));
+}
 
 /* **********************************************************************
  * Complex arithmetic
@@ -132,27 +143,15 @@ void complex_copy(objectcomplex *a, objectcomplex *out) {
     out->Z = a->Z;
 }
 
-/** performs out = a ^ b  where be is real*/
+/** performs out = a ^ b  where b is real*/
 void complex_power(objectcomplex *a, double exponent, objectcomplex *out){
     out->Z = cpow(a->Z,exponent);
 }
+
+/** performs out = a ^ b  for complex numbers*/
 void complex_cpower(objectcomplex *a, objectcomplex *b, objectcomplex *out){
     out->Z = cpow(a->Z,b->Z);
 }
-
-// /** performs out = a ^ b */
-// void complex_cpower(objectcomplex *a, objectcomplex *exponent, objectcomplex *out){
-//     double r;
-//     double theta;
-//     complex_abs(a,&r);
-//     complex_angle(a,&theta);
-//     double lnr = log(r);
-//     double newr = exp(exponent->real*lnr - exponent->imag * theta);
-//     double newtheta = exponent->imag*lnr+exponent->real*theta;
-//     out->real = newr*cos(newtheta);
-//     out->imag = newr*sin(newtheta);
-
-// }
 
 /** performs out = a / b */
 void complex_div(objectcomplex *a, objectcomplex *b, objectcomplex *out){
@@ -164,6 +163,20 @@ void complex_invert(objectcomplex *a, objectcomplex *out){
     out->Z = 1/a->Z;
 }
 
+/** performs out = conj(a) by negating the imaginary part */
+void complex_conj(objectcomplex *a, objectcomplex *out) {
+    out->Z = conj(a->Z);
+}
+
+/** calculates theta in the complex representation a = r e^{i theta}  */
+void complex_angle(objectcomplex *a, double *out){
+    *out = carg(a->Z);
+}
+/* **********************************************************************
+ * Builtin Mathematical Funtions For Complex Numbers
+ * ********************************************************************* */
+
+// Macro for creating a value from a new complex that copies val 
 #define RET_COMPLEX(val,out) \
     objectcomplex *new=NULL;\
     new = object_complexfromcomplex(val);\
@@ -171,8 +184,11 @@ void complex_invert(objectcomplex *a, objectcomplex *out){
         out=MORPHO_OBJECT(new);\
         morpho_bindobjects(v, 1, &out);\
     }
+
+// Macro for creating a value bool 
 #define RET_DOUBLE(val,out) \
     out = MORPHO_FLOAT(val);
+
 
 #define COMPLEX_BUILTIN(fcn,type,MAKEVAL)\
 value complex_builtin##fcn(vm * v, objectcomplex *c) {\
@@ -186,10 +202,9 @@ value complex_builtinfabs(vm * v, objectcomplex *c) {
     return MORPHO_FLOAT(val);
 }
 
-//COMPLEX_BUILTIN(fabs,double,RET_DOUBLE)
 COMPLEX_BUILTIN(exp,double complex,RET_COMPLEX)
 COMPLEX_BUILTIN(log,double complex,RET_COMPLEX)
-//COMPLEX_BUILTIN(log10,double complex,RET_COMPLEX)
+
 value complex_builtinlog10(vm * v, objectcomplex *c) {
     value out = MORPHO_NIL;
     double complex val = clog(c->Z)/log(10);
@@ -209,14 +224,13 @@ COMPLEX_BUILTIN(cosh,double complex,RET_COMPLEX)
 COMPLEX_BUILTIN(tanh,double complex,RET_COMPLEX)
 COMPLEX_BUILTIN(sqrt,double complex,RET_COMPLEX)
 
-//COMPLEX_BUILTIN(floor,double complex,RET_COMPLEX)
-//COMPLEX_BUILTIN(ceil,double complex,RET_COMPLEX)
 value complex_builtinfloor(vm * v, objectcomplex *c) {
     value out = MORPHO_NIL;
     double complex val = floor(creal(c->Z))+I*floor(cimag(c->Z));
     RET_COMPLEX(val,out)
     return out;
 }
+
 value complex_builtinceil(vm * v, objectcomplex *c) {
     value out = MORPHO_NIL;
     double complex val = ceil(creal(c->Z))+I*ceil(cimag(c->Z));
@@ -235,35 +249,45 @@ value complex_builtin##fcn(objectcomplex *c) {\
     return MORPHO_BOOL(val);\
 }
 
-
-
 COMPLEX_BUILTIN_BOOL(isfinite,&&)
 COMPLEX_BUILTIN_BOOL(isinf,||)
 COMPLEX_BUILTIN_BOOL(isnan,||)
 
 #undef COMPLEX_BUILTIN_BOOL
 
-
-
-/** performs out = conj(a) by negating the imaginary part */
-void complex_conj(objectcomplex *a, objectcomplex *out) {
-    out->Z = conj(a->Z);
-}
-
-/** calculates theta in the complex representation a = r e^{i theta}  */
-void complex_angle(objectcomplex *a, double *out){
-    *out = carg(a->Z);
-}
-
-/** Prints a complex */
-void complex_print(objectcomplex *a) {
-    char sign = '+';
-    if (cimag(a->Z)<0) {
-        sign = '-';
+value complex_builtinatan(vm *v, value c){
+    value out = MORPHO_NIL;
+    double complex val = catan(MORPHO_GETCOMPLEX(c)->Z);
+    objectcomplex *new = NULL;
+    new = object_complexfromcomplex(val);
+    if (new) {
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
     }
-
-    printf("%g %c %gim",(fabs(creal(a->Z))<2*MORPHO_EPS ? 0 : creal(a->Z)),sign,(fabs(cimag(a->Z))<2*MORPHO_EPS ? 0 : fabs(cimag(a->Z))));
 }
+value complex_builtinatan2(vm *v, value c1, value c2){
+    value out = MORPHO_NIL;
+    double complex val;
+    if (MORPHO_ISCOMPLEX(c1) && MORPHO_ISCOMPLEX(c2)) {
+        val = catan(MORPHO_GETCOMPLEX(c1)->Z/MORPHO_GETCOMPLEX(c2)->Z);
+    } else if (MORPHO_ISCOMPLEX(c1) && MORPHO_ISNUMBER(c2)) {
+        double num;
+        morpho_valuetofloat(c2,&num);
+        val = catan(MORPHO_GETCOMPLEX(c1)->Z/num);
+    } else if (MORPHO_ISNUMBER(c1) && MORPHO_ISCOMPLEX(c2)) {
+        double num;
+        morpho_valuetofloat(c2,&num);
+        val = catan(num/MORPHO_GETCOMPLEX(c1)->Z);
+    } else morpho_runtimeerror(v, COMPLEX_INVLDNARG);
+     
+    objectcomplex *new = NULL;
+    new = object_complexfromcomplex(val);
+    if (new) {
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    }
+}
+
 
 /* **********************************************************************
  * Complex veneer class
@@ -566,14 +590,13 @@ value Complex_powerr(vm *v, int nargs, value *args) {
 
 }
 
-
-// /** Complex norm */
-// value Complex_abs(vm *v, int nargs, value *args) {
-//     objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
-//     double val;
-//     complex_abs(a,&val);
-//     return MORPHO_FLOAT(val);
-// }
+/** Angle of a complex number  */
+value Complex_angle(vm *v, int nargs, value *args) {
+    objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
+    double val;
+    atan2(cimag(a->Z),creal(a->Z));
+    return MORPHO_FLOAT(val);
+}
 
 /** Conjugate of a complex */
 value Complex_conjugate(vm *v, int nargs, value *args) {
@@ -615,7 +638,7 @@ MORPHO_METHOD(MORPHO_MULR_METHOD, Complex_mul, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_DIVR_METHOD, Complex_divr, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_POW_METHOD, Complex_power, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_POWR_METHOD, Complex_powerr, BUILTIN_FLAGSEMPTY),
-//MORPHO_METHOD(COMPLEX_ABS_METHOD, Complex_abs, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(COMPLEX_ANGLE_METHOD, Complex_angle, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(COMPLEX_CONJUGATE_METHOD, Complex_conjugate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(COMPLEX_REAL_METHOD, Complex_getreal, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(COMPLEX_IMAG_METHOD, Complex_getimag, BUILTIN_FLAGSEMPTY),

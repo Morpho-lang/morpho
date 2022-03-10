@@ -37,16 +37,21 @@ objectcomplex *object_newcomplex(double real, double imag);
 /** Creates a new complex from an existing complex */
 objectcomplex *object_clonecomplex(objectcomplex *array);
 
+/** Clones a value that holds a complex */
+value object_clonecomplexvalue(value val);
+
+bool complex_equality(objectcomplex *a, objectcomplex *b);
 /* -------------------------------------------------------
  * Complex class
  * ------------------------------------------------------- */
 
-#define COMPLEX_CLASSNAME "Complex"
+#define COMPLEX_CLASSNAME                   "Complex"
 
-#define COMPLEX_CONJUGATE_METHOD "conj"
-#define COMPLEX_ABS_METHOD "abs"
-#define COMPLEX_REAL_METHOD "real"
-#define COMPLEX_IMAG_METHOD "imag"
+#define COMPLEX_CONJUGATE_METHOD            "conj"
+#define COMPLEX_ABS_METHOD                  "abs"
+#define COMPLEX_REAL_METHOD                 "real"
+#define COMPLEX_IMAG_METHOD                 "imag"
+#define COMPLEX_ANGLE_METHOD                "angle"
 
 #define COMPLEX_CONSTRUCTOR                "CmplxCns"
 #define COMPLEX_CONSTRUCTOR_MSG            "Complex() constructor should be called with two floats"
@@ -73,6 +78,8 @@ void complex_abs(objectcomplex *a, double *out);
 void complex_angle(objectcomplex *a, double *out);
 void complex_print(objectcomplex *m);
 void complex_initialize(void);
+void complex_getreal(objectcomplex *c, double *value);
+void complex_getimag(objectcomplex *c, double *value);
 
 /* Built-in fucntions */
 value complex_builtinexp(vm * v, objectcomplex* c);
@@ -98,4 +105,13 @@ value complex_builtinceil(vm * v, objectcomplex* c);
 value complex_builtinisfinite(objectcomplex* c);
 value complex_builtinisinf(objectcomplex* c);
 value complex_builtinisnan(objectcomplex* c);
+
+value complex_builtinatan(vm *v, value c);
+value complex_builtinatan2(vm *v, value c1, value c2);
+
+value Complex_getreal(vm *v, int nargs, value *args);
+value Complex_getimag(vm *v, int nargs, value *args);
+value Complex_angle(vm *v, int nargs, value *args);
+value Complex_conj(vm *v, int nargs, value *args);
+
 #endif /* complex_h */

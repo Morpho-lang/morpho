@@ -1,27 +1,78 @@
 //Complex builtin test
+import constants
+//[ ] Tests
+//    [ ] builtins
+//    [ ] equalityd
+//    [ ] 1+2im parser
 
-abs
-arg
 
-exp
-log
-log10
-sin
-cos
-tan
-asin
-acos
-atan
+var A = Complex(1,2)
+var B = Complex(2.2,-3.1)
+var C = Complex(3,4)
+// abs
+print abs(C)
+// expect: 5
 
-sinh
-cosh
-tanh
-sqrt
+// exp
+print (imag(exp(Complex(2,Pi/2)))==exp(2))
+// expect: true
+print real(exp(Complex(4,Pi)))==-exp(4)
+// expect: true
 
-floor
-ceil
+// log
 
-isfinite
-isinf
-isnan
 
+// log10
+
+
+// sin
+
+
+// cos
+
+
+// tan
+
+
+// asin
+
+
+// acos
+
+
+// atan
+
+// sinh
+
+
+// cosh
+
+
+// tanh
+
+
+// sqrt
+
+// floor
+
+// ceil
+
+
+// isfinite
+
+
+// isinf
+
+
+// isnan
+
+
+// arctan
+
+// real 
+
+// imag
+
+// angle
+
+// conj

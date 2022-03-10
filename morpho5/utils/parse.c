@@ -276,13 +276,13 @@ static bool lex_number(lexer *l, token *tok, error *err) {
         while (lex_isdigit(lex_peek(l))) lex_advance(l);
     }
     
-    // /* Imaginary Numbers */
-    // if (lex_peek(l) =='i' && lex_peekahead(l, 1) == 'm'){
-    //     /* mark this as an imaginary number*/
-    //     type = TOKEN_IMAG;
-    //     lex_advance(l); /* Consume the 'i' */
-    //     lex_advance(l); /* Consume the 'm' */
-    // }
+    /* Imaginary Numbers */
+    if (lex_peek(l) =='i' && lex_peekahead(l, 1) == 'm'){
+        /* mark this as an imaginary number*/
+        type = TOKEN_IMAG;
+        lex_advance(l); /* Consume the 'i' */
+        lex_advance(l); /* Consume the 'm' */
+    }
     
     lex_recordtoken(l, type, tok);
     
@@ -340,6 +340,7 @@ tokentype lex_symboltype(lexer *l) {
             if (type==TOKEN_SYMBOL) type = lex_checksymbol(l, 1, 1, "n", TOKEN_IN);
             if (type==TOKEN_SYMBOL) type = lex_checksymbol(l, 1, 1, "s", TOKEN_IS);
             if (type==TOKEN_SYMBOL) type = lex_checksymbol(l, 1, 5, "mport", TOKEN_IMPORT);
+            if (type==TOKEN_SYMBOL) type = lex_checksymbol(l, 1, 1, "m", TOKEN_IMAG);
             return type;
         }
         case 'n': return lex_checksymbol(l, 1, 2, "il", TOKEN_NIL);
@@ -519,6 +520,7 @@ static syntaxtreeindx parse_declarationmulti(parser *p, int n, tokentype *end);
 
 static syntaxtreeindx parse_integer(parser *p);
 static syntaxtreeindx parse_number(parser *p);
+static syntaxtreeindx parse_complex(parser *p);
 static syntaxtreeindx parse_bool(parser *p);
 static syntaxtreeindx parse_string(parser *p);
 static syntaxtreeindx parse_dictionary(parser *p);
@@ -722,11 +724,17 @@ syntaxtreeindx parse_number(parser *p) {
     double f = strtod(p->previous.start, NULL);
     return parse_addnode(p, NODE_FLOAT, MORPHO_FLOAT(f), &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
 }
-// syntaxtreeindx parse_complex(parser *p) {
-//     double f = strtod(p->previous.start,NULL);//subtract 2 to get rid of the im
-//     value c = MORPHO_OBJECT(object_newcomplex(0,f));
-//     return parse_addnode(p, NODE_COMPLEX, c, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
-// }
+syntaxtreeindx parse_complex(parser *p) {
+
+    double f;
+    if (p->previous.length==2) { // just a bare im symbol
+        f = 1;
+    } else {
+        f = strtod(p->previous.start,NULL);
+    }
+    value c = MORPHO_OBJECT(object_newcomplex(0,f));
+    return parse_addnode(p, NODE_IMAG, c, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
+}
 
 /** Parses a bool */
 static syntaxtreeindx parse_bool(parser *p) {
@@ -1570,13 +1578,13 @@ parserule rules[] = {
     PREFIX(parse_interpolation),                       // TOKEN_INTERPOLATION
     PREFIX(parse_integer),                             // TOKEN_INTEGER
     PREFIX(parse_number),                              // TOKEN_NUMBER
-    // PREFIX(parse_complex),                              // TOKEN_NUMBER
     PREFIX(parse_symbol),                              // TOKEN_SYMBOL
     PREFIX(parse_bool),                                // TOKEN_TRUE
     PREFIX(parse_bool),                                // TOKEN_FALSE
     PREFIX(parse_nil),                                 // TOKEN_NIL
     PREFIX(parse_self),                                // TOKEN_SELF
     PREFIX(parse_super),                               // TOKEN_SUPER
+    PREFIX(parse_complex),                             // TOKEN_IMAG
 
     MIXFIX(parse_grouping, parse_call, PREC_CALL),     // TOKEN_LEFTPAREN
     UNUSED,                                            // TOKEN_RIGHTPAREN

@@ -12,6 +12,7 @@
 #include "common.h"
 #include "object.h"
 #include "sparse.h"
+#include "complexobj.h"
 
 /* **********************************************************************
 * Utility functions 
@@ -60,6 +61,10 @@ int morpho_comparevalue (value a, value b) {
                         
                         return ((MORPHO_GETDOKKEYCOL(akey)==MORPHO_GETDOKKEYCOL(bkey) &&
                                  MORPHO_GETDOKKEYROW(akey)==MORPHO_GETDOKKEYROW(bkey)) ? EQUAL : NOTEQUAL);
+                    } else if (MORPHO_ISCOMPLEX(a) && MORPHO_ISCOMPLEX(b)) {
+                        objectcomplex *acomp = MORPHO_GETCOMPLEX(a);
+                        objectcomplex *bcomp = MORPHO_GETCOMPLEX(b);
+                        return (complex_equality(acomp,bcomp)? EQUAL: NOTEQUAL);
                     } else {
                         return (MORPHO_GETOBJECT(a) == MORPHO_GETOBJECT(b)? EQUAL: NOTEQUAL);
                     }

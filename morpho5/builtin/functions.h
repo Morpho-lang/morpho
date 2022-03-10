@@ -27,6 +27,11 @@ void functions_initialize(void);
 #define FUNCTION_MAX           "max"
 #define FUNCTION_BOUNDS        "bounds"
 
+#define FUNCTION_REAL           "real"
+#define FUNCTION_IMAG           "imag"
+#define FUNCTION_ANGLE          "angle"
+#define FUNCTION_CONJ           "conj"
+
 #define FUNCTION_SIGN           "sign"
 
 #define FUNCTION_APPLY         "apply"

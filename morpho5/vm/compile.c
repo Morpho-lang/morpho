@@ -646,8 +646,10 @@ static registerindx compiler_addconstant(compiler *c, syntaxtreenode *node, valu
                     /* If clone is set, we should try to clone the contents if the thing is an object. */
                     if (MORPHO_ISSTRING(add)) {
                         add=object_clonestring(add);
+                    } else if (MORPHO_ISCOMPLEX(add)) {
+                        add=object_clonecomplexvalue(add);
                     } else {
-                        UNREACHABLE("Erroneously being asked to clone a non-string constant.");
+                        UNREACHABLE("Erroneously being asked to clone a non-string non-complex constant.");
                     }
                 }
                 
@@ -1169,11 +1171,11 @@ compilenoderule noderules[] = {
     { compiler_constant      },      // NODE_BOOL,
     { compiler_constant      },      // NODE_FLOAT
     { compiler_constant      },      // NODE_INTEGER
-//    { compiler_constant      },      // NODE_IMAG
     { compiler_constant      },      // NODE_STRING
     { compiler_symbol        },      // NODE_SYMBOL
     { compiler_self          },      // NODE_SELF
     { compiler_super         },      // NODE_SUPER
+    { compiler_constant      },      // NODE_IMAG
     NODE_UNDEFINED,                  // NODE_LEAF
 
     { compiler_negate        },      // NODE_NEGATE

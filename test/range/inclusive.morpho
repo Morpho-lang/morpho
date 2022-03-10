@@ -17,3 +17,4 @@ for (i in 0.1..1.2:0.1) print i
 // expect: 0.9
 // expect: 1
 // expect: 1.1
+// expect: 1.2

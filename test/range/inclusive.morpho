@@ -1,0 +1,19 @@
+for (i in 1..5) print i
+// expect: 1
+// expect: 2
+// expect: 3
+// expect: 4
+// expect: 5
+
+for (i in 0.1..1.2:0.1) print i
+// expect: 0.1
+// expect: 0.2
+// expect: 0.3
+// expect: 0.4
+// expect: 0.5
+// expect: 0.6
+// expect: 0.7
+// expect: 0.8
+// expect: 0.9
+// expect: 1
+// expect: 1.1

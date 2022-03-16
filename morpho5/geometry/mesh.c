@@ -991,7 +991,7 @@ bool mesh_save(objectmesh *m, char *file) {
 
     fprintf(f, "\n");
 
-    for (grade g=1; g<m->dim; g++) {
+    for (grade g=1; g<=m->dim; g++) {
         objectsparse *conn=mesh_getconnectivityelement(m, 0, g);
 
         if (conn) {

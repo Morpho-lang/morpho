@@ -264,6 +264,7 @@ value complex_builtinatan(vm *v, value c){
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
     }
+    return out;
 }
 value complex_builtinatan2(vm *v, value c1, value c2){
     value out = MORPHO_NIL;
@@ -276,8 +277,8 @@ value complex_builtinatan2(vm *v, value c1, value c2){
         val = catan(MORPHO_GETCOMPLEX(c1)->Z/num);
     } else if (MORPHO_ISNUMBER(c1) && MORPHO_ISCOMPLEX(c2)) {
         double num;
-        morpho_valuetofloat(c2,&num);
-        val = catan(num/MORPHO_GETCOMPLEX(c1)->Z);
+        morpho_valuetofloat(c1,&num);
+        val = catan(num/MORPHO_GETCOMPLEX(c2)->Z);
     } else morpho_runtimeerror(v, COMPLEX_INVLDNARG);
      
     objectcomplex *new = NULL;
@@ -286,6 +287,7 @@ value complex_builtinatan2(vm *v, value c1, value c2){
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
     }
+    return out;
 }
 
 

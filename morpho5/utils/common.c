@@ -28,6 +28,24 @@
 #define BIGGER 1
 #define SMALLER -1
 int morpho_comparevalue (value a, value b) {
+
+    // if comparing a number to complex cast the number to complex
+    // we don't need to bind here beacues the value never needs to exist beyond this scope
+    // valgrin/check with tim to be sure
+    if (MORPHO_ISCOMPLEX(a) && MORPHO_ISNUMBER(b)){
+        // cast b to complex
+        double val;
+        morpho_valuetofloat(b,&val);
+        b = MORPHO_OBJECT(object_complexfromfloat(val));
+    }
+    if (MORPHO_ISCOMPLEX(b) && MORPHO_ISNUMBER(a)){
+        // cast b to complex
+        double val;
+        morpho_valuetofloat(a,&val);
+        a = MORPHO_OBJECT(object_complexfromfloat(val));
+    }
+
+
     if (!morpho_ofsametype(a, b)) return NOTEQUAL;
     
     if (MORPHO_ISFLOAT(a)) {

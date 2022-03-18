@@ -1,0 +1,106 @@
+import constants
+
+var A = Complex(1,2)
+var B = Complex(2.2,-3.1)
+var C = Complex(3,4)
+
+var compList = [A,B,C]
+var tol = 1e-14
+
+
+// sin
+for (Z in compList){
+    print sin(Z)==sin(real(Z))*cosh(imag(Z))+im*cos(real(Z))*sinh(imag(Z))
+// expect: true
+// expect: true
+// expect: true
+}
+
+// cos
+for (Z in compList){
+    print abs(cos(Z)-cos(real(Z))*cosh(imag(Z))+im*sin(real(Z))*sinh(imag(Z)))<tol
+// expect: true
+// expect: true
+// expect: true
+}
+
+
+// tan
+for (Z in compList){
+    print abs(tan(Z)-(tan(real(Z))+im*tanh(imag(Z)))/(1-im*tan(real(Z))*tanh(imag(Z))))<tol
+// expect: true
+// expect: true
+// expect: true
+}
+
+
+// asin
+for (Z in compList){
+    print abs(asin(Z)-im * log(sqrt(1-Z^2)-im*Z))<tol
+// expect: true
+// expect: true
+// expect: true
+}
+
+
+// acos
+for (Z in compList){
+    print abs(acos(Z)-(-im * log(im*sqrt(1-Z^2)+Z)))<tol
+// expect: true
+// expect: true
+// expect: true
+}
+
+
+// atan
+for (Z in compList){
+    print abs(arctan(Z)-(-im/2*log((1+im*Z)/(1-im*Z))))<tol
+// expect: true
+// expect: true
+// expect: true
+}
+for (Z in compList){
+    print abs(arctan(2,Z)-(-im/2*log((1+im*2/Z)/(1-im*2/Z))))<tol
+// expect: true
+// expect: true
+// expect: true
+}
+for (Z in compList){
+    print abs(arctan(Z,2)-(-im/2*log((1+im*Z/2)/(1-im*Z/2))))<tol
+// expect: true
+// expect: true
+// expect: true
+}
+var D = 3.14+2.7im
+for (Z in compList){
+    print abs(arctan(Z,D)-(-im/2*log((1+im*Z/D)/(1-im*Z/D))))<tol
+// expect: true
+// expect: true
+// expect: true
+}
+// sinh
+for (Z in compList){
+    print sinh(Z)==sinh(real(Z))*cos(imag(Z))+im*cosh(real(Z))*sin(imag(Z))
+// expect: true
+// expect: true
+// expect: true
+}
+
+
+// cosh
+for (Z in compList){
+    print cosh(Z)==cosh(real(Z))*cos(imag(Z))+im*sinh(real(Z))*sin(imag(Z))
+// expect: true
+// expect: true
+// expect: true
+}
+
+
+// tanh
+for (Z in compList){
+    var expect = (tanh(real(Z))+im*tan(imag(Z)))/(1+im*tanh(real(Z))*tan(imag(Z)))
+    print abs(tanh(Z)-expect)<tol
+// expect: true
+// expect: true
+// expect: true
+}

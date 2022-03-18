@@ -14,7 +14,7 @@ print Z.imag()
 print C.real()
 // expect: 3.2
 print C.imag()
-// expect: 1.1
+// expect: -1.1
 
 
 // constuctor error

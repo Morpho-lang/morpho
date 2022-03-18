@@ -39,7 +39,10 @@ objectcomplex *object_clonecomplex(objectcomplex *array);
 
 /** Clones a value that holds a complex */
 value object_clonecomplexvalue(value val);
+/** creates a complex object from a real value */
+objectcomplex *object_complexfromfloat(double val);
 
+/** tests the equality of two complex numbers */
 bool complex_equality(objectcomplex *a, objectcomplex *b);
 /* -------------------------------------------------------
  * Complex class

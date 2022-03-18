@@ -1,10 +1,5 @@
 //Complex builtin test
 import constants
-//[ ] Tests
-//    [ ] builtins
-//    [ ] equalityd
-//    [ ] 1+2im parser
-
 
 var A = Complex(1,2)
 var B = Complex(2.2,-3.1)
@@ -12,6 +7,18 @@ var C = Complex(3,4)
 
 var compList = [A,B,C]
 var tol = 1e-15
+
+print A == 1+2im
+// expect: true
+
+print 1+2im == 1+2*im
+// expect: true
+
+print 1-2im == 1+2/im
+// expect: true
+
+print B == 2.2-3.1im
+// expect: true
 
 for (Z in compList){
     print real(Z)

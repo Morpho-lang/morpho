@@ -114,7 +114,8 @@ value builtin_arctan(vm *v, int nargs, value *args) {
         if (nargs == 1) {
             return complex_builtinatan(v,MORPHO_GETARG(args, 0));
         } else if (nargs==2) {
-            return complex_builtinatan2(v,MORPHO_GETARG(args, 0),MORPHO_GETARG(args, 1));
+            // Note Morpho uses the opposite order to C!
+            return complex_builtinatan2(v,MORPHO_GETARG(args, 1),MORPHO_GETARG(args, 0));
         }
         morpho_runtimeerror(v, MATH_NUMARGS, "arctan");
         return MORPHO_NIL;

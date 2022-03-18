@@ -60,20 +60,20 @@ for (Z in compList){
 // expect: true
 }
 for (Z in compList){
-    print abs(arctan(2,Z)-(-im/2*log((1+im*2/Z)/(1-im*2/Z))))<tol
+    print abs(arctan(2,Z)-(-im/2*log((1+im*Z/2)/(1-im*Z/2))))<tol
 // expect: true
 // expect: true
 // expect: true
 }
 for (Z in compList){
-    print abs(arctan(Z,2)-(-im/2*log((1+im*Z/2)/(1-im*Z/2))))<tol
+    print abs(arctan(Z,2)-(-im/2*log((1+im*2/Z)/(1-im*2/Z))))<tol
 // expect: true
 // expect: true
 // expect: true
 }
 var D = 3.14+2.7im
 for (Z in compList){
-    print abs(arctan(Z,D)-(-im/2*log((1+im*Z/D)/(1-im*Z/D))))<tol
+    print abs(arctan(D,Z)-(-im/2*log((1+im*Z/D)/(1-im*Z/D))))<tol
 // expect: true
 // expect: true
 // expect: true

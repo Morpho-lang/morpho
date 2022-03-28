@@ -1,0 +1,8 @@
+// Trigger an unknown dimension err 
+import meshtools
+
+var mb = MeshBuilder() 
+
+mb.addelement(1, [0,0])
+
+// expect error 'MshBldDimUnknwn'

@@ -8,6 +8,7 @@ import colored
 from colored import stylize
 import subprocess
 
+"""
 languages = { "morpho": "morpho5",
               "m3": "morpho3",
               "fe": "evolver",
@@ -18,6 +19,9 @@ languages = { "morpho": "morpho5",
               "rb": "ruby",
               "dart": "dart"
             }
+"""
+
+languages = { "morpho": "morpho5" }
 
 # Gets the output generated
 def getoutput(filepath):

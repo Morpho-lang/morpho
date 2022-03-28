@@ -1,0 +1,34 @@
+class Test {
+    init() {
+        
+        // This works
+
+        var x = Matrix([1,2,3])
+
+        self.lstx = [ x[0], x[1], x[2] ]
+        print self.lstx // expect: [ 1, 2, 3 ]
+
+        // *** Check that indexing a property works in a list ***
+        
+        self.y = Matrix([1,2,3])
+
+        self.lsty = [ self.y[0], self.y[1], self.y[2] ]
+        print self.lsty // expect: [ 1, 2, 3 ]
+        
+        // They individually work fine
+        print self.y[0] // expect: 1
+        print self.y[1] // expect: 2
+        print self.y[2] // expect: 3
+
+        // This works too
+        self.a = 1
+        self.b = 2
+        self.c = 3
+        self.lstz = [self.a, self.b, self.c]
+        print self.lstz  // expect: [ 1, 2, 3 ]
+
+    }
+    
+}
+
+var t = Test()

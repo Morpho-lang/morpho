@@ -52,6 +52,7 @@ Morpho
    graphics
    implicitmesh
    kdtree
+   meshgen
    meshtools
    optimize
    plot

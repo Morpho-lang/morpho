@@ -1265,6 +1265,7 @@ static codeinfo compiler_list(compiler *c, syntaxtreenode *node, registerindx re
         out.ninstructions+=val.ninstructions;
         if (!(CODEINFO_ISREGISTER(val) && (val.dest==reg))) {
             compiler_releaseoperand(c, val);
+            compiler_regtempwithindx(c, reg);
             val=compiler_movetoregister(c, entry, val, reg);
             out.ninstructions+=val.ninstructions;
         }
@@ -2287,6 +2288,8 @@ static void compiler_functionparameters(compiler *c, syntaxtreeindx indx) {
     }
 }
 
+value _selfsymbol;
+
 /** Compiles a function declaration */
 static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerindx reqout) {
     syntaxtreeindx body=node->right; /* Function body */
@@ -2323,8 +2326,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     
     /* The function has a reference to itself in r0, which may be 'self' if we're in a method */
     value r0symbol=node->content;
-    objectstring slfsymbol = MORPHO_STATICSTRING("self");
-    if (ismethod) r0symbol=MORPHO_OBJECT(&slfsymbol);
+    if (ismethod) r0symbol=_selfsymbol;
     compiler_regalloc(c, r0symbol);
     
     /* -- Compile the parameters -- */
@@ -3425,6 +3427,8 @@ void morpho_setbaseclass(value klss) {
 /** Initializes the error handling system */
 void compile_initialize(void) {
     baseclass=NULL;
+    
+    _selfsymbol=builtin_internsymbolascstring("self");
     
     /* Lex errors */
     morpho_defineerror(COMPILE_UNTERMINATEDCOMMENT, ERROR_LEX, COMPILE_UNTERMINATEDCOMMENT_MSG);

@@ -4365,6 +4365,16 @@ filename "Reference/kdtree.tex"
 \begin_layout Standard
 \begin_inset CommandInset include
 LatexCommand input
+filename "Reference/meshgen.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
 filename "Reference/meshtools.tex"
 
 \end_inset
@@ -4396,6 +4406,16 @@ filename "Reference/plot.tex"
 \begin_inset CommandInset include
 LatexCommand input
 filename "Reference/povray.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/vtk.tex"
 
 \end_inset
 

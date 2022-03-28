@@ -12,6 +12,28 @@ var filenames = ["data", "data.case2", "data.case3.0"]
 var vtkE
 var vtkI
 
+// test whether exporting with these filenames and then importing with
+// an added ".vtk" works
+
+for (filename in filenames) {
+
+    vtkE = VTKExporter(m1)
+    
+    vtkE.export(filename)
+
+    vtkI = VTKImporter("${filename}.vtk")
+
+    var m2 = vtkI.mesh()
+
+    print m2 
+}
+// expect: <Mesh: 2 vertices>
+// expect: <Mesh: 2 vertices>
+// expect: <Mesh: 2 vertices>
+
+
+// Test whether importing without .vtk works
+
 for (filename in filenames) {
 
     vtkE = VTKExporter(m1)

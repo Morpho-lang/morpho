@@ -29,7 +29,15 @@ modules:
 .PHONY: install
 install: morpho5
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	cp $< $(DESTDIR)$(PREFIX)/bin/morpho5
+	cp $< $(DESTDIR)$(PREFIX)/bin/morpho5dev
 	make modules
 	make help
 	make clean
+debug: CFLAGS+= -ggdb -O0
+debug: install
+
+nonanboxing: CFLAGS += -D_NO_NAN_BOXING -ggdb
+nonanboxing: install
+
+garbagecollectortest: CFLAGS += -D_DEBUG_STRESSGARBAGECOLLECTOR
+garbagecollectortest: install

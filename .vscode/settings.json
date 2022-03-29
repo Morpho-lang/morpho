@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "*.morpho": "morpho",
+        "atomic": "c",
+        "*.tcc": "c",
+        "vector": "c",
+        "limits": "c",
+        "functional": "c",
+        "numeric": "c",
+        "optional": "c"
+    }
+}

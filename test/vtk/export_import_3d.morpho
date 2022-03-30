@@ -1,0 +1,12 @@
+import meshtools
+import vtk 
+
+var m = Mesh("tetrahedron.mesh")
+
+var fname = "tetrahedron.vtk"
+
+VTKExporter(m).export(fname)
+
+var m2 = VTKImporter(fname).mesh()
+
+print m2.maxgrade() // expect: 3

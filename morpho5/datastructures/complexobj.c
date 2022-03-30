@@ -12,7 +12,6 @@
 #include "veneer.h"
 #include "common.h"
 
-
 /* **********************************************************************
  * Complex objects
  * ********************************************************************** */
@@ -49,7 +48,6 @@ objectcomplex *object_newcomplex(double real,double imag) {
 /* **********************************************************************
  * Other constructors
  * ********************************************************************** */
-
 
 /** Create complex number from a float */
 objectcomplex *object_complexfromfloat(double val) {
@@ -197,6 +195,7 @@ value complex_builtin##fcn(vm * v, objectcomplex *c) {\
     MAKEVAL(val,out)\
     return out;\
 }
+
 value complex_builtinfabs(vm * v, objectcomplex *c) {
     double val = cabs(c->Z);
     return MORPHO_FLOAT(val);
@@ -242,7 +241,6 @@ value complex_builtinceil(vm * v, objectcomplex *c) {
 #undef RET_COMPLEX
 #undef RET_DOUBLE
 
-
 #define COMPLEX_BUILTIN_BOOL(fcn,logicalop)\
 value complex_builtin##fcn(objectcomplex *c) {\
     bool val = fcn(creal(c->Z)) logicalop fcn(cimag(c->Z));\
@@ -266,9 +264,11 @@ value complex_builtinatan(vm *v, value c){
     }
     return out;
 }
+
 value complex_builtinatan2(vm *v, value c1, value c2){
     value out = MORPHO_NIL;
-    double complex val;
+    double complex val=0;
+    
     if (MORPHO_ISCOMPLEX(c1) && MORPHO_ISCOMPLEX(c2)) {
         val = catan(MORPHO_GETCOMPLEX(c1)->Z/MORPHO_GETCOMPLEX(c2)->Z);
     } else if (MORPHO_ISCOMPLEX(c1) && MORPHO_ISNUMBER(c2)) {
@@ -279,7 +279,10 @@ value complex_builtinatan2(vm *v, value c1, value c2){
         double num;
         morpho_valuetofloat(c1,&num);
         val = catan(num/MORPHO_GETCOMPLEX(c2)->Z);
-    } else morpho_runtimeerror(v, COMPLEX_INVLDNARG);
+    } else {
+        morpho_runtimeerror(v, COMPLEX_INVLDNARG);
+        return MORPHO_NIL;
+    }
      
     objectcomplex *new = NULL;
     new = object_complexfromcomplex(val);
@@ -287,6 +290,7 @@ value complex_builtinatan2(vm *v, value c1, value c2){
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
     }
+    
     return out;
 }
 
@@ -297,24 +301,22 @@ value complex_builtinatan2(vm *v, value c1, value c2){
 
 /** Constructs a Complex object */
 value complex_constructor(vm *v, int nargs, value *args) {
-    double real, imag;
+    double real=0, imag=0;
     objectcomplex *new=NULL;
     value out=MORPHO_NIL;
     // expect 2 aruments
 
-    if ( nargs==2){
-
+    if (nargs==2){
         // make sure both are numbers and cast them to floats
         if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
             morpho_valuetofloat(MORPHO_GETARG(args, 0), &real);
-        } else morpho_runtimeerror(v, COMPLEX_CONSTRUCTOR);
+        } else goto complex_constructor_error;
         
-
         if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 1))) {
             morpho_valuetofloat(MORPHO_GETARG(args, 1), &imag);
-        } else morpho_runtimeerror(v, COMPLEX_CONSTRUCTOR);
+        } else goto complex_constructor_error;
 
-    } else morpho_runtimeerror(v, COMPLEX_CONSTRUCTOR);
+    } else goto complex_constructor_error;
 
     new = object_newcomplex(real, imag);
     
@@ -324,6 +326,11 @@ value complex_constructor(vm *v, int nargs, value *args) {
     }
     
     return out;
+    
+complex_constructor_error:
+    morpho_runtimeerror(v, COMPLEX_CONSTRUCTOR);
+    
+    return MORPHO_NIL;
 }
 
 /** Gets the real part of a complex number */
@@ -341,6 +348,7 @@ value Complex_getreal(vm *v, int nargs, value *args) {
     out = MORPHO_FLOAT(real);
     return out;
 }
+
 /** Gets the imaginary part of a complex number */
 value Complex_getimag(vm *v, int nargs, value *args) {
     objectcomplex *c=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
@@ -356,8 +364,6 @@ value Complex_getimag(vm *v, int nargs, value *args) {
     out = MORPHO_FLOAT(imag);
     return out;
 }
-
-
 
 /** Prints a complex */
 value Complex_print(vm *v, int nargs, value *args) {
@@ -525,6 +531,7 @@ value Complex_divr(vm *v, int nargs, value *args) {
             }
         } else UNREACHABLE("Number did not return float value");
     } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
+    
     return out;
 }
 
@@ -557,7 +564,6 @@ value Complex_power(vm *v, int nargs, value *args) {
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
     return out;
-
 }
 
 /** Complex right exponentiation */
@@ -595,8 +601,7 @@ value Complex_powerr(vm *v, int nargs, value *args) {
 /** Angle of a complex number  */
 value Complex_angle(vm *v, int nargs, value *args) {
     objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
-    double val;
-    atan2(cimag(a->Z),creal(a->Z));
+    double val=atan2(cimag(a->Z),creal(a->Z));
     return MORPHO_FLOAT(val);
 }
 
@@ -614,7 +619,6 @@ value Complex_conjugate(vm *v, int nargs, value *args) {
     
     return out;
 }
-
 
 /** Clones a complex */
 value Complex_clone(vm *v, int nargs, value *args) {

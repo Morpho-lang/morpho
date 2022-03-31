@@ -10,5 +10,5 @@ var mesh = impl.build(stepsize=0.25)
 // Gauss curvature
 var lgc = GaussCurvature()
 
-print abs(lmc.total(mesh)-4*Pi)<1e-6
+print abs(lgc.total(mesh)-4*Pi)<1e-6
 // expect: true

@@ -1,4 +1,4 @@
-src = $(wildcard *.c) $(wildcard */*.c)
+src = $(wildcard *.c) $(wildcard */*.c) $(wildcard */*/*.c)
 obj = $(src:.c=.o)
 PREFIX = /usr/local
 HELPDIR = /usr/local/share/morpho/help

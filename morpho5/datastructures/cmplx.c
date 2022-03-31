@@ -6,7 +6,7 @@
 
 #include <string.h>
 #include "object.h"
-#include "complexobj.h"
+#include "cmplx.h"
 #include "morpho.h"
 #include "builtin.h"
 #include "veneer.h"
@@ -170,6 +170,11 @@ void complex_conj(objectcomplex *a, objectcomplex *out) {
 void complex_angle(objectcomplex *a, double *out){
     *out = carg(a->Z);
 }
+
+void complex_abs(objectcomplex *a, double *out) {
+    *out = cabs(a->Z);
+}
+
 /* **********************************************************************
  * Builtin Mathematical Funtions For Complex Numbers
  * ********************************************************************* */
@@ -601,7 +606,14 @@ value Complex_powerr(vm *v, int nargs, value *args) {
 /** Angle of a complex number  */
 value Complex_angle(vm *v, int nargs, value *args) {
     objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
-    double val=atan2(cimag(a->Z),creal(a->Z));
+    double val;
+    complex_angle(a, &val);
+    return MORPHO_FLOAT(val);
+}
+value Complex_abs(vm *v, int nargs, value *args) {
+    objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
+    double val;
+    complex_abs(a, &val);
     return MORPHO_FLOAT(val);
 }
 
@@ -648,6 +660,7 @@ MORPHO_METHOD(COMPLEX_ANGLE_METHOD, Complex_angle, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(COMPLEX_CONJUGATE_METHOD, Complex_conjugate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(COMPLEX_REAL_METHOD, Complex_getreal, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(COMPLEX_IMAG_METHOD, Complex_getimag, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(COMPLEX_ABS_METHOD, Complex_abs, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Complex_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 

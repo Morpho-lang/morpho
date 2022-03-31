@@ -14,7 +14,7 @@
 #include "object.h"
 #include "veneer.h"
 #include "builtin.h"
-#include "complexobj.h"
+#include "cmplx.h"
 
 /** Base class for instances */
 static objectclass *baseclass;

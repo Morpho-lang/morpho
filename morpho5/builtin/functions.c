@@ -14,7 +14,7 @@
 #include "mesh.h"
 #include "field.h"
 #include "selection.h"
-#include "complexobj.h"
+#include "cmplx.h"
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
@@ -61,7 +61,6 @@ BUILTIN_MATH(acos)
 BUILTIN_MATH(sinh)
 BUILTIN_MATH(cosh)
 BUILTIN_MATH(tanh)
-BUILTIN_MATH(sqrt)
 
 BUILTIN_MATH(floor)
 BUILTIN_MATH(ceil)
@@ -94,7 +93,28 @@ BUILTIN_MATH_BOOL(isinf)
 BUILTIN_MATH_BOOL(isnan)
 
 #undef BUILTIN_MATH_BOOL
-
+/** The sqrt function is needs to be able to return a complex number for negitive arguments */
+value builtin_sqrt(vm *v, int nargs, value *args) { 
+    if (nargs==1) { 
+        value arg = MORPHO_GETARG(args, 0); 
+        if (MORPHO_ISCOMPLEX(arg)){
+            return complex_builtinsqrt(v,MORPHO_GETCOMPLEX(arg));
+        }
+        else if (MORPHO_ISNUMBER(arg)) {
+            double val;
+            if (morpho_valuetofloat(arg,&val)) {
+                if (val<0) {// need to use complex sqrt
+                    objectcomplex C = MORPHO_STATICCOMPLEX(val,0);
+                    return complex_builtinsqrt(v,&C);
+                } else { 
+                    return MORPHO_FLOAT(sqrt(val));
+                }
+            } else morpho_runtimeerror(v, MATH_ARGS, "sqrt"); 
+        } else morpho_runtimeerror(v, MATH_ARGS, "sqrt"); 
+    }
+    morpho_runtimeerror(v, MATH_NUMARGS, "sqrt");
+    return MORPHO_NIL; 
+}
 
 /** The arctan function is special; it can either take one or two arguments */
 value builtin_arctan(vm *v, int nargs, value *args) {

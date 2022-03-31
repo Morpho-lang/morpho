@@ -4,8 +4,8 @@
  *  @brief Veneer class over the objectcomplex type
  */
 
-#ifndef complexobj_h
-#define complexobj_h
+#ifndef cmplx_h
+#define cmplx_h
 
 #include <stdio.h>
 #include "veneer.h"
@@ -24,6 +24,10 @@ typedef struct {
     object obj;
     double complex Z;
 } objectcomplex;
+
+/** Creates a static complex number */
+#define MORPHO_STATICCOMPLEX(real,imag)      { .obj.type=OBJECT_COMPLEX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .Z=real + I * imag}
+
 
 /** Tests whether an object is a complex */
 #define MORPHO_ISCOMPLEX(val) object_istype(val, OBJECT_COMPLEX)

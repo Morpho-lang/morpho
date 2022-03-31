@@ -9,7 +9,7 @@
 #include "parse.h"
 #include "object.h"
 #include "common.h"
-#include "complexobj.h"
+#include "cmplx.h"
 
 /* **********************************************************************
  * Lexer

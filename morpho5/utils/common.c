@@ -12,7 +12,7 @@
 #include "common.h"
 #include "object.h"
 #include "sparse.h"
-#include "complexobj.h"
+#include "cmplx.h"
 
 /* **********************************************************************
 * Utility functions 
@@ -36,13 +36,13 @@ int morpho_comparevalue (value a, value b) {
         // cast b to complex
         double val;
         morpho_valuetofloat(b,&val);
-        b = MORPHO_OBJECT(object_complexfromfloat(val));
+        return (MORPHO_GETCOMPLEX(a)->Z==val ? EQUAL: NOTEQUAL);
     }
     if (MORPHO_ISCOMPLEX(b) && MORPHO_ISNUMBER(a)){
         // cast b to complex
         double val;
         morpho_valuetofloat(a,&val);
-        a = MORPHO_OBJECT(object_complexfromfloat(val));
+        return (MORPHO_GETCOMPLEX(b)->Z==val ? EQUAL: NOTEQUAL);
     }
 
 

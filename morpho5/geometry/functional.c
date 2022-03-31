@@ -1877,10 +1877,13 @@ MORPHO_ENDCLASS
  * MeanCurvatureSq
  * ---------------------------------------------- */
 
+static value curvature_geodesicproperty;
+
 typedef struct {
     objectsparse *areael; // Areas
     objectselection *selection; // Selection
     bool integrandonly; // Output integrated curvature or 'bare' curvature.
+    bool geodesic; // Compute the geodesic curvature instead of the Gauss curvature (see https://cuhkmath.wordpress.com/2016/06/21/the-discrete-gauss-bonnet-theorem/)
 } areacurvatureref;
 
 bool areacurvature_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, areacurvatureref *ref) {
@@ -1901,6 +1904,10 @@ bool areacurvature_prepareref(objectinstance *self, objectmesh *mesh, grade g, o
         value integrandonly=MORPHO_FALSE;
         objectinstance_getproperty(self, curvature_integrandonlyproperty, &integrandonly);
         ref->integrandonly=MORPHO_ISTRUE(integrandonly);
+
+        value geodesic=MORPHO_FALSE;
+        objectinstance_getproperty(self, curvature_geodesicproperty, &geodesic);
+        ref->geodesic=MORPHO_ISTRUE(geodesic);
     }
 
     return success;
@@ -2069,6 +2076,7 @@ bool gausscurvature_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
     }
 
     *out = 2*M_PI-anglesum;
+    if (cref->geodesic) *out = M_PI-anglesum;
     if (cref->integrandonly) *out /= (areasum/3.0);
     success=true;
 
@@ -2983,6 +2991,7 @@ void functional_initialize(void) {
     nematic_pitchproperty=builtin_internsymbolascstring(NEMATIC_PITCH_PROPERTY);
 
     curvature_integrandonlyproperty=builtin_internsymbolascstring(CURVATURE_INTEGRANDONLY_PROPERTY);
+    curvature_geodesicproperty=builtin_internsymbolascstring(CURVATURE_GEODESIC_PROPERTY);
 
     objectstring objclassname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objclassname));

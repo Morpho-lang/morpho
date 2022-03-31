@@ -7,7 +7,7 @@ import plot
 var impl = ImplicitMeshBuilder(fn (x,y,z) x^2+y^2+z^2-1)
 var mesh = impl.build(stepsize=0.25)
 
-// Mean Squared curvature
+// Gauss curvature
 var lmc = GaussCurvature()
 
 print abs(lmc.total(mesh)-4*Pi)<1e-6

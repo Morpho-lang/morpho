@@ -51,7 +51,7 @@ print real(exp(Complex(4,Pi)))==-exp(4)
 print log((E*im))==(1+Pi/2*im)
 // expect: true
 
-print log(A)==(log(abs(A))+angle(A)*im)
+print abs(log(abs(A))+angle(A)*im - log(A))<1e-15
 // expect: true
 
 

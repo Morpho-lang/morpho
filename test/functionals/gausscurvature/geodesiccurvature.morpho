@@ -9,7 +9,7 @@ mesh.addgrade(1)
 var bnd = Selection(mesh, boundary=true)
 
 // Geodesic curvature
-var lmc = GaussCurvature()
-lmc.geodesic = true
-print abs(lmc.total(mesh, selection=bnd)-2*Pi)<1e-6
+var lgc = GaussCurvature()
+lgc.geodesic = true
+print abs(lgc.total(mesh, selection=bnd)-2*Pi)<1e-6
 // expect: true

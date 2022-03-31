@@ -280,6 +280,7 @@ void builtin_initialize(void) {
     /* Initialize builtin classes and functions */
     file_initialize();
     matrix_initialize();
+    gpumatrix_initialize();
     sparse_initialize();
     mesh_initialize();
     selection_initialize();

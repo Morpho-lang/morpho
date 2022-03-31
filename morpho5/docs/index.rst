@@ -20,6 +20,7 @@ Morpho
    :maxdepth: 1
 
    array
+   complex
    dictionary
    list
    matrix

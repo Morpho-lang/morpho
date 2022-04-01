@@ -121,6 +121,21 @@ The `MeanCurvatureSq` functional computes the integrated mean curvature over a s
 
 The `GaussCurvature` computes the integrated gaussian curvature over a surface.
 
+Note that for surfaces with a boundary, the integrand is correct only for the interior points. To compute the geodesic curvature of the boundary in that case, you can set the optional flag `geodesic` to `true` and compute the total on the boundary selection.
+Here is an example for a 2D disk mesh.
+
+    var mesh = Mesh("disk.mesh")
+    mesh.addgrade(1)
+
+    var whole = Selection(mesh, fn(x,y,z) true)
+    var bnd = Selection(mesh, boundary=true)
+    var interior = whole.difference(bnd)
+
+    var gauss = GaussCurvature()
+    print gauss.total(mesh, selection=interior) // expect: 0
+    gauss.geodesic = true
+    print gauss.total(mesh, selection=bnd) // expect: 2*Pi
+
 ## GradSq
 [taggradsq]: # (gradsq)
 

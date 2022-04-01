@@ -42,4 +42,4 @@ expected = Matrix([ [ 0, 0.00561671, 0.00561671, -0.0112336 ],
                     [ -0.011915, 0.00397177, 0.00397167, 0.00397174 ]])
 
 print (lh.gradient(m)-expected).norm()<tol
-// expect: true 
+// expect: true

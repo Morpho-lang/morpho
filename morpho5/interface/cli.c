@@ -65,6 +65,7 @@ linedit_color cli_tokencolors[] = {
     LINEDIT_MAGENTA,                               // TOKEN_NIL
     LINEDIT_MAGENTA,                               // TOKEN_SELF
     LINEDIT_MAGENTA,                               // TOKEN_SUPER
+    LINEDIT_BLUE,                                  // TOKEN_IMAG
     
     LINEDIT_DEFAULTCOLOR,                          // TOKEN_LEFTPAREN
     LINEDIT_DEFAULTCOLOR,                          // TOKEN_RIGHTPAREN

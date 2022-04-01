@@ -46,6 +46,8 @@ typedef void compiler;
 #define MORPHO_MULR_METHOD "mulr"
 #define MORPHO_DIV_METHOD "div"
 #define MORPHO_DIVR_METHOD "divr"
+#define MORPHO_POW_METHOD "pow"
+#define MORPHO_POWR_METHOD "powr"
 #define MORPHO_ACC_METHOD "acc"
 #define MORPHO_SUM_METHOD "sum"
 

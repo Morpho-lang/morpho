@@ -3,6 +3,8 @@ import meshtools
 import shapeopt
 import plot
 
+var tol = 2e-4
+
 var mb = MeshBuilder()
 mb.addvertex(Matrix([0,0,0]))
 mb.addvertex(Matrix([2,3,0]))
@@ -44,4 +46,3 @@ for (x,k in grd) print (x-Matrix(expected[k])).norm()<tol
 // expect: true
 // expect: true
 // expect: true
-

@@ -1,0 +1,134 @@
+//Complex builtin test
+import constants
+
+var A = Complex(1,2)
+var B = Complex(2.2,-3.1)
+var C = Complex(3,4)
+
+var compList = [A,B,C]
+var tol = 1e-15
+
+print A == 1+2im
+// expect: true
+
+print 1+2im == 1+2*im
+// expect: true
+
+print 1-2im == 1+2/im
+// expect: true
+
+print B == 2.2-3.1im
+// expect: true
+
+for (Z in compList){
+    print real(Z)
+}
+// expect: 1
+// expect: 2.2
+// expect: 3
+
+// imag
+for (Z in compList){
+    print imag(Z)
+}
+// expect: 2
+// expect: -3.1
+// expect: 4
+
+
+
+// abs
+print abs(C)
+// expect: 5
+
+// exp
+print (imag(exp(Complex(2,Pi/2)))==exp(2))
+// expect: true
+print real(exp(Complex(4,Pi)))==-exp(4)
+// expect: true
+
+// log
+print log((E*im))==(1+Pi/2*im)
+// expect: true
+
+print abs(log(abs(A))+angle(A)*im - log(A))<1e-15
+// expect: true
+
+
+// log10
+print abs(log10(A)-(log(abs(A))/log(10)+angle(A)*im/log(10)))<tol
+// expect: true
+
+
+// sqrt
+print abs(sqrt(im)-(1+im)/sqrt(2))<tol
+// expect: true
+
+// floor
+print floor(1.2+3.2im)==(1+3im)
+// expect: true
+print floor(-1.2-3.2im)==(-2-4im)
+// expect: true
+
+
+// ceil
+print ceil(1.2+3.2im)==(2+4im)
+// expect: true
+print ceil(-1.2-3.2im)==(-1-3im)
+// expect: true
+
+
+// isfinite
+print isfinite(1+im)
+// expect: true
+print isfinite(1/0+im)
+// expect: false
+print isfinite(1+1/0*im)
+// expect: false
+print isfinite(1/0+1/0*im)
+// expect: false
+
+
+// isinf
+print isinf(1+im)
+// expect: false
+print isinf(1/0+im)
+// expect: true
+print isinf(1+1/0*im)
+// expect: true
+print isinf(1/0+1/0*im)
+// expect: true
+
+// isnan
+print isnan(1+im)
+// expect: false
+print isnan(0/0+im)
+// expect: true
+print isnan(1+0/0*im)
+// expect: true
+print isnan(0/0+0/0*im)
+// expect: true
+
+// angle
+for (Z in compList){
+    print (angle(Z)-arctan(real(Z),imag(Z)))<tol
+// expect: true
+// expect: true
+// expect: true
+}
+
+// conj
+for (Z in compList){
+    print conj(Z)==real(Z)-im*imag(Z)
+// expect: true
+// expect: true
+// expect: true
+}
+
+// comparison 
+print (1+0im == 1)
+// expect: true
+
+//sqrt of negitive number
+print sqrt(-1)
+// expect: 0 + 1im

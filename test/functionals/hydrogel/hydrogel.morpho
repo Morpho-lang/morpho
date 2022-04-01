@@ -1,0 +1,45 @@
+// Hydrogel mixing energy (modeled from Flory-Rehner theory)
+var m0 = Mesh("tetrahedron.mesh")
+
+var vol0 = Volume().total(m0)
+var phi0 = 0.5
+var phiref = 0.1
+var a = 0.1
+var b = 1.0
+var c = 0.25
+var d = 1.0
+var lh = Hydrogel(m0,
+                  a = a,
+                  b = b,
+                  c = c,
+                  d = d,
+                  phiref=phiref,
+                  phi0=phi0)
+
+var m = Mesh("tetrahedron.mesh")
+// Expand m by a linear factor
+var f = 1.2
+var vert = m.vertexmatrix()
+for (i in 0...m.count()) m.setvertexposition(i, f*vert.column(i))
+
+var phi = phi0/(f^3) // New phi will be inversely proportional to the volume
+var vol = vol0 * f^3
+
+
+var e1 = vol * (a*phi*log(phi) + b*(1-phi)*log((1-phi)) + c*phi*(1-phi))
+var e2 = vol0 * d * ( log(phiref/phi)/3 - (phiref/phi)^(2/3) + 1 )
+var expected = e1 + e2
+
+var tol = 1e-6
+print abs(lh.integrand(m)[0]-expected)<tol
+// expect: true
+
+print abs(lh.total(m)-expected)<tol
+// expect: true
+
+expected = Matrix([ [ 0, 0.00561671, 0.00561671, -0.0112336 ],
+                    [ 0, 0.00972852, -0.00972849, 0 ],
+                    [ -0.011915, 0.00397177, 0.00397167, 0.00397174 ]])
+
+print (lh.gradient(m)-expected).norm()<tol
+// expect: true 

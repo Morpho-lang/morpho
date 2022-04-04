@@ -1373,7 +1373,7 @@ typedef struct {
 
 /** Prepares the reference structure from the object's properties */
 bool hydrogel_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, hydrogelref *ref) {
-    bool success = false;
+    bool success=false;
     value refmesh=MORPHO_NIL, grade=MORPHO_NIL, phi0=MORPHO_NIL;
     value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL, d=MORPHO_NIL, phiref=MORPHO_NIL;
     
@@ -1392,10 +1392,10 @@ bool hydrogel_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
         MORPHO_ISNUMBER(phiref) &&
         objectinstance_getproperty(self, hydrogel_phi0property, &phi0) &&
         (MORPHO_ISNUMBER(phi0) || MORPHO_ISFIELD(phi0))) {
-        ref->refmesh = MORPHO_GETMESH(refmesh);
-        ref->grade = MORPHO_GETINTEGERVALUE(grade);
+        ref->refmesh=MORPHO_GETMESH(refmesh);
+        ref->grade=MORPHO_GETINTEGERVALUE(grade);
 
-        if (ref->grade < 0) ref->grade = mesh_maxgrade(mesh);
+        if (ref->grade<0) ref->grade=mesh_maxgrade(mesh);
 
         if (morpho_valuetofloat(a, &ref->a) &&
             morpho_valuetofloat(b, &ref->b) &&
@@ -1418,7 +1418,7 @@ bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
     if (!functional_elementsize(v, info->refmesh, info->grade, id, nv, vid, &V0)) return false;
     if (!functional_elementsize(v, mesh, info->grade, id, nv, vid, &V)) return false;
 
-    if (V0 < 1e-8) printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
+    if (V0<1e-8) printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
 
     if (fabs(V) < MORPHO_EPS) return false;
 
@@ -1438,7 +1438,7 @@ bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
 
     if (phi>1-MORPHO_EPS) phi = 1-MORPHO_EPS;
     if (phi<MORPHO_EPS) phi = MORPHO_EPS;
-    /* Add other terms from the elasticity */
+
     *out = (info->a * phi*log(phi) +
             info->b * (1-phi)*log(1-phi) +
             info->c * phi*(1-phi))*V +
@@ -1472,7 +1472,7 @@ value Hydrogel_init(vm *v, int nargs, value *args) {
         objectinstance_setproperty(self, hydrogel_phi0property, phi0);
         objectinstance_setproperty(self, functional_gradeproperty, grade);
 
-        if (nfixed == 1 && MORPHO_ISMESH(MORPHO_GETARG(args, 0))) {
+        if (nfixed==1 && MORPHO_ISMESH(MORPHO_GETARG(args, 0))) {
             objectinstance_setproperty(self, linearelasticity_referenceproperty, MORPHO_GETARG(args, 0));
         } else morpho_runtimeerror(v, HYDROGEL_ARGS);
     } else morpho_runtimeerror(v, HYDROGEL_ARGS);

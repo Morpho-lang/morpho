@@ -209,10 +209,10 @@ that you provide on initializing the Functional:
 
     var lfh = Hydrogel(mref)
 
-Here, a, b, c, d and phiref are parameters you can supply, V is the
-current volume and V0 is the reference volume of a given element. You
-also need to supply the initial value of phi, labeled as phi0, which is
-assumed to be the same for all the elements. 
+Here, a, b, c, d and phiref are parameters you can supply (they are `nil`
+by default), V is the current volume and V0 is the reference volume of a
+given element. You also need to supply the initial value of phi, labeled
+as phi0, which is assumed to be the same for all the elements. 
 Manually set the coefficients and grade to operate on:
 
     lfh.a = 1; lfh.b = 1; lfh.c = 1; lfh.d = 1;

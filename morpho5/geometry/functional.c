@@ -1411,7 +1411,7 @@ bool hydrogel_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
 
 /** Calculate the Hydrogel energy */
 bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
-    hydrogelref *info = (hydrogelref *)ref;
+    hydrogelref *info = (hydrogelref *) ref;
     value vphi0 = info->phi0;
     double V=0.0, V0=0.0, phi0=0.0;
 
@@ -1420,7 +1420,7 @@ bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
 
     if (V0<1e-8) printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
 
-    if (fabs(V) < MORPHO_EPS) return false;
+    if (fabs(V)<MORPHO_EPS) return false;
 
     // Determine phi0 either as a number or by looking up something in a field
     if (MORPHO_ISFIELD(info->phi0)) {

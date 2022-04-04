@@ -1391,20 +1391,17 @@ bool hydrogel_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
         objectinstance_getproperty(self, hydrogel_phirefproperty, &phiref) &&
         MORPHO_ISNUMBER(phiref) &&
         objectinstance_getproperty(self, hydrogel_phi0property, &phi0) &&
-        (MORPHO_ISNUMBER(phi0) || MORPHO_ISFIELD(phi0)))
-    {
+        (MORPHO_ISNUMBER(phi0) || MORPHO_ISFIELD(phi0))) {
         ref->refmesh = MORPHO_GETMESH(refmesh);
         ref->grade = MORPHO_GETINTEGERVALUE(grade);
 
-        if (ref->grade < 0)
-            ref->grade = mesh_maxgrade(mesh);
+        if (ref->grade < 0) ref->grade = mesh_maxgrade(mesh);
 
         if (morpho_valuetofloat(a, &ref->a) &&
             morpho_valuetofloat(b, &ref->b) &&
             morpho_valuetofloat(c, &ref->c) &&
             morpho_valuetofloat(d, &ref->d) &&
-            morpho_valuetofloat(phiref, &ref->phiref))
-        {
+            morpho_valuetofloat(phiref, &ref->phiref)) {
             ref->phi0 = phi0;
             success=true;
         }

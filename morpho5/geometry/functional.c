@@ -1364,22 +1364,19 @@ static value hydrogel_dproperty;
 static value hydrogel_phirefproperty;
 static value hydrogel_phi0property;
 
-typedef struct
-{
+typedef struct {
     objectmesh *refmesh;
     grade grade;
     double a, b, c, d, phiref; // Hydrogel coefficients
-    /* Add other parameters relevant to the elasticity term */
     value phi0; // Can be a number or a field
 } hydrogelref;
 
 /** Prepares the reference structure from the object's properties */
-bool hydrogel_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, hydrogelref *ref)
-{
+bool hydrogel_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, hydrogelref *ref) {
     bool success = false;
     value refmesh=MORPHO_NIL, grade=MORPHO_NIL, phi0=MORPHO_NIL;
     value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL, d=MORPHO_NIL, phiref=MORPHO_NIL;
-    /* Add other parameters relevant to the elasticity term */
+    
     if (objectinstance_getproperty(self, linearelasticity_referenceproperty, &refmesh) &&
         objectinstance_getproperty(self, functional_gradeproperty, &grade) &&
         MORPHO_ISINTEGER(grade) &&
@@ -1409,72 +1406,57 @@ bool hydrogel_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
             morpho_valuetofloat(phiref, &ref->phiref))
         {
             ref->phi0 = phi0;
-            success = true;
+            success=true;
         }
     }
     return success;
 }
 
 /** Calculate the Hydrogel energy */
-bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out)
-{
+bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     hydrogelref *info = (hydrogelref *)ref;
     value vphi0 = info->phi0;
     double V=0.0, V0=0.0, phi0=0.0;
 
-    if (!functional_elementsize(v, info->refmesh, info->grade, id, nv, vid, &V0))
-        return false;
-    if (!functional_elementsize(v, mesh, info->grade, id, nv, vid, &V))
-        return false;
+    if (!functional_elementsize(v, info->refmesh, info->grade, id, nv, vid, &V0)) return false;
+    if (!functional_elementsize(v, mesh, info->grade, id, nv, vid, &V)) return false;
 
-    if (V0 < 1e-8)
-        printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
+    if (V0 < 1e-8) printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
 
-    if (fabs(V) < MORPHO_EPS)
-        return false;
+    if (fabs(V) < MORPHO_EPS) return false;
 
     // Determine phi0 either as a number or by looking up something in a field
-    if (MORPHO_ISFIELD(info->phi0))
-    {
+    if (MORPHO_ISFIELD(info->phi0)) {
         objectfield *p = MORPHO_GETFIELD(info->phi0);
         field_getelement(p, info->grade, id, 0, &vphi0);
     }
-    if (MORPHO_ISNUMBER(vphi0))
-    {
-        if (!morpho_valuetofloat(vphi0, &phi0))
-            return false;
+    if (MORPHO_ISNUMBER(vphi0)) {
+        if (!morpho_valuetofloat(vphi0, &phi0)) return false;
     }
 
-    double phi = phi0 / (V / V0);
+    double phi = phi0/(V/V0);
     double pr = info->phiref;
-    if (phi < 0)
-        printf("Warning: phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1 - phi);
-    if (1 - phi < 0)
-        printf("Warning: 1-phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1 - phi);
+    if (phi<0) printf("Warning: phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
+    if (1-phi<0) printf("Warning: 1-phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
 
-    if (phi > 1 - MORPHO_EPS)
-        phi = 1 - MORPHO_EPS;
-    if (phi < MORPHO_EPS)
-        phi = MORPHO_EPS;
+    if (phi>1-MORPHO_EPS) phi = 1-MORPHO_EPS;
+    if (phi<MORPHO_EPS) phi = MORPHO_EPS;
     /* Add other terms from the elasticity */
-    *out = (info->a * phi * log(phi) +
-            info->b * (1 - phi) * log(1 - phi) +
-            info->c * phi * (1 - phi)) *
-               V +
-           info->d * (log(pr / phi) / 3.0 - pow((pr / phi), (2.0 / 3)) + 1.0) * V0;
+    *out = (info->a * phi*log(phi) +
+            info->b * (1-phi)*log(1-phi) +
+            info->c * phi*(1-phi))*V +
+            info->d * (log(pr/phi)/3.0 - pow((pr/phi), (2.0/3)) + 1.0)*V0;
 
-    if (phi < 0 || 1 - phi < 0)
-        return false;
+    if (phi<0 || 1-phi<0) return false;
 
     return true;
 }
 
-value Hydrogel_init(vm *v, int nargs, value *args)
-{
+value Hydrogel_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
     int nfixed;
-    value grade = MORPHO_INTEGER(-1);
-    value a = MORPHO_NIL, b = MORPHO_NIL, c = MORPHO_NIL, d = MORPHO_NIL, phiref = MORPHO_NIL, phi0 = MORPHO_NIL;
+    value grade=MORPHO_INTEGER(-1);
+    value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL, d=MORPHO_NIL, phiref=MORPHO_NIL, phi0=MORPHO_NIL;
 
     if (builtin_options(v, nargs, args, &nfixed, 6,
                         hydrogel_aproperty, &a,
@@ -1483,8 +1465,7 @@ value Hydrogel_init(vm *v, int nargs, value *args)
                         hydrogel_dproperty, &d,
                         hydrogel_phirefproperty, &phiref,
                         hydrogel_phi0property, &phi0,
-                        functional_gradeproperty, &grade))
-    {
+                        functional_gradeproperty, &grade)) {
 
         objectinstance_setproperty(self, hydrogel_aproperty, a);
         objectinstance_setproperty(self, hydrogel_bproperty, b);
@@ -1494,15 +1475,10 @@ value Hydrogel_init(vm *v, int nargs, value *args)
         objectinstance_setproperty(self, hydrogel_phi0property, phi0);
         objectinstance_setproperty(self, functional_gradeproperty, grade);
 
-        if (nfixed == 1 && MORPHO_ISMESH(MORPHO_GETARG(args, 0)))
-        {
+        if (nfixed == 1 && MORPHO_ISMESH(MORPHO_GETARG(args, 0))) {
             objectinstance_setproperty(self, linearelasticity_referenceproperty, MORPHO_GETARG(args, 0));
-        }
-        else
-            morpho_runtimeerror(v, HYDROGEL_ARGS);
-    }
-    else
-        morpho_runtimeerror(v, HYDROGEL_ARGS);
+        } else morpho_runtimeerror(v, HYDROGEL_ARGS);
+    } else morpho_runtimeerror(v, HYDROGEL_ARGS);
 
     return MORPHO_NIL;
 }

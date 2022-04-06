@@ -1354,37 +1354,43 @@ MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LinearElasticity_gradient, BUILTIN_FLA
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
- * Flory-Huggins
- * ---------------------------------------------- */
+* Hydrogel
+* ---------------------------------------------- */
 
-static value floryhuggins_aproperty;
-static value floryhuggins_bproperty;
-static value floryhuggins_cproperty;
-static value floryhuggins_phi0property;
+static value hydrogel_aproperty;
+static value hydrogel_bproperty;
+static value hydrogel_cproperty;
+static value hydrogel_dproperty;
+static value hydrogel_phirefproperty;
+static value hydrogel_phi0property;
 
 typedef struct {
     objectmesh *refmesh;
     grade grade;
-    double a,b,c;   // Flory-Huggins coefficients
-    value phi0; // Can be a number or a field
-} floryhugginsref;
+    double a, b, c, d, phiref; // Hydrogel coefficients
+    value phi0; // Can be a number or a field. (Ensuring flexibility for supplying a phi0 field in the future)
+} hydrogelref;
 
 /** Prepares the reference structure from the object's properties */
-bool floryhuggins_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, floryhugginsref *ref) {
+bool hydrogel_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, hydrogelref *ref) {
     bool success=false;
     value refmesh=MORPHO_NIL, grade=MORPHO_NIL, phi0=MORPHO_NIL;
-    value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL;
-
+    value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL, d=MORPHO_NIL, phiref=MORPHO_NIL;
+    
     if (objectinstance_getproperty(self, linearelasticity_referenceproperty, &refmesh) &&
         objectinstance_getproperty(self, functional_gradeproperty, &grade) &&
         MORPHO_ISINTEGER(grade) &&
-        objectinstance_getproperty(self, floryhuggins_aproperty, &a) &&
+        objectinstance_getproperty(self, hydrogel_aproperty, &a) &&
         MORPHO_ISNUMBER(a) &&
-        objectinstance_getproperty(self, floryhuggins_bproperty, &b) &&
+        objectinstance_getproperty(self, hydrogel_bproperty, &b) &&
         MORPHO_ISNUMBER(b) &&
-        objectinstance_getproperty(self, floryhuggins_cproperty, &c) &&
+        objectinstance_getproperty(self, hydrogel_cproperty, &c) &&
         MORPHO_ISNUMBER(c) &&
-        objectinstance_getproperty(self, floryhuggins_phi0property, &phi0) &&
+        objectinstance_getproperty(self, hydrogel_dproperty, &d) &&
+        MORPHO_ISNUMBER(d) &&
+        objectinstance_getproperty(self, hydrogel_phirefproperty, &phiref) &&
+        MORPHO_ISNUMBER(phiref) &&
+        objectinstance_getproperty(self, hydrogel_phi0property, &phi0) &&
         (MORPHO_ISNUMBER(phi0) || MORPHO_ISFIELD(phi0))) {
         ref->refmesh=MORPHO_GETMESH(refmesh);
         ref->grade=MORPHO_GETINTEGERVALUE(grade);
@@ -1393,7 +1399,9 @@ bool floryhuggins_prepareref(objectinstance *self, objectmesh *mesh, grade g, ob
 
         if (morpho_valuetofloat(a, &ref->a) &&
             morpho_valuetofloat(b, &ref->b) &&
-            morpho_valuetofloat(c, &ref->c)) {
+            morpho_valuetofloat(c, &ref->c) &&
+            morpho_valuetofloat(d, &ref->d) &&
+            morpho_valuetofloat(phiref, &ref->phiref)) {
             ref->phi0 = phi0;
             success=true;
         }
@@ -1401,9 +1409,9 @@ bool floryhuggins_prepareref(objectinstance *self, objectmesh *mesh, grade g, ob
     return success;
 }
 
-/** Calculate the Flory-Huggins energy */
-bool floryhuggins_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
-    floryhugginsref *info = (floryhugginsref *) ref;
+/** Calculate the Hydrogel energy */
+bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    hydrogelref *info = (hydrogelref *) ref;
     value vphi0 = info->phi0;
     double V=0.0, V0=0.0, phi0=0.0;
 
@@ -1424,7 +1432,7 @@ bool floryhuggins_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     }
 
     double phi = phi0/(V/V0);
-
+    double pr = info->phiref;
     if (phi<0) printf("Warning: phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
     if (1-phi<0) printf("Warning: 1-phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
 
@@ -1432,52 +1440,57 @@ bool floryhuggins_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     if (phi<MORPHO_EPS) phi = MORPHO_EPS;
 
     *out = (info->a * phi*log(phi) +
-           info->b * (1-phi)*log(1-phi) +
-           info->c * phi*(1-phi))*V;
+            info->b * (1-phi)*log(1-phi) +
+            info->c * phi*(1-phi))*V +
+            info->d * (log(pr/phi)/3.0 - pow((pr/phi), (2.0/3)) + 1.0)*V0;
 
     if (phi<0 || 1-phi<0) return false;
 
     return true;
 }
 
-value FloryHuggins_init(vm *v, int nargs, value *args) {
+value Hydrogel_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
     int nfixed;
     value grade=MORPHO_INTEGER(-1);
-    value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL, phi0=MORPHO_NIL;
+    value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL, d=MORPHO_NIL, phiref=MORPHO_NIL, phi0=MORPHO_NIL;
 
-    if (builtin_options(v, nargs, args, &nfixed, 5,
-                        floryhuggins_aproperty, &a,
-                        floryhuggins_bproperty, &b,
-                        floryhuggins_cproperty, &c,
-                        floryhuggins_phi0property, &phi0,
+    if (builtin_options(v, nargs, args, &nfixed, 6,
+                        hydrogel_aproperty, &a,
+                        hydrogel_bproperty, &b,
+                        hydrogel_cproperty, &c,
+                        hydrogel_dproperty, &d,
+                        hydrogel_phirefproperty, &phiref,
+                        hydrogel_phi0property, &phi0,
                         functional_gradeproperty, &grade)) {
 
-        objectinstance_setproperty(self, floryhuggins_aproperty, a);
-        objectinstance_setproperty(self, floryhuggins_bproperty, b);
-        objectinstance_setproperty(self, floryhuggins_cproperty, c);
-        objectinstance_setproperty(self, floryhuggins_phi0property, phi0);
+        objectinstance_setproperty(self, hydrogel_aproperty, a);
+        objectinstance_setproperty(self, hydrogel_bproperty, b);
+        objectinstance_setproperty(self, hydrogel_cproperty, c);
+        objectinstance_setproperty(self, hydrogel_dproperty, d);
+        objectinstance_setproperty(self, hydrogel_phirefproperty, phiref);
+        objectinstance_setproperty(self, hydrogel_phi0property, phi0);
         objectinstance_setproperty(self, functional_gradeproperty, grade);
 
         if (nfixed==1 && MORPHO_ISMESH(MORPHO_GETARG(args, 0))) {
             objectinstance_setproperty(self, linearelasticity_referenceproperty, MORPHO_GETARG(args, 0));
-        } else morpho_runtimeerror(v, FLORYHUGGINS_ARGS);
-    } else morpho_runtimeerror(v, FLORYHUGGINS_ARGS);
+        } else morpho_runtimeerror(v, HYDROGEL_ARGS);
+    } else morpho_runtimeerror(v, HYDROGEL_ARGS);
 
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD(FloryHuggins, integrand, (ref.grade), floryhugginsref, floryhuggins_prepareref, functional_mapintegrand, floryhuggins_integrand, NULL, FLORYHUGGINS_PRP, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(Hydrogel, integrand, (ref.grade), hydrogelref, hydrogel_prepareref, functional_mapintegrand, hydrogel_integrand, NULL, HYDROGEL_PRP, SYMMETRY_NONE)
 
-FUNCTIONAL_METHOD(FloryHuggins, total, (ref.grade), floryhugginsref, floryhuggins_prepareref, functional_sumintegrand, floryhuggins_integrand, NULL, FLORYHUGGINS_PRP, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(Hydrogel, total, (ref.grade), hydrogelref, hydrogel_prepareref, functional_sumintegrand, hydrogel_integrand, NULL, HYDROGEL_PRP, SYMMETRY_NONE)
 
-FUNCTIONAL_METHOD(FloryHuggins, gradient, (ref.grade), floryhugginsref, floryhuggins_prepareref, functional_mapnumericalgradient, floryhuggins_integrand, NULL, FLORYHUGGINS_PRP, SYMMETRY_ADD)
+FUNCTIONAL_METHOD(Hydrogel, gradient, (ref.grade), hydrogelref, hydrogel_prepareref, functional_mapnumericalgradient, hydrogel_integrand, NULL, HYDROGEL_PRP, SYMMETRY_ADD)
 
-MORPHO_BEGINCLASS(FloryHuggins)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, FloryHuggins_init, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, FloryHuggins_integrand, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, FloryHuggins_total, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, FloryHuggins_gradient, BUILTIN_FLAGSEMPTY)
+MORPHO_BEGINCLASS(Hydrogel)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Hydrogel_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Hydrogel_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Hydrogel_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Hydrogel_gradient, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -2972,10 +2985,12 @@ void functional_initialize(void) {
     scalarpotential_gradfunctionproperty=builtin_internsymbolascstring(SCALARPOTENTIAL_GRADFUNCTION_PROPERTY);
     linearelasticity_referenceproperty=builtin_internsymbolascstring(LINEARELASTICITY_REFERENCE_PROPERTY);
     linearelasticity_poissonproperty=builtin_internsymbolascstring(LINEARELASTICITY_POISSON_PROPERTY);
-    floryhuggins_aproperty=builtin_internsymbolascstring(FLORYHUGGINS_A_PROPERTY);
-    floryhuggins_bproperty=builtin_internsymbolascstring(FLORYHUGGINS_B_PROPERTY);
-    floryhuggins_cproperty=builtin_internsymbolascstring(FLORYHUGGINS_C_PROPERTY);
-    floryhuggins_phi0property=builtin_internsymbolascstring(FLORYHUGGINS_PHI0_PROPERTY);
+    hydrogel_aproperty=builtin_internsymbolascstring(HYDROGEL_A_PROPERTY);
+    hydrogel_bproperty=builtin_internsymbolascstring(HYDROGEL_B_PROPERTY);
+    hydrogel_cproperty=builtin_internsymbolascstring(HYDROGEL_C_PROPERTY);
+    hydrogel_dproperty=builtin_internsymbolascstring(HYDROGEL_D_PROPERTY);
+    hydrogel_phirefproperty=builtin_internsymbolascstring(HYDROGEL_PHIREF_PROPERTY);
+    hydrogel_phi0property=builtin_internsymbolascstring(HYDROGEL_PHI0_PROPERTY);
     equielement_weightproperty=builtin_internsymbolascstring(EQUIELEMENT_WEIGHT_PROPERTY);
     nematic_ksplayproperty=builtin_internsymbolascstring(NEMATIC_KSPLAY_PROPERTY);
     nematic_ktwistproperty=builtin_internsymbolascstring(NEMATIC_KTWIST_PROPERTY);
@@ -2994,7 +3009,7 @@ void functional_initialize(void) {
     builtin_addclass(VOLUME_CLASSNAME, MORPHO_GETCLASSDEFINITION(Volume), objclass);
     builtin_addclass(SCALARPOTENTIAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(ScalarPotential), objclass);
     builtin_addclass(LINEARELASTICITY_CLASSNAME, MORPHO_GETCLASSDEFINITION(LinearElasticity), objclass);
-    builtin_addclass(FLORYHUGGINS_CLASSNAME, MORPHO_GETCLASSDEFINITION(FloryHuggins), objclass);
+    builtin_addclass(HYDROGEL_CLASSNAME, MORPHO_GETCLASSDEFINITION(Hydrogel), objclass);
     builtin_addclass(EQUIELEMENT_CLASSNAME, MORPHO_GETCLASSDEFINITION(EquiElement), objclass);
     builtin_addclass(LINECURVATURESQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineCurvatureSq), objclass);
     builtin_addclass(LINETORSIONSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineTorsionSq), objclass);
@@ -3015,8 +3030,8 @@ void functional_initialize(void) {
     morpho_defineerror(SCALARPOTENTIAL_FNCLLBL, ERROR_HALT, SCALARPOTENTIAL_FNCLLBL_MSG);
     morpho_defineerror(LINEARELASTICITY_REF, ERROR_HALT, LINEARELASTICITY_REF_MSG);
     morpho_defineerror(LINEARELASTICITY_PRP, ERROR_HALT, LINEARELASTICITY_PRP_MSG);
-    morpho_defineerror(FLORYHUGGINS_ARGS, ERROR_HALT, FLORYHUGGINS_ARGS_MSG);
-    morpho_defineerror(FLORYHUGGINS_PRP, ERROR_HALT, FLORYHUGGINS_PRP_MSG);
+    morpho_defineerror(HYDROGEL_ARGS, ERROR_HALT, HYDROGEL_ARGS_MSG);
+    morpho_defineerror(HYDROGEL_PRP, ERROR_HALT, HYDROGEL_PRP_MSG);
     morpho_defineerror(EQUIELEMENT_ARGS, ERROR_HALT, EQUIELEMENT_ARGS_MSG);
     morpho_defineerror(GRADSQ_ARGS, ERROR_HALT, GRADSQ_ARGS_MSG);
     morpho_defineerror(NEMATIC_ARGS, ERROR_HALT, NEMATIC_ARGS_MSG);

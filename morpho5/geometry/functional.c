@@ -1368,7 +1368,7 @@ typedef struct {
     objectmesh *refmesh;
     grade grade;
     double a, b, c, d, phiref; // Hydrogel coefficients
-    value phi0; // Can be a number or a field
+    value phi0; // Can be a number or a field. (Ensuring flexibility for supplying a phi0 field in the future)
 } hydrogelref;
 
 /** Prepares the reference structure from the object's properties */

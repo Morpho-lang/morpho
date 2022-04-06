@@ -93,7 +93,7 @@
 #define HYDROGEL_ARGS_MSG              "Hydrogel requires a reference mesh and allows 'grade', 'a', 'b', 'c', 'd', 'phi0' and 'phiref' as optional arguments."
 
 #define HYDROGEL_PRP                   "HydrglPrp"
-#define HYDROGEL_PRP_MSG               "Hydrogel requires properties 'reference' to be a mesh, 'grade' to be an integer grade, 'a', 'b', 'c' 'd' and 'phiref' to be numbers and 'phi0' as either a number or a field."
+#define HYDROGEL_PRP_MSG               "Hydrogel requires the first argument to be a mesh, 'grade' to be an integer grade, 'a', 'b', 'c' 'd', 'phi0' and 'phiref' to be numbers."
 
 #define GRADSQ_ARGS                    "GradSqArgs"
 #define GRADSQ_ARGS_MSG                "GradSq requires a field as the argument."

@@ -177,9 +177,7 @@ static inline bool morpho_isnumber(value a) {
 #define MORPHO_FLOATTOINTEGER(x) (MORPHO_INTEGER((int) round(MORPHO_GETFLOATVALUE((x)))))
 
 /** Define notion of falsity/truthyness */
-static inline bool morpho_isfalse(value a) {
-    return (MORPHO_ISNIL(a) || (MORPHO_ISBOOL(a) && (MORPHO_GETBOOLVALUE(a)==false)));
-}
+bool morpho_isfalse(value a);
 
 #define MORPHO_ISFALSE(x) (morpho_isfalse(x))
 #define MORPHO_ISTRUE(x) (!morpho_isfalse(x))

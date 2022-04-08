@@ -3,7 +3,7 @@
 ![Build and Test Status](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg)
 ![Example Status](https://github.com/Morpho-lang/morpho/actions/workflows/Examples.yml/badge.svg)
 ![No NaN Boxing Test](https://github.com/Morpho-lang/morpho/actions/workflows/NoNanBoxing.yml/badge.svg)
-![Garbage Collector Test](https://github.com/Morpho-lang/morpho/actions/workflows/GarbageCollectorStressTest.yml/badge.svg)
+![Garbage Collector Test](https://github.com/Morpho-lang/morpho/actions/workflows/GarbageCollectorTest.yml/badge.svg)
 
 The Morpho language. Morpho is a programmable environment for shape optimization. Morpho aims to be:
 

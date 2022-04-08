@@ -1,4 +1,4 @@
-name: Garbage Colletor Stress Test
+name: Garbage Colletor Test
 
 on:
   push:

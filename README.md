@@ -2,8 +2,6 @@
 
 ![Build and Test Status](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?branch=main)
 ![Example Status](https://github.com/Morpho-lang/morpho/actions/workflows/Examples.yml/badge.svg?branch=main)
-![No NaN Boxing Test](https://github.com/Morpho-lang/morpho/actions/workflows/NoNanBoxing.yml/badge.svg?branch=main)
-![Garbage Collector Test](https://github.com/Morpho-lang/morpho/actions/workflows/GarbageCollectorTest.yml/badge.svg?branch=main)
 
 The Morpho language. Morpho is a programmable environment for shape optimization. Morpho aims to be:
 
@@ -230,3 +228,6 @@ morpho5 thomson.morpho
 This example starts with randomly distributed charges on a sphere and minimizing electric potential.
 
 It should generate an interactive figure of points on a sphere.
+
+![No NaN Boxing Test](https://github.com/Morpho-lang/morpho/actions/workflows/NoNanBoxing.yml/badge.svg?branch=main)
+![Garbage Collector Test](https://github.com/Morpho-lang/morpho/actions/workflows/GarbageCollectorTest.yml/badge.svg?branch=main)

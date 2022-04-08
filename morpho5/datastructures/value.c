@@ -7,6 +7,11 @@
 #include "value.h"
 #include "common.h"
 
+/** Define notion of falsity/truthyness */
+bool morpho_isfalse(value a) {
+    return (MORPHO_ISNIL(a) || (MORPHO_ISBOOL(a) && (MORPHO_GETBOOLVALUE(a)==false)));
+}
+
 DEFINE_VARRAY(value, value);
 
 /** @brief Finds a value in an varray using a loose equality test (MORPHO_ISEQUAL)

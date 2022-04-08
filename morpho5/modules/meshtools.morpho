@@ -41,6 +41,8 @@ class MeshBuilder {
   addedge(el) { return self.addelement(1, el) }
 
   addface(el) { return self.addelement(2, el) }
+  
+  addvolume(el) { return self.addelement(3, el) }
 
   addvolume(el) { return self.addelement(3, el) }
 

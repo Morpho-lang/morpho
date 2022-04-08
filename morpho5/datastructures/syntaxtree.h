@@ -25,6 +25,7 @@ typedef enum {
     NODE_SYMBOL,
     NODE_SELF,
     NODE_SUPER, 
+    NODE_IMAG,
     
     NODE_LEAF, /* ^ All leafs should be above this enum value */
     

@@ -47,4 +47,3 @@ for (x,k in grd) print (x-Matrix(expected[k])).norm()<tol
 // expect: true
 // expect: true
 // expect: true
-

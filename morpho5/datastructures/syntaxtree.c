@@ -47,6 +47,7 @@ static char * nodedisplay[] = {
     "",        // NODE_SYMBOL,
     "self",    // NODE_SELF,
     "super",   // NODE_SUPER,
+    "im",      // NODE_IMAG,
     
     "",        // NODE_LEAF, /* ^ All leafs should be above this enum value */
     

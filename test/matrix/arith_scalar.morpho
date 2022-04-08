@@ -6,6 +6,7 @@ print a-1
 // expect: [ 0 1 ]
 // expect: [ 2 3 ]
 
+
 print 1-a
 // expect: [ 0 -1 ]
 // expect: [ -2 -3 ]
@@ -14,6 +15,7 @@ print 1-a
 print a+1
 // expect: [ 2 3 ]
 // expect: [ 4 5 ]
+
 
 print 1+a
 // expect: [ 2 3 ]

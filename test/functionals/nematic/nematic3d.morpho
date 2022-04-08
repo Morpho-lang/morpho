@@ -21,7 +21,6 @@ var tol = 1e-5
 print abs(lnn.integrand(m)[0]-expected)<tol
 // expect: true
 
-
 print abs(lnn.total(m)-expected)<tol
 // expect: true
 

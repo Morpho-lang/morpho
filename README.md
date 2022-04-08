@@ -1,6 +1,6 @@
 ![Morpho](manual/src/Figures/morphologosmall.png#gh-light-mode-only)![Morpho](manual/src/Figures/morphologosmall-white.png#gh-dark-mode-only)
 
-[![Build Status](https://github.com/Morpho-lang/morpho/workflows/CI/badge.svg)](https://github.com/Morpho-lang/morpho/actions?query=workflow%3ACI)
+![Build Status](https://github.com/Morpho-lang/morpho/actions/workflows/CI/badge.svg?branch=main)
 The Morpho language. Morpho is a programmable environment for shape optimization. Morpho aims to be:
 
 * **Familiar**. Morpho uses syntax similar to other C-family languages. The syntax fits on a postcard, so it's easy to learn.

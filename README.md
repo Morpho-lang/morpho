@@ -1,6 +1,12 @@
 ![Morpho](manual/src/Figures/morphologosmall.png#gh-light-mode-only)![Morpho](manual/src/Figures/morphologosmall-white.png#gh-dark-mode-only)
 
-![Build Status](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?branch=main)
+![Build Status](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?step=make)
+![Test Status](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?step=test)
+![Morphoview Build Status](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?=makeMorphoview)
+![Example Status](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?step=testExamples)
+![No NaN Boxing Test](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?step=testNoNanBoxing)
+![Garbage Collector Test](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?step=testGarbageCollectorTest)
+
 The Morpho language. Morpho is a programmable environment for shape optimization. Morpho aims to be:
 
 * **Familiar**. Morpho uses syntax similar to other C-family languages. The syntax fits on a postcard, so it's easy to learn.

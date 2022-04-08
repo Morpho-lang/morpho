@@ -1,11 +1,9 @@
 ![Morpho](manual/src/Figures/morphologosmall.png#gh-light-mode-only)![Morpho](manual/src/Figures/morphologosmall-white.png#gh-dark-mode-only)
 
-![Build Status](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?step=make)
-![Test Status](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?step=test)
-![Morphoview Build Status](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?=makeMorphoview)
-![Example Status](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?step=testExamples)
-![No NaN Boxing Test](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?step=testNoNanBoxing)
-![Garbage Collector Test](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?step=testGarbageCollectorTest)
+![Build and Test Status](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg)
+![Example Status](https://github.com/Morpho-lang/morpho/actions/workflows/Examples.yml/badge.svg)
+![No NaN Boxing Test](https://github.com/Morpho-lang/morpho/actions/workflows/NoNanBoxing.yml/badge.svg)
+![Garbage Collector Test](https://github.com/Morpho-lang/morpho/actions/workflows/GarbageCollectorStressTest.yml/badge.svg)
 
 The Morpho language. Morpho is a programmable environment for shape optimization. Morpho aims to be:
 

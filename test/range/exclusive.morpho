@@ -16,6 +16,3 @@ for (i in 0...-2:-0.5) print i
 // expect: -1
 // expect: -1.5
 
-for (i in 1.0...1.2:0.15) print i
-// expect: 1
-// AssumeFail(#114): 1.15

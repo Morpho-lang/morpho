@@ -1,0 +1,75 @@
+// Geodesic curvature 
+import constants
+import meshtools 
+import meshgen 
+import implicitmesh
+import plot
+
+// Computes the euler characteristic of a mesh
+fn euler(mesh) {
+    return mesh.count(0) - mesh.count(1) + mesh.count(2)
+}
+
+// For surfaces with zero Gaussian curvature, the geodesic curvature integral will be equal to 2Pi * Euler characteristic of the surface.
+fn testzerogaussmesh(mesh, lgc) {
+    mesh.addgrade(1)
+    var bnd = Selection(mesh, boundary=true)
+
+    print abs(lgc.total(mesh, selection=bnd)-2*Pi*euler(mesh))<1e-6
+}
+
+var lgc = GaussCurvature()
+lgc.geodesic = true
+
+// Disk mesh (Euler characteristic = 1)
+var mesh = Mesh("disk.mesh")
+testzerogaussmesh(mesh, lgc)
+// expect: true
+
+// Tube mesh (Euler characteristic = 0)
+
+var mesh = AreaMesh(fn (u, v) [v, cos(u), sin(u)], -Pi...Pi:Pi/4,-1..1:0.1, closed=[true, false])
+testzerogaussmesh(mesh, lgc)
+// expect: true
+
+// Half-slice of a sphere
+
+fn disktohemisphere(mesh) {
+
+    var vert = mesh.vertexmatrix()
+    var hemisphere = mesh.clone()
+
+    for (i in 0...mesh.count()) {
+        var pos = vert.column(i)
+        var x = pos[0]
+        var y = pos[1]
+        var z2 = 1 - x^2 - y^2
+        var z 
+        if (z2<0) z = 0
+        else z = sqrt(z2)
+        var posnew = Matrix([x, y, z])
+        
+        hemisphere.setvertexposition(i, posnew)
+    }
+
+    return hemisphere
+}
+
+// Create an approximate hemisphere
+var mesh = Mesh("disk.mesh")
+mesh = refinemesh(mesh)
+mesh.addgrade(1)
+var hemisphere = disktohemisphere(mesh)
+hemisphere.addgrade(1)
+var bnd = Selection(hemisphere, boundary=true)
+
+var whole = Selection(hemisphere, fn(x,y,z) true)
+var interior = whole.difference(bnd)
+
+// The hemisphere is an approximate one, so the value is off, but the gauss integral and the geodesic integral add up to 2Pi.
+var g1 = GaussCurvature().total(hemisphere, selection=interior)
+
+var g2 = lgc.total(hemisphere, selection=bnd)
+var lhs = g1+g2
+print abs(lhs-2*Pi*euler(hemisphere))<1e-6 
+// expect: true

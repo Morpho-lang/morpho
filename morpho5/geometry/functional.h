@@ -32,6 +32,7 @@
 #define NEMATIC_DIRECTOR_PROPERTY             "director"
 
 #define CURVATURE_INTEGRANDONLY_PROPERTY      "integrandonly"
+#define CURVATURE_GEODESIC_PROPERTY           "geodesic"
 
 /* Functional methods */
 #define FUNCTIONAL_INTEGRAND_METHOD    "integrand"

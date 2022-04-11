@@ -1619,15 +1619,14 @@ int range_count(objectrange *range) {
     if (MORPHO_ISFLOAT(range->start)) {
         double diff=MORPHO_GETFLOATVALUE(range->end)-MORPHO_GETFLOATVALUE(range->start);
         double stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETFLOATVALUE(range->step));
-        out=diff/stp;
+        double cnt = ceil(diff / stp);
+        if (isfinite(cnt)) out = cnt + (fabs(cnt * stp - diff) <= DBL_EPSILON);
     } else {
         int diff=MORPHO_GETINTEGERVALUE(range->end)-MORPHO_GETINTEGERVALUE(range->start);
         int stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETINTEGERVALUE(range->step));
-        out=diff/stp;
+        if (stp != 0) out = diff / stp + 1;
     }
-    if (out>=0) out+=1;
-    else out=0;
-    
+    if (out < 0) out=0;
     return out;
 }
 

@@ -18,12 +18,10 @@
  * ********************************************************************** */
 
 objecttype objectgpumatrixtype;
-
+GPUStatus myGPUstatus = {.cudaStatus = cudaSuccess, .cublasStatus = CUBLAS_STATUS_NOT_INITIALIZED, .cublasHandle = NULL, .init = NULL};
 /** Function object definitions */
 size_t objectgpumatrix_sizefn(object *obj) {
-    return sizeof(objectgpumatrix)+sizeof(double) *
-            ((objectgpumatrix *) obj)->ncols *
-            ((objectgpumatrix *) obj)->nrows;
+    return sizeof(objectgpumatrix);
 }
 
 void objectgpumatrix_printfn(object *obj) {
@@ -33,21 +31,22 @@ void objectgpumatrix_printfn(object *obj) {
 objecttypedefn objectgpumatrixdefn = {
     .printfn=objectgpumatrix_printfn,
     .markfn=NULL,
-    .freefn=NULL,
+    .freefn=objectgpufree,
     .sizefn=objectgpumatrix_sizefn
 };
 
 /** Creates a gpumatrix object */
 objectgpumatrix *object_newgpumatrix(unsigned int nrows, unsigned int ncols, bool zero) {
     unsigned int nel = nrows*ncols;
-    objectgpumatrix *new = (objectgpumatrix *) object_new(sizeof(objectgpumatrix)+nel*sizeof(double), OBJECT_GPUMATRIX);
+    objectgpumatrix *new = (objectgpumatrix *) object_new(sizeof(objectgpumatrix), OBJECT_GPUMATRIX);
     
     if (new) {
+        new->status=&myGPUstatus;
         new->ncols=ncols;
         new->nrows=nrows;
-        new->elements=new->gpumatrixdata;
+        GPUallocate(new->status,&new->elements,nel*sizeof(double));
         if (zero) {
-            memset(new->elements, 0, sizeof(double)*nel);
+            GPUmemset(new->status,new->elements, 0, sizeof(double)*nel);
         }
     }
     
@@ -106,7 +105,7 @@ objectgpumatrix *object_gpumatrixfromarray(objectarray *array) {
     unsigned int dim[2]={0,1}; // The 1 is to allow for vector arrays.
     unsigned int ndim=0;
     objectgpumatrix *ret=NULL;
-    
+    bool success;
     if (gpumatrix_getarraydimensions(array, dim, 2, &ndim)) {
         ret=object_newgpumatrix(dim[0], dim[1], true);
     }
@@ -116,9 +115,8 @@ objectgpumatrix *object_gpumatrixfromarray(objectarray *array) {
         for (unsigned int j=0; j<dim[1]; j++) {
             indx[0]=i; indx[1]=j;
             value f = gpumatrix_getarrayelement(array, ndim, indx);
-            if (morpho_isnumber(f)) {
-                morpho_valuetofloat(f, &ret->elements[j*dim[0]+i]);
-            } else if (!MORPHO_ISNIL(f)) {
+            success = gpumatrix_setelementfromval(ret,j*dim[0]+i,f);
+            if (!success) {
                 object_free((object *) ret); return NULL;
             }
         }
@@ -126,7 +124,17 @@ objectgpumatrix *object_gpumatrixfromarray(objectarray *array) {
     
     return ret;
 }
+bool gpumatrix_setelementfromval(objectgpumatrix *a, int ind, value val) {
+    if (morpho_isnumber(val)) {
+        double v;
+        morpho_valuetofloat(val, &v);
+        GPUcopy_to_device(a->status,&a->elements[ind],&v,sizeof(double));
+    } else if (!MORPHO_ISNIL(val)) {
+        return false;
+    }
+    return true;
 
+}
 /*
  * Create matrices from lists
  */
@@ -182,7 +190,7 @@ objectgpumatrix *object_gpumatrixfromlist(objectlist *list) {
             value f;
             if (gpumatrix_getlistelement(list, ndim, indx, &f) &&
                 morpho_isnumber(f)) {
-                morpho_valuetofloat(f, &ret->elements[j*dim[0]+i]);
+                gpumatrix_setelementfromval(ret,j*dim[0]+i,f);
             } else {
                 object_free((object *) ret);
                 return NULL;
@@ -198,7 +206,7 @@ objectgpumatrix *object_gpumatrixfromfloats(unsigned int nrows, unsigned int nco
     objectgpumatrix *ret=NULL;
     
     ret=object_newgpumatrix(nrows, ncols, true);
-    if (ret) cblas_dcopy(ncols*nrows, list, 1, ret->elements, 1);
+    if (ret) GPUcopy_to_device(ret->status,ret->elements,list,nrows*ncols*sizeof(double));
     
     return ret;
 }
@@ -212,10 +220,14 @@ objectgpumatrix *object_clonegpumatrix(objectgpumatrix *in) {
     objectgpumatrix *new = object_newgpumatrix(in->nrows, in->ncols, false);
     
     if (new) {
-        cblas_dcopy(in->ncols * in->nrows, in->elements, 1, new->elements, 1);
+        GPUcopy(in->status,in->ncols*in->nrows,in->elements,1,new->elements,1);
     }
     
     return new;
+}
+
+void objectgpufree(objectgpumatrix *gpumat) {
+    GPUdeallocate(gpumat->status,gpumat->elements);
 }
 
 /* **********************************************************************
@@ -226,7 +238,8 @@ objectgpumatrix *object_clonegpumatrix(objectgpumatrix *in) {
     @returns true if the element is in the range of the gpumatrix, false otherwise */
 bool gpumatrix_setelement(objectgpumatrix *gpumatrix, unsigned int row, unsigned int col, double value) {
     if (col<gpumatrix->ncols && row<gpumatrix->nrows) {
-        gpumatrix->elements[col*gpumatrix->nrows+row]=value;
+        
+        GPUcopy_to_device(gpumatrix->status,&gpumatrix->elements[col*gpumatrix->nrows+row],&value,sizeof(double));
         return true;
     }
     return false;
@@ -236,37 +249,37 @@ bool gpumatrix_setelement(objectgpumatrix *gpumatrix, unsigned int row, unsigned
  *  @returns true if the element is in the range of the gpumatrix, false otherwise */
 bool gpumatrix_getelement(objectgpumatrix *gpumatrix, unsigned int row, unsigned int col, double *value) {
     if (col<gpumatrix->ncols && row<gpumatrix->nrows) {
-        if (value) *value=gpumatrix->elements[col*gpumatrix->nrows+row];
+        if (value) GPUcopy_to_host(gpumatrix->status,value,&gpumatrix->elements[col*gpumatrix->nrows+row],sizeof(double));
         return true;
     }
     return false;
 }
 
 /** @brief Gets a column's entries
- *  @param[in] gpumatrix - the gpumatrix
- *  @param[in] col - column number
- *  @param[out] v - column entries (gpumatrix->nrows in number)
- *  @returns true if the element is in the range of the gpumatrix, false otherwise */
-bool gpumatrix_getcolumn(objectgpumatrix *gpumatrix, unsigned int col, double **v) {
-    if (col<gpumatrix->ncols) {
-        *v=&gpumatrix->elements[col*gpumatrix->nrows];
-        return true;
-    }
-    return false;
-}
+//  *  @param[in] gpumatrix - the gpumatrix
+//  *  @param[in] col - column number
+//  *  @param[out] v - column entries (gpumatrix->nrows in number)
+//  *  @returns true if the element is in the range of the gpumatrix, false otherwise */
+// bool gpumatrix_getcolumn(objectgpumatrix *gpumatrix, unsigned int col, double **v) {
+//     if (col<gpumatrix->ncols) {
+//         *v=&gpumatrix->elements[col*gpumatrix->nrows];
+//         return true;
+//     }
+//     return false;
+// }
 
-/** @brief Sets a column's entries
- *  @param[in] gpumatrix - the gpumatrix
- *  @param[in] col - column number
- *  @param[in] v - column entries (gpumatrix->nrows in number)
- *  @returns true if the element is in the range of the gpumatrix, false otherwise */
-bool gpumatrix_setcolumn(objectgpumatrix *gpumatrix, unsigned int col, double *v) {
-    if (col<gpumatrix->ncols) {
-        cblas_dcopy(gpumatrix->nrows, v, 1, &gpumatrix->elements[col*gpumatrix->nrows], 1);
-        return true;
-    }
-    return false;
-}
+// /** @brief Sets a column's entries
+//  *  @param[in] gpumatrix - the gpumatrix
+//  *  @param[in] col - column number
+//  *  @param[in] v - column entries (gpumatrix->nrows in number)
+//  *  @returns true if the element is in the range of the gpumatrix, false otherwise */
+// bool gpumatrix_setcolumn(objectgpumatrix *gpumatrix, unsigned int col, double *v) {
+//     if (col<gpumatrix->ncols) {
+//         cblas_dcopy(gpumatrix->nrows, v, 1, &gpumatrix->elements[col*gpumatrix->nrows], 1);
+//         return true;
+//     }
+//     return false;
+// }
 
 /** @brief Add a vector to a column in a gpumatrix
  *  @param[in] m - the gpumatrix
@@ -274,13 +287,13 @@ bool gpumatrix_setcolumn(objectgpumatrix *gpumatrix, unsigned int col, double *v
  *  @param[in] alpha - scale
  *  @param[out] v - column entries (gpumatrix->nrows in number) [should have m->nrows entries]
  *  @returns true on success */
-bool gpumatrix_addtocolumn(objectgpumatrix *m, unsigned int col, double alpha, double *v) {
-    if (col<m->ncols) {
-        cblas_daxpy(m->nrows, alpha, v, 1, &m->elements[col*m->nrows], 1);
-        return true;
-    }
-    return false;
-}
+// bool gpumatrix_addtocolumn(objectgpumatrix *m, unsigned int col, double alpha, double *v) {
+//     if (col<m->ncols) {
+//         cblas_daxpy(m->nrows, alpha, v, 1, &m->elements[col*m->nrows], 1);
+//         return true;
+//     }
+//     return false;
+// }
 
 /* **********************************************************************
  * gpuMatrix arithmetic
@@ -288,7 +301,7 @@ bool gpumatrix_addtocolumn(objectgpumatrix *m, unsigned int col, double alpha, d
 
 objectgpumatrixerror gpumatrix_copy(objectgpumatrix *a, objectgpumatrix *out) {
     if (a->ncols==out->ncols && a->nrows==out->nrows) {
-        cblas_dcopy(a->ncols * a->nrows, a->elements, 1, out->elements, 1);
+        GPUcopy(a->status, a->ncols*a->nrows, a->elements,1, out->elements, 1);
         return GPUMATRIX_OK;
     }
     return GPUMATRIX_INCMPTBLDIM;
@@ -298,8 +311,9 @@ objectgpumatrixerror gpumatrix_copy(objectgpumatrix *a, objectgpumatrix *out) {
 objectgpumatrixerror gpumatrix_add(objectgpumatrix *a, objectgpumatrix *b, objectgpumatrix *out) {
     if (a->ncols==b->ncols && a->ncols==out->ncols &&
         a->nrows==b->nrows && a->nrows==out->nrows) {
-        if (a!=out) cblas_dcopy(a->ncols * a->nrows, a->elements, 1, out->elements, 1);
-        cblas_daxpy(a->ncols * a->nrows, 1.0, b->elements, 1, out->elements, 1);
+        double scale = 1;
+        if (a!=out) GPUcopy(a->status, a->ncols * a->nrows, a->elements, 1, out->elements, 1);
+        GPUaxpy(a->status, a->ncols * a->nrows, &scale, b->elements, 1, out->elements, 1);
         return GPUMATRIX_OK;
     }
     return GPUMATRIX_INCMPTBLDIM;
@@ -308,9 +322,8 @@ objectgpumatrixerror gpumatrix_add(objectgpumatrix *a, objectgpumatrix *b, objec
 /** Performs lambda*a + beta -> out. */
 objectgpumatrixerror gpumatrix_addscalar(objectgpumatrix *a, double lambda, double beta, objectgpumatrix *out) {
     if (a->ncols==out->ncols && a->nrows==out->nrows) {
-        for (unsigned int i=0; i<out->nrows*out->ncols; i++) {
-            out->elements[i]=lambda*a->elements[i]+beta;
-        }
+        GPUScalarAddition(a->status,a->elements,beta,out->elements,a->ncols*a->nrows);
+
         return GPUMATRIX_OK;
     }
 
@@ -320,7 +333,7 @@ objectgpumatrixerror gpumatrix_addscalar(objectgpumatrix *a, double lambda, doub
 /** Performs a + lambda*b -> a. */
 objectgpumatrixerror gpumatrix_accumulate(objectgpumatrix *a, double lambda, objectgpumatrix *b) {
     if (a->ncols==b->ncols && a->nrows==b->nrows ) {
-        cblas_daxpy(a->ncols * a->nrows, lambda, b->elements, 1, a->elements, 1);
+        GPUaxpy(a->status,a->ncols * a->nrows, &lambda, b->elements, 1, a->elements, 1);
         return GPUMATRIX_OK;
     }
     return GPUMATRIX_INCMPTBLDIM;
@@ -330,8 +343,9 @@ objectgpumatrixerror gpumatrix_accumulate(objectgpumatrix *a, double lambda, obj
 objectgpumatrixerror gpumatrix_sub(objectgpumatrix *a, objectgpumatrix *b, objectgpumatrix *out) {
     if (a->ncols==b->ncols && a->ncols==out->ncols &&
         a->nrows==b->nrows && a->nrows==out->nrows) {
-        if (a!=out) cblas_dcopy(a->ncols * a->nrows, a->elements, 1, out->elements, 1);
-        cblas_daxpy(a->ncols * a->nrows, -1.0, b->elements, 1, out->elements, 1);
+        double scale = -1;
+        if (a!=out) GPUcopy(a->status, a->ncols * a->nrows, a->elements, 1, out->elements, 1);
+        GPUaxpy(a->status,a->ncols * a->nrows, &scale, b->elements, 1, out->elements, 1);
         return GPUMATRIX_OK;
     }
     return GPUMATRIX_INCMPTBLDIM;
@@ -340,7 +354,9 @@ objectgpumatrixerror gpumatrix_sub(objectgpumatrix *a, objectgpumatrix *b, objec
 /** Performs a * b -> out */
 objectgpumatrixerror gpumatrix_mul(objectgpumatrix *a, objectgpumatrix *b, objectgpumatrix *out) {
     if (a->ncols==b->nrows && a->nrows==out->nrows && b->ncols==out->ncols) {
-        cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, a->nrows, b->ncols, a->ncols, 1.0, a->elements, a->nrows, b->elements, b->nrows, 0.0, out->elements, out->nrows);
+        double alpha = 1;
+        double beta = 0;
+        GPUgemm(a->status,a->nrows,b->ncols,a->ncols,&alpha,a->elements,a->nrows, b->elements, b->nrows, &beta, out->elements, out->nrows);
         return GPUMATRIX_OK;
     }
     return GPUMATRIX_INCMPTBLDIM;
@@ -493,12 +509,12 @@ objectgpumatrixerror gpumatrix_identity(objectgpumatrix *a) {
 
 /** Prints a gpumatrix */
 void gpumatrix_print(objectgpumatrix *m) {
+    double elements[m->nrows*m->ncols];
+    GPUcopy_to_host(m->status,elements,m->elements,sizeof(double)*m->nrows*m->ncols);
     for (int i=0; i<m->nrows; i++) { // Rows run from 0...m
         printf("[ ");
         for (int j=0; j<m->ncols; j++) { // Columns run from 0...k
-            double v;
-            gpumatrix_getelement(m, i, j, &v);
-            printf("%g ", (fabs(v)<MORPHO_EPS ? 0 : v));
+            printf("%g ", (fabs(elements[j+i*m->ncols])<MORPHO_EPS ? 0 : elements[i+j*m->nrows]));
         }
         printf("]%s", (i<m->nrows-1 ? "\n" : ""));
     }
@@ -507,50 +523,172 @@ void gpumatrix_print(objectgpumatrix *m) {
 /* **********************************************************************
  * gpuMatrix veneer class
  * ********************************************************************* */
-#define MORPHO_GPUMATRIX_TYPE gpu
-#define MORPHO_GPUMATRIX_TYPE_CAP GPU
-
-#include "matrixveneer.h"
-
-#undef MORPHO_GPUMATRIX_TYPE
-#undef MORPHO_GPUMATRIX_TYPE_CAP
 
 
-MORPHO_BEGINCLASS(gpuMatrix)
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, gpuMatrix_getindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SETINDEX_METHOD, gpuMatrix_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(GPUMATRIX_GETCOLUMN_METHOD, gpuMatrix_getcolumn, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(GPUMATRIX_SETCOLUMN_METHOD, gpuMatrix_setcolumn, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, gpuMatrix_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ADD_METHOD, gpuMatrix_add, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ADDR_METHOD, gpuMatrix_addr, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SUB_METHOD, gpuMatrix_sub, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SUBR_METHOD, gpuMatrix_subr, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_MUL_METHOD, gpuMatrix_mul, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_MULR_METHOD, gpuMatrix_mulr, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_DIV_METHOD, gpuMatrix_div, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ACC_METHOD, gpuMatrix_acc, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(GPUMATRIX_INNER_METHOD, gpuMatrix_inner, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SUM_METHOD, gpuMatrix_sum, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(GPUMATRIX_NORM_METHOD, gpuMatrix_norm, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(GPUMATRIX_TRANSPOSE_METHOD, gpuMatrix_transpose, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(GPUMATRIX_TRACE_METHOD, gpuMatrix_trace, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, gpuMatrix_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_COUNT_METHOD, gpuMatrix_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(GPUMATRIX_DIMENSIONS_METHOD, gpuMatrix_dimensions, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, gpuMatrix_clone, BUILTIN_FLAGSEMPTY)
+#undef MORPHO_GETMATRIX
+#undef MORPHO_ISMATRIX
+#define MORPHO_GETMATRIX MORPHO_GETGPUMATRIX
+#define MORPHO_ISMATRIX MORPHO_ISGPUMATRIX
+#define objectmatrix objectgpumatrix
+
+#define matrix_constructor gpumatrix_constructor
+
+#define object_newmatrix object_newgpumatrix
+#define object_matrixfromarray object_gpumatrixfromarray
+#define object_matrixfromlist object_gpumatrixfromlist
+#define object_matrixfromfloats object_gpumatrixfromfloats
+#define object_clonematrix object_clonegpumatrix
+
+#define matrix_slicedim gpumatrix_slicedim
+#define matrix_sliceconstructor gpumatrix_sliceconstructor
+#define matrix_slicecopy gpumatrix_slicecopy
+#define matrix_getelement gpumatrix_getelement
+#define matrix_setelement gpumatrix_setelement
+#define matrix_getcolumn gpumatrix_getcolumn
+#define matrix_setcolumn gpumatrix_setcolumn
+
+
+#define matrix_add gpumatrix_add
+#define matrix_addscalar gpumatrix_addscalar
+#define matrix_sub gpumatrix_sub
+#define matrix_mul gpumatrix_mul
+#define matrix_scale gpumatrix_scale
+#define matrix_divs gpumatrix_divs
+#define matrix_divl gpumatrix_divl
+#define matrix_accumulate gpumatrix_accumulate
+#define matrix_inner gpumatrix_inner
+#define matrix_sum gpumatrix_sum
+#define matrix_norm gpumatrix_norm
+#define matrix_transpose gpumatrix_transpose
+#define matrix_trace gpumatrix_trace
+#define matrix_print gpumatrix_print
+
+#define Matrix_getindex GPUMatrix_getindex
+#define Matrix_setindex GPUMatrix_setindex
+#define Matrix_setcolumn GPUMatrix_setcolumn
+#define Matrix_getcolumn GPUMatrix_getcolumn
+#define Matrix_print GPUMatrix_print
+#define Matrix_add GPUMatrix_add
+#define Matrix_addr GPUMatrix_addr
+#define Matrix_sub GPUMatrix_sub
+#define Matrix_subr GPUMatrix_subr
+#define Matrix_mul GPUMatrix_mul
+#define Matrix_mulr GPUMatrix_mulr
+#define Matrix_div GPUMatrix_div
+#define Matrix_acc GPUMatrix_acc
+#define Matrix_inner GPUMatrix_inner
+#define Matrix_sum GPUMatrix_sum
+#define Matrix_norm GPUMatrix_norm
+#define Matrix_transpose GPUMatrix_transpose
+#define Matrix_trace GPUMatrix_trace
+#define Matrix_enumerate GPUMatrix_enumerate
+#define Matrix_count GPUMatrix_count
+#define Matrix_dimensions GPUMatrix_dimensions
+#define Matrix_clone GPUMatrix_clone
+
+
+#include "matrixveneer2.h"
+
+#undef MORPHO_GETMATRIX
+#undef MORPHO_ISMATRIX
+
+
+#undef objectmatrix
+
+#undef matrix_constructor
+
+#undef object_newmatrix
+#undef object_matrixfromarray
+#undef object_matrixfromlist
+#undef object_matrixfromfloats
+#undef object_clonematrix
+
+#undef matrix_slicedim
+#undef matrix_sliceconstructor
+#undef matrix_slicecopy
+#undef matrix_getelement
+#undef matrix_setelement
+#undef matrix_getcolumn
+#undef matrix_setcolumn
+
+#undef matrix_add
+#undef matrix_addscalar
+#undef matrix_sub
+#undef matrix_mul
+#undef matrix_scale
+#undef matrix_divs
+#undef matrix_divl
+#undef matrix_accumulate
+#undef matrix_inner
+#undef matrix_sum
+#undef matrix_norm
+#undef matrix_transpose
+#undef matrix_trace
+#undef matrix_print
+
+
+#undef Matrix_setindex
+#undef Matrix_getindex
+#undef Matrix_setcolumn
+#undef Matrix_getcolumn
+#undef Matrix_print
+#undef Matrix_add
+#undef Matrix_addr
+#undef Matrix_sub
+#undef Matrix_subr
+#undef Matrix_mul
+#undef Matrix_mulr
+#undef Matrix_div
+#undef Matrix_acc
+#undef Matrix_inner
+#undef Matrix_sum
+#undef Matrix_norm
+#undef Matrix_transpose
+#undef Matrix_trace
+#undef Matrix_enumerate
+#undef Matrix_count
+#undef Matrix_dimensions
+#undef Matrix_clone
+
+#define MORPHO_ISMATRIX(val) object_istype(val, OBJECT_MATRIX)
+#define MORPHO_GETMATRIX(val)   ((objectmatrix *) MORPHO_GETOBJECT(val))
+
+
+MORPHO_BEGINCLASS(GPUMatrix)
+MORPHO_METHOD(MORPHO_GETINDEX_METHOD, GPUMatrix_getindex, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_SETINDEX_METHOD, GPUMatrix_setindex, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(GPUMATRIX_GETCOLUMN_METHOD, GPUMatrix_getcolumn, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(GPUMATRIX_SETCOLUMN_METHOD, GPUMatrix_setcolumn, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, GPUMatrix_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_ADD_METHOD, GPUMatrix_add, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_ADDR_METHOD, GPUMatrix_addr, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_SUB_METHOD, GPUMatrix_sub, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_SUBR_METHOD, GPUMatrix_subr, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_MUL_METHOD, GPUMatrix_mul, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_MULR_METHOD, GPUMatrix_mulr, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_DIV_METHOD, GPUMatrix_div, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_ACC_METHOD, GPUMatrix_acc, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(GPUMATRIX_INNER_METHOD, GPUMatrix_inner, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_SUM_METHOD, GPUMatrix_sum, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(GPUMATRIX_NORM_METHOD, GPUMatrix_norm, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(GPUMATRIX_TRANSPOSE_METHOD, GPUMatrix_transpose, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(GPUMATRIX_TRACE_METHOD, GPUMatrix_trace, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, GPUMatrix_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_COUNT_METHOD, GPUMatrix_count, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(GPUMATRIX_DIMENSIONS_METHOD, GPUMatrix_dimensions, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_CLONE_METHOD, GPUMatrix_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
  * Initialization
  * ********************************************************************* */
 
-void gpugpumatrix_initialize(void) {
+void gpumatrix_initialize(void) {
     objectgpumatrixtype=object_addtype(&objectgpumatrixdefn);
     
     builtin_addfunction(GPUMATRIX_CLASSNAME, gpumatrix_constructor, BUILTIN_FLAGSEMPTY);
     
-    value gpumatrixclass=builtin_addclass(GPUMATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(gpuMatrix), MORPHO_NIL);
+    value gpumatrixclass=builtin_addclass(GPUMATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(GPUMatrix), MORPHO_NIL);
     object_setveneerclass(OBJECT_GPUMATRIX, gpumatrixclass);
     
     morpho_defineerror(GPUMATRIX_INDICESOUTSIDEBOUNDS, ERROR_HALT, GPUMATRIX_INDICESOUTSIDEBOUNDS_MSG);

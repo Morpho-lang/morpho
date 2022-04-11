@@ -4,26 +4,24 @@
  *  @brief Veneer class over the gpuobjectgpumatrix type that interfaces with blas and lapack
  */
 
-#ifndef gpugpumatrix_h
-#define gpugpumatrix_h
+#ifndef gpumatrix_h
+#define gpumatrix_h
 
 #include <stdio.h>
 #include "veneer.h"
-/** Use Apple's Accelerate library for LAPACK and BLAS */
-#ifdef __APPLE__
-#ifdef MORPHO_LINALG_USE_ACCELERATE
-#include <Accelerate/Accelerate.h>
-#define GPUMATRIX_LAPACK_PRESENT
-#endif
+
+#define MORPHO_USE_CUDA
+/** Use CUDA or openCL for GPU Accleartion */
+#ifdef MORPHO_USE_CUDA
+    #include "cudainterface.h"
+#elif MORPHO_USE_OPENCL
+    #include "openclinterface.h"
+#else
+    #error "Please choose a GPU option"
+
 #endif
 
-/** Otherwise, use LAPACKE */
-#ifndef GPUMATRIX_LAPACK_PRESENT
-#include <cblas.h>
-#include <lapacke.h>
-#define MORPHO_LINALG_USE_LAPACKE
-#define GPUMATRIX_LAPACK_PRESENT
-#endif
+
 
 /* -------------------------------------------------------
  * Matrix objects
@@ -43,9 +41,7 @@ typedef struct {
     unsigned int nrows;
     unsigned int ncols;
     double *elements;
-    double gpumatrixdata[];
-    bool onGPU = false;
-    bool complex = false;
+    GPUStatus *status;
 } objectgpumatrix;
 
 /** Tests whether an object is a gpumatrix */
@@ -63,9 +59,8 @@ objectgpumatrix *object_gpumatrixfromarray(objectarray *array);
 /** Creates a new gpumatrix from an existing gpumatrix */
 objectgpumatrix *object_clonegpumatrix(objectgpumatrix *array);
 
-/** @brief Use to create static matrices on the C stack
-    @details Intended for small matrices; Caller needs to supply a double array of size nr*nc. */
-#define MORPHO_STATICGPUMATRIX(darray, nr, nc)      { .obj.type=OBJECT_GPUMATRIX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .elements=darray, .nrows=nr, .ncols=nc }
+/** Deletes a gpumatrix from the GPU */
+void objectgpufree(objectgpumatrix *gpumat);
 
 /** Macro to decide if a gpumatrix is 'small' or 'large' and hence static or dynamic allocation should be used. */
 #define GPUMATRIX_ISSMALL(m) (m->nrows*m->ncols<MORPHO_MAXIMUMSTACKALLOC)
@@ -74,7 +69,7 @@ objectgpumatrix *object_clonegpumatrix(objectgpumatrix *array);
  * Matrix class
  * ------------------------------------------------------- */
 
-#define GPUMATRIX_CLASSNAME "Matrix"
+#define GPUMATRIX_CLASSNAME "GPUMatrix"
 
 #define GPUMATRIX_TRANSPOSE_METHOD "transpose"
 #define GPUMATRIX_TRACE_METHOD "trace"
@@ -88,34 +83,34 @@ objectgpumatrix *object_clonegpumatrix(objectgpumatrix *array);
 
 #define GPUMATRIX_DIMENSIONS_METHOD "dimensions"
 
-#define GPUMATRIX_INDICESOUTSIDEBOUNDS       "MtrxBnds"
-#define GPUMATRIX_INDICESOUTSIDEBOUNDS_MSG   "Matrix index out of bounds."
+#define GPUMATRIX_INDICESOUTSIDEBOUNDS       "GPUMtrxBnds"
+#define GPUMATRIX_INDICESOUTSIDEBOUNDS_MSG   "GPUMatrix index out of bounds."
 
-#define GPUMATRIX_INVLDINDICES               "MtrxInvldIndx"
-#define GPUMATRIX_INVLDINDICES_MSG           "Matrix indices must be integers."
+#define GPUMATRIX_INVLDINDICES               "GPUMtrxInvldIndx"
+#define GPUMATRIX_INVLDINDICES_MSG           "GPUMatrix indices must be integers."
 
-#define GPUMATRIX_INVLDNUMINDICES            "MtrxInvldNumIndx"
+#define GPUMATRIX_INVLDNUMINDICES            "GPUMtrxInvldNumIndx"
 #define GPUMATRIX_INVLDNUMINDICES_MSG        "Matrix expects two arguments for indexing."
 
-#define GPUMATRIX_CONSTRUCTOR                "MtrxCns"
+#define GPUMATRIX_CONSTRUCTOR                "GPUMtrxCns"
 #define GPUMATRIX_CONSTRUCTOR_MSG            "Matrix() constructor should be called either with dimensions or an array, list or gpumatrix initializer."
 
-#define GPUMATRIX_INVLDARRAYINIT             "MtrxInvldInit"
+#define GPUMATRIX_INVLDARRAYINIT             "GPUMtrxInvldInit"
 #define GPUMATRIX_INVLDARRAYINIT_MSG         "Invalid initializer passed to Matrix()."
 
-#define GPUMATRIX_ARITHARGS                  "MtrxInvldArg"
+#define GPUMATRIX_ARITHARGS                  "GPUMtrxInvldArg"
 #define GPUMATRIX_ARITHARGS_MSG              "Matrix arithmetic methods expect a gpumatrix or number as their argument."
 
-#define GPUMATRIX_INCOMPATIBLEMATRICES       "MtrxIncmptbl"
+#define GPUMATRIX_INCOMPATIBLEMATRICES       "GPUMtrxIncmptbl"
 #define GPUMATRIX_INCOMPATIBLEMATRICES_MSG   "Matrices have incompatible shape."
 
-#define GPUMATRIX_SINGULAR                   "MtrxSnglr"
+#define GPUMATRIX_SINGULAR                   "GPUMtrxSnglr"
 #define GPUMATRIX_SINGULAR_MSG               "Matrix is singular."
 
-#define GPUMATRIX_NOTSQ                      "MtrxNtSq"
+#define GPUMATRIX_NOTSQ                      "GPUMtrxNtSq"
 #define GPUMATRIX_NOTSQ_MSG                  "Matrix is not square."
 
-#define GPUMATRIX_SETCOLARGS                 "MtrxStClArgs"
+#define GPUMATRIX_SETCOLARGS                 "GPUMtrxStClArgs"
 #define GPUMATRIX_SETCOLARGS_MSG             "Method setcolumn expects an integer column index and a column gpumatrix as arguments."
 
 /* -------------------------------------------------------
@@ -135,6 +130,7 @@ bool gpumatrix_getlistdimensions(objectlist *list, unsigned int dim[], unsigned 
 bool gpumatrix_getlistelement(objectlist *list, unsigned int ndim, unsigned int *indx, value *val);
 
 bool gpumatrix_setelement(objectgpumatrix *gpumatrix, unsigned int row, unsigned int col, double value);
+bool gpumatrix_setelementfromval(objectgpumatrix *a, int ind, value val);
 bool gpumatrix_getelement(objectgpumatrix *gpumatrix, unsigned int row, unsigned int col, double *value);
 
 bool gpumatrix_getcolumn(objectgpumatrix *gpumatrix, unsigned int col, double **v);

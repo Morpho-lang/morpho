@@ -9,17 +9,17 @@
 
 #include <stdio.h>
 #include "veneer.h"
+#include "cudainterface.h"
 
-#define MORPHO_USE_CUDA
-/** Use CUDA or openCL for GPU Accleartion */
-#ifdef MORPHO_USE_CUDA
-    #include "cudainterface.h"
-#elif MORPHO_USE_OPENCL
-    #include "openclinterface.h"
-#else
-    #error "Please choose a GPU option"
+// #define MORPHO_USE_CUDA
+// /** Use CUDA or openCL for GPU Accleartion */
+// #ifdef MORPHO_USE_CUDA
+// #elif MORPHO_USE_OPENCL
+//     #include "openclinterface.h"
+// #else
+//     #error "Please choose a GPU option"
 
-#endif
+// #endif
 
 
 
@@ -60,7 +60,7 @@ objectgpumatrix *object_gpumatrixfromarray(objectarray *array);
 objectgpumatrix *object_clonegpumatrix(objectgpumatrix *array);
 
 /** Deletes a gpumatrix from the GPU */
-void objectgpufree(objectgpumatrix *gpumat);
+void objectgpufree(object *obj);
 
 /** Macro to decide if a gpumatrix is 'small' or 'large' and hence static or dynamic allocation should be used. */
 #define GPUMATRIX_ISSMALL(m) (m->nrows*m->ncols<MORPHO_MAXIMUMSTACKALLOC)
@@ -158,4 +158,4 @@ void gpumatrix_print(objectgpumatrix *m);
 
 void gpumatrix_initialize(void);
 
-#endif /* gpumatrix_h */
+#endif

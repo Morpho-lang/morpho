@@ -18,16 +18,16 @@
 #define GPUMULT "cublasGEMM"
 
 
-
+extern "C" {
 
 void GPUStatusCheck(GPUStatus* cudaInterface, const char * errid){
     if (cudaInterface->cudaStatus != cudaSuccess) {
         // morpho_runtimeerror(cudaInterface->v, errid);
         printf("GPU error");
     }
-    if (cudaInterface->cublasStatus != cudaSuccess) {
+    if (cudaInterface->cublasStatus != CUBLAS_STATUS_SUCCESS) {
         // morpho_runtimeerror(cudaInterface->v, errid);
-        printf("cublas error");
+        printf("cublas error: %d",cudaInterface->cublasStatus);
     }
 }
 
@@ -72,6 +72,8 @@ void GPUScalarAddition(GPUStatus* cudaInterface, double* Matrix, double scalar, 
     unsigned int numberOfBlocks = ceil(size / (float) blockSize);
 
     ScalarAddition<<<numberOfBlocks, blockSize>>>(Matrix,scalar,out,size);
+    cudaInterface->cudaStatus = cudaDeviceSynchronize();
+
     GPUStatusCheck(cudaInterface,GPUSCALARADD);
 
 }
@@ -165,4 +167,5 @@ void GPUgemm(GPUStatus* cudaInterface,\
     cudaInterface->cublasStatus = cublasDgemm(cudaInterface->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,\
                                                 m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
     GPUStatusCheck(cudaInterface,GPUMULT);
+}
 }

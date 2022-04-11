@@ -6,12 +6,16 @@
 #ifndef cudainterface_h
 #define cudainterface_h
 #include "cuda.h"
-#include "cuda_runtime.h"
+#include <stdio.h>
+#include <stdbool.h>
+#include "cuda_runtime_api.h"
 #include "cublas_v2.h"
+
 //#include "vm.h"
 
-
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef struct {
     cudaError_t cudaStatus;
     cublasStatus_t cublasStatus;
@@ -22,17 +26,23 @@ typedef struct {
 void GPUsetup(GPUStatus* cudaInterface);//,vm* v);
 void GPUallocate(GPUStatus* cudaInterface,void** ptr, unsigned int size);
 void GPUdeallocate(GPUStatus* cudaInterface,void* dPointer);
-void GPUmemset(GPUStatus* cudaInterface,void* devicePointer, void* hostPointer, unsigned int size);
+void GPUmemset(GPUStatus* cudaInterface,void* devicePointer, int bytepattern, unsigned int size);
 void GPUcopy_to_host(GPUStatus* cudaInterface,void * hostPointer, void * devicepointer, unsigned int size);
 void GPUcopy_to_device(GPUStatus* cudaInterface,void* devicePointer, void* hostPointer, unsigned int size);
+void GPUScalarAddition(GPUStatus* cudaInterface, double* Matrix, double scalar, double *out, int size);
 
 /** cuBLAS functions*/
 void dotProduct(GPUStatus* cudaInterface, double* v1, double * v2, int size, double * out);
-void GPUaxpy(GPUStatus* cudaInterface, int n, double* alpha, double * x, double * incx, double * y, double * incy);
+void GPUaxpy(GPUStatus* cudaInterface, int n, double* alpha, double * x, int incx, double * y, int incy);
 void GPUcopy(GPUStatus* cudaInterface,int n, double * x, int incx, double *y, int incy);
 void GPUScale(GPUStatus* cudaInterface, int n, const double *alpha, double *x, int incx);
 void GPUgemm(GPUStatus* cudaInterface, int m, int n, int k, const double *alpha,\
              const double *A, int lda, const double *B, int ldb,\
              const double *beta, double *C, int ldc);
+             
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -27,6 +27,11 @@ size_t objectgpumatrix_sizefn(object *obj) {
 void objectgpumatrix_printfn(object *obj) {
     printf("<gpuMatrix>");
 }
+void objectgpufree(object *obj) {
+    objectgpumatrix * gpumat = (objectgpumatrix *) obj;
+    GPUdeallocate(gpumat->status,gpumat->elements);
+}
+
 
 objecttypedefn objectgpumatrixdefn = {
     .printfn=objectgpumatrix_printfn,
@@ -39,12 +44,12 @@ objecttypedefn objectgpumatrixdefn = {
 objectgpumatrix *object_newgpumatrix(unsigned int nrows, unsigned int ncols, bool zero) {
     unsigned int nel = nrows*ncols;
     objectgpumatrix *new = (objectgpumatrix *) object_new(sizeof(objectgpumatrix), OBJECT_GPUMATRIX);
-    
+    GPUsetup(&myGPUstatus);
     if (new) {
         new->status=&myGPUstatus;
         new->ncols=ncols;
         new->nrows=nrows;
-        GPUallocate(new->status,&new->elements,nel*sizeof(double));
+        GPUallocate(new->status,(void **)&new->elements,nel*sizeof(double));
         if (zero) {
             GPUmemset(new->status,new->elements, 0, sizeof(double)*nel);
         }
@@ -224,10 +229,6 @@ objectgpumatrix *object_clonegpumatrix(objectgpumatrix *in) {
     }
     
     return new;
-}
-
-void objectgpufree(objectgpumatrix *gpumat) {
-    GPUdeallocate(gpumat->status,gpumat->elements);
 }
 
 /* **********************************************************************
@@ -657,8 +658,8 @@ void gpumatrix_print(objectgpumatrix *m) {
 MORPHO_BEGINCLASS(GPUMatrix)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, GPUMatrix_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, GPUMatrix_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(GPUMATRIX_GETCOLUMN_METHOD, GPUMatrix_getcolumn, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(GPUMATRIX_SETCOLUMN_METHOD, GPUMatrix_setcolumn, BUILTIN_FLAGSEMPTY),
+//MORPHO_METHOD(GPUMATRIX_GETCOLUMN_METHOD, GPUMatrix_getcolumn, BUILTIN_FLAGSEMPTY),
+//MORPHO_METHOD(GPUMATRIX_SETCOLUMN_METHOD, GPUMatrix_setcolumn, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, GPUMatrix_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADD_METHOD, GPUMatrix_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADDR_METHOD, GPUMatrix_addr, BUILTIN_FLAGSEMPTY),

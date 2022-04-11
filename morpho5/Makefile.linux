@@ -1,5 +1,6 @@
-src = $(wildcard *.c) $(wildcard */*.c) $(wildcard */*/*.c)
-obj = $(src:.c=.o) $(src:.cu=.o)
+src = $(wildcard *.c) $(wildcard */*.c) $(wildcard */*/*.cu) $(wildcard */*/*.c) 
+tmp = $(src:.c=.o)
+obj = $(tmp:.cu=.o) 
 PREFIX = /usr/local
 HELPDIR = /usr/local/share/morpho/help
 MODULESDIR = /usr/local/share/morpho/modules
@@ -7,15 +8,16 @@ help = $(wildcard docs/*.md)
 modules = $(wildcard modules/*)
 NVCC = nvcc
 
-LDFLAGS  = -lm -lblas -llapacke -lcxsparse
+LDFLAGS  = -lm -lblas -llapacke -lcxsparse -lcublas -lcudart
 CFLAGS   = -std=c99 -O3 -I. -I/usr/include/suitesparse -I./datastructures  -I./datastructures/GPUdatastructures -I./geometry -I./interface -I./utils -I./vm -I./builtin
-CUDAFLAGS = -c
+CUDAFLAGS = -O3 -I. -I/usr/include/suitesparse -I./datastructures  -I./datastructures/GPUdatastructures -I./geometry -I./interface -I./utils -I./vm -I./builtin
 
 %.o: %.cu
-	$(NVCC) $(CUDAFLAGS) $^ -o $@
+	$(NVCC) -c -o $@ $< $(LDFLAGS) $(CUDAFLAGS) 
+
 
 morpho5: $(obj)
-	$(CC) -o $@ $^ $(LDFLAGS) $(MODULES) $(CFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS) $(MODULES) $(CFLAGS) 
 
 .PHONY: clean
 clean:

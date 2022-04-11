@@ -507,14 +507,51 @@ void matrix_print(objectmatrix *m) {
 /* **********************************************************************
  * Matrix veneer class
  * ********************************************************************* */
-#define MORPHO_MATRIX_TYPE 
-#define MORPHO_MATRIX_TYPE_CAP
 
-#include "matrixveneer.h"
+#include "matrixveneer2.h"
+/** Sets the column of a matrix */
+value Matrix_setcolumn(vm *v, int nargs, value *args) {
+    objectmatrix *m=MORPHO_GETMATRIX(MORPHO_SELF(args));
+    
+    if (nargs==2 &&
+        MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
+        MORPHO_ISMATRIX(MORPHO_GETARG(args, 1))) {
+        unsigned int col = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        objectmatrix *src = MORPHO_GETMATRIX(MORPHO_GETARG(args, 1));
+        
+        if (col<m->ncols) {
+            if (src && src->ncols*src->nrows==m->nrows) {
+                matrix_setcolumn(m, col, src->elements);
+            } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+        } else morpho_runtimeerror(v, MATRIX_INDICESOUTSIDEBOUNDS);
+    } else morpho_runtimeerror(v, MATRIX_SETCOLARGS);
+    
+    return MORPHO_NIL;
+}
 
-#undef MORPHO_MATRIX_TYPE
-#undef MORPHO_MATRIX_TYPE_CAP
-
+/** Gets a column of a matrix */
+value Matrix_getcolumn(vm *v, int nargs, value *args) {
+    objectmatrix *m=MORPHO_GETMATRIX(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    
+    if (nargs==1 &&
+        MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+        unsigned int col = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        
+        if (col<m->ncols) {
+            double *vals;
+            if (matrix_getcolumn(m, col, &vals)) {
+                objectmatrix *new=object_matrixfromfloats(m->nrows, 1, vals);
+                if (new) {
+                    out=MORPHO_OBJECT(new);
+                    morpho_bindobjects(v, 1, &out);
+                }
+            }
+        } else morpho_runtimeerror(v, MATRIX_INDICESOUTSIDEBOUNDS);
+    } else morpho_runtimeerror(v, MATRIX_SETCOLARGS);
+    
+    return out;
+}
 
 MORPHO_BEGINCLASS(Matrix)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Matrix_getindex, BUILTIN_FLAGSEMPTY),

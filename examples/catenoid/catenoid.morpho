@@ -1,7 +1,8 @@
 // This script computes the shape of a soap film attached to two circular rings separated vertically.
-// The surface tension minimizes the area of this film, resulting in a shape called a "catenoid". This belongs to the family of "minimal surfaces", which are surfaces that locally minimize their area.
+// The surface tension minimizes the area of this film, resulting in a shape called a "catenoid". 
+// This belongs to the family of "minimal surfaces", which are surfaces that locally minimize their area.
 
-// Showcases: AreaMesh, Area, conjugategradient
+// Showcases: AreaMesh, Area, conjugategradient, fixing boundary in the optimizer.
 import meshtools
 import plot
 import optimize

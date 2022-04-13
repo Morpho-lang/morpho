@@ -1,5 +1,8 @@
 ![Morpho](manual/src/Figures/morphologosmall.png#gh-light-mode-only)![Morpho](manual/src/Figures/morphologosmall-white.png#gh-dark-mode-only)
 
+![Build and Test Status](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg?branch=main)
+![Example Status](https://github.com/Morpho-lang/morpho/actions/workflows/Examples.yml/badge.svg?branch=main)
+
 The Morpho language. Morpho is a programmable environment for shape optimization. Morpho aims to be:
 
 * **Familiar**. Morpho uses syntax similar to other C-family languages. The syntax fits on a postcard, so it's easy to learn.
@@ -225,3 +228,8 @@ morpho5 thomson.morpho
 This example starts with randomly distributed charges on a sphere and minimizing electric potential.
 
 It should generate an interactive figure of points on a sphere.
+
+---
+### Other Tests
+![No NaN Boxing Test](https://github.com/Morpho-lang/morpho/actions/workflows/NoNanBoxing.yml/badge.svg?branch=main)
+![Garbage Collector Test](https://github.com/Morpho-lang/morpho/actions/workflows/GarbageCollectorTest.yml/badge.svg?branch=main)

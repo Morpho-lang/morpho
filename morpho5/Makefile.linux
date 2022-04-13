@@ -33,3 +33,9 @@ install: morpho5
 	make modules
 	make help
 	make clean
+
+nonanboxing: CFLAGS += -D_NO_NAN_BOXING
+nonanboxing: install
+
+garbagecollectortest: CFLAGS += -D_DEBUG_STRESSGARBAGECOLLECTOR
+garbagecollectortest: install

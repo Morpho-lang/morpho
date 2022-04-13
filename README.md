@@ -229,5 +229,7 @@ This example starts with randomly distributed charges on a sphere and minimizing
 
 It should generate an interactive figure of points on a sphere.
 
+---
+### Other Tests
 ![No NaN Boxing Test](https://github.com/Morpho-lang/morpho/actions/workflows/NoNanBoxing.yml/badge.svg?branch=main)
 ![Garbage Collector Test](https://github.com/Morpho-lang/morpho/actions/workflows/GarbageCollectorTest.yml/badge.svg?branch=main)

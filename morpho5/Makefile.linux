@@ -33,8 +33,6 @@ install: morpho5
 	make modules
 	make help
 	make clean
-debug: CFLAGS+= -ggdb -O0
-debug: install
 
 nonanboxing: CFLAGS += -D_NO_NAN_BOXING
 nonanboxing: install

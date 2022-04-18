@@ -29,17 +29,18 @@ class Circumsphere {
   }
 }
 
-var errDlnyInit = Error("DlnyInit", "You must initialize Delaunay with a list of points to triangulate.")
+var _errDlnyInit = Error("DlnyInit", "You must initialize Delaunay with a list of points to triangulate.")
 
 // Generates simplices for a point cloud with the Delaunay property
 // that no simplex's circumsphere contains another point
 class Delaunay {
   init (pts) {
-    if (!islist(pts) || pts.count()==0) errDlnyInit.throw()
+    if (!islist(pts) || pts.count()==0) _errDlnyInit.throw()
     var dim = pts[0].count()
     if (pts.count()<dim+1) Error("DlnyDim", "You must supply at least ${dim+1} points in ${dim} dimensions.").throw()
 
     self.dim = dim
+    self.sscale = 100
     self.pts = pts.clone()
     self.n = pts.count()
     self.bbox = self.calcbbox()
@@ -72,7 +73,7 @@ class Delaunay {
     // Where x0 and lambda are computed from a sphere that encloses the bounding box
     var extent = (self.bbox[1]-self.bbox[0])
     var xc = (self.bbox[0]+self.bbox[1])/2 // Center of the cloud
-    var r = (self.bbox[1]-xc).norm() // Radius of a ball that encloses the cloud
+    var r = self.sscale*(self.bbox[1]-xc).norm() // Radius of a ball that encloses the cloud
     var lambda = 2*(self.dim+sqrt(self.dim))*r // Scale factor
     for (i in 0...self.dim) xc[i]-=r // Shift by r in all coordinate directions
 
@@ -130,6 +131,7 @@ class Delaunay {
 
     // Create supersimplex
     var ssmplx = self.supersimplex()
+
     for (x in ssmplx) pts.append(x) // And add to the point cloud
 
     var open = [Circumsphere(pts, List(n..n+self.dim))], // List of open simplices

@@ -1,6 +1,6 @@
 var f = File("test.txt", "read")
 
-print f.filename // expect: test.txt
+print f.filename() // expect: test.txt
 var rp = f.relativepath()
 print rp // expect: file/test.txt
 

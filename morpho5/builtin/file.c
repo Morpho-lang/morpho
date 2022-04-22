@@ -13,15 +13,59 @@
 #include <stdio.h>
 #include <limits.h>
 
-static value file_fileproperty;
-static value file_filenameproperty;
-
 /** Store the current working directory (relative to the filing systems cwd) */
 static varray_char workingdir;
 
-/*
+/* **********************************************************************
+ * File objects
+ * ********************************************************************** */
+
+objecttype objectfiletype;
+
+/** File object definitions */
+size_t objectfile_sizefn(object *obj) {
+    return sizeof(objectfile);
+}
+
+void objectfile_markfn(object *obj, void *v) {
+    objectfile *file = (objectfile *) obj;
+    morpho_markvalue(v, file->filename);
+}
+
+void objectfile_freefn(object *obj) {
+    objectfile *file = (objectfile *) obj;
+    if (file->f) fclose(file->f);
+}
+
+void objectfile_printfn(object *obj) {
+    objectfile *file = (objectfile *) obj;
+    printf("<File '");
+    morpho_printvalue(file->filename);
+    printf("'>");
+}
+
+objecttypedefn objectfiledefn = {
+    .printfn=objectfile_printfn,
+    .markfn=objectfile_markfn,
+    .freefn=objectfile_freefn,
+    .sizefn=objectfile_sizefn
+};
+
+/** Creates a file object */
+objectfile *object_newfile(value filename, FILE *f) {
+    objectfile *new = (objectfile *) object_new(sizeof(objectfile), OBJECT_FILE);
+    
+    if (new) {
+        new->filename=filename;
+        new->f=f;
+    }
+    
+    return new;
+}
+
+/* **********************************************************************
  * File handling utility functions
- */
+ * ********************************************************************** */
 
 #include <errno.h>
 
@@ -36,21 +80,15 @@ bool file_getsize(FILE *f, size_t *s) {
     return true;
 }
 
-
 /* Gets the current file handle */
 FILE *file_getfile(value obj) {
-    value val;
-    
-    if (objectinstance_getproperty(MORPHO_GETINSTANCE(obj), file_fileproperty, &val)) {
-        return (FILE *) MORPHO_GETOBJECT(val);
-    }
-    
+    if (MORPHO_ISFILE(obj)) return MORPHO_GETFILE(obj)->f;
     return NULL;
 }
 
 /** Sets the current file handle */
 void file_setfile(value obj, FILE *f) {
-    objectinstance_setproperty(MORPHO_GETINSTANCE(obj), file_fileproperty, MORPHO_OBJECT(f));
+    if (MORPHO_ISFILE(obj)) MORPHO_GETFILE(obj)->f=f;
 }
 
 /** Sets the global current working directory (relative to the filing systems cwd.
@@ -100,59 +138,6 @@ FILE *file_openrelative(const char *fname, const char *mode) {
     return out;
 }
 
-/** Initializer
- * In: 1. a file name
- *   2. (optional) a string giving the requested status, e.g. "wr+"
- */
-value File_init(vm *v, int nargs, value *args) {
-    char *fname=NULL;
-    char *cmode = "r";
-    
-    if (nargs>0) {
-        if (MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
-            fname=MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
-        } else MORPHO_RAISE(v, FILE_FILENAMEARG);
-        
-        if (nargs>1) {
-            if (MORPHO_ISSTRING(MORPHO_GETARG(args, 1))) {
-                char *mode=MORPHO_GETCSTRING(MORPHO_GETARG(args, 1));
-                switch (mode[0]) {
-                    case 'r': cmode="r"; break;
-                    case 'w': cmode="w"; break;
-                    case 'a': cmode="a"; break;
-                    default: MORPHO_RAISE(v, FILE_MODE);
-                }
-            } else MORPHO_RAISE(v, FILE_MODE);
-        }
-    } else MORPHO_RAISE(v, FILE_NEEDSFILENAME);
-    
-    if (fname) {
-        FILE *f = file_openrelative(fname, cmode);
-        if (!f) MORPHO_RAISEVARGS(v, FILE_OPENFAILED, fname);
-        
-        file_setfile(MORPHO_SELF(args), f);
-        
-        value filename = object_stringfromcstring(fname, strlen(fname));
-        
-        objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), file_filenameproperty, filename);
-        
-        morpho_bindobjects(v, 1, &filename);
-    }
-    
-    return MORPHO_NIL;
-}
-
-/** Close a file  */
-value File_close(vm *v, int nargs, value *args) {
-    FILE *f=file_getfile(MORPHO_SELF(args));
-    if (f) {
-        fclose(f);
-        file_setfile(MORPHO_SELF(args), NULL);
-    }
-    
-    return MORPHO_NIL;
-}
-
 /** Reads a line using a given buffer */
 int file_readlineintovarray(FILE *f, varray_char *string) {
     int ic;
@@ -183,13 +168,73 @@ bool file_readintovarray(FILE *f, varray_char *string) {
     return true;
 }
 
-
 /** Reads a line using a given buffer */
 value file_readlineusingvarray(FILE *f, varray_char *string) {
     int ic=file_readlineintovarray(f, string);
     
     if (ic!=EOF || string->count>0) {
         return object_stringfromvarraychar(string);
+    }
+    
+    return MORPHO_NIL;
+}
+
+/* **********************************************************************
+ * File class
+ * ********************************************************************** */
+
+/** File constructor
+ * In: 1. a file name
+ *   2. (optional) a string giving the requested status, e.g. "wr+"
+ */
+value file_constructor(vm *v, int nargs, value *args) {
+    objectfile *new=NULL;
+    value out=MORPHO_NIL;
+    value filename=MORPHO_NIL;
+    char *fname=NULL;
+    char *cmode = "r";
+    
+    if (nargs>0) {
+        if (MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
+            fname=MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
+        } else MORPHO_RAISE(v, FILE_FILENAMEARG);
+        
+        if (nargs>1) {
+            if (MORPHO_ISSTRING(MORPHO_GETARG(args, 1))) {
+                char *mode=MORPHO_GETCSTRING(MORPHO_GETARG(args, 1));
+                switch (mode[0]) {
+                    case 'r': cmode="r"; break;
+                    case 'w': cmode="w"; break;
+                    case 'a': cmode="a"; break;
+                    default: MORPHO_RAISE(v, FILE_MODE);
+                }
+            } else MORPHO_RAISE(v, FILE_MODE);
+        }
+    } else MORPHO_RAISE(v, FILE_NEEDSFILENAME);
+    
+    if (fname) {
+        FILE *f = file_openrelative(fname, cmode);
+        if (!f) MORPHO_RAISEVARGS(v, FILE_OPENFAILED, fname);
+        
+        filename = object_stringfromcstring(fname, strlen(fname));
+        new = object_newfile(filename, f);
+    }
+    
+    if (new) {
+        out=MORPHO_OBJECT(new);
+        value bind[] = { filename, out };
+        morpho_bindobjects(v, 2, bind);
+    }
+    
+    return out;
+}
+
+/** Close a file  */
+value File_close(vm *v, int nargs, value *args) {
+    FILE *f=file_getfile(MORPHO_SELF(args));
+    if (f) {
+        fclose(f);
+        file_setfile(MORPHO_SELF(args), NULL);
     }
     
     return MORPHO_NIL;
@@ -231,6 +276,9 @@ value File_lines(vm *v, int nargs, value *args) {
         varray_charclear(&string);
         
         out=MORPHO_OBJECT(object_arrayfromvarrayvalue(&lines));
+        
+        varray_valuewrite(&lines, out); // Tuck onto end of lines to bind all at once
+        morpho_bindobjects(v, lines.count, lines.data);
         varray_valueclear(&lines);
     }
     
@@ -244,7 +292,9 @@ value File_readchar(vm *v, int nargs, value *args) {
         int ic=getc(f);
         if (ic!=EOF) {
             char c=(char) ic;
-            return object_stringfromcstring(&c, 1);
+            value out=object_stringfromcstring(&c, 1);
+            morpho_bindobjects(v, 1, &out);
+            return out;
         }
     }
     return MORPHO_NIL;
@@ -269,11 +319,11 @@ value File_write(vm *v, int nargs, value *args) {
 /** Get the path of a file relative to the CWD */
 value File_relativepath(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
-    value fname = MORPHO_NIL;
+    value fname = MORPHO_GETFILE(MORPHO_SELF(args))->filename;
     varray_char path;
     varray_charinit(&path);
     
-    if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), file_filenameproperty, &fname)) {
+    if (MORPHO_ISSTRING(fname)) {
         file_relativepath(MORPHO_GETCSTRING(fname), &path);
         
         out = object_stringfromvarraychar(&path);
@@ -284,6 +334,11 @@ value File_relativepath(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Get the filename */
+value File_filename(vm *v, int nargs, value *args) {
+    return MORPHO_GETFILE(MORPHO_SELF(args))->filename;
+}
+
 /** Detects whether we're at the end of the file  */
 value File_eof(vm *v, int nargs, value *args) {
     FILE *f=file_getfile(MORPHO_SELF(args));
@@ -291,29 +346,25 @@ value File_eof(vm *v, int nargs, value *args) {
     return MORPHO_FALSE;
 }
 
-/** Called when the file object is freed  */
-value File_free(vm *v, int nargs, value *args) {
-    File_close(v, nargs, args);
-    return MORPHO_NIL;
-}
-
 MORPHO_BEGINCLASS(File)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, File_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_CLOSE, File_close, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_LINES, File_lines, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_READLINE, File_readline, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_READCHAR, File_readchar, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_WRITE, File_write, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_RELATIVEPATH, File_relativepath, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FILE_FILENAME, File_filename, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_EOF, File_eof, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 void file_initialize(void) {
     varray_charinit(&workingdir);
     
-    builtin_addclass(FILE_CLASSNAME, MORPHO_GETCLASSDEFINITION(File), MORPHO_NIL);
-    file_fileproperty=builtin_internsymbolascstring(FILE_FILEPROPERTY);
-    file_filenameproperty=builtin_internsymbolascstring(FILE_FILENAMEPROPERTY);
+    objectfiletype=object_addtype(&objectfiledefn);
+    
+    builtin_addfunction(FILE_CLASSNAME, file_constructor, BUILTIN_FLAGSEMPTY);
+    value fileclass=builtin_addclass(FILE_CLASSNAME, MORPHO_GETCLASSDEFINITION(File), MORPHO_NIL);
+    object_setveneerclass(OBJECT_FILE, fileclass);
     
     morpho_defineerror(FILE_OPENFAILED, ERROR_HALT, FILE_OPENFAILED_MSG);
     morpho_defineerror(FILE_NEEDSFILENAME, ERROR_HALT, FILE_NEEDSFILENAME_MSG);

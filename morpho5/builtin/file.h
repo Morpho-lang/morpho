@@ -8,13 +8,33 @@
 #define file_h
 
 #include <stdio.h>
+#include "object.h"
 #include "morpho.h"
 
+/* -------------------------------------------------------
+ * File objects
+ * ------------------------------------------------------- */
+
+extern objecttype objectfiletype;
+#define OBJECT_FILE objectfiletype
+
+typedef struct {
+    object obj;
+    value filename;
+    FILE *f;
+} objectfile;
+
+/** Tests whether an object is a file */
+#define MORPHO_ISFILE(val) object_istype(val, OBJECT_FILE)
+
+/** Gets the object as an matrix */
+#define MORPHO_GETFILE(val)   ((objectfile *) MORPHO_GETOBJECT(val))
+
+/* -------------------------------------------------------
+ * File class
+ * ------------------------------------------------------- */
+
 #define FILE_CLASSNAME    "File"
-
-#define FILE_FILEPROPERTY "@file"
-
-#define FILE_FILENAMEPROPERTY "filename"
 
 #define FILE_CLOSE        "close"
 #define FILE_LINES        "lines"
@@ -23,6 +43,7 @@
 #define FILE_WRITE        "write"
 #define FILE_EOF          "eof"
 #define FILE_RELATIVEPATH "relativepath"
+#define FILE_FILENAME     "filename"
 
 #define FILE_READMODE     "read"
 #define FILE_WRITEMODE    "write"

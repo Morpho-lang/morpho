@@ -126,6 +126,7 @@ assemblyrule assemblyrules[] ={
     
     { OP_B, "b", "+" },
     { OP_BIF, "bif", "rA +" },
+    { OP_BIFF, "biff", "rA +" },
     
     { OP_CALL, "call", "rA, B" }, // b literal
     { OP_INVOKE, "invoke", "rA, cB, C" }, // c literal

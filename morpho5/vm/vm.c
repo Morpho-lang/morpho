@@ -1107,7 +1107,13 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             left=reg[a];
 
             if (MORPHO_ISTRUE(left)) pc+=DECODE_sBx(bc);
+            DISPATCH();
+        
+        CASE_CODE(BIFF):
+            a=DECODE_A(bc);
+            left=reg[a];
 
+            if (MORPHO_ISFALSE(left)) pc+=DECODE_sBx(bc);
             DISPATCH();
 
         CASE_CODE(CALL):

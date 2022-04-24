@@ -1739,7 +1739,7 @@ static codeinfo compiler_if(compiler *c, syntaxtreenode *node, registerindx reqo
     }
     
     /* Now generate the conditional branch over the then clause */
-    compiler_setinstruction(c, ifindx, ENCODE_LONG(OP_BIF, cond.dest, then.ninstructions+nextra));
+    compiler_setinstruction(c, ifindx, ENCODE_LONG(OP_BIFF, cond.dest, then.ninstructions+nextra));
     
     /* If necessary generate the unconditional branch over the else clause */
     if (right->type==NODE_THEN) {
@@ -1837,7 +1837,7 @@ static codeinfo compiler_while(compiler *c, syntaxtreenode *node, registerindx r
     if (node->left!=SYNTAXTREE_UNCONNECTED) {
         /* And generate the conditional branch at the start of the loop.
            The extra 1 is to skip the loop instruction */
-        compiler_setinstruction(c, condindx, ENCODE_LONG(OP_BIF, cond.dest, body.ninstructions+1));
+        compiler_setinstruction(c, condindx, ENCODE_LONG(OP_BIFF, cond.dest, body.ninstructions+1));
     }
     
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
@@ -1947,7 +1947,7 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     ninstructions++;
     
     /* Go back and generate the condition instruction */
-    compiler_setinstruction(c, condindx, ENCODE_LONG(OP_BIF, rcond, (add-tst) ));
+    compiler_setinstruction(c, condindx, ENCODE_LONG(OP_BIFF, rcond, (add-tst) ));
     
     compiler_fixloop(c, tst, add, end+1);
     
@@ -2127,7 +2127,7 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
 static codeinfo compiler_logical(compiler *c, syntaxtreenode *node, registerindx reqout) {
     /* An AND operator must branch if the first operand is false,
        an OR  operator must branch if the first operator is true */
-    bool bifflag = (node->type==NODE_AND ? false : true);
+    bool biffflag = (node->type==NODE_AND ? true : false); // Generate a BIFF instruction
     
     registerindx out = compiler_regtemp(c, reqout);
     instructionindx condindx=0; /* Where is the condition located */
@@ -2157,12 +2157,8 @@ static codeinfo compiler_logical(compiler *c, syntaxtreenode *node, registerindx
         rinstructions+=right.ninstructions;
     }
     
-    if (bifflag) {
-        UNREACHABLE("BIFF NOT IMPLEMENTED");
-    }
-    
     /* Generate the branch instruction */
-    compiler_setinstruction(c, condindx, ENCODE_LONG(OP_BIF, out, rinstructions));
+    compiler_setinstruction(c, condindx, ENCODE_LONG((biffflag ? OP_BIFF : OP_BIF), out, rinstructions));
     
     return CODEINFO(REGISTER, out, linstructions+rinstructions);
 }

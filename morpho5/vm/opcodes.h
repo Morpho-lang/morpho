@@ -48,8 +48,11 @@ OPCODE(LE)
 /** Branching */
 OPCODE(B)
 
-/** Conditional branch */
+/** Branch if true */
 OPCODE(BIF)
+
+/** Branch if false */
+OPCODE(BIFF)
 
 /** Call */
 OPCODE(CALL)

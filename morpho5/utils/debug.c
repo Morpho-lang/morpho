@@ -129,7 +129,7 @@ assemblyrule assemblyrules[] ={
     { OP_BIFF, "biff", "rA +" },
     
     { OP_CALL, "call", "rA, B" }, // b literal
-    { OP_INVOKE, "invoke", "rA, cB, C" }, // c literal
+    { OP_INVOKE, "invoke", "rA, rB, C" }, // c literal
     
     { OP_RETURN, "return", "rB" }, // c literal
 
@@ -140,7 +140,8 @@ assemblyrule assemblyrules[] ={
     
     { OP_CLOSEUP, "closeup", "rA" },
     { OP_LPR, "lpr", "rA, rB, rC" },
-    { OP_SPR, "spr", "rA, cB, rC" },
+    { OP_SPR, "spr", "rA, rB, rC" },
+    
     { OP_LIX, "lix", "rA, rB, rC" },
     { OP_SIX, "six", "rA, rB, rC" },
     

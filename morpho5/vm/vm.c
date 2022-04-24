@@ -1179,7 +1179,7 @@ callfunction: // Jump here if an instruction becomes a call
             b=DECODE_B(bc);
             c=DECODE_C(bc);
             left=reg[a];
-            right=v->konst[b];
+            right=reg[b];
 
             if (MORPHO_ISINSTANCE(left)) {
                 objectinstance *instance = MORPHO_GETINSTANCE(left);
@@ -1344,7 +1344,7 @@ callfunction: // Jump here if an instruction becomes a call
         CASE_CODE(LPR): /* Load property */
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = reg[b];
-            right = v->konst[c];
+            right = reg[c];
 
             if (MORPHO_ISINSTANCE(left)) {
                 objectinstance *instance = MORPHO_GETINSTANCE(left);
@@ -1410,7 +1410,7 @@ callfunction: // Jump here if an instruction becomes a call
 
             if (MORPHO_ISINSTANCE(left)) {
                 objectinstance *instance = MORPHO_GETINSTANCE(left);
-                left = v->konst[b]; // B is always a constant
+                left = reg[b];
                 dictionary_insertintern(&instance->fields, left, right);
             } else {
                 ERROR(VM_NOTANOBJECT);

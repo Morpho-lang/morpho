@@ -32,12 +32,15 @@ typedef struct svm vm;
  *  <pre>
  *         24      16      8       0
  *  .......|.......|.......|.......|
- *  **op**                           Opcode (gives 64 instructions)
- *        ***A****                   Operand A
- *                *        *         Select Constant (set) or Register for operands B & C
- *                 ***B**** ***C**** } Operands B & C
- *                fg**Bx************ } Operand Bx with two boolean flags f & g
- *                fg*sBx************ } Signed operand Bx with two boolean flags f & g
+ *                          ***op*** Opcode (gives 256 instructions)
+ *                  ***A****         Operand A
+ *          ***B****                 } Operands B & C
+ *  ***C****                         }
+ *                                      OR
+ *  **Bx************                 } Operand Bx as unsigned short
+ *  *sBx************                 } Signed operand Bx
+ *                                      OR
+ *  ***********LBx**********         } 24 bit unsigned integer
  * </pre>
  */
 
@@ -49,54 +52,60 @@ typedef unsigned int instruction;
  * --------------------------------------------- */
 
 /** Encodes an instruction with operands A, B and C. */
-#define ENCODE(op, A, B, C) ( ((((unsigned) op) & 0xff) << 26) | ((A & 0xff) << 18) | ((B & 0xff) << 9) | (C & 0xff) )
-
-/** Encodes an instruction with operands A, B and C also setting the constant flags Bc and Cc */
-#define ENCODEC(op, A, Bc, B, Cc, C) ( ((((unsigned) op) & 0xff) << 26) | ((A & 0xff) << 18) | ((Bc & 0x1) << 17) | ((B & 0xff) << 9) | ((Cc & 0x1) << 8) | (C & 0xff) )
-
-/** Encodes an instruction with operand A and long operand Bx */
-#define ENCODE_LONG(op, A, Bx) ( ((((unsigned) op) & 0xff) << 26) | ((A & 0xff) << 18) | (Bx & 0xffff) )
-
-/** Encodes an instruction with operand A and long operand Bx */
-#define ENCODE_LONGFLAGS(op, A, f, g, Bx) ( ((((unsigned) op) & 0xff) << 26) | ((A & 0xff) << 18) | ((f & 0x1) << 17) | ((g & 0x1) << 16) | (Bx & 0xffff) )
-
-/** Encodes an instruction with operand A */
-#define ENCODE_SINGLE(op, A) ( ((((unsigned) op) & 0xff) << 26) | ((A & 0xff) << 18))
-
-/** Encodes an instruction with operands A and B */
-#define ENCODE_DOUBLE(op, A, Bc, B) ( ((((unsigned) op) & 0xff) << 26) | ((A & 0xff) << 18) | ((Bc & 0x1) << 17) | ((B & 0xff) << 9) )
+#define ENCODE(op, A, B, C) ( (((unsigned) op) & 0xff) | ((A & 0xff) << 8) | ((B & 0xff) << 16) | ((C & 0xff) << 24) )
 
 /** Encodes an instruction with no operands */
-#define ENCODE_BYTE(op) ((((unsigned) op) & 0xff) << 26)
+#define ENCODE_BYTE(op) (((unsigned) op) & 0xff)
+
+/** Encodes an instruction with operand A */
+#define ENCODE_SINGLE(op, A) ( (((unsigned) op) & 0xff)  | ((A & 0xff) << 8))
+
+/** Encodes an instruction with two operands A and B */
+#define ENCODE_DOUBLE(op, A, B) ( (((unsigned) op) & 0xff)  | ((A & 0xff) << 8) | ((B & 0xff) << 16))
+
+/** Encodes an instruction with operand A and long operand Bx */
+#define ENCODE_LONG(op, A, Bx) ( (((unsigned) op) & 0xff) | ((A & 0xff) << 8) | ((Bx & 0xffff) << 16) )
+
+/** Encodes an instruction with operand Ax and extended operand Bl */
+#define ENCODE_EXTENDED(op, Ax) ( (((unsigned) op) & 0xff) | ((A & 0xffffff) << 8) )
+
+/** Encodes an instruction with operands A, B and C also setting the constant flags Bc and Cc */
+//#define ENCODEC(op, A, Bc, B, Cc, C) ( ((((unsigned) op) & 0xff) << 26) | ((A & 0xff) << 18) | ((Bc & 0x1) << 17) | ((B & 0xff) << 9) | ((Cc & 0x1) << 8) | (C & 0xff) )
+
+/** Encodes an instruction with operand A and long operand Bx */
+//#define ENCODE_LONGFLAGS(op, A, f, g, Bx) ( ((((unsigned) op) & 0xff) << 26) | ((A & 0xff) << 18) | ((f & 0x1) << 17) | ((g & 0x1) << 16) | (Bx & 0xffff) )
+
+
+/** Encodes an instruction with operands A and B */
+//#define ENCODE_DOUBLE(op, A, Bc, B) ( ((((unsigned) op) & 0xff) << 26) | ((A & 0xff) << 18) | ((Bc & 0x1) << 17) | ((B & 0xff) << 9) )
 
 /** Encodes an empty operand */
 #define ENCODE_EMPTYOPERAND 0
 
 /** Decode the opcode */
-#define DECODE_OP(x) (x >> 26)
+#define DECODE_OP(x) (x & 0xff)
 
 /** Decode operand A */
-#define DECODE_A(x) ((x>>18) & (0xff))
+#define DECODE_A(x) ((x>>8) & (0xff))
 /** Decode operand B */
-#define DECODE_B(x) ((x>>9) & (0xff))
+#define DECODE_B(x) ((x>>16) & (0xff))
 /** Decode operand C */
-#define DECODE_C(x) (x & 0xff)
+#define DECODE_C(x) ((x>>24) & (0xff))
 
 /** Is Operand B a constant or a register? */
-#define DECODE_ISBCONSTANT(x) ((x) & (1<<17))
+//#define DECODE_ISBCONSTANT(x) ((x) & (1<<17))
 /** Is Operand C a constant or a register? */
-#define DECODE_ISCCONSTANT(x) ((x) & (1<<8))
+//#define DECODE_ISCCONSTANT(x) ((x) & (1<<8))
 
 /** Decode long operand Bx */
-#define DECODE_Bx(x) (x & 0xffff)
+#define DECODE_Bx(x) ((x>>16) & (0xffff))
 
 /** Decode signed long operand Bx */
-#define DECODE_sBx(x) ((short) (x & 0xffff))
+#define DECODE_sBx(x) ((short) ((x>>16) & (0xffff)))
 
 /** Decode flags F and G */
-#define DECODE_F(x) ((bool) (x & (1<<17)))
-#define DECODE_G(x) ((bool) (x & (1<<16)))
-
+//#define DECODE_F(x) ((bool) (x & (1<<17)))
+//#define DECODE_G(x) ((bool) (x & (1<<16)))
 
 /* -----------------------------
  * Opcodes (built automatically)

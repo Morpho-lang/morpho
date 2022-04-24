@@ -833,8 +833,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 
         CASE_CODE(ADD):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
-            left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
-            right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
+            left = reg[b];
+            right = reg[c];
 
             if (MORPHO_ISFLOAT(left)) {
                 if (MORPHO_ISFLOAT(right)) {
@@ -880,8 +880,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 
         CASE_CODE(SUB):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
-            left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
-            right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
+            left = reg[b];
+            right = reg[c];
 
             if (MORPHO_ISFLOAT(left)) {
                 if (MORPHO_ISFLOAT(right)) {
@@ -920,8 +920,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 
         CASE_CODE(MUL):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
-            left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
-            right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
+            left = reg[b];
+            right = reg[c];
 
             if (MORPHO_ISFLOAT(left)) {
                 if (MORPHO_ISFLOAT(right)) {
@@ -960,8 +960,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 
         CASE_CODE(DIV):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
-            left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
-            right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
+            left = reg[b];
+            right = reg[c];
 
             if (MORPHO_ISFLOAT(left)) {
                 if (MORPHO_ISFLOAT(right)) {
@@ -1000,8 +1000,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 
         CASE_CODE(POW):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
-            left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
-            right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
+            left = reg[b];
+            right = reg[c];
 
             if (MORPHO_ISFLOAT(left)) {
                 if (MORPHO_ISFLOAT(right)) {
@@ -1042,7 +1042,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 
         CASE_CODE(NOT):
             a=DECODE_A(bc); b=DECODE_B(bc);
-            left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
+            left = reg[b];
+
             if (MORPHO_ISBOOL(left)) {
                 reg[a] = MORPHO_BOOL(!MORPHO_GETBOOLVALUE(left));
             } else {
@@ -1052,8 +1053,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 
         CASE_CODE(EQ):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
-            left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
-            right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
+            left = reg[b];
+            right = reg[c];
 
             MORPHO_CMPPROMOTETYPE(left,right);
             reg[a] = (morpho_comparevalue(left, right)==0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
@@ -1061,8 +1062,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 
         CASE_CODE(NEQ):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
-            left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
-            right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
+            left = reg[b];
+            right = reg[c];
 
             MORPHO_CMPPROMOTETYPE(left,right);
             reg[a] = (morpho_comparevalue(left, right)!=0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
@@ -1070,8 +1071,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 
         CASE_CODE(LT):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
-            left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
-            right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
+            left = reg[b];
+            right = reg[c];
 
             if ( !( (MORPHO_ISFLOAT(left) || MORPHO_ISINTEGER(left)) &&
                    (MORPHO_ISFLOAT(right) || MORPHO_ISINTEGER(right)) ) ) {
@@ -1084,8 +1085,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 
         CASE_CODE(LE):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
-            left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
-            right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
+            left = reg[b];
+            right = reg[c];
 
             if ( !( (MORPHO_ISFLOAT(left) || MORPHO_ISINTEGER(left)) &&
                    (MORPHO_ISFLOAT(right) || MORPHO_ISINTEGER(right)) ) ) {
@@ -1103,10 +1104,9 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 
         CASE_CODE(BIF):
             a=DECODE_A(bc);
-            b=DECODE_sBx(bc);
             left=reg[a];
 
-            if ((MORPHO_ISTRUE(left) ? true : false) == (DECODE_F(bc) ? true : false)) pc+=b;
+            if (MORPHO_ISTRUE(left)) pc+=DECODE_sBx(bc);
 
             DISPATCH();
 
@@ -1173,7 +1173,7 @@ callfunction: // Jump here if an instruction becomes a call
             b=DECODE_B(bc);
             c=DECODE_C(bc);
             left=reg[a];
-            right=(DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
+            right=v->konst[b];
 
             if (MORPHO_ISINSTANCE(left)) {
                 objectinstance *instance = MORPHO_GETINSTANCE(left);
@@ -1252,7 +1252,7 @@ callfunction: // Jump here if an instruction becomes a call
 
             if (a>0) {
                 b=DECODE_B(bc);
-                reg[0] = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
+                reg[0] = reg[b];
             } else {
                 reg[0] = MORPHO_NIL; /* No return value; returns nil */
             }
@@ -1309,7 +1309,7 @@ callfunction: // Jump here if an instruction becomes a call
         CASE_CODE(SUP):
             a=DECODE_A(bc);
             b=DECODE_B(bc);
-            right = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
+            right = reg[b];
             if (v->fp->closure && v->fp->closure->upvalues[a]) {
                 *v->fp->closure->upvalues[a]->location=right;
             } else {
@@ -1337,8 +1337,8 @@ callfunction: // Jump here if an instruction becomes a call
 
         CASE_CODE(LPR): /* Load property */
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
-            left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
-            right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
+            left = reg[b];
+            right = v->konst[c];
 
             if (MORPHO_ISINSTANCE(left)) {
                 objectinstance *instance = MORPHO_GETINSTANCE(left);
@@ -1400,11 +1400,11 @@ callfunction: // Jump here if an instruction becomes a call
         CASE_CODE(SPR):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
             left = reg[a];
-            right = (DECODE_ISCCONSTANT(bc) ? v->konst[c] : reg[c]);
+            right = reg[c];
 
             if (MORPHO_ISINSTANCE(left)) {
                 objectinstance *instance = MORPHO_GETINSTANCE(left);
-                left = (DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
+                left = v->konst[b]; // B is always a constant
                 dictionary_insertintern(&instance->fields, left, right);
             } else {
                 ERROR(VM_NOTANOBJECT);
@@ -1474,22 +1474,6 @@ callfunction: // Jump here if an instruction becomes a call
             v->ehp--;         // Pull error handler off error stack
             if (v->ehp<v->errorhandlers) v->ehp=NULL; // If the stack is empty rest to NULL
             DISPATCH();
-        
-        /*CASE_CODE(ARRAY):
-            a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
-            if (DECODE_ISBCONSTANT(bc)) {
-
-            } else {
-                objectarray *new = object_arrayfromvalueindices((unsigned int) c-b+1, &reg[b]);
-                if (new) {
-                    reg[a]=MORPHO_OBJECT(new);
-                    vm_bindobject(v, reg[a]);
-                } else {
-                    ERROR(ERROR_ALLOCATIONFAILED);
-                }
-            }
-
-            DISPATCH();*/
 
         CASE_CODE(CAT):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
@@ -1498,8 +1482,8 @@ callfunction: // Jump here if an instruction becomes a call
             DISPATCH();
 
         CASE_CODE(PRINT):
-            b=DECODE_B(bc);
-            left=(DECODE_ISBCONSTANT(bc) ? v->konst[b] : reg[b]);
+            a=DECODE_A(bc);
+            left=reg[a];
 #ifdef MORPHO_COLORTERMINAL
             printf("\033[1m");
 #endif
@@ -1511,13 +1495,6 @@ callfunction: // Jump here if an instruction becomes a call
 #endif
             printf("\n");
             DISPATCH();
-
-/*        CASE_CODE(RAISE):
-            a=DECODE_A(bc);
-            if (MORPHO_ISSTRING(reg[a])) {
-                ERROR(MORPHO_GETCSTRING(reg[a]));
-            }
-            DISPATCH();*/
 
         CASE_CODE(BREAK):
             if (v->debug) {

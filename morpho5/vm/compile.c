@@ -1435,16 +1435,17 @@ static codeinfo compiler_negate(compiler *c, syntaxtreenode *node, registerindx 
             ninstructions+=out.ninstructions;
         }
         
-        registerindx zero = compiler_addconstant(c, node, MORPHO_INTEGER(0.0), false, false);
+        registerindx zero = compiler_addconstant(c, node, MORPHO_INTEGER(0), false, false);
         codeinfo zeroinfo = CODEINFO(CONSTANT, zero, 0);
         zeroinfo=compiler_movetoregister(c, node, zeroinfo, REGISTER_UNALLOCATED);
         ninstructions+=zeroinfo.ninstructions;
         
         registerindx rout = compiler_regtemp(c, reqout);
         
-        compiler_addinstruction(c, ENCODE(OP_SUB, rout, zero, out.dest), node);
+        compiler_addinstruction(c, ENCODE(OP_SUB, rout, zeroinfo.dest, out.dest), node);
         ninstructions++;
         compiler_releaseoperand(c, out);
+        compiler_releaseoperand(c, zeroinfo);
         out = CODEINFO(REGISTER, rout, ninstructions);
     }
     
@@ -1903,6 +1904,7 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     registerindx cmone = compiler_addconstant(c, node, MORPHO_INTEGER(-1), false, false);
     codeinfo mv=compiler_movetoregister(c, collnode, coll, rmax);
     ninstructions+=mv.ninstructions;
+    
     compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rmone, cmone), node);
     compiler_addinstruction(c, ENCODE(OP_INVOKE, rmax, method.dest, 1), collnode);
     ninstructions+=2;
@@ -1919,10 +1921,12 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     registerindx rval=compiler_regalloctop(c);
     mv=compiler_movetoregister(c, collnode, coll, rval);
     ninstructions+=mv.ninstructions;
+    
     registerindx rarg=compiler_regalloctop(c);
     compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, rarg, rcount), node);
     compiler_addinstruction(c, ENCODE(OP_INVOKE, rval, method.dest, 1), collnode);
     ninstructions+=2;
+    
     compiler_regsetsymbol(c, rval, initnode->content);
     if (indxnode) compiler_regsetsymbol(c, rcount, indxnode->content);
     
@@ -1939,6 +1943,8 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     registerindx cone = compiler_addconstant(c, node, MORPHO_INTEGER(1), false, false);
     codeinfo oneinfo = CODEINFO(CONSTANT, cone, 0);
     oneinfo = compiler_movetoregister(c, node, oneinfo, REGISTER_UNALLOCATED);
+    ninstructions+=oneinfo.ninstructions;
+    
     instructionindx add=compiler_addinstruction(c, ENCODE(OP_ADD, rcount, rcount, oneinfo.dest), node);
     ninstructions++;
     

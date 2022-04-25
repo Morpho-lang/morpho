@@ -1940,6 +1940,8 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     compiler_endloop(c);
     
     /* Increment the counter */
+    instructionindx inc=compiler_currentinstructionindex(c);
+    
     registerindx cone = compiler_addconstant(c, node, MORPHO_INTEGER(1), false, false);
     codeinfo oneinfo = CODEINFO(CONSTANT, cone, 0);
     oneinfo = compiler_movetoregister(c, node, oneinfo, REGISTER_UNALLOCATED);
@@ -1955,7 +1957,7 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     /* Go back and generate the condition instruction */
     compiler_setinstruction(c, condindx, ENCODE_LONG(OP_BIFF, rcond, (add-tst) ));
     
-    compiler_fixloop(c, tst, add, end+1);
+    compiler_fixloop(c, tst, inc, end+1);
     
     if (CODEINFO_ISREGISTER(method)) compiler_regfreetemp(c, method.dest);
     

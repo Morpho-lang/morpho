@@ -121,6 +121,21 @@ The `MeanCurvatureSq` functional computes the integrated mean curvature over a s
 
 The `GaussCurvature` computes the integrated gaussian curvature over a surface.
 
+Note that for surfaces with a boundary, the integrand is correct only for the interior points. To compute the geodesic curvature of the boundary in that case, you can set the optional flag `geodesic` to `true` and compute the total on the boundary selection.
+Here is an example for a 2D disk mesh.
+
+    var mesh = Mesh("disk.mesh")
+    mesh.addgrade(1)
+
+    var whole = Selection(mesh, fn(x,y,z) true)
+    var bnd = Selection(mesh, boundary=true)
+    var interior = whole.difference(bnd)
+
+    var gauss = GaussCurvature()
+    print gauss.total(mesh, selection=interior) // expect: 0
+    gauss.geodesic = true
+    print gauss.total(mesh, selection=bnd) // expect: 2*Pi
+
 ## GradSq
 [taggradsq]: # (gradsq)
 
@@ -192,18 +207,28 @@ You can also integrate functions that involve fields:
 
 More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `AreaIntegrand`.
 
-## FloryHuggins
-[tagfloryhuggins]: # (floryhuggins)
+## Hydrogel
+[taghydrogel]: # (hydrogel)
 
-The `FloryHuggins` functional computes the Flory-Huggins mixing energy over an element:
+The `Hydrogel` functional computes the Flory-Rehner energy over an element:
 
-    a*phi*log(phi) + b*(1-phi)+log(1-phi) + c*phi*(1-phi)
+    (a*phi*log(phi) + b*(1-phi)+log(1-phi) + c*phi*(1-phi))*V + 
+    d*(log(phiref/phi)/3 - (phiref/phi)^(2/3) + 1)*V0
 
-where a, b and c are parameters you can supply. The value of phi is calculated from a reference mesh that you provide on initializing the Functional: 
+The first three terms come from the Flory-Huggins mixing energy, whereas
+the fourth term proportional to d comes from the Flory-Rehner elastic
+energy.
 
-    var lfh = FloryHuggins(mref)
+The value of phi is calculated from a reference mesh
+that you provide on initializing the Functional: 
 
+    var lfh = Hydrogel(mref)
+
+Here, a, b, c, d and phiref are parameters you can supply (they are `nil`
+by default), V is the current volume and V0 is the reference volume of a
+given element. You also need to supply the initial value of phi, labeled
+as phi0, which is assumed to be the same for all the elements. 
 Manually set the coefficients and grade to operate on:
 
-    lfh.a = 1; lfh.b = 1; lfh.c = 1;
-    lfh.grade = 2
+    lfh.a = 1; lfh.b = 1; lfh.c = 1; lfh.d = 1;
+    lfh.grade = 2, lfh.phi0 = 0.5, lfh.phiref = 0.1

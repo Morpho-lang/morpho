@@ -115,8 +115,9 @@ def getoutput(filepath):
 
 # Test a file
 def test(file,testLog,CI):
-    ret = 0;
-    print(file+":", end=" ")
+    ret = 0
+    if not CI:
+        print(file+":", end=" ")
 
 
     # Create a temporary file in the same directory
@@ -145,7 +146,7 @@ def test(file,testLog,CI):
                 print("  Expected: ", expected)
                 print("    Output: ", out)
             else:
-                print("::error file = {",file,"}::{",file," Failed}")
+                print("\n::error file = {",file,"}::{",file," Failed}")
 
 
             #also print to the test log
@@ -156,7 +157,7 @@ def test(file,testLog,CI):
                 failedTests = list(i for i in range(len(out)) if expected[i] != out[i])
                 print("Tests " + str(failedTests) + " did not match expected results.", file = testLog)
                 for testNum in failedTests:
-                    print("Test "+str(testNum))
+                    print("Test "+str(testNum), file = testLog)
                     print("  Expected: ", expected[testNum], file = testLog)
                     print("    Output: ", out[testNum], file = testLog)
             else:
@@ -181,7 +182,9 @@ total=0   # total number of tests
 
 # look for a command line arguement that says
 # this is being run for continous integration
-CI = sys.argv == '-c'
+CI = False
+if (len(sys.argv) > 1):
+    CI = sys.argv[1] == '-c'
 
 files=glob.glob('**/**.'+ext, recursive=True)
 with open("FailedTests.txt",'w') as testLog:
@@ -191,7 +194,7 @@ with open("FailedTests.txt",'w') as testLog:
         success+=test(f,testLog,CI)
         total+=1
 
-if not success == total:
+if (not CI) and (not success == total):
     os.system("emacs FailedTests.txt &")
 
 print('--End testing-----------------------')

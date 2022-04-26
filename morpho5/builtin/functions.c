@@ -14,6 +14,11 @@
 #include "mesh.h"
 #include "field.h"
 #include "selection.h"
+#include "cmplx.h"
+
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
 
 /* **********************************************************************
  * Built in functions
@@ -31,6 +36,8 @@ value builtin_##function(vm *v, int nargs, value *args) { \
                 return MORPHO_FLOAT(function(MORPHO_GETFLOATVALUE(arg))); \
             } else if (MORPHO_ISINTEGER(arg)) { \
                 return MORPHO_FLOAT(function((double) MORPHO_GETINTEGERVALUE(arg))); \
+            } else if (MORPHO_ISCOMPLEX(arg)){\
+                return complex_builtin##function(v,MORPHO_GETCOMPLEX(arg));\
             } else { \
                 morpho_runtimeerror(v, MATH_ARGS, #function);\
             } \
@@ -54,7 +61,6 @@ BUILTIN_MATH(acos)
 BUILTIN_MATH(sinh)
 BUILTIN_MATH(cosh)
 BUILTIN_MATH(tanh)
-BUILTIN_MATH(sqrt)
 
 BUILTIN_MATH(floor)
 BUILTIN_MATH(ceil)
@@ -71,6 +77,8 @@ value builtin_##function(vm *v, int nargs, value *args) { \
                     return MORPHO_BOOL(function(MORPHO_GETFLOATVALUE(arg))); \
             } else if (MORPHO_ISINTEGER(arg)) { \
                 return MORPHO_BOOL(function((double) MORPHO_GETINTEGERVALUE(arg))); \
+            } else if (MORPHO_ISCOMPLEX(arg)){\
+                return complex_builtin##function(MORPHO_GETCOMPLEX(arg));\
             } else { \
                 morpho_runtimeerror(v, MATH_ARGS, #function);\
             } \
@@ -85,25 +93,141 @@ BUILTIN_MATH_BOOL(isinf)
 BUILTIN_MATH_BOOL(isnan)
 
 #undef BUILTIN_MATH_BOOL
-
+/** The sqrt function is needs to be able to return a complex number for negitive arguments */
+value builtin_sqrt(vm *v, int nargs, value *args) { 
+    if (nargs==1) { 
+        value arg = MORPHO_GETARG(args, 0); 
+        if (MORPHO_ISCOMPLEX(arg)){
+            return complex_builtinsqrt(v,MORPHO_GETCOMPLEX(arg));
+        }
+        else if (MORPHO_ISNUMBER(arg)) {
+            double val;
+            if (morpho_valuetofloat(arg,&val)) {
+                if (val<0) {// need to use complex sqrt
+                    objectcomplex C = MORPHO_STATICCOMPLEX(val,0);
+                    return complex_builtinsqrt(v,&C);
+                } else { 
+                    return MORPHO_FLOAT(sqrt(val));
+                }
+            } else morpho_runtimeerror(v, MATH_ARGS, "sqrt"); 
+        } else morpho_runtimeerror(v, MATH_ARGS, "sqrt"); 
+    }
+    morpho_runtimeerror(v, MATH_NUMARGS, "sqrt");
+    return MORPHO_NIL; 
+}
 
 /** The arctan function is special; it can either take one or two arguments */
 value builtin_arctan(vm *v, int nargs, value *args) {
-    double x[2];
+
+    bool useComplex = false;
     for (unsigned int i=0; i<nargs; i++) {
-        if (!morpho_valuetofloat(MORPHO_GETARG(args, i), x+i)) {
+        if (MORPHO_ISNUMBER(MORPHO_GETARG(args,i))) {
+            continue;
+        } else if (MORPHO_ISCOMPLEX(MORPHO_GETARG(args, i))) {
+            useComplex = true;
+        } else {
             morpho_runtimeerror(v, MATH_ARGS, "arctan");
             return MORPHO_NIL;
         }
     }
-    
-    if (nargs==1) {
-        return MORPHO_FLOAT(atan(x[0]));
-    } else if (nargs==2) {
-        return MORPHO_FLOAT(atan2(x[1], x[0])); // Note Morpho uses the opposite order to C!
-    }
+    if (useComplex) {
+        if (nargs == 1) {
+            return complex_builtinatan(v,MORPHO_GETARG(args, 0));
+        } else if (nargs==2) {
+            // Note Morpho uses the opposite order to C!
+            return complex_builtinatan2(v,MORPHO_GETARG(args, 1),MORPHO_GETARG(args, 0));
+        }
+        morpho_runtimeerror(v, MATH_NUMARGS, "arctan");
+        return MORPHO_NIL;
+    } else {
+
+        double x[2];
+        for (unsigned int i=0; i<nargs; i++) {
+            morpho_valuetofloat(MORPHO_GETARG(args, i), x+i);
+        }
         
-    morpho_runtimeerror(v, MATH_NUMARGS, "#function");
+        if (nargs==1) {
+            return MORPHO_FLOAT(atan(x[0]));
+        } else if (nargs==2) {
+            return MORPHO_FLOAT(atan2(x[1], x[0])); // Note Morpho uses the opposite order to C!
+        }
+            
+        morpho_runtimeerror(v, MATH_NUMARGS, "arctan");
+        return MORPHO_NIL;
+    }
+}
+
+value builtin_real(vm *v, int nargs, value *args) {
+    if (nargs==1) { 
+        value arg = MORPHO_GETARG(args, 0);
+        if (MORPHO_ISNUMBER(arg)) {
+            return arg;
+        } else if (MORPHO_ISCOMPLEX(arg)) {
+            objectcomplex *c=MORPHO_GETCOMPLEX(arg);
+            double val;
+            complex_getreal(c,&val);
+            return MORPHO_FLOAT(val);
+        }
+    }
+    morpho_runtimeerror(v, MATH_NUMARGS, "real");
+    return MORPHO_NIL;
+}
+
+value builtin_imag(vm *v, int nargs, value *args) {
+    if (nargs==1) { 
+        value arg = MORPHO_GETARG(args, 0);
+        if (MORPHO_ISNUMBER(arg)) {
+            return MORPHO_FLOAT(0);
+        } else if (MORPHO_ISCOMPLEX(arg)) {
+            objectcomplex *c=MORPHO_GETCOMPLEX(arg);
+            double val;
+            complex_getimag(c,&val);
+            return MORPHO_FLOAT(val);
+        }
+    }
+    morpho_runtimeerror(v, MATH_NUMARGS, "imag");
+    return MORPHO_NIL;
+}
+
+value builtin_angle(vm *v, int nargs, value *args) {
+    if (nargs==1) { 
+        value arg = MORPHO_GETARG(args, 0);
+        if (MORPHO_ISNUMBER(arg)) {
+            double val;
+            morpho_valuetofloat(arg,&val);
+            if (val>=0) {
+                return MORPHO_FLOAT(0);
+            }
+            else return MORPHO_FLOAT(M_PI);
+        } else if (MORPHO_ISCOMPLEX(arg)) {
+            objectcomplex *c=MORPHO_GETCOMPLEX(arg);
+            double val;
+            complex_angle(c,&val);
+            return MORPHO_FLOAT(val);
+        }
+    }
+    morpho_runtimeerror(v, MATH_NUMARGS, "angle");
+    return MORPHO_NIL;
+}
+
+value builtin_conj(vm *v, int nargs, value *args) {
+    if (nargs==1) { 
+        value arg = MORPHO_GETARG(args, 0);
+        if (MORPHO_ISNUMBER(arg)) {
+            return arg;
+        } else if (MORPHO_ISCOMPLEX(arg)) {
+            objectcomplex *a=MORPHO_GETCOMPLEX(arg);
+            value out=MORPHO_NIL;
+            objectcomplex *new = object_newcomplex(0,0);
+            if (new) {
+                complex_conj(a, new);
+                out=MORPHO_OBJECT(new);
+                morpho_bindobjects(v, 1, &out);
+            }    
+            return out;
+        }
+    }
+    morpho_runtimeerror(v, MATH_NUMARGS, "conj");
     return MORPHO_NIL;
 }
 
@@ -191,6 +315,7 @@ BUILTIN_TYPECHECK(isnil, MORPHO_ISNIL)
 BUILTIN_TYPECHECK(isint, MORPHO_ISINTEGER)
 BUILTIN_TYPECHECK(isfloat, MORPHO_ISFLOAT)
 BUILTIN_TYPECHECK(isnumber, MORPHO_ISNUMBER)
+BUILTIN_TYPECHECK(iscomplex, MORPHO_ISCOMPLEX)
 BUILTIN_TYPECHECK(isbool, MORPHO_ISBOOL)
 BUILTIN_TYPECHECK(isobject, MORPHO_ISOBJECT)
 BUILTIN_TYPECHECK(isstring, MORPHO_ISSTRING)
@@ -518,6 +643,11 @@ void functions_initialize(void) {
     BUILTIN_TYPECHECK(ismesh)
     BUILTIN_TYPECHECK(isselection)
     BUILTIN_TYPECHECK(isfield)
+
+    builtin_addfunction(FUNCTION_REAL,builtin_real,BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FUNCTION_IMAG,builtin_imag,BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FUNCTION_ANGLE,builtin_angle,BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FUNCTION_CONJ,builtin_conj,BUILTIN_FLAGSEMPTY);
     
     builtin_addfunction(FUNCTION_ISCALLABLE, builtin_iscallablefunction, BUILTIN_FLAGSEMPTY);
     

@@ -1,0 +1,12 @@
+// Attempting to open a file rbc_001.vtk obtained from
+// https://people.sc.fsu.edu/~jburkardt/data/vtk/vtk.html
+
+import vtk
+import plot 
+
+var vtkI = VTKImporter("rbc_001.vtk")
+
+var m = vtkI.mesh()
+
+print m.count(0) // expect: 500
+print m.count(2) // expect: 996

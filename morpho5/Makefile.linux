@@ -45,7 +45,7 @@ debug: CFLAGS+= -ggdb -O0
 debug: CUDAFLAGS+= -g -G
 debug: install
 
-nonanboxing: CFLAGS += -D_NO_NAN_BOXING -ggdb
+nonanboxing: CFLAGS += -D_NO_NAN_BOXING
 nonanboxing: install
 
 garbagecollectortest: CFLAGS += -D_DEBUG_STRESSGARBAGECOLLECTOR

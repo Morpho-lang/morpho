@@ -5,7 +5,7 @@ import color
 import graphics
 import povray
 
-var Np = 200 // Number of particles to add
+var Np = 100 // Number of particles to add
 var r = 0.05 // radius of a particle
 var R = 3*r // Initial radius of sphere
 var delta = r // Size of step to take
@@ -20,7 +20,7 @@ fn randompt() {
 }
 
 for (n in 1..Np) { // Add particles one-by-one
-  print n
+  if (mod(n, 10)==0) print "Added particle no. ${n}"
   var x = randompt()
   while (true) {
     // Move current particle

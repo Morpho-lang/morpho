@@ -85,8 +85,9 @@
 #define MORPHO_COMPUTED_GOTO
 
 /** @brief Build Morpho VM with small but hacky value type [NaN boxing] */
+#ifndef _NO_NAN_BOXING
 #define MORPHO_NAN_BOXING
-
+#endif
 /** @brief Number of bytes to bind before GC first runs */
 #define MORPHO_GCINITIAL 1024;
 /** It seems that DeltaBlue benefits strongly from garbage collecting while the heap is still fairly small */
@@ -139,8 +140,9 @@
 //#define MORPHO_DEBUG_DISABLEGARBAGECOLLECTOR
 
 /** @brief Stress test garbage collector */
-//#define MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
-
+#ifdef _DEBUG_STRESSGARBAGECOLLECTOR
+    #define MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
+#endif
 /** @brief Log garbage collector */
 //#define MORPHO_DEBUG_LOGGARBAGECOLLECTOR
 

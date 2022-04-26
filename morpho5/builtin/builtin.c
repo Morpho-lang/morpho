@@ -12,6 +12,7 @@
 #include "builtin.h"
 #include "matrix.h"
 #include "gpumatrix.h"
+#include "cmplx.h"
 #include "sparse.h"
 #include "mesh.h"
 #include "selection.h"
@@ -287,6 +288,7 @@ void builtin_initialize(void) {
     selection_initialize();
     field_initialize();
     functional_initialize();
+    complex_initialize();
 }
 
 void builtin_finalize(void) {

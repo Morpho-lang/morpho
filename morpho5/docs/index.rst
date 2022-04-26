@@ -20,6 +20,7 @@ Morpho
    :maxdepth: 1
 
    array
+   complex
    dictionary
    list
    matrix
@@ -52,6 +53,7 @@ Morpho
    graphics
    implicitmesh
    kdtree
+   meshgen
    meshtools
    optimize
    plot

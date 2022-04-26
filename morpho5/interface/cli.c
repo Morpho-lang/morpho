@@ -65,6 +65,7 @@ linedit_color cli_tokencolors[] = {
     LINEDIT_MAGENTA,                               // TOKEN_NIL
     LINEDIT_MAGENTA,                               // TOKEN_SELF
     LINEDIT_MAGENTA,                               // TOKEN_SUPER
+    LINEDIT_BLUE,                                  // TOKEN_IMAG
     
     LINEDIT_DEFAULTCOLOR,                          // TOKEN_LEFTPAREN
     LINEDIT_DEFAULTCOLOR,                          // TOKEN_RIGHTPAREN
@@ -207,11 +208,11 @@ void cli_help (lineditor *edit, char *query, error *err, bool avail) {
 void cli(clioptions opt) {
     #ifdef MORPHO_LONG_BANNER
         printf(BLU " ___   ___ \n" RESET);
-        printf(BLU "(" CYN " @ " GRY"\\Y/" CYN " @ " BLU ") " RESET "  |  morpho 0.5.1  | \U0001F44B Type 'help' or '?' for help\n");
+        printf(BLU "(" CYN " @ " GRY"\\Y/" CYN " @ " BLU ") " RESET "  |  morpho 0.5.2  | \U0001F44B Type 'help' or '?' for help\n");
         printf(BLU " \\" CYN"__" GRY"+|+" CYN"__" BLU"/  " RESET "  |  Documentation: https://morpho-lang.readthedocs.io/en/latest/ \n");
         printf(BLU"  {" CYN"_" BLU "/ \\" CYN "_" BLU"}   " RESET "  |  Code: https://github.com/Morpho-lang/morpho \n\n");
     #else
-        printf("\U0001F98B morpho 0.5.1  | \U0001F44B Type 'help' or '?' for help\n");
+        printf("\U0001F98B morpho 0.5.2  | \U0001F44B Type 'help' or '?' for help\n");
     #endif
     // Original ASCII art source - https://www.asciiart.eu/animals/insects/butterflies
     cli_file=NULL;

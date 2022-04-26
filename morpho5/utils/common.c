@@ -12,6 +12,7 @@
 #include "common.h"
 #include "object.h"
 #include "sparse.h"
+#include "cmplx.h"
 
 /* **********************************************************************
 * Utility functions 
@@ -27,6 +28,24 @@
 #define BIGGER 1
 #define SMALLER -1
 int morpho_comparevalue (value a, value b) {
+
+    // if comparing a number to complex cast the number to complex
+    // we don't need to bind here beacues the value never needs to exist beyond this scope
+    // valgrin/check with tim to be sure
+    if (MORPHO_ISCOMPLEX(a) && MORPHO_ISNUMBER(b)){
+        // cast b to complex
+        double val;
+        morpho_valuetofloat(b,&val);
+        return (MORPHO_GETCOMPLEX(a)->Z==val ? EQUAL: NOTEQUAL);
+    }
+    if (MORPHO_ISCOMPLEX(b) && MORPHO_ISNUMBER(a)){
+        // cast b to complex
+        double val;
+        morpho_valuetofloat(a,&val);
+        return (MORPHO_GETCOMPLEX(b)->Z==val ? EQUAL: NOTEQUAL);
+    }
+
+
     if (!morpho_ofsametype(a, b)) return NOTEQUAL;
     
     if (MORPHO_ISFLOAT(a)) {
@@ -60,6 +79,10 @@ int morpho_comparevalue (value a, value b) {
                         
                         return ((MORPHO_GETDOKKEYCOL(akey)==MORPHO_GETDOKKEYCOL(bkey) &&
                                  MORPHO_GETDOKKEYROW(akey)==MORPHO_GETDOKKEYROW(bkey)) ? EQUAL : NOTEQUAL);
+                    } else if (MORPHO_ISCOMPLEX(a) && MORPHO_ISCOMPLEX(b)) {
+                        objectcomplex *acomp = MORPHO_GETCOMPLEX(a);
+                        objectcomplex *bcomp = MORPHO_GETCOMPLEX(b);
+                        return (complex_equality(acomp,bcomp)? EQUAL: NOTEQUAL);
                     } else {
                         return (MORPHO_GETOBJECT(a) == MORPHO_GETOBJECT(b)? EQUAL: NOTEQUAL);
                     }

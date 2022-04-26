@@ -40,7 +40,7 @@ class Delaunay {
     if (pts.count()<dim+1) Error("DlnyDim", "You must supply at least ${dim+1} points in ${dim} dimensions.").throw()
 
     self.dim = dim
-    self.sscale = 10
+    self.sscale = 2
     self.pts = pts.clone()
     self.n = pts.count()
     self.bbox = self.calcbbox()

@@ -169,7 +169,9 @@ value Matrix_addr(vm *v, int nargs, value *args) {
                 out=MORPHO_OBJECT(new);
                 morpho_bindobjects(v, 1, &out);
             }
-        } else UNREACHABLE("Right addition to non-zero value.");
+        } else { // If there is a value we're trying to add to just use Matrix_add for that 
+            out = Matrix_add(v, nargs, args);
+        }
     } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
     
     return out;
@@ -212,8 +214,12 @@ value Matrix_subr(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
  
     if (nargs==1 && (MORPHO_ISNIL(MORPHO_GETARG(args, 0)) ||
-                     MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)))) {
-        int i=(MORPHO_ISNIL(MORPHO_GETARG(args, 0)) ? 0 : MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)));
+                     MORPHO_ISNUMBER(MORPHO_GETARG(args, 0)))) {
+        int i = 0;
+        if (MORPHO_ISNIL(MORPHO_GETARG(args, 0))) i = 0;
+        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        if (MORPHO_ISFLOAT(MORPHO_GETARG(args, 0))) i=(fabs(MORPHO_GETFLOATVALUE(MORPHO_GETARG(args, 0)))<MORPHO_EPS ? 0 : 1);
+
         
         if (i==0) {
             objectmatrix *new = object_clonematrix(a);
@@ -222,6 +228,19 @@ value Matrix_subr(vm *v, int nargs, value *args) {
                 matrix_scale(new, -1.0);
                 morpho_bindobjects(v, 1, &out);
             }
+        } else if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+            // try and subtract like normal
+            double val;
+            if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
+                objectmatrix *new = object_newmatrix(a->nrows, a->ncols, false);
+                if (new) {
+                    out=MORPHO_OBJECT(new);
+                    matrix_addscalar(a, 1.0, -val, new);
+                    // now that did self - arg[0] and we want arg[0] - self so scale the whole thing by -1
+                    matrix_scale(new, -1.0);
+                }
+            }
+
         } else morpho_runtimeerror(v, VM_INVALIDARGS);
     } else morpho_runtimeerror(v, VM_INVALIDARGS);
     

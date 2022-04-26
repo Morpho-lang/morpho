@@ -1,0 +1,7 @@
+// Try to subtract incompatible matrices
+
+var a = GPUMatrix([[1, 2, 1], [3, 4, 1]])
+var b = GPUMatrix([[0, 1], [1, 0]])
+
+print a*b
+// expect Error: 'MtrxIncmptbl'

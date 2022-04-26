@@ -1,0 +1,7 @@
+// Transpose
+
+var a = GPUMatrix([[1,2], [3,4]])
+
+print -a
+// expect: [ -1 -2 ]
+// expect: [ -3 -4 ]

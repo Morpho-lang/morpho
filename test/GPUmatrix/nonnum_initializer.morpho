@@ -1,0 +1,4 @@
+// Non numerical initializer
+
+var m = GPUMatrix([[1,2], [3,"oops"]])
+// expect error: 'MtrxInvldInit'

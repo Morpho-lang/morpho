@@ -1,0 +1,30 @@
+// Matrix arithmetic
+
+var a = GPUMatrix([[1, 2], [3, 4]])
+var b = GPUMatrix([[0, 1], [1, 0]])
+
+print "A+B:"
+print a+b
+// expect: A+B:
+// expect: [ 1 3 ]
+// expect: [ 4 4 ]
+
+print "A-B:"
+print a-b
+// expect: A-B:
+// expect: [ 1 1 ]
+// expect: [ 2 4 ]
+
+print "A*B:"
+print a*b
+// expect: A*B:
+// expect: [ 2 1 ]
+// expect: [ 4 3 ]
+
+var c = GPUMatrix([[1,2,3], [4,5,6]])
+var d = GPUMatrix([[1,2], [3,4], [5,6]])
+print "C*D:"
+print c*d
+// expect: C*D:
+// expect: [ 22 28 ]
+// expect: [ 49 64 ]

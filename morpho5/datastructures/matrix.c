@@ -7,6 +7,7 @@
 #include <string.h>
 #include "object.h"
 #include "matrix.h"
+#include "gpumatrix.h"
 #include "sparse.h"
 #include "morpho.h"
 #include "builtin.h"
@@ -553,6 +554,21 @@ value Matrix_getcolumn(vm *v, int nargs, value *args) {
     return out;
 }
 
+value matrix_constructor_wrapper(vm *v, int nargs, value *args){
+    value out = MORPHO_NIL;
+    if (nargs==1 && MORPHO_ISGPUMATRIX(MORPHO_GETARG(args, 0))) {
+        objectmatrix *new=NULL;
+        new=object_matrixfromgpumatrix(MORPHO_GETGPUMATRIX(MORPHO_GETARG(args, 0)));
+        if (new) {
+            value out = MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        }
+    } else {
+        out = matrix_constructor(v, nargs, args);
+    }
+    return out;
+}
+
 MORPHO_BEGINCLASS(Matrix)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Matrix_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Matrix_setindex, BUILTIN_FLAGSEMPTY),
@@ -585,7 +601,7 @@ MORPHO_ENDCLASS
 void matrix_initialize(void) {
     objectmatrixtype=object_addtype(&objectmatrixdefn);
     
-    builtin_addfunction(MATRIX_CLASSNAME, matrix_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(MATRIX_CLASSNAME, matrix_constructor_wrapper, BUILTIN_FLAGSEMPTY);
     
     value matrixclass=builtin_addclass(MATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(Matrix), MORPHO_NIL);
     object_setveneerclass(OBJECT_MATRIX, matrixclass);

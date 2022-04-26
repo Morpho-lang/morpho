@@ -1,0 +1,22 @@
+// Transpose
+
+var a = GPUMatrix([[1,2], [3,4], [5,6]])
+
+print a.transpose()
+// expect: [ 1 3 5 ]
+// expect: [ 2 4 6 ]
+var size=61
+var A = GPUMatrix(size,size)
+for (i in 0...size^2) { A[mod(i,size),floor(i/size)] = i }
+var B = Matrix(size,size)
+for (i in 0...size^2) { B[floor(i/size),mod(i,size)] = i }
+
+var eq = true
+var At = A.transpose()
+
+for (i in 0...size) {
+    for (j in 0...size){
+        eq = eq and (At[i,j]==B[i,j])
+    }
+}
+print eq // expect: true

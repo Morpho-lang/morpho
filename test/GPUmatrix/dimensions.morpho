@@ -1,0 +1,10 @@
+// Solution of linear systems
+
+var a = GPUMatrix([[0.8, -0.4], [0.4, 0.8]])
+var v = GPUMatrix([0.2, 0.3])
+
+print a.dimensions()
+// expect: [ 2, 2 ]
+
+print v.dimensions()
+// expect: [ 2, 1 ]

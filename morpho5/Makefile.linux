@@ -8,9 +8,9 @@ help = $(wildcard docs/*.md)
 modules = $(wildcard modules/*)
 NVCC = nvcc
 
-LDFLAGS  = -lm -lblas -llapacke -lcxsparse -lcublas -lcudart
+LDFLAGS  = -lm -lblas -llapacke -lcxsparse -lcublas -lcusolver -lcudart 
 CFLAGS   = -std=c99 -O3 -I. -I/usr/include/suitesparse -I./datastructures  -I./datastructures/GPUdatastructures -I./geometry -I./interface -I./utils -I./vm -I./builtin
-CUDAFLAGS = -O3 -I. -I/usr/include/suitesparse -I./datastructures  -I./datastructures/GPUdatastructures -I./geometry -I./interface -I./utils -I./vm -I./builtin
+CUDAFLAGS =         -O3 -I. -I/usr/include/suitesparse -I./datastructures  -I./datastructures/GPUdatastructures -I./geometry -I./interface -I./utils -I./vm -I./builtin
 
 %.o: %.cu
 	$(NVCC) -c -o $@ $< $(LDFLAGS) $(CUDAFLAGS) 
@@ -36,12 +36,13 @@ modules:
 .PHONY: install
 install: morpho5
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	cp $< $(DESTDIR)$(PREFIX)/bin/morpho5dev
+	cp $< $(DESTDIR)$(PREFIX)/bin/morpho5
 	make modules
 	make help
 	make clean
 	
 debug: CFLAGS+= -ggdb -O0
+debug: CUDAFLAGS+= -g -G
 debug: install
 
 nonanboxing: CFLAGS += -D_NO_NAN_BOXING -ggdb

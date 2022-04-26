@@ -1,0 +1,24 @@
+// Solution of linear systems
+
+var a = GPUMatrix([[0.8, -0.4], [0.4, 0.8]])
+var v = GPUMatrix([0.2, 0.3])
+
+print a
+// expect: [ 0.8 -0.4 ]
+// expect: [ 0.4 0.8 ]
+
+print v/a
+// expect: [ 0.35 ]
+// expect: [ 0.2 ]
+
+print a/a
+// expect: [ 1 0 ]
+// expect: [ 0 1 ]
+
+print a
+// expect: [ 0.8 -0.4 ]
+// expect: [ 0.4 0.8 ]
+
+var b = GPUMatrix([[3, 4], [6, 8]])
+print v/b
+// expect error 'MtrxSnglr'

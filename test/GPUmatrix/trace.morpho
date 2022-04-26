@@ -1,0 +1,10 @@
+// Transpose
+
+var a = GPUMatrix([[1,2], [3,4]])
+
+print a.trace()
+// expect: 5
+
+var b = Matrix([[1, 2]])
+print b.trace()
+// expect error 'MtrxNtSq'

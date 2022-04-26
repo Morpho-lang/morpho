@@ -1,0 +1,6 @@
+// Access with non numerical indices
+
+var a = GPUMatrix([[1,2], [3,4], [5,6]])
+
+print a["Hello", "Squirrel"]
+// expect error: 'MtrxInvldIndx'

@@ -59,6 +59,12 @@ objectgpumatrix *object_gpumatrixfromarray(objectarray *array);
 /** Creates a new gpumatrix from an existing gpumatrix */
 objectgpumatrix *object_clonegpumatrix(objectgpumatrix *array);
 
+/** Creates a new matrix from a GPU matrix */
+objectmatrix *object_matrixfromgpumatrix(objectgpumatrix* in);
+
+/** Creates a new GPU matrix from a matrix */
+objectgpumatrix *object_gpumatrixfrommatrix(objectmatrix* in);
+
 /** Deletes a gpumatrix from the GPU */
 void objectgpufree(object *obj);
 

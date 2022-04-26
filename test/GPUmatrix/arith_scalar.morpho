@@ -1,0 +1,11 @@
+// Add/subtract a scalar
+
+var a = GPUMatrix([[1,2], [3,4]])
+
+print a-1
+// expect: [ 0 1 ]
+// expect: [ 2 3 ]
+
+print a+1
+// expect: [ 2 3 ]
+// expect: [ 4 5 ]

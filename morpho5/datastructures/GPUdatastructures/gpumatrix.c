@@ -7,6 +7,7 @@
 #include <string.h>
 #include "object.h"
 #include "gpumatrix.h"
+#include "matrix.h"
 #include "sparse.h"
 #include "morpho.h"
 #include "builtin.h"
@@ -216,9 +217,21 @@ objectgpumatrix *object_gpumatrixfromfloats(unsigned int nrows, unsigned int nco
     return ret;
 }
 
+objectgpumatrix *object_gpumatrixfrommatrix(objectmatrix* in) {
+    return object_gpumatrixfromfloats(in->nrows,in->ncols,in->elements);   
+}
 /*
  * Clone matrices
  */
+/** Transfer a matrix back to the CPU */
+objectmatrix *object_matrixfromgpumatrix(objectgpumatrix* in){
+    objectmatrix *ret = NULL;
+    ret = object_newmatrix(in->nrows,in->ncols,0);
+    if (ret) GPUcopy_to_host(in->status,ret->elements,in->elements,sizeof(double)*in->nrows*in->ncols);
+    
+    return ret;
+}
+
 
 /** Clone a gpumatrix */
 objectgpumatrix *object_clonegpumatrix(objectgpumatrix *in) {
@@ -366,7 +379,7 @@ objectgpumatrixerror gpumatrix_mul(objectgpumatrix *a, objectgpumatrix *b, objec
 /** Finds the Frobenius inner product of two matrices  */
 objectgpumatrixerror gpumatrix_inner(objectgpumatrix *a, objectgpumatrix *b, double *out) {
     if (a->ncols==b->ncols && a->nrows==b->nrows) {
-        *out=cblas_ddot(a->ncols*a->nrows, a->elements, 1, b->elements, 1);
+        GPUdot(a->status,a->ncols*a->nrows, a->elements, 1, b->elements, 1,out);
         return GPUMATRIX_OK;
     }
     return GPUMATRIX_INCMPTBLDIM;
@@ -381,17 +394,26 @@ objectgpumatrixerror gpumatrix_inner(objectgpumatrix *a, objectgpumatrix *b, dou
  * @param[out] pivot - you must provide an array with the same number of rows as a.
  * @returns objectgpumatrixerror indicating the status; GPUMATRIX_OK indicates success.
  * */
-static objectgpumatrixerror gpumatrix_div(objectgpumatrix *a, objectgpumatrix *b, objectgpumatrix *out, double *lu, int *pivot) {
-    int n=a->nrows, nrhs = b->ncols, info;
+static objectgpumatrixerror gpumatrix_div(objectgpumatrix *a, objectgpumatrix *b, objectgpumatrix *out, double *lu, int *devPivot) {
+    int n=a->nrows, nrhs = b->ncols;
+    int niter = 0;
+    int info = 0;
+    GPUcopy(a->status,a->ncols * a->nrows, a->elements, 1, lu, 1);
+    if (b!=out) GPUcopy(b->status,b->ncols * b->nrows, b->elements, 1, out->elements, 1);
+
+    int *devInfo = NULL;
+    GPUallocate(a->status,(void**)&devInfo,sizeof(int));
+    GPUgetrf(a->status,n,a->ncols,lu,n,devPivot,devInfo);
+    GPUcopy_to_host(a->status,&info,devInfo,sizeof(int));
+    if (info!=0) {
+        GPUdeallocate(a->status,devInfo);
+        return (info>0 ? GPUMATRIX_SING : GPUMATRIX_INVLD);
+    }
     
-    cblas_dcopy(a->ncols * a->nrows, a->elements, 1, lu, 1);
-    if (b!=out) cblas_dcopy(b->ncols * b->nrows, b->elements, 1, out->elements, 1);
-#ifdef MORPHO_LINALG_USE_LAPACKE
-    info=LAPACKE_dgesv(LAPACK_COL_MAJOR, n, nrhs, lu, n, pivot, out->elements, n);
-#else
-    dgesv_(&n, &nrhs, lu, &n, pivot, out->elements, &n, &info);
-#endif
-    
+    //make a temp idenity matrix
+    GPUgetrs(out->status,n,nrhs,lu,a->ncols,devPivot,out->elements,out->nrows,devInfo);
+    GPUcopy_to_host(a->status,&info,devInfo,sizeof(int));
+    GPUdeallocate(a->status,devInfo);
     return (info==0 ? GPUMATRIX_OK : (info>0 ? GPUMATRIX_SING : GPUMATRIX_INVLD));
 }
 
@@ -399,10 +421,16 @@ static objectgpumatrixerror gpumatrix_div(objectgpumatrix *a, objectgpumatrix *b
  * @warning Uses the C stack for storage, which avoids malloc but can cause stack overflow */
 objectgpumatrixerror gpumatrix_divs(objectgpumatrix *a, objectgpumatrix *b, objectgpumatrix *out) {
     if (a->ncols==b->nrows && a->ncols == out->nrows) {
-        int pivot[a->nrows];
-        double lu[a->nrows*a->ncols];
+        int *devPivot = NULL;
+        double *lu = NULL;
+        GPUallocate(a->status,(void**)&devPivot,sizeof(int)*a->nrows);
+        GPUallocate(a->status,(void**)&lu,sizeof(double)*a->nrows*a->ncols);
         
-        return gpumatrix_div(a, b, out, lu, pivot);
+        objectgpumatrixerror err = gpumatrix_div(a, b, out, lu, devPivot);
+        GPUdeallocate(a->status,devPivot);
+        GPUdeallocate(a->status,lu);
+        return err;
+
     }
     return GPUMATRIX_INCMPTBLDIM;
 }
@@ -412,13 +440,17 @@ objectgpumatrixerror gpumatrix_divl(objectgpumatrix *a, objectgpumatrix *b, obje
     objectgpumatrixerror ret = GPUMATRIX_ALLOC; // Returned if allocation fails
     if (!(a->ncols==b->nrows && a->ncols == out->nrows)) return GPUMATRIX_INCMPTBLDIM;
     
-    int *pivot=MORPHO_MALLOC(sizeof(int)*a->nrows);
-    double *lu=MORPHO_MALLOC(sizeof(double)*a->nrows*a->ncols);
+
+    int *devPivot = NULL;
+    double *lu = NULL;
+    GPUallocate(a->status,(void**)&devPivot,sizeof(int)*a->nrows);
+    GPUallocate(a->status,(void**)&lu,sizeof(double)*a->nrows*a->ncols);
+
     
-    if (pivot && lu) ret=gpumatrix_div(a, b, out, lu, pivot);
+    if (devPivot && lu) ret=gpumatrix_div(a, b, out, lu, devPivot);
     
-    if (pivot) MORPHO_FREE(pivot);
-    if (lu) MORPHO_FREE(lu);
+    GPUdeallocate(a->status,devPivot);
+    GPUdeallocate(a->status,lu);
     
     return ret;
 }
@@ -432,25 +464,26 @@ objectgpumatrixerror gpumatrix_inverse(objectgpumatrix *a, objectgpumatrix *out)
     int nrows=a->nrows, ncols=a->ncols, info;
     if (!(a->ncols==out->nrows && a->ncols == out->nrows)) return GPUMATRIX_INCMPTBLDIM;
     
-    int pivot[nrows];
+    int *devPivot = NULL;
+    GPUallocate(a->status,(void**)&devPivot,sizeof(int)*a->nrows);
+    int devInfo = 0;
+    GPUcopy(a->status,a->ncols * a->nrows, a->elements, 1, out->elements, 1);
+    GPUgetrf(a->status,nrows,ncols,out->elements,nrows,devPivot,&devInfo);
+    if (devInfo!=0) {
+        GPUdeallocate(a->status,&devPivot);
+        return (info>0 ? GPUMATRIX_SING : GPUMATRIX_INVLD);
+    }
     
-    cblas_dcopy(a->ncols * a->nrows, a->elements, 1, out->elements, 1);
-#ifdef MORPHO_LINALG_USE_LAPACKE
-    info=LAPACKE_dgetrf(LAPACK_COL_MAJOR, nrows, ncols, out->elements, nrows, pivot);
-#else
-    dgetrf_(&nrows, &ncols, out->elements, &nrows, pivot, &info);
-#endif
+    //make a temp idenity matrix
+    objectgpumatrix ident ={.elements = NULL, .ncols = a->ncols, .nrows = a->nrows, .status = a->status};
+    GPUallocate(a->status,(void**)&ident.elements,sizeof(double)*a->ncols*a->nrows);
+    gpumatrix_identity(&ident);
 
-    if (info!=0) return (info>0 ? GPUMATRIX_SING : GPUMATRIX_INVLD);
-    
-#ifdef MORPHO_LINALG_USE_LAPACKE
-    info=LAPACKE_dgetri(LAPACK_COL_MAJOR, nrows, out->elements, nrows, pivot);
-#else
-    int lwork=nrows*ncols; double work[nrows*ncols];
-    dgetri_(&nrows, out->elements, &nrows, pivot, work, &lwork, &info);
-#endif
-    
-    return (info==0 ? GPUMATRIX_OK : (info>0 ? GPUMATRIX_SING : GPUMATRIX_INVLD));
+    GPUgetrs(out->status,out->nrows,out->nrows,out->elements,out->ncols,devPivot,ident.elements,out->ncols,&devInfo);
+    GPUdeallocate(a->status,ident.elements);
+    GPUdeallocate(a->status,&devPivot);
+
+    return (devInfo==0 ? GPUMATRIX_OK : (info>0 ? GPUMATRIX_SING : GPUMATRIX_INVLD));
 }
 
 /** Sums all elements of a gpumatrix using Kahan summation */
@@ -458,18 +491,19 @@ double gpumatrix_sum(objectgpumatrix *a) {
     unsigned int nel=a->ncols*a->nrows;
     double sum=0.0, c=0.0, y,t;
     
-    for (unsigned int i=0; i<nel; i++) {
-        y=a->elements[i]-c;
-        t=sum+y;
-        c=(t-sum)-y;
-        sum=t;
-    }
+    double *GPUone;
+    double one = 1.0;
+    GPUallocate(a->status,(void **)&GPUone,sizeof(double));
+    GPUcopy_to_device(a->status,GPUone,&one,sizeof(double));
+    GPUdot(a->status,a->nrows, a->elements,1, GPUone, 0, &sum);
+    GPUdeallocate(a->status,GPUone);
     return sum;
 }
 
 /** Computes the Frobenius norm of a gpumatrix */
 double gpumatrix_norm(objectgpumatrix *a) {
-    double nrm2=cblas_dnrm2(a->ncols*a->nrows, a->elements, 1);
+    double nrm2;
+    GPUnrm2(a->status,a->ncols*a->nrows, a->elements, 1,&nrm2);
     return nrm2;
 }
 
@@ -477,25 +511,27 @@ double gpumatrix_norm(objectgpumatrix *a) {
 objectgpumatrixerror gpumatrix_transpose(objectgpumatrix *a, objectgpumatrix *out) {
     if (!(a->ncols==out->nrows && a->nrows == out->ncols)) return GPUMATRIX_INCMPTBLDIM;
 
-    /* Copy elements a column at a time */
-    for (unsigned int i=0; i<a->ncols; i++) {
-        cblas_dcopy(a->nrows, a->elements+(i*a->nrows), 1, out->elements+i, a->ncols);
-    }
+    GPUTranspose(a->status, a->elements, out->elements, a->ncols, a->nrows);
+
     return GPUMATRIX_OK;
 }
 
 /** Calculate the trace of a gpumatrix */
 objectgpumatrixerror gpumatrix_trace(objectgpumatrix *a, double *out) {
     if (a->nrows!=a->ncols) return GPUMATRIX_NSQ;
-    *out=1.0;
-    *out=cblas_ddot(a->nrows, a->elements, a->ncols+1, out, 0);
+    double *GPUone;
+    double one = 1.0;
+    GPUallocate(a->status,(void **)&GPUone,sizeof(double));
+    GPUcopy_to_device(a->status,GPUone,&one,sizeof(double));
+    GPUdot(a->status,a->nrows, a->elements,a->ncols+1, GPUone, 0, out);
+    GPUdeallocate(a->status,GPUone);
     
     return GPUMATRIX_OK;
 }
 
 /** Scale a gpumatrix */
 objectgpumatrixerror gpumatrix_scale(objectgpumatrix *a, double scale) {
-    cblas_dscal(a->ncols*a->nrows, scale, a->elements, 1);
+    GPUScale(a->status, a->ncols*a->nrows, &scale, a->elements, 1);
     
     return GPUMATRIX_OK;
 }
@@ -503,6 +539,18 @@ objectgpumatrixerror gpumatrix_scale(objectgpumatrix *a, double scale) {
 /** Load the indentity gpumatrix*/
 objectgpumatrixerror gpumatrix_identity(objectgpumatrix *a) {
     if (a->ncols!=a->nrows) return GPUMATRIX_NSQ;
+    
+    double *GPUone;
+    double one = 1.0;
+
+    GPUallocate(a->status,(void**)&GPUone,sizeof(double));
+    GPUcopy_to_device(a->status,GPUone,&one,sizeof(double));
+    GPUcopy(a->status,a->nrows, a->elements,a->ncols+1, GPUone, 0);
+    GPUdeallocate(a->status,GPUone);
+
+    // create a vector of ones
+    // copy it to the matrix
+    // delete the vector of ones
     for (int i=0; i<a->nrows; i++) for (int j=0; j<a->ncols; j++) a->elements[i+a->nrows*j]=(i==j ? 1.0 : 0.0);
     
     return GPUMATRIX_OK;
@@ -655,6 +703,21 @@ void gpumatrix_print(objectgpumatrix *m) {
 #define MORPHO_GETMATRIX(val)   ((objectmatrix *) MORPHO_GETOBJECT(val))
 
 
+value gpumatrix_constructor_wrapper(vm *v, int nargs, value *args){
+    value out = MORPHO_NIL;
+    if (nargs==1 && MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
+        objectgpumatrix *new=NULL;
+        new=object_gpumatrixfrommatrix(MORPHO_GETMATRIX(MORPHO_GETARG(args, 0)));
+        if (new) {
+            value out = MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        }
+    } else {
+        out = gpumatrix_constructor(v, nargs, args);
+    }
+    return out;
+}
+
 MORPHO_BEGINCLASS(GPUMatrix)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, GPUMatrix_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, GPUMatrix_setindex, BUILTIN_FLAGSEMPTY),
@@ -687,7 +750,7 @@ MORPHO_ENDCLASS
 void gpumatrix_initialize(void) {
     objectgpumatrixtype=object_addtype(&objectgpumatrixdefn);
     
-    builtin_addfunction(GPUMATRIX_CLASSNAME, gpumatrix_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(GPUMATRIX_CLASSNAME, gpumatrix_constructor_wrapper, BUILTIN_FLAGSEMPTY);
     
     value gpumatrixclass=builtin_addclass(GPUMATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(GPUMatrix), MORPHO_NIL);
     object_setveneerclass(OBJECT_GPUMATRIX, gpumatrixclass);

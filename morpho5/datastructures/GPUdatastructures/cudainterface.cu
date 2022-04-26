@@ -4,30 +4,43 @@
 * This is the cuda interface
 */ 
 #include "cudainterface.h"
+
+#define TILE_DIM 32
+#define BLOCK_COLS 8
+
 #include "kernals.h"
 
 #define GPUALLOCATE "cudaMalloc"
 #define GPUDEALLOCATE "cudaFree"
 #define GPUMEMSET "cudaMemset"
 #define GPUMEMCPY "cudaMemCopy"
-#define GPUSCALARADD "scalarAddition"
+#define GPUSCALARADD "Scalar Addition"
+#define GPUTRANSPOSE "Transpose"
 #define GPUDOT "cublasDotProduct"
 #define GPUAXPY "cublasAXPY"
 #define GPUSCALE "cublasScale"
 #define GPUCOPY "cublasCopy"
+#define GPUNRM2 "MatrixNorm"
 #define GPUMULT "cublasGEMM"
+#define GPUGETRF "cusolveLU"
+#define GPUGETRS "cusolveAXB"
 
 
 extern "C" {
 
 void GPUStatusCheck(GPUStatus* cudaInterface, const char * errid){
+    cudaInterface->cudaStatus = cudaDeviceSynchronize();
+
     if (cudaInterface->cudaStatus != cudaSuccess) {
         // morpho_runtimeerror(cudaInterface->v, errid);
-        printf("GPU error");
+        printf("GPU error: %s from %s\n",cudaGetErrorName(cudaInterface->cudaStatus),errid);
     }
     if (cudaInterface->cublasStatus != CUBLAS_STATUS_SUCCESS) {
         // morpho_runtimeerror(cudaInterface->v, errid);
-        printf("cublas error: %d",cudaInterface->cublasStatus);
+        printf("cublas error: %d from %s\n",cudaInterface->cublasStatus,errid);
+    }
+    if (cudaInterface->cusolverStatus!=CUSOLVER_STATUS_SUCCESS){
+        printf("cusolve error: %d from %s\n",cudaInterface->cusolverStatus,errid);
     }
 }
 
@@ -35,6 +48,7 @@ void GPUsetup(GPUStatus* cudaInterface) { //, vm* v) {
     if (!cudaInterface->init) {
         cudaInterface->cudaStatus = cudaSetDevice(0);
         cudaInterface->cublasStatus = cublasCreate(&cudaInterface->cublasHandle);
+        cudaInterface->cusolverStatus = cusolverDnCreate(&cudaInterface -> cusolverHandle);
         //cudaInterface->v = NULL;
         cudaInterface->init = true;
     }
@@ -72,9 +86,14 @@ void GPUScalarAddition(GPUStatus* cudaInterface, double* Matrix, double scalar, 
     unsigned int numberOfBlocks = ceil(size / (float) blockSize);
 
     ScalarAddition<<<numberOfBlocks, blockSize>>>(Matrix,scalar,out,size);
-    cudaInterface->cudaStatus = cudaDeviceSynchronize();
-
     GPUStatusCheck(cudaInterface,GPUSCALARADD);
+}
+
+void GPUTranspose(GPUStatus* cudaInterface, double* in, double* out, int ncols, int nrows) {
+
+    dim3 grid(ceil(ncols/(double)TILE_DIM), ceil(nrows/(double)TILE_DIM)), threads(BLOCK_COLS,TILE_DIM);
+    transposeDiagonal<<<grid,threads>>>(out, in, ncols, nrows);
+    GPUStatusCheck(cudaInterface,GPUTRANSPOSE);
 
 }
 
@@ -89,6 +108,10 @@ void dotProduct(GPUStatus* cudaInterface, double* v1, double * v2, int size, dou
     GPUStatusCheck(cudaInterface,GPUDOT);
 }
 
+void GPUdot(GPUStatus* cudaInterface,int size, double *x,int incx, double *y, int incy,double* out){
+    cudaInterface->cublasStatus = cublasDdot(cudaInterface->cublasHandle, size, x, incx, y , incy, out);
+    GPUStatusCheck(cudaInterface,GPUDOT);
+}
 
 /**
  * @brief axpy perfoms y[j] = alpha * x[k] + y[j]
@@ -136,7 +159,11 @@ void GPUScale(GPUStatus* cudaInterface, int n, const double *alpha, double *x, i
 
 
 }
+void GPUnrm2(GPUStatus* cudaInterface,int n, const double *x, int incx, double *result) {
+    cudaInterface->cublasStatus = cublasDnrm2(cudaInterface->cublasHandle, n,  x, incx, result);
+    GPUStatusCheck(cudaInterface,GPUNRM2);
 
+}
 
 
 /**
@@ -168,4 +195,83 @@ void GPUgemm(GPUStatus* cudaInterface,\
                                                 m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
     GPUStatusCheck(cudaInterface,GPUMULT);
 }
+
+/************************************************
+*       LAPACK-like cuSolver interface          *
+************************************************/
+// /**
+ 
+// handle      host 	input 	Handle to the cusolverDN library context.
+// n           host 	input 	Number of rows and columns of square matrix A. Should be non-negative.
+// nrhs 	    host 	input 	Number of right hand sides to solve. Should be non-negative.
+// dA 	        device 	None 	Matrix A with size n-by-n. Can be NULL.
+// ldda 	    host 	input 	Leading dimension of two-dimensional array used to store matrix A. lda >= n.
+// dipiv 	    device 	None 	Pivoting sequence. Not used and can be NULL.
+// dB 	        device 	None 	Set of right hand sides B of size n-by-nrhs. Can be NULL.
+// lddb 	    host 	input 	Leading dimension of two-dimensional array used to store matrix of right hand sides B. ldb >= n.
+// dX 	        device 	None 	Set of soultion vectors X of size n-by-nrhs. Can be NULL.
+// lddx 	    host 	input 	Leading dimension of two-dimensional array used to store matrix of solution vectors X. ldx >= n.
+// dwork 	    device 	none 	Pointer to device workspace. Not used and can be NULL.
+// lwork_bytes host 	output 	Pointer to a variable where required size of temporary workspace in bytes will be stored. Can't be NULL. 
+// */
+// void GPUgesv(GPUStatus* cudaInterface, int n, int nrhs, double* dA, int ldda, double* dB,\
+//  int lddb, double* dX, int lddx, int * niter, int *dinfo) {
+//     size_t lwork_bytes;
+//     int * dipiv = NULL;
+//     //cusolverDnIRSParams_t params = 
+//     //cudaInterface->cusolverStatus = cusolverDnIRSXgesv_bufferSize( cudaInterface->cusolverHandle,\
+//             params, n, nrhs, &lwork_bytes);
+
+//     GPUallocate(cudaInterface,(void**)&dipiv,sizeof(int)*n);
+
+//     cudaInterface->cusolverStatus = cusolverDnDDgesv_bufferSize(\
+//     cudaInterface->cusolverHandle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, NULL, &lwork_bytes);
+
+//     void * dWorkspace = NULL;
+//     //cusolverDnIRSInfos_t info;
+//     GPUallocate(cudaInterface,(void**)&dWorkspace,lwork_bytes);
+// /*cudaInterface->cusolverStatus cusolverDnIRSXgesv( cudaInterface->cusolverHandle,\
+//         params,
+//         info,
+//         int                         n,
+//         int                         nrhs,
+//         void                    *   dA,
+//         int                         ldda,
+//         void                    *   dB,
+//         int                         lddb,
+//         void                    *   dX,
+//         int                         lddx,
+//         void                    *   dWorkspace,
+//         size_t                      lwork_bytes,
+//         int                     *   dinfo);
+// */
+// //USE GETRS AND GETRF
+//     cudaInterface->cusolverStatus = cusolverDnDDgesv(cudaInterface->cusolverHandle,\
+//                         n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace,\
+//                         lwork_bytes, niter, dinfo);
+
+//     GPUdeallocate(cudaInterface,dWorkspace);
+//     GPUdeallocate(cudaInterface,dipiv);
+// }
+
+void GPUgetrf(GPUStatus* cudaInterface,int nrows, int ncols,double* elements,int lda,int* pivot,int* devInfo){
+    int Lwork;
+    cudaInterface->cusolverStatus = cusolverDnDgetrf_bufferSize(cudaInterface->cusolverHandle, nrows, ncols, elements, lda, &Lwork);
+    double *Workspace;
+    GPUallocate(cudaInterface, (void**)&Workspace,sizeof(double)*Lwork);
+    cudaInterface->cusolverStatus = cusolverDnDgetrf(cudaInterface->cusolverHandle, nrows, ncols, elements, lda,\
+           Workspace, pivot, devInfo );
+
+    GPUStatusCheck(cudaInterface,GPUGETRF);
+    GPUdeallocate(cudaInterface,Workspace);
 }
+
+void GPUgetrs(GPUStatus* cudaInterface, int nrows, int ncolsB, double * A, int lda, int *devIpiv, double* B, int ldb, int *devInfo) {
+
+    cudaInterface->cusolverStatus = cusolverDnDgetrs(cudaInterface->cusolverHandle,\
+           CUBLAS_OP_N, nrows, ncolsB, A, lda, devIpiv, B, ldb, devInfo);
+    GPUStatusCheck(cudaInterface,GPUGETRS);
+}
+}
+#undef TILE_DIM
+#undef BLOCK_COLS

@@ -110,6 +110,7 @@ class MeshSlicer {
 
     // Do the triangulation 
     var del = Delaunay(pts)
+    del.sscale = 100 // Use a large outer simplex
     var tri = del.triangulate() 
 
     for (t in tri) { 

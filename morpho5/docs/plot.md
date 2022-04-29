@@ -55,4 +55,4 @@ Plotfield accepts a number of optional arguments to control what is displayed:
 Supported plot styles: 
 
 * `default` - Color `Mesh` elements by the corresponding value of the `Field`.
-* `interpolated` - Interpolate `Field` quantities onto higher elements.
+* `interpolate` - Interpolate `Field` quantities onto higher elements.

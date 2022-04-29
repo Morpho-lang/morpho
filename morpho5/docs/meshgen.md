@@ -2,7 +2,7 @@
 [version]: # (0.5)
 
 # Meshgen
-[tagdelaunay]: # (delaunay)
+[tagmeshgen]: # (meshgen)
 
 The `meshgen` module is used to create `Mesh` objects corresponding to a specified domain. It provides the `MeshGen` class to perform the meshing, which are created with the following arguments:
 

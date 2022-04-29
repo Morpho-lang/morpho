@@ -8,7 +8,7 @@ var e1 = Domain(fn (x) -((x[0]/2)^2+x[1]^2+x[2]^2-(0.5)^2))
 var e2 = HalfSpaceDomain(Matrix([0.25,0,0]), Matrix([1,0,0]))
 var dom = (e0.difference(e1)).intersection(e2)
 
-var mg = MeshGen(dom, [-2..2:dh, -1..1:dh, -1..1:dh], quiet=false)
+var mg = MeshGen(dom, [-2..2:dh, -1.2..1.2:dh, -1.2..1.2:dh], quiet=false)
 var m = mg.build()
 
 Show(plotmesh(m, grade=1))

@@ -59,6 +59,7 @@ Morpho
    optimize
    plot
    povray
+   vtk
 
 .. toctree::
    :caption: Error messages

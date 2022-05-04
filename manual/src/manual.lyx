@@ -4183,6 +4183,16 @@ filename "Reference/array.tex"
 \begin_layout Standard
 \begin_inset CommandInset include
 LatexCommand input
+filename "Reference/complex.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
 filename "Reference/dictionary.tex"
 
 \end_inset

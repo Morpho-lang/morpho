@@ -1,0 +1,65 @@
+\hypertarget{meshslice}{%
+\section{Meshslice}\label{meshslice}}
+
+The \texttt{meshslice} module is used to slice a \texttt{Mesh} object
+along a given plane, yielding a new \texttt{Mesh} object of lower
+dimensionality. You can also use \texttt{meshslice} to project
+\texttt{Field} objects onto the new mesh.
+
+To use the module, begin by importing it:
+
+\begin{lstlisting}
+import meshslice 
+\end{lstlisting}
+
+Then construct a \texttt{MeshSlicer} object, passing the mesh you want
+to slice in the constructor:
+
+\begin{lstlisting}
+var slice = MeshSlicer(mesh)
+\end{lstlisting}
+
+You then perform a slice by calling the \texttt{slice} method, passing
+the plane you want to slice through. This method returns a new
+\texttt{Mesh} object comprising the slice. A plane is defined by a point
+that lies on the plane \texttt{pt} and a direction normal to the plan
+\texttt{dirn}:
+
+\begin{lstlisting}
+var slc = slice.slice(pt, dirn)
+\end{lstlisting}
+
+Having performed a slice, you can then project any associated
+\texttt{Field} objects onto the sliced mesh by calling the
+\texttt{slicefield} method:
+
+\begin{lstlisting}
+var phi = Field(mesh, fn (x,y,z) x+y+z)
+var sphi = slice.slicefield(phi)
+\end{lstlisting}
+
+The new field returned by \texttt{slicefield} lives on the sliced mesh.
+You can slice any number of fields.
+
+You can perform multiple slices with the same \texttt{MeshSlicer} simply
+by calling \texttt{slice} again with a different plane.
+
+\hypertarget{slcempty}{%
+\section{SlcEmpty}\label{slcempty}}
+
+This error occurs if you try to use \texttt{slicefield} on a
+\texttt{MeshSlicer} without having performed a slice. For example:
+
+\begin{lstlisting}
+var slice = MeshSlicer(mesh)
+slice.slicefield(phi) // Throws SlcEmpty
+slice.slice([0,0,0],[1,0,0]) 
+\end{lstlisting}
+
+To fix, call \texttt{slice} before \texttt{slicefield}:
+
+\begin{lstlisting}
+var slice = MeshSlicer(mesh)
+slice.slice([0,0,0],[1,0,0]) 
+slice.slicefield(phi) // Now slices correctly 
+\end{lstlisting}

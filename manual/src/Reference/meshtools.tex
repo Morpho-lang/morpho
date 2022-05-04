@@ -121,8 +121,8 @@ var build = MeshBuilder()
 \end{lstlisting}
 
 You can then add vertices, edges, etc. one by one using
-\texttt{addvertex}, \texttt{addedge} and \texttt{addtriangle}. Each of
-these returns an element id:
+\texttt{addvertex}, \texttt{addedge}, \texttt{addface} and
+\texttt{addelement}. Each of these returns an element id:
 
 \begin{lstlisting}
 var id1=build.addvertex(Matrix([0,0,0]))
@@ -136,6 +136,47 @@ Once the mesh is ready, call the \texttt{build} method to construct the
 \begin{lstlisting}
 var m = build.build()
 \end{lstlisting}
+
+You can specify the dimension of the \texttt{Mesh} explicitly when
+initializing the \texttt{MeshBuilder}:
+
+\begin{lstlisting}
+var mb = MeshBuilder(dimension=2)
+\end{lstlisting}
+
+or implicitly when adding the first vertex:
+
+\begin{lstlisting}
+var mb = MeshBuilder() 
+mb.addvertex([0,1]) // A 2D mesh
+\end{lstlisting}
+
+\hypertarget{mshblddimincnstnt}{%
+\section{MshBldDimIncnstnt}\label{mshblddimincnstnt}}
+
+This error is produced if you try to add a vertex that is inconsistent
+with the mesh dimension, e.g.~
+
+\begin{lstlisting}
+var mb = MeshBuilder(dimension=2) 
+mb.addvertex([1,0,0]) // Throws an error! 
+\end{lstlisting}
+
+To fix this ensure all vertices have the correct dimension.
+
+\hypertarget{mshblddimunknwn}{%
+\section{MshBldDimUnknwn}\label{mshblddimunknwn}}
+
+This error is produced if you try to add an element to a
+\texttt{MeshBuilder} object but haven't yet specified the dimension (at
+initialization) or by adding a vertex.
+
+\begin{lstlisting}
+var mb = MeshBuiler() 
+mb.addedge([0,1]) // No vertices have been added 
+\end{lstlisting}
+
+To fix this add the vertices first.
 
 \hypertarget{meshrefiner}{%
 \section{MeshRefiner}\label{meshrefiner}}

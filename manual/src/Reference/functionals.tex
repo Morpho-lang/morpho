@@ -166,6 +166,26 @@ curvature over a surface.
 The \texttt{GaussCurvature} computes the integrated gaussian curvature
 over a surface.
 
+Note that for surfaces with a boundary, the integrand is correct only
+for the interior points. To compute the geodesic curvature of the
+boundary in that case, you can set the optional flag \texttt{geodesic}
+to \texttt{true} and compute the total on the boundary selection. Here
+is an example for a 2D disk mesh.
+
+\begin{lstlisting}
+var mesh = Mesh("disk.mesh")
+mesh.addgrade(1)
+
+var whole = Selection(mesh, fn(x,y,z) true)
+var bnd = Selection(mesh, boundary=true)
+var interior = whole.difference(bnd)
+
+var gauss = GaussCurvature()
+print gauss.total(mesh, selection=interior) // expect: 0
+gauss.geodesic = true
+print gauss.total(mesh, selection=bnd) // expect: 2*Pi
+\end{lstlisting}
+
 \hypertarget{gradsq}{%
 \section{GradSq}\label{gradsq}}
 
@@ -274,27 +294,35 @@ More than one field can be used; they are passed as arguments to the
 integrand function in the order you supply them to
 \texttt{AreaIntegrand}.
 
-\hypertarget{floryhuggins}{%
-\section{FloryHuggins}\label{floryhuggins}}
+\hypertarget{hydrogel}{%
+\section{Hydrogel}\label{hydrogel}}
 
-The \texttt{FloryHuggins} functional computes the Flory-Huggins mixing
-energy over an element:
+The \texttt{Hydrogel} functional computes the Flory-Rehner energy over
+an element:
 
 \begin{lstlisting}
-a*phi*log(phi) + b*(1-phi)+log(1-phi) + c*phi*(1-phi)
+(a*phi*log(phi) + b*(1-phi)+log(1-phi) + c*phi*(1-phi))*V + 
+d*(log(phiref/phi)/3 - (phiref/phi)^(2/3) + 1)*V0
 \end{lstlisting}
 
-where a, b and c are parameters you can supply. The value of phi is
-calculated from a reference mesh that you provide on initializing the
-Functional:
+The first three terms come from the Flory-Huggins mixing energy, whereas
+the fourth term proportional to d comes from the Flory-Rehner elastic
+energy.
+
+The value of phi is calculated from a reference mesh that you provide on
+initializing the Functional:
 
 \begin{lstlisting}
-var lfh = FloryHuggins(mref)
+var lfh = Hydrogel(mref)
 \end{lstlisting}
 
-Manually set the coefficients and grade to operate on:
+Here, a, b, c, d and phiref are parameters you can supply (they are
+\texttt{nil} by default), V is the current volume and V0 is the
+reference volume of a given element. You also need to supply the initial
+value of phi, labeled as phi0, which is assumed to be the same for all
+the elements. Manually set the coefficients and grade to operate on:
 
 \begin{lstlisting}
-lfh.a = 1; lfh.b = 1; lfh.c = 1;
-lfh.grade = 2
+lfh.a = 1; lfh.b = 1; lfh.c = 1; lfh.d = 1;
+lfh.grade = 2, lfh.phi0 = 0.5, lfh.phiref = 0.1
 \end{lstlisting}

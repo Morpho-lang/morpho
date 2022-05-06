@@ -22,7 +22,7 @@ languages = { "morpho": "morpho5",
 """
 
 languages = { "morpho": "morpho5" }
-samples = 1
+samples = 10
 
 # Gets the output generated
 def getoutput(filepath):

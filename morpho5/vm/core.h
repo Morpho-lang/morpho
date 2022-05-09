@@ -132,9 +132,11 @@ typedef indx instructionindx;
 typedef struct {
     objectfunction *function;
     objectclosure *closure;
+    objectlist varlist;
     ptrdiff_t roffset; // Offset of register from base
     instruction *pc;
     unsigned int stackcount;
+    unsigned int returnreg; // Stores where any return value should be placed
     bool ret; // Should the interpreter return from this frame? 
 } callframe;
 

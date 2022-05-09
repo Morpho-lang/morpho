@@ -137,11 +137,12 @@ DECLARE_VARRAY(optionalparam, optionalparam)
 typedef struct sobjectfunction {
     object obj;
     int nargs;
+    int vararg; // The parameter number of a variadic parameter.
     value name;
     indx entry;
     struct sobjectfunction *parent;
     int nupvalues;
-    int nregs; 
+    int nregs;
     varray_value konst;
     varray_varray_upvalue prototype;
     varray_optionalparam opt;

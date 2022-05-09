@@ -637,16 +637,17 @@ static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsign
  *           7. Moving the program counter to the function
  * @param[in]  v                         The virtual machine
  * @param[in]  fn                       Function to call
- * @param[in]  shift                 rshift becomes r0 in the new call frame
+ * @param[in]  regcall            rshift becomes r0 in the new call frame
  * @param[in]  nargs                number of arguments
  * @param[out] pc                       program counter, updated
  * @param[out] reg                     register/stack pointer, updated */
-static inline bool vm_call(vm *v, value fn, unsigned int shift, unsigned int nargs, instruction **pc, value **reg) {
+static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int nargs, instruction **pc, value **reg) {
     objectfunction *func = MORPHO_GETFUNCTION(fn);
-
+    
     /* In the old frame... */
     v->fp->pc=*pc; /* Save the program counter */
     v->fp->stackcount=v->fp->function->nregs+(unsigned int) v->fp->roffset; /* Store the stacksize */
+    v->fp->returnreg=regcall; /* Store the return register */
     unsigned int oldnregs = v->fp->function->nregs; /* Get the old number of registers */
 
     v->fp++; /* Advance frame pointer */
@@ -666,28 +667,28 @@ static inline bool vm_call(vm *v, value fn, unsigned int shift, unsigned int nar
 
     /* Handle optional args */
     if (func->opt.count>0) {
-        if (!vm_vargs(v, (*pc) - v->instructions, func, shift, nargs, *reg)) return false;
+        if (!vm_vargs(v, (*pc) - v->instructions, func, regcall, nargs, *reg)) return false;
     } else if (func->nargs!=nargs) {
         vm_runtimeerror(v, (*pc) - v->instructions, VM_INVALIDARGS, func->nargs, nargs);
         return false;
     }
 
     /* Do we need to expand the stack? */
-    if (shift+func->nregs > oldnregs) {
-        /* We check this explicitly to avoid an unnecessary function call to vm_expandstack */
-        unsigned int n=shift+func->nregs-oldnregs;
-        if (v->stack.count+n>v->stack.capacity) {
-            vm_expandstack(v, reg, n); /* Expand the stack */
-        } else {
-            v->stack.count+=n;
-        }
+    if (v->stack.count+func->nregs>v->stack.capacity) {
+        vm_expandstack(v, reg, func->nregs); /* Expand the stack */
+    } else {
+        v->stack.count+=func->nregs;
     }
 
     v->konst = func->konst.data; /* Load the constant table */
-    *reg += shift; /* Shift the register frame so
-               that the register a becomes r0 */
+    value *oreg = *reg; /* Old register frame */
+    *reg += oldnregs; /* Shift the register frame */
+    
     v->fp->roffset=*reg-v->stack.data; /* Store the register index */
-
+    
+    /* Copy args */
+    for (unsigned int i=0; i<=nargs; i++) (*reg)[i] = oreg[regcall+i];
+    
     /* Zero out registers beyond args up to the top of the stack
        This has to be fast: memset was too slow. Zero seems to be faster than MORPHO_NIL */
     for (value *r = *reg + func->nregs-1; r > *reg + func->nargs; r--) *r = MORPHO_INTEGER(0);
@@ -1256,22 +1257,26 @@ callfunction: // Jump here if an instruction becomes a call
                 vm_closeupvalues(v, reg);
             }
 
+            value retvalue;
+        
             if (a>0) {
                 b=DECODE_B(bc);
-                reg[0] = reg[b];
+                retvalue = reg[b];
             } else {
-                reg[0] = MORPHO_NIL; /* No return value; returns nil */
+                retvalue = MORPHO_NIL; /* No return value; returns nil */
             }
 
             if (v->fp>v->frame) {
                 bool shouldreturn = (v->fp->ret);
-                value *or = reg + v->fp->function->nargs;
+                // value *or = reg + v->fp->function->nargs;
                 v->fp--;
                 v->konst=v->fp->function->konst.data; /* Restore the constant table */
                 reg=v->fp->roffset+v->stack.data; /* Restore registers */
                 v->stack.count=v->fp->stackcount; /* Restore the stack size */
-
-                for (value *r = reg + v->fp->function->nregs-1; r > or; r--) *r = MORPHO_INTEGER(0);
+                
+                reg[v->fp->returnreg]=retvalue; /* Copy the return value */
+                // Clear registers
+                // for (value *r = reg + v->fp->function->nregs-1; r > or; r--) *r = MORPHO_INTEGER(0);
 
                 pc=v->fp->pc; /* Jump back */
                 if (shouldreturn) return true;

@@ -1026,10 +1026,9 @@ static syntaxtreeindx parse_arglist(parser *p, tokentype rightdelimiter, unsigne
             if (parse_matchtoken(p, TOKEN_DOTDOTDOT)) {
 				// If we are trying to index something 
 				// then ... represents an open range
-				if (rightdelimiter == TOKEN_RIGHTSQBRACKET){
+				if (rightdelimiter == TOKEN_RIGHTSQBRACKET) {
 					
-				}
-                else if (varg) parse_error(p, true, PARSE_ONEVARPR);
+				} else if (varg) parse_error(p, true, PARSE_ONEVARPR);
                 varg = true;
             } else if (varg) parse_error(p, true, PARSE_VARPRLST);
             

@@ -593,34 +593,38 @@ static inline void vm_expandstack(vm *v, value **reg, unsigned int n) {
     v->stack.count+=n;
 }
 
-/** Process variadic and optional arguments */
-static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int shift, unsigned int nargs, value *reg) {
+/** Process variadic and optional arguments
+ * @param[in] v          - the VM
+ * @param[in] iindx - instruction index (used to raise errors if need be)
+ * @param[in] func    - function being called
+ * @param[in] regcall - Register for the call
+ * @param[in] nargs  - number of arguments being called with
+ * @param[in] reg       - register base
+ * @param[in] newreg - new register base
+ */
+static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int regcall, unsigned int nargs, value *reg, value *newreg) {
     unsigned int nopt = func->opt.count, // No. of optional params
                  nfixed = func->nargs-nopt, // No. of fixed params
-                 roffset = shift+nfixed+1, // Position of first optional parameter in output
+                 roffset = nfixed+1, // Position of first optional parameter in output
                  n=0;
-    value res[nopt];
 
     /* Copy across default values */
     for (unsigned int i=0; i<nopt; i++) {
-        res[i]=func->konst.data[func->opt.data[i].def];
+        newreg[roffset+i]=func->konst.data[func->opt.data[i].def];
     }
 
     /* Identify the optional arguments by searching back from the end */
     for (n=0; 2*n<nargs; n+=1) {
         unsigned int k=0;
-        for (; k<nopt; k++) if (MORPHO_ISSAME(func->opt.data[k].symbol, reg[shift+nargs-1-2*n])) break;
+        for (; k<nopt; k++) if (MORPHO_ISSAME(func->opt.data[k].symbol, reg[regcall+nargs-1-2*n])) break;
         if (k>=nopt) break; // If we didn't find a match, we're done with optional arguments
-        res[k]=reg[shift+nargs-2*n];
+        newreg[roffset+k]=reg[regcall+nargs-2*n];
     }
 
     if (nargs-2*n!=nfixed) { // Verify number of fixed args is correct
         vm_runtimeerror(v, iindx, VM_INVALIDARGS, nfixed, nargs-2*n);
         return false;
     }
-
-    /* Copy across the arguments */
-    for (unsigned int i=0; i<nopt; i++) reg[roffset+i]=res[i];
 
     return true;
 }
@@ -665,29 +669,28 @@ static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int n
     v->fp->ret=false; /* Interpreter should not return from this frame */
     v->fp->function=func; /* Store the function */
 
-    /* Handle optional args */
-    if (func->opt.count>0) {
-        if (!vm_vargs(v, (*pc) - v->instructions, func, regcall, nargs, *reg)) return false;
-    } else if (func->nargs!=nargs) {
-        vm_runtimeerror(v, (*pc) - v->instructions, VM_INVALIDARGS, func->nargs, nargs);
-        return false;
-    }
-
     /* Do we need to expand the stack? */
     if (v->stack.count+func->nregs>v->stack.capacity) {
         vm_expandstack(v, reg, func->nregs); /* Expand the stack */
     } else {
         v->stack.count+=func->nregs;
     }
-
+    
     v->konst = func->konst.data; /* Load the constant table */
     value *oreg = *reg; /* Old register frame */
     *reg += oldnregs; /* Shift the register frame */
-    
     v->fp->roffset=*reg-v->stack.data; /* Store the register index */
     
     /* Copy args */
     for (unsigned int i=0; i<=nargs; i++) (*reg)[i] = oreg[regcall+i];
+    
+    /* Handle optional args */
+    if (func->opt.count>0) {
+        if (!vm_vargs(v, (*pc) - v->instructions, func, regcall, nargs, oreg, *reg)) return false;
+    } else if (func->nargs!=nargs) {
+        vm_runtimeerror(v, (*pc) - v->instructions, VM_INVALIDARGS, func->nargs, nargs);
+        return false;
+    }
     
     /* Zero out registers beyond args up to the top of the stack
        This has to be fast: memset was too slow. Zero seems to be faster than MORPHO_NIL */

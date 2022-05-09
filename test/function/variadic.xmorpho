@@ -1,5 +1,6 @@
-// Optional arguments
+// Variadic arguments
 
+/*
 fn func(x, y, ...varg) {
   for (a in varg) print a
 }
@@ -21,3 +22,4 @@ func(1, 2, 3, 4, 5)
 func(1)
 // expect error 'ExpctdArgs'
 
+*/

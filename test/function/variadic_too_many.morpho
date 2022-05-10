@@ -4,4 +4,4 @@ fn bad(x, y, ...varg, ...warg) {
 
 }
 
-// expect Error: 'OneVarPr'
+// expect Error: 'VarPrmtr'

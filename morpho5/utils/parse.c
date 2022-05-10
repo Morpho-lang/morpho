@@ -1023,18 +1023,19 @@ static syntaxtreeindx parse_arglist(parser *p, tokentype rightdelimiter, unsigne
     
     if (!parse_checktoken(p, rightdelimiter)) {
         do {
+            bool vargthis = false;
             if (parse_matchtoken(p, TOKEN_DOTDOTDOT)) {
 				// If we are trying to index something 
 				// then ... represents an open range
 				if (rightdelimiter == TOKEN_RIGHTSQBRACKET) {
 					
 				} else if (varg) parse_error(p, true, PARSE_ONEVARPR);
-                varg = true;
+                varg = true; vargthis = true;
             } else if (varg) parse_error(p, true, PARSE_VARPRLST);
             
             current=parse_pseudoexpression(p);
 
-            if (varg) current=parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, current);
+            if (vargthis) current=parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, current);
             
             n++;
             

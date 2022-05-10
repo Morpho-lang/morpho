@@ -830,12 +830,29 @@ static inline void compiler_addoptionalarg(compiler *c, syntaxtreenode *node, va
 
     if (f) {
         value sym=program_internsymbol(c->out, symbol);
-        registerindx reg = compiler_addlocal(c, node, symbol);
+        registerindx reg = compiler_addlocal(c, node, sym);
         registerindx val = compiler_addconstant(c, node, def, false, true);
         
         optionalparam param = {.symbol=sym, .def=val, .reg=reg};
         
         varray_optionalparamwrite(&f->func->opt, param);
+    }
+}
+
+/** Adds  a variadic parameter */
+static inline void compiler_addvariadicarg(compiler *c, syntaxtreenode *node, value symbol) {
+    functionstate *f = compiler_currentfunctionstate(c);
+
+    if (f) {
+        if (object_functionhasvargs(f->func)) {
+            compiler_error(c, node, COMPILE_MLTVARPRMTR);
+            return;
+        }
+        
+        value sym=program_internsymbol(c->out, symbol);
+        registerindx reg = compiler_addlocal(c, node, sym);
+        
+        object_functionsetvarg(f->func, reg-1);
     }
 }
 
@@ -2296,9 +2313,7 @@ static void compiler_functionparameters(compiler *c, syntaxtreeindx indx) {
         case NODE_RANGE:
         {
             syntaxtreenode *name=compiler_getnode(c, node->right);
-            printf("variadic argument ");
-            morpho_printvalue(name->content);
-            printf("\n");
+            compiler_addvariadicarg(c, node, name->content);
             break;
         }
         default:
@@ -3517,6 +3532,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_CNTOTSDLP, ERROR_COMPILE, COMPILE_CNTOTSDLP_MSG);
     morpho_defineerror(COMPILE_OPTPRMDFLT, ERROR_COMPILE, COMPILE_OPTPRMDFLT_MSG);
     morpho_defineerror(COMPILE_FORWARDREF, ERROR_COMPILE, COMPILE_FORWARDREF_MSG);
+    morpho_defineerror(COMPILE_MLTVARPRMTR, ERROR_COMPILE, COMPILE_MLTVARPRMTR_MSG);
 }
 
 /** Finalizes the compiler */

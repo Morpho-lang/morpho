@@ -84,6 +84,9 @@
 #define COMPILE_FORWARDREF                "UnrslvdFrwdRf"
 #define COMPILE_FORWARDREF_MSG            "Function '%s' is called but not defined in the same scope."
 
+#define COMPILE_MLTVARPRMTR               "MltVarPrmtr"
+#define COMPILE_MLTVARPRMTR_MSG           "Functions can have at most one variadic parameter."
+
 /* **********************************************************************
  * Compiler typedefs
  * ********************************************************************** */

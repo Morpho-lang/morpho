@@ -621,7 +621,20 @@ static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsign
         newreg[roffset+k]=reg[regcall+nargs-2*n];
     }
 
-    if (nargs-2*n!=nfixed) { // Verify number of fixed args is correct
+    if (func->varg>=0) {
+        object_init((object *) &v->fp->varlist, OBJECT_LIST);
+        
+        if (nargs-2*n<nfixed-1) {
+            vm_runtimeerror(v, iindx, VM_INVALIDARGS, nfixed-1, nargs-2*n);
+            return false;
+        }
+        
+        v->fp->varlist.val.count=nargs-2*n-(nfixed-1);
+        v->fp->varlist.val.capacity=nargs-2*n-(nfixed-1);
+        v->fp->varlist.val.data=reg+regcall+nfixed;
+        
+        newreg[nfixed] = MORPHO_OBJECT(&v->fp->varlist);
+    } else if (nargs-2*n!=nfixed) { // Verify number of fixed args is correct
         vm_runtimeerror(v, iindx, VM_INVALIDARGS, nfixed, nargs-2*n);
         return false;
     }
@@ -685,7 +698,7 @@ static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int n
     for (unsigned int i=0; i<=nargs; i++) (*reg)[i] = oreg[regcall+i];
     
     /* Handle optional args */
-    if (func->opt.count>0) {
+    if (func->opt.count>0 || func->varg>0) {
         if (!vm_vargs(v, (*pc) - v->instructions, func, regcall, nargs, oreg, *reg)) return false;
     } else if (func->nargs!=nargs) {
         vm_runtimeerror(v, (*pc) - v->instructions, VM_INVALIDARGS, func->nargs, nargs);

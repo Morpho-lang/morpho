@@ -856,6 +856,12 @@ static inline void compiler_addvariadicarg(compiler *c, syntaxtreenode *node, va
     }
 }
 
+/** Check if the current function has variadic parameters */
+bool compiler_hasvariadicarg(compiler *c) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    return object_functionhasvargs(f->func);
+}
+
 /* ------------------------------------------
  * Global variables
  * ------------------------------------------- */
@@ -2291,7 +2297,11 @@ static void compiler_functionparameters(compiler *c, syntaxtreeindx indx) {
     
     switch(node->type) {
         case NODE_SYMBOL:
-            compiler_addlocal(c, node, node->content);
+        {
+            if (!compiler_hasvariadicarg(c)) {
+                compiler_addlocal(c, node, node->content);
+            } else compiler_error(c, node, COMPILE_VARPRMLST);
+        }
             break;
         case NODE_ASSIGN:
         {
@@ -2506,25 +2516,6 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
     }
     
     varray_syntaxtreeindxclear(&argnodes);
-    
-    /*
-    if (node->left!=SYNTAXTREE_UNCONNECTED) {
-        left=compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
-        ninstructions+=left.ninstructions;
-        if ((left.dest!=REGISTER_UNALLOCATED) && !compiler_iscodeinfotop(c, left)) {
-            left=compiler_movetoregister(c, node, left, REGISTER_UNALLOCATED);
-            ninstructions+=left.ninstructions;
-        }
-    }
-    
-    if (node->right!=SYNTAXTREE_UNCONNECTED) {
-        right=compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
-        ninstructions+=right.ninstructions;
-        if ((right.dest!=REGISTER_UNALLOCATED) && !compiler_iscodeinfotop(c, right)) {
-            right=compiler_movetoregister(c, node, right, REGISTER_UNALLOCATED);
-            ninstructions+=right.ninstructions;
-        }
-    }*/
     
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
@@ -3505,7 +3496,6 @@ void compile_initialize(void) {
     morpho_defineerror(PARSE_EXPCTWHL, ERROR_PARSE, PARSE_EXPCTWHL_MSG);
     morpho_defineerror(PARSE_EXPCTCTCH, ERROR_PARSE, PARSE_EXPCTCTCH_MSG);
     morpho_defineerror(PARSE_ONEVARPR, ERROR_PARSE, PARSE_ONEVARPR_MSG);
-    morpho_defineerror(PARSE_VARPRLST, ERROR_PARSE, PARSE_VARPRLST_MSG);
     morpho_defineerror(PARSE_CATCHLEFTCURLYMISSING, ERROR_PARSE, PARSE_CATCHLEFTCURLYMISSING_MSG);
     
     /* Compile errors */
@@ -3533,6 +3523,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_OPTPRMDFLT, ERROR_COMPILE, COMPILE_OPTPRMDFLT_MSG);
     morpho_defineerror(COMPILE_FORWARDREF, ERROR_COMPILE, COMPILE_FORWARDREF_MSG);
     morpho_defineerror(COMPILE_MLTVARPRMTR, ERROR_COMPILE, COMPILE_MLTVARPRMTR_MSG);
+    morpho_defineerror(COMPILE_VARPRMLST, ERROR_PARSE, COMPILE_VARPRMLST_MSG);
 }
 
 /** Finalizes the compiler */

@@ -241,6 +241,24 @@ static void vm_bindobject(vm *v, value obj) {
 #endif
 }
 
+/** @brief Binds an object to a Virtual Machine without garbage collection.
+ *  @details Any object created during execution should be bound to a VM; this object is then managed by the garbage collector.
+ *  @param v      the virtual machine
+ *  @param obj    object to bind
+ *  @warning: This should only be used in circumstances where the internal state of the VM is not consistent (i.e. calling the GC could cause a sigsev) */
+static void vm_bindobjectwithoutcollect(vm *v, value obj) {
+    object *ob = MORPHO_GETOBJECT(obj);
+    ob->status=OBJECT_ISUNMARKED;
+    ob->next=v->objects;
+    v->objects=ob;
+    size_t size=object_size(ob);
+#ifdef MORPHO_DEBUG_GCSIZETRACKING
+    dictionary_insert(&sizecheck, obj, MORPHO_INTEGER(size));
+#endif
+
+    v->bound+=size;
+}
+
 /* **********************************************************************
  * Garbage collector
  * ********************************************************************** */
@@ -573,7 +591,7 @@ static inline void vm_expandstack(vm *v, value **reg, unsigned int n) {
             ptrdiff_t p=u->location-v->stack.data;
             varray_ptrdiffadd(&diff, &p, 1);
         }
-
+        
         /* Resize the stack */
         varray_valueresize(&v->stack, newsize);
 
@@ -622,18 +640,16 @@ static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsign
     }
 
     if (func->varg>=0) {
-        object_init((object *) &v->fp->varlist, OBJECT_LIST);
-        
         if (nargs-2*n<nfixed-1) {
             vm_runtimeerror(v, iindx, VM_INVALIDARGS, nfixed-1, nargs-2*n);
             return false;
         }
         
-        v->fp->varlist.val.count=nargs-2*n-(nfixed-1);
-        v->fp->varlist.val.capacity=nargs-2*n-(nfixed-1);
-        v->fp->varlist.val.data=reg+regcall+nfixed;
-        
-        newreg[nfixed] = MORPHO_OBJECT(&v->fp->varlist);
+        objectlist *new = object_newlist(nargs-2*n-(nfixed-1), reg+regcall+nfixed);
+        if (new) {
+            newreg[nfixed] = MORPHO_OBJECT(new);
+            vm_bindobjectwithoutcollect(v, newreg[nfixed]);
+        }
     } else if (nargs-2*n!=nfixed) { // Verify number of fixed args is correct
         vm_runtimeerror(v, iindx, VM_INVALIDARGS, nfixed, nargs-2*n);
         return false;

@@ -132,7 +132,6 @@ typedef indx instructionindx;
 typedef struct {
     objectfunction *function;
     objectclosure *closure;
-    objectlist varlist;
     ptrdiff_t roffset; // Offset of register from base
     instruction *pc;
     unsigned int stackcount;

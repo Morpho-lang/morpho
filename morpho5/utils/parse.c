@@ -1031,7 +1031,7 @@ static syntaxtreeindx parse_arglist(parser *p, tokentype rightdelimiter, unsigne
 					
 				} else if (varg) parse_error(p, true, PARSE_ONEVARPR);
                 varg = true; vargthis = true;
-            } else if (varg) parse_error(p, true, PARSE_VARPRLST);
+            } 
             
             current=parse_pseudoexpression(p);
 

@@ -87,6 +87,9 @@
 #define COMPILE_MLTVARPRMTR               "MltVarPrmtr"
 #define COMPILE_MLTVARPRMTR_MSG           "Functions can have at most one variadic parameter."
 
+#define COMPILE_VARPRMLST                 "VarPrLst"
+#define COMPILE_VARPRMLST_MSG             "Cannot have fixed parameters after a variadic parameter."
+
 /* **********************************************************************
  * Compiler typedefs
  * ********************************************************************** */

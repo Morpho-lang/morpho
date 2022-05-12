@@ -277,6 +277,5 @@ bool display_initialize(void) {
 }
 
 void display_finalize(void) {
-    
     glfwTerminate();
 }

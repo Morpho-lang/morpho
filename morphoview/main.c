@@ -9,10 +9,12 @@
 
 #include "command.h"
 #include "display.h"
+#include "text.h"
 
 int main(int argc, const char * argv[]) {
     scene_initialize();
     display_initialize();
+    text_initialize();
     bool temp = false;
     
     // Process arguments
@@ -44,6 +46,7 @@ int main(int argc, const char * argv[]) {
     
     display_loop();
     
+    text_finalize();
     display_finalize();
     scene_finalize();
     

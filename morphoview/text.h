@@ -15,7 +15,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-/** Skyline data structures for rectangle packing */
+/** Skyline data structure for rectangle packing */
 
 typedef struct slentry {
     int xpos, ypos, width;
@@ -25,14 +25,15 @@ typedef struct slentry {
 DECLARE_VARRAY(textskylineentry, textskylineentry);
 
 typedef struct {
-    int width, height;
+    int width, height; // Width and height of the overall container
     
     varray_textskylineentry skyline;
 } textskyline;
 
-/** Skyline data structures for rectangle packing */
+/** Glyphs */
 
 typedef struct {
+    unsigned int character; 
     FT_Int width;
     FT_Int height;
 } textglyph;
@@ -42,11 +43,15 @@ DECLARE_VARRAY(textglyph, textglyph);
 typedef struct {
     FT_Face face;
     
+    textskyline skyline;
+    
+    dictionary glyphs;
+    varray_textglyph glyphinfo;
 } textfont;
 
 bool text_openfont(char *file, int size, textfont *font);
 void text_clearfont(textfont *font);
-void text_prepare(textfont *font, char *text);
+bool text_prepare(textfont *font, char *text);
 bool text_setfont(textfont *font);
 void text_draw(textfont *font, char *text);
 

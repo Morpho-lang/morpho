@@ -9,6 +9,57 @@
 FT_Library ftlibrary;
 
 /* -------------------------------------------------------
+ * UTF8 handling code
+ * ------------------------------------------------------- */
+
+/** @brief Returns the number of bytes in the next character of a given utf8 string
+    @returns number of bytes */
+int text_utf8numberofbytes(uint8_t *string) {
+    uint8_t byte = * string;
+    
+    if ((byte & 0xc0) == 0x80) return 0; // In the middle of a utf8 string
+    
+    // Get the number of bytes from the first character
+    if ((byte & 0xf8) == 0xf0) return 4;
+    if ((byte & 0xf0) == 0xe0) return 3;
+    if ((byte & 0xe0) == 0xc0) return 2;
+    return 1;
+}
+
+/** Decodes a utf8 character.
+ * @param[in] string - string to decode
+ * @param[out] out - decoded character
+ * @returns true on success, false otherwise */
+bool text_utf8decode(const uint8_t* string, int *out) {
+    if (*string <= 0x7f) { // ASCII single byte value
+        *out = *string;
+        return true;
+    }
+
+    int value;
+    uint32_t nbytes;
+    if ((*string & 0xe0) == 0xc0) { // Two byte sequence: 110xxxxx 10xxxxxx.
+        value = *string & 0x1f;
+        nbytes = 1;
+    } else if ((*string & 0xf0) == 0xe0) { // Three byte sequence: 1110xxxx     10xxxxxx 10xxxxxx.
+        value = *string & 0x0f;
+        nbytes = 2;
+    } else if ((*string & 0xf8) == 0xf0) { // Four byte sequence: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx.
+        value = *string & 0x07;
+        nbytes = 3;
+    } else return false; // UTF8 sequence was invalid
+
+    for (const uint8_t *s=string+1; nbytes > 0; nbytes--, s++) {
+        if ((*s & 0xc0) != 0x80) return false; // Invalid UTF8 sequence
+        value = value << 6 | (*s & 0x3f);
+    }
+    
+    *out = value;
+
+    return true;
+}
+
+/* -------------------------------------------------------
  * Testing code
  * ------------------------------------------------------- */
 
@@ -156,19 +207,30 @@ void text_clearfont(textfont *font) {
     FT_Done_Face(font->face);
 }
 
+/* Adds a character with code to a font
+ * @param[in] font - Font record filled out
+ * @param[in] code - code point to add */
+bool text_addcharacter(textfont *font, int code) {
+    FT_Error error;
+    error = FT_Load_Char(font->face, code, FT_LOAD_RENDER);
+    if (error) return false;
+    text_drawbitmap(&font->face->glyph->bitmap);
+    return true;
+}
+
 /* Prepares a font to display a particular piece of text
  * @param[in] font - Font record filled out
  * @param[in] text - */
-void text_prepare(textfont *font, char *text) {
-    FT_Error error;
-    for (char *c = text; *c!='\0'; c++) {
-        error = FT_Load_Char(font->face, *c, FT_LOAD_RENDER);
+bool text_prepare(textfont *font, char *text) {
+    for (uint8_t *c = (uint8_t *) text; *c!='\0'; ) {
+        int code;
+        if (!text_utf8decode(c, &code)) return false;
+        if (!text_addcharacter(font, code)) return false;
         
-        text_drawbitmap(&font->face->glyph->bitmap);
-        if (error) return;
-        printf("%c\n", *c);
+        c+=text_utf8numberofbytes(c);
     }
-    printf("\n");
+
+    return true;
 }
 
 /* Initialize the text library */
@@ -176,12 +238,12 @@ void text_initialize(void) {
     FT_Init_FreeType(&ftlibrary);
     
     textfont font;
-    text_openfont("/Library/Fonts/Arial Unicode.ttf", 64, &font);
-    //text_openfont("/System/Library/Fonts/Helvetica.ttc", 64, &font);
+    text_openfont("/Library/Fonts/Arial Unicode.ttf", 32, &font);
+    //text_openfont("/System/Library/Fonts/Helvetica.ttc", 32, &font);
     
-    //text_prepare(&font, "Hello World!");
+    text_prepare(&font, "Olá mundo!");
     
-    textskyline skyline;
+    /*textskyline skyline;
     
     int x, y;
     text_skylineinit(&skyline, 80, 200);
@@ -190,7 +252,7 @@ void text_initialize(void) {
         printf("%i %i\n",x,y);
     }
     
-    text_skylineclear(&skyline);
+    text_skylineclear(&skyline);*/
     
     text_clearfont(&font);
 }

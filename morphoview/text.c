@@ -231,7 +231,7 @@ bool text_openfont(char *file, int size, textfont *font) {
  * @param[out] indx - indx filled out if not NULL */
 bool text_containscharacter(textfont *font, int code, int *indx) {
     for (int i=0; i<font->glyphs.count; i++) {
-        if (font->glyphs.data->code==code) {
+        if (font->glyphs.data[i].code==code) {
             if (indx) *indx=i;
             return true;
         }
@@ -287,7 +287,7 @@ void text_initialize(void) {
     text_openfont("/Library/Fonts/Arial Unicode.ttf", 32, &font);
     //text_openfont("/System/Library/Fonts/Helvetica.ttc", 32, &font);
     
-    text_prepare(&font, "Olá mundo!");
+    text_prepare(&font, "Olá mundo! Hello world!");
     
     /*textskyline skyline;
     

@@ -107,7 +107,7 @@ void text_skylineinit(textskyline *skyline, int width, int height) {
     varray_textskylineentryinit(&skyline->skyline);
     
     /* Initially empty skyline */
-    textskylineentry def = { .xpos = 0, .ypos = 0, .width = width, .next = NULL};
+    textskylineentry def = { .xpos = 0, .ypos = 0, .width = width, .next = TEXTSKYLINE_EMPTY};
     varray_textskylineentrywrite(&skyline->skyline, def);
 }
 
@@ -118,9 +118,10 @@ void text_skylineclear(textskyline *skyline) {
 }
 
 /** Check if a skyline entry can fit a rectangle, looking  */
-bool text_skylinetestfit(textskylineentry *start, int width, int ypos) {
+bool text_skylinetestfit(textskyline *skyline, int start, int width, int ypos) {
     int w = width;
-    for (textskylineentry *e=start; e!=NULL; e=e->next) {
+    for (int i=start; i!=TEXTSKYLINE_EMPTY && i<skyline->skyline.count; i=skyline->skyline.data[i].next) {
+        textskylineentry *e = skyline->skyline.data+i;
         if (e->ypos>ypos) break; // Stop if the next rectangle is taller
         if (w<=e->width) return true; // We can fit the remaining width
         w-=e->width;
@@ -129,29 +130,34 @@ bool text_skylinetestfit(textskylineentry *start, int width, int ypos) {
 }
 
 /** Fit a new rectangle into the skyline  */
-bool text_skylinefit(textskyline *skyline, textskylineentry *start, int width, int height, int ypos) {
-    textskylineentry *end=start; // Final element
+bool text_skylinefit(textskyline *skyline, int start, int width, int height, int ypos) {
+    int end=start; // Final element
     int w = width;
     
-    for (; end!=NULL; end=end->next) { // Identify the final element in the skyline
-        if (w<=end->width) break;
-        w-=end->width;
+    for (; end!=TEXTSKYLINE_EMPTY; end=skyline->skyline.data[end].next) { // Identify the final element in the skyline
+        int elwidth = TEXT_SKYLINEENTRY(skyline, end)->width;
+        
+        if (w<=elwidth) break;
+        w-=elwidth;
     }
     
     if (start==end) { // Split the block
-        if (start->width-width>0) {
-            textskylineentry new = { .xpos = start->xpos+width, .ypos = start->ypos, .width = start->width-width, .next=start->next };
-            if (!varray_textskylineentrywrite(&skyline->skyline, new)) return false;
-            end = skyline->skyline.data+skyline->skyline.count-1;
-        } else end=NULL;
+        if (TEXT_SKYLINEENTRY(skyline, start)->width-width>0) {
+            
+            textskylineentry new = { .xpos = TEXT_SKYLINEENTRY(skyline, start)->xpos+width,
+                                     .ypos = TEXT_SKYLINEENTRY(skyline, start)->ypos,
+                                     .width = TEXT_SKYLINEENTRY(skyline, start)->width-width,
+                                     .next=TEXT_SKYLINEENTRY(skyline, start)->next };
+            end = varray_textskylineentrywrite(&skyline->skyline, new);
+        } else end=TEXTSKYLINE_EMPTY;
     } else { // Update the end block
-        end->width-=w;
-        end->xpos+=w;
+        TEXT_SKYLINEENTRY(skyline, end)->width-=w;
+        TEXT_SKYLINEENTRY(skyline, end)->xpos+=w;
     }
     
-    start->width=width;
-    start->ypos=ypos+height;
-    start->next=end;
+    TEXT_SKYLINEENTRY(skyline, start)->width=width;
+    TEXT_SKYLINEENTRY(skyline, start)->ypos=ypos+height;
+    TEXT_SKYLINEENTRY(skyline, start)->next=end;
     
     return true;
 }
@@ -164,19 +170,21 @@ bool text_skylinefit(textskyline *skyline, textskylineentry *start, int width, i
  * @param[out] y - bottom left y
  * @returns true if the rectangle has been successfully inserted, false if there's no more room */
 bool text_skylinesinsert(textskyline *skyline, int width, int height, int *x, int *y) {
-    textskylineentry *best=skyline->skyline.data;
+    int best=0, bxpos=0, bypos=skyline->height; // Start with maximum possible height
     
     /* Locate the lowest point that can accomodate the rectangle */
-    for (textskylineentry *e = skyline->skyline.data; e!=NULL; e=e->next) {
-        if (text_skylinetestfit(e, width, e->ypos) && e->ypos<best->ypos) {
-            best = e;
+    for (int i=0; i<skyline->skyline.count; i++) {
+        textskylineentry *e = &skyline->skyline.data[i];
+    
+        if (text_skylinetestfit(skyline, i, width, e->ypos) && e->ypos<bypos) {
+            best = i; bypos = e->ypos; bxpos = e->xpos;
         }
     }
     
-    if (text_skylinetestfit(best, width, best->ypos) && skyline->height>best->ypos+height) {
-        *x=best->xpos;
-        *y=best->ypos;
-        return text_skylinefit(skyline, best, width, height, best->ypos);
+    if (text_skylinetestfit(skyline, best, width, bypos) && skyline->height>bypos+height) {
+        *x=bxpos;
+        *y=bypos;
+        return text_skylinefit(skyline, best, width, height, bypos);
     }
     
     return false;

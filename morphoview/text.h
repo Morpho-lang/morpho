@@ -15,10 +15,12 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#define TEXTSKYLINE_EMPTY -1
+
 /** Skyline data structure for rectangle packing */
 typedef struct slentry {
     int xpos, ypos, width;
-    struct slentry *next;
+    int next; 
 } textskylineentry;
 
 DECLARE_VARRAY(textskylineentry, textskylineentry);
@@ -28,6 +30,8 @@ typedef struct {
     
     varray_textskylineentry skyline;
 } textskyline;
+
+#define TEXT_SKYLINEENTRY(a, i) (&a->skyline.data[i])
 
 /** Glyphs */
 

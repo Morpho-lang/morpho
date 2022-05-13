@@ -16,7 +16,6 @@
 #include FT_FREETYPE_H
 
 /** Skyline data structure for rectangle packing */
-
 typedef struct slentry {
     int xpos, ypos, width;
     struct slentry *next;
@@ -33,9 +32,10 @@ typedef struct {
 /** Glyphs */
 
 typedef struct {
-    unsigned int character; 
+    int code;
     FT_Int width;
     FT_Int height;
+    int x, y; // Location in texture 
 } textglyph;
 
 DECLARE_VARRAY(textglyph, textglyph);
@@ -44,9 +44,7 @@ typedef struct {
     FT_Face face;
     
     textskyline skyline;
-    
-    dictionary glyphs;
-    varray_textglyph glyphinfo;
+    varray_textglyph glyphs;
 } textfont;
 
 bool text_openfont(char *file, int size, textfont *font);

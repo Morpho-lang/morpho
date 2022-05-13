@@ -186,6 +186,22 @@ bool text_skylinesinsert(textskyline *skyline, int width, int height, int *x, in
  * Manage fonts
  * ------------------------------------------------------- */
 
+DEFINE_VARRAY(textglyph, textglyph);
+
+/** Initializes a font structure */
+void text_fontinit(textfont *font, int width) {
+    text_skylineinit(&font->skyline, width, width*3/4);
+    varray_textglyphinit(&font->glyphs);
+}
+
+/** Clears a font structure */
+void text_fontclear(textfont *font) {
+    FT_Done_Face(font->face);
+    
+    text_skylineclear(&font->skyline);
+    varray_textglyphclear(&font->glyphs);
+}
+
 /* Opens a font
  * @param[in] file - Font file
  * @param[in] size - Font size
@@ -201,20 +217,41 @@ bool text_openfont(char *file, int size, textfont *font) {
     return true;
 }
 
-/* Clears a font
- * @param[in] font - Font record filled out */
-void text_clearfont(textfont *font) {
-    FT_Done_Face(font->face);
+/* Check if a font contains a record for a character
+ * @param[in] font - Font record filled out
+ * @param[in] code - code point to check
+ * @param[out] indx - indx filled out if not NULL */
+bool text_containscharacter(textfont *font, int code, int *indx) {
+    for (int i=0; i<font->glyphs.count; i++) {
+        if (font->glyphs.data->code==code) {
+            if (indx) *indx=i;
+            return true;
+        }
+    }
+    return false;
 }
 
 /* Adds a character with code to a font
  * @param[in] font - Font record filled out
  * @param[in] code - code point to add */
 bool text_addcharacter(textfont *font, int code) {
-    FT_Error error;
-    error = FT_Load_Char(font->face, code, FT_LOAD_RENDER);
+    /** Check if we already have this glyph */
+    if (text_containscharacter(font, code, NULL)) return true;
+    
+    FT_Error error = FT_Load_Char(font->face, code, FT_LOAD_RENDER);
     if (error) return false;
+    
+    textglyph glyph;
+    glyph.code=code;
+    glyph.width=font->face->glyph->bitmap.width;
+    glyph.height=font->face->glyph->bitmap.rows;
+    /* Allocate space in the texture */
+    if (!text_skylinesinsert(&font->skyline, glyph.width, glyph.height, &glyph.x, &glyph.y)) return false;
+    
+    varray_textglyphwrite(&font->glyphs, glyph);
+    
     text_drawbitmap(&font->face->glyph->bitmap);
+    
     return true;
 }
 
@@ -238,6 +275,7 @@ void text_initialize(void) {
     FT_Init_FreeType(&ftlibrary);
     
     textfont font;
+    text_fontinit(&font, 100);
     text_openfont("/Library/Fonts/Arial Unicode.ttf", 32, &font);
     //text_openfont("/System/Library/Fonts/Helvetica.ttc", 32, &font);
     
@@ -254,7 +292,7 @@ void text_initialize(void) {
     
     text_skylineclear(&skyline);*/
     
-    text_clearfont(&font);
+    text_fontclear(&font);
 }
 
 void text_finalize(void) {

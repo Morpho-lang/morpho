@@ -15,6 +15,9 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#define GL_SILENCE_DEPRECATION
+#include <glad/glad.h>
+
 #define TEXTSKYLINE_EMPTY -1
 
 /** Skyline data structure for rectangle packing */
@@ -49,7 +52,12 @@ typedef struct {
     
     textskyline skyline;
     varray_textglyph glyphs;
+    
+    unsigned int texture;
+    char *texturedata; 
 } textfont;
+
+void text_test(textfont *font);
 
 bool text_openfont(char *file, int size, textfont *font);
 void text_clearfont(textfont *font);

@@ -78,6 +78,17 @@ void text_drawbitmap(FT_Bitmap *bitmap) {
   }
 }
 
+/** Displays the texture associated with a given font */
+void text_showtexture(textfont *font) {
+    for (int i=0; i<font->skyline.height; i++) {
+      for (int j=0; j<font->skyline.width; j++) {
+          char c = font->texturedata[i * font->skyline.width + j];
+          printf("%c", (c==0 ? ' ' : '*'));
+      }
+      printf("\n");
+    }
+}
+
 /* -------------------------------------------------------
  * Skyline algorithm to allocate glyphs
  * ------------------------------------------------------- */
@@ -191,6 +202,45 @@ bool text_skylinesinsert(textskyline *skyline, int width, int height, int *x, in
 }
 
 /* -------------------------------------------------------
+ * Creating the texture
+ * ------------------------------------------------------- */
+
+/** Allocates a texture of correct size */
+bool text_allocatetexture(textfont *font) {
+    size_t size = font->skyline.width*font->skyline.height;
+    font->texturedata=malloc(sizeof(char)*size);
+    if (font->texturedata) memset(font->texturedata, 0, size);
+    return (font->texturedata);
+}
+
+/** Generates the texture atlas from glyph data */
+bool text_generatetexture(textfont *font) {
+    if (!text_allocatetexture(font)) return false;
+    
+    for (int i=0; i<font->glyphs.count; i++) {
+        textglyph *glyph = &font->glyphs.data[i];
+        
+        FT_Error error = FT_Load_Char(font->face, glyph->code, FT_LOAD_RENDER);
+        if (error) return false;
+        
+        FT_Bitmap *bitmap=&font->face->glyph->bitmap;
+        
+        for (int k=0; k<glyph->height; k++) {
+            for (int j=0; j<glyph->width; j++) {
+                font->texturedata[(k+glyph->y) * font->skyline.width + j+glyph->x]= bitmap->buffer[k * bitmap->width + j];
+            }
+        }
+        
+    }
+    return true;
+}
+
+/** Clears the texture atlas */
+void text_cleartexture(textfont *font) {
+    if (font->texturedata) free(font->texturedata);
+}
+
+/* -------------------------------------------------------
  * Manage fonts
  * ------------------------------------------------------- */
 
@@ -200,6 +250,8 @@ DEFINE_VARRAY(textglyph, textglyph);
 void text_fontinit(textfont *font, int width) {
     text_skylineinit(&font->skyline, width, width*3/4);
     varray_textglyphinit(&font->glyphs);
+    font->texture=0;
+    font->texturedata=NULL;
 }
 
 /** Clears a font structure */
@@ -208,6 +260,8 @@ void text_fontclear(textfont *font) {
     
     text_skylineclear(&font->skyline);
     varray_textglyphclear(&font->glyphs);
+    
+    text_cleartexture(font);
 }
 
 /* Opens a font
@@ -258,7 +312,7 @@ bool text_addcharacter(textfont *font, int code) {
     
     varray_textglyphwrite(&font->glyphs, glyph);
     
-    text_drawbitmap(&font->face->glyph->bitmap);
+    //text_drawbitmap(&font->face->glyph->bitmap);
     
     return true;
 }
@@ -278,31 +332,65 @@ bool text_prepare(textfont *font, char *text) {
     return true;
 }
 
+/* -------------------------------------------------------
+ * OpenGL functions
+ * ------------------------------------------------------- */
+
+const char *textvertexshadersource =
+    "#version 330 core"
+    "layout (location = 0) in vec4 vertex; // <vec2 pos, vec2 tex>"
+    "out vec2 TexCoords;"
+
+    "uniform mat4 projection;"
+
+    "void main() {"
+    "    gl_Position = projection * vec4(vertex.xy, 0.0, 1.0);"
+    "    TexCoords = vertex.zw;"
+    "}";
+
+
+
+/** Creates an OpenGL texture from the texture atlas */
+void text_gltexture(textfont *font) {
+    /* Now create an OpenGL texture from this */
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
+    
+    glGenTextures(1, &font->texture); // Create and define the texture
+    glBindTexture(GL_TEXTURE_2D, font->texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, font->skyline.width, font->skyline.height,
+                 0, GL_RED, GL_UNSIGNED_BYTE, font->texturedata);
+    // set texture options
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+}
+
+/* -------------------------------------------------------
+ * Initialization
+ * ------------------------------------------------------- */
+
 /* Initialize the text library */
 void text_initialize(void) {
     FT_Init_FreeType(&ftlibrary);
-    
-    textfont font;
-    text_fontinit(&font, 100);
-    text_openfont("/Library/Fonts/Arial Unicode.ttf", 32, &font);
-    //text_openfont("/System/Library/Fonts/Helvetica.ttc", 32, &font);
-    
-    text_prepare(&font, "Olá mundo! Hello world!");
-    
-    /*textskyline skyline;
-    
-    int x, y;
-    text_skylineinit(&skyline, 80, 200);
-    for (int i=0; i<10; i++) {
-        text_skylinesinsert(&skyline, 20, 20, &x, &y);
-        printf("%i %i\n",x,y);
-    }
-    
-    text_skylineclear(&skyline);*/
-    
-    text_fontclear(&font);
 }
 
 void text_finalize(void) {
     FT_Done_FreeType(ftlibrary);
+}
+
+/** Test font system */
+void text_test(textfont *font) {
+    text_fontinit(font, 100);
+    text_openfont("/Library/Fonts/Arial Unicode.ttf", 32, font);
+    //text_openfont("/System/Library/Fonts/Helvetica.ttc", 32, &font);
+    
+    text_prepare(font, "Olá mundo! Hello world!");
+    
+    text_generatetexture(font);
+    text_showtexture(font);
+    
+    text_gltexture(font);
+    
+    text_fontclear(font);
 }

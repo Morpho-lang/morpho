@@ -224,7 +224,6 @@ display *display_open(scene *s) {
     
     /** Initialize the display */
     render_init(&new->render);
-    
     new->window=window;
     
     /** Add this to the display list */

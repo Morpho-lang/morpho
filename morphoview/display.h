@@ -13,6 +13,7 @@
 #include "matrix3d.h"
 #include "scene.h"
 #include "render.h"
+#include "text.h"
 
 #define GL_SILENCE_DEPRECATION
 #include <glad/glad.h>

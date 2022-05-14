@@ -205,11 +205,13 @@ bool command_lex(lexer *l, token *tok) {
         case 'p': command_lexrecordtoken(l, TOKEN_POINTS, tok); return true;
         case 'l': command_lexrecordtoken(l, TOKEN_LINES, tok); return true;
         case 'f': command_lexrecordtoken(l, TOKEN_FACETS, tok); return true;
+        case 'F': command_lexrecordtoken(l, TOKEN_FONT, tok); return true;
         case 'i': command_lexrecordtoken(l, TOKEN_IDENTITY, tok); return true;
         case 'r': command_lexrecordtoken(l, TOKEN_ROTATE, tok); return true;
         case 's': command_lexrecordtoken(l, TOKEN_SCALE, tok); return true;
         case 'S': command_lexrecordtoken(l, TOKEN_SCENE, tok); return true;
         case 't': command_lexrecordtoken(l, TOKEN_TRANSLATE, tok); return true;
+        case 'T': command_lexrecordtoken(l, TOKEN_TEXT, tok); return true;
         case 'v': command_lexrecordtoken(l, TOKEN_VERTICES, tok); return true;
         case 'W': command_lexrecordtoken(l, TOKEN_WINDOW, tok); return true;
         case '"': return command_lexstring(l, tok);
@@ -511,6 +513,28 @@ bool command_parsewindow(parser *p) {
     return false;
 }
 
+/** Parses a font definition */
+bool command_parsefont(parser *p) {
+    int id;
+    char *file;
+    float size;
+    
+    if (command_parseinteger(p, &id) &&
+        command_parsestring(p, &file) &&
+        command_parsefloat(p, &size)) {
+#ifdef DEBUG_PARSER
+        printf("Font %i '%s' %g\n", id, file, size);
+#endif
+    }
+    
+    return false;
+}
+
+/** Parses a text command */
+bool command_parsetext(parser *p) {
+    return false;
+}
+
 #define UNDEFINED NULL
 /** The parse table defines which function handles which token type */
 parsefunction parsetable[] = {
@@ -534,6 +558,8 @@ parsefunction parsetable[] = {
     UNDEFINED,              // TOKEN_VIEWDIRECTION
     UNDEFINED,              // TOKEN_VIEWVERTICAL
     command_parsewindow,    // TOKEN_WINDOW
+    command_parsefont,      // TOKEN_FONT
+    command_parsetext,      // TOKEN_TEXT
     
     UNDEFINED, // TOKEN_EOF
 };

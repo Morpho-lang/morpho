@@ -348,8 +348,6 @@ const char *textvertexshadersource =
     "    TexCoords = vertex.zw;"
     "}";
 
-
-
 /** Creates an OpenGL texture from the texture atlas */
 void text_gltexture(textfont *font) {
     /* Now create an OpenGL texture from this */

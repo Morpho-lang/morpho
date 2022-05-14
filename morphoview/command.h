@@ -13,7 +13,7 @@
 #include "display.h"
 #include "matrix3d.h"
 
-//#define DEBUG_PARSER
+#define DEBUG_PARSER
 
 /* -------------------------------------------------------
  * Tokens
@@ -41,6 +41,8 @@ typedef enum {
     TOKEN_VIEWDIRECTION,
     TOKEN_VIEWVERTICAL,
     TOKEN_WINDOW,
+    TOKEN_FONT,
+    TOKEN_TEXT,
     
     TOKEN_EOF
 } tokentype;

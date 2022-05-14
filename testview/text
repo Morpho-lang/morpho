@@ -1,0 +1,5 @@
+S 0 3
+W "Text"
+F 0 "/Library/Fonts/Arial Unicode.ttf" 36
+i
+T 0 0.5 0.5 0.0 "Olá mundo! Hello world!"

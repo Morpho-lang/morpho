@@ -519,19 +519,33 @@ bool command_parsefont(parser *p) {
     char *file;
     float size;
     
-    if (command_parseinteger(p, &id) &&
-        command_parsestring(p, &file) &&
-        command_parsefloat(p, &size)) {
-#ifdef DEBUG_PARSER
-        printf("Font %i '%s' %g\n", id, file, size);
-#endif
-    }
+    ERRCHK(command_parseinteger(p, &id));
+    ERRCHK(command_parsestring(p, &file));
+    ERRCHK(command_parsefloat(p, &size));
     
-    return false;
+#ifdef DEBUG_PARSER
+    printf("Font %i '%s' %g\n", id, file, size);
+#endif
+    
+    return true;
 }
 
 /** Parses a text command */
 bool command_parsetext(parser *p) {
+    int id;
+    char *string;
+    float x[3];
+    
+    ERRCHK(command_parseinteger(p, &id));
+    for (int i=0; i<3; i++) {
+        ERRCHK(command_parsefloat(p, &x[i]));
+    }
+    ERRCHK(command_parsestring(p, &string));
+    
+#ifdef DEBUG_PARSER
+    printf("Text %i '%s'\n", id, string);
+#endif
+    
     return false;
 }
 

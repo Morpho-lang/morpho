@@ -73,7 +73,7 @@ const char *fragmentshader = "#version 330 core\n"
 
 const char *textvertexshader =
     "#version 330 core\n"
-    "layout (location = 0) in vec4 vertex; // <vec2 pos, vec2 tex>\n"
+    "layout (location = 0) in vec3 vertex; // <vec2 pos, vec2 tex>\n"
     "out vec2 TexCoords;"
 
     "uniform mat4 view;"
@@ -527,28 +527,33 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
     
     /* Some text testing */
     glUseProgram(r->textshader);
+    
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    GLint textcoloruniform = glGetUniformLocation(r->textshader, "textColor");
+    vec3 textcolor = {1.0f, 1.0f, 1.0f};
+    glUniform3fv(textcoloruniform, 1, textcolor);
     
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, fonttexture);
     glBindVertexArray(fontvao);
     
     float vertices[6][4] = {
-                { 0.0f, 0.0f, 0.0f, 0.0f },
-                { 0.0f, 1.0f, 0.0f, 1.0f },
-                { 1.0f, 1.0f, 1.0f, 1.0f },
+                { -1.0f, -1.0f, 0.0f, 0.0f },
+                { -1.0f,  1.0f, 0.0f, 1.0f },
+                {  1.0f,  1.0f, 1.0f, 1.0f },
 
-                { 0.0f, 0.0f, 0.0f, 0.0f },
-                { 1.0f, 1.0f, 1.0f, 1.0f },
-                { 1.0f, 0.0f, 1.0f, 0.0f }
+                { -1.0f, -1.0f, 0.0f, 0.0f },
+                {  1.0f,  1.0f, 1.0f, 1.0f },
+                {  1.0f, -1.0f, 1.0f, 0.0f }
             };
     
     glBindBuffer(GL_ARRAY_BUFFER, fontvbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     // render quad
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glDrawArrays(GL_TRIANGLES, 0, 6) ;
     
     /* End text testing */
     

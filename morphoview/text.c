@@ -250,7 +250,6 @@ DEFINE_VARRAY(textglyph, textglyph);
 void text_fontinit(textfont *font, int width) {
     text_skylineinit(&font->skyline, width, width*3/4);
     varray_textglyphinit(&font->glyphs);
-    font->texture=0;
     font->texturedata=NULL;
 }
 
@@ -333,38 +332,6 @@ bool text_prepare(textfont *font, char *text) {
 }
 
 /* -------------------------------------------------------
- * OpenGL functions
- * ------------------------------------------------------- */
-
-const char *textvertexshadersource =
-    "#version 330 core"
-    "layout (location = 0) in vec4 vertex; // <vec2 pos, vec2 tex>"
-    "out vec2 TexCoords;"
-
-    "uniform mat4 projection;"
-
-    "void main() {"
-    "    gl_Position = projection * vec4(vertex.xy, 0.0, 1.0);"
-    "    TexCoords = vertex.zw;"
-    "}";
-
-/** Creates an OpenGL texture from the texture atlas */
-void text_gltexture(textfont *font) {
-    /* Now create an OpenGL texture from this */
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
-    
-    glGenTextures(1, &font->texture); // Create and define the texture
-    glBindTexture(GL_TEXTURE_2D, font->texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, font->skyline.width, font->skyline.height,
-                 0, GL_RED, GL_UNSIGNED_BYTE, font->texturedata);
-    // set texture options
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-}
-
-/* -------------------------------------------------------
  * Initialization
  * ------------------------------------------------------- */
 
@@ -387,8 +354,6 @@ void text_test(textfont *font) {
     
     text_generatetexture(font);
     text_showtexture(font);
-    
-    text_gltexture(font);
     
     text_fontclear(font);
 }

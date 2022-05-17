@@ -54,18 +54,17 @@ typedef struct {
     textskyline skyline;
     varray_textglyph glyphs;
     
-    unsigned int texture;
     char *texturedata; 
 } textfont;
 
 void text_test(textfont *font);
+void text_showtexture(textfont *font);
 
 void text_fontinit(textfont *font, int width);
 bool text_openfont(char *file, int size, textfont *font);
 void text_fontclear(textfont *font);
 bool text_prepare(textfont *font, char *text);
-bool text_setfont(textfont *font);
-void text_draw(textfont *font, char *text);
+bool text_generatetexture(textfont *font);
 
 void text_initialize(void);
 void text_finalize(void);

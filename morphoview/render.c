@@ -21,7 +21,9 @@ DEFINE_VARRAY(renderinstruction, renderinstruction)
  * Shaders
  * ------------------------------------------------------- */
 
-const char *vertexshadersource ="#version 330 core\n"
+/* Default shader */
+
+const char *vertexshader = "#version 330 core\n"
     "layout (location = 0) in vec3 vPos;"
     "layout (location = 1) in vec3 vColor;"
     "layout (location = 2) in vec3 vNormal;"
@@ -39,7 +41,7 @@ const char *vertexshadersource ="#version 330 core\n"
     "   normal = mat3(transpose(inverse(view * model))) * vNormal;"
     "}";
 
-const char *fragmentshadersource = "#version 330 core\n"
+const char *fragmentshader = "#version 330 core\n"
     "out vec4 FragColor;"
     "in vec3 fragColor;"
     "in vec3 fragPos;"
@@ -67,12 +69,43 @@ const char *fragmentshadersource = "#version 330 core\n"
     "   FragColor = vec4(result, 1.0f);"
     "}";
 
+/* Text shader */
+
+const char *textvertexshader =
+    "#version 330 core\n"
+    "layout (location = 0) in vec4 vertex; // <vec2 pos, vec2 tex>\n"
+    "out vec2 TexCoords;"
+
+    "uniform mat4 view;"
+    "uniform mat4 proj;"
+
+    "void main() {"
+    "    gl_Position = proj * vec4(vertex.xy, 0.0, 1.0);"
+    "    TexCoords = vertex.zw;"
+    "}";
+
+const char *textfragmentshader =
+    "#version 330 core\n"
+    "in vec2 TexCoords;"
+    "out vec4 color;"
+    "uniform sampler2D text;"
+    "uniform vec3 textColor;"
+
+    "void main() {"
+    "   vec4 sampled = vec4(1.0, 1.0, 1.0, texture(text, TexCoords).r);"
+    "   color = vec4(textColor, 1.0) * sampled;"
+    "}";
+
 /* -------------------------------------------------------
- * Initialize/finalize display
+ * Compile shaders
  * ------------------------------------------------------- */
 
-/** Initializes a display, compiling shaders */
-bool render_init(renderer *r) {
+/** Compiles and links shaders
+ * @param[in] vertexshadersource - vertex shader
+ * @param[in] fragmentshadersource - fragment shader
+ * @param[out] program - compiled program id
+ * @returns true on success, false if compilation failed */
+bool render_compileprogram(const char *vertexshadersource, const char *fragmentshadersource, GLuint *program) {
     int success;
     
     /* Create and compile vertex shader */
@@ -117,11 +150,56 @@ bool render_init(renderer *r) {
         return false;
     }
     
-    r->shader=shaderProgram;
+    if (program) *program = shaderProgram;
     
     /* Delete the compiled vertex and fragment shaders */
     glDeleteShader(vertexshader);
     glDeleteShader(fragmentshader);
+    
+    return true;
+}
+
+/* -------------------------------------------------------
+ * Text rendering
+ * ------------------------------------------------------- */
+
+/** Creates an OpenGL texture from the texture atlas */
+void render_fonttexture(textfont *font) {
+    GLuint texture;
+    
+    /* Now create an OpenGL texture from this */
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
+    
+    glGenTextures(1, &texture); // Create and define the texture
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, font->skyline.width, font->skyline.height,
+                 0, GL_RED, GL_UNSIGNED_BYTE, font->texturedata);
+    // set texture options
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+}
+
+/** Prepare fonts for display */
+void render_preparefonts(renderer *r, scene *scene) {
+    for (int i=0; i<scene->fontlist.count; i++) {
+        gfont *f=&scene->fontlist.data[i];
+        text_generatetexture(&f->font);
+        render_fonttexture(&f->font);
+        text_showtexture(&f->font);
+    }
+}
+
+/* -------------------------------------------------------
+ * Initialize/finalize display
+ * ------------------------------------------------------- */
+
+/** Initializes a display, compiling shaders */
+bool render_init(renderer *r) {
+    
+    render_compileprogram(vertexshader, fragmentshader, &r->shader);
+    render_compileprogram(textvertexshader, textfragmentshader, &r->textshader);
     
     /* Enable OpenGL features */
     glEnable(GL_DEPTH_TEST);
@@ -333,6 +411,8 @@ void render_preparescene(renderer *r, scene *s) {
         glBindVertexArray(0);
     }
     
+    render_preparefonts(r, s);
+    
     /* Now create the render list */
     GLuint carray=0;
     for (unsigned int i=0; i<s->displaylist.count; i++) {
@@ -411,7 +491,6 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
     /* Set up the projection matrix */
     mat4x4 proj;
     mat3d_ortho(NULL, proj, -1.0*aspectratio, 1.0*aspectratio, -1.0, 1.0, 1.0, 10.0);
-    //mat3d_frustum(NULL, proj, -1.0*aspectratio, 1.0*aspectratio, -1.0, 1.0, 1.0, 10.0);
     glUniformMatrix4fv(projuniform, 1, GL_FALSE, proj);
     
     /* Render objects */

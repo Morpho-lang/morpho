@@ -78,7 +78,8 @@ DECLARE_VARRAY(renderinstruction, renderinstruction)
 
 /** Renderer object. */
 typedef struct {
-    unsigned int shader;
+    GLuint shader;
+    GLuint textshader;
     varray_renderobject objects;
     varray_renderglbuffers glbuffers;
     varray_renderinstruction renderlist;

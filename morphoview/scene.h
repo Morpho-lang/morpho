@@ -101,7 +101,8 @@ typedef struct sscene {
     varray_int indx;
     varray_gobject objectlist;
     varray_gdraw displaylist;
-    varray_gfont fontlist; 
+    varray_gfont fontlist;
+    varray_gtext textlist; 
 } scene;
 
 scene *scene_new(int id, int dim);
@@ -112,8 +113,9 @@ gobject *scene_addobject(scene *s, int id);
 int scene_adddata(scene *s, float *data, int count);
 int scene_addindex(scene *s, int *data, int count);
 int scene_addelement(gobject *obj, gelement *el);
-gfont *scene_addfont(scene *s, int id, char *file, float size);
-gtext *scene_addtext(scene *s, int fontid, char *text);
+bool scene_addfont(scene *s, int id, char *file, float size, int *fontindx);
+int scene_addtext(scene *s, int fontid, char *text);
+void scene_adddraw(scene *scene, gdrawtype type, int id, int matindx);
 
 gobject *scene_getgobjectfromid(scene *s, int id);
 

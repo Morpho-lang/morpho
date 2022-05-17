@@ -314,8 +314,7 @@ bool command_parsedraw(parser *p) {
 #endif
     }
     
-    gdraw d = { .type = OBJECT, .id = id, .matindx = indx };
-    varray_gdrawadd(&p->scene->displaylist, &d, 1);
+    scene_adddraw(p->scene, OBJECT, id, indx);
     
     return true;
 }
@@ -527,22 +526,37 @@ bool command_parsefont(parser *p) {
     printf("Font %i '%s' %g\n", id, file, size);
 #endif
     
-    return scene_addfont(p->scene, id, file, size);
+    return scene_addfont(p->scene, id, file, size, NULL);
 }
 
 /** Parses a text command */
 bool command_parsetext(parser *p) {
-    int id;
+    int fontid;
     char *string;
     
-    ERRCHK(command_parseinteger(p, &id));
+    ERRCHK(command_parseinteger(p, &fontid));
     ERRCHK(command_parsestring(p, &string));
     
 #ifdef DEBUG_PARSER
-    printf("Text %i '%s'\n", id, string);
+    printf("Text %i '%s'\n", fontid, string);
 #endif
     
-    return scene_addtext(p->scene, id, string);
+    int matindx=SCENE_EMPTY;
+    int tid;
+    
+    tid=scene_addtext(p->scene, fontid, string);
+    
+    if (p->modelchanged) {
+        matindx=scene_adddata(p->scene, p->model, 16);
+        p->modelchanged=false;
+#ifdef DEBUG_PARSER
+        mat3d_print4x4(p->model);
+#endif
+    }
+    
+    scene_adddraw(p->scene, TEXT, tid, matindx);
+    
+    return true;
 }
 
 #define UNDEFINED NULL

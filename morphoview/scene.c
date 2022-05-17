@@ -20,6 +20,7 @@ scene *scene_new(int id, int dim) {
         varray_gobjectinit(&new->objectlist);
         varray_gdrawinit(&new->displaylist);
         varray_gfontinit(&new->fontlist);
+        varray_gtextinit(&new->textlist);
         varray_floatinit(&new->data);
         varray_intinit(&new->indx);
     }
@@ -38,9 +39,14 @@ void scene_free(scene *s) {
         text_fontclear(&s->fontlist.data[i].font);
     }
     
+    for (unsigned int i=0; i<s->textlist.count; i++) {
+        free(s->textlist.data[i].text);
+    }
+    
     varray_gobjectclear(&s->objectlist);
     varray_gdrawclear(&s->displaylist);
     varray_gfontclear(&s->fontlist);
+    varray_gtextclear(&s->textlist);
     varray_floatclear(&s->data);
     varray_intclear(&s->indx);
     free(s);
@@ -88,18 +94,18 @@ int scene_addelement(gobject *obj, gelement *el) {
 }
 
 /** Adds a font to a scene */
-gfont *scene_addfont(scene *s, int id, char *file, float size) {
+bool scene_addfont(scene *s, int id, char *file, float size, int *fontindx) {
     gfont font;
-    gfont *out=NULL;
     
     font.id=id;
     text_fontinit(&font.font, TEXT_DEFAULTWIDTH);
     if (text_openfont(file, (int) size, &font.font)) {
         varray_gfontwrite(&s->fontlist, font);
-        out = &s->fontlist.data[s->fontlist.count-1];
+        if (fontindx) *fontindx = s->fontlist.count-1;
+        return true;
     }
 
-    return out;
+    return false;
 }
 
 /** Find the textfont object corresponding to a given fontid */
@@ -111,7 +117,7 @@ textfont *scene_getfontfromid(scene *s, int fontid) {
 }
 
 /** Adds text to a scene */
-gtext *scene_addtext(scene *s, int fontid, char *text) {
+int scene_addtext(scene *s, int fontid, char *text) {
     textfont *font = scene_getfontfromid(s, fontid);
 
     if (!font) {
@@ -121,7 +127,16 @@ gtext *scene_addtext(scene *s, int fontid, char *text) {
     
     text_prepare(font, text);
     
-    return NULL;
+    gtext txt;
+    txt.fontid=fontid;
+    txt.text=text;
+    
+    return varray_gtextwrite(&s->textlist, txt);;
+}
+
+void scene_adddraw(scene *scene, gdrawtype type, int id, int matindx) {
+    gdraw d = { .type = type, .id = id, .matindx = matindx };
+    varray_gdrawwrite(&scene->displaylist, d);
 }
 
 /* -------------------------------------------------------
@@ -144,6 +159,7 @@ DEFINE_VARRAY(gobject, gobject);
 DEFINE_VARRAY(gelement, gelement);
 DEFINE_VARRAY(gfont, gfont);
 DEFINE_VARRAY(gdraw, gdraw);
+DEFINE_VARRAY(gtext, gtext);
 DEFINE_VARRAY(float, float);
 
 /* -------------------------------------------------------

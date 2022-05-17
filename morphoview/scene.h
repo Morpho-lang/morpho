@@ -63,12 +63,12 @@ DECLARE_VARRAY(gfont, gfont);
  * Text
  * ********************** */
 
-/*typedef struct {
+typedef struct {
     int fontid;
     char *text;
 } gtext;
 
-DECLARE_VARRAY(gtext, gtext);*/
+DECLARE_VARRAY(gtext, gtext);
 
 /* **********************
  * List of things to draw
@@ -113,6 +113,7 @@ int scene_adddata(scene *s, float *data, int count);
 int scene_addindex(scene *s, int *data, int count);
 int scene_addelement(gobject *obj, gelement *el);
 gfont *scene_addfont(scene *s, int id, char *file, float size);
+gtext *scene_addtext(scene *s, int fontid, char *text);
 
 gobject *scene_getgobjectfromid(scene *s, int id);
 

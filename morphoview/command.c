@@ -314,7 +314,7 @@ bool command_parsedraw(parser *p) {
 #endif
     }
     
-    gdraw d = { .id = id, .matindx = indx };
+    gdraw d = { .type = OBJECT, .id = id, .matindx = indx };
     varray_gdrawadd(&p->scene->displaylist, &d, 1);
     
     return true;
@@ -523,13 +523,11 @@ bool command_parsefont(parser *p) {
     ERRCHK(command_parsestring(p, &file));
     ERRCHK(command_parsefloat(p, &size));
     
-    gfont *font = scene_addfont(p->scene, id, file, size);
-    
 #ifdef DEBUG_PARSER
     printf("Font %i '%s' %g\n", id, file, size);
 #endif
     
-    return (font!=NULL);
+    return scene_addfont(p->scene, id, file, size);
 }
 
 /** Parses a text command */
@@ -544,7 +542,7 @@ bool command_parsetext(parser *p) {
     printf("Text %i '%s'\n", id, string);
 #endif
     
-    return false;
+    return scene_addtext(p->scene, id, string);
 }
 
 #define UNDEFINED NULL

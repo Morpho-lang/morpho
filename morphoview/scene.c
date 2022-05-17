@@ -102,6 +102,28 @@ gfont *scene_addfont(scene *s, int id, char *file, float size) {
     return out;
 }
 
+/** Find the textfont object corresponding to a given fontid */
+textfont *scene_getfontfromid(scene *s, int fontid) {
+    for (int i=0; i<s->fontlist.count; i++) {
+        if (s->fontlist.data[i].id==fontid) return &s->fontlist.data[i].font;
+    }
+    return NULL;
+}
+
+/** Adds text to a scene */
+gtext *scene_addtext(scene *s, int fontid, char *text) {
+    textfont *font = scene_getfontfromid(s, fontid);
+
+    if (!font) {
+        fprintf(stderr, "Font id '%i' not found.\n", fontid);
+        return false;
+    }
+    
+    text_prepare(font, text);
+    
+    return NULL;
+}
+
 /* -------------------------------------------------------
  * Find
  * ------------------------------------------------------- */

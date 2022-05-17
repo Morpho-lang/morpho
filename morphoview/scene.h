@@ -9,9 +9,14 @@
 
 #include <stdio.h>
 #include "varray.h"
+#include "text.h"
 
 #define SCENE_EMPTY -1
 DECLARE_VARRAY(float, float);
+
+/* **********************
+ * An element of a scene
+ * ********************** */
 
 typedef enum {
     POINTS,
@@ -27,6 +32,10 @@ typedef struct {
 
 DECLARE_VARRAY(gelement, gelement);
 
+/* **********************
+ * Objects
+ * ********************** */
+
 typedef struct {
     int id;
     struct {
@@ -39,12 +48,48 @@ typedef struct {
 
 DECLARE_VARRAY(gobject, gobject);
 
+/* **********************
+ * Fonts
+ * ********************** */
+
 typedef struct {
+    int id;
+    textfont font;
+} gfont;
+
+DECLARE_VARRAY(gfont, gfont);
+
+/* **********************
+ * Text
+ * ********************** */
+
+/*typedef struct {
+    int fontid;
+    char *text;
+} gtext;
+
+DECLARE_VARRAY(gtext, gtext);*/
+
+/* **********************
+ * List of things to draw
+ * ********************** */
+
+typedef enum {
+    OBJECT,
+    TEXT
+} gdrawtype;
+
+typedef struct {
+    gdrawtype type;
     int id;
     int matindx;
 } gdraw;
 
 DECLARE_VARRAY(gdraw, gdraw);
+
+/* ***************************
+ * The overall scene structure
+ * *************************** */
 
 typedef struct sscene {
     struct sscene *next; /** Linked list */
@@ -56,6 +101,7 @@ typedef struct sscene {
     varray_int indx;
     varray_gobject objectlist;
     varray_gdraw displaylist;
+    varray_gfont fontlist; 
 } scene;
 
 scene *scene_new(int id, int dim);
@@ -66,6 +112,7 @@ gobject *scene_addobject(scene *s, int id);
 int scene_adddata(scene *s, float *data, int count);
 int scene_addindex(scene *s, int *data, int count);
 int scene_addelement(gobject *obj, gelement *el);
+gfont *scene_addfont(scene *s, int id, char *file, float size);
 
 gobject *scene_getgobjectfromid(scene *s, int id);
 

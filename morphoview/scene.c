@@ -19,6 +19,7 @@ scene *scene_new(int id, int dim) {
         new->dim=dim; 
         varray_gobjectinit(&new->objectlist);
         varray_gdrawinit(&new->displaylist);
+        varray_gfontinit(&new->fontlist);
         varray_floatinit(&new->data);
         varray_intinit(&new->indx);
     }
@@ -33,8 +34,13 @@ void scene_free(scene *s) {
         varray_gelementclear(&obj->elements);
     }
     
+    for (unsigned int i=0; i<s->fontlist.count; i++) {
+        text_fontclear(&s->fontlist.data[i].font);
+    }
+    
     varray_gobjectclear(&s->objectlist);
     varray_gdrawclear(&s->displaylist);
+    varray_gfontclear(&s->fontlist);
     varray_floatclear(&s->data);
     varray_intclear(&s->indx);
     free(s);
@@ -81,6 +87,21 @@ int scene_addelement(gobject *obj, gelement *el) {
     return obj->elements.count-1;
 }
 
+/** Adds a font to a scene */
+gfont *scene_addfont(scene *s, int id, char *file, float size) {
+    gfont font;
+    gfont *out=NULL;
+    
+    font.id=id;
+    text_fontinit(&font.font, TEXT_DEFAULTWIDTH);
+    if (text_openfont(file, (int) size, &font.font)) {
+        varray_gfontwrite(&s->fontlist, font);
+        out = &s->fontlist.data[s->fontlist.count-1];
+    }
+
+    return out;
+}
+
 /* -------------------------------------------------------
  * Find
  * ------------------------------------------------------- */
@@ -99,6 +120,7 @@ gobject *scene_getgobjectfromid(scene *s, int id) {
 
 DEFINE_VARRAY(gobject, gobject);
 DEFINE_VARRAY(gelement, gelement);
+DEFINE_VARRAY(gfont, gfont);
 DEFINE_VARRAY(gdraw, gdraw);
 DEFINE_VARRAY(float, float);
 

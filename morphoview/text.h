@@ -18,6 +18,7 @@
 #define GL_SILENCE_DEPRECATION
 #include <glad/glad.h>
 
+#define TEXT_DEFAULTWIDTH 320
 #define TEXTSKYLINE_EMPTY -1
 
 /** Skyline data structure for rectangle packing */
@@ -59,8 +60,9 @@ typedef struct {
 
 void text_test(textfont *font);
 
+void text_fontinit(textfont *font, int width);
 bool text_openfont(char *file, int size, textfont *font);
-void text_clearfont(textfont *font);
+void text_fontclear(textfont *font);
 bool text_prepare(textfont *font, char *text);
 bool text_setfont(textfont *font);
 void text_draw(textfont *font, char *text);

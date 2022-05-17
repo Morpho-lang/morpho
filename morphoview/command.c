@@ -523,23 +523,21 @@ bool command_parsefont(parser *p) {
     ERRCHK(command_parsestring(p, &file));
     ERRCHK(command_parsefloat(p, &size));
     
+    gfont *font = scene_addfont(p->scene, id, file, size);
+    
 #ifdef DEBUG_PARSER
     printf("Font %i '%s' %g\n", id, file, size);
 #endif
     
-    return true;
+    return (font!=NULL);
 }
 
 /** Parses a text command */
 bool command_parsetext(parser *p) {
     int id;
     char *string;
-    float x[3];
     
     ERRCHK(command_parseinteger(p, &id));
-    for (int i=0; i<3; i++) {
-        ERRCHK(command_parsefloat(p, &x[i]));
-    }
     ERRCHK(command_parsestring(p, &string));
     
 #ifdef DEBUG_PARSER

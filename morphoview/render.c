@@ -80,7 +80,7 @@ const char *textvertexshader =
     "uniform mat4 proj;"
 
     "void main() {"
-    "    gl_Position = proj * vec4(vertex.xy, 0.0, 1.0);"
+    "    gl_Position = vec4(vertex.xy, 0.0, 1.0);"
     "    TexCoords = vertex.zw;"
     "}";
 
@@ -163,15 +163,17 @@ bool render_compileprogram(const char *vertexshadersource, const char *fragments
  * Text rendering
  * ------------------------------------------------------- */
 
+GLuint fonttexture;
+GLuint fontvao;
+GLuint fontvbo;
+
 /** Creates an OpenGL texture from the texture atlas */
 void render_fonttexture(textfont *font) {
-    GLuint texture;
-    
     /* Now create an OpenGL texture from this */
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
     
-    glGenTextures(1, &texture); // Create and define the texture
-    glBindTexture(GL_TEXTURE_2D, texture);
+    glGenTextures(1, &fonttexture); // Create and define the texture
+    glBindTexture(GL_TEXTURE_2D, fonttexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, font->skyline.width, font->skyline.height,
                  0, GL_RED, GL_UNSIGNED_BYTE, font->texturedata);
     // set texture options
@@ -187,8 +189,21 @@ void render_preparefonts(renderer *r, scene *scene) {
         gfont *f=&scene->fontlist.data[i];
         text_generatetexture(&f->font);
         render_fonttexture(&f->font);
-        text_showtexture(&f->font);
+        //text_showtexture(&f->font);
     }
+    
+    glGenVertexArrays(1, &fontvao);
+    glGenBuffers(1, &fontvbo);
+    
+    glBindVertexArray(fontvao);
+    glBindBuffer(GL_ARRAY_BUFFER, fontvbo);
+    
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 /* -------------------------------------------------------
@@ -509,6 +524,33 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
                 break;
         }
     }
+    
+    /* Some text testing */
+    glUseProgram(r->textshader);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, fonttexture);
+    glBindVertexArray(fontvao);
+    
+    float vertices[6][4] = {
+                { 0.0f, 0.0f, 0.0f, 0.0f },
+                { 0.0f, 1.0f, 0.0f, 1.0f },
+                { 1.0f, 1.0f, 1.0f, 1.0f },
+
+                { 0.0f, 0.0f, 0.0f, 0.0f },
+                { 1.0f, 1.0f, 1.0f, 1.0f },
+                { 1.0f, 0.0f, 1.0f, 0.0f }
+            };
+    
+    glBindBuffer(GL_ARRAY_BUFFER, fontvbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // render quad
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    
+    /* End text testing */
     
     GLenum er = glGetError();
     if (er!=0) {

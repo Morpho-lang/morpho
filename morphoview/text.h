@@ -18,7 +18,7 @@
 #define GL_SILENCE_DEPRECATION
 #include <glad/glad.h>
 
-#define TEXT_DEFAULTWIDTH 320
+#define TEXT_DEFAULTWIDTH 640
 #define TEXTSKYLINE_EMPTY -1
 
 /** Skyline data structure for rectangle packing */

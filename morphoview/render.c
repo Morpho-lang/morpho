@@ -73,15 +73,17 @@ const char *fragmentshader = "#version 330 core\n"
 
 const char *textvertexshader =
     "#version 330 core\n"
-    "layout (location = 0) in vec3 vertex; // <vec2 pos, vec2 tex>\n"
+    "layout (location = 0) in vec3 vertex;"
+    "layout (location = 1) in vec2 tex;"
     "out vec2 TexCoords;"
 
+    "uniform mat4 model;"
     "uniform mat4 view;"
     "uniform mat4 proj;"
 
     "void main() {"
-    "    gl_Position = vec4(vertex.xy, 0.0, 1.0);"
-    "    TexCoords = vertex.zw;"
+    "    gl_Position = proj * view * model * vec4(vertex, 1.0);"
+    "    TexCoords = tex;"
     "}";
 
 const char *textfragmentshader =
@@ -198,9 +200,11 @@ void render_preparefonts(renderer *r, scene *scene) {
     glBindVertexArray(fontvao);
     glBindBuffer(GL_ARRAY_BUFFER, fontvbo);
     
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 5, NULL, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), 0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *) (sizeof(GLfloat)*3));
     
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -535,18 +539,31 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
     vec3 textcolor = {1.0f, 1.0f, 1.0f};
     glUniform3fv(textcoloruniform, 1, textcolor);
     
+    modeluniform = glGetUniformLocation(r->textshader, "model");
+    viewuniform = glGetUniformLocation(r->textshader, "view");
+    projuniform = glGetUniformLocation(r->textshader, "proj");
+    
+    glUniformMatrix4fv(viewuniform, 1, GL_FALSE, view);
+    
+    mat3d_ortho(NULL, proj, -1.0*aspectratio, 1.0*aspectratio, -1.0, 1.0, 1.0, 10.0);
+    glUniformMatrix4fv(projuniform, 1, GL_FALSE, proj);
+    
+    mat4x4 model;
+    mat3d_identity4x4(model);
+    glUniformMatrix4fv(modeluniform, 1, GL_FALSE, model);
+    
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, fonttexture);
     glBindVertexArray(fontvao);
     
-    float vertices[6][4] = {
-                { -1.0f, -1.0f, 0.0f, 0.0f },
-                { -1.0f,  1.0f, 0.0f, 1.0f },
-                {  1.0f,  1.0f, 1.0f, 1.0f },
+    float vertices[6][5] = {
+                { -1.0f, -1.0f, 0.0f, 0.0f, 0.0f },
+                { -1.0f,  1.0f, 0.0f, 0.0f, 1.0f },
+                {  1.0f,  1.0f, 0.0f, 1.0f, 1.0f },
 
-                { -1.0f, -1.0f, 0.0f, 0.0f },
-                {  1.0f,  1.0f, 1.0f, 1.0f },
-                {  1.0f, -1.0f, 1.0f, 0.0f }
+                { -1.0f, -1.0f, 0.0f, 0.0f, 0.0f },
+                {  1.0f,  1.0f, 0.0f, 1.0f, 1.0f },
+                {  1.0f, -1.0f, 0.0f, 1.0f, 0.0f }
             };
     
     glBindBuffer(GL_ARRAY_BUFFER, fontvbo);

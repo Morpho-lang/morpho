@@ -27,6 +27,16 @@
 
 
 extern "C" {
+GPUStatus myGPUstatus = {.cudaStatus = cudaSuccess, .cublasStatus = CUBLAS_STATUS_NOT_INITIALIZED, .cublasHandle = NULL, .init = NULL};
+// p_gpu_area_integrand = gpu_area_integrand;
+// p_gpu_area_gradient = gpu_area_gradient;
+// p_gpu_volumeenclosed_integrand = gpu_volumeenclosed_integrand;
+// p_gpu_volumeenclosed_gradient = gpu_volumeenclosed_gradient;
+__device__ functional_integrand_gpu p_gpu_area_integrand = gpu_area_integrand;
+__device__ functional_gradient_gpu p_gpu_area_gradient = gpu_area_gradient;
+__device__ functional_integrand_gpu p_gpu_volumeenclosed_integrand = gpu_volumeenclosed_integrand;
+__device__ functional_gradient_gpu p_gpu_volumeenclosed_gradient = gpu_volumeenclosed_gradient;
+
 
 void GPUStatusCheck(GPUStatus* cudaInterface, const char * errid){
     cudaInterface->cudaStatus = cudaDeviceSynchronize();
@@ -34,13 +44,16 @@ void GPUStatusCheck(GPUStatus* cudaInterface, const char * errid){
     if (cudaInterface->cudaStatus != cudaSuccess) {
         // morpho_runtimeerror(cudaInterface->v, errid);
         printf("GPU error: %s from %s\n",cudaGetErrorName(cudaInterface->cudaStatus),errid);
+        exit(-1);
     }
     if (cudaInterface->cublasStatus != CUBLAS_STATUS_SUCCESS) {
         // morpho_runtimeerror(cudaInterface->v, errid);
         printf("cublas error: %d from %s\n",cudaInterface->cublasStatus,errid);
+        exit(-1);
     }
     if (cudaInterface->cusolverStatus!=CUSOLVER_STATUS_SUCCESS){
         printf("cusolve error: %d from %s\n",cudaInterface->cusolverStatus,errid);
+        exit(-1);
     }
 }
 
@@ -52,6 +65,30 @@ void GPUsetup(GPUStatus* cudaInterface) { //, vm* v) {
         //cudaInterface->v = NULL;
         cudaInterface->init = true;
     }
+    functional_integrand_gpu h_area_integrand;
+    functional_integrand_gpu h_volumeenclosed_integrand;
+    cudaMemcpyFromSymbol(&h_area_integrand,p_gpu_area_integrand,sizeof(functional_integrand_gpu));
+    cudaMemcpyFromSymbol(&h_volumeenclosed_integrand,p_gpu_volumeenclosed_integrand,sizeof(functional_integrand_gpu));
+    functional_integrand_gpu h_integrands[] = {h_area_integrand, h_volumeenclosed_integrand};
+    functional_integrand_gpu *d_integrands;
+    cudaMalloc(&d_integrands,2*sizeof(functional_integrand_gpu));
+    cudaMemcpy(d_integrands,h_integrands,2*sizeof(functional_integrand_gpu),cudaMemcpyHostToDevice);
+    cudaInterface->d_integrands = d_integrands;
+
+
+    functional_gradient_gpu h_area_gradient;
+    functional_gradient_gpu h_volumeenclosed_gradient;
+    cudaMemcpyFromSymbol(&h_area_gradient,p_gpu_area_gradient,sizeof(functional_gradient_gpu));
+    cudaMemcpyFromSymbol(&h_volumeenclosed_gradient,p_gpu_volumeenclosed_gradient,sizeof(functional_gradient_gpu));
+    functional_gradient_gpu h_gradient[] = {h_area_gradient, h_volumeenclosed_gradient};
+    functional_gradient_gpu *d_gradient;
+    cudaMalloc(&d_gradient,2*sizeof(functional_gradient_gpu));
+    cudaMemcpy(d_gradient,h_gradient,2*sizeof(functional_gradient_gpu),cudaMemcpyHostToDevice);
+    cudaInterface->d_gradients = d_gradient;
+    
+
+
+
 }
 void GPUallocate(GPUStatus* cudaInterface,void** ptr, unsigned int size){
     cudaInterface->cudaStatus = cudaMalloc((void**)ptr,(int) size);
@@ -63,6 +100,23 @@ void GPUdeallocate(GPUStatus* cudaInterface,void* dPointer) {
         cudaInterface->cudaStatus = cudaFree(dPointer);
     }
     GPUStatusCheck(cudaInterface,GPUDEALLOCATE);
+}
+
+void GPUreallocate(GPUStatus* cudaInterface,void** ptr, unsigned int newsize,unsigned int oldsize){
+    void* newptr = NULL;
+    // allocate a new space
+    GPUallocate(cudaInterface,&newptr,newsize);
+    GPUStatusCheck(cudaInterface,GPUALLOCATE);
+    if (*ptr) {
+        // copy things over room here for improvment
+        unsigned int size = (newsize<oldsize? newsize : oldsize); // take the smaller of the two
+        cudaMemcpy(newptr,*ptr,size,cudaMemcpyDeviceToDevice);
+        // delete the old one
+        GPUStatusCheck(cudaInterface,GPUMEMCPY);
+        GPUdeallocate(cudaInterface,*ptr);
+
+    }
+    *ptr = newptr;
 }
 
 void GPUmemset(GPUStatus* cudaInterface,void* devicePointer, int bytepattern, unsigned int size){
@@ -80,6 +134,15 @@ void GPUcopy_to_device(GPUStatus* cudaInterface,void* devicePointer, void* hostP
     GPUStatusCheck(cudaInterface,GPUMEMCPY);
 
 }
+void GPUcopy_device_to_device(GPUStatus* cudaInterface,void* devicePointersrc, void* devicePointerdest, unsigned int size) {
+    cudaInterface->cudaStatus = cudaMemcpy(devicePointerdest, devicePointersrc, size, cudaMemcpyDeviceToDevice);
+    GPUStatusCheck(cudaInterface,GPUMEMCPY);
+
+}
+void GPUcopy_symbol(void* dst, void* symbol, size_t size){
+    cudaMemcpyFromSymbol(dst,symbol,size);
+}
+
 
 void GPUScalarAddition(GPUStatus* cudaInterface, double* Matrix, double scalar, double *out, int size){
     unsigned int blockSize = 64;
@@ -97,11 +160,10 @@ void GPUTranspose(GPUStatus* cudaInterface, double* in, double* out, int ncols, 
 
 }
 
-
-
-
-
-
+int GPUSparseTranspose(GPUStatus* cudaInterface, objectgpusparse_light *in,objectgpusparse_light *out){
+    printf("Not Implmeneted Yet");
+    return 1;
+}
 
 void dotProduct(GPUStatus* cudaInterface, double* v1, double * v2, int size, double * out){
     cudaInterface->cublasStatus = cublasDdot(cudaInterface->cublasHandle, size, v1, 1, v2 , 1, out);
@@ -199,60 +261,6 @@ void GPUgemm(GPUStatus* cudaInterface,\
 /************************************************
 *       LAPACK-like cuSolver interface          *
 ************************************************/
-// /**
- 
-// handle      host 	input 	Handle to the cusolverDN library context.
-// n           host 	input 	Number of rows and columns of square matrix A. Should be non-negative.
-// nrhs 	    host 	input 	Number of right hand sides to solve. Should be non-negative.
-// dA 	        device 	None 	Matrix A with size n-by-n. Can be NULL.
-// ldda 	    host 	input 	Leading dimension of two-dimensional array used to store matrix A. lda >= n.
-// dipiv 	    device 	None 	Pivoting sequence. Not used and can be NULL.
-// dB 	        device 	None 	Set of right hand sides B of size n-by-nrhs. Can be NULL.
-// lddb 	    host 	input 	Leading dimension of two-dimensional array used to store matrix of right hand sides B. ldb >= n.
-// dX 	        device 	None 	Set of soultion vectors X of size n-by-nrhs. Can be NULL.
-// lddx 	    host 	input 	Leading dimension of two-dimensional array used to store matrix of solution vectors X. ldx >= n.
-// dwork 	    device 	none 	Pointer to device workspace. Not used and can be NULL.
-// lwork_bytes host 	output 	Pointer to a variable where required size of temporary workspace in bytes will be stored. Can't be NULL. 
-// */
-// void GPUgesv(GPUStatus* cudaInterface, int n, int nrhs, double* dA, int ldda, double* dB,\
-//  int lddb, double* dX, int lddx, int * niter, int *dinfo) {
-//     size_t lwork_bytes;
-//     int * dipiv = NULL;
-//     //cusolverDnIRSParams_t params = 
-//     //cudaInterface->cusolverStatus = cusolverDnIRSXgesv_bufferSize( cudaInterface->cusolverHandle,\
-//             params, n, nrhs, &lwork_bytes);
-
-//     GPUallocate(cudaInterface,(void**)&dipiv,sizeof(int)*n);
-
-//     cudaInterface->cusolverStatus = cusolverDnDDgesv_bufferSize(\
-//     cudaInterface->cusolverHandle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, NULL, &lwork_bytes);
-
-//     void * dWorkspace = NULL;
-//     //cusolverDnIRSInfos_t info;
-//     GPUallocate(cudaInterface,(void**)&dWorkspace,lwork_bytes);
-// /*cudaInterface->cusolverStatus cusolverDnIRSXgesv( cudaInterface->cusolverHandle,\
-//         params,
-//         info,
-//         int                         n,
-//         int                         nrhs,
-//         void                    *   dA,
-//         int                         ldda,
-//         void                    *   dB,
-//         int                         lddb,
-//         void                    *   dX,
-//         int                         lddx,
-//         void                    *   dWorkspace,
-//         size_t                      lwork_bytes,
-//         int                     *   dinfo);
-// */
-// //USE GETRS AND GETRF
-//     cudaInterface->cusolverStatus = cusolverDnDDgesv(cudaInterface->cusolverHandle,\
-//                         n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace,\
-//                         lwork_bytes, niter, dinfo);
-
-//     GPUdeallocate(cudaInterface,dWorkspace);
-//     GPUdeallocate(cudaInterface,dipiv);
-// }
 
 void GPUgetrf(GPUStatus* cudaInterface,int nrows, int ncols,double* elements,int lda,int* pivot,int* devInfo){
     int Lwork;
@@ -272,6 +280,30 @@ void GPUgetrs(GPUStatus* cudaInterface, int nrows, int ncolsB, double * A, int l
            CUBLAS_OP_N, nrows, ncolsB, A, lda, devIpiv, B, ldb, devInfo);
     GPUStatusCheck(cudaInterface,GPUGETRS);
 }
+
+/************************************************
+*               Functional interface            *
+************************************************/
+void GPUcall_functional(GPUStatus* cudaInterface,double* verts, int dim, objectgpusparse_light* conn,\
+                      int grade, int nelements,int integrandNo, double* out){
+    int nblocks = ceil(nelements/32.0);
+
+    functionalIntegrandEval<<<nblocks,32>>>(verts,dim,conn,nelements,integrandNo,cudaInterface->d_integrands,out);
+    GPUStatusCheck(cudaInterface,"Call Functional integrand");
+
+}
+void GPUcall_functionalgrad(GPUStatus* cudaInterface,double* verts, int dim, objectgpusparse_light* conn,\
+                            int grade, int nelements,int gradientNo, double* out) {
+    int nblocks = ceil(nelements/32.0);
+    functionalGradEval<<<nblocks,32>>>(verts,dim,conn,nelements,gradientNo,cudaInterface->d_gradients,out);
+        GPUStatusCheck(cudaInterface,"Call Functional gradient");
+
+}
+
+  
+
+
+
 }
 #undef TILE_DIM
 #undef BLOCK_COLS

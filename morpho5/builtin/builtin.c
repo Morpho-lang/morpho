@@ -14,6 +14,7 @@
 #include "gpumatrix.h"
 #include "cmplx.h"
 #include "sparse.h"
+#include "gpusparse.h"
 #include "mesh.h"
 #include "selection.h"
 #include "functional.h"
@@ -284,6 +285,7 @@ void builtin_initialize(void) {
     matrix_initialize();
     gpumatrix_initialize();
     sparse_initialize();
+    gpusparse_initialize();
     mesh_initialize();
     selection_initialize();
     field_initialize();

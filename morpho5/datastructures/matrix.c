@@ -510,57 +510,15 @@ void matrix_print(objectmatrix *m) {
  * ********************************************************************* */
 
 #include "matrixveneer2.h"
-/** Sets the column of a matrix */
-value Matrix_setcolumn(vm *v, int nargs, value *args) {
-    objectmatrix *m=MORPHO_GETMATRIX(MORPHO_SELF(args));
-    
-    if (nargs==2 &&
-        MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
-        MORPHO_ISMATRIX(MORPHO_GETARG(args, 1))) {
-        unsigned int col = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        objectmatrix *src = MORPHO_GETMATRIX(MORPHO_GETARG(args, 1));
-        
-        if (col<m->ncols) {
-            if (src && src->ncols*src->nrows==m->nrows) {
-                matrix_setcolumn(m, col, src->elements);
-            } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
-        } else morpho_runtimeerror(v, MATRIX_INDICESOUTSIDEBOUNDS);
-    } else morpho_runtimeerror(v, MATRIX_SETCOLARGS);
-    
-    return MORPHO_NIL;
-}
-
-/** Gets a column of a matrix */
-value Matrix_getcolumn(vm *v, int nargs, value *args) {
-    objectmatrix *m=MORPHO_GETMATRIX(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
-    
-    if (nargs==1 &&
-        MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        unsigned int col = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        
-        if (col<m->ncols) {
-            double *vals;
-            if (matrix_getcolumn(m, col, &vals)) {
-                objectmatrix *new=object_matrixfromfloats(m->nrows, 1, vals);
-                if (new) {
-                    out=MORPHO_OBJECT(new);
-                    morpho_bindobjects(v, 1, &out);
-                }
-            }
-        } else morpho_runtimeerror(v, MATRIX_INDICESOUTSIDEBOUNDS);
-    } else morpho_runtimeerror(v, MATRIX_SETCOLARGS);
-    
-    return out;
-}
 
 value matrix_constructor_wrapper(vm *v, int nargs, value *args){
     value out = MORPHO_NIL;
     if (nargs==1 && MORPHO_ISGPUMATRIX(MORPHO_GETARG(args, 0))) {
         objectmatrix *new=NULL;
-        new=object_matrixfromgpumatrix(MORPHO_GETGPUMATRIX(MORPHO_GETARG(args, 0)));
+        objectgpumatrix *in = MORPHO_GETGPUMATRIX(MORPHO_GETARG(args, 0));
+        new=object_matrixfromgpumatrix(in);
         if (new) {
-            value out = MORPHO_OBJECT(new);
+            out = MORPHO_OBJECT(new);
             morpho_bindobjects(v, 1, &out);
         }
     } else {

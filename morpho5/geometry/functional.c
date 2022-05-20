@@ -20,6 +20,12 @@
 #include "integrate.h"
 #include <math.h>
 
+#ifdef GPU_ACC
+    #include "gpumatrix.h"
+    #include "gpusparse.h"
+    #include "gpuinterface.h"
+#endif
+
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
 #endif
@@ -55,6 +61,13 @@ typedef struct s_functional_mapinfo {
     functional_dependencies *dependencies; // Dependencies
     symmetrybhvr sym; // Symmetry behavior
     void *ref; // Reference to pass on
+    #ifdef GPU_ACC
+    int gpu_integrand; //Integrand function for gpu accelertion
+    bool hasgpuintegrand;
+    int gpu_grad; // Gradient for gpu accelertion
+    bool hasgpugrad;
+    #endif
+
 } functional_mapinfo;
 
 
@@ -73,6 +86,16 @@ static void functional_clearmapinfo(functional_mapinfo *info) {
     info->dependencies=NULL;
     info->ref=NULL;
     info->sym=SYMMETRY_NONE;
+
+    #ifdef GPU_ACC
+    info->gpu_integrand=0;
+    info->hasgpuintegrand = false;
+
+    info->gpu_grad=0;
+    info->hasgpugrad = false;
+
+    #endif
+
 }
 
 /** Validates the arguments provided to a functional
@@ -121,6 +144,23 @@ static bool functional_countelements(vm *v, objectmesh *mesh, grade g, int *n, o
     }
     return true;
 }
+#ifdef GPU_ACC
+static bool functional_gpu_countelements(vm *v, objectmesh *mesh, grade g, int *n, objectgpusparse **s) {
+    /* How many elements? */
+    if (g==MESH_GRADE_VERTEX) {
+        *n=mesh->vert->ncols;
+    } else {
+        *s=mesh_getgpuconnectivityelement(mesh, 0, g);
+        if (*s) {
+            *n=(*s)->ncols; // Number of elements
+        } else {
+            morpho_runtimeerror(v, FUNC_ELNTFND, g);
+            return false;
+        }
+    }
+    return true;
+}
+#endif
 
 static int functional_symmetryimagelistfn(const void *a, const void *b) {
     elementid i=*(elementid *) a; elementid j=*(elementid *) b;
@@ -210,6 +250,35 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
     varray_elementidinit(&imageids);
     functional_symmetryimagelist(mesh, g, true, &imageids);
 
+#ifdef GPU_ACC
+    int gpu_integrand = info->gpu_integrand;
+    if (mesh->gpu_acceleration && info->hasgpuintegrand){
+        /* Create the output matrix */ 
+        objectgpusparse *s=NULL;
+        objectgpusparse_light *gpu_s=NULL;
+        
+        if (!functional_gpu_countelements(v, mesh, g, &n, &s)) return false;
+
+
+        objectgpumatrix *new = object_newgpumatrix(1,n,true);
+        if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
+        if (s) {
+            objectgpusparse_light temp_s = *(objectgpusparse_light*)((void*)s+sizeof(object));
+            GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
+            GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,&temp_s,sizeof(objectgpusparse_light));
+        }
+
+        GPUcall_functional(mesh->gpu_vert->status,mesh->gpu_vert->elements,mesh->dim,gpu_s,g,n,info->gpu_integrand,new->elements);
+        if (s) GPUdeallocate(mesh->gpu_vert->status,gpu_s);
+        double sum = gpumatrix_sum(new);
+        *out = MORPHO_FLOAT(sum);
+        success=true;
+        return success;
+
+    }
+#endif
+
+
     if (n>0) {
         int vertexid; // Use this if looping over grade 0
         int *vid=(g==0 ? &vertexid : NULL),
@@ -235,6 +304,7 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
                 }
             }
         } else { // Loop over elements
+
             for (elementid i=0; i<n; i++) {
                 // Skip this element if it's an image element
                 if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
@@ -283,6 +353,31 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
     varray_elementid imageids;
     varray_elementidinit(&imageids);
     functional_symmetryimagelist(mesh, g, true, &imageids);
+
+    #ifdef GPU_ACC
+    if (mesh->gpu_acceleration && info->hasgpuintegrand){
+        /* Create the output matrix */ 
+        objectgpusparse *s=NULL;
+        objectgpusparse_light *gpu_s=NULL;
+        if (!functional_gpu_countelements(v, mesh, g, &n, &s)) return false;
+        if (s) {
+            objectgpusparse_light temp_s = *(objectgpusparse_light*)((void*)s+sizeof(object));
+            GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
+            GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,&temp_s,sizeof(objectgpusparse_light));
+        }
+
+
+        objectgpumatrix *new = object_newgpumatrix(1,n,true);
+        if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
+        GPUcall_functional(mesh->gpu_vert->status,mesh->gpu_vert->elements,mesh->dim,gpu_s,g,n,info->gpu_integrand,new->elements);
+        if (s) GPUdeallocate(mesh->gpu_vert->status,gpu_s);
+
+        *out = MORPHO_OBJECT(new);
+        ret=true;
+        return ret;
+
+    }
+    #endif
 
     /* Create the output matrix */
     if (n>0) {
@@ -361,6 +456,30 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
 
     /* How many elements? */
     if (!functional_countelements(v, mesh, g, &n, &s)) return false;
+
+#ifdef GPU_ACC
+    if (mesh->gpu_acceleration && info->hasgpugrad){
+        /* Create the output matrix */ 
+        objectgpusparse *s=NULL;
+        objectgpusparse_light *gpu_s = NULL;
+        if (!functional_gpu_countelements(v, mesh, g, &n, &s)) return false;
+        
+        if (s) {
+            objectgpusparse_light temp_s = *(objectgpusparse_light*)((void*)s+sizeof(object));
+            GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
+            GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,&temp_s,sizeof(objectgpusparse_light));
+        }
+        objectgpumatrix *frc = object_newgpumatrix(mesh->vert->nrows,mesh->vert->ncols,true);
+        if (!frc) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
+        GPUcall_functionalgrad(mesh->gpu_vert->status,mesh->gpu_vert->elements,mesh->dim,gpu_s,g,n,info->gpu_grad,frc->elements);
+        if (s) GPUdeallocate(mesh->gpu_vert->status,gpu_s);
+
+        *out = MORPHO_OBJECT(frc);
+        ret=true;
+        return ret;
+
+    }
+#endif
 
     /* Create the output matrix */
     if (n>0) {
@@ -709,6 +828,7 @@ bool functional_elementsize(vm *v, objectmesh *mesh, grade g, elementid id, int 
     return false;
 }
 
+
 /* **********************************************************************
  * Functionals
  * ********************************************************************** */
@@ -760,7 +880,58 @@ value name##_total(vm *v, int nargs, value *args) { \
     \
     return out; \
 }
+#ifdef GPU_ACC
+/** Evaluate an integrand on GPU*/
+#define FUNCTIONAL_INTEGRAND_WITH_GPU(name, grade, integrandfn,gpu_integrandfn) value name##_integrand(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    value out=MORPHO_NIL; \
+    \
+    if (functional_validateargs(v, nargs, args, &info)) { \
+        info.g = grade;\
+        info.integrand = integrandfn;\
+        info.gpu_integrand = gpu_integrandfn;\
+        info.hasgpuintegrand = true;\
+        functional_mapintegrand(v, &info, &out); \
+    } \
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
+    return out; \
+}
+/** Evaluate a gradient on GPU*/
+#define FUNCTIONAL_GRADIENT_WITH_GPU(name, grade, gradientfn,gpu_gradientfn, symbhvr) \
+value name##_gradient(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    value out=MORPHO_NIL; \
+    \
+    if (functional_validateargs(v, nargs, args, &info)) { \
+        info.g = grade;\
+        info.grad = gradientfn;\
+        info.gpu_grad = gpu_gradientfn;\
+        info.hasgpugrad = true;\
+        info.sym = symbhvr; \
+        functional_mapgradient(v, &info, &out); \
+    } \
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
+    \
+    return out; \
+}
 
+/** Total an integrand on GPU*/
+#define FUNCTIONAL_TOTAL_WITH_GPU(name, grade, totalfn, gpu_totalfn) \
+value name##_total(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    value out=MORPHO_NIL; \
+    \
+    if (functional_validateargs(v, nargs, args, &info)) { \
+        info.g = grade;\
+        info.integrand = totalfn;\
+        info.gpu_integrand = gpu_totalfn;\
+        info.hasgpuintegrand = true;\
+        functional_sumintegrand(v, &info, &out); \
+    } \
+    \
+    return out; \
+}
+#endif
 /* Alternative way of defining methods that use a reference */
 #define FUNCTIONAL_METHOD(class, name, grade, reftype, prepare, integrandfn, integrandmapfn, deps, err, symbhvr) value class##_##name(vm *v, int nargs, value *args) { \
     functional_mapinfo info; \
@@ -914,10 +1085,16 @@ bool area_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void
 }
 
 FUNCTIONAL_INIT(Area, MESH_GRADE_AREA)
-FUNCTIONAL_INTEGRAND(Area, MESH_GRADE_AREA, area_integrand)
+
+#ifdef GPU_ACC
+FUNCTIONAL_INTEGRAND_WITH_GPU(Area, MESH_GRADE_AREA, area_integrand, 0)
+FUNCTIONAL_GRADIENT_WITH_GPU(Area, MESH_GRADE_AREA, area_gradient, 0, SYMMETRY_ADD)
+FUNCTIONAL_TOTAL_WITH_GPU(Area, MESH_GRADE_AREA, area_integrand,0)
+#else
+FUNCTIONAL_INTEGRAND(Area, MESH_GRADE_AREA, area_integrand,)
 FUNCTIONAL_GRADIENT(Area, MESH_GRADE_AREA, area_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(Area, MESH_GRADE_AREA, area_integrand)
-
+#endif
 MORPHO_BEGINCLASS(Area)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Area_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Area_integrand, BUILTIN_FLAGSEMPTY),
@@ -961,9 +1138,15 @@ bool volumeenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int 
 }
 
 FUNCTIONAL_INIT(VolumeEnclosed, MESH_GRADE_AREA)
+#ifdef GPU_ACC
+FUNCTIONAL_INTEGRAND_WITH_GPU(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand, 1)
+FUNCTIONAL_GRADIENT_WITH_GPU(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_gradient, 1, SYMMETRY_ADD)
+FUNCTIONAL_TOTAL_WITH_GPU(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand, 1)
+#else
 FUNCTIONAL_INTEGRAND(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
 FUNCTIONAL_GRADIENT(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
+#endif
 
 MORPHO_BEGINCLASS(VolumeEnclosed)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, VolumeEnclosed_init, BUILTIN_FLAGSEMPTY),

@@ -15,6 +15,12 @@
 #include "matrix.h"
 #include "selection.h"
 
+#ifdef GPU_ACC
+#include "gpumatrix.h"
+#include "gpusparse.h"
+#endif
+
+
 #include <limits.h>
 
 void mesh_link(objectmesh *mesh, object *obj);
@@ -36,6 +42,11 @@ void objectmesh_markfn(object *obj, void *v) {
     objectmesh *c = (objectmesh *) obj;
     if (c->vert) morpho_markobject(v, (object *) c->vert);
     if (c->conn) morpho_searchunmanagedobject(v, (object *) c->conn);
+    #ifdef GPU_ACC
+    if (c->gpu_vert) morpho_markobject(v, (object *) c->gpu_vert);
+    if (c->gpu_conn) morpho_searchunmanagedobject(v, (object *) c->gpu_conn);
+    #endif
+
 }
 
 void objectmesh_freefn(object *obj) {
@@ -81,6 +92,11 @@ objectmesh *object_newmesh(unsigned int dim, unsigned int nv, double *v) {
                 memcpy(new->vert->elements, v, sizeof(double)*dim*nv);
             }
         }
+        #ifdef GPU_ACC
+        new->gpu_vert = NULL;
+        new->gpu_conn = NULL;
+        new->gpu_acceleration = false;
+        #endif
     }
 
     return new;
@@ -1016,6 +1032,108 @@ bool mesh_save(objectmesh *m, char *file) {
 }
 
 /* **********************************************************************
+ * Internal Mesh GPU functions                                          
+ * ********************************************************************** */
+#ifdef GPU_ACC
+/** Copies the mesh vertices to the GPU*/
+bool mesh_copyverttogpu(objectmesh *m){
+    if (m->gpu_vert) {
+        if (m->gpu_vert->ncols!=m->vert->ncols || m->gpu_vert->nrows != m->vert->nrows) {
+            mesh_delink(m, (object*)m->gpu_vert);
+            if (m->gpu_vert->status==OBJECT_ISUNMANAGED) object_free((object*)m->gpu_vert);
+        
+            m->gpu_vert = object_newgpumatrix(m->vert->nrows,m->vert->ncols,false);
+            mesh_link(m, (object*) m->gpu_vert);
+        }
+    } else {
+        m->gpu_vert = object_newgpumatrix(m->vert->nrows,m->vert->ncols,false);
+        mesh_link(m, (object*) m->gpu_vert);
+    }
+    GPUcopy_to_device(m->gpu_vert->status, m->gpu_vert->elements,m->vert->elements,sizeof(double)*m->vert->ncols*m->vert->nrows);
+    return true;
+}
+
+/** Copies the mesh vertices from the GPU */
+bool mesh_copyvertfromgpu(objectmesh *m) {
+    bool ret = false;
+    if (m->gpu_vert) {
+        if (m->gpu_vert->ncols==m->vert->ncols || m->gpu_vert->nrows == m->vert->nrows) {
+            GPUcopy_to_host(m->gpu_vert->status, m->vert->elements,m->gpu_vert->elements,sizeof(double)*m->vert->ncols*m->vert->nrows);
+            ret = true;
+        }
+    }
+    return ret;
+
+}
+/** Ensures a mesh has a valid connectivity array */
+bool mesh_checkgpuconnectivity(objectmesh *mesh) {
+    if (mesh->gpu_conn) return true;
+    unsigned int dim[2]={mesh->dim+1, mesh->dim+1};
+    mesh->gpu_conn=object_newarray(2, dim);
+
+    return (mesh->gpu_conn);
+}
+
+/** Gets the connectivity gpumatrix corresponding to (row, col) */
+objectgpusparse *mesh_getgpuconnectivityelement(objectmesh *mesh, unsigned int row, unsigned int col) {
+    objectgpusparse *out=NULL;
+    unsigned int indx[2]={row,col};
+    value matrix=MORPHO_NIL;
+
+    if (mesh->gpu_conn) array_getelement(mesh->gpu_conn, 2, indx, &matrix);
+    if (MORPHO_ISGPUSPARSE(matrix)) {
+        out=MORPHO_GETGPUSPARSE(matrix);
+    }
+
+    return out;
+}
+/** Sets a gpu connectivity element */
+bool mesh_setgpuconnectivityelement(objectmesh *mesh, unsigned int row, unsigned int col, objectgpusparse *el) {
+    if (row==col) return false;
+    unsigned int indx[2]={row,col};
+    if (mesh_checkgpuconnectivity(mesh)) {
+        value old = MORPHO_NIL;
+        if (array_getelement(mesh->gpu_conn, 2, indx, &old) &&
+            MORPHO_ISOBJECT(old)) {
+            object *oel = MORPHO_GETOBJECT(old);
+            mesh_delink(mesh, oel);
+            if (oel->status==OBJECT_ISUNMANAGED) object_free(oel);
+        }
+
+        value val = MORPHO_NIL;
+        if (el) val = MORPHO_OBJECT(el);
+
+        if (array_setelement(mesh->gpu_conn, 2, indx, val) == ARRAY_OK) {
+            if (el && el->obj.status==OBJECT_ISUNMANAGED) mesh_link(mesh, (object *) el);
+        }
+    }
+    return false;
+}
+
+/** Copies the mesh connectivity to the GPU*/
+bool mesh_copyconnectivitytogpu(objectmesh *mesh) {
+    mesh_freezeconnectivity(mesh);
+    if (!mesh_checkconnectivity(mesh)) return true;
+
+    for (unsigned int i=0; i<mesh->dim+1; i++) {
+        for (unsigned int j=0; j<mesh->dim+1; j++) {
+            objectsparse *s=mesh_getconnectivityelement(mesh, i, j);
+
+            if (s) {
+                objectgpusparse *gpu_s = object_newgpusparse();
+                gpusparse_copyfromcpu(gpu_s,&s->ccs);
+                mesh_setgpuconnectivityelement(mesh,i,j,gpu_s);
+            }
+        }
+    }
+    return true;
+}
+
+/** Copies the mesh connectivity from the GPU*/
+
+
+#endif
+/* **********************************************************************
  * Mesh veneer class
  * ********************************************************************** */
 
@@ -1066,6 +1184,14 @@ value Mesh_print(vm *v, int nargs, value *args) {
 value Mesh_vertexmatrix(vm *v, int nargs, value *args) {
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
     value out=MORPHO_NIL;
+    #ifdef GPU_ACC
+    if (m->gpu_vert && m->gpu_acceleration) {
+        out=MORPHO_OBJECT(m->gpu_vert);
+        mesh_delink(m, (object *) m->gpu_vert);
+        morpho_bindobjects(v, 1, &out);
+        return out;
+    } 
+    #endif
 
     if (m->vert) out=MORPHO_OBJECT(m->vert);
     mesh_delink(m, (object *) m->vert);
@@ -1252,6 +1378,24 @@ value Mesh_clone(vm *v, int nargs, value *args) {
     return out;
 }
 
+#ifdef GPU_ACC
+
+value Mesh_copytogpu(vm *v,int nargs,value *args){
+    objectmesh *a=MORPHO_GETMESH(MORPHO_SELF(args));
+    mesh_copyverttogpu(a);
+    mesh_copyconnectivitytogpu(a);
+    a->gpu_acceleration = true;
+    return MORPHO_NIL;
+}
+
+value Mesh_copyfromgpu(vm *v,int nargs,value *args){
+    objectmesh *a=MORPHO_GETMESH(MORPHO_SELF(args));
+    mesh_copyvertfromgpu(a);
+    a->gpu_acceleration = false;
+    return MORPHO_NIL;
+}
+
+#endif
 MORPHO_BEGINCLASS(Mesh)
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Mesh_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SAVE_METHOD, Mesh_save, BUILTIN_FLAGSEMPTY),
@@ -1266,6 +1410,10 @@ MORPHO_METHOD(MESH_ADDSYMMETRY_METHOD, Mesh_addsymmetry, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_MAXGRADE_METHOD, Mesh_maxgrade, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Mesh_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Mesh_clone, BUILTIN_FLAGSEMPTY)
+#ifdef GPU_ACC
+,MORPHO_METHOD(MORPHO_COPYTOGPU_METHOD, Mesh_copytogpu, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_COPYFROMGPU_METHOD, Mesh_copyfromgpu, BUILTIN_FLAGSEMPTY)
+#endif
 MORPHO_ENDCLASS
 
 /* **********************************************************************

@@ -11,6 +11,10 @@
 #include "varray.h"
 #include "matrix.h"
 #include "sparse.h"
+#ifdef GPU_ACC
+#include "gpumatrix.h"
+#include "gpusparse.h"
+#endif
 
 /* -------------------------------------------------------
  * Mesh object
@@ -25,6 +29,12 @@ typedef struct {
     objectmatrix *vert;
     objectarray *conn;
     object *link;
+
+    #ifdef GPU_ACC
+    objectgpumatrix *gpu_vert;
+    objectarray *gpu_conn;
+    bool gpu_acceleration;
+    #endif
 } objectmesh;
 
 /** Tests whether an object is a mesh */
@@ -60,6 +70,12 @@ objectmesh *object_newmesh(unsigned int dim, unsigned int nv, double *v);
 #define MESH_ADDSYMMETRY_METHOD            "addsymmetry"
 
 #define MESH_TRANSFORM_METHOD              "transform"
+
+#ifdef GPU_ACC
+#define MORPHO_COPYTOGPU_METHOD            "todevice"
+#define MORPHO_COPYFROMGPU_METHOD            "tohost"
+#endif
+
 
 typedef int grade;
 typedef int elementid;
@@ -154,5 +170,9 @@ bool mesh_getsynonyms(objectmesh *mesh, grade g, elementid id, varray_elementid 
 int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, varray_elementid *neighbors);
 
 void mesh_initialize(void);
+
+#ifdef GPU_ACC
+objectgpusparse *mesh_getgpuconnectivityelement(objectmesh *mesh, unsigned int row, unsigned int col);
+#endif
 
 #endif /* mesh_h */

@@ -59,7 +59,6 @@ typedef struct {
     int *rix; // Row indices
     double *values; // Values
 } sparseccs;
-
 extern objecttype objectsparsetype;
 #define OBJECT_SPARSE objectsparsetype
 
@@ -142,6 +141,8 @@ typedef enum { SPARSE_DOK, SPARSE_CCS } objectsparseformat;
 typedef enum { SPARSE_OK, SPARSE_INCMPTBLDIM, SPARSE_CONVFAILED, SPARSE_FAILED } objectsparseerror;
 
 bool sparse_checkformat(objectsparse *sparse, objectsparseformat format, bool force, bool copyvals);
+
+objectsparse *object_newsparse(int *nrows, int *ncols);
 
 objectsparse *sparse_clone(objectsparse *s);
 bool sparse_setelement(objectsparse *matrix, int row, int col, value value);

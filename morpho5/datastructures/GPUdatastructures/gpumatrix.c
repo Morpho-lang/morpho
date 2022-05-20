@@ -4,6 +4,14 @@
  *  @brief Veneer class over the objectgpumatrix type that interfaces with blas and lapack
  */
 
+
+/* to dos
+[ ] Matrix & GPU matrix atrithmatic
+[ ] set col
+[ ] generic casting
+[ ] openCL
+*/
+
 #include <string.h>
 #include "object.h"
 #include "gpumatrix.h"
@@ -19,7 +27,6 @@
  * ********************************************************************** */
 
 objecttype objectgpumatrixtype;
-GPUStatus myGPUstatus = {.cudaStatus = cudaSuccess, .cublasStatus = CUBLAS_STATUS_NOT_INITIALIZED, .cublasHandle = NULL, .init = NULL};
 /** Function object definitions */
 size_t objectgpumatrix_sizefn(object *obj) {
     return sizeof(objectgpumatrix);
@@ -487,6 +494,7 @@ objectgpumatrixerror gpumatrix_inverse(objectgpumatrix *a, objectgpumatrix *out)
 }
 
 /** Sums all elements of a gpumatrix using Kahan summation */
+//TODO: MAKE THIS A BETTER SUM
 double gpumatrix_sum(objectgpumatrix *a) {
     unsigned int nel=a->ncols*a->nrows;
     double sum=0.0, c=0.0, y,t;
@@ -495,7 +503,7 @@ double gpumatrix_sum(objectgpumatrix *a) {
     double one = 1.0;
     GPUallocate(a->status,(void **)&GPUone,sizeof(double));
     GPUcopy_to_device(a->status,GPUone,&one,sizeof(double));
-    GPUdot(a->status,a->nrows, a->elements,1, GPUone, 0, &sum);
+    GPUdot(a->status,a->nrows*a->ncols, a->elements,1, GPUone, 0, &sum);
     GPUdeallocate(a->status,GPUone);
     return sum;
 }
@@ -556,6 +564,33 @@ objectgpumatrixerror gpumatrix_identity(objectgpumatrix *a) {
     return GPUMATRIX_OK;
 }
 
+/** @brief Gets a column's entries
+ *  @param[in] matrix - the matrix
+ *  @param[in] col - column number
+ *  @param[out] v - column entries (matrix->nrows in number)
+ *  @returns true if the element is in the range of the matrix, false otherwise */
+bool gpumatrix_getcolumn(objectgpumatrix *matrix, unsigned int col, double **v) {
+    if (col<matrix->ncols) {
+        *v=matrix->elements+col*matrix->nrows;
+        return true;
+    }
+    return false;
+}
+
+/** @brief Sets a column's entries
+ *  @param[in] matrix - the matrix
+ *  @param[in] col - column number
+ *  @param[in] v - column entries (matrix->nrows in number)
+ *  @returns true if the element is in the range of the matrix, false otherwise */
+bool gpumatrix_setcolumn(objectgpumatrix *matrix, unsigned int col, double *v) {
+    if (col<matrix->ncols) {
+        GPUcopy(matrix->status,matrix->nrows, v, 1, matrix->elements+col*matrix->nrows, 1);
+        return true;
+    }
+    return false;
+}
+
+
 /** Prints a gpumatrix */
 void gpumatrix_print(objectgpumatrix *m) {
     double elements[m->nrows*m->ncols];
@@ -563,7 +598,7 @@ void gpumatrix_print(objectgpumatrix *m) {
     for (int i=0; i<m->nrows; i++) { // Rows run from 0...m
         printf("[ ");
         for (int j=0; j<m->ncols; j++) { // Columns run from 0...k
-            printf("%g ", (fabs(elements[j+i*m->ncols])<MORPHO_EPS ? 0 : elements[i+j*m->nrows]));
+            printf("%g ", (fabs(elements[i+j*m->nrows])<MORPHO_EPS ? 0 : elements[i+j*m->nrows]));
         }
         printf("]%s", (i<m->nrows-1 ? "\n" : ""));
     }
@@ -709,7 +744,7 @@ value gpumatrix_constructor_wrapper(vm *v, int nargs, value *args){
         objectgpumatrix *new=NULL;
         new=object_gpumatrixfrommatrix(MORPHO_GETMATRIX(MORPHO_GETARG(args, 0)));
         if (new) {
-            value out = MORPHO_OBJECT(new);
+            out = MORPHO_OBJECT(new);
             morpho_bindobjects(v, 1, &out);
         }
     } else {
@@ -721,8 +756,8 @@ value gpumatrix_constructor_wrapper(vm *v, int nargs, value *args){
 MORPHO_BEGINCLASS(GPUMatrix)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, GPUMatrix_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, GPUMatrix_setindex, BUILTIN_FLAGSEMPTY),
-//MORPHO_METHOD(GPUMATRIX_GETCOLUMN_METHOD, GPUMatrix_getcolumn, BUILTIN_FLAGSEMPTY),
-//MORPHO_METHOD(GPUMATRIX_SETCOLUMN_METHOD, GPUMatrix_setcolumn, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(GPUMATRIX_GETCOLUMN_METHOD, GPUMatrix_getcolumn, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(GPUMATRIX_SETCOLUMN_METHOD, GPUMatrix_setcolumn, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, GPUMatrix_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADD_METHOD, GPUMatrix_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADDR_METHOD, GPUMatrix_addr, BUILTIN_FLAGSEMPTY),

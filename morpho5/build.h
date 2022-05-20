@@ -167,3 +167,14 @@
 
 /** @brief Full welcome message in CLI */
 // #define MORPHO_LONG_BANNER
+
+/*************************************
+ * GPU flags                         *
+ ************************************/
+#define CUDA_ACC
+#ifdef CUDA_ACC
+    #define GPU_ACC
+#endif
+#ifdef OPENCL_ACC
+    #define GPU_ACC
+#endif

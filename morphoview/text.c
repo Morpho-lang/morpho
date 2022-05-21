@@ -306,6 +306,9 @@ bool text_addcharacter(textfont *font, int code) {
     glyph.code=code;
     glyph.width=font->face->glyph->bitmap.width;
     glyph.height=font->face->glyph->bitmap.rows;
+    glyph.bearingx=font->face->glyph->bitmap_left;
+    glyph.bearingy=font->face->glyph->bitmap_top;
+    glyph.advance=(unsigned int) font->face->glyph->advance.x;
     /* Allocate space in the texture */
     if (!text_skylinesinsert(&font->skyline, glyph.width, glyph.height, &glyph.x, &glyph.y)) return false;
     

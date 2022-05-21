@@ -331,6 +331,91 @@ int render_entrysizefromformat(scene *s, char *format) {
     return size;
 }
 
+/** Draws an object to  newly allocated OpenGL buffers */
+void render_drawobject(renderer *r, scene *s, unsigned int i) {
+    renderglbuffers *b = &r->glbuffers.data[i];
+    int entrysize = render_entrysizefromformat(s, b->format);
+    
+    glGenVertexArrays(1, &b->array);
+    glGenBuffers(1, &b->buffer);
+    glGenBuffers(1, &b->element);
+    
+    glBindVertexArray(b->array);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, b->buffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*b->vlength, NULL, GL_STATIC_DRAW);
+    
+    /* Copy all the object data into the buffer */
+    for (unsigned int j=0; j<r->objects.count; j++) {
+        renderobject *obj = &r->objects.data[j];
+        if (obj && obj->buffer==b) {
+            glBufferSubData( GL_ARRAY_BUFFER,
+                            sizeof(GLfloat)*obj->voffset,
+                            sizeof(GLfloat)*obj->obj->vertexdata.length,
+                            s->data.data+obj->obj->vertexdata.indx);
+        }
+    }
+    
+    unsigned int offset = 0;
+    for (unsigned int j=0; b->format[j]!='\0'; j++) {
+        if (b->format[j]=='x') {
+            glVertexAttribPointer(0, s->dim, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*entrysize, (void*) (sizeof(GLfloat)*offset));
+            glEnableVertexAttribArray(0);
+            offset += s->dim;
+        } else if (b->format[j]=='c') {
+            glVertexAttribPointer(1, s->dim, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*entrysize, (void*) (sizeof(GLfloat)*offset));
+            glEnableVertexAttribArray(1);
+            offset += 3;
+        } else if (b->format[j]=='n') {
+            glVertexAttribPointer(2, s->dim, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*entrysize, (void*) (sizeof(GLfloat)*offset));
+            glEnableVertexAttribArray(2);
+            offset += s->dim;
+        }
+    }
+    
+    /* Unbind vertex array buffer */
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    /* Now for the element array buffer */
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, b->element);
+    /* Size the element buffer */
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*b->elength, NULL, GL_STATIC_DRAW);
+    
+    /* Copy all the object element data into the buffer */
+    for (unsigned int j=0; j<r->objects.count; j++) {
+        renderobject *obj = &r->objects.data[j];
+        
+        if (obj->buffer==b) {
+            int offset = obj->eoffset;
+            
+            /* Loop over elements */
+            for (unsigned int j=0; j<obj->obj->elements.count; j++) {
+                gelement *el=&obj->obj->elements.data[j];
+                
+                /* Offset the vertex indices by the vertex offset */
+                if (obj->voffset>0) for (unsigned int k=0; k<el->length; k++) {
+                    s->indx.data[el->indx+k] += obj->voffset/entrysize;
+                }
+                
+                /* Copy the vertex indices over */
+                glBufferSubData( GL_ELEMENT_ARRAY_BUFFER,
+                                sizeof(GLuint)*offset,
+                                sizeof(GLuint)*el->length,
+                                s->indx.data+el->indx);
+                
+                /* Restore vertex indices */
+                if (obj->voffset>0) for (unsigned int k=0; k<el->length; k++) {
+                    s->indx.data[el->indx+k] -= obj->voffset/entrysize;
+                }
+                
+                offset+=el->length;
+            }
+        }
+    }
+    
+    glBindVertexArray(0);
+}
+
 /** Prepares a scene for rendering */
 void render_preparescene(renderer *r, scene *s) {
     /* Loop over the display list to identify objects */
@@ -347,87 +432,7 @@ void render_preparescene(renderer *r, scene *s) {
     
     /* Now allocate OpenGL buffers and arrays */
     for (unsigned int i=0; i<r->glbuffers.count; i++) {
-        renderglbuffers *b = &r->glbuffers.data[i];
-        int entrysize = render_entrysizefromformat(s, b->format);
-        
-        glGenVertexArrays(1, &b->array);
-        glGenBuffers(1, &b->buffer);
-        glGenBuffers(1, &b->element);
-        
-        glBindVertexArray(b->array);
-        
-        glBindBuffer(GL_ARRAY_BUFFER, b->buffer);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*b->vlength, NULL, GL_STATIC_DRAW);
-        
-        /* Copy all the object data into the buffer */
-        for (unsigned int j=0; j<r->objects.count; j++) {
-            renderobject *obj = &r->objects.data[j];
-            if (obj && obj->buffer==b) {
-                glBufferSubData( GL_ARRAY_BUFFER,
-                                sizeof(GLfloat)*obj->voffset,
-                                sizeof(GLfloat)*obj->obj->vertexdata.length,
-                                s->data.data+obj->obj->vertexdata.indx);
-            }
-        }
-        
-        unsigned int offset = 0;
-        for (unsigned int j=0; b->format[j]!='\0'; j++) {
-            if (b->format[j]=='x') {
-                glVertexAttribPointer(0, s->dim, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*entrysize, (void*) (sizeof(GLfloat)*offset));
-                glEnableVertexAttribArray(0);
-                offset += s->dim;
-            } else if (b->format[j]=='c') {
-                glVertexAttribPointer(1, s->dim, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*entrysize, (void*) (sizeof(GLfloat)*offset));
-                glEnableVertexAttribArray(1);
-                offset += 3;
-            } else if (b->format[j]=='n') {
-                glVertexAttribPointer(2, s->dim, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*entrysize, (void*) (sizeof(GLfloat)*offset));
-                glEnableVertexAttribArray(2);
-                offset += s->dim;
-            }
-        }
-        
-        /* Unbind vertex array buffer */
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        
-        /* Now for the element array buffer */
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, b->element);
-        /* Size the element buffer */
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*b->elength, NULL, GL_STATIC_DRAW);
-        
-        /* Copy all the object element data into the buffer */
-        for (unsigned int j=0; j<r->objects.count; j++) {
-            renderobject *obj = &r->objects.data[j];
-            
-            if (obj->buffer==b) {
-                int offset = obj->eoffset;
-                
-                /* Loop over elements */
-                for (unsigned int j=0; j<obj->obj->elements.count; j++) {
-                    gelement *el=&obj->obj->elements.data[j];
-                    
-                    /* Offset the vertex indices by the vertex offset */
-                    if (obj->voffset>0) for (unsigned int k=0; k<el->length; k++) {
-                        s->indx.data[el->indx+k] += obj->voffset/entrysize;
-                    }
-                    
-                    /* Copy the vertex indices over */
-                    glBufferSubData( GL_ELEMENT_ARRAY_BUFFER,
-                                    sizeof(GLuint)*offset,
-                                    sizeof(GLuint)*el->length,
-                                    s->indx.data+el->indx);
-                    
-                    /* Restore vertex indices */
-                    if (obj->voffset>0) for (unsigned int k=0; k<el->length; k++) {
-                        s->indx.data[el->indx+k] -= obj->voffset/entrysize;
-                    }
-                    
-                    offset+=el->length;
-                }
-            }
-        }
-        
-        glBindVertexArray(0);
+        render_drawobject(r, s, i);
     }
     
     render_preparefonts(r, s);
@@ -544,8 +549,6 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
     projuniform = glGetUniformLocation(r->textshader, "proj");
     
     glUniformMatrix4fv(viewuniform, 1, GL_FALSE, view);
-    
-    mat3d_ortho(NULL, proj, -1.0*aspectratio, 1.0*aspectratio, -1.0, 1.0, 1.0, 10.0);
     glUniformMatrix4fv(projuniform, 1, GL_FALSE, proj);
     
     mat4x4 model;

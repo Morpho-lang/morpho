@@ -41,9 +41,11 @@ typedef struct {
 
 typedef struct {
     int code;
-    FT_Int width;
-    FT_Int height;
-    int x, y; // Location in texture 
+    int width, height;
+    int bearingx, bearingy; // Offset to top left point of a character from the origin
+    unsigned int advance; // Offset to advance to next glyph
+    
+    int x, y; // Location in texture
 } textglyph;
 
 DECLARE_VARRAY(textglyph, textglyph);

@@ -667,25 +667,6 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
                 break;
         }
     }
-    
-    /*float vertices[6][5] = {
-                { -1.0f, -1.0f, 0.0f, 0.0f, 0.0f },
-                { -1.0f,  1.0f, 0.0f, 0.0f, 1.0f },
-                {  1.0f,  1.0f, 0.0f, 1.0f, 1.0f },
-
-                { -1.0f, -1.0f, 0.0f, 0.0f, 0.0f },
-                {  1.0f,  1.0f, 0.0f, 1.0f, 1.0f },
-                {  1.0f, -1.0f, 0.0f, 1.0f, 0.0f }
-            };
-    
-    glBindBuffer(GL_ARRAY_BUFFER, fontvbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    
-    // render quad
-    glDrawArrays(GL_TRIANGLES, 0, 6) ;
-    */
-     
     /* End text rendering */
     
     GLenum er = glGetError();

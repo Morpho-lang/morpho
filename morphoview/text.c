@@ -310,7 +310,7 @@ bool text_addcharacter(textfont *font, int code) {
     glyph.bearingy=font->face->glyph->bitmap_top;
     glyph.advance=(unsigned int) font->face->glyph->advance.x;
     /* Allocate space in the texture */
-    if (!text_skylinesinsert(&font->skyline, glyph.width, glyph.height, &glyph.x, &glyph.y)) return false;
+    if (!text_skylinesinsert(&font->skyline, glyph.width+1, glyph.height+1, &glyph.x, &glyph.y)) return false;
     
     varray_textglyphwrite(&font->glyphs, glyph);
     

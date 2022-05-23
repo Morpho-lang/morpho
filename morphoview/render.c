@@ -238,8 +238,6 @@ void render_preparefonts(renderer *r, scene *scene) {
         font.font=&f->font;
         render_fonttexture(r, &f->font, &font.texture);
         varray_renderfontwrite(&r->fonts, font);
-        
-        //text_showtexture(&f->font);
     }
     
     glGenVertexArrays(1, &r->fontvao);
@@ -272,6 +270,8 @@ void render_preparetext(renderer *r, scene *s, gdraw *drw, GLuint *carray) {
     
     // Store font id in the render list
     textfont *font = scene_getfontfromid(s, txt->fontid);
+    if (!font) return;
+    
     int rfontid;
     for (rfontid=0; rfontid<r->fonts.count; rfontid++) {
         if (r->fonts.data[rfontid].font==font) break;

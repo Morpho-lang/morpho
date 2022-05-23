@@ -13,6 +13,8 @@
 
 DEFINE_VARRAY(renderobject, renderobject)
 
+DEFINE_VARRAY(renderfont, renderfont)
+
 DEFINE_VARRAY(renderglbuffers, renderglbuffers)
 
 DEFINE_VARRAY(renderinstruction, renderinstruction)
@@ -176,6 +178,7 @@ bool render_init(renderer *r) {
     glEnable(GL_MULTISAMPLE);
 
     varray_renderobjectinit(&r->objects);
+    varray_renderfontinit(&r->fonts);
     varray_renderglbuffersinit(&r->glbuffers);
     varray_renderinstructioninit(&r->renderlist);
     
@@ -192,6 +195,7 @@ void render_clear(renderer *r) {
     }
     
     varray_renderglbuffersclear(&r->glbuffers);
+    varray_renderfontclear(&r->fonts);
     varray_renderobjectclear(&r->objects);
     varray_renderinstructionclear(&r->renderlist);
     
@@ -203,17 +207,17 @@ void render_clear(renderer *r) {
  * Text rendering
  * ------------------------------------------------------- */
 
-GLuint fonttexture;
-GLuint fontvao;
-GLuint fontvbo;
+//GLuint fonttexture;
+//GLuint fontvao;
+//GLuint fontvbo;
 
 /** Creates an OpenGL texture from the texture atlas */
-void render_fonttexture(textfont *font) {
+void render_fonttexture(renderer *r, textfont *font, GLuint *out) {
     /* Now create an OpenGL texture from this */
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
     
-    glGenTextures(1, &fonttexture); // Create and define the texture
-    glBindTexture(GL_TEXTURE_2D, fonttexture);
+    glGenTextures(1, out); // Create and define the texture
+    glBindTexture(GL_TEXTURE_2D, *out);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, font->skyline.width, font->skyline.height,
                  0, GL_RED, GL_UNSIGNED_BYTE, font->texturedata);
     // set texture options
@@ -225,18 +229,24 @@ void render_fonttexture(textfont *font) {
 
 /** Prepare fonts for display */
 void render_preparefonts(renderer *r, scene *scene) {
+    
     for (int i=0; i<scene->fontlist.count; i++) {
         gfont *f=&scene->fontlist.data[i];
         text_generatetexture(&f->font);
-        render_fonttexture(&f->font);
+        
+        renderfont font;
+        font.font=&f->font;
+        render_fonttexture(r, &f->font, &font.texture);
+        varray_renderfontwrite(&r->fonts, font);
+        
         //text_showtexture(&f->font);
     }
     
-    glGenVertexArrays(1, &fontvao);
-    glGenBuffers(1, &fontvbo);
+    glGenVertexArrays(1, &r->fontvao);
+    glGenBuffers(1, &r->fontvbo);
     
-    glBindVertexArray(fontvao);
-    glBindBuffer(GL_ARRAY_BUFFER, fontvbo);
+    glBindVertexArray(r->fontvao);
+    glBindBuffer(GL_ARRAY_BUFFER, r->fontvbo);
     
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 5, NULL, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(0);
@@ -260,31 +270,43 @@ void render_preparetext(renderer *r, scene *s, gdraw *drw, GLuint *carray) {
     
     gtext *txt = &s->textlist.data[drw->id];
     
+    // Store font id in the render list
+    textfont *font = scene_getfontfromid(s, txt->fontid);
+    int rfontid;
+    for (rfontid=0; rfontid<r->fonts.count; rfontid++) {
+        if (r->fonts.data[rfontid].font==font) break;
+    }
+    if (rfontid>=r->fonts.count) return;
+    
     renderinstruction ins = { .instruction = RTEXT,
                               .data.text.txt = txt->text,
-                              .data.text.font = scene_getfontfromid(s, txt->fontid),
+                              .data.text.rfontid = rfontid,
                               .obj = NULL };
 
     varray_renderinstructionwrite(&r->renderlist, ins);
 }
 
 /** Draws a text element */
-void render_drawtext(renderer *r, textfont *font, char *text) {
+void render_rendertext(renderer *r, int rfontid, char *text) {
     textglyph glyph;
     float x=0.0, y=0.0, scale = 1.0/72.0/2.0;
     
+    renderfont *font = &r->fonts.data[rfontid];
+    
+    glBindTexture(GL_TEXTURE_2D, font->texture);
+    
     for (char *c = text, *next; *c!='\0'; c=next) {
-        if (!text_findglyph(font, c, &glyph, &next)) return;
+        if (!text_findglyph(font->font, c, &glyph, &next)) return;
         
         float xpos = x + glyph.bearingx * scale;
         float ypos = y - (glyph.height - glyph.bearingy) * scale;
         float w = glyph.width * scale;
         float h = glyph.height * scale;
         
-        float txpos = (float) glyph.x/(float) font->skyline.width;
-        float typos = (float) glyph.y/(float) font->skyline.height;
-        float tw = (float) glyph.width/(float) font->skyline.width;
-        float th = (float) glyph.height/(float) font->skyline.height;
+        float txpos = (float) glyph.x/(float) font->font->skyline.width;
+        float typos = (float) glyph.y/(float) font->font->skyline.height;
+        float tw = (float) glyph.width/(float) font->font->skyline.width;
+        float th = (float) glyph.height/(float) font->font->skyline.height;
         
         float vertices[6][5] = {
                     { xpos,     ypos,     0.0f, txpos,      typos + th },
@@ -296,7 +318,7 @@ void render_drawtext(renderer *r, textfont *font, char *text) {
                     { xpos + w, ypos,     0.0f, txpos + tw, typos + th }
                 };
         
-        glBindBuffer(GL_ARRAY_BUFFER, fontvbo);
+        glBindBuffer(GL_ARRAY_BUFFER, r->fontvbo);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         
@@ -305,23 +327,6 @@ void render_drawtext(renderer *r, textfont *font, char *text) {
         
         x += (glyph.advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
     }
-    
-    /*float vertices[6][5] = {
-                { -1.0f, -1.0f, 0.0f, 0.0f, 0.0f },
-                { -1.0f,  1.0f, 0.0f, 0.0f, 1.0f },
-                {  1.0f,  1.0f, 0.0f, 1.0f, 1.0f },
-
-                { -1.0f, -1.0f, 0.0f, 0.0f, 0.0f },
-                {  1.0f,  1.0f, 0.0f, 1.0f, 1.0f },
-                {  1.0f, -1.0f, 0.0f, 1.0f, 0.0f }
-            };
-    
-    glBindBuffer(GL_ARRAY_BUFFER, fontvbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    
-    // render quad
-    glDrawArrays(GL_TRIANGLES, 0, 6) ;*/
 }
 
 /* -------------------------------------------------------
@@ -650,8 +655,7 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
     glUniformMatrix4fv(modeluniform, 1, GL_FALSE, model);
     
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, fonttexture);
-    glBindVertexArray(fontvao);
+    glBindVertexArray(r->fontvao);
     
     /* Render objects */
     for (unsigned i=0; i<r->renderlist.count; i++) {
@@ -661,7 +665,7 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
                 glUniformMatrix4fv(modeluniform, 1, GL_FALSE, ins->data.model.model);
                 break;
             case RTEXT:
-                render_drawtext(r, ins->data.text.font, ins->data.text.txt);
+                render_rendertext(r, ins->data.text.rfontid, ins->data.text.txt);
                 break;
             case RNOP: case RARRAY: case RTRIANGLES:
                 break;

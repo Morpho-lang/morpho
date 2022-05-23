@@ -1,9 +1,10 @@
 S 0 3
 W "Text"
 F 0 "/System/Library/Fonts/Helvetica.ttc" 128
+F 1 "/System/Library/Fonts/Times.ttc" 128
 i
 t -8 0 0.0 
 T 0 "Olá mundo! Hello world!"
 i
 t -8 -1 0.0 
-T 0 "Text is now working in Morphoview!"
+T 1 "Text is now working in Morphoview!"

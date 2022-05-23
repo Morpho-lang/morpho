@@ -47,6 +47,14 @@ typedef struct {
 
 DECLARE_VARRAY(renderobject, renderobject)
 
+/** @brief A font to be used */
+typedef struct {
+    textfont *font;
+    GLuint texture;
+} renderfont;
+
+DECLARE_VARRAY(renderfont, renderfont)
+
 /** @brief Render instructions */
 typedef struct {
     enum {
@@ -73,7 +81,7 @@ typedef struct {
         
         struct {
             char *txt;
-            textfont *font; 
+            int rfontid; 
         } text;
     } data;
     
@@ -87,8 +95,11 @@ typedef struct {
     GLuint shader;
     GLuint textshader;
     varray_renderobject objects;
+    varray_renderfont fonts;
     varray_renderglbuffers glbuffers;
     varray_renderinstruction renderlist;
+    GLuint fontvao;
+    GLuint fontvbo;
 } renderer;
 
 bool render_init(renderer *r);

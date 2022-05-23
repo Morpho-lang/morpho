@@ -68,6 +68,8 @@ void text_fontclear(textfont *font);
 bool text_prepare(textfont *font, char *text);
 bool text_generatetexture(textfont *font);
 
+bool text_findglyph(textfont *font, char *string, textglyph *glyph, char **next);
+
 void text_initialize(void);
 void text_finalize(void);
 

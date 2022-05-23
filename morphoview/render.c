@@ -162,6 +162,44 @@ bool render_compileprogram(const char *vertexshadersource, const char *fragments
 }
 
 /* -------------------------------------------------------
+ * Initialize/finalize display
+ * ------------------------------------------------------- */
+
+/** Initializes a display, compiling shaders */
+bool render_init(renderer *r) {
+    
+    render_compileprogram(vertexshader, fragmentshader, &r->shader);
+    render_compileprogram(textvertexshader, textfragmentshader, &r->textshader);
+    
+    /* Enable OpenGL features */
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_MULTISAMPLE);
+
+    varray_renderobjectinit(&r->objects);
+    varray_renderglbuffersinit(&r->glbuffers);
+    varray_renderinstructioninit(&r->renderlist);
+    
+    return true;
+}
+
+void render_clear(renderer *r) {
+    for (unsigned int i=0; i<r->glbuffers.count; i++) {
+        renderglbuffers *b=&r->glbuffers.data[i];
+        
+        glDeleteVertexArrays(1, &b->array);
+        glDeleteBuffers(1, &b->buffer);
+        glDeleteBuffers(1, &b->element);
+    }
+    
+    varray_renderglbuffersclear(&r->glbuffers);
+    varray_renderobjectclear(&r->objects);
+    varray_renderinstructionclear(&r->renderlist);
+    
+    glDeleteProgram(r->shader);
+}
+
+
+/* -------------------------------------------------------
  * Text rendering
  * ------------------------------------------------------- */
 
@@ -210,45 +248,84 @@ void render_preparefonts(renderer *r, scene *scene) {
     glBindVertexArray(0);
 }
 
-/* -------------------------------------------------------
- * Initialize/finalize display
- * ------------------------------------------------------- */
-
-/** Initializes a display, compiling shaders */
-bool render_init(renderer *r) {
-    
-    render_compileprogram(vertexshader, fragmentshader, &r->shader);
-    render_compileprogram(textvertexshader, textfragmentshader, &r->textshader);
-    
-    /* Enable OpenGL features */
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_MULTISAMPLE);
-
-    varray_renderobjectinit(&r->objects);
-    varray_renderglbuffersinit(&r->glbuffers);
-    varray_renderinstructioninit(&r->renderlist);
-    
-    return true;
-}
-
-void render_clear(renderer *r) {
-    for (unsigned int i=0; i<r->glbuffers.count; i++) {
-        renderglbuffers *b=&r->glbuffers.data[i];
-        
-        glDeleteVertexArrays(1, &b->array);
-        glDeleteBuffers(1, &b->buffer);
-        glDeleteBuffers(1, &b->element);
+/** Prepares text for display */
+void render_preparetext(renderer *r, scene *s, gdraw *drw, GLuint *carray) {
+    /* Change the model matrix if provided */
+    if (drw->matindx!=SCENE_EMPTY) {
+        renderinstruction ins = { .instruction = RMODEL,
+                                  .data.model.model = &s->data.data[drw->matindx],
+                                  .obj=NULL };
+        varray_renderinstructionwrite(&r->renderlist, ins);
     }
     
-    varray_renderglbuffersclear(&r->glbuffers);
-    varray_renderobjectclear(&r->objects);
-    varray_renderinstructionclear(&r->renderlist);
+    gtext *txt = &s->textlist.data[drw->id];
     
-    glDeleteProgram(r->shader);
+    renderinstruction ins = { .instruction = RTEXT,
+                              .data.text.txt = txt->text,
+                              .data.text.font = scene_getfontfromid(s, txt->fontid),
+                              .obj = NULL };
+
+    varray_renderinstructionwrite(&r->renderlist, ins);
+}
+
+/** Draws a text element */
+void render_drawtext(renderer *r, textfont *font, char *text) {
+    textglyph glyph;
+    float x=0.0, y=0.0, scale = 1.0/72.0/2.0;
+    
+    for (char *c = text, *next; *c!='\0'; c=next) {
+        if (!text_findglyph(font, c, &glyph, &next)) return;
+        
+        float xpos = x + glyph.bearingx * scale;
+        float ypos = y - (glyph.height - glyph.bearingy) * scale;
+        float w = glyph.width * scale;
+        float h = glyph.height * scale;
+        
+        float txpos = (float) glyph.x/(float) font->skyline.width;
+        float typos = (float) glyph.y/(float) font->skyline.height;
+        float tw = (float) glyph.width/(float) font->skyline.width;
+        float th = (float) glyph.height/(float) font->skyline.height;
+        
+        float vertices[6][5] = {
+                    { xpos,     ypos,     0.0f, txpos,      typos + th },
+                    { xpos,     ypos + h, 0.0f, txpos,      typos      },
+                    { xpos + w, ypos + h, 0.0f, txpos + tw, typos      },
+
+                    { xpos,     ypos,     0.0f, txpos,      typos + th },
+                    { xpos + w, ypos + h, 0.0f, txpos + tw, typos      },
+                    { xpos + w, ypos,     0.0f, txpos + tw, typos + th }
+                };
+        
+        glBindBuffer(GL_ARRAY_BUFFER, fontvbo);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        
+        // render quad
+        glDrawArrays(GL_TRIANGLES, 0, 6) ;
+        
+        x += (glyph.advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
+    }
+    
+    /*float vertices[6][5] = {
+                { -1.0f, -1.0f, 0.0f, 0.0f, 0.0f },
+                { -1.0f,  1.0f, 0.0f, 0.0f, 1.0f },
+                {  1.0f,  1.0f, 0.0f, 1.0f, 1.0f },
+
+                { -1.0f, -1.0f, 0.0f, 0.0f, 0.0f },
+                {  1.0f,  1.0f, 0.0f, 1.0f, 1.0f },
+                {  1.0f, -1.0f, 0.0f, 1.0f, 0.0f }
+            };
+    
+    glBindBuffer(GL_ARRAY_BUFFER, fontvbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    // render quad
+    glDrawArrays(GL_TRIANGLES, 0, 6) ;*/
 }
 
 /* -------------------------------------------------------
- * Prepare the scene
+ * Object rendering
  * ------------------------------------------------------- */
 
 /** Checks if an object is present in the render object list */
@@ -416,6 +493,48 @@ void render_drawobject(renderer *r, scene *s, unsigned int i) {
     glBindVertexArray(0);
 }
 
+/** Prepares an object for rendering, inserting appropriate instructions into the render list */
+void render_prepareobject(renderer *r, scene *s, gdraw *drw, GLuint *carray) {
+    renderobject *obj = render_findrenderobjectwithid(&r->objects, drw->id);
+    
+    /* Select the vertex array if necessary */
+    renderinstruction ins = { .instruction = RARRAY, .data.array.handle = obj->buffer->array, .obj=obj };
+    if (*carray!=obj->buffer->array) varray_renderinstructionadd(&r->renderlist, &ins, 1);
+    *carray=obj->buffer->array;
+    
+    /* Change the model matrix if provided */
+    if (drw->matindx!=SCENE_EMPTY) {
+        renderinstruction ins = { .instruction = RMODEL,
+                                  .data.model.model = &s->data.data[drw->matindx],
+                                  .obj=obj };
+        varray_renderinstructionadd(&r->renderlist, &ins, 1);
+    }
+    
+    /* Now loop over the elements in the object */
+    int offset=obj->eoffset;
+    for (unsigned int j=0; j<obj->obj->elements.count; j++) {
+        gelement *el = &obj->obj->elements.data[j];
+        renderinstruction ins = { .instruction = RNOP, .obj=obj};
+        
+        switch (el->type) {
+            case FACETS:
+                ins.instruction=RTRIANGLES;
+                ins.data.triangles.offset=(void *) (sizeof(GLuint)*offset);
+                ins.data.triangles.length=el->length;
+                offset+=el->length;
+                break;
+            default:
+                break;
+        }
+        
+        if (ins.instruction!=RNOP) varray_renderinstructionadd(&r->renderlist, &ins, 1);
+    }
+}
+
+/* -------------------------------------------------------
+ * Prepare scene
+ * ------------------------------------------------------- */
+
 /** Prepares a scene for rendering */
 void render_preparescene(renderer *r, scene *s) {
     /* Loop over the display list to identify objects */
@@ -437,44 +556,17 @@ void render_preparescene(renderer *r, scene *s) {
     
     render_preparefonts(r, s);
     
-    /* Now create the render list */
+    /* Now create the object render list */
     GLuint carray=0;
     for (unsigned int i=0; i<s->displaylist.count; i++) {
         gdraw *drw=&s->displaylist.data[i];
-        renderobject *obj = render_findrenderobjectwithid(&r->objects, drw->id);
-        if (!obj) continue;
-        
-        /* Select the vertex array if necessary */
-        renderinstruction ins = { .instruction = ARRAY, .data.array.handle = obj->buffer->array, .obj=obj };
-        if (carray!=obj->buffer->array) varray_renderinstructionadd(&r->renderlist, &ins, 1);
-        carray=obj->buffer->array;
-        
-        /* Change the model matrix if provided */
-        if (drw->matindx!=SCENE_EMPTY) {
-            renderinstruction ins = { .instruction = MODEL,
-                                      .data.model.model = &s->data.data[drw->matindx],
-                                      .obj=obj };
-            varray_renderinstructionadd(&r->renderlist, &ins, 1);
-        }
-        
-        /* Now loop over the elements in the object */
-        int offset=obj->eoffset;
-        for (unsigned int j=0; j<obj->obj->elements.count; j++) {
-            gelement *el = &obj->obj->elements.data[j];
-            renderinstruction ins = { .instruction = NOP, .obj=obj};
-            
-            switch (el->type) {
-                case FACETS:
-                    ins.instruction=TRIANGLES;
-                    ins.data.triangles.offset=(void *) (sizeof(GLuint)*offset);
-                    ins.data.triangles.length=el->length;
-                    offset+=el->length;
-                    break;
-                default:
-                    break;
-            }
-            
-            if (ins.instruction!=NOP) varray_renderinstructionadd(&r->renderlist, &ins, 1);
+        switch (drw->type) {
+            case OBJECT:
+                render_prepareobject(r, s, drw, &carray);
+                break;
+            case TEXT:
+                render_preparetext(r, s, drw, &carray);
+                break;
         }
     }
 }
@@ -521,20 +613,22 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
     for (unsigned i=0; i<r->renderlist.count; i++) {
         renderinstruction *ins=&r->renderlist.data[i];
         switch (ins->instruction) {
-            case NOP: break;
-            case MODEL:
+            case RNOP: break;
+            case RMODEL:
                 glUniformMatrix4fv(modeluniform, 1, GL_FALSE, ins->data.model.model);
                 break;
-            case ARRAY:
+            case RARRAY:
                 glBindVertexArray(ins->data.array.handle);
                 break;
-            case TRIANGLES:
+            case RTRIANGLES:
                 glDrawElements(GL_TRIANGLES, ins->data.triangles.length, GL_UNSIGNED_INT, ins->data.triangles.offset);
+                break;
+            case RTEXT:
                 break;
         }
     }
     
-    /* Some text testing */
+    /* Now text rendering pass */
     glUseProgram(r->textshader);
     
     glEnable(GL_BLEND);
@@ -559,7 +653,22 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
     glBindTexture(GL_TEXTURE_2D, fonttexture);
     glBindVertexArray(fontvao);
     
-    float vertices[6][5] = {
+    /* Render objects */
+    for (unsigned i=0; i<r->renderlist.count; i++) {
+        renderinstruction *ins=&r->renderlist.data[i];
+        switch (ins->instruction) {
+            case RMODEL:
+                glUniformMatrix4fv(modeluniform, 1, GL_FALSE, ins->data.model.model);
+                break;
+            case RTEXT:
+                render_drawtext(r, ins->data.text.font, ins->data.text.txt);
+                break;
+            case RNOP: case RARRAY: case RTRIANGLES:
+                break;
+        }
+    }
+    
+    /*float vertices[6][5] = {
                 { -1.0f, -1.0f, 0.0f, 0.0f, 0.0f },
                 { -1.0f,  1.0f, 0.0f, 0.0f, 1.0f },
                 {  1.0f,  1.0f, 0.0f, 1.0f, 1.0f },
@@ -572,10 +681,12 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
     glBindBuffer(GL_ARRAY_BUFFER, fontvbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
     // render quad
     glDrawArrays(GL_TRIANGLES, 0, 6) ;
-    
-    /* End text testing */
+    */
+     
+    /* End text rendering */
     
     GLenum er = glGetError();
     if (er!=0) {

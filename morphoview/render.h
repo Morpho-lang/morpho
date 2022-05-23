@@ -50,10 +50,11 @@ DECLARE_VARRAY(renderobject, renderobject)
 /** @brief Render instructions */
 typedef struct {
     enum {
-        NOP,
-        MODEL, /* Set the model matrix */
-        ARRAY, /* Bind a VAO */
-        TRIANGLES /* Draw triangles */
+        RNOP,
+        RMODEL, /* Set the model matrix */
+        RARRAY, /* Bind a VAO */
+        RTRIANGLES, /* Draw triangles */
+        RTEXT /* Draw text */
     } instruction;
     
     union {
@@ -69,6 +70,11 @@ typedef struct {
             int length;
             void *offset;
         } triangles;
+        
+        struct {
+            char *txt;
+            textfont *font; 
+        } text;
     } data;
     
     renderobject *obj;

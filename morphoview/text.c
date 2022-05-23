@@ -334,6 +334,28 @@ bool text_prepare(textfont *font, char *text) {
     return true;
 }
 
+/** Finds a glyph for the next character in a string.
+ * @param[in] font - font structure
+ * @param[in] string - string
+ * @param[out] glyph - glyph structure
+ * @param[out] next - points to the next character
+ * @returns true if the glyph was found */
+bool text_findglyph(textfont *font, char *string, textglyph *glyph, char **next) {
+    uint8_t *c = (uint8_t *) string;
+    int code;
+    if (!text_utf8decode(c, &code)) return false;
+    
+    for (int i=0; i<font->glyphs.count; i++) {
+        if (font->glyphs.data[i].code==code) {
+            *glyph = font->glyphs.data[i];
+            if (next) *next = string + text_utf8numberofbytes(c);
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 /* -------------------------------------------------------
  * Initialization
  * ------------------------------------------------------- */

@@ -114,6 +114,7 @@ int scene_adddata(scene *s, float *data, int count);
 int scene_addindex(scene *s, int *data, int count);
 int scene_addelement(gobject *obj, gelement *el);
 bool scene_addfont(scene *s, int id, char *file, float size, int *fontindx);
+textfont *scene_getfontfromid(scene *s, int fontid);
 int scene_addtext(scene *s, int fontid, char *text);
 void scene_adddraw(scene *scene, gdrawtype type, int id, int matindx);
 

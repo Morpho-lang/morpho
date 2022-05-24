@@ -97,7 +97,7 @@ const char *textfragmentshader =
 
     "void main() {"
     "   vec4 sampled = vec4(1.0, 1.0, 1.0, texture(text, TexCoords).r);"
-    "   color = vec4(textColor, 0.5) * sampled;"
+    "   color = vec4(textColor, 1.0) * sampled;"
     "}";
 
 /* -------------------------------------------------------
@@ -289,7 +289,7 @@ void render_preparetext(renderer *r, scene *s, gdraw *drw, GLuint *carray) {
 /** Draws a text element */
 void render_rendertext(renderer *r, int rfontid, char *text) {
     textglyph glyph;
-    float x=0.0, y=0.0, scale = 1.0/72.0/2.0;
+    float x=0.0, y=0.0, z=0.0, scale = 1.0/72.0/2.0;
     
     renderfont *font = &r->fonts.data[rfontid];
     
@@ -309,13 +309,13 @@ void render_rendertext(renderer *r, int rfontid, char *text) {
         float th = (float) glyph.height/(float) font->font->skyline.height;
         
         float vertices[6][5] = {
-                    { xpos,     ypos,     0.0f, txpos,      typos + th },
-                    { xpos,     ypos + h, 0.0f, txpos,      typos      },
-                    { xpos + w, ypos + h, 0.0f, txpos + tw, typos      },
+                    { xpos,     ypos,     z, txpos,      typos + th },
+                    { xpos,     ypos + h, z, txpos,      typos      },
+                    { xpos + w, ypos + h, z, txpos + tw, typos      },
 
-                    { xpos,     ypos,     0.0f, txpos,      typos + th },
-                    { xpos + w, ypos + h, 0.0f, txpos + tw, typos      },
-                    { xpos + w, ypos,     0.0f, txpos + tw, typos + th }
+                    { xpos,     ypos,     z, txpos,      typos + th },
+                    { xpos + w, ypos + h, z, txpos + tw, typos      },
+                    { xpos + w, ypos,     z, txpos + tw, typos + th }
                 };
         
         glBindBuffer(GL_ARRAY_BUFFER, r->fontvbo);
@@ -326,6 +326,7 @@ void render_rendertext(renderer *r, int rfontid, char *text) {
         glDrawArrays(GL_TRIANGLES, 0, 6) ;
         
         x += (glyph.advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
+        z += 1e-4; // Advance z by a tiny amount so that successive glyphs are drawn over previous glyphs (for languages where overlapping glyphs exist)
     }
 }
 

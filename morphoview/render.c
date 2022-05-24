@@ -97,7 +97,7 @@ const char *textfragmentshader =
 
     "void main() {"
     "   vec4 sampled = vec4(1.0, 1.0, 1.0, texture(text, TexCoords).r);"
-    "   color = vec4(textColor, 1.0) * sampled;"
+    "   color = vec4(textColor, 0.5) * sampled;"
     "}";
 
 /* -------------------------------------------------------
@@ -327,6 +327,33 @@ void render_rendertext(renderer *r, int rfontid, char *text) {
         
         x += (glyph.advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
     }
+}
+
+/** Renders the texture atlas for a font (for debugging purposes) */
+void render_renderfonttextureatlas(renderer *r, int rfontid) {
+    renderfont *font = &r->fonts.data[rfontid];
+    
+    glBindTexture(GL_TEXTURE_2D, font->texture);
+    
+    float xpos = 0, ypos = 0, w = 20, h = 20;
+    float txpos = 0, typos = 0, tw = 1, th = 1;
+    
+    float vertices[6][5] = {
+                { xpos,     ypos,     0.0f, txpos,      typos + th },
+                { xpos,     ypos + h, 0.0f, txpos,      typos      },
+                { xpos + w, ypos + h, 0.0f, txpos + tw, typos      },
+
+                { xpos,     ypos,     0.0f, txpos,      typos + th },
+                { xpos + w, ypos + h, 0.0f, txpos + tw, typos      },
+                { xpos + w, ypos,     0.0f, txpos + tw, typos + th }
+            };
+    
+    glBindBuffer(GL_ARRAY_BUFFER, r->fontvbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    // render quad
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 /* -------------------------------------------------------
@@ -666,6 +693,7 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
                 break;
             case RTEXT:
                 render_rendertext(r, ins->data.text.rfontid, ins->data.text.txt);
+                //render_renderfonttextureatlas(r, ins->data.text.rfontid);
                 break;
             case RNOP: case RARRAY: case RTRIANGLES:
                 break;

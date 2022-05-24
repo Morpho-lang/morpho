@@ -164,6 +164,11 @@ bool text_skylinefit(textskyline *skyline, int start, int width, int height, int
     } else { // Update the end block
         TEXT_SKYLINEENTRY(skyline, end)->width-=w;
         TEXT_SKYLINEENTRY(skyline, end)->xpos+=w;
+        
+        /* Mark these as deleted */
+        for (int s=start; s!=end; s=skyline->skyline.data[s].next) {
+            if (s!=start) skyline->skyline.data[s].xpos=TEXTSKYLINE_EMPTY;
+        }
     }
     
     TEXT_SKYLINEENTRY(skyline, start)->width=width;
@@ -186,6 +191,7 @@ bool text_skylinesinsert(textskyline *skyline, int width, int height, int *x, in
     /* Locate the lowest point that can accomodate the rectangle */
     for (int i=0; i<skyline->skyline.count; i++) {
         textskylineentry *e = &skyline->skyline.data[i];
+        if (e->xpos<0) continue;
     
         if (text_skylinetestfit(skyline, i, width, e->ypos) && e->ypos<bypos) {
             best = i; bypos = e->ypos; bxpos = e->xpos;
@@ -310,7 +316,10 @@ bool text_addcharacter(textfont *font, int code) {
     glyph.bearingy=font->face->glyph->bitmap_top;
     glyph.advance=(unsigned int) font->face->glyph->advance.x;
     /* Allocate space in the texture */
-    if (!text_skylinesinsert(&font->skyline, glyph.width+1, glyph.height+1, &glyph.x, &glyph.y)) return false;
+    if (!text_skylinesinsert(&font->skyline, glyph.width+1, glyph.height+1, &glyph.x, &glyph.y)) {
+        printf("Could not allocate space in font texture atlas.\n");
+        return false;
+    }
     
     varray_textglyphwrite(&font->glyphs, glyph);
     

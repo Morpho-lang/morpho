@@ -71,6 +71,30 @@ const char *fragmentshader = "#version 330 core\n"
     "   FragColor = vec4(result, 1.0f);"
     "}";
 
+/* Flat shader */
+
+const char *flatvertexshader = "#version 330 core\n"
+    "layout (location = 0) in vec3 vPos;"
+    "layout (location = 1) in vec3 vColor;"
+    "out vec3 fragColor;"
+    "uniform mat4 model;"
+    "uniform mat4 view;"
+    "uniform mat4 proj;"
+
+    "void main() {"
+    "   gl_Position = proj * view * model * vec4(vPos, 1.0);"
+    "   fragColor = vColor;"
+    "   fragPos = vPos;"
+    "}";
+
+const char *flatfragmentshader = "#version 330 core\n"
+    "out vec4 FragColor;"
+    "in vec3 fragColor;"
+    ""
+    "void main() {"
+    "   FragColor = vec4(fragColor, 1.0f);"
+    "}";
+
 /* Text shader */
 
 const char *textvertexshader =
@@ -556,6 +580,12 @@ void render_prepareobject(renderer *r, scene *s, gdraw *drw, GLuint *carray) {
                 ins.data.triangles.length=el->length;
                 offset+=el->length;
                 break;
+            case LINES:
+                ins.instruction=RLINES;
+                ins.data.triangles.offset=(void *) (sizeof(GLuint)*offset);
+                ins.data.triangles.length=el->length;
+                offset+=el->length;
+                break;
             default:
                 break;
         }
@@ -655,6 +685,12 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
                 break;
             case RTRIANGLES:
                 glDrawElements(GL_TRIANGLES, ins->data.triangles.length, GL_UNSIGNED_INT, ins->data.triangles.offset);
+                break;
+            case RLINES:
+                glDrawElements(GL_LINES, ins->data.triangles.length, GL_UNSIGNED_INT, ins->data.triangles.offset);
+                break;
+            case RPOINTS:
+                glDrawElements(GL_POINTS, ins->data.triangles.length, GL_UNSIGNED_INT, ins->data.triangles.offset);
                 break;
             case RTEXT:
                 break;

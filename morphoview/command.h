@@ -13,7 +13,7 @@
 #include "display.h"
 #include "matrix3d.h"
 
-//#define DEBUG_PARSER
+#define DEBUG_PARSER
 
 /* -------------------------------------------------------
  * Tokens

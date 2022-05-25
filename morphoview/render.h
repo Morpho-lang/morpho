@@ -62,6 +62,8 @@ typedef struct {
         RMODEL, /* Set the model matrix */
         RARRAY, /* Bind a VAO */
         RTRIANGLES, /* Draw triangles */
+        RLINES, /* Draw lines */
+        RPOINTS, /* Draw points */
         RTEXT /* Draw text */
     } instruction;
     

@@ -732,7 +732,7 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
                 render_rendertext(r, ins->data.text.rfontid, ins->data.text.txt);
                 //render_renderfonttextureatlas(r, ins->data.text.rfontid);
                 break;
-            case RNOP: case RARRAY: case RTRIANGLES:
+            default:
                 break;
         }
     }

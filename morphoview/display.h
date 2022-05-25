@@ -43,7 +43,6 @@ typedef struct sdisplay {
     float aspectRatio; /** Aspect ratio for the window */
     
     double ox, oy; /** Previous mouse x,y positions */
-    double tx, ty; /** Previous translate x,y positions */
     
     enum {
         NORMAL,

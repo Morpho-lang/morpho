@@ -16,6 +16,7 @@ int main(int argc, const char * argv[]) {
     display_initialize();
     text_initialize();
     bool temp = false;
+    bool parsed = false;
     
     // Process arguments
     const char *file=NULL;
@@ -38,13 +39,13 @@ int main(int argc, const char * argv[]) {
         //printf("Loading %s\n", file);
         
         if (command_loadinput(file, &buffer)) {
-            command_parse(buffer);
+            parsed=command_parse(buffer);
         }
         
         free(buffer);
     }
     
-    display_loop();
+    if (parsed) display_loop();
     
     text_finalize();
     display_finalize();

@@ -27,6 +27,8 @@ typedef enum {
     TOKEN_FLOAT,
     TOKEN_STRING,
     
+    TOKEN_COLOR,
+    TOKEN_SELECTCOLOR,
     TOKEN_DRAW,
     TOKEN_OBJECT,
     TOKEN_VERTICES,

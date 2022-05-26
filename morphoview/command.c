@@ -200,6 +200,8 @@ bool command_lex(lexer *l, token *tok) {
     if (command_lexisdigit(c) || c == '-') return command_lexnumber(l, tok);
     
     switch (c) {
+        case 'c': command_lexrecordtoken(l, TOKEN_COLOR, tok); return true;
+        case 'C': command_lexrecordtoken(l, TOKEN_SELECTCOLOR, tok); return true;
         case 'd': command_lexrecordtoken(l, TOKEN_DRAW, tok); return true;
         case 'o': command_lexrecordtoken(l, TOKEN_OBJECT, tok); return true;
         case 'p': command_lexrecordtoken(l, TOKEN_POINTS, tok); return true;
@@ -297,6 +299,54 @@ bool command_iscurrentnumerical(parser *p) {
  * --------------- */
 
 #define ERRCHK(f) if (!(f)) return false;
+
+/** Parses a color definition */
+bool command_parsecolor(parser *p) {
+    int id, indx=-1;
+    int length=0;
+    ERRCHK(command_parseinteger(p, &id));
+    
+#ifdef DEBUG_PARSER
+    printf("Color %i ", id);
+#endif
+    
+    while (command_iscurrentnumerical(p)) {
+        float r[3];
+        for (int i=0; i<3; i++) ERRCHK(command_parsefloat(p, &r[i]));
+        
+        /* Add to the scene's data array */
+        int ret=scene_adddata(p->scene, r, 3);
+        if (indx<0) indx=ret;
+        
+        length++;
+        
+#ifdef DEBUG_PARSER
+        printf("%f %f %f ", r[0], r[1], r[2]);
+#endif
+    }
+    
+    if (length>0) {
+        scene_addcolor(p->scene, id, length, indx);
+    }
+    
+#ifdef DEBUG_PARSER
+    printf("\n");
+#endif
+    
+    return true;
+}
+
+/** Parses a color selection */
+bool command_parseselectcolor(parser *p) {
+    int id;
+    
+    ERRCHK(command_parseinteger(p, &id));
+#ifdef DEBUG_PARSER
+    printf("Select color %i\n", id);
+#endif
+    
+    return true;
+}
 
 /** Parses a draw command */
 bool command_parsedraw(parser *p) {
@@ -542,9 +592,7 @@ bool command_parsetext(parser *p) {
 #endif
     
     int matindx=SCENE_EMPTY;
-    int tid;
-    
-    tid=scene_addtext(p->scene, fontid, string);
+    int tid=scene_addtext(p->scene, fontid, string);
     
     if (p->modelchanged) {
         matindx=scene_adddata(p->scene, p->model, 16);
@@ -568,6 +616,8 @@ parsefunction parsetable[] = {
     UNDEFINED,              // TOKEN_FLOAT
     UNDEFINED,              // TOKEN_STRING
     
+    command_parsecolor,     // TOKEN_COLOR
+    command_parseselectcolor,// TOKEN_SELECTCOLOR
     command_parsedraw,      // TOKEN_DRAW
     command_parseobject,    // TOKEN_OBJECT
     command_parsevertices,  // TOKEN_VERTICES

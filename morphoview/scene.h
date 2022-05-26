@@ -49,6 +49,18 @@ typedef struct {
 DECLARE_VARRAY(gobject, gobject);
 
 /* **********************
+ * Colors
+ * ********************** */
+
+typedef struct {
+    int colorid;
+    int indx;
+    int length;
+} gcolor;
+
+DECLARE_VARRAY(gcolor, gcolor);
+
+/* **********************
  * Fonts
  * ********************** */
 
@@ -76,7 +88,8 @@ DECLARE_VARRAY(gtext, gtext);
 
 typedef enum {
     OBJECT,
-    TEXT
+    TEXT,
+    COLOR
 } gdrawtype;
 
 typedef struct {
@@ -100,9 +113,11 @@ typedef struct sscene {
     varray_float data;
     varray_int indx;
     varray_gobject objectlist;
-    varray_gdraw displaylist;
+    varray_gcolor colorlist;
     varray_gfont fontlist;
-    varray_gtext textlist; 
+    varray_gtext textlist;
+    
+    varray_gdraw displaylist;
 } scene;
 
 scene *scene_new(int id, int dim);
@@ -116,6 +131,7 @@ int scene_addelement(gobject *obj, gelement *el);
 bool scene_addfont(scene *s, int id, char *file, float size, int *fontindx);
 textfont *scene_getfontfromid(scene *s, int fontid);
 int scene_addtext(scene *s, int fontid, char *text);
+int scene_addcolor(scene *s, int colorid, int length, int indx);
 void scene_adddraw(scene *scene, gdrawtype type, int id, int matindx);
 
 gobject *scene_getgobjectfromid(scene *s, int id);

@@ -19,6 +19,7 @@ scene *scene_new(int id, int dim) {
         new->dim=dim; 
         varray_gobjectinit(&new->objectlist);
         varray_gdrawinit(&new->displaylist);
+        varray_gcolorinit(&new->colorlist);
         varray_gfontinit(&new->fontlist);
         varray_gtextinit(&new->textlist);
         varray_floatinit(&new->data);
@@ -45,6 +46,7 @@ void scene_free(scene *s) {
     
     varray_gobjectclear(&s->objectlist);
     varray_gdrawclear(&s->displaylist);
+    varray_gcolorclear(&s->colorlist);
     varray_gfontclear(&s->fontlist);
     varray_gtextclear(&s->textlist);
     varray_floatclear(&s->data);
@@ -134,6 +136,17 @@ int scene_addtext(scene *s, int fontid, char *text) {
     return varray_gtextwrite(&s->textlist, txt);;
 }
 
+/** Adds a color to a scene */
+int scene_addcolor(scene *s, int colorid, int length, int indx) {
+    gcolor color = { .colorid = colorid,
+                     .length = length,
+                     .indx = indx
+        
+    };
+    
+    return varray_gcolorwrite(&s->colorlist, color);
+}
+
 void scene_adddraw(scene *scene, gdrawtype type, int id, int matindx) {
     gdraw d = { .type = type, .id = id, .matindx = matindx };
     varray_gdrawwrite(&scene->displaylist, d);
@@ -157,6 +170,7 @@ gobject *scene_getgobjectfromid(scene *s, int id) {
 
 DEFINE_VARRAY(gobject, gobject);
 DEFINE_VARRAY(gelement, gelement);
+DEFINE_VARRAY(gcolor, gcolor);
 DEFINE_VARRAY(gfont, gfont);
 DEFINE_VARRAY(gdraw, gdraw);
 DEFINE_VARRAY(gtext, gtext);

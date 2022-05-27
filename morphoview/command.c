@@ -345,6 +345,8 @@ bool command_parseselectcolor(parser *p) {
     printf("Select color %i\n", id);
 #endif
     
+    scene_adddraw(p->scene, COLOR, id, -1);
+    
     return true;
 }
 

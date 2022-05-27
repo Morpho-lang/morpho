@@ -600,8 +600,12 @@ void render_prepareobject(renderer *r, scene *s, gdraw *drw, GLuint *carray) {
 
 /** Prepares a scene for rendering */
 void render_preparescene(renderer *r, scene *s) {
+    render_preparefonts(r, s);
+    
     /* Loop over the display list to identify objects */
     for (unsigned int i=0; i<s->displaylist.count; i++) {
+        if (s->displaylist.data[i].type!=OBJECT) continue;
+        
         renderobject *robj = NULL;
         
         /* Add the object to the scene if not already present */
@@ -617,8 +621,6 @@ void render_preparescene(renderer *r, scene *s) {
         render_drawobject(r, s, i);
     }
     
-    render_preparefonts(r, s);
-    
     /* Now create the object render list */
     GLuint carray=0;
     for (unsigned int i=0; i<s->displaylist.count; i++) {
@@ -629,6 +631,9 @@ void render_preparescene(renderer *r, scene *s) {
                 break;
             case TEXT:
                 render_preparetext(r, s, drw, &carray);
+                break;
+            case COLOR:
+                
                 break;
         }
     }

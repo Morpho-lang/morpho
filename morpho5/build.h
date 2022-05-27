@@ -171,7 +171,6 @@
 /*************************************
  * GPU flags                         *
  ************************************/
-#define CUDA_ACC
 #ifdef CUDA_ACC
     #define GPU_ACC
 #endif

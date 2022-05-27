@@ -12,8 +12,8 @@
 #include "matrix.h"
 #include "sparse.h"
 #ifdef GPU_ACC
-#include "gpumatrix.h"
-#include "gpusparse.h"
+    #include "gpumatrix.h"
+    #include "gpusparse.h"
 #endif
 
 /* -------------------------------------------------------

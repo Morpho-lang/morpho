@@ -5,7 +5,6 @@
  */
 
 #include "build.h"
-#include "gpusparse.h"
 #include "morpho.h"
 #include "dictionary.h"
 #include "common.h"
@@ -13,8 +12,10 @@
 #include "builtin.h"
 #include "veneer.h"
 #include "cudainterface.h"
-#include "gpumatrix.h"
-
+#ifdef GPU_ACC
+    #include "gpumatrix.h"
+    #include "gpusparse.h"
+#endif
 #include <limits.h>
 #include <stdlib.h>
 

@@ -7,12 +7,14 @@
 #include <string.h>
 #include "object.h"
 #include "matrix.h"
-#include "gpumatrix.h"
 #include "sparse.h"
 #include "morpho.h"
 #include "builtin.h"
 #include "veneer.h"
 #include "common.h"
+#ifdef GPU_ACC
+    #include "gpumatrix.h"
+#endif
 
 /* **********************************************************************
  * Matrix objects
@@ -512,6 +514,7 @@ void matrix_print(objectmatrix *m) {
 #include "matrixveneer2.h"
 
 value matrix_constructor_wrapper(vm *v, int nargs, value *args){
+    #ifdef GPU_ACC
     value out = MORPHO_NIL;
     if (nargs==1 && MORPHO_ISGPUMATRIX(MORPHO_GETARG(args, 0))) {
         objectmatrix *new=NULL;
@@ -525,6 +528,9 @@ value matrix_constructor_wrapper(vm *v, int nargs, value *args){
         out = matrix_constructor(v, nargs, args);
     }
     return out;
+    #else
+    return matrix_constructor(v,nargs,args);
+    #endif 
 }
 
 MORPHO_BEGINCLASS(Matrix)

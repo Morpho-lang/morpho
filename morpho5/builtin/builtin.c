@@ -11,15 +11,17 @@
 #include "file.h"
 #include "builtin.h"
 #include "matrix.h"
-#include "gpumatrix.h"
 #include "cmplx.h"
 #include "sparse.h"
-#include "gpusparse.h"
 #include "mesh.h"
 #include "selection.h"
 #include "functional.h"
 #include "field.h"
 #include "veneer.h"
+#ifdef GPU_ACC
+#include "gpumatrix.h"
+#include "gpusparse.h"
+#endif
 
 /* **********************************************************************
  * Global data
@@ -283,14 +285,17 @@ void builtin_initialize(void) {
     /* Initialize builtin classes and functions */
     file_initialize();
     matrix_initialize();
-    gpumatrix_initialize();
     sparse_initialize();
-    gpusparse_initialize();
     mesh_initialize();
     selection_initialize();
     field_initialize();
     functional_initialize();
     complex_initialize();
+    #ifdef GPU_ACC
+    gpumatrix_initialize();
+    gpusparse_initialize();
+    #endif
+
 }
 
 void builtin_finalize(void) {

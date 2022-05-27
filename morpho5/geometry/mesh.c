@@ -15,11 +15,6 @@
 #include "matrix.h"
 #include "selection.h"
 
-#ifdef GPU_ACC
-#include "gpumatrix.h"
-#include "gpusparse.h"
-#endif
-
 
 #include <limits.h>
 

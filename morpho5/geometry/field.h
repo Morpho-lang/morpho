@@ -38,7 +38,6 @@ typedef struct {
     void *pool; /** Pool of statically allocated objects */
     
     objectmatrix data; /** Underlying data store */
-    objectgpumatrix gpu_data;
     bool gpu_accelerated;
 
 } objectfield;

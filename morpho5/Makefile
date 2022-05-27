@@ -1,6 +1,10 @@
-src = $(wildcard *.c) $(wildcard */*.c) $(wildcard */*/*.cu) $(wildcard */*/*.c) 
-tmp = $(src:.c=.o)
-obj = $(tmp:.cu=.o) 
+src = $(wildcard *.c) $(wildcard */*.c) 
+obj = $(src:.c=.o) 
+
+cudasrc = $(wildcard *.c) $(wildcard */*.c) $(wildcard */*/*.cu) $(wildcard */*/*.c) 
+cudatmp = $(cudasrc:.c=.o)
+cudaobj = $(cudatmp:.cu=.o) 
+
 PREFIX = /usr/local
 HELPDIR = /usr/local/share/morpho/help
 MODULESDIR = /usr/local/share/morpho/modules
@@ -17,8 +21,11 @@ CUDAFLAGS = -rdc=true -O3 -I. -I/usr/include/suitesparse -I./datastructures  -I.
 
 cudainterface.o: kernal.h
 
+morpho5cuda: $(cudaobj)
+	$(NVCC) -o $@ $^ $(LDFLAGS) $(MODULES) $(CUDAFLAGS) 
+
 morpho5: $(obj)
-	$(NVCC) -o $@ $^ $(LDFLAGS) $(MODULES) $(CFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS) $(MODULES) $(CFLAGS)
 
 .PHONY: clean
 clean:
@@ -38,6 +45,14 @@ modules:
 install: morpho5
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp $< $(DESTDIR)$(PREFIX)/bin/morpho5
+	make modules
+	make help
+	make clean
+
+cudainstall: CFLAGS+= -DCUDA_ACC
+cudainstall: morpho5cuda
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	cp $< $(DESTDIR)$(PREFIX)/bin/morpho
 	make modules
 	make help
 	make clean

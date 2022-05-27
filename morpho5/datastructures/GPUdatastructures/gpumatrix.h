@@ -66,7 +66,7 @@ objectmatrix *object_matrixfromgpumatrix(objectgpumatrix* in);
 objectgpumatrix *object_gpumatrixfrommatrix(objectmatrix* in);
 
 /** Deletes a gpumatrix from the GPU */
-void objectgpufree(object *obj);
+void objectgpumatrix_freefn(object *obj);
 
 /** Macro to decide if a gpumatrix is 'small' or 'large' and hence static or dynamic allocation should be used. */
 #define GPUMATRIX_ISSMALL(m) (m->nrows*m->ncols<MORPHO_MAXIMUMSTACKALLOC)

@@ -35,8 +35,9 @@ size_t objectgpumatrix_sizefn(object *obj) {
 void objectgpumatrix_printfn(object *obj) {
     printf("<gpuMatrix>");
 }
-void objectgpufree(object *obj) {
-    objectgpumatrix * gpumat = (objectgpumatrix *) obj;
+void objectgpumatrix_freefn(object *obj) {
+    objectgpumatrix *gpumat = (objectgpumatrix *) obj;
+    // printf("Tearing down matrix of %dX%d with %lu bytes\n",gpumat->ncols,gpumat->nrows,gpumat->ncols*gpumat->nrows*sizeof(double));
     GPUdeallocate(gpumat->status,gpumat->elements);
 }
 
@@ -44,7 +45,7 @@ void objectgpufree(object *obj) {
 objecttypedefn objectgpumatrixdefn = {
     .printfn=objectgpumatrix_printfn,
     .markfn=NULL,
-    .freefn=objectgpufree,
+    .freefn=objectgpumatrix_freefn,
     .sizefn=objectgpumatrix_sizefn
 };
 
@@ -57,6 +58,7 @@ objectgpumatrix *object_newgpumatrix(unsigned int nrows, unsigned int ncols, boo
         new->status=&myGPUstatus;
         new->ncols=ncols;
         new->nrows=nrows;
+        // printf("Allocating in matrix constructor a %dX%d with %lu bytes\n",ncols,nrows,nel*sizeof(double));
         GPUallocate(new->status,(void **)&new->elements,nel*sizeof(double));
         if (zero) {
             GPUmemset(new->status,new->elements, 0, sizeof(double)*nel);

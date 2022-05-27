@@ -4,6 +4,11 @@
  *  @brief Fields
  */
 
+/* todo 
+[ ] add add gpu code to create delete and size fcns
+[ ] add gpu transfer functions (and venner methods)
+*/
+
 #ifndef field_h
 #define field_h
 
@@ -33,6 +38,9 @@ typedef struct {
     void *pool; /** Pool of statically allocated objects */
     
     objectmatrix data; /** Underlying data store */
+    objectgpumatrix gpu_data;
+    bool gpu_accelerated;
+
 } objectfield;
 
 /** Tests whether an object is a field */

@@ -39,6 +39,11 @@ __device__ functional_gradient_gpu p_gpu_volumeenclosed_gradient = gpu_volumeenc
 
 
 void GPUStatusCheck(GPUStatus* cudaInterface, const char * errid){
+    if (cudaInterface->cudaStatus != cudaSuccess) {
+        printf("GPU error: %s from %s\n",cudaGetErrorName(cudaInterface->cudaStatus),errid);
+        exit(-1);
+    }
+
     cudaInterface->cudaStatus = cudaDeviceSynchronize();
 
     if (cudaInterface->cudaStatus != cudaSuccess) {
@@ -91,15 +96,30 @@ void GPUsetup(GPUStatus* cudaInterface) { //, vm* v) {
 
 }
 void GPUallocate(GPUStatus* cudaInterface,void** ptr, unsigned int size){
+    // size_t free;
+    // size_t free_new;
+    // size_t total;
+    // cuMemGetInfo(&free,&total);
     cudaInterface->cudaStatus = cudaMalloc((void**)ptr,(int) size);
+    // cuMemGetInfo(&free_new,&total);
+    // printf("requested %u bytes actually allocated %lu, currently %lu bytes free\n",size,free-free_new,free_new); 
+
     GPUStatusCheck(cudaInterface,GPUALLOCATE);
 }
 
 void GPUdeallocate(GPUStatus* cudaInterface,void* dPointer) {
+    // size_t free;
+    // size_t total;
+    // cuMemGetInfo(&free,&total);
+
     if (dPointer) {
         cudaInterface->cudaStatus = cudaFree(dPointer);
     }
     GPUStatusCheck(cudaInterface,GPUDEALLOCATE);
+    // size_t free_new;
+    // cuMemGetInfo(&free_new,&total);
+    // printf("Deallocacated %lu bytes\n",free_new-free);
+
 }
 
 void GPUreallocate(GPUStatus* cudaInterface,void** ptr, unsigned int newsize,unsigned int oldsize){
@@ -301,7 +321,61 @@ void GPUcall_functionalgrad(GPUStatus* cudaInterface,double* verts, int dim, obj
 }
 
   
+/***************************************
+ * Sparse Arithmatic                   *
+ * ************************************/
+// cusparseSpMatDescr_t makecuSparse(objectgpusparse *in){
+//     cusparseSpMatDescr_t out;
+//     cusparseCreateCsc(&out,in->nrows,in->ncols,in->nentries, in->cptr, in->rix, in->values,
+//                   CUSPARSE_INDEX_32I,
+//                   CUSPARSE_INDEX_32I,
+//                   CUSPARSE_INDEX_32I,
+//                   CUDA_R_64F);
+//     return out;
 
+
+// }
+
+// cusparseDnMatDescr_t makecuDence(objectgpusparse *in) {
+//     cusparseSpMatDescr_t incusparse = makecuSparse(in);
+//     cusparseDnMatDescr_t out;
+//     size_t bufferSize;
+//     cusparseSparseToDense_bufferSize(in->status->cusparseHandle, incusparse,out,CUSPARSE_SPARSETODENSE_ALG_DEFAULT,&bufferSize);
+//     void* buffer;
+//     GPUallocate(in->status,&buffer,bufferSize);
+
+//     cusparseSparseToDense(in->status->cusparseHandle, incusparse,out,CUSPARSE_SPARSETODENSE_ALG_DEFAULT,buffer);
+//     return out;
+
+
+// }
+// cusparseSpMatDescr_t convertcuDenseToSparse(GPUStatus *status, cusparseDnMatDescr_t in) {
+    
+//     cusparseSpMatDescr_t out;
+//     size_t bufferSize;
+//     status->cusparseStatus = cusparseDenseToSparse_bufferSize(status->cusparseHandle,in , out,CUSPARSE_DENSETOSPARSE_ALG_DEFAULT,&bufferSize);
+
+//     void* buffer = NULL;
+//     GPUallocate(status,&buffer,bufferSize);
+
+//     status->cusparseStatus = cusparseDenseToSparse_analysis(status->cusparseHandle, in, out, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT,buffer);
+
+//     status->cusparseStatus = cusparseDenseToSparse_convert(status->cusparseHandle, in, out, CUSPARSE_DENSETOSPARSE_ALG_DEFAULT,buffer);
+//     GPUdeallocate(status,buffer);
+// }
+
+// void convertcuSparseToSparse(cusparseSpMatDescr_t in, objectgpusparse *out) {
+//     int64_t nrows;
+//     int64_t ncols;
+//     int64_t nvalues;
+//     double *values;
+//     cusparseSpMatGetSize(in,&nrows, &ncols, &nvalues);
+//     cusparseSpMatGetValues(in,&values);
+
+                     
+
+    
+// }
 
 
 }

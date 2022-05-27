@@ -58,6 +58,8 @@ extern objecttype objectgpusparsetype;
 
 typedef enum { GPUSPARSE_OK, GPUSPARSE_INCMPTBLDIM, GPUSPARSE_CONVFAILED, GPUSPARSE_FAILED } objectgpusparseerror;
 
+#define MAKEGPUSPARSE_LIGHT(s) (objectgpusparse_light*)((void*)s+sizeof(object))
+
 objectgpusparse *gpusparse_clone(objectgpusparse *s);
 
 void gpusparse_clear(objectgpusparse *a);

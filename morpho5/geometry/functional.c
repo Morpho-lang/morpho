@@ -62,10 +62,8 @@ typedef struct s_functional_mapinfo {
     symmetrybhvr sym; // Symmetry behavior
     void *ref; // Reference to pass on
     #ifdef GPU_ACC
-    int gpu_integrand; //Integrand function for gpu accelertion
-    bool hasgpuintegrand;
-    int gpu_grad; // Gradient for gpu accelertion
-    bool hasgpugrad;
+    kernal_enum gpu_integrand; //Integrand function for gpu accelertion
+    kernal_enum gpu_grad; // Gradient for gpu accelertion
     #endif
 
 } functional_mapinfo;
@@ -88,11 +86,8 @@ static void functional_clearmapinfo(functional_mapinfo *info) {
     info->sym=SYMMETRY_NONE;
 
     #ifdef GPU_ACC
-    info->gpu_integrand=0;
-    info->hasgpuintegrand = false;
-
-    info->gpu_grad=0;
-    info->hasgpugrad = false;
+    info->gpu_integrand=NO_KERNAL;
+    info->gpu_grad=NO_KERNAL;
 
     #endif
 
@@ -251,8 +246,8 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
     functional_symmetryimagelist(mesh, g, true, &imageids);
 
 #ifdef GPU_ACC
-    int gpu_integrand = info->gpu_integrand;
-    if (mesh->gpu_acceleration && info->hasgpuintegrand){
+    kernal_enum gpu_integrand = info->gpu_integrand;
+    if (mesh->gpu_acceleration && gpu_integrand != NO_KERNAL){
         /* Create the output matrix */ 
         objectgpusparse *s=NULL;
         objectgpusparse_light *gpu_s=NULL;
@@ -269,8 +264,11 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
         }
 
         GPUcall_functional(mesh->gpu_vert->status,mesh->gpu_vert->elements,mesh->dim,gpu_s,g,n,info->gpu_integrand,new->elements);
-        if (s) GPUdeallocate(mesh->gpu_vert->status,gpu_s);
+        if (s) {
+            GPUdeallocate(mesh->gpu_vert->status,gpu_s);
+        }
         double sum = gpumatrix_sum(new);
+        objectgpumatrix_freefn((object*)new);
         *out = MORPHO_FLOAT(sum);
         success=true;
         return success;
@@ -355,7 +353,7 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
     functional_symmetryimagelist(mesh, g, true, &imageids);
 
     #ifdef GPU_ACC
-    if (mesh->gpu_acceleration && info->hasgpuintegrand){
+    if (mesh->gpu_acceleration && info->gpu_integrand != NO_KERNAL){
         /* Create the output matrix */ 
         objectgpusparse *s=NULL;
         objectgpusparse_light *gpu_s=NULL;
@@ -370,7 +368,9 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
         objectgpumatrix *new = object_newgpumatrix(1,n,true);
         if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
         GPUcall_functional(mesh->gpu_vert->status,mesh->gpu_vert->elements,mesh->dim,gpu_s,g,n,info->gpu_integrand,new->elements);
-        if (s) GPUdeallocate(mesh->gpu_vert->status,gpu_s);
+        if (s) {
+            GPUdeallocate(mesh->gpu_vert->status,gpu_s);
+        }
 
         *out = MORPHO_OBJECT(new);
         ret=true;
@@ -458,7 +458,7 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
     if (!functional_countelements(v, mesh, g, &n, &s)) return false;
 
 #ifdef GPU_ACC
-    if (mesh->gpu_acceleration && info->hasgpugrad){
+    if (mesh->gpu_acceleration && info->gpu_grad != NO_KERNAL){
         /* Create the output matrix */ 
         objectgpusparse *s=NULL;
         objectgpusparse_light *gpu_s = NULL;
@@ -472,7 +472,9 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
         objectgpumatrix *frc = object_newgpumatrix(mesh->vert->nrows,mesh->vert->ncols,true);
         if (!frc) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
         GPUcall_functionalgrad(mesh->gpu_vert->status,mesh->gpu_vert->elements,mesh->dim,gpu_s,g,n,info->gpu_grad,frc->elements);
-        if (s) GPUdeallocate(mesh->gpu_vert->status,gpu_s);
+        if (s) {
+            GPUdeallocate(mesh->gpu_vert->status,gpu_s);
+        }
 
         *out = MORPHO_OBJECT(frc);
         ret=true;
@@ -890,7 +892,6 @@ value name##_total(vm *v, int nargs, value *args) { \
         info.g = grade;\
         info.integrand = integrandfn;\
         info.gpu_integrand = gpu_integrandfn;\
-        info.hasgpuintegrand = true;\
         functional_mapintegrand(v, &info, &out); \
     } \
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
@@ -906,7 +907,6 @@ value name##_gradient(vm *v, int nargs, value *args) { \
         info.g = grade;\
         info.grad = gradientfn;\
         info.gpu_grad = gpu_gradientfn;\
-        info.hasgpugrad = true;\
         info.sym = symbhvr; \
         functional_mapgradient(v, &info, &out); \
     } \
@@ -925,7 +925,6 @@ value name##_total(vm *v, int nargs, value *args) { \
         info.g = grade;\
         info.integrand = totalfn;\
         info.gpu_integrand = gpu_totalfn;\
-        info.hasgpuintegrand = true;\
         functional_sumintegrand(v, &info, &out); \
     } \
     \
@@ -1087,9 +1086,9 @@ bool area_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void
 FUNCTIONAL_INIT(Area, MESH_GRADE_AREA)
 
 #ifdef GPU_ACC
-FUNCTIONAL_INTEGRAND_WITH_GPU(Area, MESH_GRADE_AREA, area_integrand, 0)
-FUNCTIONAL_GRADIENT_WITH_GPU(Area, MESH_GRADE_AREA, area_gradient, 0, SYMMETRY_ADD)
-FUNCTIONAL_TOTAL_WITH_GPU(Area, MESH_GRADE_AREA, area_integrand,0)
+FUNCTIONAL_INTEGRAND_WITH_GPU(Area, MESH_GRADE_AREA, area_integrand, AREA_KERNAL)
+FUNCTIONAL_GRADIENT_WITH_GPU(Area, MESH_GRADE_AREA, area_gradient, AREA_KERNAL, SYMMETRY_ADD)
+FUNCTIONAL_TOTAL_WITH_GPU(Area, MESH_GRADE_AREA, area_integrand,AREA_KERNAL)
 #else
 FUNCTIONAL_INTEGRAND(Area, MESH_GRADE_AREA, area_integrand,)
 FUNCTIONAL_GRADIENT(Area, MESH_GRADE_AREA, area_gradient, SYMMETRY_ADD)
@@ -1139,9 +1138,9 @@ bool volumeenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int 
 
 FUNCTIONAL_INIT(VolumeEnclosed, MESH_GRADE_AREA)
 #ifdef GPU_ACC
-FUNCTIONAL_INTEGRAND_WITH_GPU(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand, 1)
-FUNCTIONAL_GRADIENT_WITH_GPU(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_gradient, 1, SYMMETRY_ADD)
-FUNCTIONAL_TOTAL_WITH_GPU(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand, 1)
+FUNCTIONAL_INTEGRAND_WITH_GPU(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand, VOLUMEENCLOSED_KERNAL)
+FUNCTIONAL_GRADIENT_WITH_GPU(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_gradient, VOLUMEENCLOSED_KERNAL, SYMMETRY_ADD)
+FUNCTIONAL_TOTAL_WITH_GPU(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand, VOLUMEENCLOSED_KERNAL)
 #else
 FUNCTIONAL_INTEGRAND(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
 FUNCTIONAL_GRADIENT(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_gradient, SYMMETRY_ADD)

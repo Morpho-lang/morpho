@@ -187,7 +187,18 @@ value gpusparse_constructor(vm *v, int nargs, value *args) {
     
     return out;
 }
+/** Arithmatic functions */
 
+
+
+/** add function */
+// objectsparseerror gpusparse_add(objectgpusparse *x,objectgpusparse *y,objectgpusparse *out) {
+//     //use cusparseAxpby() to perform Y = aX +bY were Y is a full matrix and X is sparse
+//     //first create a cusparse matrix from  
+//     GPUSparseAdd(MAKEGPUSPARSE_LIGHT(x),MAKEGPUSPARSE_LIGHT(y),MAKEGPUSPARSE_LIGHT(out));
+//     // cusparseAxpby(x->status->cusparseHandle,&mult,xcusparse,&mult,ycusparseD);
+
+// }
 
 // /** Enumerate protocol */
 // value GPUSparse_enumerate(vm *v, int nargs, value *args) {
@@ -290,6 +301,103 @@ value GPUSparse_copytohost(vm *v, int nargs, value *args) {
     return out;
 }
 
+// /** Arithmatic */
+
+// value GPUSparse_add(vm *v, int nargs, value *args) {
+//     objectgpusparse *a=MORPHO_GETGPUSPARSE(MORPHO_SELF(args));
+//     value out=MORPHO_NIL;
+ 
+//     if (nargs==1 && MORPHO_ISGPUSPARSE(MORPHO_GETARG(args, 0))) {
+//         objectgpusparse *b=MORPHO_GETGPUSPARSE(MORPHO_GETARG(args, 0));
+        
+//         objectgpusparse *new = object_newgpusparse(NULL, NULL);
+//         if (new) {
+//             objectsparseerror err =gpusparse_add(a, b, new);
+//             if (err==SPARSE_OK) {
+//                 out=MORPHO_OBJECT(new);
+//                 morpho_bindobjects(v, 1, &out);
+//             } else {
+//                 sparse_raiseerror(v, err);
+//             }
+//         } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+//     }
+    
+//     return out;
+// }
+
+// /** Subtract sparse matrices */
+// value GPUSparse_sub(vm *v, int nargs, value *args) {
+//     objectgpusparse *a=MORPHO_GETGPUSPARSE(MORPHO_SELF(args));
+//     value out=MORPHO_NIL;
+ 
+//     if (nargs==1 && MORPHO_ISSPARSE(MORPHO_GETARG(args, 0))) {
+//         objectgpusparse *b=MORPHO_GETGPUSPARSE(MORPHO_GETARG(args, 0));
+        
+//         objectgpusparse *new = object_newsparse(NULL, NULL);
+//         if (new) {
+//             objectgpusparseerror err =sparse_add(a, b, 1.0, -1.0, new);
+//             if (err==SPARSE_OK) {
+//                 out=MORPHO_OBJECT(new);
+//                 morpho_bindobjects(v, 1, &out);
+//             } else {
+//                 sparse_raiseerror(v, err);
+//             }
+//         } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+//     }
+    
+//     return out;
+// }
+
+// /** Multiply sparse matrices */
+// value GPUSparse_mul(vm *v, int nargs, value *args) {
+//     objectgpusparse *a=MORPHO_GETGPUSPARSE(MORPHO_SELF(args));
+//     value out=MORPHO_NIL;
+ 
+//     if (nargs==1 && MORPHO_ISSPARSE(MORPHO_GETARG(args, 0))) {
+//         objectgpusparse *b=MORPHO_GETGPUSPARSE(MORPHO_GETARG(args, 0));
+        
+//         objectgpusparse *new = object_newsparse(NULL, NULL);
+//         if (new) {
+//             objectgpusparseerror err =sparse_mul(a, b, new);
+//             if (err==SPARSE_OK) {
+//                 out=MORPHO_OBJECT(new);
+//                 morpho_bindobjects(v, 1, &out);
+//             } else {
+//                 sparse_raiseerror(v, err);
+//             }
+//         } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+//     }
+    
+//     return out;
+// }
+
+// /** Sparse rhs not implemented */
+// value GPUSparse_div(vm *v, int nargs, value *args) {
+//     return MORPHO_NIL;
+// }
+
+// /** Solve a linear system b/ A where A is sparse */
+// value GPUSparse_divr(vm *v, int nargs, value *args) {
+//     objectgpusparse *a=MORPHO_GETGPUSPARSE(MORPHO_SELF(args));
+//     value out=MORPHO_NIL;
+ 
+//     if (nargs==1 && MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
+//         objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
+        
+//         objectmatrix *new = object_newmatrix(b->nrows, b->ncols, false);
+//         if (new) {
+//             objectgpusparseerror err =sparse_div(a, b, new);
+//             if (err==SPARSE_OK) {
+//                 out=MORPHO_OBJECT(new);
+//                 morpho_bindobjects(v, 1, &out);
+//             } else {
+//                 sparse_raiseerror(v, err);
+//             }
+//         } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+//     }
+    
+//     return out;
+// }
 
 
 

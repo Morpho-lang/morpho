@@ -9,11 +9,11 @@
 #include <stdio.h>
 #include <stdbool.h>
 //#include "cuda_runtime_api.h"
-#include "cuda_runtime.h"
+// #include "cuda_runtime.h"
 #include "cublas_v2.h"
 #include "cusolver_common.h"
 #include "cusolverDn.h"
-
+#include "cusparse.h"
 //#include "vm.h"
 
 #ifdef __cplusplus
@@ -21,7 +21,7 @@ extern "C" {
 #endif
 typedef bool (*functional_integrand_gpu) (double *vert, int dim, int id, int nv, int *vid, double *out);
 typedef bool (*functional_gradient_gpu) (double *vert, int dim, int id, int nv, int *vid, double *out);
-
+typedef enum { AREA_KERNAL, VOLUMEENCLOSED_KERNAL, NO_KERNAL } kernal_enum;
 // we put a ligher version of spare here to avoid having to include object here (nvcc doens't like it)
 typedef struct {
     int nentries;
@@ -52,6 +52,9 @@ typedef struct {
 
     functional_integrand_gpu *d_integrands;
     functional_gradient_gpu *d_gradients;
+
+    cusparseHandle_t cusparseHandle;
+    cusparseStatus_t cusparseStatus;
     
     //vm * v;
     bool init;

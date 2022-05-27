@@ -64,7 +64,8 @@ typedef struct {
         RTRIANGLES, /* Draw triangles */
         RLINES, /* Draw lines */
         RPOINTS, /* Draw points */
-        RTEXT /* Draw text */
+        RTEXT, /* Draw text */
+        RCOLOR, /* Set the current color */
     } instruction;
     
     union {
@@ -85,6 +86,10 @@ typedef struct {
             char *txt;
             int rfontid; 
         } text;
+        
+        struct {
+            float rgb[3]; 
+        } color;
     } data;
     
     renderobject *obj;

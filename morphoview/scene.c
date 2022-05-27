@@ -164,6 +164,14 @@ gobject *scene_getgobjectfromid(scene *s, int id) {
     return NULL;
 }
 
+/** Gets a gcolor structure given an id */
+gcolor *scene_getcolorfromid(scene *s, int id) {
+    for (unsigned int i=0; i<s->colorlist.count; i++) {
+        if (s->colorlist.data[i].colorid==id) return &s->colorlist.data[i];
+    }
+    return NULL;
+}
+
 /* -------------------------------------------------------
  * Varrays
  * ------------------------------------------------------- */

@@ -604,16 +604,23 @@ void render_preparescene(renderer *r, scene *s) {
     
     /* Loop over the display list to identify objects */
     for (unsigned int i=0; i<s->displaylist.count; i++) {
-        if (s->displaylist.data[i].type!=OBJECT) continue;
-        
-        renderobject *robj = NULL;
-        
-        /* Add the object to the scene if not already present */
-        gobject *obj = scene_getgobjectfromid(s, s->displaylist.data[i].id);
-        if (obj) robj=render_addobject(&r->objects, obj);
-        
-        /* Add vertex data to a suitable vertex buffer, or create one if necessary */
-        if (robj) render_addobjecttoglbuffer(&r->glbuffers, robj);
+        gdraw *drw=&s->displaylist.data[i];
+        switch (drw->type) {
+            case OBJECT:
+            {
+                renderobject *robj = NULL;
+                
+                /* Add the object to the scene if not already present */
+                gobject *obj = scene_getgobjectfromid(s, s->displaylist.data[i].id);
+                if (obj) robj=render_addobject(&r->objects, obj);
+                
+                /* Add vertex data to a suitable vertex buffer, or create one if necessary */
+                if (robj) render_addobjecttoglbuffer(&r->glbuffers, robj);
+            }
+                break;
+            default:
+                break;
+        }
     }
     
     /* Now allocate OpenGL buffers and arrays */
@@ -633,7 +640,18 @@ void render_preparescene(renderer *r, scene *s) {
                 render_preparetext(r, s, drw, &carray);
                 break;
             case COLOR:
+            { // Set current color
+                gcolor *color = scene_getcolorfromid(s, drw->id);
                 
+                if (color) {
+                    renderinstruction ins = { .instruction = RCOLOR };
+                    for (int i=0; i<3; i++) ins.data.color.rgb[i]=s->data.data[color->indx+i];
+                
+                    varray_renderinstructionadd(&r->renderlist, &ins, 1);
+                } else {
+                    printf("Color %i not found.\n", drw->id);
+                }
+            }
                 break;
         }
     }
@@ -697,7 +715,7 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
             case RPOINTS:
                 glDrawElements(GL_POINTS, ins->data.triangles.length, GL_UNSIGNED_INT, ins->data.triangles.offset);
                 break;
-            case RTEXT:
+            case RTEXT: case RCOLOR:
                 break;
         }
     }
@@ -736,6 +754,9 @@ void render_render(renderer *r, float aspectratio, mat4x4 view) {
             case RTEXT:
                 render_rendertext(r, ins->data.text.rfontid, ins->data.text.txt);
                 //render_renderfonttextureatlas(r, ins->data.text.rfontid);
+                break;
+            case RCOLOR:
+                glUniform3fv(textcoloruniform, 1, ins->data.color.rgb);
                 break;
             default:
                 break;

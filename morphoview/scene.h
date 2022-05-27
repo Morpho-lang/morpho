@@ -135,6 +135,7 @@ int scene_addcolor(scene *s, int colorid, int length, int indx);
 void scene_adddraw(scene *scene, gdrawtype type, int id, int matindx);
 
 gobject *scene_getgobjectfromid(scene *s, int id);
+gcolor *scene_getcolorfromid(scene *s, int id);
 
 void scene_initialize(void);
 void scene_finalize(void);

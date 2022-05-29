@@ -37,6 +37,12 @@ This function can then be called with 1 or more arguments:
 
 The variadic parameter `v` captures all the extra arguments supplied. Functions cannot be defined with more than one variadic parameter. 
 
+You can mix regular, variadic and optional parameters. Variadic parameters come before optional parameters:
+
+    fn func(x, ...v, optional=true) {
+        // 
+    }
+
 ## Optional
 [tagoptional]: # (optional)
 

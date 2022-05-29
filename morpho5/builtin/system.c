@@ -13,13 +13,13 @@ value System_platform(vm *v, int nargs, value *args) {
     char *platform = NULL;
     value ret = MORPHO_NIL;
     
-#ifdef __APPLE__
+#if __APPLE__
     platform = SYSTEM_MACOS;
-#elifdef __linux__
+#elif __linux__
     platform = SYSTEM_LINUX;
-#elifdef __UNIX__
+#elif __UNIX__
     platform = SYSTEM_UNIX;
-#elifdef _WIN32
+#elif defined(_WIN32)
     platform = SYSTEM_WINDOWS;
 #endif
     

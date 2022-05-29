@@ -4,9 +4,11 @@
 
 // Check if a resource is a folder 
 print Folder.isfolder("folder")
+// expect: true
 
 // Find the contents of a folder
 var files = Folder.contents("folder")
 
-for (f in files) print f
+print files.count()
+// expect: 3
 

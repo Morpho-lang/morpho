@@ -1,0 +1,12 @@
+/*
+ * Folder class
+ */
+
+// Check if a resource is a folder 
+print Folder.isfolder("folder")
+
+// Find the contents of a folder
+var files = Folder.contents("folder")
+
+for (f in files) print f
+

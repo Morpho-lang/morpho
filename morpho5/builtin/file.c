@@ -358,10 +358,74 @@ MORPHO_METHOD(FILE_EOF, File_eof, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
- * Directory objects
+ * Folder objects
  * ********************************************************************** */
 
+#include <sys/stat.h>
+#include <dirent.h>
 
+/** Detect whether a resource is a folder  */
+value Folder_isfolder(vm *v, int nargs, value *args) {
+    value ret = MORPHO_FALSE;
+    if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
+        varray_char name;
+        varray_charinit(&name);
+        file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
+        struct stat path_stat;
+
+        if (stat(name.data, &path_stat)==0 &&
+            S_ISDIR(path_stat.st_mode)) {
+            ret = MORPHO_TRUE;
+        }
+        varray_charclear(&name);
+    } else morpho_runtimeerror(v, FOLDER_EXPCTPATH);
+    
+    return ret;
+}
+
+/** Return the contents of a folder  */
+value Folder_contents(vm *v, int nargs, value *args) {
+    value ret = MORPHO_NIL;
+    if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
+        varray_char name;
+        varray_charinit(&name);
+        file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
+
+        DIR *dir = opendir(name.data);
+        struct dirent *dp;
+        if (dir) {
+            varray_value contents;
+            varray_valueinit(&contents);
+            
+            do {
+                dp = readdir(dir);
+                if (dp) {
+                    value entry = object_stringfromcstring(dp->d_name, dp->d_namlen);
+                    if (MORPHO_ISSTRING(entry)) varray_valuewrite(&contents, entry);
+                }
+            } while (dp!=NULL);
+            
+            closedir(dir);
+            objectlist *clist = object_newlist(contents.count, contents.data);
+            if (clist) {
+                ret = MORPHO_OBJECT(clist);
+                varray_valuewrite(&contents, ret);
+                morpho_bindobjects(v, contents.count, contents.data);
+            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+            
+            varray_valueclear(&contents);
+        } else morpho_runtimeerror(v, FOLDER_NTFLDR);
+        
+        varray_charclear(&name);
+    } else morpho_runtimeerror(v, FOLDER_EXPCTPATH);
+    
+    return ret;
+}
+
+MORPHO_BEGINCLASS(Folder)
+MORPHO_METHOD(FOLDER_ISFOLDER, Folder_isfolder, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FOLDER_CONTENTS, Folder_contents, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
 
 /* **********************************************************************
  * Initialization
@@ -376,12 +440,17 @@ void file_initialize(void) {
     value fileclass=builtin_addclass(FILE_CLASSNAME, MORPHO_GETCLASSDEFINITION(File), MORPHO_NIL);
     object_setveneerclass(OBJECT_FILE, fileclass);
     
+    builtin_addclass(FOLDER_CLASSNAME, MORPHO_GETCLASSDEFINITION(Folder), MORPHO_NIL);
+    
     morpho_defineerror(FILE_OPENFAILED, ERROR_HALT, FILE_OPENFAILED_MSG);
     morpho_defineerror(FILE_NEEDSFILENAME, ERROR_HALT, FILE_NEEDSFILENAME_MSG);
     morpho_defineerror(FILE_FILENAMEARG, ERROR_HALT, FILE_FILENAMEARG_MSG);
     morpho_defineerror(FILE_MODE, ERROR_HALT, FILE_MODE_MSG);
     morpho_defineerror(FILE_WRITEARGS, ERROR_HALT, FILE_WRITEARGS_MSG);
     morpho_defineerror(FILE_WRITEFAIL, ERROR_HALT, FILE_WRITEFAIL_MSG);
+    
+    morpho_defineerror(FOLDER_EXPCTPATH, ERROR_HALT, FOLDER_EXPCTPATH_MSG);
+    morpho_defineerror(FOLDER_NTFLDR, ERROR_HALT, FOLDER_NTFLDR_MSG);
 }
 
 void file_finalize(void) {

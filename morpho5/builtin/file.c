@@ -357,6 +357,16 @@ MORPHO_METHOD(FILE_FILENAME, File_filename, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_EOF, File_eof, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
+/* **********************************************************************
+ * Directory objects
+ * ********************************************************************** */
+
+
+
+/* **********************************************************************
+ * Initialization
+ * ********************************************************************** */
+
 void file_initialize(void) {
     varray_charinit(&workingdir);
     

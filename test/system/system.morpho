@@ -1,0 +1,5 @@
+// Test System class
+
+print System.platform() 
+
+print System.version() 

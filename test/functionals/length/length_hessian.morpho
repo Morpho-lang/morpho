@@ -1,0 +1,9 @@
+
+import meshtools
+
+var m = LineMesh(fn (t) [cos(t), sin(t), 0], -Pi...Pi:Pi/2, closed=true)
+var a = Length()
+
+print m
+
+print a.hessian(m)

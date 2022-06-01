@@ -654,6 +654,57 @@ functional_mapnumericalfieldgradient_cleanup:
     return ret;
 }
 
+/** Map numerical hessian over the elements
+ * @param[in] v - virtual machine in use
+ * @param[in] info - map info
+ * @param[out] out - a matrix of integrand values
+ * @returns true on success, false otherwise. Error reporting through VM. */
+bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out) {
+    objectmesh *mesh = info->mesh;
+    objectselection *sel = info->sel;
+    if (sel) UNREACHABLE("Selections not implemented in hessian");
+    grade g = info->g;
+    functional_integrand *integrand = info->integrand;
+    void *ref = info->ref;
+
+    objectsparse *conn=NULL;
+    objectsparse *hess=NULL;
+
+    bool ret=false;
+    int n=0;
+
+    /* How many elements? */
+    if (!functional_countelements(v, mesh, g, &n, &conn)) return false;
+
+    /* Create the output matrix */
+    if (n>0) {
+        int ndof = mesh->vert->nrows*mesh->vert->ncols;
+        hess=object_newsparse(&ndof, &ndof);
+        if (!hess)  { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
+    }
+
+    int vertexid; // Use this if looping over grade 0
+    int *vid=(g==0 ? &vertexid : NULL),
+        nv=(g==0 ? 1 : 0); // The vertex indice
+
+    for (elementid i=0; i<n; i++) {
+        if (conn) sparseccs_getrowindices(&conn->ccs, i, &nv, &vid);
+        else vertexid=i;
+
+        if (vid && nv>0) {
+            //if (!functional_numericalgradient(v, mesh, i, nv, vid, integrand, ref, frc)) goto functional_mapnumericalhessian_cleanup;
+        }
+    }
+
+    *out = MORPHO_OBJECT(hess);
+    ret=true;
+
+functional_mapnumericalhessian_cleanup:
+    if (!ret) object_free((object *) hess);
+
+    return ret;
+}
+
 /* **********************************************************************
  * Common library functions
  * ********************************************************************** */
@@ -841,7 +892,24 @@ bool length_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *v
 
 /** Calculate gradient */
 bool length_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
-    return length_gradient_scale(v, mesh, id, nv, vid, NULL, frc, 1.0); 
+    return length_gradient_scale(v, mesh, id, nv, vid, NULL, frc, 1.0);
+}
+
+/** Evaluate a hessian */
+value Length_hessian(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    value out=MORPHO_NIL;
+
+    if (functional_validateargs(v, nargs, args, &info)) {
+        value fn;
+        info.g=MESH_GRADE_LINE;
+        info.integrand=length_integrand;
+        functional_mapnumericalhessian(v, &info, &out);
+    }
+
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+
+    return out;
 }
 
 FUNCTIONAL_INIT(Length, MESH_GRADE_LINE)
@@ -853,7 +921,8 @@ MORPHO_BEGINCLASS(Length)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Length_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Length_integrand, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Length_gradient, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Length_total, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Length_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Length_hessian, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -948,7 +1017,7 @@ bool area_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid
 
 /** Calculate gradient */
 bool area_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
-    return area_gradient_scale(v, mesh, id, nv, vid, NULL, frc, 1.0); 
+    return area_gradient_scale(v, mesh, id, nv, vid, NULL, frc, 1.0);
 }
 
 FUNCTIONAL_INIT(Area, MESH_GRADE_AREA)
@@ -1061,7 +1130,7 @@ bool volume_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *v
 
 /** Calculate gradient */
 bool volume_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
-    return volume_gradient_scale(v, mesh, id, nv, vid, NULL, frc, 1.0); 
+    return volume_gradient_scale(v, mesh, id, nv, vid, NULL, frc, 1.0);
 }
 
 FUNCTIONAL_INIT(Volume, MESH_GRADE_VOLUME)
@@ -1181,7 +1250,7 @@ value ScalarPotential_gradient(vm *v, int nargs, value *args) {
             } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
         } else if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
             // Otherwise try to use the regular scalar function
-            
+
             value fn;
             if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
                 info.g = MESH_GRADE_VERTEX;
@@ -1191,7 +1260,7 @@ value ScalarPotential_gradient(vm *v, int nargs, value *args) {
                     functional_mapnumericalgradient(v, &info, &out);
                 } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
             } else morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, SCALARPOTENTIAL_FUNCTION_PROPERTY);
-            
+
         } else morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, SCALARPOTENTIAL_FUNCTION_PROPERTY);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
@@ -1419,7 +1488,7 @@ bool hydrogel_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
     bool success=false;
     value refmesh=MORPHO_NIL, grade=MORPHO_NIL, phi0=MORPHO_NIL;
     value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL, d=MORPHO_NIL, phiref=MORPHO_NIL;
-    
+
     if (objectinstance_getproperty(self, linearelasticity_referenceproperty, &refmesh) &&
         objectinstance_getproperty(self, functional_gradeproperty, &grade) &&
         MORPHO_ISINTEGER(grade) &&
@@ -1465,7 +1534,7 @@ bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
         printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
         //morpho_runtimeerror(v, HYDROGEL_ZEEROREFELEMENT, id, V, V0);
     }
-    
+
     if (fabs(V)<MORPHO_EPS) return false;
 
     // Determine phi0 either as a number or by looking up something in a field
@@ -1500,7 +1569,7 @@ bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
 
 /** Calculate gradient */
 bool hydrogel_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
-    
+
     hydrogelref *info = (hydrogelref *) ref;
     value vphi0 = info->phi0;
     double V=0.0, V0=0.0, phi0=0.0;
@@ -1512,7 +1581,7 @@ bool hydrogel_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
         printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
         //morpho_runtimeerror(v, HYDROGEL_ZEEROREFELEMENT, id, V, V0);
     }
-    
+
     if (fabs(V)<MORPHO_EPS) return false;
 
     // Determine phi0 either as a number or by looking up something in a field
@@ -1553,14 +1622,14 @@ value Hydrogel_gradient(vm *v, int nargs, value *args) {
     hydrogelref ref;
     if (functional_validateargs(v, nargs, args, &info)) {
         if (hydrogel_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, -1, info.sel, &ref)) {
-            info.g = ref.grade; 
+            info.g = ref.grade;
             info.grad = hydrogel_gradient;
             info.ref = &ref;
             info.sym = SYMMETRY_ADD;
             functional_mapgradient(v, &info, &out);
         }
     }
-    
+
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
 
     return out;
@@ -1675,7 +1744,7 @@ bool equielement_dependencies(functional_mapinfo *info, elementid id, varray_ele
         for (unsigned int i=0; i<nbrs.count; i++) {
             int nentries, *entries; // Get the vertices for this element
             if (!sparseccs_getrowindices(&eref->eltov->ccs, nbrs.data[i], &nentries, &entries)) goto equieleement_dependencies_cleanup;
-            
+
             for (unsigned int j=0; j<nentries; j++) {
                 if (entries[j]==id) continue;
                 if (equielement_contains(out, entries[j])) continue;
@@ -1695,7 +1764,7 @@ equieleement_dependencies_cleanup:
 bool equielement_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *r, double *out) {
     equielementref *ref = (equielementref *) r;
     int nconn, *conn;
-    
+
     if (sparseccs_getrowindices(&ref->vtoel->ccs, id, &nconn, &conn)) {
         if (nconn==1) { *out = 0; return true; }
 
@@ -1879,7 +1948,7 @@ bool linecurvsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vi
     }
 
 linecurvsq_integrand_cleanup:
-    
+
     *out = result;
     varray_elementidclear(&nbrs);
     varray_elementidclear(&synid);
@@ -2360,26 +2429,26 @@ bool gradsq_evaluategradient3d(objectmesh *mesh, objectfield *field, int nv, int
     for (unsigned int i=1; i<nv; i++) {
         functional_vecsub(mesh->dim, x[i], x[0], &xarray[(i-1)*mesh->dim]);
     }
-    
+
     for (unsigned int i=0; i<mesh->dim*nentries; i++) out[i]=0;
-    
+
     objectmatrix M = MORPHO_STATICMATRIX(xarray, mesh->dim, mesh->dim);
     objectmatrix Mt = MORPHO_STATICMATRIX(xtarray, mesh->dim, mesh->dim);
     matrix_transpose(&M, &Mt);
-    
+
     double farray[nentries*mesh->dim]; // Field elements
     objectmatrix frhs = MORPHO_STATICMATRIX(farray, mesh->dim, nentries);
     objectmatrix grad = MORPHO_STATICMATRIX(out, mesh->dim, nentries);
-    
+
     // Loop over elements of the field
     for (unsigned int i=0; i<nentries; i++) {
         // Copy across the field values to form the rhs
         for (unsigned int j=0; j<mesh->dim; j++) farray[i*mesh->dim+j] = f[j+1][i]-f[0][i];
     }
-    
+
     // Solve to obtain the gradient of each element
     matrix_divs(&Mt, &frhs, &grad);
-    
+
     return true;
 }
 
@@ -2387,20 +2456,20 @@ bool gradsq_evaluategradient3d(objectmesh *mesh, objectfield *field, int nv, int
 bool gradsq_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, fieldref *ref) {
     bool success=false, grdset=false;
     value field=MORPHO_NIL, grd=MORPHO_NIL;
-    
+
     if (objectinstance_getproperty(self, functional_fieldproperty, &field) &&
         MORPHO_ISFIELD(field)) {
         ref->field=MORPHO_GETFIELD(field);
         success=true;
     }
-    
+
     if (objectinstance_getproperty(self, functional_gradeproperty, &grd) &&
         MORPHO_ISINTEGER(grd)) {
         ref->grade=MORPHO_GETINTEGERVALUE(grd);
         if (ref->grade>0) grdset=true;
     }
     if (!grdset) ref->grade=mesh_maxgrade(mesh);
-    
+
     return success;
 }
 
@@ -2419,7 +2488,7 @@ bool gradsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
     } else {
         return false;
     }
-    
+
     double gradnrm=functional_vecnorm(eref->field->psize*mesh->dim, grad);
     *out = gradnrm*gradnrm*size;
 
@@ -2436,7 +2505,7 @@ value GradSq_init(vm *v, int nargs, value *args) {
         morpho_runtimeerror(v, VM_INVALIDARGS);
         return MORPHO_FALSE;
     }
-    
+
     /* Second (optional) argument is the grade to act on */
     if (nargs>1) {
         if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 1))) {
@@ -2521,14 +2590,14 @@ bool nematic_prepareref(objectinstance *self, objectmesh *mesh, grade g, objects
         morpho_valuetofloat(val, &ref->pitch);
         ref->haspitch=true;
     }
-    
+
     if (objectinstance_getproperty(self, functional_gradeproperty, &grd) &&
         MORPHO_ISINTEGER(grd)) {
         ref->grade=MORPHO_GETINTEGERVALUE(grd);
         if (ref->grade>0) grdset=true;
     }
     if (!grdset) ref->grade=mesh_maxgrade(mesh);
-    
+
     return success;
 }
 
@@ -2737,7 +2806,7 @@ bool nematicelectric_prepareref(objectinstance *self, objectmesh *mesh, grade g,
         if (ref->grade>0) grdset=true;
     }
     if (!grdset) ref->grade=mesh_maxgrade(mesh);
-    
+
     return success;
 }
 
@@ -3086,7 +3155,7 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     if (fabs(nnorm)>MORPHO_EPS) functional_vecscale(mesh->dim, 1.0/nnorm, normaldata, normaldata);
     objectmatrix mnormal = MORPHO_STATICMATRIX(normaldata, mesh->dim, 1);
     norml = MORPHO_OBJECT(&mnormal);
-    
+
     value q0[iref->nfields+1], q1[iref->nfields+1], q2[iref->nfields+1];
     value *q[3] = { q0, q1, q2 };
     for (unsigned int k=0; k<iref->nfields; k++) {
@@ -3150,7 +3219,7 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
     for (unsigned int i=0; i<nv; i++) {
         mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
     }
-    
+
     value q0[iref->nfields+1], q1[iref->nfields+1], q2[iref->nfields+1], q3[iref->nfields+1];
     value *q[4] = { q0, q1, q2, q3 };
     for (unsigned int k=0; k<iref->nfields; k++) {
@@ -3161,7 +3230,7 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
 
     success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_VOLUME, x, iref->nfields, q, iref, out);
     if (success) *out *=size;
-    
+
     return success;
 }
 
@@ -3254,24 +3323,24 @@ void functional_initialize(void) {
 
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
     morpho_defineerror(FUNC_ELNTFND, ERROR_HALT, FUNC_ELNTFND_MSG);
-    
+
     morpho_defineerror(SCALARPOTENTIAL_FNCLLBL, ERROR_HALT, SCALARPOTENTIAL_FNCLLBL_MSG);
-    
+
     morpho_defineerror(LINEARELASTICITY_REF, ERROR_HALT, LINEARELASTICITY_REF_MSG);
     morpho_defineerror(LINEARELASTICITY_PRP, ERROR_HALT, LINEARELASTICITY_PRP_MSG);
-    
+
     morpho_defineerror(HYDROGEL_ARGS, ERROR_HALT, HYDROGEL_ARGS_MSG);
     morpho_defineerror(HYDROGEL_PRP, ERROR_HALT, HYDROGEL_PRP_MSG);
     morpho_defineerror(HYDROGEL_FLDGRD, ERROR_HALT, HYDROGEL_FLDGRD_MSG);
     morpho_defineerror(HYDROGEL_ZEEROREFELEMENT, ERROR_WARNING, HYDROGEL_ZEEROREFELEMENT_MSG);
-    
+
     morpho_defineerror(EQUIELEMENT_ARGS, ERROR_HALT, EQUIELEMENT_ARGS_MSG);
     morpho_defineerror(GRADSQ_ARGS, ERROR_HALT, GRADSQ_ARGS_MSG);
     morpho_defineerror(NEMATIC_ARGS, ERROR_HALT, NEMATIC_ARGS_MSG);
     morpho_defineerror(NEMATICELECTRIC_ARGS, ERROR_HALT, NEMATICELECTRIC_ARGS_MSG);
-    
+
     morpho_defineerror(FUNCTIONAL_ARGS, ERROR_HALT, FUNCTIONAL_ARGS_MSG);
-    
+
     morpho_defineerror(LINEINTEGRAL_ARGS, ERROR_HALT, LINEINTEGRAL_ARGS_MSG);
     morpho_defineerror(LINEINTEGRAL_NFLDS, ERROR_HALT, LINEINTEGRAL_NFLDS_MSG);
 }

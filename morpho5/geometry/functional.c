@@ -487,12 +487,12 @@ static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, 
 static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectsparse *hess) {
     double eps=0.5e-3; // ~ (eps)^(1/4)
     value f0;
-    
+
     float d2xy[] = { 1.0, eps, eps, // Data for second derivative formula
                      1.0,-eps,-eps,
                     -1.0,-eps, eps,
                     -1.0, eps,-eps};
-    
+
     float d2xx[] = { -1.0, 2*eps, 2*eps, // Data for second derivative formula
                      -1.0,-2*eps,-2*eps,
                     -30.0,     0, 0,
@@ -500,11 +500,11 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
                     +16.0,  -eps,-eps};
     float *d2,scale=1.0;
     int neval, nevalxx=5, nevalxy=4;
-    
+
     // Loop over vertices in element
     for (unsigned int j=0; j<nv; j++) {
         for (unsigned int k=0; k<nv; k++) {
-            
+
             // Loop over coordinates
             for (unsigned int l=0; l<mesh->dim; l++) {
                 double x0,y0;
@@ -512,9 +512,9 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
                     double d2f=0, ff=0;
                     matrix_getelement(mesh->vert, l, vid[j], &x0);
                     matrix_getelement(mesh->vert, m, vid[k], &y0);
-                    
+
                     if (sparsedok_get(&hess->dok, vid[j]*mesh->dim+l, vid[k]*mesh->dim+m, &f0)) ff=MORPHO_GETFLOATVALUE(f0);
-                    
+
                     if (j==k && l==m) {
                         d2=d2xx; neval=nevalxx;
                         scale=1.0/(12.0*eps*eps);
@@ -522,7 +522,7 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
                         d2=d2xy; neval=nevalxy;
                         scale=1.0/(4.0*eps*eps);
                     }
-                    
+
                     for (int n=0; n<neval; n++) {
                         double f;
                         matrix_setelement(mesh->vert, l, vid[j], x0+d2[3*n+1]);
@@ -530,12 +530,12 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
                         if (!(*integrand) (v, mesh, i, nv, vid, ref, &f)) return false;
                         d2f+=d2[3*n+0]*f;
                     }
-                    
+
                     matrix_setelement(mesh->vert, l, vid[j], x0); // Reset element
                     matrix_setelement(mesh->vert, m, vid[k], y0);
-                    
+
                     f0=MORPHO_FLOAT(ff+d2f*scale);
-                    
+
                     sparsedok_insert(&hess->dok, vid[j]*mesh->dim+l, vid[k]*mesh->dim+m, f0);
                 }
             }
@@ -1025,9 +1025,9 @@ bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
         functional_veccross(x[0], x[1], cx);
         normcx=functional_vecnorm(mesh->dim, cx);
     }
-    
+
     *out=0.5*normcx;
-    
+
     return true;
 }
 
@@ -1049,7 +1049,7 @@ bool areaenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *v
         matrix_addtocolumn(frc, vid[1], 0.5/norm, s);
     } else if (mesh->dim==2) {
         functional_veccross2d(x[0], x[1], cx);
-        
+
     }
 
     return true;
@@ -1065,7 +1065,7 @@ value AreaEnclosed_hessian(vm *v, int nargs, value *args) {
         info.integrand=areaenclosed_integrand;
         functional_mapnumericalhessian(v, &info, &out);
     }
-    
+
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
 
     return out;

@@ -654,6 +654,57 @@ functional_mapnumericalfieldgradient_cleanup:
     return ret;
 }
 
+/** Map numerical hessian over the elements
+ * @param[in] v - virtual machine in use
+ * @param[in] info - map info
+ * @param[out] out - a matrix of integrand values
+ * @returns true on success, false otherwise. Error reporting through VM. */
+bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out) {
+    objectmesh *mesh = info->mesh;
+    objectselection *sel = info->sel;
+    if (sel) UNREACHABLE("Selections not implemented in hessian");
+    grade g = info->g;
+    functional_integrand *integrand = info->integrand;
+    void *ref = info->ref;
+    
+    objectsparse *conn=NULL;
+    objectsparse *hess=NULL;
+    
+    bool ret=false;
+    int n=0;
+
+    /* How many elements? */
+    if (!functional_countelements(v, mesh, g, &n, &conn)) return false;
+    
+    /* Create the output matrix */
+    if (n>0) {
+        int ndof = mesh->vert->nrows*mesh->vert->ncols;
+        hess=object_newsparse(&ndof, &ndof);
+        if (!hess)  { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
+    }
+    
+    int vertexid; // Use this if looping over grade 0
+    int *vid=(g==0 ? &vertexid : NULL),
+        nv=(g==0 ? 1 : 0); // The vertex indice
+    
+    for (elementid i=0; i<n; i++) {
+        if (conn) sparseccs_getrowindices(&conn->ccs, i, &nv, &vid);
+        else vertexid=i;
+
+        if (vid && nv>0) {
+            //if (!functional_numericalgradient(v, mesh, i, nv, vid, integrand, ref, frc)) goto functional_mapnumericalhessian_cleanup;
+        }
+    }
+    
+    *out = MORPHO_OBJECT(hess);
+    ret=true;
+    
+functional_mapnumericalhessian_cleanup:
+    if (!ret) object_free((object *) hess);
+    
+    return ret;
+}
+
 /* **********************************************************************
  * Common library functions
  * ********************************************************************** */
@@ -811,6 +862,23 @@ bool length_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, vo
     return true;
 }
 
+/** Evaluate a hessian */
+value Length_hessian(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    value out=MORPHO_NIL;
+
+    if (functional_validateargs(v, nargs, args, &info)) {
+        value fn;
+        info.g=MESH_GRADE_LINE;
+        info.integrand=length_integrand;
+        functional_mapnumericalhessian(v, &info, &out);
+    }
+    
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+
+    return out;
+}
+
 FUNCTIONAL_INIT(Length, MESH_GRADE_LINE)
 FUNCTIONAL_INTEGRAND(Length, MESH_GRADE_LINE, length_integrand)
 FUNCTIONAL_GRADIENT(Length, MESH_GRADE_LINE, length_gradient, SYMMETRY_ADD)
@@ -820,7 +888,8 @@ MORPHO_BEGINCLASS(Length)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Length_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Length_integrand, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Length_gradient, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Length_total, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Length_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Length_hessian, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------

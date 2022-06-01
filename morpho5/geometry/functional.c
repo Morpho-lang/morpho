@@ -483,6 +483,41 @@ static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, 
     return true;
 }
 
+/* Calculates a numerical hessian */
+static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectsparse *hess) {
+    double fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
+    value f0;
+    
+    // Loop over vertices in element
+    for (unsigned int j=0; j<nv; j++) {
+        for (unsigned int k=0; k<nv; k++) {
+            
+            // Loop over coordinates
+            for (unsigned int l=0; l<mesh->dim; l++) {
+                for (unsigned int m=0; m<mesh->dim; m++) {
+                    //matrix_getelement(frc, k, vid[j], &f0);
+                    sparsedok_get(&hess->dok, j*mesh->dim+l, k*mesh->dim+m, &f0);
+
+                    /*matrix_getelement(mesh->vert, k, vid[j], &x0);
+                    matrix_setelement(mesh->vert, k, vid[j], x0+eps);
+                    if (!(*integrand) (v, mesh, i, nv, vid, ref, &fp)) return false;
+                    matrix_setelement(mesh->vert, k, vid[j], x0-eps);
+                    if (!(*integrand) (v, mesh, i, nv, vid, ref, &fm)) return false;
+                    matrix_setelement(mesh->vert, k, vid[j], x0);*/
+
+                    sparsedok_insert(&hess->dok, j*mesh->dim+l, k*mesh->dim+m, f0);
+                    //matrix_setelement(frc, k, vid[j], f0+(fp-fm)/(2*eps));
+                }
+            }
+        }
+    }
+    return true;
+}
+
+/* *************************
+ * Map functions
+ * ************************* */
+
 /** Map numerical gradient over the elements
  * @param[in] v - virtual machine in use
  * @param[in] info - map info
@@ -692,7 +727,7 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
         else vertexid=i;
 
         if (vid && nv>0) {
-            //if (!functional_numericalgradient(v, mesh, i, nv, vid, integrand, ref, frc)) goto functional_mapnumericalhessian_cleanup;
+            if (!functional_numericalhessian(v, mesh, i, nv, vid, integrand, ref, hess)) goto functional_mapnumericalhessian_cleanup;
         }
     }
 

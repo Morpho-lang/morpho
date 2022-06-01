@@ -1,22 +1,23 @@
 // Variadic arguments
 
-fn func(x, y, ...varg) {
+fn func(x, y, ...varg, q=0) {
+  print "q=${q}"
   for (a in varg) print a
 }
 
 func(1, 2)
-
-func(1, 2, 3)
-// expect: 3
+// expect: q=0
 
 func(1, 2, 3, 4)
+// expect: q=0
 // expect: 3
 // expect: 4
 
-func(1, 2, 3, 4, 5)
+func(1, 2, 3, 4, 5, q="Hi")
+// expect: q=Hi
 // expect: 3
 // expect: 4
 // expect: 5
 
-func(1)
+func(1, q=4)
 // expect error 'InvldArgs'

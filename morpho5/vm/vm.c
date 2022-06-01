@@ -241,6 +241,24 @@ static void vm_bindobject(vm *v, value obj) {
 #endif
 }
 
+/** @brief Binds an object to a Virtual Machine without garbage collection.
+ *  @details Any object created during execution should be bound to a VM; this object is then managed by the garbage collector.
+ *  @param v      the virtual machine
+ *  @param obj    object to bind
+ *  @warning: This should only be used in circumstances where the internal state of the VM is not consistent (i.e. calling the GC could cause a sigsev) */
+static void vm_bindobjectwithoutcollect(vm *v, value obj) {
+    object *ob = MORPHO_GETOBJECT(obj);
+    ob->status=OBJECT_ISUNMARKED;
+    ob->next=v->objects;
+    v->objects=ob;
+    size_t size=object_size(ob);
+#ifdef MORPHO_DEBUG_GCSIZETRACKING
+    dictionary_insert(&sizecheck, obj, MORPHO_INTEGER(size));
+#endif
+
+    v->bound+=size;
+}
+
 /* **********************************************************************
  * Garbage collector
  * ********************************************************************** */
@@ -573,7 +591,7 @@ static inline void vm_expandstack(vm *v, value **reg, unsigned int n) {
             ptrdiff_t p=u->location-v->stack.data;
             varray_ptrdiffadd(&diff, &p, 1);
         }
-
+        
         /* Resize the stack */
         varray_valueresize(&v->stack, newsize);
 
@@ -593,34 +611,49 @@ static inline void vm_expandstack(vm *v, value **reg, unsigned int n) {
     v->stack.count+=n;
 }
 
-/** Process variadic and optional arguments */
-static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int shift, unsigned int nargs, value *reg) {
+/** Process variadic and optional arguments
+ * @param[in] v          - the VM
+ * @param[in] iindx - instruction index (used to raise errors if need be)
+ * @param[in] func    - function being called
+ * @param[in] regcall - Register for the call
+ * @param[in] nargs  - number of arguments being called with
+ * @param[in] reg       - register base
+ * @param[in] newreg - new register base
+ */
+static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int regcall, unsigned int nargs, value *reg, value *newreg) {
     unsigned int nopt = func->opt.count, // No. of optional params
                  nfixed = func->nargs-nopt, // No. of fixed params
-                 roffset = shift+nfixed+1, // Position of first optional parameter in output
+                 roffset = nfixed+1, // Position of first optional parameter in output
                  n=0;
-    value res[nopt];
 
     /* Copy across default values */
     for (unsigned int i=0; i<nopt; i++) {
-        res[i]=func->konst.data[func->opt.data[i].def];
+        newreg[roffset+i]=func->konst.data[func->opt.data[i].def];
     }
 
     /* Identify the optional arguments by searching back from the end */
     for (n=0; 2*n<nargs; n+=1) {
         unsigned int k=0;
-        for (; k<nopt; k++) if (MORPHO_ISSAME(func->opt.data[k].symbol, reg[shift+nargs-1-2*n])) break;
+        for (; k<nopt; k++) if (MORPHO_ISSAME(func->opt.data[k].symbol, reg[regcall+nargs-1-2*n])) break;
         if (k>=nopt) break; // If we didn't find a match, we're done with optional arguments
-        res[k]=reg[shift+nargs-2*n];
+        newreg[roffset+k]=reg[regcall+nargs-2*n];
     }
 
-    if (nargs-2*n!=nfixed) { // Verify number of fixed args is correct
+    if (func->varg>=0) {
+        if (nargs-2*n<nfixed-1) {
+            vm_runtimeerror(v, iindx, VM_INVALIDARGS, nfixed-1, nargs-2*n);
+            return false;
+        }
+        
+        objectlist *new = object_newlist(nargs-2*n-(nfixed-1), reg+regcall+nfixed);
+        if (new) {
+            newreg[nfixed] = MORPHO_OBJECT(new);
+            vm_bindobjectwithoutcollect(v, newreg[nfixed]);
+        }
+    } else if (nargs-2*n!=nfixed) { // Verify number of fixed args is correct
         vm_runtimeerror(v, iindx, VM_INVALIDARGS, nfixed, nargs-2*n);
         return false;
     }
-
-    /* Copy across the arguments */
-    for (unsigned int i=0; i<nopt; i++) reg[roffset+i]=res[i];
 
     return true;
 }
@@ -637,16 +670,17 @@ static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsign
  *           7. Moving the program counter to the function
  * @param[in]  v                         The virtual machine
  * @param[in]  fn                       Function to call
- * @param[in]  shift                 rshift becomes r0 in the new call frame
+ * @param[in]  regcall            rshift becomes r0 in the new call frame
  * @param[in]  nargs                number of arguments
  * @param[out] pc                       program counter, updated
  * @param[out] reg                     register/stack pointer, updated */
-static inline bool vm_call(vm *v, value fn, unsigned int shift, unsigned int nargs, instruction **pc, value **reg) {
+static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int nargs, instruction **pc, value **reg) {
     objectfunction *func = MORPHO_GETFUNCTION(fn);
-
+    
     /* In the old frame... */
     v->fp->pc=*pc; /* Save the program counter */
     v->fp->stackcount=v->fp->function->nregs+(unsigned int) v->fp->roffset; /* Store the stacksize */
+    v->fp->returnreg=regcall; /* Store the return register */
     unsigned int oldnregs = v->fp->function->nregs; /* Get the old number of registers */
 
     v->fp++; /* Advance frame pointer */
@@ -664,30 +698,29 @@ static inline bool vm_call(vm *v, value fn, unsigned int shift, unsigned int nar
     v->fp->ret=false; /* Interpreter should not return from this frame */
     v->fp->function=func; /* Store the function */
 
+    /* Do we need to expand the stack? */
+    if (v->stack.count+func->nregs>v->stack.capacity) {
+        vm_expandstack(v, reg, func->nregs); /* Expand the stack */
+    } else {
+        v->stack.count+=func->nregs;
+    }
+    
+    v->konst = func->konst.data; /* Load the constant table */
+    value *oreg = *reg; /* Old register frame */
+    *reg += oldnregs; /* Shift the register frame */
+    v->fp->roffset=*reg-v->stack.data; /* Store the register index */
+    
+    /* Copy args */
+    for (unsigned int i=0; i<=nargs; i++) (*reg)[i] = oreg[regcall+i];
+    
     /* Handle optional args */
-    if (func->opt.count>0) {
-        if (!vm_vargs(v, (*pc) - v->instructions, func, shift, nargs, *reg)) return false;
+    if (func->opt.count>0 || func->varg>0) {
+        if (!vm_vargs(v, (*pc) - v->instructions, func, regcall, nargs, oreg, *reg)) return false;
     } else if (func->nargs!=nargs) {
         vm_runtimeerror(v, (*pc) - v->instructions, VM_INVALIDARGS, func->nargs, nargs);
         return false;
     }
-
-    /* Do we need to expand the stack? */
-    if (shift+func->nregs > oldnregs) {
-        /* We check this explicitly to avoid an unnecessary function call to vm_expandstack */
-        unsigned int n=shift+func->nregs-oldnregs;
-        if (v->stack.count+n>v->stack.capacity) {
-            vm_expandstack(v, reg, n); /* Expand the stack */
-        } else {
-            v->stack.count+=n;
-        }
-    }
-
-    v->konst = func->konst.data; /* Load the constant table */
-    *reg += shift; /* Shift the register frame so
-               that the register a becomes r0 */
-    v->fp->roffset=*reg-v->stack.data; /* Store the register index */
-
+    
     /* Zero out registers beyond args up to the top of the stack
        This has to be fast: memset was too slow. Zero seems to be faster than MORPHO_NIL */
     for (value *r = *reg + func->nregs-1; r > *reg + func->nargs; r--) *r = MORPHO_INTEGER(0);
@@ -1256,22 +1289,26 @@ callfunction: // Jump here if an instruction becomes a call
                 vm_closeupvalues(v, reg);
             }
 
+            value retvalue;
+        
             if (a>0) {
                 b=DECODE_B(bc);
-                reg[0] = reg[b];
+                retvalue = reg[b];
             } else {
-                reg[0] = MORPHO_NIL; /* No return value; returns nil */
+                retvalue = MORPHO_NIL; /* No return value; returns nil */
             }
 
             if (v->fp>v->frame) {
                 bool shouldreturn = (v->fp->ret);
-                value *or = reg + v->fp->function->nargs;
+                // value *or = reg + v->fp->function->nargs;
                 v->fp--;
                 v->konst=v->fp->function->konst.data; /* Restore the constant table */
                 reg=v->fp->roffset+v->stack.data; /* Restore registers */
                 v->stack.count=v->fp->stackcount; /* Restore the stack size */
-
-                for (value *r = reg + v->fp->function->nregs-1; r > or; r--) *r = MORPHO_INTEGER(0);
+                
+                reg[v->fp->returnreg]=retvalue; /* Copy the return value */
+                // Clear registers
+                // for (value *r = reg + v->fp->function->nregs-1; r > or; r--) *r = MORPHO_INTEGER(0);
 
                 pc=v->fp->pc; /* Jump back */
                 if (shouldreturn) return true;

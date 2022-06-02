@@ -494,10 +494,10 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
                     -1.0, eps,-eps};
     
     float d2xx[] = { -1.0, 2*eps, 2*eps, // Data for second derivative formula
-                     -1.0,-2*eps, -2*eps,
+                     -1.0,-2*eps,-2*eps,
                     -30.0,     0, 0,
-                    +16.0,  +eps, +eps,
-                    +16.0,  -eps, -eps};
+                    +16.0,  +eps, eps,
+                    +16.0,  -eps,-eps};
     float *d2,scale=1.0;
     int neval, nevalxx=5, nevalxy=4;
     
@@ -514,9 +514,6 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
                     matrix_getelement(mesh->vert, m, vid[k], &y0);
                     
                     if (sparsedok_get(&hess->dok, vid[j]*mesh->dim+l, vid[k]*mesh->dim+m, &f0)) ff=MORPHO_GETFLOATVALUE(f0);
-                    
-                    volatile float hx = x0+eps, hy=y0+eps;
-                    hx=hx-x0; hy=hy-y0;
                     
                     if (j==k && l==m) {
                         d2=d2xx; neval=nevalxx;

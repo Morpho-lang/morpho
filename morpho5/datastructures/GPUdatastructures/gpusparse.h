@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include "object.h"
 #include "morpho.h"
-#include "cudainterface.h"
+#include "gpuinterface.h"
 #include "sparse.h"
 
 

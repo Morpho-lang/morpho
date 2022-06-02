@@ -9,7 +9,7 @@
 
 #include <stdio.h>
 #include "veneer.h"
-#include "cudainterface.h"
+#include "gpuinterface.h"
 
 // #define MORPHO_USE_CUDA
 // /** Use CUDA or openCL for GPU Accleartion */

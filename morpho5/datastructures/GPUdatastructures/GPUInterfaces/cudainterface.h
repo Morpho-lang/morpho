@@ -6,6 +6,7 @@
 #ifndef cudainterface_h
 #define cudainterface_h
 #include "cuda.h"
+#include "gpuinterface.h"
 #include <stdio.h>
 #include <stdbool.h>
 //#include "cuda_runtime_api.h"
@@ -21,16 +22,6 @@ extern "C" {
 #endif
 typedef bool (*functional_integrand_gpu) (double *vert, int dim, int id, int nv, int *vid, double *out);
 typedef bool (*functional_gradient_gpu) (double *vert, int dim, int id, int nv, int *vid, double *out);
-typedef enum { AREA_KERNAL, VOLUMEENCLOSED_KERNAL, NO_KERNAL } kernal_enum;
-// we put a ligher version of spare here to avoid having to include object here (nvcc doens't like it)
-typedef struct {
-    int nentries;
-    int nrows;
-    int ncols;
-    int *cptr; // Pointers to column entries
-    int *rix; // Row indices
-    double *values; // Values
-} objectgpusparse_light;
 
 
 // typedef struct {
@@ -104,10 +95,10 @@ __device__ void gpu_functional_vecsub(unsigned int n, double *a, double *b, doub
 __device__ void gpu_functional_veccross(double *a, double *b, double *out);
 __device__ void gpu_matrix_addtocolumn(double *elements, int nrows, int col, double scale, double *v);
 __device__ void gpu_matrix_getcolumn(double *elements, int nrows, int col,double **out);
-__device__ bool gpu_area_integrand(double *vert, int dim, int id, int nv, int *vid, double *out);
-__device__ bool gpu_area_gradient(double *vert, int dim, int id,int nv, int *vid, double *frc); 
-__device__ bool gpu_volumeenclosed_integrand(double *vert, int dim, int id,int nv, int *vid, double *out);
-__device__ bool gpu_volumeenclosed_gradient(double *vert, int dim, int id,int nv, int *vid, double *frc);
+// __device__ bool gpu_area_integrand(double *vert, int dim, int id, int nv, int *vid, double *out);
+// __device__ bool gpu_area_gradient(double *vert, int dim, int id,int nv, int *vid, double *frc); 
+// __device__ bool gpu_volumeenclosed_integrand(double *vert, int dim, int id,int nv, int *vid, double *out);
+// __device__ bool gpu_volumeenclosed_gradient(double *vert, int dim, int id,int nv, int *vid, double *frc);
 // extern __device__ functional_integrand_gpu p_gpu_area_integrand;
 // extern __device__ functional_gradient_gpu p_gpu_area_gradient;
 // extern __device__ functional_integrand_gpu p_gpu_volumeenclosed_integrand;

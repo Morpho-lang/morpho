@@ -11,11 +11,8 @@
 #include "matrix.h"
 #include "builtin.h"
 #include "veneer.h"
-#include "cudainterface.h"
-#ifdef GPU_ACC
-    #include "gpumatrix.h"
-    #include "gpusparse.h"
-#endif
+#include "gpumatrix.h"
+#include "gpusparse.h"
 #include <limits.h>
 #include <stdlib.h>
 

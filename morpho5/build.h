@@ -176,4 +176,5 @@
 #endif
 #ifdef OPENCL_ACC
     #define GPU_ACC
+    #define MORPHO_KERNAL_DIRECTORY "/usr/local/share/morpho/gpu/kernals.h"
 #endif

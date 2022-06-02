@@ -1,20 +1,29 @@
 src = $(wildcard *.c) $(wildcard */*.c) 
 obj = $(src:.c=.o) 
 
-cudasrc = $(wildcard *.c) $(wildcard */*.c) $(wildcard */*/*.cu) $(wildcard */*/*.c) 
-cudatmp = $(cudasrc:.c=.o)
-cudaobj = $(cudatmp:.cu=.o) 
+gpusrc = $(wildcard *.c) $(wildcard */*.c) $(wildcard */*/*.cu) $(wildcard */*/*.c) 
+gpuobj = $(gpusrc:.c=.o)
+
+cudasrc = $(wildcard ./datastructures/GPUdatastructures/GPUInterfaces/*.cu) 
+cudaobj = $(gpuobj) $(cudasrc:.cu=.o) 
+
+openclsrc = $(wildcard ./datastructures/GPUdatastructures/GPUInterfaces/*.c)
+openclobj = $(gpuobj) $(openclsrc:.c=.o)
 
 PREFIX = /usr/local
 HELPDIR = /usr/local/share/morpho/help
 MODULESDIR = /usr/local/share/morpho/modules
+KERNALDIR = /usr/local/share/morpho/gpu/
 help = $(wildcard docs/*.md)
 modules = $(wildcard modules/*)
+kernals = datastructures/GPUdatastructures/GPUInterfaces/kernals.h
 NVCC = nvcc
 
+INCLUDES = -I. -I/usr/include/suitesparse -I./datastructures  -I./datastructures/GPUdatastructures -I./geometry -I./interface -I./utils -I./vm -I./builtin -I./datastructures/GPUdatastructures/GPUInterfaces
+
 LDFLAGS  = -lm -lblas -llapacke -lcxsparse -lcublas -lcusolver -lcudart -lcuda
-CFLAGS   = -std=c99 -O3 -I. -I/usr/include/suitesparse -I./datastructures  -I./datastructures/GPUdatastructures -I./geometry -I./interface -I./utils -I./vm -I./builtin
-CUDAFLAGS = -rdc=true -O3 -I. -I/usr/include/suitesparse -I./datastructures  -I./datastructures/GPUdatastructures -I./geometry -I./interface -I./utils -I./vm -I./builtin
+CFLAGS   = -std=c99 -O3 $(INCLUDES)
+CUDAFLAGS = -rdc=true -O3 $(INCLUDES)
 
 
 %.o: %.cu
@@ -25,12 +34,16 @@ cudainterface.o: kernal.h
 morpho5cuda: $(cudaobj)
 	$(NVCC) -o $@ $^ $(LDFLAGS) $(MODULES) $(CUDAFLAGS) 
 
+morpho5opencl: $(openclobj)
+	$(CC) -o $@ $^ $(LDFLAGS) $(MODULES) $(CFLAGS)
+
 morpho5: $(obj)
 	$(CC) -o $@ $^ $(LDFLAGS) $(MODULES) $(CFLAGS)
 
 .PHONY: clean
 clean:
-	rm -f $(obj) morpho5
+	rm -f $(cudaobj) $(openclobj) morpho5
+
 
 .PHONY: help
 help:
@@ -52,9 +65,21 @@ install: morpho5
 
 
 cudainstall: CFLAGS+= -DCUDA_ACC
+cudainstall: CUDAFLAGS+= -DCUDA_ACC
 cudainstall: morpho5cuda
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp $< $(DESTDIR)$(PREFIX)/bin/morpho5dev
+	make modules
+	make help
+	make clean
+
+openclinstall: CFLAGS+= -DOPENCL_ACC
+openclinstall: LDFLAGS+= -lOpenCL -lclblast
+openclinstall: morpho5opencl
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	cp $< $(DESTDIR)$(PREFIX)/bin/morpho5dev
+	mkdir -p $(KERNALDIR)
+	cp $(kernals) $(KERNALDIR)
 	make modules
 	make help
 	make clean

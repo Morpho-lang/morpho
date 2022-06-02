@@ -485,8 +485,21 @@ static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, 
 
 /* Calculates a numerical hessian */
 static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectsparse *hess) {
-    double fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
+    double eps=0.5e-3; // ~ (eps)^(1/4)
     value f0;
+    
+    float d2xy[] = { 1.0, eps, eps, // Data for second derivative formula
+                     1.0,-eps,-eps,
+                    -1.0,-eps, eps,
+                    -1.0, eps,-eps};
+    
+    float d2xx[] = { -1.0, 2*eps, 2*eps, // Data for second derivative formula
+                     -1.0,-2*eps, -2*eps,
+                    -30.0,     0, 0,
+                    +16.0,  +eps, +eps,
+                    +16.0,  -eps, -eps};
+    float *d2,scale=1.0;
+    int neval, nevalxx=5, nevalxy=4;
     
     // Loop over vertices in element
     for (unsigned int j=0; j<nv; j++) {
@@ -494,19 +507,39 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
             
             // Loop over coordinates
             for (unsigned int l=0; l<mesh->dim; l++) {
+                double x0,y0;
                 for (unsigned int m=0; m<mesh->dim; m++) {
-                    //matrix_getelement(frc, k, vid[j], &f0);
-                    sparsedok_get(&hess->dok, j*mesh->dim+l, k*mesh->dim+m, &f0);
-
-                    /*matrix_getelement(mesh->vert, k, vid[j], &x0);
-                    matrix_setelement(mesh->vert, k, vid[j], x0+eps);
-                    if (!(*integrand) (v, mesh, i, nv, vid, ref, &fp)) return false;
-                    matrix_setelement(mesh->vert, k, vid[j], x0-eps);
-                    if (!(*integrand) (v, mesh, i, nv, vid, ref, &fm)) return false;
-                    matrix_setelement(mesh->vert, k, vid[j], x0);*/
-
-                    sparsedok_insert(&hess->dok, j*mesh->dim+l, k*mesh->dim+m, f0);
-                    //matrix_setelement(frc, k, vid[j], f0+(fp-fm)/(2*eps));
+                    double d2f=0, ff=0;
+                    matrix_getelement(mesh->vert, l, vid[j], &x0);
+                    matrix_getelement(mesh->vert, m, vid[k], &y0);
+                    
+                    if (sparsedok_get(&hess->dok, vid[j]*mesh->dim+l, vid[k]*mesh->dim+m, &f0)) ff=MORPHO_GETFLOATVALUE(f0);
+                    
+                    volatile float hx = x0+eps, hy=y0+eps;
+                    hx=hx-x0; hy=hy-y0;
+                    
+                    if (j==k && l==m) {
+                        d2=d2xx; neval=nevalxx;
+                        scale=1.0/(12.0*eps*eps);
+                    } else {
+                        d2=d2xy; neval=nevalxy;
+                        scale=1.0/(4.0*eps*eps);
+                    }
+                    
+                    for (int n=0; n<neval; n++) {
+                        double f;
+                        matrix_setelement(mesh->vert, l, vid[j], x0+d2[3*n+1]);
+                        matrix_setelement(mesh->vert, m, vid[k], y0+d2[3*n+2]);
+                        if (!(*integrand) (v, mesh, i, nv, vid, ref, &f)) return false;
+                        d2f+=d2[3*n+0]*f;
+                    }
+                    
+                    matrix_setelement(mesh->vert, l, vid[j], x0); // Reset element
+                    matrix_setelement(mesh->vert, m, vid[k], y0);
+                    
+                    f0=MORPHO_FLOAT(ff+d2f*scale);
+                    
+                    sparsedok_insert(&hess->dok, vid[j]*mesh->dim+l, vid[k]*mesh->dim+m, f0);
                 }
             }
         }
@@ -936,7 +969,6 @@ value Length_hessian(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
 
     if (functional_validateargs(v, nargs, args, &info)) {
-        value fn;
         info.g=MESH_GRADE_LINE;
         info.integrand=length_integrand;
         functional_mapnumericalhessian(v, &info, &out);

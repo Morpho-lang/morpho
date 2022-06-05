@@ -401,7 +401,7 @@ value Folder_contents(vm *v, int nargs, value *args) {
                 dp = readdir(dir);
                 if (dp) {
                     if (strcmp(dp->d_name, ".")==0 || strcmp(dp->d_name, "..")==0) continue; // Skip unix parent and current folder references
-                    value entry = object_stringfromcstring(dp->d_name, dp->d_namlen);
+                    value entry = object_stringfromcstring(dp->d_name, strlen(dp->d_name));
                     if (MORPHO_ISSTRING(entry)) varray_valuewrite(&contents, entry);
                 }
             } while (dp!=NULL);

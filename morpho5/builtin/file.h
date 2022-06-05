@@ -49,6 +49,19 @@ typedef struct {
 #define FILE_WRITEMODE    "write"
 #define FILE_APPENDMODE   "append"
 
+/* -------------------------------------------------------
+ * Folder class
+ * ------------------------------------------------------- */
+
+#define FOLDER_CLASSNAME  "Folder"
+
+#define FOLDER_ISFOLDER   "isfolder"
+#define FOLDER_CONTENTS   "contents"
+
+/* -------------------------------------------------------
+ * Error messages
+ * ------------------------------------------------------- */
+
 #define FILE_OPENFAILED                   "FlOpnFld"
 #define FILE_OPENFAILED_MSG               "Couldn't open file '%s'."
 
@@ -66,6 +79,12 @@ typedef struct {
 
 #define FILE_WRITEFAIL                    "FlWrtFld"
 #define FILE_WRITEFAIL_MSG                "Write to file failed."
+
+#define FOLDER_EXPCTPATH                  "FldrExpctPth"
+#define FOLDER_EXPCTPATH_MSG              "Folder methods expect a path as an argument."
+
+#define FOLDER_NTFLDR                     "NtFldr"
+#define FOLDER_NTFLDR_MSG                 "Not a folder."
 
 bool file_getsize(FILE *f, size_t *s);
 

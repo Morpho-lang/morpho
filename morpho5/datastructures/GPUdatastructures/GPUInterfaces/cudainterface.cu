@@ -144,13 +144,17 @@ void GPUmemset(GPUStatus* cudaInterface,void* devicePointer, int bytepattern, un
     GPUStatusCheck(cudaInterface,GPUMEMSET);
 
 }
-void GPUcopy_to_host(GPUStatus* cudaInterface,void * hostPointer, void * devicepointer, unsigned int size) {
-    cudaInterface->cudaStatus = cudaMemcpy(hostPointer, devicepointer, size, cudaMemcpyDeviceToHost);
+void GPUcopy_to_host(GPUStatus* cudaInterface,void * hostPointer, void * devicePointer, size_t offset, unsigned int size) {
+    // we cast to char* because a charater is size one
+    // we expect offset to be the size in bytes
+    void* d_pos = (void*)((char*)devicePointer+offset);
+    cudaInterface->cudaStatus = cudaMemcpy(hostPointer, d_pos, size, cudaMemcpyDeviceToHost);
     GPUStatusCheck(cudaInterface,GPUMEMCPY);
 
 }
-void GPUcopy_to_device(GPUStatus* cudaInterface,void* devicePointer, void* hostPointer, unsigned int size) {
-    cudaInterface->cudaStatus = cudaMemcpy(devicePointer, hostPointer, size, cudaMemcpyHostToDevice);
+void GPUcopy_to_device(GPUStatus* cudaInterface,void* devicePointer, size_t offset, void* hostPointer, unsigned int size) {
+    void* d_pos = (void*)((char*)devicePointer+offset);
+    cudaInterface->cudaStatus = cudaMemcpy(d_pos, hostPointer, size, cudaMemcpyHostToDevice);
     GPUStatusCheck(cudaInterface,GPUMEMCPY);
 
 }
@@ -193,6 +197,14 @@ void dotProduct(GPUStatus* cudaInterface, double* v1, double * v2, int size, dou
 void GPUdot(GPUStatus* cudaInterface,int size, double *x,int incx, double *y, int incy,double* out){
     cudaInterface->cublasStatus = cublasDdot(cudaInterface->cublasHandle, size, x, incx, y , incy, out);
     GPUStatusCheck(cudaInterface,GPUDOT);
+}
+void GPUSum(GPUStatus* cudaInterface,int size, double *x, int inc, double *out) {
+    double *GPUone;
+    double one = 1.0;
+    GPUallocate(cudaInterface,(void **)&GPUone,sizeof(double));
+    GPUcopy_to_device(openCLInterface,GPUone,0,&one,sizeof(double));
+    GPUdot(cudaInterface,size, x ,inc, GPUone, 0, out);
+    GPUdeallocate(cudaInterface,GPUone);
 }
 
 /**

@@ -39,11 +39,11 @@ void gpusparse_copyfromcpu(objectgpusparse *gpuccs, sparseccs *ccs) {
     gpuccs->ncols=ccs->ncols;
     GPUallocate(gpuccs->status,(void**)&gpuccs->cptr,sizeof(int)*(ccs->ncols+1));
     GPUallocate(gpuccs->status,(void**)&gpuccs->rix,sizeof(int)*ccs->nentries);
-    GPUcopy_to_device(gpuccs->status,(void*)gpuccs->cptr,(void*)ccs->cptr,sizeof(int)*(ccs->ncols+1));
-    GPUcopy_to_device(gpuccs->status,(void*)gpuccs->rix,(void*)ccs->rix,sizeof(int)*(ccs->nentries));
+    GPUcopy_to_device(gpuccs->status,(void*)gpuccs->cptr,0,(void*)ccs->cptr,sizeof(int)*(ccs->ncols+1));
+    GPUcopy_to_device(gpuccs->status,(void*)gpuccs->rix,0,(void*)ccs->rix,sizeof(int)*(ccs->nentries));
     if (ccs->values) {
         GPUallocate(gpuccs->status,(void**)&gpuccs->values,sizeof(double)*ccs->nentries);
-        GPUcopy_to_device(gpuccs->status,(void*)gpuccs->values,(void*)ccs->values,sizeof(double)*(ccs->nentries));
+        GPUcopy_to_device(gpuccs->status,(void*)gpuccs->values,0,(void*)ccs->values,sizeof(double)*(ccs->nentries));
     }
 }
 void gpusparse_copyfromgpu(sparseccs *ccs, objectgpusparse *gpuccs) {
@@ -53,9 +53,9 @@ void gpusparse_copyfromgpu(sparseccs *ccs, objectgpusparse *gpuccs) {
     GPUallocate(gpuccs->status,(void**)&gpuccs->cptr,sizeof(int)*(ccs->ncols+1));
     GPUallocate(gpuccs->status,(void**)&gpuccs->rix,sizeof(int)*ccs->nentries);
     GPUallocate(gpuccs->status,(void**)&gpuccs->values,sizeof(double)*ccs->nentries);
-    GPUcopy_to_host(gpuccs->status,(void*)ccs->cptr,(void*)gpuccs->cptr,sizeof(int)*(ccs->ncols+1));
-    GPUcopy_to_host(gpuccs->status,(void*)ccs->rix,(void*)gpuccs->rix,sizeof(int)*(ccs->nentries));
-    GPUcopy_to_host(gpuccs->status,(void*)ccs->values,(void*)gpuccs->values,sizeof(double)*(ccs->nentries));
+    GPUcopy_to_host(gpuccs->status,(void*)ccs->cptr,(void*)gpuccs->cptr,0,sizeof(int)*(ccs->ncols+1));
+    GPUcopy_to_host(gpuccs->status,(void*)ccs->rix,(void*)gpuccs->rix,0,sizeof(int)*(ccs->nentries));
+    GPUcopy_to_host(gpuccs->status,(void*)ccs->values,(void*)gpuccs->values,0,sizeof(double)*(ccs->nentries));
 
 }
 
@@ -112,7 +112,12 @@ void objectgpusparse_freefn(object *obj) {
 }
 
 size_t objectgpusparse_sizefn(object *obj) {
+    #ifdef OPENCL_ACC
+    return sizeof(objectgpumatrix) + 3*sizeof(cl_mem);
+    #else
+
     return sizeof(objectgpusparse);
+    #endif
 }
 
 objecttypedefn objectgpusparsedefn = {

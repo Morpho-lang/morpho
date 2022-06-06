@@ -42,8 +42,8 @@ void GPUsetup(GPUStatus* openCLInterface);//,vm* v);
 void GPUallocate(GPUStatus* openCLInterface,void** ptr, unsigned int size);
 void GPUdeallocate(GPUStatus* openCLInterface,void* dPointer);
 void GPUmemset(GPUStatus* openCLInterface,void* devicePointer, int bytepattern, unsigned int size);
-void GPUcopy_to_host(GPUStatus* openCLInterface,void * hostPointer, void * devicepointer, unsigned int size);
-void GPUcopy_to_device(GPUStatus* openCLInterface,void* devicePointer, void* hostPointer, unsigned int size);
+void GPUcopy_to_host(GPUStatus* openCLInterface,void * hostPointer, void * devicepointer,size_t offset, unsigned int size);
+void GPUcopy_to_device(GPUStatus* openCLInterface,void* devicePointer, size_t offset, void* hostPointer, unsigned int size);
 void GPUcopy_device_to_device(GPUStatus* cudaInterface,void* devicePointersrc, void* devicePointerdest, unsigned int size);
 
 void GPUScalarAddition(GPUStatus* openCLInterface, double* Matrix, double scalar, double *out, int size);
@@ -53,6 +53,7 @@ int GPUSparseTranspose(GPUStatus* cudaInterface, objectgpusparse_light *in,objec
 /** cuBLAS functions*/
 void dotProduct(GPUStatus* openCLInterface, double* v1, double * v2, int size, double * out);
 void GPUdot(GPUStatus* openCLInterface,int size, double *x,int incx, double *y, int incy,double* out);
+void GPUSum(GPUStatus* openCLInterface,int size, double *x, int inc, double *out); 
 void GPUaxpy(GPUStatus* openCLInterface, int n, double* alpha, double * x, int incx, double * y, int incy);
 void GPUcopy(GPUStatus* openCLInterface,int n, double * x, int incx, double *y, int incy);
 void GPUScale(GPUStatus* openCLInterface, int n, const double *alpha, double *x, int incx);
@@ -70,7 +71,7 @@ void GPUcall_functional(GPUStatus* cudaInterface,double* verts, int dim, objectg
 void GPUcall_functionalgrad(GPUStatus* cudaInterface,double* verts, int dim, objectgpusparse_light* conn, int grade, int nelements,int gradientNo, double* out);
 
 const char* getErrorString(cl_int openCLStatus);
-
+const char* getCLBlastErrorString(CLBlastStatusCode code);
 #ifdef __cplusplus
 }
 #endif

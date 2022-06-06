@@ -59,8 +59,8 @@ void GPUallocate(GPUStatus* cudaInterface,void** ptr, unsigned int size);
 void GPUdeallocate(GPUStatus* cudaInterface,void* dPointer);
 void GPUreallocate(GPUStatus* cudaInterface,void** ptr, unsigned int newsize,unsigned int oldsize);
 void GPUmemset(GPUStatus* cudaInterface,void* devicePointer, int bytepattern, unsigned int size);
-void GPUcopy_to_host(GPUStatus* cudaInterface,void * hostPointer, void * devicepointer, unsigned int size);
-void GPUcopy_to_device(GPUStatus* cudaInterface,void* devicePointer, void* hostPointer, unsigned int size);
+void GPUcopy_to_host(GPUStatus* cudaInterface,void * hostPointer, void * devicepointer, size_t offset, unsigned int size);
+void GPUcopy_to_device(GPUStatus* cudaInterface,void* devicePointer, size_t offset, void* hostPointer, unsigned int size);
 void GPUcopy_device_to_device(GPUStatus* cudaInterface,void* devicePointersrc, void* devicePointerdest, unsigned int size);
 void GPUcopy_symbol(void* dst, void* symbol, size_t size);
 
@@ -70,6 +70,7 @@ int GPUSparseTranspose(GPUStatus* cudaInterface, objectgpusparse_light *in,objec
 /** cuBLAS functions*/
 void dotProduct(GPUStatus* cudaInterface, double* v1, double * v2, int size, double * out);
 void GPUdot(GPUStatus* cudaInterface,int size, double *x,int incx, double *y, int incy,double* out);
+void GPUSum(GPUStatus* cudaInterface,int size, double *x, int inc, double *out);
 void GPUaxpy(GPUStatus* cudaInterface, int n, double* alpha, double * x, int incx, double * y, int incy);
 void GPUcopy(GPUStatus* cudaInterface,int n, double * x, int incx, double *y, int incy);
 void GPUScale(GPUStatus* cudaInterface, int n, const double *alpha, double *x, int incx);

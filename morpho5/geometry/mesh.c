@@ -1044,7 +1044,7 @@ bool mesh_copyverttogpu(objectmesh *m){
         m->gpu_vert = object_newgpumatrix(m->vert->nrows,m->vert->ncols,false);
         mesh_link(m, (object*) m->gpu_vert);
     }
-    GPUcopy_to_device(m->gpu_vert->status, m->gpu_vert->elements,m->vert->elements,sizeof(double)*m->vert->ncols*m->vert->nrows);
+    GPUcopy_to_device(m->gpu_vert->status, m->gpu_vert->elements,0,m->vert->elements,sizeof(double)*m->vert->ncols*m->vert->nrows);
     return true;
 }
 
@@ -1053,7 +1053,7 @@ bool mesh_copyvertfromgpu(objectmesh *m) {
     bool ret = false;
     if (m->gpu_vert) {
         if (m->gpu_vert->ncols==m->vert->ncols || m->gpu_vert->nrows == m->vert->nrows) {
-            GPUcopy_to_host(m->gpu_vert->status, m->vert->elements,m->gpu_vert->elements,sizeof(double)*m->vert->ncols*m->vert->nrows);
+            GPUcopy_to_host(m->gpu_vert->status, m->vert->elements,m->gpu_vert->elements,0,sizeof(double)*m->vert->ncols*m->vert->nrows);
             ret = true;
         }
     }

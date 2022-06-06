@@ -29,7 +29,11 @@
 objecttype objectgpumatrixtype;
 /** Function object definitions */
 size_t objectgpumatrix_sizefn(object *obj) {
+    #ifdef OPENCL_ACC
+    return sizeof(objectgpumatrix) + sizeof(cl_mem);
+    #else
     return sizeof(objectgpumatrix);
+    #endif
 }
 
 void objectgpumatrix_printfn(object *obj) {
@@ -143,7 +147,7 @@ bool gpumatrix_setelementfromval(objectgpumatrix *a, int ind, value val) {
     if (morpho_isnumber(val)) {
         double v;
         morpho_valuetofloat(val, &v);
-        GPUcopy_to_device(a->status,&a->elements[ind],&v,sizeof(double));
+        GPUcopy_to_device(a->status,a->elements,sizeof(double)*ind,&v,sizeof(double));
     } else if (!MORPHO_ISNIL(val)) {
         return false;
     }
@@ -221,7 +225,7 @@ objectgpumatrix *object_gpumatrixfromfloats(unsigned int nrows, unsigned int nco
     objectgpumatrix *ret=NULL;
     
     ret=object_newgpumatrix(nrows, ncols, true);
-    if (ret) GPUcopy_to_device(ret->status,ret->elements,list,nrows*ncols*sizeof(double));
+    if (ret) GPUcopy_to_device(ret->status,ret->elements,0,list,nrows*ncols*sizeof(double));
     
     return ret;
 }
@@ -236,7 +240,7 @@ objectgpumatrix *object_gpumatrixfrommatrix(objectmatrix* in) {
 objectmatrix *object_matrixfromgpumatrix(objectgpumatrix* in){
     objectmatrix *ret = NULL;
     ret = object_newmatrix(in->nrows,in->ncols,0);
-    if (ret) GPUcopy_to_host(in->status,ret->elements,in->elements,sizeof(double)*in->nrows*in->ncols);
+    if (ret) GPUcopy_to_host(in->status,ret->elements,in->elements,0,sizeof(double)*in->nrows*in->ncols);
     
     return ret;
 }
@@ -262,7 +266,7 @@ objectgpumatrix *object_clonegpumatrix(objectgpumatrix *in) {
 bool gpumatrix_setelement(objectgpumatrix *gpumatrix, unsigned int row, unsigned int col, double value) {
     if (col<gpumatrix->ncols && row<gpumatrix->nrows) {
         
-        GPUcopy_to_device(gpumatrix->status,&gpumatrix->elements[col*gpumatrix->nrows+row],&value,sizeof(double));
+        GPUcopy_to_device(gpumatrix->status,gpumatrix->elements,sizeof(double)*(col*gpumatrix->nrows+row),&value,sizeof(double));
         return true;
     }
     return false;
@@ -272,7 +276,7 @@ bool gpumatrix_setelement(objectgpumatrix *gpumatrix, unsigned int row, unsigned
  *  @returns true if the element is in the range of the gpumatrix, false otherwise */
 bool gpumatrix_getelement(objectgpumatrix *gpumatrix, unsigned int row, unsigned int col, double *value) {
     if (col<gpumatrix->ncols && row<gpumatrix->nrows) {
-        if (value) GPUcopy_to_host(gpumatrix->status,value,&gpumatrix->elements[col*gpumatrix->nrows+row],sizeof(double));
+        if (value) GPUcopy_to_host(gpumatrix->status,value,gpumatrix->elements,sizeof(double)*(col*gpumatrix->nrows+row),sizeof(double));
         return true;
     }
     return false;
@@ -413,7 +417,7 @@ static objectgpumatrixerror gpumatrix_div(objectgpumatrix *a, objectgpumatrix *b
     int *devInfo = NULL;
     GPUallocate(a->status,(void**)&devInfo,sizeof(int));
     GPUgetrf(a->status,n,a->ncols,lu,n,devPivot,devInfo);
-    GPUcopy_to_host(a->status,&info,devInfo,sizeof(int));
+    GPUcopy_to_host(a->status,&info,devInfo,0,sizeof(int));
     if (info!=0) {
         GPUdeallocate(a->status,devInfo);
         return (info>0 ? GPUMATRIX_SING : GPUMATRIX_INVLD);
@@ -421,7 +425,7 @@ static objectgpumatrixerror gpumatrix_div(objectgpumatrix *a, objectgpumatrix *b
     
     //make a temp idenity matrix
     GPUgetrs(out->status,n,nrhs,lu,a->ncols,devPivot,out->elements,out->nrows,devInfo);
-    GPUcopy_to_host(a->status,&info,devInfo,sizeof(int));
+    GPUcopy_to_host(a->status,&info,devInfo,0,sizeof(int));
     GPUdeallocate(a->status,devInfo);
     return (info==0 ? GPUMATRIX_OK : (info>0 ? GPUMATRIX_SING : GPUMATRIX_INVLD));
 }
@@ -499,14 +503,8 @@ objectgpumatrixerror gpumatrix_inverse(objectgpumatrix *a, objectgpumatrix *out)
 //TODO: MAKE THIS A BETTER SUM
 double gpumatrix_sum(objectgpumatrix *a) {
     unsigned int nel=a->ncols*a->nrows;
-    double sum=0.0, c=0.0, y,t;
-    
-    double *GPUone;
-    double one = 1.0;
-    GPUallocate(a->status,(void **)&GPUone,sizeof(double));
-    GPUcopy_to_device(a->status,GPUone,&one,sizeof(double));
-    GPUdot(a->status,a->nrows*a->ncols, a->elements,1, GPUone, 0, &sum);
-    GPUdeallocate(a->status,GPUone);
+    double sum=0.0;
+    GPUSum(a->status,nel,a->elements,1,&sum);
     return sum;
 }
 
@@ -529,13 +527,7 @@ objectgpumatrixerror gpumatrix_transpose(objectgpumatrix *a, objectgpumatrix *ou
 /** Calculate the trace of a gpumatrix */
 objectgpumatrixerror gpumatrix_trace(objectgpumatrix *a, double *out) {
     if (a->nrows!=a->ncols) return GPUMATRIX_NSQ;
-    double *GPUone;
-    double one = 1.0;
-    GPUallocate(a->status,(void **)&GPUone,sizeof(double));
-    GPUcopy_to_device(a->status,GPUone,&one,sizeof(double));
-    GPUdot(a->status,a->nrows, a->elements,a->ncols+1, GPUone, 0, out);
-    GPUdeallocate(a->status,GPUone);
-    
+    GPUSum(a->status,a->nrows,a->elements,a->nrows+1,out);    
     return GPUMATRIX_OK;
 }
 
@@ -554,7 +546,7 @@ objectgpumatrixerror gpumatrix_identity(objectgpumatrix *a) {
     double one = 1.0;
 
     GPUallocate(a->status,(void**)&GPUone,sizeof(double));
-    GPUcopy_to_device(a->status,GPUone,&one,sizeof(double));
+    GPUcopy_to_device(a->status,GPUone,0,&one,sizeof(double));
     GPUcopy(a->status,a->nrows, a->elements,a->ncols+1, GPUone, 0);
     GPUdeallocate(a->status,GPUone);
 
@@ -596,7 +588,7 @@ bool gpumatrix_setcolumn(objectgpumatrix *matrix, unsigned int col, double *v) {
 /** Prints a gpumatrix */
 void gpumatrix_print(objectgpumatrix *m) {
     double elements[m->nrows*m->ncols];
-    GPUcopy_to_host(m->status,elements,m->elements,sizeof(double)*m->nrows*m->ncols);
+    GPUcopy_to_host(m->status,elements,m->elements,0,sizeof(double)*m->nrows*m->ncols);
     for (int i=0; i<m->nrows; i++) { // Rows run from 0...m
         printf("[ ");
         for (int j=0; j<m->ncols; j++) { // Columns run from 0...k

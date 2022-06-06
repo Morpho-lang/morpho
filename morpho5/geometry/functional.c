@@ -260,7 +260,7 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
         if (s) {
             objectgpusparse_light temp_s = *(objectgpusparse_light*)((void*)s+sizeof(object));
             GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
-            GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,&temp_s,sizeof(objectgpusparse_light));
+            GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,0,&temp_s,sizeof(objectgpusparse_light));
         }
 
         GPUcall_functional(mesh->gpu_vert->status,mesh->gpu_vert->elements,mesh->dim,gpu_s,g,n,info->gpu_integrand,new->elements);
@@ -361,7 +361,7 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
         if (s) {
             objectgpusparse_light temp_s = *(objectgpusparse_light*)((void*)s+sizeof(object));
             GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
-            GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,&temp_s,sizeof(objectgpusparse_light));
+            GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,0,&temp_s,sizeof(objectgpusparse_light));
         }
 
 
@@ -467,7 +467,7 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
         if (s) {
             objectgpusparse_light temp_s = *(objectgpusparse_light*)((void*)s+sizeof(object));
             GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
-            GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,&temp_s,sizeof(objectgpusparse_light));
+            GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,0,&temp_s,sizeof(objectgpusparse_light));
         }
         objectgpumatrix *frc = object_newgpumatrix(mesh->vert->nrows,mesh->vert->ncols,true);
         if (!frc) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }

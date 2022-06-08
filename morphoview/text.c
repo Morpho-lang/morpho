@@ -207,6 +207,14 @@ bool text_skylinesinsert(textskyline *skyline, int width, int height, int *x, in
     return false;
 }
 
+/** Tries to extend a skyline */
+bool text_skylineextend(textskyline *skyline, int height) {
+    int extend = height;
+    if (extend<TEXT_DEFAULTHEIGHT) extend = TEXT_DEFAULTHEIGHT;
+    skyline->height+=extend;
+    return true;
+}
+
 /* -------------------------------------------------------
  * Creating the texture
  * ------------------------------------------------------- */
@@ -315,10 +323,14 @@ bool text_addcharacter(textfont *font, int code) {
     glyph.bearingx=font->face->glyph->bitmap_left;
     glyph.bearingy=font->face->glyph->bitmap_top;
     glyph.advance=(unsigned int) font->face->glyph->advance.x;
+    
     /* Allocate space in the texture */
-    if (!text_skylinesinsert(&font->skyline, glyph.width+1, glyph.height+1, &glyph.x, &glyph.y)) {
-        printf("Could not allocate space in font texture atlas.\n");
-        return false;
+    while (!text_skylinesinsert(&font->skyline, glyph.width+1, glyph.height+1, &glyph.x, &glyph.y)) {
+        
+        if (!text_skylineextend(&font->skyline, glyph.height+1)) {
+            printf("Could not allocate space in font texture atlas.\n");
+            return false;
+        }
     }
     
     varray_textglyphwrite(&font->glyphs, glyph);

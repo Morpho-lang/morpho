@@ -265,6 +265,7 @@ void text_fontinit(textfont *font, int width) {
     text_skylineinit(&font->skyline, width, width*3/4);
     varray_textglyphinit(&font->glyphs);
     font->texturedata=NULL;
+    font->size=0.0; 
 }
 
 /** Clears a font structure */
@@ -279,7 +280,7 @@ void text_fontclear(textfont *font) {
 
 /* Opens a font
  * @param[in] file - Font file
- * @param[in] size - Font size
+ * @param[in] size - Font size in pixels
  * @param[out] font - Font record filled out
  * @returns true on success */
 bool text_openfont(char *file, int size, textfont *font) {

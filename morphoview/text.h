@@ -54,6 +54,8 @@ DECLARE_VARRAY(textglyph, textglyph);
 typedef struct {
     FT_Face face;
     
+    float size; // Nominal size in pts 
+    
     textskyline skyline;
     varray_textglyph glyphs;
     

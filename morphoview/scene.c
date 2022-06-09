@@ -95,13 +95,21 @@ int scene_addelement(gobject *obj, gelement *el) {
     return obj->elements.count-1;
 }
 
-/** Adds a font to a scene */
+/** Adds a font to a scene
+ @param[in] s - The scene
+ @param[in] id - font id
+ @param[in] file - font file to open
+ @param[in] size - in points
+ @param[out] fontindx - index to refer to this */
 bool scene_addfont(scene *s, int id, char *file, float size, int *fontindx) {
     gfont font;
     
     font.id=id;
     text_fontinit(&font.font, TEXT_DEFAULTWIDTH);
-    if (text_openfont(file, (int) size, &font.font)) {
+    
+    int sizepx = (int) (size / 72.0 * 720.0) /* in pts / points per inch * DPI */;
+    
+    if (text_openfont(file, sizepx, &font.font)) {
         varray_gfontwrite(&s->fontlist, font);
         if (fontindx) *fontindx = s->fontlist.count-1;
         return true;

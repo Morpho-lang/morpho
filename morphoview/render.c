@@ -313,10 +313,12 @@ void render_preparetext(renderer *r, scene *s, gdraw *drw, GLuint *carray) {
 /** Draws a text element */
 void render_rendertext(renderer *r, int rfontid, char *text) {
     textglyph glyph;
-    float x=0.0, y=0.0, z=0.0, scale = 1.0/72.0/2.0;
+    float x=0.0, y=0.0, z=0.0;
     
     renderfont *font = &r->fonts.data[rfontid];
     
+    float scale = 1.0/720.0;
+
     glBindTexture(GL_TEXTURE_2D, font->texture);
     
     for (char *c = text, *next; *c!='\0'; c=next) {

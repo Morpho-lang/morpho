@@ -18,6 +18,11 @@ Documentation is available on [readthedocs](https://morpho-lang.readthedocs.io/e
 
 Morpho can be installed as follows:
 
+- [macOS](#macos)
+- [macOS M1](#macos-m1)
+- [Unix and Linux](#unix-and-linux)
+- [Windows](#windows-via-windows-subsystem-for-linux-wsl)
+
 ### macOS
 **If you have a laptop with an [M1 chip](https://atozapplesilicon.com/how-to-check-if-your-mac-has-m1-chip/#:~:text=Tap%20on%20the%20Apple%20menu,that%20replace%20the%20Intel%20processor) please use the [macOS M1](#macos-m1) instuctions.**
 

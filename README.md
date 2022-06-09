@@ -18,7 +18,13 @@ Documentation is available on [readthedocs](https://morpho-lang.readthedocs.io/e
 
 Morpho can be installed as follows:
 
+- [macOS](#macos)
+- [macOS M1](#macos-m1)
+- [Unix and Linux](#unix-and-linux)
+- [Windows](#windows-via-windows-subsystem-for-linux-wsl)
+
 ### macOS
+**If you have a laptop with an [M1 chip](https://atozapplesilicon.com/how-to-check-if-your-mac-has-m1-chip/#:~:text=Tap%20on%20the%20Apple%20menu,that%20replace%20the%20Intel%20processor) please use the [macOS M1](#macos-m1) instuctions.**
 
 1. Install the [Homebrew](https://brew.sh) package manager, following instructions on the homebrew site.
 
@@ -52,6 +58,51 @@ make install
 cd ../morphoview
 
 make install
+```
+
+(Some users may need to use `sudo make install`)
+
+6. Check that the application works by typing
+
+```
+morpho5
+```
+
+
+### macOS M1
+
+1. Install the [Homebrew](https://brew.sh) package manager, following instructions on the homebrew site.
+
+2. Install dependencies. Open the Terminal application and type:
+
+```
+brew update
+
+brew install glfw suite-sparse
+```
+
+3. Obtain the source by cloning this repository:
+
+```
+git clone https://github.com/Morpho-lang/morpho.git
+```
+
+4. Navigate to the `morpho5` folder within the downloaded repository and build the application:
+
+```
+cd morpho/morpho5
+
+make -f Makefile.m1 install
+```
+
+(Some users may need to use `sudo make install`)
+
+5. Navigate to the `morphoview` folder and build the viewer application:
+
+```
+cd ../morphoview
+
+make -f Makefile.m1 install
 ```
 
 (Some users may need to use `sudo make install`)
@@ -200,12 +251,11 @@ Tell ubuntu which display to use
 export DISPLAY=localhost:0
 ```
 
-To set the DISPLAY variable on launch add the line
-```
-DISPLAY=localhost:0
-```
-to ~/.bashrc
+To set the DISPLAY variable on login type
 
+```
+echo export DISPLAY=localhost:0 >> ~/.bashrc
+```
 
 Test that the window system is working
 ```

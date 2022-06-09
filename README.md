@@ -102,7 +102,7 @@ make -f Makefile.m1 install
 ```
 cd ../morphoview
 
-make install
+make -f Makefile.m1 install
 ```
 
 (Some users may need to use `sudo make install`)

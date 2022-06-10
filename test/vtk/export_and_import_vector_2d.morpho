@@ -1,4 +1,5 @@
-// Testing whether exporting and importing a vector field works 
+// Testing whether exporting and importing a 2D vector field works. This
+// should add a 0 in the z component of the vector in the saved file. 
 
 import vtk
 import meshtools

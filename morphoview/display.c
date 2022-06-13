@@ -71,6 +71,7 @@ static void display_framebuffersizecallback(windowref *window, int width, int he
     d->aspectRatio=(float) width/(float) height;
     //glViewport(0, 0, width, height);
     d->width = (float) width;
+    glViewport(0, 0, width, height);
 }
 
 /** Keypress callback function */

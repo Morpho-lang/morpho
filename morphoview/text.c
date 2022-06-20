@@ -128,12 +128,29 @@ void text_skylineclear(textskyline *skyline) {
     varray_textskylineentryclear(&skyline->skyline);
 }
 
-/** Check if a skyline entry can fit a rectangle, looking  */
+/** Check if a skyline entry can fit a rectangle, looking right */
 bool text_skylinetestfit(textskyline *skyline, int start, int width, int ypos) {
     int w = width;
     for (int i=start; i!=TEXTSKYLINE_EMPTY && i<skyline->skyline.count; i=skyline->skyline.data[i].next) {
         textskylineentry *e = skyline->skyline.data+i;
         if (e->ypos>ypos) break; // Stop if the next rectangle is taller
+        if (w<=e->width) return true; // We can fit the remaining width
+        w-=e->width;
+    }
+    return false;
+}
+
+/** Scans right, finding the necessary vertical placement to fit a rectangle
+ * @param[in] skyline - skyline data structure
+ * @param[in] start - starting index
+ * @param[in] width - width of rectangle to fit
+ * @param[in,out] ypos - vertical position to fit; updated to give the minimum vertical position to fit this rectangle
+ * @returns true on success (the rectangle could be fit at this location)   */
+bool text_skylineforcefit(textskyline *skyline, int start, int width, int *ypos) {
+    int w = width;
+    for (int i=start; i!=TEXTSKYLINE_EMPTY && i<skyline->skyline.count; i=skyline->skyline.data[i].next) {
+        textskylineentry *e = skyline->skyline.data+i;
+        if (e->ypos>*ypos) *ypos = e->ypos; // Push ypos up if the next rectangle is taller.
         if (w<=e->width) return true; // We can fit the remaining width
         w-=e->width;
     }
@@ -186,15 +203,21 @@ bool text_skylinefit(textskyline *skyline, int start, int width, int height, int
  * @param[out] y - bottom left y
  * @returns true if the rectangle has been successfully inserted, false if there's no more room */
 bool text_skylinesinsert(textskyline *skyline, int width, int height, int *x, int *y) {
-    int best=0, bxpos=0, bypos=skyline->height; // Start with maximum possible height
+    int best=-1, bxpos=0, bypos=skyline->height; // Start with maximum possible height
     
-    /* Locate the lowest point that can accomodate the rectangle */
-    for (int i=0; i<skyline->skyline.count; i++) {
+    /* Generate feasible space by looking right at each point */
+    for (int i=0; i!=TEXTSKYLINE_EMPTY && i<skyline->skyline.count; i=skyline->skyline.data[i].next) {
+        
         textskylineentry *e = &skyline->skyline.data[i];
         if (e->xpos<0) continue;
     
         if (text_skylinetestfit(skyline, i, width, e->ypos) && e->ypos<bypos) {
             best = i; bypos = e->ypos; bxpos = e->xpos;
+        } else { // Try force fitting the rectangle if it doesn't fit
+            int ypos = e->ypos;
+            if (text_skylineforcefit(skyline, i, width, &ypos) && ypos<bypos) {
+                best = i; bypos = ypos; bxpos = e->xpos;
+            }
         }
     }
     
@@ -221,6 +244,7 @@ bool text_skylineextend(textskyline *skyline, int height) {
 
 /** Allocates a texture of correct size */
 bool text_allocatetexture(textfont *font) {
+    
     size_t size = font->skyline.width*font->skyline.height;
     font->texturedata=malloc(sizeof(char)*size);
     if (font->texturedata) memset(font->texturedata, 0, size);
@@ -265,7 +289,6 @@ void text_fontinit(textfont *font, int width) {
     text_skylineinit(&font->skyline, width, width*3/4);
     varray_textglyphinit(&font->glyphs);
     font->texturedata=NULL;
-    font->size=0.0; 
 }
 
 /** Clears a font structure */

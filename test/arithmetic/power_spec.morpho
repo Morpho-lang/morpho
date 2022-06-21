@@ -1,0 +1,24 @@
+import unittest
+class power_spec is unit_test {
+    integer_raised_to_an_integer(){
+        self.assertEquals(2^2,4)
+    }
+    float_raised_to_an_integer(){
+        self.assertEquals(2.0^3,8)
+    }
+    integer_raised_to_a_float(){
+        self.assertEquals(2^3.0, 8)
+    }
+    float_raised_to_a_float(){
+        self.assertEquals(2.0^3.0, 8 )
+    }
+    exponet_binds_before_uminus(){
+        self.assertEquals(-1^2, -1)
+        var x = -1
+        self.assertEquals(x^2, 1)
+        self.assertEquals((-1)^2, 1)
+    }
+    higher_exponents_happen_first(){
+        self.assertEquals(2^3^2, 512)
+    }
+} power_spec()

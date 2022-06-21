@@ -14,7 +14,7 @@
 
 class unit_test {
     init(){
-        self.tol = 1e-10 // tolerance for float comparison
+        self.tolDefault = 1e-10 // tolerance for float comparison
         self.run()
     }
     run(){
@@ -25,7 +25,7 @@ class unit_test {
         var listOfMethods = self.respondsto()
         // remove common methods
         var commonMethods = [ "init","runTest","assert","run","setindex", "clone", "index", "count", "prnt", "invoke", "clss", "serialize", "respondsto", "has", "superclass", "enumerate" ]
-        var assertMethods = ["assertListEqual", "assertArrayEqual", "assertMatrixEqual", "assertSparseEqual", "assertIntEqual", "assertFloatEqual", "assertMeshEqual", "assertSelectionEqual", "assertFieldEqual", "assertDictionayEqual", "assertRangeEqual", "assertStringEqual", "assertBoolEqual", "assertObjectEqual", "failAssertion","assertProperites","assertDimensions","assertSetEqualityOfList","assertDeepEqual","assertEquals"]
+        var assertMethods = ["assertListEqual", "assertArrayEqual", "assertMatrixEqual", "assertSparseEqual", "assertIntEqual", "assertFloatEqual", "assertMeshEqual", "assertSelectionEqual", "assertFieldEqual", "assertDictionayEqual", "assertRangeEqual", "assertStringEqual", "assertBoolEqual", "assertObjectEqual", "failAssertion","assertProperites","assertDimensions","assertSetEqualityOfList","assertDeepEqual","assertEqual"]
         var fixtureName = "fixture"
         var hasfixture = false
         if (self.respondsto(fixtureName)) {
@@ -41,6 +41,7 @@ class unit_test {
         self.failures = 0
         self.failedTests = []
         for (method in listOfMethods) {
+            self.tol = self.tolDefault
             if (hasfixture) self.invoke(fixtureName)
             self.runTest(method) 
         }
@@ -53,7 +54,7 @@ class unit_test {
         } else {
             print "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
             for (test in self.failedTests){
-                print " ${self.clss()}:test FAILED"
+                print " ${test}: FAILED"
             }
             print "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
         }
@@ -65,7 +66,7 @@ class unit_test {
         try {
             print "Running test ${method}:"
             self.invoke(method) // try running the method
-            if (self.passing) print "Passed"
+            if (self.passing && !self.assumeFail) print "Passed"
             if (self.assumeFail) print "Assumed Fail: ${self.assumeFail}"
             self.passed = true
         }
@@ -84,15 +85,13 @@ class unit_test {
     }
     assert(value){
         if (!value){
-            print "Assertion Failed"
-            self.passing = false
+            self.failAssertion("Assertion Failed")
+            return false
         }
+        return true
     }
-    assertEquals(v1,v2) {
-        if(v1!=v2 && !self.assertDeepEqual(v1,v2)) {
-            print "Assert Equal failed ${v1} != ${v2}"
-            self.passing = false
-        }
+    assertEqual(v1,v2) {
+        if(v1!=v2) self.assertDeepEqual(v1,v2)
     }
 
     assertDeepEqual(v1,v2) {
@@ -134,14 +133,16 @@ class unit_test {
         }
     }
     failAssertion(message) {
-        print message
-        self.passing = false
+        if (!self.assumeFail) {
+            print message
+            self.passing = false
+        }
     }
     assertListEqual(v1,v2,quiet = false) {
         var reason
         if (v1.count()!=v2.count()) {
             if (!quiet) {
-                self.failAssertion("Assertion Failed: Lists have differnt number of elements")
+                self.failAssertion("Assertion Failed: Lists have different number of elements")
             }
             return false
         }
@@ -152,8 +153,7 @@ class unit_test {
     }
     assertDimensions(v1,v2) {
         if (!self.assertListEqual(v1.dimensions(), v2.dimensions(),quiet = true)) {
-            print "Assertion Failed: Objects have differnt dimensions"
-            self.passing = false
+            self.failAssertion("Assertion Failed: Objects have different dimensions")
             return false
         }
         return true
@@ -179,7 +179,7 @@ class unit_test {
         if (!self.assertSetEqualityOfList(v1.indices(),v2.indices())) return false
         for (ind in v1.indices()) {
             if(!self.assertDeepEqual(v1[ind[0],ind[1]],v2[ind[0],ind[1]])) {
-                self.failAssertion("Spares Matrix elementes at ${ind} have differnt values")
+                self.failAssertion("Spares Matrix elementes at ${ind} have different values")
                 return false
             }
         }
@@ -188,14 +188,13 @@ class unit_test {
     }
     assertIntEqual(v1,v2) {
         if (v1!=v2) {
-            self.passing = false
-            print "Assertion Failed ${v1} != ${v2}"
+            self.failAssertion("Assertion Failed ${v1} != ${v2}")
             return false
         }
     }
     assertFloatEqual(v1,v2) {
         if (abs(v1-v2)>self.tol) {
-            self.failAssertion("Assertion Failed ${v1} != ${v2}, differencs is ${abs(v1-v2)} which is above the tolerance of ${self.tol}")
+            self.failAssertion("Assertion Failed ${v1} != ${v2}, difference is ${abs(v1-v2)} which is above the tolerance of ${self.tol}")
             return false
         }
         return true
@@ -206,19 +205,19 @@ class unit_test {
             return false
         }
         // check connectivity equality
-        if (!self.assertEquals(v1.maxgrade(),v2.maxgrade())) return false
+        if (!self.assertEqual(v1.maxgrade(),v2.maxgrade())) return false
         for (i in 1...v1.maxgrade()) {
             // only need to check vertex-higher grade because this contains all the information
-            if (!self.assertEquals(v1.connectivitymatrix(0,i),v2.connectivitymatrix(0,i))) return false;
+            if (!self.assertEqual(v1.connectivitymatrix(0,i),v2.connectivitymatrix(0,i))) return false;
         }
         return true
 
     }
     assertSelectionEqual(v1,v2) { 
-        if (!self.assertEquals(v1.maxgrade(),v2.maxgrade())) return false
+        if (!self.assertEqual(v1.maxgrade(),v2.maxgrade())) return false
 
         for (i in 0...v1.maxgrade()) {
-            if (!self.assertEquals(v1.idlistforgrade(i),v2.idlistforgrade(i))) return false
+            if (!self.assertEqual(v1.idlistforgrade(i),v2.idlistforgrade(i))) return false
         }
         return true
         
@@ -244,7 +243,7 @@ class unit_test {
         // will do set equality on lists of lists 
         if (v1.count()!=v2.count()) {
             if (!quiet) {
-                self.failAssertion("Assertion Failed: Lists have differnt number of elements")
+                self.failAssertion("Assertion Failed: Lists have different number of elements")
             }
             return false
         }
@@ -279,7 +278,7 @@ class unit_test {
     }
     assertDictionayEqual(v1,v2) {
         if (!self.assertSetEqualityOfList(v1.keys(),v2.keys())) {
-            self.failAssertion("Assertion Failed: Dictionaries have differnt keys")
+            self.failAssertion("Assertion Failed: Dictionaries have different keys")
         }
         for (key in v1.keys()) {
             if (!self.assertDeepEqual(v1[key],v2[key])) {
@@ -292,16 +291,16 @@ class unit_test {
     assertRangeEqual(v1,v2) {
         // if ranges have the same count, the same begining and the same incrment they are the same
         if (v1.count()!=v2.count()) {
-            self.failAssertion("Asseration Failed: Ranges have differnt number of elements")
+            self.failAssertion("Asseration Failed: Ranges have different number of elements")
             return false
         }
         if (!self.assertDeepEqual(v1.enumerate(0),v2.enumerate(0))) {
-            self.failAssertion("Assert Failed: Ranges have differnt start elements")
+            self.failAssertion("Assert Failed: Ranges have different start elements")
             return false
         }
         if (v1.count()>1) {
             if (!self.assertDeepEqual(v1.enumerate(1)-v1.enumerate(0),v2.enumerate(1)-v2.enumerate(0))) {
-                self.failAssertion("Assert Failed: Ranges have differnt increments")
+                self.failAssertion("Assert Failed: Ranges have different increments")
                 return false
             }
         }
@@ -311,14 +310,14 @@ class unit_test {
     }
     assertStringEqual(v1,v2) {
         if (v1 != v2) {
-            print "Assertion Failed: strings are ${v1} and ${v2}"
+            self.failAssertion("Assertion Failed: strings are ${v1} and ${v2}")
             return false
         }
         return true
     }
     assertBoolEqual(v1,v2) {
         if (v1 != v2) {
-            print "Assertion Failed: bools are ${v1} and ${v2}"
+            self.failAssertion("Assertion Failed: bools are ${v1} and ${v2}")
             return false
         }
         return true
@@ -326,8 +325,7 @@ class unit_test {
 
     assertProperites(v1,v2) {
         if (!self.assertListEqual(v1.has(), v2.has(),quiet = true)) {
-            print "Assertion Failed: Objects have differnt properites"
-            self.passing = false
+            self.failAssertion("Assertion Failed: Objects have different properites")
             return false
         }
         return true
@@ -339,7 +337,7 @@ class unit_test {
 
         for (prop in v1.has()) {
             if (!self.assertDeepEqual(v1[prop],v2[prop])) {
-                print "Property ${prop} not equal"
+                self.failAssertion("Property ${prop} not equal")
                 return false
             }
         }

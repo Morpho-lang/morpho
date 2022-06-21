@@ -202,7 +202,7 @@ void GPUSum(GPUStatus* cudaInterface,int size, double *x, int inc, double *out) 
     double *GPUone;
     double one = 1.0;
     GPUallocate(cudaInterface,(void **)&GPUone,sizeof(double));
-    GPUcopy_to_device(openCLInterface,GPUone,0,&one,sizeof(double));
+    GPUcopy_to_device(cudaInterface,GPUone,0,&one,sizeof(double));
     GPUdot(cudaInterface,size, x ,inc, GPUone, 0, out);
     GPUdeallocate(cudaInterface,GPUone);
 }

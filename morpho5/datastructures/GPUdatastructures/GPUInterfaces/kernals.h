@@ -338,8 +338,9 @@ KERNAL_PREFIX void functionalGradEval(double* verts, int dim, objectgpusparse_li
     }
 }
 #else
-KERNAL_PREFIX void functionalIntegrandEval(GLOBAL_PREFIX double* verts, int dim,GLOBAL_PREFIX objectgpusparse_light *s,\
+KERNAL_PREFIX void functionalIntegrandEval(GLOBAL_PREFIX double* verts, int dim,GLOBAL_PREFIX  *s,\
                       int nelements,int integrandNo,GLOBAL_PREFIX double* out){
+                          objectgpusparse_light
     // calculate contribution from element i
     int i = GETID;
     if (i<nelements){

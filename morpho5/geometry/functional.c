@@ -358,16 +358,15 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
         objectgpusparse *s=NULL;
         objectgpusparse_light *gpu_s=NULL;
         if (!functional_gpu_countelements(v, mesh, g, &n, &s)) return false;
-        if (s) {
-            objectgpusparse_light temp_s = *(objectgpusparse_light*)((void*)s+sizeof(object));
-            GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
-            GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,0,&temp_s,sizeof(objectgpusparse_light));
-        }
+        // if (s) {
+        //     GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
+        //     GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,sizeof(object),&s,sizeof(objectgpusparse_light));
+        // }
 
 
         objectgpumatrix *new = object_newgpumatrix(1,n,true);
         if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
-        GPUcall_functional(mesh->gpu_vert->status,mesh->gpu_vert->elements,mesh->dim,gpu_s,g,n,info->gpu_integrand,new->elements);
+        GPUcall_functional(mesh->gpu_vert->status,mesh->gpu_vert->elements,mesh->dim,s,g,n,info->gpu_integrand,new->elements);
         if (s) {
             GPUdeallocate(mesh->gpu_vert->status,gpu_s);
         }

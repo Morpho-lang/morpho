@@ -1,8 +1,5 @@
 import unittest
 class power_spec is unit_test {
-    fixture(){
-        self.myNumber = 3
-    }
     integer_raised_to_an_integer(){
         self.assertEqual(2^2,4)
     }
@@ -13,7 +10,7 @@ class power_spec is unit_test {
         self.assertEqual(2^3.0, 8)
     }
     float_raised_to_a_float(){
-        self.assertEqual(2.0^3.0, 8 )
+        self.assertEqual(2.0^3.0, 8)
     }
     exponent_binds_before_uminus(){
         self.assertEqual(-1^2, -1)
@@ -23,12 +20,5 @@ class power_spec is unit_test {
     }
     higher_exponents_happen_first(){
         self.assertEqual(2^3^2, 512)
-    }
-    variable_to_exponent(){
-        self.assertEqual(self.myNumber^self.myNumber,27)
-    }
-    assume_failure(){
-        // self.assumeFail = "Example Reason"
-        self.assertEqual(2^3,7)
     }
 } power_spec()

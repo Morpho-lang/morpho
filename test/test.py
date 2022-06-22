@@ -113,6 +113,48 @@ def getoutput(filepath):
     # and remove them
     return list(filter(lambda x: x!=stk, lines))
 
+def gettesttype(file):
+    # check if first line is the test header 
+    file_object = open(file, 'r')
+    lines = file_object.readlines()
+    file_object.close()
+    if len(lines)==0:
+        return False
+    match = rx.search('===================================',lines[0])
+    return (not match is None)
+
+def parseunittestresults(test,tmp,testLog,CI):
+    file_object = open(tmp, 'r')
+    lines = file_object.readlines()
+    file_object.close()
+    
+    # check the last line to see if it indicates a pass
+    match = rx.search('===================================',lines[-1])
+    if match is not None:
+        if not CI:
+            print(test+":", end=" ")
+            print(stylize("Passed",colored.fg("green")))
+        return 1
+    else:
+        # The test has failed, find the failing test and the reason
+        # Find a line beginning with Assertion Failed or Error Encountered
+        # The rest of the line is the reason
+        # The line above is "Running test test_that_failed:"
+
+        if not CI:
+            print(stylize("Failed",colored.fg("red")))
+            print("Test suite:" + test + " failed", file = testLog)
+        else:
+            print("\n::error file = {",test,"}::{",test," Failed}")
+
+        for i in range(len(lines)):
+            reason = rx.findall(r'Assertion Failed (.*)\n', lines[i])
+            if len(reason) > 0:
+                test = rx.findall(r'Running test (.*):',lines[i-1])
+                print("Test "+test[0]+" failed: " + reason[0])
+                print("Test "+test[0]+" failed: " + reason[0],file = testLog)
+        return 0
+
 # Test a file
 def test(file,testLog,CI):
     ret = 0
@@ -123,49 +165,58 @@ def test(file,testLog,CI):
     # Create a temporary file in the same directory
     tmp = file + '.out'
 
-    #Get the expected output
-    expected=getexpect(file)
-
     # Run the test
     os.system(command + ' ' +file + ' > ' + tmp)
 
-    # If we produced output
-    if os.path.exists(tmp):
-        # Get the output
-        out=getoutput(tmp)
+    # Check if this is and expect test or a unittest 
+    usingUnitTest = gettesttype(tmp)
+    
 
-        # Was it expected?
-        if(expected==out):
-            if not CI:
-                print(file+":", end=" ")
-                print(stylize("Passed",colored.fg("green")))
-            ret = 1
-        else:
-            if not CI:
-                print(stylize("Failed",colored.fg("red")))
-                print("  Expected: ", expected)
-                print("    Output: ", out)
+    if usingUnitTest:
+        ret = parseunittestresults(file,tmp,testLog,CI)
+    
+    else:
+
+        #Get the expected output
+        expected=getexpect(file)
+
+        # If we produced output
+        if os.path.exists(tmp):
+            # Get the output
+            out=getoutput(tmp)
+
+            # Was it expected?
+            if(expected==out):
+                if not CI:
+                    print(file+":", end=" ")
+                    print(stylize("Passed",colored.fg("green")))
+                ret = 1
             else:
-                print("\n::error file = {",file,"}::{",file," Failed}")
+                if not CI:
+                    print(stylize("Failed",colored.fg("red")))
+                    print("  Expected: ", expected)
+                    print("    Output: ", out)
+                else:
+                    print("\n::error file = {",file,"}::{",file," Failed}")
 
 
-            #also print to the test log
-            print(file+":", end=" ",file = testLog)
-            print("Failed", file = testLog)
+                #also print to the test log
+                print(file+":", end=" ",file = testLog)
+                print("Failed", file = testLog)
 
-            if len(out) == len(expected):
-                failedTests = list(i for i in range(len(out)) if expected[i] != out[i])
-                print("Tests " + str(failedTests) + " did not match expected results.", file = testLog)
-                for testNum in failedTests:
-                    print("Test "+str(testNum), file = testLog)
-                    print("  Expected: ", expected[testNum], file = testLog)
-                    print("    Output: ", out[testNum], file = testLog)
-            else:
-                print("  Expected: ", expected, file = testLog)
-                print("    Output: ", out, file = testLog)
+                if len(out) == len(expected):
+                    failedTests = list(i for i in range(len(out)) if expected[i] != out[i])
+                    print("Tests " + str(failedTests) + " did not match expected results.", file = testLog)
+                    for testNum in failedTests:
+                        print("Test "+str(testNum), file = testLog)
+                        print("  Expected: ", expected[testNum], file = testLog)
+                        print("    Output: ", out[testNum], file = testLog)
+                else:
+                    print("  Expected: ", expected, file = testLog)
+                    print("    Output: ", out, file = testLog)
 
 
-            print("\n",file = testLog)
+                print("\n",file = testLog)
 
 
         # Delete the temporary file
@@ -180,8 +231,8 @@ print('--Begin testing---------------------')
 success=0 # number of successful tests
 total=0   # total number of tests
 
-# look for a command line arguement that says
-# this is being run for continous integration
+# look for a command line argument that says
+# this is being run for continuos integration
 CI = False
 if (len(sys.argv) > 1):
     CI = sys.argv[1] == '-c'

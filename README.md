@@ -71,6 +71,10 @@ sudo apt install libglfw3
 sudo apt install libsuitesparse-dev
 
 sudo apt install liblapacke-dev
+
+sudo apt install povray
+
+sudo apt install libfreetype-dev libfreetype6 libfreetype6-dev
 ```
 
 3. Obtain the source by cloning this repository:
@@ -137,6 +141,8 @@ sudo apt install libsuitesparse-dev
 sudo apt install liblapacke-dev
 
 sudo apt install povray
+
+sudo apt install libfreetype-dev libfreetype6 libfreetype6-dev
 ```
 
 To build the code you will also need to install build-essentials:

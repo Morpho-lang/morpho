@@ -19,6 +19,9 @@ jobs:
         sudo apt install libglfw3
         sudo apt install libsuitesparse-dev
         sudo apt install liblapacke-dev
+        sudo apt install povray
+        sudo apt install libfreetype-dev libfreetype6 libfreetype6-dev
+
         python -m pip install --upgrade pip
         python -m pip install regex colored
     - name: make 

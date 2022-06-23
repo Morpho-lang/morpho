@@ -46,6 +46,7 @@ objectselection *object_newselection(objectmesh *mesh);
 #define SELECTION_IDLISTFORGRADEMETHOD "idlistforgrade"
 #define SELECTION_ADDGRADEMETHOD "addgrade"
 #define SELECTION_REMOVEGRADEMETHOD "removegrade"
+#define SELECTION_MAXGRADEMETHOD "maxgrade"
 
 #define SELECTION_COMPLEMENTMETHOD "complement"
 
@@ -60,6 +61,9 @@ objectselection *object_newselection(objectmesh *mesh);
 
 #define SELECTION_GRADEARG                   "SlGrdArg"
 #define SELECTION_GRADEARG_MSG               "Method requires a grade as the argument."
+
+#define SELECTION_MAXGRADEARG                   "SlMxGrdArg"
+#define SELECTION_MAXGRADEARG_MSG               "Method expects no arguments."
 
 #define SELECTION_STARG                      "SlStArg"
 #define SELECTION_STARG_MSG                  "Selection set methods require a selection as the argument."

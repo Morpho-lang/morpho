@@ -380,60 +380,66 @@ void GPUgetrs(GPUStatus* openCLInterface, int nrows, int ncolsB, double * A, int
 void GPUcall_functional(GPUStatus* openCLInterface,double* verts, int dim, objectgpusparse_light* conn,\
                       int grade, int nelements,int integrandNo, double* out){
 
-    int *nentries = NULL;
-    int *nrows = NULL;
-    int *ncols = NULL;
-    cl_mem *cptr = NULL;
-    cl_mem *rix = NULL;
-    if (conn) {
-        nentries = &conn->nentries;
-        nrows = &conn->nrows;
-        ncols = &conn->ncols;
-        cptr = (cl_mem*)conn->cptr;
-        rix = (cl_mem*)conn->rix;
-    }
-
-
-    
-    openCLInterface->openCLStatus =  clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 0,sizeof(cl_mem),(cl_mem*)(verts));
-	openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 1,sizeof(int),&dim);
-	openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 2,sizeof(int),&nelements);
-    openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 3,sizeof(int),nentries);
-    openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 4,sizeof(int),nrows);
-    openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 5,sizeof(int),ncols);
-    openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 6,sizeof(cl_mem),cptr);
-    openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 7,sizeof(cl_mem),rix);
-	openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 8,sizeof(int),&integrandNo)
-	openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 9,sizeof(cl_mem),(cl_mem*)out);
-    GPUStatusCheck(openCLInterface,"Call Functional integrand");
-
-    // size_t local = 32;
 	size_t global = nelements;
-    // if (nelements<local) { global = local;}
 
-	openCLInterface->openCLStatus = clEnqueueNDRangeKernel(openCLInterface->commands, openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 1, NULL, &global, NULL, 0, NULL, NULL);
-	clFinish(openCLInterface->commands);
+    if (conn) {
+        int *nentries = &conn->nentries;
+        int *nrows = &conn->nrows;
+        int *ncols = &conn->ncols;
+        cl_mem *cptr = (cl_mem*)conn->cptr;
+        cl_mem *rix = (cl_mem*)conn->rix;
+        openCLInterface->openCLStatus =  clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVALCONN], 0,sizeof(cl_mem),(cl_mem*)(verts));
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVALCONN], 1,sizeof(int),&dim);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVALCONN], 2,sizeof(int),&nelements);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVALCONN], 3,sizeof(int),nentries);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVALCONN], 4,sizeof(int),nrows);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVALCONN], 5,sizeof(int),ncols);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVALCONN], 6,sizeof(cl_mem),cptr);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVALCONN], 7,sizeof(cl_mem),rix);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVALCONN], 8,sizeof(int),&integrandNo);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVALCONN], 9,sizeof(cl_mem),(cl_mem*)out);
+        GPUStatusCheck(openCLInterface,"Call Functional integrand");
+        openCLInterface->openCLStatus = clEnqueueNDRangeKernel(openCLInterface->commands, openCLInterface->kernel_list[GPU_INTEGRANDEVALCONN], 1, NULL, &global, NULL, 0, NULL, NULL);
+	
+    } else {
+        openCLInterface->openCLStatus =  clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 0,sizeof(cl_mem),(cl_mem*)(verts));
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 1,sizeof(int),&dim);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 2,sizeof(int),&nelements);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 3,sizeof(int),&integrandNo);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 4,sizeof(cl_mem),(cl_mem*)out);
+        GPUStatusCheck(openCLInterface,"Call Functional integrand");
+        openCLInterface->openCLStatus = clEnqueueNDRangeKernel(openCLInterface->commands, openCLInterface->kernel_list[GPU_INTEGRANDEVAL], 1, NULL, &global, NULL, 0, NULL, NULL);
+
+
+    }
+    clFinish(openCLInterface->commands);
     GPUStatusCheck(openCLInterface,"Call Functional integrand");
 }
 void GPUcall_functionalgrad(GPUStatus* openCLInterface,double* verts, int dim, objectgpusparse_light* conn,\
                             int grade, int nelements,int gradientNo, double* out) {
-
-    openCLInterface->openCLStatus =  clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 0,sizeof(cl_mem),(cl_mem*)(verts));
-	openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 1,sizeof(int),&dim);
-	openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 2,sizeof(int),&nelements);
-    openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 3,sizeof(int),&conn->nentries);
-    openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 4,sizeof(int),&conn->nrows);
-    openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 5,sizeof(int),&conn->ncols);
-    openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 6,sizeof(cl_mem),&conn->cptr);
-    openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 7,sizeof(cl_mem),&conn->rix);
-	openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 8,sizeof(int),&gradientNo);
-	openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 9,sizeof(cl_mem),(cl_mem*)out);
-
-    // size_t local = 32;
 	size_t global = nelements;
-    // if (nelements<local) { global = local;}
+    // switch between using a connectivity matrix or not
+    if (conn) {
 
-	openCLInterface->openCLStatus = clEnqueueNDRangeKernel(openCLInterface->commands, openCLInterface->kernel_list[GPU_GRADEVAL], 1, NULL, &global, NULL, 0, NULL, NULL);
+        openCLInterface->openCLStatus =  clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVALCONN], 0,sizeof(cl_mem),(cl_mem*)(verts));
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVALCONN], 1,sizeof(int),&dim);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVALCONN], 2,sizeof(int),&nelements);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVALCONN], 3,sizeof(int),&conn->nentries);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVALCONN], 4,sizeof(int),&conn->nrows);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVALCONN], 5,sizeof(int),&conn->ncols);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVALCONN], 6,sizeof(cl_mem),(cl_mem*)conn->cptr);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVALCONN], 7,sizeof(cl_mem),(cl_mem*)conn->rix);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVALCONN], 8,sizeof(int),&gradientNo);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVALCONN], 9,sizeof(cl_mem),(cl_mem*)out);
+        openCLInterface->openCLStatus = clEnqueueNDRangeKernel(openCLInterface->commands, openCLInterface->kernel_list[GPU_GRADEVALCONN], 1, NULL, &global, NULL, 0, NULL, NULL);
+    } else {
+        openCLInterface->openCLStatus =  clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 0,sizeof(cl_mem),(cl_mem*)(verts));
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 1,sizeof(int),&dim);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 2,sizeof(int),&nelements);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 3,sizeof(int),&gradientNo);
+        openCLInterface->openCLStatus |= clSetKernelArg(openCLInterface->kernel_list[GPU_GRADEVAL], 4,sizeof(cl_mem),(cl_mem*)out);
+    	openCLInterface->openCLStatus = clEnqueueNDRangeKernel(openCLInterface->commands, openCLInterface->kernel_list[GPU_GRADEVAL], 1, NULL, &global, NULL, 0, NULL, NULL);
+    }
 	clFinish(openCLInterface->commands);
     GPUStatusCheck(openCLInterface,"Call Functional gradient");
 

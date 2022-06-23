@@ -16,9 +16,9 @@
 #include <stdio.h> 
 #include <math.h>
 
-#define NUMBER_OF_PROGRAMS 4
-#define MORPHO_OPENCL_KERNALS {"ScalarAddition", "transposeDiagonal","functionalIntegrandEval","functionalGradEval"}
-typedef enum {GPU_MATRIXSCALARADDITION, GPU_MATRIXTRANSPOSE,GPU_INTEGRANDEVAL,GPU_GRADEVAL} kernalNum;
+#define NUMBER_OF_PROGRAMS 6
+#define MORPHO_OPENCL_KERNALS {"ScalarAddition", "transposeDiagonal","functionalIntegrandEval","functionalIntegrandEvalConn","functionalGradEval","functionalGradEvalConn"}
+typedef enum {GPU_MATRIXSCALARADDITION, GPU_MATRIXTRANSPOSE,GPU_INTEGRANDEVAL,GPU_INTEGRANDEVALCONN,GPU_GRADEVAL,GPU_GRADEVALCONN} kernalNum;
 
 
 #ifdef __cplusplus

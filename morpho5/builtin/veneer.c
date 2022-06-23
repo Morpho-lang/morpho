@@ -62,8 +62,22 @@ value Object_super(vm *v, int nargs, value *args) {
 value Object_respondsto(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     objectclass *klass=MORPHO_GETINSTANCE(self)->klass;
+    if (nargs == 0) {
+        value out = MORPHO_NIL;
+        objectlist *new = object_newlist(0, NULL);
+        if (new) {
+            list_resize(new, klass->methods.count);
+            for (unsigned int i=0; i<klass->methods.capacity; i++) {
+                if (MORPHO_ISSTRING(klass->methods.contents[i].key)) {
+                    list_append(new, klass->methods.contents[i].key);
+                }
+            }
+            out = MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        return out;
 
-    if (nargs==1 &&
+    } else if (nargs==1 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         return MORPHO_BOOL(dictionary_get(&klass->methods, MORPHO_GETARG(args, 0), NULL));
     } else MORPHO_RAISE(v, RESPONDSTO_ARG);
@@ -74,8 +88,25 @@ value Object_respondsto(vm *v, int nargs, value *args) {
 /** Checks if an object has a property */
 value Object_has(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
+    
 
-    if (nargs==1 &&
+    if (nargs == 0) {
+        value out = MORPHO_NIL;
+        objectlist *new = object_newlist(0, NULL);
+        if (new) {
+            objectinstance *slf = MORPHO_GETINSTANCE(self);
+            list_resize(new, MORPHO_GETINSTANCE(self)->fields.count);
+            for (unsigned int i=0; i<slf->fields.count; i++) {
+                if (MORPHO_ISSTRING(slf->fields.contents[i].key)) {
+                    list_append(new, slf->fields.contents[i].key);
+                }
+            }
+            out = MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        return out;
+
+    } else if (nargs==1 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         return MORPHO_BOOL(dictionary_get(&MORPHO_GETINSTANCE(self)->fields, MORPHO_GETARG(args, 0), NULL));
         

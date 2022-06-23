@@ -257,16 +257,29 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
 
         objectgpumatrix *new = object_newgpumatrix(1,n,true);
         if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
+        // if (s) {
+        //     objectgpusparse_light temp_s = *(objectgpusparse_light*)((void*)s+sizeof(object));
+        //     GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
+        //     GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,0,&temp_s,sizeof(objectgpusparse_light));
+        // }
         if (s) {
+            #ifdef CUDA_ACC
+            // GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
+            // GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,sizeof(object),s,sizeof(objectgpusparse_light));
             objectgpusparse_light temp_s = *(objectgpusparse_light*)((void*)s+sizeof(object));
             GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
             GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,0,&temp_s,sizeof(objectgpusparse_light));
-        }
 
+            #else
+                gpu_s = (objectgpusparse_light*)((void*)s+sizeof(object));
+            #endif
+        }
         GPUcall_functional(mesh->gpu_vert->status,mesh->gpu_vert->elements,mesh->dim,gpu_s,g,n,info->gpu_integrand,new->elements);
+        #ifdef CUDA_ACC
         if (s) {
             GPUdeallocate(mesh->gpu_vert->status,gpu_s);
         }
+        #endif
         double sum = gpumatrix_sum(new);
         objectgpumatrix_freefn((object*)new);
         *out = MORPHO_FLOAT(sum);
@@ -357,19 +370,28 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
         /* Create the output matrix */ 
         objectgpusparse *s=NULL;
         objectgpusparse_light *gpu_s=NULL;
+        
         if (!functional_gpu_countelements(v, mesh, g, &n, &s)) return false;
-        // if (s) {
-        //     GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
-        //     GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,sizeof(object),&s,sizeof(objectgpusparse_light));
-        // }
-
+        
+        
+        if (s) {
+            #ifdef CUDA_ACC
+            objectgpusparse_light temp_s = *(objectgpusparse_light*)((void*)s+sizeof(object));
+            GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
+            GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,0,&temp_s,sizeof(objectgpusparse_light));
+            #else
+                        gpu_s = (objectgpusparse_light*)((void*)s+sizeof(object));
+            #endif
+        }
 
         objectgpumatrix *new = object_newgpumatrix(1,n,true);
         if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
-        GPUcall_functional(mesh->gpu_vert->status,mesh->gpu_vert->elements,mesh->dim,s,g,n,info->gpu_integrand,new->elements);
+        GPUcall_functional(mesh->gpu_vert->status,mesh->gpu_vert->elements,mesh->dim,gpu_s,g,n,info->gpu_integrand,new->elements);
+        #ifdef CUDA_ACC
         if (s) {
             GPUdeallocate(mesh->gpu_vert->status,gpu_s);
         }
+        #endif
 
         *out = MORPHO_OBJECT(new);
         ret=true;
@@ -463,17 +485,30 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
         objectgpusparse_light *gpu_s = NULL;
         if (!functional_gpu_countelements(v, mesh, g, &n, &s)) return false;
         
+        // if (s) {
+        //     objectgpusparse_light temp_s = *(objectgpusparse_light*)((void*)s+sizeof(object));
+        //     GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
+        //     GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,0,&temp_s,sizeof(objectgpusparse_light));
+        // }
         if (s) {
+            #ifdef CUDA_ACC
             objectgpusparse_light temp_s = *(objectgpusparse_light*)((void*)s+sizeof(object));
             GPUallocate(mesh->gpu_vert->status,(void**)&gpu_s,sizeof(objectgpusparse_light));
             GPUcopy_to_device(mesh->gpu_vert->status,gpu_s,0,&temp_s,sizeof(objectgpusparse_light));
+
+            #else
+                        gpu_s = (objectgpusparse_light*)((void*)s+sizeof(object));
+            #endif
         }
+
         objectgpumatrix *frc = object_newgpumatrix(mesh->vert->nrows,mesh->vert->ncols,true);
         if (!frc) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
         GPUcall_functionalgrad(mesh->gpu_vert->status,mesh->gpu_vert->elements,mesh->dim,gpu_s,g,n,info->gpu_grad,frc->elements);
+        #ifdef CUDA_ACC
         if (s) {
             GPUdeallocate(mesh->gpu_vert->status,gpu_s);
         }
+        #endif
 
         *out = MORPHO_OBJECT(frc);
         ret=true;

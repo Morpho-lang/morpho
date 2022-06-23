@@ -66,9 +66,9 @@ typedef struct {
     int nentries;
     int nrows;
     int ncols;
-    int *cptr; // Pointers to column entries
-    int *rix; // Row indices
-    double *values; // Values
+    GLOBAL_PREFIX int *cptr; // Pointers to column entries
+    GLOBAL_PREFIX int *rix; // Row indices
+    GLOBAL_PREFIX double *values; // Values
 } objectgpusparse_light;
 
 
@@ -338,16 +338,16 @@ KERNAL_PREFIX void functionalGradEval(double* verts, int dim, objectgpusparse_li
     }
 }
 #else
-KERNAL_PREFIX void functionalIntegrandEval(GLOBAL_PREFIX double* verts, int dim,GLOBAL_PREFIX  *s,\
-                      int nelements,int integrandNo,GLOBAL_PREFIX double* out){
-                          objectgpusparse_light
+KERNAL_PREFIX void functionalIntegrandEval(GLOBAL_PREFIX double* verts, int dim, int nelements,\
+                    int integrandNo,GLOBAL_PREFIX double* out){
     // calculate contribution from element i
+
+    // put the connectivity matrix back together
     int i = GETID;
     if (i<nelements){
-        int *vid = NULL; //vertex id
-        int nv; // number of vertices in this grade element
-        if (s) gpusparse_getrowindices(s,i,&nv,&vid);
-        else vid = &i;
+        int *vid = &i; //vertex id
+        int nv = 1; // number of vertices in this grade element
+        
         if (vid && nv>0) { 
             switch (integrandNo) {
                 case 0:
@@ -360,15 +360,64 @@ KERNAL_PREFIX void functionalIntegrandEval(GLOBAL_PREFIX double* verts, int dim,
         }
     }
 }
-KERNAL_PREFIX void functionalGradEval(GLOBAL_PREFIX double* verts, int dim, GLOBAL_PREFIX objectgpusparse_light* s,\
+KERNAL_PREFIX void functionalIntegrandEvalConn(GLOBAL_PREFIX double* verts, int dim, int nelements,\
+                    int nentries, int nrows, int ncols, GLOBAL_PREFIX int* cptr, GLOBAL_PREFIX int* rix,\
+                    int integrandNo,GLOBAL_PREFIX double* out){
+    // calculate contribution from element i
+
+    // put the connectivity matrix back together
+    objectgpusparse_light s = {.nentries = nentries, .nrows = nrows, .ncols=ncols, .cptr = cptr, .rix = rix,.values = NULL};
+    int i = GETID;
+    if (i<nelements){
+        int *vid = NULL; //vertex id
+        int nv; // number of vertices in this grade element
+        gpusparse_getrowindices(&s,i,&nv,&vid);
+        if (vid && nv>0) { 
+            switch (integrandNo) {
+                case 0:
+                    gpu_area_integrand(verts,dim,i,nv,vid,&out[i]);
+                    break;
+                case 1:
+                    gpu_volumeenclosed_integrand(verts,dim,i,nv,vid,&out[i]);
+                    break;
+            }
+        }
+    }
+}
+KERNAL_PREFIX void functionalGradEval(GLOBAL_PREFIX double* verts, int dim,\
                       int nelements,int gradNo, GLOBAL_PREFIX double* out){
+    // calculate contribution from element i
+    int i = GETID;
+    if (i<nelements){
+        int *vid = &i; //vertex id
+        int nv = 1; // number of vertices in this grade element
+            if (vid && nv>0) {
+            switch (gradNo) {
+                case 0:
+                    gpu_area_gradient(verts,dim,i,nv,vid,out);
+                    break;
+                case 1:
+                    gpu_volumeenclosed_gradient(verts,dim,i,nv,vid,out);
+                    break;
+            }
+        }
+    }
+}
+
+KERNAL_PREFIX void functionalGradEvalConn(GLOBAL_PREFIX double* verts, int dim, int nelements,\
+                    int nentries, int nrows, int ncols, GLOBAL_PREFIX int *cptr, GLOBAL_PREFIX int *rix,\
+                    int gradNo,GLOBAL_PREFIX double* out){
+    // calculate contribution from element i
+
+    // put the connectivity matrix back together
+    objectgpusparse_light s = {.nentries = nentries, .nrows = nrows, .ncols=ncols, .cptr = cptr, .rix = rix,.values = NULL};
+
     // calculate contribution from element i
     int i = GETID;
     if (i<nelements){
         int *vid = NULL; //vertex id
         int nv; // number of vertices in this grade element
-        if (s) gpusparse_getrowindices(s,i,&nv,&vid);
-        else vid = &i;
+        gpusparse_getrowindices(&s,i,&nv,&vid);
         if (vid && nv>0) {
             switch (gradNo) {
                 case 0:
@@ -381,4 +430,5 @@ KERNAL_PREFIX void functionalGradEval(GLOBAL_PREFIX double* verts, int dim, GLOB
         }
     }
 }
+
 #endif

@@ -232,7 +232,7 @@ success=0 # number of successful tests
 total=0   # total number of tests
 
 # look for a command line argument that says
-# this is being run for continuos integration
+# this is being run for continuous integration
 CI = False
 if (len(sys.argv) > 1):
     CI = sys.argv[1] == '-c'

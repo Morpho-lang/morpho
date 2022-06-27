@@ -60,6 +60,7 @@ Morpho
    optimize
    plot
    povray
+   unittest
    vtk
 
 .. toctree::

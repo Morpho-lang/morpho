@@ -1,0 +1,344 @@
+/** unit test framework */
+/* Usage: To make a new unit test create a class that inherites from unittest
+ * Each method of that test class will be run as a test
+ * use self.assert to test the truth of statement 
+ *
+ * use self.assertEqual to check the equality of the contence of two varibles
+ *
+ * set self.assumeFail = "reason" to automatically pass the test but leave a note as to why it didn't run
+ * 
+ * you can define a method fixture that will run before any methods do, use this to set common varibels that each test might want
+ *  for example you can read in a mesh and store it in self.mesh, then have each other test method refernce it.
+ * The fixture method will be run before each test.
+ */
+
+class UnitTest {
+    init(){
+        self.tolDefault = 1e-10 // tolerance for float comparison
+        self.run()
+    }
+    run(){
+        print "==================================="
+        print "Running test suite: ${self.clss()}"
+        print "==================================="
+        
+        var listOfMethods = self.respondsto()
+        // remove common methods
+        var commonMethods = [ "init","runTest","assert","run","setindex", "clone", "index", "count", "prnt", "invoke", "clss", "serialize", "respondsto", "has", "superclass", "enumerate" ]
+        var assertMethods = ["assertListEqual", "assertArrayEqual", "assertMatrixEqual", "assertSparseEqual", "assertIntEqual", "assertFloatEqual", "assertMeshEqual", "assertSelectionEqual", "assertFieldEqual", "assertDictionayEqual", "assertRangeEqual", "assertStringEqual", "assertBoolEqual", "assertObjectEqual", "failAssertion","assertProperites","assertDimensions","assertSetEqualityOfList","assertDeepEqual","assertEqual"]
+        var fixtureName = "fixture"
+        var hasfixture = false
+        if (self.respondsto(fixtureName)) {
+            listOfMethods.remove(fixtureName)
+            hasfixture = true
+        }
+
+        for (method in commonMethods+assertMethods) {
+            listOfMethods.remove(method)
+        }
+        // now we are left with just the test methods
+        self.numTests = listOfMethods.count()
+        self.failures = 0
+        self.failedTests = []
+        for (method in listOfMethods) {
+            self.tol = self.tolDefault
+            if (hasfixture) self.invoke(fixtureName)
+            self.runTest(method) 
+        }
+
+        if (self.failures == 0) {
+            print "==================================="
+            print "       Ran ${self.numTests} tests  "
+            print "       No Failures Detected        "
+            print "==================================="
+        } else {
+            print "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            for (test in self.failedTests){
+                print " ${test}: FAILED"
+            }
+            print "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+    }
+    runTest(method) {
+        self.passing = true
+        self.passed = false
+        self.assumeFail = false
+        try {
+            print "Running test ${method}:"
+            self.invoke(method) // try running the method
+            if (self.passing && !self.assumeFail) print "Passed"
+            if (self.assumeFail) print "Assumed Fail: ${self.assumeFail}"
+            self.passed = true
+        }
+        catch {
+        }
+        if (!self.passed && !self.assumeFail) {
+            print "Error is test ${method}"
+            self.passing = false
+        }
+
+        if (!self.passing && !self.assumeFail) {
+            self.failures +=1
+            self.failedTests.append(method)
+        }
+
+    }
+    assert(value){
+        if (!value){
+            self.failAssertion("Assertion Failed")
+            return false
+        }
+        return true
+    }
+    assertEqual(v1,v2) {
+        if(v1!=v2) self.assertDeepEqual(v1,v2)
+    }
+
+    assertDeepEqual(v1,v2) {
+        // try to find builtin datatypes
+        if (islist(v1) && islist(v2)) { //lists
+            return self.assertListEqual(v1,v2)
+        } else if (isarray(v1) && isarray(v2)) {// arrays
+            return self.assertArrayEqual(v1,v2)
+        } else if (ismatrix(v1) && ismatrix(v2)) { //matrix
+            return self.assertMatrixEqual(v1,v2)
+        } else if (issparse(v1) && issparse(v2)) { // sparse
+            return self.assertSparseEqual(v1,v2)
+        } else if (isint(v1) && isint(v2)) { // int
+            return self.assertIntEqual(v1,v2)
+        } else if (isnumber(v1) && isnumber(v2)) {// floats
+            return self.assertFloatEqual(v1,v2)
+        } else if (ismesh(v1) && ismesh(v2)) {
+            return self.assertMeshEqual(v1,v2)
+        } else if (isselection(v1) && isselection(v2)) {
+            return self.assertSelectionEqual(v1,v2)
+        } else if (isfield(v1) && isfield(v2)) {
+            return self.assertFieldEqual(v1,v2)
+        } else if (isdictionary(v1) && isdictionary(v2)) {
+            return self.assertDictionayEqual(v1,v2)
+        } else if (isrange(v1) && isrange(v2)) {
+            return self.assertRangeEqual(v1,v2)
+        } else if (isstring(v1) && isstring(v2)) {
+            return self.assertStringEqual(v1,v2)
+        } else if (isnil(v1) && isnil(v2)) {
+            return true
+        } else if (isbool(v1) && isbool(v2)) {
+            return self.assertBoolEqual(v1,v2)
+        } else if (isobject(v1) && isobject(v2)) {
+            return self.assertObjectEqual(v1,v2)
+        } else {
+            // couldn't determine comparible type
+            self.failAssertion("Assert Failed, ${v1} is not same type as ${v2}")
+            return false
+        }
+    }
+    failAssertion(message) {
+        if (!self.assumeFail) {
+            print message
+            self.passing = false
+        }
+    }
+    assertListEqual(v1,v2,quiet = false) {
+        var reason
+        if (v1.count()!=v2.count()) {
+            if (!quiet) {
+                self.failAssertion("Assertion Failed: Lists have different number of elements")
+            }
+            return false
+        }
+        for (i in 0...v1.count()) {
+            if(!self.assertDeepEqual(v1[i],v2[i])) return false
+        }
+        return true
+    }
+    assertDimensions(v1,v2) {
+        if (!self.assertListEqual(v1.dimensions(), v2.dimensions(),quiet = true)) {
+            self.failAssertion("Assertion Failed: Objects have different dimensions")
+            return false
+        }
+        return true
+
+    }
+    assertArrayEqual(v1,v2) {
+        if (!self.assertDimensions(v1,v2)) return false
+        for (i in 0...v1.count()){
+            if (!self.assertDeepEqual(v1.enumerate(i),v2.enumerate(i))) return false
+        }
+        return true
+    }
+    assertMatrixEqual(v1,v2) {
+        if (!self.assertDimensions(v1,v2)) return false
+        for (i in 0...v1.count()){
+            if (!self.assertDeepEqual(v1.enumerate(i),v2.enumerate(i))) return false
+        }
+        return true
+
+    }
+    assertSparseEqual(v1,v2) {
+        if (!self.assertDimensions(v1,v2)) return false
+        if (!self.assertSetEqualityOfList(v1.indices(),v2.indices())) return false
+        for (ind in v1.indices()) {
+            if(!self.assertDeepEqual(v1[ind[0],ind[1]],v2[ind[0],ind[1]])) {
+                self.failAssertion("Spares Matrix elementes at ${ind} have different values")
+                return false
+            }
+        }
+        return true
+
+    }
+    assertIntEqual(v1,v2) {
+        if (v1!=v2) {
+            self.failAssertion("Assertion Failed ${v1} != ${v2}")
+            return false
+        }
+    }
+    assertFloatEqual(v1,v2) {
+        if (abs(v1-v2)>self.tol) {
+            self.failAssertion("Assertion Failed ${v1} != ${v2}, difference is ${abs(v1-v2)} which is above the tolerance of ${self.tol}")
+            return false
+        }
+        return true
+    }
+    assertMeshEqual(v1,v2) {
+        // check matrix equality 
+        if (!self.assertMatrixEqual(v1.vertexmatrix(),v2.vertexmatrix())) {
+            return false
+        }
+        // check connectivity equality
+        if (!self.assertEqual(v1.maxgrade(),v2.maxgrade())) return false
+        for (i in 1...v1.maxgrade()) {
+            // only need to check vertex-higher grade because this contains all the information
+            if (!self.assertEqual(v1.connectivitymatrix(0,i),v2.connectivitymatrix(0,i))) return false;
+        }
+        return true
+
+    }
+    assertSelectionEqual(v1,v2) { 
+        if (!self.assertEqual(v1.maxgrade(),v2.maxgrade())) return false
+
+        for (i in 0...v1.maxgrade()) {
+            if (!self.assertEqual(v1.idlistforgrade(i),v2.idlistforgrade(i))) return false
+        }
+        return true
+        
+    }
+    assertFieldEqual(v1,v2) { 
+        if (!self.assertEqual(v1.shape(),v2.shape())) return false
+        var shape = v1.shape()
+        var mesh = v1.mesh()
+        for (grade in 0...v1.shape().count()) {
+            var elmax = shape[grade]
+            for (elid in 0...mesh.count(grade)) {
+                for (i in 0...elmax) {
+                    if (!self.assertEqual(v1[grade,elid,i],v2[grade,elid,i])) return false
+                }
+            }
+        }
+        return true
+    }
+
+    assertSetEqualityOfList(v1,v2,quiet = false) {
+        // does a shallow comparison for elements in the list but doens't care about order
+        // will do set equality on lists of lists 
+        if (v1.count()!=v2.count()) {
+            if (!quiet) {
+                self.failAssertion("Assertion Failed: Lists have different number of elements")
+            }
+            return false
+        }
+        for (i in 0...v1.count()) {
+            if (islist(v2[i])) {
+                var match = false
+                for (el in v1) {
+                    if (islist(el)) {
+                        if (self.assertListEqual(el,v2[i],quiet = true)) {
+                            match = true 
+                            continue
+                        }
+                    }
+                }
+                if (match == false) {
+                    if (!quiet) {
+                        self.failAssertion("Assertion Failed: Lists contain different elements ${v2[i]}")
+                    }
+                    return false
+                }
+            } else if (!v1.ismember(v2[i])) {
+                if (!quiet) {
+                    self.failAssertion("Assertion Failed: Lists contain different elements ${v2[i]}")
+                    print v1
+                    print v2
+                }
+                return false
+            } else v1.remove(v2[i]) // guard against mulitple same entries
+        }
+        return true
+        
+    }
+    assertDictionayEqual(v1,v2) {
+        if (!self.assertSetEqualityOfList(v1.keys(),v2.keys())) {
+            self.failAssertion("Assertion Failed: Dictionaries have different keys")
+        }
+        for (key in v1.keys()) {
+            if (!self.assertDeepEqual(v1[key],v2[key])) {
+                self.failAssertion("Assertion Failed: Dictionaries have different values at ${key}")
+                return false
+            }
+        }
+
+    }
+    assertRangeEqual(v1,v2) {
+        // if ranges have the same count, the same begining and the same incrment they are the same
+        if (v1.count()!=v2.count()) {
+            self.failAssertion("Asseration Failed: Ranges have different number of elements")
+            return false
+        }
+        if (!self.assertDeepEqual(v1.enumerate(0),v2.enumerate(0))) {
+            self.failAssertion("Assert Failed: Ranges have different start elements")
+            return false
+        }
+        if (v1.count()>1) {
+            if (!self.assertDeepEqual(v1.enumerate(1)-v1.enumerate(0),v2.enumerate(1)-v2.enumerate(0))) {
+                self.failAssertion("Assert Failed: Ranges have different increments")
+                return false
+            }
+        }
+
+        return true
+
+    }
+    assertStringEqual(v1,v2) {
+        if (v1 != v2) {
+            self.failAssertion("Assertion Failed: strings are ${v1} and ${v2}")
+            return false
+        }
+        return true
+    }
+    assertBoolEqual(v1,v2) {
+        if (v1 != v2) {
+            self.failAssertion("Assertion Failed: bools are ${v1} and ${v2}")
+            return false
+        }
+        return true
+    }
+
+    assertProperites(v1,v2) {
+        if (!self.assertListEqual(v1.has(), v2.has(),quiet = true)) {
+            self.failAssertion("Assertion Failed: Objects have different properites")
+            return false
+        }
+        return true
+
+    }
+    assertObjectEqual(v1,v2){
+        //check property lists
+        if (!self.assertProperites(v1,v2)) return false
+
+        for (prop in v1.has()) {
+            if (!self.assertDeepEqual(v1[prop],v2[prop])) {
+                self.failAssertion("Property ${prop} not equal")
+                return false
+            }
+        }
+    }
+}

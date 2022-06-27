@@ -421,6 +421,17 @@ value Selection_setindex(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Returns the max grade of the selection */
+value Selection_maxgrade(vm *v, int nargs,value *args){
+    objectselection *sel = MORPHO_GETSELECTION(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+
+    if (nargs == 0){
+        out = MORPHO_INTEGER(selection_maxgrade(sel));
+    } else morpho_runtimeerror(v, SELECTION_ISSLCTDARG);
+    return out;
+}
+
 /** Tests if something is selected */
 value Selection_isselected(vm *v, int nargs, value *args) {
     objectselection *sel = MORPHO_GETSELECTION(MORPHO_SELF(args));
@@ -549,6 +560,7 @@ MORPHO_METHOD(MORPHO_DIFFERENCE_METHOD, Selection_difference, BUILTIN_FLAGSEMPTY
 MORPHO_METHOD(MORPHO_ADD_METHOD, Selection_union, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUB_METHOD, Selection_difference, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SELECTION_ADDGRADEMETHOD, Selection_addgrade, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SELECTION_MAXGRADEMETHOD, Selection_maxgrade, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SELECTION_REMOVEGRADEMETHOD, Selection_removegrade, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Selection_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
@@ -571,6 +583,7 @@ void selection_initialize(void) {
     morpho_defineerror(SELECTION_NOMESH, ERROR_HALT, SELECTION_NOMESH_MSG);
     morpho_defineerror(SELECTION_ISSLCTDARG, ERROR_HALT, SELECTION_ISSLCTDARG_MSG);
     morpho_defineerror(SELECTION_GRADEARG, ERROR_HALT, SELECTION_GRADEARG_MSG);
+    morpho_defineerror(SELECTION_MAXGRADEARG, ERROR_HALT, SELECTION_MAXGRADEARG_MSG);
     morpho_defineerror(SELECTION_STARG, ERROR_HALT, SELECTION_STARG_MSG);
     morpho_defineerror(SELECTION_BND, ERROR_HALT, SELECTION_BND_MSG);
 }

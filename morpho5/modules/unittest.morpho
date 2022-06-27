@@ -12,7 +12,7 @@
  * The fixture method will be run before each test.
  */
 
-class unit_test {
+class unittest {
     init(){
         self.tolDefault = 1e-10 // tolerance for float comparison
         self.run()
@@ -223,7 +223,6 @@ class unit_test {
         
     }
     assertFieldEqual(v1,v2) { 
-        // shape give the number of elements per grade
         if (!self.assertEqual(v1.shape(),v2.shape())) return false
         var shape = v1.shape()
         var mesh = v1.mesh()
@@ -231,7 +230,7 @@ class unit_test {
             var elmax = shape[grade]
             for (elid in 0...mesh.count(grade)) {
                 for (i in 0...elmax) {
-                    if (!self.assertEqual(v1[grade,elid,i])) return false
+                    if (!self.assertEqual(v1[grade,elid,i],v2[grade,elid,i])) return false
                 }
             }
         }

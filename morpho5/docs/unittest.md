@@ -21,7 +21,7 @@ Methods of this class are then test methods that run when an instance of this cl
 
 ## Assert
 
-In a test method `self.assert(value)` will test if the value is true and `self.assertEqual(value1, value2)` will test if the contents of the values are equal. If an assert fails then the test that calls it will fail with an appropriate message.
+In a test method `self.assert(value)` will test if the value is true and `self.assertEqual(value1, value2)` will test if the contents of the values are equal. If an assert fails then the test that calls it will fail with an appropriate message. If you want to check set equality of a list you can use `self.assertSetEqualityOfList(list1,list2)`.
 
 ## Test Fixtures
 

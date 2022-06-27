@@ -95,7 +95,7 @@ value Object_has(vm *v, int nargs, value *args) {
         if (new) {
             objectinstance *slf = MORPHO_GETINSTANCE(self);
             list_resize(new, MORPHO_GETINSTANCE(self)->fields.count);
-            for (unsigned int i=0; i<slf->fields.count; i++) {
+            for (unsigned int i=0; i<slf->fields.capacity; i++) {
                 if (MORPHO_ISSTRING(slf->fields.contents[i].key)) {
                     list_append(new, slf->fields.contents[i].key);
                 }

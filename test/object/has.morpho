@@ -1,11 +1,36 @@
-// Check Object.respondsto()
+// Check Object.has()
+import unittest
+class has_test is unittest {
+    fixture() { 
+        self.a = Object()
+        self.a.things = "stuff"
 
-var a = Object()
-
-a.things = "stuff"
-
-print a.has("things")
-// expect: true
-
-print a.has("stuff")
-// expect: false
+    }
+    has_with_an_arg_checks_a_properity() {
+        self.assertEqual(self.a.has("things"),true)
+        self.assertEqual(self.a.has("stuff"),false)
+    }
+    has_with_no_args_returns_list_of_properites() {
+        self.assertEqual(self.a.has(),["things"])
+        self.a.stuff = 2
+        self.assertSetEqualityOfList(self.a.has(),["things","stuff"])
+    }
+    has_with_muliple_args_throws_error() {
+        var correctError = false
+        try {
+            self.a.has("one","two")
+        } catch {
+            "RspndsToArg": correctError = true
+        }
+        self.assert(correctError)
+    }
+    has_with_nonstring_throws_error() {
+        var correctError = false
+        try {
+            self.a.has(2)
+        } catch {
+            "RspndsToArg": correctError = true
+        }
+        self.assert(correctError)
+    }
+} has_test()

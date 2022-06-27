@@ -84,33 +84,49 @@ static void display_keycallback(windowref *window, int key, int scancode, int ac
             break;
         case GLFW_KEY_TAB:
         { /* Reset the view */
-            d->ox=0.0; d->oy=0.0; d->tx=0.0; d->ty=0.0; 
+            d->ox=0.0; d->oy=0.0;
             mat3d_identity4x4(d->view);
         }
             break;
         case GLFW_KEY_LEFT:
-        { /* Rotate left */
-            vec3 a = {0.0, 1.0, 0.0};
-            mat3d_rotate(d->view, a, -0.1, d->view);
-        }
+            if (mods & GLFW_MOD_ALT) {
+                /* Translate left */
+                vec3 a = {-0.1, 0.0, 0.0};
+                mat3d_translate(d->view, a, d->view);
+            } else { /* Rotate left */
+                vec3 a = {0.0, 1.0, 0.0};
+                mat3d_rotate(d->view, a, -0.1, d->view);
+            }
             break;
         case GLFW_KEY_RIGHT:
-        { /* Rotate right */
-            vec3 a = {0.0, 1.0, 0.0};
-            mat3d_rotate(d->view, a, +0.1, d->view);
-        }
+            if (mods & GLFW_MOD_ALT) {
+                /* Translate right */
+                vec3 a = {0.1, 0.0, 0.0};
+                mat3d_translate(d->view, a, d->view);
+            } else { /* Rotate right */
+                vec3 a = {0.0, 1.0, 0.0};
+                mat3d_rotate(d->view, a, +0.1, d->view);
+            }
             break;
         case GLFW_KEY_DOWN:
-        { /* Rotate down */
-            vec3 a = {1.0, 0.0, 0.0};
-            mat3d_rotate(d->view, a, +0.1, d->view);
-        }
+            if (mods & GLFW_MOD_ALT) {
+                /* Translate down */
+                vec3 a = {0.0, -0.1, 0.0};
+                mat3d_translate(d->view, a, d->view);
+            } else { /* Rotate down */
+                vec3 a = {1.0, 0.0, 0.0};
+                mat3d_rotate(d->view, a, +0.1, d->view);
+            }
             break;
         case GLFW_KEY_UP:
-        { /* Rotate up */
-            vec3 a = {1.0, 0.0, 0.0};
-            mat3d_rotate(d->view, a, -0.1, d->view);
-        }
+            if (mods & GLFW_MOD_ALT) {
+                /* Translate up */
+                vec3 a = {0.0, 0.1, 0.0};
+                mat3d_translate(d->view, a, d->view);
+            } else { /* Rotate up */
+                vec3 a = {1.0, 0.0, 0.0};
+                mat3d_rotate(d->view, a, -0.1, d->view);
+            }
             break;
         case GLFW_KEY_PAGE_DOWN:
         { /* Rotate clockwise */
@@ -152,8 +168,11 @@ static void display_cursorposncallback(windowref *window, double x, double y) {
         vec3 axis = {-dy, dx, 0};
         mat3d_rotate(d->view, axis, 1.5*sqrt(dx*dx+dy*dy), d->view);
     } else if (d->state==DRAGGING_TRANS) {
-        d->tx+=2.0*((float)(x-d->ox))/d->width;
-        d->ty-=2.0*((float)(y-d->oy))/d->width;
+        float dx=2.0*((float)(x-d->ox))/d->width;
+        float dy=2.0*((float)(y-d->oy))/d->width;
+        
+        vec3 a = {dx, -dy, 0.0};
+        mat3d_translate(d->view, a, d->view);
     }
     d->ox=x; d->oy=y;
 }
@@ -176,8 +195,6 @@ void display_init(display *d, scene *s) {
     d->aspectRatio=1.0;
     d->ox=0.0;
     d->oy=0.0;
-    d->tx=0.0;
-    d->ty=0.0;
     d->state=NORMAL;
     d->window=NULL;
     mat3d_identity4x4(d->view);
@@ -224,7 +241,6 @@ display *display_open(scene *s) {
     
     /** Initialize the display */
     render_init(&new->render);
-    
     new->window=window;
     
     /** Add this to the display list */
@@ -277,6 +293,5 @@ bool display_initialize(void) {
 }
 
 void display_finalize(void) {
-    
     glfwTerminate();
 }

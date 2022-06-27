@@ -109,7 +109,7 @@ value Object_has(vm *v, int nargs, value *args) {
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         return MORPHO_BOOL(dictionary_get(&MORPHO_GETINSTANCE(self)->fields, MORPHO_GETARG(args, 0), NULL));
         
-    } else MORPHO_RAISE(v, RESPONDSTO_ARG);
+    } else MORPHO_RAISE(v, HAS_ARG);
     
     return MORPHO_FALSE;
 }
@@ -1862,6 +1862,7 @@ void veneer_initialize(void) {
     morpho_defineerror(DICT_DCTSTARG, ERROR_HALT, DICT_DCTSTARG_MSG);
     morpho_defineerror(SETINDEX_ARGS, ERROR_HALT, SETINDEX_ARGS_MSG);
     morpho_defineerror(RESPONDSTO_ARG, ERROR_HALT, RESPONDSTO_ARG_MSG);
+    morpho_defineerror(HAS_ARG, ERROR_HALT, HAS_ARG_MSG);
     morpho_defineerror(ISMEMBER_ARG, ERROR_HALT, ISMEMBER_ARG_MSG);
     morpho_defineerror(CLASS_INVK, ERROR_HALT, CLASS_INVK_MSG);
     morpho_defineerror(LIST_ENTRYNTFND, ERROR_HALT, LIST_ENTRYNTFND_MSG);

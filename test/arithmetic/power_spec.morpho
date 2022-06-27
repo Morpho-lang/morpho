@@ -1,5 +1,5 @@
 import unittest
-class power_spec is unit_test {
+class power_spec is unittest {
     integer_raised_to_an_integer(){
         self.assertEqual(2^2,4)
     }

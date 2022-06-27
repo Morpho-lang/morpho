@@ -54,7 +54,10 @@
 #define DICT_DCTKYNTFND_MSG               "Key not found in dictionary."
 
 #define RESPONDSTO_ARG                    "RspndsToArg"
-#define RESPONDSTO_ARG_MSG                "Method respondsto expects a single string argument."
+#define RESPONDSTO_ARG_MSG                "Method respondsto expects a single string argument or no argrument."
+
+#define HAS_ARG                    		  "HasArg"
+#define HAS_ARG_MSG                		  "Method has expects a single string argument or no argument."
 
 #define ISMEMBER_ARG                      "IsMmbrArg"
 #define ISMEMBER_ARG_MSG                  "Method ismember expects a single argument."

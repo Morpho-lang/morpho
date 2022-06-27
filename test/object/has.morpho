@@ -20,7 +20,7 @@ class has_test is unittest {
         try {
             self.a.has("one","two")
         } catch {
-            "RspndsToArg": correctError = true
+            "HasArg": correctError = true
         }
         self.assert(correctError)
     }
@@ -29,7 +29,7 @@ class has_test is unittest {
         try {
             self.a.has(2)
         } catch {
-            "RspndsToArg": correctError = true
+            "HasArg": correctError = true
         }
         self.assert(correctError)
     }

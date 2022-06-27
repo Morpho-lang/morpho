@@ -111,8 +111,12 @@ class VTKExporter is VTK {
     
     // Writes a vector to the file 
     _writevector(file, v) {
-        
-        file.write("${v[0]} ${v[1]} ${v[2]} ")
+        if (v.count()==2) {
+            file.write("${v[0]} ${v[1]} 0 ")
+        }
+        else {
+            file.write("${v[0]} ${v[1]} ${v[2]} ")
+        }
     }
 
     // Writes all the vertices to the file

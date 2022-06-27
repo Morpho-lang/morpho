@@ -13,7 +13,7 @@ To create a unit test you first import the module
 
 Then create a new test class that inherits from the base class `unittest` and end the definition by creating an instance of the test class
 
-    exampleTest is unittest { 
+    exampleTest is UnitTest { 
         ...
     } exampleTest()
 
@@ -44,7 +44,7 @@ will force a test to pass regardless of asserts or errors and display a message 
 The following is an example test for the exponential operator with a fixture and an test that assumes failure
 
     import unittest
-    class power_spec is unit_test {
+    class power_spec is UnitTest {
         fixture(){
             self.myNumber = 3
         }

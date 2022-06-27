@@ -1,5 +1,5 @@
 // Check Object.respondsto()
-import unittest
+import UnitTest
 class respondsto_test is unittest {
     fixture() { 
         self.a = Object()

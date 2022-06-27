@@ -1,6 +1,6 @@
 // Check Object.has()
 import unittest
-class has_test is unittest {
+class has_test is UnitTest {
     fixture() { 
         self.a = Object()
         self.a.things = "stuff"

@@ -12,7 +12,7 @@
  * The fixture method will be run before each test.
  */
 
-class unittest {
+class UnitTest {
     init(){
         self.tolDefault = 1e-10 // tolerance for float comparison
         self.run()

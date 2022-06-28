@@ -96,7 +96,7 @@ objectsparse *sparse_sparsefromarray(objectarray *array);
 #define SPARSE_SETFAILED_MSG              "Attempt to set sparse matrix element failed."
 
 #define SPARSE_INVLDARRAYINIT             "SprsInvldInit"
-#define SPARSE_INVLDARRAYINIT_MSG         "Array initializer passed to Sparse() must be a 1 or 2 dimensional array."
+#define SPARSE_INVLDARRAYINIT_MSG         "Invalid initializer passed to Sparse()."
 
 #define SPARSE_CONVFAILEDERR              "SprsCnvFld"
 #define SPARSE_CONVFAILEDERR_MSG          "Sparse format conversion failed."

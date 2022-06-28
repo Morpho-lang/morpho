@@ -146,6 +146,7 @@ bool sparse_checkformat(objectsparse *sparse, objectsparseformat format, bool fo
 objectsparse *sparse_clone(objectsparse *s);
 bool sparse_setelement(objectsparse *matrix, int row, int col, value value);
 bool sparse_getelement(objectsparse *matrix, int row, int col, value *value);
+void sparse_getdimensions(objectsparse *s, int *nrows, int *ncols);
 
 objectsparseerror sparse_add(objectsparse *a, objectsparse *b, double alpha, double beta, objectsparse *out);
 objectsparseerror sparse_mul(objectsparse *a, objectsparse *b, objectsparse *out);

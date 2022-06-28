@@ -1,11 +1,12 @@
 // Concatenate sparse matrices together
 
-var a = Sparse([[0,0,1], [1,1,1]])
+var a = Sparse([[0,1,1], [1,0,1]])
+var b = Matrix([2,3])
 
 print a
 // expect: [ 1 0 ]
 // expect: [ 0 1 ]
 
-var b = Sparse([[a, 0], [0, a]])
+var b = Sparse([[a, 0, b], [0, a, b], [b.transpose(), b.transpose(), 0]])
 
 print b 

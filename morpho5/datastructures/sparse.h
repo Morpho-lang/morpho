@@ -139,7 +139,7 @@ bool sparseccs_doktoccs(sparsedok *in, sparseccs *out, bool copyvals);
 
 typedef enum { SPARSE_DOK, SPARSE_CCS } objectsparseformat;
 
-typedef enum { SPARSE_OK, SPARSE_INCMPTBLDIM, SPARSE_CONVFAILED, SPARSE_FAILED } objectsparseerror;
+typedef enum { SPARSE_OK, SPARSE_INCMPTBLDIM, SPARSE_INVLDINIT, SPARSE_CONVFAILED, SPARSE_FAILED } objectsparseerror;
 
 bool sparse_checkformat(objectsparse *sparse, objectsparseformat format, bool force, bool copyvals);
 

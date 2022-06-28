@@ -7,6 +7,21 @@ print a
 // expect: [ 1 0 ]
 // expect: [ 0 1 ]
 
-var b = Sparse([[a, 0, b], [0, a, b], [b.transpose(), b.transpose(), 0]])
+var c = Sparse([[a, b], [b.transpose(), 0]])
 
-print b 
+print c
+// expect: [ 0 1 2 ]
+// expect: [ 1 0 3 ]
+// expect: [ 2 3 0 ]
+
+var c = Sparse([[a, 0, b], [0, a, b], [b.transpose(), b.transpose(), 0]])
+
+print c
+// expect: [ 0 1 0 0 2 ]
+// expect: [ 1 0 0 0 3 ]
+// expect: [ 0 0 0 1 2 ]
+// expect: [ 0 0 1 0 3 ]
+// expect: [ 2 3 2 3 0 ]
+
+var c = Sparse([[a, b], [b, 0]])
+// expect error 'MtrxIncmptbl'

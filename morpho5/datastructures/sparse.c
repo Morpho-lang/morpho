@@ -158,6 +158,15 @@ bool sparsedok_setdimensions(sparsedok *dok, int nrows, int ncols) {
     return true;
 }
 
+/** Expands the dimensions of a matrix
+ * @returns true if successful, or false if the dimensions are incompatible with existing matrix entries
+ * @details This function is intended for use in constructing matrix. */
+bool sparsedok_expanddimensions(sparsedok *dok, int nrows, int ncols) {
+    if (nrows>dok->nrows) dok->nrows=nrows;
+    if (nrows>dok->ncols) dok->ncols=ncols;
+    return true;
+}
+
 /** Prints a sparsedok matrix */
 void sparsedok_print(sparsedok *dok) {
     value out;
@@ -217,6 +226,34 @@ bool sparsedok_copy(sparsedok *src, sparsedok *dest) {
         }
     }
 
+    return true;
+}
+
+/* Copies a sparsedok object with a particular destination */
+bool sparsedok_copyat(sparsedok *src, sparsedok *dest, int row0, int col0) {
+    int i, j;
+    void *ctr = sparsedok_loopstart(src);
+    value entry;
+    
+    while (sparsedok_loop(src, &ctr, &i, &j)) {
+        if (sparsedok_get(src, i, j, &entry)) {
+            if (!sparsedok_insert(dest, i+row0, j+col0, entry)) return false;
+        }
+    }
+
+    return true;
+}
+
+/** Copies a dense matrix to a sparse dok */
+bool sparsedok_copymatrixat(objectmatrix *src, sparsedok *dest, int row0, int col0) {
+    double val;
+    for (int j=0; j<src->ncols; j++) {
+        for (int i=0; i<src->nrows; i++) {
+            if (!(matrix_getelement(src, i, j, &val) &&
+                  sparsedok_insert(dest, i+row0, j+col0, MORPHO_FLOAT(val)))) return false;
+        }
+    }
+    
     return true;
 }
 
@@ -457,6 +494,23 @@ bool sparseccs_copy(sparseccs *src, sparseccs *dest) {
     return success;
 }
 
+/** Copies a sparseccs matrix into a dok matrix at offset i0, j0 */
+bool sparseccs_copyccstodok(sparseccs *src, sparsedok *dest, int row0, int col0) {
+    
+    for (int i=0, k=0; i<src->ncols; i++) { // Loop over columns
+        int nentries, *entries;
+        if (!sparseccs_getrowindices(src, i, &nentries, &entries)) return false;
+        
+        for (int j=0; j<nentries; j++) {
+            if (!sparsedok_insert(dest, row0+entries[j], col0+i, MORPHO_FLOAT(src->values[k]))) return false;
+            
+            k++;
+        }
+    }
+    
+    return true;
+}
+
 /* ***************************************
  * Object sparse interface
  * *************************************** */
@@ -569,6 +623,101 @@ objectsparse *object_newsparse(int *nrows, int *ncols) {
     return new;
 }
 
+/* *******************************
+ * Concatenate sparse matrices
+ * ******************************* */
+
+/** Checks if the contents of dim match check; if *dim hasn't been set it is updated to match check */
+bool sparse_checkupdatedimension(int check, int *dim) {
+    if (*dim<0) *dim=check;
+    if (*dim!=check) return false;
+    return true;
+}
+
+/** Checks the dimensions of a matrix of matrices to be concatenated */
+bool sparse_catcheckdimensions(objectlist *in, int ndim, unsigned int *dim, int *ncols, int *nrows) {
+    for (unsigned int i=0; i<dim[0]; i++) nrows[i]=-1;
+    for (unsigned int i=0; i<dim[1]; i++) ncols[i]=-1;
+    
+    for (unsigned int i=0; i<dim[0]; i++) { // Loop over rows
+        for (unsigned int j=0; j<dim[1]; j++) { // Loop over cols
+            unsigned int indx[2] = {i,j};
+            value val;
+            if (matrix_getlistelement(in, ndim, indx, &val)) {
+                if (MORPHO_ISSPARSE(val)) {
+                    objectsparse *sparse = MORPHO_GETSPARSE(val);
+                    int nr, nc;
+                    sparse_getdimensions(sparse, &nr, &nc);
+                    if (!(sparse_checkupdatedimension(nr, &nrows[i]) &&
+                          sparse_checkupdatedimension(nc, &ncols[j]))) return false;
+                } else if (MORPHO_ISMATRIX(val)) {
+                    objectmatrix *matrix = MORPHO_GETMATRIX(val);
+                    if (!(sparse_checkupdatedimension(matrix->nrows, &nrows[i]) &&
+                          sparse_checkupdatedimension(matrix->ncols, &ncols[j]))) return false;
+                } else if (!MORPHO_ISINTEGER(val)) {
+                    return false;
+                }
+            }
+        }
+    }
+            
+    return true;
+}
+
+/* Copy sparse matrix entries across */
+bool sparse_catcopysparseat(objectsparse *src, int row0, int col0, int *nrows, int *ncols, objectsparse *dest) {
+    
+    if (sparse_checkformat(src, SPARSE_CCS, false, false)) {
+        return sparseccs_copyccstodok(&src->ccs, &dest->dok, row0, col0);
+    } else {
+        return sparsedok_copyat(&src->dok, &dest->dok, row0, col0);
+    }
+    
+    return false;
+}
+
+/** Sparse matrix concatenation */
+bool sparse_cat(objectlist *in, objectsparse *dest) {
+    unsigned int dim[2] = {0,0}, ndim;
+    
+    if (!matrix_getlistdimensions(in, dim, 2, &ndim)) return false;
+    
+    /* Keep track of rows and columns of the sparse matrix */
+    int nrows[dim[0]], ncols[dim[1]];
+    
+    if (!sparse_catcheckdimensions(in, ndim, dim, ncols, nrows)) return false;
+    
+    int irow=0;
+    
+    /* Now copy elements across */
+    for (unsigned int i=0; i<dim[0]; i++) { // Loop over rows
+        int icol=0;
+        for (unsigned int j=0; j<dim[1]; j++) { // Loop over columns
+            unsigned int indx[2] = {i,j};
+            value val;
+            if (matrix_getlistelement(in, ndim, indx, &val)) {
+                if (MORPHO_ISSPARSE(val)) {
+                    objectsparse *sparse = MORPHO_GETSPARSE(val);
+                    sparse_catcopysparseat(sparse, irow, icol, &nrows[i], &ncols[j], dest);
+                } else if (MORPHO_ISMATRIX(val)) {
+                    objectmatrix *matrix = MORPHO_GETMATRIX(val);
+                    sparsedok_copymatrixat(matrix, &dest->dok, irow, icol);
+                } else if (MORPHO_ISINTEGER(val)) {
+                    
+                }
+            }
+            if (ncols[j]>0) icol+=ncols[j];
+        }
+        irow+=nrows[i];
+    }
+    
+    return true;
+}
+
+/* *******************************
+ * Concatenate sparse matrices
+ * ******************************* */
+
 /** Create a sparse array from an array */
 objectsparse *object_sparsefromarray(objectarray *array) {
     unsigned int dim[2] = {0,0}, ndim;
@@ -603,6 +752,11 @@ objectsparse *object_sparsefromlist(objectlist *list) {
     
     objectsparse *new=object_newsparse(NULL, NULL);
     
+    if (dim[1]!=3) { // If this isn't a list of entries, it may be a concatenation operation
+        if (sparse_cat(list, new)) return new;
+        return false;
+    }
+    
     for (unsigned int i=0; i<dim[0]; i++) {
         value v[3]={MORPHO_NIL, MORPHO_NIL, MORPHO_NIL};
         for (unsigned int k=0; k<dim[1] && k<3; k++) {
@@ -612,6 +766,9 @@ objectsparse *object_sparsefromlist(objectlist *list) {
         if (MORPHO_ISINTEGER(v[0]) && MORPHO_ISINTEGER(v[1])) {
             sparsedok_insert(&new->dok, MORPHO_GETINTEGERVALUE(v[0]), MORPHO_GETINTEGERVALUE(v[1]), v[2]);
         } else {
+            sparse_clear(new);
+            if (sparse_cat(list, new)) return new;
+            
             sparse_clear(new);
             MORPHO_FREE(new);
             return false;
@@ -631,6 +788,17 @@ objectsparse *sparse_clone(objectsparse *s) {
     }
     
     return new;
+}
+
+/** Gets the dimension sof a sparse matrix */
+void sparse_getdimensions(objectsparse *s, int *nrows, int *ncols) {
+    if (s->ccs.ncols>0) {
+        *nrows=s->ccs.nrows;
+        *ncols=s->ccs.ncols;
+    } else {
+        *nrows=s->dok.nrows;
+        *ncols=s->dok.ncols;
+    }
 }
 
 /** Set an element */
@@ -1047,14 +1215,11 @@ value Sparse_dimensions(vm *v, int nargs, value *args) {
     objectsparse *s=MORPHO_GETSPARSE(MORPHO_SELF(args));
     value dim[2];
     value out=MORPHO_NIL;
+    int nrows, ncols;
     
-    if (s->ccs.ncols>0) {
-        dim[0]=MORPHO_INTEGER(s->ccs.nrows);
-        dim[1]=MORPHO_INTEGER(s->ccs.ncols);
-    } else {
-        dim[0]=MORPHO_INTEGER(s->dok.nrows);
-        dim[1]=MORPHO_INTEGER(s->dok.ncols);
-    }
+    sparse_getdimensions(s, &nrows, &ncols);
+    dim[0]=MORPHO_INTEGER(nrows);
+    dim[1]=MORPHO_INTEGER(ncols);
     
     objectlist *new=object_newlist(2, dim);
     if (new) {

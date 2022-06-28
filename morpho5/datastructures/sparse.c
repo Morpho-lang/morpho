@@ -635,7 +635,7 @@ bool sparse_checkupdatedimension(int check, int *dim) {
 }
 
 /** Checks the dimensions of a matrix of matrices to be concatenated */
-bool sparse_catcheckdimensions(objectlist *in, int ndim, unsigned int *dim, int *ncols, int *nrows) {
+objectsparseerror sparse_catcheckdimensions(objectlist *in, int ndim, unsigned int *dim, int *ncols, int *nrows) {
     for (unsigned int i=0; i<dim[0]; i++) nrows[i]=-1;
     for (unsigned int i=0; i<dim[1]; i++) ncols[i]=-1;
     
@@ -649,19 +649,19 @@ bool sparse_catcheckdimensions(objectlist *in, int ndim, unsigned int *dim, int 
                     int nr, nc;
                     sparse_getdimensions(sparse, &nr, &nc);
                     if (!(sparse_checkupdatedimension(nr, &nrows[i]) &&
-                          sparse_checkupdatedimension(nc, &ncols[j]))) return false;
+                          sparse_checkupdatedimension(nc, &ncols[j]))) return SPARSE_INCMPTBLDIM;
                 } else if (MORPHO_ISMATRIX(val)) {
                     objectmatrix *matrix = MORPHO_GETMATRIX(val);
                     if (!(sparse_checkupdatedimension(matrix->nrows, &nrows[i]) &&
-                          sparse_checkupdatedimension(matrix->ncols, &ncols[j]))) return false;
+                          sparse_checkupdatedimension(matrix->ncols, &ncols[j]))) return SPARSE_INCMPTBLDIM;
                 } else if (!MORPHO_ISINTEGER(val)) {
-                    return false;
+                    return SPARSE_INVLDINIT;
                 }
             }
         }
     }
             
-    return true;
+    return SPARSE_OK;
 }
 
 /* Copy sparse matrix entries across */
@@ -685,7 +685,8 @@ objectsparseerror sparse_cat(objectlist *in, objectsparse *dest) {
     /* Keep track of rows and columns of the sparse matrix */
     int nrows[dim[0]], ncols[dim[1]];
     
-    if (!sparse_catcheckdimensions(in, ndim, dim, ncols, nrows)) return SPARSE_INCMPTBLDIM;
+    objectsparseerror err = sparse_catcheckdimensions(in, ndim, dim, ncols, nrows);
+    if (err!=SPARSE_OK) return err;
     
     int irow=0;
     

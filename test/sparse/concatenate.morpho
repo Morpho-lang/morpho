@@ -4,8 +4,8 @@ var a = Sparse([[0,1,1], [1,0,1]])
 var b = Matrix([2,3])
 
 print a
-// expect: [ 1 0 ]
 // expect: [ 0 1 ]
+// expect: [ 1 0 ]
 
 var c = Sparse([[a, b], [b.transpose(), 0]])
 

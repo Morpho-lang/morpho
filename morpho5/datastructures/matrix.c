@@ -964,6 +964,25 @@ value Matrix_transpose(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Reshape a matrix */
+value Matrix_reshape(vm *v, int nargs, value *args) {
+    objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
+    
+    if (nargs==2 &&
+        MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
+        MORPHO_ISINTEGER(MORPHO_GETARG(args, 1))) {
+        int nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        int ncols = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+        
+        if (nrows*ncols==a->nrows*a->ncols) {
+            a->nrows=nrows;
+            a->ncols=ncols;
+        } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);   
+    } else morpho_runtimeerror(v, MATRIX_RESHAPEARGS);
+    
+    return MORPHO_NIL;
+}
+
 /** Trace of a matrix */
 value Matrix_trace(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
@@ -1052,6 +1071,7 @@ MORPHO_METHOD(MATRIX_INNER_METHOD, Matrix_inner, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUM_METHOD, Matrix_sum, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_NORM_METHOD, Matrix_norm, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_TRANSPOSE_METHOD, Matrix_transpose, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MATRIX_RESHAPE_METHOD, Matrix_reshape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_TRACE_METHOD, Matrix_trace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Matrix_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Matrix_count, BUILTIN_FLAGSEMPTY),
@@ -1077,6 +1097,7 @@ void matrix_initialize(void) {
     morpho_defineerror(MATRIX_CONSTRUCTOR, ERROR_HALT, MATRIX_CONSTRUCTOR_MSG);
     morpho_defineerror(MATRIX_INVLDARRAYINIT, ERROR_HALT, MATRIX_INVLDARRAYINIT_MSG);
     morpho_defineerror(MATRIX_ARITHARGS, ERROR_HALT, MATRIX_ARITHARGS_MSG);
+    morpho_defineerror(MATRIX_RESHAPEARGS, ERROR_HALT, MATRIX_RESHAPEARGS_MSG);
     morpho_defineerror(MATRIX_INCOMPATIBLEMATRICES, ERROR_HALT, MATRIX_INCOMPATIBLEMATRICES_MSG);
     morpho_defineerror(MATRIX_SINGULAR, ERROR_HALT, MATRIX_SINGULAR_MSG);
     morpho_defineerror(MATRIX_NOTSQ, ERROR_HALT, MATRIX_NOTSQ_MSG);

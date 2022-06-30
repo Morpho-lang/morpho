@@ -83,6 +83,7 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 #define MATRIX_NORM_METHOD "norm"
 #define MATRIX_GETCOLUMN_METHOD "column"
 #define MATRIX_SETCOLUMN_METHOD "setcolumn"
+#define MATRIX_RESHAPE_METHOD "reshape"
 
 #define MATRIX_DIMENSIONS_METHOD "dimensions"
 
@@ -103,6 +104,9 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 
 #define MATRIX_ARITHARGS                  "MtrxInvldArg"
 #define MATRIX_ARITHARGS_MSG              "Matrix arithmetic methods expect a matrix or number as their argument."
+
+#define MATRIX_RESHAPEARGS                "MtrxRShpArg"
+#define MATRIX_RESHAPEARGS_MSG            "Reshape requires two integer arguments."
 
 #define MATRIX_INCOMPATIBLEMATRICES       "MtrxIncmptbl"
 #define MATRIX_INCOMPATIBLEMATRICES_MSG   "Matrices have incompatible shape."

@@ -811,6 +811,11 @@ void functional_veccross(double *a, double *b, double *out) {
     out[2]=a[0]*b[1]-a[1]*b[0];
 }
 
+/** 2D cross product  */
+void functional_veccross2d(double *a, double *b, double *out) {
+    *out=a[0]*b[1]-a[1]*b[0];
+}
+
 bool length_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out);
 bool area_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out);
 bool volume_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out);
@@ -995,12 +1000,19 @@ MORPHO_ENDCLASS
 
 /** Calculate area enclosed */
 bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
-    double *x[nv], cx[mesh->dim];
+    double *x[nv], cx[mesh->dim], normcx;
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
 
-    functional_veccross(x[0], x[1], cx);
-
-    *out=0.5*functional_vecnorm(mesh->dim, cx);
+    if (mesh->dim==2) {
+        functional_veccross2d(x[0], x[1], cx);
+        normcx=fabs(cx[0]);
+    } else {
+        functional_veccross(x[0], x[1], cx);
+        normcx=functional_vecnorm(mesh->dim, cx);
+    }
+    
+    *out=0.5*normcx;
+    
     return true;
 }
 
@@ -1023,6 +1035,22 @@ bool areaenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *v
     return true;
 }
 
+/** Evaluate a hessian */
+value AreaEnclosed_hessian(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    value out=MORPHO_NIL;
+
+    if (functional_validateargs(v, nargs, args, &info)) {
+        info.g=MESH_GRADE_LINE;
+        info.integrand=areaenclosed_integrand;
+        functional_mapnumericalhessian(v, &info, &out);
+    }
+    
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+
+    return out;
+}
+
 FUNCTIONAL_INIT(AreaEnclosed, MESH_GRADE_LINE)
 FUNCTIONAL_INTEGRAND(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 FUNCTIONAL_GRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_gradient, SYMMETRY_ADD)
@@ -1032,6 +1060,7 @@ MORPHO_BEGINCLASS(AreaEnclosed)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, AreaEnclosed_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, AreaEnclosed_integrand, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, AreaEnclosed_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, AreaEnclosed_hessian, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, AreaEnclosed_total, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 

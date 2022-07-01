@@ -909,7 +909,23 @@ objectsparseerror sparse_mul(objectsparse *a, objectsparse *b, objectsparse *out
     return SPARSE_FAILED;
 }
 
-/** Multiply two matrices
+/** Scale a sparse matrix by a scalar
+ * @param[in] src - sparse matrix
+ * @param[in] scale - scale
+ * @param[out] out - a*b. */
+objectsparseerror sparse_scale(objectsparse *src, double scale, objectsparse *out) {
+    if (!(sparse_checkformat(src, SPARSE_CCS, true, true))) return SPARSE_CONVFAILED;
+    sparsedok_clear(&out->dok);
+    sparseccs_clear(&out->ccs);
+    
+    if (!sparseccs_copy(&src->ccs, &out->ccs)) return SPARSE_FAILED;
+    cblas_dscal(out->ccs.ncols*out->ccs.nrows, scale, out->ccs.values, 1);
+    
+    return SPARSE_OK;
+}
+
+
+/** Solve a linear system a.x = b
  * @param[in] a - sparse matrix
  * @param[in] b - dense rhs (may have more than one column)
  * @param[out] out - Solution to a.x = b. */
@@ -935,7 +951,7 @@ objectsparseerror sparse_div(objectsparse *a, objectmatrix *b, objectmatrix *out
     return SPARSE_FAILED;
 }
 
-/** Multiply two matrices
+/** Transpose a sparse matrix
  * @param[in] a - sparse matrix
  * @param[out] out - transpose(A). */
 objectsparseerror sparse_transpose(objectsparse *a, objectsparse *out) {
@@ -1128,21 +1144,35 @@ value Sparse_sub(vm *v, int nargs, value *args) {
 /** Multiply sparse matrices */
 value Sparse_mul(vm *v, int nargs, value *args) {
     objectsparse *a=MORPHO_GETSPARSE(MORPHO_SELF(args));
+    objectsparse *new = NULL;
     value out=MORPHO_NIL;
+    objectsparseerror err = SPARSE_OK;
  
-    if (nargs==1 && MORPHO_ISSPARSE(MORPHO_GETARG(args, 0))) {
-        objectsparse *b=MORPHO_GETSPARSE(MORPHO_GETARG(args, 0));
-        
-        objectsparse *new = object_newsparse(NULL, NULL);
-        if (new) {
-            objectsparseerror err =sparse_mul(a, b, new);
-            if (err==SPARSE_OK) {
-                out=MORPHO_OBJECT(new);
-                morpho_bindobjects(v, 1, &out);
-            } else {
-                sparse_raiseerror(v, err);
-            }
-        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    if (nargs==1) {
+        if (MORPHO_ISSPARSE(MORPHO_GETARG(args, 0))) {
+            objectsparse *b=MORPHO_GETSPARSE(MORPHO_GETARG(args, 0));
+            
+            new = object_newsparse(NULL, NULL);
+            if (new) {
+                err=sparse_mul(a, b, new);
+            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        } else if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+            double scale;
+            new = object_newsparse(NULL, NULL);
+            
+            if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale)) return MORPHO_NIL;
+            
+            if (new) {
+                err=sparse_scale(a, scale, new);
+            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        }
+    }
+    
+    if (err==SPARSE_OK && new) {
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    } else {
+        sparse_raiseerror(v, err);
     }
     
     return out;
@@ -1364,6 +1394,7 @@ MORPHO_METHOD(MORPHO_PRINT_METHOD, Sparse_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADD_METHOD, Sparse_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUB_METHOD, Sparse_sub, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_MUL_METHOD, Sparse_mul, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_MULR_METHOD, Sparse_mul, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_DIVR_METHOD, Sparse_divr, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_TRANSPOSE_METHOD, Sparse_transpose, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Sparse_count, BUILTIN_FLAGSEMPTY),

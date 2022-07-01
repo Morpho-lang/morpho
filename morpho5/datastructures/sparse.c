@@ -919,7 +919,7 @@ objectsparseerror sparse_scale(objectsparse *src, double scale, objectsparse *ou
     sparseccs_clear(&out->ccs);
     
     if (!sparseccs_copy(&src->ccs, &out->ccs)) return SPARSE_FAILED;
-    cblas_dscal(out->ccs.ncols*out->ccs.nrows, scale, out->ccs.values, 1);
+    cblas_dscal(out->ccs.nentries, scale, out->ccs.values, 1);
     
     return SPARSE_OK;
 }

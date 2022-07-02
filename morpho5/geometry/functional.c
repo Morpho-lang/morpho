@@ -868,6 +868,21 @@ value name##_gradient(vm *v, int nargs, value *args) { \
     return out; \
 }
 
+/** Evaluate a gradient */
+#define FUNCTIONAL_NUMERICALGRADIENT(name, grade, integrandfn, symbhvr) \
+value name##_gradient(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    value out=MORPHO_NIL; \
+    \
+    if (functional_validateargs(v, nargs, args, &info)) { \
+        info.g = grade; info.integrand = integrandfn; info.sym = symbhvr; \
+        functional_mapnumericalgradient(v, &info, &out); \
+    } \
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
+    \
+    return out; \
+}
+
 /** Total an integrand */
 #define FUNCTIONAL_TOTAL(name, grade, totalfn) \
 value name##_total(vm *v, int nargs, value *args) { \
@@ -985,19 +1000,24 @@ bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
 
 /** Calculate gradient */
 bool areaenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
-    double *x[nv], cx[mesh->dim], s[mesh->dim];
+    double *x[nv], cx[3], s[3];
     double norm;
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
 
-    functional_veccross(x[0], x[1], cx);
-    norm=functional_vecnorm(mesh->dim, cx);
-    if (norm<MORPHO_EPS) return false;
+    if (mesh->dim==3) {
+        functional_veccross(x[0], x[1], cx);
+        norm=functional_vecnorm(mesh->dim, cx);
+        if (norm<MORPHO_EPS) return false;
 
-    functional_veccross(x[1], cx, s);
-    matrix_addtocolumn(frc, vid[0], 0.5/norm, s);
+        functional_veccross(x[1], cx, s);
+        matrix_addtocolumn(frc, vid[0], 0.5/norm, s);
 
-    functional_veccross(cx, x[0], s);
-    matrix_addtocolumn(frc, vid[1], 0.5/norm, s);
+        functional_veccross(cx, x[0], s);
+        matrix_addtocolumn(frc, vid[1], 0.5/norm, s);
+    } else if (mesh->dim==2) {
+        functional_veccross2d(x[0], x[1], cx);
+        
+    }
 
     return true;
 }
@@ -1020,7 +1040,8 @@ value AreaEnclosed_hessian(vm *v, int nargs, value *args) {
 
 FUNCTIONAL_INIT(AreaEnclosed, MESH_GRADE_LINE)
 FUNCTIONAL_INTEGRAND(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
-FUNCTIONAL_GRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_gradient, SYMMETRY_ADD)
+FUNCTIONAL_NUMERICALGRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, SYMMETRY_ADD)
+//FUNCTIONAL_GRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 
 MORPHO_BEGINCLASS(AreaEnclosed)

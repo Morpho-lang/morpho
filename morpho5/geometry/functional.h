@@ -57,6 +57,7 @@
 #define LINECURVATURESQ_CLASSNAME      "LineCurvatureSq"
 #define LINETORSIONSQ_CLASSNAME        "LineTorsionSq"
 #define MEANCURVATURESQ_CLASSNAME      "MeanCurvatureSq"
+#define ALTMEANCURVATURESQ_CLASSNAME      "AltMeanCurvatureSq"
 #define GAUSSCURVATURE_CLASSNAME       "GaussCurvature"
 #define GRADSQ_CLASSNAME               "GradSq"
 #define NORMSQ_CLASSNAME               "NormSq"

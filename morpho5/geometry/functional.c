@@ -2113,6 +2113,78 @@ MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, GaussCurvature_total, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
+ * Alternative curvatures
+ * ********************************************************************** */
+
+/** Calculate the integral of the mean curvature squared  */
+bool altmeancurvaturesq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    areacurvatureref *cref = (areacurvatureref *) ref;
+    double areasum = 0;
+    bool success=false;
+
+    varray_elementid nbrs;
+    varray_elementid synid;
+    varray_elementidinit(&nbrs);
+    varray_elementidinit(&synid);
+
+    mesh_getsynonyms(mesh, MESH_GRADE_VERTEX, id, &synid);
+    varray_elementidwriteunique(&synid, id);
+
+    double frc[mesh->dim]; // This will hold the total force due to the triangles present
+    for (unsigned int i=0; i<mesh->dim; i++) frc[i]=0.0;
+
+    mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_AREA, &nbrs);
+
+    for (unsigned int i=0; i<nbrs.count; i++) { /* Loop over adjacent triangles */
+        int nvert, *vids;
+        if (!sparseccs_getrowindices(&cref->areael->ccs, nbrs.data[i], &nvert, &vids)) goto meancurvsq_cleanup;
+
+        /* Order the vertices */
+        if (!curvature_ordervertices(&synid, nvert, vids)) goto meancurvsq_cleanup;
+
+        double *x[3], s0[3], s1[3], s01[3], s101[3];
+        double norm;
+        for (int j=0; j<3; j++) matrix_getcolumn(mesh->vert, vids[j], &x[j]);
+
+        /* s0 = x1-x0; s1 = x2-x1 */
+        functional_vecsub(mesh->dim, x[1], x[0], s0);
+        functional_vecsub(mesh->dim, x[2], x[1], s1);
+
+        /* F(v0) = (s1 x s0 x s1)/|s0 x x1|/2 */
+        functional_veccross(s0, s1, s01);
+        norm=functional_vecnorm(mesh->dim, s01);
+        if (norm<MORPHO_EPS) goto meancurvsq_cleanup;
+
+        areasum+=norm/2;
+        functional_veccross(s1, s01, s101);
+
+        functional_vecaddscale(mesh->dim, frc, 0.5/norm, s101, frc);
+    }
+
+    *out = functional_vecdot(mesh->dim, frc, frc)/(areasum/3.0)/4.0;
+    if (cref->integrandonly) *out /= (areasum/3.0);
+    success=true;
+
+meancurvsq_cleanup:
+    varray_elementidclear(&nbrs);
+    varray_elementidclear(&synid);
+
+    return success;
+}
+
+FUNCTIONAL_INIT(AltMeanCurvatureSq, MESH_GRADE_VERTEX)
+FUNCTIONAL_METHOD(AltMeanCurvatureSq, integrand, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_mapintegrand, altmeancurvaturesq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(AltMeanCurvatureSq, total, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_sumintegrand, altmeancurvaturesq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(AltMeanCurvatureSq, gradient, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_mapnumericalgradient, altmeancurvaturesq_integrand, meancurvaturesq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
+
+MORPHO_BEGINCLASS(AltMeanCurvatureSq)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, AltMeanCurvatureSq_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, AltMeanCurvatureSq_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, AltMeanCurvatureSq_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, AltMeanCurvatureSq_total, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
+/* **********************************************************************
  * Fields
  * ********************************************************************** */
 
@@ -3023,6 +3095,7 @@ void functional_initialize(void) {
     builtin_addclass(LINECURVATURESQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineCurvatureSq), objclass);
     builtin_addclass(LINETORSIONSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineTorsionSq), objclass);
     builtin_addclass(MEANCURVATURESQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(MeanCurvatureSq), objclass);
+    builtin_addclass(ALTMEANCURVATURESQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(AltMeanCurvatureSq), objclass);
     builtin_addclass(GAUSSCURVATURE_CLASSNAME, MORPHO_GETCLASSDEFINITION(GaussCurvature), objclass);
     builtin_addclass(GRADSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(GradSq), objclass);
     builtin_addclass(NORMSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(NormSq), objclass);

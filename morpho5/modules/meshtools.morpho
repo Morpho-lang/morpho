@@ -1,10 +1,22 @@
-// Mesh creation and visualization tools
+/* *********************************************************
+ * Meshtools 
+ * A module that provides various mesh creation, refinement
+ * and visualization tools 
+ * ********************************************************* */
 
+// Dependencies 
 import constants
 import kdtree
+import delaunay
 
+// Error messages  
 var _errMshBldDimIncnstnt = Error("MshBldDimIncnstnt", "Vertex dimension inconsistent with mesh dimension.")
 var _errMshBldDimUnknwn = Error("MshBldDimUnknwn", "Cannot add elements until a vertex has been added or MeshBuilder initialized with a specified dimension.")
+var _errMltVClstrFxd = Error("MltVClstrFxd", "More than one vertex in a selected cluster is fixed.")
+
+/* **************************
+ * Manual mesh creation
+ * ************************** */
 
 class MeshBuilder {
   init(dimension=nil) {
@@ -71,6 +83,10 @@ class MeshBuilder {
     return m
   }
 }
+
+/* ******************************************
+ * A few constructors to create simple meshes
+ * ****************************************** */
 
 /** Creates a mesh from a parametric function.
  * @param[in] f - a function that returns the vertex position as a list
@@ -168,7 +184,41 @@ fn PolyhedronMesh(list, faces) {
   return mb.build()
 }
 
-/* Equiangulation */
+/* **************************************************
+ * Change the dimension in which the mesh is embedded 
+ * ************************************************** */
+
+fn ChangeMeshDimension(mesh, dim) {
+    var vert = mesh.vertexmatrix()
+    var odim = vert.dimensions()[0]
+    var nv = vert.dimensions()[1]
+    var copy = 0...min(odim, dim)
+    var mb = MeshBuilder()
+
+    for (i in 0...nv) {
+        var pt = Matrix(dim)
+        var v = vert.column(i)
+        for (j in copy) pt[j]=v[j]
+        mb.addvertex(pt)
+    }
+
+    if (dim<odim) odim = dim 
+
+    for (grade in 1..odim) {
+        var conn = mesh.connectivitymatrix(0,grade)
+
+        if (!conn) continue
+        for (i in 0...conn.dimensions()[1]) {
+            mb.addelement(grade, conn.rowindices(i))
+        }
+    }
+
+    return mb.build() 
+}
+
+/* **************************
+ * Equiangulation
+ * ************************** */
 
 /* Tests whether to flip an edge
    @param[in] v - vertex matrix of edge
@@ -176,7 +226,7 @@ fn PolyhedronMesh(list, faces) {
    @param[in] cv - vertex indices of the vertices in the two triangles not
                    present in the edge
    @returns true if the edge should be flipped */
-fn equiangulatetest (v, ev, cv) {
+fn _equiangulatetest (v, ev, cv) {
   var a = (v.column(ev[0])-v.column(ev[1])).norm(), // Length of common edge
       b = (v.column(ev[0])-v.column(cv[0])).norm(), // Edges of face 1
       c = (v.column(ev[1])-v.column(cv[0])).norm(),
@@ -191,14 +241,14 @@ fn equiangulatetest (v, ev, cv) {
    @param[in] faces - faces definition matrix
    @param[in] ef - ids of two adjacent faces
    @returns a list of vertices present in triangles ef but not part of ev */
-fn cvert(ev, faces, ef) {
+fn _cvert(ev, faces, ef) {
   var cv = []
   for (i in 0..1) for (v in faces.rowindices(ef[i])) if (!ev.ismember(v)) cv.append(v)
   return cv
 }
 
 /* Flip the edge */
-fn edgeflip(m, iedge, edges, faces, ev, cv, ef) {
+fn _edgeflip(m, iedge, edges, faces, ev, cv, ef) {
   edges.setrowindices(iedge, cv)
   faces.setrowindices(ef[0], [ev[0], cv[0], cv[1]])
   faces.setrowindices(ef[1], [ev[1], cv[0], cv[1]])
@@ -223,9 +273,9 @@ fn equiangulate(m, quiet=false, fix=nil) {
     var ef=edgetoface.rowindices(iedge) // faces attached to this edge
     if (ef.count()!=2) continue  // Only edges that are connected to two triangles
 
-    var cv=cvert(ev, faces, ef)
-    if (equiangulatetest(vert, ev, cv)) {
-      edgeflip(m, iedge, edges, faces, ev, cv, ef)
+    var cv=_cvert(ev, faces, ef)
+    if (_equiangulatetest(vert, ev, cv)) {
+      _edgeflip(m, iedge, edges, faces, ev, cv, ef)
       edgetoface = m.connectivitymatrix(2,1) // Recalculate connectivity
       verttoedge = m.connectivitymatrix(1,0) // Recalculate connectivity
       nflip+=1
@@ -237,18 +287,87 @@ fn equiangulate(m, quiet=false, fix=nil) {
   return nil
 }
 
+/* **************************
+ * Merging meshes
+ * ************************** */
+
+class MeshMerge is MeshBuilder {
+  init (meshes, tol=1e-12) {
+    self.meshes = meshes
+    self.tree = nil
+    self.tol = tol // Tolerance below which vertices will be considered identical
+    self.nv = 0
+    super.init()
+  }
+
+  addmesh(msh) {
+    if (isnil(self.meshes)) self.meshes = []
+    if (!islist(self.meshes)) self.meshes = [self.meshes]
+    if (islist(msh)) for (el in msh) self.meshes.append(el)
+    else self.meshes.append(msh)
+  }
+
+  addvertex(x) {
+    if (self.tree) {
+      // Does this vertex already exist?
+      var nrst = self.tree.nearest(x)
+      if ((nrst.location - x).norm() > self.tol) {
+        // No, so create a new one
+        var new = self.tree.insert(x)
+        new.indx = super.addvertex(x)
+        return new.indx
+      } else { // Yes, so just return the index
+        return nrst.indx
+      }
+    } else { // If the tree wasn't created yet, create it and add the vertex
+      self.tree = KDTree([x])
+      self.tree.head.indx = super.addvertex(x)
+      return self.tree.head.indx
+    }
+  }
+
+  mergevertices(m) { // Merges vertices into the mesh
+    var vert = m.vertexmatrix()
+    var vdict = Dictionary()
+    for (vid in 0...m.count()) {
+      vdict[vid] = self.addvertex(vert.column(vid))
+    }
+    return vdict
+  }
+
+  mergegrade(m, g, dict) { // Merges elements of grade g into the mesh
+    var conn = m.connectivitymatrix(0, g)
+    for (id in 0...m.count(g)) {
+        var newel = [] // Convert the indices into new vertex indices
+        for (elid in conn.rowindices(id)) newel.append(dict[elid])
+        self.addelement(g, newel)
+    }
+  }
+
+  merge() {
+    for (m in self.meshes) {
+      var vdict = self.mergevertices(m) // First merge the vertices
+      for (grade in 1..m.maxgrade()) { // Then merge all higher grades
+        self.mergegrade(m, grade, vdict)
+      }
+    }
+
+    return self.build() // Build the mesh
+  }
+}
+
 /* ********************************
- * Refinement
+ * Simple refinement 
  ******************************** */
 
 // Calculate the midpoint of an edge
-fn midpoint(vertices, edges, i) {
+fn _midpoint(vertices, edges, i) {
   var edge = edges.rowindices(i)
   return 0.5*(vertices.column(edge[0])+vertices.column(edge[1]))
 }
 
 // Swaps elements of an indexable object
-fn swap(e, i, j) {
+fn _swap(e, i, j) {
   var swp = e[i]; e[i] = e[j]; e[j]=swp
 }
 
@@ -275,7 +394,7 @@ fn refinemesh(m) {
   var newvertices = Matrix(dim, nv+nl)
   for (i in 0...nv) newvertices.setcolumn(i, vertices.column(i))
   for (i in 0...nl) {
-    newvertices.setcolumn(nv+i, midpoint(vertices, edges, i))
+    newvertices.setcolumn(nv+i, _midpoint(vertices, edges, i))
   }
   new.setvertexmatrix(newvertices)
 
@@ -317,7 +436,7 @@ e0[1] b --- z -- c
       // The vertices are now in canonical order
 
       // does edge 1 connect with a? if not swap
-      if (!evert[1].ismember(va)) swap(fedge, 1, 2)
+      if (!evert[1].ismember(va)) _swap(fedge, 1, 2)
       // The edges are now in a canonical order, so that evert[1] connects to the first element of evert[0]
       var vx = nv+fedge[0], vy = nv+fedge[1], vz = nv+fedge[2]
 
@@ -345,9 +464,135 @@ e0[1] b --- z -- c
   return new
 }
 
-/* Refinement */
+/* ********************************
+ * Advanced refinement 
+ ******************************** */
 
-class MeshRefiner {
+//////////////////////
+// Utility functions
+//////////////////////
+
+// Compare two lists 
+fn _cmpel(a,b) {
+  if (a.count()!=b.count()) return false 
+  for (x in a) if (!b.ismember(x)) return false 
+  return true 
+}
+
+// Determine if list a is already in a list of lists 
+fn _elinlist(ellist, a) {
+  for (el in ellist) {
+    if (_cmpel(el, a)) return true 
+  }
+  return false 
+}
+
+/* **********************************
+ * Base class for adaptive refinement 
+ * ********************************** */
+
+/* Subclasses must implement their own version of adaptmesh, 
+   which returns a list of dictionaries, one for each grade of element, 
+   Each dictionary has: 
+    * keys corresponding to the new element ids; 
+    * values can be either 
+      - a single elementid in the old mesh OR
+      - a list of elements which will be averaged over 
+*/ 
+
+class MeshAdaptiveRefiner { 
+  init (target) { // The target can either be a single mesh or a collection of objects
+    self.target = target
+    self.refinemap = nil 
+    self.new = nil
+  }
+
+  mesh() { // Returns the mesh being refined 
+    if (ismesh(self.target)) return self.target
+    else if (islist(self.target)) {
+      for (m in self.target) if (ismesh(m)) return m
+    }
+    return nil
+  }
+
+  // Subclasses should replace this method with their own version
+  adaptmesh(selection) { }
+
+  adaptfield(field) { // Maps a field onto a new mesh
+    var mesh = self.mesh()
+    var prototype = field.enumerate(0)
+    if (isobject(prototype)) prototype=prototype.clone()
+    var shape = field.shape()
+    var result
+
+    if (self.refinemap && prototype) {
+      result = Field(self.new, prototype, grade=shape)
+
+      for (g in 0...shape.count()) {
+        if (shape[g]==0) continue
+        var dict = self.refinemap[g]
+
+        for (newid in dict) { // Loop over the new ids 
+          var oldid = dict[newid]
+
+          if (islist(oldid)) { // If this oldid is a list, average over these values
+            var sum, nn = oldid.count()
+            if (isfloat(prototype)) sum = 0
+            if (nn==0) continue
+            for (i in 0...nn) sum+=field[g, oldid[i]]
+            sum/=oldid.count()
+            result[g, newid] = sum
+          } else {
+            result[g, newid] = field[g, oldid]
+          }
+        }
+      }
+    }
+
+    return result
+  }
+
+  adaptselection(sel) { // Maps a selection onto a new mesh
+    var result
+
+    if (self.refinemap) {
+      result = Selection(self.new)
+
+      for (g in 0..self.new.maxgrade()) {
+        var dict = self.refinemap[g]
+        if (sel.count(g)==0) continue
+
+        for (id in dict.keys()) {
+          if (isint(dict[id]) && sel[g, dict[id]]) result[g, id]=true
+        }
+      }
+    }
+
+    return result
+  }
+
+  adapt(selection=nil) { // Base adaptive refinement sequence
+    var newmesh = self.adaptmesh(selection)
+
+    // Returns a refinement dictionary that maps old objects to new
+    var dict = { self.mesh() : self.new } 
+
+    if (islist(self.target)) { 
+      for (el in self.target) {
+        if (isfield(el)) dict[el] = self.adaptfield(el)
+        if (isselection(el)) dict[el] = self.adaptselection(el)
+      }
+    }
+
+    return dict
+  }
+}
+
+/* **************************
+ * Refinement
+ * ************************** */
+
+class MeshRefiner is MeshAdaptiveRefiner {
   init (target) {
     self.target = target
     self.refinemap = nil
@@ -364,13 +609,13 @@ class MeshRefiner {
 
   split(id, el, vert, mb, tree, dict) { // split elements
     var nv = el.count()
-    for (i in 0...nv) {
-      for (j in i+1...nv) {
+    for (i in 0...nv) {     // Loop over distinct pairs 
+      for (j in i+1...nv) { // 
         var midpoint = (vert.column(el[i])+vert.column(el[j]))/2
-        if (!tree.ismember(midpoint)) {
-          var id = mb.addvertex(midpoint)
+        if (!tree.ismember(midpoint)) { // Check if already exists 
+          var id = mb.addvertex(midpoint) // Add vertex 
           tree.insert(midpoint).id = id
-          dict[id]=[el[i],el[j]]
+          dict[id]=[el[i],el[j]] // dict[new vertex] -> [oldvertices]
         }
       }
     }
@@ -378,11 +623,11 @@ class MeshRefiner {
 
   refine1(id, el, vert, nel, mb, tree, dict) { // refine edges
     var midpoint = (vert.column(el[0])+vert.column(el[1]))/2
-    var mp = tree.ismember(midpoint)
+    var mp = tree.ismember(midpoint) 
     if (mp) {
-      dict[mb.addedge([el[0], mp.id])] = id
+      dict[mb.addedge([el[0], mp.id])] = id 
       dict[mb.addedge([mp.id, el[1]])] = id
-    }
+    } // refinement dictionary key: new edge id -> old edge id 
     return isobject(mp)
   }
 
@@ -448,14 +693,64 @@ class MeshRefiner {
     }
     if (newel.count()>0) {
       for (i in newel) {
-        dict[i] = id
+        dict[i] = id // refinement dictionary key: new face id -> old face id 
       }
     }
 
     return (newel.count()>0)
   }
 
-  refinemesh(selection=nil) {
+  refine3(id, el, vert, nel, mb, tree, dict) { // refine volumes 
+    var nv = el.count() // Number of vertices in the element
+    var pts = [] // Points defining the element
+    var localmap = Dictionary() // Maps local ids in pts to correct ids 
+
+    for (i in 0...nv) { // Find vertex positions and ids
+      pts.append(vert.column(el[i])) 
+      localmap[i]=el[i]
+    }
+
+    for (i in 0...nv) {      // Loop over all unique pairs 
+      for (j in i+1...nv) {  // and find midpoints 
+        var midpoint = (vert.column(el[i])+vert.column(el[j]))/2
+        var node = tree.ismember(midpoint) // Find whether this midpoint actually exists
+        if (node) {
+          localmap[pts.count()]=node.id
+          pts.append(midpoint)
+        } 
+      }
+    }
+
+    var tri = Delaunay(pts).triangulate() // Now perform the Delaunday triangulation
+
+    fn _mapel(el) { // Map local ids for this element onto the correct ids 
+      var ntri = [] 
+      for (id in el) ntri.append(localmap[id]) 
+      return ntri 
+    } 
+
+    fn _checkel(el) { // Check if this element contains any old vertices 
+      for (id in el) if (id<nv) return false 
+      return true 
+    }
+
+    for (t in tri) { // Loop over the generated tetrahedra from the triangulation
+      var newid = mb.addvolume(_mapel(t)) 
+      dict[newid] = id // refinement dictionary key: new element id -> old element id 
+
+      for (g in 1..2) { // Create "missing" elements of lower grade 
+        if (nel[g]==0) continue // Skip empty grades 
+        var elements = t.sets(g+1) // Generate all possible elements 
+        // Generate new elements only from possibilites that use only new vertices
+        for (e in elements) { 
+          if (_checkel(e)) mb.addelement(g, _mapel(e))
+        }
+      }
+    }
+  }
+
+  // vdict keys: old vertex ids -> values: new vertex ids
+  adaptmesh(selection) {
     var m = self.mesh()
     var mb = MeshBuilder()
     var vertices = m.vertexmatrix()
@@ -466,11 +761,12 @@ class MeshRefiner {
 
     for (g in 0..dim) nel[g]=m.count(g)
     var vlist = []
-    var vdict = Dictionary()
-    for (i in 0...nv) {
-      var v = vertices.column(i)
-      vlist.append(v)
-      vdict[i] = mb.addvertex(v)
+    var vdict = Dictionary() // Vertex map dictionary 
+    for (vid in 0...nv) { // Loop over vertexids in old mesh 
+      var x = vertices.column(vid) // Get the vertex position
+      vlist.append(x) 
+      var newid = mb.addvertex(x)
+      vdict[newid] = vid // Add the vertex to the new mesh
     }
 
     var tree=KDTree(vlist)
@@ -510,136 +806,181 @@ class MeshRefiner {
     return (self.new=mb.build())
   }
 
-  refinefield(field) {
-    var mesh = self.mesh()
-    var prototype = field.enumerate(0)
-    if (isobject(prototype)) prototype=prototype.clone()
-    var shape = field.shape()
-    var result
-
-    if (self.refinemap && prototype) {
-      result = Field(self.new, prototype, grade=shape)
-
-      for (g in 0...shape.count()) {
-        if (shape[g]==0) continue
-        var dict = self.refinemap[g]
-
-        for (id in dict) {
-          var map = dict[id]
-          if (islist(map)) {
-            var sum, nn = map.count()
-            if (isfloat(prototype)) sum = 0
-            if (nn==0) continue
-            for (i in 0...nn) sum+=field[g, map[i]]
-            sum/=map.count()
-            result[g, id] = sum
-          } else {
-            result[g, id] = field[g, map]
-          }
-        }
-      }
-    }
-
-    return result
-  }
-
-  refineselection(sel) {
-    var result
-
-    if (self.refinemap) {
-      result = Selection(self.new)
-
-      for (g in 0..self.new.maxgrade()) {
-        var dict = self.refinemap[g]
-        if (sel.count(g)==0) continue
-
-        for (id in dict.keys()) {
-          if (isint(dict[id]) && sel[g, dict[id]]) result[g, id]=true
-        }
-      }
-    }
-
-    return result
-  }
-
   refine(selection=nil) {
-    var newmesh = self.refinemesh(selection=selection)
-
-    var dict = { self.mesh() : self.new}
-
-    if (islist(self.target)) {
-      for (el in self.target) {
-        if (isfield(el)) dict[el] = self.refinefield(el)
-        if (isselection(el)) dict[el] = self.refineselection(el)
-      }
-    }
-
-    return dict
-  }
+    return self.adapt(selection=selection)
+  } 
 }
 
-/* Merging meshes */
-class MeshMerge is MeshBuilder {
-  init (meshes) {
-    self.meshes = meshes
-    self.tree = nil
-    self.tol = 1e-12 // Tolerance below which vertices will be considered identical
-    self.nv = 0
-    super.init()
+/* **************************
+ * Pruning
+ * ************************** */
+
+class MeshPruner is MeshAdaptiveRefiner {
+  init (target, fix=nil) {
+    self.fix = fix // Fixed vertices 
+    self.clusters = nil // A list of clusters 
+    self.vmap = nil // A dictionary that maps elements to clusters
+
+    super.init(target) 
   }
 
-  addmesh(msh) {
-    if (isnil(self.meshes)) self.meshes = []
-    if (!islist(self.meshes)) self.meshes = [self.meshes]
-    if (islist(msh)) for (el in msh) self.meshes.append(el)
-    else self.meshes.append(msh)
+  findclusterfromvertex(vid) { // Finds the cluster containing a vertex, if any
+    if (self.vmap.contains(vid)) return self.vmap[vid]
+    return nil 
   }
 
-  addvertex(x) {
-    if (self.tree) {
-      // Does this vertex already exist?
-      var nrst = self.tree.nearest(x)
-      if ((nrst.location - x).norm() > self.tol) {
-        // No, so create a new one
-        var new = self.tree.insert(x)
-        new.indx = super.addvertex(x)
-        return new.indx
-      } else { // Yes, so just return the index
-        return nrst.indx
-      }
-    } else { // If the tree wasn't created yet, create it and add the vertex
-      self.tree = KDTree([x])
-      self.tree.head.indx = super.addvertex(x)
-      return self.tree.head.indx
+  countvertices(vlist) { // Counts the number of vertices in vlist that belong to any cluster
+    var count = 0
+    for (vid in vlist) {
+      if (self.vmap.contains(vid)) count+=1
     }
-  }
+    return count
+  } 
 
-  mergevertices(m) { // Merges vertices into the mesh
-    var vert = m.vertexmatrix()
-    var vdict = Dictionary()
-    for (vid in 0...m.count()) {
-      vdict[vid] = self.addvertex(vert.column(vid))
-    }
-    return vdict
-  }
-
-  mergegrade(m, g, dict) { // Merges elements of grade g into the mesh
-    var conn = m.connectivitymatrix(0, g)
-    for (id in 0...m.count(g)) {
-        var newel = [] // Convert the indices into new vertex indices
-        for (elid in conn.rowindices(id)) newel.append(dict[elid])
-        self.addelement(g, newel)
-    }
-  }
-
-  merge() {
-    for (m in self.meshes) {
-      var vdict = self.mergevertices(m) // First merge the vertices
-      for (grade in 1..m.maxgrade()) { // Then merge all higher grades
-        self.mergegrade(m, grade, vdict)
+  countmaxverticesincluster(vlist) { // Counts the number of maximum number of vertices in vlist that belong to a single cluster
+    var count = Dictionary() 
+    var max = 0
+    for (vid in vlist) {
+      if (self.vmap.contains(vid)) {
+        var cluster = self.vmap[vid]
+        if (count.contains(cluster)) count[cluster]+=1
+        else count[cluster]=1
       }
     }
+    for (c in count) if (count[c]>max) max=count[c]
+    return max
+  } 
 
-    return self.build() // Build the mesh
+  addcluster(vlist) { // Creates a new cluster from a list of vertices
+    var newcluster = []
+    self.clusters.append(newcluster)
+    self.addverticestocluster(newcluster, vlist)
   }
+
+  addverticestocluster(cluster, vlist) { // Adds vertices to a cluster
+    for (v in vlist) {
+      if (!cluster.ismember(v)) cluster.append(v)
+      self.vmap[v]=cluster
+    }
+  }
+
+  mergeclusters(clusters) { // Merges clusters into one
+    for (k in 1...clusters.count()) {
+      self.addverticestocluster(clusters[0], clusters[k])
+      self.clusters.remove(clusters[k])
+    }
+  }
+
+  collapseelement(vlist) { // Collapses the vertices in element 
+    var clusters = []
+    for (v in vlist) {
+      var c = self.findclusterfromvertex(v)
+      // Make sure we don't find duplicate clusters
+      if (c && !_elinlist(clusters, c)) clusters.append(c)
+    }
+
+    var nc = clusters.count() // Did any of these vertices belong to a cluster?
+    if (nc==0) { // No, so they form a new cluster
+      self.addcluster(vlist)
+    } else { // Yes, so we add them to an existing cluster
+      self.addverticestocluster(clusters[0],vlist)
+      if (nc>1) self.mergeclusters(clusters) // Merge if they combine more than one
+    }
+  }
+
+  updateelement(vdict, vlist) { // Maps elements of vlist using vdict
+    var nvlist = []
+    for (v in vlist) nvlist.append(vdict[v])
+    return nvlist
+  }
+  
+  isfixed(vid) { // Test if a vertex is fixed 
+    if (self.fix) return self.fix[0, vid]
+    return false
+  } 
+
+  clustercenter(vlist) { // Find the center of a cluster 
+    var m = self.mesh()
+    var fix
+    var x 
+    for (vid in vlist) {
+      if (self.isfixed(vid)) {
+        if (fix) _errMltVClstrFxd.throw()
+        fix=m.vertexposition(vid)
+        break
+      } 
+      x+=m.vertexposition(vid)
+    }
+
+    if (fix) x=fix
+    else if (x) x/=vlist.count() 
+    
+    return x
+  }
+
+  adaptmesh(selection) {
+    var m = self.mesh()
+    self.clusters = []
+    self.vmap = Dictionary() 
+
+    // Identify clusters of points to collapse
+    for (g in 1..m.maxgrade()) {
+      var conn = m.connectivitymatrix(0, g)
+      var ids = selection.idlistforgrade(g)
+      for (elid in ids) {
+        var el=conn.rowindices(elid) 
+        self.collapseelement(el) 
+      }
+    }
+
+    // Now build the new mesh 
+    var mb = MeshBuilder() 
+    var refmap = [ ] // Dictionary describing how element ids are mapped over
+    var vdict = Dictionary(), // Map newids to oldids
+        vmap = Dictionary() // Map old vertex ids to new ids
+    for (oldid in 0...m.count()) { // Add vertices that aren't being collapsed
+      if (self.findclusterfromvertex(oldid)) continue
+      var newid = mb.addvertex(m.vertexposition(oldid))
+      vdict[newid]=oldid
+      vmap[oldid]=newid
+    }
+    for (cluster in self.clusters) { // Collapse each cluster to a new vertex
+      var x = self.clustercenter(cluster)
+      var newid = mb.addvertex(x)
+      vdict[newid]=cluster
+      for (oldid in cluster) vmap[oldid]=newid
+    }
+    refmap.append(vdict)
+
+    // Now add appropriate elements 
+    for (g in 1..m.maxgrade()) {
+      var conn = m.connectivitymatrix(0, g)
+      var dict = Dictionary() 
+      var clist = []
+
+      for (id in 0...m.count(g)) {
+        var el = conn.rowindices(id)
+        var nvcl = self.countvertices(el) // Number of vertices in a cluster
+        if (nvcl<2 || self.countmaxverticesincluster(el)==1) {
+          var newel = self.updateelement(vmap, el)
+          if (nvcl==1) { // Skip if this element is a duplicate
+            if (_elinlist(clist, newel)) continue 
+            clist.append(newel) // Only track elements connected to a cluster
+          }
+          var newid = mb.addelement(g, newel)
+          dict[newid] = id
+        }
+      }
+      refmap.append(dict)
+    }
+
+    self.refinemap = refmap
+
+    self.new = mb.build() 
+    return self.new
+  }
+
+  prune(selection) {
+    return self.adapt(selection=selection)
+  } 
 }

@@ -67,12 +67,46 @@ Create a circle:
 ## PolyhedronMesh
 [tagpolyhedronmesh]: # (polyhedron)
 
-This function creates a mesh from a polyhedron specification.
+This function creates a mesh corresponding to a polyhedron. 
+
+    var m = PolyhedronMesh(vertices, faces)
+
+where `vertices` is a list of vertices and `faces` is a list of faces specified as a list of vertex indices.
+
+To use `PolyhedronMesh`, import the `meshtools` module:
+
+    import meshtools
+
+Create a cube:
+
+    var m = PolyhedronMesh([ [-0.5, -0.5, -0.5], [ 0.5, -0.5, -0.5],
+                             [-0.5,  0.5, -0.5], [ 0.5,  0.5, -0.5],
+                             [-0.5, -0.5,  0.5], [ 0.5, -0.5,  0.5],
+                             [-0.5,  0.5,  0.5], [ 0.5,  0.5,  0.5]],
+                           [ [0,1,3,2], [4,5,7,6], [0,1,5,4], 
+                             [3,2,6,7], [0,2,6,4], [1,3,7,5] ])
+
+*Note* that the vertices in each face list must be specified strictly in cyclic order.
 
 ## Equiangulate
 [tagequiangulate]: # (equiangulate)
 
-Attempts to equiangulate a mesh.
+Attempts to equiangulate a mesh, exchanging elements to improve their regularity.
+
+    equiangulate(mesh)
+
+*Note* this function modifies the mesh in place; it does not create a new mesh.
+
+## ChangeMeshDimension
+[tagchangemeshdimension]: # (changemeshdimension)
+
+Changes the dimension in which a mesh is embedded. For example, you may have created a mesh in 2D that you now wish to use in 3D.
+
+To use:
+
+    var new = ChangeMeshDimension(mesh, dim)
+
+where `mesh` is the mesh you wish to change, and `dim` is the new embedding dimension.
 
 ## MeshBuilder
 [tagmeshbuiler]: # (meshbuilder)
@@ -103,19 +137,19 @@ or implicitly when adding the first vertex:
 ## MshBldDimIncnstnt
 [tagmshblddimincnstnt]: # (mshblddimincnstnt)
 
-This error is produced if you try to add a vertex that is inconsistent with the mesh dimension, e.g. 
+This error is produced if you try to add a vertex that is inconsistent with the mesh dimension, e.g.
 
     var mb = MeshBuilder(dimension=2) 
     mb.addvertex([1,0,0]) // Throws an error! 
 
-To fix this ensure all vertices have the correct dimension. 
+To fix this ensure all vertices have the correct dimension.
 
 ## MshBldDimUnknwn
 [tagmshblddimunknwn]: # (mshblddimunknwn)
 
-This error is produced if you try to add an element to a `MeshBuilder` object but haven't yet specified the dimension (at initialization) or by adding a vertex. 
+This error is produced if you try to add an element to a `MeshBuilder` object but haven't yet specified the dimension (at initialization) or by adding a vertex.
 
-    var mb = MeshBuiler() 
+    var mb = MeshBuilder() 
     mb.addedge([0,1]) // No vertices have been added 
 
 To fix this add the vertices first.
@@ -124,3 +158,58 @@ To fix this add the vertices first.
 [tagmeshrefiner]: # (meshrefiner)
 
 The `MeshRefiner` class is used to refine meshes, and to correct associated data structures that depend on the mesh.
+
+To prepare for refining, first create a `MeshRefiner` object either with a `Mesh`,
+
+    var mr = MeshRefiner(mesh)
+
+or with a list of objects that can include a `Mesh` as well as `Field`s and `Selection`s.
+
+    var mr = MeshRefiner([mesh, field, selection ... ])
+
+To perform the refinement, call the `refine` method. You can refine all elements,
+
+    var dict = mr.refine()
+
+or refine selected elements using a `Selection`,
+
+    var dict = mr.refine(selection=select)
+
+The `refine` method returns a `Dictionary` that maps old objects to new, refined objects. Use this to update your data structures.
+
+    var newmesh = dict[oldmesh]
+
+## MeshPruner
+[tagmeshpruner]: # (meshpruner)
+
+The `MeshPruner` class is used to prune excessive detail from meshes (a process that's sometimes referred to as coarsening), and to correct associated data structures that depend on the mesh.
+
+First create a `MeshPruner` object either with a `Mesh`,
+
+    var mp = MeshRefiner(mesh)
+
+or with a list of objects that can include a `Mesh` as well as `Field`s and `Selection`s.
+
+    var mp = MeshRefiner([mesh, field, selection ... ])
+
+To perform the refinement, call the `prune` method with a `Selection`,
+
+    var dict = mp.refine(select)
+
+The `refine` method returns a `Dictionary` that maps old objects to new, refined objects. Use this to update your data structures.
+
+    var newmesh = dict[oldmesh]
+
+## MeshMerge
+[tagmeshmerge]: # (meshmerge)
+[tagmerge]: # (meshmerge)
+
+The `MeshMerge` class is used to combine meshes into a single mesh, removing any duplicate elements.
+
+To use, create a `MeshMerge` object with a list of meshes to merge,
+
+    var mrg = MeshMerge([m1, m2, m3, ... ])
+
+and then call the `merge` method to return a combined mesh:
+
+    var newmesh = mrg.merge()

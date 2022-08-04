@@ -184,6 +184,24 @@ fn PolyhedronMesh(list, faces) {
   return mb.build()
 }
 
+// Constructs a mesh from a point cloud
+fn DelaunayMesh(pts, outputdim=3) {
+  var del = Delaunay(pts)
+  var mb = MeshBuilder()
+
+  for (x in del.pts) {
+    var p = Matrix(outputdim)
+    for (xi,i in x) p[i]=xi
+    mb.addvertex(p)
+  }
+
+  for (tri in del.triangulate()) {
+    mb.addelement(del.dim, tri)
+  }
+
+  return mb.build()
+}
+
 /* **************************************************
  * Change the dimension in which the mesh is embedded 
  * ************************************************** */

@@ -88,6 +88,20 @@ Create a cube:
 
 *Note* that the vertices in each face list must be specified strictly in cyclic order.
 
+## DelaunayMesh
+[tagdelaunaymesh]: # (delaunaymesh)
+
+The `DelaunayMesh` constructor function creates a `Mesh` object directly from a point cloud using the Delaunay triangulator.
+
+    var pts = []
+    for (i in 0...100) pts.append(Matrix([random(), random()]))
+    var m=DelaunayMesh(pts)
+    Show(plotmesh(m))
+
+You can control the output dimension of the mesh (e.g. to create a 2D mesh embedded in 3D space) using the optional `outputdim` property. 
+
+    var m = DelaunayMesh(pts, outputdim=3)
+
 ## Equiangulate
 [tagequiangulate]: # (equiangulate)
 

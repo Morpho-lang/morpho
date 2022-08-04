@@ -1,8 +1,6 @@
 /* Delaunay - Generates Delaunay simplices of a point set
  * Using a sweepline algorithm */
 
-import meshtools
-
 // Compute the Circumsphere of a set of points
 class Circumsphere {
   init (vertices, indx) {
@@ -190,22 +188,4 @@ class Delaunay {
 
     return open
   }
-}
-
-// Constructs a mesh from a point cloud
-fn DelaunayMesh(pts, outputdim=3) {
-  var del = Delaunay(pts)
-  var mb = MeshBuilder()
-
-  for (x in del.pts) {
-    var p = Matrix(outputdim)
-    for (xi,i in x) p[i]=xi
-    mb.addvertex(p)
-  }
-
-  for (tri in del.triangulate()) {
-    mb.addelement(del.dim, tri)
-  }
-
-  return mb.build()
 }

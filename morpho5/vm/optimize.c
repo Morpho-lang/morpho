@@ -428,7 +428,7 @@ void optimize_track(optimizer *opt) {
             optimize_regcontents(opt, DECODE_A(instr), GLOBAL, DECODE_Bx(instr));
             break;
         case OP_PRINT:
-            optimize_reguse(opt, DECODE_B(instr));
+            optimize_reguse(opt, DECODE_A(instr));
             break;
         //default:
         //    UNREACHABLE("Opcode not supported in optimizer.");

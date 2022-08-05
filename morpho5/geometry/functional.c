@@ -433,7 +433,7 @@ static bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, i
 }
 
 /* Calculates a numerical gradient for a remote vertex */
-static bool functional_numericalremotegradientold(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
+/*static bool functional_numericalremotegradientold(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
     objectmesh *mesh = info->mesh;
     double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
 
@@ -460,7 +460,7 @@ static bool functional_numericalremotegradientold(vm *v, functional_mapinfo *inf
     }
 
     return true;
-}
+}*/
 
 static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
     objectmesh *mesh = info->mesh;
@@ -2848,7 +2848,7 @@ FUNCTIONAL_METHOD(LineIntegral, gradient, MESH_GRADE_LINE, integralref, integral
 /** Initialize a LineIntegral object */
 value LineIntegral_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
-    int nparams = -1, nfields = 0;
+    int nparams = -1;
 
     if (nargs>0) {
         value f = MORPHO_GETARG(args, 0);

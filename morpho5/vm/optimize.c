@@ -391,17 +391,18 @@ void optimize_track(optimizer *opt) {
         case OP_NEQ:
         case OP_LT:
         case OP_LE:
-            if (!DECODE_ISBCONSTANT(instr)) optimize_reguse(opt, DECODE_B(instr));
-            if (!DECODE_ISCCONSTANT(instr)) optimize_reguse(opt, DECODE_C(instr));
+            optimize_reguse(opt, DECODE_B(instr));
+            optimize_reguse(opt, DECODE_C(instr));
             optimize_regoverwrite(opt, DECODE_A(instr));
             optimize_regcontents(opt, DECODE_A(instr), VALUE, NOTHING);
             break;
         case OP_NOT:
-            if (!DECODE_ISBCONSTANT(instr)) optimize_reguse(opt, DECODE_B(instr));
+            optimize_reguse(opt, DECODE_B(instr));
             optimize_regoverwrite(opt, DECODE_A(instr));
             optimize_regcontents(opt, DECODE_A(instr), VALUE, NOTHING);
             break;
         case OP_BIF:
+        case OP_BIFF:
             optimize_reguse(opt, DECODE_A(instr));
             break;
         case OP_CALL:
@@ -427,10 +428,10 @@ void optimize_track(optimizer *opt) {
             optimize_regcontents(opt, DECODE_A(instr), GLOBAL, DECODE_Bx(instr));
             break;
         case OP_PRINT:
-            if (!DECODE_ISBCONSTANT(instr)) optimize_reguse(opt, DECODE_B(instr));
+            optimize_reguse(opt, DECODE_B(instr));
             break;
-        default:
-            UNREACHABLE("Opcode not supported in optimizer.");
+        //default:
+        //    UNREACHABLE("Opcode not supported in optimizer.");
     }
 }
 
@@ -653,6 +654,7 @@ void optimize_buildblock(optimizer *opt, codeblockindx block, varray_codeblockin
             }
                 return; // Terminate current block
             case OP_BIF:
+            case OP_BIFF:
             {
                 int branchby = DECODE_sBx(opt->current);
                 
@@ -758,7 +760,7 @@ bool optimize_duplicate_load(optimizer *opt) {
             opt->reg[i].id==global) {
             
             if (i!=out) { // Replace with a move instruction and note the duplication
-                optimize_replaceinstruction(opt, ENCODE_DOUBLE(OP_MOV, out, false, i));
+                optimize_replaceinstruction(opt, ENCODE_DOUBLE(OP_MOV, out, i));
             } else { // Register already contains this global
                 optimize_replaceinstruction(opt, ENCODE_BYTE(OP_NOP));
             }
@@ -777,12 +779,11 @@ bool optimize_register_replacement(optimizer *opt) {
     registerindx a=DECODE_A(instr),
                  b=DECODE_B(instr),
                  c=DECODE_C(instr);
-    bool Bc=DECODE_ISBCONSTANT(instr), Cc=DECODE_ISCCONSTANT(instr);
     
-    if (!Bc) b=optimize_findoriginalregister(opt, b);
-    if (!Cc) c=optimize_findoriginalregister(opt, c);
+    b=optimize_findoriginalregister(opt, b);
+    c=optimize_findoriginalregister(opt, c);
     
-    optimize_replaceinstruction(opt, ENCODEC(opt->op, a, Bc, b, Cc, c));
+    optimize_replaceinstruction(opt, ENCODE(opt->op, a, b, c));
     
     return false; // This allows other optimization strategies to intervene after
 }
@@ -790,7 +791,7 @@ bool optimize_register_replacement(optimizer *opt) {
 /** Searches to see if an expression has already been calculated  */
 bool optimize_subexpression_elimination(optimizer *opt) {
     if (opt->op<OP_ADD || opt->op>OP_LE) return false; // Quickly eliminate non-arithmetic instructions
-    static instruction mask = (MASK_OP | MASK_B | MASK_Bc | MASK_C | MASK_Cc);
+    static instruction mask = ( MASK_OP | MASK_B | MASK_C );
     
     // Find if another register contains the same calculated value.
     for (registerindx i=0; i<opt->maxreg; i++) {
@@ -798,7 +799,7 @@ bool optimize_subexpression_elimination(optimizer *opt) {
             instruction comp = optimize_fetchinstructionat(opt, opt->reg[i].iix);
             
             if ((comp & mask)==(opt->current & mask)) {
-                optimize_replaceinstruction(opt, ENCODE_DOUBLE(OP_MOV, DECODE_A(opt->current), false, i));
+                optimize_replaceinstruction(opt, ENCODE_DOUBLE(OP_MOV, DECODE_A(opt->current), i));
                 return true;
             }
         }
@@ -823,18 +824,17 @@ bool optimize_constant_folding(optimizer *opt) {
     if (opt->op<OP_ADD || opt->op>OP_LE) return false; // Quickly eliminate non-arithmetic instructions
     
     instruction instr=opt->current;
-    bool Bc=DECODE_ISBCONSTANT(instr), Cc=DECODE_ISCCONSTANT(instr);
-    indx left=DECODE_B(instr), right=DECODE_C(instr);
+    indx left, right;
     
-    if (!Bc) Bc=optimize_findconstant(opt, DECODE_B(instr), &left);
+    bool Bc=optimize_findconstant(opt, DECODE_B(instr), &left);
     if (!Bc) return false;
-    if (!Cc) Cc=optimize_findconstant(opt, DECODE_C(instr), &right);
+    bool Cc=optimize_findconstant(opt, DECODE_C(instr), &right);
     
     if (Cc) {
         // A program that evaluates the required op with the selected constants.
         instruction ilist[] = {
-            ENCODE_LONG(OP_LCT, 0, left),
-            ENCODE_LONG(OP_LCT, 1, right),
+            ENCODE_LONG(OP_LCT, 0, (instruction) left),
+            ENCODE_LONG(OP_LCT, 1, (instruction) right),
             ENCODE(opt->op, 0, 0, 1),
             ENCODE_BYTE(OP_END)
         };
@@ -844,7 +844,7 @@ bool optimize_constant_folding(optimizer *opt) {
             indx nkonst;
             if (MORPHO_ISOBJECT(out)) UNREACHABLE("Optimizer encountered object while constant folding");
             if (optimize_addconstant(opt, out, &nkonst)) {
-                optimize_replaceinstruction(opt, ENCODE_LONG(OP_LCT, DECODE_A(instr), nkonst));
+                optimize_replaceinstruction(opt, ENCODE_LONG(OP_LCT, DECODE_A(instr), (unsigned int) nkonst));
                 return true;
             }
         }
@@ -1067,10 +1067,10 @@ void optimize_fixbranch(optimizer *opt, codeblock *block, varray_instruction *de
     
     if (DECODE_OP(last)==OP_B) {
         codeblock *destblock = optimize_getblock(opt, block->dest[0]);
-        dest->data[block->oend] = ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, destblock->ostart-block->oend-1);
-    } else if (DECODE_OP(last)==OP_BIF) {
+        dest->data[block->oend] = ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, destblock->ostart - block->oend - 1);
+    } else if (DECODE_OP(last)==OP_BIF || DECODE_OP(last)==OP_BIFF) {
         codeblock *destblock = optimize_getblock(opt, block->dest[1]);
-        dest->data[block->oend] = ENCODE_LONGFLAGS(OP_BIF, DECODE_A(last), DECODE_F(last), false, destblock->ostart-block->oend-1);
+        dest->data[block->oend] = ENCODE_LONG(DECODE_OP(last), DECODE_A(last), destblock->ostart - block->oend-1);
     }
 }
 

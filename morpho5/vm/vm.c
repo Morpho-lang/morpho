@@ -1906,6 +1906,53 @@ void morpho_setdebug(vm *v, bool active) {
 * Initialization
 * ********************************************************************** */
 
+#include <pthread.h>
+
+bool profiler_quit;
+pthread_mutex_t lock;
+
+void *profiler_thread(void *arg) {
+    vm *v = (vm *) arg;
+    
+    while (true) {
+        pthread_mutex_lock(&lock);
+        bool quit=profiler_quit;
+        pthread_mutex_unlock(&lock);
+        
+        if (quit) pthread_exit(NULL);
+        
+        for (int i=0; i<100000; i++);
+        
+        morpho_printvalue(v->fp->function->name);
+        printf("\n");
+    }
+}
+
+bool morpho_profile(vm *v, program *p) {
+    pthread_t profiler;
+    
+    pthread_mutex_init(&lock, NULL);
+    profiler_quit=false;
+    
+    int res = pthread_create(&profiler, NULL, profiler_thread, v);
+    
+    bool success=morpho_run(v, p);
+    
+    pthread_mutex_lock(&lock);
+    profiler_quit=true;
+    pthread_mutex_unlock(&lock);
+    
+    pthread_join(profiler, NULL);
+    
+    pthread_mutex_destroy(&lock);
+    
+    return success;
+}
+
+/* **********************************************************************
+* Initialization
+* ********************************************************************** */
+
 /** Initializes morpho */
 void morpho_initialize(void) {
     object_initialize(); // Must be first for zombie object tracking

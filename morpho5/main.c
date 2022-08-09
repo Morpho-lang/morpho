@@ -38,6 +38,9 @@ int main(int argc, const char * argv[]) {
                         }
                     }
                     break;
+                case 'p':
+                    opt |= CLI_PROFILE;
+                    break;
             }
         } else {
             file = option;

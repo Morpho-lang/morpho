@@ -321,7 +321,11 @@ void cli_run(const char *in, clioptions opt) {
                 }
             }
             if (opt & CLI_RUN) {
-                success=morpho_run(v, p);
+                if (opt & CLI_PROFILE) {
+                    success=morpho_profile(v, p);
+                } else {
+                    success=morpho_run(v, p);
+                }
                 if (!success) cli_reporterror(morpho_geterror(v), v);
             }
         } else {

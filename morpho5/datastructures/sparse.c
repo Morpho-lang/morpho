@@ -1158,10 +1158,9 @@ value Sparse_mul(vm *v, int nargs, value *args) {
             } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
         } else if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
             double scale;
-            new = object_newsparse(NULL, NULL);
-
             if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale)) return MORPHO_NIL;
 
+            new = object_newsparse(NULL, NULL);
             if (new) {
                 err=sparse_scale(a, scale, new);
             } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);

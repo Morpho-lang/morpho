@@ -909,6 +909,28 @@ objectsparseerror sparse_mul(objectsparse *a, objectsparse *b, objectsparse *out
     return SPARSE_FAILED;
 }
 
+/** Multiply a sparse matrix by a dense matrix: out -> out + a*b
+ * @param[in] a - sparse matrix
+ * @param[in] b - dense matrix
+ * @param[out] out - out + a*b. */
+objectsparseerror sparse_mulmat(objectsparse *a, objectmatrix *b, objectmatrix *out) {
+    if (!(sparse_checkformat(a, SPARSE_CCS, true, true))) return SPARSE_CONVFAILED;
+        
+    if (a->ccs.ncols!=b->nrows) return SPARSE_INCMPTBLDIM;
+    
+#ifdef MORPHO_LINALG_USE_CSPARSE
+    cs A;
+    sparse_ccstocsparse(&a->ccs, &A);
+    
+    for (int i=0; i<b->ncols; i++) {
+        cs_gaxpy(&A, b->elements+i*b->nrows, out->elements+i*b->nrows);
+    }
+    return SPARSE_OK;
+    
+#endif
+    return SPARSE_FAILED;
+}
+
 /** Scale a sparse matrix by a scalar
  * @param[in] src - sparse matrix
  * @param[in] scale - scale
@@ -1156,6 +1178,15 @@ value Sparse_mul(vm *v, int nargs, value *args) {
             if (new) {
                 err=sparse_mul(a, b, new);
             } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        } else if (MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
+            objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
+            
+            objectmatrix *out=object_newmatrix(b->nrows, b->ncols, true);
+            new = (objectsparse *) out; // Munge type to ensure binding/deallocation
+            
+            if (out) {
+                err=sparse_mulmat(a, b, out);
+            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
         } else if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
             double scale;
             if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale)) return MORPHO_NIL;
@@ -1172,6 +1203,7 @@ value Sparse_mul(vm *v, int nargs, value *args) {
         morpho_bindobjects(v, 1, &out);
     } else {
         sparse_raiseerror(v, err);
+        if (new) object_free((object *) new);
     }
 
     return out;

@@ -1,0 +1,8 @@
+var A = Sparse(4,4) 
+for (i in 0...4) A[i,i]=1
+
+var B = Matrix([1,2,3,4])
+
+print A*B
+
+//print B.transpose()*A

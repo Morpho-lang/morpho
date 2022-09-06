@@ -84,6 +84,7 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *do
 
 void field_zero(objectfield *field);
 
+unsigned int field_dofforgrade(objectfield *f, grade g);
 bool field_getelement(objectfield *field, grade grade, elementid el, int indx, value *out);
 bool field_getelementwithindex(objectfield *field, int indx, value *out);
 bool field_getelementaslist(objectfield *field, grade grade, elementid el, int indx, unsigned int *nentries, double **out);

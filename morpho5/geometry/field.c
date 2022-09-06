@@ -379,6 +379,11 @@ bool field_compareshape(objectfield *a, objectfield *b) {
     return false;
 }
 
+/** Returns the number of degrees of freedom in a given grade */
+unsigned int field_dofforgrade(objectfield *f, grade g) {
+    return (g<=f->ngrades ? f->dof[g] : 0);
+}
+
 /** Adds two fields together */
 bool field_add(objectfield *left, objectfield *right, objectfield *out) {
     return (matrix_add(&left->data, &right->data, &out->data)==MATRIX_OK);

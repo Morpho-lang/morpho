@@ -305,12 +305,19 @@ sparseccs_resize_error:
  * @param[in] ccs   the matrix
  * @param[in] col  column index
  * @param[out] nentries  the number of entries
- * @param[out] entries  the entries themselves */
-bool sparseccs_getrowindices(sparseccs *ccs, int col, int *nentries, int **entries) {
+ * @param[out] entries  the entries themselves
+ * @param[out] values  (optional) the values */
+bool sparseccs_getrowindiceswithvalues(sparseccs *ccs, int col, int *nentries, int **entries, double **values) {
     if (col>=ccs->ncols) return false;
     *nentries=ccs->cptr[col+1]-ccs->cptr[col];
     *entries=ccs->rix+ccs->cptr[col];
+    if (values) *values=ccs->values+ccs->cptr[col];
     return true;
+}
+
+/** Wrapper to sparseccs_getrowindiceswithvalues */
+bool sparseccs_getrowindices(sparseccs *ccs, int col, int *nentries, int **entries) {
+    return sparseccs_getrowindiceswithvalues(ccs,col,nentries,entries,NULL);
 }
 
 /** Sets the row indices given a column
@@ -804,11 +811,11 @@ objectsparse *sparse_clone(objectsparse *s) {
 /** Gets the dimension sof a sparse matrix */
 void sparse_getdimensions(objectsparse *s, int *nrows, int *ncols) {
     if (s->ccs.ncols>0) {
-        *nrows=s->ccs.nrows;
-        *ncols=s->ccs.ncols;
+        if (nrows) *nrows=s->ccs.nrows;
+        if (ncols) *ncols=s->ccs.ncols;
     } else {
-        *nrows=s->dok.nrows;
-        *ncols=s->dok.ncols;
+        if (nrows) *nrows=s->dok.nrows;
+        if (ncols) *ncols=s->dok.ncols;
     }
 }
 
@@ -940,9 +947,24 @@ objectsparseerror sparse_muldxs(objectmatrix *a, objectsparse *b, objectmatrix *
     
     if (a->ncols!=b->ccs.nrows) return SPARSE_INCMPTBLDIM;
     
+    for (unsigned int row=0; row<a->nrows; row++) {
+        for (unsigned int col=0; col<b->ccs.nrows; col++) {
+            double val, *svalues;
+            int nentries, *entries;
+            matrix_getelement(out, row, col, &val);
+            
+            sparseccs_getrowindiceswithvalues(&b->ccs, col, &nentries, &entries, &svalues);
+            for (int i=0; i<nentries; i++) {
+                double ai;
+                matrix_getelement(a, row, entries[i], &ai);
+                val+=ai*svalues[i];
+            }
+            
+            matrix_setelement(out, row, col, val);
+        }
+    }
     
-    
-    return SPARSE_FAILED;
+    return SPARSE_OK;
 }
 
 /** Scale a sparse matrix by a scalar
@@ -1232,7 +1254,10 @@ value Sparse_mulr(vm *v, int nargs, value *args) {
     if (nargs==1) {
         if (MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
             objectmatrix *a=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
-            objectmatrix *new=object_newmatrix(a->nrows, a->ncols, true);
+            int ncols;
+            sparse_getdimensions(b, NULL, &ncols);
+            
+            objectmatrix *new=object_newmatrix(a->nrows, ncols, true);
             
             if (new) {
                 err=sparse_muldxs(a, b, new);

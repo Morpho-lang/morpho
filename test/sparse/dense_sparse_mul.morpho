@@ -1,8 +1,38 @@
 // Multiply a dense matrix by sparse matrix from the LHS 
 
+var A = Sparse(4,3) 
+for (i in 0...4) for (j in 0...3) A[i,j]=i+j
+
+print A
+// expect: [ 0 1 2 ]
+// expect: [ 1 2 3 ]
+// expect: [ 2 3 4 ]
+// expect: [ 3 4 5 ]
+
+var B = Matrix([[1,-2,3,-4],[-5,6,-7,8]])
+
+print B
+// expect: [ 1 -2 3 -4 ]
+// expect: [ -5 6 -7 8 ]
+
+print B * A
+// expect: [ -8 -10 -12 ]
+// expect: [ 16 18 20 ]
+
 var A = Sparse(4,4) 
-for (i in 0...4) A[i,i]=2
+for (i in 0...4) A[i,i]=i+1
+print A 
+// expect: [ 1 0 0 0 ]
+// expect: [ 0 2 0 0 ]
+// expect: [ 0 0 3 0 ]
+// expect: [ 0 0 0 4 ]
 
 var B = Matrix([1,2,3,4])
+print B
+// expect: [ 1 ]
+// expect: [ 2 ]
+// expect: [ 3 ]
+// expect: [ 4 ]
 
 print B.transpose() * A
+// expect: [ 1 4 9 16 ]

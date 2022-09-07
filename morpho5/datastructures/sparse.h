@@ -129,6 +129,7 @@ bool sparseccs_resize(sparseccs *ccs, int nrows, int ncols, unsigned int nentrie
 bool sparseccs_get(sparseccs *ccs, int i, int j, double *val);
 
 bool sparseccs_getrowindices(sparseccs *ccs, int col, int *nentries, int **entries);
+bool sparseccs_getrowindiceswithvalues(sparseccs *ccs, int col, int *nentries, int **entries, double **vals);
 bool sparseccs_setrowindices(sparseccs *ccs, int col, int nentries, int *entries);
 bool sparseccs_getcolindices(sparseccs *ccs, int maxentries, int *nentries, int *entries);
 bool sparseccs_getcolindicesforrow(sparseccs *ccs, int row, int maxentries, int *nentries, int *entries);

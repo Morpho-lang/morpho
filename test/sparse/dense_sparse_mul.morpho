@@ -1,0 +1,8 @@
+// Multiply a dense matrix by sparse matrix from the LHS 
+
+var A = Sparse(4,4) 
+for (i in 0...4) A[i,i]=2
+
+var B = Matrix([1,2,3,4])
+
+print B.transpose() * A

@@ -909,11 +909,11 @@ objectsparseerror sparse_mul(objectsparse *a, objectsparse *b, objectsparse *out
     return SPARSE_FAILED;
 }
 
-/** Multiply a sparse matrix by a dense matrix: out -> out + a*b
+/** Multiply a sparse matrix a by a dense matrix b: out -> out + a*b
  * @param[in] a - sparse matrix
  * @param[in] b - dense matrix
  * @param[out] out - out + a*b. */
-objectsparseerror sparse_mulmat(objectsparse *a, objectmatrix *b, objectmatrix *out) {
+objectsparseerror sparse_mulsxd(objectsparse *a, objectmatrix *b, objectmatrix *out) {
     if (!(sparse_checkformat(a, SPARSE_CCS, true, true))) return SPARSE_CONVFAILED;
         
     if (a->ccs.ncols!=b->nrows) return SPARSE_INCMPTBLDIM;
@@ -928,6 +928,20 @@ objectsparseerror sparse_mulmat(objectsparse *a, objectmatrix *b, objectmatrix *
     return SPARSE_OK;
     
 #endif
+    return SPARSE_FAILED;
+}
+
+/** Multiply a dense matrix a by a sparse matrix b: out -> out + a*b
+ * @param[in] a - dense matrix
+ * @param[in] b - sparse matrix
+ * @param[out] out - out + a*b. */
+objectsparseerror sparse_muldxs(objectmatrix *a, objectsparse *b, objectmatrix *out) {
+    if (!(sparse_checkformat(b, SPARSE_CCS, true, true))) return SPARSE_CONVFAILED;
+    
+    if (a->ncols!=b->ccs.nrows) return SPARSE_INCMPTBLDIM;
+    
+    
+    
     return SPARSE_FAILED;
 }
 
@@ -1185,7 +1199,7 @@ value Sparse_mul(vm *v, int nargs, value *args) {
             new = (objectsparse *) out; // Munge type to ensure binding/deallocation
             
             if (out) {
-                err=sparse_mulmat(a, b, out);
+                err=sparse_mulsxd(a, b, out);
             } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
         } else if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
             double scale;
@@ -1206,6 +1220,35 @@ value Sparse_mul(vm *v, int nargs, value *args) {
         if (new) object_free((object *) new);
     }
 
+    return out;
+}
+
+/** Multiplication on the right */
+value Sparse_mulr(vm *v, int nargs, value *args) {
+    objectsparse *b=MORPHO_GETSPARSE(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    objectsparseerror err = SPARSE_OK;
+ 
+    if (nargs==1) {
+        if (MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
+            objectmatrix *a=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
+            objectmatrix *new=object_newmatrix(a->nrows, a->ncols, true);
+            
+            if (new) {
+                err=sparse_muldxs(a, b, new);
+                if (err==SPARSE_OK) {
+                    out=MORPHO_OBJECT(new);
+                    morpho_bindobjects(v, 1, &out);
+                } else {
+                    sparse_raiseerror(v, err);
+                    if (new) object_free((object *) new);
+                }
+            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        } else if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+            return Sparse_mul(v, nargs, args); // Redirect to regular multiplication
+        }
+    }
+    
     return out;
 }
 
@@ -1425,7 +1468,7 @@ MORPHO_METHOD(MORPHO_PRINT_METHOD, Sparse_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADD_METHOD, Sparse_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUB_METHOD, Sparse_sub, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_MUL_METHOD, Sparse_mul, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_MULR_METHOD, Sparse_mul, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_MULR_METHOD, Sparse_mulr, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_DIVR_METHOD, Sparse_divr, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_TRANSPOSE_METHOD, Sparse_transpose, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Sparse_count, BUILTIN_FLAGSEMPTY),

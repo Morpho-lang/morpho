@@ -437,6 +437,17 @@ objectsparse *mesh_addgrade(objectmesh *mesh, grade g) {
     return new;
 }
 
+void mesh_removegrade(objectmesh *mesh, grade g) {
+    /* Does the grade already exist? */
+    objectsparse *el=mesh_getconnectivityelement(mesh, 0, g);
+    grade maxg = mesh_maxgrade(mesh);
+    
+    if (el && g<=maxg) {
+        mesh_setconnectivityelement(mesh, 0, g, NULL);
+        mesh_resetconnectivity(mesh);
+    }
+}
+
 /** Adds a missing grade */
 objectsparse *mesh_addgradeold(objectmesh *mesh, grade g) {
     if (g>1) UNREACHABLE("mesh_addgrade only supports adding grade 1.");
@@ -1190,6 +1201,20 @@ value Mesh_addgrade(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Removes a grade from a mesh */
+value Mesh_removegrade(vm *v, int nargs, value *args) {
+    objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+
+    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+        unsigned int g=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        if (g==0) return MORPHO_NIL;
+        mesh_removegrade(m, g);
+    } else morpho_runtimeerror(v, MESH_ADDGRDARGS);
+
+    return out;
+}
+
 /** Adds a symmetry to a mesh */
 value Mesh_addsymmetry(vm *v, int nargs, value *args) {
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
@@ -1262,6 +1287,7 @@ MORPHO_METHOD(MESH_SETVERTEXPOSITION_METHOD, Mesh_setvertexposition, BUILTIN_FLA
 MORPHO_METHOD(MESH_RESETCONNECTIVITY_METHOD, Mesh_resetconnectivity, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_CONNECTIVITYMATRIX_METHOD, Mesh_connectivitymatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_ADDGRADE_METHOD, Mesh_addgrade, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MESH_REMOVEGRADE_METHOD, Mesh_removegrade, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_ADDSYMMETRY_METHOD, Mesh_addsymmetry, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_MAXGRADE_METHOD, Mesh_maxgrade, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Mesh_count, BUILTIN_FLAGSEMPTY),

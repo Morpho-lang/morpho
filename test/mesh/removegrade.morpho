@@ -1,0 +1,20 @@
+// Test to check that addgrade from a volume element works
+import meshtools
+
+var m = Mesh("tetrahedron2.mesh")
+m.addgrade(2)
+m.addgrade(1)
+m.removegrade(1)
+m.removegrade(2)
+
+print m.connectivitymatrix(0,3)
+// expect: [ 1 ]
+// expect: [ 1 ]
+// expect: [ 1 ]
+// expect: [ 1 ]
+
+print m.connectivitymatrix(0,1)
+// expect: nil
+
+print m.connectivitymatrix(0,2)
+// expect: nil

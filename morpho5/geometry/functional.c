@@ -1418,14 +1418,20 @@ bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
     if (!functional_elementsize(v, info->refmesh, info->grade, id, nv, vid, &V0)) return false;
     if (!functional_elementsize(v, mesh, info->grade, id, nv, vid, &V)) return false;
 
-    if (V0<1e-8) printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
-
+    if (V0<1e-8) {
+        printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
+        //morpho_runtimeerror(v, HYDROGEL_ZEEROREFELEMENT, id, V, V0);
+    }
+    
     if (fabs(V)<MORPHO_EPS) return false;
 
     // Determine phi0 either as a number or by looking up something in a field
     if (MORPHO_ISFIELD(info->phi0)) {
         objectfield *p = MORPHO_GETFIELD(info->phi0);
-        field_getelement(p, info->grade, id, 0, &vphi0);
+        if (!field_getelement(p, info->grade, id, 0, &vphi0)) {
+            morpho_runtimeerror(v, HYDROGEL_FLDGRD, (unsigned int) info->grade);
+            return false;
+        }
     }
     if (MORPHO_ISNUMBER(vphi0)) {
         if (!morpho_valuetofloat(vphi0, &phi0)) return false;
@@ -3036,16 +3042,24 @@ void functional_initialize(void) {
 
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
     morpho_defineerror(FUNC_ELNTFND, ERROR_HALT, FUNC_ELNTFND_MSG);
+    
     morpho_defineerror(SCALARPOTENTIAL_FNCLLBL, ERROR_HALT, SCALARPOTENTIAL_FNCLLBL_MSG);
+    
     morpho_defineerror(LINEARELASTICITY_REF, ERROR_HALT, LINEARELASTICITY_REF_MSG);
     morpho_defineerror(LINEARELASTICITY_PRP, ERROR_HALT, LINEARELASTICITY_PRP_MSG);
+    
     morpho_defineerror(HYDROGEL_ARGS, ERROR_HALT, HYDROGEL_ARGS_MSG);
     morpho_defineerror(HYDROGEL_PRP, ERROR_HALT, HYDROGEL_PRP_MSG);
+    morpho_defineerror(HYDROGEL_FLDGRD, ERROR_HALT, HYDROGEL_FLDGRD_MSG);
+    morpho_defineerror(HYDROGEL_ZEEROREFELEMENT, ERROR_WARNING, HYDROGEL_ZEEROREFELEMENT_MSG);
+    
     morpho_defineerror(EQUIELEMENT_ARGS, ERROR_HALT, EQUIELEMENT_ARGS_MSG);
     morpho_defineerror(GRADSQ_ARGS, ERROR_HALT, GRADSQ_ARGS_MSG);
     morpho_defineerror(NEMATIC_ARGS, ERROR_HALT, NEMATIC_ARGS_MSG);
     morpho_defineerror(NEMATICELECTRIC_ARGS, ERROR_HALT, NEMATICELECTRIC_ARGS_MSG);
+    
     morpho_defineerror(FUNCTIONAL_ARGS, ERROR_HALT, FUNCTIONAL_ARGS_MSG);
+    
     morpho_defineerror(LINEINTEGRAL_ARGS, ERROR_HALT, LINEINTEGRAL_ARGS_MSG);
     morpho_defineerror(LINEINTEGRAL_NFLDS, ERROR_HALT, LINEINTEGRAL_NFLDS_MSG);
 }

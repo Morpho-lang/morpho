@@ -8,6 +8,37 @@ Morpho provides a number of built-in functions.
 
 [showsubtopics]: # (subtopics)
 
+## sin
+[tagsin]: # (sin)
+
+Returns the sine of an angle in radians.
+
+    import constants 
+    print sin(Pi/2) // expect: 1
+
+## sinh
+[tagsinh]: # (sinh)
+
+Returns the hyperbolic sine of an angle in radians.
+
+    import constants 
+    print sin(0) // expect: 0
+
+## cos
+[tagcos]: # (cos)
+
+Returns the cosine of an angle in radians.
+
+    import constants 
+    print cos(Pi/2) // expect: 0
+
+## cosh
+[tagcosh]: # (cosh)
+
+Returns the hyperbolic cosine of an angle in radians.
+
+    print cosh(0) // expect: 1
+
 ## arctan
 [tagarctan]: # (arctan)
 

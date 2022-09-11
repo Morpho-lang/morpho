@@ -570,6 +570,21 @@ class MeshAdaptiveRefiner {
     return result
   }
 
+  selectdown(el, oldsel, newsel) {
+    var nv=self.mesh().count() // Max vertexid in old mesh 
+    var vmap = self.refinemap[0]
+    var vselected=false 
+
+    for (vid in el) { // Check at least one vertex is selected 
+      if (vid<nv && oldsel[0,vmap[vid]]) vselected=true 
+    }
+
+    if (vselected) for (vid in el) {
+      if (vid<nv && !oldsel[0,vmap[vid]]) continue 
+      newsel[0,vid]=true 
+    }
+  }
+
   adaptselection(sel) { // Maps a selection onto a new mesh
     var result
 
@@ -579,9 +594,13 @@ class MeshAdaptiveRefiner {
       for (g in 0..self.new.maxgrade()) {
         var dict = self.refinemap[g]
         if (sel.count(g)==0) continue
+        var conn = self.new.connectivitymatrix(0,g)
 
         for (id in dict.keys()) {
-          if (isint(dict[id]) && sel[g, dict[id]]) result[g, id]=true
+          if (isint(dict[id]) && sel[g, dict[id]]) {
+            result[g, id]=true
+            if (g>0) self.selectdown(conn.rowindices(id), sel, result) 
+          }
         }
       }
     }

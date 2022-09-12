@@ -1790,11 +1790,14 @@ FUNCTIONAL_METHOD(EquiElement, total, MESH_GRADE_VERTEX, equielementref, equiele
 
 FUNCTIONAL_METHOD(EquiElement, gradient, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapnumericalgradient, equielement_integrand, NULL, EQUIELEMENT_ARGS, SYMMETRY_ADD)
 
+FUNCTIONAL_METHOD(EquiElement, hessian, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapnumericalhessian, equielement_integrand, NULL, EQUIELEMENT_ARGS, SYMMETRY_ADD)
+
 MORPHO_BEGINCLASS(EquiElement)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, EquiElement_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, EquiElement_integrand, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, EquiElement_total, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, EquiElement_gradient, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, EquiElement_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, EquiElement_hessian, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

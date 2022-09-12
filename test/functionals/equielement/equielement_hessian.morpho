@@ -1,0 +1,10 @@
+
+import meshtools
+
+var m = LineMesh(fn (t) [cos(t^2), sin(t^2)], 0...sqrt(2*Pi):sqrt(2*Pi)/10, closed=true)
+
+var a = EquiElement()
+
+print a.total(m)
+
+print a.hessian(m)

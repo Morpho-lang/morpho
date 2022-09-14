@@ -1885,7 +1885,7 @@ static codeinfo compiler_while(compiler *c, syntaxtreenode *node, registerindx r
  *  +2 - value from the collection
  */
 static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx reqout) {
-    //codeinfo body;
+    codeinfo body;
     unsigned int ninstructions=0;
     syntaxtreenode *innode=NULL, *initnode=NULL, *indxnode=NULL, *collnode=NULL;
     instructionindx condindx=REGISTER_UNALLOCATED; /* Where is the condition located */
@@ -1956,9 +1956,13 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     compiler_beginloop(c);
     
     /* Compile the body */
-    codeinfo body = compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
-    ninstructions+=body.ninstructions;
-    compiler_releaseoperand(c, body);
+    if (node->right==SYNTAXTREE_UNCONNECTED) {
+        compiler_error(c, node, COMPILE_MSSNGLOOPBDY);
+    } else {
+        body=compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
+        ninstructions+=body.ninstructions;
+        compiler_releaseoperand(c, body);
+    }
     
     compiler_endloop(c);
     
@@ -3523,7 +3527,9 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_OPTPRMDFLT, ERROR_COMPILE, COMPILE_OPTPRMDFLT_MSG);
     morpho_defineerror(COMPILE_FORWARDREF, ERROR_COMPILE, COMPILE_FORWARDREF_MSG);
     morpho_defineerror(COMPILE_MLTVARPRMTR, ERROR_COMPILE, COMPILE_MLTVARPRMTR_MSG);
-    morpho_defineerror(COMPILE_VARPRMLST, ERROR_PARSE, COMPILE_VARPRMLST_MSG);
+    morpho_defineerror(COMPILE_MSSNGLOOPBDY, ERROR_COMPILE, COMPILE_MSSNGLOOPBDY_MSG);
+    
+    morpho_defineerror(COMPILE_VARPRMLST, ERROR_COMPILE, COMPILE_VARPRMLST_MSG);
 }
 
 /** Finalizes the compiler */

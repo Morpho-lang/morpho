@@ -69,7 +69,7 @@
 #define MORPHO_MAXIMUMFILENAMELENGTH 255
 
 /** @brief Size of the call frame stack. */
-#define MORPHO_CALLFRAMESTACKSIZE 64
+#define MORPHO_CALLFRAMESTACKSIZE 255
 
 /** @brief Size of the error handler stack. */
 #define MORPHO_ERRORHANDLERSTACKSIZE 64

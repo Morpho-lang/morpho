@@ -62,6 +62,7 @@
 #define NORMSQ_CLASSNAME               "NormSq"
 #define LINEINTEGRAL_CLASSNAME         "LineIntegral"
 #define AREAINTEGRAL_CLASSNAME         "AreaIntegral"
+#define VOLUMEINTEGRAL_CLASSNAME       "VolumeIntegral"
 #define NEMATIC_CLASSNAME              "Nematic"
 #define NEMATICELECTRIC_CLASSNAME      "NematicElectric"
 

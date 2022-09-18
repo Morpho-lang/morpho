@@ -2775,6 +2775,11 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
     registerindx kindx;
     codeinfo mout;
     
+    if (compiler_getcurrentclass(c)) {
+        compiler_error(c, node, COMPILE_NSTDCLSS);
+        return CODEINFO_EMPTY;
+    }
+    
     objectclass *klass=object_newclass(node->content);
     compiler_beginclass(c, klass);
     
@@ -3528,6 +3533,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_FORWARDREF, ERROR_COMPILE, COMPILE_FORWARDREF_MSG);
     morpho_defineerror(COMPILE_MLTVARPRMTR, ERROR_COMPILE, COMPILE_MLTVARPRMTR_MSG);
     morpho_defineerror(COMPILE_MSSNGLOOPBDY, ERROR_COMPILE, COMPILE_MSSNGLOOPBDY_MSG);
+    morpho_defineerror(COMPILE_NSTDCLSS, ERROR_COMPILE, COMPILE_NSTDCLSS_MSG);
     
     morpho_defineerror(COMPILE_VARPRMLST, ERROR_COMPILE, COMPILE_VARPRMLST_MSG);
 }

@@ -93,6 +93,9 @@
 #define COMPILE_MSSNGLOOPBDY              "MssngLoopBdy"
 #define COMPILE_MSSNGLOOPBDY_MSG          "Missing loop body."
 
+#define COMPILE_NSTDCLSS                  "NstdClss"
+#define COMPILE_NSTDCLSS_MSG              "Cannot define a class within another class."
+
 /* **********************************************************************
  * Compiler typedefs
  * ********************************************************************** */

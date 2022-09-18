@@ -624,7 +624,7 @@ bool integrate_integratevol(integrandfunction *function, unsigned int nsamples, 
         double w = integrationrule[5*i+4];
         
         integrate_interpolatepositionvol(dim, x, lambda, xx);
-        if (nquantity) integrate_interpolatequantitiestri(dim, lambda, nquantity, quantity, q);
+        if (nquantity) integrate_interpolatequantitiesvol(dim, lambda, nquantity, quantity, q);
         nf++;
         if ((*function) (dim, lambda, xx, nquantity, q, ref, &fout)) {
             r[i] = fout;
@@ -773,8 +773,6 @@ bool integrate_integrate(integrandfunction *integrand, unsigned int dim, unsigne
             success=integrate_volint(integrand, dim, x, nquantity, quantity, q, ref, 0, 0.0, &result);
             break;
     }
-    
-    printf("%u function evaluations.\n", nf);
     
     /* Free any quantities allocated */
     for (unsigned int i=0; i<nquantity; i++) {

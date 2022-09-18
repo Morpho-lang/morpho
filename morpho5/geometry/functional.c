@@ -3015,8 +3015,6 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
 
     success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_VOLUME, x, iref->nfields, q, iref, out);
     if (success) *out *=size;
-
-    printf("%.*g\n", DECIMAL_DIG, *out);
     
     return success;
 }

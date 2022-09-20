@@ -2777,11 +2777,41 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
     /* Store the object class as a constant */
     kindx=compiler_addconstant(c, node, MORPHO_OBJECT(klass), false, false);
     
-    /* Is there a superclass */
+    /* Is there a superclass and/or mixins? */
     if (node->left!=SYNTAXTREE_UNCONNECTED) {
-        syntaxtreenode *snode = compiler_getnode(c, node->left);
+        syntaxtreenodetype dictentrytype[] = { NODE_SEQUENCE };
+        varray_syntaxtreeindx entries;
+        varray_syntaxtreeindxinit(&entries);
         
-        if (snode->type==NODE_SYMBOL) {
+        syntaxtree_flatten(compiler_getsyntaxtree(c), node->left, 1, dictentrytype, &entries);
+        
+        for (int i=entries.count-1; i>=0; i--) { // Loop over super and mixins in reverse order
+                                                 // As super will be LAST in this list
+            syntaxtreenode *snode = syntaxtree_nodefromindx(compiler_getsyntaxtree(c), entries.data[i]) ;
+            
+            morpho_printvalue(snode->content);
+            
+            if (snode->type==NODE_SYMBOL) {
+                objectclass *superclass=compiler_findclass(c->out->global, snode->content);
+                
+                if (superclass) {
+                    if (superclass!=klass) {
+                        if (!klass->superclass) klass->superclass=superclass; // Only the first class is the super class, all others are mixins.
+                        dictionary_copy(&superclass->methods, &klass->methods);
+                    } else {
+                        compiler_error(c, snode, COMPILE_CLASSINHERITSELF);
+                    }
+                } else {
+                    compiler_error(c, snode, COMPILE_SUPERCLASSNOTFOUND, MORPHO_GETCSTRING( snode->content));
+                }
+            } else {
+                UNREACHABLE("Superclass node should be a symbol.");
+            }
+        }
+        
+        varray_syntaxtreeindxclear(&entries);
+        
+        /*if (snode->type==NODE_SYMBOL) {
             objectclass *superclass=compiler_findclass(c->out->global, snode->content);
             
             if (superclass) {
@@ -2796,7 +2826,7 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
             }
         } else {
             UNREACHABLE("Superclass node should be a symbol.");
-        }
+        }*/
     } else {
         klass->superclass=baseclass;
         if (baseclass) dictionary_copy(&baseclass->methods, &klass->methods);

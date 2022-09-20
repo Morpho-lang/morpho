@@ -2789,8 +2789,6 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
                                                  // As super will be LAST in this list
             syntaxtreenode *snode = syntaxtree_nodefromindx(compiler_getsyntaxtree(c), entries.data[i]) ;
             
-            morpho_printvalue(snode->content);
-            
             if (snode->type==NODE_SYMBOL) {
                 objectclass *superclass=compiler_findclass(c->out->global, snode->content);
                 

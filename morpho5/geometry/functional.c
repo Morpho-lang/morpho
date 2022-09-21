@@ -485,7 +485,7 @@ static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, 
 
 /* Calculates a numerical hessian */
 static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectsparse *hess) {
-    double eps=0.5e-3; // ~ (eps)^(1/4)
+    double eps=1e-8; // ~ (eps)^(1/4)
     value f0;
 
     float d2xy[] = { 1.0, eps, eps, // Data for second derivative formula

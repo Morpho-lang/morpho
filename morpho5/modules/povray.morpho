@@ -1,14 +1,36 @@
 
+class Camera {
+    init(antialias = true, width = 2048, height = 1536, viewangle = 24, viewpoint = nil, look_at = nil, sky = nil) {
+        self.antialias = antialias
+        self.width = width
+        self.height = height
+        self.viewangle = viewangle
+        self.viewpoint = viewpoint
+        self.look_at = look_at
+        self.sky = sky
+        self.light = nil
+        if (!self.viewpoint) self.viewpoint = Matrix([0,0,-5])
+        if (!self.look_at) self.look_at = Matrix([0,0,0])
+        if (!self.sky) self.sky = Matrix([0,1,0])
+    }
+}
+
+
 class POVRaytracer {
-  init(graphic, antialias = true, width = 2048, height = 1536, viewangle = 24, viewpoint = nil) {
+  init(graphic, camera = nil) {
+
+    self.camera = camera
+    if (!self.camera) self.camera = Camera() // Default Camera
     self.graphic = graphic
-    self.antialias = antialias
-    self.width = width
-    self.height = height
-    self.viewangle = viewangle
-    self.viewpoint = viewpoint
+
+    self.antialias = self.camera.antialias
+    self.width = self.camera.width
+    self.height = self.camera.height
+    self.viewangle = self.camera.viewangle
+    self.viewpoint = self.camera.viewpoint
+    self.look_at = self.camera.look_at
+    self.sky = self.camera.sky
     self.light = nil
-    if (!self.viewpoint) self.viewpoint = Matrix([0,0,-5])
   }
 
   vector(v) {
@@ -139,9 +161,9 @@ class POVRaytracer {
     out.write("#include \"colors.inc\"")
     out.write("background { rgb ${self.vector(self.graphic.background.rgb(0))} }")
     out.write("camera {"+
-              "location ${self.vector(-self.viewpoint)}"+
+              "location ${self.vector(self.viewpoint)}"+
               "up <0,1,0> right <-1.33,0,0> angle ${self.viewangle}"+
-              "look_at <0, 0, 0> }")
+              "look_at ${self.vector(self.look_at)} sky ${self.vector(self.sky)} }")
 
     for (item in self.graphic.displaylist) item.accept(self, out)
 

@@ -31,7 +31,11 @@ void command_removefile(const char *in) {
     char remove[len+4];
     strcpy(remove, "rm ");
     strcpy(remove+3, in);
-    system(remove);
+    int systemRet = system(remove);
+    if(systemRet == -1){
+        // The system method failed
+        printf("Warning: the system method to remove a temporary file (command.c:34.5) has failed.");
+    }
 }
 
 /** Returns the contents of a file as a string

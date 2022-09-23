@@ -34,19 +34,24 @@ fn Gray(x) {
 
 /* Basic color maps */
 
-class GradientMap is Color {
+class ColorMap {
+  init() { }
+  rgb(x) { return [self.red(x), self.green(x), self.blue(x)] }
+}
+
+class GradientMap is ColorMap {
   red(x) { return 0.29+0.04*x+0.66*x^2 }
   green(x) { return 0.33+0.42*x+0.24*x^2 }
   blue(x) { return 0.46-0.55*x+x^2 }
 }
 
-class GrayMap is Color {
+class GrayMap is ColorMap {
   red(x) { return x }
   green(x) { return x }
   blue(x) { return x }
 }
 
-class HueMap is Color {
+class HueMap is ColorMap {
   red(x) { return (sin(2*Pi*(x+1/4))+1)/2 }
   green(x) { return (sin(2*Pi*x)+1)/2 }
   blue(x) { return (sin(2*Pi*(x-0.4))+1)/2 }

@@ -357,8 +357,14 @@ class MeshMerge is MeshBuilder {
     var conn = m.connectivitymatrix(0, g)
     for (id in 0...m.count(g)) {
         var newel = [] // Convert the indices into new vertex indices
-        for (elid in conn.rowindices(id)) newel.append(dict[elid])
-        self.addelement(g, newel)
+        var duplicate = false // Check if the merged element contains duplicate vertices
+        
+        for (elid in conn.rowindices(id)) {
+          if (newel.ismember(dict[elid])) duplicate=true 
+          newel.append(dict[elid])
+        }
+        
+        if (!duplicate) self.addelement(g, newel)
     }
   }
 

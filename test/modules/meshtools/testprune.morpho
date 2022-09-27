@@ -1,0 +1,31 @@
+// Test pruning 
+
+import meshtools
+
+var mx = AreaMesh(fn (u,v) [u,v,0], -0.5..0.5:0.1, -0.5..0.5:0.1) 
+mx.addgrade(1)
+
+var f = Field(mx, fn (x,y,z) x^2 + y^2)
+var bnd = Selection(mx, boundary=true)
+
+var sx = Selection(mx)
+sx[2,25]=true
+sx[1,50]=true
+sx[1,51]=true
+sx[1,53]=true 
+sx[1,55]=true
+sx[2,50]=true
+sx[1,140]=true
+sx[2,100]=true
+sx[2,128]=true
+
+var mpx = MeshPruner([mx, f, sx], fix=bnd)
+var dictx = mpx.prune(sx) 
+var m2x = dictx[mx]
+var fx = dictx[f]
+var sxx = dictx[sx]
+
+print mx.count() 
+// expect: 121
+print m2x.count() 
+// expect: 109

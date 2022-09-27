@@ -161,8 +161,21 @@ class POVRaytracer {
     if (quiet) silent = "&> /dev/null"
     var disp = ""
     if (!display) disp = "-D"
-    system("povray ${path} ${disp} +A +W${self.width} +H${self.height} ${silent}")
-    var out = path.split(".")[0]
-    if (!quiet && display) system("open ${out}.png")
+    system("povray ./\"${path}\" ${disp} +A +W${self.width} +H${self.height} ${silent}")
+    var out = self._slice(path, 0, path.count()-4)
+    if (!quiet && display) system("open ./${out}.png")
+  }
+  /*
+  private method: slice a string given a start and an end
+  @param string: string to be slice
+  @param start: starting index
+  @param end: ending index(exclusive)
+  */
+  _slice(string, start, end) {
+    var s = ""
+    for (i in start...end) {
+      s += string[i]
+    }
+    return s
   }
 }

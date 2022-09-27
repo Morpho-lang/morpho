@@ -22,7 +22,7 @@ Returns the sine of an angle in radians.
 Returns the hyperbolic sine of an angle in radians.
 
     import constants 
-    print sin(0) // expect: 0
+    print sinh(0) // expect: 0
 
 ## cos
 [tagcos]: # (cos)

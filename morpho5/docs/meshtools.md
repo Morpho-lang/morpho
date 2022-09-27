@@ -200,17 +200,17 @@ The `MeshPruner` class is used to prune excessive detail from meshes (a process 
 
 First create a `MeshPruner` object either with a `Mesh`,
 
-    var mp = MeshRefiner(mesh)
+    var mp = MeshPruner(mesh)
 
 or with a list of objects that can include a `Mesh` as well as `Field`s and `Selection`s.
 
-    var mp = MeshRefiner([mesh, field, selection ... ])
+    var mp = MeshPruner([mesh, field, selection ... ])
 
-To perform the refinement, call the `prune` method with a `Selection`,
+To perform the coarsening, call the `prune` method with a `Selection`,
 
-    var dict = mp.refine(select)
+    var dict = mp.prune(select)
 
-The `refine` method returns a `Dictionary` that maps old objects to new, refined objects. Use this to update your data structures.
+The `prune` method returns a `Dictionary` that maps old objects to new, refined objects. Use this to update your data structures.
 
     var newmesh = dict[oldmesh]
 

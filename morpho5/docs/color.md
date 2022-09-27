@@ -21,7 +21,7 @@ The `color` module also provides `ColorMap`s, which are give a sequence of color
 ## RGB
 [tagrgb]: # (rgb)
 
-Gets the rgb components of a `Color` or `ColorMap` object as a list. Takes a single argument in the range 0..1, although the result will only depend on this argument if the object is a `ColorMap`.
+Gets the rgb components of a `Color` or `ColorMap` object as a list. Takes a single argument in the range 0 to 1, although the result will only depend on this argument if the object is a `ColorMap`.
 
     var col = Color(0.1,0.5,0.7)
     print col.rgb(0)
@@ -76,12 +76,12 @@ Built in `Color` object for use with the `graphics` and `plot` modules.
 
 ## Colormap
 [tagcolormap]: # (colormap)
-The `color` module provides `ColorMap`s which are subclasses of `Color` that map a single parameter in the range 0..1 onto a continuum of colors. `Color`s and `Colormap`s have the same interface.
+The `color` module provides `ColorMap`s which are subclasses of `Color` that map a single parameter in the range 0 to 1 onto a continuum of colors. `Color`s and `Colormap`s have the same interface.
 
 Get the red, green or blue components of a color or colormap:
 
     var col = HueMap()
-    print col.red(0.5) // argument can be in range 0..1
+    print col.red(0.5) // argument can be in range 0 to 1
 
 Get all three components as a list:
 
@@ -106,7 +106,7 @@ Available ColorMaps: `GradientMap`,  `GrayMap`, `HueMap`, `ViridisMap`, `MagmaMa
 ## HueMap
 [taghuemap]: # (huemap)
 
-`HueMap` is a `Colormap` that displays vivid colors. It is periodic on the interval 0..1.
+`HueMap` is a `Colormap` that displays vivid colors. It is periodic on the interval 0 to 1.
 
 ## ViridisMap
 [tagviridismap]: # (viridismap)

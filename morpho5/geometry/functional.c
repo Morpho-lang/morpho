@@ -2988,6 +2988,71 @@ MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, AreaIntegral_gradient, BUILTIN_FLAGSEM
 MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, AreaIntegral_fieldgradient, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
+/* ----------------------------------------------
+ * VolumeIntegral
+ * ---------------------------------------------- */
+
+/** Integrate a function over a volume */
+bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    integralref *iref = ref;
+    double *x[4], size;
+    bool success;
+
+    if (!functional_elementsize(v, mesh, MESH_GRADE_VOLUME, id, nv, vid, &size)) return false;
+
+    iref->v=v;
+    for (unsigned int i=0; i<nv; i++) {
+        mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
+    }
+    
+    value q0[iref->nfields+1], q1[iref->nfields+1], q2[iref->nfields+1], q3[iref->nfields+1];
+    value *q[4] = { q0, q1, q2, q3 };
+    for (unsigned int k=0; k<iref->nfields; k++) {
+        for (unsigned int i=0; i<nv; i++) {
+            field_getelement(MORPHO_GETFIELD(iref->fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
+        }
+    }
+
+    success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_VOLUME, x, iref->nfields, q, iref, out);
+    if (success) *out *=size;
+    
+    return success;
+}
+
+FUNCTIONAL_METHOD(VolumeIntegral, integrand, MESH_GRADE_VOLUME, integralref, integral_prepareref, functional_mapintegrand, volumeintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+
+FUNCTIONAL_METHOD(VolumeIntegral, total, MESH_GRADE_VOLUME, integralref, integral_prepareref, functional_sumintegrand, volumeintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+
+FUNCTIONAL_METHOD(VolumeIntegral, gradient, MESH_GRADE_VOLUME, integralref, integral_prepareref, functional_mapnumericalgradient, volumeintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+
+/** Field gradients for Volume Integrals */
+value VolumeIntegral_fieldgradient(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    integralref ref;
+    value out=MORPHO_NIL;
+
+    if (functional_validateargs(v, nargs, args, &info)) {
+        // Should check whether the field is known about here...
+        if (integral_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_VOLUME, info.sel, &ref)) {
+            info.g=MESH_GRADE_VOLUME;
+            info.integrand=volumeintegral_integrand;
+            info.ref=&ref;
+            functional_mapnumericalfieldgradient(v, &info, &out);
+        } else morpho_runtimeerror(v, GRADSQ_ARGS);
+    }
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+    return out;
+}
+
+MORPHO_BEGINCLASS(VolumeIntegral)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineIntegral_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, VolumeIntegral_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, VolumeIntegral_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, VolumeIntegral_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, VolumeIntegral_fieldgradient, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
+
 /* **********************************************************************
  * Initialization
  * ********************************************************************** */
@@ -3034,6 +3099,7 @@ void functional_initialize(void) {
     builtin_addclass(NORMSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(NormSq), objclass);
     builtin_addclass(LINEINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineIntegral), objclass);
     builtin_addclass(AREAINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(AreaIntegral), objclass);
+    builtin_addclass(VOLUMEINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(VolumeIntegral), objclass);
     builtin_addclass(NEMATIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(Nematic), objclass);
     builtin_addclass(NEMATICELECTRIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(NematicElectric), objclass);
 

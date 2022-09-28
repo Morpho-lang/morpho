@@ -305,6 +305,88 @@ fn equiangulate(m, quiet=false, fix=nil) {
   return nil
 }
 
+
+//////////////////////
+// Utility functions
+//////////////////////
+
+// Compare two lists 
+fn _cmpel(a,b) {
+  if (a.count()!=b.count()) return false 
+  for (x in a) if (!b.ismember(x)) return false 
+  return true 
+}
+
+// Determine if list a is already in a list of lists 
+fn _elinlist(ellist, a) {
+  for (el in ellist) {
+    if (_cmpel(el, a)) return true 
+  }
+  return false 
+}
+
+/* **********************************
+ * ElementList
+ * ********************************** */
+
+var _errellstgrd = Error("ElLstGrd", "Element doesn't match grade of ElementList.")
+
+/* A data structure to (relatively) efficiently find duplicate elements. 
+   Presently uses a Sparse to do this; a Dictionary would be better in future */
+class ElementList {
+  init(mesh, grade, sort=false) {
+    self.grade = grade 
+    self.sort = sort 
+    var nv = mesh 
+    if (ismesh(mesh)) nv = mesh.count() 
+    self._store = Sparse(nv, nv)
+    self._count = 0 
+  }
+
+  _add(el) {
+    if (self._match(el)) return 
+
+    if (self.grade==1) {
+      self._store[el[0],el[1]] = true 
+    } else {
+      var st = el[2..self.grade] // Use the remaining indices 
+      var lst = self._store[el[0],el[1]]
+      if (islist(lst)) lst.append(st) // If there's a list already, store it 
+      else self._store[el[0],el[1]]=[st] // Otherwise, just return it 
+    }
+    self._count+=1 
+  }
+
+  _match(el) {
+    var entry = self._store[el[0],el[1]]
+    if (isbool(entry)) return true // If the entry is a boolean (grade 1) then we have a match
+    if (islist(entry)) { 
+      return _elinlist(entry, el[2..self.grade]) // If not, we have to match the remaining indices in the list 
+    }
+    return false 
+  }
+
+  _checksrt(el) { // Checks to see if we need to sort the element
+    if (!self.sort) return el 
+    var ell = el.clone()
+    ell.sort()
+    return ell
+  }
+
+  addelement(el) { // Adds an element to the structure 
+    self._add(self._checksrt(el))
+  }
+
+  ismember(el) { // Checks if an element is already a member 
+    if (el.count()!=self.grade+1) _errellstgrd.throw() 
+    return self._match(self._checksrt(el))
+  }
+
+  count() {
+    return self._count
+  }
+}
+
 /* **************************
  * Merging meshes
  * ************************** */
@@ -315,7 +397,14 @@ class MeshMerge is MeshBuilder {
     self.tree = nil
     self.tol = tol // Tolerance below which vertices will be considered identical
     self.nv = 0
+    self.elists = nil 
     super.init()
+  }
+
+  maxgrade() {
+    var lst = []
+    for (m in self.meshes) lst.append(m.maxgrade())
+    return max(lst)
   }
 
   addmesh(msh) {
@@ -353,6 +442,24 @@ class MeshMerge is MeshBuilder {
     return vdict
   }
 
+  _initelists() {
+    var mg = self.maxgrade()
+    self.elists = Array(mg+1)
+    var nv = self.vertices.count()
+    for (g in 1..mg) self.elists[g] = ElementList(nv, g, sort=true) 
+  }
+
+  _clearelists() {
+    self.elists = nil 
+  }
+
+  addelement(g, el) {
+    var elist = self.elists[g]
+    if (elist.ismember(el)) return 
+    elist.addelement(el)
+    super.addelement(g, el)
+  }
+
   mergegrade(m, g, dict) { // Merges elements of grade g into the mesh
     var conn = m.connectivitymatrix(0, g)
     for (id in 0...m.count(g)) {
@@ -369,12 +476,20 @@ class MeshMerge is MeshBuilder {
   }
 
   merge() {
-    for (m in self.meshes) {
-      var vdict = self.mergevertices(m) // First merge the vertices
-      for (grade in 1..m.maxgrade()) { // Then merge all higher grades
-        self.mergegrade(m, grade, vdict)
+    var vdict = [] 
+    for (m in self.meshes) { // First merge the vertices
+      vdict.append(self.mergevertices(m))
+    } 
+
+    self._initelists() // Prepare lists to keep track of elements
+
+    for (m, k in self.meshes) { // Then merge all higher grades
+      for (grade in 1..m.maxgrade()) { 
+        self.mergegrade(m, grade, vdict[k])
       }
     }
+
+    self._clearelists() 
 
     return self.build() // Build the mesh
   }
@@ -491,25 +606,6 @@ e0[1] b --- z -- c
 /* ********************************
  * Advanced refinement 
  ******************************** */
-
-//////////////////////
-// Utility functions
-//////////////////////
-
-// Compare two lists 
-fn _cmpel(a,b) {
-  if (a.count()!=b.count()) return false 
-  for (x in a) if (!b.ismember(x)) return false 
-  return true 
-}
-
-// Determine if list a is already in a list of lists 
-fn _elinlist(ellist, a) {
-  for (el in ellist) {
-    if (_cmpel(el, a)) return true 
-  }
-  return false 
-}
 
 /* **********************************
  * Base class for adaptive refinement 

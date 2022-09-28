@@ -18,6 +18,12 @@ var _errMltVClstrFxd = Error("MltVClstrFxd", "More than one vertex in a selected
  * Manual mesh creation
  * ************************** */
 
+// Grades
+var vertexGrade = 0
+var lineGrade = 1
+var areaGrade = 2
+var volumeGrade = 3
+
 class MeshBuilder {
   init(dimension=nil) {
     self.vertices = []
@@ -50,13 +56,11 @@ class MeshBuilder {
     return self.elements[grade-1].count()-1
   }
 
-  addedge(el) { return self.addelement(1, el) }
+  addedge(el) { return self.addelement(lineGrade, el) }
 
-  addface(el) { return self.addelement(2, el) }
+  addface(el) { return self.addelement(areaGrade, el) }
   
-  addvolume(el) { return self.addelement(3, el) }
-
-  addvolume(el) { return self.addelement(3, el) }
+  addvolume(el) { return self.addelement(volumeGrade, el) }
 
   makeconnectivity(el) {
     if (el.count()==0) return nil
@@ -735,6 +739,7 @@ class MeshRefiner is MeshAdaptiveRefiner {
   init (target) {
     self.target = target
     self.refinemap = nil
+    self._clearelists()
     self.new = nil
   }
 
@@ -746,38 +751,55 @@ class MeshRefiner is MeshAdaptiveRefiner {
     return nil
   }
 
-  split(id, el, vert, mb, tree, dict) { // split elements
+  _initelists(maxgrade, nv) {
+    self.elists = Array(maxgrade+1)
+    for (g in 1..maxgrade) self.elists[g] = ElementList(nv, g, sort=true) 
+  }
+
+  _clearelists() {
+    self.elists = nil 
+  }
+
+  split(id, el, vert, dict) { // split elements, generating new vertices
     var nv = el.count()
     for (i in 0...nv) {     // Loop over distinct pairs 
       for (j in i+1...nv) { // 
         var midpoint = (vert.column(el[i])+vert.column(el[j]))/2
-        if (!tree.ismember(midpoint)) { // Check if already exists 
-          var id = mb.addvertex(midpoint) // Add vertex 
-          tree.insert(midpoint).id = id
+        if (!self.tree.ismember(midpoint)) { // Check if already exists 
+          var id = self.mb.addvertex(midpoint) // Add vertex 
+          self.tree.insert(midpoint).id = id
           dict[id]=[el[i],el[j]] // dict[new vertex] -> [oldvertices]
         }
       }
     }
   }
 
-  refine1(id, el, vert, nel, mb, tree, dict) { // refine edges
+  addelement(srcid, grade, el, dict) {
+    if (self.elists[grade].ismember(el)) return nil
+    var id = self.mb.addelement(grade, el)
+    self.elists[grade].addelement(el)
+    if (isdictionary(dict)) dict[id] = srcid 
+    return id 
+  }
+
+  refine1(id, el, vert, nel, dict) { // refine edges
     var midpoint = (vert.column(el[0])+vert.column(el[1]))/2
-    var mp = tree.ismember(midpoint) 
+    var mp = self.tree.ismember(midpoint) 
     if (mp) {
-      dict[mb.addedge([el[0], mp.id])] = id 
-      dict[mb.addedge([mp.id, el[1]])] = id
+      self.addelement(id, lineGrade, [el[0], mp.id], dict) 
+      self.addelement(id, lineGrade, [mp.id, el[1]], dict) 
     } // refinement dictionary key: new edge id -> old edge id 
     return isobject(mp)
   }
-
-  refine2(id, el, vert, nel, mb, tree, dict) { // refine faces
+ 
+  refine2(id, el, vert, nel, dict) { // refine faces
     var nv = el.count()
     var refedge = []
 
     for (i in 0...nv) { // Generate midpoints
       for (j in i+1...nv) {
         var midpoint = (vert.column(el[i])+vert.column(el[j]))/2
-        var node = tree.ismember(midpoint)
+        var node = self.tree.ismember(midpoint)
         if (node) {
           refedge.append([el[i], el[j], node.id])
         }
@@ -792,16 +814,17 @@ class MeshRefiner is MeshAdaptiveRefiner {
       . --- * -- . . --- * -- . . --- * -- . */
 
     var nref = refedge.count()
-    var newel = []
-
-    if (nref==1) {
+    if (nref==0) {
+      return false 
+    } else if (nref==1) {
       var tid
       for (id in el) if (!refedge[0].ismember(id)) tid = id
 
-      newel.append(mb.addface([refedge[0][0], refedge[0][2], tid]))
-      newel.append(mb.addface([refedge[0][2], refedge[0][1], tid]))
+      self.addelement(id, areaGrade, [refedge[0][0], refedge[0][2], tid], dict)
+      self.addelement(id, areaGrade, [refedge[0][2], refedge[0][1], tid], dict)
+
       if (nel[1]>0) {
-        mb.addedge([refedge[0][2], tid])
+        self.addelement(id, lineGrade, [refedge[0][2], tid], nil)
       }
     } else if (nref==2) {
       var shareid, xid, yid
@@ -811,35 +834,30 @@ class MeshRefiner is MeshAdaptiveRefiner {
         if (!refedge[0].ismember(id) && refedge[1].ismember(id)) yid = id
       }
 
-      newel.append(mb.addface([shareid, refedge[0][2], refedge[1][2]]))
-      newel.append(mb.addface([xid, refedge[0][2], refedge[1][2]]))
-      newel.append(mb.addface([xid, yid, refedge[1][2]]))
+      self.addelement(id, areaGrade, [shareid, refedge[0][2], refedge[1][2]], dict)
+      self.addelement(id, areaGrade, [xid, refedge[0][2], refedge[1][2]], dict)
+      self.addelement(id, areaGrade, [xid, yid, refedge[1][2]], dict)
 
       if (nel[1]>0) {
-        mb.addedge([refedge[1][2], xid])
-        mb.addedge([refedge[0][2], refedge[1][2]])
+        self.addelement(id, lineGrade, [refedge[1][2], xid], nil)
+        self.addelement(id, lineGrade, [refedge[0][2], refedge[1][2]], nil)
       }
     } else if (nref==3) {
-      newel.append(mb.addface([el[0], refedge[0][2], refedge[1][2]]))
-      newel.append(mb.addface([el[1], refedge[0][2], refedge[2][2]]))
-      newel.append(mb.addface([el[2], refedge[1][2], refedge[2][2]]))
-      newel.append(mb.addface([refedge[0][2], refedge[1][2], refedge[2][2]]))
-      if (nel[1]>0) {
-        mb.addedge([refedge[0][2], refedge[1][2]])
-        mb.addedge([refedge[1][2], refedge[2][2]])
-        mb.addedge([refedge[2][2], refedge[0][2]])
-      }
-    }
-    if (newel.count()>0) {
-      for (i in newel) {
-        dict[i] = id // refinement dictionary key: new face id -> old face id 
-      }
-    }
+      self.addelement(id, areaGrade, [el[0], refedge[0][2], refedge[1][2]], dict)
+      self.addelement(id, areaGrade, [el[1], refedge[0][2], refedge[2][2]], dict)
+      self.addelement(id, areaGrade, [el[2], refedge[1][2], refedge[2][2]], dict)
+      self.addelement(id, areaGrade, [refedge[0][2], refedge[1][2], refedge[2][2]], dict)
 
-    return (newel.count()>0)
+      if (nel[1]>0) {
+        self.addelement(id, lineGrade, [refedge[0][2], refedge[1][2]], nil)
+        self.addelement(id, lineGrade, [refedge[1][2], refedge[2][2]], nil)
+        self.addelement(id, lineGrade, [refedge[2][2], refedge[0][2]], nil)
+      }
+    }
+    return true 
   }
 
-  refine3(id, el, vert, nel, mb, tree, dict) { // refine volumes 
+  refine3(id, el, vert, nel, dict) { // refine volumes 
     var nv = el.count() // Number of vertices in the element
     var pts = [] // Points defining the element
     var localmap = Dictionary() // Maps local ids in pts to correct ids 
@@ -852,7 +870,7 @@ class MeshRefiner is MeshAdaptiveRefiner {
     for (i in 0...nv) {      // Loop over all unique pairs 
       for (j in i+1...nv) {  // and find midpoints 
         var midpoint = (vert.column(el[i])+vert.column(el[j]))/2
-        var node = tree.ismember(midpoint) // Find whether this midpoint actually exists
+        var node = self.tree.ismember(midpoint) // Find whether this midpoint actually exists
         if (node) {
           localmap[pts.count()]=node.id
           pts.append(midpoint)
@@ -874,24 +892,26 @@ class MeshRefiner is MeshAdaptiveRefiner {
     }
 
     for (t in tri) { // Loop over the generated tetrahedra from the triangulation
-      var newid = mb.addvolume(_mapel(t)) 
-      dict[newid] = id // refinement dictionary key: new element id -> old element id 
+      self.addelement(id, volumeGrade, _mapel(t), dict)
 
       for (g in 1..2) { // Create "missing" elements of lower grade 
         if (nel[g]==0) continue // Skip empty grades 
         var elements = t.sets(g+1) // Generate all possible elements 
         // Generate new elements only from possibilites that use only new vertices
         for (e in elements) { 
-          if (_checkel(e)) mb.addelement(g, _mapel(e))
+          if (_checkel(e)) {
+            self.addelement(id, g, _mapel(e), nil)
+          }
         }
       }
     }
+    return true 
   }
 
   // vdict keys: old vertex ids -> values: new vertex ids
   adaptmesh(selection) {
     var m = self.mesh()
-    var mb = MeshBuilder()
+    self.mb = MeshBuilder()
     var vertices = m.vertexmatrix()
     var dim = vertices.dimensions()[0]
     var nv = vertices.dimensions()[1]
@@ -904,11 +924,11 @@ class MeshRefiner is MeshAdaptiveRefiner {
     for (vid in 0...nv) { // Loop over vertexids in old mesh 
       var x = vertices.column(vid) // Get the vertex position
       vlist.append(x) 
-      var newid = mb.addvertex(x)
+      var newid = self.mb.addvertex(x)
       vdict[newid] = vid // Add the vertex to the new mesh
     }
 
-    var tree=KDTree(vlist)
+    self.tree=KDTree(vlist)
 
     // Create new vertices
     for (g in 1..dim) {
@@ -917,12 +937,13 @@ class MeshRefiner is MeshAdaptiveRefiner {
       for (i in 0...nel[g]) { // Loop over elements
         if (selection && !selection.isselected(g, i)) continue
         //print "Split grade ${g} element ${i}"
-        self.split(i, el.rowindices(i), vertices, mb, tree, vdict)
+        self.split(i, el.rowindices(i), vertices, vdict)
       }
     }
     refmap.append(vdict)
 
     // Now loop over all elements and either copy or refine them
+    self._initelists(dim, self.mb.vertices.count())
     for (g in 1..dim) {
       var refinemethod = "refine${g}"
       var el = m.connectivitymatrix(0, g)
@@ -931,18 +952,18 @@ class MeshRefiner is MeshAdaptiveRefiner {
       for (i in 0...nel[g]) { // Loop over elements
         //print "Refine grade ${g} element ${i}"
         var eind = el.rowindices(i)
-        if (!self.invoke(refinemethod, i, eind, vertices, nel, mb, tree, dict)) {
-          var id = mb.addelement(g, eind)
-          dict[id] = i // Just copy the element across
+        if (!self.invoke(refinemethod, i, eind, vertices, nel, dict)) {
+          self.addelement(i, g, eind, dict) // Just copy the element across
         }
       }
 
       refmap.append(dict)
     }
+    self._clearelists()
 
     self.refinemap = refmap
 
-    return (self.new=mb.build())
+    return (self.new=self.mb.build())
   }
 
   refine(selection=nil) {

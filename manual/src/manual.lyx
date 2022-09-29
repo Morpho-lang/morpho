@@ -18,10 +18,10 @@
   {\thesection}{1em}{}
 \titleformat{\subsection}
   {\normalfont\sffamily\large}
-  {\thesection}{1em}{}
+  {\thesubsection}{1em}{}
 \titleformat{\subsubsection}
   {\normalfont\sffamily\normalsize}
-  {\thesection}{1em}{}
+  {\thesubsubsection}{1em}{}
 
 \usepackage{newtxtext}
 \usepackage{titletoc}
@@ -164,7 +164,7 @@ figs-within-sections
 \begin_inset Newline newline
 \end_inset
 
-Version 0.5.3
+Version 0.5.4
 \end_layout
 
 \begin_layout Standard
@@ -306,7 +306,7 @@ morpho
 \begin_layout Standard
 \align center
 \begin_inset Tabular
-<lyxtabular version="3" rows="7" columns="2">
+<lyxtabular version="3" rows="8" columns="2">
 <features tabularvalignment="middle">
 <column alignment="center" valignment="top">
 <column alignment="center" valignment="top">
@@ -445,6 +445,26 @@ Anca Andrei
 
 \begin_layout Plain Layout
 Mathew Giso
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Sam Hocking
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Emmett Hamilton
 \end_layout
 
 \end_inset
@@ -4376,6 +4396,16 @@ filename "Reference/kdtree.tex"
 \begin_inset CommandInset include
 LatexCommand input
 filename "Reference/meshgen.tex"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset include
+LatexCommand input
+filename "Reference/meshslice.tex"
 
 \end_inset
 

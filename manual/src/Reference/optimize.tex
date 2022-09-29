@@ -5,7 +5,7 @@ The \texttt{optimize} package contains a number of functions and classes
 to perform shape optimization.
 
 \hypertarget{optimizationproblem}{%
-\section{OptimizationProblem}\label{optimizationproblem}}
+\subsection{OptimizationProblem}\label{optimizationproblem}}
 
 An \texttt{OptimizationProblem} object defines an optimization problem,
 which may include functionals to optimize as well as global and local
@@ -45,14 +45,14 @@ problem.addlocalconstraint(ls, onesided=true)
 \end{lstlisting}
 
 \hypertarget{optimizer}{%
-\section{Optimizer}\label{optimizer}}
+\subsection{Optimizer}\label{optimizer}}
 
 \texttt{Optimizer} objects are used to optimize \texttt{Mesh}es and
 \texttt{Field}s. You should use the appropriate subclass:
 \texttt{ShapeOptimizer} or \texttt{FieldOptimizer} respectively.
 
 \hypertarget{shapeoptimizer}{%
-\section{ShapeOptimizer}\label{shapeoptimizer}}
+\subsection{ShapeOptimizer}\label{shapeoptimizer}}
 
 A \texttt{ShapeOptimizer} object performs shape optimization: it moves
 the vertex positions to reduce an overall energy.
@@ -93,7 +93,7 @@ sopt.maxconstraintsteps = 20 // Maximum number of constraint steps to use
 \end{lstlisting}
 
 \hypertarget{fieldoptimizer}{%
-\section{FieldOptimizer}\label{fieldoptimizer}}
+\subsection{FieldOptimizer}\label{fieldoptimizer}}
 
 A \texttt{FieldOptimizer} object performs field optimization: it changes
 elements of a \texttt{Field} to reduce an overall energy.

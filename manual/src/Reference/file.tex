@@ -40,7 +40,7 @@ f.close()
 \end{lstlisting}
 
 \hypertarget{lines}{%
-\section{lines}\label{lines}}
+\subsection{lines}\label{lines}}
 
 Returns the contents of a file as an array of strings; each element
 corresponds to a single line.
@@ -55,7 +55,7 @@ f.close()
 \end{lstlisting}
 
 \hypertarget{readline}{%
-\section{readline}\label{readline}}
+\subsection{readline}\label{readline}}
 
 Reads a single line from a file; returns the result as a string.
 
@@ -70,12 +70,12 @@ f.close()
 \end{lstlisting}
 
 \hypertarget{readchar}{%
-\section{readchar}\label{readchar}}
+\subsection{readchar}\label{readchar}}
 
 Reads a single character from a file; returns the result as a string.
 
 \hypertarget{write}{%
-\section{write}\label{write}}
+\subsection{write}\label{write}}
 
 Writes to a file.
 
@@ -88,11 +88,29 @@ f.close()
 \end{lstlisting}
 
 \hypertarget{close}{%
-\section{close}\label{close}}
+\subsection{close}\label{close}}
 
 Closes an open file.
 
 \hypertarget{eof}{%
-\section{eof}\label{eof}}
+\subsection{eof}\label{eof}}
 
 Returns true if at the end of the file; false otherwise
+
+\hypertarget{folder}{%
+\section{Folder}\label{folder}}
+
+The \texttt{Folder} class enables you to find whether a filepath refers
+to a folder, and find the contents of that folder.
+
+Find whether a path refers to a folder:
+
+\begin{lstlisting}
+print Folder.isfolder("path/folder")
+\end{lstlisting}
+
+Get a list of a folder's contents:
+
+\begin{lstlisting}
+print Folder.contents("path/folder")
+\end{lstlisting}

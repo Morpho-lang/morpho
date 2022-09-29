@@ -46,7 +46,7 @@ print pt.location
 \end{lstlisting}
 
 \hypertarget{insert}{%
-\section{Insert}\label{insert}}
+\subsection{Insert}\label{insert}}
 
 Inserts a new point into a k-d tree. Returns a KDTreeNode object.
 
@@ -59,7 +59,7 @@ of time, it is generally better to build the tree using the constructor
 function KDTree rather than one-by-one with insert.
 
 \hypertarget{ismember}{%
-\section{Ismember}\label{ismember}}
+\subsection{Ismember}\label{ismember}}
 
 Checks if a point is a member of a k-d tree. Returns \texttt{true} or
 \texttt{false}.
@@ -69,7 +69,7 @@ print tree.ismember(Matrix([0,0,0]))
 \end{lstlisting}
 
 \hypertarget{nearest}{%
-\section{Nearest}\label{nearest}}
+\subsection{Nearest}\label{nearest}}
 
 Finds the point in a k-d tree nearest to a point of interest. Returns a
 KDTreeNode object.
@@ -85,7 +85,7 @@ print pt.location
 \end{lstlisting}
 
 \hypertarget{search}{%
-\section{Search}\label{search}}
+\subsection{Search}\label{search}}
 
 Finds all points in a k-d tree that lie within a cuboidal bounding box.
 Returns a list of KDTreeNode objects.
@@ -100,7 +100,7 @@ for (x in result) print x.location
 \end{lstlisting}
 
 \hypertarget{kdtreenode}{%
-\section{KDTreeNode}\label{kdtreenode}}
+\subsection{KDTreeNode}\label{kdtreenode}}
 
 An object corresponding to a single node in a k-d tree. To get the
 location of the node, access the \texttt{location} property:

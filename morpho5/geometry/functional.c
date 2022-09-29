@@ -518,6 +518,9 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
                     if (j==k && l==m) {
                         d2=d2xx; neval=nevalxx;
                         scale=1.0/(12.0*eps*eps);
+                    } else if (l==m) {
+                        d2=d2yy; neval=nevalyy;
+                        scale=1.0/(12.0*eps*eps);
                     } else {
                         d2=d2xy; neval=nevalxy;
                         scale=1.0/(4.0*eps*eps);

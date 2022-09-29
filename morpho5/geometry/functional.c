@@ -488,18 +488,25 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
     double eps=1e-8; // ~ (eps)^(1/4)
     value f0;
     
-    float d2xy[] = { 1.0, eps, eps, // Data for second derivative formula
+    double d2xy[] = { 1.0, eps, eps, // Data for second derivative formula
                      1.0,-eps,-eps,
                     -1.0,-eps, eps,
                     -1.0, eps,-eps};
     
-    float d2xx[] = { -1.0, 2*eps, 2*eps, // Data for second derivative formula
-                     -1.0,-2*eps,-2*eps,
+    double d2xx[] = { -1.0, 2*eps, 0, // Data for second derivative formula
+                     -1.0,-2*eps, 0,
                     -30.0,     0, 0,
-                    +16.0,  +eps, eps,
-                    +16.0,  -eps,-eps};
-    float *d2,scale=1.0;
-    int neval, nevalxx=5, nevalxy=4;
+                    +16.0,  +eps, 0,
+                    +16.0,  -eps, 0};
+    
+    double d2yy[] = { -1.0, 0, 2*eps, // Data for second derivative formula
+                     -1.0,  0,-2*eps,
+                    -30.0,  0, 0,
+                    +16.0,  0, eps,
+                    +16.0,  0,-eps};
+    
+    double *d2,scale=1.0;
+    int neval, nevalxx=5, nevalyy=5, nevalxy=4;
     
     // Loop over vertices in element
     for (unsigned int j=0; j<nv; j++) {
@@ -515,8 +522,11 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
                     
                     if (sparsedok_get(&hess->dok, vid[j]*mesh->dim+l, vid[k]*mesh->dim+m, &f0)) ff=MORPHO_GETFLOATVALUE(f0);
                     
-                    if (j==k && l==m) {
+                    if (j==k) {
                         d2=d2xx; neval=nevalxx;
+                        scale=1.0/(12.0*eps*eps);
+                    } else if (l==m) {
+                        d2=d2yy; neval=nevalyy;
                         scale=1.0/(12.0*eps*eps);
                     } else {
                         d2=d2xy; neval=nevalxy;

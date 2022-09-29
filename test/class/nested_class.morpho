@@ -1,0 +1,12 @@
+class Foo {
+    foo() {
+        class Boo {
+
+        }
+
+        return Boo() 
+    }
+}
+
+print Foo() 
+// expect error 'NstdClss'

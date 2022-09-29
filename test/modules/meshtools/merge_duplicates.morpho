@@ -1,0 +1,37 @@
+// MeshMerge with duplicate elemtns 
+import meshtools
+
+var m1 = MeshBuilder()
+var m2 = MeshBuilder()
+
+m1.addvertex([0,0,0])
+m1.addvertex([0, 1, 0])
+m1.addvertex([0,1,-1])
+m1.addedge([0,1])
+m1.addedge([1,2])
+m1.addedge([2,0])
+m1.addface([0,1,2])
+
+m2.addvertex([0,0,0])
+m2.addvertex([0, 1, 0])
+m2.addvertex([0,1,1])
+m2.addedge([0,1])
+m2.addedge([1,2])
+m2.addedge([2,0])
+m2.addface([0,1,2])
+
+var mesh1 = m1.build()
+var mesh2 = m2.build()
+var merge = MeshMerge([mesh1, mesh2])
+var final = merge.merge()
+
+print final.count(0) // expect: 4
+print final.count(1) // expect: 5
+print final.count(2) // expect: 2
+
+merge = MeshMerge([mesh1, mesh1])
+final = merge.merge()
+
+print final.count(0) // expect: 3
+print final.count(1) // expect: 3
+print final.count(2) // expect: 1

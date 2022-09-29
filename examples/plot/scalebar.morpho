@@ -1,0 +1,26 @@
+// Demonstrates drawing a scalebar alongside the output of plotfield 
+
+import color
+import plot
+import meshgen 
+
+var m = AreaMesh(fn (u,v) [u, v, 0], -1..1:0.1, -1..1:0.1)
+var f = Field(m, fn (x,y,z) sin(2*Pi*x*y))
+
+// Add a scalebar 
+Show(plotfield(f, style="interpolate", colormap=ViridisMap(), scalebar=ScaleBar(posn=[1.2,0,0]))) 
+
+// Showcases some of the many options for Scalebar 
+var sb = ScaleBar(nticks=8,          // Maximum number of ticks
+                  length=1,          // Length of scalebar
+                  posn=[0,-1.2,0],   // Position of scalebar  
+                  dirn=[1,0,0],      // Direction in which scalebar is to be drawn
+                  tickdirn=[0,-1,0], // Direction in which to draw ticks
+                  textdirn=[1,0,0],  // Direction to draw text
+                  textvertical=[0,1,0], // Vertical direction for text 
+                  textcolor=White,   // Text color
+                  fontsize=10 )      // Font size 
+
+Show(plotfield(f, style="interpolate", colormap=InfernoMap(), scalebar=sb))
+
+

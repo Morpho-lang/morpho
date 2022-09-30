@@ -24,7 +24,7 @@ Morpho can be installed as follows:
 - [Windows](#windows-via-windows-subsystem-for-linux-wsl)
 
 ### macOS
-**If you have a laptop with an [M1 chip](https://atozapplesilicon.com/how-to-check-if-your-mac-has-m1-chip/#:~:text=Tap%20on%20the%20Apple%20menu,that%20replace%20the%20Intel%20processor) please use the [macOS M1](#macos-m1) instuctions.**
+**If you have a laptop with an [M1 or M2 chip](https://atozapplesilicon.com/how-to-check-if-your-mac-has-m1-chip/#:~:text=Tap%20on%20the%20Apple%20menu,that%20replace%20the%20Intel%20processor) please use the [macOS M1](#macos-m1) instuctions.**
 
 1. Install the [Homebrew](https://brew.sh) package manager, following instructions on the homebrew site.
 
@@ -33,7 +33,7 @@ Morpho can be installed as follows:
 ```
 brew update
 
-brew install glfw suite-sparse
+brew install glfw suite-sparse freetype povray 
 ```
 
 3. Obtain the source by cloning this repository:
@@ -78,7 +78,7 @@ morpho5
 ```
 brew update
 
-brew install glfw suite-sparse
+brew install glfw suite-sparse freetype povray 
 ```
 
 3. Obtain the source by cloning this repository:
@@ -95,7 +95,7 @@ cd morpho/morpho5
 make -f Makefile.m1 install
 ```
 
-(Some users may need to use `sudo make install`)
+(Some users may need to use `sudo make -f Makefile.m1 install`)
 
 5. Navigate to the `morphoview` folder and build the viewer application:
 
@@ -105,7 +105,7 @@ cd ../morphoview
 make -f Makefile.m1 install
 ```
 
-(Some users may need to use `sudo make install`)
+(Some users may need to use `sudo make -f Makefile.m1 install`)
 
 6. Check that the application works by typing
 
@@ -125,7 +125,7 @@ sudo apt install liblapacke-dev
 
 sudo apt install povray
 
-sudo apt install libfreetype-dev libfreetype6 libfreetype6-dev
+sudo apt install libfreetype6-dev
 ```
 
 3. Obtain the source by cloning this repository:
@@ -193,7 +193,7 @@ sudo apt install liblapacke-dev
 
 sudo apt install povray
 
-sudo apt install libfreetype-dev libfreetype6 libfreetype6-dev
+sudo apt install libfreetype6-dev
 ```
 
 To build the code you will also need to install build-essentials:

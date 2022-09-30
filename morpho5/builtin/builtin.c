@@ -9,6 +9,7 @@
 #include "object.h"
 #include "functions.h"
 #include "file.h"
+#include "system.h"
 #include "builtin.h"
 #include "matrix.h"
 #include "cmplx.h"
@@ -280,6 +281,7 @@ void builtin_initialize(void) {
     
     /* Initialize builtin classes and functions */
     file_initialize();
+    system_initialize();
     matrix_initialize();
     sparse_initialize();
     mesh_initialize();
@@ -299,4 +301,5 @@ void builtin_finalize(void) {
     varray_valueclear(&builtin_objects);
     
     file_finalize();
+    system_finalize();
 }

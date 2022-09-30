@@ -2,8 +2,8 @@ src = $(wildcard *.c) ../morpho5/datastructures/varray.c ../deps/glad/src/glad.c
 obj = $(src:.c=.o)
 PREFIX = /usr/local
 
-LDFLAGS  = -lm -lblas -llapacke -lglfw -ldl
-CFLAGS   = -std=c99 -O3 -I. -I../morpho5/datastructures -I../morpho5 -I../morpho5/utils -I../deps/glad/include
+LDFLAGS  = -lm -lblas -llapacke -lglfw -ldl -lfreetype
+CFLAGS   = -std=c99 -O3 -I. -I/usr/include/freetype2 -I../morpho5/datastructures -I../morpho5 -I../morpho5/utils -I../deps/glad/include
 
 morphoview: $(obj)
 	$(CC) -o $@ $^ $(LDFLAGS) $(MODULES) $(CFLAGS)

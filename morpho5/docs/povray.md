@@ -56,7 +56,7 @@ The `render` method supports two optional boolean arguments:
 * `display` - whether to turn on the graphic display while rendering or not (`true` by default) 
 
 # Camera
-[tagpovray]: # (camera)
+[tagcamera]: # (camera)
 
 The `Camera` object can be initialized as follows:
 

@@ -62,6 +62,7 @@
 #define NORMSQ_CLASSNAME               "NormSq"
 #define LINEINTEGRAL_CLASSNAME         "LineIntegral"
 #define AREAINTEGRAL_CLASSNAME         "AreaIntegral"
+#define VOLUMEINTEGRAL_CLASSNAME       "VolumeIntegral"
 #define NEMATIC_CLASSNAME              "Nematic"
 #define NEMATICELECTRIC_CLASSNAME      "NematicElectric"
 
@@ -94,7 +95,13 @@
 #define HYDROGEL_ARGS_MSG              "Hydrogel requires a reference mesh and allows 'grade', 'a', 'b', 'c', 'd', 'phi0' and 'phiref' as optional arguments."
 
 #define HYDROGEL_PRP                   "HydrglPrp"
-#define HYDROGEL_PRP_MSG               "Hydrogel requires the first argument to be a mesh, 'grade' to be an integer grade, 'a', 'b', 'c' 'd', 'phi0' and 'phiref' to be numbers."
+#define HYDROGEL_PRP_MSG               "Hydrogel requires the first argument to be a mesh, 'grade' to be an integer grade, 'a', 'b', 'c' 'd', 'phiref' to be numbers and 'phi0' to be a number or a Field."
+
+#define HYDROGEL_FLDGRD                "HydrglFldGrd"
+#define HYDROGEL_FLDGRD_MSG            "Hydrogel has been given phi0 as a Field that lacks scalar elements in grade %u."
+
+#define HYDROGEL_ZEEROREFELEMENT       "HydrglZrRfVl"
+#define HYDROGEL_ZEEROREFELEMENT_MSG   "Reference element %u has tiny volume V=%g, V0=%g\n"
 
 #define GRADSQ_ARGS                    "GradSqArgs"
 #define GRADSQ_ARGS_MSG                "GradSq requires a field as the argument."

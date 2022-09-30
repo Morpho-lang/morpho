@@ -3,8 +3,47 @@
 
 Morpho provides a number of built-in functions.
 
+\hypertarget{sin}{%
+\subsection{sin}\label{sin}}
+
+Returns the sine of an angle in radians.
+
+\begin{lstlisting}
+import constants 
+print sin(Pi/2) // expect: 1
+\end{lstlisting}
+
+\hypertarget{sinh}{%
+\subsection{sinh}\label{sinh}}
+
+Returns the hyperbolic sine of an angle in radians.
+
+\begin{lstlisting}
+import constants 
+print sinh(0) // expect: 0
+\end{lstlisting}
+
+\hypertarget{cos}{%
+\subsection{cos}\label{cos}}
+
+Returns the cosine of an angle in radians.
+
+\begin{lstlisting}
+import constants 
+print cos(Pi/2) // expect: 0
+\end{lstlisting}
+
+\hypertarget{cosh}{%
+\subsection{cosh}\label{cosh}}
+
+Returns the hyperbolic cosine of an angle in radians.
+
+\begin{lstlisting}
+print cosh(0) // expect: 1
+\end{lstlisting}
+
 \hypertarget{arctan}{%
-\section{arctan}\label{arctan}}
+\subsection{arctan}\label{arctan}}
 
 Returns the arctangent of an input value that lies from \texttt{-Inf} to
 \texttt{Inf}. You can use one argument:
@@ -22,100 +61,100 @@ print arctan(x, y)
 Note the order \texttt{x}, \texttt{y} differs from some other languages.
 
 \hypertarget{isnil}{%
-\section{isnil}\label{isnil}}
+\subsection{isnil}\label{isnil}}
 
 Returns \texttt{true} if a value is \texttt{nil} or \texttt{false}
 otherwise.
 
 \hypertarget{isint}{%
-\section{isint}\label{isint}}
+\subsection{isint}\label{isint}}
 
 Returns \texttt{true} if a value is an integer or \texttt{false}
 otherwise.
 
 \hypertarget{isfloat}{%
-\section{isfloat}\label{isfloat}}
+\subsection{isfloat}\label{isfloat}}
 
 Returns \texttt{true} if a value is a floating point number or
 \texttt{false} otherwise.
 
 \hypertarget{isbool}{%
-\section{isbool}\label{isbool}}
+\subsection{isbool}\label{isbool}}
 
 Returns \texttt{true} if a value is a boolean or \texttt{false}
 otherwise.
 
 \hypertarget{isobject}{%
-\section{isobject}\label{isobject}}
+\subsection{isobject}\label{isobject}}
 
 Returns \texttt{true} if a value is an object or \texttt{false}
 otherwise.
 
 \hypertarget{isstring}{%
-\section{isstring}\label{isstring}}
+\subsection{isstring}\label{isstring}}
 
 Returns \texttt{true} if a value is a string or \texttt{false}
 otherwise.
 
 \hypertarget{isclass}{%
-\section{isclass}\label{isclass}}
+\subsection{isclass}\label{isclass}}
 
 Returns \texttt{true} if a value is a class or \texttt{false} otherwise.
 
 \hypertarget{isrange}{%
-\section{isrange}\label{isrange}}
+\subsection{isrange}\label{isrange}}
 
 Returns \texttt{true} if a value is a range or \texttt{false} otherwise.
 
 \hypertarget{isdictionary}{%
-\section{isdictionary}\label{isdictionary}}
+\subsection{isdictionary}\label{isdictionary}}
 
 Returns \texttt{true} if a value is a dictionary or \texttt{false}
 otherwise.
 
 \hypertarget{islist}{%
-\section{islist}\label{islist}}
+\subsection{islist}\label{islist}}
 
 Returns \texttt{true} if a value is a list or \texttt{false} otherwise.
 
 \hypertarget{isarray}{%
-\section{isarray}\label{isarray}}
+\subsection{isarray}\label{isarray}}
 
 Returns \texttt{true} if a value is an array or \texttt{false}
 otherwise.
 
 \hypertarget{ismatrix}{%
-\section{ismatrix}\label{ismatrix}}
+\subsection{ismatrix}\label{ismatrix}}
 
 Returns \texttt{true} if a value is a matrix or \texttt{false}
 otherwise.
 
 \hypertarget{issparse}{%
-\section{issparse}\label{issparse}}
+\subsection{issparse}\label{issparse}}
 
 Returns \texttt{true} if a value is a sparse matrix or \texttt{false}
 otherwise.
 
 \hypertarget{isinf}{%
-\section{isinf}\label{isinf}}
+\subsection{isinf}\label{isinf}}
 
 Returns \texttt{true} if a value is infinite or \texttt{false}
 otherwise.
 
 \hypertarget{isnan}{%
-\section{isnan}\label{isnan}}
+\subsection{isnan}\label{isnan}}
 
 Returns \texttt{true} if a value is a Not a Number or \texttt{false}
 otherwise.
 
 \hypertarget{iscallable}{%
-\section{iscallable}\label{iscallable}}
+\subsection{iscallable}\label{iscallable}}
 
 Returns \texttt{true} if a value is callable or \texttt{false}
 otherwise.
 
 \hypertarget{apply}{%
-\section{Apply}\label{apply}}
+\subsection{Apply}\label{apply}}
 
 Apply calls a function with the arguments provided as a list:
 

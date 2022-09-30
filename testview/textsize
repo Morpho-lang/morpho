@@ -1,0 +1,33 @@
+S 0 3
+W "Text"
+o 1
+v "xnc"
+0. 0. 0. 0. 0. 1. 0.6 0.6 0.6
+1. 0. 0. 0. 0. 1. 0.6 0.6 0.6
+0. 1. 0. 0. 0. 1. 0.6 0.6 0.6
+1. 1. 0. 0. 0. 1. 0.6 0.6 0.6
+f
+0 1 2 
+1 2 3
+c 0 1 1 1
+C 0 
+F 0 "/System/Library/Fonts/Helvetica.ttc" 10
+i
+t -0 0 0.0 
+T 0 "Hello World"
+t 0 0.138889 0.0 
+T 0 "Hello World"
+t 0 0.138889 0.0 
+T 0 "Hello World"
+t 0 0.138889 0.0 
+T 0 "Hello World"
+t 0 0.138889 0.0 
+T 0 "Hello World"
+t 0 0.138889 0.0 
+T 0 "Hello World"
+t 0 0.138889 0.0 
+T 0 "Hello World"
+i 
+t -1 0 0.0
+d 1 
+

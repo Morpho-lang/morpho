@@ -137,11 +137,12 @@ DECLARE_VARRAY(optionalparam, optionalparam)
 typedef struct sobjectfunction {
     object obj;
     int nargs;
+    int varg; // The parameter number of a variadic parameter.
     value name;
     indx entry;
     struct sobjectfunction *parent;
     int nupvalues;
-    int nregs; 
+    int nregs;
     varray_value konst;
     varray_varray_upvalue prototype;
     varray_optionalparam opt;
@@ -160,6 +161,8 @@ objectfunction *object_getfunctionparent(objectfunction *func);
 value object_getfunctionname(objectfunction *func);
 varray_value *object_functiongetconstanttable(objectfunction *func);
 objectfunction *object_newfunction(indx entry, value name, objectfunction *parent, unsigned int nargs);
+bool object_functionhasvargs(objectfunction *func);
+void object_functionsetvarg(objectfunction *func, unsigned int varg);
 
 /* ---------------------------
  * Upvalue objects

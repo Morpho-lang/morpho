@@ -81,3 +81,16 @@ Closes an open file.
 [tageof]: # (eof)
 
 Returns true if at the end of the file; false otherwise
+
+# Folder
+[tagfolder]: # (Folder)
+
+The `Folder` class enables you to find whether a filepath refers to a folder, and find the contents of that folder.
+
+Find whether a path refers to a folder:
+
+    print Folder.isfolder("path/folder")
+    
+Get a list of a folder's contents: 
+
+    print Folder.contents("path/folder")

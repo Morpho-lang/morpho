@@ -152,7 +152,7 @@ The `Sphere` function creates a sphere.
 * `center` is the position of the center of the sphere; this can be a list or column `Matrix`.
 * `radius` is the radius of the sphere
 
-You can also provide an optional argument:
+You can also provide optional arguments:
 
 * `color` is the color of the sphere. This can be a list of RGB values or a `Color` object.
 * `transmit` sets the transparency of the sphere. This parameter is only
@@ -166,5 +166,31 @@ Draw some randomly sized spheres:
     var g = Graphics()
     for (i in 0...10) {
       g.display(Sphere([random()-1/2, random()-1/2, random()-1/2], 0.1*(1+random()),       color=Gray(random())))
+    }
+    Show(g)
+
+## Text
+[tagText]: # (Text)
+
+A `Text` object is used to display text. 
+
+    Text(text, position)
+
+* `text` is the text to display as a string.
+* `position` is the position at which to display the text. 
+
+You can also provide optional arguments:
+
+* `color` is the color of the text. This should be a `Color` object.
+* `dirn` is the direction along which the text is drawn. This should be a `List` or a `Matrix`.
+* `size` is the font size to use
+* `vertical` is the vertical direction for the text
+* `font` is the `Font` object to use.
+
+Draw several pieces of text around the y axis:
+
+    var g = Graphics()
+    for (phi in 0..Pi:Pi/8) {
+      g.display(Text("Hello World", [0,0,0], size=72, dirn=[0,1,0], vertical=[cos(phi),0,sin(phi)]))
     }
     Show(g)

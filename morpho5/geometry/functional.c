@@ -1418,14 +1418,20 @@ bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
     if (!functional_elementsize(v, info->refmesh, info->grade, id, nv, vid, &V0)) return false;
     if (!functional_elementsize(v, mesh, info->grade, id, nv, vid, &V)) return false;
 
-    if (V0<1e-8) printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
-
+    if (V0<1e-8) {
+        printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
+        //morpho_runtimeerror(v, HYDROGEL_ZEEROREFELEMENT, id, V, V0);
+    }
+    
     if (fabs(V)<MORPHO_EPS) return false;
 
     // Determine phi0 either as a number or by looking up something in a field
     if (MORPHO_ISFIELD(info->phi0)) {
         objectfield *p = MORPHO_GETFIELD(info->phi0);
-        field_getelement(p, info->grade, id, 0, &vphi0);
+        if (!field_getelement(p, info->grade, id, 0, &vphi0)) {
+            morpho_runtimeerror(v, HYDROGEL_FLDGRD, (unsigned int) info->grade);
+            return false;
+        }
     }
     if (MORPHO_ISNUMBER(vphi0)) {
         if (!morpho_valuetofloat(vphi0, &phi0)) return false;
@@ -2982,6 +2988,71 @@ MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, AreaIntegral_gradient, BUILTIN_FLAGSEM
 MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, AreaIntegral_fieldgradient, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
+/* ----------------------------------------------
+ * VolumeIntegral
+ * ---------------------------------------------- */
+
+/** Integrate a function over a volume */
+bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    integralref *iref = ref;
+    double *x[4], size;
+    bool success;
+
+    if (!functional_elementsize(v, mesh, MESH_GRADE_VOLUME, id, nv, vid, &size)) return false;
+
+    iref->v=v;
+    for (unsigned int i=0; i<nv; i++) {
+        mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
+    }
+    
+    value q0[iref->nfields+1], q1[iref->nfields+1], q2[iref->nfields+1], q3[iref->nfields+1];
+    value *q[4] = { q0, q1, q2, q3 };
+    for (unsigned int k=0; k<iref->nfields; k++) {
+        for (unsigned int i=0; i<nv; i++) {
+            field_getelement(MORPHO_GETFIELD(iref->fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
+        }
+    }
+
+    success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_VOLUME, x, iref->nfields, q, iref, out);
+    if (success) *out *=size;
+    
+    return success;
+}
+
+FUNCTIONAL_METHOD(VolumeIntegral, integrand, MESH_GRADE_VOLUME, integralref, integral_prepareref, functional_mapintegrand, volumeintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+
+FUNCTIONAL_METHOD(VolumeIntegral, total, MESH_GRADE_VOLUME, integralref, integral_prepareref, functional_sumintegrand, volumeintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+
+FUNCTIONAL_METHOD(VolumeIntegral, gradient, MESH_GRADE_VOLUME, integralref, integral_prepareref, functional_mapnumericalgradient, volumeintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+
+/** Field gradients for Volume Integrals */
+value VolumeIntegral_fieldgradient(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    integralref ref;
+    value out=MORPHO_NIL;
+
+    if (functional_validateargs(v, nargs, args, &info)) {
+        // Should check whether the field is known about here...
+        if (integral_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_VOLUME, info.sel, &ref)) {
+            info.g=MESH_GRADE_VOLUME;
+            info.integrand=volumeintegral_integrand;
+            info.ref=&ref;
+            functional_mapnumericalfieldgradient(v, &info, &out);
+        } else morpho_runtimeerror(v, GRADSQ_ARGS);
+    }
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+    return out;
+}
+
+MORPHO_BEGINCLASS(VolumeIntegral)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineIntegral_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, VolumeIntegral_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, VolumeIntegral_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, VolumeIntegral_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, VolumeIntegral_fieldgradient, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
+
 /* **********************************************************************
  * Initialization
  * ********************************************************************** */
@@ -3028,6 +3099,7 @@ void functional_initialize(void) {
     builtin_addclass(NORMSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(NormSq), objclass);
     builtin_addclass(LINEINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineIntegral), objclass);
     builtin_addclass(AREAINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(AreaIntegral), objclass);
+    builtin_addclass(VOLUMEINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(VolumeIntegral), objclass);
     builtin_addclass(NEMATIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(Nematic), objclass);
     builtin_addclass(NEMATICELECTRIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(NematicElectric), objclass);
 
@@ -3036,16 +3108,24 @@ void functional_initialize(void) {
 
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
     morpho_defineerror(FUNC_ELNTFND, ERROR_HALT, FUNC_ELNTFND_MSG);
+    
     morpho_defineerror(SCALARPOTENTIAL_FNCLLBL, ERROR_HALT, SCALARPOTENTIAL_FNCLLBL_MSG);
+    
     morpho_defineerror(LINEARELASTICITY_REF, ERROR_HALT, LINEARELASTICITY_REF_MSG);
     morpho_defineerror(LINEARELASTICITY_PRP, ERROR_HALT, LINEARELASTICITY_PRP_MSG);
+    
     morpho_defineerror(HYDROGEL_ARGS, ERROR_HALT, HYDROGEL_ARGS_MSG);
     morpho_defineerror(HYDROGEL_PRP, ERROR_HALT, HYDROGEL_PRP_MSG);
+    morpho_defineerror(HYDROGEL_FLDGRD, ERROR_HALT, HYDROGEL_FLDGRD_MSG);
+    morpho_defineerror(HYDROGEL_ZEEROREFELEMENT, ERROR_WARNING, HYDROGEL_ZEEROREFELEMENT_MSG);
+    
     morpho_defineerror(EQUIELEMENT_ARGS, ERROR_HALT, EQUIELEMENT_ARGS_MSG);
     morpho_defineerror(GRADSQ_ARGS, ERROR_HALT, GRADSQ_ARGS_MSG);
     morpho_defineerror(NEMATIC_ARGS, ERROR_HALT, NEMATIC_ARGS_MSG);
     morpho_defineerror(NEMATICELECTRIC_ARGS, ERROR_HALT, NEMATICELECTRIC_ARGS_MSG);
+    
     morpho_defineerror(FUNCTIONAL_ARGS, ERROR_HALT, FUNCTIONAL_ARGS_MSG);
+    
     morpho_defineerror(LINEINTEGRAL_ARGS, ERROR_HALT, LINEINTEGRAL_ARGS_MSG);
     morpho_defineerror(LINEINTEGRAL_NFLDS, ERROR_HALT, LINEINTEGRAL_NFLDS_MSG);
 }

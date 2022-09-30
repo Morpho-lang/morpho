@@ -18,6 +18,45 @@ Once a function has been defined you can evaluate it like any other morpho funct
 
     print sqr(2)
 
+[show]: # (subtopics) 
+
+## Variadic
+[tagvariadic]: # (variadic)
+
+As well as regular parameters, functions can also be defined with *variadic* parameters: 
+
+    fn func(x, ...v) {
+        for (a in v) print a
+    }
+
+This function can then be called with 1 or more arguments: 
+
+    func(1)
+    func(1, 2)
+    func(1, 2, 3) // All valid! 
+
+The variadic parameter `v` captures all the extra arguments supplied. Functions cannot be defined with more than one variadic parameter. 
+
+You can mix regular, variadic and optional parameters. Variadic parameters come before optional parameters:
+
+    fn func(x, ...v, optional=true) {
+        // 
+    }
+
+## Optional
+[tagoptional]: # (optional)
+
+Functions can also be defined with *optional* parameters:
+
+    fn func(a=1) {
+        print a 
+    }
+
+Each optional parameter must be defined with a default value (here `1`). The function can then be called either with or without the optional parameter: 
+
+    func()    // a == 1 due to default value
+    func(a=2) // a == 2 supplied by the user
+
 ## Return
 [tagreturn]: # (return)
 

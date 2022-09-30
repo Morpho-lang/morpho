@@ -42,6 +42,7 @@ Morpho
    :maxdepth: 1
 
    file
+   system
 
 .. toctree::
    :caption: Modules

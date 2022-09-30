@@ -13,7 +13,7 @@ morpho5 program.morpho
 \end{lstlisting}
 
 \hypertarget{comments}{%
-\section{Comments}\label{comments}}
+\subsection{Comments}\label{comments}}
 
 Two types of comment are available. The first type is called a `line
 comment' whereby text after \texttt{//} on the same line is ignored by
@@ -41,7 +41,7 @@ In contrast to C, these comments can be nested
 enabling the programmer to quickly comment out a section of code.
 
 \hypertarget{symbols}{%
-\section{Symbols}\label{symbols}}
+\subsection{Symbols}\label{symbols}}
 
 Symbols are used to refer to named entities, including variables,
 classes, functions etc. Symbols must begin with a letter or underscore
@@ -60,7 +60,7 @@ Classes are typically given names with an initial capital letter.
 Variable names are usually all lower case.
 
 \hypertarget{newlines}{%
-\section{Newlines}\label{newlines}}
+\subsection{Newlines}\label{newlines}}
 
 Strictly, morpho ends statements with semicolons like C, but in practice
 these are usually optional and you can just start a new line instead.
@@ -101,7 +101,7 @@ print a   // < Morpho thinks this is a complete statement
 \end{lstlisting}
 
 \hypertarget{booleans}{%
-\section{Booleans}\label{booleans}}
+\subsection{Booleans}\label{booleans}}
 
 Comparison operations like \texttt{==}, \texttt{\textless{}} and
 \texttt{\textgreater{}=} return \texttt{true} or \texttt{false}
@@ -119,7 +119,7 @@ return true
 \end{lstlisting}
 
 \hypertarget{nil}{%
-\section{Nil}\label{nil}}
+\subsection{Nil}\label{nil}}
 
 The keyword \texttt{nil} is used to represent the absence of an object
 or value.
@@ -134,7 +134,7 @@ if (nil) {
 \end{lstlisting}
 
 \hypertarget{blocks}{%
-\section{Blocks}\label{blocks}}
+\subsection{Blocks}\label{blocks}}
 
 Code is divided into \emph{blocks}, which are delimited by curly
 brackets like this:
@@ -165,7 +165,7 @@ would print ``Bar'' then ``Foo''; the version of \texttt{a} inside the
 code block is said to \emph{shadow} the outer version.
 
 \hypertarget{precedence}{%
-\section{Precedence}\label{precedence}}
+\subsection{Precedence}\label{precedence}}
 
 Precedence refers to the order in which morpho evaluates operations. For
 example,
@@ -185,7 +185,7 @@ print (1+2)*3 // prints 9
 \end{lstlisting}
 
 \hypertarget{print}{%
-\section{Print}\label{print}}
+\subsection{Print}\label{print}}
 
 The \texttt{print} keyword is used to print information to the console.
 It can be followed by any value, e.g.

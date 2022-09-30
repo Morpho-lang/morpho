@@ -31,7 +31,11 @@ void command_removefile(const char *in) {
     char remove[len+4];
     strcpy(remove, "rm ");
     strcpy(remove+3, in);
-    system(remove);
+    int systemRet = system(remove);
+    if(systemRet == -1){
+        // The system method failed
+        printf("Warning: the system method to remove a temporary file (command.c:34.5) has failed.");
+    }
 }
 
 /** Returns the contents of a file as a string
@@ -200,16 +204,21 @@ bool command_lex(lexer *l, token *tok) {
     if (command_lexisdigit(c) || c == '-') return command_lexnumber(l, tok);
     
     switch (c) {
+        case 'c': command_lexrecordtoken(l, TOKEN_COLOR, tok); return true;
+        case 'C': command_lexrecordtoken(l, TOKEN_SELECTCOLOR, tok); return true;
         case 'd': command_lexrecordtoken(l, TOKEN_DRAW, tok); return true;
         case 'o': command_lexrecordtoken(l, TOKEN_OBJECT, tok); return true;
         case 'p': command_lexrecordtoken(l, TOKEN_POINTS, tok); return true;
         case 'l': command_lexrecordtoken(l, TOKEN_LINES, tok); return true;
         case 'f': command_lexrecordtoken(l, TOKEN_FACETS, tok); return true;
+        case 'F': command_lexrecordtoken(l, TOKEN_FONT, tok); return true;
         case 'i': command_lexrecordtoken(l, TOKEN_IDENTITY, tok); return true;
+        case 'm': command_lexrecordtoken(l, TOKEN_MATRIX, tok); return true;
         case 'r': command_lexrecordtoken(l, TOKEN_ROTATE, tok); return true;
         case 's': command_lexrecordtoken(l, TOKEN_SCALE, tok); return true;
         case 'S': command_lexrecordtoken(l, TOKEN_SCENE, tok); return true;
         case 't': command_lexrecordtoken(l, TOKEN_TRANSLATE, tok); return true;
+        case 'T': command_lexrecordtoken(l, TOKEN_TEXT, tok); return true;
         case 'v': command_lexrecordtoken(l, TOKEN_VERTICES, tok); return true;
         case 'W': command_lexrecordtoken(l, TOKEN_WINDOW, tok); return true;
         case '"': return command_lexstring(l, tok);
@@ -296,6 +305,56 @@ bool command_iscurrentnumerical(parser *p) {
 
 #define ERRCHK(f) if (!(f)) return false;
 
+/** Parses a color definition */
+bool command_parsecolor(parser *p) {
+    int id, indx=-1;
+    int length=0;
+    ERRCHK(command_parseinteger(p, &id));
+    
+#ifdef DEBUG_PARSER
+    printf("Color %i ", id);
+#endif
+    
+    while (command_iscurrentnumerical(p)) {
+        float r[3];
+        for (int i=0; i<3; i++) ERRCHK(command_parsefloat(p, &r[i]));
+        
+        /* Add to the scene's data array */
+        int ret=scene_adddata(p->scene, r, 3);
+        if (indx<0) indx=ret;
+        
+        length++;
+        
+#ifdef DEBUG_PARSER
+        printf("%f %f %f ", r[0], r[1], r[2]);
+#endif
+    }
+    
+    if (length>0) {
+        scene_addcolor(p->scene, id, length, indx);
+    }
+    
+#ifdef DEBUG_PARSER
+    printf("\n");
+#endif
+    
+    return true;
+}
+
+/** Parses a color selection */
+bool command_parseselectcolor(parser *p) {
+    int id;
+    
+    ERRCHK(command_parseinteger(p, &id));
+#ifdef DEBUG_PARSER
+    printf("Select color %i\n", id);
+#endif
+    
+    scene_adddraw(p->scene, COLOR, id, -1);
+    
+    return true;
+}
+
 /** Parses a draw command */
 bool command_parsedraw(parser *p) {
     int id, indx = SCENE_EMPTY;
@@ -312,8 +371,7 @@ bool command_parsedraw(parser *p) {
 #endif
     }
     
-    gdraw d = { .id = id, .matindx = indx };
-    varray_gdrawadd(&p->scene->displaylist, &d, 1);
+    scene_adddraw(p->scene, OBJECT, id, indx);
     
     return true;
 }
@@ -431,7 +489,27 @@ bool command_parseidentity(parser *p) {
     return true;
 }
 
-/** Parse an identity command */
+/** Parse a matrix command */
+bool command_parsematrix(parser *p) {
+    mat4x4 x, m;
+    for (int i=0; i<16; i++) {
+        ERRCHK(command_parsefloat(p, &x[i]));
+    }
+    
+#ifdef DEBUG_PARSER
+    printf("Matrix:\n");
+    mat3d_print4x4(x);
+#endif
+    
+    mat3d_copy4x4(p->model, m);
+    mat3d_mul4x4(m, x, p->model);
+    
+    p->modelchanged=true;
+    
+    return true;
+}
+
+/** Parse a rotate command */
 bool command_parserotate(parser *p) {
     float phi, x[3];
     ERRCHK(command_parsefloat(p, &phi));
@@ -448,7 +526,7 @@ bool command_parserotate(parser *p) {
     return true;
 }
 
-/** Parse an identity command */
+/** Parse a scale command */
 bool command_parsescale(parser *p) {
     float s;
     ERRCHK(command_parsefloat(p, &s));
@@ -461,7 +539,7 @@ bool command_parsescale(parser *p) {
     return true;
 }
 
-/** Parse an identity command */
+/** Parse a translate command */
 bool command_parsetranslate(parser *p) {
     float x[3];
     for (int i=0; i<3; i++) {
@@ -511,6 +589,51 @@ bool command_parsewindow(parser *p) {
     return false;
 }
 
+/** Parses a font definition */
+bool command_parsefont(parser *p) {
+    int id;
+    char *file;
+    float size;
+    
+    ERRCHK(command_parseinteger(p, &id));
+    ERRCHK(command_parsestring(p, &file));
+    ERRCHK(command_parsefloat(p, &size));
+    
+#ifdef DEBUG_PARSER
+    printf("Font %i '%s' %g\n", id, file, size);
+#endif
+    
+    return scene_addfont(p->scene, id, file, size, NULL);
+}
+
+/** Parses a text command */
+bool command_parsetext(parser *p) {
+    int fontid;
+    char *string;
+    
+    ERRCHK(command_parseinteger(p, &fontid));
+    ERRCHK(command_parsestring(p, &string));
+    
+#ifdef DEBUG_PARSER
+    printf("Text %i '%s'\n", fontid, string);
+#endif
+    
+    int matindx=SCENE_EMPTY;
+    int tid=scene_addtext(p->scene, fontid, string);
+    
+    if (p->modelchanged) {
+        matindx=scene_adddata(p->scene, p->model, 16);
+        p->modelchanged=false;
+#ifdef DEBUG_PARSER
+        mat3d_print4x4(p->model);
+#endif
+    }
+    
+    scene_adddraw(p->scene, TEXT, tid, matindx);
+    
+    return true;
+}
+
 #define UNDEFINED NULL
 /** The parse table defines which function handles which token type */
 parsefunction parsetable[] = {
@@ -520,6 +643,8 @@ parsefunction parsetable[] = {
     UNDEFINED,              // TOKEN_FLOAT
     UNDEFINED,              // TOKEN_STRING
     
+    command_parsecolor,     // TOKEN_COLOR
+    command_parseselectcolor,// TOKEN_SELECTCOLOR
     command_parsedraw,      // TOKEN_DRAW
     command_parseobject,    // TOKEN_OBJECT
     command_parsevertices,  // TOKEN_VERTICES
@@ -527,6 +652,7 @@ parsefunction parsetable[] = {
     command_parseindex,     // TOKEN_LINES
     command_parseindex,     // TOKEN_FACETS
     command_parseidentity,  // TOKEN_IDENTITY
+    command_parsematrix,    // TOKEN_MATRIX
     command_parserotate,    // TOKEN_ROTATE
     command_parsescale,     // TOKEN_SCALE
     command_parsescene,     // TOKEN_SCENE
@@ -534,6 +660,8 @@ parsefunction parsetable[] = {
     UNDEFINED,              // TOKEN_VIEWDIRECTION
     UNDEFINED,              // TOKEN_VIEWVERTICAL
     command_parsewindow,    // TOKEN_WINDOW
+    command_parsefont,      // TOKEN_FONT
+    command_parsetext,      // TOKEN_TEXT
     
     UNDEFINED, // TOKEN_EOF
 };

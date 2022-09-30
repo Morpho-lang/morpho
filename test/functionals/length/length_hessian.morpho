@@ -8,6 +8,8 @@ mb.addvertex([1,0])
 mb.addedge([0,1])
 var m = mb.build()*/
 
+print m.vertexmatrix() 
+
 var a = Length()
 
 print a.total(m)

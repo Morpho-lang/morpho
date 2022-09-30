@@ -485,19 +485,20 @@ static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, 
 
 /* Calculates a numerical hessian */
 static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectsparse *hess) {
-    double eps=1e-8; // ~ (eps)^(1/4)
+    double eps=1e-4; // ~ (eps)^(1/4)
     value f0;
-
-    float d2xy[] = { 1.0, eps, eps, // Data for second derivative formula
+    
+    // Finite difference rules from Abramowitz and Stegun 1972, p. 884
+    double d2xy[] = { 1.0, eps, eps, // Data for second derivative formula
                      1.0,-eps,-eps,
                     -1.0,-eps, eps,
                     -1.0, eps,-eps};
 
-    float d2xx[] = { -1.0, 2*eps, 2*eps, // Data for second derivative formula
-                     -1.0,-2*eps,-2*eps,
-                    -30.0,     0, 0,
-                    +16.0,  +eps, 0,
-                    +16.0,  -eps, 0};
+    double d2xx[] = { -1.0, 0, 2*eps, // Data for second derivative formula
+                     -1.0, 0, -2*eps,
+                    +16.0, 0, +eps,
+                    +16.0, 0, -eps,
+                    -30.0, 0,    0 };
 
     double *d2,scale=1.0;
     int neval, nevalxx=5, nevalxy=4;
@@ -508,15 +509,15 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
 
             // Loop over coordinates
             for (unsigned int l=0; l<mesh->dim; l++) {
-                double x0,y0;
+                double x0,y0; // x and y are the two variables currently being differentiated wrt; x=Xj[l], y=Xk[m]
                 for (unsigned int m=0; m<mesh->dim; m++) {
                     double d2f=0, ff=0;
-                    matrix_getelement(mesh->vert, l, vid[j], &x0);
+                    matrix_getelement(mesh->vert, l, vid[j], &x0); // Get the initial values
                     matrix_getelement(mesh->vert, m, vid[k], &y0);
 
                     if (sparsedok_get(&hess->dok, vid[j]*mesh->dim+l, vid[k]*mesh->dim+m, &f0)) ff=MORPHO_GETFLOATVALUE(f0);
 
-                    if ((j==k) && (l==m)) {
+                    if ((j==k) && (l==m)) { // Diagonal element
                         d2=d2xx; neval=nevalxx;
                         scale=1.0/(12.0*eps*eps);
                     } else {
@@ -527,7 +528,7 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
                     for (int n=0; n<neval; n++) {
                         double f;
                         matrix_setelement(mesh->vert, l, vid[j], x0+d2[3*n+1]);
-                        matrix_setelement(mesh->vert, m, vid[k], y0+d2[3*n+2]);
+                        matrix_setelement(mesh->vert, m, vid[k], y0+d2[3*n+2]); // For j==l and l==m, this just overwrites the x value
                         if (!(*integrand) (v, mesh, i, nv, vid, ref, &f)) return false;
                         d2f+=d2[3*n+0]*f;
                     }

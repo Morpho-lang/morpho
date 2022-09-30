@@ -9,7 +9,7 @@ class Camera {
         self.look_at = look_at
         self.sky = sky
         self.light = nil
-        if (!self.viewpoint) self.viewpoint = Matrix([0,0,-5])
+        if (!self.viewpoint) self.viewpoint = Matrix([0,0,5])
         if (!self.look_at) self.look_at = Matrix([0,0,0])
         if (!self.sky) self.sky = Matrix([0,1,0])
     }
@@ -64,8 +64,8 @@ class POVRaytracer {
     out.write("text {" +
               "  ttf \"timrom.ttf\" \"${item.string}\" 0.1, 0 \n" + 
               "  pigment { rgb ${self.color(item.color)} ${arg} }")
+    out.write("  scale ${item.size / 75} ")
     out.write("  translate ${item.posn[0]}*x + ${item.posn[1]}*y + ${item.posn[2]}*z ")
-    out.write("  scale ${item.size / 48} ")
     var m = item.transformationmatrix() 
     if (m) {
       var str = "  matrix <"

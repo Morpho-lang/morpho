@@ -483,11 +483,24 @@ static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, 
     return true;
 }
 
+double functional_sumlist(double *list, unsigned int nel) {
+    double sum=0.0, c=0.0, y,t;
+
+    for (unsigned int i=0; i<nel; i++) {
+        y=list[i]-c;
+        t=sum+y;
+        c=(t-sum)-y;
+        sum=t;
+    }
+
+    return sum;
+}
+
 /* Calculates a numerical hessian */
 static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectsparse *hess) {
     double eps=1e-4; // ~ (eps)^(1/4)
     value f0;
-    
+
     // Finite difference rules from Abramowitz and Stegun 1972, p. 884
     double d2xy[] = { 1.0, eps, eps, // Data for second derivative formula
                      1.0,-eps,-eps,
@@ -511,7 +524,7 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
             for (unsigned int l=0; l<mesh->dim; l++) {
                 double x0,y0; // x and y are the two variables currently being differentiated wrt; x=Xj[l], y=Xk[m]
                 for (unsigned int m=0; m<mesh->dim; m++) {
-                    double d2f=0, ff=0;
+                    double ff=0;
                     matrix_getelement(mesh->vert, l, vid[j], &x0); // Get the initial values
                     matrix_getelement(mesh->vert, m, vid[k], &y0);
 
@@ -525,13 +538,15 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
                         scale=1.0/(4.0*eps*eps);
                     }
 
+                    double f[neval];
                     for (int n=0; n<neval; n++) {
-                        double f;
                         matrix_setelement(mesh->vert, l, vid[j], x0+d2[3*n+1]);
                         matrix_setelement(mesh->vert, m, vid[k], y0+d2[3*n+2]); // For j==l and l==m, this just overwrites the x value
-                        if (!(*integrand) (v, mesh, i, nv, vid, ref, &f)) return false;
-                        d2f+=d2[3*n+0]*f;
+                        if (!(*integrand) (v, mesh, i, nv, vid, ref, &f[n])) return false;
+                        f[n]*=d2[3*n+0];
                     }
+
+                    double d2f = functional_sumlist(f, neval);
 
                     matrix_setelement(mesh->vert, l, vid[j], x0); // Reset element
                     matrix_setelement(mesh->vert, m, vid[k], y0);

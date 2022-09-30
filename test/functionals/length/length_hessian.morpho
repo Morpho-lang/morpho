@@ -11,7 +11,6 @@ var m = mb.build()*/
 print m.vertexmatrix() 
 
 var a = Length()
-
 print a.total(m)
 
 print a.hessian(m)

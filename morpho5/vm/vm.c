@@ -2119,6 +2119,12 @@ bool morpho_profile(vm *v, program *p) {
     return success;
 }
 
+#else
+
+bool morpho_profile(vm *v, program *p) {
+    return morpho_run(v, p);
+}
+
 #endif
 
 /* **********************************************************************

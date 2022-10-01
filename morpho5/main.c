@@ -39,7 +39,11 @@ int main(int argc, const char * argv[]) {
                     }
                     break;
                 case 'p':
-                    opt |= CLI_PROFILE;
+#ifdef MORPHO_PROFILER
+                    if (strncmp(option+1, "profile", strlen("profile"))==0) {
+                        opt |= CLI_PROFILE;
+                    }
+#endif
                     break;
             }
         } else {

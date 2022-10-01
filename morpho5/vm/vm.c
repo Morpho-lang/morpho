@@ -186,6 +186,9 @@ static void vm_init(vm *v) {
     varray_valueresize(&v->stack, MORPHO_STACKINITIALSIZE);
     error_init(&v->err);
     v->errfp=NULL;
+#ifdef MORPHO_PROFILER
+    v->profiler=NULL;
+#endif
 }
 
 /** Clears a virtual machine */
@@ -691,6 +694,9 @@ static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int n
     v->fp++; /* Advance frame pointer */
     v->fp->pc=*pc; /* We will also store the program counter in the new frame;
                       this will be used to detect whether the VM should return on OP_RETURN */
+#ifdef MORPHO_PROFILER
+    v->fp->inbuiltinfunction=NULL;
+#endif
 
     if (MORPHO_ISCLOSURE(fn)) {
         objectclosure *closure=MORPHO_GETCLOSURE(fn); /* Closure object in use */
@@ -1176,7 +1182,13 @@ callfunction: // Jump here if an instruction becomes a call
 
                 objectbuiltinfunction *f = MORPHO_GETBUILTINFUNCTION(left);
 
+#ifdef MORPHO_PROFILER
+                v->fp->inbuiltinfunction=f;
+#endif
                 value ret = (f->function) (v, c, reg+a);
+#ifdef MORPHO_PROFILER
+                v->fp->inbuiltinfunction=NULL;
+#endif
                 ERRORCHK();
                 reg=v->stack.data+v->fp->roffset; /* Ensure register pointer is correct */
                 reg[a]=ret;
@@ -1768,6 +1780,9 @@ bool morpho_run(vm *v, program *p) {
     v->fp->function=p->global;
     v->fp->closure=NULL;
     v->fp->roffset=0;
+#ifdef MORPHO_PROFILER
+    v->fp->inbuiltinfunction=NULL;
+#endif
     
     /* Initialize global variables */
     int oldsize = v->globals.count;
@@ -1820,7 +1835,13 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
         xargs[0]=r0;
         for (unsigned int i=0; i<nargs; i++) xargs[i+1]=args[i];
 
+#ifdef MORPHO_PROFILER
+        v->fp->inbuiltinfunction=f;
+#endif
         *ret=(f->function) (v, nargs, xargs);
+#ifdef MORPHO_PROFILER
+        v->fp->inbuiltinfunction=NULL;
+#endif
         success=true;
     } else if (MORPHO_ISFUNCTION(fn) || MORPHO_ISCLOSURE(fn)) {
         ptrdiff_t aoffset=0;
@@ -1906,48 +1927,199 @@ void morpho_setdebug(vm *v, bool active) {
 * Initialization
 * ********************************************************************** */
 
-#include <pthread.h>
+#ifdef MORPHO_PROFILER
 
-bool profiler_quit;
-pthread_mutex_t lock;
+#define PROFILER_NVALUES 2
+#define PROFILER_VALUEPOSN 1
 
+#define PROFILER_GLOBAL "(global)"
+#define PROFILER_ANON   "(anonymous)"
+
+/** Record a sample */
+void profiler_sample(profiler *profile, value func) {
+    value v=MORPHO_INTEGER(1);
+    if (dictionary_get(&profile->profile_dict, func, &v)) {
+        v=MORPHO_INTEGER(MORPHO_GETINTEGERVALUE(v)+1);
+    }
+    
+    dictionary_insert(&profile->profile_dict, func, v);
+}
+
+/** Profiler monitor thread */
 void *profiler_thread(void *arg) {
     vm *v = (vm *) arg;
+    profiler *profile = v->profiler;
+    if (!v->profiler) return NULL;
     
     while (true) {
-        pthread_mutex_lock(&lock);
-        bool quit=profiler_quit;
-        pthread_mutex_unlock(&lock);
+        pthread_mutex_lock(&profile->profile_lock);
+        bool quit=profile->profiler_quit;
+        pthread_mutex_unlock(&profile->profile_lock);
         
         if (quit) pthread_exit(NULL);
         
-        for (int i=0; i<100000; i++);
+        for (int i=0; i<1000000; i++);
         
-        morpho_printvalue(v->fp->function->name);
-        printf("\n");
+        objectbuiltinfunction *infunction=v->fp->inbuiltinfunction;
+        if (infunction) {
+            profiler_sample(profile, MORPHO_OBJECT(infunction));
+        } else {
+            profiler_sample(profile, MORPHO_OBJECT(v->fp->function));
+        }
     }
 }
 
+/** Initialize profiler data structure */
+void profiler_init(profiler *profile, program *p) {
+    dictionary_init(&profile->profile_dict);
+    pthread_mutex_init(&profile->profile_lock, NULL);
+    profile->profiler_quit=false;
+    profile->program=p;
+}
+
+/** Clear profiler data structure */
+void profiler_clear(profiler *profile) {
+    pthread_mutex_destroy(&profile->profile_lock);
+    dictionary_clear(&profile->profile_dict);
+}
+
+/** Kills a profiler thread */
+void profiler_kill(profiler *profile) {
+    pthread_mutex_lock(&profile->profile_lock);
+    profile->profiler_quit=true;
+    pthread_mutex_unlock(&profile->profile_lock);
+    pthread_join(profile->profiler, NULL);
+}
+
+/** Sorting function */
+int profiler_sort(const void *a, const void *b) {
+    value *aa = (value *) a;
+    value *bb = (value *) b;
+    return morpho_comparevalue(aa[PROFILER_VALUEPOSN], bb[PROFILER_VALUEPOSN]);
+}
+
+/** Returns the function name */
+bool profiler_getname(value func, value *name, value *klass) {
+    bool success=false;
+    
+    if (MORPHO_ISBUILTINFUNCTION(func)) {
+        *name = MORPHO_GETBUILTINFUNCTION(func)->name;
+        *klass = MORPHO_NIL;
+        success=true;
+    } else if (MORPHO_ISFUNCTION(func)) {
+        *name = MORPHO_GETFUNCTION(func)->name;
+        objectclass *k=MORPHO_GETFUNCTION(func)->klass;
+        if (k) *klass = k->name;
+        success=true;
+    }
+    return success;
+}
+
+/** Calculates the length to display */
+size_t profiler_calculatelength(profiler *p, value func) {
+    value name, klass;
+    size_t length=0;
+    
+    if (profiler_getname(func, &name, &klass)) {
+        if (MORPHO_ISSTRING(name)) {
+            length+=MORPHO_GETSTRINGLENGTH(name);
+        } else if (MORPHO_ISNIL(name)) {
+            if (func==MORPHO_OBJECT(p->program->global)) length+=strlen(PROFILER_GLOBAL);
+            else length+=strlen(PROFILER_ANON);
+        }
+                 
+        if (MORPHO_ISSTRING(klass)) length+=MORPHO_GETSTRINGLENGTH(klass)+1; // extra length for the '.'
+    }
+    
+    return length;
+}
+
+/** Display the name */
+void profiler_display(profiler *p, value func) {
+    value name, klass;
+    if (profiler_getname(func, &name, &klass)) {
+        if (MORPHO_ISSTRING(klass)) {
+            morpho_printvalue(klass);
+            printf(".");
+        }
+        
+        if (MORPHO_ISSTRING(name)) {
+            morpho_printvalue(name);
+        } else if (MORPHO_ISNIL(name)) {
+            if (func==MORPHO_OBJECT(p->program->global)) printf(PROFILER_GLOBAL);
+            else printf(PROFILER_ANON);
+        }
+    }
+}
+
+/** Report the outcome of profiling */
+void profiler_report(profiler *profile) {
+    varray_value samples;
+    varray_valueinit(&samples);
+    
+    for (unsigned int i=0; i<profile->profile_dict.capacity; i++) {
+        if (!MORPHO_ISNIL(profile->profile_dict.contents[i].key)) {
+            varray_valuewrite(&samples, profile->profile_dict.contents[i].key);
+            varray_valuewrite(&samples, profile->profile_dict.contents[i].val);
+        }
+    }
+    
+    qsort(samples.data, samples.count/PROFILER_NVALUES, sizeof(value)*PROFILER_NVALUES, profiler_sort);
+    
+    /* Calculate the length of the names to display */
+    long nsamples = 0;
+    size_t maxlength = 0;
+    for (unsigned int i=0; i<samples.count; i+=PROFILER_NVALUES) {
+        size_t length = profiler_calculatelength(profile, samples.data[i]);
+        if (length>maxlength) maxlength = length;
+        
+        nsamples += (long) MORPHO_GETINTEGERVALUE(samples.data[i+PROFILER_VALUEPOSN]);
+    }
+    
+    // Now report the output
+    
+    printf("===Profiler output: Execution took %.3f seconds with %ld samples===\n", ((double) profile->end - profile->start)/((double) CLOCKS_PER_SEC), nsamples);
+    for (unsigned int i=0; i<samples.count; i+=PROFILER_NVALUES) {
+        profiler_display(profile, samples.data[i]); // Display the function or method
+        size_t length = profiler_calculatelength(profile, samples.data[i]);
+        for (int j=0; j<maxlength-length; j++) printf(" ");
+        
+        int fsamples = MORPHO_GETINTEGERVALUE(samples.data[i+PROFILER_VALUEPOSN]); // Display the count
+        printf(" %.2f%% [%i samples]\n", 100.0*((float) fsamples)/nsamples, fsamples);
+    }
+    printf("===\n");
+    
+    varray_valueclear(&samples);
+}
+
+/** Profile the execution of a program
+ * @param[in] v - the virtual machine to use
+ * @param[in] p - program to run
+ * @returns true on success, false otherwise */
 bool morpho_profile(vm *v, program *p) {
-    pthread_t profiler;
+    profiler profile;
+
+    profiler_init(&profile, p);
     
-    pthread_mutex_init(&lock, NULL);
-    profiler_quit=false;
+    if (pthread_create(&profile.profiler, NULL, profiler_thread, v)) { // Returns 0 on success
+        UNREACHABLE("Unable to run profiler.");
+    }
     
-    int res = pthread_create(&profiler, NULL, profiler_thread, v);
+    v->profiler=&profile;
     
+    profile.start=clock();
     bool success=morpho_run(v, p);
+    profile.end=clock();
     
-    pthread_mutex_lock(&lock);
-    profiler_quit=true;
-    pthread_mutex_unlock(&lock);
+    profiler_kill(&profile);
     
-    pthread_join(profiler, NULL);
-    
-    pthread_mutex_destroy(&lock);
+    profiler_report(&profile);
+    profiler_clear(&profile);
     
     return success;
 }
+
+#endif
 
 /* **********************************************************************
 * Initialization

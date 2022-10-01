@@ -1208,7 +1208,13 @@ callfunction: // Jump here if an instruction becomes a call
                         if (MORPHO_ISFUNCTION(ifunc)) {
                             if (!vm_call(v, ifunc, a, c, &pc, &reg)) goto vm_error;
                         } else if (MORPHO_ISBUILTINFUNCTION(ifunc)) {
+#ifdef MORPHO_PROFILER
+                            v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
+#endif
                             (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, c, reg+a);
+#ifdef MORPHO_PROFILER
+                            v->fp->inbuiltinfunction=NULL;
+#endif
                             ERRORCHK();
                         }
                     } else {
@@ -1241,7 +1247,13 @@ callfunction: // Jump here if an instruction becomes a call
                     if (MORPHO_ISFUNCTION(ifunc)) {
                         if (!vm_call(v, ifunc, a, c, &pc, &reg)) goto vm_error;
                     } else if (MORPHO_ISBUILTINFUNCTION(ifunc)) {
+#ifdef MORPHO_PROFILER
+                        v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
+#endif
                         reg[a] = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, c, reg+a);
+#ifdef MORPHO_PROFILER
+                        v->fp->inbuiltinfunction=NULL;
+#endif
                         ERRORCHK();
                     }
                 } else if (dictionary_getintern(&instance->fields, right, &left)) {
@@ -1268,7 +1280,13 @@ callfunction: // Jump here if an instruction becomes a call
                     if (MORPHO_ISFUNCTION(ifunc)) {
                         if (!vm_call(v, ifunc, a, c, &pc, &reg)) goto vm_error;
                     } else if (MORPHO_ISBUILTINFUNCTION(ifunc)) {
+#ifdef MORPHO_PROFILER
+                        v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
+#endif
                         reg[a] = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, c, reg+a);
+#ifdef MORPHO_PROFILER
+                        v->fp->inbuiltinfunction=NULL;
+#endif
                         ERRORCHK();
                     }
                 } else {
@@ -1283,7 +1301,13 @@ callfunction: // Jump here if an instruction becomes a call
                     value ifunc;
                     if (dictionary_getintern(&klass->methods, right, &ifunc)) {
                         if (MORPHO_ISBUILTINFUNCTION(ifunc)) {
+#ifdef MORPHO_PROFILER
+                            v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
+#endif
                             reg[a] = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, c, reg+a);
+#ifdef MORPHO_PROFILER
+                            v->fp->inbuiltinfunction=NULL;
+#endif
                             ERRORCHK();
                         }
                     } else {
@@ -1932,6 +1956,8 @@ void morpho_setdebug(vm *v, bool active) {
 #define PROFILER_NVALUES 2
 #define PROFILER_VALUEPOSN 1
 
+#define PROFILER_SAMPLINGINTERVAL (0.0001*CLOCKS_PER_SEC)
+
 #define PROFILER_GLOBAL "(global)"
 #define PROFILER_ANON   "(anonymous)"
 
@@ -1950,6 +1976,8 @@ void *profiler_thread(void *arg) {
     vm *v = (vm *) arg;
     profiler *profile = v->profiler;
     if (!v->profiler) return NULL;
+    clock_t last = clock();
+    clock_t time = last;
     
     while (true) {
         pthread_mutex_lock(&profile->profile_lock);
@@ -1958,7 +1986,8 @@ void *profiler_thread(void *arg) {
         
         if (quit) pthread_exit(NULL);
         
-        for (int i=0; i<1000000; i++);
+        while (time-last<PROFILER_SAMPLINGINTERVAL) time = clock();
+        last = time;
         
         objectbuiltinfunction *infunction=v->fp->inbuiltinfunction;
         if (infunction) {
@@ -2001,17 +2030,19 @@ int profiler_sort(const void *a, const void *b) {
 /** Returns the function name */
 bool profiler_getname(value func, value *name, value *klass) {
     bool success=false;
+    objectclass *k = NULL;
     
     if (MORPHO_ISBUILTINFUNCTION(func)) {
         *name = MORPHO_GETBUILTINFUNCTION(func)->name;
-        *klass = MORPHO_NIL;
+        k=MORPHO_GETBUILTINFUNCTION(func)->klass;
         success=true;
     } else if (MORPHO_ISFUNCTION(func)) {
         *name = MORPHO_GETFUNCTION(func)->name;
-        objectclass *k=MORPHO_GETFUNCTION(func)->klass;
-        if (k) *klass = k->name;
+        k=MORPHO_GETFUNCTION(func)->klass;
         success=true;
     }
+    
+    *klass = (k ? k->name : MORPHO_NIL);
     return success;
 }
 

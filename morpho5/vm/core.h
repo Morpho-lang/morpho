@@ -266,6 +266,7 @@ struct svm {
     
 #ifdef MORPHO_PROFILER
     profiler *profiler;
+    enum { VM_RUNNING, VM_INGC } status; 
 #endif
     
     objectupvalue *openupvalues; /** Linked list of open upvalues */

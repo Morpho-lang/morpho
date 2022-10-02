@@ -188,6 +188,7 @@ static void vm_init(vm *v) {
     v->errfp=NULL;
 #ifdef MORPHO_PROFILER
     v->profiler=NULL;
+    v->status=VM_RUNNING;
 #endif
 }
 
@@ -448,6 +449,10 @@ void vm_collectgarbage(vm *v) {
 #endif
     vm *vc = (v!=NULL ? v : globalvm);
     if (!vc) return;
+    
+#ifdef MORPHO_PROFILER
+    vc->status=VM_INGC;
+#endif
 
     if (vc && vc->bound>0) {
         size_t init=vc->bound;
@@ -475,6 +480,10 @@ void vm_collectgarbage(vm *v) {
         if (vc) printf("    collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->nextgc);
 #endif
     }
+    
+#ifdef MORPHO_PROFILER
+    vc->status=VM_RUNNING;
+#endif
 }
 
 /* **********************************************************************
@@ -1960,10 +1969,12 @@ void morpho_setdebug(vm *v, bool active) {
 
 #define PROFILER_GLOBAL "(global)"
 #define PROFILER_ANON   "(anonymous)"
+#define PROFILER_GC     "(garbage collector)"
 
 /** Record a sample */
 void profiler_sample(profiler *profile, value func) {
     value v=MORPHO_INTEGER(1);
+    
     if (dictionary_get(&profile->profile_dict, func, &v)) {
         v=MORPHO_INTEGER(MORPHO_GETINTEGERVALUE(v)+1);
     }
@@ -1990,7 +2001,10 @@ void *profiler_thread(void *arg) {
         last = time;
         
         objectbuiltinfunction *infunction=v->fp->inbuiltinfunction;
-        if (infunction) {
+        
+        if (v->status==VM_INGC) {
+            profiler_sample(profile, MORPHO_INTEGER(1));
+        } else if (infunction) {
             profiler_sample(profile, MORPHO_OBJECT(infunction));
         } else {
             profiler_sample(profile, MORPHO_OBJECT(v->fp->function));
@@ -2032,7 +2046,10 @@ bool profiler_getname(value func, value *name, value *klass) {
     bool success=false;
     objectclass *k = NULL;
     
-    if (MORPHO_ISBUILTINFUNCTION(func)) {
+    if (MORPHO_ISINTEGER(func)) {
+        *name = MORPHO_NIL; // In the Garbage collector
+        success=true;
+    } else if (MORPHO_ISBUILTINFUNCTION(func)) {
         *name = MORPHO_GETBUILTINFUNCTION(func)->name;
         k=MORPHO_GETBUILTINFUNCTION(func)->klass;
         success=true;
@@ -2054,6 +2071,8 @@ size_t profiler_calculatelength(profiler *p, value func) {
     if (profiler_getname(func, &name, &klass)) {
         if (MORPHO_ISSTRING(name)) {
             length+=MORPHO_GETSTRINGLENGTH(name);
+        } else if (MORPHO_ISINTEGER(func)) {
+            length+=strlen(PROFILER_GC);
         } else if (MORPHO_ISNIL(name)) {
             if (MORPHO_ISSAME(func, MORPHO_OBJECT(p->program->global))) length+=strlen(PROFILER_GLOBAL);
             else length+=strlen(PROFILER_ANON);
@@ -2076,6 +2095,8 @@ void profiler_display(profiler *p, value func) {
         
         if (MORPHO_ISSTRING(name)) {
             morpho_printvalue(name);
+        } else if (MORPHO_ISINTEGER(func)) {
+            printf(PROFILER_GC);
         } else if (MORPHO_ISNIL(name)) {
             if (MORPHO_ISSAME(func, MORPHO_OBJECT(p->program->global))) printf(PROFILER_GLOBAL);
             else printf(PROFILER_ANON);

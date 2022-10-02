@@ -688,20 +688,19 @@ class Show {
     } else if (isobject(col) && !islist(col)) col = col.rgb(0)
 
     out.write("v \"xnc\"")
-    for (i in 0...nv) {
-      var line = ""
-      for (j in 0...dim) {
-        line+="${x[j,i]} "
+    for (var i=0; i<nv; i+=1) {
+      for (var j=0; j<dim; j+=1) {
+        out.write("${x[j,i]} ")
       }
-      for (j in 0...dim) {
-        line+="${n[j,i]} "
+      for (var j=0; j<dim; j+=1) {
+        out.write("${n[j,i]} ")
       }
       if (localcolor) {
-        for (j in 0...3) line+="${col[j,i]} "
+        for (var j=0; j<3; j+=1) out.write("${col[j,i]} ")
       } else {
-        for (j in 0...item.colors.count()) line+="${col[j]} "
+        var count = item.colors.count()
+        for (var j=0; j<count; j+=1) out.write("${col[j]} ")
       }
-      out.write(line)
     }
 
     out.write("f")
@@ -710,11 +709,11 @@ class Show {
     var nf=f.dimensions()[1]
 
     for (i in 0...nf) {
-      var line = ""
+      //var line = ""
       for (j in 0...nv) {
-        if (f[j,i]!=0) line+="${j} "
+        if (f[j,i]!=0) out.write("${j} ")
       }
-      out.write(line)
+      //out.write(line)
     }
   }
 

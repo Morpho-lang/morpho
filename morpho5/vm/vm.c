@@ -2055,7 +2055,7 @@ size_t profiler_calculatelength(profiler *p, value func) {
         if (MORPHO_ISSTRING(name)) {
             length+=MORPHO_GETSTRINGLENGTH(name);
         } else if (MORPHO_ISNIL(name)) {
-            if (func==MORPHO_OBJECT(p->program->global)) length+=strlen(PROFILER_GLOBAL);
+            if (MORPHO_ISSAME(func, MORPHO_OBJECT(p->program->global))) length+=strlen(PROFILER_GLOBAL);
             else length+=strlen(PROFILER_ANON);
         }
                  
@@ -2077,7 +2077,7 @@ void profiler_display(profiler *p, value func) {
         if (MORPHO_ISSTRING(name)) {
             morpho_printvalue(name);
         } else if (MORPHO_ISNIL(name)) {
-            if (func==MORPHO_OBJECT(p->program->global)) printf(PROFILER_GLOBAL);
+            if (MORPHO_ISSAME(func, MORPHO_OBJECT(p->program->global))) printf(PROFILER_GLOBAL);
             else printf(PROFILER_ANON);
         }
     }

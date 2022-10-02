@@ -269,7 +269,7 @@ var la=LineIntegral(fn (x, n) n.inner(tangent()), n)
 where \texttt{n} is a vector field. The local interpolated value of this
 field is passed to your integrand function. More than one field can be
 used; they are passed as arguments to the integrand function in the
-order you supply them to \texttt{LineIntegrand}.
+order you supply them to \texttt{LineIntegral}.
 
 \hypertarget{areaintegral}{%
 \subsection{AreaIntegral}\label{areaintegral}}
@@ -292,7 +292,30 @@ var la=AreaIntegral(fn (x, phi) phi^2, phi)
 
 More than one field can be used; they are passed as arguments to the
 integrand function in the order you supply them to
-\texttt{AreaIntegrand}.
+\texttt{AreaIntegral}.
+
+\hypertarget{volumeintegral}{%
+\subsection{VolumeIntegral}\label{volumeintegral}}
+
+The \texttt{VolumeIntegral} functional computes the volume integral of a
+function. You supply an integrand function that takes a position matrix
+as an argument.
+
+To compute integral(x\emph{y}z) over an volume element:
+
+\begin{lstlisting}
+var la=VolumeIntegral(fn (x) x[0]*x[1]*x[2])
+\end{lstlisting}
+
+You can also integrate functions that involve fields:
+
+\begin{lstlisting}
+var la=VolumeIntegral(fn (x, phi) phi^2, phi)
+\end{lstlisting}
+
+More than one field can be used; they are passed as arguments to the
+integrand function in the order you supply them to
+\texttt{VolumeIntegral}.
 
 \hypertarget{hydrogel}{%
 \subsection{Hydrogel}\label{hydrogel}}

@@ -182,7 +182,7 @@ var S = Field(m, 0) // Initialize to a scalar
 for (i in 0...m.count()) S[i]=qtoorder(q_tensor[i])
 
 // Plot the scalar order field
-var splot = plotfield(S, style="interpolate")
+var splot = plotfield(S, style="interpolate", colormap = ViridisMap(), scalebar=ScaleBar(posn=[1.2,0,0]))
 // Plot the director using the visualize function we wrote above
 var gnn=visualize(m, nn, 0.05)
 
@@ -194,7 +194,8 @@ var pov = POVRaytracer(gdisp)
 
 // Set the viewing angle in degrees. The larger the angle, the larger the field of view.
 pov.viewangle=35
-
+pov.viewpoint = Matrix([0,0,6])
+pov.light = [Matrix([3,4,5]), Matrix([-3,-4,5])]
 // Render to a .pov file. This also generates a .png image with the same name.
 pov.render("Qtensor_K_${K}.pov")
 

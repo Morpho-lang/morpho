@@ -527,7 +527,7 @@ class Tube {
  **************************************** */
 
 class Text {
-  init(string, posn, dirn=nil, vertical=nil, size=10, font=nil, color=nil) {
+  init(string, posn, dirn=nil, vertical=nil, size=10, font=nil, color=nil, filter=nil, transmit=nil) {
     self.posn = posn
     if (islist(self.posn)) self.posn = Matrix(self.posn)
 
@@ -541,6 +541,10 @@ class Text {
     self.font = font
     self.color = color 
     self.size = size 
+    
+    /* Optional arguments to be used by povray*/
+    self.filter = filter 
+    self.transmit = transmit
   }
 
   transformationmatrix() {

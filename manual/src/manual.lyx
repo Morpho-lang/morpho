@@ -664,8 +664,21 @@ suitesparse is used for sparse linear algebra.
  
 \end_layout
 
+\begin_layout Description
+freetype provides text display.
+\end_layout
+
+\begin_layout Description
+povray is a ray-tracer that is used for publication-quality graphics.
+ 
+\end_layout
+
 \begin_layout Section
 MacOS
+\end_layout
+
+\begin_layout Standard
+Note that if you have an M1 or M2 processor, see the note below: 
 \end_layout
 
 \begin_layout Enumerate
@@ -695,7 +708,7 @@ brew update
 
 \begin_layout Plain Layout
 
-brew install glfw suite-sparse
+brew install glfw suite-sparse freetype povray
 \end_layout
 
 \end_inset
@@ -768,7 +781,7 @@ status open
 
 \begin_layout Plain Layout
 
-cd morpho/morpho5
+cd morpho/morphoview
 \end_layout
 
 \begin_layout Plain Layout
@@ -795,6 +808,68 @@ morpho5
 \end_inset
 
 
+\end_layout
+
+\begin_layout Standard
+Some users may need to preface 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+make install
+\end_layout
+
+\end_inset
+
+with the sudo command:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+sudo make install
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+Note for M1 and M2 users
+\end_layout
+
+\begin_layout Standard
+The M1 and M2 requires a different build script.
+ Where you see 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+make install
+\end_layout
+
+\end_inset
+
+in steps 4 and 5 below, replace this with
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+make -f Makefile.m1 install
+\end_layout
+
+\end_inset
+
+Some users may need to preface these with sudo as above.
+ 
 \end_layout
 
 \begin_layout Section
@@ -843,6 +918,16 @@ sudo apt install libsuitesparse-dev
 \begin_layout Plain Layout
 
 sudo apt install liblapacke
+\end_layout
+
+\begin_layout Plain Layout
+
+sudo apt install povray
+\end_layout
+
+\begin_layout Plain Layout
+
+sudo apt install libfreetype6-dev
 \end_layout
 
 \end_inset
@@ -1009,6 +1094,11 @@ sudo apt install liblapacke-dev
 \begin_layout Plain Layout
 
 sudo apt install povray
+\end_layout
+
+\begin_layout Plain Layout
+
+sudo apt install libfreetype6-dev
 \end_layout
 
 \end_inset

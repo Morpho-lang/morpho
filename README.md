@@ -12,6 +12,8 @@ The Morpho language. Morpho is a programmable environment for shape optimization
 
 Documentation is available on [readthedocs](https://morpho-lang.readthedocs.io/en/latest/) and via an extensive [user manual](https://github.com/Morpho-lang/morpho/blob/main/manual/manual.pdf).
 
+Please see the [Code of Conduct](CODE_OF_CONDUCT.md) for the morpho community. 
+
 *This material is based upon work supported by the National Science Foundation under grants DMR-1654283 and OAC-2003820.*
 
 ## Installation

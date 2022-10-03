@@ -1,0 +1,16 @@
+// Plot a selection 
+import plot
+import meshtools
+
+/* Create a simple mesh for demonstration purposes */
+var m = AreaMesh(fn (u,v) [u,v,0], -1..1:0.2, -1..1:0.2)
+m.addgrade(1)
+
+// Visualize the boundary 
+var s = Selection(m, boundary=true)
+Show(plotselection(m, s, grade=[0,1,2]))
+
+// Select portions of a mesh by region 
+var s2 = Selection(m, fn (x,y,z) x<=0)
+s2.addgrade(2)
+Show(plotselection(m, s2, grade=[0,1,2]))

@@ -110,38 +110,40 @@ assemblyrule assemblyrules[] ={
     { OP_NOP, "nop", "" },
     { OP_MOV, "mov", "rA, rB" },
     { OP_LCT, "lct", "rA, cX" }, // Custom
-    { OP_ADD, "add", "rA, ?B, ?C" },
-    { OP_SUB, "sub", "rA, ?B, ?C" },
-    { OP_MUL, "mul", "rA, ?B, ?C" },
-    { OP_DIV, "div", "rA, ?B, ?C" },
-    { OP_POW, "pow", "rA, ?B, ?C" },
-    { OP_NOT, "not", "rA, ?B" },
+    { OP_ADD, "add", "rA, rB, rC" },
+    { OP_SUB, "sub", "rA, rB, rC" },
+    { OP_MUL, "mul", "rA, rB, rC" },
+    { OP_DIV, "div", "rA, rB, rC" },
+    { OP_POW, "pow", "rA, rB, rC" },
+    { OP_NOT, "not", "rA, rB" },
     
-    { OP_EQ, "eq ", "rA, ?B, ?C" },
-    { OP_NEQ, "neq", "rA, ?B, ?C" },
-    { OP_LT, "lt ", "rA, ?B, ?C" },
-    { OP_LE, "le ", "rA, ?B, ?C" },
+    { OP_EQ, "eq ", "rA, rB, rC" },
+    { OP_NEQ, "neq", "rA, rB, rC" },
+    { OP_LT, "lt ", "rA, rB, rC" },
+    { OP_LE, "le ", "rA, rB, rC" },
     
-    { OP_PRINT, "print", "?B" },
+    { OP_PRINT, "print", "rA" },
     
     { OP_B, "b", "+" },
-    { OP_BIF, "bif", "F rA +" },
+    { OP_BIF, "bif", "rA +" },
+    { OP_BIFF, "biff", "rA +" },
     
     { OP_CALL, "call", "rA, B" }, // b literal
-    { OP_INVOKE, "invoke", "rA, ?B, C" }, // c literal
+    { OP_INVOKE, "invoke", "rA, rB, C" }, // c literal
     
     { OP_RETURN, "return", "rB" }, // c literal
 
     { OP_CLOSURE, "closure", "rA, pB" }, // b prototype
     
     { OP_LUP, "lup", "rA, uB" }, // b 'u'
-    { OP_SUP, "sup", "uA, ?B" }, // a 'u', b c|r
+    { OP_SUP, "sup", "uA, rB" }, // a 'u', b c|r
     
     { OP_CLOSEUP, "closeup", "rA" },
-    { OP_LPR, "lpr", "rA, ?B, ?C" },
-    { OP_SPR, "spr", "rA, ?B, ?C" },
-    { OP_LIX, "lix", "rA, ?B, ?C" },
-    { OP_SIX, "six", "rA, ?B, ?C" },
+    { OP_LPR, "lpr", "rA, rB, rC" },
+    { OP_SPR, "spr", "rA, rB, rC" },
+    
+    { OP_LIX, "lix", "rA, rB, rC" },
+    { OP_SIX, "six", "rA, rB, rC" },
     
     { OP_LGL, "lgl", "rA, gX" }, //
     { OP_SGL, "sgl", "rA, gX" }, // label b with 'g'
@@ -149,9 +151,7 @@ assemblyrule assemblyrules[] ={
     { OP_PUSHERR, "pusherr", "cX" },
     { OP_POPERR, "poperr", "+" },
     
-   // { OP_ARRAY, "array", "rA, ?B, ?C" },
-    { OP_CAT, "cat", "rA, ?B, ?C" },
-   // { OP_RAISE, "raise", "rA" },
+    { OP_CAT, "cat", "rA, rB, rC" },
     { OP_BREAK, "break", "" },
     { OP_END, "end", "" },
     { 0, NULL, "" } // Null terminate the list
@@ -211,13 +211,6 @@ void debug_disassembleinstruction(instruction instruction, instructionindx indx,
                 case 'C': {
                     cm=mode; nc=DECODE_C(instruction);
                     n+=printf("%u", DECODE_C(instruction));
-                }
-                    break;
-                case 'F': n+=printf("%s", (DECODE_F(instruction) ? "t" : "f")); break;
-                case '?': {
-                    bool isconst=(c[1]=='B' ? DECODE_ISBCONSTANT(instruction) : DECODE_ISCCONSTANT(instruction)); // Is the next letter B or C?
-                    mode=( isconst ? CONST : REG );
-                    n+=printf("%s", (isconst ? "c" : "r"));
                 }
                     break;
                 case 'c': mode=CONST; n+=printf("%c", *c); break;

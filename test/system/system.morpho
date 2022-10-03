@@ -1,0 +1,7 @@
+// Test System class
+
+print isstring(System.platform())
+// expect: true
+
+print isstring(System.version())
+// expect: true

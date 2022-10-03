@@ -21,7 +21,7 @@ for f in files:
     print(filename)
     os.system(f'pandoc -o {filename}.tex {f}')
     os.system(f'sed -i \'\' -e \'s/verbatim/lstlisting/g\' {filename}.tex')
-    os.system(f'sed -i \'\' -e \'s/\\\\subsection/\\\\section/g\' {filename}.tex')
+    os.system(f'sed -i \'\' -e \'s/\\\\subsection/\\\\subsection/g\' {filename}.tex')
     os.system(f'sed -i \'\' -e \'s/\\\\tightlist//g\' {filename}.tex')
 
 print('-------------------------------------------------')

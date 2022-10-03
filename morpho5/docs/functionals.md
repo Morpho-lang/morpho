@@ -190,7 +190,7 @@ You can also integrate functions that involve fields:
 
     var la=LineIntegral(fn (x, n) n.inner(tangent()), n)
 
-where `n` is a vector field. The local interpolated value of this field is passed to your integrand function. More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `LineIntegrand`.
+where `n` is a vector field. The local interpolated value of this field is passed to your integrand function. More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `LineIntegral`.
 
 ## AreaIntegral
 [tagareaintegral]: # (areaintegral)
@@ -205,7 +205,22 @@ You can also integrate functions that involve fields:
 
     var la=AreaIntegral(fn (x, phi) phi^2, phi)
 
-More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `AreaIntegrand`.
+More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `AreaIntegral`.
+
+## VolumeIntegral
+[tagvolumeintegral]: # (volumeintegral)
+
+The `VolumeIntegral` functional computes the volume integral of a function. You supply an integrand function that takes a position matrix as an argument.
+
+To compute integral(x*y*z) over an volume element:
+
+    var la=VolumeIntegral(fn (x) x[0]*x[1]*x[2])
+
+You can also integrate functions that involve fields:
+
+    var la=VolumeIntegral(fn (x, phi) phi^2, phi)
+
+More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `VolumeIntegral`.
 
 ## Hydrogel
 [taghydrogel]: # (hydrogel)

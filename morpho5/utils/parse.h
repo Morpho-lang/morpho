@@ -136,9 +136,6 @@
 #define PARSE_CATCHLEFTCURLYMISSING       "ExpctHndlr"
 #define PARSE_CATCHLEFTCURLYMISSING_MSG   "Expected block of error handlers after catch."
 
-#define PARSE_VARPRLST                    "VarPrLst"
-#define PARSE_VARPRLST_MSG                "Variadic parameter must be last."
-
 #define PARSE_ONEVARPR                    "OneVarPr"
 #define PARSE_ONEVARPR_MSG                "Functions can have only one variadic parameter."
 

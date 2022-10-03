@@ -22,6 +22,7 @@ languages = { "morpho": "morpho5",
 """
 
 languages = { "morpho": "morpho5" }
+samples = 10
 
 # Gets the output generated
 def getoutput(filepath):
@@ -64,8 +65,10 @@ def benchmark(folder):
     for lang in languages.keys():
         test = glob.glob(folder + '**.' + lang, recursive=False)
         if (len(test)>0):
-            time=run(languages[lang], test[0])
-            dict[lang]=time
+            time = []
+            for i in range(1,samples):
+                time.append(run(languages[lang], test[0]))
+            dict[lang]=min(time)
     return dict
 
 print('--Begin testing---------------------')

@@ -84,7 +84,7 @@ the mesh generation:
 uses.
 
 \hypertarget{domain}{%
-\section{Domain}\label{domain}}
+\subsection{Domain}\label{domain}}
 
 The \texttt{Domain} class is used to conveniently build a domain by
 composing simpler elements.
@@ -113,7 +113,7 @@ var dom = a.union(b).difference(c)
 \end{lstlisting}
 
 \hypertarget{circulardomain}{%
-\section{CircularDomain}\label{circulardomain}}
+\subsection{CircularDomain}\label{circulardomain}}
 
 Conveniently constructs a \texttt{Domain} object correspondiong to a
 disk. Requires the position of the center and a radius as arguments.
@@ -125,7 +125,7 @@ var c = CircularDomain([0,0], 1)
 \end{lstlisting}
 
 \hypertarget{halfspacedomain}{%
-\section{HalfSpaceDomain}\label{halfspacedomain}}
+\subsection{HalfSpaceDomain}\label{halfspacedomain}}
 
 Conveniently constructs a \texttt{Domain} object correspondiong to a
 half space defined by a plane at \texttt{x0} and a normal \texttt{n}:
@@ -159,7 +159,7 @@ var m = mg.build()
 \end{lstlisting}
 
 \hypertarget{mshgndim}{%
-\section{MshGnDim}\label{mshgndim}}
+\subsection{MshGnDim}\label{mshgndim}}
 
 The \texttt{MeshGen} module currently supports 2 and 3 dimensional
 meshes. Higher dimensional meshing will be available in a future

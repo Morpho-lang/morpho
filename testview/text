@@ -1,0 +1,23 @@
+S 0 3
+W "Text"
+c 0 1 1 1
+c 1 1 0 0  
+C 0 
+F 0 "/System/Library/Fonts/Helvetica.ttc" 12
+i
+t -1 0.2 0.0 
+T 0 "Olá mundo! Hello world!"
+F 2 "/System/Library/Fonts/Hiragino Sans GB.ttc" 12
+C 1 
+i
+t -1 0 0.0 
+T 2 "こんにちは世界!"
+C 0
+F 3 "/System/Library/Fonts/Kohinoor.ttc" 12
+i
+t -1 -0.2 0.0 
+T 3 "नमस्ते दुनिया!"
+F 1 "/System/Library/Fonts/Times.ttc" 12
+i
+t -1 -0.4 0.0 
+T 1 "Text is now working in Morphoview!"

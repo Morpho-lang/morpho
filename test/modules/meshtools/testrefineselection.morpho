@@ -1,0 +1,36 @@
+// Test refinement of selections with down projection 
+import meshtools
+import plot 
+
+var mx = AreaMesh(fn (u,v) [u,v,0], -0.5..0.5:0.5, -0.5..0.5:0.5) 
+mx.addgrade(1)
+
+var sel = Selection(mx, boundary=true)
+var selcorner = Selection(mx, fn (x,y,z) x<-0.4 && y<-0.4)
+var selmost = sel.difference(selcorner)
+
+var mpx = MeshRefiner([mx, sel, selmost])
+var dictx = mpx.refine() 
+
+mx=dictx[mx]
+sel=dictx[sel]
+selmost=dictx[selmost]
+
+var sel2 = Selection(mx, boundary=true)
+
+fn compareselections(mesh, sel1, sel2) {
+    for (g in 0..mesh.maxgrade()) {
+        for (id in 0...mesh.count(g)) {
+            if (sel1[g,id]!=sel2[g,id]) return false 
+        }
+    }
+    return true 
+}
+
+print compareselections(mx, sel, sel2)
+// expect: true
+
+print selmost.idlistforgrade(0).count() +1 == sel.idlistforgrade(0).count() 
+// expect: true
+
+//Show(plotselection(mx, sel, grade=[0,1,2]))

@@ -35,7 +35,7 @@ Functionals provide a number of standard methods:
 Each of these may be called with a mesh, a field and a selection.
 
 \hypertarget{length}{%
-\section{Length}\label{length}}
+\subsection{Length}\label{length}}
 
 A \texttt{Length} functional calculates the length of a line element in
 a mesh.
@@ -51,7 +51,7 @@ print le.total(m)
 \end{lstlisting}
 
 \hypertarget{areaenclosed}{%
-\section{AreaEnclosed}\label{areaenclosed}}
+\subsection{AreaEnclosed}\label{areaenclosed}}
 
 An \texttt{AreaEnclosed} functional calculates the area enclosed by a
 loop of line elements.
@@ -61,7 +61,7 @@ var la = AreaEnclosed()
 \end{lstlisting}
 
 \hypertarget{area}{%
-\section{Area}\label{area}}
+\subsection{Area}\label{area}}
 
 An \texttt{Area} functional calculates the area of the area elements in
 a mesh:
@@ -72,7 +72,7 @@ print la.total(mesh)
 \end{lstlisting}
 
 \hypertarget{volumeenclosed}{%
-\section{VolumeEnclosed}\label{volumeenclosed}}
+\subsection{VolumeEnclosed}\label{volumeenclosed}}
 
 A \texttt{VolumeEnclosed} functional is used to calculate the volume
 enclosed by a surface. Note that this estimate may become inaccurate for
@@ -83,7 +83,7 @@ var lv = VolumeEnclosed()
 \end{lstlisting}
 
 \hypertarget{volume}{%
-\section{Volume}\label{volume}}
+\subsection{Volume}\label{volume}}
 
 A \texttt{Volume} functional calculates the volume of volume elements.
 
@@ -92,7 +92,7 @@ var lv = Volume()
 \end{lstlisting}
 
 \hypertarget{scalarpotential}{%
-\section{ScalarPotential}\label{scalarpotential}}
+\subsection{ScalarPotential}\label{scalarpotential}}
 
 The \texttt{ScalarPotential} functional is applied to point elements.
 
@@ -117,7 +117,7 @@ problem.addlocalconstraint(lsph)
 See the thomson example for use of this technique.
 
 \hypertarget{linearelasticity}{%
-\section{LinearElasticity}\label{linearelasticity}}
+\subsection{LinearElasticity}\label{linearelasticity}}
 
 The \texttt{LinearElasticity} functional measures the linear elastic
 energy away from a reference state.
@@ -136,32 +136,32 @@ le.grade = 2
 \end{lstlisting}
 
 \hypertarget{equielement}{%
-\section{EquiElement}\label{equielement}}
+\subsection{EquiElement}\label{equielement}}
 
 The \texttt{EquiElement} functional measures the discrepency between the
 size of elements adjacent to each vertex. It can be used to equalize
 elements for regularization purposes.
 
 \hypertarget{linecurvaturesq}{%
-\section{LineCurvatureSq}\label{linecurvaturesq}}
+\subsection{LineCurvatureSq}\label{linecurvaturesq}}
 
 The \texttt{LineCurvatureSq} functional measures the integrated
 curvature squared of a sequence of line elements.
 
 \hypertarget{linetorsionsq}{%
-\section{LineTorsionSq}\label{linetorsionsq}}
+\subsection{LineTorsionSq}\label{linetorsionsq}}
 
 The \texttt{LineTorsionSq} functional measures the integrated torsion
 squared of a sequence of line elements.
 
 \hypertarget{meancurvaturesq}{%
-\section{MeanCurvatureSq}\label{meancurvaturesq}}
+\subsection{MeanCurvatureSq}\label{meancurvaturesq}}
 
 The \texttt{MeanCurvatureSq} functional computes the integrated mean
 curvature over a surface.
 
 \hypertarget{gausscurvature}{%
-\section{GaussCurvature}\label{gausscurvature}}
+\subsection{GaussCurvature}\label{gausscurvature}}
 
 The \texttt{GaussCurvature} computes the integrated gaussian curvature
 over a surface.
@@ -187,7 +187,7 @@ print gauss.total(mesh, selection=bnd) // expect: 2*Pi
 \end{lstlisting}
 
 \hypertarget{gradsq}{%
-\section{GradSq}\label{gradsq}}
+\subsection{GradSq}\label{gradsq}}
 
 The \texttt{GradSq} functional measures the integral of the gradient
 squared of a field. The field can be a scalar, vector or matrix
@@ -200,7 +200,7 @@ var le=GradSq(phi)
 \end{lstlisting}
 
 \hypertarget{nematic}{%
-\section{Nematic}\label{nematic}}
+\subsection{Nematic}\label{nematic}}
 
 The \texttt{Nematic} functional measures the elastic energy of a nematic
 liquid crystal.
@@ -224,7 +224,7 @@ print lf.ksplay
 \end{lstlisting}
 
 \hypertarget{nematicelectric}{%
-\section{NematicElectric}\label{nematicelectric}}
+\subsection{NematicElectric}\label{nematicelectric}}
 
 The \texttt{NematicElectric} functional measures the integral of a
 nematic and electric coupling term integral((n.E)\^{}2) where the
@@ -235,13 +235,13 @@ Initialize with a director field \texttt{nn} and a scalar potential
 \texttt{phi}: var lne = NematicElectric(nn, phi)
 
 \hypertarget{normsq}{%
-\section{NormSq}\label{normsq}}
+\subsection{NormSq}\label{normsq}}
 
 The \texttt{NormSq} functional measures the elementwise L2 norm squared
 of a field.
 
 \hypertarget{lineintegral}{%
-\section{LineIntegral}\label{lineintegral}}
+\subsection{LineIntegral}\label{lineintegral}}
 
 The \texttt{LineIntegral} functional computes the line integral of a
 function. You supply an integrand function that takes a position matrix
@@ -269,10 +269,10 @@ var la=LineIntegral(fn (x, n) n.inner(tangent()), n)
 where \texttt{n} is a vector field. The local interpolated value of this
 field is passed to your integrand function. More than one field can be
 used; they are passed as arguments to the integrand function in the
-order you supply them to \texttt{LineIntegrand}.
+order you supply them to \texttt{LineIntegral}.
 
 \hypertarget{areaintegral}{%
-\section{AreaIntegral}\label{areaintegral}}
+\subsection{AreaIntegral}\label{areaintegral}}
 
 The \texttt{AreaIntegral} functional computes the area integral of a
 function. You supply an integrand function that takes a position matrix
@@ -292,10 +292,33 @@ var la=AreaIntegral(fn (x, phi) phi^2, phi)
 
 More than one field can be used; they are passed as arguments to the
 integrand function in the order you supply them to
-\texttt{AreaIntegrand}.
+\texttt{AreaIntegral}.
+
+\hypertarget{volumeintegral}{%
+\subsection{VolumeIntegral}\label{volumeintegral}}
+
+The \texttt{VolumeIntegral} functional computes the volume integral of a
+function. You supply an integrand function that takes a position matrix
+as an argument.
+
+To compute integral(x\emph{y}z) over an volume element:
+
+\begin{lstlisting}
+var la=VolumeIntegral(fn (x) x[0]*x[1]*x[2])
+\end{lstlisting}
+
+You can also integrate functions that involve fields:
+
+\begin{lstlisting}
+var la=VolumeIntegral(fn (x, phi) phi^2, phi)
+\end{lstlisting}
+
+More than one field can be used; they are passed as arguments to the
+integrand function in the order you supply them to
+\texttt{VolumeIntegral}.
 
 \hypertarget{hydrogel}{%
-\section{Hydrogel}\label{hydrogel}}
+\subsection{Hydrogel}\label{hydrogel}}
 
 The \texttt{Hydrogel} functional computes the Flory-Rehner energy over
 an element:

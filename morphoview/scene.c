@@ -19,6 +19,9 @@ scene *scene_new(int id, int dim) {
         new->dim=dim; 
         varray_gobjectinit(&new->objectlist);
         varray_gdrawinit(&new->displaylist);
+        varray_gcolorinit(&new->colorlist);
+        varray_gfontinit(&new->fontlist);
+        varray_gtextinit(&new->textlist);
         varray_floatinit(&new->data);
         varray_intinit(&new->indx);
     }
@@ -33,8 +36,19 @@ void scene_free(scene *s) {
         varray_gelementclear(&obj->elements);
     }
     
+    for (unsigned int i=0; i<s->fontlist.count; i++) {
+        text_fontclear(&s->fontlist.data[i].font);
+    }
+    
+    for (unsigned int i=0; i<s->textlist.count; i++) {
+        free(s->textlist.data[i].text);
+    }
+    
     varray_gobjectclear(&s->objectlist);
     varray_gdrawclear(&s->displaylist);
+    varray_gcolorclear(&s->colorlist);
+    varray_gfontclear(&s->fontlist);
+    varray_gtextclear(&s->textlist);
     varray_floatclear(&s->data);
     varray_intclear(&s->indx);
     free(s);
@@ -81,6 +95,71 @@ int scene_addelement(gobject *obj, gelement *el) {
     return obj->elements.count-1;
 }
 
+/** Adds a font to a scene
+ @param[in] s - The scene
+ @param[in] id - font id
+ @param[in] file - font file to open
+ @param[in] size - in points
+ @param[out] fontindx - index to refer to this */
+bool scene_addfont(scene *s, int id, char *file, float size, int *fontindx) {
+    gfont font;
+    
+    font.id=id;
+    text_fontinit(&font.font, TEXT_DEFAULTWIDTH);
+    
+    int sizepx = (int) (size / 72.0 * 720.0) /* in pts / points per inch * DPI */;
+    
+    if (text_openfont(file, sizepx, &font.font)) {
+        varray_gfontwrite(&s->fontlist, font);
+        if (fontindx) *fontindx = s->fontlist.count-1;
+        return true;
+    }
+
+    return false;
+}
+
+/** Find the textfont object corresponding to a given fontid */
+textfont *scene_getfontfromid(scene *s, int fontid) {
+    for (int i=0; i<s->fontlist.count; i++) {
+        if (s->fontlist.data[i].id==fontid) return &s->fontlist.data[i].font;
+    }
+    return NULL;
+}
+
+/** Adds text to a scene */
+int scene_addtext(scene *s, int fontid, char *text) {
+    textfont *font = scene_getfontfromid(s, fontid);
+
+    if (!font) {
+        fprintf(stderr, "Font id '%i' not found.\n", fontid);
+        return false;
+    }
+    
+    text_prepare(font, text);
+    
+    gtext txt;
+    txt.fontid=fontid;
+    txt.text=text;
+    
+    return varray_gtextwrite(&s->textlist, txt);;
+}
+
+/** Adds a color to a scene */
+int scene_addcolor(scene *s, int colorid, int length, int indx) {
+    gcolor color = { .colorid = colorid,
+                     .length = length,
+                     .indx = indx
+        
+    };
+    
+    return varray_gcolorwrite(&s->colorlist, color);
+}
+
+void scene_adddraw(scene *scene, gdrawtype type, int id, int matindx) {
+    gdraw d = { .type = type, .id = id, .matindx = matindx };
+    varray_gdrawwrite(&scene->displaylist, d);
+}
+
 /* -------------------------------------------------------
  * Find
  * ------------------------------------------------------- */
@@ -93,13 +172,24 @@ gobject *scene_getgobjectfromid(scene *s, int id) {
     return NULL;
 }
 
+/** Gets a gcolor structure given an id */
+gcolor *scene_getcolorfromid(scene *s, int id) {
+    for (unsigned int i=0; i<s->colorlist.count; i++) {
+        if (s->colorlist.data[i].colorid==id) return &s->colorlist.data[i];
+    }
+    return NULL;
+}
+
 /* -------------------------------------------------------
  * Varrays
  * ------------------------------------------------------- */
 
 DEFINE_VARRAY(gobject, gobject);
 DEFINE_VARRAY(gelement, gelement);
+DEFINE_VARRAY(gcolor, gcolor);
+DEFINE_VARRAY(gfont, gfont);
 DEFINE_VARRAY(gdraw, gdraw);
+DEFINE_VARRAY(gtext, gtext);
 DEFINE_VARRAY(float, float);
 
 /* -------------------------------------------------------

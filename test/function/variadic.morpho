@@ -1,6 +1,5 @@
-// Optional arguments
+// Variadic arguments
 
-/*
 fn func(x, y, ...varg) {
   for (a in varg) print a
 }
@@ -8,10 +7,16 @@ fn func(x, y, ...varg) {
 func(1, 2)
 
 func(1, 2, 3)
+// expect: 3
 
 func(1, 2, 3, 4)
+// expect: 3
+// expect: 4
 
 func(1, 2, 3, 4, 5)
+// expect: 3
+// expect: 4
+// expect: 5
 
 func(1)
-*/
+// expect error 'InvldArgs'

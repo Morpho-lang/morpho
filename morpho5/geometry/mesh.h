@@ -56,6 +56,7 @@ objectmesh *object_newmesh(unsigned int dim, unsigned int nv, double *v);
 #define MESH_RESETCONNECTIVITY_METHOD      "resetconnectivity"
 #define MESH_CONNECTIVITYMATRIX_METHOD     "connectivitymatrix"
 #define MESH_ADDGRADE_METHOD               "addgrade"
+#define MESH_REMOVEGRADE_METHOD            "removegrade"
 #define MESH_MAXGRADE_METHOD               "maxgrade"
 #define MESH_ADDSYMMETRY_METHOD            "addsymmetry"
 
@@ -143,8 +144,10 @@ objectsparse *mesh_addgrade(objectmesh *mesh, grade g);
 objectsparse *mesh_addconnectivityelement(objectmesh *mesh, unsigned int row, unsigned int col);
 objectsparse *mesh_getconnectivityelement(objectmesh *mesh, unsigned int row, unsigned int col);
 
+
 bool mesh_getconnectivity(objectsparse *conn, elementid id, int *nentries, int **entries);
 void mesh_freezeconnectivity(objectmesh *mesh);
+void mesh_resetconnectivity(objectmesh *m);
 
 bool mesh_getvertexcoordinates(objectmesh *mesh, elementid id, double *val);
 bool mesh_getvertexcoordinatesaslist(objectmesh *mesh, elementid id, double **out);

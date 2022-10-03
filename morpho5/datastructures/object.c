@@ -194,6 +194,7 @@ objectfunction *object_newfunction(indx entry, value name, objectfunction *paren
         new->entry=entry;
         new->name=object_clonestring(name);
         new->nargs=nargs;
+        new->varg=-1; // No vargs
         new->parent=parent;
         varray_optionalparaminit(&new->opt);
     }
@@ -217,6 +218,16 @@ varray_value *object_functiongetconstanttable(objectfunction *func) {
         return &func->konst;
     }
     return NULL;
+}
+
+/** Does a function have variadic args? */
+bool object_functionhasvargs(objectfunction *func) {
+    return (func->varg>=0);
+}
+
+/** Sets the parameter number of a variadic argument */
+void object_functionsetvarg(objectfunction *func, unsigned int varg) {
+    func->varg=varg;
 }
 
 /** Adds an upvalue prototype to a function

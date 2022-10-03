@@ -1,0 +1,42 @@
+// Test refinement of 3D meshes to make sure duplicate elements aren't generated. 
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0, 0, 0.612372])
+mb.addvertex([-0.288675, -0.5, -0.204124]) 
+mb.addvertex([-0.288675, 0.5, -0.204124]) 
+mb.addvertex([0.57735, 0, -0.204124]) 
+mb.addvolume([0,1,2,3])
+var m = mb.build() 
+
+m.addgrade(1)
+m.addgrade(2)
+m.addgrade(3)
+
+print m.count(0) // expect: 4
+print m.count(1) // expect: 6
+print m.count(2) // expect: 4
+print m.count(3) // expect: 1
+
+var s = Selection(m, boundary=true)
+s.addgrade(1)
+
+print "S ${s.count(0)} ${s.count(1)} ${s.count(2)} ${s.count(3)}" // expect: S 4 6 4 0
+
+var mr = MeshRefiner([m,s])
+var refmap = mr.refine()
+
+m = refmap[m]
+s = refmap[s]
+
+print m.count(0) // expect: 10
+print m.count(1) // expect: 25
+print m.count(2) // expect: 24
+print m.count(3) // expect: 8
+
+print "S+ ${s.count(0)} ${s.count(1)} ${s.count(2)} ${s.count(3)}" // expect: S+ 10 12 16 0
+
+var sref = Selection(m, boundary=true)
+sref.addgrade(1)
+
+print "Sr ${sref.count(0)} ${sref.count(1)} ${sref.count(2)} ${sref.count(3)}" // expect: Sr 10 24 16 0

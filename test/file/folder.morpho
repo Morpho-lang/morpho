@@ -1,0 +1,14 @@
+/*
+ * Folder class
+ */
+
+// Check if a resource is a folder 
+print Folder.isfolder("folder")
+// expect: true
+
+// Find the contents of a folder
+var files = Folder.contents("folder")
+
+print files.count()
+// expect: 3
+

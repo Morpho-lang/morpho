@@ -36,6 +36,7 @@ typedef enum {
     TOKEN_LINES,
     TOKEN_FACETS,
     TOKEN_IDENTITY,
+    TOKEN_MATRIX,
     TOKEN_ROTATE,
     TOKEN_SCALE,
     TOKEN_SCENE,

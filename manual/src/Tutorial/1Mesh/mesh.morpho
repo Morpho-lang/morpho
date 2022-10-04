@@ -11,7 +11,7 @@ var g=plotmesh(m, grade=1)
 var pov = POVRaytracer(g)
 
 g.background = White
-pov.viewpoint = Matrix([0,0,-10])
+pov.viewpoint = Matrix([0,0,10])
 pov.viewangle = 20
 pov.background = White
 pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]

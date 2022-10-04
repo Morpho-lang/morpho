@@ -119,6 +119,9 @@ void morpho_unreachable(const char *explanation);
 * VM error messages
 * ********************************************************************** */
 
+#define VM_STCKOVFLW                      "StckOvflw"
+#define VM_STCKOVFLW_MSG                  "Stack overflow."
+
 #define VM_INVLDOP                        "InvldOp"
 #define VM_INVLDOP_MSG                    "Invalid operands. Failed to %s %s and %s"
 

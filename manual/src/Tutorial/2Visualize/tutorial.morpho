@@ -14,7 +14,7 @@ bnd.addgrade(0)
 var gselec=plotselection(m, bnd, grade=1)
 gselec.background = White
 var pov = POVRaytracer(gselec)
-pov.viewpoint = Matrix([0,0,-10])
+pov.viewpoint = Matrix([0,0,10])
 pov.viewangle = 20
 pov.background = White
 pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]
@@ -76,7 +76,7 @@ var gdisp = g+gnn
 
 gdisp.background = White
 var pov = POVRaytracer(gdisp)
-pov.viewpoint = Matrix([0,0,-10])
+pov.viewpoint = Matrix([0,0,10])
 pov.viewangle = 25
 pov.background = White
 pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]

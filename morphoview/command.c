@@ -31,7 +31,11 @@ void command_removefile(const char *in) {
     char remove[len+4];
     strcpy(remove, "rm ");
     strcpy(remove+3, in);
-    system(remove);
+    int systemRet = system(remove);
+    if(systemRet == -1){
+        // The system method failed
+        printf("Warning: the system method to remove a temporary file (command.c:34.5) has failed.");
+    }
 }
 
 /** Returns the contents of a file as a string
@@ -209,6 +213,7 @@ bool command_lex(lexer *l, token *tok) {
         case 'f': command_lexrecordtoken(l, TOKEN_FACETS, tok); return true;
         case 'F': command_lexrecordtoken(l, TOKEN_FONT, tok); return true;
         case 'i': command_lexrecordtoken(l, TOKEN_IDENTITY, tok); return true;
+        case 'm': command_lexrecordtoken(l, TOKEN_MATRIX, tok); return true;
         case 'r': command_lexrecordtoken(l, TOKEN_ROTATE, tok); return true;
         case 's': command_lexrecordtoken(l, TOKEN_SCALE, tok); return true;
         case 'S': command_lexrecordtoken(l, TOKEN_SCENE, tok); return true;
@@ -484,7 +489,27 @@ bool command_parseidentity(parser *p) {
     return true;
 }
 
-/** Parse an identity command */
+/** Parse a matrix command */
+bool command_parsematrix(parser *p) {
+    mat4x4 x, m;
+    for (int i=0; i<16; i++) {
+        ERRCHK(command_parsefloat(p, &x[i]));
+    }
+    
+#ifdef DEBUG_PARSER
+    printf("Matrix:\n");
+    mat3d_print4x4(x);
+#endif
+    
+    mat3d_copy4x4(p->model, m);
+    mat3d_mul4x4(m, x, p->model);
+    
+    p->modelchanged=true;
+    
+    return true;
+}
+
+/** Parse a rotate command */
 bool command_parserotate(parser *p) {
     float phi, x[3];
     ERRCHK(command_parsefloat(p, &phi));
@@ -501,7 +526,7 @@ bool command_parserotate(parser *p) {
     return true;
 }
 
-/** Parse an identity command */
+/** Parse a scale command */
 bool command_parsescale(parser *p) {
     float s;
     ERRCHK(command_parsefloat(p, &s));
@@ -514,7 +539,7 @@ bool command_parsescale(parser *p) {
     return true;
 }
 
-/** Parse an identity command */
+/** Parse a translate command */
 bool command_parsetranslate(parser *p) {
     float x[3];
     for (int i=0; i<3; i++) {
@@ -627,6 +652,7 @@ parsefunction parsetable[] = {
     command_parseindex,     // TOKEN_LINES
     command_parseindex,     // TOKEN_FACETS
     command_parseidentity,  // TOKEN_IDENTITY
+    command_parsematrix,    // TOKEN_MATRIX
     command_parserotate,    // TOKEN_ROTATE
     command_parsescale,     // TOKEN_SCALE
     command_parsescene,     // TOKEN_SCENE

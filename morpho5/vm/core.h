@@ -230,6 +230,7 @@ struct svm {
     instruction *instructions; /* Base of instructions */
     value *konst; /* Current constant table */
     callframe *fp; /* Frame pointer saved on exit */
+    callframe *fpmax; /* Maximum value of the frame pointer */
     errorhandler *ehp; /* Error handler pointer */
     
     error err; /** An error struct that will be filled out when an error occurs */

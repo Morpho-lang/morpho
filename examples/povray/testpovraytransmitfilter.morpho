@@ -52,7 +52,7 @@ fn demo() {
 var g = demo()
 
 var pov = POVRaytracer(g)
-pov.viewpoint = Matrix([1.2, 6, -3.6])
+pov.viewpoint = Matrix([-1.2, -6, 3.6])
 pov.viewangle = 35
 // pov.light = [Matrix([10, 10, 10]), Matrix([-10, -10, 10])]
 pov.light =[Matrix([-10, -10, 10])]

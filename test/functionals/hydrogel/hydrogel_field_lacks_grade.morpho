@@ -1,0 +1,34 @@
+// Create a hydrogel phi0 with the wrong type of Field 
+
+import plot 
+import optimize
+import meshtools
+
+var mb = MeshBuilder() 
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([0,0,1])
+mb.addelement(3,[0,1,2,3])
+
+var m=mb.build() 
+var mref = m.clone() 
+
+var phi0 = Field(m, grade=2) // Needs to have elements in grade 3 
+
+var fha = 0.0 
+var fhb = 1.0
+var fhc = 0.499 
+var fhd = -1.0 
+var phir = 0.0359465
+
+var lh=Hydrogel(mref,
+    a = fha,
+    b = fhb,
+    c = fhc,
+    d = fhd,
+    phiref=phir,
+    phi0=phi0)
+
+lh.total(m)
+// expect error 'HydrglFldGrd' 

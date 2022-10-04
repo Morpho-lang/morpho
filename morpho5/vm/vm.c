@@ -175,6 +175,7 @@ static void vm_init(vm *v) {
     v->objects=NULL;
     v->openupvalues=NULL;
     v->fp=NULL;
+    v->fpmax=&v->frame[MORPHO_CALLFRAMESTACKSIZE-1]; // Last valid value of v->fp
     v->ehp=NULL;
     v->bound=0;
     v->nextgc=MORPHO_GCINITIAL;
@@ -683,6 +684,10 @@ static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int n
     v->fp->returnreg=regcall; /* Store the return register */
     unsigned int oldnregs = v->fp->function->nregs; /* Get the old number of registers */
 
+    if (v->fp==v->fpmax) { // Detect stack overflow
+        vm_runtimeerror(v, (*pc) - v->instructions, VM_STCKOVFLW);
+        return false;
+    }
     v->fp++; /* Advance frame pointer */
     v->fp->pc=*pc; /* We will also store the program counter in the new frame;
                       this will be used to detect whether the VM should return on OP_RETURN */
@@ -1913,6 +1918,7 @@ void morpho_initialize(void) {
     dictionary_init(&sizecheck);
 #endif
 
+    morpho_defineerror(VM_STCKOVFLW, ERROR_HALT, VM_STCKOVFLW_MSG);
     morpho_defineerror(VM_INVLDOP, ERROR_HALT, VM_INVLDOP_MSG);
     morpho_defineerror(VM_CNCTFLD, ERROR_HALT, VM_CNCTFLD_MSG);
     morpho_defineerror(VM_UNCALLABLE, ERROR_HALT, VM_UNCALLABLE_MSG);

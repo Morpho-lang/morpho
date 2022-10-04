@@ -24,7 +24,7 @@ The module also provides \texttt{DelaunayMesh} to directly create meshes
 from Delaunay triangulations.
 
 \hypertarget{triangulate}{%
-\section{Triangulate}\label{triangulate}}
+\subsection{Triangulate}\label{triangulate}}
 
 The \texttt{triangulate} method performs the delaunay triangulation. To
 use it, first construct a \texttt{Delaunay} object with the point cloud
@@ -43,29 +43,8 @@ var tri = del.triangulate()
 This returns a list of triangles
 \texttt{{[}\ {[}i,\ j,\ k{]},\ ...\ {]}}.
 
-\hypertarget{delaunaymesh}{%
-\section{DelaunayMesh}\label{delaunaymesh}}
-
-The \texttt{DelaunayMesh} constructor function creates a \texttt{Mesh}
-object directly from a point cloud using the Delaunay triangulator.
-
-\begin{lstlisting}
-var pts = []
-for (i in 0...100) pts.append(Matrix([random(), random()]))
-var m=DelaunayMesh(pts)
-Show(plotmesh(m))
-\end{lstlisting}
-
-You can control the output dimension of the mesh (e.g.~to create a 2D
-mesh embedded in 3D space) using the optional \texttt{outputdim}
-property.
-
-\begin{lstlisting}
-var m = DelaunayMesh(pts, outputdim=3)
-\end{lstlisting}
-
 \hypertarget{circumsphere}{%
-\section{Circumsphere}\label{circumsphere}}
+\subsection{Circumsphere}\label{circumsphere}}
 
 The \texttt{Circumsphere} class calculates the circumsphere of a set of
 points, i.e.~a sphere such that all the points are on the surface of the

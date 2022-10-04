@@ -59,7 +59,7 @@ fn display(m, nn, dl, file) {
 
   gdisp.background = White
   var pov = POVRaytracer(gdisp)
-  pov.viewpoint = Matrix([0,0,-10])
+  pov.viewpoint = Matrix([0,0,10])
   pov.viewangle = 25
   pov.background = White
   pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]

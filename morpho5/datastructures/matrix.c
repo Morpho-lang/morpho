@@ -455,13 +455,20 @@ objectmatrixerror matrix_eigensystem(objectmatrix *a, double *wr, double *wi, ob
     if (a->nrows!=a->ncols) return MATRIX_NSQ;
     if (vec && ((a->nrows!=vec->nrows) || (a->nrows!=vec->ncols))) return MATRIX_INCMPTBLDIM;
     
+    double *acopy=MORPHO_MALLOC(n*n*sizeof(double));
+    if (!acopy) return MATRIX_ALLOC;
+    
+    cblas_dcopy(n*n, a->elements, 1, acopy, 1);
+    
 #ifdef MORPHO_LINALG_USE_LAPACKE
-    info=LAPACKE_dgeev(LAPACK_COL_MAJOR, 'N', (vec ? 'V' : 'N'), n, a->elements, n, wr, wi, NULL, n, (vec ? vec->elements : NULL), n);
+    info=LAPACKE_dgeev(LAPACK_COL_MAJOR, 'N', (vec ? 'V' : 'N'), n, acopy, n, wr, wi, NULL, n, (vec ? vec->elements : NULL), n);
 #else
-    int lwork=4*n; double work[lwork];
-    dgeev_("N", (vec ? "V" : "N"), &n, a->elements, &n, wr, wi, NULL, &n, (vec ? vec->elements : NULL), &n, work, &lwork, &info);
+    int lwork=4*n; double work[4*n];
+    dgeev_("N", (vec ? "V" : "N"), &n, acopy, &n, wr, wi, NULL, &n, (vec ? vec->elements : NULL), &n, work, &lwork, &info);
 #endif
     
+    if (acopy) MORPHO_FREE(acopy);
+        
     if (info!=0) return (info>0 ? MATRIX_FAILED : MATRIX_INVLD);
     
     return MATRIX_OK;

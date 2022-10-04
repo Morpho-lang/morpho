@@ -1,4 +1,5 @@
-// Eigenvalues and Eigensystem
+// Transpose
+
 var a = Matrix([[1,-1,0], [-1,1,0], [0,0,1]])
 
 var ev = a.eigenvalues()
@@ -13,6 +14,8 @@ for (e in ev) print e
 // expect: 1 + 2im
 // expect: 1 - 2im
 // expect: 1
+
+print a 
 
 var es = a.eigensystem()
 print es[0]

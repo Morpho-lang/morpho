@@ -47,13 +47,25 @@ typedef struct {
 
 DECLARE_VARRAY(renderobject, renderobject)
 
+/** @brief A font to be used */
+typedef struct {
+    textfont *font;
+    GLuint texture;
+} renderfont;
+
+DECLARE_VARRAY(renderfont, renderfont)
+
 /** @brief Render instructions */
 typedef struct {
     enum {
-        NOP,
-        MODEL, /* Set the model matrix */
-        ARRAY, /* Bind a VAO */
-        TRIANGLES /* Draw triangles */
+        RNOP,
+        RMODEL, /* Set the model matrix */
+        RARRAY, /* Bind a VAO */
+        RTRIANGLES, /* Draw triangles */
+        RLINES, /* Draw lines */
+        RPOINTS, /* Draw points */
+        RTEXT, /* Draw text */
+        RCOLOR, /* Set the current color */
     } instruction;
     
     union {
@@ -69,6 +81,15 @@ typedef struct {
             int length;
             void *offset;
         } triangles;
+        
+        struct {
+            char *txt;
+            int rfontid; 
+        } text;
+        
+        struct {
+            float rgb[3]; 
+        } color;
     } data;
     
     renderobject *obj;
@@ -78,10 +99,14 @@ DECLARE_VARRAY(renderinstruction, renderinstruction)
 
 /** Renderer object. */
 typedef struct {
-    unsigned int shader;
+    GLuint shader;
+    GLuint textshader;
     varray_renderobject objects;
+    varray_renderfont fonts;
     varray_renderglbuffers glbuffers;
     varray_renderinstruction renderlist;
+    GLuint fontvao;
+    GLuint fontvbo;
 } renderer;
 
 bool render_init(renderer *r);

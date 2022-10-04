@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include "object.h"
 #include "morpho.h"
+#include "matrix.h"
 
 /* ***************************************
  * Sparse objects
@@ -128,6 +129,7 @@ bool sparseccs_resize(sparseccs *ccs, int nrows, int ncols, unsigned int nentrie
 bool sparseccs_get(sparseccs *ccs, int i, int j, double *val);
 
 bool sparseccs_getrowindices(sparseccs *ccs, int col, int *nentries, int **entries);
+bool sparseccs_getrowindiceswithvalues(sparseccs *ccs, int col, int *nentries, int **entries, double **vals);
 bool sparseccs_setrowindices(sparseccs *ccs, int col, int nentries, int *entries);
 bool sparseccs_getcolindices(sparseccs *ccs, int maxentries, int *nentries, int *entries);
 bool sparseccs_getcolindicesforrow(sparseccs *ccs, int row, int maxentries, int *nentries, int *entries);
@@ -150,6 +152,8 @@ void sparse_getdimensions(objectsparse *s, int *nrows, int *ncols);
 
 objectsparseerror sparse_add(objectsparse *a, objectsparse *b, double alpha, double beta, objectsparse *out);
 objectsparseerror sparse_mul(objectsparse *a, objectsparse *b, objectsparse *out);
+objectsparseerror sparse_mulsxd(objectsparse *a, objectmatrix *b, objectmatrix *out);
+objectsparseerror sparse_muldxs(objectmatrix *a, objectsparse *b, objectmatrix *out);
 objectsparseerror sparse_transpose(objectsparse *a, objectsparse *out);
 
 void sparse_clear(objectsparse *a);

@@ -826,6 +826,8 @@ value Matrix_mul(vm *v, int nargs, value *args) {
                 morpho_bindobjects(v, 1, &out);
             }
         }
+    } else if (nargs==1 && MORPHO_ISSPARSE(MORPHO_GETARG(args, 0))) {
+        // Returns nil to ensure it gets passed to mulr on Sparse
     } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
     
     return out;

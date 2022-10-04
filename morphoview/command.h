@@ -27,6 +27,8 @@ typedef enum {
     TOKEN_FLOAT,
     TOKEN_STRING,
     
+    TOKEN_COLOR,
+    TOKEN_SELECTCOLOR,
     TOKEN_DRAW,
     TOKEN_OBJECT,
     TOKEN_VERTICES,
@@ -41,6 +43,8 @@ typedef enum {
     TOKEN_VIEWDIRECTION,
     TOKEN_VIEWVERTICAL,
     TOKEN_WINDOW,
+    TOKEN_FONT,
+    TOKEN_TEXT,
     
     TOKEN_EOF
 } tokentype;

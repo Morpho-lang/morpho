@@ -62,6 +62,19 @@ objectmatrix *object_newmatrix(unsigned int nrows, unsigned int ncols, bool zero
  * Create matrices from array objects
  */
 
+void matrix_raiseerror(vm *v, objectmatrixerror err) {
+    switch(err) {
+        case MATRIX_OK: break;
+        case MATRIX_INCMPTBLDIM: morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES); break;
+        case MATRIX_SING: morpho_runtimeerror(v, MATRIX_SINGULAR); break;
+        case MATRIX_INVLD: morpho_runtimeerror(v, MATRIX_INVLDARRAYINIT); break;
+        case MATRIX_BNDS: morpho_runtimeerror(v, MATRIX_INDICESOUTSIDEBOUNDS); break;
+        case MATRIX_NSQ: morpho_runtimeerror(v, MATRIX_NOTSQ); break;
+        case MATRIX_FAILED: morpho_runtimeerror(v, MATRIX_OPFAILED); break;
+        case MATRIX_ALLOC: morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); break;
+    }
+}
+
 /** Recurses into an objectarray to find the dimensions of the array and all child arrays
  * @param[in] array - to search
  * @param[out] dim - array of dimensions to be filled out (must be zero'd before initial call)
@@ -435,6 +448,25 @@ objectmatrixerror matrix_inverse(objectmatrix *a, objectmatrix *out) {
     
     return (info==0 ? MATRIX_OK : (info>0 ? MATRIX_SING : MATRIX_INVLD));
 }
+
+/** Compute eigenvalues and eigenvectors of a matrix */
+objectmatrixerror matrix_eigensystem(objectmatrix *a, double *wr, double *wi, objectmatrix *vec) {
+    int info, n=a->nrows;
+    if (a->nrows!=a->ncols) return MATRIX_NSQ;
+    if (vec && ((a->nrows!=vec->nrows) || (a->nrows!=vec->ncols))) return MATRIX_INCMPTBLDIM;
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    info=LAPACKE_dgeev(LAPACK_COL_MAJOR, 'N', (vec ? 'V' : 'N'), n, a->elements, n, wr, wi, NULL, n, (vec ? vec->elements : NULL), n);
+#else
+    int lwork=4*n; double work[lwork];
+    dgeev_("N", (vec ? "V" : "N"), &n, a->elements, &n, wr, wi, NULL, &n, (vec ? vec->elements : NULL), &n, work, &lwork, &info);
+#endif
+    
+    if (info!=0) return (info>0 ? MATRIX_FAILED : MATRIX_INVLD);
+    
+    return MATRIX_OK;
+}
+
 
 /** Sums all elements of a matrix using Kahan summation */
 double matrix_sum(objectmatrix *a) {
@@ -951,6 +983,103 @@ value Matrix_norm(vm *v, int nargs, value *args) {
     return MORPHO_FLOAT(matrix_norm(a));
 }
 
+/** Matrix eigensystem */
+bool Matrix_eigen(vm *v, objectmatrix *a, value *evals, value *evecs) {
+    double *ev = MORPHO_MALLOC(sizeof(double)*a->nrows*2); // Allocate temporary memory for eigenvalues
+    objectmatrix *vecs=NULL;
+    objectlist *vallist = object_newlist(0, NULL);
+    bool success=false;
+    
+    if (evecs) vecs=object_clonematrix(a);
+    if (!ev || !vallist || (evecs && !vecs)) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto matrix_eigen_cleanup; };
+    
+    double *er=ev, *ei=ev+a->nrows;
+    
+    objectmatrixerror err=matrix_eigensystem(a, er, ei, vecs);
+    if (err!=MATRIX_OK) {
+        matrix_raiseerror(v, err);
+        goto matrix_eigen_cleanup;
+    }
+        
+    for (int i=0; i<a->nrows; i++) {
+        if (fabs(ei[i])<MORPHO_EPS) {
+            list_append(vallist, MORPHO_FLOAT(er[i]));
+        } else {
+            objectcomplex *c = object_newcomplex(er[i], ei[i]);
+            if (c) {
+                list_append(vallist, MORPHO_OBJECT(c));
+            } else {
+                morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+                goto matrix_eigen_cleanup;
+            }
+        }
+    }
+        
+    if (evals) *evals = MORPHO_OBJECT(vallist);
+    if (evecs) *evecs = MORPHO_OBJECT(vecs);
+    
+    success=true;
+    
+matrix_eigen_cleanup:
+    if (ev) MORPHO_FREE(ev);
+    
+    if (!success) {
+        if (vallist) {
+            for (unsigned int i=0; i<vallist->val.count; i++) {
+                if (MORPHO_ISOBJECT(vallist->val.data[i])) object_free(MORPHO_GETOBJECT(vallist->val.data[i]));
+            }
+            object_free((object *) vallist);
+        }
+        if (vecs) {
+            object_free((object *) vecs);
+        }
+    }
+    
+    return success;
+}
+
+/** Matrix eigenvalues */
+value Matrix_eigenvalues(vm *v, int nargs, value *args) {
+    objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
+    value evals=MORPHO_NIL;
+    
+    if (Matrix_eigen(v, a, &evals, NULL)) {
+        objectlist *new = MORPHO_GETLIST(evals);
+        list_append(new, evals); // Ensure we retain the List object
+        morpho_bindobjects(v, new->val.count, new->val.data);
+        new->val.count--; // And pop it back off
+    }
+    
+    return evals;
+}
+
+/** Matrix eigensystem */
+value Matrix_eigensystem(vm *v, int nargs, value *args) {
+    objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
+    value evals=MORPHO_NIL, evecs=MORPHO_NIL, out=MORPHO_NIL;
+    objectlist *result = object_newlist(0, NULL);
+    if (!result) {
+        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        return MORPHO_NIL;
+    }
+    
+    if (Matrix_eigen(v, a, &evals, &evecs)) {
+        objectlist *evallist = MORPHO_GETLIST(evals);
+        
+        list_append(result, evals); // Create the output list
+        list_append(result, evecs);
+        out=MORPHO_OBJECT(result);
+        
+        list_append(evallist, evals); // Ensure we bind all objects at once
+        list_append(evallist, evecs); // by popping them onto the evallist.
+        list_append(evallist, out);   //
+        morpho_bindobjects(v, evallist->val.count, evallist->val.data);
+        evallist->val.count-=3; // and then popping them back off.
+    }
+    
+    return out;
+}
+
 /** Transpose of a matrix */
 value Matrix_transpose(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
@@ -1074,6 +1203,8 @@ MORPHO_METHOD(MORPHO_SUM_METHOD, Matrix_sum, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_NORM_METHOD, Matrix_norm, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_TRANSPOSE_METHOD, Matrix_transpose, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_RESHAPE_METHOD, Matrix_reshape, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MATRIX_EIGENVALUES_METHOD, Matrix_eigenvalues, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MATRIX_EIGENSYSTEM_METHOD, Matrix_eigensystem, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_TRACE_METHOD, Matrix_trace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Matrix_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Matrix_count, BUILTIN_FLAGSEMPTY),
@@ -1103,5 +1234,6 @@ void matrix_initialize(void) {
     morpho_defineerror(MATRIX_INCOMPATIBLEMATRICES, ERROR_HALT, MATRIX_INCOMPATIBLEMATRICES_MSG);
     morpho_defineerror(MATRIX_SINGULAR, ERROR_HALT, MATRIX_SINGULAR_MSG);
     morpho_defineerror(MATRIX_NOTSQ, ERROR_HALT, MATRIX_NOTSQ_MSG);
+    morpho_defineerror(MATRIX_OPFAILED, ERROR_HALT, MATRIX_OPFAILED_MSG);
     morpho_defineerror(MATRIX_SETCOLARGS, ERROR_HALT, MATRIX_SETCOLARGS_MSG);
 }

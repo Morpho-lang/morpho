@@ -25,6 +25,8 @@
 #define MATRIX_LAPACK_PRESENT
 #endif
 
+#include "cmplx.h"
+
 /* -------------------------------------------------------
  * Matrix objects
  * ------------------------------------------------------- */
@@ -84,6 +86,8 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 #define MATRIX_GETCOLUMN_METHOD "column"
 #define MATRIX_SETCOLUMN_METHOD "setcolumn"
 #define MATRIX_RESHAPE_METHOD "reshape"
+#define MATRIX_EIGENVALUES_METHOD "eigenvalues"
+#define MATRIX_EIGENSYSTEM_METHOD "eigensystem"
 
 #define MATRIX_DIMENSIONS_METHOD "dimensions"
 
@@ -117,6 +121,9 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 #define MATRIX_NOTSQ                      "MtrxNtSq"
 #define MATRIX_NOTSQ_MSG                  "Matrix is not square."
 
+#define MATRIX_OPFAILED                   "MtrxOpFld"
+#define MATRIX_OPFAILED_MSG               "Matrix operation failed."
+
 #define MATRIX_SETCOLARGS                 "MtrxStClArgs"
 #define MATRIX_SETCOLARGS_MSG             "Method setcolumn expects an integer column index and a column matrix as arguments."
 
@@ -124,7 +131,7 @@ objectmatrix *object_clonematrix(objectmatrix *array);
  * Matrix errors
  * ------------------------------------------------------- */
 
-typedef enum { MATRIX_OK, MATRIX_INCMPTBLDIM, MATRIX_SING, MATRIX_INVLD, MATRIX_BNDS, MATRIX_NSQ, MATRIX_ALLOC } objectmatrixerror;
+typedef enum { MATRIX_OK, MATRIX_INCMPTBLDIM, MATRIX_SING, MATRIX_INVLD, MATRIX_BNDS, MATRIX_NSQ, MATRIX_FAILED, MATRIX_ALLOC } objectmatrixerror;
 
 /* -------------------------------------------------------
  * Matrix interface

@@ -1495,7 +1495,7 @@ bool hydrogel_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     double grad = (-info->a * phi +
             info->b * ( phi + log(1-phi) ) +
             info->c * phi*phi +
-            info->d * (pr/phi0) * ((-phi/pr)/3.0 + (2.0/3) * pow((phi/pr), (1.0/3)) ) );
+            info->d * (pr/phi0) * ((phi/pr)/3.0 - (2.0/3) * pow((phi/pr), (1.0/3)) ) );
 
     double *x[nv], s10[mesh->dim], s20[mesh->dim], s30[mesh->dim];
     double s31[mesh->dim], s21[mesh->dim], cx[mesh->dim], uu;

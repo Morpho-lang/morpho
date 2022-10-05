@@ -449,15 +449,20 @@ objectmatrixerror matrix_inverse(objectmatrix *a, objectmatrix *out) {
     return (info==0 ? MATRIX_OK : (info>0 ? MATRIX_SING : MATRIX_INVLD));
 }
 
-/** Compute eigenvalues and eigenvectors of a matrix */
+/** Compute eigenvalues and eigenvectors of a matrix
+ * @param[in] a - an objectmatrix to diagonalize of size n
+ * @param[out] wr - a buffer of size n will hold the real part of the eigenvalues on exit
+ * @param[out] wi - a buffer of size n will hold the imag part of the eigenvalues on exit
+ * @param[out] vec - (optional) will be filled out with eigenvectors as columns (should be of size n)
+ * @returns an error code or MATRIX_OK on success */
 objectmatrixerror matrix_eigensystem(objectmatrix *a, double *wr, double *wi, objectmatrix *vec) {
     int info, n=a->nrows;
     if (a->nrows!=a->ncols) return MATRIX_NSQ;
     if (vec && ((a->nrows!=vec->nrows) || (a->nrows!=vec->ncols))) return MATRIX_INCMPTBLDIM;
     
+    // Copy a to prevent destruction
     double *acopy=MORPHO_MALLOC(n*n*sizeof(double));
     if (!acopy) return MATRIX_ALLOC;
-    
     cblas_dcopy(n*n, a->elements, 1, acopy, 1);
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
@@ -467,7 +472,7 @@ objectmatrixerror matrix_eigensystem(objectmatrix *a, double *wr, double *wi, ob
     dgeev_("N", (vec ? "V" : "N"), &n, acopy, &n, wr, wi, NULL, &n, (vec ? vec->elements : NULL), &n, work, &lwork, &info);
 #endif
     
-    if (acopy) MORPHO_FREE(acopy);
+    if (acopy) MORPHO_FREE(acopy); // Free up buffer
         
     if (info!=0) return (info>0 ? MATRIX_FAILED : MATRIX_INVLD);
     
@@ -993,21 +998,26 @@ value Matrix_norm(vm *v, int nargs, value *args) {
 /** Matrix eigensystem */
 bool Matrix_eigen(vm *v, objectmatrix *a, value *evals, value *evecs) {
     double *ev = MORPHO_MALLOC(sizeof(double)*a->nrows*2); // Allocate temporary memory for eigenvalues
-    objectmatrix *vecs=NULL;
-    objectlist *vallist = object_newlist(0, NULL);
-    bool success=false;
-    
-    if (evecs) vecs=object_clonematrix(a);
-    if (!ev || !vallist || (evecs && !vecs)) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto matrix_eigen_cleanup; };
-    
     double *er=ev, *ei=ev+a->nrows;
     
+    objectmatrix *vecs=NULL; // A new matrix for eigenvectors
+    objectlist *vallist = object_newlist(0, NULL); // List to hold eigenvalues
+    bool success=false;
+    
+    if (evecs) vecs=object_clonematrix(a); // Clones a to hold eigenvectors
+    
+    // Check that everything was allocated correctly
+    if (!(ev && vallist && (!evecs || vecs))) {
+        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto matrix_eigen_cleanup; };
+    
     objectmatrixerror err=matrix_eigensystem(a, er, ei, vecs);
+    
     if (err!=MATRIX_OK) {
         matrix_raiseerror(v, err);
         goto matrix_eigen_cleanup;
     }
         
+    // Now process the eigenvalues
     for (int i=0; i<a->nrows; i++) {
         if (fabs(ei[i])<MORPHO_EPS) {
             list_append(vallist, MORPHO_FLOAT(er[i]));
@@ -1037,9 +1047,7 @@ matrix_eigen_cleanup:
             }
             object_free((object *) vallist);
         }
-        if (vecs) {
-            object_free((object *) vecs);
-        }
+        if (vecs) object_free((object *) vecs);
     }
     
     return success;
@@ -1064,8 +1072,8 @@ value Matrix_eigenvalues(vm *v, int nargs, value *args) {
 value Matrix_eigensystem(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
     value evals=MORPHO_NIL, evecs=MORPHO_NIL, out=MORPHO_NIL;
-    objectlist *result = object_newlist(0, NULL);
-    if (!result) {
+    objectlist *resultlist = object_newlist(0, NULL);
+    if (!resultlist) {
         morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
         return MORPHO_NIL;
     }
@@ -1073,13 +1081,13 @@ value Matrix_eigensystem(vm *v, int nargs, value *args) {
     if (Matrix_eigen(v, a, &evals, &evecs)) {
         objectlist *evallist = MORPHO_GETLIST(evals);
         
-        list_append(result, evals); // Create the output list
-        list_append(result, evecs);
-        out=MORPHO_OBJECT(result);
+        list_append(resultlist, evals); // Create the output list
+        list_append(resultlist, evecs);
+        out=MORPHO_OBJECT(resultlist);
         
-        list_append(evallist, evals); // Ensure we bind all objects at once
-        list_append(evallist, evecs); // by popping them onto the evallist.
-        list_append(evallist, out);   //
+        list_append(resultlist, evals); // Ensure we bind all objects at once
+        list_append(resultlist, evecs); // by popping them onto the evallist.
+        list_append(resultlist, out);   //
         morpho_bindobjects(v, evallist->val.count, evallist->val.data);
         evallist->val.count-=3; // and then popping them back off.
     }

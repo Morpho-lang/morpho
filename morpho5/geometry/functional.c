@@ -1495,9 +1495,8 @@ bool hydrogel_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     double grad = (-info->a * phi +
             info->b * ( phi + log(1-phi) ) +
             info->c * phi*phi +
-            info->d * (-phi/pr)/3.0 + (2.0/3) * pow((phi/pr), (1.0/3)) );
+            info->d * (pr/phi0) * ((-phi/pr)/3.0 + (2.0/3) * pow((phi/pr), (1.0/3)) ) );
 
-    
     double *x[nv], s10[mesh->dim], s20[mesh->dim], s30[mesh->dim];
     double s31[mesh->dim], s21[mesh->dim], cx[mesh->dim], uu;
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
@@ -1511,7 +1510,6 @@ bool hydrogel_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     functional_veccross(s20, s30, cx);
     uu=functional_vecdot(mesh->dim, s10, cx);
     uu=(uu>0 ? 1.0 : -1.0);
-
     matrix_addtocolumn(frc, vid[1], grad* uu/6.0, cx);
 
     functional_veccross(s31, s21, cx);
@@ -1525,6 +1523,27 @@ bool hydrogel_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
 
     return true;
 }
+
+/** Evaluate a gradient */
+value Hydrogel_gradient(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    value out=MORPHO_NIL;
+    hydrogelref ref;
+    if (functional_validateargs(v, nargs, args, &info)) {
+        if (hydrogel_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_VOLUME, info.sel, &ref)) { 
+            info.g = MESH_GRADE_VOLUME;
+            info.grad = hydrogel_gradient;
+            info.ref = &ref;
+            info.sym = SYMMETRY_ADD;
+            functional_mapgradient(v, &info, &out);
+        }
+    }
+    
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+
+    return out;
+}
+
 
 value Hydrogel_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
@@ -1560,8 +1579,6 @@ value Hydrogel_init(vm *v, int nargs, value *args) {
 FUNCTIONAL_METHOD(Hydrogel, integrand, (ref.grade), hydrogelref, hydrogel_prepareref, functional_mapintegrand, hydrogel_integrand, NULL, HYDROGEL_PRP, SYMMETRY_NONE)
 
 FUNCTIONAL_METHOD(Hydrogel, total, (ref.grade), hydrogelref, hydrogel_prepareref, functional_sumintegrand, hydrogel_integrand, NULL, HYDROGEL_PRP, SYMMETRY_NONE)
-
-FUNCTIONAL_GRADIENT(Hydrogel, MESH_GRADE_VOLUME, hydrogel_gradient, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(Hydrogel)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Hydrogel_init, BUILTIN_FLAGSEMPTY),

@@ -44,6 +44,7 @@
 /* Special functions that can be used in integrands */
 #define TANGENT_FUNCTION               "tangent"
 #define NORMAL_FUNCTION                "normal"
+#define GRAD_FUNCTION                  "grad"
 
 /* Functional names */
 #define LENGTH_CLASSNAME               "Length"

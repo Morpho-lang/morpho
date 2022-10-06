@@ -3104,6 +3104,12 @@ static value functional_normal(vm *v, int nargs, value *args) {
     return norml;
 }
 
+value gradfn;
+
+static value functional_gradfn(vm *v, int nargs, value *args) {
+    return gradfn;
+}
+
 /* ----------------------------------------------
  * LineIntegral
  * ---------------------------------------------- */
@@ -3290,6 +3296,13 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     objectmatrix mnormal = MORPHO_STATICMATRIX(normaldata, mesh->dim, 1);
     norml = MORPHO_OBJECT(&mnormal);
 
+    /* Evaluate gradient */
+    objectfield *fld=MORPHO_GETFIELD(iref->fields[0]);
+    double grad[fld->mesh->dim]; //  *mesh->dim];
+    if (!gradsq_evaluategradient(mesh, fld, nv, vid, grad)) return false;
+    objectmatrix mgrad = MORPHO_STATICMATRIX(grad, mesh->dim, 1);
+    gradfn = MORPHO_OBJECT(&mgrad);
+    
     value q0[iref->nfields+1], q1[iref->nfields+1], q2[iref->nfields+1];
     value *q[3] = { q0, q1, q2 };
     for (unsigned int k=0; k<iref->nfields; k++) {
@@ -3454,6 +3467,7 @@ void functional_initialize(void) {
 
     builtin_addfunction(TANGENT_FUNCTION, functional_tangent, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(NORMAL_FUNCTION, functional_normal, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(GRAD_FUNCTION, functional_gradfn, BUILTIN_FLAGSEMPTY);
 
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
     morpho_defineerror(FUNC_ELNTFND, ERROR_HALT, FUNC_ELNTFND_MSG);

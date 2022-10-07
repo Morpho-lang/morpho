@@ -1085,9 +1085,9 @@ value Matrix_eigensystem(vm *v, int nargs, value *args) {
         list_append(resultlist, evecs);
         out=MORPHO_OBJECT(resultlist);
         
-        list_append(resultlist, evals); // Ensure we bind all objects at once
-        list_append(resultlist, evecs); // by popping them onto the evallist.
-        list_append(resultlist, out);   //
+        list_append(evallist, evals); // Ensure we bind all objects at once
+        list_append(evallist, evecs); // by popping them onto the evallist.
+        list_append(evallist, out);   //
         morpho_bindobjects(v, evallist->val.count, evallist->val.data);
         evallist->val.count-=3; // and then popping them back off.
     }

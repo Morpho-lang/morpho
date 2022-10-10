@@ -402,12 +402,12 @@ void optimize_track(optimizer *opt) {
             optimize_reguse(opt, DECODE_B(instr));
             optimize_reguse(opt, DECODE_C(instr));
             optimize_regoverwrite(opt, DECODE_A(instr));
-            optimize_regcontents(opt, DECODE_A(instr), VALUE, NOTHING);
+            optimize_regcontents(opt, DECODE_A(instr), VALUE, REGISTER_UNALLOCATED);
             break;
         case OP_NOT:
             optimize_reguse(opt, DECODE_B(instr));
             optimize_regoverwrite(opt, DECODE_A(instr));
-            optimize_regcontents(opt, DECODE_A(instr), VALUE, NOTHING);
+            optimize_regcontents(opt, DECODE_A(instr), VALUE, REGISTER_UNALLOCATED);
             break;
         case OP_BIF:
         case OP_BIFF:
@@ -423,7 +423,7 @@ void optimize_track(optimizer *opt) {
                 opt->reg[a+i+1].contains=NOTHING; // call uses and overwrites arguments.
             }
             optimize_regoverwrite(opt, DECODE_A(instr));
-            optimize_regcontents(opt, DECODE_A(instr), VALUE, NOTHING);
+            optimize_regcontents(opt, DECODE_A(instr), VALUE, REGISTER_UNALLOCATED);
         }
             break;
         case OP_INVOKE:
@@ -438,26 +438,43 @@ void optimize_track(optimizer *opt) {
                 opt->reg[a+i+1].contains=NOTHING; // invoke uses and overwrites arguments.
             }
             optimize_regoverwrite(opt, a);
-            optimize_regcontents(opt, a, VALUE, NOTHING);
+            optimize_regcontents(opt, a, VALUE, REGISTER_UNALLOCATED);
         }
             break;
         case OP_RETURN:
             if (DECODE_A(instr)>0) optimize_reguse(opt, DECODE_B(instr));
             break;
         case OP_LGL:
-            optimize_regoverwrite(opt, DECODE_A(instr));
+        {
+            registerindx a = DECODE_A(instr);
+            optimize_regoverwrite(opt, a);
             optimize_loadglobal(opt, DECODE_Bx(instr));
-            optimize_regcontents(opt, DECODE_A(instr), GLOBAL, DECODE_Bx(instr));
+            optimize_regcontents(opt, a, GLOBAL, DECODE_Bx(instr));
+        }
             break;
         case OP_SGL:
             optimize_reguse(opt, DECODE_A(instr));
             optimize_regcontents(opt, DECODE_A(instr), GLOBAL, DECODE_Bx(instr));
             break;
+        case OP_LPR:
+        {
+            registerindx a = DECODE_A(instr);
+            optimize_reguse(opt, DECODE_B(instr));
+            optimize_reguse(opt, DECODE_C(instr));
+            optimize_regoverwrite(opt, a);
+            optimize_regcontents(opt, a, VALUE, NOTHING);
+        }
+            break;
+        case OP_SPR:
+            optimize_reguse(opt, DECODE_A(instr));
+            optimize_reguse(opt, DECODE_B(instr));
+            optimize_reguse(opt, DECODE_C(instr));
+            break;
         case OP_PRINT:
             optimize_reguse(opt, DECODE_A(instr));
             break;
-        //default:
-        //    UNREACHABLE("Opcode not supported in optimizer.");
+        default:
+            UNREACHABLE("Opcode not supported in optimizer.");
     }
 }
 

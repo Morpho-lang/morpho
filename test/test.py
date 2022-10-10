@@ -186,7 +186,7 @@ CI = False
 if (len(sys.argv) > 1):
     CI = sys.argv[1] == '-c'
 
-files=glob.glob('if/**.'+ext, recursive=True)
+files=glob.glob('**/**.'+ext, recursive=True)
 with open("FailedTests.txt",'w') as testLog:
 
     for f in files:

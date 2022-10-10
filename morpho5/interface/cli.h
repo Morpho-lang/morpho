@@ -32,11 +32,11 @@
 #define CLI_NORMALTEXT ""
 #endif
 
-#define CLI_RUN                 0x1
-#define CLI_DISASSEMBLE         0x2
-#define CLI_DISASSEMBLESHOWSRC  0x4
-#define CLI_DEBUG               0x8
-#define CLI_OPTIMIZE            0x10
+#define CLI_RUN                 (1<<0)
+#define CLI_DISASSEMBLE         (1<<1)
+#define CLI_DISASSEMBLESHOWSRC  (1<<2)
+#define CLI_DEBUG               (1<<3)
+#define CLI_OPTIMIZE            (1<<4)
 
 typedef unsigned int clioptions;
 

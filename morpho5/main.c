@@ -29,7 +29,7 @@ int main(int argc, const char * argv[]) {
                     /* v note fallthrough */
                 case 'd':
                     if (strncmp(option+1, "debug", strlen("debug"))==0) {
-                        opt^=CLI_DEBUG;
+                        opt|=CLI_DEBUG;
                     } else { /* Disassemble */
                         opt |= CLI_DISASSEMBLE;
                         if (option[2]=='l' || option[2]=='L') {
@@ -39,7 +39,7 @@ int main(int argc, const char * argv[]) {
                     }
                     break;
                 case 'O': /* Optimize */
-                    opt^=CLI_OPTIMIZE;
+                    opt|=CLI_OPTIMIZE;
                     break;
             }
         } else {

@@ -253,6 +253,8 @@ void optimize_moveto(optimizer *opt, instructionindx indx) {
     optimize_fetch(opt);
 }
 
+void optimize_restartannotation(optimizer *opt);
+
 
 /** Initializes optimizer data structure */
 void optimize_init(optimizer *opt, program *prog) {
@@ -269,6 +271,7 @@ void optimize_init(optimizer *opt, program *prog) {
     dictionary_init(&opt->functions);
     varray_codeblockinit(&opt->cfgraph);
     varray_debugannotationinit(&opt->aout);
+    optimize_restartannotation(opt);
     
     opt->v=morpho_newvm();
     opt->temp=morpho_newprogram();
@@ -1190,6 +1193,7 @@ void optimize_layoutblocks(optimizer *opt) {
     /** Patch new annotations into program */
     varray_debugannotationclear(&opt->out->annotations);
     opt->out->annotations=opt->aout;
+
     varray_debugannotationinit(&opt->aout); // Reinitialize optimizers annotation record
     
     varray_codeblockindxclear(&sorted);

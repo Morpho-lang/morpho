@@ -1053,7 +1053,9 @@ void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstr
     } while (opt->nchanged>0);
     
     optimize_saveregisterstatetoblock(opt, block);
+#ifdef MORPHO_DEBUG_LOGOPTIMIZER
     optimize_showreginfo(opt->maxreg, opt->reg);
+#endif
 }
 
 /* **********************************************************************

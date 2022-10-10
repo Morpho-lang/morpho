@@ -419,6 +419,18 @@ void optimize_track(optimizer *opt) {
             optimize_regcontents(opt, DECODE_A(instr), VALUE, NOTHING);
         }
             break;
+        case OP_INVOKE:
+        {
+            registerindx a = DECODE_A(instr);
+            registerindx b = DECODE_B(instr);
+            registerindx c = DECODE_C(instr);
+            optimize_reguse(opt, a);
+            optimize_reguse(opt, b);
+            for (unsigned int i=0; i<c; i++) opt->reg[a+i+1].contains=NOTHING; // invoke uses and overwrites arguments.
+            optimize_regoverwrite(opt, a);
+            optimize_regcontents(opt, a, VALUE, NOTHING);
+        }
+            break;
         case OP_RETURN:
             if (DECODE_A(instr)>0) optimize_reguse(opt, DECODE_B(instr));
             break;
@@ -682,11 +694,6 @@ void optimize_buildblock(optimizer *opt, codeblockindx block, varray_codeblockin
                 optimize_branchto(opt, block, optimizer_currentindx(opt)+1+branchby, worklist);
             }
                 return; // Terminate current block
-            case OP_CALL:
-            {
-                
-            }
-                break;
             case OP_RETURN:
             case OP_END:
                 return; // Terminate current block
@@ -728,6 +735,12 @@ void optimize_addfunction(optimizer *opt, value func) {
 
 /** Builds all blocks starting from the current function */
 void optimize_rootblock(optimizer *opt, varray_codeblockindx *worklist) {
+#ifdef MORPHO_DEBUG_LOGOPTIMIZER
+    printf("Building root block for function '");
+    morpho_printvalue(MORPHO_OBJECT(opt->func));
+    printf("'\n");
+#endif
+    
     codeblockindx first = optimize_newblock(opt, opt->func->entry); // Start at the entry point of the program
     optimize_setroot(opt, first);
     varray_codeblockindxwrite(worklist, first);

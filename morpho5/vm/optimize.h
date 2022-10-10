@@ -41,8 +41,12 @@ typedef struct scodeblock {
     int nreg; /** Size of register file */
     reginfo *reg; /** Register state at end */
     
+    objectfunction *func; /** Function for this block */
+    
     instructionindx ostart; /** First instruction in output */
     instructionindx oend; /** Last instruction in output */
+    
+    bool isroot; /** Is this a root block (i.e. a function call or similar) */
 } codeblock;
 
 DECLARE_VARRAY(codeblock, codeblock)
@@ -62,6 +66,7 @@ typedef struct {
     int maxreg;              // Maximum number of registers to track
     objectfunction *func;    // Current function
     
+    dictionary functions;  // Functions and methods to process
     varray_codeblock cfgraph; // Control flow graph
     
     reginfo reg[MORPHO_MAXARGS];

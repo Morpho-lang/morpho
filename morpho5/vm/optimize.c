@@ -19,7 +19,7 @@ DEFINE_VARRAY(codeblockindx, codeblockindx);
  * ----------- */
 
 /** Initialize a code block */
-void optimize_initcodeblock(codeblock *block, instructionindx start) {
+void optimize_initcodeblock(codeblock *block, objectfunction *func, instructionindx start) {
     block->start=start;
     block->end=start;
     block->inbound=0;
@@ -32,6 +32,8 @@ void optimize_initcodeblock(codeblock *block, instructionindx start) {
     block->reg=NULL;
     block->ostart=0;
     block->oend=0;
+    block->func=func;
+    block->isroot=false;
 }
 
 /** Clear a code block */
@@ -264,6 +266,7 @@ void optimize_init(optimizer *opt, program *prog) {
     optimize_setfunction(opt, prog->global);
     optimize_restart(opt, 0);
     
+    dictionary_init(&opt->functions);
     varray_codeblockinit(&opt->cfgraph);
     varray_debugannotationinit(&opt->aout);
     
@@ -279,6 +282,7 @@ void optimize_clear(optimizer *opt) {
         optimize_clearcodeblock(opt->cfgraph.data+i);
     }
     
+    dictionary_clear(&opt->functions);
     varray_codeblockclear(&opt->cfgraph);
     varray_debugannotationclear(&opt->aout);
     
@@ -470,7 +474,7 @@ void optimize_showcodeblocks(optimizer *opt) {
 /** Create a new block that starts at a given index and add it to the control flow graph; returns a handle to this block */
 codeblockindx optimize_newblock(optimizer *opt, instructionindx start) {
     codeblock new;
-    optimize_initcodeblock(&new, start);
+    optimize_initcodeblock(&new, opt->func, start);
     varray_codeblockwrite(&opt->cfgraph, new);
     return opt->cfgraph.count-1;
 }
@@ -485,9 +489,24 @@ instructionindx optimize_getend(optimizer *opt, codeblockindx handle) {
     return opt->cfgraph.data[handle].end;
 }
 
+/** Get the function associated with a block */
+objectfunction *optimize_getfunction(optimizer *opt, codeblockindx handle) {
+    return opt->cfgraph.data[handle].func;
+}
+
 /** Set a block's end point */
 void optimize_setend(optimizer *opt, codeblockindx handle, instructionindx end) {
     opt->cfgraph.data[handle].end=end;
+}
+
+/** Indicate that a block is root */
+void optimize_setroot(optimizer *opt, codeblockindx handle) {
+    opt->cfgraph.data[handle].isroot=true;
+}
+
+/** Check if a block is listed as root */
+bool optimize_isroot(optimizer *opt, codeblockindx handle) {
+    return opt->cfgraph.data[handle].isroot;
 }
 
 /** Has the block been visited? */
@@ -580,7 +599,7 @@ codeblockindx optimize_splitblock(optimizer *opt, codeblockindx handle, instruct
     if (split==start) return handle;
     if (split<start || split>end) UNREACHABLE("Splitting an invalid block");
     
-    codeblockindx new = optimize_newblock(opt, split);
+    codeblockindx new = optimize_newblock(opt, split); // Inherits function
     optimize_setend(opt, new, end);
     optimize_setend(opt, handle, split-1);
     optimize_copydest(opt, handle, new); // New block carries over destinations
@@ -689,21 +708,55 @@ void optimize_addsrcrefs(optimizer *opt) {
     }
 }
 
+void optimize_addfunction(optimizer *opt, value func);
+
+/** Searches a list of values for entry points */
+void optimize_searchlist(optimizer *opt, varray_value *list) {
+    for (unsigned int i=0; i<list->count; i++) {
+        value entry = list->data[i];
+        
+        if (MORPHO_ISFUNCTION(entry)) optimize_addfunction(opt, entry);
+    }
+}
+
+/** Adds a function to the control flow graph */
+void optimize_addfunction(optimizer *opt, value func) {
+    if (!MORPHO_ISFUNCTION(func)) return;
+    dictionary_insert(&opt->functions, func, MORPHO_TRUE);
+    optimize_searchlist(opt, &MORPHO_GETFUNCTION(func)->konst); // Search constant table
+}
+
+/** Builds all blocks starting from the current function */
+void optimize_rootblock(optimizer *opt, varray_codeblockindx *worklist) {
+    codeblockindx first = optimize_newblock(opt, opt->func->entry); // Start at the entry point of the program
+    optimize_setroot(opt, first);
+    varray_codeblockindxwrite(worklist, first);
+    optimize_incinbound(opt, first);
+
+    while (worklist->count>0) {
+        codeblockindx current;
+        if (!varray_codeblockindxpop(worklist, &current)) UNREACHABLE("Unexpectedly empty worklist in control flow graph");
+        
+        optimize_buildblock(opt, current, worklist);
+    }
+}
+
 /** Builds the control flow graph from the source */
 void optimize_buildcontrolflowgraph(optimizer *opt) {
     varray_codeblockindx worklist; // Worklist of blocks to analyze
     varray_codeblockindxinit(&worklist);
     
-    codeblockindx first = optimize_newblock(opt, opt->func->entry); // Start at the entry point of the program
-    varray_codeblockindxwrite(&worklist, first);
-    optimize_incinbound(opt, first);
+    optimize_addfunction(opt, MORPHO_OBJECT(opt->out->global)); // Add the global function
     
-    while (worklist.count>0) {
-        codeblockindx current;
-        if (!varray_codeblockindxpop(&worklist, &current)) UNREACHABLE("Unexpectedly empty worklist in control flow graph");
-        
-        optimize_buildblock(opt, current, &worklist);
+    // Now build the blocks for each function in the table
+    for (unsigned int i=0; i<opt->functions.capacity; i++) {
+        value func=opt->functions.contents[i].key;
+        if (MORPHO_ISFUNCTION(func)) {
+            optimize_setfunction(opt, MORPHO_GETFUNCTION(func));
+            optimize_rootblock(opt, &worklist);
+        }
     }
+    
     varray_codeblockindxclear(&worklist);
     
     optimize_addsrcrefs(opt);
@@ -960,6 +1013,7 @@ void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstr
                     end=optimize_getend(opt, block);
     
     optimize_setcurrentblock(opt, block);
+    optimize_setfunction(opt, optimize_getfunction(opt, block));
     
 #ifdef MORPHO_DEBUG_LOGOPTIMIZER
     printf("Optimizing block %u.\n", block);
@@ -1074,6 +1128,13 @@ void optimize_fixbranch(optimizer *opt, codeblock *block, varray_instruction *de
     }
 }
 
+/** Fix function starting point */
+void optimize_fixfunction(optimizer *opt, codeblock *block) {
+    if (block->isroot && block->func->entry==block->start) {
+        block->func->entry=block->ostart;
+    }
+}
+
 /** Layout blocks */
 void optimize_layoutblocks(optimizer *opt) {
     codeblockindx nblocks = opt->cfgraph.count;
@@ -1096,6 +1157,8 @@ void optimize_layoutblocks(optimizer *opt) {
         
         block->ostart=iout; // Record block's new start and end point
         block->oend=iout+ninstructions-1;
+        
+        optimize_fixfunction(opt, block);
         
         iout+=ninstructions;
     }
@@ -1133,7 +1196,11 @@ bool optimize(program *prog) {
     // Now optimize blocks
     varray_codeblockindx worklist;
     varray_codeblockindxinit(&worklist);
-    varray_codeblockindxwrite(&worklist, 0); // Start with first block
+    
+    // Ensure all root blocks are on the worklist
+    for (unsigned int i=0; i<opt.cfgraph.count; i++) {
+        if (opt.cfgraph.data[i].isroot) varray_codeblockindxwrite(&worklist, i); // Add to the worklist
+    }
     
     while (worklist.count>0) {
         codeblockindx current;

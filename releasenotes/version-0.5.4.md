@@ -8,7 +8,7 @@ The `meshtools` module has been extensively revised with many new features:
 
 * New `MeshPruner` class added that enables coarsening of meshes, analogous to `MeshRefiner`. 
 * Refinement of 3D elements.
-* Refinement of selections is improved, adding.
+* Refinement of selections is improved.
 * Bugfixes for `MeshRefiner` and `MeshMerge` to prevent duplicate elements being generated in some circumstances. 
 
 ## Text

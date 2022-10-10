@@ -12,6 +12,7 @@
 #include "compile.h"
 #include "morpho.h"
 
+#define INSTRUCTIONINDX_EMPTY -1
 #define CODEBLOCKDEST_EMPTY -1
 typedef int codeblockindx;
 

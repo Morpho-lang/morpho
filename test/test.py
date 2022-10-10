@@ -16,7 +16,7 @@ import colored
 from colored import stylize
 
 # define what command to use to invoke the interpreter
-command = 'morpho5'
+command = 'morpho5 -O'
 
 # define the file extension to test
 ext = 'morpho'
@@ -186,7 +186,7 @@ CI = False
 if (len(sys.argv) > 1):
     CI = sys.argv[1] == '-c'
 
-files=glob.glob('**/**.'+ext, recursive=True)
+files=glob.glob('if/**.'+ext, recursive=True)
 with open("FailedTests.txt",'w') as testLog:
 
     for f in files:

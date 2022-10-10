@@ -90,7 +90,7 @@ void optimize_regclear(optimizer *opt) {
         opt->reg[i].contains=NOTHING;
         opt->reg[i].id=0;
         opt->reg[i].used=0;
-        opt->reg[i].iix=0;
+        opt->reg[i].iix=INSTRUCTIONINDX_EMPTY;
         opt->reg[i].block=CODEBLOCKDEST_EMPTY;
     }
 }
@@ -152,6 +152,7 @@ instruction optimize_fetchinstructionat(optimizer *opt, indx ix) {
 
 /** Replaces an instruction at a given indx */
 void optimize_replaceinstructionat(optimizer *opt, indx ix, instruction inst) {
+    if (ix==INSTRUCTIONINDX_EMPTY) UNREACHABLE("Trying to replace an undefined instruction.");
     opt->nchanged+=1;
     opt->out->code.data[ix]=inst;
 }
@@ -417,7 +418,10 @@ void optimize_track(optimizer *opt) {
             registerindx a = DECODE_A(instr);
             registerindx b = DECODE_B(instr);
             optimize_reguse(opt, a);
-            for (unsigned int i=0; i<b; i++) opt->reg[a+i+1].contains=NOTHING; // call uses and overwrites arguments.
+            for (unsigned int i=0; i<b; i++) {
+                optimize_reguse(opt, a+i+1);
+                opt->reg[a+i+1].contains=NOTHING; // call uses and overwrites arguments.
+            }
             optimize_regoverwrite(opt, DECODE_A(instr));
             optimize_regcontents(opt, DECODE_A(instr), VALUE, NOTHING);
         }
@@ -429,7 +433,10 @@ void optimize_track(optimizer *opt) {
             registerindx c = DECODE_C(instr);
             optimize_reguse(opt, a);
             optimize_reguse(opt, b);
-            for (unsigned int i=0; i<c; i++) opt->reg[a+i+1].contains=NOTHING; // invoke uses and overwrites arguments.
+            for (unsigned int i=0; i<c; i++) {
+                optimize_reguse(opt, a+i+1);
+                opt->reg[a+i+1].contains=NOTHING; // invoke uses and overwrites arguments.
+            }
             optimize_regoverwrite(opt, a);
             optimize_regcontents(opt, a, VALUE, NOTHING);
         }
@@ -1023,6 +1030,20 @@ void optimize_restoreregisterstate(optimizer *opt, codeblockindx handle) {
 #endif
 }
 
+/** Prints the code in a block */
+void optimize_printblock(optimizer *opt, codeblockindx block) {
+    instructionindx start=optimize_getstart(opt, block),
+                    end=optimize_getend(opt, block);
+    optimize_restart(opt, start);
+    for (;
+        opt->iindx<=end;
+        optimize_advance(opt)) {
+        optimize_fetch(opt);
+        debug_disassembleinstruction(opt->op, opt->iindx, NULL, NULL);
+        printf("\n");
+    }
+}
+
 /** Optimize a block */
 void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstrategy *strategies) {
     instructionindx start=optimize_getstart(opt, block),
@@ -1057,6 +1078,9 @@ void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstr
     
     optimize_saveregisterstatetoblock(opt, block);
 #ifdef MORPHO_DEBUG_LOGOPTIMIZER
+    printf("Optimized block %u:\n", block);
+    optimize_printblock(opt, block);
+    
     optimize_showreginfo(opt->maxreg, opt->reg);
 #endif
 }
@@ -1170,6 +1194,11 @@ void optimize_layoutblocks(optimizer *opt) {
     /** Copy and compactify blocks */
     for (unsigned int i=0; i<nblocks; i++) {
         codeblock *block = optimize_getblock(opt, sorted.data[i]);
+        
+#ifdef MORPHO_DEBUG_LOGOPTIMIZER
+        printf("Compacting block %u.\n", sorted.data[i]);
+        optimize_printblock(opt, sorted.data[i]);
+#endif
         
         int ninstructions=optimize_compactifyblock(opt, block, &out);
         

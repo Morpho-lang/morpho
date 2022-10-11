@@ -110,12 +110,6 @@ void optimize_reguse(optimizer *opt, registerindx reg) {
     opt->reg[reg].used++;
 }
 
-/** Indicates an instruction overwrites a register */
-static inline void optimize_regoverwrite(optimizer *opt, registerindx reg) {
-    opt->overwriteprev=opt->reg[reg];
-    opt->overwrites=reg;
-}
-
 /** Invalidates any old copies of a stored quantity */
 void optimize_reginvalidate(optimizer *opt, returntype type, indx id) {
     for (unsigned int i=0; i<opt->maxreg; i++) {
@@ -123,6 +117,13 @@ void optimize_reginvalidate(optimizer *opt, returntype type, indx id) {
             opt->reg[i].contains=VALUE;
         }
     }
+}
+
+/** Indicates an instruction overwrites a register */
+static inline void optimize_regoverwrite(optimizer *opt, registerindx reg) {
+    optimize_reginvalidate(opt, REGISTER, reg); // Invalidate any aliases of this register
+    opt->overwriteprev=opt->reg[reg];
+    opt->overwrites=reg;
 }
 
 /** Show the contents of a register */
@@ -785,6 +786,24 @@ void optimize_buildblock(optimizer *opt, codeblockindx block, varray_codeblockin
                 optimize_branchto(opt, block, optimizer_currentindx(opt)+1+branchby, worklist);
             }
                 return; // Terminate current block
+            case OP_PUSHERR:
+            {
+                int ix = DECODE_Bx(opt->current);
+                if (MORPHO_ISDICTIONARY(opt->func->konst.data[ix])) {
+                    objectdictionary *dict = MORPHO_GETDICTIONARY(opt->func->konst.data[ix]);
+                    
+                    for (unsigned int i=0; i<dict->dict.capacity; i++) {
+                        if (MORPHO_ISTRUE(dict->dict.contents[i].key)) {
+                            instructionindx hindx=MORPHO_GETINTEGERVALUE(dict->dict.contents[i].val);
+                            codeblockindx errhandler = optimize_newblock(opt, hindx); // Start at the entry point of the program
+                            optimize_setroot(opt, errhandler);
+                            varray_codeblockindxwrite(worklist, errhandler);
+                        }
+                    }
+                }
+                optimize_branchto(opt, block, optimizer_currentindx(opt)+1, worklist);
+            }
+                return; // Terminate current block
             case OP_RETURN:
             case OP_END:
                 return; // Terminate current block
@@ -1253,6 +1272,28 @@ int optimize_compactifyblock(optimizer *opt, codeblock *block, varray_instructio
     return count;
 }
 
+/** Fixes a pusherr dictionary */
+void optimize_fixpusherr(optimizer *opt, codeblock *block, varray_instruction *dest) {
+    instruction last = dest->data[block->oend];
+    int ix = DECODE_Bx(last);
+    if (MORPHO_ISDICTIONARY(block->func->konst.data[ix])) {
+        objectdictionary *dict = MORPHO_GETDICTIONARY(block->func->konst.data[ix]);
+        
+        // Loop over error handler dictionary, repairing indices into code.
+        for (unsigned int i=0; i<dict->dict.capacity; i++) {
+            if (MORPHO_ISFALSE(dict->dict.contents[i].key)) continue;
+            instructionindx hindx=MORPHO_GETINTEGERVALUE(dict->dict.contents[i].val);
+            
+            codeblockindx errhandler;
+            if (optimize_findblock(opt, hindx, &errhandler)) {
+                codeblock *h = optimize_getblock(opt, errhandler);
+                if (h) dict->dict.contents[i].val=MORPHO_INTEGER(h->ostart);
+                else UNREACHABLE("Couldn't find block for error handler");
+            } else UNREACHABLE("Couldn't find error handler");
+        }
+    }
+}
+
 /** Fix branch instructions */
 void optimize_fixbranch(optimizer *opt, codeblock *block, varray_instruction *dest) {
     if (block->oend<block->ostart) return;
@@ -1264,6 +1305,8 @@ void optimize_fixbranch(optimizer *opt, codeblock *block, varray_instruction *de
     } else if (DECODE_OP(last)==OP_BIF || DECODE_OP(last)==OP_BIFF) {
         codeblock *destblock = optimize_getblock(opt, block->dest[1]);
         dest->data[block->oend] = ENCODE_LONG(DECODE_OP(last), DECODE_A(last), destblock->ostart - block->oend-1);
+    } else if (DECODE_OP(last)==OP_PUSHERR) {
+        optimize_fixpusherr(opt, block, dest);
     }
 }
 

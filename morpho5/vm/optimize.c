@@ -1003,7 +1003,7 @@ bool optimize_branch_optimization(optimizer *opt) {
     return false;
 }
 
-/** Replaces duplicate registers  */
+/** Folds constants  */
 bool optimize_constant_folding(optimizer *opt) {
     if (opt->op<OP_ADD || opt->op>OP_LE) return false; // Quickly eliminate non-arithmetic instructions
     
@@ -1186,11 +1186,10 @@ void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstr
     } while (opt->nchanged>0);
     
     optimize_saveregisterstatetoblock(opt, block);
+    
 #ifdef MORPHO_DEBUG_LOGOPTIMIZER
     printf("Optimized block %u:\n", block);
     optimize_printblock(opt, block);
-    
-    optimize_showreginfo(opt->maxreg, opt->reg);
 #endif
 }
 
@@ -1211,18 +1210,6 @@ void optimize_checkunused(optimizer *opt) {
                 !optimize_isretained(opt, i, j)) {
                 optimize_replaceunused(opt, &block->reg[j]);
             }
-            
-           /* if (block->reg[j].contains!=NOTHING &&
-                block->reg[j].used==0 &&
-                !optimize_isretained(opt, i, j)) {
-                // Should check for side effects!
-                
-                if (block->reg[j].iix==INSTRUCTIONINDX_EMPTY) continue;
-                instruction op = DECODE_OP(optimize_fetchinstructionat(opt, block->reg[j].iix));
-                if (op==OP_INVOKE || op==OP_CALL) continue;
-                
-                optimize_replaceinstructionat(opt, block->reg[j].iix, ENCODE_BYTE(OP_NOP));
-            }*/
         }
     }
 }

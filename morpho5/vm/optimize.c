@@ -115,6 +115,15 @@ static inline void optimize_regoverwrite(optimizer *opt, registerindx reg) {
     opt->overwrites=reg;
 }
 
+/** Invalidates any old copies of a stored quantity */
+void optimize_reginvalidate(optimizer *opt, returntype type, indx id) {
+    for (unsigned int i=0; i<opt->maxreg; i++) {
+        if (opt->reg[i].contains==type && opt->reg[i].id==id) {
+            opt->reg[i].contains=VALUE;
+        }
+    }
+}
+
 /** Show the contents of a register */
 void optimize_showreginfo(unsigned int regmax, reginfo *reg) {
     for (unsigned int i=0; i<regmax; i++) {
@@ -147,6 +156,7 @@ void optimize_regshow(optimizer *opt) {
 
 /** Fetches an instruction at a given indx */
 instruction optimize_fetchinstructionat(optimizer *opt, indx ix) {
+    if (ix==INSTRUCTIONINDX_EMPTY) UNREACHABLE("Trying to fetch an undefined instruction.");
     return opt->out->code.data[ix];
 }
 
@@ -453,6 +463,7 @@ void optimize_track(optimizer *opt) {
         }
             break;
         case OP_SGL:
+            optimize_reginvalidate(opt, GLOBAL, DECODE_Bx(instr));
             optimize_reguse(opt, DECODE_A(instr));
             optimize_regcontents(opt, DECODE_A(instr), GLOBAL, DECODE_Bx(instr));
             break;
@@ -478,6 +489,16 @@ void optimize_track(optimizer *opt) {
     }
 }
 
+/* Replaces an unused instruction */
+void optimize_replaceunused(optimizer *opt, reginfo *reg) {
+    if (reg->iix!=INSTRUCTIONINDX_EMPTY) {
+        instruction op = DECODE_OP(optimize_fetchinstructionat(opt, reg->iix));
+        if (op==OP_INVOKE || op==OP_CALL) return;
+        
+        optimize_replaceinstructionat(opt, reg->iix, ENCODE_BYTE(OP_NOP));
+    }
+}
+
 /** Process overwrite */
 void optimize_overwrite(optimizer *opt, bool detectunused) {
     if (opt->overwrites==REGISTER_UNALLOCATED) return;
@@ -487,7 +508,7 @@ void optimize_overwrite(optimizer *opt, bool detectunused) {
         opt->overwriteprev.used==0 &&
         opt->overwriteprev.block==optimize_getcurrentblock(opt)) {
         
-        optimize_replaceinstructionat(opt, opt->reg[opt->overwrites].iix, ENCODE_BYTE(OP_NOP));
+        optimize_replaceunused(opt, &opt->reg[opt->overwrites]);
     }
     
     opt->reg[opt->overwrites].used=0;
@@ -889,6 +910,8 @@ bool optimize_subexpression_elimination(optimizer *opt) {
     // Find if another register contains the same calculated value.
     for (registerindx i=0; i<opt->maxreg; i++) {
         if (opt->reg[i].contains==VALUE) {
+            if (opt->reg[i].block!=opt->currentblock || // Only look within this block
+                opt->reg[i].iix==INSTRUCTIONINDX_EMPTY) continue;
             instruction comp = optimize_fetchinstructionat(opt, opt->reg[i].iix);
             
             if ((comp & mask)==(opt->current & mask)) {
@@ -1056,7 +1079,7 @@ void optimize_printblock(optimizer *opt, codeblockindx block) {
         opt->iindx<=end;
         optimize_advance(opt)) {
         optimize_fetch(opt);
-        debug_disassembleinstruction(opt->op, opt->iindx, NULL, NULL);
+        debug_disassembleinstruction(opt->current, opt->iindx, NULL, NULL);
         printf("\n");
     }
 }
@@ -1113,12 +1136,24 @@ void optimize_checkunused(optimizer *opt) {
         codeblock *block=optimize_getblock(opt, i);
         
         for (registerindx j=0; j<block->nreg; j++) {
+            
             if (block->reg[j].contains!=NOTHING &&
                 block->reg[j].used==0 &&
                 !optimize_isretained(opt, i, j)) {
-                // Should check for side effects!
-                optimize_replaceinstructionat(opt, block->reg[j].iix, ENCODE_BYTE(OP_NOP));
+                optimize_replaceunused(opt, &block->reg[j]);
             }
+            
+           /* if (block->reg[j].contains!=NOTHING &&
+                block->reg[j].used==0 &&
+                !optimize_isretained(opt, i, j)) {
+                // Should check for side effects!
+                
+                if (block->reg[j].iix==INSTRUCTIONINDX_EMPTY) continue;
+                instruction op = DECODE_OP(optimize_fetchinstructionat(opt, block->reg[j].iix));
+                if (op==OP_INVOKE || op==OP_CALL) continue;
+                
+                optimize_replaceinstructionat(opt, block->reg[j].iix, ENCODE_BYTE(OP_NOP));
+            }*/
         }
     }
 }

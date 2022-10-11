@@ -1254,6 +1254,7 @@ int optimize_compactifyblock(optimizer *opt, codeblock *block, varray_instructio
 
 /** Fix branch instructions */
 void optimize_fixbranch(optimizer *opt, codeblock *block, varray_instruction *dest) {
+    if (block->oend<block->ostart) return;
     instruction last = dest->data[block->oend];
     
     if (DECODE_OP(last)==OP_B) {

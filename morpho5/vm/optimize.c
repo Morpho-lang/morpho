@@ -391,6 +391,7 @@ void optimize_track(optimizer *opt) {
         case OP_BREAK:
         case OP_END:
         case OP_B:
+        case OP_CLOSEUP:
             break;
         case OP_MOV:
             optimize_reguse(opt, DECODE_B(instr));
@@ -481,6 +482,36 @@ void optimize_track(optimizer *opt) {
             optimize_reguse(opt, DECODE_A(instr));
             optimize_reguse(opt, DECODE_B(instr));
             optimize_reguse(opt, DECODE_C(instr));
+            break;
+        case OP_CLOSURE:
+            optimize_reguse(opt, DECODE_A(instr));
+            break;
+        case OP_LUP:
+            optimize_regoverwrite(opt, DECODE_A(instr));
+            optimize_regcontents(opt, DECODE_A(instr), VALUE, NOTHING);
+            break;
+        case OP_SUP:
+            optimize_reguse(opt, DECODE_B(instr));
+            break;
+        case OP_LIX:
+        {
+            registerindx a=DECODE_A(instr);
+            registerindx b=DECODE_B(instr);
+            registerindx c=DECODE_C(instr);
+            optimize_reguse(opt, a);
+            for (unsigned int i=b; i<=c; i++) optimize_reguse(opt, i);
+            optimize_regoverwrite(opt, b);
+            optimize_regcontents(opt, b, VALUE, NOTHING);
+        }
+            break;
+        case OP_SIX:
+        {
+            registerindx a=DECODE_A(instr);
+            registerindx b=DECODE_B(instr);
+            registerindx c=DECODE_C(instr);
+            optimize_reguse(opt, a);
+            for (unsigned int i=b; i<=c; i++) optimize_reguse(opt, i);
+        }
             break;
         case OP_PRINT:
             optimize_reguse(opt, DECODE_A(instr));

@@ -103,6 +103,7 @@ static inline void optimize_regcontents(optimizer *opt, registerindx reg, return
 
 /** Indicates an instruction uses a register */
 void optimize_reguse(optimizer *opt, registerindx reg) {
+    //if (opt->reg[reg].contains==NOTHING) printf("Unresolved reference in reg %u.\n", reg);
     if (opt->reg[reg].block!=CODEBLOCKDEST_EMPTY && opt->reg[reg].block!=optimize_getcurrentblock(opt)) {
         optimize_retaininparents(opt, reg);
     }
@@ -483,6 +484,16 @@ void optimize_track(optimizer *opt) {
             break;
         case OP_PRINT:
             optimize_reguse(opt, DECODE_A(instr));
+            break;
+        case OP_CAT:
+        {
+            registerindx a=DECODE_A(instr);
+            registerindx b=DECODE_B(instr);
+            registerindx c=DECODE_C(instr);
+            for (unsigned int i=b; i<=c; i++) optimize_reguse(opt, i);
+            optimize_regoverwrite(opt, a);
+            optimize_regcontents(opt, a, VALUE, NOTHING);
+        }
             break;
         default:
             UNREACHABLE("Opcode not supported in optimizer.");
@@ -1046,6 +1057,7 @@ void optimize_restoreregisterstate(optimizer *opt, codeblockindx handle) {
         optimize_showregisterstateforblock(opt, block->src.data[i]);
         
         for (unsigned int j=0; j<src->nreg; j++) {
+            if (src->reg[j].contains==NOTHING) continue;
             // If it doesn't match the type, we mark it as a VALUE
             if (opt->reg[j].contains!=src->reg[j].contains ||
                 opt->reg[j].id!=src->reg[j].id) {

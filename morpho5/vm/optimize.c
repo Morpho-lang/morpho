@@ -476,7 +476,7 @@ void optimize_track(optimizer *opt) {
             optimize_reguse(opt, DECODE_B(instr));
             optimize_reguse(opt, DECODE_C(instr));
             optimize_regoverwrite(opt, a);
-            optimize_regcontents(opt, a, VALUE, NOTHING);
+            optimize_regcontents(opt, a, VALUE, REGISTER_UNALLOCATED);
         }
             break;
         case OP_SPR:
@@ -485,11 +485,17 @@ void optimize_track(optimizer *opt) {
             optimize_reguse(opt, DECODE_C(instr));
             break;
         case OP_CLOSURE:
+        {
             optimize_reguse(opt, DECODE_A(instr));
+            registerindx b = DECODE_B(instr); // Get which registers are used from the upvalue prototype
+            varray_upvalue *v = &opt->func->prototype.data[b];
+            for (unsigned int i=0; i<v->count; i++) optimize_reguse(opt, (registerindx) v->data[i].reg);
+        }
             break;
         case OP_LUP:
             optimize_regoverwrite(opt, DECODE_A(instr));
-            optimize_regcontents(opt, DECODE_A(instr), VALUE, NOTHING);
+            //optimize_regcontents(opt, DECODE_A(instr), UPVALUE, DECODE_B(instr));
+            optimize_regcontents(opt, DECODE_A(instr), VALUE, REGISTER_UNALLOCATED);
             break;
         case OP_SUP:
             optimize_reguse(opt, DECODE_B(instr));
@@ -502,7 +508,7 @@ void optimize_track(optimizer *opt) {
             optimize_reguse(opt, a);
             for (unsigned int i=b; i<=c; i++) optimize_reguse(opt, i);
             optimize_regoverwrite(opt, b);
-            optimize_regcontents(opt, b, VALUE, NOTHING);
+            optimize_regcontents(opt, b, VALUE, REGISTER_UNALLOCATED);
         }
             break;
         case OP_SIX:
@@ -524,7 +530,7 @@ void optimize_track(optimizer *opt) {
             registerindx c=DECODE_C(instr);
             for (unsigned int i=b; i<=c; i++) optimize_reguse(opt, i);
             optimize_regoverwrite(opt, a);
-            optimize_regcontents(opt, a, VALUE, NOTHING);
+            optimize_regcontents(opt, a, VALUE, REGISTER_UNALLOCATED);
         }
             break;
         default:

@@ -769,6 +769,7 @@ void optimize_buildblock(optimizer *opt, codeblockindx block, varray_codeblockin
         
         switch (opt->op) {
             case OP_B:
+            case OP_POPERR:
             {
                 int branchby = DECODE_sBx(opt->current);
                 optimize_branchto(opt, block, optimizer_currentindx(opt)+1+branchby, worklist);
@@ -1257,9 +1258,9 @@ void optimize_fixbranch(optimizer *opt, codeblock *block, varray_instruction *de
     if (block->oend<block->ostart) return;
     instruction last = dest->data[block->oend];
     
-    if (DECODE_OP(last)==OP_B) {
+    if (DECODE_OP(last)==OP_B || DECODE_OP(last)==OP_POPERR) {
         codeblock *destblock = optimize_getblock(opt, block->dest[0]);
-        dest->data[block->oend] = ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, destblock->ostart - block->oend - 1);
+        dest->data[block->oend] = ENCODE_LONG(DECODE_OP(last), REGISTER_UNALLOCATED, destblock->ostart - block->oend - 1);
     } else if (DECODE_OP(last)==OP_BIF || DECODE_OP(last)==OP_BIFF) {
         codeblock *destblock = optimize_getblock(opt, block->dest[1]);
         dest->data[block->oend] = ENCODE_LONG(DECODE_OP(last), DECODE_A(last), destblock->ostart - block->oend-1);

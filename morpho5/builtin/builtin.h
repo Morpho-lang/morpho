@@ -35,6 +35,7 @@ typedef struct  {
     value name;
     builtinfunctionflags flags;
     builtinfunction function;
+    objectclass *klass; 
 } objectbuiltinfunction;
 
 /** Gets an objectfunction from a value */

@@ -49,6 +49,7 @@ static void builtin_init(objectbuiltinfunction *func) {
     func->flags=BUILTIN_FLAGSEMPTY;
     func->function=NULL;
     func->name=MORPHO_NIL;
+    func->klass=NULL;
 }
 
 /** @brief An enumerate loop.
@@ -215,6 +216,7 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
             objectbuiltinfunction *method = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
             builtin_init(method);
             method->function=desc[i].function;
+            method->klass=new;
             method->name=object_stringfromcstring(desc[i].name, strlen(desc[i].name));
             method->flags=desc[i].flags;
             

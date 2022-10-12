@@ -2361,6 +2361,9 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     
     objectfunction *func = object_newfunction(bindx+1, node->content, compiler_getcurrentfunction(c), 0);
     
+    /* Record the class if a method */
+    if (ismethod) func->klass=compiler_getcurrentclass(c);
+    
     /* Add the function as a constant */
     kindx=compiler_addconstant(c, node, MORPHO_OBJECT(func), false, false);
     

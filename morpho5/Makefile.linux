@@ -6,7 +6,7 @@ MODULESDIR = /usr/local/share/morpho/modules
 help = $(wildcard docs/*.md)
 modules = $(wildcard modules/*)
 
-LDFLAGS  = -lm -lblas -llapacke -lcxsparse
+LDFLAGS  = -lm -lblas -llapacke -lcxsparse -lpthread
 CFLAGS   = -std=c99 -O3 -I. -I/usr/include/suitesparse -I./datastructures -I./geometry -I./interface -I./utils -I./vm -I./builtin
 
 morpho5: $(obj)

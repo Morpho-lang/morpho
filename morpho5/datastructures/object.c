@@ -196,6 +196,7 @@ objectfunction *object_newfunction(indx entry, value name, objectfunction *paren
         new->nargs=nargs;
         new->varg=-1; // No vargs
         new->parent=parent;
+        new->klass=NULL; 
         varray_optionalparaminit(&new->opt);
     }
     

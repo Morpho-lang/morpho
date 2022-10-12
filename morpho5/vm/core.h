@@ -136,7 +136,10 @@ typedef struct {
     instruction *pc;
     unsigned int stackcount;
     unsigned int returnreg; // Stores where any return value should be placed
-    bool ret; // Should the interpreter return from this frame? 
+    bool ret; // Should the interpreter return from this frame?
+#ifdef MORPHO_PROFILER
+    objectbuiltinfunction *inbuiltinfunction; // Keep track if we're in a built in function
+#endif
 } callframe;
 
 /* **********************************************************************
@@ -205,6 +208,24 @@ struct sprogram {
 };
 
 /* **********************************************************************
+ * Profiler
+ * ********************************************************************** */
+
+#ifdef MORPHO_PROFILER
+#include <pthread.h>
+/** @brief Morpho profiler */
+typedef struct {
+    pthread_t profiler;
+    bool profiler_quit;
+    pthread_mutex_t profile_lock;
+    dictionary profile_dict;
+    clock_t start;
+    clock_t end;
+    program *program; 
+} profiler;
+#endif
+
+/* **********************************************************************
  * Virtual machines
  * ********************************************************************** */
 
@@ -242,6 +263,11 @@ struct svm {
     size_t nextgc; /** Next garbage collection threshold */
     
     bool debug; /** Is the debugger active or not */
+    
+#ifdef MORPHO_PROFILER
+    profiler *profiler;
+    enum { VM_RUNNING, VM_INGC } status; 
+#endif
     
     objectupvalue *openupvalues; /** Linked list of open upvalues */
 };

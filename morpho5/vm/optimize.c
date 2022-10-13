@@ -6,6 +6,7 @@
 
 #include "optimize.h"
 #include "debug.h"
+#include "vm.h"
 
 DEFINE_VARRAY(codeblock, codeblock);
 DEFINE_VARRAY(codeblockindx, codeblockindx);
@@ -212,6 +213,11 @@ bool optimize_addconstant(optimizer *opt, value val, indx *out) {
     }
     varray_valuewrite(&opt->func->konst, val);
     *out=opt->func->konst.count-1;
+    
+    if (MORPHO_ISOBJECT(val)) {
+        // Bind the object to the program
+        program_bindobject(opt->out, MORPHO_GETOBJECT(val));
+    }
     
     return true;
 }
@@ -554,12 +560,12 @@ void optimize_overwrite(optimizer *opt, bool detectunused) {
     if (opt->overwrites==REGISTER_UNALLOCATED) return;
     
     // Detect unused expression
-    if (detectunused && opt->overwriteprev.contains!=NOTHING &&
+    if (detectunused && opt->overwriteprev.contains==CONSTANT &&
         opt->overwriteprev.used==0 &&
         opt->overwriteprev.block==optimize_getcurrentblock(opt)) {
         
         // We need to type check this!
-        //optimize_replaceunused(opt, &opt->reg[opt->overwrites]);
+        optimize_replaceunused(opt, &opt->reg[opt->overwrites]);
     }
     
     opt->reg[opt->overwrites].used=0;
@@ -919,7 +925,10 @@ bool optimize_evaluateprogram(optimizer *opt, instruction *list, registerindx de
     }
     
     if (morpho_run(opt->v, opt->temp)) { // Run the program and extract output
-        if (out && dest< opt->v->stack.count) *out = opt->v->stack.data[dest];
+        if (out && dest< opt->v->stack.count) {
+            *out = opt->v->stack.data[dest];
+            if (MORPHO_ISOBJECT(*out)) vm_unbindobject(opt->v, *out);
+        }
         success=true;
     }
     opt->temp->global=storeglobal; // Restore the global function
@@ -1059,7 +1068,7 @@ bool optimize_constant_folding(optimizer *opt) {
         value out;
         if (optimize_evaluateprogram(opt, ilist, 0, &out)) {
             indx nkonst;
-            if (MORPHO_ISOBJECT(out)) UNREACHABLE("Optimizer encountered object while constant folding");
+            //if (MORPHO_ISOBJECT(out)) UNREACHABLE("Optimizer encountered object while constant folding");
             if (optimize_addconstant(opt, out, &nkonst)) {
                 optimize_replaceinstruction(opt, ENCODE_LONG(OP_LCT, DECODE_A(instr), (unsigned int) nkonst));
                 return true;
@@ -1242,7 +1251,8 @@ void optimize_checkunused(optimizer *opt) {
         
         for (registerindx j=0; j<block->nreg; j++) {
             
-            if (block->reg[j].contains!=NOTHING &&
+            // This needs to check for side effects to be more general 
+            if (block->reg[j].contains==CONSTANT && // More general check needed!
                 block->reg[j].used==0 &&
                 !optimize_isretained(opt, i, j)) {
                 optimize_replaceunused(opt, &block->reg[j]);
@@ -1433,7 +1443,7 @@ bool optimize(program *prog) {
         optimize_desttoworklist(&opt, current, &worklist);
     }
     
-    //optimize_checkunused(&opt);
+    optimize_checkunused(&opt);
     
     varray_codeblockindxclear(&worklist);
     optimize_layoutblocks(&opt);

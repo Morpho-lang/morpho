@@ -218,6 +218,24 @@ void vm_freeobjects(vm *v) {
 dictionary sizecheck;
 #endif
 
+/** Unbinds an object from a VM. */
+void vm_unbindobject(vm *v, value obj) {
+    object *ob=MORPHO_GETOBJECT(obj);
+    
+    if (v->objects==ob) {
+        v->objects=ob->next;
+    } else {
+        for (object *e=v->objects; e!=NULL; e=e->next) {
+            if (e->next==ob) { e->next=ob->next; break; }
+        }
+    }
+    // Correct estimate of bound size.
+    if (ob->status!=OBJECT_ISUNMANAGED) {
+        v->bound-=object_size(ob);
+        ob->status=OBJECT_ISUNMANAGED;
+    }
+}
+
 #include "object.h"
 /** @brief Binds an object to a Virtual Machine.
  *  @details Any object created during execution should be bound to a VM; this object is then managed by the garbage collector.

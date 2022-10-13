@@ -312,12 +312,10 @@ static inline bool _dictionary_insert(dictionary *dict, value key, value val, bo
             return true;
         } else {
             /* Entry doesn't exist, */
-            if (entry) {
-                entry->key=key;
-                entry->val=val;
-                dict->count++;
-                return true;
-            }
+            entry->key=key;
+            entry->val=val;
+            dict->count++;
+            return true;
         }
     }
     

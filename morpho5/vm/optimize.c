@@ -165,15 +165,20 @@ instruction optimize_fetchinstructionat(optimizer *opt, indx ix) {
 /** Replaces an instruction at a given indx */
 void optimize_replaceinstructionat(optimizer *opt, indx ix, instruction inst) {
     if (ix==INSTRUCTIONINDX_EMPTY) UNREACHABLE("Trying to replace an undefined instruction.");
-    opt->nchanged+=1;
-    opt->out->code.data[ix]=inst;
+    if (opt->out->code.data[ix]!=inst) {
+        opt->nchanged+=1;
+        opt->out->code.data[ix]=inst;
+    }
 }
 
 /** Replaces the current instruction */
 void optimize_replaceinstruction(optimizer *opt, instruction inst) {
-    opt->out->code.data[opt->iindx]=inst;
-    opt->current=inst;
-    opt->op=DECODE_OP(inst);
+    if (opt->out->code.data[opt->iindx]!=inst) {
+        opt->nchanged+=1;
+        opt->out->code.data[opt->iindx]=inst;
+        opt->current=inst;
+        opt->op=DECODE_OP(inst);
+    }
 }
 
 /* ------------
@@ -378,11 +383,6 @@ void optimize_restartannotation(optimizer *opt) {
 /** Track contents of registers etc*/
 void optimize_track(optimizer *opt) {
     instruction instr=opt->current;
-
-#ifdef MORPHO_DEBUG_LOGOPTIMIZER
-    debug_disassembleinstruction(instr, opt->iindx, NULL, NULL);
-    printf("\n");
-#endif
     
     int op=DECODE_OP(instr);
     switch (op) {
@@ -741,18 +741,23 @@ bool optimize_findblock(optimizer *opt, instructionindx indx, codeblockindx *han
  * @param[out] dest - block handle if found
  * @returns handle for destination branch */
 codeblockindx optimize_branchto(optimizer *opt, codeblockindx handle, instructionindx dest, varray_codeblockindx *worklist) {
-    codeblockindx existing = CODEBLOCKDEST_EMPTY;
-    codeblockindx out;
+    codeblockindx srcblock, destblock=CODEBLOCKDEST_EMPTY;
     
-    if (optimize_findblock(opt, dest, &existing)) {
-        out = optimize_splitblock(opt, existing, dest);
+    if (optimize_findblock(opt, dest, &destblock)) {
+        optimize_splitblock(opt, destblock, dest);
     } else {
-        out = optimize_newblock(opt, dest);
+        codeblockindx out = optimize_newblock(opt, dest);
         varray_codeblockindxwrite(worklist, out); // Add to worklist
     }
-    optimize_adddest(opt, handle, out);
     
-    return out;
+    if (optimize_findblock(opt, opt->iindx, &srcblock) &&
+        optimize_findblock(opt, dest, &destblock)) {
+        optimize_adddest(opt, srcblock, destblock);
+    } else {
+        UNREACHABLE("Couldn't find block.");
+    }
+    
+    return destblock;
 }
 
 /** Build a code block from the current starting point
@@ -939,7 +944,8 @@ bool optimize_duplicate_load(optimizer *opt) {
     // Find if another register contains this global
     for (registerindx i=0; i<opt->maxreg; i++) {
         if (opt->reg[i].contains==GLOBAL &&
-            opt->reg[i].id==global) {
+            opt->reg[i].id==global &&
+            opt->reg[i].block==opt->currentblock) { // Nonlocal eliminations require understanding the call graph to check for SGL. 
             
             if (i!=out) { // Replace with a move instruction and note the duplication
                 optimize_replaceinstruction(opt, ENCODE_DOUBLE(OP_MOV, out, i));
@@ -970,10 +976,30 @@ bool optimize_register_replacement(optimizer *opt) {
     return false; // This allows other optimization strategies to intervene after
 }
 
+/* Check if a register is overwritten between two instructions */
+bool optimize_checkoverwites(optimizer *opt, instructionindx start, instructionindx end, int nregisters, registerindx *reg) {
+    bool result=true;
+    optimizer temp = *opt; /* Preserve the optimizer state */
+    
+    optimize_moveto(opt, start);
+    while (opt->iindx<end && result) {
+        optimize_advance(opt);
+        optimize_fetch(opt);
+        optimize_track(opt);
+        for (unsigned int i=0; i<nregisters; i++) if (reg[i]==opt->overwrites) {
+            result=false; break;
+        }
+    }
+    
+    *opt = temp; /* Restore the optimizer state */
+    return result;
+}
+
 /** Searches to see if an expression has already been calculated  */
 bool optimize_subexpression_elimination(optimizer *opt) {
     if (opt->op<OP_ADD || opt->op>OP_LE) return false; // Quickly eliminate non-arithmetic instructions
     static instruction mask = ( MASK_OP | MASK_B | MASK_C );
+    registerindx reg[] = { DECODE_B(opt->current), DECODE_C(opt->current) } ;
     
     // Find if another register contains the same calculated value.
     for (registerindx i=0; i<opt->maxreg; i++) {
@@ -983,6 +1009,11 @@ bool optimize_subexpression_elimination(optimizer *opt) {
             instruction comp = optimize_fetchinstructionat(opt, opt->reg[i].iix);
             
             if ((comp & mask)==(opt->current & mask)) {
+                /* Need to check if an instruction between the previous one and the
+                   current one overwrites any operands */
+                
+                if (!optimize_checkoverwites(opt, opt->reg[i].iix, opt->iindx, (opt->op==OP_NOT ? 1 : 2), reg)) return false;
+                
                 optimize_replaceinstruction(opt, ENCODE_DOUBLE(OP_MOV, DECODE_A(opt->current), i));
                 return true;
             }
@@ -1175,6 +1206,10 @@ void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstr
             optimize_advance(opt)) {
             
             optimize_fetch(opt);
+#ifdef MORPHO_DEBUG_LOGOPTIMIZER
+            debug_disassembleinstruction(opt->current, opt->iindx, NULL, NULL);
+            printf("\n");
+#endif
             optimize_optimizeinstruction(opt, strategies);
             optimize_track(opt); // Track contents of registers
             optimize_overwrite(opt, true);
@@ -1296,6 +1331,7 @@ void optimize_fixbranch(optimizer *opt, codeblock *block, varray_instruction *de
         codeblock *destblock = optimize_getblock(opt, block->dest[0]);
         dest->data[block->oend] = ENCODE_LONG(DECODE_OP(last), REGISTER_UNALLOCATED, destblock->ostart - block->oend - 1);
     } else if (DECODE_OP(last)==OP_BIF || DECODE_OP(last)==OP_BIFF) {
+        if (block->dest[1]==INSTRUCTIONINDX_EMPTY) UNREACHABLE("Branch to unknown block");
         codeblock *destblock = optimize_getblock(opt, block->dest[1]);
         dest->data[block->oend] = ENCODE_LONG(DECODE_OP(last), DECODE_A(last), destblock->ostart - block->oend-1);
     } else if (DECODE_OP(last)==OP_PUSHERR) {

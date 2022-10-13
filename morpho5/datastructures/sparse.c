@@ -821,11 +821,12 @@ void sparse_getdimensions(objectsparse *s, int *nrows, int *ncols) {
 
 /** Set an element */
 bool sparse_setelement(objectsparse *s, int row, int col, value val) {
-    if (sparsedok_insert(&s->dok, row, col, val)) {
+    if (sparse_checkformat(s, SPARSE_CCS, false, false)) {
+        if (!sparseccs_copyccstodok(&s->ccs, &s->dok, 0, 0)) return false;
         sparse_removeformat(s, SPARSE_CCS);
-        return true;
     }
-    /* Should invalidate CCS here */
+    
+    if (sparsedok_insert(&s->dok, row, col, val)) return true;
     return false;
 }
 

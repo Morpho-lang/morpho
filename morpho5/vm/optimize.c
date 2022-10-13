@@ -558,7 +558,8 @@ void optimize_overwrite(optimizer *opt, bool detectunused) {
         opt->overwriteprev.used==0 &&
         opt->overwriteprev.block==optimize_getcurrentblock(opt)) {
         
-        optimize_replaceunused(opt, &opt->reg[opt->overwrites]);
+        // We need to type check this!
+        //optimize_replaceunused(opt, &opt->reg[opt->overwrites]);
     }
     
     opt->reg[opt->overwrites].used=0;
@@ -1432,7 +1433,7 @@ bool optimize(program *prog) {
         optimize_desttoworklist(&opt, current, &worklist);
     }
     
-    optimize_checkunused(&opt);
+    //optimize_checkunused(&opt);
     
     varray_codeblockindxclear(&worklist);
     optimize_layoutblocks(&opt);

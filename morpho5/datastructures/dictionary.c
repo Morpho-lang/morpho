@@ -274,8 +274,7 @@ static bool dictionary_find(dictionary *dict, value key, bool intern, dictionary
             if (MORPHO_ISEQUAL(e->val, DICTIONARY_TOMBSTONEVALUE)) {
                 if (!tombstone) tombstone = e; /* We found a tombstone */
                 *entry = (tombstone ? tombstone : e);
-            }
-            else {
+            } else {
                 /* Otherwise, this is an empty slot. Return this, or the tombstone */
                 *entry = (tombstone ? tombstone : e);
                 return false;

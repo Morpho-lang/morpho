@@ -250,6 +250,7 @@ static inline void optimize_nooverwrite(optimizer *opt) {
 /** Fetches the instruction  */
 void optimize_fetch(optimizer *opt) {
     optimize_nooverwrite(opt);
+    if (opt->iindx>=opt->out->code.count) return; 
     
     opt->current=opt->out->code.data[opt->iindx];
     opt->op=DECODE_OP(opt->current);

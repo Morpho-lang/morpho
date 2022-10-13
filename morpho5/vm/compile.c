@@ -3174,7 +3174,11 @@ static bool compiler_tobytecode(compiler *c, program *out) {
         compiler_releaseoperand(c, info);
     }
     compiler_checkoutstandingforwardreference(c);
-    if (c->tree.entry>=0) compiler_addinstruction(c, ENCODE_BYTE(OP_END), syntaxtree_nodefromindx(&c->tree, c->tree.entry));
+    if (c->tree.tree.count==0) {
+        compiler_addinstruction(c, ENCODE_BYTE(OP_END), NULL);
+    } else if (c->tree.entry>=0) {
+        compiler_addinstruction(c, ENCODE_BYTE(OP_END), syntaxtree_nodefromindx(&c->tree, c->tree.entry));
+    }
 
     return true;
 }

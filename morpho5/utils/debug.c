@@ -68,6 +68,7 @@ void debug_setreg(varray_debugannotation *list, indx reg, value symbol) {
 
 /** Uses information from a syntaxtreenode to associate a sequence of instructions with source */
 void debug_addnode(varray_debugannotation *list, syntaxtreenode *node) {
+    if (!node) return; 
     debugannotation *last = debug_lastannotation(list);
     if (last && last->type==DEBUG_ELEMENT &&
         node->line==last->content.element.line &&

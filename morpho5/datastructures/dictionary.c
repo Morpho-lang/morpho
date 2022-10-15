@@ -11,6 +11,7 @@
 #include "memory.h"
 #include "object.h"
 #include "sparse.h"
+#include "error.h"
 
 /*
  * Macros that control the behavior of the dictionary.
@@ -249,11 +250,11 @@ static bool dictionary_find(dictionary *dict, value key, bool intern, dictionary
     
     /* Store a pointer to any tombstones we encounter along the way. */
     dictionaryentry *tombstone = NULL;
+    dictionaryentry *e = NULL;
     
     /* Loop over entries */
     do {
-        dictionaryentry *e = &dict->contents[indx];
-        
+        e = &dict->contents[indx];
         if (intern) {
             /* If intern is set, we use MORPHO_SAME (tests for equality depending on whether
             objects are the same not just equivalent. */
@@ -273,17 +274,18 @@ static bool dictionary_find(dictionary *dict, value key, bool intern, dictionary
         if (MORPHO_ISNIL(e->key)) {
             if (MORPHO_ISEQUAL(e->val, DICTIONARY_TOMBSTONEVALUE)) {
                 if (!tombstone) tombstone = e; /* We found a tombstone */
-                *entry = (tombstone ? tombstone : e);
             } else {
-                /* Otherwise, this is an empty slot. Return this, or the tombstone */
-                *entry = (tombstone ? tombstone : e);
-                return false;
+                /* Otherwise, this is an empty slot. We can now break
+                the loop and eventually return this, or the tombstone */
+                break;
             }
         }
         
         indx = DICTIONARY_REDUCE((indx + 1), dict->capacity);
     } while (indx!=start_index); /* Loop will always terminate if we do a full cycle of the entries */
-     
+    // If we did not find an existing entry, return the blank, or
+    // preferably a tombstone
+    *entry = (tombstone ? tombstone : e);
     return false;
 }
 
@@ -312,10 +314,14 @@ static inline bool _dictionary_insert(dictionary *dict, value key, value val, bo
             return true;
         } else {
             /* Entry doesn't exist, */
-            entry->key=key;
-            entry->val=val;
-            dict->count++;
-            return true;
+            if (entry) {
+                entry->key=key;
+                entry->val=val;
+                dict->count++;
+                return true;
+            } else {
+                UNREACHABLE("Dictionary failed to insert an entry");
+            }
         }
     }
     

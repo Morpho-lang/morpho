@@ -77,9 +77,8 @@ typedef struct {
     program *temp;           // Temporary program
     
     indx a;                  // Current annotation
-    indx ai;                 // Count instructions within given annotation
-    int acopied;             // Count number of copied instructions
     instructionindx aindx;   // Instruction counter for annotations
+    indx aoffset;                 // Instruction offset for current annotation
     varray_debugannotation aout; // Annotations out
 } optimizer;
 

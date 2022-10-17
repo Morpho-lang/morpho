@@ -329,14 +329,19 @@ void optimize_restartannotation(optimizer *opt) {
     opt->aoffset=0;
 }
 
-/** Get next annotation */
-void optimize_annotationadvance(optimizer *opt) {
-    opt->a++;
-}
-
 /** Gets the current annotation */
 debugannotation *optimize_currentannotation(optimizer *opt) {
     return &opt->out->annotations.data[opt->a];
+}
+
+/** Get next annotation and update annotation counters */
+void optimize_annotationadvance(optimizer *opt) {
+    debugannotation *ann=optimize_currentannotation(opt);
+    
+    opt->aoffset=0;
+    if (ann->type==DEBUG_ELEMENT) opt->aindx+=ann->content.element.ninstr;
+    
+    opt->a++;
 }
 
 /** Are we at the end of annotations */
@@ -362,8 +367,6 @@ void optimize_annotationmoveto(optimizer *opt, instructionindx ix) {
             }
             
             lastelement=opt->a;
-            opt->aoffset=0;
-            opt->aindx+=ann->content.element.ninstr;
         }
     }
 }
@@ -371,6 +374,7 @@ void optimize_annotationmoveto(optimizer *opt, instructionindx ix) {
 /** Copies across annotations for a specific code block */
 void optimize_annotationcopyforblock(optimizer *opt, codeblock *block) {
     optimize_annotationmoveto(opt, block->start);
+    instructionindx iindx = block->start;
     
     for (;
          !optimize_annotationatend(opt);
@@ -379,15 +383,19 @@ void optimize_annotationcopyforblock(optimizer *opt, codeblock *block) {
         
         if (ann->type==DEBUG_ELEMENT) {
             // Figure out how many instructions are left in the block and in the annotation
-            instructionindx remaininginblock = block->oend-opt->aindx+1;
+            instructionindx remaininginblock = block->end-iindx+1;
             instructionindx remaininginann = ann->content.element.ninstr-opt->aoffset;
             
+            instructionindx ninstr=(remaininginann<remaininginblock ? remaininginann : remaininginblock);
+            
             debugannotation new = { .type=DEBUG_ELEMENT,
-                .content.element.ninstr = (int) (remaininginann<remaininginblock ? remaininginann : remaininginblock),
+                .content.element.ninstr = (int) ninstr,
                 .content.element.line = ann->content.element.line,
                 .content.element.posn = ann->content.element.posn
             };
             varray_debugannotationwrite(&opt->aout, new);
+            
+            iindx+=ninstr;
             
             // Break if we are done with the block
             if (remaininginblock<=remaininginann) break;
@@ -395,18 +403,23 @@ void optimize_annotationcopyforblock(optimizer *opt, codeblock *block) {
             // Copy across non element records
             varray_debugannotationadd(&opt->aout, ann, 1);
         }
-        
-        optimize_annotationadvance(opt);
     }
 }
 
 /** Copies across and fixes annotations */
 void optimize_fixannotations(optimizer *opt, varray_codeblockindx *blocks) {
+#ifdef MORPHO_DEBUG_LOGOPTIMIZER
+    debug_showannotations(&opt->out->annotations);
+#endif
     optimize_restartannotation(opt);
     for (unsigned int i=0; i<blocks->count; i++) {
-        codeblock *block = optimize_getblock(opt, blocks[i].data[i]);
+//        printf("Fixing annotations for block %i\n", blocks->data[i]);
+        codeblock *block = optimize_getblock(opt, blocks->data[i]);
         optimize_annotationcopyforblock(opt, block);
     }
+#ifdef MORPHO_DEBUG_LOGOPTIMIZER
+    debug_showannotations(&opt->aout);
+#endif
 }
 
 /* **********************************************************************
@@ -1427,7 +1440,6 @@ void optimize_layoutblocks(optimizer *opt) {
     /** Patch instructions into program */
     varray_instructionclear(&opt->out->code);
     opt->out->code=out;
-    
     
     /** Patch new annotations into program */
     varray_debugannotationclear(&opt->out->annotations);

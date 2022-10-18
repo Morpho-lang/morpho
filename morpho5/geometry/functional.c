@@ -1455,6 +1455,96 @@ bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
     return true;
 }
 
+/** Calculate gradient */
+bool hydrogel_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
+    
+    hydrogelref *info = (hydrogelref *) ref;
+    value vphi0 = info->phi0;
+    double V=0.0, V0=0.0, phi0=0.0;
+
+    if (!functional_elementsize(v, info->refmesh, info->grade, id, nv, vid, &V0)) return false;
+    if (!functional_elementsize(v, mesh, info->grade, id, nv, vid, &V)) return false;
+
+    if (V0<1e-8) {
+        printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
+        //morpho_runtimeerror(v, HYDROGEL_ZEEROREFELEMENT, id, V, V0);
+    }
+    
+    if (fabs(V)<MORPHO_EPS) return false;
+
+    // Determine phi0 either as a number or by looking up something in a field
+    if (MORPHO_ISFIELD(info->phi0)) {
+        objectfield *p = MORPHO_GETFIELD(info->phi0);
+        if (!field_getelement(p, info->grade, id, 0, &vphi0)) {
+            morpho_runtimeerror(v, HYDROGEL_FLDGRD, (unsigned int) info->grade);
+            return false;
+        }
+    }
+    if (MORPHO_ISNUMBER(vphi0)) {
+        if (!morpho_valuetofloat(vphi0, &phi0)) return false;
+    }
+
+    double phi = phi0/(V/V0);
+    double pr = info->phiref;
+    if (phi<0) printf("Warning: phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
+    if (1-phi<0) printf("Warning: 1-phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
+
+    if (phi>1-MORPHO_EPS) phi = 1-MORPHO_EPS;
+    if (phi<MORPHO_EPS) phi = MORPHO_EPS;
+
+    double grad = (-info->a * phi +
+            info->b * ( phi + log(1-phi) ) +
+            info->c * phi*phi +
+            info->d * (pr/phi0) * ((phi/pr)/3.0 - (2.0/3) * pow((phi/pr), (1.0/3)) ) );
+
+    double *x[nv], s10[mesh->dim], s20[mesh->dim], s30[mesh->dim];
+    double s31[mesh->dim], s21[mesh->dim], cx[mesh->dim], uu;
+    for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
+
+    functional_vecsub(mesh->dim, x[1], x[0], s10);
+    functional_vecsub(mesh->dim, x[2], x[0], s20);
+    functional_vecsub(mesh->dim, x[3], x[0], s30);
+    functional_vecsub(mesh->dim, x[3], x[1], s31);
+    functional_vecsub(mesh->dim, x[2], x[1], s21);
+
+    functional_veccross(s20, s30, cx);
+    uu=functional_vecdot(mesh->dim, s10, cx);
+    uu=(uu>0 ? 1.0 : -1.0);
+    matrix_addtocolumn(frc, vid[1], grad* uu/6.0, cx);
+
+    functional_veccross(s31, s21, cx);
+    matrix_addtocolumn(frc, vid[0], grad* uu/6.0, cx);
+
+    functional_veccross(s30, s10, cx);
+    matrix_addtocolumn(frc, vid[2], grad* uu/6.0, cx);
+
+    functional_veccross(s10, s20, cx);
+    matrix_addtocolumn(frc, vid[3], grad* uu/6.0, cx);
+
+    return true;
+}
+
+/** Evaluate a gradient */
+value Hydrogel_gradient(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    value out=MORPHO_NIL;
+    hydrogelref ref;
+    if (functional_validateargs(v, nargs, args, &info)) {
+        if (hydrogel_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_VOLUME, info.sel, &ref)) { 
+            info.g = MESH_GRADE_VOLUME;
+            info.grad = hydrogel_gradient;
+            info.ref = &ref;
+            info.sym = SYMMETRY_ADD;
+            functional_mapgradient(v, &info, &out);
+        }
+    }
+    
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+
+    return out;
+}
+
+
 value Hydrogel_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
     int nfixed;
@@ -1489,8 +1579,6 @@ value Hydrogel_init(vm *v, int nargs, value *args) {
 FUNCTIONAL_METHOD(Hydrogel, integrand, (ref.grade), hydrogelref, hydrogel_prepareref, functional_mapintegrand, hydrogel_integrand, NULL, HYDROGEL_PRP, SYMMETRY_NONE)
 
 FUNCTIONAL_METHOD(Hydrogel, total, (ref.grade), hydrogelref, hydrogel_prepareref, functional_sumintegrand, hydrogel_integrand, NULL, HYDROGEL_PRP, SYMMETRY_NONE)
-
-FUNCTIONAL_METHOD(Hydrogel, gradient, (ref.grade), hydrogelref, hydrogel_prepareref, functional_mapnumericalgradient, hydrogel_integrand, NULL, HYDROGEL_PRP, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(Hydrogel)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Hydrogel_init, BUILTIN_FLAGSEMPTY),

@@ -74,10 +74,15 @@ bool optimize_isretained(optimizer *opt, codeblockindx handle, registerindx reg)
 /** Marks reg as retained in parents of the current code block */
 void optimize_retaininparents(optimizer *opt, registerindx reg) {
     codeblock *block=optimize_getblock(opt, optimize_getcurrentblock(opt));
-    
     for (unsigned int i=0; i<block->src.count; i++) {
         codeblockindx dest = block->src.data[i];
         if (dest!=CODEBLOCKDEST_EMPTY) optimize_retain(opt, dest, reg);
+    }
+    
+    codeblockindx dest=opt->reg[reg].block;
+    
+    if (dest!=CODEBLOCKDEST_EMPTY) {
+        optimize_retain(opt, dest, reg);
     }
 }
 
@@ -1180,7 +1185,7 @@ void optimize_restoreregisterstate(optimizer *opt, codeblockindx handle) {
     codeblock *block = optimize_getblock(opt, handle);
     
     // Check if all parents have been visited.
-    for (unsigned int i=0; i<block->src.count; i++) if (!optimize_getvisited(opt, block->src.data[i])) return;
+    //for (unsigned int i=0; i<block->src.count; i++) if (!optimize_getvisited(opt, block->src.data[i])) return;
     
     // Copy across the first block
     if (block->src.count>0) {
@@ -1293,6 +1298,7 @@ void optimize_checkunused(optimizer *opt) {
             // This needs to check for side effects to be more general 
             if (block->reg[j].contains==CONSTANT && // More general check needed!
                 block->reg[j].used==0 &&
+                block->reg[j].block==i &&
                 !optimize_isretained(opt, i, j)) {
                 optimize_replaceunused(opt, &block->reg[j]);
             }
@@ -1483,7 +1489,7 @@ bool optimize(program *prog) {
         optimize_desttoworklist(&opt, current, &worklist);
     }
     
-    optimize_checkunused(&opt);
+    //optimize_checkunused(&opt);
     
     varray_codeblockindxclear(&worklist);
     optimize_layoutblocks(&opt);

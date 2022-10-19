@@ -1141,11 +1141,11 @@ bool optimize_unused_global(optimizer *opt) {
 #define OP_LAST OP_END+1
 
 optimizationstrategy firstpass[] = {
-    { OP_ANY, optimize_register_replacement },
-    { OP_ANY, optimize_subexpression_elimination },
-    { OP_ANY, optimize_constant_folding },
-    { OP_LGL, optimize_duplicate_load },
-    { OP_B, optimize_branch_optimization },
+    //{ OP_ANY, optimize_register_replacement },    // untested
+    { OP_ANY, optimize_subexpression_elimination }, // ok
+    { OP_ANY, optimize_constant_folding },          // not ok
+    { OP_LGL, optimize_duplicate_load },            // ok
+    { OP_B, optimize_branch_optimization },         // ok
     { OP_LAST, NULL }
 };
 
@@ -1163,7 +1163,7 @@ void optimize_optimizeinstruction(optimizer *opt, optimizationstrategy *strategi
     if (opt->op==OP_NOP) return;
     for (optimizationstrategy *s = strategies; s->match!=OP_LAST; s++) {
         if (s->match==OP_ANY || s->match==opt->op) {
-           // if ((*s->fn) (opt)) return;
+            if ((*s->fn) (opt)) return;
         }
     }
 }

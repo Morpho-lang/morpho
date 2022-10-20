@@ -1,0 +1,49 @@
+
+import meshgen 
+import plot 
+import meshtools
+
+// Some random points 
+var pts = [ [ 0.118625, 0.966611 ],
+            [ 0.868882, 0.854463 ],
+            [ 0.237799, 0.284121 ],
+            [ 0.17586, 0.534928 ],
+            [ 0.864168, 0.820575 ],
+            [ 0.436567, 0.0629146 ],
+            [ 0.770178, 0.529049 ],
+            [ 0.554193, 0.844503 ],
+            [ 0.418181, 0.414727 ],
+            [ 0.652704, 0.682881 ] ]
+
+var x = []
+for (p in pts) x.append(Matrix(p))
+
+var mesh = DelaunayMesh(x)
+//mesh.addgrade(1)
+
+fn numericalgrad(func, m, eps=1e-8) {
+   var x=m.vertexmatrix()
+   var grad=x.clone()
+   var dim = x.dimensions()[0]
+
+   for (i in 0...m.count()) {
+      for (j in 0...dim) {
+         var temp = x[j,i]
+         x[j,i]=temp+eps
+         var fr=func.total(m)
+         x[j,i]=temp-eps
+         var fl=func.total(m)
+         x[j,i]=temp
+         grad[j,i]=(fr-fl)/(2*eps)
+      }
+   }
+
+   return grad
+} 
+
+
+var leq = EquiElement()
+var ngrad=numericalgrad(leq, mesh)
+var grad=leq.gradient(mesh)
+print (ngrad-grad).norm()<1e-4
+// expect: true

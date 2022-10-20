@@ -1,7 +1,27 @@
 // Test equielements
 
 import meshtools
-import shapeopt
+import optimize
+
+fn numericalgrad(func, m, eps=1e-8) {
+   var x=m.vertexmatrix()
+   var grad=x.clone()
+   var dim = x.dimensions()[0]
+
+   for (i in 0...m.count()) {
+      for (j in 0...dim) {
+         var temp = x[j,i]
+         x[j,i]=temp+eps
+         var fr=func.total(m)
+         x[j,i]=temp-eps
+         var fl=func.total(m)
+         x[j,i]=temp
+         grad[j,i]=(fr-fl)/(2*eps)
+      }
+   }
+
+   return grad
+} 
 
 var m = LineMesh(fn (t) [t, 0, 0], 0..1:0.5)
 
@@ -16,14 +36,13 @@ print le.integrand(m)
 print le.total(m)
 // expect: 0.32
 
-print le.gradient(m)
-// expect: [ 0 -3.2 0 ]
-// expect: [ 0 0 0 ]
-// expect: [ 0 0 0 ]
+print (le.gradient(m)-numericalgrad(le, m)).norm() < 1e-4
+// expect: true
 
-var opt=ShapeOptimizer(m)
+var problem = OptimizationProblem(m)
+problem.addenergy(le)
 
-opt.addenergy(le)
+var opt=ShapeOptimizer(problem, m)
 
 opt.quiet=true
 opt.relax(20)

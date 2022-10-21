@@ -1160,19 +1160,19 @@ bool optimize_unused_global(optimizer *opt) {
 
 optimizationstrategy firstpass[] = {
     //{ OP_ANY, optimize_register_replacement },    // untested
-    { OP_ANY, optimize_subexpression_elimination }, // ok
-    { OP_ANY, optimize_constant_folding },          // not ok
-    { OP_LGL, optimize_duplicate_load },            // ok
-    { OP_B, optimize_branch_optimization },         // ok
+    //{ OP_ANY, optimize_subexpression_elimination }, // ok
+    { OP_LGL, optimize_duplicate_load },              // ok
+    //{ OP_B, optimize_branch_optimization },         // ok
     { OP_LAST, NULL }
 };
 
 optimizationstrategy secondpass[] = {
-    { OP_ANY, optimize_register_replacement },
+    //{ OP_ANY, optimize_register_replacement },
     { OP_ANY, optimize_subexpression_elimination },
-    { OP_ANY, optimize_constant_folding },
+    { OP_ANY, optimize_constant_folding },          // Must be in second pass for correct data flow
     { OP_LGL, optimize_duplicate_load },
-    { OP_SGL, optimize_unused_global },
+    { OP_B, optimize_branch_optimization },         // ok
+    //{ OP_SGL, optimize_unused_global },
     { OP_LAST, NULL }
 };
 
@@ -1477,22 +1477,16 @@ void optimize_layoutblocks(optimizer *opt) {
  * Public interface
  * ********************************************************************** */
 
-/** Public interface to optimizer */
-bool optimize(program *prog) {
-    optimizer opt;
-    //optimizationstrategy *pass[2] = { firstpass, secondpass};
-    
-    optimize_init(&opt, prog);
-    
-    optimize_buildcontrolflowgraph(&opt);
-    
+/* Perform an optimization pass */
+bool optimization_pass(optimizer *opt, optimizationstrategy *strategylist) {
     // Now optimize blocks
     varray_codeblockindx worklist;
     varray_codeblockindxinit(&worklist);
     
-    // Ensure all root blocks are on the worklist
-    for (unsigned int i=0; i<opt.cfgraph.count; i++) {
-        if (opt.cfgraph.data[i].isroot) varray_codeblockindxwrite(&worklist, i); // Add to the worklist
+    for (unsigned int i=0; i<opt->cfgraph.count; i++) {
+        opt->cfgraph.data[i].visited=0; // Clear visit flag
+        // Ensure all root blocks are on the worklist
+        if (opt->cfgraph.data[i].isroot) varray_codeblockindxwrite(&worklist, i); // Add to the worklist
     }
     
     while (worklist.count>0) {
@@ -1500,16 +1494,34 @@ bool optimize(program *prog) {
         if (!varray_codeblockindxpop(&worklist, &current)) UNREACHABLE("Unexpectedly empty worklist in optimizer");
         
         // Make sure we didn't already finalize this block
-        if (optimize_getvisited(&opt, current)>=optimize_getinbound(&opt, current)) continue;
+        if (optimize_getvisited(opt, current)>=optimize_getinbound(opt, current)) continue;
         
-        optimize_optimizeblock(&opt, current, firstpass);
-        optimize_visit(&opt, current);
-        optimize_desttoworklist(&opt, current, &worklist);
+        optimize_optimizeblock(opt, current, strategylist);
+        optimize_visit(opt, current);
+        optimize_desttoworklist(opt, current, &worklist);
     }
     
     //optimize_checkunused(&opt);
     
     varray_codeblockindxclear(&worklist);
+    
+    return true;
+}
+
+
+/** Public interface to optimizer */
+bool optimize(program *prog) {
+    optimizer opt;
+    optimizationstrategy *pass[2] = { firstpass, secondpass};
+    
+    optimize_init(&opt, prog);
+    
+    optimize_buildcontrolflowgraph(&opt);
+    
+    for (int i=0; i<2; i++) {
+        optimization_pass(&opt, pass[i]);
+    }
+
     optimize_layoutblocks(&opt);
     
     optimize_clear(&opt);

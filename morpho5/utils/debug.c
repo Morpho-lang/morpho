@@ -404,7 +404,11 @@ void debug_showannotations(varray_debugannotation *list) {
         switch (ann->type) {
             case DEBUG_CLASS:
                 printf("Class: ");
-                morpho_printvalue(MORPHO_OBJECT(ann->content.klass.klass));
+                if (!ann->content.klass.klass) {
+                    printf("(none)");
+                } else {
+                    morpho_printvalue(MORPHO_OBJECT(ann->content.klass.klass));
+                }
                 break;
             case DEBUG_ELEMENT:
                 printf("Element: [%ti] instructions: %i line: %i posn: %i",

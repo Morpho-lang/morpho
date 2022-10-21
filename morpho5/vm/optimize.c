@@ -391,14 +391,23 @@ void optimize_annotationcopyforblock(optimizer *opt, codeblock *block) {
             instructionindx remaininginblock = block->end-iindx+1;
             instructionindx remaininginann = ann->content.element.ninstr-opt->aoffset;
             
+            int nnops=0; // Count NOPs which will be deleted by compactify
+            
             instructionindx ninstr=(remaininginann<remaininginblock ? remaininginann : remaininginblock);
             
-            debugannotation new = { .type=DEBUG_ELEMENT,
-                .content.element.ninstr = (int) ninstr,
-                .content.element.line = ann->content.element.line,
-                .content.element.posn = ann->content.element.posn
-            };
-            varray_debugannotationwrite(&opt->aout, new);
+            for (int i=0; i<ninstr; i++) {
+                instruction instruction=optimize_fetchinstructionat(opt, i+iindx);
+                if (DECODE_OP(instruction)==OP_NOP) nnops++;
+            }
+            
+            if (ninstr>nnops) {
+                debugannotation new = { .type=DEBUG_ELEMENT,
+                    .content.element.ninstr = (int) ninstr - nnops,
+                    .content.element.line = ann->content.element.line,
+                    .content.element.posn = ann->content.element.posn
+                };
+                varray_debugannotationwrite(&opt->aout, new);
+            }
             
             iindx+=ninstr;
             
@@ -908,13 +917,14 @@ void optimize_addfunction(optimizer *opt, value func) {
 
 /** Builds all blocks starting from the current function */
 void optimize_rootblock(optimizer *opt, varray_codeblockindx *worklist) {
+    codeblockindx first = optimize_newblock(opt, opt->func->entry); // Start at the entry point of the program
+    
 #ifdef MORPHO_DEBUG_LOGOPTIMIZER
-    printf("Building root block for function '");
+    printf("Building root block [%u] for function '", first);
     morpho_printvalue(MORPHO_OBJECT(opt->func));
     printf("'\n");
 #endif
     
-    codeblockindx first = optimize_newblock(opt, opt->func->entry); // Start at the entry point of the program
     optimize_setroot(opt, first);
     varray_codeblockindxwrite(worklist, first);
     optimize_incinbound(opt, first);
@@ -959,7 +969,11 @@ void optimize_buildcontrolflowgraph(optimizer *opt) {
 bool optimize_evaluateprogram(optimizer *opt, instruction *list, registerindx dest, value *out) {
     bool success=false;
     objectfunction *storeglobal=opt->temp->global; // Retain the old global function
-    opt->temp->global=opt->func; // Patch in function
+    
+    objectfunction temp=*opt->func; // Keep all the function's info, e.g. constant table
+    temp.entry=0;
+    
+    opt->temp->global=&temp; // Patch in our function
     
     varray_instruction *code = &opt->temp->code;
     code->count=0; // Clear the program
@@ -1110,10 +1124,14 @@ bool optimize_constant_folding(optimizer *opt) {
         };
         
         value out;
+        
         if (optimize_evaluateprogram(opt, ilist, 0, &out)) {
             indx nkonst;
             //if (MORPHO_ISOBJECT(out)) UNREACHABLE("Optimizer encountered object while constant folding");
             if (optimize_addconstant(opt, out, &nkonst)) {
+                if (nkonst==19) {
+                    
+                }
                 optimize_replaceinstruction(opt, ENCODE_LONG(OP_LCT, DECODE_A(instr), (unsigned int) nkonst));
                 return true;
             }
@@ -1415,6 +1433,9 @@ void optimize_layoutblocks(optimizer *opt) {
     
     instructionindx iout=0; // Track instruction count
     
+    /** Fix annotations */
+    optimize_fixannotations(opt, &sorted);
+    
     /** Copy and compactify blocks */
     for (unsigned int i=0; i<nblocks; i++) {
         codeblock *block = optimize_getblock(opt, sorted.data[i]);
@@ -1439,9 +1460,6 @@ void optimize_layoutblocks(optimizer *opt) {
         codeblock *block = optimize_getblock(opt, sorted.data[i]);
         optimize_fixbranch(opt, block, &out);
     }
-    
-    /** Fix annotations */
-    optimize_fixannotations(opt, &sorted);
     
     /** Patch instructions into program */
     varray_instructionclear(&opt->out->code);

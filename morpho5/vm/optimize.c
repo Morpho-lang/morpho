@@ -194,7 +194,10 @@ void optimize_replaceinstruction(optimizer *opt, instruction inst) {
 /** Trace back through duplicate registers */
 registerindx optimize_findoriginalregister(optimizer *opt, registerindx reg) {
     registerindx out=reg;
-    while (opt->reg[out].contains==REGISTER) out=(registerindx) opt->reg[out].id;
+    while (opt->reg[out].contains==REGISTER) {
+        out=(registerindx) opt->reg[out].id;
+        if (out==reg) return out;
+    }
     return out;
 }
 

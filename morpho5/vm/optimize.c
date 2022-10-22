@@ -86,6 +86,16 @@ void optimize_retaininparents(optimizer *opt, registerindx reg) {
     }
 }
 
+/** Indicates an instruction uses a global */
+void optimize_useglobal(optimizer *opt, indx ix) {
+    if (opt->globals) opt->globals[ix].used++;
+}
+
+/** Remove a reference to a global */
+void optimize_unuseglobal(optimizer *opt, indx ix) {
+    if (opt->globals) opt->globals[ix].used--;
+}
+
 /* -----------
  * Reginfo
  * ----------- */
@@ -177,9 +187,15 @@ instruction optimize_fetchinstructionat(optimizer *opt, indx ix) {
 }
 
 /** Replaces an instruction at a given indx */
-void optimize_replaceinstructionat(optimizer *opt, indx ix, instruction inst) {
+void optimize_replaceinstructionat(optimizer *opt, instructionindx ix, instruction inst) {
+    instruction old = opt->out->code.data[ix];
     if (ix==INSTRUCTIONINDX_EMPTY) UNREACHABLE("Trying to replace an undefined instruction.");
     if (opt->out->code.data[ix]!=inst) {
+        /* Update usage etc. here (should be expanded on) */
+        if (DECODE_OP(old)==OP_LGL) {
+            optimize_unuseglobal(opt, DECODE_Bx(old));
+        }
+        
         opt->nchanged+=1;
         opt->out->code.data[ix]=inst;
     }
@@ -187,12 +203,9 @@ void optimize_replaceinstructionat(optimizer *opt, indx ix, instruction inst) {
 
 /** Replaces the current instruction */
 void optimize_replaceinstruction(optimizer *opt, instruction inst) {
-    if (opt->out->code.data[opt->iindx]!=inst) {
-        opt->nchanged+=1;
-        opt->out->code.data[opt->iindx]=inst;
-        opt->current=inst;
-        opt->op=DECODE_OP(inst);
-    }
+    optimize_replaceinstructionat(opt, opt->iindx, inst);
+    opt->current=inst;
+    opt->op=DECODE_OP(inst);
 }
 
 /* ------------
@@ -257,11 +270,6 @@ bool optimize_atend(optimizer *opt) {
 void optimize_setfunction(optimizer *opt, objectfunction *func) {
     opt->maxreg=func->nregs;
     opt->func=func;
-}
-
-/** Indicates an instruction uses a global */
-static inline void optimize_loadglobal(optimizer *opt, indx ix) {
-    if (opt->globals) opt->globals[ix].used++;
 }
 
 /** Indicates no overwrite takes place */
@@ -532,7 +540,7 @@ void optimize_track(optimizer *opt) {
         {
             registerindx a = DECODE_A(instr);
             optimize_regoverwrite(opt, a);
-            optimize_loadglobal(opt, DECODE_Bx(instr));
+            optimize_useglobal(opt, DECODE_Bx(instr));
             optimize_regcontents(opt, a, GLOBAL, DECODE_Bx(instr));
         }
             break;
@@ -1016,8 +1024,33 @@ typedef struct {
     optimizationstrategyfn fn;
 } optimizationstrategy;
 
+/** Identifies duplicate constants instructions */
+bool optimize_duplicate_loadconst(optimizer *opt) {
+    registerindx out = DECODE_A(opt->current);
+    indx cindx = DECODE_Bx(opt->current);
+    
+    // Find if another register contains this constant
+    for (registerindx i=0; i<opt->maxreg; i++) {
+        if (opt->reg[i].contains==CONSTANT &&
+            opt->reg[i].id==cindx &&
+            opt->reg[i].block==opt->currentblock &&
+            opt->reg[i].iix<optimizer_currentindx(opt)) {
+            
+            if (i!=out) { // Replace with a move instruction and note the duplication
+                optimize_replaceinstruction(opt, ENCODE_DOUBLE(OP_MOV, out, i));
+            } else { // Register already contains this constant
+                optimize_replaceinstruction(opt, ENCODE_BYTE(OP_NOP));
+            }
+            
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 /** Identifies duplicate load instructions */
-bool optimize_duplicate_load(optimizer *opt) {
+bool optimize_duplicate_loadglobal(optimizer *opt) {
     registerindx out = DECODE_A(opt->current);
     indx global = DECODE_Bx(opt->current);
     
@@ -1025,13 +1058,15 @@ bool optimize_duplicate_load(optimizer *opt) {
     for (registerindx i=0; i<opt->maxreg; i++) {
         if (opt->reg[i].contains==GLOBAL &&
             opt->reg[i].id==global &&
-            opt->reg[i].block==opt->currentblock) { // Nonlocal eliminations require understanding the call graph to check for SGL. 
+            opt->reg[i].block==opt->currentblock &&
+            opt->reg[i].iix<optimizer_currentindx(opt)) { // Nonlocal eliminations require understanding the call graph to check for SGL. 
             
             if (i!=out) { // Replace with a move instruction and note the duplication
                 optimize_replaceinstruction(opt, ENCODE_DOUBLE(OP_MOV, out, i));
             } else { // Register already contains this global
                 optimize_replaceinstruction(opt, ENCODE_BYTE(OP_NOP));
             }
+            
             return true;
         }
     }
@@ -1172,7 +1207,8 @@ bool optimize_unused_global(optimizer *opt) {
 // The first pass establishes the data flow from block-block
 // Only put things that can act on incomplete data flow here
 optimizationstrategy firstpass[] = {
-    { OP_LGL, optimize_duplicate_load },
+    { OP_LCT, optimize_duplicate_loadconst },
+    { OP_LGL, optimize_duplicate_loadglobal },
     { OP_LAST, NULL }
 };
 
@@ -1181,7 +1217,7 @@ optimizationstrategy secondpass[] = {
     { OP_ANY, optimize_register_replacement },
     { OP_ANY, optimize_subexpression_elimination },
     { OP_ANY, optimize_constant_folding },          // Must be in second pass for correct data flow
-    { OP_LGL, optimize_duplicate_load },
+    { OP_LGL, optimize_duplicate_loadglobal },
     { OP_B, optimize_branch_optimization },
     { OP_SGL, optimize_unused_global },
     { OP_LAST, NULL }

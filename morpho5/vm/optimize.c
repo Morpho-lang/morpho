@@ -1074,6 +1074,11 @@ bool optimize_duplicate_loadglobal(optimizer *opt) {
     return false;
 }
 
+/** Reduces powers to multiplies */
+bool optimize_power_reduction(optimizer *opt) {
+    return false;
+}
+
 /** Replaces duplicate registers  */
 bool optimize_register_replacement(optimizer *opt) {
     if (opt->op<OP_ADD || opt->op>OP_LE) return false; // Quickly eliminate non-arithmetic instructions
@@ -1209,6 +1214,7 @@ bool optimize_unused_global(optimizer *opt) {
 optimizationstrategy firstpass[] = {
     { OP_LCT, optimize_duplicate_loadconst },
     { OP_LGL, optimize_duplicate_loadglobal },
+    { OP_POW, optimize_power_reduction },
     { OP_LAST, NULL }
 };
 
@@ -1217,8 +1223,9 @@ optimizationstrategy secondpass[] = {
     { OP_ANY, optimize_register_replacement },
     { OP_ANY, optimize_subexpression_elimination },
     { OP_ANY, optimize_constant_folding },          // Must be in second pass for correct data flow
+    { OP_LCT, optimize_duplicate_loadconst },
     { OP_LGL, optimize_duplicate_loadglobal },
-    { OP_B, optimize_branch_optimization },
+    { OP_B,   optimize_branch_optimization },
     { OP_SGL, optimize_unused_global },
     { OP_LAST, NULL }
 };

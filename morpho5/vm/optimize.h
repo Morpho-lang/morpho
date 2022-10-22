@@ -22,7 +22,8 @@ typedef struct {
     indx id;              // index of global, register, constant etc.
     int used;             // Count how many times this has been used in the block
     instructionindx iix;  // Instruction that last wrote to this register
-    codeblockindx block; // Which block was responsible for the write? 
+    codeblockindx block;  // Which block was responsible for the write?
+    value type;           // Type checking
 } reginfo;
 
 DECLARE_VARRAY(codeblockindx, codeblockindx)

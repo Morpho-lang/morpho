@@ -98,6 +98,7 @@ void optimize_regclear(optimizer *opt) {
         opt->reg[i].used=0;
         opt->reg[i].iix=INSTRUCTIONINDX_EMPTY;
         opt->reg[i].block=CODEBLOCKDEST_EMPTY;
+        opt->reg[i].type=MORPHO_NIL;
     }
 }
 
@@ -144,7 +145,14 @@ void optimize_showreginfo(unsigned int regmax, reginfo *reg) {
             case UPVALUE: printf("u%td", reg[i].id); break;
             case VALUE: printf("value"); break;
         }
-        if (reg[i].contains!=NOTHING) printf(" [%u] : %u", reg[i].block, reg[i].used);
+        if (reg[i].contains!=NOTHING) {
+            printf(" [%u] : %u", reg[i].block, reg[i].used);
+            if (!MORPHO_ISNIL(reg[i].type)) {
+                printf("(");
+                morpho_printvalue(reg[i].type);
+                printf(")");
+            }
+        }
         printf("\n");
     }
     printf("\n");
@@ -1161,21 +1169,21 @@ bool optimize_unused_global(optimizer *opt) {
 #define OP_ANY -1
 #define OP_LAST OP_END+1
 
+// The first pass establishes the data flow from block-block
+// Only put things that can act on incomplete data flow here
 optimizationstrategy firstpass[] = {
-    //{ OP_ANY, optimize_register_replacement },    // untested
-    //{ OP_ANY, optimize_subexpression_elimination }, // ok
-    { OP_LGL, optimize_duplicate_load },              // ok
-    //{ OP_B, optimize_branch_optimization },         // ok
+    { OP_LGL, optimize_duplicate_load },
     { OP_LAST, NULL }
 };
 
+// The second pass is for arbitrary transformations
 optimizationstrategy secondpass[] = {
-    //{ OP_ANY, optimize_register_replacement },
+    { OP_ANY, optimize_register_replacement },
     { OP_ANY, optimize_subexpression_elimination },
     { OP_ANY, optimize_constant_folding },          // Must be in second pass for correct data flow
     { OP_LGL, optimize_duplicate_load },
-    { OP_B, optimize_branch_optimization },         // ok
-    //{ OP_SGL, optimize_unused_global },
+    { OP_B, optimize_branch_optimization },
+    { OP_SGL, optimize_unused_global },
     { OP_LAST, NULL }
 };
 
@@ -1194,8 +1202,8 @@ void optimize_optimizeinstruction(optimizer *opt, optimizationstrategy *strategi
  * ********************************************************************** */
 
 void optimize_showregisterstateforblock(optimizer *opt, codeblockindx handle) {
-    codeblock *block = optimize_getblock(opt, handle);
 #ifdef MORPHO_DEBUG_LOGOPTIMIZER
+    codeblock *block = optimize_getblock(opt, handle);
     printf("Register state from block %u\n", handle);
     optimize_showreginfo(block->nreg, block->reg);
 #endif
@@ -1309,7 +1317,7 @@ void optimize_optimizeblock(optimizer *opt, codeblockindx block, optimizationstr
  * ********************************************************************** */
 
 /** Check all blocks for unused instructions */
-void optimize_checkunused(optimizer *opt) {
+/*void optimize_checkunused(optimizer *opt) {
     //return;
     for (codeblockindx i=0; i<opt->cfgraph.count; i++) {
         codeblock *block=optimize_getblock(opt, i);
@@ -1325,7 +1333,7 @@ void optimize_checkunused(optimizer *opt) {
             }
         }
     }
-}
+}*/
 
 /* **********************************************************************
  * Final processing and layout of final program
@@ -1520,11 +1528,9 @@ bool optimize(program *prog) {
     optimize_init(&opt, prog);
     
     optimize_buildcontrolflowgraph(&opt);
-    
     for (int i=0; i<2; i++) {
         optimization_pass(&opt, pass[i]);
     }
-
     optimize_layoutblocks(&opt);
     
     optimize_clear(&opt);

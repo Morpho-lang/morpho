@@ -1076,6 +1076,14 @@ bool optimize_duplicate_loadglobal(optimizer *opt) {
 
 /** Reduces powers to multiplies */
 bool optimize_power_reduction(optimizer *opt) {
+    indx kindx;
+    if (optimize_findconstant(opt, DECODE_C(opt->current), &kindx)) {
+        value konst = opt->func->konst.data[kindx];
+        if (MORPHO_ISINTEGER(konst) && MORPHO_GETINTEGERVALUE(konst)==2) {
+            optimize_replaceinstruction(opt, ENCODE(OP_MUL, DECODE_A(opt->current), DECODE_B(opt->current), DECODE_B(opt->current)));
+        }
+    }
+    
     return false;
 }
 

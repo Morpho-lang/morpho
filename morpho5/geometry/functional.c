@@ -709,6 +709,20 @@ bool functional_elementsize(vm *v, objectmesh *mesh, grade g, elementid id, int 
     return false;
 }
 
+bool length_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc);
+bool area_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc);
+bool volume_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc);
+
+/** Calculate element gradient */
+bool functional_elementgradient(vm *v, objectmesh *mesh, grade g, elementid id, int nv, int *vid, objectmatrix *frc) {
+    switch (g) {
+        case 1: return length_gradient(v, mesh, id, nv, vid, NULL, frc);
+        case 2: return area_gradient(v, mesh, id, nv, vid, NULL, frc);
+        case 3: return volume_gradient(v, mesh, id, nv, vid, NULL, frc);
+    }
+    return false;
+}
+
 /* **********************************************************************
  * Functionals
  * ********************************************************************** */
@@ -1497,30 +1511,11 @@ bool hydrogel_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
             info->c * phi*phi +
             info->d * (pr/phi0) * ((phi/pr)/3.0 - (2.0/3) * pow((phi/pr), (1.0/3)) ) );
 
-    double *x[nv], s10[mesh->dim], s20[mesh->dim], s30[mesh->dim];
-    double s31[mesh->dim], s21[mesh->dim], cx[mesh->dim], uu;
-    for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
+    // Compute element gradient
+    if (!functional_elementgradient(v, mesh, info->grade, id, nv, vid, frc)) return false;
 
-    functional_vecsub(mesh->dim, x[1], x[0], s10);
-    functional_vecsub(mesh->dim, x[2], x[0], s20);
-    functional_vecsub(mesh->dim, x[3], x[0], s30);
-    functional_vecsub(mesh->dim, x[3], x[1], s31);
-    functional_vecsub(mesh->dim, x[2], x[1], s21);
-
-    functional_veccross(s20, s30, cx);
-    uu=functional_vecdot(mesh->dim, s10, cx);
-    uu=(uu>0 ? 1.0 : -1.0);
-    matrix_addtocolumn(frc, vid[1], grad* uu/6.0, cx);
-
-    functional_veccross(s31, s21, cx);
-    matrix_addtocolumn(frc, vid[0], grad* uu/6.0, cx);
-
-    functional_veccross(s30, s10, cx);
-    matrix_addtocolumn(frc, vid[2], grad* uu/6.0, cx);
-
-    functional_veccross(s10, s20, cx);
-    matrix_addtocolumn(frc, vid[3], grad* uu/6.0, cx);
-
+    // Multiply by the integrand gradient
+    matrix_scale(frc, grad);
     return true;
 }
 
@@ -1530,8 +1525,8 @@ value Hydrogel_gradient(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     hydrogelref ref;
     if (functional_validateargs(v, nargs, args, &info)) {
-        if (hydrogel_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_VOLUME, info.sel, &ref)) { 
-            info.g = MESH_GRADE_VOLUME;
+        if (hydrogel_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, -1, info.sel, &ref)) {
+            info.g = ref.grade; 
             info.grad = hydrogel_gradient;
             info.ref = &ref;
             info.sym = SYMMETRY_ADD;

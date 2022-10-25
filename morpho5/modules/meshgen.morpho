@@ -356,8 +356,6 @@ class MeshGen {
     opt.steplimit = min(self.steplimit, self.ttol/normfrc)
     // Similar for stepsize
     opt.stepsize = min(self.stepsize, self.ttol/normfrc/5)
-    // opt.steplimit = self.steplimit
-    // opt.stepsize = self.stepsize
     opt.etol = self.etol // Use a fairly loose convergence criterion
     opt.quiet = self.quiet
     if (self.method.ismember("FixedStepSize")) {

@@ -186,7 +186,6 @@ class MeshGen {
 
     self.stepsize = self.h0/5    // Stepsize for optimizer 
     self.steplimit = self.h0/2   // Steplm for optimizer 
-    if (self.dim>2) { self.stepsize/=2; self.steplimit/=2 }
 
     self.mesh = nil          // Mesh
     self.problem = nil       // Optimization problem
@@ -346,8 +345,19 @@ class MeshGen {
   optimize() { // Perform optimization
     var opt = MGShapeOptimizer(self.problem, self.mesh, ttol=self.ttol*self.h0, localcheck=self.method.ismember("LocalCheck"))
     opt.fix(self.selectbboxpts())
-    opt.stepsize = self.stepsize 
-    opt.steplimit = self.steplimit 
+    // set steplimit such that the first step doesn't take vertices
+    // further than ttol
+
+    // Calculate the initial force
+    var frc = opt.totalforcewithconstraints()
+    var normfrc = frc.norm()
+    // set initial force to be the minimum of the provided steplimit and
+    // the stepsize required to move a distance of ttol
+    opt.steplimit = min(self.steplimit, self.ttol/normfrc)
+    // Similar for stepsize
+    opt.stepsize = min(self.stepsize, self.ttol/normfrc/5)
+    // opt.steplimit = self.steplimit
+    // opt.stepsize = self.stepsize
     opt.etol = self.etol // Use a fairly loose convergence criterion
     opt.quiet = self.quiet
     if (self.method.ismember("FixedStepSize")) {

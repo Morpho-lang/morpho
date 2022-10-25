@@ -137,10 +137,8 @@ class Delaunay {
         // Add the simplex's exterior to the exterior list and don't retain.
         // sets() generates sets of order dim from the element e.g. triangles use order 2
         for (e in smplx.i.sets(self.dim)) {
-            // Check if the key already exists. If so, assign a nil
-            // value to the key so that we can ignore it later. Else,
-            // add to dictionary. This removes the need for dedup
             key = "${e}"
+            // Check if the key already exists. If so, remove the key.
             if (self.ext.contains(key)) {
                 self.ext.remove(key)
             }

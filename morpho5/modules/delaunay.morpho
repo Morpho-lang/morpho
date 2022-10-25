@@ -85,33 +85,6 @@ class Delaunay {
     return pts
   }
 
-  dedup(ext) { // Removes exterior simplices that appear twice from a list
-    var newext = []
-    var ignore = []
-    var n = ext.count()
-
-    fn issame(l1, l2) {
-      var c = 0 // Count number of elements in common with el
-      for (q in l1) if (l2.ismember(q)) c+=1
-      return (c==l1.count()) // i.e. were all of them in common?
-    }
-
-    for (i in 0...n) {
-      if (ignore.ismember(i)) continue
-      var copy = true
-      for (j in i+1...n) { // Check this simplex against all the remaining ones
-        if (issame(ext[i], ext[j])) {
-          copy=false
-          ignore.append(j)
-        }
-      }
-
-      if (copy) newext.append(ext[i])
-    }
-
-    return newext
-  }
-
   triangulate() { // Create Delaunay triangulation
     var sweep=self.picksweep() // Pick sweep dimension
 
@@ -132,60 +105,72 @@ class Delaunay {
 
     for (x in ssmplx) pts.append(x) // And add to the point cloud
 
-    var open = [Circumsphere(pts, List(n..n+self.dim))], // List of open simplices
-        closed = [] // List of finalized simplices
+    self.open = [Circumsphere(pts, List(n..n+self.dim))]// List of open simplices
+    self.closed = [] // List of finalized simplices
 
     // Incrementally add each point to the mesh
+    self.ext = Dictionary() // Exterior (n-1) simplices
     for (ix in indices) {
-      var ext = [] // Exterior (n-1) simplices
-
+      self.ext.clear()
       // For each open simplex, check to see if the current point is
       // inside its circumsphere. If it is, remove the triangle and add
       // its edges to an edge list.
-      var newopen = []
-      for (smplx in open) {
-        var dx = pts[ix][sweep] - smplx.x[sweep]
+      self.newopen = []
+      var dx, key, e
+      for (smplx in self.open) {
+        dx = pts[ix][sweep] - smplx.x[sweep]
 
         // If this point is to the right of this simplex's circumcircle,
         // then this simplex shouldn't get checked again. Add it to the
         // closed list and don't retain.
         if (dx > 0.0 && dx > smplx.r) {
-          closed.append(smplx)
+          self.closed.append(smplx)
           continue
         }
 
         // If we're outside the circumsphere, skip this simplex.
         if ((pts[ix] - smplx.x).norm() - smplx.r > self.eps) {
-          newopen.append(smplx)
+          self.newopen.append(smplx)
           continue
         }
 
         // Add the simplex's exterior to the exterior list and don't retain.
         // sets() generates sets of order dim from the element e.g. triangles use order 2
-        for (e in smplx.i.sets(self.dim)) ext.append(e)
+        for (e in smplx.i.sets(self.dim)) {
+            // Check if the key already exists. If so, assign a nil
+            // value to the key so that we can ignore it later. Else,
+            // add to dictionary. This removes the need for dedup
+            key = "${e}"
+            if (self.ext.contains(key)) {
+                self.ext.remove(key)
+            }
+            else {
+                self.ext[key] = e
+            }
+        }
       }
-      open = newopen
-
-      ext=self.dedup(ext) // remove any duplicate exterior simplices
+      self.open = self.newopen
 
       // Add a new simplex for each exterior (n-1) simplex.
-      for (e in ext) {
-        e.append(ix) // Include the vertex being added
-        open.append(Circumsphere(pts, e))
+      for (e in self.ext.keys()) {
+        self.extel = self.ext[e]
+        self.extel.append(ix) // Include the vertex being added*
+        self.open.append(Circumsphere(pts, self.extel))
       }
     }
 
     // Copy any remaining open triangles to the closed list
-    for (smplx in open) closed.append(smplx)
+    for (smplx in self.open) self.closed.append(smplx)
 
     // Select all simplices that don't have a vertex from the supersimplex
-    open = []
-    for (smplx in closed) {
-      var record = true
+    self.open = []
+    var record
+    for (smplx in self.closed) {
+      record = true
       for (ix in smplx.i) if (ix>=n) record = false
-      if (record) open.append(smplx.i)
+      if (record) self.open.append(smplx.i)
     }
 
-    return open
+    return self.open
   }
 }

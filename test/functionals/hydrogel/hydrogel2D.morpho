@@ -1,0 +1,60 @@
+// Hydrogel mixing energy in 2D (modeled from Flory-Rehner theory)
+import meshtools 
+
+var mb = MeshBuilder()
+
+mb.addvertex(Matrix([-1/2,0,0]))
+mb.addvertex(Matrix([1/2,0,0]))
+mb.addvertex(Matrix([0,sqrt(3)/2,0]))
+mb.addedge([0,1])
+mb.addedge([1,2])
+mb.addedge([2,0])
+mb.addface([0,1,2])
+
+var m0 = mb.build()
+
+var vol0 = Area().total(m0)
+var phi0 = 0.5
+var phiref = 0.1
+var a = 0.1
+var b = 1.0
+var c = 0.25
+var d = 1.0
+var lh = Hydrogel(m0,
+                  a = a,
+                  b = b,
+                  c = c,
+                  d = d,
+                  phiref=phiref,
+                  phi0=phi0)
+
+var m = mb.build()
+// Expand m by a linear factor
+var f = 1.2
+var vert = m.vertexmatrix()
+for (i in 0...m.count()) m.setvertexposition(i, f*vert.column(i))
+
+var phi = phi0/(f^2) // New phi will be inversely proportional to the area
+var vol = vol0 * f^2
+
+
+var e1 = vol * (a*phi*log(phi) + b*(1-phi)*log((1-phi)) + c*phi*(1-phi))
+var e2 = vol0 * d * ( log(phiref/phi)/3 - (phiref/phi)^(2/3) + 1 )
+var expected = e1 + e2
+
+var tol = 1e-6
+print abs(lh.integrand(m)[0]-expected)<tol
+// expect: true
+
+print abs(lh.total(m)-expected)<tol
+// expect: true
+
+var grad = (-a * phi + b * ( phi + log(1-phi) ) + c * phi*phi +
+            d * (phiref/phi0) * ((phi/phiref)/3.0 - (2.0/3) * (phi/phiref)^(1.0/3) ) )
+
+var areagrad = Area().gradient(m)
+
+expected = grad * areagrad
+
+print (lh.gradient(m)-expected).norm()<tol
+// expect: true

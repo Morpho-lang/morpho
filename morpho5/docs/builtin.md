@@ -288,7 +288,7 @@ Finds the maximum value of its arguments. If any of the arguments are Objects an
 ## Bounds
 [tagbounds]: # (bounds)
 
-Returns both the results of `min` and `max` as a list, providing a set of bounds for its arguments, and enumerable objects within them. 
+Returns both the results of `min` and `max` as a list, Providing a set of bounds for its arguments and any enumerable objects within them.
 
     print bounds(1,2,3) // expect: [1,3]
     print bounds([3,2,1],[0,-1,2]) // expect: [-1,3]

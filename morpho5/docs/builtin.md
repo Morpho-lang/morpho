@@ -8,6 +8,32 @@ Morpho provides a number of built-in functions.
 
 [showsubtopics]: # (subtopics)
 
+## random
+[tagrandom]: # (random)
+[tagrand]: # (rand)
+
+The `random` function generates a random number from a uniform distribution on the interval [0,1].
+
+    print random() 
+
+See also `randomnormal` and `randomint`.
+
+## randomnormal
+[tagrandomnormal]: # (randomnormal)
+
+The `randomnormal` function generates a random number from a normal (gaussian) distribution with unit variance and zero offset.
+
+    print randomnormal() 
+
+See also `random` and `randomint`.
+
+## randomint
+[tagrandomnormal]: # (randomnormal)
+
+The `randomint` function generates a random integer with a specified maximum value.
+
+    print randomint(10) // Generates a random integer [0,10)
+
 ## arctan
 [tagarctan]: # (arctan)
 

@@ -119,6 +119,33 @@ DECLARE_VARRAY(upvalue, upvalue)
 DECLARE_VARRAY(varray_upvalue, varray_upvalue)
 
 /* ---------------------------
+ * Classes
+ * --------------------------- */
+
+extern objecttype objectclasstype;
+#define OBJECT_CLASS objectclasstype
+
+typedef struct sobjectclass {
+    object obj;
+    struct sobjectclass *superclass;
+    value name;
+    dictionary methods;
+} objectclass;
+
+/** Tests whether an object is a class */
+#define MORPHO_ISCLASS(val) object_istype(val, OBJECT_CLASS)
+
+/** Gets the object as a class */
+#define MORPHO_GETCLASS(val)   ((objectclass *) MORPHO_GETOBJECT(val))
+
+/** Gets the superclass */
+#define MORPHO_GETSUPERCLASS(val)   (MORPHO_GETCLASS(val)->superclass)
+
+objectclass *object_newclass(value name);
+
+objectclass *morpho_lookupclass(value obj);
+
+/* ---------------------------
  * Functions
  * --------------------------- */
 
@@ -143,6 +170,7 @@ typedef struct sobjectfunction {
     struct sobjectfunction *parent;
     int nupvalues;
     int nregs;
+    objectclass *klass; 
     varray_value konst;
     varray_varray_upvalue prototype;
     varray_optionalparam opt;
@@ -211,33 +239,6 @@ objectclosure *object_newclosure(objectfunction *sf, objectfunction *func, indx 
 
 /** Retrieve the function object from a closure */
 #define MORPHO_GETCLOSUREFUNCTION(val)  (((objectclosure *) MORPHO_GETOBJECT(val))->func)
-
-/* ---------------------------
- * Classes
- * --------------------------- */
-
-extern objecttype objectclasstype;
-#define OBJECT_CLASS objectclasstype
-
-typedef struct sobjectclass {
-    object obj;
-    struct sobjectclass *superclass;
-    value name;
-    dictionary methods;
-} objectclass;
-
-/** Tests whether an object is a class */
-#define MORPHO_ISCLASS(val) object_istype(val, OBJECT_CLASS)
-
-/** Gets the object as a class */
-#define MORPHO_GETCLASS(val)   ((objectclass *) MORPHO_GETOBJECT(val))
-
-/** Gets the superclass */
-#define MORPHO_GETSUPERCLASS(val)   (MORPHO_GETCLASS(val)->superclass)
-
-objectclass *object_newclass(value name);
-
-objectclass *morpho_lookupclass(value obj);
 
 /* ---------------------------
  * Instances

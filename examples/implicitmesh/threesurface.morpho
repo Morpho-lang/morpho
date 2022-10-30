@@ -23,6 +23,6 @@ g.background = White
 
 var pov = POVRaytracer(g)
 pov.light = [Matrix([-3,3,3]), Matrix([3,3,3]), Matrix([0,-3,3])]
-pov.viewpoint = Matrix([0,4,-20])
+pov.viewpoint = Matrix([0,-4,20])
 pov.viewangle = 45
 pov.render("threesurface.pov")

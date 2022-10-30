@@ -119,7 +119,7 @@ void morpho_writeusererror(error *err, errorid id, char *message) {
     err->id=id;
     size_t length = strlen(message);
     if (length>MORPHO_ERRORSTRINGSIZE-1) length = MORPHO_ERRORSTRINGSIZE-1;
-    strncpy(err->msg, message, length);
+    memcpy(err->msg, message, length);
     err->msg[length]='\0'; // Ensure null termination
 }
 

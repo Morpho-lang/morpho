@@ -143,11 +143,22 @@ for (i in 0...m.count(2)) {
   ff[2,i]=fe[0,i]
 }
 
-Show(plotfield(ff, colormap=GrayMap()))
+var sb = ScaleBar(nticks=3,          // Maximum number of ticks
+                  length=1,          // Length of scalebar
+                  posn=[0,-1,0],   // Position of scalebar  
+                  dirn=[1,0,0],      // Direction in which scalebar is to be drawn
+                  tickdirn=[0,-1,0], // Direction in which to draw ticks
+                  textdirn=[1,0,0],  // Direction to draw text
+                  textvertical=[0,1,0], // Vertical direction for text 
+                  textcolor=White,   // Text color
+                  fontsize=6 )      // Font size 
+
+
+Show(plotfield(ff, colormap=GrayMap(), scalebar=sb))
 
 gdisp.background = White
 var pov = POVRaytracer(gdisp)
-pov.viewpoint = Matrix([0,0,-10])
+pov.viewpoint = Matrix([0,0,10])
 pov.background = White
 pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]
 pov.render("out.pov")

@@ -19,8 +19,61 @@ morpho function.
 print sqr(2)
 \end{lstlisting}
 
+\hypertarget{variadic}{%
+\subsection{Variadic}\label{variadic}}
+
+As well as regular parameters, functions can also be defined with
+\emph{variadic} parameters:
+
+\begin{lstlisting}
+fn func(x, ...v) {
+    for (a in v) print a
+}
+\end{lstlisting}
+
+This function can then be called with 1 or more arguments:
+
+\begin{lstlisting}
+func(1)
+func(1, 2)
+func(1, 2, 3) // All valid! 
+\end{lstlisting}
+
+The variadic parameter \texttt{v} captures all the extra arguments
+supplied. Functions cannot be defined with more than one variadic
+parameter.
+
+You can mix regular, variadic and optional parameters. Variadic
+parameters come before optional parameters:
+
+\begin{lstlisting}
+fn func(x, ...v, optional=true) {
+    // 
+}
+\end{lstlisting}
+
+\hypertarget{optional}{%
+\subsection{Optional}\label{optional}}
+
+Functions can also be defined with \emph{optional} parameters:
+
+\begin{lstlisting}
+fn func(a=1) {
+    print a 
+}
+\end{lstlisting}
+
+Each optional parameter must be defined with a default value (here
+\texttt{1}). The function can then be called either with or without the
+optional parameter:
+
+\begin{lstlisting}
+func()    // a == 1 due to default value
+func(a=2) // a == 2 supplied by the user
+\end{lstlisting}
+
 \hypertarget{return}{%
-\section{Return}\label{return}}
+\subsection{Return}\label{return}}
 
 The \texttt{return} keyword is used to exit from a function, optionally
 passing a given value back to the caller. \texttt{return} can be used

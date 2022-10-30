@@ -1,0 +1,30 @@
+// Check volume integral 
+
+import constants
+import plot 
+
+// Build unit tetrahedron
+var mb = MeshBuilder() 
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([0,0,1])
+mb.addvolume([0,1,2,3])
+var m = mb.build()
+
+// Construct a field 
+var f = Field(m, fn (x,y,z) y)
+
+var neval = 0
+
+// Integrand 
+fn q(x, f) { 
+    neval+=1 
+    return (sin(2*Pi*x[0]*f)^2) 
+}
+
+var lv = VolumeIntegral(q, f)
+var est = lv.total(m) 
+
+print abs(est-0.02482305536688542)<1e-8
+// expect: true

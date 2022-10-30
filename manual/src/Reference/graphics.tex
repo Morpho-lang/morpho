@@ -41,7 +41,7 @@ Show(g1+g2)
 \end{lstlisting}
 
 \hypertarget{show}{%
-\section{Show}\label{show}}
+\subsection{Show}\label{show}}
 
 \texttt{Show} is used to launch an interactive graphical display using
 the external \texttt{morphoview} application. \texttt{Show} takes a
@@ -53,7 +53,7 @@ Show(g)
 \end{lstlisting}
 
 \hypertarget{trianglecomplex}{%
-\section{TriangleComplex}\label{trianglecomplex}}
+\subsection{TriangleComplex}\label{trianglecomplex}}
 
 A \texttt{TriangleComplex} is a graphical element that can be used as
 part of a graphical display. It consists of a list of vertices and a
@@ -98,7 +98,7 @@ You can also provide optional arguments:
 Add to a \texttt{Graphics} object using the \texttt{display} method.
 
 \hypertarget{arrow}{%
-\section{Arrow}\label{arrow}}
+\subsection{Arrow}\label{arrow}}
 
 The \texttt{Arrow} function creates an arrow. It takes two arguments:
 
@@ -146,7 +146,7 @@ Show(g)
 \end{lstlisting}
 
 \hypertarget{cylinder}{%
-\section{Cylinder}\label{cylinder}}
+\subsection{Cylinder}\label{cylinder}}
 
 The \texttt{Cylinder} function creates a cylinder. It takes two required
 arguments:
@@ -194,7 +194,7 @@ Show(g)
 \end{lstlisting}
 
 \hypertarget{tube}{%
-\section{Tube}\label{tube}}
+\subsection{Tube}\label{tube}}
 
 The \texttt{Tube} function connects a sequence of points to form a tube.
 
@@ -244,7 +244,7 @@ g.display(a)
 \end{lstlisting}
 
 \hypertarget{sphere}{%
-\section{Sphere}\label{sphere}}
+\subsection{Sphere}\label{sphere}}
 
 The \texttt{Sphere} function creates a sphere.
 
@@ -261,7 +261,7 @@ Sphere(center, radius)
   \texttt{radius} is the radius of the sphere
 \end{itemize}
 
-You can also provide an optional argument:
+You can also provide optional arguments:
 
 \begin{itemize}
 
@@ -285,6 +285,51 @@ Draw some randomly sized spheres:
 var g = Graphics()
 for (i in 0...10) {
   g.display(Sphere([random()-1/2, random()-1/2, random()-1/2], 0.1*(1+random()),       color=Gray(random())))
+}
+Show(g)
+\end{lstlisting}
+
+\hypertarget{text}{%
+\subsection{Text}\label{text}}
+
+A \texttt{Text} object is used to display text.
+
+\begin{lstlisting}
+Text(text, position)
+\end{lstlisting}
+
+\begin{itemize}
+
+\item
+  \texttt{text} is the text to display as a string.
+\item
+  \texttt{position} is the position at which to display the text.
+\end{itemize}
+
+You can also provide optional arguments:
+
+\begin{itemize}
+
+\item
+  \texttt{color} is the color of the text. This should be a
+  \texttt{Color} object.
+\item
+  \texttt{dirn} is the direction along which the text is drawn. This
+  should be a \texttt{List} or a \texttt{Matrix}.
+\item
+  \texttt{size} is the font size to use
+\item
+  \texttt{vertical} is the vertical direction for the text
+\item
+  \texttt{font} is the \texttt{Font} object to use.
+\end{itemize}
+
+Draw several pieces of text around the y axis:
+
+\begin{lstlisting}
+var g = Graphics()
+for (phi in 0..Pi:Pi/8) {
+  g.display(Text("Hello World", [0,0,0], size=72, dirn=[0,1,0], vertical=[cos(phi),0,sin(phi)]))
 }
 Show(g)
 \end{lstlisting}

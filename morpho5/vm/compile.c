@@ -1885,7 +1885,7 @@ static codeinfo compiler_while(compiler *c, syntaxtreenode *node, registerindx r
  *  +2 - value from the collection
  */
 static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx reqout) {
-    //codeinfo body;
+    codeinfo body;
     unsigned int ninstructions=0;
     syntaxtreenode *innode=NULL, *initnode=NULL, *indxnode=NULL, *collnode=NULL;
     instructionindx condindx=REGISTER_UNALLOCATED; /* Where is the condition located */
@@ -1956,9 +1956,13 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     compiler_beginloop(c);
     
     /* Compile the body */
-    codeinfo body = compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
-    ninstructions+=body.ninstructions;
-    compiler_releaseoperand(c, body);
+    if (node->right==SYNTAXTREE_UNCONNECTED) {
+        compiler_error(c, node, COMPILE_MSSNGLOOPBDY);
+    } else {
+        body=compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
+        ninstructions+=body.ninstructions;
+        compiler_releaseoperand(c, body);
+    }
     
     compiler_endloop(c);
     
@@ -2356,6 +2360,9 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     bindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
     
     objectfunction *func = object_newfunction(bindx+1, node->content, compiler_getcurrentfunction(c), 0);
+    
+    /* Record the class if a method */
+    if (ismethod) func->klass=compiler_getcurrentclass(c);
     
     /* Add the function as a constant */
     kindx=compiler_addconstant(c, node, MORPHO_OBJECT(func), false, false);
@@ -2770,6 +2777,11 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
     unsigned int ninstructions=0;
     registerindx kindx;
     codeinfo mout;
+    
+    if (compiler_getcurrentclass(c)) {
+        compiler_error(c, node, COMPILE_NSTDCLSS);
+        return CODEINFO_EMPTY;
+    }
     
     objectclass *klass=object_newclass(node->content);
     compiler_beginclass(c, klass);
@@ -3551,7 +3563,10 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_OPTPRMDFLT, ERROR_COMPILE, COMPILE_OPTPRMDFLT_MSG);
     morpho_defineerror(COMPILE_FORWARDREF, ERROR_COMPILE, COMPILE_FORWARDREF_MSG);
     morpho_defineerror(COMPILE_MLTVARPRMTR, ERROR_COMPILE, COMPILE_MLTVARPRMTR_MSG);
-    morpho_defineerror(COMPILE_VARPRMLST, ERROR_PARSE, COMPILE_VARPRMLST_MSG);
+    morpho_defineerror(COMPILE_MSSNGLOOPBDY, ERROR_COMPILE, COMPILE_MSSNGLOOPBDY_MSG);
+    morpho_defineerror(COMPILE_NSTDCLSS, ERROR_COMPILE, COMPILE_NSTDCLSS_MSG);
+    
+    morpho_defineerror(COMPILE_VARPRMLST, ERROR_COMPILE, COMPILE_VARPRMLST_MSG);
 }
 
 /** Finalizes the compiler */

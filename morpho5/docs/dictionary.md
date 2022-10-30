@@ -27,3 +27,25 @@ Create an empty dictionary using the `Dictionary` constructor function:
 Loop over keys in a dictionary:
 
     for (k in dict) print k
+
+The `keys` method returns a Morpho List of the keys.
+
+    var keys = dict.keys() // will return ["Massachusetts", "New York", "Vermont"]
+
+The `contains` method returns a Bool value for whether the Dictionary
+contains a given key.
+
+    print dict.contains("Vermont") // true
+    print dict.contains("New Hampshire") // false
+
+The `remove` method removes a given key from the Dictionary.
+
+    dict.remove("Vermont")
+    print dict // { New York : Albany, Massachusetts : Boston }
+
+The `clear` method removes all the (key, value) pairs fromt the
+dictionary, resulting in an empty dictionary. 
+
+    dict.clear()
+
+    print dict // {  }

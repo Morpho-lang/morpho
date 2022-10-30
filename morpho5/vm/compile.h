@@ -90,6 +90,12 @@
 #define COMPILE_VARPRMLST                 "VarPrLst"
 #define COMPILE_VARPRMLST_MSG             "Cannot have fixed parameters after a variadic parameter."
 
+#define COMPILE_MSSNGLOOPBDY              "MssngLoopBdy"
+#define COMPILE_MSSNGLOOPBDY_MSG          "Missing loop body."
+
+#define COMPILE_NSTDCLSS                  "NstdClss"
+#define COMPILE_NSTDCLSS_MSG              "Cannot define a class within another class."
+
 /* **********************************************************************
  * Compiler typedefs
  * ********************************************************************** */

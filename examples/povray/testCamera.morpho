@@ -1,0 +1,33 @@
+import meshtools
+import implicitmesh
+import plot
+import povray 
+
+var c = Matrix([0.1,0.2,0.3])
+var impl = ImplicitMeshBuilder(fn (x,y,z) (x-c[0])^2/(0.5^2)+(y-c[1])^2/(0.75^2)+(z-c[2])^2-1)
+
+var m = impl.build(stepsize=0.25)
+
+var g = plotmesh(m)
+
+var pov = POVRaytracer(g)
+
+pov.render("default.pov")
+
+var camera = Camera(look_at = c)
+
+pov = POVRaytracer(g, camera = camera)
+
+pov.render("centered.pov")
+
+pov.viewpoint = c + Matrix([-5,0,0])
+
+pov.render("centered_xview.pov")
+
+pov.viewpoint = c + Matrix([0,-5,0])
+
+pov.render("centered_yview.pov")
+
+pov.sky = Matrix([1,0,0])
+
+pov.render("centered_yview_fixed_rotated.pov")

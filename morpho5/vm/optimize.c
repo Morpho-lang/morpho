@@ -96,6 +96,39 @@ void optimize_unuseglobal(optimizer *opt, indx ix) {
     if (opt->globals) opt->globals[ix].used--;
 }
 
+/** Updates the contents of a global */
+void optimize_globalcontents(optimizer *opt, indx ix, returntype type, indx id) {
+    if (opt->globals) {
+        if (opt->globals[ix].contains==NOTHING) {
+            opt->globals[ix].contains = type;
+            opt->globals[ix].id = id;
+        } else if (opt->globals[ix].contains==type) {
+            if (opt->globals[ix].id!=id) opt->globals[ix].id = GLOBAL_UNALLOCATED;
+        } else {
+            opt->globals[ix].contains = VALUE;
+            opt->globals[ix].id = GLOBAL_UNALLOCATED;
+        }
+    }
+}
+    
+bool optimize_matchtype(value t1, value t2) {
+    return MORPHO_ISSAME(t1, t2);
+}
+
+/** Sets the type of a global */
+void optimize_setglobaltype(optimizer *opt, indx ix, value type) {
+    if (opt->globals) {
+        if (MORPHO_ISNIL(type) || MORPHO_ISNIL(opt->globals[ix].type)) opt->globals[ix].type = type;
+        else if (!optimize_matchtype(opt->globals[ix].type, type)) opt->globals[ix].type = OPTIMIZER_AMBIGUOUSTYPE;
+    }
+}
+
+/** Indicates an instruction uses a global */
+value optimize_getglobaltype(optimizer *opt, indx ix) {
+    if (opt->globals) return opt->globals[ix].type;
+    return MORPHO_NIL;
+}
+
 /* -----------
  * Reginfo
  * ----------- */
@@ -136,8 +169,37 @@ void optimize_reginvalidate(optimizer *opt, returntype type, indx id) {
     }
 }
 
+/** Sets the type of value in a register */
+void optimize_regsettype(optimizer *opt, registerindx reg, value value) {
+    opt->reg[reg].type=value;
+}
+
+/** Resolves the type of value produced by an arithmetic instruction */
+void optimize_resolvearithmetictype(optimizer *opt) {
+    registerindx a=DECODE_A(opt->current);
+    registerindx b=DECODE_B(opt->current);
+    registerindx c=DECODE_C(opt->current);
+    value ta = MORPHO_NIL, tb = opt->reg[b].type, tc = opt->reg[c].type;
+    
+    if (MORPHO_ISINTEGER(tb) && MORPHO_ISINTEGER(tc)) {
+        ta = MORPHO_INTEGER(1);
+    } else if ((MORPHO_ISINTEGER(tb) && MORPHO_ISFLOAT(tc)) ||
+               (MORPHO_ISFLOAT(tb) && MORPHO_ISINTEGER(tc)) ||
+               (MORPHO_ISFLOAT(tb) && MORPHO_ISFLOAT(tc))) {
+        ta = MORPHO_FLOAT(1.0);
+    }
+    
+    optimize_regsettype(opt, a, ta);
+}
+
+/** Gets the type of value in a register if known */
+value optimize_getregtype(optimizer *opt, registerindx reg) {
+    return opt->reg[reg].type;
+}
+
 /** Indicates an instruction overwrites a register */
-static inline void optimize_regoverwrite(optimizer *opt, registerindx reg) {
+void optimize_regoverwrite(optimizer *opt, registerindx reg) {
+    optimize_regsettype(opt, reg, MORPHO_NIL);
     optimize_reginvalidate(opt, REGISTER, reg); // Invalidate any aliases of this register
     opt->overwriteprev=opt->reg[reg];
     opt->overwrites=reg;
@@ -158,8 +220,9 @@ void optimize_showreginfo(unsigned int regmax, reginfo *reg) {
         if (reg[i].contains!=NOTHING) {
             printf(" [%u] : %u", reg[i].block, reg[i].used);
             if (!MORPHO_ISNIL(reg[i].type)) {
-                printf("(");
-                morpho_printvalue(reg[i].type);
+                printf(" (");
+                if (OPTIMIZER_ISAMBIGUOUS(reg[i].type)) printf("multiple");
+                else morpho_printvalue(reg[i].type);
                 printf(")");
             }
         }
@@ -312,6 +375,7 @@ void optimize_init(optimizer *opt, program *prog) {
     for (unsigned int i=0; i<opt->out->nglobals; i++) {
         opt->globals[i].contains=NOTHING;
         opt->globals[i].used=0;
+        opt->globals[i].type=MORPHO_NIL;
     }
     opt->maxreg=MORPHO_MAXARGS;
     optimize_setfunction(opt, prog->global);
@@ -477,16 +541,27 @@ void optimize_track(optimizer *opt) {
             optimize_reguse(opt, DECODE_B(instr));
             optimize_regoverwrite(opt, DECODE_A(instr));
             optimize_regcontents(opt, DECODE_A(instr), REGISTER, DECODE_B(instr));
+            optimize_regsettype(opt, DECODE_A(instr), optimize_getregtype(opt, DECODE_B(instr)));
             break;
         case OP_LCT:
             optimize_regoverwrite(opt, DECODE_A(instr));
             optimize_regcontents(opt, DECODE_A(instr), CONSTANT, DECODE_Bx(instr));
+            if (opt->func && DECODE_Bx(instr)<opt->func->konst.count) {
+                value k = opt->func->konst.data[DECODE_Bx(instr)];
+                optimize_regsettype(opt, DECODE_A(instr), k);
+            }
             break;
         case OP_ADD:
         case OP_SUB:
         case OP_MUL:
         case OP_DIV:
         case OP_POW:
+            optimize_reguse(opt, DECODE_B(instr));
+            optimize_reguse(opt, DECODE_C(instr));
+            optimize_regoverwrite(opt, DECODE_A(instr));
+            optimize_regcontents(opt, DECODE_A(instr), VALUE, REGISTER_UNALLOCATED);
+            optimize_resolvearithmetictype(opt);
+            break;
         case OP_EQ:
         case OP_NEQ:
         case OP_LT:
@@ -495,11 +570,13 @@ void optimize_track(optimizer *opt) {
             optimize_reguse(opt, DECODE_C(instr));
             optimize_regoverwrite(opt, DECODE_A(instr));
             optimize_regcontents(opt, DECODE_A(instr), VALUE, REGISTER_UNALLOCATED);
+            optimize_regsettype(opt, DECODE_A(instr), MORPHO_TRUE);
             break;
         case OP_NOT:
             optimize_reguse(opt, DECODE_B(instr));
             optimize_regoverwrite(opt, DECODE_A(instr));
             optimize_regcontents(opt, DECODE_A(instr), VALUE, REGISTER_UNALLOCATED);
+            optimize_regsettype(opt, DECODE_A(instr), MORPHO_TRUE);
             break;
         case OP_BIF:
         case OP_BIFF:
@@ -542,6 +619,7 @@ void optimize_track(optimizer *opt) {
             optimize_regoverwrite(opt, a);
             optimize_useglobal(opt, DECODE_Bx(instr));
             optimize_regcontents(opt, a, GLOBAL, DECODE_Bx(instr));
+            optimize_regsettype(opt, DECODE_A(instr), optimize_getglobaltype(opt, DECODE_Bx(instr)));
         }
             break;
         case OP_SGL:
@@ -1210,6 +1288,19 @@ bool optimize_unused_global(optimizer *opt) {
     return false;
 }
 
+/** Tracks information written to a global */
+bool optimize_storeglobal_trackcontents(optimizer *opt) {
+    registerindx rix = DECODE_A(opt->current);
+    value type = optimize_getregtype(opt, rix);
+    if (!MORPHO_ISNIL(type)) optimize_setglobaltype(opt, DECODE_Bx(opt->current), type);
+    
+    if (opt->reg[rix].contains!=NOTHING) {
+        optimize_globalcontents(opt, DECODE_Bx(opt->current), opt->reg[rix].contains, opt->reg[rix].id);
+    }
+    
+    return false;
+}
+
 /* --------------------------
  * Table of strategies
  * -------------------------- */
@@ -1222,6 +1313,7 @@ bool optimize_unused_global(optimizer *opt) {
 optimizationstrategy firstpass[] = {
     { OP_LCT, optimize_duplicate_loadconst },
     { OP_LGL, optimize_duplicate_loadglobal },
+    { OP_SGL, optimize_storeglobal_trackcontents },
     { OP_POW, optimize_power_reduction },
     { OP_LAST, NULL }
 };
@@ -1235,6 +1327,7 @@ optimizationstrategy secondpass[] = {
     { OP_LGL, optimize_duplicate_loadglobal },
     { OP_B,   optimize_branch_optimization },
     { OP_SGL, optimize_unused_global },
+    { OP_SGL, optimize_storeglobal_trackcontents },
     { OP_LAST, NULL }
 };
 

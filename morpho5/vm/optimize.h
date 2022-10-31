@@ -26,6 +26,9 @@ typedef struct {
     value type;           // Type checking
 } reginfo;
 
+#define OPTIMIZER_AMBIGUOUSTYPE (MORPHO_OBJECT(NULL))
+#define OPTIMIZER_ISAMBIGUOUS(a) ((MORPHO_ISOBJECT(a)) && (MORPHO_GETOBJECT(a)==NULL))
+
 DECLARE_VARRAY(codeblockindx, codeblockindx)
 
 /** Basic blocks for control flow graph */

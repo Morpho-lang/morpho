@@ -26,7 +26,16 @@ typedef struct {
     value type;           // Type checking
 } reginfo;
 
-#define OPTIMIZER_AMBIGUOUSTYPE (MORPHO_OBJECT(NULL))
+/** Keep track of global contents */
+typedef struct {
+    returntype contains;  // What does the register contain?
+    indx id;              // index of global, register, constant etc.
+    int used;             // Count how many times this has been used in the block
+    value type;           // Type checking
+    value contents;       // Values written to the register
+} globalinfo;
+
+#define OPTIMIZER_AMBIGUOUS (MORPHO_OBJECT(NULL))
 #define OPTIMIZER_ISAMBIGUOUS(a) ((MORPHO_ISOBJECT(a)) && (MORPHO_GETOBJECT(a)==NULL))
 
 DECLARE_VARRAY(codeblockindx, codeblockindx)
@@ -75,7 +84,7 @@ typedef struct {
     varray_codeblock cfgraph; // Control flow graph
     
     reginfo reg[MORPHO_MAXARGS];
-    reginfo *globals;
+    globalinfo *globals;
     
     vm *v;                   // We keep a VM to do things like constant folding etc.
     program *temp;           // Temporary program

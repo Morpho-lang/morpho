@@ -86,6 +86,21 @@ void optimize_retaininparents(optimizer *opt, registerindx reg) {
     }
 }
 
+/* -----------
+ * Globals
+ * ----------- */
+
+/** Initialize globals */
+void optimize_initglobals(optimizer *opt) {
+    if (!opt->globals) return;
+    for (unsigned int i=0; i<opt->out->nglobals; i++) {
+        opt->globals[i].contains=NOTHING;
+        opt->globals[i].used=0;
+        opt->globals[i].type=MORPHO_NIL;
+        opt->globals[i].contents=MORPHO_NIL;
+    }
+}
+
 /** Indicates an instruction uses a global */
 void optimize_useglobal(optimizer *opt, indx ix) {
     if (opt->globals) opt->globals[ix].used++;
@@ -116,12 +131,20 @@ bool optimize_matchtype(value t1, value t2) {
     return MORPHO_ISSAME(t1, t2);
 }
 
-/** Sets the type of a global */
+/** Updates a globals type  */
 void optimize_updateglobaltype(optimizer *opt, indx ix, value type) {
-    if (opt->globals) {
-        if (MORPHO_ISNIL(type) || MORPHO_ISNIL(opt->globals[ix].type)) opt->globals[ix].type = type;
-        else if (!optimize_matchtype(opt->globals[ix].type, type)) opt->globals[ix].type = OPTIMIZER_AMBIGUOUSTYPE;
-    }
+    if (!opt->globals) return;
+    
+    if (MORPHO_ISNIL(type) || MORPHO_ISNIL(opt->globals[ix].type)) opt->globals[ix].type = type;
+    else if (!optimize_matchtype(opt->globals[ix].type, type)) opt->globals[ix].type = OPTIMIZER_AMBIGUOUS;
+}
+
+/** Updates a globals value  */
+void optimize_updateglobalcontents(optimizer *opt, indx ix, value val) {
+    if (!opt->globals) return;
+    
+    if (MORPHO_ISNIL(opt->globals[ix].contents)) opt->globals[ix].contents = val;
+    else if (!MORPHO_ISEQUAL(val, opt->globals[ix].contents)) opt->globals[ix].contents = OPTIMIZER_AMBIGUOUS;
 }
 
 /** Gets the type of a global */
@@ -131,10 +154,11 @@ value optimize_getglobaltype(optimizer *opt, indx ix) {
 }
 
 /** Gets the contents of a global */
-bool optimize_getglobalcontents(optimizer *opt, indx ix, returntype *contents, indx *id) {
+bool optimize_getglobalcontents(optimizer *opt, indx ix, returntype *contains, indx *id, value *contents) {
     if (opt->globals) {
-        if (contents) *contents = opt->globals[ix].contains;
+        if (contains) *contains = opt->globals[ix].contains;
         if (id) *id = opt->globals[ix].id;
+        if (contents) *contents = opt->globals[ix].contents;
         return true;
     }
     return false;
@@ -382,12 +406,8 @@ void optimize_restartannotation(optimizer *opt);
 /** Initializes optimizer data structure */
 void optimize_init(optimizer *opt, program *prog) {
     opt->out=prog;
-    opt->globals=MORPHO_MALLOC(sizeof(reginfo)*(opt->out->nglobals+1));
-    for (unsigned int i=0; i<opt->out->nglobals; i++) {
-        opt->globals[i].contains=NOTHING;
-        opt->globals[i].used=0;
-        opt->globals[i].type=MORPHO_NIL;
-    }
+    opt->globals=MORPHO_MALLOC(sizeof(globalinfo)*(opt->out->nglobals+1));
+    optimize_initglobals(opt);
     opt->maxreg=MORPHO_MAXARGS;
     optimize_setfunction(opt, prog->global);
     optimize_restart(opt, 0);
@@ -1303,11 +1323,12 @@ bool optimize_unused_global(optimizer *opt) {
 bool optimize_constant_global(optimizer *opt) {
     indx global = DECODE_Bx(opt->current);
     returntype contents;
+    value val;
     
-    if (optimize_getglobalcontents(opt, global, &contents, NULL) &&
-        contents==CONSTANT) {
+    if (optimize_getglobalcontents(opt, global, &contents, NULL, &val) &&
+        contents==CONSTANT &&
+        !OPTIMIZER_ISAMBIGUOUS(val)) {
         indx kindx;
-        value val = optimize_getglobaltype(opt, global);
         
         if (optimize_addconstant(opt, val, &kindx)) {
             optimize_replaceinstruction(opt, ENCODE_LONG(OP_LCT, DECODE_A(opt->current), kindx));
@@ -1325,10 +1346,11 @@ bool optimize_storeglobal_trackcontents(optimizer *opt) {
     registerindx rix = DECODE_A(opt->current);
     value type = optimize_getregtype(opt, rix);
     
-    optimize_updateglobaltype(opt, DECODE_Bx(opt->current), (MORPHO_ISNIL(type) ? OPTIMIZER_AMBIGUOUSTYPE: type));
+    optimize_updateglobaltype(opt, DECODE_Bx(opt->current), (MORPHO_ISNIL(type) ? OPTIMIZER_AMBIGUOUS: type));
     
     if (opt->reg[rix].contains!=NOTHING) {
         optimize_globalcontents(opt, DECODE_Bx(opt->current), opt->reg[rix].contains, opt->reg[rix].id);
+        optimize_updateglobalcontents(opt, DECODE_Bx(opt->current), opt->reg[rix].type);
     }
     
     return false;

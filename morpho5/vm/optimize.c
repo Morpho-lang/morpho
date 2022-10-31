@@ -135,16 +135,22 @@ bool optimize_matchtype(value t1, value t2) {
 void optimize_updateglobaltype(optimizer *opt, indx ix, value type) {
     if (!opt->globals) return;
     
-    if (MORPHO_ISNIL(type) || MORPHO_ISNIL(opt->globals[ix].type)) opt->globals[ix].type = type;
-    else if (!optimize_matchtype(opt->globals[ix].type, type)) opt->globals[ix].type = OPTIMIZER_AMBIGUOUS;
+    if (MORPHO_ISNIL(type) || MORPHO_ISNIL(opt->globals[ix].type)) {
+        opt->globals[ix].type = type;
+    } else if (MORPHO_ISSAME(opt->globals[ix].contents, OPTIMIZER_AMBIGUOUS)) {
+        return;
+    } else if (!optimize_matchtype(opt->globals[ix].type, type)) opt->globals[ix].type = OPTIMIZER_AMBIGUOUS;
 }
 
 /** Updates a globals value  */
 void optimize_updateglobalcontents(optimizer *opt, indx ix, value val) {
     if (!opt->globals) return;
     
-    if (MORPHO_ISNIL(opt->globals[ix].contents)) opt->globals[ix].contents = val;
-    else if (!MORPHO_ISEQUAL(val, opt->globals[ix].contents)) opt->globals[ix].contents = OPTIMIZER_AMBIGUOUS;
+    if (MORPHO_ISNIL(opt->globals[ix].contents)) {
+        opt->globals[ix].contents = val;
+    } else if (MORPHO_ISSAME(opt->globals[ix].contents, OPTIMIZER_AMBIGUOUS)) {
+        return; 
+    } else if (!MORPHO_ISEQUAL(val, opt->globals[ix].contents)) opt->globals[ix].contents = OPTIMIZER_AMBIGUOUS;
 }
 
 /** Gets the type of a global */
@@ -678,6 +684,8 @@ void optimize_track(optimizer *opt) {
             registerindx b = DECODE_B(instr); // Get which registers are used from the upvalue prototype
             varray_upvalue *v = &opt->func->prototype.data[b];
             for (unsigned int i=0; i<v->count; i++) optimize_reguse(opt, (registerindx) v->data[i].reg);
+            optimize_regoverwrite(opt, DECODE_A(instr)); // Generates a closure in register
+            optimize_regcontents(opt, DECODE_A(instr), VALUE, REGISTER_UNALLOCATED);
         }
             break;
         case OP_LUP:

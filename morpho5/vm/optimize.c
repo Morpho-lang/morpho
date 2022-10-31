@@ -110,23 +110,34 @@ void optimize_globalcontents(optimizer *opt, indx ix, returntype type, indx id) 
         }
     }
 }
-    
+
+/** Decides whether two types match */
 bool optimize_matchtype(value t1, value t2) {
     return MORPHO_ISSAME(t1, t2);
 }
 
 /** Sets the type of a global */
-void optimize_setglobaltype(optimizer *opt, indx ix, value type) {
+void optimize_updateglobaltype(optimizer *opt, indx ix, value type) {
     if (opt->globals) {
         if (MORPHO_ISNIL(type) || MORPHO_ISNIL(opt->globals[ix].type)) opt->globals[ix].type = type;
         else if (!optimize_matchtype(opt->globals[ix].type, type)) opt->globals[ix].type = OPTIMIZER_AMBIGUOUSTYPE;
     }
 }
 
-/** Indicates an instruction uses a global */
+/** Gets the type of a global */
 value optimize_getglobaltype(optimizer *opt, indx ix) {
     if (opt->globals) return opt->globals[ix].type;
     return MORPHO_NIL;
+}
+
+/** Gets the contents of a global */
+bool optimize_getglobalcontents(optimizer *opt, indx ix, returntype *contents, indx *id) {
+    if (opt->globals) {
+        if (contents) *contents = opt->globals[ix].contains;
+        if (id) *id = opt->globals[ix].id;
+        return true;
+    }
+    return false;
 }
 
 /* -----------
@@ -221,7 +232,7 @@ void optimize_showreginfo(unsigned int regmax, reginfo *reg) {
             printf(" [%u] : %u", reg[i].block, reg[i].used);
             if (!MORPHO_ISNIL(reg[i].type)) {
                 printf(" (");
-                if (OPTIMIZER_ISAMBIGUOUS(reg[i].type)) printf("multiple");
+                if (OPTIMIZER_ISAMBIGUOUS(reg[i].type)) printf("ambiguous");
                 else morpho_printvalue(reg[i].type);
                 printf(")");
             }
@@ -1288,11 +1299,33 @@ bool optimize_unused_global(optimizer *opt) {
     return false;
 }
 
+/** Identifies globals that just contain a constant */
+bool optimize_constant_global(optimizer *opt) {
+    indx global = DECODE_Bx(opt->current);
+    returntype contents;
+    
+    if (optimize_getglobalcontents(opt, global, &contents, NULL) &&
+        contents==CONSTANT) {
+        indx kindx;
+        value val = optimize_getglobaltype(opt, global);
+        
+        if (optimize_addconstant(opt, val, &kindx)) {
+            optimize_replaceinstruction(opt, ENCODE_LONG(OP_LCT, DECODE_A(opt->current), kindx));
+            optimize_unuseglobal(opt, global);
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+
 /** Tracks information written to a global */
 bool optimize_storeglobal_trackcontents(optimizer *opt) {
     registerindx rix = DECODE_A(opt->current);
     value type = optimize_getregtype(opt, rix);
-    if (!MORPHO_ISNIL(type)) optimize_setglobaltype(opt, DECODE_Bx(opt->current), type);
+    
+    optimize_updateglobaltype(opt, DECODE_Bx(opt->current), (MORPHO_ISNIL(type) ? OPTIMIZER_AMBIGUOUSTYPE: type));
     
     if (opt->reg[rix].contains!=NOTHING) {
         optimize_globalcontents(opt, DECODE_Bx(opt->current), opt->reg[rix].contains, opt->reg[rix].id);
@@ -1325,9 +1358,9 @@ optimizationstrategy secondpass[] = {
     { OP_ANY, optimize_constant_folding },          // Must be in second pass for correct data flow
     { OP_LCT, optimize_duplicate_loadconst },
     { OP_LGL, optimize_duplicate_loadglobal },
+    { OP_LGL, optimize_constant_global },           // Second pass to ensure all sgls have been seen
     { OP_B,   optimize_branch_optimization },
     { OP_SGL, optimize_unused_global },
-    { OP_SGL, optimize_storeglobal_trackcontents },
     { OP_LAST, NULL }
 };
 

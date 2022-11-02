@@ -1655,11 +1655,47 @@ bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
     return success;
 }
 
-/** Calculate the linear elastic energy */
+
+bool equielement_contains(varray_elementid *nbrs, elementid id) {
+    for (unsigned int i=0; i<nbrs->count; i++) {
+        if (nbrs->data[i]==id) return true;
+    }
+    return false;
+}
+
+/** Finds the points that a point depends on  */
+bool equielement_dependencies(functional_mapinfo *info, elementid id, varray_elementid *out) {
+    objectmesh *mesh = info->mesh;
+    equielementref *eref = info->ref;
+    bool success=false;
+    varray_elementid nbrs;
+    varray_elementidinit(&nbrs);
+
+    if (mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, eref->grade, &nbrs)>0) {
+        for (unsigned int i=0; i<nbrs.count; i++) {
+            int nentries, *entries; // Get the vertices for this element
+            if (!sparseccs_getrowindices(&eref->eltov->ccs, nbrs.data[i], &nentries, &entries)) goto equieleement_dependencies_cleanup;
+            
+            for (unsigned int j=0; j<nentries; j++) {
+                if (entries[j]==id) continue;
+                if (equielement_contains(out, entries[j])) continue;
+                varray_elementidwrite(out, entries[j]);
+            }
+        }
+    }
+    success=true;
+
+equieleement_dependencies_cleanup:
+    varray_elementidclear(&nbrs);
+
+    return success;
+}
+
+/** Calculate the equielement energy */
 bool equielement_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *r, double *out) {
     equielementref *ref = (equielementref *) r;
     int nconn, *conn;
-
+    
     if (sparseccs_getrowindices(&ref->vtoel->ccs, id, &nconn, &conn)) {
         if (nconn==1) { *out = 0; return true; }
 
@@ -1721,7 +1757,7 @@ FUNCTIONAL_METHOD(EquiElement, integrand, MESH_GRADE_VERTEX, equielementref, equ
 
 FUNCTIONAL_METHOD(EquiElement, total, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_sumintegrand, equielement_integrand, NULL, EQUIELEMENT_ARGS, SYMMETRY_NONE)
 
-FUNCTIONAL_METHOD(EquiElement, gradient, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapnumericalgradient, equielement_integrand, NULL, EQUIELEMENT_ARGS, SYMMETRY_ADD)
+FUNCTIONAL_METHOD(EquiElement, gradient, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapnumericalgradient, equielement_integrand, equielement_dependencies, EQUIELEMENT_ARGS, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(EquiElement)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, EquiElement_init, BUILTIN_FLAGSEMPTY),

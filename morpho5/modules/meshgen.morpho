@@ -67,6 +67,30 @@ fn HalfSpaceDomain(x0, n) {
   return Domain(fn (x) -(x-xx0).inner(nn))
 }
 
+// A rectangular domain defined by a list of ranges. 
+// Works in arbitrary dimensions
+fn RectangularDomain(ranges) {
+  var dim = ranges.count() 
+  var x0 = []
+  var w = []
+  for (r in ranges) {
+    var bnds = bounds(r)
+    w.append((bnds[1]-bnds[0])/2)
+    x0.append((bnds[1]+bnds[0])/2)
+  }
+
+  fn rectsdf (x) {
+    var sdf
+    for (xoff, k in x0) {
+      var f = 1-abs((x[k]-xoff)/w[k])
+      if (!sdf || f<sdf) sdf = f 
+    }
+    return sdf 
+  }
+
+  return Domain(rectsdf)
+}
+
 /* ********************************************************
  * Functionals to control mesh quality
  * ******************************************************** */

@@ -75,6 +75,15 @@ Create a domain corresponding to the unit disk:
 
     var c = CircularDomain([0,0], 1)
 
+## RectangularDomain
+[tagrectangulardomain]: # (rectangulardomain)
+
+Conveniently constructs a `Domain` object corresponding to a rectangle. Requires a list of ranges as arguments. Works in arbitrary dimensions
+
+Create a square `Domain`:
+
+    var c = RectangularDomain([-1..1, -1..1])
+
 ## HalfSpaceDomain
 [halfspacedomain]: # (halfspacedomain)
 

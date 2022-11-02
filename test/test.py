@@ -16,7 +16,7 @@ import colored
 from colored import stylize
 
 # define what command to use to invoke the interpreter
-command = 'morpho5 -O'
+command = 'morpho5'
 
 # define the file extension to test
 ext = 'morpho'

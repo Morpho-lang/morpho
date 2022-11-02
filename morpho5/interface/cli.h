@@ -37,7 +37,7 @@
 #define CLI_DISASSEMBLESHOWSRC  (1<<2)
 #define CLI_DEBUG               (1<<3)
 #define CLI_OPTIMIZE            (1<<4)
-#definn CLI_PROFILE             (1<<5)
+#define CLI_PROFILE             (1<<5)
 
 typedef unsigned int clioptions;
 

@@ -709,6 +709,34 @@ bool functional_elementsize(vm *v, objectmesh *mesh, grade g, elementid id, int 
     return false;
 }
 
+bool length_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc, double scale);
+bool area_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc, double scale);
+bool volume_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc, double scale);
+
+bool length_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc);
+bool area_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc);
+bool volume_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc);
+
+/** Calculate a scaled element gradient */
+bool functional_elementgradient_scale(vm *v, objectmesh *mesh, grade g, elementid id, int nv, int *vid, objectmatrix *frc, double scale) {
+    switch (g) {
+        case 1: return length_gradient_scale(v, mesh, id, nv, vid, NULL, frc, scale);
+        case 2: return area_gradient_scale(v, mesh, id, nv, vid, NULL, frc, scale);
+        case 3: return volume_gradient_scale(v, mesh, id, nv, vid, NULL, frc, scale);
+    }
+    return false;
+}
+
+/** Calculate element gradient */
+bool functional_elementgradient(vm *v, objectmesh *mesh, grade g, elementid id, int nv, int *vid, objectmatrix *frc) {
+    switch (g) {
+        case 1: return length_gradient(v, mesh, id, nv, vid, NULL, frc);
+        case 2: return area_gradient(v, mesh, id, nv, vid, NULL, frc);
+        case 3: return volume_gradient(v, mesh, id, nv, vid, NULL, frc);
+    }
+    return false;
+}
+
 /* **********************************************************************
  * Functionals
  * ********************************************************************** */
@@ -796,8 +824,8 @@ bool length_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
     return true;
 }
 
-/** Calculate gradient */
-bool length_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
+/** Calculate scaled gradient */
+bool length_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc, double scale) {
     double *x[nv], s0[mesh->dim], norm;
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
 
@@ -805,10 +833,15 @@ bool length_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, vo
     norm=functional_vecnorm(mesh->dim, s0);
     if (norm<MORPHO_EPS) return false;
 
-    matrix_addtocolumn(frc, vid[0], -1.0/norm, s0);
-    matrix_addtocolumn(frc, vid[1], 1./norm, s0);
+    matrix_addtocolumn(frc, vid[0], -1.0/norm*scale, s0);
+    matrix_addtocolumn(frc, vid[1], 1./norm*scale, s0);
 
     return true;
+}
+
+/** Calculate gradient */
+bool length_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
+    return length_gradient_scale(v, mesh, id, nv, vid, NULL, frc, 1.0); 
 }
 
 FUNCTIONAL_INIT(Length, MESH_GRADE_LINE)
@@ -887,8 +920,8 @@ bool area_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, voi
     return true;
 }
 
-/** Calculate gradient */
-bool area_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
+/** Calculate scaled gradient */
+bool area_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc, double scale) {
     double *x[nv], s0[3], s1[3], s01[3], s010[3], s011[3];
     double norm;
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
@@ -903,14 +936,19 @@ bool area_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void
     functional_veccross(s01, s0, s010);
     functional_veccross(s01, s1, s011);
 
-    matrix_addtocolumn(frc, vid[0], 0.5/norm, s011);
-    matrix_addtocolumn(frc, vid[2], 0.5/norm, s010);
+    matrix_addtocolumn(frc, vid[0], 0.5/norm*scale, s011);
+    matrix_addtocolumn(frc, vid[2], 0.5/norm*scale, s010);
 
     functional_vecadd(mesh->dim, s010, s011, s0);
 
-    matrix_addtocolumn(frc, vid[1], -0.5/norm, s0);
+    matrix_addtocolumn(frc, vid[1], -0.5/norm*scale, s0);
 
     return true;
+}
+
+/** Calculate gradient */
+bool area_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
+    return area_gradient_scale(v, mesh, id, nv, vid, NULL, frc, 1.0); 
 }
 
 FUNCTIONAL_INIT(Area, MESH_GRADE_AREA)
@@ -991,8 +1029,8 @@ bool volume_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
     return true;
 }
 
-/** Calculate gradient */
-bool volume_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
+/** Calculate scaled gradient */
+bool volume_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc, double scale) {
     double *x[nv], s10[mesh->dim], s20[mesh->dim], s30[mesh->dim];
     double s31[mesh->dim], s21[mesh->dim], cx[mesh->dim], uu;
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
@@ -1007,18 +1045,23 @@ bool volume_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, vo
     uu=functional_vecdot(mesh->dim, s10, cx);
     uu=(uu>0 ? 1.0 : -1.0);
 
-    matrix_addtocolumn(frc, vid[1], uu/6.0, cx);
+    matrix_addtocolumn(frc, vid[1], uu/6.0*scale, cx);
 
     functional_veccross(s31, s21, cx);
-    matrix_addtocolumn(frc, vid[0], uu/6.0, cx);
+    matrix_addtocolumn(frc, vid[0], uu/6.0*scale, cx);
 
     functional_veccross(s30, s10, cx);
-    matrix_addtocolumn(frc, vid[2], uu/6.0, cx);
+    matrix_addtocolumn(frc, vid[2], uu/6.0*scale, cx);
 
     functional_veccross(s10, s20, cx);
-    matrix_addtocolumn(frc, vid[3], uu/6.0, cx);
+    matrix_addtocolumn(frc, vid[3], uu/6.0*scale, cx);
 
     return true;
+}
+
+/** Calculate gradient */
+bool volume_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
+    return volume_gradient_scale(v, mesh, id, nv, vid, NULL, frc, 1.0); 
 }
 
 FUNCTIONAL_INIT(Volume, MESH_GRADE_VOLUME)
@@ -1455,6 +1498,75 @@ bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
     return true;
 }
 
+/** Calculate gradient */
+bool hydrogel_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
+    
+    hydrogelref *info = (hydrogelref *) ref;
+    value vphi0 = info->phi0;
+    double V=0.0, V0=0.0, phi0=0.0;
+
+    if (!functional_elementsize(v, info->refmesh, info->grade, id, nv, vid, &V0)) return false;
+    if (!functional_elementsize(v, mesh, info->grade, id, nv, vid, &V)) return false;
+
+    if (V0<1e-8) {
+        printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
+        //morpho_runtimeerror(v, HYDROGEL_ZEEROREFELEMENT, id, V, V0);
+    }
+    
+    if (fabs(V)<MORPHO_EPS) return false;
+
+    // Determine phi0 either as a number or by looking up something in a field
+    if (MORPHO_ISFIELD(info->phi0)) {
+        objectfield *p = MORPHO_GETFIELD(info->phi0);
+        if (!field_getelement(p, info->grade, id, 0, &vphi0)) {
+            morpho_runtimeerror(v, HYDROGEL_FLDGRD, (unsigned int) info->grade);
+            return false;
+        }
+    }
+    if (MORPHO_ISNUMBER(vphi0)) {
+        if (!morpho_valuetofloat(vphi0, &phi0)) return false;
+    }
+
+    double phi = phi0/(V/V0);
+    double pr = info->phiref;
+    if (phi<0) printf("Warning: phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
+    if (1-phi<0) printf("Warning: 1-phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
+
+    if (phi>1-MORPHO_EPS) phi = 1-MORPHO_EPS;
+    if (phi<MORPHO_EPS) phi = MORPHO_EPS;
+
+    double grad = (-info->a * phi +
+            info->b * ( phi + log(1-phi) ) +
+            info->c * phi*phi +
+            info->d * (pr/phi0) * ((phi/pr)/3.0 - (2.0/3) * pow((phi/pr), (1.0/3)) ) );
+
+    // Compute grad * element gradient
+    if (!functional_elementgradient_scale(v, mesh, info->grade, id, nv, vid, frc, grad)) return false;
+
+    return true;
+}
+
+/** Evaluate a gradient */
+value Hydrogel_gradient(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    value out=MORPHO_NIL;
+    hydrogelref ref;
+    if (functional_validateargs(v, nargs, args, &info)) {
+        if (hydrogel_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, -1, info.sel, &ref)) {
+            info.g = ref.grade; 
+            info.grad = hydrogel_gradient;
+            info.ref = &ref;
+            info.sym = SYMMETRY_ADD;
+            functional_mapgradient(v, &info, &out);
+        }
+    }
+    
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+
+    return out;
+}
+
+
 value Hydrogel_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
     int nfixed;
@@ -1489,8 +1601,6 @@ value Hydrogel_init(vm *v, int nargs, value *args) {
 FUNCTIONAL_METHOD(Hydrogel, integrand, (ref.grade), hydrogelref, hydrogel_prepareref, functional_mapintegrand, hydrogel_integrand, NULL, HYDROGEL_PRP, SYMMETRY_NONE)
 
 FUNCTIONAL_METHOD(Hydrogel, total, (ref.grade), hydrogelref, hydrogel_prepareref, functional_sumintegrand, hydrogel_integrand, NULL, HYDROGEL_PRP, SYMMETRY_NONE)
-
-FUNCTIONAL_METHOD(Hydrogel, gradient, (ref.grade), hydrogelref, hydrogel_prepareref, functional_mapnumericalgradient, hydrogel_integrand, NULL, HYDROGEL_PRP, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(Hydrogel)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Hydrogel_init, BUILTIN_FLAGSEMPTY),
@@ -1545,11 +1655,47 @@ bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
     return success;
 }
 
-/** Calculate the linear elastic energy */
+
+bool equielement_contains(varray_elementid *nbrs, elementid id) {
+    for (unsigned int i=0; i<nbrs->count; i++) {
+        if (nbrs->data[i]==id) return true;
+    }
+    return false;
+}
+
+/** Finds the points that a point depends on  */
+bool equielement_dependencies(functional_mapinfo *info, elementid id, varray_elementid *out) {
+    objectmesh *mesh = info->mesh;
+    equielementref *eref = info->ref;
+    bool success=false;
+    varray_elementid nbrs;
+    varray_elementidinit(&nbrs);
+
+    if (mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, eref->grade, &nbrs)>0) {
+        for (unsigned int i=0; i<nbrs.count; i++) {
+            int nentries, *entries; // Get the vertices for this element
+            if (!sparseccs_getrowindices(&eref->eltov->ccs, nbrs.data[i], &nentries, &entries)) goto equieleement_dependencies_cleanup;
+            
+            for (unsigned int j=0; j<nentries; j++) {
+                if (entries[j]==id) continue;
+                if (equielement_contains(out, entries[j])) continue;
+                varray_elementidwrite(out, entries[j]);
+            }
+        }
+    }
+    success=true;
+
+equieleement_dependencies_cleanup:
+    varray_elementidclear(&nbrs);
+
+    return success;
+}
+
+/** Calculate the equielement energy */
 bool equielement_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *r, double *out) {
     equielementref *ref = (equielementref *) r;
     int nconn, *conn;
-
+    
     if (sparseccs_getrowindices(&ref->vtoel->ccs, id, &nconn, &conn)) {
         if (nconn==1) { *out = 0; return true; }
 
@@ -1611,7 +1757,7 @@ FUNCTIONAL_METHOD(EquiElement, integrand, MESH_GRADE_VERTEX, equielementref, equ
 
 FUNCTIONAL_METHOD(EquiElement, total, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_sumintegrand, equielement_integrand, NULL, EQUIELEMENT_ARGS, SYMMETRY_NONE)
 
-FUNCTIONAL_METHOD(EquiElement, gradient, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapnumericalgradient, equielement_integrand, NULL, EQUIELEMENT_ARGS, SYMMETRY_ADD)
+FUNCTIONAL_METHOD(EquiElement, gradient, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapnumericalgradient, equielement_integrand, equielement_dependencies, EQUIELEMENT_ARGS, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(EquiElement)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, EquiElement_init, BUILTIN_FLAGSEMPTY),

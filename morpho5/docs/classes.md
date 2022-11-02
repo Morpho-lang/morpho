@@ -30,6 +30,29 @@ Methods are called using the . operator:
 
 [showsubtopics]: # (subtopics)
 
+## Is
+[tagis]: # (is)
+
+The `is` keyword is used to specify a class's superclass:
+
+    class A is B {
+
+    }
+
+All methods defined by the superclass `B` are copied into the new class `A`, *before* any methods specified in the class definition. Hence, you can replace methods from the superclass simply by defining a method with the same name.
+
+## With
+[tagwith]: # (with)
+[tagmixin]: # (mixin)
+
+The `with` keyword is used together with `is` to insert additional methods into a class definition *without* making them the superclass. These are often called `mixins`. These methods are inserted after the superclass's methods. Multiple classes can be specified after `with`; they are added in the order specified.
+
+    class A is B with C, D {
+
+    }
+
+Here `B` is the superclass of `A`, but methods defined by `C` and `D` are also available to `A`. If `B`, `C` and `D` define methods with the same name, those in `C` take precedence over any in `B` and those in `D` take precedence over `B` and `C`. 
+
 ## Self
 [tagself]: # (self)
 
@@ -52,7 +75,7 @@ For example, consider the following pair of classes:
         init(type) { self.type=type }
     }
 
-    class Soup < Lunch {
+    class Soup is Lunch {
         init(type) {
             print "Delicious soup!"
             super.init(type)

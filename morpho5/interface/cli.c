@@ -125,6 +125,7 @@ linedit_color cli_tokencolors[] = {
     LINEDIT_MAGENTA,                               // TOKEN_IMPORT
     LINEDIT_MAGENTA,                               // TOKEN_AS
     LINEDIT_MAGENTA,                               // TOKEN_IS
+    LINEDIT_MAGENTA,                               // TOKEN_WITH
     LINEDIT_MAGENTA,                               // TOKEN_TRY
     LINEDIT_MAGENTA,                               // TOKEN_CATCH
     
@@ -321,7 +322,11 @@ void cli_run(const char *in, clioptions opt) {
                 }
             }
             if (opt & CLI_RUN) {
-                success=morpho_run(v, p);
+                if (opt & CLI_PROFILE) {
+                    success=morpho_profile(v, p);
+                } else {
+                    success=morpho_run(v, p);
+                }
                 if (!success) cli_reporterror(morpho_geterror(v), v);
             }
         } else {

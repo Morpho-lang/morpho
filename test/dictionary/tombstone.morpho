@@ -1,0 +1,31 @@
+// This test makes sure that dictionary insertion happens even if there
+// are only tombstones and no blank entries left.
+
+var d = Dictionary()
+
+var N = 16 // This is chosen because it's the minimum and defualt capacity of the Morpho dictionary.
+
+var n = floor(0.75*N) // This is the maximum number of entries that can be added to the dictionary  without triggering a resize to 2*N
+
+// Add n items
+var key 
+for (i in 1..n) {
+    key = "${i}"
+    d[key] = i
+}
+
+// Now, remove a single key, followed by addition of another key, for
+// all these keys. This triggers a situation at i=n-1 that all the blank
+// entries have been replaced with tombstones. The old
+// implementation of dictionary_find returns a NULL pointer for entry,
+// and _dictionary_insert in turn doesn't handle that scenario. Hence,
+// the last assignment of d[newkey] fails silently. The current
+// implementation should handle this scenario.
+var newkey
+for (i in 1..n) {
+    key = "${i}"
+    d.remove(key)
+    newkey = "new_${i}"
+    d[newkey] = i
+}
+print d[newkey] // expect: 12

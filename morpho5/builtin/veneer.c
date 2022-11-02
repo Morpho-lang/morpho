@@ -1446,7 +1446,7 @@ value dictionary_constructor(vm *v, int nargs, value *args) {
     return out;
 }
 
-/** Sets a dictionary entry */
+/** Gets a dictionary entry */
 value Dictionary_getindex(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
     value out=MORPHO_NIL;
@@ -1460,7 +1460,7 @@ value Dictionary_getindex(vm *v, int nargs, value *args) {
     return out;
 }
 
-/** Gets a dictionary entry */
+/** Sets a dictionary entry */
 value Dictionary_setindex(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
 
@@ -1475,7 +1475,7 @@ value Dictionary_setindex(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-/** Sets a dictionary entry */
+/** Returns a Bool value for whether the Dictionary contains a given key */
 value Dictionary_contains(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
     value out=MORPHO_FALSE;
@@ -1485,6 +1485,17 @@ value Dictionary_contains(vm *v, int nargs, value *args) {
     }
 
     return out;
+}
+
+/** Removes a dictionary entry with a given key */
+value Dictionary_remove(vm *v, int nargs, value *args) {
+    objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
+    
+    if (nargs==1) {
+        dictionary_remove(&slf->dict, MORPHO_GETARG(args, 0));
+    }
+    
+    return MORPHO_NIL;
 }
 
 /** Prints a dictionary */
@@ -1573,6 +1584,15 @@ value Dictionary_clone(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Clears a Dictionary */
+value Dictionary_clear(vm *v, int nargs, value *args) {
+    objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
+    
+    dictionary_clear(&slf->dict);
+    
+    return MORPHO_NIL;
+}
+
 #define DICTIONARY_SETOP(op) \
 value Dictionary_##op(vm *v, int nargs, value *args) { \
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args)); \
@@ -1600,6 +1620,8 @@ MORPHO_BEGINCLASS(Dictionary)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Dictionary_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Dictionary_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(DICTIONARY_CONTAINS_METHOD, Dictionary_contains, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(DICTIONARY_REMOVE_METHOD, Dictionary_remove, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(DICTIONARY_CLEAR_METHOD, Dictionary_clear, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Dictionary_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Dictionary_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Dictionary_enumerate, BUILTIN_FLAGSEMPTY),

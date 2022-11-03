@@ -1,43 +1,24 @@
 // Check Object.respondsto()
 import unittest
-class respondsto_test is UnitTest {
-    fixture() { 
-        self.a = Object()
-    }
-    respondsto_with_an_arg_checks_a_properity() {
-        self.assertEqual(self.a.respondsto("invoke"),true)
-        self.assertEqual(self.a.respondsto("squiggle"),false)
-    }
-    respondsto_with_no_args_returns_list_of_properites() {
-        var objectMethods = [ "setindex", "clone", "index", "count", "prnt", "invoke", "clss", "serialize", "respondsto", "has", "superclass", "enumerate" ]
-        self.assertSetEqualityOfList(self.a.respondsto(),objectMethods)
-        
-        // class aplus {
-        //     newmethod(){
-        //         return true
-        //     }
-        // }
-        self.assumeFail = "Class Defined in another classes method gains subsequent methods #146"
 
-        // var newA = aplus()
-        // self.assertSetEqualityOfList(newA.respondsto(),objectMethods.append("newmethod"))
-    }
-    respondsto_with_muliple_args_throws_error() {
-        var correctError = false
-        try {
-            self.a.respondsto("squiggle","foo")
-        } catch {
-            "RspndsToArg": correctError = true
-        }
-        self.assert(correctError)
-    }
-    respondsto_with_nonstring_throws_error() {
-        var correctError = false
-        try {
-            self.a.respondsto(2)
-        } catch {
-            "RspndsToArg": correctError = true
-        }
-        self.assert(correctError)
-    }
-} respondsto_test()
+// Check Object.respondsto()
+
+var a = Object()
+
+print a.respondsto("invoke")
+// expect: true
+
+print a.respondsto("squiggle")
+// expect: false
+
+print a.respondsto()
+// expect: [ "setindex", "clone", "index", "count", "prnt", "invoke", "clss", "serialize", "respondsto", "has", "superclass", "enumerate" ]
+
+var a = Object
+a.respondsto()
+// expect: [ "setindex", "clone", "index", "count", "prnt", "invoke", "clss", "serialize", "respondsto", "has", "superclass", "enumerate" ]
+
+print a.respondsto("squiggle","foo")
+// expect error 'RspndsToArg'
+
+

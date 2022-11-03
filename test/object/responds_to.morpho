@@ -8,5 +8,8 @@ print a.respondsto("invoke")
 print a.respondsto("squiggle")
 // expect: false
 
+print a.respondsto()
+// expect: [ "setindex", "clone", "index", "count", "prnt", "invoke", "clss", "serialize", "respondsto", "has", "superclass", "enumerate" ]
+
 print a.respondsto("squiggle","foo")
 // expect error 'RspndsToArg'

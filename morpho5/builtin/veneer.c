@@ -63,7 +63,22 @@ value Object_respondsto(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     objectclass *klass=MORPHO_GETINSTANCE(self)->klass;
 
-    if (nargs==1 &&
+if (nargs == 0) {
+        value out = MORPHO_NIL;
+        objectlist *new = object_newlist(0, NULL);
+        if (new) {
+            list_resize(new, klass->methods.count);
+            for (unsigned int i=0; i<klass->methods.capacity; i++) {
+                if (MORPHO_ISSTRING(klass->methods.contents[i].key)) {
+                    list_append(new, klass->methods.contents[i].key);
+                }
+            }
+            out = MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        return out;
+
+    } else if (nargs==1 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         return MORPHO_BOOL(dictionary_get(&klass->methods, MORPHO_GETARG(args, 0), NULL));
     } else MORPHO_RAISE(v, RESPONDSTO_ARG);
@@ -75,11 +90,27 @@ value Object_respondsto(vm *v, int nargs, value *args) {
 value Object_has(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
 
-    if (nargs==1 &&
+    if (nargs == 0) {
+        value out = MORPHO_NIL;
+        objectlist *new = object_newlist(0, NULL);
+        if (new) {
+            objectinstance *slf = MORPHO_GETINSTANCE(self);
+            list_resize(new, MORPHO_GETINSTANCE(self)->fields.count);
+            for (unsigned int i=0; i<slf->fields.capacity; i++) {
+                if (MORPHO_ISSTRING(slf->fields.contents[i].key)) {
+                    list_append(new, slf->fields.contents[i].key);
+                }
+            }
+            out = MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        return out;
+
+    } else if (nargs==1 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         return MORPHO_BOOL(dictionary_get(&MORPHO_GETINSTANCE(self)->fields, MORPHO_GETARG(args, 0), NULL));
         
-    } else MORPHO_RAISE(v, RESPONDSTO_ARG);
+    } else MORPHO_RAISE(v, HAS_ARG);
     
     return MORPHO_FALSE;
 }
@@ -1854,6 +1885,7 @@ void veneer_initialize(void) {
     morpho_defineerror(DICT_DCTSTARG, ERROR_HALT, DICT_DCTSTARG_MSG);
     morpho_defineerror(SETINDEX_ARGS, ERROR_HALT, SETINDEX_ARGS_MSG);
     morpho_defineerror(RESPONDSTO_ARG, ERROR_HALT, RESPONDSTO_ARG_MSG);
+    morpho_defineerror(HAS_ARG, ERROR_HALT, HAS_ARG_MSG);
     morpho_defineerror(ISMEMBER_ARG, ERROR_HALT, ISMEMBER_ARG_MSG);
     morpho_defineerror(CLASS_INVK, ERROR_HALT, CLASS_INVK_MSG);
     morpho_defineerror(LIST_ENTRYNTFND, ERROR_HALT, LIST_ENTRYNTFND_MSG);

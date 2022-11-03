@@ -65,7 +65,7 @@ value Object_respondsto(vm *v, int nargs, value *args) {
     if (nargs == 0) {
         value out = MORPHO_NIL;
         objectlist *new = object_newlist(0, NULL);
-        if (new && klass) {
+        if (new) {
             list_resize(new, klass->methods.count);
             for (unsigned int i=0; i<klass->methods.capacity; i++) {
                 if (MORPHO_ISSTRING(klass->methods.contents[i].key)) {

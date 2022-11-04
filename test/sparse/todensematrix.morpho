@@ -1,0 +1,19 @@
+// Convert a Sparse matrix to a Dense Matrix 
+
+var a = Sparse([[0,0,1],[1,1,1],[1,2,-2],[2,1,-3],[2,2,1],[3,3,1]])
+var b = Sparse([[0,1,1],[1,0,2],[2,3,3],[3,2,4]])
+
+var ad = Matrix(a) 
+var bd = Matrix(b) 
+
+print ad
+// expect: [ 1 0 0 0 ]
+// expect: [ 0 1 -2 0 ]
+// expect: [ 0 -3 1 0 ]
+// expect: [ 0 0 0 1 ]
+
+print bd
+// expect: [ 0 1 0 0 ]
+// expect: [ 2 0 0 0 ]
+// expect: [ 0 0 0 3 ]
+// expect: [ 0 0 4 0 ]

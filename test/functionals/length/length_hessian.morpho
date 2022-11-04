@@ -1,16 +1,15 @@
 
 import meshtools
+import "../numericalderivatives.morpho"
 
 var m = LineMesh(fn (t) [cos(t), sin(t)], -Pi...Pi:Pi/2, closed=true)
-/*var mb = MeshBuilder() 
-mb.addvertex([0,0])
-mb.addvertex([1,0])
-mb.addedge([0,1])
-var m = mb.build()*/
-
-print m.vertexmatrix() 
 
 var a = Length()
-print a.total(m)
+print abs(a.total(m) - 4*sqrt(2)) < 1e-10
+// expect: true 
+
+print (a.gradient(m)-numericalgradient(a, m)).norm()<1e-6
+// expect: true 
 
 print a.hessian(m)
+print numericalhessian(a, m)

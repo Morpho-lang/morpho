@@ -547,7 +547,7 @@ bool sparseccs_copytomatrix(sparseccs *src, objectmatrix *dest, int row0, int co
         if (!sparseccs_getrowindices(src, i, &nentries, &entries)) return false;
 
         for (int j=0; j<nentries; j++) {
-            if (!matrix_setelement(dest, i+row0, j+col0, src->values[k])) return false;
+            if (!matrix_setelement(dest, entries[j]+row0, i+col0, src->values[k])) return false;
             k++;
         }
     }

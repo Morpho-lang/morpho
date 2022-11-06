@@ -81,7 +81,7 @@ void debug_addnode(varray_debugannotation *list, syntaxtreenode *node) {
 }
 
 /** Clear debugging list, freeing attached info */
-void debug_clear(varray_debugannotation *list) {
+void debug_clearannotationlist(varray_debugannotation *list) {
     for (unsigned int j=0; j<list->count; j++) {
         switch (list->data[j].type) {
             case DEBUG_REGISTER: {
@@ -465,6 +465,25 @@ void morpho_stacktrace(vm *v) {
 }
 
 /* **********************************************************************
+ * Debugger structure
+ * ********************************************************************** */
+
+/** Clears a debugger structure */
+void debugger_clear(debugger *d) {
+    varray_charclear(&d->breakpoints);
+}
+
+/** Initializes a debugger structure with a specified program */
+void debugger_init(debugger *d, program *p) {
+    d->singlestep=false;
+    varray_charinit(&d->breakpoints);
+    
+    int ninstructions = p->code.count;
+    if (!varray_charresize(&d->breakpoints, ninstructions)) return;
+    memset(d->breakpoints.data, '\0', sizeof(char)*ninstructions);
+}
+
+/* **********************************************************************
  * Debugger
  * ********************************************************************** */
 
@@ -637,7 +656,7 @@ static bool debug_parsesymbol(char *in, varray_char *out) {
 }
 
 /** Morpho debugger */
-void debugger(vm *v) {
+void debugger_enter(vm *v) {
     lineditor edit;
     
     int line=0;
@@ -660,9 +679,10 @@ void debugger(vm *v) {
             switch (input[0]) {
                 case '?': // Help
                     printf("Available commands:\n");
-                    printf("  [a]ddress, [c]ontinue, [d]isassemble, [g]lobal\n");
-                    printf("  [l]ist, [q]uit, [r]egisters, [s]tack, [t]race\n");
-                    printf("  [.]show symbol, [=]set, [,]garbage collect\n");
+                    printf("  [a]ddress, [b]reakpoint, [c]ontinue, [d]isassemble\n");
+                    printf("  [g]lobal, [l]ist, [q]uit, [r]egisters, [s]tack\n");
+                    printf("  [t]race, [/]single step, [.]show symbol, [=]set\n");
+                    printf("  [,]garbage collect [?]help\n");
                     break;
                 case 'A': case 'a': // Address
                 {
@@ -675,6 +695,9 @@ void debugger(vm *v) {
                         }
                     } else printf("Invalid register.\n");
                 }
+                    break;
+                case 'B': case 'b': // Breakpoint
+                    printf("Not implemented.\n");
                     break;
                 case 'C': case 'c': // Continue
                     stop=true;
@@ -724,8 +747,18 @@ void debugger(vm *v) {
                     varray_charclear(&symbol);
                 }
                     break;
-                case '=':
+                case '/':
                     printf("Not implemented...\n");
+                    break;
+                case '=': {
+                    varray_char symbol;
+                    varray_charinit(&symbol);
+                    if (debug_parsesymbol(input+1, &symbol)) {
+                    }
+                    
+                    printf("Not implemented...\n");
+                    varray_charclear(&symbol);
+                }
                     break;
                 case ',':
                     vm_collectgarbage(v);
@@ -737,4 +770,25 @@ void debugger(vm *v) {
     }
     printf("---Resuming----------\n");
     linedit_clear(&edit);
+}
+
+/* **********************************************************************
+ * Run a program with debugging active
+ * ********************************************************************** */
+
+/** Run a program with debugging
+ * @param[in] v - the virtual machine to use
+ * @param[in] p - program to run
+ * @returns true on success, false otherwise */
+bool morpho_debug(vm *v, program *p) {
+    debugger debug;
+
+    debugger_init(&debug, p);
+    v->debug=&debug;
+    
+    bool success=morpho_run(v, p);
+    
+    debugger_clear(&debug);
+    
+    return success;
 }

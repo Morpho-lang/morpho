@@ -20,7 +20,7 @@ void debug_setreg(varray_debugannotation *list, indx reg, value symbol);
 void debug_pusherr(varray_debugannotation *list, objectdictionary *dict);
 void debug_poperr(varray_debugannotation *list);
 void debug_addnode(varray_debugannotation *list, syntaxtreenode *node);
-void debug_clear(varray_debugannotation *list);
+void debug_clearannotationlist(varray_debugannotation *list);
 
 void debug_disassembleinstruction(instruction instruction, instructionindx indx, value *konst, value *reg);
 void debug_disassemble(program *code, int *matchline);
@@ -31,6 +31,9 @@ void debug_showannotations(varray_debugannotation *list);
 
 void debug_showstack(vm *v);
 
-void debugger(vm *v);
+void debugger_init(debugger *d, program *p);;
+void debugger_clear(debugger *d);
+
+void debugger_enter(vm *v);
 
 #endif /* debug_h */

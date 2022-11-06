@@ -52,7 +52,7 @@ static void vm_programinit(program *p) {
 static void vm_programclear(program *p) {
     if (p->global) object_free((object *) p->global);
     varray_instructionclear(&p->code);
-    debug_clear(&p->annotations);
+    debug_clearannotationlist(&p->annotations);
     p->global=NULL;
     /* Free any objects bound to the program */
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
@@ -179,7 +179,7 @@ static void vm_init(vm *v) {
     v->ehp=NULL;
     v->bound=0;
     v->nextgc=MORPHO_GCINITIAL;
-    v->debug=false;
+    v->debug=NULL;
     vm_graylistinit(&v->gray);
     varray_valueinit(&v->stack);
     varray_valueinit(&v->globals);
@@ -1608,12 +1608,13 @@ callfunction: // Jump here if an instruction becomes a call
             DISPATCH();
 
         CASE_CODE(BREAK):
-            if (v->debug) {
+            /*if (v->debug) {
                 v->fp->pc=pc;
                 v->fp->roffset=reg-v->stack.data;
-                debugger(v);
+                debug_debugger(v);
                 ERRORCHK();
             }
+            */
             DISPATCH();
 
         CASE_CODE(END):
@@ -1970,13 +1971,8 @@ bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value
     return morpho_call(v, MORPHO_OBJECT(&inv), nargs, args, ret);
 }
 
-/** Sets whether debugging is active or not for a virtual machine */
-void morpho_setdebug(vm *v, bool active) {
-    v->debug=active;
-}
-
 /* **********************************************************************
-* Initialization
+* Profiler
 * ********************************************************************** */
 
 #ifdef MORPHO_PROFILER

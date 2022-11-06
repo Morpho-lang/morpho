@@ -122,9 +122,6 @@ void morpho_releaseobjects(vm *v, int handle);
 void morpho_runtimeerror(vm *v, errorid id, ...);
 void morpho_usererror(vm *v, errorid id, char *message);
 
-/* Activate/deactivate the debugger */
-void morpho_setdebug(vm *v, bool active);
-
 /* Compilation */
 compiler *morpho_newcompiler(program *out);
 void morpho_freecompiler(compiler *c);
@@ -135,6 +132,7 @@ void morpho_resetentry(program *p);
 /* Interpreting */
 bool morpho_run(vm *v, program *p);
 bool morpho_profile(vm *v, program *p);
+bool morpho_debug(vm *v, program *p);
 bool morpho_lookupmethod(value obj, value label, value *method);
 bool morpho_countparameters(value f, int *nparams);
 bool morpho_call(vm *v, value fn, int nargs, value *args, value *ret);

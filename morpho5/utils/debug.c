@@ -68,6 +68,7 @@ void debug_setreg(varray_debugannotation *list, indx reg, value symbol) {
 
 /** Uses information from a syntaxtreenode to associate a sequence of instructions with source */
 void debug_addnode(varray_debugannotation *list, syntaxtreenode *node) {
+    if (!node) return; 
     debugannotation *last = debug_lastannotation(list);
     if (last && last->type==DEBUG_ELEMENT &&
         node->line==last->content.element.line &&
@@ -391,6 +392,51 @@ bool debug_symbolsforfunction(program *code, objectfunction *func, instructionin
     }
     
     return true;
+}
+
+/** Prints all the annotations for a program */
+void debug_showannotations(varray_debugannotation *list) {
+    indx ix = 0;
+    printf("Showing %u annotations.\n", list->count);
+    for (unsigned int j=0; j<list->count; j++) {
+        printf("%u: ", j);
+        debugannotation *ann = &list->data[j];
+        switch (ann->type) {
+            case DEBUG_CLASS:
+                printf("Class: ");
+                if (!ann->content.klass.klass) {
+                    printf("(none)");
+                } else {
+                    morpho_printvalue(MORPHO_OBJECT(ann->content.klass.klass));
+                }
+                break;
+            case DEBUG_ELEMENT:
+                printf("Element: [%ti] instructions: %i line: %i posn: %i",
+                       ix, ann->content.element.ninstr, ann->content.element.line, ann->content.element.posn);
+                ix+=ann->content.element.ninstr;
+                break;
+            case DEBUG_FUNCTION:
+                printf("Function: ");
+                morpho_printvalue(MORPHO_OBJECT(ann->content.function.function));
+                break;
+            case DEBUG_MODULE:
+                printf("Module: ");
+                morpho_printvalue(ann->content.module.module);
+                break;
+            case DEBUG_PUSHERR:
+                printf("Pusherr: ");
+                morpho_printvalue(MORPHO_OBJECT(ann->content.errorhandler.handler));
+                break;
+            case DEBUG_POPERR:
+                printf("Poperr: ");
+                break;
+            case DEBUG_REGISTER:
+                printf("Register: %ti ", ann->content.reg.reg);
+                morpho_printvalue(ann->content.reg.symbol);
+                break;
+        }
+        printf("\n");
+    }
 }
 
 /* **********************************************************************

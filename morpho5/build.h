@@ -88,7 +88,7 @@
 * ********************************************************************** */
 
 /** @brief Build Morpho VM with computed gotos */
-#define MORPHO_COMPUTED_GOTO
+//#define MORPHO_COMPUTED_GOTO
 
 /** @brief Build Morpho VM with small but hacky value type [NaN boxing] */
 #ifndef _NO_NAN_BOXING

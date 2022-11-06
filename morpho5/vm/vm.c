@@ -839,6 +839,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
     #define OPOPCODECNT(p, bc)
 #endif
 
+#define ENTERDEBUGGER() { v->fp->pc=pc; v->fp->roffset=reg-v->stack.data; debugger_enter(v); }
+    
 /* Define the interpreter loop. Computed gotos or regular switch statements can be used here. */
 #ifdef MORPHO_COMPUTED_GOTO
     /* The dispatch table, containing the entry points for each opcode */
@@ -847,7 +849,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
       #include "opcodes.h"
       #undef OPCODE
     };
-
+    
     /* The interpret loop begins by dispatching an instruction */
     #define INTERPRET_LOOP    DISPATCH();
 
@@ -873,7 +875,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
         OPOPCODECNT(pp, bc)                                                  \
         op=DECODE_OP(bc);                                                    \
         OPCODECNT(op)                                                        \
-        MORPHO_DISASSEMBLE_INSRUCTION(bc,pc-v->instructions,v->konst, reg)         \
+        MORPHO_DISASSEMBLE_INSRUCTION(bc,pc-v->instructions,v->konst, reg)   \
+        if (DEBUG_ISSINGLESTEP(v->debug)) ENTERDEBUGGER();                   \
         switch (op)
 
     /* Each opcode generates a case statement */
@@ -1610,9 +1613,7 @@ callfunction: // Jump here if an instruction becomes a call
 
         CASE_CODE(BREAK):
             if (v->debug) {
-                v->fp->pc=pc;
-                v->fp->roffset=reg-v->stack.data;
-                debugger_enter(v);
+                ENTERDEBUGGER();
                 ERRORCHK();
             }
             DISPATCH();

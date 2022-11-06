@@ -483,6 +483,11 @@ void debugger_init(debugger *d, program *p) {
     memset(d->breakpoints.data, '\0', sizeof(char)*ninstructions);
 }
 
+/** Sets whether single step mode is in operation */
+void debugger_setsinglestep(debugger *d, bool singlestep) {
+    d->singlestep=singlestep;
+}
+
 /* **********************************************************************
  * Debugger
  * ********************************************************************** */
@@ -667,7 +672,7 @@ void debugger_enter(vm *v) {
     linedit_setprompt(&edit, "@>");
     printf("---morpho debugger---\n");
     printf("Type '?' for help.\n");
-    printf("Breakpoint in %s", ((!func) || MORPHO_ISNIL(func->name)? "global" : MORPHO_GETCSTRING(func->name)) );
+    printf("%s in %s", (v->debug->singlestep ? "Single stepping" : "Breakpoint"), ((!func) || MORPHO_ISNIL(func->name)? "global" : MORPHO_GETCSTRING(func->name)) );
     if (line!=ERROR_POSNUNIDENTIFIABLE) printf(" at line %u", line);
     printf("\n");
     
@@ -707,6 +712,7 @@ void debugger_enter(vm *v) {
                     printf("Not implemented.\n");
                     break;
                 case 'C': case 'c': // Continue
+                    debugger_setsinglestep(v->debug, false);
                     stop=true;
                     break;
                 case 'D': case 'd': // Disassemble
@@ -752,6 +758,8 @@ void debugger_enter(vm *v) {
                     debug_showregisters(v, v->fp);
                     break;
                 case 'S': case 's': // Step
+                    debugger_setsinglestep(v->debug, true);
+                    stop=true;
                     //debug_showstack(v);
                     break;
                 case 'T': case 't': // Trace

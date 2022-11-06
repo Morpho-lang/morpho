@@ -11,6 +11,8 @@
 #include "syntaxtree.h"
 #include "object.h"
 
+#define DEBUG_ISSINGLESTEP(d) ((d) && (d->singlestep))
+
 debugannotation *debug_lastannotation(varray_debugannotation *list);
 void debug_addannotation(varray_debugannotation *list, debugannotation *annotation);
 void debug_stripend(varray_debugannotation *list);

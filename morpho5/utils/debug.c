@@ -680,9 +680,16 @@ void debugger_enter(vm *v) {
                 case '?': // Help
                     printf("Available commands:\n");
                     printf("  [a]ddress, [b]reakpoint, [c]ontinue, [d]isassemble\n");
-                    printf("  [g]lobal, [l]ist, [q]uit, [r]egisters, [s]tack\n");
-                    printf("  [t]race, [/]single step, [.]show symbol, [=]set\n");
+                    printf("  [g]lobal, [l]ist, [p]rint, [q]uit,\n");
+                    printf("  [r]egisters, [s]tep, [t]race, [=]set\n");
                     printf("  [,]garbage collect [?]help\n");
+                    // [c]lear breakpoint
+                    // [d]elete breakpoint
+                    // [h]elp
+                    // [i]nfo - combines stack, registers,
+                    // [s]tep - steps into calls
+                    // [n]ext
+                    
                     break;
                 case 'A': case 'a': // Address
                 {
@@ -709,7 +716,7 @@ void debugger_enter(vm *v) {
                 {
                     if (!debug_parseint(input, &k)) {
                         morpho_globals(v);
-                        break; 
+                        break;
                     }
                     
                     if (k>=0 && k<v->globals.count) {
@@ -722,19 +729,10 @@ void debugger_enter(vm *v) {
                 case 'L': case 'l': // List source
                     debug_list(v);
                     break;
-                case 'Q': case 'q': // Quit
-                    morpho_runtimeerror(v, VM_DBGQUIT);
-                    return;
-                case 'R': case 'r': // Registers
-                    debug_showregisters(v, v->fp);
+                case 'N': case 'n': // Next
+                    printf("Not implemented...\n");
                     break;
-                case 'S': case 's': // Stack
-                    debug_showstack(v);
-                    break;
-                case 'T': case 't': // Trace
-                    morpho_stacktrace(v);
-                    break;
-                case '.': {
+                case 'P': case 'p': { // Print
                     varray_char symbol;
                     varray_charinit(&symbol);
                     
@@ -747,14 +745,23 @@ void debugger_enter(vm *v) {
                     varray_charclear(&symbol);
                 }
                     break;
-                case '/':
-                    printf("Not implemented...\n");
+                case 'Q': case 'q': // Quit
+                    morpho_runtimeerror(v, VM_DBGQUIT);
+                    return;
+                case 'R': case 'r': // Registers
+                    debug_showregisters(v, v->fp);
                     break;
-                case '=': {
+                case 'S': case 's': // Step
+                    //debug_showstack(v);
+                    break;
+                case 'T': case 't': // Trace
+                    morpho_stacktrace(v);
+                    break;
+                case '=':
+                {
                     varray_char symbol;
                     varray_charinit(&symbol);
-                    if (debug_parsesymbol(input+1, &symbol)) {
-                    }
+                    //if (debug_parsesymbol(input+1, &symbol));
                     
                     printf("Not implemented...\n");
                     varray_charclear(&symbol);

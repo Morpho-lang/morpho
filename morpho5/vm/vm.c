@@ -1609,13 +1609,12 @@ callfunction: // Jump here if an instruction becomes a call
             DISPATCH();
 
         CASE_CODE(BREAK):
-            /*if (v->debug) {
+            if (v->debug) {
                 v->fp->pc=pc;
                 v->fp->roffset=reg-v->stack.data;
-                debug_debugger(v);
+                debugger_enter(v);
                 ERRORCHK();
             }
-            */
             DISPATCH();
 
         CASE_CODE(END):

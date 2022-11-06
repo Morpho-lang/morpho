@@ -410,7 +410,7 @@ functional_mapgradient_cleanup:
 }
 
 /* Calculates a numerical gradient */
-static bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectmatrix *frc) {
+bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectmatrix *frc) {
     double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
 
     // Loop over vertices in element
@@ -432,37 +432,8 @@ static bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, i
     return true;
 }
 
-/* Calculates a numerical gradient for a remote vertex */
-static bool functional_numericalremotegradientold(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
-    objectmesh *mesh = info->mesh;
-    double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
-
-    int *rvid=(info->g==0 ? &remoteid : NULL),
-        rnv=(info->g==0 ? 1 : 0); // The vertex indices
-
-    if (conn) sparseccs_getrowindices(&conn->ccs, remoteid, &rnv, &rvid);
-
-    // Loop over vertices in element
-    for (unsigned int j=0; j<nv; j++) {
-        // Loop over coordinates
-        for (unsigned int k=0; k<mesh->dim; k++) {
-            matrix_getelement(frc, k, vid[j], &f0);
-
-            matrix_getelement(mesh->vert, k, vid[j], &x0);
-            matrix_setelement(mesh->vert, k, vid[j], x0+eps);
-            if (!(*info->integrand) (v, mesh, remoteid, rnv, rvid, info->ref, &fp)) return false;
-            matrix_setelement(mesh->vert, k, vid[j], x0-eps);
-            if (!(*info->integrand) (v, mesh, remoteid, rnv, rvid, info->ref, &fm)) return false;
-            matrix_setelement(mesh->vert, k, vid[j], x0);
-
-            matrix_setelement(frc, k, vid[j], f0+(fp-fm)/(2*eps));
-        }
-    }
-
-    return true;
-}
-
-static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
+/** Calculates the gradient of element remoteid with respect to vertex i */
+bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
     objectmesh *mesh = info->mesh;
     double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
 
@@ -755,6 +726,9 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
     bool ret=false;
     int n=0;
 
+    varray_elementid dependencies;
+    if (info->dependencies) varray_elementidinit(&dependencies);
+    
     /* How many elements? */
     if (!functional_countelements(v, mesh, g, &n, &conn)) return false;
 
@@ -775,6 +749,15 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
 
         if (vid && nv>0) {
             if (!functional_numericalhessian(v, mesh, i, nv, vid, integrand, ref, hess)) goto functional_mapnumericalhessian_cleanup;
+            
+            if (info->dependencies && // Loop over dependencies if there are any
+                (info->dependencies) (info, i, &dependencies)) {
+                for (int j=0; j<dependencies.count; j++) {
+                    if (functional_containsvertex(nv, vid, dependencies.data[j])) continue;
+                    //if (!functional_numericalremotegradient(v, info, s, dependencies.data[j], i, nv, vid, frc)) goto functional_mapnumericalhessian_cleanup;
+                }
+                dependencies.count=0;
+            }
         }
     }
 
@@ -782,6 +765,7 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
     ret=true;
 
 functional_mapnumericalhessian_cleanup:
+    if (info->dependencies) varray_elementidclear(&dependencies);
     if (!ret) object_free((object *) hess);
 
     return ret;
@@ -1959,7 +1943,7 @@ FUNCTIONAL_METHOD(EquiElement, total, MESH_GRADE_VERTEX, equielementref, equiele
 
 FUNCTIONAL_METHOD(EquiElement, gradient, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapnumericalgradient, equielement_integrand, equielement_dependencies, EQUIELEMENT_ARGS, SYMMETRY_ADD)
 
-FUNCTIONAL_METHOD(EquiElement, hessian, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapnumericalhessian, equielement_integrand, NULL, EQUIELEMENT_ARGS, SYMMETRY_ADD)
+FUNCTIONAL_METHOD(EquiElement, hessian, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapnumericalhessian, equielement_integrand, equielement_dependencies, EQUIELEMENT_ARGS, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(EquiElement)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, EquiElement_init, BUILTIN_FLAGSEMPTY),

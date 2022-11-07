@@ -488,6 +488,11 @@ void debugger_setsinglestep(debugger *d, bool singlestep) {
     d->singlestep=singlestep;
 }
 
+/** Are we in singlestep mode? */
+bool debugger_insinglestep(debugger *d) {
+    return d->singlestep;
+}
+
 /* **********************************************************************
  * Debugger
  * ********************************************************************** */
@@ -623,9 +628,9 @@ instructionindx debug_previnstruction(vm *v) {
     return 0;
 }
 
-/** Return the next instruction index, i.e. the one about to be executed. */
-instructionindx debug_nextinstruction(vm *v) {
-    return v->fp->pc-v->current->code.data;
+/** Return the current instruction index */
+instructionindx debug_currentinstruction(vm *v) {
+    return v->fp->pc-v->current->code.data-1;
 }
 
 /** Source listing */
@@ -662,18 +667,26 @@ static bool debug_parsesymbol(char *in, varray_char *out) {
 
 /** Morpho debugger */
 void debugger_enter(vm *v) {
+    debugger *debug = v->debug;
     lineditor edit;
+    instructionindx iindx = debug_currentinstruction(v);
     
     int line=0;
     objectfunction *func=NULL;
-    debug_infofromindx(v->current, debug_nextinstruction(v), &line, NULL, &func, NULL);
+    debug_infofromindx(v->current, iindx, &line, NULL, &func, NULL);
+    
+    /** If we're in single step mode, only stop when we've changed line */
+    if (debugger_insinglestep(debug) &&
+        line==debug->currentline &&
+        func==debug->currentfunc) return;
     
     linedit_init(&edit);
     linedit_setprompt(&edit, "@>");
     printf("---morpho debugger---\n");
     printf("Type '?' for help.\n");
-    printf("%s in %s", (v->debug->singlestep ? "Single stepping" : "Breakpoint"), ((!func) || MORPHO_ISNIL(func->name)? "global" : MORPHO_GETCSTRING(func->name)) );
+    printf("%s in %s", (debug->singlestep ? "Single stepping" : "Breakpoint"), ((!func) || MORPHO_ISNIL(func->name)? "global" : MORPHO_GETCSTRING(func->name)));
     if (line!=ERROR_POSNUNIDENTIFIABLE) printf(" at line %u", line);
+    printf(" at instruction %ti", iindx);
     printf("\n");
     
     for (bool stop=false; !stop; ) {
@@ -712,7 +725,7 @@ void debugger_enter(vm *v) {
                     printf("Not implemented.\n");
                     break;
                 case 'C': case 'c': // Continue
-                    debugger_setsinglestep(v->debug, false);
+                    debugger_setsinglestep(debug, false);
                     stop=true;
                     break;
                 case 'D': case 'd': // Disassemble
@@ -759,6 +772,8 @@ void debugger_enter(vm *v) {
                     break;
                 case 'S': case 's': // Step
                     debugger_setsinglestep(v->debug, true);
+                    v->debug->currentline=line;
+                    v->debug->currentfunc=func;
                     stop=true;
                     //debug_showstack(v);
                     break;

@@ -184,8 +184,12 @@ DECLARE_VARRAY(debugannotation, debugannotation)
  * ********************************************************************** */
 
 typedef struct {
-    bool active; /** Is the debugger active or not */
-    bool singlestep; /** Single step */
+    bool active; /** Is the debugger active? */
+    bool singlestep; /** Is single step mode on? */
+    
+    int currentline; /** Record current line in singlestep mode */
+    objectfunction *currentfunc; /** Record current function */
+    
     varray_char breakpoints; /** Keep track of breakpoints */
 } debugger;
 

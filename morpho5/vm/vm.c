@@ -862,8 +862,11 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
     /* Create a label corresponding to each opcode */
     #define CASE_CODE(name)   code_##name
     
-    #define DEBUG_ENABLE() { if (v->debug) for (int i=0; dispatchtable[i]!=&&code_END; i++) dispatchtable[i]=&&code_BREAK; }
-    #define DEBUG_DISABLE() { if (v->debug) for (int i=0; dispatchtable[i]!=&&code_END; i++) dispatchtable[i]=debugdispatchtable[i]; }
+    int nopcodes;
+    for (nopcodes=0; dispatchtable[nopcodes]!=&&code_END; nopcodes++);
+    
+    #define DEBUG_ENABLE() { if (v->debug) for (int i=0; i<=nopcodes; i++) dispatchtable[i]=&&code_BREAK; }
+    #define DEBUG_DISABLE() { if (v->debug) for (int i=0; i<=nopcodes; i++) dispatchtable[i]=debugdispatchtable[i]; }
 
     /* Dispatch here means fetch the next instruction, decode and jump */
     #define FETCHANDDECODE()                                                 \
@@ -1627,13 +1630,16 @@ callfunction: // Jump here if an instruction becomes a call
 
         CASE_CODE(BREAK):
             if (v->debug) {
-                ENTERDEBUGGER();
-                ERRORCHK();
+                if (op==OP_BREAK ||
+                    debugger_insinglestep(v->debug)) {
+                    ENTERDEBUGGER();
+                    ERRORCHK();
+                }
                 
 #ifdef MORPHO_COMPUTED_GOTO
                 bool instep = (dispatchtable[0]==&&code_BREAK);
                 
-                if (v->debug->singlestep) {
+                if (debugger_insinglestep(v->debug)) {
                     if (!instep) DEBUG_ENABLE()
                 } else if (instep) DEBUG_DISABLE()
                     

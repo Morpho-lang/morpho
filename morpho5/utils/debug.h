@@ -35,6 +35,7 @@ void debug_showstack(vm *v);
 
 void debugger_init(debugger *d, program *p);;
 void debugger_clear(debugger *d);
+bool debugger_insinglestep(debugger *d);
 
 void debugger_enter(vm *v);
 

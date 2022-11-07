@@ -850,23 +850,37 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
       #undef OPCODE
     };
     
+    static void* debugdispatchtable[] = { // Backup copy of the dispatch table
+      #define OPCODE(name) &&code_##name,
+      #include "opcodes.h"
+      #undef OPCODE
+    };
+    
     /* The interpret loop begins by dispatching an instruction */
     #define INTERPRET_LOOP    DISPATCH();
 
     /* Create a label corresponding to each opcode */
     #define CASE_CODE(name)   code_##name
+    
+    #define DEBUG_ENABLE() { if (v->debug) for (int i=0; dispatchtable[i]!=&&code_END; i++) dispatchtable[i]=&&code_BREAK; }
+    #define DEBUG_DISABLE() { if (v->debug) for (int i=0; dispatchtable[i]!=&&code_END; i++) dispatchtable[i]=debugdispatchtable[i]; }
 
     /* Dispatch here means fetch the next instruction, decode and jump */
-    #define DISPATCH()                                                       \
-        do {                                                                 \
+    #define FETCHANDDECODE()                                                 \
+        {                                                                    \
             bc=*pc++;                                                        \
             OPOPCODECNT(pp, bc)                                              \
             op=DECODE_OP(bc);                                                \
             OPCODECNT(op)                                                    \
             MORPHO_DISASSEMBLE_INSRUCTION(bc,pc-v->instructions,v->konst, reg)     \
+        }
+    
+    #define DISPATCH()                                                       \
+        do {                                                                 \
+            FETCHANDDECODE()                                                 \
             goto *dispatchtable[op];                                         \
         } while(false);
-
+    
 #else
     /* Every iteration of the interpret loop we fetch, decode and switch */
     #define INTERPRET_LOOP                                                   \
@@ -890,7 +904,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 #define VERROR(id, ...) { vm_runtimeerror(v, pc-v->instructions, id, __VA_ARGS__); goto vm_error; }
 #define OPERROR(op){vm_throwOpError(v,pc-v->instructions,VM_INVLDOP,op,left,right); goto vm_error; }
 #define ERRORCHK() if (v->err.cat!=ERROR_NONE) goto vm_error;
-
+    
     INTERPRET_LOOP
     {
         CASE_CODE(NOP):
@@ -1615,6 +1629,19 @@ callfunction: // Jump here if an instruction becomes a call
             if (v->debug) {
                 ENTERDEBUGGER();
                 ERRORCHK();
+                
+#ifdef MORPHO_COMPUTED_GOTO
+                bool instep = (dispatchtable[0]==&&code_BREAK);
+                
+                if (v->debug->singlestep) {
+                    if (!instep) DEBUG_ENABLE()
+                } else if (instep) DEBUG_DISABLE()
+                    
+                if (instep) {
+                    if (op==OP_BREAK) FETCHANDDECODE()
+                    goto *debugdispatchtable[op];
+                }
+#endif
             }
             DISPATCH();
 

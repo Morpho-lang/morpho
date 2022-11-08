@@ -863,11 +863,13 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
     #define CASE_CODE(name)   code_##name
     
     int nopcodes;
-    for (nopcodes=0; dispatchtable[nopcodes]!=&&code_END; nopcodes++);
+    for (nopcodes=0; dispatchtable[nopcodes]!=&&code_END; ) nopcodes++;
     
     #define DEBUG_ENABLE() { if (v->debug) for (int i=0; i<=nopcodes; i++) dispatchtable[i]=&&code_BREAK; }
     #define DEBUG_DISABLE() { if (v->debug) for (int i=0; i<=nopcodes; i++) dispatchtable[i]=debugdispatchtable[i]; }
 
+    DEBUG_ENABLE()
+    
     /* Dispatch here means fetch the next instruction, decode and jump */
     #define FETCHANDDECODE()                                                 \
         {                                                                    \
@@ -907,6 +909,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 #define VERROR(id, ...) { vm_runtimeerror(v, pc-v->instructions, id, __VA_ARGS__); goto vm_error; }
 #define OPERROR(op){vm_throwOpError(v,pc-v->instructions,VM_INVLDOP,op,left,right); goto vm_error; }
 #define ERRORCHK() if (v->err.cat!=ERROR_NONE) goto vm_error;
+    
+    DEBUG_ENABLE()
     
     INTERPRET_LOOP
     {
@@ -1630,21 +1634,26 @@ callfunction: // Jump here if an instruction becomes a call
 
         CASE_CODE(BREAK):
             if (v->debug) {
-                if (op==OP_BREAK ||
-                    debugger_insinglestep(v->debug)) {
+                bool breakop = (op==OP_BREAK);
+
+#ifdef MORPHO_COMPUTED_GOTO
+                if (breakop) FETCHANDDECODE();
+#endif
+                
+                if (breakop ||
+                    debug_shouldbreakatpc(v, pc)) {
                     ENTERDEBUGGER();
                     ERRORCHK();
                 }
                 
 #ifdef MORPHO_COMPUTED_GOTO
-                bool instep = (dispatchtable[0]==&&code_BREAK);
+                bool debugdispatchactive = (dispatchtable[0]==&&code_BREAK);
                 
-                if (debugger_insinglestep(v->debug)) {
-                    if (!instep) DEBUG_ENABLE()
-                } else if (instep) DEBUG_DISABLE()
-                    
-                if (instep) {
-                    if (op==OP_BREAK) FETCHANDDECODE()
+                /*if (debugger_insinglestep(v->debug)) {
+                    if (!debugdispatchactive) DEBUG_ENABLE()
+                } else if (debugdispatchactive) DEBUG_DISABLE()*/
+                
+                if (debugdispatchactive) {
                     goto *debugdispatchtable[op];
                 }
 #endif

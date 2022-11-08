@@ -481,6 +481,7 @@ void debugger_init(debugger *d, program *p) {
     int ninstructions = p->code.count;
     if (!varray_charresize(&d->breakpoints, ninstructions)) return;
     memset(d->breakpoints.data, '\0', sizeof(char)*ninstructions);
+    d->breakpoints.count=ninstructions;
 }
 
 /** Sets whether single step mode is in operation */
@@ -491,6 +492,33 @@ void debugger_setsinglestep(debugger *d, bool singlestep) {
 /** Are we in singlestep mode? */
 bool debugger_insinglestep(debugger *d) {
     return d->singlestep;
+}
+
+/** Sets a breakpoint */
+void debugger_setbreakpoint(debugger *d, instructionindx indx) {
+    if (indx>d->breakpoints.count) return;
+    d->breakpoints.data[indx]='b';
+}
+
+/** Clears a breakpoint */
+void debugger_clearbreakpoint(debugger *d, instructionindx indx) {
+    if (indx>d->breakpoints.count) return;
+    d->breakpoints.data[indx]='\0';
+}
+
+/** Tests if we should break at a given point */
+bool debugger_shouldbreakat(debugger *d, instructionindx indx) {
+    if (indx>d->breakpoints.count) return false;
+    return (d->breakpoints.data[indx]!='\0');
+}
+
+/** Should we break */
+bool debug_shouldbreakatpc(vm *v, instruction *pc) {
+    if (!v->debug) return false;
+    if (debugger_insinglestep(v->debug)) return true;
+    instructionindx iindx = pc-v->current->code.data-1;
+    if (debugger_shouldbreakat(v->debug, iindx)) return true;
+    return false;
 }
 
 /* **********************************************************************
@@ -683,7 +711,7 @@ void debugger_enter(vm *v) {
     linedit_init(&edit);
     linedit_setprompt(&edit, "@>");
     printf("---morpho debugger---\n");
-    printf("Type '?' for help.\n");
+    printf("Type '?' or 'h' for help.\n");
     printf("%s in %s", (debug->singlestep ? "Single stepping" : "Breakpoint"), ((!func) || MORPHO_ISNIL(func->name)? "global" : MORPHO_GETCSTRING(func->name)));
     if (line!=ERROR_POSNUNIDENTIFIABLE) printf(" at line %u", line);
     printf(" at instruction %ti", iindx);
@@ -695,17 +723,15 @@ void debugger_enter(vm *v) {
         
         if (input) {
             switch (input[0]) {
-                case '?': // Help
+                case '?':
+                case 'h': case 'H':// Help
                     printf("Available commands:\n");
                     printf("  [a]ddress, [b]reakpoint, [c]ontinue, [d]isassemble\n");
-                    printf("  [g]lobal, [l]ist, [p]rint, [q]uit,\n");
-                    printf("  [r]egisters, [s]tep, [t]race, [=]set\n");
-                    printf("  [,]garbage collect [?]help\n");
+                    printf("  [g]lobal, [i]nfo, [l]ist, [p]rint, [q]uit,\n");
+                    printf("  [r]egisters, [s]tep, [t]race, [x]clear, [=]set\n");
+                    printf("  [,]garbage collect [?]/[h]elp\n");
                     // [c]lear breakpoint
                     // [d]elete breakpoint
-                    // [h]elp
-                    // [i]nfo - combines stack, registers,
-                    // [s]tep - steps into calls
                     // [n]ext
                     
                     break;
@@ -722,7 +748,12 @@ void debugger_enter(vm *v) {
                 }
                     break;
                 case 'B': case 'b': // Breakpoint
-                    printf("Not implemented.\n");
+                    if (debug_parseint(input, &k)) {
+                        debugger_setbreakpoint(debug, k);
+                        break;
+                    }
+                    
+                    printf("Invalid breakpoint target.\n");
                     break;
                 case 'C': case 'c': // Continue
                     debugger_setsinglestep(debug, false);
@@ -731,7 +762,7 @@ void debugger_enter(vm *v) {
                 case 'D': case 'd': // Disassemble
                     morpho_disassemble(v->current, &line);
                     break;
-                case 'G': case 'g': // Go
+                case 'G': case 'g': // Globals
                 {
                     if (!debug_parseint(input, &k)) {
                         morpho_globals(v);
@@ -744,6 +775,8 @@ void debugger_enter(vm *v) {
                         printf("\n");
                     } else printf("Invalid global number.\n");
                 }
+                    break;
+                case 'I': case 'i': // Info
                     break;
                 case 'L': case 'l': // List source
                     debug_list(v);
@@ -779,6 +812,13 @@ void debugger_enter(vm *v) {
                     break;
                 case 'T': case 't': // Trace
                     morpho_stacktrace(v);
+                    break;
+                case 'X': case 'x':
+                    if (debug_parseint(input, &k)) {
+                        debugger_clearbreakpoint(debug, k);
+                        break;
+                    }
+                    printf("Invalid breakpoint target.\n");
                     break;
                 case '=':
                 {

@@ -40,5 +40,6 @@ bool debugger_insinglestep(debugger *d);
 void debugger_enter(vm *v);
 
 bool debug_shouldbreakatpc(vm *v, instruction *pc);
+bool debugger_isactive(debugger *d);
 
 #endif /* debug_h */

@@ -476,6 +476,8 @@ void debugger_clear(debugger *d) {
 /** Initializes a debugger structure with a specified program */
 void debugger_init(debugger *d, program *p) {
     d->singlestep=false;
+    
+    d->nbreakpoints=0;
     varray_charinit(&d->breakpoints);
     
     int ninstructions = p->code.count;
@@ -498,12 +500,14 @@ bool debugger_insinglestep(debugger *d) {
 void debugger_setbreakpoint(debugger *d, instructionindx indx) {
     if (indx>d->breakpoints.count) return;
     d->breakpoints.data[indx]='b';
+    d->nbreakpoints++;
 }
 
 /** Clears a breakpoint */
 void debugger_clearbreakpoint(debugger *d, instructionindx indx) {
     if (indx>d->breakpoints.count) return;
     d->breakpoints.data[indx]='\0';
+    d->nbreakpoints--;
 }
 
 /** Tests if we should break at a given point */
@@ -519,6 +523,11 @@ bool debug_shouldbreakatpc(vm *v, instruction *pc) {
     instructionindx iindx = pc-v->current->code.data-1;
     if (debugger_shouldbreakat(v->debug, iindx)) return true;
     return false;
+}
+
+/** Tests if the debugger is in a mode that could cause breaks at arbitrary instructions */
+bool debugger_isactive(debugger *d) {
+    return (d->singlestep || (d->nbreakpoints>0));
 }
 
 /* **********************************************************************

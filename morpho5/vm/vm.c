@@ -867,8 +867,6 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
     
     #define DEBUG_ENABLE() { if (v->debug) for (int i=0; i<=nopcodes; i++) dispatchtable[i]=&&code_BREAK; }
     #define DEBUG_DISABLE() { if (v->debug) for (int i=0; i<=nopcodes; i++) dispatchtable[i]=debugdispatchtable[i]; }
-
-    DEBUG_ENABLE()
     
     /* Dispatch here means fetch the next instruction, decode and jump */
     #define FETCHANDDECODE()                                                 \
@@ -895,7 +893,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
         op=DECODE_OP(bc);                                                    \
         OPCODECNT(op)                                                        \
         MORPHO_DISASSEMBLE_INSRUCTION(bc,pc-v->instructions,v->konst, reg)   \
-        if (DEBUG_ISSINGLESTEP(v->debug)) ENTERDEBUGGER();                   \
+        if (debug_shouldbreakatpc(v, pc)) ENTERDEBUGGER();                   \
         switch (op)
 
     /* Each opcode generates a case statement */
@@ -909,8 +907,6 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 #define VERROR(id, ...) { vm_runtimeerror(v, pc-v->instructions, id, __VA_ARGS__); goto vm_error; }
 #define OPERROR(op){vm_throwOpError(v,pc-v->instructions,VM_INVLDOP,op,left,right); goto vm_error; }
 #define ERRORCHK() if (v->err.cat!=ERROR_NONE) goto vm_error;
-    
-    DEBUG_ENABLE()
     
     INTERPRET_LOOP
     {
@@ -1634,28 +1630,26 @@ callfunction: // Jump here if an instruction becomes a call
 
         CASE_CODE(BREAK):
             if (v->debug) {
-                bool breakop = (op==OP_BREAK);
-
-#ifdef MORPHO_COMPUTED_GOTO
-                if (breakop) FETCHANDDECODE();
-#endif
-                
-                if (breakop ||
-                    debug_shouldbreakatpc(v, pc)) {
+                if (debug_shouldbreakatpc(v, pc) ||
+                    op==OP_BREAK) {
                     ENTERDEBUGGER();
                     ERRORCHK();
                 }
                 
 #ifdef MORPHO_COMPUTED_GOTO
+                // If using computed gotos, all instructions are routed through OP_BREAK
+                // when the debugger is active. When this is happening we must perform a regular
+                // dispatch after we've checked whether to enter the debugger
                 bool debugdispatchactive = (dispatchtable[0]==&&code_BREAK);
                 
-                /*if (debugger_insinglestep(v->debug)) {
+                if (debugger_isactive(v->debug)) { // Check if singlestep or breakpoints are active  
                     if (!debugdispatchactive) DEBUG_ENABLE()
-                } else if (debugdispatchactive) DEBUG_DISABLE()*/
+                } else if (debugdispatchactive) DEBUG_DISABLE()
                 
-                if (debugdispatchactive) {
-                    goto *debugdispatchtable[op];
-                }
+                if (op==OP_BREAK) DISPATCH(); // Perform a regular dispatch if we stopped at OP_BREAK
+                
+                // If the debug dispatch table was active, must dispatch to execute the instruction
+                if (debugdispatchactive) goto *debugdispatchtable[op];
 #endif
             }
             DISPATCH();

@@ -118,6 +118,10 @@ bool sparsedok_setdimensions(sparsedok *dok, int nrows, int ncols);
 unsigned int sparsedok_count(sparsedok *dok);
 void *sparsedok_loopstart(sparsedok *dok);
 bool sparsedok_loop(sparsedok *dok, void **cntr, int *i, int *j);
+bool sparsedok_copy(sparsedok *src, sparsedok *dest);
+bool sparsedok_copyat(sparsedok *src, sparsedok *dest, int row0, int col0);
+bool sparsedok_copymatrixat(objectmatrix *src, sparsedok *dest, int row0, int col0);
+bool sparsedok_copytomatrix(sparsedok *src, objectmatrix *dest, int row0, int col0);
 
 /* ***************************************
  * Compressed Column Storage Format
@@ -134,6 +138,9 @@ bool sparseccs_setrowindices(sparseccs *ccs, int col, int nentries, int *entries
 bool sparseccs_getcolindices(sparseccs *ccs, int maxentries, int *nentries, int *entries);
 bool sparseccs_getcolindicesforrow(sparseccs *ccs, int row, int maxentries, int *nentries, int *entries);
 bool sparseccs_doktoccs(sparsedok *in, sparseccs *out, bool copyvals);
+bool sparseccs_copy(sparseccs *src, sparseccs *dest);
+bool sparseccs_copytodok(sparseccs *src, sparsedok *dest, int row0, int col0);
+bool sparseccs_copytomatrix(sparseccs *src, objectmatrix *dest, int row0, int col0);
 
 /* ***************************************
  * Object sparse interface
@@ -145,6 +152,7 @@ typedef enum { SPARSE_OK, SPARSE_INCMPTBLDIM, SPARSE_INVLDINIT, SPARSE_CONVFAILE
 
 bool sparse_checkformat(objectsparse *sparse, objectsparseformat format, bool force, bool copyvals);
 
+objectsparseerror sparse_tomatrix(objectsparse *in, objectmatrix **out);
 objectsparse *sparse_clone(objectsparse *s);
 bool sparse_setelement(objectsparse *matrix, int row, int col, value value);
 bool sparse_getelement(objectsparse *matrix, int row, int col, value *value);

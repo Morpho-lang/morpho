@@ -299,9 +299,26 @@ bool matrix_addtocolumn(objectmatrix *m, unsigned int col, double alpha, double 
  * Matrix arithmetic
  * ********************************************************************* */
 
+/** Copies one matrix to another */
 objectmatrixerror matrix_copy(objectmatrix *a, objectmatrix *out) {
     if (a->ncols==out->ncols && a->nrows==out->nrows) {
         cblas_dcopy(a->ncols * a->nrows, a->elements, 1, out->elements, 1);
+        return MATRIX_OK;
+    }
+    return MATRIX_INCMPTBLDIM;
+}
+
+/** Copies a matrix to another at an arbitrary point */
+objectmatrixerror matrix_copyat(objectmatrix *a, objectmatrix *out, int row0, int col0) {
+    if (col0+a->ncols<out->ncols && row0+a->nrows<out->nrows) {
+        for (int j=0; j<a->ncols; j++) {
+            for (int i=0; i<a->nrows; i++) {
+                double value;
+                if (!matrix_getelement(a, i, j, &value)) return MATRIX_BNDS;
+                if (!matrix_setelement(out, row0+i, col0+j, value)) return MATRIX_BNDS;
+            }
+        }
+        
         return MATRIX_OK;
     }
     return MATRIX_INCMPTBLDIM;
@@ -581,6 +598,10 @@ value matrix_constructor(vm *v, int nargs, value *args) {
                MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
         new=object_clonematrix(MORPHO_GETMATRIX(MORPHO_GETARG(args, 0)));
         if (!new) morpho_runtimeerror(v, MATRIX_INVLDARRAYINIT);
+    } else if (nargs==1 &&
+               MORPHO_ISSPARSE(MORPHO_GETARG(args, 0))) {
+        objectsparseerror err=sparse_tomatrix(MORPHO_GETSPARSE(MORPHO_GETARG(args, 0)), &new);
+        if (err!=SPARSE_OK) morpho_runtimeerror(v, MATRIX_INVLDARRAYINIT);
     } else morpho_runtimeerror(v, MATRIX_CONSTRUCTOR);
     
     if (new) {

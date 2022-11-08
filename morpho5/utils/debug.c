@@ -712,14 +712,15 @@ void debugger_enter(vm *v) {
     objectfunction *func=NULL;
     debug_infofromindx(v->current, iindx, &line, NULL, &func, NULL);
     
-    /** If we're in single step mode, only stop when we've changed line */
+    /** If we're in single step mode, only stop when we've changed line OR if a breakpoint is explicitly set */
     if (debugger_insinglestep(debug) &&
         line==debug->currentline &&
-        func==debug->currentfunc) return;
+        func==debug->currentfunc &&
+        !debugger_shouldbreakat(debug, iindx)) return;
     
     linedit_init(&edit);
     linedit_setprompt(&edit, "@>");
-    printf("---morpho debugger---\n");
+    printf("---Morpho debugger---\n");
     printf("Type '?' or 'h' for help.\n");
     printf("%s in %s", (debug->singlestep ? "Single stepping" : "Breakpoint"), ((!func) || MORPHO_ISNIL(func->name)? "global" : MORPHO_GETCSTRING(func->name)));
     if (line!=ERROR_POSNUNIDENTIFIABLE) printf(" at line %u", line);

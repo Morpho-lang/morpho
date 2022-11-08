@@ -1359,46 +1359,6 @@ value Sparse_mulr(vm *v, int nargs, value *args) {
         }
     }
 
-    if (err==SPARSE_OK && new) {
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    } else {
-        sparse_raiseerror(v, err);
-        if (new) object_free((object *) new);
-    }
-
-    return out;
-}
-
-/** Multiplication on the right */
-value Sparse_mulr(vm *v, int nargs, value *args) {
-    objectsparse *b=MORPHO_GETSPARSE(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
-    objectsparseerror err = SPARSE_OK;
-
-    if (nargs==1) {
-        if (MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
-            objectmatrix *a=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
-            int ncols;
-            sparse_getdimensions(b, NULL, &ncols);
-
-            objectmatrix *new=object_newmatrix(a->nrows, ncols, true);
-
-            if (new) {
-                err=sparse_muldxs(a, b, new);
-                if (err==SPARSE_OK) {
-                    out=MORPHO_OBJECT(new);
-                    morpho_bindobjects(v, 1, &out);
-                } else {
-                    sparse_raiseerror(v, err);
-                    if (new) object_free((object *) new);
-                }
-            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-        } else if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
-            return Sparse_mul(v, nargs, args); // Redirect to regular multiplication
-        }
-    }
-
     return out;
 }
 

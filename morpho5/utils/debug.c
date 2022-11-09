@@ -6,11 +6,15 @@
 
 #include <stdarg.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "compile.h"
 #include "vm.h"
 #include "debug.h"
 #include "morpho.h"
+#include "cli.h"
+
+void morpho_runtimeerror(vm *v, errorid id, ...);
 
 /* **********************************************************************
  * Debugging annotations
@@ -588,7 +592,189 @@ bool debugger_isactive(debugger *d) {
  * Debugger
  * ********************************************************************** */
 
-void morpho_runtimeerror(vm *v, errorid id, ...);
+/* ---------------
+ * Parse responses
+ * --------------- */
+
+typedef enum {
+    DEBUGTOKEN_ASTERISK,
+    DEBUGTOKEN_DOT,
+    
+    DEBUGTOKEN_INTEGER,
+    
+    DEBUGTOKEN_BREAK,
+    DEBUGTOKEN_CLEAR,
+    DEBUGTOKEN_HELP,
+    DEBUGTOKEN_INFO,
+    DEBUGTOKEN_QUIT,
+    DEBUGTOKEN_SYMBOL,
+    
+    DEBUGTOKEN_EOF
+} debugtokentype;
+
+/** List of commands and corresponding token types */
+typedef struct {
+    char *string;
+    debugtokentype type;
+} debuggercommand;
+
+/* Note that these are matched in order so single letter commands
+   should come AFTER the full command */
+debuggercommand commandlist[] =
+{
+  { "break", DEBUGTOKEN_BREAK },
+  { "b", DEBUGTOKEN_BREAK },
+    
+  { "clear", DEBUGTOKEN_CLEAR },
+  { "x", DEBUGTOKEN_CLEAR },
+    
+  { "help", DEBUGTOKEN_HELP },
+  { "h", DEBUGTOKEN_HELP },
+    
+  { "info", DEBUGTOKEN_INFO },
+  { "i", DEBUGTOKEN_INFO },
+    
+  { "quit", DEBUGTOKEN_QUIT },
+  { "q", DEBUGTOKEN_QUIT },
+    
+  { "", DEBUGTOKEN_EOF }
+};
+
+typedef struct {
+    debugtokentype type;
+    char *start;
+    int length;
+} debugtoken;
+
+typedef struct {
+    char *start;
+    char *current;
+} debuglexer;
+
+/** Initialize the lexer */
+void debuglexer_init(debuglexer *l, char *start) {
+    l->start=start;
+    l->current=start;
+}
+
+/** Are we at the end? */
+bool debuglexer_isatend(debuglexer *l) {
+    return (*(l->current) == '\0');
+}
+
+/** @brief Checks if a character is a digit. Doesn't advance. */
+bool debuglexer_isdigit(char c) {
+    return (c>='0' && c<= '9');
+}
+
+/** @brief Checks if a character is alphanumeric or underscore.  Doesn't advance. */
+bool debuglexer_isalpha(char c) {
+    return (c>='a' && c<= 'z') || (c>='A' && c<= 'Z') || (c=='_');
+}
+
+/** @brief Returns the next character */
+char debuglexer_peek(debuglexer *l) {
+    return *(l->current);
+}
+
+/** Advance by one character */
+char debuglexer_advance(debuglexer *l) {
+    char c=*(l->current);
+    l->current++;
+    return c;
+}
+
+/** Skip whitespace */
+bool debuglexer_skipwhitespace(debuglexer *l, debugtoken *tok) {
+    do {
+        switch (debuglexer_peek(l)) {
+            case ' ': case '\t': case '\r':
+                debuglexer_advance(l);
+                break;
+            default:
+                return true;
+        }
+    } while (true);
+    return false;
+}
+
+/** Record a token */
+void debuglexer_recordtoken(debuglexer *l, debugtokentype type, debugtoken *tok) {
+    tok->type=type;
+    tok->start=l->start;
+    tok->length=(int) (l->current - l->start);
+}
+
+/** Lex an integer */
+bool debuglexer_integer(debuglexer *l, debugtoken *tok) {
+    while (debuglexer_isdigit(debuglexer_peek(l))) debuglexer_advance(l);
+    debuglexer_recordtoken(l, DEBUGTOKEN_INTEGER, tok);
+    return true;
+}
+
+/** Case indep comparison of a with command */
+bool debuglexer_comparesymbol(char *a, char *command) {
+    for (int i=0; command[i]!='\0'; i++) {
+        char c = tolower(a[i]);
+        if (c!=command[i]) return false;
+        if (c=='\0') return false;
+    }
+    return true;
+}
+
+/** Determines if a token matches a command */
+debugtokentype debuglexer_matchcommand(debuglexer *l) {
+    for (int i=0; commandlist[i].type!=DEBUGTOKEN_EOF; i++) {
+        if (debuglexer_comparesymbol(l->start, commandlist[i].string)) return commandlist[i].type;
+    }
+    
+    return DEBUGTOKEN_SYMBOL;
+}
+
+/** Lex a symbol */
+static bool debuglexer_symbol(debuglexer *l, debugtoken *tok, bool command) {
+    while (debuglexer_isalpha(debuglexer_peek(l)) || debuglexer_isdigit(debuglexer_peek(l))) debuglexer_advance(l);
+    
+    debugtokentype type = DEBUGTOKEN_SYMBOL;
+    if (command) type=debuglexer_matchcommand(l);
+    
+    /* It's a symbol for now... */
+    debuglexer_recordtoken(l, type, tok);
+    
+    return true;
+}
+
+/** Lex */
+bool debuglex(debuglexer *l, debugtoken *tok, bool command) {
+    /* Handle leading whitespace */
+    if (! debuglexer_skipwhitespace(l, tok)) return false; /* Check for failure */
+    
+    l->start=l->current;
+    
+    if (debuglexer_isatend(l)) {
+        debuglexer_recordtoken(l, DEBUGTOKEN_EOF, tok);
+        return true;
+    }
+    
+    char c = debuglexer_advance(l);
+    if (debuglexer_isalpha(c)) return debuglexer_symbol(l, tok, command);
+    if (debuglexer_isdigit(c)) return debuglexer_integer(l, tok);
+    
+    switch(c) {
+        /* Single character tokens */
+        case '*': debuglexer_recordtoken(l, DEBUGTOKEN_ASTERISK, tok); return true;
+        case '.': debuglexer_recordtoken(l, DEBUGTOKEN_DOT, tok); return true;
+        case '?': debuglexer_recordtoken(l, DEBUGTOKEN_HELP, tok); return true;
+        default:
+            break;
+    }
+    
+    return false;
+}
+
+/* ----------------------
+ * Debugger functionality
+ * ---------------------- */
 
 /** Shows the contents of the registers for a given frame */
 void debug_showregisters(vm *v, callframe *frame) {
@@ -796,49 +982,94 @@ static bool debug_parsebreakpoint(program *code, char *in, instructionindx *out)
     return success;
 }
 
+/* ----------------------
+ * Debugger functionality
+ * ---------------------- */
+
+#ifdef MORPHO_COLORTERMINAL
+#define DEBUG_COLOR CLI_GREENCODE
+#else
+#define DEBUG_COLOR ""
+#endif
+
+/** Display the morpho banner */
+void debugger_banner(debugger *debug) {
+    printf("%s---Morpho debugger---%s\n", DEBUG_COLOR, CLI_NORMALTEXT);
+    printf("Type '?' or 'h' for help.\n");
+    printf("%s in %s", (debug->singlestep ? "Single stepping" : "Breakpoint"), ((!debug->currentfunc) || MORPHO_ISNIL(debug->currentfunc->name)? "global" : MORPHO_GETCSTRING(debug->currentfunc->name)));
+    if (debug->currentline!=ERROR_POSNUNIDENTIFIABLE) printf(" at line %u", debug->currentline);
+    printf(" at instruction %ti", debug->iindx);
+    printf("\n");
+}
+
+/** Display the resume text */
+void debugger_resumebanner(debugger *debug) {
+    printf("%s---Resuming----------%s\n", DEBUG_COLOR, CLI_NORMALTEXT);
+}
+
+/** Debugger help */
+void debugger_help(debugger *debug) {
+    printf("Available commands:\n");
+    printf("  [b]reakpoint, [q]uit\n");
+    //printf("  [a]ddress, [b]reakpoint, [c]ontinue, [d]isassemble\n");
+    //printf("  [g]lobal, [i]nfo, [l]ist, [p]rint, [q]uit,\n");
+    //printf("  [r]egisters, [s]tep, [t]race, [x]clear, [=]set\n");
+    //printf("  [,]garbage collect [?]/[h]elp\n");
+    // [c]lear breakpoint
+    // [d]elete breakpoint
+    // [n]ext
+}
+
+/* ----------------------
+ * The debugger itself
+ * ---------------------- */
+
 /** Morpho debugger */
 void debugger_enter(vm *v) {
     debugger *debug = v->debug;
     lineditor edit;
-    instructionindx iindx = debug_currentinstruction(v);
     
-    int line=0;
-    objectfunction *func=NULL;
-    debug_infofromindx(v->current, iindx, &line, NULL, &func, NULL);
+    debug->iindx = debug_currentinstruction(v);
+    int oline=debug->currentline;
+    objectfunction *ofunc=debug->currentfunc;
+    
+    /** Fetch info from annotations */
+    debug_infofromindx(v->current, debug->iindx, &debug->currentline, NULL, &debug->currentfunc, NULL);
     
     /** If we're in single step mode, only stop when we've changed line OR if a breakpoint is explicitly set */
     if (debugger_insinglestep(debug) &&
-        line==debug->currentline &&
-        func==debug->currentfunc &&
-        !debugger_shouldbreakat(debug, iindx)) return;
+        oline==debug->currentline &&
+        ofunc==debug->currentfunc &&
+        !debugger_shouldbreakat(debug, debug->iindx)) return;
     
     linedit_init(&edit);
     linedit_setprompt(&edit, "@>");
-    printf("---Morpho debugger---\n");
-    printf("Type '?' or 'h' for help.\n");
-    printf("%s in %s", (debug->singlestep ? "Single stepping" : "Breakpoint"), ((!func) || MORPHO_ISNIL(func->name)? "global" : MORPHO_GETCSTRING(func->name)));
-    if (line!=ERROR_POSNUNIDENTIFIABLE) printf(" at line %u", line);
-    printf(" at instruction %ti", iindx);
-    printf("\n");
     
+    debugger_banner(debug);
+    
+    debuglexer lex;   // Lexer to read commands
+    debugtoken token; // Record tokens
     for (bool stop=false; !stop; ) {
         char *input = linedit(&edit);
-        int k;
+        if (!input) continue;
         
+        debuglexer_init(&lex, input);
+        debuglex(&lex, &token, true);
+        
+        switch (token.type) {
+            case DEBUGTOKEN_HELP:
+                debugger_help(debug);
+                break;
+            case DEBUGTOKEN_QUIT:
+                morpho_runtimeerror(v, VM_DBGQUIT);
+                return;
+            default:
+                printf("Unrecognized debugger command\n");
+                break;
+        }
+/*
         if (input) {
             switch (input[0]) {
-                case '?':
-                case 'h': case 'H':// Help
-                    printf("Available commands:\n");
-                    printf("  [a]ddress, [b]reakpoint, [c]ontinue, [d]isassemble\n");
-                    printf("  [g]lobal, [i]nfo, [l]ist, [p]rint, [q]uit,\n");
-                    printf("  [r]egisters, [s]tep, [t]race, [x]clear, [=]set\n");
-                    printf("  [,]garbage collect [?]/[h]elp\n");
-                    // [c]lear breakpoint
-                    // [d]elete breakpoint
-                    // [n]ext
-                    
-                    break;
                 case 'A': case 'a': // Address
                 {
                     if (!debug_parseint(input, &k)) break;
@@ -905,9 +1136,6 @@ void debugger_enter(vm *v) {
                     varray_charclear(&symbol);
                 }
                     break;
-                case 'Q': case 'q': // Quit
-                    morpho_runtimeerror(v, VM_DBGQUIT);
-                    return;
                 case 'R': case 'r': // Registers
                     debug_showregisters(v, v->fp);
                     break;
@@ -948,8 +1176,8 @@ void debugger_enter(vm *v) {
                     printf("Unrecognized debugger command\n");
             }
         }
+*/
     }
-    printf("---Resuming----------\n");
     linedit_clear(&edit);
 }
 

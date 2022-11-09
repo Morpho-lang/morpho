@@ -21,8 +21,13 @@
 #define CLI_SHORT_HELP "?"
 
 #define CLI_NORMALCODE   "\033[0m"
-#define CLI_REDCODE     "\033[0;31m"
+#define CLI_REDCODE      "\033[0;31m"
+#define CLI_GREENCODE    "\033[0;32m"
+#define CLI_YELLOWCODE   "\033[0;33m"
 #define CLI_BLUECODE     "\033[0;34m"
+#define CLI_PURPLECODE   "\033[0;35m"
+#define CLI_CYANCODE     "\033[0;36m"
+#define CLI_WHITECODE    "\033[0;37m"
 
 #ifdef MORPHO_COLORTERMINAL
 #define CLI_ERRORCOLOR CLI_REDCODE

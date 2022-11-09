@@ -186,8 +186,9 @@ DECLARE_VARRAY(debugannotation, debugannotation)
 typedef struct {
     bool singlestep; /** Is single step mode on? */
     
-    int currentline; /** Record current line in singlestep mode */
+    int currentline; /** Record current line */
     objectfunction *currentfunc; /** Record current function */
+    instructionindx iindx; /** Record current instruction */
     
     int nbreakpoints; /** Number of active breakpoints */
     varray_char breakpoints; /** Keep track of breakpoints */

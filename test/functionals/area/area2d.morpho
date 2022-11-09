@@ -1,0 +1,23 @@
+import meshtools 
+
+import "../numericalderivatives.morpho"
+
+var mb = MeshBuilder() 
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+
+mb.addface([0,1,2])
+
+var m = mb.build() 
+
+var a = Area() 
+
+print m
+// expect: <Mesh: 3 vertices>
+
+print (a.integrand(m) - Matrix([ 0.5 ])).norm() < 1e-5
+// expect: true
+
+print (a.gradient(m) - numericalgradient(a, m)).norm() < 1e-5
+// expect: true

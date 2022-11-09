@@ -1092,15 +1092,16 @@ MORPHO_ENDCLASS
 
 /** Calculate area */
 bool area_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
-    double *x[nv], s0[mesh->dim], s1[mesh->dim], cx[mesh->dim];
+    double *x[nv], s0[3], s1[3], cx[3];
+    for (int j=0; j<3; j++) { s0[j]=0; s1[j]=0; cx[j]=0; }
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
 
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     functional_vecsub(mesh->dim, x[2], x[1], s1);
 
     functional_veccross(s0, s1, cx);
-
-    *out=0.5*functional_vecnorm(mesh->dim, cx);
+    *out=0.5*functional_vecnorm(3, cx);
+    
     return true;
 }
 
@@ -1108,13 +1109,14 @@ bool area_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, voi
 bool area_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc, double scale) {
     double *x[nv], s0[3], s1[3], s01[3], s010[3], s011[3];
     double norm;
+    for (int j=0; j<3; j++) { s0[j]=0; s1[j]=0; s01[j]=0; s010[j]=0; s011[j]=0; }
     for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
 
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     functional_vecsub(mesh->dim, x[2], x[1], s1);
 
     functional_veccross(s0, s1, s01);
-    norm=functional_vecnorm(mesh->dim, s01);
+    norm=functional_vecnorm(3, s01);
     if (norm<MORPHO_EPS) return false;
 
     functional_veccross(s01, s0, s010);

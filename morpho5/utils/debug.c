@@ -361,6 +361,26 @@ bool debug_infofromindx(program *code, instructionindx indx, int *line, int *pos
     return false;
 }
 
+/** Finds the instruction indx corresponding to a particular line of code */
+bool debug_indxfromline(program *code, int line, instructionindx *out) {
+    instructionindx i=0;
+    
+    for (unsigned int j=0; j<code->annotations.count; j++) {
+        debugannotation *ann = &code->annotations.data[j];
+        switch (ann->type) {
+            case DEBUG_ELEMENT:
+                if (ann->content.element.line==line) {
+                    *out=i;
+                    return true;
+                }
+                i+=ann->content.element.ninstr;
+                break;
+            default: break;
+        }
+    }
+    return false;
+}
+
 /** Finds the instruction index corresponding to the entry point of a function or method */
 bool debug_indxfromfunction(program *code, value klassname, value fname, instructionindx *indx) {
     objectclass *cklass=NULL;
@@ -742,14 +762,11 @@ static bool debug_parsebreakpoint(program *code, char *in, instructionindx *out)
     if (*input=='*') instruction=true;
     
     int k;
-    if (debug_parseint(input, &k)) {
+    if (debug_parseint(in, &k)) {
         if (instruction) {
             *out = k;
             return true;
-        }
-        else {
-            printf("Line: %i\n", k);
-        }
+        } else if (debug_indxfromline(code, k, out)) return true;
     }
     
     bool success=false;

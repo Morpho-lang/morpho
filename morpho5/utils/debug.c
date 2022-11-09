@@ -364,6 +364,7 @@ bool debug_infofromindx(program *code, instructionindx indx, int *line, int *pos
 /** Finds the instruction indx corresponding to a particular line of code */
 bool debug_indxfromline(program *code, int line, instructionindx *out) {
     instructionindx i=0;
+    value module=MORPHO_NIL;
     
     for (unsigned int j=0; j<code->annotations.count; j++) {
         debugannotation *ann = &code->annotations.data[j];
@@ -374,6 +375,9 @@ bool debug_indxfromline(program *code, int line, instructionindx *out) {
                     return true;
                 }
                 i+=ann->content.element.ninstr;
+                break;
+            case DEBUG_MODULE:
+                module=ann->content.module.module;
                 break;
             default: break;
         }
@@ -758,7 +762,6 @@ static bool debug_parsebreakpoint(program *code, char *in, instructionindx *out)
     
     char *input = in;
     while (*input!='\0' && isspace(*input)) input++; // Skip space
-    
     if (*input=='*') instruction=true;
     
     int k;

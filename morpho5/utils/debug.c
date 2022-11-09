@@ -361,6 +361,36 @@ bool debug_infofromindx(program *code, instructionindx indx, int *line, int *pos
     return false;
 }
 
+/** Finds the instruction index corresponding to the entry point of a function or method */
+bool debug_indxfromfunction(program *code, value klassname, value fname, instructionindx *indx) {
+    objectclass *cklass=NULL;
+    objectfunction *cfunc=NULL;
+    instructionindx i=0;
+    
+    for (unsigned int j=0; j<code->annotations.count; j++) {
+        debugannotation *ann = &code->annotations.data[j];
+        switch (ann->type) {
+            case DEBUG_ELEMENT:
+                i+=ann->content.element.ninstr;
+                break;
+            case DEBUG_FUNCTION:
+                cfunc=ann->content.function.function;
+                if (MORPHO_ISEQUAL(cfunc->name, fname) &&
+                    (MORPHO_ISNIL(klassname) || MORPHO_ISEQUAL(cklass->name, klassname))) {
+                    *indx=cfunc->entry;
+                    return true;
+                }
+                break;
+            case DEBUG_CLASS:
+                cklass=ann->content.klass.klass;
+                break;
+            default: break;
+        }
+    }
+    
+    return false;
+}
+
 /** Identifies symbols associated with registers
  * @param[in] code - a program
  * @param[in] func - the function of interest
@@ -702,6 +732,50 @@ static bool debug_parsesymbol(char *in, varray_char *out) {
     return (out->count>0);
 }
 
+/** Parses a symbol */
+static bool debug_parsebreakpoint(program *code, char *in, instructionindx *out) {
+    bool instruction=false; // Detect if we're parsing an instruction
+    
+    char *input = in;
+    while (*input!='\0' && isspace(*input)) input++; // Skip space
+    
+    if (*input=='*') instruction=true;
+    
+    int k;
+    if (debug_parseint(input, &k)) {
+        if (instruction) {
+            *out = k;
+            return true;
+        }
+        else {
+            printf("Line: %i\n", k);
+        }
+    }
+    
+    bool success=false;
+    varray_char symbol;
+    varray_charinit(&symbol);
+    
+    if (debug_parsesymbol(input, &symbol)) {
+        char *fstring = symbol.data, *kstring = symbol.data;
+        bool ismethod = debug_parsesymbol(input+strlen(fstring)+1, &symbol);
+        
+        if (ismethod) {
+            fstring=symbol.data+strlen(symbol.data)+1;
+            kstring=symbol.data;
+        }
+        
+        objectstring klassname = MORPHO_STATICSTRING(kstring);
+        objectstring fnname = MORPHO_STATICSTRING(fstring);
+        
+        if (debug_indxfromfunction(code, (ismethod ? MORPHO_OBJECT(&klassname) : MORPHO_NIL), MORPHO_OBJECT(&fnname), out)) success=true;
+    }
+    
+    varray_charclear(&symbol);
+    
+    return success;
+}
+
 /** Morpho debugger */
 void debugger_enter(vm *v) {
     debugger *debug = v->debug;
@@ -758,12 +832,15 @@ void debugger_enter(vm *v) {
                 }
                     break;
                 case 'B': case 'b': // Breakpoint
-                    if (debug_parseint(input, &k)) {
-                        debugger_setbreakpoint(debug, k);
+                {
+                    instructionindx breakpoint;
+                    if (debug_parsebreakpoint(v->current, input+1, &breakpoint)) {
+                        debugger_setbreakpoint(debug, breakpoint);
                         break;
                     }
                     
                     printf("Invalid breakpoint target.\n");
+                }
                     break;
                 case 'C': case 'c': // Continue
                     debugger_setsinglestep(debug, false);
@@ -787,6 +864,7 @@ void debugger_enter(vm *v) {
                 }
                     break;
                 case 'I': case 'i': // Info
+                    
                     break;
                 case 'L': case 'l': // List source
                     debug_list(v);
@@ -824,11 +902,14 @@ void debugger_enter(vm *v) {
                     morpho_stacktrace(v);
                     break;
                 case 'X': case 'x':
-                    if (debug_parseint(input, &k)) {
-                        debugger_clearbreakpoint(debug, k);
+                {
+                    instructionindx breakpoint;
+                    if (debug_parsebreakpoint(v->current, input+1, &breakpoint)) {
+                        debugger_clearbreakpoint(debug, breakpoint);
                         break;
                     }
                     printf("Invalid breakpoint target.\n");
+                }
                     break;
                 case '=':
                 {

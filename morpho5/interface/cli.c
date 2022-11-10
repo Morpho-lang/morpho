@@ -353,7 +353,8 @@ char *cli_loadsource(const char *in) {
     varray_charinit(&buffer);
     
     /* Open the input file if provided */
-    if (inn) f=fopen(inn, "r");
+    if (inn) f=file_openrelative(inn,"r"); // Try opening relative to the working directory
+    if (!f) f=fopen(inn, "r"); 
     if (inn && !f) {
         return NULL;
     }

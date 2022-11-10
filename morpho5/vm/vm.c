@@ -516,7 +516,7 @@ void vm_collectgarbage(vm *v) {
 void vm_runtimeerror(vm *v, ptrdiff_t iindx, errorid id, ...) {
     va_list args;
     int line=ERROR_POSNUNIDENTIFIABLE, posn=ERROR_POSNUNIDENTIFIABLE;
-    debug_infofromindx(v->current, iindx, &line, &posn, NULL, NULL);
+    debug_infofromindx(v->current, iindx, NULL, &line, &posn, NULL, NULL);
 
     va_start(args, id);
     morpho_writeerrorwithidvalist(&v->err, id, line, posn, args);

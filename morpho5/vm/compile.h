@@ -242,6 +242,9 @@ typedef struct scompiler {
     /* Syntax tree node of the current method being compiled */
     syntaxtreenode *currentmethod;
     
+    /* Current module */
+    value currentmodule;
+    
     /* Program we're compiling to */
     program *out;
     

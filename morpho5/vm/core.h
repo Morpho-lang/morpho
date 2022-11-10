@@ -188,6 +188,7 @@ typedef struct {
     
     int currentline; /** Record current line */
     objectfunction *currentfunc; /** Record current function */
+    value currentmodule; /** Current module */
     instructionindx iindx; /** Record current instruction */
     
     int nbreakpoints; /** Number of active breakpoints */

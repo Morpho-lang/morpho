@@ -50,6 +50,12 @@ void debug_setclass(varray_debugannotation *list, objectclass *klass) {
     debug_addannotation(list, &ann);
 }
 
+/** Sets the current module */
+void debug_setmodule(varray_debugannotation *list, value module) {
+    debugannotation ann = { .type = DEBUG_MODULE, .content.module.module = module };
+    debug_addannotation(list, &ann);
+}
+
 /** Pushes an error handler onto the stack */
 void debug_pusherr(varray_debugannotation *list, objectdictionary *dict) {
     debugannotation ann = { .type = DEBUG_PUSHERR, .content.errorhandler.handler = dict};
@@ -337,7 +343,7 @@ void morpho_disassemble(program *code, int *matchline) {
  * ********************************************************************** */
 
 /** Finds debugging info asssociated with instruction at indx */
-bool debug_infofromindx(program *code, instructionindx indx, int *line, int *posn, objectfunction **func, objectclass **klass) {
+bool debug_infofromindx(program *code, instructionindx indx, value *module, int *line, int *posn, objectfunction **func, objectclass **klass) {
     objectclass *cklass=NULL;
     objectfunction *cfunc=NULL;
     instructionindx i=0;
@@ -358,6 +364,7 @@ bool debug_infofromindx(program *code, instructionindx indx, int *line, int *pos
                 break;
             case DEBUG_FUNCTION: cfunc=ann->content.function.function; break;
             case DEBUG_CLASS: cklass=ann->content.klass.klass; break;
+            case DEBUG_MODULE: if (module) *module=ann->content.module.module; break;
             default: break;
         }
     }
@@ -505,7 +512,7 @@ void debug_showannotations(varray_debugannotation *list) {
 void morpho_stacktrace(vm *v) {
     for (callframe *f = (v->errfp ? v->errfp : v->fp); f!=NULL && f>=v->frame; f--) {
         instructionindx indx = f->pc-v->current->code.data;
-        if (indx>0) indx--; /* Becuase the pc always points to the NEXT instr. */
+        if (indx>0) indx--; /* Because the pc always points to the NEXT instr. */
         
         printf("  ");
         printf("%s", (f==v->fp ? "  in " : "from "));
@@ -514,7 +521,7 @@ void morpho_stacktrace(vm *v) {
         else printf("global");
         
         int line=0;
-        if (debug_infofromindx(v->current, indx, &line, NULL, NULL, NULL)) {
+        if (debug_infofromindx(v->current, indx, NULL, &line, NULL, NULL, NULL)) {
             printf(" at line %u", line);
         }
         
@@ -531,6 +538,11 @@ void debugger_init(debugger *d, program *p) {
     d->singlestep=false;
     
     d->nbreakpoints=0;
+    
+    d->currentfunc=NULL;
+    d->currentline=0;
+    d->currentmodule=MORPHO_NIL;
+    
     varray_charinit(&d->breakpoints);
     
     int ninstructions = p->code.count;
@@ -993,7 +1005,7 @@ void debug_showglobals(vm *v) {
 bool debug_printsymbol(vm *v, char *match) {
     objectstring str = MORPHO_STATICSTRING((match ? match : ""));
     value matchstr = MORPHO_OBJECT(&str);
-    bool success;
+    bool success=false;
     
     objectstring prntlabel = MORPHO_STATICSTRING(MORPHO_PRINT_METHOD);
     
@@ -1047,9 +1059,10 @@ instructionindx debug_currentinstruction(vm *v) {
 /** Source listing */
 void debug_list(vm *v) {
     int line;
+    value module=MORPHO_NIL;
     
-    if (debug_infofromindx(v->current, debug_previnstruction(v), &line, NULL, NULL, NULL)) {
-        cli_list(NULL, line-5, line+5);
+    if (debug_infofromindx(v->current, debug_previnstruction(v), &module, &line, NULL, NULL, NULL)) {
+        cli_list((MORPHO_ISSTRING(module) ? MORPHO_GETCSTRING(module): NULL), line-5, line+5);
     }
 }
 
@@ -1068,8 +1081,13 @@ void debugger_banner(debugger *debug) {
     printf("%s---Morpho debugger---%s\n", DEBUG_COLOR, CLI_NORMALTEXT);
     printf("Type '?' or 'h' for help.\n");
     printf("%s in %s", (debug->singlestep ? "Single stepping" : "Breakpoint"), ((!debug->currentfunc) || MORPHO_ISNIL(debug->currentfunc->name)? "global" : MORPHO_GETCSTRING(debug->currentfunc->name)));
+    if (!MORPHO_ISNIL(debug->currentmodule)) {
+        printf(" in \"");
+        morpho_printvalue(debug->currentmodule);
+        printf("\"");
+    }
     if (debug->currentline!=ERROR_POSNUNIDENTIFIABLE) printf(" at line %u", debug->currentline);
-    printf(" at instruction %ti", debug->iindx);
+    printf(" [Instruction %ti]", debug->iindx);
     printf("\n");
 }
 
@@ -1175,7 +1193,7 @@ void debugger_enter(vm *v) {
     objectfunction *ofunc=debug->currentfunc;
     
     /** Fetch info from annotations */
-    debug_infofromindx(v->current, debug->iindx, &debug->currentline, NULL, &debug->currentfunc, NULL);
+    debug_infofromindx(v->current, debug->iindx, &debug->currentmodule, &debug->currentline, NULL, &debug->currentfunc, NULL);
     
     /** If we're in single step mode, only stop when we've changed line OR if a breakpoint is explicitly set */
     if (debugger_insinglestep(debug) &&

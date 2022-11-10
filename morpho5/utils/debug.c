@@ -1154,6 +1154,11 @@ void debugger_info(vm *v, debugger *debug, debuglexer *lex) {
         case DEBUGTOKEN_HELP:
         default:
             printf("Valid info commands: \n");
+            printf("  info address n: Displays the address of register n.\n");
+            printf("  info globals: Displays the contents of all globals.\n");
+            printf("  info global n: Displays the contents of global n.\n");
+            printf("  info registers: Displays the contents of all registers.\n");
+            printf("  info stack: Displays the stack.\n");
             break;
     }
 }

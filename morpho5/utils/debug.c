@@ -526,11 +526,6 @@ void morpho_stacktrace(vm *v) {
  * Debugger structure
  * ********************************************************************** */
 
-/** Clears a debugger structure */
-void debugger_clear(debugger *d) {
-    varray_charclear(&d->breakpoints);
-}
-
 /** Initializes a debugger structure with a specified program */
 void debugger_init(debugger *d, program *p) {
     d->singlestep=false;
@@ -542,6 +537,11 @@ void debugger_init(debugger *d, program *p) {
     if (!varray_charresize(&d->breakpoints, ninstructions)) return;
     memset(d->breakpoints.data, '\0', sizeof(char)*ninstructions);
     d->breakpoints.count=ninstructions;
+}
+
+/** Clears a debugger structure */
+void debugger_clear(debugger *d) {
+    varray_charclear(&d->breakpoints);
 }
 
 /** Sets whether single step mode is in operation */
@@ -602,11 +602,24 @@ typedef enum {
     
     DEBUGTOKEN_INTEGER,
     
+    DEBUGTOKEN_ADDRESS,
     DEBUGTOKEN_BREAK,
     DEBUGTOKEN_CLEAR,
+    DEBUGTOKEN_CONTINUE,
+    DEBUGTOKEN_DISASSEMBLE,
+    DEBUGTOKEN_GARBAGECOLLECT,
+    DEBUGTOKEN_GLOBALS,
+    DEBUGTOKEN_G,
     DEBUGTOKEN_HELP,
     DEBUGTOKEN_INFO,
+    DEBUGTOKEN_LIST,
+    DEBUGTOKEN_PRINT,
     DEBUGTOKEN_QUIT,
+    DEBUGTOKEN_REGISTERS,
+    DEBUGTOKEN_STACK,
+    DEBUGTOKEN_STEP,
+    DEBUGTOKEN_TRACE,
+    
     DEBUGTOKEN_SYMBOL,
     
     DEBUGTOKEN_EOF
@@ -622,20 +635,57 @@ typedef struct {
    should come AFTER the full command */
 debuggercommand commandlist[] =
 {
+  { "address", DEBUGTOKEN_ADDRESS },
+    
   { "break", DEBUGTOKEN_BREAK },
+  { "bt", DEBUGTOKEN_TRACE },
   { "b", DEBUGTOKEN_BREAK },
     
   { "clear", DEBUGTOKEN_CLEAR },
   { "x", DEBUGTOKEN_CLEAR },
+    
+  { "continue", DEBUGTOKEN_CONTINUE },
+  { "c", DEBUGTOKEN_CONTINUE },
+    
+  { "disassemble", DEBUGTOKEN_DISASSEMBLE },
+  { "disassem", DEBUGTOKEN_DISASSEMBLE },
+  { "d", DEBUGTOKEN_DISASSEMBLE },
+  
+  { "garbage", DEBUGTOKEN_GARBAGECOLLECT },
+  { "gc", DEBUGTOKEN_GARBAGECOLLECT },
+    
+  { "globals", DEBUGTOKEN_GLOBALS },
+  { "global", DEBUGTOKEN_GLOBALS },
+    
+  { "g", DEBUGTOKEN_G },
     
   { "help", DEBUGTOKEN_HELP },
   { "h", DEBUGTOKEN_HELP },
     
   { "info", DEBUGTOKEN_INFO },
   { "i", DEBUGTOKEN_INFO },
-    
+  
+  { "list", DEBUGTOKEN_LIST },
+  { "l", DEBUGTOKEN_LIST },
+  
+  { "print", DEBUGTOKEN_PRINT },
+  { "p", DEBUGTOKEN_PRINT },
+
   { "quit", DEBUGTOKEN_QUIT },
   { "q", DEBUGTOKEN_QUIT },
+    
+  { "registers", DEBUGTOKEN_REGISTERS },
+  { "register", DEBUGTOKEN_REGISTERS },
+  { "reg", DEBUGTOKEN_REGISTERS },
+  { "r", DEBUGTOKEN_REGISTERS },
+
+  { "stack", DEBUGTOKEN_STACK },
+    
+  { "step", DEBUGTOKEN_STEP },
+  { "s", DEBUGTOKEN_STEP },
+  
+  { "trace", DEBUGTOKEN_TRACE },
+  { "t", DEBUGTOKEN_TRACE },
     
   { "", DEBUGTOKEN_EOF }
 };
@@ -723,7 +773,7 @@ bool debuglexer_comparesymbol(char *a, char *command) {
 }
 
 /** Determines if a token matches a command */
-debugtokentype debuglexer_matchcommand(debuglexer *l) {
+debugtokentype debuglexer_matchkeyword(debuglexer *l) {
     for (int i=0; commandlist[i].type!=DEBUGTOKEN_EOF; i++) {
         if (debuglexer_comparesymbol(l->start, commandlist[i].string)) return commandlist[i].type;
     }
@@ -732,11 +782,11 @@ debugtokentype debuglexer_matchcommand(debuglexer *l) {
 }
 
 /** Lex a symbol */
-static bool debuglexer_symbol(debuglexer *l, debugtoken *tok, bool command) {
+static bool debuglexer_symbol(debuglexer *l, debugtoken *tok, bool match) {
     while (debuglexer_isalpha(debuglexer_peek(l)) || debuglexer_isdigit(debuglexer_peek(l))) debuglexer_advance(l);
     
     debugtokentype type = DEBUGTOKEN_SYMBOL;
-    if (command) type=debuglexer_matchcommand(l);
+    if (match) type=debuglexer_matchkeyword(l);
     
     /* It's a symbol for now... */
     debuglexer_recordtoken(l, type, tok);
@@ -772,6 +822,77 @@ bool debuglex(debuglexer *l, debugtoken *tok, bool command) {
     return false;
 }
 
+/** Copies a token to a null-terminated string */
+void debugger_tokentostring(debugtoken *tok, char *string) {
+    strncpy(string, tok->start, tok->length);
+    string[tok->length]='\0';
+}
+
+/** Converts a token to an integer; returns true on success */
+bool debugger_tokentoint(debugtoken *tok, int *out) {
+    if (tok->type==DEBUGTOKEN_INTEGER) {
+        char str[tok->length+1];
+        debugger_tokentostring(tok, str);
+        *out=atoi(str);
+        return true;
+    }
+    return false;
+}
+
+/** Attempts to parse an integer */
+bool debugger_parseint(debuglexer *lex, debugtoken *tok, int *out) {
+    return (debuglex(lex, tok, false) &&
+            debugger_tokentoint(tok, out));
+}
+
+/** Parse a breakpoint command */
+bool debugger_parsebreakpoint(vm *v, debugger *debug, debuglexer *lex, instructionindx *out) {
+    debugtoken tok;
+    bool instruction=false; // Detect if we're parsing an instruction
+    bool success=false;
+    debugtoken symbol[2];
+    int nsymbol=0;
+    
+    while (!debuglexer_isatend(lex) && nsymbol<2) {
+        if (!debuglex(lex, &tok, false)) return false;
+        
+        switch (tok.type) {
+            case DEBUGTOKEN_ASTERISK:
+            case DEBUGTOKEN_ADDRESS:
+                instruction=true;
+                break;
+            case DEBUGTOKEN_INTEGER:
+            {
+                int iindx;
+                if (!debugger_tokentoint(&tok, &iindx)) return false;
+                if (instruction) { // The integer is an instruction index
+                    *out = iindx;
+                    return true;
+                } else if (debug_indxfromline(v->current, iindx, out)) return true;
+            }
+                break;
+            case DEBUGTOKEN_SYMBOL:
+                symbol[nsymbol]=tok;
+                nsymbol++;
+                break;
+            default:
+                break;
+        }
+    }
+    
+    if (nsymbol>0) { // Process function or method names
+        value fnname = object_stringfromcstring(symbol[nsymbol-1].start, symbol[nsymbol-1].length);
+        value klassname = object_stringfromcstring(symbol[0].start, symbol[0].length);
+        
+        if (debug_indxfromfunction(v->current, (nsymbol>1 ? klassname : MORPHO_NIL), fnname, out)) success=true;
+        
+        morpho_freeobject(fnname);
+        morpho_freeobject(klassname);
+    }
+
+    return success;
+}
+
 /* ----------------------
  * Debugger functionality
  * ---------------------- */
@@ -783,6 +904,7 @@ void debug_showregisters(vm *v, callframe *frame) {
     instructionindx cinstr=frame->pc-v->current->code.data;
     bool sym = debug_symbolsforfunction(v->current, frame->function, &cinstr, symbols);
     
+    printf("Register contents:\n");
     value *reg = v->stack.data + frame->roffset;
     for (unsigned int i=0; i<nreg; i++) {
         printf("  r%u: ", i);
@@ -793,69 +915,6 @@ void debug_showregisters(vm *v, callframe *frame) {
             printf(")");
         }
         printf("\n");
-    }
-}
-
-/** Shows current symbols */
-void debug_showsymbols(vm *v) {
-    for (callframe *f=v->fp; f>=v->frame; f--) {
-        printf("in %s", (f==v->frame ? "global" : ""));
-        if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(f->function->name);
-        printf(":\n");
-        
-        value symbols[f->function->nregs];
-        instructionindx indx = f->pc-v->current->code.data;
-        
-        debug_symbolsforfunction(v->current, f->function, &indx, symbols);
-        
-        for (int i=0; i<f->function->nregs; i++) {
-            if (!MORPHO_ISNIL(symbols[i])) {
-                printf("  ");
-                morpho_printvalue(symbols[i]);
-                printf("=");
-                morpho_printvalue(v->stack.data[f->roffset+i]);
-                printf("\n");
-            }
-        }
-        
-    }
-}
-
-/** Prints a specified symbol */
-void debug_printsymbol(vm *v, char *match) {
-    objectstring str = MORPHO_STATICSTRING((match ? match : ""));
-    value matchstr = MORPHO_OBJECT(&str);
-    
-    objectstring prntlabel = MORPHO_STATICSTRING(MORPHO_PRINT_METHOD);
-    
-    for (callframe *f=v->fp; f>=v->frame; f--) {
-        value symbols[f->function->nregs];
-        instructionindx indx = f->pc-v->current->code.data;
-        
-        debug_symbolsforfunction(v->current, f->function, &indx, symbols);
-        
-        for (int i=0; i<f->function->nregs; i++) {
-            if (!MORPHO_ISNIL(symbols[i]) && MORPHO_ISEQUAL(symbols[i], matchstr)) {
-                morpho_printvalue(symbols[i]);
-                
-                printf(" (in %s", (f==v->frame ? "global" : ""));
-                if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(f->function->name);
-                printf(") ");
-                
-                printf("= ");
-                value val = v->stack.data[f->roffset+i];
-
-                if (MORPHO_ISOBJECT(val)) {
-                    value printmethod, out;
-                    if (morpho_lookupmethod(val, MORPHO_OBJECT(&prntlabel), &printmethod)) {
-                        morpho_invoke(v, val, printmethod, 0, NULL, &out);
-                    }
-                } else {
-                    morpho_printvalue(val);
-                }
-                printf("\n");
-            }
-        }
     }
 }
 
@@ -886,8 +945,42 @@ void debug_showstack(vm *v) {
     }
 }
 
+/** Shows current symbols */
+void debug_showsymbols(vm *v) {
+    for (callframe *f=v->fp; f>=v->frame; f--) {
+        printf("in %s", (f==v->frame ? "global" : ""));
+        if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(f->function->name);
+        printf(":\n");
+        
+        value symbols[f->function->nregs];
+        instructionindx indx = f->pc-v->current->code.data;
+        
+        debug_symbolsforfunction(v->current, f->function, &indx, symbols);
+        
+        for (int i=0; i<f->function->nregs; i++) {
+            if (!MORPHO_ISNIL(symbols[i])) {
+                printf("  ");
+                morpho_printvalue(symbols[i]);
+                printf("=");
+                morpho_printvalue(v->stack.data[f->roffset+i]);
+                printf("\n");
+            }
+        }
+        
+    }
+}
+
+/** Prints a global */
+void debug_showglobal(vm *v, int id) {
+    if (id>=0 && id<v->globals.count) {
+        printf("  g%u:", id);
+        morpho_printvalue(v->globals.data[id]);
+        printf("\n");
+    } else printf("Invalid global number.\n");
+}
+
 /** Prints list of globals */
-void morpho_globals(vm *v) {
+void debug_showglobals(vm *v) {
     printf("Globals:\n");
     for (unsigned int i=0; i<v->globals.count; i++) {
         printf("  g%u: ", i);
@@ -896,8 +989,46 @@ void morpho_globals(vm *v) {
     }
 }
 
-#include "linedit.h"
-#include "cli.h"
+/** Prints a specified symbol */
+bool debug_printsymbol(vm *v, char *match) {
+    objectstring str = MORPHO_STATICSTRING((match ? match : ""));
+    value matchstr = MORPHO_OBJECT(&str);
+    bool success;
+    
+    objectstring prntlabel = MORPHO_STATICSTRING(MORPHO_PRINT_METHOD);
+    
+    for (callframe *f=v->fp; f>=v->frame; f--) {
+        value symbols[f->function->nregs];
+        instructionindx indx = f->pc-v->current->code.data;
+        
+        debug_symbolsforfunction(v->current, f->function, &indx, symbols);
+        
+        for (int i=0; i<f->function->nregs; i++) {
+            if (!MORPHO_ISNIL(symbols[i]) && MORPHO_ISEQUAL(symbols[i], matchstr)) {
+                morpho_printvalue(symbols[i]);
+                
+                printf(" (in %s", (f==v->frame ? "global" : ""));
+                if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(f->function->name);
+                printf(") ");
+                
+                printf("= ");
+                value val = v->stack.data[f->roffset+i];
+
+                if (MORPHO_ISOBJECT(val)) {
+                    value printmethod, out;
+                    if (morpho_lookupmethod(val, MORPHO_OBJECT(&prntlabel), &printmethod)) {
+                        morpho_invoke(v, val, printmethod, 0, NULL, &out);
+                    }
+                } else {
+                    morpho_printvalue(val);
+                }
+                printf("\n");
+                success=true;
+            }
+        }
+    }
+    return success;
+}
 
 /** Return the previous instruction index */
 instructionindx debug_previnstruction(vm *v) {
@@ -910,76 +1041,16 @@ instructionindx debug_currentinstruction(vm *v) {
     return v->fp->pc-v->current->code.data-1;
 }
 
+#include "linedit.h"
+#include "cli.h"
+
 /** Source listing */
 void debug_list(vm *v) {
     int line;
+    
     if (debug_infofromindx(v->current, debug_previnstruction(v), &line, NULL, NULL, NULL)) {
         cli_list(NULL, line-5, line+5);
     }
-}
-
-/** Reads an integer parameter */
-static bool debug_parseint(char *in, int *out) {
-    char *input=in;
-    for (input++; !isdigit(*input) && (*input!='\0'); input++);
-    if (*input=='\0') return false;
-    if (out) *out=atoi(input);
-    return true;
-}
-
-/** Parses a symbol */
-static bool debug_parsesymbol(char *in, varray_char *out) {
-    char *input=in;
-    while (*input!='\0' && isspace(*input)) input++; // Skip space
-    
-    while (*input!='\0' && (isalpha(*input) || isdigit(*input) || *input=='_')) {
-        varray_charwrite(out, *input);
-        input++;
-    }
-    
-    if (out->count>0) varray_charwrite(out, '\0'); // Ensure null terminated.
-    
-    return (out->count>0);
-}
-
-/** Parses a symbol */
-static bool debug_parsebreakpoint(program *code, char *in, instructionindx *out) {
-    bool instruction=false; // Detect if we're parsing an instruction
-    
-    char *input = in;
-    while (*input!='\0' && isspace(*input)) input++; // Skip space
-    if (*input=='*') instruction=true;
-    
-    int k;
-    if (debug_parseint(in, &k)) {
-        if (instruction) {
-            *out = k;
-            return true;
-        } else if (debug_indxfromline(code, k, out)) return true;
-    }
-    
-    bool success=false;
-    varray_char symbol;
-    varray_charinit(&symbol);
-    
-    if (debug_parsesymbol(input, &symbol)) {
-        char *fstring = symbol.data, *kstring = symbol.data;
-        bool ismethod = debug_parsesymbol(input+strlen(fstring)+1, &symbol);
-        
-        if (ismethod) {
-            fstring=symbol.data+strlen(symbol.data)+1;
-            kstring=symbol.data;
-        }
-        
-        objectstring klassname = MORPHO_STATICSTRING(kstring);
-        objectstring fnname = MORPHO_STATICSTRING(fstring);
-        
-        if (debug_indxfromfunction(code, (ismethod ? MORPHO_OBJECT(&klassname) : MORPHO_NIL), MORPHO_OBJECT(&fnname), out)) success=true;
-    }
-    
-    varray_charclear(&symbol);
-    
-    return success;
 }
 
 /* ----------------------
@@ -1010,14 +1081,84 @@ void debugger_resumebanner(debugger *debug) {
 /** Debugger help */
 void debugger_help(debugger *debug) {
     printf("Available commands:\n");
-    printf("  [b]reakpoint, [q]uit\n");
-    //printf("  [a]ddress, [b]reakpoint, [c]ontinue, [d]isassemble\n");
-    //printf("  [g]lobal, [i]nfo, [l]ist, [p]rint, [q]uit,\n");
-    //printf("  [r]egisters, [s]tep, [t]race, [x]clear, [=]set\n");
-    //printf("  [,]garbage collect [?]/[h]elp\n");
-    // [c]lear breakpoint
-    // [d]elete breakpoint
-    // [n]ext
+    printf("  [b]reakpoint, [c]ontinue, [d]isassemble, [g]arbage collect,\n"
+           "  [?]/[h]elp, [i]nfo, [l]ist, [p]rint, [q]uit, [s]tep, \n"
+           "  [t]race, [x]clear\n");
+}
+
+/** Shows one or more globals */
+void debugger_globals(vm *v, debugger *debug, debuglexer *lex) {
+    debugtoken token; // Record tokens
+    int id;
+    if (debugger_parseint(lex, &token, &id)) {
+        debug_showglobal(v, id);
+    } else {
+        debug_showglobals(v);
+    }
+}
+
+/** Find the address of an object in a register */
+void debugger_address(vm *v, debugger *debug, debuglexer *lex) {
+    debugtoken tok;
+    int rindx;
+    
+    if (!debugger_parseint(lex, &tok, &rindx)) return;
+        
+    if (rindx>=0 && rindx<v->fp->function->nregs) {
+        value *reg = v->stack.data + v->fp->roffset;
+        if (MORPHO_ISOBJECT(reg[rindx])) {
+            printf("Object in register %i at %p.\n", rindx, (void *) MORPHO_GETOBJECT(reg[rindx]));
+        }
+    } else printf("Invalid register.\n");
+}
+
+/** Information */
+void debugger_info(vm *v, debugger *debug, debuglexer *lex) {
+    debugtoken token; // Record tokens
+    if (!debuglex(lex, &token, true)) return;
+    
+    switch (token.type) {
+        case DEBUGTOKEN_ASTERISK:
+        case DEBUGTOKEN_ADDRESS:
+            debugger_address(v, debug, lex);
+            break;
+        case DEBUGTOKEN_GLOBALS:
+        case DEBUGTOKEN_G:
+            debugger_globals(v, debug, lex);
+            break;
+        case DEBUGTOKEN_REGISTERS:
+            debug_showregisters(v, v->fp);
+            break;
+        case DEBUGTOKEN_STACK:
+        case DEBUGTOKEN_STEP:
+            debug_showstack(v);
+            break;
+        case DEBUGTOKEN_HELP:
+        default:
+            printf("Valid info commands: \n");
+            break;
+    }
+}
+
+/** Process a set/clear breakpoint */
+void debugger_breakpoint(vm *v, debugger *debug, debuglexer *lex, bool set) {
+    instructionindx breakpoint;
+    if (debugger_parsebreakpoint(v, debug, lex, &breakpoint)) {
+        if (set) debugger_setbreakpoint(debug, breakpoint);
+        else debugger_clearbreakpoint(debug, breakpoint);
+    } else printf("Invalid breakpoint target.\n");
+}
+
+/** Prints a symbol or all symbols in view */
+void debugger_print(vm *v, debugger *debug, debuglexer *lex) {
+    debugtoken tok;
+    if (debuglex(lex, &tok, false) &&
+        tok.type==DEBUGTOKEN_SYMBOL) {
+        tok.start[tok.length]='\0';
+        if (!debug_printsymbol(v, tok.start)) printf("Symbol '%s' not found.\n", tok.start);
+    } else {
+        debug_showsymbols(v);
+    }
 }
 
 /* ----------------------
@@ -1057,127 +1198,52 @@ void debugger_enter(vm *v) {
         debuglex(&lex, &token, true);
         
         switch (token.type) {
+            case DEBUGTOKEN_BREAK:
+                debugger_breakpoint(v, debug, &lex, true);
+                break;
+            case DEBUGTOKEN_CLEAR:
+                debugger_breakpoint(v, debug, &lex, false);
+                break;
+            case DEBUGTOKEN_CONTINUE:
+                debugger_setsinglestep(debug, false);
+                stop=true;
+                break;
+            case DEBUGTOKEN_DISASSEMBLE:
+                debug_disassemble(v->current, &debug->currentline);
+                break;
+            case DEBUGTOKEN_GARBAGECOLLECT:
+            case DEBUGTOKEN_G:
+                vm_collectgarbage(v);
+                break;
             case DEBUGTOKEN_HELP:
                 debugger_help(debug);
+                break;
+            case DEBUGTOKEN_INFO:
+                debugger_info(v, debug, &lex);
+                break;
+            case DEBUGTOKEN_LIST:
+                debug_list(v);
+                break;
+            case DEBUGTOKEN_PRINT:
+                debugger_print(v, debug, &lex);
                 break;
             case DEBUGTOKEN_QUIT:
                 morpho_runtimeerror(v, VM_DBGQUIT);
                 return;
+            case DEBUGTOKEN_STEP:
+                debugger_setsinglestep(debug, true);
+                stop=true;
+                break;
+            case DEBUGTOKEN_TRACE:
+                morpho_stacktrace(v);
+                break;
             default:
                 printf("Unrecognized debugger command\n");
                 break;
         }
-/*
-        if (input) {
-            switch (input[0]) {
-                case 'A': case 'a': // Address
-                {
-                    if (!debug_parseint(input, &k)) break;
-                    
-                    if (k>=0 && k<v->fp->function->nregs) {
-                        value *reg = v->stack.data + v->fp->roffset;
-                        if (MORPHO_ISOBJECT(reg[k])) {
-                            printf("Object in register %i at %p.\n", k, (void *) MORPHO_GETOBJECT(reg[k]));
-                        }
-                    } else printf("Invalid register.\n");
-                }
-                    break;
-                case 'B': case 'b': // Breakpoint
-                {
-                    instructionindx breakpoint;
-                    if (debug_parsebreakpoint(v->current, input+1, &breakpoint)) {
-                        debugger_setbreakpoint(debug, breakpoint);
-                        break;
-                    }
-                    
-                    printf("Invalid breakpoint target.\n");
-                }
-                    break;
-                case 'C': case 'c': // Continue
-                    debugger_setsinglestep(debug, false);
-                    stop=true;
-                    break;
-                case 'D': case 'd': // Disassemble
-                    morpho_disassemble(v->current, &line);
-                    break;
-                case 'G': case 'g': // Globals
-                {
-                    if (!debug_parseint(input, &k)) {
-                        morpho_globals(v);
-                        break;
-                    }
-                    
-                    if (k>=0 && k<v->globals.count) {
-                        printf("global %u:", k);
-                        morpho_printvalue(v->globals.data[k]);
-                        printf("\n");
-                    } else printf("Invalid global number.\n");
-                }
-                    break;
-                case 'I': case 'i': // Info
-                    
-                    break;
-                case 'L': case 'l': // List source
-                    debug_list(v);
-                    break;
-                case 'N': case 'n': // Next
-                    printf("Not implemented...\n");
-                    break;
-                case 'P': case 'p': { // Print
-                    varray_char symbol;
-                    varray_charinit(&symbol);
-                    
-                    if (debug_parsesymbol(input+1, &symbol)) {
-                        debug_printsymbol(v, symbol.data);
-                    } else {
-                        debug_showsymbols(v);
-                    }
-                    
-                    varray_charclear(&symbol);
-                }
-                    break;
-                case 'R': case 'r': // Registers
-                    debug_showregisters(v, v->fp);
-                    break;
-                case 'S': case 's': // Step
-                    debugger_setsinglestep(v->debug, true);
-                    v->debug->currentline=line;
-                    v->debug->currentfunc=func;
-                    stop=true;
-                    //debug_showstack(v);
-                    break;
-                case 'T': case 't': // Trace
-                    morpho_stacktrace(v);
-                    break;
-                case 'X': case 'x':
-                {
-                    instructionindx breakpoint;
-                    if (debug_parsebreakpoint(v->current, input+1, &breakpoint)) {
-                        debugger_clearbreakpoint(debug, breakpoint);
-                        break;
-                    }
-                    printf("Invalid breakpoint target.\n");
-                }
-                    break;
-                case '=':
-                {
-                    varray_char symbol;
-                    varray_charinit(&symbol);
-                    //if (debug_parsesymbol(input+1, &symbol));
-                    
-                    printf("Not implemented...\n");
-                    varray_charclear(&symbol);
-                }
-                    break;
-                case ',':
-                    vm_collectgarbage(v);
-                    break;
-                default:
-                    printf("Unrecognized debugger command\n");
-            }
-        }
-*/
     }
+    
+    debugger_resumebanner(debug);
     linedit_clear(&edit);
 }
 

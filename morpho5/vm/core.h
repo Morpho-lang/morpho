@@ -69,15 +69,10 @@ typedef unsigned int instruction;
 /** Encodes an instruction with operand Ax and extended operand Bl */
 #define ENCODE_EXTENDED(op, Ax) ( (((unsigned) op) & 0xff) | ((A & 0xffffff) << 8) )
 
-/** Encodes an instruction with operands A, B and C also setting the constant flags Bc and Cc */
-//#define ENCODEC(op, A, Bc, B, Cc, C) ( ((((unsigned) op) & 0xff) << 26) | ((A & 0xff) << 18) | ((Bc & 0x1) << 17) | ((B & 0xff) << 9) | ((Cc & 0x1) << 8) | (C & 0xff) )
-
-/** Encodes an instruction with operand A and long operand Bx */
-//#define ENCODE_LONGFLAGS(op, A, f, g, Bx) ( ((((unsigned) op) & 0xff) << 26) | ((A & 0xff) << 18) | ((f & 0x1) << 17) | ((g & 0x1) << 16) | (Bx & 0xffff) )
-
-
-/** Encodes an instruction with operands A and B */
-//#define ENCODE_DOUBLE(op, A, Bc, B) ( ((((unsigned) op) & 0xff) << 26) | ((A & 0xff) << 18) | ((Bc & 0x1) << 17) | ((B & 0xff) << 9) )
+#define MASK_OP     (0xff)
+#define MASK_A      (0xff << 8)
+#define MASK_B      (0xff << 16)
+#define MASK_C      (0xff << 24)
 
 /** Encodes an empty operand */
 #define ENCODE_EMPTYOPERAND 0
@@ -92,20 +87,11 @@ typedef unsigned int instruction;
 /** Decode operand C */
 #define DECODE_C(x) ((x>>24) & (0xff))
 
-/** Is Operand B a constant or a register? */
-//#define DECODE_ISBCONSTANT(x) ((x) & (1<<17))
-/** Is Operand C a constant or a register? */
-//#define DECODE_ISCCONSTANT(x) ((x) & (1<<8))
-
 /** Decode long operand Bx */
 #define DECODE_Bx(x) ((x>>16) & (0xffff))
 
 /** Decode signed long operand Bx */
 #define DECODE_sBx(x) ((short) ((x>>16) & (0xffff)))
-
-/** Decode flags F and G */
-//#define DECODE_F(x) ((bool) (x & (1<<17)))
-//#define DECODE_G(x) ((bool) (x & (1<<16)))
 
 /* -----------------------------
  * Opcodes (built automatically)
@@ -242,28 +228,28 @@ typedef struct {
 /** @brief A Morpho virtual machine and its current state */
 struct svm {
     program *current; /** The current program being executed */
-    
+
     varray_value globals; /** Global variables */
     varray_value stack; /** The stack */
     callframe frame[MORPHO_CALLFRAMESTACKSIZE]; /** The call frame stack */
     errorhandler errorhandlers[MORPHO_ERRORHANDLERSTACKSIZE]; /** Error handler stack */
-    
+
     instruction *instructions; /* Base of instructions */
     value *konst; /* Current constant table */
     callframe *fp; /* Frame pointer saved on exit */
     callframe *fpmax; /* Maximum value of the frame pointer */
     errorhandler *ehp; /* Error handler pointer */
-    
+
     error err; /** An error struct that will be filled out when an error occurs */
     callframe *errfp; /** Record frame pointer when an error occured */
-    
+
     object *objects; /** Linked list of objects */
     graylist gray; /** Graylist for garbage collection */
     size_t bound; /** Estimated size of bound bytes */
     size_t nextgc; /** Next garbage collection threshold */
-    
+
     bool debug; /** Is the debugger active or not */
-    
+
 #ifdef MORPHO_PROFILER
     profiler *profiler;
     enum { VM_RUNNING, VM_INGC } status; 

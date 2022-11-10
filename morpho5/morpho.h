@@ -128,7 +128,7 @@ void morpho_setdebug(vm *v, bool active);
 /* Compilation */
 compiler *morpho_newcompiler(program *out);
 void morpho_freecompiler(compiler *c);
-bool morpho_compile(char *in, compiler *c, error *err);
+bool morpho_compile(char *in, compiler *c, bool optimize, error *err);
 const char *morpho_compilerrestartpoint(compiler *c);
 void morpho_resetentry(program *p);
 

@@ -611,6 +611,7 @@ bool debugger_isactive(debugger *d) {
 typedef enum {
     DEBUGTOKEN_ASTERISK,
     DEBUGTOKEN_DOT,
+    DEBUGTOKEN_EQ,
     
     DEBUGTOKEN_INTEGER,
     
@@ -628,6 +629,7 @@ typedef enum {
     DEBUGTOKEN_PRINT,
     DEBUGTOKEN_QUIT,
     DEBUGTOKEN_REGISTERS,
+    DEBUGTOKEN_SET,
     DEBUGTOKEN_STACK,
     DEBUGTOKEN_STEP,
     DEBUGTOKEN_TRACE,
@@ -694,6 +696,9 @@ debuggercommand commandlist[] =
   { "stack", DEBUGTOKEN_STACK },
     
   { "step", DEBUGTOKEN_STEP },
+
+  { "set", DEBUGTOKEN_SET },
+    
   { "s", DEBUGTOKEN_STEP },
   
   { "trace", DEBUGTOKEN_TRACE },
@@ -827,6 +832,7 @@ bool debuglex(debuglexer *l, debugtoken *tok, bool command) {
         case '*': debuglexer_recordtoken(l, DEBUGTOKEN_ASTERISK, tok); return true;
         case '.': debuglexer_recordtoken(l, DEBUGTOKEN_DOT, tok); return true;
         case '?': debuglexer_recordtoken(l, DEBUGTOKEN_HELP, tok); return true;
+        case '=': debuglexer_recordtoken(l, DEBUGTOKEN_EQ, tok); return true;
         default:
             break;
     }
@@ -855,6 +861,13 @@ bool debugger_tokentoint(debugtoken *tok, int *out) {
 bool debugger_parseint(debuglexer *lex, debugtoken *tok, int *out) {
     return (debuglex(lex, tok, false) &&
             debugger_tokentoint(tok, out));
+}
+
+/** Advances the lexer and matches a specified token type */
+bool debugger_parsematch(debuglexer *lex, debugtokentype match) {
+    debugtoken tok;
+    return (debuglex(lex, &tok, false) &&
+            tok.type==match);
 }
 
 /** Parse a breakpoint command */
@@ -902,6 +915,31 @@ bool debugger_parsebreakpoint(vm *v, debugger *debug, debuglexer *lex, instructi
         morpho_freeobject(klassname);
     }
 
+    return success;
+}
+
+/* Parses a string into a value */
+bool debugger_parsevalue(char *in, value *out) {
+    lexer l;
+    parser p;
+    syntaxtree tree;
+    error err;
+    bool success=false;
+    syntaxtree_init(&tree);
+    lex_init(&l, in, 0);
+    parse_init(&p, &l, &err, &tree);
+    if (parse(&p) && tree.tree.count>0) {
+        syntaxtreenode node = tree.tree.data[tree.entry];
+        
+        if (SYNTAXTREE_ISLEAF(node.type)) {
+            if (MORPHO_ISSTRING(node.content)) {
+                *out = object_clonestring(node.content);
+            } else *out = node.content;
+            
+            success=true;
+        }
+    }
+    syntaxtree_clear(&tree);
     return success;
 }
 
@@ -1001,13 +1039,9 @@ void debug_showglobals(vm *v) {
     }
 }
 
-/** Prints a specified symbol */
-bool debug_printsymbol(vm *v, char *match) {
-    objectstring str = MORPHO_STATICSTRING((match ? match : ""));
-    value matchstr = MORPHO_OBJECT(&str);
-    bool success=false;
-    
-    objectstring prntlabel = MORPHO_STATICSTRING(MORPHO_PRINT_METHOD);
+/** Attempts to find a symbol. If successful val is updated to give its storage location */
+bool debug_findsymbol(vm *v, debugtoken *tok, callframe **frame, value *symbol, value **val) {
+    value matchstr = object_stringfromcstring(tok->start, tok->length);
     
     for (callframe *f=v->fp; f>=v->frame; f--) {
         value symbols[f->function->nregs];
@@ -1017,29 +1051,52 @@ bool debug_printsymbol(vm *v, char *match) {
         
         for (int i=0; i<f->function->nregs; i++) {
             if (!MORPHO_ISNIL(symbols[i]) && MORPHO_ISEQUAL(symbols[i], matchstr)) {
-                morpho_printvalue(symbols[i]);
-                
-                printf(" (in %s", (f==v->frame ? "global" : ""));
-                if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(f->function->name);
-                printf(") ");
-                
-                printf("= ");
-                value val = v->stack.data[f->roffset+i];
-
-                if (MORPHO_ISOBJECT(val)) {
-                    value printmethod, out;
-                    if (morpho_lookupmethod(val, MORPHO_OBJECT(&prntlabel), &printmethod)) {
-                        morpho_invoke(v, val, printmethod, 0, NULL, &out);
-                    }
-                } else {
-                    morpho_printvalue(val);
-                }
-                printf("\n");
-                success=true;
+                if (frame) *frame = f;
+                if (symbol) *symbol = symbols[i];
+                if (val) *val = &v->stack.data[f->roffset+i];
+                morpho_freeobject(matchstr);
+                return true;
             }
         }
     }
-    return success;
+    
+    morpho_freeobject(matchstr);
+    return false;
+}
+
+/** Prints a specified symbol */
+bool debug_printsymbol(vm *v, debugtoken *tok) {
+    value symbol, *val;
+    callframe *frame;
+    if (!debug_findsymbol(v, tok, &frame, &symbol, &val)) return false;
+    
+    objectstring prntlabel = MORPHO_STATICSTRING(MORPHO_PRINT_METHOD);
+    morpho_printvalue(symbol);
+    
+    printf(" (in %s", (frame==v->frame ? "global" : ""));
+    if (frame->function->klass &&
+        !MORPHO_ISNIL(frame->function->klass->name)) {
+        morpho_printvalue(frame->function->klass->name);
+        printf(".");
+    }
+    if (!MORPHO_ISNIL(frame->function->name)) {
+        morpho_printvalue(frame->function->name);
+    } else printf("anonymous");
+    printf(") ");
+    
+    printf("= ");
+
+    if (MORPHO_ISOBJECT(*val)) {
+        value printmethod, out;
+        if (morpho_lookupmethod(*val, MORPHO_OBJECT(&prntlabel), &printmethod)) {
+            morpho_invoke(v, *val, printmethod, 0, NULL, &out);
+        }
+    } else {
+        morpho_printvalue(*val);
+    }
+    printf("\n");
+    
+    return true;
 }
 
 /** Return the previous instruction index */
@@ -1169,7 +1226,6 @@ void debugger_globals(vm *v, debugger *debug, debuglexer *lex) {
     }
 }
 
-
 /** Information */
 void debugger_info(vm *v, debugger *debug, debuglexer *lex) {
     debugtoken token; // Record tokens
@@ -1223,10 +1279,48 @@ void debugger_print(vm *v, debugger *debug, debuglexer *lex) {
     if (debuglex(lex, &tok, false) &&
         tok.type==DEBUGTOKEN_SYMBOL) {
         tok.start[tok.length]='\0';
-        if (!debug_printsymbol(v, tok.start)) printf("Symbol '%s' not found.\n", tok.start);
+        if (!debug_printsymbol(v, &tok)) printf("Symbol '%s' not found.\n", tok.start);
     } else {
         debug_showsymbols(v);
     }
+}
+
+/** Sets a variable or register */
+bool debugger_set(vm *v, debugger *debug, debuglexer *lex) {
+    debugtoken tok;
+    value *dest=NULL;
+    value val=MORPHO_NIL;
+    bool success=false;
+    
+    if (debuglex(lex, &tok, false)) {
+        if (debuglexer_matchkeyword(lex)==DEBUGTOKEN_REGISTERS) {
+            int r;
+            if (debugger_parseint(lex, &tok, &r)) {
+                if (r>=0 && r<v->fp->function->nregs) {
+                    dest = v->stack.data+v->fp->roffset+r;
+                } else {
+                    printf("Invalid register.\n");
+                    return false;
+                }
+            }
+        } else if (tok.type==DEBUGTOKEN_SYMBOL) {
+            if (!debug_findsymbol(v, &tok, NULL, NULL, &dest)) {
+                printf("Symbol not found.\n");
+                return false;
+            }
+        }
+    }
+    
+    if (dest) {
+        if (!debugger_parsematch(lex, DEBUGTOKEN_EQ)) return false;
+        
+        if (debugger_parsevalue(lex->current, &val)) {
+            *dest = val;
+            success=true;
+        }
+    } else printf("Invalid target.\n");
+
+    return success;
 }
 
 /* ----------------------
@@ -1298,6 +1392,9 @@ void debugger_enter(vm *v) {
             case DEBUGTOKEN_QUIT:
                 morpho_runtimeerror(v, VM_DBGQUIT);
                 return;
+            case DEBUGTOKEN_SET:
+                debugger_set(v, debug, &lex);
+                break;
             case DEBUGTOKEN_STEP:
                 debugger_setsinglestep(debug, true);
                 stop=true;

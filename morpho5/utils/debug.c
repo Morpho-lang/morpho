@@ -605,7 +605,7 @@ bool debugger_isactive(debugger *d) {
  * ********************************************************************** */
 
 /* ---------------
- * Parse responses
+ * Parse commands
  * --------------- */
 
 typedef enum {
@@ -1056,16 +1056,6 @@ instructionindx debug_currentinstruction(vm *v) {
 #include "linedit.h"
 #include "cli.h"
 
-/** Source listing */
-void debug_list(vm *v) {
-    int line;
-    value module=MORPHO_NIL;
-    
-    if (debug_infofromindx(v->current, debug_previnstruction(v), &module, &line, NULL, NULL, NULL)) {
-        cli_list((MORPHO_ISSTRING(module) ? MORPHO_GETCSTRING(module): NULL), line-5, line+5);
-    }
-}
-
 /* ----------------------
  * Debugger functionality
  * ---------------------- */
@@ -1076,18 +1066,42 @@ void debug_list(vm *v) {
 #define DEBUG_COLOR ""
 #endif
 
-/** Display the morpho banner */
-void debugger_banner(debugger *debug) {
-    printf("%s---Morpho debugger---%s\n", DEBUG_COLOR, CLI_NORMALTEXT);
-    printf("Type '?' or 'h' for help.\n");
-    printf("%s in %s", (debug->singlestep ? "Single stepping" : "Breakpoint"), ((!debug->currentfunc) || MORPHO_ISNIL(debug->currentfunc->name)? "global" : MORPHO_GETCSTRING(debug->currentfunc->name)));
-    if (!MORPHO_ISNIL(debug->currentmodule)) {
+/** Prints the location information */
+void debugger_printlocation(vm *v, debugger *debug, instructionindx indx) {
+    value module;
+    int line;
+    objectfunction *fn;
+    objectclass *klass;
+    debug_infofromindx(v->current, indx, &module, &line, NULL, &fn, &klass);
+    
+    printf("in ");
+    
+    if (klass) {
+        morpho_printvalue(klass->name);
+        printf(".");
+    }
+    
+    if (!MORPHO_ISNIL(fn->name)) morpho_printvalue(fn->name);
+    else if (v->current->global==fn) printf("global");
+    else printf("anonymous fn");
+    
+    if (!MORPHO_ISNIL(module)) {
         printf(" in \"");
-        morpho_printvalue(debug->currentmodule);
+        morpho_printvalue(module);
         printf("\"");
     }
-    if (debug->currentline!=ERROR_POSNUNIDENTIFIABLE) printf(" at line %u", debug->currentline);
-    printf(" [Instruction %ti]", debug->iindx);
+    printf(" at line %i ", line);
+    
+    printf("[instruction %ti]", indx);
+    
+}
+
+/** Display the morpho banner */
+void debugger_banner(vm *v, debugger *debug) {
+    printf("%s---Morpho debugger---%s\n", DEBUG_COLOR, CLI_NORMALTEXT);
+    printf("Type '?' or 'h' for help.\n");
+    printf("%s ", (debug->singlestep ? "Single stepping" : "Breakpoint"));
+    debugger_printlocation(v, debug, debug->iindx);
     printf("\n");
 }
 
@@ -1096,23 +1110,21 @@ void debugger_resumebanner(debugger *debug) {
     printf("%s---Resuming----------%s\n", DEBUG_COLOR, CLI_NORMALTEXT);
 }
 
+/** Process a set/clear breakpoint */
+void debugger_breakpoint(vm *v, debugger *debug, debuglexer *lex, bool set) {
+    instructionindx breakpoint;
+    if (debugger_parsebreakpoint(v, debug, lex, &breakpoint)) {
+        if (set) debugger_setbreakpoint(debug, breakpoint);
+        else debugger_clearbreakpoint(debug, breakpoint);
+    } else printf("Invalid breakpoint target.\n");
+}
+
 /** Debugger help */
 void debugger_help(debugger *debug) {
     printf("Available commands:\n");
     printf("  [b]reakpoint, [c]ontinue, [d]isassemble, [g]arbage collect,\n"
            "  [?]/[h]elp, [i]nfo, [l]ist, [p]rint, [q]uit, [s]tep, \n"
            "  [t]race, [x]clear\n");
-}
-
-/** Shows one or more globals */
-void debugger_globals(vm *v, debugger *debug, debuglexer *lex) {
-    debugtoken token; // Record tokens
-    int id;
-    if (debugger_parseint(lex, &token, &id)) {
-        debug_showglobal(v, id);
-    } else {
-        debug_showglobals(v);
-    }
 }
 
 /** Find the address of an object in a register */
@@ -1130,6 +1142,34 @@ void debugger_address(vm *v, debugger *debug, debuglexer *lex) {
     } else printf("Invalid register.\n");
 }
 
+/** Displays active breakpoints */
+void debugger_showbreakpoints(vm *v, debugger *debug) {
+    printf("Active breakpoints:\n");
+    for (instructionindx i=0; i<debug->breakpoints.count; i++) {
+        if (debug->breakpoints.data[i]!='\0') {
+            printf("  Breakpoint ");
+            debugger_printlocation(v, debug, i);
+            printf("\n");
+        } else if (DECODE_OP(v->current->code.data[i])==OP_BREAK) {
+            printf("  Break ");
+            debugger_printlocation(v, debug, i);
+            printf("\n");
+        }
+    }
+}
+
+/** Shows one or more globals */
+void debugger_globals(vm *v, debugger *debug, debuglexer *lex) {
+    debugtoken token; // Record tokens
+    int id;
+    if (debugger_parseint(lex, &token, &id)) {
+        debug_showglobal(v, id);
+    } else {
+        debug_showglobals(v);
+    }
+}
+
+
 /** Information */
 void debugger_info(vm *v, debugger *debug, debuglexer *lex) {
     debugtoken token; // Record tokens
@@ -1139,6 +1179,9 @@ void debugger_info(vm *v, debugger *debug, debuglexer *lex) {
         case DEBUGTOKEN_ASTERISK:
         case DEBUGTOKEN_ADDRESS:
             debugger_address(v, debug, lex);
+            break;
+        case DEBUGTOKEN_BREAK:
+            debugger_showbreakpoints(v, debug);
             break;
         case DEBUGTOKEN_GLOBALS:
         case DEBUGTOKEN_G:
@@ -1155,6 +1198,7 @@ void debugger_info(vm *v, debugger *debug, debuglexer *lex) {
         default:
             printf("Valid info commands: \n");
             printf("  info address n: Displays the address of register n.\n");
+            printf("  info break: Displays all breakpoints.\n");
             printf("  info globals: Displays the contents of all globals.\n");
             printf("  info global n: Displays the contents of global n.\n");
             printf("  info registers: Displays the contents of all registers.\n");
@@ -1163,13 +1207,14 @@ void debugger_info(vm *v, debugger *debug, debuglexer *lex) {
     }
 }
 
-/** Process a set/clear breakpoint */
-void debugger_breakpoint(vm *v, debugger *debug, debuglexer *lex, bool set) {
-    instructionindx breakpoint;
-    if (debugger_parsebreakpoint(v, debug, lex, &breakpoint)) {
-        if (set) debugger_setbreakpoint(debug, breakpoint);
-        else debugger_clearbreakpoint(debug, breakpoint);
-    } else printf("Invalid breakpoint target.\n");
+/** Source listing */
+void debugger_list(vm *v) {
+    int line;
+    value module=MORPHO_NIL;
+    
+    if (debug_infofromindx(v->current, debug_previnstruction(v), &module, &line, NULL, NULL, NULL)) {
+        cli_list((MORPHO_ISSTRING(module) ? MORPHO_GETCSTRING(module): NULL), line-5, line+5);
+    }
 }
 
 /** Prints a symbol or all symbols in view */
@@ -1209,7 +1254,7 @@ void debugger_enter(vm *v) {
     linedit_init(&edit);
     linedit_setprompt(&edit, "@>");
     
-    debugger_banner(debug);
+    debugger_banner(v, debug);
     
     debuglexer lex;   // Lexer to read commands
     debugtoken token; // Record tokens
@@ -1245,7 +1290,7 @@ void debugger_enter(vm *v) {
                 debugger_info(v, debug, &lex);
                 break;
             case DEBUGTOKEN_LIST:
-                debug_list(v);
+                debugger_list(v);
                 break;
             case DEBUGTOKEN_PRINT:
                 debugger_print(v, debug, &lex);

@@ -925,8 +925,9 @@ bool debugger_parsevalue(char *in, value *out) {
     syntaxtree tree;
     error err;
     bool success=false;
+    error_init(&err);
     syntaxtree_init(&tree);
-    lex_init(&l, in, 0);
+    lex_init(&l, in, 1);
     parse_init(&p, &l, &err, &tree);
     if (parse(&p) && tree.tree.count>0) {
         syntaxtreenode node = tree.tree.data[tree.entry];
@@ -939,6 +940,7 @@ bool debugger_parsevalue(char *in, value *out) {
             success=true;
         }
     }
+    
     syntaxtree_clear(&tree);
     return success;
 }
@@ -1313,11 +1315,11 @@ bool debugger_set(vm *v, debugger *debug, debuglexer *lex) {
     
     if (dest) {
         if (!debugger_parsematch(lex, DEBUGTOKEN_EQ)) return false;
-        
+
         if (debugger_parsevalue(lex->current, &val)) {
             *dest = val;
             success=true;
-        }
+        } else printf("Couldn't parse expression.\n");
     } else printf("Invalid target.\n");
 
     return success;

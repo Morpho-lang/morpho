@@ -3500,8 +3500,6 @@ void morpho_setbaseclass(value klss) {
 
 /** Initializes the compiler */
 void compile_initialize(void) {
-    baseclass=NULL;
-
     _selfsymbol=builtin_internsymbolascstring("self");
 
     /* Lex errors */

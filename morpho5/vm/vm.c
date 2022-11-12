@@ -2216,8 +2216,8 @@ void morpho_initialize(void) {
     object_initialize(); // Must be first for zombie object tracking
     error_initialize();
     random_initialize();
+    builtin_initialize(); // Must come before initialization of any classes or similar
     compile_initialize();
-    builtin_initialize();
 
 #ifdef MORPHO_DEBUG_GCSIZETRACKING
     dictionary_init(&sizecheck);

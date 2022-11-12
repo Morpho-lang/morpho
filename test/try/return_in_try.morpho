@@ -8,7 +8,6 @@ fn func() {
 }
 
 for (i in 1..100) {
-  print i
   func()
 }
 

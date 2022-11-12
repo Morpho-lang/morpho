@@ -1356,6 +1356,12 @@ callfunction: // Jump here if an instruction becomes a call
             if (v->openupvalues) { /* Close upvalues */
                 vm_closeupvalues(v, reg);
             }
+        
+            if (v->ehp) { /* Remove any error handlers from this call frame */
+                while (v->ehp->fp==v->fp &&
+                       v->ehp>=v->errorhandlers) v->ehp--;
+                if (v->ehp<v->errorhandlers) v->ehp=NULL; // If the stack is empty rest to NULL
+            }
 
             value retvalue;
 

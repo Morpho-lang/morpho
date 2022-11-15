@@ -122,6 +122,9 @@ void morpho_unreachable(const char *explanation);
 #define VM_STCKOVFLW                      "StckOvflw"
 #define VM_STCKOVFLW_MSG                  "Stack overflow."
 
+#define VM_ERRSTCKOVFLW                   "ErrStckOvflw"
+#define VM_ERRSTCKOVFLW_MSG               "Error handler stack overflow."
+
 #define VM_INVLDOP                        "InvldOp"
 #define VM_INVLDOP_MSG                    "Invalid operands. Failed to %s %s and %s"
 

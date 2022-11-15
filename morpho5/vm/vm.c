@@ -1356,6 +1356,12 @@ callfunction: // Jump here if an instruction becomes a call
             if (v->openupvalues) { /* Close upvalues */
                 vm_closeupvalues(v, reg);
             }
+        
+            if (v->ehp) { /* Remove any error handlers from this call frame */
+                while (v->ehp->fp==v->fp &&
+                       v->ehp>=v->errorhandlers) v->ehp--;
+                if (v->ehp<v->errorhandlers) v->ehp=NULL; // If the stack is empty rest to NULL
+            }
 
             value retvalue;
 
@@ -1574,6 +1580,9 @@ callfunction: // Jump here if an instruction becomes a call
 
         CASE_CODE(PUSHERR):
             b=DECODE_Bx(bc);
+            if (v->ehp && v->ehp>=v->errorhandlers+MORPHO_ERRORHANDLERSTACKSIZE-1) {
+                ERROR(VM_ERRSTCKOVFLW);
+            }
             if (!v->ehp) v->ehp=v->errorhandlers; else v->ehp++; // Add new error handler to the error stack
             v->ehp->fp=v->fp; // Store the current frame pointer
             v->ehp->dict=v->konst[b]; // Store the error handler dictionary from the constant table
@@ -2207,14 +2216,15 @@ void morpho_initialize(void) {
     object_initialize(); // Must be first for zombie object tracking
     error_initialize();
     random_initialize();
+    builtin_initialize(); // Must come before initialization of any classes or similar
     compile_initialize();
-    builtin_initialize();
 
 #ifdef MORPHO_DEBUG_GCSIZETRACKING
     dictionary_init(&sizecheck);
 #endif
 
     morpho_defineerror(VM_STCKOVFLW, ERROR_HALT, VM_STCKOVFLW_MSG);
+    morpho_defineerror(VM_ERRSTCKOVFLW, ERROR_HALT, VM_ERRSTCKOVFLW_MSG);
     morpho_defineerror(VM_INVLDOP, ERROR_HALT, VM_INVLDOP_MSG);
     morpho_defineerror(VM_CNCTFLD, ERROR_HALT, VM_CNCTFLD_MSG);
     morpho_defineerror(VM_UNCALLABLE, ERROR_HALT, VM_UNCALLABLE_MSG);

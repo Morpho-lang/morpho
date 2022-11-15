@@ -5,3 +5,10 @@ print isstring(System.platform())
 
 print isstring(System.version())
 // expect: true
+
+print isnumber(System.clock())
+// expect: true 
+
+System.exit() 
+
+print "We never get here"

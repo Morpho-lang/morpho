@@ -1,0 +1,17 @@
+// Variadic args 
+
+fn func(...a) {
+  for (x in a) print x 
+}
+
+func(1)
+// expect: 1
+
+func(1, 2)
+// expect: 1
+// expect: 2
+
+func(1, 2, 3)
+// expect: 1
+// expect: 2
+// expect: 3

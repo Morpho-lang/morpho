@@ -17,8 +17,10 @@
 
 #define SYSTEM_CLASSNAME       "System"
 
-#define SYSTEM_PLATFORM        "platform"
-#define SYSTEM_VERSION         "version"
+#define SYSTEM_PLATFORM_METHOD        "platform"
+#define SYSTEM_VERSION_METHOD         "version"
+#define SYSTEM_CLOCK_METHOD           "clock"
+#define SYSTEM_EXIT_METHOD            "exit"
 
 #define SYSTEM_MACOS   "macos"
 #define SYSTEM_LINUX   "linux"

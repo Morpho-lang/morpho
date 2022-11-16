@@ -752,7 +752,7 @@ static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int n
     for (unsigned int i=0; i<=nargs; i++) (*reg)[i] = oreg[regcall+i];
 
     /* Handle optional args */
-    if (func->opt.count>0 || func->varg>0) {
+    if (func->opt.count>0 || func->varg>=0) {
         if (!vm_vargs(v, (*pc) - v->instructions, func, regcall, nargs, oreg, *reg)) return false;
     } else if (func->nargs!=nargs) {
         vm_runtimeerror(v, (*pc) - v->instructions, VM_INVALIDARGS, func->nargs, nargs);
@@ -1872,7 +1872,15 @@ bool morpho_run(vm *v, program *p) {
 
     instructionindx start = program_getentry(p);
 
-    return morpho_interpret(v, reg, start);
+    int success = morpho_interpret(v, reg, start);
+
+    if (!success &&
+        morpho_matcherror(morpho_geterror(v), VM_EXIT)) {
+        success=true;
+        error_clear(morpho_geterror(v));
+    }
+    
+    return success;
 }
 
 /* Call a morpho function from C code */

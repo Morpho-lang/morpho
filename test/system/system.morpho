@@ -7,7 +7,7 @@ print isstring(System.version())
 // expect: true
 
 print isnumber(System.clock())
-// expect: true 
+// expect: true
 
 System.exit() 
 

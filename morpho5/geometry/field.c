@@ -752,7 +752,9 @@ value Field_op(vm *v, int nargs, value *args) {
             else { morpho_runtimeerror(v, FIELD_OP); return MORPHO_NIL; }
         }
         
-        field_op(v, fn, slf, nargs-1, flds, &out);
+        if (field_op(v, fn, slf, nargs-1, flds, &out)) {
+            morpho_bindobjects(v, 1, &out);
+        }
     } else morpho_runtimeerror(v, FIELD_OP);
     
     return out;

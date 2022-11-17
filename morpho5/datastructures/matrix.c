@@ -601,7 +601,9 @@ value matrix_constructor(vm *v, int nargs, value *args) {
         if (!new) {
             /** Could this be a concatenation operation? */
             objectsparseerror err = sparse_catmatrix(MORPHO_GETLIST(MORPHO_GETARG(args, 0)), &new);
-            if (err!=SPARSE_OK) sparse_raiseerror(v, err);
+            if (err==SPARSE_INVLDINIT) {
+                morpho_runtimeerror(v, MATRIX_INVLDARRAYINIT);
+            } else if (err!=SPARSE_OK) sparse_raiseerror(v, err);
         }
     } else if (nargs==1 &&
                MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {

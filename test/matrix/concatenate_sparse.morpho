@@ -1,6 +1,6 @@
 // Concatenate matrices together
 
-var a = Sparse([[0,0,1],[1,1,1]])
+var a = Sparse([[0,1,1],[1,0,1]])
 var b = Matrix([2,3])
 
 print a

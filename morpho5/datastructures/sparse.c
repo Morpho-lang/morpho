@@ -767,7 +767,8 @@ bool matrix_catcopyentry(void *out, value val, int irow, int icol) {
 objectsparseerror sparse_docat(objectlist *in, void *dest, sparse_catcopyfn copyfn, int *outrows, int *outcols) {
     unsigned int dim[2] = {0,0}, ndim;
 
-    if (!matrix_getlistdimensions(in, dim, 2, &ndim)) return SPARSE_INVLDINIT;
+    if (!matrix_getlistdimensions(in, dim, 2, &ndim) ||
+        ndim>2) return SPARSE_INVLDINIT;
 
     /* Keep track of rows and columns of the matrix */
     int nrows[dim[0]], ncols[dim[1]];

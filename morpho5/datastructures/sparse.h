@@ -149,6 +149,7 @@ bool sparseccs_copytomatrix(sparseccs *src, objectmatrix *dest, int row0, int co
 typedef enum { SPARSE_DOK, SPARSE_CCS } objectsparseformat;
 
 typedef enum { SPARSE_OK, SPARSE_INCMPTBLDIM, SPARSE_INVLDINIT, SPARSE_CONVFAILED, SPARSE_FAILED } objectsparseerror;
+void sparse_raiseerror(vm *v, objectsparseerror err);
 
 bool sparse_checkformat(objectsparse *sparse, objectsparseformat format, bool force, bool copyvals);
 

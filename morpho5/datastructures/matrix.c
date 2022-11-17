@@ -151,6 +151,9 @@ objectmatrix *object_matrixfromarray(objectarray *array) {
  * @param[out] ndim - number of dimensions of the array */
 bool matrix_getlistdimensions(objectlist *list, unsigned int dim[], unsigned int maxdim, unsigned int *ndim) {
     unsigned int m=0;
+    
+    if (maxdim==0) return false;
+    
     /* Store the length */
     if (list->val.count>dim[0]) dim[0]=list->val.count;
     
@@ -187,6 +190,8 @@ objectmatrix *object_matrixfromlist(objectlist *list) {
     if (matrix_getlistdimensions(list, dim, 2, &ndim)) {
         ret=object_newmatrix(dim[0], dim[1], true);
     }
+    
+    if (ndim>2) return false;
     
     unsigned int indx[2];
     if (ret) for (unsigned int i=0; i<dim[0]; i++) {
@@ -595,9 +600,8 @@ value matrix_constructor(vm *v, int nargs, value *args) {
         new=object_matrixfromlist(MORPHO_GETLIST(MORPHO_GETARG(args, 0)));
         if (!new) {
             /** Could this be a concatenation operation? */
-            if (sparse_catmatrix(MORPHO_GETLIST(MORPHO_GETARG(args, 0)), &new)!=SPARSE_OK) {
-                morpho_runtimeerror(v, MATRIX_INVLDARRAYINIT);
-            }
+            objectsparseerror err = sparse_catmatrix(MORPHO_GETLIST(MORPHO_GETARG(args, 0)), &new);
+            if (err!=SPARSE_OK) sparse_raiseerror(v, err);
         }
     } else if (nargs==1 &&
                MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {

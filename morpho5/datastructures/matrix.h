@@ -151,6 +151,7 @@ bool matrix_setcolumn(objectmatrix *matrix, unsigned int col, double *v);
 bool matrix_addtocolumn(objectmatrix *m, unsigned int col, double alpha, double *v);
 
 objectmatrixerror matrix_copy(objectmatrix *a, objectmatrix *out);
+objectmatrixerror matrix_copyat(objectmatrix *a, objectmatrix *out, int row0, int col0);
 objectmatrixerror matrix_add(objectmatrix *a, objectmatrix *b, objectmatrix *out);
 objectmatrixerror matrix_accumulate(objectmatrix *a, double lambda, objectmatrix *b);
 objectmatrixerror matrix_sub(objectmatrix *a, objectmatrix *b, objectmatrix *out);

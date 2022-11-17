@@ -167,6 +167,9 @@ objectsparseerror sparse_transpose(objectsparse *a, objectsparse *out);
 void sparse_clear(objectsparse *a);
 size_t sparse_size(objectsparse *a);
 
+objectsparseerror sparse_cat(objectlist *in, objectsparse *dest);
+objectsparseerror sparse_catmatrix(objectlist *in, objectmatrix **out);
+
 /* ***************************************
  * Sparse class methods
  * *************************************** */

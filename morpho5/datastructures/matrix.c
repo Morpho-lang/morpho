@@ -310,7 +310,7 @@ objectmatrixerror matrix_copy(objectmatrix *a, objectmatrix *out) {
 
 /** Copies a matrix to another at an arbitrary point */
 objectmatrixerror matrix_copyat(objectmatrix *a, objectmatrix *out, int row0, int col0) {
-    if (col0+a->ncols<out->ncols && row0+a->nrows<out->nrows) {
+    if (col0+a->ncols<=out->ncols && row0+a->nrows<=out->nrows) {
         for (int j=0; j<a->ncols; j++) {
             for (int i=0; i<a->nrows; i++) {
                 double value;
@@ -593,7 +593,12 @@ value matrix_constructor(vm *v, int nargs, value *args) {
     } else if (nargs==1 &&
                MORPHO_ISLIST(MORPHO_GETARG(args, 0))) {
         new=object_matrixfromlist(MORPHO_GETLIST(MORPHO_GETARG(args, 0)));
-        if (!new) morpho_runtimeerror(v, MATRIX_INVLDARRAYINIT);
+        if (!new) {
+            /** Could this be a concatenation operation? */
+            if (sparse_catmatrix(MORPHO_GETLIST(MORPHO_GETARG(args, 0)), &new)!=SPARSE_OK) {
+                morpho_runtimeerror(v, MATRIX_INVLDARRAYINIT);
+            }
+        }
     } else if (nargs==1 &&
                MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
         new=object_clonematrix(MORPHO_GETMATRIX(MORPHO_GETARG(args, 0)));
@@ -737,6 +742,21 @@ value Matrix_getcolumn(vm *v, int nargs, value *args) {
 value Matrix_print(vm *v, int nargs, value *args) {
     objectmatrix *m=MORPHO_GETMATRIX(MORPHO_SELF(args));
     matrix_print(m);
+    return MORPHO_NIL;
+}
+
+/** Matrix add */
+value Matrix_assign(vm *v, int nargs, value *args) {
+    objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
+ 
+    if (nargs==1 && MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
+        objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
+        
+        if (a->ncols==b->ncols && a->nrows==b->nrows) {
+            matrix_copy(b, a);
+        } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    }
+    
     return MORPHO_NIL;
 }
 
@@ -1226,6 +1246,7 @@ MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Matrix_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_GETCOLUMN_METHOD, Matrix_getcolumn, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_SETCOLUMN_METHOD, Matrix_setcolumn, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Matrix_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_ASSIGN_METHOD, Matrix_assign, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADD_METHOD, Matrix_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADDR_METHOD, Matrix_addr, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUB_METHOD, Matrix_sub, BUILTIN_FLAGSEMPTY),

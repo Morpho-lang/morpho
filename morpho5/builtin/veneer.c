@@ -1115,7 +1115,7 @@ value List_append(vm *v, int nargs, value *args) {
 
     varray_valueadd(&slf->val, args+1, nargs);
 
-    if (slf->val.capacity!=capacity) morpho_resizeobject(v, (object *) slf, capacity*sizeof(value), slf->val.capacity*sizeof(value));
+    if (slf->val.capacity!=capacity) morpho_resizeobject(v, (object *) slf, capacity*sizeof(value)+sizeof(objectlist), slf->val.capacity*sizeof(value)+sizeof(objectlist));
 
     return MORPHO_SELF(args);
 }

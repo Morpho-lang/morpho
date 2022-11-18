@@ -1277,7 +1277,9 @@ callfunction: // Jump here if an instruction becomes a call
 #ifdef MORPHO_PROFILER
                         v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
 #endif
-                        reg[a] = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, c, reg+a);
+                        value ret = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, c, reg+a);
+                        reg=v->fp->roffset+v->stack.data; /* Restore registers */
+                        reg[a] = ret;
 #ifdef MORPHO_PROFILER
                         v->fp->inbuiltinfunction=NULL;
 #endif
@@ -1310,7 +1312,9 @@ callfunction: // Jump here if an instruction becomes a call
 #ifdef MORPHO_PROFILER
                         v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
 #endif
-                        reg[a] = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, c, reg+a);
+                        value ret = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, c, reg+a);
+                        reg=v->fp->roffset+v->stack.data; /* Restore registers */
+                        reg[a] = ret;
 #ifdef MORPHO_PROFILER
                         v->fp->inbuiltinfunction=NULL;
 #endif
@@ -1331,7 +1335,9 @@ callfunction: // Jump here if an instruction becomes a call
 #ifdef MORPHO_PROFILER
                             v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
 #endif
-                            reg[a] = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, c, reg+a);
+                            value ret = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, c, reg+a);
+                            reg=v->fp->roffset+v->stack.data; /* Restore registers */
+                            reg[a] = ret;
 #ifdef MORPHO_PROFILER
                             v->fp->inbuiltinfunction=NULL;
 #endif
@@ -1818,6 +1824,9 @@ void morpho_releaseobjects(vm *v, int handle) {
  *  @param newsize new size
  */
 void morpho_resizeobject(vm *v, object *obj, size_t oldsize, size_t newsize) {
+#ifdef MORPHO_DEBUG_GCSIZETRACKING
+    dictionary_insert(&sizecheck, MORPHO_OBJECT(obj), MORPHO_INTEGER(newsize));
+#endif
     if (obj->status==OBJECT_ISUNMANAGED) return;
     v->bound-=oldsize;
     v->bound+=newsize;

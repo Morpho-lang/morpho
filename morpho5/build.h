@@ -92,7 +92,7 @@
 
 /** @brief Build Morpho VM with small but hacky value type [NaN boxing] */
 #ifndef _NO_NAN_BOXING
-#define MORPHO_NAN_BOXING
+//#define MORPHO_NAN_BOXING
 #endif
 /** @brief Number of bytes to bind before GC first runs */
 #define MORPHO_GCINITIAL 1024;
@@ -153,7 +153,7 @@
 //#define MORPHO_DEBUG_LOGGARBAGECOLLECTOR
 
 /** @brief Check GC size tracking */
-//#define MORPHO_DEBUG_GCSIZETRACKING
+#define MORPHO_DEBUG_GCSIZETRACKING
 
 /** @brief Fill global constant table */
 //#define MORPHO_DEBUG_FILLGLOBALCONSTANTTABLE

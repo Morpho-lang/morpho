@@ -153,7 +153,7 @@
 //#define MORPHO_DEBUG_LOGGARBAGECOLLECTOR
 
 /** @brief Check GC size tracking */
-#define MORPHO_DEBUG_GCSIZETRACKING
+//#define MORPHO_DEBUG_GCSIZETRACKING
 
 /** @brief Fill global constant table */
 //#define MORPHO_DEBUG_FILLGLOBALCONSTANTTABLE

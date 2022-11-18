@@ -1469,7 +1469,7 @@ value Dictionary_setindex(vm *v, int nargs, value *args) {
 
         dictionary_insert(&slf->dict, MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1));
 
-        if (slf->dict.capacity!=capacity) morpho_resizeobject(v, (object *) slf, capacity*sizeof(value), slf->dict.capacity*sizeof(value));
+        if (slf->dict.capacity!=capacity) morpho_resizeobject(v, (object *) slf, capacity*sizeof(dictionaryentry)+sizeof(objectdictionary), slf->dict.capacity*sizeof(dictionaryentry)+sizeof(objectdictionary));
     } else morpho_runtimeerror(v, SETINDEX_ARGS);
 
     return MORPHO_NIL;

@@ -861,8 +861,13 @@ value Sparse_setindex(vm *v, int nargs, value *args) {
     unsigned int indx[2]={0,0};
     
     if (array_valuelisttoindices(nargs-1, args+1, indx)) {
+        size_t osize = sparse_size(s);
         if (!sparse_setelement(s, indx[0], indx[1], args[nargs])) {
             morpho_runtimeerror(v, SPARSE_SETFAILED);
+        }
+        size_t nsize = sparse_size(s);
+        if (osize!=nsize) {
+            morpho_resizeobject(v, (object *) s, osize, nsize);
         }
     } else morpho_runtimeerror(v, MATRIX_INVLDINDICES);
     
@@ -954,7 +959,8 @@ value Sparse_mul(vm *v, int nargs, value *args) {
         
         objectsparse *new = object_newsparse(NULL, NULL);
         if (new) {
-            objectsparseerror err =sparse_mul(a, b, new);
+            objectsparseerror err=sparse_mul(a, b, new);
+            
             if (err==SPARSE_OK) {
                 out=MORPHO_OBJECT(new);
                 morpho_bindobjects(v, 1, &out);

@@ -224,7 +224,7 @@ bool mesh_setconnectivityelement(objectmesh *mesh, unsigned int row, unsigned in
     unsigned int indx[2]={row,col};
     if (mesh_checkconnectivity(mesh)) {
         value old = MORPHO_NIL;
-        if (array_getelement(mesh->conn, 2, indx, &old) &&
+        if ((array_getelement(mesh->conn, 2, indx, &old)==ARRAY_OK) &&
             MORPHO_ISOBJECT(old)) {
             object *oel = MORPHO_GETOBJECT(old);
             mesh_delink(mesh, oel);
@@ -658,6 +658,7 @@ bool mesh_addelementwithvertices(objectmesh *mesh, grade g, elementid *v) {
 /** Resets connectivity elements other than the first row */
 void mesh_resetconnectivity(objectmesh *m) {
     grade max = mesh_maxgrade(m);
+    
     for (grade i=1; i<=max; i++) {
         for (grade j=0; j<=max; j++) {
             mesh_setconnectivityelement(m, i, j, NULL);

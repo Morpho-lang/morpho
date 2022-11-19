@@ -149,6 +149,7 @@
 #ifdef _DEBUG_STRESSGARBAGECOLLECTOR
     #define MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
 #endif
+
 /** @brief Log garbage collector */
 //#define MORPHO_DEBUG_LOGGARBAGECOLLECTOR
 

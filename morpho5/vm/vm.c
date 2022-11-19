@@ -1832,6 +1832,15 @@ void morpho_resizeobject(vm *v, object *obj, size_t oldsize, size_t newsize) {
     v->bound+=newsize;
 }
 
+
+/** @brief Checks if an object is managed by the garbage collector
+ *  @param obj  the object to check
+ *  @returns true if it is managed, false otherwise 
+ */
+bool morpho_ismanagedobject(object *obj) {
+    return (obj->status==OBJECT_ISUNMARKED || obj->status==OBJECT_ISMARKED);
+}
+
 /** Runs a program
  * @param[in] v - the virtual machine to use
  * @param[in] p - program to run

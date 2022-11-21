@@ -468,14 +468,17 @@ bool sparseccs_copy(sparseccs *src, sparseccs *dest) {
  * @param copyvals copy values across
  * @returns true if the format is available */
 bool sparse_checkformat(objectsparse *sparse, objectsparseformat format, bool force, bool copyvals) {
+    bool available=false;
     switch (format) {
         case SPARSE_DOK:
-            return (sparse->dok.ncols>0 && sparse->dok.nrows>0)||(sparse->dok.dict.count>0);
+            available=(sparse->dok.ncols>0 && sparse->dok.nrows>0)||(sparse->dok.dict.count>0);
+            break;
         case SPARSE_CCS:
             if (force && !sparse->ccs.cptr) {
-                return sparseccs_doktoccs(&sparse->dok, &sparse->ccs, copyvals);
-            } else return (sparse->ccs.cptr);
+                available=sparseccs_doktoccs(&sparse->dok, &sparse->ccs, copyvals);
+            } else available=(sparse->ccs.cptr);
     }
+    return available;
 }
 
 /** Removes data structures for a given format */
@@ -861,8 +864,13 @@ value Sparse_setindex(vm *v, int nargs, value *args) {
     unsigned int indx[2]={0,0};
     
     if (array_valuelisttoindices(nargs-1, args+1, indx)) {
+        size_t osize = sparse_size(s);
         if (!sparse_setelement(s, indx[0], indx[1], args[nargs])) {
             morpho_runtimeerror(v, SPARSE_SETFAILED);
+        }
+        size_t nsize = sparse_size(s);
+        if (osize!=nsize) {
+            morpho_resizeobject(v, (object *) s, osize, nsize);
         }
     } else morpho_runtimeerror(v, MATRIX_INVLDINDICES);
     
@@ -908,7 +916,13 @@ value Sparse_add(vm *v, int nargs, value *args) {
         
         objectsparse *new = object_newsparse(NULL, NULL);
         if (new) {
+            size_t asize=sparse_size(a), bsize=sparse_size(b);
+            
             objectsparseerror err =sparse_add(a, b, 1.0, 1.0, new);
+            
+            morpho_resizeobject(v, (object *) a, asize, sparse_size(a));
+            morpho_resizeobject(v, (object *) b, bsize, sparse_size(b));
+            
             if (err==SPARSE_OK) {
                 out=MORPHO_OBJECT(new);
                 morpho_bindobjects(v, 1, &out);
@@ -931,7 +945,13 @@ value Sparse_sub(vm *v, int nargs, value *args) {
         
         objectsparse *new = object_newsparse(NULL, NULL);
         if (new) {
+            size_t asize=sparse_size(a), bsize=sparse_size(b);
+            
             objectsparseerror err =sparse_add(a, b, 1.0, -1.0, new);
+            
+            morpho_resizeobject(v, (object *) a, asize, sparse_size(a));
+            morpho_resizeobject(v, (object *) b, bsize, sparse_size(b));
+            
             if (err==SPARSE_OK) {
                 out=MORPHO_OBJECT(new);
                 morpho_bindobjects(v, 1, &out);
@@ -954,7 +974,13 @@ value Sparse_mul(vm *v, int nargs, value *args) {
         
         objectsparse *new = object_newsparse(NULL, NULL);
         if (new) {
-            objectsparseerror err =sparse_mul(a, b, new);
+            size_t asize=sparse_size(a), bsize=sparse_size(b);
+            
+            objectsparseerror err=sparse_mul(a, b, new);
+            
+            morpho_resizeobject(v, (object *) a, asize, sparse_size(a));
+            morpho_resizeobject(v, (object *) b, bsize, sparse_size(b));
+            
             if (err==SPARSE_OK) {
                 out=MORPHO_OBJECT(new);
                 morpho_bindobjects(v, 1, &out);
@@ -982,7 +1008,10 @@ value Sparse_divr(vm *v, int nargs, value *args) {
         
         objectmatrix *new = object_newmatrix(b->nrows, b->ncols, false);
         if (new) {
+            size_t asize=sparse_size(a);
             objectsparseerror err =sparse_div(a, b, new);
+            morpho_resizeobject(v, (object *) a, asize, sparse_size(a));
+            
             if (err==SPARSE_OK) {
                 out=MORPHO_OBJECT(new);
                 morpho_bindobjects(v, 1, &out);
@@ -1002,7 +1031,10 @@ value Sparse_transpose(vm *v, int nargs, value *args) {
  
     objectsparse *new = object_newsparse(NULL, NULL);
     if (new) {
-        objectsparseerror err =sparse_transpose(a, new);
+        size_t asize=sparse_size(a);
+        objectsparseerror err = sparse_transpose(a, new);
+        morpho_resizeobject(v, (object *) a, asize, sparse_size(a));
+        
         if (err==SPARSE_OK) {
             out=MORPHO_OBJECT(new);
             morpho_bindobjects(v, 1, &out);
@@ -1099,7 +1131,9 @@ value Sparse_setrowindices(vm *v, int nargs, value *args) {
  
     if (nargs==2 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
         MORPHO_ISLIST(MORPHO_GETARG(args, 1))) {
+        size_t ssize=sparse_size(s);
         if (sparse_checkformat(s, SPARSE_CCS, true, true)) {
+            morpho_resizeobject(v, (object *) s, ssize, sparse_size(s));
             int col = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
             objectlist *list = MORPHO_GETLIST(MORPHO_GETARG(args, 1));
             int nentries=list_length(list);
@@ -1129,8 +1163,11 @@ value Sparse_setrowindices(vm *v, int nargs, value *args) {
 value Sparse_colindices(vm *v, int nargs, value *args) {
     objectsparse *s=MORPHO_GETSPARSE(MORPHO_SELF(args));
     value out=MORPHO_NIL;
- 
+    
+    size_t ssize=sparse_size(s);
     if (sparse_checkformat(s, SPARSE_CCS, true, true)) {
+        morpho_resizeobject(v, (object *) s, ssize, sparse_size(s));
+        
         int ncols=0;
         varray_int cols;
         varray_intinit(&cols);
@@ -1156,7 +1193,9 @@ value Sparse_indices(vm *v, int nargs, value *args) {
     objectsparse *s=MORPHO_GETSPARSE(MORPHO_SELF(args));
     value out=MORPHO_NIL;
  
+    size_t ssize=sparse_size(s);
     if (sparse_checkformat(s, SPARSE_DOK, true, true)) {
+        morpho_resizeobject(v, (object *) s, ssize, sparse_size(s));
         objectlist *list=object_newlist(s->dok.dict.count, NULL);
         if (list) {
             for (objectdokkey *key=s->dok.keys; key!=NULL; key=(objectdokkey *) key->obj.next) {

@@ -111,6 +111,7 @@ errorid array_to_list_error(objectarrayerror err);
 bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out);
 objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned int *indx, value *out);
 objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned int *indx, value in);
+void array_print(vm *v, objectarray *a);
 objectarrayerror setslicerecursive(value* a, value* out,objectarrayerror copy(value * ,value *,\
 									unsigned int, unsigned int *,unsigned int *),unsigned int ndim,\
 									unsigned int curdim, unsigned int *indx,unsigned int *newindx, value *slices);

@@ -109,7 +109,8 @@ void morpho_bindobjects(vm *v, int nobj, value *obj);
 void morpho_markobject(void *v, object *obj);
 void morpho_markvalue(void *v, value val);
 void morpho_markvarrayvalue(void *v, varray_value *array);
-void morpho_searchunmanagedobject(void *v, object *obj); 
+void morpho_searchunmanagedobject(void *v, object *obj);
+bool morpho_ismanagedobject(object *obj); 
 
 /* Tell the VM that the size of an object has changed */
 void morpho_resizeobject(vm *v, object *obj, size_t oldsize, size_t newsize);

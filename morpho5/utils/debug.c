@@ -344,8 +344,9 @@ void morpho_disassemble(program *code, int *matchline) {
 
 /** Finds debugging info asssociated with instruction at indx */
 bool debug_infofromindx(program *code, instructionindx indx, value *module, int *line, int *posn, objectfunction **func, objectclass **klass) {
-    objectclass *cklass=NULL;
-    objectfunction *cfunc=NULL;
+    if (module) *module=MORPHO_NIL; 
+    if (func) *func=code->global;
+    if (klass) *klass=NULL;
     instructionindx i=0;
     
     for (unsigned int j=0; j<code->annotations.count; j++) {
@@ -355,15 +356,13 @@ bool debug_infofromindx(program *code, instructionindx indx, value *module, int 
                 if (i+ann->content.element.ninstr>indx) {
                     if (line) *line = ann->content.element.line;
                     if (posn) *posn = ann->content.element.posn;
-                    if (func) *func = cfunc;
-                    if (klass) *klass = cklass;
                     return true;
                 }
                 i+=ann->content.element.ninstr;
             }
                 break;
-            case DEBUG_FUNCTION: cfunc=ann->content.function.function; break;
-            case DEBUG_CLASS: cklass=ann->content.klass.klass; break;
+            case DEBUG_FUNCTION: if (func) *func=ann->content.function.function; break;
+            case DEBUG_CLASS: if (klass) *klass=ann->content.klass.klass; break;
             case DEBUG_MODULE: if (module) *module=ann->content.module.module; break;
             default: break;
         }
@@ -1127,10 +1126,10 @@ instructionindx debug_currentinstruction(vm *v) {
 
 /** Prints the location information */
 void debugger_printlocation(vm *v, debugger *debug, instructionindx indx) {
-    value module;
-    int line;
-    objectfunction *fn;
-    objectclass *klass;
+    value module=MORPHO_NIL;
+    int line=0;
+    objectfunction *fn=NULL;
+    objectclass *klass=NULL;
     debug_infofromindx(v->current, indx, &module, &line, NULL, &fn, &klass);
     
     printf("in ");
@@ -1267,7 +1266,7 @@ void debugger_info(vm *v, debugger *debug, debuglexer *lex) {
 
 /** Source listing */
 void debugger_list(vm *v) {
-    int line;
+    int line=0;
     value module=MORPHO_NIL;
     
     if (debug_infofromindx(v->current, debug_previnstruction(v), &module, &line, NULL, NULL, NULL)) {

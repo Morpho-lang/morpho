@@ -275,6 +275,20 @@ static objectclass *compiler_getcurrentclass(compiler *c) {
 }
 
 /* ------------------------------------------
+ * Modules
+ * ------------------------------------------- */
+
+/** Sets the current module */
+static void compiler_setmodule(compiler *c, value module) {
+    c->currentmodule=module;
+}
+
+/** Gets the current module */
+static value compiler_getmodule(compiler *c) {
+    return c->currentmodule;
+}
+
+/* ------------------------------------------
  * Loops
  * ------------------------------------------- */
 
@@ -3335,6 +3349,8 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             /* Set up the compiler */
             compiler cc;
             compiler_init(src.data, c->out, &cc);
+            compiler_setmodule(&cc, modname);
+            debug_setmodule(&c->out->annotations, modname);
             cc.parent=c; /* Ensures global variables can be found */
 
             morpho_compile(src.data, &cc, false, &c->err);
@@ -3345,7 +3361,9 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             } else {
                 c->err.module = MORPHO_GETCSTRING(modname);
             }
-
+            
+            debug_setmodule(&c->out->annotations, compiler_getmodule(c));
+            
             compiler_clear(&cc);
 
             end=c->out->code.count;
@@ -3398,6 +3416,7 @@ void compiler_init(const char *source, program *out, compiler *c) {
     c->prevfunction = NULL;
     c->currentclass = NULL;
     c->currentmethod = NULL;
+    c->currentmodule = MORPHO_NIL;
     c->parent = NULL;
 }
 

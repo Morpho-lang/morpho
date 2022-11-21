@@ -180,6 +180,22 @@ typedef struct {
 DECLARE_VARRAY(debugannotation, debugannotation)
 
 /* **********************************************************************
+ * Debugger
+ * ********************************************************************** */
+
+typedef struct {
+    bool singlestep; /** Is single step mode on? */
+    
+    int currentline; /** Record current line */
+    objectfunction *currentfunc; /** Record current function */
+    value currentmodule; /** Current module */
+    instructionindx iindx; /** Record current instruction */
+    
+    int nbreakpoints; /** Number of active breakpoints */
+    varray_char breakpoints; /** Keep track of breakpoints */
+} debugger;
+
+/* **********************************************************************
  * Programs
  * ********************************************************************** */
 
@@ -248,7 +264,7 @@ struct svm {
     size_t bound; /** Estimated size of bound bytes */
     size_t nextgc; /** Next garbage collection threshold */
 
-    bool debug; /** Is the debugger active or not */
+    debugger *debug; 
 
 #ifdef MORPHO_PROFILER
     profiler *profiler;

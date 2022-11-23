@@ -804,6 +804,13 @@ value Field_mesh(vm *v, int nargs, value *args) {
     return MORPHO_OBJECT(f->mesh);
 }
 
+/** Get the matrix that stores the Field */
+value Field_linearize(vm *v, int nargs, value *args) {
+    objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
+    
+    return MORPHO_OBJECT(&f->data);
+}
+
 MORPHO_BEGINCLASS(Field)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Field_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Field_setindex, BUILTIN_FLAGSEMPTY),
@@ -823,7 +830,8 @@ MORPHO_METHOD(FIELD_OP_METHOD, Field_op, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Field_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Field_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_SHAPE_METHOD, Field_shape, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FIELD_MESH_METHOD, Field_mesh, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FIELD_MESH_METHOD, Field_mesh, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FIELD_LINEARIZE_METHOD, Field_linearize, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

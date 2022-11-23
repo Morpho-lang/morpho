@@ -134,6 +134,7 @@ void morpho_resetentry(program *p);
 
 /* Interpreting */
 bool morpho_run(vm *v, program *p);
+bool morpho_profile(vm *v, program *p);
 bool morpho_lookupmethod(value obj, value label, value *method);
 bool morpho_countparameters(value f, int *nparams);
 bool morpho_call(vm *v, value fn, int nargs, value *args, value *ret);

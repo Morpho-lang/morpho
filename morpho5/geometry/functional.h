@@ -39,10 +39,12 @@
 #define FUNCTIONAL_TOTAL_METHOD        "total"
 #define FUNCTIONAL_GRADIENT_METHOD     "gradient"
 #define FUNCTIONAL_FIELDGRADIENT_METHOD     "fieldgradient"
+#define FUNCTIONAL_HESSIAN_METHOD      "hessian"
 
 /* Special functions that can be used in integrands */
 #define TANGENT_FUNCTION               "tangent"
 #define NORMAL_FUNCTION                "normal"
+#define GRAD_FUNCTION                  "grad"
 
 /* Functional names */
 #define LENGTH_CLASSNAME               "Length"

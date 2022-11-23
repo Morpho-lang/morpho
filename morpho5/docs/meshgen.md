@@ -39,6 +39,8 @@ There are also a number of properties of a `MeshGen` object that can be set prio
 * `fscale` an internal "pressure"
 * `ttol` how far the vertices are allowed to move before retriangulation
 * `etol` energy tolerance for optimization problem
+* `maxiterations` Maximum number of iterations of minimization +
+  retriangulation (default is 100)
 
 `MeshGen` picks default values that cover a reasonable range of uses.
 
@@ -72,6 +74,15 @@ Conveniently constructs a `Domain` object correspondiong to a disk. Requires the
 Create a domain corresponding to the unit disk: 
 
     var c = CircularDomain([0,0], 1)
+
+## RectangularDomain
+[tagrectangulardomain]: # (rectangulardomain)
+
+Conveniently constructs a `Domain` object corresponding to a rectangle. Requires a list of ranges as arguments. Works in arbitrary dimensions
+
+Create a square `Domain`:
+
+    var c = RectangularDomain([-1..1, -1..1])
 
 ## HalfSpaceDomain
 [halfspacedomain]: # (halfspacedomain)

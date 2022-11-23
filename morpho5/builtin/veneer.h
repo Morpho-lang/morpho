@@ -40,6 +40,8 @@
 
 #define DICTIONARY_KEYS_METHOD "keys"
 #define DICTIONARY_CONTAINS_METHOD "contains"
+#define DICTIONARY_REMOVE_METHOD "remove"
+#define DICTIONARY_CLEAR_METHOD "clear"
 
 #define RANGE_ARGS                        "RngArgs"
 #define RANGE_ARGS_MSG                    "Range expects numerical arguments: a start, an end and an optional stepsize."

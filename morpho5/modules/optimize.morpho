@@ -198,6 +198,7 @@ class Optimizer {
     self.linmintol = 0.001 // Convergence tolerance for line minimizations
     self.linminmax = 10 // Maximum number of iterations for line minimizations
     self.maxconstraintsteps = 20 // Maximum number of constraint steps
+    self.maxbracketsteps = 20 // Maximum number of bracketing steps 
     self.quiet = false // Whether to report
   }
 
@@ -424,6 +425,7 @@ class Optimizer {
 
             // Now solve for the necessary motion
             var m=self.forceinnerproducts(fa)
+            if (m.norm()<self.ctol) continue
             var sol = Matrix(va)/m
 
             if (msh) { // Move the vertex
@@ -486,26 +488,35 @@ class Optimizer {
   /* Bracket the stepsize */
   bracketstepsize() {
     var s = [ 0, self.stepsize, 2*self.stepsize ]
-    var bracket = [ self.totalenergy(), self.energywithstepsize(s[1]), self.energywithstepsize(s[2]) ]
+    if (2*self.stepsize>self.steplimit) {
+      s[1]=self.steplimit/2 
+      s[2]=self.steplimit 
+    }
 
+    var bracket = [ self.totalenergy(), self.energywithstepsize(s[1]), self.energywithstepsize(s[2]) ]
     var iter = 0
 
     while (!(bracket[1]<bracket[0] && bracket[1]<bracket[2])) {
-      if (bracket[2]<bracket[1]) { // Step size is too small
+      if (bracket[1]>bracket[0]) { // Step size is too big
+        s[1]=s[1]/2
+        bracket[1]=self.energywithstepsize(s[1])
+      } else if (bracket[2]<bracket[1]) { // Step size is too small
+        if (2*s[2]>self.steplimit) { // Ensure we don't exceed steplimit
+          if (bracket[1]<bracket[0] && bracket[2]<bracket[1]) return -1
+          return false 
+        }
         s[1]=s[2]
         s[2]=2*s[2]
         bracket[1]=bracket[2]
         bracket[2]=self.energywithstepsize(s[2])
-      } else if (bracket[1]>bracket[0]) { // Step size is too big
-        s[1]=s[1]/2
-        bracket[1]=self.energywithstepsize(s[1])
       } else {
         print "Cannot resolve bracket. Current stepsizes [${s[0]},${s[1]},${s[2]}] and bracket [${bracket[0]},${bracket[1]},${bracket[2]}]"
+        if (bracket[1]<bracket[0] && bracket[2]<bracket[1]) return -1
         return nil
       }
-      if (iter>10) {
-        print "Couldn't bracket stepsize. Adjust stepsize and retry."
-        return nil
+      if (iter>self.maxbracketsteps) {
+        print "Too many steps in bracketing stepsize. Current stepsizes [${s[0]},${s[1]},${s[2]}] and bracket [${bracket[0]},${bracket[1]},${bracket[2]}]"
+        return nil 
       }
       iter+=1
     }
@@ -549,10 +560,14 @@ class Optimizer {
      returns true */
   dolinesearch() {
     var brack=self.bracketstepsize()
-    if (!islist(brack)) return false
+    if (brack==-1) { // Bracketing failed; should take regular step
+      //print "Linesearch failed; taking regular step."
+      self.stepsize = self.steplimit
+      return self.steplimit
+    } else if (!islist(brack)) return false // Bracketing completely failed
 
     var step = brent(brack[0], self.energywithstepsize, self.linmintol, self.linminmax)
-    if (step) self.stepsize = step[0]
+    if (islist(step)) self.stepsize = step[0]
     return step
   }
 

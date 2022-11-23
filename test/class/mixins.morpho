@@ -1,0 +1,33 @@
+// Test mixins 
+
+class A {
+  a() { return "Foo" }
+  b() { return "Ooo Noo!" }
+}
+
+class B {
+  b() { return "Boo" }
+  c() { return "Coo" }
+}
+
+class Q {
+  b() { return "Woo" }
+  q() { return "Qoo" }
+  z() { return self.a() }
+}
+
+class C is A with B, Q {
+  
+}
+
+var x = C()
+
+print x.a() // expect: Foo
+print x.b() // expect: Woo
+print x.c() // expect: Coo
+print x.q() // expect: Qoo
+print x.z() // expect: Foo
+
+
+
+

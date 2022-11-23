@@ -76,6 +76,7 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 
 #define MATRIX_CLASSNAME "Matrix"
 
+#define MATRIX_INVERSE_METHOD "inverse"
 #define MATRIX_TRANSPOSE_METHOD "transpose"
 #define MATRIX_TRACE_METHOD "trace"
 #define MATRIX_INNER_METHOD "inner"

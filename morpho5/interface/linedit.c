@@ -154,7 +154,7 @@ void linedit_stringdelete(linedit_string *string, size_t posn, size_t n) {
     
     if (offset<string->length) {
         if (offset+nbytes<string->length) {
-            memmove(string->string+offset, string->string+offset+n, string->length-offset-nbytes+1);
+            memmove(string->string+offset, string->string+offset+nbytes, string->length-offset-nbytes+1);
         } else {
             string->string[offset]='\0';
         }
@@ -448,34 +448,6 @@ void linedit_getterminalwidth(lineditor *edit) {
 }
 
 /** @brief Shows visible characters l...r from a string */
-void linedit_writewindowX(char *string, int l, int r) {
-    int i=0;
-    for (char *s=string; *s!='\0'; s++) {
-        if (*s=='\r') { // Reset on a carriage return
-            if (write(STDOUT_FILENO, "\r", 1)==-1) return;
-            i=0;
-        } else if (iscntrl(*s)) {
-            if (*s=='\033') { // A terminal control character
-                char *ctl=s; // First identify its length
-                while (!isalpha(*ctl) && *ctl!='\0') ctl++;
-                if (write(STDOUT_FILENO, s, ctl-s+1)==-1) return; // print it
-                s=ctl;
-            }
-        } else { // Otherwise show printable characters that lie within the window
-            if (i>=l) {
-                int n=0;
-                while (i+n<=r && !iscntrl(s[n])) n++;
-                if (n>0) {
-                    if (write(STDOUT_FILENO, s, n)==-1) return;
-                    s+=n-1; // because of s++ at the end of the loop
-                    i+=n;
-                }
-            } else i++;
-        }
-    }
-}
-
-/** @brief Shows visible characters l...r from a string */
 void linedit_writewindow(char *string, int l, int r) {
     int i=0;
     int width=0;
@@ -668,7 +640,13 @@ void linedit_eraseline(linedit_string *out) {
  * Interface
  * ********************************************************************** */
 
-/* Adds a string with selection highlighting */
+/** Adds a string with selection highlighting
+ * @param[in] edit - active editor
+ * @param[in] in - input string
+ * @param[in] offset - offset of string in characters
+ * @param[in] length - length of string in characters
+ * @param[in] col - color
+ * @param[out] out - display plus coloring information written to this string */
 void linedit_addcstringwithselection(lineditor *edit, char *in, size_t offset, size_t length, linedit_color *col, linedit_string *out) {
     int lposn=-1, rposn=-1;
     
@@ -689,6 +667,7 @@ void linedit_addcstringwithselection(lineditor *edit, char *in, size_t offset, s
         if (lposn<0) {
             linedit_setemphasis(out, LINEDIT_REVERSE);
         }
+        char *c=in;
         for (int i=0; i<length; i++) {
             if (i==lposn) {
                 linedit_setemphasis(out, LINEDIT_REVERSE);
@@ -698,7 +677,10 @@ void linedit_addcstringwithselection(lineditor *edit, char *in, size_t offset, s
                 /* Restore the color if one is provided */
                 if (col) linedit_setcolor(out, *col);
             }
-            linedit_stringappend(out, in+i, 1);
+            int nbytes=linedit_utf8numberofbytes(c);
+            if (nbytes) linedit_stringappend(out, c, nbytes);
+            else nbytes=1; // Corrupted stream
+            c+=nbytes;
         }
     }
 }
@@ -847,7 +829,8 @@ bool lineedit_atendofline(lineditor *edit) {
 void linedit_advanceposition(lineditor *edit, int delta) {
     edit->posn+=delta;
     if (edit->posn<0) edit->posn=0;
-    if (edit->posn>(int)edit->current.length) edit->posn=(int) edit->current.length;
+    int linewidth = linedit_stringwidth(&edit->current);
+    if (edit->posn>linewidth) edit->posn=linewidth;
 }
 
 /** Obtain and process a single keypress */
@@ -940,8 +923,10 @@ bool linedit_processkeypress(lineditor *edit) {
                         if (linedit_getmode(edit)==LINEDIT_SELECTIONMODE) {
                             int lposn=(edit->sposn < edit->posn ? edit->sposn : edit->posn);
                             int rposn = (edit->sposn < edit->posn ? edit->posn : edit->sposn);
+                            size_t lindx = linedit_utf8index(&edit->current, lposn, 0);
+                            size_t rindx = linedit_utf8index(&edit->current, rposn, 0);
                             linedit_stringclear(&edit->clipboard);
-                            linedit_stringappend(&edit->clipboard, edit->current.string+lposn, (size_t) rposn-lposn);
+                            linedit_stringappend(&edit->clipboard, edit->current.string+lindx, (size_t) rindx-lindx);
                         }
                         break;
                     case 'D': /* Delete a character */
@@ -965,7 +950,7 @@ bool linedit_processkeypress(lineditor *edit) {
                         linedit_setmode(edit, LINEDIT_DEFAULTMODE);
                         if (edit->clipboard.length>0) {
                             linedit_stringinsert(&edit->current, edit->posn, edit->clipboard.string, edit->clipboard.length);
-                            linedit_advanceposition(edit, (int) edit->clipboard.length);
+                            linedit_advanceposition(edit, linedit_stringwidth(&edit->clipboard));
                         }
                         break;
                     default: break;

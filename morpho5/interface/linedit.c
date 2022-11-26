@@ -38,7 +38,7 @@ typedef struct {
 #define LINEDIT_KEYPRESSGETCHAR(a) ((a)->c[0])
 
 /* **********************************************************************
- * Strings
+ * UTF8 support
  * ********************************************************************** */
 
 /** @brief Returns the number of bytes in the next character of a given utf8 string
@@ -55,6 +55,21 @@ int linedit_utf8numberofbytes(char *string) {
     return 1;
 }
 
+/** Decodes a utf8 encoded character pointed to by c into an int */
+int linedit_utf8toint(char *c) {
+    unsigned int ret = -1;
+    int nbytes=linedit_utf8numberofbytes(c);
+    switch (nbytes) {
+        case 1: ret=(c[0] & 0x7f); break;
+        case 2: ret=((c[0] & 0x1f)<<6) | (c[1] & 0x3f); break;
+        case 3: ret=((c[0] & 0x0f)<<12) | ((c[1] & 0x3f)<<6) | (c[2] & 0x3f); break;
+        case 4: ret=((c[0] & 0x0f)<<18) | ((c[1] & 0x3f)<<12) | ((c[2] & 0x3f)<<6) | (c[3] & 0x3f) ; break;
+        default: break;
+    }
+    
+    return ret;
+}
+
 /** @brief Returns a pointer to character i in a utf8 encoded string */
 ssize_t linedit_utf8index(linedit_string *string, size_t i, size_t offset) {
     int advance=0;
@@ -68,6 +83,10 @@ ssize_t linedit_utf8index(linedit_string *string, size_t i, size_t offset) {
     
     return -1;
 }
+
+/* **********************************************************************
+ * Strings
+ * ********************************************************************** */
 
 #define linedit_MINIMUMSTRINGSIZE  8
 
@@ -413,7 +432,7 @@ void linedit_enablerawmode(void) {
                         ICRNL  - translate CR into NL (ctrl-m)
                         BRKINT - parity checking
                         ISTRIP - strip bit 8 of each input byte */
-    termraw.c_iflag &= ~(IXON | ICRNL | BRKINT | BRKINT | ISTRIP);
+    termraw.c_iflag &= ~(IXON | ICRNL | BRKINT | INPCK | BRKINT | ISTRIP);
     /* Output: Turn off: OPOST - output processing */
     termraw.c_oflag &= ~(OPOST);
     /* Character: CS8 Set 8 bits per byte */
@@ -423,6 +442,8 @@ void linedit_enablerawmode(void) {
                  IEXTEN - literal (ctrl-v)
                  ISIG   - turn off signals (ctrl-c and ctrl-z) */
     termraw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+    /* Set return condition for control characters */
+    termraw.c_cc[VMIN] = 1; termraw.c_cc[VTIME] = 0; /* 1 byte, no timer */
     
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &termraw);
 }
@@ -431,6 +452,32 @@ void linedit_enablerawmode(void) {
 void linedit_disablerawmode(void) {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &terminit);
     printf("\r"); /** Print a carriage return to ensure we're back on the left hand side */
+}
+
+#define LINEDIT_CURSORPOSN_BUFFERSIZE 32
+/** @brief Gets the cursor position */
+bool linedit_getcursorposition(int *x, int *y) {
+    char answer[LINEDIT_CURSORPOSN_BUFFERSIZE];
+    int i=0, row=0, col=0;
+
+    /* Report cursor location */
+    if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return false;
+
+    /* Read the response: ESC [ rows ; cols R */
+    while (i < sizeof(answer)-1) {
+        if (read(STDIN_FILENO,answer+i,1) != 1) break;
+        if (answer[i] == 'R') break; // Response is 'R' terminated
+        i++;
+    }
+    answer[i] = '\0'; // Terminal response is not null-terminated by default
+
+    /* Parse response */
+    if (answer[0] != 27 || answer[1] != '[') return false;
+    if (sscanf(answer+2,"%d;%d",&row,&col) != 2) return false;
+    
+    if (y) *y = row; // Return result
+    if (x) *x = col;
+    return true;
 }
 
 /** @brief Gets the terminal width */
@@ -443,7 +490,7 @@ void linedit_getterminalwidth(lineditor *edit) {
     if (!(ioctl(1, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0)) {
         edit->ncols=ws.ws_col;
     } else {
-        //
+        // Should get cursor position etc here.
     }
 }
 
@@ -1141,6 +1188,18 @@ int linedit_getwidth(lineditor *edit) {
 
 /** Initialize a line editor */
 void linedit_init(lineditor *edit) {
+    /*
+    char *str = "👽🦋👋👩🏾‍🦰👱🏾🧑🏾‍⚖️AöЖ€𝄞";
+    int x,y,x1;
+    linedit_enablerawmode();
+    for (char *c=str; *c!='\0'; c+=linedit_utf8numberofbytes(c)) {
+        linedit_getcursorposition(&x, &y);
+        write(STDOUT_FILENO, c, linedit_utf8numberofbytes(c));
+        linedit_getcursorposition(&x1, &y);
+        printf(" %i\r\n",x1-x);
+    }
+    linedit_disablerawmode();*/
+    
     if (!edit) return;
     edit->color=NULL;
     edit->ncols=0;

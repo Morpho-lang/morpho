@@ -138,7 +138,7 @@ typedef enum {
 /** Holds all state information needed for a line editor */
 typedef struct {
     lineditormode mode;      /* Current editing mode */
-    int posn;                /* Position of the cursor */
+    int posn;                /* Position of the cursor in characters */
     int sposn;               /* Starting point of a selection */
     int ncols;               /* Number of columns */
     linedit_string prompt;   /* The prompt */

@@ -868,7 +868,7 @@ void linedit_setposition(lineditor *edit, int posn) {
 
 /** Checks if we're at the end of the line */
 bool lineedit_atendofline(lineditor *edit) {
-    return (edit->posn==edit->current.length);
+    return (edit->posn==linedit_stringwidth(&edit->current));
 }
 
 /** @brief Advances the position by delta

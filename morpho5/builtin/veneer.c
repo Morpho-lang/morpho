@@ -18,7 +18,7 @@
 value Object_getindex(vm *v, int nargs, value *args) {
     value self=MORPHO_SELF(args);
     value out=MORPHO_NIL;
-
+    
     if (nargs==1 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0)) &&
         MORPHO_ISINSTANCE(self)) {
@@ -53,15 +53,21 @@ value Object_class(vm *v, int nargs, value *args) {
 /** Find the object's superclass */
 value Object_super(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
-    objectclass *klass=MORPHO_GETINSTANCE(self)->klass;
-
+    
+    objectclass *klass=NULL;
+    if (MORPHO_ISINSTANCE(self)) klass=MORPHO_GETINSTANCE(self)->klass;
+    else if (MORPHO_ISCLASS(self)) klass=MORPHO_GETCLASS(self);
+    
     return (klass->superclass ? MORPHO_OBJECT(klass->superclass) : MORPHO_NIL);
 }
 
 /** Checks if an object responds to a method */
 value Object_respondsto(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
-    objectclass *klass=MORPHO_GETINSTANCE(self)->klass;
+    
+    objectclass *klass=NULL;
+    if (MORPHO_ISINSTANCE(self)) klass=MORPHO_GETINSTANCE(self)->klass;
+    else if (MORPHO_ISCLASS(self)) klass=MORPHO_GETCLASS(self);
 
     if (nargs==1 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
@@ -74,6 +80,7 @@ value Object_respondsto(vm *v, int nargs, value *args) {
 /** Checks if an object has a property */
 value Object_has(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
+    if (MORPHO_ISCLASS(self)) return MORPHO_FALSE;
 
     if (nargs==1 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
@@ -87,9 +94,12 @@ value Object_has(vm *v, int nargs, value *args) {
 /** Invoke a method */
 value Object_invoke(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
-    objectclass *klass=MORPHO_GETINSTANCE(self)->klass;
     value out=MORPHO_NIL;
 
+    objectclass *klass=NULL;
+    if (MORPHO_ISINSTANCE(self)) klass=MORPHO_GETINSTANCE(self)->klass;
+    else if (MORPHO_ISCLASS(self)) klass=MORPHO_GETCLASS(self);
+    
     if (nargs>0 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         value fn;

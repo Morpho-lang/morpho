@@ -1,0 +1,12 @@
+// Check respondsto called on a class
+
+var a = Object
+
+print a.respondsto("invoke")
+// expect: true
+
+print a.respondsto("squiggle")
+// expect: false
+
+print a.respondsto("squiggle","foo")
+// expect error 'RspndsToArg'

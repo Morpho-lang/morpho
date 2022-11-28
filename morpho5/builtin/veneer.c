@@ -542,15 +542,15 @@ objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned in
  * @param[in] dimFcn - a function that checks if the number of indecies is compatabile with the slicable object.
  * @param[in] constuctor - a function that create the a new object of the type of a.
  * @param[in] copy - a function that can copy information from a to out.
- * @param[in] ndim - the number of dimentions being indexed.
+ * @param[in] ndim - the number of dimensions being indexed.
  * @param[in] slices - a set of indices that can be lists ranges or ints.
- * @param[out] out - returns the requeted slice of a.
+ * @param[out] out - returns the requested slice of a.
 */
 objectarrayerror getslice(value *a, bool dimFcn(value *,unsigned int),\
 						  void constuctor(unsigned int *,unsigned int,value *),\
 						  objectarrayerror copy(value * ,value *, unsigned int, unsigned int *,unsigned int *),\
 						  unsigned int ndim, value *slices, value *out){
-	//dimenation checking
+	//dimension checking
 	if (!(*dimFcn)(a,ndim)) return ARRAY_WRONGDIM;
 
 	unsigned int slicesize[ndim];
@@ -569,14 +569,14 @@ objectarrayerror getslice(value *a, bool dimFcn(value *,unsigned int),\
 	// initalize out with the right size
 	(*constuctor)(slicesize,ndim,out);
 
-
 	// fill it out recurivly
 	unsigned int indx[ndim];
 	unsigned int newindx[ndim];
 	return setslicerecursive(a, out, copy, ndim, 0, indx, newindx, slices);
 
 }
-/** Interates though the a ndim number of provided slices recursivly and copies the data from a to out.
+
+/** Iterates though the a ndim number of provided slices recursivly and copies the data from a to out.
  * @param[in] a - the sliceable object (array, list, matrix, etc..).
  * @param[out] out - returns the requeted slice of a.
  * @param[in] copy - a function that can copy information from a to out.

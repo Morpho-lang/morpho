@@ -18,7 +18,7 @@
 value Object_getindex(vm *v, int nargs, value *args) {
     value self=MORPHO_SELF(args);
     value out=MORPHO_NIL;
-
+    
     if (nargs==1 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0)) &&
         MORPHO_ISINSTANCE(self)) {
@@ -53,15 +53,21 @@ value Object_class(vm *v, int nargs, value *args) {
 /** Find the object's superclass */
 value Object_super(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
-    objectclass *klass=MORPHO_GETINSTANCE(self)->klass;
-
+    
+    objectclass *klass=NULL;
+    if (MORPHO_ISINSTANCE(self)) klass=MORPHO_GETINSTANCE(self)->klass;
+    else if (MORPHO_ISCLASS(self)) klass=MORPHO_GETCLASS(self);
+    
     return (klass->superclass ? MORPHO_OBJECT(klass->superclass) : MORPHO_NIL);
 }
 
 /** Checks if an object responds to a method */
 value Object_respondsto(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
-    objectclass *klass=MORPHO_GETINSTANCE(self)->klass;
+    
+    objectclass *klass=NULL;
+    if (MORPHO_ISINSTANCE(self)) klass=MORPHO_GETINSTANCE(self)->klass;
+    else if (MORPHO_ISCLASS(self)) klass=MORPHO_GETCLASS(self);
 
     if (nargs==1 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
@@ -74,6 +80,7 @@ value Object_respondsto(vm *v, int nargs, value *args) {
 /** Checks if an object has a property */
 value Object_has(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
+    if (MORPHO_ISCLASS(self)) return MORPHO_FALSE;
 
     if (nargs==1 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
@@ -87,9 +94,12 @@ value Object_has(vm *v, int nargs, value *args) {
 /** Invoke a method */
 value Object_invoke(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
-    objectclass *klass=MORPHO_GETINSTANCE(self)->klass;
     value out=MORPHO_NIL;
 
+    objectclass *klass=NULL;
+    if (MORPHO_ISINSTANCE(self)) klass=MORPHO_GETINSTANCE(self)->klass;
+    else if (MORPHO_ISCLASS(self)) klass=MORPHO_GETCLASS(self);
+    
     if (nargs>0 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         value fn;
@@ -532,15 +542,15 @@ objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned in
  * @param[in] dimFcn - a function that checks if the number of indecies is compatabile with the slicable object.
  * @param[in] constuctor - a function that create the a new object of the type of a.
  * @param[in] copy - a function that can copy information from a to out.
- * @param[in] ndim - the number of dimentions being indexed.
+ * @param[in] ndim - the number of dimensions being indexed.
  * @param[in] slices - a set of indices that can be lists ranges or ints.
- * @param[out] out - returns the requeted slice of a.
+ * @param[out] out - returns the requested slice of a.
 */
 objectarrayerror getslice(value *a, bool dimFcn(value *,unsigned int),\
 						  void constuctor(unsigned int *,unsigned int,value *),\
 						  objectarrayerror copy(value * ,value *, unsigned int, unsigned int *,unsigned int *),\
 						  unsigned int ndim, value *slices, value *out){
-	//dimenation checking
+	//dimension checking
 	if (!(*dimFcn)(a,ndim)) return ARRAY_WRONGDIM;
 
 	unsigned int slicesize[ndim];
@@ -559,14 +569,14 @@ objectarrayerror getslice(value *a, bool dimFcn(value *,unsigned int),\
 	// initalize out with the right size
 	(*constuctor)(slicesize,ndim,out);
 
-
 	// fill it out recurivly
 	unsigned int indx[ndim];
 	unsigned int newindx[ndim];
 	return setslicerecursive(a, out, copy, ndim, 0, indx, newindx, slices);
 
 }
-/** Interates though the a ndim number of provided slices recursivly and copies the data from a to out.
+
+/** Iterates though the a ndim number of provided slices recursivly and copies the data from a to out.
  * @param[in] a - the sliceable object (array, list, matrix, etc..).
  * @param[out] out - returns the requeted slice of a.
  * @param[in] copy - a function that can copy information from a to out.

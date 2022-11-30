@@ -2149,7 +2149,10 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
         for (unsigned int j=0; j<labelnodes.count; j++) {
             syntaxtreenode *label=compiler_getnode(c, labelnodes.data[j]);
 
-            if (label->type!=NODE_STRING) UNREACHABLE("Not a string!");
+            if (label->type!=NODE_STRING) {
+                compiler_error(c, label, COMPILE_INVLDLBL);
+                break;
+            }
 
             registerindx labelsymbol=compiler_addsymbol(c, entry, label->content);
             value symbolkey = compiler_getconstant(c, labelsymbol);
@@ -3592,8 +3595,8 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_MLTVARPRMTR, ERROR_COMPILE, COMPILE_MLTVARPRMTR_MSG);
     morpho_defineerror(COMPILE_MSSNGLOOPBDY, ERROR_COMPILE, COMPILE_MSSNGLOOPBDY_MSG);
     morpho_defineerror(COMPILE_NSTDCLSS, ERROR_COMPILE, COMPILE_NSTDCLSS_MSG);
-
     morpho_defineerror(COMPILE_VARPRMLST, ERROR_COMPILE, COMPILE_VARPRMLST_MSG);
+    morpho_defineerror(COMPILE_INVLDLBL, ERROR_COMPILE, COMPILE_INVLDLBL_MSG);
 }
 
 /** Finalizes the compiler */

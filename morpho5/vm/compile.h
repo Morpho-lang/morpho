@@ -96,6 +96,9 @@
 #define COMPILE_NSTDCLSS                  "NstdClss"
 #define COMPILE_NSTDCLSS_MSG              "Cannot define a class within another class."
 
+#define COMPILE_INVLDLBL                  "InvldLbl"
+#define COMPILE_INVLDLBL_MSG              "Invalid label in catch statment."
+
 /* **********************************************************************
  * Compiler typedefs
  * ********************************************************************** */

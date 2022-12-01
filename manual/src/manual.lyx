@@ -18,15 +18,13 @@
   {\thesection}{1em}{}
 \titleformat{\subsection}
   {\normalfont\sffamily\large}
-  {\thesubsection}{1em}{}
+  {\thesection}{1em}{}
 \titleformat{\subsubsection}
   {\normalfont\sffamily\normalsize}
-  {\thesubsubsection}{1em}{}
+  {\thesection}{1em}{}
 
 \usepackage{newtxtext}
 \usepackage{titletoc}
-
-\setcounter{tocdepth}{0}
 
 \contentsmargin[1cm]{0cm}
 
@@ -53,6 +51,9 @@
 \usepackage{listings}
 \usepackage{color}
 \definecolor{ltgry}{rgb}{0.95,0.95,0.95}
+\definecolor{purplekeywords}{rgb}{0.75,0,0.75}
+\definecolor{greycomments}{rgb}{0.5,0.5,0.5}
+\definecolor{redstrings}{rgb}{0.64,0.08,0.08}
 \lstset{backgroundcolor=\color{ltgry}}
 
 \lstset{columns=fixed, basicstyle=\ttfamily, basewidth=0.55em}
@@ -131,7 +132,7 @@ figs-within-sections
 \rightmargin 1in
 \bottommargin 1in
 \secnumdepth 2
-\tocdepth 2
+\tocdepth 1
 \paragraph_separation indent
 \paragraph_indentation default
 \is_math_indent 0
@@ -141,6 +142,7 @@ figs-within-sections
 \papercolumns 1
 \papersides 1
 \paperpagestyle default
+\listings_params "language=Java,showspaces=false,showtabs=false,breaklines=true,showstringspaces=false,breakatwhitespace=true,escapeinside={(*@}{@*)},commentstyle={\color{greycomments}},keywordstyle={\color{purplekeywords}\bfseries},stringstyle={\color{redstrings}},basicstyle={\ttfamily},morekeywords={ var, fn, print,in }"
 \tracking_changes false
 \output_changes false
 \html_math_output 0
@@ -164,7 +166,7 @@ figs-within-sections
 \begin_inset Newline newline
 \end_inset
 
-Version 0.5.4
+Version 0.5.5
 \end_layout
 
 \begin_layout Standard
@@ -516,7 +518,7 @@ LatexCommand tableofcontents
 \end_layout
 
 \begin_layout Chapter
-Overview
+Overview 
 \end_layout
 
 \begin_layout Standard
@@ -600,10 +602,86 @@ morpho
  
 \end_layout
 
+\begin_layout Standard
+This manual aims to help users to learn to use 
+\emph on
+morpho
+\emph default
+.
+ It provides installation instructions in Chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:Installing-Morpho"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, information about how to run the program in Chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:Using-Morpho"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ A detailed tutorial is provided in Chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:Tutorial"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ showing how to set up and solve an example problem.
+ Chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:Working-with-Meshes"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ provides information about working with meshes.
+ The examples provided with morpho are described in Chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:Examples"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ The remaining chapters, comprising the second part of the manual, provide
+ a reference guide for all areas of 
+\emph on
+morpho
+\emph default
+ functionality.
+ 
+\end_layout
+
 \begin_layout Chapter
 Installing 
 \emph on
 Morpho
+\begin_inset CommandInset label
+LatexCommand label
+name "chap:Installing-Morpho"
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Standard
@@ -1328,6 +1406,13 @@ This example starts with randomly distributed charges on a sphere and minimizing
 Using 
 \emph on
 Morpho
+\begin_inset CommandInset label
+LatexCommand label
+name "chap:Using-Morpho"
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Standard
@@ -1656,6 +1741,13 @@ Ctrl-E
 
 \begin_layout Chapter
 Tutorial
+\begin_inset CommandInset label
+LatexCommand label
+name "chap:Tutorial"
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Standard
@@ -4163,11 +4255,6606 @@ You should look at other example files provided in the
 examples
 \family default
  folder of the git repository.
- The remainder of the manual provides a detailed reference for 
+ The remainder of the manual comprises chapters exploring certain 
+\emph on
+morpho
+\emph default
+ concepts in more detail, followed by a detailed reference manual for 
 \emph on
 morpho
 \emph default
  functionality, and a complete description of the scripting language.
+ 
+\end_layout
+
+\begin_layout Chapter
+Working with Meshes
+\begin_inset CommandInset label
+LatexCommand label
+name "chap:Working-with-Meshes"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This chapter explains a number of ways the user can create and manipulate
+ Mesh objects in 
+\emph on
+morpho
+\emph default
+.
+ The simplest way to create a mesh for a desired domain is to use the 
+\family typewriter
+meshgen
+\family default
+ module, which provides a very high level and convenient interface.
+ The 
+\family typewriter
+meshtools
+\family default
+ module provides low level mesh creation operations and a number of useful
+ routines to manipulate meshes.
+ The 
+\family typewriter
+implicitmesh
+\family default
+ module produces surfaces from implicit functions.
+ Finally, you can use an external program to create a mesh that exports
+ the data in vtk format using the 
+\family typewriter
+vtk
+\family default
+ module.
+ 
+\end_layout
+
+\begin_layout Standard
+Mesh creation follows two patterns.
+ Some methods use a 
+\series bold
+constructor
+\series default
+ pattern where you call a single function that creates the Mesh, e.g.
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var mesh = LineMesh(fn (t) [t,0], -1..1:0.1)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Other approaches follow a 
+\series bold
+builder
+\series default
+ pattern, where you first create a special helper object,
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var mb = MeshBuilder()
+\end_layout
+
+\end_inset
+
+and manipulate it, e.g.
+ by adding elements or setting options.
+ The Mesh is then created by calling the build method: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var mesh = mb.build() 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+The meshgen module
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:Meshgen"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\family typewriter
+meshgen
+\family default
+ module conveniently produces high quality meshes for many kinds of domain.
+ It follows the builder pattern with a MeshGen helper object that performs
+ the construction.
+ To use 
+\family typewriter
+meshgen
+\family default
+, the user must provide a scalar function that is positive everywhere that
+ they want to be meshed
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+One example is referred to in the literature as a 
+\emph on
+signed distance function
+\emph default
+, which is the Euclidean distance of a given point 
+\begin_inset Formula $x$
+\end_inset
+
+ to the boundary of a set 
+\begin_inset Formula $\Omega$
+\end_inset
+
+ with the sign positive if 
+\begin_inset Formula $x$
+\end_inset
+
+ is in the interior of 
+\begin_inset Formula $\Omega$
+\end_inset
+
+.
+ MeshGen does not require signed distance functions, but accepts any continuous
+ and reasonably smooth function,
+\end_layout
+
+\end_inset
+
+.
+ For example, the interior of the unit disk in two dimensions, is described
+ by the function 
+\begin_inset Formula 
+\[
+f(x,y)=1-(x^{2}+y^{2}).
+\]
+
+\end_inset
+
+To create the corresponding Mesh, we must first specify a suitable 
+\emph on
+morpho
+\emph default
+ function that describes the domain.
+ This function will be called repeatedly by MeshGen, which will pass it
+ a position vector 
+\family typewriter
+x
+\family default
+.
+ Hence, the 
+\begin_inset Formula $(x,y)$
+\end_inset
+
+ components must be accessed from the argument 
+\family typewriter
+x
+\family default
+ by indexing:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+fn disk(x) { 
+\end_layout
+
+\begin_layout Plain Layout
+
+  return 1-(x[0]^2+x[1]^2) 
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+Now that the function is specified, we can create a MeshGen object: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var mg = MeshGen(disk, [-1..1:0.2, -1..1:0.2])
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The second parameter is a list of Ranges that provide overall bounds on
+ the domain to be meshed.
+ Here we will use 
+\begin_inset Formula $x,y\in[-1,1]$
+\end_inset
+
+.
+ By setting the stepsize, the user can provide MeshGen with an overall suggestio
+n of the resolution.
+ 
+\end_layout
+
+\begin_layout Standard
+Finally, we create the Mesh by calling the build method: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var m = mg.build() 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The resulting Mesh is shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MeshGen-disk"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, left panel.
+ A higher resolution Mesh can be generated by changing the Range objects
+ passed to MeshGen: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var mg = MeshGen(disk, [-1..1:0.1, -1..1:0.1])
+\end_layout
+
+\end_inset
+
+This generates a much higher resolution Mesh, with approximately four times
+ the number of vertices as shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MeshGen-disk"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, right panel.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/MeshChapter/MeshGen/disk.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/MeshChapter/MeshGen/finedisk.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:MeshGen-disk"
+
+\end_inset
+
+Two disks created with different resolutions with MeshGen.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+MeshGen can also mesh more complicated domains.
+ To facilitate this, it provides a Domain class that accepts a scalar function
+ in its constructor.
+ For example, this code creates an ellipse as shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MeshGen-2"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, left panel:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var e0 = Domain(fn (x) -((x[0]/2)^2+x[1]^2-1)) 
+\end_layout
+
+\begin_layout Plain Layout
+
+var mg = MeshGen(e0, [-2..2:0.2, -1..1:0.2])
+\end_layout
+
+\begin_layout Plain Layout
+
+var m = mg.build()
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The benefit of this is that Domain objects can be combined using set operation
+ methods 
+\family typewriter
+union
+\family default
+, 
+\family typewriter
+intersection
+\family default
+ and 
+\family typewriter
+difference
+\family default
+.
+ To illustrate the possibilities with this, we use a special constructor
+ to create three domains corresponding to disks,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var a = CircularDomain(Matrix([-0.5,0]), 1)
+\end_layout
+
+\begin_layout Plain Layout
+
+var b = CircularDomain(Matrix([0.5,0]), 1)
+\end_layout
+
+\begin_layout Plain Layout
+
+var c = CircularDomain(Matrix([0,0]), 0.3)
+\end_layout
+
+\end_inset
+
+then combine them,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var dom = a.union(b).difference(c)
+\end_layout
+
+\end_inset
+
+and mesh the resulting domain,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var mg = MeshGen(dom, [-2..2:0.1, -1..1:0.1], quiet=false)
+\end_layout
+
+\begin_layout Plain Layout
+
+var m = mg.build()
+\end_layout
+
+\end_inset
+
+with the result shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MeshGen-2"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, right panel.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/MeshChapter/MeshGen/ellipse.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/MeshChapter/MeshGen/overlappingdisks.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:MeshGen-2"
+
+\end_inset
+
+More complex domains can be created with MeshGen by combining domains.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+Three dimensional meshes are created very similarly.
+ Here we create a spherical mesh, displayed in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MeshGen-3"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var dh = 0.2 
+\end_layout
+
+\begin_layout Plain Layout
+
+var dom = Domain(fn (x) -(x[0]^2+x[1]^2+x[2]^2-1))
+\end_layout
+
+\begin_layout Plain Layout
+
+var mg = MeshGen(dom, [-1..1:dh, -1..1:dh, -1..1:dh])
+\end_layout
+
+\begin_layout Plain Layout
+
+var m = mg.build()
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/MeshChapter/MeshSlicer/mesh.png
+	lyxscale 20
+	width 4in
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:MeshGen-3"
+
+\end_inset
+
+Spherical mesh created with MeshGen
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+The meshtools module 
+\end_layout
+
+\begin_layout Standard
+Meshtools provides many useful functions for working with Meshes, including
+ constructors to create certain kinds of Mesh and also classes for refining,
+ coarsening and merging Meshes.
+ 
+\end_layout
+
+\begin_layout Subsection
+LineMesh
+\end_layout
+
+\begin_layout Standard
+The 
+\family typewriter
+LineMesh
+\family default
+ function is a convenient way to create a Mesh from a one-parameter parametric
+ function.
+ You must specify the function to use and a Range of points to generate.
+ 
+\family typewriter
+LineMesh
+\family default
+ then evaluates each point in the Range and joins them together with a line
+ element.
+ 
+\end_layout
+
+\begin_layout Standard
+This is useful to generate meshes such as a simple straight line (Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:LineMesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, left panel): 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var m = LineMesh(fn (t) [t,0], -1..1:0.1)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+You can also request the ends of the Mesh be joined together to form a loop
+ by specifying 
+\family typewriter
+closed
+\family default
+.
+ This code generates a circle (Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:LineMesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, center panel):
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var m = LineMesh(fn (t) [cos(t),sin(t)], -Pi...Pi:2*Pi/10, closed=true)
+\end_layout
+
+\end_inset
+
+You can increase the resolution of the circle by changing the stepsize in
+ the Range, for example to 
+\family typewriter
+2*Pi/20
+\family default
+ to double the number of points.
+ Note the use of the exclusive Range operator here, 
+\family typewriter
+...
+\family default
+, rather than 
+\family typewriter
+..
+\family default
+to avoid duplicating the point at (1,0).
+ 
+\end_layout
+
+\begin_layout Standard
+The output Mesh can be of any dimension, such as this helix in 3D (Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:LineMesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, right panel).
+ Notice that here we use a regular function rather than an anonymous function:
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+fn helix(t) { 
+\end_layout
+
+\begin_layout Plain Layout
+
+  return [cos(2*Pi*t),t/2,sin(2*Pi*t)] 
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+var m = LineMesh(helix, -2..2:1/20)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/MeshChapter/LineMesh/line.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/MeshChapter/LineMesh/circle.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/MeshChapter/LineMesh/helix.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:LineMesh"
+
+\end_inset
+
+Using LineMesh to create meshes from parametric functions: A straight line,
+ a circle and a helix.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+AreaMesh
+\end_layout
+
+\begin_layout Standard
+
+\family typewriter
+AreaMesh
+\family default
+ is similar to 
+\family typewriter
+LineMesh
+\family default
+ function creates a Mesh from a parametric function, which now takes two
+ parameters.
+ To create a square, 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var m = AreaMesh(fn (u,v) [u,v,0], -1..1:0.2, -1..1:0.2)
+\end_layout
+
+\end_inset
+
+where notice that a separate Range is required for 
+\begin_inset Formula $u$
+\end_inset
+
+ and 
+\begin_inset Formula $v$
+\end_inset
+
+.
+ By default, the output of AreaMesh only contains grade 0 and grade 2 elements,
+ i.e.
+ vertices and facets, as is visible in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:AreaMesh-1"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+(left).
+ To add in grade 1 elements if required, call the 
+\family typewriter
+addgrade
+\family default
+ method on the Mesh:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+m.addgrade(1)
+\end_layout
+
+\end_inset
+
+This gives the result shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:AreaMesh-1"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+(right).
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/MeshChapter/AreaMesh/square.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/MeshChapter/AreaMesh/square2.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:AreaMesh-1"
+
+\end_inset
+
+Using AreaMesh to create a flat square mesh.
+ Left: By default, only grade 0 and 2 elements are generated.
+ Right: The grade 1 elements can be added in with 
+\family typewriter
+addgrade
+\family default
+.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+As with LineMesh, the Meshes can be closed in one or both directions, enabling
+ the creation of a cylinder,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+m = AreaMesh(fn (u, v) [v, cos(u), sin(u)], 
+\end_layout
+
+\begin_layout Plain Layout
+
+               -Pi...Pi:Pi/16,
+\end_layout
+
+\begin_layout Plain Layout
+
+               -2..2:0.1, closed=[true, false])
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+and a torus, 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var c=1, a=0.5 m = AreaMesh(fn (u, v) [(c + a*cos(v))*cos(u), 
+\end_layout
+
+\begin_layout Plain Layout
+
+                                       (c + a*cos(v))*sin(u),  
+\end_layout
+
+\begin_layout Plain Layout
+
+                                        a*sin(v)],
+\end_layout
+
+\begin_layout Plain Layout
+
+                            0...2*Pi:Pi/16,
+\end_layout
+
+\begin_layout Plain Layout
+
+                            0...2*Pi:Pi/8, closed=true)
+\end_layout
+
+\end_inset
+
+The results of these are displayed in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:AreaMesh-2"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ Note that the meshes generated by more modules that incorporate some degree
+ of quality control, e.g.
+ 
+\family typewriter
+implicitmesh
+\family default
+ or 
+\family typewriter
+meshgen
+\family default
+, are generally better and should be used in preference to those created
+ by AreaMesh.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/MeshChapter/AreaMesh/tube.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/MeshChapter/AreaMesh/torus.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:AreaMesh-2"
+
+\end_inset
+
+A cylinder and torus created with AreaMesh.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+PolyhedronMesh
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/MeshChapter/PolyhedronMesh/cubevertices.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/MeshChapter/PolyhedronMesh/cubeface.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/MeshChapter/PolyhedronMesh/cube.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:PolyhedronMesh"
+
+\end_inset
+
+Creating a cube with PolyhedronMesh.
+ (Left) First the vertices are specified.
+ (Center) Faces are specified as an ordered sequence of points.
+ (Right) PolyhedronMesh adds additional vertices to create
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+PolyhedronMesh helps to create Meshes corresponding to polyhedra.
+ To make a cube, for example, we specify the eight vertices (see Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:PolyhedronMesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, left),
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var vertices = [[-0.5, -0.5, -0.5],
+\end_layout
+
+\begin_layout Plain Layout
+
+                [ 0.5, -0.5, -0.5],
+\end_layout
+
+\begin_layout Plain Layout
+
+                [-0.5,  0.5, -0.5],
+\end_layout
+
+\begin_layout Plain Layout
+
+                [ 0.5,  0.5, -0.5], 
+\end_layout
+
+\begin_layout Plain Layout
+
+                [-0.5, -0.5,  0.5],
+\end_layout
+
+\begin_layout Plain Layout
+
+                [ 0.5, -0.5,  0.5],
+\end_layout
+
+\begin_layout Plain Layout
+
+                [-0.5,  0.5,  0.5],
+\end_layout
+
+\begin_layout Plain Layout
+
+                [ 0.5,  0.5,  0.5]]
+\end_layout
+
+\end_inset
+
+and the six faces,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var faces = [ [0,1,3,2], [4,5,7,6],
+\end_layout
+
+\begin_layout Plain Layout
+
+              [0,1,5,4], [3,2,6,7],
+\end_layout
+
+\begin_layout Plain Layout
+
+              [0,2,6,4], [1,3,7,5] ]
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Note that the vertex ids must be given
+\emph on
+ in order 
+\emph default
+going around each face (see Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:PolyhedronMesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, center).
+ Once the faces are specified, we can create the mesh, 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var m = PolyhedronMesh(vertices, faces)
+\end_layout
+
+\begin_layout Plain Layout
+
+m.addgrade(1)
+\end_layout
+
+\end_inset
+
+Note that PolyhedronMesh automatically creates additional vertices and generates
+ triangles to complete the mesh (Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:PolyhedronMesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, right).
+ We then added line elements (grade 1) as these are not automatically created
+ by PolyhedronMesh.
+ 
+\end_layout
+
+\begin_layout Subsection
+DelaunayMesh
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/MeshChapter/DelaunayMesh/points.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/MeshChapter/DelaunayMesh/mesh.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:DelaunayMesh"
+
+\end_inset
+
+Delaunay triangulation of (left) a random oint cloud gives (right) a tetrahedral
+ization.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The DelaunayMesh constructor function performs a delaunay 
+\begin_inset Quotes eld
+\end_inset
+
+triangulation
+\begin_inset Quotes erd
+\end_inset
+
+ of a point set.
+ For example, creating a random cloud of points (Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:DelaunayMesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, left panel):
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var pts = []
+\end_layout
+
+\begin_layout Plain Layout
+
+for (i in 0...100) pts.append(Matrix([2*random()-1, 2*random()-1, 2*random()-1]))
+ 
+\end_layout
+
+\end_inset
+
+we can then call DelaunayMesh to construct a tetrahedralization.
+ DelaunayMesh only generates elements of the highest grade (in 2D, area
+ elements, in 3D volume elements) so if edges are needed these can be added
+ with 
+\family typewriter
+addgrade
+\family default
+.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var m=DelaunayMesh(pts)
+\end_layout
+
+\begin_layout Plain Layout
+
+m.addgrade(1)
+\end_layout
+
+\end_inset
+
+The resulting tetrahedralization is shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:DelaunayMesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, right panel.
+\end_layout
+
+\begin_layout Subsection
+ChangeMeshDimension
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:ChangeMeshDimension"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Occasionally, one wishes to take a mesh embedded in one space, say two dimension
+s, and embed it in a space of different dimensionality.
+ For example, you may wish to use a 2D mesh generated with MeshGen in 3D
+ space.
+ The function 
+\family typewriter
+ChangeMeshDimension
+\family default
+ provides a convenient way to do this: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var new = ChangeMeshDimension(mesh, dim)
+\end_layout
+
+\end_inset
+
+where 
+\family typewriter
+dim
+\family default
+ is the target dimension of the new mesh.
+ 
+\end_layout
+
+\begin_layout Subsection
+MeshBuilder
+\end_layout
+
+\begin_layout Standard
+The MeshBuilder class facilitates manual construction of a Mesh object.
+ It is primarily intended to be used by other mesh building algorithms,
+ but is occasionally useful.
+ To begin, create a MeshBuilder object:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var mb = MeshBuilder()
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+You can then add vertices and other elements one by one by calling appropriate
+ methods.
+ Let's build a tetrahedron by first adding the vertices: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+mb.addvertex([0, 0, 0.612372])
+\end_layout
+
+\begin_layout Plain Layout
+
+mb.addvertex([-0.288675, -0.5, -0.204124])
+\end_layout
+
+\begin_layout Plain Layout
+
+mb.addvertex([-0.288675, 0.5, -0.204124])
+\end_layout
+
+\begin_layout Plain Layout
+
+mb.addvertex([0.57735, 0, -0.204124])
+\end_layout
+
+\end_inset
+
+We then need to add edges connecting these vertices, and faces as well.
+ We could do this one by one, giving a list of vertex ids for each element
+ in turn, 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+mb.addedge([0,1])
+\end_layout
+
+\begin_layout Plain Layout
+
+mb.addedge([0,2]) 
+\end_layout
+
+\begin_layout Plain Layout
+
+// ...
+ etc.
+ 
+\end_layout
+
+\end_inset
+
+but there's a smarter way for this case.
+ Notice that the vertex ids corresponding to the edges of the tetrahedron
+ correspond to the sets of size 2 generated from the list 
+\family typewriter
+[0,1,2,3]
+\family default
+ as can be seen by running this code: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var vids = [0,1,2,3]
+\end_layout
+
+\begin_layout Plain Layout
+
+for (s in vids.sets(2)) print s 
+\end_layout
+
+\end_inset
+
+We can therefore generate the edges automatically, 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var vids = [0,1,2,3]
+\end_layout
+
+\begin_layout Plain Layout
+
+for (s in vids.sets(2)) mb.addedge(s)
+\end_layout
+
+\end_inset
+
+and the faces as well, which are the sets of size 3, 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+for (s in vids.sets(3)) mb.addface(s)
+\end_layout
+
+\end_inset
+
+We can finish by adding a single grade 3 element corresponding to the volume:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+mb.addvolume(vids)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Once all these have been added, call the 
+\family typewriter
+build
+\family default
+ method to create a Mesh object: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var m = mb.build()
+\end_layout
+
+\end_inset
+
+and the resulting Mesh is shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MeshBuilder"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/MeshChapter/MeshBuilder/tetrahedron.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:MeshBuilder"
+
+\end_inset
+
+Tetrahedron created with MeshBuilder.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+The implicitmesh module
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/MeshChapter/ImplicitMesh/ellipsoid.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/MeshChapter/ImplicitMesh/torus.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:ImplicitMesh"
+
+\end_inset
+
+Surfaces created with the 
+\family typewriter
+implicitmesh
+\family default
+ module.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The implicitmesh module is designed to mesh surfaces that can be described
+ as the level sets of a scalar function.
+ For example, an ellipsoid is described by the equation, 
+\begin_inset Formula 
+\[
+\left(\frac{x}{a}\right)^{2}+\left(\frac{x}{b}\right)^{2}+\left(\frac{x}{c}\right)^{2}=1,
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $a$
+\end_inset
+
+, 
+\begin_inset Formula $b$
+\end_inset
+
+ and 
+\begin_inset Formula $c$
+\end_inset
+
+ are constants that determine the type of ellipsoid.
+ A 
+\emph on
+prolate
+\emph default
+ ellipsoid is obtained by setting 
+\begin_inset Formula $a>b=c$
+\end_inset
+
+.
+ To create the mesh, we first create an ImplicitMeshBuilder object and then
+ build,
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+import implicitmesh
+\end_layout
+
+\begin_layout Plain Layout
+
+var impl = ImplicitMeshBuilder(fn (x,y,z) x^2/3+y^2+z^2-1)
+\end_layout
+
+\begin_layout Plain Layout
+
+var mesh = impl.build(stepsize=0.25) 
+\end_layout
+
+\end_inset
+
+and the result is shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:ImplicitMesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, left panel.
+ The resolution of the mesh can be controlled by adjusting the optional
+ parameter 
+\family typewriter
+stepsize
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Standard
+A torus can obeys the equation, 
+\begin_inset Formula 
+\[
+(x^{2}+y^{2}+z^{2}+r^{2}-a^{2})^{2}-4r^{2}(x^{2}+y^{2})=0
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $r$
+\end_inset
+
+ is the radius of the torus and 
+\begin_inset Formula $a$
+\end_inset
+
+is its modulus.
+ As shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:ImplicitMesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, right panel, and can be created with ImplicitMeshBuilder in a similar
+ way, 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var r=1
+\end_layout
+
+\begin_layout Plain Layout
+
+var a=0.35
+\end_layout
+
+\begin_layout Plain Layout
+
+var impl = ImplicitMeshBuilder(fn (x,y,z) (x^2+y^2+z^2+r^2-a^2)^2 -
+\end_layout
+
+\begin_layout Plain Layout
+
+                                           4*r^2*(x^2+y^2) )
+\end_layout
+
+\begin_layout Plain Layout
+
+var mesh = impl.build(start=Matrix([1,0,0.5]), stepsize=0.25) 
+\end_layout
+
+\begin_layout Plain Layout
+
+mesh.addgrade(1) 
+\end_layout
+
+\end_inset
+
+Note that here we specify an initial starting point for the mesh generation,
+ and add in grade 1 elements after the mesh is created.
+ 
+\end_layout
+
+\begin_layout Section
+The vtk module
+\end_layout
+
+\begin_layout Standard
+The vtk module provides importing and exporting facilities for the popular
+ VTK file format, which is used by many other programs such as 
+\family typewriter
+paraview
+\family default
+.
+ Unlike morpho 
+\emph on
+.mesh
+\emph default
+ files, VTK files can include both Mesh and Field data.
+ To load a mesh from a VTK file, use a VTKImporter object: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+import vtk 
+\end_layout
+
+\begin_layout Plain Layout
+
+var mv = VTKImporter("file.vtk")
+\end_layout
+
+\begin_layout Plain Layout
+
+var m = mv.mesh()
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Fields can be loaded in a similar way.
+ Each field in the VTK file has an identifier, which is passed to the 
+\family typewriter
+field
+\family default
+ method as a string.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var f = mv.field(
+\begin_inset Quotes eld
+\end_inset
+
+F
+\begin_inset Quotes erd
+\end_inset
+
+)
+\end_layout
+
+\begin_layout Plain Layout
+
+var g = mv.field(
+\begin_inset Quotes eld
+\end_inset
+
+G
+\begin_inset Quotes erd
+\end_inset
+
+)
+\end_layout
+
+\end_inset
+
+Exporting requires a VTKExporter class, 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+import meshtools 
+\end_layout
+
+\begin_layout Plain Layout
+
+import vtk 
+\end_layout
+
+\begin_layout Plain Layout
+
+var m1 = LineMesh(fn (t) [t,0,0], -1..1:2)
+\end_layout
+
+\begin_layout Plain Layout
+
+var g1 = Field(m1, fn(x,y,z) Matrix([x,2*x,3*x]))
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+var vtkE = VTKExporter(g1, fieldname="g")
+\end_layout
+
+\begin_layout Plain Layout
+
+vtkE.export("data.vtk")
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Merging meshes
+\end_layout
+
+\begin_layout Standard
+A potential strategy to create meshes for complicated domains is to begin
+ by creating several simpler meshes and then merging them together into
+ one larger mesh.
+ The MeshMerge class in the 
+\family typewriter
+meshtools
+\family default
+ package allows us to do this.
+ To use it, we create a MeshMerge object with a list of meshes we wish to
+ merge
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var mrg = MeshMerge([m1, m2, m3, ...
+ ])
+\end_layout
+
+\end_inset
+
+and then call the merge method to perform the merge and return the resulting
+ Mesh: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var newmesh = mrg.merge()
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+As an example of this, we will build a mesh that might be an initial guess
+ for a membrane held between two square fixed boundaries.
+ We'll do this by creating one octant and then reflecting it along different
+ axes.
+ The basic unit is constructed with PolyhedronMesh, as shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MeshMerge"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var a = 0.5 // Vertical separation
+\end_layout
+
+\begin_layout Plain Layout
+
+var r = 0.5 // Size of hole
+\end_layout
+
+\begin_layout Plain Layout
+
+var L = 1  // Size of box 
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+// One octant of the mesh 
+\end_layout
+
+\begin_layout Plain Layout
+
+var vertices = [ [r,0,a], [L,0,a], [L,r,a], [L,L,a],
+\end_layout
+
+\begin_layout Plain Layout
+
+                 [r,L,a], [0,L,a], [0,r,a], [r,r,a],
+\end_layout
+
+\begin_layout Plain Layout
+
+                 [r,0,0], [r,r,0], [0,r,0] ]
+\end_layout
+
+\begin_layout Plain Layout
+
+var faces = [ [0,1,2,7], [2,3,4,7], [7,4,5,6], [0,8,9,7], [6,7,9,10] ]
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+var m1 = PolyhedronMesh(vertices, faces)
+\end_layout
+
+\begin_layout Plain Layout
+
+m1.addgrade(1)
+\end_layout
+
+\end_inset
+
+We now need to create code that reflects a Mesh about one or more axes.
+ There's more than one way this could be done, but we will here create a
+ MeshReflector class that follows the builder pattern:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+class MeshReflector {
+\end_layout
+
+\begin_layout Plain Layout
+
+  init(mesh) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    self.mesh = mesh
+\end_layout
+
+\begin_layout Plain Layout
+
+    self.dim = mesh.vertexmatrix().dimensions()[0] // Get Mesh dimension
+\end_layout
+
+\begin_layout Plain Layout
+
+  }
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+  // Construct a matrix that reflects about one or more axes    
+\end_layout
+
+\begin_layout Plain Layout
+
+  _reflectionmatrix(axis) { 
+\end_layout
+
+\begin_layout Plain Layout
+
+    var rmat = Matrix(self.dim,self.dim)
+\end_layout
+
+\begin_layout Plain Layout
+
+    for (i in 0...self.dim) rmat[i,i]=1
+\end_layout
+
+\begin_layout Plain Layout
+
+    if (isint(axis)) rmat[axis,axis]*=-1
+\end_layout
+
+\begin_layout Plain Layout
+
+    else if (isobject(axis)) for (i in axis) rmat[i,i]*=-1
+\end_layout
+
+\begin_layout Plain Layout
+
+    return rmat
+\end_layout
+
+\begin_layout Plain Layout
+
+  }
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+  reflect(axis) { // Reflect the mesh about the given axis or axes
+\end_layout
+
+\begin_layout Plain Layout
+
+    var rmat = self._reflectionmatrix(axis)
+\end_layout
+
+\begin_layout Plain Layout
+
+    // Clone and transform the mesh
+\end_layout
+
+\begin_layout Plain Layout
+
+    var m = self.mesh.clone()
+\end_layout
+
+\begin_layout Plain Layout
+
+    for (vid in 0...m.count()) {
+\end_layout
+
+\begin_layout Plain Layout
+
+	  m.setvertexposition(vid, rmat * m.vertexposition(vid))
+\end_layout
+
+\begin_layout Plain Layout
+
+	}
+\end_layout
+
+\begin_layout Plain Layout
+
+    return m
+\end_layout
+
+\begin_layout Plain Layout
+
+  }
+\end_layout
+
+\begin_layout Plain Layout
+
+} 
+\end_layout
+
+\end_inset
+
+Having defined this class, we create a MeshReflector and use it to build
+ seven reflected copies: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var mr = MeshReflector(m1)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+// Merge reflected meshed together
+\end_layout
+
+\begin_layout Plain Layout
+
+var merge = MeshMerge([ m1,
+\end_layout
+
+\begin_layout Plain Layout
+
+                        mr.reflect(0),
+\end_layout
+
+\begin_layout Plain Layout
+
+                        mr.reflect(1),
+\end_layout
+
+\begin_layout Plain Layout
+
+                        mr.reflect(2),
+\end_layout
+
+\begin_layout Plain Layout
+
+                        mr.reflect([0,1]),
+\end_layout
+
+\begin_layout Plain Layout
+
+                        mr.reflect([1,2]),
+\end_layout
+
+\begin_layout Plain Layout
+
+                        mr.reflect([2,0]),
+\end_layout
+
+\begin_layout Plain Layout
+
+                        mr.reflect([0,1,2])
+\end_layout
+
+\begin_layout Plain Layout
+
+                      ])
+\end_layout
+
+\begin_layout Plain Layout
+
+var m = merge.merge()
+\end_layout
+
+\end_inset
+
+The resulting mesh is shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MeshMerge"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, right panel.
+ Note that MeshMerge automatically removes duplicate elements as the merge
+ is performed, so that 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+print m1.count(1)
+\end_layout
+
+\end_inset
+
+reports that there were 35 line elements in the original mesh, while 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+print m.count(1)
+\end_layout
+
+\end_inset
+
+yields 
+\begin_inset Formula $256=8\times(35-6/2)$
+\end_inset
+
+ line elements, because there are 6 shared edges for each copy.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/MeshChapter/MeshMerge/unit.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/MeshChapter/MeshMerge/final.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:MeshMerge"
+
+\end_inset
+
+By reflecting a small mesh segment (left) about various axes, we can assemble
+ a larger mesh (right).
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Slicing meshes
+\end_layout
+
+\begin_layout Standard
+The 
+\family typewriter
+meshslice
+\family default
+ module is designed to help visualize a 
+\begin_inset Quotes eld
+\end_inset
+
+slice
+\begin_inset Quotes erd
+\end_inset
+
+ through the mesh and associated Fields, which is often useful when working
+ with three or higher dimensional meshes.
+ To illustrate its use, we'll reuse the spherical mesh created with MeshGen
+ in Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:Meshgen"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ above (see Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MeshGen-3"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+).
+ Ensure that the mesh has grade 2 elements present with 
+\family typewriter
+addgrade
+\family default
+ if necessary.
+ We'll also create a simple scalar field: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var u = Field(m, fn (x,y,z) x*y)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To take a slice, first create a MeshSlicer object with the mesh we want
+ to slice: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var ms=MeshSlicer(m)
+\end_layout
+
+\end_inset
+
+Then call the 
+\family typewriter
+slice
+\family default
+ method, which requires us to specify a slicing plane.
+ Planes are defined by a point 
+\begin_inset Formula $(x,y,z)$
+\end_inset
+
+ and a normal vector 
+\begin_inset Formula $(n_{x},n_{y},n_{z})$
+\end_inset
+
+, which are passed as arguments:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var slc=ms.slice([0,0,0],[0,0,1]) // position, normal
+\end_layout
+
+\end_inset
+
+After taking a slice, we can then slice any number of Field objects as well:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var uslc=ms.slicefield(u)
+\end_layout
+
+\end_inset
+
+A single MeshSlicer can take any number of slices from the same Mesh; 
+\family typewriter
+slicefield
+\family default
+ always uses the most recent slice taken.
+ Results from the example are shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MeshSlicer"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ As can be seen, the results of slicing a Mesh typically produce meshes
+ that are quire irregular, with narrow triangles and unequally sized elements.
+ Hence, these meshes are intended mostly for visualization purposes rather
+ than use in calculations.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/MeshChapter/MeshSlicer/slicemesh.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/MeshChapter/MeshSlicer/field.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:MeshSlicer"
+
+\end_inset
+
+Sliced plane of the spherical Mesh shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:MeshGen-3"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, together with a sliced scalar field plotted with plotfield.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Chapter
+Examples
+\begin_inset CommandInset label
+LatexCommand label
+name "chap:Examples"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This chapter discusses the example programs provided to illustrate various
+ 
+\emph on
+morpho
+\emph default
+ features.
+ These can be found in the 
+\family typewriter
+examples
+\family default
+ folder of the morpho git repository and are listed here in alphabetical
+ order.
+ Some closely relate to material presented in other chapters for which cross-ref
+erences are provided.
+ 
+\end_layout
+
+\begin_layout Section
+Catenoid 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/ExamplesChapter/catenoid/catenoid-before.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/ExamplesChapter/catenoid/catenoid-after.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Catenoid"
+
+\end_inset
+
+Catenoid.
+
+\series default
+ (left) initial mesh before optimization and (right) after optimization.
+ Only grade 1 elements are shown.
+ Boundary elements are displayed in red.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+A soap film held between two parallel concentric circular rings adopts the
+ shape of a minimal surface called a 
+\emph on
+catenoid.
+ 
+\emph default
+This is a relatively simple optimization problem, and hence is a good example
+ for beginners to 
+\emph on
+morpho
+\emph default
+.
+ 
+\end_layout
+
+\begin_layout Standard
+The initial mesh is created using AreaMesh in the 
+\family typewriter
+meshtools
+\family default
+ module:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var r = 1.0 // radius
+\end_layout
+
+\begin_layout Plain Layout
+
+var ratio = 0.4 // Separation to diameter ratio
+\end_layout
+
+\begin_layout Plain Layout
+
+var L = 2*r*ratio // Separation
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+// Generate a tube / cylindrical mesh
+\end_layout
+
+\begin_layout Plain Layout
+
+var mesh = AreaMesh(fn (u, v) [r*cos(u), v, r*sin(u)],
+\end_layout
+
+\begin_layout Plain Layout
+
+                    -Pi...Pi:Pi/10,
+\end_layout
+
+\begin_layout Plain Layout
+
+                    -L/2..L/2:L/5,
+\end_layout
+
+\begin_layout Plain Layout
+
+                    closed=[true,false] )
+\end_layout
+
+\begin_layout Plain Layout
+
+mesh.addgrade(1)
+\end_layout
+
+\end_inset
+
+The boundary of the mesh must be fixed in place.
+ We can do this by creating a Selection, and visualizing it as shown in
+ Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Catenoid"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, left panel: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// Select the boundary
+\end_layout
+
+\begin_layout Plain Layout
+
+var bnd = Selection(mesh, boundary=true)
+\end_layout
+
+\begin_layout Plain Layout
+
+var g = plotselection(mesh, bnd, grade=1) 
+\end_layout
+
+\end_inset
+
+The optimization problem simply requires us to specify the area as the quantity
+ to minimize: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+ // Define the optimizataion problem
+\end_layout
+
+\begin_layout Plain Layout
+
+var problem = OptimizationProblem(mesh) 
+\end_layout
+
+\begin_layout Plain Layout
+
+// Add the area energy using the built-in Area functional
+\end_layout
+
+\begin_layout Plain Layout
+
+var area = Area()
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addenergy(area) 
+\end_layout
+
+\end_inset
+
+We then create a ShapeOptimizer to perform the optimization,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var opt = ShapeOptimizer(problem, mesh) 
+\end_layout
+
+\end_inset
+
+fix the boundary elements using the selection object we created, 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+opt.fix(bnd)
+\end_layout
+
+\end_inset
+
+and perform the optimization.
+ Conjugate gradient works well for this problem and converges in a few iteration
+s.
+ The final optimized shape is shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Catenoid"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, right panel.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+opt.conjugategradient(1000)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Cholesteric
+\end_layout
+
+\begin_layout Standard
+A cholesteric liquid crystal, in contrast to a nematic liquid crystal as
+ was considered in the tutorial in Chapter X, favors a twisted state.
+ The liquid crystal elastic energy is modified to include a preferred chiral
+ wavevector 
+\begin_inset Formula $q_{0}$
+\end_inset
+
+, 
+\begin_inset Formula 
+\begin{equation}
+F=\frac{1}{2}\int_{C}K_{11}\left(\nabla\cdot\mathbf{n}\right)^{2}+K_{22}(\mathbf{n}\cdot\nabla\times\mathbf{n}-q_{0})^{2}+K_{33}\left|\mathbf{n}\times\nabla\times\mathbf{n}\right|^{2}dA.\label{eq:CholestericFreeEnergy}
+\end{equation}
+
+\end_inset
+
+The cholesteric example minimizes Eq.
+ 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:CholestericFreeEnergy"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ in a square domain 
+\begin_inset Formula $(x,y)\in[-L,L]$
+\end_inset
+
+, with 
+\begin_inset Formula $L=1/2$
+\end_inset
+
+, together with an anchoring energy, 
+\begin_inset Formula 
+\[
+W\int(\mathbf{n}\cdot\mathbf{\hat{y}})^{2}dl,
+\]
+
+\end_inset
+
+imposed on the top and bottom boundaries to promote 
+\emph on
+planar degenerate
+\emph default
+ alignment, i.e.
+ 
+\begin_inset Formula $\mathbf{n}$
+\end_inset
+
+ prefers to lie any direction in the 
+\begin_inset Formula $x-z$
+\end_inset
+
+ plane.
+ The optimized structure with 
+\begin_inset Formula $q_{0}=\pi/2$
+\end_inset
+
+ is displayed in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "fig:Cholesteric"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/ExamplesChapter/cholesteric/cholesteric.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Cholesteric"
+
+\end_inset
+
+
+\series bold
+Cholesteric liquid crystal on a square domain.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Cube
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/ExamplesChapter/cube/cube-init.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/ExamplesChapter/cube/cube.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Cube"
+
+\end_inset
+
+Minimal surface at constant enclosed volume.
+
+\series default
+ (left) Initial cube (right) Final optimized structure after 4 levels of
+ refinement.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This example finds a minimal surface with fixed enclosed volume, i.e.
+ a sphere.
+ It closely parallels a similar example from 
+\emph on
+Surface Evolver
+\emph default
+, and hence may aid those familiar with that program in learning to use
+ 
+\emph on
+morpho
+\emph default
+.
+ Starting from an initial cube, shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "fig:Cube"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, and created as follows:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+ // Create an initial cube
+\end_layout
+
+\begin_layout Plain Layout
+
+var m = PolyhedronMesh([ [-0.5, -0.5, -0.5],
+\end_layout
+
+\begin_layout Plain Layout
+
+                         [ 0.5, -0.5, -0.5],
+\end_layout
+
+\begin_layout Plain Layout
+
+                         [-0.5,  0.5, -0.5],
+\end_layout
+
+\begin_layout Plain Layout
+
+                         [ 0.5,  0.5, -0.5],
+\end_layout
+
+\begin_layout Plain Layout
+
+                         [-0.5, -0.5,  0.5],
+\end_layout
+
+\begin_layout Plain Layout
+
+                         [ 0.5, -0.5,  0.5],
+\end_layout
+
+\begin_layout Plain Layout
+
+                         [-0.5,  0.5,  0.5],
+\end_layout
+
+\begin_layout Plain Layout
+
+                         [ 0.5,  0.5,  0.5]],
+\end_layout
+
+\begin_layout Plain Layout
+
+                       [ [0,1,3,2], [4,5,7,6],
+\end_layout
+
+\begin_layout Plain Layout
+
+                         [0,1,5,4], [3,2,6,7],
+\end_layout
+
+\begin_layout Plain Layout
+
+                         [0,2,6,4], [1,3,7,5] ])
+\end_layout
+
+\end_inset
+
+The problem and optimizer are set up:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var problem = OptimizationProblem(m)
+\end_layout
+
+\begin_layout Plain Layout
+
+var la = Area()
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addenergy(la)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+var lv = VolumeEnclosed()
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addconstraint(lv)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+var opt = ShapeOptimizer(problem, m)
+\end_layout
+
+\end_inset
+
+The mesh is optimized, then refined, then reoptimized:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var Nlevels = 4 // Levels of refinement
+\end_layout
+
+\begin_layout Plain Layout
+
+var Nsteps = 1000 // Maximum number of steps per refinement level
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+for (i in 1..Nlevels) {
+\end_layout
+
+\begin_layout Plain Layout
+
+  opt.conjugategradient(Nsteps)
+\end_layout
+
+\begin_layout Plain Layout
+
+  if (i==Nlevels) break
+\end_layout
+
+\begin_layout Plain Layout
+
+  // Refine
+\end_layout
+
+\begin_layout Plain Layout
+
+  var mr=MeshRefiner([m])
+\end_layout
+
+\begin_layout Plain Layout
+
+  var refmap = mr.refine()
+\end_layout
+
+\begin_layout Plain Layout
+
+  for (el in [problem, opt]) el.update(refmap)
+\end_layout
+
+\begin_layout Plain Layout
+
+  m = refmap[m]
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+And finally the resulting area is compared with the true area of a sphere
+ at the same volume: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var V0=lv.total(m)
+\end_layout
+
+\begin_layout Plain Layout
+
+var Af=la.total(m)
+\end_layout
+
+\begin_layout Plain Layout
+
+var R=(V0/(4/3*Pi))^(1/3)
+\end_layout
+
+\begin_layout Plain Layout
+
+var area = 4*Pi*R^2
+\end_layout
+
+\begin_layout Plain Layout
+
+print "Final area: ${Af} True area: ${area} diff: ${abs(Af-area)}"
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Delaunay
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/ExamplesChapter/delaunay/delaunay-2d.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/ExamplesChapter/delaunay/delaunay-3d.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Delaunay"
+
+\end_inset
+
+Delaunay triangulation.
+
+\series default
+ (left) Triangulation of random 2D point cloud (right) Tetrahedralization
+ of random 3D point cloud.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This example demonstrates use of the 
+\family typewriter
+delaunay
+\family default
+ module to create a Delaunay triangulation from a point cloud.
+ The triangulation generated is explicitly checked for the property that
+ no point other than the vertices lies within the circumsphere of each triangle.
+ 
+\end_layout
+
+\begin_layout Section
+DLA 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/ExamplesChapter/dla/dla.png
+	lyxscale 20
+	width 6in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:DLA"
+
+\end_inset
+
+
+\series bold
+Aggregate produced by diffusion limited aggregation.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Diffusion Limited Aggregation is a process describing the formation of aggregate
+s of sticky particles.
+ An initial seed particle of radius 
+\begin_inset Formula $r$
+\end_inset
+
+ is placed at 
+\begin_inset Formula $\mathbf{x}_{0}=(0,0,0)$
+\end_inset
+
+.
+ Subsequent particles are added one by one from initial random points 
+\begin_inset Formula $\mathbf{x}_{i}^{0}=R\mathbf{\xi}/|\mathbf{\xi}|$
+\end_inset
+
+ where 
+\begin_inset Formula $\xi$
+\end_inset
+
+ is a random point normally distributed in each axis; the construction 
+\begin_inset Formula $\mathbf{\xi}/|\mathbf{\xi}|$
+\end_inset
+
+ generates a random point on the unit sphere.
+ In 
+\emph on
+morpho
+\emph default
+, this looks like
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+fn randompt() {
+\end_layout
+
+\begin_layout Plain Layout
+
+  var x = Matrix([randomnormal(), randomnormal(), randomnormal()])
+\end_layout
+
+\begin_layout Plain Layout
+
+  return R*x/x.norm() 
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+The mobile particle moves diffusively, according to
+\begin_inset Formula 
+\[
+\mathbf{x}_{i}^{n+1}=\mathbf{x}_{i}^{n}+\delta\xi
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $\delta$
+\end_inset
+
+ is a small number.
+ As the particle moves, we check to see if it has collided with any other
+ particles, 
+\begin_inset Formula 
+\begin{equation}
+\left|x_{i}-x_{j}\right|<2r,\forall i\neq j,\label{eq:collisioncheck}
+\end{equation}
+
+\end_inset
+
+or if it has wandered out of bounds, 
+\begin_inset Formula 
+\[
+\left|x_{i}\right|>2R.
+\]
+
+\end_inset
+
+If a particle has collided with another particle, it becomes fixed in place
+ and joins the aggregate.
+ As particles are added, the aggregate develops a characteristic fractalline
+ morphology as shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:DLA"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ The body of the program is a double loop:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+for (n in 1..Np) { // Add particles one-by-one  
+\end_layout
+
+\begin_layout Plain Layout
+
+  var x = randompt()
+\end_layout
+
+\begin_layout Plain Layout
+
+  while (true) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    // Move current particle
+\end_layout
+
+\begin_layout Plain Layout
+
+    x+=Matrix([delta*randomnormal(), delta*randomnormal(), delta*randomnormal()]
+)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    // Check for collisions
+\end_layout
+
+\begin_layout Plain Layout
+
+    /* ...
+ */
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    // Catch if it wandered out of the boundary
+\end_layout
+
+\begin_layout Plain Layout
+
+    if (x.norm()>2*R) x = randompt() 
+\end_layout
+
+\begin_layout Plain Layout
+
+  }
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To perform the collision check, the example uses a data structure called
+ a 
+\begin_inset Formula $k$
+\end_inset
+
+-dimensional tree, provided in the 
+\family typewriter
+kdtree
+\family default
+ module.
+ A 
+\begin_inset Formula $k$
+\end_inset
+
+-dimensional tree provides a nearest neighbor search with 
+\begin_inset Formula $O(\log N)$
+\end_inset
+
+ complexity rather than 
+\begin_inset Formula $O(N)$
+\end_inset
+
+ complexity as would be required by searching all the points directly.
+ The collision check code looks like this: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+if ((tree.nearest(x).location-x).norm()<2*r) {
+\end_layout
+
+\begin_layout Plain Layout
+
+  tree.insert(x)
+\end_layout
+
+\begin_layout Plain Layout
+
+  pts.append(x)
+\end_layout
+
+\begin_layout Plain Layout
+
+  if (x.norm()>R/2) R = 2*x.norm()
+\end_layout
+
+\begin_layout Plain Layout
+
+  break // Move to next particle
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+Notice that we gradually expand 
+\begin_inset Formula $R$
+\end_inset
+
+ as the aggregate grows.
+ Ideally, each point should start very far away, really at infinity, but
+ this would be very expensive in terms of the number of diffusion steps.
+ A value of 
+\begin_inset Formula $R$
+\end_inset
+
+ double the greatest extent of the aggregate is a good compromise between
+ speed and a reasonable approximation of diffusion limited aggregation.
+ 
+\end_layout
+
+\begin_layout Standard
+This example also demonstrates how to create a simple custom visualization
+ directly using the 
+\family typewriter
+graphics 
+\family default
+module.
+ The particles are drawn as spheres and displayed with the following code.
+ An example run is displayed in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:DLA"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var col = Gray(0.5)
+\end_layout
+
+\begin_layout Plain Layout
+
+var g = Graphics()
+\end_layout
+
+\begin_layout Plain Layout
+
+g.background = White
+\end_layout
+
+\begin_layout Plain Layout
+
+for (x in pts) g.display(Sphere(x, r, color=col))
+\end_layout
+
+\begin_layout Plain Layout
+
+Show(g)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Electrostatics
+\end_layout
+
+\begin_layout Standard
+This example shows how to solve a simple electrostatics problem with adaptive
+ refinement, and provides a useful example of how to cast a problem that
+ is normally thought of as solving a PDE as an optimization problem.
+ 
+\end_layout
+
+\begin_layout Standard
+Suppose we want to solve Laplace's equation,
+\begin_inset Formula 
+\[
+\nabla^{2}\phi=0
+\]
+
+\end_inset
+
+on a square domain 
+\begin_inset Formula $C$
+\end_inset
+
+ defined by 
+\begin_inset Formula $-L/2\leq x\leq L/2$
+\end_inset
+
+ and 
+\begin_inset Formula $-L/2\leq y\leq L/2$
+\end_inset
+
+.
+ An equivalent formulation suitable for 
+\emph on
+morpho
+\emph default
+ is to minimize, 
+\begin_inset Formula 
+\begin{equation}
+\int_{C}\left|\nabla\phi\right|^{2}dA\label{eq:el1}
+\end{equation}
+
+\end_inset
+
+with respect to 
+\begin_inset Formula $\phi$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+We can show the two are equivalent by applying calculus of variations
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+If you're not familiar with calculus of variations, feel free to skip paragraphs
+ that refer to 
+\begin_inset Quotes eld
+\end_inset
+
+variations
+\begin_inset Quotes erd
+\end_inset
+
+.
+ The calculus of variations generalizes calculus from differentiating with
+ respect to variables to differentiating with respect to functions.
+\end_layout
+
+\end_inset
+
+ to the expression Eq.
+ 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:el1"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, 
+\begin_inset Formula 
+\begin{align*}
+\delta\int_{C}\left|\nabla\phi\right|^{2}dA & =\int_{C}\delta\left|\nabla\phi\right|^{2}dA\\
+ & =\int_{C}\frac{\partial}{\partial\nabla\phi}\left|\nabla\phi\right|^{2}\cdot\delta\nabla\phi dA,
+\end{align*}
+
+\end_inset
+
+and integrating by parts, 
+\begin_inset Formula 
+\begin{align}
+\int_{C}\frac{\partial}{\partial\nabla\phi}\left|\nabla\phi\right|^{2}\cdot\delta\nabla\phi dA & =\int_{\partial C}\nabla\phi\cdot\hat{\mathbf{s}}\delta\phi dl-\int_{C}\nabla\cdot\frac{\partial}{\partial\nabla\phi}\left|\nabla\phi\right|^{2}\delta\phi dA\nonumber \\
+ & =\int_{\partial C}\nabla\phi\cdot\hat{\mathbf{s}}\delta\phi dl-\int_{C}\nabla^{2}\phi\delta\phi dA,\label{eq:bulkvariations}
+\end{align}
+
+\end_inset
+
+where 
+\begin_inset Formula $\hat{\mathbf{s}}$
+\end_inset
+
+ is the outward normal.
+ Hence, allowing for arbitrary variations 
+\begin_inset Formula $\delta\phi$
+\end_inset
+
+, in order for the bulk integrand to vanish Laplace's equation 
+\begin_inset Formula $\nabla^{2}\phi=0$
+\end_inset
+
+ must be satisfied.
+ Similarly requiring the boundary integrand to vanish yields the 
+\begin_inset Quotes eld
+\end_inset
+
+natural
+\begin_inset Quotes erd
+\end_inset
+
+ boundary condition 
+\begin_inset Formula $\nabla\phi\cdot\hat{\mathbf{s}}=0$
+\end_inset
+
+, known as the Neumann boundary condition.
+ In the absence of boundary energies, solving 
+\begin_inset Formula $\nabla^{2}\phi=0$
+\end_inset
+
+ in 
+\begin_inset Formula $C$
+\end_inset
+
+ subject to 
+\begin_inset Formula $\nabla\phi\cdot\hat{\mathbf{s}}=0$
+\end_inset
+
+ on 
+\begin_inset Formula $\partial C$
+\end_inset
+
+ yields the family of uniform constant solutions 
+\begin_inset Formula $\phi=\text{const}.$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To impose boundary data, we will supplement Eq.
+ 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:el1"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ with the additional functional, 
+\begin_inset Formula 
+\begin{equation}
+\lambda\int_{\partial C}\left[\phi-\phi_{0}(\mathbf{x})\right]^{2}dl\label{eq:anchoring}
+\end{equation}
+
+\end_inset
+
+where the function 
+\begin_inset Formula $\phi_{0}$
+\end_inset
+
+ represents some imposed boundary potential.
+ Taking variations of this functional, 
+\begin_inset Formula 
+\begin{align}
+\delta\lambda\int_{\partial C}\left[\phi-\phi_{0}(\mathbf{x})\right]^{2}dl & =\lambda\int_{\partial C}\frac{\partial}{\partial\phi}\left[\phi-\phi_{0}(\mathbf{x})\right]^{2}\delta\phi dl\nonumber \\
+ & =\lambda\int_{\partial C}2\left[\phi-\phi_{0}(\mathbf{x})\right]\delta\phi dl\label{eq:boundary}
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Collecting the boundary terms from Eq.
+ 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:bulkvariations"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ and Eq.
+ 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:boundary"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, we obtain the equivalent boundary condition on 
+\begin_inset Formula $\phi$
+\end_inset
+
+, 
+\begin_inset Formula 
+\[
+\nabla\phi\cdot\hat{\mathbf{s}}+2\lambda(\phi-\phi_{0})=0,
+\]
+
+\end_inset
+
+which is known as a Robin boundary condition.
+ As 
+\begin_inset Formula $\lambda\to\infty$
+\end_inset
+
+, 
+\begin_inset Formula $\phi\to\phi_{0}$
+\end_inset
+
+ on the boundary, recovering a fixed boundary or Dirichlet condition, while
+ as 
+\begin_inset Formula $\lambda\to0$
+\end_inset
+
+, we recover the Neumann conditions discussed earlier.
+ 
+\end_layout
+
+\begin_layout Standard
+In the example, we will set 
+\begin_inset Formula $\phi_{0}=0$
+\end_inset
+
+ on the left and lower boundary and 
+\begin_inset Formula $\phi_{0}=1$
+\end_inset
+
+ on the right and upper boundary, and use 
+\begin_inset Formula $\lambda=100$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+The code illustrates a few 
+\emph on
+morpho 
+\emph default
+tricks.
+ First, the following code is used to select the left/bottom and upper/right
+ sides of the mesh:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var bnd = Selection(mesh, boundary=true)
+\end_layout
+
+\begin_layout Plain Layout
+
+var bnd1 = Selection(mesh, fn (x,y,z) abs(x+L/2)<0.01 || abs(y+L/2)<0.01)
+\end_layout
+
+\begin_layout Plain Layout
+
+var bnd2 = Selection(mesh, fn (x,y,z) abs(x-L/2)<0.01 || abs(y-L/2)<0.01)
+\end_layout
+
+\begin_layout Plain Layout
+
+for (b in [bnd1, bnd2]) b.addgrade(1)
+\end_layout
+
+\begin_layout Plain Layout
+
+bnd1=bnd.intersection(bnd1)
+\end_layout
+
+\begin_layout Plain Layout
+
+bnd2=bnd.intersection(bnd2)
+\end_layout
+
+\end_inset
+
+What's happening here is that we select the whole boundary in the first
+ line and then select relevant vertices in the next two lines.
+ The edges are then added to the selection with 
+\family typewriter
+addgrade
+\family default
+, but this also selects some interior edges.
+ To ensure we only have boundary edges in our selections, we find the intersecti
+on of 
+\family typewriter
+bnd1
+\family default
+ and 
+\family typewriter
+bnd
+\family default
+, and similarly for 
+\family typewriter
+bnd2
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Standard
+The problem setup involves adding the electrostatic energy Eq.
+ 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:el1"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ using 
+\family typewriter
+GradSq
+\family default
+ and the boundary terms Eq.
+ 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:anchoring"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ as 
+\family typewriter
+LineIntegral
+\family default
+s.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var problem = OptimizationProblem(mesh)
+\end_layout
+
+\begin_layout Plain Layout
+
+var le = GradSq(phi)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addenergy(le)
+\end_layout
+
+\begin_layout Plain Layout
+
+var v1 = 0, v2 = 1
+\end_layout
+
+\begin_layout Plain Layout
+
+var lt1 = LineIntegral(fn (x, v) (v-v1)^2, phi)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addenergy(lt1, selection=bnd1, prefactor=100)
+\end_layout
+
+\begin_layout Plain Layout
+
+var lt2 = LineIntegral(fn (x, v) (v-v2)^2, phi)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addenergy(lt2, selection=bnd2, prefactor=100) 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Optimization is done with a 
+\family typewriter
+FieldOptimizer
+\family default
+: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var opt = FieldOptimizer(problem, phi)
+\end_layout
+
+\begin_layout Plain Layout
+
+opt.conjugategradient(100)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The problem as posed requires 
+\begin_inset Formula $\phi$
+\end_inset
+
+ to very sharply change in the upper left and lower right cornes as the
+ imposed potential changes, but far away from these 
+\begin_inset Formula $\phi$
+\end_inset
+
+ changes much more slowly.
+ We would like therefore to perform 
+\emph on
+adaptive refinement
+\emph default
+, refining the mesh only in places where 
+\begin_inset Formula $\phi$
+\end_inset
+
+ is rapidly changing and using coarse elements elsewhere.
+ 
+\end_layout
+
+\begin_layout Standard
+To identify elements to refine, we compute the electrostatic energy in each
+ element—we'll use this as a heuristic measure of how rapidly 
+\begin_inset Formula $\phi$
+\end_inset
+
+ is changing—and find the mean energy per element.
+ We then create a Selection and manually select elements that have an electrosta
+tic energy more than 
+\begin_inset Formula $1.5\times$
+\end_inset
+
+ the mean.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// Select elements that have an above average contribution to the energy
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+var en = le.integrand(phi) // energy in each element
+\end_layout
+
+\begin_layout Plain Layout
+
+var mean = en.sum()/en.count() // mean energy per element
+\end_layout
+
+\begin_layout Plain Layout
+
+var srefine = Selection(mesh)
+\end_layout
+
+\begin_layout Plain Layout
+
+for (id in 0...en.count()) if (en[0,id]>1.5*mean) srefine[2,id]=true 
+\end_layout
+
+\begin_layout Plain Layout
+
+// identify large contributions
+\end_layout
+
+\end_inset
+
+Refinement is then performed with a MeshRefiner object from the 
+\family typewriter
+meshtools
+\family default
+ module, which we create with a list of both the mesh to refine 
+\emph on
+and 
+\emph default
+all quantities that refer to the mesh:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var ref = MeshRefiner([mesh, phi, bnd, bnd1, bnd2])
+\end_layout
+
+\end_inset
+
+The refinement is performed using the selection 
+\family typewriter
+srefine
+\family default
+ just created 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var refmap = ref.refine(selection=srefine)
+\end_layout
+
+\end_inset
+
+which returns a Dictionary mapping the old quantities to the new refined
+ ones.
+ We use this dictionary to update the OptimizationProblem and FieldOptimizer,
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+for (el in [problem, opt]) el.update(refmap)
+\end_layout
+
+\end_inset
+
+and finally update our variables
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+mesh = refmap[mesh]
+\end_layout
+
+\begin_layout Plain Layout
+
+phi = refmap[phi]
+\end_layout
+
+\begin_layout Plain Layout
+
+bnd = refmap[bnd]
+\end_layout
+
+\begin_layout Plain Layout
+
+bnd1 = refmap[bnd1]
+\end_layout
+
+\begin_layout Plain Layout
+
+bnd2 = refmap[bnd2]
+\end_layout
+
+\end_inset
+
+Finally, we equiangulate the mesh to help avoid narrow elements,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+equiangulate(mesh)
+\end_layout
+
+\end_inset
+
+Once refinement is complete, further optimization can occur on the newly
+ refined mesh
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+opt.conjugategradient(1000)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The process of refinement and optimization just described takes place in
+ a loop.
+ The resulting mesh after 10 iterations is shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Electrostatics"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, together with the solution 
+\begin_inset Formula $\phi$
+\end_inset
+
+.
+ The code runs in a few seconds, providing a considerable speedup over optimizin
+g on a fine grid to get comparable accuracy.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/ExamplesChapter/electrostatics/electrostatics-mesh.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/ExamplesChapter/electrostatics/electrostatics-result.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Electrostatics"
+
+\end_inset
+
+
+\series bold
+Electrostatics problem on a square domain
+\series default
+ (left) mesh after 10 iterations of adaptive refinement and optimization
+ and (right) the resulting solution.
+ Grade 1 elements are shown to emphasize the mesh structure.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Implicitmesh
+\end_layout
+
+\begin_layout Standard
+These examples illustrate how to use the 
+\family typewriter
+implicitmesh
+\family default
+ module to generate surfaces described as the zero set of a scalar function.
+ The 
+\family typewriter
+sphere.morpho
+\family default
+ and 
+\family typewriter
+torus.morpho
+\family default
+ examples are described more fully in Chapter X, Section Y.
+ The remaining 
+\family typewriter
+threesurface.morpho
+\family default
+ creates a triangulation of a surface with three handles,
+\begin_inset Formula 
+\[
+r_{z}^{4}z^{2}-\left(1-\left(\frac{x}{r_{x}}\right)^{2}-\left(\frac{y}{r_{y}}\right)^{2}\right)\left((x-x_{1})^{2}+y^{2}-r_{1}^{2}\right)\left((x+x_{1})^{2}+y^{2}-r_{1}^{2}\right)\left(x^{2}+y^{2}-r_{1}^{2}\right)=0,
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $r_{x}$
+\end_inset
+
+, 
+\begin_inset Formula $r_{y}$
+\end_inset
+
+, 
+\begin_inset Formula $r_{z}$
+\end_inset
+
+, 
+\begin_inset Formula $r_{1}$
+\end_inset
+
+ and 
+\begin_inset Formula $x_{1}$
+\end_inset
+
+ are parameters.
+ The resulting surface is shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Threesurface"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/ExamplesChapter/implicitmesh/threesurface.png
+	lyxscale 20
+	width 4in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Threesurface"
+
+\end_inset
+
+
+\series bold
+Surface with three handles
+\series default
+ generated with the 
+\family typewriter
+implicitmesh
+\family default
+ module.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Meshgen
+\end_layout
+
+\begin_layout Standard
+Examples in this folder illustrate various techniques to create Meshes with
+ the 
+\family typewriter
+meshgen
+\family default
+ module.
+ Examples in two dimensions are shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Meshgen-2D"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+; those in 3D are shown in Fig.
+ XXX.
+ See also Chapter X, Section Y for additional discussion of the 
+\family typewriter
+meshgen
+\family default
+ module.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+
+\family sans
+A
+\begin_inset Graphics
+	filename figures/ExamplesChapter/meshgen/disk.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+B
+\begin_inset Graphics
+	filename figures/ExamplesChapter/meshgen/ellipse.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+
+\family sans
+C
+\begin_inset Graphics
+	filename figures/ExamplesChapter/meshgen/halfdisk.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+D
+\begin_inset Graphics
+	filename figures/ExamplesChapter/meshgen/overlappingdisks.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+
+\family sans
+E
+\begin_inset Graphics
+	filename figures/ExamplesChapter/meshgen/superellipse.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+F
+\begin_inset Graphics
+	filename figures/ExamplesChapter/meshgen/weighted.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Meshgen-2D"
+
+\end_inset
+
+
+\series bold
+2D meshes created with the 
+\family typewriter
+meshgen
+\family default
+ module.
+
+\series default
+ 
+\series bold
+A
+\series default
+ 
+\family typewriter
+disk.morpho
+\family default
+, 
+\series bold
+B
+\series default
+ 
+\family typewriter
+ellipse.morpho
+\family default
+,
+\series bold
+ C
+\series default
+ 
+\family typewriter
+halfdisk.morpho
+\family default
+, 
+\series bold
+D
+\series default
+ 
+\family typewriter
+overlappingdisks.morpho
+\family default
+, 
+\series bold
+E
+\series default
+ 
+\family typewriter
+superellipse.morpho
+\family default
+, 
+\series bold
+F
+\series default
+ 
+\family typewriter
+weighted.morpho
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+
+\family sans
+A
+\begin_inset Graphics
+	filename figures/ExamplesChapter/meshgen/sphere.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+B
+\begin_inset Graphics
+	filename figures/ExamplesChapter/meshgen/ellipsoidsection.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+
+\family sans
+C
+\begin_inset Graphics
+	filename figures/ExamplesChapter/meshgen/superellipsoid.png
+	lyxscale 20
+	width 3in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Meshgen-3D"
+
+\end_inset
+
+
+\series bold
+3D meshes created with the 
+\family typewriter
+meshgen
+\family default
+ module.
+
+\series default
+ 
+\series bold
+A
+\series default
+ 
+\family typewriter
+sphere.morpho
+\family default
+, 
+\series bold
+B
+\family typewriter
+\series default
+ ellipsoidsection.morpho
+\family default
+,
+\series bold
+ C
+\series default
+ 
+\family typewriter
+superellipsoid.morpho.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Meshslice
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/ExamplesChapter/meshslice/meshslice2.png
+	lyxscale 20
+	width 4in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Meshslice"
+
+\end_inset
+
+Mesh sliced along three planes
+\series default
+ showing a scalar field interpolated onto each slice.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This example shows how to use the 
+\family typewriter
+meshslice
+\family default
+ module to create a slice through a mesh for visualization purposes.
+ The program uses a spherical mesh, 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var m = Mesh("sphere.mesh")
+\end_layout
+
+\begin_layout Plain Layout
+
+m.addgrade(1)
+\end_layout
+
+\begin_layout Plain Layout
+
+m.addgrade(2)
+\end_layout
+
+\end_inset
+
+and creates a couple of example Fields, one scalar, 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var phi = Field(m, fn (x,y,z) x+y+z)
+\end_layout
+
+\end_inset
+
+and one vector, 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var nn = Field(m, fn (x,y,z) Matrix([x,y,z])/sqrt(x^2+y^2+z^2))
+\end_layout
+
+\end_inset
+
+A MeshSlicer is created to do the slicing, 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var slice = MeshSlicer(m)
+\end_layout
+
+\begin_layout Plain Layout
+
+var slc = slice.slice([0,0,0], [1,0,0])
+\end_layout
+
+\end_inset
+
+and then interpolated Fields along this slice are created too, 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var sphi = slice.slicefield(phi)
+\end_layout
+
+\begin_layout Plain Layout
+
+var snn = slice.slicefield(nn)
+\end_layout
+
+\end_inset
+
+Grade 1 elements (edges) from the original mesh, together with the field
+ phi interpolated onto three different slices, are shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Meshslice"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ The example program illustrates a few other different possibilities.
+ 
+\end_layout
+
+\begin_layout Section
+Plot
+\end_layout
+
+\begin_layout Standard
+This example illustrates drawing of meshes, plotting of fields, etc.
+ See Chapter X on visualization for more details.
+ 
+\end_layout
+
+\begin_layout Section
+Povray
+\end_layout
+
+\begin_layout Standard
+Examples in this folder illustrates use of the 
+\family typewriter
+povray
+\family default
+ module used to produce publication quality renderings from within 
+\emph on
+morpho
+\emph default
+ programs.
+ All figures in this book were generated using this module.
+ 
+\end_layout
+
+\begin_layout Section
+Qtensor
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/ExamplesChapter/qtensor/Qtensor_K_0.01.png
+	lyxscale 20
+	width 4in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Qtensor"
+
+\end_inset
+
+
+\series default
+Equilibrium configuration of nematic LC in a disk described by the Q tensor
+ formulation.
+ The scalar order parameter is shown as a density field; the local orientation
+ extracted from 
+\begin_inset Formula $Q$
+\end_inset
+
+ is displayed as cylinders.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This example demonstrates use of the alternative Q-tensor formulation of
+ nematic liquid crystal theory.
+ We briefly present the necessary theory in two subsections below, then
+ describe the implementation in 
+\emph on
+morpho
+\emph default
+.
+ 
+\end_layout
+
+\begin_layout Subsection
+The Q tensor
+\end_layout
+
+\begin_layout Standard
+In 2D, for a uniaxial nematic, we can define a Q-tensor: 
+\begin_inset Formula 
+\[
+Q_{ij}=S(n_{i}n_{j}-1/2\delta_{ij})
+\]
+
+\end_inset
+
+Here, the 
+\begin_inset Formula $-1/2\delta_{ij}$
+\end_inset
+
+ is added for convenience, to make the matrix traceless: 
+\begin_inset Formula 
+\[
+\text{Tr}(\mathbf{Q})=Q_{ii}=S(n_{i}n_{i}-1/2\delta_{ii})=S(1-1/2(2))=0
+\]
+
+\end_inset
+
+Now, the Q-tensor is also symmetric by definition: 
+\begin_inset Formula 
+\[
+Q_{ij}=Q_{ji}
+\]
+
+\end_inset
+
+Due to these two reasons we can write the Q-tensor as a function of only
+ 
+\begin_inset Formula $Q_{xx}$
+\end_inset
+
+ and 
+\begin_inset Formula $Q_{xy}$
+\end_inset
+
+: 
+\begin_inset Formula 
+\[
+\mathbf{Q}=\begin{bmatrix}Q_{xx} & Q_{xy}\\
+Q_{xy} & -Q_{xx}
+\end{bmatrix}.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Elastic Energy and Anchoring
+\end_layout
+
+\begin_layout Standard
+The Landau-de Gennes equilibrium free energy for a nematic liquid crystal
+ can be written in terms of the Q-tensor: 
+\begin_inset Formula 
+\begin{align*}
+F_{LDG}= & \int_{\Omega}d^{2}{\bf x}\ \left(\frac{a_{2}}{2}\text{Tr}(\mathbf{Q}^{2})+\frac{a_{4}}{4}(\text{Tr}\mathbf{Q}^{2})^{2}+\frac{K}{2}(\nabla\mathbf{Q})^{2}\right)\\
+ & +\oint_{\partial\Omega}d{\bf x}\frac{1}{2}E_{A}\text{Tr}[(\mathbf{Q}-\mathbf{W})^{2}]
+\end{align*}
+
+\end_inset
+
+where 
+\begin_inset Formula $a_{2}=(\rho-1)$
+\end_inset
+
+ and 
+\begin_inset Formula $a_{4}=(\rho+1)/\rho^{2}$
+\end_inset
+
+ set the isotropic to nematic transition with 
+\begin_inset Formula $\rho$
+\end_inset
+
+ being the non-dimensional density.
+ The system is in the isotropic state for 
+\begin_inset Formula $\rho<1$
+\end_inset
+
+ and in the nematic phase when 
+\begin_inset Formula $\rho>1$
+\end_inset
+
+.
+ In the nematic phase, 
+\begin_inset Formula $\ell_{n}=\sqrt{K/a_{2}}$
+\end_inset
+
+ sets the nematic coherence length.
+ Now, 
+\begin_inset Formula 
+\[
+\mathbf{Q}^{2}=\begin{bmatrix}Q_{xx} & Q_{xy}\\
+Q_{xy} & -Q_{xx}
+\end{bmatrix}\begin{bmatrix}Q_{xx} & Q_{xy}\\
+Q_{xy} & -Q_{xx}
+\end{bmatrix}=(Q_{xx}^{2}+Q_{xy}^{2})\begin{bmatrix}1 & 0\\
+0 & 1
+\end{bmatrix}
+\]
+
+\end_inset
+
+Hence, 
+\begin_inset Formula 
+\[
+\text{Tr}(\mathbf{Q}^{2})=2(Q_{xx}^{2}+Q_{xy}^{2})
+\]
+
+\end_inset
+
+Similarly, 
+\begin_inset Formula 
+\[
+(\nabla\mathbf{Q})^{2}=\partial_{i}Q_{kj}\partial_{i}Q_{kj}=2\{(\partial_{x}Q_{xx})^{2}+(\partial_{x}Q_{xy})^{2}+(\partial_{y}Q_{xx})^{2}+(\partial_{y}Q_{xy})^{2}\}
+\]
+
+\end_inset
+
+Now, the second term is a boundary integral, with 
+\begin_inset Formula $E_{A}$
+\end_inset
+
+ being the anchoring strength.
+ 
+\begin_inset Formula $\mathbf{W}$
+\end_inset
+
+ is the tensor corresponding to the boundary condition.
+ For instance, for parallel anchoring, 
+\begin_inset Formula 
+\[
+W_{ij}=(t_{i}t_{j}-1/2\delta_{ij})
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $t_{i}$
+\end_inset
+
+ is a component of the tangent vector at the boundary.
+ 
+\begin_inset Formula $\mathbf{W}$
+\end_inset
+
+ is also a symmetric traceless tensor with two independent components 
+\begin_inset Formula $W_{xx}$
+\end_inset
+
+ and 
+\begin_inset Formula $W_{xy}$
+\end_inset
+
+.
+ The boundary term becomes: 
+\begin_inset Formula 
+\[
+\text{Tr}[(\mathbf{Q}-\mathbf{W})^{2}]=2\{Q_{xx}^{2}+Q_{xy}^{2}-2(Q_{xx}W_{xx}+Q_{xy}W_{xy})+W_{xx}^{2}+W_{xy}^{2}\}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Optimization problem
+\end_layout
+
+\begin_layout Standard
+We can formulate all the preceding expressions in terms of vector quantities:
+ 
+\begin_inset Formula 
+\[
+\vec{q}\equiv\{Q_{xx},Q_{xy}\}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\vec{w}\equiv\{w_{xx},w_{xy}\}
+\]
+
+\end_inset
+
+Thus, 
+\begin_inset Formula 
+\[
+\text{Tr}(\mathbf{Q}^{2})=2||\vec{q}||^{2}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+(\nabla\mathbf{Q})^{2}=2||\nabla\vec{q}||^{2}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\text{Tr}[(\mathbf{Q}-\mathbf{W})^{2}]=2||\vec{q}-\vec{w}||^{2}
+\]
+
+\end_inset
+
+With these, we want to minimize the area-integral of 
+\begin_inset Formula 
+\[
+F=\int_{\Omega}d^{2}{\bf x}\ \left(a_{2}||\vec{q}||^{2}+a_{4}||\vec{q}||^{4}+K||\nabla\vec{q}||^{2}\right)
+\]
+
+\end_inset
+
+together with the line-integral energy 
+\begin_inset Formula 
+\[
+\oint_{\partial\Omega}d{\bf x}\ E_{A}||\vec{q}-\vec{w}||^{2}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Implementation
+\end_layout
+
+\begin_layout Standard
+This free energy is readily set up in 
+\emph on
+morpho
+\emph default
+.
+ For this example, we consider a 2D disk geometry with unit radius.
+ We use 
+\begin_inset Formula $\rho=1.3$
+\end_inset
+
+, so that we are deep in the nematic regime.
+ We fix 
+\begin_inset Formula $E_{\text{A}}=3$
+\end_inset
+
+, which sets strong anchoring at the boundary.
+ With this strong tangential anchoring, we get a topological charge of 
+\begin_inset Formula $+1$
+\end_inset
+
+ at the boundary, and this acts as a constraint.
+ When the nematic coherence length is comparable to the disk diameter (
+\begin_inset Formula $\ell_{n}\sim R$
+\end_inset
+
+), the 
+\begin_inset Formula $+1$
+\end_inset
+
+ charge penetrates throughout the disk, whereas if (
+\begin_inset Formula $\ell_{n}\ll R$
+\end_inset
+
+), then a formation with 2 
+\begin_inset Formula $+1/2$
+\end_inset
+
+ defects is more stable.
+ To test this, we use two different values of 
+\begin_inset Formula $K$
+\end_inset
+
+:, 0.01 and 1.0.
+\end_layout
+
+\begin_layout Standard
+We first define all our parameters and import 
+\begin_inset Formula $\texttt{disk.mesh}$
+\end_inset
+
+ from the tactoid example: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var rho = 1.3 // Deep in the nematic phase
+\end_layout
+
+\begin_layout Plain Layout
+
+var EA = 3 // Anchoring strength
+\end_layout
+
+\begin_layout Plain Layout
+
+var K = 0.01 // Bending modulus
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+var a2 = (1-rho)
+\end_layout
+
+\begin_layout Plain Layout
+
+var a4 = (1+rho)/rho^2
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+var m = Mesh("disk.mesh")
+\end_layout
+
+\begin_layout Plain Layout
+
+var m = refinemesh(m) // Refining for a better result
+\end_layout
+
+\begin_layout Plain Layout
+
+var bnd = Selection(m, boundary=true)
+\end_layout
+
+\begin_layout Plain Layout
+
+bnd.addgrade(0) // add point elements
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+We define the Q-tensor in its vector form as discussed above, initializing
+ it to small random values: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var q_tensor = Field(m, fn(x,y,z)
+\end_layout
+
+\begin_layout Plain Layout
+
+Matrix([0.01*random(1), 0.01*random(1)]))
+\end_layout
+
+\end_inset
+
+Note that this incidentally makes the director parallel to a 45 degree line.
+ We now define the bulk energy, the anchoring energy and the distortion
+ free energy as follows: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// Define bulk free energy
+\end_layout
+
+\begin_layout Plain Layout
+
+fn landau(x, q) {
+\end_layout
+
+\begin_layout Plain Layout
+
+  var qt = q.norm()
+\end_layout
+
+\begin_layout Plain Layout
+
+  var qt2=qt*qt
+\end_layout
+
+\begin_layout Plain Layout
+
+  return a2*qt2 + a4*qt2*qt2
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+// Define anchoring energy at the boundary
+\end_layout
+
+\begin_layout Plain Layout
+
+fn anchoring(x, q) {
+\end_layout
+
+\begin_layout Plain Layout
+
+  var t = tangent()
+\end_layout
+
+\begin_layout Plain Layout
+
+  var wxx = t[0]*t[0]-0.5
+\end_layout
+
+\begin_layout Plain Layout
+
+  var wxy = t[0]*t[1]
+\end_layout
+
+\begin_layout Plain Layout
+
+  return (q[0]-wxx)^2+(q[1]-wxy)^2
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+var bulk = AreaIntegral(landau, q_tensor)
+\end_layout
+
+\begin_layout Plain Layout
+
+var anchor = LineIntegral(anchoring, q_tensor)
+\end_layout
+
+\begin_layout Plain Layout
+
+var elastic = GradSq(q_tensor)
+\end_layout
+
+\end_inset
+
+Equipped with the energies, we define the 
+\family typewriter
+OptimizationProblem
+\family default
+: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var problem = OptimizationProblem(m)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addenergy(bulk)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addenergy(elastic, prefactor = K)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addenergy(anchor, selection=bnd, prefactor=EA)
+\end_layout
+
+\end_inset
+
+To minimize the energy with respect to the field, we define the 
+\family typewriter
+FieldOptimizer
+\family default
+ and perform a 
+\family typewriter
+linesearch
+\family default
+: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var opt = FieldOptimizer(problem, q_tensor)
+\end_layout
+
+\begin_layout Plain Layout
+
+opt.linesearch(500)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Visualization
+\end_layout
+
+\begin_layout Standard
+For visualizing the final configuration, we use the same piece of code we
+ used for the tactoid example, and define some additional helper functions
+ to extract the director and the order from the Q-tensor:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+fn qtodirector(q) {
+\end_layout
+
+\begin_layout Plain Layout
+
+  var S = 2*q.norm()
+\end_layout
+
+\begin_layout Plain Layout
+
+  var Q = q/S
+\end_layout
+
+\begin_layout Plain Layout
+
+  var nx = sqrt(Q[0]+0.5)
+\end_layout
+
+\begin_layout Plain Layout
+
+  var ny = abs(Q[1]/nx)
+\end_layout
+
+\begin_layout Plain Layout
+
+  nx*=sign(Q[1])
+\end_layout
+
+\begin_layout Plain Layout
+
+  return Matrix([nx,ny,0])
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+fn qtoorder(q) {
+\end_layout
+
+\begin_layout Plain Layout
+
+  var S = 2*q.norm()
+\end_layout
+
+\begin_layout Plain Layout
+
+  return S
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+We use these to create Fields from 
+\family typewriter
+q_tensor
+\family default
+.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// Convert the q-tensor to the director and order
+\end_layout
+
+\begin_layout Plain Layout
+
+var nn = Field(m, Matrix([1,0,0]))
+\end_layout
+
+\begin_layout Plain Layout
+
+for (i in 0...m.count()) nn[i]=qtodirector(q_tensor[i])
+\end_layout
+
+\begin_layout Plain Layout
+
+var S = Field(m, 0)
+\end_layout
+
+\begin_layout Plain Layout
+
+for (i in 0...m.count()) S[i]=qtoorder(q_tensor[i])
+\end_layout
+
+\end_inset
+
+and display these, reusing the 
+\family typewriter
+visualize
+\family default
+ function from the tactoid tutorial example.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var splot = plotfield(S, style="interpolate")
+\end_layout
+
+\begin_layout Plain Layout
+
+var gnn=visualize(m, nn, 0.05)
+\end_layout
+
+\begin_layout Plain Layout
+
+var gdisp = splot+gnn
+\end_layout
+
+\begin_layout Plain Layout
+
+Show(gdisp)
+\end_layout
+
+\end_inset
+
+This creates beautiful plots of the nematic, displayed in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Qtensor"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ Like the tactoid example, we can do adaptive mesh refinement based on the
+ elastic energy density as well.
+ 
+\end_layout
+
+\begin_layout Section
+Thomson
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/ExamplesChapter/thomson/thomson.png
+	lyxscale 20
+	width 4in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Thomson"
+
+\end_inset
+
+Solution of the Thomson problem
+\series default
+ for 
+\begin_inset Formula $N=100$
+\end_inset
+
+ charges.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Consider 
+\begin_inset Formula $N$
+\end_inset
+
+ charges 
+\begin_inset Formula $q$
+\end_inset
+
+ with positions 
+\begin_inset Formula $\mathbf{x}_{i}$
+\end_inset
+
+ that are each confined to lie on the unit sphere so that 
+\begin_inset Formula $\left|\mathbf{x}_{i}\right|=1$
+\end_inset
+
+ that repel each other electrostatically and hence whose configuration minimizes
+ the energy, 
+\begin_inset Formula 
+\[
+\frac{k}{2}\sum_{i\neq j}\frac{q^{2}}{\left|\mathbf{x}_{i}-\mathbf{x}_{j}\right|}
+\]
+
+\end_inset
+
+The problem was posed by the physicist J.
+ J.
+ Thomson in 1904, in the context of an early model for the structure of
+ an atom.
+ 
+\end_layout
+
+\begin_layout Standard
+To set this up in 
+\emph on
+morpho
+\emph default
+, we begin by creating a mesh from a sequence of random points using a MeshBuild
+er object from the 
+\family typewriter
+meshtools
+\family default
+ module.
+ Notice that this is quite an unusual mesh; it consists of 
+\begin_inset Formula $N$
+\end_inset
+
+ unconnected points with no connectivity information.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var build = MeshBuilder()
+\end_layout
+
+\begin_layout Plain Layout
+
+for (i in 1..Np) {
+\end_layout
+
+\begin_layout Plain Layout
+
+  var x = Matrix([2*random()-1, 2*random()-1, 2*random()-1])
+\end_layout
+
+\begin_layout Plain Layout
+
+  x/=x.norm() // Project onto unit sphere
+\end_layout
+
+\begin_layout Plain Layout
+
+  build.addvertex(x)
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+var mesh = build.build()
+\end_layout
+
+\end_inset
+
+The optimization problem is then specified.
+ We use the PairwisePotential functional from the 
+\family typewriter
+functionals
+\family default
+ module and supply the Coulomb potential 
+\begin_inset Formula $1/r$
+\end_inset
+
+, together with its derivative 
+\begin_inset Formula $-1/r^{2}$
+\end_inset
+
+ as anonymous functions:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var problem = OptimizationProblem(mesh)
+\end_layout
+
+\begin_layout Plain Layout
+
+var lv = PairwisePotential(fn (r) 1/r, fn (r) -1/r^2)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addenergy(lv)
+\end_layout
+
+\end_inset
+
+Constraining the particles to a sphere is implemented as a level set constraint:
+ We use the ScalarPotential functional as a local constraint to ensure that
+ each particle lies on the zero contour of the scalar function 
+\begin_inset Formula $x^{2}+y^{2}+z^{2}-1$
+\end_inset
+
+, which defines the unit sphere.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var lsph = ScalarPotential(fn (x,y,z) x^2+y^2+z^2-1) problem.addlocalconstraint(l
+sph) 
+\end_layout
+
+\end_inset
+
+Optimization is then performed: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var opt = ShapeOptimizer(problem, mesh)
+\end_layout
+
+\begin_layout Plain Layout
+
+opt.stepsize=0.01/sqrt(Np)
+\end_layout
+
+\begin_layout Plain Layout
+
+opt.relax(5)
+\end_layout
+
+\begin_layout Plain Layout
+
+opt.conjugategradient(1000)
+\end_layout
+
+\end_inset
+
+Notice that we estimate the initial stepsize from the number of particles.
+ Since each particle will adopt a fraction 
+\begin_inset Formula $1/N$
+\end_inset
+
+ of the area, the stepsize is 
+\begin_inset Formula $\propto1/\sqrt{N}$
+\end_inset
+
+.
+ In practice, we find that taking a few steps of gradient descent with relax
+ helps condition the problem by pushing any particles from the initially
+ random distribution that happened to be placed very close to one another
+ apart.
+ After this 
+\family typewriter
+conjugategradient
+\family default
+works well and typically converges in around 
+\begin_inset Formula $100$
+\end_inset
+
+ iterations.
+ 
+\end_layout
+
+\begin_layout Standard
+A final interesting feature of this example is the use of a custom visualization.
+ We draw a sphere with a center of mass at the location at each particle:
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var g = Graphics()
+\end_layout
+
+\begin_layout Plain Layout
+
+for (i in 0...mesh.count()) {
+\end_layout
+
+\begin_layout Plain Layout
+
+  g.display(Sphere(mesh.vertexposition(i),1/sqrt(Np)))
+\end_layout
+
+\begin_layout Plain Layout
+
+} 
+\end_layout
+
+\begin_layout Plain Layout
+
+g.display(Sphere([0,0,0],1))
+\end_layout
+
+\begin_layout Plain Layout
+
+Show(g)
+\end_layout
+
+\end_inset
+
+A typical configuration resulting from this is shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Thomson"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ Note that we made the large sphere transparent to render with the povray
+ module; this was achieved by adding the optional argument 
+\family typewriter
+transmit=0.3
+\family default
+ to the call to 
+\family typewriter
+Sphere
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Section
+Wrap
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/ExamplesChapter/wrap/wrap.png
+	lyxscale 20
+	width 4in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Wrap"
+
+\end_inset
+
+Minimal surface constrained to lie outside two ellipsoidal one-sided level
+ set constraints.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The wrap example finds a minimal surface constrainted to lie outside two
+ ellipsoids.
+ The solution, shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Wrap"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+) could represent, for example, a possible configuration for a fluid bridge
+ connecting two ellipsoidal particles.
+ 
+\end_layout
+
+\begin_layout Standard
+The basic idea of this code is to 
+\begin_inset Quotes eld
+\end_inset
+
+shrink wrap
+\begin_inset Quotes erd
+\end_inset
+
+ the ellipsoids, starting with an initial mesh is a cube that completely
+ encloses them.
+ This is created with PolyhedronMesh from the 
+\family typewriter
+meshtools
+\family default
+ module:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// Create a initial cube
+\end_layout
+
+\begin_layout Plain Layout
+
+var L = 2
+\end_layout
+
+\begin_layout Plain Layout
+
+var cube = [[-L, -L, -L], [-L, -L, L], [-L, L, -L],
+\end_layout
+
+\begin_layout Plain Layout
+
+            [-L, L, L], [L, -L, -L], [L, -L, L],
+\end_layout
+
+\begin_layout Plain Layout
+
+            [L, L, -L], [L, L, L]]
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+var faces = [[7, 3, 1, 5], [7, 5, 4, 6], [7, 6, 2, 3], [3, 2, 0, 1], [0,
+ 2, 6,   4], [1, 0, 4, 5]]
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+var m=PolyhedronMesh(cube, faces)
+\end_layout
+
+\begin_layout Plain Layout
+
+m=refinemesh(m)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The particles are implemented as level set constraints.
+ A convenient Ellipsoid class is defined to help create appropriate constraints,
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+class Ellipsoid { // Construct with Ellipsoid(origin, principalradii)
+\end_layout
+
+\begin_layout Plain Layout
+
+  init(x, r) { 
+\end_layout
+
+\begin_layout Plain Layout
+
+    self.origin = x
+\end_layout
+
+\begin_layout Plain Layout
+
+    self.principalradii = r
+\end_layout
+
+\begin_layout Plain Layout
+
+  }
+\end_layout
+
+\begin_layout Plain Layout
+
+  // Returns a level set function for this Ellipsoid
+\end_layout
+
+\begin_layout Plain Layout
+
+  levelset() {
+\end_layout
+
+\begin_layout Plain Layout
+
+    fn phi (x,y,z) {
+\end_layout
+
+\begin_layout Plain Layout
+
+      var x0 = self.origin, rr = self.principalradii
+\end_layout
+
+\begin_layout Plain Layout
+
+      return ((x-x0[0])/rr[0])^2 + ((y-x0[1])/rr[1])^2 + ((z-x0[2])/rr[2])^2
+ - 1     
+\end_layout
+
+\begin_layout Plain Layout
+
+	}
+\end_layout
+
+\begin_layout Plain Layout
+
+    return phi
+\end_layout
+
+\begin_layout Plain Layout
+
+  }
+\end_layout
+
+\begin_layout Plain Layout
+
+  /* Analogous code for gradient() ...
+ */
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+The 
+\family typewriter
+levelset
+\family default
+ method manufactures a scalar function representing the ellipsoid and suitable
+ for use with the ScalarPotential functional.
+ A second method, 
+\family typewriter
+gradient
+\family default
+, returns the gradient of that function.
+ 
+\end_layout
+
+\begin_layout Standard
+The two ellipsoids of interest are then created like so: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var ell1 = Ellipsoid([0,1/2,0],[1/2,1/2,1])
+\end_layout
+
+\begin_layout Plain Layout
+
+var ell2 = Ellipsoid([0,-1/2,0],[1,1/2,1/2])
+\end_layout
+
+\end_inset
+
+The optimization problem is set up to include the surface area subject to
+ satisfaction of the level set constraints; these are noted as one-sided,
+ i.e.
+ satisfied if the mesh lies at any point outside the constraint region.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// We want to minimize the area
+\end_layout
+
+\begin_layout Plain Layout
+
+var la = Area() // Subject to level set constraints
+\end_layout
+
+\begin_layout Plain Layout
+
+var ls1 = ScalarPotential( ell1.levelset(), ell1.gradient() )
+\end_layout
+
+\begin_layout Plain Layout
+
+var ls2 = ScalarPotential( ell2.levelset(), ell2.gradient() )
+\end_layout
+
+\begin_layout Plain Layout
+
+var leq = EquiElement()
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+var problem = OptimizationProblem(m)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addenergy(la)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addlocalconstraint(ls1, onesided=true)
+\end_layout
+
+\begin_layout Plain Layout
+
+problem.addlocalconstraint(ls2, onesided=true) 
+\end_layout
+
+\end_inset
+
+To promote mesh quality, a second regularization problem is set up: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var reg = OptimizationProblem(m)
+\end_layout
+
+\begin_layout Plain Layout
+
+reg.addenergy(leq)
+\end_layout
+
+\begin_layout Plain Layout
+
+reg.addlocalconstraint(ls1, onesided=true)
+\end_layout
+
+\begin_layout Plain Layout
+
+reg.addlocalconstraint(ls2, onesided=true)
+\end_layout
+
+\end_inset
+
+Optimization and refinement are performed iteratively:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+sopt.stepsize=0.025
+\end_layout
+
+\begin_layout Plain Layout
+
+sopt.steplimit=0.1
+\end_layout
+
+\begin_layout Plain Layout
+
+ropt.stepsize=0.01
+\end_layout
+
+\begin_layout Plain Layout
+
+ropt.steplimit=0.2
+\end_layout
+
+\begin_layout Plain Layout
+
+for (refine in 1..3) {
+\end_layout
+
+\begin_layout Plain Layout
+
+  for (i in 1..100) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    sopt.relax(5)
+\end_layout
+
+\begin_layout Plain Layout
+
+    ropt.conjugategradient(1)
+\end_layout
+
+\begin_layout Plain Layout
+
+    equiangulate(m)
+\end_layout
+
+\begin_layout Plain Layout
+
+  }
+\end_layout
+
+\begin_layout Plain Layout
+
+  var mr=MeshRefiner([m])
+\end_layout
+
+\begin_layout Plain Layout
+
+  var refmap = mr.refine()
+\end_layout
+
+\begin_layout Plain Layout
+
+  for (el in [problem, reg, sopt, ropt]) el.update(refmap)
+\end_layout
+
+\begin_layout Plain Layout
+
+  m = refmap[m]
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+Note that we set 
+\family typewriter
+stepsize
+\family default
+ and 
+\family typewriter
+steplimit
+\family default
+ on each optimizer; these values were found by trial and error.
+ The initial shape is quite extreme, and so we use 
+\family typewriter
+relax
+\family default
+ for the main optimization problem which is very robust.
+ Calling 
+\family typewriter
+equiangulate
+\family default
+ helps maintain mesh quality.
  
 \end_layout
 

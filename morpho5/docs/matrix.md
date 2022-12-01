@@ -29,3 +29,17 @@ The division operator is used to solve a linear system, e.g.
     print b/a
 
 yields the solution to the system a*x = b.
+
+[showsubtopics]: # (subtopics)
+
+## Inverse
+[taginverse]: # (Inverse)
+
+Returns the inverse of a matrix if it is invertible. Raises a
+`MtrxSnglr` error if the matrix is singular. E.g.
+
+    var m = Matrix([[1,2],[3,4]])
+    var mi = m.inverse()
+
+yields the inverse of the matrix `m`, such that mi*m is the identity
+matrix.

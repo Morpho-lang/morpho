@@ -1,0 +1,19 @@
+// 3D Ellipsoidal shell intersecting with a plane
+import meshgen
+import plot
+
+var dh = 0.2
+var e0 = Domain(fn (x) -((x[0]/2)^2+x[1]^2+x[2]^2-1))
+var e1 = Domain(fn (x) -((x[0]/2)^2+x[1]^2+x[2]^2-(0.5)^2))
+var e2 = HalfSpaceDomain(Matrix([0.25,0,0]), Matrix([1,0,0]))
+var dom = (e0.difference(e1)).intersection(e2)
+
+var mg = MeshGen(dom, [-2..2:dh, -1.2..1.2:dh, -1.2..1.2:dh], quiet=false)
+var m = mg.build()
+
+m.addgrade(2)
+//Show(plotmesh(m, grade=1))
+
+import "../raytrace.morpho"
+raytrace(plotmesh(m, grade=[1,2]), "ellipsoidsection.pov", viewpoint=[10,4,10], viewangle=18)
+

@@ -1,0 +1,50 @@
+// Test cholesteric in a square boundary
+import meshtools
+import plot
+import optimize
+
+var L = 0.5
+var dx = 0.1
+
+var m = AreaMesh(fn (u, v) [u, v, 0], -L..L:dx, -L..L:dx)
+m.addgrade(1)
+
+var substrate = Selection(m, fn (x,y,z) abs(y-(-0.5))<0.001 || abs(y-(0.5))<0.001)
+substrate.addgrade(1)
+//Show(plotselection(m, substrate, grade=1))
+
+var nn = Field(m, Matrix([1,0,0]))
+
+var problem = OptimizationProblem(m)
+
+var lnem = Nematic(nn)
+problem.addenergy(lnem)
+
+// Impose planar degenerate anchoring by penalizing ny
+var lanch = LineIntegral(fn (x, n) n[1]^2, nn)
+problem.addenergy(lanch, selection=substrate)
+
+var ln=NormSq(nn)
+problem.addlocalconstraint(ln, field=nn, target=1)
+lnem.pitch = Pi/2
+
+var opt = FieldOptimizer(problem, nn)
+opt.conjugategradient(1000)
+
+// Function to visualize a director field
+fn visualize(m, nn, dl) {
+  var v = m.vertexmatrix()
+  var nv = v.dimensions()[1]
+  var g = Graphics()
+  for (i in 0...nv) {
+    var x = v.column(i)
+    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.3))
+  }
+  return g
+}
+
+import "../raytrace.morpho" 
+
+var g=visualize(m, nn, dx/4)
+
+raytrace(g, "cholesteric.pov", viewpoint=Matrix([0,0,3]), viewangle=30)

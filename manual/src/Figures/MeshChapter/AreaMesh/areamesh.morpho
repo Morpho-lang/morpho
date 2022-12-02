@@ -1,0 +1,35 @@
+import meshtools 
+import plot
+import povray  
+
+fn raytrace(g, fname, viewpoint=nil) {
+  var vp = viewpoint
+  if (!vp) vp = Matrix([0,0,10])
+  var pov = POVRaytracer(g)
+  g.background = White
+  pov.viewpoint = vp
+  pov.viewangle = 18
+  pov.background = White
+  pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]
+  pov.render(fname, quiet=true)
+}
+
+var m = AreaMesh(fn (u,v) [u, v, 0], -1..1:0.2, -1..1:0.2)
+var g=plotmesh(m,grade=[0,1,2])
+raytrace(g, "square.pov")
+
+m.addgrade(1)
+g=plotmesh(m,grade=[0,1,2])
+raytrace(g, "square2.pov")
+
+m = AreaMesh(fn (u, v) [v, cos(u), sin(u)], -Pi...Pi:Pi/16,
+                     -2..2:0.1, closed=[true, false])
+g=plotmesh(m,grade=[0,1,2])
+raytrace(g, "tube.pov", viewpoint=Matrix([10,10,10]))
+
+var c=1, a=0.5
+m = AreaMesh(fn (u, v) [(c + a*cos(v))*cos(u),
+                        (c + a*cos(v))*sin(u),
+                        a*sin(v)], 0...2*Pi:Pi/16, 0...2*Pi:Pi/8, closed=true)
+g=plotmesh(m,grade=[0,1,2])
+raytrace(g, "torus.pov", viewpoint=Matrix([0,-10,10]))

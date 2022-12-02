@@ -1,0 +1,26 @@
+import graphics 
+import povray 
+
+var fnames
+var _count = 0
+
+fn raytraceinit(f) {
+  fnames = f 
+}
+
+fn raytrace(g, fname, viewpoint=nil, viewangle=18) {
+  var vp = viewpoint 
+  if (!vp) vp=Matrix([5,5,6])
+  var pov = POVRaytracer(g)
+  g.background = White
+  pov.viewpoint = vp
+  pov.viewangle = viewangle
+  pov.background = White
+  pov.light=[Matrix([10,10,10]), Matrix([0,0,10]), Matrix([-10,-10,10])]
+  pov.render(fname, quiet=true)
+}
+
+fn Show(g) {
+  raytrace(g, fnames[_count], viewangle=25)
+  _count +=1 
+}

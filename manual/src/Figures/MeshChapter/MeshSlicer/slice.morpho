@@ -1,0 +1,30 @@
+
+import "../raytrace.morpho" 
+
+import meshgen 
+import plot 
+import meshslice
+
+print "Building mesh..."
+var dh = 0.2
+var dom = Domain(fn (x) -(x[0]^2+x[1]^2+x[2]^2-1))
+var mg = MeshGen(dom, [-1..1:dh, -1..1:dh, -1..1:dh], quiet=true)
+var m = mg.build()
+m.addgrade(2)
+
+print m
+var g1=plotmesh(m, grade=[0,1])
+raytrace(g1, "mesh.pov", viewpoint=Matrix([0,0,10]), viewangle=18)
+
+print "Slicing..."
+var u = Field(m, fn (x,y,z) x*y)
+
+var ms=MeshSlicer(m)
+var slc=ms.slice([0,0,0],[0,0,1])
+var e0=ms.slicefield(u)
+
+var g2=plotmesh(slc, grade=[0,1,2])
+raytrace(g2, "slicemesh.pov", viewpoint=Matrix([0,0,10]), viewangle=20)
+
+var g3=plotfield(e0, style="interpolate", scalebar = ScaleBar(posn=[1.2,0,0], textcolor=Black))
+raytrace(g3, "field.pov", viewpoint=Matrix([0,0,10]), viewangle=20)

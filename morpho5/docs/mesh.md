@@ -16,7 +16,7 @@ Each type of element is referred to as belonging to a different `grade`. Point-l
 
 The `plot` package includes functions to visualize meshes.
 
-[showsuptopics]: # (showsuptopics)
+[showsubtopics]: # (showsubtopics)
 
 ## Save
 [tagsave]: # (Save)

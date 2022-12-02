@@ -1142,6 +1142,31 @@ value Matrix_eigensystem(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Inverts a matrix */
+value Matrix_inverse(vm *v, int nargs, value *args) {
+    objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+
+    // The inverse will have the number of rows and number of columns
+    // swapped. 
+    objectmatrix *new = object_newmatrix(a->ncols, a->nrows, false);
+    if (new) {
+        objectmatrixerror mi = matrix_inverse(a, new);
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+        if (mi==MATRIX_OK) {
+            return out;
+        } else if (mi==MATRIX_SING) {
+            morpho_runtimeerror(v, MATRIX_SINGULAR);
+        } else if (mi==MATRIX_INVLD) {
+            morpho_runtimeerror(v, MATRIX_INVLDARRAYINIT);
+        } else {
+            UNREACHABLE("matrix_inverse returned an error which should not be valid.\n");
+        }
+    }
+    
+}
+
 /** Transpose of a matrix */
 value Matrix_transpose(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
@@ -1264,6 +1289,7 @@ MORPHO_METHOD(MORPHO_ACC_METHOD, Matrix_acc, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_INNER_METHOD, Matrix_inner, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUM_METHOD, Matrix_sum, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_NORM_METHOD, Matrix_norm, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MATRIX_INVERSE_METHOD, Matrix_inverse, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_TRANSPOSE_METHOD, Matrix_transpose, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_RESHAPE_METHOD, Matrix_reshape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_EIGENVALUES_METHOD, Matrix_eigenvalues, BUILTIN_FLAGSEMPTY),

@@ -17,7 +17,7 @@ There are many ways you can contribute to Morpho:
 
 All contributors are expected to follow the [Morpho Code of Conduct](https://github.com/Morpho-lang/morpho/blob/main/CODE_OF_CONDUCT.md).
 
-For further guidance and pointers, a developer's manual is coming soon! In the meantime, we encourage you to [join our Slack community](https://join.slack.com/t/morphoco/shared_invite/zt-1hiby4iqv-UhqKEeqZih0vSG3k4gEfXQ) or get in touch via email.
+For further guidance and pointers, a developer's guide gradually being assembled [devguide](https://github.com/Morpho-lang/morpho/blob/main/devguide/devguide.pdf). In the meantime, we encourage you to [join our Slack community](https://join.slack.com/t/morphoco/shared_invite/zt-1hiby4iqv-UhqKEeqZih0vSG3k4gEfXQ) or get in touch via email.
 
 ## Unit-tests
 

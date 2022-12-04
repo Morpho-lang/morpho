@@ -8,7 +8,7 @@ var dom = Domain(fn (x) -((x[0]^4+x[1]^4+x[2]^4)^(1/4)-1))
 var mg = MeshGen(dom, [-1..1:dh, -1..1:dh, -1..1:dh], quiet=false)
 var m = mg.build()
 
-Show(plotmesh(m, grade=1))
+//Show(plotmesh(m, grade=1))
 
 import "../raytrace.morpho"
 raytrace(plotmesh(m, grade=1), "superellipsoid.pov", viewpoint=[6,6,10], viewangle=18)

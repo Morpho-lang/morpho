@@ -198,7 +198,7 @@ pov.viewangle=35
 pov.viewpoint = Matrix([0,0,6])
 pov.light = [Matrix([3,4,5]), Matrix([-3,-4,5])]
 // Render to a .pov file. This also generates a .png image with the same name.
-pov.render("Qtensor_K_${K}.pov")
+pov.render("Qtensor_K_${K}.pov", display=false)
 
 // Open up the viewer application
-Show(gdisp) 
+//Show(gdisp) 

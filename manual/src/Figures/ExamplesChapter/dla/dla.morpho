@@ -46,10 +46,10 @@ var col = Gray(0.5)
 var g = Graphics()
 g.background = White
 for (x in pts) g.display(Sphere(x, r, color=col))
-Show(g)
+//Show(g)
 
 // And raytrace it too
 var pov = POVRaytracer(g)
 pov.viewangle = 32
 pov.light = [Matrix([3,3,10]), Matrix([-3,3,10]), Matrix([0,-3,10])]
-pov.render("dla.pov")
+pov.render("dla.pov", display=false)

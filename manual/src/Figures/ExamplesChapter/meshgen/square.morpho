@@ -8,4 +8,4 @@ var mg = MeshGen(e0, [-2..2:0.2, -2..2:0.2], quiet=false)
 //mg.ttol=0.5
 var m = mg.build()
 
-Show(plotmesh(m, grade=1))
+//Show(plotmesh(m, grade=1))

@@ -11,7 +11,7 @@ fn raytrace(g, fname, viewpoint=nil) {
   pov.viewangle = 15
   pov.background = White
   pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]
-  pov.render(fname, quiet=true)
+  pov.render(fname, quiet=true, display=false)
 }
 
 // Create an initial cube

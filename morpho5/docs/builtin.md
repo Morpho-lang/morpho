@@ -141,7 +141,7 @@ Returns `true` if a value is a `Mesh`, or `false` otherwise.
 Returns `true` if a value is a `Selection`, or `false` otherwise.
 
 ## isfield
-[tagisselection]: # (isfield)
+[tagisfield]: # (isfield)
 
 Returns `true` if a value is a `Field`, or `false` otherwise.
 

@@ -14,7 +14,7 @@ var mesh = impl.build(start=Matrix([0,3,0]), stepsize=0.3, maxiterations=4000)
 
 mesh.addgrade(1)
 var g=plotmesh(mesh, grade=[1,2])
-Show(g)
+//Show(g)
 
 import color
 import povray
@@ -25,4 +25,4 @@ var pov = POVRaytracer(g)
 pov.light = [Matrix([-3,3,3]), Matrix([3,3,3]), Matrix([0,-3,3])]
 pov.viewpoint = Matrix([0,-4,20])
 pov.viewangle = 45
-pov.render("threesurface.pov")
+pov.render("threesurface.pov", display=false)

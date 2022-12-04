@@ -14,8 +14,12 @@
  * Paths and file system
  * ********************************************************************** */
 
-#define MORPHO_HELPDIRECTORY "/usr/local/share/morpho/help"
-#define MORPHO_MODULEDIRECTORY "/usr/local/share/morpho/modules"
+#ifndef MORPHO_RESOURCESDIRECTORY
+    #define MORPHO_RESOURCESDIRECTORY "/usr/local/share"
+#endif
+
+#define MORPHO_HELPDIRECTORY (MORPHO_RESOURCESDIRECTORY "/morpho/help")
+#define MORPHO_MODULEDIRECTORY (MORPHO_RESOURCESDIRECTORY "/morpho/modules")
 
 #define MORPHO_SEPARATOR "/"
 
@@ -74,14 +78,14 @@
 /** @brief Size of the error handler stack. */
 #define MORPHO_ERRORHANDLERSTACKSIZE 64
 
-/** @brief Maximum number of arguments */
-#define MORPHO_MAXARGS 255
-
-/** @brief Maximum number of constants */
-#define MORPHO_MAXCONSTANTS 65536
-
 /** @brief Maximum number of object types */
 #define MORPHO_MAXIMUMOBJECTDEFNS 64
+
+/** @brief Maximum number of arguments */
+#define MORPHO_MAXARGS 255 /** @warning Note that this cannot easily be adjusted >255 without changing the instruction encoding */
+
+/** @brief Maximum number of constants */
+#define MORPHO_MAXCONSTANTS 65536 /** @warning Note that this cannot easily be adjusted >65536 without changing the instruction encoding */
 
 /* **********************************************************************
 * Performance

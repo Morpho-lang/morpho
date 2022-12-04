@@ -957,7 +957,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             if (MORPHO_ISOBJECT(left)) {
                 if (vm_invoke(v, left, addselector, 1, &right, &reg[a])) {
                     ERRORCHK();
-                    DISPATCH();
+                    if (!MORPHO_ISNIL(reg[a])) DISPATCH();
                 }
             }
 
@@ -996,7 +996,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             if (MORPHO_ISOBJECT(left)) {
                 if (vm_invoke(v, left, subselector, 1, &right, &reg[a])) {
                     ERRORCHK();
-                    DISPATCH();
+                    if (!MORPHO_ISNIL(reg[a])) DISPATCH();
                 }
             }
 
@@ -1036,7 +1036,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             if (MORPHO_ISOBJECT(left)) {
                 if (vm_invoke(v, left, mulselector, 1, &right, &reg[a])) {
                     ERRORCHK();
-                    DISPATCH();
+                    if (!MORPHO_ISNIL(reg[a])) DISPATCH();
                 }
             }
 
@@ -1076,7 +1076,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             if (MORPHO_ISOBJECT(left)) {
                 if (vm_invoke(v, left, divselector, 1, &right, &reg[a])) {
                     ERRORCHK();
-                    DISPATCH();
+                    if (!MORPHO_ISNIL(reg[a])) DISPATCH();
                 }
             }
 
@@ -1116,7 +1116,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             if (MORPHO_ISOBJECT(left)) {
                 if (vm_invoke(v, left, powselector, 1, &right, &reg[a])) {
                     ERRORCHK();
-                    DISPATCH();
+                    if (!MORPHO_ISNIL(reg[a])) DISPATCH();
                 }
             }
 

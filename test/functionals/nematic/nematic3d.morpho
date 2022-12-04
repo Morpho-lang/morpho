@@ -1,8 +1,5 @@
 // Test nematic
 
-import meshtools
-import optimize
-
 var tol = 1e-6
 
 var m = Mesh("tetrahedron.mesh")

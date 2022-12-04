@@ -516,10 +516,52 @@ double matrix_sum(objectmatrix *a) {
     return sum;
 }
 
+/** Norms */
+
 /** Computes the Frobenius norm of a matrix */
 double matrix_norm(objectmatrix *a) {
     double nrm2=cblas_dnrm2(a->ncols*a->nrows, a->elements, 1);
     return nrm2;
+}
+
+/** Computes the L1 norm of a matrix */
+double matrix_L1norm(objectmatrix *a) {
+    unsigned int nel=a->ncols*a->nrows;
+    double sum=0.0, c=0.0, y,t;
+    
+    for (unsigned int i=0; i<nel; i++) {
+        y=fabs(a->elements[i])-c;
+        t=sum+y;
+        c=(t-sum)-y;
+        sum=t;
+    }
+    return sum;
+}
+
+/** Computes the Ln norm of a matrix */
+double matrix_Lnnorm(objectmatrix *a, double n) {
+    unsigned int nel=a->ncols*a->nrows;
+    double sum=0.0, c=0.0, y,t;
+    
+    for (unsigned int i=0; i<nel; i++) {
+        y=pow(a->elements[i],n)-c;
+        t=sum+y;
+        c=(t-sum)-y;
+        sum=t;
+    }
+    return pow(sum,1.0/n);
+}
+
+/** Computes the Linf norm of a matrix */
+double matrix_Linfnorm(objectmatrix *a) {
+    unsigned int nel=a->ncols*a->nrows;
+    double max=0.0;
+    
+    for (unsigned int i=0; i<nel; i++) {
+        double y=fabs(a->elements[i]);
+        if (y>max) max=y;
+    }
+    return max;
 }
 
 /** Transpose a matrix */
@@ -1098,7 +1140,31 @@ value Matrix_sum(vm *v, int nargs, value *args) {
 /** Matrix norm */
 value Matrix_norm(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
-    return MORPHO_FLOAT(matrix_norm(a));
+    value out = MORPHO_NIL;
+    
+    if (nargs==1) {
+        value arg = MORPHO_GETARG(args, 0);
+        
+        if (MORPHO_ISNUMBER(arg)) {
+            double n;
+            
+            if (morpho_valuetofloat(arg, &n)) {
+                if (fabs(n-1.0)<MORPHO_EPS) {
+                    out=MORPHO_FLOAT(matrix_L1norm(a));
+                } else if (fabs(n-2.0)<MORPHO_EPS) {
+                    out=MORPHO_FLOAT(matrix_norm(a));
+                } else if (isinf(n)) {
+                    out=MORPHO_FLOAT(matrix_Linfnorm(a));
+                } else {
+                    out=MORPHO_FLOAT(matrix_Lnnorm(a, n));
+                }
+            } else morpho_runtimeerror(v, MATRIX_NORMARGS);
+        } else morpho_runtimeerror(v, MATRIX_NORMARGS);
+    } else if (nargs==0) {
+        out=MORPHO_FLOAT(matrix_norm(a));
+    } else morpho_runtimeerror(v, MATRIX_NORMARGS);
+    
+    return out;
 }
 
 /** Matrix eigenvalues */
@@ -1320,4 +1386,5 @@ void matrix_initialize(void) {
     morpho_defineerror(MATRIX_NOTSQ, ERROR_HALT, MATRIX_NOTSQ_MSG);
     morpho_defineerror(MATRIX_OPFAILED, ERROR_HALT, MATRIX_OPFAILED_MSG);
     morpho_defineerror(MATRIX_SETCOLARGS, ERROR_HALT, MATRIX_SETCOLARGS_MSG);
+    morpho_defineerror(MATRIX_NORMARGS, ERROR_HALT, MATRIX_NORMARGS_MSG);
 }

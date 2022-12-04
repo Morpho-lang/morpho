@@ -105,10 +105,17 @@ matrix.
 ## Norm
 [tagnorm]: # (Norm)
 
-Returns a matrix norm. By default the L2 norm is returned: 
+Returns a matrix norm. By default the L2 norm is returned:
 
     var a = Matrix([1,2,3,4])
-    print a.norm() // Expect: sqrt(30) = 0.5477..
+    print a.norm() // Expect: sqrt(30) = 5.47723...
+
+You can select a different norm by supplying an argument:
+
+    import constants
+    print a.norm(1) // Expect: 10 (L1 norm is sum of absolute values) 
+    print a.norm(3) // Expect: 4.64159 (An unusual choice of norm)
+    print a.norm(Inf) // Expect: 4 (Inf-norm corresponds to maximum absolute value)
 
 ## Reshape
 [tagreshape]: # (Reshape)

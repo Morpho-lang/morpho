@@ -128,6 +128,9 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 #define MATRIX_SETCOLARGS                 "MtrxStClArgs"
 #define MATRIX_SETCOLARGS_MSG             "Method setcolumn expects an integer column index and a column matrix as arguments."
 
+#define MATRIX_NORMARGS                   "MtrxNrmArgs"
+#define MATRIX_NORMARGS_MSG               "Method norm expects an (optional) numerical argument."
+
 /* -------------------------------------------------------
  * Matrix errors
  * ------------------------------------------------------- */

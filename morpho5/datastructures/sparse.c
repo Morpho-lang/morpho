@@ -1351,6 +1351,7 @@ value Sparse_sub(vm *v, int nargs, value *args) {
 /** Multiply sparse matrices */
 value Sparse_mul(vm *v, int nargs, value *args) {
     objectsparse *a=MORPHO_GETSPARSE(MORPHO_SELF(args));
+    size_t asize = sparse_size(a);
     objectsparse *new = NULL;
     value out=MORPHO_NIL;
     objectsparseerror err = SPARSE_OK;
@@ -1358,10 +1359,12 @@ value Sparse_mul(vm *v, int nargs, value *args) {
     if (nargs==1) {
         if (MORPHO_ISSPARSE(MORPHO_GETARG(args, 0))) {
             objectsparse *b=MORPHO_GETSPARSE(MORPHO_GETARG(args, 0));
-
+            size_t bsize=sparse_size(b);
+            
             new = object_newsparse(NULL, NULL);
             if (new) {
                 err=sparse_mul(a, b, new);
+                morpho_resizeobject(v, (object *) b, bsize, sparse_size(b)); // Check for size change
             } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
         } else if (MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
             objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
@@ -1383,6 +1386,8 @@ value Sparse_mul(vm *v, int nargs, value *args) {
         }
     }
 
+    morpho_resizeobject(v, (object *) a, asize, sparse_size(a)); // In case we caused a size change
+    
     if (err==SPARSE_OK && new) {
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);

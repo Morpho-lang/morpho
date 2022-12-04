@@ -2585,7 +2585,8 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     /* Move selector into a temporary register unless we already have one
        that's at the top of the stack */
     if (!compiler_iscodeinfotop(c, func)) {
-        func=compiler_movetoregister(c, node, func, (reqout<top ? REGISTER_UNALLOCATED : reqout));
+        registerindx otop = compiler_regalloctop(c);
+        func=compiler_movetoregister(c, node, func, otop);
         ninstructions+=func.ninstructions;
     }
 
@@ -2623,6 +2624,8 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     return CODEINFO(REGISTER, func.dest, ninstructions);
 }
 
+#include <stdint.h>
+
 /** Compiles a method invocation */
 static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
@@ -2646,8 +2649,9 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     /* Move object into a temporary register unless we already have one
        that's at the top of the stack */
     if (!compiler_iscodeinfotop(c, object)) {
-        object=compiler_movetoregister(c, node, object, (reqout<top ? REGISTER_UNALLOCATED : reqout));
-           ninstructions+=object.ninstructions;
+        registerindx otop = compiler_regalloctop(c);
+        object=compiler_movetoregister(c, node, object, otop);
+        ninstructions+=object.ninstructions;
     }
 
     /* Compile the arguments */

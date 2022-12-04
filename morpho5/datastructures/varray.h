@@ -84,7 +84,15 @@ int varray_##name##write(varray_##name *v, type data) { \
 void varray_##name##clear(varray_##name *v) { \
     morpho_allocate(v->data, 0, 0); \
     varray_##name##init(v); \
-}
+} \
+bool varray_##name##pop(varray_##name *v, type *dest) { \
+    if (v->count>0) { \
+        v->count-=1; \
+        *dest = v->data[v->count]; \
+        return true; \
+    } \
+    return false; \
+} \
 
 /* **********************************************************************
 * Common varray types

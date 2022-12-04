@@ -38,3 +38,33 @@ Loop over keys in a dictionary:
 \begin{lstlisting}
 for (k in dict) print k
 \end{lstlisting}
+
+The \texttt{keys} method returns a Morpho List of the keys.
+
+\begin{lstlisting}
+var keys = dict.keys() // will return ["Massachusetts", "New York", "Vermont"]
+\end{lstlisting}
+
+The \texttt{contains} method returns a Bool value for whether the
+Dictionary contains a given key.
+
+\begin{lstlisting}
+print dict.contains("Vermont") // true
+print dict.contains("New Hampshire") // false
+\end{lstlisting}
+
+The \texttt{remove} method removes a given key from the Dictionary.
+
+\begin{lstlisting}
+dict.remove("Vermont")
+print dict // { New York : Albany, Massachusetts : Boston }
+\end{lstlisting}
+
+The \texttt{clear} method removes all the (key, value) pairs fromt the
+dictionary, resulting in an empty dictionary.
+
+\begin{lstlisting}
+dict.clear()
+
+print dict // {  }
+\end{lstlisting}

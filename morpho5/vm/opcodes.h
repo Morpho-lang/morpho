@@ -30,9 +30,6 @@ OPCODE(DIV)
 /** Raise to a power */
 OPCODE(POW)
 
-/** Logical NOT of a register */
-OPCODE(NOT)
-
 /** Comparison test */
 OPCODE(EQ)
 
@@ -44,6 +41,9 @@ OPCODE(LT)
 
 /** Comparison test */
 OPCODE(LE)
+
+/** Logical NOT of a register */
+OPCODE(NOT)
 
 /** Branching */
 OPCODE(B)

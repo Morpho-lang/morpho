@@ -432,8 +432,37 @@ bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, int nv, 
     return true;
 }
 
-/** Calculates the gradient of element remoteid with respect to vertex i */
-bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
+/* Calculates a numerical gradient for a remote vertex */
+/*static bool functional_numericalremotegradientold(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
+    objectmesh *mesh = info->mesh;
+    double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
+
+    int *rvid=(info->g==0 ? &remoteid : NULL),
+        rnv=(info->g==0 ? 1 : 0); // The vertex indices
+
+    if (conn) sparseccs_getrowindices(&conn->ccs, remoteid, &rnv, &rvid);
+
+    // Loop over vertices in element
+    for (unsigned int j=0; j<nv; j++) {
+        // Loop over coordinates
+        for (unsigned int k=0; k<mesh->dim; k++) {
+            matrix_getelement(frc, k, vid[j], &f0);
+
+            matrix_getelement(mesh->vert, k, vid[j], &x0);
+            matrix_setelement(mesh->vert, k, vid[j], x0+eps);
+            if (!(*info->integrand) (v, mesh, remoteid, rnv, rvid, info->ref, &fp)) return false;
+            matrix_setelement(mesh->vert, k, vid[j], x0-eps);
+            if (!(*info->integrand) (v, mesh, remoteid, rnv, rvid, info->ref, &fm)) return false;
+            matrix_setelement(mesh->vert, k, vid[j], x0);
+
+            matrix_setelement(frc, k, vid[j], f0+(fp-fm)/(2*eps));
+        }
+    }
+
+    return true;
+}*/
+
+static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
     objectmesh *mesh = info->mesh;
     double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
 
@@ -3189,7 +3218,7 @@ FUNCTIONAL_METHOD(LineIntegral, gradient, MESH_GRADE_LINE, integralref, integral
 /** Initialize a LineIntegral object */
 value LineIntegral_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
-    int nparams = -1, nfields = 0;
+    int nparams = -1;
 
     if (nargs>0) {
         value f = MORPHO_GETARG(args, 0);

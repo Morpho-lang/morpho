@@ -1,0 +1,13 @@
+// Circular domain with weight function
+import meshgen
+import plot
+
+// Weighted element size
+var hbar = fn (x) 1+x[0]/2 // larger elements as a function of x
+var mg = MeshGen(CircularDomain([0,0], 1), [-1..1:0.1, -1..1:0.1], quiet=false, weight=hbar)
+var m = mg.build()
+
+//Show(plotmesh(m, grade=1))
+
+import "../raytrace.morpho"
+raytrace(plotmesh(m, grade=1), "weighted.pov", viewpoint=[0,0,10], viewangle=18)

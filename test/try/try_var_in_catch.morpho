@@ -1,0 +1,16 @@
+/* **********************************
+ * morpho test suite
+ * try_var_in_catch.morpho
+ * Empty catch block
+ * ********************************** */
+
+var err = Error("Foo", "A Foo occurred")
+var str = "Foo"
+try {
+  err.throw()
+} catch {
+  str:
+    print "Caught the foo"
+}
+// expect error 'InvldLbl'
+

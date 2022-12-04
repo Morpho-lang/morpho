@@ -78,6 +78,9 @@ the mesh generation:
   retriangulation
 \item
   \texttt{etol} energy tolerance for optimization problem
+\item
+  \texttt{maxiterations} Maximum number of iterations of minimization +
+  retriangulation (default is 100)
 \end{itemize}
 
 \texttt{MeshGen} picks default values that cover a reasonable range of
@@ -122,6 +125,19 @@ Create a domain corresponding to the unit disk:
 
 \begin{lstlisting}
 var c = CircularDomain([0,0], 1)
+\end{lstlisting}
+
+\hypertarget{rectangulardomain}{%
+\subsection{RectangularDomain}\label{rectangulardomain}}
+
+Conveniently constructs a \texttt{Domain} object corresponding to a
+rectangle. Requires a list of ranges as arguments. Works in arbitrary
+dimensions
+
+Create a square \texttt{Domain}:
+
+\begin{lstlisting}
+var c = RectangularDomain([-1..1, -1..1])
 \end{lstlisting}
 
 \hypertarget{halfspacedomain}{%

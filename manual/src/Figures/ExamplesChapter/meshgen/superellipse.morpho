@@ -1,0 +1,16 @@
+// Superellipse domain
+import meshgen
+import plot
+
+// Superellipse
+var e1 = Domain(fn (x) -((x[0]^4+x[1]^4)^(1/4)-1))
+var e2 = Domain(fn (x) -((x[0]^4+x[1]^4)^(1/4)-0.5))
+var dom = e1.difference(e2)
+
+var mg = MeshGen(dom, [-1..1:0.1, -1..1:0.1], quiet=false)
+var m = mg.build()
+
+//Show(plotmesh(m, grade=1))
+
+import "../raytrace.morpho"
+raytrace(plotmesh(m, grade=1), "superellipse.pov", viewpoint=[0,0,10], viewangle=18)

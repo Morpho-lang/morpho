@@ -56,7 +56,10 @@
 #define DICT_DCTKYNTFND_MSG               "Key not found in dictionary."
 
 #define RESPONDSTO_ARG                    "RspndsToArg"
-#define RESPONDSTO_ARG_MSG                "Method respondsto expects a single string argument."
+#define RESPONDSTO_ARG_MSG                "Method respondsto expects a single string argument or no argrument."
+
+#define HAS_ARG                    		  "HasArg"
+#define HAS_ARG_MSG                		  "Method has expects a single string argument or no argument."
 
 #define ISMEMBER_ARG                      "IsMmbrArg"
 #define ISMEMBER_ARG_MSG                  "Method ismember expects a single argument."
@@ -111,6 +114,7 @@ errorid array_to_list_error(objectarrayerror err);
 bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out);
 objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned int *indx, value *out);
 objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned int *indx, value in);
+void array_print(vm *v, objectarray *a);
 objectarrayerror setslicerecursive(value* a, value* out,objectarrayerror copy(value * ,value *,\
 									unsigned int, unsigned int *,unsigned int *),unsigned int ndim,\
 									unsigned int curdim, unsigned int *indx,unsigned int *newindx, value *slices);

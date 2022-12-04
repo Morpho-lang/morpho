@@ -1,0 +1,11 @@
+
+fn func() {
+  try {
+    return func() 
+  } catch {
+  }
+  return false 
+}
+
+func() 
+// expect error 'ErrStckOvflw'

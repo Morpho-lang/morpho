@@ -1,0 +1,61 @@
+// Example of using the meshslice module 
+
+import meshtools
+import plot
+import meshslice
+
+// We'll create a spherical example mesh 
+var m = Mesh("sphere.mesh")
+m.addgrade(1) 
+m.addgrade(2)
+
+// And a couple of example fields 
+var phi = Field(m, fn (x,y,z) x+y+z)
+var nn = Field(m, fn (x,y,z) Matrix([x,y,z])/sqrt(x^2+y^2+z^2))
+
+// First create the slicer 
+var slice = MeshSlicer(m)
+
+// We'll perform a slice 
+var slc = slice.slice([0,0,0], [1,0,0])
+
+// and then slice the fields 
+var sphi = slice.slicefield(phi) 
+var snn = slice.slicefield(nn)
+
+// We'll slice along a couple of other planes too
+var slc2 = slice.slice([0,0,0], [0,1,0])
+var sphi2 = slice.slicefield(phi) 
+var slc3 = slice.slice([0,0,0], [0,0,1])
+var sphi3 = slice.slicefield(phi) 
+
+
+import "../raytrace.morpho" 
+
+// Visualization 1: Show the three slices 
+var g1=plotmesh(slc, grade=[0,1,2])+plotmesh(slc2, grade=[0,1,2])+plotmesh(slc3, grade=[0,1,2])
+raytrace(g1, "meshslice.pov", viewpoint=Matrix([6,6,6]), viewangle=18)
+
+// Visualization 2: show the original mesh, plus three slices 
+var g2=plotmesh(m, grade=[1])+
+     plotfield(sphi, style="interpolate")+
+     plotfield(sphi2, style="interpolate")+
+     plotfield(sphi3, style="interpolate")
+raytrace(g2, "meshslice2.pov", viewpoint=Matrix([6,6,6]), viewangle=18)
+
+// Helper function to visualize a unit vector field as cylinders 
+fn visualizedirector(m, nn, dl) {
+  var v = m.vertexmatrix()
+  var g = Graphics()
+  for (i in 0...m.count()) {
+    var x = v.column(i)
+    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.3))
+  }
+  return g
+}
+
+// Visualization 3: Show a sliced mesh, plus the vector field nn 
+var g3=plotmesh(slc, grade=[1,2])+
+     visualizedirector(slc, snn, 0.1)
+raytrace(g3, "meshslice3.pov", viewpoint=Matrix([6,6,6]), viewangle=18)
+     

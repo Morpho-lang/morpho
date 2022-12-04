@@ -1,0 +1,15 @@
+// Operations on Field elements in a loop
+
+import meshtools 
+
+var m = AreaMesh(fn(u,v) [u,v,0], -1..1:0.1, -1..1:0.1)
+
+var f = Field(m, Matrix([1,0,0]))
+
+var d_n
+for (i in 1..1000) {
+    d_n = f.op(fn (x) x.inner(Matrix([1/2, sqrt(3)/2, 0])))
+}
+
+print "ok"
+// expect: ok

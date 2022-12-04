@@ -96,6 +96,9 @@
 #define COMPILE_NSTDCLSS                  "NstdClss"
 #define COMPILE_NSTDCLSS_MSG              "Cannot define a class within another class."
 
+#define COMPILE_INVLDLBL                  "InvldLbl"
+#define COMPILE_INVLDLBL_MSG              "Invalid label in catch statment."
+
 /* **********************************************************************
  * Compiler typedefs
  * ********************************************************************** */
@@ -139,7 +142,9 @@ typedef enum {
     REGISTER,
     CONSTANT,
     UPVALUE,
-    GLOBAL
+    GLOBAL,
+    VALUE,  // Used by the optimizer
+    NOTHING //
 } returntype;
 
 typedef struct {
@@ -239,6 +244,9 @@ typedef struct scompiler {
     
     /* Syntax tree node of the current method being compiled */
     syntaxtreenode *currentmethod;
+    
+    /* Current module */
+    value currentmodule;
     
     /* Program we're compiling to */
     program *out;

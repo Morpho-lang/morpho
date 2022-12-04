@@ -8,7 +8,7 @@
  * Version
  * ********************************************************************** */
 
-#define MORPHO_VERSIONSTRING "0.5.4"
+#define MORPHO_VERSIONSTRING "0.5.5"
 
 /* **********************************************************************
  * Paths and file system
@@ -149,6 +149,7 @@
 #ifdef _DEBUG_STRESSGARBAGECOLLECTOR
     #define MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
 #endif
+
 /** @brief Log garbage collector */
 //#define MORPHO_DEBUG_LOGGARBAGECOLLECTOR
 
@@ -157,6 +158,9 @@
 
 /** @brief Fill global constant table */
 //#define MORPHO_DEBUG_FILLGLOBALCONSTANTTABLE
+
+/** @brief Log optimizer */
+//#define MORPHO_DEBUG_LOGOPTIMIZER
 
 /** @brief Log help file parsing */
 //#define MORPHO_DEBUG_LOGHELPFILES

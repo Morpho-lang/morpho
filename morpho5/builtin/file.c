@@ -250,6 +250,7 @@ value File_readline(vm *v, int nargs, value *args) {
         varray_charinit(&string);
         
         out = file_readlineusingvarray(f, &string);
+        morpho_bindobjects(v, 1, &out);
         varray_charclear(&string);
     }
     return out;

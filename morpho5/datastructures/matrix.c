@@ -936,10 +936,11 @@ value Matrix_subr(vm *v, int nargs, value *args) {
             if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
                 objectmatrix *new = object_newmatrix(a->nrows, a->ncols, false);
                 if (new) {
-                    out=MORPHO_OBJECT(new);
                     matrix_addscalar(a, 1.0, -val, new);
                     // now that did self - arg[0] and we want arg[0] - self so scale the whole thing by -1
                     matrix_scale(new, -1.0);
+                    out=MORPHO_OBJECT(new);
+                    morpho_bindobjects(v, 1, &out);
                 }
             }
 

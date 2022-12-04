@@ -1,0 +1,61 @@
+// Demonstrate use of the Delaunay module
+
+import plot
+import delaunay
+
+var N = 100 // Number of points 
+
+// Explicitly check that all triangles have the property that no other point is in their circumcircle
+fn checkTriangulation(pts, tri, quiet=false) {
+    var success = true
+    for (t, k in tri) {
+        var sph = Circumsphere(pts, t)
+
+        for (i in 0...pts.count()) {
+            if (t.ismember(i)) continue // Skip the vertices of the triangle
+
+            if (sph.pointinsphere(pts[i])) {
+                if (!quiet) print "Point ${i} is in triangle ${k}."
+                success=false; 
+            }
+        }
+    }
+    return success
+}
+
+// 2D random point distribution 
+var a = []
+for (i in 1..N) a.append(Matrix([2*random()-1, 2*(2*random()-1)]))
+
+var del = Delaunay(a)
+var tri = del.triangulate() // Returns a list of triangles [ [i, j, k], ... ]
+
+if (checkTriangulation(a, tri)) {
+    print "2D triangulation passed."
+}
+
+// 3D random point distribution 
+var b = []
+for (i in 1..N) b.append(Matrix([2*random()-1, 2*(2*random()-1), 2*random()-1]))
+
+del = Delaunay(b)
+tri = del.triangulate()
+
+if (checkTriangulation(b, tri)) {
+    print "3D triangulation passed."
+}
+
+// Directly create meshes 
+var m2d = DelaunayMesh(a)
+m2d.addgrade(1) // Mesh as returned only contains grade 2 elements (triangles) so add the bars
+
+var m3d = DelaunayMesh(b)
+m3d.addgrade(1) // Mesh as returned only contains grade 2 elements (triangles) so add the bars
+
+import "../raytrace.morpho" 
+
+var g2d=plotmesh(m2d, grade=[0,1])
+var g3d=plotmesh(m3d, grade=[0,1])
+
+raytrace(g2d, "delaunay-2d.pov", viewpoint=Matrix([0,0,15]), viewangle=25)
+raytrace(g3d, "delaunay-3d.pov", viewpoint=Matrix([0,0,15]), viewangle=25)

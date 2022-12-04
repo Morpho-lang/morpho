@@ -1,0 +1,74 @@
+// Solve Laplace's equation on a square domain by minimizing |grad V|^2
+import meshtools
+import plot
+import optimize
+
+
+var delta=0.25 // Mesh spacing
+var L = 1 // Size of domain
+
+// Create the mesh
+var mesh = AreaMesh(fn (u,v) [ u, v, 0 ], -L/2..L/2:delta, -L/2..L/2:delta)
+mesh.addgrade(1)
+
+// Create boundaries and select edges, building up from selecting vertices
+var bnd = Selection(mesh, boundary=true)
+var bnd1 = Selection(mesh, fn (x,y,z) abs(x+L/2)<0.01 || abs(y+L/2)<0.01)
+var bnd2 = Selection(mesh, fn (x,y,z) abs(x-L/2)<0.01 || abs(y-L/2)<0.01)
+for (b in [bnd1, bnd2]) b.addgrade(1)
+
+bnd1=bnd.intersection(bnd1)
+bnd2=bnd.intersection(bnd2)
+
+// Create field
+var phi = Field(mesh, fn (x,y,z) 0)
+
+// Set up the problem
+var problem = OptimizationProblem(mesh)
+
+var le = GradSq(phi)
+problem.addenergy(le)
+
+var v1 = 0, v2 = 1
+var lt1 = LineIntegral(fn (x, v) (v-v1)^2, phi)
+problem.addenergy(lt1, selection=bnd1, prefactor=100)
+
+var lt2 = LineIntegral(fn (x, v) (v-v2)^2, phi)
+problem.addenergy(lt2, selection=bnd2, prefactor=100)
+
+// Create the optimizer and perform optimization
+var opt = FieldOptimizer(problem, phi)
+opt.conjugategradient(100)
+
+for (i in 1..10) {
+  // Select elements that have an above average contribution to the energy
+  var en = le.integrand(phi) // energy in each element
+  var mean = en.sum()/en.count() // mean energy per element
+  var srefine = Selection(mesh)
+  for (id in 0...en.count()) if (en[0,id]>1.5*mean) srefine[2,id]=true // identify large contributions
+
+  // Refine
+  var ref = MeshRefiner([mesh, phi, bnd, bnd1, bnd2])
+  var refmap = ref.refine(selection=srefine) // perform the refinement
+  for (el in [problem, opt]) el.update(refmap) // update the problem
+  mesh = refmap[mesh] // update all our variables
+  phi = refmap[phi]
+  bnd = refmap[bnd]
+  bnd1 = refmap[bnd1]
+  bnd2 = refmap[bnd2]
+  equiangulate(mesh)
+
+  // Reminimize
+  opt.conjugategradient(1000)
+}
+
+print "Final mesh has ${mesh.count(2)} elements"
+
+import "../raytrace.morpho" 
+
+var g=plotmesh(mesh, grade=1, color=Black)
+raytrace(g, "electrostatics-mesh.pov", viewpoint=Matrix([0,0,5]))
+
+// Display the result
+var g=plotfield(phi, style="interpolate", scalebar=ScaleBar(posn=[0.6,0,0], length=0.25, textcolor=Black))
+raytrace(g, "electrostatics-result.pov", viewpoint=Matrix([0,0,5]))

@@ -38,15 +38,15 @@ objecttype object_addtype(objecttypedefn *def) {
     if (!def->printfn || !def->sizefn) {
         UNREACHABLE("Object definition must provide a print and size function.");
     }
-    
+
     if (objectdefnnext>=MORPHO_MAXIMUMOBJECTDEFNS) {
         UNREACHABLE("Too many object definitions (increase MORPHO_MAXIMUMOBJECTDEFNS).");
     }
-    
+
     objectdefns[objectdefnnext]=*def;
-    objectdefns[objectdefnnext].veneer = NULL; 
+    objectdefns[objectdefnnext].veneer = NULL;
     objectdefnnext+=1;
-    
+
     return objectdefnnext-1;
 }
 
@@ -116,13 +116,13 @@ size_t object_size(object *obj) {
  *  @param type   type to initialize with */
 object *object_new(size_t size, objecttype type) {
     object *new = MORPHO_MALLOC(size);
-    
+
     if (new) object_init(new, type);
-    
+
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
     printf("Create object %p of size %ld with type %d.\n", (void *) new, size, type);
 #endif
-    
+
     return new;
 }
 
@@ -188,7 +188,7 @@ void object_functionclear(objectfunction *func) {
 /** @brief Creates a new function */
 objectfunction *object_newfunction(indx entry, value name, objectfunction *parent, unsigned int nargs) {
     objectfunction *new = (objectfunction *) object_new(sizeof(objectfunction), OBJECT_FUNCTION);
-    
+
     if (new) {
         object_functioninit(new);
         new->entry=entry;
@@ -199,7 +199,7 @@ objectfunction *object_newfunction(indx entry, value name, objectfunction *paren
         new->klass=NULL; 
         varray_optionalparaminit(&new->opt);
     }
-    
+
     return new;
 }
 
@@ -283,12 +283,12 @@ void object_upvalueinit(objectupvalue *c) {
 /** Creates a new upvalue for the register pointed to by reg. */
 objectupvalue *object_newupvalue(value *reg) {
     objectupvalue *new = (objectupvalue *) object_new(sizeof(objectupvalue), OBJECT_UPVALUE);
-    
+
     if (new) {
         object_upvalueinit(new);
         new->location=reg;
     }
-    
+
     return new;
 }
 
@@ -335,11 +335,11 @@ void object_closureinit(objectclosure *c) {
 objectclosure *object_newclosure(objectfunction *sf, objectfunction *func, indx np) {
     objectclosure *new = NULL;
     varray_upvalue *up = NULL;
-    
+
     if (np<sf->prototype.count) {
         up = &sf->prototype.data[np];
     }
-    
+
     if (up) {
         new = (objectclosure *) object_new(sizeof(objectclosure) + sizeof(objectupvalue*)*up->count, OBJECT_CLOSURE);
         if (new) {
@@ -351,7 +351,7 @@ objectclosure *object_newclosure(objectfunction *sf, objectfunction *func, indx 
             new->nupvalues=up->count;
         }
     }
-    
+
     return new;
 }
 
@@ -392,13 +392,13 @@ objecttypedefn objectclassdefn = {
 
 objectclass *object_newclass(value name) {
     objectclass *newclass = (objectclass *) object_new(sizeof(objectclass), OBJECT_CLASS);
-    
+
     if (newclass) {
         newclass->name=object_clonestring(name);
         dictionary_init(&newclass->methods);
         newclass->superclass=NULL;
     }
-    
+
     return newclass;
 }
 
@@ -426,7 +426,7 @@ void objectinstance_markfn(object *obj, void *v) {
 
 void objectinstance_freefn(object *obj) {
     objectinstance *instance = (objectinstance *) obj;
-    
+
 #ifdef MORPHO_REUSEPOOL
     if (npool<POOLMAX) {
         obj->next=pool;
@@ -453,30 +453,30 @@ objecttypedefn objectinstancedefn = {
 /** Create an instance */
 objectinstance *object_newinstance(objectclass *klass) {
     objectinstance *new;
-    
+
 #ifdef MORPHO_REUSEPOOL
     if (npool>0) {
         new = (objectinstance *) pool;
         pool = new->obj.next;
         npool--;
-        
+
         new->obj.next=NULL;
         new->obj.hsh=HASH_EMPTY;
         new->obj.status=OBJECT_ISUNMANAGED;
         dictionary_wipe(&new->fields);
-        
+
         new->klass=klass;
         return new;
     }
 #endif
-    
+
     new = (objectinstance *) object_new(sizeof(objectinstance), OBJECT_INSTANCE);
-    
+
     if (new) {
         new->klass=klass;
         dictionary_init(&new->fields);
     }
-    
+
     return new;
 }
 
@@ -534,12 +534,12 @@ objecttypedefn objectinvocationdefn = {
 /** Create a new invocation */
 objectinvocation *object_newinvocation(value receiver, value method) {
     objectinvocation *new = (objectinvocation *) object_new(sizeof(objectinvocation), OBJECT_INVOCATION);
-    
+
     if (new) {
         new->receiver=receiver;
         new->method=method;
     }
-    
+
     return new;
 }
 
@@ -570,7 +570,7 @@ objecttypedefn objectstringdefn = {
 value object_stringfromcstring(const char *in, size_t length) {
     value out = MORPHO_NIL;
     objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
-    
+
     if (new) {
         new->string=new->stringdata;
         new->string[length] = '\0'; /* Zero terminate the string to be compatible with C */
@@ -608,9 +608,9 @@ value object_concatenatestring(value a, value b) {
     objectstring *bstring = MORPHO_GETSTRING(b);
     size_t length = (astring ? astring->length : 0) + (bstring ? bstring->length : 0);
     value out = MORPHO_NIL;
-    
+
     objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
-    
+
     if (new) {
         new->string=new->stringdata;
         new->length=length;
@@ -656,9 +656,9 @@ objecttypedefn objectdictionarydefn = {
 /** Creates a new dictionary */
 objectdictionary *object_newdictionary(void) {
     objectdictionary *new = (objectdictionary *) object_new(sizeof(objectdictionary), OBJECT_DICTIONARY);
-    
+
     if (new) dictionary_init(&new->dict);
-    
+
     return new;
 }
 
@@ -701,13 +701,13 @@ objecttypedefn objectlistdefn = {
 /** Creates a new list */
 objectlist *object_newlist(unsigned int nval, value *val) {
     objectlist *new = (objectlist *) object_new(sizeof(objectlist), OBJECT_LIST);
-    
+
     if (new) {
         varray_valueinit(&new->val);
         if (val) varray_valueadd(&new->val, val, nval);
         else varray_valueresize(&new->val, nval);
     }
-    
+
     return new;
 }
 
@@ -743,12 +743,12 @@ objecttypedefn objectarraydefn = {
 void object_arrayinit(objectarray *array, unsigned int ndim, unsigned int *dim) {
     object_init((object *) array, OBJECT_ARRAY);
     unsigned int nel = (ndim==0 ? 0 : 1);
-    
+
     /* Store pointers into the data array */
     array->dimensions=array->data;
     array->multipliers=array->data+ndim;
     array->values=array->data+2*ndim;
-    
+
     /* Store the description of array dimensions */
     array->ndim=ndim;
     for (unsigned int i=0; i<ndim; i++) {
@@ -759,7 +759,7 @@ void object_arrayinit(objectarray *array, unsigned int ndim, unsigned int *dim) 
 
     /* Store the size of the object for convenient access */
     array->nelements=nel;
- 
+
     /* Arrays are initialized to nil. */
 #ifdef MORPHO_NAN_BOXING
     memset(array->values, 0, sizeof(value)*nel);
@@ -784,12 +784,12 @@ objectarray *object_newarray(unsigned int ndim, unsigned int *dim) {
     /* Calculate the number of elements */
     unsigned int nel=(ndim==0 ? 0 : dim[0]);
     for (unsigned int i=1; i<ndim; i++) nel*=dim[i];
-    
+
     size_t size = sizeof(objectarray)+sizeof(value)*(2*ndim + nel);
-        
+
     objectarray *new = (objectarray *) object_new(size, OBJECT_ARRAY);
     if (new) object_arrayinit(new, ndim, dim);
-    
+
     return new;
 }
 
@@ -823,19 +823,19 @@ objecttypedefn objectrangedefn = {
 /** Create a new range. Step may be set to MORPHO_NIL to use the default value of 1 */
 objectrange *object_newrange(value start, value end, value step) {
     value v[3]={start, end, step};
-    
+
     /* Ensure all three values are either integer or floating point */
     if (!value_promotenumberlist((MORPHO_ISNIL(step) ? 2 : 3), v)) return NULL;
-    
+
     objectrange *new = (objectrange *) object_new(sizeof(objectrange), OBJECT_RANGE);
-    
+
     if (new) {
         new->start=v[0];
         new->end=v[1];
         new->step=v[2];
         new->nsteps=range_count(new);
     }
-    
+
     return new;
 }
 
@@ -862,14 +862,14 @@ void object_initialize(void) {
     pool=NULL;
     npool=0;
 #endif
-    
+
     objectfunctiontype=object_addtype(&objectfunctiondefn);
     objectupvaluetype=object_addtype(&objectupvaluedefn);
     objectclosuretype=object_addtype(&objectclosuredefn);
     objectclasstype=object_addtype(&objectclassdefn);
     objectinstancetype=object_addtype(&objectinstancedefn);
     objectinvocationtype=object_addtype(&objectinvocationdefn);
-    
+
     objectstringtype=object_addtype(&objectstringdefn);
     objectarraytype=object_addtype(&objectarraydefn);
     objectlisttype=object_addtype(&objectlistdefn);

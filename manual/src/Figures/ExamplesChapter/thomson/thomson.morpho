@@ -1,0 +1,58 @@
+// Thomson problem of arranging charges on a sphere
+// to minimize the electrostatic energy
+// Showcases: MeshBuilder, PairwisePotential, ScalarPotential
+import meshtools
+import plot
+import optimize
+import functionals
+
+var Np = 100 // Number of particles
+
+// Create the mesh, which consists of Np random points each representing
+// a charge on the unit sphere.
+var build = MeshBuilder()
+for (i in 1..Np) {
+  var x = Matrix([2*random()-1, 2*random()-1, 2*random()-1])
+  x/=x.norm() // Project onto unit sphere
+  build.addvertex(x)
+}
+var mesh = build.build() // Tell the MeshBuilder to build the mesh
+
+// Specify the problem
+var problem = OptimizationProblem(mesh)
+
+// The particle repel one another by a Coulomb potential.
+// We supply the potential and it's derivative wrt r as anonymous functions.
+var lv = PairwisePotential(fn (r) 1/r, fn (r) -1/r^2)
+problem.addenergy(lv)
+
+// Constrain the particles on the unit sphere via a level set constraint.
+// The level set function and its gradient are supplied as anonymous functions.
+var lsph = ScalarPotential(fn (x,y,z) x^2+y^2+z^2-1)
+problem.addlocalconstraint(lsph)
+
+// Set up the optimizer to optimize this problem wrt the mesh vertex positions.
+var opt = ShapeOptimizer(problem, mesh)
+
+// Choose a stepsize
+opt.stepsize=0.01/sqrt(Np)
+
+// Do a few iterations at fixed stepsize to move away from the initally random
+// condition. [This helps condition the problem]
+opt.relax(5)
+// Now perform gradient descent
+opt.conjugategradient(1000) // Perform up to 1000 iterations of direct gradient descent
+
+// Visualize the results
+var g = Graphics()
+for (i in 0...mesh.count()) {
+  // Display each particle as a sphere
+  g.display(Sphere(mesh.vertexposition(i),1/sqrt(Np)))
+}
+//Show(g) // Open up the viewer application
+
+g.display(Sphere([0,0,0],1,transmit=0.3))
+
+import "../raytrace.morpho" 
+
+raytrace(g, "thomson.pov", viewpoint=Matrix([3,3,10]), viewangle=18)

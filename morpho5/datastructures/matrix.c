@@ -570,6 +570,64 @@ void matrix_print(objectmatrix *m) {
     }
 }
 
+/** Matrix eigensystem */
+bool matrix_eigen(vm *v, objectmatrix *a, value *evals, value *evecs) {
+    double *ev = MORPHO_MALLOC(sizeof(double)*a->nrows*2); // Allocate temporary memory for eigenvalues
+    double *er=ev, *ei=ev+a->nrows;
+    
+    objectmatrix *vecs=NULL; // A new matrix for eigenvectors
+    objectlist *vallist = object_newlist(0, NULL); // List to hold eigenvalues
+    bool success=false;
+    
+    if (evecs) vecs=object_clonematrix(a); // Clones a to hold eigenvectors
+    
+    // Check that everything was allocated correctly
+    if (!(ev && vallist && (!evecs || vecs))) {
+        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto matrix_eigen_cleanup; };
+    
+    objectmatrixerror err=matrix_eigensystem(a, er, ei, vecs);
+    
+    if (err!=MATRIX_OK) {
+        matrix_raiseerror(v, err);
+        goto matrix_eigen_cleanup;
+    }
+        
+    // Now process the eigenvalues
+    for (int i=0; i<a->nrows; i++) {
+        if (fabs(ei[i])<MORPHO_EPS) {
+            list_append(vallist, MORPHO_FLOAT(er[i]));
+        } else {
+            objectcomplex *c = object_newcomplex(er[i], ei[i]);
+            if (c) {
+                list_append(vallist, MORPHO_OBJECT(c));
+            } else {
+                morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+                goto matrix_eigen_cleanup;
+            }
+        }
+    }
+        
+    if (evals) *evals = MORPHO_OBJECT(vallist);
+    if (evecs) *evecs = MORPHO_OBJECT(vecs);
+    
+    success=true;
+    
+matrix_eigen_cleanup:
+    if (ev) MORPHO_FREE(ev);
+    
+    if (!success) {
+        if (vallist) {
+            for (unsigned int i=0; i<vallist->val.count; i++) {
+                if (MORPHO_ISOBJECT(vallist->val.data[i])) object_free(MORPHO_GETOBJECT(vallist->val.data[i]));
+            }
+            object_free((object *) vallist);
+        }
+        if (vecs) object_free((object *) vecs);
+    }
+    
+    return success;
+}
+
 /* **********************************************************************
  * Matrix veneer class
  * ********************************************************************* */
@@ -1042,70 +1100,12 @@ value Matrix_norm(vm *v, int nargs, value *args) {
     return MORPHO_FLOAT(matrix_norm(a));
 }
 
-/** Matrix eigensystem */
-bool Matrix_eigen(vm *v, objectmatrix *a, value *evals, value *evecs) {
-    double *ev = MORPHO_MALLOC(sizeof(double)*a->nrows*2); // Allocate temporary memory for eigenvalues
-    double *er=ev, *ei=ev+a->nrows;
-    
-    objectmatrix *vecs=NULL; // A new matrix for eigenvectors
-    objectlist *vallist = object_newlist(0, NULL); // List to hold eigenvalues
-    bool success=false;
-    
-    if (evecs) vecs=object_clonematrix(a); // Clones a to hold eigenvectors
-    
-    // Check that everything was allocated correctly
-    if (!(ev && vallist && (!evecs || vecs))) {
-        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto matrix_eigen_cleanup; };
-    
-    objectmatrixerror err=matrix_eigensystem(a, er, ei, vecs);
-    
-    if (err!=MATRIX_OK) {
-        matrix_raiseerror(v, err);
-        goto matrix_eigen_cleanup;
-    }
-        
-    // Now process the eigenvalues
-    for (int i=0; i<a->nrows; i++) {
-        if (fabs(ei[i])<MORPHO_EPS) {
-            list_append(vallist, MORPHO_FLOAT(er[i]));
-        } else {
-            objectcomplex *c = object_newcomplex(er[i], ei[i]);
-            if (c) {
-                list_append(vallist, MORPHO_OBJECT(c));
-            } else {
-                morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-                goto matrix_eigen_cleanup;
-            }
-        }
-    }
-        
-    if (evals) *evals = MORPHO_OBJECT(vallist);
-    if (evecs) *evecs = MORPHO_OBJECT(vecs);
-    
-    success=true;
-    
-matrix_eigen_cleanup:
-    if (ev) MORPHO_FREE(ev);
-    
-    if (!success) {
-        if (vallist) {
-            for (unsigned int i=0; i<vallist->val.count; i++) {
-                if (MORPHO_ISOBJECT(vallist->val.data[i])) object_free(MORPHO_GETOBJECT(vallist->val.data[i]));
-            }
-            object_free((object *) vallist);
-        }
-        if (vecs) object_free((object *) vecs);
-    }
-    
-    return success;
-}
-
 /** Matrix eigenvalues */
 value Matrix_eigenvalues(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
     value evals=MORPHO_NIL;
     
-    if (Matrix_eigen(v, a, &evals, NULL)) {
+    if (matrix_eigen(v, a, &evals, NULL)) {
         objectlist *new = MORPHO_GETLIST(evals);
         list_append(new, evals); // Ensure we retain the List object
         morpho_bindobjects(v, new->val.count, new->val.data);
@@ -1125,7 +1125,7 @@ value Matrix_eigensystem(vm *v, int nargs, value *args) {
         return MORPHO_NIL;
     }
     
-    if (Matrix_eigen(v, a, &evals, &evecs)) {
+    if (matrix_eigen(v, a, &evals, &evecs)) {
         objectlist *evallist = MORPHO_GETLIST(evals);
         
         list_append(resultlist, evals); // Create the output list
@@ -1154,17 +1154,11 @@ value Matrix_inverse(vm *v, int nargs, value *args) {
         objectmatrixerror mi = matrix_inverse(a, new);
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
-        if (mi==MATRIX_OK) {
-            return out;
-        } else if (mi==MATRIX_SING) {
-            morpho_runtimeerror(v, MATRIX_SINGULAR);
-        } else if (mi==MATRIX_INVLD) {
-            morpho_runtimeerror(v, MATRIX_INVLDARRAYINIT);
-        } else {
-            UNREACHABLE("matrix_inverse returned an error which should not be valid.\n");
-        }
+        
+        if (mi!=MATRIX_OK) matrix_raiseerror(v, mi);
     }
     
+    return out;
 }
 
 /** Transpose of a matrix */

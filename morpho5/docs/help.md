@@ -27,3 +27,8 @@ You can also use `?` as a shorthand synonym for `help`
 A useful feature is that, if an error occurs, simply type `help` to get more information about the error.
 
 [showtopics]: # (topics)
+
+# Quit
+[tagquit]: # (quit)
+
+The `quit` CLI command quits `morpho` run in interactive mode and returns to the shell.

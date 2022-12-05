@@ -1,0 +1,61 @@
+import meshtools 
+import plot
+import povray  
+
+fn raytrace(g, fname, viewpoint=nil) {
+  var vp = viewpoint
+  if (!vp) vp = 10*Matrix([3,8,10])/sqrt(10^2+8^2+3^2)
+  var pov = POVRaytracer(g)
+  g.background = White
+  pov.viewpoint = vp
+  pov.viewangle = 15
+  pov.background = White
+  pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]
+  pov.render(fname, quiet=true, display=false)
+}
+
+// Create an initial cube
+var vertices =  [ [-0.5, -0.5, -0.5],
+                  [ 0.5, -0.5, -0.5],
+                  [-0.5,  0.5, -0.5],
+                  [ 0.5,  0.5, -0.5],
+                  [-0.5, -0.5,  0.5],
+                  [ 0.5, -0.5,  0.5],
+                  [-0.5,  0.5,  0.5],
+                  [ 0.5,  0.5,  0.5] ]
+
+var mb=MeshBuilder()
+for (v in vertices) mb.addvertex(v)
+var m = mb.build() 
+
+var offset = Matrix([-0.05,-0.05,-0.05])
+fn out(x) { return 0.05*x/x.norm()+offset }
+
+var g=plotmesh(m,grade=[0,1])+plotmeshlabels(m, offset=out, color=Red)
+raytrace(g, "cubevertices.pov")
+
+mb.addedge([4,5]) 
+mb.addedge([5,7]) 
+mb.addedge([7,6]) 
+mb.addedge([6,4]) 
+
+var m = mb.build() 
+var g=plotmesh(m,grade=[0,1])+plotmeshlabels(m, offset=out, color=Red) 
+raytrace(g, "cubeface.pov")
+
+var faces = [ [0,1,3,2], [4,5,7,6],
+              [0,1,5,4], [3,2,6,7],
+              [0,2,6,4], [1,3,7,5] ]
+
+var m = PolyhedronMesh(vertices, faces)
+m.addgrade(1)
+
+var g=plotmesh(m,grade=[0,1,2])
+//raytrace(g, "cube.pov")
+
+var dirn = Matrix([1,0,0])
+var vd = Matrix([3,8,10])
+
+//dirn -= dirn.inner(vd)*vd/vd.inner(vd)
+var g=plotmesh(m,grade=[0,1,2])+plotmeshlabels(m, dirn=dirn, offset=out, color=Red)
+raytrace(g, "cube.pov")

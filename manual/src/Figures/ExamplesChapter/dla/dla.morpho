@@ -1,0 +1,55 @@
+// Diffusion Limited Aggregation
+
+import kdtree
+import color
+import graphics
+import povray
+
+var Np = 400 // Number of particles to add
+var r = 0.05 // radius of a particle
+var R = 3*r // Initial radius of sphere
+var delta = r // Size of step to take
+
+var pts = [ Matrix([0,0,0]) ]
+var tree = KDTree(pts)
+
+// Generate a random point
+fn randompt() {
+  var x = Matrix([randomnormal(), randomnormal(), randomnormal()])
+  return R*x/x.norm()
+}
+
+for (n in 1..Np) { // Add particles one-by-one
+  if (mod(n, 10)==0) {
+    print "Added particle no. ${n}"
+  }
+  var x = randompt()
+  while (true) {
+    // Move current particle
+    x+=Matrix([delta*randomnormal(), delta*randomnormal(), delta*randomnormal()])
+
+    // Check if it collided with another particle
+    if ((tree.nearest(x).location-x).norm()<2*r) {
+      tree.insert(x)
+      pts.append(x)
+      if (x.norm()>R/2) R = 2*x.norm()
+      break // Move to next particle
+    }
+
+    // Catch if it wandered out of the boundary
+    if (x.norm()>2*R) x = randompt()
+  }
+}
+
+// Now visualize the result
+var col = Gray(0.5)
+var g = Graphics()
+g.background = White
+for (x in pts) g.display(Sphere(x, r, color=col))
+//Show(g)
+
+// And raytrace it too
+var pov = POVRaytracer(g)
+pov.viewangle = 32
+pov.light = [Matrix([3,3,10]), Matrix([-3,3,10]), Matrix([0,-3,10])]
+pov.render("dla.pov", display=false)

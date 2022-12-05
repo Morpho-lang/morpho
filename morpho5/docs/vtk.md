@@ -108,9 +108,9 @@ Minimal example:
 
     var vtkI = VTKImporter("data.vtk")
 
-    var m = vtkI.getmesh()
+    var m = vtkI.mesh()
 
-    var f = vtkI.getfield("f")
+    var f = vtkI.field("f")
 
-    var g = vtkI.getfield("g")
+    var g = vtkI.field("g")
 

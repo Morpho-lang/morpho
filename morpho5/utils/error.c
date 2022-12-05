@@ -176,7 +176,6 @@ void error_initialize(void) {
     
     /* Define errors */
     morpho_defineerror(ERROR_ALLOCATIONFAILED, ERROR_EXIT, ERROR_ALLOCATIONFAILED_MSG);
-    
     morpho_defineerror(ERROR_INTERNALERROR, ERROR_EXIT, ERROR_INTERNALERROR_MSG);
 }
 

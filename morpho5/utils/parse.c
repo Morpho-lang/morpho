@@ -361,7 +361,11 @@ tokentype lex_symboltype(lexer *l) {
             return type;
         }
         case 'v': return lex_checksymbol(l, 1, 2, "ar", TOKEN_VAR);
-        case 'w': return lex_checksymbol(l, 1, 4, "hile", TOKEN_WHILE);
+        case 'w': {
+            tokentype type = lex_checksymbol(l, 1, 4, "hile", TOKEN_WHILE);
+            if (type==TOKEN_SYMBOL) type = lex_checksymbol(l, 1, 3, "ith", TOKEN_WITH);
+            return type;
+        }
     }
     
     return TOKEN_SYMBOL;
@@ -1220,6 +1224,18 @@ static syntaxtreeindx parse_classdeclaration(parser *p) {
         sclass=parse_addnode(p, NODE_SYMBOL, sname, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
     }
     
+    if (parse_matchtoken(p, TOKEN_WITH)) {
+        do {
+            parse_consume(p, TOKEN_SYMBOL, COMPILE_EXPECTSUPER);
+            value mixin=parse_symbolasvalue(p);
+            
+            syntaxtreeindx smixin=parse_addnode(p, NODE_SYMBOL, mixin, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
+                
+            sclass = parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &p->previous, smixin, sclass); // Mixins end up being recorded in reverse order
+            
+        } while (parse_matchtoken(p, TOKEN_COMMA));
+    }
+    
     parse_consume(p, TOKEN_LEFTCURLYBRACKET, COMPILE_CLASSLEFTCURLYMISSING);
     /* Method declarations */
     syntaxtreeindx last=SYNTAXTREE_UNCONNECTED, current=SYNTAXTREE_UNCONNECTED;
@@ -1644,6 +1660,7 @@ parserule rules[] = {
     UNUSED,                                            // TOKEN_IMPORT
     UNUSED,                                            // TOKEN_AS
     UNUSED,                                            // TOKEN_IS
+    UNUSED,                                            // TOKEN_WITH
     UNUSED,                                            // TOKEN_TRY
     UNUSED,                                            // TOKEN_CATCH
     

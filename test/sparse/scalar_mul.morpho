@@ -1,0 +1,14 @@
+// Scalar multiplication
+
+var a = Sparse([[0,1,1], [1,1,1], [1,0,2]])
+print a
+// expect: [ 0 1 ]
+// expect: [ 2 1 ]
+
+print a*2
+// expect: [ 0 2 ]
+// expect: [ 4 2 ]
+
+print 3*a 
+// expect: [ 0 3 ]
+// expect: [ 6 3 ]

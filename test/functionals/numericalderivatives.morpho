@@ -1,0 +1,69 @@
+// Numerical derivatives to test functionals
+
+fn numericalgradient(func, m, eps=1e-8) {
+   var x=m.vertexmatrix()
+   var grad=x.clone()
+   var dim = x.dimensions()[0]
+
+   for (i in 0...m.count()) {
+      for (j in 0...dim) {
+         var temp = x[j,i]
+         x[j,i]=temp+eps
+         var fr=func.total(m)
+         x[j,i]=temp-eps
+         var fl=func.total(m)
+         x[j,i]=temp
+         grad[j,i]=(fr-fl)/(2*eps)
+      }
+   }
+
+   return grad
+} 
+
+fn _hessianelement(func, m, x, i, j, k, l, dim, eps) {
+    var s = i*dim+k, t = j*dim+l
+
+    if (i==j && k==l) {
+      var temp=x[k,i]
+      var fc=func.total(m)
+      x[k,i]=temp+eps
+      var fr=func.total(m)
+      x[k,i]=temp-eps
+      var fl=func.total(m)
+      x[k,i]=temp
+      return (fr + fl - 2*fc)/(eps^2)
+    } 
+
+    var tempi=x[k,i], tempj=x[l,j]
+    x[k,i]=tempi+eps
+    x[l,j]=tempj+eps
+    var frr=func.total(m)
+    x[k,i]=tempi-eps
+    x[l,j]=tempj-eps
+    var fll=func.total(m)
+    x[k,i]=tempi-eps
+    x[l,j]=tempj+eps
+    var flr=func.total(m)
+    x[k,i]=tempi+eps
+    x[l,j]=tempj-eps
+    var frl=func.total(m)
+    return (frr + fll - flr - frl)/(4*eps^2)
+}
+
+fn numericalhessian(func, m, eps=1e-3) {
+  var x=m.vertexmatrix()
+  var dim = x.dimensions()
+  var hess = Matrix(dim[0]*dim[1], dim[0]*dim[1]) 
+
+  for (i in 0...m.count()) {
+    for (j in 0...m.count()) {
+      for (k in 0...dim[0]) {
+        for (l in 0...dim[0]) {
+          hess[i*dim[0]+k, j*dim[0]+l]=_hessianelement(func, m, x, i, j, k, l, dim[0], eps)
+        }
+      }
+    }
+  }
+
+  return hess
+} 

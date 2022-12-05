@@ -1,0 +1,55 @@
+// This script computes the shape of a soap film attached to two circular rings separated vertically.
+// The surface tension minimizes the area of this film, resulting in a shape called a "catenoid". 
+// This belongs to the family of "minimal surfaces", which are surfaces that locally minimize their area.
+
+// Showcases: AreaMesh, Area, conjugategradient, fixing boundary in the optimizer.
+import meshtools
+import plot
+import optimize
+import "../raytrace.morpho" 
+
+// Set up geometrical parameters
+
+var r = 1.0 // radius
+var ratio = 0.4 // Separation to diameter ratio
+var L = 2*r*ratio // Separation
+
+// Generate a tube / cylindrical mesh
+var mesh = AreaMesh(fn (u, v) [r*cos(u), v, r*sin(u)], 
+                    -Pi...Pi:Pi/10,
+                    -L/2..L/2:L/5, 
+                    closed=[true,false]
+)
+
+mesh.addgrade(1)
+
+// Select the boundary
+var bnd = Selection(mesh, boundary=true)
+
+var g = plotselection(mesh, bnd, grade=1)
+g.background = White
+g.title = "Before"
+//Show(g)
+
+raytrace(g, "catenoid-before.pov", viewpoint=Matrix([0,3,10]), viewangle=18)
+
+// Define the optimizataion problem
+var problem = OptimizationProblem(mesh)
+// Add the area energy using the built-in Area functional
+var area = Area()
+problem.addenergy(area)
+
+// Define the optimizer
+var opt = ShapeOptimizer(problem, mesh)
+// Ask the optimizer to fix the boundary rings
+opt.fix(bnd)
+
+// Minimize!
+opt.conjugategradient(1000)
+
+g = plotselection(mesh, bnd, grade=1)
+g.background = White
+g.title = "After"
+//Show(g)
+
+raytrace(g, "catenoid-after.pov", viewpoint=Matrix([0,3,10]), viewangle=18)

@@ -236,6 +236,10 @@ fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, 
     var nv=mesh.count(0)       // Number of elements in this grade
     var cmat = Matrix(3, nv)   // Make a color matrix
 
+    if (field.shape()[0]==0) {
+      Error("PltFldInt", "Can't use 'interpolate' style: Field lacks values on vertices.").throw() 
+    }
+
     for (i in 0...nv) {
       var val = field[0, i]
       if (scale) val=(val-bnd[0])*sc

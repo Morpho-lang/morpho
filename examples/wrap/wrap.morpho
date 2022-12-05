@@ -80,13 +80,13 @@ sopt.steplimit=0.1
 sopt.ctol = 1e-9
 sopt.maxconstraintsteps = 100
 
-ropt.stepsize=0.0005
-ropt.steplimit=0.1
+ropt.stepsize=0.01
+ropt.steplimit=0.2
 
 for (refine in 1..3) {
   for (i in 1..100) {
     sopt.relax(5)
-    ropt.linesearch(1)
+    ropt.conjugategradient(5)
     equiangulate(m)
   }
 

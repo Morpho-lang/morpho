@@ -1,0 +1,204 @@
+/* Problem of a 2D nematic confined to a disk with parallel anchoring boundary condition, modeled by a Q-tensor free energy.
+Showcases: AreaIntegral, LineIntegral, MeshRefiner, POVRaytracer, Graphics
+This example demonstrates the following features of morpho:
+* It uses AreaIntegral to define the polynomial form of free energy. 
+* It uses mesh refinement to get a better resolution for the solution at the nematic defect locations, where there is more distortion in the field value.
+* To visualize the Q-tensor, we need to see both the director (orientations) and the scalar order parameter (degree of order) together. This script shows how that can be done by adding the graphics together.
+*/
+import meshtools
+import optimize
+import plot
+import povray
+
+// Define parameters that control the script options
+
+/* The flag `refine_adaptively` is set to decide whether to refine our mesh in regions of high elastic energy. In comparison to refining everywhere, this method gives a speed up while still giving an accurate result. When this flag is `true`, the script performs `refine_iters` (defined below) number of steps of successive adaptive refinement and relaxation. While running this script for the first time, it's ideal to set this to `false`. After getting the result, the user can then turn on adaptive refinement and compare.
+The flag `visualize_refinement`, when `true`, gives further visual insight into the refinement by displaying the regions it selects for refinement, superimposed with the director. It also displays the refined mesh at each stage.
+*/
+var refine_adaptively = false // Flag to turn mesh-refinement on/off
+var refine_iters = 4 // Number of iterations of refimenent
+var visualize_refinement = false // Flag to turn plotting the refinement regions and refined meshes on/off
+
+// Define physical parameters
+
+var rho = 1.3 // Density. rho>1 results in the nematic phase
+var EA = 3 // Anchoring strength
+var K = 0.01 // Bending modulus. K=0.01 yields two +1/2 defects, whereas K=1.0 yields a single +1 defect.
+
+var a2 = (1-rho) // Coefficient of Tr(Q^2) in the Free energy 
+var a4 = (1+rho)/rho^2 // Coefficient of (Tr(Q^2))^2 in the Free energy
+
+// Import disk mesh
+
+var m = Mesh("dense_disk.mesh")
+
+// Select boundary
+var bnd = Selection(m, boundary=true)
+bnd.addgrade(0) // add point elements
+
+// Create director field
+
+/* 
+Since a 2D Q-tensor for a uniaxial nematic is symmetric and traceless, there are only two independent components, Qxx and Qxy. We thus define the q_tensor to be a 2D vector, with its components being Qxx and Qxy. We initialize it to be zero and add a random noise of 1% strength as a perturbation to start the gradient descent. The Q-tensor usually takes values of order 1, so we can use 0.01*random(1) as the initial 1% noise.
+*/
+
+var q_tensor = Field(m, fn(x,y,z) Matrix([0.01*random(1), 0.01*random(1)]))
+
+// Define various components of the energy.
+// Since these functions are meant to be arguments to AreaIntegral and LineIntegral, their first input argument has to be the position vector `x`. The field argument (the q-tensor in our case) comes after.
+
+// Define bulk free energy functional
+fn landau(x, q) {
+  var qt = q.norm()
+  var qt2=qt*qt
+  return a2*qt2 + a4*qt2*qt2
+}
+
+// Define anchoring energy functional at the boundary
+fn anchoring(x, q) {
+  var t = tangent()
+  var wxx = t[0]*t[0]-0.5
+  var wxy = t[0]*t[1]
+  return (q[0]-wxx)^2+(q[1]-wxy)^2
+}
+
+// The bulk free energy is now the area-integral of the landau functional with the field input being q_tensor
+var bulk = AreaIntegral(landau, q_tensor)
+// Similarly, the anchoring free energy is now the line-integral of the anchoring functional with the field input being q_tensor
+var anchor = LineIntegral(anchoring, q_tensor)
+
+// The elastic energy is the grad-squared of the q-tensor
+var elastic = GradSq(q_tensor)
+
+// Specify the problem
+var problem = OptimizationProblem(m)
+
+// Add the energies to the problem
+problem.addenergy(bulk)
+// The anchoring energy has a prefactor of EA, and is applied only to the boundary
+problem.addenergy(anchor, selection=bnd, prefactor = EA)
+// The elastic energy has a prefactor of K
+problem.addenergy(elastic, prefactor = K)
+
+// Set up the optimizer to optimize this problem wrt the Field values.
+var opt = FieldOptimizer(problem, q_tensor)
+
+// `iters` specifies the number of iterations for the linelearch. From emperical observation, iters=500 works well. 
+var iters = 500 
+// Minimize the free energy!
+opt.conjugategradient(iters)
+
+// Define some helper functions to plot the result
+
+// Function to get the director (unit vector n) from the Q-tensor
+fn qtodirector(q) {
+  var S = 2*q.norm()
+  var Q = q/S
+  var nx = sqrt(Q[0]+0.5)
+  var ny = abs(Q[1]/nx)
+  nx = nx*sign(Q[1])
+  return Matrix([nx,ny,0])
+}
+
+// Function to get the scalar order parameter S from the Q-tensor
+fn qtoorder(q) {
+  var S = 2*q.norm()
+  return S
+}
+
+/* Function to visualize a director field
+This function returns a `Graphics()` object that has the director field visualized in the form of cylinders. Here,
+1. m is the mesh
+2. nn is the director field and
+3. dl is the half-length of the cylinders to be drawn. 
+4. aspectratio (optional argument) is the aspect ratio of the cylinders. (default is 0.3 here)
+*/
+fn visualize(m, nn, dl, aspectratio=0.3) {
+  var v = m.vertexmatrix()
+  var nv = v.dimensions()[1]
+  var g = Graphics()
+  for (i in 0...nv) {
+    var x = v.column(i)
+    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=aspectratio))
+  }
+  return g
+}
+
+/* Adaptive mesh refinement
+Here, we refine the mesh based on the elastic energy density and linesearch successively.
+*/
+if (refine_adaptively){
+  for (i in 1..refine_iters){
+  
+    // Select elements that have a large contribution to the elastic energy
+    var en = elastic.integrand(q_tensor)
+    var mean = en.sum()/en.count()
+    var srefine = Selection(m) // Start with an empty selection
+    for (id in 0...en.count()) if (en[0,id]>1.5*mean) srefine[2,id]=true // Identify high (compared to the mean) energy elements
+  
+    // Visualize the selected region for refimenemt 
+    
+    if (visualize_refinement){
+      var gs = plotselection(m, srefine, grade=2)
+      var nn = Field(m, Matrix([1,0,0])) // Initialize to some vector
+      for (i in 0...m.count()) nn[i]=qtodirector(q_tensor[i])
+      var gnn=visualize(m, nn, 0.05)
+      Show(gs+gnn)
+    }
+  
+    // Create a mesh refiner
+    var mr=MeshRefiner([m, q_tensor, bnd])
+  
+    // Perform the refinement
+    var refmap = mr.refine(selection=srefine)
+  
+    
+    // Now that refinement is done, update the problems and optimizers
+    for (el in [problem, opt]) el.update(refmap)
+    
+    // Use the new mesh and field
+    m = refmap[m]
+    q_tensor = refmap[q_tensor]
+    bnd = refmap[bnd]
+    
+    equiangulate(m)
+  
+    // Visualize the refined mesh at each stage
+    if (visualize_refinement) Show(plotmesh(m, grade=1))
+  
+    opt.conjugategradient(iters)
+  }
+}
+
+// Visualize the result
+
+  
+// Convert the q-tensor to the director and order
+
+var nn = Field(m, Matrix([1,0,0])) // Initialize to some vector
+for (i in 0...m.count()) nn[i]=qtodirector(q_tensor[i])
+
+var S = Field(m, 0) // Initialize to a scalar
+for (i in 0...m.count()) S[i]=qtoorder(q_tensor[i])
+
+// Plot the scalar order field
+var splot = plotfield(S, style="interpolate", colormap = ViridisMap(), scalebar=ScaleBar(posn=[1.2,0,0],textcolor=Black))
+// Plot the director using the visualize function we wrote above
+var gnn=visualize(m, nn, 0.05)
+
+// Both `plotfield` and `visualize` return a Graphics object. We can just add the two to get the final plot 
+var gdisp = splot+gnn
+gdisp.background=White
+
+// Generate a POVRaytracer object using the Graphics() object
+var pov = POVRaytracer(gdisp)
+
+// Set the viewing angle in degrees. The larger the angle, the larger the field of view.
+pov.viewangle=35
+pov.viewpoint = Matrix([0,0,6])
+pov.light = [Matrix([3,4,5]), Matrix([-3,-4,5])]
+// Render to a .pov file. This also generates a .png image with the same name.
+pov.render("Qtensor_K_${K}.pov", display=false)
+
+// Open up the viewer application
+//Show(gdisp) 

@@ -30,9 +30,59 @@ typedef enum {
 
 /** A single keypress event obtained and processed by the terminal */
 typedef struct {
-    keytype type;
-    char c;
+    keytype type; /** Type of keypress */
+    char c[5]; /** Up to four bytes of utf8 encoded unicode plus null terminator */
+    int nbytes; /** Number of bytes */
 } keypress;
+
+#define LINEDIT_KEYPRESSGETCHAR(a) ((a)->c[0])
+
+/* **********************************************************************
+ * UTF8 support
+ * ********************************************************************** */
+
+/** @brief Returns the number of bytes in the next character of a given utf8 string
+    @returns number of bytes */
+int linedit_utf8numberofbytes(char *string) {
+    uint8_t byte = * ((uint8_t *) string);
+    
+    if ((byte & 0xc0) == 0x80) return 0; // In the middle of a utf8 string
+    
+    // Get the number of bytes from the first character
+    if ((byte & 0xf8) == 0xf0) return 4;
+    if ((byte & 0xf0) == 0xe0) return 3;
+    if ((byte & 0xe0) == 0xc0) return 2;
+    return 1;
+}
+
+/** Decodes a utf8 encoded character pointed to by c into an int */
+int linedit_utf8toint(char *c) {
+    unsigned int ret = -1;
+    int nbytes=linedit_utf8numberofbytes(c);
+    switch (nbytes) {
+        case 1: ret=(c[0] & 0x7f); break;
+        case 2: ret=((c[0] & 0x1f)<<6) | (c[1] & 0x3f); break;
+        case 3: ret=((c[0] & 0x0f)<<12) | ((c[1] & 0x3f)<<6) | (c[2] & 0x3f); break;
+        case 4: ret=((c[0] & 0x0f)<<18) | ((c[1] & 0x3f)<<12) | ((c[2] & 0x3f)<<6) | (c[3] & 0x3f) ; break;
+        default: break;
+    }
+    
+    return ret;
+}
+
+/** @brief Returns a pointer to character i in a utf8 encoded string */
+ssize_t linedit_utf8index(linedit_string *string, size_t i, size_t offset) {
+    int advance=0;
+    size_t nchars=0;
+    
+    for (ssize_t j=0; j+offset<=string->length; j+=advance, nchars++) {
+        if (nchars==i) return j;
+        advance=linedit_utf8numberofbytes(string->string+offset+j);
+        if (advance==0) break; // If advance is 0, the string is corrupted; return failure
+    }
+    
+    return -1;
+}
 
 /* **********************************************************************
  * Strings
@@ -76,42 +126,56 @@ bool linedit_stringresize(linedit_string *string, size_t size) {
     return (string->string!=NULL);
 }
 
-/** Adds a character to a string */
-void linedit_stringaddcharacter(linedit_string *string, char *c, size_t n) {
-    if (string->capacity<=string->length+n) {
-        if (!linedit_stringresize(string, string->length+n+1)) return;
+/** Adds a string to a string */
+void linedit_stringappend(linedit_string *string, char *c, size_t nbytes) {
+    if (string->capacity<=string->length+nbytes) {
+        if (!linedit_stringresize(string, string->length+nbytes+1)) return;
     }
     
-    strncpy(string->string+string->length, c, n);
-    string->length+=n;
+    strncpy(string->string+string->length, c, nbytes);
+    string->length+=nbytes;
     string->string[string->length]='\0'; /* Keep the string zero-terminated */
 }
 
-/** @brief   Inserts characters at a given position.
+/** @brief   Inserts characters at a given position
+ *  @param[in] string - string to amend
+ *  @param[in] posn - insertion position as a character index
+ *  @param[in] c - string to insert
+ *  @param[in] n - number of bytes to insert
  *  @details If the position is after the length of the string
  *           the new characters are instead appended. */
 void linedit_stringinsert(linedit_string *string, size_t posn, char *c, size_t n) {
-    if (posn<string->length) {
+    ssize_t offset=linedit_utf8index(string, posn, 0);
+    if (offset<0) return;
+    
+    if (offset<string->length) {
         if (string->capacity<=string->length+n) {
             if (!linedit_stringresize(string, string->length+n+1)) return;
         }
         /* Move the remaining part of the string */
-        memmove(string->string+posn+n, string->string+posn, string->length-posn+1);
+        memmove(string->string+offset+n, string->string+offset, string->length-posn+1);
         /* Copy in the text to insert */
-        memmove(string->string+posn, c, n);
+        memmove(string->string+offset, c, n);
         string->length+=n;
     } else {
-        linedit_stringaddcharacter(string, c, n);
+        linedit_stringappend(string, c, n);
     }
 }
 
-/** @brief   Deletes characters at a given position. */
+/** @brief   Deletes characters at a given position.
+ *  @param[in] string - string to amend
+ *  @param[in] posn - Delete characters as a character index
+ *  @param[in] n - number of characters to delete */
 void linedit_stringdelete(linedit_string *string, size_t posn, size_t n) {
-    if (posn<string->length) {
-        if (posn+n<string->length) {
-            memmove(string->string+posn, string->string+posn+n, string->length-posn-n+1);
+    ssize_t offset=linedit_utf8index(string, posn, 0);
+    ssize_t nbytes=linedit_utf8index(string, n, offset);
+    if (offset<0) return;
+    
+    if (offset<string->length) {
+        if (offset+nbytes<string->length) {
+            memmove(string->string+offset, string->string+offset+nbytes, string->length-offset-nbytes+1);
         } else {
-            string->string[posn]='\0';
+            string->string[offset]='\0';
         }
         string->length=strlen(string->string);
     }
@@ -131,7 +195,12 @@ void linedit_stringaddcstring(linedit_string *string, char *s) {
 
 /** Finds the width of a string in characters */
 int linedit_stringwidth(linedit_string *string) {
-    return (int) string->length;
+    int n=0;
+    for (int i=0; i<string->length; ) {
+        i+=linedit_utf8numberofbytes(string->string+i);
+        n++;
+    }
+    return n;
 }
 
 /** Returns a C string from a string */
@@ -363,7 +432,7 @@ void linedit_enablerawmode(void) {
                         ICRNL  - translate CR into NL (ctrl-m)
                         BRKINT - parity checking
                         ISTRIP - strip bit 8 of each input byte */
-    termraw.c_iflag &= ~(IXON | ICRNL | BRKINT | BRKINT | ISTRIP);
+    termraw.c_iflag &= ~(IXON | ICRNL | BRKINT | INPCK | BRKINT | ISTRIP);
     /* Output: Turn off: OPOST - output processing */
     termraw.c_oflag &= ~(OPOST);
     /* Character: CS8 Set 8 bits per byte */
@@ -373,6 +442,8 @@ void linedit_enablerawmode(void) {
                  IEXTEN - literal (ctrl-v)
                  ISIG   - turn off signals (ctrl-c and ctrl-z) */
     termraw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+    /* Set return condition for control characters */
+    termraw.c_cc[VMIN] = 1; termraw.c_cc[VTIME] = 0; /* 1 byte, no timer */
     
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &termraw);
 }
@@ -381,6 +452,32 @@ void linedit_enablerawmode(void) {
 void linedit_disablerawmode(void) {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &terminit);
     printf("\r"); /** Print a carriage return to ensure we're back on the left hand side */
+}
+
+#define LINEDIT_CURSORPOSN_BUFFERSIZE 32
+/** @brief Gets the cursor position */
+bool linedit_getcursorposition(int *x, int *y) {
+    char answer[LINEDIT_CURSORPOSN_BUFFERSIZE];
+    int i=0, row=0, col=0;
+
+    /* Report cursor location */
+    if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return false;
+
+    /* Read the response: ESC [ rows ; cols R */
+    while (i < sizeof(answer)-1) {
+        if (read(STDIN_FILENO,answer+i,1) != 1) break;
+        if (answer[i] == 'R') break; // Response is 'R' terminated
+        i++;
+    }
+    answer[i] = '\0'; // Terminal response is not null-terminated by default
+
+    /* Parse response */
+    if (answer[0] != 27 || answer[1] != '[') return false;
+    if (sscanf(answer+2,"%d;%d",&row,&col) != 2) return false;
+    
+    if (y) *y = row; // Return result
+    if (x) *x = col;
+    return true;
 }
 
 /** @brief Gets the terminal width */
@@ -393,14 +490,16 @@ void linedit_getterminalwidth(lineditor *edit) {
     if (!(ioctl(1, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0)) {
         edit->ncols=ws.ws_col;
     } else {
-        //
+        // Should get cursor position etc here.
     }
 }
 
 /** @brief Shows visible characters l...r from a string */
 void linedit_writewindow(char *string, int l, int r) {
     int i=0;
-    for (char *s=string; *s!='\0'; s++) {
+    int width=0;
+    for (char *s=string; *s!='\0'; s+=width) {
+        width=linedit_utf8numberofbytes(s);
         if (*s=='\r') { // Reset on a carriage return
             if (write(STDOUT_FILENO, "\r", 1)==-1) return;
             i=0;
@@ -412,15 +511,8 @@ void linedit_writewindow(char *string, int l, int r) {
                 s=ctl;
             }
         } else { // Otherwise show printable characters that lie within the window
-            if (i>=l) {
-                int n=0;
-                while (i+n<=r && !iscntrl(s[n])) n++;
-                if (n>0) {
-                    if (write(STDOUT_FILENO, s, n)==-1) return;
-                    s+=n-1; // because of s++ at the end of the loop
-                    i+=n;
-                }
-            } else i++;
+            if (i>=l && i<r) write(STDOUT_FILENO, s, width);
+            i++;
         }
     }
 }
@@ -452,24 +544,31 @@ enum keycodes {
 #define LINEDIT_CODESTRINGSIZE 24
 
 /** Enable this macro to get reports on unhandled keypresses */
-#define LINEDIT_DEBUGKEYPRESS
+//#define LINEDIT_DEBUGKEYPRESS
+
+/** Initializes a keypress structure */
+void linedit_keypressinit(keypress *out) {
+    out->type=UNKNOWN;
+    for (int i=0; i<5; i++) out->c[i]='\0';
+    out->nbytes=0;
+}
 
 /** @brief Read and decode a single keypress from the terminal */
 bool linedit_readkey(lineditor *edit, keypress *out) {
     out->type=UNKNOWN;
     
-    if (read(STDIN_FILENO, &out->c, 1) == 1) {
-        if (iscntrl(out->c)) {
-            switch (out->c) {
+    if (read(STDIN_FILENO, out->c, 1) == 1) {
+        if (iscntrl(LINEDIT_KEYPRESSGETCHAR(out))) {
+            switch (LINEDIT_KEYPRESSGETCHAR(out)) {
                 case ESC_CODE:
                 {   /* Escape sequences */
                     char seq[LINEDIT_CODESTRINGSIZE];
-                    size_t ret=0;
+                    ssize_t ret=0;
                     
                     /* Read in the escape sequence */
                     for (unsigned int i=0; i<LINEDIT_CODESTRINGSIZE; i++) {
                         ret=read(STDIN_FILENO, &seq[i], 1);
-                        if (ret==-1 || isalpha(seq[i])) break;
+                        if (ret<0 || isalpha(seq[i])) break;
                     }
                     
                     /** Decode the escape sequence */
@@ -509,18 +608,28 @@ bool linedit_readkey(lineditor *edit, keypress *out) {
                 case DELETE_CODE: out->type=DELETE; break;
                 case RETURN_CODE: out->type=RETURN; break;
                 default:
-                    if (out->c>0 && out->c<27) { /* Ctrl+character */
+                    if (LINEDIT_KEYPRESSGETCHAR(out)>0 && LINEDIT_KEYPRESSGETCHAR(out)<27) { /* Ctrl+character */
                         out->type=CTRL;
-                        out->c+='A'-1; /* Return the character code */
+                        out->c[0]+='A'-1; /* Return the character code */
                     } else {
 #ifdef LINEDIT_DEBUGKEYPRESS
-                        printf("Unhandled keypress: %d\r\n", out->c);
+                        printf("Unhandled keypress: %d\r\n", LINEDIT_KEYPRESSGETCHAR(out));
 #endif
                     }
             }
             
         } else {
+            out->nbytes=linedit_utf8numberofbytes(out->c);
+            /* Read in the unicode sequence */
+            ssize_t ret=0;
+            for (int i=1; i<out->nbytes; i++) {
+                ret=read(STDIN_FILENO, &out->c[i], 1);
+                if (ret<0) break;
+            }
             out->type=CHARACTER;
+#ifdef LINEDIT_DEBUGKEYPRESS
+            printf("Character: %s (%i bytes)\r\n", out->c, out->nbytes);
+#endif
         }
     }
     return true;
@@ -578,7 +687,13 @@ void linedit_eraseline(linedit_string *out) {
  * Interface
  * ********************************************************************** */
 
-/* Adds a string with selection highlighting */
+/** Adds a string with selection highlighting
+ * @param[in] edit - active editor
+ * @param[in] in - input string
+ * @param[in] offset - offset of string in characters
+ * @param[in] length - length of string in characters
+ * @param[in] col - color
+ * @param[out] out - display plus coloring information written to this string */
 void linedit_addcstringwithselection(lineditor *edit, char *in, size_t offset, size_t length, linedit_color *col, linedit_string *out) {
     int lposn=-1, rposn=-1;
     
@@ -593,12 +708,13 @@ void linedit_addcstringwithselection(lineditor *edit, char *in, size_t offset, s
     
     /* Is the text we're showing outside the selected region entirely? */
     if (rposn<0 || lposn>(int) length) {
-        linedit_stringaddcharacter(out, in, length);
+        linedit_stringappend(out, in, length);
     } else {
         /* If not, add the characters one by one and insert highlighting */
         if (lposn<0) {
             linedit_setemphasis(out, LINEDIT_REVERSE);
         }
+        char *c=in;
         for (int i=0; i<length; i++) {
             if (i==lposn) {
                 linedit_setemphasis(out, LINEDIT_REVERSE);
@@ -608,7 +724,10 @@ void linedit_addcstringwithselection(lineditor *edit, char *in, size_t offset, s
                 /* Restore the color if one is provided */
                 if (col) linedit_setcolor(out, *col);
             }
-            linedit_stringaddcharacter(out, in+i, 1);
+            int nbytes=linedit_utf8numberofbytes(c);
+            if (nbytes) linedit_stringappend(out, c, nbytes);
+            else nbytes=1; // Corrupted stream
+            c+=nbytes;
         }
     }
 }
@@ -674,7 +793,7 @@ void linedit_refreshline(lineditor *edit) {
     linedit_setdefaulttext(&output);
     
     /* Display the prompt */
-    linedit_stringaddcharacter(&output, "\r", 1);
+    linedit_stringappend(&output, "\r", 1);
     linedit_stringaddcstring(&output, edit->prompt.string);
     
     /* Display the current line, syntax colored if available */
@@ -693,7 +812,7 @@ void linedit_refreshline(lineditor *edit) {
     }
     
     linedit_setdefaulttext(&output);
-    linedit_stringaddcharacter(&output, "\r", 1);
+    linedit_stringappend(&output, "\r", 1);
     
     /* Determine the left and right hand boundaries */
     int promptwidth=linedit_stringwidth(&edit->prompt);
@@ -715,8 +834,7 @@ void linedit_refreshline(lineditor *edit) {
     
     /* Write the output string to the display */
     linedit_writewindow(output.string, start, end);
-    //linedit_write(output.string);
-    
+
     linedit_stringclear(&output);
 }
 
@@ -745,12 +863,12 @@ lineditormode linedit_getmode(lineditor *edit) {
  * @param edit     - the editor
  * @param posn     - position to set, or negative to move to end */
 void linedit_setposition(lineditor *edit, int posn) {
-    edit->posn=(posn<0 ? (int) edit->current.length : posn);
+    edit->posn=(posn<0 ? linedit_stringwidth(&edit->current) : posn);
 }
 
 /** Checks if we're at the end of the line */
 bool lineedit_atendofline(lineditor *edit) {
-    return (edit->posn==edit->current.length);
+    return (edit->posn==linedit_stringwidth(&edit->current));
 }
 
 /** @brief Advances the position by delta
@@ -758,7 +876,8 @@ bool lineedit_atendofline(lineditor *edit) {
 void linedit_advanceposition(lineditor *edit, int delta) {
     edit->posn+=delta;
     if (edit->posn<0) edit->posn=0;
-    if (edit->posn>(int)edit->current.length) edit->posn=(int) edit->current.length;
+    int linewidth = linedit_stringwidth(&edit->current);
+    if (edit->posn>linewidth) edit->posn=linewidth;
 }
 
 /** Obtain and process a single keypress */
@@ -766,11 +885,13 @@ bool linedit_processkeypress(lineditor *edit) {
     keypress key;
     bool regeneratesuggestions=true;
     
+    linedit_keypressinit(&key);
+    
     if (linedit_readkey(edit, &key)) {
         switch (key.type) {
             case CHARACTER:
                 linedit_setmode(edit, LINEDIT_DEFAULTMODE);
-                linedit_stringinsert(&edit->current, edit->posn, &key.c, 1);
+                linedit_stringinsert(&edit->current, edit->posn, key.c, key.nbytes);
                 linedit_advanceposition(edit, 1);
                 break;
             case DELETE:
@@ -836,7 +957,7 @@ bool linedit_processkeypress(lineditor *edit) {
                 }
                 break;
             case CTRL: /* Handle ctrl+letter combos */
-                switch(key.c) {
+                switch(LINEDIT_KEYPRESSGETCHAR(&key)) {
                     case 'A': /* Move to start of line */
                         linedit_setmode(edit, LINEDIT_DEFAULTMODE);
                         edit->posn=0;
@@ -849,8 +970,10 @@ bool linedit_processkeypress(lineditor *edit) {
                         if (linedit_getmode(edit)==LINEDIT_SELECTIONMODE) {
                             int lposn=(edit->sposn < edit->posn ? edit->sposn : edit->posn);
                             int rposn = (edit->sposn < edit->posn ? edit->posn : edit->sposn);
+                            size_t lindx = linedit_utf8index(&edit->current, lposn, 0);
+                            size_t rindx = linedit_utf8index(&edit->current, rposn, 0);
                             linedit_stringclear(&edit->clipboard);
-                            linedit_stringaddcharacter(&edit->clipboard, edit->current.string+lposn, (size_t) rposn-lposn);
+                            linedit_stringappend(&edit->clipboard, edit->current.string+lindx, (size_t) rindx-lindx);
                         }
                         break;
                     case 'D': /* Delete a character */
@@ -874,7 +997,7 @@ bool linedit_processkeypress(lineditor *edit) {
                         linedit_setmode(edit, LINEDIT_DEFAULTMODE);
                         if (edit->clipboard.length>0) {
                             linedit_stringinsert(&edit->current, edit->posn, edit->clipboard.string, edit->clipboard.length);
-                            linedit_advanceposition(edit, (int) edit->clipboard.length);
+                            linedit_advanceposition(edit, linedit_stringwidth(&edit->clipboard));
                         }
                         break;
                     default: break;
@@ -903,7 +1026,7 @@ void linedit_noterminal(lineditor *edit) {
         c = fgetc(stdin);
         if (c==EOF || c=='\n') return;
         char a = (char) c;
-        linedit_stringaddcharacter(&edit->current, &a, 1);
+        linedit_stringappend(&edit->current, &a, 1);
     } while (true);
 }
 
@@ -1065,6 +1188,18 @@ int linedit_getwidth(lineditor *edit) {
 
 /** Initialize a line editor */
 void linedit_init(lineditor *edit) {
+    /*
+    char *str = "👽🦋👋👩🏾‍🦰👱🏾🧑🏾‍⚖️AöЖ€𝄞";
+    int x,y,x1;
+    linedit_enablerawmode();
+    for (char *c=str; *c!='\0'; c+=linedit_utf8numberofbytes(c)) {
+        linedit_getcursorposition(&x, &y);
+        write(STDOUT_FILENO, c, linedit_utf8numberofbytes(c));
+        linedit_getcursorposition(&x1, &y);
+        printf(" %i\r\n",x1-x);
+    }
+    linedit_disablerawmode();*/
+    
     if (!edit) return;
     edit->color=NULL;
     edit->ncols=0;

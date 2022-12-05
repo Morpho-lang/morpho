@@ -1,0 +1,28 @@
+
+var N = 4
+var a = Sparse(N,N)
+
+for (i in 0...N) a[i,i]=i+1
+
+var b = a*a 
+
+print b 
+// expect: [ 1 0 0 0 ]
+// expect: [ 0 4 0 0 ]
+// expect: [ 0 0 9 0 ]
+// expect: [ 0 0 0 16 ]
+
+b[0,N-1] = 1
+b[N-1,0] = 1
+
+print b 
+// expect: [ 1 0 0 1 ]
+// expect: [ 0 4 0 0 ]
+// expect: [ 0 0 9 0 ]
+// expect: [ 1 0 0 16 ]
+
+print b*b
+// expect: [ 2 0 0 17 ]
+// expect: [ 0 16 0 0 ]
+// expect: [ 0 0 81 0 ]
+// expect: [ 17 0 0 257 ]

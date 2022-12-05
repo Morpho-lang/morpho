@@ -23,6 +23,7 @@ void program_bindobject(program *p, object *obj);
 
 value program_internsymbol(program *p, value symbol);
 
+void vm_unbindobject(vm *v, value obj);
 void vm_freeobjects(vm *v);
 void vm_collectgarbage(vm *v);
 

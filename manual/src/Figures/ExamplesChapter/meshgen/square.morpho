@@ -1,0 +1,11 @@
+// Square domain with a hole 
+import meshgen
+import plot
+
+var e0 = Domain(fn (x) ((x[0])^2+x[1]^2-1))
+var mg = MeshGen(e0, [-2..2:0.2, -2..2:0.2], quiet=false)
+//mg.maxiterations=10
+//mg.ttol=0.5
+var m = mg.build()
+
+//Show(plotmesh(m, grade=1))

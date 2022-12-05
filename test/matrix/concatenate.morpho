@@ -1,0 +1,27 @@
+// Concatenate matrices together
+
+var a = Matrix([[0,1], [1,0]])
+var b = Matrix([2,3])
+
+print a
+// expect: [ 0 1 ]
+// expect: [ 1 0 ]
+
+var c = Matrix([[a, b], [b.transpose(), 0]])
+
+print c
+// expect: [ 0 1 2 ]
+// expect: [ 1 0 3 ]
+// expect: [ 2 3 0 ]
+
+var c = Matrix([[a, 0, b], [0, a, b], [b.transpose(), b.transpose(), 0]])
+
+print c
+// expect: [ 0 1 0 0 2 ]
+// expect: [ 1 0 0 0 3 ]
+// expect: [ 0 0 0 1 2 ]
+// expect: [ 0 0 1 0 3 ]
+// expect: [ 2 3 2 3 0 ]
+
+var c = Matrix([[a, b], [b, 0]])
+// expect error 'MtrxIncmptbl'

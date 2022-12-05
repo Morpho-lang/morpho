@@ -3,62 +3,39 @@
 
 Morpho provides a number of built-in functions.
 
-\hypertarget{sin}{%
-\subsection{sin}\label{sin}}
+\hypertarget{random}{%
+\subsection{Random}\label{random}}
 
-Returns the sine of an angle in radians.
-
-\begin{lstlisting}
-import constants 
-print sin(Pi/2) // expect: 1
-\end{lstlisting}
-
-\hypertarget{sinh}{%
-\subsection{sinh}\label{sinh}}
-
-Returns the hyperbolic sine of an angle in radians.
+The \texttt{random} function generates a random number from a uniform
+distribution on the interval {[}0,1{]}.
 
 \begin{lstlisting}
-import constants 
-print sinh(0) // expect: 0
+print random() 
 \end{lstlisting}
 
-\hypertarget{cos}{%
-\subsection{cos}\label{cos}}
+See also \texttt{randomnormal} and \texttt{randomint}.
 
-Returns the cosine of an angle in radians.
+\hypertarget{randomnormal}{%
+\subsection{Randomnormal}\label{randomnormal}}
+
+The \texttt{randomnormal} function generates a random number from a
+normal (gaussian) distribution with unit variance and zero offset.
 
 \begin{lstlisting}
-import constants 
-print cos(Pi/2) // expect: 0
+print randomnormal() 
 \end{lstlisting}
 
-\hypertarget{cosh}{%
-\subsection{cosh}\label{cosh}}
+See also \texttt{random} and \texttt{randomint}.
 
-Returns the hyperbolic cosine of an angle in radians.
+\hypertarget{randomint}{%
+\subsection{Randomint}\label{randomint}}
+
+The \texttt{randomint} function generates a random integer with a
+specified maximum value.
 
 \begin{lstlisting}
-print cosh(0) // expect: 1
+print randomint(10) // Generates a random integer [0,10)
 \end{lstlisting}
-
-\hypertarget{arctan}{%
-\subsection{arctan}\label{arctan}}
-
-Returns the arctangent of an input value that lies from \texttt{-Inf} to
-\texttt{Inf}. You can use one argument:
-
-\begin{lstlisting}
-print arctan(0) // expect: 0
-\end{lstlisting}
-
-or use two arguments to return the angle in the correct quadrant:
-
-\begin{lstlisting}
-print arctan(x, y)
-\end{lstlisting}
-
-Note the order \texttt{x}, \texttt{y} differs from some other languages.
 
 \hypertarget{isnil}{%
 \subsection{isnil}\label{isnil}}
@@ -153,6 +130,45 @@ otherwise.
 Returns \texttt{true} if a value is callable or \texttt{false}
 otherwise.
 
+\hypertarget{isfinite}{%
+\subsection{isfinite}\label{isfinite}}
+
+Returns \texttt{true} if a value is finite or \texttt{false} otherwise.
+
+\begin{lstlisting}
+print isfinite(1) // expect: true 
+print isfinite(1/0) // expect: false 
+\end{lstlisting}
+
+\hypertarget{isnumber}{%
+\subsection{isnumber}\label{isnumber}}
+
+Returns \texttt{true} if a value is a real number, or \texttt{false}
+otherwise.
+
+\begin{lstlisting}
+print isnumber(1) // expect: true 
+print isnumber(Object()) // expect: false
+\end{lstlisting}
+
+\hypertarget{ismesh}{%
+\subsection{ismesh}\label{ismesh}}
+
+Returns \texttt{true} if a value is a \texttt{Mesh}, or \texttt{false}
+otherwise.
+
+\hypertarget{isselection}{%
+\subsection{isselection}\label{isselection}}
+
+Returns \texttt{true} if a value is a \texttt{Selection}, or
+\texttt{false} otherwise.
+
+\hypertarget{isfield}{%
+\subsection{isfield}\label{isfield}}
+
+Returns \texttt{true} if a value is a \texttt{Field}, or \texttt{false}
+otherwise.
+
 \hypertarget{apply}{%
 \subsection{Apply}\label{apply}}
 
@@ -179,4 +195,180 @@ another list:
 
 \begin{lstlisting}
 apply(f, [[1,2]]) // equivalent to f([1,2])
+\end{lstlisting}
+
+\hypertarget{abs}{%
+\subsection{Abs}\label{abs}}
+
+Returns the absolute value of a number:
+
+\begin{lstlisting}
+print abs(-10) // prints 10 
+\end{lstlisting}
+
+\hypertarget{arctan}{%
+\subsection{Arctan}\label{arctan}}
+
+Returns the arctangent of an input value that lies from \texttt{-Inf} to
+\texttt{Inf}. You can use one argument:
+
+\begin{lstlisting}
+print arctan(0) // expect: 0
+\end{lstlisting}
+
+or use two arguments to return the angle in the correct quadrant:
+
+\begin{lstlisting}
+print arctan(x, y)
+\end{lstlisting}
+
+Note the order \texttt{x}, \texttt{y} differs from some other languages.
+
+\hypertarget{exp}{%
+\subsection{Exp}\label{exp}}
+
+Exponential function \texttt{e\^{}x}. Inverse of \texttt{log}.
+
+\begin{lstlisting}
+print exp(0) // expect: 1 
+print exp(Pi*im) // expect: -1 + 0im
+\end{lstlisting}
+
+\hypertarget{log}{%
+\subsection{Log}\label{log}}
+
+Natural logarithm function. Inverse of \texttt{exp}.
+
+\begin{lstlisting}
+print log(1) // expect: 0 
+\end{lstlisting}
+
+\hypertarget{log10}{%
+\subsection{Log10}\label{log10}}
+
+Base 10 logarithm function.
+
+\begin{lstlisting}
+print log10(10) // expect: 1
+\end{lstlisting}
+
+\hypertarget{sin}{%
+\subsection{Sin}\label{sin}}
+
+Sine trigonometric function.
+
+\begin{lstlisting}
+print sin(0) // expect: 0 
+\end{lstlisting}
+
+\hypertarget{sinh}{%
+\subsection{Sinh}\label{sinh}}
+
+Hyperbolic sine trigonometric function.
+
+\begin{lstlisting}
+print sinh(0) // expect: 0 
+\end{lstlisting}
+
+\hypertarget{cos}{%
+\subsection{Cos}\label{cos}}
+
+Cosine trigonometric function.
+
+\begin{lstlisting}
+print cos(0) // expect: 1
+\end{lstlisting}
+
+\hypertarget{cosh}{%
+\subsection{Cosh}\label{cosh}}
+
+Hyperbolic cosine trigonometric function.
+
+\begin{lstlisting}
+print cosh(0) // expect: 1
+\end{lstlisting}
+
+\hypertarget{tan}{%
+\subsection{Tan}\label{tan}}
+
+Tangent trigonometric function.
+
+\begin{lstlisting}
+print tan(0) // expect: 0 
+\end{lstlisting}
+
+\hypertarget{tanh}{%
+\subsection{Tanh}\label{tanh}}
+
+Hyperbolic tangent trigonometric function.
+
+\begin{lstlisting}
+print tanh(0) // expect: 0 
+\end{lstlisting}
+
+\hypertarget{asin}{%
+\subsection{Asin}\label{asin}}
+
+Inverse sine trigonometric function. Returns a value on the interval
+\texttt{{[}-Pi/2,Pi/2{]}}.
+
+\begin{lstlisting}
+print asin(0) // expect: 0 
+\end{lstlisting}
+
+\hypertarget{acos}{%
+\subsection{Acos}\label{acos}}
+
+Inverse cosine trigonometric function. Returns a value on the interval
+\texttt{{[}-Pi/2,Pi/2{]}}.
+
+\begin{lstlisting}
+print acos(1) // expect: 0 
+\end{lstlisting}
+
+\hypertarget{sqrt}{%
+\subsection{Sqrt}\label{sqrt}}
+
+Square root function.
+
+\begin{lstlisting}
+print sqrt(4) // expect: 2
+\end{lstlisting}
+
+\hypertarget{min}{%
+\subsection{Min}\label{min}}
+
+Finds the minimum value of its arguments. If any of the arguments are
+Objects and are enumerable, (e.g.~a \texttt{List}), \texttt{min} will
+search inside them for a minimum value. Accepts any number of arguments.
+
+\begin{lstlisting}
+print min(3,2,1) // expect: 1 
+print min([3,2,1]) // expect: 1 
+print min([3,2,1],[0,-1,2]) // expect: -2 
+\end{lstlisting}
+
+\hypertarget{max}{%
+\subsection{Max}\label{max}}
+
+Finds the maximum value of its arguments. If any of the arguments are
+Objects and are enumerable, (e.g.~a \texttt{List}), \texttt{max} will
+search inside them for a maximum value. Accepts any number of arguments.
+
+\begin{lstlisting}
+print min(3,2,1) // expect: 3 
+print min([3,2,1]) // expect: 3
+print min([3,2,1],[0,-1,2]) // expect: 3 
+\end{lstlisting}
+
+\hypertarget{bounds}{%
+\subsection{Bounds}\label{bounds}}
+
+Returns both the results of \texttt{min} and \texttt{max} as a list,
+Providing a set of bounds for its arguments and any enumerable objects
+within them.
+
+\begin{lstlisting}
+print bounds(1,2,3) // expect: [1,3]
+print bounds([3,2,1],[0,-1,2]) // expect: [-1,3]
 \end{lstlisting}

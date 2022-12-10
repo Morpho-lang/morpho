@@ -15,3 +15,7 @@ which could return `macos`, `linux`, `unix` or `windows`.
 Find the current version of morpho: 
 
     print System.version() 
+
+Stop execution of a program:
+
+    System.exit() 

@@ -2425,13 +2425,6 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 #endif
         {
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, 0), node); /* Add a return */
-        } else if (isanonymous) {
-            if (!CODEINFO_ISREGISTER(bodyinfo)) {
-                bodyinfo=compiler_movetoregister(c, node, bodyinfo, REGISTER_UNALLOCATED);
-                ninstructions+=bodyinfo.ninstructions;
-            }
-
-            compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, bodyinfo.dest), node);
         } else {
             compiler_addinstruction(c, ENCODE_BYTE(OP_RETURN), node); /* Add a return */
         }

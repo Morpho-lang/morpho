@@ -949,8 +949,9 @@ static syntaxtreeindx parse_binary(parser *p) {
         if (nodetype==NODE_ASSIGN &&
             parse_matchtoken(p, TOKEN_FUNCTION)) {
             right=parse_anonymousfunction(p);
+        } else {
+            right = parse_precedence(p, rule->precedence + (assoc == LEFT ? 1 : 0));
         }
-        right = parse_precedence(p, rule->precedence + (assoc == LEFT ? 1 : 0));
     }
     
     /* Now add this node */
@@ -1115,7 +1116,12 @@ static syntaxtreeindx parse_anonymousfunction(parser *p) {
     parse_consume(p, TOKEN_RIGHTPAREN, COMPILE_FNRGHTPARENMISSING);
     
     /* Function body */
-    body=parse_expression(p);
+    if (parse_matchtoken(p, TOKEN_LEFTCURLYBRACKET)) { // fn (x) { ... }
+        body=parse_blockstatement(p);
+    } else {
+        body=parse_expression(p); // Short form: fn (x) x
+        body=parse_addnode(p, NODE_RETURN, MORPHO_NIL, &start, body, SYNTAXTREE_UNCONNECTED);
+    }
     
     return parse_addnode(p, NODE_FUNCTION, MORPHO_NIL, &start, args, body);
 }

@@ -1139,7 +1139,7 @@ bool area_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid
     double *x[nv], s0[3], s1[3], s01[3], s010[3], s011[3];
     double norm;
     for (int j=0; j<3; j++) { s0[j]=0; s1[j]=0; s01[j]=0; s010[j]=0; s011[j]=0; }
-    for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) if (!matrix_getcolumn(mesh->vert, vid[j], &x[j])) return false;
 
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     functional_vecsub(mesh->dim, x[2], x[1], s1);
@@ -1185,7 +1185,7 @@ MORPHO_ENDCLASS
 /** Calculate enclosed volume */
 bool volumeenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     double *x[nv], cx[mesh->dim];
-    for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) if (!matrix_getcolumn(mesh->vert, vid[j], &x[j])) return false;
 
     functional_veccross(x[0], x[1], cx);
 
@@ -2521,8 +2521,7 @@ bool gradsq_computeperpendicular(unsigned int n, double *s1, double *s2, double 
  @param[in] nv - number of vertices
  @param[in] vid - vertex ids
  @param[out] out - should be field->psize * mesh->dim units of storage */
-bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *vid, double *out) {
-    double *f[nv]; // Field value lists
+bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *vid, double *out) {    double *f[nv]; // Field value lists
     double *x[nv]; // Vertex coordinates
     unsigned int nentries=0;
 
@@ -2546,7 +2545,7 @@ bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *
 
     /* Compute the gradient */
     for (unsigned int i=0; i<mesh->dim*nentries; i++) out[i]=0;
-    for (unsigned int j=0; j<mesh->dim; j++) {
+    for (unsigned int j=0; j<nv; j++) {
         for (unsigned int i=0; i<nentries; i++) {
             functional_vecaddscale(mesh->dim, &out[i*mesh->dim], f[j][i], t[j], &out[i*mesh->dim]);
         }
@@ -2784,8 +2783,11 @@ double nematic_bcintfg(unsigned int n, double *f, double *g) {
 bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     nematicref *eref = ref;
     double size=0; // Length area or volume of the element
-    double gradnn[eref->field->psize*mesh->dim];
-    double divnn, curlnn[mesh->dim];
+    double gradnnraw[eref->field->psize*3];
+    double gradnn[eref->field->psize*3];
+    double divnn, curlnn[3] = { 0.0, 0.0, 0.0 };
+    
+    for (int i=0; i<eref->field->psize*3; i++) { gradnn[i]=0.0; gradnnraw[i]=0.0; }
 
     if (!functional_elementsize(v, mesh, eref->grade, id, nv, vid, &size)) return false;
 
@@ -2798,17 +2800,21 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
 
     // Evaluate gradients of the director
     if (eref->grade==2) {
-        if (!gradsq_evaluategradient(mesh, eref->field, nv, vid, gradnn)) return
+        if (!gradsq_evaluategradient(mesh, eref->field, nv, vid, gradnnraw)) return
             false;
     } else if (eref->grade==3) {
-        if (!gradsq_evaluategradient3d(mesh, eref->field, nv, vid, gradnn)) return
+        if (!gradsq_evaluategradient3d(mesh, eref->field, nv, vid, gradnnraw)) return
             false;
     }
+    
+    // Copy into 3x3 matrix
+    for (int j=0; j<3; j++) for (int i=0; i<mesh->dim; i++) gradnn[3*j+i] = gradnnraw[mesh->dim*j+i];
+    
     // Output of this is the matrix:
     // [ nx,x ny,x nz,x ] [ 0 3 6 ] <- indices
     // [ nx,y ny,y nz,y ] [ 1 4 7 ]
     // [ nx,z ny,z nz,z ] [ 2 5 8 ]
-    objectmatrix gradnnmat = MORPHO_STATICMATRIX(gradnn, mesh->dim, mesh->dim);
+    objectmatrix gradnnmat = MORPHO_STATICMATRIX(gradnn, 3, 3);
 
     matrix_trace(&gradnnmat, &divnn);
     curlnn[0]=gradnn[7]-gradnn[5]; // nz,y - ny,z
@@ -2824,9 +2830,9 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
                        -ctwst[3], -ctwst[4], -ctwst[5] };
 
     /* Calculate integrals of nx^2, ny^2, nz^2, nx*ny, ny*nz, and nz*nx over the element */
-    double nnt[mesh->dim][nv]; // The transpose of nn
+    double nnt[3][nv]; // The transpose of nn
     for (unsigned int i=0; i<nv; i++)
-        for (unsigned int j=0; j<mesh->dim; j++) nnt[j][i]=nn[i][j];
+        for (unsigned int j=0; j<3; j++) nnt[j][i]=nn[i][j];
 
     double integrals[] = {  nematic_bcintfg(nv, nnt[0], nnt[0]),
                             nematic_bcintfg(nv, nnt[1], nnt[1]),

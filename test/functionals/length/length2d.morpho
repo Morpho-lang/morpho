@@ -1,7 +1,12 @@
-
+import meshtools 
 import "../numericalderivatives.morpho"
 
-var m = Mesh("line.mesh")
+var mb = MeshBuilder()
+mb.addvertex([-1,-1])
+mb.addvertex([1,1])
+mb.addedge([0,1])
+var m = mb.build() 
+
 var a = Length()
 
 print m

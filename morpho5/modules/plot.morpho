@@ -89,7 +89,7 @@ fn plotmesh(mesh, selection=nil, grade=nil, color=nil,  filter=nil, transmit=nil
   var flat = nil
 
   var bb = _bbox(mesh.vertexmatrix())
-  var centroid = Matrix(bb.count())
+  var centroid = Matrix(3)
   var size[bb.count()]
   for (x, i in bb) {
     size[i]=x[1]-x[0]
@@ -298,6 +298,12 @@ fn _centroid(m, g, id) {
   return x 
 }
 
+fn _to3d(x) {
+  var y = Matrix(3)
+  for (i in 0...min(x.count(),3)) y[i]=x[i]
+  return y
+}
+
 fn plotmeshlabels(mesh, grade=0, selection=nil, fontsize=10, offset=nil, dirn=nil, vertical=nil, color=nil) {
   var gradelist = grade 
   if (!islist(grade)) gradelist = [grade]
@@ -327,9 +333,9 @@ fn plotmeshlabels(mesh, grade=0, selection=nil, fontsize=10, offset=nil, dirn=ni
 
     for (id in 0...mesh.count(g)) {
       if (selection && !selection[g,id]) continue 
-      var x = _centroid(mesh, g, id)
+      var x = _to3d(_centroid(mesh, g, id))
       if (iscallable(dirn)) dir=dirn(x)
-      if (iscallable(vert)) vert=vertical(x)
+      if (iscallable(vertical)) vert=vertical(x)
       var offset = off 
       if (iscallable(off)) offset = off(x)
 

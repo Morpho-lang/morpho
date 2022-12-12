@@ -1,0 +1,41 @@
+import meshtools 
+
+// Mesh embedded in 2D
+var mb = MeshBuilder() 
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build() 
+
+var nn = Field(m, Matrix([1,0,0]))
+nn[0,1]=Matrix([1/sqrt(3),1/sqrt(3),1/sqrt(3)])
+nn[0,2]=Matrix([0,0,1])
+
+var lnem = Nematic(nn)
+var Ea=lnem.total(m)
+
+// Mesh embedded in 3D
+var mb2 = MeshBuilder() 
+mb2.addvertex([0,0,0])
+mb2.addvertex([1,0,0])
+mb2.addvertex([0,1,0])
+mb2.addface([0,1,2])
+var m2 = mb2.build() 
+
+var nn2 = Field(m2, Matrix([1,0,0]))
+nn2[0,1]=Matrix([1/sqrt(3),1/sqrt(3),1/sqrt(3)])
+nn2[0,2]=Matrix([0,0,1])
+
+var lnem2 = Nematic(nn2)
+var Eb=lnem2.total(m2)
+
+print abs(Ea-Eb)<1e-8 // expect: true
+
+print abs(Nematic(nn2, ksplay=1, ktwist=0, kbend=0).total(m2)-Nematic(nn, ksplay=1, ktwist=0, kbend=0).total(m))<1e-8 // expect: true
+print abs(Nematic(nn2, ksplay=0, ktwist=1, kbend=0).total(m2)-Nematic(nn, ksplay=0, ktwist=1, kbend=0).total(m))<1e-8 // expect: true
+print abs(Nematic(nn2, ksplay=0, ktwist=0, kbend=1).total(m2)-Nematic(nn, ksplay=0, ktwist=0, kbend=1).total(m))<1e-8 // expect: true
+
+print (lnem.gradient(m)-lnem2.gradient(m2)[0..1,0..2]).norm()<1e-8 // expect: true
+
+print (lnem.fieldgradient(nn)-lnem2.fieldgradient(nn2)).linearize().norm()<1e-8 // expect: true

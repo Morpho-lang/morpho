@@ -193,7 +193,7 @@ bool functional_containsvertex(int nv, int *vid, elementid id) {
  * @param[in] info - map info
  * @param[out] out - a matrix of integrand values
  * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
+bool functional_sumintegrandX(vm *v, functional_mapinfo *info, value *out) {
     bool success=false;
     objectmesh *mesh = info->mesh;
     objectselection *sel = info->sel;
@@ -798,6 +798,196 @@ functional_mapnumericalhessian_cleanup:
     if (!ret) object_free((object *) hess);
 
     return ret;
+}
+
+/* **********************************************************************
+ * Multithreaded map functions
+ * ********************************************************************** */
+
+/** Gradient function */
+typedef bool (functional_mapfn) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out);
+
+typedef bool (functional_processfn) (void *task);
+
+typedef struct {
+    elementid start, end; /* Start and end indices for the task */
+    grade g; /* Grade of element */
+    
+    varray_elementid *skip; /* Sorted list of element ids to skip; set to NULL if not needed */
+    unsigned int sindx;
+    
+    objectsparse *conn; /* Connectivity matrix */
+    
+    functional_mapfn *mapfn; /* Map function */
+    functional_processfn *processfn; /* Post process results */
+    
+    objectmesh *mesh; /* Mesh in use */
+    vm *v; /* Virtual machine in use */
+    void *ref; /* Ref as an opaque pointer */
+    void *result; /* Result of individual element as an opaque pointer */
+    void *out; /* Overall output as an opaque pointer */
+} functional_task;
+
+/* Initialize a task structure */
+void functionaltask_init(functional_task *task, elementid start, elementid end, functional_mapinfo *info)  {
+    task->start=start;
+    task->end=end;
+    task->g=(info ? info->g : 0);
+    
+    task->skip=NULL;
+    task->sindx=0;
+    
+    task->conn=NULL;
+    
+    task->mapfn=NULL;
+    task->processfn=NULL;
+    
+    task->mesh=(info ? info->mesh : NULL);
+    task->v=NULL;
+    task->ref=(info ? info->ref : NULL);
+    task->out=NULL;
+    task->result=NULL;
+}
+
+/** Check if we should skip element id */
+bool functional_checkskip(functional_task *task, elementid i) {
+    if ((task->skip) &&
+        (task->sindx<task->skip->count) &&
+        task->skip->data[task->sindx]==i) {
+        task->sindx++;
+        return true;
+    }
+    return false;
+}
+
+/* Do work
+ 
+ // Integrand:
+ if ((*integrand) (v, mesh, i, nv, vid, ref, &result)) {
+     matrix_setelement(new, 0, i, result);
+ } else goto functional_mapintegrand_cleanup;
+ 
+ // Gradient:
+ if (!(*grad) (v, mesh, i, nv, vid, ref, frc)) goto functional_mapgradient_cleanup;
+ */
+
+bool functional_mapoverselection(functional_task *task) {
+    
+    return true;
+}
+
+/* Maps a function over elements */
+bool functional_mapoverelements(void *arg) {
+    functional_task *task = (functional_task *) arg;
+    elementid i; /* Counter */
+    elementid *vid=&i; /* Will hold element definition */
+    int nv=1; /* Number of vertices per element; default to 1  */
+    
+    for (i=task->start; i<task->end; i++) {
+        // Skip this element if it's an image element
+        if (functional_checkskip(task, i)) continue;
+        
+        // Fetch element definition
+        if (task->conn) {
+            if (!sparseccs_getrowindices(&task->conn->ccs, i, &nv, &vid)) return false;
+        }
+        
+        // Perform the map function
+        if (!(*task->mapfn) (task->v, task->mesh, i, nv, vid, task->ref, task->result)) return false;
+        
+        // Perform post-processing if needed
+        if (task->processfn) if (!(*task->processfn) (task)) return false;
+    }
+    return true;
+}
+
+/** Maps tasks */
+bool functional_parallelmap(int ntasks, functional_task *tasks) {
+    threadpool pool;
+    
+    threadpool_init(&pool, 4);
+    
+    for (int i=0; i<ntasks; i++) {
+        threadpool_add_task(&pool, functional_mapoverelements, (void *) &tasks[i]);
+    }
+
+    threadpool_fence(&pool);
+    threadpool_clear(&pool);
+    
+    return true;
+}
+
+typedef struct {
+    double c;
+    double sum;
+} kahansum;
+
+/** Perform Kahan summation for total */
+bool functional_sumprocessfn(void *arg) {
+    functional_task *task = (functional_task *) arg;
+    double result = *((double *) task->result);
+    kahansum *ks = (kahansum *) task->out;
+    double y=result-ks->c;
+    double t=ks->sum+y;
+    ks->c=(t-ks->sum)-y;
+    ks->sum=t; // Kahan summation
+    return true;
+}
+
+/** Set relevant matrix element to the result of the integrand */
+bool functional_integrandprocessfn(void *arg) {
+    functional_task *task = (functional_task *) arg;
+    //matrix_setelement(new, 0, i, (double *) task->result);
+    return true;
+}
+
+/** Parallelized version of sum integrand */
+bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
+    int ntask = 1;
+    functional_task task[ntask];
+    double results[ntask];
+    kahansum sums[ntask];
+    
+    int nel=0;               // Number of elements
+    objectsparse *conn=NULL; // The associated connectivity matrix if any
+    
+    /* Work out the number of elements */
+    if (!functional_countelements(v, info->mesh, info->g, &nel, &conn)) return false;
+    
+    /* Find any image elements so they can be skipped */
+    varray_elementid imageids;
+    varray_elementidinit(&imageids);
+    functional_symmetryimagelist(info->mesh, info->g, true, &imageids);
+    
+    for (int i=0; i<ntask; i++) {
+        functionaltask_init(&task[i], 0, nel, info); // Setup the task
+        
+        task[i].v=v;
+        task[i].conn=conn;
+        if (imageids.count>0) task[i].skip=&imageids;
+        
+        task[i].mapfn=(functional_mapfn *) info->integrand;
+        task[i].processfn=functional_sumprocessfn;
+        
+        task[i].result=(void *) &results[i];
+        task[i].out=(void *) &sums[i];
+        
+        results[i]=0.0;
+        sums[i].c=0.0; sums[i].sum=0.0;
+    }
+    
+    functional_parallelmap(ntask, task);
+    
+    // Sum up the results from each task...
+    double sumlist[ntask];
+    for (int i=0; i<ntask; i++) sumlist[i]=sums[i].sum;
+    
+    // ...and return the result
+    *out = MORPHO_FLOAT(functional_sumlist(sumlist, ntask));
+    
+    varray_elementidclear(&imageids);
+    
+    return true;
 }
 
 /* **********************************************************************

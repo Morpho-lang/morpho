@@ -884,15 +884,13 @@ bool functional_mapfn_elements(void *arg) {
     
     // Loop over required elements
     for (elementid i=task->start; i<task->end; i++) {
-        if (!selected) {
-            task->id = i;
-        } else {
+        if (selected) {
             // Skip empty dictionary entries
             if (!MORPHO_ISINTEGER(selected->contents[i].key)) continue;
             
             // Fetch the element id from the dictionary
             task->id = MORPHO_GETINTEGERVALUE(selected->contents[i].key);
-        }
+        } else task->id = i;
         
         // Skip this element if it's an image element
         if (functional_checkskip(task)) continue;
@@ -967,7 +965,7 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
     /* Work out the number of elements */
     if (!functional_countelements(v, info->mesh, info->g, &nel, &conn)) return false;
     
-    int ntask = 4;
+    int ntask = 16;
     functional_task task[ntask];
     
     int bins[ntask+1];

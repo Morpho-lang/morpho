@@ -804,6 +804,8 @@ functional_mapnumericalhessian_cleanup:
  * Multithreaded map functions
  * ********************************************************************** */
 
+threadpool functional_pool;
+
 /** Gradient function */
 typedef bool (functional_mapfn) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out);
 
@@ -870,32 +872,6 @@ bool functional_checkskip(functional_task *task) {
 
 /** Maps a function over elements */
 bool functional_mapfn_elements(void *arg) {
-    printf("Elements running.\n");
-    functional_task *task = (functional_task *) arg;
-    elementid *vid=&task->id; /* Will hold element definition */
-    int nv=1; /* Number of vertices per element; default to 1  */
-    
-    // Loop over required elements
-    for (task->id=task->start; task->id<task->end; task->id++) {
-        // Skip this element if it's an image element
-        if (functional_checkskip(task)) continue;
-        
-        // Fetch element definition
-        if (task->conn) {
-            if (!sparseccs_getrowindices(&task->conn->ccs, task->id, &nv, &vid)) return false;
-        }
-        
-        // Perform the map function
-        if (!(*task->mapfn) (task->v, task->mesh, task->id, nv, vid, task->ref, task->result)) return false;
-        
-        // Perform post-processing if needed
-        if (task->processfn) if (!(*task->processfn) (task)) return false;
-    }
-    return true;
-}
-
-/** Maps a function over elements */
-bool functional_mapfn_elements2(void *arg) {
     functional_task *task = (functional_task *) arg;
     dictionary *selected=NULL;
     elementid *vid=&task->id; /* Will hold element definition */
@@ -935,28 +911,13 @@ bool functional_mapfn_elements2(void *arg) {
     return true;
 }
 
-
-bool testfn(void *x) {
-    printf("Woohoo!\n");
-    return true;
-}
-
 /** Dispatches tasks to threadpool */
 bool functional_parallelmap(int ntasks, functional_task *tasks) {
-    threadpool pool;
     
-    //threadpool_test();
-    
-    threadpool_init(&pool, 4);
-    
-    for (int i=0; i<5; i++) {
-        //threadpool_add_task(&pool, testfn, NULL);
-       threadpool_add_task(&pool, functional_mapfn_elements, (void *) &tasks[i]);
+    for (int i=0; i<ntasks; i++) {
+       threadpool_add_task(&functional_pool, functional_mapfn_elements, (void *) &tasks[i]);
     }
-
-    threadpool_fence(&pool);
-    
-    threadpool_clear(&pool);
+    threadpool_fence(&functional_pool);
     
     return true;
 }
@@ -976,9 +937,26 @@ bool functional_sumprocessfn(void *arg) {
     double t=ks->sum+y;
     ks->c=(t-ks->sum)-y;
     ks->sum=t; // Kahan summation
-    
-    printf("%g (c=%g) (result=%g)\n", ks->sum, ks->c, result);
     return true;
+}
+
+/** Calculate bin sizes */
+void functional_binbounds(int nel, int nbins, int *binbounds) {
+    int binsizes[nbins];
+    
+    int defsize = nel / nbins;
+    for (int i=0; i<nbins; i++) binsizes[i]=defsize;
+    
+    int rem = nel % nbins;
+    while (rem>0) {
+        for (int i=0; i<nbins && rem>0; i++) { binsizes[i]++; rem--; }
+    }
+    
+    int bindx=0;
+    for (int i=0; i<=nbins; i++) {
+        binbounds[i]=bindx;
+        bindx+=binsizes[i];
+    }
 }
 
 /** Parallelized version of sum integrand */
@@ -989,8 +967,11 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
     /* Work out the number of elements */
     if (!functional_countelements(v, info->mesh, info->g, &nel, &conn)) return false;
     
-    int ntask = 1;
+    int ntask = 4;
     functional_task task[ntask];
+    
+    int bins[ntask+1];
+    functional_binbounds(nel, ntask, bins);
     
     double results[ntask];   // Store results
     _kahansum sums[ntask];    // Sums from each task
@@ -1001,7 +982,7 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
     functional_symmetryimagelist(info->mesh, info->g, true, &imageids);
     
     for (int i=0; i<ntask; i++) {
-        functionaltask_init(&task[i], 0, nel, info); // Setup the task
+        functionaltask_init(&task[i], bins[i], bins[i+1], info); // Setup the task
         
         task[i].v=v;
         task[i].conn=conn;
@@ -1018,7 +999,6 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
     }
     
     functional_parallelmap(ntask, task);
-    //functional_mapfn_elements((void *) &task[0]);
     
     // Sum up the results from each task...
     double sumlist[ntask];
@@ -3747,4 +3727,10 @@ void functional_initialize(void) {
 
     morpho_defineerror(LINEINTEGRAL_ARGS, ERROR_HALT, LINEINTEGRAL_ARGS_MSG);
     morpho_defineerror(LINEINTEGRAL_NFLDS, ERROR_HALT, LINEINTEGRAL_NFLDS_MSG);
+    
+    threadpool_init(&functional_pool, 4);
+}
+
+void functional_finalize(void) {
+    threadpool_clear(&functional_pool);
 }

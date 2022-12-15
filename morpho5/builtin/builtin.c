@@ -302,6 +302,7 @@ void builtin_finalize(void) {
     dictionary_clear(&builtin_symboltable);
     varray_valueclear(&builtin_objects);
     
+    functional_finalize();
     file_finalize();
     system_finalize();
 }

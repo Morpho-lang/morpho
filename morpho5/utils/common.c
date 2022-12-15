@@ -351,7 +351,7 @@ void *threadpool_worker(void *ref) {
         pool->nprocessing++;
         pthread_mutex_unlock(&pool->lock_mutex);
         
-        if (t.func) (t.func) (t.arg); /* Perform the assigned task */
+        if (t.func) { (t.func) (t.arg); }; /* Perform the assigned task */
         
         pthread_mutex_lock(&pool->lock_mutex);
         pool->nprocessing--;
@@ -381,6 +381,9 @@ bool threadpool_init(threadpool *pool, int nworkers) {
     pthread_cond_init(&pool->work_halted_cond, NULL);
     
     pool->nthreads=nworkers;
+    pool->stop=false;
+    pool->nprocessing=0;
+    
     for (int i=0; i<pool->nthreads; i++) {
         pthread_t thread;
         pthread_create(&thread, NULL, threadpool_worker, pool);
@@ -407,10 +410,11 @@ void threadpool_clear(threadpool *pool) {
 
 /** Adds a task to the threadpool */
 bool threadpool_add_task(threadpool *pool, workfn func, void *arg) {
+    bool success=true;
     pthread_mutex_lock(&pool->lock_mutex);
     
     task t = { .func = func, .arg=arg };
-    if (!varray_taskadd(&pool->queue, &t, 1)) return false; /* Add the task to the queue */
+    if (!varray_taskadd(&pool->queue, &t, 1)) success=false; /* Add the task to the queue */
 
     pthread_cond_broadcast(&pool->work_available_cond); /* Signal there is work to be done */
     pthread_mutex_unlock(&pool->lock_mutex);
@@ -421,8 +425,8 @@ bool threadpool_add_task(threadpool *pool, workfn func, void *arg) {
 void threadpool_fence(threadpool *pool) {
     pthread_mutex_lock(&pool->lock_mutex);
     
-    while(true) {
-        if ((!pool->stop && pool->nprocessing > 0) || // If we are simply waiting for tasks to finish
+    while (true) {
+        if ((!pool->stop && (pool->queue.count > 0 || pool->nprocessing>0)) || // If we are simply waiting for tasks to finish
             (pool->stop && pool->nthreads > 0)) { // Or if we have been told to stop
             pthread_cond_wait(&pool->work_halted_cond, &pool->lock_mutex); // Block until working_cond is set
         } else break;
@@ -431,7 +435,6 @@ void threadpool_fence(threadpool *pool) {
     pthread_mutex_unlock(&pool->lock_mutex);
 }
 
-
 bool worker(void *arg) {
     int *val = arg;
     int  old = *val;
@@ -439,8 +442,8 @@ bool worker(void *arg) {
     *val += 1000;
     printf("tid=%p, old=%d, val=%d\n", pthread_self(), old, *val);
     
-    if (*val%2)
-        usleep(100000);
+   // if (*val%2)
+   //     usleep(100000);
     
     return false;
 }

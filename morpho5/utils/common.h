@@ -139,20 +139,21 @@ typedef struct {
 DECLARE_VARRAY(task, task);
 
 typedef struct {
-    varray_task queue; /* Queue of tasks lined up */
-    
     pthread_mutex_t lock_mutex; /* Lock for access to threadpool structure. */
     pthread_cond_t work_available_cond; /* Signals that work is available. */
     pthread_cond_t work_halted_cond; /* Signals when no threads are processing. */
     int nprocessing; /* Number of threads actively processing work */
     int nthreads; /* Number of active threads. */
     bool stop; /* Indicates threads should terminate */
+    
+    varray_task queue; /* Queue of tasks lined up */
 } threadpool;
 
 bool threadpool_init(threadpool *pool, int nworkers);
 void threadpool_clear(threadpool *pool);
 bool threadpool_add_task(threadpool *pool, workfn func, void *arg);
 void threadpool_fence(threadpool *pool);
+void threadpool_wait(threadpool *pool);
 
 void threadpool_test(void);
 

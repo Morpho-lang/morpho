@@ -810,7 +810,7 @@ typedef bool (functional_mapfn) (vm *v, objectmesh *mesh, elementid id, int nv, 
 /** Optionally process results from mapfn */
 typedef bool (functional_processfn) (void *task);
 
-#define PADDING char padding[128]
+#define PADDING char __padding[128]
 
 /** Work to be done is divided into "tasks" which are then dispatched to the threadpool for execution. */
 typedef struct {
@@ -911,9 +911,9 @@ bool functional_mapfn_elements(void *arg) {
 }
 
 /** Dispatches tasks to threadpool */
-bool functional_parallelmap(int ntasks, functional_task **tasks) {
+bool functional_parallelmap(int ntasks, functional_task *tasks) {
     for (int i=0; i<ntasks; i++) {
-       threadpool_add_task(&functional_pool, functional_mapfn_elements, (void *) tasks[i]);
+       threadpool_add_task(&functional_pool, functional_mapfn_elements, (void *) &tasks[i]);
     }
     threadpool_fence(&functional_pool);
     
@@ -992,16 +992,10 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
         task[i].result=(void *) &sums[i].result;
         task[i].out=(void *) &sums[i];
         
-        sums[i].result=0.0;
         sums[i].c=0.0; sums[i].sum=0.0;
     }
     
-    functional_task *mytask[ntask];
-    for (int i=0; i<ntask; i++) {
-        mytask[i]=&task[i];
-    }
-    
-    functional_parallelmap(ntask, mytask);
+    functional_parallelmap(ntask, task);
     
     // Sum up the results from each task...
     double sumlist[ntask];

@@ -57,8 +57,6 @@ typedef struct s_functional_mapinfo {
     void *ref; // Reference to pass on
 } functional_mapinfo;
 
-
-
 /* **********************************************************************
  * Utility functions
  * ********************************************************************** */
@@ -804,6 +802,8 @@ functional_mapnumericalhessian_cleanup:
  * Multithreaded map functions
  * ********************************************************************** */
 
+
+
 threadpool functional_pool;
 
 /** Gradient function */
@@ -910,10 +910,9 @@ bool functional_mapfn_elements(void *arg) {
 }
 
 /** Dispatches tasks to threadpool */
-bool functional_parallelmap(int ntasks, functional_task *tasks) {
-    
+bool functional_parallelmap(int ntasks, functional_task **tasks) {
     for (int i=0; i<ntasks; i++) {
-       threadpool_add_task(&functional_pool, functional_mapfn_elements, (void *) &tasks[i]);
+       threadpool_add_task(&functional_pool, functional_mapfn_elements, (void *) tasks[i]);
     }
     threadpool_fence(&functional_pool);
     
@@ -965,14 +964,15 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
     /* Work out the number of elements */
     if (!functional_countelements(v, info->mesh, info->g, &nel, &conn)) return false;
     
-    int ntask = 16;
-    functional_task task[ntask];
+    int ntask = 4;
+    int pad = 8;
+    functional_task task[ntask*pad];
     
     int bins[ntask+1];
     functional_binbounds(nel, ntask, bins);
     
-    double results[ntask];   // Store results
-    _kahansum sums[ntask];    // Sums from each task
+    double results[ntask*pad];   // Store results
+    _kahansum sums[ntask*pad];    // Sums from each task
     
     /* Find any image elements so they can be skipped */
     varray_elementid imageids;
@@ -980,23 +980,30 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
     functional_symmetryimagelist(info->mesh, info->g, true, &imageids);
     
     for (int i=0; i<ntask; i++) {
-        functionaltask_init(&task[i], bins[i], bins[i+1], info); // Setup the task
+        functionaltask_init(&task[i*pad], bins[i], bins[i+1], info); // Setup the task
         
-        task[i].v=v;
-        task[i].conn=conn;
-        if (imageids.count>0) task[i].skip=&imageids;
+        int j = i*pad;
         
-        task[i].mapfn=(functional_mapfn *) info->integrand;
-        task[i].processfn=functional_sumprocessfn;
+        task[j].v=v;
+        task[j].conn=conn;
+        if (imageids.count>0) task[j].skip=&imageids;
         
-        task[i].result=(void *) &results[i];
-        task[i].out=(void *) &sums[i];
+        task[j].mapfn=(functional_mapfn *) info->integrand;
+        task[j].processfn=functional_sumprocessfn;
         
-        results[i]=0.0;
-        sums[i].c=0.0; sums[i].sum=0.0;
+        task[j].result=(void *) &results[i*pad];
+        task[j].out=(void *) &sums[i*pad];
+        
+        results[j]=0.0;
+        sums[j].c=0.0; sums[j].sum=0.0;
     }
     
-    functional_parallelmap(ntask, task);
+    functional_task *mytask[ntask];
+    for (int i=0; i<ntask; i++) {
+        mytask[i]=&task[i*pad];
+    }
+    
+    functional_parallelmap(ntask, mytask);
     
     // Sum up the results from each task...
     double sumlist[ntask];

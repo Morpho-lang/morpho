@@ -332,6 +332,18 @@ bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int 
 * Thread pools
 * ********************************************************************** */
 
+int threadpool_nthreads = MORPHO_DEFAULTTHREADNUMBER;
+
+/** Sets the number of worker threads to use */
+void morpho_setthreadnumber(int nthreads) {
+    threadpool_nthreads = nthreads;
+}
+
+/** Returns the number of worker threads to use */
+int morpho_threadnumber(void) {
+    return threadpool_nthreads;
+}
+
 DEFINE_VARRAY(task, task);
 
 /* Worker thread */
@@ -435,6 +447,7 @@ void threadpool_fence(threadpool *pool) {
     pthread_mutex_unlock(&pool->lock_mutex);
 }
 
+/*
 bool worker(void *arg) {
     int *val = arg;
     int  old = *val;
@@ -468,3 +481,4 @@ void threadpool_test(void) {
     
     threadpool_clear(&pool);
 }
+*/

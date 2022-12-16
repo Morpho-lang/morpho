@@ -966,7 +966,7 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
     /* Work out the number of elements */
     if (!functional_countelements(v, info->mesh, info->g, &nel, &conn)) return false;
     
-    int ntask = 4;
+    int ntask = morpho_threadnumber();
     functional_task task[ntask];
     
     int bins[ntask+1];
@@ -3725,7 +3725,7 @@ void functional_initialize(void) {
     morpho_defineerror(LINEINTEGRAL_ARGS, ERROR_HALT, LINEINTEGRAL_ARGS_MSG);
     morpho_defineerror(LINEINTEGRAL_NFLDS, ERROR_HALT, LINEINTEGRAL_NFLDS_MSG);
     
-    threadpool_init(&functional_pool, 4);
+    threadpool_init(&functional_pool, morpho_threadnumber());
 }
 
 void functional_finalize(void) {

@@ -146,6 +146,10 @@ void morpho_printvalue(value v);
 void morpho_disassemble(program *code, int *matchline);
 void morpho_stacktrace(vm *v);
 
+/* Multithreading */
+void morpho_setthreadnumber(int nthreads);
+int morpho_threadnumber(void);
+
 /* Initialization and finalization */
 void morpho_setbaseclass(value clss);
 void morpho_initialize(void);

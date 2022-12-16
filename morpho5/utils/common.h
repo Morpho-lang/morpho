@@ -155,6 +155,4 @@ bool threadpool_add_task(threadpool *pool, workfn func, void *arg);
 void threadpool_fence(threadpool *pool);
 void threadpool_wait(threadpool *pool);
 
-void threadpool_test(void);
-
 #endif /* common_h */

@@ -263,7 +263,7 @@ functional_sumintegrand_cleanup:
  * @param[in] info - map info
  * @param[out] out - a matrix of integrand values
  * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
+bool functional_mapintegrandX(vm *v, functional_mapinfo *info, value *out) {
     objectmesh *mesh = info->mesh;
     objectselection *sel = info->sel;
     grade g = info->g;
@@ -816,6 +816,7 @@ typedef bool (functional_processfn) (void *task);
 typedef struct {
     elementid start, end; /* Start and end indices for the task */
     elementid id; /* Current element id */
+    elementid nel; /* Current element id */
     
     varray_elementid *skip; /* Sorted list of element ids to skip; set to NULL if not needed */
     unsigned int sindx;
@@ -840,6 +841,7 @@ typedef struct {
 void functionaltask_init(functional_task *task, elementid start, elementid end, functional_mapinfo *info)  {
     task->start=start;
     task->end=end;
+    task->nel=0;
     task->id=0;
     task->g=(info ? info->g : 0);
     
@@ -871,7 +873,7 @@ bool functional_checkskip(functional_task *task) {
     return false;
 }
 
-/** Maps a function over elements */
+/** Worker function to map a function over elements */
 bool functional_mapfn_elements(void *arg) {
     functional_task *task = (functional_task *) arg;
     dictionary *selected=NULL;
@@ -920,28 +922,9 @@ bool functional_parallelmap(int ntasks, functional_task *tasks) {
     return true;
 }
 
-/* Structure to store a kahan sum */
-typedef struct {
-    double result;
-    double c;
-    double sum;
-    PADDING;
-} _kahansum;
-
-/** Perform Kahan summation for total */
-bool functional_sumprocessfn(void *arg) {
-    functional_task *task = (functional_task *) arg;
-    _kahansum *ks = (_kahansum *) task->out;
-    double y=ks->result-ks->c;
-    double t=ks->sum+y;
-    ks->c=(t-ks->sum)-y;
-    ks->sum=t; // Kahan summation
-    return true;
-}
-
 /** Calculate bin sizes */
 void functional_binbounds(int nel, int nbins, int *binbounds) {
-    int binsizes[nbins];
+    int binsizes[nbins+1];
     
     int defsize = nel / nbins;
     for (int i=0; i<nbins; i++) binsizes[i]=defsize;
@@ -958,40 +941,79 @@ void functional_binbounds(int nel, int nbins, int *binbounds) {
     }
 }
 
-/** Parallelized version of sum integrand */
-bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
-    int nel=0;               // Number of elements
+/** Prepare tasks for submitting
+ * @param[in] v - Virtual machine to use
+ * @param[in] info - Info structure with functional information
+ * @param[in] ntask - Number of tasks
+ * @param[out] task - Task structures updated
+ * @param[out] imageids - Updated to include symmetry image ids */
+int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, functional_task *task, varray_elementid *imageids) {
+    int nel=0;
     objectsparse *conn=NULL; // The associated connectivity matrix if any
     
     /* Work out the number of elements */
     if (!functional_countelements(v, info->mesh, info->g, &nel, &conn)) return false;
     
-    int ntask = morpho_threadnumber();
-    functional_task task[ntask];
-    
     int bins[ntask+1];
     functional_binbounds(nel, ntask, bins);
     
-    _kahansum sums[ntask];    // Sums from each task
-    
     /* Find any image elements so they can be skipped */
-    varray_elementid imageids;
-    varray_elementidinit(&imageids);
-    functional_symmetryimagelist(info->mesh, info->g, true, &imageids);
+    functional_symmetryimagelist(info->mesh, info->g, true, imageids);
     
+    /** Initialize task structures */
     for (int i=0; i<ntask; i++) {
-        functionaltask_init(&task[i], bins[i], bins[i+1], info); // Setup the task
+        functionaltask_init(task+i, bins[i], bins[i+1], info); // Setup the task
         
+        task[i].nel=nel;
         task[i].v=v;
         task[i].conn=conn;
-        if (imageids.count>0) task[i].skip=&imageids;
-        
+        if (imageids->count>0) task[i].skip=imageids;
+    }
+    
+    return true;
+}
+
+/* ----------------------------
+ * Sum integrands
+ * ---------------------------- */
+
+/* Structure to store intermediate results for Kahan summation */
+typedef struct {
+    double result;
+    double c;
+    double sum;
+    PADDING;
+} functional_sumintermediate;
+
+/** Perform Kahan summation for total */
+bool functional_sumintegrandprocessfn(void *arg) {
+    functional_task *task = (functional_task *) arg;
+    functional_sumintermediate *ks = (functional_sumintermediate *) task->out;
+    double y=ks->result-ks->c;
+    double t=ks->sum+y;
+    ks->c=(t-ks->sum)-y;
+    ks->sum=t; // Kahan summation
+    return true;
+}
+
+/** Sum the integrand, mapping over integrand function */
+bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
+    int ntask=morpho_threadnumber();
+    functional_task task[ntask];
+    
+    varray_elementid imageids;
+    varray_elementidinit(&imageids);
+    
+    if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
+    
+    functional_sumintermediate sums[ntask];
+    
+    for (int i=0; i<ntask; i++) {
         task[i].mapfn=(functional_mapfn *) info->integrand;
-        task[i].processfn=functional_sumprocessfn;
+        task[i].processfn=functional_sumintegrandprocessfn;
         
         task[i].result=(void *) &sums[i].result;
         task[i].out=(void *) &sums[i];
-        
         sums[i].c=0.0; sums[i].sum=0.0;
     }
     
@@ -1005,17 +1027,61 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
     *out = MORPHO_FLOAT(functional_sumlist(sumlist, ntask));
     
     varray_elementidclear(&imageids);
-    
     return true;
 }
 
+/* ----------------------------
+ * Map integrands
+ * ---------------------------- */
+
 /** Set relevant matrix element to the result of the integrand */
-bool functional_integrandprocessfn(void *arg) {
+bool functional_mapintegrandprocessfn(void *arg) {
     functional_task *task = (functional_task *) arg;
     objectmatrix *new = (objectmatrix *) task->out;
     matrix_setelement(new, 0, task->id, *(double *) task->result);
     return true;
 }
+
+/** Sum the integrand, mapping over integrand function */
+bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
+    int ntask=morpho_threadnumber();
+    functional_task task[ntask];
+    
+    varray_elementid imageids;
+    varray_elementidinit(&imageids);
+    
+    objectmatrix *new = NULL;
+    
+    if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
+    
+    /* Create output matrix */
+    if (task[0].nel>0) {
+        new=object_newmatrix(1, task[0].nel, true);
+        if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
+    }
+    
+    functional_sumintermediate sums[ntask];
+    
+    for (int i=0; i<ntask; i++) {
+        task[i].mapfn=(functional_mapfn *) info->integrand;
+        task[i].processfn=functional_mapintegrandprocessfn;
+    
+        task[i].result=(void *) &sums[i].result;
+        task[i].out=(void *) new;
+    }
+    
+    functional_parallelmap(ntask, task);
+    
+    // ...and return the result
+    *out = MORPHO_OBJECT(new);
+    
+    varray_elementidclear(&imageids);
+    return true;
+}
+
+/* ----------------------------
+ * Map gradients
+ * ---------------------------- */
 
 /* **********************************************************************
  * Common library functions

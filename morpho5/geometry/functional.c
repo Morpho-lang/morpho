@@ -345,7 +345,7 @@ functional_mapintegrand_cleanup:
  * @param[in] info - map info structure
  * @param[out] out - a matrix of integrand values
  * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
+bool functional_mapgradientX(vm *v, functional_mapinfo *info, value *out) {
     objectmesh *mesh = info->mesh;
     objectselection *sel = info->sel;
     grade g = info->g;
@@ -1042,7 +1042,7 @@ bool functional_mapintegrandprocessfn(void *arg) {
     return true;
 }
 
-/** Sum the integrand, mapping over integrand function */
+/** Map integrand function, storing the results in a matrix */
 bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
     int ntask=morpho_threadnumber();
     functional_task task[ntask];
@@ -1082,6 +1082,38 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
 /* ----------------------------
  * Map gradients
  * ---------------------------- */
+
+/** Compute the gradient */
+bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
+    int ntask=morpho_threadnumber();
+    functional_task task[ntask];
+    
+    varray_elementid imageids;
+    varray_elementidinit(&imageids);
+    
+    objectmatrix *new = NULL;
+    
+    if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
+    
+    /* Create output matrix */ /* Should create one per thread? */
+    if (task[0].nel>0) {
+        new=object_newmatrix(info->mesh->vert->nrows, info->mesh->vert->ncols, true);
+        if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
+    }
+    
+    for (int i=0; i<ntask; i++) {
+        task[i].mapfn=(functional_mapfn *) info->grad;
+        task[i].result=(void *) new;
+    }
+    
+    functional_parallelmap(ntask, task);
+    
+    // ...and return the result
+    *out = MORPHO_OBJECT(new);
+    
+    varray_elementidclear(&imageids);
+    return true;
+}
 
 /* **********************************************************************
  * Common library functions

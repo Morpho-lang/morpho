@@ -2059,27 +2059,37 @@ bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value
 * Subkernels
 * ********************************************************************** */
 
-DEFINE_VARRAY(vm, struct svm)
+DEFINE_VARRAY(vm, struct svm *)
 
 /** Obtain subkernels from the VM for use in a thread */
 bool vm_subkernels(vm *v, int nkernels, vm **subkernels) {
-    for (int i=0; i<nkernels; i++) {
-        vm sv;
-        if (!varray_vmadd(&v->subkernels, &sv, 1)) return false;
-        subkernels[i]=&v->subkernels.data[v->subkernels.count-1];
-        vm_init(subkernels[i]);
-        vm_start(subkernels[i], v->current);
-        subkernels[i]->parent=v;
-        
+    int nk=0;
+    
+    /* Check for unused subkernels */
+    for (int i=0; i<v->subkernels.count; i++) {
+        vm *kernel=v->subkernels.data[i];
+        if (!kernel->parent) { // Check whether subkernel is unused
+            subkernels[nk]=kernel;
+            nk++;
+        }
     }
+    
+    /* Create any additional kernels that need to be made */
+    for (int i=nk; i<nkernels; i++) {
+        vm *new = morpho_newvm();
+        if (!new) return false;
+        if (!varray_vmadd(&v->subkernels, &new, 1)) return false;
+        vm_start(new, v->current);
+        new->parent=v;
+        subkernels[i]=new;
+    }
+    
     return true;
 }
 
-/** Release subkernels from the VM for use in a thread */
-void vm_releasesubkernels(vm *v, int nkernels, vm *subkernels) {
-    for (int i=0; i<nkernels; i++) {
-        subkernels[i].parent=NULL;
-    }
+/** Release a subkernels from the VM for use in a thread */
+void vm_releasesubkernel(vm *subkernel) {
+    subkernel->parent=NULL;
 }
 
 /* **********************************************************************

@@ -157,6 +157,6 @@ void morpho_finalize(void);
 
 /* Obtain subkernels [for internal use only] */
 bool vm_subkernels(vm *v, int nkernels, vm **subkernels);
-void vm_releasesubkernels(vm *v, int nkernels, vm *subkernels);
+void vm_releasesubkernel(vm *subkernel);
 
 #endif /* morpho_h */

@@ -976,6 +976,13 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
     return true;
 }
 
+/** Cleans up task structures after executing them. */
+void functional_cleanuptasks(vm *v, int ntask, functional_task *task) {
+    for (int i=0; i<ntask; i++) {
+        if (task[i].v!=v) vm_releasesubkernel(task[i].v);
+    }
+}
+
 /* ----------------------------
  * Sum integrands
  * ---------------------------- */
@@ -1029,6 +1036,7 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
     // ...and return the result
     *out = MORPHO_FLOAT(functional_sumlist(sumlist, ntask));
     
+    functional_cleanuptasks(v, ntask, task);
     varray_elementidclear(&imageids);
     return true;
 }
@@ -1078,6 +1086,7 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
     // ...and return the result
     *out = MORPHO_OBJECT(new);
     
+    functional_cleanuptasks(v, ntask, task);
     varray_elementidclear(&imageids);
     return true;
 }
@@ -1123,6 +1132,7 @@ functional_mapgradient_cleanup:
     // ...and return the result
     *out = MORPHO_OBJECT(new[0]);
     
+    functional_cleanuptasks(v, ntask, task);
     varray_elementidclear(&imageids);
     return success;
 }

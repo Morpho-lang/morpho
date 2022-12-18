@@ -243,7 +243,7 @@ typedef struct {
 
 /** Varrays of vms */
 struct svm;
-DECLARE_VARRAY(vm, struct svm)
+DECLARE_VARRAY(vm, struct svm*)
 
 /** @brief A Morpho virtual machine and its current state */
 struct svm {

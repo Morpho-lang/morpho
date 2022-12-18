@@ -407,6 +407,8 @@ functional_mapgradient_cleanup:
     return ret;
 }
 
+static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc);
+
 /* Calculates a numerical gradient */
 bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectmatrix *frc) {
     double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
@@ -1085,34 +1087,43 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
 
 /** Compute the gradient */
 bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
+    int success=false;
     int ntask=morpho_threadnumber();
     functional_task task[ntask];
     
     varray_elementid imageids;
     varray_elementidinit(&imageids);
     
-    objectmatrix *new = NULL;
+    objectmatrix *new[ntask];
+    for (int i=0; i<ntask; i++) new[i]=NULL;
     
     if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
     
-    /* Create output matrix */ /* Should create one per thread? */
-    if (task[0].nel>0) {
-        new=object_newmatrix(info->mesh->vert->nrows, info->mesh->vert->ncols, true);
-        if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
-    }
-    
+    /* Create output matrix */
     for (int i=0; i<ntask; i++) {
+        // Create one per thread
+        new[i]=object_newmatrix(info->mesh->vert->nrows, info->mesh->vert->ncols, true);
+        if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapgradient_cleanup; }
+        
         task[i].mapfn=(functional_mapfn *) info->grad;
-        task[i].result=(void *) new;
+        task[i].result=(void *) new[i];
     }
     
     functional_parallelmap(ntask, task);
     
+    /* Then add up all the matrices */
+    for (int i=1; i<ntask; i++) matrix_add(new[0], new[i], new[0]);
+    
+    success=true;
+    
+functional_mapgradient_cleanup:
+    for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
+    
     // ...and return the result
-    *out = MORPHO_OBJECT(new);
+    *out = MORPHO_OBJECT(new[0]);
     
     varray_elementidclear(&imageids);
-    return true;
+    return success;
 }
 
 /* **********************************************************************

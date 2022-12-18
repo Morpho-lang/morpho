@@ -191,6 +191,8 @@ static void vm_init(vm *v) {
     v->profiler=NULL;
     v->status=VM_RUNNING;
 #endif
+    v->parent=NULL;
+    varray_vminit(&v->subkernels);
 }
 
 /** Clears a virtual machine */
@@ -199,6 +201,38 @@ static void vm_clear(vm *v) {
     varray_valueclear(&v->globals);
     vm_graylistclear(&v->gray);
     vm_freeobjects(v);
+    varray_vmclear(&v->subkernels);
+}
+
+/** Prepares a vm to run program p */
+bool vm_start(vm *v, program *p) {
+    /* Set the current program */
+    v->current=p;
+
+    /* Clear current error state */
+    error_clear(&v->err);
+    v->errfp=NULL;
+
+    /* Set up the callframe stack */
+    v->fp=v->frame; /* Set the frame pointer to the bottom of the stack */
+    v->fp->function=p->global;
+    v->fp->closure=NULL;
+    v->fp->roffset=0;
+    
+#ifdef MORPHO_PROFILER
+    v->fp->inbuiltinfunction=NULL;
+#endif
+    
+    /* Set instruction base */
+    v->instructions = p->code.data;
+    if (!v->instructions) return false;
+
+    /* Set up the constant table */
+    varray_value *konsttable=object_functiongetconstanttable(p->global);
+    if (!konsttable) return false;
+    v->konst = konsttable->data;
+    
+    return true;
 }
 
 /** Frees all objects bound to a virtual machine */
@@ -468,6 +502,8 @@ void vm_collectgarbage(vm *v) {
 #endif
     vm *vc = (v!=NULL ? v : globalvm);
     if (!vc) return;
+    
+    if (vc->parent) return; // Don't garbage collect in subkernels
     
 #ifdef MORPHO_PROFILER
     vc->status=VM_INGC;
@@ -1884,41 +1920,17 @@ bool morpho_ismanagedobject(object *obj) {
  * @param[in] p - program to run
  * @returns true on success, false if an error occurred */
 bool morpho_run(vm *v, program *p) {
-    /* Set the current program */
-    v->current=p;
-
-    /* Clear current error state */
-    error_clear(&v->err);
-    v->errfp=NULL;
-
-    /* Set up the callframe stack */
-    v->fp=v->frame; /* Set the frame pointer to the bottom of the stack */
-    v->fp->function=p->global;
-    v->fp->closure=NULL;
-    v->fp->roffset=0;
+    if (!vm_start(v, p)) return false;
     
-#ifdef MORPHO_PROFILER
-    v->fp->inbuiltinfunction=NULL;
-#endif
-
     /* Initialize global variables */
     int oldsize = v->globals.count;
     varray_valueresize(&v->globals, p->nglobals);
     v->globals.count=p->nglobals;
     for (int i=oldsize; i<p->nglobals; i++) v->globals.data[i]=MORPHO_NIL; /* Zero out globals */
 
-    /* Set instruction base */
-    v->instructions = p->code.data;
-    if (!v->instructions) return false;
-
-    /* Set up the constant table */
-    varray_value *konsttable=object_functiongetconstanttable(p->global);
-    if (!konsttable) return false;
-    v->konst = konsttable->data;
-
     /* and initially set the register pointer to the bottom of the stack */
     value *reg = v->stack.data;
-
+    
     /* Expand and clear the stack if necessary */
     if (v->fp->function->nregs>v->stack.count) {
         unsigned int oldcount=v->stack.count;
@@ -1973,7 +1985,7 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
         value *xargs=args;
 
         /* If the arguments are on the stack, we need to keep to track of this */
-        bool argsonstack=(args>v->stack.data && args<v->stack.data+v->stack.capacity);
+        bool argsonstack=(v->stack.data && args>v->stack.data && args<v->stack.data+v->stack.capacity);
         if (argsonstack) aoffset=args-v->stack.data;
 
         value *reg=v->stack.data+v->fp->roffset;
@@ -2041,6 +2053,33 @@ bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value
     inv.method=method;
 
     return morpho_call(v, MORPHO_OBJECT(&inv), nargs, args, ret);
+}
+
+/* **********************************************************************
+* Subkernels
+* ********************************************************************** */
+
+DEFINE_VARRAY(vm, struct svm)
+
+/** Obtain subkernels from the VM for use in a thread */
+bool vm_subkernels(vm *v, int nkernels, vm **subkernels) {
+    for (int i=0; i<nkernels; i++) {
+        vm sv;
+        if (!varray_vmadd(&v->subkernels, &sv, 1)) return false;
+        subkernels[i]=&v->subkernels.data[v->subkernels.count-1];
+        vm_init(subkernels[i]);
+        vm_start(subkernels[i], v->current);
+        subkernels[i]->parent=v;
+        
+    }
+    return true;
+}
+
+/** Release subkernels from the VM for use in a thread */
+void vm_releasesubkernels(vm *v, int nkernels, vm *subkernels) {
+    for (int i=0; i<nkernels; i++) {
+        subkernels[i].parent=NULL;
+    }
 }
 
 /* **********************************************************************

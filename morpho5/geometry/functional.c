@@ -812,8 +812,6 @@ typedef bool (functional_mapfn) (vm *v, objectmesh *mesh, elementid id, int nv, 
 /** Optionally process results from mapfn */
 typedef bool (functional_processfn) (void *task);
 
-#define PADDING char __padding[128]
-
 /** Work to be done is divided into "tasks" which are then dispatched to the threadpool for execution. */
 typedef struct {
     elementid start, end; /* Start and end indices for the task */
@@ -836,7 +834,7 @@ typedef struct {
     
     void *result; /* Result of individual element as an opaque pointer */
     void *out; /* Overall output as an opaque pointer */
-    PADDING;
+    _MORPHO_PADDING;
 } functional_task;
 
 /* Initialize a task structure */
@@ -962,12 +960,15 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
     /* Find any image elements so they can be skipped */
     functional_symmetryimagelist(info->mesh, info->g, true, imageids);
     
+    vm *subkernels[ntask];
+    if (!vm_subkernels(v, ntask, subkernels)) return false; 
+    
     /** Initialize task structures */
     for (int i=0; i<ntask; i++) {
         functionaltask_init(task+i, bins[i], bins[i+1], info); // Setup the task
         
+        task[i].v=subkernels[i];
         task[i].nel=nel;
-        task[i].v=v;
         task[i].conn=conn;
         if (imageids->count>0) task[i].skip=imageids;
     }
@@ -984,7 +985,7 @@ typedef struct {
     double result;
     double c;
     double sum;
-    PADDING;
+    _MORPHO_PADDING;
 } functional_sumintermediate;
 
 /** Perform Kahan summation for total */

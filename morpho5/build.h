@@ -123,6 +123,12 @@
 /** @brief Default number of threads */
 #define MORPHO_DEFAULTTHREADNUMBER 1
 
+/** @brief Size of L1 cache line */
+#define _MORPHO_L1CACHELINESIZE 128 // M1/M2 is 128; most intel are 64
+
+/** @brief Pad data structures involved in multiprocessing */
+#define _MORPHO_PADDING char __padding[_MORPHO_L1CACHELINESIZE]
+
 /* **********************************************************************
  * Libraries
  * ********************************************************************** */

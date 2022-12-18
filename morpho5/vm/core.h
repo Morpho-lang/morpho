@@ -241,6 +241,10 @@ typedef struct {
 /** @brief Highest register addressable in a window. */
 #define VM_MAXIMUMREGISTERNUMBER 255
 
+/** Varrays of vms */
+struct svm;
+DECLARE_VARRAY(vm, struct svm)
+
 /** @brief A Morpho virtual machine and its current state */
 struct svm {
     program *current; /** The current program being executed */
@@ -272,6 +276,11 @@ struct svm {
 #endif
     
     objectupvalue *openupvalues; /** Linked list of open upvalues */
+    
+    struct svm *parent; /** Parent vm */
+    varray_vm subkernels; /** Subkernels */
+    
+    _MORPHO_PADDING; /** Ensure subkernels do not cause false sharing */
 };
 
 /* **********************************************************************

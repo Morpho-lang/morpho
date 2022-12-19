@@ -2089,6 +2089,35 @@ bool vm_subkernels(vm *v, int nkernels, vm **subkernels) {
 
 /** Release a subkernels from the VM for use in a thread */
 void vm_releasesubkernel(vm *subkernel) {
+    vm *v = subkernel->parent;
+    if (!v) return;
+    
+    /** Transfer objects from subkernel to kernel */
+    if (subkernel->objects) {
+        object *obj;
+    
+        for (obj=subkernel->objects; obj!=NULL; obj=obj->next) {
+            if (obj->next==NULL) break;
+        }
+        
+        /* Add the subkernel's objects to the parent */
+        obj->next=v->objects;
+        v->objects=subkernel->objects;
+        
+        /* Include this in the bound list */
+        v->bound+=subkernel->bound;
+        
+        /* Remove from the subkernel */
+        subkernel->objects=NULL;
+        subkernel->bound=0;
+    }
+    
+    /** Check if the subkernel is in an error state */
+    if (!ERROR_SUCCEEDED(subkernel->err) &&
+        ERROR_SUCCEEDED(v->err)) {
+        v->err=subkernel->err;
+    }
+    
     subkernel->parent=NULL;
 }
 

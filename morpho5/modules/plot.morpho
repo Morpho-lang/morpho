@@ -261,6 +261,8 @@ fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, 
 
       for (i in 0...nel) {
         var val = field[g, i]
+        if (!isnil(cmin)) val = max(cmin, val)
+        if (!isnil(cmax)) val = min(cmax, val)
         if (scale) val=(val-bnd[0])*sc
         cmat.setcolumn(i, Matrix(cm.rgb(val)))
       }

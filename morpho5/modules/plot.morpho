@@ -217,7 +217,7 @@ fn plotselection(mesh, selection, grade=nil, filter=nil, transmit=nil) {
  * @param[in] colormap - Colormap to use
  * @param[in] style - style to use
  * @param[in] scale - whether or not to scale values */
-fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, transmit=nil, scalebar=nil) {
+fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, transmit=nil, scalebar=nil, cmin=nil, cmax=nil) {
   var mesh = field.mesh()
   var shape = field.shape()
 
@@ -229,6 +229,8 @@ fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, 
   if (cm==nil) cm = ViridisMap()    // Default color map
 
   var bnd=bounds(field)         // Find bounds for the field
+  if (!isnil(cmin)) bnd[0] = cmin
+  if (!isnil(cmax)) bnd[1] = cmax
   var sc = bnd[1]-bnd[0]
   if (abs(sc)>1e-16) sc=1/sc else sc = 1
 
@@ -242,6 +244,8 @@ fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, 
 
     for (i in 0...nv) {
       var val = field[0, i]
+      if (!isnil(cmin)) val = max(cmin, val)
+      if (!isnil(cmax)) val = min(cmax, val)
       if (scale) val=(val-bnd[0])*sc
       cmat.setcolumn(i, Matrix(cm.rgb(val)))
     }

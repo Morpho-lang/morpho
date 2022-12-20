@@ -2080,6 +2080,8 @@ bool vm_subkernels(vm *v, int nkernels, vm **subkernels) {
         if (!new) return false;
         if (!varray_vmadd(&v->subkernels, &new, 1)) return false;
         vm_start(new, v->current);
+        new->globals.count=v->globals.count;
+        new->globals.data=v->globals.data;
         new->parent=v;
         subkernels[i]=new;
     }

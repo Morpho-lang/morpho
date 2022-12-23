@@ -570,7 +570,7 @@ static bool functional_numericalhessian(vm *v, objectmesh *mesh, elementid i, in
  * @param[in] info - map info
  * @param[out] out - a matrix of integrand values
  * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out) {
+bool functional_mapnumericalgradientX(vm *v, functional_mapinfo *info, value *out) {
     objectmesh *mesh = info->mesh;
     objectselection *sel = info->sel;
     grade g = info->g;
@@ -1116,6 +1116,84 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
         if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapgradient_cleanup; }
         
         task[i].mapfn=(functional_mapfn *) info->grad;
+        task[i].result=(void *) new[i];
+    }
+    
+    functional_parallelmap(ntask, task);
+    
+    /* Then add up all the matrices */
+    for (int i=1; i<ntask; i++) matrix_add(new[0], new[i], new[0]);
+    
+    success=true;
+    
+functional_mapgradient_cleanup:
+    for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
+    
+    // ...and return the result
+    *out = MORPHO_OBJECT(new[0]);
+    
+    functional_cleanuptasks(v, ntask, task);
+    varray_elementidclear(&imageids);
+    return success;
+}
+
+/* ----------------------------
+ * Map numerical gradients
+ * ---------------------------- */
+
+/** Computes the gradient of element eid with respect to vertex i */
+bool functional_numericalgrad(vm *v, objectmesh *mesh, elementid eid, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectmatrix *frc) {
+    double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
+    
+    // Loop over coordinates
+    for (unsigned int k=0; k<mesh->dim; k++) {
+        matrix_getelement(frc, k, i, &f0);
+
+        matrix_getelement(mesh->vert, k, i, &x0);
+        matrix_setelement(mesh->vert, k, i, x0+eps);
+        if (!(*integrand) (v, mesh, eid, nv, vid, ref, &fp)) return false;
+        matrix_setelement(mesh->vert, k, i, x0-eps);
+        if (!(*integrand) (v, mesh, eid, nv, vid, ref, &fm)) return false;
+        matrix_setelement(mesh->vert, k, i, x0);
+
+        matrix_setelement(frc, k, i, f0+(fp-fm)/(2*eps));
+    }
+    
+    return true;
+}
+
+/** Computes the gradient of element id with respect to its constituent vertices */
+bool functional_numericalgradientmapfn(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out) {
+    functional_mapinfo *info=(functional_mapinfo *) ref;
+    
+    for (int i=0; i<nv; i++) {
+        functional_numericalgrad(v, mesh, id, vid[i], nv, vid, info->integrand, info->ref, out);
+    }
+    
+    return true;
+}
+
+/** Compute the gradient numerically */
+bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out) {
+    int success=false;
+    int ntask=morpho_threadnumber();
+    functional_task task[ntask];
+    
+    varray_elementid imageids;
+    varray_elementidinit(&imageids);
+    
+    objectmatrix *new[ntask];
+    for (int i=0; i<ntask; i++) new[i]=NULL;
+    
+    if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
+    
+    for (int i=0; i<ntask; i++) {
+        // Create one output matrix per thread
+        new[i]=object_newmatrix(info->mesh->vert->nrows, info->mesh->vert->ncols, true);
+        if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapgradient_cleanup; }
+        
+        task[i].ref=(void *) info;
+        task[i].mapfn=functional_numericalgradientmapfn;
         task[i].result=(void *) new[i];
     }
     

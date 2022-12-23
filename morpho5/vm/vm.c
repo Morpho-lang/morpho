@@ -2070,6 +2070,7 @@ bool vm_subkernels(vm *v, int nkernels, vm **subkernels) {
         vm *kernel=v->subkernels.data[i];
         if (!kernel->parent) { // Check whether subkernel is unused
             subkernels[nk]=kernel;
+            kernel->parent=v;
             nk++;
         }
     }

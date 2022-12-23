@@ -1162,12 +1162,27 @@ bool functional_numericalgrad(vm *v, objectmesh *mesh, elementid eid, elementid 
     return true;
 }
 
-/** Computes the gradient of element id with respect to its constituent vertices */
+/** Computes the gradient of element id with respect to its constituent vertices and any dependencies */
 bool functional_numericalgradientmapfn(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out) {
     functional_mapinfo *info=(functional_mapinfo *) ref;
     
     for (int i=0; i<nv; i++) {
-        functional_numericalgrad(v, mesh, id, vid[i], nv, vid, info->integrand, info->ref, out);
+        if (!functional_numericalgrad(v, mesh, id, vid[i], nv, vid, info->integrand, info->ref, out)) return false;
+    }
+    
+    // Now handle dependencies
+    if (info->dependencies) {
+        varray_elementid dependencies;
+        varray_elementidinit(&dependencies);
+        
+        // Get list of vertices this element depends on
+        if ((info->dependencies) (info, id, &dependencies)) {
+            for (int j=0; j<dependencies.count; j++) {
+                functional_numericalgrad(v, mesh, id, dependencies.data[j], nv, vid, info->integrand, info->ref, out);
+            }
+        }
+        
+        varray_elementidclear(&dependencies);
     }
     
     return true;
@@ -1182,8 +1197,10 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
     varray_elementid imageids;
     varray_elementidinit(&imageids);
     
-    objectmatrix *new[ntask];
+    objectmatrix *new[ntask]; // Create an output matrix for each thread
     for (int i=0; i<ntask; i++) new[i]=NULL;
+    
+    objectmesh meshclones[ntask]; // Create shallow clones of the mesh with different vertex matrices
     
     if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
     
@@ -1192,7 +1209,12 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
         new[i]=object_newmatrix(info->mesh->vert->nrows, info->mesh->vert->ncols, true);
         if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapgradient_cleanup; }
         
-        task[i].ref=(void *) info;
+        // Clone the vertex matrix for each thread
+        meshclones[i]=*info->mesh;
+        meshclones[i].vert=object_clonematrix(info->mesh->vert);
+        task[i].mesh=&meshclones[i];
+        
+        task[i].ref=(void *) info; // Use this to pass the info structure
         task[i].mapfn=functional_numericalgradientmapfn;
         task[i].result=(void *) new[i];
     }
@@ -1204,14 +1226,18 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
     
     success=true;
     
-functional_mapgradient_cleanup:
-    for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
-    
     // ...and return the result
     *out = MORPHO_OBJECT(new[0]);
     
+functional_mapgradient_cleanup:
+    // Free the temporary copies of the vertex matrices
+    for (int i=0; i<ntask; i++) object_free((object *) meshclones[i].vert);
+    // Free spare output matrices
+    for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
+    
     functional_cleanuptasks(v, ntask, task);
     varray_elementidclear(&imageids);
+    
     return success;
 }
 
@@ -2781,9 +2807,12 @@ bool meancurvaturesq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, in
     mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_AREA, &nbrs);
 
     for (unsigned int i=0; i<nbrs.count; i++) { /* Loop over adjacent triangles */
-        int nvert, *vids;
-        if (!sparseccs_getrowindices(&cref->areael->ccs, nbrs.data[i], &nvert, &vids)) goto meancurvsq_cleanup;
+        int nvert, *ovids;
+        if (!sparseccs_getrowindices(&cref->areael->ccs, nbrs.data[i], &nvert, &ovids)) goto meancurvsq_cleanup;
 
+        int vids[nvert]; // Copy so we can reorder
+        for (int j=0; j<nvert; j++) vids[j]=ovids[j];
+        
         /* Order the vertices */
         if (!curvature_ordervertices(&synid, nvert, vids)) goto meancurvsq_cleanup;
 
@@ -2853,8 +2882,11 @@ bool gausscurvature_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
     mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_AREA, &nbrs);
 
     for (unsigned int i=0; i<nbrs.count; i++) { /* Loop over adjacent triangles */
-        int nvert, *vids;
-        if (!sparseccs_getrowindices(&cref->areael->ccs, nbrs.data[i], &nvert, &vids)) goto gausscurv_cleanup;
+        int nvert, *ovids;
+        if (!sparseccs_getrowindices(&cref->areael->ccs, nbrs.data[i], &nvert, &ovids)) goto gausscurv_cleanup;
+        
+        int vids[nvert]; // Copy so we can reorder
+        for (int j=0; j<nvert; j++) vids[j]=ovids[j];
 
         /* Order the vertices */
         if (!curvature_ordervertices(&synid, nvert, vids)) goto gausscurv_cleanup;

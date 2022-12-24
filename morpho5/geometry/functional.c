@@ -1172,6 +1172,7 @@ bool functional_numericalgrad(vm *v, objectmesh *mesh, elementid eid, elementid 
 
 /** Computes the gradient of element id with respect to its constituent vertices and any dependencies */
 bool functional_numericalgradientmapfn(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out) {
+    bool success=true;
     functional_mapinfo *info=(functional_mapinfo *) ref;
     
     for (int i=0; i<nv; i++) {
@@ -1186,14 +1187,15 @@ bool functional_numericalgradientmapfn(vm *v, objectmesh *mesh, elementid id, in
         // Get list of vertices this element depends on
         if ((info->dependencies) (info, id, &dependencies)) {
             for (int j=0; j<dependencies.count; j++) {
-                functional_numericalgrad(v, mesh, id, dependencies.data[j], nv, vid, info->integrand, info->ref, out);
+                if (functional_containsvertex(nv, vid, dependencies.data[j])) continue;
+                if (!functional_numericalgrad(v, mesh, id, dependencies.data[j], nv, vid, info->integrand, info->ref, out)) success=false;
             }
         }
         
         varray_elementidclear(&dependencies);
     }
     
-    return true;
+    return success;
 }
 
 /** Compute the gradient numerically */

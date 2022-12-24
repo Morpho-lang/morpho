@@ -2124,6 +2124,17 @@ void vm_releasesubkernel(vm *subkernel) {
     subkernel->parent=NULL;
 }
 
+/** Clean out attached objects from a subkernel */
+void vm_cleansubkernel(vm *subkernel) {
+    object *next=NULL;
+    for (object *obj=subkernel->objects; obj!=NULL; obj=next) {
+        next=obj->next;
+        object_free(obj);
+    }
+    subkernel->objects=NULL;
+    subkernel->bound=0;
+}
+
 /* **********************************************************************
 * Initialization
 * ********************************************************************** */

@@ -908,6 +908,9 @@ bool functional_mapfn_elements(void *arg) {
         
         // Perform post-processing if needed
         if (task->processfn) if (!(*task->processfn) (task)) return false;
+        
+        // Clean out temporary objects
+        vm_cleansubkernel(task->v);
     }
     return true;
 }

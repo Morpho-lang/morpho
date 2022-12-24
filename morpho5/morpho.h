@@ -155,8 +155,9 @@ void morpho_setbaseclass(value clss);
 void morpho_initialize(void);
 void morpho_finalize(void);
 
-/* Obtain subkernels [for internal use only] */
+/* Obtain and use subkernels [for internal use only] */
 bool vm_subkernels(vm *v, int nkernels, vm **subkernels);
 void vm_releasesubkernel(vm *subkernel);
+void vm_cleansubkernel(vm *subkernel);
 
 #endif /* morpho_h */

@@ -1132,6 +1132,9 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
     /* Then add up all the matrices */
     for (int i=1; i<ntask; i++) matrix_add(new[0], new[i], new[0]);
     
+    // Use symmetry actions
+    if (info->sym==SYMMETRY_ADD) functional_symmetrysumforces(info->mesh, new[0]);
+    
     success=true;
     
 functional_mapgradient_cleanup:
@@ -1235,6 +1238,9 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
     for (int i=1; i<ntask; i++) matrix_add(new[0], new[i], new[0]);
     
     success=true;
+    
+    // Use symmetry actions
+    if (info->sym==SYMMETRY_ADD) functional_symmetrysumforces(info->mesh, new[0]);
     
     // ...and return the result
     *out = MORPHO_OBJECT(new[0]);

@@ -854,7 +854,7 @@ void functionaltask_init(functional_task *task, elementid start, elementid end, 
     task->processfn=NULL;
     
     task->mesh=(info ? info->mesh : NULL);
-    task->selection=NULL;
+    task->selection=(info ? info->sel : NULL);
     
     task->v=NULL;
     task->ref=(info ? info->ref : NULL);
@@ -957,8 +957,13 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
     /* Work out the number of elements */
     if (!functional_countelements(v, info->mesh, info->g, &nel, &conn)) return false;
     
+    int cmax=nel;
+    if (info->sel) {
+        cmax=info->sel[info->g].selected->capacity;
+    }
+    
     int bins[ntask+1];
-    functional_binbounds(nel, ntask, bins);
+    functional_binbounds(cmax, ntask, bins);
     
     /* Find any image elements so they can be skipped */
     functional_symmetryimagelist(info->mesh, info->g, true, imageids);

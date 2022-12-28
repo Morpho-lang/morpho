@@ -83,6 +83,8 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *do
 #define FIELD_MESHARG                    "FldMshArg"
 #define FIELD_MESHARG_MSG                "Field expects a mesh as its first argurment"
 
+objectfield *field_clone(objectfield *f);
+
 void field_zero(objectfield *field);
 bool field_addpool(objectfield *field);
 

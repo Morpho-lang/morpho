@@ -216,7 +216,7 @@ void field_zero(objectfield *f) {
 /** Adds the object pool. This is a collection of statically allocated objects */
 bool field_addpool(objectfield *f) {
     unsigned int nel = f->nelements;
-    if (MORPHO_ISMATRIX(f->prototype)) {
+    if (!f->pool && MORPHO_ISMATRIX(f->prototype)) {
         objectmatrix *prototype=MORPHO_GETMATRIX(f->prototype);
         f->pool=MORPHO_MALLOC(sizeof(objectmatrix)*nel);
         if (f->pool) {

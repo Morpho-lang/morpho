@@ -666,7 +666,7 @@ functional_numericalgradient_cleanup:
     return ret;
 }
 
-bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value *out) {
+bool functional_mapnumericalfieldgradientX(vm *v, functional_mapinfo *info, value *out) {
     objectmesh *mesh = info->mesh;
     objectselection *sel = info->sel;
     objectfield *field = info->field;
@@ -829,6 +829,7 @@ typedef struct {
     
     vm *v; /* Virtual machine in use */
     objectmesh *mesh; /* Mesh in use */
+    objectfield *field; /* Field in use */
     objectselection *selection; /* Selection to use if any */
     void *ref; /* Ref as an opaque pointer */
     
@@ -854,6 +855,7 @@ void functionaltask_init(functional_task *task, elementid start, elementid end, 
     task->processfn=NULL;
     
     task->mesh=(info ? info->mesh : NULL);
+    task->field=(info ? info->field : NULL);
     task->selection=(info ? info->sel : NULL);
     
     task->v=NULL;
@@ -967,6 +969,7 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
     
     /* Find any image elements so they can be skipped */
     functional_symmetryimagelist(info->mesh, info->g, true, imageids);
+    if (info->field) field_addpool(info->field);
     
     vm *subkernels[ntask];
     if (!vm_subkernels(v, ntask, subkernels)) return false; 
@@ -1248,6 +1251,110 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
 functional_mapgradient_cleanup:
     // Free the temporary copies of the vertex matrices
     for (int i=0; i<ntask; i++) object_free((object *) meshclones[i].vert);
+    // Free spare output matrices
+    for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
+    
+    functional_cleanuptasks(v, ntask, task);
+    varray_elementidclear(&imageids);
+    
+    return success;
+}
+
+/* ----------------------------
+ * Map numerical field gradients
+ * ---------------------------- */
+
+/** Computes the field gradient of element eid with respect to field grade g element i */
+bool functional_numericalfieldgrad(vm *v, objectmesh *mesh, elementid eid, objectfield *field, grade g, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectfield *grad) {
+    double fr,fl,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
+    
+    /* Loop over dofs in field entry */
+    for (int j=0; j<field->psize*field->dof[g]; j++) {
+        int k=field->offset[g]+i*field->psize*field->dof[g]+j;
+        double f0=field->data.elements[k];
+        field->data.elements[k]+=eps;
+
+        if (!(*integrand) (v, mesh, eid, nv, vid, ref, &fr)) return false;
+
+        field->data.elements[k]=f0-eps;
+
+        if (!(*integrand) (v, mesh, eid, nv, vid, ref, &fl)) return false;
+
+        field->data.elements[k]=f0;
+
+        grad->data.elements[k]+=(fr-fl)/(2*eps);
+    }
+    
+    return true;
+}
+
+typedef struct {
+    functional_mapinfo *info;
+    objectfield *field;
+} functional_numericalfieldgradientref;
+
+/** Computes the gradient of element id with respect to its constituent vertices and any dependencies */
+bool functional_numericalfieldgradientmapfn(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out) {
+    functional_numericalfieldgradientref *tref=(functional_numericalfieldgradientref *) ref;
+    grade g=0;
+    
+    /* Temporary code: Should establish dependencies from the discretization
+       For now, we simply loop over the vertices */
+    for (elementid k=0; k<nv; k++) {
+        if (!functional_numericalfieldgrad(v, mesh, id, tref->field, g, vid[k], nv, vid, tref->info->integrand, tref->info->ref, out)) return false;
+    }
+    
+    return true;
+}
+
+/** Compute the field gradient numerically */
+bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value *out) {
+    int success=false;
+    int ntask=morpho_threadnumber();
+    functional_task task[ntask];
+    
+    varray_elementid imageids;
+    varray_elementidinit(&imageids);
+    
+    objectfield *new[ntask]; // Create an output field for each thread
+    objectfield *fieldclones[ntask]; // Create clones of the field for each thread
+    functional_numericalfieldgradientref tref[ntask];
+    for (int i=0; i<ntask; i++) {
+        new[i]=NULL; fieldclones[i]=NULL;
+    }
+    
+    if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
+    
+    for (int i=0; i<ntask; i++) {
+        // Create one output field per thread
+        new[i] = object_newfield(info->mesh, info->field->prototype, info->field->dof);
+        if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapfieldgradient_cleanup; }
+        field_zero(new[i]);
+        
+        // Clone the vertex matrix for each thread
+        fieldclones[i]=field_clone(info->field);
+        tref[i].info=info;
+        tref[i].field=fieldclones[i];
+        
+        task[i].ref=(void *) &tref[i]; // Use this to pass the info structure
+        task[i].mapfn=functional_numericalfieldgradientmapfn;
+        task[i].result=(void *) new[i];
+    }
+    
+    functional_parallelmap(ntask, task);
+    
+    /* Then add up all the fields */
+    //for (int i=1; i<ntask; i++) matrix_add(&new[0]->data, &new[i]->data, &new[0]->data);
+    
+    success=true;
+    
+    // ...and return the result
+    *out = MORPHO_OBJECT(new[0]);
+    
+functional_mapfieldgradient_cleanup:
+    // Free the temporary copies of the fields
+    for (int i=0; i<ntask; i++) object_free((object *) fieldclones[i]);
+    
     // Free spare output matrices
     for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
     

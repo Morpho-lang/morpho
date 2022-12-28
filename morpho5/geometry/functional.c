@@ -3623,6 +3623,13 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
         objectlist *list = MORPHO_GETLIST(field);
         ref->nfields=list->val.count;
         ref->fields=list->val.data;
+        
+        for (int i=0; i<ref->nfields; i++) {
+            if (MORPHO_ISFIELD(ref->fields[i])) {
+                objectfield *fld = MORPHO_GETFIELD(ref->fields[i]);
+                field_addpool(fld);
+            }
+        }
     }
     return success;
 }

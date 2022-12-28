@@ -1167,7 +1167,7 @@ functional_mapgradient_cleanup:
 
 /** Computes the gradient of element eid with respect to vertex i */
 bool functional_numericalgrad(vm *v, objectmesh *mesh, elementid eid, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectmatrix *frc) {
-    double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
+    double f0,fp,fm,x0,eps=1e-8; // Should use sqrt(machineeps)*(1+|x|) here
     
     // Loop over coordinates
     for (unsigned int k=0; k<mesh->dim; k++) {
@@ -1276,7 +1276,7 @@ functional_mapgradient_cleanup:
 
 /** Computes the field gradient of element eid with respect to field grade g element i */
 bool functional_numericalfieldgrad(vm *v, objectmesh *mesh, elementid eid, objectfield *field, grade g, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectfield *grad) {
-    double fr,fl,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
+    double fr,fl,eps=1e-8; // Should use sqrt(machineeps)*(1+|x|) here
     
     /* Loop over dofs in field entry */
     for (int j=0; j<field->psize*field->dof[g]; j++) {
@@ -1345,7 +1345,9 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
         // Clone the vertex matrix for each thread
         fieldclones[i]=field_clone(info->field);
         tref[i].ref=info->ref;
-        if (info->cloneref) tref[i].ref=(info->cloneref) (info->ref, info->field, fieldclones[i]);
+        if (info->cloneref) {
+            tref[i].ref=(info->cloneref) (info->ref, info->field, fieldclones[i]);
+        } else UNREACHABLE("Functional calls numericalfieldgradient but doesn't provide cloneref");
         tref[i].integrand=info->integrand;
         tref[i].field=fieldclones[i];
         
@@ -3211,6 +3213,19 @@ bool gradsq_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectse
     return success;
 }
 
+/** Clones the nematic reference with a given substitute field */
+void *gradsq_cloneref(void *ref, objectfield *field, objectfield *sub) {
+    fieldref *nref = (fieldref *) ref;
+    fieldref *clone = MORPHO_MALLOC(sizeof(fieldref));
+    
+    if (clone) {
+        *clone = *nref;
+        if (clone->field==field) clone->field=sub;
+    }
+    
+    return clone;
+}
+
 /** Calculate the |grad q|^2 energy */
 bool gradsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     fieldref *eref = ref;
@@ -3270,6 +3285,7 @@ value GradSq_fieldgradient(vm *v, int nargs, value *args) {
             info.g = ref.grade;
             info.field = ref.field;
             info.integrand = gradsq_integrand;
+            info.cloneref = gradsq_cloneref;
             info.ref = &ref;
             functional_mapnumericalfieldgradient(v, &info, &out);
         } else morpho_runtimeerror(v, GRADSQ_ARGS);
@@ -3562,6 +3578,23 @@ bool nematicelectric_prepareref(objectinstance *self, objectmesh *mesh, grade g,
     return success;
 }
 
+/** Clones the nematic reference with a given substitute field */
+void *nematicelectric_cloneref(void *ref, objectfield *field, objectfield *sub) {
+    nematicelectricref *nref = (nematicelectricref *) ref;
+    nematicelectricref *clone = MORPHO_MALLOC(sizeof(nematicelectricref));
+    
+    if (clone) {
+        *clone = *nref;
+        if (clone->director==field) clone->director=sub;
+        if (MORPHO_ISFIELD(clone->field) &&
+            MORPHO_GETFIELD(clone->field)==field) {
+            clone->field=MORPHO_OBJECT(sub);
+        }
+    }
+    
+    return clone;
+}
+
 /** Calculate the integral (n.E)^2 energy, where E is calculated from the electric potential */
 bool nematicelectric_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     nematicelectricref *eref = ref;
@@ -3636,6 +3669,7 @@ value NematicElectric_fieldgradient(vm *v, int nargs, value *args) {
         if (nematicelectric_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_AREA, info.sel, &ref)) {
             info.g=ref.grade;
             info.integrand=nematicelectric_integrand;
+            info.cloneref=nematicelectric_cloneref;
             info.ref=&ref;
             functional_mapnumericalfieldgradient(v, &info, &out);
         } else morpho_runtimeerror(v, GRADSQ_ARGS);
@@ -3687,6 +3721,7 @@ value NormSq_fieldgradient(vm *v, int nargs, value *args) {
             info.ref=&ref;
             info.field=ref.field;
             info.integrand=normsq_integrand;
+            info.cloneref=gradsq_cloneref;
             functional_mapnumericalfieldgradient(v, &info, &out);
         } else morpho_runtimeerror(v, GRADSQ_ARGS);
     }
@@ -3772,6 +3807,35 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
         }
     }
     return success;
+}
+
+/** Clones the integral reference with a given substitute field */
+void *integral_cloneref(void *ref, objectfield *field, objectfield *sub) {
+    integralref *nref = (integralref *) ref;
+    integralref *clone = MORPHO_MALLOC(sizeof(integralref));
+    
+    if (clone) {
+        *clone = *nref;
+        clone->fields=MORPHO_MALLOC(sizeof(value)*clone->nfields);
+        if (!clone->fields) { MORPHO_FREE(clone); return NULL; }
+        
+        for (int i=0; i<clone->nfields; i++) {
+            clone->fields[i]=nref->fields[i];
+            if (MORPHO_ISFIELD(nref->fields[i]) &&
+                MORPHO_GETFIELD(nref->fields[i])==field) {
+                clone->fields[i]=MORPHO_OBJECT(sub);
+            }
+        }
+    }
+    
+    return clone;
+}
+
+/** Frees a reference */
+void integral_freeref(void *ref) {
+    integralref *nref = (integralref *) ref;
+    MORPHO_FREE(nref->fields);
+    MORPHO_FREE(ref);
 }
 
 bool integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *ref, double *fout) {
@@ -3884,6 +3948,8 @@ value LineIntegral_fieldgradient(vm *v, int nargs, value *args) {
         if (integral_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_LINE, info.sel, &ref)) {
             info.g=MESH_GRADE_LINE;
             info.integrand=lineintegral_integrand;
+            info.cloneref=integral_cloneref;
+            info.freeref=integral_freeref;
             info.ref=&ref;
             functional_mapnumericalfieldgradient(v, &info, &out);
         } else morpho_runtimeerror(v, GRADSQ_ARGS);
@@ -3966,6 +4032,8 @@ value AreaIntegral_fieldgradient(vm *v, int nargs, value *args) {
         if (integral_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_AREA, info.sel, &ref)) {
             info.g=MESH_GRADE_AREA;
             info.integrand=areaintegral_integrand;
+            info.cloneref=integral_cloneref;
+            info.freeref=integral_freeref;
             info.ref=&ref;
             functional_mapnumericalfieldgradient(v, &info, &out);
         } else morpho_runtimeerror(v, GRADSQ_ARGS);
@@ -4030,6 +4098,8 @@ value VolumeIntegral_fieldgradient(vm *v, int nargs, value *args) {
         if (integral_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_VOLUME, info.sel, &ref)) {
             info.g=MESH_GRADE_VOLUME;
             info.integrand=volumeintegral_integrand;
+            info.cloneref=integral_cloneref;
+            info.freeref=integral_freeref;
             info.ref=&ref;
             functional_mapnumericalfieldgradient(v, &info, &out);
         } else morpho_runtimeerror(v, GRADSQ_ARGS);

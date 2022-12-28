@@ -42,6 +42,12 @@ typedef bool (functional_gradient) (vm *v, objectmesh *mesh, elementid id, int n
 
 struct s_functional_mapinfo; // Resolve circular typedef dependency
 
+/** Clone reference function */
+typedef void * (functional_cloneref) (void *ref, objectfield *field, objectfield *sub);
+
+/** Free reference function */
+typedef void (functional_freeref) (void *ref);
+
 /** Dependencies function */
 typedef bool (functional_dependencies) (struct s_functional_mapinfo *info, elementid id, varray_elementid *out);
 
@@ -53,6 +59,8 @@ typedef struct s_functional_mapinfo {
     functional_integrand *integrand; // Integrand function
     functional_gradient *grad; // Gradient
     functional_dependencies *dependencies; // Dependencies
+    functional_cloneref *cloneref; // Clone a reference with a given field substituted
+    functional_freeref *freeref; // Free a reference
     symmetrybhvr sym; // Symmetry behavior
     void *ref; // Reference to pass on
 } functional_mapinfo;
@@ -69,6 +77,8 @@ static void functional_clearmapinfo(functional_mapinfo *info) {
     info->integrand=NULL;
     info->grad=NULL;
     info->dependencies=NULL;
+    info->cloneref=NULL;
+    info->freeref=NULL;
     info->ref=NULL;
     info->sym=SYMMETRY_NONE;
 }
@@ -1289,8 +1299,9 @@ bool functional_numericalfieldgrad(vm *v, objectmesh *mesh, elementid eid, objec
 }
 
 typedef struct {
-    functional_mapinfo *info;
     objectfield *field;
+    functional_integrand *integrand;
+    void *ref;
 } functional_numericalfieldgradientref;
 
 /** Computes the gradient of element id with respect to its constituent vertices and any dependencies */
@@ -1301,7 +1312,7 @@ bool functional_numericalfieldgradientmapfn(vm *v, objectmesh *mesh, elementid i
     /* Temporary code: Should establish dependencies from the discretization
        For now, we simply loop over the vertices */
     for (elementid k=0; k<nv; k++) {
-        if (!functional_numericalfieldgrad(v, mesh, id, tref->field, g, vid[k], nv, vid, tref->info->integrand, tref->info->ref, out)) return false;
+        if (!functional_numericalfieldgrad(v, mesh, id, tref->field, g, vid[k], nv, vid, tref->integrand, tref->ref, out)) return false;
     }
     
     return true;
@@ -1333,7 +1344,9 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
         
         // Clone the vertex matrix for each thread
         fieldclones[i]=field_clone(info->field);
-        tref[i].info=info;
+        tref[i].ref=info->ref;
+        if (info->cloneref) tref[i].ref=(info->cloneref) (info->ref, info->field, fieldclones[i]);
+        tref[i].integrand=info->integrand;
         tref[i].field=fieldclones[i];
         
         task[i].ref=(void *) &tref[i]; // Use this to pass the info structure
@@ -1344,7 +1357,7 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
     functional_parallelmap(ntask, task);
     
     /* Then add up all the fields */
-    //for (int i=1; i<ntask; i++) matrix_add(&new[0]->data, &new[i]->data, &new[0]->data);
+    for (int i=1; i<ntask; i++) matrix_add(&new[0]->data, &new[i]->data, &new[0]->data);
     
     success=true;
     
@@ -1352,8 +1365,14 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
     *out = MORPHO_OBJECT(new[0]);
     
 functional_mapfieldgradient_cleanup:
-    // Free the temporary copies of the fields
-    for (int i=0; i<ntask; i++) object_free((object *) fieldclones[i]);
+    for (int i=0; i<ntask; i++) {
+        // Free any cloned references
+        if (info->freeref) (info->freeref) (tref[i].ref);
+        else if (info->cloneref) MORPHO_FREE(tref[i].ref);
+        
+        // Free the temporary copies of the fields
+        object_free((object *) fieldclones[i]);
+    }
     
     // Free spare output matrices
     for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
@@ -3320,6 +3339,19 @@ bool nematic_prepareref(objectinstance *self, objectmesh *mesh, grade g, objects
     return success;
 }
 
+/** Clones the nematic reference with a given substitute field */
+void *nematic_cloneref(void *ref, objectfield *field, objectfield *sub) {
+    nematicref *nref = (nematicref *) ref;
+    nematicref *clone = MORPHO_MALLOC(sizeof(nematicref));
+    
+    if (clone) {
+        *clone = *nref;
+        if (clone->field==field) clone->field=sub;
+    }
+    
+    return clone;
+}
+
 /* Integrates two linear functions with values at vertices f[0]...f[2] and g[0]...g[2] */
 double nematic_bcint(double *f, double *g) {
     return (f[0]*(2*g[0]+g[1]+g[2]) + f[1]*(g[0]+2*g[1]+g[2]) + f[2]*(g[0]+g[1]+2*g[2]))/12;
@@ -3476,6 +3508,7 @@ value Nematic_fieldgradient(vm *v, int nargs, value *args) {
             info.g=ref.grade;
             info.integrand=nematic_integrand;
             info.ref=&ref;
+            info.cloneref=nematic_cloneref;
             functional_mapnumericalfieldgradient(v, &info, &out);
         } else morpho_runtimeerror(v, GRADSQ_ARGS);
     }

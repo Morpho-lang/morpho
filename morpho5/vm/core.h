@@ -250,6 +250,7 @@ struct svm {
     program *current; /** The current program being executed */
 
     varray_value globals; /** Global variables */
+    varray_value tlvars; /** Thread-local variables */
     varray_value stack; /** The stack */
     callframe frame[MORPHO_CALLFRAMESTACKSIZE]; /** The call frame stack */
     errorhandler errorhandlers[MORPHO_ERRORHANDLERSTACKSIZE]; /** Error handler stack */

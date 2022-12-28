@@ -160,4 +160,9 @@ bool vm_subkernels(vm *v, int nkernels, vm **subkernels);
 void vm_releasesubkernel(vm *subkernel);
 void vm_cleansubkernel(vm *subkernel);
 
+/* Thread local storage [for internal use only] */
+int vm_addtlvar(void);
+bool vm_settlvar(vm *v, int handle, value val);
+bool vm_gettlvar(vm *v, int handle, value *out);
+
 #endif /* morpho_h */

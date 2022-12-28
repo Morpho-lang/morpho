@@ -959,7 +959,7 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
     
     int cmax=nel;
     if (info->sel) {
-        cmax=info->sel[info->g].selected->capacity;
+        cmax=info->sel->selected[info->g].capacity;
     }
     
     int bins[ntask+1];
@@ -3570,22 +3570,28 @@ MORPHO_ENDCLASS
  * Integrand functions
  * ---------------------------------------------- */
 
-value tangent;
+int tangenthandle;
 
 static value functional_tangent(vm *v, int nargs, value *args) {
-    return tangent;
+    value out=MORPHO_NIL;
+    vm_gettlvar(v, tangenthandle, &out);
+    return out;
 }
 
-value norml;
+int normlhandle;
 
 static value functional_normal(vm *v, int nargs, value *args) {
-    return norml;
+    value out=MORPHO_NIL;
+    vm_gettlvar(v, normlhandle, &out);
+    return out;
 }
 
-value gradfn;
+int gradfnhandle;
 
 static value functional_gradfn(vm *v, int nargs, value *args) {
-    return gradfn;
+    value out=MORPHO_NIL;
+    vm_gettlvar(v, gradfnhandle, &out);
+    return out;
 }
 
 /* ----------------------------------------------
@@ -3639,13 +3645,13 @@ bool integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int n
 
 /** Integrate a function over a line */
 bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
-    integralref *iref = ref;
+    integralref iref = *(integralref *) ref;
     double *x[2], size;
     bool success;
 
     if (!functional_elementsize(v, mesh, MESH_GRADE_LINE, id, nv, vid, &size)) return false;
 
-    iref->v=v;
+    iref.v=v;
     for (unsigned int i=0; i<nv; i++) {
         mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
     }
@@ -3656,17 +3662,17 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     tnorm=functional_vecnorm(mesh->dim, tangentdata);
     if (fabs(tnorm)>MORPHO_EPS) functional_vecscale(mesh->dim, 1.0/tnorm, tangentdata, tangentdata);
     objectmatrix mtangent = MORPHO_STATICMATRIX(tangentdata, mesh->dim, 1);
-    tangent = MORPHO_OBJECT(&mtangent);
+    vm_settlvar(v, tangenthandle, MORPHO_OBJECT(&mtangent));
 
-    value q0[iref->nfields+1], q1[iref->nfields+1];
+    value q0[iref.nfields+1], q1[iref.nfields+1];
     value *q[2] = { q0, q1 };
-    for (unsigned int k=0; k<iref->nfields; k++) {
+    for (unsigned int k=0; k<iref.nfields; k++) {
         for (unsigned int i=0; i<nv; i++) {
-            field_getelement(MORPHO_GETFIELD(iref->fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
+            field_getelement(MORPHO_GETFIELD(iref.fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
         }
     }
 
-    success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_LINE, x, iref->nfields, q, iref, out);
+    success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_LINE, x, iref.nfields, q, &iref, out);
     if (success) *out *=size;
 
     return success;
@@ -3772,7 +3778,7 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     nnorm=functional_vecnorm(mesh->dim, normaldata);
     if (fabs(nnorm)>MORPHO_EPS) functional_vecscale(mesh->dim, 1.0/nnorm, normaldata, normaldata);
     objectmatrix mnormal = MORPHO_STATICMATRIX(normaldata, mesh->dim, 1);
-    norml = MORPHO_OBJECT(&mnormal);
+    vm_settlvar(v, normlhandle, MORPHO_OBJECT(&mnormal));
 
     /* Evaluate gradient */
     /* -- Temporary code below -- */
@@ -3972,6 +3978,11 @@ void functional_initialize(void) {
     morpho_defineerror(LINEINTEGRAL_NFLDS, ERROR_HALT, LINEINTEGRAL_NFLDS_MSG);
     
     threadpool_init(&functional_pool, morpho_threadnumber());
+    
+    tangenthandle=vm_addtlvar();
+    normlhandle=vm_addtlvar();
+    gradfnhandle=vm_addtlvar();
+    
 }
 
 void functional_finalize(void) {

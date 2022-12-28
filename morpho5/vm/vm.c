@@ -183,6 +183,7 @@ static void vm_init(vm *v) {
     v->debug=NULL;
     vm_graylistinit(&v->gray);
     varray_valueinit(&v->stack);
+    varray_valueinit(&v->tlvars);
     varray_valueinit(&v->globals);
     varray_valueresize(&v->stack, MORPHO_STACKINITIALSIZE);
     error_init(&v->err);
@@ -199,6 +200,7 @@ static void vm_init(vm *v) {
 static void vm_clear(vm *v) {
     varray_valueclear(&v->stack);
     varray_valueclear(&v->globals);
+    varray_valueclear(&v->tlvars);
     vm_graylistclear(&v->gray);
     vm_freeobjects(v);
     varray_vmclear(&v->subkernels);
@@ -2133,6 +2135,51 @@ void vm_cleansubkernel(vm *subkernel) {
     }
     subkernel->objects=NULL;
     subkernel->bound=0;
+}
+
+/* **********************************************************************
+* Thread local storage
+* ********************************************************************** */
+
+int ntlvars=0;
+
+/** Adds a thread local variable, returning the handle */
+int vm_addtlvar(void) {
+    int out = ntlvars;
+    ntlvars++;
+    return out;
+}
+
+/** Initialize threadlocal variables for a vm */
+bool vm_inittlvars(vm *v) {
+    if (v->tlvars.capacity<ntlvars) {
+        if (!varray_valueresize(&v->tlvars, ntlvars)) return false;
+        v->tlvars.count=ntlvars;
+        for (int i=0; i<ntlvars; i++) v->tlvars.data[i]=MORPHO_NIL;
+    }
+    return true;
+}
+
+/** Sets the value of a thread local variable */
+bool vm_settlvar(vm *v, int handle, value val) {
+    bool success=false;
+    if (handle<ntlvars &&
+        vm_inittlvars(v)) {
+        v->tlvars.data[handle]=val;
+        success=true;
+    }
+    return success;
+}
+
+/** Gets the value of a thread local variable */
+bool vm_gettlvar(vm *v, int handle, value *out) {
+    bool success=false;
+    if (handle<ntlvars &&
+        vm_inittlvars(v)) {
+        *out = v->tlvars.data[handle];
+        success=true; 
+    }
+    return success;
 }
 
 /* **********************************************************************

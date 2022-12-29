@@ -117,9 +117,6 @@
 /** @brief Avoid using global variables (suitable for small programs only) */
 //#define MORPHO_NOGLOBALS
 
-/** @brief Use multithreaded code */
-#define MORPHO_MULTITHREAD
-
 /** @brief Default number of threads */
 #define MORPHO_DEFAULTTHREADNUMBER 0
 

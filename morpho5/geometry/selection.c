@@ -486,6 +486,8 @@ value Selection_removegrade(vm *v, int nargs, value *args) {
 
 /** Print the selection */
 value Selection_print(vm *v, int nargs, value *args) {
+    value self = MORPHO_SELF(args);
+    if (!MORPHO_ISSELECTION(self)) return Object_print(v, nargs, args);
     printf("<Selection>");
     return MORPHO_NIL;
 }
@@ -565,7 +567,10 @@ void selection_initialize(void) {
     
     builtin_addfunction(SELECTION_CLASSNAME, selection_constructor, BUILTIN_FLAGSEMPTY);
     
-    value selectionclass=builtin_addclass(SELECTION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Selection), MORPHO_NIL);
+    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    
+    value selectionclass=builtin_addclass(SELECTION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Selection), objclass);
     object_setveneerclass(OBJECT_SELECTION, selectionclass);
     
     morpho_defineerror(SELECTION_NOMESH, ERROR_HALT, SELECTION_NOMESH_MSG);

@@ -1,0 +1,18 @@
+// Test Matrix methods inherited from Object 
+
+var m = Mesh() 
+
+var a = Selection(m)
+
+print a.respondsto("respondsto") // expect: true
+
+print islist(a.respondsto()) // expect: true
+
+print a.clss() // expect: @Selection
+
+print a.superclass() // expect: @Object
+
+print islist(a.invoke("respondsto")) // expect: true
+
+print a.has("a") // expect: false
+

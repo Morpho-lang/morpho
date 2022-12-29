@@ -1067,6 +1067,9 @@ value Mesh_save(vm *v, int nargs, value *args) {
 
 /** Print the mesh */
 value Mesh_print(vm *v, int nargs, value *args) {
+    value self = MORPHO_SELF(args);
+    if (!MORPHO_ISMESH(self)) return Object_print(v, nargs, args);
+    
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
     printf("<Mesh:");
     if (m->vert) printf(" %u vertices", mesh_nvertices(m));
@@ -1306,7 +1309,10 @@ void mesh_initialize(void) {
 
     builtin_addfunction(MESH_CLASSNAME, mesh_constructor, BUILTIN_FLAGSEMPTY);
 
-    value meshclass=builtin_addclass(MESH_CLASSNAME, MORPHO_GETCLASSDEFINITION(Mesh), MORPHO_NIL);
+    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    
+    value meshclass=builtin_addclass(MESH_CLASSNAME, MORPHO_GETCLASSDEFINITION(Mesh), objclass);
     object_setveneerclass(OBJECT_MESH, meshclass);
 
     morpho_defineerror(MESH_FILENOTFOUND, ERROR_HALT, MESH_FILENOTFOUND_MSG);

@@ -100,6 +100,12 @@
 #define ERROR_ARGS                        "ErrorArgs"
 #define ERROR_ARGS_MSG                    "Error much be called with a tag and a default message as arguments."
 
+#define OBJECT_CANTCLONE                  "ObjCantClone"
+#define OBJECT_CANTCLONE_MSG              "Cannot clone this object."
+
+#define OBJECT_IMMUTABLE                  "ObjImmutable"
+#define OBJECT_IMMUTABLE_MSG              "Cannot modify this object."
+
 /* Public interfaces to various data structures */
 typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_OUTOFBOUNDS,ARRAY_NONINTINDX } objectarrayerror;
 

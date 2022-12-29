@@ -51,6 +51,8 @@ typedef void compiler;
 #define MORPHO_ACC_METHOD "acc"
 #define MORPHO_SUM_METHOD "sum"
 
+#define MORPHO_CONTAINS_METHOD "contains"
+
 #define MORPHO_UNION_METHOD "union"
 #define MORPHO_INTERSECTION_METHOD "intersection"
 #define MORPHO_DIFFERENCE_METHOD "difference"

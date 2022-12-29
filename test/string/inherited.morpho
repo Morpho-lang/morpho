@@ -1,0 +1,17 @@
+// Test String methods inherited from Object 
+
+var str = "12"
+
+print str.respondsto("clss") // expect: true
+
+print islist(str.respondsto()) // expect: true
+
+print str.clss() // expect: @String
+
+print str.superclass() // expect: @Object
+
+print islist(str.invoke("respondsto")) // expect: true
+
+print str.has("a") // expect: false
+
+print str.count() // expect: 2

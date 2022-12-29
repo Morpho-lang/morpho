@@ -203,12 +203,15 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
     varray_valuewrite(&builtin_objects, label);
     objectclass *new = object_newclass(label);
     varray_valuewrite(&builtin_objects, MORPHO_OBJECT(new));
+    objectclass *superklass = NULL;
     
     if (!new) return MORPHO_NIL;
     
     /** Copy methods from superclass */
     if (MORPHO_ISCLASS(superclass)) {
-        dictionary_copy(&MORPHO_GETCLASS(superclass)->methods, &new->methods);
+        superklass = MORPHO_GETCLASS(superclass);
+        dictionary_copy(&superklass->methods, &new->methods);
+        new->superclass=superklass;
     }
     
     for (unsigned int i=0; desc[i].name!=NULL; i++) {
@@ -224,7 +227,9 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
             
             varray_valuewrite(&builtin_objects, MORPHO_OBJECT(method));
             
-            if (dictionary_get(&new->methods, method->name, NULL)) {
+            if (dictionary_get(&new->methods, method->name, NULL) &&
+                ( !superklass || // Ok to redefine methods in the superclass 
+                  !dictionary_get(&superklass->methods, method->name, NULL)) ) {
                 UNREACHABLE("redefinition of method in builtin class (check builtin.c)");
             }
             

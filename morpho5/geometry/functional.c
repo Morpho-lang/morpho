@@ -3972,13 +3972,13 @@ MORPHO_ENDCLASS
 
 /** Integrate a function over an area */
 bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
-    integralref *iref = ref;
+    integralref iref = *(integralref *) ref;
     double *x[3], size;
     bool success;
 
     if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &size)) return false;
 
-    iref->v=v;
+    iref.v=v;
     for (unsigned int i=0; i<nv; i++) {
         mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
     }
@@ -4001,15 +4001,15 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     objectmatrix mgrad = MORPHO_STATICMATRIX(grad, mesh->dim, 1);
     gradfn = MORPHO_OBJECT(&mgrad);*/
 
-    value q0[iref->nfields+1], q1[iref->nfields+1], q2[iref->nfields+1];
+    value q0[iref.nfields+1], q1[iref.nfields+1], q2[iref.nfields+1];
     value *q[3] = { q0, q1, q2 };
-    for (unsigned int k=0; k<iref->nfields; k++) {
+    for (unsigned int k=0; k<iref.nfields; k++) {
         for (unsigned int i=0; i<nv; i++) {
-            field_getelement(MORPHO_GETFIELD(iref->fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
+            field_getelement(MORPHO_GETFIELD(iref.fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
         }
     }
 
-    success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_AREA, x, iref->nfields, q, iref, out);
+    success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_AREA, x, iref.nfields, q, &iref, out);
     if (success) *out *=size;
 
     return success;
@@ -4056,26 +4056,26 @@ MORPHO_ENDCLASS
 
 /** Integrate a function over a volume */
 bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
-    integralref *iref = ref;
+    integralref iref = *(integralref *) ref;
     double *x[4], size;
     bool success;
 
     if (!functional_elementsize(v, mesh, MESH_GRADE_VOLUME, id, nv, vid, &size)) return false;
 
-    iref->v=v;
+    iref.v=v;
     for (unsigned int i=0; i<nv; i++) {
         mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
     }
 
-    value q0[iref->nfields+1], q1[iref->nfields+1], q2[iref->nfields+1], q3[iref->nfields+1];
+    value q0[iref.nfields+1], q1[iref.nfields+1], q2[iref.nfields+1], q3[iref.nfields+1];
     value *q[4] = { q0, q1, q2, q3 };
-    for (unsigned int k=0; k<iref->nfields; k++) {
+    for (unsigned int k=0; k<iref.nfields; k++) {
         for (unsigned int i=0; i<nv; i++) {
-            field_getelement(MORPHO_GETFIELD(iref->fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
+            field_getelement(MORPHO_GETFIELD(iref.fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
         }
     }
 
-    success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_VOLUME, x, iref->nfields, q, iref, out);
+    success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, q, &iref, out);
     if (success) *out *=size;
 
     return success;

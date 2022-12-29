@@ -1,0 +1,16 @@
+// Test Matrix methods inherited from Object 
+
+var err = Matrix([1,2,3])
+
+print err.respondsto("respondsto") // expect: true
+
+print islist(err.respondsto()) // expect: true
+
+print err.clss() // expect: @Matrix
+
+print err.superclass() // expect: @Object
+
+print islist(err.invoke("respondsto")) // expect: true
+
+print err.has("a") // expect: false
+

@@ -1279,6 +1279,9 @@ value Sparse_enumerate(vm *v, int nargs, value *args) {
 
 /** Print a sparse matrix */
 value Sparse_print(vm *v, int nargs, value *args) {
+    value self = MORPHO_SELF(args);
+    if (!MORPHO_ISSPARSE(self)) return Object_print(v, nargs, args);
+    
     objectsparse *s=MORPHO_GETSPARSE(MORPHO_SELF(args));
 
     if (sparse_checkformat(s, SPARSE_CCS, false, false)) {
@@ -1682,7 +1685,10 @@ void sparse_initialize(void) {
 
     builtin_addfunction(SPARSE_CLASSNAME, sparse_constructor, BUILTIN_FLAGSEMPTY);
 
-    value sparseclass=builtin_addclass(SPARSE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Sparse), MORPHO_NIL);
+    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    
+    value sparseclass=builtin_addclass(SPARSE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Sparse), objclass);
     object_setveneerclass(OBJECT_SPARSE, sparseclass);
 
     morpho_defineerror(SPARSE_CONSTRUCTOR, ERROR_HALT, SPARSE_CONSTRUCTOR_MSG);

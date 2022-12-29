@@ -1906,7 +1906,7 @@ void veneer_initialize(void) {
     object_setveneerclass(OBJECT_RANGE, rangeclass);
 
     /* Error */
-    builtin_addclass(ERROR_CLASSNAME, MORPHO_GETCLASSDEFINITION(Error), MORPHO_NIL);
+    builtin_addclass(ERROR_CLASSNAME, MORPHO_GETCLASSDEFINITION(Error), objclass);
     error_tagproperty=builtin_internsymbolascstring(ERROR_TAG_PROPERTY);
     error_messageproperty=builtin_internsymbolascstring(ERROR_MESSAGE_PROPERTY);
 

@@ -106,6 +106,9 @@
 #define OBJECT_IMMUTABLE                  "ObjImmutable"
 #define OBJECT_IMMUTABLE_MSG              "Cannot modify this object."
 
+/* Object methods */
+value Object_print(vm *v, int nargs, value *args);
+
 /* Public interfaces to various data structures */
 typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_OUTOFBOUNDS,ARRAY_NONINTINDX } objectarrayerror;
 

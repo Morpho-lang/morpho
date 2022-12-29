@@ -52,7 +52,7 @@ int main(int argc, const char * argv[]) {
                         int nw=0;
                         while (!isdigit(*c) && *c!='\0') c++;
                         if (isdigit(*c)) nw=atoi(c);
-                        if (nw==0) nw=1; /* Use one thread by default */
+                        if (nw<0) nw=0;
                         morpho_setthreadnumber(nw);
                     }
                     

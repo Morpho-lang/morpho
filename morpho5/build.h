@@ -121,7 +121,7 @@
 #define MORPHO_MULTITHREAD
 
 /** @brief Default number of threads */
-#define MORPHO_DEFAULTTHREADNUMBER 1
+#define MORPHO_DEFAULTTHREADNUMBER 0
 
 /** @brief Size of L1 cache line */
 #define _MORPHO_L1CACHELINESIZE 128 // M1/M2 is 128; most intel are 64

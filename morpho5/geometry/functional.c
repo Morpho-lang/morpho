@@ -1030,6 +1030,8 @@ bool functional_sumintegrandprocessfn(void *arg) {
 /** Sum the integrand, mapping over integrand function */
 bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
     int ntask=morpho_threadnumber();
+    if (!ntask) return functional_sumintegrandX(v, info, out);
+    
     functional_task task[ntask];
     
     varray_elementid imageids;
@@ -1077,6 +1079,7 @@ bool functional_mapintegrandprocessfn(void *arg) {
 /** Map integrand function, storing the results in a matrix */
 bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
     int ntask=morpho_threadnumber();
+    if (!ntask) return functional_mapintegrandX(v, info, out);
     functional_task task[ntask];
     
     varray_elementid imageids;
@@ -1120,6 +1123,7 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
 bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
     int ntask=morpho_threadnumber();
+    if (!ntask) return functional_mapgradientX(v, info, out);
     functional_task task[ntask];
     
     varray_elementid imageids;
@@ -1218,6 +1222,7 @@ bool functional_numericalgradientmapfn(vm *v, objectmesh *mesh, elementid id, in
 bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
     int ntask=morpho_threadnumber();
+    if (!ntask) return functional_mapnumericalgradientX(v, info, out);
     functional_task task[ntask];
     
     varray_elementid imageids;
@@ -1322,6 +1327,7 @@ bool functional_numericalfieldgradientmapfn(vm *v, objectmesh *mesh, elementid i
 bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
     int ntask=morpho_threadnumber();
+    if (!ntask) return functional_mapnumericalfieldgradientX(v, info, out);
     functional_task task[ntask];
     
     varray_elementid imageids;

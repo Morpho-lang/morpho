@@ -1,0 +1,16 @@
+// Test veneer class 
+
+fn func(x) {
+  fn g() { return x }
+  return g
+}
+
+var a = func(1)
+
+print a() // expect: 1 
+
+print a // expect: <<fn g>>
+
+print a.clss() // expect: @Closure
+
+print a.clone() // expect err 'ObjCantClone'

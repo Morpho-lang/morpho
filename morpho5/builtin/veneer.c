@@ -1819,9 +1819,17 @@ MORPHO_ENDCLASS
  * Closure
  * ********************************************************************** */
 
+MORPHO_BEGINCLASS(Closure)
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
 /* **********************************************************************
  * Function
  * ********************************************************************** */
+
+MORPHO_BEGINCLASS(Function)
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
 
 /* **********************************************************************
  * Invocation
@@ -1971,6 +1979,14 @@ void veneer_initialize(void) {
     value rangeclass=builtin_addclass(RANGE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Range), objclass);
     object_setveneerclass(OBJECT_RANGE, rangeclass);
 
+    /* Closure */
+    value closureclass=builtin_addclass(CLOSURE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Closure), objclass);
+    object_setveneerclass(OBJECT_CLOSURE, closureclass);
+    
+    /* Function */
+    value functionclass=builtin_addclass(FUNCTION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Function), objclass);
+    object_setveneerclass(OBJECT_FUNCTION, functionclass);
+    
     /* Invocation */
     builtin_addfunction(INVOCATION_CLASSNAME, invocation_constructor, BUILTIN_FLAGSEMPTY);
     value invocationclass=builtin_addclass(INVOCATION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Invocation), objclass);

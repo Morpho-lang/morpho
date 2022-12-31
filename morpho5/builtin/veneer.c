@@ -1699,7 +1699,9 @@ MORPHO_METHOD(MORPHO_ADD_METHOD, Dictionary_union, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUB_METHOD, Dictionary_difference, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
-/* Range */
+/* **********************************************************************
+ * Range
+ * ********************************************************************** */
 
 /** Calculate the number of steps in a range */
 int range_count(objectrange *range) {
@@ -1769,13 +1771,6 @@ value Range_getindex(vm *v, int nargs, value *args) {
     return MORPHO_SELF(args);
 }
 
-/** Print ranges */
-value Range_print(vm *v, int nargs, value *args) {
-    object_print(MORPHO_SELF(args));
-
-    return MORPHO_SELF(args);
-}
-
 /** Enumerate members of a range */
 value Range_enumerate(vm *v, int nargs, value *args) {
     objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
@@ -1800,23 +1795,94 @@ value Range_count(vm *v, int nargs, value *args) {
 
 /** Clones a range */
 value Range_clone(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
     objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
     objectrange *new = object_newrange(slf->start, slf->end, slf->step);
-    if (!new) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    value out = MORPHO_OBJECT(new);
-    morpho_bindobjects(v, 1, &out);
+
+    if (new) {
+        out = MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    
     return out;
 }
 
 MORPHO_BEGINCLASS(Range)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Range_getindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Range_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Range_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Range_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Range_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
-/* Error */
+/* **********************************************************************
+ * Closure
+ * ********************************************************************** */
+
+/* **********************************************************************
+ * Function
+ * ********************************************************************** */
+
+/* **********************************************************************
+ * Invocation
+ * ********************************************************************** */
+
+/** Creates a new invocation object */
+value invocation_constructor(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+
+    if (nargs==2) {
+        value receiver = MORPHO_GETARG(args, 0);
+        value selector = MORPHO_GETARG(args, 1);
+        
+        if (!MORPHO_ISOBJECT(receiver) || !MORPHO_ISSTRING(selector)) {
+            morpho_runtimeerror(v, INVOCATION_ARGS);
+            return MORPHO_NIL;
+        }
+        
+        value method = MORPHO_NIL;
+        
+        objectclass *klass=object_getclass(selector);
+        
+        if (dictionary_get(&klass->methods, selector, &method)) {
+            objectinvocation *new = object_newinvocation(receiver, method);
+
+            if (new) {
+                out = MORPHO_OBJECT(new);
+                morpho_bindobjects(v, 1, &out);
+            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        }
+        
+    } else morpho_runtimeerror(v, INVOCATION_ARGS);
+
+    return out;
+}
+
+/** Clones a range */
+value Invocation_clone(vm *v, int nargs, value *args) {
+    value self = MORPHO_SELF(args);
+    value out = MORPHO_NIL;
+    if (!MORPHO_ISINVOCATION(self)) return MORPHO_NIL;
+    
+    objectinvocation *slf = MORPHO_GETINVOCATION(self);
+    objectinvocation *new = object_newinvocation(slf->receiver, slf->method);
+    
+    if (new) {
+        out = MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    
+    return out;
+}
+
+MORPHO_BEGINCLASS(Invocation)
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_CLONE_METHOD, Invocation_clone, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
+/* **********************************************************************
+ * Error
+ * ********************************************************************** */
 
 static value error_tagproperty;
 static value error_messageproperty;
@@ -1905,6 +1971,11 @@ void veneer_initialize(void) {
     value rangeclass=builtin_addclass(RANGE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Range), objclass);
     object_setveneerclass(OBJECT_RANGE, rangeclass);
 
+    /* Invocation */
+    builtin_addfunction(INVOCATION_CLASSNAME, invocation_constructor, BUILTIN_FLAGSEMPTY);
+    value invocationclass=builtin_addclass(INVOCATION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Invocation), objclass);
+    object_setveneerclass(OBJECT_INVOCATION, invocationclass);
+    
     /* Error */
     builtin_addclass(ERROR_CLASSNAME, MORPHO_GETCLASSDEFINITION(Error), objclass);
     error_tagproperty=builtin_internsymbolascstring(ERROR_TAG_PROPERTY);

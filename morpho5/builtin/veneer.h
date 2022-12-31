@@ -20,6 +20,9 @@
 #define LIST_CLASSNAME "List"
 #define DICTIONARY_CLASSNAME "Dictionary"
 #define RANGE_CLASSNAME "Range"
+#define FUNCTION_CLASSNAME "Function"
+#define CLOSURE_CLASSNAME "Closure"
+#define INVOCATION_CLASSNAME "Invocation"
 #define ERROR_CLASSNAME "Error"
 
 #define ERROR_TAG_PROPERTY "tag"
@@ -96,6 +99,12 @@
 
 #define ARRAY_CMPT                        "ArrayCmpt"
 #define ARRAY_CMPT_MSG                    "Array initializer is not compatible with the requested dimensions."
+
+#define INVOCATION_ARGS                   "InvocationArgs"
+#define INVOCATION_ARGS_MSG               "Invocation must be called with an object and a method name as arguments."
+
+#define INVOCATION_METHOD                 "InvocationMethod"
+#define INVOCATION_METHOD_MSG             "Method not found."
 
 #define ERROR_ARGS                        "ErrorArgs"
 #define ERROR_ARGS_MSG                    "Error much be called with a tag and a default message as arguments."

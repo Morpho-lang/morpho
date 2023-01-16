@@ -7,10 +7,10 @@ fn func(x) {
 
 var a = func(1)
 
-print a() // expect: 1 
+print a() // expect: 1
 
 print a // expect: <<fn g>>
 
 print a.clss() // expect: @Closure
 
-print a.clone() // expect err 'ObjCantClone'
+print a.clone() // expect error 'ObjCantClone'

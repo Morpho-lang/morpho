@@ -36,10 +36,6 @@ static dictionary builtin_symboltable;
 /** Keep a list of objects created by builtin */
 varray_value builtin_objects;
 
-/** Core object types can be provided with a 'veneer' class enabling the user to call methods
-    on it, e.g. <string>.length(). This list provides easy access. */
-//objectclass *objectveneer[OBJECT_EXTERN+1];
-
 /* **********************************************************************
  * Utility functions
  * ********************************************************************** */

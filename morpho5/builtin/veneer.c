@@ -1819,7 +1819,30 @@ MORPHO_ENDCLASS
  * Closure
  * ********************************************************************** */
 
+value Closure_tostring(vm *v, int nargs, value *args) {
+    objectclosure *self=MORPHO_GETCLOSURE(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+    
+    varray_char buffer;
+    varray_charinit(&buffer);
+
+    if (self->func) {
+        varray_charadd(&buffer, "<<fn ", 5);
+        morpho_printtobuffer(v, self->func->name, &buffer);
+        varray_charadd(&buffer, ">>", 2);
+    }
+
+    out = object_stringfromvarraychar(&buffer);
+    if (MORPHO_ISSTRING(out)) {
+        morpho_bindobjects(v, 1, &out);
+    }
+    varray_charclear(&buffer);
+
+    return out;
+}
+
 MORPHO_BEGINCLASS(Closure)
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Closure_tostring, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
@@ -1827,7 +1850,28 @@ MORPHO_ENDCLASS
  * Function
  * ********************************************************************** */
 
+value Function_tostring(vm *v, int nargs, value *args) {
+    objectfunction *func=MORPHO_GETFUNCTION(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+
+    varray_char buffer;
+    varray_charinit(&buffer);
+
+    varray_charadd(&buffer, "<fn ", 4);
+    morpho_printtobuffer(v, func->name, &buffer);
+    varray_charwrite(&buffer, '>');
+
+    out = object_stringfromvarraychar(&buffer);
+    if (MORPHO_ISSTRING(out)) {
+        morpho_bindobjects(v, 1, &out);
+    }
+    varray_charclear(&buffer);
+
+    return out;
+}
+
 MORPHO_BEGINCLASS(Function)
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Function_tostring, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
@@ -1850,7 +1894,7 @@ value invocation_constructor(vm *v, int nargs, value *args) {
         
         value method = MORPHO_NIL;
         
-        objectclass *klass=object_getclass(selector);
+        objectclass *klass=object_getclass(receiver);
         
         if (dictionary_get(&klass->methods, selector, &method)) {
             objectinvocation *new = object_newinvocation(receiver, method);
@@ -1862,6 +1906,27 @@ value invocation_constructor(vm *v, int nargs, value *args) {
         }
         
     } else morpho_runtimeerror(v, INVOCATION_ARGS);
+
+    return out;
+}
+
+/** Converts to a string for string interpolation */
+value Invocation_tostring(vm *v, int nargs, value *args) {
+    objectinvocation *inv=MORPHO_GETINVOCATION(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+
+    varray_char buffer;
+    varray_charinit(&buffer);
+    
+    morpho_printtobuffer(v, inv->receiver, &buffer);
+    varray_charwrite(&buffer, '.');
+    morpho_printtobuffer(v, inv->method, &buffer);
+    
+    out = object_stringfromvarraychar(&buffer);
+    if (MORPHO_ISSTRING(out)) {
+        morpho_bindobjects(v, 1, &out);
+    }
+    varray_charclear(&buffer);
 
     return out;
 }
@@ -1885,6 +1950,7 @@ value Invocation_clone(vm *v, int nargs, value *args) {
 
 MORPHO_BEGINCLASS(Invocation)
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Invocation_tostring, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Invocation_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 

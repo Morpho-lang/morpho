@@ -8,4 +8,4 @@ print func // expect: <fn func>
 
 print func.clss() // expect: @Function
 
-print func.clone() // expect err 'ObjCantClone'
+print func.clone() // expect error 'ObjCantClone'

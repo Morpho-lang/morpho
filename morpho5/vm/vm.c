@@ -1503,10 +1503,10 @@ callfunction: // Jump here if an instruction becomes a call
                     VERROR(VM_OBJECTLACKSPROPERTY, p);
                 }
             } else if (MORPHO_ISCLASS(left)) {
-                /* If it's a class, we lookup a method and bind it to self, which is in r0 */
+                /* If it's a class, we lookup the method and create the invocation */
                 objectclass *klass = MORPHO_GETCLASS(left);
-                if (dictionary_get(&klass->methods, right, &reg[a])) {
-                    objectinvocation *bound=object_newinvocation(reg[0], reg[a]);
+                if (klass && dictionary_get(&klass->methods, right, &reg[a])) {
+                    objectinvocation *bound=object_newinvocation(left, reg[a]);
                     if (bound) {
                         /* Bind into the VM */
                         reg[a]=MORPHO_OBJECT(bound);

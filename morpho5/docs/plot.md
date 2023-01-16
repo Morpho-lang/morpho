@@ -69,6 +69,9 @@ Plotfield accepts a number of optional arguments to control what is displayed:
 * `scalebar` - A `Scalebar` object to use. 
 * `style` - Plot style. See below. 
 * `filter` and `transmit` - Used by the `povray` module to indicate transparency.
+* `cmin` and `cmax` - Can be used to define the data range covered.
+  Values beyond these limits will be colored by the lower/upper bound of
+  the colormap accordingly.
 
 Supported plot styles: 
 

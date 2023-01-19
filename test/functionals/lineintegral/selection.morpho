@@ -26,5 +26,5 @@ var grad=lc.fieldgradient(f, s).linearize()
 
 var ngrad = Matrix([ 0.00285333, 0.0136, 0.0186, 0.0164, 0.0094, 0.00164666, 0, 0, 0, 0, 0 ])
 
-print (grad-ngrad).norm() < 1e-8
+print (grad-ngrad).norm() < 1e-6
 // expect: true

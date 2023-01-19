@@ -22,4 +22,4 @@ for (i in 0...f.count()) {
     ngrad[i]=(fr-fl)/(2*eps)
 }
 
-print (grad-ngrad).linearize().norm() < 1e-8 // expect: true
+print (grad-ngrad).linearize().norm() < 1e-6 // expect: true

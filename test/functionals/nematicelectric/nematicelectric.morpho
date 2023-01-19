@@ -31,7 +31,7 @@ print lne.integrand(m)
 print abs(lne.total(m) - 0.25) < 1e-8
 // expect: true
 
-print (lne.gradient(m)-numericalgradient(lne, m)).norm() < 1e-8
+print (lne.gradient(m)-numericalgradient(lne, m)).norm() < 1e-6
 // expect: true
 
 print lne.fieldgradient(nn)

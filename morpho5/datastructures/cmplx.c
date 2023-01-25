@@ -372,7 +372,10 @@ value Complex_getimag(vm *v, int nargs, value *args) {
 
 /** Prints a complex */
 value Complex_print(vm *v, int nargs, value *args) {
-    objectcomplex *c=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
+    value self = MORPHO_SELF(args);
+    if (!MORPHO_ISCOMPLEX(self)) return Object_print(v, nargs, args);
+    
+    objectcomplex *c=MORPHO_GETCOMPLEX(self);
     complex_print(c);
     return MORPHO_NIL;
 }
@@ -673,7 +676,10 @@ void complex_initialize(void) {
     
     builtin_addfunction(COMPLEX_CLASSNAME, complex_constructor, BUILTIN_FLAGSEMPTY);
     
-    value complexclass=builtin_addclass(COMPLEX_CLASSNAME, MORPHO_GETCLASSDEFINITION(ComplexNum), MORPHO_NIL);
+    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    
+    value complexclass=builtin_addclass(COMPLEX_CLASSNAME, MORPHO_GETCLASSDEFINITION(ComplexNum), objclass);
     object_setveneerclass(OBJECT_COMPLEX, complexclass);
 
     morpho_defineerror(COMPLEX_CONSTRUCTOR, ERROR_HALT, COMPLEX_CONSTRUCTOR_MSG);

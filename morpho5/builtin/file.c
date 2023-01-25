@@ -10,6 +10,7 @@
 #include "object.h"
 #include "morpho.h"
 #include "common.h"
+#include "veneer.h"
 #include <stdio.h>
 #include <limits.h>
 
@@ -438,8 +439,11 @@ void file_initialize(void) {
     
     objectfiletype=object_addtype(&objectfiledefn);
     
+    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    
     builtin_addfunction(FILE_CLASSNAME, file_constructor, BUILTIN_FLAGSEMPTY);
-    value fileclass=builtin_addclass(FILE_CLASSNAME, MORPHO_GETCLASSDEFINITION(File), MORPHO_NIL);
+    value fileclass=builtin_addclass(FILE_CLASSNAME, MORPHO_GETCLASSDEFINITION(File), objclass);
     object_setveneerclass(OBJECT_FILE, fileclass);
     
     builtin_addclass(FOLDER_CLASSNAME, MORPHO_GETCLASSDEFINITION(Folder), MORPHO_NIL);

@@ -1,0 +1,10 @@
+import plot 
+import povray 
+
+var g = Graphics()
+
+g.display(Text("Hello World", [0,0,0]))
+
+var pov = POVRaytracer(g)
+
+pov.render("helloworld.pov")

@@ -1,0 +1,13 @@
+// Compute norms other than L2
+import constants 
+
+var a = Matrix([1,2,3])
+
+print a.norm(1) // expect: 6
+
+print abs(a.norm(2) - 3.74166) < 1e-4 // expect: true
+
+print abs(a.norm(3) - 3.30193) < 1e-4 // expect: true
+
+print a.norm(Inf) // expect: 3
+

@@ -31,6 +31,13 @@ As a shorthand, it's possible to omit the grade and index; these are then both a
 
 [showsubtopics]: # (subtopics)
 
+## Mesh
+[tagmesh]: # (mesh)
+
+Returns the Mesh associated with a Field object:
+
+    var f.mesh() 
+
 ## Grade
 [taggrade]: # (grade)
 

@@ -125,6 +125,7 @@ linedit_color cli_tokencolors[] = {
     LINEDIT_MAGENTA,                               // TOKEN_IMPORT
     LINEDIT_MAGENTA,                               // TOKEN_AS
     LINEDIT_MAGENTA,                               // TOKEN_IS
+    LINEDIT_MAGENTA,                               // TOKEN_WITH
     LINEDIT_MAGENTA,                               // TOKEN_TRY
     LINEDIT_MAGENTA,                               // TOKEN_CATCH
     
@@ -228,9 +229,6 @@ void cli(clioptions opt) {
     /* Set up VM */
     vm *v = morpho_newvm();
     
-    /* Always enable debugging in interactive mode */
-    morpho_setdebug(v, true);
-    
     linedit_init(&edit);
     linedit_setprompt(&edit, CLI_PROMPT);
     linedit_syntaxcolor(&edit, cli_lex, cli_tokencolors, TOKEN_EOF);
@@ -259,7 +257,7 @@ void cli(clioptions opt) {
         }
         
         /* Compile code */
-        success=morpho_compile(input, c, &err);
+        success=morpho_compile(input, c, false, &err);
         
         if (success) {
             /* If compilation was successful, and we're in interactive mode, execute... */
@@ -267,7 +265,7 @@ void cli(clioptions opt) {
                 morpho_disassemble(p, NULL);
             }
             if (opt & CLI_RUN) {
-                success=morpho_run(v, p);
+                success=morpho_debug(v, p);
                 if (!success) {
                     cli_reporterror(morpho_geterror(v), v);
                     err=*morpho_geterror(v);
@@ -296,8 +294,6 @@ void cli_run(const char *in, clioptions opt) {
     compiler *c = morpho_newcompiler(p);
     vm *v = morpho_newvm();
     
-    if (opt & CLI_DEBUG) morpho_setdebug(v, true);
-    
     char *src = cli_loadsource(in);
     
     error err; /* Error structure that received messages from the compiler and VM */
@@ -309,7 +305,7 @@ void cli_run(const char *in, clioptions opt) {
     
     if (src) {
         /* Compile code */
-        success=morpho_compile(src, c, &err);
+        success=morpho_compile(src, c, (opt & CLI_OPTIMIZE), &err);
         
         /* Run code if successful */
         if (success) {
@@ -321,7 +317,13 @@ void cli_run(const char *in, clioptions opt) {
                 }
             }
             if (opt & CLI_RUN) {
-                success=morpho_run(v, p);
+                if (opt & CLI_DEBUG) {
+                    success=morpho_debug(v, p);
+                } else if (opt & CLI_PROFILE) {
+                    success=morpho_profile(v, p);
+                } else {
+                    success=morpho_run(v, p);
+                }
                 if (!success) cli_reporterror(morpho_geterror(v), v);
             }
         } else {
@@ -351,7 +353,8 @@ char *cli_loadsource(const char *in) {
     varray_charinit(&buffer);
     
     /* Open the input file if provided */
-    if (inn) f=fopen(inn, "r");
+    if (inn) f=file_openrelative(inn,"r"); // Try opening relative to the working directory
+    if (!f) f=fopen(inn, "r"); 
     if (inn && !f) {
         return NULL;
     }

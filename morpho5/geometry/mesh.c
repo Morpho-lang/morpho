@@ -224,7 +224,7 @@ bool mesh_setconnectivityelement(objectmesh *mesh, unsigned int row, unsigned in
     unsigned int indx[2]={row,col};
     if (mesh_checkconnectivity(mesh)) {
         value old = MORPHO_NIL;
-        if (array_getelement(mesh->conn, 2, indx, &old) &&
+        if ((array_getelement(mesh->conn, 2, indx, &old)==ARRAY_OK) &&
             MORPHO_ISOBJECT(old)) {
             object *oel = MORPHO_GETOBJECT(old);
             mesh_delink(mesh, oel);
@@ -658,6 +658,7 @@ bool mesh_addelementwithvertices(objectmesh *mesh, grade g, elementid *v) {
 /** Resets connectivity elements other than the first row */
 void mesh_resetconnectivity(objectmesh *m) {
     grade max = mesh_maxgrade(m);
+    
     for (grade i=1; i<=max; i++) {
         for (grade j=0; j<=max; j++) {
             mesh_setconnectivityelement(m, i, j, NULL);
@@ -1066,6 +1067,9 @@ value Mesh_save(vm *v, int nargs, value *args) {
 
 /** Print the mesh */
 value Mesh_print(vm *v, int nargs, value *args) {
+    value self = MORPHO_SELF(args);
+    if (!MORPHO_ISMESH(self)) return Object_print(v, nargs, args);
+    
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
     printf("<Mesh:");
     if (m->vert) printf(" %u vertices", mesh_nvertices(m));
@@ -1305,7 +1309,10 @@ void mesh_initialize(void) {
 
     builtin_addfunction(MESH_CLASSNAME, mesh_constructor, BUILTIN_FLAGSEMPTY);
 
-    value meshclass=builtin_addclass(MESH_CLASSNAME, MORPHO_GETCLASSDEFINITION(Mesh), MORPHO_NIL);
+    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    
+    value meshclass=builtin_addclass(MESH_CLASSNAME, MORPHO_GETCLASSDEFINITION(Mesh), objclass);
     object_setveneerclass(OBJECT_MESH, meshclass);
 
     morpho_defineerror(MESH_FILENOTFOUND, ERROR_HALT, MESH_FILENOTFOUND_MSG);

@@ -1,0 +1,8 @@
+// Test Dictionary clear method
+
+var mass = { "Capital" : "Boston", "Population" : 6892503 }
+
+mass.clear()
+
+mass["Abbreviation"] = "MA"
+print mass // expect: { Abbreviation : MA }

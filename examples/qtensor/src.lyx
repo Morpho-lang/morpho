@@ -1,0 +1,948 @@
+#LyX file created by tex2lyx 2.3
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin /Users/timatherton/Documents/Programs/morpho-public/morpho/examples/qtensor/
+\textclass article
+\begin_preamble
+\usepackage{physics}
+\usepackage{xcolor}
+\definecolor{codegray}{rgb}{0.9,0.9,0.9}
+\usepackage{listings}
+\newcommand{\morpho}{\textit{morpho}}
+\newcommand{\Morpho}{\textit{Morpho}}
+\title{Q-tensor model of nematics}
+\author{Chaitanya Joshi}
+\date{October 2021}
+
+
+\end_preamble
+\use_default_options false
+\maintain_unincluded_children false
+\language english
+\language_package none
+\inputencoding utf8
+\fontencoding default
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 0
+\use_package cancel 0
+\use_package esint 1
+\use_package mathdots 0
+\use_package mathtools 0
+\use_package mhchem 0
+\use_package stackrel 0
+\use_package stmaryrd 0
+\use_package undertilde 0
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 0
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+lstset
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+ language=Java, tabsize=4, basicstyle=
+\family typewriter
+, backgroundcolor=
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+color{codegray}
+\end_layout
+
+\end_inset
+
+, showstringspaces=false 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+maketitle
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+In 2D, for a uniaxial nematic, we can define a Q-tensor: 
+\begin_inset Formula \[
+Q_{ij} = S (n_i n_j - 1/2 \delta_{ij})
+\]
+\end_inset
+
+Here, the 
+\begin_inset Formula $-1/2 \delta_{ij}$
+\end_inset
+
+ is added for convenience, to make the matrix traceless: 
+\begin_inset Formula \[\text{Tr}(\mathbf{Q}) = Q_{ii} = S(n_i n_i - 1/2 \delta_{ii}) = S(1 - 1/2(2)) = 0
+\]
+\end_inset
+
+Now, the Q-tensor is also symmetric by definition: 
+\begin_inset Formula \[
+Q_{ij} = Q_{ji}
+\]
+\end_inset
+
+Due to these two reasons we can write the Q-tensor as a function of only 
+\begin_inset Formula $Q_{xx}$
+\end_inset
+
+ and 
+\begin_inset Formula $Q_{xy}$
+\end_inset
+
+: 
+\begin_inset Formula \[
+\mathbf{Q} = \begin{bmatrix}Q_{xx} & Q_{xy} \\ Q_{xy} & -Q_{xx} \end{bmatrix}
+\]
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Simple Passive Nematic Model
+\end_layout
+
+\begin_layout Standard
+The Landau-de Gennes equilibrium free energy for a nematic liquid crystal can be written in terms of the Q-tensor: 
+\begin_inset Formula \begin{align*}
+F_{LDG} = &\int_\Omega d^2{\bf x} \ \left(\frac{a_2}{2} \text{Tr}(\mathbf{Q}^2) + \frac{a_4}{4} (\text{Tr} \mathbf{Q}^2)^2 + \frac{K}{2}(\nabla\mathbf{Q})^2 \right) \\
+&+ \oint_{\partial\Omega} d{\bf x} \frac{1}{2}E_A \text{Tr}[(\mathbf{Q}-\mathbf{W})^2]
+\end{align*}
+\end_inset
+
+where 
+\begin_inset Formula $a_2 = (\rho-1)$
+\end_inset
+
+ and 
+\begin_inset Formula $a_4 = (\rho+1)/\rho^2$
+\end_inset
+
+ set the isotropic to nematic transition with 
+\begin_inset Formula $\rho$
+\end_inset
+
+ being the non-dimensional density. The system is in the isotropic state for 
+\begin_inset Formula $\rho<1$
+\end_inset
+
+ and in the nematic phase when 
+\begin_inset Formula $\rho>1$
+\end_inset
+
+. In the nematic phase, 
+\begin_inset Formula $\ell_n = \sqrt{K/a_2}$
+\end_inset
+
+ sets the nematic coherence length. Now, 
+\begin_inset Formula \[
+\mathbf{Q}^2 = \begin{bmatrix}Q_{xx} & Q_{xy} \\ Q_{xy} & -Q_{xx} \end{bmatrix} \begin{bmatrix}Q_{xx} & Q_{xy} \\ Q_{xy} & -Q_{xx} \end{bmatrix} = (Q_{xx}^2+Q_{xy}^2) \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}
+\]
+\end_inset
+
+Hence, 
+\begin_inset Formula \[
+\text{Tr}(\mathbf{Q}^2) = 2(Q_{xx}^2+Q_{xy}^2)
+\]
+\end_inset
+
+Similarly, 
+\begin_inset Formula \[
+(\nabla \mathbf{Q})^2 = \partial_i Q_{kj}\partial_i Q_{kj} = 2 \{ (\partial_x Q_{xx})^2+(\partial_xQ_{xy})^2 + (\partial_y Q_{xx})^2+(\partial_y Q_{xy})^2 \}
+\]
+\end_inset
+
+Now, the second term is a boundary integral, with 
+\begin_inset Formula $E_A$
+\end_inset
+
+ being the anchoring strength. 
+\begin_inset Formula $\mathbf{W}$
+\end_inset
+
+ is the tensor corresponding to the boundary condition. For instance, for parallel anchoring, 
+\begin_inset Formula \[
+W_{ij} = (t_i t_j - 1/2 \delta_{ij})
+\]
+\end_inset
+
+where 
+\begin_inset Formula $t_i$
+\end_inset
+
+ is a component of the tangent vector at the boundary. 
+\begin_inset Formula $\mathbf{W}$
+\end_inset
+
+ is also a symmetric traceless tensor with two independent components 
+\begin_inset Formula $W_{xx}$
+\end_inset
+
+ and 
+\begin_inset Formula $W_{xy}$
+\end_inset
+
+. The boundary term becomes: 
+\begin_inset Formula \[ \text{Tr}[(\mathbf{Q}-\mathbf{W})^2] = 2\{ Q_{xx}^2 + Q_{xy}^2 - 2(Q_{xx}W_{xx} + Q_{xy}W_{xy}) + W_{xx}^2 + W_{xy}^2 \} 
+\]
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Vector formulation
+\end_layout
+
+\begin_layout Standard
+We can formulate all these expressions in terms of vector quantities: 
+\begin_inset Formula \[\vec{q} \equiv \{ Q_{xx}, Q_{xy}\}\]
+\end_inset
+
+
+\begin_inset Formula \[\vec{w} \equiv \{ w_{xx}, w_{xy}\}\]
+\end_inset
+
+Thus, 
+\begin_inset Formula \[
+\text{Tr}(\mathbf{Q}^2) = 2 ||\vec{q}||^2
+\]
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula \[
+(\nabla \mathbf{Q})^2 = 2 ||\nabla \vec{q}||^2
+\]
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula \[
+\text{Tr}[(\mathbf{Q}-\mathbf{W})^2] = 2 ||\vec{q}-\vec{w}||^2
+\]
+\end_inset
+
+With these, we want to minimize the area-integral of 
+\begin_inset Formula \[
+F = \int_\Omega d^2{\bf x} \ \left( a_2 ||\vec{q}||^2 + a_4 ||\vec{q}||^4 + K||\nabla\vec{q}||^2 \right)
+\]
+\end_inset
+
+together with the line-integral energy 
+\begin_inset Formula \[
+\oint_{\partial\Omega} d{\bf x} \ E_A ||\vec{q}-\vec{w}||^2
+\]
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+Morpho
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset space \space{}
+
+\end_inset
+
+implementation
+\end_layout
+
+\begin_layout Standard
+This free energy is readily set up in 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+morpho
+\end_layout
+
+\end_inset
+
+. For this problem, we will consider a 2D disk geometry with unit radius. We use 
+\begin_inset Formula $\rho=1.3$
+\end_inset
+
+, so that we are deep in the nematic regime. We fix 
+\begin_inset Formula $E_{\text{A}}=3$
+\end_inset
+
+, which sets strong anchoring at the boundary. With this strong tangential anchoring, we get a topological charge of 
+\begin_inset Formula $+1$
+\end_inset
+
+ at the boundary, and this acts as a constraint. When the nematic coherence length is comparable to the disk diameter (
+\begin_inset Formula $\ell_n \sim R$
+\end_inset
+
+), the 
+\begin_inset Formula $+1$
+\end_inset
+
+ charge penetrates throughout the disk, whereas if (
+\begin_inset Formula $\ell_n \ll R$
+\end_inset
+
+), then a formation with 2 
+\begin_inset Formula $+1/2$
+\end_inset
+
+ defects is more stable. To test this, we use two different values of 
+\begin_inset Formula $K$
+\end_inset
+
+:, 0.01 and 1.0.
+\end_layout
+
+\begin_layout Standard
+We first define all our parameters and import 
+\begin_inset Formula $\texttt{disk.mesh}$
+\end_inset
+
+ from the tactoid example: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+var rho = 1.3 // Deep in the nematic phase
+\end_layout
+
+\begin_layout Plain Layout
+var EA = 3 // Anchoring strength
+\end_layout
+
+\begin_layout Plain Layout
+var K = 0.01 // Bending modulus
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+var a2 = (1-rho)
+\end_layout
+
+\begin_layout Plain Layout
+var a4 = (1+rho)/rho^2
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+var m = Mesh("disk.mesh")
+\end_layout
+
+\begin_layout Plain Layout
+var m = refinemesh(m) // Refining for a better result
+\end_layout
+
+\begin_layout Plain Layout
+var bnd = Selection(m, boundary=true)
+\end_layout
+
+\begin_layout Plain Layout
+bnd.addgrade(0) // add point elements
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+We define the Q-tensor in its vector form as discussed above, initializing it to small random values: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+var q_tensor = Field(m, fn(x,y,z)
+\end_layout
+
+\begin_layout Plain Layout
+Matrix([0.01*random(1), 0.01*random(1)]))
+\end_layout
+
+\end_inset
+
+Note that this incidentally makes the director parallel to a 45 degree line. We now define the bulk energy, the anchoring energy and the distortion free energy as follows: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+// Define bulk free energy
+\end_layout
+
+\begin_layout Plain Layout
+fn landau(x, q) {
+\end_layout
+
+\begin_layout Plain Layout
+  var qt = q.norm()
+\end_layout
+
+\begin_layout Plain Layout
+  var qt2=qt*qt
+\end_layout
+
+\begin_layout Plain Layout
+  return a2*qt2 + a4*qt2*qt2
+\end_layout
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\begin_layout Plain Layout
+// Define anchoring energy at the boundary
+\end_layout
+
+\begin_layout Plain Layout
+fn anchoring(x, q) {
+\end_layout
+
+\begin_layout Plain Layout
+  var t = tangent()
+\end_layout
+
+\begin_layout Plain Layout
+  var wxx = t[0]*t[0]-0.5
+\end_layout
+
+\begin_layout Plain Layout
+  var wxy = t[0]*t[1]
+\end_layout
+
+\begin_layout Plain Layout
+  return (q[0]-wxx)^2+(q[1]-wxy)^2
+\end_layout
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+var bulk = AreaIntegral(landau, q_tensor)
+\end_layout
+
+\begin_layout Plain Layout
+var anchor = LineIntegral(anchoring, q_tensor)
+\end_layout
+
+\begin_layout Plain Layout
+var elastic = GradSq(q_tensor)
+\end_layout
+
+\end_inset
+
+Equipped with the energies, we define the 
+\family typewriter
+OptimizationProblem
+\family default
+: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+var problem = OptimizationProblem(m)
+\end_layout
+
+\begin_layout Plain Layout
+problem.addenergy(bulk)
+\end_layout
+
+\begin_layout Plain Layout
+problem.addenergy(elastic, prefactor = K)
+\end_layout
+
+\begin_layout Plain Layout
+problem.addenergy(anchor, selection=bnd, prefactor=EA)
+\end_layout
+
+\end_inset
+
+To minimize the energy with respect to the field, we define the 
+\family typewriter
+FieldOptimizer
+\family default
+ and perform a 
+\family typewriter
+linesearch
+\family default
+: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+var opt = FieldOptimizer(problem, q_tensor)
+\end_layout
+
+\begin_layout Plain Layout
+opt.linesearch(500)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Visualizing the result
+\end_layout
+
+\begin_layout Standard
+For visualizing the final configuration, we use the same piece of code we used for the tactoid example, and define some additional helper functions to extract the director and the order from the Q-tensor. 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+fn sign(x) {
+\end_layout
+
+\begin_layout Plain Layout
+  if (x<0.0) return -1.0
+\end_layout
+
+\begin_layout Plain Layout
+  else if (x>0.0) return 1.0
+\end_layout
+
+\begin_layout Plain Layout
+  return 0.0
+\end_layout
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+fn qtodirector(q) {
+\end_layout
+
+\begin_layout Plain Layout
+  var S = 2*q.norm()
+\end_layout
+
+\begin_layout Plain Layout
+  var Q = q/S
+\end_layout
+
+\begin_layout Plain Layout
+  var nx = sqrt(Q[0]+0.5)
+\end_layout
+
+\begin_layout Plain Layout
+  var ny = abs(Q[1]/nx)
+\end_layout
+
+\begin_layout Plain Layout
+  nx*=sign(Q[1])
+\end_layout
+
+\begin_layout Plain Layout
+  return Matrix([nx,ny,0])
+\end_layout
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+fn qtoorder(q) {
+\end_layout
+
+\begin_layout Plain Layout
+  var S = 2*q.norm()
+\end_layout
+
+\begin_layout Plain Layout
+  return S
+\end_layout
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+// Convert the q-tensor to the director and order
+\end_layout
+
+\begin_layout Plain Layout
+var nn = Field(m, Matrix([1,0,0]))
+\end_layout
+
+\begin_layout Plain Layout
+for (i in 0...m.count()) nn[i]=qtodirector(q_tensor[i])
+\end_layout
+
+\begin_layout Plain Layout
+var S = Field(m, 0)
+\end_layout
+
+\begin_layout Plain Layout
+for (i in 0...m.count()) S[i]=qtoorder(q_tensor[i])
+\end_layout
+
+\end_inset
+
+
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+// Function to visualize a director field
+\end_layout
+
+\begin_layout Plain Layout
+fn visualize(m, nn, dl) {
+\end_layout
+
+\begin_layout Plain Layout
+  var v = m.vertexmatrix()
+\end_layout
+
+\begin_layout Plain Layout
+  var nv = v.dimensions()[1]
+\end_layout
+
+\begin_layout Plain Layout
+  var g = Graphics()
+\end_layout
+
+\begin_layout Plain Layout
+  for (i in 0...nv) {
+\end_layout
+
+\begin_layout Plain Layout
+    var x = v.column(i)
+\end_layout
+
+\begin_layout Plain Layout
+    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl,
+\end_layout
+
+\begin_layout Plain Layout
+    aspectratio=0.3))
+\end_layout
+
+\begin_layout Plain Layout
+  }
+\end_layout
+
+\begin_layout Plain Layout
+  return g
+\end_layout
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+// Visualize the result
+\end_layout
+
+\begin_layout Plain Layout
+// var g=plotmesh(m, grade=1)
+\end_layout
+
+\begin_layout Plain Layout
+var splot = plotfield(S, style="interpolate")
+\end_layout
+
+\begin_layout Plain Layout
+var gnn=visualize(m, nn, 0.05)
+\end_layout
+
+\begin_layout Plain Layout
+var gdisp = splot+gnn
+\end_layout
+
+\begin_layout Plain Layout
+Show(gdisp)
+\end_layout
+
+\end_inset
+
+We can go further and use the 
+\family typewriter
+povray
+\family default
+ module to render a 
+\family typewriter
+.png
+\family default
+ output: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+var pov = POVRaytracer(gdisp)
+\end_layout
+
+\begin_layout Plain Layout
+pov.viewangle=35
+\end_layout
+
+\begin_layout Plain Layout
+pov.render("Qtensor_K_${K}.pov")
+\end_layout
+
+\end_inset
+
+
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+centering
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset Graphics 
+	filename Qtensor_K_1.png
+	width 45line%
+
+\end_inset
+
+ 
+\begin_inset Graphics 
+	filename Qtensor_K_0.01.png
+	width 45line%
+
+\end_inset
+
+ 
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Final configuration of the director and order for (left) 
+\begin_inset Formula $K=1$
+\end_inset
+
+ and (right) 
+\begin_inset Formula $K=0.01$
+\end_inset
+
+. The cylinders indicate the nematic director whereas the color indicates the scalar order parameter. Note how the 
+\begin_inset Formula $K=1$
+\end_inset
+
+ case has a single 
+\begin_inset Formula $+1$
+\end_inset
+
+ defect at the center whereas the 
+\begin_inset Formula $K=0.01$
+\end_inset
+
+ case has two 
+\begin_inset Formula $+1/2$
+\end_inset
+
+ defects.
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:qtensor"
+
+\end_inset
+
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This creates beautiful plots of the nematic, as seen in the example Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:qtensor"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+. Like the tactoid example, we can do adaptive mesh refinement based on the elastic energy density as well. The full code, along with the optional adaptive refinement can be found under 
+\family typewriter
+examples/qtensor/qtensor.morpho
+\family default
+. 
+\end_layout
+
+\end_body
+\end_document

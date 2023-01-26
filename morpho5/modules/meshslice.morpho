@@ -21,6 +21,7 @@ class MeshSlicer {
     self.basis = nil 
     self.ptol = ptol
     self.pairs = nil
+    self.map = nil
     self.vert = nil
     self.mb = nil
   }
@@ -113,17 +114,22 @@ class MeshSlicer {
     del.sscale = 100 // Use a large outer simplex
     var tri = del.triangulate() 
 
+    var el = []
+
     for (t in tri) { 
       var ntri = []
       for (ix in t) { // Replace with the correct indices
         ntri.append(newel[ix])
       }
-      self.mb.addelement(2, ntri) // and add the element
+      el.append(self.mb.addelement(2, ntri)) // and add the element
     }
+
+    return el 
   }
 
   project(g, el) { // project element of grade g onto next lower grade
     var pairs = self.vertexpairs(el)
+    var ret // Return the projected element(s)
 
     // Find the intersections of all the boundaries
     for (pair in pairs) {
@@ -132,12 +138,13 @@ class MeshSlicer {
 
       var intersection = self.findintersection(i,j)
       if (intersection) {
-        intersection.id = self.mb.addvertex(intersection.x)
+        ret = self.mb.addvertex(intersection.x)
+        intersection.id = ret
         self.pairs[i,j] = intersection // record the pair
       }
     }
 
-    if (g<2) return // Skip if a line element
+    if (g<2) return ret // Skip if a line element
 
     // Create a new element
     var newel = [] // First create a list of the vertices on the plane
@@ -147,12 +154,12 @@ class MeshSlicer {
     }
 
     if (newel.count()==g) {
-      self.mb.addelement(newel.count()-1, newel)
+      ret=self.mb.addelement(newel.count()-1, newel)
     } else {
-      self.triangulate(newel)
+      ret=self.triangulate(newel)
     }
 
-    return newel.count()
+    return ret
   }
 
   select(pt, dirn) { // Returns a selection of all elements intersecting with a plane
@@ -175,37 +182,68 @@ class MeshSlicer {
   slice(pt, dirn) {
     self.setpt(pt, dirn)
     self.pairs = Sparse([]) // Used to keep track vertices created from pairs of vertices
+    self.map = List(0..self.mesh.maxgrade())
     self.vert = self.mesh.vertexmatrix()
     self.mb = MeshBuilder()
 
     for (g in 1..self.mesh.maxgrade()) { // Loop over grades
       var conn = self.mesh.connectivitymatrix(0, g) // Get the connectivity matrix
       if (!conn) continue
+      var dict = Dictionary() 
 
       for (id in 0...self.mesh.count(g)) { // Loop over elements
         var el = conn.rowindices(id)
         if (self.testintersection(el)) { // Check if the element intersects
-          var np = self.project(g, el)
+          var nid = self.project(g, el)
+          dict[id] = nid
         }
       }
+
+      self.map[g] = dict 
     }
 
     self.newmesh = self.mb.build()
     return self.newmesh
   }
 
-  slicefield(fld) {
+  slicefield(fld, interpolate=true) {
     if (!self.newmesh) _errSlcEmpty.throw() 
-    var f = Field(self.newmesh, fld[0]) 
-    for (j in 0...self.pairs.dimensions()[1]) {
-      var ri=self.pairs.rowindices(j)
-      for (i in ri) {
-        var fi = fld[i], fj = fld[j]
-        var u = self.pairs[i,j].u
-        var id = self.pairs[i,j].id
-        f[0,id]=(1-u)*fi + u*fj
+
+    // Determine the new shape of the field 
+    var shape = fld.shape() 
+    var newshape = []
+    for (i in 1...shape.count()) newshape.append(shape[i])
+    if (shape[0]>0) newshape[0]=max(shape[0], shape[1])
+
+    var f = Field(self.newmesh, fld[0], grade=newshape) 
+
+    // Interpolate vertex-based fields first 
+    if (interpolate) for (k in 0...shape[0]) { 
+      for (j in 0...self.pairs.dimensions()[1]) {
+        var ri=self.pairs.rowindices(j)
+        for (i in ri) {
+          var fi = fld[0,i,k], fj = fld[0,j,k]
+          var u = self.pairs[i,j].u
+          var id = self.pairs[i,j].id
+          f[0,id,k]=(1-u)*fi + u*fj
+        }
       }
     }
+
+    // Then copy information from higher elements
+    for (g in 1..self.mesh.maxgrade()) {
+      var nvar = shape[g]
+      var dict = self.map[g]
+      if (nvar==0) continue
+      if (!isdictionary(dict)) continue
+
+      for (id in dict) { // Copy the contents down into the next grade 
+        var fid = dict[id]
+        if (isint(fid)) for (k in 0...nvar) f[g-1,fid,k]=fld[g,id,k]
+        else for (l in fid) for (k in 0...nvar) f[g-1,l,k]=fld[g,id,k]
+      }
+    }
+
     return f 
   }
 }

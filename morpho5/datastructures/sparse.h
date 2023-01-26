@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include "object.h"
 #include "morpho.h"
+#include "matrix.h"
 
 /* ***************************************
  * Sparse objects
@@ -96,7 +97,7 @@ objectsparse *sparse_sparsefromarray(objectarray *array);
 #define SPARSE_SETFAILED_MSG              "Attempt to set sparse matrix element failed."
 
 #define SPARSE_INVLDARRAYINIT             "SprsInvldInit"
-#define SPARSE_INVLDARRAYINIT_MSG         "Array initializer passed to Sparse() must be a 1 or 2 dimensional array."
+#define SPARSE_INVLDARRAYINIT_MSG         "Invalid initializer passed to Sparse()."
 
 #define SPARSE_CONVFAILEDERR              "SprsCnvFld"
 #define SPARSE_CONVFAILEDERR_MSG          "Sparse format conversion failed."
@@ -117,6 +118,10 @@ bool sparsedok_setdimensions(sparsedok *dok, int nrows, int ncols);
 unsigned int sparsedok_count(sparsedok *dok);
 void *sparsedok_loopstart(sparsedok *dok);
 bool sparsedok_loop(sparsedok *dok, void **cntr, int *i, int *j);
+bool sparsedok_copy(sparsedok *src, sparsedok *dest);
+bool sparsedok_copyat(sparsedok *src, sparsedok *dest, int row0, int col0);
+bool sparsedok_copymatrixat(objectmatrix *src, sparsedok *dest, int row0, int col0);
+bool sparsedok_copytomatrix(sparsedok *src, objectmatrix *dest, int row0, int col0);
 
 /* ***************************************
  * Compressed Column Storage Format
@@ -128,10 +133,14 @@ bool sparseccs_resize(sparseccs *ccs, int nrows, int ncols, unsigned int nentrie
 bool sparseccs_get(sparseccs *ccs, int i, int j, double *val);
 
 bool sparseccs_getrowindices(sparseccs *ccs, int col, int *nentries, int **entries);
+bool sparseccs_getrowindiceswithvalues(sparseccs *ccs, int col, int *nentries, int **entries, double **vals);
 bool sparseccs_setrowindices(sparseccs *ccs, int col, int nentries, int *entries);
 bool sparseccs_getcolindices(sparseccs *ccs, int maxentries, int *nentries, int *entries);
 bool sparseccs_getcolindicesforrow(sparseccs *ccs, int row, int maxentries, int *nentries, int *entries);
 bool sparseccs_doktoccs(sparsedok *in, sparseccs *out, bool copyvals);
+bool sparseccs_copy(sparseccs *src, sparseccs *dest);
+bool sparseccs_copytodok(sparseccs *src, sparsedok *dest, int row0, int col0);
+bool sparseccs_copytomatrix(sparseccs *src, objectmatrix *dest, int row0, int col0);
 
 /* ***************************************
  * Object sparse interface
@@ -139,20 +148,28 @@ bool sparseccs_doktoccs(sparsedok *in, sparseccs *out, bool copyvals);
 
 typedef enum { SPARSE_DOK, SPARSE_CCS } objectsparseformat;
 
-typedef enum { SPARSE_OK, SPARSE_INCMPTBLDIM, SPARSE_CONVFAILED, SPARSE_FAILED } objectsparseerror;
+typedef enum { SPARSE_OK, SPARSE_INCMPTBLDIM, SPARSE_INVLDINIT, SPARSE_CONVFAILED, SPARSE_FAILED } objectsparseerror;
+void sparse_raiseerror(vm *v, objectsparseerror err);
 
 bool sparse_checkformat(objectsparse *sparse, objectsparseformat format, bool force, bool copyvals);
 
+objectsparseerror sparse_tomatrix(objectsparse *in, objectmatrix **out);
 objectsparse *sparse_clone(objectsparse *s);
 bool sparse_setelement(objectsparse *matrix, int row, int col, value value);
 bool sparse_getelement(objectsparse *matrix, int row, int col, value *value);
+void sparse_getdimensions(objectsparse *s, int *nrows, int *ncols);
 
 objectsparseerror sparse_add(objectsparse *a, objectsparse *b, double alpha, double beta, objectsparse *out);
 objectsparseerror sparse_mul(objectsparse *a, objectsparse *b, objectsparse *out);
+objectsparseerror sparse_mulsxd(objectsparse *a, objectmatrix *b, objectmatrix *out);
+objectsparseerror sparse_muldxs(objectmatrix *a, objectsparse *b, objectmatrix *out);
 objectsparseerror sparse_transpose(objectsparse *a, objectsparse *out);
 
 void sparse_clear(objectsparse *a);
 size_t sparse_size(objectsparse *a);
+
+objectsparseerror sparse_cat(objectlist *in, objectsparse *dest);
+objectsparseerror sparse_catmatrix(objectlist *in, objectmatrix **out);
 
 /* ***************************************
  * Sparse class methods

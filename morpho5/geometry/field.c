@@ -752,7 +752,9 @@ value Field_op(vm *v, int nargs, value *args) {
             else { morpho_runtimeerror(v, FIELD_OP); return MORPHO_NIL; }
         }
         
-        field_op(v, fn, slf, nargs-1, flds, &out);
+        if (field_op(v, fn, slf, nargs-1, flds, &out)) {
+            morpho_bindobjects(v, 1, &out);
+        }
     } else morpho_runtimeerror(v, FIELD_OP);
     
     return out;
@@ -760,6 +762,9 @@ value Field_op(vm *v, int nargs, value *args) {
 
 /** Print the mesh */
 value Field_print(vm *v, int nargs, value *args) {
+    value self = MORPHO_SELF(args);
+    if (!MORPHO_ISFIELD(self)) return Object_print(v, nargs, args);
+    
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
     printf("<Field>\n");
     matrix_print(&f->data);
@@ -804,6 +809,13 @@ value Field_mesh(vm *v, int nargs, value *args) {
     return MORPHO_OBJECT(f->mesh);
 }
 
+/** Get the matrix that stores the Field */
+value Field_linearize(vm *v, int nargs, value *args) {
+    objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
+    
+    return MORPHO_OBJECT(&f->data);
+}
+
 MORPHO_BEGINCLASS(Field)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Field_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Field_setindex, BUILTIN_FLAGSEMPTY),
@@ -823,7 +835,8 @@ MORPHO_METHOD(FIELD_OP_METHOD, Field_op, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Field_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Field_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_SHAPE_METHOD, Field_shape, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FIELD_MESH_METHOD, Field_mesh, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FIELD_MESH_METHOD, Field_mesh, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FIELD_LINEARIZE_METHOD, Field_linearize, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -837,7 +850,10 @@ void field_initialize(void) {
     
     builtin_addfunction(FIELD_CLASSNAME, field_constructor, BUILTIN_FLAGSEMPTY);
     
-    value fieldclass=builtin_addclass(FIELD_CLASSNAME, MORPHO_GETCLASSDEFINITION(Field), MORPHO_NIL);
+    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    
+    value fieldclass=builtin_addclass(FIELD_CLASSNAME, MORPHO_GETCLASSDEFINITION(Field), objclass);
     object_setveneerclass(OBJECT_FIELD, fieldclass);
     
     morpho_defineerror(FIELD_INDICESOUTSIDEBOUNDS, ERROR_HALT, FIELD_INDICESOUTSIDEBOUNDS_MSG);

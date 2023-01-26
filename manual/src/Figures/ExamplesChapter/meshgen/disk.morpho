@@ -1,0 +1,12 @@
+// Domain composed of a single disk
+import meshgen
+import plot
+
+var dom = fn (x) -(x[0]^2+x[1]^2-1)
+var mg = MeshGen(dom, [-1..1:0.2, -1..1:0.2], quiet=false)
+var m = mg.build()
+
+//Show(plotmesh(m, grade=1))
+
+import "../raytrace.morpho"
+raytrace(plotmesh(m, grade=1), "disk.pov", viewpoint=[0,0,10], viewangle=18)

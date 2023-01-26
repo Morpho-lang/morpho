@@ -1,0 +1,17 @@
+// Test Range methods inherited from Object 
+
+var a = 1..2
+
+print a.respondsto("clss") // expect: true
+
+print islist(a.respondsto()) // expect: true
+
+print a.clss() // expect: @Range
+
+print a.superclass() // expect: @Object
+
+print islist(a.invoke("respondsto")) // expect: true
+
+print a.has("a") // expect: false
+
+print a.count() // expect: 2

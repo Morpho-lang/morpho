@@ -51,6 +51,8 @@ typedef void compiler;
 #define MORPHO_ACC_METHOD "acc"
 #define MORPHO_SUM_METHOD "sum"
 
+#define MORPHO_CONTAINS_METHOD "contains"
+
 #define MORPHO_UNION_METHOD "union"
 #define MORPHO_INTERSECTION_METHOD "intersection"
 #define MORPHO_DIFFERENCE_METHOD "difference"
@@ -109,7 +111,8 @@ void morpho_bindobjects(vm *v, int nobj, value *obj);
 void morpho_markobject(void *v, object *obj);
 void morpho_markvalue(void *v, value val);
 void morpho_markvarrayvalue(void *v, varray_value *array);
-void morpho_searchunmanagedobject(void *v, object *obj); 
+void morpho_searchunmanagedobject(void *v, object *obj);
+bool morpho_ismanagedobject(object *obj); 
 
 /* Tell the VM that the size of an object has changed */
 void morpho_resizeobject(vm *v, object *obj, size_t oldsize, size_t newsize);
@@ -122,18 +125,17 @@ void morpho_releaseobjects(vm *v, int handle);
 void morpho_runtimeerror(vm *v, errorid id, ...);
 void morpho_usererror(vm *v, errorid id, char *message);
 
-/* Activate/deactivate the debugger */
-void morpho_setdebug(vm *v, bool active);
-
 /* Compilation */
 compiler *morpho_newcompiler(program *out);
 void morpho_freecompiler(compiler *c);
-bool morpho_compile(char *in, compiler *c, error *err);
+bool morpho_compile(char *in, compiler *c, bool optimize, error *err);
 const char *morpho_compilerrestartpoint(compiler *c);
 void morpho_resetentry(program *p);
 
 /* Interpreting */
 bool morpho_run(vm *v, program *p);
+bool morpho_profile(vm *v, program *p);
+bool morpho_debug(vm *v, program *p);
 bool morpho_lookupmethod(value obj, value label, value *method);
 bool morpho_countparameters(value f, int *nparams);
 bool morpho_call(vm *v, value fn, int nargs, value *args, value *ret);

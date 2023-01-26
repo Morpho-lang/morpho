@@ -1,0 +1,48 @@
+import meshgen
+import plot
+import povray
+
+fn raytrace(g, fname, viewpoint=nil, viewangle=18) {
+  var vp = viewpoint 
+  if (!vp) vp=Matrix([0,0,10])
+  var pov = POVRaytracer(g)
+  g.background = White
+  pov.viewpoint = vp
+  pov.viewangle = viewangle
+  pov.background = White
+  pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]
+  pov.render(fname, quiet=true)
+}
+
+// Disk
+fn disk(x) { return -(x[0]^2+x[1]^2-1) }
+var mg = MeshGen(disk, [-1..1:0.2, -1..1:0.2])
+var m = mg.build()
+print m
+
+var g=plotmesh(m, grade=[0,1])
+raytrace(g, "disk.pov")
+
+mg = MeshGen(disk, [-1..1:0.1, -1..1:0.1])
+m = mg.build()
+print m
+
+var g=plotmesh(m, grade=[0,1])
+raytrace(g, "finedisk.pov")
+
+var e0 = Domain(fn (x) -((x[0]/2)^2+x[1]^2-1))
+var mg = MeshGen(e0, [-2..2:0.2, -1..1:0.2])
+var m = mg.build()
+var g=plotmesh(m, grade=[0,1])
+raytrace(g, "ellipse.pov", viewpoint=Matrix([0,0,15]))
+
+var a = CircularDomain(Matrix([-0.5,0]), 1)
+var b = CircularDomain(Matrix([0.5,0]), 1)
+var c = CircularDomain(Matrix([0,0]), 0.3)
+var dom = a.union(b).difference(c)
+
+var mg = MeshGen(dom, [-2..2:0.1, -1..1:0.1], quiet=false)
+var m = mg.build()
+
+g=plotmesh(m, grade=1)
+raytrace(g, "overlappingdisks.pov", viewpoint=Matrix([0,0,12]))

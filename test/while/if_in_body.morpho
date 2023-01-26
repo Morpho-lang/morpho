@@ -1,0 +1,12 @@
+// The if divides the loop into multiple control flow blocks
+
+var i = 1
+while (i < 4) {
+  var j=i 
+
+  if (j == 1) print true
+
+  i = i + 1
+}
+
+// expect: true

@@ -89,7 +89,7 @@ fn plotmesh(mesh, selection=nil, grade=nil, color=nil,  filter=nil, transmit=nil
   var flat = nil
 
   var bb = _bbox(mesh.vertexmatrix())
-  var centroid = Matrix(bb.count())
+  var centroid = Matrix(3)
   var size[bb.count()]
   for (x, i in bb) {
     size[i]=x[1]-x[0]
@@ -217,7 +217,7 @@ fn plotselection(mesh, selection, grade=nil, filter=nil, transmit=nil) {
  * @param[in] colormap - Colormap to use
  * @param[in] style - style to use
  * @param[in] scale - whether or not to scale values */
-fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, transmit=nil, scalebar=nil) {
+fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, transmit=nil, scalebar=nil, cmin=nil, cmax=nil) {
   var mesh = field.mesh()
   var shape = field.shape()
 
@@ -229,6 +229,8 @@ fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, 
   if (cm==nil) cm = ViridisMap()    // Default color map
 
   var bnd=bounds(field)         // Find bounds for the field
+  if (!isnil(cmin)) bnd[0] = cmin
+  if (!isnil(cmax)) bnd[1] = cmax
   var sc = bnd[1]-bnd[0]
   if (abs(sc)>1e-16) sc=1/sc else sc = 1
 
@@ -236,8 +238,14 @@ fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, 
     var nv=mesh.count(0)       // Number of elements in this grade
     var cmat = Matrix(3, nv)   // Make a color matrix
 
+    if (field.shape()[0]==0) {
+      Error("PltFldInt", "Can't use 'interpolate' style: Field lacks values on vertices.").throw() 
+    }
+
     for (i in 0...nv) {
       var val = field[0, i]
+      if (!isnil(cmin)) val = max(cmin, val)
+      if (!isnil(cmax)) val = min(cmax, val)
       if (scale) val=(val-bnd[0])*sc
       cmat.setcolumn(i, Matrix(cm.rgb(val)))
     }
@@ -253,6 +261,8 @@ fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, 
 
       for (i in 0...nel) {
         var val = field[g, i]
+        if (!isnil(cmin)) val = max(cmin, val)
+        if (!isnil(cmax)) val = min(cmax, val)
         if (scale) val=(val-bnd[0])*sc
         cmat.setcolumn(i, Matrix(cm.rgb(val)))
       }
@@ -294,6 +304,12 @@ fn _centroid(m, g, id) {
   return x 
 }
 
+fn _to3d(x) {
+  var y = Matrix(3)
+  for (i in 0...min(x.count(),3)) y[i]=x[i]
+  return y
+}
+
 fn plotmeshlabels(mesh, grade=0, selection=nil, fontsize=10, offset=nil, dirn=nil, vertical=nil, color=nil) {
   var gradelist = grade 
   if (!islist(grade)) gradelist = [grade]
@@ -323,9 +339,9 @@ fn plotmeshlabels(mesh, grade=0, selection=nil, fontsize=10, offset=nil, dirn=ni
 
     for (id in 0...mesh.count(g)) {
       if (selection && !selection[g,id]) continue 
-      var x = _centroid(mesh, g, id)
+      var x = _to3d(_centroid(mesh, g, id))
       if (iscallable(dirn)) dir=dirn(x)
-      if (iscallable(vert)) vert=vertical(x)
+      if (iscallable(vertical)) vert=vertical(x)
       var offset = off 
       if (iscallable(off)) offset = off(x)
 

@@ -1,0 +1,16 @@
+// Test Mesh methods inherited from Object 
+
+var a = Mesh() 
+
+print a.respondsto("respondsto") // expect: true
+
+print islist(a.respondsto()) // expect: true
+
+print a.clss() // expect: @Mesh
+
+print a.superclass() // expect: @Object
+
+print islist(a.invoke("respondsto")) // expect: true
+
+print a.has("a") // expect: false
+

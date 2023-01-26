@@ -1,0 +1,28 @@
+
+import implicitmesh
+import plot
+
+// 3-surface
+var rx=6
+var ry=3.5
+var rz=4
+var r1=1.2
+var x1=3.9
+
+var impl = ImplicitMeshBuilder(fn (x,y,z) rz^4*z^2 - (1-(x/rx)^2-(y/ry)^2)*((x-x1)^2 + y^2 - r1^2)*(x^2+y^2-r1^2)*((x+x1)^2+y^2-r1^2))
+var mesh = impl.build(start=Matrix([0,3,0]), stepsize=0.3, maxiterations=4000)
+
+mesh.addgrade(1)
+var g=plotmesh(mesh, grade=[1,2])
+//Show(g)
+
+import color
+import povray
+
+g.background = White
+
+var pov = POVRaytracer(g)
+pov.light = [Matrix([-3,3,3]), Matrix([3,3,3]), Matrix([0,-3,3])]
+pov.viewpoint = Matrix([0,-4,20])
+pov.viewangle = 45
+pov.render("threesurface.pov", display=false)

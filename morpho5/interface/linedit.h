@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <string.h>
+#include <stdint.h>
 
 #include <termios.h>
 #include <unistd.h>
@@ -23,10 +24,10 @@
 
 /** lineditor strings */
 typedef struct slinedit_string {
-    size_t capacity;
-    size_t length;
-    char *string;
-    struct slinedit_string *next;
+    size_t capacity;  /** Capacity of the string in bytes */
+    size_t length; /** Length in bytes */
+    char *string; /** String data */
+    struct slinedit_string *next; /** Enable strings to be chained together */
 } linedit_string;
 
 /** A list of strings */
@@ -138,7 +139,7 @@ typedef enum {
 /** Holds all state information needed for a line editor */
 typedef struct {
     lineditormode mode;      /* Current editing mode */
-    int posn;                /* Position of the cursor */
+    int posn;                /* Position of the cursor in characters */
     int sposn;               /* Starting point of a selection */
     int ncols;               /* Number of columns */
     linedit_string prompt;   /* The prompt */
@@ -173,6 +174,10 @@ void linedit_syntaxcolor(lineditor *edit, linedit_tokenizer tokenizer, linedit_c
  *  @param edit         Line editor to configure
  *  @param completer    a function */
 void linedit_autocomplete(lineditor *edit, linedit_completer completer);
+
+/** @brief Configures multiline editing
+ *  @param edit         Line editor to configure */
+void linedit_multiline(lineditor *edit);
 
 /** @brief Adds a completion suggestion
  *  @param completion   completion data structure

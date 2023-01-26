@@ -62,7 +62,7 @@ class POVRaytracer {
   visittext(item, out) {
     var arg = self.optionalarg(item)
     out.write("text {" +
-              "  ttf \"timrom.ttf\" \"${item.string}\" 0.1, 0 \n" + 
+              "  ttf \"cyrvetic.ttf\" \"${item.string}\" 0.1, 0 \n" + 
               "  pigment { rgb ${self.color(item.color)} ${arg} }")
     out.write("  scale ${item.size / 75} ")
     out.write("  translate ${item.posn[0]}*x + ${item.posn[1]}*y + ${item.posn[2]}*z ")

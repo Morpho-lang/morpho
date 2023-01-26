@@ -8,49 +8,31 @@ Morpho provides a number of built-in functions.
 
 [showsubtopics]: # (subtopics)
 
-## sin
-[tagsin]: # (sin)
+## Random
+[tagrandom]: # (random)
+[tagrand]: # (rand)
 
-Returns the sine of an angle in radians.
+The `random` function generates a random number from a uniform distribution on the interval [0,1].
 
-    import constants 
-    print sin(Pi/2) // expect: 1
+    print random() 
 
-## sinh
-[tagsinh]: # (sinh)
+See also `randomnormal` and `randomint`.
 
-Returns the hyperbolic sine of an angle in radians.
+## Randomnormal
+[tagrandomnormal]: # (randomnormal)
 
-    import constants 
-    print sinh(0) // expect: 0
+The `randomnormal` function generates a random number from a normal (gaussian) distribution with unit variance and zero offset.
 
-## cos
-[tagcos]: # (cos)
+    print randomnormal() 
 
-Returns the cosine of an angle in radians.
+See also `random` and `randomint`.
 
-    import constants 
-    print cos(Pi/2) // expect: 0
+## Randomint
+[tagrandomnormal]: # (randomnormal)
 
-## cosh
-[tagcosh]: # (cosh)
+The `randomint` function generates a random integer with a specified maximum value.
 
-Returns the hyperbolic cosine of an angle in radians.
-
-    print cosh(0) // expect: 1
-
-## arctan
-[tagarctan]: # (arctan)
-
-Returns the arctangent of an input value that lies from `-Inf` to `Inf`. You can use one argument:
-
-    print arctan(0) // expect: 0
-
-or use two arguments to return the angle in the correct quadrant:
-
-    print arctan(x, y)
-
-Note the order `x`, `y` differs from some other languages.
+    print randomint(10) // Generates a random integer [0,10)
 
 ## isnil
 [tagisnil]: # (isnil)
@@ -132,6 +114,37 @@ Returns `true` if a value is a Not a Number or `false` otherwise.
 
 Returns `true` if a value is callable or `false` otherwise.
 
+## isfinite
+[tagisfinite]: # (isfinite)
+
+Returns `true` if a value is finite or `false` otherwise.
+
+    print isfinite(1) // expect: true 
+    print isfinite(1/0) // expect: false 
+
+## isnumber
+[tagisnumber]: # (isnumber)
+
+Returns `true` if a value is a real number, or `false` otherwise.
+
+    print isnumber(1) // expect: true 
+    print isnumber(Object()) // expect: false
+
+## ismesh
+[tagismesh]: # (ismesh)
+
+Returns `true` if a value is a `Mesh`, or `false` otherwise.
+
+## isselection
+[tagisselection]: # (isselection)
+
+Returns `true` if a value is a `Selection`, or `false` otherwise.
+
+## isfield
+[tagisfield]: # (isfield)
+
+Returns `true` if a value is a `Field`, or `false` otherwise.
+
 ## Apply
 [tagapply]: # (apply)
 
@@ -148,3 +161,134 @@ You may also instead omit the list and use apply with multiple arguments:
 There is one edge case that occurs when you want to call a function that accepts a single list as a parameter. In this case, enclose the list in another list: 
 
     apply(f, [[1,2]]) // equivalent to f([1,2])
+
+## Abs
+[tagabs]: # (abs)
+
+Returns the absolute value of a number: 
+
+    print abs(-10) // prints 10 
+
+## Arctan
+[tagarctan]: # (arctan)
+
+Returns the arctangent of an input value that lies from `-Inf` to `Inf`. You can use one argument:
+
+    print arctan(0) // expect: 0
+
+or use two arguments to return the angle in the correct quadrant:
+
+    print arctan(x, y)
+
+Note the order `x`, `y` differs from some other languages.
+
+## Exp
+[tagexp]: # (exp)
+
+Exponential function `e^x`. Inverse of `log`.
+
+    print exp(0) // expect: 1 
+    print exp(Pi*im) // expect: -1 + 0im
+
+## Log
+[taglog]: # (log)
+
+Natural logarithm function. Inverse of `exp`.
+
+    print log(1) // expect: 0 
+
+## Log10
+[taglog10]: # (log10)
+
+Base 10 logarithm function.
+
+    print log10(10) // expect: 1
+
+## Sin
+[tagsin]: # (sin)
+
+Sine trigonometric function.
+
+    print sin(0) // expect: 0 
+
+## Sinh
+[tagsinh]: # (sinh)
+
+Hyperbolic sine trigonometric function.
+
+    print sinh(0) // expect: 0 
+
+## Cos
+[tagcos]: # (cos)
+
+Cosine trigonometric function.
+
+    print cos(0) // expect: 1
+
+## Cosh
+[tagcosh]: # (cosh)
+
+Hyperbolic cosine trigonometric function.
+
+    print cosh(0) // expect: 1
+
+## Tan
+[tagtan]: # (tan)
+
+Tangent trigonometric function.
+
+    print tan(0) // expect: 0 
+
+## Tanh
+[tagtanh]: # (tanh)
+
+Hyperbolic tangent trigonometric function.
+
+    print tanh(0) // expect: 0 
+
+## Asin
+[tagasin]: # (asin)
+
+Inverse sine trigonometric function. Returns a value on the interval    `[-Pi/2,Pi/2]`.
+
+    print asin(0) // expect: 0 
+
+## Acos
+[tagacos]: # (acos)
+
+Inverse cosine trigonometric function. Returns a value on the interval  `[-Pi/2,Pi/2]`.
+
+    print acos(1) // expect: 0 
+
+## Sqrt
+[tagsqrt]: # (sqrt)
+
+Square root function.
+
+    print sqrt(4) // expect: 2
+
+## Min
+[tagmin]: # (min)
+
+Finds the minimum value of its arguments. If any of the arguments are Objects and are enumerable, (e.g. a `List`), `min` will search inside them for a minimum value. Accepts any number of arguments. 
+
+    print min(3,2,1) // expect: 1 
+    print min([3,2,1]) // expect: 1 
+    print min([3,2,1],[0,-1,2]) // expect: -2 
+
+## Max
+[tagmax]: # (max)
+
+Finds the maximum value of its arguments. If any of the arguments are Objects and are enumerable, (e.g. a `List`), `max` will search inside them for a maximum value. Accepts any number of arguments. 
+
+    print min(3,2,1) // expect: 3 
+    print min([3,2,1]) // expect: 3
+    print min([3,2,1],[0,-1,2]) // expect: 3 
+
+## Bounds
+[tagbounds]: # (bounds)
+
+Returns both the results of `min` and `max` as a list, Providing a set of bounds for its arguments and any enumerable objects within them.
+
+    print bounds(1,2,3) // expect: [1,3]
+    print bounds([3,2,1],[0,-1,2]) // expect: [-1,3]

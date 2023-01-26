@@ -114,7 +114,7 @@ Join two lists together:
 ## Tuples
 [tagtuples]: # (tuples)
 
-Generate all possible n-tuples from a list:
+Generate all possible 2-tuples from a list:
 
     var t = [ 1, 2, 3].tuples(2)
     
@@ -123,9 +123,9 @@ produces `[ [ 1, 1 ], [ 1, 2 ], [ 1, 3 ] ... ]`.
 ## Sets
 [tagsets]: # (sets)
 
-Generate all possible sets of order n from a list. 
+Generate all possible sets of order 2 from a list. 
 
-    var t = [ 1, 2, 3 ].tuples(2)
+    var t = [ 1, 2, 3 ].sets(2)
     
 produces `[ [ 1, 2 ], [ 1, 3 ], [ 2, 3 ] ]`.
 

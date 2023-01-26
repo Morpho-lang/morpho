@@ -151,11 +151,6 @@ void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
                 morpho_printtobuffer(v, klass->name, buffer);
                 varray_charwrite(buffer, '>');
             }
-        } else if (MORPHO_ISFUNCTION(val)) {
-            objectfunction *fn = MORPHO_GETFUNCTION(val);
-            varray_charadd(buffer, "<fn ", 4);
-            morpho_printtobuffer(v, fn->name, buffer);
-            varray_charwrite(buffer, '>');
         } else if (MORPHO_ISBUILTINFUNCTION(val)) {
             objectbuiltinfunction *fn = MORPHO_GETBUILTINFUNCTION(val);
             varray_charadd(buffer, "<fn ", 4);

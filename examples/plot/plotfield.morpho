@@ -14,3 +14,5 @@ for (id in 0...mesh.count()) f[id]=msq[0,id]
 
 // Visualize the field 
 Show(plotfield(f, grade=2, style="interpolate", scalebar=ScaleBar(posn=[1.2,0,0])))
+// Visualize with custom limits on the colormap
+Show(plotfield(f, grade=2, style="interpolate", cmin=0.025, cmax=0.075, scalebar=ScaleBar(posn=[1.2,0,0])))

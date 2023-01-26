@@ -361,7 +361,11 @@ tokentype lex_symboltype(lexer *l) {
             return type;
         }
         case 'v': return lex_checksymbol(l, 1, 2, "ar", TOKEN_VAR);
-        case 'w': return lex_checksymbol(l, 1, 4, "hile", TOKEN_WHILE);
+        case 'w': {
+            tokentype type = lex_checksymbol(l, 1, 4, "hile", TOKEN_WHILE);
+            if (type==TOKEN_SYMBOL) type = lex_checksymbol(l, 1, 3, "ith", TOKEN_WITH);
+            return type;
+        }
     }
     
     return TOKEN_SYMBOL;
@@ -945,8 +949,9 @@ static syntaxtreeindx parse_binary(parser *p) {
         if (nodetype==NODE_ASSIGN &&
             parse_matchtoken(p, TOKEN_FUNCTION)) {
             right=parse_anonymousfunction(p);
+        } else {
+            right = parse_precedence(p, rule->precedence + (assoc == LEFT ? 1 : 0));
         }
-        right = parse_precedence(p, rule->precedence + (assoc == LEFT ? 1 : 0));
     }
     
     /* Now add this node */
@@ -1111,7 +1116,12 @@ static syntaxtreeindx parse_anonymousfunction(parser *p) {
     parse_consume(p, TOKEN_RIGHTPAREN, COMPILE_FNRGHTPARENMISSING);
     
     /* Function body */
-    body=parse_expression(p);
+    if (parse_matchtoken(p, TOKEN_LEFTCURLYBRACKET)) { // fn (x) { ... }
+        body=parse_blockstatement(p);
+    } else {
+        body=parse_expression(p); // Short form: fn (x) x
+        body=parse_addnode(p, NODE_RETURN, MORPHO_NIL, &start, body, SYNTAXTREE_UNCONNECTED);
+    }
     
     return parse_addnode(p, NODE_FUNCTION, MORPHO_NIL, &start, args, body);
 }
@@ -1218,6 +1228,18 @@ static syntaxtreeindx parse_classdeclaration(parser *p) {
         parse_consume(p, TOKEN_SYMBOL, COMPILE_EXPECTSUPER);
         sname=parse_symbolasvalue(p);
         sclass=parse_addnode(p, NODE_SYMBOL, sname, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
+    }
+    
+    if (parse_matchtoken(p, TOKEN_WITH)) {
+        do {
+            parse_consume(p, TOKEN_SYMBOL, COMPILE_EXPECTSUPER);
+            value mixin=parse_symbolasvalue(p);
+            
+            syntaxtreeindx smixin=parse_addnode(p, NODE_SYMBOL, mixin, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
+                
+            sclass = parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &p->previous, smixin, sclass); // Mixins end up being recorded in reverse order
+            
+        } while (parse_matchtoken(p, TOKEN_COMMA));
     }
     
     parse_consume(p, TOKEN_LEFTCURLYBRACKET, COMPILE_CLASSLEFTCURLYMISSING);
@@ -1644,6 +1666,7 @@ parserule rules[] = {
     UNUSED,                                            // TOKEN_IMPORT
     UNUSED,                                            // TOKEN_AS
     UNUSED,                                            // TOKEN_IS
+    UNUSED,                                            // TOKEN_WITH
     UNUSED,                                            // TOKEN_TRY
     UNUSED,                                            // TOKEN_CATCH
     

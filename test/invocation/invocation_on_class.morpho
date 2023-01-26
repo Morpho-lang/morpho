@@ -1,0 +1,11 @@
+// Invocation veneer class
+
+var a = Object.respondsto
+
+print a
+// expect: @Object.<fn respondsto>
+
+print a.clss() 
+// expect: @Invocation
+
+print islist(a()) // expect: true

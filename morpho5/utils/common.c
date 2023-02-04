@@ -8,6 +8,7 @@
 #include <math.h>
 #include <string.h>
 #include <ctype.h>
+#include <dirent.h>
 #include <sys/stat.h>
 #include "common.h"
 #include "object.h"
@@ -323,4 +324,71 @@ bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int 
     return true;
 }
 
+/** List of resource folders, terminated with a blank string */
+char *resourcefolders[] = {
+    "/opt",
+    "/usr/local/share",
+    ""
+};
 
+bool common_searchdirectory(char *path, char *fname, varray_char *out) {
+    DIR *d; /* Handle for the directory */
+    struct dirent *entry; /* Entries in the directory */
+    
+    d = opendir(path);
+    
+    if (d) {
+        while ((entry = readdir(d)) != NULL) { // Loop over directory entries
+            /* Construct the file name */
+            char file[strlen(path)+strlen(entry->d_name)+2];
+            strcpy(file, path);
+            strcat(file, "/");
+            strcat(file, entry->d_name);
+            
+            if (morpho_isdirectory(file)) { // Recurse
+            } else { // Check if it's a file we want
+                
+            }
+        }
+        closedir(d);
+    }
+    
+    return false;
+}
+
+/** Attempts to locate a resource */
+bool morpho_findresource(char *directory, char *name, char *extension, bool recurse, varray_char *out) {
+    
+    for (int i=0; *resourcefolders[i]!='\0'; i++) { // Loop over possible resource folders
+        common_searchdirectory(resourcefolders[i], name, out);
+        
+        
+    }
+    
+    /*varray_charclear(out);
+    varray_charadd(out, MORPHO_MODULEDIRECTORY, (int) strlen(MORPHO_MODULEDIRECTORY));
+    varray_charadd(out, MORPHO_SEPARATOR, (int) strlen(MORPHO_SEPARATOR));
+    varray_charadd(out, name, (int) strlen(name));
+    varray_charadd(out, MORPHO_EXTENSION, (int)  strlen(MORPHO_EXTENSION));
+    varray_charadd(out, "\0", 1);*/
+    
+    return false;
+}
+
+/** Searches for a module with given name, returns the file name for inclusion. */
+bool compiler_Xfindmodule(char *name, varray_char *fname) {
+    varray_charclear(fname);
+    varray_charadd(fname, MORPHO_MODULEDIRECTORY, (int) strlen(MORPHO_MODULEDIRECTORY));
+    varray_charadd(fname, MORPHO_SEPARATOR, (int) strlen(MORPHO_SEPARATOR));
+    varray_charadd(fname, name, (int) strlen(name));
+    varray_charadd(fname, MORPHO_EXTENSION, (int)  strlen(MORPHO_EXTENSION));
+    varray_charadd(fname, "\0", 1);
+
+    morpho_findresource(MORPHO_MODULEDIRECTORY, name, MORPHO_EXTENSION, true, fname);
+    
+    FILE *f=fopen(fname->data, "r");
+
+    if (f) fclose(f);
+
+    return (f!=NULL);
+}

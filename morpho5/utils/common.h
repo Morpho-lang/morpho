@@ -122,4 +122,6 @@ typedef enum {
 void morpho_tuplesinit(unsigned int nval, unsigned int n, unsigned int *c, tuplemode mode);
 bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int *c, tuplemode mode, value *tuple);
 
+bool morpho_findresource(char *folder, char *name, char *extension, bool recurse, varray_char *out);
+
 #endif /* common_h */

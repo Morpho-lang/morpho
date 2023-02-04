@@ -54,6 +54,9 @@ int main(int argc, const char * argv[]) {
         }
     }
     
+    varray_char fname;
+    morpho_findresource("modules", "optimize", "morpho", true, &fname);
+    
     if (file) cli_run(file, opt);
     else cli(opt);
     

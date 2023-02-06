@@ -323,4 +323,16 @@ bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int 
     return true;
 }
 
+#include <dlfcn.h>
 
+void morpho_loadextension(char *path) {
+    void *handle = dlopen("/usr/local/lib/morpho/function.dylib", RTLD_LAZY);
+    void (*fptr) (void);
+    
+    *(void **)(&fptr) = dlsym(handle, "function_init");
+
+    (*fptr) ();
+    
+    //dlclose(handle);
+    printf("DONE!\n");
+}

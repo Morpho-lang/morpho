@@ -55,7 +55,11 @@ int main(int argc, const char * argv[]) {
     }
     
     varray_char fname;
-    morpho_findresource("modules", "optimize", "morpho", true, &fname);
+    varray_charinit(&fname);
+    char *ext[] = { "morpho", "" };
+    if (morpho_findresource("modules", "optimize", ext, true, &fname)) {
+        printf("%s\n", fname.data);
+    }
     
     if (file) cli_run(file, opt);
     else cli(opt);

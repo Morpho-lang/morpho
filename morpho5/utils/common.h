@@ -12,6 +12,7 @@
 #include <math.h>
 #include <float.h>
 #include <string.h>
+#include <pthread.h>
 #include "value.h"
 #include "object.h"
 #include "builtin.h"
@@ -121,5 +122,37 @@ typedef enum {
 
 void morpho_tuplesinit(unsigned int nval, unsigned int n, unsigned int *c, tuplemode mode);
 bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int *c, tuplemode mode, value *tuple);
+
+/* -----------------------------------------
+ * Thread pools
+ * ----------------------------------------- */
+
+/** A work function will be called by the threadpool once a thread is available.
+    You must supply all relevant information for both input and output in a single structure passed as an opaque reference. */
+typedef bool (* workfn) (void *arg);
+
+typedef struct {
+    workfn func;
+    void *arg;
+} task;
+
+DECLARE_VARRAY(task, task);
+
+typedef struct {
+    pthread_mutex_t lock_mutex; /* Lock for access to threadpool structure. */
+    pthread_cond_t work_available_cond; /* Signals that work is available. */
+    pthread_cond_t work_halted_cond; /* Signals when no threads are processing. */
+    int nprocessing; /* Number of threads actively processing work */
+    int nthreads; /* Number of active threads. */
+    bool stop; /* Indicates threads should terminate */
+    
+    varray_task queue; /* Queue of tasks lined up */
+} threadpool;
+
+bool threadpool_init(threadpool *pool, int nworkers);
+void threadpool_clear(threadpool *pool);
+bool threadpool_add_task(threadpool *pool, workfn func, void *arg);
+void threadpool_fence(threadpool *pool);
+void threadpool_wait(threadpool *pool);
 
 #endif /* common_h */

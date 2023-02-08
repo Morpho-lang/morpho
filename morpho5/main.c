@@ -14,8 +14,6 @@
 #include "sparse.h"
 
 int main(int argc, const char * argv[]) {
-    morpho_initialize();
-    
     clioptions opt = CLI_RUN;
     const char *file = NULL;
     
@@ -48,11 +46,25 @@ int main(int argc, const char * argv[]) {
                     }
 #endif
                     break;
+                case 'w': /* Workers */
+                    {
+                        const char *c=option+2;
+                        int nw=0;
+                        while (!isdigit(*c) && *c!='\0') c++;
+                        if (isdigit(*c)) nw=atoi(c);
+                        if (nw<0) nw=0;
+                        morpho_setthreadnumber(nw);
+                    }
+                    
+                    break;
             }
         } else {
             file = option;
         }
     }
+    
+    /* Initialize program and run */
+    morpho_initialize();
     
     if (file) cli_run(file, opt);
     else cli(opt);

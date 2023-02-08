@@ -118,5 +118,6 @@
 #define FUNCTIONAL_ARGS_MSG            "Invalid args passed to method."
 
 void functional_initialize(void);
+void functional_finalize(void);
 
 #endif /* functional_h */

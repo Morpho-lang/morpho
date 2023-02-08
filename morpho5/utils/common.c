@@ -325,6 +325,15 @@ bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int 
 
 #include <dlfcn.h>
 
+typedef struct {
+    void *handle;
+} extension;
+
+DECLARE_VARRAY(extension, extension)
+DEFINE_VARRAY(extension, extension)
+
+varray_extension extensions;
+
 void morpho_loadextension(char *path) {
     void *handle = dlopen("/usr/local/lib/morpho/function.dylib", RTLD_LAZY);
     void (*fptr) (void);
@@ -334,5 +343,4 @@ void morpho_loadextension(char *path) {
     (*fptr) ();
     
     //dlclose(handle);
-    printf("DONE!\n");
 }

@@ -1233,8 +1233,6 @@ callfunction: // Jump here if an instruction becomes a call
 #ifdef MORPHO_PROFILER
                 v->fp->inbuiltinfunction=f;
 #endif
-                morpho_printvalue(f->name);
-                printf("\n");
                 value ret = (f->function) (v, c, reg+a);
 #ifdef MORPHO_PROFILER
                 v->fp->inbuiltinfunction=NULL;

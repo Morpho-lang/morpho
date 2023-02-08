@@ -154,10 +154,6 @@ value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags
     value out = MORPHO_NIL;
     varray_valuewrite(&builtin_objects, MORPHO_OBJECT(new));
     
-    if (strcmp(name, "exfunc")==0) {
-        printf("Caught.\n");
-    }
-    
     if (new) {
         builtin_init(new);
         new->function=func;

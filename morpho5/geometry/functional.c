@@ -3996,13 +3996,13 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     }
 
     /* Set up normal vector... (temporary code here) */
-    double s0[mesh->dim], s1[mesh->dim], normaldata[mesh->dim], nnorm=0.0;
+    double s0[3] = {0.0,0.0,0.0}, s1[3] = {0.0,0.0,0.0}, normaldata[3], nnorm=0.0;
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     functional_vecsub(mesh->dim, x[2], x[1], s1);
     functional_veccross(s0, s1, normaldata);
     nnorm=functional_vecnorm(mesh->dim, normaldata);
     if (fabs(nnorm)>MORPHO_EPS) functional_vecscale(mesh->dim, 1.0/nnorm, normaldata, normaldata);
-    objectmatrix mnormal = MORPHO_STATICMATRIX(normaldata, mesh->dim, 1);
+    objectmatrix mnormal = MORPHO_STATICMATRIX(normaldata, 3, 1);
     vm_settlvar(v, normlhandle, MORPHO_OBJECT(&mnormal));
 
     /* Evaluate gradient */

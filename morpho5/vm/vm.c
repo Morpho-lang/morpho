@@ -394,7 +394,7 @@ void vm_gcmarkroots(vm *v) {
     printf("> Stack.\n");
 #endif
     value *stacktop = v->stack.data+v->fp->roffset+v->fp->function->nregs-1;
-
+    
     /* Find the largest stack position currently in play */
     /*for (callframe *f=v->frame; f<v->fp; f++) {
         value *ftop = v->stack.data+f->roffset+f->function->nregs-1;

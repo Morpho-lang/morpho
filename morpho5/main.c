@@ -1,7 +1,7 @@
 /** @file main.c
  *  @author T J Atherton
  *
- *  @brief Main entry point 
+ *  @brief Main entry point
  */
 
 #include <stdio.h>
@@ -14,11 +14,9 @@
 #include "sparse.h"
 
 int main(int argc, const char * argv[]) {
-    morpho_initialize();
-    
     clioptions opt = CLI_RUN;
     const char *file = NULL;
-    
+
     /* Process command line arguments */
     for (unsigned int i=1; i<argc; i++) {
         const char *option = argv[i];
@@ -48,22 +46,36 @@ int main(int argc, const char * argv[]) {
                     }
 #endif
                     break;
+                case 'w': /* Workers */
+                    {
+                        const char *c=option+2;
+                        int nw=0;
+                        while (!isdigit(*c) && *c!='\0') c++;
+                        if (isdigit(*c)) nw=atoi(c);
+                        if (nw<0) nw=0;
+                        morpho_setthreadnumber(nw);
+                    }
+
+                    break;
             }
         } else {
             file = option;
         }
     }
-    
+
     varray_char fname;
     varray_charinit(&fname);
     char *ext[] = { "morpho", "" };
     if (morpho_findresource("modules", "optimize", ext, true, &fname)) {
         printf("%s\n", fname.data);
     }
-    
+
+    /* Initialize program and run */
+    morpho_initialize();
+
     if (file) cli_run(file, opt);
     else cli(opt);
-    
+
     morpho_finalize();
     return 0;
 }

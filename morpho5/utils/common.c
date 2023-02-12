@@ -16,7 +16,7 @@
 #include "cmplx.h"
 
 /* **********************************************************************
-* Utility functions 
+* Utility functions
 * ********************************************************************** */
 
 /** @brief Compares two values
@@ -48,7 +48,7 @@ int morpho_comparevalue (value a, value b) {
 
 
     if (!morpho_ofsametype(a, b)) return NOTEQUAL;
-    
+
     if (MORPHO_ISFLOAT(a)) {
         double x = MORPHO_GETFLOATVALUE(b) - MORPHO_GETFLOATVALUE(a);
         if (x>DBL_EPSILON) return BIGGER; /* Fast way out for clear cut cases */
@@ -72,12 +72,12 @@ int morpho_comparevalue (value a, value b) {
                         objectstring *astring = MORPHO_GETSTRING(a);
                         objectstring *bstring = MORPHO_GETSTRING(b);
                         size_t len = (astring->length > bstring->length ? astring->length : bstring->length);
-                        
+
                         return -strncmp(astring->string, bstring->string, len);
                     } else if (MORPHO_ISDOKKEY(a) && MORPHO_ISDOKKEY(b)) {
                         objectdokkey *akey = MORPHO_GETDOKKEY(a);
                         objectdokkey *bkey = MORPHO_GETDOKKEY(b);
-                        
+
                         return ((MORPHO_GETDOKKEYCOL(akey)==MORPHO_GETDOKKEYCOL(bkey) &&
                                  MORPHO_GETDOKKEYROW(akey)==MORPHO_GETDOKKEYROW(bkey)) ? EQUAL : NOTEQUAL);
                     } else if (MORPHO_ISCOMPLEX(a) && MORPHO_ISCOMPLEX(b)) {
@@ -120,7 +120,7 @@ void morpho_printvalue(value v) {
                 object_print(v);
                 return;
             default:
-                return; 
+                return;
         }
     }
 }
@@ -130,18 +130,18 @@ void morpho_printvalue(value v) {
 void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
     char tmp[MORPHO_TOSTRINGTMPBUFFERSIZE];
     int nv;
-    
+
     if (MORPHO_ISSTRING(val)) {
         objectstring *s = MORPHO_GETSTRING(val);
         varray_charadd(buffer, s->string, (int) s->length);
     } else if (MORPHO_ISOBJECT(val)) {
         objectclass *klass = morpho_lookupclass(val);
-        
+
         if (klass) {
             objectstring str = MORPHO_STATICSTRING(MORPHO_TOSTRING_METHOD);
             value label = MORPHO_OBJECT(&str);
             value method, ret;
-            
+
             if (morpho_lookupmethod(val, label, &method) &&
                 morpho_invoke(v, val, method, 0, NULL, &ret)) {
                 if (MORPHO_ISSTRING(ret)) {
@@ -181,15 +181,15 @@ void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
 value morpho_concatenate(vm *v, int nval, value *val) {
     varray_char buffer;
     varray_charinit(&buffer);
-    
+
     for (unsigned int i=0; i<nval; i++) {
         morpho_printtobuffer(v, val[i], &buffer);
     }
-    
+
     value out=object_stringfromcstring(buffer.data, buffer.count);
-    
+
     varray_charclear(&buffer);
-    
+
     return out;
 }
 
@@ -200,7 +200,7 @@ char *morpho_strdup(char *string) {
     size_t len = strlen(string) + 1;
     char* output = (char*) malloc ((len + 1) * sizeof(char));
     if (output) memcpy(output, string, len);
-    
+
     return output;
 }
 
@@ -208,9 +208,9 @@ char *morpho_strdup(char *string) {
     @returns number of bytes */
 int morpho_utf8numberofbytes(uint8_t *string) {
     uint8_t byte = * string;
-    
+
     if ((byte & 0xc0) == 0x80) return 0; // In the middle of a utf8 string
-    
+
     // Get the number of bytes from the first character
     if ((byte & 0xf8) == 0xf0) return 4;
     if ((byte & 0xf0) == 0xe0) return 3;
@@ -230,7 +230,7 @@ unsigned int morpho_powerof2ceiling(unsigned int n) {
     n |= n >> 8;
     n |= n >> 16;
     n++;
-    
+
     return n;
 }
 
@@ -261,17 +261,17 @@ bool white_space_remainder(const char *s, int start){
 bool morpho_countparameters(value f, int *nparams) {
     value g = f;
     bool success=false;
-    
+
     if (MORPHO_ISINVOCATION(g)) { // Unpack invocation
         objectinvocation *inv = MORPHO_GETINVOCATION(g);
         g=inv->method;
     }
-    
+
     if (MORPHO_ISCLOSURE(g)) { // Unpack closure
         objectclosure *cl = MORPHO_GETCLOSURE(g);
         g=MORPHO_OBJECT(cl->func);
     }
-    
+
     if (MORPHO_ISFUNCTION(g)) {
         objectfunction *fun = MORPHO_GETFUNCTION(g);
         *nparams=fun->nargs;
@@ -306,23 +306,178 @@ void morpho_tuplesinit(unsigned int nval, unsigned int n, unsigned int *c, tuple
 bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int *c, tuplemode mode, value *tuple) {
     unsigned int *counter=c, *cmax=c+n; // Counters
     int k;
-    
+
     if (counter[0]>cmax[0]) return false; // Done
-    
+
     // Generate tuple from counter
     for (unsigned int i=0; i<n; i++) tuple[i]=list[counter[i]];
-    
+
     // Increment counters
     counter[n-1]++; // Increment last counter
     for (k=n-1; k>0 && counter[k]>cmax[k]; k--) counter[k-1]++; // Carry
-    
+
     if (k<n-1) {
         if (mode==MORPHO_TUPLEMODE) for (unsigned int i=k+1; i<n; i++) counter[i]=0;
         if (mode==MORPHO_SETMODE) for (unsigned int i=k+1; i<n; i++) counter[i]=counter[i-1]+1;
     }
-    
+
     return true;
 }
+
+/* **********************************************************************
+* Thread pools
+* ********************************************************************** */
+
+int threadpool_nthreads = MORPHO_DEFAULTTHREADNUMBER;
+
+/** Sets the number of worker threads to use */
+void morpho_setthreadnumber(int nthreads) {
+    threadpool_nthreads = nthreads;
+}
+
+/** Returns the number of worker threads to use */
+int morpho_threadnumber(void) {
+    return threadpool_nthreads;
+}
+
+DEFINE_VARRAY(task, task);
+
+/* Worker thread */
+void *threadpool_worker(void *ref) {
+    threadpool *pool = (threadpool *) ref;
+    task t = { .func = NULL, .arg = NULL };
+
+    while (true) {
+        /* Await a task */
+        pthread_mutex_lock(&pool->lock_mutex);
+        while (pool->queue.count == 0 && !pool->stop)
+            pthread_cond_wait(&pool->work_available_cond, &pool->lock_mutex);
+
+        if (pool->stop) break; /* Terminate if asked to do so */
+
+        varray_taskpop(&pool->queue, &t); /* Get the task */
+        pool->nprocessing++;
+        pthread_mutex_unlock(&pool->lock_mutex);
+
+        if (t.func) { (t.func) (t.arg); }; /* Perform the assigned task */
+
+        pthread_mutex_lock(&pool->lock_mutex);
+        pool->nprocessing--;
+        if (!pool->stop && pool->nprocessing == 0 && pool->queue.count == 0)
+            pthread_cond_signal(&pool->work_halted_cond);
+        pthread_mutex_unlock(&pool->lock_mutex);
+    }
+
+    /* No need to lock here as lock was already obtained */
+    pool->nthreads--;
+    pthread_cond_signal(&pool->work_halted_cond);
+    pthread_mutex_unlock(&pool->lock_mutex);
+
+    return NULL;
+}
+
+/* Interface */
+
+/** Initialize a threadpool with n worker threads. */
+bool threadpool_init(threadpool *pool, int nworkers) {
+    if (nworkers<1) return false;
+
+    varray_taskinit(&pool->queue);
+
+    pthread_mutex_init(&pool->lock_mutex, NULL);
+    pthread_cond_init(&pool->work_available_cond, NULL);
+    pthread_cond_init(&pool->work_halted_cond, NULL);
+
+    pool->nthreads=nworkers;
+    pool->stop=false;
+    pool->nprocessing=0;
+
+    for (int i=0; i<pool->nthreads; i++) {
+        pthread_t thread;
+        pthread_create(&thread, NULL, threadpool_worker, pool);
+        pthread_detach(thread);
+    }
+
+    return true;
+}
+
+/** Clears a threadpool. */
+void threadpool_clear(threadpool *pool) {
+    pthread_mutex_lock(&pool->lock_mutex);
+    varray_taskclear(&pool->queue); /* Erase any remaining tasks */
+    pool->stop = true; /* Tell workers to stop */
+    pthread_cond_broadcast(&pool->work_available_cond); /* Signal to workers */
+    pthread_mutex_unlock(&pool->lock_mutex);
+
+    threadpool_fence(pool); /* Await workers to terminate */
+
+    pthread_mutex_destroy(&pool->lock_mutex);
+    pthread_cond_destroy(&pool->work_available_cond);
+    pthread_cond_destroy(&pool->work_halted_cond);
+}
+
+/** Adds a task to the threadpool */
+bool threadpool_add_task(threadpool *pool, workfn func, void *arg) {
+    bool success=true;
+    pthread_mutex_lock(&pool->lock_mutex);
+
+    task t = { .func = func, .arg=arg };
+    if (!varray_taskadd(&pool->queue, &t, 1)) success=false; /* Add the task to the queue */
+
+    pthread_cond_broadcast(&pool->work_available_cond); /* Signal there is work to be done */
+    pthread_mutex_unlock(&pool->lock_mutex);
+    return true;
+}
+
+/** Blocks until all tasks in the thread pool are complete */
+void threadpool_fence(threadpool *pool) {
+    pthread_mutex_lock(&pool->lock_mutex);
+
+    while (true) {
+        if ((!pool->stop && (pool->queue.count > 0 || pool->nprocessing>0)) || // If we are simply waiting for tasks to finish
+            (pool->stop && pool->nthreads > 0)) { // Or if we have been told to stop
+            pthread_cond_wait(&pool->work_halted_cond, &pool->lock_mutex); // Block until working_cond is set
+        } else break;
+    }
+
+    pthread_mutex_unlock(&pool->lock_mutex);
+}
+
+/*
+bool worker(void *arg) {
+    int *val = arg;
+    int  old = *val;
+
+    *val += 1000;
+    printf("tid=%p, old=%d, val=%d\n", pthread_self(), old, *val);
+
+   // if (*val%2)
+   //     usleep(100000);
+
+    return false;
+}
+
+void threadpool_test(void) {
+    threadpool pool;
+    int num_items = 100;
+    int vals[num_items];
+
+    threadpool_init(&pool, 4);
+
+    for (int i=0; i<num_items; i++) {
+        vals[i] = i;
+        threadpool_add_task(&pool, worker, vals+i);
+    }
+
+    threadpool_fence(&pool);
+
+    for (int i=0; i<num_items; i++) {
+        printf("%d\n", vals[i]);
+    }
+
+    threadpool_clear(&pool);
+}
+*/
 
 /** List of resource folders, terminated with a blank string */
 char *resourcefolders[] = {
@@ -336,13 +491,13 @@ bool common_matchfile(char *file, char *match, char *extensions[]) {
     for (; file[i]!='\0' && file[i]!='.'; i++) {
         if (file[i]!=match[i]) return false;
     }
-    
+
     if (file[i]!='.') return false; i++;
-    
+
     for (int k=0; *extensions[k]!='\0'; k++) {
         if (strcmp(file+i, extensions[k])==0) return true;
     }
-    
+
     return false;
 }
 
@@ -350,23 +505,23 @@ bool common_searchdirectory(char *path, char *fname, char *extensions[], varray_
     DIR *d; /* Handle for the directory */
     struct dirent *entry; /* Entries in the directory */
     bool success=false;
-    
+
     d = opendir(path);
-    
+
     if (d) {
         while ((entry = readdir(d)) != NULL) { // Loop over directory entries
             if (strcmp(entry->d_name, ".")==0 ||
                 strcmp(entry->d_name, "..")==0) continue;
-            
+
             /* Construct the file name */
             int len = (int) (strlen(path)+strlen(entry->d_name)+2);
             char file[len];
             strcpy(file, path);
             strcat(file, "/");
             strcat(file, entry->d_name);
-            
+
             printf("%s\n", file);
-            
+
             if (morpho_isdirectory(file)) { // Recurse
                 if (common_searchdirectory(file, fname, extensions, out)) return true;
             } else { // Check if it's a file we want
@@ -379,18 +534,18 @@ bool common_searchdirectory(char *path, char *fname, char *extensions[], varray_
         }
         closedir(d);
     }
-    
+
     return success;
 }
 
 /** Attempts to locate a resource */
 bool morpho_findresource(char *directory, char *name, char *extensions[], bool recurse, varray_char *out) {
     bool success=false;
-    
+
     for (int i=0; *resourcefolders[i]!='\0' && !success; i++) { // Loop over possible resource folders
         success=common_searchdirectory(resourcefolders[i], name, extensions, out);
     }
-    
+
     return success;
 }
 
@@ -404,7 +559,7 @@ bool compiler_Xfindmodule(char *name, varray_char *fname) {
     varray_charadd(fname, "\0", 1);
 
     morpho_findresource(MORPHO_MODULEDIRECTORY, name, MORPHO_EXTENSION, true, fname);
-    
+
     FILE *f=fopen(fname->data, "r");
 
     if (f) fclose(f);

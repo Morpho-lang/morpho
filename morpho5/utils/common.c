@@ -479,33 +479,87 @@ void threadpool_test(void) {
 }
 */
 
+/* **********************************************************************
+* Resources
+* ********************************************************************** */
+
 /** List of resource folders, terminated with a blank string */
 char *resourcefolders[] = {
-    "/usr/local/share/morpho",
-    "/usr/local/opt/morpho",
+    MORPHO_RESOURCESFOLDER,
+    "/opt/morpho",
     ""
 };
 
-bool common_matchfile(char *file, char *match, char *extensions[]) {
-    int i=0;
-    for (; file[i]!='\0' && file[i]!='.'; i++) {
-        if (file[i]!=match[i]) return false;
+/** Identifies a base folder emanating from path and consistent with resourceenumerator */
+void resources_matchbasefolder(resourceenumerator *en, char *path) {
+    varray_char fname;
+    varray_charinit(&fname);
+    varray_charadd(&fname, path, (int) strlen(path));
+    varray_charwrite(&fname, MORPHO_SEPARATOR);
+    
+    if (en->folder) {
+        int i=0;
+        for (; en->folder[i]!='\0' && en->folder[i]!=MORPHO_SEPARATOR; i++) varray_charwrite(&fname, en->folder[i]);
+        
+        int nfldr=fname.count;
+        varray_charwrite(&fname, MORPHO_SEPARATOR);
+        varray_charadd(&fname, MORPHO_MORPHOSUBFOLDER, strlen(MORPHO_MORPHOSUBFOLDER));
+        varray_charwrite(&fname, '\0');
+        if (morpho_isdirectory(fname.data)) {
+            fname.count--;
+        } else fname.count=nfldr;
+        
+        for (; en->folder[i]!='\0'; i++) varray_charwrite(&fname, en->folder[i]);
     }
-
-    if (file[i]!='.') return false; i++;
-
-    for (int k=0; *extensions[k]!='\0'; k++) {
-        if (strcmp(file+i, extensions[k])==0) return true;
+    varray_charwrite(&fname, '\0');
+    
+    if (morpho_isdirectory(fname.data)) {
+        value v = object_stringfromcstring(fname.data, fname.count);
+        if (MORPHO_ISSTRING(v)) varray_valuewrite(&en->resources, v);
     }
+    
+    varray_charclear(&fname);
+}
 
+/** Locates all possible base folders consistent with the current folder specification
+ @param[in] en - initialized enumerator */
+void resources_basefolders(resourceenumerator *en) {
+    for (int i=0; *resourcefolders[i]!='\0'; i++) { // Loop over possible resource folders
+        resources_matchbasefolder(en, resourcefolders[i]);
+    }
+}
+
+/** Checks if a filename matches all criteria in a resourceenumerator
+ @param[in] en - initialized enumerator */
+bool resources_matchfile(resourceenumerator *en, char *file) {
+    char *c = file+strlen(file);
+    
+    while (c>=file && *c!='.') c--; // Skip past extension
+    
+    if (en->fname) { // Match filename if requested
+        char *f = c;
+        while (f>=file && *f!=MORPHO_SEPARATOR) f--;
+        if (*f==MORPHO_SEPARATOR) f++;
+        for (int i=0; f[i]!='\0' && f[i]!='.'; i++) { // Now compare filename against match
+            if (f[i]!=en->fname[i]) return false;
+        }
+    }
+    
+    if (!en->ext) return true; // Match extension only if requested
+    
+    if (*c!='.') return false;
+    for (int k=0; *en->ext[k]!='\0'; k++) { // Check extension against possible extensions
+        if (strcmp(c+1, en->ext[k])==0) return true; // We have a match
+    }
+    
     return false;
 }
 
-bool common_searchdirectory(char *path, char *fname, char *extensions[], varray_char *out) {
+/** Searches a given folder, adding all resources to the enumerator
+ @param[in] en - initialized enumerator */
+void morpho_searchfolder(resourceenumerator *en, char *path) {
     DIR *d; /* Handle for the directory */
     struct dirent *entry; /* Entries in the directory */
-    bool success=false;
-
     d = opendir(path);
 
     if (d) {
@@ -514,55 +568,62 @@ bool common_searchdirectory(char *path, char *fname, char *extensions[], varray_
                 strcmp(entry->d_name, "..")==0) continue;
 
             /* Construct the file name */
-            int len = (int) (strlen(path)+strlen(entry->d_name)+2);
+            size_t len = strlen(path)+strlen(entry->d_name)+2;
             char file[len];
             strcpy(file, path);
             strcat(file, "/");
             strcat(file, entry->d_name);
-
-            printf("%s\n", file);
-
-            if (morpho_isdirectory(file)) { // Recurse
-                if (common_searchdirectory(file, fname, extensions, out)) return true;
-            } else { // Check if it's a file we want
-                if (common_matchfile(entry->d_name, fname, extensions)) {
-                    varray_charadd(out, file, len);
-                    success=true;
-                    break;
-                }
+            
+            if (morpho_isdirectory(file)) {
+                if (!en->recurse) continue;
+            } else {
+                if (!resources_matchfile(en, file)) continue;
             }
+            
+            /* Add the file or folder to the work list */
+            value v = object_stringfromcstring(file, len);
+            if (MORPHO_ISSTRING(v)) varray_valuewrite(&en->resources, v);
         }
         closedir(d);
     }
-
-    return success;
 }
 
-/** Attempts to locate a resource */
-bool morpho_findresource(char *directory, char *name, char *extensions[], bool recurse, varray_char *out) {
-    bool success=false;
+/** Initialize a resource enumerator
+ @param[in] en - enumerator to initialize
+ @param[in] folder - folder specification to scan
+ @param[in] fname - filename to match
+ @param[in] ext - list of possible extensions, terminated by an empty string
+ @param[in] recurse - search recursively */
+void morpho_resourceenumeratorinit(resourceenumerator *en, char *folder, char *fname, char *ext[], bool recurse) {
+    en->folder = folder;
+    en->fname = fname;
+    en->ext = ext;
+    en->recurse = recurse;
+    varray_valueinit(&en->resources);
+    resources_basefolders(en);
+}
 
-    for (int i=0; *resourcefolders[i]!='\0' && !success; i++) { // Loop over possible resource folders
-        success=common_searchdirectory(resourcefolders[i], name, extensions, out);
+/** Clears a resource enumerator
+ @param[in] en - enumerator to clear */
+void morpho_resourceenumeratorclear(resourceenumerator *en) {
+    for (int i=0; i<en->resources.count; i++) morpho_freeobject(en->resources.data[i]);
+    varray_valueclear(&en->resources);
+}
+
+/** Enumerates resources
+ @param[in] en - enumerator to use
+ @param[out] out - next resource */
+bool morpho_enumerateresources(resourceenumerator *en, value *out) {
+    if (en->resources.count==0) return false;
+    value next = en->resources.data[--en->resources.count];
+    
+    while (morpho_isdirectory(MORPHO_GETCSTRING(next))) {
+        morpho_searchfolder(en, MORPHO_GETCSTRING(next));
+        morpho_freeobject(next);
+        if (en->resources.count==0) return false; 
+        next = en->resources.data[--en->resources.count];
     }
-
-    return success;
-}
-
-/** Searches for a module with given name, returns the file name for inclusion. */
-bool compiler_Xfindmodule(char *name, varray_char *fname) {
-    varray_charclear(fname);
-    varray_charadd(fname, MORPHO_MODULEDIRECTORY, (int) strlen(MORPHO_MODULEDIRECTORY));
-    varray_charadd(fname, MORPHO_SEPARATOR, (int) strlen(MORPHO_SEPARATOR));
-    varray_charadd(fname, name, (int) strlen(name));
-    varray_charadd(fname, MORPHO_EXTENSION, (int)  strlen(MORPHO_EXTENSION));
-    varray_charadd(fname, "\0", 1);
-
-    morpho_findresource(MORPHO_MODULEDIRECTORY, name, MORPHO_EXTENSION, true, fname);
-
-    FILE *f=fopen(fname->data, "r");
-
-    if (f) fclose(f);
-
-    return (f!=NULL);
+    
+    *out = next;
+    return true;
 }

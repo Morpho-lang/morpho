@@ -62,16 +62,19 @@ int main(int argc, const char * argv[]) {
             file = option;
         }
     }
-
-    varray_char fname;
-    varray_charinit(&fname);
-    char *ext[] = { "morpho", "" };
-    if (morpho_findresource("modules", "optimize", ext, true, &fname)) {
-        printf("%s\n", fname.data);
-    }
-
+    
     /* Initialize program and run */
     morpho_initialize();
+    
+    resourceenumerator en;
+    value out;
+    char *ext[] = { "md", "" };
+    morpho_resourceenumeratorinit(&en, MORPHO_HELPFOLDER, "test", ext, true);
+    while (morpho_enumerateresources(&en, &out)) {
+        printf("%s\n", MORPHO_GETCSTRING(out));
+        morpho_freeobject(out);
+    }
+    morpho_resourceenumeratorclear(&en);
 
     if (file) cli_run(file, opt);
     else cli(opt);

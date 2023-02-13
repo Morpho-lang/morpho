@@ -21,7 +21,16 @@
 #define MORPHO_HELPDIRECTORY (MORPHO_RESOURCESDIRECTORY "/morpho/help")
 #define MORPHO_MODULEDIRECTORY (MORPHO_RESOURCESDIRECTORY "/morpho/modules")
 
-#define MORPHO_SEPARATOR "/"
+#ifndef MORPHO_RESOURCESFOLDER
+    #define MORPHO_RESOURCESFOLDER "/usr/local"
+#endif
+
+#define MORPHO_HELPFOLDER "share/help"
+#define MORPHO_MODULEFOLDER "share/modules"
+#define MORPHO_EXTENSIONSFOLDER "lib"
+#define MORPHO_MORPHOSUBFOLDER "morpho"
+
+#define MORPHO_SEPARATOR '/'
 
 #define MORPHO_EXTENSION ".morpho"
 

@@ -3267,7 +3267,7 @@ void compiler_copyglobals(compiler *src, compiler *dest, dictionary *compare) {
 bool compiler_findmodule(char *name, varray_char *fname) {
     varray_charclear(fname);
     varray_charadd(fname, MORPHO_MODULEDIRECTORY, (int) strlen(MORPHO_MODULEDIRECTORY));
-    varray_charadd(fname, MORPHO_SEPARATOR, (int) strlen(MORPHO_SEPARATOR));
+    varray_charwrite(fname, MORPHO_SEPARATOR);
     varray_charadd(fname, name, (int) strlen(name));
     varray_charadd(fname, MORPHO_EXTENSION, (int)  strlen(MORPHO_EXTENSION));
     varray_charadd(fname, "\0", 1);

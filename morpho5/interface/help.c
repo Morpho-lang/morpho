@@ -14,7 +14,7 @@
 #include "veneer.h"
 
 /** The interactive help system uses a collection of Markdown files, located in
- *  MORPHO_HELPDIRECTORY, that define available topics. Help files are all
+ *  MORPHO_HELPFOLDER, that define available topics. Help files are all
  *  valid Markdown, although only a subset is used, and the help system interprets
  *  Markdown syntax in special ways:
  *
@@ -29,7 +29,6 @@
  */
 
 static dictionary helpdict;
-static char *helpdir = MORPHO_HELPDIRECTORY;
 static objecthelptopic *topics = NULL;
 
 /* **********************************************************************
@@ -454,36 +453,18 @@ bool help_load(char *file) {
 }
 
 /** Searches for help files
- *  @param path     directory to search (recursively)
  *  @returns true if any help files were successfully processed. */
-bool help_searchpath(char *path) {
-    DIR *d; /* Handle for the directory */
-    struct dirent *entry; /* Entries in the directory */
-    bool success=false; /* Did we load any entries? */
-    
-#ifdef MORPHO_DEBUG_LOGHELPFILES
-    printf("Searching help directory '%s'\n", helpdir);
-#endif
-    
-    d = opendir(helpdir);
-    
-    if (d) {
-        while ((entry = readdir(d)) != NULL) {
-            /* Contruct the file name */
-            char file[strlen(path)+strlen(entry->d_name)+2];
-            strcpy(file, path);
-            strcat(file, "/");
-            strcat(file, entry->d_name);
-            
-            /* If it's not a directory, try to open it */
-            if (!morpho_isdirectory(file)) {
-                bool res=help_load(file);
-                if (res) success=true;
-            }
-        }
-        closedir(d);
+bool help_findfiles(void) {
+    bool success=false;
+    resourceenumerator en;
+    value out;
+    char *ext[] = { MORPHO_HELPEXTENSION, "" };
+    morpho_resourceenumeratorinit(&en, MORPHO_HELPFOLDER, NULL, ext, true);
+    while (morpho_enumerateresources(&en, &out)) {
+        if (help_load(MORPHO_GETCSTRING(out))) success=true;
+        morpho_freeobject(out);
     }
-    
+    morpho_resourceenumeratorclear(&en);
     return success;
 }
 
@@ -498,7 +479,7 @@ bool help_initialize(void) {
     
     dictionary_init(&helpdict);
     
-    return help_searchpath(MORPHO_HELPDIRECTORY);
+    return help_findfiles();
 }
 
 /** Finalizes the help system */

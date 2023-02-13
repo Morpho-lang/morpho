@@ -65,16 +65,6 @@ int main(int argc, const char * argv[]) {
     
     /* Initialize program and run */
     morpho_initialize();
-    
-    resourceenumerator en;
-    value out;
-    char *ext[] = { "md", "" };
-    morpho_resourceenumeratorinit(&en, MORPHO_HELPFOLDER, "test", ext, true);
-    while (morpho_enumerateresources(&en, &out)) {
-        printf("%s\n", MORPHO_GETCSTRING(out));
-        morpho_freeobject(out);
-    }
-    morpho_resourceenumeratorclear(&en);
 
     if (file) cli_run(file, opt);
     else cli(opt);

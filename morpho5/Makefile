@@ -11,10 +11,10 @@ HELPDIR = $(RESOURCEPREFIX)/share/morpho/help
 MODULESDIR = $(RESOURCEPREFIX)/share/morpho/modules
 endif 
 
-INSTALLDIR = /usr/local/bin
-
 ifdef DESTDIR 
 INSTALLDIR = $(DESTDIR)
+else 
+INSTALLDIR = /usr/local/bin
 endif 
 
 help = $(wildcard docs/*.md)
@@ -47,6 +47,4 @@ install: morpho5
 	make modules
 	make help
 	make clean
-
-check: 
-	echo $(EXTCFLAGS)
+	

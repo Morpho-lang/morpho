@@ -155,8 +155,6 @@ bool threadpool_add_task(threadpool *pool, workfn func, void *arg);
 void threadpool_fence(threadpool *pool);
 void threadpool_wait(threadpool *pool);
 
-bool morpho_findresource(char *folder, char *name, char *extensions[], bool recurse, varray_char *out);
-
 /* -----------------------------------------
  * Resources
  * ----------------------------------------- */
@@ -173,6 +171,7 @@ void morpho_resourceenumeratorinit(resourceenumerator *en, char *folder, char *f
 void morpho_resourceenumeratorclear(resourceenumerator *en);
 
 bool morpho_enumerateresources(resourceenumerator *en, value *out);
+bool morpho_findresource(char *folder, char *fname, char *ext[], bool recurse, value *out);
 
 void resources_initialize(void);
 void resources_finalize(void);

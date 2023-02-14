@@ -3265,18 +3265,16 @@ void compiler_copyglobals(compiler *src, compiler *dest, dictionary *compare) {
 
 /** Searches for a module with given name, returns the file name for inclusion. */
 bool compiler_findmodule(char *name, varray_char *fname) {
-    varray_charclear(fname);
-    varray_charadd(fname, MORPHO_MODULEDIRECTORY, (int) strlen(MORPHO_MODULEDIRECTORY));
-    varray_charwrite(fname, MORPHO_SEPARATOR);
-    varray_charadd(fname, name, (int) strlen(name));
-    varray_charadd(fname, MORPHO_EXTENSION, (int)  strlen(MORPHO_EXTENSION));
-    varray_charadd(fname, "\0", 1);
-
-    FILE *f=fopen(fname->data, "r");
-
-    if (f) fclose(f);
-
-    return (f!=NULL);
+    char *ext[] = { MORPHO_EXTENSION, "" };
+    value out=MORPHO_NIL;
+    bool success=morpho_findresource(MORPHO_MODULEFOLDER, name, ext, true, &out);
+    
+    if (success) {
+        if (MORPHO_ISSTRING(out)) varray_charadd(fname, MORPHO_GETCSTRING(out), (int) MORPHO_GETSTRINGLENGTH(out));
+        morpho_freeobject(out);
+    }
+    
+    return success;
 }
 
 /** Import a module */

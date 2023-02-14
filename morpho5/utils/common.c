@@ -554,7 +554,7 @@ bool resources_matchfile(resourceenumerator *en, char *file) {
 
 /** Searches a given folder, adding all resources to the enumerator
  @param[in] en - initialized enumerator */
-void morpho_searchfolder(resourceenumerator *en, char *path) {
+void resources_searchfolder(resourceenumerator *en, char *path) {
     DIR *d; /* Handle for the directory */
     struct dirent *entry; /* Entries in the directory */
     d = opendir(path);
@@ -615,7 +615,7 @@ bool morpho_enumerateresources(resourceenumerator *en, value *out) {
     value next = en->resources.data[--en->resources.count];
     
     while (morpho_isdirectory(MORPHO_GETCSTRING(next))) {
-        morpho_searchfolder(en, MORPHO_GETCSTRING(next));
+        resources_searchfolder(en, MORPHO_GETCSTRING(next));
         morpho_freeobject(next);
         if (en->resources.count==0) return false; 
         next = en->resources.data[--en->resources.count];
@@ -623,6 +623,21 @@ bool morpho_enumerateresources(resourceenumerator *en, value *out) {
     
     *out = next;
     return true;
+}
+
+/** Locates a resource
+ @param[in] folder - folder specification to scan
+ @param[in] fname - filename to match
+ @param[in] ext - list of possible extensions, terminated by an empty string
+ @param[in] recurse - search recursively
+ @param[out] out - an objectstring that contains the resource file location */
+bool morpho_findresource(char *folder, char *fname, char *ext[], bool recurse, value *out) {
+    bool success=false;
+    resourceenumerator en;
+    morpho_resourceenumeratorinit(&en, folder, fname, ext, recurse);
+    success=morpho_enumerateresources(&en, out);
+    morpho_resourceenumeratorclear(&en);
+    return success;
 }
 
 void resources_initialize(void) {

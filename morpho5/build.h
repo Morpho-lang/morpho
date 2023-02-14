@@ -34,7 +34,7 @@
 #define MORPHO_MORPHOSUBFOLDER "morpho"
 #define MORPHO_SEPARATOR '/'
 
-#define MORPHO_EXTENSION ".morpho"
+#define MORPHO_EXTENSION "morpho"
 
 /* **********************************************************************
  * Features

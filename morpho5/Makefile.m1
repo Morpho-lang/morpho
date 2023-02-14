@@ -1,7 +1,6 @@
 src = $(wildcard *.c) $(wildcard */*.c)
 obj = $(src:.c=.o)
 
-
 ifdef MORPHORESOURCESFOLDER
 RESOURCEPREFIX = $(MORPHORESOURCESFOLDER)
 HELPDIR = $(RESOURCEPREFIX)/share/help

@@ -174,4 +174,7 @@ void morpho_resourceenumeratorclear(resourceenumerator *en);
 
 bool morpho_enumerateresources(resourceenumerator *en, value *out);
 
+void resources_initialize(void);
+void resources_finalize(void);
+
 #endif /* common_h */

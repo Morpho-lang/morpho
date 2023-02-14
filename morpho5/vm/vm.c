@@ -2189,6 +2189,7 @@ bool vm_gettlvar(vm *v, int handle, value *out) {
 /** Initializes morpho */
 void morpho_initialize(void) {
     object_initialize(); // Must be first for zombie object tracking
+    resources_initialize(); // Must be early to ensure resources can be found
     error_initialize();
     random_initialize();
     builtin_initialize(); // Must come before initialization of any classes or similar
@@ -2251,5 +2252,6 @@ void morpho_finalize(void) {
     error_finalize();
     compile_finalize();
     builtin_finalize();
+    resources_finalize();
     object_finalize(); // Must be last for zombie object tracking
 }

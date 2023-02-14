@@ -166,7 +166,7 @@ Developer Guide
 \begin_inset Newline newline
 \end_inset
 
-Version 0.5.5
+Version 0.5.6
 \end_layout
 
 \begin_layout Standard
@@ -210,14 +210,14 @@ language and are loaded with the
 import
 \family default
  keyword.
- 
+ Creating a module is no different than writing a 
+\emph on
+morpho
+\emph default
+ program!
 \end_layout
 
-\begin_layout Standard
-\begin_inset Note Note
-status open
-
-\begin_layout Plain Layout
+\begin_layout Itemize
 
 \series bold
 Extensions
@@ -233,12 +233,7 @@ import
 \family default
  keyword; the distinction between modules and extensions is purposefully
  not visible to the user; a module could be reimplemented as an extension
- with the same interface, for example.
-\end_layout
-
-\end_inset
-
-
+ with the same interface, for example
 \begin_inset Separator plain
 \end_inset
 
@@ -248,10 +243,15 @@ import
 \begin_layout Itemize
 
 \series bold
-Modifying morpho directly.
+Contributing to the 
+\emph on
+morpho
+\emph default
+ source code.
 
 \series default
- Changes to the core data types could be incorporated into morpho directly.
+ Changes to the core data types, improvements to the compiler, etc.
+ could be incorporated into morpho directly.
  We highly recommend connecting to the 
 \emph on
 morpho
@@ -260,6 +260,22 @@ morpho
  on, or whether there is guidance or advice on how specific features should
  work.
  
+\end_layout
+
+\begin_layout Standard
+Modules and extensions should be distributed in their own git repository
+ as a package.
+ See Chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:Morpho-packages"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ for further information.
 \end_layout
 
 \begin_layout Standard
@@ -366,10 +382,202 @@ Distributing your module
 
 \end_layout
 
+\begin_layout Chapter
+
+\emph on
+Morpho
+\emph default
+ packages
+\begin_inset CommandInset label
+LatexCommand label
+name "chap:Morpho-packages"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To facilitate convenient distribution, 
+\emph on
+morpho
+\emph default
+ supports a lightweight notion of 
+\emph on
+packages
+\emph default
+, which comprise some functionality.
+ A package is simply a git repository that contains some or all of the following
+ file structure: 
+\end_layout
+
+\begin_layout Description
+/share/modules for
+\family typewriter
+ .morpho
+\family default
+ files that define a module
+\end_layout
+
+\begin_layout Description
+/share/help for 
+\family typewriter
+.md
+\family default
+ files containing interactive help
+\end_layout
+
+\begin_layout Description
+/lib for compiled extensions (these may be produced during installation).
+ 
+\end_layout
+
+\begin_layout Description
+/src for source files 
+\end_layout
+
+\begin_layout Description
+/examples for examples
+\end_layout
+
+\begin_layout Description
+/test for test files 
+\end_layout
+
+\begin_layout Description
+/manual if a package is sufficiently complex to require a manual 
+\end_layout
+
+\begin_layout Description
+README.md information about the package, installation etc.
+ 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ searches both its base installation and all known packages when trying
+ to locate resources.
+ We anticipate that at some future point a package management system similar
+ to pip will be created; the structure above is intended to be sufficiently
+ simple that different installation approaches could be supported.
+ 
+\end_layout
+
+\begin_layout Standard
+We recommmend naming your package with the 
+\emph on
+morpho-
+\emph default
+ prefix.
+ Please let the morpho development team know about interesting packages!
+\end_layout
+
 \begin_layout Part
 Coding in 
 \emph on
 morpho
+\end_layout
+
+\begin_layout Chapter
+
+\emph on
+Morpho
+\emph default
+ modules
+\end_layout
+
+\begin_layout Standard
+A 
+\emph on
+morpho
+\emph default
+ module is simply a piece of 
+\emph on
+morpho
+\emph default
+ code that is intended to be distributed for use by others.
+ If you create a useful program, consider packaging it as a module.
+ This chapter simply suggests some good practices for modules: 
+\end_layout
+
+\begin_layout Subsection*
+Consider reusability
+\end_layout
+
+\begin_layout Standard
+Any 
+\end_layout
+
+\begin_layout Subsection*
+Practice good coding style
+\end_layout
+
+\begin_layout Subsection*
+Create a test suite
+\end_layout
+
+\begin_layout Subsection*
+Create documentation
+\end_layout
+
+\begin_layout Chapter
+
+\emph on
+Morpho
+\emph default
+ help files 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+'s interactive help system utilizes a subset of the 
+\begin_inset CommandInset href
+LatexCommand href
+name "Markdown"
+target "https://daringfireball.net/projects/markdown/"
+literal "false"
+
+\end_inset
+
+ plain text formatting system.
+ Each entry begins with a header, for example: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+# Entry
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Entries with lower
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+## Subentry
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Chapter

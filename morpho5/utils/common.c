@@ -483,12 +483,7 @@ void threadpool_test(void) {
 * Resources
 * ********************************************************************** */
 
-/** List of resource folders, terminated with a blank string */
-char *resourcefolders[] = {
-    MORPHO_RESOURCESFOLDER,
-    "/opt/morpho",
-    ""
-};
+varray_value resourcelocations;
 
 /** Identifies a base folder emanating from path and consistent with resourceenumerator */
 void resources_matchbasefolder(resourceenumerator *en, char *path) {
@@ -524,8 +519,10 @@ void resources_matchbasefolder(resourceenumerator *en, char *path) {
 /** Locates all possible base folders consistent with the current folder specification
  @param[in] en - initialized enumerator */
 void resources_basefolders(resourceenumerator *en) {
-    for (int i=0; *resourcefolders[i]!='\0'; i++) { // Loop over possible resource folders
-        resources_matchbasefolder(en, resourcefolders[i]);
+    for (int i=0; i<resourcelocations.count; i++) { // Loop over possible resource folders
+        if (MORPHO_ISSTRING(resourcelocations.data[i])) {
+            resources_matchbasefolder(en, MORPHO_GETCSTRING(resourcelocations.data[i]));
+        }
     }
 }
 
@@ -626,4 +623,16 @@ bool morpho_enumerateresources(resourceenumerator *en, value *out) {
     
     *out = next;
     return true;
+}
+
+void resources_initialize(void) {
+    varray_valueinit(&resourcelocations);
+    
+    value v = object_stringfromcstring(MORPHO_RESOURCESFOLDER, strlen(MORPHO_RESOURCESFOLDER));
+    varray_valuewrite(&resourcelocations, v);
+}
+
+void resources_finalize(void) {
+    for (int i=0; i<resourcelocations.count; i++) morpho_freeobject(resourcelocations.data[i]);
+    varray_valueclear(&resourcelocations);
 }

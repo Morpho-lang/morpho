@@ -14,6 +14,7 @@
 #include "object.h"
 #include "sparse.h"
 #include "cmplx.h"
+#include "file.h"
 
 /* **********************************************************************
 * Utility functions
@@ -498,7 +499,7 @@ void resources_matchbasefolder(resourceenumerator *en, char *path) {
         
         int nfldr=fname.count;
         varray_charwrite(&fname, MORPHO_SEPARATOR);
-        varray_charadd(&fname, MORPHO_MORPHOSUBFOLDER, strlen(MORPHO_MORPHOSUBFOLDER));
+        varray_charadd(&fname, MORPHO_MORPHOSUBDIR, strlen(MORPHO_MORPHOSUBDIR));
         varray_charwrite(&fname, '\0');
         if (morpho_isdirectory(fname.data)) {
             fname.count--;
@@ -640,11 +641,39 @@ bool morpho_findresource(char *folder, char *fname, char *ext[], bool recurse, v
     return success;
 }
 
+/** Loads a list of packages in ~/.morphopackages */
+void resources_loadpackagelist(void) {
+    varray_char line;
+    varray_charinit(&line);
+
+    char *home = getenv("HOME");
+    varray_charadd(&line, home, (int) strlen(home));
+    varray_charwrite(&line, MORPHO_SEPARATOR);
+    varray_charadd(&line, MORPHO_PACKAGELIST, (int) strlen(MORPHO_PACKAGELIST));
+    varray_charwrite(&line, '\0');
+    
+    FILE *f = fopen(line.data, "r");
+    if (f) {
+        while (!feof(f)) {
+            line.count=0;
+            if (file_readlineintovarray(f, &line) &&
+                line.count>0) {
+                value str = object_stringfromvarraychar(&line);
+                varray_valuewrite(&resourcelocations, str);
+                printf("%s\n", line.data);
+            }
+        }
+        fclose(f);
+    }
+    varray_charclear(&line);
+}
+
 void resources_initialize(void) {
     varray_valueinit(&resourcelocations);
-    
-    value v = object_stringfromcstring(MORPHO_RESOURCESFOLDER, strlen(MORPHO_RESOURCESFOLDER));
+    value v = object_stringfromcstring(MORPHO_RESOURCESDIR, strlen(MORPHO_RESOURCESDIR));
     varray_valuewrite(&resourcelocations, v);
+    
+    resources_loadpackagelist();
 }
 
 void resources_finalize(void) {

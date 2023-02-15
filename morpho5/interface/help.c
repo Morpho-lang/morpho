@@ -459,7 +459,7 @@ bool help_findfiles(void) {
     resourceenumerator en;
     value out;
     char *ext[] = { MORPHO_HELPEXTENSION, "" };
-    morpho_resourceenumeratorinit(&en, MORPHO_HELPFOLDER, NULL, ext, true);
+    morpho_resourceenumeratorinit(&en, MORPHO_HELPDIR, NULL, ext, true);
     while (morpho_enumerateresources(&en, &out)) {
         if (help_load(MORPHO_GETCSTRING(out))) success=true;
         morpho_freeobject(out);

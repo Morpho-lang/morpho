@@ -3267,10 +3267,14 @@ void compiler_copyglobals(compiler *src, compiler *dest, dictionary *compare) {
 bool compiler_findmodule(char *name, varray_char *fname) {
     char *ext[] = { MORPHO_EXTENSION, "" };
     value out=MORPHO_NIL;
-    bool success=morpho_findresource(MORPHO_MODULEFOLDER, name, ext, true, &out);
+    bool success=morpho_findresource(MORPHO_MODULEDIR, name, ext, true, &out);
     
     if (success) {
-        if (MORPHO_ISSTRING(out)) varray_charadd(fname, MORPHO_GETCSTRING(out), (int) MORPHO_GETSTRINGLENGTH(out));
+        fname->count=0;
+        if (MORPHO_ISSTRING(out)) {
+            varray_charadd(fname, MORPHO_GETCSTRING(out), (int) MORPHO_GETSTRINGLENGTH(out));
+            varray_charwrite(fname, '\0');
+        }
         morpho_freeobject(out);
     }
     

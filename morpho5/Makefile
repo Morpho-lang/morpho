@@ -1,8 +1,8 @@
 src = $(wildcard *.c) $(wildcard */*.c)
 obj = $(src:.c=.o)
 
-ifdef MORPHORESOURCESFOLDER
-RESOURCEPREFIX = $(MORPHORESOURCESFOLDER)
+ifdef MORPHORESOURCESDIR
+RESOURCEPREFIX = $(MORPHORESOURCESDIR)
 HELPDIR = $(RESOURCEPREFIX)/share/help
 MODULESDIR = $(RESOURCEPREFIX)/share/modules
 else 
@@ -21,7 +21,7 @@ help = $(wildcard docs/*.md)
 modules = $(wildcard modules/*)
 
 LDFLAGS  = -lm -lcblas -llapack -lcxsparse
-CFLAGS   = $(EXTCFLAGS) -DMORPHO_RESOURCESFOLDER=\"$(RESOURCEPREFIX)\" -std=c99 -O3 -I. -I./datastructures -I./geometry -I./interface -I./utils -I./vm -I./builtin
+CFLAGS   = $(EXTCFLAGS) -DMORPHO_RESOURCESDIR=\"$(RESOURCEPREFIX)\" -std=c99 -O3 -I. -I./datastructures -I./geometry -I./interface -I./utils -I./vm -I./builtin
 
 morpho5: $(obj)
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)

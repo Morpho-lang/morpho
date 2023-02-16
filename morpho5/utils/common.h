@@ -180,6 +180,9 @@ void resources_finalize(void);
  * Extensions
  * ----------------------------------------- */
 
-void morpho_loadextension(char *path);
+bool morpho_loadextension(char *name);
+
+void extensions_initialize(void);
+void extensions_finalize(void);
 
 #endif /* common_h */

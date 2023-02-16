@@ -18,19 +18,22 @@
     #define MORPHO_RESOURCESDIR "/usr/local"
 #endif
 
-#define MORPHO_HELPDIR "share/help"
-#define MORPHO_HELPEXTENSION "md"
+#define MORPHO_HELPDIR "share/help"           // Folder structure where help files are found
+#define MORPHO_HELPEXTENSION "md"             // File extension for help files
 
-#define MORPHO_MODULEDIR "share/modules"
+#define MORPHO_MODULEDIR "share/modules"      // Folder structure where modules are found
 
-#define MORPHO_EXTENSIONSDIR "lib"
+#ifndef MORPHO_DYLIBEXTENSION
+#define MORPHO_DYLIBEXTENSION "dylib"         // File extension for extensions
+#endif
+#define MORPHO_EXTENSIONSDIR "lib"            // Folder structure where extensions are found
 
-#define MORPHO_MORPHOSUBDIR "morpho"
-#define MORPHO_SEPARATOR '/'
+#define MORPHO_MORPHOSUBDIR "morpho"          // Morpho subdirectory 
+#define MORPHO_SEPARATOR '/'                  // File directory separator
 
-#define MORPHO_EXTENSION "morpho"
+#define MORPHO_EXTENSION "morpho"             // File extension for morpho files
 
-#define MORPHO_PACKAGELIST ".morphopackages"
+#define MORPHO_PACKAGELIST ".morphopackages"  // File in $HOME that contains package locations
 
 /* **********************************************************************
  * Features

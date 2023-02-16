@@ -713,7 +713,7 @@ void extensions_call(extension *e, char *name, char *fn) {
 
 /** Attempts to load an extension with given name. Returns true if it was found and loaded successfully */
 bool morpho_loadextension(char *name) {
-    char *ext[] = { MORPHO_DYLIBEXTENSION, "" };
+    char *ext[] = { MORPHO_DYLIBEXTENSION, "dylib", "so", "" };
     value out = MORPHO_NIL;
     
     if (!morpho_findresource(MORPHO_EXTENSIONSDIR, name, ext, true, &out)) return false;

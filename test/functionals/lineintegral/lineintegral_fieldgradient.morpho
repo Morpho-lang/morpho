@@ -1,0 +1,25 @@
+import meshtools 
+
+var m = LineMesh(fn (u) [u,0,0], 0..1:0.1)
+
+var f = Field(m, fn (x,y,z) x)
+
+var ll = LineIntegral(fn (x, f) f^2, f)
+
+var grad = ll.fieldgradient(f)
+
+var ngrad = f.clone() 
+
+var eps = 1e-8
+var fl, fr 
+for (i in 0...f.count()) {
+    var f0 = f[i]
+    f[i]=f0+eps 
+    fr=ll.total(m)
+    f[i]=f0-eps
+    fl=ll.total(m)
+    f[i]=f0 
+    ngrad[i]=(fr-fl)/(2*eps)
+}
+
+print (grad-ngrad).linearize().norm() < 1e-6 // expect: true

@@ -2,6 +2,7 @@
 
 import meshtools
 import plot
+import "../numericalderivatives.morpho"
 
 var L = 1
 var np = 10
@@ -27,13 +28,11 @@ var lne = NematicElectric(nn, phi)
 print lne.integrand(m)
 // expect: [ 0.25 ]
 
-print lne.total(m)
-// expect: 0.25
+print abs(lne.total(m) - 0.25) < 1e-8
+// expect: true
 
-print lne.gradient(m)
-// expect: [ 0.75 -0.25 -0.5 ]
-// expect: [ -0.25 0 0.25 ]
-// expect: [ 0 0 0 ]
+print (lne.gradient(m)-numericalgradient(lne, m)).norm() < 1e-6
+// expect: true
 
 print lne.fieldgradient(nn)
 // expect: <Field>

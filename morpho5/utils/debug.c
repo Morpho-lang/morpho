@@ -983,7 +983,7 @@ void debug_showstack(vm *v) {
     
     f=v->frame; k=0;
     printf("Stack contents:\n");
-    for (unsigned int i=0; i<v->fp->roffset+v->fp->function->nregs-1; i++) {
+    for (unsigned int i=0; i<v->fp->roffset+v->fp->function->nregs; i++) {
         if (i==fbounds[k]) {
             printf("---");
             if (f->function) morpho_printvalue(f->function->name);

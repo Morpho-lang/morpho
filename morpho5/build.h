@@ -14,16 +14,23 @@
  * Paths and file system
  * ********************************************************************** */
 
-#ifndef MORPHO_RESOURCESDIRECTORY
-    #define MORPHO_RESOURCESDIRECTORY "/usr/local/share"
+#ifndef MORPHO_RESOURCESDIR
+    #define MORPHO_RESOURCESDIR "/usr/local"
 #endif
 
-#define MORPHO_HELPDIRECTORY (MORPHO_RESOURCESDIRECTORY "/morpho/help")
-#define MORPHO_MODULEDIRECTORY (MORPHO_RESOURCESDIRECTORY "/morpho/modules")
+#define MORPHO_HELPDIR "share/help"
+#define MORPHO_HELPEXTENSION "md"
 
-#define MORPHO_SEPARATOR "/"
+#define MORPHO_MODULEDIR "share/modules"
 
-#define MORPHO_EXTENSION ".morpho"
+#define MORPHO_EXTENSIONSDIR "lib"
+
+#define MORPHO_MORPHOSUBDIR "morpho"
+#define MORPHO_SEPARATOR '/'
+
+#define MORPHO_EXTENSION "morpho"
+
+#define MORPHO_PACKAGELIST ".morphopackages"
 
 /* **********************************************************************
  * Features
@@ -116,6 +123,15 @@
 
 /** @brief Avoid using global variables (suitable for small programs only) */
 //#define MORPHO_NOGLOBALS
+
+/** @brief Default number of threads */
+#define MORPHO_DEFAULTTHREADNUMBER 0
+
+/** @brief Size of L1 cache line */
+#define _MORPHO_L1CACHELINESIZE 128 // M1/M2 is 128; most intel are 64
+
+/** @brief Pad data structures involved in multiprocessing */
+#define _MORPHO_PADDING char __padding[_MORPHO_L1CACHELINESIZE]
 
 /* **********************************************************************
  * Libraries

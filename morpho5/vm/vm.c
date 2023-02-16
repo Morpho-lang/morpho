@@ -183,6 +183,7 @@ static void vm_init(vm *v) {
     v->debug=NULL;
     vm_graylistinit(&v->gray);
     varray_valueinit(&v->stack);
+    varray_valueinit(&v->tlvars);
     varray_valueinit(&v->globals);
     varray_valueresize(&v->stack, MORPHO_STACKINITIALSIZE);
     error_init(&v->err);
@@ -191,14 +192,49 @@ static void vm_init(vm *v) {
     v->profiler=NULL;
     v->status=VM_RUNNING;
 #endif
+    v->parent=NULL;
+    varray_vminit(&v->subkernels);
 }
 
 /** Clears a virtual machine */
 static void vm_clear(vm *v) {
     varray_valueclear(&v->stack);
     varray_valueclear(&v->globals);
+    varray_valueclear(&v->tlvars);
     vm_graylistclear(&v->gray);
     vm_freeobjects(v);
+    varray_vmclear(&v->subkernels);
+}
+
+/** Prepares a vm to run program p */
+bool vm_start(vm *v, program *p) {
+    /* Set the current program */
+    v->current=p;
+
+    /* Clear current error state */
+    error_clear(&v->err);
+    v->errfp=NULL;
+
+    /* Set up the callframe stack */
+    v->fp=v->frame; /* Set the frame pointer to the bottom of the stack */
+    v->fp->function=p->global;
+    v->fp->closure=NULL;
+    v->fp->roffset=0;
+    
+#ifdef MORPHO_PROFILER
+    v->fp->inbuiltinfunction=NULL;
+#endif
+    
+    /* Set instruction base */
+    v->instructions = p->code.data;
+    if (!v->instructions) return false;
+
+    /* Set up the constant table */
+    varray_value *konsttable=object_functiongetconstanttable(p->global);
+    if (!konsttable) return false;
+    v->konst = konsttable->data;
+    
+    return true;
 }
 
 /** Frees all objects bound to a virtual machine */
@@ -358,7 +394,7 @@ void vm_gcmarkroots(vm *v) {
     printf("> Stack.\n");
 #endif
     value *stacktop = v->stack.data+v->fp->roffset+v->fp->function->nregs-1;
-
+    
     /* Find the largest stack position currently in play */
     /*for (callframe *f=v->frame; f<v->fp; f++) {
         value *ftop = v->stack.data+f->roffset+f->function->nregs-1;
@@ -468,6 +504,8 @@ void vm_collectgarbage(vm *v) {
 #endif
     vm *vc = (v!=NULL ? v : globalvm);
     if (!vc) return;
+    
+    if (vc->parent) return; // Don't garbage collect in subkernels
     
 #ifdef MORPHO_PROFILER
     vc->status=VM_INGC;
@@ -1884,41 +1922,17 @@ bool morpho_ismanagedobject(object *obj) {
  * @param[in] p - program to run
  * @returns true on success, false if an error occurred */
 bool morpho_run(vm *v, program *p) {
-    /* Set the current program */
-    v->current=p;
-
-    /* Clear current error state */
-    error_clear(&v->err);
-    v->errfp=NULL;
-
-    /* Set up the callframe stack */
-    v->fp=v->frame; /* Set the frame pointer to the bottom of the stack */
-    v->fp->function=p->global;
-    v->fp->closure=NULL;
-    v->fp->roffset=0;
+    if (!vm_start(v, p)) return false;
     
-#ifdef MORPHO_PROFILER
-    v->fp->inbuiltinfunction=NULL;
-#endif
-
     /* Initialize global variables */
     int oldsize = v->globals.count;
     varray_valueresize(&v->globals, p->nglobals);
     v->globals.count=p->nglobals;
     for (int i=oldsize; i<p->nglobals; i++) v->globals.data[i]=MORPHO_NIL; /* Zero out globals */
 
-    /* Set instruction base */
-    v->instructions = p->code.data;
-    if (!v->instructions) return false;
-
-    /* Set up the constant table */
-    varray_value *konsttable=object_functiongetconstanttable(p->global);
-    if (!konsttable) return false;
-    v->konst = konsttable->data;
-
     /* and initially set the register pointer to the bottom of the stack */
     value *reg = v->stack.data;
-
+    
     /* Expand and clear the stack if necessary */
     if (v->fp->function->nregs>v->stack.count) {
         unsigned int oldcount=v->stack.count;
@@ -1973,7 +1987,7 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
         value *xargs=args;
 
         /* If the arguments are on the stack, we need to keep to track of this */
-        bool argsonstack=(args>v->stack.data && args<v->stack.data+v->stack.capacity);
+        bool argsonstack=(v->stack.data && args>v->stack.data && args<v->stack.data+v->stack.capacity);
         if (argsonstack) aoffset=args-v->stack.data;
 
         value *reg=v->stack.data+v->fp->roffset;
@@ -2044,12 +2058,138 @@ bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value
 }
 
 /* **********************************************************************
+* Subkernels
+* ********************************************************************** */
+
+DEFINE_VARRAY(vm, struct svm *)
+
+/** Obtain subkernels from the VM for use in a thread */
+bool vm_subkernels(vm *v, int nkernels, vm **subkernels) {
+    int nk=0;
+    
+    /* Check for unused subkernels */
+    for (int i=0; i<v->subkernels.count; i++) {
+        vm *kernel=v->subkernels.data[i];
+        if (!kernel->parent) { // Check whether subkernel is unused
+            subkernels[nk]=kernel;
+            kernel->parent=v;
+            nk++;
+        }
+    }
+    
+    /* Create any additional kernels that need to be made */
+    for (int i=nk; i<nkernels; i++) {
+        vm *new = morpho_newvm();
+        if (!new) return false;
+        if (!varray_vmadd(&v->subkernels, &new, 1)) return false;
+        vm_start(new, v->current);
+        new->globals.count=v->globals.count;
+        new->globals.data=v->globals.data;
+        new->parent=v;
+        subkernels[i]=new;
+    }
+    
+    return true;
+}
+
+/** Release a subkernels from the VM for use in a thread */
+void vm_releasesubkernel(vm *subkernel) {
+    vm *v = subkernel->parent;
+    if (!v) return;
+    
+    /** Transfer objects from subkernel to kernel */
+    if (subkernel->objects) {
+        object *obj;
+    
+        for (obj=subkernel->objects; obj!=NULL; obj=obj->next) {
+            if (obj->next==NULL) break;
+        }
+        
+        /* Add the subkernel's objects to the parent */
+        obj->next=v->objects;
+        v->objects=subkernel->objects;
+        
+        /* Include this in the bound list */
+        v->bound+=subkernel->bound;
+        
+        /* Remove from the subkernel */
+        subkernel->objects=NULL;
+        subkernel->bound=0;
+    }
+    
+    /** Check if the subkernel is in an error state */
+    if (!ERROR_SUCCEEDED(subkernel->err) &&
+        ERROR_SUCCEEDED(v->err)) {
+        v->err=subkernel->err;
+    }
+    
+    subkernel->parent=NULL;
+}
+
+/** Clean out attached objects from a subkernel */
+void vm_cleansubkernel(vm *subkernel) {
+    object *next=NULL;
+    for (object *obj=subkernel->objects; obj!=NULL; obj=next) {
+        next=obj->next;
+        object_free(obj);
+    }
+    subkernel->objects=NULL;
+    subkernel->bound=0;
+}
+
+/* **********************************************************************
+* Thread local storage
+* ********************************************************************** */
+
+int ntlvars=0;
+
+/** Adds a thread local variable, returning the handle */
+int vm_addtlvar(void) {
+    int out = ntlvars;
+    ntlvars++;
+    return out;
+}
+
+/** Initialize threadlocal variables for a vm */
+bool vm_inittlvars(vm *v) {
+    if (v->tlvars.capacity<ntlvars) {
+        if (!varray_valueresize(&v->tlvars, ntlvars)) return false;
+        v->tlvars.count=ntlvars;
+        for (int i=0; i<ntlvars; i++) v->tlvars.data[i]=MORPHO_NIL;
+    }
+    return true;
+}
+
+/** Sets the value of a thread local variable */
+bool vm_settlvar(vm *v, int handle, value val) {
+    bool success=false;
+    if (handle<ntlvars &&
+        vm_inittlvars(v)) {
+        v->tlvars.data[handle]=val;
+        success=true;
+    }
+    return success;
+}
+
+/** Gets the value of a thread local variable */
+bool vm_gettlvar(vm *v, int handle, value *out) {
+    bool success=false;
+    if (handle<ntlvars &&
+        vm_inittlvars(v)) {
+        *out = v->tlvars.data[handle];
+        success=true; 
+    }
+    return success;
+}
+
+/* **********************************************************************
 * Initialization
 * ********************************************************************** */
 
 /** Initializes morpho */
 void morpho_initialize(void) {
     object_initialize(); // Must be first for zombie object tracking
+    resources_initialize(); // Must be early to ensure resources can be found
     error_initialize();
     random_initialize();
     builtin_initialize(); // Must come before initialization of any classes or similar
@@ -2112,5 +2252,6 @@ void morpho_finalize(void) {
     error_finalize();
     compile_finalize();
     builtin_finalize();
+    resources_finalize();
     object_finalize(); // Must be last for zombie object tracking
 }

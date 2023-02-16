@@ -64,8 +64,6 @@ int main(int argc, const char * argv[]) {
     }
 
     morpho_initialize();
-    
-    morpho_loadextension("demo");
 
     if (file) cli_run(file, opt);
     else cli(opt);

@@ -62,8 +62,7 @@ int main(int argc, const char * argv[]) {
             file = option;
         }
     }
-    
-    /* Initialize program and run */
+
     morpho_initialize();
 
     if (file) cli_run(file, opt);

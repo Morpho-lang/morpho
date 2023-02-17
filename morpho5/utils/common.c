@@ -492,11 +492,11 @@ void resources_matchbasefolder(resourceenumerator *en, char *path) {
     varray_charinit(&fname);
     varray_charadd(&fname, path, (int) strlen(path));
     varray_charwrite(&fname, MORPHO_SEPARATOR);
-    
+
     if (en->folder) {
         int i=0;
         for (; en->folder[i]!='\0' && en->folder[i]!=MORPHO_SEPARATOR; i++) varray_charwrite(&fname, en->folder[i]);
-        
+
         int nfldr=fname.count;
         varray_charwrite(&fname, MORPHO_SEPARATOR);
         varray_charadd(&fname, MORPHO_MORPHOSUBDIR, strlen(MORPHO_MORPHOSUBDIR));
@@ -504,16 +504,16 @@ void resources_matchbasefolder(resourceenumerator *en, char *path) {
         if (morpho_isdirectory(fname.data)) {
             fname.count--;
         } else fname.count=nfldr;
-        
+
         for (; en->folder[i]!='\0'; i++) varray_charwrite(&fname, en->folder[i]);
     }
     varray_charwrite(&fname, '\0');
-    
+
     if (morpho_isdirectory(fname.data)) {
         value v = object_stringfromcstring(fname.data, fname.count);
         if (MORPHO_ISSTRING(v)) varray_valuewrite(&en->resources, v);
     }
-    
+
     varray_charclear(&fname);
 }
 
@@ -531,9 +531,9 @@ void resources_basefolders(resourceenumerator *en) {
  @param[in] en - initialized enumerator */
 bool resources_matchfile(resourceenumerator *en, char *file) {
     char *c = file+strlen(file);
-    
+
     while (c>=file && *c!='.') c--; // Skip past extension
-    
+
     if (en->fname) { // Match filename if requested
         char *f = c;
         while (f>=file && *f!=MORPHO_SEPARATOR) f--;
@@ -542,14 +542,14 @@ bool resources_matchfile(resourceenumerator *en, char *file) {
             if (f[i]!=en->fname[i]) return false;
         }
     }
-    
+
     if (!en->ext) return true; // Match extension only if requested
-    
+
     if (*c!='.') return false;
     for (int k=0; *en->ext[k]!='\0'; k++) { // Check extension against possible extensions
         if (strcmp(c+1, en->ext[k])==0) return true; // We have a match
     }
-    
+
     return false;
 }
 
@@ -571,13 +571,13 @@ void resources_searchfolder(resourceenumerator *en, char *path) {
             strcpy(file, path);
             strcat(file, "/");
             strcat(file, entry->d_name);
-            
+
             if (morpho_isdirectory(file)) {
                 if (!en->recurse) continue;
             } else {
                 if (!resources_matchfile(en, file)) continue;
             }
-            
+
             /* Add the file or folder to the work list */
             value v = object_stringfromcstring(file, len);
             if (MORPHO_ISSTRING(v)) varray_valuewrite(&en->resources, v);
@@ -614,14 +614,14 @@ void morpho_resourceenumeratorclear(resourceenumerator *en) {
 bool morpho_enumerateresources(resourceenumerator *en, value *out) {
     if (en->resources.count==0) return false;
     value next = en->resources.data[--en->resources.count];
-    
+
     while (morpho_isdirectory(MORPHO_GETCSTRING(next))) {
         resources_searchfolder(en, MORPHO_GETCSTRING(next));
         morpho_freeobject(next);
-        if (en->resources.count==0) return false; 
+        if (en->resources.count==0) return false;
         next = en->resources.data[--en->resources.count];
     }
-    
+
     *out = next;
     return true;
 }
@@ -651,7 +651,7 @@ void resources_loadpackagelist(void) {
     varray_charwrite(&line, MORPHO_SEPARATOR);
     varray_charadd(&line, MORPHO_PACKAGELIST, (int) strlen(MORPHO_PACKAGELIST));
     varray_charwrite(&line, '\0');
-    
+
     FILE *f = fopen(line.data, "r");
     if (f) {
         while (!feof(f)) {
@@ -660,7 +660,6 @@ void resources_loadpackagelist(void) {
                 line.count>0) {
                 value str = object_stringfromvarraychar(&line);
                 varray_valuewrite(&resourcelocations, str);
-                printf("%s\n", line.data);
             }
         }
         fclose(f);
@@ -672,7 +671,7 @@ void resources_initialize(void) {
     varray_valueinit(&resourcelocations);
     value v = object_stringfromcstring(MORPHO_RESOURCESDIR, strlen(MORPHO_RESOURCESDIR));
     varray_valuewrite(&resourcelocations, v);
-    
+
     resources_loadpackagelist();
 }
 
@@ -680,3 +679,71 @@ void resources_finalize(void) {
     for (int i=0; i<resourcelocations.count; i++) morpho_freeobject(resourcelocations.data[i]);
     varray_valueclear(&resourcelocations);
 }
+
+/* **********************************************************************
+* Extensions
+* ********************************************************************** */
+
+#include <dlfcn.h>
+
+typedef struct {
+    value name;
+    void *handle;
+} extension;
+
+DECLARE_VARRAY(extension, extension)
+DEFINE_VARRAY(extension, extension)
+
+#define MORPHO_EXTENSIONINITIALIZE "initialize" // Function to call upon initialization
+#define MORPHO_EXTENSIONFINALIZE "finalize"     // Function to call upon finalization
+
+varray_extension extensions;
+
+/** Trys to locate a function with NAME_FN in extension e, and calls it if found */
+void extensions_call(extension *e, char *name, char *fn) {
+    void (*fptr) (void);
+    char fnname[strlen(name)+strlen(fn)+2];
+    strcpy(fnname, name);
+    strcat(fnname, "_");
+    strcat(fnname, fn);
+    
+    fptr = dlsym(e->handle, fnname);
+    if (fptr) (*fptr) ();
+}
+
+/** Attempts to load an extension with given name. Returns true if it was found and loaded successfully */
+bool morpho_loadextension(char *name) {
+    char *ext[] = { MORPHO_DYLIBEXTENSION, "dylib", "so", "" };
+    value out = MORPHO_NIL;
+    
+    if (!morpho_findresource(MORPHO_EXTENSIONSDIR, name, ext, true, &out)) return false;
+    
+    extension e;
+    e.handle = dlopen(MORPHO_GETCSTRING(out), RTLD_LAZY);
+    if (e.handle) {
+        e.name = object_stringfromcstring(name, strlen(name));
+        varray_extensionwrite(&extensions, e);
+        
+        extensions_call(&e, name, MORPHO_EXTENSIONINITIALIZE);
+    }
+    
+    morpho_freeobject(out);
+    
+    return e.handle;
+}
+
+void extensions_initialize(void) {
+    varray_extensioninit(&extensions);
+}
+
+void extensions_finalize(void) {
+    for (int i=0; i<extensions.count; i++) {
+        /* Finalize and close each extension */
+        value name = extensions.data[i].name;
+        extensions_call(&extensions.data[i], MORPHO_GETCSTRING(name), MORPHO_EXTENSIONFINALIZE);
+        morpho_freeobject(name);
+        dlclose(extensions.data[i].handle);
+    }
+    varray_extensionclear(&extensions);
+}
+

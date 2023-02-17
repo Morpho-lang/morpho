@@ -40,12 +40,18 @@ modules:
 	mkdir -p $(MODULESDIR)
 	cp -R $(modules) $(MODULESDIR)
 
+.PHONY: headers 
+headers: 
+	mkdir -p $(HEADERSDIR)
+	find . -type f -name '*.h' -exec cp {} $(HEADERSDIR) \;
+
 .PHONY: install
 install: morpho5
 	mkdir -p $(INSTALLDIR)
 	cp $< $(INSTALLDIR)/morpho5
 	make modules
 	make help
+	make headers
 	make clean
 
 nonanboxing: CFLAGS += -D_NO_NAN_BOXING

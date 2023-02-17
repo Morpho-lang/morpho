@@ -2194,6 +2194,7 @@ void morpho_initialize(void) {
     random_initialize();
     builtin_initialize(); // Must come before initialization of any classes or similar
     compile_initialize();
+    extensions_initialize();
 
 #ifdef MORPHO_DEBUG_GCSIZETRACKING
     dictionary_init(&sizecheck);
@@ -2249,6 +2250,7 @@ void morpho_initialize(void) {
 
 /** Finalizes morpho */
 void morpho_finalize(void) {
+    extensions_finalize();
     error_finalize();
     compile_finalize();
     builtin_finalize();

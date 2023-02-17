@@ -1,7 +1,7 @@
 /** @file main.c
  *  @author T J Atherton
  *
- *  @brief Main entry point 
+ *  @brief Main entry point
  */
 
 #include <stdio.h>
@@ -16,7 +16,7 @@
 int main(int argc, const char * argv[]) {
     clioptions opt = CLI_RUN;
     const char *file = NULL;
-    
+
     /* Process command line arguments */
     for (unsigned int i=1; i<argc; i++) {
         const char *option = argv[i];
@@ -55,7 +55,7 @@ int main(int argc, const char * argv[]) {
                         if (nw<0) nw=0;
                         morpho_setthreadnumber(nw);
                     }
-                    
+
                     break;
             }
         } else {
@@ -65,10 +65,10 @@ int main(int argc, const char * argv[]) {
     
     /* Initialize program and run */
     morpho_initialize();
-    
+
     if (file) cli_run(file, opt);
     else cli(opt);
-    
+
     morpho_finalize();
     return 0;
 }

@@ -14,16 +14,23 @@
  * Paths and file system
  * ********************************************************************** */
 
-#ifndef MORPHO_RESOURCESDIRECTORY
-    #define MORPHO_RESOURCESDIRECTORY "/usr/local/share"
+#ifndef MORPHO_RESOURCESDIR
+    #define MORPHO_RESOURCESDIR "/usr/local"
 #endif
 
-#define MORPHO_HELPDIRECTORY (MORPHO_RESOURCESDIRECTORY "/morpho/help")
-#define MORPHO_MODULEDIRECTORY (MORPHO_RESOURCESDIRECTORY "/morpho/modules")
+#define MORPHO_HELPDIR "share/help"
+#define MORPHO_HELPEXTENSION "md"
 
-#define MORPHO_SEPARATOR "/"
+#define MORPHO_MODULEDIR "share/modules"
 
-#define MORPHO_EXTENSION ".morpho"
+#define MORPHO_EXTENSIONSDIR "lib"
+
+#define MORPHO_MORPHOSUBDIR "morpho"
+#define MORPHO_SEPARATOR '/'
+
+#define MORPHO_EXTENSION "morpho"
+
+#define MORPHO_PACKAGELIST ".morphopackages"
 
 /* **********************************************************************
  * Features

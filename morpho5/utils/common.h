@@ -62,7 +62,7 @@ static inline bool morpho_comparevaluesame (value a, value b) {
     return (a==b);
 #else
     if (a.type!=b.type) return false;
-    
+
     switch (a.type) {
         case VALUE_NIL:
             return true; /** Nils are always the same */
@@ -78,7 +78,7 @@ static inline bool morpho_comparevaluesame (value a, value b) {
         default:
             UNREACHABLE("unhandled value type for comparison [Check morpho_comparevaluesame]");
     }
-    
+
     return false;
 #endif
 }
@@ -145,7 +145,7 @@ typedef struct {
     int nprocessing; /* Number of threads actively processing work */
     int nthreads; /* Number of active threads. */
     bool stop; /* Indicates threads should terminate */
-    
+
     varray_task queue; /* Queue of tasks lined up */
 } threadpool;
 
@@ -154,5 +154,26 @@ void threadpool_clear(threadpool *pool);
 bool threadpool_add_task(threadpool *pool, workfn func, void *arg);
 void threadpool_fence(threadpool *pool);
 void threadpool_wait(threadpool *pool);
+
+/* -----------------------------------------
+ * Resources
+ * ----------------------------------------- */
+
+typedef struct {
+    char *folder;
+    char *fname;
+    char **ext;
+    bool recurse;
+    varray_value resources;
+} resourceenumerator;
+
+void morpho_resourceenumeratorinit(resourceenumerator *en, char *folder, char *fname, char *ext[], bool recurse);
+void morpho_resourceenumeratorclear(resourceenumerator *en);
+
+bool morpho_enumerateresources(resourceenumerator *en, value *out);
+bool morpho_findresource(char *folder, char *fname, char *ext[], bool recurse, value *out);
+
+void resources_initialize(void);
+void resources_finalize(void);
 
 #endif /* common_h */

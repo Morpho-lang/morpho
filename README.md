@@ -26,7 +26,7 @@ Participation in the morpho community, both as users and developers, is bound by
 
 ## Contributing 
 
-Morpho is under active development and we welcome contributions! Please see the [Contributor's guide](CONTRIBUTING.md) for more information about how you can get involved in the morpho project. For those interested in extending morpho or working with the source a [dev guide](https://github.com/Morpho-lang/morpho/blob/main/devguide/devguide.pdf) is also provided. 
+Morpho is under active development and we welcome contributions! Please see the [Contributor's guide](CONTRIBUTING.md) for more information about how you can get involved in the morpho project. For those interested in extending morpho or working with the source a [Developer guide](https://github.com/Morpho-lang/morpho/blob/main/devguide/devguide.pdf) is also provided. 
 
 We provide a [Roadmap](https://github.com/Morpho-lang/morpho/wiki/Road-Map) for future development plans that might give you ideas for how you could contribute.
 
@@ -45,7 +45,7 @@ Morpho can be installed as follows:
 
 The recommended approach to installing morpho on macOS is to use the [Homebrew](https://brew.sh) package manager.
 
-1. Install homebrew, following instructions on the homebrew site. 
+1. Install [Homebrew](https://brew.sh), following instructions on the homebrew site. 
 
 2. In the terminal type: 
 

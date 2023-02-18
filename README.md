@@ -16,12 +16,11 @@ The Morpho language. Morpho is a programmable environment for shape optimization
 
 Documentation is available on [readthedocs](https://morpho-lang.readthedocs.io/en/latest/) and via an extensive [user manual](https://github.com/Morpho-lang/morpho/blob/main/manual/manual.pdf). 
 
-A [Slack community](https://join.slack.com/t/morphoco/shared_invite/zt-1o6azavwl-XMtjjFwxW~P6C8rc~YbBlA) is available for people interested in using morpho and seeking support: 
+A [Slack community](https://join.slack.com/t/morphoco/shared_invite/zt-1o6azavwl-XMtjjFwxW~P6C8rc~YbBlA) is also available for people interested in using morpho and seeking support. 
 
 In academic publications, please cite morpho as: 
 
-    Joshi, C. et al. "Morpho -- A programmable environment for shape optimization and shapeshifting problems", arXiv:2208.07859
- (2022) 
+    Joshi, C. et al., "Morpho -- A programmable environment for shape optimization and shapeshifting problems", arXiv:2208.07859 (2022) 
  
 We expect to update this once the paper is published. 
 
@@ -29,11 +28,11 @@ Participation in the morpho community, both as users and developers, is bound by
 
 ## Contributing 
 
-Morpho is under active development and we welcome contributions! Please see the [contributer's guide](CONTRIBUTING.md) for more information about how you can get involved in the morpho project. For those interested in extending morpho or working with the source a [dev guide](https://github.com/Morpho-lang/morpho/blob/main/devguide/devguide.pdf) is available. 
+Morpho is under active development and we welcome contributions! Please see the [Contributor's guide](CONTRIBUTING.md) for more information about how you can get involved in the morpho project. For those interested in extending morpho or working with the source a [dev guide](https://github.com/Morpho-lang/morpho/blob/main/devguide/devguide.pdf) is also provided. 
 
-A [Roadmap](https://github.com/Morpho-lang/morpho/wiki/Road-Map) for future development.
+We provide a [Roadmap](https://github.com/Morpho-lang/morpho/wiki/Road-Map) for future development plans that might give you ideas for how you could contribute.
 
-We welcome bug reports and suggestions: Please feel free to use the `Issues` feature on github to bring these to our attention. 
+We also welcome bug reports and suggestions: Please feel free to use the `Issues` feature on github to bring these to our attention. 
 
 ## Installation
 

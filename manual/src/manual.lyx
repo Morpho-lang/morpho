@@ -166,7 +166,7 @@ figs-within-sections
 \begin_inset Newline newline
 \end_inset
 
-Version 0.5.5
+Version 0.5.6
 \end_layout
 
 \begin_layout Standard
@@ -712,6 +712,99 @@ Morpho
 \end_layout
 
 \begin_layout Section
+Where 
+\emph on
+morpho
+\emph default
+ installation puts things
+\end_layout
+
+\begin_layout Standard
+A 
+\emph on
+morpho
+\emph default
+ installation includes help files, modules, and other resources.
+ By default, these are installed in the 
+\series bold
+/usr/local/
+\series default
+ file structure, including in the following places:
+\end_layout
+
+\begin_layout Description
+/usr/local/bin The morpho and morphoview executables are placed here.
+\end_layout
+
+\begin_layout Description
+/usr/local/share/morpho Help files and modules are stored here.
+\end_layout
+
+\begin_layout Description
+/usr/local/include/morpho Morpho header files for building extensions.
+\end_layout
+
+\begin_layout Description
+/usr/local/lib/morpho Morpho extensions.
+\end_layout
+
+\begin_layout Standard
+It's possible to build 
+\emph on
+morpho
+\emph default
+ to use different locations for resources and the binary.
+ To do so, set the 
+\family typewriter
+MORPHORESOURCESDIR
+\family default
+ option when you run make, e.g.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+sudo make MORPHORESOURCESDIR=X install
+\end_layout
+
+\end_inset
+
+where X is the base folder you wish to use, i.e.
+ the replacement for 
+\series bold
+/usr/local
+\series default
+.
+ Subfolders will be created by the installer.
+ To control where the 
+\emph on
+morpho
+\emph default
+ binary is placed, also set the 
+\family typewriter
+DESTDIR
+\family default
+ option,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+sudo make MORPHORESOURCESDIR=X DESTDIR=Y install
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
 Dependencies
 \end_layout
 
@@ -748,7 +841,6 @@ freetype provides text display.
 
 \begin_layout Description
 povray is a ray-tracer that is used for publication-quality graphics.
- 
 \end_layout
 
 \begin_layout Section
@@ -756,7 +848,72 @@ MacOS
 \end_layout
 
 \begin_layout Standard
-Note that if you have an M1 or M2 processor, see the note below: 
+The recommended approach to installing morpho on macOS is to use the 
+\begin_inset CommandInset href
+LatexCommand href
+name "Homebrew"
+target "https://brew.sh"
+literal "false"
+
+\end_inset
+
+ package manager.
+\end_layout
+
+\begin_layout Enumerate
+Install homebrew, following instructions on the homebrew site.
+ 
+\end_layout
+
+\begin_layout Enumerate
+In the terminal type: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+brew update
+\end_layout
+
+\begin_layout Plain Layout
+
+brew tap morpho-lang/morpho
+\end_layout
+
+\begin_layout Plain Layout
+
+brew install morpho
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+You may be prompted by homebrew to install additional components.
+ For some users, it may be necessary to install XCode from the App Store.
+ 
+\end_layout
+
+\begin_layout Section
+MacOS (Manual Installation)
+\end_layout
+
+\begin_layout Standard
+If you ever need to do a manual installation, for example if you want to
+ use the cutting edge 
+\family typewriter
+dev
+\family default
+ branch of morpho, you should follow these instructions.
+ If you have an intel mac, you should omit the 
+\family typewriter
+-f Makefile.m1
+\family default
+ flag below.
+ 
 \end_layout
 
 \begin_layout Enumerate
@@ -770,6 +927,24 @@ literal "false"
 \end_inset
 
  package manager, following instructions on the homebrew site.
+ 
+\end_layout
+
+\begin_layout Enumerate
+If you previously installed morpho using homebrew, you must first remove
+ it.
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+brew uninstall morpho
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Enumerate
@@ -839,7 +1014,7 @@ cd morpho/morpho5
 
 \begin_layout Plain Layout
 
-make install
+make -f Makefile.m1 install
 \end_layout
 
 \end_inset
@@ -864,7 +1039,7 @@ cd morpho/morphoview
 
 \begin_layout Plain Layout
 
-make install
+make -f Makefile.m1 install
 \end_layout
 
 \end_inset
@@ -916,59 +1091,59 @@ sudo make install
 
 \end_layout
 
-\begin_layout Subsubsection
-Note for M1 and M2 users
-\end_layout
-
-\begin_layout Standard
-The M1 and M2 requires a different build script.
- Where you see 
-\begin_inset listings
-inline false
-status open
-
-\begin_layout Plain Layout
-
-make install
-\end_layout
-
-\end_inset
-
-in steps 4 and 5 below, replace this with
-\begin_inset listings
-inline false
-status open
-
-\begin_layout Plain Layout
-
-make -f Makefile.m1 install
-\end_layout
-
-\end_inset
-
-Some users may need to preface these with sudo as above.
- 
-\end_layout
-
 \begin_layout Section
 Linux
 \end_layout
 
 \begin_layout Standard
-Note that the build script places 
+Building on Linux is similar to the macOS manual install.
+ Here we give commands for Ubuntu, which uses the 
 \family typewriter
-morpho5
+apt
 \family default
- and 
-\family typewriter
-morphoview
-\family default
- in the 
-\family typewriter
-/usr/local
-\family default
- file structure; this can easily be changed if a different location is preferred.
+ package manager.
+ On other distributions you will need to find the equivalent packages.
  
+\end_layout
+
+\begin_layout Enumerate
+Make sure your version of apt is up to date.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+sudo apt update
+\end_layout
+
+\begin_layout Plain Layout
+
+sudo apt upgrade
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Ensure you have basic developer tools installed.
+ Some distributions omit these to save space.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+sudo apt install build-essential
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Enumerate
@@ -977,35 +1152,15 @@ Install
 morpho
 \emph default
 's dependencies using your distribution's package manager (or manually if
- you prefer).
- For example, on Ubuntu you would type:
+ you prefer):
 \begin_inset listings
 inline false
 status open
 
 \begin_layout Plain Layout
 
-sudo apt install libglfw3
-\end_layout
-
-\begin_layout Plain Layout
-
-sudo apt install libsuitesparse-dev
-\end_layout
-
-\begin_layout Plain Layout
-
-sudo apt install liblapacke
-\end_layout
-
-\begin_layout Plain Layout
-
-sudo apt install povray
-\end_layout
-
-\begin_layout Plain Layout
-
-sudo apt install libfreetype6-dev
+sudo apt install libglfw3-dev libsuitesparse-dev liblapacke povraylibfreetype6-d
+ev
 \end_layout
 
 \end_inset
@@ -1128,147 +1283,9 @@ morpho
 Install Morpho
 \end_layout
 
-\begin_layout Enumerate
-Install the dependencies.
- You can install the dependencies using the Advanced Package Tool or apt.
- First update the apt package list and then update existing packages.
+\begin_layout Standard
+Follow the instructions for the linux install above.
  
-\begin_inset listings
-inline false
-status open
-
-\begin_layout Plain Layout
-
-sudo apt update
-\end_layout
-
-\begin_layout Plain Layout
-
-sudo apt upgrade
-\end_layout
-
-\end_inset
-
-The dependencies for morpho can be then installed as follows:
-\begin_inset listings
-inline false
-status open
-
-\begin_layout Plain Layout
-
-sudo apt install libglfw3-dev
-\end_layout
-
-\begin_layout Plain Layout
-
-sudo apt install libsuitesparse-dev
-\end_layout
-
-\begin_layout Plain Layout
-
-sudo apt install liblapacke-dev
-\end_layout
-
-\begin_layout Plain Layout
-
-sudo apt install povray
-\end_layout
-
-\begin_layout Plain Layout
-
-sudo apt install libfreetype6-dev
-\end_layout
-
-\end_inset
-
-To build the code you will also need to install build-essentials:
-\begin_inset listings
-inline false
-status open
-
-\begin_layout Plain Layout
-
-sudo apt install build-essential
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Enumerate
-Obtain the morpho source by cloning the Morpho repository:
-\begin_inset listings
-inline false
-status open
-
-\begin_layout Plain Layout
-
-git clone https://github.com/Morpho-lang/morpho.git
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Enumerate
-Navigate to the morpho5 folder within the downloaded repository and build
- the application:
-\begin_inset listings
-inline false
-status open
-
-\begin_layout Plain Layout
-
-cd morpho/morpho5
-\end_layout
-
-\begin_layout Plain Layout
-
-sudo make -f Makefile.linux install
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Enumerate
-Navigate to the morphoview folder and build the viewer application:
-\begin_inset listings
-inline false
-status open
-
-\begin_layout Plain Layout
-
-cd ../morphoview
-\end_layout
-
-\begin_layout Plain Layout
-
-sudo make -f Makefile.linux install 
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Enumerate
-Check that the application works by typing:
-\begin_inset listings
-inline false
-status open
-
-\begin_layout Plain Layout
-
-morpho5
-\end_layout
-
-\end_inset
-
-
 \end_layout
 
 \begin_layout Subsection
@@ -1402,6 +1419,149 @@ This example starts with randomly distributed charges on a sphere and minimizing
  
 \end_layout
 
+\begin_layout Section
+Updating 
+\emph on
+morpho
+\end_layout
+
+\begin_layout Standard
+As new versions of 
+\emph on
+morpho
+\emph default
+ are released, you will likely want to upgrade to the latest version.
+ From the terminal:
+\end_layout
+
+\begin_layout Itemize
+If you used homebrew to install morpho, simply type,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+brew upgrade morpho
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+If you installed 
+\emph on
+morpho
+\emph default
+ manually, and still have the git repository folder on your computer, navigate
+ to this with 
+\family typewriter
+cd
+\family default
+ and type,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+git pull
+\end_layout
+
+\end_inset
+
+which downloads any updates.
+ You can then follow the above instructions to recompile 
+\emph on
+morpho.
+ 
+\emph default
+It's not necessary to reinstall dependencies, but note that some new releases
+ of 
+\emph on
+morpho
+\emph default
+ may require additional dependencies.
+ 
+\end_layout
+
+\begin_layout Itemize
+If you no longer have the original 
+\emph on
+morpho
+\emph default
+ git repository folder from which you installed morpho, simply rerun the
+ installation from scratch as above.
+ You shouldn't need to reinstall dependencies.
+ 
+\end_layout
+
+\begin_layout Section
+Uninstalling 
+\emph on
+morpho
+\end_layout
+
+\begin_layout Standard
+If you wish to uninstall morpho, you can do so simply from the terminal
+ application.
+\end_layout
+
+\begin_layout Itemize
+If you used homebrew to install morpho, simply type
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+brew uninstall morpho
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Alternatively, if you did a manual install, you can remove everything with
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+rm /usr/local/bin/morpho
+\end_layout
+
+\begin_layout Plain Layout
+
+rm /usr/local/bin/morphoview
+\end_layout
+
+\begin_layout Plain Layout
+
+rm -r /usr/local/share/morpho
+\end_layout
+
+\begin_layout Plain Layout
+
+rm -r /usr/local/lib/morpho
+\end_layout
+
+\end_inset
+
+You may need to prefix these with 
+\family typewriter
+sudo
+\family default
+.
+ 
+\end_layout
+
 \begin_layout Chapter
 Using 
 \emph on
@@ -1456,6 +1616,55 @@ morpho5 script.morpho
 \end_inset
 
 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ supports a number of switches:
+\end_layout
+
+\begin_layout Description
+-w Run 
+\emph on
+morpho
+\emph default
+ with more than one worker thread, e.g.
+ 
+\family typewriter
+-w 4
+\family default
+ runs morpho with 4 threads.
+ 
+\end_layout
+
+\begin_layout Description
+-D Display disassembly of the program without running it.
+ 
+\emph on
+[See developer guide]
+\end_layout
+
+\begin_layout Description
+-d Debugging mode.
+ Morpho will stop and enter the debugger whenever a 
+\family typewriter
+@
+\family default
+ is encountered in the source.
+ 
+\emph on
+[See developer guide]
+\end_layout
+
+\begin_layout Description
+-p Profile the program execution.
+ Useful to identify performance bottlenecks.
+ 
+\emph on
+[See developer guide]
 \end_layout
 
 \begin_layout Section

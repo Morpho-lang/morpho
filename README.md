@@ -14,13 +14,11 @@ The Morpho language. Morpho is a programmable environment for shape optimization
 
 ## Learn and use morpho
 
-Documentation is available on [readthedocs](https://morpho-lang.readthedocs.io/en/latest/) and via an extensive [user manual](https://github.com/Morpho-lang/morpho/blob/main/manual/manual.pdf). 
-
-A [Slack community](https://join.slack.com/t/morphoco/shared_invite/zt-1o6azavwl-XMtjjFwxW~P6C8rc~YbBlA) is also available for people interested in using morpho and seeking support. 
+Documentation is available on [readthedocs](https://morpho-lang.readthedocs.io/en/latest/) and via an extensive [user manual](https://github.com/Morpho-lang/morpho/blob/main/manual/manual.pdf). A [Slack community](https://join.slack.com/t/morphoco/shared_invite/zt-1o6azavwl-XMtjjFwxW~P6C8rc~YbBlA) is also available for people interested in using morpho and seeking support. 
 
 In academic publications, please cite morpho as: 
 
-    Joshi, C. et al., "Morpho -- A programmable environment for shape optimization and shapeshifting problems", arXiv:2208.07859 (2022) 
+*Joshi, C. et al., "Morpho -- A programmable environment for shape optimization and shapeshifting problems", arXiv:2208.07859 (2022)*
  
 We expect to update this once the paper is published. 
 
@@ -32,7 +30,7 @@ Morpho is under active development and we welcome contributions! Please see the 
 
 We provide a [Roadmap](https://github.com/Morpho-lang/morpho/wiki/Road-Map) for future development plans that might give you ideas for how you could contribute.
 
-We also welcome bug reports and suggestions: Please feel free to use the `Issues` feature on github to bring these to our attention. 
+We also welcome bug reports and suggestions: Please feel free to use the *Issues* feature on our github repository to bring these to the developers' attention. 
 
 ## Installation
 
@@ -166,11 +164,7 @@ glxgears
 
 #### Test that visualization works
 
-1\. Test the thomson program!
-
-Navigate to the thomson example in the examples directory and run it.
-
-If you are in the `morphoview` directory
+Navigate to the thomson example in the examples directory and run it. If you are in the `morphoview` directory, you can do this by typing,
 
 ```
 cd ../examples/thomson

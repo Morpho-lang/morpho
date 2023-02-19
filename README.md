@@ -45,9 +45,9 @@ Morpho can be installed as follows:
 
 The recommended approach to installing morpho on macOS is to use the [Homebrew](https://brew.sh) package manager.
 
-1. Install [Homebrew](https://brew.sh), following instructions on the homebrew site. 
+1\. Install [Homebrew](https://brew.sh), following instructions on the homebrew site. 
 
-2. In the terminal type: 
+2\. In the terminal type: 
 
 ```
 brew update
@@ -55,7 +55,11 @@ brew tap morpho-lang/morpho
 brew install morpho
 ```
 
-You may be prompted by homebrew to install additional components. For some users, it may be necessary to install XCode from the App Store. 
+You may be prompted by homebrew to install additional components. For some users, it may be necessary to install XCode from the App Store. We recommend you also obtain this git repository so that you can try the examples, read the manual etc. which are not installed by homebrew. To do so simply cd to any convenient folder in the Terminal and type:  
+
+```
+git clone https://github.com/Morpho-lang/morpho.git
+```
 
 ### Unix and Linux
 

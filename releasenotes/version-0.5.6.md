@@ -18,6 +18,10 @@ The morpho runtime can now look for resource files---help files, morpho files, e
 
 It's now possible to extend morpho through dynamic libraries written in C and linked at runtime. From the user's perspective, these work just like modules using the `import` keyword. 
 
+## New manual chapter on visualization
+
+We continue to improve the manual, and now include a chapter on visualization. The developer guide has also been updated. 
+
 ## Other improvements
 
 * Improvements to morpho's object model. New Function, Closures and Invocation classes provided that respond to standard methods. 

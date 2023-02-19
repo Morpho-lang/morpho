@@ -650,7 +650,21 @@ noprefix "false"
 
 \end_inset
 
- provides information about working with meshes.
+ provides information about working with meshes and Chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:Visualization"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ describes how to visualize the results of your calculation with 
+\emph on
+morpho
+\emph default
+.
  The examples provided with morpho are described in Chapter 
 \begin_inset CommandInset ref
 LatexCommand ref
@@ -701,12 +715,18 @@ https://github.com/Morpho-lang/morpho
 \end_inset
 
 .
- 
+ We are continuously working on improving 
 \emph on
-Morpho
+morpho
 \emph default
- is presently installed from source; streamlined installation will be provided
- in future releases.
+ installation.
+ With this release, 
+\emph on
+morpho
+\emph default
+ on macOS now has a streamlined installation process using homebrew.
+ Other platforms must be installed from source and we hope to provide packages
+ for future releases.
  Instructions for different platforms are provided below.
  
 \end_layout
@@ -729,7 +749,17 @@ morpho
 \series bold
 /usr/local/
 \series default
- file structure, including in the following places:
+ file structure
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+On the macOS, these files are contained within the mo
+\end_layout
+
+\end_inset
+
+, including in the following places:
 \end_layout
 
 \begin_layout Description
@@ -831,7 +861,28 @@ blas/lapack are used for dense linear algebra.
 \end_layout
 
 \begin_layout Description
-suitesparse is used for sparse linear algebra.
+suitesparse is used for sparse linear algebra
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+See 
+\begin_inset Flex URL
+status open
+
+\begin_layout Plain Layout
+
+https://people.engr.tamu.edu/davis/suitesparse.html
+\end_layout
+
+\end_inset
+
+ and publications for details
+\end_layout
+
+\end_inset
+
+.
  
 \end_layout
 
@@ -861,7 +912,26 @@ literal "false"
 \end_layout
 
 \begin_layout Enumerate
-Install homebrew, following instructions on the homebrew site.
+If you have a previous installation of morpho, we recommend you remove it
+ by following the instructions for uninstalling 
+\emph on
+morpho
+\emph default
+ below.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Install 
+\begin_inset CommandInset href
+LatexCommand href
+name "Homebrew"
+target "https://brew.sh"
+literal "false"
+
+\end_inset
+
+, following instructions on the homebrew site.
  
 \end_layout
 
@@ -888,13 +958,28 @@ brew install morpho
 
 \end_inset
 
-
-\end_layout
-
-\begin_layout Standard
 You may be prompted by homebrew to install additional components.
  For some users, it may be necessary to install XCode from the App Store.
  
+\end_layout
+
+\begin_layout Enumerate
+We also recommend that you obtain the morpho git repository, because it
+ contains the manual, examples and other useful materials that aren't installed
+ by homebrew.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+git clone https://github.com/Morpho-lang/morpho.git
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Section
@@ -908,12 +993,36 @@ If you ever need to do a manual installation, for example if you want to
 dev
 \family default
  branch of morpho, you should follow these instructions.
- If you have an intel mac, you should omit the 
+ If you have an Intel mac, you should omit the 
 \family typewriter
 -f Makefile.m1
 \family default
- flag below.
- 
+ flags in the make command below.
+ Note also that some users may need to preface 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+make install
+\end_layout
+
+\end_inset
+
+with the sudo command:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+sudo make install
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Enumerate
@@ -1056,34 +1165,6 @@ status open
 \begin_layout Plain Layout
 
 morpho5
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-Some users may need to preface 
-\begin_inset listings
-inline false
-status open
-
-\begin_layout Plain Layout
-
-make install
-\end_layout
-
-\end_inset
-
-with the sudo command:
-\begin_inset listings
-inline false
-status open
-
-\begin_layout Plain Layout
-
-sudo make install
 \end_layout
 
 \end_inset
@@ -1284,7 +1365,11 @@ Install Morpho
 \end_layout
 
 \begin_layout Standard
-Follow the instructions for the linux install above.
+Follow the instructions for the linux install above to install 
+\emph on
+morpho
+\emph default
+.
  
 \end_layout
 
@@ -7105,6 +7190,1942 @@ noprefix "false"
 \end_inset
 
 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Chapter
+Visualization
+\begin_inset CommandInset label
+LatexCommand label
+name "chap:Visualization"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This chapter describes ways to use 
+\emph on
+morpho
+\emph default
+ to visualize output.
+ Easy to use functions to visualize geometric objects are found in the 
+\family typewriter
+plot
+\family default
+ module, while you can draw arbitrary objects using the 
+\family typewriter
+graphics
+\family default
+ module.
+ Publication quality output can be generated conveniently using the 
+\family typewriter
+povray
+\family default
+ module.
+ 
+\end_layout
+
+\begin_layout Section
+The plot module 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+
+\family sans
+A
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/plotmesh/square.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\family sans
+B
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/plotmesh/square2.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\family sans
+C
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/plotmesh/square3.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:PlotMesh"
+
+\end_inset
+
+Using plotmesh.
+
+\series default
+ 
+\series bold
+A
+\series default
+ By default, the highest grade element is displayed.
+ 
+\series bold
+B
+\series default
+ Other grades, here points and edges, can be shown by setting the 
+\family typewriter
+grade
+\family default
+ option.
+ 
+\series bold
+C
+\series default
+ The color of the mesh can be chosen with the color option.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\family typewriter
+plot
+\family default
+ module offers a convenient way to visualize Meshes, Fields and Selections.
+ To illustrate its use, we'll create a simple Mesh,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+import meshtools
+\end_layout
+
+\begin_layout Plain Layout
+
+var m = AreaMesh(fn (u,v) [u, v, 0], -1..1:0.2, -1..1:0.2)
+\end_layout
+
+\begin_layout Plain Layout
+
+m.addgrade(1)
+\end_layout
+
+\end_inset
+
+and an associated scalar Field,
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var f = Field(m, fn (x,y) x*y)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Meshes
+\end_layout
+
+\begin_layout Standard
+To visualize the Mesh, use the 
+\family typewriter
+plotmesh
+\family default
+ function
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var g = plotmesh(m)
+\end_layout
+
+\end_inset
+
+which outputs a Graphics object, which we'll describe more fully in Section
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:The-graphics-module"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ below.
+ By default, 
+\family typewriter
+plotmesh
+\family default
+ shows only the highest grade element present—here grade 2 or facets—as
+ shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:PlotMesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+A.
+ To show other grades, use the 
+\family typewriter
+grade
+\family default
+ option:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var g = plotmesh(m, grade=[0,1])
+\end_layout
+
+\end_inset
+
+which shows points and edges as shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:PlotMesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+B.
+ 
+\end_layout
+
+\begin_layout Standard
+You can control the color of the Mesh with the 
+\family typewriter
+color
+\family default
+ option as shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:PlotMesh"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+C:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var g = plotmesh(m, grade=0, color=Red)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To display particular selected elements of a mesh, you can use the optional
+ 
+\family typewriter
+selection
+\family default
+ argument and supply a Selection object.
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var sel = Selection(m, fn (x,y,z) x^2+y^2<1)
+\end_layout
+
+\begin_layout Plain Layout
+
+sel.addgrade(2)
+\end_layout
+
+\begin_layout Plain Layout
+
+var g = plotmesh(m, grade=[0,2], selection=sel)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Mesh labels
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+
+\family sans
+A
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/plotmeshlabels/meshlabels.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\family sans
+B
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/plotmeshlabels/meshlabels2.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:PlotMeshLabels"
+
+\end_inset
+
+Using plotmeshlabels to display element ids.
+
+\series default
+ 
+\series bold
+A
+\series default
+ Element ids for vertices.
+ 
+\series bold
+B
+\series default
+ Element ids for the grade 1 elements.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+It's sometimes helpful to be able to identify the id of a particular element
+ in a Mesh, especially for debugging purposes.
+ The 
+\family typewriter
+plotmeshlabels
+\family default
+ function is designed to facilitate this as shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:PlotMeshLabels"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ You can select which grade to draw ids for and specify their color, size
+ and draw direction.
+ It's also possible to give an offset, which can be a list, matrix or even
+ a function, that adjusts the placement of the labels relative to the center
+ of the element.
+ Here we offset them a little above and to the right: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var glabel = plotmeshlabels(m, grade=0, color=Black, offset=[0.025,0.025,0])
+\end_layout
+
+\end_inset
+
+The 
+\family typewriter
+plotmeshlabels
+\family default
+ function only draws labels, not the mesh itself, so we typically combine
+ it with 
+\family typewriter
+plotmesh
+\family default
+ and display both:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var gmesh = plotmesh(m, grade=[0,1])
+\end_layout
+
+\begin_layout Plain Layout
+
+var g = gmesh+glabel
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To show the grade 1 element ids, for example, we might use:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var glabel = plotmeshlabels(m, grade=1, color=Red, offset=[-0.05,-0.05,-0.03])
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Selections
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+
+\family sans
+A
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/plotselection/selection.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\family sans
+B
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/plotselection/selectionbnd.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:PlotSelection"
+
+\end_inset
+
+Using plotselection.
+
+\series default
+ 
+\series bold
+A
+\series default
+ Selected elements.
+ 
+\series bold
+B
+\series default
+ Selected boundary.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+When setting up a problem in 
+\emph on
+morpho
+\emph default
+, it's very common to use Selection objects to apply Functionals to limited
+ parts of a Mesh.
+ It's essential to check that the Selections are correct, and 
+\family typewriter
+plotselection
+\family default
+ provides an easy way to do this.
+ To illustrate this, let's select the lower right hand elements in the Mesh,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var s = Selection(m, fn (x,y,z) x<=0 && y<=0)
+\end_layout
+
+\begin_layout Plain Layout
+
+s.addgrade(1)
+\end_layout
+
+\end_inset
+
+and visualize the Selection as shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:PlotSelection"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+A:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var g = plotselection(m, s, grade=[0,1])
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Similarly, we can select the boundary,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var bnd = Selection(m, boundary=true)
+\end_layout
+
+\end_inset
+
+and visualize the selection as shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:PlotSelection"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+B:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var gbnd = plotselection(m, bnd, grade=[0,1])
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Fields
+\end_layout
+
+\begin_layout Standard
+Another important use of the 
+\family typewriter
+plot
+\family default
+ module is to visualize scalar Field objects.
+ To illustrate this, we'll create an AreaMesh that has more points,
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var m = AreaMesh(fn (u,v) [u, v, 0], -1..1:0.1, -1..1:0.1)
+\end_layout
+
+\end_inset
+
+and a corresponding Field object
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+It's actually the third lowest energy eigenmode of a square drum, or equivalentl
+y the 
+\begin_inset Formula $(1,1)$
+\end_inset
+
+ state of a 2D infinite square well in quantum mechanics.
+\end_layout
+
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var f = Field(m, fn (x,y,z) sin(Pi*x)*sin(Pi*y))
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+By default, 
+\family typewriter
+plotfield
+\family default
+ draws points at which the Field is defined, and colors them by the value
+ as in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:PlotField"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+A:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var g = plotfield(f)
+\end_layout
+
+\end_inset
+
+Alternatively, 
+\family typewriter
+plotfield
+\family default
+ can draw higher order elements and interpolate the coloring if you select
+ the style option appropriately as shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:PlotField"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+B:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var g = plotfield(f, style="interpolate")
+\end_layout
+
+\end_inset
+
+To aid interpretation of these plots, it's common to display a ScaleBar
+ object alongside the plot.
+ These have quite a few options, including the position and size, as well
+ as the number of ticks and text layout.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var sb = ScaleBar(posn=[1.2,0,0], length=1, textcolor=Black)
+\end_layout
+
+\end_inset
+
+The scalebar is the then supplied as an optional argument to 
+\family typewriter
+plotfield
+\family default
+.
+ Here, we also use a different colormap object: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var g = plotfield(f, style="interpolate", scalebar=sb, colormap=PlasmaMap())
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\family typewriter
+color
+\family default
+ module supplies a number of colormaps that you can try: ViridisMap is used
+ by default, but PlasmaMap, MagmaMap and InfernoMap are also recommended
+ and have been specially formulated to be accessible to users with limited
+ color perception
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+The 
+\emph on
+morpho
+\emph default
+ versions are adapted from 
+\emph on
+Simon Garnier, Noam Ross, Robert Rudis, Antônio P.
+ Camargo, Marco Sciaini, and Cédric Scherer (2021).
+ viridis(Lite) - Colorblind-Friendly Color Maps for R.
+ viridis package version 0.6.2.
+\end_layout
+
+\end_inset
+
+.
+ GrayMap and HueMap are also available.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+
+\family sans
+A
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/plotfield/fieldpts.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\family sans
+B
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/plotfield/interpolate.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\family sans
+C
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/plotfield/scalebar.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:PlotField"
+
+\end_inset
+
+Visualizing Fields with plotfield.
+
+\series default
+ 
+\series bold
+A
+\series default
+ By default, the field is displayed by coloring the respective points.
+ 
+\series bold
+B
+\series default
+ Interpolated view.
+ 
+\series bold
+C
+\series default
+ The same field with a scalebar added and a different choice of colormap
+ (here PlasmaMap) used.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+The graphics module
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:The-graphics-module"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Support for low level graphics is provided by the 
+\family typewriter
+graphics
+\family default
+ module, which you can use this to create custom visualizations and generate
+ other kinds of graphical output.
+ These can be easily combined with output from the 
+\family typewriter
+plot
+\family default
+ module, which utilizes 
+\family typewriter
+graphics
+\family default
+ internally.
+ 
+\end_layout
+
+\begin_layout Standard
+We begin by creating a Graphics object, which represents a 
+\emph on
+scene
+\emph default
+ or a collection of things to be displayed.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var g = Graphics()
+\end_layout
+
+\end_inset
+
+Once the Graphics object is created, we can add 
+\emph on
+display elements
+\emph default
+
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+Sometimes referred to as graphics 'primitives'.
+\end_layout
+
+\end_inset
+
+, objects specifying what is to be drawn, to the scene in turn.
+ The graphics module supports the following kinds of element:
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Cylinder
+\series default
+ specified by two points at each end of the cylinder on its axis.
+ You can also specify the aspect ratio, i.e.
+ the ratio of the radius of the cylinder to its length, and the number of
+ points to draw.
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+Cylinder([-1/2,-1/2,-1/2], [1/2,1/2,1/2], aspectratio=0.2, n=10)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Arrow
+\series default
+ specified in the same way as a Cylinder, e.g.
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+Arrow([-1/2,-1/2,-1/2], [1/2,1/2,1/2], aspectratio=0.2, n=10)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Sphere
+\series default
+ specified by the center and the radius, e.g.
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+Sphere([0,0,0], 0.8)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Text
+\series default
+ specified by the text to display and the location to display at.
+ Many options can be provided, including the drawing direction and the vertical
+ direction, the size in points (1 graphics unit=72 points), and the Font.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+Text("Hello World!", [-0.75,0,0], size=24, color=Black)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Tube
+\series default
+ specified by a sequence of points and a radius.
+ You can also specify if the tube is closed or not.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var pts = []
+\end_layout
+
+\begin_layout Plain Layout
+
+for (phi in -Pi..Pi:Pi/32) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    pts.append([0.5*(1+0.3*sin(4*phi))*cos(phi), 0.5*(1+0.3*sin(4*phi))*sin(phi),
+ 0]) 
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+g.display(Tube(pts, 0.05, color=Blue, closed=true))
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+TriangleComplex
+\series default
+ describes a collection of triangles, which can be used to display polyhedra
+ and other complex objects.
+ These elements are low-level, and further information is available in the
+ reference section.
+\end_layout
+
+\begin_layout Standard
+Most of these elements accept certain optional arguments:
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+color
+\series default
+ to specify the color.
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+transmit
+\series default
+ specifies the transparency of the element, which by default is 0.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+filter
+\series default
+ alternative way of specifying transparency for use with the povray module.
+ 
+\end_layout
+
+\begin_layout Standard
+Once appropriate elements have been created, we can display the Graphics
+ object with 
+\family typewriter
+morphoview
+\family default
+ using Show.
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+Show(g)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+
+\family sans
+A
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/primitives/cylinder.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\family sans
+B
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/primitives/arrow.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\family sans
+C
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/primitives/sphere.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+
+\family sans
+D
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/primitives/text.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\family sans
+E
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/primitives/tube.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\family sans
+F
+\family default
+
+\begin_inset Graphics
+	filename Figures/VisChapter/primitives/trianglecomplex.png
+	lyxscale 20
+	width 2in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:GraphicsElements"
+
+\end_inset
+
+Graphics elements.
+
+\series default
+ 
+\series bold
+A 
+\series default
+Cylinder
+\series bold
+ B
+\series default
+ Arrow 
+\series bold
+C
+\series default
+ Sphere 
+\series bold
+D
+\series default
+ Text 
+\series bold
+E
+\series default
+ Tube and 
+\series bold
+F
+\series default
+ TriangleComplex.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection*
+Example: Visualizing an electric field
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Figures/VisChapter/electricexample/electric.png
+	lyxscale 20
+	width 5in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:ElectricField"
+
+\end_inset
+
+Electric field due to a dipole.
+
+\series default
+ Custom visualization created using the graphics module.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+As an illustration of what's possible using the 
+\family typewriter
+graphics
+\family default
+ module directly, we'll create a visualization of the electric field due
+ to two point charges (Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:ElectricField"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+).
+ Begin by setting some constants and creating the Graphics object:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var L = 2 // Size of domain to draw
+\end_layout
+
+\begin_layout Plain Layout
+
+var R = 1 // Separation of the charges
+\end_layout
+
+\begin_layout Plain Layout
+
+var dx = 0.125 // Spacing of points to draw
+\end_layout
+
+\begin_layout Plain Layout
+
+var eps = 1e-10 // Check for zero separation
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+var g = Graphics() 
+\end_layout
+
+\end_inset
+
+We'll now define the charges by creating two List objects: one contains
+ the strength of each charge and the second stores their positions:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// Electric field due to a system of point charges
+\end_layout
+
+\begin_layout Plain Layout
+
+var qq = [1,-1] 
+\end_layout
+
+\begin_layout Plain Layout
+
+var xq = [ Matrix([-R/2, 0, 0]), Matrix([R/2, 0, 0])]
+\end_layout
+
+\end_inset
+
+We'll also define a cutoff distance around each charge below which we won't
+ draw the electric field (remember it grows 
+\begin_inset Formula $\to\infty$
+\end_inset
+
+ as we get closer!):
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var cutoff = 0.2
+\end_layout
+
+\end_inset
+
+Next, we need a function that calculates the electric field at an arbitary
+ point.
+ We do this by summing up the electric fields due to each charge using Coulomb's
+ law: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+fn efield(x) {
+\end_layout
+
+\begin_layout Plain Layout
+
+   var e = 0
+\end_layout
+
+\begin_layout Plain Layout
+
+   for (q, k in qq) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    var r=x-xq[k]
+\end_layout
+
+\begin_layout Plain Layout
+
+    if (r.norm()<cutoff) return nil
+\end_layout
+
+\begin_layout Plain Layout
+
+    e+=q*r/(r.norm()^3) // = 1/r^2 * 
+\backslash
+hat{r}
+\end_layout
+
+\begin_layout Plain Layout
+
+  }
+\end_layout
+
+\begin_layout Plain Layout
+
+  return e
+\end_layout
+
+\begin_layout Plain Layout
+
+ }
+\end_layout
+
+\end_inset
+
+To draw the electric field, we create a rectangular grid of points, calculate
+ the electric field at each point and draw an Arrow along the orientation.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var lambda = dx/10
+\end_layout
+
+\begin_layout Plain Layout
+
+for (x in -L..L:dx) for (y in -L..L:dx) {
+\end_layout
+
+\begin_layout Plain Layout
+
+  var x0 = Matrix([x,y,0])
+\end_layout
+
+\begin_layout Plain Layout
+
+  var E = efield(x0)
+\end_layout
+
+\begin_layout Plain Layout
+
+  if (isnil(E)) continue
+\end_layout
+
+\begin_layout Plain Layout
+
+  if (E.norm()>eps) g.display(Arrow(x0-lambda*E,x0+lambda*E))
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+We now draw the charges, coloring them by their sign:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+for (q,k in qq) {
+\end_layout
+
+\begin_layout Plain Layout
+
+  var col = Red
+\end_layout
+
+\begin_layout Plain Layout
+
+  if (q<0) col = Blue
+\end_layout
+
+\begin_layout Plain Layout
+
+  g.display(Sphere(xq[k],dx/4,color=col))
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+Finally, we display the scene:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+Show(g)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+The povray module
+\end_layout
+
+\begin_layout Standard
+All figures in this manual have been exported directly from the 
+\emph on
+morpho
+\emph default
+ programs that created them using the persistence of vision raytracer or
+ 
+\family typewriter
+povray
+\family default
+.
+ A raytracer is a program that takes a scene description and renders graphical
+ output by tracing the path of individual rays of light.
+ Because the model of light propagation and image formation is physically
+ motivated, the output is of very high quality.
+ By contrast, 
+\family typewriter
+morphoview
+\family default
+ and most graphics programs use simplified approximate rendering techniques
+ that enable real time interactive output.
+ At the time of writing, raytracing is gaining popularity as a technique,
+ and some high performance graphics cards now have real time raytracing
+ capability.
+ 
+\family typewriter
+povray
+\family default
+ is a very well established program that is widely available and cross platform.
+ 
+\end_layout
+
+\begin_layout Standard
+To use the 
+\family typewriter
+povray
+\family default
+ module, you need to create a POVRaytracer object and initialize it with
+ the graphics object 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+import povray
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+var pov = POVRaytracer(g)
+\end_layout
+
+\end_inset
+
+You can choose features of the graphics out by setting properties of this
+ object, for example: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+pov.viewpoint = Matrix([5,5,6]) // Sets where the camera is located
+\end_layout
+
+\begin_layout Plain Layout
+
+pov.viewangle = 18 // Controls the angular size of the view
+\end_layout
+
+\begin_layout Plain Layout
+
+pov.background = White // Sets the background for rendering
+\end_layout
+
+\begin_layout Plain Layout
+
+pov.light=[Matrix([10,10,10]), Matrix([0,0,10]), Matrix([-10,-10,10])] //
+ Places light point sources at several positions
+\end_layout
+
+\end_inset
+
+Because the list of properties can get quite cumbersome, it's possible to
+ specify them through a separate Camera object and initialize the raytracer
+ to use the Camera: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+var pov = POVRaytracer(g, camera=cam)
+\end_layout
+
+\end_inset
+
+See the Reference section for further details.
+ 
+\end_layout
+
+\begin_layout Standard
+To produce output, call the render method to create a .pov file and run povray:
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+pov.render(
+\begin_inset Quotes eld
+\end_inset
+
+graphic.pov
+\begin_inset Quotes erd
+\end_inset
+
+)
+\end_layout
+
+\end_inset
+
+By default, the resulting .png file is opened.
+ You can stop this by calling render with 
+\family typewriter
+display
+\family default
+ set to 
+\family typewriter
+false
+\family default
+: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+pov.render(
+\begin_inset Quotes eld
+\end_inset
+
+graphic.pov
+\begin_inset Quotes erd
+\end_inset
+
+, display=false)
+\end_layout
+
+\end_inset
+
+If you wish to simply create .pov file without running povray, use the write
+ method:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+pov.write(
+\begin_inset Quotes eld
+\end_inset
+
+graphic.pov
+\begin_inset Quotes erd
+\end_inset
+
+)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Figures/VisChapter/povray/transparency.png
+	lyxscale 20
+	width 4in
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Transparency"
+
+\end_inset
+
+Randomly generated spheres 
+\series default
+rendered with random transparency.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+A major advantage of raytracing is natural support for transparency effects.
+ Here we generate 50 spheres of random placement, size and transparency
+ by setting the 
+\family typewriter
+transmit
+\family default
+ option.
+ The rendered output is shown in Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Transparency"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+fn randompt(R) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    return R*Matrix([random()-1/2, random()-1/2, random()-1/2])
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+for (i in 1..50) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    g.display(Sphere(randompt(1.5), random()/5, transmit=random()))
+\end_layout
+
+\begin_layout Plain Layout
+
+}
 \end_layout
 
 \end_inset

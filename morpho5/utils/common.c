@@ -536,11 +536,10 @@ bool resources_matchfile(resourceenumerator *en, char *file) {
 
     if (en->fname) { // Match filename if requested
         char *f = c;
-        while (f>=file && *f!=MORPHO_SEPARATOR) f--;
-        if (*f==MORPHO_SEPARATOR) f++;
-        for (int i=0; f[i]!='\0' && f[i]!='.'; i++) { // Now compare filename against match
-            if (f[i]!=en->fname[i]) return false;
-        }
+        while (f>=file && *f!=MORPHO_SEPARATOR) f--; // Find last separator
+        if (*f==MORPHO_SEPARATOR) f++; // If we stopped at a separator, skip it
+        
+        if (strncmp(en->fname, f, strlen(en->fname))!=0) return false; // Now compare
     }
 
     if (!en->ext) return true; // Match extension only if requested

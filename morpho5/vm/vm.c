@@ -120,6 +120,7 @@ value program_internsymbol(program *p, value symbol) {
     printf("Interning symbol '");
     morpho_printvalue(symbol);
 #endif
+    
     if (builtin_checksymbol(symbol)) { // Check if this is part of the built in symbol table already
         return builtin_internsymbol(symbol);
     }

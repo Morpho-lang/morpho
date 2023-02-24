@@ -268,7 +268,7 @@ value builtin_internsymbolascstring(char *symbol) {
 }
 
 /** Checks if a symbol exists in the global symbol table */
-value builtin_checksymbol(value symbol) {
+bool builtin_checksymbol(value symbol) {
     value val;
     return dictionary_get(&builtin_symboltable, symbol, &val);
 }

@@ -108,7 +108,7 @@ void builtin_copysymboltable(dictionary *out);
 
 value builtin_internsymbol(value symbol);
 value builtin_internsymbolascstring(char *symbol);
-value builtin_checksymbol(value symbol);
+bool builtin_checksymbol(value symbol);
 
 bool builtin_options(vm *v, int nargs, value *args, int *nfixed, int noptions, ...);
 bool builtin_iscallable(value val);

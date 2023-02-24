@@ -267,6 +267,12 @@ value builtin_internsymbolascstring(char *symbol) {
     return internselector;
 }
 
+/** Checks if a symbol exists in the global symbol table */
+bool builtin_checksymbol(value symbol) {
+    value val;
+    return dictionary_get(&builtin_symboltable, symbol, &val);
+}
+
 /* **********************************************************************
  * Initialization/Finalization
  * ********************************************************************** */

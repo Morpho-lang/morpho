@@ -26,7 +26,7 @@ Convert a string to an integer:
 
 Morpho provides double precision floating point numbers. 
 
-Convert a string to an floating point number:
+Convert a string to a floating point number:
 
     print Float("1.2e2")+1 // expect: 121
 

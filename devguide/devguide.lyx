@@ -166,7 +166,7 @@ Developer Guide
 \begin_inset Newline newline
 \end_inset
 
-Version 0.5.5
+Version 0.5.6
 \end_layout
 
 \begin_layout Standard
@@ -210,14 +210,14 @@ language and are loaded with the
 import
 \family default
  keyword.
- 
+ Creating a module is no different than writing a 
+\emph on
+morpho
+\emph default
+ program!
 \end_layout
 
-\begin_layout Standard
-\begin_inset Note Note
-status open
-
-\begin_layout Plain Layout
+\begin_layout Itemize
 
 \series bold
 Extensions
@@ -233,12 +233,7 @@ import
 \family default
  keyword; the distinction between modules and extensions is purposefully
  not visible to the user; a module could be reimplemented as an extension
- with the same interface, for example.
-\end_layout
-
-\end_inset
-
-
+ with the same interface, for example
 \begin_inset Separator plain
 \end_inset
 
@@ -248,10 +243,15 @@ import
 \begin_layout Itemize
 
 \series bold
-Modifying morpho directly.
+Contributing to the 
+\emph on
+morpho
+\emph default
+ source code.
 
 \series default
- Changes to the core data types could be incorporated into morpho directly.
+ Changes to the core data types, improvements to the compiler, etc.
+ could be incorporated into morpho directly.
  We highly recommend connecting to the 
 \emph on
 morpho
@@ -260,6 +260,42 @@ morpho
  on, or whether there is guidance or advice on how specific features should
  work.
  
+\end_layout
+
+\begin_layout Standard
+Modules and extensions should be distributed in their own git repository
+ as a package.
+ See Chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:Morpho-packages"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ for further information.
+\end_layout
+
+\begin_layout Standard
+We also recommend contributers look at the 
+\family typewriter
+CONTRIBUTING.md
+\family default
+ and 
+\family typewriter
+CODE_OF_CONDUCT.md
+\family default
+ documents in the 
+\emph on
+morpho
+\emph default
+ git repository for information and advice about contributing to 
+\emph on
+morpho
+\emph default
+, as well as how ethical standards for participation in our community.
 \end_layout
 
 \begin_layout Standard
@@ -364,6 +400,335 @@ Distributing your module
 \end_inset
 
 
+\end_layout
+
+\begin_layout Chapter
+
+\emph on
+Morpho
+\emph default
+ packages
+\begin_inset CommandInset label
+LatexCommand label
+name "chap:Morpho-packages"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To facilitate convenient distribution, 
+\emph on
+morpho
+\emph default
+ supports a lightweight notion of 
+\emph on
+packages
+\emph default
+, which comprise some functionality.
+ A package is simply a git repository that contains some or all of the following
+ file structure: 
+\end_layout
+
+\begin_layout Description
+/share/modules for
+\family typewriter
+ .morpho
+\family default
+ files that define a module
+\end_layout
+
+\begin_layout Description
+/share/help for 
+\family typewriter
+.md
+\family default
+ files containing interactive help (see below).
+\end_layout
+
+\begin_layout Description
+/lib for compiled extensions (these may be produced during installation).
+ 
+\end_layout
+
+\begin_layout Description
+/src for source files 
+\end_layout
+
+\begin_layout Description
+/examples for examples
+\end_layout
+
+\begin_layout Description
+/test for test files 
+\end_layout
+
+\begin_layout Description
+/manual if a package is sufficiently complex to require a manual 
+\end_layout
+
+\begin_layout Description
+README.md information about the package, installation etc.
+ 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ searches both its base installation and all known packages when trying
+ to locate resources.
+ We anticipate that at some future point a package management system similar
+ to pip will be created; the structure above is intended to be sufficiently
+ simple that different installation approaches could be supported.
+ 
+\end_layout
+
+\begin_layout Standard
+We recommmend naming your package with the 
+\emph on
+morpho-
+\emph default
+ prefix.
+ Please let the morpho development team know about interesting packages!
+\end_layout
+
+\begin_layout Section
+
+\emph on
+Morpho
+\emph default
+ help files 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+'s interactive help system utilizes a subset of the 
+\begin_inset CommandInset href
+LatexCommand href
+name "Markdown"
+target "https://daringfireball.net/projects/markdown/"
+literal "false"
+
+\end_inset
+
+ plain text formatting system.
+ Help files should be put in the 
+\family typewriter
+/share/help
+\family default
+ folder of your package so that morpho can find them.
+ 
+\end_layout
+
+\begin_layout Standard
+Each entry begins with a heading, for example: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+# Entry
+\end_layout
+
+\end_inset
+
+Using different heading levels indicates to 
+\emph on
+morpho
+\emph default
+ that a topic should be included as a subtopic.
+ Here, the two heading level 2 entries become subtopics of the main topic,
+ which uses heading level 1: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+# Main topic 
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+## Subtopic 1
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+## Subtopic 2
+\end_layout
+
+\end_inset
+
+
+\emph on
+Morpho
+\emph default
+'s help system supports basic formatting, including emphasized text:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+This is *emphasized* text.
+\end_layout
+
+\end_inset
+
+and lists can be included like so:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+* List entry
+\end_layout
+
+\begin_layout Plain Layout
+
+* Another list entry
+\end_layout
+
+\end_inset
+
+Code can be typeset inline,
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+Grave accents are used to delimit `some code`
+\end_layout
+
+\end_inset
+
+or can be included in a block by indenting the code:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+    for (i in 1..10) print i
+\end_layout
+
+\end_inset
+
+The terminal viewer will syntax color this automatically.
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ (ab)uses the Markdown hyperlink sytax to encode control features.
+ To specify a tag or keyword for a help entry, create a hyperlink where
+ the label begins with the word 
+\family typewriter
+tag
+\family default
+, and include the keyword you'd like to use in the target as follows:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+## Min
+\end_layout
+
+\begin_layout Plain Layout
+
+[tagmin]: # (min)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+Finds the minimum value...
+\end_layout
+
+\end_inset
+
+This unusual syntax is necessary as Markdown lacks comments or syntax for
+ metadata, and we use hyperlinks to encode text in a way that is valid Markdown
+ but remains transparent to regular Markdown viewers.
+ The 
+\family typewriter
+#
+\family default
+ is a valid URL target, and the construction in effect 'hides' the text
+ in parentheses.
+ Since hyperlink labels (the part in square brackets) must be unique per
+ file, add any text you like, typically the name of the tag, after the word
+ 
+\family typewriter
+tag
+\family default
+.
+\end_layout
+
+\begin_layout Standard
+Similarly, to tell the help viewer to show a table of subtopics after an
+ entry, add a line like this: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+[showsubtopics]: # (subtopics)
+\end_layout
+
+\end_inset
+
+Any characters after 
+\family typewriter
+showsubtopics
+\family default
+ in the label are ignored, so you can add additional characters to ensure
+ a unique label.
+ 
 \end_layout
 
 \begin_layout Part
@@ -1105,6 +1470,325 @@ Hence, optimization involves not only thinking about the performance of
 
 \begin_layout Part
 Coding in C
+\end_layout
+
+\begin_layout Chapter
+Writing an extension
+\end_layout
+
+\begin_layout Standard
+Morpho extensions are dynamic libraries that are loaded at runtime.
+ From the user's perspective, they work just like modules through the 
+\family typewriter
+import
+\family default
+ statement:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+import myextension
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+When the compiler encounters an import statement, it first searches to see
+ if a valid extension can be found with that name.
+ If so, the extension is loaded and compilation continues.
+\end_layout
+
+\begin_layout Standard
+Extensions are implemented in C or any language that can be linked with
+ C.
+ A minimal extension looks like this:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// myextension.c 
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+#include <stdio.h>
+\end_layout
+
+\begin_layout Plain Layout
+
+#include <morpho/morpho.h>
+\end_layout
+
+\begin_layout Plain Layout
+
+#include <morpho/builtin.h>
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+value myfunc(vm *v, int nargs, value *args) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    printf("Hello world!
+\backslash
+n");
+\end_layout
+
+\begin_layout Plain Layout
+
+    return MORPHO_NIL;
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+void myextension_initialize(void) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    builtin_addfunction("myfunc", myfunc, BUILTIN_FLAGSEMPTY);
+\end_layout
+
+\begin_layout Plain Layout
+
+}   
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+void myextension_finalize(void) {
+\end_layout
+
+\begin_layout Plain Layout
+
+} 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+All 
+\emph on
+morpho
+\emph default
+ extensions 
+\series bold
+must
+\series default
+ provide an initialize function, and it 
+\series bold
+must
+\series default
+ be named 
+\family typewriter
+EXTENSIONNAME_initialize
+\family default
+.
+ In this function, you should call the morpho API to define functions and
+ classes implemented by your extension, and set up any global data as necessary.
+ Here, we add a function to the runtime that will be visible to user code
+ as 
+\family typewriter
+myfunc
+\family default
+.
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ extensions 
+\series bold
+may
+\series default
+ but are not required to provide a finalize function, with a similar naming
+ convention to the initializer.
+ This function should deallocate or close anything created by your extension
+ that isn't visible to the 
+\emph on
+morpho
+\emph default
+ runtime.
+ Here, the function data structures are handled by the morpho runtime so
+ there's no finalization to do.
+ 
+\end_layout
+
+\begin_layout Standard
+The remaining code implements your extension.
+ Here, we implement a very simple function that conforms to the interface
+ for a 
+\begin_inset Quotes eld
+\end_inset
+
+builtin
+\begin_inset Quotes erd
+\end_inset
+
+ function.
+ The function just prints some text and returns 
+\family typewriter
+nil
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Subsection*
+Compiling an extension
+\end_layout
+
+\begin_layout Standard
+To compile the above code, it's necessary to ensure that the morpho header
+ files are visible to your compiler.
+ They could be copied from the morpho git to 
+\family typewriter
+/usr/local/include/morpho
+\family default
+ for example 
+\emph on
+[we intend to automate this as part of installation in future releases]
+\emph default
+.
+ 
+\end_layout
+
+\begin_layout Standard
+You need to compile this code as a dynamic library.
+ For example on the macOS with clang, 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+cc -undefined dynamic_lookup -dynamiclib -o myextension.dylib myextension.c
+\end_layout
+
+\end_inset
+
+The 
+\family typewriter
+-dynamiclib
+\family default
+ option indicates that the target should be a dynamic library.
+ The 
+\family typewriter
+-undefined dynamic_lookup
+\family default
+ option indicates to the linker that any undefined references should be
+ resolved at runtime.
+ 
+\end_layout
+
+\begin_layout Subsection*
+Packaging an extension
+\end_layout
+
+\begin_layout Standard
+As for 
+\emph on
+morpho
+\emph default
+ modules, we advise hosting your extension in a git repository with 
+\emph on
+morpho-
+\emph default
+ as the prefix and with the file structure as suggested in chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:Morpho-packages"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ We recommend including the C source files in 
+\family typewriter
+/src
+\family default
+ and compiling your extension to 
+\family typewriter
+/lib
+\family default
+, where it can be found by 
+\emph on
+morpho
+\emph default
+.
+ We highly recommend including interactive help files in 
+\family typewriter
+/share/help
+\family default
+ and examples as well.
+ All extensions should have a 
+\family typewriter
+README.md
+\family default
+ explaining what the extension is for and how the user should install it.
+ 
+\end_layout
+
+\begin_layout Standard
+In the imminent future, we anticipate providing an automated way to build
+ extensions that should help with installation.
+ For now, the above recommendations should ensure your basic file structure
+ is future-proof.
+ 
+\end_layout
+
+\begin_layout Standard
+We also note that the C API is not yet stable.
+ As we gain experience writing extensions and identify common needs, we
+ anticipate improving the API.
+ We welcome your feedback.
+ 
 \end_layout
 
 \begin_layout Chapter

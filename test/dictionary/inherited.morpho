@@ -1,0 +1,17 @@
+// Test Dictionary methods inherited from Object 
+
+var mass = { "Capital" : "Boston", "Population" : 6892503 }
+
+print mass.respondsto("contains") // expect: true
+
+print islist(mass.respondsto()) // expect: true
+
+print mass.clss() // expect: @Dictionary
+
+print mass.superclass() // expect: @Object
+
+print islist(mass.invoke("respondsto")) // expect: true
+
+print mass.has("a") // expect: false
+
+print mass.count() // expect: 2

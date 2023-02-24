@@ -1,0 +1,23 @@
+// Test List methods inherited from Object 
+
+var err = Error("Err", "My error")
+
+print err.respondsto("respondsto") // expect: true
+
+print islist(err.respondsto()) // expect: true
+
+print err.clss() // expect: @Error
+
+print err.superclass() // expect: @Object
+
+print islist(err.invoke("respondsto")) // expect: true
+
+print err.has("a") // expect: false
+
+print err.count() // expect: 2
+
+print err["message"] // expect: My error
+
+err["message"] = "We're doomed!"
+
+err.throw() // expect error 'Err'

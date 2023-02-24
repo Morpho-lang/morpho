@@ -3,18 +3,34 @@
 [![Build and Test](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml/badge.svg)](https://github.com/Morpho-lang/morpho/actions/workflows/CI.yml)
 [![Examples](https://github.com/Morpho-lang/morpho/actions/workflows/Examples.yml/badge.svg)](https://github.com/Morpho-lang/morpho/actions/workflows/Examples.yml)
 
-The Morpho language. Morpho is a programmable environment for shape optimization. Morpho aims to be:
+The Morpho language. Morpho is a programmable environment for shape optimization and scientific computing tasks more generally. Morpho aims to be:
 
 * **Familiar**. Morpho uses syntax similar to other C-family languages. The syntax fits on a postcard, so it's easy to learn.
 * **Fast**. Morpho programs run as efficiently as other well-implemented dynamic languages like *wren* or *lua* (Morpho is significantly faster than Python, for example). Morpho leverages numerical libraries like *BLAS*, *LAPACK* and *SUITESPARSE* to provide high performance.
 * **Class-based**. A morpho program involves creating and manipulating objects, which greatly simplifies operation.
-* **Extendable**. Morpho is, in effect, an embeddable language oriented for scientific applications. Functionality is easy to add via packages.
+* **Extendable**. Functionality is easy to add via packages, both in Morpho and in C or other compiled languages.
 
-Documentation is available on [readthedocs](https://morpho-lang.readthedocs.io/en/latest/) and via an extensive [user manual](https://github.com/Morpho-lang/morpho/blob/main/manual/manual.pdf).
+*Morpho is based upon work supported by the National Science Foundation under grants DMR-1654283 and OAC-2003820.*
 
-Please see the [Code of Conduct](CODE_OF_CONDUCT.md) for the morpho community. 
+## Learn and use morpho
 
-*This material is based upon work supported by the National Science Foundation under grants DMR-1654283 and OAC-2003820.*
+Documentation is available on [readthedocs](https://morpho-lang.readthedocs.io/en/latest/) and via an extensive [user manual](https://github.com/Morpho-lang/morpho/blob/main/manual/manual.pdf). A [Slack community](https://join.slack.com/t/morphoco/shared_invite/zt-1o6azavwl-XMtjjFwxW~P6C8rc~YbBlA) is also available for people interested in using morpho and seeking support. 
+
+In academic publications, please cite morpho as: 
+
+*Joshi, C. et al., "Morpho -- A programmable environment for shape optimization and shapeshifting problems", arXiv:2208.07859 (2022)*
+ 
+We expect to update this once the paper is published. 
+
+Participation in the morpho community, both as users and developers, is bound by our [Code of Conduct](CODE_OF_CONDUCT.md). 
+
+## Contributing 
+
+Morpho is under active development and we welcome contributions! Please see the [Contributor's guide](CONTRIBUTING.md) for more information about how you can get involved in the morpho project. For those interested in extending morpho or working with the source a [Developer guide](https://github.com/Morpho-lang/morpho/blob/main/devguide/devguide.pdf) is also provided. 
+
+We provide a [Roadmap](https://github.com/Morpho-lang/morpho/wiki/Road-Map) for future development plans that might give you ideas for how you could contribute.
+
+We also welcome bug reports and suggestions: Please feel free to use the *Issues* feature on our github repository to bring these to the developers' attention. 
 
 ## Installation
 
@@ -26,117 +42,55 @@ Morpho can be installed as follows:
 - [Windows](#windows-via-windows-subsystem-for-linux-wsl)
 
 ### macOS
-**If you have a laptop with an [M1 or M2 chip](https://atozapplesilicon.com/how-to-check-if-your-mac-has-m1-chip/#:~:text=Tap%20on%20the%20Apple%20menu,that%20replace%20the%20Intel%20processor) please use the [macOS M1](#macos-m1) instuctions.**
 
-1. Install the [Homebrew](https://brew.sh) package manager, following instructions on the homebrew site.
+The recommended approach to installing morpho on macOS is to use the [Homebrew](https://brew.sh) package manager.
 
-2. Install dependencies. Open the Terminal application and type:
+1\. Install [Homebrew](https://brew.sh), following instructions on the homebrew site. 
 
-```
-brew update
-
-brew install glfw suite-sparse freetype povray 
-```
-
-3. Obtain the source by cloning this repository:
-
-```
-git clone https://github.com/Morpho-lang/morpho.git
-```
-
-4. Navigate to the `morpho5` folder within the downloaded repository and build the application:
-
-```
-cd morpho/morpho5
-
-make install
-```
-
-(Some users may need to use `sudo make install`)
-
-5. Navigate to the `morphoview` folder and build the viewer application:
-
-```
-cd ../morphoview
-
-make install
-```
-
-(Some users may need to use `sudo make install`)
-
-6. Check that the application works by typing
-
-```
-morpho5
-```
-
-
-### macOS M1
-
-1. Install the [Homebrew](https://brew.sh) package manager, following instructions on the homebrew site.
-
-2. Install dependencies. Open the Terminal application and type:
+2\. In the terminal type: 
 
 ```
 brew update
-
-brew install glfw suite-sparse freetype povray 
+brew tap morpho-lang/morpho
+brew install morpho
 ```
 
-3. Obtain the source by cloning this repository:
+You may be prompted by homebrew to install additional components. For some users, it may be necessary to install XCode from the App Store. We recommend you also obtain this git repository so that you can try the examples, read the manual etc. which are not installed by homebrew. To do so simply cd to any convenient folder in the Terminal and type:  
 
 ```
 git clone https://github.com/Morpho-lang/morpho.git
-```
-
-4. Navigate to the `morpho5` folder within the downloaded repository and build the application:
-
-```
-cd morpho/morpho5
-
-make -f Makefile.m1 install
-```
-
-(Some users may need to use `sudo make -f Makefile.m1 install`)
-
-5. Navigate to the `morphoview` folder and build the viewer application:
-
-```
-cd ../morphoview
-
-make -f Makefile.m1 install
-```
-
-(Some users may need to use `sudo make -f Makefile.m1 install`)
-
-6. Check that the application works by typing
-
-```
-morpho5
 ```
 
 ### Unix and Linux
 
-2. Install morpho's dependencies using your distribution's package manager (or manually if you prefer). For example, on Ubuntu you would type
+These instructions assume a distribution that uses the apt package manager. You may need to find equivalent packages for other distributions. 
+
+1\. Make sure your version of apt is up to date. 
+
 ```
-sudo apt install libglfw3
-
-sudo apt install libsuitesparse-dev
-
-sudo apt install liblapacke-dev
-
-sudo apt install povray
-
-sudo apt install libfreetype6-dev
+sudo apt update
+sudo apt upgrade
 ```
 
-3. Obtain the source by cloning this repository:
+2\. Ensure you have basic developer tools installed. Some distributions omit these to save space.
+
+```
+sudo apt install build-essential
+```
+
+3\. Install morpho's dependencies using your distribution's package manager. 
+
+```
+sudo apt install libglfw3-dev libsuitesparse-dev liblapacke-dev povray libfreetype6-dev
+```
+
+4\. Obtain the source by cloning this repository:
 
 ```
 git clone https://github.com/Morpho-lang/morpho.git
 ```
 
-4. Navigate to the `morpho5` folder within the downloaded repository and build the application:
+5\. Navigate to the `morpho5` folder within the downloaded repository and build the application:
 
 ```
 cd morpho/morpho5
@@ -144,7 +98,7 @@ cd morpho/morpho5
 sudo make -f Makefile.linux install
 ```
 
-5. Navigate to the `morphoview` folder and build the viewer application:
+6\. Navigate to the `morphoview` folder and build the viewer application:
 
 ```
 cd ../morphoview
@@ -152,13 +106,13 @@ cd ../morphoview
 sudo make -f Makefile.linux install
 ```
 
-6. Check that the application works by typing
+7\. Check that the application works by typing
 
 ```
 morpho5
 ```
 
-Note that the build script places morpho5 and morphoview in the `/usr/local` file structure; this can easily be changed if a different location is preferred.
+Note that the build script places morpho5 and morphoview in the `/usr/local` file structure; this can easily be changed if a different location is preferred. See the manual for details. 
 
 ### Windows via Windows Subsystem for Linux (WSL)
 
@@ -172,110 +126,49 @@ Unless mentioned otherwise, all the commands below are run in the Ubuntu termina
 
 #### Install Morpho
 
-1\. Install the dependencies
+Follow the instructions for the linux install above. 
 
-You can install the dependencies using the Advanced Package Tool or apt.
-
-First update the apt package list and then update existing packages.
-
-```
-sudo apt update
-
-sudo apt upgrade
-```
-
-
-The dependencies for morpho can be then installed as follows:
-```
-sudo apt install libglfw3-dev
-
-sudo apt install libsuitesparse-dev
-
-sudo apt install liblapacke-dev
-
-sudo apt install povray
-
-sudo apt install libfreetype6-dev
-```
-
-To build the code you will also need to install build-essentials:
-
-```
-sudo apt install build-essential
-```
-
-2\. Obtain the morpho source by cloning the Morpho repository:
-
-```
-git clone https://github.com/Morpho-lang/morpho.git
-```
-
-3\. Navigate to the morpho5 folder within the downloaded repository and build the application:
-
-```
-cd morpho/morpho5
-
-sudo make -f Makefile.linux install
-```
-
-4\. Navigate to the morphoview folder and build the viewer application:
-
-```
-cd ../morphoview
-
-sudo make -f Makefile.linux install
-```
-
-5\. Check that the application works by typing
-
-```
-morpho5
-```
-
-6\. Get the visualization working in WSL:
+#### Get visualization working in WSL
 
 Now a window manager must be installed so that the WSL can create windows.
 
-On Windows, install [VcXsrv](https://sourceforge.net/projects/vcxsrv/).
+1\. On Windows, install [VcXsrv](https://sourceforge.net/projects/vcxsrv/).
 
 It shows up as XLaunch in the Windows start menu.
 
-Open Xlaunch. Then,
+2\. Open Xlaunch. Then,
 
 * choose 'Multiple windows', set display number to 0, and hit 'Next'
 * choose `start no client' and hit 'Next'
 * <b>Unselect</b> 'native opengl' and hit 'Next'
 * Hit 'Finish'
 
-In Ubuntu download a package containing a full suite of desktop utilities that allows for the use of windows.
+3\. Within Ubuntu download a package containing a full suite of desktop utilities that allows for the use of windows.
 
 ```
 sudo apt install ubuntu-desktop mesa-utils
 ````
 
-Tell ubuntu which display to use
+4\. Tell ubuntu which display to use
 
 ```
 export DISPLAY=localhost:0
 ```
 
-To set the DISPLAY variable on login type
+5\. To set the DISPLAY variable on login type
 
 ```
 echo export DISPLAY=localhost:0 >> ~/.bashrc
 ```
 
-Test that the window system is working
+6\. Test that the window system is working
 ```
 glxgears
 ```
 
+#### Test that visualization works
 
-7\. Test the thomson program!
-
-Navigate to the thomson example in the examples directory and run it.
-
-If you are in the `morphoview` directory
+Navigate to the thomson example in the examples directory and run it. If you are in the `morphoview` directory, you can do this by typing,
 
 ```
 cd ../examples/thomson
@@ -283,9 +176,7 @@ cd ../examples/thomson
 morpho5 thomson.morpho
 ```
 
-This example starts with randomly distributed charges on a sphere and minimizing electric potential.
-
-It should generate an interactive figure of points on a sphere.
+This example starts with randomly distributed charges on a sphere and minimizing electric potential. It should generate an interactively rotatable figure of points on a sphere. See the manual for details. 
 
 ---
 ### Other Tests

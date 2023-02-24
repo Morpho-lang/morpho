@@ -216,7 +216,7 @@ void field_zero(objectfield *f) {
 /** Adds the object pool. This is a collection of statically allocated objects */
 bool field_addpool(objectfield *f) {
     unsigned int nel = f->nelements;
-    if (MORPHO_ISMATRIX(f->prototype)) {
+    if (!f->pool && MORPHO_ISMATRIX(f->prototype)) {
         objectmatrix *prototype=MORPHO_GETMATRIX(f->prototype);
         f->pool=MORPHO_MALLOC(sizeof(objectmatrix)*nel);
         if (f->pool) {
@@ -762,6 +762,9 @@ value Field_op(vm *v, int nargs, value *args) {
 
 /** Print the mesh */
 value Field_print(vm *v, int nargs, value *args) {
+    value self = MORPHO_SELF(args);
+    if (!MORPHO_ISFIELD(self)) return Object_print(v, nargs, args);
+    
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
     printf("<Field>\n");
     matrix_print(&f->data);
@@ -847,7 +850,10 @@ void field_initialize(void) {
     
     builtin_addfunction(FIELD_CLASSNAME, field_constructor, BUILTIN_FLAGSEMPTY);
     
-    value fieldclass=builtin_addclass(FIELD_CLASSNAME, MORPHO_GETCLASSDEFINITION(Field), MORPHO_NIL);
+    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    
+    value fieldclass=builtin_addclass(FIELD_CLASSNAME, MORPHO_GETCLASSDEFINITION(Field), objclass);
     object_setveneerclass(OBJECT_FIELD, fieldclass);
     
     morpho_defineerror(FIELD_INDICESOUTSIDEBOUNDS, ERROR_HALT, FIELD_INDICESOUTSIDEBOUNDS_MSG);

@@ -1,0 +1,18 @@
+import meshtools 
+import meshgen 
+import plot 
+
+import "../raytrace.morpho"
+
+var m = AreaMesh(fn (u,v) [u, v, 0], -1..1:0.5, -1..1:0.5)
+m.addgrade(1)
+
+var s = Selection(m, fn (x,y,z) x<=0 && y<=0)
+s.addgrade(1)
+
+var g =plotselection(m, s, grade=[0,1])
+raytrace(g, "selection.pov", viewpoint = [0,0,10])
+
+var bnd = Selection(m, boundary=true)
+var gbnd =plotselection(m, bnd, grade=[0,1])
+raytrace(gbnd, "selectionbnd.pov", viewpoint = [0,0,10])

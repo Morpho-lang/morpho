@@ -83,7 +83,10 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *do
 #define FIELD_MESHARG                    "FldMshArg"
 #define FIELD_MESHARG_MSG                "Field expects a mesh as its first argurment"
 
+objectfield *field_clone(objectfield *f);
+
 void field_zero(objectfield *field);
+bool field_addpool(objectfield *field);
 
 unsigned int field_dofforgrade(objectfield *f, grade g);
 bool field_getelement(objectfield *field, grade grade, elementid el, int indx, value *out);

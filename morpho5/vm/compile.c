@@ -2425,13 +2425,6 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 #endif
         {
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, 0), node); /* Add a return */
-        } else if (isanonymous) {
-            if (!CODEINFO_ISREGISTER(bodyinfo)) {
-                bodyinfo=compiler_movetoregister(c, node, bodyinfo, REGISTER_UNALLOCATED);
-                ninstructions+=bodyinfo.ninstructions;
-            }
-
-            compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, bodyinfo.dest), node);
         } else {
             compiler_addinstruction(c, ENCODE_BYTE(OP_RETURN), node); /* Add a return */
         }
@@ -3272,18 +3265,20 @@ void compiler_copyglobals(compiler *src, compiler *dest, dictionary *compare) {
 
 /** Searches for a module with given name, returns the file name for inclusion. */
 bool compiler_findmodule(char *name, varray_char *fname) {
-    varray_charclear(fname);
-    varray_charadd(fname, MORPHO_MODULEDIRECTORY, (int) strlen(MORPHO_MODULEDIRECTORY));
-    varray_charadd(fname, MORPHO_SEPARATOR, (int) strlen(MORPHO_SEPARATOR));
-    varray_charadd(fname, name, (int) strlen(name));
-    varray_charadd(fname, MORPHO_EXTENSION, (int)  strlen(MORPHO_EXTENSION));
-    varray_charadd(fname, "\0", 1);
-
-    FILE *f=fopen(fname->data, "r");
-
-    if (f) fclose(f);
-
-    return (f!=NULL);
+    char *ext[] = { MORPHO_EXTENSION, "" };
+    value out=MORPHO_NIL;
+    bool success=morpho_findresource(MORPHO_MODULEDIR, name, ext, true, &out);
+    
+    if (success) {
+        fname->count=0;
+        if (MORPHO_ISSTRING(out)) {
+            varray_charadd(fname, MORPHO_GETCSTRING(out), (int) MORPHO_GETSTRINGLENGTH(out));
+            varray_charwrite(fname, '\0');
+        }
+        morpho_freeobject(out);
+    }
+    
+    return success;
 }
 
 /** Import a module */
@@ -3316,7 +3311,8 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
 
     if (module) {
         if (module->type==NODE_SYMBOL) {
-            if (compiler_findmodule(MORPHO_GETCSTRING(module->content), &filename)) {
+            if (morpho_loadextension(MORPHO_GETCSTRING(module->content))) {
+            } else if (compiler_findmodule(MORPHO_GETCSTRING(module->content), &filename)) {
                 fname=filename.data;
             } else {
                 compiler_error(c, module, COMPILE_MODULENOTFOUND, MORPHO_GETCSTRING(module->content));

@@ -846,6 +846,9 @@ value Matrix_getcolumn(vm *v, int nargs, value *args) {
 
 /** Prints a matrix */
 value Matrix_print(vm *v, int nargs, value *args) {
+    value self = MORPHO_SELF(args);
+    if (!MORPHO_ISMATRIX(self)) return Object_print(v, nargs, args);
+    
     objectmatrix *m=MORPHO_GETMATRIX(MORPHO_SELF(args));
     matrix_print(m);
     return MORPHO_NIL;
@@ -1371,7 +1374,10 @@ void matrix_initialize(void) {
     
     builtin_addfunction(MATRIX_CLASSNAME, matrix_constructor, BUILTIN_FLAGSEMPTY);
     
-    value matrixclass=builtin_addclass(MATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(Matrix), MORPHO_NIL);
+    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    
+    value matrixclass=builtin_addclass(MATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(Matrix), objclass);
     object_setveneerclass(OBJECT_MATRIX, matrixclass);
     
     morpho_defineerror(MATRIX_INDICESOUTSIDEBOUNDS, ERROR_HALT, MATRIX_INDICESOUTSIDEBOUNDS_MSG);

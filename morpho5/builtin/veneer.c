@@ -34,42 +34,54 @@ value Object_getindex(vm *v, int nargs, value *args) {
 value Object_setindex(vm *v, int nargs, value *args) {
     value self=MORPHO_SELF(args);
 
-    if (nargs==2 &&
-        MORPHO_ISSTRING(MORPHO_GETARG(args, 0)) &&
-        MORPHO_ISINSTANCE(self)) {
-        dictionary_insert(&MORPHO_GETINSTANCE(self)->fields, MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1));
-    } else morpho_runtimeerror(v, SETINDEX_ARGS);
+    if (MORPHO_ISINSTANCE(self)) {
+        if (nargs==2 &&
+            MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
+            dictionary_insert(&MORPHO_GETINSTANCE(self)->fields, MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1));
+        } else morpho_runtimeerror(v, SETINDEX_ARGS);
+    } else {
+        morpho_runtimeerror(v, OBJECT_IMMUTABLE);
+    }
 
     return MORPHO_NIL;
+}
+
+/** Given an object attempts to find its class */
+objectclass *object_getclass(value v) {
+    objectclass *klass=NULL;
+    if (MORPHO_ISINSTANCE(v)) klass=MORPHO_GETINSTANCE(v)->klass;
+    else if (MORPHO_ISCLASS(v)) klass=MORPHO_GETCLASS(v);
+    else if (MORPHO_ISOBJECT(v)) klass=object_getveneerclass(MORPHO_GETOBJECTTYPE(v));
+    return klass;
 }
 
 /** Find the object's class */
 value Object_class(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
+    value out = MORPHO_NIL;
 
-    return MORPHO_OBJECT(MORPHO_GETINSTANCE(self)->klass);
+    objectclass *klass=object_getclass(self);
+    if (klass) out = MORPHO_OBJECT(klass);
+    
+    return out;
 }
 
 /** Find the object's superclass */
 value Object_super(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     
-    objectclass *klass=NULL;
-    if (MORPHO_ISINSTANCE(self)) klass=MORPHO_GETINSTANCE(self)->klass;
-    else if (MORPHO_ISCLASS(self)) klass=MORPHO_GETCLASS(self);
+    objectclass *klass=object_getclass(self);
     
-    return (klass->superclass ? MORPHO_OBJECT(klass->superclass) : MORPHO_NIL);
+    return (klass && klass->superclass ? MORPHO_OBJECT(klass->superclass) : MORPHO_NIL);
 }
 
 /** Checks if an object responds to a method */
 value Object_respondsto(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     
-    objectclass *klass=NULL;
-    if (MORPHO_ISINSTANCE(self)) klass=MORPHO_GETINSTANCE(self)->klass;
-    else if (MORPHO_ISCLASS(self)) klass=MORPHO_GETCLASS(self);
+    objectclass *klass=object_getclass(self);
 
-if (nargs == 0) {
+    if (nargs == 0) {
         value out = MORPHO_NIL;
         objectlist *new = object_newlist(0, NULL);
         if (new) {
@@ -95,7 +107,7 @@ if (nargs == 0) {
 /** Checks if an object has a property */
 value Object_has(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
-    if (MORPHO_ISCLASS(self)) return MORPHO_FALSE;
+    if (!MORPHO_ISINSTANCE(self)) return MORPHO_FALSE;
 
     if (nargs == 0) {
         value out = MORPHO_NIL;
@@ -127,11 +139,9 @@ value Object_invoke(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     value out=MORPHO_NIL;
 
-    objectclass *klass=NULL;
-    if (MORPHO_ISINSTANCE(self)) klass=MORPHO_GETINSTANCE(self)->klass;
-    else if (MORPHO_ISCLASS(self)) klass=MORPHO_GETCLASS(self);
+    objectclass *klass=object_getclass(self);
     
-    if (nargs>0 &&
+    if (klass && nargs>0 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         value fn;
         if (dictionary_get(&klass->methods, MORPHO_GETARG(args, 0), &fn)) {
@@ -160,6 +170,8 @@ value Object_print(vm *v, int nargs, value *args) {
 #else
         if (klass) printf("%s instance", (MORPHO_ISSTRING(klass->name) ? MORPHO_GETCSTRING(klass->name): "Object") );
 #endif
+    } else {
+        morpho_printvalue(self);
     }
     return MORPHO_NIL;
 }
@@ -226,6 +238,8 @@ value Object_clone(vm *v, int nargs, value *args) {
             out = MORPHO_OBJECT(new);
             morpho_bindobjects(v, 1, &out);
         }
+    } else {
+        morpho_runtimeerror(v, OBJECT_CANTCLONE);
     }
 
     return out;
@@ -858,7 +872,10 @@ value Array_setindex(vm *v, int nargs, value *args) {
 
 /** Print an array */
 value Array_print(vm *v, int nargs, value *args) {
-    array_print(v, MORPHO_GETARRAY(MORPHO_SELF(args)));
+    value self = MORPHO_SELF(args);
+    if (!MORPHO_ISARRAY(self)) return Object_print(v, nargs, args);
+    
+    array_print(v, MORPHO_GETARRAY(self));
 
     return MORPHO_NIL;
 }
@@ -1255,7 +1272,10 @@ value List_count(vm *v, int nargs, value *args) {
 
 /** Print a list */
 value List_print(vm *v, int nargs, value *args) {
-    objectlist *lst=MORPHO_GETLIST(MORPHO_SELF(args));
+    value self = MORPHO_SELF(args);
+    if (!MORPHO_ISLIST(self)) return Object_print(v, nargs, args);
+    
+    objectlist *lst=MORPHO_GETLIST(self);
 
     printf("[ ");
     for (unsigned int i=0; i<lst->val.count; i++) {
@@ -1462,7 +1482,8 @@ MORPHO_METHOD(MORPHO_CLONE_METHOD, List_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADD_METHOD, List_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_SORT_METHOD, List_sort, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_ORDER_METHOD, List_order, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(LIST_ISMEMBER_METHOD, List_ismember, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(LIST_ISMEMBER_METHOD, List_ismember, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_CONTAINS_METHOD, List_ismember, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -1541,7 +1562,10 @@ value Dictionary_remove(vm *v, int nargs, value *args) {
 
 /** Prints a dictionary */
 value Dictionary_print(vm *v, int nargs, value *args) {
-    objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
+    value self = MORPHO_SELF(args);
+    if (!MORPHO_ISDICTIONARY(self)) return Object_print(v, nargs, args);
+    
+    objectdictionary *slf = MORPHO_GETDICTIONARY(self);
 
     printf("{ ");
     unsigned int k=0;
@@ -1660,7 +1684,7 @@ DICTIONARY_SETOP(difference)
 MORPHO_BEGINCLASS(Dictionary)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Dictionary_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Dictionary_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(DICTIONARY_CONTAINS_METHOD, Dictionary_contains, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_CONTAINS_METHOD, Dictionary_contains, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(DICTIONARY_REMOVE_METHOD, Dictionary_remove, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(DICTIONARY_CLEAR_METHOD, Dictionary_clear, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Dictionary_print, BUILTIN_FLAGSEMPTY),
@@ -1675,7 +1699,9 @@ MORPHO_METHOD(MORPHO_ADD_METHOD, Dictionary_union, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUB_METHOD, Dictionary_difference, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
-/* Range */
+/* **********************************************************************
+ * Range
+ * ********************************************************************** */
 
 /** Calculate the number of steps in a range */
 int range_count(objectrange *range) {
@@ -1745,13 +1771,6 @@ value Range_getindex(vm *v, int nargs, value *args) {
     return MORPHO_SELF(args);
 }
 
-/** Print ranges */
-value Range_print(vm *v, int nargs, value *args) {
-    object_print(MORPHO_SELF(args));
-
-    return MORPHO_SELF(args);
-}
-
 /** Enumerate members of a range */
 value Range_enumerate(vm *v, int nargs, value *args) {
     objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
@@ -1776,23 +1795,168 @@ value Range_count(vm *v, int nargs, value *args) {
 
 /** Clones a range */
 value Range_clone(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
     objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
     objectrange *new = object_newrange(slf->start, slf->end, slf->step);
-    if (!new) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    value out = MORPHO_OBJECT(new);
-    morpho_bindobjects(v, 1, &out);
+
+    if (new) {
+        out = MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    
     return out;
 }
 
 MORPHO_BEGINCLASS(Range)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Range_getindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Range_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Range_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Range_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Range_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
-/* Error */
+/* **********************************************************************
+ * Closure
+ * ********************************************************************** */
+
+value Closure_tostring(vm *v, int nargs, value *args) {
+    objectclosure *self=MORPHO_GETCLOSURE(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+    
+    varray_char buffer;
+    varray_charinit(&buffer);
+
+    if (self->func) {
+        varray_charadd(&buffer, "<<fn ", 5);
+        morpho_printtobuffer(v, self->func->name, &buffer);
+        varray_charadd(&buffer, ">>", 2);
+    }
+
+    out = object_stringfromvarraychar(&buffer);
+    if (MORPHO_ISSTRING(out)) {
+        morpho_bindobjects(v, 1, &out);
+    }
+    varray_charclear(&buffer);
+
+    return out;
+}
+
+MORPHO_BEGINCLASS(Closure)
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Closure_tostring, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
+/* **********************************************************************
+ * Function
+ * ********************************************************************** */
+
+value Function_tostring(vm *v, int nargs, value *args) {
+    objectfunction *func=MORPHO_GETFUNCTION(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+
+    varray_char buffer;
+    varray_charinit(&buffer);
+
+    varray_charadd(&buffer, "<fn ", 4);
+    morpho_printtobuffer(v, func->name, &buffer);
+    varray_charwrite(&buffer, '>');
+
+    out = object_stringfromvarraychar(&buffer);
+    if (MORPHO_ISSTRING(out)) {
+        morpho_bindobjects(v, 1, &out);
+    }
+    varray_charclear(&buffer);
+
+    return out;
+}
+
+MORPHO_BEGINCLASS(Function)
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Function_tostring, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
+/* **********************************************************************
+ * Invocation
+ * ********************************************************************** */
+
+/** Creates a new invocation object */
+value invocation_constructor(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+
+    if (nargs==2) {
+        value receiver = MORPHO_GETARG(args, 0);
+        value selector = MORPHO_GETARG(args, 1);
+        
+        if (!MORPHO_ISOBJECT(receiver) || !MORPHO_ISSTRING(selector)) {
+            morpho_runtimeerror(v, INVOCATION_ARGS);
+            return MORPHO_NIL;
+        }
+        
+        value method = MORPHO_NIL;
+        
+        objectclass *klass=object_getclass(receiver);
+        
+        if (dictionary_get(&klass->methods, selector, &method)) {
+            objectinvocation *new = object_newinvocation(receiver, method);
+
+            if (new) {
+                out = MORPHO_OBJECT(new);
+                morpho_bindobjects(v, 1, &out);
+            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        }
+        
+    } else morpho_runtimeerror(v, INVOCATION_ARGS);
+
+    return out;
+}
+
+/** Converts to a string for string interpolation */
+value Invocation_tostring(vm *v, int nargs, value *args) {
+    objectinvocation *inv=MORPHO_GETINVOCATION(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+
+    varray_char buffer;
+    varray_charinit(&buffer);
+    
+    morpho_printtobuffer(v, inv->receiver, &buffer);
+    varray_charwrite(&buffer, '.');
+    morpho_printtobuffer(v, inv->method, &buffer);
+    
+    out = object_stringfromvarraychar(&buffer);
+    if (MORPHO_ISSTRING(out)) {
+        morpho_bindobjects(v, 1, &out);
+    }
+    varray_charclear(&buffer);
+
+    return out;
+}
+
+/** Clones a range */
+value Invocation_clone(vm *v, int nargs, value *args) {
+    value self = MORPHO_SELF(args);
+    value out = MORPHO_NIL;
+    if (!MORPHO_ISINVOCATION(self)) return MORPHO_NIL;
+    
+    objectinvocation *slf = MORPHO_GETINVOCATION(self);
+    objectinvocation *new = object_newinvocation(slf->receiver, slf->method);
+    
+    if (new) {
+        out = MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    
+    return out;
+}
+
+MORPHO_BEGINCLASS(Invocation)
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Invocation_tostring, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_CLONE_METHOD, Invocation_clone, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
+/* **********************************************************************
+ * Error
+ * ********************************************************************** */
 
 static value error_tagproperty;
 static value error_messageproperty;
@@ -1858,31 +2022,44 @@ void veneer_initialize(void) {
 
     /* String */
     builtin_addfunction(STRING_CLASSNAME, string_constructor, BUILTIN_FLAGSEMPTY);
-    value stringclass=builtin_addclass(STRING_CLASSNAME, MORPHO_GETCLASSDEFINITION(String), MORPHO_NIL);
+    value stringclass=builtin_addclass(STRING_CLASSNAME, MORPHO_GETCLASSDEFINITION(String), objclass);
     object_setveneerclass(OBJECT_STRING, stringclass);
 
     /* Array */
     builtin_addfunction(ARRAY_CLASSNAME, array_constructor, BUILTIN_FLAGSEMPTY);
-    value arrayclass=builtin_addclass(ARRAY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Array), MORPHO_NIL);
+    value arrayclass=builtin_addclass(ARRAY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Array), objclass);
     object_setveneerclass(OBJECT_ARRAY, arrayclass);
 
     /* List */
     builtin_addfunction(LIST_CLASSNAME, list_constructor, BUILTIN_FLAGSEMPTY);
-    value listclass=builtin_addclass(LIST_CLASSNAME, MORPHO_GETCLASSDEFINITION(List), MORPHO_NIL);
+    value listclass=builtin_addclass(LIST_CLASSNAME, MORPHO_GETCLASSDEFINITION(List), objclass);
     object_setveneerclass(OBJECT_LIST, listclass);
 
     /* Dictionary */
     builtin_addfunction(DICTIONARY_CLASSNAME, dictionary_constructor, BUILTIN_FLAGSEMPTY);
-    value dictionaryclass=builtin_addclass(DICTIONARY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Dictionary), MORPHO_NIL);
+    value dictionaryclass=builtin_addclass(DICTIONARY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Dictionary), objclass);
     object_setveneerclass(OBJECT_DICTIONARY, dictionaryclass);
 
     /* Range */
     builtin_addfunction(RANGE_CLASSNAME, range_constructor, BUILTIN_FLAGSEMPTY);
-    value rangeclass=builtin_addclass(RANGE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Range), MORPHO_NIL);
+    value rangeclass=builtin_addclass(RANGE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Range), objclass);
     object_setveneerclass(OBJECT_RANGE, rangeclass);
 
+    /* Closure */
+    value closureclass=builtin_addclass(CLOSURE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Closure), objclass);
+    object_setveneerclass(OBJECT_CLOSURE, closureclass);
+    
+    /* Function */
+    value functionclass=builtin_addclass(FUNCTION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Function), objclass);
+    object_setveneerclass(OBJECT_FUNCTION, functionclass);
+    
+    /* Invocation */
+    builtin_addfunction(INVOCATION_CLASSNAME, invocation_constructor, BUILTIN_FLAGSEMPTY);
+    value invocationclass=builtin_addclass(INVOCATION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Invocation), objclass);
+    object_setveneerclass(OBJECT_INVOCATION, invocationclass);
+    
     /* Error */
-    builtin_addclass(ERROR_CLASSNAME, MORPHO_GETCLASSDEFINITION(Error), MORPHO_NIL);
+    builtin_addclass(ERROR_CLASSNAME, MORPHO_GETCLASSDEFINITION(Error), objclass);
     error_tagproperty=builtin_internsymbolascstring(ERROR_TAG_PROPERTY);
     error_messageproperty=builtin_internsymbolascstring(ERROR_MESSAGE_PROPERTY);
 
@@ -1905,4 +2082,7 @@ void veneer_initialize(void) {
     morpho_defineerror(LIST_ARGS, ERROR_HALT, LIST_ARGS_MSG);
     morpho_defineerror(LIST_NUMARGS, ERROR_HALT, LIST_NUMARGS_MSG);
     morpho_defineerror(ERROR_ARGS, ERROR_HALT, ERROR_ARGS_MSG);
+    
+    morpho_defineerror(OBJECT_CANTCLONE, ERROR_HALT, OBJECT_CANTCLONE_MSG);
+    morpho_defineerror(OBJECT_IMMUTABLE, ERROR_HALT, OBJECT_IMMUTABLE_MSG);
 }

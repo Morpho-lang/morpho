@@ -1,0 +1,44 @@
+import meshtools 
+import graphics
+
+import "../raytrace.morpho"
+var L = 2
+var R = 1
+var dx = 0.125
+var eps = 1e-10
+
+var g = Graphics() 
+
+// Electric field due to a system of point charges
+var qq = [1,-1] 
+var xq = [ Matrix([-R/2, 0, 0]), Matrix([R/2, 0, 0])]
+
+var cutoff = 0.2
+
+fn efield(x) { 
+  var e = 0 
+  for (q, k in qq) {
+    var r=x-xq[k]
+    if (r.norm()<cutoff) return nil 
+    e+=q*r/(r.norm()^3) // = 1/r^2 * \hat{r}
+  }
+  return e 
+}
+
+var lambda = dx/10
+for (x in -L..L:dx) for (y in -L..L:dx) {
+  var x0 = Matrix([x,y,0])
+  var E = efield(x0)
+  if (isnil(E)) continue
+  if (E.norm()>eps) g.display(Arrow(x0-lambda*E,x0+lambda*E))
+}
+
+for (q,k in qq) {
+  var col = Red 
+  if (q<0) col = Blue
+  g.display(Sphere(xq[k],dx/4,color=col))
+}
+
+//Show(g)
+
+raytrace(g, "electric.pov", viewpoint = [0,0,10])

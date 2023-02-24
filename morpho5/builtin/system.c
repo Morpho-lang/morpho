@@ -8,6 +8,7 @@
 #include "build.h"
 #include "system.h"
 #include "builtin.h"
+#include "veneer.h"
 
 /** Returns a platform description */
 value System_platform(vm *v, int nargs, value *args) {
@@ -65,7 +66,10 @@ MORPHO_ENDCLASS
  * ********************************************************************** */
 
 void system_initialize(void) {
-    builtin_addclass(SYSTEM_CLASSNAME, MORPHO_GETCLASSDEFINITION(System), MORPHO_NIL);
+    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    
+    builtin_addclass(SYSTEM_CLASSNAME, MORPHO_GETCLASSDEFINITION(System), objclass);
     
     morpho_defineerror(VM_EXIT, ERROR_EXIT, VM_EXIT_MSG);
 }

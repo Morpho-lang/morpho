@@ -8,6 +8,14 @@
 #define functional_h
 
 #include <stdio.h>
+#include "morpho.h"
+#include "mesh.h"
+#include "field.h"
+#include "selection.h"
+
+/* -------------------------------------------------------
+ * Functionals
+ * ------------------------------------------------------- */
 
 /* Functional properties */
 #define FUNCTIONAL_GRADE_PROPERTY             "grade"
@@ -117,6 +125,167 @@
 #define FUNCTIONAL_ARGS                "FnctlArgs"
 #define FUNCTIONAL_ARGS_MSG            "Invalid args passed to method."
 
+/* -------------------------------------------------------
+ * Functional types
+ * ------------------------------------------------------- */
+
+extern value functional_gradeproperty;
+extern value functional_fieldproperty;
+
+/** Symmetry behaviors */
+typedef enum {
+    SYMMETRY_NONE,
+    SYMMETRY_ADD
+} symmetrybhvr;
+
+/** Integrand function */
+typedef bool (functional_integrand) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out);
+
+/** Gradient function */
+typedef bool (functional_gradient) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc);
+
+struct s_functional_mapinfo; // Resolve circular typedef dependency
+
+/** Clone reference function */
+typedef void * (functional_cloneref) (void *ref, objectfield *field, objectfield *sub);
+
+/** Free reference function */
+typedef void (functional_freeref) (void *ref);
+
+/** Dependencies function */
+typedef bool (functional_dependencies) (struct s_functional_mapinfo *info, elementid id, varray_elementid *out);
+
+typedef struct s_functional_mapinfo {
+    objectmesh *mesh; // Mesh to use
+    objectselection *sel; // Selection, if any
+    objectfield *field; // Field, if any
+    grade g; // Grade to use
+    functional_integrand *integrand; // Integrand function
+    functional_gradient *grad; // Gradient
+    functional_dependencies *dependencies; // Dependencies
+    functional_cloneref *cloneref; // Clone a reference with a given field substituted
+    functional_freeref *freeref; // Free a reference
+    symmetrybhvr sym; // Symmetry behavior
+    void *ref; // Reference to pass on
+} functional_mapinfo;
+
+bool functional_validateargs(vm *v, int nargs, value *args, functional_mapinfo *info);
+void functional_symmetryimagelist(objectmesh *mesh, grade g, bool sort, varray_elementid *ids);
+bool functional_symmetrysumforces(objectmesh *mesh, objectmatrix *frc);
+bool functional_inlist(varray_elementid *list, elementid id);
+bool functional_containsvertex(int nv, int *vid, elementid id);
+
+bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out);
+bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out);
+bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out);
+bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out);
+bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value *out);
+
+void functional_vecadd(unsigned int n, double *a, double *b, double *out);
+void functional_vecaddscale(unsigned int n, double *a, double lambda, double *b, double *out);
+void functional_vecsub(unsigned int n, double *a, double *b, double *out);
+void functional_vecscale(unsigned int n, double lambda, double *a, double *out);
+double functional_vecnorm(unsigned int n, double *a);
+double functional_vecdot(unsigned int n, double *a, double *b);
+void functional_veccross(double *a, double *b, double *out);
+void functional_veccross2d(double *a, double *b, double *out);
+
+bool functional_elementsize(vm *v, objectmesh *mesh, grade g, elementid id, int nv, int *vid, double *out);
+bool functional_elementgradient_scale(vm *v, objectmesh *mesh, grade g, elementid id, int nv, int *vid, objectmatrix *frc, double scale);
+bool functional_elementgradient(vm *v, objectmesh *mesh, grade g, elementid id, int nv, int *vid, objectmatrix *frc);
+
+/* -------------------------------------------------------
+ * Functional method macros
+ * ------------------------------------------------------- */
+
+/** Initialize a functional */
+#define FUNCTIONAL_INIT(name, grade) value name##_init(vm *v, int nargs, value *args) { \
+    objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), functional_gradeproperty, MORPHO_INTEGER(grade)); \
+    return MORPHO_NIL; \
+}
+
+/** Evaluate an integrand */
+#define FUNCTIONAL_INTEGRAND(name, grade, integrandfn) value name##_integrand(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    value out=MORPHO_NIL; \
+    \
+    if (functional_validateargs(v, nargs, args, &info)) { \
+        info.g = grade; info.integrand = integrandfn; \
+        functional_mapintegrand(v, &info, &out); \
+    } \
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
+    return out; \
+}
+
+/** Evaluate a gradient */
+#define FUNCTIONAL_GRADIENT(name, grade, gradientfn, symbhvr) \
+value name##_gradient(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    value out=MORPHO_NIL; \
+    \
+    if (functional_validateargs(v, nargs, args, &info)) { \
+        info.g = grade; info.grad = gradientfn; info.sym = symbhvr; \
+        functional_mapgradient(v, &info, &out); \
+    } \
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
+    \
+    return out; \
+}
+
+/** Evaluate a gradient */
+#define FUNCTIONAL_NUMERICALGRADIENT(name, grade, integrandfn, symbhvr) \
+value name##_gradient(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    value out=MORPHO_NIL; \
+    \
+    if (functional_validateargs(v, nargs, args, &info)) { \
+        info.g = grade; info.integrand = integrandfn; info.sym = symbhvr; \
+        functional_mapnumericalgradient(v, &info, &out); \
+    } \
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
+    \
+    return out; \
+}
+
+/** Total an integrand */
+#define FUNCTIONAL_TOTAL(name, grade, totalfn) \
+value name##_total(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    value out=MORPHO_NIL; \
+    \
+    if (functional_validateargs(v, nargs, args, &info)) { \
+        info.g = grade; info.integrand = totalfn; \
+        functional_sumintegrand(v, &info, &out); \
+    } \
+    \
+    return out; \
+}
+
+/* Alternative way of defining methods that use a reference */
+#define FUNCTIONAL_METHOD(class, name, grade, reftype, prepare, integrandfn, integrandmapfn, deps, err, symbhvr) value class##_##name(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    reftype ref; \
+    value out=MORPHO_NIL; \
+    \
+    if (functional_validateargs(v, nargs, args, &info)) { \
+        if (prepare(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, grade, info.sel, &ref)) { \
+            info.integrand = integrandmapfn; \
+            info.dependencies = deps, \
+            info.sym = symbhvr; \
+            info.g = grade; \
+            info.ref = &ref; \
+            integrandfn(v, &info, &out); \
+        } else morpho_runtimeerror(v, err); \
+    } \
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
+    return out; \
+}
+
+/* -------------------------------------------------------
+ * Initialization
+ * ------------------------------------------------------- */
+
 void functional_initialize(void);
+void functional_finalize(void);
 
 #endif /* functional_h */

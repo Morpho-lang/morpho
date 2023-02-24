@@ -51,6 +51,8 @@ typedef void compiler;
 #define MORPHO_ACC_METHOD "acc"
 #define MORPHO_SUM_METHOD "sum"
 
+#define MORPHO_CONTAINS_METHOD "contains"
+
 #define MORPHO_UNION_METHOD "union"
 #define MORPHO_INTERSECTION_METHOD "intersection"
 #define MORPHO_DIFFERENCE_METHOD "difference"
@@ -146,9 +148,23 @@ void morpho_printvalue(value v);
 void morpho_disassemble(program *code, int *matchline);
 void morpho_stacktrace(vm *v);
 
+/* Multithreading */
+void morpho_setthreadnumber(int nthreads);
+int morpho_threadnumber(void);
+
 /* Initialization and finalization */
 void morpho_setbaseclass(value clss);
 void morpho_initialize(void);
 void morpho_finalize(void);
+
+/* Obtain and use subkernels [for internal use only] */
+bool vm_subkernels(vm *v, int nkernels, vm **subkernels);
+void vm_releasesubkernel(vm *subkernel);
+void vm_cleansubkernel(vm *subkernel);
+
+/* Thread local storage [for internal use only] */
+int vm_addtlvar(void);
+bool vm_settlvar(vm *v, int handle, value val);
+bool vm_gettlvar(vm *v, int handle, value *out);
 
 #endif /* morpho_h */

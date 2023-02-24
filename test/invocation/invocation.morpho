@@ -1,0 +1,21 @@
+// Invocation veneer class
+
+var a = Object() 
+
+var b = a.respondsto
+
+print b
+// expect: <Object>.<fn respondsto>
+
+print b.clss() 
+// expect: @Invocation
+
+print b.superclass()
+// expect: @Object
+
+print b.clone()("respondsto") 
+// expect: true
+
+var c = Invocation(a, "respondsto")
+
+print islist(c()) // expect: true

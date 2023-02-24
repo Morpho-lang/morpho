@@ -8,22 +8,32 @@
  * Version
  * ********************************************************************** */
 
-#define MORPHO_VERSIONSTRING "0.5.5"
+#define MORPHO_VERSIONSTRING "0.5.6"
 
 /* **********************************************************************
  * Paths and file system
  * ********************************************************************** */
 
-#ifndef MORPHO_RESOURCESDIRECTORY
-    #define MORPHO_RESOURCESDIRECTORY "/usr/local/share"
+#ifndef MORPHO_RESOURCESDIR
+    #define MORPHO_RESOURCESDIR "/usr/local"
 #endif
 
-#define MORPHO_HELPDIRECTORY (MORPHO_RESOURCESDIRECTORY "/morpho/help")
-#define MORPHO_MODULEDIRECTORY (MORPHO_RESOURCESDIRECTORY "/morpho/modules")
+#define MORPHO_HELPDIR "share/help"           // Folder structure where help files are found
+#define MORPHO_HELPEXTENSION "md"             // File extension for help files
 
-#define MORPHO_SEPARATOR "/"
+#define MORPHO_MODULEDIR "share/modules"      // Folder structure where modules are found
 
-#define MORPHO_EXTENSION ".morpho"
+#ifndef MORPHO_DYLIBEXTENSION
+#define MORPHO_DYLIBEXTENSION "dylib"         // File extension for extensions
+#endif
+#define MORPHO_EXTENSIONSDIR "lib"            // Folder structure where extensions are found
+
+#define MORPHO_MORPHOSUBDIR "morpho"          // Morpho subdirectory 
+#define MORPHO_SEPARATOR '/'                  // File directory separator
+
+#define MORPHO_EXTENSION "morpho"             // File extension for morpho files
+
+#define MORPHO_PACKAGELIST ".morphopackages"  // File in $HOME that contains package locations
 
 /* **********************************************************************
  * Features
@@ -116,6 +126,15 @@
 
 /** @brief Avoid using global variables (suitable for small programs only) */
 //#define MORPHO_NOGLOBALS
+
+/** @brief Default number of threads */
+#define MORPHO_DEFAULTTHREADNUMBER 0
+
+/** @brief Size of L1 cache line */
+#define _MORPHO_L1CACHELINESIZE 128 // M1/M2 is 128; most intel are 64
+
+/** @brief Pad data structures involved in multiprocessing */
+#define _MORPHO_PADDING char __padding[_MORPHO_L1CACHELINESIZE]
 
 /* **********************************************************************
  * Libraries

@@ -18,7 +18,7 @@ Documentation is available on [readthedocs](https://morpho-lang.readthedocs.io/e
 
 In academic publications, please cite morpho as: 
 
-*Joshi, C. et al., "Morpho -- A programmable environment for shape optimization and shapeshifting problems", arXiv:2208.07859 (2022)*
+*Joshi, C. et al., "Morpho -- A programmable environment for shape optimization and shapeshifting problems", [arXiv:2208.07859](https://arxiv.org/abs/2208.07859) (2022)*
  
 We expect to update this once the paper is published. 
 

@@ -57,6 +57,9 @@ typedef void compiler;
 #define MORPHO_INTERSECTION_METHOD "intersection"
 #define MORPHO_DIFFERENCE_METHOD "difference"
 
+#define MORPHO_ROLL_METHOD "roll"
+#define MORPHO_JOIN_METHOD "join"
+
 #define MORPHO_CLASS_METHOD "clss"
 #define MORPHO_SUPER_METHOD "superclass"
 #define MORPHO_SERIALIZE_METHOD "serialize"

@@ -571,6 +571,10 @@ value Field_assign(vm *v, int nargs, value *args) {
         if (field_compareshape(a, b)) {
             matrix_copy(&b->data, &a->data);
         } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
+    } else if (nargs==1 && MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
+        objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
+        
+        if (matrix_copy(b, &a->data)!=MATRIX_OK) morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
     } else morpho_runtimeerror(v, FIELD_ARITHARGS);
     
     return MORPHO_NIL;

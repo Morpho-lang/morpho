@@ -755,6 +755,46 @@ objectarrayerror matrix_slicecopy(value * a,value * out, unsigned int ndim, unsi
 	return ARRAY_OK;
 }
 
+/** Rolls the matrix list */
+void matrix_rollflat(objectmatrix *a, objectmatrix *b, int nplaces) {
+    unsigned int N = a->nrows*a->ncols;
+    int n = abs(nplaces);
+    if (n>N) n = n % N;
+    unsigned int Np = N - n; // Number of elements to roll
+    
+    if (nplaces<0) {
+        memcpy(b->matrixdata, a->matrixdata+n, sizeof(double)*Np);
+        memcpy(b->matrixdata+Np, a->matrixdata, sizeof(double)*n);
+    } else {
+        memcpy(b->matrixdata+n, a->matrixdata, sizeof(double)*Np);
+        if (n>0) memcpy(b->matrixdata, a->matrixdata+Np, sizeof(double)*n);
+    }
+}
+
+/** Copies arow from matrix a into brow for matrix b */
+void matrix_copyrow(objectmatrix *a, int arow, objectmatrix *b, int brow) {
+    cblas_dcopy(a->ncols, a->elements+arow, a->nrows, b->elements+brow, a->nrows);
+}
+
+/** Rolls a list by a number of elements */
+objectmatrix *matrix_roll(objectmatrix *a, int nplaces, int axis) {
+    objectmatrix *new=object_newmatrix(a->nrows, a->ncols, false);
+    
+    if (new) {
+        switch(axis) {
+            case 0: { // TODO: Could probably be faster
+                for (unsigned int i=0; i<a->nrows; i++) {
+                    matrix_copyrow(a, i, new, (i+nplaces) % a->nrows);
+                }
+            }
+                break;
+            case 1: matrix_rollflat(a, new, nplaces*a->nrows); break;
+        }
+    }
+
+    return new;
+}
+
 /** Gets the matrix element with given indices */
 value Matrix_getindex(vm *v, int nargs, value *args) {
     objectmatrix *m=MORPHO_GETMATRIX(MORPHO_SELF(args));
@@ -1140,6 +1180,30 @@ value Matrix_sum(vm *v, int nargs, value *args) {
     return MORPHO_FLOAT(matrix_sum(a));
 }
 
+/** Roll a matrix */
+value Matrix_roll(vm *v, int nargs, value *args) {
+    objectmatrix *slf = MORPHO_GETMATRIX(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+    int roll, axis=0;
+
+    if (nargs>0 &&
+        morpho_valuetoint(MORPHO_GETARG(args, 0), &roll)) {
+        
+        if (nargs==2 && !morpho_valuetoint(MORPHO_GETARG(args, 1), &axis)) return out;
+        
+        objectmatrix *new = matrix_roll(slf, roll, axis);
+
+        if (new) {
+            out = MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        }
+
+    } else morpho_runtimeerror(v, LIST_ADDARGS);
+
+    return out;
+}
+
+
 /** Matrix norm */
 value Matrix_norm(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
@@ -1362,6 +1426,7 @@ MORPHO_METHOD(MATRIX_TRACE_METHOD, Matrix_trace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Matrix_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Matrix_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_DIMENSIONS_METHOD, Matrix_dimensions, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_ROLL_METHOD, Matrix_roll, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Matrix_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 

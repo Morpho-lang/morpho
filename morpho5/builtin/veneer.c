@@ -1129,16 +1129,14 @@ objectlist *list_roll(objectlist *a, int nplaces) {
     if (new) {
         new->val.count=a->val.count;
         unsigned int N = a->val.count;
+        int n = abs(nplaces);
+        if (n>N) n = n % N;
+        unsigned int Np = N - n; // Number of elements to roll
+        
         if (nplaces<0) {
-            int n = - nplaces;
-            if (n>N) n = n % N;
-            unsigned int Np = N - n; // Number of elements to roll
             memcpy(new->val.data, a->val.data+n, sizeof(value)*Np);
             memcpy(new->val.data+Np, a->val.data, sizeof(value)*n);
         } else {
-            int n = nplaces;
-            if (n>N) n = n % N;
-            unsigned int Np = N - n; // Number of elements to roll
             memcpy(new->val.data+n, a->val.data, sizeof(value)*Np);
             if (n>0) memcpy(new->val.data, a->val.data+Np, sizeof(value)*n);
         }

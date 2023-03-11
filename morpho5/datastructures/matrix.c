@@ -783,8 +783,10 @@ objectmatrix *matrix_roll(objectmatrix *a, int nplaces, int axis) {
     if (new) {
         switch(axis) {
             case 0: { // TODO: Could probably be faster
-                for (unsigned int i=0; i<a->nrows; i++) {
-                    matrix_copyrow(a, i, new, (i+nplaces) % a->nrows);
+                for (int i=0; i<a->nrows; i++) {
+                    int j = (i+nplaces);
+                    if (j<0) j+=a->nrows;
+                    matrix_copyrow(a, i, new, j % a->nrows);
                 }
             }
                 break;

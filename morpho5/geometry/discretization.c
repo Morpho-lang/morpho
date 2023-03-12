@@ -14,13 +14,15 @@
  * ------------------------------------------------------- */
 
 typedef struct {
+    char *label; // Label for the discretization
     int order;
     grade g;
     int *shape; // Number of degrees of freedom per grade [g+1 elements]
 } discretization;
 
 /** Initialize a discretization structure */
-bool discretization_init(discretization *d, int order, grade g) {
+bool discretization_init(discretization *d, char *label, int order, grade g) {
+    d->label = label;
     d->order = order;
     d->g = g;
     d->shape = MORPHO_MALLOC(sizeof(int)*(g+1));
@@ -70,15 +72,16 @@ typedef struct {
 
 /** Discretization object definitions */
 void objectdiscretization_printfn(object *obj) {
-    printf("<Discretization>");
+    objectdiscretization *d = (objectdiscretization *) obj;
+    printf("<Discretization: %s %i>", d->d.label, d->d.order);
 }
 
 void objectdiscretization_markfn(object *obj, void *v) {
-    //objectdiscretization *d = (objectdiscretization *) obj;
 }
 
 void objectdiscretization_freefn(object *obj) {
-    //objectdiscretization *d = (objectdiscretization *) obj;
+    objectdiscretization *d = (objectdiscretization *) obj;
+    discretization_clear(&d->d);
 }
 
 size_t objectdiscretization_sizefn(object *obj) {
@@ -92,8 +95,14 @@ objecttypedefn objectdiscretizationdefn = {
     .sizefn=objectdiscretization_sizefn
 };
 
-objectdiscretization *object_newdiscretization(void) {
+/** Creates a new discretization object */
+objectdiscretization *object_newdiscretization(char *label, int order, int grade, int *shape) {
     objectdiscretization *new = (objectdiscretization *) object_new(sizeof(objectdiscretization), OBJECT_DISCRETIZATION);
+    
+    if (new) {
+        discretization_init(&new->d, label, order, grade);
+        for (int i=0; i<=grade; i++) new->d.shape[i]=shape[i];
+    }
 
     return new;
 }
@@ -110,22 +119,12 @@ value Discretization_order(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Discretization)
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Discretization_order, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(DISCRETIZATION_ORDERMETHOD, Discretization_order, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* -------------------------------------------------------
  * 1D Lagrange elements
  * ------------------------------------------------------- */
-
-/** Initializes a discretization structure */
-bool cgn_init(discretization *d, int order) {
-    bool success=discretization_init(d, order, MESH_GRADE_LINE);
-    if (success) {
-        d->shape[0]=2;
-        d->shape[1]=order-1;
-    }
-    return success;
-}
 
 /** Returns the number of nodes per element */
 int cgn_nodecount(discretization *d) {
@@ -157,9 +156,18 @@ bool cgn_nodepositions(discretization *d, objectmatrix *out) {
 /** Constructor for lagrange cfn */
 value lagrange_constructor(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
-    objectdiscretization *new = object_newdiscretization();
+    int order=1;
+    
+    if (nargs==1) {
+        morpho_valuetoint(MORPHO_GETARG(args, 0), &order);
+    }
+    
+    int shape[2] = { 1, order-1 };
+    objectdiscretization *new = object_newdiscretization(LAGRANGE_CONSTRUCTORNAME, order, MESH_GRADE_LINE, shape);
+    
     if (new) out = MORPHO_OBJECT(new);
     if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
+    
     return out;
 }
 
@@ -169,6 +177,12 @@ value lagrange_constructor(vm *v, int nargs, value *args) {
 
 void discretization_initialize(void) {
     objectdiscretizationtype=object_addtype(&objectdiscretizationdefn);
+    
+    objectstring objclassname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+    value objclass = builtin_findclass(MORPHO_OBJECT(&objclassname));
+    
+    value discretizationclass=builtin_addclass(DISCRETIZATION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Discretization), objclass);
+    object_setveneerclass(OBJECT_DISCRETIZATION, discretizationclass);
     
     builtin_addfunction(LAGRANGE_CONSTRUCTORNAME, lagrange_constructor, BUILTIN_FLAGSEMPTY);
 }

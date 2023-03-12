@@ -9,7 +9,10 @@
 
 #include <stdio.h>
 
+#define DISCRETIZATION_CLASSNAME "Discretization"
 #define LAGRANGE_CONSTRUCTORNAME "LagrangeFunctionSpace"
+
+#define DISCRETIZATION_ORDERMETHOD "order"
 
 void discretization_initialize(void);
 

@@ -16,6 +16,7 @@
 #include "sparse.h"
 #include "mesh.h"
 #include "selection.h"
+#include "discretization.h"
 #include "functional.h"
 #include "field.h"
 #include "veneer.h"
@@ -296,6 +297,7 @@ void builtin_initialize(void) {
     mesh_initialize();
     selection_initialize();
     field_initialize();
+    discretization_initialize();
     functional_initialize();
     complex_initialize();
 }

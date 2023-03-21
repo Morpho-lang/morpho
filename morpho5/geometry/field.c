@@ -409,6 +409,7 @@ bool field_op(vm *v, value fn, objectfield *f, int nargs, objectfield **args, va
     value ret=MORPHO_NIL;
     value fargs[nargs+1];
     objectfield *fld=NULL;
+    int handle = -1;
     
     for (int i=0; i<nel; i++) {
         if (!field_getelementwithindex(f, i, &fargs[0])) return false;
@@ -419,6 +420,7 @@ bool field_op(vm *v, value fn, objectfield *f, int nargs, objectfield **args, va
         if (morpho_call(v, fn, nargs+1, fargs, &ret)) {
             if (!fld) {
                 if (field_checkprototype(ret)) {
+                    if (MORPHO_ISOBJECT(ret)) handle=morpho_retainobjects(v, 1, &ret);
                     fld=object_newfield(f->mesh, ret, f->dof);
                     if (!fld) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
                 } else {
@@ -430,6 +432,7 @@ bool field_op(vm *v, value fn, objectfield *f, int nargs, objectfield **args, va
         } else return false;
     }
     
+    if (handle>=0) morpho_releaseobjects(v, handle);
     if (fld) *out = MORPHO_OBJECT(fld);
     
     return true;

@@ -90,6 +90,15 @@ Computes the Frobenius inner product between two matrices:
 
     var prod = A.inner(B)
 
+## Outer
+[tagouter]: # (Outer)
+
+Computes the outer produce between two vectors: 
+
+    var prod = A.outer(B)
+
+Note that `outer` always treats both vectors as column vectors. 
+
 ## Inverse
 [taginverse]: # (Inverse)
 

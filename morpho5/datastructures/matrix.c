@@ -390,6 +390,15 @@ objectmatrixerror matrix_inner(objectmatrix *a, objectmatrix *b, double *out) {
     return MATRIX_INCMPTBLDIM;
 }
 
+/** Computes the outer product of two matrices  */
+objectmatrixerror matrix_outer(objectmatrix *a, objectmatrix *b, objectmatrix *out) {
+    int m=a->nrows*a->ncols, n=b->nrows*b->ncols;
+    if (m==out->nrows && n==out->ncols) {
+        cblas_dger(CblasColMajor, m, n, 1, a->elements, 1, b->elements, 1, out->elements, out->nrows);
+        return MATRIX_OK;
+    }
+    return MATRIX_INCMPTBLDIM;
+}
 
 /** Solves the system a.x = b
  * @param[in] a  lhs
@@ -1175,6 +1184,24 @@ value Matrix_inner(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Outer product */
+value Matrix_outer(vm *v, int nargs, value *args) {
+    objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+ 
+    if (nargs==1 && MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
+        objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
+        objectmatrix *new=object_newmatrix(a->nrows*a->ncols, b->nrows*b->ncols, true);
+        
+        if (new &&
+            matrix_outer(a, b, new)==MATRIX_OK) {
+            out=MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
+    
+    return out;
+}
 
 /** Matrix sum */
 value Matrix_sum(vm *v, int nargs, value *args) {
@@ -1417,6 +1444,7 @@ MORPHO_METHOD(MORPHO_MULR_METHOD, Matrix_mulr, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_DIV_METHOD, Matrix_div, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ACC_METHOD, Matrix_acc, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_INNER_METHOD, Matrix_inner, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MATRIX_OUTER_METHOD, Matrix_outer, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUM_METHOD, Matrix_sum, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_NORM_METHOD, Matrix_norm, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_INVERSE_METHOD, Matrix_inverse, BUILTIN_FLAGSEMPTY),

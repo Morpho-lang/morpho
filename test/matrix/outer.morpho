@@ -1,0 +1,14 @@
+// Outer product
+
+var a = Matrix([1,2,3])
+
+print a.outer(a)
+// expect: [ 1 2 3 ]
+// expect: [ 2 4 6 ]
+// expect: [ 3 6 9 ]
+
+var b = Matrix([1,2])
+print a.outer(b)
+// expect: [ 1 2 ]
+// expect: [ 2 4 ]
+// expect: [ 3 6 ]

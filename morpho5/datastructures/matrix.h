@@ -80,6 +80,7 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 #define MATRIX_TRANSPOSE_METHOD "transpose"
 #define MATRIX_TRACE_METHOD "trace"
 #define MATRIX_INNER_METHOD "inner"
+#define MATRIX_OUTER_METHOD "outer"
 #define MATRIX_DET_METHOD "det"
 #define MATRIX_EIGENVALUES_METHOD "eigenvalues"
 #define MATRIX_EIGENSYSTEM_METHOD "eigensystem"
@@ -161,6 +162,7 @@ objectmatrixerror matrix_accumulate(objectmatrix *a, double lambda, objectmatrix
 objectmatrixerror matrix_sub(objectmatrix *a, objectmatrix *b, objectmatrix *out);
 objectmatrixerror matrix_mul(objectmatrix *a, objectmatrix *b, objectmatrix *out);
 objectmatrixerror matrix_inner(objectmatrix *a, objectmatrix *b, double *out);
+objectmatrixerror matrix_outer(objectmatrix *a, objectmatrix *b, objectmatrix *out);
 objectmatrixerror matrix_divs(objectmatrix *a, objectmatrix *b, objectmatrix *out);
 objectmatrixerror matrix_divl(objectmatrix *a, objectmatrix *b, objectmatrix *out);
 objectmatrixerror matrix_inverse(objectmatrix *a, objectmatrix *out);

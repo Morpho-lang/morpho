@@ -603,8 +603,8 @@ objectmatrixerror matrix_scale(objectmatrix *a, double scale) {
 /** Load the indentity matrix*/
 objectmatrixerror matrix_identity(objectmatrix *a) {
     if (a->ncols!=a->nrows) return MATRIX_NSQ;
-    for (int i=0; i<a->nrows; i++) for (int j=0; j<a->ncols; j++) a->elements[i+a->nrows*j]=(i==j ? 1.0 : 0.0);
-    
+    memset(a->elements, 0, sizeof(double)*a->nrows*a->ncols);
+    for (int i=0; i<a->nrows; i++) a->elements[i+a->nrows*i]=1.0;
     return MATRIX_OK;
 }
 
@@ -723,6 +723,29 @@ value matrix_constructor(vm *v, int nargs, value *args) {
         objectsparseerror err=sparse_tomatrix(MORPHO_GETSPARSE(MORPHO_GETARG(args, 0)), &new);
         if (err!=SPARSE_OK) morpho_runtimeerror(v, MATRIX_INVLDARRAYINIT);
     } else morpho_runtimeerror(v, MATRIX_CONSTRUCTOR);
+    
+    if (new) {
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    }
+    
+    return out;
+}
+
+/** Creates an identity matrix */
+value matrix_identityconstructor(vm *v, int nargs, value *args) {
+    int n;
+    objectmatrix *new=NULL;
+    value out = MORPHO_NIL;
+    
+    if (nargs==1 &&
+               MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+        n = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        new=object_newmatrix(n, n, false);
+        if (new) {
+            matrix_identity(new);
+        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    } else morpho_runtimeerror(v, MATRIX_IDENTCONSTRUCTOR);
     
     if (new) {
         out=MORPHO_OBJECT(new);
@@ -1468,6 +1491,7 @@ void matrix_initialize(void) {
     objectmatrixtype=object_addtype(&objectmatrixdefn);
     
     builtin_addfunction(MATRIX_CLASSNAME, matrix_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(MATRIX_IDENTITYCONSTRUCTOR, matrix_identityconstructor, BUILTIN_FLAGSEMPTY);
     
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
@@ -1488,4 +1512,5 @@ void matrix_initialize(void) {
     morpho_defineerror(MATRIX_OPFAILED, ERROR_HALT, MATRIX_OPFAILED_MSG);
     morpho_defineerror(MATRIX_SETCOLARGS, ERROR_HALT, MATRIX_SETCOLARGS_MSG);
     morpho_defineerror(MATRIX_NORMARGS, ERROR_HALT, MATRIX_NORMARGS_MSG);
+    morpho_defineerror(MATRIX_IDENTCONSTRUCTOR, ERROR_HALT, MATRIX_IDENTCONSTRUCTOR_MSG);
 }

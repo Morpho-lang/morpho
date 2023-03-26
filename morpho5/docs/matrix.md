@@ -166,3 +166,10 @@ Rotates values in a Matrix about a given axis by a given shift:
     var r = A.roll(shift, axis)
 
 Elements that roll beyond the last position are re-introduced at the first.
+
+## IdentityMatrix
+[tagidentitymatrix]: # (IdentityMatrix)
+
+Constructs an identity matrix of a specified size:
+
+    var a = IdentityMatrix(size)

@@ -76,6 +76,8 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 
 #define MATRIX_CLASSNAME "Matrix"
 
+#define MATRIX_IDENTITYCONSTRUCTOR "IdentityMatrix"
+
 #define MATRIX_INVERSE_METHOD "inverse"
 #define MATRIX_TRANSPOSE_METHOD "transpose"
 #define MATRIX_TRACE_METHOD "trace"
@@ -104,6 +106,9 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 
 #define MATRIX_CONSTRUCTOR                "MtrxCns"
 #define MATRIX_CONSTRUCTOR_MSG            "Matrix() constructor should be called either with dimensions or an array, list or matrix initializer."
+
+#define MATRIX_IDENTCONSTRUCTOR           "MtrxIdnttyCns"
+#define MATRIX_IDENTCONSTRUCTOR_MSG       "IdentityMatrix expects the dimension as its argument."
 
 #define MATRIX_INVLDARRAYINIT             "MtrxInvldInit"
 #define MATRIX_INVLDARRAYINIT_MSG         "Invalid initializer passed to Matrix()."

@@ -3878,13 +3878,12 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     objectmatrix mnormal = MORPHO_STATICMATRIX(normaldata, 3, 1);
     vm_settlvar(v, normlhandle, MORPHO_OBJECT(&mnormal));
 
-    /* Evaluate gradient */
-    /* -- Temporary code below -- */
-    /*objectfield *fld=MORPHO_GETFIELD(iref->fields[0]);
+    /* Evaluate gradient... (temporary code here) */
+    objectfield *fld=MORPHO_GETFIELD(iref.fields[0]);
     double grad[fld->mesh->dim]; //  *mesh->dim];
     if (!gradsq_evaluategradient(mesh, fld, nv, vid, grad)) return false;
     objectmatrix mgrad = MORPHO_STATICMATRIX(grad, mesh->dim, 1);
-    gradfn = MORPHO_OBJECT(&mgrad);*/
+    vm_settlvar(v, gradfnhandle, MORPHO_OBJECT(&mgrad));
 
     value q0[iref.nfields+1], q1[iref.nfields+1], q2[iref.nfields+1];
     value *q[3] = { q0, q1, q2 };

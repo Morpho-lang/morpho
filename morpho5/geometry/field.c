@@ -812,6 +812,21 @@ value Field_mesh(vm *v, int nargs, value *args) {
 /** Get the matrix that stores the Field */
 value Field_linearize(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+    
+    objectmatrix *m=object_clonematrix(&f->data);
+    if (m) {
+        out = MORPHO_OBJECT(m);
+        morpho_bindobjects(v, 1, &out);
+    }
+    
+    return out;
+}
+
+/** Directly the matrix that stores the Field
+ @warning only use when you know what you're doing.  */
+value Field_unsafelinearize(vm *v, int nargs, value *args) {
+    objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
     
     return MORPHO_OBJECT(&f->data);
 }
@@ -836,7 +851,8 @@ MORPHO_METHOD(MORPHO_PRINT_METHOD, Field_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Field_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_SHAPE_METHOD, Field_shape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_MESH_METHOD, Field_mesh, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FIELD_LINEARIZE_METHOD, Field_linearize, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FIELD_LINEARIZE_METHOD, Field_linearize, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FIELD__LINEARIZE_METHOD, Field_unsafelinearize, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

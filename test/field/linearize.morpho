@@ -6,6 +6,7 @@ print m
 
 var f = Field(m)
 var a = f.linearize() 
+var b = f._linearize() 
 
 print a
 // expect: [ 0 ]
@@ -14,6 +15,14 @@ print a
 // expect: [ 0 ]
 
 for (i in 0...4) a[i] = i
+print f 
+// expect: <Field>
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+
+for (i in 0...4) b[i] = i
 print f 
 // expect: <Field>
 // expect: [ 0 ]

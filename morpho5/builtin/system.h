@@ -20,6 +20,7 @@
 #define SYSTEM_PLATFORM_METHOD        "platform"
 #define SYSTEM_VERSION_METHOD         "version"
 #define SYSTEM_CLOCK_METHOD           "clock"
+#define SYSTEM_READLINE_METHOD        "readline"
 #define SYSTEM_EXIT_METHOD            "exit"
 
 #define SYSTEM_MACOS   "macos"

@@ -48,6 +48,28 @@ value System_clock(vm *v, int nargs, value *args) {
     return MORPHO_FLOAT( ((double) time)/((double) CLOCKS_PER_SEC) );
 }
 
+/** Print */
+value System_print(vm *v, int nargs, value *args) {
+    for (int i=0; i<nargs; i++) morpho_printvalue(MORPHO_GETARG(args, i));
+    return MORPHO_NIL;
+}
+
+/** Readline */
+value System_readline(vm *v, int nargs, value *args) {
+    char buffer[MORPHO_INPUTBUFFERDEFAULTSIZE];
+    value out = MORPHO_NIL;
+     
+    if (fgets(buffer, sizeof(buffer), stdin)) {
+        char *p = strchr(buffer, '\n');
+        if (p) *p = '\0';
+        
+        out = object_stringfromcstring(buffer, strlen(buffer));
+        if (MORPHO_ISSTRING(out)) morpho_bindobjects(v, 1, &out);
+    }
+    
+    return out;
+}
+
 /** Exit */
 value System_exit(vm *v, int nargs, value *args) {
     morpho_runtimeerror(v, VM_EXIT);
@@ -58,6 +80,8 @@ MORPHO_BEGINCLASS(System)
 MORPHO_METHOD(SYSTEM_PLATFORM_METHOD, System_platform, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_VERSION_METHOD, System_version, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_CLOCK_METHOD, System_clock, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SYSTEM_READLINE_METHOD, System_readline, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, System_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_EXIT_METHOD, System_exit, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 

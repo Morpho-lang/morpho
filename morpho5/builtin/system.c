@@ -54,6 +54,30 @@ value System_print(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Sleep for a specified number of milliseconds */
+void system_sleep(int msecs) {
+#ifdef WIN32
+    Sleep (msecs);
+#else
+    struct timespec t;
+    t.tv_sec  =  msecs / 1000;
+    t.tv_nsec = (msecs % 1000) * 1000000;
+    nanosleep (&t, NULL);
+#endif
+}
+
+/** Sleep for a specified number of seconds */
+value System_sleep(vm *v, int nargs, value *args) {
+    if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+        double t;
+        if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &t)) {
+            system_sleep((int) (1000*t));
+        }
+    } else morpho_runtimeerror(v, SLEEP_ARGS);
+    
+    return MORPHO_NIL;
+}
+
 /** Readline */
 value System_readline(vm *v, int nargs, value *args) {
     char buffer[MORPHO_INPUTBUFFERDEFAULTSIZE];
@@ -80,8 +104,9 @@ MORPHO_BEGINCLASS(System)
 MORPHO_METHOD(SYSTEM_PLATFORM_METHOD, System_platform, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_VERSION_METHOD, System_version, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_CLOCK_METHOD, System_clock, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SYSTEM_READLINE_METHOD, System_readline, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, System_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SYSTEM_SLEEP_METHOD, System_sleep, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SYSTEM_READLINE_METHOD, System_readline, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_EXIT_METHOD, System_exit, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
@@ -95,6 +120,7 @@ void system_initialize(void) {
     
     builtin_addclass(SYSTEM_CLASSNAME, MORPHO_GETCLASSDEFINITION(System), objclass);
     
+    morpho_defineerror(SLEEP_ARGS, ERROR_HALT, SLEEP_ARGS_MSG);
     morpho_defineerror(VM_EXIT, ERROR_EXIT, VM_EXIT_MSG);
 }
 

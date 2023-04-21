@@ -4,6 +4,7 @@
  *  @brief Built in class to provide access to the runtime
  */
 
+#include <stdio.h>
 #include <time.h>
 #include "build.h"
 #include "system.h"
@@ -51,6 +52,7 @@ value System_clock(vm *v, int nargs, value *args) {
 /** Print */
 value System_print(vm *v, int nargs, value *args) {
     for (int i=0; i<nargs; i++) morpho_printvalue(MORPHO_GETARG(args, i));
+    fflush(stdout);
     return MORPHO_NIL;
 }
 

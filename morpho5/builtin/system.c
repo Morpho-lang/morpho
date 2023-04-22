@@ -42,11 +42,21 @@ value System_version(vm *v, int nargs, value *args) {
     return ret;
 }
 
+double system_clock(void) {
+#ifdef WIN32
+    SYSTEMTIME st;
+    GetSystemTime (&st);
+    return ((double) st.wSecond) + st.wMilliseconds * 1e-6;
+#else
+    struct timeval tv;
+    gettimeofday (&tv, NULL);
+    return ((double) tv.tv_sec) + tv.tv_usec * 1e-6;
+#endif
+}
+
 /** Clock */
 value System_clock(vm *v, int nargs, value *args) {
-    clock_t time;
-    time = clock();
-    return MORPHO_FLOAT( ((double) time)/((double) CLOCKS_PER_SEC) );
+    return MORPHO_FLOAT(system_clock());
 }
 
 /** Print */

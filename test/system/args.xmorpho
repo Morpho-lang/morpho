@@ -1,0 +1,5 @@
+// Gets the arguments and prints them 
+
+var args = System.arguments() 
+
+print args 

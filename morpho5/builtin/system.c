@@ -11,6 +11,31 @@
 #include "builtin.h"
 #include "veneer.h"
 
+/** Set arguments passed to morpho program */
+
+static value arglist;
+
+void morpho_setargs(int argc, const char * argv[]) {
+    if (!MORPHO_ISLIST(arglist)) return;
+    objectlist *alist = MORPHO_GETLIST(arglist);
+    for (int i=0; i<argc; i++) {
+        value arg = object_stringfromcstring(argv[i], strlen(argv[i]));
+        if (MORPHO_ISSTRING(arg)) list_append(alist, arg);
+    }
+}
+
+void system_freeargs(void) {
+    if (!MORPHO_ISLIST(arglist)) return;
+    objectlist *alist = MORPHO_GETLIST(arglist);
+    
+    for (int i=0; i<list_length(alist); i++) {
+        value el;
+        if (!list_getelement(alist, i, &el)) continue;
+        morpho_freeobject(el);
+    }
+    morpho_freeobject(arglist);
+}
+
 /** Returns a platform description */
 value System_platform(vm *v, int nargs, value *args) {
     char *platform = NULL;
@@ -106,6 +131,11 @@ value System_readline(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Arguments passed to the process */
+value System_arguments(vm *v, int nargs, value *args) {
+    return MORPHO_OBJECT(arglist);
+}
+
 /** Exit */
 value System_exit(vm *v, int nargs, value *args) {
     morpho_runtimeerror(v, VM_EXIT);
@@ -119,6 +149,7 @@ MORPHO_METHOD(SYSTEM_CLOCK_METHOD, System_clock, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, System_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_SLEEP_METHOD, System_sleep, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_READLINE_METHOD, System_readline, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SYSTEM_ARGUMENTS_METHOD, System_arguments, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_EXIT_METHOD, System_exit, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
@@ -134,7 +165,11 @@ void system_initialize(void) {
     
     morpho_defineerror(SLEEP_ARGS, ERROR_HALT, SLEEP_ARGS_MSG);
     morpho_defineerror(VM_EXIT, ERROR_EXIT, VM_EXIT_MSG);
+    
+    objectlist *alist = object_newlist(0, NULL);
+    if (alist) arglist = MORPHO_OBJECT(alist);
 }
 
 void system_finalize(void) {
+    system_freeargs();
 }

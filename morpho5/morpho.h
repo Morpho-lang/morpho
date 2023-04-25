@@ -156,6 +156,7 @@ int morpho_threadnumber(void);
 void morpho_setbaseclass(value clss);
 void morpho_initialize(void);
 void morpho_finalize(void);
+void morpho_setargs(int argc, const char * argv[]); // Pass arguments to morpho
 
 /* Obtain and use subkernels [for internal use only] */
 bool vm_subkernels(vm *v, int nkernels, vm **subkernels);

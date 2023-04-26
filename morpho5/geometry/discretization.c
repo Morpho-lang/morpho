@@ -35,15 +35,15 @@ void discretization_clear(discretization *d) {
 }
 
 /** */
-/*bool discretization_assemblefieldref(discretization *d, objectmesh *mesh, objectfield *f, objectsparse *out) {
+bool discretization_assemblefieldref(discretization *d, objectmesh *mesh, objectfield *f, objectsparse *out) {
     
-    elementid n = mesh_nelementsforgrade(mesh, d->g);
+    /*elementid n = mesh_nelementsforgrade(mesh, d->g);
     for (elementid i=0; i<n; i++) {
         
-    }
+    }*/
     
     return false;
-}*/
+}
 
 /*
 void discretization_value(objectfield *fld, discretization *disc, objectsparse *elmatrix) {
@@ -73,7 +73,7 @@ typedef struct {
 /** Discretization object definitions */
 void objectdiscretization_printfn(object *obj) {
     objectdiscretization *d = (objectdiscretization *) obj;
-    printf("<Discretization: %s %i>", d->d.label, d->d.order);
+    printf("<%s %i>", d->d.label, d->d.order);
 }
 
 void objectdiscretization_markfn(object *obj, void *v) {
@@ -147,10 +147,28 @@ bool cgn_nodepositions(discretization *d, objectmatrix *out) {
     
 }*/
 
-/** Assembles the */
-/*bool cgn_assemble(discretization *d, objectfield *f, elementid id, objectsparse *out) {
-    return false;
-}*/
+typedef struct {
+    grade g;      // Grade of entry
+    elementid id; // Element id
+    int k;        // Value number
+} fieldentry;
+
+DECLARE_VARRAY(fieldentry, fieldentry);
+DEFINE_VARRAY(fieldentry, fieldentry);
+
+/** Determines hoe */
+bool cgn_assemble(discretization *d, objectmesh *m, elementid id, int nv, elementid vid[], varray_fieldentry *out) {
+    
+    fieldentry v0 = { .g = MESH_GRADE_VERTEX, .id = vid[0], .k = 0 };
+    varray_fieldentrywrite(out, v0);
+    
+    
+    
+    fieldentry v1 = { .g = MESH_GRADE_VERTEX, .id = vid[1], .k = 0 };
+    varray_fieldentrywrite(out, v1);
+    
+    return true;
+}
 
 
 /** Constructor for lagrange cfn */

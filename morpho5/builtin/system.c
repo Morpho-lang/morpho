@@ -11,6 +11,10 @@
 #include "builtin.h"
 #include "veneer.h"
 
+#ifndef WIN32
+#include <sys/time.h>
+#endif
+
 /** Set arguments passed to morpho program */
 
 static value arglist;

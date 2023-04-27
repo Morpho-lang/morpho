@@ -139,7 +139,7 @@ value System_readline(vm *v, int nargs, value *args) {
 
 /** Arguments passed to the process */
 value System_arguments(vm *v, int nargs, value *args) {
-    return MORPHO_OBJECT(arglist);
+    return arglist;
 }
 
 /** Exit */

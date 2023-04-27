@@ -76,10 +76,13 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 
 #define MATRIX_CLASSNAME "Matrix"
 
+#define MATRIX_IDENTITYCONSTRUCTOR "IdentityMatrix"
+
 #define MATRIX_INVERSE_METHOD "inverse"
 #define MATRIX_TRANSPOSE_METHOD "transpose"
 #define MATRIX_TRACE_METHOD "trace"
 #define MATRIX_INNER_METHOD "inner"
+#define MATRIX_OUTER_METHOD "outer"
 #define MATRIX_DET_METHOD "det"
 #define MATRIX_EIGENVALUES_METHOD "eigenvalues"
 #define MATRIX_EIGENSYSTEM_METHOD "eigensystem"
@@ -103,6 +106,9 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 
 #define MATRIX_CONSTRUCTOR                "MtrxCns"
 #define MATRIX_CONSTRUCTOR_MSG            "Matrix() constructor should be called either with dimensions or an array, list or matrix initializer."
+
+#define MATRIX_IDENTCONSTRUCTOR           "MtrxIdnttyCns"
+#define MATRIX_IDENTCONSTRUCTOR_MSG       "IdentityMatrix expects the dimension as its argument."
 
 #define MATRIX_INVLDARRAYINIT             "MtrxInvldInit"
 #define MATRIX_INVLDARRAYINIT_MSG         "Invalid initializer passed to Matrix()."
@@ -161,6 +167,7 @@ objectmatrixerror matrix_accumulate(objectmatrix *a, double lambda, objectmatrix
 objectmatrixerror matrix_sub(objectmatrix *a, objectmatrix *b, objectmatrix *out);
 objectmatrixerror matrix_mul(objectmatrix *a, objectmatrix *b, objectmatrix *out);
 objectmatrixerror matrix_inner(objectmatrix *a, objectmatrix *b, double *out);
+objectmatrixerror matrix_outer(objectmatrix *a, objectmatrix *b, objectmatrix *out);
 objectmatrixerror matrix_divs(objectmatrix *a, objectmatrix *b, objectmatrix *out);
 objectmatrixerror matrix_divl(objectmatrix *a, objectmatrix *b, objectmatrix *out);
 objectmatrixerror matrix_inverse(objectmatrix *a, objectmatrix *out);

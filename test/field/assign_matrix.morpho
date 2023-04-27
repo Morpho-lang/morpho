@@ -1,0 +1,30 @@
+// Scalar field assign with matrix
+
+var m = Mesh("square.mesh")
+print m
+// expect: <Mesh: 4 vertices>
+
+var f = Field(m)
+
+// Create a convenient function for output
+fn write(f) { print "[${f[0]}, ${f[1]}, ${f[2]}, ${f[3]}]" }
+
+var a = f.linearize().clone() 
+
+// Set elements
+for (i in 0...4) a[i]=i
+
+// Show fresh field 
+write(f)
+// expect: [0, 0, 0, 0]
+
+// Assign matrix to field 
+f.assign(a)
+
+// Show assigned field 
+write(f)
+// expect: [0, 1, 2, 3]
+
+var b = Matrix([1,2])
+f.assign(b)
+// expect error 'FldIncmptbl'

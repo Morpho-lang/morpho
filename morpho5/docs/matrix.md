@@ -90,6 +90,15 @@ Computes the Frobenius inner product between two matrices:
 
     var prod = A.inner(B)
 
+## Outer
+[tagouter]: # (Outer)
+
+Computes the outer produce between two vectors: 
+
+    var prod = A.outer(B)
+
+Note that `outer` always treats both vectors as column vectors. 
+
 ## Inverse
 [taginverse]: # (Inverse)
 
@@ -148,3 +157,19 @@ Returns the transpose of a matrix:
 Computes the trace (the sum of the diagonal elements) of a square matrix:
 
     var tr = A.trace()
+
+## Roll
+[tagroll]: # (Roll)
+
+Rotates values in a Matrix about a given axis by a given shift:
+
+    var r = A.roll(shift, axis)
+
+Elements that roll beyond the last position are re-introduced at the first.
+
+## IdentityMatrix
+[tagidentitymatrix]: # (IdentityMatrix)
+
+Constructs an identity matrix of a specified size:
+
+    var a = IdentityMatrix(size)

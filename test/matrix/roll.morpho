@@ -1,0 +1,54 @@
+// Roll a list 
+
+var m = Matrix([ [1,2,3,4],
+                 [5,6,7,8],
+                 [9,10,11,12],
+                 [13,14,15,16]])
+print m
+// expect: [ 1 2 3 4 ]
+// expect: [ 5 6 7 8 ]
+// expect: [ 9 10 11 12 ]
+// expect: [ 13 14 15 16 ]
+
+print m.roll(1,0)
+// expect: [ 13 14 15 16 ]
+// expect: [ 1 2 3 4 ]
+// expect: [ 5 6 7 8 ]
+// expect: [ 9 10 11 12 ]
+
+print m.roll(-1,0)
+// expect: [ 5 6 7 8 ]
+// expect: [ 9 10 11 12 ]
+// expect: [ 13 14 15 16 ]
+// expect: [ 1 2 3 4 ]
+
+print m.roll(-2,0)
+// expect: [ 9 10 11 12 ]
+// expect: [ 13 14 15 16 ]
+// expect: [ 1 2 3 4 ]
+// expect: [ 5 6 7 8 ]
+
+print m.roll(1,1)
+// expect: [ 4 1 2 3 ]
+// expect: [ 8 5 6 7 ]
+// expect: [ 12 9 10 11 ]
+// expect: [ 16 13 14 15 ]
+
+print m.roll(-1,1)
+// expect: [ 2 3 4 1 ]
+// expect: [ 6 7 8 5 ]
+// expect: [ 10 11 12 9 ]
+// expect: [ 14 15 16 13 ]
+
+var a = Matrix([ [  -1,  -1,   -1,   -1,   -1 ],
+                 [ -0.5, -0.5, -0.5, -0.5, -0.5 ],
+                 [  0,    0,    0,    0,    0 ],
+                 [  0.5,  0.5,  0.5,  0.5,  0.5 ],
+                 [  1,    1,    1,    1,    1 ] ])
+
+print a.roll(-1, 0)
+// expect: [ -0.5 -0.5 -0.5 -0.5 -0.5 ]
+// expect: [ 0 0 0 0 0 ]
+// expect: [ 0.5 0.5 0.5 0.5 0.5 ]
+// expect: [ 1 1 1 1 1 ]
+// expect: [ -1 -1 -1 -1 -1 ]

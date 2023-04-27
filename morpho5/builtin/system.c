@@ -4,6 +4,8 @@
  *  @brief Built in class to provide access to the runtime
  */
 
+#define _POSIX_C_SOURCE 199309L
+
 #include <stdio.h>
 #include <time.h>
 #include "build.h"

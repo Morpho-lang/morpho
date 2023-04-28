@@ -55,7 +55,7 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *do
 #define FIELD_SHAPE_METHOD   "shape"
 #define FIELD_MESH_METHOD    "mesh"
 #define FIELD_LINEARIZE_METHOD    "linearize"
-#define FIELD__LINEARIZE_METHOD    "_linearize"
+#define FIELD__LINEARIZE_METHOD    "__linearize"
 
 #define FIELD_INDICESOUTSIDEBOUNDS       "FldBnds"
 #define FIELD_INDICESOUTSIDEBOUNDS_MSG   "Field index out of bounds."

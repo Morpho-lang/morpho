@@ -6,7 +6,7 @@ print m
 
 var f = Field(m)
 var a = f.linearize() 
-var b = f._linearize() 
+var b = f.__linearize() 
 
 print a
 // expect: [ 0 ]

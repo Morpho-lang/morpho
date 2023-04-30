@@ -21,7 +21,7 @@ help = $(wildcard docs/*.md)
 modules = $(wildcard modules/*)
 
 LDFLAGS  = -ldl -lm -lblas -llapacke -lcxsparse -lpthread
-CFLAGS   = $(EXTCFLAGS) -DMORPHO_RESOURCESDIR=\"$(RESOURCEPREFIX)\" -std=c99 -O3 -I. -I/usr/include/suitesparse -I./datastructures -I./geometry -I./interface -I./utils -I./vm -I./builtin
+CFLAGS   = $(EXTCFLAGS) -Wl,-export-dynamic -DMORPHO_RESOURCESDIR=\"$(RESOURCEPREFIX)\" -std=c99 -O3 -I. -I/usr/include/suitesparse -I./datastructures -I./geometry -I./interface -I./utils -I./vm -I./builtin
 
 morpho5: $(obj)
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)

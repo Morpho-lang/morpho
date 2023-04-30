@@ -5,6 +5,7 @@ var m = AreaMesh(fn (x,y) [x,y,0], 0..1:0.5, 0..1:0.5)
 
 var f = Field(m, fn (x,y,z) x)
 var g = Field(m, fn (x,y,z) 2*y)
+var h = Field(m, fn (x,y,z) x+y)
 
 fn integrand(x, n) {
     var g = grad(n) 
@@ -14,8 +15,11 @@ fn integrand(x, n) {
 print AreaIntegral(integrand, f).total(m)
 // expect: 1
 
-print AreaIntegral(fn (x, f, g) grad(g).norm(), f, g).total(m)
+print AreaIntegral(fn (x, fl, gl) grad(g).norm(), f, g).total(m)
 // expect: 2
 
-//print AreaIntegral(fn (x, f, g) grad(f).inner(grad(g)), f, g).total(m)
+print AreaIntegral(fn (x, fl, gl) grad(f).inner(grad(g)), f, g).total(m)
+// expect: 0
+
+print AreaIntegral(fn (x, u, v) grad(g).inner(grad(h)), g, h).total(m)
 // expect: 2

@@ -3781,16 +3781,22 @@ void integral_evaluategradient(vm *v, value q, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);
     if (!elref) UNREACHABLE("Element reference unavailable");
     
-    int ifld;
-    for (ifld=0; ifld<elref->iref->nfields; ifld++) {
-        if (MORPHO_ISSAME(elref->qinterpolated[ifld], q)) break;
-        // @warning: This will fail if two fields happen to have the same value(!)
-    }
-    if (ifld>=elref->iref->nfields) {
-        morpho_runtimeerror(v, INTEGRAL_FLD); return;
-    }
+    objectfield *fld=NULL;
     
-    objectfield *fld=MORPHO_GETFIELD(elref->iref->fields[ifld]);
+    if (MORPHO_ISFIELD(q)) {
+        fld=MORPHO_GETFIELD(q);
+    } else { // Attempt to guess the original field
+        int ifld;
+        for (ifld=0; ifld<elref->iref->nfields; ifld++) {
+            if (MORPHO_ISSAME(elref->qinterpolated[ifld], q)) break;
+            // @warning: This will fail if two fields happen to have the same value(!)
+        }
+        if (ifld>=elref->iref->nfields) {
+            morpho_runtimeerror(v, INTEGRAL_FLD); return;
+        }
+        
+        fld = MORPHO_GETFIELD(elref->iref->fields[ifld]);
+    }
     
     int dim = elref->mesh->dim;
     

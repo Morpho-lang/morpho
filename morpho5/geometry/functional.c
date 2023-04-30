@@ -3679,7 +3679,7 @@ objecttype objectintegralelementreftype;
 #define MORPHO_GETINTEGRALELEMENTREF(val) ((objectintegralelementref *) MORPHO_GETOBJECT(val))
 
 /** Static element ref */
-#define MORPHO_STATICINTEGRALELEMENTREF(mesh, id, nv, vid)      { .obj.type=OBJECT_INTEGRALELEMENTREF, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .mesh=mesh, .id=id, .nv=nv, .vid=vid }
+#define MORPHO_STATICINTEGRALELEMENTREF(mesh, grade, id, nv, vid)      { .obj.type=OBJECT_INTEGRALELEMENTREF, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .g=grade, .mesh=mesh, .id=id, .nv=nv, .vid=vid }
 
 int elementhandle;
 
@@ -3891,7 +3891,7 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     double *x[nv];
     bool success;
 
-    objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, id, nv, vid);
+    objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_LINE, id, nv, vid);
     elref.iref = &iref;
     elref.vertexposn = x;
     
@@ -4009,7 +4009,7 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     double *x[nv];
     bool success;
     
-    objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, id, nv, vid);
+    objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_AREA, id, nv, vid);
     elref.iref = &iref;
     elref.vertexposn = x; 
 

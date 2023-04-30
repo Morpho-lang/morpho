@@ -1,0 +1,14 @@
+import constants
+import meshtools
+
+var m = AreaMesh(fn (x,y) [x,y,0], 0..1:0.5, 0..1:0.5)
+
+var f = Field(m, fn (x,y,z) x)
+
+fn integrand(x, n) {
+    var g = grad(n) 
+    return g.inner(g)
+}
+
+print AreaIntegral(integrand, f).total(m)
+// expect: 1

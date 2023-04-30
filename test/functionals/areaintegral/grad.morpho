@@ -5,6 +5,6 @@ var m = AreaMesh(fn (x,y) [x,y,0], 0..1:0.5, 0..1:0.5)
 
 var f = Field(m, fn (x,y,z) 2*x) 
 
-print AreaIntegral(fn (x, n) grad(f).norm(), f).total(m)
+print AreaIntegral(fn (x, f) grad(f).norm(), f).total(m)
 
 

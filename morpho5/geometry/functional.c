@@ -3626,7 +3626,7 @@ MORPHO_ENDCLASS
  * Integrals
  * ********************************************************************** */
 
-/** Integral references */
+/** Integral references - potentially shared across threads */
 
 typedef struct {
     value integrand;
@@ -3640,7 +3640,8 @@ typedef struct {
  * ---------------------------------------------- */
 
 /** Integral element references
- @brief used to store information about the current element in thread-local storage. We wrap them in an object so that they can be safely stored in a value. */
+ @brief used to store information about the current element in thread-local storage. We wrap them in an object so that they can be safely stored in a value.
+ Guaranteed to be thread local */
 
 typedef struct {
     object obj;
@@ -3651,6 +3652,7 @@ typedef struct {
     int *vid;            // Vertex ids
     double **vertexposn; // List of vertex positions
     double elementsize;  // Size of the element
+    value *qinterpolated; // List of interpolated quantities (this allows us to identify operators on fields)
     integralref *iref;
 } objectintegralelementref;
 
@@ -3679,12 +3681,12 @@ objecttype objectintegralelementreftype;
 #define MORPHO_GETINTEGRALELEMENTREF(val) ((objectintegralelementref *) MORPHO_GETOBJECT(val))
 
 /** Static element ref */
-#define MORPHO_STATICINTEGRALELEMENTREF(mesh, grade, id, nv, vid)      { .obj.type=OBJECT_INTEGRALELEMENTREF, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .g=grade, .mesh=mesh, .id=id, .nv=nv, .vid=vid }
+#define MORPHO_STATICINTEGRALELEMENTREF(mesh, grade, id, nv, vid)      { .obj.type=OBJECT_INTEGRALELEMENTREF, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .g=grade, .mesh=mesh, .id=id, .nv=nv, .vid=vid, .qinterpolated=NULL }
 
 int elementhandle;
 
 /** Get the current element ref from thread-local storage in the VM */
-objectintegralelementref *functional_getelementref(vm *v) {
+objectintegralelementref *integral_getelementref(vm *v) {
     value elref=MORPHO_NIL;
     vm_gettlvar(v, elementhandle, &elref);
     if (MORPHO_ISINTEGRALELEMENTREF(elref)) return MORPHO_GETINTEGRALELEMENTREF(elref);
@@ -3699,9 +3701,9 @@ objectintegralelementref *functional_getelementref(vm *v) {
 int tangenthandle; // TL storage handle for tangent vectors
 
 /** Evaluate the tangent vector */
-void functional_evaluatetangent(vm *v, value *out) {
-    objectintegralelementref *elref = functional_getelementref(v);
-    if (!elref) return;
+void integral_evaluatetangent(vm *v, value *out) {
+    objectintegralelementref *elref = integral_getelementref(v);
+    if (!elref) UNREACHABLE("Element reference unavailable");
     
     int dim = elref->mesh->dim;
     
@@ -3720,12 +3722,11 @@ void functional_evaluatetangent(vm *v, value *out) {
     *out = MORPHO_OBJECT(mtangent);
 }
 
-static value functional_tangent(vm *v, int nargs, value *args) {
+static value integral_tangent(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     
     vm_gettlvar(v, tangenthandle, &out);
-    if (MORPHO_ISNIL(out)) functional_evaluatetangent(v, &out);
-    if (MORPHO_ISNIL(out)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    if (MORPHO_ISNIL(out)) integral_evaluatetangent(v, &out);
     
     return out;
 }
@@ -3737,9 +3738,9 @@ static value functional_tangent(vm *v, int nargs, value *args) {
 int normlhandle; // TL storage handle for normal vectors
 
 /** Evaluates the normal vector */
-void functional_evaluatenormal(vm *v, value *out) {
-    objectintegralelementref *elref = functional_getelementref(v);
-    if (!elref) return;
+void integral_evaluatenormal(vm *v, value *out) {
+    objectintegralelementref *elref = integral_getelementref(v);
+    if (!elref) UNREACHABLE("Element reference unavailable");
     
     int dim = elref->mesh->dim;
     double s0[dim], s1[dim];
@@ -3760,12 +3761,11 @@ void functional_evaluatenormal(vm *v, value *out) {
     *out = MORPHO_OBJECT(mnormal);
 }
 
-static value functional_normal(vm *v, int nargs, value *args) {
+static value integral_normal(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
 
     vm_gettlvar(v, normlhandle, &out);
-    if (MORPHO_ISNIL(out)) functional_evaluatenormal(v, &out);
-    if (MORPHO_ISNIL(out)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    if (MORPHO_ISNIL(out)) integral_evaluatenormal(v, &out);
     
     return out;
 }
@@ -3776,9 +3776,46 @@ static value functional_normal(vm *v, int nargs, value *args) {
 
 int gradfnhandle; // TL storage handle for gradients
 
-static value functional_gradfn(vm *v, int nargs, value *args) {
+// @warning: Only can evaluate one gradient at a time(!)
+void integral_evaluategradient(vm *v, value q, value *out) {
+    objectintegralelementref *elref = integral_getelementref(v);
+    if (!elref) UNREACHABLE("Element reference unavailable");
+    
+    int ifld;
+    for (ifld=0; ifld<elref->iref->nfields; ifld++) {
+        if (MORPHO_ISSAME(elref->qinterpolated[ifld], q)) break;
+        // @warning: This will fail if two fields happen to have the same value(!)
+    }
+    if (ifld>=elref->iref->nfields) {
+        morpho_runtimeerror(v, INTEGRAL_FLD); return;
+    }
+    
+    objectfield *fld=MORPHO_GETFIELD(elref->iref->fields[ifld]);
+    
+    int dim = elref->mesh->dim;
+    
+    objectmatrix *mgrad = object_newmatrix(dim, 1, false);
+    if (!mgrad) {
+        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        return;
+    } 
+    
+    if (!gradsq_evaluategradient(elref->mesh, fld, elref->nv, elref->vid, mgrad->elements)) {
+        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        return;
+    }
+    
+    vm_settlvar(v, gradfnhandle, MORPHO_OBJECT(mgrad));
+    *out = MORPHO_OBJECT(mgrad);
+}
+
+static value integral_gradfn(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
-    vm_gettlvar(v, gradfnhandle, &out);
+    if (nargs==1) {
+        vm_gettlvar(v, gradfnhandle, &out);
+        if (MORPHO_ISNIL(out)) integral_evaluategradient(v, MORPHO_GETARG(args, 0), &out);
+    } else morpho_runtimeerror(v, INTEGRAL_FLD);
+    
     return out;
 }
 
@@ -3787,7 +3824,7 @@ static value functional_gradfn(vm *v, int nargs, value *args) {
  * ---------------------- */
 
 /** Clears threadlocal storage */
-void functional_cleartlvars(vm *v) {
+void integral_cleartlvars(vm *v) {
     int handles[] = { elementhandle, normlhandle, tangenthandle, gradfnhandle, -1 };
     
     for (int i=0; handles[i]>=0; i++) {
@@ -3795,7 +3832,7 @@ void functional_cleartlvars(vm *v) {
     }
 }
 
-void functional_freetlvars(vm *v) {
+void integral_freetlvars(vm *v) {
     int handles[] = { normlhandle, tangenthandle, gradfnhandle, -1 };
     
     for (int i=0; handles[i]>=0; i++) {
@@ -3804,7 +3841,7 @@ void functional_freetlvars(vm *v) {
         if (MORPHO_ISOBJECT(val)) morpho_freeobject(val);
     }
     
-    functional_cleartlvars(v);
+    integral_cleartlvars(v);
 }
 
 /* ----------------------------------------------
@@ -3876,7 +3913,10 @@ bool integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int n
 
     args[0]=MORPHO_OBJECT(&posn);
     for (unsigned int i=0; i<nquantity; i++) args[i+1]=quantity[i];
-
+    
+    objectintegralelementref *elref = integral_getelementref(iref->v);
+    if (elref) elref->qinterpolated=quantity;
+    
     if (morpho_call(iref->v, iref->integrand, nquantity+1, args, &out)) {
         morpho_valuetofloat(out,fout);
         return true;
@@ -3903,7 +3943,7 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     }
 
     /* Set up quantities */
-    functional_cleartlvars(v);
+    integral_cleartlvars(v);
     vm_settlvar(v, elementhandle, MORPHO_OBJECT(&elref));
 
     value q0[iref.nfields+1], q1[iref.nfields+1];
@@ -3917,7 +3957,7 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_LINE, x, iref.nfields, q, &iref, out);
     if (success) *out *=elref.elementsize;
 
-    functional_freetlvars(v);
+    integral_freetlvars(v);
     
     return success;
 }
@@ -4021,15 +4061,8 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     }
 
     /* Set up quantities */
-    functional_cleartlvars(v);
+    integral_cleartlvars(v);
     vm_settlvar(v, elementhandle, MORPHO_OBJECT(&elref));
-
-    /* Evaluate gradient... (temporary code here) */
-    /*objectfield *fld=MORPHO_GETFIELD(iref.fields[0]);
-    double grad[fld->mesh->dim]; //  *mesh->dim];
-    if (!gradsq_evaluategradient(mesh, fld, nv, vid, grad)) return false;
-    objectmatrix mgrad = MORPHO_STATICMATRIX(grad, mesh->dim, 1);
-    vm_settlvar(v, gradfnhandle, MORPHO_OBJECT(&mgrad));*/
 
     value q0[iref.nfields+1], q1[iref.nfields+1], q2[iref.nfields+1];
     value *q[3] = { q0, q1, q2 };
@@ -4042,7 +4075,7 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_AREA, x, iref.nfields, q, &iref, out);
     if (success) *out *= elref.elementsize;
 
-    functional_freetlvars(v);
+    integral_freetlvars(v);
     
     return success;
 }
@@ -4199,9 +4232,9 @@ void functional_initialize(void) {
     builtin_addclass(NEMATIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(Nematic), objclass);
     builtin_addclass(NEMATICELECTRIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(NematicElectric), objclass);
 
-    builtin_addfunction(TANGENT_FUNCTION, functional_tangent, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(NORMAL_FUNCTION, functional_normal, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(GRAD_FUNCTION, functional_gradfn, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(TANGENT_FUNCTION, integral_tangent, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(NORMAL_FUNCTION, integral_normal, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(GRAD_FUNCTION, integral_gradfn, BUILTIN_FLAGSEMPTY);
 
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
     morpho_defineerror(FUNC_ELNTFND, ERROR_HALT, FUNC_ELNTFND_MSG);
@@ -4225,6 +4258,7 @@ void functional_initialize(void) {
 
     morpho_defineerror(LINEINTEGRAL_ARGS, ERROR_HALT, LINEINTEGRAL_ARGS_MSG);
     morpho_defineerror(LINEINTEGRAL_NFLDS, ERROR_HALT, LINEINTEGRAL_NFLDS_MSG);
+    morpho_defineerror(INTEGRAL_FLD, ERROR_HALT, INTEGRAL_FLD_MSG);
     
     threadpool_init(&functional_pool, morpho_threadnumber());
     

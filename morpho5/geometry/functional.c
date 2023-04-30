@@ -3635,7 +3635,12 @@ typedef struct {
     vm *v;
 } integralref;
 
-/** Integral element references */
+/* ----------------------------------------------
+ * Integrand functions
+ * ---------------------------------------------- */
+
+/** Integral element references
+ @brief used to store information about the current element in thread-local storage. We wrap them in an object so that they can be safely stored in a value. */
 
 typedef struct {
     object obj;
@@ -3678,10 +3683,7 @@ objecttype objectintegralelementreftype;
 
 int elementhandle;
 
-/* ----------------------------------------------
- * Integrand functions
- * ---------------------------------------------- */
-
+/** Get the current element ref from thread-local storage in the VM */
 objectintegralelementref *functional_getelementref(vm *v) {
     value elref=MORPHO_NIL;
     vm_gettlvar(v, elementhandle, &elref);
@@ -3694,11 +3696,37 @@ objectintegralelementref *functional_getelementref(vm *v) {
  * Tangent
  * -------- */
 
-int tangenthandle;
+int tangenthandle; // TL storage handle for tangent vectors
+
+/** Evaluate the tangent vector */
+void functional_evaluatetangent(vm *v, value *out) {
+    objectintegralelementref *elref = functional_getelementref(v);
+    if (!elref) return;
+    
+    int dim = elref->mesh->dim;
+    
+    objectmatrix *mtangent = object_newmatrix(dim, 1, false);
+    if (!mtangent) {
+        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        return;
+    }
+    
+    functional_vecsub(dim, elref->vertexposn[1], elref->vertexposn[0], mtangent->elements);
+
+    double tnorm=functional_vecnorm(dim, mtangent->elements);
+    if (fabs(tnorm)>MORPHO_EPS) functional_vecscale(dim, 1.0/tnorm, mtangent->elements, mtangent->elements);
+    
+    vm_settlvar(v, tangenthandle, MORPHO_OBJECT(mtangent));
+    *out = MORPHO_OBJECT(mtangent);
+}
 
 static value functional_tangent(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
+    
     vm_gettlvar(v, tangenthandle, &out);
+    if (MORPHO_ISNIL(out)) functional_evaluatetangent(v, &out);
+    if (MORPHO_ISNIL(out)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    
     return out;
 }
 
@@ -3706,9 +3734,9 @@ static value functional_tangent(vm *v, int nargs, value *args) {
  * Normal
  * -------- */
 
-int normlhandle;
+int normlhandle; // TL storage handle for normal vectors
 
-/** Evaluates the normal given */
+/** Evaluates the normal vector */
 void functional_evaluatenormal(vm *v, value *out) {
     objectintegralelementref *elref = functional_getelementref(v);
     if (!elref) return;
@@ -3746,7 +3774,7 @@ static value functional_normal(vm *v, int nargs, value *args) {
  * Gradient
  * -------- */
 
-int gradfnhandle;
+int gradfnhandle; // TL storage handle for gradients
 
 static value functional_gradfn(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
@@ -3754,15 +3782,29 @@ static value functional_gradfn(vm *v, int nargs, value *args) {
     return out;
 }
 
-/* --------
- * Gradient
- * -------- */
+/* ----------------------
+ * General initialization
+ * ---------------------- */
 
+/** Clears threadlocal storage */
 void functional_cleartlvars(vm *v) {
-    value val;
-    vm_gettlvar(v, normlhandle, &val);
-    if (MORPHO_ISOBJECT(val)) morpho_freeobject(val);
-    vm_settlvar(v, normlhandle, MORPHO_NIL);
+    int handles[] = { elementhandle, normlhandle, tangenthandle, gradfnhandle, -1 };
+    
+    for (int i=0; handles[i]>=0; i++) {
+        vm_settlvar(v, handles[i], MORPHO_NIL);
+    }
+}
+
+void functional_freetlvars(vm *v) {
+    int handles[] = { normlhandle, tangenthandle, gradfnhandle, -1 };
+    
+    for (int i=0; handles[i]>=0; i++) {
+        value val;
+        vm_gettlvar(v, handles[i], &val);
+        if (MORPHO_ISOBJECT(val)) morpho_freeobject(val);
+    }
+    
+    functional_cleartlvars(v);
 }
 
 /* ----------------------------------------------
@@ -3846,23 +3888,23 @@ bool integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int n
 /** Integrate a function over a line */
 bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     integralref iref = *(integralref *) ref;
-    double *x[2], size;
+    double *x[nv];
     bool success;
 
-    if (!functional_elementsize(v, mesh, MESH_GRADE_LINE, id, nv, vid, &size)) return false;
+    objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, id, nv, vid);
+    elref.iref = &iref;
+    elref.vertexposn = x;
+    
+    if (!functional_elementsize(v, mesh, MESH_GRADE_LINE, id, nv, vid, &elref.elementsize)) return false;
 
     iref.v=v;
     for (unsigned int i=0; i<nv; i++) {
         mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
     }
 
-    /* Set up tangent vector... (temporary code here) */
-    double tangentdata[mesh->dim], tnorm=0.0;
-    functional_vecsub(mesh->dim, x[1], x[0], tangentdata);
-    tnorm=functional_vecnorm(mesh->dim, tangentdata);
-    if (fabs(tnorm)>MORPHO_EPS) functional_vecscale(mesh->dim, 1.0/tnorm, tangentdata, tangentdata);
-    objectmatrix mtangent = MORPHO_STATICMATRIX(tangentdata, mesh->dim, 1);
-    vm_settlvar(v, tangenthandle, MORPHO_OBJECT(&mtangent));
+    /* Set up quantities */
+    functional_cleartlvars(v);
+    vm_settlvar(v, elementhandle, MORPHO_OBJECT(&elref));
 
     value q0[iref.nfields+1], q1[iref.nfields+1];
     value *q[2] = { q0, q1 };
@@ -3873,8 +3915,10 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     }
 
     success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_LINE, x, iref.nfields, q, &iref, out);
-    if (success) *out *=size;
+    if (success) *out *=elref.elementsize;
 
+    functional_freetlvars(v);
+    
     return success;
 }
 
@@ -3977,9 +4021,8 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     }
 
     /* Set up quantities */
+    functional_cleartlvars(v);
     vm_settlvar(v, elementhandle, MORPHO_OBJECT(&elref));
-    vm_settlvar(v, normlhandle, MORPHO_NIL);
-    vm_settlvar(v, tangenthandle, MORPHO_NIL);
 
     /* Evaluate gradient... (temporary code here) */
     /*objectfield *fld=MORPHO_GETFIELD(iref.fields[0]);
@@ -3999,7 +4042,7 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_AREA, x, iref.nfields, q, &iref, out);
     if (success) *out *= elref.elementsize;
 
-    functional_cleartlvars(v);
+    functional_freetlvars(v);
     
     return success;
 }

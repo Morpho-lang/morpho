@@ -3783,12 +3783,16 @@ void integral_evaluategradient(vm *v, value q, value *out) {
     if (!elref) UNREACHABLE("Element reference unavailable");
     
     /* Identify the field being referred to */
-    int ifld;
+    int ifld, xfld=-1;
     for (ifld=0; ifld<elref->iref->nfields; ifld++) {
         if (MORPHO_ISFIELD(q) && MORPHO_ISSAME(elref->iref->fields[ifld], q)) break;
-        else if (MORPHO_ISSAME(elref->qinterpolated[ifld], q)) break;
+        else if (MORPHO_ISSAME(elref->qinterpolated[ifld], q)) {
+            if (xfld>=0) { morpho_runtimeerror(v, INTEGRAL_AMBGSFLD); return; }
+            xfld=ifld;
+        }
         // @warning: This will fail if two fields happen to have the same value(!)
     }
+    if (xfld>=0) ifld = xfld;
     
     if (ifld>=elref->iref->nfields) {
         morpho_runtimeerror(v, INTEGRAL_FLD); return;
@@ -4283,6 +4287,7 @@ void functional_initialize(void) {
     morpho_defineerror(LINEINTEGRAL_ARGS, ERROR_HALT, LINEINTEGRAL_ARGS_MSG);
     morpho_defineerror(LINEINTEGRAL_NFLDS, ERROR_HALT, LINEINTEGRAL_NFLDS_MSG);
     morpho_defineerror(INTEGRAL_FLD, ERROR_HALT, INTEGRAL_FLD_MSG);
+    morpho_defineerror(INTEGRAL_AMBGSFLD, ERROR_HALT, INTEGRAL_AMBGSFLD_MSG);
     
     threadpool_init(&functional_pool, morpho_threadnumber());
     

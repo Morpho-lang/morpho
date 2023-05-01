@@ -92,6 +92,9 @@
 #define INTEGRAL_FLD                   "IntgrlFld"
 #define INTEGRAL_FLD_MSG               "Can't identify field."
 
+#define INTEGRAL_AMBGSFLD              "IntgrlAmbgsFld"
+#define INTEGRAL_AMBGSFLD_MSG          "Field reference is ambigious: call with a Field object."
+
 #define LINEINTEGRAL_NFLDS             "IntgrlNFlds"
 #define LINEINTEGRAL_NFLDS_MSG         "Incorrect number of Fields provided for integrand function."
 

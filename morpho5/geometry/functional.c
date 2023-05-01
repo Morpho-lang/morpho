@@ -3784,7 +3784,7 @@ void integral_evaluategradient(vm *v, value q, value *out) {
     objectfield *fld=NULL;
     
     if (MORPHO_ISFIELD(q)) {
-        fld=MORPHO_GETFIELD(q);
+        fld=MORPHO_GETFIELD(q); // @warning: This approach seems to have issues.
     } else { // Attempt to guess the original field
         int ifld;
         for (ifld=0; ifld<elref->iref->nfields; ifld++) {

@@ -1,0 +1,25 @@
+import constants
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+
+var m = mb.build() 
+
+var f = Field(m, fn (x,y) Matrix([x,y]))
+
+var r
+
+fn integrand(x, n) {
+    var g = grad(n) 
+    r=g
+    return 0
+}
+
+print AreaIntegral(integrand, f).total(m)
+// expect: 0
+
+print r 

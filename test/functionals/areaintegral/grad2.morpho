@@ -4,8 +4,8 @@ import meshtools
 var m = AreaMesh(fn (x,y) [x,y,0], 0..1:0.5, 0..1:0.5)
 
 var f = Field(m, fn (x,y,z) x)
-var g = Field(m, fn (x,y,z) 2*y)
-var h = Field(m, fn (x,y,z) x+y)
+var g = Field(m, fn (x,y,z) 5+2*y+0.001*x)
+var h = Field(m, fn (x,y,z) x+4*y)
 
 fn integrand(x, n) {
     var g = grad(n) 
@@ -18,8 +18,8 @@ print AreaIntegral(integrand, f).total(m)
 print AreaIntegral(fn (x, fl, gl) grad(g).norm(), f, g).total(m)
 // expect: 2
 
-print AreaIntegral(fn (x, fl, gl) grad(f).inner(grad(g)), f, g).total(m)
-// expect: 0
+print AreaIntegral(fn (x, fl, gl) grad(fl).inner(grad(g)), f, g).total(m)
+// expect: 0.001
 
-print AreaIntegral(fn (x, u, v) grad(g).inner(grad(h)), g, h).total(m)
-// expect: 2
+print AreaIntegral(fn (x, g, h) grad(g).inner(grad(h)), g, h).total(m)
+// expect: 8.001

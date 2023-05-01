@@ -3653,6 +3653,7 @@ typedef struct {
     double **vertexposn; // List of vertex positions
     double elementsize;  // Size of the element
     value *qinterpolated; // List of interpolated quantities (this allows us to identify operators on fields)
+    value *qgrad;        // Gradients
     integralref *iref;
 } objectintegralelementref;
 
@@ -3774,29 +3775,29 @@ static value integral_normal(vm *v, int nargs, value *args) {
  * Gradient
  * -------- */
 
-int gradfnhandle; // TL storage handle for gradients
+//int gradfnhandle; // TL storage handle for gradients
 
 // @warning: Only can evaluate one gradient at a time(!)
 void integral_evaluategradient(vm *v, value q, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);
     if (!elref) UNREACHABLE("Element reference unavailable");
     
-    objectfield *fld=NULL;
-    
-    if (MORPHO_ISFIELD(q)) {
-        fld=MORPHO_GETFIELD(q); // @warning: This approach seems to have issues.
-    } else { // Attempt to guess the original field
-        int ifld;
-        for (ifld=0; ifld<elref->iref->nfields; ifld++) {
-            if (MORPHO_ISSAME(elref->qinterpolated[ifld], q)) break;
-            // @warning: This will fail if two fields happen to have the same value(!)
-        }
-        if (ifld>=elref->iref->nfields) {
-            morpho_runtimeerror(v, INTEGRAL_FLD); return;
-        }
-        
-        fld = MORPHO_GETFIELD(elref->iref->fields[ifld]);
+    /* Identify the field being referred to */
+    int ifld;
+    for (ifld=0; ifld<elref->iref->nfields; ifld++) {
+        if (MORPHO_ISFIELD(q) && MORPHO_ISSAME(elref->iref->fields[ifld], q)) break;
+        else if (MORPHO_ISSAME(elref->qinterpolated[ifld], q)) break;
+        // @warning: This will fail if two fields happen to have the same value(!)
     }
+    
+    if (ifld>=elref->iref->nfields) {
+        morpho_runtimeerror(v, INTEGRAL_FLD); return;
+    }
+    
+    *out = elref->qgrad[ifld];
+    if (!MORPHO_ISNIL(*out)) return;
+    
+    objectfield *fld = MORPHO_GETFIELD(elref->iref->fields[ifld]);
     
     int dim = elref->mesh->dim;
     
@@ -3811,15 +3812,14 @@ void integral_evaluategradient(vm *v, value q, value *out) {
         return;
     }
     
-    vm_settlvar(v, gradfnhandle, MORPHO_OBJECT(mgrad));
+    elref->qgrad[ifld]=MORPHO_OBJECT(mgrad);
     *out = MORPHO_OBJECT(mgrad);
 }
 
 static value integral_gradfn(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     if (nargs==1) {
-        vm_gettlvar(v, gradfnhandle, &out);
-        if (MORPHO_ISNIL(out)) integral_evaluategradient(v, MORPHO_GETARG(args, 0), &out);
+        integral_evaluategradient(v, MORPHO_GETARG(args, 0), &out);
     } else morpho_runtimeerror(v, INTEGRAL_FLD);
     
     return out;
@@ -3831,7 +3831,7 @@ static value integral_gradfn(vm *v, int nargs, value *args) {
 
 /** Clears threadlocal storage */
 void integral_cleartlvars(vm *v) {
-    int handles[] = { elementhandle, normlhandle, tangenthandle, gradfnhandle, -1 };
+    int handles[] = { elementhandle, normlhandle, tangenthandle, -1 };
     
     for (int i=0; handles[i]>=0; i++) {
         vm_settlvar(v, handles[i], MORPHO_NIL);
@@ -3839,7 +3839,7 @@ void integral_cleartlvars(vm *v) {
 }
 
 void integral_freetlvars(vm *v) {
-    int handles[] = { normlhandle, tangenthandle, gradfnhandle, -1 };
+    int handles[] = { normlhandle, tangenthandle, -1 };
     
     for (int i=0; handles[i]>=0; i++) {
         value val;
@@ -3936,10 +3936,13 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     integralref iref = *(integralref *) ref;
     double *x[nv];
     bool success;
-
+    value qgrad[iref.nfields];
+    for (int i=0; i<iref.nfields; i++) qgrad[i] = MORPHO_NIL;
+    
     objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_LINE, id, nv, vid);
     elref.iref = &iref;
     elref.vertexposn = x;
+    elref.qgrad=qgrad;
     
     if (!functional_elementsize(v, mesh, MESH_GRADE_LINE, id, nv, vid, &elref.elementsize)) return false;
 
@@ -4055,9 +4058,13 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     double *x[nv];
     bool success;
     
+    value qgrad[iref.nfields];
+    for (int i=0; i<iref.nfields; i++) qgrad[i] = MORPHO_NIL;
+    
     objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_AREA, id, nv, vid);
     elref.iref = &iref;
-    elref.vertexposn = x; 
+    elref.vertexposn = x;
+    elref.qgrad=qgrad;
 
     if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &elref.elementsize)) return false;
 
@@ -4082,6 +4089,7 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     if (success) *out *= elref.elementsize;
 
     integral_freetlvars(v);
+    for (int i=0; i<iref.nfields; i++) morpho_freeobject(qgrad[i]);
     
     return success;
 }
@@ -4282,7 +4290,6 @@ void functional_initialize(void) {
     elementhandle=vm_addtlvar();
     tangenthandle=vm_addtlvar();
     normlhandle=vm_addtlvar();
-    gradfnhandle=vm_addtlvar();
 }
 
 void functional_finalize(void) {

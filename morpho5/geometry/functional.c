@@ -3788,9 +3788,9 @@ void integral_evaluategradient(vm *v, value q, value *out) {
         if (MORPHO_ISFIELD(q) && MORPHO_ISSAME(elref->iref->fields[ifld], q)) break;
         else if (MORPHO_ISSAME(elref->qinterpolated[ifld], q)) {
             if (xfld>=0) { morpho_runtimeerror(v, INTEGRAL_AMBGSFLD); return; }
+            // @warning: This will fail if two fields happen to have the same value(!)
             xfld=ifld;
         }
-        // @warning: This will fail if two fields happen to have the same value(!)
     }
     if (xfld>=0) ifld = xfld;
     
@@ -3804,20 +3804,43 @@ void integral_evaluategradient(vm *v, value q, value *out) {
     objectfield *fld = MORPHO_GETFIELD(elref->iref->fields[ifld]);
     
     int dim = elref->mesh->dim;
+    int ndof = fld->psize; // Number of degrees of freedom per element
+    double grad[ndof*dim]; // Storage for gradient
+    value gradx[dim]; // Components of the gradient
+    for (int i=0; i<dim; i++) gradx[i]=MORPHO_NIL;
     
-    objectmatrix *mgrad = object_newmatrix(dim, 1, false);
-    if (!mgrad) {
-        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-        return;
-    } 
-    
-    if (!gradsq_evaluategradient(elref->mesh, fld, elref->nv, elref->vid, mgrad->elements)) {
-        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    if (!gradsq_evaluategradient(elref->mesh, fld, elref->nv, elref->vid, grad)) {
+        UNREACHABLE("Couldn't evaluate gradient");
         return;
     }
+
+    if (ndof==1) {
+        objectmatrix *mgrad=object_newmatrix(dim, 1, false);
+        if (!mgrad) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return; }
+        memcpy(mgrad->elements, grad, sizeof(grad));
+        *out = MORPHO_OBJECT(mgrad);
+    } else {
+        for (int i=0; i<dim; i++) {
+            objectmatrix *mgrad=object_newmatrix(dim, 1, false);
+            if (!mgrad) goto integral_evaluategradient_cleanup;
+            memcpy(mgrad->elements, &grad[i*ndof], sizeof(double)*ndof);
+            gradx[i]=MORPHO_OBJECT(mgrad);
+        }
+        objectlist *glst = object_newlist(dim, gradx);
+        if (!glst) goto integral_evaluategradient_cleanup;
+        *out = MORPHO_OBJECT(glst);
+    }
     
-    elref->qgrad[ifld]=MORPHO_OBJECT(mgrad);
-    *out = MORPHO_OBJECT(mgrad);
+    elref->qgrad[ifld]=*out;
+    
+    return;
+
+integral_evaluategradient_cleanup:
+    
+    for (int i=0; i<dim; i++) if (MORPHO_ISOBJECT(gradx[i]))
+    morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    
+    return;
 }
 
 static value integral_gradfn(vm *v, int nargs, value *args) {

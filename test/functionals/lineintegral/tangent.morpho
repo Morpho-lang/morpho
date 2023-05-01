@@ -8,8 +8,9 @@ var nn = Field(m, fn (x,y,z) Matrix([1,0,0]))
 // A line integral with a element call
 var lc = LineIntegral(fn (x, n) (n.inner(tangent()))^2, nn)
 
-print lc.integrand(m)
-// expect: [ 0.00765645 0.0644846 0.156434 0.248384 0.305212 0.305212 0.248384 0.156434 0.0644846 0.00765645 ]
+var ans = Matrix([[ 0.00765645, 0.0644846, 0.156434, 0.248384, 0.305212, 0.305212, 0.248384, 0.156434, 0.0644846, 0.00765645 ]])
+print (lc.integrand(m)-ans).norm() < 1e-5 
+// expect: true
 
-print lc.total(m)
-// expect: 1.56434
+print abs(lc.total(m) - 1.56434) <1e-5
+// expect: true

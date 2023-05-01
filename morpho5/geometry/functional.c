@@ -4128,15 +4128,23 @@ MORPHO_ENDCLASS
 /** Integrate a function over a volume */
 bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     integralref iref = *(integralref *) ref;
-    double *x[4], size;
+    double *x[nv];
     bool success;
+    
+    objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_AREA, id, nv, vid);
+    elref.iref = &iref;
+    elref.vertexposn = x;
 
-    if (!functional_elementsize(v, mesh, MESH_GRADE_VOLUME, id, nv, vid, &size)) return false;
+    if (!functional_elementsize(v, mesh, MESH_GRADE_VOLUME, id, nv, vid, &elref.elementsize)) return false;
 
     iref.v=v;
     for (unsigned int i=0; i<nv; i++) {
         mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
     }
+    
+    /* Set up quantities */
+    integral_cleartlvars(v);
+    vm_settlvar(v, elementhandle, MORPHO_OBJECT(&elref));
 
     value q0[iref.nfields+1], q1[iref.nfields+1], q2[iref.nfields+1], q3[iref.nfields+1];
     value *q[4] = { q0, q1, q2, q3 };
@@ -4147,8 +4155,10 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
     }
 
     success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, q, &iref, out);
-    if (success) *out *=size;
+    if (success) *out *=elref.elementsize;
 
+    integral_freetlvars(v);
+    
     return success;
 }
 

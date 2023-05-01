@@ -3704,7 +3704,7 @@ int tangenthandle; // TL storage handle for tangent vectors
 /** Evaluate the tangent vector */
 void integral_evaluatetangent(vm *v, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);
-    if (!elref) UNREACHABLE("Element reference unavailable");
+    if (!elref) { morpho_runtimeerror(v, INTEGRAL_SPCLFN, TANGENT_FUNCTION); return; }
     
     int dim = elref->mesh->dim;
     
@@ -3741,7 +3741,7 @@ int normlhandle; // TL storage handle for normal vectors
 /** Evaluates the normal vector */
 void integral_evaluatenormal(vm *v, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);
-    if (!elref) UNREACHABLE("Element reference unavailable");
+    if (!elref) { morpho_runtimeerror(v, INTEGRAL_SPCLFN, NORMAL_FUNCTION); return; }
     
     int dim = elref->mesh->dim;
     double s0[dim], s1[dim];
@@ -3780,7 +3780,7 @@ static value integral_normal(vm *v, int nargs, value *args) {
 // @warning: Only can evaluate one gradient at a time(!)
 void integral_evaluategradient(vm *v, value q, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);
-    if (!elref) UNREACHABLE("Element reference unavailable");
+    if (!elref) { morpho_runtimeerror(v, INTEGRAL_SPCLFN, GRAD_FUNCTION); return; }
     
     /* Identify the field being referred to */
     int ifld, xfld=-1;
@@ -4311,6 +4311,7 @@ void functional_initialize(void) {
     morpho_defineerror(LINEINTEGRAL_NFLDS, ERROR_HALT, LINEINTEGRAL_NFLDS_MSG);
     morpho_defineerror(INTEGRAL_FLD, ERROR_HALT, INTEGRAL_FLD_MSG);
     morpho_defineerror(INTEGRAL_AMBGSFLD, ERROR_HALT, INTEGRAL_AMBGSFLD_MSG);
+    morpho_defineerror(INTEGRAL_SPCLFN, ERROR_HALT, INTEGRAL_SPCLFN_MSG);
     
     threadpool_init(&functional_pool, morpho_threadnumber());
     

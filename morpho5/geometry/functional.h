@@ -95,6 +95,9 @@
 #define INTEGRAL_AMBGSFLD              "IntgrlAmbgsFld"
 #define INTEGRAL_AMBGSFLD_MSG          "Field reference is ambigious: call with a Field object."
 
+#define INTEGRAL_SPCLFN                "IntgrlSpclFn"
+#define INTEGRAL_SPCLFN_MSG            "Special function '%s' must not be called outside of an Integral."
+
 #define LINEINTEGRAL_NFLDS             "IntgrlNFlds"
 #define LINEINTEGRAL_NFLDS_MSG         "Incorrect number of Fields provided for integrand function."
 

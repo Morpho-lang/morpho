@@ -3823,8 +3823,10 @@ void integral_evaluategradient(vm *v, value q, value *out) {
         memcpy(mgrad->elements, grad, sizeof(grad));
         *out = MORPHO_OBJECT(mgrad);
     } else {
+        if (!MORPHO_ISMATRIX(fld->prototype)) UNREACHABLE("Field type not supported in grad");
+        objectmatrix *proto = MORPHO_GETMATRIX(fld->prototype);
         for (int i=0; i<dim; i++) {
-            objectmatrix *mgrad=object_newmatrix(dim, 1, false);
+            objectmatrix *mgrad=object_newmatrix(proto->nrows, proto->ncols, false); // Should copy prototype dimensions!
             if (!mgrad) goto integral_evaluategradient_cleanup;
             memcpy(mgrad->elements, &grad[i*ndof], sizeof(double)*ndof);
             gradx[i]=MORPHO_OBJECT(mgrad);

@@ -3775,8 +3775,6 @@ static value integral_normal(vm *v, int nargs, value *args) {
  * Gradient
  * -------- */
 
-//int gradfnhandle; // TL storage handle for gradients
-
 // @warning: Only can evaluate one gradient at a time(!)
 void integral_evaluategradient(vm *v, value q, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);

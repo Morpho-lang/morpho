@@ -3626,12 +3626,15 @@ MORPHO_ENDCLASS
  * Integrals
  * ********************************************************************** */
 
-/** Integral references - potentially shared across threads */
+/** Integral references
+ @brief Used to pass through the functional element mapping system.
+ A thread local copy is made with cloned fields */
 
 typedef struct {
     value integrand;
     int nfields;
     value *fields;
+    value *originalfields; // Original fields
     vm *v;
 } integralref;
 
@@ -3775,7 +3778,6 @@ static value integral_normal(vm *v, int nargs, value *args) {
  * Gradient
  * -------- */
 
-// @warning: Only can evaluate one gradient at a time(!)
 void integral_evaluategradient(vm *v, value q, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);
     if (!elref) { morpho_runtimeerror(v, INTEGRAL_SPCLFN, GRAD_FUNCTION); return; }
@@ -3783,7 +3785,7 @@ void integral_evaluategradient(vm *v, value q, value *out) {
     /* Identify the field being referred to */
     int ifld, xfld=-1;
     for (ifld=0; ifld<elref->iref->nfields; ifld++) {
-        if (MORPHO_ISFIELD(q) && MORPHO_ISSAME(elref->iref->fields[ifld], q)) break;
+        if (MORPHO_ISFIELD(q) && MORPHO_ISSAME(elref->iref->originalfields[ifld], q)) break;
         else if (MORPHO_ISSAME(elref->qinterpolated[ifld], q)) {
             if (xfld>=0) { morpho_runtimeerror(v, INTEGRAL_AMBGSFLD); return; }
             // @warning: This will fail if two fields happen to have the same value(!)
@@ -3792,6 +3794,7 @@ void integral_evaluategradient(vm *v, value q, value *out) {
     }
     if (xfld>=0) ifld = xfld;
     
+    // Raise an error if we couldn't find it
     if (ifld>=elref->iref->nfields) {
         morpho_runtimeerror(v, INTEGRAL_FLD); return;
     }
@@ -3801,6 +3804,7 @@ void integral_evaluategradient(vm *v, value q, value *out) {
     
     objectfield *fld = MORPHO_GETFIELD(elref->iref->fields[ifld]);
     
+    // Evaluate the gradient
     int dim = elref->mesh->dim;
     int ndof = fld->psize; // Number of degrees of freedom per element
     double grad[ndof*dim]; // Storage for gradient
@@ -3812,6 +3816,7 @@ void integral_evaluategradient(vm *v, value q, value *out) {
         return;
     }
 
+    // Copy into a list or matrix as appropriate
     if (ndof==1) {
         objectmatrix *mgrad=object_newmatrix(dim, 1, false);
         if (!mgrad) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return; }
@@ -3829,6 +3834,7 @@ void integral_evaluategradient(vm *v, value q, value *out) {
         *out = MORPHO_OBJECT(glst);
     }
     
+    // Store for further use
     elref->qgrad[ifld]=*out;
     
     return;
@@ -3897,6 +3903,7 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
         objectlist *list = MORPHO_GETLIST(field);
         ref->nfields=list->val.count;
         ref->fields=list->val.data;
+        ref->originalfields=list->val.data;
         
         for (int i=0; i<ref->nfields; i++) {
             if (MORPHO_ISFIELD(ref->fields[i])) {
@@ -3915,6 +3922,7 @@ void *integral_cloneref(void *ref, objectfield *field, objectfield *sub) {
     
     if (clone) {
         *clone = *nref;
+        clone->originalfields=nref->originalfields;
         clone->fields=MORPHO_MALLOC(sizeof(value)*clone->nfields);
         if (!clone->fields) { MORPHO_FREE(clone); return NULL; }
         

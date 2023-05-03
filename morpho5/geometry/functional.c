@@ -3828,7 +3828,8 @@ void integral_evaluategradient(vm *v, value q, value *out) {
         for (int i=0; i<dim; i++) {
             objectmatrix *mgrad=object_newmatrix(proto->nrows, proto->ncols, false); // Should copy prototype dimensions!
             if (!mgrad) goto integral_evaluategradient_cleanup;
-            memcpy(mgrad->elements, &grad[i*ndof], sizeof(double)*ndof);
+            //memcpy(mgrad->elements, &grad[i*ndof], sizeof(double)*ndof);
+            for (int k=0; k<ndof; k++) mgrad->elements[k]=grad[k*dim+i];
             gradx[i]=MORPHO_OBJECT(mgrad);
         }
         objectlist *glst = object_newlist(dim, gradx);

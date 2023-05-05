@@ -48,6 +48,7 @@
 #define FUNCTIONAL_GRADIENT_METHOD     "gradient"
 #define FUNCTIONAL_FIELDGRADIENT_METHOD     "fieldgradient"
 #define FUNCTIONAL_HESSIAN_METHOD      "hessian"
+#define FUNCTIONAL_INTEGRANDAT_METHOD      "integrandat"
 
 /* Special functions that can be used in integrands */
 #define TANGENT_FUNCTION               "tangent"
@@ -160,6 +161,7 @@ typedef struct s_functional_mapinfo {
     objectselection *sel; // Selection, if any
     objectfield *field; // Field, if any
     grade g; // Grade to use
+    elementid id; // Element id at which to evaluate the integrand
     functional_integrand *integrand; // Integrand function
     functional_gradient *grad; // Gradient
     functional_dependencies *dependencies; // Dependencies
@@ -177,6 +179,7 @@ bool functional_containsvertex(int nv, int *vid, elementid id);
 
 bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out);
+bool functional_mapintegrandat(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value *out);

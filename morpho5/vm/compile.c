@@ -912,6 +912,7 @@ static globalindx compiler_addglobal(compiler *c, syntaxtreenode *node, value sy
         if (dictionary_insert(&c->globals, object_clonestring(symbol), MORPHO_INTEGER(c->out->nglobals))) {
             indx=c->out->nglobals;
             c->out->nglobals++;
+            debug_setglobal(&c->out->annotations, indx, symbol);
         }
     }
 

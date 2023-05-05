@@ -76,6 +76,14 @@ void debug_setreg(varray_debugannotation *list, indx reg, value symbol) {
     debug_addannotation(list, &ann);
 }
 
+/** Associates a global with a symbol */
+void debug_setglobal(varray_debugannotation *list, indx gindx, value symbol) {
+    if (!MORPHO_ISSTRING(symbol)) return;
+    value sym = object_clonestring(symbol);
+    debugannotation ann = { .type = DEBUG_GLOBAL, .content.global.gindx = gindx, .content.global.symbol = sym };
+    debug_addannotation(list, &ann);
+}
+
 /** Uses information from a syntaxtreenode to associate a sequence of instructions with source */
 void debug_addnode(varray_debugannotation *list, syntaxtreenode *node) {
     if (!node) return; 
@@ -93,14 +101,17 @@ void debug_addnode(varray_debugannotation *list, syntaxtreenode *node) {
 /** Clear debugging list, freeing attached info */
 void debug_clearannotationlist(varray_debugannotation *list) {
     for (unsigned int j=0; j<list->count; j++) {
+        value sym=MORPHO_NIL;
         switch (list->data[j].type) {
-            case DEBUG_REGISTER: {
-                value sym=list->data[j].content.reg.symbol;
-                if (MORPHO_ISOBJECT(sym)) object_free(MORPHO_GETOBJECT(sym));
-            }
+            case DEBUG_REGISTER:
+                sym = list->data[j].content.reg.symbol;
+                break;
+            case DEBUG_GLOBAL:
+                sym=list->data[j].content.global.symbol;
                 break;
             default: break;
         }
+        if (MORPHO_ISOBJECT(sym)) object_free(MORPHO_GETOBJECT(sym));
     }
     varray_debugannotationclear(list);
 }
@@ -496,6 +507,10 @@ void debug_showannotations(varray_debugannotation *list) {
                 break;
             case DEBUG_REGISTER:
                 printf("Register: %ti ", ann->content.reg.reg);
+                morpho_printvalue(ann->content.reg.symbol);
+                break;
+            case DEBUG_GLOBAL:
+                printf("Global: %ti ", ann->content.global.gindx);
                 morpho_printvalue(ann->content.reg.symbol);
                 break;
         }
@@ -1044,6 +1059,7 @@ void debug_showglobals(vm *v) {
 bool debug_findsymbol(vm *v, debugtoken *tok, callframe **frame, value *symbol, value **val) {
     value matchstr = object_stringfromcstring(tok->start, tok->length);
     
+    /* Check back through callframes */
     for (callframe *f=v->fp; f>=v->frame; f--) {
         value symbols[f->function->nregs];
         instructionindx indx = f->pc-v->current->code.data;
@@ -1058,6 +1074,19 @@ bool debug_findsymbol(vm *v, debugtoken *tok, callframe **frame, value *symbol, 
                 morpho_freeobject(matchstr);
                 return true;
             }
+        }
+    }
+    
+    /* Otherwise is it a global? */
+    for (unsigned int j=0; j<v->current->annotations.count; j++) {
+        debugannotation *ann = &v->current->annotations.data[j];
+        if (ann->type==DEBUG_GLOBAL &&
+            MORPHO_ISEQUAL(ann->content.global.symbol, matchstr)) {
+            if (frame) *frame = v->frame;
+            if (symbol) *symbol = ann->content.global.symbol;
+            if (val) *val = &v->globals.data[ann->content.global.gindx];
+            morpho_freeobject(matchstr);
+            return true;
         }
     }
     
@@ -1082,7 +1111,7 @@ bool debug_printsymbol(vm *v, debugtoken *tok) {
     }
     if (!MORPHO_ISNIL(frame->function->name)) {
         morpho_printvalue(frame->function->name);
-    } else printf("anonymous");
+    } else if (frame!=v->frame) printf("anonymous");
     printf(") ");
     
     printf("= ");

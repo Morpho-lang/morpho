@@ -7,3 +7,5 @@ print foo.baz = "baz value" // expect: baz value
 
 print foo.bar // expect: bar value
 print foo.baz // expect: baz value
+
+@

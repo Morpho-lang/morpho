@@ -148,6 +148,7 @@ typedef struct {
         DEBUG_CLASS, // Set the current class
         DEBUG_MODULE, // Set the current module
         DEBUG_REGISTER, // Associates a symbol with a register
+        DEBUG_GLOBAL, // Associates a symbol with a global
         DEBUG_ELEMENT, // Associates a sequence of instructions with a code element
         DEBUG_PUSHERR, // Push an error handler
         DEBUG_POPERR // Pop an error handler
@@ -169,6 +170,10 @@ typedef struct {
             indx reg;
             value symbol;
         } reg;
+        struct {
+            indx gindx;
+            value symbol;
+        } global;
         struct {
             int ninstr;
             int line;

@@ -4,4 +4,4 @@ var m = LineMesh(fn(t) [t^2, 0, 0], 0..10)
 
 var l = Length()
 
-print l.integrandat(m, 5) // expect: 11
+print l.integrandForElement(m, 5) // expect: 11

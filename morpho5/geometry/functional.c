@@ -1036,7 +1036,7 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
  * @param[in] info - map info
  * @param[out] out - a matrix of integrand values
  * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_mapintegrandat(vm *v, functional_mapinfo *info, value *out) {
+bool functional_mapintegrandforelement(vm *v, functional_mapinfo *info, value *out) {
     objectmesh *mesh = info->mesh;
     objectselection *sel = info->sel;
     grade g = info->g;
@@ -1533,14 +1533,14 @@ value Length_hessian(vm *v, int nargs, value *args) {
 }
 
 /** Evaluate the integrand at a given element */
-value Length_integrandat(vm *v, int nargs, value *args) {
+value Length_integrandForElement(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     value out=MORPHO_NIL;
     
     if (functional_validateargs(v, nargs, args, &info)) {
         info.g=MESH_GRADE_LINE;
         info.integrand=length_integrand;
-        functional_mapintegrandat(v, &info, &out);
+        functional_mapintegrandforelement(v, &info, &out);
     }
     // if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
 
@@ -1558,7 +1558,7 @@ MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Length_integrand, BUILTIN_FLAGSEMPTY)
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Length_gradient, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Length_total, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Length_hessian, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_INTEGRANDAT_METHOD, Length_integrandat, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONAL_INTEGRANDFORELEMENT_METHOD, Length_integrandForElement, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -1624,14 +1624,14 @@ value AreaEnclosed_hessian(vm *v, int nargs, value *args) {
 }
 
 /** Evaluate the integrand at a given element */
-value AreaEnclosed_integrandat(vm *v, int nargs, value *args) {
+value AreaEnclosed_integrandForElement(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     value out=MORPHO_NIL;
     
     if (functional_validateargs(v, nargs, args, &info)) {
         info.g=MESH_GRADE_LINE;
         info.integrand=areaenclosed_integrand;
-        functional_mapintegrandat(v, &info, &out);
+        functional_mapintegrandforelement(v, &info, &out);
     }
     // if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
 
@@ -1651,7 +1651,7 @@ MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, AreaEnclosed_integrand, BUILTIN_FLAGS
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, AreaEnclosed_gradient, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, AreaEnclosed_hessian, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, AreaEnclosed_total, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_INTEGRANDAT_METHOD, AreaEnclosed_integrandat, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONAL_INTEGRANDFORELEMENT_METHOD, AreaEnclosed_integrandForElement, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------

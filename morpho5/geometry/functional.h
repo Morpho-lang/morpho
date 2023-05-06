@@ -48,7 +48,7 @@
 #define FUNCTIONAL_GRADIENT_METHOD     "gradient"
 #define FUNCTIONAL_FIELDGRADIENT_METHOD     "fieldgradient"
 #define FUNCTIONAL_HESSIAN_METHOD      "hessian"
-#define FUNCTIONAL_INTEGRANDAT_METHOD      "integrandat"
+#define FUNCTIONAL_INTEGRANDFORELEMENT_METHOD      "integrandForElement"
 
 /* Special functions that can be used in integrands */
 #define TANGENT_FUNCTION               "tangent"

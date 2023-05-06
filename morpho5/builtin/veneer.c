@@ -2038,9 +2038,9 @@ value Error_throw(vm *v, int nargs, value *args) {
     value tag=MORPHO_NIL, msg=MORPHO_NIL;
 
     if (slf) {
-        objectinstance_getproperty(slf, error_tagproperty, &tag);
+        objectinstance_getpropertyinterned(slf, error_tagproperty, &tag);
         if (nargs==0) {
-            objectinstance_getproperty(slf, error_messageproperty, &msg);
+            objectinstance_getpropertyinterned(slf, error_messageproperty, &msg);
         } else {
             msg=MORPHO_GETARG(args, 0);
         }

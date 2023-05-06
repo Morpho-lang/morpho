@@ -1830,7 +1830,7 @@ value ScalarPotential_integrand(vm *v, int nargs, value *args) {
 
     if (functional_validateargs(v, nargs, args, &info)) {
         value fn;
-        if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
+        if (objectinstance_getpropertyinterned(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
             info.g = MESH_GRADE_VERTEX;
             info.integrand = scalarpotential_integrand;
             info.ref = &fn;
@@ -1851,18 +1851,18 @@ value ScalarPotential_gradient(vm *v, int nargs, value *args) {
     if (functional_validateargs(v, nargs, args, &info)) {
         value fn;
         // Check if a gradient function is available
-        if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_gradfunctionproperty, &fn)) {
+        if (objectinstance_getpropertyinterned(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_gradfunctionproperty, &fn)) {
             info.g = MESH_GRADE_VERTEX;
             info.grad = scalarpotential_gradient;
             info.ref = &fn;
             if (MORPHO_ISCALLABLE(fn)) {
                 functional_mapgradient(v, &info, &out);
             } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
-        } else if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
+        } else if (objectinstance_getpropertyinterned(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
             // Otherwise try to use the regular scalar function
 
             value fn;
-            if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
+            if (objectinstance_getpropertyinterned(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
                 info.g = MESH_GRADE_VERTEX;
                 info.integrand = scalarpotential_integrand;
                 info.ref = &fn;
@@ -1885,7 +1885,7 @@ value ScalarPotential_total(vm *v, int nargs, value *args) {
 
     if (functional_validateargs(v, nargs, args, &info)) {
         value fn;
-        if (objectinstance_getproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
+        if (objectinstance_getpropertyinterned(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
             info.g = MESH_GRADE_VERTEX;
             info.integrand = scalarpotential_integrand;
             info.ref = &fn;
@@ -1974,10 +1974,10 @@ bool linearelasticity_prepareref(objectinstance *self, linearelasticityref *ref)
     value grade=MORPHO_NIL;
     value poisson=MORPHO_NIL;
 
-    if (objectinstance_getproperty(self, linearelasticity_referenceproperty, &refmesh) &&
-        objectinstance_getproperty(self, functional_gradeproperty, &grade) &&
+    if (objectinstance_getpropertyinterned(self, linearelasticity_referenceproperty, &refmesh) &&
+        objectinstance_getpropertyinterned(self, functional_gradeproperty, &grade) &&
         MORPHO_ISINTEGER(grade) &&
-        objectinstance_getproperty(self, linearelasticity_poissonproperty, &poisson) &&
+        objectinstance_getpropertyinterned(self, linearelasticity_poissonproperty, &poisson) &&
         MORPHO_ISNUMBER(poisson)) {
         ref->refmesh=MORPHO_GETMESH(refmesh);
         ref->grade=MORPHO_GETINTEGERVALUE(grade);
@@ -2099,20 +2099,20 @@ bool hydrogel_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
     value refmesh=MORPHO_NIL, grade=MORPHO_NIL, phi0=MORPHO_NIL;
     value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL, d=MORPHO_NIL, phiref=MORPHO_NIL;
 
-    if (objectinstance_getproperty(self, linearelasticity_referenceproperty, &refmesh) &&
-        objectinstance_getproperty(self, functional_gradeproperty, &grade) &&
+    if (objectinstance_getpropertyinterned(self, linearelasticity_referenceproperty, &refmesh) &&
+        objectinstance_getpropertyinterned(self, functional_gradeproperty, &grade) &&
         MORPHO_ISINTEGER(grade) &&
-        objectinstance_getproperty(self, hydrogel_aproperty, &a) &&
+        objectinstance_getpropertyinterned(self, hydrogel_aproperty, &a) &&
         MORPHO_ISNUMBER(a) &&
-        objectinstance_getproperty(self, hydrogel_bproperty, &b) &&
+        objectinstance_getpropertyinterned(self, hydrogel_bproperty, &b) &&
         MORPHO_ISNUMBER(b) &&
-        objectinstance_getproperty(self, hydrogel_cproperty, &c) &&
+        objectinstance_getpropertyinterned(self, hydrogel_cproperty, &c) &&
         MORPHO_ISNUMBER(c) &&
-        objectinstance_getproperty(self, hydrogel_dproperty, &d) &&
+        objectinstance_getpropertyinterned(self, hydrogel_dproperty, &d) &&
         MORPHO_ISNUMBER(d) &&
-        objectinstance_getproperty(self, hydrogel_phirefproperty, &phiref) &&
+        objectinstance_getpropertyinterned(self, hydrogel_phirefproperty, &phiref) &&
         MORPHO_ISNUMBER(phiref) &&
-        objectinstance_getproperty(self, hydrogel_phi0property, &phi0) &&
+        objectinstance_getpropertyinterned(self, hydrogel_phi0property, &phi0) &&
         (MORPHO_ISNUMBER(phi0) || MORPHO_ISFIELD(phi0))) {
         ref->refmesh=MORPHO_GETMESH(refmesh);
         ref->grade=MORPHO_GETINTEGERVALUE(grade);
@@ -2308,7 +2308,7 @@ bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
     value grade=MORPHO_NIL;
     value weight=MORPHO_NIL;
 
-    if (objectinstance_getproperty(self, functional_gradeproperty, &grade) &&
+    if (objectinstance_getpropertyinterned(self, functional_gradeproperty, &grade) &&
         MORPHO_ISINTEGER(grade) ) {
         ref->grade=MORPHO_GETINTEGERVALUE(grade);
         ref->weight=NULL;
@@ -2322,7 +2322,7 @@ bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
         if (ref->vtoel && ref->eltov) success=true;
     }
 
-    if (objectinstance_getproperty(self, equielement_weightproperty, &weight) &&
+    if (objectinstance_getpropertyinterned(self, equielement_weightproperty, &weight) &&
         MORPHO_ISMATRIX(weight) ) {
         ref->weight=MORPHO_GETMATRIX(weight);
         if (ref->weight) {
@@ -2480,7 +2480,7 @@ bool curvature_prepareref(objectinstance *self, objectmesh *mesh, grade g, objec
 
     if (success) {
         value integrandonly=MORPHO_FALSE;
-        objectinstance_getproperty(self, curvature_integrandonlyproperty, &integrandonly);
+        objectinstance_getpropertyinterned(self, curvature_integrandonlyproperty, &integrandonly);
         ref->integrandonly=MORPHO_ISTRUE(integrandonly);
     }
 
@@ -2749,11 +2749,11 @@ bool areacurvature_prepareref(objectinstance *self, objectmesh *mesh, grade g, o
 
     if (success) {
         value integrandonly=MORPHO_FALSE;
-        objectinstance_getproperty(self, curvature_integrandonlyproperty, &integrandonly);
+        objectinstance_getpropertyinterned(self, curvature_integrandonlyproperty, &integrandonly);
         ref->integrandonly=MORPHO_ISTRUE(integrandonly);
 
         value geodesic=MORPHO_FALSE;
-        objectinstance_getproperty(self, curvature_geodesicproperty, &geodesic);
+        objectinstance_getpropertyinterned(self, curvature_geodesicproperty, &geodesic);
         ref->geodesic=MORPHO_ISTRUE(geodesic);
     }
 
@@ -3075,13 +3075,13 @@ bool gradsq_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectse
     bool success=false, grdset=false;
     value field=MORPHO_NIL, grd=MORPHO_NIL;
 
-    if (objectinstance_getproperty(self, functional_fieldproperty, &field) &&
+    if (objectinstance_getpropertyinterned(self, functional_fieldproperty, &field) &&
         MORPHO_ISFIELD(field)) {
         ref->field=MORPHO_GETFIELD(field);
         success=true;
     }
 
-    if (objectinstance_getproperty(self, functional_gradeproperty, &grd) &&
+    if (objectinstance_getpropertyinterned(self, functional_gradeproperty, &grd) &&
         MORPHO_ISINTEGER(grd)) {
         ref->grade=MORPHO_GETINTEGERVALUE(grd);
         if (ref->grade>0) grdset=true;
@@ -3204,26 +3204,26 @@ bool nematic_prepareref(objectinstance *self, objectmesh *mesh, grade g, objects
     ref->ksplay=1.0; ref->ktwist=1.0; ref->kbend=1.0; ref->pitch=0.0;
     ref->haspitch=false;
 
-    if (objectinstance_getproperty(self, functional_fieldproperty, &field) &&
+    if (objectinstance_getpropertyinterned(self, functional_fieldproperty, &field) &&
         MORPHO_ISFIELD(field)) {
         ref->field=MORPHO_GETFIELD(field);
         success=true;
     }
-    if (objectinstance_getproperty(self, nematic_ksplayproperty, &val) && MORPHO_ISNUMBER(val)) {
+    if (objectinstance_getpropertyinterned(self, nematic_ksplayproperty, &val) && MORPHO_ISNUMBER(val)) {
         morpho_valuetofloat(val, &ref->ksplay);
     }
-    if (objectinstance_getproperty(self, nematic_ktwistproperty, &val) && MORPHO_ISNUMBER(val)) {
+    if (objectinstance_getpropertyinterned(self, nematic_ktwistproperty, &val) && MORPHO_ISNUMBER(val)) {
         morpho_valuetofloat(val, &ref->ktwist);
     }
-    if (objectinstance_getproperty(self, nematic_kbendproperty, &val) && MORPHO_ISNUMBER(val)) {
+    if (objectinstance_getpropertyinterned(self, nematic_kbendproperty, &val) && MORPHO_ISNUMBER(val)) {
         morpho_valuetofloat(val, &ref->kbend);
     }
-    if (objectinstance_getproperty(self, nematic_pitchproperty, &val) && MORPHO_ISNUMBER(val)) {
+    if (objectinstance_getpropertyinterned(self, nematic_pitchproperty, &val) && MORPHO_ISNUMBER(val)) {
         morpho_valuetofloat(val, &ref->pitch);
         ref->haspitch=true;
     }
 
-    if (objectinstance_getproperty(self, functional_gradeproperty, &grd) &&
+    if (objectinstance_getpropertyinterned(self, functional_gradeproperty, &grd) &&
         MORPHO_ISINTEGER(grd)) {
         ref->grade=MORPHO_GETINTEGERVALUE(grd);
         if (ref->grade>0) grdset=true;
@@ -3441,7 +3441,7 @@ bool nematicelectric_prepareref(objectinstance *self, objectmesh *mesh, grade g,
     ref->field=MORPHO_NIL;
     value fieldlist=MORPHO_NIL, grd=MORPHO_NIL;
 
-    if (objectinstance_getproperty(self, functional_fieldproperty, &fieldlist) &&
+    if (objectinstance_getpropertyinterned(self, functional_fieldproperty, &fieldlist) &&
         MORPHO_ISLIST(fieldlist)) {
         objectlist *lst = MORPHO_GETLIST(fieldlist);
         value director = MORPHO_NIL;
@@ -3453,7 +3453,7 @@ bool nematicelectric_prepareref(objectinstance *self, objectmesh *mesh, grade g,
         if (MORPHO_ISFIELD(ref->field) || MORPHO_ISMATRIX(ref->field)) success=true;
     }
 
-    if (objectinstance_getproperty(self, functional_gradeproperty, &grd) &&
+    if (objectinstance_getpropertyinterned(self, functional_gradeproperty, &grd) &&
         MORPHO_ISINTEGER(grd)) {
         ref->grade=MORPHO_GETINTEGERVALUE(grd);
         if (ref->grade>0) grdset=true;
@@ -3673,12 +3673,12 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
     ref->v=NULL;
     ref->nfields=0;
 
-    if (objectinstance_getproperty(self, scalarpotential_functionproperty, &func) &&
+    if (objectinstance_getpropertyinterned(self, scalarpotential_functionproperty, &func) &&
         MORPHO_ISCALLABLE(func)) {
         ref->integrand=func;
         success=true;
     }
-    if (objectinstance_getproperty(self, functional_fieldproperty, &field) &&
+    if (objectinstance_getpropertyinterned(self, functional_fieldproperty, &field) &&
         MORPHO_ISLIST(field)) {
         objectlist *list = MORPHO_GETLIST(field);
         ref->nfields=list->val.count;

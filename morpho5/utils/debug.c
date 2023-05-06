@@ -1032,7 +1032,6 @@ void debug_showsymbols(vm *v) {
                 printf("\n");
             }
         }
-        
     }
 }
 
@@ -1094,16 +1093,25 @@ bool debug_findsymbol(vm *v, debugtoken *tok, callframe **frame, value *symbol, 
     return false;
 }
 
-/** Prints a specified symbol */
-bool debug_printsymbol(vm *v, debugtoken *tok) {
-    value symbol, *val;
-    callframe *frame;
-    if (!debug_findsymbol(v, tok, &frame, &symbol, &val)) return false;
-    
+/** Prints a value, looking up the print method if necessary */
+bool debug_printvalue(vm *v, value val) {
     objectstring prntlabel = MORPHO_STATICSTRING(MORPHO_PRINT_METHOD);
-    morpho_printvalue(symbol);
     
-    printf(" (in %s", (frame==v->frame ? "global" : ""));
+    if (MORPHO_ISOBJECT(val)) {
+        value printmethod, out;
+        if (morpho_lookupmethod(val, MORPHO_OBJECT(&prntlabel), &printmethod)) {
+            return morpho_invoke(v, val, printmethod, 0, NULL, &out);
+        }
+    } else {
+        morpho_printvalue(val);
+    }
+    
+    return true;
+}
+
+/** Prints the location associated with the current context */
+bool debug_printlocation(vm *v, callframe *frame) {
+    printf("(in %s", (frame==v->frame ? "global" : ""));
     if (frame->function->klass &&
         !MORPHO_ISNIL(frame->function->klass->name)) {
         morpho_printvalue(frame->function->klass->name);
@@ -1112,18 +1120,21 @@ bool debug_printsymbol(vm *v, debugtoken *tok) {
     if (!MORPHO_ISNIL(frame->function->name)) {
         morpho_printvalue(frame->function->name);
     } else if (frame!=v->frame) printf("anonymous");
-    printf(") ");
-    
-    printf("= ");
+    printf(")");
+    return true;
+}
 
-    if (MORPHO_ISOBJECT(*val)) {
-        value printmethod, out;
-        if (morpho_lookupmethod(*val, MORPHO_OBJECT(&prntlabel), &printmethod)) {
-            morpho_invoke(v, *val, printmethod, 0, NULL, &out);
-        }
-    } else {
-        morpho_printvalue(*val);
+/** Prints a specified symbol */
+bool debug_printsymbol(vm *v, value symbol, value property, callframe *frame, value val) {
+    morpho_printvalue(symbol);
+    if (MORPHO_ISSTRING(property)) {
+        printf(".");
+        morpho_printvalue(property);
     }
+    printf(" ");
+    debug_printlocation(v, frame);
+    printf(" = ");
+    debug_printvalue(v, val);
     printf("\n");
     
     return true;
@@ -1306,13 +1317,50 @@ void debugger_list(vm *v) {
 /** Prints a symbol or all symbols in view */
 void debugger_print(vm *v, debugger *debug, debuglexer *lex) {
     debugtoken tok;
+    value symbol, val, property=MORPHO_NIL;
+    callframe *frame;
+    
     if (debuglex(lex, &tok, false) &&
         tok.type==DEBUGTOKEN_SYMBOL) {
-        tok.start[tok.length]='\0';
-        if (!debug_printsymbol(v, &tok)) printf("Symbol '%s' not found.\n", tok.start);
+        char label[tok.length+1]; // Copy symbol name so we can print it in error messages
+        strncpy(label, tok.start, tok.length);
+        label[tok.length]='\0';
+        
+        value *valp;
+        if (!debug_findsymbol(v, &tok, &frame, &symbol, &valp)) {
+            printf("Symbol '%s' not found.\n", label);
+            goto debugger_print_cleanup;
+        }
+        val = *valp;
+        
+        // Is this a property lookup request?
+        if (debuglex(lex, &tok, false) &&
+            tok.type==DEBUGTOKEN_DOT &&
+            debuglex(lex, &tok, false) && // Parse property name
+            tok.type==DEBUGTOKEN_SYMBOL) {
+            if (MORPHO_ISINSTANCE(val)) {
+                property=object_stringfromcstring(tok.start, tok.length);
+                objectinstance *obj = MORPHO_GETINSTANCE(val);
+                
+                if (!objectinstance_getproperty(obj, property, &val)) {
+                    printf("Symbol '%s' lacks property '", label);
+                    morpho_printvalue(property);
+                    printf("'\n");
+                    goto debugger_print_cleanup;
+                }
+            } else {
+                printf("Symbol '%s' is not an instance.\n", label);
+                goto debugger_print_cleanup;
+            }
+        }
+            
+        debug_printsymbol(v, symbol, property, frame, val);
     } else {
         debug_showsymbols(v);
     }
+    
+debugger_print_cleanup:
+    if (MORPHO_ISOBJECT(property)) morpho_freeobject(property);
 }
 
 /** Sets a variable or register */

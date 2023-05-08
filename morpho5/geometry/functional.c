@@ -3811,7 +3811,13 @@ void integral_evaluategradient(vm *v, value q, value *out) {
     value gradx[dim]; // Components of the gradient
     for (int i=0; i<dim; i++) gradx[i]=MORPHO_NIL;
     
-    if (!gradsq_evaluategradient(elref->mesh, fld, elref->nv, elref->vid, grad)) {
+    bool gsucc = false;
+    
+    // Evaluate correct gradient
+    if (elref->g==2) gsucc=gradsq_evaluategradient(elref->mesh, fld, elref->nv, elref->vid, grad);
+    else if (elref->g==3) gsucc=gradsq_evaluategradient3d(elref->mesh, fld, elref->nv, elref->vid, grad);
+    
+    if (!gsucc) {
         UNREACHABLE("Couldn't evaluate gradient");
         return;
     }
@@ -4175,9 +4181,13 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
     double *x[nv];
     bool success;
     
-    objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_AREA, id, nv, vid);
+    value qgrad[iref.nfields];
+    for (int i=0; i<iref.nfields; i++) qgrad[i] = MORPHO_NIL;
+    
+    objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_VOLUME, id, nv, vid);
     elref.iref = &iref;
     elref.vertexposn = x;
+    elref.qgrad=qgrad;
 
     if (!functional_elementsize(v, mesh, MESH_GRADE_VOLUME, id, nv, vid, &elref.elementsize)) return false;
 
@@ -4202,6 +4212,7 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
     if (success) *out *=elref.elementsize;
 
     integral_freetlvars(v);
+    for (int i=0; i<iref.nfields; i++) morpho_freeobject(qgrad[i]);
     
     return success;
 }

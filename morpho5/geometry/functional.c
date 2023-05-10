@@ -3024,6 +3024,38 @@ bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *
     return true;
 }
 
+/** Evaluates the gradient of a field quantity in 1D
+ @param[in] mesh - object to use
+ @param[in] field - field to compute gradient of
+ @param[in] nv - number of vertices
+ @param[in] vid - vertex ids
+ @param[out] out - should be field->psize * mesh->dim units of storage */
+bool gradsq_evaluategradient1d(objectmesh *mesh, objectfield *field, int nv, int *vid, double *out) {    double *f[nv]; // Field value lists
+    double *x[nv]; // Vertex coordinates
+    unsigned int nentries=0;
+
+    // Get field values and vertex coordinates
+    for (unsigned int i=0; i<nv; i++) {
+        if (!mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i])) return false;
+        if (!field_getelementaslist(field, MESH_GRADE_VERTEX, vid[i], 0, &nentries, &f[i])) return false;
+    }
+
+    double s[mesh->dim];
+
+    /* Vector sides */
+    functional_vecsub(mesh->dim, x[1], x[0], s);
+
+    /* Compute the gradient */
+    for (unsigned int i=0; i<mesh->dim*nentries; i++) out[i]=0;
+    for (unsigned int j=0; j<nv; j++) {
+        for (unsigned int i=0; i<nentries; i++) {
+//            functional_vecaddscale(mesh->dim, &out[i*mesh->dim], f[j][i], t[j], &out[i*mesh->dim]);
+        }
+    }
+
+    return true;
+}
+
 /** Evaluates the gradient of a field quantity in 3D
  @param[in] mesh - object to use
  @param[in] field - field to compute gradient of

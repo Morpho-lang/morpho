@@ -220,6 +220,19 @@ bool functional_elementgradient(vm *v, objectmesh *mesh, grade g, elementid id, 
     return out; \
 }
 
+/** Evaluate an integrand at an element */
+#define FUNCTIONAL_INTEGRANDFORELEMENT(name, grade, integrandfn) value name##_integrandForElement(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    value out=MORPHO_NIL; \
+    \
+    if (functional_validateargs(v, nargs, args, &info)) { \
+        info.g = grade; info.integrand = integrandfn; \
+        functional_mapintegrandforelement(v, &info, &out); \
+    } \
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
+    return out; \
+}
+
 /** Evaluate a gradient */
 #define FUNCTIONAL_GRADIENT(name, grade, gradientfn, symbhvr) \
 value name##_gradient(vm *v, int nargs, value *args) { \

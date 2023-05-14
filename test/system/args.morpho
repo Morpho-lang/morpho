@@ -1,0 +1,7 @@
+// Gets the arguments and prints them 
+
+system("morpho5 system/args.xmorpho")
+// expect: [  ]
+
+system("morpho5 system/args.xmorpho hello world")
+// expect: [ hello, world ]

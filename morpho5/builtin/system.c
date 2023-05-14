@@ -4,11 +4,43 @@
  *  @brief Built in class to provide access to the runtime
  */
 
+#define _POSIX_C_SOURCE 199309L
+
+#include <stdio.h>
 #include <time.h>
 #include "build.h"
 #include "system.h"
 #include "builtin.h"
 #include "veneer.h"
+
+#ifndef WIN32
+#include <sys/time.h>
+#endif
+
+/** Set arguments passed to morpho program */
+
+static value arglist;
+
+void morpho_setargs(int argc, const char * argv[]) {
+    if (!MORPHO_ISLIST(arglist)) return;
+    objectlist *alist = MORPHO_GETLIST(arglist);
+    for (int i=0; i<argc; i++) {
+        value arg = object_stringfromcstring(argv[i], strlen(argv[i]));
+        if (MORPHO_ISSTRING(arg)) list_append(alist, arg);
+    }
+}
+
+void system_freeargs(void) {
+    if (!MORPHO_ISLIST(arglist)) return;
+    objectlist *alist = MORPHO_GETLIST(arglist);
+    
+    for (int i=0; i<list_length(alist); i++) {
+        value el;
+        if (!list_getelement(alist, i, &el)) continue;
+        morpho_freeobject(el);
+    }
+    morpho_freeobject(arglist);
+}
 
 /** Returns a platform description */
 value System_platform(vm *v, int nargs, value *args) {
@@ -41,11 +73,73 @@ value System_version(vm *v, int nargs, value *args) {
     return ret;
 }
 
+double system_clock(void) {
+#ifdef WIN32
+    SYSTEMTIME st;
+    GetSystemTime (&st);
+    return ((double) st.wSecond) + st.wMilliseconds * 1e-6;
+#else
+    struct timeval tv;
+    gettimeofday (&tv, NULL);
+    return ((double) tv.tv_sec) + tv.tv_usec * 1e-6;
+#endif
+}
+
 /** Clock */
 value System_clock(vm *v, int nargs, value *args) {
-    clock_t time;
-    time = clock();
-    return MORPHO_FLOAT( ((double) time)/((double) CLOCKS_PER_SEC) );
+    return MORPHO_FLOAT(system_clock());
+}
+
+/** Print */
+value System_print(vm *v, int nargs, value *args) {
+    for (int i=0; i<nargs; i++) morpho_printvalue(MORPHO_GETARG(args, i));
+    fflush(stdout);
+    return MORPHO_NIL;
+}
+
+/** Sleep for a specified number of milliseconds */
+void system_sleep(int msecs) {
+#ifdef WIN32
+    Sleep (msecs);
+#else
+    struct timespec t;
+    t.tv_sec  =  msecs / 1000;
+    t.tv_nsec = (msecs % 1000) * 1000000;
+    nanosleep (&t, NULL);
+#endif
+}
+
+/** Sleep for a specified number of seconds */
+value System_sleep(vm *v, int nargs, value *args) {
+    if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+        double t;
+        if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &t)) {
+            system_sleep((int) (1000*t));
+        }
+    } else morpho_runtimeerror(v, SLEEP_ARGS);
+    
+    return MORPHO_NIL;
+}
+
+/** Readline */
+value System_readline(vm *v, int nargs, value *args) {
+    char buffer[MORPHO_INPUTBUFFERDEFAULTSIZE];
+    value out = MORPHO_NIL;
+     
+    if (fgets(buffer, sizeof(buffer), stdin)) {
+        char *p = strchr(buffer, '\n');
+        if (p) *p = '\0';
+        
+        out = object_stringfromcstring(buffer, strlen(buffer));
+        if (MORPHO_ISSTRING(out)) morpho_bindobjects(v, 1, &out);
+    }
+    
+    return out;
+}
+
+/** Arguments passed to the process */
+value System_arguments(vm *v, int nargs, value *args) {
+    return arglist;
 }
 
 /** Exit */
@@ -58,6 +152,10 @@ MORPHO_BEGINCLASS(System)
 MORPHO_METHOD(SYSTEM_PLATFORM_METHOD, System_platform, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_VERSION_METHOD, System_version, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_CLOCK_METHOD, System_clock, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, System_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SYSTEM_SLEEP_METHOD, System_sleep, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SYSTEM_READLINE_METHOD, System_readline, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SYSTEM_ARGUMENTS_METHOD, System_arguments, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_EXIT_METHOD, System_exit, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
@@ -71,8 +169,13 @@ void system_initialize(void) {
     
     builtin_addclass(SYSTEM_CLASSNAME, MORPHO_GETCLASSDEFINITION(System), objclass);
     
+    morpho_defineerror(SLEEP_ARGS, ERROR_HALT, SLEEP_ARGS_MSG);
     morpho_defineerror(VM_EXIT, ERROR_EXIT, VM_EXIT_MSG);
+    
+    objectlist *alist = object_newlist(0, NULL);
+    if (alist) arglist = MORPHO_OBJECT(alist);
 }
 
 void system_finalize(void) {
+    system_freeargs();
 }

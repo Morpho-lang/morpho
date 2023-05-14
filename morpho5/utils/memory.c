@@ -6,7 +6,6 @@
 
 #include <stdio.h>
 #include "memory.h"
-#include "dictionary.h"
 
 #ifdef MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
 #include "morpho.h"

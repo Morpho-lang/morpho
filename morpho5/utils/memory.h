@@ -8,7 +8,6 @@
 #define memory_h
 
 #include <stdlib.h>
-#include "build.h"
 
 /** Macro to redirect malloc through our memory management */
 #define MORPHO_MALLOC(size) morpho_allocate(NULL, 0, size)

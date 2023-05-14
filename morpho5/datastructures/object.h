@@ -263,6 +263,7 @@ objectinstance *object_newinstance(objectclass *klass);
 
 bool objectinstance_setproperty(objectinstance *obj, value key, value val);
 bool objectinstance_getproperty(objectinstance *obj, value key, value *val);
+bool objectinstance_getpropertyinterned(objectinstance *obj, value key, value *val);
 
 /* ---------------------------
  * Bound methods
@@ -284,10 +285,6 @@ typedef struct {
 #define MORPHO_GETINVOCATION(val)   ((objectinvocation *) MORPHO_GETOBJECT(val))
 
 objectinvocation *object_newinvocation(value receiver, value method);
-
-bool objectinstance_insertpropertybycstring(objectinstance *obj, char *property, value val);
-
-bool objectinstance_getpropertybycstring(objectinstance *obj, char *property, value *val);
 
 /* ---------------------------
  * Strings

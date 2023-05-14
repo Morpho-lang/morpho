@@ -1891,7 +1891,7 @@ int morpho_retainobjects(vm *v, int nobj, value *obj) {
     return gcount;
 }
 
-/** @brief Relese objects temporarily retained by the VM.
+/** @brief Release objects temporarily retained by the VM.
  *  @param v      the virtual machine
  *  @param handle a handle returned by morpho_retainobjects. */
 void morpho_releaseobjects(vm *v, int handle) {

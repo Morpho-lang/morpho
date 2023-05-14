@@ -492,11 +492,20 @@ bool objectinstance_setproperty(objectinstance *obj, value key, value val) {
 
 /* @brief Gets a value into a property
  * @param obj   the object
+ * @param key   key to use
+ * @param[out] val   stores the value
+ * @returns true on success  */
+bool objectinstance_getproperty(objectinstance *obj, value key, value *val) {
+    return dictionary_get(&obj->fields, key, val);
+}
+
+/* @brief Interned property lookup
+ * @param obj   the object
  * @param key   key to use @warning: This MUST have been previously interned into a symboltable
  *                                   e.g. with builtin_internsymbol
  * @param[out] val   stores the value
  * @returns true on success  */
-bool objectinstance_getproperty(objectinstance *obj, value key, value *val) {
+bool objectinstance_getpropertyinterned(objectinstance *obj, value key, value *val) {
     return dictionary_getintern(&obj->fields, key, val);
 }
 

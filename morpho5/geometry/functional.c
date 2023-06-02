@@ -3030,7 +3030,9 @@ bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *
  @param[in] nv - number of vertices
  @param[in] vid - vertex ids
  @param[out] out - should be field->psize * mesh->dim units of storage */
-bool gradsq_evaluategradient1d(objectmesh *mesh, objectfield *field, int nv, int *vid, double *out) {    double *f[nv]; // Field value lists
+bool gradsq_evaluategradient1d(objectmesh *mesh, objectfield *field, int nv, int *vid, double *out) {
+    UNREACHABLE("GradSq in 3D not implemented.");
+    double *f[nv]; // Field value lists
     double *x[nv]; // Vertex coordinates
     unsigned int nentries=0;
 

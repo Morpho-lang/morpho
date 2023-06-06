@@ -527,15 +527,25 @@ void resources_basefolders(resourceenumerator *en) {
     }
 }
 
+/** Finds the character at which the extension separator occurs in a filename. Returns NULL if no extension is present */
+char *resources_findextension(char *f) {
+    for (char *c = f+strlen(f); c>=f; c--) {
+        if (*c=='.') return c;
+    }
+    
+    return NULL;
+}
+
 /** Checks if a filename matches all criteria in a resourceenumerator
  @param[in] en - initialized enumerator */
 bool resources_matchfile(resourceenumerator *en, char *file) {
-    char *c = file+strlen(file);
-
-    while (c>=file && *c!='.') c--; // Skip past extension
+    
+    // Skip extension
+    char *ext = resources_findextension(file);
+    if (!ext) ext = file+strlen(file); // If no extension found, just go to the end of the filename
 
     if (en->fname) { // Match filename if requested
-        char *f = c;
+        char *f = ext;
         while (f>=file && *f!=MORPHO_SEPARATOR) f--; // Find last separator
         if (*f==MORPHO_SEPARATOR) f++; // If we stopped at a separator, skip it
         
@@ -544,9 +554,9 @@ bool resources_matchfile(resourceenumerator *en, char *file) {
 
     if (!en->ext) return true; // Match extension only if requested
 
-    if (*c!='.') return false;
+    if (*ext!='.') return false;
     for (int k=0; *en->ext[k]!='\0'; k++) { // Check extension against possible extensions
-        if (strcmp(c+1, en->ext[k])==0) return true; // We have a match
+        if (strcmp(ext+1, en->ext[k])==0) return true; // We have a match
     }
 
     return false;

@@ -709,7 +709,7 @@ DEFINE_VARRAY(extension, extension)
 varray_extension extensions;
 
 /** Trys to locate a function with NAME_FN in extension e, and calls it if found */
-void extensions_call(extension *e, char *name, char *fn) {
+bool extensions_call(extension *e, char *name, char *fn) {
     void (*fptr) (void);
     char fnname[strlen(name)+strlen(fn)+2];
     strcpy(fnname, name);
@@ -718,6 +718,7 @@ void extensions_call(extension *e, char *name, char *fn) {
     
     fptr = dlsym(e->handle, fnname);
     if (fptr) (*fptr) ();
+    return fptr;
 }
 
 /** Attempts to load an extension with given name. Returns true if it was found and loaded successfully */
@@ -729,14 +730,17 @@ bool morpho_loadextension(char *name) {
     
     extension e;
     e.handle = dlopen(MORPHO_GETCSTRING(out), RTLD_LAZY);
+    morpho_freeobject(out);
+    
     if (e.handle) {
         e.name = object_stringfromcstring(name, strlen(name));
         varray_extensionwrite(&extensions, e);
         
-        extensions_call(&e, name, MORPHO_EXTENSIONINITIALIZE);
+        if (!extensions_call(&e, name, MORPHO_EXTENSIONINITIALIZE)) {
+            dlclose(e.handle);
+            return false; // Check extension initialized correctly.
+        }
     }
-    
-    morpho_freeobject(out);
     
     return e.handle;
 }

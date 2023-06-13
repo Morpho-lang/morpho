@@ -114,23 +114,25 @@ morpho5
 
 Note that the build script places morpho5 and morphoview in the `/usr/local` file structure; this can easily be changed if a different location is preferred. See the manual for details. 
 
-### Windows via Windows Subsystem for Linux (WSL)
+### Windows via Windows Subsystem for Linux (WSL2)
 
-#### Install WSL
+#### Install WSL2
 
-The instructions to install the Ubuntu App are [here](https://ubuntu.com/tutorials/ubuntu-on-windows#1-overview).
-
-Once the Ubuntu terminal is working in Windows, you can install Morpho through it in almost the same way as a Linux system, with the addition of an X windows manager to handle visualizations.
-
-Unless mentioned otherwise, all the commands below are run in the Ubuntu terminal.
+If you don't have WSL2 installed on your Windows computer, follow the instructions to install the Ubuntu App [here](https://ubuntu.com/tutorials/install-ubuntu-on-wsl2-on-windows-11-with-gui-support#1-overview). Follow all the steps in this link to ensure that graphics are working. 
 
 #### Install Morpho
 
-Follow the instructions for the linux install above. 
+Once the Ubuntu terminal is working in Windows, you can install Morpho the same way as a [Linux system](#unix-and-linux).
 
-#### Get visualization working in WSL
+If you are using WSL2, then the installation is complete.
 
-Now a window manager must be installed so that the WSL can create windows.
+#### Graphics On WSL1
+
+If you instead are working on WSL1, then you need to follow these instructions to get graphics running.
+
+Unless mentioned otherwise, all the commands below are run in the Ubuntu terminal.
+
+A window manager must be installed so that the WSL1 can create windows.
 
 1\. On Windows, install [VcXsrv](https://sourceforge.net/projects/vcxsrv/).
 

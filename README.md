@@ -122,7 +122,7 @@ If you don't have WSL2 installed on your Windows computer, follow the instructio
 
 #### Install Morpho
 
-Once the Ubuntu terminal is working in Windows, you can install Morpho the same way as a [Linux system](#unix-and-linux).
+Once the Ubuntu terminal is working in Windows, you can install Morpho the same way as in Linux by running the commands in the [instructions](#unix-and-linux) in the Ubuntu terminal.
 
 If you are using WSL2, then the installation is complete.
 

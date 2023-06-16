@@ -166,7 +166,7 @@ figs-within-sections
 \begin_inset Newline newline
 \end_inset
 
-Version 0.5.6
+Version 0.5.7
 \end_layout
 
 \begin_layout Standard
@@ -308,7 +308,7 @@ morpho
 \begin_layout Standard
 \align center
 \begin_inset Tabular
-<lyxtabular version="3" rows="8" columns="2">
+<lyxtabular version="3" rows="9" columns="2">
 <features tabularvalignment="middle">
 <column alignment="center" valignment="top">
 <column alignment="center" valignment="top">
@@ -467,6 +467,26 @@ Sam Hocking
 
 \begin_layout Plain Layout
 Emmett Hamilton
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Hudson Ramirez
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Paco Navarro
 \end_layout
 
 \end_inset
@@ -754,7 +774,7 @@ morpho
 status open
 
 \begin_layout Plain Layout
-On the macOS, these files are contained within the mo
+On the macOS, these files are contained within the homebrew system
 \end_layout
 
 \end_inset
@@ -1040,8 +1060,15 @@ literal "false"
 \end_layout
 
 \begin_layout Enumerate
+
+\series bold
 If you previously installed morpho using homebrew, you must first remove
  it.
+ This step is vitally important as the two installed versions may cause
+ conflicts.
+ 
+\series default
+
 \begin_inset listings
 inline false
 status open
@@ -1170,6 +1197,13 @@ morpho5
 \end_inset
 
 
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+If you wish to switch back to a homebrew install, follow the instructions
+ below to uninstall morpho to prevent version conflicts.
 \end_layout
 
 \begin_layout Section
@@ -1340,24 +1374,17 @@ Install WSL
 \end_layout
 
 \begin_layout Standard
-The instructions to install the Ubuntu App are 
+If you don't have WSL2 installed on your Windows computer, 
 \begin_inset CommandInset href
 LatexCommand href
-name "here"
-target "https://ubuntu.com/tutorials/ubuntu-on-windows#1-overview"
+name "follow the instructions to install the Ubuntu App"
+target "https://ubuntu.com/tutorials/install-ubuntu-on-wsl2-on-windows-11-with-gui-support#1-overview"
 literal "false"
 
 \end_inset
 
 .
- Once the Ubuntu terminal is working in Windows, you can install 
-\emph on
-morpho
-\emph default
- through it in almost the same way as a Linux system, with the addition
- of an X windows manager to handle visualizations.
- Unless mentioned otherwise, all the commands below are run in the Ubuntu
- terminal.
+ Follow all the steps in this link to ensure that graphics are working.
 \end_layout
 
 \begin_layout Subsection
@@ -1365,16 +1392,29 @@ Install Morpho
 \end_layout
 
 \begin_layout Standard
-Follow the instructions for the linux install above to install 
+Once the Ubuntu terminal is working in Windows, you can install 
 \emph on
 morpho
 \emph default
-.
- 
+ the same way as in Linux by running the commands in the instructions in
+ the Ubuntu terminal.
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+If you are using WSL2, then the installation is complete.
 \end_layout
 
 \begin_layout Subsection
-Get visualization working in WSL
+Graphics On WSL1
+\end_layout
+
+\begin_layout Standard
+If you instead are working on WSL1, then you need to follow these instructions
+ to get graphics running.
+ Unless mentioned otherwise, all the commands below are run in the Ubuntu
+ terminal.
 \end_layout
 
 \begin_layout Enumerate
@@ -1446,37 +1486,48 @@ export DISPLAY=localhost:0
 
 \end_inset
 
-To set the DISPLAY variable on launch add the line 
+To set the DISPLAY variable on login type 
 \begin_inset listings
 inline false
 status open
 
 \begin_layout Plain Layout
 
-DISPLAY=localhost:0 
+echo export DISPLAY=localhost:0 >> ~/.bashrc 
 \end_layout
 
 \end_inset
 
- to 
-\family typewriter
-~/.bashrc
-\family default
-.
+
+\emph on
+[Note that this assumes you are using bash as your terminal; you will may
+ to adjust this line for other terminals].
+\end_layout
+
+\begin_layout Enumerate
+Test that the window system is working by running
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+glxgears
+\end_layout
+
+\end_inset
+
+which should open a window with some gears.
  
 \end_layout
 
 \begin_layout Enumerate
-Test that the window system is working by running 
-\family typewriter
-glxgears
-\family default
-.
-\end_layout
 
-\begin_layout Enumerate
-Test the thomson example program! Navigate to the thomson example in the
- examples directory and run it.
+\series bold
+Test the thomson example program.
+
+\series default
+ Navigate to the thomson example in the examples directory and run it.
  If you are in the 
 \family typewriter
 morphoview

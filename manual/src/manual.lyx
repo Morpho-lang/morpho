@@ -915,7 +915,7 @@ povray is a ray-tracer that is used for publication-quality graphics.
 \end_layout
 
 \begin_layout Section
-MacOS
+macOS
 \end_layout
 
 \begin_layout Standard
@@ -1003,7 +1003,7 @@ git clone https://github.com/Morpho-lang/morpho.git
 \end_layout
 
 \begin_layout Section
-MacOS (Manual Installation)
+macOS (Manual Installation)
 \end_layout
 
 \begin_layout Standard

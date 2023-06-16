@@ -536,26 +536,38 @@ void resources_basefolders(resourceenumerator *en) {
     }
 }
 
+/** Finds the character at which the extension separator occurs in a filename. Returns NULL if no extension is present */
+char *resources_findextension(char *f) {
+    for (char *c = f+strlen(f); c>=f; c--) {
+        if (*c=='.') return c;
+    }
+    
+    return NULL;
+}
+
 /** Checks if a filename matches all criteria in a resourceenumerator
  @param[in] en - initialized enumerator */
 bool resources_matchfile(resourceenumerator *en, char *file) {
-    char *c = file+strlen(file);
-
-    while (c>=file && *c!='.') c--; // Skip past extension
+    
+    // Skip extension
+    char *ext = resources_findextension(file);
+    if (!ext) ext = file+strlen(file); // If no extension found, just go to the end of the filename
 
     if (en->fname) { // Match filename if requested
-        char *f = c;
+        char *f = ext;
         while (f>=file && *f!=MORPHO_SEPARATOR) f--; // Find last separator
         if (*f==MORPHO_SEPARATOR) f++; // If we stopped at a separator, skip it
         
-        if (strncmp(en->fname, f, strlen(en->fname))!=0) return false; // Now compare
+        size_t len = strlen(en->fname);
+        if (strncmp(en->fname, f, len)!=0) return false; // Compare string
+        if (!(f[len]=='.' || f[len]=='\0')) return false; // Ensure filename is terminated by null byte or file extension separator.
     }
 
     if (!en->ext) return true; // Match extension only if requested
 
-    if (*c!='.') return false;
+    if (*ext!='.') return false;
     for (int k=0; *en->ext[k]!='\0'; k++) { // Check extension against possible extensions
-        if (strcmp(c+1, en->ext[k])==0) return true; // We have a match
+        if (strcmp(ext+1, en->ext[k])==0) return true; // We have a match
     }
 
     return false;
@@ -708,7 +720,7 @@ DEFINE_VARRAY(extension, extension)
 varray_extension extensions;
 
 /** Trys to locate a function with NAME_FN in extension e, and calls it if found */
-void extensions_call(extension *e, char *name, char *fn) {
+bool extensions_call(extension *e, char *name, char *fn) {
     void (*fptr) (void);
     char fnname[strlen(name)+strlen(fn)+2];
     strcpy(fnname, name);
@@ -717,6 +729,7 @@ void extensions_call(extension *e, char *name, char *fn) {
     
     fptr = dlsym(e->handle, fnname);
     if (fptr) (*fptr) ();
+    return fptr;
 }
 
 /** Attempts to load an extension with given name. Returns true if it was found and loaded successfully */
@@ -728,14 +741,17 @@ bool morpho_loadextension(char *name) {
     
     extension e;
     e.handle = dlopen(MORPHO_GETCSTRING(out), RTLD_LAZY);
+    morpho_freeobject(out);
+    
     if (e.handle) {
         e.name = object_stringfromcstring(name, strlen(name));
         varray_extensionwrite(&extensions, e);
         
-        extensions_call(&e, name, MORPHO_EXTENSIONINITIALIZE);
+        if (!extensions_call(&e, name, MORPHO_EXTENSIONINITIALIZE)) {
+            dlclose(e.handle);
+            return false; // Check extension initialized correctly.
+        }
     }
-    
-    morpho_freeobject(out);
     
     return e.handle;
 }

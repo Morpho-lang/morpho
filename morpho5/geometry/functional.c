@@ -34,6 +34,7 @@ static void functional_clearmapinfo(functional_mapinfo *info) {
     info->field=NULL;
     info->sel=NULL;
     info->g=0;
+    info->id=0;
     info->integrand=NULL;
     info->grad=NULL;
     info->dependencies=NULL;
@@ -59,6 +60,8 @@ bool functional_validateargs(vm *v, int nargs, value *args, functional_mapinfo *
         } else if (MORPHO_ISFIELD(MORPHO_GETARG(args,i))) {
             info->field = MORPHO_GETFIELD(MORPHO_GETARG(args,i));
             if (info->field) info->mesh = (info->field->mesh); // Retrieve the mesh from the field
+        } else if (MORPHO_ISINTEGER(MORPHO_GETARG(args,i))) {
+            info->id = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args,i));
         }
     }
 
@@ -1028,6 +1031,45 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
  * Map integrands
  * ---------------------------- */
 
+/** Calculate the integrand at a particular element
+ * @param[in] v - virtual machine in use
+ * @param[in] info - map info
+ * @param[out] out - a matrix of integrand values
+ * @returns true on success, false otherwise. Error reporting through VM. */
+bool functional_mapintegrandforelement(vm *v, functional_mapinfo *info, value *out) {
+    objectmesh *mesh = info->mesh;
+    objectselection *sel = info->sel;
+    grade g = info->g;
+    elementid id = info->id;
+    functional_integrand *integrand = info->integrand;
+    void *ref = info->ref;
+    objectsparse *s=NULL;
+    bool ret=false;
+    int n=0;
+    
+    /* How many elements? */
+    if (!functional_countelements(v, mesh, g, &n, &s)) return false;
+    // Check if the requested element id is out of range
+    if (id>=n) return false;
+    
+    int vertexid; // Use this if looping over grade 0
+    int *vid=(g==0 ? &vertexid : NULL),
+        nv=(g==0 ? 1 : 0); // The vertex indices
+    if (s) sparseccs_getrowindices(&s->ccs, id, &nv, &vid);
+    else vertexid=id;
+
+    double result;
+    if (vid && nv>0) {
+        if (! (*integrand) (v, mesh, id, nv, vid, ref, &result)) {
+            return false;
+        }
+    }
+    *out = MORPHO_FLOAT(result);
+    ret=true;
+    
+    return ret;
+}
+
 /** Set relevant matrix element to the result of the integrand */
 bool functional_mapintegrandprocessfn(void *arg) {
     functional_task *task = (functional_task *) arg;
@@ -1492,12 +1534,14 @@ value Length_hessian(vm *v, int nargs, value *args) {
 
 FUNCTIONAL_INIT(Length, MESH_GRADE_LINE)
 FUNCTIONAL_INTEGRAND(Length, MESH_GRADE_LINE, length_integrand)
+FUNCTIONAL_INTEGRANDFORELEMENT(Length, MESH_GRADE_LINE, length_integrand)
 FUNCTIONAL_GRADIENT(Length, MESH_GRADE_LINE, length_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(Length, MESH_GRADE_LINE, length_integrand)
 
 MORPHO_BEGINCLASS(Length)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Length_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Length_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRANDFORELEMENT_METHOD, Length_integrandForElement, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Length_gradient, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Length_total, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Length_hessian, BUILTIN_FLAGSEMPTY)
@@ -1567,6 +1611,7 @@ value AreaEnclosed_hessian(vm *v, int nargs, value *args) {
 
 FUNCTIONAL_INIT(AreaEnclosed, MESH_GRADE_LINE)
 FUNCTIONAL_INTEGRAND(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
+FUNCTIONAL_INTEGRANDFORELEMENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 FUNCTIONAL_NUMERICALGRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, SYMMETRY_ADD)
 //FUNCTIONAL_GRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
@@ -1574,6 +1619,7 @@ FUNCTIONAL_TOTAL(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 MORPHO_BEGINCLASS(AreaEnclosed)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, AreaEnclosed_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, AreaEnclosed_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRANDFORELEMENT_METHOD, AreaEnclosed_integrandForElement, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, AreaEnclosed_gradient, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, AreaEnclosed_hessian, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, AreaEnclosed_total, BUILTIN_FLAGSEMPTY)
@@ -1632,12 +1678,14 @@ bool area_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void
 
 FUNCTIONAL_INIT(Area, MESH_GRADE_AREA)
 FUNCTIONAL_INTEGRAND(Area, MESH_GRADE_AREA, area_integrand)
+FUNCTIONAL_INTEGRANDFORELEMENT(Area, MESH_GRADE_AREA, area_integrand)
 FUNCTIONAL_GRADIENT(Area, MESH_GRADE_AREA, area_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(Area, MESH_GRADE_AREA, area_integrand)
 
 MORPHO_BEGINCLASS(Area)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Area_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Area_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRANDFORELEMENT_METHOD, Area_integrandForElement, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Area_gradient, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Area_total, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
@@ -2571,12 +2619,14 @@ linecurvsq_integrand_cleanup:
 
 FUNCTIONAL_INIT(LineCurvatureSq, MESH_GRADE_VERTEX)
 FUNCTIONAL_METHOD(LineCurvatureSq, integrand, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapintegrand, linecurvsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(LineCurvatureSq, integrandForElement, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapintegrandforelement, linecurvsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
 FUNCTIONAL_METHOD(LineCurvatureSq, total, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_sumintegrand, linecurvsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
 FUNCTIONAL_METHOD(LineCurvatureSq, gradient, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapnumericalgradient, linecurvsq_integrand, linecurvsq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(LineCurvatureSq)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineCurvatureSq_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LineCurvatureSq_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRANDFORELEMENT_METHOD, LineCurvatureSq_integrandForElement, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineCurvatureSq_gradient, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineCurvatureSq_total, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS

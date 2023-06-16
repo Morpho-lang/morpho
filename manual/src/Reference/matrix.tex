@@ -116,6 +116,17 @@ Computes the Frobenius inner product between two matrices:
 var prod = A.inner(B)
 \end{lstlisting}
 
+\hypertarget{outer}{%
+\subsection{Outer}\label{outer}}
+
+Computes the outer produce between two vectors:
+
+\begin{lstlisting}
+var prod = A.outer(B)
+\end{lstlisting}
+
+Note that \texttt{outer} always treats both vectors as column vectors.
+
 \hypertarget{inverse}{%
 \subsection{Inverse}\label{inverse}}
 
@@ -189,4 +200,25 @@ matrix:
 
 \begin{lstlisting}
 var tr = A.trace()
+\end{lstlisting}
+
+\hypertarget{roll}{%
+\subsection{Roll}\label{roll}}
+
+Rotates values in a Matrix about a given axis by a given shift:
+
+\begin{lstlisting}
+var r = A.roll(shift, axis)
+\end{lstlisting}
+
+Elements that roll beyond the last position are re-introduced at the
+first.
+
+\hypertarget{identitymatrix}{%
+\subsection{IdentityMatrix}\label{identitymatrix}}
+
+Constructs an identity matrix of a specified size:
+
+\begin{lstlisting}
+var a = IdentityMatrix(size)
 \end{lstlisting}

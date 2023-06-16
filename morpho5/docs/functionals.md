@@ -68,9 +68,11 @@ A `Volume` functional calculates the volume of volume elements.
 
 The `ScalarPotential` functional is applied to point elements.
 
-    var ls = ScalarPotential(potential, gradient)
+    var ls = ScalarPotential(potential)
 
-You must supply two functions (which may be anonymous) that return the potential and gradient respectively.
+You must supply a function (which may be anonymous) that returns the potential. You may optionally provide a function that returns the gradient as well at initialization:
+
+    var ls = ScalarPotential(potential, gradient)
 
 This functional is often used to constrain the mesh to the level set of a function. For example, to confine a set of points to a sphere:
 

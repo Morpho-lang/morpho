@@ -549,7 +549,9 @@ bool resources_matchfile(resourceenumerator *en, char *file) {
         while (f>=file && *f!=MORPHO_SEPARATOR) f--; // Find last separator
         if (*f==MORPHO_SEPARATOR) f++; // If we stopped at a separator, skip it
         
-        if (strncmp(en->fname, f, strlen(en->fname))!=0) return false; // Now compare
+        size_t len = strlen(en->fname);
+        if (strncmp(en->fname, f, len)!=0) return false; // Compare string
+        if (!(f[len]=='.' || f[len]=='\0')) return false; // Ensure filename is terminated by null byte or file extension separator.
     }
 
     if (!en->ext) return true; // Match extension only if requested

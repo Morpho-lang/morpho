@@ -433,6 +433,14 @@ void vm_gcmarkroots(vm *v) {
     for (objectupvalue *u=v->openupvalues; u!=NULL; u=u->next) {
         vm_gcmarkobject(v, (object *) u);
     }
+
+#ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
+    printf("> Thread local storage.\n");
+#endif
+    for (int i=0; i<v->tlvars.count; i++) {
+        vm_gcmarkvalue(v, v->tlvars.data[i]);
+    }
+    
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
     printf("> End mark roots.\n");
 #endif

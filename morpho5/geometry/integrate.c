@@ -285,7 +285,7 @@ bool integrate_areaint(integrandfunction *function, unsigned int dim, double *x[
         double *lambda=pts+3*i;
         integrate_interpolatepositiontri(dim, x, lambda, xx);
         if (nquantity)  integrate_interpolatequantitiestri(dim, lambda, nquantity, quantity, q);
-        if ((*function) (dim, lambda, xx, nquantity, q, ref, &fout)){
+        if ((*function) (dim, lambda, xx, nquantity, q, ref, &fout)) {
             r[i] = fout;
         } else{
             return false;

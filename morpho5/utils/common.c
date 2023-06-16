@@ -326,6 +326,15 @@ bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int 
 }
 
 /* **********************************************************************
+* Analyze callable
+* ********************************************************************** */
+
+/** Determines whether a callable object may call fn */
+bool morpho_calls(value callable, value fn) {
+    return false;
+}
+
+/* **********************************************************************
 * Thread pools
 * ********************************************************************** */
 

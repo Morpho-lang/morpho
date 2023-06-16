@@ -88,6 +88,7 @@ objectfield *field_clone(objectfield *f);
 
 void field_zero(objectfield *field);
 bool field_addpool(objectfield *field);
+unsigned int field_sizeprototype(value prototype);
 
 unsigned int field_dofforgrade(objectfield *f, grade g);
 bool field_getelement(objectfield *field, grade grade, elementid el, int indx, value *out);

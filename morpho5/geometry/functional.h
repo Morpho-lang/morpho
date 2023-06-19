@@ -194,6 +194,7 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapintegrandat(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out);
+bool functional_mapfieldgradient(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value *out);
 

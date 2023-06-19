@@ -1378,7 +1378,7 @@ bool functional_mapfieldgradient(vm *v, functional_mapinfo *info, value *out) {
     /* Then add up all the fields using their underlying data stores */
     for (int i=1; i<ntask; i++) matrix_add(&new[0]->data, &new[1]->data, &new[0]->data);
     
-    // TODO: Use symmetry actions 
+    // TODO: Use symmetry actions
     //if (info->sym==SYMMETRY_ADD) functional_symmetrysumforces(info->mesh, new[0]);
     
     success=true;

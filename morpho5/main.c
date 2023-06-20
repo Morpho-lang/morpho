@@ -16,9 +16,10 @@
 int main(int argc, const char * argv[]) {
     clioptions opt = CLI_RUN;
     const char *file = NULL;
+    int i=0;
 
     /* Process command line arguments */
-    for (unsigned int i=1; i<argc; i++) {
+    for (i=1; i<argc; i++) {
         const char *option = argv[i];
         if (argv[i] && option[0]=='-') {
             switch (option[1]) {
@@ -60,10 +61,13 @@ int main(int argc, const char * argv[]) {
             }
         } else {
             file = option;
+            break;
         }
     }
 
     morpho_initialize();
+    
+    if (i<argc) morpho_setargs(argc-i-1, argv+i+1); // Pass unprocessed args to the morpho runtime.
 
     if (file) cli_run(file, opt);
     else cli(opt);

@@ -123,6 +123,8 @@ typedef enum {
 void morpho_tuplesinit(unsigned int nval, unsigned int n, unsigned int *c, tuplemode mode);
 bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int *c, tuplemode mode, value *tuple);
 
+bool morpho_calls(value callable, value fn);
+
 /* -----------------------------------------
  * Thread pools
  * ----------------------------------------- */

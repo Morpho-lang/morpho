@@ -8,7 +8,7 @@
  * Version
  * ********************************************************************** */
 
-#define MORPHO_VERSIONSTRING "0.5.6"
+#define MORPHO_VERSIONSTRING "0.5.7"
 
 /* **********************************************************************
  * Paths and file system
@@ -77,7 +77,7 @@
 #define MORPHO_ERRORSTRINGSIZE 255
 
 /** @brief Default size of input buffer. */
-#define MORPHO_INPUTBUFFERDEFAULTSIZE 255
+#define MORPHO_INPUTBUFFERDEFAULTSIZE 1024
 
 /** @brief Maximum file name length. */
 #define MORPHO_MAXIMUMFILENAMELENGTH 255

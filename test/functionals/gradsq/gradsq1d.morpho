@@ -1,0 +1,17 @@
+
+// Currently morpho doesn't support GradSq on 1D elements. 
+// This test will in future check that this works once implemented
+
+/*import meshtools 
+
+var mb = MeshBuilder()
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addedge([0,1])
+var m = mb.build() 
+
+var f = Field(m, fn (x,y,z) x)
+
+var lgs = GradSq(f) 
+
+print lgs.total(m) */

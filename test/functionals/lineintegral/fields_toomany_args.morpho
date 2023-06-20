@@ -9,4 +9,4 @@ var f = Field(m, fn (x,y,z) x)
 
 // A line integral with a field
 var lcf = LineIntegral(fn (x, f, g) (f*(1-f))^2, f, f, f)
-// expect error 'IntNFlds'
+// expect error 'IntgrlNFlds'

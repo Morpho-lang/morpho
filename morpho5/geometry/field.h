@@ -55,6 +55,7 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *do
 #define FIELD_SHAPE_METHOD   "shape"
 #define FIELD_MESH_METHOD    "mesh"
 #define FIELD_LINEARIZE_METHOD    "linearize"
+#define FIELD__LINEARIZE_METHOD    "__linearize"
 
 #define FIELD_INDICESOUTSIDEBOUNDS       "FldBnds"
 #define FIELD_INDICESOUTSIDEBOUNDS_MSG   "Field index out of bounds."
@@ -87,6 +88,7 @@ objectfield *field_clone(objectfield *f);
 
 void field_zero(objectfield *field);
 bool field_addpool(objectfield *field);
+unsigned int field_sizeprototype(value prototype);
 
 unsigned int field_dofforgrade(objectfield *f, grade g);
 bool field_getelement(objectfield *field, grade grade, elementid el, int indx, value *out);

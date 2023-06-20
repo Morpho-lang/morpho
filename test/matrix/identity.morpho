@@ -1,0 +1,15 @@
+// Identity matrix
+
+var a = IdentityMatrix(2)
+print a
+// expect: [ 1 0 ]
+// expect: [ 0 1 ]
+
+a = IdentityMatrix(3)
+print a
+// expect: [ 1 0 0 ]
+// expect: [ 0 1 0 ]
+// expect: [ 0 0 1 ]
+
+a = IdentityMatrix()
+// expect error 'MtrxIdnttyCns'

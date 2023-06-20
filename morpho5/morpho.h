@@ -57,6 +57,9 @@ typedef void compiler;
 #define MORPHO_INTERSECTION_METHOD "intersection"
 #define MORPHO_DIFFERENCE_METHOD "difference"
 
+#define MORPHO_ROLL_METHOD "roll"
+#define MORPHO_JOIN_METHOD "join"
+
 #define MORPHO_CLASS_METHOD "clss"
 #define MORPHO_SUPER_METHOD "superclass"
 #define MORPHO_SERIALIZE_METHOD "serialize"
@@ -156,6 +159,7 @@ int morpho_threadnumber(void);
 void morpho_setbaseclass(value clss);
 void morpho_initialize(void);
 void morpho_finalize(void);
+void morpho_setargs(int argc, const char * argv[]); // Pass arguments to morpho
 
 /* Obtain and use subkernels [for internal use only] */
 bool vm_subkernels(vm *v, int nkernels, vm **subkernels);

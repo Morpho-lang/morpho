@@ -390,6 +390,15 @@ objectmatrixerror matrix_inner(objectmatrix *a, objectmatrix *b, double *out) {
     return MATRIX_INCMPTBLDIM;
 }
 
+/** Computes the outer product of two matrices  */
+objectmatrixerror matrix_outer(objectmatrix *a, objectmatrix *b, objectmatrix *out) {
+    int m=a->nrows*a->ncols, n=b->nrows*b->ncols;
+    if (m==out->nrows && n==out->ncols) {
+        cblas_dger(CblasColMajor, m, n, 1, a->elements, 1, b->elements, 1, out->elements, out->nrows);
+        return MATRIX_OK;
+    }
+    return MATRIX_INCMPTBLDIM;
+}
 
 /** Solves the system a.x = b
  * @param[in] a  lhs
@@ -594,8 +603,8 @@ objectmatrixerror matrix_scale(objectmatrix *a, double scale) {
 /** Load the indentity matrix*/
 objectmatrixerror matrix_identity(objectmatrix *a) {
     if (a->ncols!=a->nrows) return MATRIX_NSQ;
-    for (int i=0; i<a->nrows; i++) for (int j=0; j<a->ncols; j++) a->elements[i+a->nrows*j]=(i==j ? 1.0 : 0.0);
-    
+    memset(a->elements, 0, sizeof(double)*a->nrows*a->ncols);
+    for (int i=0; i<a->nrows; i++) a->elements[i+a->nrows*i]=1.0;
     return MATRIX_OK;
 }
 
@@ -723,6 +732,29 @@ value matrix_constructor(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Creates an identity matrix */
+value matrix_identityconstructor(vm *v, int nargs, value *args) {
+    int n;
+    objectmatrix *new=NULL;
+    value out = MORPHO_NIL;
+    
+    if (nargs==1 &&
+               MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+        n = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        new=object_newmatrix(n, n, false);
+        if (new) {
+            matrix_identity(new);
+        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    } else morpho_runtimeerror(v, MATRIX_IDENTCONSTRUCTOR);
+    
+    if (new) {
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    }
+    
+    return out;
+}
+
 /** Checks that a matrix is indexed with 2 indices with a generic interface */
 bool matrix_slicedim(value * a, unsigned int ndim){
 	if (ndim>2||ndim<0) return false;
@@ -753,6 +785,48 @@ objectarrayerror matrix_slicecopy(value * a,value * out, unsigned int ndim, unsi
 		return ARRAY_OUTOFBOUNDS;
 	}
 	return ARRAY_OK;
+}
+
+/** Rolls the matrix list */
+void matrix_rollflat(objectmatrix *a, objectmatrix *b, int nplaces) {
+    unsigned int N = a->nrows*a->ncols;
+    int n = abs(nplaces);
+    if (n>N) n = n % N;
+    unsigned int Np = N - n; // Number of elements to roll
+    
+    if (nplaces<0) {
+        memcpy(b->matrixdata, a->matrixdata+n, sizeof(double)*Np);
+        memcpy(b->matrixdata+Np, a->matrixdata, sizeof(double)*n);
+    } else {
+        memcpy(b->matrixdata+n, a->matrixdata, sizeof(double)*Np);
+        if (n>0) memcpy(b->matrixdata, a->matrixdata+Np, sizeof(double)*n);
+    }
+}
+
+/** Copies arow from matrix a into brow for matrix b */
+void matrix_copyrow(objectmatrix *a, int arow, objectmatrix *b, int brow) {
+    cblas_dcopy(a->ncols, a->elements+arow, a->nrows, b->elements+brow, a->nrows);
+}
+
+/** Rolls a list by a number of elements */
+objectmatrix *matrix_roll(objectmatrix *a, int nplaces, int axis) {
+    objectmatrix *new=object_newmatrix(a->nrows, a->ncols, false);
+    
+    if (new) {
+        switch(axis) {
+            case 0: { // TODO: Could probably be faster
+                for (int i=0; i<a->nrows; i++) {
+                    int j = (i+nplaces);
+                    if (j<0) j+=a->nrows;
+                    matrix_copyrow(a, i, new, j % a->nrows);
+                }
+            }
+                break;
+            case 1: matrix_rollflat(a, new, nplaces*a->nrows); break;
+        }
+    }
+
+    return new;
 }
 
 /** Gets the matrix element with given indices */
@@ -1133,12 +1207,54 @@ value Matrix_inner(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Outer product */
+value Matrix_outer(vm *v, int nargs, value *args) {
+    objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+ 
+    if (nargs==1 && MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
+        objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
+        objectmatrix *new=object_newmatrix(a->nrows*a->ncols, b->nrows*b->ncols, true);
+        
+        if (new &&
+            matrix_outer(a, b, new)==MATRIX_OK) {
+            out=MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
+    
+    return out;
+}
 
 /** Matrix sum */
 value Matrix_sum(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
     return MORPHO_FLOAT(matrix_sum(a));
 }
+
+/** Roll a matrix */
+value Matrix_roll(vm *v, int nargs, value *args) {
+    objectmatrix *slf = MORPHO_GETMATRIX(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+    int roll, axis=0;
+
+    if (nargs>0 &&
+        morpho_valuetoint(MORPHO_GETARG(args, 0), &roll)) {
+        
+        if (nargs==2 && !morpho_valuetoint(MORPHO_GETARG(args, 1), &axis)) return out;
+        
+        objectmatrix *new = matrix_roll(slf, roll, axis);
+
+        if (new) {
+            out = MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        }
+
+    } else morpho_runtimeerror(v, LIST_ADDARGS);
+
+    return out;
+}
+
 
 /** Matrix norm */
 value Matrix_norm(vm *v, int nargs, value *args) {
@@ -1351,6 +1467,7 @@ MORPHO_METHOD(MORPHO_MULR_METHOD, Matrix_mulr, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_DIV_METHOD, Matrix_div, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ACC_METHOD, Matrix_acc, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_INNER_METHOD, Matrix_inner, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MATRIX_OUTER_METHOD, Matrix_outer, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SUM_METHOD, Matrix_sum, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_NORM_METHOD, Matrix_norm, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_INVERSE_METHOD, Matrix_inverse, BUILTIN_FLAGSEMPTY),
@@ -1362,6 +1479,7 @@ MORPHO_METHOD(MATRIX_TRACE_METHOD, Matrix_trace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Matrix_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Matrix_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_DIMENSIONS_METHOD, Matrix_dimensions, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_ROLL_METHOD, Matrix_roll, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Matrix_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
@@ -1373,6 +1491,7 @@ void matrix_initialize(void) {
     objectmatrixtype=object_addtype(&objectmatrixdefn);
     
     builtin_addfunction(MATRIX_CLASSNAME, matrix_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(MATRIX_IDENTITYCONSTRUCTOR, matrix_identityconstructor, BUILTIN_FLAGSEMPTY);
     
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
@@ -1393,4 +1512,5 @@ void matrix_initialize(void) {
     morpho_defineerror(MATRIX_OPFAILED, ERROR_HALT, MATRIX_OPFAILED_MSG);
     morpho_defineerror(MATRIX_SETCOLARGS, ERROR_HALT, MATRIX_SETCOLARGS_MSG);
     morpho_defineerror(MATRIX_NORMARGS, ERROR_HALT, MATRIX_NORMARGS_MSG);
+    morpho_defineerror(MATRIX_IDENTCONSTRUCTOR, ERROR_HALT, MATRIX_IDENTCONSTRUCTOR_MSG);
 }

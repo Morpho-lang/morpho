@@ -97,11 +97,16 @@ var lv = Volume()
 The \texttt{ScalarPotential} functional is applied to point elements.
 
 \begin{lstlisting}
-var ls = ScalarPotential(potential, gradient)
+var ls = ScalarPotential(potential)
 \end{lstlisting}
 
-You must supply two functions (which may be anonymous) that return the
-potential and gradient respectively.
+You must supply a function (which may be anonymous) that returns the
+potential. You may optionally provide a function that returns the
+gradient as well at initialization:
+
+\begin{lstlisting}
+var ls = ScalarPotential(potential, gradient)
+\end{lstlisting}
 
 This functional is often used to constrain the mesh to the level set of
 a function. For example, to confine a set of points to a sphere:

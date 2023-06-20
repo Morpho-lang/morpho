@@ -433,6 +433,14 @@ void vm_gcmarkroots(vm *v) {
     for (objectupvalue *u=v->openupvalues; u!=NULL; u=u->next) {
         vm_gcmarkobject(v, (object *) u);
     }
+
+#ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
+    printf("> Thread local storage.\n");
+#endif
+    for (int i=0; i<v->tlvars.count; i++) {
+        vm_gcmarkvalue(v, v->tlvars.data[i]);
+    }
+    
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
     printf("> End mark roots.\n");
 #endif
@@ -1891,7 +1899,7 @@ int morpho_retainobjects(vm *v, int nobj, value *obj) {
     return gcount;
 }
 
-/** @brief Relese objects temporarily retained by the VM.
+/** @brief Release objects temporarily retained by the VM.
  *  @param v      the virtual machine
  *  @param handle a handle returned by morpho_retainobjects. */
 void morpho_releaseobjects(vm *v, int handle) {

@@ -6,11 +6,13 @@ RESOURCEPREFIX = $(MORPHORESOURCESDIR)
 HELPDIR = $(RESOURCEPREFIX)/share/help
 MODULESDIR = $(RESOURCEPREFIX)/share/modules
 HEADERSDIR = $(RESOURCEPREFIX)/include
+EXTENSIONSDIR = $(RESOURCEPREFIX)/lib
 else 
 RESOURCEPREFIX = /usr/local
 HELPDIR = $(RESOURCEPREFIX)/share/morpho/help
 MODULESDIR = $(RESOURCEPREFIX)/share/morpho/modules
 HEADERSDIR = $(RESOURCEPREFIX)/include/morpho
+EXTENSIONSDIR = $(RESOURCEPREFIX)/lib/morpho
 endif 
 
 ifdef DESTDIR 
@@ -47,6 +49,10 @@ headers:
 	mkdir -p $(HEADERSDIR)
 	find . -type f -name '*.h' -exec cp {} $(HEADERSDIR) \;
 
+.PHONY: extensions
+extensions: 
+	mkdir -p $(EXTENSIONSDIR)
+
 .PHONY: install
 install: morpho5
 	mkdir -p $(INSTALLDIR)
@@ -54,5 +60,6 @@ install: morpho5
 	make modules
 	make help
 	make headers 
+	make extensions
 	make clean
 	

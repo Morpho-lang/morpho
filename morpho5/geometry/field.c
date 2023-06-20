@@ -409,6 +409,7 @@ bool field_op(vm *v, value fn, objectfield *f, int nargs, objectfield **args, va
     value ret=MORPHO_NIL;
     value fargs[nargs+1];
     objectfield *fld=NULL;
+    int handle = -1;
     
     for (int i=0; i<nel; i++) {
         if (!field_getelementwithindex(f, i, &fargs[0])) return false;
@@ -419,6 +420,7 @@ bool field_op(vm *v, value fn, objectfield *f, int nargs, objectfield **args, va
         if (morpho_call(v, fn, nargs+1, fargs, &ret)) {
             if (!fld) {
                 if (field_checkprototype(ret)) {
+                    if (MORPHO_ISOBJECT(ret)) handle=morpho_retainobjects(v, 1, &ret);
                     fld=object_newfield(f->mesh, ret, f->dof);
                     if (!fld) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
                 } else {
@@ -430,6 +432,7 @@ bool field_op(vm *v, value fn, objectfield *f, int nargs, objectfield **args, va
         } else return false;
     }
     
+    if (handle>=0) morpho_releaseobjects(v, handle);
     if (fld) *out = MORPHO_OBJECT(fld);
     
     return true;
@@ -571,6 +574,10 @@ value Field_assign(vm *v, int nargs, value *args) {
         if (field_compareshape(a, b)) {
             matrix_copy(&b->data, &a->data);
         } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
+    } else if (nargs==1 && MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
+        objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
+        
+        if (matrix_copy(b, &a->data)!=MATRIX_OK) morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
     } else morpho_runtimeerror(v, FIELD_ARITHARGS);
     
     return MORPHO_NIL;
@@ -812,6 +819,21 @@ value Field_mesh(vm *v, int nargs, value *args) {
 /** Get the matrix that stores the Field */
 value Field_linearize(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+    
+    objectmatrix *m=object_clonematrix(&f->data);
+    if (m) {
+        out = MORPHO_OBJECT(m);
+        morpho_bindobjects(v, 1, &out);
+    }
+    
+    return out;
+}
+
+/** Directly the matrix that stores the Field
+ @warning only use when you know what you're doing.  */
+value Field_unsafelinearize(vm *v, int nargs, value *args) {
+    objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
     
     return MORPHO_OBJECT(&f->data);
 }
@@ -836,7 +858,8 @@ MORPHO_METHOD(MORPHO_PRINT_METHOD, Field_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Field_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_SHAPE_METHOD, Field_shape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_MESH_METHOD, Field_mesh, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FIELD_LINEARIZE_METHOD, Field_linearize, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FIELD_LINEARIZE_METHOD, Field_linearize, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FIELD__LINEARIZE_METHOD, Field_unsafelinearize, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

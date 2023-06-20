@@ -1122,6 +1122,29 @@ objectlist *list_concatenate(objectlist *a, objectlist *b) {
     return new;
 }
 
+/** Rolls a list by a number of elements */
+objectlist *list_roll(objectlist *a, int nplaces) {
+    objectlist *new=object_newlist(a->val.count, NULL);
+    
+    if (new) {
+        new->val.count=a->val.count;
+        unsigned int N = a->val.count;
+        int n = abs(nplaces);
+        if (n>N) n = n % N;
+        unsigned int Np = N - n; // Number of elements to roll
+        
+        if (nplaces<0) {
+            memcpy(new->val.data, a->val.data+n, sizeof(value)*Np);
+            memcpy(new->val.data+Np, a->val.data, sizeof(value)*n);
+        } else {
+            memcpy(new->val.data+n, a->val.data, sizeof(value)*Np);
+            if (n>0) memcpy(new->val.data, a->val.data+Np, sizeof(value)*n);
+        }
+    }
+
+    return new;
+}
+
 /** Loop function for enumerable initializers */
 static bool list_enumerableinitializer(vm *v, indx i, value val, void *ref) {
     objectlist *list = (objectlist *) ref;
@@ -1447,13 +1470,41 @@ value List_clone(vm *v, int nargs, value *args) {
 }
 
 /** Joins two lists together  */
-value List_add(vm *v, int nargs, value *args) {
+value List_join(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     value out = MORPHO_NIL;
 
     if (nargs==1 && MORPHO_ISLIST(MORPHO_GETARG(args, 0))) {
         objectlist *operand = MORPHO_GETLIST(MORPHO_GETARG(args, 0));
         objectlist *new = list_concatenate(slf, operand);
+
+        if (new) {
+            out = MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        }
+
+    } else morpho_runtimeerror(v, LIST_ADDARGS);
+
+    return out;
+}
+
+/** Arithmetic add of two lists  */
+value List_add(vm *v, int nargs, value *args) {
+    UNREACHABLE("API for list add has changed.\n");
+    return MORPHO_NIL;
+}
+
+/** Roll a list */
+value List_roll(vm *v, int nargs, value *args) {
+    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+
+    if (nargs==1 &&
+        MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+        int roll;
+        morpho_valuetoint(MORPHO_GETARG(args, 0), &roll);
+        
+        objectlist *new = list_roll(slf, roll);
 
         if (new) {
             out = MORPHO_OBJECT(new);
@@ -1480,6 +1531,8 @@ MORPHO_METHOD(LIST_TUPLES_METHOD, List_tuples, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_SETS_METHOD, List_sets, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, List_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADD_METHOD, List_add, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_JOIN_METHOD, List_join, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_ROLL_METHOD, List_roll, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_SORT_METHOD, List_sort, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_ORDER_METHOD, List_order, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_ISMEMBER_METHOD, List_ismember, BUILTIN_FLAGSEMPTY),
@@ -1985,9 +2038,9 @@ value Error_throw(vm *v, int nargs, value *args) {
     value tag=MORPHO_NIL, msg=MORPHO_NIL;
 
     if (slf) {
-        objectinstance_getproperty(slf, error_tagproperty, &tag);
+        objectinstance_getpropertyinterned(slf, error_tagproperty, &tag);
         if (nargs==0) {
-            objectinstance_getproperty(slf, error_messageproperty, &msg);
+            objectinstance_getpropertyinterned(slf, error_messageproperty, &msg);
         } else {
             msg=MORPHO_GETARG(args, 0);
         }

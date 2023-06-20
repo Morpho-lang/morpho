@@ -48,6 +48,7 @@
 #define FUNCTIONAL_GRADIENT_METHOD     "gradient"
 #define FUNCTIONAL_FIELDGRADIENT_METHOD     "fieldgradient"
 #define FUNCTIONAL_HESSIAN_METHOD      "hessian"
+#define FUNCTIONAL_INTEGRANDFORELEMENT_METHOD      "integrandForElement"
 
 /* Special functions that can be used in integrands */
 #define TANGENT_FUNCTION               "tangent"
@@ -86,10 +87,19 @@
 #define SCALARPOTENTIAL_FNCLLBL        "SclrPtFnCllbl"
 #define SCALARPOTENTIAL_FNCLLBL_MSG    "ScalarPotential function is not callable."
 
-#define LINEINTEGRAL_ARGS              "IntArgs"
+#define LINEINTEGRAL_ARGS              "IntgrlArgs"
 #define LINEINTEGRAL_ARGS_MSG          "Integral functionals require a callable argument, followed by zero or more Fields."
 
-#define LINEINTEGRAL_NFLDS             "IntNFlds"
+#define INTEGRAL_FLD                   "IntgrlFld"
+#define INTEGRAL_FLD_MSG               "Can't identify field."
+
+#define INTEGRAL_AMBGSFLD              "IntgrlAmbgsFld"
+#define INTEGRAL_AMBGSFLD_MSG          "Field reference is ambigious: call with a Field object."
+
+#define INTEGRAL_SPCLFN                "IntgrlSpclFn"
+#define INTEGRAL_SPCLFN_MSG            "Special function '%s' must not be called outside of an Integral."
+
+#define LINEINTEGRAL_NFLDS             "IntgrlNFlds"
 #define LINEINTEGRAL_NFLDS_MSG         "Incorrect number of Fields provided for integrand function."
 
 #define LINEARELASTICITY_REF           "LnElstctyRef"
@@ -144,6 +154,9 @@ typedef bool (functional_integrand) (vm *v, objectmesh *mesh, elementid id, int 
 /** Gradient function */
 typedef bool (functional_gradient) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc);
 
+/** Field gradient function */
+typedef bool (functional_fieldgradient) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectfield *frc);
+
 struct s_functional_mapinfo; // Resolve circular typedef dependency
 
 /** Clone reference function */
@@ -160,8 +173,10 @@ typedef struct s_functional_mapinfo {
     objectselection *sel; // Selection, if any
     objectfield *field; // Field, if any
     grade g; // Grade to use
+    elementid id; // Element id at which to evaluate the integrand
     functional_integrand *integrand; // Integrand function
     functional_gradient *grad; // Gradient
+    functional_fieldgradient *fieldgrad; // Field gradient
     functional_dependencies *dependencies; // Dependencies
     functional_cloneref *cloneref; // Clone a reference with a given field substituted
     functional_freeref *freeref; // Free a reference
@@ -177,7 +192,9 @@ bool functional_containsvertex(int nv, int *vid, elementid id);
 
 bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out);
+bool functional_mapintegrandat(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out);
+bool functional_mapfieldgradient(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value *out);
 
@@ -212,6 +229,19 @@ bool functional_elementgradient(vm *v, objectmesh *mesh, grade g, elementid id, 
     if (functional_validateargs(v, nargs, args, &info)) { \
         info.g = grade; info.integrand = integrandfn; \
         functional_mapintegrand(v, &info, &out); \
+    } \
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
+    return out; \
+}
+
+/** Evaluate an integrand at an element */
+#define FUNCTIONAL_INTEGRANDFORELEMENT(name, grade, integrandfn) value name##_integrandForElement(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    value out=MORPHO_NIL; \
+    \
+    if (functional_validateargs(v, nargs, args, &info)) { \
+        info.g = grade; info.integrand = integrandfn; \
+        functional_mapintegrandforelement(v, &info, &out); \
     } \
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
     return out; \

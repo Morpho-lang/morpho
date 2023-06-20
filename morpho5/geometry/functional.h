@@ -154,6 +154,9 @@ typedef bool (functional_integrand) (vm *v, objectmesh *mesh, elementid id, int 
 /** Gradient function */
 typedef bool (functional_gradient) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc);
 
+/** Field gradient function */
+typedef bool (functional_fieldgradient) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectfield *frc);
+
 struct s_functional_mapinfo; // Resolve circular typedef dependency
 
 /** Clone reference function */
@@ -173,6 +176,7 @@ typedef struct s_functional_mapinfo {
     elementid id; // Element id at which to evaluate the integrand
     functional_integrand *integrand; // Integrand function
     functional_gradient *grad; // Gradient
+    functional_fieldgradient *fieldgrad; // Field gradient
     functional_dependencies *dependencies; // Dependencies
     functional_cloneref *cloneref; // Clone a reference with a given field substituted
     functional_freeref *freeref; // Free a reference
@@ -190,6 +194,7 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapintegrandat(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out);
+bool functional_mapfieldgradient(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value *out);
 

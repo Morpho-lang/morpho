@@ -50,7 +50,7 @@ headers:
 	find . -type f -name '*.h' -exec cp {} $(HEADERSDIR) \;
 
 .PHONY: extensions
-headers: 
+extensions: 
 	mkdir -p $(EXTENSIONSDIR)
 
 .PHONY: install

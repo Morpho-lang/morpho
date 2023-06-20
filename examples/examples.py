@@ -86,7 +86,7 @@ def run(file,testLog,CI):
 
             if (iserror(line)):
                 if not CI:
-                    print(stylize("Failed",colored.fg("red")))
+                    print("Failed") #stylize("Failed",colored.fg("red"))) // Temporarily disable this 6/19/23 due to colored module API change
                 else:
                     print("::error file = {",file,"}::{",file," Failed}")
 
@@ -101,7 +101,7 @@ def run(file,testLog,CI):
         if (ret ==1):
             if not CI:
                 print(file+":", end=" ")
-                print(stylize("Passed",colored.fg("green")))
+                print("Passed") #stylize("Passed",colored.fg("green")))
         # Delete the temporary file
         os.system('rm ' + tmp)
     return ret

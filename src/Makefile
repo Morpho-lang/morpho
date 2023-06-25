@@ -1,0 +1,17 @@
+src = $(wildcard *.c) $(wildcard */*.c)
+obj = $(src:.c=.dylib)
+
+LDFLAGS  = -lm -lcblas -llapack -lcxsparse -L/opt/homebrew/lib
+CFLAGS   = -undefined dynamic_lookup -dynamiclib $(EXTCFLAGS) -O3 -I/opt/homebrew/include -I. -I./datastructures -I./geometry -I./utils -I./vm -I./builtin
+
+libmorpho:
+	$(CC) -o $@.dylib $(src) $(LDFLAGS) $(CFLAGS)
+
+.PHONY: clean
+clean:
+
+.PHONY: install
+install: libmorpho
+	cp libmorpho.dylib /usr/local/lib/libmorpho.dylib
+	make clean 
+	

@@ -13,7 +13,11 @@ include_directories("src/utils")
 include_directories("src/vm")
 
 # Find suitesparse cs.h header file 
-find_file(SUITESPARSE_HEADER cs.h)
+find_file(SUITESPARSE_HEADER cs.h 
+          HINTS 
+            /usr/local/include
+            /usr/local/include/suitesparse
+            /usr/include/suitesparse)
 
 # Identify folder that cs.h is located in from SUITESPARSE_HEADER and store in SUITESPARSE_INCLUDE
 get_filename_component(SUITESPARSE_INCLUDE ${SUITESPARSE_HEADER} DIRECTORY)
@@ -21,14 +25,14 @@ get_filename_component(SUITESPARSE_INCLUDE ${SUITESPARSE_HEADER} DIRECTORY)
 # Add morpho headers to MORPHO_INCLUDE
 target_include_directories(morpho PUBLIC ${SUITESPARSE_INCLUDE})
 
-# Locate lapack
+# Locate a lapack version; we can use lapacke 
 find_library(LAPACK_LIBRARY
-    NAMES lapack liblapack
+    NAMES lapack liblapack lapacke liblapacke
 )
 
 # Locate cblas
 find_library(CBLAS_LIBRARY
-    NAMES cblas libcblas
+    NAMES cblas libcblas blas libblas
 )
 
 # Locate suitesparse

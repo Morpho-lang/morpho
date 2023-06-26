@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.1)
 project(morpho-libmorpho)
 
 add_library(morpho SHARED "") 

@@ -1,0 +1,9 @@
+target_sources(morpho
+    PRIVATE
+        discretization.c
+        field.c
+        functional.c
+        integrate.c
+        mesh.c
+        selection.c
+)

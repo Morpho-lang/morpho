@@ -9,6 +9,7 @@ libmorpho:
 
 .PHONY: clean
 clean:
+	rm libmorpho.dylib
 
 .PHONY: install
 install: libmorpho

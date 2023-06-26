@@ -1,0 +1,11 @@
+target_sources(morpho
+    PRIVATE
+        cmplx.c
+        dictionary.c
+        matrix.c
+        object.c
+        sparse.c
+        syntaxtree.c
+        value.c
+        varray.c
+)

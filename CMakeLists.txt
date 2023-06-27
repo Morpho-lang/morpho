@@ -25,9 +25,11 @@ get_filename_component(SUITESPARSE_INCLUDE ${SUITESPARSE_HEADER} DIRECTORY)
 # Add morpho headers to MORPHO_INCLUDE
 target_include_directories(morpho PUBLIC ${SUITESPARSE_INCLUDE})
 
-# Locate a lapack version; we can use lapacke 
+# Locate a lapack version
+# Currently we prefer LAPACKE 
+# TODO: Fix morpho source to select between lapack and lapacke
 find_library(LAPACK_LIBRARY
-    NAMES lapack liblapack lapacke liblapacke
+    NAMES lapacke liblapacke lapack liblapack 
 )
 
 # Locate cblas

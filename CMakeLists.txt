@@ -42,7 +42,10 @@ find_library(SUITESPARSE_LIBRARY
     NAMES cxsparse libcxsparse
 )
 
-target_link_libraries(morpho ${SUITESPARSE_LIBRARY} ${CBLAS_LIBRARY} ${LAPACK_LIBRARY} ${CMAKE_DL_LIBS})
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
+target_link_libraries(morpho ${SUITESPARSE_LIBRARY} ${CBLAS_LIBRARY} ${LAPACK_LIBRARY} ${CMAKE_DL_LIBS} Threads::Threads)
 
 # Install the resulting library
 install(TARGETS morpho)

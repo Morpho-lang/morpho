@@ -4,6 +4,7 @@ target_sources(morpho
 )
 
 add_subdirectory(builtin)
+add_subdirectory(classes)
 add_subdirectory(datastructures)
 add_subdirectory(geometry)
 add_subdirectory(utils)

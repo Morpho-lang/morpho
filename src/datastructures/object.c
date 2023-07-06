@@ -803,52 +803,6 @@ objectarray *object_newarray(unsigned int ndim, unsigned int *dim) {
 }
 
 /* **********************************************************************
- * Ranges
- * ********************************************************************** */
-
-/** Array object definitions */
-void objectrange_printfn(object *obj) {
-    objectrange *r = (objectrange *) obj;
-    morpho_printvalue(r->start);
-    printf("..");
-    morpho_printvalue(r->end);
-    if (!MORPHO_ISNIL(r->step)) {
-        printf(":");
-        morpho_printvalue(r->step);
-    }
-}
-
-size_t objectrange_sizefn(object *obj) {
-    return sizeof(objectrange);
-}
-
-objecttypedefn objectrangedefn = {
-    .printfn=objectrange_printfn,
-    .markfn=NULL,
-    .freefn=NULL,
-    .sizefn=objectrange_sizefn
-};
-
-/** Create a new range. Step may be set to MORPHO_NIL to use the default value of 1 */
-objectrange *object_newrange(value start, value end, value step) {
-    value v[3]={start, end, step};
-
-    /* Ensure all three values are either integer or floating point */
-    if (!value_promotenumberlist((MORPHO_ISNIL(step) ? 2 : 3), v)) return NULL;
-
-    objectrange *new = (objectrange *) object_new(sizeof(objectrange), OBJECT_RANGE);
-
-    if (new) {
-        new->start=v[0];
-        new->end=v[1];
-        new->step=v[2];
-        new->nsteps=range_count(new);
-    }
-
-    return new;
-}
-
-/* **********************************************************************
  * Initialization
  * ********************************************************************** */
 
@@ -863,8 +817,6 @@ objecttype objectinvocationtype;
 objecttype objectdictionarytype;
 objecttype objectarraytype;
 objecttype objectlisttype;
-
-objecttype objectrangetype;
 
 void object_initialize(void) {
 #ifdef MORPHO_REUSEPOOL
@@ -883,7 +835,6 @@ void object_initialize(void) {
     objectarraytype=object_addtype(&objectarraydefn);
     objectlisttype=object_addtype(&objectlistdefn);
     objectdictionarytype=object_addtype(&objectdictionarydefn);
-    objectrangetype=object_addtype(&objectrangedefn);
 }
 
 void object_finalize(void) {

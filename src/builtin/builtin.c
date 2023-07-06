@@ -289,6 +289,7 @@ void builtin_initialize(void) {
     veneer_initialize(); 
     
     /* Initialize builtin classes and functions */
+    range_initialize();
     file_initialize();
     system_initialize();
     matrix_initialize();

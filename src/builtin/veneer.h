@@ -9,6 +9,7 @@
 
 #include "builtin.h"
 #include "matrix.h"
+#include "range.h"
 
 /* ---------------------------
  * Veneer classes
@@ -19,7 +20,6 @@
 #define ARRAY_CLASSNAME "Array"
 #define LIST_CLASSNAME "List"
 #define DICTIONARY_CLASSNAME "Dictionary"
-#define RANGE_CLASSNAME "Range"
 #define FUNCTION_CLASSNAME "Function"
 #define CLOSURE_CLASSNAME "Closure"
 #define INVOCATION_CLASSNAME "Invocation"
@@ -46,9 +46,6 @@
 #define DICTIONARY_CONTAINS_METHOD "contains"
 #define DICTIONARY_REMOVE_METHOD "remove"
 #define DICTIONARY_CLEAR_METHOD "clear"
-
-#define RANGE_ARGS                        "RngArgs"
-#define RANGE_ARGS_MSG                    "Range expects numerical arguments: a start, an end and an optional stepsize."
 
 #define SETINDEX_ARGS                     "SetIndxArgs"
 #define SETINDEX_ARGS_MSG                 "Setindex method expects an index and a value as arguments."

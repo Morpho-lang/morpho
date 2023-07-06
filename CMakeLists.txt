@@ -7,6 +7,7 @@ add_subdirectory(src)
 # Include morpho header files across the project 
 include_directories("src")
 include_directories("src/builtin")
+include_directories("src/classes")
 include_directories("src/datastructures")
 include_directories("src/geometry")
 include_directories("src/utils")

@@ -128,15 +128,11 @@ object *object_new(size_t size, objecttype type) {
 }
 
 /* **********************************************************************
- * Functions
+ * Upvalues
  * ********************************************************************** */
 
 DEFINE_VARRAY(upvalue, upvalue);
 DEFINE_VARRAY(varray_upvalue, varray_upvalue);
-
-/* **********************************************************************
- * Upvalues
- * ********************************************************************** */
 
 /** Upvalue object definitions */
 void objectupvalue_printfn(object *obj) {

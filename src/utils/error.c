@@ -174,10 +174,6 @@ void morpho_unreachable(const char *explanation) {
 void error_initialize(void) {
     dictionary_init(&error_table);
     varray_errordefinitioninit(&error_messages);
-    
-    /* Define errors */
-    morpho_defineerror(ERROR_ALLOCATIONFAILED, ERROR_EXIT, ERROR_ALLOCATIONFAILED_MSG);
-    morpho_defineerror(ERROR_INTERNALERROR, ERROR_EXIT, ERROR_INTERNALERROR_MSG);
 }
 
 /** Finalizes the error handling system */

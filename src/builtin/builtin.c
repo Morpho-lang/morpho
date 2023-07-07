@@ -278,18 +278,16 @@ bool builtin_checksymbol(value symbol) {
  * ********************************************************************** */
 
 void builtin_initialize(void) {
-    objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
-    
     dictionary_init(&builtin_functiontable);
     dictionary_init(&builtin_classtable);
     dictionary_init(&builtin_symboltable);
     varray_valueinit(&builtin_objects);
     
-    functions_initialize();
-    veneer_initialize(); 
-    
     /* Initialize builtin classes and functions */
-    string_initialize();
+    string_initialize(); // Must be initialized early as much depends on this
+    
+    object_initialize(); // This has been carefully placed to ensure
+    
     dict_initialize();
     list_initialize();
     closure_initialize();
@@ -297,8 +295,13 @@ void builtin_initialize(void) {
     range_initialize();
     complex_initialize();
     
+    objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
+    
     file_initialize();
     system_initialize();
+    
+    functions_initialize();
+    veneer_initialize();
     
     matrix_initialize();
     sparse_initialize();

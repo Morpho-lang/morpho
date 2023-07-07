@@ -2201,11 +2201,12 @@ bool vm_gettlvar(vm *v, int handle, value *out) {
 
 /** Initializes morpho */
 void morpho_initialize(void) {
-    object_initialize(); // Must be first for zombie object tracking
-    resources_initialize(); // Must be early to ensure resources can be found
-    error_initialize();
     random_initialize();
+    error_initialize();
+    
     builtin_initialize(); // Must come before initialization of any classes or similar
+    resources_initialize(); // Must come before compiler and extensions
+    
     compile_initialize();
     extensions_initialize();
 
@@ -2213,6 +2214,9 @@ void morpho_initialize(void) {
     dictionary_init(&sizecheck);
 #endif
 
+    morpho_defineerror(ERROR_ALLOCATIONFAILED, ERROR_EXIT, ERROR_ALLOCATIONFAILED_MSG);
+    morpho_defineerror(ERROR_INTERNALERROR, ERROR_EXIT, ERROR_INTERNALERROR_MSG);
+    
     morpho_defineerror(VM_STCKOVFLW, ERROR_HALT, VM_STCKOVFLW_MSG);
     morpho_defineerror(VM_ERRSTCKOVFLW, ERROR_HALT, VM_ERRSTCKOVFLW_MSG);
     morpho_defineerror(VM_INVLDOP, ERROR_HALT, VM_INVLDOP_MSG);

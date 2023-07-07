@@ -294,69 +294,6 @@ objectupvalue *object_newupvalue(value *reg) {
 }
 
 /* **********************************************************************
- * Closures
- * ********************************************************************** */
-
-/** Closure object definitions */
-void objectclosure_printfn(object *obj) {
-    objectclosure *f = (objectclosure *) obj;
-    printf("<");
-    objectfunction_printfn((object *) f->func);
-    printf(">");
-}
-
-void objectclosure_markfn(object *obj, void *v) {
-    objectclosure *c = (objectclosure *) obj;
-    morpho_markobject(v, (object *) c->func);
-    for (unsigned int i=0; i<c->nupvalues; i++) {
-        morpho_markobject(v, (object *) c->upvalues[i]);
-    }
-}
-
-size_t objectclosure_sizefn(object *obj) {
-    return sizeof(objectclosure)+sizeof(objectupvalue *)*((objectclosure *) obj)->nupvalues;
-}
-
-objecttypedefn objectclosuredefn = {
-    .printfn=objectclosure_printfn,
-    .markfn=objectclosure_markfn,
-    .freefn=NULL,
-    .sizefn=objectclosure_sizefn
-};
-
-/** Closure functions */
-void object_closureinit(objectclosure *c) {
-    c->func=NULL;
-}
-
-/** @brief Creates a new closure
- *  @param sf       the objectfunction of the current environment
- *  @param func     a function object to enclose
- *  @param np       the prototype number to use */
-objectclosure *object_newclosure(objectfunction *sf, objectfunction *func, indx np) {
-    objectclosure *new = NULL;
-    varray_upvalue *up = NULL;
-
-    if (np<sf->prototype.count) {
-        up = &sf->prototype.data[np];
-    }
-
-    if (up) {
-        new = (objectclosure *) object_new(sizeof(objectclosure) + sizeof(objectupvalue*)*up->count, OBJECT_CLOSURE);
-        if (new) {
-            object_closureinit(new);
-            new->func=func;
-            for (unsigned int i=0; i<up->count; i++) {
-                new->upvalues[i]=NULL;
-            }
-            new->nupvalues=up->count;
-        }
-    }
-
-    return new;
-}
-
-/* **********************************************************************
  * Classes
  * ********************************************************************** */
 
@@ -603,7 +540,6 @@ dictionary *object_dictionary(objectdictionary *dict) {
 
 objecttype objectfunctiontype;
 objecttype objectupvaluetype;
-objecttype objectclosuretype;
 objecttype objectclasstype;
 objecttype objectinstancetype;
 objecttype objectinvocationtype;
@@ -618,7 +554,6 @@ void object_initialize(void) {
 
     objectfunctiontype=object_addtype(&objectfunctiondefn);
     objectupvaluetype=object_addtype(&objectupvaluedefn);
-    objectclosuretype=object_addtype(&objectclosuredefn);
     objectclasstype=object_addtype(&objectclassdefn);
     objectinstancetype=object_addtype(&objectinstancedefn);
     objectinvocationtype=object_addtype(&objectinvocationdefn);

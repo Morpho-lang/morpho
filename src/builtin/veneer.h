@@ -12,6 +12,7 @@
 #include "range.h"
 #include "strng.h"
 #include "array.h"
+#include "closure.h"
 #include "matrix.h"
 
 /* ---------------------------
@@ -21,7 +22,6 @@
 #define OBJECT_CLASSNAME "Object"
 #define DICTIONARY_CLASSNAME "Dictionary"
 #define FUNCTION_CLASSNAME "Function"
-#define CLOSURE_CLASSNAME "Closure"
 #define INVOCATION_CLASSNAME "Invocation"
 #define ERROR_CLASSNAME "Error"
 
@@ -78,7 +78,6 @@
 
 /* Object methods */
 value Object_print(vm *v, int nargs, value *args);
-
 
 void veneer_initialize(void);
 

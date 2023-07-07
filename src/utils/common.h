@@ -17,6 +17,7 @@
 #include "object.h"
 #include "builtin.h"
 #include "error.h"
+#include "veneer.h"
 
 #define COMMON_NILSTRING   "nil"
 #define COMMON_TRUESTRING  "true"

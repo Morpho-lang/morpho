@@ -474,37 +474,6 @@ MORPHO_METHOD(MORPHO_SUB_METHOD, Dictionary_difference, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
- * Closure
- * ********************************************************************** */
-
-value Closure_tostring(vm *v, int nargs, value *args) {
-    objectclosure *self=MORPHO_GETCLOSURE(MORPHO_SELF(args));
-    value out = MORPHO_NIL;
-    
-    varray_char buffer;
-    varray_charinit(&buffer);
-
-    if (self->func) {
-        varray_charadd(&buffer, "<<fn ", 5);
-        morpho_printtobuffer(v, self->func->name, &buffer);
-        varray_charadd(&buffer, ">>", 2);
-    }
-
-    out = object_stringfromvarraychar(&buffer);
-    if (MORPHO_ISSTRING(out)) {
-        morpho_bindobjects(v, 1, &out);
-    }
-    varray_charclear(&buffer);
-
-    return out;
-}
-
-MORPHO_BEGINCLASS(Closure)
-MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Closure_tostring, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY)
-MORPHO_ENDCLASS
-
-/* **********************************************************************
  * Function
  * ********************************************************************** */
 
@@ -682,10 +651,6 @@ void veneer_initialize(void) {
     builtin_addfunction(DICTIONARY_CLASSNAME, dictionary_constructor, BUILTIN_FLAGSEMPTY);
     value dictionaryclass=builtin_addclass(DICTIONARY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Dictionary), objclass);
     object_setveneerclass(OBJECT_DICTIONARY, dictionaryclass);
-
-    /* Closure */
-    value closureclass=builtin_addclass(CLOSURE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Closure), objclass);
-    object_setveneerclass(OBJECT_CLOSURE, closureclass);
     
     /* Function */
     value functionclass=builtin_addclass(FUNCTION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Function), objclass);

@@ -192,6 +192,8 @@ objectfunction *object_newfunction(indx entry, value name, objectfunction *paren
 bool object_functionhasvargs(objectfunction *func);
 void object_functionsetvarg(objectfunction *func, unsigned int varg);
 
+void objectfunction_printfn(object *obj);
+
 /* ---------------------------
  * Upvalue objects
  * --------------------------- */
@@ -214,31 +216,6 @@ objectupvalue *object_newupvalue(value *reg);
 
 /** Tests whether an object is a function */
 #define MORPHO_ISUPVALUE(val) object_istype(val, object_upvaluetype)
-
-/* ---------------------------
- * Closures
- * --------------------------- */
-
-extern objecttype objectclosuretype;
-#define OBJECT_CLOSURE objectclosuretype
-
-typedef struct {
-    object obj;
-    objectfunction *func;
-    int nupvalues;
-    objectupvalue *upvalues[];
-} objectclosure;
-
-objectclosure *object_newclosure(objectfunction *sf, objectfunction *func, indx np);
-
-/** Tests whether an object is a closure */
-#define MORPHO_ISCLOSURE(val) object_istype(val, OBJECT_CLOSURE)
-
-/** Gets the object as a closure */
-#define MORPHO_GETCLOSURE(val)   ((objectclosure *) MORPHO_GETOBJECT(val))
-
-/** Retrieve the function object from a closure */
-#define MORPHO_GETCLOSUREFUNCTION(val)  (((objectclosure *) MORPHO_GETOBJECT(val))->func)
 
 /* ---------------------------
  * Instances

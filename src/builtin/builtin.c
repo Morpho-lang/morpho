@@ -289,11 +289,13 @@ void builtin_initialize(void) {
     veneer_initialize(); 
     
     /* Initialize builtin classes and functions */
+    closure_initialize();
     array_initialize();
     range_initialize();
     list_initialize();
     string_initialize();
     complex_initialize();
+    
     file_initialize();
     system_initialize();
     
@@ -325,4 +327,5 @@ void builtin_finalize(void) {
     list_finalize();
     range_finalize();
     array_finalize();
+    closure_finalize();
 }

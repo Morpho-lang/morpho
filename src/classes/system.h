@@ -24,17 +24,17 @@
 #define SYSTEM_ARGUMENTS_METHOD       "arguments"
 #define SYSTEM_EXIT_METHOD            "exit"
 
-#define SYSTEM_MACOS   "macos"
-#define SYSTEM_LINUX   "linux"
-#define SYSTEM_UNIX    "unix"
-#define SYSTEM_WINDOWS "windows"
+#define SYSTEM_MACOS                  "macos"
+#define SYSTEM_LINUX                  "linux"
+#define SYSTEM_UNIX                   "unix"
+#define SYSTEM_WINDOWS                "windows"
 
 /* -------------------------------------------------------
  * System error messages
  * ------------------------------------------------------- */
 
-#define SLEEP_ARGS                        "SystmSlpArgs"
-#define SLEEP_ARGS_MSG                    "Sleep method expects a time in seconds."
+#define SLEEP_ARGS                    "SystmSlpArgs"
+#define SLEEP_ARGS_MSG                "Sleep method expects a time in seconds."
 
 void system_initialize(void);
 void system_finalize(void);

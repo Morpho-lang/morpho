@@ -598,88 +598,6 @@ dictionary *object_dictionary(objectdictionary *dict) {
 }
 
 /* **********************************************************************
- * Arrays
- * ********************************************************************** */
-
-/** Array object definitions */
-void objectarray_printfn(object *obj) {
-    printf("<Array>");
-}
-
-void objectarray_markfn(object *obj, void *v) {
-    objectarray *c = (objectarray *) obj;
-    for (unsigned int i=0; i<c->nelements; i++) {
-        morpho_markvalue(v, c->values[i]);
-    }
-}
-
-size_t objectarray_sizefn(object *obj) {
-    return sizeof(objectarray) +
-        sizeof(value) * ( ((objectarray *) obj)->nelements+2*((objectarray *) obj)->ndim );
-}
-
-objecttypedefn objectarraydefn = {
-    .printfn=objectarray_printfn,
-    .markfn=objectarray_markfn,
-    .freefn=NULL,
-    .sizefn=objectarray_sizefn
-};
-
-/** Initializes an array given the size */
-void object_arrayinit(objectarray *array, unsigned int ndim, unsigned int *dim) {
-    object_init((object *) array, OBJECT_ARRAY);
-    unsigned int nel = (ndim==0 ? 0 : 1);
-
-    /* Store pointers into the data array */
-    array->dimensions=array->data;
-    array->multipliers=array->data+ndim;
-    array->values=array->data+2*ndim;
-
-    /* Store the description of array dimensions */
-    array->ndim=ndim;
-    for (unsigned int i=0; i<ndim; i++) {
-        array->dimensions[i]=MORPHO_INTEGER(dim[i]);
-        array->multipliers[i]=MORPHO_INTEGER(nel);
-        nel*=dim[i];
-    }
-
-    /* Store the size of the object for convenient access */
-    array->nelements=nel;
-
-    /* Arrays are initialized to nil. */
-#ifdef MORPHO_NAN_BOXING
-    memset(array->values, 0, sizeof(value)*nel);
-#else
-    for (unsigned int i=0; i<nel; i++) array->values[i]=MORPHO_FLOAT(0.0);
-#endif
-}
-
-/** @brief Creates an array object
- * @details Arrays are stored in memory as follows:
- *          objectarray structure with flexible array member value
- *          value [0..dim-1] the dimensions of the array
- *          value [dim..2*dim-1] stores multipliers for each dimension to translate to the index
- *          value [2*dim..] array elements in column major order, i.e. the matrix
- *          [ [ 1, 2],
- *           [ 3, 4] ] is stored as:
- *          <structure> // the structure
- *          2, 2, // the dimensions
- *          1, 2, // multipliers for each index to access elements
- *          1, 3, 2, 4 // the elements in column major order */
-objectarray *object_newarray(unsigned int ndim, unsigned int *dim) {
-    /* Calculate the number of elements */
-    unsigned int nel=(ndim==0 ? 0 : dim[0]);
-    for (unsigned int i=1; i<ndim; i++) nel*=dim[i];
-
-    size_t size = sizeof(objectarray)+sizeof(value)*(2*ndim + nel);
-
-    objectarray *new = (objectarray *) object_new(size, OBJECT_ARRAY);
-    if (new) object_arrayinit(new, ndim, dim);
-
-    return new;
-}
-
-/* **********************************************************************
  * Initialization
  * ********************************************************************** */
 
@@ -691,7 +609,6 @@ objecttype objectinstancetype;
 objecttype objectinvocationtype;
 
 objecttype objectdictionarytype;
-objecttype objectarraytype;
 
 void object_initialize(void) {
 #ifdef MORPHO_REUSEPOOL
@@ -705,7 +622,6 @@ void object_initialize(void) {
     objectclasstype=object_addtype(&objectclassdefn);
     objectinstancetype=object_addtype(&objectinstancedefn);
     objectinvocationtype=object_addtype(&objectinvocationdefn);
-    objectarraytype=object_addtype(&objectarraydefn);
     objectdictionarytype=object_addtype(&objectdictionarydefn);
 }
 

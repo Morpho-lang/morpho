@@ -8,17 +8,17 @@
 #define veneer_h
 
 #include "builtin.h"
-#include "matrix.h"
 #include "list.h"
 #include "range.h"
 #include "strng.h"
+#include "array.h"
+#include "matrix.h"
 
 /* ---------------------------
  * Veneer classes
  * --------------------------- */
 
 #define OBJECT_CLASSNAME "Object"
-#define ARRAY_CLASSNAME "Array"
 #define DICTIONARY_CLASSNAME "Dictionary"
 #define FUNCTION_CLASSNAME "Function"
 #define CLOSURE_CLASSNAME "Closure"
@@ -61,15 +61,6 @@
 #define CLASS_INVK                        "ClssInvk"
 #define CLASS_INVK_MSG                    "Cannot invoke method '%s' on a class."
 
-#define ARRAY_ARGS                        "ArrayArgs"
-#define ARRAY_ARGS_MSG                    "Array must be called with integer dimensions as arguments."
-
-#define ARRAY_INIT                        "ArrayInit"
-#define ARRAY_INIT_MSG                    "Array initializer must be another array or a list."
-
-#define ARRAY_CMPT                        "ArrayCmpt"
-#define ARRAY_CMPT_MSG                    "Array initializer is not compatible with the requested dimensions."
-
 #define INVOCATION_ARGS                   "InvocationArgs"
 #define INVOCATION_ARGS_MSG               "Invocation must be called with an object and a method name as arguments."
 
@@ -88,27 +79,6 @@
 /* Object methods */
 value Object_print(vm *v, int nargs, value *args);
 
-/* Public interfaces to various data structures */
-typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_OUTOFBOUNDS,ARRAY_NONINTINDX } objectarrayerror;
-
-errorid array_error(objectarrayerror err);
-errorid array_to_matrix_error(objectarrayerror err);
-errorid array_to_list_error(objectarrayerror err);
-
-bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out);
-objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned int *indx, value *out);
-objectarrayerror array_setelement(objectarray *a, unsigned int ndim, unsigned int *indx, value in);
-void array_print(vm *v, objectarray *a);
-objectarrayerror setslicerecursive(value* a, value* out,objectarrayerror copy(value * ,value *,\
-									unsigned int, unsigned int *,unsigned int *),unsigned int ndim,\
-									unsigned int curdim, unsigned int *indx,unsigned int *newindx, value *slices);
-objectarrayerror getslice(value *a, bool dimFcn(value *,unsigned int),\
-						  void constuctor(unsigned int *,unsigned int,value *),\
-						  objectarrayerror copy(value * ,value *, unsigned int, unsigned int *,unsigned int *),\
-						  unsigned int ndim, value *slices, value *out);
-objectarrayerror array_slicecopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx);
-void array_sliceconstructor(unsigned int *slicesize,unsigned int ndim,value* out);
-bool array_slicedim(value * a, unsigned int ndim);
 
 void veneer_initialize(void);
 

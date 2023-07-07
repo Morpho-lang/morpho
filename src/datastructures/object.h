@@ -312,41 +312,6 @@ typedef struct {
 objectdictionary *object_newdictionary(void);
 
 /* -------------------------------------------------------
- * Arrays
- * ------------------------------------------------------- */
-
-extern objecttype objectarraytype;
-#define OBJECT_ARRAY objectarraytype
-
-typedef struct {
-    object obj;
-    unsigned int ndim;
-    unsigned int nelements;
-    value *values;
-    value *dimensions;
-    value *multipliers;
-    value data[];
-} objectarray;
-
-/** Tests whether an object is an array */
-#define MORPHO_ISARRAY(val) object_istype(val, OBJECT_ARRAY)
-
-/** Gets the object as an array */
-#define MORPHO_GETARRAY(val)   ((objectarray *) MORPHO_GETOBJECT(val))
-
-/** Creates an array object */
-objectarray *object_newarray(unsigned int dimension, unsigned int *dim);
-
-/** Creates a new array from a list of values */
-objectarray *object_arrayfromvaluelist(unsigned int n, value *v);
-
-/** Creates a new 1D array from a list of varray_value */
-objectarray *object_arrayfromvarrayvalue(varray_value *v);
-
-/** Creates a new array object with the dimensions given as a list of values */
-objectarray *object_arrayfromvalueindices(unsigned int ndim, value *dim);
-
-/* -------------------------------------------------------
  * Veneer classes
  * ------------------------------------------------------- */
 

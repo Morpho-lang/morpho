@@ -17,6 +17,10 @@
 #include <sys/time.h>
 #endif
 
+/* **********************************************************************
+ * System utility functions
+ * ********************************************************************** */
+
 /** Set arguments passed to morpho program */
 static value arglist;
 

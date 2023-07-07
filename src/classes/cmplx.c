@@ -672,17 +672,24 @@ MORPHO_ENDCLASS
  * ********************************************************************* */
 
 void complex_initialize(void) {
+    // Define complex object type
     objectcomplextype=object_addtype(&objectcomplexdefn);
     
+    // Complex constructor function
     builtin_addfunction(COMPLEX_CLASSNAME, complex_constructor, BUILTIN_FLAGSEMPTY);
     
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
+    // Define Complex class
     value complexclass=builtin_addclass(COMPLEX_CLASSNAME, MORPHO_GETCLASSDEFINITION(ComplexNum), objclass);
     object_setveneerclass(OBJECT_COMPLEX, complexclass);
 
+    // Complex error messages
     morpho_defineerror(COMPLEX_CONSTRUCTOR, ERROR_HALT, COMPLEX_CONSTRUCTOR_MSG);
     morpho_defineerror(COMPLEX_ARITHARGS, ERROR_HALT, COMPLEX_ARITHARGS_MSG);
     morpho_defineerror(COMPLEX_INVLDNARG, ERROR_HALT, COMPLEX_INVLDNARG_MSG);
+}
+
+void complex_finalize(void) {
 }

@@ -124,7 +124,8 @@ value Complex_getimag(vm *v, int nargs, value *args);
 value Complex_angle(vm *v, int nargs, value *args);
 value Complex_conj(vm *v, int nargs, value *args);
 
-/* Initialization */
+/* Initialization/finalization */
 void complex_initialize(void);
+void complex_finalize(void);
 
 #endif /* complex_h */

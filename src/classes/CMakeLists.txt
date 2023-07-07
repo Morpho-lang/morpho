@@ -1,5 +1,6 @@
 target_sources(morpho
     PRIVATE
+        array.c  array.h
         cmplx.c  cmplx.h
         file.c   file.h
         list.c   list.h

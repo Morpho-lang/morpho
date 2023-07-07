@@ -14,7 +14,6 @@
  * objectrange definitions
  * ********************************************************************** */
 
-/** Array object definitions */
 void objectrange_printfn(object *obj) {
     objectrange *r = (objectrange *) obj;
     morpho_printvalue(r->start);

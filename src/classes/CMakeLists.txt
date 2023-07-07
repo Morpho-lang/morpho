@@ -3,6 +3,7 @@ target_sources(morpho
         array.c    array.h
         closure.c  closure.h
         cmplx.c    cmplx.h
+        dict.c     dict.h
         file.c     file.h
         list.c     list.h
         range.c    range.h

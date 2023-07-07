@@ -40,6 +40,7 @@ struct sobject {
 
 /** Gets an objects key */
 #define MORPHO_GETOBJECTHASH(val)           (MORPHO_GETOBJECT(val)->hsh)
+
 /** Sets an objects key */
 #define MORPHO_SETOBJECTHASH(val, newhash)  (MORPHO_GETOBJECT(val)->hsh = newhash)
 
@@ -262,31 +263,6 @@ typedef struct {
 #define MORPHO_GETINVOCATION(val)   ((objectinvocation *) MORPHO_GETOBJECT(val))
 
 objectinvocation *object_newinvocation(value receiver, value method);
-
-/* -------------------------------------------------------
- * Dictionaries
- * ------------------------------------------------------- */
-
-extern objecttype objectdictionarytype;
-#define OBJECT_DICTIONARY objectdictionarytype
-
-typedef struct {
-    object obj;
-    dictionary dict;
-} objectdictionary;
-
-/** Tests whether an object is a dictionary */
-#define MORPHO_ISDICTIONARY(val) object_istype(val, OBJECT_DICTIONARY)
-
-/** Gets the object as a dictionary */
-#define MORPHO_GETDICTIONARY(val)   ((objectdictionary *) MORPHO_GETOBJECT(val))
-
-/** Extract the dictionary from an objectdictionary */
-/*static dictionary *object_dictionaryfromobject(objectdictionary *dict) {
-    return &dict->dict;
-}*/
-
-objectdictionary *object_newdictionary(void);
 
 /* -------------------------------------------------------
  * Veneer classes

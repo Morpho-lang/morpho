@@ -491,50 +491,6 @@ objectinvocation *object_newinvocation(value receiver, value method) {
 }
 
 /* **********************************************************************
- * Dictionaries
- * ********************************************************************** */
-
-/** Dictionary object definitions */
-void objectdictionary_printfn(object *obj) {
-    printf("<Dictionary>");
-}
-
-void objectdictionary_freefn(object *obj) {
-    objectdictionary *dict = (objectdictionary *) obj;
-    dictionary_clear(&dict->dict);
-}
-
-void objectdictionary_markfn(object *obj, void *v) {
-    objectdictionary *c = (objectdictionary *) obj;
-    morpho_markdictionary(v, &c->dict);
-}
-
-size_t objectdictionary_sizefn(object *obj) {
-    return sizeof(objectdictionary)+(((objectdictionary *) obj)->dict.capacity)*sizeof(dictionaryentry);
-}
-
-objecttypedefn objectdictionarydefn = {
-    .printfn=objectdictionary_printfn,
-    .markfn=objectdictionary_markfn,
-    .freefn=objectdictionary_freefn,
-    .sizefn=objectdictionary_sizefn
-};
-
-/** Creates a new dictionary */
-objectdictionary *object_newdictionary(void) {
-    objectdictionary *new = (objectdictionary *) object_new(sizeof(objectdictionary), OBJECT_DICTIONARY);
-
-    if (new) dictionary_init(&new->dict);
-
-    return new;
-}
-
-/** Extracts the dictionary from an objectdictionary. */
-dictionary *object_dictionary(objectdictionary *dict) {
-    return &dict->dict;
-}
-
-/* **********************************************************************
  * Initialization
  * ********************************************************************** */
 
@@ -543,8 +499,6 @@ objecttype objectupvaluetype;
 objecttype objectclasstype;
 objecttype objectinstancetype;
 objecttype objectinvocationtype;
-
-objecttype objectdictionarytype;
 
 void object_initialize(void) {
 #ifdef MORPHO_REUSEPOOL
@@ -557,7 +511,6 @@ void object_initialize(void) {
     objectclasstype=object_addtype(&objectclassdefn);
     objectinstancetype=object_addtype(&objectinstancedefn);
     objectinvocationtype=object_addtype(&objectinvocationdefn);
-    objectdictionarytype=object_addtype(&objectdictionarydefn);
 }
 
 void object_finalize(void) {

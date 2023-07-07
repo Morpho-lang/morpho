@@ -1,7 +1,7 @@
 /** @file system.c
  *  @author T J Atherton
  *
- *  @brief Built in class to provide access to the runtime
+ *  @brief Built in class to provide access to the runtime and system
  */
 
 #define _POSIX_C_SOURCE 199309L
@@ -18,9 +18,9 @@
 #endif
 
 /** Set arguments passed to morpho program */
-
 static value arglist;
 
+/** Set arguments with which the host program was called with */
 void morpho_setargs(int argc, const char * argv[]) {
     if (!MORPHO_ISLIST(arglist)) return;
     objectlist *alist = MORPHO_GETLIST(arglist);
@@ -30,6 +30,7 @@ void morpho_setargs(int argc, const char * argv[]) {
     }
 }
 
+/** Free arguments */
 void system_freeargs(void) {
     if (!MORPHO_ISLIST(arglist)) return;
     objectlist *alist = MORPHO_GETLIST(arglist);
@@ -41,6 +42,35 @@ void system_freeargs(void) {
     }
     morpho_freeobject(arglist);
 }
+
+/** Returns the system clock */
+double system_clock(void) {
+#ifdef WIN32
+    SYSTEMTIME st;
+    GetSystemTime (&st);
+    return ((double) st.wSecond) + st.wMilliseconds * 1e-6;
+#else
+    struct timeval tv;
+    gettimeofday (&tv, NULL);
+    return ((double) tv.tv_sec) + tv.tv_usec * 1e-6;
+#endif
+}
+
+/** Sleep for a specified number of milliseconds */
+void system_sleep(int msecs) {
+#ifdef WIN32
+    Sleep (msecs);
+#else
+    struct timespec t;
+    t.tv_sec  =  msecs / 1000;
+    t.tv_nsec = (msecs % 1000) * 1000000;
+    nanosleep (&t, NULL);
+#endif
+}
+
+/* **********************************************************************
+ * System class
+ * ********************************************************************* */
 
 /** Returns a platform description */
 value System_platform(vm *v, int nargs, value *args) {
@@ -73,18 +103,6 @@ value System_version(vm *v, int nargs, value *args) {
     return ret;
 }
 
-double system_clock(void) {
-#ifdef WIN32
-    SYSTEMTIME st;
-    GetSystemTime (&st);
-    return ((double) st.wSecond) + st.wMilliseconds * 1e-6;
-#else
-    struct timeval tv;
-    gettimeofday (&tv, NULL);
-    return ((double) tv.tv_sec) + tv.tv_usec * 1e-6;
-#endif
-}
-
 /** Clock */
 value System_clock(vm *v, int nargs, value *args) {
     return MORPHO_FLOAT(system_clock());
@@ -95,18 +113,6 @@ value System_print(vm *v, int nargs, value *args) {
     for (int i=0; i<nargs; i++) morpho_printvalue(MORPHO_GETARG(args, i));
     fflush(stdout);
     return MORPHO_NIL;
-}
-
-/** Sleep for a specified number of milliseconds */
-void system_sleep(int msecs) {
-#ifdef WIN32
-    Sleep (msecs);
-#else
-    struct timespec t;
-    t.tv_sec  =  msecs / 1000;
-    t.tv_nsec = (msecs % 1000) * 1000000;
-    nanosleep (&t, NULL);
-#endif
 }
 
 /** Sleep for a specified number of seconds */

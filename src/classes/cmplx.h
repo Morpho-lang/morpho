@@ -30,7 +30,7 @@ typedef struct {
 /** Tests whether an object is a complex */
 #define MORPHO_ISCOMPLEX(val) object_istype(val, OBJECT_COMPLEX)
 
-/** Gets the object as an complex */
+/** Gets the object as a complex */
 #define MORPHO_GETCOMPLEX(val)   ((objectcomplex *) MORPHO_GETOBJECT(val))
 
 /** Creates a complex object */

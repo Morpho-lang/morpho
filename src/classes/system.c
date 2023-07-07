@@ -1,7 +1,7 @@
 /** @file system.c
  *  @author T J Atherton
  *
- *  @brief Built in class to provide access to the runtime and system
+ *  @brief Defines System class to provide access to the runtime and system
  */
 
 #define _POSIX_C_SOURCE 199309L

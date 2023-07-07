@@ -1,7 +1,7 @@
 /** @file system.h
  *  @author T J Atherton
  *
- *  @brief Built in class to provide access to the runtime and system
+ *  @brief Defines System class to provide access to the runtime and system
  */
 
 #ifndef system_h

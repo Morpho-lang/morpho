@@ -289,11 +289,12 @@ void builtin_initialize(void) {
     veneer_initialize(); 
     
     /* Initialize builtin classes and functions */
+    string_initialize();
+    dict_initialize();
+    list_initialize();
     closure_initialize();
     array_initialize();
     range_initialize();
-    list_initialize();
-    string_initialize();
     complex_initialize();
     
     file_initialize();
@@ -306,7 +307,6 @@ void builtin_initialize(void) {
     selection_initialize();
     field_initialize();
     functional_initialize();
-    
 }
 
 void builtin_finalize(void) {
@@ -322,10 +322,12 @@ void builtin_finalize(void) {
     
     system_finalize();
     file_finalize();
-    complex_initialize();
-    string_finalize();
-    list_finalize();
+    
+    complex_finalize();
     range_finalize();
     array_finalize();
     closure_finalize();
+    list_finalize();
+    dict_finalize();
+    string_finalize();
 }

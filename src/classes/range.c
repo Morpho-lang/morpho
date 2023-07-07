@@ -91,7 +91,7 @@ value range_iterate(objectrange *range, unsigned int i) {
  * Range veneer class
  * ********************************************************************** */
 
-/** Constructor function for Ranges */
+/** Constructor function for ranges */
 value range_constructor(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     objectrange *new=NULL;
@@ -174,7 +174,6 @@ MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Range_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Range_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Range_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
-
 
 /* **********************************************************************
  * Initialization and finalization

@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include "error.h"
+#include "strng.h"
 #include "common.h"
 #include "dictionary.h"
 

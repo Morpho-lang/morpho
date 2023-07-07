@@ -11,13 +11,13 @@
 #include "matrix.h"
 #include "list.h"
 #include "range.h"
+#include "strng.h"
 
 /* ---------------------------
  * Veneer classes
  * --------------------------- */
 
 #define OBJECT_CLASSNAME "Object"
-#define STRING_CLASSNAME "String"
 #define ARRAY_CLASSNAME "Array"
 #define DICTIONARY_CLASSNAME "Dictionary"
 #define FUNCTION_CLASSNAME "Function"
@@ -61,9 +61,6 @@
 #define CLASS_INVK                        "ClssInvk"
 #define CLASS_INVK_MSG                    "Cannot invoke method '%s' on a class."
 
-#define STRING_IMMTBL                     "StrngImmtbl"
-#define STRING_IMMTBL_MSG                 "Strings are immutable."
-
 #define ARRAY_ARGS                        "ArrayArgs"
 #define ARRAY_ARGS_MSG                    "Array must be called with integer dimensions as arguments."
 
@@ -93,10 +90,6 @@ value Object_print(vm *v, int nargs, value *args);
 
 /* Public interfaces to various data structures */
 typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_OUTOFBOUNDS,ARRAY_NONINTINDX } objectarrayerror;
-
-bool string_tonumber(objectstring *string, value *out);
-int string_countchars(objectstring *s);
-char *string_index(objectstring *s, int i);
 
 errorid array_error(objectarrayerror err);
 errorid array_to_matrix_error(objectarrayerror err);

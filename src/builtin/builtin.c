@@ -291,6 +291,7 @@ void builtin_initialize(void) {
     /* Initialize builtin classes and functions */
     range_initialize();
     list_initialize();
+    string_initialize();
     file_initialize();
     system_initialize();
     matrix_initialize();
@@ -315,6 +316,7 @@ void builtin_finalize(void) {
     
     system_finalize();
     file_finalize();
+    string_finalize();
     list_finalize();
     range_finalize();
 }

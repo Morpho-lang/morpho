@@ -286,43 +286,6 @@ typedef struct {
 
 objectinvocation *object_newinvocation(value receiver, value method);
 
-/* ---------------------------
- * Strings
- * --------------------------- */
-
-extern objecttype objectstringtype;
-#define OBJECT_STRING objectstringtype
-
-/** A string object */
-typedef struct {
-    object obj;
-    size_t length;
-    char *string;
-    char stringdata[];
-} objectstring;
-
-#define MORPHO_GETSTRING(val)             ((objectstring *) MORPHO_GETOBJECT(val))
-#define MORPHO_GETCSTRING(val)            (((objectstring *) MORPHO_GETOBJECT(val))->string)
-#define MORPHO_GETSTRINGLENGTH(val)       (((objectstring *) MORPHO_GETOBJECT(val))->length)
-
-/** Tests whether an object is a string */
-#define MORPHO_ISSTRING(val) object_istype(val, OBJECT_STRING)
-
-/** Use to create static strings on the C stack */
-#define MORPHO_STATICSTRING(cstring)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=strlen(cstring) }
-
-/** Use to create static strings on the C stack */
-#define MORPHO_STATICSTRINGWITHLENGTH(cstring, len)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=len }
-
-
-#define OBJECT_STRINGLABEL "string"
-#define OBJECT_SYMBOLLABEL "symbol"
-
-value object_stringfromcstring(const char *in, size_t length);
-value object_stringfromvarraychar(varray_char *in);
-value object_clonestring(value val);
-value object_concatenatestring(value a, value b);
-
 /* -------------------------------------------------------
  * Dictionaries
  * ------------------------------------------------------- */

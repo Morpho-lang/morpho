@@ -12,6 +12,7 @@
 #include "vm.h"
 #include "debug.h"
 #include "morpho.h"
+#include "strng.h"
 
 void morpho_runtimeerror(vm *v, errorid id, ...);
 

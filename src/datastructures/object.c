@@ -134,120 +134,6 @@ object *object_new(size_t size, objecttype type) {
 DEFINE_VARRAY(upvalue, upvalue);
 DEFINE_VARRAY(varray_upvalue, varray_upvalue);
 
-/** Function object definitions */
-void objectfunction_freefn(object *obj) {
-    objectfunction *func = (objectfunction *) obj;
-    morpho_freeobject(func->name);
-    varray_optionalparamclear(&func->opt);
-    object_functionclear(func);
-}
-
-void objectfunction_markfn(object *obj, void *v) {
-    objectfunction *f = (objectfunction *) obj;
-    morpho_markvalue(v, f->name);
-    morpho_markvarrayvalue(v, &f->konst);
-}
-
-size_t objectfunction_sizefn(object *obj) {
-    return sizeof(objectfunction);
-}
-
-void objectfunction_printfn(object *obj) {
-    objectfunction *f = (objectfunction *) obj;
-    if (f) printf("<fn %s>", (MORPHO_ISNIL(f->name) ? "" : MORPHO_GETCSTRING(f->name)));
-}
-
-objecttypedefn objectfunctiondefn = {
-    .printfn=objectfunction_printfn,
-    .markfn=objectfunction_markfn,
-    .freefn=objectfunction_freefn,
-    .sizefn=objectfunction_sizefn
-};
-
-/** @brief Initializes a new function */
-void object_functioninit(objectfunction *func) {
-    func->entry=0;
-    func->name=MORPHO_NIL;
-    func->nargs=0;
-    func->parent=NULL;
-    func->nupvalues=0;
-    func->nregs=0;
-    varray_valueinit(&func->konst);
-    varray_varray_upvalueinit(&func->prototype);
-}
-
-/** @brief Clears a function */
-void object_functionclear(objectfunction *func) {
-    varray_valueclear(&func->konst);
-    /** Clear the upvalue prototypes */
-    for (unsigned int i=0; i<func->prototype.count; i++) {
-        varray_upvalueclear(&func->prototype.data[i]);
-    }
-    varray_varray_upvalueclear(&func->prototype);
-}
-
-/** @brief Creates a new function */
-objectfunction *object_newfunction(indx entry, value name, objectfunction *parent, unsigned int nargs) {
-    objectfunction *new = (objectfunction *) object_new(sizeof(objectfunction), OBJECT_FUNCTION);
-
-    if (new) {
-        object_functioninit(new);
-        new->entry=entry;
-        new->name=object_clonestring(name);
-        new->nargs=nargs;
-        new->varg=-1; // No vargs
-        new->parent=parent;
-        new->klass=NULL; 
-        varray_optionalparaminit(&new->opt);
-    }
-
-    return new;
-}
-
-/** Gets the parent of a function */
-objectfunction *object_getfunctionparent(objectfunction *func) {
-    return func->parent;
-}
-
-/** Gets the name of a function */
-value object_getfunctionname(objectfunction *func) {
-    return func->name;
-}
-
-/** Gets the constant table associated with a function */
-varray_value *object_functiongetconstanttable(objectfunction *func) {
-    if (func) {
-        return &func->konst;
-    }
-    return NULL;
-}
-
-/** Does a function have variadic args? */
-bool object_functionhasvargs(objectfunction *func) {
-    return (func->varg>=0);
-}
-
-/** Sets the parameter number of a variadic argument */
-void object_functionsetvarg(objectfunction *func, unsigned int varg) {
-    func->varg=varg;
-}
-
-/** Adds an upvalue prototype to a function
- * @param[in]  func   function object to add to
- * @param[in]  v      a varray of upvalues that will be copied into the function
- *                    definition.
- * @param[out] ix     index of the closure created
- * @returns true on success */
-bool object_functionaddprototype(objectfunction *func, varray_upvalue *v, indx *ix) {
-    bool success=false;
-    varray_upvalue new;
-    varray_upvalueinit(&new);
-    success=varray_upvalueadd(&new, v->data, v->count);
-    if (success) varray_varray_upvalueadd(&func->prototype, &new, 1);
-    if (success && ix) *ix = (indx) func->prototype.count-1;
-    return success;
-}
-
 /* **********************************************************************
  * Upvalues
  * ********************************************************************** */
@@ -494,7 +380,6 @@ objectinvocation *object_newinvocation(value receiver, value method) {
  * Initialization
  * ********************************************************************** */
 
-objecttype objectfunctiontype;
 objecttype objectupvaluetype;
 objecttype objectclasstype;
 objecttype objectinstancetype;
@@ -506,7 +391,6 @@ void object_initialize(void) {
     npool=0;
 #endif
 
-    objectfunctiontype=object_addtype(&objectfunctiondefn);
     objectupvaluetype=object_addtype(&objectupvaluedefn);
     objectclasstype=object_addtype(&objectclassdefn);
     objectinstancetype=object_addtype(&objectinstancedefn);

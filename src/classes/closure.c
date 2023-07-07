@@ -117,7 +117,7 @@ void closure_initialize(void) {
     // Create closure object type
     objectclosuretype=object_addtype(&objectclosuredefn);
     
-    // Locate the Object class to use as the parent class of Range
+    // Locate the Object class to use as the parent class of Closure
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     

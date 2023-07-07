@@ -11,8 +11,10 @@
 #include "list.h"
 #include "range.h"
 #include "strng.h"
+#include "function.h"
 #include "array.h"
 #include "dict.h"
+#include "function.h"
 #include "closure.h"
 #include "matrix.h"
 
@@ -21,7 +23,6 @@
  * --------------------------- */
 
 #define OBJECT_CLASSNAME "Object"
-#define FUNCTION_CLASSNAME "Function"
 #define INVOCATION_CLASSNAME "Invocation"
 #define ERROR_CLASSNAME "Error"
 

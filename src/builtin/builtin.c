@@ -285,6 +285,7 @@ void builtin_initialize(void) {
     
     /* Initialize builtin classes and functions */
     string_initialize(); // Must be initialized early as much depends on this
+    function_initialize();
     
     object_initialize(); // This has been carefully placed to ensure
     

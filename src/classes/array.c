@@ -599,7 +599,7 @@ void array_initialize(void) {
     // Create array object type
     objectarraytype=object_addtype(&objectarraydefn);
     
-    // Locate the Object class to use as the parent class of Range
+    // Locate the Object class to use as the parent class of Array
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     

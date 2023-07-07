@@ -261,35 +261,6 @@ MORPHO_METHOD(MORPHO_CLONE_METHOD, Object_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
- * Function
- * ********************************************************************** */
-
-value Function_tostring(vm *v, int nargs, value *args) {
-    objectfunction *func=MORPHO_GETFUNCTION(MORPHO_SELF(args));
-    value out = MORPHO_NIL;
-
-    varray_char buffer;
-    varray_charinit(&buffer);
-
-    varray_charadd(&buffer, "<fn ", 4);
-    morpho_printtobuffer(v, func->name, &buffer);
-    varray_charwrite(&buffer, '>');
-
-    out = object_stringfromvarraychar(&buffer);
-    if (MORPHO_ISSTRING(out)) {
-        morpho_bindobjects(v, 1, &out);
-    }
-    varray_charclear(&buffer);
-
-    return out;
-}
-
-MORPHO_BEGINCLASS(Function)
-MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Function_tostring, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY)
-MORPHO_ENDCLASS
-
-/* **********************************************************************
  * Invocation
  * ********************************************************************** */
 
@@ -433,10 +404,6 @@ void veneer_initialize(void) {
     /* Object */
     value objclass=builtin_addclass(OBJECT_CLASSNAME, MORPHO_GETCLASSDEFINITION(Object), MORPHO_NIL);
     morpho_setbaseclass(objclass);
-
-    /* Function */
-    value functionclass=builtin_addclass(FUNCTION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Function), objclass);
-    object_setveneerclass(OBJECT_FUNCTION, functionclass);
     
     /* Invocation */
     builtin_addfunction(INVOCATION_CLASSNAME, invocation_constructor, BUILTIN_FLAGSEMPTY);

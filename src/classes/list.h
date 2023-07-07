@@ -66,4 +66,19 @@ objectlist *object_newlist(unsigned int nval, value *val);
 #define LIST_NUMARGS                      "LstNumArgs"
 #define LIST_NUMARGS_MSG                  "Lists can only be indexed with one argument."
 
+/* -------------------------------------------------------
+ * List interface
+ * ------------------------------------------------------- */
+
+bool list_resize(objectlist *list, int size);
+void list_append(objectlist *list, value v);
+unsigned int list_length(objectlist *list);
+bool list_getelement(objectlist *list, int i, value *out);
+void list_sort(objectlist *list);
+objectlist *list_clone(objectlist *list);
+
+// Initialization/Finalization
+void list_initialize(void);
+void list_finalize(void);
+
 #endif

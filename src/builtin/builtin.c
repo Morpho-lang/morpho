@@ -290,6 +290,7 @@ void builtin_initialize(void) {
     
     /* Initialize builtin classes and functions */
     range_initialize();
+    list_initialize();
     file_initialize();
     system_initialize();
     matrix_initialize();
@@ -311,6 +312,9 @@ void builtin_finalize(void) {
     varray_valueclear(&builtin_objects);
     
     functional_finalize();
-    file_finalize();
+    
     system_finalize();
+    file_finalize();
+    list_finalize();
+    range_finalize();
 }

@@ -50,6 +50,8 @@ objectarray *object_arrayfromvalueindices(unsigned int ndim, value *dim);
 
 #define ARRAY_CLASSNAME                   "Array"
 
+#define ARRAY_DIMENSIONS_METHOD           "dimensions"
+
 /* -------------------------------------------------------
  * Array error messages
  * ------------------------------------------------------- */

@@ -64,6 +64,9 @@ value object_concatenatestring(value a, value b);
 
 #define STRING_CLASSNAME                  "String"
 
+#define STRING_SPLIT_METHOD               "split"
+#define STRING_ISNUMBER_METHOD            "isnumber"
+
 /* -------------------------------------------------------
  * String error messages
  * ------------------------------------------------------- */

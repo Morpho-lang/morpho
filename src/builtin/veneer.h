@@ -28,10 +28,6 @@
 #define ERROR_TAG_PROPERTY "tag"
 #define ERROR_MESSAGE_PROPERTY "message"
 
-#define STRING_SPLIT_METHOD "split"
-#define STRING_ISNUMBER_METHOD "isnumber"
-#define ARRAY_DIMENSIONS_METHOD "dimensions"
-
 #define DICTIONARY_KEYS_METHOD "keys"
 #define DICTIONARY_CONTAINS_METHOD "contains"
 #define DICTIONARY_REMOVE_METHOD "remove"

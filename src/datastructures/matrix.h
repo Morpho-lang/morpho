@@ -26,6 +26,7 @@
 #endif
 
 #include "cmplx.h"
+#include "list.h"
 
 /* -------------------------------------------------------
  * Matrix objects

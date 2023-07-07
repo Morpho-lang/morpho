@@ -9,6 +9,7 @@
 
 #include "builtin.h"
 #include "matrix.h"
+#include "list.h"
 #include "range.h"
 
 /* ---------------------------
@@ -18,7 +19,6 @@
 #define OBJECT_CLASSNAME "Object"
 #define STRING_CLASSNAME "String"
 #define ARRAY_CLASSNAME "Array"
-#define LIST_CLASSNAME "List"
 #define DICTIONARY_CLASSNAME "Dictionary"
 #define FUNCTION_CLASSNAME "Function"
 #define CLOSURE_CLASSNAME "Closure"
@@ -31,16 +31,6 @@
 #define STRING_SPLIT_METHOD "split"
 #define STRING_ISNUMBER_METHOD "isnumber"
 #define ARRAY_DIMENSIONS_METHOD "dimensions"
-
-#define LIST_ISMEMBER_METHOD "ismember"
-#define LIST_SORT_METHOD "sort"
-#define LIST_ORDER_METHOD "order"
-#define LIST_POP_METHOD "pop"
-#define LIST_INSERT_METHOD "insert"
-#define LIST_REMOVE_METHOD "remove"
-#define LIST_TUPLES_METHOD "tuples"
-#define LIST_SETS_METHOD "sets"
-
 
 #define DICTIONARY_KEYS_METHOD "keys"
 #define DICTIONARY_CONTAINS_METHOD "contains"
@@ -70,21 +60,6 @@
 
 #define CLASS_INVK                        "ClssInvk"
 #define CLASS_INVK_MSG                    "Cannot invoke method '%s' on a class."
-
-#define LIST_ENTRYNTFND                   "EntryNtFnd"
-#define LIST_ENTRYNTFND_MSG               "Entry not found."
-
-#define LIST_ADDARGS                      "LstAddArgs"
-#define LIST_ADDARGS_MSG                  "Add method requires a list."
-
-#define LIST_SRTFN                        "LstSrtFn"
-#define LIST_SRTFN_MSG                    "List sort function must return an integer."
-
-#define LIST_ARGS                         "LstArgs"
-#define LIST_ARGS_MSG                     "Lists must be called with integer dimensions as arguments."
-
-#define LIST_NUMARGS                      "LstNumArgs"
-#define LIST_NUMARGS_MSG                  "Lists can only be indexed with one argument."
 
 #define STRING_IMMTBL                     "StrngImmtbl"
 #define STRING_IMMTBL_MSG                 "Strings are immutable."

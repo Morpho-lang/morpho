@@ -1,4 +1,4 @@
-/** @file complex.h
+/** @file cmplx.h
  *  @author Danny Goldstein
  *
  *  @brief Veneer class over the objectcomplex type

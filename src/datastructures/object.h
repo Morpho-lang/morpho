@@ -349,29 +349,6 @@ typedef struct {
 objectdictionary *object_newdictionary(void);
 
 /* -------------------------------------------------------
- * Lists
- * ------------------------------------------------------- */
-
-extern objecttype objectlisttype;
-#define OBJECT_LIST objectlisttype
-
-typedef struct {
-    object obj;
-    varray_value val;
-} objectlist;
-
-/** Tests whether an object is a list */
-#define MORPHO_ISLIST(val) object_istype(val, OBJECT_LIST)
-
-/** Gets the object as a list */
-#define MORPHO_GETLIST(val)   ((objectlist *) MORPHO_GETOBJECT(val))
-
-/** Create a static list - you must initialize the list separately */
-#define MORPHO_STATICLIST      { .obj.type=OBJECT_LIST, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .val.count=0, .val.capacity=0, .val.data=NULL }
-
-objectlist *object_newlist(unsigned int nval, value *val);
-
-/* -------------------------------------------------------
  * Arrays
  * ------------------------------------------------------- */
 

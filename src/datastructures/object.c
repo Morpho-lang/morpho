@@ -677,50 +677,6 @@ dictionary *object_dictionary(objectdictionary *dict) {
 }
 
 /* **********************************************************************
- * Lists
- * ********************************************************************** */
-
-/** List object definitions */
-void objectlist_printfn(object *obj) {
-    printf("<List>");
-}
-
-void objectlist_freefn(object *obj) {
-    objectlist *list = (objectlist *) obj;
-    varray_valueclear(&list->val);
-}
-
-void objectlist_markfn(object *obj, void *v) {
-    objectlist *c = (objectlist *) obj;
-    morpho_markvarrayvalue(v, &c->val);
-}
-
-size_t objectlist_sizefn(object *obj) {
-    return sizeof(objectlist)+sizeof(value) *
-            ((objectlist *) obj)->val.capacity;
-}
-
-objecttypedefn objectlistdefn = {
-    .printfn=objectlist_printfn,
-    .markfn=objectlist_markfn,
-    .freefn=objectlist_freefn,
-    .sizefn=objectlist_sizefn
-};
-
-/** Creates a new list */
-objectlist *object_newlist(unsigned int nval, value *val) {
-    objectlist *new = (objectlist *) object_new(sizeof(objectlist), OBJECT_LIST);
-
-    if (new) {
-        varray_valueinit(&new->val);
-        if (val) varray_valueadd(&new->val, val, nval);
-        else varray_valueresize(&new->val, nval);
-    }
-
-    return new;
-}
-
-/* **********************************************************************
  * Arrays
  * ********************************************************************** */
 
@@ -816,7 +772,6 @@ objecttype objectinvocationtype;
 
 objecttype objectdictionarytype;
 objecttype objectarraytype;
-objecttype objectlisttype;
 
 void object_initialize(void) {
 #ifdef MORPHO_REUSEPOOL
@@ -833,7 +788,6 @@ void object_initialize(void) {
 
     objectstringtype=object_addtype(&objectstringdefn);
     objectarraytype=object_addtype(&objectarraydefn);
-    objectlisttype=object_addtype(&objectlistdefn);
     objectdictionarytype=object_addtype(&objectdictionarydefn);
 }
 

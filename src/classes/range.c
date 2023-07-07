@@ -91,7 +91,7 @@ value range_iterate(objectrange *range, unsigned int i) {
  * Range veneer class
  * ********************************************************************** */
 
-/** Constructor function for ranges */
+/** Constructor function for Ranges */
 value range_constructor(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     objectrange *new=NULL;
@@ -195,6 +195,7 @@ void range_initialize(void) {
     value rangeclass=builtin_addclass(RANGE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Range), objclass);
     object_setveneerclass(OBJECT_RANGE, rangeclass);
     
+    // Range error messages
     morpho_defineerror(RANGE_ARGS, ERROR_HALT, RANGE_ARGS_MSG);
 }
 

@@ -1,7 +1,7 @@
 /** @file file.c
  *  @author T J Atherton
  *
- *  @brief Built in class to provide file input and output
+ *  @brief Defines file object type as well as File and Folder classes
  */
 
 #include "file.h"

@@ -1,7 +1,7 @@
 /** @file file.h
  *  @author T J Atherton
  *
- *  @brief Built in class to provide file input and output
+ *  @brief Defines file object type as well as File and Folder classes
  */
 
 #ifndef file_h
@@ -59,7 +59,7 @@ typedef struct {
 #define FOLDER_CONTENTS   "contents"
 
 /* -------------------------------------------------------
- * Error messages
+ * File error messages
  * ------------------------------------------------------- */
 
 #define FILE_OPENFAILED                   "FlOpnFld"
@@ -86,15 +86,17 @@ typedef struct {
 #define FOLDER_NTFLDR                     "NtFldr"
 #define FOLDER_NTFLDR_MSG                 "Not a folder."
 
+/* -------------------------------------------------------
+ * File interface
+ * ------------------------------------------------------- */
+
 bool file_getsize(FILE *f, size_t *s);
-
 void file_setworkingdirectory(const char *script);
-
 FILE *file_openrelative(const char *fname, const char *mode);
-
 int file_readlineintovarray(FILE *f, varray_char *string);
 bool file_readintovarray(FILE *f, varray_char *string);
 
+/* Initialization/finalization */
 void file_initialize(void);
 void file_finalize(void);
 

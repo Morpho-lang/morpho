@@ -407,29 +407,6 @@ objectarray *object_arrayfromvarrayvalue(varray_value *v);
 objectarray *object_arrayfromvalueindices(unsigned int ndim, value *dim);
 
 /* -------------------------------------------------------
- * Ranges
- * ------------------------------------------------------- */
-
-extern objecttype objectrangetype;
-#define OBJECT_RANGE objectrangetype
-
-typedef struct {
-    object obj;
-    unsigned int nsteps;
-    value start;
-    value end;
-    value step;
-} objectrange;
-
-/** Tests whether an object is a range */
-#define MORPHO_ISRANGE(val) object_istype(val, OBJECT_RANGE)
-
-/** Gets the object as a range */
-#define MORPHO_GETRANGE(val)   ((objectrange *) MORPHO_GETOBJECT(val))
-
-objectrange *object_newrange(value start, value end, value step);
-
-/* -------------------------------------------------------
  * Veneer classes
  * ------------------------------------------------------- */
 

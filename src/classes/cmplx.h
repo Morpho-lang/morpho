@@ -11,8 +11,6 @@
 #include "veneer.h"
 #include <complex.h>
 
-
-
 /* -------------------------------------------------------
  * Complex objects
  * ------------------------------------------------------- */
@@ -48,6 +46,7 @@ objectcomplex *object_complexfromfloat(double val);
 
 /** tests the equality of two complex numbers */
 bool complex_equality(objectcomplex *a, objectcomplex *b);
+
 /* -------------------------------------------------------
  * Complex class
  * ------------------------------------------------------- */
@@ -60,6 +59,10 @@ bool complex_equality(objectcomplex *a, objectcomplex *b);
 #define COMPLEX_IMAG_METHOD                 "imag"
 #define COMPLEX_ANGLE_METHOD                "angle"
 
+/* -------------------------------------------------------
+ * Complex error messages
+ * ------------------------------------------------------- */
+
 #define COMPLEX_CONSTRUCTOR                "CmplxCns"
 #define COMPLEX_CONSTRUCTOR_MSG            "Complex() constructor should be called with two floats"
 
@@ -69,11 +72,9 @@ bool complex_equality(objectcomplex *a, objectcomplex *b);
 #define COMPLEX_INVLDNARG                  "CmpxArg"
 #define COMPLEX_INVLDNARG_MSG              "Complex Operation did not exect those arguments."
 
-
 /* -------------------------------------------------------
  * Complex interface
  * ------------------------------------------------------- */
-
 
 void complex_copy(objectcomplex *a, objectcomplex *out);
 void complex_add(objectcomplex *a, objectcomplex *b, objectcomplex *out);
@@ -84,11 +85,11 @@ void complex_conj(objectcomplex *a, objectcomplex *out);
 void complex_abs(objectcomplex *a, double *out);
 void complex_angle(objectcomplex *a, double *out);
 void complex_print(objectcomplex *m);
-void complex_initialize(void);
 void complex_getreal(objectcomplex *c, double *value);
 void complex_getimag(objectcomplex *c, double *value);
 
 /* Built-in fucntions */
+
 value complex_builtinexp(vm * v, objectcomplex* c);
 value complex_builtinfabs(vm * v, objectcomplex* c);
 value complex_builtinexp(vm * v, objectcomplex* c);
@@ -116,9 +117,14 @@ value complex_builtinisnan(objectcomplex* c);
 value complex_builtinatan(vm *v, value c);
 value complex_builtinatan2(vm *v, value c1, value c2);
 
+/* Complex methods */
+
 value Complex_getreal(vm *v, int nargs, value *args);
 value Complex_getimag(vm *v, int nargs, value *args);
 value Complex_angle(vm *v, int nargs, value *args);
 value Complex_conj(vm *v, int nargs, value *args);
+
+/* Initialization */
+void complex_initialize(void);
 
 #endif /* complex_h */

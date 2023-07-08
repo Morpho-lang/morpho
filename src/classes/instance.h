@@ -58,6 +58,9 @@ objectinstance *object_newinstance(objectclass *klass);
 #define HAS_ARG                           "HasArg"
 #define HAS_ARG_MSG                       "Method has expects a single string argument or no argument."
 
+#define ISMEMBER_ARG                      "IsMmbrArg"
+#define ISMEMBER_ARG_MSG                  "Method ismember expects a single argument."
+
 /* -------------------------------------------------------
  * Instance interface
  * ------------------------------------------------------- */

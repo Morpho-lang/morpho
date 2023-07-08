@@ -25,9 +25,6 @@
  * Veneer classes
  * --------------------------- */
 
-#define ISMEMBER_ARG                      "IsMmbrArg"
-#define ISMEMBER_ARG_MSG                  "Method ismember expects a single argument."
-
 #define CLASS_INVK                        "ClssInvk"
 #define CLASS_INVK_MSG                    "Cannot invoke method '%s' on a class."
  

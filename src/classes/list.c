@@ -625,11 +625,10 @@ value List_ismember(vm *v, int nargs, value *args) {
 
     if (nargs==1) {
         return MORPHO_BOOL(list_ismember(slf, MORPHO_GETARG(args, 0)));
-    } else morpho_runtimeerror(v, VM_INVALIDARGS, 1, nargs);
+    } else morpho_runtimeerror(v, ISMEMBER_ARG, 1, nargs);
 
     return MORPHO_NIL;
 }
-
 
 MORPHO_BEGINCLASS(List)
 MORPHO_METHOD(MORPHO_APPEND_METHOD, List_append, BUILTIN_FLAGSEMPTY),

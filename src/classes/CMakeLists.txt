@@ -4,6 +4,7 @@ target_sources(morpho
         closure.c    closure.h
         cmplx.c      cmplx.h
         dict.c       dict.h
+        err.c        err.h
         file.c       file.h
         function.c   function.h
         instance.c   instance.h

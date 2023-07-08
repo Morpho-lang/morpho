@@ -305,6 +305,7 @@ void builtin_initialize(void) {
     array_initialize();
     range_initialize();
     complex_initialize();
+    err_initialize();
     
     file_initialize();
     system_initialize();
@@ -335,6 +336,7 @@ void builtin_finalize(void) {
     system_finalize();
     file_finalize();
     
+    err_finalize();
     complex_finalize();
     range_finalize();
     array_finalize();

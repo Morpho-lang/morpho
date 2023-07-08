@@ -330,56 +330,12 @@ bool objectinstance_getpropertyinterned(objectinstance *obj, value key, value *v
 }
 
 /* **********************************************************************
- * Invocations
- * ********************************************************************** */
-
-/** Invocation object definitions */
-void objectinvocation_printfn(object *obj) {
-    objectinvocation *c = (objectinvocation *) obj;
-#ifndef MORPHO_LOXCOMPATIBILITY
-    object_print(c->receiver);
-    printf(".");
-#endif
-    object_print(c->method);
-}
-
-void objectinvocation_markfn(object *obj, void *v) {
-    objectinvocation *c = (objectinvocation *) obj;
-    morpho_markvalue(v, c->receiver);
-    morpho_markvalue(v, c->method);
-}
-
-size_t objectinvocation_sizefn(object *obj) {
-    return sizeof(objectinvocation);
-}
-
-objecttypedefn objectinvocationdefn = {
-    .printfn=objectinvocation_printfn,
-    .markfn=objectinvocation_markfn,
-    .freefn=NULL,
-    .sizefn=objectinvocation_sizefn
-};
-
-/** Create a new invocation */
-objectinvocation *object_newinvocation(value receiver, value method) {
-    objectinvocation *new = (objectinvocation *) object_new(sizeof(objectinvocation), OBJECT_INVOCATION);
-
-    if (new) {
-        new->receiver=receiver;
-        new->method=method;
-    }
-
-    return new;
-}
-
-/* **********************************************************************
  * Initialization
  * ********************************************************************** */
 
 objecttype objectupvaluetype;
 objecttype objectclasstype;
 objecttype objectinstancetype;
-objecttype objectinvocationtype;
 
 void object_initialize(void) {
 #ifdef MORPHO_REUSEPOOL
@@ -389,7 +345,6 @@ void object_initialize(void) {
 
     objectupvaluetype=object_addtype(&objectupvaluedefn);
     objectinstancetype=object_addtype(&objectinstancedefn);
-    objectinvocationtype=object_addtype(&objectinvocationdefn);
 }
 
 void object_finalize(void) {

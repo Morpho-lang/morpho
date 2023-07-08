@@ -194,27 +194,6 @@ bool objectinstance_setproperty(objectinstance *obj, value key, value val);
 bool objectinstance_getproperty(objectinstance *obj, value key, value *val);
 bool objectinstance_getpropertyinterned(objectinstance *obj, value key, value *val);
 
-/* ---------------------------
- * Bound methods
- * --------------------------- */
-
-extern objecttype objectinvocationtype;
-#define OBJECT_INVOCATION objectinvocationtype
-
-typedef struct {
-    object obj;
-    value receiver;
-    value method;
-} objectinvocation;
-
-/** Tests whether an object is an invocation */
-#define MORPHO_ISINVOCATION(val) object_istype(val, OBJECT_INVOCATION)
-
-/** Gets the object as an invocation */
-#define MORPHO_GETINVOCATION(val)   ((objectinvocation *) MORPHO_GETOBJECT(val))
-
-objectinvocation *object_newinvocation(value receiver, value method);
-
 /* -------------------------------------------------------
  * Veneer classes
  * ------------------------------------------------------- */

@@ -297,6 +297,7 @@ void builtin_initialize(void) {
     
     object_initialize(); // This has been carefully placed to ensure
     
+    invocation_initialize();
     dict_initialize();
     list_initialize();
     closure_initialize();

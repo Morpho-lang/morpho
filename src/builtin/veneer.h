@@ -8,14 +8,15 @@
 #define veneer_h
 
 #include "builtin.h"
-#include "list.h"
-#include "range.h"
-#include "strng.h"
-#include "function.h"
-#include "array.h"
-#include "dict.h"
 #include "function.h"
 #include "closure.h"
+#include "invocation.h"
+#include "list.h"
+#include "array.h"
+#include "range.h"
+#include "strng.h"
+#include "dict.h"
+
 #include "matrix.h"
 
 /* ---------------------------
@@ -23,7 +24,6 @@
  * --------------------------- */
 
 #define OBJECT_CLASSNAME "Object"
-#define INVOCATION_CLASSNAME "Invocation"
 #define ERROR_CLASSNAME "Error"
 
 #define ERROR_TAG_PROPERTY "tag"
@@ -47,12 +47,6 @@
 #define CLASS_INVK                        "ClssInvk"
 #define CLASS_INVK_MSG                    "Cannot invoke method '%s' on a class."
 
-#define INVOCATION_ARGS                   "InvocationArgs"
-#define INVOCATION_ARGS_MSG               "Invocation must be called with an object and a method name as arguments."
-
-#define INVOCATION_METHOD                 "InvocationMethod"
-#define INVOCATION_METHOD_MSG             "Method not found."
-
 #define ERROR_ARGS                        "ErrorArgs"
 #define ERROR_ARGS_MSG                    "Error much be called with a tag and a default message as arguments."
 
@@ -64,6 +58,8 @@
 
 /* Object methods */
 value Object_print(vm *v, int nargs, value *args);
+
+objectclass *object_getclass(value v);
 
 void veneer_initialize(void);
 

@@ -115,8 +115,6 @@ bool builtin_iscallable(value val) {
  * object_builtinfunction definition
  * ********************************************************************** */
 
-objecttype objectbuiltinfunctiontype;
-
 /** Instance object definitions */
 void objectbuiltinfunction_printfn(object *obj) {
     objectbuiltinfunction *f = (objectbuiltinfunction *) obj;
@@ -279,6 +277,8 @@ bool builtin_checksymbol(value symbol) {
 
 extern objecttypedefn objectstringdefn;
 extern objecttypedefn objectclassdefn;
+
+objecttype objectbuiltinfunctiontype;
 
 void builtin_initialize(void) {
     dictionary_init(&builtin_functiontable);

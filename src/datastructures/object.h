@@ -103,22 +103,6 @@ objecttypedefn *object_getdefn(object *obj);
  * We now define essential object types
  * ************************************* */
 
-/* -------------------------------------------------------
- * Upvalue structure
- * ------------------------------------------------------- */
-
-/** Each upvalue */
-typedef struct {
-    bool islocal; /** Set if the upvalue is local to this function */
-    indx reg; /** An index that either:
-                  if islocal - refers to the register
-               OR otherwise  - refers to the upvalue array in the current closure */
-} upvalue;
-
-DECLARE_VARRAY(upvalue, upvalue)
-
-DECLARE_VARRAY(varray_upvalue, varray_upvalue)
-
 /* ---------------------------
  * Classes
  * --------------------------- */
@@ -147,6 +131,21 @@ objectclass *object_newclass(value name);
 // TODO: The below seem to be duplicates of one another!
 objectclass *morpho_lookupclass(value obj);
 objectclass *object_getclass(value v);
+
+/* -------------------------------------------------------
+ * Upvalue structure
+ * ------------------------------------------------------- */
+
+/** Each upvalue */
+typedef struct {
+    bool islocal; /** Set if the upvalue is local to this function */
+    indx reg; /** An index that either:
+                  if islocal - refers to the register
+               OR otherwise  - refers to the upvalue array in the current closure */
+} upvalue;
+
+DECLARE_VARRAY(upvalue, upvalue)
+DECLARE_VARRAY(varray_upvalue, varray_upvalue)
 
 /* ---------------------------
  * Upvalue objects

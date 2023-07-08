@@ -128,9 +128,7 @@ typedef struct sobjectclass {
 
 objectclass *object_newclass(value name);
 
-// TODO: The below seem to be duplicates of one another!
 objectclass *morpho_lookupclass(value obj);
-objectclass *object_getclass(value v);
 
 /* -------------------------------------------------------
  * Upvalue structure

@@ -76,7 +76,7 @@ value invocation_constructor(vm *v, int nargs, value *args) {
         
         value method = MORPHO_NIL;
         
-        objectclass *klass=object_getclass(receiver);
+        objectclass *klass=morpho_lookupclass(receiver);
         
         if (dictionary_get(&klass->methods, selector, &method)) {
             objectinvocation *new = object_newinvocation(receiver, method);

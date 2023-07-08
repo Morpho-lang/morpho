@@ -162,7 +162,7 @@ value Object_class(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     value out = MORPHO_NIL;
 
-    objectclass *klass=object_getclass(self);
+    objectclass *klass=morpho_lookupclass(self);
     if (klass) out = MORPHO_OBJECT(klass);
     
     return out;
@@ -172,7 +172,7 @@ value Object_class(vm *v, int nargs, value *args) {
 value Object_super(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     
-    objectclass *klass=object_getclass(self);
+    objectclass *klass=morpho_lookupclass(self);
     
     return (klass && klass->superclass ? MORPHO_OBJECT(klass->superclass) : MORPHO_NIL);
 }
@@ -181,7 +181,7 @@ value Object_super(vm *v, int nargs, value *args) {
 value Object_respondsto(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     
-    objectclass *klass=object_getclass(self);
+    objectclass *klass=morpho_lookupclass(self);
 
     if (nargs == 0) {
         value out = MORPHO_NIL;
@@ -241,7 +241,7 @@ value Object_invoke(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     value out=MORPHO_NIL;
 
-    objectclass *klass=object_getclass(self);
+    objectclass *klass=morpho_lookupclass(self);
     
     if (klass && nargs>0 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {

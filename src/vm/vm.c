@@ -2034,15 +2034,12 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
 }
 
 /** Find the class associated with a value */
-objectclass *morpho_lookupclass(value obj) {
-    objectclass *out = NULL;
-    if (MORPHO_ISINSTANCE(obj)) {
-        objectinstance *instance=MORPHO_GETINSTANCE(obj);
-        out=instance->klass;
-    } else {
-        out = object_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
-    }
-    return out;
+objectclass *morpho_lookupclass(value v) {
+    objectclass *klass=NULL;
+    if (MORPHO_ISINSTANCE(v)) klass=MORPHO_GETINSTANCE(v)->klass;
+    else if (MORPHO_ISCLASS(v)) klass=MORPHO_GETCLASS(v);
+    else if (MORPHO_ISOBJECT(v)) klass=object_getveneerclass(MORPHO_GETOBJECTTYPE(v));
+    return klass;
 }
 
 /** Finds a method */

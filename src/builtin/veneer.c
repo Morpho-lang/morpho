@@ -6,9 +6,6 @@
 
 #include "morpho.h"
 #include "veneer.h"
-#include "object.h"
-#include "common.h"
-#include "parse.h"
 
 /* **********************************************************************
  * Initialization

@@ -127,15 +127,6 @@ object *object_new(size_t size, objecttype type) {
     return new;
 }
 
-/** Given an object attempts to find its class */
-objectclass *object_getclass(value v) {
-    objectclass *klass=NULL;
-    if (MORPHO_ISINSTANCE(v)) klass=MORPHO_GETINSTANCE(v)->klass;
-    else if (MORPHO_ISCLASS(v)) klass=MORPHO_GETCLASS(v);
-    else if (MORPHO_ISOBJECT(v)) klass=object_getveneerclass(MORPHO_GETOBJECTTYPE(v));
-    return klass;
-}
-
 /* **********************************************************************
  * Upvalues
  * ********************************************************************** */

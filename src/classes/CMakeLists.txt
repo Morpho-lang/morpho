@@ -6,6 +6,7 @@ target_sources(morpho
         dict.c       dict.h
         file.c       file.h
         function.c   function.h
+        instance.c   instance.h
         invocation.c invocation.h
         list.c       list.h
         range.c      range.h

@@ -144,7 +144,9 @@ typedef struct sobjectclass {
 
 objectclass *object_newclass(value name);
 
+// TODO: The below seem to be duplicates of one another!
 objectclass *morpho_lookupclass(value obj);
+objectclass *object_getclass(value v);
 
 /* ---------------------------
  * Upvalue objects
@@ -168,31 +170,6 @@ objectupvalue *object_newupvalue(value *reg);
 
 /** Tests whether an object is an upvalue */
 #define MORPHO_ISUPVALUE(val) object_istype(val, object_upvaluetype)
-
-/* ---------------------------
- * Instances
- * --------------------------- */
-
-extern objecttype objectinstancetype;
-#define OBJECT_INSTANCE objectinstancetype
-
-typedef struct {
-    object obj;
-    objectclass *klass;
-    dictionary fields;
-} objectinstance;
-
-/** Tests whether an object is a class */
-#define MORPHO_ISINSTANCE(val) object_istype(val, OBJECT_INSTANCE)
-
-/** Gets the object as a class */
-#define MORPHO_GETINSTANCE(val)   ((objectinstance *) MORPHO_GETOBJECT(val))
-
-objectinstance *object_newinstance(objectclass *klass);
-
-bool objectinstance_setproperty(objectinstance *obj, value key, value val);
-bool objectinstance_getproperty(objectinstance *obj, value key, value *val);
-bool objectinstance_getpropertyinterned(objectinstance *obj, value key, value *val);
 
 /* -------------------------------------------------------
  * Veneer classes

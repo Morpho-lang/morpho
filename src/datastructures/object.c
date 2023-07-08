@@ -127,6 +127,15 @@ object *object_new(size_t size, objecttype type) {
     return new;
 }
 
+/** Given an object attempts to find its class */
+objectclass *object_getclass(value v) {
+    objectclass *klass=NULL;
+    if (MORPHO_ISINSTANCE(v)) klass=MORPHO_GETINSTANCE(v)->klass;
+    else if (MORPHO_ISCLASS(v)) klass=MORPHO_GETCLASS(v);
+    else if (MORPHO_ISOBJECT(v)) klass=object_getveneerclass(MORPHO_GETOBJECTTYPE(v));
+    return klass;
+}
+
 /* **********************************************************************
  * Upvalues
  * ********************************************************************** */
@@ -223,119 +232,11 @@ objectclass *object_newclass(value name) {
 }
 
 /* **********************************************************************
- * Instances
- * ********************************************************************** */
-
-/** Instance object definitions */
-void objectinstance_printfn(object *obj) {
-#ifndef MORPHO_LOXCOMPATIBILITY
-    printf("<");
-#endif
-    printf("%s", MORPHO_GETCSTRING(((objectinstance *) obj)->klass->name));
-#ifndef MORPHO_LOXCOMPATIBILITY
-    printf(">");
-#else
-    printf(" instance");
-#endif
-}
-
-void objectinstance_markfn(object *obj, void *v) {
-    objectinstance *c = (objectinstance *) obj;
-    morpho_markdictionary(v, &c->fields);
-}
-
-void objectinstance_freefn(object *obj) {
-    objectinstance *instance = (objectinstance *) obj;
-
-#ifdef MORPHO_REUSEPOOL
-    if (npool<POOLMAX) {
-        obj->next=pool;
-        pool=obj;
-        npool++;
-        return;
-    }
-#endif
-
-    dictionary_clear(&instance->fields);
-}
-
-size_t objectinstance_sizefn(object *obj) {
-    return sizeof(objectinstance);
-}
-
-objecttypedefn objectinstancedefn = {
-    .printfn=objectinstance_printfn,
-    .markfn=objectinstance_markfn,
-    .freefn=objectinstance_freefn,
-    .sizefn=objectinstance_sizefn
-};
-
-/** Create an instance */
-objectinstance *object_newinstance(objectclass *klass) {
-    objectinstance *new;
-
-#ifdef MORPHO_REUSEPOOL
-    if (npool>0) {
-        new = (objectinstance *) pool;
-        pool = new->obj.next;
-        npool--;
-
-        new->obj.next=NULL;
-        new->obj.hsh=HASH_EMPTY;
-        new->obj.status=OBJECT_ISUNMANAGED;
-        dictionary_wipe(&new->fields);
-
-        new->klass=klass;
-        return new;
-    }
-#endif
-
-    new = (objectinstance *) object_new(sizeof(objectinstance), OBJECT_INSTANCE);
-
-    if (new) {
-        new->klass=klass;
-        dictionary_init(&new->fields);
-    }
-
-    return new;
-}
-
-/* @brief Inserts a value into a property
- * @param obj   the object
- * @param key   key to use @warning: This MUST have been previously interned into a symboltable
- *                                   e.g. with builtin_internsymbol
- * @param val   value to use
- * @returns true on success  */
-bool objectinstance_setproperty(objectinstance *obj, value key, value val) {
-    return dictionary_insertintern(&obj->fields, key, val);
-}
-
-/* @brief Gets a value into a property
- * @param obj   the object
- * @param key   key to use
- * @param[out] val   stores the value
- * @returns true on success  */
-bool objectinstance_getproperty(objectinstance *obj, value key, value *val) {
-    return dictionary_get(&obj->fields, key, val);
-}
-
-/* @brief Interned property lookup
- * @param obj   the object
- * @param key   key to use @warning: This MUST have been previously interned into a symboltable
- *                                   e.g. with builtin_internsymbol
- * @param[out] val   stores the value
- * @returns true on success  */
-bool objectinstance_getpropertyinterned(objectinstance *obj, value key, value *val) {
-    return dictionary_getintern(&obj->fields, key, val);
-}
-
-/* **********************************************************************
  * Initialization
  * ********************************************************************** */
 
 objecttype objectupvaluetype;
 objecttype objectclasstype;
-objecttype objectinstancetype;
 
 void object_initialize(void) {
 #ifdef MORPHO_REUSEPOOL
@@ -344,7 +245,6 @@ void object_initialize(void) {
 #endif
 
     objectupvaluetype=object_addtype(&objectupvaluedefn);
-    objectinstancetype=object_addtype(&objectinstancedefn);
 }
 
 void object_finalize(void) {

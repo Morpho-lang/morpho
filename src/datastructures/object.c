@@ -388,7 +388,6 @@ void object_initialize(void) {
 #endif
 
     objectupvaluetype=object_addtype(&objectupvaluedefn);
-    objectclasstype=object_addtype(&objectclassdefn);
     objectinstancetype=object_addtype(&objectinstancedefn);
     objectinvocationtype=object_addtype(&objectinvocationdefn);
 }

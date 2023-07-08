@@ -272,7 +272,7 @@ objecttype objectstringtype;
 
 void string_initialize(void) {
     // Create string object type
-    objectstringtype=object_addtype(&objectstringdefn);
+    //objectstringtype=object_addtype(&objectstringdefn);
     
     // Locate the Object class to use as the parent class of Range
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);

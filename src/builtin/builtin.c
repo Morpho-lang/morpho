@@ -277,11 +277,19 @@ bool builtin_checksymbol(value symbol) {
  * Initialization/Finalization
  * ********************************************************************** */
 
+extern objecttypedefn objectstringdefn;
+extern objecttypedefn objectclassdefn;
+
 void builtin_initialize(void) {
     dictionary_init(&builtin_functiontable);
     dictionary_init(&builtin_classtable);
     dictionary_init(&builtin_symboltable);
     varray_valueinit(&builtin_objects);
+    
+    // Initialize core object types
+    objectstringtype=object_addtype(&objectstringdefn);
+    objectclasstype=object_addtype(&objectclassdefn);
+    objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
     
     /* Initialize builtin classes and functions */
     string_initialize(); // Must be initialized early as much depends on this
@@ -295,8 +303,6 @@ void builtin_initialize(void) {
     array_initialize();
     range_initialize();
     complex_initialize();
-    
-    objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
     
     file_initialize();
     system_initialize();

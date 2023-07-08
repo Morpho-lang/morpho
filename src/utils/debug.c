@@ -1159,3 +1159,26 @@ instructionindx debug_currentinstruction(vm *v) {
 void debugger_enter(vm *v) {
   
 }
+
+/* **********************************************************************
+ * Run a program with debugging active
+ * ********************************************************************** */
+
+/** Run a program with debugging
+ * @param[in] v - the virtual machine to use
+ * @param[in] p - program to run
+ * @returns true on success, false otherwise */
+bool morpho_debug(vm *v, program *p) {
+    return morpho_run(v, p);
+    
+    /*debugger debug;
+
+    debugger_init(&debug, p);
+    v->debug=&debug;
+    
+    bool success=morpho_run(v, p);
+    
+    debugger_clear(&debug);
+    
+    return success;*/
+}

@@ -2269,5 +2269,4 @@ void morpho_finalize(void) {
     compile_finalize();
     builtin_finalize();
     resources_finalize();
-    object_finalize(); // Must be last for zombie object tracking
 }

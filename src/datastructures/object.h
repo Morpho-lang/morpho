@@ -1,7 +1,7 @@
 /** @file object.h
  *  @author T J Atherton
  *
- *  @brief Provide functionality for extended and mutable data types.
+ *  @brief Implement objects, heap-allocated data structures with type information
 */
 
 #ifndef object_h
@@ -11,78 +11,61 @@
 #include "value.h"
 #include "dictionary.h"
 
-typedef ptrdiff_t indx;
+/* -------------------------------------------------------
+ * Fundamental object type
+ * ------------------------------------------------------- */
 
-void object_initialize(void);
-void object_finalize(void);
+/** Objects are heap-allocated data structures that have a common header allowing type identification.
+    The header should never be accessed directly, but through macros as provided below */
 
-/* ---------------------------
- * Generic objects
- * --------------------------- */
-
-/** Categorizes the type of an object */
+/** The objecttype identifies the type of an object. */
 typedef int objecttype;
 
-/** Simplest object */
+/** Fundamental object structure */
 struct sobject {
-    objecttype type;
-    enum {
-        OBJECT_ISUNMANAGED,
-        OBJECT_ISUNMARKED,
-        OBJECT_ISMARKED
+    objecttype type;            // Type
+    enum {                      // Memory management status for the object:
+        OBJECT_ISUNMANAGED,     // - UNMANAGED means the object is manually alloc'd/dealloc'd
+        OBJECT_ISUNMARKED,      // - UNMARKED means the object is managed by the GC
+        OBJECT_ISMARKED         // - MARKED is used internally by the GC
     } status;
-    hash hsh;
-    struct sobject *next; 
+    hash hsh;                   // hash value
+    struct sobject *next;       // All objects can be chained together (e.g. to attach to the VM that created them)
 };
 
-/** Gets the type of the object associated with a value */
+/** These macros access the object structure's fields. */
+
+/** Gets the type of the object associated with a value
+    @warning: Do not use this to compare types, use an appropriate macro like MORPHO_ISXXX  */
 #define MORPHO_GETOBJECTTYPE(val)           (MORPHO_GETOBJECT(val)->type)
 
-/** Gets an objects key */
+/** Gets an object's key */
 #define MORPHO_GETOBJECTHASH(val)           (MORPHO_GETOBJECT(val)->hsh)
 
 /** Sets an objects key */
 #define MORPHO_SETOBJECTHASH(val, newhash)  (MORPHO_GETOBJECT(val)->hsh = newhash)
 
-/* ---------------------------
- * Generic object functions
- * --------------------------- */
+/* -------------------------------------------------------
+ * object definitions
+ * ------------------------------------------------------- */
 
-/** Tests whether an object is of a specified type */
-static inline bool object_istype(value val, objecttype type) {
-    return (MORPHO_ISOBJECT(val) && MORPHO_GETOBJECTTYPE(val)==type);
-}
+/** To define a new object type, you must provide several functions that enable the morpho runtime to interact with it.
+    These object definition functions are collected together in an objecttypedefn.
+    The object type is assigned at initialization by calling object_addtype */
 
-void object_init(object *obj, objecttype type);
-void object_free(object *obj);
-void object_freeunmanaged(object *obj);
-void object_print(value v);
-void object_printtobuffer(value v, varray_char *buffer);
-object *object_new(size_t size, objecttype type);
-size_t object_size(object *obj);
-
-static inline void morpho_freeobject(value val) {
-    if (MORPHO_ISOBJECT(val)) object_free(MORPHO_GETOBJECT(val));
-}
-
-/* --------------------------------------
- * Custom object types can be defined
- * by providing a few interface functions
- * -------------------------------------- */
-
-/** Prints a short identifier for the object */
+/** Called to print a short identifier for the object */
 typedef void (*objectprintfn) (object *obj);
 
-/** Mark the contents of an object */
+/** Called to mark the contents of an object; called by the garbage collector to identify subsidiary objects */
 typedef void (*objectmarkfn) (object *obj, void *v);
 
-/** Frees any unmanaged subsidiary data structures for an object */
+/** Called to free any unmanaged subsidiary data structures for an object */
 typedef void (*objectfreefn) (object *obj);
 
-/** Returns the size of an object and allocated data */
+/** Called to return the size of an object and attached data (anything NOT stored in a value) */
 typedef size_t (*objectsizefn) (object *obj);
 
-/** Define a custom object type */
+/** Defines a custom object type. */
 typedef struct {
     object *veneer; // Veneer class
     objectfreefn freefn;
@@ -91,12 +74,31 @@ typedef struct {
     objectprintfn printfn;
 } objecttypedefn;
 
-DECLARE_VARRAY(objecttypedefn, objecttypedefn)
+/* -------------------------------------------------------
+ * Object creation and management
+ * ------------------------------------------------------- */
 
-void object_nullfn(object *obj);
-
+// Define new object types
 objecttype object_addtype(objecttypedefn *def);
-
 objecttypedefn *object_getdefn(object *obj);
+
+// Management of object structures
+void object_init(object *obj, objecttype type);
+void object_free(object *obj);
+void object_freeifunmanaged(object *obj);
+void object_print(value v);
+void object_printtobuffer(value v, varray_char *buffer);
+size_t object_size(object *obj);
+
+bool object_istype(value val, objecttype type);
+
+// Create a new object with a specified allocation size and type
+object *object_new(size_t size, objecttype type);
+
+// Recommended interface to free an object from a value
+void morpho_freeobject(value val);
+
+// Index type
+typedef ptrdiff_t indx;
 
 #endif /* object_h */

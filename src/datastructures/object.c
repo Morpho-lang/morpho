@@ -17,16 +17,6 @@
 #include "common.h"
 
 /* **********************************************************************
- * Reuse pool
- * ********************************************************************** */
-
-#ifdef MORPHO_REUSEPOOL
-#define POOLMAX 1000
-int npool;
-object *pool;
-#endif
-
-/* **********************************************************************
  * Object definitions
  * ********************************************************************** */
 
@@ -34,7 +24,8 @@ object *pool;
 objecttypedefn objectdefns[MORPHO_MAXIMUMOBJECTDEFNS];
 objecttype objectdefnnext = 0; /** Type of the next object definition */
 
-/** Adds a new object type */
+/** Adds a new object type with a given definition.
+ @returns: the objecttype identifier to be used henceforth */
 objecttype object_addtype(objecttypedefn *def) {
     if (!def->printfn || !def->sizefn) {
         UNREACHABLE("Object definition must provide a print and size function.");
@@ -54,19 +45,6 @@ objecttype object_addtype(objecttypedefn *def) {
 /** Gets the appropriate definition given an object */
 objecttypedefn *object_getdefn(object *obj) {
     return &objectdefns[obj->type];
-}
-
-/** @brief Sets the veneer class for a particular object type */
-void object_setveneerclass(objecttype type, value class) {
-    if (objectdefns[type].veneer!=NULL) {
-        UNREACHABLE("Veneer class redefined.\n");
-    }
-    objectdefns[type].veneer=(object *) MORPHO_GETCLASS(class);
-}
-
-/** @brief Gets the veneer for a particular object type */
-objectclass *object_getveneerclass(objecttype type) {
-    return (objectclass *) objectdefns[type].veneer;
 }
 
 /* **********************************************************************
@@ -97,7 +75,7 @@ void object_free(object *obj) {
 }
 
 /** Free an object if it is unmanaged */
-void object_freeunmanaged(object *obj) {
+void object_freeifunmanaged(object *obj) {
     if (obj->status==OBJECT_ISUNMANAGED) object_free(obj);
 }
 
@@ -127,16 +105,29 @@ object *object_new(size_t size, objecttype type) {
     return new;
 }
 
-/* **********************************************************************
- * Initialization
- * ********************************************************************** */
-
-void object_initialize(void) {
-#ifdef MORPHO_REUSEPOOL
-    pool=NULL;
-    npool=0;
-#endif
+/** Checks if an object is of a particular type */
+bool object_istype(value val, objecttype type) {
+    return (MORPHO_ISOBJECT(val) && MORPHO_GETOBJECTTYPE(val)==type);
 }
 
-void object_finalize(void) {
+/** Free any object that may be contained in a value. */
+void morpho_freeobject(value val) {
+    if (MORPHO_ISOBJECT(val)) object_free(MORPHO_GETOBJECT(val));
+}
+
+/* **********************************************************************
+ * Veneer classes
+ * ********************************************************************** */
+
+/** @brief Sets the veneer class for a particular object type */
+void object_setveneerclass(objecttype type, value class) {
+    if (objectdefns[type].veneer!=NULL) {
+        UNREACHABLE("Veneer class redefined.\n");
+    }
+    objectdefns[type].veneer=(object *) MORPHO_GETCLASS(class);
+}
+
+/** @brief Gets the veneer for a particular object type */
+objectclass *object_getveneerclass(objecttype type) {
+    return (objectclass *) objectdefns[type].veneer;
 }

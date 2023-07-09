@@ -312,7 +312,6 @@ void builtin_initialize(void) {
     system_initialize();
     
     functions_initialize();
-    veneer_initialize();
     
     matrix_initialize();
     sparse_initialize();

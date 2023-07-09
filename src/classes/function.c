@@ -1,7 +1,7 @@
-/** @file range.c
+/** @file function.c
  *  @author T J Atherton
  *
- *  @brief Implements the Range class
+ *  @brief Implement objectfunctions and the Function veneer class
  */
 
 #include "morpho.h"

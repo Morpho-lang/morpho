@@ -1,7 +1,7 @@
 /** @file function.h
  *  @author T J Atherton
  *
- *  @brief Defines range object type and Range class
+ *  @brief Defines function object type and Function veneer class
  */
 
 #ifndef function_h

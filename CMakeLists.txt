@@ -14,6 +14,15 @@ include_directories("src/linalg")
 include_directories("src/utils")
 include_directories("src/vm")
 
+# Create source groups for IDE
+source_group("builtin" REGULAR_EXPRESSION src/builtin/.*\\.[ch])
+source_group("classes" REGULAR_EXPRESSION src/classes/.*\\.[ch])
+source_group("datastructures" REGULAR_EXPRESSION src/datastructures/.*\\.[ch])
+source_group("geometry" REGULAR_EXPRESSION src/geometry/.*\\.[ch])
+source_group("linalg" REGULAR_EXPRESSION src/linalg/.*\\.[ch])
+source_group("utils" REGULAR_EXPRESSION src/utils/.*\\.[ch])
+source_group("vm" REGULAR_EXPRESSION src/vm/.*\\.[ch])
+
 # Find suitesparse cs.h header file 
 find_file(SUITESPARSE_HEADER cs.h 
           HINTS 

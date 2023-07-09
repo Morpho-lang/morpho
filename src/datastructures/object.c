@@ -128,54 +128,6 @@ object *object_new(size_t size, objecttype type) {
 }
 
 /* **********************************************************************
- * Upvalues
- * ********************************************************************** */
-
-DEFINE_VARRAY(upvalue, upvalue);
-DEFINE_VARRAY(varray_upvalue, varray_upvalue);
-
-/** Upvalue object definitions */
-void objectupvalue_printfn(object *obj) {
-    printf("upvalue");
-}
-
-void objectupvalue_markfn(object *obj, void *v) {
-    morpho_markvalue(v, ((objectupvalue *) obj)->closed);
-}
-
-size_t objectupvalue_sizefn(object *obj) {
-    return sizeof(objectupvalue);
-}
-
-objecttypedefn objectupvaluedefn = {
-    .printfn=objectupvalue_printfn,
-    .markfn=objectupvalue_markfn,
-    .freefn=NULL,
-    .sizefn=objectupvalue_sizefn
-};
-
-
-/** Initializes a new upvalue object. */
-void object_upvalueinit(objectupvalue *c) {
-    object_init(&c->obj, OBJECT_UPVALUE);
-    c->location=NULL;
-    c->closed=MORPHO_NIL;
-    c->next=NULL;
-}
-
-/** Creates a new upvalue for the register pointed to by reg. */
-objectupvalue *object_newupvalue(value *reg) {
-    objectupvalue *new = (objectupvalue *) object_new(sizeof(objectupvalue), OBJECT_UPVALUE);
-
-    if (new) {
-        object_upvalueinit(new);
-        new->location=reg;
-    }
-
-    return new;
-}
-
-/* **********************************************************************
  * Classes
  * ********************************************************************** */
 
@@ -226,7 +178,6 @@ objectclass *object_newclass(value name) {
  * Initialization
  * ********************************************************************** */
 
-objecttype objectupvaluetype;
 objecttype objectclasstype;
 
 void object_initialize(void) {
@@ -234,8 +185,6 @@ void object_initialize(void) {
     pool=NULL;
     npool=0;
 #endif
-
-    objectupvaluetype=object_addtype(&objectupvaluedefn);
 }
 
 void object_finalize(void) {

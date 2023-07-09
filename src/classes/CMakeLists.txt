@@ -13,4 +13,5 @@ target_sources(morpho
         range.c      range.h
         strng.c      strng.h
         system.c     system.h
+        upvalue.c    upvalue.h
 )

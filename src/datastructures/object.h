@@ -131,44 +131,6 @@ objectclass *object_newclass(value name);
 objectclass *morpho_lookupclass(value obj);
 
 /* -------------------------------------------------------
- * Upvalue structure
- * ------------------------------------------------------- */
-
-/** Each upvalue */
-typedef struct {
-    bool islocal; /** Set if the upvalue is local to this function */
-    indx reg; /** An index that either:
-                  if islocal - refers to the register
-               OR otherwise  - refers to the upvalue array in the current closure */
-} upvalue;
-
-DECLARE_VARRAY(upvalue, upvalue)
-DECLARE_VARRAY(varray_upvalue, varray_upvalue)
-
-/* ---------------------------
- * Upvalue objects
- * --------------------------- */
-
-extern objecttype objectupvaluetype;
-#define OBJECT_UPVALUE objectupvaluetype
-
-typedef struct sobjectupvalue {
-    object obj;
-    value* location; /** Pointer to the location of the upvalue */
-    value  closed; /** Closed value of the upvalue */
-    struct sobjectupvalue *next;
-} objectupvalue;
-
-void object_upvalueinit(objectupvalue *c);
-objectupvalue *object_newupvalue(value *reg);
-
-/** Gets an upvalue from a value */
-#define MORPHO_GETUPVALUE(val)   ((objectupvalue *) MORPHO_GETOBJECT(val))
-
-/** Tests whether an object is an upvalue */
-#define MORPHO_ISUPVALUE(val) object_istype(val, object_upvaluetype)
-
-/* -------------------------------------------------------
  * Veneer classes
  * ------------------------------------------------------- */
 

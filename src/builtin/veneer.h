@@ -9,6 +9,7 @@
 
 #include "builtin.h"
 
+#include "upvalue.h"
 #include "function.h"
 #include "closure.h"
 #include "invocation.h"

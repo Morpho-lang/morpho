@@ -99,42 +99,4 @@ objecttype object_addtype(objecttypedefn *def);
 
 objecttypedefn *object_getdefn(object *obj);
 
-/* *************************************
- * We now define essential object types
- * ************************************* */
-
-/* ---------------------------
- * Classes
- * --------------------------- */
-
-extern objecttype objectclasstype;
-#define OBJECT_CLASS objectclasstype
-
-typedef struct sobjectclass {
-    object obj;
-    struct sobjectclass *superclass;
-    value name;
-    dictionary methods;
-} objectclass;
-
-/** Tests whether an object is a class */
-#define MORPHO_ISCLASS(val) object_istype(val, OBJECT_CLASS)
-
-/** Gets the object as a class */
-#define MORPHO_GETCLASS(val)   ((objectclass *) MORPHO_GETOBJECT(val))
-
-/** Gets the superclass */
-#define MORPHO_GETSUPERCLASS(val)   (MORPHO_GETCLASS(val)->superclass)
-
-objectclass *object_newclass(value name);
-
-objectclass *morpho_lookupclass(value obj);
-
-/* -------------------------------------------------------
- * Veneer classes
- * ------------------------------------------------------- */
-
-void object_setveneerclass(objecttype type, value class);
-objectclass *object_getveneerclass(objecttype type);
-
 #endif /* object_h */

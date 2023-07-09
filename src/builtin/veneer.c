@@ -12,5 +12,4 @@
  * ********************************************************************** */
 
 void veneer_initialize(void) {
-    morpho_defineerror(CLASS_INVK, ERROR_HALT, CLASS_INVK_MSG);
 }

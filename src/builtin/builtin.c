@@ -295,6 +295,7 @@ void builtin_initialize(void) {
     instance_initialize(); // Must initialize first so that Object exists
     string_initialize(); 
     function_initialize();
+    class_initialize();
     
     object_initialize(); // This has been carefully placed to ensure
     

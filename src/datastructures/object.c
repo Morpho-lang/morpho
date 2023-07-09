@@ -128,57 +128,8 @@ object *object_new(size_t size, objecttype type) {
 }
 
 /* **********************************************************************
- * Classes
- * ********************************************************************** */
-
-/** Class object definitions */
-void objectclass_printfn(object *obj) {
-#ifndef MORPHO_LOXCOMPATIBILITY
-    printf("@");
-#endif
-    printf("%s", MORPHO_GETCSTRING(((objectclass *) obj)->name));
-}
-
-void objectclass_markfn(object *obj, void *v) {
-    objectclass *c = (objectclass *) obj;
-    morpho_markvalue(v, c->name);
-    morpho_markdictionary(v, &c->methods);
-}
-
-void objectclass_freefn(object *obj) {
-    objectclass *klass = (objectclass *) obj;
-    morpho_freeobject(klass->name);
-    dictionary_clear(&klass->methods);
-}
-
-size_t objectclass_sizefn(object *obj) {
-    return sizeof(objectclass);
-}
-
-objecttypedefn objectclassdefn = {
-    .printfn=objectclass_printfn,
-    .markfn=objectclass_markfn,
-    .freefn=objectclass_freefn,
-    .sizefn=objectclass_sizefn,
-};
-
-objectclass *object_newclass(value name) {
-    objectclass *newclass = (objectclass *) object_new(sizeof(objectclass), OBJECT_CLASS);
-
-    if (newclass) {
-        newclass->name=object_clonestring(name);
-        dictionary_init(&newclass->methods);
-        newclass->superclass=NULL;
-    }
-
-    return newclass;
-}
-
-/* **********************************************************************
  * Initialization
  * ********************************************************************** */
-
-objecttype objectclasstype;
 
 void object_initialize(void) {
 #ifdef MORPHO_REUSEPOOL

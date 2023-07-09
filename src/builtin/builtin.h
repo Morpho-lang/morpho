@@ -8,6 +8,7 @@
 #define builtin_h
 
 #include "object.h"
+#include "clss.h"
 
 #ifndef MORPHO_CORE
 #include "morpho.h"
@@ -103,6 +104,9 @@ void builtin_printfunction(objectbuiltinfunction *f);
 
 value builtin_addclass(char *name, builtinclassentry desc[], value superclass);
 value builtin_findclass(value name);
+
+void object_setveneerclass(objecttype type, value class);
+objectclass *object_getveneerclass(objecttype type);
 
 void builtin_copysymboltable(dictionary *out);
 

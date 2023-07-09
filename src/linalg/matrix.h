@@ -72,7 +72,7 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 #define MATRIX_ISSMALL(m) (m->nrows*m->ncols<MORPHO_MAXIMUMSTACKALLOC)
 
 /* -------------------------------------------------------
- * Matrix class
+ * Matrix veneer class
  * ------------------------------------------------------- */
 
 #define MATRIX_CLASSNAME "Matrix"
@@ -95,6 +95,10 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 #define MATRIX_EIGENSYSTEM_METHOD "eigensystem"
 
 #define MATRIX_DIMENSIONS_METHOD "dimensions"
+
+/* -------------------------------------------------------
+ * Matrix error messages
+ * ------------------------------------------------------- */
 
 #define MATRIX_INDICESOUTSIDEBOUNDS       "MtrxBnds"
 #define MATRIX_INDICESOUTSIDEBOUNDS_MSG   "Matrix index out of bounds."
@@ -139,7 +143,7 @@ objectmatrix *object_clonematrix(objectmatrix *array);
 #define MATRIX_NORMARGS_MSG               "Method norm expects an (optional) numerical argument."
 
 /* -------------------------------------------------------
- * Matrix errors
+ * objectmatrixerror type
  * ------------------------------------------------------- */
 
 typedef enum { MATRIX_OK, MATRIX_INCMPTBLDIM, MATRIX_SING, MATRIX_INVLD, MATRIX_BNDS, MATRIX_NSQ, MATRIX_FAILED, MATRIX_ALLOC } objectmatrixerror;

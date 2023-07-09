@@ -12,9 +12,9 @@
 #include "morpho.h"
 #include "matrix.h"
 
-/* ***************************************
+/* -------------------------------------------------------
  * Sparse objects
- * *************************************** */
+ * ------------------------------------------------------- */
 
 extern objecttype objectdokkeytype;
 #define OBJECT_DOKKEY objectdokkeytype
@@ -79,9 +79,9 @@ typedef struct {
 objectsparse *object_newsparse(int *nrows, int *ncols);
 objectsparse *sparse_sparsefromarray(objectarray *array);
 
-/* ***************************************
- * The Sparse class
- * *************************************** */
+/* -------------------------------------------------------
+ * Sparse veneer class
+ * ------------------------------------------------------- */
 
 #define SPARSE_CLASSNAME "Sparse"
 
@@ -89,6 +89,10 @@ objectsparse *sparse_sparsefromarray(objectarray *array);
 #define SPARSE_SETROWINDICES_METHOD "setrowindices"
 #define SPARSE_COLINDICES_METHOD "colindices"
 #define SPARSE_INDICES_METHOD "indices"
+
+/* -------------------------------------------------------
+ * Sparse errors
+ * ------------------------------------------------------- */
 
 #define SPARSE_CONSTRUCTOR                "SprsCns"
 #define SPARSE_CONSTRUCTOR_MSG            "Sparse() should be called either with dimensions or an array initializer."
@@ -104,6 +108,10 @@ objectsparse *sparse_sparsefromarray(objectarray *array);
 
 #define SPARSE_OPFAILEDERR                "SprsOpFld"
 #define SPARSE_OPFAILEDERR_MSG            "Sparse matrix operation failed."
+
+/* -------------------------------------------------------
+ * Sparse interface
+ * ------------------------------------------------------- */
 
 /* ***************************************
  * Dictionary of keys format
@@ -142,13 +150,14 @@ bool sparseccs_copy(sparseccs *src, sparseccs *dest);
 bool sparseccs_copytodok(sparseccs *src, sparsedok *dest, int row0, int col0);
 bool sparseccs_copytomatrix(sparseccs *src, objectmatrix *dest, int row0, int col0);
 
-/* ***************************************
- * Object sparse interface
- * *************************************** */
-
 typedef enum { SPARSE_DOK, SPARSE_CCS } objectsparseformat;
 
 typedef enum { SPARSE_OK, SPARSE_INCMPTBLDIM, SPARSE_INVLDINIT, SPARSE_CONVFAILED, SPARSE_FAILED } objectsparseerror;
+
+/* ***************************************
+ * Generic sparse functions
+ * *************************************** */
+
 void sparse_raiseerror(vm *v, objectsparseerror err);
 
 bool sparse_checkformat(objectsparse *sparse, objectsparseformat format, bool force, bool copyvals);
@@ -177,10 +186,7 @@ objectsparseerror sparse_catmatrix(objectlist *in, objectmatrix **out);
 
 value Sparse_divr(vm *v, int nargs, value *args);
 
-/* ***************************************
- * Initialization
- * *************************************** */
-
+/** Intialization */
 void sparse_initialize(void);
 
 #endif /* sparse_h */

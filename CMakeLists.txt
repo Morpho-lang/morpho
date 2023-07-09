@@ -10,6 +10,7 @@ include_directories("src/builtin")
 include_directories("src/classes")
 include_directories("src/datastructures")
 include_directories("src/geometry")
+include_directories("src/linalg")
 include_directories("src/utils")
 include_directories("src/vm")
 

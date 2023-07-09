@@ -292,9 +292,9 @@ void builtin_initialize(void) {
     objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
     
     /* Initialize builtin classes and functions */
-    string_initialize(); // Must be initialized early as much depends on this
+    instance_initialize(); // Must initialize first so that Object exists
+    string_initialize(); 
     function_initialize();
-    instance_initialize();
     
     object_initialize(); // This has been carefully placed to ensure
     

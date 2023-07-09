@@ -8,8 +8,8 @@
 #define cmplx_h
 
 #include <stdio.h>
-#include "veneer.h"
 #include <complex.h>
+#include "veneer.h"
 
 /* -------------------------------------------------------
  * Complex objects

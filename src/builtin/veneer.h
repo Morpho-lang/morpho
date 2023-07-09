@@ -1,7 +1,7 @@
 /** @file veneer.h
  *  @author T J Atherton
  *
- *  @brief Veneer classes over built in objects
+ *  @brief List of classes
  */
 
 #ifndef veneer_h
@@ -26,11 +26,5 @@
 //#include "system.h"
 
 #include "matrix.h"
-
-/* ---------------------------
- * Veneer classes
- * --------------------------- */
- 
-void veneer_initialize(void);
 
 #endif /* veneer_h */

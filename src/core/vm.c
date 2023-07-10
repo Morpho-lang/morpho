@@ -14,6 +14,7 @@
 #include "debug.h"
 #include "profile.h"
 #include "resources.h"
+#include "extensions.h"
 
 value initselector = MORPHO_NIL;
 value indexselector = MORPHO_NIL;

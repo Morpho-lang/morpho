@@ -10,12 +10,8 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <math.h>
-#include <float.h>
-#include <string.h>
 #include "value.h"
 #include "object.h"
-#include "builtin.h"
-#include "error.h"
 #include "veneer.h"
 
 #define COMMON_NILSTRING   "nil"
@@ -122,14 +118,5 @@ typedef enum {
 
 void morpho_tuplesinit(unsigned int nval, unsigned int n, unsigned int *c, tuplemode mode);
 bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int *c, tuplemode mode, value *tuple);
-
-/* -----------------------------------------
- * Extensions
- * ----------------------------------------- */
-
-bool morpho_loadextension(char *name);
-
-void extensions_initialize(void);
-void extensions_finalize(void);
 
 #endif /* common_h */

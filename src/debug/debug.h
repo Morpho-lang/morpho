@@ -1,4 +1,4 @@
-/** @file debug.c
+/** @file debug.h
  *  @author T J Atherton
  *
  *  @brief Debugger, dissassembly and other tools
@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include "syntaxtree.h"
 #include "object.h"
+#include "program.h"
 
 #define DEBUG_ISSINGLESTEP(d) ((d) && (d->singlestep))
 

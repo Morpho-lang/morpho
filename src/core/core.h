@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include <stddef.h>
 
-typedef struct sprogram program;
 typedef struct svm vm;
 
 #include "error.h"
@@ -22,9 +21,11 @@ typedef struct svm vm;
 #include "dictionary.h"
 #include "builtin.h"
 
+#include "program.h"
+
 /* **********************************************************************
-* Virtual machine instructions
-* ********************************************************************** */
+ * Instruction format
+ * ********************************************************************** */
 
 /** @brief A Morpho instruction
  *
@@ -43,9 +44,6 @@ typedef struct svm vm;
  *  ***********LBx**********         } 24 bit unsigned integer
  * </pre>
  */
-
-/** @brief Morpho instructions */
-typedef unsigned int instruction;
 
 /* ---------------------------------------------
  * Macros for encoding and decoding instructions
@@ -104,10 +102,8 @@ typedef enum {
 } opcode;
 
 /* **********************************************************************
- * Call frames
+ * Virtual machine
  * ********************************************************************** */
-
-DECLARE_VARRAY(instruction, instruction);
 
 /** @brief Maximum number of registers per call frame. */
 #define MORPHO_MAXREGISTERS 255
@@ -138,53 +134,6 @@ typedef struct {
 } errorhandler;
 
 /* **********************************************************************
- * Debug info
- * ********************************************************************** */
-
-/** Annotations for the compiled code to link back to the source */
-typedef struct {
-    enum {
-        DEBUG_FUNCTION, // Set the current function
-        DEBUG_CLASS, // Set the current class
-        DEBUG_MODULE, // Set the current module
-        DEBUG_REGISTER, // Associates a symbol with a register
-        DEBUG_GLOBAL, // Associates a symbol with a global
-        DEBUG_ELEMENT, // Associates a sequence of instructions with a code element
-        DEBUG_PUSHERR, // Push an error handler
-        DEBUG_POPERR // Pop an error handler
-    } type;
-    union {
-        struct {
-            objectdictionary *handler;
-        } errorhandler;
-        struct {
-            objectfunction *function;
-        } function;
-        struct {
-            objectclass *klass;
-        } klass;
-        struct {
-            value module;
-        } module;
-        struct {
-            indx reg;
-            value symbol;
-        } reg;
-        struct {
-            indx gindx;
-            value symbol;
-        } global;
-        struct {
-            int ninstr;
-            int line;
-            int posn;
-        } element;
-    } content;
-} debugannotation;
-
-DECLARE_VARRAY(debugannotation, debugannotation)
-
-/* **********************************************************************
  * Debugger
  * ********************************************************************** */
 
@@ -199,20 +148,6 @@ typedef struct {
     int nbreakpoints; /** Number of active breakpoints */
     varray_char breakpoints; /** Keep track of breakpoints */
 } debugger;
-
-/* **********************************************************************
- * Programs
- * ********************************************************************** */
-
-/** @brief Morpho code program and associated data */
-struct sprogram {
-    varray_instruction code; /** Compiled instructions */
-    varray_debugannotation annotations; /** Information about how the code connects to the source */
-    objectfunction *global;  /** Pseudofunction containing global data */
-    unsigned int nglobals;
-    object *boundlist; /** Linked list of static objects bound to this program */
-    dictionary symboltable; /** The symbol table */
-};
 
 /* **********************************************************************
  * Profiler

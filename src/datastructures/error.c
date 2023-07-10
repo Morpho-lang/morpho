@@ -1,7 +1,7 @@
 /** @file error.c
 *  @author T J Atherton
 *
-*  @brief Morpho error handling
+*  @brief Morpho error data structure and handling
 */
 
 #include <stdio.h>

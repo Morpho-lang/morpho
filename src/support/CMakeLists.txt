@@ -1,9 +1,7 @@
 target_sources(morpho
     PRIVATE
-        common.c
-        debug.c
-        error.c
-        memory.c
-        parse.c
-        random.c
+        common.c    common.h
+        memory.c    memory.h
+        parse.c     parse.h
+        random.c    random.h
 )

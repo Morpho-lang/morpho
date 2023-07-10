@@ -1,7 +1,7 @@
 /** @file error.h
  *  @author T J Atherton
  *
- *  @brief Morpho error handling
+ *  @brief Morpho error data structure and handling
 */
 
 #ifndef error_h

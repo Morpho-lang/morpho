@@ -5,8 +5,6 @@
  */
 
 #include "morpho.h"
-#include "object.h"
-#include "builtin.h"
 #include "classes.h"
 
 static value error_tagproperty;

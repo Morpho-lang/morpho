@@ -6,11 +6,10 @@
 
 #include <string.h>
 #include <stdio.h>
+
 #include "morpho.h"
 #include "classes.h"
-#include "object.h"
-#include "strng.h"
-#include "parse.h"
+#include "lex.h"
 #include "common.h"
 
 /* **********************************************************************

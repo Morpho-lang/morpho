@@ -5,10 +5,7 @@
  */
 
 #include "morpho.h"
-#include "object.h"
-#include "builtin.h"
 #include "classes.h"
-#include "common.h"
 
 /* **********************************************************************
  * objectinstance definitions

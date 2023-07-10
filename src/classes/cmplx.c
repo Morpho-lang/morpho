@@ -5,10 +5,7 @@
  */
 
 #include <string.h>
-#include "object.h"
-#include "cmplx.h"
 #include "morpho.h"
-#include "builtin.h"
 #include "classes.h"
 #include "common.h"
 

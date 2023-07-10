@@ -5,11 +5,8 @@
  */
 
 #include "morpho.h"
-#include "object.h"
-#include "common.h"
-#include "builtin.h"
-#include "list.h"
 #include "classes.h"
+#include "common.h"
 
 /* **********************************************************************
  * objectlist definitions

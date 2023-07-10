@@ -5,13 +5,11 @@
  */
 
 #include <string.h>
-#include "object.h"
+#include "morpho.h"
+#include "classes.h"
+
 #include "matrix.h"
 #include "sparse.h"
-#include "morpho.h"
-#include "builtin.h"
-#include "classes.h"
-#include "common.h"
 
 /* **********************************************************************
  * Matrix objects

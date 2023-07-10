@@ -6,7 +6,6 @@
 
 #include "morpho.h"
 #include "classes.h"
-#include "object.h"
 #include "common.h"
 
 /* **********************************************************************

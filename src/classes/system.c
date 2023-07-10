@@ -8,10 +8,10 @@
 
 #include <stdio.h>
 #include <time.h>
-#include "build.h"
-#include "system.h"
-#include "builtin.h"
+
+#include "morpho.h"
 #include "classes.h"
+#include "system.h"
 
 #ifndef WIN32
 #include <sys/time.h>

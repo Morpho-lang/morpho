@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <sys/stat.h>
+
 #include "common.h"
 #include "sparse.h"
 #include "resources.h"

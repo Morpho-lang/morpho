@@ -5,14 +5,12 @@
  */
 
 #include "functional.h"
-#include "builtin.h"
+#include "morpho.h"
 #include "classes.h"
 #include "common.h"
+
 #include "threadpool.h"
-#include "error.h"
-#include "value.h"
-#include "object.h"
-#include "morpho.h"
+
 #include "matrix.h"
 #include "sparse.h"
 #include "integrate.h"

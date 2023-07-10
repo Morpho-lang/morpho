@@ -6,15 +6,9 @@
 
 #include <string.h>
 #include <stdio.h>
-#include "value.h"
-#include "object.h"
-#include "builtin.h"
-#include "memory.h"
-#include "error.h"
-#include "strng.h"
-#include "sparse.h"
-#include "selection.h"
-#include "common.h"
+
+#include "morpho.h"
+#include "classes.h"
 
 /* **********************************************************************
  * Object definitions

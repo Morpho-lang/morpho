@@ -4,17 +4,14 @@
  *  @brief Veneer class over the objectsparse type that provides sparse matrices
  */
 
-#include "build.h"
-#include "sparse.h"
-#include "morpho.h"
-#include "dictionary.h"
-#include "common.h"
-#include "matrix.h"
-#include "builtin.h"
-#include "classes.h"
-
 #include <limits.h>
 #include <stdlib.h>
+
+#include "morpho.h"
+#include "classes.h"
+
+#include "sparse.h"
+#include "matrix.h"
 
 /* ***************************************
  * Compatibility with Sparse libraries

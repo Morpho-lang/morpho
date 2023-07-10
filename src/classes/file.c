@@ -4,15 +4,12 @@
  *  @brief Defines file object type as well as File and Folder classes
  */
 
-#include "file.h"
-#include "builtin.h"
-#include "error.h"
-#include "object.h"
-#include "morpho.h"
-#include "common.h"
-#include "classes.h"
 #include <stdio.h>
 #include <limits.h>
+
+#include "morpho.h"
+#include "classes.h"
+#include "file.h"
 
 /** Store the current working directory (relative to the filing systems cwd) */
 static varray_char workingdir;

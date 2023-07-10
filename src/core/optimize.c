@@ -7,6 +7,7 @@
 #include "optimize.h"
 #include "debug.h"
 #include "vm.h"
+#include "gc.h"
 
 DEFINE_VARRAY(codeblock, codeblock);
 DEFINE_VARRAY(codeblockindx, codeblockindx);

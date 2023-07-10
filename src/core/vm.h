@@ -11,12 +11,8 @@
 #include "core.h"
 
 /* **********************************************************************
-* Prototypes
+* Interface
 * ********************************************************************** */
-
-void vm_unbindobject(vm *v, value obj);
-void vm_freeobjects(vm *v);
-void vm_collectgarbage(vm *v);
 
 void morpho_initialize(void);
 void morpho_finalize(void);

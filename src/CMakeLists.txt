@@ -5,8 +5,9 @@ target_sources(morpho
 
 add_subdirectory(builtin)
 add_subdirectory(classes)
+add_subdirectory(core)
 add_subdirectory(datastructures)
+add_subdirectory(debug)
 add_subdirectory(geometry)
 add_subdirectory(linalg)
-add_subdirectory(utils)
-add_subdirectory(vm)
+add_subdirectory(support)

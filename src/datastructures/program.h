@@ -20,6 +20,9 @@
 typedef unsigned int instruction;
 DECLARE_VARRAY(instruction, instruction);
 
+/** @brief Index into instructions */
+typedef indx instructionindx;
+
 /* -------------------------------------------------------
  * Debug annotations contain debugging information
  * ------------------------------------------------------- */
@@ -80,6 +83,14 @@ typedef struct {
     object *boundlist; /** Linked list of static objects bound to this program */
     dictionary symboltable; /** The symbol table */
 } program;
+
+#define MORPHO_PROGRAMSTART 0
+void program_setentry(program *p, instructionindx entry);
+instructionindx program_getentry(program *p);
+varray_value *program_getconstanttable(program *p);
+void program_bindobject(program *p, object *obj);
+
+value program_internsymbol(program *p, value symbol);
 
 #endif /* MORPHO_CORE */
 

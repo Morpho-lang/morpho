@@ -108,9 +108,6 @@ typedef enum {
 /** @brief Maximum number of registers per call frame. */
 #define MORPHO_MAXREGISTERS 255
 
-/** @brief Index into instructions */
-typedef indx instructionindx;
-
 typedef struct {
     objectfunction *function;
     objectclosure *closure;

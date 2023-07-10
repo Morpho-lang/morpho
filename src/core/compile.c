@@ -16,6 +16,7 @@
 #include "builtin.h"
 #include "cmplx.h"
 #include "optimize.h"
+#include "resources.h"
 
 /** Base class for instances */
 static objectclass *baseclass;

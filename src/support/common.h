@@ -159,27 +159,6 @@ void threadpool_fence(threadpool *pool);
 void threadpool_wait(threadpool *pool);
 
 /* -----------------------------------------
- * Resources
- * ----------------------------------------- */
-
-typedef struct {
-    char *folder;
-    char *fname;
-    char **ext;
-    bool recurse;
-    varray_value resources;
-} resourceenumerator;
-
-void morpho_resourceenumeratorinit(resourceenumerator *en, char *folder, char *fname, char *ext[], bool recurse);
-void morpho_resourceenumeratorclear(resourceenumerator *en);
-
-bool morpho_enumerateresources(resourceenumerator *en, value *out);
-bool morpho_findresource(char *folder, char *fname, char *ext[], bool recurse, value *out);
-
-void resources_initialize(void);
-void resources_finalize(void);
-
-/* -----------------------------------------
  * Extensions
  * ----------------------------------------- */
 

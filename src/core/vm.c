@@ -13,6 +13,7 @@
 #include "morpho.h"
 #include "debug.h"
 #include "profile.h"
+#include "resources.h"
 
 value initselector = MORPHO_NIL;
 value indexselector = MORPHO_NIL;

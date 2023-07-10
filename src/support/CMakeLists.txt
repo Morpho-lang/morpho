@@ -4,4 +4,5 @@ target_sources(morpho
         memory.c    memory.h
         parse.c     parse.h
         random.c    random.h
+        resources.c resources.h
 )

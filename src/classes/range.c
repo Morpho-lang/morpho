@@ -4,6 +4,8 @@
  *  @brief Implements the Range class
  */
 
+#include <float.h>
+
 #include "morpho.h"
 #include "classes.h"
 

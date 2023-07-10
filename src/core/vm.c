@@ -131,6 +131,10 @@ void vm_freeobjects(vm *v) {
 dictionary sizecheck;
 #endif
 
+/* **********************************************************************
+* Binding and unbinding objects to the VM
+* ********************************************************************** */
+
 /** Unbinds an object from a VM. */
 void vm_unbindobject(vm *v, value obj) {
     object *ob=MORPHO_GETOBJECT(obj);
@@ -149,7 +153,6 @@ void vm_unbindobject(vm *v, value obj) {
     }
 }
 
-#include "object.h"
 /** @brief Binds an object to a Virtual Machine.
  *  @details Any object created during execution should be bound to a VM; this object is then managed by the garbage collector.
  *  @param v      the virtual machine

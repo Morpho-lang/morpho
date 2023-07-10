@@ -11,9 +11,9 @@
 #include "build.h"
 #include "varray.h"
 
-/* **********************************************************************
+/* -------------------------------------------------------
  * Error type definitions
- * ********************************************************************** */
+ * ------------------------------------------------------- */
 
 /** @brief Identifier for errors. */
 typedef char * errorid;
@@ -86,9 +86,9 @@ typedef struct {
 /** A varray of errordefinitions */
 DECLARE_VARRAY(errordefinition, errordefinition)
 
-/* **********************************************************************
+/* -------------------------------------------------------
  * or related macros
- * ********************************************************************** */
+ * ------------------------------------------------------- */
 
 /** Macro to place in code that should be unreachable */
 #ifdef MORPHO_DEBUG
@@ -105,9 +105,9 @@ void morpho_unreachable(const char *explanation);
 /** Exit codes from BSD standard */
 #define BSD_EX_SOFTWARE 70
 
-/* **********************************************************************
+/* -------------------------------------------------------
  * General error codes
- * ********************************************************************** */
+ * ------------------------------------------------------- */
 
 #define ERROR_ALLOCATIONFAILED            "Alloc"
 #define ERROR_ALLOCATIONFAILED_MSG        "Memory allocation failed."
@@ -115,9 +115,9 @@ void morpho_unreachable(const char *explanation);
 #define ERROR_INTERNALERROR               "Intrnl"
 #define ERROR_INTERNALERROR_MSG           "Internal error (contact developer)."
 
-/* **********************************************************************
-* VM error messages
-* ********************************************************************** */
+/* -------------------------------------------------------
+ * VM error messages
+ * ------------------------------------------------------- */
 
 #define VM_EXIT                           "Exit"
 #define VM_EXIT_MSG                       "VM halted."
@@ -185,10 +185,9 @@ void morpho_unreachable(const char *explanation);
 #define VM_GETINDEXARGS                   "NonintIndex"
 #define VM_GETINDEXARGS_MSG               "Noninteger array index."
 
-
-/* **********************************************************************
- * Prototypes
- * ********************************************************************** */
+/* -------------------------------------------------------
+ * Error interface
+ * ------------------------------------------------------- */
 
 void error_init(error *err);
 void error_clear(error *err);

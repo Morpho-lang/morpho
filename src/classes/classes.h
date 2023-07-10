@@ -1,7 +1,7 @@
 /** @file classes.h
  *  @author T J Atherton
  *
- *  @brief List of classes
+ *  @brief List of classes and object types
  */
 
 #ifndef classes_h

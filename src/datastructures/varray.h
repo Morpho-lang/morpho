@@ -12,9 +12,9 @@
 #include <stdbool.h>
 #include "memory.h"
 
-/**
+/* -------------------------------------------------------
  * Variable array macros
- */
+ * ------------------------------------------------------- */
 
 /** @brief Creates a generic varray containing a specified type.
  *
@@ -94,9 +94,9 @@ bool varray_##name##pop(varray_##name *v, type *dest) { \
     return false; \
 } \
 
-/* **********************************************************************
-* Common varray types
-* ********************************************************************** */
+/* -------------------------------------------------------
+ * Common varray types
+ * ------------------------------------------------------- */
 
 DECLARE_VARRAY(char, char);
 DECLARE_VARRAY(int, int);

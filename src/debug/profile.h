@@ -9,7 +9,8 @@
 
 #include "compile.h"
 #include "vm.h"
-#include "profile.h"
 #include "morpho.h"
+
+bool morpho_profile(vm *v, program *p);
 
 #endif /* profile_h */

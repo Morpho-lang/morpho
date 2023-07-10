@@ -1,7 +1,7 @@
 /** @file memory.h
  *  @author T J Atherton
  *
- *  @brief Morpho memory management
+ *  @brief Morpho memory allocator
 */
 
 #ifndef memory_h

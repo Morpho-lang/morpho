@@ -11,7 +11,6 @@
 #include "memory.h"
 #include "object.h"
 #include "sparse.h"
-#include "error.h"
 
 /*
  * Macros that control the behavior of the dictionary.

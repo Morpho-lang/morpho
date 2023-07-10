@@ -7,12 +7,31 @@
 #include "value.h"
 #include "common.h"
 
+DEFINE_VARRAY(value, value);
+
+/** Detect if a value is a number */
+bool morpho_isnumber(value a) {
+    return (MORPHO_ISINTEGER(a) || MORPHO_ISFLOAT(a));
+}
+
 /** Define notion of falsity/truthyness */
 bool morpho_isfalse(value a) {
     return (MORPHO_ISNIL(a) || (MORPHO_ISBOOL(a) && (MORPHO_GETBOOLVALUE(a)==false)));
 }
 
-DEFINE_VARRAY(value, value);
+/** Convert a value to an integer */
+bool morpho_valuetoint(value v, int *out) {
+    if (MORPHO_ISINTEGER(v)) { *out = MORPHO_GETINTEGERVALUE(v); return true; }
+    if (MORPHO_ISFLOAT(v)) { *out = (int) MORPHO_GETFLOATVALUE(v); return true; }
+    return false;
+}
+
+/** Convert a value to a float */
+bool morpho_valuetofloat(value v, double *out) {
+    if (MORPHO_ISINTEGER(v)) { *out = (double) MORPHO_GETINTEGERVALUE(v); return true; }
+    if (MORPHO_ISFLOAT(v)) { *out = MORPHO_GETFLOATVALUE(v); return true; }
+    return false;
+}
 
 /** @brief Finds a value in an varray using a loose equality test (MORPHO_ISEQUAL)
  *  @param[in]  varray     the array to search
@@ -63,7 +82,7 @@ bool value_promotenumberlist(unsigned int nv, value *v) {
     return true;
 }
 
-/* Finds the maximum and minimum of a list of values */
+/** Finds the maximum and minimum of a list of values */
 bool value_minmax(unsigned int nval, value *list, value *min, value *max) {
     if (nval==0) return false;
     

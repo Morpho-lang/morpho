@@ -10,15 +10,10 @@
 #include "functiondefs.h"
 #include "file.h"
 #include "system.h"
-#include "builtin.h"
-#include "matrix.h"
-#include "cmplx.h"
-#include "sparse.h"
 #include "mesh.h"
 #include "selection.h"
 #include "functional.h"
 #include "field.h"
-#include "classes.h"
 
 /* **********************************************************************
  * Global data

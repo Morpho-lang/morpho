@@ -12,7 +12,7 @@
 #include "morpho.h"
 #include "file.h"
 #include "object.h"
-#include "veneer.h"
+#include "classes.h"
 #include "builtin.h"
 #include "cmplx.h"
 #include "optimize.h"

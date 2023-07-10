@@ -1,5 +1,6 @@
 target_sources(morpho
     PRIVATE
+        classes.h
         array.c      array.h
         closure.c    closure.h
         clss.c       clss.h

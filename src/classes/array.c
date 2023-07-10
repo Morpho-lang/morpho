@@ -5,7 +5,7 @@
  */
 
 #include "morpho.h"
-#include "veneer.h"
+#include "classes.h"
 #include "object.h"
 #include "common.h"
 

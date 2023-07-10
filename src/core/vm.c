@@ -8,7 +8,7 @@
 #include <time.h>
 #include "vm.h"
 #include "compile.h"
-#include "veneer.h"
+#include "classes.h"
 #include "builtin.h"
 #include "morpho.h"
 #include "debug.h"

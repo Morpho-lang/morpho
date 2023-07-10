@@ -1,12 +1,12 @@
-/** @file functions.c
+/** @file functiondefs.c
  *  @author T J Atherton
  *
- *  @brief Built in functions
+ *  @brief Built in function definitions
  */
 
 #include <time.h>
 #include <stdlib.h>
-#include "functions.h"
+#include "functiondefs.h"
 #include "random.h"
 #include "builtin.h"
 #include "common.h"
@@ -592,7 +592,7 @@ value builtin_clock(vm *v, int nargs, value *args) {
 #define BUILTIN_TYPECHECK(function) \
     builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
 
-void functions_initialize(void) {
+void functiondefs_initialize(void) {
     builtin_addfunction(FUNCTION_CLOCK, builtin_clock, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(FUNCTION_RANDOM, builtin_random, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(FUNCTION_RANDOMINT, builtin_randomint, BUILTIN_FLAGSEMPTY);

@@ -10,7 +10,7 @@
 #include "sparse.h"
 #include "morpho.h"
 #include "builtin.h"
-#include "veneer.h"
+#include "classes.h"
 #include "common.h"
 
 /* **********************************************************************

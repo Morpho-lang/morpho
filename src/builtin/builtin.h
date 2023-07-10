@@ -14,9 +14,9 @@
 #include "morpho.h"
 #endif
 
-/* ---------------------------
- * Built in functions
- * --------------------------- */
+/* -------------------------------------------------------
+ * Built in function objects
+ * ------------------------------------------------------- */
 
 /** Flags that describe properties of the built in function */
 typedef unsigned int builtinfunctionflags;
@@ -45,9 +45,10 @@ typedef struct  {
 /** Tests whether an object is a function */
 #define MORPHO_ISBUILTINFUNCTION(val) object_istype(val, OBJECT_BUILTINFUNCTION)
 
-/* ---------------------------
+/* -------------------------------------------------------
  * Built in classes
- * --------------------------- */
+ * ------------------------------------------------------- */
+
 /** A type used to store the entries of a built in class */
 typedef struct {
     enum { BUILTIN_METHOD, BUILTIN_PROPERTY } type;
@@ -72,10 +73,13 @@ typedef struct {
 #define MORPHO_ENDCLASS         , MORPHO_PROPERTY(NULL) \
                                 };
 
+/** Use this macro to retrieve the class definition for calling builtin_addclass */
+
 #define MORPHO_GETCLASSDEFINITION(name)    (builtinclass_##name)
 
 /** Macros and functions for built in classes */
 
+/** Get the nth argument from the args list */
 #define MORPHO_GETARG(args, n)  (args[n+1])
 
 /** This macro gets self */
@@ -87,16 +91,16 @@ typedef struct {
                               { morpho_runtimeerror(v, err, __VA_ARGS__); \
                                 return MORPHO_NIL; }
 
-/* ---------------------------
- * Loop functions
- * --------------------------- */
+/* -------------------------------------------------------
+ * Loop functions to enumerate over enumerable objects
+ * ------------------------------------------------------- */
 
 /** Type of C function that implements a built in Morpho function */
 typedef bool (*builtin_loopfunction) (vm *v, indx i, value item, void *ref);
 
-/* ---------------------------
- * Prototypes
- * --------------------------- */
+/* -------------------------------------------------------
+ * Interface
+ * ------------------------------------------------------- */
 
 value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags flags);
 value builtin_findfunction(value name);

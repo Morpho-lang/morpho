@@ -6,7 +6,7 @@
 
 #include "functional.h"
 #include "builtin.h"
-#include "veneer.h"
+#include "classes.h"
 #include "common.h"
 #include "threadpool.h"
 #include "error.h"

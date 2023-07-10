@@ -10,7 +10,7 @@
 #include "file.h"
 #include "varray.h"
 #include "parse.h"
-#include "veneer.h"
+#include "classes.h"
 #include "sparse.h"
 #include "matrix.h"
 #include "selection.h"

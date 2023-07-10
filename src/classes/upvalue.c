@@ -6,7 +6,7 @@
 
 #include "morpho.h"
 #include "object.h"
-#include "veneer.h"
+#include "classes.h"
 
 /* **********************************************************************
  * objectupvalue definitions

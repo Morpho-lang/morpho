@@ -8,7 +8,7 @@
 #define matrix_h
 
 #include <stdio.h>
-#include "veneer.h"
+#include "classes.h"
 /** Use Apple's Accelerate library for LAPACK and BLAS */
 #ifdef __APPLE__
 #ifdef MORPHO_LINALG_USE_ACCELERATE

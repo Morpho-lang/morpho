@@ -1,11 +1,11 @@
-/** @file veneer.h
+/** @file classes.h
  *  @author T J Atherton
  *
  *  @brief List of classes
  */
 
-#ifndef veneer_h
-#define veneer_h
+#ifndef classes_h
+#define classes_h
 
 #include "builtin.h"
 

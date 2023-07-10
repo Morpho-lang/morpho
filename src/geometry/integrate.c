@@ -8,7 +8,7 @@
 #include "morpho.h"
 #include "object.h"
 #include "builtin.h"
-#include "veneer.h"
+#include "classes.h"
 #include "matrix.h"
 #include "sparse.h"
 #include "mesh.h"

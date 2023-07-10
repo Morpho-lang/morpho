@@ -9,7 +9,7 @@
 #include "common.h"
 #include "builtin.h"
 #include "list.h"
-#include "veneer.h"
+#include "classes.h"
 
 /* **********************************************************************
  * objectlist definitions

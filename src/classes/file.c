@@ -10,7 +10,7 @@
 #include "object.h"
 #include "morpho.h"
 #include "common.h"
-#include "veneer.h"
+#include "classes.h"
 #include <stdio.h>
 #include <limits.h>
 

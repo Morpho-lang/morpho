@@ -7,7 +7,7 @@
 #include "builtin.h"
 #include "common.h"
 #include "object.h"
-#include "functions.h"
+#include "functiondefs.h"
 #include "file.h"
 #include "system.h"
 #include "builtin.h"
@@ -18,7 +18,7 @@
 #include "selection.h"
 #include "functional.h"
 #include "field.h"
-#include "veneer.h"
+#include "classes.h"
 
 /* **********************************************************************
  * Global data
@@ -293,10 +293,10 @@ void builtin_initialize(void) {
     
     /* Initialize builtin classes and functions */
     instance_initialize(); // Must initialize first so that Object exists
+    
     string_initialize(); 
     function_initialize();
     class_initialize();
-    
     invocation_initialize();
     dict_initialize();
     list_initialize();
@@ -309,11 +309,14 @@ void builtin_initialize(void) {
     file_initialize();
     system_initialize();
     
-    functions_initialize();
+    // Initialize function definitions
+    functiondefs_initialize();
     
+    // Initialize linear algebra
     matrix_initialize();
     sparse_initialize();
     
+    // Initialize geometry
     mesh_initialize();
     selection_initialize();
     field_initialize();

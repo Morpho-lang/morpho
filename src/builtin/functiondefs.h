@@ -1,15 +1,17 @@
-/** @file functions.h
+/** @file functiondefs.h
  *  @author T J Atherton
  *
- *  @brief Built in functions
+ *  @brief Built in function definitions
  */
 
-#ifndef functions_h
-#define functions_h
+#ifndef functiondefs_h
+#define functiondefs_h
 
 #include <stdio.h>
 
-void functions_initialize(void);
+/* -------------------------------------------------------
+ * Built in function labels
+ * ------------------------------------------------------- */
 
 #define FUNCTION_RANDOM        "random"
 #define FUNCTION_RANDOMINT     "randomint"
@@ -38,6 +40,10 @@ void functions_initialize(void);
 
 #define FUNCTION_ARCTAN        "arctan"
 
+/* -------------------------------------------------------
+ * Errors thrown by builtin functions
+ * ------------------------------------------------------- */
+
 #define MATH_ARGS                    "ExpctNmArgs"
 #define MATH_ARGS_MSG                "Function '%s' expects numerical arguments."
 
@@ -55,5 +61,11 @@ void functions_initialize(void);
 
 #define APPLY_ARGS                   "ApplyArgs"
 #define APPLY_ARGS_MSG               "Function 'apply' expects at least two arguments."
+
+/* -------------------------------------------------------
+ * Interface to define builtin functions
+ * ------------------------------------------------------- */
+
+void functiondefs_initialize(void);
 
 #endif /* functions_h */

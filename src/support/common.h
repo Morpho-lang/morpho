@@ -12,7 +12,7 @@
 #include <math.h>
 #include "value.h"
 #include "object.h"
-#include "veneer.h"
+#include "classes.h"
 
 #define COMMON_NILSTRING   "nil"
 #define COMMON_TRUESTRING  "true"

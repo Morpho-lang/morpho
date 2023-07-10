@@ -7,7 +7,7 @@
 #include "morpho.h"
 #include "object.h"
 #include "builtin.h"
-#include "veneer.h"
+#include "classes.h"
 
 /* **********************************************************************
  * objectrange definitions

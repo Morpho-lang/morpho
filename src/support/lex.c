@@ -22,6 +22,7 @@ void lex_init(lexer *l, const char *start, int line) {
     l->start=start;
     l->line=line;
     l->posn=0;
+    l->matchkeywords=true;
 #ifdef MORPHO_STRINGINTERPOLATION
     l->interpolationlevel=0;
 #endif
@@ -40,32 +41,32 @@ void lex_recordtoken(lexer *l, tokentype type, token *tok) {
 }
 
 /** @brief Checks if we're at the end of the string. Doesn't advance. */
-static bool lex_isatend(lexer *l) {
+bool lex_isatend(lexer *l) {
     return (*(l->current) == '\0');
 }
 
 /** @brief Checks if a character is a digit. Doesn't advance. */
-static bool lex_isdigit(char c) {
+bool lex_isdigit(char c) {
     return (c>='0' && c<= '9');
 }
 
 /** @brief Checks if a character is alphanumeric or underscore.  Doesn't advance. */
-static bool lex_isalpha(char c) {
+bool lex_isalpha(char c) {
     return (c>='a' && c<= 'z') || (c>='A' && c<= 'Z') || (c=='_');
 }
 
 /** @brief Checks if a character is whitespace.  Doesn't advance. */
-static bool lex_isnumber(char c) {
+bool lex_isnumber(char c) {
     return isdigit(c);
 }
 
 /** @brief Checks if a character is whitespace.  Doesn't advance. */
-static bool lex_isspace(char c) {
+bool lex_isspace(char c) {
     return (c==' ') || (c=='\t') || (c=='\n') || (c=='\r');
 }
 
 /** @brief Advances the lexer by one character, returning the character */
-static char lex_advance(lexer *l) {
+char lex_advance(lexer *l) {
     char c = *(l->current);
     l->current++;
     l->posn++;
@@ -73,29 +74,29 @@ static char lex_advance(lexer *l) {
 }
 
 /** @brief Returns the previous character */
-static char lex_previous(lexer *l) {
+char lex_previous(lexer *l) {
     if (l->current==l->start) return '\0';
     return *(l->current - 1);
 }
 
 /** @brief Returns the next character */
-static char lex_peek(lexer *l) {
+char lex_peek(lexer *l) {
     return *(l->current);
 }
 
 /** @brief Returns n characters ahead. Caller should check that this is meaningfull. */
-static char lex_peekahead(lexer *l, int n) {
+char lex_peekahead(lexer *l, int n) {
     return *(l->current + n);
 }
 
 /** @brief Handle line counting */
-static void lex_newline(lexer *l) {
+void lex_newline(lexer *l) {
     l->line++; l->posn=0;
 }
 
 /** @brief Advances the lexer by one character if it is equal to c
  * @returns true if the character matched, false otherwise */
-static bool lex_match(lexer *l, char c) {
+bool lex_match(lexer *l, char c) {
     if (lex_isatend(l)) return false;
     if (*(l->current) == c) {
         l->current++;
@@ -109,7 +110,7 @@ static bool lex_match(lexer *l, char c) {
  * @param[out] tok  token record to fill out (if necessary)
  * @param[out] err  error struct to fill out on errors
  * @returns true on success, false if an error occurs */
-static bool lex_skipmultilinecomment(lexer *l, token *tok, error *err) {
+bool lex_skipmultilinecomment(lexer *l, token *tok, error *err) {
     unsigned int level=0;
     unsigned int startline = l->line, startpsn = l->posn;
     
@@ -151,7 +152,7 @@ static bool lex_skipmultilinecomment(lexer *l, token *tok, error *err) {
  *  @param[out] tok  token record to fill out (if necessary)
  *  @param[out] err  error struct to fill out on errors
  *  @returns true on success, false if an error occurs */
-static bool lex_skipcomment(lexer *l, token *tok, error *err) {
+bool lex_skipcomment(lexer *l, token *tok, error *err) {
     char c = lex_peekahead(l, 1);
     if (c == '/') {
         while (lex_peek(l) != '\n' && !lex_isatend(l)) lex_advance(l);
@@ -167,7 +168,7 @@ static bool lex_skipcomment(lexer *l, token *tok, error *err) {
  *  @param[out] tok  token record to fill out (if necessary)
  *  @param[out] err  error struct to fill out on errors
  *  @returns true on success, false if an error occurs */
-static bool lex_skipwhitespace(lexer *l, token *tok, error *err) {
+bool lex_skipwhitespace(lexer *l, token *tok, error *err) {
     do {
         switch (lex_peek(l)) {
             case ' ':
@@ -196,7 +197,7 @@ static bool lex_skipwhitespace(lexer *l, token *tok, error *err) {
  *  @param[out] tok  token record to fill out
  *  @param[out] err  error struct to fill out on errors
  *  @returns true on success, false if an error occurs */
-static bool lex_string(lexer *l, token *tok, error *err) {
+bool lex_string(lexer *l, token *tok, error *err) {
     unsigned int startline = l->line, startpsn = l->posn;
     
 #ifdef MORPHO_STRINGINTERPOLATION
@@ -245,7 +246,7 @@ static bool lex_string(lexer *l, token *tok, error *err) {
  *  @param[out] tok  token record to fill out
  *  @param[out] err  error struct to fill out on errors
  *  @returns true on success, false if an error occurs */
-static bool lex_number(lexer *l, token *tok, error *err) {
+bool lex_number(lexer *l, token *tok, error *err) {
     tokentype type=TOKEN_INTEGER;
     while (lex_isdigit(lex_peek(l))) lex_advance(l);
     
@@ -294,7 +295,7 @@ static bool lex_number(lexer *l, token *tok, error *err) {
  *  @param[in]  match  string to match with
  *  @param[in]  type   token type to use if the match is successful
  *  @returns type or TOKEN_SYMBOL if the match was not successful */
-static tokentype lex_checksymbol(lexer *l, int start, int length, char *match, tokentype type) {
+tokentype lex_checksymbol(lexer *l, int start, int length, char *match, tokentype type) {
     int toklength = (int) (l->current - l->start);
     int expectedlength = start + length;
     
@@ -374,13 +375,21 @@ tokentype lex_symboltype(lexer *l) {
  *  @param[out] tok  token record to fill out
  *  @param[out] err  error struct to fill out on errors
  *  @returns true on success, false if an error occurs */
-static bool lex_symbol(lexer *l, token *tok, error *err) {
+bool lex_symbol(lexer *l, token *tok, error *err) {
     while (lex_isalpha(lex_peek(l)) || lex_isdigit(lex_peek(l))) lex_advance(l);
     
+    tokentype typ = TOKEN_SYMBOL;
+    if (l->matchkeywords) typ = lex_symboltype(l);
+    
     /* It's a symbol for now... */
-    lex_recordtoken(l, lex_symboltype(l), tok);
+    lex_recordtoken(l, typ, tok);
     
     return true;
+}
+
+/** @brief Choose whether the lexer should attempt to match keywords or simply return them as symbols. */
+void lex_setmatchkeywords(lexer *l, bool match) {
+    l->matchkeywords=match;
 }
 
 /** @brief Identifies the next token

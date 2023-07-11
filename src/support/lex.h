@@ -16,15 +16,15 @@
  * Tokens
  * ------------------------------------------------------- */
 
-/** The type of token. N.B. Each token will have a parserule in the parser */
-typedef enum {
+/** Enum listing standard token types. Each token will be mapped to a parserule in the parser */
+enum {
     /* A blank token */
     TOKEN_NONE,
     
     /* New line */
     TOKEN_NEWLINE,
     
-    /* The Help keyword */
+    /* Question mark */
     TOKEN_QUESTION,
     
     /* Literals */
@@ -33,8 +33,6 @@ typedef enum {
     TOKEN_INTEGER,
     TOKEN_NUMBER,
     TOKEN_SYMBOL,
-    TOKEN_TRUE, TOKEN_FALSE, TOKEN_NIL,
-    TOKEN_SELF, TOKEN_SUPER, TOKEN_IMAG,
     
     /* Brackets */
     TOKEN_LEFTPAREN, TOKEN_RIGHTPAREN,
@@ -61,6 +59,8 @@ typedef enum {
     TOKEN_LTEQ, TOKEN_GTEQ,
     
     /* Keywords */
+    TOKEN_TRUE, TOKEN_FALSE, TOKEN_NIL,
+    TOKEN_SELF, TOKEN_SUPER, TOKEN_IMAG,
     TOKEN_PRINT, TOKEN_VAR,
     TOKEN_IF, TOKEN_ELSE, TOKEN_IN, 
     TOKEN_WHILE, TOKEN_FOR, TOKEN_DO, TOKEN_BREAK, TOKEN_CONTINUE,
@@ -72,7 +72,10 @@ typedef enum {
     TOKEN_INCOMPLETE,
     TOKEN_ERROR,
     TOKEN_EOF
-} tokentype;
+};
+
+/** Token types are left as a generic int to facilitate reprogrammability in the future */
+typedef int tokentype;
 
 /** A token */
 typedef struct {
@@ -97,6 +100,7 @@ typedef struct {
     const char* current; /** Current point */
     int line; /** Line number */
     int posn; /** Character position in line */
+    bool matchkeywords; /** Whether to match keywords or not; default is true */
 #ifdef MORPHO_STRINGINTERPOLATION
     int interpolationlevel; /** Level of string interpolation */
 #endif
@@ -117,6 +121,7 @@ typedef struct {
 * ********************************************************************** */
 
 void lex_init(lexer *l, const char *start, int line);
+void lex_setmatchkeywords(lexer *l, bool match);
 bool lex(lexer *l, token *tok, error *err);
 
 #endif /* lex_h */

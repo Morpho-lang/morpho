@@ -1131,12 +1131,6 @@ parserule rules[] = {
     PREFIX(parse_integer),                             // TOKEN_INTEGER
     PREFIX(parse_number),                              // TOKEN_NUMBER
     PREFIX(parse_symbol),                              // TOKEN_SYMBOL
-    PREFIX(parse_bool),                                // TOKEN_TRUE
-    PREFIX(parse_bool),                                // TOKEN_FALSE
-    PREFIX(parse_nil),                                 // TOKEN_NIL
-    PREFIX(parse_self),                                // TOKEN_SELF
-    PREFIX(parse_super),                               // TOKEN_SUPER
-    PREFIX(parse_complex),                             // TOKEN_IMAG
 
     MIXFIX(parse_grouping, parse_call, PREC_CALL),     // TOKEN_LEFTPAREN
     UNUSED,                                            // TOKEN_RIGHTPAREN
@@ -1180,6 +1174,12 @@ parserule rules[] = {
     INFIX(parse_binary, PREC_COMPARISON),              // TOKEN_LTEQ
     INFIX(parse_binary, PREC_COMPARISON),              // TOKEN_GTEQ
     
+    PREFIX(parse_bool),                                // TOKEN_TRUE
+    PREFIX(parse_bool),                                // TOKEN_FALSE
+    PREFIX(parse_nil),                                 // TOKEN_NIL
+    PREFIX(parse_self),                                // TOKEN_SELF
+    PREFIX(parse_super),                               // TOKEN_SUPER
+    PREFIX(parse_complex),                             // TOKEN_IMAG
     UNUSED,                                            // TOKEN_PRINT
     UNUSED,                                            // TOKEN_VAR
     UNUSED,                                            // TOKEN_IF

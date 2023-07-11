@@ -124,6 +124,7 @@ bool string_tonumber(objectstring *string, value *out) {
             return true;
         }
     }
+    lex_clear(&l);
 
     return false;
 }

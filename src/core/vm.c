@@ -1838,6 +1838,7 @@ bool vm_gettlvar(vm *v, int handle, value *out) {
 void morpho_initialize(void) {
     random_initialize();
     error_initialize();
+    lexer_initialize();
     
     builtin_initialize(); // Must come before initialization of any classes or similar
     resources_initialize(); // Must come before compiler and extensions
@@ -1906,4 +1907,5 @@ void morpho_finalize(void) {
     compile_finalize();
     builtin_finalize();
     resources_finalize();
+    lexer_finalize();
 }

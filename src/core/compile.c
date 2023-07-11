@@ -3426,6 +3426,7 @@ void compiler_init(const char *source, program *out, compiler *c) {
 /** @brief Clear attached data structures from a compiler
  *  @param[in]  c        compiler to clear */
 void compiler_clear(compiler *c) {
+    lex_clear(&c->lex);
     compiler_fstackclear(c);
     syntaxtree_clear(&c->tree);
     dictionary_freecontents(&c->globals, true, false);

@@ -1122,7 +1122,6 @@ void parse_synchronize(parser *p) {
 #define MIXFIX(unaryfn, infixfn, prec) { unaryfn, infixfn,   prec      }
 
 parserule rules[] = {
-    UNUSED,                                            // TOKEN_NONE
     UNUSED,                                            // TOKEN_NEWLINE
     UNUSED,                                            // TOKEN_QUESTION
 
@@ -1359,6 +1358,8 @@ bool parse_stringtovaluearray(char *string, unsigned int nmax, value *v, unsigne
     } while (tok.type!=TOKEN_EOF && k<nmax);
     
     if (n) *n=k;
+    
+    lex_clear(&l);
     
     return true;
 }

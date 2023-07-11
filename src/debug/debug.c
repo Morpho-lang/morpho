@@ -955,6 +955,7 @@ bool debugger_parsevalue(char *in, value *out) {
         }
     }
     
+    lex_clear(&l);
     syntaxtree_clear(&tree);
     return success;
 }

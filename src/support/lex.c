@@ -10,7 +10,85 @@
 #include "lex.h"
 
 /* **********************************************************************
- * Lexer
+ * Standard token definitions
+ * ********************************************************************** */
+
+tokendefn standardtokens[] = {
+    { "and",        TOKEN_DBLAMP   },
+    { "as",         TOKEN_AS       },
+    { "break",      TOKEN_BREAK    },
+    { "class",      TOKEN_CLASS    },
+    { "continue",   TOKEN_CONTINUE },
+    { "catch",      TOKEN_CATCH    },
+    { "do",         TOKEN_DO       },
+    { "else",       TOKEN_ELSE     },
+    { "false",      TOKEN_FALSE    },
+    { "for",        TOKEN_FOR      },
+    { "fn",         TOKEN_FUNCTION },
+    { "help",       TOKEN_QUESTION },
+    { "if",         TOKEN_IF       },
+    { "in",         TOKEN_IN       },
+    { "is",         TOKEN_IS       },
+    { "import",     TOKEN_IMPORT   },
+    { "im",         TOKEN_IMAG     },
+    { "nil",        TOKEN_NIL      },
+    { "or",         TOKEN_DBLVBAR  },
+    { "print",      TOKEN_PRINT    },
+    { "return",     TOKEN_RETURN   },
+    { "self",       TOKEN_SELF     },
+    { "super",      TOKEN_SUPER    },
+    { "true",       TOKEN_TRUE     },
+    { "try",        TOKEN_TRY      },
+    { "var",        TOKEN_VAR      },
+    { "while",      TOKEN_WHILE    },
+    { "with",       TOKEN_WITH     },
+#ifdef MORPHO_LOXCOMPATIBILITY
+    { "fun",        TOKEN_FUNCTION },
+    { "this",       TOKEN_SELF     },
+#endif
+    { "",           TOKEN_NONE     }  // Token list should be terminated by an empty token
+};
+
+int nstandardtokens;
+
+/* **********************************************************************
+ * Work with token definitions
+ * ********************************************************************** */
+
+/** Compare two token definitions */
+int _lex_matchtokndefn(const void *ldefn, const void *rdefn) {
+    tokendefn *a = (tokendefn *) ldefn;
+    tokendefn *b = (tokendefn *) rdefn;
+    
+    return strcmp(a->string, b->string);
+}
+
+/** Compare a string  with the contents of a token definition */
+int _lex_matchtokendefnwithstring(const void *lstr, const void *rdefn) {
+    char *a = (char *) lstr;
+    tokendefn *b = (tokendefn *) rdefn;
+    
+    return strcmp(a, b->string);
+}
+
+/** Compare the contents of a token with the contents of a token definition */
+int _lex_matchtokendefnwithtoken(const void *ltok, const void *rdefn) {
+    token *tok = (token *) ltok;
+    tokendefn *b = (tokendefn *) rdefn;
+    
+    // Compare token with token definition
+    int cmp = strncmp(tok->start, b->string, tok->length);
+    
+    // If we see a match, ensure that we're not simply matching the initial part of the definition.
+    if (cmp==0 && b->string[tok->length]!='\0') cmp = -b->string[tok->length]; // Mimic behavior of strcmp
+    
+    return cmp;
+}
+
+DEFINE_VARRAY(tokendefn, tokendefn);
+
+/* **********************************************************************
+ * Initialize/clear a lexer
  * ********************************************************************** */
 
 /** @brief Initializes a lexer with a given starting point
@@ -26,6 +104,39 @@ void lex_init(lexer *l, const char *start, int line) {
 #ifdef MORPHO_STRINGINTERPOLATION
     l->interpolationlevel=0;
 #endif
+    l->defns=standardtokens;   // Use the standard morpho tokens by default
+    l->ndefns=nstandardtokens;
+    varray_tokendefninit(&l->defnstore); // Alternative definitions will be held here
+}
+
+/** @brief Clears a lexer */
+void lex_clear(lexer *l) {
+    l->current=NULL;
+    l->start=NULL;
+    l->posn=0;
+    l->matchkeywords=true;
+#ifdef MORPHO_STRINGINTERPOLATION
+    l->interpolationlevel=0;
+#endif
+    varray_tokendefnclear(&l->defnstore);
+}
+
+/* **********************************************************************
+ * Internal functions
+ * ********************************************************************** */
+
+/** @brief Tests if the current prototoken matches a known token.
+ *  @param[in]  l       The lexer in use
+ *  @param[out] type Type of token, if found
+ *  @returns true if the token matched, false if not */
+bool lex_matchtoken(lexer *l, tokentype *type) {
+    token tok = { .start = l->start, .length = (int) (l->current - l->start) };
+
+    tokendefn *def = bsearch(&tok, l->defns, l->ndefns, sizeof(tokendefn), _lex_matchtokendefnwithtoken);
+    
+    if (def && type) *type = def->type;
+    
+    return def;
 }
 
 /** @brief Records a token
@@ -307,7 +418,7 @@ tokentype lex_checksymbol(lexer *l, int start, int length, char *match, tokentyp
 }
 
 /** @brief Determines if a token matches any of the reserved words */
-tokentype lex_symboltype(lexer *l) {
+/*tokentype lex_symboltype(lexer *l) {
     switch (l->start[0]) {
         case 'a': {
             tokentype type = lex_checksymbol(l, 1, 2, "nd", TOKEN_DBLAMP);
@@ -368,6 +479,14 @@ tokentype lex_symboltype(lexer *l) {
     }
     
     return TOKEN_SYMBOL;
+}*/
+
+tokentype lex_symboltype(lexer *l) {
+    tokentype t = TOKEN_SYMBOL;
+    
+    lex_matchtoken(l, &t);
+    
+    return t;
 }
 
 /** @brief Lex symbols
@@ -381,16 +500,40 @@ bool lex_symbol(lexer *l, token *tok, error *err) {
     tokentype typ = TOKEN_SYMBOL;
     if (l->matchkeywords) typ = lex_symboltype(l);
     
-    /* It's a symbol for now... */
     lex_recordtoken(l, typ, tok);
     
     return true;
+}
+
+/* **********************************************************************
+ * Customize the lexer
+ * ********************************************************************** */
+
+/** Sets the lexer to use a specific set of token definitions
+ * @param[in]  l    the lexer
+ * @param[out] defns  List of token definitons, terminated by a null or null length string
+ * @warning: The lexer does not duplicate the token definition strings, so these should be preserved. */
+void lex_settokendefns(lexer *l, tokendefn *defns) {
+    int n;
+    for (n=0; ; n++) if (defns[n].string == NULL || strlen(defns[n].string)==0) break;
+    
+    l->defnstore.count=0;
+    varray_tokendefnadd(&l->defnstore, defns, n);
+    
+    l->defns=l->defnstore.data;
+    l->ndefns=n;
+    
+    qsort(l->defns, l->ndefns, sizeof(tokendefn), _lex_matchtokndefn);
 }
 
 /** @brief Choose whether the lexer should attempt to match keywords or simply return them as symbols. */
 void lex_setmatchkeywords(lexer *l, bool match) {
     l->matchkeywords=match;
 }
+
+/* **********************************************************************
+ * Lexer public interface
+ * ********************************************************************** */
 
 /** @brief Identifies the next token
  *  @param[in]  l     The lexer in use
@@ -486,4 +629,19 @@ bool lex(lexer *l, token *tok, error *err) {
     }
     
     return false;
+}
+
+/** @brief Initialization/finalization */
+void lexer_initialize(void) {
+    // Ensure standardtokens is sorted; this is then used by default to reduce cost of initializing a lexer.
+    int n;
+    for (n=0; ; n++) if (standardtokens[n].string == NULL || strlen(standardtokens[n].string)==0) break;
+    qsort(standardtokens, n, sizeof(tokendefn), _lex_matchtokndefn);
+    
+    // Retain the number of standardtokens
+    nstandardtokens = n;
+}
+
+void lexer_finalize(void) {
+    
 }

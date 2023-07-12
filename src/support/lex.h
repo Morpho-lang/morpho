@@ -115,10 +115,11 @@ typedef struct {
     const char* current; /** Current point */
     int line; /** Line number */
     int posn; /** Character position in line */
+    
     bool matchkeywords; /** Whether to match keywords or not; default is true */
-#ifdef MORPHO_STRINGINTERPOLATION
+    bool stringinterpolation; /** Whether to perform string interpolation */
+    
     int interpolationlevel; /** Level of string interpolation */
-#endif
     
     tokendefn *defns; /** Pointer to token defintions in use */
     int ndefns; /** Number of token defintions in use */

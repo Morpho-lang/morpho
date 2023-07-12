@@ -140,8 +140,11 @@ void lex_init(lexer *l, const char *start, int line) {
     l->posn=0;
     l->matchkeywords=true;
 #ifdef MORPHO_STRINGINTERPOLATION
-    l->interpolationlevel=0;
+    l->stringinterpolation=true;
+#else
+    l->stringinterpolation=false;
 #endif
+    l->interpolationlevel=0;
     l->defns=standardtokens;   // Use the standard morpho tokens by default
     l->ndefns=nstandardtokens;
     varray_tokendefninit(&l->defnstore); // Alternative definitions will be held here
@@ -152,10 +155,7 @@ void lex_clear(lexer *l) {
     l->current=NULL;
     l->start=NULL;
     l->posn=0;
-    l->matchkeywords=true;
-#ifdef MORPHO_STRINGINTERPOLATION
     l->interpolationlevel=0;
-#endif
     varray_tokendefnclear(&l->defnstore);
 }
 
@@ -293,7 +293,6 @@ bool lex_skipmultilinecomment(lexer *l, token *tok, error *err) {
     return true;
 }
 
-
 /** @brief Skips comments
  *  @param[in]  l    the lexer
  *  @param[out] tok  token record to fill out (if necessary)
@@ -341,22 +340,19 @@ bool lex_skipwhitespace(lexer *l, token *tok, error *err) {
 bool lex_string(lexer *l, token *tok, error *err) {
     unsigned int startline = l->line, startpsn = l->posn;
     
-#ifdef MORPHO_STRINGINTERPOLATION
     char first = lex_previous(l);
-#endif
     
     while (lex_peek(l) != '"' && !lex_isatend(l)) {
         if (lex_peek(l) == '\n') lex_newline(l);
         
-#ifdef MORPHO_STRINGINTERPOLATION
         /* Detect string interpolation */
-        if (lex_peek(l) == '$' && lex_peekahead(l, 1) == '{') {
+        if (l->stringinterpolation && lex_peek(l) == '$' && lex_peekahead(l, 1) == '{') {
             lex_advance(l); lex_advance(l);
             lex_recordtoken(l, TOKEN_INTERPOLATION, tok);
             if (first=='"') l->interpolationlevel++;
             return true;
         }
-#endif
+
         /* Detect an escaped character */
         if (lex_peek(l)=='\\') {
             lex_advance(l);
@@ -374,9 +370,7 @@ bool lex_string(lexer *l, token *tok, error *err) {
     
     lex_advance(l); /* Closing quote */
     
-#ifdef MORPHO_STRINGINTERPOLATION
-    if (l->interpolationlevel>0 && first=='}') l->interpolationlevel--;
-#endif
+    if (l->stringinterpolation && l->interpolationlevel>0 && first=='}') l->interpolationlevel--;
     
     lex_recordtoken(l, TOKEN_STRING, tok);
     return true;
@@ -492,6 +486,11 @@ void lex_settokendefns(lexer *l, tokendefn *defns) {
     qsort(l->defns, l->ndefns, sizeof(tokendefn), _lex_matchtokndefn);
 }
 
+/** @brief Choose whether the lexer should perform string interpolation. */
+void lex_setstringinterpolation(lexer *l, bool interpolation) {
+    l->stringinterpolation=interpolation;
+}
+
 /** @brief Choose whether the lexer should attempt to match keywords or simply return them as symbols. */
 void lex_setmatchkeywords(lexer *l, bool match) {
     l->matchkeywords=match;
@@ -519,7 +518,10 @@ bool lex(lexer *l, token *tok, error *err) {
     
     char c = lex_advance(l);
     if (lex_isalpha(c)) return lex_symbol(l, tok, err);
-    if (lex_isdigit(c)) return lex_number(l, tok, err);
+    if (lex_isdigit(c) ||
+        (c=='-' && lex_isdigit(lex_peek(l))) ) { // Include leading minus sign in number
+        return lex_number(l, tok, err);
+    }
     
     tokentype type = TOKEN_NONE;
     while (lex_matchtoken(l, &type)) lex_next(l); // Try to match the largest token possible
@@ -531,12 +533,11 @@ bool lex(lexer *l, token *tok, error *err) {
             return false;
             
         case TOKEN_RIGHTCURLYBRACKET:
-#ifdef MORPHO_STRINGINTERPOLATION
-            if (l->interpolationlevel>0) {
+            if (l->stringinterpolation && l->interpolationlevel>0) {
                 return lex_string(l, tok, err);
             }
-            break;
-#endif
+            lex_recordtoken(l, type, tok);
+            return true;
             
         case TOKEN_STRING:
             return lex_string(l, tok, err);

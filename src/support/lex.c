@@ -14,39 +14,77 @@
  * ********************************************************************** */
 
 tokendefn standardtokens[] = {
-    { "and",        TOKEN_DBLAMP   },
-    { "as",         TOKEN_AS       },
-    { "break",      TOKEN_BREAK    },
-    { "class",      TOKEN_CLASS    },
-    { "continue",   TOKEN_CONTINUE },
-    { "catch",      TOKEN_CATCH    },
-    { "do",         TOKEN_DO       },
-    { "else",       TOKEN_ELSE     },
-    { "false",      TOKEN_FALSE    },
-    { "for",        TOKEN_FOR      },
-    { "fn",         TOKEN_FUNCTION },
-    { "help",       TOKEN_QUESTION },
-    { "if",         TOKEN_IF       },
-    { "in",         TOKEN_IN       },
-    { "is",         TOKEN_IS       },
-    { "import",     TOKEN_IMPORT   },
-    { "im",         TOKEN_IMAG     },
-    { "nil",        TOKEN_NIL      },
-    { "or",         TOKEN_DBLVBAR  },
-    { "print",      TOKEN_PRINT    },
-    { "return",     TOKEN_RETURN   },
-    { "self",       TOKEN_SELF     },
-    { "super",      TOKEN_SUPER    },
-    { "true",       TOKEN_TRUE     },
-    { "try",        TOKEN_TRY      },
-    { "var",        TOKEN_VAR      },
-    { "while",      TOKEN_WHILE    },
-    { "with",       TOKEN_WITH     },
+    { "(",          TOKEN_LEFTPAREN         },
+    { ")",          TOKEN_RIGHTPAREN        },
+    { "[",          TOKEN_LEFTSQBRACKET     },
+    { "]",          TOKEN_RIGHTSQBRACKET    },
+    { "{",          TOKEN_LEFTCURLYBRACKET  },
+    { "}",          TOKEN_RIGHTCURLYBRACKET }, // Note string interpolation is a special case
+    { ";",          TOKEN_SEMICOLON         },
+    { ":",          TOKEN_COLON             },
+    { ",",          TOKEN_COMMA             },
+    { "^",          TOKEN_CIRCUMFLEX        },
+    { "?",          TOKEN_QUESTION          },
+    { "@",          TOKEN_AT                },
+    { "#",          TOKEN_HASH              },
+    { ".",          TOKEN_DOT               },
+    { "..",         TOKEN_DOTDOT            },
+    { "...",        TOKEN_DOTDOTDOT         },
+    { "+",          TOKEN_PLUS              },
+    { "+=",         TOKEN_PLUSEQ            },
+    { "-",          TOKEN_MINUS             },
+    { "-=",         TOKEN_MINUSEQ           },
+    { "*",          TOKEN_STAR              },
+    { "*=",         TOKEN_STAREQ            },
+    { "/",          TOKEN_SLASH             },
+    { "/=",         TOKEN_SLASHEQ           },
+    { "==",         TOKEN_EQ                },
+    { "=",          TOKEN_EQUAL             },
+    { "!",          TOKEN_EXCLAMATION       },
+    { "!=",         TOKEN_NEQ               },
+    { "<",          TOKEN_LT                },
+    { "<=",         TOKEN_LTEQ              },
+    { ">",          TOKEN_GT                },
+    { ">=",         TOKEN_GTEQ              },
+    { "&",          TOKEN_AMP               },
+    { "&&",         TOKEN_DBLAMP            },
+    { "|",          TOKEN_VBAR              },
+    { "||",         TOKEN_DBLVBAR           },
+    { "\"",         TOKEN_STRING            },
+    { "\n",         TOKEN_NEWLINE           },
+    { "and",        TOKEN_DBLAMP            },
+    { "as",         TOKEN_AS                },
+    { "break",      TOKEN_BREAK             },
+    { "class",      TOKEN_CLASS             },
+    { "continue",   TOKEN_CONTINUE          },
+    { "catch",      TOKEN_CATCH             },
+    { "do",         TOKEN_DO                },
+    { "else",       TOKEN_ELSE              },
+    { "false",      TOKEN_FALSE             },
+    { "for",        TOKEN_FOR               },
+    { "fn",         TOKEN_FUNCTION          },
+    { "help",       TOKEN_QUESTION          },
+    { "if",         TOKEN_IF                },
+    { "in",         TOKEN_IN                },
+    { "is",         TOKEN_IS                },
+    { "import",     TOKEN_IMPORT            },
+    { "im",         TOKEN_IMAG              },
+    { "nil",        TOKEN_NIL               },
+    { "or",         TOKEN_DBLVBAR           },
+    { "print",      TOKEN_PRINT             },
+    { "return",     TOKEN_RETURN            },
+    { "self",       TOKEN_SELF              },
+    { "super",      TOKEN_SUPER             },
+    { "true",       TOKEN_TRUE              },
+    { "try",        TOKEN_TRY               },
+    { "var",        TOKEN_VAR               },
+    { "while",      TOKEN_WHILE             },
+    { "with",       TOKEN_WITH              },
 #ifdef MORPHO_LOXCOMPATIBILITY
-    { "fun",        TOKEN_FUNCTION },
-    { "this",       TOKEN_SELF     },
+    { "fun",        TOKEN_FUNCTION          },
+    { "this",       TOKEN_SELF              },
 #endif
-    { "",           TOKEN_NONE     }  // Token list should be terminated by an empty token
+    { "",           TOKEN_NONE              }  // Token list should be terminated by an empty token
 };
 
 int nstandardtokens;
@@ -156,18 +194,13 @@ bool lex_isatend(lexer *l) {
     return (*(l->current) == '\0');
 }
 
-/** @brief Checks if a character is a digit. Doesn't advance. */
-bool lex_isdigit(char c) {
-    return (c>='0' && c<= '9');
-}
-
-/** @brief Checks if a character is alphanumeric or underscore.  Doesn't advance. */
+/** @brief Checks if a character is alphanumeric or underscore. */
 bool lex_isalpha(char c) {
-    return (c>='a' && c<= 'z') || (c>='A' && c<= 'Z') || (c=='_');
+    return (isalpha(c) || (c=='_'));
 }
 
-/** @brief Checks if a character is whitespace.  Doesn't advance. */
-bool lex_isnumber(char c) {
+/** @brief Checks if a character is a digit.  */
+bool lex_isdigit(char c) {
     return isdigit(c);
 }
 
@@ -182,6 +215,20 @@ char lex_advance(lexer *l) {
     l->current++;
     l->posn++;
     return c;
+}
+
+/** @brief Advances the current character in the lexer by one */
+char lex_next(lexer *l) {
+    char c = *(l->current);
+    l->current++;
+    return c;
+}
+
+/** @brief Reverses the current character in the lexer by one */
+bool lex_back(lexer *l) {
+    if (l->current==l->start) return false;
+    l->current--;
+    return true;
 }
 
 /** @brief Returns the previous character */
@@ -203,17 +250,6 @@ char lex_peekahead(lexer *l, int n) {
 /** @brief Handle line counting */
 void lex_newline(lexer *l) {
     l->line++; l->posn=0;
-}
-
-/** @brief Advances the lexer by one character if it is equal to c
- * @returns true if the character matched, false otherwise */
-bool lex_match(lexer *l, char c) {
-    if (lex_isatend(l)) return false;
-    if (*(l->current) == c) {
-        l->current++;
-        return true;
-    }
-    return false;
 }
 
 /** @brief Skips multiline comments
@@ -287,12 +323,6 @@ bool lex_skipwhitespace(lexer *l, token *tok, error *err) {
             case '\r':
                 lex_advance(l);
                 break;
-/*
-            case '\n':
-                lex_newline(l);
-                lex_advance(l);
-                break;
-*/
             case '/':
                 if (!lex_skipcomment(l, tok, err)) return true;
                 break;
@@ -364,7 +394,7 @@ bool lex_number(lexer *l, token *tok, error *err) {
     /* Fractional part */
     char next = '\0';
     if (lex_peek(l)!='\0') next=lex_peekahead(l, 1); // Prevent looking beyond buffer
-    if (lex_peek(l) == '.' && (lex_isnumber(next)
+    if (lex_peek(l) == '.' && (lex_isdigit(next)
 #ifndef MORPHO_LOXCOMPATIBILITY
                                || lex_isspace(next) || next=='\0'
 #endif
@@ -491,80 +521,37 @@ bool lex(lexer *l, token *tok, error *err) {
     if (lex_isalpha(c)) return lex_symbol(l, tok, err);
     if (lex_isdigit(c)) return lex_number(l, tok, err);
     
-    switch(c) {
-        /* Single character tokens */
-        case '(': lex_recordtoken(l, TOKEN_LEFTPAREN, tok); return true;
-        case ')': lex_recordtoken(l, TOKEN_RIGHTPAREN, tok); return true;
-        case '[': lex_recordtoken(l, TOKEN_LEFTSQBRACKET, tok); return true;
-        case ']': lex_recordtoken(l, TOKEN_RIGHTSQBRACKET, tok); return true;
-        case '{': lex_recordtoken(l, TOKEN_LEFTCURLYBRACKET, tok); return true;
-        case '}':
+    tokentype type = TOKEN_NONE;
+    while (lex_matchtoken(l, &type)) lex_next(l); // Try to match the largest token possible
+    
+    if (type!=TOKEN_NONE) lex_back(l); // If we matched, we advanced by one character too far
+        
+    switch (type) { // Handle special token types
+        case TOKEN_NONE:
+            return false;
+            
+        case TOKEN_RIGHTCURLYBRACKET:
 #ifdef MORPHO_STRINGINTERPOLATION
             if (l->interpolationlevel>0) {
                 return lex_string(l, tok, err);
             }
+            break;
 #endif
-            lex_recordtoken(l, TOKEN_RIGHTCURLYBRACKET, tok);
-            return true;
-        case ';': lex_recordtoken(l, TOKEN_SEMICOLON, tok); return true;
-        case ':': lex_recordtoken(l, TOKEN_COLON, tok); return true;
-        case ',': lex_recordtoken(l, TOKEN_COMMA, tok); return true;
-        case '^': lex_recordtoken(l, TOKEN_CIRCUMFLEX, tok); return true;
-        case '?': lex_recordtoken(l, TOKEN_QUESTION, tok); return true;
-        case '@': lex_recordtoken(l, TOKEN_AT, tok); return true;
-        case '#': lex_recordtoken(l, TOKEN_HASH, tok); return true;
             
-        /* Possible double character tokens */
-        case '.':
-            if (lex_match(l, '.')) {
-                if (lex_match(l, '.')) {
-                    lex_recordtoken(l, TOKEN_DOTDOTDOT , tok);
-                } else lex_recordtoken(l, TOKEN_DOTDOT , tok);
-            } else lex_recordtoken(l, TOKEN_DOT , tok);
-            return true;
-        case '+':
-            lex_recordtoken(l, ( lex_match(l, '=') ? TOKEN_PLUSEQ : TOKEN_PLUS ), tok);
-            return true;
-        case '-':
-            lex_recordtoken(l, ( lex_match(l, '=') ? TOKEN_MINUSEQ : TOKEN_MINUS ), tok);
-            return true;
-        case '*':
-            lex_recordtoken(l, (lex_match(l, '=') ? TOKEN_STAREQ : TOKEN_STAR), tok);
-            return true;
-        case '/':
-            lex_recordtoken(l, (lex_match(l, '=') ? TOKEN_SLASHEQ : TOKEN_SLASH), tok);
-            return true;
-        case '=':
-            lex_recordtoken(l, (lex_match(l, '=') ? TOKEN_EQ : TOKEN_EQUAL), tok);
-            return true;
-        case '!':
-            lex_recordtoken(l, (lex_match(l, '=') ? TOKEN_NEQ : TOKEN_EXCLAMATION), tok);
-            return true;
-        case '<':
-            lex_recordtoken(l, (lex_match(l, '=') ? TOKEN_LTEQ : TOKEN_LT), tok);
-            return true;
-        case '>':
-            lex_recordtoken(l, (lex_match(l, '=') ? TOKEN_GTEQ : TOKEN_GT), tok);
-            return true;
-        case '&':
-            lex_recordtoken(l, (lex_match(l, '&') ? TOKEN_DBLAMP : TOKEN_AMP), tok);
-            return true;
-        case '|':
-            lex_recordtoken(l, (lex_match(l, '|') ? TOKEN_DBLVBAR : TOKEN_VBAR), tok);
-            return true;
-        
-        /* Strings */
-        case '"':
+        case TOKEN_STRING:
             return lex_string(l, tok, err);
             
-        /* Newlines */
-        case '\n':
-            lex_recordtoken(l, TOKEN_NEWLINE, tok);
+        case TOKEN_NEWLINE:
+            lex_recordtoken(l, type, tok);
             lex_newline(l);
             return true;
+            
+        default:
+            break;
     }
-    
-    return false;
+        
+    lex_recordtoken(l, type, tok);
+    return true;
 }
 
 /** @brief Initialization/finalization */

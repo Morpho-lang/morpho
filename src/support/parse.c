@@ -23,7 +23,7 @@
  *  @param p       the parser to initialize
  *  @param lex   lexer to use
  *  @param err   an error structure to fill out if necessary
- *  @param tree syntaxtree to fill out */
+ *  @param tree Pointer to the output */
 void parse_init(parser *p, lexer *lex, error *err, syntaxtree *tree) {
     p->current = TOKEN_BLANK;
     p->previous = TOKEN_BLANK;
@@ -31,7 +31,6 @@ void parse_init(parser *p, lexer *lex, error *err, syntaxtree *tree) {
     p->lex=lex;
     p->err=err;
     p->tree=tree;
-    syntaxtree_clear(tree);
     p->nl=false;
 }
 
@@ -258,8 +257,9 @@ syntaxtreeindx parse_number(parser *p) {
     double f = strtod(p->previous.start, NULL);
     return parse_addnode(p, NODE_FLOAT, MORPHO_FLOAT(f), &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
 }
-syntaxtreeindx parse_complex(parser *p) {
 
+/** Parse a complex number */
+syntaxtreeindx parse_complex(parser *p) {
     double f;
     if (p->previous.length==2) { // just a bare im symbol
         f = 1;
@@ -1113,95 +1113,86 @@ void parse_synchronize(parser *p) {
  * The parser definition table
  * ------------------------------- */
 
-/** @brief Parse table.
- *  Each line in the table defines the parserule(s) for a specific token type.
- *  @warning It is imperative that this table be in the same order as the tokentype enum */
-#define UNUSED                         { NULL,    NULL,      PREC_NONE }
-#define PREFIX(fn)                     { fn,      NULL,      PREC_NONE }
-#define INFIX(fn, prec)                { NULL,    fn,        prec      }
-#define MIXFIX(unaryfn, infixfn, prec) { unaryfn, infixfn,   prec      }
-
 parserule rules[] = {
-    UNUSED,                                            // TOKEN_NEWLINE
-    UNUSED,                                            // TOKEN_QUESTION
+    PARSERULE_UNUSED(TOKEN_NEWLINE),
+    PARSERULE_UNUSED(TOKEN_QUESTION),
+    
+    PARSERULE_PREFIX(TOKEN_STRING, parse_string),
+    PARSERULE_PREFIX(TOKEN_INTERPOLATION, parse_interpolation),
+    PARSERULE_PREFIX(TOKEN_INTEGER, parse_integer),
+    PARSERULE_PREFIX(TOKEN_NUMBER, parse_number),
+    PARSERULE_PREFIX(TOKEN_SYMBOL, parse_symbol),
 
-    PREFIX(parse_string),                              // TOKEN_STRING
-    PREFIX(parse_interpolation),                       // TOKEN_INTERPOLATION
-    PREFIX(parse_integer),                             // TOKEN_INTEGER
-    PREFIX(parse_number),                              // TOKEN_NUMBER
-    PREFIX(parse_symbol),                              // TOKEN_SYMBOL
-
-    MIXFIX(parse_grouping, parse_call, PREC_CALL),     // TOKEN_LEFTPAREN
-    UNUSED,                                            // TOKEN_RIGHTPAREN
-    MIXFIX(parse_list, parse_index, PREC_CALL),        // TOKEN_LEFTSQBRACKET
-    UNUSED,                                            // TOKEN_RIGHTSQBRACKET
-    PREFIX(parse_dictionary),                          // TOKEN_LEFTCURLYBRACKET
-    UNUSED,                                            // TOKEN_RIGHTCURLYBRACKET
-
-    UNUSED,                                            // TOKEN_COLON
-    UNUSED,                                            // TOKEN_SEMICOLON
-    UNUSED,                                            // TOKEN_COMMA
+    PARSERULE_MIXFIX(TOKEN_LEFTPAREN, parse_grouping, parse_call, PREC_CALL),
+    PARSERULE_UNUSED(TOKEN_RIGHTPAREN),
+    PARSERULE_MIXFIX(TOKEN_LEFTSQBRACKET, parse_list, parse_index, PREC_CALL),
+    PARSERULE_UNUSED(TOKEN_RIGHTSQBRACKET),
+    PARSERULE_PREFIX(TOKEN_LEFTCURLYBRACKET, parse_dictionary),
+    PARSERULE_UNUSED(TOKEN_RIGHTCURLYBRACKET),
+    PARSERULE_UNUSED(TOKEN_COLON),
+    PARSERULE_UNUSED(TOKEN_SEMICOLON),
+    PARSERULE_UNUSED(TOKEN_COMMA),
     
-    INFIX(parse_binary, PREC_TERM),                    // TOKEN_PLUS
-    MIXFIX(parse_unary, parse_binary, PREC_TERM),      // TOKEN_MINUS
-    INFIX(parse_binary, PREC_FACTOR),                  // TOKEN_STAR
-    INFIX(parse_binary, PREC_FACTOR),                  // TOKEN_SLASH
-    INFIX(parse_binary, PREC_POW),                     // TOKEN_CIRCUMFLEX
+    PARSERULE_INFIX(TOKEN_PLUS, parse_binary, PREC_TERM),
+    PARSERULE_MIXFIX(TOKEN_MINUS, parse_unary, parse_binary, PREC_TERM),
+    PARSERULE_INFIX(TOKEN_STAR, parse_binary, PREC_FACTOR),
+    PARSERULE_INFIX(TOKEN_SLASH, parse_binary, PREC_FACTOR),
+    PARSERULE_INFIX(TOKEN_CIRCUMFLEX, parse_binary, PREC_POW),
     
-    UNUSED,                                            // TOKEN_PLUSPLUS
-    UNUSED,                                            // TOKEN_MINUSMINUS
-    INFIX(parse_assignby, PREC_ASSIGN),                // TOKEN_PLUSEQ
-    INFIX(parse_assignby, PREC_ASSIGN),                // TOKEN_MINUSEQ
-    INFIX(parse_assignby, PREC_ASSIGN),                // TOKEN_STAREQ
-    INFIX(parse_assignby, PREC_ASSIGN),                // TOKEN_SLASHEQ
-    UNUSED,                                            // TOKEN_HASH
-    PREFIX(parse_unary),                               // TOKEN_AT
+    PARSERULE_UNUSED(TOKEN_PLUSPLUS),
+    PARSERULE_UNUSED(TOKEN_MINUSMINUS),
+    PARSERULE_INFIX(TOKEN_PLUSEQ, parse_assignby, PREC_ASSIGN),
+    PARSERULE_INFIX(TOKEN_MINUSEQ, parse_assignby, PREC_ASSIGN),
+    PARSERULE_INFIX(TOKEN_STAREQ, parse_assignby, PREC_ASSIGN),
+    PARSERULE_INFIX(TOKEN_SLASHEQ, parse_assignby, PREC_ASSIGN),
+    PARSERULE_UNUSED(TOKEN_HASH),
+    PARSERULE_PREFIX(TOKEN_AT, parse_unary),
     
-    INFIX(parse_binary, PREC_CALL),                    // TOKEN_DOT
-    INFIX(parse_range, PREC_RANGE),                    // TOKEN_DOTDOT
-    INFIX(parse_range, PREC_RANGE),                    // TOKEN_DOTDOTDOT
-    PREFIX(parse_unary),                               // TOKEN_EXCLAMATION
-    UNUSED,                                            // TOKEN_AMP
-    UNUSED,                                            // TOKEN_VBAR
-    INFIX(parse_binary, PREC_AND),                     // TOKEN_DBLAMP
-    INFIX(parse_binary, PREC_OR),                      // TOKEN_DBLVBAR
-    INFIX(parse_binary, PREC_ASSIGN),                  // TOKEN_EQUAL
-    INFIX(parse_binary, PREC_EQUALITY),                // TOKEN_EQ
-    INFIX(parse_binary, PREC_EQUALITY),                // TOKEN_NEQ
-    INFIX(parse_binary, PREC_COMPARISON),              // TOKEN_LT
-    INFIX(parse_binary, PREC_COMPARISON),              // TOKEN_GT
-    INFIX(parse_binary, PREC_COMPARISON),              // TOKEN_LTEQ
-    INFIX(parse_binary, PREC_COMPARISON),              // TOKEN_GTEQ
+    PARSERULE_INFIX(TOKEN_DOT, parse_binary, PREC_CALL),
+    PARSERULE_INFIX(TOKEN_DOTDOT, parse_range, PREC_RANGE),
+    PARSERULE_INFIX(TOKEN_DOTDOTDOT, parse_range, PREC_RANGE),
+    PARSERULE_PREFIX(TOKEN_EXCLAMATION, parse_unary),
+    PARSERULE_UNUSED(TOKEN_AMP),
+    PARSERULE_UNUSED(TOKEN_VBAR),
+    PARSERULE_INFIX(TOKEN_DBLAMP, parse_binary, PREC_AND),
+    PARSERULE_INFIX(TOKEN_DBLVBAR, parse_binary, PREC_OR),
+    PARSERULE_INFIX(TOKEN_EQUAL, parse_binary, PREC_ASSIGN),
+    PARSERULE_INFIX(TOKEN_EQ, parse_binary, PREC_EQUALITY),
+    PARSERULE_INFIX(TOKEN_NEQ, parse_binary, PREC_EQUALITY),
+    PARSERULE_INFIX(TOKEN_LT, parse_binary, PREC_COMPARISON),
+    PARSERULE_INFIX(TOKEN_GT, parse_binary, PREC_COMPARISON),
+    PARSERULE_INFIX(TOKEN_LTEQ, parse_binary, PREC_COMPARISON),
+    PARSERULE_INFIX(TOKEN_GTEQ, parse_binary, PREC_COMPARISON),
     
-    PREFIX(parse_bool),                                // TOKEN_TRUE
-    PREFIX(parse_bool),                                // TOKEN_FALSE
-    PREFIX(parse_nil),                                 // TOKEN_NIL
-    PREFIX(parse_self),                                // TOKEN_SELF
-    PREFIX(parse_super),                               // TOKEN_SUPER
-    PREFIX(parse_complex),                             // TOKEN_IMAG
-    UNUSED,                                            // TOKEN_PRINT
-    UNUSED,                                            // TOKEN_VAR
-    UNUSED,                                            // TOKEN_IF
-    UNUSED,                                            // TOKEN_ELSE
-    UNUSED,                                            // TOKEN_IN
-    UNUSED,                                            // TOKEN_WHILE
-    UNUSED,                                            // TOKEN_FOR
-    UNUSED,                                            // TOKEN_DO
-    UNUSED,                                            // TOKEN_BREAK
-    UNUSED,                                            // TOKEN_CONTINUE
-    UNUSED,                                            // TOKEN_FUNCTION
-    UNUSED,                                            // TOKEN_RETURN
-    UNUSED,                                            // TOKEN_CLASS
-    UNUSED,                                            // TOKEN_IMPORT
-    UNUSED,                                            // TOKEN_AS
-    UNUSED,                                            // TOKEN_IS
-    UNUSED,                                            // TOKEN_WITH
-    UNUSED,                                            // TOKEN_TRY
-    UNUSED,                                            // TOKEN_CATCH
+    PARSERULE_PREFIX(TOKEN_TRUE, parse_bool),
+    PARSERULE_PREFIX(TOKEN_FALSE, parse_bool),
+    PARSERULE_PREFIX(TOKEN_NIL, parse_nil),
+    PARSERULE_PREFIX(TOKEN_SELF, parse_self),
+    PARSERULE_PREFIX(TOKEN_SUPER, parse_super),
+    PARSERULE_PREFIX(TOKEN_IMAG, parse_complex),
+    PARSERULE_UNUSED(TOKEN_PRINT),
+    PARSERULE_UNUSED(TOKEN_VAR),
+    PARSERULE_UNUSED(TOKEN_IF),
+    PARSERULE_UNUSED(TOKEN_ELSE),
+    PARSERULE_UNUSED(TOKEN_IN),
+    PARSERULE_UNUSED(TOKEN_WHILE),
+    PARSERULE_UNUSED(TOKEN_FOR),
+    PARSERULE_UNUSED(TOKEN_DO),
+    PARSERULE_UNUSED(TOKEN_BREAK),
+    PARSERULE_UNUSED(TOKEN_CONTINUE),
+    PARSERULE_UNUSED(TOKEN_FUNCTION),
+    PARSERULE_UNUSED(TOKEN_RETURN),
+    PARSERULE_UNUSED(TOKEN_CLASS),
+    PARSERULE_UNUSED(TOKEN_IMPORT),
+    PARSERULE_UNUSED(TOKEN_AS),
+    PARSERULE_UNUSED(TOKEN_IS),
+    PARSERULE_UNUSED(TOKEN_WITH),
+    PARSERULE_UNUSED(TOKEN_TRY),
+    PARSERULE_UNUSED(TOKEN_CATCH),
     
-    UNUSED,                                            // TOKEN_INCOMPLETE
-    UNUSED,                                            // TOKEN_ERROR
-    UNUSED,                                            // TOKEN_EOF
+    PARSERULE_UNUSED(TOKEN_INCOMPLETE), 
+    PARSERULE_UNUSED(TOKEN_ERROR),
+    PARSERULE_UNUSED(TOKEN_EOF)
 };
 
 /** Get the rule to parse an element of type tokentype. */
@@ -1306,6 +1297,10 @@ static syntaxtreeindx parse_precedence(parser *p, precedence precendence) {
     
     return result;
 }
+
+/* **********************************************************************
+ * Interface
+ * ********************************************************************** */
 
 /** Entry point into the parser */
 bool parse(parser *p) {

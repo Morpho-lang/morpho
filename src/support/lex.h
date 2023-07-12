@@ -131,11 +131,11 @@ typedef struct {
  * Lex error messages
  * ------------------------------------------------------- */
 
-#define COMPILE_UNTERMINATEDCOMMENT       "UntrmComm"
-#define COMPILE_UNTERMINATEDCOMMENT_MSG   "Unterminated multiline comment '/*'."
+#define LEXER_UNTERMINATEDCOMMENT       "UntrmComm"
+#define LEXER_UNTERMINATEDCOMMENT_MSG   "Unterminated multiline comment '/*'."
 
-#define COMPILE_UNTERMINATEDSTRING        "UntrmStrng"
-#define COMPILE_UNTERMINATEDSTRING_MSG    "Unterminated string."
+#define LEXER_UNTERMINATEDSTRING        "UntrmStrng"
+#define LEXER_UNTERMINATEDSTRING_MSG    "Unterminated string."
 
 /* -------------------------------------------------------
  * Lex interface

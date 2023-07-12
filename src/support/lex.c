@@ -266,7 +266,7 @@ bool lex_skipmultilinecomment(lexer *l, token *tok, error *err) {
         switch (c) {
             case '\0':
                 /* If we come to the end of the file, the token is marked as incomplete. */
-                morpho_writeerrorwithid(err, COMPILE_UNTERMINATEDCOMMENT, startline, startpsn);
+                morpho_writeerrorwithid(err, LEXER_UNTERMINATEDCOMMENT, startline, startpsn);
                 lex_recordtoken(l, TOKEN_INCOMPLETE, tok);
                 return false;
             case '\n':
@@ -363,7 +363,7 @@ bool lex_string(lexer *l, token *tok, error *err) {
     
     if (lex_isatend(l)) {
         /* Unterminated string */
-        morpho_writeerrorwithid(err, COMPILE_UNTERMINATEDSTRING, startline, startpsn);
+        morpho_writeerrorwithid(err, LEXER_UNTERMINATEDSTRING, startline, startpsn);
         lex_recordtoken(l, TOKEN_INCOMPLETE, tok);
         return false;
     }
@@ -564,6 +564,10 @@ void lexer_initialize(void) {
     
     // Retain the number of standardtokens
     nstandardtokens = n;
+    
+    /* Lexer errors */
+    morpho_defineerror(LEXER_UNTERMINATEDCOMMENT, ERROR_LEX, LEXER_UNTERMINATEDCOMMENT_MSG);
+    morpho_defineerror(LEXER_UNTERMINATEDSTRING, ERROR_LEX, LEXER_UNTERMINATEDSTRING_MSG);
 }
 
 void lexer_finalize(void) {

@@ -1,7 +1,7 @@
 /** @file parse.h
  *  @author T J Atherton and others (see below)
  *
- *  @brief Lexer and parser
+ *  @brief Parser
 */
 
 #ifndef parse_h
@@ -136,27 +136,16 @@
 * Parser
 * ********************************************************************** */
 
-/* -------------------------------------------------------
- * Define a Parser
- * ------------------------------------------------------- */
-
-/** @brief A structure that defines the state of a parser */
-typedef struct {
-    token current; /** The current token */
-    token previous; /** The previous token */
-    syntaxtreeindx left;
-    lexer *lex; /** Lexer to use */
-    syntaxtree *tree; /** Syntax tree receiving output */
-    error *err; /** Error structure to output errors to */
-    bool nl; /** Was a newline encountered before the current token? */
-} parser;
+/** Parser type defined below */
+typedef struct sparser parser;
 
 /* -------------------------------------------------------
- * Tokens are parsed into the AST by parserules
+ * The parser is defined by parserules that respond to
+ * various token types
  * ------------------------------------------------------- */
 
-/** @brief an enumerated type that defines precedence order in Morpho. */
-typedef enum {
+/** @brief an enumerated type that defines precedence order. */
+enum {
     PREC_NONE,
     PREC_LOWEST,
     PREC_ASSIGN,
@@ -171,7 +160,10 @@ typedef enum {
     PREC_POW,
     PREC_CALL,
     PREC_HIGHEST
-} precedence;
+};
+
+/** Precedence order */
+typedef int precedence;
 
 /** @brief Definition of a parse function. */
 typedef syntaxtreeindx (*parsefunction) (parser *c);
@@ -180,18 +172,50 @@ typedef syntaxtreeindx (*parsefunction) (parser *c);
  * providing functions to parse the token if it is encountered in the
  * prefix or infix positions. The parse rule also defines the precedence. */
 typedef struct {
+    tokentype type;
     parsefunction prefix;
     parsefunction infix;
     precedence precedence;
 } parserule;
+
+/** @brief Macros used to build a parser definition table
+ *  Each line in the table defines the parserule(s) for a specific token type.  */
+#define PARSERULE_UNUSED(tok)                         { tok, NULL,    NULL,    PREC_NONE }
+#define PARSERULE_PREFIX(tok, fn)                     { tok, fn,      NULL,    PREC_NONE }
+#define PARSERULE_INFIX(tok, fn, prec)                { tok, NULL,    fn,      prec      }
+#define PARSERULE_MIXFIX(tok, unaryfn, infixfn, prec) { tok, unaryfn, infixfn, prec      }
+
+/** Varrays of parse rules */
+DECLARE_VARRAY(parserule, parserule)
+
+/* -------------------------------------------------------
+ * Define a Parser
+ * ------------------------------------------------------- */
+
+/** @brief A structure that defines the state of a parser */
+struct sparser {
+    token current; /** The current token */
+    token previous; /** The previous token */
+    syntaxtreeindx left;
+    lexer *lex; /** Lexer to use */
+    syntaxtree *tree; /** Output */
+    error *err; /** Error structure to output errors to */
+    bool nl; /** Was a newline encountered before the current token? */
+    varray_parserule parsetable;
+};
 
 /* -------------------------------------------------------
  * Prototypes for using a parser
  * ------------------------------------------------------- */
 
 void parse_init(parser *p, lexer *lex, error *err, syntaxtree *tree);
+void parse_clear(parser *p);
+
 bool parse(parser *p);
 
 bool parse_stringtovaluearray(char *string, unsigned int nmax, value *v, unsigned int *n, error *err);
+
+void parse_initialize(void);
+void parse_finalize(void);
 
 #endif /* parse_h */

@@ -3525,10 +3525,6 @@ void morpho_setbaseclass(value klss) {
 void compile_initialize(void) {
     _selfsymbol=builtin_internsymbolascstring("self");
 
-    /* Lex errors */
-    morpho_defineerror(COMPILE_UNTERMINATEDCOMMENT, ERROR_LEX, COMPILE_UNTERMINATEDCOMMENT_MSG);
-    morpho_defineerror(COMPILE_UNTERMINATEDSTRING, ERROR_LEX, COMPILE_UNTERMINATEDSTRING_MSG);
-
     /* Parse errors */
     morpho_defineerror(COMPILE_INCOMPLETEEXPRESSION, ERROR_PARSE, COMPILE_INCOMPLETEEXPRESSION_MSG);
     morpho_defineerror(COMPILE_MISSINGPARENTHESIS, ERROR_PARSE, COMPILE_MISSINGPARENTHESIS_MSG);

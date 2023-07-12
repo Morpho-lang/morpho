@@ -153,7 +153,7 @@ void lex_setmatchkeywords(lexer *l, bool match);
 bool lex(lexer *l, token *tok, error *err);
 
 // Initialization/finalization
-void lexer_initialize(void);
-void lexer_finalize(void);
+void lex_initialize(void);
+void lex_finalize(void);
 
 #endif /* lex_h */

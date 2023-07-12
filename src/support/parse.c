@@ -300,7 +300,7 @@ syntaxtreeindx parse_statementterminator(parser *p) {
 #endif
     } else if (parse_checktoken(p, TOKEN_IN) || parse_checktoken(p, TOKEN_ELSE)) {
     } else {
-        parse_error(p, true, COMPILE_MISSINGSEMICOLONEXP);
+        parse_error(p, true, PARSE_MISSINGSEMICOLONEXP);
     }
     return SYNTAXTREE_UNCONNECTED;
 }
@@ -353,7 +353,7 @@ syntaxtreeindx parse_self(parser *p) {
 /** Parses a super token */
 syntaxtreeindx parse_super(parser *p) {
     if (!parse_checktoken(p, TOKEN_DOT)) {
-        parse_error(p, false, COMPILE_EXPECTDOTAFTERSUPER);
+        parse_error(p, false, PARSE_EXPECTDOTAFTERSUPER);
     }
 
     return parse_addnode(p, NODE_SUPER, MORPHO_NIL, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
@@ -420,7 +420,7 @@ syntaxtreeindx parse_interpolation(parser *p) {
     } else if (parse_matchtoken(p, TOKEN_INTERPOLATION)) {
         right = parse_interpolation(p);
     } else {
-        parse_error(p, false, COMPILE_INCOMPLETESTRINGINT);
+        parse_error(p, false, PARSE_INCOMPLETESTRINGINT);
     }
     
     return parse_addnode(p, NODE_INTERPOLATION, s, &tok, left, right);
@@ -430,7 +430,7 @@ syntaxtreeindx parse_interpolation(parser *p) {
 syntaxtreeindx parse_grouping(parser *p) {
     syntaxtreeindx indx;
     indx = parse_addnode(p, NODE_GROUPING, MORPHO_NIL, &p->previous, parse_expression(p), SYNTAXTREE_UNCONNECTED);
-    parse_consume(p, TOKEN_RIGHTPAREN, COMPILE_MISSINGPARENTHESIS);
+    parse_consume(p, TOKEN_RIGHTPAREN, PARSE_MISSINGPARENTHESIS);
     return indx;
 }
 
@@ -495,7 +495,7 @@ syntaxtreeindx parse_binary(parser *p) {
     
     /* Check if we have a right hand side. */
     if (parse_checktoken(p, TOKEN_EOF)) {
-        parse_error(p, true, COMPILE_INCOMPLETEEXPRESSION);
+        parse_error(p, true, PARSE_INCOMPLETEEXPRESSION);
     } else {
         if (nodetype==NODE_ASSIGN &&
             parse_matchtoken(p, TOKEN_FUNCTION)) {
@@ -530,7 +530,7 @@ syntaxtreeindx parse_assignby(parser *p) {
     
     /* Check if we have a right hand side. */
     if (parse_checktoken(p, TOKEN_EOF)) {
-        parse_error(p, true, COMPILE_INCOMPLETEEXPRESSION);
+        parse_error(p, true, PARSE_INCOMPLETEEXPRESSION);
     } else {
         right = parse_precedence(p, rule->precedence);
     }
@@ -578,7 +578,7 @@ syntaxtreeindx parse_call(parser *p) {
     
     right=parse_arglist(p, TOKEN_RIGHTPAREN, &nargs);
     
-    parse_consume(p, TOKEN_RIGHTPAREN, COMPILE_CALLRGHTPARENMISSING);
+    parse_consume(p, TOKEN_RIGHTPAREN, PARSE_CALLRGHTPARENMISSING);
     
     return parse_addnode(p, NODE_CALL, MORPHO_NIL, &start, left, right);
 }
@@ -596,7 +596,7 @@ syntaxtreeindx parse_index(parser *p) {
     
     right=parse_arglist(p, TOKEN_RIGHTSQBRACKET, &nindx);
     
-    parse_consume(p, TOKEN_RIGHTSQBRACKET, COMPILE_CALLRGHTPARENMISSING);
+    parse_consume(p, TOKEN_RIGHTSQBRACKET, PARSE_CALLRGHTPARENMISSING);
     
     return parse_addnode(p, NODE_INDEX, MORPHO_NIL, &start, left, right);
 }
@@ -607,7 +607,7 @@ syntaxtreeindx parse_list(parser *p) {
     token start = p->previous;
     
     syntaxtreeindx right=parse_arglist(p, TOKEN_RIGHTSQBRACKET, &nindx);
-    parse_consume(p, TOKEN_RIGHTSQBRACKET, COMPILE_CALLRGHTPARENMISSING);
+    parse_consume(p, TOKEN_RIGHTSQBRACKET, PARSE_CALLRGHTPARENMISSING);
 
     return parse_addnode(p, NODE_LIST, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, right);
 }
@@ -619,9 +619,9 @@ syntaxtreeindx parse_anonymousfunction(parser *p) {
                    body=SYNTAXTREE_UNCONNECTED;
     
     /* Parameter list */
-    parse_consume(p, TOKEN_LEFTPAREN, COMPILE_FNLEFTPARENMISSING);
+    parse_consume(p, TOKEN_LEFTPAREN, PARSE_FNLEFTPARENMISSING);
     args=parse_arglist(p, TOKEN_RIGHTPAREN, NULL);
-    parse_consume(p, TOKEN_RIGHTPAREN, COMPILE_FNRGHTPARENMISSING);
+    parse_consume(p, TOKEN_RIGHTPAREN, PARSE_FNRGHTPARENMISSING);
     
     /* Function body */
     if (parse_matchtoken(p, TOKEN_LEFTCURLYBRACKET)) { // fn (x) { ... }
@@ -671,7 +671,7 @@ syntaxtreeindx parse_vardeclaration(parser *p) {
     do {
         token start = p->previous;
         
-        symbol=parse_variable(p, COMPILE_VAREXPECTED);
+        symbol=parse_variable(p, PARSE_VAREXPECTED);
         
         if (parse_matchtoken(p, TOKEN_LEFTSQBRACKET)) {
             symbol=parse_index(p);
@@ -705,15 +705,15 @@ syntaxtreeindx parse_functiondeclaration(parser *p) {
     /* Function name */
     if (parse_matchtoken(p, TOKEN_SYMBOL)) {
         name=parse_symbolasvalue(p);
-    } else parse_error(p, false, COMPILE_FNNAMEMISSING);
+    } else parse_error(p, false, PARSE_FNNAMEMISSING);
     
     /* Parameter list */
-    parse_consume(p, TOKEN_LEFTPAREN, COMPILE_FNLEFTPARENMISSING);
+    parse_consume(p, TOKEN_LEFTPAREN, PARSE_FNLEFTPARENMISSING);
     args=parse_arglist(p, TOKEN_RIGHTPAREN, NULL);
-    parse_consume(p, TOKEN_RIGHTPAREN, COMPILE_FNRGHTPARENMISSING);
+    parse_consume(p, TOKEN_RIGHTPAREN, PARSE_FNRGHTPARENMISSING);
     
     /* Function body */
-    parse_consume(p, TOKEN_LEFTCURLYBRACKET, COMPILE_FNLEFTCURLYMISSING);
+    parse_consume(p, TOKEN_LEFTCURLYBRACKET, PARSE_FNLEFTCURLYMISSING);
     body=parse_blockstatement(p);
     
     return parse_addnode(p, NODE_FUNCTION, name, &start, args, body);
@@ -729,18 +729,18 @@ syntaxtreeindx parse_classdeclaration(parser *p) {
     /* Class name */
     if (parse_matchtoken(p, TOKEN_SYMBOL)) {
         name=parse_symbolasvalue(p);
-    } else parse_error(p, false, COMPILE_EXPECTCLASSNAME);
+    } else parse_error(p, false, PARSE_EXPECTCLASSNAME);
     
     /* Extract a superclass name */
     if (parse_matchtoken(p, TOKEN_LT) || parse_matchtoken(p, TOKEN_IS)) {
-        parse_consume(p, TOKEN_SYMBOL, COMPILE_EXPECTSUPER);
+        parse_consume(p, TOKEN_SYMBOL, PARSE_EXPECTSUPER);
         sname=parse_symbolasvalue(p);
         sclass=parse_addnode(p, NODE_SYMBOL, sname, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
     }
     
     if (parse_matchtoken(p, TOKEN_WITH)) {
         do {
-            parse_consume(p, TOKEN_SYMBOL, COMPILE_EXPECTSUPER);
+            parse_consume(p, TOKEN_SYMBOL, PARSE_EXPECTSUPER);
             value mixin=parse_symbolasvalue(p);
             
             syntaxtreeindx smixin=parse_addnode(p, NODE_SYMBOL, mixin, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
@@ -750,7 +750,7 @@ syntaxtreeindx parse_classdeclaration(parser *p) {
         } while (parse_matchtoken(p, TOKEN_COMMA));
     }
     
-    parse_consume(p, TOKEN_LEFTCURLYBRACKET, COMPILE_CLASSLEFTCURLYMISSING);
+    parse_consume(p, TOKEN_LEFTCURLYBRACKET, PARSE_CLASSLEFTCURLYMISSING);
     /* Method declarations */
     syntaxtreeindx last=SYNTAXTREE_UNCONNECTED, current=SYNTAXTREE_UNCONNECTED;
     
@@ -765,7 +765,7 @@ syntaxtreeindx parse_classdeclaration(parser *p) {
         last = current;
     }
     
-    parse_consume(p, TOKEN_RIGHTCURLYBRACKET, COMPILE_CLASSRGHTCURLYMISSING);
+    parse_consume(p, TOKEN_RIGHTCURLYBRACKET, PARSE_CLASSRGHTCURLYMISSING);
     
     return parse_addnode(p, NODE_CLASS, name, &start, sclass, current);
 }
@@ -786,7 +786,7 @@ syntaxtreeindx parse_importdeclaration(parser *p) {
     } else if (parse_matchtoken(p, TOKEN_SYMBOL)){
         modulename=parse_symbol(p);
     } else {
-        parse_error(p, true, COMPILE_IMPORTMISSINGNAME);
+        parse_error(p, true, PARSE_IMPORTMISSINGNAME);
         return SYNTAXTREE_UNCONNECTED;
     }
     
@@ -794,16 +794,16 @@ syntaxtreeindx parse_importdeclaration(parser *p) {
         if (parse_matchtoken(p, TOKEN_AS)) {
             if (parse_matchtoken(p, TOKEN_SYMBOL)) {
                 right=parse_symbol(p);
-            } else parse_error(p, true, COMPILE_IMPORTASSYMBL);
+            } else parse_error(p, true, PARSE_IMPORTASSYMBL);
         } else if (parse_matchtoken(p, TOKEN_FOR)) {
             do {
                 if (parse_matchtoken(p, TOKEN_SYMBOL)) {
                     syntaxtreeindx symbl=parse_symbol(p);
                     right=parse_addnode(p, NODE_FOR, MORPHO_NIL, &p->previous, right, symbl);
-                } else parse_error(p, true, COMPILE_IMPORTFORSYMBL);
+                } else parse_error(p, true, PARSE_IMPORTFORSYMBL);
             } while (parse_matchtoken(p, TOKEN_COMMA));
         } else {
-            parse_error(p, true, COMPILE_IMPORTUNEXPCTDTOK);
+            parse_error(p, true, PARSE_IMPORTUNEXPCTDTOK);
         }
     }
     
@@ -845,9 +845,9 @@ syntaxtreeindx parse_blockstatement(parser *p) {
     
     body = parse_declarationmulti(p, 1, terminator);
     if (parse_checktoken(p, TOKEN_EOF)) {
-        parse_error(p, false, COMPILE_INCOMPLETEEXPRESSION);
+        parse_error(p, false, PARSE_INCOMPLETEEXPRESSION);
     } else {
-        parse_consume(p, TOKEN_RIGHTCURLYBRACKET, COMPILE_MISSINGSEMICOLONEXP);
+        parse_consume(p, TOKEN_RIGHTCURLYBRACKET, PARSE_MISSINGSEMICOLONEXP);
     }
     
     scope=parse_addnode(p, NODE_SCOPE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, body);
@@ -863,9 +863,9 @@ syntaxtreeindx parse_ifstatement(parser *p) {
                     out=SYNTAXTREE_UNCONNECTED;
     token start = p->previous;
     
-    parse_consume(p, TOKEN_LEFTPAREN, COMPILE_IFLFTPARENMISSING);
+    parse_consume(p, TOKEN_LEFTPAREN, PARSE_IFLFTPARENMISSING);
     cond=parse_expression(p);
-    parse_consume(p, TOKEN_RIGHTPAREN, COMPILE_IFRGHTPARENMISSING);
+    parse_consume(p, TOKEN_RIGHTPAREN, PARSE_IFRGHTPARENMISSING);
     
     token thentok = p->current;
     then=parse_statement(p);
@@ -890,9 +890,9 @@ syntaxtreeindx parse_whilestatement(parser *p) {
                     out=SYNTAXTREE_UNCONNECTED;
     token start = p->previous;
     
-    parse_consume(p, TOKEN_LEFTPAREN, COMPILE_WHILELFTPARENMISSING);
+    parse_consume(p, TOKEN_LEFTPAREN, PARSE_WHILELFTPARENMISSING);
     cond=parse_expression(p);
-    parse_consume(p, TOKEN_RIGHTPAREN, COMPILE_IFRGHTPARENMISSING);
+    parse_consume(p, TOKEN_RIGHTPAREN, PARSE_IFRGHTPARENMISSING);
     body=parse_statement(p);
     
     out=parse_addnode(p, NODE_WHILE, MORPHO_NIL, &start, cond, body);
@@ -910,7 +910,7 @@ syntaxtreeindx parse_forstatement(parser *p) {
     token start = p->current;
     bool forin=false;
  
-    parse_consume(p, TOKEN_LEFTPAREN, COMPILE_FORLFTPARENMISSING);
+    parse_consume(p, TOKEN_LEFTPAREN, PARSE_FORLFTPARENMISSING);
     if (parse_matchtoken(p, TOKEN_SEMICOLON)) {
         
     } else if (parse_matchtoken(p, TOKEN_VAR)) {
@@ -938,7 +938,7 @@ syntaxtreeindx parse_forstatement(parser *p) {
             final=parse_expression(p);
         }
     }
-    parse_consume(p, TOKEN_RIGHTPAREN, COMPILE_FORRGHTPARENMISSING);
+    parse_consume(p, TOKEN_RIGHTPAREN, PARSE_FORRGHTPARENMISSING);
     
     if (!parse_checkstatementterminator(p)) {
         body=parse_statement(p);
@@ -989,9 +989,9 @@ syntaxtreeindx parse_dostatement(parser *p) {
     body=parse_statement(p);
     
     parse_consume(p, TOKEN_WHILE, PARSE_EXPCTWHL);
-    parse_consume(p, TOKEN_LEFTPAREN, COMPILE_WHILELFTPARENMISSING);
+    parse_consume(p, TOKEN_LEFTPAREN, PARSE_WHILELFTPARENMISSING);
     cond=parse_expression(p);
-    parse_consume(p, TOKEN_RIGHTPAREN, COMPILE_IFRGHTPARENMISSING);
+    parse_consume(p, TOKEN_RIGHTPAREN, PARSE_IFRGHTPARENMISSING);
     
     /* Optional statement terminator */
     if (parse_checkstatementterminator(p)) {
@@ -1267,7 +1267,7 @@ syntaxtreeindx parse_precedence(parser *p, precedence precendence) {
     prefixrule = parse_getrule(p, p->previous.type)->prefix;
     
     if (!prefixrule) {
-        parse_error(p, true, COMPILE_EXPECTEXPRESSION);
+        parse_error(p, true, PARSE_EXPECTEXPRESSION);
         return SYNTAXTREE_UNCONNECTED;
     }
     
@@ -1371,4 +1371,51 @@ bool parse_stringtovaluearray(char *string, unsigned int nmax, value *v, unsigne
     lex_clear(&l);
     
     return true;
+}
+
+void parse_initialize(void) {
+    /* Parse errors */
+    morpho_defineerror(PARSE_INCOMPLETEEXPRESSION, ERROR_PARSE, PARSE_INCOMPLETEEXPRESSION_MSG);
+    morpho_defineerror(PARSE_MISSINGPARENTHESIS, ERROR_PARSE, PARSE_MISSINGPARENTHESIS_MSG);
+    morpho_defineerror(PARSE_EXPECTEXPRESSION, ERROR_PARSE, PARSE_EXPECTEXPRESSION_MSG);
+    morpho_defineerror(PARSE_MISSINGSEMICOLON, ERROR_PARSE, PARSE_MISSINGSEMICOLON_MSG);
+    morpho_defineerror(PARSE_MISSINGSEMICOLONEXP, ERROR_PARSE, PARSE_MISSINGSEMICOLONEXP_MSG);
+    morpho_defineerror(PARSE_MISSINGSEMICOLONVAR, ERROR_PARSE, PARSE_MISSINGSEMICOLONVAR_MSG);
+    morpho_defineerror(PARSE_VAREXPECTED, ERROR_PARSE, PARSE_VAREXPECTED_MSG);
+    morpho_defineerror(PARSE_BLOCKTERMINATOREXP, ERROR_PARSE, PARSE_BLOCKTERMINATOREXP_MSG);
+    morpho_defineerror(PARSE_IFLFTPARENMISSING, ERROR_PARSE, PARSE_IFLFTPARENMISSING_MSG);
+    morpho_defineerror(PARSE_IFRGHTPARENMISSING, ERROR_PARSE, PARSE_IFRGHTPARENMISSING_MSG);
+    morpho_defineerror(PARSE_WHILELFTPARENMISSING, ERROR_PARSE, PARSE_WHILELFTPARENMISSING_MSG);
+    morpho_defineerror(PARSE_FORLFTPARENMISSING, ERROR_PARSE, PARSE_FORLFTPARENMISSING_MSG);
+    morpho_defineerror(PARSE_FORSEMICOLONMISSING, ERROR_PARSE, PARSE_FORSEMICOLONMISSING_MSG);
+    morpho_defineerror(PARSE_FORRGHTPARENMISSING, ERROR_PARSE, PARSE_FORRGHTPARENMISSING_MSG);
+    morpho_defineerror(PARSE_FNNAMEMISSING, ERROR_PARSE, PARSE_FNNAMEMISSING_MSG);
+    morpho_defineerror(PARSE_FNLEFTPARENMISSING, ERROR_PARSE, PARSE_FNLEFTPARENMISSING_MSG);
+    morpho_defineerror(PARSE_FNRGHTPARENMISSING, ERROR_PARSE, PARSE_FNRGHTPARENMISSING_MSG);
+    morpho_defineerror(PARSE_FNLEFTCURLYMISSING, ERROR_PARSE, PARSE_FNLEFTCURLYMISSING_MSG);
+    morpho_defineerror(PARSE_CALLRGHTPARENMISSING, ERROR_PARSE, PARSE_CALLRGHTPARENMISSING_MSG);
+    morpho_defineerror(PARSE_EXPECTCLASSNAME, ERROR_PARSE, PARSE_EXPECTCLASSNAME_MSG);
+    morpho_defineerror(PARSE_CLASSLEFTCURLYMISSING, ERROR_PARSE, PARSE_CLASSLEFTCURLYMISSING_MSG);
+    morpho_defineerror(PARSE_CLASSRGHTCURLYMISSING, ERROR_PARSE, PARSE_CLASSRGHTCURLYMISSING_MSG);
+    morpho_defineerror(PARSE_EXPECTDOTAFTERSUPER, ERROR_PARSE, PARSE_EXPECTDOTAFTERSUPER_MSG);
+    morpho_defineerror(PARSE_INCOMPLETESTRINGINT, ERROR_PARSE, PARSE_INCOMPLETESTRINGINT_MSG);
+    morpho_defineerror(PARSE_VARBLANKINDEX, ERROR_COMPILE, PARSE_VARBLANKINDEX_MSG);
+    morpho_defineerror(PARSE_IMPORTMISSINGNAME, ERROR_PARSE, PARSE_IMPORTMISSINGNAME_MSG);
+    morpho_defineerror(PARSE_IMPORTUNEXPCTDTOK, ERROR_PARSE, PARSE_IMPORTUNEXPCTDTOK_MSG);
+    morpho_defineerror(PARSE_IMPORTASSYMBL, ERROR_PARSE, PARSE_IMPORTASSYMBL_MSG);
+    morpho_defineerror(PARSE_IMPORTFORSYMBL, ERROR_PARSE, PARSE_IMPORTFORSYMBL_MSG);
+    morpho_defineerror(PARSE_EXPECTSUPER, ERROR_COMPILE, PARSE_EXPECTSUPER_MSG);
+
+    morpho_defineerror(PARSE_UNRECGNZEDTOK, ERROR_PARSE, PARSE_UNRECGNZEDTOK_MSG);
+    morpho_defineerror(PARSE_DCTSPRTR, ERROR_PARSE, PARSE_DCTSPRTR_MSG);
+    morpho_defineerror(PARSE_SWTCHSPRTR, ERROR_PARSE, PARSE_SWTCHSPRTR_MSG);
+    morpho_defineerror(PARSE_DCTENTRYSPRTR, ERROR_PARSE, PARSE_DCTENTRYSPRTR_MSG);
+    morpho_defineerror(PARSE_EXPCTWHL, ERROR_PARSE, PARSE_EXPCTWHL_MSG);
+    morpho_defineerror(PARSE_EXPCTCTCH, ERROR_PARSE, PARSE_EXPCTCTCH_MSG);
+    morpho_defineerror(PARSE_ONEVARPR, ERROR_PARSE, PARSE_ONEVARPR_MSG);
+    morpho_defineerror(PARSE_CATCHLEFTCURLYMISSING, ERROR_PARSE, PARSE_CATCHLEFTCURLYMISSING_MSG);
+}
+
+void parse_finalize(void) {
+    
 }

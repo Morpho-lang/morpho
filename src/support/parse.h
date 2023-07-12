@@ -18,95 +18,95 @@
 
 /* Parser */
 
-#define COMPILE_INCOMPLETEEXPRESSION      "IncExp"
-#define COMPILE_INCOMPLETEEXPRESSION_MSG  "Incomplete expression."
+#define PARSE_INCOMPLETEEXPRESSION      "IncExp"
+#define PARSE_INCOMPLETEEXPRESSION_MSG  "Incomplete expression."
 
-#define COMPILE_MISSINGPARENTHESIS        "MssngParen"
-#define COMPILE_MISSINGPARENTHESIS_MSG    "Expect ')' after expression."
+#define PARSE_MISSINGPARENTHESIS        "MssngParen"
+#define PARSE_MISSINGPARENTHESIS_MSG    "Expect ')' after expression."
 
-#define COMPILE_EXPECTEXPRESSION          "ExpExpr"
-#define COMPILE_EXPECTEXPRESSION_MSG      "Expected expression."
+#define PARSE_EXPECTEXPRESSION          "ExpExpr"
+#define PARSE_EXPECTEXPRESSION_MSG      "Expected expression."
 
-#define COMPILE_MISSINGSEMICOLON          "MssngSemiVal"
-#define COMPILE_MISSINGSEMICOLON_MSG      "Expect ; after value."
+#define PARSE_MISSINGSEMICOLON          "MssngSemiVal"
+#define PARSE_MISSINGSEMICOLON_MSG      "Expect ; after value."
 
-#define COMPILE_MISSINGSEMICOLONEXP       "MssngExpTerm"
-#define COMPILE_MISSINGSEMICOLONEXP_MSG   "Expect expression terminator (; or newline) after expression."
+#define PARSE_MISSINGSEMICOLONEXP       "MssngExpTerm"
+#define PARSE_MISSINGSEMICOLONEXP_MSG   "Expect expression terminator (; or newline) after expression."
 
-#define COMPILE_MISSINGSEMICOLONVAR       "MssngSemiVar"
-#define COMPILE_MISSINGSEMICOLONVAR_MSG   "Expect ; after variable declaration."
+#define PARSE_MISSINGSEMICOLONVAR       "MssngSemiVar"
+#define PARSE_MISSINGSEMICOLONVAR_MSG   "Expect ; after variable declaration."
 
-#define COMPILE_VAREXPECTED               "VarExpct"
-#define COMPILE_VAREXPECTED_MSG           "Variable name expected after var."
+#define PARSE_VAREXPECTED               "VarExpct"
+#define PARSE_VAREXPECTED_MSG           "Variable name expected after var."
 
-#define COMPILE_BLOCKTERMINATOREXP        "MssngBrc"
-#define COMPILE_BLOCKTERMINATOREXP_MSG    "Expected '}' to finish block."
+#define PARSE_BLOCKTERMINATOREXP        "MssngBrc"
+#define PARSE_BLOCKTERMINATOREXP_MSG    "Expected '}' to finish block."
 
-#define COMPILE_IFLFTPARENMISSING         "IfMssngLftPrn"
-#define COMPILE_IFLFTPARENMISSING_MSG     "Expected '(' after if."
+#define PARSE_IFLFTPARENMISSING         "IfMssngLftPrn"
+#define PARSE_IFLFTPARENMISSING_MSG     "Expected '(' after if."
 
-#define COMPILE_IFRGHTPARENMISSING        "IfMssngRgtPrn"
-#define COMPILE_IFRGHTPARENMISSING_MSG    "Expected ')' after condition."
+#define PARSE_IFRGHTPARENMISSING        "IfMssngRgtPrn"
+#define PARSE_IFRGHTPARENMISSING_MSG    "Expected ')' after condition."
 
-#define COMPILE_WHILELFTPARENMISSING      "WhlMssngLftPrn"
-#define COMPILE_WHILELFTPARENMISSING_MSG  "Expected '(' after while."
+#define PARSE_WHILELFTPARENMISSING      "WhlMssngLftPrn"
+#define PARSE_WHILELFTPARENMISSING_MSG  "Expected '(' after while."
 
-#define COMPILE_FORLFTPARENMISSING        "ForMssngLftPrn"
-#define COMPILE_FORLFTPARENMISSING_MSG    "Expected '(' after for."
+#define PARSE_FORLFTPARENMISSING        "ForMssngLftPrn"
+#define PARSE_FORLFTPARENMISSING_MSG    "Expected '(' after for."
 
-#define COMPILE_FORSEMICOLONMISSING       "ForMssngSemi"
-#define COMPILE_FORSEMICOLONMISSING_MSG   "Expected ';'."
+#define PARSE_FORSEMICOLONMISSING       "ForMssngSemi"
+#define PARSE_FORSEMICOLONMISSING_MSG   "Expected ';'."
 
-#define COMPILE_FORRGHTPARENMISSING       "ForMssngRgtPrn"
-#define COMPILE_FORRGHTPARENMISSING_MSG   "Expected ')' after for clauses."
+#define PARSE_FORRGHTPARENMISSING       "ForMssngRgtPrn"
+#define PARSE_FORRGHTPARENMISSING_MSG   "Expected ')' after for clauses."
 
-#define COMPILE_FNNAMEMISSING             "FnNoName"
-#define COMPILE_FNNAMEMISSING_MSG         "Expected function or method name."
+#define PARSE_FNNAMEMISSING             "FnNoName"
+#define PARSE_FNNAMEMISSING_MSG         "Expected function or method name."
 
-#define COMPILE_FNLEFTPARENMISSING        "FnMssngLftPrn"
-#define COMPILE_FNLEFTPARENMISSING_MSG    "Expect '(' after name."
+#define PARSE_FNLEFTPARENMISSING        "FnMssngLftPrn"
+#define PARSE_FNLEFTPARENMISSING_MSG    "Expect '(' after name."
 
-#define COMPILE_FNRGHTPARENMISSING        "FnMssngRgtPrn"
-#define COMPILE_FNRGHTPARENMISSING_MSG    "Expect ')' after parameters."
+#define PARSE_FNRGHTPARENMISSING        "FnMssngRgtPrn"
+#define PARSE_FNRGHTPARENMISSING_MSG    "Expect ')' after parameters."
 
-#define COMPILE_FNLEFTCURLYMISSING        "FnMssngLftBrc"
-#define COMPILE_FNLEFTCURLYMISSING_MSG    "Expect '{' before body."
+#define PARSE_FNLEFTCURLYMISSING        "FnMssngLftBrc"
+#define PARSE_FNLEFTCURLYMISSING_MSG    "Expect '{' before body."
 
-#define COMPILE_CALLRGHTPARENMISSING      "CllMssngRgtPrn"
-#define COMPILE_CALLRGHTPARENMISSING_MSG  "Expect ')' after arguments."
+#define PARSE_CALLRGHTPARENMISSING      "CllMssngRgtPrn"
+#define PARSE_CALLRGHTPARENMISSING_MSG  "Expect ')' after arguments."
 
-#define COMPILE_EXPECTCLASSNAME           "ClsNmMssng"
-#define COMPILE_EXPECTCLASSNAME_MSG       "Expect class name."
+#define PARSE_EXPECTCLASSNAME           "ClsNmMssng"
+#define PARSE_EXPECTCLASSNAME_MSG       "Expect class name."
 
-#define COMPILE_CLASSLEFTCURLYMISSING     "ClsMssngLftBrc"
-#define COMPILE_CLASSLEFTCURLYMISSING_MSG "Expect '{' before class body."
+#define PARSE_CLASSLEFTCURLYMISSING     "ClsMssngLftBrc"
+#define PARSE_CLASSLEFTCURLYMISSING_MSG "Expect '{' before class body."
 
-#define COMPILE_CLASSRGHTCURLYMISSING     "ClsMssngRgtBrc"
-#define COMPILE_CLASSRGHTCURLYMISSING_MSG "Expect '}' after class body."
+#define PARSE_CLASSRGHTCURLYMISSING     "ClsMssngRgtBrc"
+#define PARSE_CLASSRGHTCURLYMISSING_MSG "Expect '}' after class body."
 
-#define COMPILE_EXPECTDOTAFTERSUPER       "ExpctDtSpr"
-#define COMPILE_EXPECTDOTAFTERSUPER_MSG   "Expect '.' after 'super'"
+#define PARSE_EXPECTDOTAFTERSUPER       "ExpctDtSpr"
+#define PARSE_EXPECTDOTAFTERSUPER_MSG   "Expect '.' after 'super'"
 
-#define COMPILE_INCOMPLETESTRINGINT       "IntrpIncmp"
-#define COMPILE_INCOMPLETESTRINGINT_MSG   "Incomplete string after interpolation."
+#define PARSE_INCOMPLETESTRINGINT       "IntrpIncmp"
+#define PARSE_INCOMPLETESTRINGINT_MSG   "Incomplete string after interpolation."
 
-#define COMPILE_VARBLANKINDEX             "EmptyIndx"
-#define COMPILE_VARBLANKINDEX_MSG         "Empty capacity in variable declaration."
+#define PARSE_VARBLANKINDEX             "EmptyIndx"
+#define PARSE_VARBLANKINDEX_MSG         "Empty capacity in variable declaration."
 
-#define COMPILE_IMPORTMISSINGNAME         "ImprtMssngNm"
-#define COMPILE_IMPORTMISSINGNAME_MSG     "Import expects a module or file name."
+#define PARSE_IMPORTMISSINGNAME         "ImprtMssngNm"
+#define PARSE_IMPORTMISSINGNAME_MSG     "Import expects a module or file name."
 
-#define COMPILE_IMPORTUNEXPCTDTOK         "ImprtExpctFrAs"
-#define COMPILE_IMPORTUNEXPCTDTOK_MSG     "Import expects a module or file name followed by for or as."
+#define PARSE_IMPORTUNEXPCTDTOK         "ImprtExpctFrAs"
+#define PARSE_IMPORTUNEXPCTDTOK_MSG     "Import expects a module or file name followed by for or as."
 
-#define COMPILE_IMPORTASSYMBL             "ExpctSymblAftrAs"
-#define COMPILE_IMPORTASSYMBL_MSG         "Expect symbol after as in import."
+#define PARSE_IMPORTASSYMBL             "ExpctSymblAftrAs"
+#define PARSE_IMPORTASSYMBL_MSG         "Expect symbol after as in import."
 
-#define COMPILE_IMPORTFORSYMBL            "ExpctSymblAftrFr"
-#define COMPILE_IMPORTFORSYMBL_MSG        "Expect symbol(s) after for in import."
+#define PARSE_IMPORTFORSYMBL            "ExpctSymblAftrFr"
+#define PARSE_IMPORTFORSYMBL_MSG        "Expect symbol(s) after for in import."
 
-#define COMPILE_EXPECTSUPER               "SprNmMssng"
-#define COMPILE_EXPECTSUPER_MSG           "Expect superclass name."
+#define PARSE_EXPECTSUPER               "SprNmMssng"
+#define PARSE_EXPECTSUPER_MSG           "Expect superclass name."
 
 #define PARSE_UNRECGNZEDTOK               "UnrcgnzdTok"
 #define PARSE_UNRECGNZEDTOK_MSG           "Encountered an unrecognized token."

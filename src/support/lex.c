@@ -556,7 +556,7 @@ bool lex(lexer *l, token *tok, error *err) {
 }
 
 /** @brief Initialization/finalization */
-void lexer_initialize(void) {
+void lex_initialize(void) {
     // Ensure standardtokens is sorted; this is then used by default to reduce cost of initializing a lexer.
     int n;
     for (n=0; ; n++) if (standardtokens[n].string == NULL || strlen(standardtokens[n].string)==0) break;
@@ -570,6 +570,6 @@ void lexer_initialize(void) {
     morpho_defineerror(LEXER_UNTERMINATEDSTRING, ERROR_LEX, LEXER_UNTERMINATEDSTRING_MSG);
 }
 
-void lexer_finalize(void) {
+void lex_finalize(void) {
     
 }

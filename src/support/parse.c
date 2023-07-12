@@ -10,109 +10,112 @@
 #include "object.h"
 #include "common.h"
 #include "cmplx.h"
+#include "syntaxtree.h"
 
 /* **********************************************************************
- * Parser
+ * Parser utility functions
  * ********************************************************************** */
 
-/* -------------------------------
- * Initialize a parser
- * ------------------------------- */
-
-/** @brief Initialize a parser
- *  @param p       the parser to initialize
- *  @param lex   lexer to use
- *  @param err   an error structure to fill out if necessary
- *  @param tree Pointer to the output */
-void parse_init(parser *p, lexer *lex, error *err, syntaxtree *tree) {
-    p->current = TOKEN_BLANK;
-    p->previous = TOKEN_BLANK;
-    p->left = SYNTAXTREE_UNCONNECTED;
-    p->lex=lex;
-    p->err=err;
-    p->tree=tree;
-    p->nl=false;
+/** @brief Fills out the error record
+ *  @param p        the parser
+ *  @param use_prev use the previous token? [this is the more typical usage]
+ *  @param id       error id
+ *  @param ...      additional data for sprintf. */
+void parse_error(parser *p, bool use_prev, errorid id, ... ) {
+    va_list args;
+    token *tok = (use_prev ? &p->previous : &p->current);
+    
+    /** Only return the first error that occurs */
+    if (p->err->id!=ERROR_NONE) return;
+    
+    va_start(args, id);
+    morpho_writeerrorwithid(p->err, id, tok->line, tok->posn-tok->length, args);
+    va_end(args);
 }
 
-/* ------------------------------------------
- * Parser implementation functions (parselets)
- * ------------------------------------------- */
+/** @brief Advance the parser by one token
+ *  @param   p the parser in use.
+ *  @returns true on success, false otherwise */
+bool parse_advance(parser *p) {
+    lexer *l = p->lex;
+    
+    p->previous=p->current;
+    p->nl=false;
+    
+    for (;;) {
+        lex(l, &p->current, p->err);
+        
+        /* Skip any newlines encountered */
+        if (p->current.type==TOKEN_NEWLINE) {
+            p->nl=true;
+            continue;
+        }
+        
+        if (p->current.type != TOKEN_ERROR) break;
+        UNREACHABLE("Unhandled error in parser.\n");
+    }
+    
+    return (p->err->cat==ERROR_NONE);
+}
 
-static void parse_error(parser *p, bool use_prev, errorid id, ... );
-static bool parse_advance(parser *p);
-static bool parse_consume(parser *p, tokentype type, errorid id);
-void parse_synchronize(parser *p);
+/** @brief Checks if the next token has the required type, otherwise generates an error.
+ *  @param   p    the parser in use
+ *  @param   type type to check
+ *  @param   id   error id to generate if the token doesn't match
+ *  @returns true on success */
+bool parse_consume(parser *p, tokentype type, errorid id) {
+    if (p->current.type==type) {
+        parse_advance(p);
+        return true;
+    }
+    
+    /* Raise an error */
+    if (id!=ERROR_NONE) parse_error(p, true, id);
+    return false;
+}
 
-/* --- Prototypes --- */
-
-static syntaxtreeindx parse_precedence(parser *p, precedence precendence);
-static syntaxtreeindx parse_expression(parser *p);
-static syntaxtreeindx parse_statement(parser *p);
-static syntaxtreeindx parse_declaration(parser *p);
-static syntaxtreeindx parse_declarationmulti(parser *p, int n, tokentype *end);
-
-static syntaxtreeindx parse_integer(parser *p);
-static syntaxtreeindx parse_number(parser *p);
-static syntaxtreeindx parse_complex(parser *p);
-static syntaxtreeindx parse_bool(parser *p);
-static syntaxtreeindx parse_string(parser *p);
-static syntaxtreeindx parse_dictionary(parser *p);
-static syntaxtreeindx parse_interpolation(parser *p);
-static syntaxtreeindx parse_nil(parser *p);
-static syntaxtreeindx parse_symbol(parser *p);
-static value parse_symbolasvalue(parser *p);
-static syntaxtreeindx parse_self(parser *p);
-static syntaxtreeindx parse_super(parser *p);
-static syntaxtreeindx parse_variable(parser *p, errorid id);
-static syntaxtreeindx parse_grouping(parser *p);
-static syntaxtreeindx parse_unary(parser *p);
-static syntaxtreeindx parse_binary(parser *p);
-static syntaxtreeindx parse_assignby(parser *p);
-static syntaxtreeindx parse_call(parser *p);
-static syntaxtreeindx parse_index(parser *p);
-static syntaxtreeindx parse_list(parser *p);
-static syntaxtreeindx parse_anonymousfunction(parser *p);
-static syntaxtreeindx parse_switch(parser *p);
-
-static syntaxtreeindx parse_vardeclaration(parser *p);
-static syntaxtreeindx parse_functiondeclaration(parser *p);
-static syntaxtreeindx parse_classdeclaration(parser *p);
-static syntaxtreeindx parse_importdeclaration(parser *p);
-
-static syntaxtreeindx parse_printstatement(parser *p);
-static syntaxtreeindx parse_expressionstatement(parser *p);
-static syntaxtreeindx parse_blockstatement(parser *p);
-static syntaxtreeindx parse_ifstatement(parser *p);
-static syntaxtreeindx parse_whilestatement(parser *p);
-static syntaxtreeindx parse_forstatement(parser *p);
-static syntaxtreeindx parse_dostatement(parser *p);
-static syntaxtreeindx parse_breakstatement(parser *p);
-static syntaxtreeindx parse_returnstatement(parser *p);
-static syntaxtreeindx parse_trystatement(parser *p);
-static syntaxtreeindx parse_breakpointstatement(parser *p);
-
-static syntaxtreeindx parse_statementterminator(parser *p);
-
-static parserule *parse_getrule(parser *p, tokentype type);
-
-syntaxtreeindx syntaxtree_addnode(syntaxtree *tree, syntaxtreenodetype type, value content, int line, int posn, syntaxtreeindx left, syntaxtreeindx right);
-
-/* --- Utility functions --- */
+/** @brief Keep parsing til the end of a statement boundary. */
+void parse_synchronize(parser *p) {
+    while (p->current.type!=TOKEN_EOF) {
+        /** Align */
+        if (p->previous.type == TOKEN_SEMICOLON) return;
+        switch (p->current.type) {
+            case TOKEN_PRINT:
+            case TOKEN_IF:
+            case TOKEN_WHILE:
+            case TOKEN_FOR:
+            case TOKEN_DO:
+            case TOKEN_BREAK:
+            case TOKEN_CONTINUE:
+            case TOKEN_RETURN:
+            case TOKEN_TRY:
+                
+            case TOKEN_CLASS:
+            case TOKEN_FUNCTION:
+            case TOKEN_VAR:
+                return;
+            default:
+                ;
+        }
+        
+        parse_advance(p);
+    }
+}
 
 /** Adds a node to the syntax tree. */
-static inline syntaxtreeindx parse_addnode(parser *p, syntaxtreenodetype type, value content, token *tok, syntaxtreeindx left, syntaxtreeindx right) {
+syntaxtreeindx parse_addnode(parser *p, syntaxtreenodetype type, value content, token *tok, syntaxtreeindx left, syntaxtreeindx right) {
     syntaxtreeindx new = syntaxtree_addnode(p->tree, type, content, tok->line, tok->posn, left, right);
     p->left=new; /* Record this for a future infix operator to catch */
     return new;
 }
 
 /** Checks whether the current token matches a specified tokentype */
-static bool parse_checktoken(parser *p, tokentype type) {
+bool parse_checktoken(parser *p, tokentype type) {
     return p->current.type==type;
 }
 
 /** Checks whether the current token matches any of the specified tokentypes */
-static bool parse_checktokenmulti(parser *p, int n, tokentype *type) {
+bool parse_checktokenmulti(parser *p, int n, tokentype *type) {
     for (int i=0; i<n; i++) {
         if (p->current.type==type[i]) return true;
     }
@@ -121,14 +124,14 @@ static bool parse_checktokenmulti(parser *p, int n, tokentype *type) {
 }
 
 /** Checks whether the current token matches a given type and advances if so. */
-static bool parse_matchtoken(parser *p, tokentype type) {
+bool parse_matchtoken(parser *p, tokentype type) {
     if (!parse_checktoken(p, type)) return false;
     parse_advance(p);
     return true;
 }
 
 /** Checks whether a possible statement terminator is next */
-static bool parse_checkstatementterminator(parser *p) {
+bool parse_checkstatementterminator(parser *p) {
     return (parse_checktoken(p, TOKEN_SEMICOLON)
 #ifdef MORPHO_NEWLINETERMINATORS
             || (p->nl)
@@ -139,8 +142,157 @@ static bool parse_checkstatementterminator(parser *p) {
             ) ;
 }
 
+/** Turn a token into a string */
+value parse_stringfromtoken(parser *p, unsigned int start, unsigned int length) {
+    char str[p->previous.length];
+    const char *in=p->previous.start;
+    unsigned int k=0;
+    
+    for (unsigned int i=start; i<length; i++) {
+        if (in[i]!='\\') { // Escape characters
+            str[k]=in[i]; k++;
+        } else {
+            if (i<length-1) switch (in[i+1]) {
+                case 'n':
+                    str[k]='\n'; break;
+                case 't':
+                    str[k]='\t'; break;
+                case 'r':
+                    str[k]='\r'; break;
+                default:
+                    str[k]=in[i+1]; break;
+            }
+            i++; k++;
+        }
+    }
+    
+    return object_stringfromcstring(str, k);
+}
+
+/** Parses a symbol token into a value */
+value parse_symbolasvalue(parser *p) {
+    value s = object_stringfromcstring(p->previous.start, p->previous.length);
+    if (MORPHO_ISNIL(s)) parse_error(p, true, ERROR_ALLOCATIONFAILED, OBJECT_SYMBOLLABEL);
+
+    return s;
+}
+
+parserule *parse_getrule(parser *p, tokentype type);
+
+/* ------------------------------------------
+ * Parser implementation functions (parselets)
+ * ------------------------------------------- */
+
+// Utility functions
+syntaxtreeindx parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs);
+syntaxtreeindx parse_variable(parser *p, errorid id);
+
+// Base parsers for different elements of the grammar
+syntaxtreeindx parse_precedence(parser *p, precedence precendence);
+syntaxtreeindx parse_expression(parser *p);
+syntaxtreeindx parse_pseudoexpression(parser *p);
+syntaxtreeindx parse_statement(parser *p);
+syntaxtreeindx parse_declaration(parser *p);
+syntaxtreeindx parse_declarationmulti(parser *p, int n, tokentype *end);
+
+// Simple literals
+syntaxtreeindx parse_nil(parser *p);
+syntaxtreeindx parse_integer(parser *p);
+syntaxtreeindx parse_number(parser *p);
+syntaxtreeindx parse_complex(parser *p);
+syntaxtreeindx parse_bool(parser *p);
+syntaxtreeindx parse_self(parser *p);
+syntaxtreeindx parse_super(parser *p);
+syntaxtreeindx parse_symbol(parser *p);
+
+// Compound objects
+syntaxtreeindx parse_string(parser *p);
+syntaxtreeindx parse_dictionary(parser *p);
+syntaxtreeindx parse_interpolation(parser *p);
+syntaxtreeindx parse_grouping(parser *p);
+syntaxtreeindx parse_unary(parser *p);
+syntaxtreeindx parse_binary(parser *p);
+syntaxtreeindx parse_assignby(parser *p);
+syntaxtreeindx parse_call(parser *p);
+syntaxtreeindx parse_index(parser *p);
+syntaxtreeindx parse_list(parser *p);
+syntaxtreeindx parse_anonymousfunction(parser *p);
+syntaxtreeindx parse_switch(parser *p);
+
+// Declarations
+syntaxtreeindx parse_vardeclaration(parser *p);
+syntaxtreeindx parse_functiondeclaration(parser *p);
+syntaxtreeindx parse_classdeclaration(parser *p);
+syntaxtreeindx parse_importdeclaration(parser *p);
+
+// Statements
+syntaxtreeindx parse_printstatement(parser *p);
+syntaxtreeindx parse_expressionstatement(parser *p);
+syntaxtreeindx parse_blockstatement(parser *p);
+syntaxtreeindx parse_ifstatement(parser *p);
+syntaxtreeindx parse_whilestatement(parser *p);
+syntaxtreeindx parse_forstatement(parser *p);
+syntaxtreeindx parse_dostatement(parser *p);
+syntaxtreeindx parse_breakstatement(parser *p);
+syntaxtreeindx parse_returnstatement(parser *p);
+syntaxtreeindx parse_trystatement(parser *p);
+syntaxtreeindx parse_breakpointstatement(parser *p);
+
+/* ------------------------------------------
+ * Utility functions for this parser
+ * ------------------------------------------- */
+
+/** @brief Parses an argument list
+ * @param[in]  p     the parser
+ * @param[in]  rightdelimiter  token type that denotes the end of the arguments list
+ * @param[out] nargs the number of arguments
+ * @returns indx of the arguments list
+ * @details Note that the arguments are output in reverse order, i.e. the
+ *          first argument is deepest in the tree. */
+syntaxtreeindx parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs) {
+    syntaxtreeindx prev=SYNTAXTREE_UNCONNECTED, current=SYNTAXTREE_UNCONNECTED;
+    token start = p->current;
+    unsigned int n=0;
+    bool varg=false;
+    
+    if (!parse_checktoken(p, rightdelimiter)) {
+        do {
+            bool vargthis = false;
+            if (parse_matchtoken(p, TOKEN_DOTDOTDOT)) {
+                // If we are trying to index something
+                // then ... represents an open range
+                if (rightdelimiter == TOKEN_RIGHTSQBRACKET) {
+                    
+                } else if (varg) parse_error(p, true, PARSE_ONEVARPR);
+                varg = true; vargthis = true;
+            }
+            
+            current=parse_pseudoexpression(p);
+
+            if (vargthis) current=parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, current);
+            
+            n++;
+            
+            current=parse_addnode(p, NODE_ARGLIST, MORPHO_NIL, &start, prev, current);
+            
+            prev = current;
+        } while (parse_matchtoken(p, TOKEN_COMMA));
+    }
+    
+    /* Output the number of args */
+    if (nargs) *nargs=n;
+    
+    return current;
+}
+
+/** Parses a variable name, or raises and error if a symbol isn't found */
+syntaxtreeindx parse_variable(parser *p, errorid id) {
+    parse_consume(p, TOKEN_SYMBOL, id);
+    return parse_symbol(p);
+}
+
 /** Parse a statement terminator  */
-static syntaxtreeindx parse_statementterminator(parser *p) {
+syntaxtreeindx parse_statementterminator(parser *p) {
     if (parse_checktoken(p, TOKEN_SEMICOLON)) {
         parse_advance(p);
 #ifdef MORPHO_NEWLINETERMINATORS
@@ -153,97 +305,14 @@ static syntaxtreeindx parse_statementterminator(parser *p) {
     return SYNTAXTREE_UNCONNECTED;
 }
 
-/* --- Implementations --- */
+/* ------------------------------------------
+ * Basic literals
+ * ------------------------------------------- */
 
-/** Parses an expression */
-syntaxtreeindx parse_expression(parser *p) {
-    return parse_precedence(p, PREC_ASSIGN);
-}
-
-/** Parses an expression that may include an anonymous function */
-syntaxtreeindx parse_pseudoexpression(parser *p) {
-    if (parse_matchtoken(p, TOKEN_FUNCTION)) {
-        return parse_anonymousfunction(p);
-    } else {
-        return parse_expression(p);
-    }
-}
-
-/** @brief Parse statements
- *  @details Statements are things that are allowed inside control flow statements */
-syntaxtreeindx parse_statement(parser *p) {
-    if (parse_matchtoken(p, TOKEN_PRINT)) {
-        return parse_printstatement(p);
-    } else if (parse_matchtoken(p, TOKEN_IF)) {
-        return parse_ifstatement(p);
-    } else if (parse_matchtoken(p, TOKEN_WHILE)) {
-        return parse_whilestatement(p);
-    } else if (parse_matchtoken(p, TOKEN_FOR)) {
-        return parse_forstatement(p);
-    } else if (parse_matchtoken(p, TOKEN_DO)) {
-        return parse_dostatement(p);
-    } else if (parse_matchtoken(p, TOKEN_BREAK)) {
-        return parse_breakstatement(p);
-    } else if (parse_matchtoken(p, TOKEN_CONTINUE)) {
-        return parse_breakstatement(p);
-    } else if (parse_matchtoken(p, TOKEN_RETURN)) {
-        return parse_returnstatement(p);
-    } else if (parse_matchtoken(p, TOKEN_TRY)) {
-        return parse_trystatement(p);
-    } else if (parse_matchtoken(p, TOKEN_LEFTCURLYBRACKET)) {
-        return parse_blockstatement(p);
-    } else if (parse_matchtoken(p, TOKEN_AT)) {
-        return parse_breakpointstatement(p);
-    } else {
-        return parse_expressionstatement(p);
-    }
-    return SYNTAXTREE_UNCONNECTED;
-}
-
-/** @brief Parse declarations
- *  @details Declarations define something (e.g. a variable or a function) OR
- *           a regular statement. They are *not* allowed in control flow statements. */
-syntaxtreeindx parse_declaration(parser *p) {
-    syntaxtreeindx ret=SYNTAXTREE_UNCONNECTED;
-    
-    if (parse_matchtoken(p, TOKEN_FUNCTION)) {
-        ret=parse_functiondeclaration(p);
-    } else if (parse_matchtoken(p, TOKEN_VAR)) {
-        ret=parse_vardeclaration(p);
-    } else if (parse_matchtoken(p, TOKEN_CLASS)) {
-        ret=parse_classdeclaration(p);
-    } else if (parse_matchtoken(p, TOKEN_IMPORT)) {
-        ret=parse_importdeclaration(p);
-    } else {
-        ret=parse_statement(p);
-    }
-    
-    if (!ERROR_SUCCEEDED(*(p->err))) {
-        parse_synchronize(p);
-    }
-    return ret;
-}
-
-/** Parses multiple declarations, separated by ; separators
- *  @param p    the parser
- *  @param end  token type to terminate on [use TOKEN_EOF if no special terminator]
- *  @returns    the syntaxtreeindx of the parsed expression */
-static syntaxtreeindx parse_declarationmulti(parser *p, int n, tokentype *end) {
-    syntaxtreeindx last=SYNTAXTREE_UNCONNECTED, current=SYNTAXTREE_UNCONNECTED;
-    token start = p->current;
-    
-    while (!parse_checktokenmulti(p, n, end) && !parse_checktoken(p, TOKEN_EOF)) {
-        current=parse_declaration(p);
-        
-        /* If we now have more than one node, insert a sequence node */
-        if (last!=SYNTAXTREE_UNCONNECTED) {
-            current = parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, last, current);
-        }
-        
-        last = current;
-    }
-    
-    return current;
+/** Parses nil */
+syntaxtreeindx parse_nil(parser *p) {
+    return parse_addnode(p, NODE_NIL,
+        MORPHO_NIL, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
 }
 
 /** Parses an integer */
@@ -271,41 +340,35 @@ syntaxtreeindx parse_complex(parser *p) {
 }
 
 /** Parses a bool */
-static syntaxtreeindx parse_bool(parser *p) {
+syntaxtreeindx parse_bool(parser *p) {
     return parse_addnode(p, NODE_BOOL,
         MORPHO_BOOL((p->previous.type==TOKEN_TRUE ? true : false)), &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
 }
 
-/** Turn a token into a string */
-static value parse_stringfromtoken(parser *p, unsigned int start, unsigned int length) {
-    char str[p->previous.length];
-    const char *in=p->previous.start;
-    unsigned int k=0;
-    
-    for (unsigned int i=start; i<length; i++) {
-        if (in[i]!='\\') { // Escape characters
-            str[k]=in[i]; k++;
-        } else {
-            if (i<length-1) switch (in[i+1]) {
-                case 'n':
-                    str[k]='\n'; break;
-                case 't':
-                    str[k]='\t'; break;
-                case 'r':
-                    str[k]='\r'; break;
-                default:
-                    str[k]=in[i+1]; break;
-            }
-            i++; k++;
-        }
-    }
-    
-    return object_stringfromcstring(str, k);
+/** Parses a self token */
+syntaxtreeindx parse_self(parser *p) {
+    return parse_addnode(p, NODE_SELF, MORPHO_NIL, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
 }
 
+/** Parses a super token */
+syntaxtreeindx parse_super(parser *p) {
+    if (!parse_checktoken(p, TOKEN_DOT)) {
+        parse_error(p, false, COMPILE_EXPECTDOTAFTERSUPER);
+    }
+
+    return parse_addnode(p, NODE_SUPER, MORPHO_NIL, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
+}
+
+/** Parses a symbol */
+syntaxtreeindx parse_symbol(parser *p) {
+    value s = object_stringfromcstring(p->previous.start, p->previous.length);
+    if (MORPHO_ISNIL(s)) parse_error(p, true, ERROR_ALLOCATIONFAILED, OBJECT_SYMBOLLABEL);
+
+    return parse_addnode(p, NODE_SYMBOL, s, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
+}
 
 /** Parses a string */
-static syntaxtreeindx parse_string(parser *p) {
+syntaxtreeindx parse_string(parser *p) {
     value s = parse_stringfromtoken(p, 1, p->previous.length-1);
     if (MORPHO_ISNIL(s)) parse_error(p, true, ERROR_ALLOCATIONFAILED, OBJECT_STRINGLABEL);
     return parse_addnode(p, NODE_STRING, s, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
@@ -313,7 +376,7 @@ static syntaxtreeindx parse_string(parser *p) {
 
 /** @brief: Parses a dictionary.
  * @details Dictionaries are a list of key/value pairs,  { key : value, key: value } */
-static syntaxtreeindx parse_dictionary(parser *p) {
+syntaxtreeindx parse_dictionary(parser *p) {
     syntaxtreeindx last=SYNTAXTREE_UNCONNECTED;
     last=parse_addnode(p, NODE_DICTIONARY, MORPHO_NIL, &p->current, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
     
@@ -341,7 +404,7 @@ static syntaxtreeindx parse_dictionary(parser *p) {
 }
 
 /** Parses a string interpolation. */
-static syntaxtreeindx parse_interpolation(parser *p) {
+syntaxtreeindx parse_interpolation(parser *p) {
     token tok = p->previous;
     
     /* First copy the string */
@@ -363,50 +426,8 @@ static syntaxtreeindx parse_interpolation(parser *p) {
     return parse_addnode(p, NODE_INTERPOLATION, s, &tok, left, right);
 }
 
-/** Parses nil */
-static syntaxtreeindx parse_nil(parser *p) {
-    return parse_addnode(p, NODE_NIL,
-        MORPHO_NIL, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
-}
-
-/** Parses a symbol */
-static syntaxtreeindx parse_symbol(parser *p) {
-    value s = object_stringfromcstring(p->previous.start, p->previous.length);
-    if (MORPHO_ISNIL(s)) parse_error(p, true, ERROR_ALLOCATIONFAILED, OBJECT_SYMBOLLABEL);
-
-    return parse_addnode(p, NODE_SYMBOL, s, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
-}
-
-/** Parses a symbol into a value */
-static value parse_symbolasvalue(parser *p) {
-    value s = object_stringfromcstring(p->previous.start, p->previous.length);
-    if (MORPHO_ISNIL(s)) parse_error(p, true, ERROR_ALLOCATIONFAILED, OBJECT_SYMBOLLABEL);
-
-    return s;
-}
-
-/** Parses a variable name, or raises and error if a symbol isn't found */
-static syntaxtreeindx parse_variable(parser *p, errorid id) {
-    parse_consume(p, TOKEN_SYMBOL, id);
-    return parse_symbol(p);
-}
-
-/** Parses a self token */
-static syntaxtreeindx parse_self(parser *p) {
-    return parse_addnode(p, NODE_SELF, MORPHO_NIL, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
-}
-
-/** Parses a super token */
-static syntaxtreeindx parse_super(parser *p) {
-    if (!parse_checktoken(p, TOKEN_DOT)) {
-        parse_error(p, false, COMPILE_EXPECTDOTAFTERSUPER);
-    }
-
-    return parse_addnode(p, NODE_SUPER, MORPHO_NIL, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
-}
-
 /** Parses an expression in parentheses */
-static syntaxtreeindx parse_grouping(parser *p) {
+syntaxtreeindx parse_grouping(parser *p) {
     syntaxtreeindx indx;
     indx = parse_addnode(p, NODE_GROUPING, MORPHO_NIL, &p->previous, parse_expression(p), SYNTAXTREE_UNCONNECTED);
     parse_consume(p, TOKEN_RIGHTPAREN, COMPILE_MISSINGPARENTHESIS);
@@ -414,7 +435,7 @@ static syntaxtreeindx parse_grouping(parser *p) {
 }
 
 /** Parse a unary operator */
-static syntaxtreeindx parse_unary(parser *p) {
+syntaxtreeindx parse_unary(parser *p) {
     token start = p->previous;
     syntaxtreenodetype nodetype=NODE_LEAF;
     
@@ -432,7 +453,7 @@ static syntaxtreeindx parse_unary(parser *p) {
 }
 
 /** Parse a binary operator */
-static syntaxtreeindx parse_binary(parser *p) {
+syntaxtreeindx parse_binary(parser *p) {
     token start = p->previous;
     syntaxtreenodetype nodetype=NODE_LEAF;
     enum {LEFT, RIGHT} assoc = LEFT; /* for left associative operators */
@@ -489,7 +510,7 @@ static syntaxtreeindx parse_binary(parser *p) {
 }
 
 /** Parse operators like +=, -=, *= etc. */
-static syntaxtreeindx parse_assignby(parser *p) {
+syntaxtreeindx parse_assignby(parser *p) {
     token start = p->previous;
     syntaxtreenodetype nodetype=NODE_LEAF;
     
@@ -521,7 +542,7 @@ static syntaxtreeindx parse_assignby(parser *p) {
 }
 
 /** Parses a range */
-static syntaxtreeindx parse_range(parser *p) {
+syntaxtreeindx parse_range(parser *p) {
     token start = p->previous;
     bool inclusive = (start.type==TOKEN_DOTDOT);
     
@@ -543,51 +564,8 @@ static syntaxtreeindx parse_range(parser *p) {
     return out;
 }
 
-/** @brief Parses an argument list
- * @param[in]  p     the parser
- * @param[in]  rightdelimiter  token type that denotes the end of the arguments list
- * @param[out] nargs the number of arguments
- * @returns indx of the arguments list
- * @details Note that the arguments are output in reverse order, i.e. the
- *          first argument is deepest in the tree. */
-static syntaxtreeindx parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs) {
-    syntaxtreeindx prev=SYNTAXTREE_UNCONNECTED, current=SYNTAXTREE_UNCONNECTED;
-    token start = p->current;
-    unsigned int n=0;
-    bool varg=false;
-    
-    if (!parse_checktoken(p, rightdelimiter)) {
-        do {
-            bool vargthis = false;
-            if (parse_matchtoken(p, TOKEN_DOTDOTDOT)) {
-				// If we are trying to index something 
-				// then ... represents an open range
-				if (rightdelimiter == TOKEN_RIGHTSQBRACKET) {
-					
-				} else if (varg) parse_error(p, true, PARSE_ONEVARPR);
-                varg = true; vargthis = true;
-            } 
-            
-            current=parse_pseudoexpression(p);
-
-            if (vargthis) current=parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, current);
-            
-            n++;
-            
-            current=parse_addnode(p, NODE_ARGLIST, MORPHO_NIL, &start, prev, current);
-            
-            prev = current;
-        } while (parse_matchtoken(p, TOKEN_COMMA));
-    }
-    
-    /* Output the number of args */
-    if (nargs) *nargs=n;
-    
-    return current;
-}
-
 /** Parse a function call */
-static syntaxtreeindx parse_call(parser *p) {
+syntaxtreeindx parse_call(parser *p) {
     token start = p->previous;
     syntaxtreeindx left=p->left;
     syntaxtreeindx right;
@@ -610,7 +588,7 @@ static syntaxtreeindx parse_call(parser *p) {
        /          \
   symbol         indices
  */
-static syntaxtreeindx parse_index(parser *p) {
+syntaxtreeindx parse_index(parser *p) {
     token start = p->previous;
     syntaxtreeindx left=p->left;
     syntaxtreeindx right;
@@ -624,7 +602,7 @@ static syntaxtreeindx parse_index(parser *p) {
 }
 
 /** Parse list  */
-static syntaxtreeindx parse_list(parser *p) {
+syntaxtreeindx parse_list(parser *p) {
     unsigned int nindx;
     token start = p->previous;
     
@@ -635,7 +613,7 @@ static syntaxtreeindx parse_list(parser *p) {
 }
 
 /** Parses an anonymous function */
-static syntaxtreeindx parse_anonymousfunction(parser *p) {
+syntaxtreeindx parse_anonymousfunction(parser *p) {
     token start = p->previous;
     syntaxtreeindx args=SYNTAXTREE_UNCONNECTED,
                    body=SYNTAXTREE_UNCONNECTED;
@@ -658,7 +636,7 @@ static syntaxtreeindx parse_anonymousfunction(parser *p) {
 
 /** @brief: Parses a switch block
  * @details Switch blocks are key/statement pairs. Each pair is stored in a NODE_DICTIONARY list */
-static syntaxtreeindx parse_switch(parser *p) {
+syntaxtreeindx parse_switch(parser *p) {
     syntaxtreeindx last=SYNTAXTREE_UNCONNECTED;
     
     while(!parse_matchtoken(p, TOKEN_RIGHTCURLYBRACKET) && !parse_checktoken(p, TOKEN_EOF)) {
@@ -687,7 +665,7 @@ static syntaxtreeindx parse_switch(parser *p) {
  * ------------------------------- */
 
 /** Parses a variable declaration */
-static syntaxtreeindx parse_vardeclaration(parser *p) {
+syntaxtreeindx parse_vardeclaration(parser *p) {
     syntaxtreeindx symbol, initializer, out=SYNTAXTREE_UNCONNECTED, last=SYNTAXTREE_UNCONNECTED;
     
     do {
@@ -718,7 +696,7 @@ static syntaxtreeindx parse_vardeclaration(parser *p) {
 }
 
 /** Parses a function declaration */
-static syntaxtreeindx parse_functiondeclaration(parser *p) {
+syntaxtreeindx parse_functiondeclaration(parser *p) {
     value name=MORPHO_NIL;
     token start = p->previous;
     syntaxtreeindx args=SYNTAXTREE_UNCONNECTED,
@@ -742,7 +720,7 @@ static syntaxtreeindx parse_functiondeclaration(parser *p) {
 }
 
 /* Parses a class declaration */
-static syntaxtreeindx parse_classdeclaration(parser *p) {
+syntaxtreeindx parse_classdeclaration(parser *p) {
     value name=MORPHO_NIL;
     value sname=MORPHO_NIL;
     syntaxtreeindx sclass=SYNTAXTREE_UNCONNECTED;
@@ -799,7 +777,7 @@ static syntaxtreeindx parse_classdeclaration(parser *p) {
  *                    \
  *                   ( items )
  */
-static syntaxtreeindx parse_importdeclaration(parser *p) {
+syntaxtreeindx parse_importdeclaration(parser *p) {
     syntaxtreeindx modulename=SYNTAXTREE_UNCONNECTED, right=SYNTAXTREE_UNCONNECTED;
     token start = p->previous;
     
@@ -839,7 +817,7 @@ static syntaxtreeindx parse_importdeclaration(parser *p) {
  * ------------------------------- */
 
 /** Parse a print statement */
-static syntaxtreeindx parse_printstatement(parser *p) {
+syntaxtreeindx parse_printstatement(parser *p) {
     token start = p->previous;
     syntaxtreeindx left = parse_pseudoexpression(p);
     parse_statementterminator(p);
@@ -847,7 +825,7 @@ static syntaxtreeindx parse_printstatement(parser *p) {
 }
 
 /** Parse an expression statement */
-static syntaxtreeindx parse_expressionstatement(parser *p) {
+syntaxtreeindx parse_expressionstatement(parser *p) {
     syntaxtreeindx out = parse_expression(p);
     parse_statementterminator(p);
     return out;
@@ -859,7 +837,7 @@ static syntaxtreeindx parse_expressionstatement(parser *p) {
  *                    /     \
  *                   -       body
  **/
-static syntaxtreeindx parse_blockstatement(parser *p) {
+syntaxtreeindx parse_blockstatement(parser *p) {
     syntaxtreeindx body = SYNTAXTREE_UNCONNECTED,
                    scope = SYNTAXTREE_UNCONNECTED;
     token start = p->previous;
@@ -878,7 +856,7 @@ static syntaxtreeindx parse_blockstatement(parser *p) {
 }
 
 /** Parse an if statement */
-static syntaxtreeindx parse_ifstatement(parser *p) {
+syntaxtreeindx parse_ifstatement(parser *p) {
     syntaxtreeindx  cond=SYNTAXTREE_UNCONNECTED,
                     then=SYNTAXTREE_UNCONNECTED,
                     els=SYNTAXTREE_UNCONNECTED,
@@ -906,7 +884,7 @@ static syntaxtreeindx parse_ifstatement(parser *p) {
 }
 
 /** Parse a while statement */
-static syntaxtreeindx parse_whilestatement(parser *p) {
+syntaxtreeindx parse_whilestatement(parser *p) {
     syntaxtreeindx  cond=SYNTAXTREE_UNCONNECTED,
                     body=SYNTAXTREE_UNCONNECTED,
                     out=SYNTAXTREE_UNCONNECTED;
@@ -923,7 +901,7 @@ static syntaxtreeindx parse_whilestatement(parser *p) {
 }
 
 /** Parse a for statement. */
-static syntaxtreeindx parse_forstatement(parser *p) {
+syntaxtreeindx parse_forstatement(parser *p) {
     syntaxtreeindx init=SYNTAXTREE_UNCONNECTED, // Initializer
                    cond=SYNTAXTREE_UNCONNECTED, // Condition
                    body=SYNTAXTREE_UNCONNECTED, // Loop body
@@ -1002,7 +980,7 @@ static syntaxtreeindx parse_forstatement(parser *p) {
 }
 
 /** Parses a do...while loop */
-static syntaxtreeindx parse_dostatement(parser *p) {
+syntaxtreeindx parse_dostatement(parser *p) {
     syntaxtreeindx body=SYNTAXTREE_UNCONNECTED, // Loop body
                    cond=SYNTAXTREE_UNCONNECTED; // Condition
     syntaxtreeindx out=SYNTAXTREE_UNCONNECTED;
@@ -1026,7 +1004,7 @@ static syntaxtreeindx parse_dostatement(parser *p) {
 }
 
 /** Parses a break or continue statement */
-static syntaxtreeindx parse_breakstatement(parser *p) {
+syntaxtreeindx parse_breakstatement(parser *p) {
     token start = p->previous;
     
     parse_statementterminator(p);
@@ -1035,7 +1013,7 @@ static syntaxtreeindx parse_breakstatement(parser *p) {
 }
 
 /** Parse a return statement */
-static syntaxtreeindx parse_returnstatement(parser *p) {
+syntaxtreeindx parse_returnstatement(parser *p) {
     token start = p->previous;
     syntaxtreeindx left = SYNTAXTREE_UNCONNECTED;
     
@@ -1052,7 +1030,7 @@ static syntaxtreeindx parse_returnstatement(parser *p) {
         try
       /          \
     body        catch block */
-static syntaxtreeindx parse_trystatement(parser *p) {
+syntaxtreeindx parse_trystatement(parser *p) {
     syntaxtreeindx try=SYNTAXTREE_UNCONNECTED, // Try block
                    catch=SYNTAXTREE_UNCONNECTED; // Catch dictionary
     syntaxtreeindx out=SYNTAXTREE_UNCONNECTED;
@@ -1076,7 +1054,7 @@ static syntaxtreeindx parse_trystatement(parser *p) {
 }
 
 /** Parse a breakpoint statement */
-static syntaxtreeindx parse_breakpointstatement(parser *p) {
+syntaxtreeindx parse_breakpointstatement(parser *p) {
     token start = p->previous;
     
     if (parse_checkstatementterminator(p)) {
@@ -1086,27 +1064,99 @@ static syntaxtreeindx parse_breakpointstatement(parser *p) {
     return parse_addnode(p, NODE_BREAKPOINT, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED);
 }
 
-/** Keep parsing til the end of a statement boundary. */
-void parse_synchronize(parser *p) {
-    while (p->current.type!=TOKEN_EOF) {
-        /** Align */
-        if (p->previous.type == TOKEN_SEMICOLON) return;
-        switch (p->current.type) {
-            case TOKEN_CLASS:
-            case TOKEN_FUNCTION:
-            case TOKEN_VAR:
-            case TOKEN_FOR:
-            case TOKEN_IF:
-            case TOKEN_WHILE:
-            case TOKEN_PRINT:
-            case TOKEN_RETURN:
-                return;
-            default:
-                ;
+/* -------------------------------
+ * Categories of things to parse
+ * ------------------------------- */
+
+/** Parses an expression */
+syntaxtreeindx parse_expression(parser *p) {
+    return parse_precedence(p, PREC_ASSIGN);
+}
+
+/** Parses an expression that may include an anonymous function */
+syntaxtreeindx parse_pseudoexpression(parser *p) {
+    if (parse_matchtoken(p, TOKEN_FUNCTION)) {
+        return parse_anonymousfunction(p);
+    } else {
+        return parse_expression(p);
+    }
+}
+
+/** @brief Parse statements
+ *  @details Statements are things that are allowed inside control flow statements */
+syntaxtreeindx parse_statement(parser *p) {
+    if (parse_matchtoken(p, TOKEN_PRINT)) {
+        return parse_printstatement(p);
+    } else if (parse_matchtoken(p, TOKEN_IF)) {
+        return parse_ifstatement(p);
+    } else if (parse_matchtoken(p, TOKEN_WHILE)) {
+        return parse_whilestatement(p);
+    } else if (parse_matchtoken(p, TOKEN_FOR)) {
+        return parse_forstatement(p);
+    } else if (parse_matchtoken(p, TOKEN_DO)) {
+        return parse_dostatement(p);
+    } else if (parse_matchtoken(p, TOKEN_BREAK)) {
+        return parse_breakstatement(p);
+    } else if (parse_matchtoken(p, TOKEN_CONTINUE)) {
+        return parse_breakstatement(p);
+    } else if (parse_matchtoken(p, TOKEN_RETURN)) {
+        return parse_returnstatement(p);
+    } else if (parse_matchtoken(p, TOKEN_TRY)) {
+        return parse_trystatement(p);
+    } else if (parse_matchtoken(p, TOKEN_LEFTCURLYBRACKET)) {
+        return parse_blockstatement(p);
+    } else if (parse_matchtoken(p, TOKEN_AT)) {
+        return parse_breakpointstatement(p);
+    } else {
+        return parse_expressionstatement(p);
+    }
+    return SYNTAXTREE_UNCONNECTED;
+}
+
+/** @brief Parse declarations
+ *  @details Declarations define something (e.g. a variable or a function) OR
+ *           a regular statement. They are *not* allowed in control flow statements. */
+syntaxtreeindx parse_declaration(parser *p) {
+    syntaxtreeindx ret=SYNTAXTREE_UNCONNECTED;
+    
+    if (parse_matchtoken(p, TOKEN_FUNCTION)) {
+        ret=parse_functiondeclaration(p);
+    } else if (parse_matchtoken(p, TOKEN_VAR)) {
+        ret=parse_vardeclaration(p);
+    } else if (parse_matchtoken(p, TOKEN_CLASS)) {
+        ret=parse_classdeclaration(p);
+    } else if (parse_matchtoken(p, TOKEN_IMPORT)) {
+        ret=parse_importdeclaration(p);
+    } else {
+        ret=parse_statement(p);
+    }
+    
+    if (!ERROR_SUCCEEDED(*(p->err))) {
+        parse_synchronize(p);
+    }
+    return ret;
+}
+
+/** Parses multiple declarations, separated by ; separators
+ *  @param p    the parser
+ *  @param end  token type to terminate on [use TOKEN_EOF if no special terminator]
+ *  @returns    the syntaxtreeindx of the parsed expression */
+syntaxtreeindx parse_declarationmulti(parser *p, int n, tokentype *end) {
+    syntaxtreeindx last=SYNTAXTREE_UNCONNECTED, current=SYNTAXTREE_UNCONNECTED;
+    token start = p->current;
+    
+    while (!parse_checktokenmulti(p, n, end) && !parse_checktoken(p, TOKEN_EOF)) {
+        current=parse_declaration(p);
+        
+        /* If we now have more than one node, insert a sequence node */
+        if (last!=SYNTAXTREE_UNCONNECTED) {
+            current = parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, last, current);
         }
         
-        parse_advance(p);
+        last = current;
     }
+    
+    return current;
 }
 
 /* -------------------------------
@@ -1196,77 +1246,19 @@ parserule rules[] = {
 };
 
 /** Get the rule to parse an element of type tokentype. */
-static parserule *parse_getrule(parser *p, tokentype type) {
+parserule *parse_getrule(parser *p, tokentype type) {
     return &rules[type];
 }
 
 /* -------------------------------
-* Parser implementation functions
-* ------------------------------- */
-
-/** @brief Fills out the error record
- *  @param p        the parser
- *  @param use_prev use the previous token? [this is the more typical usage]
- *  @param id       error id
- *  @param ...      additional data for sprintf. */
-static void parse_error(parser *p, bool use_prev, errorid id, ... ) {
-    va_list args;
-    token *tok = (use_prev ? &p->previous : &p->current);
-    
-    /** Only return the first error that occurs */
-    if (p->err->id!=ERROR_NONE) return;
-    
-    va_start(args, id);
-    morpho_writeerrorwithid(p->err, id, tok->line, tok->posn-tok->length, args);
-    va_end(args);
-}
-
-/** @brief Advance the parser by one token
- *  @param   p the parser in use.
- *  @returns true on success, false otherwise */
-static bool parse_advance(parser *p) {
-    lexer *l = p->lex;
-    
-    p->previous=p->current;
-    p->nl=false;
-    
-    for (;;) {
-        lex(l, &p->current, p->err);
-        
-        /* Skip any newlines encountered */
-        if (p->current.type==TOKEN_NEWLINE) {
-            p->nl=true;
-            continue;
-        }
-        
-        if (p->current.type != TOKEN_ERROR) break;
-        printf("UNHANDLED ERROR.\n");
-    }
-    
-    return (p->err->cat==ERROR_NONE);
-}
-
-/** @brief Checks if the next token has the required type, otherwise generates an error.
- *  @param   p    the parser in use
- *  @param   type type to check
- *  @param   id   error id to generate if the token doesn't match
- *  @returns true on success */
-static bool parse_consume(parser *p, tokentype type, errorid id) {
-    if (p->current.type==type) {
-        parse_advance(p);
-        return true;
-    }
-    
-    /* Raise an error */
-    if (id!=ERROR_NONE) parse_error(p, true, id);
-    return false;
-}
+ * Parser implementation functions
+ * ------------------------------- */
 
 /** @brief Continues parsing while tokens have a lower or equal precendece than a specified value.
  *  @param   p    the parser in use
  *  @param   precendence precedence value to keep below or equal to
  *  @returns syntaxtreeindx for the expression parsed */
-static syntaxtreeindx parse_precedence(parser *p, precedence precendence) {
+syntaxtreeindx parse_precedence(parser *p, precedence precendence) {
     parsefunction prefixrule=NULL, infixrule=NULL;
     syntaxtreeindx result;
     
@@ -1301,6 +1293,28 @@ static syntaxtreeindx parse_precedence(parser *p, precedence precendence) {
 /* **********************************************************************
  * Interface
  * ********************************************************************** */
+
+/** @brief Initialize a parser
+ *  @param p       the parser to initialize
+ *  @param lex   lexer to use
+ *  @param err   an error structure to fill out if necessary
+ *  @param tree Pointer to the output */
+void parse_init(parser *p, lexer *lex, error *err, syntaxtree *tree) {
+    p->current = TOKEN_BLANK;
+    p->previous = TOKEN_BLANK;
+    p->left = SYNTAXTREE_UNCONNECTED;
+    p->lex=lex;
+    p->err=err;
+    p->tree=tree;
+    p->nl=false;
+}
+
+/** @brief Clear a parser */
+void parse_clear(parser *p) {
+    p->current = TOKEN_BLANK;
+    p->previous = TOKEN_BLANK;
+    p->left = SYNTAXTREE_UNCONNECTED;
+}
 
 /** Entry point into the parser */
 bool parse(parser *p) {

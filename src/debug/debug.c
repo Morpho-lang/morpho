@@ -622,7 +622,7 @@ bool debugger_isactive(debugger *d) {
  * Parse commands
  * --------------- */
 
-typedef enum {
+enum {
     DEBUGTOKEN_ASTERISK,
     DEBUGTOKEN_DOT,
     DEBUGTOKEN_EQ,
@@ -651,7 +651,9 @@ typedef enum {
     DEBUGTOKEN_SYMBOL,
     
     DEBUGTOKEN_EOF
-} debugtokentype;
+};
+
+typedef int debugtokentype;
 
 /** List of commands and corresponding token types */
 typedef struct {

@@ -282,7 +282,9 @@ bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, voi
     /* Output the number of args */
     if (nargs) *nargs=n;
     
-    return current;
+    *((syntaxtreeindx *) out)=current;
+    
+    return true;
 }
 
 /** Parses a variable name, or raises and error if a symbol isn't found */

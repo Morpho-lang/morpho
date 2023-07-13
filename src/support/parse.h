@@ -12,11 +12,81 @@
 #include "lex.h"
 #include "syntaxtree.h"
 
-/* **********************************************************************
-* Parser error messages
-* ********************************************************************** */
+/* -------------------------------------------------------
+ * Parser data types
+ * ------------------------------------------------------- */
 
-/* Parser */
+/** Parser type defined below */
+typedef struct sparser parser;
+
+/* -------------------------------------------------------
+ * The parser is defined by parserules that respond to
+ * various token types
+ * ------------------------------------------------------- */
+
+/** @brief an enumerated type that defines precedence order. */
+enum {
+    PREC_NONE,
+    PREC_LOWEST,
+    PREC_ASSIGN,
+    PREC_OR,
+    PREC_AND,
+    PREC_EQUALITY,
+    PREC_COMPARISON,
+    PREC_RANGE,
+    PREC_TERM,
+    PREC_FACTOR,
+    PREC_UNARY,
+    PREC_POW,
+    PREC_CALL,
+    PREC_HIGHEST
+};
+
+/** Precedence order */
+typedef int precedence;
+
+/** @brief Definition of a parse function. */
+typedef bool (*parsefunction) (parser *c, void *out);
+
+/** @brief A parse rule will be defined for each token,
+ * providing functions to parse the token if it is encountered in the
+ * prefix or infix positions. The parse rule also defines the precedence. */
+typedef struct {
+    tokentype type;
+    parsefunction prefix;
+    parsefunction infix;
+    precedence precedence;
+} parserule;
+
+/** @brief Macros used to build a parser definition table
+ *  Each line in the table defines the parserule(s) for a specific token type.  */
+#define PARSERULE_UNUSED(tok)                         { tok, NULL,    NULL,    PREC_NONE }
+#define PARSERULE_PREFIX(tok, fn)                     { tok, fn,      NULL,    PREC_NONE }
+#define PARSERULE_INFIX(tok, fn, prec)                { tok, NULL,    fn,      prec      }
+#define PARSERULE_MIXFIX(tok, unaryfn, infixfn, prec) { tok, unaryfn, infixfn, prec      }
+
+/** Varrays of parse rules */
+DECLARE_VARRAY(parserule, parserule)
+
+/* -------------------------------------------------------
+ * Define a Parser
+ * ------------------------------------------------------- */
+
+/** @brief A structure that defines the state of a parser */
+struct sparser {
+    token current; /** The current token */
+    token previous; /** The previous token */
+    syntaxtreeindx left;
+    lexer *lex; /** Lexer to use */
+    syntaxtree *tree; /** Output */
+    error *err; /** Error structure to output errors to */
+    bool nl; /** Was a newline encountered before the current token? */
+    varray_parserule parsetable;
+};
+
+/* -------------------------------------------------------
+ * Parser error messages
+ * ------------------------------------------------------- */
 
 #define PARSE_INCOMPLETEEXPRESSION      "IncExp"
 #define PARSE_INCOMPLETEEXPRESSION_MSG  "Incomplete expression."
@@ -132,80 +202,23 @@
 #define PARSE_ONEVARPR                    "OneVarPr"
 #define PARSE_ONEVARPR_MSG                "Functions can have only one variadic parameter."
 
-/* **********************************************************************
-* Parser
-* ********************************************************************** */
-
-/** Parser type defined below */
-typedef struct sparser parser;
-
 /* -------------------------------------------------------
- * The parser is defined by parserules that respond to
- * various token types
+ * Interface for writing a custom parser
  * ------------------------------------------------------- */
 
-/** @brief an enumerated type that defines precedence order. */
-enum {
-    PREC_NONE,
-    PREC_LOWEST,
-    PREC_ASSIGN,
-    PREC_OR,
-    PREC_AND,
-    PREC_EQUALITY,
-    PREC_COMPARISON,
-    PREC_RANGE,
-    PREC_TERM,
-    PREC_FACTOR,
-    PREC_UNARY,
-    PREC_POW,
-    PREC_CALL,
-    PREC_HIGHEST
-};
+// Library functions
+void parse_error(parser *p, bool use_prev, errorid id, ... );
+bool parse_advance(parser *p);
+bool parse_checktoken(parser *p, tokentype type);
+bool parse_checktokenmulti(parser *p, int n, tokentype *type);
+bool parse_checktokenadvance(parser *p, tokentype type);
+bool parse_checkrequiredtoken(parser *p, tokentype type, errorid id);
 
-/** Precedence order */
-typedef int precedence;
-
-/** @brief Definition of a parse function. */
-typedef syntaxtreeindx (*parsefunction) (parser *c);
-
-/** @brief A parse rule will be defined for each token,
- * providing functions to parse the token if it is encountered in the
- * prefix or infix positions. The parse rule also defines the precedence. */
-typedef struct {
-    tokentype type;
-    parsefunction prefix;
-    parsefunction infix;
-    precedence precedence;
-} parserule;
-
-/** @brief Macros used to build a parser definition table
- *  Each line in the table defines the parserule(s) for a specific token type.  */
-#define PARSERULE_UNUSED(tok)                         { tok, NULL,    NULL,    PREC_NONE }
-#define PARSERULE_PREFIX(tok, fn)                     { tok, fn,      NULL,    PREC_NONE }
-#define PARSERULE_INFIX(tok, fn, prec)                { tok, NULL,    fn,      prec      }
-#define PARSERULE_MIXFIX(tok, unaryfn, infixfn, prec) { tok, unaryfn, infixfn, prec      }
-
-/** Varrays of parse rules */
-DECLARE_VARRAY(parserule, parserule)
+// Find a parserule for a given tokentype
+parserule *parse_getrule(parser *p, tokentype type);
 
 /* -------------------------------------------------------
- * Define a Parser
- * ------------------------------------------------------- */
-
-/** @brief A structure that defines the state of a parser */
-struct sparser {
-    token current; /** The current token */
-    token previous; /** The previous token */
-    syntaxtreeindx left;
-    lexer *lex; /** Lexer to use */
-    syntaxtree *tree; /** Output */
-    error *err; /** Error structure to output errors to */
-    bool nl; /** Was a newline encountered before the current token? */
-    varray_parserule parsetable;
-};
-
-/* -------------------------------------------------------
- * Prototypes for using a parser
+ * Parser interface
  * ------------------------------------------------------- */
 
 void parse_init(parser *p, lexer *lex, error *err, syntaxtree *tree);

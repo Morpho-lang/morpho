@@ -126,7 +126,7 @@ void syntaxtree_init(syntaxtree *tree);
 void syntaxtree_clear(syntaxtree *tree);
 void syntaxtree_print(syntaxtree *tree);
 
-syntaxtreeindx syntaxtree_addnode(syntaxtree *tree, syntaxtreenodetype type, value content, int line, int posn, syntaxtreeindx left, syntaxtreeindx right);
+bool syntaxtree_addnode(syntaxtree *tree, syntaxtreenodetype type, value content, int line, int posn, syntaxtreeindx left, syntaxtreeindx right, syntaxtreeindx *out);
 
 syntaxtreenode *syntaxtree_nodefromindx(syntaxtree *tree, syntaxtreeindx indx);
 

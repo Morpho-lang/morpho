@@ -1168,6 +1168,15 @@ bool parse_declarationmulti(parser *p, int n, tokentype *end, void *out) {
     return true;
 }
 
+/** Parse a program as a sequence of declarations and statements */
+bool parse_program(parser *p, void *out) {
+    tokentype terminator[] = { TOKEN_EOF };
+    
+    parse_declarationmulti(p, 1, terminator, out);
+    
+    return (p->err->cat==ERROR_NONE);
+}
+
 /* -------------------------------
  * The parser definition table
  * ------------------------------- */
@@ -1326,14 +1335,10 @@ void parse_clear(parser *p) {
     p->left = SYNTAXTREE_UNCONNECTED;
 }
 
-/** Entry point into the parser */
+/** Entry point into the morpho parser */
 bool parse(parser *p) {
     parse_advance(p);
-    tokentype terminator[] = { TOKEN_EOF };
-    
-    parse_declarationmulti(p, 1, terminator, &p->tree->entry);
-    
-    return (p->err->cat==ERROR_NONE);
+    return parse_program(p, &p->tree->entry);
 }
 
 /** Convenience function to parse a string into an array of values

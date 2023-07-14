@@ -131,12 +131,18 @@ value parse_tokenasstring(parser *p) {
 
 /** Adds a node to the syntax tree. */
 bool parse_addnode(parser *p, syntaxtreenodetype type, value content, token *tok, syntaxtreeindx left, syntaxtreeindx right, syntaxtreeindx *out) {
+    syntaxtree *tree = (syntaxtree *) p->out;
     
-    if (!syntaxtree_addnode(p->tree, type, content, tok->line, tok->posn, left, right, out)) return false;
+    if (!syntaxtree_addnode(tree, type, content, tok->line, tok->posn, left, right, out)) return false;
     
     p->left=*out; /* Record this for a future infix operator to catch */
     
     return true;
+}
+
+/** Retrieve a syntaxtree node from an index. */
+syntaxtreenode *parse_lookupnode(parser *p, syntaxtreeindx i) {
+    return syntaxtree_nodefromindx((syntaxtree *) p->out, i);
 }
 
 /* ------------------------------------------
@@ -201,6 +207,43 @@ bool parse_breakpointstatement(parser *p, void *out);
 /* ------------------------------------------
  * Utility functions for this parser
  * ------------------------------------------- */
+
+/** @brief Continues parsing while tokens have a lower or equal precendece than a specified value.
+ *  @param   p    the parser in use
+ *  @param   precendence precedence value to keep below or equal to
+ *  @returns syntaxtreeindx for the expression parsed */
+bool parse_precedence(parser *p, precedence precendence, void *out) {
+    parsefunction prefixrule=NULL, infixrule=NULL;
+    syntaxtreeindx result;
+    
+    parse_advance(p);
+    
+    prefixrule = parse_getrule(p, p->previous.type)->prefix;
+    
+    if (!prefixrule) {
+        parse_error(p, true, PARSE_EXPECTEXPRESSION);
+        return SYNTAXTREE_UNCONNECTED;
+    }
+    
+    prefixrule(p, &result);
+    
+    /* Now keep parsing while the tokens have lower precedence */
+    while (precendence <= parse_getrule(p, p->current.type)->precedence) {
+#ifdef MORPHO_NEWLINETERMINATORS
+        /* Break if a newline is encountered before a function call */
+        if (p->current.type==TOKEN_LEFTPAREN && p->nl) break;
+#endif
+        
+        parse_advance(p);
+        
+        infixrule = parse_getrule(p, p->previous.type)->infix;
+        if (infixrule) infixrule(p, &result);
+        else parse_error(p, true, 0);
+    }
+
+    *((syntaxtreeindx *) out) = result;
+    return true;
+}
 
 /** Checks whether a possible statement terminator is next */
 bool parse_checkstatementterminator(parser *p) {
@@ -567,7 +610,8 @@ bool parse_range(parser *p, void *out) {
     if (parse_checktokenadvance(p, TOKEN_COLON)) {
         syntaxtreeindx step;
         parse_expression(p, &step);
-        if (!inclusive) p->tree->tree.data[right].right=step;
+        
+        if (!inclusive) parse_lookupnode(p, right)->right = step;
         parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, new, step, &new);
     }
     
@@ -1268,47 +1312,6 @@ parserule *parse_getrule(parser *p, tokentype type) {
     return &rules[type];
 }
 
-/* -------------------------------
- * Parser implementation functions
- * ------------------------------- */
-
-/** @brief Continues parsing while tokens have a lower or equal precendece than a specified value.
- *  @param   p    the parser in use
- *  @param   precendence precedence value to keep below or equal to
- *  @returns syntaxtreeindx for the expression parsed */
-bool parse_precedence(parser *p, precedence precendence, void *out) {
-    parsefunction prefixrule=NULL, infixrule=NULL;
-    syntaxtreeindx result;
-    
-    parse_advance(p);
-    
-    prefixrule = parse_getrule(p, p->previous.type)->prefix;
-    
-    if (!prefixrule) {
-        parse_error(p, true, PARSE_EXPECTEXPRESSION);
-        return SYNTAXTREE_UNCONNECTED;
-    }
-    
-    prefixrule(p, &result);
-    
-    /* Now keep parsing while the tokens have lower precedence */
-    while (precendence <= parse_getrule(p, p->current.type)->precedence) {
-#ifdef MORPHO_NEWLINETERMINATORS
-        /* Break if a newline is encountered before a function call */
-        if (p->current.type==TOKEN_LEFTPAREN && p->nl) break;
-#endif
-        
-        parse_advance(p);
-        
-        infixrule = parse_getrule(p, p->previous.type)->infix;
-        if (infixrule) infixrule(p, &result);
-        else parse_error(p, true, 0);
-    }
-
-    *((syntaxtreeindx *) out) = result;
-    return true;
-}
-
 /* **********************************************************************
  * Interface
  * ********************************************************************** */
@@ -1318,13 +1321,13 @@ bool parse_precedence(parser *p, precedence precendence, void *out) {
  *  @param lex   lexer to use
  *  @param err   an error structure to fill out if necessary
  *  @param tree Pointer to the output */
-void parse_init(parser *p, lexer *lex, error *err, syntaxtree *tree) {
+void parse_init(parser *p, lexer *lex, error *err, void *out) {
     p->current = TOKEN_BLANK;
     p->previous = TOKEN_BLANK;
     p->left = SYNTAXTREE_UNCONNECTED;
     p->lex=lex;
     p->err=err;
-    p->tree=tree;
+    p->out=out;
     p->nl=false;
 }
 
@@ -1338,7 +1341,7 @@ void parse_clear(parser *p) {
 /** Entry point into the morpho parser */
 bool parse(parser *p) {
     parse_advance(p);
-    return parse_program(p, &p->tree->entry);
+    return parse_program(p, &((syntaxtree *) p->out)->entry);
 }
 
 /** Convenience function to parse a string into an array of values

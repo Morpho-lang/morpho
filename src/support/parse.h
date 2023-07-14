@@ -78,7 +78,7 @@ struct sparser {
     token previous; /** The previous token */
     syntaxtreeindx left;
     lexer *lex; /** Lexer to use */
-    syntaxtree *tree; /** Output */
+    void *out; /** Output */
     error *err; /** Error structure to output errors to */
     bool nl; /** Was a newline encountered before the current token? */
     varray_parserule parsetable;
@@ -221,7 +221,7 @@ parserule *parse_getrule(parser *p, tokentype type);
  * Parser interface
  * ------------------------------------------------------- */
 
-void parse_init(parser *p, lexer *lex, error *err, syntaxtree *tree);
+void parse_init(parser *p, lexer *lex, error *err, void *out);
 void parse_clear(parser *p);
 
 bool parse(parser *p);

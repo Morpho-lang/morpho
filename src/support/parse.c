@@ -1270,7 +1270,7 @@ parserule rules[] = {
 };
 
 /* **********************************************************************
- * Customize parser
+ * Obtain parse rules
  * ********************************************************************** */
 
 /** Compares two parse rules */
@@ -1279,6 +1279,19 @@ int _parse_parserulecmp(const void *l, const void *r) {
     parserule *b = (parserule *) r;
     return ((int) a->type) - ((int) b->type);
 }
+
+/** Get the rule to parse an element of type tokentype. */
+parserule *parse_getrule(parser *p, tokentype type) {
+    if (p->parsetable.count==0) return &rules[type];
+    
+    parserule key = { .type = type };
+    
+    return bsearch(&key, p->parsetable.data, p->parsetable.count, sizeof(parserule), _parse_parserulecmp);
+}
+
+/* **********************************************************************
+ * Customize parsers
+ * ********************************************************************** */
 
 /** Defines the parse table. */
 bool parse_setparsetable(parser *p, parserule *rules) {
@@ -1293,13 +1306,9 @@ bool parse_setparsetable(parser *p, parserule *rules) {
     qsort(p->parsetable.data, p->parsetable.count, sizeof(parserule), _parse_parserulecmp);
 }
 
-/** Get the rule to parse an element of type tokentype. */
-parserule *parse_getrule(parser *p, tokentype type) {
-    if (p->parsetable.count==0) return &rules[type];
-    
-    parserule key = { .type = type };
-    
-    return bsearch(&key, p->parsetable.data, p->parsetable.count, sizeof(parserule), _parse_parserulecmp);
+/** Sets the parse function to be called to start parsing */
+void parse_setbaseparsefn(parser *p, parsefunction fn) {
+    p->baseparsefn = fn;
 }
 
 /* **********************************************************************
@@ -1319,6 +1328,7 @@ void parse_init(parser *p, lexer *lex, error *err, void *out) {
     p->err=err;
     p->out=out;
     p->nl=false;
+    p->baseparsefn=parse_program;
     varray_parseruleinit(&p->parsetable);
     parse_setparsetable(p, rules);
 }
@@ -1331,11 +1341,15 @@ void parse_clear(parser *p) {
     varray_parseruleclear(&p->parsetable);
 }
 
-/** Entry point into the morpho parser */
+/** Entry point into the parser */
 bool parse(parser *p) {
     parse_advance(p);
-    return parse_program(p, NULL);
+    return (p->baseparsefn) (p, NULL);
 }
+
+/* **********************************************************************
+ * Other useful parsers
+ * ********************************************************************** */
 
 /** Convenience function to parse a string into an array of values
  * @param[in] string - string to parse

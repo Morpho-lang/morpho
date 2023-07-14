@@ -77,11 +77,15 @@ struct sparser {
     token current; /** The current token */
     token previous; /** The previous token */
     syntaxtreeindx left;
+    
     lexer *lex; /** Lexer to use */
     void *out; /** Output */
     error *err; /** Error structure to output errors to */
     bool nl; /** Was a newline encountered before the current token? */
-    varray_parserule parsetable;
+    
+    // Customize parser
+    parsefunction baseparsefn; /** Base parse function */
+    varray_parserule parsetable; /** Table of parse rules */
 };
 
 /* -------------------------------------------------------
@@ -285,10 +289,14 @@ bool parse_switch(parser *p, void *out);
 void parse_init(parser *p, lexer *lex, error *err, void *out);
 void parse_clear(parser *p);
 
+bool parse_setparsetable(parser *p, parserule *rules);
+void parse_setbaseparsefn(parser *p, parsefunction fn);
+
 bool parse(parser *p);
 
 bool parse_stringtovaluearray(char *string, unsigned int nmax, value *v, unsigned int *n, error *err);
 
+// Initialization/finalization
 void parse_initialize(void);
 void parse_finalize(void);
 

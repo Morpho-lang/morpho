@@ -518,10 +518,7 @@ bool lex(lexer *l, token *tok, error *err) {
     
     char c = lex_advance(l);
     if (lex_isalpha(c)) return lex_symbol(l, tok, err);
-    if (lex_isdigit(c) ||
-        (c=='-' && lex_isdigit(lex_peek(l))) ) { // Include leading minus sign in number
-        return lex_number(l, tok, err);
-    }
+    if (lex_isdigit(c)) return lex_number(l, tok, err);
     
     tokentype type = TOKEN_NONE;
     while (lex_matchtoken(l, &type)) lex_next(l); // Try to match the largest token possible

@@ -402,7 +402,9 @@ bool parse_dictionary(parser *p, void *out) {
         }
     } while(!parse_checktokenadvance(p, TOKEN_RIGHTCURLYBRACKET) && !parse_checktoken(p, TOKEN_EOF));
     
-    return last;
+    *((syntaxtreeindx *) out) = last;
+    
+    return true;
 }
 
 /** Parses a string interpolation. */
@@ -986,7 +988,7 @@ bool parse_forstatement(parser *p, void *out) {
         parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, body, final, &loop);
         parse_addnode(p, NODE_WHILE, MORPHO_NIL, &start, cond, loop, &whil);
         parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, init, whil, &seq);
-        parse_addnode(p,NODE_SCOPE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, seq, (syntaxtreeindx *) out);
+        ret=parse_addnode(p, NODE_SCOPE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, seq, (syntaxtreeindx *) out);
     }
     
     return ret;

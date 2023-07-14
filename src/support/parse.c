@@ -61,6 +61,45 @@ bool parse_advance(parser *p) {
     return (p->err->cat==ERROR_NONE);
 }
 
+/** @brief Continues parsing while tokens have a lower or equal precendece than a specified value.
+ *  @param   p    the parser in use
+ *  @param   precendence precedence value to keep below or equal to
+ *  @returns syntaxtreeindx for the expression parsed */
+bool parse_precedence(parser *p, precedence prec, void *out) {
+    parsefunction prefixrule=NULL, infixrule=NULL;
+    
+    parse_advance(p);
+    
+    parserule *rule = parse_getrule(p, p->previous.type);
+    if (rule) prefixrule = rule->prefix;
+    
+    if (!rule || !prefixrule) {
+        parse_error(p, true, PARSE_EXPECTEXPRESSION);
+        return SYNTAXTREE_UNCONNECTED;
+    }
+    
+    prefixrule(p, out);
+    
+    /* Now keep parsing while the tokens have lower precedence */
+    rule=parse_getrule(p, p->current.type);
+    while (rule!=NULL && prec <= rule->precedence) {
+#ifdef MORPHO_NEWLINETERMINATORS
+        /* Break if a newline is encountered before a function call */
+        if (p->current.type==TOKEN_LEFTPAREN && p->nl) break;
+#endif
+        
+        parse_advance(p);
+        
+        infixrule = parse_getrule(p, p->previous.type)->infix;
+        if (infixrule) infixrule(p, out);
+        else parse_error(p, true, 0);
+        
+        rule=parse_getrule(p, p->current.type);
+    }
+
+    return true;
+}
+
 /** Checks whether the current token matches a specified tokentype */
 bool parse_checktoken(parser *p, tokentype type) {
     return p->current.type==type;
@@ -152,9 +191,6 @@ syntaxtreenode *parse_lookupnode(parser *p, syntaxtreeindx i) {
  * Parser implementation functions (parselets)
  * ------------------------------------------- */
 
-// Utility functions
-bool parse_precedence(parser *p, precedence precendence, void *out);
-
 bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, void *out);
 bool parse_variable(parser *p, errorid id, void *out);
 bool parse_statementterminator(parser *p);
@@ -164,47 +200,6 @@ void parse_synchronize(parser *p);
 /* ------------------------------------------
  * Utility functions for this parser
  * ------------------------------------------- */
-
-/** @brief Continues parsing while tokens have a lower or equal precendece than a specified value.
- *  @param   p    the parser in use
- *  @param   precendence precedence value to keep below or equal to
- *  @returns syntaxtreeindx for the expression parsed */
-bool parse_precedence(parser *p, precedence prec, void *out) {
-    parsefunction prefixrule=NULL, infixrule=NULL;
-    syntaxtreeindx result;
-    
-    parse_advance(p);
-    
-    parserule *rule = parse_getrule(p, p->previous.type);
-    if (rule) prefixrule = rule->prefix;
-    
-    if (!rule || !prefixrule) {
-        parse_error(p, true, PARSE_EXPECTEXPRESSION);
-        return SYNTAXTREE_UNCONNECTED;
-    }
-    
-    prefixrule(p, &result);
-    
-    /* Now keep parsing while the tokens have lower precedence */
-    rule=parse_getrule(p, p->current.type);
-    while (rule!=NULL && prec <= rule->precedence) {
-#ifdef MORPHO_NEWLINETERMINATORS
-        /* Break if a newline is encountered before a function call */
-        if (p->current.type==TOKEN_LEFTPAREN && p->nl) break;
-#endif
-        
-        parse_advance(p);
-        
-        infixrule = parse_getrule(p, p->previous.type)->infix;
-        if (infixrule) infixrule(p, &result);
-        else parse_error(p, true, 0);
-        
-        rule=parse_getrule(p, p->current.type);
-    }
-
-    *((syntaxtreeindx *) out) = result;
-    return true;
-}
 
 /** @brief Parses an argument list
  * @param[in]  p     the parser

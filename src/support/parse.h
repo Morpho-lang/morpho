@@ -213,6 +213,7 @@ struct sparser {
 // Library functions
 void parse_error(parser *p, bool use_prev, errorid id, ... );
 bool parse_advance(parser *p);
+bool parse_precedence(parser *p, precedence prec, void *out);
 bool parse_checktoken(parser *p, tokentype type);
 bool parse_checktokenmulti(parser *p, int n, tokentype *type);
 bool parse_checktokenadvance(parser *p, tokentype type);

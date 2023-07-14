@@ -175,9 +175,10 @@ bool parse_precedence(parser *p, precedence prec, void *out) {
     
     parse_advance(p);
     
-    prefixrule = parse_getrule(p, p->previous.type)->prefix;
+    parserule *rule = parse_getrule(p, p->previous.type);
+    if (rule) prefixrule = rule->prefix;
     
-    if (!prefixrule) {
+    if (!rule || !prefixrule) {
         parse_error(p, true, PARSE_EXPECTEXPRESSION);
         return SYNTAXTREE_UNCONNECTED;
     }
@@ -185,7 +186,7 @@ bool parse_precedence(parser *p, precedence prec, void *out) {
     prefixrule(p, &result);
     
     /* Now keep parsing while the tokens have lower precedence */
-    parserule *rule=parse_getrule(p, p->current.type);
+    rule=parse_getrule(p, p->current.type);
     while (rule!=NULL && prec <= rule->precedence) {
 #ifdef MORPHO_NEWLINETERMINATORS
         /* Break if a newline is encountered before a function call */

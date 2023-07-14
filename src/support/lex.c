@@ -94,7 +94,7 @@ int nstandardtokens;
  * ********************************************************************** */
 
 /** Compare two token definitions */
-int _lex_matchtokndefn(const void *ldefn, const void *rdefn) {
+int _lex_tokndefncmp(const void *ldefn, const void *rdefn) {
     tokendefn *a = (tokendefn *) ldefn;
     tokendefn *b = (tokendefn *) rdefn;
     
@@ -102,7 +102,7 @@ int _lex_matchtokndefn(const void *ldefn, const void *rdefn) {
 }
 
 /** Compare a string  with the contents of a token definition */
-int _lex_matchtokendefnwithstring(const void *lstr, const void *rdefn) {
+int _lex_tokendefnwithstringcmp(const void *lstr, const void *rdefn) {
     char *a = (char *) lstr;
     tokendefn *b = (tokendefn *) rdefn;
     
@@ -110,7 +110,7 @@ int _lex_matchtokendefnwithstring(const void *lstr, const void *rdefn) {
 }
 
 /** Compare the contents of a token with the contents of a token definition */
-int _lex_matchtokendefnwithtoken(const void *ltok, const void *rdefn) {
+int _lex_tokendefnwithtokencmp(const void *ltok, const void *rdefn) {
     token *tok = (token *) ltok;
     tokendefn *b = (tokendefn *) rdefn;
     
@@ -170,7 +170,7 @@ void lex_clear(lexer *l) {
 bool lex_matchtoken(lexer *l, tokentype *type) {
     token tok = { .start = l->start, .length = (int) (l->current - l->start) };
 
-    tokendefn *def = bsearch(&tok, l->defns, l->ndefns, sizeof(tokendefn), _lex_matchtokendefnwithtoken);
+    tokendefn *def = bsearch(&tok, l->defns, l->ndefns, sizeof(tokendefn), _lex_tokendefnwithtokencmp);
     
     if (def && type) *type = def->type;
     
@@ -483,7 +483,7 @@ void lex_settokendefns(lexer *l, tokendefn *defns) {
     l->defns=l->defnstore.data;
     l->ndefns=n;
     
-    qsort(l->defns, l->ndefns, sizeof(tokendefn), _lex_matchtokndefn);
+    qsort(l->defns, l->ndefns, sizeof(tokendefn), _lex_tokndefncmp);
 }
 
 /** @brief Choose whether the lexer should perform string interpolation. */
@@ -557,7 +557,7 @@ void lex_initialize(void) {
     // Ensure standardtokens is sorted; this is then used by default to reduce cost of initializing a lexer.
     int n;
     for (n=0; ; n++) if (standardtokens[n].string == NULL || strlen(standardtokens[n].string)==0) break;
-    qsort(standardtokens, n, sizeof(tokendefn), _lex_matchtokndefn);
+    qsort(standardtokens, n, sizeof(tokendefn), _lex_tokndefncmp);
     
     // Retain the number of standardtokens
     nstandardtokens = n;

@@ -213,9 +213,70 @@ bool parse_checktoken(parser *p, tokentype type);
 bool parse_checktokenmulti(parser *p, int n, tokentype *type);
 bool parse_checktokenadvance(parser *p, tokentype type);
 bool parse_checkrequiredtoken(parser *p, tokentype type, errorid id);
+value parse_stringfromtoken(parser *p, unsigned int start, unsigned int length);
+value parse_tokenasstring(parser *p);
+
+// Functions for use when out is a syntaxtree
+bool parse_addnode(parser *p, syntaxtreenodetype type, value content, token *tok, syntaxtreeindx left, syntaxtreeindx right, syntaxtreeindx *out);
+syntaxtreenode *parse_lookupnode(parser *p, syntaxtreeindx i);
 
 // Find a parserule for a given tokentype
 parserule *parse_getrule(parser *p, tokentype type);
+
+/* -------------------------------------------------------
+ * Morpho parse rules
+ * ------------------------------------------------------- */
+
+// Fundamental parse rules
+bool parse_expression(parser *p, void *out);
+bool parse_pseudoexpression(parser *p, void *out);
+bool parse_statement(parser *p, void *out);
+bool parse_declaration(parser *p, void *out);
+bool parse_declarationmulti(parser *p, int n, tokentype *end, void *out);
+bool parse_program(parser *p, void *out);
+
+// Declarations
+bool parse_vardeclaration(parser *p, void *out);
+bool parse_functiondeclaration(parser *p, void *out);
+bool parse_classdeclaration(parser *p, void *out);
+bool parse_importdeclaration(parser *p, void *out);
+
+// Statements
+bool parse_printstatement(parser *p, void *out);
+bool parse_expressionstatement(parser *p, void *out);
+bool parse_blockstatement(parser *p, void *out);
+bool parse_ifstatement(parser *p, void *out);
+bool parse_whilestatement(parser *p, void *out);
+bool parse_forstatement(parser *p, void *out);
+bool parse_dostatement(parser *p, void *out);
+bool parse_breakstatement(parser *p, void *out);
+bool parse_returnstatement(parser *p, void *out);
+bool parse_trystatement(parser *p, void *out);
+bool parse_breakpointstatement(parser *p, void *out);
+
+// Simple literals
+bool parse_nil(parser *p, void *out);
+bool parse_integer(parser *p, void *out);
+bool parse_number(parser *p, void *out);
+bool parse_complex(parser *p, void *out);
+bool parse_bool(parser *p, void *out);
+bool parse_self(parser *p, void *out);
+bool parse_super(parser *p, void *out);
+bool parse_symbol(parser *p, void *out);
+
+// Compound objects
+bool parse_string(parser *p, void *out);
+bool parse_dictionary(parser *p, void *out);
+bool parse_interpolation(parser *p, void *out);
+bool parse_grouping(parser *p, void *out);
+bool parse_unary(parser *p, void *out);
+bool parse_binary(parser *p, void *out);
+bool parse_assignby(parser *p, void *out);
+bool parse_call(parser *p, void *out);
+bool parse_index(parser *p, void *out);
+bool parse_list(parser *p, void *out);
+bool parse_anonymousfunction(parser *p, void *out);
+bool parse_switch(parser *p, void *out);
 
 /* -------------------------------------------------------
  * Parser interface

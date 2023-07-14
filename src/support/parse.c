@@ -12,6 +12,9 @@
 #include "cmplx.h"
 #include "syntaxtree.h"
 
+/** Varrays of parse rules */
+DEFINE_VARRAY(parserule, parserule)
+
 /* **********************************************************************
  * Parser utility functions
  * ********************************************************************** */
@@ -94,7 +97,7 @@ bool parse_checkrequiredtoken(parser *p, tokentype type, errorid id) {
     return false;
 }
 
-/** Turn a token into a string */
+/** Turn a token into a string, parsing escape characters */
 value parse_stringfromtoken(parser *p, unsigned int start, unsigned int length) {
     char str[p->previous.length];
     const char *in=p->previous.start;
@@ -121,7 +124,7 @@ value parse_stringfromtoken(parser *p, unsigned int start, unsigned int length) 
     return object_stringfromcstring(str, k);
 }
 
-/** Parses a symbol token into a value */
+/** Parses a symbol token into a value with no processing. */
 value parse_tokenasstring(parser *p) {
     value s = object_stringfromcstring(p->previous.start, p->previous.length);
     if (MORPHO_ISNIL(s)) parse_error(p, true, ERROR_ALLOCATIONFAILED, OBJECT_SYMBOLLABEL);
@@ -150,59 +153,13 @@ syntaxtreenode *parse_lookupnode(parser *p, syntaxtreeindx i) {
  * ------------------------------------------- */
 
 // Utility functions
+bool parse_precedence(parser *p, precedence precendence, void *out);
+
 bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, void *out);
 bool parse_variable(parser *p, errorid id, void *out);
-
-// Base parsers for different elements of the grammar
-bool parse_precedence(parser *p, precedence precendence, void *out);
-bool parse_expression(parser *p, void *out);
-bool parse_pseudoexpression(parser *p, void *out);
-bool parse_statement(parser *p, void *out);
-bool parse_declaration(parser *p, void *out);
-bool parse_declarationmulti(parser *p, int n, tokentype *end, void *out);
-
-// Simple literals
-bool parse_nil(parser *p, void *out);
-bool parse_integer(parser *p, void *out);
-bool parse_number(parser *p, void *out);
-bool parse_complex(parser *p, void *out);
-bool parse_bool(parser *p, void *out);
-bool parse_self(parser *p, void *out);
-bool parse_super(parser *p, void *out);
-bool parse_symbol(parser *p, void *out);
-
-// Compound objects
-bool parse_string(parser *p, void *out);
-bool parse_dictionary(parser *p, void *out);
-bool parse_interpolation(parser *p, void *out);
-bool parse_grouping(parser *p, void *out);
-bool parse_unary(parser *p, void *out);
-bool parse_binary(parser *p, void *out);
-bool parse_assignby(parser *p, void *out);
-bool parse_call(parser *p, void *out);
-bool parse_index(parser *p, void *out);
-bool parse_list(parser *p, void *out);
-bool parse_anonymousfunction(parser *p, void *out);
-bool parse_switch(parser *p, void *out);
-
-// Declarations
-bool parse_vardeclaration(parser *p, void *out);
-bool parse_functiondeclaration(parser *p, void *out);
-bool parse_classdeclaration(parser *p, void *out);
-bool parse_importdeclaration(parser *p, void *out);
-
-// Statements
-bool parse_printstatement(parser *p, void *out);
-bool parse_expressionstatement(parser *p, void *out);
-bool parse_blockstatement(parser *p, void *out);
-bool parse_ifstatement(parser *p, void *out);
-bool parse_whilestatement(parser *p, void *out);
-bool parse_forstatement(parser *p, void *out);
-bool parse_dostatement(parser *p, void *out);
-bool parse_breakstatement(parser *p, void *out);
-bool parse_returnstatement(parser *p, void *out);
-bool parse_trystatement(parser *p, void *out);
-bool parse_breakpointstatement(parser *p, void *out);
+bool parse_statementterminator(parser *p);
+bool parse_checkstatementterminator(parser *p);
+void parse_synchronize(parser *p);
 
 /* ------------------------------------------
  * Utility functions for this parser
@@ -212,7 +169,7 @@ bool parse_breakpointstatement(parser *p, void *out);
  *  @param   p    the parser in use
  *  @param   precendence precedence value to keep below or equal to
  *  @returns syntaxtreeindx for the expression parsed */
-bool parse_precedence(parser *p, precedence precendence, void *out) {
+bool parse_precedence(parser *p, precedence prec, void *out) {
     parsefunction prefixrule=NULL, infixrule=NULL;
     syntaxtreeindx result;
     
@@ -228,7 +185,8 @@ bool parse_precedence(parser *p, precedence precendence, void *out) {
     prefixrule(p, &result);
     
     /* Now keep parsing while the tokens have lower precedence */
-    while (precendence <= parse_getrule(p, p->current.type)->precedence) {
+    parserule *rule=parse_getrule(p, p->current.type);
+    while (rule!=NULL && prec <= rule->precedence) {
 #ifdef MORPHO_NEWLINETERMINATORS
         /* Break if a newline is encountered before a function call */
         if (p->current.type==TOKEN_LEFTPAREN && p->nl) break;
@@ -239,50 +197,12 @@ bool parse_precedence(parser *p, precedence precendence, void *out) {
         infixrule = parse_getrule(p, p->previous.type)->infix;
         if (infixrule) infixrule(p, &result);
         else parse_error(p, true, 0);
+        
+        rule=parse_getrule(p, p->current.type);
     }
 
     *((syntaxtreeindx *) out) = result;
     return true;
-}
-
-/** Checks whether a possible statement terminator is next */
-bool parse_checkstatementterminator(parser *p) {
-    return (parse_checktoken(p, TOKEN_SEMICOLON)
-#ifdef MORPHO_NEWLINETERMINATORS
-            || (p->nl)
-            || parse_checktoken(p, TOKEN_EOF)
-            || parse_checktoken(p, TOKEN_RIGHTCURLYBRACKET)
-#endif
-            || parse_checktoken(p, TOKEN_IN)
-            ) ;
-}
-
-/** @brief Keep parsing til the end of a statement boundary. */
-void parse_synchronize(parser *p) {
-    while (p->current.type!=TOKEN_EOF) {
-        /** Align */
-        if (p->previous.type == TOKEN_SEMICOLON) return;
-        switch (p->current.type) {
-            case TOKEN_PRINT:
-            case TOKEN_IF:
-            case TOKEN_WHILE:
-            case TOKEN_FOR:
-            case TOKEN_DO:
-            case TOKEN_BREAK:
-            case TOKEN_CONTINUE:
-            case TOKEN_RETURN:
-            case TOKEN_TRY:
-                
-            case TOKEN_CLASS:
-            case TOKEN_FUNCTION:
-            case TOKEN_VAR:
-                return;
-            default:
-                ;
-        }
-        
-        parse_advance(p);
-    }
 }
 
 /** @brief Parses an argument list
@@ -337,7 +257,7 @@ bool parse_variable(parser *p, errorid id, void *out) {
 }
 
 /** Parse a statement terminator  */
-syntaxtreeindx parse_statementterminator(parser *p) {
+bool parse_statementterminator(parser *p) {
     if (parse_checktoken(p, TOKEN_SEMICOLON)) {
         parse_advance(p);
 #ifdef MORPHO_NEWLINETERMINATORS
@@ -347,7 +267,47 @@ syntaxtreeindx parse_statementterminator(parser *p) {
     } else {
         parse_error(p, true, PARSE_MISSINGSEMICOLONEXP);
     }
-    return SYNTAXTREE_UNCONNECTED;
+    return true;
+}
+
+/** Checks whether a possible statement terminator is next */
+bool parse_checkstatementterminator(parser *p) {
+    return (parse_checktoken(p, TOKEN_SEMICOLON)
+#ifdef MORPHO_NEWLINETERMINATORS
+            || (p->nl)
+            || parse_checktoken(p, TOKEN_EOF)
+            || parse_checktoken(p, TOKEN_RIGHTCURLYBRACKET)
+#endif
+            || parse_checktoken(p, TOKEN_IN)
+            ) ;
+}
+
+/** @brief Keep parsing til the end of a statement boundary. */
+void parse_synchronize(parser *p) {
+    while (p->current.type!=TOKEN_EOF) {
+        /** Align */
+        if (p->previous.type == TOKEN_SEMICOLON) return;
+        switch (p->current.type) {
+            case TOKEN_PRINT:
+            case TOKEN_IF:
+            case TOKEN_WHILE:
+            case TOKEN_FOR:
+            case TOKEN_DO:
+            case TOKEN_BREAK:
+            case TOKEN_CONTINUE:
+            case TOKEN_RETURN:
+            case TOKEN_TRY:
+                
+            case TOKEN_CLASS:
+            case TOKEN_FUNCTION:
+            case TOKEN_VAR:
+                return;
+            default:
+                ;
+        }
+        
+        parse_advance(p);
+    }
 }
 
 /* ------------------------------------------
@@ -1216,14 +1176,14 @@ bool parse_declarationmulti(parser *p, int n, tokentype *end, void *out) {
 bool parse_program(parser *p, void *out) {
     tokentype terminator[] = { TOKEN_EOF };
     
-    parse_declarationmulti(p, 1, terminator, out);
+    parse_declarationmulti(p, 1, terminator, &((syntaxtree *) p->out)->entry);
     
     return (p->err->cat==ERROR_NONE);
 }
 
-/* -------------------------------
- * The parser definition table
- * ------------------------------- */
+/* **********************************************************************
+ * Parser definition table for morpho grammar
+ * ********************************************************************** */
 
 parserule rules[] = {
     PARSERULE_UNUSED(TOKEN_NEWLINE),
@@ -1304,12 +1264,41 @@ parserule rules[] = {
     
     PARSERULE_UNUSED(TOKEN_INCOMPLETE), 
     PARSERULE_UNUSED(TOKEN_ERROR),
-    PARSERULE_UNUSED(TOKEN_EOF)
+    PARSERULE_UNUSED(TOKEN_EOF),
+    PARSERULE_UNUSED(TOKEN_NONE)
 };
+
+/* **********************************************************************
+ * Customize parser
+ * ********************************************************************** */
+
+/** Compares two parse rules */
+int _parse_parserulecmp(const void *l, const void *r) {
+    parserule *a = (parserule *) l;
+    parserule *b = (parserule *) r;
+    return ((int) a->type) - ((int) b->type);
+}
+
+/** Defines the parse table. */
+bool parse_setparsetable(parser *p, parserule *rules) {
+    varray_parseruleclear(&p->parsetable);
+    
+    for (int i=0; rules[i].type!=TOKEN_NONE; i++) {
+        if (rules[i].prefix!=NULL || rules[i].infix!=NULL) {
+            if (!varray_parseruleadd(&p->parsetable, &rules[i], 1)) return false;
+        }
+    }
+    
+    qsort(p->parsetable.data, p->parsetable.count, sizeof(parserule), _parse_parserulecmp);
+}
 
 /** Get the rule to parse an element of type tokentype. */
 parserule *parse_getrule(parser *p, tokentype type) {
-    return &rules[type];
+    if (p->parsetable.count==0) return &rules[type];
+    
+    parserule key = { .type = type };
+    
+    return bsearch(&key, p->parsetable.data, p->parsetable.count, sizeof(parserule), _parse_parserulecmp);
 }
 
 /* **********************************************************************
@@ -1329,6 +1318,8 @@ void parse_init(parser *p, lexer *lex, error *err, void *out) {
     p->err=err;
     p->out=out;
     p->nl=false;
+    varray_parseruleinit(&p->parsetable);
+    parse_setparsetable(p, rules);
 }
 
 /** @brief Clear a parser */
@@ -1336,12 +1327,13 @@ void parse_clear(parser *p) {
     p->current = TOKEN_BLANK;
     p->previous = TOKEN_BLANK;
     p->left = SYNTAXTREE_UNCONNECTED;
+    varray_parseruleclear(&p->parsetable);
 }
 
 /** Entry point into the morpho parser */
 bool parse(parser *p) {
     parse_advance(p);
-    return parse_program(p, &((syntaxtree *) p->out)->entry);
+    return parse_program(p, NULL);
 }
 
 /** Convenience function to parse a string into an array of values

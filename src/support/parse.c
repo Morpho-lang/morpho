@@ -1437,7 +1437,7 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_ONEVARPR, ERROR_PARSE, PARSE_ONEVARPR_MSG);
     morpho_defineerror(PARSE_CATCHLEFTCURLYMISSING, ERROR_PARSE, PARSE_CATCHLEFTCURLYMISSING_MSG);
     
-    json_parse();
+    //json_parse();
 }
 
 void parse_finalize(void) {
@@ -1463,17 +1463,17 @@ enum {
 };
 
 tokendefn jsontokens[] = {
-    { "{",          JSON_LEFTCURLYBRACE         },
-    { "}",          JSON_RIGHTCURLYBRACE        },
-    { "[",          JSON_LEFTSQUAREBRACE        },
-    { "]",          JSON_RIGHTSQUAREBRACE       },
-    { ",",          JSON_COMMA                  },
-    { ":",          JSON_COLON                  },
-    { "\"",         JSON_QUOTE                  },
-    { "true",       JSON_TRUE                   },
-    { "false",      JSON_FALSE                  },
-    { "null",       JSON_NULL                   },
-    { "",           TOKEN_NONE                  }
+    { "{",          JSON_LEFTCURLYBRACE         , NULL },
+    { "}",          JSON_RIGHTCURLYBRACE        , NULL },
+    { "[",          JSON_LEFTSQUAREBRACE        , NULL },
+    { "]",          JSON_RIGHTSQUAREBRACE       , NULL },
+    { ",",          JSON_COMMA                  , NULL },
+    { ":",          JSON_COLON                  , NULL },
+    { "\"",         JSON_QUOTE                  , NULL },
+    { "true",       JSON_TRUE                   , NULL },
+    { "false",      JSON_FALSE                  , NULL },
+    { "null",       JSON_NULL                   , NULL },
+    { "",           TOKEN_NONE                  , NULL }
 };
 
 bool json_parsevalue(parser *p, void *out);
@@ -1555,7 +1555,6 @@ void json_parse(void) {
     lex_init(&l, test, 0);
     lex_settokendefns(&l, jsontokens);
     lex_seteof(&l, JSON_EOF);
-    lex_setspecialtokens(&l, false);
 
     parser p;
     parse_init(&p, &l, &err, &out);

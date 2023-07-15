@@ -13,6 +13,8 @@
 
 /** The lexer breaks an input stream into tokens, classifying them as it goes. */
 
+typedef struct slexer lexer;
+
 /* -------------------------------------------------------
  * Tokens
  * ------------------------------------------------------- */
@@ -36,12 +38,20 @@ typedef struct {
 #define TOKEN_BLANK ((token) {.type=TOKEN_NONE, .start=NULL, .length=0, .line=0, .posn=0} )
 
 /* -------------------------------------------------------
+ * Token processing functions
+ * ------------------------------------------------------- */
+
+/** Token processing functions are called after recording it. */
+typedef bool (* processtokenfn) (lexer *l, token *tok, error *err);
+
+/* -------------------------------------------------------
  * Token definitions
  * ------------------------------------------------------- */
 
 typedef struct {
-    char *string;
-    tokentype type;
+    char *string; // String defining the token
+    tokentype type; // Token type
+    processtokenfn processfn; // Optional processfunction to call
 } tokendefn;
 
 DECLARE_VARRAY(tokendefn, tokendefn);
@@ -80,6 +90,8 @@ enum {
     TOKEN_HASH,
     TOKEN_AT,
     
+    /* Other symbols */
+    TOKEN_QUOTE,
     TOKEN_DOT,
     TOKEN_DOTDOT,
     TOKEN_DOTDOTDOT,
@@ -110,7 +122,7 @@ enum {
  * ------------------------------------------------------- */
 
 /** @brief Store the current configuration of a lexer */
-typedef struct {
+struct slexer {
     const char* start; /** Starting point to lex */
     const char* current; /** Current point */
     int line; /** Line number */
@@ -118,7 +130,6 @@ typedef struct {
     
     bool matchkeywords; /** Whether to match keywords or not; default is true */
     bool stringinterpolation; /** Whether to perform string interpolation */
-    bool specialtokens; /** Whether to process special tokens */
     tokentype eoftype; /** End of file marker */
     
     int interpolationlevel; /** Level of string interpolation */
@@ -127,17 +138,24 @@ typedef struct {
     int ndefns; /** Number of token defintions in use */
     
     varray_tokendefn defnstore; /** Used to hold custom tokens */
-} lexer;
+} ;
 
 /* -------------------------------------------------------
  * Lex error messages
  * ------------------------------------------------------- */
+
+#define LEXER_UNRECOGNIZEDTOKEN         "UnrgnzdTkn"
+#define LEXER_UNRECOGNIZEDTOKEN_MSG     "Unrecognized token."
 
 #define LEXER_UNTERMINATEDCOMMENT       "UntrmComm"
 #define LEXER_UNTERMINATEDCOMMENT_MSG   "Unterminated multiline comment '/*'."
 
 #define LEXER_UNTERMINATEDSTRING        "UntrmStrng"
 #define LEXER_UNTERMINATEDSTRING_MSG    "Unterminated string."
+
+/* -------------------------------------------------------
+ * Functions to support writing a lexer
+ * ------------------------------------------------------- */
 
 /* -------------------------------------------------------
  * Lex interface
@@ -153,7 +171,6 @@ void lex_setwhitespace(lexer *l, char *ws);
 void lex_seteof(lexer *l, tokentype eoftype);
 void lex_setstringinterpolation(lexer *l, bool interpolation);
 void lex_setmatchkeywords(lexer *l, bool match);
-void lex_setspecialtokens(lexer *l, bool special);
 
 // Obtain the next token
 bool lex(lexer *l, token *tok, error *err);

@@ -9,88 +9,46 @@
 
 #include "lex.h"
 
+extern tokendefn standardtokens[];
+extern int nstandardtokens;
+
 /* **********************************************************************
- * Standard token definitions
+ * Initialize/clear a lexer
  * ********************************************************************** */
 
-tokendefn standardtokens[] = {
-    { "(",          TOKEN_LEFTPAREN         },
-    { ")",          TOKEN_RIGHTPAREN        },
-    { "[",          TOKEN_LEFTSQBRACKET     },
-    { "]",          TOKEN_RIGHTSQBRACKET    },
-    { "{",          TOKEN_LEFTCURLYBRACKET  },
-    { "}",          TOKEN_RIGHTCURLYBRACKET }, // Note string interpolation is a special case
-    { ";",          TOKEN_SEMICOLON         },
-    { ":",          TOKEN_COLON             },
-    { ",",          TOKEN_COMMA             },
-    { "^",          TOKEN_CIRCUMFLEX        },
-    { "?",          TOKEN_QUESTION          },
-    { "@",          TOKEN_AT                },
-    { "#",          TOKEN_HASH              },
-    { ".",          TOKEN_DOT               },
-    { "..",         TOKEN_DOTDOT            },
-    { "...",        TOKEN_DOTDOTDOT         },
-    { "+",          TOKEN_PLUS              },
-    { "+=",         TOKEN_PLUSEQ            },
-    { "-",          TOKEN_MINUS             },
-    { "-=",         TOKEN_MINUSEQ           },
-    { "*",          TOKEN_STAR              },
-    { "*=",         TOKEN_STAREQ            },
-    { "/",          TOKEN_SLASH             },
-    { "/=",         TOKEN_SLASHEQ           },
-    { "==",         TOKEN_EQ                },
-    { "=",          TOKEN_EQUAL             },
-    { "!",          TOKEN_EXCLAMATION       },
-    { "!=",         TOKEN_NEQ               },
-    { "<",          TOKEN_LT                },
-    { "<=",         TOKEN_LTEQ              },
-    { ">",          TOKEN_GT                },
-    { ">=",         TOKEN_GTEQ              },
-    { "&",          TOKEN_AMP               },
-    { "&&",         TOKEN_DBLAMP            },
-    { "|",          TOKEN_VBAR              },
-    { "||",         TOKEN_DBLVBAR           },
-    { "\"",         TOKEN_STRING            },
-    { "\n",         TOKEN_NEWLINE           },
-    { "and",        TOKEN_DBLAMP            },
-    { "as",         TOKEN_AS                },
-    { "break",      TOKEN_BREAK             },
-    { "class",      TOKEN_CLASS             },
-    { "continue",   TOKEN_CONTINUE          },
-    { "catch",      TOKEN_CATCH             },
-    { "do",         TOKEN_DO                },
-    { "else",       TOKEN_ELSE              },
-    { "false",      TOKEN_FALSE             },
-    { "for",        TOKEN_FOR               },
-    { "fn",         TOKEN_FUNCTION          },
-    { "help",       TOKEN_QUESTION          },
-    { "if",         TOKEN_IF                },
-    { "in",         TOKEN_IN                },
-    { "is",         TOKEN_IS                },
-    { "import",     TOKEN_IMPORT            },
-    { "im",         TOKEN_IMAG              },
-    { "nil",        TOKEN_NIL               },
-    { "or",         TOKEN_DBLVBAR           },
-    { "print",      TOKEN_PRINT             },
-    { "return",     TOKEN_RETURN            },
-    { "self",       TOKEN_SELF              },
-    { "super",      TOKEN_SUPER             },
-    { "true",       TOKEN_TRUE              },
-    { "try",        TOKEN_TRY               },
-    { "var",        TOKEN_VAR               },
-    { "while",      TOKEN_WHILE             },
-    { "with",       TOKEN_WITH              },
-#ifdef MORPHO_LOXCOMPATIBILITY
-    { "fun",        TOKEN_FUNCTION          },
-    { "this",       TOKEN_SELF              },
+/** @brief Initializes a lexer with a given starting point
+ *  @param l     The lexer to initialize
+ *  @param start Starting point to lex from
+ *  @param line  The current line number */
+void lex_init(lexer *l, const char *start, int line) {
+    l->current=start;
+    l->start=start;
+    l->line=line;
+    l->posn=0;
+    l->matchkeywords=true;
+#ifdef MORPHO_STRINGINTERPOLATION
+    l->stringinterpolation=true;
+#else
+    l->stringinterpolation=false;
 #endif
-    { "",           TOKEN_NONE              }  // Token list should be terminated by an empty token
-};
+    l->interpolationlevel=0;
+    l->eoftype=TOKEN_EOF;
+    l->defns=standardtokens;   // Use the standard morpho tokens by default
+    l->ndefns=nstandardtokens;
+    varray_tokendefninit(&l->defnstore); // Alternative definitions will be held here
+}
 
-int nstandardtokens;
+/** @brief Clears a lexer */
+void lex_clear(lexer *l) {
+    l->current=NULL;
+    l->start=NULL;
+    l->posn=0;
+    l->interpolationlevel=0;
+    varray_tokendefnclear(&l->defnstore);
+}
 
 /* **********************************************************************
- * Work with token definitions
+ * Comparison functions for token definitions
  * ********************************************************************** */
 
 /** Compare two token definitions */
@@ -126,55 +84,19 @@ int _lex_tokendefnwithtokencmp(const void *ltok, const void *rdefn) {
 DEFINE_VARRAY(tokendefn, tokendefn);
 
 /* **********************************************************************
- * Initialize/clear a lexer
- * ********************************************************************** */
-
-/** @brief Initializes a lexer with a given starting point
- *  @param l     The lexer to initialize
- *  @param start Starting point to lex from
- *  @param line  The current line number */
-void lex_init(lexer *l, const char *start, int line) {
-    l->current=start;
-    l->start=start;
-    l->line=line;
-    l->posn=0;
-    l->matchkeywords=true;
-    l->specialtokens=true;
-#ifdef MORPHO_STRINGINTERPOLATION
-    l->stringinterpolation=true;
-#else
-    l->stringinterpolation=false;
-#endif
-    l->interpolationlevel=0;
-    l->eoftype=TOKEN_EOF;
-    l->defns=standardtokens;   // Use the standard morpho tokens by default
-    l->ndefns=nstandardtokens;
-    varray_tokendefninit(&l->defnstore); // Alternative definitions will be held here
-}
-
-/** @brief Clears a lexer */
-void lex_clear(lexer *l) {
-    l->current=NULL;
-    l->start=NULL;
-    l->posn=0;
-    l->interpolationlevel=0;
-    varray_tokendefnclear(&l->defnstore);
-}
-
-/* **********************************************************************
- * Internal functions
+ * Lexer library functions
  * ********************************************************************** */
 
 /** @brief Tests if the current prototoken matches a known token.
  *  @param[in]  l       The lexer in use
- *  @param[out] type Type of token, if found
+ *  @param[out] defn Type of token, if found
  *  @returns true if the token matched, false if not */
-bool lex_matchtoken(lexer *l, tokentype *type) {
+bool lex_matchtoken(lexer *l, tokendefn **defn) {
     token tok = { .start = l->start, .length = (int) (l->current - l->start) };
 
     tokendefn *def = bsearch(&tok, l->defns, l->ndefns, sizeof(tokendefn), _lex_tokendefnwithtokencmp);
     
-    if (def && type) *type = def->type;
+    if (def && defn) *defn = def;
     
     return def;
 }
@@ -253,6 +175,91 @@ char lex_peekahead(lexer *l, int n) {
 void lex_newline(lexer *l) {
     l->line++; l->posn=0;
 }
+
+/* **********************************************************************
+ * Morpho lexer
+ * ********************************************************************** */
+
+// Process functions we'll be using
+bool lex_string(lexer *l, token *tok, error *err);
+bool lex_processnewline(lexer *l, token *tok, error *err);
+bool lex_processinterpolation(lexer *l, token *tok, error *err);
+
+tokendefn standardtokens[] = {
+    { "(",          TOKEN_LEFTPAREN         , NULL },
+    { ")",          TOKEN_RIGHTPAREN        , NULL },
+    { "[",          TOKEN_LEFTSQBRACKET     , NULL },
+    { "]",          TOKEN_RIGHTSQBRACKET    , NULL },
+    { "{",          TOKEN_LEFTCURLYBRACKET  , NULL },
+    { "}",          TOKEN_RIGHTCURLYBRACKET , lex_processinterpolation },
+    { ";",          TOKEN_SEMICOLON         , NULL },
+    { ":",          TOKEN_COLON             , NULL },
+    { ",",          TOKEN_COMMA             , NULL },
+    { "^",          TOKEN_CIRCUMFLEX        , NULL },
+    { "?",          TOKEN_QUESTION          , NULL },
+    { "@",          TOKEN_AT                , NULL },
+    { "#",          TOKEN_HASH              , NULL },
+    { ".",          TOKEN_DOT               , NULL },
+    { "..",         TOKEN_DOTDOT            , NULL },
+    { "...",        TOKEN_DOTDOTDOT         , NULL },
+    { "+",          TOKEN_PLUS              , NULL },
+    { "+=",         TOKEN_PLUSEQ            , NULL },
+    { "-",          TOKEN_MINUS             , NULL },
+    { "-=",         TOKEN_MINUSEQ           , NULL },
+    { "*",          TOKEN_STAR              , NULL },
+    { "*=",         TOKEN_STAREQ            , NULL },
+    { "/",          TOKEN_SLASH             , NULL },
+    { "/=",         TOKEN_SLASHEQ           , NULL },
+    { "==",         TOKEN_EQ                , NULL },
+    { "=",          TOKEN_EQUAL             , NULL },
+    { "!",          TOKEN_EXCLAMATION       , NULL },
+    { "!=",         TOKEN_NEQ               , NULL },
+    { "<",          TOKEN_LT                , NULL },
+    { "<=",         TOKEN_LTEQ              , NULL },
+    { ">",          TOKEN_GT                , NULL },
+    { ">=",         TOKEN_GTEQ              , NULL },
+    { "&",          TOKEN_AMP               , NULL },
+    { "&&",         TOKEN_DBLAMP            , NULL },
+    { "|",          TOKEN_VBAR              , NULL },
+    { "||",         TOKEN_DBLVBAR           , NULL },
+    { "\"",         TOKEN_QUOTE             , lex_string },
+    { "\n",         TOKEN_NEWLINE           , lex_processnewline },
+    { "and",        TOKEN_DBLAMP            , NULL },
+    { "as",         TOKEN_AS                , NULL },
+    { "break",      TOKEN_BREAK             , NULL },
+    { "class",      TOKEN_CLASS             , NULL },
+    { "continue",   TOKEN_CONTINUE          , NULL },
+    { "catch",      TOKEN_CATCH             , NULL },
+    { "do",         TOKEN_DO                , NULL },
+    { "else",       TOKEN_ELSE              , NULL },
+    { "false",      TOKEN_FALSE             , NULL },
+    { "for",        TOKEN_FOR               , NULL },
+    { "fn",         TOKEN_FUNCTION          , NULL },
+    { "help",       TOKEN_QUESTION          , NULL },
+    { "if",         TOKEN_IF                , NULL },
+    { "in",         TOKEN_IN                , NULL },
+    { "is",         TOKEN_IS                , NULL },
+    { "import",     TOKEN_IMPORT            , NULL },
+    { "im",         TOKEN_IMAG              , NULL },
+    { "nil",        TOKEN_NIL               , NULL },
+    { "or",         TOKEN_DBLVBAR           , NULL },
+    { "print",      TOKEN_PRINT             , NULL },
+    { "return",     TOKEN_RETURN            , NULL },
+    { "self",       TOKEN_SELF              , NULL },
+    { "super",      TOKEN_SUPER             , NULL },
+    { "true",       TOKEN_TRUE              , NULL },
+    { "try",        TOKEN_TRY               , NULL },
+    { "var",        TOKEN_VAR               , NULL },
+    { "while",      TOKEN_WHILE             , NULL },
+    { "with",       TOKEN_WITH              , NULL },
+#ifdef MORPHO_LOXCOMPATIBILITY
+    { "fun",        TOKEN_FUNCTION          , NULL },
+    { "this",       TOKEN_SELF              , NULL },
+#endif
+    { "",           TOKEN_NONE              , NULL }  // Token list should be terminated by an empty token
+};
+
+int nstandardtokens;
 
 /** @brief Skips multiline comments
  * @param[in]  l    the lexer
@@ -445,8 +452,9 @@ tokentype lex_checksymbol(lexer *l, int start, int length, char *match, tokentyp
 
 tokentype lex_symboltype(lexer *l) {
     tokentype t = TOKEN_SYMBOL;
+    tokendefn *def;
     
-    lex_matchtoken(l, &t);
+    if (lex_matchtoken(l, &def)) t = def->type;
     
     return t;
 }
@@ -464,6 +472,20 @@ bool lex_symbol(lexer *l, token *tok, error *err) {
     
     lex_recordtoken(l, typ, tok);
     
+    return true;
+}
+
+/** @brief Process function for newline tokens */
+bool lex_processnewline(lexer *l, token *tok, error *err) {
+    lex_newline(l);
+    return true;
+}
+
+/** @brief Process function for interpolation tokens */
+bool lex_processinterpolation(lexer *l, token *tok, error *err) {
+    if (l->stringinterpolation && l->interpolationlevel>0) {
+        return lex_string(l, tok, err);
+    }
     return true;
 }
 
@@ -503,11 +525,6 @@ void lex_setmatchkeywords(lexer *l, bool match) {
     l->matchkeywords=match;
 }
 
-/** @brief Choose whether the lexer should process special tokens, or simply return them. */
-void lex_setspecialtokens(lexer *l, bool special) {
-    l->specialtokens=special;
-}
-
 /* **********************************************************************
  * Lexer public interface
  * ********************************************************************** */
@@ -533,36 +550,27 @@ bool lex(lexer *l, token *tok, error *err) {
     if (lex_isdigit(c)) return lex_number(l, tok, err);
     
     // Try to match a specified token
-    tokentype type = TOKEN_NONE;
-    while (lex_matchtoken(l, &type)) lex_next(l); // Try to match the largest token possible
-    if (type!=TOKEN_NONE) lex_back(l); // If we matched, we advanced by one character too far
-        
-    if (l->specialtokens) switch (type) { // Handle special token types
-        case TOKEN_NONE:
-            return false;
-            
-        case TOKEN_RIGHTCURLYBRACKET:
-            if (l->stringinterpolation && l->interpolationlevel>0) {
-                return lex_string(l, tok, err);
-            }
-            lex_recordtoken(l, type, tok);
-            return true;
-            
-        case TOKEN_STRING:
-            return lex_string(l, tok, err);
-            
-        case TOKEN_NEWLINE:
-            lex_recordtoken(l, type, tok);
-            lex_newline(l);
-            return true;
-            
-        default:
-            break;
+    tokendefn *defn=NULL;
+    while (lex_matchtoken(l, &defn)) lex_next(l); // Try to match the largest token possible
+    
+    // Record the token if matched
+    if (defn && defn->type!=TOKEN_NONE) {
+        lex_back(l); // If we matched, we advanced by one character too far
+        lex_recordtoken(l, defn->type, tok);
+    } else { // Unrecognized token
+        morpho_writeerrorwithid(err, LEXER_UNRECOGNIZEDTOKEN, l->line, l->posn);
+        return false;
     }
-        
-    lex_recordtoken(l, type, tok);
+    
+    // If the token type provides a process function, call it
+    if (defn->processfn) return (defn->processfn) (l, tok, err);
+
     return true;
 }
+
+/* **********************************************************************
+ * Initialization/finalization
+ * ********************************************************************** */
 
 /** @brief Initialization/finalization */
 void lex_initialize(void) {
@@ -575,6 +583,7 @@ void lex_initialize(void) {
     nstandardtokens = n;
     
     /* Lexer errors */
+    morpho_defineerror(LEXER_UNRECOGNIZEDTOKEN, ERROR_LEX, LEXER_UNRECOGNIZEDTOKEN_MSG);
     morpho_defineerror(LEXER_UNTERMINATEDCOMMENT, ERROR_LEX, LEXER_UNTERMINATEDCOMMENT_MSG);
     morpho_defineerror(LEXER_UNTERMINATEDSTRING, ERROR_LEX, LEXER_UNTERMINATEDSTRING_MSG);
 }

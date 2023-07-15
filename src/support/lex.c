@@ -139,12 +139,14 @@ void lex_init(lexer *l, const char *start, int line) {
     l->line=line;
     l->posn=0;
     l->matchkeywords=true;
+    l->specialtokens=true;
 #ifdef MORPHO_STRINGINTERPOLATION
     l->stringinterpolation=true;
 #else
     l->stringinterpolation=false;
 #endif
     l->interpolationlevel=0;
+    l->eoftype=TOKEN_EOF;
     l->defns=standardtokens;   // Use the standard morpho tokens by default
     l->ndefns=nstandardtokens;
     varray_tokendefninit(&l->defnstore); // Alternative definitions will be held here
@@ -486,6 +488,11 @@ void lex_settokendefns(lexer *l, tokendefn *defns) {
     qsort(l->defns, l->ndefns, sizeof(tokendefn), _lex_tokndefncmp);
 }
 
+/** @brief Sets the token type representing End Of File */
+void lex_seteof(lexer *l, tokentype eoftype) {
+    l->eoftype = eoftype;
+}
+
 /** @brief Choose whether the lexer should perform string interpolation. */
 void lex_setstringinterpolation(lexer *l, bool interpolation) {
     l->stringinterpolation=interpolation;
@@ -494,6 +501,11 @@ void lex_setstringinterpolation(lexer *l, bool interpolation) {
 /** @brief Choose whether the lexer should attempt to match keywords or simply return them as symbols. */
 void lex_setmatchkeywords(lexer *l, bool match) {
     l->matchkeywords=match;
+}
+
+/** @brief Choose whether the lexer should process special tokens, or simply return them. */
+void lex_setspecialtokens(lexer *l, bool special) {
+    l->specialtokens=special;
 }
 
 /* **********************************************************************
@@ -507,12 +519,12 @@ void lex_setmatchkeywords(lexer *l, bool match) {
  *  @returns true on success or false on failure  */
 bool lex(lexer *l, token *tok, error *err) {
     /* Handle leading whitespace */
-    if (! lex_skipwhitespace(l, tok, err)) return false; /* Check for failure */
+    if (!lex_skipwhitespace(l, tok, err)) return false; /* Check for failure */
     
     l->start=l->current;
     
     if (lex_isatend(l)) {
-        lex_recordtoken(l, TOKEN_EOF, tok);
+        lex_recordtoken(l, l->eoftype, tok);
         return true;
     }
     
@@ -520,12 +532,12 @@ bool lex(lexer *l, token *tok, error *err) {
     if (lex_isalpha(c)) return lex_symbol(l, tok, err);
     if (lex_isdigit(c)) return lex_number(l, tok, err);
     
+    // Try to match a specified token
     tokentype type = TOKEN_NONE;
     while (lex_matchtoken(l, &type)) lex_next(l); // Try to match the largest token possible
-    
     if (type!=TOKEN_NONE) lex_back(l); // If we matched, we advanced by one character too far
         
-    switch (type) { // Handle special token types
+    if (l->specialtokens) switch (type) { // Handle special token types
         case TOKEN_NONE:
             return false;
             

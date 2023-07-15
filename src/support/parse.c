@@ -1339,7 +1339,7 @@ void parse_clear(parser *p) {
 /** Entry point into the parser */
 bool parse(parser *p) {
     parse_advance(p);
-    return (p->baseparsefn) (p, NULL);
+    return (p->baseparsefn) (p, p->out);
 }
 
 /* **********************************************************************
@@ -1393,6 +1393,8 @@ bool parse_stringtovaluearray(char *string, unsigned int nmax, value *v, unsigne
     return true;
 }
 
+void json_parse(void);
+
 void parse_initialize(void) {
     /* Parse errors */
     morpho_defineerror(PARSE_INCOMPLETEEXPRESSION, ERROR_PARSE, PARSE_INCOMPLETEEXPRESSION_MSG);
@@ -1434,9 +1436,137 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_EXPCTCTCH, ERROR_PARSE, PARSE_EXPCTCTCH_MSG);
     morpho_defineerror(PARSE_ONEVARPR, ERROR_PARSE, PARSE_ONEVARPR_MSG);
     morpho_defineerror(PARSE_CATCHLEFTCURLYMISSING, ERROR_PARSE, PARSE_CATCHLEFTCURLYMISSING_MSG);
+    
+    json_parse();
 }
 
 void parse_finalize(void) {
     
 }
 
+/* **********************************************************************
+ * Experimental JSON parser
+ * ********************************************************************** */
+
+enum {
+    JSON_LEFTCURLYBRACE,
+    JSON_RIGHTCURLYBRACE,
+    JSON_LEFTSQUAREBRACE,
+    JSON_RIGHTSQUAREBRACE,
+    JSON_COMMA,
+    JSON_COLON,
+    JSON_QUOTE,
+    JSON_TRUE,
+    JSON_FALSE,
+    JSON_NULL,
+    JSON_EOF
+};
+
+tokendefn jsontokens[] = {
+    { "{",          JSON_LEFTCURLYBRACE         },
+    { "}",          JSON_RIGHTCURLYBRACE        },
+    { "[",          JSON_LEFTSQUAREBRACE        },
+    { "]",          JSON_RIGHTSQUAREBRACE       },
+    { ",",          JSON_COMMA                  },
+    { ":",          JSON_COLON                  },
+    { "\"",         JSON_QUOTE                  },
+    { "true",       JSON_TRUE                   },
+    { "false",      JSON_FALSE                  },
+    { "null",       JSON_NULL                   },
+    { "",           TOKEN_NONE                  }
+};
+
+bool json_parsevalue(parser *p, void *out);
+
+void json_output(void *out, value v) {
+    * ((value *) out) = v;
+}
+
+bool json_parseobject(parser *p, void *out) {
+    return true;
+}
+
+bool json_parsearray(parser *p, void *out) {
+    objectlist *new = object_newlist(0, NULL);
+    if (!new) parse_error(p, true, ERROR_ALLOCATIONFAILED);
+
+    while (!parse_checktoken(p, JSON_RIGHTSQUAREBRACE) &&
+           !parse_checktoken(p, JSON_EOF)) {
+        value v;
+        if (json_parsevalue(p, &v)) {
+            list_append(new, v);
+        }
+        parse_checktokenadvance(p, JSON_COMMA);
+    }
+    
+    json_output(out, MORPHO_OBJECT(new));
+    
+    return true;
+}
+
+bool json_parsestring(parser *p, void *out) {
+    return true;
+}
+
+bool json_parsetrue(parser *p, void *out) {
+    json_output(out, MORPHO_TRUE);
+    return true;
+}
+
+bool json_parsefalse(parser *p, void *out) {
+    json_output(out, MORPHO_FALSE);
+    return true;
+}
+
+bool json_parsenull(parser *p, void *out) {
+    json_output(out, MORPHO_NIL);
+    return true;
+}
+
+bool json_parsevalue(parser *p, void *out) {
+    if (parse_checktokenadvance(p, JSON_LEFTCURLYBRACE)) {
+        return json_parseobject(p, out);
+    } else if (parse_checktokenadvance(p, JSON_LEFTSQUAREBRACE)) {
+        return json_parsearray(p, out);
+    } else if (parse_checktokenadvance(p, JSON_QUOTE)) {
+        return json_parsestring(p, out);
+    } else if (parse_checktokenadvance(p, JSON_TRUE)) {
+        return json_parsetrue(p, out);
+    } else if (parse_checktokenadvance(p, JSON_FALSE)) {
+        return json_parsefalse(p, out);
+    } else if (parse_checktokenadvance(p, JSON_NULL)) {
+        return json_parsenull(p, out);
+    }
+    return false;
+}
+
+parserule json_rules[] = {
+    PARSERULE_UNUSED(JSON_LEFTCURLYBRACE),
+    PARSERULE_UNUSED(TOKEN_NONE)
+};
+
+char *test = "1234"; //"  [ true, false, null ]";
+
+void json_parse(void) {
+    error err;
+    value out;
+    
+    lexer l;
+    lex_init(&l, test, 0);
+    lex_settokendefns(&l, jsontokens);
+    lex_seteof(&l, JSON_EOF);
+    lex_setspecialtokens(&l, false);
+
+    parser p;
+    parse_init(&p, &l, &err, &out);
+    parse_setbaseparsefn(&p, json_parsevalue);
+    parse_setparsetable(&p, json_rules);
+    
+    parse(&p);
+    
+    morpho_printvalue(out);
+    printf("\n");
+    
+    parse_clear(&p);
+    lex_clear(&l);
+}

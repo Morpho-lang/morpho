@@ -47,7 +47,7 @@ typedef struct {
 DECLARE_VARRAY(tokendefn, tokendefn);
 
 /* -------------------------------------------------------
- * Standard token types
+ * Morpho token types
  * ------------------------------------------------------- */
 
 /** Enum listing standard token types. Each token will be mapped to a parserule in the parser */
@@ -118,6 +118,8 @@ typedef struct {
     
     bool matchkeywords; /** Whether to match keywords or not; default is true */
     bool stringinterpolation; /** Whether to perform string interpolation */
+    bool specialtokens; /** Whether to process special tokens */
+    tokentype eoftype; /** End of file marker */
     
     int interpolationlevel; /** Level of string interpolation */
     
@@ -145,9 +147,13 @@ typedef struct {
 void lex_init(lexer *l, const char *start, int line);
 void lex_clear(lexer *l);
 
-// Program lexer
+// Configure lexer
 void lex_settokendefns(lexer *l, tokendefn *defns);
+void lex_setwhitespace(lexer *l, char *ws);
+void lex_seteof(lexer *l, tokentype eoftype);
+void lex_setstringinterpolation(lexer *l, bool interpolation);
 void lex_setmatchkeywords(lexer *l, bool match);
+void lex_setspecialtokens(lexer *l, bool special);
 
 // Obtain the next token
 bool lex(lexer *l, token *tok, error *err);

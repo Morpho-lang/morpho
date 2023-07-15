@@ -57,6 +57,31 @@ typedef struct {
 DECLARE_VARRAY(tokendefn, tokendefn);
 
 /* -------------------------------------------------------
+ * Lexer data structure
+ * ------------------------------------------------------- */
+
+/** @brief Store the current configuration of a lexer */
+struct slexer {
+    const char* start; /** Starting point to lex */
+    const char* current; /** Current point */
+    int line; /** Line number */
+    int posn; /** Character position in line */
+    
+    bool matchkeywords; /** Whether to match keywords or not; default is true */
+    bool stringinterpolation; /** Whether to perform string interpolation */
+    tokentype eoftype; /** End of file marker */
+    processtokenfn whitespacefn; /** Called to skip whitespace */
+    processtokenfn prefn; /** Called before attempting to match the token list */
+    
+    int interpolationlevel; /** Level of string interpolation */
+    
+    tokendefn *defns; /** Pointer to token defintions in use */
+    int ndefns; /** Number of token defintions in use */
+    
+    varray_tokendefn defnstore; /** Used to hold custom tokens */
+} ;
+
+/* -------------------------------------------------------
  * Morpho token types
  * ------------------------------------------------------- */
 
@@ -113,32 +138,8 @@ enum {
     
     /* Errors and other statuses */
     TOKEN_INCOMPLETE,
-    TOKEN_ERROR,
     TOKEN_EOF
 };
-
-/* -------------------------------------------------------
- * Lexer data structure
- * ------------------------------------------------------- */
-
-/** @brief Store the current configuration of a lexer */
-struct slexer {
-    const char* start; /** Starting point to lex */
-    const char* current; /** Current point */
-    int line; /** Line number */
-    int posn; /** Character position in line */
-    
-    bool matchkeywords; /** Whether to match keywords or not; default is true */
-    bool stringinterpolation; /** Whether to perform string interpolation */
-    tokentype eoftype; /** End of file marker */
-    
-    int interpolationlevel; /** Level of string interpolation */
-    
-    tokendefn *defns; /** Pointer to token defintions in use */
-    int ndefns; /** Number of token defintions in use */
-    
-    varray_tokendefn defnstore; /** Used to hold custom tokens */
-} ;
 
 /* -------------------------------------------------------
  * Lex error messages
@@ -154,8 +155,21 @@ struct slexer {
 #define LEXER_UNTERMINATEDSTRING_MSG    "Unterminated string."
 
 /* -------------------------------------------------------
- * Functions to support writing a lexer
+ * Library functions to support customizable lexers
  * ------------------------------------------------------- */
+
+bool lex_matchtoken(lexer *l, tokendefn **defn);
+void lex_recordtoken(lexer *l, tokentype type, token *tok);
+char lex_advance(lexer *l);
+bool lex_back(lexer *l);
+bool lex_isatend(lexer *l);
+bool lex_isalpha(char c);
+bool lex_isdigit(char c);
+bool lex_isspace(char c);
+char lex_peek(lexer *l);
+char lex_peekahead(lexer *l, int n);
+char lex_peekprevious(lexer *l);
+void lex_newline(lexer *l);
 
 /* -------------------------------------------------------
  * Lex interface
@@ -167,7 +181,6 @@ void lex_clear(lexer *l);
 
 // Configure lexer
 void lex_settokendefns(lexer *l, tokendefn *defns);
-void lex_setwhitespace(lexer *l, char *ws);
 void lex_seteof(lexer *l, tokentype eoftype);
 void lex_setstringinterpolation(lexer *l, bool interpolation);
 void lex_setmatchkeywords(lexer *l, bool match);

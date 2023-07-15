@@ -46,16 +46,11 @@ bool parse_advance(parser *p) {
     p->nl=false;
     
     for (;;) {
-        lex(l, &p->current, p->err);
+        if (!lex(l, &p->current, p->err)) return false;
         
         /* Skip any newlines encountered */
-        if (p->current.type==TOKEN_NEWLINE) {
-            p->nl=true;
-            continue;
-        }
-        
-        if (p->current.type != TOKEN_ERROR) break;
-        UNREACHABLE("Unhandled error in parser.\n");
+        if (p->current.type!=TOKEN_NEWLINE) break;
+        p->nl=true;
     }
     
     return (p->err->cat==ERROR_NONE);
@@ -1258,8 +1253,7 @@ parserule rules[] = {
     PARSERULE_UNUSED(TOKEN_TRY),
     PARSERULE_UNUSED(TOKEN_CATCH),
     
-    PARSERULE_UNUSED(TOKEN_INCOMPLETE), 
-    PARSERULE_UNUSED(TOKEN_ERROR),
+    PARSERULE_UNUSED(TOKEN_INCOMPLETE),
     PARSERULE_UNUSED(TOKEN_EOF),
     PARSERULE_UNUSED(TOKEN_NONE)
 };
@@ -1437,7 +1431,7 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_ONEVARPR, ERROR_PARSE, PARSE_ONEVARPR_MSG);
     morpho_defineerror(PARSE_CATCHLEFTCURLYMISSING, ERROR_PARSE, PARSE_CATCHLEFTCURLYMISSING_MSG);
     
-    //json_parse();
+    // json_parse();
 }
 
 void parse_finalize(void) {
@@ -1447,6 +1441,12 @@ void parse_finalize(void) {
 /* **********************************************************************
  * Experimental JSON parser
  * ********************************************************************** */
+
+/* -------------------------------------------------------
+ * JSON token types and process functions
+ * ------------------------------------------------------- */
+
+bool json_lexstring(lexer *l, token *tok, error *err);
 
 enum {
     JSON_LEFTCURLYBRACE,
@@ -1469,12 +1469,20 @@ tokendefn jsontokens[] = {
     { "]",          JSON_RIGHTSQUAREBRACE       , NULL },
     { ",",          JSON_COMMA                  , NULL },
     { ":",          JSON_COLON                  , NULL },
-    { "\"",         JSON_QUOTE                  , NULL },
+    { "\"",         JSON_QUOTE                  , json_lexstring },
     { "true",       JSON_TRUE                   , NULL },
     { "false",      JSON_FALSE                  , NULL },
     { "null",       JSON_NULL                   , NULL },
     { "",           TOKEN_NONE                  , NULL }
 };
+
+bool json_lexstring(lexer *l, token *tok, error *err) {
+    return true;
+}
+
+/* -------------------------------------------------------
+ * JSON parse functions
+ * ------------------------------------------------------- */
 
 bool json_parsevalue(parser *p, void *out);
 
@@ -1540,12 +1548,16 @@ bool json_parsevalue(parser *p, void *out) {
     return false;
 }
 
+/* -------------------------------------------------------
+ * JSON parse table
+ * ------------------------------------------------------- */
+
 parserule json_rules[] = {
     PARSERULE_UNUSED(JSON_LEFTCURLYBRACE),
     PARSERULE_UNUSED(TOKEN_NONE)
 };
 
-char *test = "1234"; //"  [ true, false, null ]";
+char *test = "[ true, false, null ]"; //"   \"hello\""
 
 void json_parse(void) {
     error err;

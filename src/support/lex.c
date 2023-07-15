@@ -13,43 +13,12 @@ extern tokendefn standardtokens[];
 extern int nstandardtokens;
 
 /* **********************************************************************
- * Initialize/clear a lexer
+ * Lexer library functions
  * ********************************************************************** */
 
-/** @brief Initializes a lexer with a given starting point
- *  @param l     The lexer to initialize
- *  @param start Starting point to lex from
- *  @param line  The current line number */
-void lex_init(lexer *l, const char *start, int line) {
-    l->current=start;
-    l->start=start;
-    l->line=line;
-    l->posn=0;
-    l->matchkeywords=true;
-#ifdef MORPHO_STRINGINTERPOLATION
-    l->stringinterpolation=true;
-#else
-    l->stringinterpolation=false;
-#endif
-    l->interpolationlevel=0;
-    l->eoftype=TOKEN_EOF;
-    l->defns=standardtokens;   // Use the standard morpho tokens by default
-    l->ndefns=nstandardtokens;
-    varray_tokendefninit(&l->defnstore); // Alternative definitions will be held here
-}
-
-/** @brief Clears a lexer */
-void lex_clear(lexer *l) {
-    l->current=NULL;
-    l->start=NULL;
-    l->posn=0;
-    l->interpolationlevel=0;
-    varray_tokendefnclear(&l->defnstore);
-}
-
-/* **********************************************************************
+/* -------------------------------------------------------
  * Comparison functions for token definitions
- * ********************************************************************** */
+ * ------------------------------------------------------- */
 
 /** Compare two token definitions */
 int _lex_tokndefncmp(const void *ldefn, const void *rdefn) {
@@ -83,9 +52,9 @@ int _lex_tokendefnwithtokencmp(const void *ltok, const void *rdefn) {
 
 DEFINE_VARRAY(tokendefn, tokendefn);
 
-/* **********************************************************************
- * Lexer library functions
- * ********************************************************************** */
+/* -------------------------------------------------------
+ * Library functions to support writing custom lexers
+ * ------------------------------------------------------- */
 
 /** @brief Tests if the current prototoken matches a known token.
  *  @param[in]  l       The lexer in use
@@ -110,7 +79,23 @@ void lex_recordtoken(lexer *l, tokentype type, token *tok) {
     tok->start=l->start;
     tok->length=(int) (l->current - l->start);
     tok->line=l->line;
-    tok->posn=l->posn;
+    tok->posn=l->posn - tok->length;
+}
+
+/** @brief Advances the lexer by one character, returning the character */
+char lex_advance(lexer *l) {
+    char c = *(l->current);
+    l->current++;
+    l->posn++;
+    return c;
+}
+
+/** @brief Reverses the current character in the lexer by one. */
+bool lex_back(lexer *l) {
+    if (l->current==l->start) return false;
+    l->current--;
+    l->posn--;
+    return true;
 }
 
 /** @brief Checks if we're at the end of the string. Doesn't advance. */
@@ -128,37 +113,10 @@ bool lex_isdigit(char c) {
     return isdigit(c);
 }
 
-/** @brief Checks if a character is whitespace.  Doesn't advance. */
+/** @brief Checks if a character is whitespace.
+    @warning: The morpho lexer does not consider newlines to be whitespace. */
 bool lex_isspace(char c) {
     return (c==' ') || (c=='\t') || (c=='\n') || (c=='\r');
-}
-
-/** @brief Advances the lexer by one character, returning the character */
-char lex_advance(lexer *l) {
-    char c = *(l->current);
-    l->current++;
-    l->posn++;
-    return c;
-}
-
-/** @brief Advances the current character in the lexer by one */
-char lex_next(lexer *l) {
-    char c = *(l->current);
-    l->current++;
-    return c;
-}
-
-/** @brief Reverses the current character in the lexer by one */
-bool lex_back(lexer *l) {
-    if (l->current==l->start) return false;
-    l->current--;
-    return true;
-}
-
-/** @brief Returns the previous character */
-char lex_previous(lexer *l) {
-    if (l->current==l->start) return '\0';
-    return *(l->current - 1);
 }
 
 /** @brief Returns the next character */
@@ -171,7 +129,13 @@ char lex_peekahead(lexer *l, int n) {
     return *(l->current + n);
 }
 
-/** @brief Handle line counting */
+/** @brief Returns the previous character */
+char lex_peekprevious(lexer *l) {
+    if (l->current==l->start) return '\0';
+    return *(l->current - 1);
+}
+
+/** @brief Advance line counter */
 void lex_newline(lexer *l) {
     l->line++; l->posn=0;
 }
@@ -184,6 +148,10 @@ void lex_newline(lexer *l) {
 bool lex_string(lexer *l, token *tok, error *err);
 bool lex_processnewline(lexer *l, token *tok, error *err);
 bool lex_processinterpolation(lexer *l, token *tok, error *err);
+
+/* -------------------------------------------------------
+ * Morpho token definitions
+ * ------------------------------------------------------- */
 
 tokendefn standardtokens[] = {
     { "(",          TOKEN_LEFTPAREN         , NULL },
@@ -260,6 +228,10 @@ tokendefn standardtokens[] = {
 };
 
 int nstandardtokens;
+
+/* -------------------------------------------------------
+ * Morpho lexing functions
+ * ------------------------------------------------------- */
 
 /** @brief Skips multiline comments
  * @param[in]  l    the lexer
@@ -349,7 +321,7 @@ bool lex_skipwhitespace(lexer *l, token *tok, error *err) {
 bool lex_string(lexer *l, token *tok, error *err) {
     unsigned int startline = l->line, startpsn = l->posn;
     
-    char first = lex_previous(l);
+    char first = lex_peekprevious(l);
     
     while (lex_peek(l) != '"' && !lex_isatend(l)) {
         if (lex_peek(l) == '\n') lex_newline(l);
@@ -475,6 +447,18 @@ bool lex_symbol(lexer *l, token *tok, error *err) {
     return true;
 }
 
+/* -------------------------------------------------------
+ * Morpho token processing functions
+ * ------------------------------------------------------- */
+
+/** @brief Process function for to identify symbols and numbers */
+bool lex_preprocess(lexer *l, token *tok, error *err) {
+    char c = lex_peek(l);
+    if (lex_isalpha(c)) return lex_symbol(l, tok, err);
+    if (lex_isdigit(c)) return lex_number(l, tok, err);
+    return false;
+}
+
 /** @brief Process function for newline tokens */
 bool lex_processnewline(lexer *l, token *tok, error *err) {
     lex_newline(l);
@@ -490,7 +474,44 @@ bool lex_processinterpolation(lexer *l, token *tok, error *err) {
 }
 
 /* **********************************************************************
- * Customize the lexer
+ * Initialize/clear a lexer
+ * ********************************************************************** */
+
+/** @brief Initializes a lexer with a given starting point
+ *  @param l     The lexer to initialize
+ *  @param start Starting point to lex from
+ *  @param line  The current line number */
+void lex_init(lexer *l, const char *start, int line) {
+    l->current=start;
+    l->start=start;
+    l->line=line;
+    l->posn=0;
+    l->matchkeywords=true;
+#ifdef MORPHO_STRINGINTERPOLATION
+    l->stringinterpolation=true;
+#else
+    l->stringinterpolation=false;
+#endif
+    l->interpolationlevel=0;
+    l->prefn=lex_preprocess;
+    l->whitespacefn=lex_skipwhitespace;
+    l->eoftype=TOKEN_EOF;
+    l->defns=standardtokens;   // Use the standard morpho tokens by default
+    l->ndefns=nstandardtokens;
+    varray_tokendefninit(&l->defnstore); // Alternative definitions will be held here
+}
+
+/** @brief Clears a lexer */
+void lex_clear(lexer *l) {
+    l->current=NULL;
+    l->start=NULL;
+    l->posn=0;
+    l->interpolationlevel=0;
+    varray_tokendefnclear(&l->defnstore);
+}
+
+/* **********************************************************************
+ * Configure the lexer
  * ********************************************************************** */
 
 /** Sets the lexer to use a specific set of token definitions
@@ -525,6 +546,16 @@ void lex_setmatchkeywords(lexer *l, bool match) {
     l->matchkeywords=match;
 }
 
+/** @brief Provide a processing function to skip whitespace and comments. */
+void lex_setwhitespacefn(lexer *l, processtokenfn whitespacefn) {
+    l->whitespacefn = whitespacefn;
+}
+
+/** @brief Provide a processing function to identify tokens prior to matching. */
+void lex_setprefn(lexer *l, processtokenfn prefn) {
+    l->prefn = prefn;
+}
+
 /* **********************************************************************
  * Lexer public interface
  * ********************************************************************** */
@@ -535,23 +566,32 @@ void lex_setmatchkeywords(lexer *l, bool match) {
  *  @param[out] tok   Token structure to fill out
  *  @returns true on success or false on failure  */
 bool lex(lexer *l, token *tok, error *err) {
-    /* Handle leading whitespace */
-    if (!lex_skipwhitespace(l, tok, err)) return false; /* Check for failure */
+    // Handle leading whitespace
+    if (l->whitespacefn) {
+        if (!((l->whitespacefn) (l, tok, err))) return false;
+    }
     
+    // Set beginning of the token
     l->start=l->current;
     
+    // Check whether we're at the end of the source string
     if (lex_isatend(l)) {
         lex_recordtoken(l, l->eoftype, tok);
         return true;
     }
     
-    char c = lex_advance(l);
-    if (lex_isalpha(c)) return lex_symbol(l, tok, err);
-    if (lex_isdigit(c)) return lex_number(l, tok, err);
+    // If the lexer has a prefn, call that and check whether it handled the token.
+    if (l->prefn) {
+        bool success=(l->prefn) (l, tok, err);
+        //if (err->cat!=ERROR_NONE) return false; // It raised an error, so should return
+        if (success) return true;
+    }
     
-    // Try to match a specified token
+    // Try to match the specified tokens
     tokendefn *defn=NULL;
-    while (lex_matchtoken(l, &defn)) lex_next(l); // Try to match the largest token possible
+    do {
+        lex_advance(l);
+    } while (lex_matchtoken(l, &defn)); // Match the largest token possible
     
     // Record the token if matched
     if (defn && defn->type!=TOKEN_NONE) {

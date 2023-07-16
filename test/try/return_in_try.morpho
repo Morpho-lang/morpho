@@ -1,0 +1,15 @@
+
+fn func() {
+  try {
+    return true
+  } catch {
+  }
+  return false 
+}
+
+for (i in 1..100) {
+  func()
+}
+
+print "ok"
+// expect: ok

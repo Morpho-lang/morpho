@@ -1,0 +1,3 @@
+// Check that calling a bool generates an err.
+
+true() // expect error: 'Uncallable'

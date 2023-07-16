@@ -1,0 +1,13 @@
+import "../numericalderivatives.morpho"
+
+var m = Mesh("triangle.mesh")
+var a = Area()
+
+print m
+// expect: <Mesh: 3 vertices>
+
+print (a.integrand(m) - Matrix([ 1.29904 ])).norm() < 1e-5
+// expect: true
+
+print (a.gradient(m)-numericalgradient(a, m)).norm() < 1e-5
+// expect: true

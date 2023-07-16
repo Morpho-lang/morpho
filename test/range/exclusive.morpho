@@ -1,0 +1,18 @@
+// Exclusive
+
+for (i in 1...5) print i
+// expect: 1
+// expect: 2
+// expect: 3
+// expect: 4
+
+for (i in 1...2:0.5) print i
+// expect: 1
+// expect: 1.5
+
+for (i in 0...-2:-0.5) print i
+// expect: 0
+// expect: -0.5
+// expect: -1
+// expect: -1.5
+

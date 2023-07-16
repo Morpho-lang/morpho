@@ -1,0 +1,25 @@
+// Newlines as statement terminators
+
+/*
+ * Classes
+ */
+
+class Donut {
+ init(type) {
+   self.type = type
+ }
+
+ eat() {
+   print "A delicious ${self.type} donut!"
+ }
+}
+
+var cruller = Donut("Cruller")
+
+cruller.eat()
+// expect: A delicious Cruller donut!
+
+// Ambiguity: Is this a property access?
+print cruller
+.eat
+// expect: <Donut>.<fn eat>

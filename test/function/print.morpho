@@ -1,0 +1,5 @@
+// Print functions 
+fn foo() {}
+print foo // expect: <fn foo>
+
+print clock // expect: <fn clock>

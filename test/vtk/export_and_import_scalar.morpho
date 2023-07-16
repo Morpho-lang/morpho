@@ -1,0 +1,26 @@
+// Testing whether exporting and importing a scalar field works 
+
+import vtk
+import meshtools
+
+var m1 = LineMesh(fn (t) [t,0,0], -1..1:2)
+
+var f1 = Field(m1, fn(x,y,z) x)
+
+var vtkE = VTKExporter(f1, fieldname="f")
+
+var filename = "data.vtk"
+
+vtkE.export(filename)
+
+var vtkI = VTKImporter(filename)
+
+var m2 = vtkI.mesh()
+
+var f2 = vtkI.field("f")
+
+print m2 // expect: <Mesh: 2 vertices>
+
+print f2 // expect: <Field>
+// expect: [ -1 ]
+// expect: [ 1 ]

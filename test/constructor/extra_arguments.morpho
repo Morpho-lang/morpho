@@ -1,0 +1,8 @@
+class Foo {
+  init(a, b) {
+    self.a = a
+    self.b = b
+  }
+}
+
+var foo = Foo(1, 2, 3, 4) // expect error 'InvldArgs'

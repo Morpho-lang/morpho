@@ -1,0 +1,30 @@
+// Testing whether exporting and importing a vector field works 
+
+import vtk
+import meshtools
+
+var m1 = LineMesh(fn (t) [t,0,0], -1..1:2)
+
+var g1 = Field(m1, fn(x,y,z) Matrix([x,2*x,3*x]))
+
+var vtkE = VTKExporter(g1, fieldname="g")
+
+var filename = "data.vtk"
+
+vtkE.export(filename)
+
+var vtkI = VTKImporter(filename)
+
+var m2 = vtkI.mesh()
+
+var g2 = vtkI.field("g")
+
+print m2 // expect: <Mesh: 2 vertices>
+
+print g2 // expect: <Field>
+// expect: [ -1 ]
+// expect: [ -2 ]
+// expect: [ -3 ]
+// expect: [ 1 ]
+// expect: [ 2 ]
+// expect: [ 3 ]

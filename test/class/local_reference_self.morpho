@@ -1,0 +1,11 @@
+// Check a method can return the class. 
+
+{
+  class Foo {
+    returnSelf() {
+      return Foo
+    }
+  }
+
+  print Foo().returnSelf() // expect: @Foo
+}

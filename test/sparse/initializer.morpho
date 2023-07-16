@@ -1,0 +1,35 @@
+// Initialize different matrices
+
+var b = Matrix(2,2)
+b[1,1]=4
+print b[0,1]
+// expect: 0
+print b[1,1]
+// expect: 4
+print b
+// expect: [ 0 0 ]
+// expect: [ 0 4 ]
+
+var N = 4
+var a = Sparse(N,N)
+for(var i=0; i<N; i=i+1) a[i,i]=1
+
+print a[2,2]
+// expect: 1
+print a[3,2]
+// expect: 0
+print a
+// expect: [ 1 0 0 0 ]
+// expect: [ 0 1 0 0 ]
+// expect: [ 0 0 1 0 ]
+// expect: [ 0 0 0 1 ]
+
+// Array initializer
+var c = Sparse([[0,0,1],[1,1,1],[1,2,-1],[2,1,-1],[2,2,1],[3,3,1]])
+print c
+// expect: [ 1 0 0 0 ]
+// expect: [ 0 1 -1 0 ]
+// expect: [ 0 -1 1 0 ]
+// expect: [ 0 0 0 1 ]
+print c[1,2]
+// expect: -1

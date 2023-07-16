@@ -1,0 +1,7 @@
+class Base {
+  foo() {
+    super.doesNotExist // expect error 'ClssLcksMthd'
+  }
+}
+
+Base().foo()

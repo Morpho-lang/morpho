@@ -1,0 +1,25 @@
+
+var a = Mesh("tetrahedron.mesh")
+
+print a
+// expect: <Mesh: 4 vertices>
+
+print a.vertexmatrix()
+// expect: [ 0 -0.288675 -0.288675 0.57735 ]
+// expect: [ 0 -0.5 0.5 0 ]
+// expect: [ 0.612372 -0.204124 -0.204124 -0.204124 ]
+
+print a.vertexposition(1)
+// expect: [ -0.288675 ]
+// expect: [ -0.5 ]
+// expect: [ -0.204124 ]
+
+a.setvertexposition(1, a.vertexposition(1)+Matrix([0.1,0.1,0.1]))
+
+print a.vertexmatrix()
+// expect: [ 0 -0.188675 -0.288675 0.57735 ]
+// expect: [ 0 -0.4 0.5 0 ]
+// expect: [ 0.612372 -0.104124 -0.204124 -0.204124 ]
+
+print a.vertexposition(5)
+// expect Error 'MshInvldId'

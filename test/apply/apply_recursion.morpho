@@ -1,0 +1,9 @@
+// Apply a function to arguments
+
+fn f(x) {
+  if (x==0) return 0
+  return x+apply(f, x-1)
+}
+
+print f(60)
+// expect: 1830

@@ -1,0 +1,4 @@
+// Comment at end of file
+
+print "ok" // expect: ok
+// comment

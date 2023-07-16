@@ -1,0 +1,5 @@
+var m = Mesh()
+print m // shows empty mesh
+// expect: <Mesh: 0 vertices>
+m.setvertexposition(0, Matrix([-5,0,0]))
+// expect error 'MshInvldId'

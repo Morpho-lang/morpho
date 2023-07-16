@@ -1,0 +1,23 @@
+// Check insert method
+
+var a = [ 1, 2 ]
+
+a.insert(0, 0)
+print a // expect: [ 0, 1, 2 ]
+
+a.insert(1, 0.5)
+print a // expect: [ 0, 0.5, 1, 2 ]
+
+a.insert(2, 0.6, 0.7, 0.8, 0.9)
+print a // expect: [ 0, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2 ]
+
+a.insert(-2, 1.5)
+print a // expect: [ 0, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.5, 2 ]
+
+a.insert(-1, 2.5)
+print a // expect: [ 0, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.5, 2, 2.5 ]
+
+var b = []
+for (i in 1..20) b.insert(0, i)
+print b
+// expect: [ 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 ]

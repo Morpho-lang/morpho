@@ -1,0 +1,14 @@
+// Test to confirm that adding grade 0 to a mesh doesn't change anything.
+import meshtools
+import symmetry
+var m = LineMesh(fn (t) [t,0,0], -1..1:1)
+m.addgrade(0)
+print m.connectivitymatrix(0,0) // expect: nil
+var s = Selection(m, fn (x,y,z) x<-0.5 || x>0.5)
+var t = Translate(Matrix([2,0,0]))
+m.addsymmetry(t, s)
+m.addgrade(0)
+print m.connectivitymatrix(0,0)
+// expect: [ 0 0 <Translate> ]
+// expect: [ 0 0 0 ]
+// expect: [ 0 0 0 ]

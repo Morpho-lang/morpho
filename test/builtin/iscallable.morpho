@@ -1,0 +1,34 @@
+// Check whether iscallable works correctly
+
+class Foo {
+  bar() { }
+}
+
+var a[2,2]
+
+var f = Foo()
+
+fn g(x) { return x }
+
+fn h(t) {
+  fn q() { return t }
+  return q
+}
+
+var s = h(1)
+
+var vals = [  f, // expect: false
+              g, // expect: true
+              f.bar, // expect: true
+              9, // expect: false
+              9.0, // expect: false
+              "Hi", // expect: false
+              a, // expect: false
+              sin, // expect: true
+              s, // expect: true
+              h(2) // expect: true
+              ]
+
+for (x in vals) {
+  print iscallable(x)
+}

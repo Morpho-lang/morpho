@@ -1,0 +1,52 @@
+// Testing whether importing / exporting files with filenames that don't
+// end in a ".vtk" works. The desired behavior is to append the filename
+// with a ".vtk" in case it doesn't end that way
+
+import vtk 
+import meshtools
+
+var m1 = LineMesh(fn (t) [t,0,0], -1..1:2)
+
+var filenames = ["data", "data.case2", "data.case3.0"]
+
+var vtkE
+var vtkI
+
+// test whether exporting with these filenames and then importing with
+// an added ".vtk" works
+
+for (filename in filenames) {
+
+    vtkE = VTKExporter(m1)
+    
+    vtkE.export(filename)
+
+    vtkI = VTKImporter("${filename}.vtk")
+
+    var m2 = vtkI.mesh()
+
+    print m2 
+}
+// expect: <Mesh: 2 vertices>
+// expect: <Mesh: 2 vertices>
+// expect: <Mesh: 2 vertices>
+
+
+// Test whether importing without .vtk works
+
+for (filename in filenames) {
+
+    vtkE = VTKExporter(m1)
+    
+    vtkE.export(filename)
+
+    vtkI = VTKImporter(filename)
+
+    var m2 = vtkI.mesh()
+
+    print m2 
+}
+// expect: <Mesh: 2 vertices>
+// expect: <Mesh: 2 vertices>
+// expect: <Mesh: 2 vertices>
+

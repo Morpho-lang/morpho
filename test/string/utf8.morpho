@@ -1,0 +1,14 @@
+// UTF8
+
+var s = "A~¶Þॐஃ"
+
+print s.count()
+// expect: 6
+
+for (x in s) print x
+// expect: A
+// expect: ~
+// expect: ¶
+// expect: Þ
+// expect: ॐ
+// expect: ஃ

@@ -1,0 +1,11 @@
+// Assign to property with index
+
+class Foo {
+  init() {
+    self.prop = Array(1)
+    self.prop[0] = "Bar"
+  }
+}
+
+print Foo().prop[0]
+// expect: Bar

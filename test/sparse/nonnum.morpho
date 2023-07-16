@@ -1,0 +1,6 @@
+// Sparse matrices can store non-numerical values
+
+var a = Sparse([[0,1,"Blob"], [1,1,"Bloop"]])
+print a
+// expect: [ 0 Blob ]
+// expect: [ 0 Bloop ]

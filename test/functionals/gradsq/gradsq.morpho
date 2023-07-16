@@ -1,0 +1,31 @@
+// Test gradsq on a single triangle
+
+import meshtools
+import shapeopt
+
+var m = Mesh("triangle.mesh")
+
+var phi = Field(m)
+phi[1]=1
+
+var lel = GradSq(phi)
+
+print lel.integrand(m)
+// expect: [ 0.57735 ]
+
+print lel.total(m)
+// expect: 0.57735
+
+var grad = lel.gradient(m)
+var value = Matrix([[ 0.192452, 0.192452, -0.3849 ],[ 0.333333, -0.333335, 5.55112e-07 ],[ 0, 0, 0 ]])
+print (grad-value).norm()<1e-5
+// expect: true
+
+var grd=lel.fieldgradient(m, phi)
+
+print abs(grd[0] - (-0.57735))<5e-6
+print abs(grd[1] - (1.1547))<5e-6
+print abs(grd[2] - (-0.57735))<5e-6
+// expect: true
+// expect: true
+// expect: true

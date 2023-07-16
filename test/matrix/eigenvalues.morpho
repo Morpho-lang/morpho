@@ -1,0 +1,29 @@
+// Transpose
+
+var a = Matrix([[1,-1,0], [-1,1,0], [0,0,1]])
+
+var ev = a.eigenvalues()
+ev.sort() 
+print ev 
+// expect: [ 0, 1, 2 ]
+
+var b = Matrix([[1,2,0], [-2,1,0], [0,0,1]])
+
+var ev = b.eigenvalues()
+for (e in ev) print e 
+// expect: 1 + 2im
+// expect: 1 - 2im
+// expect: 1
+
+print a  // ensure a is not overwritten
+// expect: [ 1 -1 0 ]
+// expect: [ -1 1 0 ]
+// expect: [ 0 0 1 ]
+
+var es = a.eigensystem()
+print es[0]
+// expect: [ 2, 0, 1 ]
+print es[1]
+// expect: [ 0.707107 0.707107 0 ]
+// expect: [ -0.707107 0.707107 0 ]
+// expect: [ 0 0 1 ]

@@ -1,0 +1,12 @@
+// Check what happens if insufficient fields supplied to LineIntegral
+
+import constants
+import meshtools
+
+var m = LineMesh(fn (t) [t,0,0], 0..1:0.1)
+
+var f = Field(m, fn (x,y,z) x)
+
+// A line integral with a field
+var lcf = LineIntegral(fn (x, f, g) (f*(1-f))^2, f)
+// expect error 'IntgrlNFlds'

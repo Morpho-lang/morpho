@@ -1,0 +1,19 @@
+// Veneer class methods
+
+var a[3,3]
+
+a[1,1]="Hi!"
+
+a.setindex(2,2,"Bye!")
+
+print a.count()
+// expect: 9
+
+print a.index(1,1)
+// expect: Hi!
+
+print a.index(2,2)
+// expect: Bye!
+
+print a.index(4,4)
+// expect Error 'IndxBnds'

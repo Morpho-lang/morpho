@@ -1,0 +1,4 @@
+// Ensure that a class cannot inherit itself
+
+class Foo < Foo {}
+// expect error 'ClssCrcRf'

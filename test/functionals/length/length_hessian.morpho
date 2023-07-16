@@ -1,0 +1,15 @@
+
+import meshtools
+import "../numericalderivatives.morpho"
+
+var m = LineMesh(fn (t) [cos(t), sin(t)], -Pi...Pi:Pi/2, closed=true)
+
+var a = Length()
+print abs(a.total(m) - 4*sqrt(2)) < 1e-10
+// expect: true
+
+print (a.gradient(m)-numericalgradient(a, m)).norm()<1e-6
+// expect: true
+
+print (Matrix(a.hessian(m))-numericalhessian(a, m, eps=1e-4)).norm() < 1e-2
+// expect: true

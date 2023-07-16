@@ -1,0 +1,6 @@
+class Foo {
+  bar() { return self }
+  baz() { return "baz" }
+}
+
+print Foo().bar().baz() // expect: baz

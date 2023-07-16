@@ -1,0 +1,10 @@
+// Forces a runtime err. generating a stacktrace
+
+fn f() {
+	var a
+
+	print a-1
+}
+
+f()
+// expect: Error 'InvldOp': Operands must be numbers.

@@ -1,0 +1,23 @@
+// Tests nested classes, which are currently forbidden 
+
+/*class Outer {
+  method() {
+    print self // exp <Outer>
+
+    fn f() {
+      print self // exp <Outer>
+
+      class Inner {
+        method() {
+          print self // exp <Inner>
+        }
+      }
+
+      Inner().method()
+    }
+    f()
+  }
+}
+
+Outer().method()
+*/

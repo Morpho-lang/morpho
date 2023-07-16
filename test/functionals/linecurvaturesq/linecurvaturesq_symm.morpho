@@ -1,0 +1,25 @@
+// Symmetries
+import constants
+import meshtools
+import plot
+import symmetry
+
+var np=50
+var L=1
+
+var m = LineMesh(fn (t) [t, 0.2*cos(Pi*t), 0], -L..L:2/np)
+//Show(plotmesh(m))
+
+// Add translational symmetry to the exterior vertices
+var s = Selection(m, fn (x,y,z) abs(x+L)<1e-10 || abs(x-L)<1e-10)
+var t = Translate(Matrix([2*L,0,0]))
+m.addsymmetry(t, s)
+
+// Create the manifold
+var lc = LineCurvatureSq()
+print lc.total(m)
+// expect: 3.16856
+
+lc.integrandonly = true
+print lc.integrand(m)
+// expect: [ 3.87607 3.74578 3.38492 2.8701 2.29371 1.73455 1.24313 0.841609 0.531919 0.305208 0.149083 0.0520402 0.00569076 0.00569076 0.0520402 0.149083 0.305208 0.531919 0.841609 1.24313 1.73455 2.29371 2.8701 3.38492 3.74578 3.87607 3.74578 3.38492 2.8701 2.29371 1.73455 1.24313 0.841609 0.531919 0.305208 0.149083 0.0520402 0.00569076 0.00569076 0.0520402 0.149083 0.305208 0.531919 0.841609 1.24313 1.73455 2.29371 2.8701 3.38492 3.74578 0 ]

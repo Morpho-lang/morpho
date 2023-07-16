@@ -1,0 +1,10 @@
+// Check that you can call a function with index access in arguments
+
+fn f(a,b) {
+  return "${a}, ${b}"
+}
+
+var a = [ 1, 2 ]
+
+print f(a[0],a[1])
+// expect: 1, 2

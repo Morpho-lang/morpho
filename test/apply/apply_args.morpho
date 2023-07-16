@@ -1,0 +1,11 @@
+// Apply a function to arguments
+
+fn f(x,y,z) {
+  return x*x+y*y+z*z;
+}
+
+print apply(f, 0.5, 0.2, 0.1)
+// expect: 0.3
+
+print apply(f, 0.5)
+// expect: Error 'InvldArgs'

@@ -1,0 +1,42 @@
+// Access the underlying linearized store for the Field
+
+var m = Mesh("square.mesh")
+print m
+// expect: <Mesh: 4 vertices>
+
+var f = Field(m)
+var a = f.linearize() 
+var b = f.__linearize() 
+
+print a
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+
+for (i in 0...4) a[i] = i
+print f 
+// expect: <Field>
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+
+for (i in 0...4) b[i] = i
+print f 
+// expect: <Field>
+// expect: [ 0 ]
+// expect: [ 1 ]
+// expect: [ 2 ]
+// expect: [ 3 ]
+
+var f2 = Field(m, Matrix([1,0]))
+print f2.linearize() 
+// expect: [ 1 ]
+// expect: [ 0 ]
+// expect: [ 1 ]
+// expect: [ 0 ]
+// expect: [ 1 ]
+// expect: [ 0 ]
+// expect: [ 1 ]
+// expect: [ 0 ]

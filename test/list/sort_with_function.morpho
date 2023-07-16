@@ -1,0 +1,11 @@
+// Test List sort with function
+
+fn cmp(a, b) {
+  return -(a-b)
+}
+
+var lst = [ 4, 3, 2, 7, 8, 1, 10, 9, 6, 5 ]
+lst.sort(cmp)
+
+print lst
+// expect: [ 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 ]

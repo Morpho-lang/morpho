@@ -1,0 +1,8 @@
+// Check eigenvalues works on a problematic matrix
+
+var a = Matrix([[ -0.083929, 0.102945, 0.213477 ],
+                [ 0.102945, -0.108697, 0.189335 ],
+                [ 0.213477, 0.189335, 0.192626 ]])
+
+print a.eigensystem()
+// expect: [ <List>, <Matrix> ]

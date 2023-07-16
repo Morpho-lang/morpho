@@ -1,0 +1,17 @@
+fn g() {
+  fn isEven(n) {
+    if (n == 0) return true
+    return isOdd(n - 1)
+  }
+
+  fn isOdd(n) {
+    if (n == 0) return false
+    return isEven(n - 1)
+  }
+
+  return isEven
+}
+
+var isEv=g()
+print isEv(3) // expect: false
+print isEv(4) // expect: true

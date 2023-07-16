@@ -1,0 +1,22 @@
+// Newlines as statement terminators
+
+/* *********
+ * For loops
+ * ********* */
+
+// Ambiguity: Is the statement following the for in the loop?
+for (var i=0;i<2; i=i+1)
+print "done"
+// expect: done
+
+// Put the body on the same line
+for (var i=0;i<2; i=i+1) print "easy!"
+// expect: easy!
+// expect: easy!
+
+// Or use curly braces
+for (var i=0;i<2; i=i+1) {
+  print "trouble"
+}
+// expect: trouble
+// expect: trouble

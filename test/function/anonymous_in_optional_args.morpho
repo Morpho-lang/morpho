@@ -1,0 +1,11 @@
+// Anonymous fn in the optional arguments of a function 
+
+fn f(x, g=nil) {
+    print g(x)
+}
+
+f("Foo", g=fn (x) x) // expect: Foo
+
+f("Foo", g=fn (x) "Boo") // expect: Boo
+
+f("Foo", g=fn (x) { return x[0] }) // expect: F

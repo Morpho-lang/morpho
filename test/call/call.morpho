@@ -1,0 +1,12 @@
+// Test calling functions
+
+// Built in function
+print exp(0)
+// expect: 1
+
+// A function
+fn sqr(x) {
+  return x*x
+}
+print sqr(2)
+// expect: 4

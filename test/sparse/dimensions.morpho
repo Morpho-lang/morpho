@@ -1,0 +1,17 @@
+// Dimensions of a sparse matrix
+
+var a = Sparse([[1,2,3],[2,4,1],[4,4,0]])
+
+print a
+// expect: [ 0 0 0 0 0 ]
+// expect: [ 0 0 3 0 0 ]
+// expect: [ 0 0 0 0 1 ]
+// expect: [ 0 0 0 0 0 ]
+// expect: [ 0 0 0 0 0 ]
+
+print a.dimensions()
+// expect: [ 5, 5 ]
+
+var b=a*a
+print b.dimensions()
+// expect: [ 5, 5 ]

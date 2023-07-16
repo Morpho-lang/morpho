@@ -1,0 +1,15 @@
+// Anonymous closure
+
+var a = 0.5
+print apply(fn (x) x+a, 0.2)
+// expect: 0.7
+
+fn f(x) {
+  return fn (y) x+y
+}
+
+print f(0.4)
+// expect: <<fn >>
+
+print f(0.4)(0.4)
+// expect: 0.8

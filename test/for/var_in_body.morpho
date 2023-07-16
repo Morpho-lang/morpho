@@ -1,0 +1,4 @@
+// Body must be a statement
+for (;;) var foo;
+
+// expect error 'ExpExpr'

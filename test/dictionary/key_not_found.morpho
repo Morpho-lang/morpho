@@ -1,0 +1,6 @@
+// Test Dictionary standard methods
+
+var mass = { "Capital" : "Boston", "Population" : 6892503 }
+
+print mass["Capital"] // expect: Boston
+print mass["Area"] // expect error 'DctKyNtFnd'

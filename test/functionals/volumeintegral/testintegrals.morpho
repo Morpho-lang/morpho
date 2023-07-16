@@ -1,0 +1,20 @@
+// Test that integrators give correct estimates for simple integrals 
+
+import meshtools 
+import plot 
+
+var a = AreaMesh(fn (u,v) [u,v], 0..1:0.1, 0..1:0.1)
+
+var eps = 1e-10
+
+print abs(AreaIntegral(fn (x) x[0]).total(a) - 1/2) < eps // expect: true
+print abs(AreaIntegral(fn (x) x[0]*x[1]).total(a) - 1/4) < eps // expect: true
+print abs(AreaIntegral(fn (x) (x[0]*x[1])^2).total(a) - 1/9) < eps // expect: true
+
+var pts = []
+for (x in 0..1:0.25) for (y in 0..1:0.25) for (z in 0..1:0.25) pts.append(Matrix([x,y,z]))
+var m = DelaunayMesh(pts)
+
+print abs(VolumeIntegral(fn (x) x[0]).total(m) - 1/2) < eps // expect: true
+print abs(VolumeIntegral(fn (x) x[0]*x[1]*x[2]).total(m) - 1/8)  < eps // expect: true
+print abs(VolumeIntegral(fn (x) (x[0]*x[1]*x[2])^2).total(m) - 1/27)  < eps // expect: true

@@ -1,0 +1,51 @@
+// Test equielements
+
+import meshtools
+import optimize
+
+fn numericalgrad(func, m, eps=1e-8) {
+   var x=m.vertexmatrix()
+   var grad=x.clone()
+   var dim = x.dimensions()[0]
+
+   for (i in 0...m.count()) {
+      for (j in 0...dim) {
+         var temp = x[j,i]
+         x[j,i]=temp+eps
+         var fr=func.total(m)
+         x[j,i]=temp-eps
+         var fl=func.total(m)
+         x[j,i]=temp
+         grad[j,i]=(fr-fl)/(2*eps)
+      }
+   }
+
+   return grad
+} 
+
+var m = LineMesh(fn (t) [t, 0, 0], 0..1:0.5)
+
+var le = EquiElement()
+
+var v = m.vertexmatrix()
+v.setcolumn(1, Matrix([0.3, 0, 0]))
+
+print le.integrand(m)
+// expect: [ 0 0.32 0 ]
+
+print le.total(m)
+// expect: 0.32
+
+print (le.gradient(m)-numericalgrad(le, m)).norm() < 1e-4
+// expect: true
+
+var problem = OptimizationProblem(m)
+problem.addenergy(le)
+
+var opt=ShapeOptimizer(problem, m)
+
+opt.quiet=true
+opt.relax(20)
+
+print abs(opt.totalenergy())<1e-8
+// expect: true

@@ -1,0 +1,9 @@
+// Check that assignment is right associative
+var a = "Not me!"
+var b = "Or me!"
+var c = "But me!"
+
+a = b = c
+print a  // expect: But me!
+print b  // expect: But me!
+print c  // expect: But me!

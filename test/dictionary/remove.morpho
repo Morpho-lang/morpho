@@ -1,0 +1,7 @@
+// Test Dictionary remove method
+
+var mass = { "Capital" : "Boston", "Population" : 6892503 }
+
+mass.remove("Capital")
+
+print mass // expect: { Population : 6892503 }

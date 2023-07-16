@@ -1,0 +1,10 @@
+// Ensuring unary minus and operations are compatible
+
+var a = 1
+var b = 4
+
+print -a/b
+// expect: -0.25
+
+print -a/b
+// expect: -0.25

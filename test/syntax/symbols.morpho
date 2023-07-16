@@ -1,0 +1,19 @@
+/* **********************************
+ * morpho test suite
+ * symbols.morpho
+ * Test symbols
+ * ********************************** */
+
+var _symbol = 2
+print _symbol // expect: 2
+
+var Breakfast = "Eggs"
+var breakfast = "Bacon"
+print Breakfast // expect: Eggs
+
+class My_class {}
+var c = My_class()
+print c // expect: <My_class>
+
+var sym123 = 6
+print sym123 // expect: 6

@@ -1,0 +1,18 @@
+
+var a = Mesh("square.mesh")
+var b = a.clone()
+
+print b
+// expect: <Mesh: 4 vertices>
+
+a.addgrade(1)
+
+print b.connectivitymatrix(0,2)
+// expect: [ 1 0 ]
+// expect: [ 1 1 ]
+// expect: [ 1 1 ]
+// expect: [ 0 1 ]
+
+
+print b.connectivitymatrix(0,1)
+// expect: nil

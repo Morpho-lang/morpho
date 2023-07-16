@@ -1,0 +1,13 @@
+fn f() {
+  for (i in 1..10) {
+    print i
+    if (i==5) return
+  }
+}
+
+f()
+// expect: 1
+// expect: 2
+// expect: 3
+// expect: 4
+// expect: 5

@@ -1,0 +1,22 @@
+/* **********************************
+ * morpho test suite
+ * try_recurse.morpho
+ * try/catch from deep in a recursion
+ * ********************************** */
+
+var err = Error("Foo", "A Foo occurred")
+
+fn rec(x) {
+  if (x==0) err.throw()
+
+  rec(x-1)
+}
+
+try {
+  rec(50)
+} catch {
+  "Foo": print "Caught"
+}
+
+// expect: Caught
+print "ok" // expect: ok

@@ -1,0 +1,8 @@
+// Count downwards
+
+for (i in -0.1..-0.5:-0.1) print i
+// expect: -0.1
+// expect: -0.2
+// expect: -0.3
+// expect: -0.4
+// expect: -0.5

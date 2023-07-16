@@ -1,0 +1,32 @@
+// Test List veneer class
+
+var lst = [ 1,2,3 ]
+print lst[0] // expect: 1
+print lst[1] // expect: 2
+print lst[2] // expect: 3
+print lst.count() // expect: 3
+
+// Empty list
+var a = []
+print a
+// expect: [  ]
+
+for (i in 1..5) a.append(i)
+
+print a
+// expect: [ 1, 2, 3, 4, 5 ]
+
+print a.pop()
+// expect: 5
+print a.pop()
+// expect: 4
+
+print a.count()
+// expect: 3
+
+print a
+// expect: [ 1, 2, 3 ]
+
+a.append("Hello")
+print a
+// expect: [ 1, 2, 3, Hello ]

@@ -1,0 +1,8 @@
+// Methods that don't return anything return self.
+class Foo {
+  bar() {
+    return
+  }
+}
+
+print Foo().bar() // expect: <Foo>

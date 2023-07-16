@@ -1,0 +1,14 @@
+// Splitting strings
+
+var t = "A~;¶Þॐ,ஃ"
+print t.split(";,")
+// expect: [ A~, ¶Þॐ, ஃ ]
+
+print "A~;¶Þॐ,ஃ;".split(";,")
+// expect: [ A~, ¶Þॐ, ஃ,  ]
+
+print ";;;".split(";")
+// expect: [ , , ,  ]
+
+print "hello".split(";")
+// expect: [ hello ]

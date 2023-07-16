@@ -1,0 +1,6 @@
+// Continue outside of loop but in if statement
+
+if (true) {
+  continue
+}
+// expect error 'CntOtsdLp'

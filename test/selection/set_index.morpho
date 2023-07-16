@@ -1,0 +1,12 @@
+// Test selections
+
+var m = Mesh("square.mesh")
+
+var s = Selection(m)
+print s // expect: <Selection>
+
+s[0,1] = true
+print s[0,1] // expect: true
+
+s[0,1] = false
+print s[0,1] // expect: false

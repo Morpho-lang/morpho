@@ -1,0 +1,11 @@
+
+var a = Mesh("square.mesh")
+
+print a
+// expect: <Mesh: 4 vertices>
+
+a.save("out.mesh")
+
+var b = Mesh("out.mesh")
+print b
+// expect: <Mesh: 4 vertices>

@@ -1,0 +1,7 @@
+class Foo {
+  Foo() {
+    self = "value" // Error 'InvldAssgn'
+  }
+}
+
+Foo()

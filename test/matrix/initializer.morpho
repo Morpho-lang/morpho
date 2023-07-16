@@ -1,0 +1,37 @@
+// Initialize different matrices
+
+var a = Matrix([[1]])
+print a
+// expect: [ 1 ]
+
+var b = Matrix([ [1, 2], [3, 4]])
+print b
+// expect: [ 1 2 ]
+// expect: [ 3 4 ]
+
+var c = Matrix([ [1, 2, 3], [4, 5, 6], [7, 8, 9]])
+print c
+// expect: [ 1 2 3 ]
+// expect: [ 4 5 6 ]
+// expect: [ 7 8 9 ]
+
+a = Matrix(2,2)
+a[0,0] = 1.0
+a[1,1] = 1.0
+print a
+// expect: [ 1 0 ]
+// expect: [ 0 1 ]
+
+var v = Matrix([0.2, 0.3])
+print v
+// expect: [ 0.2 ]
+// expect: [ 0.3 ]
+
+var w = Matrix(b)
+print w
+// expect: [ 1 2 ]
+// expect: [ 3 4 ]
+
+var w = Matrix([[1,[2,3]]])
+// expect Error 'MtrxInvldInit'
+print w

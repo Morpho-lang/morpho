@@ -1,0 +1,12 @@
+class Foo {
+  init(arg) {
+    print "Foo.init(" + arg + ")"
+    self.field = "init"
+  }
+}
+
+fn init() {
+  print "not an initializer"
+}
+
+init() // expect: not an initializer

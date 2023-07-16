@@ -1,0 +1,2 @@
+fn foo(a, b c, d, e, f) {}
+// expect error 'FnMssngRgtPrn'

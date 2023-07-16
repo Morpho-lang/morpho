@@ -1,0 +1,22 @@
+import meshtools 
+import "../numericalderivatives.morpho"
+
+var mb = MeshBuilder()
+mb.addvertex([-1,-1])
+mb.addvertex([1,1])
+mb.addedge([0,1])
+var m = mb.build() 
+
+var a = Length()
+
+print m
+// expect: <Mesh: 2 vertices>
+
+print (a.total(m) - 2*sqrt(2)) < 1e-5
+// expect: true
+
+print (a.integrand(m) - Matrix([ 2*sqrt(2) ])).norm() < 1e-5
+// expect: true
+
+print (a.gradient(m) - numericalgradient(a, m)).norm() < 1e-5
+// expect: true

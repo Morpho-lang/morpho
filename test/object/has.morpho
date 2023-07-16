@@ -1,0 +1,14 @@
+// Check Object.respondsto()
+
+var a = Object()
+
+a.things = "stuff"
+
+print a.has("things")
+// expect: true
+
+print a.has("stuff")
+// expect: false
+
+print a.has()
+// expect: [ things ]

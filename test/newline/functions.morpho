@@ -1,0 +1,31 @@
+// Newlines as statement terminators
+
+/* *********
+ * Functions
+ * ********* */
+
+// Ambiguity: Line terminator after return
+fn test1(x) {
+  return x*x
+}
+
+fn test2(x) {
+  return
+  x*x
+}
+
+fn test3(x) {
+  return x*
+  test1(x)
+}
+
+print test1(2) // expect: 4
+
+print test2(2) // expect: nil
+
+print test3(2) // expect: 8
+
+// Ambiguity: Is this two statements or a function call?
+print test1
+(1)
+// expect: <fn test1>

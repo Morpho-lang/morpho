@@ -1,0 +1,46 @@
+// Line torsion Sq
+import constants
+import meshtools
+import symmetry
+
+var np=10
+var R=1
+var L=2
+
+var m = LineMesh(fn (t) [R*cos(2*Pi*t), R*sin(2*Pi*t), t], 0..L:L/np, closed=false)
+// Show(plotmesh(m, grade=1))
+
+// Add translational symmetry to the exterior vertices
+var s = Selection(m, fn (x,y,z) abs(z)<1e-10 || abs(z-L)<1e-10)
+var t = Translate(Matrix([0,0,L]))
+m.addsymmetry(t, s)
+
+// Create the manifold
+var lc = LineTorsionSq()
+
+var grad = lc.gradient(m)
+
+var dim = grad.dimensions()
+var ngrad = Matrix(dim[0], dim[1])
+
+// Manually calculate the gradient
+var vert = m.vertexmatrix()
+var eps = 1e-8
+
+for (i in 0...dim[0]) {
+  for (j in 0...dim[1]) {
+    var v = vert[i, j]
+    vert[i, j] = v + eps
+    var fp = lc.total(m)
+    vert[i, j] = v - eps
+    var fm = lc.total(m)
+    ngrad[i,j] = (fp-fm)/(2*eps)
+  }
+}
+
+// Account for symmetry
+var sym=ngrad.column(0)+ngrad.column(np)
+ngrad.setcolumn(0, sym)
+ngrad.setcolumn(np, sym)
+
+print (grad-ngrad).norm()/grad.count() < 1e-6 // expect: true

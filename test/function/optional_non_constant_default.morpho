@@ -1,0 +1,7 @@
+// Optional arguments
+
+fn func(x, y=2*5) {
+
+}
+
+// expect error 'OptPrmDflt'

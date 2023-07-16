@@ -1462,7 +1462,7 @@ void parse_finalize(void) {
 #include "dictionary.h"
 
 #define JSON_OBJCTKEY                    "JSONObjctKey"
-#define JSON_OBJCTKEY_MSG                "JSON Object keys must be strings."
+#define JSON_OBJCTKEY_MSG                "JSON object keys must be strings."
 
 /* -------------------------------------------------------
  * JSON token types and process functions
@@ -1793,7 +1793,7 @@ void json_initializeparser(parser *p, lexer *l, error *err, void *out) {
     parse_setskipnewline(p, false, TOKEN_NONE);
 }
 
-char *test =  "{ \"Hello\" : \"World\", \"Goodbye\" : 2 }";
+char *test =  "{ 23 : \"World\", \"Goodbye\" : 2 }";
 //"  [ 1213, 1.2, 1.3e-02, 1.4e-03 ] ";
 // "{ \"Hello\" : \"World\" }";
 //"  [ 1213, 1.2, 1.3e-02, 1.4e-03 ] ";

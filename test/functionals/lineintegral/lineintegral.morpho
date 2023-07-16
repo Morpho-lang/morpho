@@ -1,0 +1,27 @@
+import constants
+import meshtools
+
+var m = LineMesh(fn (t) [t,0,0], 0..1:0.1)
+
+var f = Field(m, fn (x,y,z) x)
+
+// A line integral with only spatial dependence
+var lc = LineIntegral(fn (x) (x[0]*(1-x[0]))^2)
+
+print lc.integrand(m)
+// expect: [ 0.000285333 0.00164533 0.00350533 0.00514533 0.00608533 0.00608533 0.00514533 0.00350533 0.00164533 0.000285333 ]
+
+print lc.total(m)
+// expect: 0.0333333
+
+// A line integral with a field
+var lcf = LineIntegral(fn (x, f) (f*(1-f))^2, f)
+
+print lcf.integrand(m)
+// expect: [ 0.000285333 0.00164533 0.00350533 0.00514533 0.00608533 0.00608533 0.00514533 0.00350533 0.00164533 0.000285333 ]
+
+print lcf.total(m)
+// expect: 0.0333333
+
+var badLiField = LineIntegral(fn (x,f) (f*(1-f))^2, nil)
+// expect error 'IntgrlArgs'

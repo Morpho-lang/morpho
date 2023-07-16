@@ -1,0 +1,5 @@
+// expect error 'UntrmComm'
+
+/* Unterminated comment
+
+print "Hello"

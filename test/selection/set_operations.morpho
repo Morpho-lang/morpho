@@ -1,0 +1,28 @@
+// Selection set operations
+
+var m = Mesh("square.mesh")
+
+fn f(x,y,z) {
+  return y>0.5
+}
+
+fn g(x,y,z) {
+  return x<0.5
+}
+
+var s1 = Selection(m, f)
+print s1.idlistforgrade(0)
+// expect: [ 2, 3 ]
+
+var s2 = Selection(m, g)
+print s2.idlistforgrade(0)
+// expect: [ 0, 2 ]
+
+print s1.union(s2).idlistforgrade(0)
+// expect: [ 0, 2, 3 ]
+
+print s1.intersection(s2).idlistforgrade(0)
+// expect: [ 2 ]
+
+print s1.difference(s2).idlistforgrade(0)
+// expect: [ 3 ]

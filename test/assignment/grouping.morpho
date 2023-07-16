@@ -1,0 +1,4 @@
+// Check that cannot assign to a quantity in grouping. 
+
+var a = "a"
+(a) = "value" // Error 'InvldAssgn'

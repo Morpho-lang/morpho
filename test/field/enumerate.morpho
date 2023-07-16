@@ -1,0 +1,21 @@
+// Operations on Field elements
+
+var m = Mesh("square.mesh")
+
+var f = Field(m, Matrix([1,0]), grade = 2)
+print f.count()
+// expect: 2
+
+for (v in f) print v
+// expect: [ 1 ]
+// expect: [ 0 ]
+// expect: [ 1 ]
+// expect: [ 0 ]
+
+var g = f.op(fn (x) x.norm())
+print g.count()
+// expect: 2
+
+for (nrm in g) print nrm
+// expect: 1
+// expect: 1

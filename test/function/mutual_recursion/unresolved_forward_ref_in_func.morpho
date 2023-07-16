@@ -1,0 +1,14 @@
+// Forward references must be resolved in the same scope
+
+fn f() {
+    return fn (u) func(u)
+}
+
+fn func(u) {
+    return u
+}
+
+var x = f()
+print x(1)
+
+// expect error 'UnrslvdFrwdRf'

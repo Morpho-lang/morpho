@@ -1,0 +1,4 @@
+// Err. when a level set function isn't callable
+
+var a = ScalarPotential(0.4)
+// expect Error 'SclrPtFnCllbl'

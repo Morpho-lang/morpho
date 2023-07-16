@@ -1,0 +1,17 @@
+
+var m = Mesh("tetrahedron.mesh")
+var a = Volume()
+
+print m
+// expect: <Mesh: 4 vertices>
+
+print a.integrand(m)
+// expect: [ 0.117851 ]
+
+print a.total(m)
+// expect: 0.117851
+
+print a.gradient(m)
+// expect: [ 0 -0.0680413 -0.0680413 0.136083 ]
+// expect: [ 0 -0.117851 0.117851 0 ]
+// expect: [ 0.144338 -0.0481125 -0.0481125 -0.0481125 ]

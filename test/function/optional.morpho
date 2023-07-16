@@ -1,0 +1,30 @@
+// Optional arguments
+
+fn func(x, y=true, z=2) {
+  print x
+  print y
+  print z
+}
+
+func(1)
+// expect: 1
+// expect: true
+// expect: 2
+
+func(1, y=false)
+// expect: 1
+// expect: false
+// expect: 2
+
+func(1, z=3)
+// expect: 1
+// expect: true
+// expect: 3
+
+func(1, z=3, y=false)
+// expect: 1
+// expect: false
+// expect: 3
+
+func(1, 2, y=false)
+// expect error 'InvldArgs'

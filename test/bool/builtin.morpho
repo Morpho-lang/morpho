@@ -1,0 +1,6 @@
+// Test not operator on Boolean values
+
+print Bool(1) // expect: true
+print Bool(0) // expect: true
+print Bool(nil) // expect: false
+print Bool(false) // expect: false

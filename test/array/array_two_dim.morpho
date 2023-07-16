@@ -1,0 +1,27 @@
+// Two dimensional arrays
+
+var a[3,3]
+
+var k=0
+for (var i=0; i<3; i=i+1) {
+  for (var j=0; j<3; j=j+1) {
+    a[i,j]=k
+    k=k+1
+  }
+}
+
+for (var i=0; i<3; i=i+1) {
+  for (var j=0; j<3; j=j+1) {
+    print a[i,j]
+  }
+}
+
+// expect: 0
+// expect: 1
+// expect: 2
+// expect: 3
+// expect: 4
+// expect: 5
+// expect: 6
+// expect: 7
+// expect: 8

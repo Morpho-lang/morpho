@@ -1,0 +1,6 @@
+// Strings have methods but not properties
+
+print "Hello".count
+// expect: Hello.<fn count>
+
+"str".foo // expect error 'ClssLcksMthd'

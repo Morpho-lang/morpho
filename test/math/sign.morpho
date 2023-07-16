@@ -1,0 +1,9 @@
+print sign(-1) // expect: -1
+print sign(0) // expect: 0
+print sign(1) // expect: 1
+print sign(2.0) // expect: 1
+print sign(-2.0) // expect: -1
+print sign(0.0) // expect: 0
+print sign(-(1/0)) // expect: -1
+print sign(1/0) // expect: 1
+print sign(0/0) // expect: 0

@@ -1,0 +1,17 @@
+// Test selections
+
+var m = Mesh("square.mesh")
+
+var p = ScalarPotential(
+  fn (x,y,z) (y-0.5),
+  fn (x,y,z) Matrix([0,-1,0])
+)
+
+var s = Selection(m, fn (q) q>0, p.integrand(m))
+print s // expect: <Selection>
+
+print s.isselected(0, 0) // expect: false
+print s.isselected(0, 1) // expect: false
+print s.isselected(0, 2) // expect: true
+
+print s.idlistforgrade(0) // expect: [ 2, 3 ]

@@ -84,6 +84,8 @@ struct sparser {
     bool nl; /** Was a newline encountered before the current token? */
     
     // Customize parser
+    bool skipnewline; /** Whether to advance past newline tokens or return them */
+    tokentype toknewline; /** Newline token type */
     parsefunction baseparsefn; /** Base parse function */
     varray_parserule parsetable; /** Table of parse rules */
 };
@@ -115,6 +117,12 @@ struct sparser {
 
 #define PARSE_BLOCKTERMINATOREXP        "MssngBrc"
 #define PARSE_BLOCKTERMINATOREXP_MSG    "Expected '}' to finish block."
+
+#define PARSE_MSSNGSQBRC                "MssngSqBrc"
+#define PARSE_MSSNGSQBRC_MSG            "Expected ']' to finish list."
+
+#define PARSE_MSSNGCOMMA                "MssngComma"
+#define PARSE_MSSNGCOMMA_MSG            "Expected ','."
 
 #define PARSE_IFLFTPARENMISSING         "IfMssngLftPrn"
 #define PARSE_IFLFTPARENMISSING_MSG     "Expected '(' after if."
@@ -192,7 +200,10 @@ struct sparser {
 #define PARSE_SWTCHSPRTR_MSG              "Expected a colon after label."
 
 #define PARSE_DCTENTRYSPRTR               "DctEntrySprtr"
-#define PARSE_DCTENTRYSPRTR_MSG           "Expected a comma or '}'."
+#define PARSE_DCTENTRYSPRTR_MSG           "Expected a comma separating each dictionary entry."
+
+#define PARSE_DCTTRMNTR                   "DctTrmntr"
+#define PARSE_DCTTRMNTR_MSG               "Expected a '}' to end the dictionary."
 
 #define PARSE_EXPCTWHL                    "ExpctWhl"
 #define PARSE_EXPCTWHL_MSG                "Expected while after loop body."
@@ -205,6 +216,12 @@ struct sparser {
 
 #define PARSE_ONEVARPR                    "OneVarPr"
 #define PARSE_ONEVARPR_MSG                "Functions can have only one variadic parameter."
+
+#define PARSE_VALRANGE                    "ValRng"
+#define PARSE_VALRANGE_MSG                "Value out of range."
+
+#define PARSE_STRESC                      "StrEsc"
+#define PARSE_STRESC_MSG                  "Unrecognized escape sequence in string."
 
 /* -------------------------------------------------------
  * Interface for writing a custom parser
@@ -292,6 +309,7 @@ void parse_clear(parser *p);
 
 bool parse_setparsetable(parser *p, parserule *rules);
 void parse_setbaseparsefn(parser *p, parsefunction fn);
+void parse_setskipnewline(parser *p, bool skip, tokentype toknewline);
 
 bool parse(parser *p);
 

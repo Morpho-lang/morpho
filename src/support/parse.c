@@ -29,10 +29,10 @@ void parse_error(parser *p, bool use_prev, errorid id, ... ) {
     token *tok = (use_prev ? &p->previous : &p->current);
     
     /** Only return the first error that occurs */
-    if (p->err->id!=ERROR_NONE) return;
+    if (p->err->cat!=ERROR_NONE) return;
     
     va_start(args, id);
-    morpho_writeerrorwithid(p->err, id, tok->line, tok->posn-tok->length, args);
+    morpho_writeerrorwithid(p->err, id, tok->line, tok->posn, args);
     va_end(args);
 }
 
@@ -49,8 +49,10 @@ bool parse_advance(parser *p) {
         if (!lex(l, &p->current, p->err)) return false;
         
         /* Skip any newlines encountered */
-        if (p->current.type!=TOKEN_NEWLINE) break;
-        p->nl=true;
+        if (p->skipnewline && p->current.type==p->toknewline) {
+            p->nl=true;
+            continue;
+        } else break;
     }
     
     return (p->err->cat==ERROR_NONE);
@@ -73,7 +75,7 @@ bool parse_precedence(parser *p, precedence prec, void *out) {
         return SYNTAXTREE_UNCONNECTED;
     }
     
-    prefixrule(p, out);
+    if (!prefixrule(p, out)) return false;
     
     /* Now keep parsing while the tokens have lower precedence */
     rule=parse_getrule(p, p->current.type);
@@ -86,8 +88,9 @@ bool parse_precedence(parser *p, precedence prec, void *out) {
         parse_advance(p);
         
         infixrule = parse_getrule(p, p->previous.type)->infix;
-        if (infixrule) infixrule(p, out);
-        else parse_error(p, true, 0);
+        if (infixrule) {
+            if (!infixrule(p, out)) return false;
+        } else UNREACHABLE("No infix rule defined for this token type [check parser definition table].");
         
         rule=parse_getrule(p, p->current.type);
     }
@@ -392,7 +395,7 @@ bool parse_dictionary(parser *p, void *out) {
         parse_addnode(p, NODE_DICTIONARY, MORPHO_NIL, &tok, last, pair, &last);
         
         if (!parse_checktoken(p, TOKEN_RIGHTCURLYBRACKET)) {
-            if (!parse_checkrequiredtoken(p, TOKEN_COMMA, PARSE_DCTENTRYSPRTR)) break;
+            if (!parse_checkrequiredtoken(p, TOKEN_COMMA, PARSE_DCTTRMNTR)) break;
         }
     } while(!parse_checktokenadvance(p, TOKEN_RIGHTCURLYBRACKET) && !parse_checktoken(p, TOKEN_EOF));
     
@@ -614,7 +617,7 @@ bool parse_list(parser *p, void *out) {
     
     syntaxtreeindx right;
     parse_arglist(p, TOKEN_RIGHTSQBRACKET, &nindx, &right);
-    parse_checkrequiredtoken(p, TOKEN_RIGHTSQBRACKET, PARSE_CALLRGHTPARENMISSING);
+    parse_checkrequiredtoken(p, TOKEN_RIGHTSQBRACKET, PARSE_MSSNGSQBRC);
 
     return parse_addnode(p, NODE_LIST, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, right, out);
 }
@@ -1300,6 +1303,12 @@ void parse_setbaseparsefn(parser *p, parsefunction fn) {
     p->baseparsefn = fn;
 }
 
+/** Sets whether to skip new line tokens, and define the token type if so. */
+void parse_setskipnewline(parser *p, bool skip, tokentype toknewline) {
+    p->skipnewline = skip;
+    p->toknewline = toknewline;
+}
+
 /* **********************************************************************
  * Interface
  * ********************************************************************** */
@@ -1317,8 +1326,11 @@ void parse_init(parser *p, lexer *lex, error *err, void *out) {
     p->err=err;
     p->out=out;
     p->nl=false;
-    p->baseparsefn=parse_program;
     varray_parseruleinit(&p->parsetable);
+    
+    // Configure parser to parse morpho by default
+    parse_setbaseparsefn(p, parse_program);
+    parse_setskipnewline(p, true, TOKEN_NEWLINE);
     parse_setparsetable(p, rules);
 }
 
@@ -1399,6 +1411,8 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_MISSINGSEMICOLONVAR, ERROR_PARSE, PARSE_MISSINGSEMICOLONVAR_MSG);
     morpho_defineerror(PARSE_VAREXPECTED, ERROR_PARSE, PARSE_VAREXPECTED_MSG);
     morpho_defineerror(PARSE_BLOCKTERMINATOREXP, ERROR_PARSE, PARSE_BLOCKTERMINATOREXP_MSG);
+    morpho_defineerror(PARSE_MSSNGSQBRC, ERROR_PARSE, PARSE_MSSNGSQBRC_MSG);
+    morpho_defineerror(PARSE_MSSNGCOMMA, ERROR_PARSE, PARSE_MSSNGCOMMA_MSG);
     morpho_defineerror(PARSE_IFLFTPARENMISSING, ERROR_PARSE, PARSE_IFLFTPARENMISSING_MSG);
     morpho_defineerror(PARSE_IFRGHTPARENMISSING, ERROR_PARSE, PARSE_IFRGHTPARENMISSING_MSG);
     morpho_defineerror(PARSE_WHILELFTPARENMISSING, ERROR_PARSE, PARSE_WHILELFTPARENMISSING_MSG);
@@ -1426,12 +1440,15 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_DCTSPRTR, ERROR_PARSE, PARSE_DCTSPRTR_MSG);
     morpho_defineerror(PARSE_SWTCHSPRTR, ERROR_PARSE, PARSE_SWTCHSPRTR_MSG);
     morpho_defineerror(PARSE_DCTENTRYSPRTR, ERROR_PARSE, PARSE_DCTENTRYSPRTR_MSG);
+    morpho_defineerror(PARSE_DCTTRMNTR, ERROR_PARSE, PARSE_DCTENTRYSPRTR_MSG);
     morpho_defineerror(PARSE_EXPCTWHL, ERROR_PARSE, PARSE_EXPCTWHL_MSG);
     morpho_defineerror(PARSE_EXPCTCTCH, ERROR_PARSE, PARSE_EXPCTCTCH_MSG);
     morpho_defineerror(PARSE_ONEVARPR, ERROR_PARSE, PARSE_ONEVARPR_MSG);
     morpho_defineerror(PARSE_CATCHLEFTCURLYMISSING, ERROR_PARSE, PARSE_CATCHLEFTCURLYMISSING_MSG);
+    morpho_defineerror(PARSE_VALRANGE, ERROR_PARSE, PARSE_VALRANGE_MSG);
+    morpho_defineerror(PARSE_STRESC, ERROR_PARSE, PARSE_STRESC_MSG);
     
-    // json_parse();
+    json_parse();
 }
 
 void parse_finalize(void) {
@@ -1442,11 +1459,17 @@ void parse_finalize(void) {
  * Experimental JSON parser
  * ********************************************************************** */
 
+#include "dictionary.h"
+
+#define JSON_OBJCTKEY                    "JSONObjctKey"
+#define JSON_OBJCTKEY_MSG                "JSON Object keys must be strings."
+
 /* -------------------------------------------------------
  * JSON token types and process functions
  * ------------------------------------------------------- */
 
 bool json_lexstring(lexer *l, token *tok, error *err);
+bool json_lexnumber(lexer *l, token *tok, error *err);
 
 enum {
     JSON_LEFTCURLYBRACE,
@@ -1455,10 +1478,14 @@ enum {
     JSON_RIGHTSQUAREBRACE,
     JSON_COMMA,
     JSON_COLON,
+    JSON_MINUS,
     JSON_QUOTE,
     JSON_TRUE,
     JSON_FALSE,
     JSON_NULL,
+    JSON_STRING,
+    JSON_NUMBER,
+    JSON_FLOAT,
     JSON_EOF
 };
 
@@ -1469,6 +1496,7 @@ tokendefn jsontokens[] = {
     { "]",          JSON_RIGHTSQUAREBRACE       , NULL },
     { ",",          JSON_COMMA                  , NULL },
     { ":",          JSON_COLON                  , NULL },
+    { "-",          JSON_MINUS                  , json_lexnumber },
     { "\"",         JSON_QUOTE                  , json_lexstring },
     { "true",       JSON_TRUE                   , NULL },
     { "false",      JSON_FALSE                  , NULL },
@@ -1476,8 +1504,83 @@ tokendefn jsontokens[] = {
     { "",           TOKEN_NONE                  , NULL }
 };
 
-bool json_lexstring(lexer *l, token *tok, error *err) {
+/** Skip over JSON whitespace */
+bool json_lexwhitespace(lexer *l, token *tok, error *err) {
+    for (;;) {
+        char c = lex_peek(l);
+        
+        switch (c) {
+            case '\n':
+                lex_newline(l); // V Intentional fallthrough
+            case ' ':
+            case '\t':
+            case '\r':
+                lex_advance(l);
+                break;
+            default:
+                return true;
+        }
+    }
     return true;
+}
+
+/** Record JSON strings as a token */
+bool json_lexstring(lexer *l, token *tok, error *err) {
+    char c;
+    
+    while (lex_peek(l) != '"' && !lex_isatend(l)) {
+        if (lex_peek(l)=='\\') lex_advance(l); // Detect an escaped character
+
+        lex_advance(l);
+    }
+    
+    if (lex_isatend(l)) {
+        morpho_writeerrorwithid(err, LEXER_UNTERMINATEDSTRING, tok->line, tok->posn);
+        return false;
+    }
+    
+    lex_advance(l); // Advance over final quote
+    lex_recordtoken(l, JSON_STRING, tok);
+    
+    return true;
+}
+
+/** Record JSON numbers as a token */
+bool json_lexnumber(lexer *l, token *tok, error *err) {
+    tokentype type = JSON_NUMBER;
+    while (lex_isdigit(lex_peek(l)) && !lex_isatend(l)) lex_advance(l);
+    
+    if (lex_peek(l)=='.') { lex_advance(l); type = JSON_FLOAT; };
+    
+    while (lex_isdigit(lex_peek(l)) && !lex_isatend(l)) lex_advance(l);
+    
+    if (lex_peek(l)=='e' || lex_peek(l)=='E') { lex_advance(l); type = JSON_FLOAT; };
+    if (lex_peek(l)=='+' || lex_peek(l)=='-') lex_advance(l);
+    
+    while (lex_isdigit(lex_peek(l)) && !lex_isatend(l)) lex_advance(l);
+    
+    lex_recordtoken(l, type, tok);
+    
+    return true;
+}
+
+/** Lexer token preprocessor function */
+bool json_lexpreprocess(lexer *l, token *tok, error *err) {
+    char c = lex_peek(l);
+    if (lex_isdigit(c)) return json_lexnumber(l, tok, err);
+    return false;
+}
+
+/* -------------------------------------------------------
+ * Initialize a JSON lexer
+ * ------------------------------------------------------- */
+
+void json_initializelexer(lexer *l, char *src) {
+    lex_init(l, src, 0);
+    lex_settokendefns(l, jsontokens);
+    lex_setprefn(l, json_lexpreprocess);
+    lex_setwhitespacefn(l, json_lexwhitespace);
+    lex_seteof(l, JSON_EOF);
 }
 
 /* -------------------------------------------------------
@@ -1486,66 +1589,180 @@ bool json_lexstring(lexer *l, token *tok, error *err) {
 
 bool json_parsevalue(parser *p, void *out);
 
+/** Convenience function to place a value in the opaque out pointer */
 void json_output(void *out, value v) {
     * ((value *) out) = v;
 }
 
-bool json_parseobject(parser *p, void *out) {
-    return true;
-}
-
-bool json_parsearray(parser *p, void *out) {
-    objectlist *new = object_newlist(0, NULL);
-    if (!new) parse_error(p, true, ERROR_ALLOCATIONFAILED);
-
-    while (!parse_checktoken(p, JSON_RIGHTSQUAREBRACE) &&
-           !parse_checktoken(p, JSON_EOF)) {
-        value v;
-        if (json_parsevalue(p, &v)) {
-            list_append(new, v);
+bool json_parsestring(parser *p, void *out) {
+    bool success=false;
+    varray_char str;
+    varray_charinit(&str);
+    
+    const char *input = p->previous.start;
+    unsigned int length = p->previous.length;
+    
+    for (unsigned int i=1; i<length-1; i++) {
+        if (input[i]!='\\') {
+            varray_charwrite(&str, input[i]);
+        } else {
+            i++;
+            switch (input[i]) {
+                case '\"': varray_charwrite(&str, '\"'); break;
+                case '\\': varray_charwrite(&str, '\\'); break;
+                case '/': varray_charwrite(&str, '/'); break;
+                case 'b': varray_charwrite(&str, '\b'); break;
+                case 'f': varray_charwrite(&str, '\f'); break;
+                case 'n': varray_charwrite(&str, '\n'); break;
+                case 'r': varray_charwrite(&str, '\r'); break;
+                case 't': varray_charwrite(&str, '\t'); break;
+                case 'u':
+                {
+                    long c = strtol(&input[i+2], NULL, 16);
+                    
+                }
+                    break;
+                default:
+                    parse_error(p, true, PARSE_STRESC);
+                    goto json_parsestring_cleanup;
+            }
         }
-        parse_checktokenadvance(p, JSON_COMMA);
     }
     
-    json_output(out, MORPHO_OBJECT(new));
+    objectstring *new = object_stringfromvarraychar(&str);
+    if (new) {
+        success=true;
+        json_output(out, MORPHO_OBJECT(new));
+    } else {
+        parse_error(p, true, ERROR_ALLOCATIONFAILED);
+    }
+    
+json_parsestring_cleanup:
+    varray_charclear(&str);
+    return success;
+}
+
+/** Parses an integer */
+bool json_parsenumber(parser *p, void *out) {
+    long f = strtol(p->previous.start, NULL, 10);
+    
+    if ( (errno==ERANGE && (f==LONG_MAX || f==LONG_MIN)) || // Check for underflow or overflow
+        f>INT_MAX || f<INT_MIN) {
+        parse_error(p, true, PARSE_VALRANGE);
+        return false; 
+    }
+    
+    json_output(out, MORPHO_INTEGER((int) f));
     
     return true;
 }
 
-bool json_parsestring(parser *p, void *out) {
+/** Parses an floating point value */
+bool json_parsefloat(parser *p, void *out) {
+    double f = strtod(p->previous.start, NULL);
+    
+    if ( errno==ERANGE && (f==HUGE_VAL || f==-HUGE_VAL || f<=DBL_MIN) ) {
+        parse_error(p, true, PARSE_VALRANGE);
+        return false;
+    }
+    
+    json_output(out, MORPHO_FLOAT((double) f));
+    
     return true;
 }
 
+/** Parses the true identifier */
 bool json_parsetrue(parser *p, void *out) {
     json_output(out, MORPHO_TRUE);
     return true;
 }
 
+/** Parses the false identifier */
 bool json_parsefalse(parser *p, void *out) {
     json_output(out, MORPHO_FALSE);
     return true;
 }
 
+/** Parses the null identifier */
 bool json_parsenull(parser *p, void *out) {
     json_output(out, MORPHO_NIL);
     return true;
 }
 
-bool json_parsevalue(parser *p, void *out) {
-    if (parse_checktokenadvance(p, JSON_LEFTCURLYBRACE)) {
-        return json_parseobject(p, out);
-    } else if (parse_checktokenadvance(p, JSON_LEFTSQUAREBRACE)) {
-        return json_parsearray(p, out);
-    } else if (parse_checktokenadvance(p, JSON_QUOTE)) {
-        return json_parsestring(p, out);
-    } else if (parse_checktokenadvance(p, JSON_TRUE)) {
-        return json_parsetrue(p, out);
-    } else if (parse_checktokenadvance(p, JSON_FALSE)) {
-        return json_parsefalse(p, out);
-    } else if (parse_checktokenadvance(p, JSON_NULL)) {
-        return json_parsenull(p, out);
+/** Parse an 'object', which is really a dictionary */
+bool json_parseobject(parser *p, void *out) {
+    objectdictionary *new = object_newdictionary();
+    if (!new) {
+        parse_error(p, true, ERROR_ALLOCATIONFAILED);
+        return false;
     }
+    
+    while (!parse_checktoken(p, JSON_RIGHTCURLYBRACE) &&
+           !parse_checktoken(p, JSON_EOF)) {
+        value key=MORPHO_NIL, val=MORPHO_NIL;
+        
+        /* Parse the key/value pair */
+        if (parse_checktoken(p, JSON_STRING)) {
+            if (!json_parsevalue(p, &key)) goto json_parseobjectcleanup;
+        } else {
+            parse_error(p, true, JSON_OBJCTKEY);
+            goto json_parseobjectcleanup;
+        }
+        
+        if (!parse_checkrequiredtoken(p, JSON_COLON, PARSE_DCTSPRTR)) goto json_parseobjectcleanup;
+        if (!json_parsevalue(p, &val)) goto json_parseobjectcleanup;
+        
+        dictionary_insert(&new->dict, key, val);
+        
+        if (!parse_checktoken(p, JSON_RIGHTCURLYBRACE)) {
+            if (!parse_checkrequiredtoken(p, JSON_COMMA, PARSE_DCTTRMNTR)) goto json_parseobjectcleanup;
+        }
+    }
+    
+    if (!parse_checkrequiredtoken(p, JSON_RIGHTCURLYBRACE, PARSE_DCTTRMNTR)) goto json_parseobjectcleanup;
+    
+    json_output(out, MORPHO_OBJECT(new));
+    
+    return true;
+    
+json_parseobjectcleanup:
+    if (new) object_free((object *) new);
     return false;
+}
+
+/** Parses an array, e.g. [ 1, 2, 3 ] */
+bool json_parsearray(parser *p, void *out) {
+    objectlist *new = object_newlist(0, NULL);
+    if (!new) {
+        parse_error(p, true, ERROR_ALLOCATIONFAILED);
+        return false;
+    }
+
+    while (!parse_checktoken(p, JSON_RIGHTSQUAREBRACE) &&
+           !parse_checktoken(p, JSON_EOF)) {
+        value v=MORPHO_NIL;
+        if (json_parsevalue(p, &v)) {
+            list_append(new, v);
+        } else goto json_parsearraycleanup;
+        
+        if (!parse_checktoken(p, JSON_RIGHTSQUAREBRACE)) {
+            if (!parse_checkrequiredtoken(p, JSON_COMMA, PARSE_MSSNGCOMMA)) goto json_parsearraycleanup;
+        }
+    }
+    
+    if (!parse_checkrequiredtoken(p, JSON_RIGHTSQUAREBRACE, PARSE_MSSNGSQBRC)) goto json_parsearraycleanup;
+    
+    json_output(out, MORPHO_OBJECT(new));
+    return true;
+    
+json_parsearraycleanup:
+    if (new) object_free((object *) new);
+    return false;
+}
+
+/** Parses a json value using the parse table */
+bool json_parsevalue(parser *p, void *out) {
+    return parse_precedence(p, PREC_NONE, out);
 }
 
 /* -------------------------------------------------------
@@ -1553,29 +1770,63 @@ bool json_parsevalue(parser *p, void *out) {
  * ------------------------------------------------------- */
 
 parserule json_rules[] = {
-    PARSERULE_UNUSED(JSON_LEFTCURLYBRACE),
+    PARSERULE_PREFIX(JSON_LEFTCURLYBRACE, json_parseobject),
+    PARSERULE_PREFIX(JSON_LEFTSQUAREBRACE, json_parsearray),
+    PARSERULE_PREFIX(JSON_STRING, json_parsestring),
+    PARSERULE_PREFIX(JSON_NUMBER, json_parsenumber),
+    PARSERULE_PREFIX(JSON_FLOAT, json_parsefloat),
+    PARSERULE_PREFIX(JSON_TRUE, json_parsetrue),
+    PARSERULE_PREFIX(JSON_FALSE, json_parsefalse),
+    PARSERULE_PREFIX(JSON_NULL, json_parsenull),
     PARSERULE_UNUSED(TOKEN_NONE)
 };
 
-char *test = "[ true, false, null ]"; //"   \"hello\""
+/* -------------------------------------------------------
+ * Initialize a JSON parser
+ * ------------------------------------------------------- */
+
+/** Initializes a parser to parse JSON */
+void json_initializeparser(parser *p, lexer *l, error *err, void *out) {
+    parse_init(p, l, err, out);
+    parse_setbaseparsefn(p, json_parsevalue);
+    parse_setparsetable(p, json_rules);
+    parse_setskipnewline(p, false, TOKEN_NONE);
+}
+
+char *test =  "{ \"Hello\" : \"World\", \"Goodbye\" : 2 }";
+//"  [ 1213, 1.2, 1.3e-02, 1.4e-03 ] ";
+// "{ \"Hello\" : \"World\" }";
+//"  [ 1213, 1.2, 1.3e-02, 1.4e-03 ] ";
+//"   \"hel\\\"\\plo\"";
+//" \r \t   [ true, false, null ]";
+//"  [ 1213, 1.2, 1.3e-02, 1.4e-03 ] ";
 
 void json_parse(void) {
+    morpho_defineerror(JSON_OBJCTKEY, ERROR_PARSE, JSON_OBJCTKEY_MSG);
+    
     error err;
     value out;
     
     lexer l;
-    lex_init(&l, test, 0);
-    lex_settokendefns(&l, jsontokens);
-    lex_seteof(&l, JSON_EOF);
+    json_initializelexer(&l, test);
 
     parser p;
-    parse_init(&p, &l, &err, &out);
-    parse_setbaseparsefn(&p, json_parsevalue);
-    parse_setparsetable(&p, json_rules);
+    json_initializeparser(&p, &l, &err, &out);
     
-    parse(&p);
+    bool success=parse(&p);
     
-    morpho_printvalue(out);
+    if (MORPHO_ISLIST(out)) {
+        objectlist *l = MORPHO_GETLIST(out);
+        for (int i=0; i<l->val.count; i++) {
+            morpho_printvalue(l->val.data[i]);
+            if (i<l->val.count-1) printf(", ");
+        }
+    } else if (MORPHO_ISDICTIONARY(out)) {
+        objectdictionary *d = MORPHO_GETDICTIONARY(out);
+        dictionary_inspect(&d->dict);
+    } else {
+        morpho_printvalue(out);
+    }
     printf("\n");
     
     parse_clear(&p);

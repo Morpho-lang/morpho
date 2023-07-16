@@ -184,6 +184,8 @@ void lex_settokendefns(lexer *l, tokendefn *defns);
 void lex_seteof(lexer *l, tokentype eoftype);
 void lex_setstringinterpolation(lexer *l, bool interpolation);
 void lex_setmatchkeywords(lexer *l, bool match);
+void lex_setwhitespacefn(lexer *l, processtokenfn whitespacefn);
+void lex_setprefn(lexer *l, processtokenfn prefn);
 
 // Obtain the next token
 bool lex(lexer *l, token *tok, error *err);

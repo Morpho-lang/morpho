@@ -1448,7 +1448,7 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_VALRANGE, ERROR_PARSE, PARSE_VALRANGE_MSG);
     morpho_defineerror(PARSE_STRESC, ERROR_PARSE, PARSE_STRESC_MSG);
     
-    json_parse();
+    //json_parse();
 }
 
 void parse_finalize(void) {

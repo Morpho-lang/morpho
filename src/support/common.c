@@ -135,6 +135,10 @@ void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
     if (MORPHO_ISSTRING(val)) {
         objectstring *s = MORPHO_GETSTRING(val);
         varray_charadd(buffer, s->string, (int) s->length);
+    } else if (MORPHO_ISCLASS(val)) {
+        objectclass *klass = MORPHO_GETCLASS(val);
+        varray_charwrite(buffer, '@');
+        morpho_printtobuffer(v, klass->name, buffer);
     } else if (MORPHO_ISOBJECT(val)) {
         objectclass *klass = morpho_lookupclass(val);
 
@@ -158,10 +162,6 @@ void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
             varray_charadd(buffer, "<fn ", 4);
             morpho_printtobuffer(v, fn->name, buffer);
             varray_charwrite(buffer, '>');
-        } else if (MORPHO_ISCLASS(val)) {
-            objectclass *klass = MORPHO_GETCLASS(val);
-            varray_charwrite(buffer, '@');
-            morpho_printtobuffer(v, klass->name, buffer);
         }
     } else if (MORPHO_ISFLOAT(val)) {
         nv=sprintf(tmp, "%g", MORPHO_GETFLOATVALUE(val));

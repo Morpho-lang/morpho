@@ -448,10 +448,10 @@ bool lex_symbol(lexer *l, token *tok, error *err) {
 }
 
 /* -------------------------------------------------------
- * Morpho token processing functions
+ * Morpho preprocessing functions
  * ------------------------------------------------------- */
 
-/** @brief Process function for to identify symbols and numbers */
+/** @brief Process function for newline tokens */
 bool lex_preprocess(lexer *l, token *tok, error *err) {
     char c = lex_peek(l);
     if (lex_isalpha(c)) return lex_symbol(l, tok, err);

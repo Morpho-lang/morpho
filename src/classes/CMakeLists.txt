@@ -11,6 +11,7 @@ target_sources(morpho
         function.c   function.h
         instance.c   instance.h
         invocation.c invocation.h
+        json.c       json.h
         list.c       list.h
         range.c      range.h
         strng.c      strng.h

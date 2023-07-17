@@ -304,6 +304,7 @@ void builtin_initialize(void) {
     
     file_initialize();
     system_initialize();
+    json_initialize();
     
     // Initialize function definitions
     functiondefs_initialize();
@@ -330,6 +331,7 @@ void builtin_finalize(void) {
     
     functional_finalize();
     
+    json_finalize();
     system_finalize();
     file_finalize();
     

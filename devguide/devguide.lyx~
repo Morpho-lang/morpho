@@ -8306,9 +8306,117 @@ The lexer
 \end_layout
 
 \begin_layout Standard
-The lexer is defined in support/lex.c and support/lex.h and has been rewritten
- for v0.6 to be useful outside the morpho compiler.
+The lexer takes a raw C source string as input and sequentially splits it
+ into 
+\emph on
+tokens
+\emph default
+ demarcated by their starting point, length and type.
+ It is defined in support/lex.c and support/lex.h and has been rewritten for
+ v0.6 to be usable for lexing applications beyond the compiler.
  
+\end_layout
+
+\begin_layout Standard
+To use a lexer, it must first be initialized by calling 
+\family typewriter
+lex_init
+\family default
+ with a pointer to the source 
+\family typewriter
+start
+\family default
+ and a starting line number 
+\family typewriter
+line
+\family default
+: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+void lex_init(lexer *l, const char *start, int line)
+\end_layout
+
+\end_inset
+
+You can obtain tokens by repeatedly calling 
+\family typewriter
+lex
+\family default
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+bool lex(lexer *l, token *tok, error *err)
+\end_layout
+
+\end_inset
+
+which fills out a 
+\family typewriter
+token
+\family default
+ structure with the next token and returns 
+\family typewriter
+true
+\family default
+ on success.
+ If an error occurs, it will fill out the provided 
+\family typewriter
+error
+\family default
+ structure and return 
+\family typewriter
+false
+\family default
+.
+ Once the source string is exhausted, the lexer returns a special token
+ (the token type can be configured) indicating end of file.
+ 
+\end_layout
+
+\begin_layout Standard
+Once you're done with a lexer, you must call
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+void lex_clear(lexer *l)
+\end_layout
+
+\end_inset
+
+to free any attached data.
+ 
+\end_layout
+
+\begin_layout Subsection
+Tokens
+\end_layout
+
+\begin_layout Standard
+Tokens are a data structure used to demarcate syntactic units in a source
+ text.
+ 
+\end_layout
+
+\begin_layout Subsection
+Custom lexers
+\end_layout
+
+\begin_layout Section
+The lexer
 \end_layout
 
 \begin_layout Chapter

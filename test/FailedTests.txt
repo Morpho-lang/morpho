@@ -1,0 +1,16 @@
+json/json.morpho: Failed
+Tests [2, 7, 8, 9] did not match expected results.
+Test 2
+  Expected:  Goodbye
+    Output:  2
+Test 7
+  Expected:  "hel"lo"
+    Output:  hel"lo
+Test 8
+  Expected:  true 
+    Output:  nil
+Test 9
+  Expected:  [ true, false, nil ]
+    Output:  @error[UnrgnzdTkn]
+
+

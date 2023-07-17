@@ -24,6 +24,7 @@
 #include "err.h"
 //#include "file.h"
 //#include "system.h"
+#include "json.h"
 
 #include "matrix.h"
 

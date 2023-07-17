@@ -317,7 +317,7 @@ json_parsearraycleanup:
 
 /** Parses a json value using the parse table */
 bool json_parsevalue(parser *p, void *out) {
-    return parse_precedence(p, PREC_NONE, out);
+    return parse_precedence(p, PREC_ASSIGN, out);
 }
 
 /* -------------------------------------------------------
@@ -382,6 +382,7 @@ value JSON_parse(vm *v, int nargs, value *args) {
     if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         char *src = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
         error err;
+        error_init(&err);
         if (!json_parse(src, &err, &out, NULL)) {
             morpho_runtimeerror(v, err.id);
         }

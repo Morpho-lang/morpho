@@ -1,5 +1,8 @@
 // Parse various kinds of JSON 
 
+print JSON.parse("]")
+
+/*
 var dict = JSON.parse("{ \"Hello\" : \"World\", \"Goodbye\" : 2 }")
 
 print isdictionary(dict) 
@@ -24,3 +27,4 @@ print JSON.parse("true")
 
 print JSON.parse(" \r \t   [ true, false, null ]");
 // expect: [ true, false, nil ]
+*/

@@ -1,7 +1,6 @@
 // Parse various kinds of JSON 
 
-print JSON.parse("]")
-
+print JSON.parse("[a?]")
 /*
 var dict = JSON.parse("{ \"Hello\" : \"World\", \"Goodbye\" : 2 }")
 

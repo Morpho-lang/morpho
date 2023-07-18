@@ -50,25 +50,20 @@ int _lex_tokendefnwithtokencmp(const void *ltok, const void *rdefn) {
     return cmp;
 }
 
+/** Compare a character with the first character of a token definition */
+int _lex_tokendefnwithtokenfirstcharcmp(const void *l, const void *rdefn) {
+    char *c = (char *) l;
+    tokendefn *b = (tokendefn *) rdefn;
+    
+    return *c -  b->string[0];
+}
+
+
 DEFINE_VARRAY(tokendefn, tokendefn);
 
 /* -------------------------------------------------------
  * Library functions to support writing custom lexers
  * ------------------------------------------------------- */
-
-/** @brief Tests if the current prototoken matches a known token.
- *  @param[in]  l       The lexer in use
- *  @param[out] defn Type of token, if found
- *  @returns true if the token matched, false if not */
-bool lex_matchtoken(lexer *l, tokendefn **defn) {
-    token tok = { .start = l->start, .length = (int) (l->current - l->start) };
-
-    tokendefn *def = bsearch(&tok, l->defns, l->ndefns, sizeof(tokendefn), _lex_tokendefnwithtokencmp);
-    
-    if (def && defn) *defn = def;
-    
-    return def;
-}
 
 /** @brief Records a token
  *  @param[in]  l     The lexer in use
@@ -88,6 +83,14 @@ char lex_advance(lexer *l) {
     l->current++;
     l->posn++;
     return c;
+}
+
+/** @brief Advances the lexer by n characters, returning the last character */
+char lex_advanceby(lexer *l, size_t n) {
+    char c = *(l->current);
+    l->current+=n;
+    l->posn+=n;
+    return *(l->current-1);
 }
 
 /** @brief Reverses the current character in the lexer by one. */
@@ -138,6 +141,51 @@ char lex_peekprevious(lexer *l) {
 /** @brief Advance line counter */
 void lex_newline(lexer *l) {
     l->line++; l->posn=0;
+}
+
+
+/** @brief Attempts to find a matching token for the current token.
+ *  @param[in] l The lexer in use
+ *  @param[out] defn Type of token, if found
+ *  @returns true if the token matched, false if not */
+bool lex_matchtoken(lexer *l, tokendefn **defn) {
+    token tok = { .start = l->start, .length = (int) (l->current - l->start) };
+
+    tokendefn *def = bsearch(&tok, l->defns, l->ndefns, sizeof(tokendefn),
+                              _lex_tokendefnwithtokencmp);
+    
+    if (def && defn) *defn = def;
+    
+    return def;
+}
+
+/** @brief Attempts to identify a token from the current point, advances if it finds one.
+ *  @param[in] l The lexer in use
+ *  @param[out] defn Type of token, if found
+ *  @returns true if the token matched, false if not */
+bool lex_identifytoken(lexer *l, tokendefn **defn) {
+    char c = lex_peek(l);
+    
+    // Match first character
+    tokendefn *def = bsearch(&c, l->defns, l->ndefns, sizeof(tokendefn),
+                              _lex_tokendefnwithtokenfirstcharcmp);
+    if (!def) return false;
+    
+    tokendefn *last = l->defns+l->ndefns-1;
+    // Now find the last definition that matches this character
+    while (def<last && (def+1)->string[0]==c) def++;
+    
+    // Test each in turn, working backwards to match the longest token we can
+    for (; def->string[0]==c && def>=l->defns; def--) {
+        size_t len=strlen(def->string);
+        if (strncmp(def->string, l->current, len)==0) {
+            lex_advanceby(l, len);
+            if (defn) *defn = def;
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 /* **********************************************************************
@@ -566,6 +614,8 @@ void lex_setprefn(lexer *l, processtokenfn prefn) {
  *  @param[out] tok   Token structure to fill out
  *  @returns true on success or false on failure  */
 bool lex(lexer *l, token *tok, error *err) {
+    bool success=false;
+    
     // Handle leading whitespace
     if (l->whitespacefn) {
         if (!((l->whitespacefn) (l, tok, err))) return false;
@@ -582,22 +632,15 @@ bool lex(lexer *l, token *tok, error *err) {
     
     // If the lexer has a prefn, call that and check whether it handled the token.
     if (l->prefn) {
-        bool success=(l->prefn) (l, tok, err);
+        success=(l->prefn) (l, tok, err);
         //if (err->cat!=ERROR_NONE) return false; // It raised an error, so should return
         if (success) return true;
     }
     
-    // Try to match the specified tokens
     tokendefn *defn=NULL;
-    do {
-        lex_advance(l);
-    } while (lex_matchtoken(l, &defn)); // Match the largest token possible
-    
-    // Record the token if matched
-    if (defn && defn->type!=TOKEN_NONE) {
-        lex_back(l); // If we matched, we advanced by one character too far
+    if (lex_identifytoken(l, &defn)) {
         lex_recordtoken(l, defn->type, tok);
-    } else { // Unrecognized token
+    } else {
         morpho_writeerrorwithid(err, LEXER_UNRECOGNIZEDTOKEN, l->line, l->posn);
         return false;
     }

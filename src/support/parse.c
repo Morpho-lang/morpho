@@ -1339,7 +1339,7 @@ void parse_clear(parser *p) {
 
 /** Entry point into the parser */
 bool parse(parser *p) {
-    parse_advance(p);
+    if (!parse_advance(p)) return false; 
     return (p->baseparsefn) (p, p->out);
 }
 

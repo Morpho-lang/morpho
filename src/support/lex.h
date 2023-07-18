@@ -158,6 +158,7 @@ enum {
  * Library functions to support customizable lexers
  * ------------------------------------------------------- */
 
+bool lex_findtoken(lexer *l, tokendefn **defn);
 bool lex_matchtoken(lexer *l, tokendefn **defn);
 void lex_recordtoken(lexer *l, tokentype type, token *tok);
 char lex_advance(lexer *l);

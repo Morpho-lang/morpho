@@ -65,7 +65,7 @@ bool parse_advance(parser *p) {
 bool parse_precedence(parser *p, precedence prec, void *out) {
     parsefunction prefixrule=NULL, infixrule=NULL;
     
-    parse_advance(p);
+    if (!parse_advance(p)) return false;
     
     parserule *rule = parse_getrule(p, p->previous.type);
     if (rule) prefixrule = rule->prefix;

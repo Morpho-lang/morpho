@@ -1,7 +1,5 @@
 // Parse various kinds of JSON 
 
-print JSON.parse("[a?]")
-/*
 var dict = JSON.parse("{ \"Hello\" : \"World\", \"Goodbye\" : 2 }")
 
 print isdictionary(dict) 
@@ -19,11 +17,10 @@ for (e in a) print e
 // expect: 0.0014
 
 print JSON.parse("   \"hel\\\"lo\"");
-// expect: "hel"lo"
+// expect: hel"lo
 
 print JSON.parse("true")
-// expect: true 
+// expect: true
 
 print JSON.parse(" \r \t   [ true, false, null ]");
 // expect: [ true, false, nil ]
-*/

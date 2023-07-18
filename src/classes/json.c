@@ -158,7 +158,10 @@ bool json_parsestring(parser *p, void *out) {
     unsigned int length = p->previous.length;
     
     for (unsigned int i=1; i<length-1; i++) {
-        if (input[i]!='\\') {
+        if (iscntrl(input[i])) {
+            parse_error(p, true, JSON_UNESCPDCTRL);
+            goto json_parsestring_cleanup;
+        } else if (input[i]!='\\') {
             varray_charwrite(&str, input[i]);
         } else {
             i++;
@@ -320,6 +323,16 @@ bool json_parsevalue(parser *p, void *out) {
     return parse_precedence(p, PREC_ASSIGN, out);
 }
 
+/** Base JSON parse type */
+bool json_parseelement(parser *p, void *out) {
+    bool success=json_parsevalue(p, out);
+    if (success && p->current.type!=JSON_EOF) {
+        parse_error(p, false, JSON_EXTRNSTOK);
+        return false;
+    }
+    return success;
+}
+
 /* -------------------------------------------------------
  * JSON parse table
  * ------------------------------------------------------- */
@@ -343,7 +356,7 @@ parserule json_rules[] = {
 /** Initializes a parser to parse JSON */
 void json_initializeparser(parser *p, lexer *l, error *err, void *out) {
     parse_init(p, l, err, out);
-    parse_setbaseparsefn(p, json_parsevalue);
+    parse_setbaseparsefn(p, json_parseelement);
     parse_setparsetable(p, json_rules);
     parse_setskipnewline(p, false, TOKEN_NONE);
 }
@@ -408,6 +421,8 @@ void json_initialize(void) {
     
     morpho_defineerror(JSON_OBJCTKEY, ERROR_PARSE, JSON_OBJCTKEY_MSG);
     morpho_defineerror(JSON_PRSARGS, ERROR_PARSE, JSON_PRSARGS_MSG);
+    morpho_defineerror(JSON_EXTRNSTOK, ERROR_PARSE, JSON_EXTRNSTOK_MSG);
+    morpho_defineerror(JSON_UNESCPDCTRL, ERROR_PARSE, JSON_UNESCPDCTRL_MSG);
 }
 
 void json_finalize(void) {

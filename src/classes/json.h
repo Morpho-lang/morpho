@@ -25,8 +25,14 @@
 #define JSON_OBJCTKEY                    "JSONObjctKey"
 #define JSON_OBJCTKEY_MSG                "JSON object keys must be strings."
 
+#define JSON_EXTRNSTOK                   "JSONExtrnsTkn"
+#define JSON_EXTRNSTOK_MSG               "Extraneous token after JSON element."
+
 #define JSON_PRSARGS                     "JSONPrsArgs"
 #define JSON_PRSARGS_MSG                 "Method 'parse' requires a string as the argument."
+
+#define JSON_UNESCPDCTRL                 "JSONUnescpdCtrl"
+#define JSON_UNESCPDCTRL_MSG             "Unescaped control character in string literal."
 
 /* -------------------------------------------------------
  * JSON interface

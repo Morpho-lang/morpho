@@ -1,5 +1,7 @@
 // Parse various kinds of JSON 
 
+var arr = JSON.parse("[1,]")
+
 var dict = JSON.parse("{ \"Hello\" : \"World\", \"Goodbye\" : 2 }")
 
 print isdictionary(dict) 

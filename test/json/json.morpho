@@ -1,6 +1,8 @@
 // Parse various kinds of JSON 
 
-print JSON.parse("]")//{ \"min\": -1.0e+28, \"max\": 1.0e+28 }")
+//print JSON.parse("]")//{ \"min\": -1.0e+28, \"max\": 1.0e+28 }")
+
+print JSON.parse("\"'\\u03a9'\"")
 
 /*
 print "Hello"

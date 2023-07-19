@@ -7,6 +7,7 @@
 #include "morpho.h"
 #include "classes.h"
 
+#include "common.h"
 #include "parse.h"
 #include "dictionary.h"
 #include "json.h"
@@ -203,8 +204,19 @@ bool json_parsestring(parser *p, void *out) {
                 case 't': varray_charwrite(&str, '\t'); break;
                 case 'u':
                 {
-                    long c = strtol(&input[i+2], NULL, 16);
+                    const char *codestr = &input[i+1];
+                    for (int j=0; j<4; j++) {
+                        if (!isxdigit(codestr[j])) {
+                            parse_error(p, true, JSON_INVLDUNCD);
+                            goto json_parsestring_cleanup;
+                        }
+                    }
+                    long codept = strtol(codestr, NULL, 16);
                     
+                    char buffer[4];
+                    int nchars = morpho_encodeutf8((int) codept, buffer);
+                    varray_charadd(&str, buffer, nchars);
+                    i+=4;
                 }
                     break;
                 default:
@@ -478,6 +490,7 @@ void json_initialize(void) {
     morpho_defineerror(JSON_PRSARGS, ERROR_PARSE, JSON_PRSARGS_MSG);
     morpho_defineerror(JSON_EXTRNSTOK, ERROR_PARSE, JSON_EXTRNSTOK_MSG);
     morpho_defineerror(JSON_UNESCPDCTRL, ERROR_PARSE, JSON_UNESCPDCTRL_MSG);
+    morpho_defineerror(JSON_INVLDUNCD, ERROR_PARSE, JSON_INVLDUNCD_MSG);
     morpho_defineerror(JSON_NMBRFRMT, ERROR_PARSE, JSON_NMBRFRMT_MSG);
     morpho_defineerror(JSON_BLNKELMNT, ERROR_PARSE, JSON_BLNKELMNT_MSG);
 }

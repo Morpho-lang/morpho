@@ -34,6 +34,9 @@
 #define JSON_UNESCPDCTRL                 "JSONUnescpdCtrl"
 #define JSON_UNESCPDCTRL_MSG             "Unescaped control character in string literal."
 
+#define JSON_NMBRFRMT                    "JSONNmbrFrmt"
+#define JSON_NMBRFRMT_MSG                "Improperly formatted number."
+
 /* -------------------------------------------------------
  * JSON interface
  * ------------------------------------------------------- */

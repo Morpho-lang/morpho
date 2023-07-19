@@ -72,7 +72,7 @@ bool parse_precedence(parser *p, precedence prec, void *out) {
     
     if (!rule || !prefixrule) {
         parse_error(p, true, PARSE_EXPECTEXPRESSION);
-        return SYNTAXTREE_UNCONNECTED;
+        return false;
     }
     
     if (!prefixrule(p, out)) return false;
@@ -809,7 +809,7 @@ bool parse_importdeclaration(parser *p, void *out) {
         parse_symbol(p, &modulename);
     } else {
         parse_error(p, true, PARSE_IMPORTMISSINGNAME);
-        return SYNTAXTREE_UNCONNECTED;
+        return false;
     }
     
     if (!parse_checkstatementterminator(p)) {

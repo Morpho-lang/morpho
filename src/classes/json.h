@@ -37,6 +37,9 @@
 #define JSON_NMBRFRMT                    "JSONNmbrFrmt"
 #define JSON_NMBRFRMT_MSG                "Improperly formatted number."
 
+#define JSON_BLNKELMNT                   "JSONBlnkElmnt"
+#define JSON_BLNKELMNT_MSG               "Blank element."
+
 /* -------------------------------------------------------
  * JSON interface
  * ------------------------------------------------------- */

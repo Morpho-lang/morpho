@@ -326,13 +326,16 @@ bool json_parsearray(parser *p, void *out) {
 
     while (!parse_checktoken(p, JSON_RIGHTSQUAREBRACE) &&
            !parse_checktoken(p, JSON_EOF)) {
+        if (parse_checkdisallowedtoken(p, JSON_COMMA, JSON_BLNKELMNT)) goto json_parsearraycleanup;
         jsonoutput v = *(jsonoutput *) out;
+        
         if (json_parsevalue(p, &v)) {
             list_append(new, json_getoutput(&v));
         } else goto json_parsearraycleanup;
         
         if (!parse_checktoken(p, JSON_RIGHTSQUAREBRACE)) {
             if (!parse_checkrequiredtoken(p, JSON_COMMA, PARSE_MSSNGCOMMA)) goto json_parsearraycleanup;
+            if (parse_checkdisallowedtoken(p, JSON_RIGHTSQUAREBRACE, JSON_BLNKELMNT)) goto json_parsearraycleanup;
         }
     }
     
@@ -353,7 +356,10 @@ bool json_parsevalue(parser *p, void *out) {
 
 /** Base JSON parse type */
 bool json_parseelement(parser *p, void *out) {
+    if (parse_checkdisallowedtoken(p, JSON_EOF, JSON_BLNKELMNT)) return false;
+    
     bool success=json_parsevalue(p, out);
+    
     if (success && p->current.type!=JSON_EOF) {
         parse_error(p, false, JSON_EXTRNSTOK);
         return false;
@@ -473,6 +479,7 @@ void json_initialize(void) {
     morpho_defineerror(JSON_EXTRNSTOK, ERROR_PARSE, JSON_EXTRNSTOK_MSG);
     morpho_defineerror(JSON_UNESCPDCTRL, ERROR_PARSE, JSON_UNESCPDCTRL_MSG);
     morpho_defineerror(JSON_NMBRFRMT, ERROR_PARSE, JSON_NMBRFRMT_MSG);
+    morpho_defineerror(JSON_BLNKELMNT, ERROR_PARSE, JSON_BLNKELMNT_MSG);
 }
 
 void json_finalize(void) {

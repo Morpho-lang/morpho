@@ -134,6 +134,19 @@ bool parse_checkrequiredtoken(parser *p, tokentype type, errorid id) {
     return false;
 }
 
+/** @brief Checks if the next token has a specific type and if it does generates an error.
+ *  @param   p    the parser in use
+ *  @param   type type to check
+ *  @param   id   error id to generate if the token is found doesn't match
+ *  @returns true if the disallowed token was found */
+bool parse_checkdisallowedtoken(parser *p, tokentype type, errorid id) {
+    if (parse_checktoken(p, type)) {
+        parse_error(p, true, id);
+        return true;
+    }
+    return false;
+}
+
 /** Turn a token into a string, parsing escape characters */
 value parse_stringfromtoken(parser *p, unsigned int start, unsigned int length) {
     char str[p->previous.length];

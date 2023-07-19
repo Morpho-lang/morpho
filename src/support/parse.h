@@ -235,6 +235,7 @@ bool parse_checktoken(parser *p, tokentype type);
 bool parse_checktokenmulti(parser *p, int n, tokentype *type);
 bool parse_checktokenadvance(parser *p, tokentype type);
 bool parse_checkrequiredtoken(parser *p, tokentype type, errorid id);
+bool parse_checkdisallowedtoken(parser *p, tokentype type, errorid id);
 value parse_stringfromtoken(parser *p, unsigned int start, unsigned int length);
 value parse_tokenasstring(parser *p);
 

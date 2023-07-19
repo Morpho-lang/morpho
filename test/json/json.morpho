@@ -1,5 +1,7 @@
 // Parse various kinds of JSON 
 
+print JSON.parse(" ")
+
 /*
 print "Hello"
 for (i in 1..100000) {

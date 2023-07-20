@@ -2,6 +2,7 @@
  *  @author T J Atherton
  *
  *  @brief JSON parser
+ *  @details Aims to be compliant with RFC 8259, tested against https://github.com/nst/JSONTestSuite
  */
 
 #include "morpho.h"

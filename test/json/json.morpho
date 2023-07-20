@@ -2,7 +2,8 @@
 
 //print JSON.parse("]")//{ \"min\": -1.0e+28, \"max\": 1.0e+28 }")
 
-print JSON.parse("\"'\\u03a9'\"")
+//print JSON.parse("\"'\\u03a9'\"")
+//print JSON.parse("\"'\\uD83E\\uDD8B'\"")
 
 /*
 print "Hello"
@@ -16,7 +17,6 @@ for (i in 1..100000) {
     }
 }*/
 
-/*
 var dict = JSON.parse("{ \"Hello\" : \"World\", \"Goodbye\" : 2 }")
 
 print isdictionary(dict) 
@@ -41,4 +41,3 @@ print JSON.parse("true")
 
 print JSON.parse(" \r \t   [ true, false, null ]");
 // expect: [ true, false, nil ]
-*/

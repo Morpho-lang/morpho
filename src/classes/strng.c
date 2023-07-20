@@ -43,11 +43,31 @@ value object_stringfromcstring(const char *in, size_t length) {
     if (new) {
         new->string=new->stringdata;
         new->string[length] = '\0'; /* Zero terminate the string to be compatible with C */
-        memcpy(new->string, in, length);
+        if (in) {
+            memcpy(new->string, in, length);
+        } else {
+            memset(new->string, 0, length);
+        }
         new->length=strlen(new->string);
         out = MORPHO_OBJECT(new);
     }
     return out;
+}
+
+/** @brief Creates a string with given length
+ *  @param length length of string to allocate
+ *  @returns the object (as a value) which will be MORPHO_NIL on failure */
+objectstring *object_stringwithsize(size_t length) {
+    objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
+
+    if (new) {
+        new->string=new->stringdata;
+        new->string[length] = '\0'; // Ensure pre-null terminated
+        memset(new->string, 0, length);
+        new->length=length;
+        return new;
+    }
+    return NULL;
 }
 
 /** @brief Converts a varray_char into a string.

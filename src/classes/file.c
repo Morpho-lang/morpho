@@ -238,22 +238,6 @@ value File_close(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-/** Read a line  */
-value File_readline(vm *v, int nargs, value *args) {
-    FILE *f=file_getfile(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
-    
-    if (f) {
-        varray_char string;
-        varray_charinit(&string);
-        
-        out = file_readlineusingvarray(f, &string);
-        morpho_bindobjects(v, 1, &out);
-        varray_charclear(&string);
-    }
-    return out;
-}
-
 /** Get the contents of a file as an array */
 value File_lines(vm *v, int nargs, value *args) {
     FILE *f=file_getfile(MORPHO_SELF(args));
@@ -281,6 +265,39 @@ value File_lines(vm *v, int nargs, value *args) {
         varray_valueclear(&lines);
     }
     
+    return out;
+}
+
+/** Reads the whole file into a string */
+value File_readall(vm *v, int nargs, value *args) {
+    FILE *f=file_getfile(MORPHO_SELF(args));
+    size_t size;
+    value out = MORPHO_NIL;
+    if (f && file_getsize(f, &size)) {
+        objectstring *new=object_stringwithsize(size);
+        if (new) {
+            size_t nbytes = fread(new->string, sizeof(char), size, f);
+            new->length=nbytes;
+            out = MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        }
+    }
+    return out;
+}
+
+/** Read a line  */
+value File_readline(vm *v, int nargs, value *args) {
+    FILE *f=file_getfile(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    
+    if (f) {
+        varray_char string;
+        varray_charinit(&string);
+        
+        out = file_readlineusingvarray(f, &string);
+        morpho_bindobjects(v, 1, &out);
+        varray_charclear(&string);
+    }
     return out;
 }
 
@@ -348,6 +365,7 @@ value File_eof(vm *v, int nargs, value *args) {
 MORPHO_BEGINCLASS(File)
 MORPHO_METHOD(FILE_CLOSE, File_close, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_LINES, File_lines, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FILE_READALL, File_readall, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_READLINE, File_readline, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_READCHAR, File_readchar, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FILE_WRITE, File_write, BUILTIN_FLAGSEMPTY),

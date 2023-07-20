@@ -38,6 +38,7 @@ typedef struct {
 
 #define FILE_CLOSE        "close"
 #define FILE_LINES        "lines"
+#define FILE_READALL      "readall"
 #define FILE_READLINE     "readline"
 #define FILE_READCHAR     "readchar"
 #define FILE_WRITE        "write"

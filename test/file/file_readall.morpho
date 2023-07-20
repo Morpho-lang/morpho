@@ -1,0 +1,21 @@
+// Test the readall method, that reads the whole file into a string. 
+
+var f=File("test.txt")
+var p=f.readall()
+f.close()
+
+print isstring(p)
+// expect: true
+
+var words = []
+for (word in p.split(" \n")) if (word.count()>0) words.append(word)
+
+print words.count() 
+// expect: 77
+
+var f2=File("string.txt")
+var p2=f2.readall()
+f2.close()
+
+print p2[p2.count()-1]
+// expect: ]

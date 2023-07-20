@@ -49,6 +49,9 @@ typedef struct {
 /** Create a string object from a C string */
 value object_stringfromcstring(const char *in, size_t length);
 
+/** Create an empty string of specified size */
+objectstring *object_stringwithsize(size_t length);
+
 /** Create a string object from a character varray */
 value object_stringfromvarraychar(varray_char *in);
 

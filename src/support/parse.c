@@ -1152,7 +1152,7 @@ bool parse_declaration(parser *p, void *out) {
         success=parse_statement(p, out);
     }
     
-    if (!success) parse_synchronize(p);
+    //if (!success) parse_synchronize(p);
     return success;
 }
 
@@ -1165,7 +1165,7 @@ bool parse_declarationmulti(parser *p, int n, tokentype *end, void *out) {
     token start = p->current;
     
     while (!parse_checktokenmulti(p, n, end) && !parse_checktoken(p, TOKEN_EOF)) {
-        parse_declaration(p, &current);
+        if (!parse_declaration(p, &current)) return false;
         
         /* If we now have more than one node, insert a sequence node */
         if (last!=SYNTAXTREE_UNCONNECTED) {

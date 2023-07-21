@@ -122,6 +122,7 @@ bool string_tonumber(objectstring *string, value *out) {
     lexer l;
     token tok;
     error err;
+    error_init(&err);
     lex_init(&l, string->string, 0);
 
     if (lex(&l, &tok, &err)) {
@@ -152,7 +153,7 @@ bool string_tonumber(objectstring *string, value *out) {
 /** Count number of characters in a string */
 int string_countchars(objectstring *s) {
     int n=0;
-    for (uint8_t *c = (uint8_t *) s->string; *c!='\0'; ) {
+    for (char *c = s->string; *c!='\0'; ) {
         c+=morpho_utf8numberofbytes(c);
         n++;
     }
@@ -162,7 +163,7 @@ int string_countchars(objectstring *s) {
 /** Get a pointer to the i'th character of a string */
 char *string_index(objectstring *s, int i) {
     int n=0;
-    for (uint8_t *c = (uint8_t *) s->string; *c!='\0'; ) {
+    for (char *c = s->string; *c!='\0'; ) {
         if (i==n) return (char *) c;
         c+=morpho_utf8numberofbytes(c);
         n++;
@@ -217,7 +218,7 @@ value String_enumerate(vm *v, int nargs, value *args) {
         } else {
             char *c=string_index(slf, n);
             if (c) {
-                out=object_stringfromcstring(c, morpho_utf8numberofbytes((uint8_t *) c));
+                out=object_stringfromcstring(c, morpho_utf8numberofbytes(c));
                 morpho_bindobjects(v, 1, &out);
             } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
         }
@@ -248,9 +249,9 @@ value String_split(vm *v, int nargs, value *args) {
         if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
 
         char *last = slf->string;
-        for (char *c = slf->string; *c!='\0'; c+=morpho_utf8numberofbytes((uint8_t *) c)) { // Loop over string
+        for (char *c = slf->string; *c!='\0'; c+=morpho_utf8numberofbytes(c)) { // Loop over string
             for (char *s = split->string; *s!='\0';) { // Loop over split chars
-                int nbytes = morpho_utf8numberofbytes((uint8_t *) s);
+                int nbytes = morpho_utf8numberofbytes(s);
                 if (strncmp(c, s, nbytes)==0) {
                     value newstring = object_stringfromcstring(last, c-last);
                     if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);

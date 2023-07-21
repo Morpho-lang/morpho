@@ -633,7 +633,7 @@ bool lex(lexer *l, token *tok, error *err) {
     // If the lexer has a prefn, call that and check whether it handled the token.
     if (l->prefn) {
         success=(l->prefn) (l, tok, err);
-        //if (err->cat!=ERROR_NONE) return false; // It raised an error, so should return
+        // if (err->cat!=ERROR_NONE) return false; // It raised an error, so should return
         if (success) return true;
     }
     

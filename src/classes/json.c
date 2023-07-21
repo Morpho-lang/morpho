@@ -102,20 +102,48 @@ bool json_lexstring(lexer *l, token *tok, error *err) {
 bool json_lexnumber(lexer *l, token *tok, error *err) {
     bool hasdot=false, hasexp=false;
     tokentype type = JSON_NUMBER;
-    while (lex_isdigit(lex_peek(l)) && !lex_isatend(l)) lex_advance(l);
     
-    if (lex_peek(l)=='.') { lex_advance(l); hasdot=true; type = JSON_FLOAT; };
+    // Detect if we are missing digits (ie an isolated '-')
+    char c = lex_peek(l);
+    if (c=='0') {
+        lex_advance(l);
+        if (lex_isdigit(lex_peek(l))) goto json_lexnumberinvld; // Cannot follow '0' by digits.
+    }
     
-    while (lex_isdigit(lex_peek(l)) && !lex_isatend(l)) lex_advance(l);
+    if (lex_isdigit(c)) {
+        // Advance through initial digits
+        while (lex_isdigit(lex_peek(l)) && !lex_isatend(l)) lex_advance(l);
+    } else goto json_lexnumberinvld;
     
-    if (lex_peek(l)=='e' || lex_peek(l)=='E') { lex_advance(l); hasexp=true; type = JSON_FLOAT; };
-    if (lex_peek(l)=='+' || lex_peek(l)=='-') lex_advance(l);
+    // Detect fractional separator
+    if (lex_peek(l)=='.') {
+        lex_advance(l);
+        hasdot=true;
+        type = JSON_FLOAT;
+        
+        // Digits are required after fractional separator
+        if (!lex_isdigit(lex_peek(l))) goto json_lexnumberinvld;
+        while (lex_isdigit(lex_peek(l)) && !lex_isatend(l)) lex_advance(l);
+    };
     
+    if (lex_peek(l)=='e' || lex_peek(l)=='E') {
+        lex_advance(l); hasexp=true; type = JSON_FLOAT;
+    }
+    if (lex_peek(l)=='+' || lex_peek(l)=='-') {
+        if (hasexp) lex_advance(l); else goto json_lexnumberinvld; // Only allow +/- after exp
+    }
+    
+    // Digits are required after exponent
+    if (hasexp && !lex_isdigit(lex_peek(l))) goto json_lexnumberinvld;
     while (lex_isdigit(lex_peek(l)) && !lex_isatend(l)) lex_advance(l);
     
     lex_recordtoken(l, type, tok);
     
     return true;
+
+json_lexnumberinvld:
+    morpho_writeerrorwithid(err, JSON_NMBRFRMT, tok->line, tok->posn);
+    return false;
 }
 
 /** Lexer token preprocessor function */
@@ -187,7 +215,7 @@ bool json_parsestring(parser *p, void *out) {
     unsigned int length = p->previous.length;
     
     for (unsigned int i=1; i<length-1; i++) {
-        if (iscntrl(input[i])) {
+        if (iscntrl(input[i]) && input[i]<='\x1f') { // RFC 8259 mandates that ctrl characters are 0x00 - 0x1f
             parse_error(p, true, JSON_UNESCPDCTRL);
             goto json_parsestring_cleanup;
         } else if (input[i]!='\\') {
@@ -244,7 +272,7 @@ json_parsestring_cleanup:
 bool json_parsenumber(parser *p, void *out) {
     long f = strtol(p->previous.start, NULL, 10);
     
-    if ( (errno==ERANGE && (f==LONG_MAX || f==LONG_MIN)) || // Check for underflow or overflow
+    if ( ((f==LONG_MAX || f==LONG_MIN) && errno==ERANGE) || // Check for underflow or overflow
         f>INT_MAX || f<INT_MIN) {
         parse_error(p, true, PARSE_VALRANGE);
         return false;
@@ -259,7 +287,7 @@ bool json_parsenumber(parser *p, void *out) {
 bool json_parsefloat(parser *p, void *out) {
     double f = strtod(p->previous.start, NULL);
     
-    if ( errno==ERANGE && (f==HUGE_VAL || f==-HUGE_VAL || f<=DBL_MIN) ) {
+    if ( errno==ERANGE && (f==HUGE_VAL || f==-HUGE_VAL || f==DBL_MIN) ) {
         parse_error(p, true, PARSE_VALRANGE);
         return false;
     }
@@ -314,7 +342,8 @@ bool json_parseobject(parser *p, void *out) {
         dictionary_insert(&new->dict, json_getoutput(&key), json_getoutput(&val));
         
         if (!parse_checktoken(p, JSON_RIGHTCURLYBRACE)) {
-            if (!parse_checkrequiredtoken(p, JSON_COMMA, PARSE_DCTTRMNTR)) goto json_parseobjectcleanup;
+            if (!parse_checkrequiredtoken(p, JSON_COMMA, PARSE_DCTSPRTR)) goto json_parseobjectcleanup;
+            if (parse_checkdisallowedtoken(p, JSON_RIGHTCURLYBRACE, JSON_BLNKELMNT)) goto json_parseobjectcleanup;
         }
     }
     

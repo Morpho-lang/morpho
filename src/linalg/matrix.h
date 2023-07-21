@@ -12,6 +12,7 @@
 /** Use Apple's Accelerate library for LAPACK and BLAS */
 #ifdef __APPLE__
 #ifdef MORPHO_LINALG_USE_ACCELERATE
+#define ACCELERATE_NEW_LAPACK
 #include <Accelerate/Accelerate.h>
 #define MATRIX_LAPACK_PRESENT
 #endif

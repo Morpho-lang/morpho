@@ -29,7 +29,7 @@ void parse_error(parser *p, bool use_prev, errorid id, ... ) {
     token *tok = (use_prev ? &p->previous : &p->current);
     
     /** Only return the first error that occurs */
-    if (p->err->cat!=ERROR_NONE) return;
+    if (ERROR_FAILED(*p->err)) return;
     
     va_start(args, id);
     morpho_writeerrorwithid(p->err, id, tok->line, tok->posn, args);
@@ -55,7 +55,7 @@ bool parse_advance(parser *p) {
         } else break;
     }
     
-    return (p->err->cat==ERROR_NONE);
+    return ERROR_SUCCEEDED(*p->err);
 }
 
 /** @brief Continues parsing while tokens have a lower or equal precendece than a specified value.
@@ -1180,7 +1180,7 @@ bool parse_program(parser *p, void *out) {
     
     parse_declarationmulti(p, 1, terminator, &((syntaxtree *) p->out)->entry);
     
-    return (p->err->cat==ERROR_NONE);
+    return ERROR_SUCCEEDED(*p->err);
 }
 
 /* **********************************************************************

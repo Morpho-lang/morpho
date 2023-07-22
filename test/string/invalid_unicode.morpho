@@ -1,0 +1,4 @@
+// Test string literals with invalid unicode specifier
+
+print "\U00.F98B"
+// expect error 'InvldUncd'

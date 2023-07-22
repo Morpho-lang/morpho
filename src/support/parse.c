@@ -130,7 +130,7 @@ bool parse_checkrequiredtoken(parser *p, tokentype type, errorid id) {
         return true;
     }
         
-    if (id!=ERROR_NONE) parse_error(p, true, id);
+    if (id!=ERROR_NONE) parse_error(p, false, id);
     return false;
 }
 
@@ -147,31 +147,94 @@ bool parse_checkdisallowedtoken(parser *p, tokentype type, errorid id) {
     return false;
 }
 
+/** Converts a hex string to a character code, outputting it into a varray
+    @param[in] p - the current parser
+    @param[in] codestr - code string to parse
+    @param[in] nhex - number of hex characters to parse
+    @param[in] raw - returns a raw ascii byte, rather than the utf8 encoded character
+    @param[out] out - characters are added
+    @returns true on success, false on failure */
+bool parse_codepointfromhex(parser *p, const char *codestr, int nhex, bool raw, varray_char *out) {
+    char in[nhex+1];
+    
+    for (int j=0; j<nhex; j++) {
+        if (isxdigit(codestr[j])) {
+            in[j]=codestr[j];
+        } else {
+            parse_error(p, true, PARSE_INVLDUNCD);
+            return false;
+        }
+    }
+    in[nhex]='\0';
+    
+    long codept = strtol(in, NULL, 16);
+    char buffer[4];
+    int nchars=1;
+    if (!raw) {
+        nchars = morpho_encodeutf8((int) codept, buffer);
+    } else {
+        buffer[0] = (char) codept;
+    }
+    
+    if (!varray_charadd(out, buffer, nchars)) {
+        parse_error(p, true, ERROR_ALLOCATIONFAILED);
+        return false;
+    }
+    return true;
+}
+
 /** Turn a token into a string, parsing escape characters */
-value parse_stringfromtoken(parser *p, unsigned int start, unsigned int length) {
-    char str[p->previous.length];
-    const char *in=p->previous.start;
-    unsigned int k=0;
+bool parse_stringfromtoken(parser *p, unsigned int start, unsigned int length, value *out) {
+    bool success=false;
+    const char *input=p->previous.start;
+    varray_char str;
+    varray_charinit(&str);
     
     for (unsigned int i=start; i<length; i++) {
-        if (in[i]!='\\') { // Escape characters
-            str[k]=in[i]; k++;
+
+        if (input[i]=='\n') {
+            varray_charwrite(&str, input[i]);
+        } else if (iscntrl(input[i])) {
+            parse_error(p, true, PARSE_UNESCPDCTRL);
+            goto parse_stringfromtokencleanup;
+        } else if (input[i]!='\\') {
+            varray_charwrite(&str, input[i]);
         } else {
-            if (i<length-1) switch (in[i+1]) {
-                case 'n':
-                    str[k]='\n'; break;
-                case 't':
-                    str[k]='\t'; break;
-                case 'r':
-                    str[k]='\r'; break;
+            i++;
+            switch (input[i]) {
+                case 'b': varray_charwrite(&str, '\b'); break;
+                case 'f': varray_charwrite(&str, '\f'); break;
+                case 'n': varray_charwrite(&str, '\n'); break;
+                case 'r': varray_charwrite(&str, '\r'); break;
+                case 't': varray_charwrite(&str, '\t'); break;
+                case 'u':
+                    if (!parse_codepointfromhex(p, &input[i+1], 4, false, &str)) goto parse_stringfromtokencleanup;
+                    i+=4;
+                    break;
+                case 'U':
+                    if (!parse_codepointfromhex(p, &input[i+1], 8, false, &str)) goto parse_stringfromtokencleanup;
+                    i+=8;
+                    break;
+                case 'x':
+                    if (!parse_codepointfromhex(p, &input[i+1], 2, true, &str)) goto parse_stringfromtokencleanup;
+                    i+=2;
+                    break;
                 default:
-                    str[k]=in[i+1]; break;
+                    varray_charwrite(&str, input[i]); break;
             }
-            i++; k++;
         }
     }
     
-    return object_stringfromcstring(str, k);
+    success=true;
+    if (out) {
+        *out = object_stringfromvarraychar(&str);
+        if (!(*out)) parse_error(p, true, ERROR_ALLOCATIONFAILED);
+    }
+    
+parse_stringfromtokencleanup:
+    varray_charclear(&str);
+    
+    return success;
 }
 
 /** Parses a symbol token into a value with no processing. */
@@ -199,6 +262,42 @@ bool parse_addnode(parser *p, syntaxtreenodetype type, value content, token *tok
 /** Retrieve a syntaxtree node from an index. */
 syntaxtreenode *parse_lookupnode(parser *p, syntaxtreeindx i) {
     return syntaxtree_nodefromindx((syntaxtree *) p->out, i);
+}
+
+/** Checks whether a long created by strtol is within range. Raises a parse error if not and returns false. */
+bool parse_validatestrtol(parser *p, long f) {
+    if ( ((f==LONG_MAX || f==LONG_MIN) && errno==ERANGE) || // Check for underflow or overflow
+        f>INT_MAX || f<INT_MIN) {
+        parse_error(p, true, PARSE_VALRANGE);
+        return false;
+    }
+    return true;
+}
+
+/** Checks whether a double created by strtod is within range. Raises a parse error if not and returns false. */
+bool parse_validatestrtod(parser *p, double f) {
+    if ( errno==ERANGE && (f==HUGE_VAL || f==-HUGE_VAL || f==DBL_MIN) ) {
+        parse_error(p, true, PARSE_VALRANGE);
+        return false;
+    }
+    return true;
+}
+
+/** Increments the recursion depth counter. If it exceeds PARSE_RECURSIONLIMIT an error is generated */
+bool parse_incrementrecursiondepth(parser *p) {
+    if (!(p->recursiondepth<p->maxrecursiondepth)) {
+        parse_error(p, false, PARSE_RCRSNLMT);
+        return false;
+    }
+        
+    p->recursiondepth++;
+    return true;
+}
+
+/** Decrements the recursion depth counter. */
+bool parse_decrementrecursiondepth(parser *p) {
+    if (p->recursiondepth>0) p->recursiondepth--;
+    return false;
 }
 
 /* ------------------------------------------
@@ -240,7 +339,7 @@ bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, voi
                 varg = true; vargthis = true;
             }
             
-            parse_pseudoexpression(p, &current);
+            if (!parse_pseudoexpression(p, &current)) return false;
 
             if (vargthis) if (!parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, current, &current)) return false;
             
@@ -333,12 +432,16 @@ bool parse_nil(parser *p, void *out) {
 /** Parses an integer */
 bool parse_integer(parser *p, void *out) {
     long f = strtol(p->previous.start, NULL, 10);
+    if (!parse_validatestrtol(p, f)) return false;
+    
     return parse_addnode(p, NODE_INTEGER, MORPHO_INTEGER(f), &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
 
 /** Parses a number */
 bool parse_number(parser *p, void *out) {
     double f = strtod(p->previous.start, NULL);
+    if (!parse_validatestrtod(p, f)) return false;
+    
     return parse_addnode(p, NODE_FLOAT, MORPHO_FLOAT(f), &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
 
@@ -348,7 +451,8 @@ bool parse_complex(parser *p, void *out) {
     if (p->previous.length==2) { // just a bare im symbol
         f = 1;
     } else {
-        f = strtod(p->previous.start,NULL);
+        f = strtod(p->previous.start, NULL);
+        if (!parse_validatestrtod(p, f)) return false;
     }
     value c = MORPHO_OBJECT(object_newcomplex(0,f));
     return parse_addnode(p, NODE_IMAG, c, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
@@ -384,8 +488,9 @@ bool parse_symbol(parser *p, void *out) {
 
 /** Parses a string */
 bool parse_string(parser *p, void *out) {
-    value s = parse_stringfromtoken(p, 1, p->previous.length-1);
-    if (MORPHO_ISNIL(s)) parse_error(p, true, ERROR_ALLOCATIONFAILED, OBJECT_STRINGLABEL);
+    value s;
+    if (!parse_stringfromtoken(p, 1, p->previous.length-1, &s)) return false;
+    
     return parse_addnode(p, NODE_STRING, s, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
 
@@ -395,7 +500,8 @@ bool parse_dictionary(parser *p, void *out) {
     syntaxtreeindx last=SYNTAXTREE_UNCONNECTED;
     parse_addnode(p, NODE_DICTIONARY, MORPHO_NIL, &p->current, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, &last);
     
-    do {
+    while (!parse_checktoken(p, TOKEN_RIGHTCURLYBRACKET) &&
+           !parse_checktoken(p, TOKEN_EOF)) {
         syntaxtreeindx key, val, pair;
         token tok=p->current; // Keep track of the token that corresponds to each key/value pair
         
@@ -411,9 +517,11 @@ bool parse_dictionary(parser *p, void *out) {
         if (!parse_addnode(p, NODE_DICTIONARY, MORPHO_NIL, &tok, last, pair, &last)) return false;
         
         if (!parse_checktoken(p, TOKEN_RIGHTCURLYBRACKET)) {
-            if (!parse_checkrequiredtoken(p, TOKEN_COMMA, PARSE_DCTTRMNTR)) break;
+            if (!parse_checkrequiredtoken(p, TOKEN_COMMA, PARSE_MSSNGCOMMA)) return false;
         }
-    } while(!parse_checktokenadvance(p, TOKEN_RIGHTCURLYBRACKET) && !parse_checktoken(p, TOKEN_EOF));
+    };
+    
+    if (!parse_checkrequiredtoken(p, TOKEN_RIGHTCURLYBRACKET, PARSE_DCTTRMNTR)) return false;
     
     *((syntaxtreeindx *) out) = last;
     
@@ -425,8 +533,8 @@ bool parse_interpolation(parser *p, void *out) {
     token tok = p->previous;
     
     /* First copy the string */
-    value s = parse_stringfromtoken(p, 1, tok.length-2);
-    if (MORPHO_ISNIL(s)) parse_error(p, true, ERROR_ALLOCATIONFAILED, OBJECT_STRINGLABEL);
+    value s;
+    if (!parse_stringfromtoken(p, 1, tok.length-2, &s)) return false;
     
     syntaxtreeindx left=SYNTAXTREE_UNCONNECTED, right=SYNTAXTREE_UNCONNECTED;
     
@@ -970,7 +1078,7 @@ bool parse_forstatement(parser *p, void *out) {
     }
     
     if (forin) {
-        /* A for..in loop is parsed as follows:
+        /* A for..in loop is parsed into the syntax tree as follows:
          *
          *                 forin
          *                /     \
@@ -1323,6 +1431,13 @@ void parse_setskipnewline(parser *p, bool skip, tokentype toknewline) {
     p->toknewline = toknewline;
 }
 
+/** Set maximum recursion depth
+ @warning: It is not guaranteed that values above PARSE_MAXRECURSIONDEPTH are achievable */
+void parse_setmaxrecursiondepth(parser *p, int maxdepth) {
+    p->maxrecursiondepth = maxdepth;
+}
+
+
 /* **********************************************************************
  * Interface
  * ********************************************************************** */
@@ -1340,6 +1455,8 @@ void parse_init(parser *p, lexer *lex, error *err, void *out) {
     p->err=err;
     p->out=out;
     p->nl=false;
+    p->maxrecursiondepth=PARSE_MAXRECURSIONDEPTH;
+    p->recursiondepth=0;
     varray_parseruleinit(&p->parsetable);
     
     // Configure parser to parse morpho by default
@@ -1459,6 +1576,9 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_CATCHLEFTCURLYMISSING, ERROR_PARSE, PARSE_CATCHLEFTCURLYMISSING_MSG);
     morpho_defineerror(PARSE_VALRANGE, ERROR_PARSE, PARSE_VALRANGE_MSG);
     morpho_defineerror(PARSE_STRESC, ERROR_PARSE, PARSE_STRESC_MSG);
+    morpho_defineerror(PARSE_RCRSNLMT, ERROR_PARSE, PARSE_RCRSNLMT_MSG);
+    morpho_defineerror(PARSE_UNESCPDCTRL, ERROR_PARSE, PARSE_UNESCPDCTRL_MSG);
+    morpho_defineerror(PARSE_INVLDUNCD, ERROR_PARSE, PARSE_INVLDUNCD_MSG);
 }
 
 void parse_finalize(void) {

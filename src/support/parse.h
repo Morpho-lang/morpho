@@ -72,11 +72,17 @@ DECLARE_VARRAY(parserule, parserule)
  * Define a Parser
  * ------------------------------------------------------- */
 
+/** Maximum depth of recursion for a parser */
+#define PARSE_MAXRECURSIONDEPTH 1000
+
 /** @brief A structure that defines the state of a parser */
 struct sparser {
     token current; /** The current token */
     token previous; /** The previous token */
     syntaxtreeindx left;
+    
+    int maxrecursiondepth; /** Maximum recursion depth */
+    int recursiondepth; /** Recursion depth */
     
     lexer *lex; /** Lexer to use */
     void *out; /** Output */
@@ -94,101 +100,101 @@ struct sparser {
  * Parser error messages
  * ------------------------------------------------------- */
 
-#define PARSE_INCOMPLETEEXPRESSION      "IncExp"
-#define PARSE_INCOMPLETEEXPRESSION_MSG  "Incomplete expression."
+#define PARSE_INCOMPLETEEXPRESSION        "IncExp"
+#define PARSE_INCOMPLETEEXPRESSION_MSG    "Incomplete expression."
 
-#define PARSE_MISSINGPARENTHESIS        "MssngParen"
-#define PARSE_MISSINGPARENTHESIS_MSG    "Expect ')' after expression."
+#define PARSE_MISSINGPARENTHESIS          "MssngParen"
+#define PARSE_MISSINGPARENTHESIS_MSG      "Expect ')' after expression."
 
-#define PARSE_EXPECTEXPRESSION          "ExpExpr"
-#define PARSE_EXPECTEXPRESSION_MSG      "Expected expression."
+#define PARSE_EXPECTEXPRESSION            "ExpExpr"
+#define PARSE_EXPECTEXPRESSION_MSG        "Expected expression."
 
-#define PARSE_MISSINGSEMICOLON          "MssngSemiVal"
-#define PARSE_MISSINGSEMICOLON_MSG      "Expect ; after value."
+#define PARSE_MISSINGSEMICOLON            "MssngSemiVal"
+#define PARSE_MISSINGSEMICOLON_MSG        "Expect ; after value."
 
-#define PARSE_MISSINGSEMICOLONEXP       "MssngExpTerm"
-#define PARSE_MISSINGSEMICOLONEXP_MSG   "Expect expression terminator (; or newline) after expression."
+#define PARSE_MISSINGSEMICOLONEXP         "MssngExpTerm"
+#define PARSE_MISSINGSEMICOLONEXP_MSG     "Expect expression terminator (; or newline) after expression."
 
-#define PARSE_MISSINGSEMICOLONVAR       "MssngSemiVar"
-#define PARSE_MISSINGSEMICOLONVAR_MSG   "Expect ; after variable declaration."
+#define PARSE_MISSINGSEMICOLONVAR         "MssngSemiVar"
+#define PARSE_MISSINGSEMICOLONVAR_MSG     "Expect ; after variable declaration."
 
-#define PARSE_VAREXPECTED               "VarExpct"
-#define PARSE_VAREXPECTED_MSG           "Variable name expected after var."
+#define PARSE_VAREXPECTED                 "VarExpct"
+#define PARSE_VAREXPECTED_MSG             "Variable name expected after var."
 
-#define PARSE_BLOCKTERMINATOREXP        "MssngBrc"
-#define PARSE_BLOCKTERMINATOREXP_MSG    "Expected '}' to finish block."
+#define PARSE_BLOCKTERMINATOREXP          "MssngBrc"
+#define PARSE_BLOCKTERMINATOREXP_MSG      "Expected '}' to finish block."
 
-#define PARSE_MSSNGSQBRC                "MssngSqBrc"
-#define PARSE_MSSNGSQBRC_MSG            "Expected ']' to finish list."
+#define PARSE_MSSNGSQBRC                  "MssngSqBrc"
+#define PARSE_MSSNGSQBRC_MSG              "Expected ']' to finish list."
 
-#define PARSE_MSSNGCOMMA                "MssngComma"
-#define PARSE_MSSNGCOMMA_MSG            "Expected ','."
+#define PARSE_MSSNGCOMMA                  "MssngComma"
+#define PARSE_MSSNGCOMMA_MSG              "Expected ','."
 
-#define PARSE_IFLFTPARENMISSING         "IfMssngLftPrn"
-#define PARSE_IFLFTPARENMISSING_MSG     "Expected '(' after if."
+#define PARSE_IFLFTPARENMISSING           "IfMssngLftPrn"
+#define PARSE_IFLFTPARENMISSING_MSG       "Expected '(' after if."
 
-#define PARSE_IFRGHTPARENMISSING        "IfMssngRgtPrn"
-#define PARSE_IFRGHTPARENMISSING_MSG    "Expected ')' after condition."
+#define PARSE_IFRGHTPARENMISSING          "IfMssngRgtPrn"
+#define PARSE_IFRGHTPARENMISSING_MSG      "Expected ')' after condition."
 
-#define PARSE_WHILELFTPARENMISSING      "WhlMssngLftPrn"
-#define PARSE_WHILELFTPARENMISSING_MSG  "Expected '(' after while."
+#define PARSE_WHILELFTPARENMISSING        "WhlMssngLftPrn"
+#define PARSE_WHILELFTPARENMISSING_MSG    "Expected '(' after while."
 
-#define PARSE_FORLFTPARENMISSING        "ForMssngLftPrn"
-#define PARSE_FORLFTPARENMISSING_MSG    "Expected '(' after for."
+#define PARSE_FORLFTPARENMISSING          "ForMssngLftPrn"
+#define PARSE_FORLFTPARENMISSING_MSG      "Expected '(' after for."
 
-#define PARSE_FORSEMICOLONMISSING       "ForMssngSemi"
-#define PARSE_FORSEMICOLONMISSING_MSG   "Expected ';'."
+#define PARSE_FORSEMICOLONMISSING         "ForMssngSemi"
+#define PARSE_FORSEMICOLONMISSING_MSG     "Expected ';'."
 
-#define PARSE_FORRGHTPARENMISSING       "ForMssngRgtPrn"
-#define PARSE_FORRGHTPARENMISSING_MSG   "Expected ')' after for clauses."
+#define PARSE_FORRGHTPARENMISSING         "ForMssngRgtPrn"
+#define PARSE_FORRGHTPARENMISSING_MSG     "Expected ')' after for clauses."
 
-#define PARSE_FNNAMEMISSING             "FnNoName"
-#define PARSE_FNNAMEMISSING_MSG         "Expected function or method name."
+#define PARSE_FNNAMEMISSING               "FnNoName"
+#define PARSE_FNNAMEMISSING_MSG           "Expected function or method name."
 
-#define PARSE_FNLEFTPARENMISSING        "FnMssngLftPrn"
-#define PARSE_FNLEFTPARENMISSING_MSG    "Expect '(' after name."
+#define PARSE_FNLEFTPARENMISSING          "FnMssngLftPrn"
+#define PARSE_FNLEFTPARENMISSING_MSG      "Expect '(' after name."
 
-#define PARSE_FNRGHTPARENMISSING        "FnMssngRgtPrn"
-#define PARSE_FNRGHTPARENMISSING_MSG    "Expect ')' after parameters."
+#define PARSE_FNRGHTPARENMISSING          "FnMssngRgtPrn"
+#define PARSE_FNRGHTPARENMISSING_MSG      "Expect ')' after parameters."
 
-#define PARSE_FNLEFTCURLYMISSING        "FnMssngLftBrc"
-#define PARSE_FNLEFTCURLYMISSING_MSG    "Expect '{' before body."
+#define PARSE_FNLEFTCURLYMISSING          "FnMssngLftBrc"
+#define PARSE_FNLEFTCURLYMISSING_MSG      "Expect '{' before body."
 
-#define PARSE_CALLRGHTPARENMISSING      "CllMssngRgtPrn"
-#define PARSE_CALLRGHTPARENMISSING_MSG  "Expect ')' after arguments."
+#define PARSE_CALLRGHTPARENMISSING        "CllMssngRgtPrn"
+#define PARSE_CALLRGHTPARENMISSING_MSG    "Expect ')' after arguments."
 
-#define PARSE_EXPECTCLASSNAME           "ClsNmMssng"
-#define PARSE_EXPECTCLASSNAME_MSG       "Expect class name."
+#define PARSE_EXPECTCLASSNAME             "ClsNmMssng"
+#define PARSE_EXPECTCLASSNAME_MSG         "Expect class name."
 
-#define PARSE_CLASSLEFTCURLYMISSING     "ClsMssngLftBrc"
-#define PARSE_CLASSLEFTCURLYMISSING_MSG "Expect '{' before class body."
+#define PARSE_CLASSLEFTCURLYMISSING       "ClsMssngLftBrc"
+#define PARSE_CLASSLEFTCURLYMISSING_MSG   "Expect '{' before class body."
 
-#define PARSE_CLASSRGHTCURLYMISSING     "ClsMssngRgtBrc"
-#define PARSE_CLASSRGHTCURLYMISSING_MSG "Expect '}' after class body."
+#define PARSE_CLASSRGHTCURLYMISSING       "ClsMssngRgtBrc"
+#define PARSE_CLASSRGHTCURLYMISSING_MSG   "Expect '}' after class body."
 
-#define PARSE_EXPECTDOTAFTERSUPER       "ExpctDtSpr"
-#define PARSE_EXPECTDOTAFTERSUPER_MSG   "Expect '.' after 'super'"
+#define PARSE_EXPECTDOTAFTERSUPER         "ExpctDtSpr"
+#define PARSE_EXPECTDOTAFTERSUPER_MSG     "Expect '.' after 'super'"
 
-#define PARSE_INCOMPLETESTRINGINT       "IntrpIncmp"
-#define PARSE_INCOMPLETESTRINGINT_MSG   "Incomplete string after interpolation."
+#define PARSE_INCOMPLETESTRINGINT         "IntrpIncmp"
+#define PARSE_INCOMPLETESTRINGINT_MSG     "Incomplete string after interpolation."
 
-#define PARSE_VARBLANKINDEX             "EmptyIndx"
-#define PARSE_VARBLANKINDEX_MSG         "Empty capacity in variable declaration."
+#define PARSE_VARBLANKINDEX               "EmptyIndx"
+#define PARSE_VARBLANKINDEX_MSG           "Empty capacity in variable declaration."
 
-#define PARSE_IMPORTMISSINGNAME         "ImprtMssngNm"
-#define PARSE_IMPORTMISSINGNAME_MSG     "Import expects a module or file name."
+#define PARSE_IMPORTMISSINGNAME           "ImprtMssngNm"
+#define PARSE_IMPORTMISSINGNAME_MSG       "Import expects a module or file name."
 
-#define PARSE_IMPORTUNEXPCTDTOK         "ImprtExpctFrAs"
-#define PARSE_IMPORTUNEXPCTDTOK_MSG     "Import expects a module or file name followed by for or as."
+#define PARSE_IMPORTUNEXPCTDTOK           "ImprtExpctFrAs"
+#define PARSE_IMPORTUNEXPCTDTOK_MSG       "Import expects a module or file name followed by for or as."
 
-#define PARSE_IMPORTASSYMBL             "ExpctSymblAftrAs"
-#define PARSE_IMPORTASSYMBL_MSG         "Expect symbol after as in import."
+#define PARSE_IMPORTASSYMBL               "ExpctSymblAftrAs"
+#define PARSE_IMPORTASSYMBL_MSG           "Expect symbol after as in import."
 
-#define PARSE_IMPORTFORSYMBL            "ExpctSymblAftrFr"
-#define PARSE_IMPORTFORSYMBL_MSG        "Expect symbol(s) after for in import."
+#define PARSE_IMPORTFORSYMBL              "ExpctSymblAftrFr"
+#define PARSE_IMPORTFORSYMBL_MSG          "Expect symbol(s) after for in import."
 
-#define PARSE_EXPECTSUPER               "SprNmMssng"
-#define PARSE_EXPECTSUPER_MSG           "Expect superclass name."
+#define PARSE_EXPECTSUPER                 "SprNmMssng"
+#define PARSE_EXPECTSUPER_MSG             "Expect superclass name."
 
 #define PARSE_UNRECGNZEDTOK               "UnrcgnzdTok"
 #define PARSE_UNRECGNZEDTOK_MSG           "Encountered an unrecognized token."
@@ -223,6 +229,15 @@ struct sparser {
 #define PARSE_STRESC                      "StrEsc"
 #define PARSE_STRESC_MSG                  "Unrecognized escape sequence in string."
 
+#define PARSE_RCRSNLMT                    "RcrsnLmt"
+#define PARSE_RCRSNLMT_MSG                "Recursion depth exceeded."
+
+#define PARSE_UNESCPDCTRL                 "UnescpdCtrl"
+#define PARSE_UNESCPDCTRL_MSG             "Unescaped control character in string literal."
+
+#define PARSE_INVLDUNCD                   "InvldUncd"
+#define PARSE_INVLDUNCD_MSG               "Invalid unicode escape sequence."
+
 /* -------------------------------------------------------
  * Interface for writing a custom parser
  * ------------------------------------------------------- */
@@ -236,7 +251,8 @@ bool parse_checktokenmulti(parser *p, int n, tokentype *type);
 bool parse_checktokenadvance(parser *p, tokentype type);
 bool parse_checkrequiredtoken(parser *p, tokentype type, errorid id);
 bool parse_checkdisallowedtoken(parser *p, tokentype type, errorid id);
-value parse_stringfromtoken(parser *p, unsigned int start, unsigned int length);
+bool parse_codepointfromhex(parser *p, const char *codestr, int nhex, bool raw, varray_char *out);
+bool parse_stringfromtoken(parser *p, unsigned int start, unsigned int length, value *out);
 value parse_tokenasstring(parser *p);
 
 // Functions for use when out is a syntaxtree
@@ -245,6 +261,14 @@ syntaxtreenode *parse_lookupnode(parser *p, syntaxtreeindx i);
 
 // Find a parserule for a given tokentype
 parserule *parse_getrule(parser *p, tokentype type);
+
+// Validate output
+bool parse_validatestrtol(parser *p, long f);
+bool parse_validatestrtod(parser *p, double f);
+
+// Recursion depth checking
+bool parse_incrementrecursiondepth(parser *p);
+bool parse_decrementrecursiondepth(parser *p);
 
 /* -------------------------------------------------------
  * Morpho parse rules
@@ -311,6 +335,7 @@ void parse_clear(parser *p);
 bool parse_setparsetable(parser *p, parserule *rules);
 void parse_setbaseparsefn(parser *p, parsefunction fn);
 void parse_setskipnewline(parser *p, bool skip, tokentype toknewline);
+void parse_setmaxrecursiondepth(parser *p, int maxdepth);
 
 bool parse(parser *p);
 

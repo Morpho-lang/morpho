@@ -1,0 +1,4 @@
+// Test for values outside floating point range
+
+print -1.21e55555
+// expect error 'ValRng'

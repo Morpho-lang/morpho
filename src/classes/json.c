@@ -3,6 +3,7 @@
  *
  *  @brief JSON parser
  *  @details Aims to be compliant with RFC 8259, tested against https://github.com/nst/JSONTestSuite
+ *           Currently passes all except "n_multidigit_number_then_00.json"
  */
 
 #include "morpho.h"
@@ -216,7 +217,7 @@ bool json_parsestring(parser *p, void *out) {
     
     for (unsigned int i=1; i<length-1; i++) {
         if (iscntrl(input[i]) && input[i]<='\x1f') { // RFC 8259 mandates that ctrl characters are 0x00 - 0x1f
-            parse_error(p, true, JSON_UNESCPDCTRL);
+            parse_error(p, true, PARSE_UNESCPDCTRL);
             goto json_parsestring_cleanup;
         } else if (input[i]!='\\') {
             varray_charwrite(&str, input[i]);
@@ -233,18 +234,7 @@ bool json_parsestring(parser *p, void *out) {
                 case 't': varray_charwrite(&str, '\t'); break;
                 case 'u':
                 {
-                    const char *codestr = &input[i+1];
-                    for (int j=0; j<4; j++) {
-                        if (!isxdigit(codestr[j])) {
-                            parse_error(p, true, JSON_INVLDUNCD);
-                            goto json_parsestring_cleanup;
-                        }
-                    }
-                    long codept = strtol(codestr, NULL, 16);
-                    
-                    char buffer[4];
-                    int nchars = morpho_encodeutf8((int) codept, buffer);
-                    varray_charadd(&str, buffer, nchars);
+                    if (!parse_codepointfromhex(p, &input[i+1], 4, false, &str)) goto json_parsestring_cleanup;
                     i+=4;
                 }
                     break;
@@ -271,12 +261,7 @@ json_parsestring_cleanup:
 /** Parses an integer */
 bool json_parsenumber(parser *p, void *out) {
     long f = strtol(p->previous.start, NULL, 10);
-    
-    if ( ((f==LONG_MAX || f==LONG_MIN) && errno==ERANGE) || // Check for underflow or overflow
-        f>INT_MAX || f<INT_MIN) {
-        parse_error(p, true, PARSE_VALRANGE);
-        return false;
-    }
+    if (!parse_validatestrtol(p, f)) return false;
     
     json_setoutput(out, MORPHO_INTEGER((int) f));
     
@@ -286,11 +271,7 @@ bool json_parsenumber(parser *p, void *out) {
 /** Parses an floating point value */
 bool json_parsefloat(parser *p, void *out) {
     double f = strtod(p->previous.start, NULL);
-    
-    if ( errno==ERANGE && (f==HUGE_VAL || f==-HUGE_VAL || f==DBL_MIN) ) {
-        parse_error(p, true, PARSE_VALRANGE);
-        return false;
-    }
+    if (!parse_validatestrtod(p, f)) return false;
     
     json_setoutput(out, MORPHO_FLOAT((double) f));
     
@@ -393,7 +374,12 @@ json_parsearraycleanup:
 
 /** Parses a json value using the parse table */
 bool json_parsevalue(parser *p, void *out) {
-    return parse_precedence(p, PREC_ASSIGN, out);
+    if (!parse_incrementrecursiondepth(p)) return false; // Increment and check
+    
+    bool success=parse_precedence(p, PREC_ASSIGN, out);
+    
+    parse_decrementrecursiondepth(p);
+    return success;
 }
 
 /** Base JSON parse type */
@@ -519,8 +505,6 @@ void json_initialize(void) {
     morpho_defineerror(JSON_OBJCTKEY, ERROR_PARSE, JSON_OBJCTKEY_MSG);
     morpho_defineerror(JSON_PRSARGS, ERROR_PARSE, JSON_PRSARGS_MSG);
     morpho_defineerror(JSON_EXTRNSTOK, ERROR_PARSE, JSON_EXTRNSTOK_MSG);
-    morpho_defineerror(JSON_UNESCPDCTRL, ERROR_PARSE, JSON_UNESCPDCTRL_MSG);
-    morpho_defineerror(JSON_INVLDUNCD, ERROR_PARSE, JSON_INVLDUNCD_MSG);
     morpho_defineerror(JSON_NMBRFRMT, ERROR_PARSE, JSON_NMBRFRMT_MSG);
     morpho_defineerror(JSON_BLNKELMNT, ERROR_PARSE, JSON_BLNKELMNT_MSG);
 }

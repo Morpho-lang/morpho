@@ -1,0 +1,4 @@
+// Test for values outside integer range
+
+print 1221323213412343143
+// expect error 'ValRng'

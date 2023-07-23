@@ -194,6 +194,17 @@ objectlist *list_order(objectlist *list) {
     return new;
 }
 
+/** Reverses a list in place */
+void list_reverse(objectlist *list) {
+    unsigned int hlen = list->val.count / 2;
+    for (unsigned int i=0; i<hlen; i++) {
+        value swp = list->val.data[i];
+        unsigned int j=list->val.count-i-1;
+        list->val.data[i]=list->val.data[j];
+        list->val.data[j]=swp;
+    }
+}
+
 /** Tests if a value is a member of a list */
 bool list_ismember(objectlist *list, value v) {
     for (unsigned int i=0; i<list->val.count; i++) {
@@ -206,6 +217,7 @@ bool list_ismember(objectlist *list, value v) {
 objectlist *list_clone(objectlist *list) {
     return object_newlist(list->val.count, list->val.data);
 }
+
 /* Copies data from list a at position indx to list out at position newindx with a generic interface */
 objectarrayerror list_slicecopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx){
     value data;
@@ -616,6 +628,15 @@ value List_order(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Returns a list with the order reversed */
+value List_reverse(vm *v, int nargs, value *args) {
+    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    
+    list_reverse(slf);
+    
+    return MORPHO_NIL;
+}
+
 /** Tests if a list has a value as a member */
 value List_ismember(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
@@ -646,6 +667,7 @@ MORPHO_METHOD(MORPHO_JOIN_METHOD, List_join, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ROLL_METHOD, List_roll, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_SORT_METHOD, List_sort, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_ORDER_METHOD, List_order, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(LIST_REVERSE_METHOD, List_reverse, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_ISMEMBER_METHOD, List_ismember, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CONTAINS_METHOD, List_ismember, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS

@@ -338,6 +338,18 @@ bool lex_skipcomment(lexer *l, token *tok, error *err) {
     return false;
 }
 
+/** @brief Detect and skip a shebang line
+ *  @param[in]  l    the lexer
+ *  @param[out] tok  token record to fill out (if necessary)
+ *  @param[out] err  error struct to fill out on errors
+ *  @returns true on success, false if an error occurs */
+bool lex_skipshebang(lexer *l) {
+    if (lex_peek(l)=='#' && lex_peekahead(l, 1)=='!') {
+        while (lex_peek(l) != '\n' && !lex_isatend(l)) lex_advance(l);
+    }
+    return true;
+}
+
 /** @brief Skips whitespace
  *  @param[in]  l    the lexer
  *  @param[out] tok  token record to fill out (if necessary)

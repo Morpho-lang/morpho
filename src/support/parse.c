@@ -1475,7 +1475,8 @@ void parse_clear(parser *p) {
 
 /** Entry point into the parser */
 bool parse(parser *p) {
-    if (!parse_advance(p)) return false; 
+    lex_skipshebang(p->lex);
+    if (!parse_advance(p)) return false;
     return (p->baseparsefn) (p, p->out);
 }
 

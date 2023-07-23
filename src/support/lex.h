@@ -136,6 +136,9 @@ enum {
     TOKEN_IMPORT, TOKEN_AS, TOKEN_IS, TOKEN_WITH,
     TOKEN_TRY, TOKEN_CATCH,
     
+    /* Shebangs at start of script */
+    TOKEN_SHEBANG,
+    
     /* Errors and other statuses */
     TOKEN_INCOMPLETE,
     TOKEN_EOF
@@ -171,6 +174,8 @@ char lex_peek(lexer *l);
 char lex_peekahead(lexer *l, int n);
 char lex_peekprevious(lexer *l);
 void lex_newline(lexer *l);
+
+bool lex_skipshebang(lexer *l);
 
 /* -------------------------------------------------------
  * Lex interface

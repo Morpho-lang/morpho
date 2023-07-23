@@ -1,7 +1,4 @@
 build/*
 .DS_Store
 test/FailedTests.txt
-test/FailedTests.txt
-test/FailedTests.txt
-test/FailedTests.txt
-test/FailedTests.txt
+*.out

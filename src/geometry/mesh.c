@@ -4,13 +4,11 @@
  *  @brief Mesh class and associated functionality
  */
 
-#include "object.h"
-#include "builtin.h"
+#include "morpho.h"
+#include "classes.h"
 #include "mesh.h"
 #include "file.h"
-#include "varray.h"
 #include "parse.h"
-#include "veneer.h"
 #include "sparse.h"
 #include "matrix.h"
 #include "selection.h"

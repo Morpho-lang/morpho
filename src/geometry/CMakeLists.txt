@@ -1,9 +1,8 @@
 target_sources(morpho
     PRIVATE
-        discretization.c
-        field.c
-        functional.c
-        integrate.c
-        mesh.c
-        selection.c
+        field.c       field.h
+        functional.c  functional.h
+        integrate.c   integrate.h
+        mesh.c        mesh.h
+        selection.c   selection.h
 )

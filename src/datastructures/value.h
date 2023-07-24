@@ -16,12 +16,30 @@
 /* Forward declarations of object structures */
 typedef struct sobject object;
 
-/** @brief A Morpho value */
+/* -------------------------------------------------------
+ * Fundamental value type
+ * ------------------------------------------------------- */
 
+/** Values are the basic data type in morpho: each variable declared with 'var' corresponds to one value.
+    Values can contain the following types:
+        VALUE_NIL           - nil
+        VALUE_INTEGER - 32 bit integer
+        VALUE_DOUBLE  -
+        VALUE_BOOL       - boolean type
+        VALUE_OBJECT   - pointer to an object
+    The implementation of a value is intentionally opaque and can be NAN boxed into a 64-bit double or left as a struct.
+    This file therfore defines several kinds of macro to:
+        * create values of a given type, e.g. MORPHO_INTEGER.
+        * Test the type of a value, e.g. MORPHO_ISINTEGER
+        * Extract a given type from a value and cast to the relevant C type, e.g. MORPHO_GETINTEGERVALUE */
+
+/** NAN Boxing represents a value as a double, using the values that correspond to NAN to contain the remaining types. */
 #ifdef MORPHO_NAN_BOXING
 
+/** In this representation, we can extract non-double types from a 64 bit integer */
 typedef uint64_t value;
 
+/** Define macros that enable us to refer to various bits */
 #define SIGN_BIT    ((uint64_t) 0x8000000000000000)
 #define QNAN        ((uint64_t) 0x7ffc000000000000)
 #define LOWER_WORD  ((uint64_t) 0x00000000ffffffff)
@@ -36,14 +54,17 @@ typedef uint64_t value;
 #define TAG_TRUE    1
 #define TAG_FALSE   0
 
+/** Bit mask used to select type bits */
 #define TYPE_BITS (TAG_OBJ | TAG_NIL | TAG_BOOL | TAG_INT)
 
+/** Map VALUE_XXX macros to type bits  */
 #define VALUE_NIL       (TAG_NIL)
 #define VALUE_INTEGER   (TAG_INT)
 #define VALUE_DOUBLE    ()
 #define VALUE_BOOL      (TAG_BOOL)
 #define VALUE_OBJECT    (TAG_OBJ)
 
+/** Get the type from a value */
 #define MORPHO_GETTYPE(x)  ((x) & TYPE_BITS)
 
 /** Union to enable conversion of a double to a 64 bit integer */
@@ -102,14 +123,13 @@ static inline bool morpho_ofsametype(value a, value b) {
     return false;
 }
 
-/* Ordered type labels */
-
 /* Computes an ordered type for a value  */
-static inline unsigned int morpho_getorderedtype(value v) {
+/*static inline unsigned int morpho_getorderedtype(value v) {
     if (MORPHO_ISFLOAT(v)) return 0;
     return ((v & (TAG_NIL | TAG_BOOL | TAG_INT))>>47) + ((v & TAG_OBJ) >> (63-2));
-}
+}*/
 
+/** Alternatively, we represent a value through a struct. */
 #else
 
 /** @brief A enumerated type defining the different types available in Morpho. */
@@ -165,43 +185,47 @@ static inline bool morpho_ofsametype(value a, value b) {
 
 #endif
 
-static inline bool morpho_isnumber(value a) {
-    return (MORPHO_ISINTEGER(a) || MORPHO_ISFLOAT(a));
-}
+/* -------------------------------------------------------
+ * Functions and macros for working with values
+ * ------------------------------------------------------- */
 
+/** Detect if a value is a number */
+bool morpho_isnumber(value a);
+
+/** Define a unified notion of falsity/truthyness */
+bool morpho_isfalse(value a);
+
+/** Convert a value to an integer */
+bool morpho_valuetoint(value v, int *out);
+
+/** Convert a value to a float */
+bool morpho_valuetofloat(value v, double *out);
+
+/** Macro to detect if a value is a number */
 #define MORPHO_ISNUMBER(v) (morpho_isnumber(v))
 
 /** Conversion of integer to a float */
 #define MORPHO_INTEGERTOFLOAT(x) (MORPHO_FLOAT((double) MORPHO_GETINTEGERVALUE((x))))
+
 /** Conversion of a float to an integer with rounding */
 #define MORPHO_FLOATTOINTEGER(x) (MORPHO_INTEGER((int) round(MORPHO_GETFLOATVALUE((x)))))
 
-/** Define notion of falsity/truthyness */
-bool morpho_isfalse(value a);
-
+/** Macros to determine if a value is true or false */
 #define MORPHO_ISFALSE(x) (morpho_isfalse(x))
 #define MORPHO_ISTRUE(x) (!morpho_isfalse(x))
 
-/* Conversion between types */
-
-/* Convert a value to an integer */
-static inline bool morpho_valuetoint(value v, int *out) {
-    if (MORPHO_ISINTEGER(v)) { *out = MORPHO_GETINTEGERVALUE(v); return true; }
-    if (MORPHO_ISFLOAT(v)) { *out = (int) MORPHO_GETFLOATVALUE(v); return true; }
-    return false;
-}
-
-/* Convert a value to a float */
-static inline bool morpho_valuetofloat(value v, double *out) {
-    if (MORPHO_ISINTEGER(v)) { *out = (double) MORPHO_GETINTEGERVALUE(v); return true; }
-    if (MORPHO_ISFLOAT(v)) { *out = MORPHO_GETFLOATVALUE(v); return true; }
-    return false;
-}
+/* -------------------------------------------------------
+ * Varrays of values
+ * ------------------------------------------------------- */
 
 DECLARE_VARRAY(value, value);
 
 bool varray_valuefind(varray_value *varray, value v, unsigned int *out);
 bool varray_valuefindsame(varray_value *varray, value v, unsigned int *out);
+
+/* -------------------------------------------------------
+ * Other utility functions
+ * ------------------------------------------------------- */
 
 bool value_promotenumberlist(unsigned int nv, value *v);
 bool value_minmax(unsigned int nval, value *list, value *min, value *max);

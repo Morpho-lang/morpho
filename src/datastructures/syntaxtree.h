@@ -88,7 +88,7 @@ typedef enum {
     NODE_LIST,
     NODE_IMPORT,
     NODE_BREAKPOINT
-    
+
 } syntaxtreenodetype;
 
 static inline bool syntaxtree_istype(syntaxtreenodetype type, syntaxtreenodetype lower, syntaxtreenodetype upper) {

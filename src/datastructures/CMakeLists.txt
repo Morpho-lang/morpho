@@ -1,11 +1,10 @@
 target_sources(morpho
     PRIVATE
-        cmplx.c
-        dictionary.c
-        matrix.c
-        object.c
-        sparse.c
-        syntaxtree.c
-        value.c
-        varray.c
+        dictionary.c   dictionary.h
+        error.c        error.h
+        object.c       object.h
+        program.c      program.h
+        syntaxtree.c   syntaxtree.h
+        value.c        value.h
+        varray.c       varray.h
 )

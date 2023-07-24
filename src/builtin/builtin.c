@@ -7,18 +7,14 @@
 #include "builtin.h"
 #include "common.h"
 #include "object.h"
-#include "functions.h"
+#include "functiondefs.h"
 #include "file.h"
 #include "system.h"
-#include "builtin.h"
-#include "matrix.h"
-#include "cmplx.h"
-#include "sparse.h"
 #include "mesh.h"
 #include "selection.h"
 #include "functional.h"
 #include "field.h"
-#include "veneer.h"
+#include "classes.h"
 
 /* **********************************************************************
  * Global data
@@ -114,8 +110,6 @@ bool builtin_iscallable(value val) {
 /* **********************************************************************
  * object_builtinfunction definition
  * ********************************************************************** */
-
-objecttype objectbuiltinfunctiontype;
 
 /** Instance object definitions */
 void objectbuiltinfunction_printfn(object *obj) {
@@ -277,27 +271,52 @@ bool builtin_checksymbol(value symbol) {
  * Initialization/Finalization
  * ********************************************************************** */
 
+extern objecttypedefn objectstringdefn;
+extern objecttypedefn objectclassdefn;
+
+objecttype objectbuiltinfunctiontype;
+
 void builtin_initialize(void) {
-    objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
-    
     dictionary_init(&builtin_functiontable);
     dictionary_init(&builtin_classtable);
     dictionary_init(&builtin_symboltable);
     varray_valueinit(&builtin_objects);
     
-    functions_initialize();
-    veneer_initialize(); 
+    // Initialize core object types
+    objectstringtype=object_addtype(&objectstringdefn);
+    objectclasstype=object_addtype(&objectclassdefn);
+    objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
     
     /* Initialize builtin classes and functions */
+    instance_initialize(); // Must initialize first so that Object exists
+    
+    string_initialize(); 
+    function_initialize();
+    class_initialize();
+    invocation_initialize();
+    dict_initialize();
+    list_initialize();
+    closure_initialize();
+    array_initialize();
+    range_initialize();
+    complex_initialize();
+    err_initialize();
+    
     file_initialize();
     system_initialize();
+    
+    // Initialize function definitions
+    functiondefs_initialize();
+    
+    // Initialize linear algebra
     matrix_initialize();
     sparse_initialize();
+    
+    // Initialize geometry
     mesh_initialize();
     selection_initialize();
     field_initialize();
     functional_initialize();
-    complex_initialize();
 }
 
 void builtin_finalize(void) {
@@ -310,6 +329,19 @@ void builtin_finalize(void) {
     varray_valueclear(&builtin_objects);
     
     functional_finalize();
-    file_finalize();
+    
     system_finalize();
+    file_finalize();
+    
+    err_finalize();
+    complex_finalize();
+    range_finalize();
+    array_finalize();
+    closure_finalize();
+    list_finalize();
+    dict_finalize();
+    invocation_finalize();
+    instance_finalize();
+    function_finalize();
+    string_finalize();
 }

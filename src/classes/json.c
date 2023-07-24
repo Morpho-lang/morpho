@@ -245,10 +245,10 @@ bool json_parsestring(parser *p, void *out) {
         }
     }
     
-    objectstring *new = object_stringfromvarraychar(&str);
-    if (new) {
+    value new = object_stringfromvarraychar(&str);
+    if (MORPHO_ISOBJECT(new)) {
         success=true;
-        json_setoutput(out, MORPHO_OBJECT(new));
+        json_setoutput(out, new);
     } else {
         parse_error(p, true, ERROR_ALLOCATIONFAILED);
     }

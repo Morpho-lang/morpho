@@ -1418,6 +1418,7 @@ bool parse_setparsetable(parser *p, parserule *rules) {
     }
     
     qsort(p->parsetable.data, p->parsetable.count, sizeof(parserule), _parse_parserulecmp);
+    return true;
 }
 
 /** Sets the parse function to be called to start parsing */

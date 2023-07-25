@@ -208,6 +208,7 @@ static double pts[] = {
     0.4285714285714286, 0.4285714285714286, 0.1428571428571429,
     0.4285714285714286, 0.1428571428571429, 0.4285714285714286,
     0.1428571428571429, 0.4285714285714286, 0.4285714285714286,
+    
     0.7777777777777778, 0.1111111111111111, 0.1111111111111111,
     0.1111111111111111, 0.7777777777777778, 0.1111111111111111,
     0.1111111111111111, 0.1111111111111111, 0.7777777777777778,
@@ -218,6 +219,14 @@ static double pts[] = {
     0.1111111111111111, 0.3333333333333333, 0.5555555555555556,
     0.1111111111111111, 0.5555555555555556, 0.3333333333333333,
     0.3333333333333333, 0.3333333333333333, 0.3333333333333333
+};
+
+double w[] = {
+    -0.5625, 0.5208333333333332, 0.5208333333333332, 0.5208333333333332,
+    
+    0.1265625, -0.5425347222222222, -0.5425347222222222, -0.5425347222222222,
+    0.4168402777777778, 0.4168402777777778, 0.4168402777777778, 0.4168402777777778,
+    0.4168402777777778, 0.4168402777777778
 };
 
 static double wts1[] = {-0.2812500000000000, 0.2604166666666667};
@@ -810,3 +819,600 @@ double testintegrand(unsigned int dim, double *t, double *x, unsigned int nquant
     //integrate_integrate(testintegrand, 3, 1, xx, 1, v, NULL, &out);
     //printf("integral value: %g\n", out);
 }*/
+
+
+/* **********************************************************************
+ * New integrator
+ * ********************************************************************** */
+
+int nevals;
+
+bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
+    //*fout = pow(1.0-x[1], 4.0);
+    double val = (x[0]*x[1]);
+    *fout=val*val*val*val;
+    nevals++;
+    return true;
+}
+
+/* --------------------------------
+ * Vertex and element stack
+ * -------------------------------- */
+
+/** Adds a vertex to the integrators vertex stack, returning the id */
+int integrate_addvertex(integrator *integrate, int ndof, double *v) {
+    int vid = integrate->vertexstack.count;
+    varray_doubleadd(&integrate->vertexstack, v, ndof);
+    return vid;
+}
+
+/** Adds an element to the element stack, returning the id */
+int integrate_addelement(integrator *integrate, int nv, int *vid) {
+    int elid=integrate->elementstack.count;
+    varray_intadd(&integrate->elementstack, vid, nv);
+    return elid;
+}
+
+void integrate_getvertices(integrator *integrate, int elementid, int nv, double **vert) {
+    for (int i=0; i<nv; i++) {
+        int vid=integrate->elementstack.data[elementid+i];
+        vert[i]=&(integrate->vertexstack.data[vid]);
+    }
+}
+
+void integrate_getelement(integrator *integrate, int elementid, int nv, int *vid) {
+    for (int i=0; i<nv; i++) vid[i]=integrate->elementstack.data[elementid+i];
+}
+
+/* --------------------------------
+ * Define some quadrature rules
+ * -------------------------------- */
+
+/* --------------------------------
+ * Simple midpoint-simpson rule
+ * -------------------------------- */
+
+double midpointnodes[] = {
+    0.5, 0.5, // Midpoint
+    0.0, 1.0, // } Simpsons extension
+    1.0, 0.0, // }
+};
+
+double midpointweights[] = {
+    1.0,
+    0.66666666666666667, 0.16666666666666667, 0.16666666666666667
+};
+
+quadraturerule midpointsimpson = {
+    .dim = 1,
+    .order = 0,
+    .nnodes = 1,
+    .next = 3,
+    .nodes = midpointnodes,
+    .weights = midpointweights,
+};
+
+/* --------------------------------
+ * Gauss-Kronrod 1-3 rule
+ * -------------------------------- */
+
+double gk13nds[] = {
+    0.50000000000000000000, 0.50000000000000000000,
+    0.11270166537925831148, 0.88729833462074168852,
+    0.88729833462074168852, 0.11270166537925831148
+};
+
+double gk13wts[] = {
+    1.0,
+    0.4444444444444444444445, 0.2777777777777777777778,
+    0.277777777777777777778
+};
+
+quadraturerule gk13 = {
+    .dim = 1,
+    .order = 0,
+    .nnodes = 1,
+    .next = 3,
+    .nodes = gk13nds,
+    .weights = gk13wts,
+};
+
+/* --------------------------------
+ * Gauss-Kronrod 2-5 rule
+ * -------------------------------- */
+
+double gk25nds[] = {
+    0.21132486540518711775, 0.78867513459481288225,
+    0.78867513459481288225, 0.21132486540518711775,
+    0.037089950113724269217, 0.96291004988627573078,
+    0.50000000000000000000, 0.50000000000000000000,
+    0.96291004988627573078, 0.037089950113724269217
+};
+
+double gk25wts[] = {
+    0.5, 0.5, // Gauss weights
+    0.2454545454545454545455, // Kronrod extension
+    0.245454545454545454546,
+    0.098989898989898989899,
+    0.3111111111111111111111,
+    0.098989898989898989899
+};
+
+quadraturerule gk25 = {
+    .dim = 1,
+    .order = 0,
+    .nnodes = 2,
+    .next = 5,
+    .nodes = gk25nds,
+    .weights = gk25wts,
+};
+
+/* --------------------------------
+ * Gauss-Kronrod 7-15 rule
+ * -------------------------------- */
+
+double gk715nds[] = {
+    0.0254460438286207377369, 0.9745539561713792622631, // Gauss nodes
+    0.1292344072003027800681, 0.8707655927996972199320,
+    0.2970774243113014165467, 0.7029225756886985834533,
+    0.5, 0.5,
+    0.7029225756886985834533, 0.2970774243113014165467,
+    0.8707655927996972199320, 0.1292344072003027800681,
+    0.9745539561713792622631, 0.0254460438286207377369,
+    
+    0.0042723144395936803966, 0.9957276855604063196035, // Kronrod extension
+    0.0675677883201154636052, 0.9324322116798845363949,
+    0.2069563822661544348530, 0.7930436177338455651471,
+    0.3961075224960507661997, 0.6038924775039492338004,
+    0.6038924775039492338004, 0.3961075224960507661997,
+    0.7930436177338455651471, 0.2069563822661544348530,
+    0.9324322116798845363949, 0.0675677883201154636052,
+    0.9957276855604063196035, 0.0042723144395936803966
+};
+
+double gk715wts[] = {
+    0.0647424830844348466355, // Gauss weights
+    0.1398526957446383339505,
+    0.1909150252525594724752,
+    0.20897959183673469387755,
+    0.1909150252525594724752,
+    0.13985269574463833395075,
+    0.0647424830844348466353,
+    
+    0.0315460463149892766454, // Kronrod extensions
+    0.070326629857762959373,
+    0.0951752890323927049567,
+    0.104741070542363914007,
+    0.095175289032392704957,
+    0.0703266298577629593726,
+    0.0315460463149892766454,
+    
+    0.0114676610052646124819,
+    0.0523950051611250919200,
+    0.0845023633196339514133,
+    0.1022164700376494462071,
+    0.1022164700376494462071,
+    0.0845023633196339514133,
+    0.05239500516112509192,
+    0.01146766100526461248187
+};
+
+quadraturerule gk715 = {
+    .dim = 1,
+    .order = 7,
+    .nnodes = 7,
+    .next = 15,
+    .nodes = gk715nds,
+    .weights = gk715wts,
+};
+
+/* --------------------------------
+ * Triangle
+ * -------------------------------- */
+
+/* Quadrature rules based on Walkington, "Quadrature on Simplices of arbitrary dimension" */
+
+double tripts[] = {
+    0.3333333333333333, 0.3333333333333333, 0.3333333333333333,
+    0.6000000000000000, 0.2000000000000000, 0.2000000000000000,
+    0.2000000000000000, 0.6000000000000000, 0.2000000000000000,
+    0.2000000000000000, 0.2000000000000000, 0.6000000000000000,
+    
+    0.7142857142857143, 0.1428571428571429, 0.1428571428571429,
+    0.1428571428571429, 0.7142857142857143, 0.1428571428571429,
+    0.1428571428571429, 0.1428571428571429, 0.7142857142857143,
+    0.4285714285714286, 0.4285714285714286, 0.1428571428571429,
+    0.4285714285714286, 0.1428571428571429, 0.4285714285714286,
+    0.1428571428571429, 0.4285714285714286, 0.4285714285714286,
+    
+    0.7777777777777778, 0.1111111111111111, 0.1111111111111111,
+    0.1111111111111111, 0.7777777777777778, 0.1111111111111111,
+    0.1111111111111111, 0.1111111111111111, 0.7777777777777778,
+    0.3333333333333333, 0.5555555555555556, 0.1111111111111111,
+    0.3333333333333333, 0.1111111111111111, 0.5555555555555556,
+    0.5555555555555556, 0.3333333333333333, 0.1111111111111111,
+    0.5555555555555556, 0.1111111111111111, 0.3333333333333333,
+    0.1111111111111111, 0.3333333333333333, 0.5555555555555556,
+    0.1111111111111111, 0.5555555555555556, 0.3333333333333333,
+    0.3333333333333333, 0.3333333333333333, 0.3333333333333333
+};
+
+double triwts[] = {
+    -0.5625, 0.5208333333333332, 0.5208333333333332, 0.5208333333333332,
+    
+    0.1265625, -0.5425347222222222, -0.5425347222222222, -0.5425347222222222,
+    0.4168402777777778, 0.4168402777777778, 0.4168402777777778, 0.4168402777777778,
+    0.4168402777777778, 0.4168402777777778
+};
+
+quadraturerule tri410 = {
+    .dim = 2,
+    .order = 1,
+    .nnodes = 4,
+    .next = 10,
+    .nodes = tripts,
+    .weights = triwts,
+};
+
+double triwts1020[] = {
+    0.1265625, -0.5425347222222222, -0.5425347222222222, -0.5425347222222222,
+    0.4168402777777778, 0.4168402777777778, 0.4168402777777778, 0.4168402777777778,
+    0.4168402777777778, 0.4168402777777778,
+    
+    -0.0158203125, 0.2422030009920634, 0.2422030009920634, 0.2422030009920634,
+    -0.6382866753472222, -0.6382866753472222, -0.6382866753472222, -0.6382866753472222,
+    -0.6382866753472222, -0.6382866753472222,
+    
+    0.4118931361607142, 0.4118931361607142, 0.4118931361607142, 0.4118931361607142,
+    0.4118931361607142, 0.4118931361607142, 0.4118931361607142, 0.4118931361607142,
+    0.4118931361607142, 0.4118931361607142
+};
+
+quadraturerule tri1020 = {
+    .dim = 2,
+    .order = 4,
+    .nnodes = 10,
+    .next = 20,
+    .nodes = tripts,
+    .weights = triwts1020,
+};
+
+/* --------------------------------
+ * Interpolation rule
+ * -------------------------------- */
+
+bool linearinterpolate(int nbary, double *bary, int dim, double **v, double *x) {
+    for (int j=0; j<dim; j++) x[j]=0.0;
+    for (int k=0; k<nbary; k++) {
+        for (int j=0; j<dim; j++) {
+            x[j]+=bary[k]*v[k][j];
+        }
+    }
+}
+
+/* --------------------------------
+ * Function to perform quadrature
+ * -------------------------------- */
+
+/** Weighted sum of a list using Kahan summation */
+double integrate_sumlistweighted(unsigned int nel, double *list, double *wts) {
+    double sum=0.0, c=0.0, y,t;
+
+    for (unsigned int i=0; i<nel; i++) {
+        y=(list[i]*wts[i])-c;
+        t=sum+y;
+        c=(t-sum)-y;
+        sum=t;
+    }
+
+    return sum;
+}
+
+/** Integrates a function over an element specified in work, filling out the integral and error estimate if provided */
+bool quadrature(integrator *integrate, quadratureworkitem *work) {
+    quadraturerule *rule = integrate->rule;
+    int n = (rule->next!=INTEGRATE_NOEXT ? rule->next : rule->nnodes);
+    int nbary = rule->dim+1; // Number of barycentric points
+    
+    double *vert[nbary];
+    integrate_getvertices(integrate, work->elementid, nbary, vert);
+    
+    //printf("[%g,%g %g,%g] ", vert[0][0], vert[0][1], vert[1][0], vert[1][1]);
+    
+    double x[integrate->dim];
+    double f[n];
+    
+    for (unsigned int i=0; i<n; i++) {
+        linearinterpolate(nbary, &rule->nodes[nbary*i], integrate->dim, vert, x);
+        
+        // Evaluate function
+        if (!(*integrate->integrand) (rule->dim, &rule->nodes[nbary*i], x, integrate->nquantity, NULL, integrate->ref, &f[i])) return false;
+    }
+    
+    double r1 = integrate_sumlistweighted(rule->nnodes, f, rule->weights);
+    double r2 = r1;
+    
+    if (rule->next!=INTEGRATE_NOEXT) {
+        r2 = integrate_sumlistweighted(rule->next, f, &rule->weights[rule->nnodes]);
+        work->err = work->weight*fabs(r2-r1);
+    }
+    
+    work->val = work->weight*r2;
+    
+    //printf("-> %g (%g)\n", work->val, work->err);
+    
+    return true;
+}
+
+/* --------------------------------
+ * Subdivision rules
+ * -------------------------------- */
+
+/* -------
+ *   1D
+ * ------- */
+
+/** Bisection */
+double bisectionpts[] = {
+    0.5, 0.5
+};
+
+double bisectionweights[] = {
+    0.5, 0.5
+};
+
+int bisectionintervals[] = {
+    2, 1,
+    0, 2
+};
+
+subdivisionrule bisection = {
+    .dim = 1,
+    .npts = 1,
+    .pts = bisectionpts,
+    .nels = 2,
+    .newels = bisectionintervals,
+    .weights = bisectionweights
+};
+
+/** Trisection */
+
+double trisectionpts[] = {
+    0.666666666666666667, 0.333333333333333333,
+    0.333333333333333333, 0.666666666666666667
+};
+
+double trisectionweights[] = {
+    0.333333333333333333, 0.333333333333333333, 0.333333333333333333
+};
+
+int trisectionintervals[] = {
+    0, 2,
+    3, 1,
+    2, 3
+};
+
+subdivisionrule trisection = {
+    .dim = 1,
+    .npts = 2,
+    .pts = trisectionpts,
+    .nels = 3,
+    .newels = trisectionintervals,
+    .weights = trisectionweights
+};
+
+/* -------
+ *   2D
+ * ------- */
+
+/** Quadrasection of 2D triangle */
+double triquadrasectionpts[] = {
+    0.5, 0.5, 0.0,
+    0.0, 0.5, 0.5,
+    0.5, 0.0, 0.5
+};
+
+double triquadrasectionweights[] = {
+    0.25, 0.25, 0.25, 0.25
+};
+
+/*
+ *       2
+ *      / \
+ *     5 - 4
+ *    / \ / \
+ *   0 - 3 - 1
+ */
+
+int triquadrasectiontris[] = {
+    0, 3, 5,
+    3, 1, 4,
+    3, 4, 5,
+    5, 4, 2
+};
+
+subdivisionrule trianglequadrasection = {
+    .dim = 2,
+    .npts = 3,
+    .pts = triquadrasectionpts,
+    .nels = 4,
+    .newels = triquadrasectiontris,
+    .weights = triquadrasectionweights
+};
+
+/* --------------------------------
+ * Subdivision
+ * -------------------------------- */
+
+bool subdivide(integrator *integrate, quadratureworkitem *work, varray_quadratureworkitem *worklist, int *nels) {
+    subdivisionrule *rule = integrate->subdivide;
+    quadratureworkitem newitems[rule->nels];
+    int nindx = rule->dim+1;
+    double *vert[nindx]; // Old vertices
+    double x[rule->npts][integrate->dim]; // Interpolated vertices
+    
+    integrate_getvertices(integrate, work->elementid, nindx, vert);
+    
+    // Copy across vertex ids from old element
+    int vid[nindx+rule->npts];
+    integrate_getelement(integrate, work->elementid, nindx, vid);
+    
+    // Interpolate vertices
+    for (int j=0; j<rule->npts; j++) {
+        linearinterpolate(nindx, &rule->pts[j*nindx], integrate->dim, vert, x[j]);
+        
+        /*printf("New vertex: ");
+        for (int k=0; k<integrate->dim; k++) printf("%g ", x[j][k]);
+        printf("\n");*/
+    }
+    
+    // Add vertices
+    for (int j=0; j<rule->npts; j++) {
+        vid[nindx+j]=integrate_addvertex(integrate, integrate->dim, x[j]);
+    }
+    
+    for (int i=0; i<rule->nels; i++) {
+        newitems[i].val=0.0;
+        newitems[i].err=0.0;
+        newitems[i].weight=work->weight*rule->weights[i];
+        
+        // Find vertex ids for the element
+        int element[nindx];
+        for (int k=0; k<nindx; k++) element[k]=vid[rule->newels[nindx*i+k]];
+        
+        // Define the new element
+        newitems[i].elementid=integrate_addelement(integrate, nindx, element);
+    }
+    
+    varray_quadratureworkitemadd(worklist, newitems, rule->nels);
+    
+    *nels = rule->nels;
+}
+
+/* --------------------------------
+ * Work items
+ * -------------------------------- */
+
+DEFINE_VARRAY(quadratureworkitem, quadratureworkitem)
+
+void integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out) {
+    
+}
+
+/** Compares two parse rules */
+int _quadratureworkitemcmp(const void *l, const void *r) {
+    quadratureworkitem *a = (quadratureworkitem *) l;
+    quadratureworkitem *b = (quadratureworkitem *) r;
+    if (b->err < a->err) return 1;
+    else if (b->err > a->err) return -1;
+    return 0;
+}
+
+/** Estimate the value of the integrand given a worklist */
+double integrate_estimate(varray_quadratureworkitem *worklist) {
+    double sum=0.0, c=0.0, y,t;
+
+    for (unsigned int i=0; i<worklist->count; i++) {
+        y=worklist->data[i].val-c;
+        t=sum+y;
+        c=(t-sum)-y;
+        sum=t;
+    }
+
+    return sum;
+}
+
+/** Estimate the error on the integrand given a worklist */
+double integrate_error(varray_quadratureworkitem *worklist) {
+    double sum=0.0, c=0.0, y,t;
+
+    for (unsigned int i=0; i<worklist->count; i++) {
+        y=worklist->data[i].err-c;
+        t=sum+y;
+        c=(t-sum)-y;
+        sum=t;
+    }
+
+    return sum;
+}
+
+/** Free data associated with an integrator */
+void integrator_clear(integrator *integrate) {
+    varray_intclear(&integrate->elementstack);
+    varray_doubleclear(&integrate->vertexstack);
+}
+
+void integrate_test(void) {
+    nevals = 0;
+    
+    integrator integ;
+    integ.integrand = test_integrand;
+    integ.rule = &tri1020; // &tri410; // = gk715; ;  //;
+    integ.subdivide = &trianglequadrasection; //&bisection;
+    integ.nquantity = 0;
+    integ.tol = INTEGRATE_ACCURACYGOAL;
+    integ.ztol = 1e-9;
+    integ.dim = 2;
+    varray_doubleinit(&integ.vertexstack);
+    varray_intinit(&integ.elementstack);
+    integ.ref = NULL;
+    
+    double err, est;
+    
+    double x0[2] = { 0, 0 };
+    double x1[2] = { 1, 0 };
+    double x2[2] = { 1, 1 };
+    int v0 = integrate_addvertex(&integ, 2, x0);
+    int v1 = integrate_addvertex(&integ, 2, x1);
+    int v2 = integrate_addvertex(&integ, 2, x2);
+    int el0[] = { v0, v1, v2 };
+    int elid = integrate_addelement(&integ, 3, el0);
+    
+    varray_quadratureworkitem worklist;
+    varray_quadratureworkiteminit(&worklist);
+
+    quadratureworkitem work;
+    work.weight = 1.0;
+    work.elementid = elid;
+    quadrature(&integ, &work); // Perform initial quadrature
+    
+    varray_quadratureworkitemwrite(&worklist, work);
+    int iter;
+    
+    for (iter=0; iter<100; iter++) {
+        // Check error
+        err = integrate_error(&worklist);
+        est = integrate_estimate(&worklist);
+        
+        //printf("Estimate: %g (%g)\n", est, err);
+        if (fabs(est)<integ.ztol || fabs(err/est)<integ.tol) break;
+        
+        // Ensure quadrature list remains sorted
+        qsort(worklist.data, worklist.count, sizeof(quadratureworkitem), _quadratureworkitemcmp);
+        
+        // Pick worst element
+        varray_quadratureworkitempop(&worklist, &work);
+        
+        // Subdivide
+        int nels; // Number of elements created
+        subdivide(&integ, &work, &worklist, &nels);
+        
+        // Perform quadrature on each new element
+        for (int k=0; k<nels; k++) quadrature(&integ, &worklist.data[worklist.count-k-1]);
+    }
+    
+    printf("New integrator: %g with %i iterations and %i function evaluations.\n", est, iter, nevals);
+    
+    varray_quadratureworkitemclear(&worklist);
+    
+    nevals = 0;
+    double out;
+    double *xx[] = { x0, x1, x2 };
+    integrate_integrate(test_integrand, 2, 2, xx, 0, NULL, NULL, &out);
+    
+    printf("Old integrator: %g with %i function evaluations.\n", out, nevals);
+    
+    integrator_clear(&integ);
+    
+    exit(0);
+}

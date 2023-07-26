@@ -828,16 +828,38 @@ double testintegrand(unsigned int dim, double *t, double *x, unsigned int nquant
 int nevals;
 
 bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
-    //*fout = pow(1.0-x[1], 4.0);
-    double val = (x[0]*x[1]);
-    *fout=val*val*val*val;
+    //*fout = 0.5*pow(x[0]+x[1], -0.2);
+    //double val = sin(M_PI*x[0]); //1/(0.1+x[0]*x[1]);
+    *fout=x[0]*x[1]*x[2]; //1/sqrt(x[0]); //+ 1/sqrt(x[1]) + 1/sqrt(x[0]+x[1]);
     nevals++;
     return true;
 }
 
-/* --------------------------------
- * Vertex and element stack
- * -------------------------------- */
+/* -------------------------------------------------
+ * Basic operations on the integrator data structure
+ * ------------------------------------------------- */
+
+/** Initialize an integrator structure */
+void integrator_init(integrator *integrate) {
+    integrate->integrand = NULL;
+    integrate->rule = NULL;
+    integrate->errrule = NULL;
+    integrate->subdivide = NULL;
+    integrate->nquantity = 0;
+    integrate->tol = INTEGRATE_ACCURACYGOAL;
+    integrate->ztol = INTEGRATE_ZEROCHECK;
+    integrate->dim = 0;
+    integrate->ref = NULL;
+    varray_doubleinit(&integrate->vertexstack);
+    varray_intinit(&integrate->elementstack);
+    error_init(&integrate->err);
+}
+
+/** Free data associated with an integrator */
+void integrator_clear(integrator *integrate) {
+    varray_intclear(&integrate->elementstack);
+    varray_doubleclear(&integrate->vertexstack);
+}
 
 /** Adds a vertex to the integrators vertex stack, returning the id */
 int integrate_addvertex(integrator *integrate, int ndof, double *v) {
@@ -853,6 +875,8 @@ int integrate_addelement(integrator *integrate, int nv, int *vid) {
     return elid;
 }
 
+/** Retrieves the vertex pointers given an elementid.
+ @warning: The pointers returned should not be used after a call to integrate_addvertex */
 void integrate_getvertices(integrator *integrate, int elementid, int nv, double **vert) {
     for (int i=0; i<nv; i++) {
         int vid=integrate->elementstack.data[elementid+i];
@@ -860,12 +884,13 @@ void integrate_getvertices(integrator *integrate, int elementid, int nv, double 
     }
 }
 
+/** Retrieves an element with elementid */
 void integrate_getelement(integrator *integrate, int elementid, int nv, int *vid) {
     for (int i=0; i<nv; i++) vid[i]=integrate->elementstack.data[elementid+i];
 }
 
 /* --------------------------------
- * Define some quadrature rules
+ * Quadrature rules
  * -------------------------------- */
 
 /* --------------------------------
@@ -1078,7 +1103,163 @@ quadraturerule tri1020 = {
 };
 
 /* --------------------------------
- * Interpolation rule
+ * Tetrahedron
+ * -------------------------------- */
+
+// Nodes and weights from Journal of Computational and Applied Mathematics, 236, 17, 4348-4364 (2012)
+
+double tet5pts[] = {
+    0.91978967333688,0.0267367755543735,0.0267367755543735,0.0267367755543735,
+    0.0267367755543735,0.91978967333688,0.0267367755543735,0.0267367755543735,
+    0.0267367755543735,0.0267367755543735,0.91978967333688,0.0267367755543735,
+    0.0267367755543735,0.0267367755543735,0.0267367755543735,0.91978967333688,
+    0.174035630246894,0.747759888481809,0.0391022406356488,0.0391022406356488,
+    0.747759888481809,0.174035630246894,0.0391022406356488,0.0391022406356488,
+    0.174035630246894,0.0391022406356488,0.747759888481809,0.0391022406356488,
+    0.747759888481809,0.0391022406356488,0.174035630246894,0.0391022406356488,
+    0.174035630246894,0.0391022406356488,0.0391022406356488,0.747759888481809,
+    0.747759888481809,0.0391022406356488,0.0391022406356488,0.174035630246894,
+    0.0391022406356488,0.174035630246894,0.747759888481809,0.0391022406356488,
+    0.0391022406356488,0.747759888481809,0.174035630246894,0.0391022406356488,
+    0.0391022406356488,0.174035630246894,0.0391022406356488,0.747759888481809,
+    0.0391022406356488,0.747759888481809,0.0391022406356488,0.174035630246894,
+    0.0391022406356488,0.0391022406356488,0.174035630246894,0.747759888481809,
+    0.0391022406356488,0.0391022406356488,0.747759888481809,0.174035630246894,
+    0.454754599984483,0.454754599984483,0.0452454000155172,0.0452454000155172,
+    0.454754599984483,0.0452454000155172,0.454754599984483,0.0452454000155172,
+    0.454754599984483,0.0452454000155172,0.0452454000155172,0.454754599984483,
+    0.0452454000155172,0.454754599984483,0.454754599984483,0.0452454000155172,
+    0.0452454000155172,0.454754599984483,0.0452454000155172,0.454754599984483,
+    0.0452454000155172,0.0452454000155172,0.454754599984483,0.454754599984483,
+    0.503118645014598,0.223201037962315,0.223201037962315,0.050479279060772,
+    0.223201037962315,0.503118645014598,0.223201037962315,0.050479279060772,
+    0.223201037962315,0.223201037962315,0.503118645014598,0.050479279060772,
+    0.503118645014598,0.223201037962315,0.050479279060772,0.223201037962315,
+    0.223201037962315,0.503118645014598,0.050479279060772,0.223201037962315,
+    0.223201037962315,0.223201037962315,0.050479279060772,0.503118645014598,
+    0.503118645014598,0.050479279060772,0.223201037962315,0.223201037962315,
+    0.223201037962315,0.050479279060772,0.503118645014598,0.223201037962315,
+    0.223201037962315,0.050479279060772,0.223201037962315,0.503118645014598,
+    0.050479279060772,0.503118645014598,0.223201037962315,0.223201037962315,
+    0.050479279060772,0.223201037962315,0.503118645014598,0.223201037962315,
+    0.050479279060772,0.223201037962315,0.223201037962315,0.503118645014598,
+    0.25,0.25,0.25,0.25
+};
+
+double tet5wts[] = {
+    0.0021900463965388,0.0021900463965388,0.0021900463965388,0.0021900463965388,
+    0.0143395670177665,0.0143395670177665,0.0143395670177665,0.0143395670177665,
+    0.0143395670177665,0.0143395670177665,0.0143395670177665,0.0143395670177665,
+    0.0143395670177665,0.0143395670177665,0.0143395670177665,0.0143395670177665,
+    0.0250305395686746,0.0250305395686746,0.0250305395686746,0.0250305395686746,
+    0.0250305395686746,0.0250305395686746,0.0479839333057554,0.0479839333057554,
+    0.0479839333057554,0.0479839333057554,0.0479839333057554,0.0479839333057554,
+    0.0479839333057554,0.0479839333057554,0.0479839333057554,0.0479839333057554,
+    0.0479839333057554,0.0479839333057554,0.093174573119534 };
+
+quadraturerule tet5 = {
+    .dim = 3,
+    .order = 4,
+    .nnodes = 35,
+    .next = INTEGRATE_NOEXT,
+    .nodes = tet5pts,
+    .weights = tet5wts,
+};
+
+double tet6pts[] = {
+    0.955143804540822,0.0149520651530592,0.0149520651530592,0.0149520651530592,
+    0.0149520651530592,0.955143804540822,0.0149520651530592,0.0149520651530592,
+    0.0149520651530592,0.0149520651530592,0.955143804540822,0.0149520651530592,
+    0.0149520651530592,0.0149520651530592,0.0149520651530592,0.955143804540822,
+    0.77997600844154,0.151831949165937,0.0340960211962615,0.0340960211962615,
+    0.151831949165937,0.77997600844154,0.0340960211962615,0.0340960211962615,
+    0.77997600844154,0.0340960211962615,0.151831949165937,0.0340960211962615,
+    0.151831949165937,0.0340960211962615,0.77997600844154,0.0340960211962615,
+    0.77997600844154,0.0340960211962615,0.0340960211962615,0.151831949165937,
+    0.151831949165937,0.0340960211962615,0.0340960211962615,0.77997600844154,
+    0.0340960211962615,0.77997600844154,0.151831949165937,0.0340960211962615,
+    0.0340960211962615,0.151831949165937,0.77997600844154,0.0340960211962615,
+    0.0340960211962615,0.77997600844154,0.0340960211962615,0.151831949165937,
+    0.0340960211962615,0.151831949165937,0.0340960211962615,0.77997600844154,
+    0.0340960211962615,0.0340960211962615,0.77997600844154,0.151831949165937,
+    0.0340960211962615,0.0340960211962615,0.151831949165937,0.77997600844154,
+    0.354934056063979,0.552655643106017,0.0462051504150017,0.0462051504150017,
+    0.552655643106017,0.354934056063979,0.0462051504150017,0.0462051504150017,
+    0.354934056063979,0.0462051504150017,0.552655643106017,0.0462051504150017,
+    0.552655643106017,0.0462051504150017,0.354934056063979,0.0462051504150017,
+    0.354934056063979,0.0462051504150017,0.0462051504150017,0.552655643106017,
+    0.552655643106017,0.0462051504150017,0.0462051504150017,0.354934056063979,
+    0.0462051504150017,0.354934056063979,0.552655643106017,0.0462051504150017,
+    0.0462051504150017,0.552655643106017,0.354934056063979,0.0462051504150017,
+    0.0462051504150017,0.354934056063979,0.0462051504150017,0.552655643106017,
+    0.0462051504150017,0.552655643106017,0.0462051504150017,0.354934056063979,
+    0.0462051504150017,0.0462051504150017,0.354934056063979,0.552655643106017,
+    0.0462051504150017,0.0462051504150017,0.552655643106017,0.354934056063979,
+    0.538104322888002,0.228190461068761,0.228190461068761,0.0055147549744775,
+    0.228190461068761,0.538104322888002,0.228190461068761,0.0055147549744775,
+    0.228190461068761,0.228190461068761,0.538104322888002,0.0055147549744775,
+    0.538104322888002,0.228190461068761,0.0055147549744775,0.228190461068761,
+    0.228190461068761,0.538104322888002,0.0055147549744775,0.228190461068761,
+    0.228190461068761,0.228190461068761,0.0055147549744775,0.538104322888002,
+    0.538104322888002,0.0055147549744775,0.228190461068761,0.228190461068761,
+    0.228190461068761,0.0055147549744775,0.538104322888002,0.228190461068761,
+    0.228190461068761,0.0055147549744775,0.228190461068761,0.538104322888002,
+    0.0055147549744775,0.538104322888002,0.228190461068761,0.228190461068761,
+    0.0055147549744775,0.228190461068761,0.538104322888002,0.228190461068761,
+    0.0055147549744775,0.228190461068761,0.228190461068761,0.538104322888002,
+    0.19618375957456,0.352305260087994,0.352305260087994,0.099205720249453,
+    0.352305260087994,0.19618375957456,0.352305260087994,0.099205720249453,
+    0.352305260087994,0.352305260087994,0.19618375957456,0.099205720249453,
+    0.19618375957456,0.352305260087994,0.099205720249453,0.352305260087994,
+    0.352305260087994,0.19618375957456,0.099205720249453,0.352305260087994,
+    0.352305260087994,0.352305260087994,0.099205720249453,0.19618375957456,
+    0.19618375957456,0.099205720249453,0.352305260087994,0.352305260087994,
+    0.352305260087994,0.099205720249453,0.19618375957456,0.352305260087994,
+    0.352305260087994,0.099205720249453,0.352305260087994,0.19618375957456,
+    0.099205720249453,0.19618375957456,0.352305260087994,0.352305260087994,
+    0.099205720249453,0.352305260087994,0.19618375957456,0.352305260087994,
+    0.099205720249453,0.352305260087994,0.352305260087994,0.19618375957456,
+    0.596564995621017,0.134478334792994,0.134478334792994,0.134478334792994,
+    0.134478334792994,0.596564995621017,0.134478334792994,0.134478334792994,
+    0.134478334792994,0.134478334792994,0.596564995621017,0.134478334792994,
+    0.134478334792994,0.134478334792994,0.134478334792994,0.596564995621017
+};
+
+double tet6wts[] = {
+    0.001037311233614,0.001037311233614,0.001037311233614,0.001037311233614,
+    0.009601664539948,0.009601664539948,0.009601664539948,0.009601664539948,
+    0.009601664539948,0.009601664539948,0.009601664539948,0.009601664539948,
+    0.009601664539948,0.009601664539948,0.009601664539948,0.009601664539948,
+    0.0164493976798232,0.0164493976798232,0.0164493976798232,0.0164493976798232,
+    0.0164493976798232,0.0164493976798232,0.0164493976798232,0.0164493976798232,
+    0.0164493976798232,0.0164493976798232,0.0164493976798232,0.0164493976798232,
+    0.015374776651331,0.015374776651331,0.015374776651331,0.015374776651331,
+    0.015374776651331,0.015374776651331,0.015374776651331,0.015374776651331,
+    0.015374776651331,0.015374776651331,0.015374776651331,0.015374776651331,
+    0.029352011837523,0.029352011837523,0.029352011837523,0.029352011837523,
+    0.029352011837523,0.029352011837523,0.029352011837523,0.029352011837523,
+    0.029352011837523,0.029352011837523,0.029352011837523,0.029352011837523,
+    0.0366291366405108,0.0366291366405108,0.0366291366405108,0.0366291366405108
+};
+
+quadraturerule tet6 = {
+    .dim = 3,
+    .order = 4,
+    .nnodes = 56,
+    .next = INTEGRATE_NOEXT,
+    .nodes = tet6pts,
+    .weights = tet6wts,
+};
+
+quadraturerule *quadrules[] = {
+    &tri410,
+    &tri1020,
+    &tet5,
+    &tet6
+};
+
+/* --------------------------------
+ * Linear interpolation rule
  * -------------------------------- */
 
 bool linearinterpolate(int nbary, double *bary, int dim, double **v, double *x) {
@@ -1109,20 +1290,18 @@ double integrate_sumlistweighted(unsigned int nel, double *list, double *wts) {
 }
 
 /** Integrates a function over an element specified in work, filling out the integral and error estimate if provided */
-bool quadrature(integrator *integrate, quadratureworkitem *work) {
-    quadraturerule *rule = integrate->rule;
+bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem *work) {
     int n = (rule->next!=INTEGRATE_NOEXT ? rule->next : rule->nnodes);
     int nbary = rule->dim+1; // Number of barycentric points
     
     double *vert[nbary];
     integrate_getvertices(integrate, work->elementid, nbary, vert);
     
-    //printf("[%g,%g %g,%g] ", vert[0][0], vert[0][1], vert[1][0], vert[1][1]);
-    
     double x[integrate->dim];
     double f[n];
     
     for (unsigned int i=0; i<n; i++) {
+        // Interpolate the point
         linearinterpolate(nbary, &rule->nodes[nbary*i], integrate->dim, vert, x);
         
         // Evaluate function
@@ -1131,15 +1310,20 @@ bool quadrature(integrator *integrate, quadratureworkitem *work) {
     
     double r1 = integrate_sumlistweighted(rule->nnodes, f, rule->weights);
     double r2 = r1;
+    work->val = work->weight*r2;
+    work->err = -1;
     
-    if (rule->next!=INTEGRATE_NOEXT) {
+    if (rule->next!=INTEGRATE_NOEXT) { // Evaluate extension
         r2 = integrate_sumlistweighted(rule->next, f, &rule->weights[rule->nnodes]);
         work->err = work->weight*fabs(r2-r1);
+    } else if (integrate->errrule) {  // Otherwise, use the error rule to obtain the estimate
+        if (rule==integrate->errrule) return true; // We already are using the r
+        double temp = work->val;
+        if (!quadrature(integrate, integrate->errrule, work)) return false;
+        work->err=fabs(work->val-temp); // Estimate error from difference of rules
+    } else {
+        UNREACHABLE("Integrator definition inconsistent.");
     }
-    
-    work->val = work->weight*r2;
-    
-    //printf("-> %g (%g)\n", work->val, work->err);
     
     return true;
 }
@@ -1176,7 +1360,6 @@ subdivisionrule bisection = {
 };
 
 /** Trisection */
-
 double trisectionpts[] = {
     0.666666666666666667, 0.333333333333333333,
     0.333333333333333333, 0.666666666666666667
@@ -1240,6 +1423,43 @@ subdivisionrule trianglequadrasection = {
     .weights = triquadrasectionweights
 };
 
+/* -------
+ *   3D
+ * ------- */
+
+/** Splitting of tetrahedra */
+double tetsubdivpts[] = {
+    0.5, 0.5, 0.0, 0.0,
+    0.5, 0.0, 0.5, 0.0,
+    0.5, 0.0, 0.0, 0.5,
+    0.0, 0.5, 0.5, 0.0,
+    0.0, 0.5, 0.0, 0.5,
+    0.0, 0.0, 0.5, 0.5
+};
+
+double tetsubdivwts[] = {
+    0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125
+};
+
+int tetsubdivtets[] =  {
+    1, 4, 7, 8,
+    0, 4, 7, 9,
+    0, 4, 8, 9,
+    4, 7, 8, 9,
+    0, 5, 7, 9,
+    0, 6, 8, 9,
+    2, 5, 7, 9,
+    3, 6, 8, 9 };
+
+subdivisionrule tetsection = {
+    .dim = 3,
+    .npts = 6,
+    .pts = tetsubdivpts,
+    .nels = 8,
+    .newels = tetsubdivtets,
+    .weights = tetsubdivwts
+};
+
 /* --------------------------------
  * Subdivision
  * -------------------------------- */
@@ -1260,10 +1480,6 @@ bool subdivide(integrator *integrate, quadratureworkitem *work, varray_quadratur
     // Interpolate vertices
     for (int j=0; j<rule->npts; j++) {
         linearinterpolate(nindx, &rule->pts[j*nindx], integrate->dim, vert, x[j]);
-        
-        /*printf("New vertex: ");
-        for (int k=0; k<integrate->dim; k++) printf("%g ", x[j][k]);
-        printf("\n");*/
     }
     
     // Add vertices
@@ -1271,6 +1487,7 @@ bool subdivide(integrator *integrate, quadratureworkitem *work, varray_quadratur
         vid[nindx+j]=integrate_addvertex(integrate, integrate->dim, x[j]);
     }
     
+    // Add elements
     for (int i=0; i<rule->nels; i++) {
         newitems[i].val=0.0;
         newitems[i].err=0.0;
@@ -1284,6 +1501,7 @@ bool subdivide(integrator *integrate, quadratureworkitem *work, varray_quadratur
         newitems[i].elementid=integrate_addelement(integrate, nindx, element);
     }
     
+    // Add these to the work list
     varray_quadratureworkitemadd(worklist, newitems, rule->nels);
     
     *nels = rule->nels;
@@ -1295,11 +1513,7 @@ bool subdivide(integrator *integrate, quadratureworkitem *work, varray_quadratur
 
 DEFINE_VARRAY(quadratureworkitem, quadratureworkitem)
 
-void integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out) {
-    
-}
-
-/** Compares two parse rules */
+/** Compares two work items in terms of their error */
 int _quadratureworkitemcmp(const void *l, const void *r) {
     quadratureworkitem *a = (quadratureworkitem *) l;
     quadratureworkitem *b = (quadratureworkitem *) r;
@@ -1336,37 +1550,37 @@ double integrate_error(varray_quadratureworkitem *worklist) {
     return sum;
 }
 
-/** Free data associated with an integrator */
-void integrator_clear(integrator *integrate) {
-    varray_intclear(&integrate->elementstack);
-    varray_doubleclear(&integrate->vertexstack);
+/* --------------------------------
+ * Driver routine
+ * -------------------------------- */
+
+void integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out) {
+    
 }
 
 void integrate_test(void) {
     nevals = 0;
     
     integrator integ;
+    integrator_init(&integ);
     integ.integrand = test_integrand;
-    integ.rule = &tri1020; // &tri410; // = gk715; ;  //;
-    integ.subdivide = &trianglequadrasection; //&bisection;
-    integ.nquantity = 0;
-    integ.tol = INTEGRATE_ACCURACYGOAL;
-    integ.ztol = 1e-9;
-    integ.dim = 2;
-    varray_doubleinit(&integ.vertexstack);
-    varray_intinit(&integ.elementstack);
-    integ.ref = NULL;
+    integ.rule = &tet5; //&tri1020; // &tri410; // = gk715; ;  //;
+    integ.errrule = &tet6;
+    integ.subdivide = &tetsection; //&bisection;
+    integ.dim = 3;
     
     double err, est;
     
-    double x0[2] = { 0, 0 };
-    double x1[2] = { 1, 0 };
-    double x2[2] = { 1, 1 };
-    int v0 = integrate_addvertex(&integ, 2, x0);
-    int v1 = integrate_addvertex(&integ, 2, x1);
-    int v2 = integrate_addvertex(&integ, 2, x2);
-    int el0[] = { v0, v1, v2 };
-    int elid = integrate_addelement(&integ, 3, el0);
+    double x0[3] = { 0, 0, 0 };
+    double x1[3] = { 1, 0, 0 };
+    double x2[3] = { 0, 1, 0 };
+    double x3[3] = { 0, 1, 1 };
+    int v0 = integrate_addvertex(&integ, 3, x0);
+    int v1 = integrate_addvertex(&integ, 3, x1);
+    int v2 = integrate_addvertex(&integ, 3, x2);
+    int v3 = integrate_addvertex(&integ, 3, x3);
+    int el0[] = { v0, v1, v2, v3 };
+    int elid = integrate_addelement(&integ, 4, el0);
     
     varray_quadratureworkitem worklist;
     varray_quadratureworkiteminit(&worklist);
@@ -1374,17 +1588,16 @@ void integrate_test(void) {
     quadratureworkitem work;
     work.weight = 1.0;
     work.elementid = elid;
-    quadrature(&integ, &work); // Perform initial quadrature
+    quadrature(&integ, integ.rule, &work); // Perform initial quadrature
     
     varray_quadratureworkitemwrite(&worklist, work);
     int iter;
     
-    for (iter=0; iter<100; iter++) {
+    for (iter=0; iter<2000; iter++) {
         // Check error
         err = integrate_error(&worklist);
         est = integrate_estimate(&worklist);
         
-        //printf("Estimate: %g (%g)\n", est, err);
         if (fabs(est)<integ.ztol || fabs(err/est)<integ.tol) break;
         
         // Ensure quadrature list remains sorted
@@ -1398,7 +1611,7 @@ void integrate_test(void) {
         subdivide(&integ, &work, &worklist, &nels);
         
         // Perform quadrature on each new element
-        for (int k=0; k<nels; k++) quadrature(&integ, &worklist.data[worklist.count-k-1]);
+        for (int k=0; k<nels; k++) quadrature(&integ, integ.rule, &worklist.data[worklist.count-k-1]);
     }
     
     printf("New integrator: %g with %i iterations and %i function evaluations.\n", est, iter, nevals);
@@ -1407,8 +1620,8 @@ void integrate_test(void) {
     
     nevals = 0;
     double out;
-    double *xx[] = { x0, x1, x2 };
-    integrate_integrate(test_integrand, 2, 2, xx, 0, NULL, NULL, &out);
+    double *xx[] = { x0, x1, x2, x3 };
+    integrate_integrate(test_integrand, 3, 3, xx, 0, NULL, NULL, &out);
     
     printf("Old integrator: %g with %i function evaluations.\n", out, nevals);
     

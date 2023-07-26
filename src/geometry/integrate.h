@@ -11,6 +11,7 @@
 #include "morpho.h"
 
 #define INTEGRATE_ACCURACYGOAL 1e-6
+#define INTEGRATE_ZEROCHECK 1e-8
 #define INTEGRATE_MAXRECURSION 100
 
 /* -------------------------------------------------------
@@ -74,6 +75,7 @@ typedef struct {
     //value **quantity;
     double val; /** Value of work item */
     double err; /** Error estimate of work item */
+    //int nextitem; /** Could maintain a sorted heap */
 } quadratureworkitem;
 
 DECLARE_VARRAY(quadratureworkitem, quadratureworkitem)
@@ -98,6 +100,8 @@ typedef struct {
     
     double ztol; /** Tolerance for zero detection */
     double tol; /** Tolerance for relative error */
+    
+    error err; /** Store error messages from the integrator */
     
     void *ref; /** Reference to pass to integrand */
 } integrator;

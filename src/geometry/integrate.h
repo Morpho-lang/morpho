@@ -13,6 +13,7 @@
 #define INTEGRATE_ACCURACYGOAL 1e-6
 #define INTEGRATE_ZEROCHECK 1e-15
 #define INTEGRATE_MAXRECURSION 100
+#define INTEGRATE_MAXITERATIONS 5000
 
 /* -------------------------------------------------------
  * Integrator type definitions
@@ -100,6 +101,7 @@ typedef struct {
     
     double ztol; /** Tolerance for zero detection */
     double tol; /** Tolerance for relative error */
+    int maxiterations; /** Maximum number of subdivisions to perform */
     
     error err; /** Store error messages from the integrator */
     

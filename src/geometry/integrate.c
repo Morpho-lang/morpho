@@ -830,8 +830,8 @@ int nevals;
 bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
     //*fout = 0.5*pow(x[0]+x[1], -0.2);
     //double val = sin(M_PI*x[0]); //1/(0.1+x[0]*x[1]);
-    double val = (x[0]*x[1]*x[2]);
-    *fout=val*val*val; //1/sqrt(x[0]); //+ 1/sqrt(x[1]) + 1/sqrt(x[0]+x[1]);
+    double val = sqrt(x[0]);//(x[0]*x[1]*x[2]);
+    *fout=val; //1/sqrt(x[0]); //+ 1/sqrt(x[1]) + 1/sqrt(x[0]+x[1]);
     nevals++;
     return true;
 }
@@ -849,6 +849,7 @@ void integrator_init(integrator *integrate) {
     integrate->nquantity = 0;
     integrate->tol = INTEGRATE_ACCURACYGOAL;
     integrate->ztol = INTEGRATE_ZEROCHECK;
+    integrate->maxiterations = INTEGRATE_MAXITERATIONS;
     integrate->dim = 0;
     integrate->ref = NULL;
     varray_doubleinit(&integrate->vertexstack);
@@ -1594,7 +1595,7 @@ void integrate_test(void) {
     varray_quadratureworkitemwrite(&worklist, work);
     int iter;
     
-    for (iter=0; iter<2000; iter++) {
+    for (iter=0; iter<integ.maxiterations; iter++) {
         // Check error
         err = integrate_error(&worklist);
         est = integrate_estimate(&worklist);
@@ -1627,7 +1628,7 @@ void integrate_test(void) {
     
     printf("Old integrator: %g with %i function evaluations.\n", out, nevals);
     
-    double trueval = 2.70562770562770562770562770563e-6;
+    double trueval = 0.457142857142857142857142857143; //6.34286348572062857777143491429e-8;//2.70562770562770562770562770563e-6;
     
     printf("Difference %g (relative error %g) tol: %g\n", fabs(out-est), fabs(out-est)/est, integ.tol);
     

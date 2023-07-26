@@ -11,7 +11,7 @@
 #include "morpho.h"
 
 #define INTEGRATE_ACCURACYGOAL 1e-6
-#define INTEGRATE_ZEROCHECK 1e-8
+#define INTEGRATE_ZEROCHECK 1e-15
 #define INTEGRATE_MAXRECURSION 100
 
 /* -------------------------------------------------------

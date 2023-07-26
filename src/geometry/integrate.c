@@ -830,7 +830,8 @@ int nevals;
 bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
     //*fout = 0.5*pow(x[0]+x[1], -0.2);
     //double val = sin(M_PI*x[0]); //1/(0.1+x[0]*x[1]);
-    *fout=x[0]*x[1]*x[2]; //1/sqrt(x[0]); //+ 1/sqrt(x[1]) + 1/sqrt(x[0]+x[1]);
+    double val = (x[0]*x[1]*x[2]);
+    *fout=val*val*val; //1/sqrt(x[0]); //+ 1/sqrt(x[1]) + 1/sqrt(x[0]+x[1]);
     nevals++;
     return true;
 }
@@ -862,22 +863,22 @@ void integrator_clear(integrator *integrate) {
 }
 
 /** Adds a vertex to the integrators vertex stack, returning the id */
-int integrate_addvertex(integrator *integrate, int ndof, double *v) {
+int integrator_addvertex(integrator *integrate, int ndof, double *v) {
     int vid = integrate->vertexstack.count;
     varray_doubleadd(&integrate->vertexstack, v, ndof);
     return vid;
 }
 
 /** Adds an element to the element stack, returning the id */
-int integrate_addelement(integrator *integrate, int nv, int *vid) {
+int integrator_addelement(integrator *integrate, int nv, int *vid) {
     int elid=integrate->elementstack.count;
     varray_intadd(&integrate->elementstack, vid, nv);
     return elid;
 }
 
 /** Retrieves the vertex pointers given an elementid.
- @warning: The pointers returned should not be used after a call to integrate_addvertex */
-void integrate_getvertices(integrator *integrate, int elementid, int nv, double **vert) {
+ @warning: The pointers returned should not be used after a call to integrator_addvertex */
+void integrator_getvertices(integrator *integrate, int elementid, int nv, double **vert) {
     for (int i=0; i<nv; i++) {
         int vid=integrate->elementstack.data[elementid+i];
         vert[i]=&(integrate->vertexstack.data[vid]);
@@ -885,7 +886,7 @@ void integrate_getvertices(integrator *integrate, int elementid, int nv, double 
 }
 
 /** Retrieves an element with elementid */
-void integrate_getelement(integrator *integrate, int elementid, int nv, int *vid) {
+void integrator_getelement(integrator *integrate, int elementid, int nv, int *vid) {
     for (int i=0; i<nv; i++) vid[i]=integrate->elementstack.data[elementid+i];
 }
 
@@ -1295,7 +1296,7 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
     int nbary = rule->dim+1; // Number of barycentric points
     
     double *vert[nbary];
-    integrate_getvertices(integrate, work->elementid, nbary, vert);
+    integrator_getvertices(integrate, work->elementid, nbary, vert);
     
     double x[integrate->dim];
     double f[n];
@@ -1471,11 +1472,11 @@ bool subdivide(integrator *integrate, quadratureworkitem *work, varray_quadratur
     double *vert[nindx]; // Old vertices
     double x[rule->npts][integrate->dim]; // Interpolated vertices
     
-    integrate_getvertices(integrate, work->elementid, nindx, vert);
+    integrator_getvertices(integrate, work->elementid, nindx, vert);
     
     // Copy across vertex ids from old element
     int vid[nindx+rule->npts];
-    integrate_getelement(integrate, work->elementid, nindx, vid);
+    integrator_getelement(integrate, work->elementid, nindx, vid);
     
     // Interpolate vertices
     for (int j=0; j<rule->npts; j++) {
@@ -1484,7 +1485,7 @@ bool subdivide(integrator *integrate, quadratureworkitem *work, varray_quadratur
     
     // Add vertices
     for (int j=0; j<rule->npts; j++) {
-        vid[nindx+j]=integrate_addvertex(integrate, integrate->dim, x[j]);
+        vid[nindx+j]=integrator_addvertex(integrate, integrate->dim, x[j]);
     }
     
     // Add elements
@@ -1498,7 +1499,7 @@ bool subdivide(integrator *integrate, quadratureworkitem *work, varray_quadratur
         for (int k=0; k<nindx; k++) element[k]=vid[rule->newels[nindx*i+k]];
         
         // Define the new element
-        newitems[i].elementid=integrate_addelement(integrate, nindx, element);
+        newitems[i].elementid=integrator_addelement(integrate, nindx, element);
     }
     
     // Add these to the work list
@@ -1574,13 +1575,13 @@ void integrate_test(void) {
     double x0[3] = { 0, 0, 0 };
     double x1[3] = { 1, 0, 0 };
     double x2[3] = { 0, 1, 0 };
-    double x3[3] = { 0, 1, 1 };
-    int v0 = integrate_addvertex(&integ, 3, x0);
-    int v1 = integrate_addvertex(&integ, 3, x1);
-    int v2 = integrate_addvertex(&integ, 3, x2);
-    int v3 = integrate_addvertex(&integ, 3, x3);
+    double x3[3] = { 0, 0, 1 };
+    int v0 = integrator_addvertex(&integ, 3, x0);
+    int v1 = integrator_addvertex(&integ, 3, x1);
+    int v2 = integrator_addvertex(&integ, 3, x2);
+    int v3 = integrator_addvertex(&integ, 3, x3);
     int el0[] = { v0, v1, v2, v3 };
-    int elid = integrate_addelement(&integ, 4, el0);
+    int elid = integrator_addelement(&integ, 4, el0);
     
     varray_quadratureworkitem worklist;
     varray_quadratureworkiteminit(&worklist);
@@ -1621,9 +1622,17 @@ void integrate_test(void) {
     nevals = 0;
     double out;
     double *xx[] = { x0, x1, x2, x3 };
-    integrate_integrate(test_integrand, 3, 3, xx, 0, NULL, NULL, &out);
+    value *quantities[] = { NULL, NULL, NULL, NULL };
+    integrate_integrate(test_integrand, 3, 3, xx, 0, quantities, NULL, &out);
     
     printf("Old integrator: %g with %i function evaluations.\n", out, nevals);
+    
+    double trueval = 2.70562770562770562770562770563e-6;
+    
+    printf("Difference %g (relative error %g) tol: %g\n", fabs(out-est), fabs(out-est)/est, integ.tol);
+    
+    printf("New: %g (relative error %g) tol: %g\n", fabs(trueval-est), fabs(trueval-est)/trueval, integ.tol);
+    printf("Old: %g (relative error %g) tol: %g\n", fabs(trueval-out), fabs(trueval-out)/trueval, integ.tol);
     
     integrator_clear(&integ);
     

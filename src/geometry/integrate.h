@@ -77,7 +77,7 @@ typedef struct {
     double val; /** Value of work item */
     double lval; /** Value of work item from lower order estimate */
     double err; /** Error estimate of work item */
-    //int nextitem; /** Could maintain a sorted heap */
+    int next; /** Use to maintain a sorted heap */
 } quadratureworkitem;
 
 DECLARE_VARRAY(quadratureworkitem, quadratureworkitem)
@@ -97,6 +97,8 @@ typedef struct {
     
     subdivisionrule *subdivide; /** Subdivision rule to use */
     
+    int workp; /** Index of largest item in the work list */
+    int freep; /** Index of a free item in the work list */
     varray_quadratureworkitem worklist; /** Work list */
     varray_double vertexstack; /** Stack of vertices */
     varray_int elementstack; /** Stack of elements */

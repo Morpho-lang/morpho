@@ -830,8 +830,8 @@ int nevals;
 bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
     //*fout = 0.5*pow(x[0]+x[1], -0.2);
     //double val = sin(M_PI*x[0]); //1/(0.1+x[0]*x[1]);
-    double val = (x[0]*x[1]*x[2]);//sqrt(x[0]*x[1]);//(x[0]*x[1]*x[2]);
-    *fout=val*val*val*val; //1/sqrt(x[0]); //+ 1/sqrt(x[1]) + 1/sqrt(x[0]+x[1]);
+    //double val = (x[0]*x[1]*x[2]);//sqrt(x[0]*x[1]);//(x[0]*x[1]*x[2]);
+    *fout=sqrt(x[0]*x[1]); //val*val*val*val; //1/sqrt(x[0]); //+ 1/sqrt(x[1]) + 1/sqrt(x[0]+x[1]);
     nevals++;
     return true;
 }
@@ -856,6 +856,8 @@ void integrator_init(integrator *integrate) {
     integrate->ref = NULL;
     integrate->val = 0;
     integrate->err = 0;
+    integrate->workp = -1;
+    integrate->freep = -1;
     varray_quadratureworkiteminit(&integrate->worklist);
     varray_doubleinit(&integrate->vertexstack);
     varray_intinit(&integrate->elementstack);
@@ -897,26 +899,63 @@ void integrator_getelement(integrator *integrate, int elementid, int nv, int *vi
     for (int i=0; i<nv; i++) vid[i]=integrate->elementstack.data[elementid+i];
 }
 
-/** Adds a work item to the integrator's work list */
-int integrator_pushworkitem(integrator *integrate, quadratureworkitem *work) {
-    varray_quadratureworkitemadd(&integrate->worklist, work, 1);
-}
+long searchsteps;
+long insertions;
 
-/** Compares two work items in terms of their error */
-int _quadratureworkitemcmp(const void *l, const void *r) {
-    quadratureworkitem *a = (quadratureworkitem *) l;
-    quadratureworkitem *b = (quadratureworkitem *) r;
-    if (b->err < a->err) return 1;
-    else if (b->err > a->err) return -1;
-    return 0;
+/** Adds a work item to the integrator's work list */
+bool integrator_pushworkitem(integrator *integrate, quadratureworkitem *work) {
+    insertions++;
+    
+    int push = integrate->freep;
+    if (push>=0) {
+        integrate->worklist.data[push]=*work;
+        integrate->freep = -1;
+    } else {
+        varray_quadratureworkitemadd(&integrate->worklist, work, 1);
+        push = integrate->worklist.count-1; // The item is now the last item
+    }
+    
+    // Search through the list to find an entry that's smaller than this one
+    int last=-1;
+    for (int i=integrate->workp; i>=0; i=integrate->worklist.data[i].next) {
+        if (work->err>integrate->worklist.data[i].err) break;
+        last=i;
+        searchsteps++;
+    }
+    
+    // Insert the new item
+    if (last>=0) {
+        integrate->worklist.data[push].next = integrate->worklist.data[last].next;
+        integrate->worklist.data[last].next = push;
+    } else {
+        integrate->worklist.data[push].next = integrate->workp;
+        integrate->workp=push;
+    }
+    
+    /*printf("Inserting: %g -> ", work->err);
+    for (int i=integrate->workp; i>=0; i=integrate->worklist.data[i].next) {
+        printf("%g ", integrate->worklist.data[i].err);
+    }
+    printf("\n");*/
+    
+    return true;
 }
 
 /** Pops the work item with the largest error */
-int integrator_popworkitem(integrator *integrate, quadratureworkitem *work) {
-    // Ensure quadrature list was sorted
-    qsort(integrate->worklist.data, integrate->worklist.count, sizeof(quadratureworkitem), _quadratureworkitemcmp);
+bool integrator_popworkitem(integrator *integrate, quadratureworkitem *work) {
+    int pop = integrate->workp; // Pop first item
+    *work = integrate->worklist.data[pop]; // Copy it to work
     
-    varray_quadratureworkitempop(&integrate->worklist, work);
+    integrate->workp=work->next; // Remove from list
+    integrate->freep = pop; // Note that it can be reused
+    
+    /*printf("Pop\n");
+    for (int i=integrate->workp; i>=0; i=integrate->worklist.data[i].next) {
+        printf("%g ", integrate->worklist.data[i].err);
+    }
+    printf("\n");*/
+    
+    return true;
 }
 
 /** Estimate the value and error of the integrand given a worklist */
@@ -1636,6 +1675,7 @@ void integrate(integrandfunction *integrand, unsigned int dim, unsigned int grad
 }
 
 void integrate_test(void) {
+    searchsteps=0; insertions=0;
     nevals = 0;
     
     integrator integ;
@@ -1694,7 +1734,7 @@ void integrate_test(void) {
     
     printf("Old integrator: %g with %i function evaluations.\n", out, nevals);
     
-    double trueval = 6.34286348572062857777143491429e-8; //0.0000118928690357261785833214404643; //0.261799387799149436538553615273; //0.457142857142857142857142857143; //6.34286348572062857777143491429e-8;//2.70562770562770562770562770563e-6;
+    double trueval = 0.196349540849362077403915211455; //0.0000118928690357261785833214404643; //0.261799387799149436538553615273; //0.457142857142857142857142857143; //6.34286348572062857777143491429e-8;//2.70562770562770562770562770563e-6;
     
     printf("Difference %g (relative error %g) tol: %g\n", fabs(out-integ.val), fabs(out-integ.val)/integ.val, integ.tol);
     
@@ -1702,6 +1742,8 @@ void integrate_test(void) {
     printf("Old: %g (relative error %g) tol: %g\n", fabs(trueval-out), fabs(trueval-out)/trueval, integ.tol);
     
     integrator_clear(&integ);
+    
+    printf("Mean search length: %g\n", ((double) searchsteps)/((double) insertions) );
     
     exit(0);
 }

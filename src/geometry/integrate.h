@@ -105,7 +105,10 @@ typedef struct {
     double tol; /** Tolerance for relative error */
     int maxiterations; /** Maximum number of subdivisions to perform */
     
-    error err; /** Store error messages from the integrator */
+    double val; /** Estimated value of the integral */
+    double err; /** Estimated error of the integral */
+    
+    error emsg; /** Store error messages from the integrator */
     
     void *ref; /** Reference to pass to integrand */
 } integrator;

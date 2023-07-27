@@ -836,6 +836,8 @@ bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquanti
     return true;
 }
 
+DEFINE_VARRAY(quadratureworkitem, quadratureworkitem)
+
 /* -------------------------------------------------
  * Basic operations on the integrator data structure
  * ------------------------------------------------- */
@@ -852,10 +854,12 @@ void integrator_init(integrator *integrate) {
     integrate->maxiterations = INTEGRATE_MAXITERATIONS;
     integrate->dim = 0;
     integrate->ref = NULL;
+    integrate->val = 0;
+    integrate->err = 0;
     varray_quadratureworkiteminit(&integrate->worklist);
     varray_doubleinit(&integrate->vertexstack);
     varray_intinit(&integrate->elementstack);
-    error_init(&integrate->err);
+    error_init(&integrate->emsg);
 }
 
 /** Free data associated with an integrator */
@@ -891,6 +895,48 @@ void integrator_getvertices(integrator *integrate, int elementid, int nv, double
 /** Retrieves an element with elementid */
 void integrator_getelement(integrator *integrate, int elementid, int nv, int *vid) {
     for (int i=0; i<nv; i++) vid[i]=integrate->elementstack.data[elementid+i];
+}
+
+/** Adds a work item to the integrator's work list */
+int integrator_pushworkitem(integrator *integrate, quadratureworkitem *work) {
+    varray_quadratureworkitemadd(&integrate->worklist, work, 1);
+}
+
+/** Compares two work items in terms of their error */
+int _quadratureworkitemcmp(const void *l, const void *r) {
+    quadratureworkitem *a = (quadratureworkitem *) l;
+    quadratureworkitem *b = (quadratureworkitem *) r;
+    if (b->err < a->err) return 1;
+    else if (b->err > a->err) return -1;
+    return 0;
+}
+
+/** Pops the work item with the largest error */
+int integrator_popworkitem(integrator *integrate, quadratureworkitem *work) {
+    // Ensure quadrature list was sorted
+    qsort(integrate->worklist.data, integrate->worklist.count, sizeof(quadratureworkitem), _quadratureworkitemcmp);
+    
+    varray_quadratureworkitempop(&integrate->worklist, work);
+}
+
+/** Estimate the value and error of the integrand given a worklist */
+void integrator_estimate(integrator *integrate) {
+    double sumval=0.0, cval=0.0, yval, tval,
+           sumerr=0.0, cerr=0.0, yerr, terr;
+
+    for (unsigned int i=0; i<integrate->worklist.count; i++) {
+        yval=integrate->worklist.data[i].val-cval;
+        yerr=integrate->worklist.data[i].err-cerr;
+        tval=sumval+yval;
+        terr=sumerr+yerr;
+        cval=(tval-sumval)-yval;
+        cerr=(terr-sumerr)-yerr;
+        sumval=tval;
+        sumerr=terr;
+    }
+    
+    integrate->val = sumval;
+    integrate->err = sumerr;
 }
 
 /* --------------------------------
@@ -1517,9 +1563,8 @@ subdivisionrule tetsection = {
  * Subdivision
  * -------------------------------- */
 
-bool subdivide(integrator *integrate, quadratureworkitem *work, varray_quadratureworkitem *worklist, int *nels) {
+bool subdivide(integrator *integrate, quadratureworkitem *work, varray_quadratureworkitem *worklist, int *nels, quadratureworkitem *newitems) {
     subdivisionrule *rule = integrate->subdivide;
-    quadratureworkitem newitems[rule->nels];
     int nindx = rule->dim+1;
     double *vert[nindx]; // Old vertices
     double x[rule->npts][integrate->dim]; // Interpolated vertices
@@ -1554,53 +1599,32 @@ bool subdivide(integrator *integrate, quadratureworkitem *work, varray_quadratur
         newitems[i].elementid=integrator_addelement(integrate, nindx, element);
     }
     
-    // Add these to the work list
-    varray_quadratureworkitemadd(worklist, newitems, rule->nels);
-    
     *nels = rule->nels;
+    
+    return true;
 }
 
 /* --------------------------------
- * Work items
+ * Laurie's sharper error estimate
  * -------------------------------- */
 
-DEFINE_VARRAY(quadratureworkitem, quadratureworkitem)
-
-/** Compares two work items in terms of their error */
-int _quadratureworkitemcmp(const void *l, const void *r) {
-    quadratureworkitem *a = (quadratureworkitem *) l;
-    quadratureworkitem *b = (quadratureworkitem *) r;
-    if (b->err < a->err) return 1;
-    else if (b->err > a->err) return -1;
-    return 0;
-}
-
-/** Estimate the value of the integrand given a worklist */
-double integrate_estimate(varray_quadratureworkitem *worklist) {
-    double sum=0.0, c=0.0, y,t;
-
-    for (unsigned int i=0; i<worklist->count; i++) {
-        y=worklist->data[i].val-c;
-        t=sum+y;
-        c=(t-sum)-y;
-        sum=t;
+/** Laurie's sharper error estimator: BIT 23 (1983), 258-261
+    The norm of the difference between two rules |A-B| is usually too pessimistic;
+    this attempts to extrapolate a sharper estimate if convergence looks good */
+void sharpenerrorestimate(integrator *integrate, quadratureworkitem *work, int nels, quadratureworkitem *newitems) {
+    double a1=work->val, b1=work->lval, a2=0, b2=0;
+    for (int k=0; k<nels; k++) {
+        a2+=newitems[k].val;
+        b2+=newitems[k].lval;
     }
-
-    return sum;
-}
-
-/** Estimate the error on the integrand given a worklist */
-double integrate_error(varray_quadratureworkitem *worklist) {
-    double sum=0.0, c=0.0, y,t;
-
-    for (unsigned int i=0; i<worklist->count; i++) {
-        y=worklist->data[i].err-c;
-        t=sum+y;
-        c=(t-sum)-y;
-        sum=t;
+    
+    // Scale errors if conditions are met
+    if (fabs(a2-a1)<fabs(b2-b1) && // Laurie's second condition
+        fabs(a2-b2)<fabs(a1-b1)) // Weak form of first condition (see Gonnet)
+    {
+        double sigma=fabs((a2-a1)/(b2-b1-a2+a1));
+        for (int k=0; k<nels; k++) newitems[k].err*=sigma;
     }
-
-    return sum;
 }
 
 /* --------------------------------
@@ -1622,8 +1646,6 @@ void integrate_test(void) {
     integ.subdivide = &tetsection; //&trianglequadrasection;
     integ.dim = 3;
     
-    double err, est;
-    
     double x0[3] = { 0, 0, 0 };
     double x1[3] = { 1, 0, 0 };
     double x2[3] = { 0, 1, 0 };
@@ -1640,49 +1662,29 @@ void integrate_test(void) {
     work.elementid = elid;
     quadrature(&integ, integ.rule, &work); // Perform initial quadrature
     
-    varray_quadratureworkitemwrite(&integ.worklist, work);
+    integrator_pushworkitem(&integ, &work);
     int iter;
     
     for (iter=0; iter<integ.maxiterations; iter++) {
-        // Check error
-        err = integrate_error(&integ.worklist);
-        est = integrate_estimate(&integ.worklist);
+        integrator_estimate(&integ);
         
-        if (fabs(est)<integ.ztol || fabs(err/est)<integ.tol) break;
+        if (fabs(integ.val)<integ.ztol || fabs(integ.err/integ.val)<integ.tol) break;
         
-        // Ensure quadrature list remains sorted
-        qsort(integ.worklist.data, integ.worklist.count, sizeof(quadratureworkitem), _quadratureworkitemcmp);
-        
-        // Pick worst element
-        varray_quadratureworkitempop(&integ.worklist, &work);
+        integrator_popworkitem(&integ, &work);
         
         // Subdivide
         int nels; // Number of elements created
-        subdivide(&integ, &work, &integ.worklist, &nels);
+        quadratureworkitem newitems[integ.subdivide->nels];
         
-        // Perform quadrature on each new element
-        for (int k=0; k<nels; k++) quadrature(&integ, integ.rule, &integ.worklist.data[integ.worklist.count-k-1]);
+        subdivide(&integ, &work, &integ.worklist, &nels, newitems);
+        for (int k=0; k<nels; k++) quadrature(&integ, integ.rule, &newitems[k]);
+        sharpenerrorestimate(&integ, &work, nels, newitems);
         
-        // Laurie's sharper error estimator: BIT 23 (1983), 258-261
-        // The norm of the difference between two rules |A-B| is
-        // usually too pessimistic; this attempts to extrapolate a sharper estimate
-        double a1=work.val, b1=work.lval, a2=0, b2=0;
-        for (int k=0; k<nels; k++) {
-            a2+=integ.worklist.data[integ.worklist.count-k-1].val;
-            b2+=integ.worklist.data[integ.worklist.count-k-1].lval;
-        }
-        
-        if (fabs(a2-a1)<fabs(b2-b1) && // Laurie's second consition
-            fabs(a2-b2)<fabs(a1-b1)) // Weak form of first condition (see Gonnet)
-        {
-            double sigma=fabs((a2-a1)/(b2-b1-a2+a1));
-            for (int k=0; k<nels; k++) {
-                integ.worklist.data[integ.worklist.count-k-1].err*=sigma;
-            }
-        }
+        // Add new work items to the list
+        for (int k=0; k<nels; k++) integrator_pushworkitem(&integ, &newitems[k]);
     }
     
-    printf("New integrator: %g with %i iterations and %i function evaluations.\n", est, iter, nevals);
+    printf("New integrator: %g (%g) with %i iterations and %i function evaluations.\n", integ.val, integ.err, iter, nevals);
     
     nevals = 0;
     double out;
@@ -1692,11 +1694,11 @@ void integrate_test(void) {
     
     printf("Old integrator: %g with %i function evaluations.\n", out, nevals);
     
-    double trueval = 0.0000118928690357261785833214404643; //0.261799387799149436538553615273; //0.457142857142857142857142857143; //6.34286348572062857777143491429e-8;//2.70562770562770562770562770563e-6;
+    double trueval = 6.34286348572062857777143491429e-8; //0.0000118928690357261785833214404643; //0.261799387799149436538553615273; //0.457142857142857142857142857143; //6.34286348572062857777143491429e-8;//2.70562770562770562770562770563e-6;
     
-    printf("Difference %g (relative error %g) tol: %g\n", fabs(out-est), fabs(out-est)/est, integ.tol);
+    printf("Difference %g (relative error %g) tol: %g\n", fabs(out-integ.val), fabs(out-integ.val)/integ.val, integ.tol);
     
-    printf("New: %g (relative error %g) tol: %g\n", fabs(trueval-est), fabs(trueval-est)/trueval, integ.tol);
+    printf("New: %g (relative error %g) tol: %g\n", fabs(trueval-integ.val), fabs(trueval-integ.val)/trueval, integ.tol);
     printf("Old: %g (relative error %g) tol: %g\n", fabs(trueval-out), fabs(trueval-out)/trueval, integ.tol);
     
     integrator_clear(&integ);

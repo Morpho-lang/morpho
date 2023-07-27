@@ -77,7 +77,6 @@ typedef struct {
     double val; /** Value of work item */
     double lval; /** Value of work item from lower order estimate */
     double err; /** Error estimate of work item */
-    int next; /** Use to maintain a sorted heap */
 } quadratureworkitem;
 
 DECLARE_VARRAY(quadratureworkitem, quadratureworkitem)

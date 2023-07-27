@@ -899,61 +899,50 @@ void integrator_getelement(integrator *integrate, int elementid, int nv, int *vi
     for (int i=0; i<nv; i++) vid[i]=integrate->elementstack.data[elementid+i];
 }
 
-long searchsteps;
-long insertions;
-
-/** Adds a work item to the integrator's work list */
+/** Adds a work item to the integrator's work list.
+    Uses a binary queue data structure to facilitate ln(N) push and pop - https://en.wikipedia.org/wiki/Binary_heap */
 bool integrator_pushworkitem(integrator *integrate, quadratureworkitem *work) {
-    insertions++;
+    varray_quadratureworkitemadd(&integrate->worklist, work, 1);
     
-    int push = integrate->freep;
-    if (push>=0) {
-        integrate->worklist.data[push]=*work;
-        integrate->freep = -1;
-    } else {
-        varray_quadratureworkitemadd(&integrate->worklist, work, 1);
-        push = integrate->worklist.count-1; // The item is now the last item
+    for (int i=integrate->worklist.count-1, p; i>0; i=p) {
+        p=floor((i-1)/2); // Parent
+        if (integrate->worklist.data[i].err>integrate->worklist.data[p].err) {
+            quadratureworkitem swp=integrate->worklist.data[i];
+            integrate->worklist.data[i]=integrate->worklist.data[p];
+            integrate->worklist.data[p]=swp;
+        } else break;
     }
-    
-    // Search through the list to find an entry that's smaller than this one
-    int last=-1;
-    for (int i=integrate->workp; i>=0; i=integrate->worklist.data[i].next) {
-        if (work->err>integrate->worklist.data[i].err) break;
-        last=i;
-        searchsteps++;
-    }
-    
-    // Insert the new item
-    if (last>=0) {
-        integrate->worklist.data[push].next = integrate->worklist.data[last].next;
-        integrate->worklist.data[last].next = push;
-    } else {
-        integrate->worklist.data[push].next = integrate->workp;
-        integrate->workp=push;
-    }
-    
-    /*printf("Inserting: %g -> ", work->err);
-    for (int i=integrate->workp; i>=0; i=integrate->worklist.data[i].next) {
-        printf("%g ", integrate->worklist.data[i].err);
-    }
-    printf("\n");*/
     
     return true;
 }
 
 /** Pops the work item with the largest error */
 bool integrator_popworkitem(integrator *integrate, quadratureworkitem *work) {
-    int pop = integrate->workp; // Pop first item
-    *work = integrate->worklist.data[pop]; // Copy it to work
+    *work = integrate->worklist.data[0];
     
-    integrate->workp=work->next; // Remove from list
-    integrate->freep = pop; // Note that it can be reused
+    // Move the last element into first place and pop
+    int n=integrate->worklist.count-1;
+    if (n>0) integrate->worklist.data[0]=integrate->worklist.data[n];
+    integrate->worklist.count--;
     
-    /*printf("Pop\n");
-    for (int i=integrate->workp; i>=0; i=integrate->worklist.data[i].next) {
-        printf("%g ", integrate->worklist.data[i].err);
+    // Go down the heap, ensuring that the heap property is maintained
+    for (int i=0, p, q; i<n; i=p) {
+        p=2*i + 1; // Left - child nodes
+        q=p+1;     // Right
+        
+        // Check if the right child element has a larger value, if it exists
+        if (q<n &&
+            integrate->worklist.data[q].err>integrate->worklist.data[p].err) {
+            p=q;
+        }
+        
+        // If the child element is larger, swap it up
+        if (p<n && integrate->worklist.data[p].err>integrate->worklist.data[i].err) {
+            quadratureworkitem swp=integrate->worklist.data[i];
+            integrate->worklist.data[i]=integrate->worklist.data[p];
+            integrate->worklist.data[p]=swp;
+        } else break;
     }
-    printf("\n");*/
     
     return true;
 }
@@ -1675,7 +1664,6 @@ void integrate(integrandfunction *integrand, unsigned int dim, unsigned int grad
 }
 
 void integrate_test(void) {
-    searchsteps=0; insertions=0;
     nevals = 0;
     
     integrator integ;
@@ -1742,8 +1730,6 @@ void integrate_test(void) {
     printf("Old: %g (relative error %g) tol: %g\n", fabs(trueval-out), fabs(trueval-out)/trueval, integ.tol);
     
     integrator_clear(&integ);
-    
-    printf("Mean search length: %g\n", ((double) searchsteps)/((double) insertions) );
     
     exit(0);
 }

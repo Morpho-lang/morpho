@@ -75,6 +75,7 @@ typedef struct {
     int elementid; /** Id of element on the element stack */
     //value **quantity;
     double val; /** Value of work item */
+    double lval; /** Value of work item from lower order estimate */
     double err; /** Error estimate of work item */
     //int nextitem; /** Could maintain a sorted heap */
 } quadratureworkitem;

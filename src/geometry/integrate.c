@@ -830,8 +830,8 @@ int nevals;
 bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
     //*fout = 0.5*pow(x[0]+x[1], -0.2);
     //double val = sin(M_PI*x[0]); //1/(0.1+x[0]*x[1]);
-    double val = sqrt(x[0]*x[1]);//(x[0]*x[1]*x[2]);
-    *fout=val; //1/sqrt(x[0]); //+ 1/sqrt(x[1]) + 1/sqrt(x[0]+x[1]);
+    double val = (x[0]*x[1]*x[2]);//sqrt(x[0]*x[1]);//(x[0]*x[1]*x[2]);
+    *fout=val*val*val*val; //1/sqrt(x[0]); //+ 1/sqrt(x[1]) + 1/sqrt(x[0]+x[1]);
     nevals++;
     return true;
 }
@@ -1360,17 +1360,19 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
     }
     
     double r1 = integrate_sumlistweighted(rule->nnodes, f, rule->weights);
-    double r2 = r1;
-    work->val = work->weight*r2;
+    work->lval = work->val = work->weight*r1;
     work->err = -1;
     
-    if (rule->next!=INTEGRATE_NOEXT) { // Evaluate extension
-        r2 = integrate_sumlistweighted(rule->next, f, &rule->weights[rule->nnodes]);
-        work->err = work->weight*fabs(r2-r1);
+    // Estimate error
+    if (rule->next!=INTEGRATE_NOEXT) { // Evaluate extension rule
+        double r2 = integrate_sumlistweighted(rule->next, f, &rule->weights[rule->nnodes]);
+        work->val = work->weight*r2; // Record better estimate
+        work->err = work->weight*fabs(r2-r1); // Use the difference as the error estimator
     } else if (integrate->errrule) {  // Otherwise, use the error rule to obtain the estimate
-        if (rule==integrate->errrule) return true; // We already are using the r
-        double temp = work->val;
+        if (rule==integrate->errrule) return true; // We already are using the error rule
+        double temp = work->val; // Retain the lower order estimate
         if (!quadrature(integrate, integrate->errrule, work)) return false;
+        work->lval=temp;
         work->err=fabs(work->val-temp); // Estimate error from difference of rules
     } else {
         UNREACHABLE("Integrator definition inconsistent.");
@@ -1615,26 +1617,23 @@ void integrate_test(void) {
     integrator integ;
     integrator_init(&integ);
     integ.integrand = test_integrand;
-    integ.rule = &cubtri; //&tri1020; //&cubtri;//&tri1020;// &tet5; //&tri1020; // &tri410; // = gk715; ;  //;
-    //integ.errrule = &tet6;
-    integ.subdivide = &trianglequadrasection;
-    integ.dim = 2;
+    integ.rule = &tet5; //&cubtri; //&tri1020; //&cubtri;//&tri1020;// &tet5; //&tri1020; // &tri410; // = gk715; ;  //;
+    integ.errrule = &tet6;
+    integ.subdivide = &tetsection; //&trianglequadrasection;
+    integ.dim = 3;
     
     double err, est;
     
     double x0[3] = { 0, 0, 0 };
     double x1[3] = { 1, 0, 0 };
     double x2[3] = { 0, 1, 0 };
-    //double x3[3] = { 0, 0, 1 };
-    int v0 = integrator_addvertex(&integ, 2, x0);
-    int v1 = integrator_addvertex(&integ, 2, x1);
-    int v2 = integrator_addvertex(&integ, 2, x2);
-    //int v3 = integrator_addvertex(&integ, 3, x3);
-    int el0[] = { v0, v1, v2 };//, v3 };
-    int elid = integrator_addelement(&integ, 3, el0);
-    
-    //varray_quadratureworkitem worklist;
-    //varray_quadratureworkiteminit(&worklist);
+    double x3[3] = { 0, 0, 1 };
+    int v0 = integrator_addvertex(&integ, 3, x0);
+    int v1 = integrator_addvertex(&integ, 3, x1);
+    int v2 = integrator_addvertex(&integ, 3, x2);
+    int v3 = integrator_addvertex(&integ, 3, x3);
+    int el0[] = { v0, v1, v2, v3 };
+    int elid = integrator_addelement(&integ, 4, el0);
 
     quadratureworkitem work;
     work.weight = 1.0;
@@ -1664,45 +1663,36 @@ void integrate_test(void) {
         // Perform quadrature on each new element
         for (int k=0; k<nels; k++) quadrature(&integ, integ.rule, &integ.worklist.data[integ.worklist.count-k-1]);
         
-        printf("Original triangle: %g (%g)\n", work.val, work.err);
-        double *vv[3];
-        integrator_getvertices(&integ, work.elementid, 3, vv);
-        for (int k=0; k<3; k++) {
-            printf("(");
-            for (int j=0; j<2; j++) {
-                printf("%g ", vv[k][j]);
-            }
-            printf("), ");
-        }
-        printf("\n");
-        
-        double sval=0, pval=0, serr=0;
+        // Laurie's sharper error estimator: BIT 23 (1983), 258-261
+        // The norm of the difference between two rules |A-B| is
+        // usually too pessimistic; this attempts to extrapolate a sharper estimate
+        double a1=work.val, b1=work.lval, a2=0, b2=0;
         for (int k=0; k<nels; k++) {
-            quadratureworkitem *w = &integ.worklist.data[integ.worklist.count-k-1];
-            sval+=w->val;
-            serr+=w->err;
+            a2+=integ.worklist.data[integ.worklist.count-k-1].val;
+            b2+=integ.worklist.data[integ.worklist.count-k-1].lval;
         }
         
-        double b2 = sval;
-        double a2 = sval;
-        
-        printf("Split triangle: %g (%g) [%g]\n", sval, serr, sval-work.val);
-        printf("Reduction in err %g\n", serr/work.err);
-        
-        printf("\n");
+        if (fabs(a2-a1)<fabs(b2-b1) && // Laurie's second consition
+            fabs(a2-b2)<fabs(a1-b1)) // Weak form of first condition (see Gonnet)
+        {
+            double sigma=fabs((a2-a1)/(b2-b1-a2+a1));
+            for (int k=0; k<nels; k++) {
+                integ.worklist.data[integ.worklist.count-k-1].err*=sigma;
+            }
+        }
     }
     
     printf("New integrator: %g with %i iterations and %i function evaluations.\n", est, iter, nevals);
     
     nevals = 0;
     double out;
-    double *xx[] = { x0, x1, x2 };//, x3 };
+    double *xx[] = { x0, x1, x2, x3 };
     value *quantities[] = { NULL, NULL, NULL, NULL };
-    integrate_integrate(test_integrand, 2, 2, xx, 0, quantities, NULL, &out);
+    integrate_integrate(test_integrand, 3, 3, xx, 0, quantities, NULL, &out);
     
     printf("Old integrator: %g with %i function evaluations.\n", out, nevals);
     
-    double trueval = 0.457142857142857142857142857143; //6.34286348572062857777143491429e-8;//2.70562770562770562770562770563e-6;
+    double trueval = 0.0000118928690357261785833214404643; //0.261799387799149436538553615273; //0.457142857142857142857142857143; //6.34286348572062857777143491429e-8;//2.70562770562770562770562770563e-6;
     
     printf("Difference %g (relative error %g) tol: %g\n", fabs(out-est), fabs(out-est)/est, integ.tol);
     

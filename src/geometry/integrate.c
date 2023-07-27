@@ -852,6 +852,7 @@ void integrator_init(integrator *integrate) {
     integrate->maxiterations = INTEGRATE_MAXITERATIONS;
     integrate->dim = 0;
     integrate->ref = NULL;
+    varray_quadratureworkiteminit(&integrate->worklist);
     varray_doubleinit(&integrate->vertexstack);
     varray_intinit(&integrate->elementstack);
     error_init(&integrate->err);
@@ -859,6 +860,7 @@ void integrator_init(integrator *integrate) {
 
 /** Free data associated with an integrator */
 void integrator_clear(integrator *integrate) {
+    varray_quadratureworkitemclear(&integrate->worklist);
     varray_intclear(&integrate->elementstack);
     varray_doubleclear(&integrate->vertexstack);
 }
@@ -1584,41 +1586,39 @@ void integrate_test(void) {
     int el0[] = { v0, v1, v2, v3 };
     int elid = integrator_addelement(&integ, 4, el0);
     
-    varray_quadratureworkitem worklist;
-    varray_quadratureworkiteminit(&worklist);
+    //varray_quadratureworkitem worklist;
+    //varray_quadratureworkiteminit(&worklist);
 
     quadratureworkitem work;
     work.weight = 1.0;
     work.elementid = elid;
     quadrature(&integ, integ.rule, &work); // Perform initial quadrature
     
-    varray_quadratureworkitemwrite(&worklist, work);
+    varray_quadratureworkitemwrite(&integ.worklist, work);
     int iter;
     
     for (iter=0; iter<integ.maxiterations; iter++) {
         // Check error
-        err = integrate_error(&worklist);
-        est = integrate_estimate(&worklist);
+        err = integrate_error(&integ.worklist);
+        est = integrate_estimate(&integ.worklist);
         
         if (fabs(est)<integ.ztol || fabs(err/est)<integ.tol) break;
         
         // Ensure quadrature list remains sorted
-        qsort(worklist.data, worklist.count, sizeof(quadratureworkitem), _quadratureworkitemcmp);
+        qsort(integ.worklist.data, integ.worklist.count, sizeof(quadratureworkitem), _quadratureworkitemcmp);
         
         // Pick worst element
-        varray_quadratureworkitempop(&worklist, &work);
+        varray_quadratureworkitempop(&integ.worklist, &work);
         
         // Subdivide
         int nels; // Number of elements created
-        subdivide(&integ, &work, &worklist, &nels);
+        subdivide(&integ, &work, &integ.worklist, &nels);
         
         // Perform quadrature on each new element
-        for (int k=0; k<nels; k++) quadrature(&integ, integ.rule, &worklist.data[worklist.count-k-1]);
+        for (int k=0; k<nels; k++) quadrature(&integ, integ.rule, &integ.worklist.data[integ.worklist.count-k-1]);
     }
     
     printf("New integrator: %g with %i iterations and %i function evaluations.\n", est, iter, nevals);
-    
-    varray_quadratureworkitemclear(&worklist);
     
     nevals = 0;
     double out;

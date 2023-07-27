@@ -96,6 +96,7 @@ typedef struct {
     
     subdivisionrule *subdivide; /** Subdivision rule to use */
     
+    varray_quadratureworkitem worklist; /** Work list */
     varray_double vertexstack; /** Stack of vertices */
     varray_int elementstack; /** Stack of elements */
     

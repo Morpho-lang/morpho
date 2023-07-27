@@ -1389,9 +1389,9 @@ quadraturerule *quadrules[] = {
 
 bool linearinterpolate(int nbary, double *bary, int dim, double **v, double *x) {
     for (int j=0; j<dim; j++) x[j]=0.0;
-    for (int k=0; k<nbary; k++) {
-        for (int j=0; j<dim; j++) {
-            x[j]+=bary[k]*v[k][j];
+    for (int j=0; j<dim; j++) {
+        for (int k=0; k<nbary; k++) {
+            x[j]+=v[k][j]*bary[k];
         }
     }
 }
@@ -1435,7 +1435,6 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
     
     double r1 = integrate_sumlistweighted(rule->nnodes, f, rule->weights);
     work->lval = work->val = work->weight*r1;
-    work->err = -1;
     
     // Estimate error
     if (rule->next!=INTEGRATE_NOEXT) { // Evaluate extension rule
@@ -1591,7 +1590,7 @@ subdivisionrule tetsection = {
  * Subdivision
  * -------------------------------- */
 
-bool subdivide(integrator *integrate, quadratureworkitem *work, varray_quadratureworkitem *worklist, int *nels, quadratureworkitem *newitems) {
+bool subdivide(integrator *integrate, quadratureworkitem *work, int *nels, quadratureworkitem *newitems) {
     subdivisionrule *rule = integrate->subdivide;
     int nindx = rule->dim+1;
     double *vert[nindx]; // Old vertices
@@ -1655,6 +1654,18 @@ void sharpenerrorestimate(integrator *integrate, quadratureworkitem *work, int n
     }
 }
 
+/** Adds newitems to the work list and updates the value and error */
+void update(integrator *integrate, quadratureworkitem *work, int nels, quadratureworkitem *newitems) {
+    double dval=0, derr=0;
+    for (int k=0; k<nels; k++) {
+        dval+=newitems[k].val;
+        derr+=newitems[k].err;
+        integrator_pushworkitem(integrate, &newitems[k]);
+    }
+    integrate->val+=dval-work->val;
+    integrate->err+=derr-work->err;
+}
+
 /* --------------------------------
  * Driver routine
  * -------------------------------- */
@@ -1693,8 +1704,8 @@ void integrate_test(void) {
     integrator_pushworkitem(&integ, &work);
     int iter;
     
+    integrator_estimate(&integ);
     for (iter=0; iter<integ.maxiterations; iter++) {
-        integrator_estimate(&integ);
         
         if (fabs(integ.val)<integ.ztol || fabs(integ.err/integ.val)<integ.tol) break;
         
@@ -1704,14 +1715,14 @@ void integrate_test(void) {
         int nels; // Number of elements created
         quadratureworkitem newitems[integ.subdivide->nels];
         
-        subdivide(&integ, &work, &integ.worklist, &nels, newitems);
+        subdivide(&integ, &work, &nels, newitems);
         for (int k=0; k<nels; k++) quadrature(&integ, integ.rule, &newitems[k]);
         sharpenerrorestimate(&integ, &work, nels, newitems);
         
-        // Add new work items to the list
-        for (int k=0; k<nels; k++) integrator_pushworkitem(&integ, &newitems[k]);
+        update(&integ, &work, nels, newitems);
     }
     
+    integrator_estimate(&integ);
     printf("New integrator: %g (%g) with %i iterations and %i function evaluations.\n", integ.val, integ.err, iter, nevals);
     
     nevals = 0;

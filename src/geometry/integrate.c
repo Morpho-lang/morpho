@@ -830,7 +830,7 @@ int nevals;
 bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
     //*fout = 0.5*pow(x[0]+x[1], -0.2);
     //double val = sin(M_PI*x[0]); //1/(0.1+x[0]*x[1]);
-    double val = sqrt(x[0]);//(x[0]*x[1]*x[2]);
+    double val = sqrt(x[0]*x[1]);//(x[0]*x[1]*x[2]);
     *fout=val; //1/sqrt(x[0]); //+ 1/sqrt(x[1]) + 1/sqrt(x[0]+x[1]);
     nevals++;
     return true;
@@ -969,7 +969,7 @@ double gk25wts[] = {
 
 quadraturerule gk25 = {
     .dim = 1,
-    .order = 0,
+    .order = 0, // Incorrect
     .nnodes = 2,
     .next = 5,
     .nodes = gk25nds,
@@ -1076,7 +1076,7 @@ double triwts[] = {
 
 quadraturerule tri410 = {
     .dim = 2,
-    .order = 1,
+    .order = 3, // 4pt rule is order 3,
     .nnodes = 4,
     .next = 10,
     .nodes = tripts,
@@ -1099,11 +1099,58 @@ double triwts1020[] = {
 
 quadraturerule tri1020 = {
     .dim = 2,
-    .order = 4,
+    .order = 4, // Wrong
     .nnodes = 10,
     .next = 20,
     .nodes = tripts,
     .weights = triwts1020,
+};
+
+// CUBTRI rule from D. P. Laurie, ACM Transactions on Mathematical Software, Vol 8, No. 2, June 1982,Pages 210-218
+
+double cubtripts[] = {
+    0.333333333333333333,0.333333333333333333,0.333333333333333333,
+    0.797426985353087322,0.101286507323456339,0.101286507323456339,
+    0.101286507323456339,0.101286507323456339,0.797426985353087322,
+    0.101286507323456339,0.797426985353087322,0.101286507323456339,
+    0.0597158717897698205,0.47014206410511509,0.47014206410511509,
+    0.47014206410511509,0.47014206410511509,0.0597158717897698205,
+    0.47014206410511509,0.0597158717897698205,0.47014206410511509,
+    0.941038278231120867,0.0294808608844395667,0.0294808608844395667,
+    0.0294808608844395667,0.0294808608844395667,0.941038278231120867,
+    0.0294808608844395667,0.941038278231120867,0.0294808608844395667,
+    0.535795346449899265,0.232102326775050368,0.232102326775050368,
+    0.232102326775050368,0.232102326775050368,0.535795346449899265,
+    0.232102326775050368,0.535795346449899265,0.232102326775050368,
+    0.0294808608844395667,0.232102326775050368,0.738416812340510066,
+    0.232102326775050368,0.0294808608844395667,0.738416812340510066,
+    0.738416812340510066,0.0294808608844395667,0.232102326775050368,
+    0.738416812340510066,0.232102326775050368,0.0294808608844395667,
+    0.0294808608844395667,0.738416812340510066,0.232102326775050368,
+    0.232102326775050368,0.738416812340510066,0.0294808608844395667
+};
+
+double cubtriwts[] ={
+    0.225000000000000000, 0.125939180544827153, 0.125939180544827153,
+    0.125939180544827153, 0.132394152788506181, 0.132394152788506181,
+    0.132394152788506181,
+    
+    0.0378610912003146833, 0.0376204254131829721, 0.0376204254131829721,
+    0.0376204254131829721, 0.0783573522441173376, 0.0783573522441173376,
+    0.0783573522441173376, 0.0134442673751654019, 0.0134442673751654019,
+    0.0134442673751654019, 0.116271479656965896, 0.116271479656965896,
+    0.116271479656965896, 0.0375097224552317488, 0.0375097224552317488,
+    0.0375097224552317488, 0.0375097224552317488, 0.0375097224552317488,
+    0.0375097224552317488
+};
+
+quadraturerule cubtri = {
+    .dim = 2,
+    .order = 8,
+    .nnodes = 7,
+    .next = 19,
+    .nodes = cubtripts,
+    .weights = cubtriwts,
 };
 
 /* --------------------------------
@@ -1568,23 +1615,23 @@ void integrate_test(void) {
     integrator integ;
     integrator_init(&integ);
     integ.integrand = test_integrand;
-    integ.rule = &tet5; //&tri1020; // &tri410; // = gk715; ;  //;
-    integ.errrule = &tet6;
-    integ.subdivide = &tetsection; //&bisection;
-    integ.dim = 3;
+    integ.rule = &cubtri; //&tri1020; //&cubtri;//&tri1020;// &tet5; //&tri1020; // &tri410; // = gk715; ;  //;
+    //integ.errrule = &tet6;
+    integ.subdivide = &trianglequadrasection;
+    integ.dim = 2;
     
     double err, est;
     
     double x0[3] = { 0, 0, 0 };
     double x1[3] = { 1, 0, 0 };
     double x2[3] = { 0, 1, 0 };
-    double x3[3] = { 0, 0, 1 };
-    int v0 = integrator_addvertex(&integ, 3, x0);
-    int v1 = integrator_addvertex(&integ, 3, x1);
-    int v2 = integrator_addvertex(&integ, 3, x2);
-    int v3 = integrator_addvertex(&integ, 3, x3);
-    int el0[] = { v0, v1, v2, v3 };
-    int elid = integrator_addelement(&integ, 4, el0);
+    //double x3[3] = { 0, 0, 1 };
+    int v0 = integrator_addvertex(&integ, 2, x0);
+    int v1 = integrator_addvertex(&integ, 2, x1);
+    int v2 = integrator_addvertex(&integ, 2, x2);
+    //int v3 = integrator_addvertex(&integ, 3, x3);
+    int el0[] = { v0, v1, v2 };//, v3 };
+    int elid = integrator_addelement(&integ, 3, el0);
     
     //varray_quadratureworkitem worklist;
     //varray_quadratureworkiteminit(&worklist);
@@ -1616,15 +1663,42 @@ void integrate_test(void) {
         
         // Perform quadrature on each new element
         for (int k=0; k<nels; k++) quadrature(&integ, integ.rule, &integ.worklist.data[integ.worklist.count-k-1]);
+        
+        printf("Original triangle: %g (%g)\n", work.val, work.err);
+        double *vv[3];
+        integrator_getvertices(&integ, work.elementid, 3, vv);
+        for (int k=0; k<3; k++) {
+            printf("(");
+            for (int j=0; j<2; j++) {
+                printf("%g ", vv[k][j]);
+            }
+            printf("), ");
+        }
+        printf("\n");
+        
+        double sval=0, pval=0, serr=0;
+        for (int k=0; k<nels; k++) {
+            quadratureworkitem *w = &integ.worklist.data[integ.worklist.count-k-1];
+            sval+=w->val;
+            serr+=w->err;
+        }
+        
+        double b2 = sval;
+        double a2 = sval;
+        
+        printf("Split triangle: %g (%g) [%g]\n", sval, serr, sval-work.val);
+        printf("Reduction in err %g\n", serr/work.err);
+        
+        printf("\n");
     }
     
     printf("New integrator: %g with %i iterations and %i function evaluations.\n", est, iter, nevals);
     
     nevals = 0;
     double out;
-    double *xx[] = { x0, x1, x2, x3 };
+    double *xx[] = { x0, x1, x2 };//, x3 };
     value *quantities[] = { NULL, NULL, NULL, NULL };
-    integrate_integrate(test_integrand, 3, 3, xx, 0, quantities, NULL, &out);
+    integrate_integrate(test_integrand, 2, 2, xx, 0, quantities, NULL, &out);
     
     printf("Old integrator: %g with %i function evaluations.\n", out, nevals);
     

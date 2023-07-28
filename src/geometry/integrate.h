@@ -13,7 +13,7 @@
 #define INTEGRATE_ACCURACYGOAL 1e-6
 #define INTEGRATE_ZEROCHECK 1e-15
 #define INTEGRATE_MAXRECURSION 100
-#define INTEGRATE_MAXITERATIONS 5000
+#define INTEGRATE_MAXITERATIONS 10000
 
 /* -------------------------------------------------------
  * Integrator type definitions
@@ -43,7 +43,6 @@ typedef unsigned int quadrature_flags;
 typedef struct {
     int dim; /** Dimensionality of the rule */
     int order; /** Order of integrator */
-    quadrature_flags flags; /** Additional properties of a quadrature rule */
     int nnodes; /** Number of nodes */
     int next; /** Number of extension points, or -1 for no extension */
     double *nodes; /** Nodes */

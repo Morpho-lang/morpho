@@ -692,7 +692,7 @@ bool integrate_volint(integrandfunction *function, unsigned int dim, double *x[4
     double *xn[4]; /* Will hold the vertices. */
     double x01[dim], x02[dim], x03[dim], x12[dim], x13[dim], x23[dim]; /* New ertices from midpoints */
     double *xx[] = { x[0], x[1], x[2], x[3], x01, x02, x03, x12, x13, x23 }; // All vertices
-    value q01[nquantity], q02[nquantity], q03[nquantity], q12[nquantity], q13[nquantity], q23[nquantity];
+    value q01[nquantity+1], q02[nquantity+1], q03[nquantity+1], q12[nquantity+1], q13[nquantity+1], q23[nquantity+1];
     value *qq[] = { quantity[0], quantity[1], quantity[2], quantity[3], q01, q02, q03, q12, q13, q23 }; // All vertices
     value *qn[4];
     
@@ -830,8 +830,8 @@ int nevals;
 bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
     //*fout = 0.5*pow(x[0]+x[1], -0.2);
     //double val = sin(M_PI*x[0]); //1/(0.1+x[0]*x[1]);
-    //double val = (x[0]*x[1]*x[2]);//sqrt(x[0]*x[1]);//(x[0]*x[1]*x[2]);
-    *fout=sqrt(x[0]*x[1]); //val*val*val*val; //1/sqrt(x[0]); //+ 1/sqrt(x[1]) + 1/sqrt(x[0]+x[1]);
+    double val = x[0]*x[1]*x[2]; //sin(M_PI*x[0]*x[1]*x[2]); //(x[0]*x[1]*x[2]);//sqrt(x[0]*x[1]);//(x[0]*x[1]*x[2]);
+    *fout=log(val*val); //val*val*val*val; //1/sqrt(x[0]); //+ 1/sqrt(x[1]) + 1/sqrt(x[0]+x[1]);
     nevals++;
     return true;
 }
@@ -1384,10 +1384,10 @@ quadraturerule *quadrules[] = {
 };
 
 /* --------------------------------
- * Linear interpolation rule
+ * Linear interpolation
  * -------------------------------- */
 
-bool linearinterpolate(int nbary, double *bary, int dim, double **v, double *x) {
+void linearinterpolate(int nbary, double *bary, int dim, double **v, double *x) {
     for (int j=0; j<dim; j++) x[j]=0.0;
     for (int j=0; j<dim; j++) {
         for (int k=0; k<nbary; k++) {
@@ -1396,22 +1396,28 @@ bool linearinterpolate(int nbary, double *bary, int dim, double **v, double *x) 
     }
 }
 
+/** Also provide a version using BLAS to accelerate multiplication */
+void prepareinterpolate(int nbary, int dim, double **v, double *vv) {
+    int k=0;
+    for (int i=0; i<nbary; i++) {
+        for (int j=0; j<dim; j++) {
+            vv[k]=v[i][j];
+            k++;
+        }
+    }
+}
+
+void xlinearinterpolate(int nbary, double *bary, int dim, double *vv, double *x) {
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, dim, 1, nbary, 1.0, vv, dim, bary, nbary, 0.0, x, dim);
+}
+    
 /* --------------------------------
  * Function to perform quadrature
  * -------------------------------- */
 
-/** Weighted sum of a list using Kahan summation */
+/** Weighted sum of a list */
 double integrate_sumlistweighted(unsigned int nel, double *list, double *wts) {
-    double sum=0.0, c=0.0, y,t;
-
-    for (unsigned int i=0; i<nel; i++) {
-        y=(list[i]*wts[i])-c;
-        t=sum+y;
-        c=(t-sum)-y;
-        sum=t;
-    }
-
-    return sum;
+    return cblas_ddot(nel, list, 1, wts, 1);
 }
 
 /** Integrates a function over an element specified in work, filling out the integral and error estimate if provided */
@@ -1419,16 +1425,18 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
     int n = (rule->next!=INTEGRATE_NOEXT ? rule->next : rule->nnodes);
     int nbary = rule->dim+1; // Number of barycentric points
     
-    double *vert[nbary];
+    double *vert[nbary], vmat[nbary*integrate->dim];
     integrator_getvertices(integrate, work->elementid, nbary, vert);
+    
+    prepareinterpolate(nbary, integrate->dim, vert, vmat);
     
     double x[integrate->dim];
     double f[n];
     
     for (unsigned int i=0; i<n; i++) {
         // Interpolate the point
-        linearinterpolate(nbary, &rule->nodes[nbary*i], integrate->dim, vert, x);
-        
+        xlinearinterpolate(nbary, &rule->nodes[nbary*i], integrate->dim, vmat, x);
+
         // Evaluate function
         if (!(*integrate->integrand) (rule->dim, &rule->nodes[nbary*i], x, integrate->nquantity, NULL, integrate->ref, &f[i])) return false;
     }
@@ -1657,83 +1665,103 @@ void sharpenerrorestimate(integrator *integrate, quadratureworkitem *work, int n
 /** Adds newitems to the work list and updates the value and error */
 void update(integrator *integrate, quadratureworkitem *work, int nels, quadratureworkitem *newitems) {
     double dval=0, derr=0;
+    integrate->val-=work->val;
+    integrate->err-=work->err;
     for (int k=0; k<nels; k++) {
         dval+=newitems[k].val;
         derr+=newitems[k].err;
         integrator_pushworkitem(integrate, &newitems[k]);
     }
-    integrate->val+=dval-work->val;
-    integrate->err+=derr-work->err;
+    integrate->val+=dval;
+    integrate->err+=derr;
 }
 
 /* --------------------------------
  * Driver routine
  * -------------------------------- */
 
-void integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out) {
-    
-}
-
-void integrate_test(void) {
+void integrate_test1(integrator *integrate) {
     nevals = 0;
-    
-    integrator integ;
-    integrator_init(&integ);
-    integ.integrand = test_integrand;
-    integ.rule = &tet5; //&cubtri; //&tri1020; //&cubtri;//&tri1020;// &tet5; //&tri1020; // &tri410; // = gk715; ;  //;
-    integ.errrule = &tet6;
-    integ.subdivide = &tetsection; //&trianglequadrasection;
-    integ.dim = 3;
+
+    integrator_init(integrate);
+    integrate->integrand = test_integrand;
+    integrate->rule = &tet5; //&cubtri; //&tri1020; //&cubtri;//&tri1020;// &tet5; //&tri1020; // &tri410; // = gk715; ;  //;
+    integrate->errrule = &tet6;
+    integrate->subdivide = &tetsection; //&trianglequadrasection;
+    integrate->dim = 3;
     
     double x0[3] = { 0, 0, 0 };
     double x1[3] = { 1, 0, 0 };
     double x2[3] = { 0, 1, 0 };
     double x3[3] = { 0, 0, 1 };
-    int v0 = integrator_addvertex(&integ, 3, x0);
-    int v1 = integrator_addvertex(&integ, 3, x1);
-    int v2 = integrator_addvertex(&integ, 3, x2);
-    int v3 = integrator_addvertex(&integ, 3, x3);
+    int v0 = integrator_addvertex(integrate, 3, x0);
+    int v1 = integrator_addvertex(integrate, 3, x1);
+    int v2 = integrator_addvertex(integrate, 3, x2);
+    int v3 = integrator_addvertex(integrate, 3, x3);
     int el0[] = { v0, v1, v2, v3 };
-    int elid = integrator_addelement(&integ, 4, el0);
+    int elid = integrator_addelement(integrate, 4, el0);
 
     quadratureworkitem work;
     work.weight = 1.0;
     work.elementid = elid;
-    quadrature(&integ, integ.rule, &work); // Perform initial quadrature
+    quadrature(integrate, integrate->rule, &work); // Perform initial quadrature
     
-    integrator_pushworkitem(&integ, &work);
-    int iter;
+    integrator_pushworkitem(integrate, &work);
+    integrator_estimate(integrate);
     
-    integrator_estimate(&integ);
-    for (iter=0; iter<integ.maxiterations; iter++) {
+    for (int iter=0; iter<integrate->maxiterations; iter++) {
+        // Convergence check
+        if (fabs(integrate->val)<integrate->ztol || fabs(integrate->err/integrate->val)<integrate->tol) break;
         
-        if (fabs(integ.val)<integ.ztol || fabs(integ.err/integ.val)<integ.tol) break;
-        
-        integrator_popworkitem(&integ, &work);
+        // Get worst interval
+        integrator_popworkitem(integrate, &work);
         
         // Subdivide
         int nels; // Number of elements created
-        quadratureworkitem newitems[integ.subdivide->nels];
+        quadratureworkitem newitems[integrate->subdivide->nels];
         
-        subdivide(&integ, &work, &nels, newitems);
-        for (int k=0; k<nels; k++) quadrature(&integ, integ.rule, &newitems[k]);
-        sharpenerrorestimate(&integ, &work, nels, newitems);
+        subdivide(integrate, &work, &nels, newitems);
+        for (int k=0; k<nels; k++) quadrature(integrate, integrate->rule, &newitems[k]);
         
-        update(&integ, &work, nels, newitems);
+        // Error estimate
+        sharpenerrorestimate(integrate, &work, nels, newitems);
+        update(integrate, &work, nels, newitems);
     }
     
-    integrator_estimate(&integ);
-    printf("New integrator: %g (%g) with %i iterations and %i function evaluations.\n", integ.val, integ.err, iter, nevals);
-    
+    integrator_estimate(integrate);
+}
+
+void integrate_test2(double *out) {
     nevals = 0;
-    double out;
+    
+    double x0[3] = { 0, 0, 0 };
+    double x1[3] = { 1, 0, 0 };
+    double x2[3] = { 0, 1, 0 };
+    double x3[3] = { 0, 0, 1 };
     double *xx[] = { x0, x1, x2, x3 };
     value *quantities[] = { NULL, NULL, NULL, NULL };
-    integrate_integrate(test_integrand, 3, 3, xx, 0, quantities, NULL, &out);
+    integrate_integrate(test_integrand, 3, 3, xx, 0, quantities, NULL, out);
+}
+
+void integrate_test(void) {
+    integrator integ;
+    double out;
+    int evals1;
     
+    int Nmax = 2;
+    for (int i=0; i<Nmax; i++) {
+        evals1 = 0;
+        integrate_test1(&integ);
+        evals1 = nevals;
+        nevals = 0;
+        integrate_test2(&out);
+        if (i<Nmax-1) integrator_clear(&integ);
+    }
+    
+    printf("New integrator: %g (%g) with %i function evaluations.\n", integ.val, integ.err, evals1);
     printf("Old integrator: %g with %i function evaluations.\n", out, nevals);
     
-    double trueval = 0.196349540849362077403915211455; //0.0000118928690357261785833214404643; //0.261799387799149436538553615273; //0.457142857142857142857142857143; //6.34286348572062857777143491429e-8;//2.70562770562770562770562770563e-6;
+    double trueval = -10.999999902019141;
     
     printf("Difference %g (relative error %g) tol: %g\n", fabs(out-integ.val), fabs(out-integ.val)/integ.val, integ.tol);
     

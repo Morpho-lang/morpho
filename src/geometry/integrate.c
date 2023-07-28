@@ -825,17 +825,6 @@ double testintegrand(unsigned int dim, double *t, double *x, unsigned int nquant
  * New integrator
  * ********************************************************************** */
 
-int nevals;
-
-bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
-    //*fout = 0.5*pow(x[0]+x[1], -0.2);
-    //double val = sin(M_PI*x[0]); //1/(0.1+x[0]*x[1]);
-    double val = x[0]*x[1]*x[2]; //sin(M_PI*x[0]*x[1]*x[2]); //(x[0]*x[1]*x[2]);//sqrt(x[0]*x[1]);//(x[0]*x[1]*x[2]);
-    *fout=log(val*val); //val*val*val*val; //1/sqrt(x[0]); //+ 1/sqrt(x[1]) + 1/sqrt(x[0]+x[1]);
-    nevals++;
-    return true;
-}
-
 DEFINE_VARRAY(quadratureworkitem, quadratureworkitem)
 
 /* -------------------------------------------------
@@ -844,6 +833,7 @@ DEFINE_VARRAY(quadratureworkitem, quadratureworkitem)
 
 /** Initialize an integrator structure */
 void integrator_init(integrator *integrate) {
+    integrate->adapt = true;
     integrate->integrand = NULL;
     integrate->rule = NULL;
     integrate->errrule = NULL;
@@ -987,7 +977,8 @@ double midpointweights[] = {
 };
 
 quadraturerule midpointsimpson = {
-    .dim = 1,
+    .name = "midpointsimpson",
+    .grade = 1,
     .order = 0,
     .nnodes = 1,
     .next = 3,
@@ -1012,8 +1003,9 @@ double gk13wts[] = {
 };
 
 quadraturerule gk13 = {
-    .dim = 1,
-    .order = 0,
+    .name = "gausskronrod1-3",
+    .grade = 1,
+    .order = 3,
     .nnodes = 1,
     .next = 3,
     .nodes = gk13nds,
@@ -1042,12 +1034,62 @@ double gk25wts[] = {
 };
 
 quadraturerule gk25 = {
-    .dim = 1,
-    .order = 0, // Incorrect
+    .name = "gausskronrod2-5",
+    .grade = 1,
+    .order = 5,
     .nnodes = 2,
     .next = 5,
     .nodes = gk25nds,
     .weights = gk25wts,
+};
+
+/* --------------------------------
+ * Gauss-Kronrod 5-11 rule
+ * -------------------------------- */
+
+// Appears to be Mathematica's default integrator!
+
+double gk511nds[] = {
+    0.046910077030668003601,  0.9530899229693319964,
+    0.23076534494715845448,   0.76923465505284154552,
+    0.5,0.5,
+    0.76923465505284154552,   0.23076534494715845448,
+    0.9530899229693319964,    0.046910077030668003601,
+    
+    0.0079573199525787677519, 0.99204268004742123225,
+    0.12291663671457538978,   0.87708336328542461022,
+    0.36018479341910840329,   0.63981520658089159671,
+    0.63981520658089159671,   0.36018479341910840329,
+    0.87708336328542461022,   0.12291663671457538978,
+    0.99204268004742123225,   0.0079573199525787677519
+};
+
+double gk511wts[] = {
+    0.118463442528094543757, 0.2393143352496832340206, 0.2844444444444444444444, // Gauss
+    0.2393143352496832340206, 0.118463442528094543757,
+    
+    0.0576166583112366970123, // Kronrod
+    0.12052016961432379335,
+    0.1414937089287456066021,
+    0.12052016961432379335,
+    0.0576166583112366970123,
+    
+    0.02129101837554091643225,
+    0.093400398278246328734,
+    0.136424900956279461171,
+    0.136424900956279461171,
+    0.0934003982782463287339,
+    0.0212910183755409164322
+};
+
+quadraturerule gk511 = {
+    .name = "gausskronrod5-11",
+    .grade = 1,
+    .order = 11,
+    .nnodes = 5,
+    .next = 11,
+    .nodes = gk511nds,
+    .weights = gk511wts,
 };
 
 /* --------------------------------
@@ -1101,8 +1143,9 @@ double gk715wts[] = {
 };
 
 quadraturerule gk715 = {
-    .dim = 1,
-    .order = 7,
+    .name = "gausskronrod7-15",
+    .grade = 1,
+    .order = 15,
     .nnodes = 7,
     .next = 15,
     .nodes = gk715nds,
@@ -1149,7 +1192,8 @@ double triwts[] = {
 };
 
 quadraturerule tri410 = {
-    .dim = 2,
+    .name = "tri410",
+    .grade = 2,
     .order = 3, // 4pt rule is order 3,
     .nnodes = 4,
     .next = 10,
@@ -1172,7 +1216,8 @@ double triwts1020[] = {
 };
 
 quadraturerule tri1020 = {
-    .dim = 2,
+    .name = "tri1020",
+    .grade = 2,
     .order = 4, // Wrong
     .nnodes = 10,
     .next = 20,
@@ -1219,7 +1264,8 @@ double cubtriwts[] ={
 };
 
 quadraturerule cubtri = {
-    .dim = 2,
+    .name = "cubtri",
+    .grade = 2,
     .order = 8,
     .nnodes = 7,
     .next = 19,
@@ -1283,8 +1329,9 @@ double tet5wts[] = {
     0.0479839333057554,0.0479839333057554,0.093174573119534 };
 
 quadraturerule tet5 = {
-    .dim = 3,
-    .order = 4,
+    .name = "tet5",
+    .grade = 3,
+    .order = 7,
     .nnodes = 35,
     .next = INTEGRATE_NOEXT,
     .nodes = tet5pts,
@@ -1368,8 +1415,9 @@ double tet6wts[] = {
 };
 
 quadraturerule tet6 = {
-    .dim = 3,
-    .order = 4,
+    .name = "tet6",
+    .grade = 3,
+    .order = 9,
     .nnodes = 56,
     .next = INTEGRATE_NOEXT,
     .nodes = tet6pts,
@@ -1377,10 +1425,10 @@ quadraturerule tet6 = {
 };
 
 quadraturerule *quadrules[] = {
-    &tri410,
-    &tri1020,
-    &tet5,
-    &tet6
+    &midpointsimpson, &gk13, &gk25, &gk511, &gk715,
+    &tri410, &tri1020, &cubtri,
+    &tet5, &tet6,
+    NULL
 };
 
 /* --------------------------------
@@ -1423,7 +1471,7 @@ double integrate_sumlistweighted(unsigned int nel, double *list, double *wts) {
 /** Integrates a function over an element specified in work, filling out the integral and error estimate if provided */
 bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem *work) {
     int n = (rule->next!=INTEGRATE_NOEXT ? rule->next : rule->nnodes);
-    int nbary = rule->dim+1; // Number of barycentric points
+    int nbary = rule->grade+1; // Number of barycentric points
     
     double *vert[nbary], vmat[nbary*integrate->dim];
     integrator_getvertices(integrate, work->elementid, nbary, vert);
@@ -1438,7 +1486,7 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
         xlinearinterpolate(nbary, &rule->nodes[nbary*i], integrate->dim, vmat, x);
 
         // Evaluate function
-        if (!(*integrate->integrand) (rule->dim, &rule->nodes[nbary*i], x, integrate->nquantity, NULL, integrate->ref, &f[i])) return false;
+        if (!(*integrate->integrand) (rule->grade, &rule->nodes[nbary*i], x, integrate->nquantity, NULL, integrate->ref, &f[i])) return false;
     }
     
     double r1 = integrate_sumlistweighted(rule->nnodes, f, rule->weights);
@@ -1485,7 +1533,7 @@ int bisectionintervals[] = {
 };
 
 subdivisionrule bisection = {
-    .dim = 1,
+    .grade = 1,
     .npts = 1,
     .pts = bisectionpts,
     .nels = 2,
@@ -1510,7 +1558,7 @@ int trisectionintervals[] = {
 };
 
 subdivisionrule trisection = {
-    .dim = 1,
+    .grade = 1,
     .npts = 2,
     .pts = trisectionpts,
     .nels = 3,
@@ -1549,7 +1597,7 @@ int triquadrasectiontris[] = {
 };
 
 subdivisionrule trianglequadrasection = {
-    .dim = 2,
+    .grade = 2,
     .npts = 3,
     .pts = triquadrasectionpts,
     .nels = 4,
@@ -1586,12 +1634,20 @@ int tetsubdivtets[] =  {
     3, 6, 8, 9 };
 
 subdivisionrule tetsection = {
-    .dim = 3,
+    .grade = 3,
     .npts = 6,
     .pts = tetsubdivpts,
     .nels = 8,
     .newels = tetsubdivtets,
     .weights = tetsubdivwts
+};
+
+subdivisionrule *subdivisionrules[] = {
+    &bisection,
+    &trisection,
+    &trianglequadrasection,
+    &tetsection,
+    NULL
 };
 
 /* --------------------------------
@@ -1600,7 +1656,7 @@ subdivisionrule tetsection = {
 
 bool subdivide(integrator *integrate, quadratureworkitem *work, int *nels, quadratureworkitem *newitems) {
     subdivisionrule *rule = integrate->subdivide;
-    int nindx = rule->dim+1;
+    int nindx = rule->grade+1;
     double *vert[nindx]; // Old vertices
     double x[rule->npts][integrate->dim]; // Interpolated vertices
     
@@ -1677,37 +1733,128 @@ void update(integrator *integrate, quadratureworkitem *work, int nels, quadratur
 }
 
 /* --------------------------------
+ * Integrator configuration
+ * -------------------------------- */
+
+/** Finds a rule by name */
+bool integrator_matchrulebyname(int grade, char *name, quadraturerule **out) {
+    for (int i=0; quadrules[i]!=NULL; i++) {
+        if (quadrules[i]->grade!=grade) continue;
+        if (name && quadrules[i]->name &&
+            (strcmp(name, quadrules[i]->name)==0)) { // Match a rule by name
+            *out = quadrules[i];
+            return true;
+        }
+    }
+    return false;
+}
+
+/** Finds the [highest/lowest] rule with order such that minorder <= order <= maxorder */
+bool integrator_matchrulebyorder(int grade, int minorder, int maxorder, bool highest, quadraturerule **out) {
+    int best=-1, bestorder=(highest ? -1 : INT_MAX);
+    for (int i=0; quadrules[i]!=NULL; i++) {
+        if (quadrules[i]->grade!=grade) continue;
+        
+        if (quadrules[i]->order>=minorder &&
+            quadrules[i]->order<=maxorder &&
+            ( (highest && quadrules[i]->order>bestorder) ||
+              (!highest && quadrules[i]->order<bestorder) )) {
+            best = i;
+            bestorder = quadrules[i]->order;
+        }
+    }
+    if (best>=0) *out = quadrules[best];
+    return (best>=0);
+}
+
+/** Configures an integrator based on the grade to integrate and hints for order and rule type
+ * @param[in] integrate     - integrator structure to be configured
+ * @param[in] adapt             - enable adaptive refinement
+ * @param[in] grade              - Dimension of the vertices
+ * @param[in] order              - Requested order of quadrature rule
+ * @param[in] name                - Alternatively, supply the name of a known rule
+ * @returns true if the configuration was successful */
+bool integrator_configure(integrator *integrate, bool adapt, int grade, int order, char *name) {
+    integrate->rule=NULL;
+    integrate->errrule=NULL;
+    integrate->adapt=adapt;
+    
+    if (name) {
+        if (!integrator_matchrulebyname(grade, name, &integrate->rule)) return false;
+    } else if (order<0) { // If no order requested find the highest order rule available
+        if (!integrator_matchrulebyorder(grade, 0, INT_MAX, true, &integrate->rule)) return false;
+    } else { // Prefer a rule that integrates at least order, but otherwise find the best
+        if (!(integrator_matchrulebyorder(grade, order, INT_MAX, false, &integrate->rule) ||
+            integrator_matchrulebyorder(grade, 0, order, true, &integrate->rule))) return false;
+    }
+    
+    // Check we succeeded in finding a rule
+    if (!integrate->rule) return false;
+    
+    // Do we need an extension rule?
+    if (adapt && integrate->rule->next==INTEGRATE_NOEXT) {
+        // Prefer an extension rule that has higher order
+        if (!integrator_matchrulebyorder(grade, integrate->rule->order+1, INT_MAX, false,  &integrate->errrule)) {
+            // but if there wasn't one, find the next lowest one...
+            if (!integrator_matchrulebyorder(grade, 0, integrate->rule->order-1, true,  &integrate->errrule)) return false;
+        }
+        
+        // Ensure that the error rule is higher than the integration rule
+        if (integrate->rule->order>integrate->errrule->order) {
+            quadraturerule *swp=integrate->rule;
+            integrate->rule=integrate->errrule;
+            integrate->errrule=swp;
+        }
+    }
+    
+    // Select subdivision rule
+    for (int i=0; subdivisionrules[i]!=NULL; i++) {
+        if (subdivisionrules[i]->grade==grade) {
+            integrate->subdivide = subdivisionrules[i];
+            break;
+        }
+    }
+    
+    return true;
+}
+
+/* --------------------------------
  * Driver routine
  * -------------------------------- */
 
-void integrate_test1(integrator *integrate) {
-    nevals = 0;
-
-    integrator_init(integrate);
-    integrate->integrand = test_integrand;
-    integrate->rule = &tet5; //&cubtri; //&tri1020; //&cubtri;//&tri1020;// &tet5; //&tri1020; // &tri410; // = gk715; ;  //;
-    integrate->errrule = &tet6;
-    integrate->subdivide = &tetsection; //&trianglequadrasection;
-    integrate->dim = 3;
+/** Integrates over a function
+ * @param[in] integrate     - integrator structure, that has been configured with integrator_configure
+ * @param[in] integrand     - function to integrate
+ * @param[in] dim                  - Dimension of the vertices
+ * @param[in] x                       - vertices of the line x[0] = {x,y,z} etc.
+ * @param[in] nquantity     - number of quantities per vertex
+ * @param[in] quantity       - List of quantities for each vertex.
+ * @param[in] ref                  - a pointer to any data required by the function
+ * @returns True on success */
+bool integrator_integrate(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, value **quantity, void *ref) {
+    integrate->dim=dim;
+    integrate->ref=ref;
+    integrate->integrand=integrand;
+    integrate->worklist.count=0;    // Reset all these without deallocating
+    integrate->vertexstack.count=0;
+    integrate->elementstack.count=0;
+    error_clear(&integrate->emsg);
     
-    double x0[3] = { 0, 0, 0 };
-    double x1[3] = { 1, 0, 0 };
-    double x2[3] = { 0, 1, 0 };
-    double x3[3] = { 0, 0, 1 };
-    int v0 = integrator_addvertex(integrate, 3, x0);
-    int v1 = integrator_addvertex(integrate, 3, x1);
-    int v2 = integrator_addvertex(integrate, 3, x2);
-    int v3 = integrator_addvertex(integrate, 3, x3);
-    int el0[] = { v0, v1, v2, v3 };
-    int elid = integrator_addelement(integrate, 4, el0);
-
+    // Create first element
+    int elementid[integrate->dim+1];
+    for (int i=0; i<integrate->dim+1; i++) {
+        elementid[i]=integrator_addvertex(integrate, integrate->dim, x[i]);
+    }
+    int elid = integrator_addelement(integrate, integrate->dim+1, elementid);
+    
+    // Add it to the work list
     quadratureworkitem work;
     work.weight = 1.0;
     work.elementid = elid;
     quadrature(integrate, integrate->rule, &work); // Perform initial quadrature
     
     integrator_pushworkitem(integrate, &work);
-    integrator_estimate(integrate);
+    integrator_estimate(integrate); // Initial estimate
     
     for (int iter=0; iter<integrate->maxiterations; iter++) {
         // Convergence check
@@ -1725,11 +1872,76 @@ void integrate_test1(integrator *integrate) {
         
         // Error estimate
         sharpenerrorestimate(integrate, &work, nels, newitems);
+        
+        // Add new items to heap and update error estimates
         update(integrate, &work, nels, newitems);
     }
     
+    // Final estimate by Kahan summing heap
     integrator_estimate(integrate);
+    
+    return true;
 }
+
+/* -------------------------------------
+ * Public interface matching old version
+ * ------------------------------------- */
+
+/** Integrate over an element - public interface for one off integrals.
+ * @param[in] integrand   - integrand
+ * @param[in] dim                - Dimension of the vertices
+ * @param[in] grade            - Grade to integrate over
+ * @param[in] x                     - vertices of the triangle x[0] = {x,y,z} etc.
+ * @param[in] nquantity   - number of quantities per vertex
+ * @param[in] quantity     - List of quantities for each endpoint.
+ * @param[in] ref                - a pointer to any data required by the function
+ * @param[out] out              - value of the integral
+ * @returns true on success. */
+bool integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out, double *err) {
+    bool success=false;
+    integrator integrate;
+    integrator_init(&integrate);
+    
+    integrator_configure(&integrate, true, grade, -1, NULL);
+    success=integrator_integrate(&integrate, integrand, dim, x, nquantity, quantity, ref);
+    
+    *out = integrate.val;
+    *err = integrate.err;
+    
+    integrator_clear(&integrate);
+    
+    return success;
+}
+
+/* --------------------------------
+ * Testing code
+ * -------------------------------- */
+
+int nevals;
+
+bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
+    //double val = x[0]*x[1]*x[2];
+    *fout=1.0/sqrt(x[0]);
+    nevals++;
+    return true;
+}
+
+void integrate_test1(double *out, double *err) {
+    nevals = 0;
+
+    double x0[3] = { 0, 0, 0 };
+    double x1[3] = { 1, 0, 0 };
+    double x2[3] = { 0, 1, 0 };
+    double x3[3] = { 0, 0, 1 };
+    
+    double *xx[] = { x0, x1, x2, x3 };
+    value *quantities[] = { NULL, NULL, NULL, NULL };
+    
+    integrate(test_integrand, 1, 1, xx, 0, quantities, NULL, out, err);
+    
+    return;
+}
+
 
 void integrate_test2(double *out) {
     nevals = 0;
@@ -1740,35 +1952,31 @@ void integrate_test2(double *out) {
     double x3[3] = { 0, 0, 1 };
     double *xx[] = { x0, x1, x2, x3 };
     value *quantities[] = { NULL, NULL, NULL, NULL };
-    integrate_integrate(test_integrand, 3, 3, xx, 0, quantities, NULL, out);
+    integrate_integrate(test_integrand, 1, 1, xx, 0, quantities, NULL, out);
 }
 
 void integrate_test(void) {
-    integrator integ;
-    double out;
+    double out, out1, err1;
     int evals1;
     
-    int Nmax = 2;
+    int Nmax = 1;
     for (int i=0; i<Nmax; i++) {
         evals1 = 0;
-        integrate_test1(&integ);
+        integrate_test1(&out1, &err1);
         evals1 = nevals;
         nevals = 0;
         integrate_test2(&out);
-        if (i<Nmax-1) integrator_clear(&integ);
     }
     
-    printf("New integrator: %g (%g) with %i function evaluations.\n", integ.val, integ.err, evals1);
+    printf("New integrator: %g (%g) with %i function evaluations.\n", out1, err1, evals1);
     printf("Old integrator: %g with %i function evaluations.\n", out, nevals);
     
-    double trueval = -10.999999902019141;
+    double trueval = 2;
     
-    printf("Difference %g (relative error %g) tol: %g\n", fabs(out-integ.val), fabs(out-integ.val)/integ.val, integ.tol);
+    printf("Difference %g (relative error %g) tol: %g\n", fabs(out-out1), fabs(out-out1)/out1, INTEGRATE_ACCURACYGOAL);
     
-    printf("New: %g (relative error %g) tol: %g\n", fabs(trueval-integ.val), fabs(trueval-integ.val)/trueval, integ.tol);
-    printf("Old: %g (relative error %g) tol: %g\n", fabs(trueval-out), fabs(trueval-out)/trueval, integ.tol);
-    
-    integrator_clear(&integ);
+    printf("New: %g (relative error %g) tol: %g\n", fabs(trueval-out1), fabs(trueval-out1)/trueval, INTEGRATE_ACCURACYGOAL);
+    printf("Old: %g (relative error %g) tol: %g\n", fabs(trueval-out), fabs(trueval-out)/trueval, INTEGRATE_ACCURACYGOAL);
     
     exit(0);
 }

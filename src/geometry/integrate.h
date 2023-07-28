@@ -41,7 +41,8 @@ typedef bool (integrandfunction) (unsigned int dim, double *lambda, double *x, u
 typedef unsigned int quadrature_flags;
 
 typedef struct {
-    int dim; /** Dimensionality of the rule */
+    char *name; /** Identifier for the rule */
+    int grade; /** Dimensionality of element the rule operates on */
     int order; /** Order of integrator */
     int nnodes; /** Number of nodes */
     int next; /** Number of extension points, or -1 for no extension */
@@ -57,7 +58,7 @@ typedef struct {
  * ---------------------------------- */
 
 typedef struct {
-    int dim;      /** Dimension of strategy */
+    int grade;    /** Appropriate grade for the strategy */
     int npts;     /** Number of new pts created */
     double *pts;  /** New barycentric coordinates */
     int nels;     /** Number of new elements created */
@@ -88,8 +89,9 @@ typedef struct {
     integrandfunction *integrand; /** Function to integrate */
     
     int dim; /** Dimension of points in embedded space */
-    
     int nquantity; /** Number of quantities to interpolate */
+    
+    bool adapt; /** Enable adaptive integration */
     quadraturerule *rule;  /** Quadrature rule to use */
     quadraturerule *errrule; /** Additional rule for error estimation */
     

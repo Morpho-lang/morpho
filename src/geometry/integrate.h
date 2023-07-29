@@ -64,6 +64,7 @@ typedef struct {
     - a set of new nodes to be created in the original element, given as barycentric coordinates
     - a list of vertex ids defining the new element (the original vertices are labelled 0...grade-1
     - a list of weights for the new elements (the fraction of the total d-volume of the original element)
+      N.B. weights should sum to 1 (NOT the volume of the element
     - metadata */
 
 typedef struct {

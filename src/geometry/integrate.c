@@ -1145,8 +1145,79 @@ quadraturerule cubtri = {
  * Tetrahedron
  * -------------------------------- */
 
-// Nodes and weights from Journal of Computational and Applied Mathematics, 236, 17, 4348-4364 (2012)
+// Nodes and weights from Keast, Computer Methods in Applied Mechanics and Engineering,
+//    Volume 55, Number 3, May 1986, pages 339-348.
 
+double keast4pts[] = {
+    0.25,0.25,0.25,0.25,
+    0.78571428571428571,  0.071428571428571428, 0.071428571428571428, 0.071428571428571428,
+    0.071428571428571428, 0.78571428571428571,  0.071428571428571428, 0.071428571428571428,
+    0.071428571428571428, 0.071428571428571428, 0.78571428571428571,  0.071428571428571428,
+    0.071428571428571428, 0.071428571428571428, 0.071428571428571428, 0.78571428571428571,
+    0.39940357616679922,  0.39940357616679922,  0.10059642383320078,  0.10059642383320078,
+    0.39940357616679922,  0.10059642383320078,  0.39940357616679922,  0.10059642383320078,
+    0.39940357616679922,  0.10059642383320078,  0.10059642383320078,  0.39940357616679922,
+    0.10059642383320078,  0.39940357616679922,  0.39940357616679922,  0.10059642383320078,
+    0.10059642383320078,  0.39940357616679922,  0.10059642383320078,  0.39940357616679922,
+    0.10059642383320078,  0.10059642383320078,  0.39940357616679922,  0.39940357616679922
+};
+
+double keast4wts[] = {
+    -0.07893333333333333,
+    0.04573333333333333333,0.04573333333333333333,
+    0.04573333333333333333,0.04573333333333333333,
+    0.149333333333333328,0.149333333333333328,0.149333333333333328,0.149333333333333328,0.149333333333333328,0.149333333333333328
+};
+
+quadraturerule keast4 = {
+    .name = "keast4",
+    .grade = 3,
+    .order = 4,
+    .nnodes = 11,
+    .next = INTEGRATE_NOEXT,
+    .nodes = keast4pts,
+    .weights = keast4wts,
+};
+
+double keast5pts[] = {
+    0.25,0.25,0.25,0.25,
+    0,0.3333333333333333,0.3333333333333333,0.3333333333333333,
+    0.3333333333333333,0,0.3333333333333333,0.3333333333333333,
+    0.3333333333333333,0.3333333333333333,0,0.3333333333333333,
+    0.3333333333333333,0.3333333333333333,0.3333333333333333,0,
+    0.72727272727272727,0.090909090909090909,0.090909090909090909,0.090909090909090909,
+    0.090909090909090909,0.72727272727272727,0.090909090909090909,0.090909090909090909,
+    0.090909090909090909,0.090909090909090909,0.72727272727272727,0.090909090909090909,
+    0.090909090909090909,0.090909090909090909,0.090909090909090909,0.72727272727272727,
+    0.066550153573664281,0.066550153573664281,0.43344984642633573,0.43344984642633573,
+    0.066550153573664281,0.43344984642633573,0.066550153573664281,0.43344984642633573,
+    0.066550153573664281,0.43344984642633573,0.43344984642633573,0.066550153573664281,
+    0.43344984642633573,0.066550153573664281,0.066550153573664281,0.43344984642633573,
+    0.43344984642633573,0.066550153573664281,0.43344984642633573,0.066550153573664281,
+    0.43344984642633573,0.43344984642633573,0.066550153573664281,0.066550153573664281
+};
+
+double keast5wts[] = {
+    0.181702068582535114,
+    0.0361607142857142958, 0.0361607142857142958, 0.0361607142857142958,
+    0.0361607142857142958, 0.069871494516173845,
+    
+    0.069871494516173845,0.069871494516173845,0.069871494516173845,0.06569484936831872,
+    0.06569484936831872,0.06569484936831872,0.06569484936831872,0.06569484936831872,
+    0.06569484936831872
+};
+
+quadraturerule keast5 = {
+    .name = "keast5",
+    .grade = 3,
+    .order = 5,
+    .nnodes = 15,
+    .next = INTEGRATE_NOEXT,
+    .nodes = keast5pts,
+    .weights = keast5wts,
+};
+
+// Nodes and weights from Journal of Computational and Applied Mathematics, 236, 17, 4348-4364 (2012)
 double tet5pts[] = {
     0.91978967333688,0.0267367755543735,0.0267367755543735,0.0267367755543735,
     0.0267367755543735,0.91978967333688,0.0267367755543735,0.0267367755543735,
@@ -1295,7 +1366,7 @@ quadraturerule tet6 = {
 quadraturerule *quadrules[] = {
     &midpointsimpson, &gk13, &gk25, &gk511, &gk715,
     &tri410, &tri1020, &cubtri,
-    &tet5, &tet6,
+    &keast4, &keast5, &tet5, &tet6,
     NULL
 };
 
@@ -1903,7 +1974,7 @@ bool integrate(integrandfunction *integrand, unsigned int dim, unsigned int grad
     integrator integrate;
     integrator_init(&integrate);
     
-    integrator_configure(&integrate, true, grade, -1, NULL);
+    integrator_configure(&integrate, true, grade, 2, NULL);
     success=integrator_integrate(&integrate, integrand, dim, x, nquantity, quantity, ref);
     
     *out = integrate.val;
@@ -1921,8 +1992,8 @@ bool integrate(integrandfunction *integrand, unsigned int dim, unsigned int grad
 int nevals;
 
 bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
-    //double val = x[0]*x[1]*x[2];
-    *fout=x[0]*x[1];
+    double val = x[0]*x[1]*x[2];
+    *fout=val*val;
     nevals++;
     return true;
 }
@@ -1938,7 +2009,7 @@ void integrate_test1(double *out, double *err) {
     double *xx[] = { x0, x1, x2, x3 };
     value *quantities[] = { NULL, NULL, NULL, NULL };
     
-    integrate(test_integrand, 2, 2, xx, 0, quantities, NULL, out, err);
+    integrate(test_integrand, 3, 3, xx, 0, quantities, NULL, out, err);
     
     return;
 }
@@ -1953,7 +2024,7 @@ void integrate_test2(double *out) {
     double x3[3] = { 0, 0, 1 };
     double *xx[] = { x0, x1, x2, x3 };
     value *quantities[] = { NULL, NULL, NULL, NULL };
-    integrate_integrate(test_integrand, 2, 2, xx, 0, quantities, NULL, out);
+    integrate_integrate(test_integrand, 3, 3, xx, 0, quantities, NULL, out);
 }
 
 void integrate_test(void) {
@@ -1972,7 +2043,7 @@ void integrate_test(void) {
     printf("New integrator: %g (%g) with %i function evaluations.\n", out1, err1, evals1);
     printf("Old integrator: %g with %i function evaluations.\n", out, nevals);
     
-    double trueval = 0.533333333333333333333333333333;
+    double trueval = 0.000132275132275132275132275132275;
     
     printf("Difference %g (relative error %g) tol: %g\n", fabs(out-out1), fabs(out-out1)/out1, INTEGRATE_ACCURACYGOAL);
     

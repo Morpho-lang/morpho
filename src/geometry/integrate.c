@@ -1363,10 +1363,59 @@ quadraturerule tet6 = {
     .weights = tet6wts,
 };
 
+// Grundmann-Möller embedded rules:
+//   SIAM Journal on Numerical Analysis , Apr., 1978, Vol. 15, No. 2 (Apr., 1978), pp. 282-290
+// See also a very clear example presented in
+//   ACM Transactions on Mathematical Software, Volume 29, Issue 3, pp 297–308 (2003) */
+
+double grundmann12pts[] = {
+    0.25,0.25,0.25,0.25,
+    0.16666666666666666667,0.16666666666666666667,0.16666666666666666667,0.5,
+    0.16666666666666666667,0.16666666666666666667,0.5,0.16666666666666666667,
+    0.16666666666666666667,0.5,0.16666666666666666667,0.16666666666666666667,
+    0.5,0.16666666666666666667,0.16666666666666666667,0.16666666666666666667,
+    
+    0.125,0.125,0.375,0.375,
+    0.125,0.375,0.125,0.375,
+    0.125,0.375,0.375,0.125,
+    0.375,0.125,0.125,0.375,
+    0.375,0.125,0.375,0.125,
+    0.375,0.375,0.125,0.125,
+    0.125,0.125,0.125,0.625,
+    0.125,0.125,0.625,0.125,
+    0.125,0.625,0.125,0.125,
+    0.625,0.125,0.125,0.125
+};
+
+double grundmann12wts[] = {
+    -0.8,0.45,0.45,0.45,0.45,
+    
+    0.26666666666666666667,-0.57857142857142857143,-0.57857142857142857143,
+       -0.57857142857142857143,-0.57857142857142857143,0.3047619047619047619,
+       0.3047619047619047619,0.3047619047619047619,0.3047619047619047619,
+       0.3047619047619047619,0.3047619047619047619,0.3047619047619047619,
+       0.3047619047619047619,0.3047619047619047619,0.3047619047619047619
+};
+
+quadraturerule grundmann12 = {
+    .name = "grundmann12",
+    .grade = 3,
+    .order = 5,
+    .nnodes = 5,
+    .next = 15,
+    .nodes = grundmann12pts,
+    .weights = grundmann12wts,
+};
+
+/* --------------------------------
+ * List of quadrature rules
+ * -------------------------------- */
+
 quadraturerule *quadrules[] = {
     &midpointsimpson, &gk13, &gk25, &gk511, &gk715,
     &tri410, &tri1020, &cubtri,
     &keast4, &keast5, &tet5, &tet6,
+    &grundmann12,
     NULL
 };
 
@@ -1707,6 +1756,7 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
     // Estimate error
     if (rule->next!=INTEGRATE_NOEXT) { // Evaluate extension rule
         double r2 = integrate_sumlistweighted(rule->next, f, &rule->weights[rule->nnodes]);
+        work->lval= work->val; // Retain lower order estimate
         work->val = work->weight*r2; // Record better estimate
         work->err = work->weight*fabs(r2-r1); // Use the difference as the error estimator
     } else if (integrate->errrule) {  // Otherwise, use the error rule to obtain the estimate
@@ -1928,7 +1978,8 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
     integrator_pushworkitem(integrate, &work);
     integrator_estimate(integrate); // Initial estimate
     
-    for (int iter=0; iter<integrate->maxiterations; iter++) {
+    int iter;
+    if (integrate->adapt) for (iter=0; iter<integrate->maxiterations; iter++) {
         // Convergence check
         if (fabs(integrate->val)<integrate->ztol || fabs(integrate->err/integrate->val)<integrate->tol) break;
         
@@ -1974,7 +2025,7 @@ bool integrate(integrandfunction *integrand, unsigned int dim, unsigned int grad
     integrator integrate;
     integrator_init(&integrate);
     
-    integrator_configure(&integrate, true, grade, 2, NULL);
+    integrator_configure(&integrate, true, grade, -1, "grundmann12");
     success=integrator_integrate(&integrate, integrand, dim, x, nquantity, quantity, ref);
     
     *out = integrate.val;
@@ -1992,8 +2043,8 @@ bool integrate(integrandfunction *integrand, unsigned int dim, unsigned int grad
 int nevals;
 
 bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
-    double val = x[0]*x[1]*x[2];
-    *fout=val*val;
+    double val = x[0]; //*x[1]*x[2];
+    *fout=val;
     nevals++;
     return true;
 }
@@ -2031,6 +2082,7 @@ void integrate_test(void) {
     double out, out1, err1;
     int evals1;
     
+    nevals = 0;
     int Nmax = 1;
     for (int i=0; i<Nmax; i++) {
         evals1 = 0;
@@ -2043,7 +2095,7 @@ void integrate_test(void) {
     printf("New integrator: %g (%g) with %i function evaluations.\n", out1, err1, evals1);
     printf("Old integrator: %g with %i function evaluations.\n", out, nevals);
     
-    double trueval = 0.000132275132275132275132275132275;
+    double trueval = 2.70562770562770562770562770563e-6;
     
     printf("Difference %g (relative error %g) tol: %g\n", fabs(out-out1), fabs(out-out1)/out1, INTEGRATE_ACCURACYGOAL);
     

@@ -38,8 +38,11 @@ typedef bool (integrandfunction) (unsigned int dim, double *lambda, double *x, u
  * Quadrature rules define wts/nodes
  * ---------------------------------- */
 
-typedef unsigned int quadrature_flags;
-
+/** @details A quadrature rule is defined by:
+    - a set of nodes, given in barycentric coordinates (d+1 values per node)
+    - and a set of weights
+    - metadata
+    The integrator is designed to work with rules which provide a higher order extension. */
 typedef struct {
     char *name; /** Identifier for the rule */
     int grade; /** Dimensionality of element the rule operates on */
@@ -50,12 +53,18 @@ typedef struct {
     double *weights; /** Weights */
 } quadraturerule;
 
-/** Indicate that a quadrature rule doesn't have extensions */
+/** Indicate that a quadrature rule doesn't have a extension */
 #define INTEGRATE_NOEXT -1
 
 /* ----------------------------------
  * Subdivision rules
  * ---------------------------------- */
+
+/** @details A subdivision rule is defined by:
+    - a set of new nodes to be created in the original element, given as barycentric coordinates
+    - a list of vertex ids defining the new element (the original vertices are labelled 0...grade-1
+    - a list of weights for the new elements (the fraction of the total d-volume of the original element)
+    - metadata */
 
 typedef struct {
     int grade;    /** Appropriate grade for the strategy */

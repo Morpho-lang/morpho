@@ -356,7 +356,7 @@ bool integrate_areaint(integrandfunction *function, unsigned int dim, double *x[
     double *xn[3]; /* Will hold the vertices. */
     double x01[dim], x12[dim], x20[dim]; /* Vertices from midpoints */
     double sub;
-    value q01[nquantity], q12[nquantity], q20[nquantity], *qn[3];
+    value q01[nquantity+1], q12[nquantity+1], q20[nquantity+1], *qn[3];
     
     r3=0.0;
     /* New vertices s*/
@@ -825,141 +825,9 @@ double testintegrand(unsigned int dim, double *t, double *x, unsigned int nquant
  * New integrator
  * ********************************************************************** */
 
-DEFINE_VARRAY(quadratureworkitem, quadratureworkitem)
-
-/* -------------------------------------------------
- * Basic operations on the integrator data structure
- * ------------------------------------------------- */
-
-/** Initialize an integrator structure */
-void integrator_init(integrator *integrate) {
-    integrate->adapt = true;
-    integrate->integrand = NULL;
-    integrate->rule = NULL;
-    integrate->errrule = NULL;
-    integrate->subdivide = NULL;
-    integrate->nquantity = 0;
-    integrate->tol = INTEGRATE_ACCURACYGOAL;
-    integrate->ztol = INTEGRATE_ZEROCHECK;
-    integrate->maxiterations = INTEGRATE_MAXITERATIONS;
-    integrate->dim = 0;
-    integrate->ref = NULL;
-    integrate->val = 0;
-    integrate->err = 0;
-    integrate->workp = -1;
-    integrate->freep = -1;
-    varray_quadratureworkiteminit(&integrate->worklist);
-    varray_doubleinit(&integrate->vertexstack);
-    varray_intinit(&integrate->elementstack);
-    error_init(&integrate->emsg);
-}
-
-/** Free data associated with an integrator */
-void integrator_clear(integrator *integrate) {
-    varray_quadratureworkitemclear(&integrate->worklist);
-    varray_intclear(&integrate->elementstack);
-    varray_doubleclear(&integrate->vertexstack);
-}
-
-/** Adds a vertex to the integrators vertex stack, returning the id */
-int integrator_addvertex(integrator *integrate, int ndof, double *v) {
-    int vid = integrate->vertexstack.count;
-    varray_doubleadd(&integrate->vertexstack, v, ndof);
-    return vid;
-}
-
-/** Adds an element to the element stack, returning the id */
-int integrator_addelement(integrator *integrate, int nv, int *vid) {
-    int elid=integrate->elementstack.count;
-    varray_intadd(&integrate->elementstack, vid, nv);
-    return elid;
-}
-
-/** Retrieves the vertex pointers given an elementid.
- @warning: The pointers returned should not be used after a call to integrator_addvertex */
-void integrator_getvertices(integrator *integrate, int elementid, int nv, double **vert) {
-    for (int i=0; i<nv; i++) {
-        int vid=integrate->elementstack.data[elementid+i];
-        vert[i]=&(integrate->vertexstack.data[vid]);
-    }
-}
-
-/** Retrieves an element with elementid */
-void integrator_getelement(integrator *integrate, int elementid, int nv, int *vid) {
-    for (int i=0; i<nv; i++) vid[i]=integrate->elementstack.data[elementid+i];
-}
-
-/** Adds a work item to the integrator's work list.
-    Uses a binary queue data structure to facilitate ln(N) push and pop - https://en.wikipedia.org/wiki/Binary_heap */
-bool integrator_pushworkitem(integrator *integrate, quadratureworkitem *work) {
-    varray_quadratureworkitemadd(&integrate->worklist, work, 1);
-    
-    for (int i=integrate->worklist.count-1, p; i>0; i=p) {
-        p=floor((i-1)/2); // Parent
-        if (integrate->worklist.data[i].err>integrate->worklist.data[p].err) {
-            quadratureworkitem swp=integrate->worklist.data[i];
-            integrate->worklist.data[i]=integrate->worklist.data[p];
-            integrate->worklist.data[p]=swp;
-        } else break;
-    }
-    
-    return true;
-}
-
-/** Pops the work item with the largest error */
-bool integrator_popworkitem(integrator *integrate, quadratureworkitem *work) {
-    *work = integrate->worklist.data[0];
-    
-    // Move the last element into first place and pop
-    int n=integrate->worklist.count-1;
-    if (n>0) integrate->worklist.data[0]=integrate->worklist.data[n];
-    integrate->worklist.count--;
-    
-    // Go down the heap, ensuring that the heap property is maintained
-    for (int i=0, p, q; i<n; i=p) {
-        p=2*i + 1; // Left - child nodes
-        q=p+1;     // Right
-        
-        // Check if the right child element has a larger value, if it exists
-        if (q<n &&
-            integrate->worklist.data[q].err>integrate->worklist.data[p].err) {
-            p=q;
-        }
-        
-        // If the child element is larger, swap it up
-        if (p<n && integrate->worklist.data[p].err>integrate->worklist.data[i].err) {
-            quadratureworkitem swp=integrate->worklist.data[i];
-            integrate->worklist.data[i]=integrate->worklist.data[p];
-            integrate->worklist.data[p]=swp;
-        } else break;
-    }
-    
-    return true;
-}
-
-/** Estimate the value and error of the integrand given a worklist */
-void integrator_estimate(integrator *integrate) {
-    double sumval=0.0, cval=0.0, yval, tval,
-           sumerr=0.0, cerr=0.0, yerr, terr;
-
-    for (unsigned int i=0; i<integrate->worklist.count; i++) {
-        yval=integrate->worklist.data[i].val-cval;
-        yerr=integrate->worklist.data[i].err-cerr;
-        tval=sumval+yval;
-        terr=sumerr+yerr;
-        cval=(tval-sumval)-yval;
-        cerr=(terr-sumerr)-yerr;
-        sumval=tval;
-        sumerr=terr;
-    }
-    
-    integrate->val = sumval;
-    integrate->err = sumerr;
-}
-
-/* --------------------------------
+/* **********************************************
  * Quadrature rules
- * -------------------------------- */
+ * ********************************************** */
 
 /* --------------------------------
  * Simple midpoint-simpson rule
@@ -1431,88 +1299,9 @@ quadraturerule *quadrules[] = {
     NULL
 };
 
-/* --------------------------------
- * Linear interpolation
- * -------------------------------- */
-
-void linearinterpolate(int nbary, double *bary, int dim, double **v, double *x) {
-    for (int j=0; j<dim; j++) x[j]=0.0;
-    for (int j=0; j<dim; j++) {
-        for (int k=0; k<nbary; k++) {
-            x[j]+=v[k][j]*bary[k];
-        }
-    }
-}
-
-/** Also provide a version using BLAS to accelerate multiplication */
-void prepareinterpolate(int nbary, int dim, double **v, double *vv) {
-    int k=0;
-    for (int i=0; i<nbary; i++) {
-        for (int j=0; j<dim; j++) {
-            vv[k]=v[i][j];
-            k++;
-        }
-    }
-}
-
-void xlinearinterpolate(int nbary, double *bary, int dim, double *vv, double *x) {
-    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, dim, 1, nbary, 1.0, vv, dim, bary, nbary, 0.0, x, dim);
-}
-    
-/* --------------------------------
- * Function to perform quadrature
- * -------------------------------- */
-
-/** Weighted sum of a list */
-double integrate_sumlistweighted(unsigned int nel, double *list, double *wts) {
-    return cblas_ddot(nel, list, 1, wts, 1);
-}
-
-/** Integrates a function over an element specified in work, filling out the integral and error estimate if provided */
-bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem *work) {
-    int n = (rule->next!=INTEGRATE_NOEXT ? rule->next : rule->nnodes);
-    int nbary = rule->grade+1; // Number of barycentric points
-    
-    double *vert[nbary], vmat[nbary*integrate->dim];
-    integrator_getvertices(integrate, work->elementid, nbary, vert);
-    
-    prepareinterpolate(nbary, integrate->dim, vert, vmat);
-    
-    double x[integrate->dim];
-    double f[n];
-    
-    for (unsigned int i=0; i<n; i++) {
-        // Interpolate the point
-        xlinearinterpolate(nbary, &rule->nodes[nbary*i], integrate->dim, vmat, x);
-
-        // Evaluate function
-        if (!(*integrate->integrand) (rule->grade, &rule->nodes[nbary*i], x, integrate->nquantity, NULL, integrate->ref, &f[i])) return false;
-    }
-    
-    double r1 = integrate_sumlistweighted(rule->nnodes, f, rule->weights);
-    work->lval = work->val = work->weight*r1;
-    
-    // Estimate error
-    if (rule->next!=INTEGRATE_NOEXT) { // Evaluate extension rule
-        double r2 = integrate_sumlistweighted(rule->next, f, &rule->weights[rule->nnodes]);
-        work->val = work->weight*r2; // Record better estimate
-        work->err = work->weight*fabs(r2-r1); // Use the difference as the error estimator
-    } else if (integrate->errrule) {  // Otherwise, use the error rule to obtain the estimate
-        if (rule==integrate->errrule) return true; // We already are using the error rule
-        double temp = work->val; // Retain the lower order estimate
-        if (!quadrature(integrate, integrate->errrule, work)) return false;
-        work->lval=temp;
-        work->err=fabs(work->val-temp); // Estimate error from difference of rules
-    } else {
-        UNREACHABLE("Integrator definition inconsistent.");
-    }
-    
-    return true;
-}
-
-/* --------------------------------
+/* **********************************************
  * Subdivision rules
- * -------------------------------- */
+ * ********************************************** */
 
 /* -------
  *   1D
@@ -1649,6 +1438,218 @@ subdivisionrule *subdivisionrules[] = {
     &tetsection,
     NULL
 };
+
+
+/* **********************************************
+ * Integrator data structure and operations
+ * ********************************************** */
+
+DEFINE_VARRAY(quadratureworkitem, quadratureworkitem)
+
+/** Initialize an integrator structure */
+void integrator_init(integrator *integrate) {
+    integrate->adapt = true;
+    integrate->integrand = NULL;
+    integrate->rule = NULL;
+    integrate->errrule = NULL;
+    integrate->subdivide = NULL;
+    integrate->nquantity = 0;
+    integrate->tol = INTEGRATE_ACCURACYGOAL;
+    integrate->ztol = INTEGRATE_ZEROCHECK;
+    integrate->maxiterations = INTEGRATE_MAXITERATIONS;
+    integrate->dim = 0;
+    integrate->ref = NULL;
+    integrate->val = 0;
+    integrate->err = 0;
+    integrate->workp = -1;
+    integrate->freep = -1;
+    varray_quadratureworkiteminit(&integrate->worklist);
+    varray_doubleinit(&integrate->vertexstack);
+    varray_intinit(&integrate->elementstack);
+    error_init(&integrate->emsg);
+}
+
+/** Free data associated with an integrator */
+void integrator_clear(integrator *integrate) {
+    varray_quadratureworkitemclear(&integrate->worklist);
+    varray_intclear(&integrate->elementstack);
+    varray_doubleclear(&integrate->vertexstack);
+}
+
+/** Adds a vertex to the integrators vertex stack, returning the id */
+int integrator_addvertex(integrator *integrate, int ndof, double *v) {
+    int vid = integrate->vertexstack.count;
+    varray_doubleadd(&integrate->vertexstack, v, ndof);
+    return vid;
+}
+
+/** Adds an element to the element stack, returning the id */
+int integrator_addelement(integrator *integrate, int nv, int *vid) {
+    int elid=integrate->elementstack.count;
+    varray_intadd(&integrate->elementstack, vid, nv);
+    return elid;
+}
+
+/** Retrieves the vertex pointers given an elementid.
+ @warning: The pointers returned should not be used after a call to integrator_addvertex */
+void integrator_getvertices(integrator *integrate, int elementid, int nv, double **vert) {
+    for (int i=0; i<nv; i++) {
+        int vid=integrate->elementstack.data[elementid+i];
+        vert[i]=&(integrate->vertexstack.data[vid]);
+    }
+}
+
+/** Retrieves an element with elementid */
+void integrator_getelement(integrator *integrate, int elementid, int nv, int *vid) {
+    for (int i=0; i<nv; i++) vid[i]=integrate->elementstack.data[elementid+i];
+}
+
+/** Adds a work item to the integrator's work list.
+    Uses a binary queue data structure to facilitate ln(N) push and pop - https://en.wikipedia.org/wiki/Binary_heap */
+bool integrator_pushworkitem(integrator *integrate, quadratureworkitem *work) {
+    varray_quadratureworkitemadd(&integrate->worklist, work, 1);
+    
+    for (int i=integrate->worklist.count-1, p; i>0; i=p) {
+        p=floor((i-1)/2); // Parent
+        if (integrate->worklist.data[i].err>integrate->worklist.data[p].err) {
+            quadratureworkitem swp=integrate->worklist.data[i];
+            integrate->worklist.data[i]=integrate->worklist.data[p];
+            integrate->worklist.data[p]=swp;
+        } else break;
+    }
+    
+    return true;
+}
+
+/** Pops the work item with the largest error */
+bool integrator_popworkitem(integrator *integrate, quadratureworkitem *work) {
+    *work = integrate->worklist.data[0];
+    
+    // Move the last element into first place and pop
+    int n=integrate->worklist.count-1;
+    if (n>0) integrate->worklist.data[0]=integrate->worklist.data[n];
+    integrate->worklist.count--;
+    
+    // Go down the heap, ensuring that the heap property is maintained
+    for (int i=0, p, q; i<n; i=p) {
+        p=2*i + 1; // Left - child nodes
+        q=p+1;     // Right
+        
+        // Check if the right child element has a larger value, if it exists
+        if (q<n &&
+            integrate->worklist.data[q].err>integrate->worklist.data[p].err) {
+            p=q;
+        }
+        
+        // If the child element is larger, swap it up
+        if (p<n && integrate->worklist.data[p].err>integrate->worklist.data[i].err) {
+            quadratureworkitem swp=integrate->worklist.data[i];
+            integrate->worklist.data[i]=integrate->worklist.data[p];
+            integrate->worklist.data[p]=swp;
+        } else break;
+    }
+    
+    return true;
+}
+
+/** Estimate the value and error of the integrand given a worklist */
+void integrator_estimate(integrator *integrate) {
+    double sumval=0.0, cval=0.0, yval, tval,
+           sumerr=0.0, cerr=0.0, yerr, terr;
+
+    for (unsigned int i=0; i<integrate->worklist.count; i++) {
+        yval=integrate->worklist.data[i].val-cval;
+        yerr=integrate->worklist.data[i].err-cerr;
+        tval=sumval+yval;
+        terr=sumerr+yerr;
+        cval=(tval-sumval)-yval;
+        cerr=(terr-sumerr)-yerr;
+        sumval=tval;
+        sumerr=terr;
+    }
+    
+    integrate->val = sumval;
+    integrate->err = sumerr;
+}
+
+/* --------------------------------
+ * Linear interpolation
+ * -------------------------------- */
+
+void linearinterpolate(int nbary, double *bary, int dim, double **v, double *x) {
+    for (int j=0; j<dim; j++) x[j]=0.0;
+    for (int j=0; j<dim; j++) {
+        for (int k=0; k<nbary; k++) {
+            x[j]+=v[k][j]*bary[k];
+        }
+    }
+}
+
+/** Also provide a version using BLAS to accelerate multiplication */
+void prepareinterpolate(int nbary, int dim, double **v, double *vv) {
+    int k=0;
+    for (int i=0; i<nbary; i++) {
+        for (int j=0; j<dim; j++) {
+            vv[k]=v[i][j];
+            k++;
+        }
+    }
+}
+
+void xlinearinterpolate(int nbary, double *bary, int dim, double *vv, double *x) {
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, dim, 1, nbary, 1.0, vv, dim, bary, nbary, 0.0, x, dim);
+}
+    
+/* --------------------------------
+ * Function to perform quadrature
+ * -------------------------------- */
+
+/** Weighted sum of a list */
+double integrate_sumlistweighted(unsigned int nel, double *list, double *wts) {
+    return cblas_ddot(nel, list, 1, wts, 1);
+}
+
+/** Integrates a function over an element specified in work, filling out the integral and error estimate if provided */
+bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem *work) {
+    int n = (rule->next!=INTEGRATE_NOEXT ? rule->next : rule->nnodes);
+    int nbary = rule->grade+1; // Number of barycentric points
+    
+    double *vert[nbary], vmat[nbary*integrate->dim];
+    integrator_getvertices(integrate, work->elementid, nbary, vert);
+    
+    prepareinterpolate(nbary, integrate->dim, vert, vmat);
+    
+    double x[integrate->dim];
+    double f[n];
+    
+    for (unsigned int i=0; i<n; i++) {
+        // Interpolate the point
+        xlinearinterpolate(nbary, &rule->nodes[nbary*i], integrate->dim, vmat, x);
+
+        // Evaluate function
+        if (!(*integrate->integrand) (rule->grade, &rule->nodes[nbary*i], x, integrate->nquantity, NULL, integrate->ref, &f[i])) return false;
+    }
+    
+    double r1 = integrate_sumlistweighted(rule->nnodes, f, rule->weights);
+    work->lval = work->val = work->weight*r1;
+    
+    // Estimate error
+    if (rule->next!=INTEGRATE_NOEXT) { // Evaluate extension rule
+        double r2 = integrate_sumlistweighted(rule->next, f, &rule->weights[rule->nnodes]);
+        work->val = work->weight*r2; // Record better estimate
+        work->err = work->weight*fabs(r2-r1); // Use the difference as the error estimator
+    } else if (integrate->errrule) {  // Otherwise, use the error rule to obtain the estimate
+        if (rule==integrate->errrule) return true; // We already are using the error rule
+        double temp = work->val; // Retain the lower order estimate
+        if (!quadrature(integrate, integrate->errrule, work)) return false;
+        work->lval=temp;
+        work->err=fabs(work->val-temp); // Estimate error from difference of rules
+    } else {
+        UNREACHABLE("Integrator definition inconsistent.");
+    }
+    
+    return true;
+}
 
 /* --------------------------------
  * Subdivision
@@ -1921,7 +1922,7 @@ int nevals;
 
 bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
     //double val = x[0]*x[1]*x[2];
-    *fout=1.0/sqrt(x[0]);
+    *fout=x[0]*x[1];
     nevals++;
     return true;
 }
@@ -1937,7 +1938,7 @@ void integrate_test1(double *out, double *err) {
     double *xx[] = { x0, x1, x2, x3 };
     value *quantities[] = { NULL, NULL, NULL, NULL };
     
-    integrate(test_integrand, 1, 1, xx, 0, quantities, NULL, out, err);
+    integrate(test_integrand, 2, 2, xx, 0, quantities, NULL, out, err);
     
     return;
 }
@@ -1952,7 +1953,7 @@ void integrate_test2(double *out) {
     double x3[3] = { 0, 0, 1 };
     double *xx[] = { x0, x1, x2, x3 };
     value *quantities[] = { NULL, NULL, NULL, NULL };
-    integrate_integrate(test_integrand, 1, 1, xx, 0, quantities, NULL, out);
+    integrate_integrate(test_integrand, 2, 2, xx, 0, quantities, NULL, out);
 }
 
 void integrate_test(void) {
@@ -1971,7 +1972,7 @@ void integrate_test(void) {
     printf("New integrator: %g (%g) with %i function evaluations.\n", out1, err1, evals1);
     printf("Old integrator: %g with %i function evaluations.\n", out, nevals);
     
-    double trueval = 2;
+    double trueval = 0.533333333333333333333333333333;
     
     printf("Difference %g (relative error %g) tol: %g\n", fabs(out-out1), fabs(out-out1)/out1, INTEGRATE_ACCURACYGOAL);
     

@@ -1678,6 +1678,7 @@ void integrator_estimate(integrator *integrate) {
     double sumval=0.0, cval=0.0, yval, tval,
            sumerr=0.0, cerr=0.0, yerr, terr;
 
+    // Sum in reverse as smallest entries should be nearer the end
     for (int i=integrate->worklist.count-1; i>=0; i--) {
         yval=integrate->worklist.data[i].val-cval;
         yerr=integrate->worklist.data[i].err-cerr;

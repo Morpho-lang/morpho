@@ -1581,6 +1581,7 @@ void integrator_init(integrator *integrate) {
     integrate->ref = NULL;
     integrate->val = 0;
     integrate->err = 0;
+    integrate->niterations = 0;
     integrate->workp = -1;
     integrate->freep = -1;
     varray_quadratureworkiteminit(&integrate->worklist);
@@ -1677,7 +1678,7 @@ void integrator_estimate(integrator *integrate) {
     double sumval=0.0, cval=0.0, yval, tval,
            sumerr=0.0, cerr=0.0, yerr, terr;
 
-    for (unsigned int i=0; i<integrate->worklist.count; i++) {
+    for (int i=integrate->worklist.count-1; i>=0; i--) {
         yval=integrate->worklist.data[i].val-cval;
         yerr=integrate->worklist.data[i].err-cerr;
         tval=sumval+yval;
@@ -1756,7 +1757,6 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
     // Estimate error
     if (rule->next!=INTEGRATE_NOEXT) { // Evaluate extension rule
         double r2 = integrate_sumlistweighted(rule->next, f, &rule->weights[rule->nnodes]);
-        work->lval= work->val; // Retain lower order estimate
         work->val = work->weight*r2; // Record better estimate
         work->err = work->weight*fabs(r2-r1); // Use the difference as the error estimator
     } else if (integrate->errrule) {  // Otherwise, use the error rule to obtain the estimate
@@ -2000,6 +2000,8 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
         update(integrate, &work, nels, newitems);
     }
     
+    integrate->niterations=iter;
+    
     // Final estimate by Kahan summing heap
     integrator_estimate(integrate);
     
@@ -2031,6 +2033,8 @@ bool integrate(integrandfunction *integrand, unsigned int dim, unsigned int grad
     *out = integrate.val;
     *err = integrate.err;
     
+    printf("Number of iterations: %i [max: %i]\n", integrate.niterations, INTEGRATE_MAXITERATIONS);
+    
     integrator_clear(&integrate);
     
     return success;
@@ -2043,8 +2047,8 @@ bool integrate(integrandfunction *integrand, unsigned int dim, unsigned int grad
 int nevals;
 
 bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
-    double val = x[0]; //*x[1]*x[2];
-    *fout=val;
+    double val = x[0]*x[1]*x[2];
+    *fout=val*x[0]; //pow(x[0],1.1);
     nevals++;
     return true;
 }

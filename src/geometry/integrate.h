@@ -117,6 +117,7 @@ typedef struct {
     double tol; /** Tolerance for relative error */
     int maxiterations; /** Maximum number of subdivisions to perform */
     
+    int niterations; /** Number of iterations performed */
     double val; /** Estimated value of the integral */
     double err; /** Estimated error of the integral */
     

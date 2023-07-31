@@ -2082,9 +2082,29 @@ double integrate_sumlistweighted(unsigned int nel, double *list, double *wts) {
     return cblas_ddot(nel, list, 1, wts, 1);
 }
 
+/** Evaluates the integrand at specified places */
+bool integrate_evalfn(integrator *integrate, quadraturerule *rule, int nbary, int imin, int imax, double *vmat, double *x, double *f) {
+    for (int i=imin; i<imax; i++) {
+        // Interpolate the point
+        xlinearinterpolate(nbary, &rule->nodes[nbary*i], integrate->dim, vmat, x);
+
+        // Evaluate function
+        if (!(*integrate->integrand) (rule->grade, &rule->nodes[nbary*i], x, integrate->nquantity, NULL, integrate->ref, &f[i])) return false;
+    }
+    return true;
+}
+
 /** Integrates a function over an element specified in work, filling out the integral and error estimate if provided */
 bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem *work) {
-    int n = (rule->ext!=NULL ? rule->ext->nnodes : rule->nnodes);
+    int n = rule->nnodes;
+    
+    int nmax = rule->nnodes;
+    int np = 0; // Number of levels of p-refinement
+    for (quadraturerule *q = rule->ext; q!=NULL; q=q->ext) {
+        nmax = q->nnodes;
+        np++;
+    }
+    
     int nbary = rule->grade+1; // Number of barycentric points
     
     double *vert[nbary], vmat[nbary*integrate->dim];
@@ -2093,24 +2113,41 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
     prepareinterpolate(nbary, integrate->dim, vert, vmat);
     
     double x[integrate->dim];
-    double f[n];
+    double f[nmax];
     
-    for (unsigned int i=0; i<n; i++) {
-        // Interpolate the point
-        xlinearinterpolate(nbary, &rule->nodes[nbary*i], integrate->dim, vmat, x);
-
-        // Evaluate function
-        if (!(*integrate->integrand) (rule->grade, &rule->nodes[nbary*i], x, integrate->nquantity, NULL, integrate->ref, &f[i])) return false;
-    }
+    if (!integrate_evalfn(integrate, rule, nbary, 0, rule->nnodes, vmat, x, f)) return false;
     
-    double r1 = integrate_sumlistweighted(rule->nnodes, f, rule->weights);
-    work->lval = work->val = work->weight*r1;
+    double r[np+1];
+    double eps[np+1];
+    r[0]=integrate_sumlistweighted(rule->nnodes, f, rule->weights);
+    eps[0]=0.0;
+    work->lval = work->val = work->weight*r[0];
     
     // Estimate error
     if (rule->ext!=NULL) { // Evaluate extension rule
-        double r2 = integrate_sumlistweighted(rule->ext->nnodes, f, rule->ext->weights);
-        work->val = work->weight*r2; // Record better estimate
-        work->err = work->weight*fabs(r2-r1); // Use the difference as the error estimator
+        int nmin = rule->nnodes, ip=0;
+        // Attempt p-refinement
+        for (quadraturerule *q=rule->ext; q!=NULL; q=q->ext) {
+            ip++;
+            if (!integrate_evalfn(integrate, q, nbary, nmin, q->nnodes, vmat, x, f)) return false;
+            
+            r[ip]=integrate_sumlistweighted(q->nnodes, f, q->weights);
+            eps[ip]=fabs(r[ip]-r[ip-1]);
+            nmin = q->nnodes;
+            
+            if (fabs(eps[ip]/r[ip])<1e-14) break;
+            if (ip>1 && eps[ip]>0.05*eps[ip-1]) break; // p-refinement doesn't seem to be working
+        }
+        
+        printf("p: ");
+        for (int k=0; k<=ip; k++) printf("%g (%g)", r[k], eps[k]);
+        printf("\neps: ");
+        for (int k=2; k<=ip; k++) printf("%g ", eps[k]/eps[k-1]);
+        printf("\n");
+        
+        work->lval = work->weight*r[ip-1];
+        work->val = work->weight*r[ip]; // Record better estimate
+        work->err = work->weight*eps[ip]; // Use the difference as the error estimator
     } else if (integrate->errrule) {  // Otherwise, use the error rule to obtain the estimate
         if (rule==integrate->errrule) return true; // We already are using the error rule
         double temp = work->val; // Retain the lower order estimate
@@ -2392,7 +2429,7 @@ bool integrate(integrandfunction *integrand, unsigned int dim, unsigned int grad
     integrator integrate;
     integrator_init(&integrate);
     
-    if (!integrator_configure(&integrate, true, grade, -1, "grundmann4")) return false;
+    if (!integrator_configure(&integrate, true, grade, -1, "grundmann1")) return false;
     success=integrator_integrate(&integrate, integrand, dim, x, nquantity, quantity, ref);
     
     *out = integrate.val;
@@ -2412,8 +2449,11 @@ bool integrate(integrandfunction *integrand, unsigned int dim, unsigned int grad
 int nevals;
 
 bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
-    double val = x[0]*x[1]*x[2];
-    *fout=val*val*val*val*val;//sqrt(val);
+    //double val = pow(sin(x[0]+x[1]),-0.5); //x[0]*x[1]*x[2]; // exp(-x[0]*x[0]); //sqrt(x[0]); //exp(-x[0]*x[0]); //*x[1]*x[2];
+    //if (x[0]-x[1]<0.5) val=1.0;
+    double val = sin(3*x[0]+6*x[1]);
+    
+    *fout=val; //val*val*val*val;
     nevals++;
     return true;
 }

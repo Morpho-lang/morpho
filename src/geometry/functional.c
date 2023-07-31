@@ -4352,7 +4352,13 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
         }
     }
 
-    success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_AREA, x, iref.nfields, q, &iref, out);
+    if (MORPHO_ISDICTIONARY(iref.method)) {
+        double err;
+        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_AREA, x, iref.nfields, q, &iref, out, &err);
+    } else {
+        success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_AREA, x, iref.nfields, q, &iref, out);
+    }
+    
     if (success) *out *= elref.elementsize;
 
     integral_freetlvars(v);
@@ -4433,7 +4439,13 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
         }
     }
 
-    success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, q, &iref, out);
+    if (MORPHO_ISDICTIONARY(iref.method)) {
+        double err;
+        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, q, &iref, out, &err);
+    } else {
+        success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, q, &iref, out);
+    }
+    
     if (success) *out *=elref.elementsize;
 
     integral_freetlvars(v);

@@ -1846,7 +1846,7 @@ void morpho_initialize(void) {
     parse_initialize();
     compile_initialize();
     extensions_initialize();
-
+    
 #ifdef MORPHO_DEBUG_GCSIZETRACKING
     dictionary_init(&sizecheck);
 #endif

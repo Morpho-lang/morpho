@@ -1,0 +1,24 @@
+// Class to count number of times a function is evaluated
+// Used by integration testing suite 
+
+class EvaluationCounter {
+    init(func) {
+        self.func = func
+        self.pts = []
+    }
+
+    eval(x) {
+        self.pts.append(x.clone())
+        var xx = [] 
+        for (u in x) xx.append(u)
+        return apply(self.func, xx)
+    }
+
+    reset() {
+        self.pts = []
+    }
+
+    count() {
+        return self.pts.count() 
+    }
+}

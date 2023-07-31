@@ -1761,8 +1761,8 @@ quadraturerule *quadrules[] = {
     &gauss7, &kronrod15,
 
     &tri4, &tri10, &tri20,
-
     &cubtri7, &cubtri19,
+    
     &keast4, &keast5,
     &tet5, &tet6,
 
@@ -2126,6 +2126,7 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
     // Estimate error
     if (rule->ext!=NULL) { // Evaluate extension rule
         int nmin = rule->nnodes, ip=0;
+        
         // Attempt p-refinement
         for (quadraturerule *q=rule->ext; q!=NULL; q=q->ext) {
             ip++;
@@ -2136,14 +2137,7 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
             nmin = q->nnodes;
             
             if (fabs(eps[ip]/r[ip])<1e-14) break;
-            if (ip>1 && eps[ip]>0.05*eps[ip-1]) break; // p-refinement doesn't seem to be working
         }
-        
-        printf("p: ");
-        for (int k=0; k<=ip; k++) printf("%g (%g)", r[k], eps[k]);
-        printf("\nratios: ");
-        for (int k=2; k<=ip; k++) printf("%g ", eps[k]/eps[k-1]);
-        printf("\n");
         
         work->lval = work->weight*r[ip-1];
         work->val = work->weight*r[ip]; // Record better estimate
@@ -2409,8 +2403,7 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
     integrator_pushworkitem(integrate, &work);
     integrator_estimate(integrate); // Initial estimate
     
-    int iter;
-    if (integrate->adapt) for (iter=0; iter<integrate->maxiterations; iter++) {
+    if (integrate->adapt) for (integrate->niterations=0; integrate->niterations<=integrate->maxiterations; integrate->niterations++) {
         // Convergence check
         if (fabs(integrate->val)<integrate->ztol || fabs(integrate->err/integrate->val)<integrate->tol) break;
         
@@ -2430,8 +2423,6 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
         // Add new items to heap and update error estimates
         update(integrate, &work, nels, newitems);
     }
-    
-    integrate->niterations=iter;
     
     // Final estimate by Kahan summing heap
     integrator_estimate(integrate);
@@ -2466,8 +2457,6 @@ bool integrate(integrandfunction *integrand, objectdictionary *method, unsigned 
     
     *out = integrate.val;
     *err = integrate.err;
-    
-    printf("Number of iterations: %i [max: %i]\n", integrate.niterations, INTEGRATE_MAXITERATIONS);
     
     integrator_clear(&integrate);
     

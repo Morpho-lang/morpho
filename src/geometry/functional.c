@@ -3836,6 +3836,7 @@ typedef struct {
     int nfields;
     value *fields;
     value *originalfields; // Original fields
+    value method; // Method dictionary
     vm *v;
 } integralref;
 
@@ -4095,17 +4096,24 @@ void integral_freetlvars(vm *v) {
  * LineIntegral
  * ---------------------------------------------- */
 
+value functional_methodproperty;
+
 /** Prepares an integral reference */
 bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, integralref *ref) {
     bool success=false;
     value func=MORPHO_NIL;
     value field=MORPHO_NIL;
+    value method=MORPHO_NIL;
     ref->v=NULL;
     ref->nfields=0;
 
     if (objectinstance_getpropertyinterned(self, scalarpotential_functionproperty, &func) &&
         MORPHO_ISCALLABLE(func)) {
         ref->integrand=func;
+        success=true;
+    }
+    if (objectinstance_getpropertyinterned(self, functional_methodproperty, &method)) {
+        ref->method=method;
         success=true;
     }
     if (objectinstance_getpropertyinterned(self, functional_fieldproperty, &field) &&
@@ -4179,7 +4187,7 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     integralref iref = *(integralref *) ref;
     double *x[nv];
     bool success;
-    value qgrad[iref.nfields];
+    value qgrad[iref.nfields+1];
     for (int i=0; i<iref.nfields; i++) qgrad[i] = MORPHO_NIL;
     
     objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_LINE, id, nv, vid);
@@ -4206,7 +4214,13 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
         }
     }
 
-    success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_LINE, x, iref.nfields, q, &iref, out);
+    if (MORPHO_ISDICTIONARY(iref.method)) {
+        double err;
+        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_LINE, x, iref.nfields, q, &iref, out, &err);
+    } else {
+        success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_LINE, x, iref.nfields, q, &iref, out);
+    }
+    
     if (success) *out *=elref.elementsize;
 
     integral_freetlvars(v);
@@ -4224,8 +4238,18 @@ FUNCTIONAL_METHOD(LineIntegral, gradient, MESH_GRADE_LINE, integralref, integral
 value LineIntegral_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
     int nparams = -1;
+    int nfixed;
+    value method=MORPHO_NIL;
 
-    if (nargs>0) {
+    if (builtin_options(v, nargs, args, &nfixed, 1,
+                        functional_methodproperty, &method)) {
+        if (MORPHO_ISDICTIONARY(method)) objectinstance_setproperty(self, functional_methodproperty, method);
+    } else {
+        morpho_runtimeerror(v, LINEINTEGRAL_ARGS);
+        return MORPHO_NIL;
+    }
+    
+    if (nfixed>0) {
         value f = MORPHO_GETARG(args, 0);
 
         if (morpho_countparameters(f, &nparams)) {
@@ -4236,17 +4260,17 @@ value LineIntegral_init(vm *v, int nargs, value *args) {
         }
     }
 
-    if (nparams!=nargs) {
+    if (nparams!=nfixed) {
         morpho_runtimeerror(v, LINEINTEGRAL_NFLDS);
         return MORPHO_NIL;
     }
 
-    if (nargs>1) {
+    if (nfixed>1) {
         /* Remaining arguments should be fields */
         objectlist *list = object_newlist(nargs-1, & MORPHO_GETARG(args, 1));
         if (!list) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
 
-        for (unsigned int i=1; i<nargs; i++) {
+        for (unsigned int i=1; i<nfixed; i++) {
             if (!MORPHO_ISFIELD(MORPHO_GETARG(args, i))) {
                 morpho_runtimeerror(v, LINEINTEGRAL_ARGS);
                 object_free((object *) list);
@@ -4476,6 +4500,8 @@ void functional_initialize(void) {
     nematic_ktwistproperty=builtin_internsymbolascstring(NEMATIC_KTWIST_PROPERTY);
     nematic_kbendproperty=builtin_internsymbolascstring(NEMATIC_KBEND_PROPERTY);
     nematic_pitchproperty=builtin_internsymbolascstring(NEMATIC_PITCH_PROPERTY);
+    
+    functional_methodproperty=builtin_internsymbolascstring(INTEGRAL_METHOD_PROPERTY);
 
     curvature_integrandonlyproperty=builtin_internsymbolascstring(CURVATURE_INTEGRANDONLY_PROPERTY);
     curvature_geodesicproperty=builtin_internsymbolascstring(CURVATURE_GEODESIC_PROPERTY);

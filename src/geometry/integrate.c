@@ -2141,7 +2141,7 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
         
         printf("p: ");
         for (int k=0; k<=ip; k++) printf("%g (%g)", r[k], eps[k]);
-        printf("\neps: ");
+        printf("\nratios: ");
         for (int k=2; k<=ip; k++) printf("%g ", eps[k]/eps[k-1]);
         printf("\n");
         
@@ -2342,6 +2342,35 @@ bool integrator_configure(integrator *integrate, bool adapt, int grade, int orde
     return true;
 }
 
+/** Configures the integrator based on the contents of a dictionary */
+bool integrator_configurewithdictionary(integrator *integrate, grade g, objectdictionary *dict) {
+    char *name=NULL;
+    bool adapt=true;
+    int order=-1;
+    value val;
+    
+    objectstring rulelabel = MORPHO_STATICSTRING(INTEGRATE_RULELABEL);
+    objectstring degreelabel = MORPHO_STATICSTRING(INTEGRATE_DEGREELABEL);
+    objectstring adaptlabel = MORPHO_STATICSTRING(INTEGRATE_ADAPTLABEL);
+    
+    if (dictionary_get(&dict->dict, MORPHO_OBJECT(&rulelabel), &val) &&
+        MORPHO_ISSTRING(val)) {
+        name = MORPHO_GETCSTRING(val);
+    }
+
+    if (dictionary_get(&dict->dict, MORPHO_OBJECT(&degreelabel), &val) &&
+        MORPHO_ISINTEGER(val)) {
+        order = MORPHO_GETINTEGERVALUE(val);
+    }
+    
+    if (dictionary_get(&dict->dict, MORPHO_OBJECT(&adaptlabel), &val) &&
+        MORPHO_ISBOOL(val)) {
+        adapt = MORPHO_GETBOOLVALUE(val);
+    }
+    
+    return integrator_configure(integrate, adapt, g, order, name);
+}
+
 /* --------------------------------
  * Driver routine
  * -------------------------------- */
@@ -2416,6 +2445,7 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
 
 /** Integrate over an element - public interface for one off integrals.
  * @param[in] integrand   - integrand
+ * @param[in] method         - Dictionary with method selection (optional)
  * @param[in] dim                - Dimension of the vertices
  * @param[in] grade            - Grade to integrate over
  * @param[in] x                     - vertices of the triangle x[0] = {x,y,z} etc.
@@ -2424,12 +2454,14 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
  * @param[in] ref                - a pointer to any data required by the function
  * @param[out] out              - value of the integral
  * @returns true on success. */
-bool integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out, double *err) {
+bool integrate(integrandfunction *integrand, objectdictionary *method, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out, double *err) {
     bool success=false;
     integrator integrate;
     integrator_init(&integrate);
     
-    if (!integrator_configure(&integrate, true, grade, -1, "grundmann1")) return false;
+    if (method) {
+        if (!integrator_configurewithdictionary(&integrate, grade, method)) return false;
+    } else if (!integrator_configure(&integrate, true, grade, -1, NULL)) return false;
     success=integrator_integrate(&integrate, integrand, dim, x, nquantity, quantity, ref);
     
     *out = integrate.val;
@@ -2469,7 +2501,7 @@ void integrate_test1(double *out, double *err) {
     double *xx[] = { x0, x1, x2, x3 };
     value *quantities[] = { NULL, NULL, NULL, NULL };
     
-    integrate(test_integrand, 3, 3, xx, 0, quantities, NULL, out, err);
+    integrate(test_integrand, NULL, 3, 3, xx, 0, quantities, NULL, out, err);
     
     return;
 }

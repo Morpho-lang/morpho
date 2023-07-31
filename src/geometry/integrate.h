@@ -9,6 +9,11 @@
 
 #include <stdio.h>
 #include "morpho.h"
+#include "dict.h"
+
+#define INTEGRATE_RULELABEL "rule"
+#define INTEGRATE_DEGREELABEL "degree"
+#define INTEGRATE_ADAPTLABEL "adapt"
 
 #define INTEGRATE_ACCURACYGOAL 1e-6
 #define INTEGRATE_ZEROCHECK 1e-15
@@ -130,6 +135,8 @@ typedef struct {
  * ------------------------------------------------------- */
 
 bool integrate_integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out);
+
+bool integrate(integrandfunction *integrand, objectdictionary *method, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out, double *err);
 
 void integrate_test(void);
 

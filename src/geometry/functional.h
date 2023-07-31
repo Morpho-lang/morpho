@@ -42,6 +42,8 @@
 #define CURVATURE_INTEGRANDONLY_PROPERTY      "integrandonly"
 #define CURVATURE_GEODESIC_PROPERTY           "geodesic"
 
+#define INTEGRAL_METHOD_PROPERTY              "method"
+
 /* Functional methods */
 #define FUNCTIONAL_INTEGRAND_METHOD    "integrand"
 #define FUNCTIONAL_TOTAL_METHOD        "total"

@@ -1,0 +1,42 @@
+// Test underlying integration routine
+
+import meshtools
+
+var mb = MeshBuilder() 
+mb.addvertex([0])
+mb.addvertex([1])
+mb.addedge([0,1])
+var m = mb.build()
+
+class Counter {
+    init(func) {
+        self.func = func
+        self.ncalls = 0
+    }
+
+    eval(x) {
+        self.ncalls+=1
+        return self.func(x[0])
+    }
+
+    reset() {
+        self.ncalls=0
+    }
+
+    count() {
+        return self.ncalls
+    }
+}
+
+var exact = 0.66666666666666666667
+
+var c = Counter(fn (x) sqrt(x))
+
+var r1 = LineIntegral(c.eval, method={ "order" : 1 } ).total(m)
+
+print c.count()
+c.reset()
+
+var r2 = LineIntegral(c.eval).total(m)
+
+print c.count()

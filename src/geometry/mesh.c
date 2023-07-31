@@ -1305,7 +1305,7 @@ MORPHO_ENDCLASS
  * ********************************************************************** */
 
 void mesh_initialize(void) {
-    integrate_test();
+    // integrate_test();
     
     objectmeshtype=object_addtype(&objectmeshdefn);
     

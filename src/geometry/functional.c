@@ -4325,7 +4325,7 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     double *x[nv];
     bool success;
     
-    value qgrad[iref.nfields];
+    value qgrad[iref.nfields+1];
     for (int i=0; i<iref.nfields; i++) qgrad[i] = MORPHO_NIL;
     
     objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_AREA, id, nv, vid);

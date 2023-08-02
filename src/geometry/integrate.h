@@ -71,14 +71,17 @@ struct quadraturerule_s {
       N.B. weights should sum to 1 (NOT the volume of the element
     - metadata */
 
-typedef struct {
+typedef struct subdivisionrule_struct subdivisionrule;
+
+struct subdivisionrule_struct {
     int grade;    /** Appropriate grade for the strategy */
     int npts;     /** Number of new pts created */
     double *pts;  /** New barycentric coordinates */
     int nels;     /** Number of new elements created */
     int *newels;  /** Indices of new elements */
     double *weights;  /** Weights of new elements */
-} subdivisionrule;
+    subdivisionrule *alt; /** Alternative subdivision rule */
+} ;
 
 /* --------------------------------
  * Quadrature work items

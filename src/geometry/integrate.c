@@ -1798,7 +1798,8 @@ subdivisionrule bisection = {
     .pts = bisectionpts,
     .nels = 2,
     .newels = bisectionintervals,
-    .weights = bisectionweights
+    .weights = bisectionweights,
+    .alt = NULL
 };
 
 /** Trisection */
@@ -1823,14 +1824,56 @@ subdivisionrule trisection = {
     .pts = trisectionpts,
     .nels = 3,
     .newels = trisectionintervals,
-    .weights = trisectionweights
+    .weights = trisectionweights,
+    .alt = NULL
 };
 
 /* -------
  *   2D
  * ------- */
 
+/*
+ *       2
+ *      / \
+ *     / | \
+ *    /  |  \
+ *   0 - 3 - 1
+ */
+
+/** Bisection of 2D triangle */
+double tribisectionpts[] = {
+    0.5, 0.5, 0.0
+};
+
+double tribisectionweights[] = {
+    0.5, 0.5
+};
+
+int tribisectiontris[] = {
+    0, 3, 2,
+    3, 1, 2
+};
+
+subdivisionrule trianglebisection = {
+    .grade = 2,
+    .npts = 1,
+    .pts = tribisectionpts,
+    .nels = 2,
+    .newels = tribisectiontris,
+    .weights = tribisectionweights,
+    .alt = NULL
+};
+
 /** Quadrasection of 2D triangle */
+
+/*
+ *       2
+ *      / \
+ *     5 - 4
+ *    / \ / \
+ *   0 - 3 - 1
+ */
+
 double triquadrasectionpts[] = {
     0.5, 0.5, 0.0,
     0.0, 0.5, 0.5,
@@ -1840,14 +1883,6 @@ double triquadrasectionpts[] = {
 double triquadrasectionweights[] = {
     0.25, 0.25, 0.25, 0.25
 };
-
-/*
- *       2
- *      / \
- *     5 - 4
- *    / \ / \
- *   0 - 3 - 1
- */
 
 int triquadrasectiontris[] = {
     0, 3, 5,
@@ -1862,7 +1897,8 @@ subdivisionrule trianglequadrasection = {
     .pts = triquadrasectionpts,
     .nels = 4,
     .newels = triquadrasectiontris,
-    .weights = triquadrasectionweights
+    .weights = triquadrasectionweights,
+    .alt = &trianglebisection
 };
 
 /* -------
@@ -1899,12 +1935,12 @@ subdivisionrule tetsection = {
     .pts = tetsubdivpts,
     .nels = 8,
     .newels = tetsubdivtets,
-    .weights = tetsubdivwts
+    .weights = tetsubdivwts,
+    .alt = NULL
 };
 
 subdivisionrule *subdivisionrules[] = {
     &bisection,
-    &trisection,
     &trianglequadrasection,
     &tetsection,
     NULL
@@ -2159,6 +2195,18 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
  * Subdivision
  * -------------------------------- */
 
+typedef struct {
+    double diff;
+    double *vptr;
+    int id;
+} _subvertex;
+
+int _subvertexcmp(const void *a, const void *b) {
+    _subvertex *aa = (_subvertex *) a;
+    _subvertex *bb = (_subvertex *) b;
+    return bb->diff - aa->diff;
+}
+
 bool subdivide(integrator *integrate, quadratureworkitem *work, int *nels, quadratureworkitem *newitems) {
     subdivisionrule *rule = integrate->subdivide;
     int nindx = rule->grade+1;
@@ -2170,6 +2218,39 @@ bool subdivide(integrator *integrate, quadratureworkitem *work, int *nels, quadr
     // Copy across vertex ids from old element
     int vid[nindx+rule->npts];
     integrator_getelement(integrate, work->elementid, nindx, vid);
+    
+    /*{ // Evaluate element and reorder vertices
+        int nbary = rule->grade+1;
+        double lambda[] = { 1.0, 0.0, 0.0,
+            0.0, 1.0, 0.0,
+            0.0, 0.0, 1.0 };
+        double f[rule->grade+1];
+        
+        for (int j=0; j<nbary; j++) {
+            (*integrate->integrand) (integrate->dim, lambda+nbary*j, vert[j], 0, NULL, integrate->ref, &f[j]);
+        }
+        
+        double fbar = (f[0]+f[1]+f[2])/3.0;
+        double s[3] = { fabs(f[1]-f[0]), fabs(f[2]-f[1]), fabs(f[2]-f[0]) };
+        double v[3] = { fabs(f[0]-fbar), fabs(f[1]-fbar), fabs(f[2]-fbar) };
+        
+        fbar = fabs(fbar);
+        bool bisect = false;
+        //for (int j=0; j<3; j++) if (v[j]>0.5*fbar) { bisect=true; break; }
+        
+        if (bisect) {
+            _subvertex vv[nbary];
+            vv[0].diff=s[0]+s[2];
+            vv[1].diff=s[0]+s[1];
+            vv[2].diff=s[1]+s[2];
+            for (int j=0; j<3; j++) { vv[j].id = vid[j]; vv[j].vptr = vert[j]; }
+            qsort(vv, nbary, sizeof(_subvertex), _subvertexcmp);
+            
+            for (int j=0; j<3; j++) { vid[j] = vv[j].id; vert[j] = vv[j].vptr; }
+            
+            rule = &trianglebisection;
+        }
+    }*/
     
     // Interpolate vertices
     for (int j=0; j<rule->npts; j++) {

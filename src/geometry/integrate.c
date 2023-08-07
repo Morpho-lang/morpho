@@ -4,6 +4,7 @@
  *  @brief Numerical integration
 */
 
+#include <limits.h>
 #include "integrate.h"
 #include "morpho.h"
 #include "classes.h"

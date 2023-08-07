@@ -5,6 +5,9 @@
 */
 
 #include <string.h>
+#include <float.h>
+#include <limits.h>
+#include <errno.h>
 #include <ctype.h>
 #include "parse.h"
 #include "object.h"

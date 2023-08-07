@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.22)
 project(morpho-libmorpho)
 
 add_library(morpho SHARED "") 
@@ -64,7 +64,7 @@ target_link_libraries(morpho ${SUITESPARSE_LIBRARY} ${CBLAS_LIBRARY} ${LAPACK_LI
 install(TARGETS morpho)
 
 # Install morpho header files
-install(TARGETS morpho 
-        FILE_SET public_headers 
-        DESTINATION include/morpho
-)
+#install(TARGETS morpho 
+#        FILE_SET public_headers 
+#        DESTINATION include/morpho
+#)

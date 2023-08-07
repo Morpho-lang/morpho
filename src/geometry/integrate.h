@@ -18,7 +18,7 @@
 #define INTEGRATE_ACCURACYGOAL 1e-6
 #define INTEGRATE_ZEROCHECK 1e-15
 #define INTEGRATE_MAXRECURSION 100
-#define INTEGRATE_MAXITERATIONS 10000
+#define INTEGRATE_MAXITERATIONS 1000
 
 /* -------------------------------------------------------
  * Integrator type definitions
@@ -119,6 +119,7 @@ typedef struct {
     varray_quadratureworkitem worklist; /** Work list */
     varray_double vertexstack; /** Stack of vertices */
     varray_int elementstack; /** Stack of elements */
+    varray_value quantitystack; /** Stack of quantities */
     
     double ztol; /** Tolerance for zero detection */
     double tol; /** Tolerance for relative error */
@@ -132,6 +133,16 @@ typedef struct {
     
     void *ref; /** Reference to pass to integrand */
 } integrator;
+
+/* -------------------------------------------------------
+ * Integrator errors
+ * ------------------------------------------------------- */
+
+#define INTEGRATE_QDRTRMXSBDVSNS      "QdrtrMxSbdvns"
+#define INTEGRATE_QDRTRMXSBDVSNS_MSG  "Maximum number of subdivisions reached in integrator."
+
+#define INTEGRATE_QDRTRRLNTFND        "QdrtrRlNtFnd"
+#define INTEGRATE_QDRTRRLNTFND_MSG    "Quadrature rule not found."
 
 /* -------------------------------------------------------
  * Integrator interface

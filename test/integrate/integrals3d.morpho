@@ -39,3 +39,25 @@ for (t in tests) {
 }
 
 for (res in out) print Array(res)
+
+var times = []
+var ntimes = 100
+
+print "Timing tests"
+for (t in tests) {
+    var start = System.clock() 
+    for (i in 1..ntimes) {
+        var r1 = VolumeIntegral(fn (x) apply(t[0], x[0], x[1], x[2]), method={ "rule" : "grundmann1" } ).total(m)
+    }
+    var time1 = System.clock()-start
+
+    start = System.clock() 
+    for (i in 1..ntimes) {
+        var r1 = VolumeIntegral(fn (x) apply(t[0], x[0], x[1], x[2]) ).total(m)
+    }
+    var time2 = System.clock() - start
+    
+    times.append([time1, time2])
+}
+
+for (t in times) print Array(t)

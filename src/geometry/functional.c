@@ -4267,7 +4267,7 @@ value LineIntegral_init(vm *v, int nargs, value *args) {
 
     if (nfixed>1) {
         /* Remaining arguments should be fields */
-        objectlist *list = object_newlist(nargs-1, & MORPHO_GETARG(args, 1));
+        objectlist *list = object_newlist(nfixed-1, & MORPHO_GETARG(args, 1));
         if (!list) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
 
         for (unsigned int i=1; i<nfixed; i++) {

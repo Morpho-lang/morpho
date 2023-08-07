@@ -303,6 +303,11 @@ bool matrix_addtocolumn(objectmatrix *m, unsigned int col, double alpha, double 
  * ********************************************************************* */
 
 /** Copies one matrix to another */
+unsigned int matrix_countdof(objectmatrix *a) {
+    return a->ncols*a->nrows;
+}
+
+/** Copies one matrix to another */
 objectmatrixerror matrix_copy(objectmatrix *a, objectmatrix *out) {
     if (a->ncols==out->ncols && a->nrows==out->nrows) {
         cblas_dcopy(a->ncols * a->nrows, a->elements, 1, out->elements, 1);

@@ -18,6 +18,9 @@
 /** Varrays of parse rules */
 DEFINE_VARRAY(parserule, parserule)
 
+/** Macro to check return of a bool function */
+#define PARSE_CHECK(f) if (!(f)) return false;
+
 /* **********************************************************************
  * Parser utility functions
  * ********************************************************************** */
@@ -68,7 +71,7 @@ bool parse_advance(parser *p) {
 bool parse_precedence(parser *p, precedence prec, void *out) {
     parsefunction prefixrule=NULL, infixrule=NULL;
     
-    if (!parse_advance(p)) return false;
+    PARSE_CHECK(parse_advance(p));
     
     parserule *rule = parse_getrule(p, p->previous.type);
     if (rule) prefixrule = rule->prefix;
@@ -78,7 +81,7 @@ bool parse_precedence(parser *p, precedence prec, void *out) {
         return false;
     }
     
-    if (!prefixrule(p, out)) return false;
+    PARSE_CHECK(prefixrule(p, out));
     
     /* Now keep parsing while the tokens have lower precedence */
     rule=parse_getrule(p, p->current.type);
@@ -92,7 +95,7 @@ bool parse_precedence(parser *p, precedence prec, void *out) {
         
         infixrule = parse_getrule(p, p->previous.type)->infix;
         if (infixrule) {
-            if (!infixrule(p, out)) return false;
+            PARSE_CHECK(infixrule(p, out))
         } else UNREACHABLE("No infix rule defined for this token type [check parser definition table].");
         
         rule=parse_getrule(p, p->current.type);
@@ -117,7 +120,7 @@ bool parse_checktokenmulti(parser *p, int n, tokentype *type) {
 
 /** Checks whether the current token matches a given type and advances if so. */
 bool parse_checktokenadvance(parser *p, tokentype type) {
-    if (!parse_checktoken(p, type)) return false;
+    PARSE_CHECK(parse_checktoken(p, type));
     parse_advance(p);
     return true;
 }
@@ -342,13 +345,13 @@ bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, voi
                 varg = true; vargthis = true;
             }
             
-            if (!parse_pseudoexpression(p, &current)) return false;
+            PARSE_CHECK(parse_pseudoexpression(p, &current));
 
-            if (vargthis) if (!parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, current, &current)) return false;
+            if (vargthis) PARSE_CHECK(parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, current, &current));
             
             n++;
             
-            if (!parse_addnode(p, NODE_ARGLIST, MORPHO_NIL, &start, prev, current, &current)) return false;
+            PARSE_CHECK(parse_addnode(p, NODE_ARGLIST, MORPHO_NIL, &start, prev, current, &current));
             
             prev = current;
         } while (parse_checktokenadvance(p, TOKEN_COMMA));
@@ -364,7 +367,7 @@ bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, voi
 
 /** Parses a variable name, or raises and error if a symbol isn't found */
 bool parse_variable(parser *p, errorid id, void *out) {
-    parse_checkrequiredtoken(p, TOKEN_SYMBOL, id);
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_SYMBOL, id));
     return parse_symbol(p, out);
 }
 
@@ -435,7 +438,7 @@ bool parse_nil(parser *p, void *out) {
 /** Parses an integer */
 bool parse_integer(parser *p, void *out) {
     long f = strtol(p->previous.start, NULL, 10);
-    if (!parse_validatestrtol(p, f)) return false;
+    PARSE_CHECK(parse_validatestrtol(p, f));
     
     return parse_addnode(p, NODE_INTEGER, MORPHO_INTEGER(f), &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
@@ -443,7 +446,7 @@ bool parse_integer(parser *p, void *out) {
 /** Parses a number */
 bool parse_number(parser *p, void *out) {
     double f = strtod(p->previous.start, NULL);
-    if (!parse_validatestrtod(p, f)) return false;
+    PARSE_CHECK(parse_validatestrtod(p, f));
     
     return parse_addnode(p, NODE_FLOAT, MORPHO_FLOAT(f), &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
@@ -455,7 +458,7 @@ bool parse_complex(parser *p, void *out) {
         f = 1;
     } else {
         f = strtod(p->previous.start, NULL);
-        if (!parse_validatestrtod(p, f)) return false;
+        PARSE_CHECK(parse_validatestrtod(p, f));
     }
     value c = MORPHO_OBJECT(object_newcomplex(0,f));
     return parse_addnode(p, NODE_IMAG, c, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
@@ -476,6 +479,7 @@ bool parse_self(parser *p, void *out) {
 bool parse_super(parser *p, void *out) {
     if (!parse_checktoken(p, TOKEN_DOT)) {
         parse_error(p, false, PARSE_EXPECTDOTAFTERSUPER);
+        return false;
     }
 
     return parse_addnode(p, NODE_SUPER, MORPHO_NIL, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
@@ -484,7 +488,10 @@ bool parse_super(parser *p, void *out) {
 /** Parses a symbol */
 bool parse_symbol(parser *p, void *out) {
     value s = object_stringfromcstring(p->previous.start, p->previous.length);
-    if (MORPHO_ISNIL(s)) parse_error(p, true, ERROR_ALLOCATIONFAILED, OBJECT_SYMBOLLABEL);
+    if (MORPHO_ISNIL(s)) {
+        parse_error(p, true, ERROR_ALLOCATIONFAILED, OBJECT_SYMBOLLABEL);
+        return false;
+    }
 
     return parse_addnode(p, NODE_SYMBOL, s, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
@@ -492,7 +499,7 @@ bool parse_symbol(parser *p, void *out) {
 /** Parses a string */
 bool parse_string(parser *p, void *out) {
     value s;
-    if (!parse_stringfromtoken(p, 1, p->previous.length-1, &s)) return false;
+    PARSE_CHECK(parse_stringfromtoken(p, 1, p->previous.length-1, &s));
     
     return parse_addnode(p, NODE_STRING, s, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
@@ -509,22 +516,22 @@ bool parse_dictionary(parser *p, void *out) {
         token tok=p->current; // Keep track of the token that corresponds to each key/value pair
         
         /* Parse the key/value pair */
-        if (!parse_expression(p, &key)) return false;
-        if (!parse_checkrequiredtoken(p, TOKEN_COLON, PARSE_DCTSPRTR)) break;
-        if (!parse_expression(p, &val)) return false;
+        PARSE_CHECK(parse_expression(p, &key));
+        PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_COLON, PARSE_DCTSPRTR));
+        PARSE_CHECK(parse_expression(p, &val));
         
         /* Create an entry node */
-        if (!parse_addnode(p, NODE_DICTENTRY, MORPHO_NIL, &tok, key, val, &pair)) return false;
+        PARSE_CHECK(parse_addnode(p, NODE_DICTENTRY, MORPHO_NIL, &tok, key, val, &pair));
         
         /* These are linked into a chain of dictionary nodes */
-        if (!parse_addnode(p, NODE_DICTIONARY, MORPHO_NIL, &tok, last, pair, &last)) return false;
+        PARSE_CHECK(parse_addnode(p, NODE_DICTIONARY, MORPHO_NIL, &tok, last, pair, &last));
         
         if (!parse_checktoken(p, TOKEN_RIGHTCURLYBRACKET)) {
-            if (!parse_checkrequiredtoken(p, TOKEN_COMMA, PARSE_MSSNGCOMMA)) return false;
+            PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_COMMA, PARSE_MSSNGCOMMA));
         }
     };
     
-    if (!parse_checkrequiredtoken(p, TOKEN_RIGHTCURLYBRACKET, PARSE_DCTTRMNTR)) return false;
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTCURLYBRACKET, PARSE_DCTTRMNTR));
     
     *((syntaxtreeindx *) out) = last;
     
@@ -537,7 +544,7 @@ bool parse_interpolation(parser *p, void *out) {
     
     /* First copy the string */
     value s;
-    if (!parse_stringfromtoken(p, 1, tok.length-2, &s)) return false;
+    PARSE_CHECK(parse_stringfromtoken(p, 1, tok.length-2, &s));
     
     syntaxtreeindx left=SYNTAXTREE_UNCONNECTED, right=SYNTAXTREE_UNCONNECTED;
     
@@ -561,9 +568,9 @@ parse_interpolation_cleanup:
 /** Parses an expression in parentheses */
 bool parse_grouping(parser *p, void *out) {
     syntaxtreeindx new;
-    if (!parse_expression(p, &new)) return false;
-    if (!parse_addnode(p, NODE_GROUPING, MORPHO_NIL, &p->previous, new, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out)) return false;
-    parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_MISSINGPARENTHESIS);
+    PARSE_CHECK(parse_expression(p, &new));
+    PARSE_CHECK(parse_addnode(p, NODE_GROUPING, MORPHO_NIL, &p->previous, new, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_MISSINGPARENTHESIS));
     return true;
 }
 
@@ -583,7 +590,7 @@ bool parse_unary(parser *p, void *out) {
     
     /* Now add this node */
     syntaxtreeindx right;
-    if (!parse_precedence(p, PREC_UNARY, &right)) return false;
+    PARSE_CHECK(parse_precedence(p, PREC_UNARY, &right));
     return parse_addnode(p, nodetype, MORPHO_NIL, &start, right, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
 
@@ -631,12 +638,13 @@ bool parse_binary(parser *p, void *out) {
     /* Check if we have a right hand side. */
     if (parse_checktoken(p, TOKEN_EOF)) {
         parse_error(p, true, PARSE_INCOMPLETEEXPRESSION);
+        return false;
     } else {
         if (nodetype==NODE_ASSIGN &&
             parse_checktokenadvance(p, TOKEN_FUNCTION)) {
-            if (!parse_anonymousfunction(p, &right)) return false;
+            PARSE_CHECK(parse_anonymousfunction(p, &right));
         } else {
-            if (!parse_precedence(p, rule->precedence + (assoc == LEFT ? 1 : 0), &right)) return false;
+            PARSE_CHECK(parse_precedence(p, rule->precedence + (assoc == LEFT ? 1 : 0), &right));
         }
     }
     
@@ -667,7 +675,7 @@ bool parse_assignby(parser *p, void *out) {
     if (parse_checktoken(p, TOKEN_EOF)) {
         parse_error(p, true, PARSE_INCOMPLETEEXPRESSION);
     } else {
-        if (!parse_precedence(p, rule->precedence, &right)) return false;
+        PARSE_CHECK(parse_precedence(p, rule->precedence, &right));
     }
     
     if (!parse_addnode(p, nodetype, MORPHO_NIL, &start, left, right, &right)) return false;
@@ -683,21 +691,21 @@ bool parse_range(parser *p, void *out) {
     
     syntaxtreeindx left=p->left;
     syntaxtreeindx right;
-    parse_expression(p, &right);
+    PARSE_CHECK(parse_expression(p, &right));
     syntaxtreeindx one=SYNTAXTREE_UNCONNECTED;
     if (!inclusive) {
-        if (!parse_addnode(p, NODE_INTEGER, MORPHO_INTEGER(1), &start, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, &one)) return false;
-        if (!parse_addnode(p, NODE_SUBTRACT, MORPHO_NIL, &start, right, one, &right)) return false;
+        PARSE_CHECK(parse_addnode(p, NODE_INTEGER, MORPHO_INTEGER(1), &start, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, &one));
+        PARSE_CHECK(parse_addnode(p, NODE_SUBTRACT, MORPHO_NIL, &start, right, one, &right));
     }
     syntaxtreeindx new;
-    if (!parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, left, right, &new)) return false;
+    PARSE_CHECK(parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, left, right, &new));
     
     if (parse_checktokenadvance(p, TOKEN_COLON)) {
         syntaxtreeindx step;
-        if (!parse_expression(p, &step)) return false;
+        PARSE_CHECK(parse_expression(p, &step));
         
         if (!inclusive) parse_lookupnode(p, right)->right = step;
-        if (!parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, new, step, &new)) return false;
+        PARSE_CHECK(parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, new, step, &new));
     }
     
     *((syntaxtreeindx *) out) = new;
@@ -711,9 +719,8 @@ bool parse_call(parser *p, void *out) {
     syntaxtreeindx right;
     unsigned int nargs;
     
-    if (!parse_arglist(p, TOKEN_RIGHTPAREN, &nargs, &right)) return false;
-    
-    parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_CALLRGHTPARENMISSING);
+    PARSE_CHECK(parse_arglist(p, TOKEN_RIGHTPAREN, &nargs, &right));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_CALLRGHTPARENMISSING));
     
     return parse_addnode(p, NODE_CALL, MORPHO_NIL, &start, left, right, out);
 }
@@ -729,9 +736,8 @@ bool parse_index(parser *p, void *out) {
     syntaxtreeindx right;
     unsigned int nindx;
     
-    if (!parse_arglist(p, TOKEN_RIGHTSQBRACKET, &nindx, &right)) return false;
-    
-    parse_checkrequiredtoken(p, TOKEN_RIGHTSQBRACKET, PARSE_CALLRGHTPARENMISSING);
+    PARSE_CHECK(parse_arglist(p, TOKEN_RIGHTSQBRACKET, &nindx, &right));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTSQBRACKET, PARSE_CALLRGHTPARENMISSING));
     
     return parse_addnode(p, NODE_INDEX, MORPHO_NIL, &start, left, right, (syntaxtreeindx *) out);
 }
@@ -742,8 +748,8 @@ bool parse_list(parser *p, void *out) {
     token start = p->previous;
     
     syntaxtreeindx right;
-    if (!parse_arglist(p, TOKEN_RIGHTSQBRACKET, &nindx, &right)) return false;
-    parse_checkrequiredtoken(p, TOKEN_RIGHTSQBRACKET, PARSE_MSSNGSQBRC);
+    PARSE_CHECK(parse_arglist(p, TOKEN_RIGHTSQBRACKET, &nindx, &right));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTSQBRACKET, PARSE_MSSNGSQBRC));
 
     return parse_addnode(p, NODE_LIST, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, right, out);
 }
@@ -755,16 +761,16 @@ bool parse_anonymousfunction(parser *p, void *out) {
                    body=SYNTAXTREE_UNCONNECTED;
     
     /* Parameter list */
-    parse_checkrequiredtoken(p, TOKEN_LEFTPAREN, PARSE_FNLEFTPARENMISSING);
-    if (!parse_arglist(p, TOKEN_RIGHTPAREN, NULL, &args)) return false;
-    parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_FNRGHTPARENMISSING);
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_LEFTPAREN, PARSE_FNLEFTPARENMISSING));
+    PARSE_CHECK(parse_arglist(p, TOKEN_RIGHTPAREN, NULL, &args));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_FNRGHTPARENMISSING));
     
     /* Function body */
     if (parse_checktokenadvance(p, TOKEN_LEFTCURLYBRACKET)) { // fn (x) { ... }
-        if (!parse_blockstatement(p, &body)) return false;
+        PARSE_CHECK(parse_blockstatement(p, &body));
     } else {
-        if (!parse_expression(p, &body)) return false; // Short form: fn (x) x
-        parse_addnode(p, NODE_RETURN, MORPHO_NIL, &start, body, SYNTAXTREE_UNCONNECTED, &body);
+        PARSE_CHECK(parse_expression(p, &body)); // Short form: fn (x) x
+        PARSE_CHECK(parse_addnode(p, NODE_RETURN, MORPHO_NIL, &start, body, SYNTAXTREE_UNCONNECTED, &body));
     }
     
     return parse_addnode(p, NODE_FUNCTION, MORPHO_NIL, &start, args, body, out);
@@ -780,16 +786,16 @@ bool parse_switch(parser *p, void *out) {
         token tok=p->current; // Keep track of the token that corresponds to each key/value pair
         
         /* Parse the key/value pair */
-        if (!parse_expression(p, &key)) return false;
-        if (!parse_checkrequiredtoken(p, TOKEN_COLON, PARSE_SWTCHSPRTR)) break;
+        PARSE_CHECK(parse_expression(p, &key));
+        PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_COLON, PARSE_SWTCHSPRTR));
         tokentype terminators[] = { TOKEN_STRING, TOKEN_INTEGER, TOKEN_NUMBER, TOKEN_TRUE, TOKEN_FALSE, TOKEN_NIL, TOKEN_RIGHTCURLYBRACKET };
-        if (!parse_declarationmulti(p, 7, terminators, &statements)) return false;
+        PARSE_CHECK(parse_declarationmulti(p, 7, terminators, &statements));
         
         /* Create an entry node */
-        if (!parse_addnode(p, NODE_DICTENTRY, MORPHO_NIL, &tok, key, statements, &pair)) return false;
+        PARSE_CHECK(parse_addnode(p, NODE_DICTENTRY, MORPHO_NIL, &tok, key, statements, &pair));
         
         /* These are linked into a chain of sequence nodes */
-        if (!parse_addnode(p, NODE_DICTIONARY, MORPHO_NIL, &tok, last, pair, &last)) return false;
+        PARSE_CHECK(parse_addnode(p, NODE_DICTIONARY, MORPHO_NIL, &tok, last, pair, &last));
     };
     
     *((syntaxtreeindx *) out) = last;
@@ -808,26 +814,26 @@ bool parse_vardeclaration(parser *p, void *out) {
     do {
         token start = p->previous;
         
-        if (!parse_variable(p, PARSE_VAREXPECTED, &symbol)) return false;
+        PARSE_CHECK(parse_variable(p, PARSE_VAREXPECTED, &symbol));
         
         if (parse_checktokenadvance(p, TOKEN_LEFTSQBRACKET)) {
             if (!parse_index(p, &symbol)) return false;
         }
         
         if (parse_checktokenadvance(p, TOKEN_EQUAL)) {
-            if (!parse_pseudoexpression(p, &initializer)) return false;
+            PARSE_CHECK(parse_pseudoexpression(p, &initializer));
         } else initializer=SYNTAXTREE_UNCONNECTED;
         
-        if (!parse_addnode(p, NODE_DECLARATION, MORPHO_NIL, &start, symbol, initializer, &new)) return false;
+        PARSE_CHECK(parse_addnode(p, NODE_DECLARATION, MORPHO_NIL, &start, symbol, initializer, &new));
         
         if (last!=SYNTAXTREE_UNCONNECTED) {
-            if (!parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, last, new, &new)) return false;
+            PARSE_CHECK(parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, last, new, &new));
         }
         
         last=new;
     } while (parse_checktokenadvance(p, TOKEN_COMMA));
     
-    if (!parse_statementterminator(p)) return false;
+    PARSE_CHECK(parse_statementterminator(p));
     
     *((syntaxtreeindx *) out) = new;
     
@@ -847,13 +853,13 @@ bool parse_functiondeclaration(parser *p, void *out) {
     } else parse_error(p, false, PARSE_FNNAMEMISSING);
     
     /* Parameter list */
-    parse_checkrequiredtoken(p, TOKEN_LEFTPAREN, PARSE_FNLEFTPARENMISSING);
-    if (!parse_arglist(p, TOKEN_RIGHTPAREN, NULL, &args)) return false;
-    parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_FNRGHTPARENMISSING);
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_LEFTPAREN, PARSE_FNLEFTPARENMISSING));
+    PARSE_CHECK(parse_arglist(p, TOKEN_RIGHTPAREN, NULL, &args));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_FNRGHTPARENMISSING));
     
     /* Function body */
-    parse_checkrequiredtoken(p, TOKEN_LEFTCURLYBRACKET, PARSE_FNLEFTCURLYMISSING);
-    if (!parse_blockstatement(p, &body)) return false;
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_LEFTCURLYBRACKET, PARSE_FNLEFTCURLYMISSING));
+    PARSE_CHECK(parse_blockstatement(p, &body));
     
     return parse_addnode(p, NODE_FUNCTION, name, &start, args, body, (syntaxtreeindx *) out);
 }
@@ -872,9 +878,9 @@ bool parse_classdeclaration(parser *p, void *out) {
     
     /* Extract a superclass name */
     if (parse_checktokenadvance(p, TOKEN_LT) || parse_checktokenadvance(p, TOKEN_IS)) {
-        parse_checkrequiredtoken(p, TOKEN_SYMBOL, PARSE_EXPECTSUPER);
+        PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_SYMBOL, PARSE_EXPECTSUPER));
         sname=parse_tokenasstring(p);
-        if (!parse_addnode(p, NODE_SYMBOL, sname, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, &sclass)) return false;
+        PARSE_CHECK(parse_addnode(p, NODE_SYMBOL, sname, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, &sclass));
     }
     
     if (parse_checktokenadvance(p, TOKEN_WITH)) {
@@ -883,29 +889,29 @@ bool parse_classdeclaration(parser *p, void *out) {
             value mixin=parse_tokenasstring(p);
             
             syntaxtreeindx smixin;
-            if (!parse_addnode(p, NODE_SYMBOL, mixin, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, &smixin)) return false;
+            PARSE_CHECK(parse_addnode(p, NODE_SYMBOL, mixin, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, &smixin));
                 
-            if (!parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &p->previous, smixin, sclass, &sclass)) return false; // Mixins end up being recorded in reverse order
+            PARSE_CHECK(parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &p->previous, smixin, sclass, &sclass)); // Mixins end up being recorded in reverse order
             
         } while (parse_checktokenadvance(p, TOKEN_COMMA));
     }
     
-    parse_checkrequiredtoken(p, TOKEN_LEFTCURLYBRACKET, PARSE_CLASSLEFTCURLYMISSING);
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_LEFTCURLYBRACKET, PARSE_CLASSLEFTCURLYMISSING));
     /* Method declarations */
     syntaxtreeindx last=SYNTAXTREE_UNCONNECTED, current=SYNTAXTREE_UNCONNECTED;
     
     while (!parse_checktoken(p, TOKEN_RIGHTCURLYBRACKET) && !parse_checktoken(p, TOKEN_EOF)) {
-        if (!parse_functiondeclaration(p, &current)) return false;
+        PARSE_CHECK(parse_functiondeclaration(p, &current));
         
         /* If we now have more than one node, insert a sequence node */
         if (last!=SYNTAXTREE_UNCONNECTED) {
-            if (!parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, last, current, &current)) return false;
+            PARSE_CHECK(parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, last, current, &current));
         }
         
         last = current;
     }
     
-    parse_checkrequiredtoken(p, TOKEN_RIGHTCURLYBRACKET, PARSE_CLASSRGHTCURLYMISSING);
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTCURLYBRACKET, PARSE_CLASSRGHTCURLYMISSING));
     
     return parse_addnode(p, NODE_CLASS, name, &start, sclass, current, (syntaxtreeindx *) out);
 }
@@ -922,9 +928,9 @@ bool parse_importdeclaration(parser *p, void *out) {
     token start = p->previous;
     
     if (parse_checktokenadvance(p, TOKEN_STRING)) {
-        if (!parse_string(p, &modulename)) return false;
+        PARSE_CHECK(parse_string(p, &modulename));
     } else if (parse_checktokenadvance(p, TOKEN_SYMBOL)){
-        if (!parse_symbol(p, &modulename)) return false;
+        PARSE_CHECK(parse_symbol(p, &modulename));
     } else {
         parse_error(p, true, PARSE_IMPORTMISSINGNAME);
         return false;
@@ -939,8 +945,8 @@ bool parse_importdeclaration(parser *p, void *out) {
             do {
                 if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
                     syntaxtreeindx symbl;
-                    if (!parse_symbol(p, &symbl)) return false;
-                    if (!parse_addnode(p, NODE_FOR, MORPHO_NIL, &p->previous, right, symbl, &right)) return false;
+                    PARSE_CHECK(parse_symbol(p, &symbl));
+                    PARSE_CHECK(parse_addnode(p, NODE_FOR, MORPHO_NIL, &p->previous, right, symbl, &right));
                 } else parse_error(p, true, PARSE_IMPORTFORSYMBL);
             } while (parse_checktokenadvance(p, TOKEN_COMMA));
         } else {
@@ -948,7 +954,7 @@ bool parse_importdeclaration(parser *p, void *out) {
         }
     }
     
-    parse_statementterminator(p);
+    PARSE_CHECK(parse_statementterminator(p));
     
     return parse_addnode(p, NODE_IMPORT, MORPHO_NIL, &start, modulename, right, (syntaxtreeindx *) out);
 }
@@ -961,16 +967,16 @@ bool parse_importdeclaration(parser *p, void *out) {
 bool parse_printstatement(parser *p, void *out) {
     token start = p->previous;
     syntaxtreeindx left;
-    if (!parse_pseudoexpression(p, &left)) return false;
-    if (!parse_statementterminator(p)) return false;
+    PARSE_CHECK(parse_pseudoexpression(p, &left));
+    PARSE_CHECK(parse_statementterminator(p));
     return parse_addnode(p, NODE_PRINT, MORPHO_NIL, &start, left, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
 
 /** Parse an expression statement */
 bool parse_expressionstatement(parser *p, void *out) {
     syntaxtreeindx new;
-    if (!parse_expression(p, &new)) return false;
-    if (!parse_statementterminator(p)) return false;
+    PARSE_CHECK(parse_expression(p, &new));
+    PARSE_CHECK(parse_statementterminator(p));
     *((syntaxtreeindx *) out) = new;
     return true;
 }
@@ -987,11 +993,11 @@ bool parse_blockstatement(parser *p, void *out) {
     token start = p->previous;
     tokentype terminator[] = { TOKEN_RIGHTCURLYBRACKET };
     
-    if (!parse_declarationmulti(p, 1, terminator, &body)) return false;
+    PARSE_CHECK(parse_declarationmulti(p, 1, terminator, &body));
     if (parse_checktoken(p, TOKEN_EOF)) {
         parse_error(p, false, PARSE_INCOMPLETEEXPRESSION);
     } else {
-        parse_checkrequiredtoken(p, TOKEN_RIGHTCURLYBRACKET, PARSE_MISSINGSEMICOLONEXP);
+        PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTCURLYBRACKET, PARSE_MISSINGSEMICOLONEXP));
     }
     
     return parse_addnode(p, NODE_SCOPE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, body, out);
@@ -1004,19 +1010,19 @@ bool parse_ifstatement(parser *p, void *out) {
                     els=SYNTAXTREE_UNCONNECTED;
     token start = p->previous;
     
-    parse_checkrequiredtoken(p, TOKEN_LEFTPAREN, PARSE_IFLFTPARENMISSING);
-    if (!parse_expression(p, &cond)) return false;
-    parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_IFRGHTPARENMISSING);
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_LEFTPAREN, PARSE_IFLFTPARENMISSING));
+    PARSE_CHECK(parse_expression(p, &cond));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_IFRGHTPARENMISSING));
     
     token thentok = p->current;
-    if (!parse_statement(p, &then)) return false;
+    PARSE_CHECK(parse_statement(p, &then));
     
     if (parse_checktoken(p, TOKEN_ELSE)) {
         parse_advance(p);
-        if (!parse_statement(p, &els)) return false;
+        PARSE_CHECK(parse_statement(p, &els));
         
         /* Create an additional node that contains both statements */
-        if (!parse_addnode(p, NODE_THEN, MORPHO_NIL, &thentok, then, els, &then)) return false;
+        PARSE_CHECK(parse_addnode(p, NODE_THEN, MORPHO_NIL, &thentok, then, els, &then));
     }
     
     return parse_addnode(p, NODE_IF, MORPHO_NIL, &start, cond, then, out);
@@ -1028,10 +1034,10 @@ bool parse_whilestatement(parser *p, void *out) {
                     body=SYNTAXTREE_UNCONNECTED;
     token start = p->previous;
     
-    parse_checkrequiredtoken(p, TOKEN_LEFTPAREN, PARSE_WHILELFTPARENMISSING);
-    if (!parse_expression(p, &cond)) return false;
-    parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_IFRGHTPARENMISSING);
-    if (!parse_statement(p, &body)) return false;
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_LEFTPAREN, PARSE_WHILELFTPARENMISSING));
+    PARSE_CHECK(parse_expression(p, &cond));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_IFRGHTPARENMISSING));
+    PARSE_CHECK(parse_statement(p, &body));
     
     return parse_addnode(p, NODE_WHILE, MORPHO_NIL, &start, cond, body, out);
 }
@@ -1045,16 +1051,16 @@ bool parse_forstatement(parser *p, void *out) {
     token start = p->current;
     bool forin=false, ret=false;
  
-    parse_checkrequiredtoken(p, TOKEN_LEFTPAREN, PARSE_FORLFTPARENMISSING);
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_LEFTPAREN, PARSE_FORLFTPARENMISSING));
     if (parse_checktokenadvance(p, TOKEN_SEMICOLON)) {
         
     } else if (parse_checktokenadvance(p, TOKEN_VAR)) {
-        if (!parse_vardeclaration(p, &init)) return false;
+        PARSE_CHECK(parse_vardeclaration(p, &init));
     } else {
-        if (!parse_expression(p, &init)) return false;
+        PARSE_CHECK(parse_expression(p, &init));
         while (parse_checktokenadvance(p, TOKEN_COMMA)) {
             syntaxtreeindx new;
-            if (!parse_expressionstatement(p, &new)) return false;
+            PARSE_CHECK(parse_expressionstatement(p, &new));
             parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &p->current, init, new, &init);
         }
         parse_checktokenadvance(p, TOKEN_SEMICOLON);
@@ -1062,22 +1068,22 @@ bool parse_forstatement(parser *p, void *out) {
     
     if (parse_checktokenadvance(p, TOKEN_IN)) {
         /* If its an for..in loop, parse the collection */
-        if (!parse_expression(p, &cond)) return false;
+        PARSE_CHECK(parse_expression(p, &cond));
         forin=true;
     } else {
         /* Otherwise, parse the condition and final clause in a traditional for loop. */
         if (!parse_checktokenadvance(p, TOKEN_SEMICOLON)) {
-            if (!parse_expressionstatement(p, &cond)) return false;
+            PARSE_CHECK(parse_expressionstatement(p, &cond));
         }
         
         if (!parse_checktoken(p, TOKEN_RIGHTPAREN)) {
-            if (!parse_expression(p, &final)) return false;
+            PARSE_CHECK(parse_expression(p, &final));
         }
     }
-    parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_FORRGHTPARENMISSING);
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_FORRGHTPARENMISSING));
     
     if (!parse_checkstatementterminator(p)) {
-        if (!parse_statement(p, &body)) return false;
+        PARSE_CHECK(parse_statement(p, &body));
     }
     
     if (forin) {
@@ -1090,7 +1096,7 @@ bool parse_forstatement(parser *p, void *out) {
          *          init    collection
          */
         syntaxtreeindx innode;
-        if (!parse_addnode(p, NODE_IN, MORPHO_NIL, &start, init, cond, &innode)) return false;
+        PARSE_CHECK(parse_addnode(p, NODE_IN, MORPHO_NIL, &start, init, cond, &innode));
         ret=parse_addnode(p, NODE_FOR, MORPHO_NIL, &start, innode, body, (syntaxtreeindx *) out);
     } else {
         /* A traditional for loop is parsed into an equivalent while loop:
@@ -1109,9 +1115,9 @@ bool parse_forstatement(parser *p, void *out) {
          * */
         syntaxtreeindx loop,whil,seq;
         
-        if (!parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, body, final, &loop)) return false;
-        if (!parse_addnode(p, NODE_WHILE, MORPHO_NIL, &start, cond, loop, &whil)) return false;
-        if (!parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, init, whil, &seq)) return false;
+        PARSE_CHECK(parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, body, final, &loop));
+        PARSE_CHECK(parse_addnode(p, NODE_WHILE, MORPHO_NIL, &start, cond, loop, &whil));
+        PARSE_CHECK(parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, init, whil, &seq));
         ret=parse_addnode(p, NODE_SCOPE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, seq, (syntaxtreeindx *) out);
     }
     
@@ -1126,14 +1132,14 @@ bool parse_dostatement(parser *p, void *out) {
     
     if (!parse_statement(p, &body)) return false;
     
-    parse_checkrequiredtoken(p, TOKEN_WHILE, PARSE_EXPCTWHL);
-    parse_checkrequiredtoken(p, TOKEN_LEFTPAREN, PARSE_WHILELFTPARENMISSING);
-    if (!parse_expression(p, &cond)) return false;
-    parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_IFRGHTPARENMISSING);
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_WHILE, PARSE_EXPCTWHL));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_LEFTPAREN, PARSE_WHILELFTPARENMISSING));
+    PARSE_CHECK(parse_expression(p, &cond));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_IFRGHTPARENMISSING));
     
     /* Optional statement terminator */
     if (parse_checkstatementterminator(p)) {
-        if (!parse_statementterminator(p)) return false;
+        PARSE_CHECK(parse_statementterminator(p));
     }
     
     return parse_addnode(p, NODE_DO, MORPHO_NIL, &start, body, cond, (syntaxtreeindx *) out);
@@ -1143,7 +1149,7 @@ bool parse_dostatement(parser *p, void *out) {
 bool parse_breakstatement(parser *p, void *out) {
     token start = p->previous;
     
-    if (!parse_statementterminator(p)) return false;
+    PARSE_CHECK(parse_statementterminator(p));
     
     return parse_addnode(p, (start.type==TOKEN_BREAK ? NODE_BREAK: NODE_CONTINUE), MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
@@ -1154,10 +1160,10 @@ bool parse_returnstatement(parser *p, void *out) {
     syntaxtreeindx left = SYNTAXTREE_UNCONNECTED;
     
     if (!parse_checkstatementterminator(p)) {
-        if (!parse_pseudoexpression(p, &left)) return false;
+        PARSE_CHECK(parse_pseudoexpression(p, &left));
     }
     
-    if (!parse_statementterminator(p)) return false;
+    PARSE_CHECK(parse_statementterminator(p));
     
     return parse_addnode(p, NODE_RETURN, MORPHO_NIL, &start, left, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
@@ -1171,16 +1177,16 @@ bool parse_trystatement(parser *p, void *out) {
                    catch=SYNTAXTREE_UNCONNECTED; // Catch dictionary
     token start = p->current;
     
-    if (!parse_statement(p, &try)) return false;
+    PARSE_CHECK(parse_statement(p, &try));
     
-    parse_checkrequiredtoken(p, TOKEN_CATCH, PARSE_EXPCTCTCH);
-    parse_checkrequiredtoken(p, TOKEN_LEFTCURLYBRACKET, PARSE_CATCHLEFTCURLYMISSING);
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_CATCH, PARSE_EXPCTCTCH));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_LEFTCURLYBRACKET, PARSE_CATCHLEFTCURLYMISSING));
     
-    if (!parse_switch(p, &catch)) return false;
+    PARSE_CHECK(parse_switch(p, &catch));
     
     /* Optional statement terminator */
     if (parse_checkstatementterminator(p)) {
-        if (!parse_statementterminator(p)) return false;
+        PARSE_CHECK(parse_statementterminator(p));
     }
     
     return parse_addnode(p, NODE_TRY, MORPHO_NIL, &start, try, catch, (syntaxtreeindx *) out);
@@ -1191,7 +1197,7 @@ bool parse_breakpointstatement(parser *p, void *out) {
     token start = p->previous;
     
     if (parse_checkstatementterminator(p)) {
-        if (!parse_statementterminator(p)) return false;
+        PARSE_CHECK(parse_statementterminator(p));
     }
     
     return parse_addnode(p, NODE_BREAKPOINT, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
@@ -1276,11 +1282,11 @@ bool parse_declarationmulti(parser *p, int n, tokentype *end, void *out) {
     token start = p->current;
     
     while (!parse_checktokenmulti(p, n, end) && !parse_checktoken(p, TOKEN_EOF)) {
-        if (!parse_declaration(p, &current)) return false;
+        PARSE_CHECK(parse_declaration(p, &current));
         
         /* If we now have more than one node, insert a sequence node */
         if (last!=SYNTAXTREE_UNCONNECTED) {
-            parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, last, current, &current);
+            PARSE_CHECK(parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, last, current, &current));
         }
         
         last = current;

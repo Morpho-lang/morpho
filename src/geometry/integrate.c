@@ -2213,7 +2213,7 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
     double *vert[nbary], vmat[nbary*integrate->dim]; // Vertex information
     value *quantity[nbary];
     integrator_getvertices(integrate, work->elementid, nbary, vert);
-    integrator_getquantities(integrate, work->elementid, nbary, quantity);
+    //integrator_getquantities(integrate, work->elementid, nbary, quantity);
     
     prepareinterpolate(nbary, integrate->dim, vert, vmat);
     

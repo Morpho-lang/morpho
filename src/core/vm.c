@@ -1839,6 +1839,8 @@ void morpho_initialize(void) {
     random_initialize();
     error_initialize();
     
+    object_initialize(); // Must be first
+    
     builtin_initialize(); // Must come before initialization of any classes or similar
     resources_initialize(); // Must come before compiler and extensions
     
@@ -1910,4 +1912,6 @@ void morpho_finalize(void) {
     resources_finalize();
     lex_finalize();
     parse_finalize();
+    
+    object_finalize(); // Must be last
 }

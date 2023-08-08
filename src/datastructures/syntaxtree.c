@@ -17,6 +17,11 @@ void syntaxtree_init(syntaxtree *tree) {
     tree->entry=0;
 }
 
+/** @brief Wipe a syntax tree, not freeing attached objects */
+void syntaxtree_wipe(syntaxtree *tree) {
+    varray_syntaxtreenodeclear(&tree->tree);
+}
+
 /** @brief Finalize a syntax tree */
 void syntaxtree_clear(syntaxtree *tree) {
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR

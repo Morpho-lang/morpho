@@ -94,6 +94,8 @@ struct sparser {
     tokentype toknewline; /** Newline token type */
     parsefunction baseparsefn; /** Base parse function */
     varray_parserule parsetable; /** Table of parse rules */
+    
+    varray_value objects; /** Hold objects generated while parsing */
 };
 
 /* -------------------------------------------------------
@@ -338,6 +340,8 @@ void parse_setskipnewline(parser *p, bool skip, tokentype toknewline);
 void parse_setmaxrecursiondepth(parser *p, int maxdepth);
 
 bool parse(parser *p);
+
+bool morpho_parse(parser *p);
 
 bool parse_stringtovaluearray(char *string, unsigned int nmax, value *v, unsigned int *n, error *err);
 

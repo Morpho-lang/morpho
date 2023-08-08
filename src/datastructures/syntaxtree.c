@@ -19,7 +19,7 @@ void syntaxtree_init(syntaxtree *tree) {
 
 /** @brief Wipe a syntax tree, not freeing attached objects */
 void syntaxtree_wipe(syntaxtree *tree) {
-    varray_syntaxtreenodeclear(&tree->tree);
+    tree->tree.count=0;
 }
 
 /** @brief Finalize a syntax tree */

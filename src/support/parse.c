@@ -356,7 +356,10 @@ bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, voi
                 // then ... represents an open range
                 if (rightdelimiter == TOKEN_RIGHTSQBRACKET) {
                     
-                } else if (varg) parse_error(p, true, PARSE_ONEVARPR);
+                } else if (varg) {
+                    parse_error(p, true, PARSE_ONEVARPR);
+                    return false;
+                }
                 varg = true; vargthis = true;
             }
             
@@ -396,6 +399,7 @@ bool parse_statementterminator(parser *p) {
     } else if (parse_checktoken(p, TOKEN_IN) || parse_checktoken(p, TOKEN_ELSE)) {
     } else {
         parse_error(p, true, PARSE_MISSINGSEMICOLONEXP);
+        return false;
     }
     return true;
 }
@@ -693,6 +697,7 @@ bool parse_assignby(parser *p, void *out) {
     /* Check if we have a right hand side. */
     if (parse_checktoken(p, TOKEN_EOF)) {
         parse_error(p, true, PARSE_INCOMPLETEEXPRESSION);
+        return false;
     } else {
         PARSE_CHECK(parse_precedence(p, rule->precedence, &right));
     }
@@ -870,7 +875,10 @@ bool parse_functiondeclaration(parser *p, void *out) {
     if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
         name=parse_tokenasstring(p);
         parse_addobject(p, name);
-    } else parse_error(p, false, PARSE_FNNAMEMISSING);
+    } else {
+        parse_error(p, false, PARSE_FNNAMEMISSING);
+        return false;
+    }
     
     /* Parameter list */
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_LEFTPAREN, PARSE_FNLEFTPARENMISSING));
@@ -895,7 +903,10 @@ bool parse_classdeclaration(parser *p, void *out) {
     if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
         name=parse_tokenasstring(p);
         parse_addobject(p, name);
-    } else parse_error(p, false, PARSE_EXPECTCLASSNAME);
+    } else {
+        parse_error(p, false, PARSE_EXPECTCLASSNAME);
+        return false;
+    }
     
     /* Extract a superclass name */
     if (parse_checktokenadvance(p, TOKEN_LT) || parse_checktokenadvance(p, TOKEN_IS)) {
@@ -963,17 +974,24 @@ bool parse_importdeclaration(parser *p, void *out) {
         if (parse_checktokenadvance(p, TOKEN_AS)) {
             if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
                 if (!parse_symbol(p, &right)) return false;
-            } else parse_error(p, true, PARSE_IMPORTASSYMBL);
+            } else {
+                parse_error(p, true, PARSE_IMPORTASSYMBL);
+                return false;
+            }
         } else if (parse_checktokenadvance(p, TOKEN_FOR)) {
             do {
                 if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
                     syntaxtreeindx symbl;
                     PARSE_CHECK(parse_symbol(p, &symbl));
                     PARSE_CHECK(parse_addnode(p, NODE_FOR, MORPHO_NIL, &p->previous, right, symbl, &right));
-                } else parse_error(p, true, PARSE_IMPORTFORSYMBL);
+                } else {
+                    parse_error(p, true, PARSE_IMPORTFORSYMBL);
+                    return false;
+                }
             } while (parse_checktokenadvance(p, TOKEN_COMMA));
         } else {
             parse_error(p, true, PARSE_IMPORTUNEXPCTDTOK);
+            return false;
         }
     }
     
@@ -1019,6 +1037,7 @@ bool parse_blockstatement(parser *p, void *out) {
     PARSE_CHECK(parse_declarationmulti(p, 1, terminator, &body));
     if (parse_checktoken(p, TOKEN_EOF)) {
         parse_error(p, false, PARSE_INCOMPLETEEXPRESSION);
+        return false;
     } else {
         PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTCURLYBRACKET, PARSE_MISSINGSEMICOLONEXP));
     }

@@ -234,7 +234,7 @@ bool parse_stringfromtoken(parser *p, unsigned int start, unsigned int length, v
     success=true;
     if (out) {
         *out = object_stringfromvarraychar(&str);
-        if (!(*out)) parse_error(p, true, ERROR_ALLOCATIONFAILED);
+        if (!(MORPHO_ISSTRING(*out))) parse_error(p, true, ERROR_ALLOCATIONFAILED);
     }
     
 parse_stringfromtokencleanup:

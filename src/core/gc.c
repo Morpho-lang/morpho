@@ -165,7 +165,7 @@ void vm_gcmarkroots(vm *v) {
 void vm_gcmarkretainobject(vm *v, object *obj) {
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
     printf("Searching object %p ", (void *) obj);
-    morpho_printvalue(MORPHO_OBJECT(obj));
+    object_print(MORPHO_OBJECT(obj));
     printf("\n");
 #endif
     objecttypedefn *defn=object_getdefn(obj);

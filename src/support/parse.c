@@ -91,7 +91,7 @@ bool parse_precedence(parser *p, precedence prec, void *out) {
         if (p->current.type==TOKEN_LEFTPAREN && p->nl) break;
 #endif
         
-        parse_advance(p);
+        PARSE_CHECK(parse_advance(p));
         
         infixrule = parse_getrule(p, p->previous.type)->infix;
         if (infixrule) {
@@ -121,7 +121,7 @@ bool parse_checktokenmulti(parser *p, int n, tokentype *type) {
 /** Checks whether the current token matches a given type and advances if so. */
 bool parse_checktokenadvance(parser *p, tokentype type) {
     PARSE_CHECK(parse_checktoken(p, type));
-    parse_advance(p);
+    PARSE_CHECK(parse_advance(p));
     return true;
 }
 
@@ -132,7 +132,7 @@ bool parse_checktokenadvance(parser *p, tokentype type) {
  *  @returns true on success */
 bool parse_checkrequiredtoken(parser *p, tokentype type, errorid id) {
     if (parse_checktoken(p, type)) {
-        parse_advance(p);
+        PARSE_CHECK(parse_advance(p));
         return true;
     }
         
@@ -392,7 +392,7 @@ bool parse_variable(parser *p, errorid id, void *out) {
 /** Parse a statement terminator  */
 bool parse_statementterminator(parser *p) {
     if (parse_checktoken(p, TOKEN_SEMICOLON)) {
-        parse_advance(p);
+        PARSE_CHECK(parse_advance(p));
 #ifdef MORPHO_NEWLINETERMINATORS
     } else if (p->nl || parse_checktoken(p, TOKEN_EOF) || parse_checktoken(p, TOKEN_RIGHTCURLYBRACKET)) {
 #endif
@@ -440,7 +440,7 @@ void parse_synchronize(parser *p) {
                 ;
         }
         
-        parse_advance(p);
+        PARSE_CHECK(parse_advance(p));
     }
 }
 
@@ -1060,7 +1060,7 @@ bool parse_ifstatement(parser *p, void *out) {
     PARSE_CHECK(parse_statement(p, &then));
     
     if (parse_checktoken(p, TOKEN_ELSE)) {
-        parse_advance(p);
+        PARSE_CHECK(parse_advance(p));
         PARSE_CHECK(parse_statement(p, &els));
         
         /* Create an additional node that contains both statements */
@@ -1530,7 +1530,7 @@ void parse_clear(parser *p) {
 
 /** Generic entry point into the parser; call this from your own parser wrapper */
 bool parse(parser *p) {
-    if (!parse_advance(p)) return false;
+    PARSE_CHECK(parse_advance(p));
     bool success=(p->baseparsefn) (p, p->out);
     if (!success) parse_freeobjects(p);
     parse_clearobjects(p);

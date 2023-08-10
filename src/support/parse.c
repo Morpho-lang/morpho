@@ -329,7 +329,7 @@ bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, voi
 bool parse_variable(parser *p, errorid id, void *out);
 bool parse_statementterminator(parser *p);
 bool parse_checkstatementterminator(parser *p);
-void parse_synchronize(parser *p);
+bool parse_synchronize(parser *p);
 
 /* ------------------------------------------
  * Utility functions for this parser
@@ -417,10 +417,10 @@ bool parse_checkstatementterminator(parser *p) {
 }
 
 /** @brief Keep parsing til the end of a statement boundary. */
-void parse_synchronize(parser *p) {
+bool parse_synchronize(parser *p) {
     while (p->current.type!=TOKEN_EOF) {
         /** Align */
-        if (p->previous.type == TOKEN_SEMICOLON) return;
+        if (p->previous.type == TOKEN_SEMICOLON) return true;
         switch (p->current.type) {
             case TOKEN_PRINT:
             case TOKEN_IF:
@@ -435,13 +435,15 @@ void parse_synchronize(parser *p) {
             case TOKEN_CLASS:
             case TOKEN_FUNCTION:
             case TOKEN_VAR:
-                return;
+                return true;
             default:
                 ;
         }
         
         PARSE_CHECK(parse_advance(p));
     }
+
+    return true;
 }
 
 /* ------------------------------------------

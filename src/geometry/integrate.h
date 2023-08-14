@@ -119,6 +119,8 @@ typedef struct {
     varray_quadratureworkitem worklist; /** Work list */
     varray_double vertexstack; /** Stack of vertices */
     varray_int elementstack; /** Stack of elements */
+    
+    int nqdof; /** Number of quantity degrees of freedom */
     varray_value quantitystack; /** Stack of quantities */
     
     double ztol; /** Tolerance for zero detection */

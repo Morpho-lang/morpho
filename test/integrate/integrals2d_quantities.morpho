@@ -1,7 +1,6 @@
-// Test underlying integration routine
+// Test integration using quantities
 
 import meshtools
-import "counter.morpho"
 
 var mb = MeshBuilder() 
 mb.addvertex([0,0])
@@ -10,58 +9,10 @@ mb.addvertex([0,1])
 mb.addface([0,1,2])
 var m = mb.build()
 
-var f = Field(m, 0) //Matrix([0,0]))
-f[0,1]=0.5//Matrix([1,0])
-f[0,2]=1//Matrix([0,1])
+var f = Field(m, Matrix([0,0]))
+f[0,1]=Matrix([3,0])
+f[0,2]=Matrix([0,6])
 
-// List of integrals to evaluate and precalculated exact values 
-// See ACM Transactions on Mathematical Software, Vol 8, No. 2, June 1982,Pages 210-218
-var tests = [ //[ fn (x, y) (x^2+3*y^2)^(-1/2), 0.93313202062943577716 ],
-              //[ circ, 0.39269908169872415481 ],
-              //[ fn (x, y) exp(sin(x)*cos(y)), 0.691810450659522 ],
-              //[ fn (x, y) x^2/(1+x^2), 0.061175426882524345093 ],
-              //[ fn (x, y) sin(3*x+6*y), 0.031203084128814462056 ],
-              //[ fn (x, y) sin(x+y)^(-1/2), 0.691684734029392 ] 
-              ]
+//print abs(AreaIntegral(fn (x, q) q[0]+q[1], f, method={  } ).total(m) - 1.5) < 1e-6
 
-print AreaIntegral(fn (x, q) q^2, f, method={  } ).total(m)
-
-System.exit()
-
-var out = []
-
-for (t in tests) {
-    var c = EvaluationCounter(t[0]) 
-    
-    var r1 = AreaIntegral(c.eval, method={  } ).total(m)
-    var c1 = c.count()
-    c.reset()
-    var r2 = AreaIntegral(c.eval).total(m)
-    var c2 = c.count()
-
-    out.append([r1, abs((r1-t[1])/t[1]), c1, r2, abs((r2-t[1])/t[1]), c2])
-}
-
-for (res in out) print Array(res)
-
-var times = []
-var ntimes = 10
-
-print "Timing tests"
-for (t in tests) {
-    var start = System.clock() 
-    for (i in 1..ntimes) {
-        var r1 = AreaIntegral(fn (x) apply(t[0], x[0], x[1]), method={ } ).total(m)
-    }
-    var time1 = System.clock()-start
-
-    start = System.clock() 
-    for (i in 1..ntimes) {
-        var r1 = AreaIntegral(fn (x) apply(t[0], x[0], x[1]) ).total(m)
-    }
-    var time2 = System.clock() - start
-    
-    times.append([time1, time2])
-}
-
-for (t in times) print Array(t)
+print abs(AreaIntegral(fn (x, q) sin(q[0]+q[1]), f, method={  } ).total(m) - 0.031203084128814462056) < 1e-8

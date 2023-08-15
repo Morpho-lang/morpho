@@ -1,4 +1,9 @@
 target_sources(morpho
+    PRIVATE
+        morpho.h build.h
+)
+
+target_sources(morpho
     INTERFACE
     FILE_SET public_headers
     TYPE HEADERS

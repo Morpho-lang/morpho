@@ -16,6 +16,7 @@
 #include "build.h"
 #include "value.h"
 #include "error.h"
+#include "version.h"
 
 /* **********************************************************************
 * VM types
@@ -93,6 +94,9 @@ extern value cloneselector;
 /* **********************************************************************
 * Public interfaces
 * ********************************************************************** */
+
+/* Version checking */
+void morpho_version(version *v);
 
 /* Error handling */
 void morpho_writeerrorwithid(error *err, errorid id, int line, int position, ...);

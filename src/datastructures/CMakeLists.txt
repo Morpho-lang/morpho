@@ -7,6 +7,7 @@ target_sources(morpho
         syntaxtree.c    syntaxtree.h
         value.c         value.h
         varray.c        varray.h
+        version.c       version.h
 )
 
 target_sources(morpho
@@ -21,4 +22,5 @@ target_sources(morpho
         syntaxtree.h
         value.h
         varray.h
+        version.h
 )

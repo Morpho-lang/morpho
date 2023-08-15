@@ -2011,11 +2011,12 @@ int integrator_addvertex(integrator *integrate, int ndof, double *v) {
 }
 
 /** Adds an element to the element stack, returning the id. Elements consist of :
-    - a specified number of vertex ids, followed by
+    - vertex ids
     - a number of quantity ids. */
-int integrator_addelement(integrator *integrate, int nvid, int *vids) {
+int integrator_addelement(integrator *integrate, int *vids, int *qids) {
     int elid=integrate->elementstack.count;
-    varray_intadd(&integrate->elementstack, vids, nvid);
+    varray_intadd(&integrate->elementstack, vids, integrate->nbary);
+    if (integrate->nquantity && qids) varray_intadd(&integrate->elementstack, qids, integrate->nbary);
     return elid;
 }
 
@@ -2067,8 +2068,11 @@ void integrator_getquantities(integrator *integrate, int elementid, value **quan
 }
 
 /** Retrieves an element with elementid */
-void integrator_getelement(integrator *integrate, int elementid, int nv, int *vid) {
-    for (int i=0; i<nv; i++) vid[i]=integrate->elementstack.data[elementid+i];
+void integrator_getelement(integrator *integrate, int elementid, int *vid, int *qid) {
+    for (int i=0; i<integrate->nbary; i++) {
+        vid[i]=integrate->elementstack.data[elementid+i];
+        if (integrate->nquantity && qid) qid[i]=integrate->elementstack.data[elementid+integrate->nbary+i];
+    }
 }
 
 /** Adds a work item to the integrator's work list.
@@ -2303,17 +2307,9 @@ bool subdivide(integrator *integrate, quadratureworkitem *work, int *nels, quadr
     subdivisionrule *rule = integrate->subdivide;
     
     // Fetch the element data
-    int element[2*integrate->nbary];
-    integrator_getelement(integrate, work->elementid, 2*integrate->nbary, element);
-    
     int npts = integrate->nbary+rule->npts;
     int vid[npts], qid[npts];
-    
-    // Copy across vertex and element ids from the old element
-    for (int j=0; j<integrate->nbary; j++) {
-        vid[j]=element[j];
-        if (integrate->nquantity) qid[j]=element[integrate->nbary+j]; // Copy quantity ids from the element
-    }
+    integrator_getelement(integrate, work->elementid, vid, qid);
     
     // Get ready for interpolation
     double vmat[integrate->nbary*integrate->ndof]; // Vertex information
@@ -2338,14 +2334,14 @@ bool subdivide(integrator *integrate, quadratureworkitem *work, int *nels, quadr
         newitems[i].weight=work->weight*rule->weights[i];
         
         // Construct new element from the vertex ids and quantity ids
-        int element[2*integrate->nbary];
+        int vids[integrate->nbary], qids[integrate->nbary];
         for (int k=0; k<integrate->nbary; k++) {
-            element[k]=vid[rule->newels[integrate->nbary*i+k]];
-            element[integrate->nbary+k]=qid[rule->newels[integrate->nbary*i+k]];
+            vids[k]=vid[rule->newels[integrate->nbary*i+k]];
+            if (integrate->nquantity) qids[k]=qid[rule->newels[integrate->nbary*i+k]];
         }
         
         // Define the new element
-        newitems[i].elementid=integrator_addelement(integrate, 2*integrate->nbary, element);
+        newitems[i].elementid=integrator_addelement(integrate, vids, qids);
     }
     
     *nels = rule->nels;
@@ -2554,12 +2550,12 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
     integrator_addquantity(integrate, nquantity, quantity[0]);
     
     // Create first element
-    int elementid[2*integrate->nbary];
+    int vids[integrate->nbary], qids[integrate->nbary];
     for (int i=0; i<integrate->nbary; i++) {
-        elementid[i]=integrator_addvertex(integrate, dim, x[i]);
-        if (nquantity) elementid[integrate->nbary+i]=integrator_addquantity(integrate, nquantity, quantity[i]);
+        vids[i]=integrator_addvertex(integrate, dim, x[i]);
+        if (nquantity) qids[i]=integrator_addquantity(integrate, nquantity, quantity[i]);
     }
-    int elid = integrator_addelement(integrate, 2*integrate->nbary, elementid);
+    int elid = integrator_addelement(integrate, vids, qids);
     
     // Add it to the work list
     quadratureworkitem work;

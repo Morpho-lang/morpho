@@ -2028,7 +2028,7 @@ void integrator_countquantitydof(integrator *integrate, int nq, value *quantity)
         } else if (MORPHO_ISMATRIX(quantity[i])) {
             objectmatrix *m = MORPHO_GETMATRIX(quantity[i]);
             ndof+=matrix_countdof(m);
-        } else return false;
+        } else return;
     }
     integrate->nqdof=ndof;
 }
@@ -2167,9 +2167,9 @@ void preparequantities(integrator *integrate, int nbary, value **quantity, doubl
                 int mdof=m->ncols*m->nrows;
                 for (int l=0; l<mdof; l++) qmat[(k+l)*nbary+j]=m->elements[l];
             }
-        } else return false;
+        } else return;
     }
-    return true;
+    return;
 }
 
 /** Processes the results of interpolation */

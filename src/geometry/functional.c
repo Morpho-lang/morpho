@@ -4106,6 +4106,7 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
     value method=MORPHO_NIL;
     ref->v=NULL;
     ref->nfields=0;
+    ref->method=MORPHO_NIL;
 
     if (objectinstance_getpropertyinterned(self, scalarpotential_functionproperty, &func) &&
         MORPHO_ISCALLABLE(func)) {
@@ -4114,7 +4115,6 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
     }
     if (objectinstance_getpropertyinterned(self, functional_methodproperty, &method)) {
         ref->method=method;
-        success=true;
     }
     if (objectinstance_getpropertyinterned(self, functional_fieldproperty, &field) &&
         MORPHO_ISLIST(field)) {

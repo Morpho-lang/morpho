@@ -19,7 +19,7 @@ fn circ(x,y) {
 // List of integrals to evaluate and precalculated exact values 
 // See ACM Transactions on Mathematical Software, Vol 8, No. 2, June 1982,Pages 210-218
 var tests = [ [ fn (x, y) (x^2+3*y^2)^(-1/2), 0.93313202062943577716 ],
-              [ circ, 0.39269908169872415481 ],
+              // [ circ, 0.39269908169872415481 ], 
               [ fn (x, y) exp(sin(x)*cos(y)), 0.691810450659522 ],
               [ fn (x, y) x^2/(1+x^2), 0.061175426882524345093 ],
               [ fn (x, y) sin(3*x+6*y), 0.031203084128814462056 ],

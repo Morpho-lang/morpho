@@ -1,0 +1,5 @@
+// Check that you can't assign to an expression
+
+var a = "a"
+var b = "b"
+a + b = "value" // Error 'InvldAssgn'

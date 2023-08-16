@@ -1,0 +1,5 @@
+
+var a = Mesh("square_missingcoord.mesh")
+
+print a
+// expect error 'MshLdVrtDim'

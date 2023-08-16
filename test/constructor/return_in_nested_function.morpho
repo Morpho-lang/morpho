@@ -1,0 +1,10 @@
+class Foo {
+  init() {
+    fn init() {
+      return "bar"
+    }
+    print init() // expect: bar
+  }
+}
+
+print Foo() // expect: <Foo>

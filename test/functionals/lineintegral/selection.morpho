@@ -1,0 +1,30 @@
+// Test selections for fieldgradient
+import constants
+import meshtools
+
+var m = LineMesh(fn (t) [t,0,0], 0..1:0.1)
+
+var s = Selection(m, fn (x,y,z) x<=0.5)
+s.addgrade(1)
+
+var f = Field(m, fn (x,y,z) x)
+
+// A line integral with only spatial dependence
+var lc = LineIntegral(fn (x, f) (f*(1-f))^2, f)
+
+var int = lc.integrand(f, s)
+
+var exp = Matrix([[ 0.000285333, 0.00164533, 0.00350533, 0.00514533, 0.00608533, 0, 0, 0, 0, 0 ]])
+
+print (int-exp).norm() < 1e-8
+// expect: true
+
+print abs(lc.total(f, s) - 0.0166667) < 1e-6
+// expect: true
+
+var grad=lc.fieldgradient(f, s).linearize()
+
+var ngrad = Matrix([ 0.00285333, 0.0136, 0.0186, 0.0164, 0.0094, 0.00164666, 0, 0, 0, 0, 0 ])
+
+print (grad-ngrad).norm() < 1e-6
+// expect: true

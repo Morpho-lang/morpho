@@ -1,0 +1,4 @@
+// Join lists
+
+print [ 1, 2 ].join([ 3, 4 ])
+// expect: [ 1, 2, 3, 4 ]

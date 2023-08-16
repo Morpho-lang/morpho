@@ -1,0 +1,47 @@
+// Hydrogel mixing energy in 2D for a mesh with 2 facets (modeled from
+// Flory-Rehner theory)
+// Testing whether elementwise scaling by the gradient works
+import meshtools 
+
+var mb = MeshBuilder()
+
+mb.addvertex(Matrix([-1/2 ,0.1,0.1]))
+mb.addvertex(Matrix([0.6,-0.07,0]))
+mb.addvertex(Matrix([0,0.76,-0.2]))
+mb.addvertex(Matrix([0.35,0.3,0.85]))
+mb.addvertex(Matrix([0.29,0.34,-0.79]))
+mb.addvolume([0,1,2,3])
+mb.addvolume([0,1,2,4])
+var m0 = mb.build()
+
+m0.addgrade(1)
+m0.addgrade(2)
+
+var vol0 = Volume().total(m0)
+var phi0 = 0.5
+var phiref = 0.1
+var a = 0.1
+var b = 1.0
+var c = 0.25
+var d = 1.0
+var lh = Hydrogel(m0,
+                  a = a,
+                  b = b,
+                  c = c,
+                  d = d,
+                  phiref=phiref,
+                  phi0=phi0)
+
+var m = m0.clone()
+var f = 1.2
+var vert = m.vertexmatrix()
+for (i in 0...m.count()) m.setvertexposition(i, f*vert.column(i))
+
+var tol = 1e-6
+
+var expected = Matrix([[ 0.0186177, -0.0147269, -0.0038909, -0.00160984, 0.00160958 ],
+                       [ 0.0133731, 0.0115293, -0.0249025, -0.0038523, 0.00385234 ],
+                       [ -0.000354994, 0.000820056, -0.000465045, -0.0111579, 0.011158 ]])
+
+print (lh.gradient(m)-expected).norm()<tol
+// expect: true

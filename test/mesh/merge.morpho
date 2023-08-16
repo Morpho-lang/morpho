@@ -1,0 +1,51 @@
+import meshtools
+
+var m1 = LineMesh(fn (t) [cos(t), sin(t), 0], 0..Pi:Pi/5)
+var m2 = LineMesh(fn (t) [cos(t), sin(t), 0], Pi..2*Pi:Pi/5)
+
+var merge = MeshMerge([m1])
+merge.addmesh([m2])
+var m = merge.merge()
+
+var lines = m.connectivitymatrix(0,1)
+print lines
+// expect: [ 1 0 0 0 0 0 0 0 0 1 ]
+// expect: [ 1 1 0 0 0 0 0 0 0 0 ]
+// expect: [ 0 1 1 0 0 0 0 0 0 0 ]
+// expect: [ 0 0 1 1 0 0 0 0 0 0 ]
+// expect: [ 0 0 0 1 1 0 0 0 0 0 ]
+// expect: [ 0 0 0 0 1 1 0 0 0 0 ]
+// expect: [ 0 0 0 0 0 1 1 0 0 0 ]
+// expect: [ 0 0 0 0 0 0 1 1 0 0 ]
+// expect: [ 0 0 0 0 0 0 0 1 1 0 ]
+// expect: [ 0 0 0 0 0 0 0 0 1 1 ]
+
+for (elid in 0...m.count(1)) print lines.rowindices(elid)
+// expect: [ 0, 1 ]
+// expect: [ 1, 2 ]
+// expect: [ 2, 3 ]
+// expect: [ 3, 4 ]
+// expect: [ 4, 5 ]
+// expect: [ 5, 6 ]
+// expect: [ 6, 7 ]
+// expect: [ 7, 8 ]
+// expect: [ 8, 9 ]
+// expect: [ 0, 9 ]
+
+var merge2 = MeshMerge(m1)
+merge2.addmesh(m2)
+print merge2.meshes
+// expect: [ <Mesh>, <Mesh> ]
+
+var merger2 = merge2.merge()
+var v1 = m.vertexmatrix()
+var v2 = merger2.vertexmatrix()
+var Equal= true
+var d = v1.dimensions()
+for ( d1 in 0...d[0]){
+		for (d2 in 0...d[1]){
+			Equal = Equal && v1[d1,d2]==v2[d1,d2]
+		}
+}
+print Equal
+// expect: true

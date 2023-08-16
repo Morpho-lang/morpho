@@ -1,0 +1,16 @@
+// Dictionary literal in a loop constucted from variables (with operations!)
+// Checks register allocation and instruction count
+
+var t = "Type"
+
+for (i in 1..2) {
+  var p =  { t: "Cruller", "Calories": 400*i+50 }
+
+  print p["Type"]
+  print p["Calories"]
+}
+
+// expect: Cruller
+// expect: 450
+// expect: Cruller
+// expect: 850

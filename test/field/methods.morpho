@@ -1,0 +1,11 @@
+// Scalar field
+
+var m = Mesh("square.mesh")
+
+var f = Field(m, Matrix([1,2]), grade = [1, 0, 1])
+
+print f.shape()
+// expect: [ 1, 0, 1 ]
+
+print f.mesh()
+// expect: <Mesh: 4 vertices>

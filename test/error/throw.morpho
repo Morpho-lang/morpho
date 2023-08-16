@@ -1,0 +1,6 @@
+// User generated errs
+
+var err = Error("FooFoo", "Can't foo foos.")
+err.throw()
+
+// expect: Error 'FooFoo': Can't foo foos.

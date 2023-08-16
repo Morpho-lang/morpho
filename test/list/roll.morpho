@@ -1,0 +1,18 @@
+// Roll a list 
+
+var lst = [ 1,2,3 ]
+
+for (n in -4..4) {
+    print lst.roll(n)
+}
+
+// expect: [ 2, 3, 1 ]
+// expect: [ 1, 2, 3 ]
+// expect: [ 3, 1, 2 ]
+// expect: [ 2, 3, 1 ]
+// expect: [ 1, 2, 3 ]
+// expect: [ 3, 1, 2 ]
+// expect: [ 2, 3, 1 ]
+// expect: [ 1, 2, 3 ]
+// expect: [ 3, 1, 2 ]
+

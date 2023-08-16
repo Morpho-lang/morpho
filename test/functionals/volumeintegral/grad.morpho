@@ -1,0 +1,22 @@
+import constants
+import meshtools
+
+// Build unit tetrahedron
+var mb = MeshBuilder() 
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([0,0,1])
+mb.addvolume([0,1,2,3])
+var m = mb.build()
+
+// Construct a field 
+var f = Field(m, fn (x,y,z) x)
+
+print abs(VolumeIntegral(fn (x, f) grad(f).norm(), f).total(m) - 1/6) < 1e-6
+// expect: true
+
+// Construct a field 
+var g = Field(m, fn (x,y,z) x+y+z)
+print abs(VolumeIntegral(fn (x, f) grad(f).norm(), g).total(m) - sqrt(3)/6) < 1e-6
+// expect: true

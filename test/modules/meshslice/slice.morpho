@@ -1,0 +1,14 @@
+// Test slice 
+
+import meshslice
+import plot
+
+var m = Mesh("tetrahedron.mesh")
+m.addgrade(1)
+
+//Show(plotmesh(m, grade=[0,1,2]))
+
+var slice = MeshSlicer(m) 
+var m2 = slice.slice([0.1,0,0],[1,0,0]) 
+
+print ismesh(m2) // expect: true

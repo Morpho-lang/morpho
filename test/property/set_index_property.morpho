@@ -1,0 +1,15 @@
+
+class Foo {
+  init() {
+    self.elements = Array(3)
+    for (i in 0...3) {
+      self.elements[i]=i
+    }
+  }
+}
+
+var mb = Foo()
+for (i in mb.elements) print i
+// expect: 0
+// expect: 1
+// expect: 2

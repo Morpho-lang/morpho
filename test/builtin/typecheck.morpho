@@ -1,0 +1,38 @@
+// Check that type checking functions work correctly
+
+class Foo {
+  init(x) { self.bar = x }
+}
+
+var a[2,2]
+
+var vals = [  nil, 1, 0.2, true, false, Object(), "Hi",
+              Foo, 1..2, { "a": 1, "b": 2}, [], a,
+              Matrix(2,2), Sparse([[1,1,1]]) ]
+var check = [ isnil, isint, isfloat, isbool, isbool, isobject, isstring,
+              isclass, isrange, isdictionary, islist, isarray,
+              ismatrix, issparse ]
+
+var tst=Matrix(check.count(),vals.count())
+
+for (i in 0..vals.count()-1) {
+  for (j in 0..vals.count()-1) {
+    if (apply(check[i], [].append(vals[j]))) tst[i,j]=1
+  }
+}
+
+print tst
+// expect: [ 1 0 0 0 0 0 0 0 0 0 0 0 0 0 ]
+// expect: [ 0 1 0 0 0 0 0 0 0 0 0 0 0 0 ]
+// expect: [ 0 0 1 0 0 0 0 0 0 0 0 0 0 0 ]
+// expect: [ 0 0 0 1 1 0 0 0 0 0 0 0 0 0 ]
+// expect: [ 0 0 0 1 1 0 0 0 0 0 0 0 0 0 ]
+// expect: [ 0 0 0 0 0 1 1 1 1 1 1 1 1 1 ]
+// expect: [ 0 0 0 0 0 0 1 0 0 0 0 0 0 0 ]
+// expect: [ 0 0 0 0 0 0 0 1 0 0 0 0 0 0 ]
+// expect: [ 0 0 0 0 0 0 0 0 1 0 0 0 0 0 ]
+// expect: [ 0 0 0 0 0 0 0 0 0 1 0 0 0 0 ]
+// expect: [ 0 0 0 0 0 0 0 0 0 0 1 0 0 0 ]
+// expect: [ 0 0 0 0 0 0 0 0 0 0 0 1 0 0 ]
+// expect: [ 0 0 0 0 0 0 0 0 0 0 0 0 1 0 ]
+// expect: [ 0 0 0 0 0 0 0 0 0 0 0 0 0 1 ]

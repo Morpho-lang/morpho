@@ -8,23 +8,89 @@
 #define lex_h
 
 #include <stdio.h>
+#include "varray.h"
 #include "error.h"
 
 /** The lexer breaks an input stream into tokens, classifying them as it goes. */
+
+typedef struct slexer lexer;
 
 /* -------------------------------------------------------
  * Tokens
  * ------------------------------------------------------- */
 
-/** The type of token. N.B. Each token will have a parserule in the parser */
-typedef enum {
-    /* A blank token */
-    TOKEN_NONE,
+#define TOKEN_NONE -1
+
+/** Token types are left as a generic int to facilitate reprogrammability in the future */
+typedef int tokentype;
+
+/** A token */
+typedef struct {
+    tokentype type; /** Type of the token */
+    const char *start; /** Start of the token */
+    unsigned int length; /** Its length */
+    /* Position of the token in the source */
+    int line; /** Source line */
+    int posn; /** Character position of the end of the token */
+} token;
+
+/** Literal for a blank token */
+#define TOKEN_BLANK ((token) {.type=TOKEN_NONE, .start=NULL, .length=0, .line=0, .posn=0} )
+
+/* -------------------------------------------------------
+ * Token processing functions
+ * ------------------------------------------------------- */
+
+/** Token processing functions are called after recording it. */
+typedef bool (* processtokenfn) (lexer *l, token *tok, error *err);
+
+/* -------------------------------------------------------
+ * Token definitions
+ * ------------------------------------------------------- */
+
+typedef struct {
+    char *string; // String defining the token
+    tokentype type; // Token type
+    processtokenfn processfn; // Optional processfunction to call
+} tokendefn;
+
+DECLARE_VARRAY(tokendefn, tokendefn);
+
+/* -------------------------------------------------------
+ * Lexer data structure
+ * ------------------------------------------------------- */
+
+/** @brief Store the current configuration of a lexer */
+struct slexer {
+    const char* start; /** Starting point to lex */
+    const char* current; /** Current point */
+    int line; /** Line number */
+    int posn; /** Character position in line */
     
+    bool matchkeywords; /** Whether to match keywords or not; default is true */
+    bool stringinterpolation; /** Whether to perform string interpolation */
+    tokentype eoftype; /** End of file marker */
+    processtokenfn whitespacefn; /** Called to skip whitespace */
+    processtokenfn prefn; /** Called before attempting to match the token list */
+    
+    int interpolationlevel; /** Level of string interpolation */
+    
+    tokendefn *defns; /** Pointer to token defintions in use */
+    int ndefns; /** Number of token defintions in use */
+    
+    varray_tokendefn defnstore; /** Used to hold custom tokens */
+} ;
+
+/* -------------------------------------------------------
+ * Morpho token types
+ * ------------------------------------------------------- */
+
+/** Enum listing standard token types. Each token will be mapped to a parserule in the parser */
+enum {
     /* New line */
     TOKEN_NEWLINE,
     
-    /* The Help keyword */
+    /* Question mark */
     TOKEN_QUESTION,
     
     /* Literals */
@@ -33,8 +99,6 @@ typedef enum {
     TOKEN_INTEGER,
     TOKEN_NUMBER,
     TOKEN_SYMBOL,
-    TOKEN_TRUE, TOKEN_FALSE, TOKEN_NIL,
-    TOKEN_SELF, TOKEN_SUPER, TOKEN_IMAG,
     
     /* Brackets */
     TOKEN_LEFTPAREN, TOKEN_RIGHTPAREN,
@@ -51,6 +115,8 @@ typedef enum {
     TOKEN_HASH,
     TOKEN_AT,
     
+    /* Other symbols */
+    TOKEN_QUOTE,
     TOKEN_DOT,
     TOKEN_DOTDOT,
     TOKEN_DOTDOTDOT,
@@ -61,62 +127,77 @@ typedef enum {
     TOKEN_LTEQ, TOKEN_GTEQ,
     
     /* Keywords */
+    TOKEN_TRUE, TOKEN_FALSE, TOKEN_NIL,
+    TOKEN_SELF, TOKEN_SUPER, TOKEN_IMAG,
     TOKEN_PRINT, TOKEN_VAR,
-    TOKEN_IF, TOKEN_ELSE, TOKEN_IN, 
+    TOKEN_IF, TOKEN_ELSE, TOKEN_IN,
     TOKEN_WHILE, TOKEN_FOR, TOKEN_DO, TOKEN_BREAK, TOKEN_CONTINUE,
     TOKEN_FUNCTION, TOKEN_RETURN, TOKEN_CLASS,
-    TOKEN_IMPORT, TOKEN_AS, TOKEN_IS, TOKEN_WITH, 
+    TOKEN_IMPORT, TOKEN_AS, TOKEN_IS, TOKEN_WITH,
     TOKEN_TRY, TOKEN_CATCH,
+    
+    /* Shebangs at start of script */
+    TOKEN_SHEBANG,
     
     /* Errors and other statuses */
     TOKEN_INCOMPLETE,
-    TOKEN_ERROR,
     TOKEN_EOF
-} tokentype;
-
-/** A token */
-typedef struct {
-    tokentype type; /** Type of the token */
-    const char *start; /** Start of the token */
-    unsigned int length; /** Its length */
-    /* Position of the token in the source */
-    int line; /** Source line */
-    int posn; /** Character position of the end of the token */
-} token;
-
-/** Literal for a blank token */
-#define TOKEN_BLANK ((token) {.type=TOKEN_NONE, .start=NULL, .length=0, .line=0, .posn=0} )
+};
 
 /* -------------------------------------------------------
- * Lexer data structure
+ * Lex error messages
  * ------------------------------------------------------- */
 
-/** @brief Store the current configuration of a lexer */
-typedef struct {
-    const char* start; /** Starting point to lex */
-    const char* current; /** Current point */
-    int line; /** Line number */
-    int posn; /** Character position in line */
-#ifdef MORPHO_STRINGINTERPOLATION
-    int interpolationlevel; /** Level of string interpolation */
-#endif
-} lexer;
+#define LEXER_UNRECOGNIZEDTOKEN         "UnrgnzdTkn"
+#define LEXER_UNRECOGNIZEDTOKEN_MSG     "Unrecognized token."
 
-/* **********************************************************************
-* Lexer error messages
-* ********************************************************************** */
+#define LEXER_UNTERMINATEDCOMMENT       "UntrmComm"
+#define LEXER_UNTERMINATEDCOMMENT_MSG   "Unterminated multiline comment '/*'."
 
-#define COMPILE_UNTERMINATEDCOMMENT       "UntrmComm"
-#define COMPILE_UNTERMINATEDCOMMENT_MSG   "Unterminated multiline comment '/*'."
+#define LEXER_UNTERMINATEDSTRING        "UntrmStrng"
+#define LEXER_UNTERMINATEDSTRING_MSG    "Unterminated string."
 
-#define COMPILE_UNTERMINATEDSTRING        "UntrmStrng"
-#define COMPILE_UNTERMINATEDSTRING_MSG    "Unterminated string."
+/* -------------------------------------------------------
+ * Library functions to support customizable lexers
+ * ------------------------------------------------------- */
 
-/* **********************************************************************
-* Lexer interface
-* ********************************************************************** */
+bool lex_findtoken(lexer *l, tokendefn **defn);
+bool lex_matchtoken(lexer *l, tokendefn **defn);
+void lex_recordtoken(lexer *l, tokentype type, token *tok);
+char lex_advance(lexer *l);
+bool lex_back(lexer *l);
+bool lex_isatend(lexer *l);
+bool lex_isalpha(char c);
+bool lex_isdigit(char c);
+bool lex_isspace(char c);
+char lex_peek(lexer *l);
+char lex_peekahead(lexer *l, int n);
+char lex_peekprevious(lexer *l);
+void lex_newline(lexer *l);
 
+bool lex_skipshebang(lexer *l);
+
+/* -------------------------------------------------------
+ * Lex interface
+ * ------------------------------------------------------- */
+
+// Initialize and clear a lexer structure
 void lex_init(lexer *l, const char *start, int line);
+void lex_clear(lexer *l);
+
+// Configure lexer
+void lex_settokendefns(lexer *l, tokendefn *defns);
+void lex_seteof(lexer *l, tokentype eoftype);
+void lex_setstringinterpolation(lexer *l, bool interpolation);
+void lex_setmatchkeywords(lexer *l, bool match);
+void lex_setwhitespacefn(lexer *l, processtokenfn whitespacefn);
+void lex_setprefn(lexer *l, processtokenfn prefn);
+
+// Obtain the next token
 bool lex(lexer *l, token *tok, error *err);
+
+// Initialization/finalization
+void lex_initialize(void);
+void lex_finalize(void);
 
 #endif /* lex_h */

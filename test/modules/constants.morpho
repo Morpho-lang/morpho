@@ -1,0 +1,8 @@
+// Test constants package
+
+import constants
+
+print Pi
+// expect: 3.14159
+print E
+// expect: 2.71828

@@ -1,0 +1,24 @@
+// Ensure that variables shadow globals in method definitions
+
+var m = "Still here!"
+
+class Foo {
+  bar(f) {
+    var m = Matrix(2,2)
+    for (i in 0...2) {
+      for (j in 0...2) {
+        m[i,j]=i*j
+      }
+    }
+    print m
+  }
+}
+
+var a = Foo()
+
+a.bar(1)
+// expect: [ 0 0 ]
+// expect: [ 0 1 ]
+
+print m
+// expect: Still here!

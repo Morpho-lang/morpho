@@ -171,12 +171,13 @@ void syntaxtree_print(syntaxtree *tree) {
  *  @param left    } left ...
  *  @param right   } ...and right branches of the node.
  */
-syntaxtreeindx syntaxtree_addnode(syntaxtree *tree, syntaxtreenodetype type, value content, int line, int posn, syntaxtreeindx left, syntaxtreeindx right) {
+bool syntaxtree_addnode(syntaxtree *tree, syntaxtreenodetype type, value content, int line, int posn, syntaxtreeindx left, syntaxtreeindx right, syntaxtreeindx *out) {
     syntaxtreenode new = {.content=content, .left = left, .right = right, .type = type, .line=line, .posn=posn};
     
-    varray_syntaxtreenodeadd(&tree->tree, &new, 1);
+    if (!varray_syntaxtreenodeadd(&tree->tree, &new, 1)) return false;
     
-    return (syntaxtreeindx) tree->tree.count-1;
+    *out = tree->tree.count-1;
+    return true;
 }
 
 /** Gets a syntaxtree node from its index */

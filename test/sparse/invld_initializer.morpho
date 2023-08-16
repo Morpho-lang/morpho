@@ -1,0 +1,4 @@
+// Initialize different matrices
+
+var b = Sparse([["Blob","Bloop", 1]])
+// expect Error: 'SprsInvldInit'

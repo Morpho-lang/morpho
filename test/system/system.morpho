@@ -1,0 +1,14 @@
+// Test System class
+
+print isstring(System.platform())
+// expect: true
+
+print isstring(System.version())
+// expect: true
+
+print isnumber(System.clock())
+// expect: true
+
+System.exit() 
+
+print "We never get here"

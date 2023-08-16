@@ -1,0 +1,10 @@
+
+import "optional.morpho"
+
+foo(1)
+// expect: 1
+// expect: Boop
+
+foo(1, beep="BeepBeep")
+// expect: 1
+// expect: BeepBeep

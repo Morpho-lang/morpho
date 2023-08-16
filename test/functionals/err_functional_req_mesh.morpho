@@ -1,0 +1,5 @@
+var m = Mesh("triangle.mesh")
+var a = Area()
+
+print a.integrand()
+// expect error 'FnctlIntMsh'

@@ -1,0 +1,2 @@
+var nil = "value"
+// expect error: 'VarExpct'

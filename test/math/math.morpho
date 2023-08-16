@@ -1,0 +1,34 @@
+// Test math functions
+
+print exp(2)
+// expect: 7.38906
+
+print log(10)
+// expect: 2.30259
+
+print log10(10)
+// expect: 1
+
+print sin(1.2)
+// expect: 0.932039
+
+print cos(0.2)
+// expect: 0.980067
+
+print sqrt(2)
+// expect: 1.41421
+
+print floor(3.5)
+// expect: 3
+
+print ceil(3.5)
+// expect: 4
+
+print arctan(-0.2,-0.5)
+// expect: -1.9513
+
+print abs(-1.2)
+// expect: 1.2
+
+print sin("Hello")
+// expect error 'ExpctArgNm'

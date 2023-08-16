@@ -1,0 +1,14 @@
+// Do..while loop with break and continue
+
+var i = 0
+do {
+  if (i==5) break
+  i+=1
+  if (i==3) continue
+  print i
+} while (true)
+
+// expect: 1
+// expect: 2
+// expect: 4
+// expect: 5

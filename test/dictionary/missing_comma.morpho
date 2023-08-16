@@ -1,0 +1,4 @@
+// Missing comma between key/value pairs 
+
+var a = { "a" : "b" "c" : "d" }
+// expect error 'MssngComma'

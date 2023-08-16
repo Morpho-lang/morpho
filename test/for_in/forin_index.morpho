@@ -1,0 +1,20 @@
+// For in loops with index parameter
+
+var a = Matrix([1,2,3,4])
+
+for (var x, i in a) {
+  print "${i}: ${x}"
+}
+// expect: 0: 1
+// expect: 1: 2
+// expect: 2: 3
+// expect: 3: 4
+
+// Optional var
+for (x, i in a) {
+  print "${i}: ${x}"
+}
+// expect: 0: 1
+// expect: 1: 2
+// expect: 2: 3
+// expect: 3: 4

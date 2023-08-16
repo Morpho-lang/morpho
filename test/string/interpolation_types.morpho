@@ -1,0 +1,45 @@
+// Check interpolation types
+
+var i = 1
+var x = 0.5
+var tr = true
+var fl = false
+var n = nil
+
+print "${i} ${x} ${tr} ${fl} ${n}" // expect: 1 0.5 true false nil
+
+var lst = [ 1, 2, 3 ]
+print "${lst}" // expect: [ 1, 2, 3 ]
+
+// Functions 
+fn fun() { return x }
+print "${fun}" // expect: <fn fun>
+
+// Closures
+fn f(a) {
+  fn g() { return a }
+  return g
+}
+
+var q = f(1)
+
+print "${q}" // expect: <<fn g>>
+
+// Invocations
+var q = Object().respondsto
+print "${q}" // expect: <Object>.<fn respondsto>
+
+// Built in functions
+print "${cos}" // expect: <fn cos>
+
+class Klass {}
+
+print "${Klass}" // expect: @Klass
+
+class Chatty {
+  init(x) { self.name = x }
+  tostring() { return "@#%!"+self.name+"*&^" }
+}
+
+var s = Chatty("hello")
+print "${s}" // expect: @#%!hello*&^

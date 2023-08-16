@@ -1,0 +1,4 @@
+// Missing separator between key/value pair
+
+var a = { "a" "b" }
+// expect error 'DctSprtr'

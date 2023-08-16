@@ -1,0 +1,44 @@
+
+var m = Mesh("cube.mesh")
+var la = Area()
+var lv = VolumeEnclosed()
+
+print m
+// expect: <Mesh: 14 vertices>
+
+print "Area: ${la.total(m)} Volume: ${lv.total(m)}"
+// expect: Area: 6 Volume: 1
+
+var fa = la.gradient(m)
+var fv = lv.gradient(m)
+
+print fa
+// expect: [ -1 1 -1 1 -1 1 -1 1 0 0 0 0 0 0 ]
+// expect: [ -1 -1 1 1 -1 -1 1 1 0 0 0 0 0 0 ]
+// expect: [ -1 -1 -1 -1 1 1 1 1 0 0 0 0 0 0 ]
+print fv
+// expect: [ -0.166667 0.166667 -0.166667 0.166667 -0.166667 0.166667 -0.166667 0.166667 0 0 0 0 -0.333333 0.333333 ]
+// expect: [ -0.166667 -0.166667 0.166667 0.166667 -0.166667 -0.166667 0.166667 0.166667 0 0 -0.333333 0.333333 0 0 ]
+// expect: [ -0.166667 -0.166667 -0.166667 -0.166667 0.166667 0.166667 0.166667 0.166667 -0.333333 0.333333 0 0 0 0 ]
+
+var ainnerv=fa.inner(fv)
+var vinnerv=fv.inner(fv)
+print "${ainnerv}, ${vinnerv}"
+// expect: 4, 1.33333
+
+var ft=fa.clone()
+ft.acc(-ainnerv/vinnerv, fv)
+
+print ft
+// expect: [ -0.5 0.5 -0.5 0.5 -0.5 0.5 -0.5 0.5 0 0 0 0 1 -1 ]
+// expect: [ -0.5 -0.5 0.5 0.5 -0.5 -0.5 0.5 0.5 0 0 1 -1 0 0 ]
+// expect: [ -0.5 -0.5 -0.5 -0.5 0.5 0.5 0.5 0.5 1 -1 0 0 0 0 ]
+
+var v = m.vertexmatrix()
+
+v.acc(-0.01,ft)
+
+print la.total(m)
+print lv.total(m)
+// expect: 5.8833
+// expect: 0.999702

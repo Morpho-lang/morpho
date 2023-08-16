@@ -1,0 +1,4 @@
+// Increment can't be a statement
+for (var a = 1; a < 2; print "a") {}
+
+// expect error 'ExpExpr'

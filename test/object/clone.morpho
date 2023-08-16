@@ -1,0 +1,25 @@
+// Cloning an object
+
+class Foo {
+  init(x) {
+    self.boo = x
+  }
+}
+
+var a = Foo(5)
+
+print a.boo
+// expect: 5
+
+var b = a.clone()
+
+print b.boo
+// expect: 5
+
+b.boo = 10
+
+print a.boo
+// expect: 5
+
+print b.boo
+// expect: 10

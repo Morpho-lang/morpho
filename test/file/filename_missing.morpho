@@ -1,0 +1,7 @@
+/*
+ * File class
+ */
+
+// Read in characters
+var f = File()
+// expect error: 'FlNmMssng'

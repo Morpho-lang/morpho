@@ -1,0 +1,70 @@
+// Automated testing of JSON parser against the test suite:
+// https://github.com/nst/JSONTestSuite
+
+// Loads a file and returns the contents as a string
+fn loadFile(fname) {
+    var f = File(fname, "read") 
+    var out = f.readall()
+    f.close() 
+    return out
+}
+
+// Runs a test, returnineg true if successful
+fn test(src) {
+    var success=false
+    try {
+        JSON.parse(src)
+        success=true
+    } catch {
+        "DctSprtr":
+        "DctTrmntr":
+        "ExpExpr":
+        "JSONExtrnsTkn":
+        "JSONObjctKey":
+        "InvldUncd":
+        "UnescpdCtrl":
+        "JSONBlnkElmnt":
+        "JSONNmbrFrmt":
+        "UntrmStrng": 
+        "UnrgnzdTkn": 
+        "ValRng": 
+        "MssngComma":
+        "MssngSqBrc":
+        "StrEsc":
+        "RcrsnLmt":
+    }
+    return success
+}
+
+// Checks if the test passed by looking at the filename, which should begin 
+// with 'y' - parse must succeed
+//      'i' - parser can either accept or reject the contents
+//      'n' - parse must raise an error
+fn passq(fname, result) {
+    var expect = fname[0]
+    if (fname[0]=="y" && result==true) return "Passed" 
+    if (fname[0]=="n" && result==false) return "Passed" 
+    if (fname[0]=="i") return "Passed" 
+    return "Failed"
+}
+
+// Call this script with a folder of test files to examine
+var args = System.arguments()
+if (args.count()==0) System.exit() 
+var folder = args[0]
+
+if (Folder.isfolder(folder)) {
+    var files = Folder.contents(folder)
+    print "Analyzing ${files.count()} files."
+    var pass=0
+
+    for (fname, k in files) { // Run tests and report results 
+        var src = loadFile(folder+"/"+fname)
+        var outcome = test(src)
+        var passed = passq(fname, outcome)
+        if (passed=="Passed") pass+=1
+        if (passed=="Failed") print "${k}: ${passed} [${outcome}] [${fname}] ${src}"
+    }
+
+    print "Test suite complete: ${pass}/${files.count()} passed."
+}

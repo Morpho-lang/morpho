@@ -1,0 +1,15 @@
+// Test string veneer class
+
+var a = "Hello"
+print a
+// expect: Hello
+
+print a.count()
+// expect: 5
+
+var b = a.count
+print b()
+// expect: 5
+
+print b
+// expect: Hello.<fn count>

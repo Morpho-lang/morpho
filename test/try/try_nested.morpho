@@ -1,0 +1,24 @@
+/* **********************************
+ * morpho test suite
+ * try.morpho
+ * Nested try/catch
+ * ********************************** */
+
+var err = Error("Foo", "A Foo occurred")
+var err2 = Error("Hoo", "A Hoo occurred")
+
+try {
+  try {
+    err.throw()
+  } catch {
+    "Foo" :
+      print "caught in inner"
+      err2.throw()
+  }
+} catch {
+  "Foo" : print "caught in outer"
+  "Hoo" : print "also caught in outer"
+}
+
+// expect: caught in inner
+// expect: also caught in outer

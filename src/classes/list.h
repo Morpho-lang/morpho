@@ -46,6 +46,7 @@ objectlist *object_newlist(unsigned int nval, value *val);
 #define LIST_REMOVE_METHOD                "remove"
 #define LIST_TUPLES_METHOD                "tuples"
 #define LIST_SETS_METHOD                  "sets"
+#define LIST_REVERSE_METHOD               "reverse"
 
 /* -------------------------------------------------------
  * List error messages

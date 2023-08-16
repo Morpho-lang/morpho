@@ -1,0 +1,10 @@
+// Test string literals with byte specifiers
+
+print "\x09"=="\t"
+// expect: true
+
+print "\x08"=="\b"
+// expect: true
+
+print "\x0a"=="\n"
+// expect: true

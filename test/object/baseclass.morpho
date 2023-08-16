@@ -1,0 +1,19 @@
+// Object is the default parent class for all other classes
+
+class Foo { }
+
+var a = Foo()
+
+a.prnt()
+print ""
+// expect: <Foo>
+
+print a.respondsto("prnt")
+// expect: true
+
+a.invoke("prnt")
+print ""
+// expect: <Foo>
+
+print a.superclass()
+// expect: @Object

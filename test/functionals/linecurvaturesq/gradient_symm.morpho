@@ -1,0 +1,48 @@
+// Line curvature Sq gradient
+import constants
+import meshtools
+import plot
+import symmetry
+
+var np=10
+var L=1
+
+var m = LineMesh(fn (t) [t, 0.2*cos(2*Pi*t), 0], -L..L:2/np)
+//Show(plotmesh(m))
+
+// Add translational symmetry to the exterior vertices
+var s = Selection(m, fn (x,y,z) abs(x+L)<1e-10 || abs(x-L)<1e-10)
+var t = Translate(Matrix([2*L,0,0]))
+m.addsymmetry(t, s)
+
+// Create the manifold
+var lc = LineCurvatureSq()
+
+var grad = lc.gradient(m)
+
+var dim = grad.dimensions()
+var ngrad = Matrix(dim[0], dim[1])
+
+// Manually calculate the gradient
+var vert = m.vertexmatrix()
+
+var eps = 1e-10
+
+for (i in 0...dim[0]) {
+  for (j in 0...dim[1]) {
+    var v = vert[i, j]
+    vert[i, j] = v + eps
+    var fp = lc.total(m)
+    vert[i, j] = v - eps
+    var fm = lc.total(m)
+    ngrad[i,j] = (fp-fm)/(2*eps)
+  }
+}
+
+var sym=ngrad.column(0)+ngrad.column(np)
+ngrad.setcolumn(0, sym)
+ngrad.setcolumn(np, sym)
+
+//print (grad-ngrad).norm()
+
+print (grad-ngrad).norm()/grad.count() < 1e-5 // expect: true

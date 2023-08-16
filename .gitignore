@@ -1,2 +1,5 @@
-
 build/*
+.DS_Store
+test/FailedTests.txt
+*.out
+.vscode/settings.json

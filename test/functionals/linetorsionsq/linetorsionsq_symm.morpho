@@ -1,0 +1,23 @@
+// Line torsion Sq
+import constants
+import meshtools
+import symmetry
+import plot
+
+var np=1000
+var R=1
+var L=2
+
+var m = LineMesh(fn (t) [R*cos(2*Pi*t), R*sin(2*Pi*t), t], 0..L:L/np, closed=false)
+// Show(plotmesh(m, grade=1))
+
+// Add translational symmetry to the exterior vertices
+var s = Selection(m, fn (x,y,z) abs(z)<1e-10 || abs(z-L)<1e-10)
+var t = Translate(Matrix([0,0,L]))
+m.addsymmetry(t, s)
+
+// Create the torsionsq
+var lc = LineTorsionSq()
+
+print abs(lc.total(m) - 0.306601) < 1e-5
+// expect: true

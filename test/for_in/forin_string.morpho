@@ -1,0 +1,12 @@
+// For in loops with strings
+
+var a = "Hello"
+
+for (var x in a) {
+  print x
+}
+// expect: H
+// expect: e
+// expect: l
+// expect: l
+// expect: o

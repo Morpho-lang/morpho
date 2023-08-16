@@ -1,0 +1,4 @@
+class Foo {}
+
+class Bar < (Foo) {}
+// expect error: 'SprNmMssng'

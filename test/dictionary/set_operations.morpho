@@ -1,0 +1,28 @@
+// Dictionary set operations
+
+var a = { 1: 0, 2: 0, 3: 0 }
+var b = { 2: 0, 3: 0, 4: 0 }
+
+var k = a.union(b).keys()
+k.sort()
+print k
+// expect: [ 1, 2, 3, 4 ]
+
+k=a.intersection(b).keys()
+k.sort()
+print k
+// expect: [ 2, 3 ]
+
+k=a.difference(b).keys()
+k.sort()
+print k
+// expect: [ 1 ]
+
+// Addition and subtraction operators map onto difference and union
+print { "foo": 0, "bar": 0} - { "bar": 0}
+// expect: { foo : 0 }
+
+k=({ "f": 0, "g": 0} + { "h": 0, "i": 0}).keys()
+k.sort()
+print k
+// expect: [ f, g, h, i ]

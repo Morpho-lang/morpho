@@ -1,0 +1,14 @@
+// Test Dictionary standard methods
+
+var mass = { "Capital" : "Boston", "Population" : 6892503 }
+
+print mass // expect: { Population : 6892503 , Capital : Boston }
+
+print mass.count() // expect: 2
+
+for (key in mass) print key
+// expect: Population
+// expect: Capital
+
+var mass2 = mass.clone()
+print mass2["Capital"] // expect: Boston

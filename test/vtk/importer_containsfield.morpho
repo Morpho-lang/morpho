@@ -1,0 +1,8 @@
+// Checking whether the contiainsfield function works
+import vtk
+import meshtools
+
+var vtkI = VTKImporter("mesh_scalar.vtk")
+
+print vtkI.containsfield("f") // expect: true
+print vtkI.containsfield("g") // expect: false

@@ -51,6 +51,9 @@ typedef enum {
 /** Did an operation succeed without errors? */
 #define ERROR_SUCCEEDED(err) ((err).cat == ERROR_NONE)
 
+/** Did an operation fail? */
+#define ERROR_FAILED(err) ((err).cat != ERROR_NONE)
+
 /** Is this a runtime error? */
 #define ERROR_ISRUNTIMEERROR(err) ((err).cat <= ERROR_EXIT)
 

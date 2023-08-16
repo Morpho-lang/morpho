@@ -1,0 +1,5 @@
+// Test not operator on boolean values
+
+print !true;    // expect: false
+print !false;   // expect: true
+print !!true;   // expect: true

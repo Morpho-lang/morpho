@@ -1,0 +1,11 @@
+// Test slice 
+
+import meshslice
+import plot
+
+var m = Mesh("tetrahedron.mesh")
+var f = Field(m)
+
+var slice = MeshSlicer(m) 
+var f2 = slice.slicefield(f) // expect error 'SlcEmpty'
+var m2 = slice.slice([0.1,0,0],[1,0,0]) 

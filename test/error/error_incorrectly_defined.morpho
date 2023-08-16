@@ -1,0 +1,5 @@
+// User generated errs
+
+var err = Error("FooFoo", 1)
+
+// expect: Error 'ErrorArgs'

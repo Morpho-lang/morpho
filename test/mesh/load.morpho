@@ -1,0 +1,5 @@
+
+var a = Mesh("sphere.mesh")
+
+print a
+// expect: <Mesh: 770 vertices>

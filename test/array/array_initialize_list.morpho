@@ -1,0 +1,9 @@
+// Initialize array with list
+
+var a = Array(4, [1,2,3,4])
+print a
+// expect: [ 1, 2, 3, 4 ]
+
+var b = Array(2, 2, [[1,2], [3, 4]])
+print b
+// expect: [ [ 1, 2 ], [ 3, 4 ] ]

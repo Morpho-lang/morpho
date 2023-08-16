@@ -1,0 +1,13 @@
+// Check Object.invoke()
+
+var a = Object()
+
+a.invoke("prnt")
+print ""
+// expect: <Object>
+
+print a.invoke("superclass")
+// expect: nil
+
+print a.invoke("respondsto", "superclass")
+// expect: true

@@ -1,0 +1,47 @@
+/*
+ * File class
+ */
+
+// Read in characters
+var f = File("test.txt")
+
+for (var i=0; i<5; i=i+1) print f.readchar()
+f.close()
+// expect: L
+// expect: o
+// expect: r
+// expect: e
+// expect: m
+
+// Verify we read nil after the file is closed
+for (var i=0; i<2; i=i+1) print f.readchar()
+// expect: nil
+// expect: nil
+
+f=File("test.txt")
+var p=f.lines()
+f.close()
+
+print p[3]
+// expect: Curabitur gravida neque in neque sodales molestie.
+
+print "---"
+// expect: ---
+
+// Read lines in individually
+var g = File("test.txt")
+while (!g.eof()) {
+  var line = g.readline();
+  if (line) print line;
+}
+g.close()
+// expect: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+// expect: Phasellus sit amet ligula in ante porta mattis.
+// expect: Duis fringilla dui nec tristique rhoncus.
+// expect: Curabitur gravida neque in neque sodales molestie.
+// expect: Fusce ut velit pellentesque lectus porttitor malesuada a pellentesque libero.
+// expect: Ut tristique leo quis ullamcorper ornare.
+// expect: Integer cursus nunc nibh, eu interdum nisl mattis quis.
+// expect: Phasellus in lectus id dolor rhoncus cursus.
+// expect: Maecenas dapibus tincidunt turpis, nec fermentum augue ultrices sed.
+// expect: Curabitur venenatis sem sed velit varius tristique.

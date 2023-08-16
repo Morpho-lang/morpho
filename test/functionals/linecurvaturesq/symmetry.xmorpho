@@ -1,0 +1,16 @@
+// Symmetries
+
+/** Translations by a constant vector */
+class Translate {
+  init (vec) { // Store the translation vector
+    self.vec = vec
+  }
+
+  transform(posn) { // Forward transformation
+    return posn+self.vec
+  }
+
+  inverse(posn) { // Inverse transformation
+    return posn-self.vec
+  }
+}

@@ -1,0 +1,2 @@
+if (true) "ok" else class Foo {}
+// expect error: 'ExpExpr'

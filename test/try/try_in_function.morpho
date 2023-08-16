@@ -1,0 +1,32 @@
+/* **********************************
+ * morpho test suite
+ * try_in_function.morpho
+ * Test try/catch in a function
+ * ********************************** */
+
+var err = Error("Boo", "boo")
+var er2 = Error("Hoo", "hoo")
+var obj = Object()
+
+fn f(o) {
+  try {
+    print o.foo
+
+    err.throw()
+  } catch {
+    "ObjLcksPrp":
+      print "No foo"
+    "Boo":
+      print "No boo"
+      er2.throw()
+  }
+}
+
+f(obj) // expect: No foo
+
+obj.foo = true
+
+f(obj)
+// expect: true
+// expect: No boo
+// expect error 'Hoo'

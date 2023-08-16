@@ -1,0 +1,38 @@
+// String interpolation
+
+var i = 1;
+print "Just ${i} interpolation here...";
+// expect: Just 1 interpolation here...
+
+print "and ${2*(i+1)} here";
+// expect: and 4 here
+
+var drink = "Tea";
+var steep = 4;
+var cool = 2;
+print "${drink} will be ready in ${steep + cool} minutes.";
+// expect: Tea will be ready in 6 minutes.
+
+class Drink {
+	init(type) {
+		self.type = type;
+	}
+
+	consume() {
+		return self.type;
+	}
+}
+
+var beverage = Drink("coffee");
+
+print "I'd like ${i} cup of ${beverage.type} please!";
+// expect: I'd like 1 cup of coffee please!
+
+print "Another cup of ${beverage.consume()}, please!";
+// expect: Another cup of coffee, please!
+
+{ print "Check that ${ i } interpolation ${ i } closes properly"; }
+// expect: Check that 1 interpolation 1 closes properly
+
+print "Nested ${"interpolation?! Are you ${"mad?!"}"}";
+// expect: Nested interpolation?! Are you mad?!

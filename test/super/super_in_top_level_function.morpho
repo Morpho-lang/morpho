@@ -1,0 +1,3 @@
+fn foo() {
+  super.bar() // expect error 'SprOtsdClss'
+}

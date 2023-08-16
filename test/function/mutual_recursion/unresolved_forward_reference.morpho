@@ -1,0 +1,8 @@
+// A forward reference that is never supplied
+
+fn isEven(n) {
+  if (n == 0) return true
+  return isOdd(n - 1)
+}
+
+// expect error 'UnrslvdFrwdRf'

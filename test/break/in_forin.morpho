@@ -1,0 +1,22 @@
+// For in loops with break and continue
+
+// Immediately stop a loop
+for (i in 1..5) break
+
+// Conditionally terminate a loop early
+for (i in 1..5) {
+  if (i>3) break
+  print i
+}
+// expect: 1
+// expect: 2
+// expect: 3
+
+// Conditionally skip early elements
+for (i in 1..5) {
+  if (i<3) continue
+  print i
+}
+// expect: 3
+// expect: 4
+// expect: 5

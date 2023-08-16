@@ -1,0 +1,14 @@
+// Test string literals with escaped characters
+
+print "Hello\nGoodbye"
+// expect: Hello
+// expect: Goodbye
+
+print "\"Hello\""
+// expect: "Hello"
+
+
+var i = "hello"
+print "Hello\n${i}Goodbye"
+// expect: Hello
+// expect: helloGoodbye

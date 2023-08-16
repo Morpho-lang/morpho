@@ -1,0 +1,6 @@
+{
+  var a = "inner"
+}
+
+print a
+// expect error: 'SymblUndf'

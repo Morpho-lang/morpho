@@ -1,0 +1,19 @@
+// Sparse matrices
+
+var a = Sparse([[0,0,1],[1,1,1],[1,2,-1],[2,1,-1],[2,2,1],[3,3,1]])
+
+print a
+// expect: [ 1 0 0 0 ]
+// expect: [ 0 1 -1 0 ]
+// expect: [ 0 -1 1 0 ]
+// expect: [ 0 0 0 1 ]
+
+var dim = a.dimensions()
+
+for (i in 0...dim[1]) {
+  print a.rowindices(i)
+}
+// expect: [ 0 ]
+// expect: [ 1, 2 ]
+// expect: [ 1, 2 ]
+// expect: [ 3 ]

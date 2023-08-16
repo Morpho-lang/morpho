@@ -1,0 +1,28 @@
+// Test selections
+
+var m = Mesh("square.mesh")
+m.addgrade(1)
+
+fn f(x,y,z) {
+  return y>0.5
+}
+
+var s = Selection(m, f)
+
+s.addgrade(1, partials=true)
+var l = s.idlistforgrade(1)
+l.sort()
+print l
+// expect: [ 1, 2, 3, 4 ]
+
+s.removegrade(1)
+print s.idlistforgrade(1)
+// expect: [  ]
+
+s.addgrade(1)
+print s.idlistforgrade(1)
+// expect: [ 4 ]
+
+s.addgrade(2, partials=true)
+print s.idlistforgrade(2)
+// expect: [ 0, 1 ]

@@ -1,0 +1,25 @@
+// Matrix field
+
+var m = Mesh("square.mesh")
+print m
+// expect: <Mesh: 4 vertices>
+
+var f = Field(m, Matrix(2,2))
+
+print f[0]
+// expect: [ 0 0 ]
+// expect: [ 0 0 ]
+
+f[1]=f[0]=Matrix([[1,0],[0,1]])
+
+var g = f+f
+
+print g[1]
+// expect: [ 2 0 ]
+// expect: [ 0 2 ]
+
+var h = Field(m, fn (x,y,z) Matrix([[cos(x),0],[0,sin(x)]]))
+
+print h[1]
+// expect: [ 0.540302 0 ]
+// expect: [ 0 0.841471 ]

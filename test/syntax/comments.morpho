@@ -1,0 +1,16 @@
+/* **********************************
+ * morpho test suite
+ * comments.morpho
+ * Test comments
+ * ********************************** */
+
+print 1 // print 2
+// expect: 1
+
+print // 1
+2
+// expect: 2
+
+/* print 3 */
+
+/* Nested /* comment */ */

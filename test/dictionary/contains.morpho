@@ -1,0 +1,7 @@
+// Test Dictionary contains method
+
+var mass = { "Capital" : "Boston", "Population" : 6892503 }
+
+print mass.contains("Capital") // expect: true
+
+print mass.contains("State") // expect: false

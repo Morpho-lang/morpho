@@ -1,0 +1,7 @@
+// Try to multiply incompatible matrices
+
+var a = Matrix([[1, 2, 1], [3, 4, 1]])
+var b = Matrix([[0, 1], [1, 0]])
+
+print a*b
+// expect Error: 'MtrxIncmptbl'

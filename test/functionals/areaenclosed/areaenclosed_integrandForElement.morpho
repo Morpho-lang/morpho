@@ -1,0 +1,9 @@
+import meshtools
+
+var m = LineMesh(fn(t) [cos(t), sin(t), 0], 0..3*Pi/2:Pi/2, closed=true)
+
+m.addgrade(1)
+
+var a = AreaEnclosed()
+
+print a.integrandForElement(m, 1) // expect: 0.5

@@ -1,0 +1,6 @@
+// Transpose
+
+var a = Matrix([1,1,1])
+
+print a.norm()
+// expect: 1.73205

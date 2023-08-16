@@ -1,0 +1,35 @@
+// Creates nested arrays to stress garbage collector
+
+// Recursively make arrays
+fn makearray(size, depth) {
+  if (depth<1) return nil;
+
+  var a[size,size]
+  for (var i=0; i<size; i=i+1) {
+    for (var j=0; j<size; j=j+1) {
+      a[i,j]=makearray(size, depth-1)
+    }
+  }
+
+  return a
+}
+
+// Make a few of them
+fn test() {
+  for (var k=0; k<10; k=k+1) {
+    makearray(4,5)
+    print k
+  }
+}
+
+test()
+// expect: 0
+// expect: 1
+// expect: 2
+// expect: 3
+// expect: 4
+// expect: 5
+// expect: 6
+// expect: 7
+// expect: 8
+// expect: 9

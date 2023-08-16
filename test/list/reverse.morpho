@@ -1,0 +1,12 @@
+// Reverse a list
+
+// Odd length
+var lst = [ 1, 2, 3 ]
+lst.reverse()
+print lst
+// expect: [ 3, 2, 1 ]
+
+var lst = [ 1, 2, 3, 4 ]
+lst.reverse()
+print lst
+// expect: [ 4, 3, 2, 1 ]

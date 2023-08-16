@@ -1,0 +1,33 @@
+
+var m = Mesh("tetrahedron.mesh")
+
+fn phi(x,y,z) {
+  return x^2+y^2+z^2
+}
+
+fn gradphi(x,y,z) {
+  return Matrix([2*x,2*y,2*z])
+}
+
+var a = ScalarPotential(phi)
+
+var mc = Matrix([ 0.374999, 0.375, 0.375, 0.375 ])
+var mi = Matrix(4)
+
+for (k in 0...m.count()) {
+  var x = m.vertexposition(k)
+  mi[k]=phi(x[0], x[1], x[2])
+}
+
+print (mi-mc).norm()<1e-5
+// expect: true
+
+print a.total(m)
+// expect: 1.5
+
+var ngrad = [[ 0, -0.57735, -0.57735, 1.1547 ],
+             [ 0, -1, 1, 0 ],
+             [ 1.22474, -0.408248, -0.408248, -0.408248 ]]
+
+print (a.gradient(m)-Matrix(Array(ngrad))).norm() < 1e-5
+// expect: true

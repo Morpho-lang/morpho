@@ -1,0 +1,17 @@
+// Assign 
+
+var a = Matrix([[1,2], [3,4]])
+var b = Matrix(2,2)
+
+print b 
+// expect: [ 0 0 ]
+// expect: [ 0 0 ]
+b.assign(a) 
+
+print b 
+// expect: [ 1 2 ]
+// expect: [ 3 4 ]
+
+var c = Matrix(1,2)
+b.assign(c)
+// expect error 'MtrxIncmptbl'

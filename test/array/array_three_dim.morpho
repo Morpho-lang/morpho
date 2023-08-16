@@ -1,0 +1,30 @@
+// Three dimensional arrays
+
+var N=2
+var a[N,N,N]
+
+var k=0
+for (var i=0; i<N; i=i+1) {
+  for (var j=0; j<N; j=j+1) {
+    for (var l=0; l<N; l=l+1) {
+      a[i,j,l]=k
+      k=k+1
+    }
+  }
+}
+
+for (var i=0; i<N; i=i+1) {
+  for (var j=0; j<N; j=j+1) {
+    for (var l=0; l<N; l=l+1) {
+      print a[i,j,l]
+    }
+  }
+}
+// expect: 0
+// expect: 1
+// expect: 2
+// expect: 3
+// expect: 4
+// expect: 5
+// expect: 6
+// expect: 7

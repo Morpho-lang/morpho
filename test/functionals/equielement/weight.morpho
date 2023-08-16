@@ -1,0 +1,32 @@
+// Test equielements with weights
+
+import meshtools
+import optimize
+import plot
+
+var m = Mesh("hex.mesh")
+m.addgrade(1)
+
+m.setvertexposition(0, Matrix([0, 0.2, 0]))
+
+var bnd = Selection(m, boundary=true)
+bnd.addgrade(0) // Boundary vertices
+
+var w = Field(m, grade=2)
+for (i in 0...w.count()) w[2,i]=1
+
+var le = EquiElement(grade=2, weight=w)
+var la = Area()
+
+var problem = OptimizationProblem(m)
+problem.addenergy(le)
+
+var opt=ShapeOptimizer(problem, m)
+opt.fix(bnd)
+
+opt.quiet=true
+opt.relax(10)
+
+var xc=m.vertexposition(0)
+print xc.inner(xc)<1e-9
+// expect: true

@@ -1,0 +1,13 @@
+/* **********************************
+ * morpho test suite
+ * try.morpho
+ * Missing catch statement
+ * ********************************** */
+
+var err = Error("Foo", "A Foo occurred")
+
+try {
+  err.throw()
+}
+
+// expect error 'ExpctCtch'

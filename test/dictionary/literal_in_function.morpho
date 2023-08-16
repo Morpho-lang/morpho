@@ -1,0 +1,10 @@
+// Dictionary literal in a function
+
+fn state(cap, pop) {
+  return { "Capital" : cap, "Population" : 6892503 }
+}
+
+var mass=state("Boston", 6892503)
+
+print mass["Capital"] // expect: Boston
+print mass["Population"] // expect: 6892503

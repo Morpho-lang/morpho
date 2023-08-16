@@ -1,0 +1,22 @@
+/* **********************************
+ * morpho test suite
+ * try_reentrancy.morpho
+ * try/catch from within renentered vm
+ * ********************************** */
+
+var err = Error("Foo", "A Foo occurred")
+var err2 = Error("Boo", "A Foo occurred")
+
+fn bar (x) {
+  err2.throw()
+}
+
+for (i in 1..4) {
+  try {
+    apply(bar, nil)
+  } catch {
+    "Foo": print "Caught"
+  }
+}
+
+// expect error 'Boo'

@@ -1,0 +1,26 @@
+// Detect a bug around returns enclosed in conditionals
+
+class Foo {
+  init () {
+    self.a = 1
+  }
+
+  method() {
+    var df = self.other()
+    if (df<self.a) {
+      print "Bloop"
+      return nil // <--- this was previously misdetected as a final return
+    }
+  }
+
+  other() {
+    return 3
+  }
+
+}
+
+var f = Foo()
+f.method()
+
+print "oops"
+// expect: oops

@@ -1,0 +1,4 @@
+// Can't have a class as the body of a while loop
+
+while (true) class Foo {}
+// expect error 'ExpExpr'

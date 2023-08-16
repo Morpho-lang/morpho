@@ -857,6 +857,7 @@ static bool mesh_checksection(char *line, grade *g) {
 objectmesh *mesh_load(vm *v, char *file) {
     objectmesh *out = NULL;
     error err;
+    error_init(&err);
 
     /* Open the file */
     FILE *f = file_openrelative(file, "r");

@@ -1,0 +1,12 @@
+import meshtools
+import vtk 
+
+var m = Mesh("square.mesh")
+
+var fname = "square.vtk"
+
+VTKExporter(m).export(fname)
+
+var m2 = VTKImporter(fname).mesh()
+
+print m2.maxgrade() // expect: 2

@@ -43,11 +43,31 @@ value object_stringfromcstring(const char *in, size_t length) {
     if (new) {
         new->string=new->stringdata;
         new->string[length] = '\0'; /* Zero terminate the string to be compatible with C */
-        memcpy(new->string, in, length);
+        if (in) {
+            memcpy(new->string, in, length);
+        } else {
+            memset(new->string, 0, length);
+        }
         new->length=strlen(new->string);
         out = MORPHO_OBJECT(new);
     }
     return out;
+}
+
+/** @brief Creates a string with given length
+ *  @param length length of string to allocate
+ *  @returns the object (as a value) which will be MORPHO_NIL on failure */
+objectstring *object_stringwithsize(size_t length) {
+    objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
+
+    if (new) {
+        new->string=new->stringdata;
+        new->string[length] = '\0'; // Ensure pre-null terminated
+        memset(new->string, 0, length);
+        new->length=length;
+        return new;
+    }
+    return NULL;
 }
 
 /** @brief Converts a varray_char into a string.
@@ -102,6 +122,7 @@ bool string_tonumber(objectstring *string, value *out) {
     lexer l;
     token tok;
     error err;
+    error_init(&err);
     lex_init(&l, string->string, 0);
 
     if (lex(&l, &tok, &err)) {
@@ -124,6 +145,7 @@ bool string_tonumber(objectstring *string, value *out) {
             return true;
         }
     }
+    lex_clear(&l);
 
     return false;
 }
@@ -131,7 +153,7 @@ bool string_tonumber(objectstring *string, value *out) {
 /** Count number of characters in a string */
 int string_countchars(objectstring *s) {
     int n=0;
-    for (uint8_t *c = (uint8_t *) s->string; *c!='\0'; ) {
+    for (char *c = s->string; *c!='\0'; ) {
         c+=morpho_utf8numberofbytes(c);
         n++;
     }
@@ -141,7 +163,7 @@ int string_countchars(objectstring *s) {
 /** Get a pointer to the i'th character of a string */
 char *string_index(objectstring *s, int i) {
     int n=0;
-    for (uint8_t *c = (uint8_t *) s->string; *c!='\0'; ) {
+    for (char *c = s->string; *c!='\0'; ) {
         if (i==n) return (char *) c;
         c+=morpho_utf8numberofbytes(c);
         n++;
@@ -196,7 +218,7 @@ value String_enumerate(vm *v, int nargs, value *args) {
         } else {
             char *c=string_index(slf, n);
             if (c) {
-                out=object_stringfromcstring(c, morpho_utf8numberofbytes((uint8_t *) c));
+                out=object_stringfromcstring(c, morpho_utf8numberofbytes(c));
                 morpho_bindobjects(v, 1, &out);
             } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
         }
@@ -227,9 +249,9 @@ value String_split(vm *v, int nargs, value *args) {
         if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
 
         char *last = slf->string;
-        for (char *c = slf->string; *c!='\0'; c+=morpho_utf8numberofbytes((uint8_t *) c)) { // Loop over string
+        for (char *c = slf->string; *c!='\0'; c+=morpho_utf8numberofbytes(c)) { // Loop over string
             for (char *s = split->string; *s!='\0';) { // Loop over split chars
-                int nbytes = morpho_utf8numberofbytes((uint8_t *) s);
+                int nbytes = morpho_utf8numberofbytes(s);
                 if (strncmp(c, s, nbytes)==0) {
                     value newstring = object_stringfromcstring(last, c-last);
                     if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);

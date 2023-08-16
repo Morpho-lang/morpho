@@ -1,0 +1,15 @@
+/* **********************************
+ * morpho test suite
+ * try_empty_label.morpho
+ * Test empty labels in catch 
+ * ********************************** */
+
+var err = Error("Foo", "foo")
+
+try {
+  err.throw()
+} catch {
+  "Foo":
+}
+
+print "ok" // expect: ok

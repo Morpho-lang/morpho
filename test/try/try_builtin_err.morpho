@@ -1,0 +1,14 @@
+/* **********************************
+ * morpho test suite
+ * try_builtin_err.morpho
+ * Test try/catch statement with builtin error
+ * ********************************** */
+
+var obj = Object()
+
+try {
+  print obj.foo
+} catch {
+  "ObjLcksPrp":
+    print "No foo" // expect: No foo
+}

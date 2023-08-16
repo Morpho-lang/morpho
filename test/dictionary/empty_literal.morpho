@@ -1,0 +1,5 @@
+// Empty dictionary literal
+
+var a = { }
+print isdictionary(a)
+// expect: true

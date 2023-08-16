@@ -1,0 +1,29 @@
+// Check Object.respondsto()
+
+var a = Object()
+
+print a.respondsto("invoke")
+// expect: true
+
+print a.respondsto("squiggle")
+// expect: false
+
+var r = a.respondsto()
+r.sort() 
+print r
+// expect: [ clone, clss, count, enumerate, has, index, invoke, prnt, respondsto, serialize, setindex, superclass ]
+class bar {
+    method1(){
+        1+1
+    }
+}
+
+var b = bar()
+r = b.respondsto()
+r.sort() 
+print r
+// expect: [ clone, clss, count, enumerate, has, index, invoke, method1, prnt, respondsto, serialize, setindex, superclass ]
+
+
+print a.respondsto("squiggle","foo")
+// expect error 'RspndsToArg'

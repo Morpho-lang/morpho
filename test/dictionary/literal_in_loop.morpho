@@ -1,0 +1,13 @@
+// Dictionary literal in a loop
+// (Checks the compiler returned the right instruction count)
+
+for (i in 1..5) {
+  var mass = { "Capital" : "Boston", "Population" : 6892503 }
+  print mass["Capital"]
+}
+
+// expect: Boston
+// expect: Boston
+// expect: Boston
+// expect: Boston
+// expect: Boston

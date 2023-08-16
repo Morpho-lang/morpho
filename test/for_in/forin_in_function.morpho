@@ -1,0 +1,13 @@
+// For in loops
+
+fn f(u) {
+  for (var x in u) print x
+}
+
+var a = Matrix([1,2,3,4])
+
+f(a)
+// expect: 1
+// expect: 2
+// expect: 3
+// expect: 4

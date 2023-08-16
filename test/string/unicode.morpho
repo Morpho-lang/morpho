@@ -1,0 +1,4 @@
+// Test string literals with unicode character
+
+print "\U0001F98B"
+// expect: 🦋

@@ -1,0 +1,17 @@
+// Check ismember method on a list
+
+print [1,2,3].ismember(1)
+// expect: true
+
+print [1,2,3].ismember(5)
+// expect: false
+
+var a = Object()
+var b = Object()
+var c = Object()
+
+print [a,b].ismember(a)
+// expect: true
+
+print [a,b].ismember(c)
+// expect: false

@@ -1,0 +1,9929 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass book
+\begin_preamble
+\usepackage{titlesec}
+\titleformat{\part}
+  {\normalfont\sffamily\huge}
+  {\partname\ \thepart}{1em}{}
+\titleformat{\chapter}[display]
+  {\normalfont\sffamily\huge}
+  {\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titleformat{\section}
+  {\normalfont\sffamily\Large}
+  {\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\sffamily\large}
+  {\thesection}{1em}{}
+\titleformat{\subsubsection}
+  {\normalfont\sffamily\normalsize}
+  {\thesection}{1em}{}
+
+\usepackage{newtxtext}
+\usepackage{titletoc}
+
+\contentsmargin[1cm]{0cm}
+
+\titlecontents{part}[0em]{\vskip12pt\bfseries\sffamily}
+{\thecontentslabel\enspace}
+{\hspace{1.05em}}
+{ \hfill\contentspage}[\vskip 6pt]
+
+\titlecontents{chapter}[0em]{\vskip12pt\bfseries\sffamily}
+{\thecontentslabel\enspace}
+{\hspace{1.05em}}
+{ \hfill\contentspage}[\vskip 6pt]
+
+\titlecontents{section}[1em]{\sffamily}
+{\thecontentslabel\enspace}
+{}
+{\titlerule*[1pc]{.}\quad\contentspage}[\vskip 4pt]
+
+\titlecontents{subsection}[2.7em]{\sffamily}
+{\thecontentslabel\enspace}
+{}
+{\titlerule*[1pc]{.}\quad\contentspage}[\vskip 3pt]
+
+\usepackage{listings}
+\usepackage{color}
+\definecolor{ltgry}{rgb}{0.95,0.95,0.95}
+\lstset{backgroundcolor=\color{ltgry}}
+
+\lstset{columns=fixed, basicstyle=\ttfamily, basewidth=0.55em}
+
+\usepackage{pifont}
+\newcommand{\xmark}{\ding{55}}
+\end_preamble
+\use_default_options true
+\begin_modules
+theorems-ams
+eqs-within-sections
+figs-within-sections
+\end_modules
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "Baskerville"
+\font_sans "default" "Helvetica"
+\font_typewriter "default" "Andale Mono"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 80 80
+\use_microtype false
+\use_dash_ligatures false
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize 11
+\spacing single
+\use_hyperref true
+\pdf_bookmarks true
+\pdf_bookmarksnumbered false
+\pdf_bookmarksopen false
+\pdf_bookmarksopenlevel 1
+\pdf_breaklinks false
+\pdf_pdfborder true
+\pdf_colorlinks false
+\pdf_backref false
+\pdf_pdfusetitle true
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 1in
+\topmargin 1in
+\rightmargin 1in
+\bottommargin 1in
+\secnumdepth 2
+\tocdepth 1
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+
+\family sans
+\emph on
+\begin_inset Graphics
+	filename Figures/morphologo.pdf
+	width 3.5in
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+Developer Guide
+\begin_inset Newline newline
+\end_inset
+
+Version 0.6.0
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset toc
+LatexCommand tableofcontents
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Chapter
+Introduction
+\end_layout
+
+\begin_layout Standard
+This Developer Manual aims to assist users interested in extending or improving
+ 
+\emph on
+morpho.
+
+\emph default
+ Developers interested in adding new features to 
+\emph on
+morpho
+\emph default
+ can utilize one of the following mechanisms for expansion:
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Modules 
+\series default
+are written in the 
+\emph on
+morpho 
+\emph default
+language and are loaded with the 
+\family typewriter
+import
+\family default
+ keyword.
+ Creating a module is no different than writing a 
+\emph on
+morpho
+\emph default
+ program!
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Extensions
+\series default
+ are written in C or C++ using the 
+\emph on
+morpho
+\emph default
+ C API.
+ These are also loaded with the 
+\family typewriter
+import
+\family default
+ keyword; the distinction between modules and extensions is purposefully
+ not visible to the user; a module could be reimplemented as an extension
+ with the same interface, for example
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Contributing to the 
+\emph on
+morpho
+\emph default
+ source code.
+
+\series default
+ Changes to the core data types, improvements to the compiler, etc.
+ could be incorporated into morpho directly.
+ We highly recommend connecting to the 
+\emph on
+morpho
+\emph default
+ developers before doing this to check if the idea is already being worked
+ on, or whether there is guidance or advice on how specific features should
+ work.
+ 
+\end_layout
+
+\begin_layout Standard
+Modules and extensions should be distributed in their own git repository
+ as a package.
+ See Chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:Morpho-packages"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ for further information.
+\end_layout
+
+\begin_layout Standard
+We also recommend contributers look at the 
+\family typewriter
+CONTRIBUTING.md
+\family default
+ and 
+\family typewriter
+CODE_OF_CONDUCT.md
+\family default
+ documents in the 
+\emph on
+morpho
+\emph default
+ git repository for information and advice about contributing to 
+\emph on
+morpho
+\emph default
+, as well as how ethical standards for participation in our community.
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+This developer guide is only partially complete and represents a work in
+ progress: We are gradually adding in helpful information to assist developers.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Note Note
+status collapsed
+
+\begin_layout Chapter
+Chaitanya and Sam's ideas
+\end_layout
+
+\begin_layout Enumerate
+Creating a new objecttype, even a simple object.
+ 
+\end_layout
+
+\begin_layout Enumerate
+How to use the morpho debugger.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Build options for debugging —
+\begin_inset space \thinspace{}
+\end_inset
+
+what do they do? 
+\end_layout
+
+\begin_layout Enumerate
+How to write efficient morpho code.
+ [e.g.
+ how much faster is C code vs morpho].
+ 
+\end_layout
+
+\begin_layout Enumerate
+Type checking.
+\end_layout
+
+\begin_layout Enumerate
+Cloning versus deep cloning.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Standard methods.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Vanilla morpho documentation.
+ The Mesh data structures.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Note Note
+status collapsed
+
+\begin_layout Chapter
+Writing a 
+\emph on
+morpho
+\emph default
+ module
+\end_layout
+
+\begin_layout Section
+
+\emph on
+Morpho
+\emph default
+ coding advice
+\end_layout
+
+\begin_layout Section
+Interactive help 
+\end_layout
+
+\begin_layout Plain Layout
+Interactive help is written in a subset of Markdown.
+ 
+\end_layout
+
+\begin_layout Section
+Distributing your module
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Chapter
+
+\emph on
+Morpho
+\emph default
+ packages
+\begin_inset CommandInset label
+LatexCommand label
+name "chap:Morpho-packages"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To facilitate convenient distribution, 
+\emph on
+morpho
+\emph default
+ supports a lightweight notion of 
+\emph on
+packages
+\emph default
+, which comprise some functionality.
+ A package is simply a git repository that contains some or all of the following
+ file structure: 
+\end_layout
+
+\begin_layout Description
+/share/modules for
+\family typewriter
+ .morpho
+\family default
+ files that define a module
+\end_layout
+
+\begin_layout Description
+/share/help for 
+\family typewriter
+.md
+\family default
+ files containing interactive help (see below).
+\end_layout
+
+\begin_layout Description
+/lib for compiled extensions (these may be produced during installation).
+ 
+\end_layout
+
+\begin_layout Description
+/src for source files 
+\end_layout
+
+\begin_layout Description
+/examples for examples
+\end_layout
+
+\begin_layout Description
+/test for test files 
+\end_layout
+
+\begin_layout Description
+/manual if a package is sufficiently complex to require a manual 
+\end_layout
+
+\begin_layout Description
+README.md information about the package, installation etc.
+ 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ searches both its base installation and all known packages when trying
+ to locate resources.
+ We anticipate that at some future point a package management system similar
+ to pip will be created; the structure above is intended to be sufficiently
+ simple that different installation approaches could be supported.
+ 
+\end_layout
+
+\begin_layout Standard
+We recommmend naming your package with the 
+\emph on
+morpho-
+\emph default
+ prefix.
+ Please let the morpho development team know about interesting packages!
+\end_layout
+
+\begin_layout Section
+
+\emph on
+Morpho
+\emph default
+ help files 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+'s interactive help system utilizes a subset of the 
+\begin_inset CommandInset href
+LatexCommand href
+name "Markdown"
+target "https://daringfireball.net/projects/markdown/"
+literal "false"
+
+\end_inset
+
+ plain text formatting system.
+ Help files should be put in the 
+\family typewriter
+/share/help
+\family default
+ folder of your package so that morpho can find them.
+ 
+\end_layout
+
+\begin_layout Standard
+Each entry begins with a heading, for example: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+# Entry
+\end_layout
+
+\end_inset
+
+Using different heading levels indicates to 
+\emph on
+morpho
+\emph default
+ that a topic should be included as a subtopic.
+ Here, the two heading level 2 entries become subtopics of the main topic,
+ which uses heading level 1: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+# Main topic 
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+## Subtopic 1
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+## Subtopic 2
+\end_layout
+
+\end_inset
+
+
+\emph on
+Morpho
+\emph default
+'s help system supports basic formatting, including emphasized text:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+This is *emphasized* text.
+\end_layout
+
+\end_inset
+
+and lists can be included like so:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+* List entry
+\end_layout
+
+\begin_layout Plain Layout
+
+* Another list entry
+\end_layout
+
+\end_inset
+
+Code can be typeset inline,
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+Grave accents are used to delimit `some code`
+\end_layout
+
+\end_inset
+
+or can be included in a block by indenting the code:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+    for (i in 1..10) print i
+\end_layout
+
+\end_inset
+
+The terminal viewer will syntax color this automatically.
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ (ab)uses the Markdown hyperlink sytax to encode control features.
+ To specify a tag or keyword for a help entry, create a hyperlink where
+ the label begins with the word 
+\family typewriter
+tag
+\family default
+, and include the keyword you'd like to use in the target as follows:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+## Min
+\end_layout
+
+\begin_layout Plain Layout
+
+[tagmin]: # (min)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+Finds the minimum value...
+\end_layout
+
+\end_inset
+
+This unusual syntax is necessary as Markdown lacks comments or syntax for
+ metadata, and we use hyperlinks to encode text in a way that is valid Markdown
+ but remains transparent to regular Markdown viewers.
+ The 
+\family typewriter
+#
+\family default
+ is a valid URL target, and the construction in effect 'hides' the text
+ in parentheses.
+ Since hyperlink labels (the part in square brackets) must be unique per
+ file, add any text you like, typically the name of the tag, after the word
+ 
+\family typewriter
+tag
+\family default
+.
+\end_layout
+
+\begin_layout Standard
+Similarly, to tell the help viewer to show a table of subtopics after an
+ entry, add a line like this: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+[showsubtopics]: # (subtopics)
+\end_layout
+
+\end_inset
+
+Any characters after 
+\family typewriter
+showsubtopics
+\family default
+ in the label are ignored, so you can add additional characters to ensure
+ a unique label.
+ 
+\end_layout
+
+\begin_layout Part
+Coding in 
+\emph on
+morpho
+\end_layout
+
+\begin_layout Chapter
+The 
+\emph on
+morpho
+\emph default
+ debugger
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ provides a debugger that allows you to pause execution of a program, examine
+ the state of variables and registers, and continue.
+ To enable it run morpho with the 
+\family typewriter
+-debug
+\family default
+ command line switch.
+ Note that there is a performance penalty for running with debugging enabled.
+ 
+\end_layout
+
+\begin_layout Standard
+You may set hard breakpoints in your code—places where morpho will always
+ pause—by placing an 
+\family typewriter
+@
+\family default
+ symbol.
+ For example:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\begin_layout Plain Layout
+
+print 
+\begin_inset Quotes eld
+\end_inset
+
+Hello World
+\begin_inset Quotes erd
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+will break immediately before executing the print statement.
+ When morpho reaches one of these breakpoints, it enters debugging mode:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+---Morpho debugger---
+\end_layout
+
+\begin_layout Plain Layout
+
+Type '?' or 'h' for help.
+\end_layout
+
+\begin_layout Plain Layout
+
+Breakpoint in global at line 5 [Instruction 15]
+\end_layout
+
+\begin_layout Plain Layout
+
+@> 
+\end_layout
+
+\end_inset
+
+The 
+\family typewriter
+@>
+\family default
+ prompt reminds you that you're in the debugger rather than in interactive
+ mode.
+ You can then perform a number of commands to understand the current state
+ of the virtual machine, set additional breakpoints, examine the contents
+ of variables and registers, etc.
+ Most commands have a long form, e.g.
+ 
+\begin_inset Quotes eld
+\end_inset
+
+break
+\begin_inset Quotes erd
+\end_inset
+
+ or 
+\begin_inset Quotes eld
+\end_inset
+
+clear
+\begin_inset Quotes erd
+\end_inset
+
+ and a short form 
+\begin_inset Quotes eld
+\end_inset
+
+b
+\begin_inset Quotes erd
+\end_inset
+
+ or 
+\begin_inset Quotes eld
+\end_inset
+
+x
+\begin_inset Quotes erd
+\end_inset
+
+ respectively.
+ Debugger commands are largely consistent with those for the 
+\family typewriter
+gdb
+\family default
+ tool.
+ 
+\end_layout
+
+\begin_layout Standard
+Some of the debugging features require knowledge of how 
+\emph on
+morpho's
+\emph default
+ virtual machine works, which is documented in Chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:The-Morpho-Virtual"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Section
+Debugging commands
+\end_layout
+
+\begin_layout Subsection
+Break
+\end_layout
+
+\begin_layout Standard
+The 
+\family typewriter
+b
+\family default
+ command sets a breakpoint:
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+b
+\begin_inset space ~
+\end_inset
+
+lineno
+\family default
+ Break at a given line number.
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+b
+\begin_inset space ~
+\end_inset
+
+*instruction
+\family default
+ Break at a given instruction.
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+b
+\begin_inset space ~
+\end_inset
+
+functionname
+\family default
+ Break at a given function.
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+b
+\begin_inset space ~
+\end_inset
+
+Class.methodname
+\family default
+ Break at a given method.
+\end_layout
+
+\begin_layout Subsection
+Continue
+\end_layout
+
+\begin_layout Standard
+Continues program execution, leaving the debugger.
+ 
+\end_layout
+
+\begin_layout Subsection
+Disassemble
+\end_layout
+
+\begin_layout Standard
+Displays disassembly for the current line of code.
+ 
+\end_layout
+
+\begin_layout Subsection
+Garbage collect
+\end_layout
+
+\begin_layout Standard
+Forces a garbage collection.
+ 
+\end_layout
+
+\begin_layout Subsection
+Clear
+\end_layout
+
+\begin_layout Standard
+Clears a breakpoint.
+ The syntax is the same as for 
+\family typewriter
+b
+\family default
+.
+ Note the abbreviation is 
+\family typewriter
+x
+\family default
+ not 
+\family typewriter
+c
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Subsection
+Info
+\end_layout
+
+\begin_layout Standard
+Info reports on various features of the virtual machine.
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+i
+\begin_inset space ~
+\end_inset
+
+address
+\begin_inset space ~
+\end_inset
+
+n
+\family default
+ Displays the physical address of the object in register 
+\emph on
+n
+\emph default
+.
+
+\emph on
+ [This is primarily useful when debugging morpho itself]
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+i
+\begin_inset space ~
+\end_inset
+
+break
+\family default
+ Displays all active breakpoints
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+i
+\begin_inset space ~
+\end_inset
+
+globals
+\family default
+ Displays the value of all globals
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+i
+\begin_inset space ~
+\end_inset
+
+global
+\begin_inset space ~
+\end_inset
+
+n
+\family default
+ Displays the contents of global 
+\emph on
+n
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+i
+\begin_inset space ~
+\end_inset
+
+registers
+\family default
+ Displays registers for the current function call
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+i
+\begin_inset space ~
+\end_inset
+
+stack
+\family default
+ Displays the current stack
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+i
+\begin_inset space ~
+\end_inset
+
+help
+\family default
+ Displays a list of valid info commands
+\end_layout
+
+\begin_layout Subsection
+List
+\end_layout
+
+\begin_layout Standard
+Prints a program listing of the lines around the current execution point.
+ 
+\end_layout
+
+\begin_layout Subsection
+Print
+\end_layout
+
+\begin_layout Standard
+Prints the value of variables.
+ 
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+p
+\begin_inset space ~
+\end_inset
+
+symbol
+\family default
+ Prints the value of a given symbol
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+p
+\family default
+ Print all currently visible symbols
+\end_layout
+
+\begin_layout Subsection
+Set
+\end_layout
+
+\begin_layout Standard
+Prints the value of a variable or register.
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+set
+\begin_inset space ~
+\end_inset
+
+r
+\begin_inset space ~
+\end_inset
+
+n
+\begin_inset space ~
+\end_inset
+
+=
+\begin_inset space ~
+\end_inset
+
+<expr>
+\family default
+ Sets the value of register 
+\emph on
+n
+\emph default
+ to be
+\emph on
+ <expr>.
+\end_layout
+
+\begin_layout Labeling
+\labelwidthstring 00.00.0000
+
+\family typewriter
+set
+\begin_inset space ~
+\end_inset
+
+<symbol>
+\begin_inset space ~
+\end_inset
+
+=
+\begin_inset space ~
+\end_inset
+
+<expr>
+\family default
+ Sets the value of variable 
+\emph on
+<symbol>
+\emph default
+ to be
+\emph on
+ <expr>.
+\end_layout
+
+\begin_layout Standard
+Expressions must be simple constant values.
+ 
+\end_layout
+
+\begin_layout Subsection
+Quit
+\end_layout
+
+\begin_layout Standard
+Terminates program execution.
+ 
+\end_layout
+
+\begin_layout Subsection
+Step
+\end_layout
+
+\begin_layout Standard
+Continues execution, but returns to the debugger at the next line.
+ 
+\end_layout
+
+\begin_layout Subsection
+Trace
+\end_layout
+
+\begin_layout Standard
+Shows the current execution trace, i.e.
+ the list of functions and method calls that the program has made to get
+ to the current point.
+ 
+\end_layout
+
+\begin_layout Chapter
+The 
+\emph on
+morpho
+\emph default
+ profiler
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ provides a simple profiler to help identify bottlenecks in the program.
+ To use it run morpho with the 
+\family typewriter
+-profile 
+\family default
+command line switch.
+ As the program runs, a separate monitor thread runs independently and samples
+ the state of the morpho virtual machine at regular intervals, deducing
+ at each time which function or method is in use.
+ At the end of program execution, the profiler prints a report.
+ A sample run
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+on the 
+\emph on
+morpho
+\emph default
+ example 
+\family typewriter
+examples/meshgen/sphere.morpho
+\end_layout
+
+\end_inset
+
+ might produce something like: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+===Profiler output: Execution took 51.019 seconds with 272450 samples===
+\end_layout
+
+\begin_layout Plain Layout
+
+issame                              32.98% [89866 samples] 
+\end_layout
+
+\begin_layout Plain Layout
+
+Delaunay.dedup                      15.63% [42580 samples] 
+\end_layout
+
+\begin_layout Plain Layout
+
+(garbage collector)                 13.41% [36528 samples] 
+\end_layout
+
+\begin_layout Plain Layout
+
+List.ismember                       7.16% [19518 samples] 
+\end_layout
+
+\begin_layout Plain Layout
+
+Delaunay.triangulate                6.40% [17450 samples] 
+\end_layout
+
+\begin_layout Plain Layout
+
+List.enumerate                      3.58% [9750 samples] 
+\end_layout
+
+\begin_layout Plain Layout
+
+Show.trianglecomplexobjectdata      2.59% [7065 samples] 
+\end_layout
+
+\begin_layout Plain Layout
+
+Circumsphere.init                   2.24% [6091 samples] 
+\end_layout
+
+\begin_layout Plain Layout
+
+OneSidedHookeElasticity.integrandfn 1.77% [4834 samples] 
+\end_layout
+
+\begin_layout Plain Layout
+
+Matrix.column                       1.25% [3412 samples]
+\end_layout
+
+\begin_layout Plain Layout
+
+(anonymous)                         1.25% [3406 samples]
+\end_layout
+
+\begin_layout Plain Layout
+
+List.count                          1.01% [2758 samples]
+\end_layout
+
+\begin_layout Plain Layout
+
+Range.enumerate                     0.90% [2451 samples]
+\end_layout
+
+\begin_layout Plain Layout
+
+...
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+On the first line, the profiler reports the time elapsed between the start
+ and end of executing the program (which does not include compilation time)
+ and the total number of samples taken.
+ In subsequent lines, the profiler reports the name of a function or method,
+ the number of samples in which the virtual machine was observed to be in
+ that function, and the overall fraction of samples as a percentage.
+ The list is sorted so that the most common function is reported first.
+ The profiler reports on both user-implemented functions and morpho functions
+ and methods that are implemented in C (but visible to the user).
+ 
+\end_layout
+
+\begin_layout Standard
+There are some special entries: anonymous functions are reported as 
+\family typewriter
+(anonymous)
+\family default
+; time in the global context, i.e.
+ outside of a function or method is reported as 
+\family typewriter
+(global)
+\family default
+; time spent in the garbage collector is reported as 
+\family typewriter
+(garbage collector)
+\family default
+, here on the third line.
+ Garbage collection in this example is frequently 
+\begin_inset Formula $\sim10\%$
+\end_inset
+
+ of execution time; if it becoms significantly higher, this may suggest
+ your program is created too many temporary objects.
+ 
+\end_layout
+
+\begin_layout Standard
+How to interpret and act on profiler data is something of an art form.
+ In the above example, the largest fraction of execution time was spent
+ in a relatively function, 
+\family typewriter
+issame
+\family default
+, that compared two objects.
+ An obvious strategy would have been to simply reimplement the function
+ in C, which would have undoubtedly improved the performance.
+ However, on inspecting the code it was realized that 
+\family typewriter
+issame
+\family default
+ was actually being called by 
+\family typewriter
+Delaunay.dedup
+\family default
+ to remove entries from a data structure, and that by using a different
+ data structure this step could be entirely eliminated providing a significant
+ performance gain.
+ 
+\end_layout
+
+\begin_layout Standard
+Hence, optimization involves not only thinking about the performance of
+ individual pieces of code, but also the data structures and algorithms
+ being used.
+ The profiler simply directs the programmer's attention to the most time
+ consuming bits of code to avoid optimizing sections of code that aren't
+ called frequently.
+ 
+\end_layout
+
+\begin_layout Part
+Coding in C
+\end_layout
+
+\begin_layout Chapter
+Writing an extension
+\end_layout
+
+\begin_layout Standard
+Morpho extensions are dynamic libraries that are loaded at runtime.
+ From the user's perspective, they work just like modules through the 
+\family typewriter
+import
+\family default
+ statement:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+import myextension
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+When the compiler encounters an import statement, it first searches to see
+ if a valid extension can be found with that name.
+ If so, the extension is loaded and compilation continues.
+\end_layout
+
+\begin_layout Standard
+Extensions are implemented in C or any language that can be linked with
+ C.
+ A minimal extension looks like this:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+// myextension.c 
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+#include <stdio.h>
+\end_layout
+
+\begin_layout Plain Layout
+
+#include <morpho/morpho.h>
+\end_layout
+
+\begin_layout Plain Layout
+
+#include <morpho/builtin.h>
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+value myfunc(vm *v, int nargs, value *args) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    printf("Hello world!
+\backslash
+n");
+\end_layout
+
+\begin_layout Plain Layout
+
+    return MORPHO_NIL;
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+void myextension_initialize(void) {
+\end_layout
+
+\begin_layout Plain Layout
+
+    builtin_addfunction("myfunc", myfunc, BUILTIN_FLAGSEMPTY);
+\end_layout
+
+\begin_layout Plain Layout
+
+}   
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+void myextension_finalize(void) {
+\end_layout
+
+\begin_layout Plain Layout
+
+} 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+All 
+\emph on
+morpho
+\emph default
+ extensions 
+\series bold
+must
+\series default
+ provide an initialize function, and it 
+\series bold
+must
+\series default
+ be named 
+\family typewriter
+EXTENSIONNAME_initialize
+\family default
+.
+ In this function, you should call the morpho API to define functions and
+ classes implemented by your extension, and set up any global data as necessary.
+ Here, we add a function to the runtime that will be visible to user code
+ as 
+\family typewriter
+myfunc
+\family default
+.
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+ extensions 
+\series bold
+may
+\series default
+ but are not required to provide a finalize function, with a similar naming
+ convention to the initializer.
+ This function should deallocate or close anything created by your extension
+ that isn't visible to the 
+\emph on
+morpho
+\emph default
+ runtime.
+ Here, the function data structures are handled by the morpho runtime so
+ there's no finalization to do.
+ 
+\end_layout
+
+\begin_layout Standard
+The remaining code implements your extension.
+ Here, we implement a very simple function that conforms to the interface
+ for a 
+\begin_inset Quotes eld
+\end_inset
+
+builtin
+\begin_inset Quotes erd
+\end_inset
+
+ function.
+ The function just prints some text and returns 
+\family typewriter
+nil
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Subsection*
+Compiling an extension
+\end_layout
+
+\begin_layout Standard
+To compile the above code, it's necessary to ensure that the morpho header
+ files are visible to your compiler.
+ They could be copied from the morpho git to 
+\family typewriter
+/usr/local/include/morpho
+\family default
+ for example 
+\emph on
+[we intend to automate this as part of installation in future releases]
+\emph default
+.
+ 
+\end_layout
+
+\begin_layout Standard
+You need to compile this code as a dynamic library.
+ For example on the macOS with clang, 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+cc -undefined dynamic_lookup -dynamiclib -o myextension.dylib myextension.c
+\end_layout
+
+\end_inset
+
+The 
+\family typewriter
+-dynamiclib
+\family default
+ option indicates that the target should be a dynamic library.
+ The 
+\family typewriter
+-undefined dynamic_lookup
+\family default
+ option indicates to the linker that any undefined references should be
+ resolved at runtime.
+ 
+\end_layout
+
+\begin_layout Subsection*
+Packaging an extension
+\end_layout
+
+\begin_layout Standard
+As for 
+\emph on
+morpho
+\emph default
+ modules, we advise hosting your extension in a git repository with 
+\emph on
+morpho-
+\emph default
+ as the prefix and with the file structure as suggested in chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:Morpho-packages"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ We recommend including the C source files in 
+\family typewriter
+/src
+\family default
+ and compiling your extension to 
+\family typewriter
+/lib
+\family default
+, where it can be found by 
+\emph on
+morpho
+\emph default
+.
+ We highly recommend including interactive help files in 
+\family typewriter
+/share/help
+\family default
+ and examples as well.
+ All extensions should have a 
+\family typewriter
+README.md
+\family default
+ explaining what the extension is for and how the user should install it.
+ 
+\end_layout
+
+\begin_layout Standard
+In the imminent future, we anticipate providing an automated way to build
+ extensions that should help with installation.
+ For now, the above recommendations should ensure your basic file structure
+ is future-proof.
+ 
+\end_layout
+
+\begin_layout Standard
+We also note that the C API is not yet stable.
+ As we gain experience writing extensions and identify common needs, we
+ anticipate improving the API.
+ We welcome your feedback.
+ 
+\end_layout
+
+\begin_layout Chapter
+The 
+\emph on
+morpho
+\emph default
+ C API 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Morpho
+\emph default
+, like many languages, is implemented in C for performance reasons.
+ Extensions to morpho can also be written in C, or in a language that can
+ link with C.
+ 
+\end_layout
+
+\begin_layout Section
+Basic data types
+\end_layout
+
+\begin_layout Subsection
+Value
+\end_layout
+
+\begin_layout Standard
+A 
+\family typewriter
+value
+\family default
+ is the most basic data type in 
+\emph on
+morpho
+\emph default
+.
+ At any time, a value can contain any 
+\emph on
+one
+\emph default
+ of:
+\end_layout
+
+\begin_layout Itemize
+A signed integer, equivalent to an 
+\family typewriter
+int32
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Itemize
+A 
+\family typewriter
+double
+\family default
+ precision floating point number.
+ 
+\end_layout
+
+\begin_layout Itemize
+A pointer to an object.
+\end_layout
+
+\begin_layout Itemize
+A boolean value indicating 
+\family typewriter
+true
+\family default
+ or 
+\family typewriter
+false
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Itemize
+The value 
+\family typewriter
+nil
+\family default
+ representing no information.
+ 
+\end_layout
+
+\begin_layout Standard
+The structure of a value is kept opaque for performance reasons; setting
+ and getting a value must be done through macros provided by 
+\emph on
+morpho:
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Initialize a 
+\family typewriter
+value
+\family default
+ with a literal.
+
+\series default
+ Macros provided include 
+\family typewriter
+MORPHO_NIL
+\family default
+, 
+\family typewriter
+MORPHO_TRUE
+\family default
+, 
+\family typewriter
+MORPHO_FALSE
+\family default
+.
+ You can also use 
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Convert a C type to a 
+\family typewriter
+value
+\family default
+.
+
+\series default
+ Use the macros 
+\family typewriter
+MORPHO_INTEGER
+\family default
+, 
+\family typewriter
+MORPHO_FLOAT
+\family default
+, 
+\family typewriter
+MORPHO_OBJECT
+\family default
+, 
+\family typewriter
+MORPHO_BOOL
+\family default
+.
+ to do this.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Convert a 
+\family typewriter
+value
+\family default
+ to a C type.
+
+\series default
+ 
+\family typewriter
+MORPHO_GETINTEGERVALUE
+\family default
+, 
+\family typewriter
+MORPHO_GETFLOATVALUE
+\family default
+, 
+\family typewriter
+MORPHO_GETBOOLVALUE
+\family default
+, 
+\family typewriter
+MORPHO_GETOBJECT
+\family default
+.
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Test whether a value is of a certain type.
+
+\series default
+ Use 
+\family typewriter
+MORPHO_ISNIL
+\family default
+, 
+\family typewriter
+MORPHO_ISINTEGER
+\family default
+, 
+\family typewriter
+MORPHO_ISFLOAT
+\family default
+, 
+\family typewriter
+MORPHO_ISOBJECT
+\family default
+, 
+\family typewriter
+MORPHO_ISBOOL
+\family default
+.
+ Do 
+\series bold
+not
+\series default
+ use a direct comparison with a literal, because the value implementation
+ is intentionally opaque and such comparisons may fail.
+ In other words, do this
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+if (MORPHO_ISNIL(val)) ...
+ // Correct
+\end_layout
+
+\end_inset
+
+and not
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+if (val==MORPHO_NIL) ...
+ // Incorrect
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Additionally, a number of utility functions exist to compare values: 
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+MORPHO_ISEQUAL(a, b)
+\family default
+ tests if two values are equal.
+ For strings, etc.
+ this involves a detailed comparison.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+MORPHO_ISSAME(a, b)
+\family default
+ tests if two values refer to the same object (or are equal if they are
+ not objects).
+ This macro is intended to be faster than ISEQUAL.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+morpho_ofsametype(value a, value b)
+\family default
+ returns true if a and b have the same type.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+MORPHO_ISNUMBER(value a)
+\family default
+ returns true is a is a number (i.e.
+ integer or float).
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+morpho_valuetoint
+\family default
+, 
+\family typewriter
+morpho_valuetofloat
+\family default
+, 
+\family typewriter
+MORPHO_INTEGERTOFLOAT
+\family default
+,
+\family typewriter
+ MORPHO_FLOATTOINTEGER
+\family default
+ provide conversion between types.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+MORPHO_ISFALSE
+\family default
+, 
+\family typewriter
+MORPHO_ISTRUE
+\family default
+ test if a value is true or false.
+ 
+\end_layout
+
+\begin_layout Subsection
+Objects
+\end_layout
+
+\begin_layout Standard
+Objects are data types that require memory allocation, and are implemented
+ as C 
+\family typewriter
+struct
+\family default
+s that always begin with a field of type 
+\family typewriter
+object
+\family default
+.
+ This design enables 
+\emph on
+type munging
+\emph default
+, i.e.
+ casting any object to a generic 
+\family typewriter
+object
+\family default
+ type, but with the ability to infer the type of an object at a later point.
+ To store a pointer to an object in a 
+\family typewriter
+value
+\family default
+, 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+value v = MORPHO_OBJECT(objectpointer)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Many macros are provided to detect what kind of object is present, for example
+ 
+\family typewriter
+MORPHO_ISSTRING
+\family default
+, 
+\family typewriter
+MORPHO_ISLIST
+\family default
+, 
+\family typewriter
+MORPHO_ISMATRIX
+\family default
+, 
+\family typewriter
+MORPHO_ISSPARSE
+\family default
+.
+ Once you have determined the type of an object, you can then use macros
+ like 
+\family typewriter
+MORPHO_GETSTRING
+\family default
+,
+\family typewriter
+ MORPHO_GETLIST
+\family default
+ or similar to retrieve a pointer of the correct type.
+ Convenience macros such as 
+\family typewriter
+MORPHO_GETCSTRING
+\family default
+ are provided to enable easy access to object fields from a 
+\family typewriter
+value
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Standard
+New types of object can be defined; see Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:NewObjectType"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Subsection
+Varray
+\end_layout
+
+\begin_layout Standard
+Variable length arrays are arrays that dynamically adjust in size as new
+ members are added.
+ They're a very useful type that differs only by the type contained in them.
+ Hence, 
+\family typewriter
+common.h
+\family default
+ provides two convenient macros to create them for a specific type.
+ Suppose we want to define a varray of integers: to do so, we would include
+ in an appropriate 
+\family typewriter
+.h
+\family default
+ file the statement:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+DECLARE_VARRAY(integer, int)
+\end_layout
+
+\end_inset
+
+and then
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+DEFINE_VARRAY(integer, int)
+\end_layout
+
+\end_inset
+
+in our 
+\family typewriter
+.c
+\family default
+ file.
+ These definitions would create 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "language=C"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+varray_integerinit(varray_integer *v);
+\end_layout
+
+\begin_layout Plain Layout
+
+varray_integeradd(varray_integer *v, int data[], int count);
+\end_layout
+
+\begin_layout Plain Layout
+
+varray_integerwrite(varray_integer *v, int data);
+\end_layout
+
+\begin_layout Plain Layout
+
+varray_integerclear(varray_integer *v);
+\end_layout
+
+\end_inset
+
+Where we want to use an integer varray, we would write something like
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+varray_integer v;
+\end_layout
+
+\begin_layout Plain Layout
+
+...
+\end_layout
+
+\begin_layout Plain Layout
+
+/* Initialize the varray */
+\end_layout
+
+\begin_layout Plain Layout
+
+varray_integerinit(&v);
+\end_layout
+
+\begin_layout Plain Layout
+
+...
+\end_layout
+
+\begin_layout Plain Layout
+
+/* Write an element to the varray */
+\end_layout
+
+\begin_layout Plain Layout
+
+varray_integerwrite(&v, 1);
+\end_layout
+
+\begin_layout Plain Layout
+
+...
+\end_layout
+
+\begin_layout Plain Layout
+
+/* Deinitialize the varray */
+\end_layout
+
+\begin_layout Plain Layout
+
+varray_integerclear(&v);
+\end_layout
+
+\begin_layout Plain Layout
+
+...
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Implementing a new function
+\end_layout
+
+\begin_layout Standard
+Creating a new builtin morpho function requires the programmer to write
+ a function in C with the following interface: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+value customfunction(vm *v, int nargs, value *args);
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Your function will be passed an opaque reference to the virtual machine
+ 
+\family typewriter
+v
+\family default
+, the number of arguments that the function was called with 
+\family typewriter
+nargs
+\family default
+, and a list of arguments 
+\family typewriter
+args
+\family default
+.
+ You must 
+\series bold
+not
+\series default
+ access the argument list directly, but rather use the macro 
+\family typewriter
+MORPHO_GETARG(args, n)
+\family default
+ to get the 
+\family typewriter
+n
+\family default
+th argument.
+ You must return a 
+\family typewriter
+value
+\family default
+, which may be 
+\family typewriter
+MORPHO_NIL
+\family default
+.
+ For example, a simple implementation of the 
+\family typewriter
+sin
+\family default
+ trigonometric function might look like this:
+\begin_inset listings
+lstparams "language=C"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+value sin_fn(vm *v, int nargs, value *args) {
+\end_layout
+
+\begin_layout Plain Layout
+
+	if (nargs!=1) /* Raise error */; 
+\end_layout
+
+\begin_layout Plain Layout
+
+	double input;
+\end_layout
+
+\begin_layout Plain Layout
+
+	if (morpho_valuetofloat(MORPHO_GETARG(args, 0)) {
+\end_layout
+
+\begin_layout Plain Layout
+
+		return MORPHO_FLOAT(sin(input)); 
+\end_layout
+
+\begin_layout Plain Layout
+
+	} else /* Raise error */
+\end_layout
+
+\begin_layout Plain Layout
+
+	return MORPHO_NIL; 
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Morpho C-functions are naturally variadic; if your function is called with
+ the wrong number of arguments, you are responsible for raising an error
+ as described in Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:Error-handling"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+If you create any new objects in your function, you 
+\series bold
+must
+\series default
+ bind them to the virtual machine as described in Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:Memory-management"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+To make the function visible to morpho, call 
+\family typewriter
+builtin_addfunction
+\family default
+ in your extension's initialization function, e.g.
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+builtin_addfunction(
+\begin_inset Quotes eld
+\end_inset
+
+sin
+\begin_inset Quotes erd
+\end_inset
+
+, sin_fn, BUILTIN_FLAGSEMPTY);
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+From morpho, the user can then use the new 
+\family typewriter
+sin
+\family default
+ function as if it were a regular function.
+ 
+\end_layout
+
+\begin_layout Subsection
+Optional parameters
+\end_layout
+
+\begin_layout Standard
+Your function may accept optional parameters just as for regular morpho
+ functions.
+ The library function 
+\family typewriter
+builtin_options
+\family default
+ enables you to retrieve these values, as in the below example:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "language=C"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+static value fnoption1;
+\end_layout
+
+\begin_layout Plain Layout
+
+static value fnoption2;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+init(void) { // Initialization function called when your extension is run
+\end_layout
+
+\begin_layout Plain Layout
+
+	fnoption1=builtin_internsymbolascstring(
+\begin_inset Quotes eld
+\end_inset
+
+opt1
+\begin_inset Quotes erd
+\end_inset
+
+);
+\end_layout
+
+\begin_layout Plain Layout
+
+	fnoption2=builtin_internsymbolascstring(
+\begin_inset Quotes eld
+\end_inset
+
+opt2
+\begin_inset Quotes erd
+\end_inset
+
+);
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+value opt_fn(vm *v, int nargs, value *args) {
+\end_layout
+
+\begin_layout Plain Layout
+
+	int nfixed; // Number of fixed args.
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+	value optval1 = MORPHO_NIL;        // Declare values to receive
+\end_layout
+
+\begin_layout Plain Layout
+
+	value optval2 = MORPHO_INTEGER(2); // optional parameters
+\end_layout
+
+\begin_layout Plain Layout
+
+	if (!builtin_options(v, nargs, args, // Pass through 
+\end_layout
+
+\begin_layout Plain Layout
+
+		                 &nfixed,        // Number of fixed parameters is returned
+\end_layout
+
+\begin_layout Plain Layout
+
+                         2,              // Number of possible optional
+ args
+\end_layout
+
+\begin_layout Plain Layout
+
+                         fnoption1, &optval1, // Pairs of symbols and values
+ to receive them
+\end_layout
+
+\begin_layout Plain Layout
+
+                         fnoption2, &optval2) return MORPHO_NIL; 
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+	// ...
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+Symbols for the optional parameters must be declared in your initialization
+ function by calling 
+\family typewriter
+builtin_internsymbolascstring
+\family default
+.
+ These are typically tracked in a global variable.
+ 
+\end_layout
+
+\begin_layout Standard
+You call 
+\family typewriter
+builtin_options
+\family default
+ with the arguments passed to your function, 
+\family typewriter
+v
+\family default
+, 
+\family typewriter
+nargs
+\family default
+ and 
+\family typewriter
+args
+\family default
+, an pointer of type int* to receive the number of fixed parameters detected,
+ and then a list of optional parameters and their associated symbols.
+ If 
+\family typewriter
+builtin_options
+\family default
+ detects that a particular optional argument has been supplied by the user,
+ the corresponding 
+\family typewriter
+value
+\family default
+ is updated.
+ 
+\end_layout
+
+\begin_layout Standard
+You must check the return value of 
+\family typewriter
+builtin_options
+\family default
+, which returns 
+\family typewriter
+false
+\family default
+ on failure.
+ Where this occurs, you must return as quickly as possible from your function,
+ returning 
+\family typewriter
+MORPHO_NIL
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Section
+Implementing a new class
+\end_layout
+
+\begin_layout Standard
+There are two implementation patterns to define a new 
+\family typewriter
+morpho
+\family default
+ class:
+\end_layout
+
+\begin_layout Enumerate
+The object uses an 
+\family typewriter
+objectinstance
+\family default
+ and all information is stored in properties of the object.
+ These are visible to the user, can be edited by the user using the property
+ notation, and are accessible from within C code using 
+\family typewriter
+objectinstance_getproperty
+\family default
+ and 
+\family typewriter
+objectinstance_setproperty
+\family default
+.
+ The user may subclass a class implemented in this way and override method
+ definitions.
+ Many functionals use this strategy, as it's lightweight.
+ It does have some limitations: you may 
+\series bold
+not
+\series default
+ use this strategy if you need to store bare pointers (i.e.
+ those that refer to something that isn't an object) or if you want the
+ very fastest possible performance since property access is relatively expensive.
+ 
+\end_layout
+
+\begin_layout Enumerate
+You create a new object type (see Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:NewObjectType"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+) which can include arbitrary information.
+ You then create what is referred to as a 
+\emph on
+veneer class, 
+\emph default
+(see Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:Veneer-classes"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+), a 
+\emph on
+morpho
+\emph default
+ class that that defines user-accessible methods.
+ While more cumbersome, this pattern provides the fastest possible performance,
+ but object properties are not visible to the user and the resulting class
+ cannot be subclassed by the user.
+ 
+\end_layout
+
+\begin_layout Standard
+Both of these use a similar approach to define the class, which is in effect
+ simply a collection of method implementations.
+ Indeed, methods have exactly the same interface as C-functions.
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+value mymethod(vm *v, int nargs, value *args);
+\end_layout
+
+\end_inset
+
+and are written in the same way.
+ From within a method, the macro 
+\family typewriter
+MORPHO_SELF(args)
+\family default
+ returns the object itself as a 
+\family typewriter
+value
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Standard
+Once you have defined your method implementations, you must tell the 
+\emph on
+morpho
+\emph default
+ runtime about your class.
+ First, a set of macros are provided to create the appropriate class definition,
+ e.g.
+ for the Mesh class, 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+MORPHO_BEGINCLASS(Mesh)
+\end_layout
+
+\begin_layout Plain Layout
+
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Mesh_print, BUILTIN_FLAGSEMPTY), MORPHO_METHO
+D(MORPHO_SAVE_METHOD, Mesh_save, BUILTIN_FLAGSEMPTY), 
+\end_layout
+
+\begin_layout Plain Layout
+
+/* ...
+ */
+\end_layout
+
+\begin_layout Plain Layout
+
+MORPHO_ENDCLASS
+\end_layout
+
+\end_inset
+
+You call the 
+\family typewriter
+MORPHO_BEGINCLASS
+\family default
+ macro with a name for your class (this need not be the user-facing name).
+ You then use 
+\family typewriter
+MORPHO_ METHOD
+\family default
+ repeatedly to specify each method.
+ The first argument is the user-facing method label, which is often a macro.
+ The second argument is the C function that implements the method.
+ The final argument is a list of flags that can be used to inform morpho
+ about the method.
+ These are reserved for future use and 
+\family typewriter
+BUILTIN_FLAGSEMPTY
+\family default
+ is sufficient.
+ Finally, you use 
+\family typewriter
+MORPHO_ENDCLASS
+\family default
+ to finish the class definition.
+ 
+\end_layout
+
+\begin_layout Standard
+Having defined the available methods you must then call 
+\family typewriter
+builtin_addclass
+\family default
+ in your initialization code to actually define the class.
+ For the Length functional, this would look like: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+builtin_addclass(LENGTH_CLASSNAME, MORPHO_GETCLASSDEFINITION(Length), objclass);
+\end_layout
+
+\end_inset
+
+The first argument, 
+\family typewriter
+LENGTH_CLASSNAME
+\family default
+, is the user-visible name for the class.
+ The second argument is the class definition.
+ Use the macro 
+\family typewriter
+MORPHO_GETCLASSDEFINITION
+\family default
+ to retrieve this, supplying the name you used with 
+\family typewriter
+MORPHO_BEGINCLASS
+\family default
+.
+ The final argument is the parent class.
+ Often, we want this to be Object, and we can retrieve this like so: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+objectstring objclassname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+\end_layout
+
+\begin_layout Plain Layout
+
+value objclass = builtin_findclass(MORPHO_OBJECT(&objclassname));
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Implementing a new object type
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:NewObjectType"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The morpho object system is readily extensible.
+ Many data structures, strings, lists, dictionaries, matrices, etc.
+ are implemented as objects.
+ To illustrate what's necessary to create a new one, in this section, we'll
+ implement a new objectfoo type.
+ It's a good idea to declare new object types in a separate pair of implementati
+on (.c) and header (.h) files.
+ 
+\end_layout
+
+\begin_layout Standard
+In the header file, we'll begin by declaring a global variable as 
+\family typewriter
+extern
+\family default
+ that will later contain the objecttype.
+ We'll also declare a macro to refer to the objecttype later.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+extern objecttype objectfootype;
+\end_layout
+
+\begin_layout Plain Layout
+
+#define OBJECT_FOO objectfootype
+\end_layout
+
+\end_inset
+
+Now we can declare an associated structure and type for objectfoos.
+ Let's make them as simple as possible, simply storing a single 
+\family typewriter
+value
+\family default
+.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+typedef struct {
+\end_layout
+
+\begin_layout Plain Layout
+
+	object obj;     
+\end_layout
+
+\begin_layout Plain Layout
+
+	value foo; 
+\end_layout
+
+\begin_layout Plain Layout
+
+} objectfoo;
+\end_layout
+
+\end_inset
+
+Note that we start the structure declaration with a field of type 
+\family typewriter
+object
+\family default
+ that is reserved for 
+\emph on
+morpho
+\emph default
+ to use.
+ All object structures are 
+\series bold
+required
+\series default
+ to have the first field be an 
+\family typewriter
+object
+\family default
+, because 
+\emph on
+morpho
+\emph default
+ uses this field to detect the object type.
+ The remainder of the structure can be anything; here we just declare the
+ value.
+ 
+\end_layout
+
+\begin_layout Standard
+It's a good idea to implement convenience macros to check if a value contains
+ a particular type of object, and to retrieve the object from a value with
+ the correct pointer type.
+ For example: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+/** Tests whether an object is a foo */ 
+\end_layout
+
+\begin_layout Plain Layout
+
+#define MORPHO_ISFOO(val) object_istype(val, OBJECT_FOO)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+/** Gets the object as a foo */
+\end_layout
+
+\begin_layout Plain Layout
+
+#define MORPHO_GETFOO(val)   ((objectfoo *) MORPHO_GETOBJECT(val))
+\end_layout
+
+\end_inset
+
+You may also declare other macros to retrieve fields 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+/** Gets the foo value from a foo */
+\end_layout
+
+\begin_layout Plain Layout
+
+#define MORPHO_GETFOOVALUE(val) (((objectfoo *) MORPHO_GETOBJECT(val))->foo)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In the implementation file, we will create a global variable to hold the
+ objectfootype; this will be filled in by initialization code.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+objecttype objectfootype;
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We can then begin defining an objectfoo's functionality.
+ The first step is to implement a constructor function, which should allocate
+ memory for the object and initialize it.
+ This will involve calling,
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+object *object_new(size_t size, objecttype type)
+\end_layout
+
+\end_inset
+
+to create a new object with a specified size and type.
+ If 
+\family typewriter
+object_new
+\family default
+ returns a non-NULL pointer, allocation was successful and you can initialize
+ the object.
+ The constructor for an 
+\family typewriter
+objectfoo
+\family default
+, for example, might be: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+objectfoo *object_newfoo(value foo) {
+\end_layout
+
+\begin_layout Plain Layout
+
+	objectfoo *new = (objectfoo *) object_new(sizeof(objectfoo), OBJECT_FOO);	
+\end_layout
+
+\begin_layout Plain Layout
+
+	if (new) new->foo=foo;
+\end_layout
+
+\begin_layout Plain Layout
+
+	return new; 
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+You could provide more than one constructor to create your object from different
+ kinds of input.
+ For example, we could declare 
+\family typewriter
+object_foofromllist
+\family default
+ to create a foo from an objectlist.
+ Prototypes for the constructors should be added to the header file.
+ 
+\end_layout
+
+\begin_layout Standard
+To interface our new object type with the morpho runtime, we need to define
+ several functions: 
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+objectfoo_printfn (object *obj)
+\family default
+ Called by 
+\emph on
+morpho
+\emph default
+ to print a brief description of the object, e.g.
+ 
+\family typewriter
+<Object>
+\family default
+.
+ If the object's contents are short and can be conveniently displayed (as
+ for a string), printing the contents is allowable.
+ Detailed information or printing of complicated objects (e.g.
+ a matrix) should 
+\emph on
+not
+\emph default
+ be implemented here; it should go in a veneer class (see Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:Veneer-classes"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+).
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+void objectfoo_printfn (object *obj) {
+\end_layout
+
+\begin_layout Plain Layout
+
+	printf(
+\begin_inset Quotes eld
+\end_inset
+
+<Foo>
+\begin_inset Quotes erd
+\end_inset
+
+);
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+objectfoo_freefn(object *obj)
+\family default
+ [Optional] Called when the object is about to be free'd, providing an opportuni
+ty to free any private data, i.e.
+ data that is otherwise invisible to the virtual machine.
+ Almost always, objects that are referred to by a 
+\family typewriter
+value
+\family default
+ are not required to be free'd.
+ For example anything that has been passed to you by the virtual machine,
+ or that you have created and bound to the virtual machine with 
+\family typewriter
+morpho_bindobjects
+\family default
+, should 
+\series bold
+not
+\series default
+ be free'd.
+ Rather, this is for memory that your object has allocated independently
+ with 
+\family typewriter
+MORPHO_ALLOC
+\family default
+.
+ Since our objectfoo doesn't have any private data, we can actually skip
+ this function.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+objectfoo_markfn(object *obj, void *v)
+\family default
+ [Optional] Called by the garbage collector to find references to other
+ objects.
+ You should call 
+\family typewriter
+morpho_markobject
+\family default
+, 
+\family typewriter
+morpho_markvalue
+\family default
+, 
+\family typewriter
+morpho_markdictionary
+\family default
+ or 
+\family typewriter
+morpho_markvarrayvalue
+\family default
+ as appropriate to inform the garbage collector of these references.
+ Since we have a reference to a value in the foo field, we just need to
+ call 
+\family typewriter
+morpho_markvalue
+\family default
+.
+ Failing to inform the garbage collector correctly of references your object
+ holds can cause random crashes; to help identify these compile with 
+\family typewriter
+MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
+\family default
+.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+void objectfoo_markfn (object *obj) {
+\end_layout
+
+\begin_layout Plain Layout
+
+	morpho_markvalue( ((objectfoo *) obj)->foo ); 
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\family typewriter
+size_t objectfoo_sizefn(object *obj)
+\family default
+Should return the size of the object.
+ You 
+\series bold
+should
+\series default
+ include the size of any private data you hold, but 
+\series bold
+should not
+\series default
+ include the size of any references.
+ Hence, we simply return the size of the struct.
+ If the estimates returned by this function are incorrect, 
+\emph on
+morpho
+\emph default
+ programs using your object will still most likely run correctly, but the
+ garbage collection may run either too frequently, impacting performance,
+ or not frequently enough, potentially causing the program to run out of
+ memory.
+ 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+void objectfoo_sizefn (object *obj) {
+\end_layout
+
+\begin_layout Plain Layout
+
+	return sizeof(objectfoo); 
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+These functions should be collected together in a 
+\family typewriter
+objecttypedefn
+\family default
+ structure, which is normally declared statically: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+objecttypedefn objectfoodefn = {     
+\end_layout
+
+\begin_layout Plain Layout
+
+	.printfn=objectfoo_printfn,
+\end_layout
+
+\begin_layout Plain Layout
+
+    .markfn=objectfoo_markfn, 
+\end_layout
+
+\begin_layout Plain Layout
+
+    .freefn=NULL, 
+\end_layout
+
+\begin_layout Plain Layout
+
+    .sizefn=objectfoo_sizefn
+\end_layout
+
+\begin_layout Plain Layout
+
+};
+\end_layout
+
+\end_inset
+
+Now all these functions have been defined, we must add the following line
+ to initialization code, 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+objectfootype=object_addtype(&objectfoodefn);
+\end_layout
+
+\end_inset
+
+which registers the objectfoodefn with the morpho runtime and returns an
+ objectype, which we record for use elsewhere.
+ 
+\end_layout
+
+\begin_layout Standard
+Nothing requires us to expose a new object type to the user; we can use
+ such an object purely for internal purposes.
+ Most objecttypes, however, provide a veneer class as we'll discuss in the
+ following section.
+ 
+\end_layout
+
+\begin_layout Section
+Veneer classes
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:Veneer-classes"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+A veneer class is a morpho class definition that the runtime refers to whenever
+ the corresponding object is encountered.
+ Such a class provides a 
+\begin_inset Quotes eld
+\end_inset
+
+veneer
+\begin_inset Quotes erd
+\end_inset
+
+ over a regular morpho object that enables the user to interact with it
+ like any other object.
+ For example, if morpho tries to add a float to an 
+\family typewriter
+objectmatrix
+\family default
+, morpho looks up the veneer class for an 
+\family typewriter
+objectmatrix
+\family default
+ then tries to invoke the 
+\family typewriter
+add
+\family default
+ or 
+\family typewriter
+addr
+\family default
+ method as appropriate.
+ 
+\end_layout
+
+\begin_layout Standard
+Veneer classes are defined as for regular classes (see the preceding section).
+ The programmer must provide method implementations, define the class and
+ register it with the runtime.
+ To register a class as a veneer class, one more step is required in initializat
+ion code: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+object_setveneerclass(OBJECT_MATRIX, matrixclass);
+\end_layout
+
+\end_inset
+
+which registers the class object 
+\family typewriter
+matrixclass
+\family default
+ (this is the return value of 
+\family typewriter
+builtin_addclass
+\family default
+) as the veneer class for objects of type 
+\family typewriter
+OBJECT_MATRIX
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Section
+Error handling
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:Error-handling"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Memory management
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:Memory-management"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The morpho runtime provides garbage collection: the user need not worry
+ about deallocating any object.
+ The actual garbage collector implementation is intentionally opaque and
+ is likely a target of future improvement.
+ The C programmer typically interacts with the garbage collector in two
+ ways: First, new object types must provide a markfunction to enable the
+ garbage collector to see any 
+\family typewriter
+value
+\family default
+s stored within an object as described in Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:NewObjectType"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ Second, where new objects are created and returned to the user, these should
+ typically be bound to a virtual machine as will be described below.
+ 
+\end_layout
+
+\begin_layout Standard
+Morpho uses the following model for memory management.
+ Generic blocks of memory can be allocated, free'd and reallocated using
+ the following macros: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+x = MORPHO_MALLOC(size)
+\end_layout
+
+\begin_layout Plain Layout
+
+MORPHO_FREE(x) 
+\end_layout
+
+\begin_layout Plain Layout
+
+MORPHO_REALLOC(x, size)
+\end_layout
+
+\end_inset
+
+If you allocate memory using 
+\family typewriter
+MORPHO_MALLOC
+\family default
+, you are responsible for freeing it.
+ For example, if you allocate additional memory when an custom object is
+ created, you should free it in the appropriate freefn.
+ 
+\end_layout
+
+\begin_layout Standard
+If you create an object, you are resposible for freeing that object by calling
+ 
+\family typewriter
+object_free
+\family default
+ unless that object is bound to a virtual machine by calling: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+morpho_bindobjects(vm *v, int nobj, value *obj);
+\end_layout
+
+\end_inset
+
+with a list of objects.
+ A simple example:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+objectfoo *foo = objectfoo_new();
+\end_layout
+
+\begin_layout Plain Layout
+
+// Check for success and raise an error if allocation failed
+\end_layout
+
+\begin_layout Plain Layout
+
+value new = MORPHO_OBJECT(foo) 
+\end_layout
+
+\begin_layout Plain Layout
+
+morpho_bindobjects(v, 1, &new); 
+\end_layout
+
+\end_inset
+
+Once an object is bound to a virtual machine, the garbage collector is responsib
+le for determining whether it is in use and can be safely deallocated.
+ 
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset Quotes eld
+\end_inset
+
+weak
+\begin_inset Quotes erd
+\end_inset
+
+ garbage collection model used by morpho has a number of advantages: It
+ reduces pressure on the garbage collector by reducing the number of blocks
+ that need to be tracked, because data associated with the runtime environment
+ does not have to be managed.
+ It facilitates a number of virtual machine features such as re-entrancy,
+ because morpho objects can be created, used and even returned to the user
+ without the garbage collector being involved.
+ Nonetheless, because of the non-deterministic nature of garbage collection,
+ various classes of subtle bugs can arise: 
+\end_layout
+
+\begin_layout Enumerate
+An incorrectly programmed custom object may fail to inform the garbage collector
+ about 
+\family typewriter
+value
+\family default
+s or other structures it has access to in its 
+\family typewriter
+markfn
+\family default
+.
+ It is 
+\series bold
+essential
+\series default
+ that this function works correctly, otherwise the garbage collector may
+ think that an object is no longer in use (and hence deallocate it) when
+ in fact it is.
+ 
+\end_layout
+
+\begin_layout Enumerate
+When calling morpho code from C it is necessary to be careful to ensure
+ that bound objects remain visible to the garbage collector or they may
+ be incorrectly free'd.
+ See Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:Re-entrancy"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ for further information.
+ 
+\end_layout
+
+\begin_layout Standard
+In both cases, when an incorrectly free'd object is next used, it will cause
+ a segmentation fault.
+ To help debug such errors, it's possible to build morpho with the option
+ 
+\family typewriter
+MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
+\family default
+.
+ This forces garbage collection on every bind operation, and will tend to
+ cause segmentation faults to occur much sooner after the problematic code
+ has executed.
+ 
+\end_layout
+
+\begin_layout Section
+Re-entrancy
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:Re-entrancy"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The morpho virtual machine is 
+\emph on
+re-entrant
+\emph default
+, i.e.
+ C function and method implementations can call morpho code and re-enter
+ the virtual machine.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+bool morpho_call(vm *v, value fn, int nargs, value *args, value *ret);
+\end_layout
+
+\begin_layout Plain Layout
+
+bool morpho_lookupmethod(value obj, value label, value *method);
+\end_layout
+
+\begin_layout Plain Layout
+
+bool morpho_countparameters(value f, int *nparams);
+\end_layout
+
+\begin_layout Plain Layout
+
+bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args,
+ value *ret); 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Part
+
+\emph on
+Morpho
+\emph default
+ internal documentation
+\end_layout
+
+\begin_layout Chapter
+
+\emph on
+libmorpho
+\emph default
+ source code
+\end_layout
+
+\begin_layout Standard
+The morpho source code has been significantly reorganized in version 0.6
+ to improve its modularity and reusability.
+ Each file is intended to provide one piece of functionality, and is organized
+ into folders as follows:—
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="8" columns="2">
+<features tabularvalignment="middle">
+<column alignment="left" valignment="top">
+<column alignment="left" valignment="top">
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Folder
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Purpose
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+core
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Compiler and virtual machine.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+debug
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Debugger and profiler.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+classes
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Morpho object types and veneer classes.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+linalg
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Support for dense and sparse linear algebra.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+builtin
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Support construction of builtin classes and functions.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+support
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Various utility packages
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+datastructures
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Low level data structures used by morpho
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+A description of files within each of these folders is provided in Table
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "tab:MapSource"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset Tabular
+<lyxtabular version="3" rows="42" columns="3">
+<features tabularvalignment="middle">
+<column alignment="left" valignment="top">
+<column alignment="left" valignment="top">
+<column alignment="left" valignment="top">
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Folder
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+File
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Description
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="left" valignment="middle" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+core
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+compile.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Compiler
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+core.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Type definitions for VM core
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+gc.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Garbage collector
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+optimize.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Optimizer
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+vm.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Virtual machine.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="left" valignment="middle" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+debug
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+debug.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Debugger
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+profile.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Profiler
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="left" valignment="middle" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+classes
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+classes.h/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+List of classes
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+array.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Array class
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+closure.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Closure class
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+clss.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+class object type
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+cmplx.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Complex number
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+dict.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Dictionary class (see dictionary.c/.h for underlying implementation)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+file.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+File and Folder classes
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+function.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Function class
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+instance.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Object class
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+invocation.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Invocation class
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+list.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+List class
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+range.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Range class
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+upvalue.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+upvalue object type
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+strng.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Strings
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+system.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+System class
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="left" valignment="middle" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+linalg
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+matrix.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Matrix class
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+sparse.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Sparse class
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="left" valignment="middle" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+builtin
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+builtin.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Support for builtin functions and classes
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+functiondefs.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Builtin functions
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="left" valignment="middle" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+support
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+common.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Contains utility functions
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+extensions.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Extensions
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+lex.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Lexer
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+memory.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Basic memory allocation
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+parse.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Parser
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+random.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Random number generator
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+resources.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Resource locator
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+threadpool.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Thread pool
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="left" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+datastructures
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+dictionary.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Dictionary struct
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+error.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Error messages
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+object.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Fundamental object type
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+program.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Program data structure
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+syntaxtree.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Syntax tree struct used by compiler
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+value.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Basic value type
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+varray.c/.h
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Variable length arrays
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "tab:MapSource"
+
+\end_inset
+
+Map of the 
+\emph on
+morpho
+\emph default
+ source code.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Coding standards
+\end_layout
+
+\begin_layout Subsection
+File contents
+\end_layout
+
+\begin_layout Itemize
+Header files (
+\family typewriter
+.h
+\family default
+) should include type definitions and function prototypes, and only include
+ other header files necessary for the correct 
+\emph on
+declaration
+\emph default
+ of the contents, not necessarily their 
+\emph on
+implementation
+\emph default
+.
+ This helps reduce interdependencies.
+ 
+\end_layout
+
+\begin_layout Itemize
+Implementation files (
+\family typewriter
+.
+\family default
+c) must 
+\family typewriter
+#include
+\family default
+ all necessary header files for successful compilation.
+ 
+\end_layout
+
+\begin_layout Subsection
+Comments
+\end_layout
+
+\begin_layout Standard
+Functions, typedefs and other constructs in 
+\emph on
+Morpho
+\emph default
+ should be accompanied by comments in doxygen format describing the purpose
+ of the construct and its interface, for example: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+/** myfunc
+\end_layout
+
+\begin_layout Plain Layout
+
+ * @brief      What the function does
+\end_layout
+
+\begin_layout Plain Layout
+
+ *
+\end_layout
+
+\begin_layout Plain Layout
+
+ * @details    A more detailed description.
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+ *
+\end_layout
+
+\begin_layout Plain Layout
+
+ * @param[in]  x An input parameter
+\end_layout
+
+\begin_layout Plain Layout
+
+ * @param[out] y An output parameter
+\end_layout
+
+\begin_layout Plain Layout
+
+ * @return     What the function returns.
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+ */
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Occasionally, it is useful to include ASCII diagrams in the source code
+ to illustrate algorithms or data structures.
+ They can formatted so that doxygen preserves the spacing as in the below
+ example: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+/** @detail 
+\end_layout
+
+\begin_layout Plain Layout
+
+ * <pre>
+\end_layout
+
+\begin_layout Plain Layout
+
+ *      A
+\end_layout
+
+\begin_layout Plain Layout
+
+ *     / 
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ *    B   C
+\end_layout
+
+\begin_layout Plain Layout
+
+ * </pre> 
+\end_layout
+
+\begin_layout Plain Layout
+
+ */
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Naming conventions
+\end_layout
+
+\begin_layout Enumerate
+Types should be named lower case all one word, e.g 
+\family typewriter
+dictionaryentry
+\family default
+.
+\end_layout
+
+\begin_layout Enumerate
+Functions should be named 
+\family typewriter
+module_functionname
+\family default
+ where 
+\family typewriter
+module
+\family default
+ refers to the conceptual unit that the function belongs to (typically the
+ same as the filename).
+ 
+\end_layout
+
+\begin_layout Enumerate
+Method definitions should be of the form 
+\family typewriter
+Classname_methodname
+\family default
+ noting the capitalization.
+\end_layout
+
+\begin_layout Subsection
+Scoping
+\end_layout
+
+\begin_layout Standard
+Macros not intended for use outside a particular context should be 
+\family typewriter
+#undef
+\family default
+'d.
+\end_layout
+
+\begin_layout Subsection
+Unreachable code 
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:Unreachable-code"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Where appropriate, mark unreachable code with 
+\family typewriter
+UNREACHABLE(x)
+\family default
+.
+ The parameter of this macro is a short static char describing where the
+ unreachable code is.
+ 
+\end_layout
+
+\begin_layout Subsection
+C99 features
+\end_layout
+
+\begin_layout Standard
+In this section we note specific C99 features used in the implementation
+ of 
+\emph on
+Morpho
+\emph default
+.
+ 
+\end_layout
+
+\begin_layout Itemize
+\begin_inset CommandInset href
+LatexCommand href
+name "Compound literals"
+target "https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/Compound-Literals.html"
+literal "false"
+
+\end_inset
+
+ are used to implement 
+\family typewriter
+value
+\family default
+ literals.
+ 
+\end_layout
+
+\begin_layout Itemize
+\begin_inset CommandInset href
+LatexCommand href
+name "Flexible array members"
+target "https://en.wikipedia.org/wiki/Flexible_array_member"
+literal "false"
+
+\end_inset
+
+ are used to implement some object types.
+ These look like this:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+struct mystruct {
+\end_layout
+
+\begin_layout Plain Layout
+
+	int len;
+\end_layout
+
+\begin_layout Plain Layout
+
+	double arr[]; /* Note lack of size here */
+\end_layout
+
+\begin_layout Plain Layout
+
+};
+\end_layout
+
+\end_inset
+
+where the flexible array member must be at the end of the 
+\family typewriter
+struct
+\family default
+ definition.
+ 
+\end_layout
+
+\begin_layout Itemize
+Pointers are converted into 
+\family typewriter
+uintptr_t
+\family default
+ to hash them.
+ This type is defined so that conversion from a pointer and back yields
+ the same value.
+ 
+\end_layout
+
+\begin_layout Chapter
+The Virtual Machine
+\begin_inset CommandInset label
+LatexCommand label
+name "chap:The-Morpho-Virtual"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Virtual machine structure
+\end_layout
+
+\begin_layout Standard
+The virtual machine operates on a progam which comprises a sequence of instructi
+ons, described in subsequent sections, that perform various functions.
+ While running the program, the VM maintains the following state: 
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Program counter.
+
+\series default
+ This points to the next instruction to be executed.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Data
+\series default
+ 
+\series bold
+stack
+\series default
+.
+ The data stack contains information the program is acting on.
+ It is an ordered list of values that can grow as needed.
+ A subset of these values are visible to the VM at any one time, referred
+ to as the 
+\emph on
+register window
+\emph default
+.
+ Because morpho instructions can refer to any available register, not just
+ the top of the stack, morpho's VM is a 
+\emph on
+register machine
+\emph default
+.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Call stack
+\series default
+.
+ The call stack keeps track of function calls and grows or shrinks as functions
+ are called or return.
+ Each entry, called a 
+\emph on
+call frame
+\emph default
+, contains information associated with a function call: which parts of the
+ data stack are visible, the value of the program counter when the call
+ took place, a table of constants, etc
+\emph on
+.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Error handler stack
+\series default
+.
+ Programs may provide code to handle certain kinds of errors.
+ This stack keeps track of error handlers currently in use.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+Garbage collector information
+\series default
+.
+ As objects are created at runtime, the VM keeps track of them and their
+ size and periodically removes unused objects.
+ 
+\end_layout
+
+\begin_layout Section
+
+\emph on
+Morpho
+\emph default
+ instructions
+\end_layout
+
+\begin_layout Standard
+Each 
+\emph on
+Morpho
+\emph default
+ VM instruction is a packed 
+\family typewriter
+unsigned int
+\family default
+, with the following possible formats
+\begin_inset Float table
+placement h
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="6" columns="6">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="left" valignment="top" width="2.5in">
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Type
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Bits
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multirow="3" alignment="left" valignment="middle" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Description
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0-7
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+8-15
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+16-23
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+24-31
+\end_layout
+
+\end_inset
+</cell>
+<cell multirow="4" alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Opcode
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+A
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+B
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+C
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Operation with three byte parameters; B & C can be marked as constants.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Opcode
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+A
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Bx
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Operation with one byte and one short parameter & two flags.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Opcode
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+A
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+sBx
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Operation with one byte and one signed short parameter & two flags.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+4
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Opcode
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Ax
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Operation with one 24 bit unsigned parameter
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\emph on
+Morpho
+\emph default
+ instruction formats.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\noindent
+This permits up to 64 separate opcodes and up to 256 individually addressable
+ registers per frame.
+ Parameter A denotes the register that is used to store the result of the
+ operation, or more generally the register that is affected.
+ Operations B and C are used to denote the input registers.
+ Additionally, a single bit flag (Bc and Cc) can be set for each input register.
+ These are used, for example, to select between loading from a register
+ or from the current frame's constant table.
+ 
+\end_layout
+
+\begin_layout Section
+
+\emph on
+Morpho
+\emph default
+ opcodes
+\end_layout
+
+\begin_layout Standard
+Each instruction has 1-3 operands.
+ Lower case letters indicate registers, upper case represents literals or
+ constant ids.
+ 
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="38" columns="4">
+<features islongtable="true" longtabularalignment="center">
+<column alignment="left" valignment="top" width="0pt">
+<column alignment="left" valignment="top" width="0pt">
+<column alignment="left" valignment="top" width="0pt">
+<column alignment="left" valignment="top" width="3in">
+<row>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Category
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Opcode
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Operands
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Explanation
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+nop
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+No operation.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+mov
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Moves reg.
+ b into reg.
+ a
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+lct
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, Bx
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Moves constant B into reg.
+ a
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Arithmetic
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+add
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Adds register b to c and stores the result in a.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+sub
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Subtracts register c from b and stores the result in a.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+mul
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Multiplies register b with register c and stores the result in a.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+div
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Divides register b with register c and stores the result in a.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+pow
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Raises register b to the power of register c and stores the result in a.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Logical
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+not
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Performs logical not on register b and stores the result in a.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Comparison
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+eq
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Sets reg.
+ a to boolean b==c
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+neq
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Sets reg.
+ a to boolean b!=c
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+lt
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Sets reg.
+ a to boolean b<c
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+le
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Sets reg.
+ a to boolean b<=c
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Branch
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+b
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+sBx
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Branches by (signed) B instructions
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+bif
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, sBx
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Branches by (signed) B instructions if a is true.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+biff
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, sBx
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Branches by (signed) B instructions if a is false.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Function calls
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+call
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, B
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Calls the function in register a with B arguments
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+return
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+A, b
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Returns from the current function
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row newpage="true">
+<cell alignment="left" valignment="top" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+If parameter A>0, register b is returned
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Objects
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+invoke
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, C
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Invokes method b on object a with C arguments.
+ Arguments are stored in register a+1 onwards.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+lpr
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Looks up property c in object b, storing the result in a.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+spr
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Stores value c in object a with property b.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Closures
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+closure
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a B
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Encapsulates the function in register a into a closure using prototype number
+ B from the enclosing function object.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+lup
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, B
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Loads the contents of upvalue number B into register a.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+sup
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+A, b
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Stores the contents of b in upvalue number A
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+closeup
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+A
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Closes upvalues beyond register number A
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Indices
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+lix
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Loads an element from array a.
+ Indices to use are stored in registers b..c, and the result is stored in
+ register b.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+six
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Stores value c in array a with indices stored in registers b..c-1.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+array
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Creates an array with dimensions in registers b..c and stores it in register
+ a.
+
+\emph on
+ (Should be deprecated)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Globals
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+lgl
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, Bx
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Loads global number Bx into register a.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+sgl
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, Bx
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Stores the contents of register a into global number Bx.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Error handlers
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+pusherr
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Bx
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Pushes the error handler in constant Bx onto the error handler stack
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+poperr
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+sBx
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Pops the current error handler off the error handler stack and branch by
+ (signed) B instructions
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+print
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Prints the contents of register a.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+cat
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a, b, c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Concatenates the contents of registers b-c and stores the result in register
+ a.
+ 
+\emph on
+(Should be deprecated?)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+break
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Breakpoint
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+end
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Denotes end of programs
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+How function calls work 
+\end_layout
+
+\begin_layout Standard
+When a function or method call takes place, the VM: 
+\end_layout
+
+\begin_layout Enumerate
+Records the program counter, register index and stack size in the current
+ call frame.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Advances the frame pointer.
+ 
+\end_layout
+
+\begin_layout Enumerate
+If the called object is a closure, pulls out the function to be called and
+ records the closure in the new call frame.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Records the function to be called.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Sets up the constant table.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Advances the register window and clears the contents of registers to be
+ used by the function.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Register r0 contains either the function object OR the value of 
+\family typewriter
+self
+\family default
+ if this is a method call.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Registers r1 onwards contain the arguments of the function.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Moves the program counter to the entry point of the function.
+ 
+\end_layout
+
+\begin_layout Section
+Methods
+\end_layout
+
+\begin_layout Standard
+Methods are similar to functions, except that 
+\emph on
+r0
+\emph default
+ contains the object.
+ 
+\end_layout
+
+\begin_layout Section
+How error handling works 
+\end_layout
+
+\begin_layout Standard
+Ordinarily, when a runtime error is generated execution immediately stops
+ and the error is reported to the user.
+ Sometimes a possible error can be forseen by the programmer and the program
+ can be written to take an alternative course of action.
+ To achieve this, the Morpho VM provides for error handlers.
+ 
+\end_layout
+
+\begin_layout Standard
+Morpho keeps track of error handlers on a special stack.
+ As execution proceeds, the program may add an error handler to the stack
+ using the 
+\family typewriter
+pusherr
+\family default
+ opcode; it can then be removed again by using 
+\family typewriter
+poperr
+\family default
+.
+ Only the most recent error handler can be removed in this way.
+ 
+\end_layout
+
+\begin_layout Standard
+When an error occurs, the VM searches the error handlers currently in use
+ from the top of the error handler stack downwards to find an error handler
+ that matches the ErrorID tag.
+ If none is found, execution terminates and the error is reported to the
+ user as normal.
+ If suitable handler is found, however, execution resumes at a point specified
+ by the handler.
+ The callframe is reset to that of the error handler and any open upvalues
+ beyond that frame are closed.
+ 
+\end_layout
+
+\begin_layout Subsubsection
+Re-entrancy
+\end_layout
+
+\begin_layout Standard
+In searching for an error handler, the VM checks whether an intermediate
+ call frame requires it to return.
+ This happens if the VM has been re-entered from a C function (using 
+\family typewriter
+morpho_call
+\family default
+ for example).
+ In such a case, the VM returns from the intermediate frame rather than
+ handling the error (and so 
+\family typewriter
+morpho_call
+\family default
+ returns false).
+ The calling C function should check for this case and either handle the
+ error itself or exit as quickly as possible.
+ If the error isn't handled, once the intermediate C function returns, the
+ outer VM that called it will detect the error and resume the search for
+ an error handler.
+ 
+\end_layout
+
+\begin_layout Chapter
+The compiler
+\end_layout
+
+\begin_layout Section
+Overview
+\end_layout
+
+\begin_layout Standard
+The 
+\emph on
+Morpho
+\emph default
+ compiler takes a string of 
+\emph on
+Morpho
+\emph default
+ input and converts to bytecode by a three stage process (Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Structure-of-the"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+): The source code is first divided into 
+\emph on
+tokens
+\emph default
+, basic units like number, identifier etc., by the 
+\emph on
+lexer
+\emph default
+.
+ Tokens are then converted into a 
+\emph on
+syntax tree
+\emph default
+, an abstract representation of the programs syntactic structure, by the
+ 
+\emph on
+parser
+\emph default
+.
+ These two components are in 
+\family typewriter
+parse.c/.h
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Standard
+Finally, the syntax tree is converted to bytecode by the bytecode compiler
+ (referred to hereafter simply as the compiler) in 
+\family typewriter
+compile.c/.h
+\family default
+.
+ The resulting bytecode can then be run by the virtual machine described
+ in chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "chap:The-Morpho-Virtual"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Figures/compilerstructure.pdf
+	width 100col%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Structure-of-the"
+
+\end_inset
+
+Structure of the 
+\emph on
+Morpho
+\emph default
+ compiler.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Extending the compiler
+\end_layout
+
+\begin_layout Standard
+This section provides a very brief guide to how the compiler may be extended.
+ When modifying the compiler, it's a good idea to do so in the order suggested
+ by Fig.
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Structure-of-the"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+: First modify the lexer to produce any new token types required, then the
+ parser to parse new syntax correctly, then finally the compiler.
+ The file 
+\family typewriter
+build.h
+\family default
+ contains a number of macros that can be defined that cause morpho to generate
+ output to help debug compiler features, for example 
+\family typewriter
+MORPHO_DEBUG_DISPLAYSYNTAXTREE
+\family default
+ displays a syntax tree after compilation.
+ 
+\end_layout
+
+\begin_layout Subsection
+New token types 
+\end_layout
+
+\begin_layout Standard
+New token types (for example, for a new operator or keyword) can be implemented
+ by adding a new entry into the 
+\family typewriter
+tokentype
+\family default
+ enum in 
+\family typewriter
+parse.h
+\family default
+.
+ It is imperative to make a corresponding entry into the parser definition
+ table (see 
+\family typewriter
+parserule rules[]
+\family default
+ in 
+\family typewriter
+parse.c
+\family default
+), even if the token type is marked 
+\family typewriter
+UNUSED
+\family default
+ for now.
+ The overall order of token types isn't significant, but it's essential
+ that these two structures match.
+ You will also need to modify 
+\family typewriter
+cli.c
+\family default
+ as there is a parallel table 
+\family typewriter
+cli_tokencolors
+\family default
+ describing how to syntax color different token types.
+ 
+\end_layout
+
+\begin_layout Standard
+You should then modify the lexer to generate the token.
+ Tokens are identified from the initial character in 
+\family typewriter
+lex()
+\family default
+ and functions that it calls.
+ New reserved words require modifying 
+\family typewriter
+lex_symboltype
+\family default
+.
+ Modifications to literals require modifying 
+\family typewriter
+lex_string
+\family default
+ or 
+\family typewriter
+lex_number
+\family default
+.
+ Once a token is identified, it is recorded by calling 
+\family typewriter
+lex_recordtoken
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Subsection
+Parser
+\end_layout
+
+\begin_layout Standard
+You now need to create a parse rule, or edit an existing one if appropriate,
+ to parse the new token type.
+ Parse functions all have the form 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+syntaxtreeindx parse_MY(compiler *c)
+\end_layout
+
+\end_inset
+
+and call:
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+parse_advance
+\family default
+ and 
+\family typewriter
+parse_consume
+\family default
+ to obtain tokens.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+parse_expression
+\family default
+ or 
+\family typewriter
+parse_precedence
+\family default
+ to parse subexpressions.
+ 
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+parser_addnode
+\family default
+ to add nodes to the syntax tree.
+ 
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+parse_error
+\family default
+ to record errors.
+ 
+\end_layout
+
+\begin_layout Standard
+Once the parse rule is created, it may be included in the parser definition
+ table (see 
+\family typewriter
+parserule rules[]
+\family default
+ in 
+\family typewriter
+parse.c
+\family default
+) or called from another function.
+ New operators, for example, are typically inserted directly into the defintion
+ table, and macros are available to denote the token as 
+\family typewriter
+PREFIX
+\family default
+, 
+\family typewriter
+INFIX
+\family default
+ or 
+\family typewriter
+MIXFIX
+\family default
+.
+ Keywords that introduce a statement, e.g.
+ 
+\family typewriter
+var
+\family default
+ or 
+\family typewriter
+fn
+\family default
+, require inserting an appropriate text and call into 
+\family typewriter
+parse_statement
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Subsection
+Syntax tree
+\end_layout
+
+\begin_layout Standard
+Once the parser has been modified, it may be necessary to create new syntax
+ tree node types:
+\end_layout
+
+\begin_layout Enumerate
+Create any new syntaxtreenodetypes necessary.
+ A node type is defined by adding a new entry into the 
+\family typewriter
+syntaxtreenodetype
+\family default
+ enumerated type definition.
+ The order 
+\emph on
+does
+\emph default
+ matter: new node types should be grouped with leafs, unary operators or
+ operators as is documented in the source.
+ It is imperative to make a corresponding entry in the compiler definition
+ table (see 
+\family typewriter
+compiler_nodefn noderules[]
+\family default
+ in 
+\family typewriter
+compile.c
+\family default
+); it can be marked 
+\family typewriter
+NODE_UNDEFINED
+\family default
+ for now.
+ As for the parser definition table, it's essential that these structures
+ match.
+ It's also important to add a corresponding entry into the 
+\family typewriter
+nodedisplay
+\family default
+ array in 
+\family typewriter
+syntaxtree.c
+\family default
+; this is used to display syntax trees for debugging purposes.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Modify the parse rule generated in the previous section to emit appropriate
+ syntax tree nodes.
+ 
+\end_layout
+
+\begin_layout Subsection
+Compiler rule
+\end_layout
+
+\begin_layout Enumerate
+Create a compiler rule for any new node types.
+ Insert it into the compiler definition table at the corresponding place.
+ Compiler rules call 
+\family typewriter
+compiler_nodetobytecode
+\family default
+ to compile child nodes, and 
+\family typewriter
+compiler_writeinstruction
+\family default
+ to create bytecode.
+ Macros are available to encode instructions.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Creation of new instruction types is possible (by modifying the VM) but
+ strongly discouraged; contact the developers if you have ideas about improved
+ VM functionality.
+ 
+\end_layout
+
+\begin_layout Section
+The lexer
+\end_layout
+
+\begin_layout Standard
+The lexer takes a raw C source string as input and sequentially splits it
+ into 
+\emph on
+tokens
+\emph default
+ demarcated by their starting point, length and type.
+ It is defined in support/lex.c and support/lex.h and has been rewritten for
+ v0.6 to be usable for lexing applications beyond the compiler.
+ 
+\end_layout
+
+\begin_layout Standard
+To use a lexer, it must first be initialized by calling 
+\family typewriter
+lex_init
+\family default
+ with a pointer to the source 
+\family typewriter
+start
+\family default
+ and a starting line number 
+\family typewriter
+line
+\family default
+: 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+void lex_init(lexer *l, const char *start, int line)
+\end_layout
+
+\end_inset
+
+You can obtain tokens by repeatedly calling 
+\family typewriter
+lex
+\family default
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+bool lex(lexer *l, token *tok, error *err)
+\end_layout
+
+\end_inset
+
+which fills out a 
+\family typewriter
+token
+\family default
+ structure with the next token and returns 
+\family typewriter
+true
+\family default
+ on success.
+ If an error occurs, it will fill out the provided 
+\family typewriter
+error
+\family default
+ structure and return 
+\family typewriter
+false
+\family default
+.
+ Once the source string is exhausted, the lexer returns a special token
+ (the token type can be configured) indicating end of file.
+ 
+\end_layout
+
+\begin_layout Standard
+Once you're done with a lexer, you must call
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+void lex_clear(lexer *l)
+\end_layout
+
+\end_inset
+
+to free any attached data.
+ 
+\end_layout
+
+\begin_layout Subsection
+Tokens
+\end_layout
+
+\begin_layout Standard
+Tokens are a data structure used to demarcate syntactic units in a source
+ text.
+ 
+\end_layout
+
+\begin_layout Subsection
+Custom lexers
+\end_layout
+
+\begin_layout Section
+The lexer
+\end_layout
+
+\begin_layout Chapter
+
+\emph on
+Morphoview
+\end_layout
+
+\begin_layout Standard
+Morpho 0.5 separates out UI code into a separate application, 
+\emph on
+morphoview
+\emph default
+.
+ This enables, for example, running a program on a cluster and seeing the
+ results on another computer, or having different client dependent implementatio
+ns (e.g.
+ a Metal client for macOS, an OpenGL client for Linux, etc.).
+ The 
+\emph on
+morpho
+\emph default
+ language runtime communicates with morphoview via temporary files, but
+ this will be replaced by a client/server model via ZeroMQ or similar.
+ 
+\end_layout
+
+\begin_layout Section
+Command language
+\end_layout
+
+\begin_layout Standard
+Morpho communicates with 
+\emph on
+morphoview
+\emph default
+ via an imperative scommand language designed to be simple and human readable.
+ Valid commands are given in table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "tab:Morphoview-command-language."
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ together with their syntax.
+ Commands and their elements may be separated by arbitrary whitespace.
+ Additional commands may be provided in the future.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="35" columns="3">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="left" valignment="top" width="0pt">
+<column alignment="left" valignment="top" width="4in">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Command
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Syntax
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Description
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+c
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+c id r g b ...
+ 
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Color buffer declaration 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+C
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+C id 
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Use color or map object 
+\emph on
+id.
+ 
+\emph default
+If no 
+\emph on
+id
+\emph default
+ is provided, clears current color object.
+ 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+d
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+d id 
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Draw object 
+\emph on
+id
+\emph default
+ using current transformation matrix and color 
+\emph on
+id
+\emph default
+.
+ 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+o
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+o id 
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Object
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+id
+\family default
+ is an integer that may be used to refer to the object later; unique per
+ scene.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+v
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+v format
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Vertex array
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+f1 ...
+ 
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+format
+\family default
+ is a string that contains at least any or all of the letters x, n and c
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+...
+ fn
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+and is used to specify the information present and the order, e.g.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+xnc
+\family default
+ — vertex entries contain position, normal and color
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+x
+\family default
+ — only position information is present
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+xc
+\family default
+ — indicates position and color information
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+This is then followed by the appropriate number of floats
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+p
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+p
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Points
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+v1 ...
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+A list of integer indices into the object's vertex array to be drawn as
+ points
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+l
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+l
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Lines 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+v1 v2 ...
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+A list of integer indices into the object's vertex array to be drawn as
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+a continuous sequence of lines
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+f
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+f
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Facets
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+v1 v2 v3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+A list of triplets of integer indices into the object's vertex array to
+ be drawn as facets.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+i
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+i
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Set the current transformation to the identity matrix 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+m
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+m m11 m21 ..
+ m44
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Multiply the current transformation by the given 4x4 matrix, given in column
+ major order
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+r
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+r phi x y z
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Rotate by phi radians about the axis 
+\begin_inset Formula $(x,y,z)$
+\end_inset
+
+ [
+\begin_inset Formula $(x,y$
+\end_inset
+
+) in 2d]
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+s
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+s f
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Scale by factor f
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+S
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+S id dim
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Scene description
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+id
+\family default
+ is an integer that may be used to refer to the scene later
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+dim
+\family default
+
+\begin_inset Formula $\in\{2,3\}$
+\end_inset
+
+ is the dimension of the scene
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+t
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+t x y z 
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Translate by 
+\emph on
+(x,y, z) 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+T
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+T fontid string
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Draw text 
+\begin_inset Quotes eld
+\end_inset
+
+string
+\begin_inset Quotes erd
+\end_inset
+
+ with font 
+\family typewriter
+id
+\family default
+ using current transformation matrix and color id 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+F
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+F fontid file size
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Declare font
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+file
+\family default
+ the filename and path of the desired font
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+size
+\family default
+ the size in points
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+fontid
+\family default
+ an integer that will be used by T commands to refer to the font
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+W
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+W title
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Window features
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\family typewriter
+title
+\family default
+ is the window title
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "tab:Morphoview-command-language."
+
+\end_inset
+
+
+\series bold
+Morphoview command language.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Usage
+\end_layout
+
+\begin_layout Standard
+A typical file will begin will begin by specifying a scene, 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+S 0 2
+\end_layout
+
+\end_inset
+
+and (completely optionally) setting the window title
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+W 
+\begin_inset Quotes eld
+\end_inset
+
+Triangle
+\begin_inset Quotes erd
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+Following this, objects in the scene may be defined, 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+o 1
+\end_layout
+
+\end_inset
+
+which include vertex data and elements of the object.
+ For instance, a simple triangle could include
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+v x
+\end_layout
+
+\begin_layout Plain Layout
+
+1 0 0
+\end_layout
+
+\begin_layout Plain Layout
+
+0 1 0
+\end_layout
+
+\begin_layout Plain Layout
+
+1 1 0
+\end_layout
+
+\begin_layout Plain Layout
+
+f 0 1 2
+\end_layout
+
+\end_inset
+
+providing a list of three vertices and then specifying that a single facet
+ is to be drawn from these vertices.
+ 
+\end_layout
+
+\begin_layout Standard
+After objects have been specified, the scene can be drawn.
+ Objects are positioned in the scene by using transformation matrices: Morphovie
+w maintains a current object transformation matrix at all times.
+ Initially, this is set to the identity matrix (so that the object is placed
+ in the scene using the coordinates at which it is defined), but the matrix
+ can be modified by the 
+\family typewriter
+i
+\family default
+, 
+\family typewriter
+r
+\family default
+, 
+\family typewriter
+s
+\family default
+ and 
+\family typewriter
+t
+\family default
+ commands.
+ e
+\end_layout
+
+\begin_layout Standard
+For example, to scale, rotate translate and then draw object 1, 
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+s 0.5
+\end_layout
+
+\begin_layout Plain Layout
+
+r 1 0 0 1
+\end_layout
+
+\begin_layout Plain Layout
+
+t 0.5 0.5 0
+\end_layout
+
+\begin_layout Plain Layout
+
+d 1
+\end_layout
+
+\end_inset
+
+You can draw multiple objects using the same transformation matrix just
+ by issuing subsequent draw commands.
+ 
+\end_layout
+
+\begin_layout Standard
+Once the scene is specified, 
+\emph on
+Morphoview
+\emph default
+ will open a viewer window displaying the specified scene.
+ 
+\end_layout
+
+\begin_layout Subsection
+Morphoview internal structure
+\end_layout
+
+\begin_layout Enumerate
+
+\series bold
+Parser.
+
+\series default
+ The parser processes the command file and builds up a Scene object from
+ the program.
+\end_layout
+
+\begin_layout Enumerate
+
+\series bold
+Scene.
+
+\series default
+ Morphoview programs describe a Scene.
+ Once the scene is described, it is then prepared for rendering.
+ 
+\end_layout
+
+\begin_layout Enumerate
+
+\series bold
+Renderer.
+
+\series default
+ This module takes a scene and prepares OpenGL data structures for rendering.
+ 
+\end_layout
+
+\begin_layout Enumerate
+
+\series bold
+Display.
+
+\series default
+ Manages windows, user interface etc.
+ 
+\end_layout
+
+\end_body
+\end_document

@@ -1,0 +1,4 @@
+// Test string literals with unescaped control character
+
+print "  "
+// expect error 'UnescpdCtrl'

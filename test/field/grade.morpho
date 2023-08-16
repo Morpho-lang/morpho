@@ -1,0 +1,22 @@
+// Higher grades
+
+var m = Mesh("square.mesh")
+print m
+// expect: <Mesh: 4 vertices>
+
+var f = Field(m, grade=2)
+
+f[2, 0]=1
+f[1]=2
+
+print f[2, 0]
+// expect: 1
+print f[1]
+// expect: 2
+
+var g = Field(m, Matrix(2,2), grade=2)
+
+g[1]=Matrix([[1,2],[3,4]])
+print g[1]
+// expect: [ 1 2 ]
+// expect: [ 3 4 ]

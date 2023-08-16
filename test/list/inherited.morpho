@@ -1,0 +1,17 @@
+// Test List methods inherited from Object 
+
+var lst = [ 1, 2 ]
+
+print lst.respondsto("contains") // expect: true
+
+print islist(lst.respondsto()) // expect: true
+
+print lst.clss() // expect: @List
+
+print lst.superclass() // expect: @Object
+
+print islist(lst.invoke("respondsto")) // expect: true
+
+print lst.has("a") // expect: false
+
+print lst.count() // expect: 2

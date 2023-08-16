@@ -1,0 +1,4 @@
+// Body must be a statement
+for (;;) fn foo() {}
+
+// expect error 'ExpExpr'

@@ -1,0 +1,9 @@
+// Trigger an inconsistent dimension err 
+import meshtools
+
+var mb = MeshBuilder() 
+
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0,1])
+
+// expect error 'MshBldDimIncnstnt'

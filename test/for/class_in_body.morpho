@@ -1,0 +1,4 @@
+// Body must be a statement
+for (;;) class Foo {}
+
+// expect error 'ExpExpr'

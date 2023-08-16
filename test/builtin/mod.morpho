@@ -1,0 +1,16 @@
+// Mod function
+
+print mod(5, 3)
+// expect: 2
+
+print mod(5.3, 3)
+// expect: 2.3
+
+print mod(4, 2.5)
+// expect: 1.5
+
+print mod(3.4, 1.1)
+// expect: 0.1
+
+print mod(1,2,3)
+// expect Error 'InvldArgs'

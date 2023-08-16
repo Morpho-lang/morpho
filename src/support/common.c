@@ -135,6 +135,10 @@ void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
     if (MORPHO_ISSTRING(val)) {
         objectstring *s = MORPHO_GETSTRING(val);
         varray_charadd(buffer, s->string, (int) s->length);
+    } else if (MORPHO_ISCLASS(val)) {
+        objectclass *klass = MORPHO_GETCLASS(val);
+        varray_charwrite(buffer, '@');
+        morpho_printtobuffer(v, klass->name, buffer);
     } else if (MORPHO_ISOBJECT(val)) {
         objectclass *klass = morpho_lookupclass(val);
 
@@ -158,10 +162,6 @@ void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
             varray_charadd(buffer, "<fn ", 4);
             morpho_printtobuffer(v, fn->name, buffer);
             varray_charwrite(buffer, '>');
-        } else if (MORPHO_ISCLASS(val)) {
-            objectclass *klass = MORPHO_GETCLASS(val);
-            varray_charwrite(buffer, '@');
-            morpho_printtobuffer(v, klass->name, buffer);
         }
     } else if (MORPHO_ISFLOAT(val)) {
         nv=sprintf(tmp, "%g", MORPHO_GETFLOATVALUE(val));
@@ -207,8 +207,8 @@ char *morpho_strdup(char *string) {
 
 /** @brief Returns the number of bytes in the next character of a given utf8 string
     @returns number of bytes */
-int morpho_utf8numberofbytes(uint8_t *string) {
-    uint8_t byte = * string;
+int morpho_utf8numberofbytes(char *string) {
+    uint8_t byte = * ((uint8_t *) string);
 
     if ((byte & 0xc0) == 0x80) return 0; // In the middle of a utf8 string
 
@@ -217,6 +217,48 @@ int morpho_utf8numberofbytes(uint8_t *string) {
     if ((byte & 0xf0) == 0xe0) return 3;
     if ((byte & 0xe0) == 0xc0) return 2;
     return 1;
+}
+
+/** Decodes a utf8 encoded character pointed to by c into an int */
+int morpho_utf8toint(char *c) {
+    unsigned int ret = -1;
+    int nbytes=morpho_utf8numberofbytes(c);
+    switch (nbytes) {
+        case 1: ret=(c[0] & 0x7f); break;
+        case 2: ret=((c[0] & 0x1f)<<6) | (c[1] & 0x3f); break;
+        case 3: ret=((c[0] & 0x0f)<<12) | ((c[1] & 0x3f)<<6) | (c[2] & 0x3f); break;
+        case 4: ret=((c[0] & 0x0f)<<18) | ((c[1] & 0x3f)<<12) | ((c[2] & 0x3f)<<6) | (c[3] & 0x3f) ; break;
+        default: break;
+    }
+    
+    return ret;
+}
+
+/** Encodes a unicode character c into a utf8 encoded string, returning the number of bytes written.
+  @param[in] c - character to encode
+  @param[out] out - buffer to hold string, which must be at least 4 bytes
+  @returns the number of bytes written, including 0 on failure */
+int morpho_encodeutf8(int c, char *out) {
+    if (c<=0x7f) { // 1 byte unicode -> ascii
+        out[0]=c; // b 0XXXXXXX
+        return 1;
+    } else if (c<=0x07ff) { // 2 byte
+        out[0]=(char) (((c >>  6) & 0x1f) | 0xc0); // b 110XXXXX
+        out[1]=(char) (((c >>  0) & 0x3f) | 0x80); // b 10XXXXXX
+        return 2;
+    } else if (c<=0xffff) { // 3 byte
+        out[0]=(char) (((c >> 12) & 0x0f) | 0xe0); // b 1110XXXX
+        out[1]=(char) (((c >>  6) & 0x3f) | 0x80); // b 10XXXXXX
+        out[2]=(char) (((c >>  0) & 0x3f) | 0x80); // b 10XXXXXX
+        return 3;
+    } else if (c<=0x10ffff) {
+        out[0]=(char) (((c >> 18) & 0x07) | 0xf0); // b 11110XXX
+        out[1]=(char) (((c >> 12) & 0x3f) | 0x80); // b 10XXXXXX
+        out[2]=(char) (((c >>  6) & 0x3f) | 0x80); // b 10XXXXXX
+        out[3]=(char) (((c >>  0) & 0x3f) | 0x80); // b 10XXXXXX
+        return 4;
+    }
+    return 0;
 }
 
 /** @brief Computes the nearest power of 2 above an integer

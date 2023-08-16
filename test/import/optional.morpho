@@ -1,0 +1,6 @@
+// Test module that defines an optional argument
+
+fn foo(x, beep="Boop") {
+  print x
+  print beep
+}

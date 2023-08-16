@@ -1,0 +1,7 @@
+// Variadic parameter must be last
+
+fn bad(...varg, x, y) {
+
+}
+
+// expect Error: 'VarPrLst'

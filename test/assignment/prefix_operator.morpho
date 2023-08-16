@@ -1,0 +1,3 @@
+// Check that you can't assign to a prefix operator
+var a = "a";
+!a = "value"; // Error 'InvldAssgn'

@@ -2020,6 +2020,28 @@ int integrator_addelement(integrator *integrate, int *vids, int *qids) {
     return elid;
 }
 
+/**
+ Quantities are stored as needed on the quantity stack. The first n values are used
+ to store interpolated values. As new vertices are added, n entries are added to the quantity stack
+
+ | base:          | q list 0:      | q list 1:   |
+ | q0, q1, ... qn | q0, q1, ... qn | q0, q1, ... |
+
+ As elements are added, they include both vertex ids and references to entries on the quantity stack. Each element is 2*nbary entries long:
+
+ nbary               nbary
+ | vid0, vid1, ... : qid0, qid1, ... |
+
+ For each element, we build an interpolation matrix,
+
+ [ x0 y0 q0,0 q1,0 ... qn,0 ]
+ [ x1 y1 q0,1 q1,1 ... qn,1 ]
+ [ x2 y1 q0,2 q1,2 ... qn,2 ]
+
+ which when multiplied by the barycentric coordinates yields the interpolated quantite
+
+ [l0, l1, l2] . Interp -> [ x0, y0, q0, q1, ... qn ] */
+
 /** Adds nq quantities to the quantity stack, returning the id of the first element */
 int integrator_addquantity(integrator *integrate, int nq, value *quantity) {
     int qid=integrate->quantitystack.count;
@@ -2044,7 +2066,7 @@ void integrator_countquantitydof(integrator *integrate, int nq, value *quantity)
         } else if (MORPHO_ISMATRIX(quantity[i])) {
             objectmatrix *m = MORPHO_GETMATRIX(quantity[i]);
             ndof+=matrix_countdof(m);
-        } else return false;
+        } else return;
     }
     integrate->nqdof=ndof;
 }
@@ -2186,9 +2208,8 @@ void preparequantities(integrator *integrate, value **quantity, double *qmat) {
                 int mdof=m->ncols*m->nrows;
                 for (int l=0; l<mdof; l++) qmat[(k+l)*integrate->nbary+j]=m->elements[l];
             }
-        } else return false;
+        } else return;
     }
-    return true;
 }
 
 /** Sets up interpolation matrix */

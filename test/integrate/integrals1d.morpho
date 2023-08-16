@@ -27,6 +27,20 @@ for (t in tests) {
     var c = EvaluationCounter(t[0]) 
     
     var r1 = LineIntegral(c.eval, method={ "rule" : "gauss5" } ).total(m)
+
+    print (abs((r1-t[1])/t[1]))<1e-5
+}
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+
+/*
+for (t in tests) {
+    var c = EvaluationCounter(t[0]) 
+    
+    var r1 = LineIntegral(c.eval, method={ "rule" : "gauss5" } ).total(m)
     var c1 = c.count()
     c.reset()
     var r2 = LineIntegral(c.eval).total(m)
@@ -57,4 +71,4 @@ for (t in tests) {
     times.append([time1, time2])
 }
 
-for (t in times) print Array(t)
+for (t in times) print Array(t)*/

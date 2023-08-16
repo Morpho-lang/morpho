@@ -30,6 +30,18 @@ var out = []
 
 for (t in tests) {
     var c = EvaluationCounter(t[0]) 
+    var r1 = AreaIntegral(c.eval, method={  } ).total(m)
+    print (abs((r1-t[1])/t[1])<1e-6) 
+}
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+
+/*
+for (t in tests) {
+    var c = EvaluationCounter(t[0]) 
     
     var r1 = AreaIntegral(c.eval, method={  } ).total(m)
     var c1 = c.count()
@@ -63,3 +75,5 @@ for (t in tests) {
 }
 
 for (t in times) print Array(t)
+
+*/

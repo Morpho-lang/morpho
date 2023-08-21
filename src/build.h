@@ -110,7 +110,7 @@
 
 /** @brief Build Morpho VM with small but hacky value type [NaN boxing] */
 #ifndef _NO_NAN_BOXING
-//#define MORPHO_NAN_BOXING
+#define MORPHO_NAN_BOXING
 #endif
 /** @brief Number of bytes to bind before GC first runs */
 #define MORPHO_GCINITIAL 1024;

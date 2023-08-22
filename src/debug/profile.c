@@ -135,28 +135,28 @@ size_t profiler_calculatelength(profiler *p, value func) {
     return length;
 }
 
-/** Display the name */
-void profiler_display(profiler *p, value func) {
+/** Display the function name and its sampling count */
+void profiler_display(profiler *p, value func, vm *v) {
     value name, klass;
-/*    if (profiler_getname(func, &name, &klass)) {
+    if (profiler_getname(func, &name, &klass)) {
         if (MORPHO_ISSTRING(klass)) {
-            morpho_printvalue(klass);
-            printf(".");
+            morpho_printvalue(v, klass);
+            morpho_printf(v, ".");
         }
         
         if (MORPHO_ISSTRING(name)) {
-            morpho_printvalue(name);
+            morpho_printvalue(v, name);
         } else if (MORPHO_ISINTEGER(func)) {
-            printf(PROFILER_GC);
+            morpho_printf(v, PROFILER_GC);
         } else if (MORPHO_ISNIL(name)) {
-            if (MORPHO_ISSAME(func, MORPHO_OBJECT(p->program->global))) printf(PROFILER_GLOBAL);
-            else printf(PROFILER_ANON);
+            if (MORPHO_ISSAME(func, MORPHO_OBJECT(p->program->global))) morpho_printf(v, PROFILER_GLOBAL);
+            else morpho_printf(v, PROFILER_ANON);
         }
-    }*/
+    }
 }
 
 /** Report the outcome of profiling */
-void profiler_report(profiler *profile) {
+void profiler_report(profiler *profile, vm *v) {
     varray_value samples;
     varray_valueinit(&samples);
     
@@ -180,17 +180,16 @@ void profiler_report(profiler *profile) {
     }
     
     // Now report the output
-    
-    printf("===Profiler output: Execution took %.3f seconds with %ld samples===\n", ((double) profile->end - profile->start)/((double) CLOCKS_PER_SEC), nsamples);
+    morpho_printf(v, "===Profiler output: Execution took %.3f seconds with %ld samples===\n", ((double) profile->end - profile->start)/((double) CLOCKS_PER_SEC), nsamples);
     for (unsigned int i=0; i<samples.count; i+=PROFILER_NVALUES) {
-        profiler_display(profile, samples.data[i]); // Display the function or method
+        profiler_display(profile, samples.data[i], v); // Display the function or method
         size_t length = profiler_calculatelength(profile, samples.data[i]);
-        for (int j=0; j<maxlength-length; j++) printf(" ");
+        for (int j=0; j<maxlength-length; j++) morpho_printf(v, " ");
         
         int fsamples = MORPHO_GETINTEGERVALUE(samples.data[i+PROFILER_VALUEPOSN]); // Display the count
-        printf(" %.2f%% [%i samples]\n", 100.0*((float) fsamples)/nsamples, fsamples);
+        morpho_printf(v, " %.2f%% [%i samples]\n", 100.0*((float) fsamples)/nsamples, fsamples);
     }
-    printf("===\n");
+    morpho_printf(v, "===\n");
     
     varray_valueclear(&samples);
 }
@@ -216,7 +215,7 @@ bool morpho_profile(vm *v, program *p) {
     
     profiler_kill(&profile);
     
-    profiler_report(&profile);
+    profiler_report(&profile, v);
     profiler_clear(&profile);
     
     return success;

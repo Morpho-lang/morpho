@@ -73,7 +73,7 @@ void object_freeifunmanaged(object *obj) {
     if (obj->status==OBJECT_ISUNMANAGED) object_free(obj);
 }
 
-/** Prints an object */
+/** Calls an object's print function */
 void object_print(void *v, value val) {
     object *obj = MORPHO_GETOBJECT(val);
     object_getdefn(obj)->printfn(obj, v);

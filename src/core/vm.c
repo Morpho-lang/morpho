@@ -1757,7 +1757,7 @@ int morpho_printf(vm *v, char *format, ...) {
     
     va_list args;
     
-    if (v) {
+    if (v && v->printfn) {
         for (;;) {
             va_start(args, format);
             nchars = vsnprintf(v->buffer.data, v->buffer.capacity, format, args);
@@ -1769,13 +1769,9 @@ int morpho_printf(vm *v, char *format, ...) {
         }
         
         v->buffer.count=nchars;
-        
-        if (v->printfn) {
-            (v->printfn) (v, v->printref, v->buffer.data);
-        } else {
-            printf("%s", v->buffer.data);
-        }
-    } else { // If no VM available, resort to regular printf
+    
+        (v->printfn) (v, v->printref, v->buffer.data);
+    } else { // If no VM or no print function available, resort to regular printf
         va_start(args, format);
         nchars=vprintf(format, args);
         va_end(args); 

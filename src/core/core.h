@@ -218,6 +218,12 @@ struct svm {
     struct svm *parent; /** Parent vm */
     varray_vm subkernels; /** Subkernels */
     
+    morphoprintfn printfn; /** Print callback */
+    void *printref; /** Print callback reference */
+    
+    morphowarningfn warningfn; /** Warning callback */
+    void *warningref; /** Warning callback reference */
+    
     _MORPHO_PADDING; /** Ensure subkernels do not cause false sharing */
 };
 

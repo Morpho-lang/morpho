@@ -128,8 +128,9 @@ void morpho_resizeobject(vm *v, object *obj, size_t oldsize, size_t newsize);
 int morpho_retainobjects(vm *v, int nobj, value *obj);
 void morpho_releaseobjects(vm *v, int handle);
 
-/* Raise runtime errors */
+/* Raise runtime errors and warnings */
 void morpho_runtimeerror(vm *v, errorid id, ...);
+void morpho_warning(vm *v, errorid id, ...);
 void morpho_usererror(vm *v, errorid id, char *message);
 
 /* Compilation */

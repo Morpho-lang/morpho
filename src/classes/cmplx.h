@@ -90,29 +90,29 @@ void complex_getimag(objectcomplex *c, double *value);
 
 /* Built-in fucntions */
 
-value complex_builtinexp(vm * v, objectcomplex* c);
-value complex_builtinfabs(vm * v, objectcomplex* c);
-value complex_builtinexp(vm * v, objectcomplex* c);
-value complex_builtinlog(vm * v, objectcomplex* c);
-value complex_builtinlog10(vm * v, objectcomplex* c);
+value complex_builtinexp(vm *v, objectcomplex *c);
+value complex_builtinfabs(vm *v, objectcomplex *c);
+value complex_builtinexp(vm *v, objectcomplex *c);
+value complex_builtinlog(vm *v, objectcomplex *c);
+value complex_builtinlog10(vm *v, objectcomplex *c);
 
-value complex_builtinsin(vm * v, objectcomplex* c);
-value complex_builtincos(vm * v, objectcomplex* c);
-value complex_builtintan(vm * v, objectcomplex* c);
-value complex_builtinasin(vm * v, objectcomplex* c);
-value complex_builtinacos(vm * v, objectcomplex* c);
+value complex_builtinsin(vm *v, objectcomplex *c);
+value complex_builtincos(vm *v, objectcomplex *c);
+value complex_builtintan(vm *v, objectcomplex *c);
+value complex_builtinasin(vm *v, objectcomplex *c);
+value complex_builtinacos(vm *v, objectcomplex *c);
 
-value complex_builtinsinh(vm * v, objectcomplex* c);
-value complex_builtincosh(vm * v, objectcomplex* c);
-value complex_builtintanh(vm * v, objectcomplex* c);
-value complex_builtinsqrt(vm * v, objectcomplex* c);
+value complex_builtinsinh(vm *v, objectcomplex *c);
+value complex_builtincosh(vm *v, objectcomplex *c);
+value complex_builtintanh(vm *v, objectcomplex *c);
+value complex_builtinsqrt(vm *v, objectcomplex *c);
 
-value complex_builtinfloor(vm * v, objectcomplex* c);
-value complex_builtinceil(vm * v, objectcomplex* c);
+value complex_builtinfloor(vm *v, objectcomplex *c);
+value complex_builtinceil(vm *v, objectcomplex *c);
 
-value complex_builtinisfinite(objectcomplex* c);
-value complex_builtinisinf(objectcomplex* c);
-value complex_builtinisnan(objectcomplex* c);
+value complex_builtinisfinite(objectcomplex *c);
+value complex_builtinisinf(objectcomplex *c);
+value complex_builtinisnan(objectcomplex *c);
 
 value complex_builtinatan(vm *v, value c);
 value complex_builtinatan2(vm *v, value c1, value c2);

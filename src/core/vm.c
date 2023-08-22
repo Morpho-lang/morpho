@@ -66,6 +66,11 @@ static void vm_init(vm *v) {
 #endif
     v->parent=NULL;
     varray_vminit(&v->subkernels);
+    
+    v->printfn=NULL;
+    v->printref=NULL;
+    v->warningfn=NULL;
+    v->warningref=NULL;
 }
 
 /** Clears a virtual machine */
@@ -76,6 +81,18 @@ static void vm_clear(vm *v) {
     vm_graylistclear(&v->gray);
     vm_freeobjects(v);
     varray_vmclear(&v->subkernels);
+}
+
+/** Configure print callback function */
+void morpho_setprintfn(vm *v, morphoprintfn printfn, void *ref) {
+    v->printfn=printfn;
+    v->printref=ref;
+}
+
+/** Configure warning callback function */
+void morpho_setwarningfn(vm *v, morphowarningfn warningfn, void *ref) {
+    v->warningfn=warningfn;
+    v->warningref=ref;
 }
 
 /** Prepares a vm to run program p */

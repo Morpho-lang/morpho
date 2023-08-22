@@ -74,10 +74,13 @@ typedef void compiler;
 #define MORPHO_CLONE_METHOD "clone"
 #define MORPHO_PRINT_METHOD "prnt"
 #define MORPHO_SAVE_METHOD "save"
-#define MORPHO_THROW_METHOD "throw"
 
 /* Non-standard methods */
 #define MORPHO_APPEND_METHOD "append"
+
+#define MORPHO_THROW_METHOD "throw"
+#define MORPHO_WARNING_METHOD "warning"
+#define MORPHO_INFO_METHOD "info"
 
 extern value initselector;
 extern value indexselector;
@@ -130,8 +133,9 @@ void morpho_releaseobjects(vm *v, int handle);
 
 /* Raise runtime errors and warnings */
 void morpho_runtimeerror(vm *v, errorid id, ...);
-void morpho_warning(vm *v, errorid id, ...);
 void morpho_usererror(vm *v, errorid id, char *message);
+
+void morpho_warning(vm *v, error *err);
 
 /* Compilation */
 compiler *morpho_newcompiler(program *out);

@@ -40,15 +40,6 @@
 #define MORPHO_PACKAGELIST ".morphopackages"  // File in $HOME that contains package locations
 
 /* **********************************************************************
- * Features
- * ********************************************************************** */
-
-#ifndef DEBUG
-/** @brief Use coloring in output */
-#define MORPHO_COLORTERMINAL
-#endif
-
-/* **********************************************************************
  * Language features
  * ********************************************************************** */
 

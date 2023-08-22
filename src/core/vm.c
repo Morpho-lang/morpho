@@ -1337,15 +1337,9 @@ callfunction: // Jump here if an instruction becomes a call
         CASE_CODE(PRINT):
             a=DECODE_A(bc);
             left=reg[a];
-#ifdef MORPHO_COLORTERMINAL
-            printf("\033[1m");
-#endif
             if (!vm_invoke(v, left, printselector, 0, NULL, &right)) {
                 morpho_printvalue(left);
             }
-#ifdef MORPHO_COLORTERMINAL
-            printf("\033[0m");
-#endif
             printf("\n");
             DISPATCH();
 
@@ -1506,6 +1500,15 @@ void morpho_runtimeerror(vm *v, errorid id, ...) {
  * @param message error message */
 void morpho_usererror(vm *v, errorid id, char *message) {
     morpho_writeusererror(&v->err, id, message);
+}
+
+/** @brief Public interface to raise a warning */
+void morpho_warning(vm *v, error *err) {
+    if (v->warningfn) {
+        (v->warningfn) (v, v->warningref, err);
+    } else {
+        fprintf(stderr, "Warning [%s]: %s\n", err->id, err->msg);
+    }
 }
 
 /** @brief Binds a set of objects to a Virtual Machine; public interface.

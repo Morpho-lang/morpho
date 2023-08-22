@@ -27,7 +27,6 @@ typedef enum {
     ERROR_NONE, /** No error. */
     
 /* Execution should continue */
-    ERROR_INFO, /** Informational messages generated. */
     ERROR_WARNING, /** Warnings generated. */
     
 /* Execution should not continue */
@@ -45,9 +44,6 @@ typedef enum {
  * Macros to scrutinize these types
  * -------------------------------- */
 
-/** Checks if execution should continue after the error */
-#define ERROR_SHOULDCONTINUE(cat) (cat < ERROR_HALT)
-
 /** Did an operation succeed without errors? */
 #define ERROR_SUCCEEDED(err) ((err).cat == ERROR_NONE)
 
@@ -58,7 +54,7 @@ typedef enum {
 #define ERROR_ISRUNTIMEERROR(err) ((err).cat <= ERROR_EXIT)
 
 /* ----------------------------------------------------
- * or struct, containing information about the error
+ * Error struct, containing information about the error
  * ---------------------------------------------------- */
 
 /** @brief A type used by public-facing morpho functions */
@@ -77,7 +73,7 @@ typedef struct {
 #define ERROR_POSNUNIDENTIFIABLE -1
 
 /* --------------------------------
- * or definitions
+ * Error definitions
  * -------------------------------- */
 
 /** @brief Definition of an error message. */
@@ -90,7 +86,7 @@ typedef struct {
 DECLARE_VARRAY(errordefinition, errordefinition)
 
 /* -------------------------------------------------------
- * or related macros
+ * Error related macros
  * ------------------------------------------------------- */
 
 /** Macro to place in code that should be unreachable */

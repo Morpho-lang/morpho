@@ -1482,33 +1482,53 @@ error *morpho_geterror(vm *v) {
     return &v->err;
 }
 
-/** @brief Public interface to raise a runtime error
+/** @brief Raises an error described by an error structure
  * @param v        the virtual machine
- * @param id       error id
- * @param ...      additional data for sprintf. */
-void morpho_runtimeerror(vm *v, errorid id, ...) {
-    va_list args;
-
-    va_start(args, id);
-    morpho_writeerrorwithidvalist(&v->err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
-    va_end(args);
+ * @param err    error to raise */
+void morpho_error(vm *v, error *err) {
+    if (err->cat!=ERROR_WARNING) { // Errors of category ERROR_WARNING are always raised as warnings
+        v->err = *err;
+    } else morpho_warning(v, err);
 }
 
-/** @brief Public interface to raise a user error
- * @param v        the virtual machine
- * @param id       error id
- * @param message error message */
-void morpho_usererror(vm *v, errorid id, char *message) {
-    morpho_writeusererror(&v->err, id, message);
-}
-
-/** @brief Public interface to raise a warning */
+/** @brief Raises an warning described by an error structure  */
 void morpho_warning(vm *v, error *err) {
     if (v->warningfn) {
         (v->warningfn) (v, v->warningref, err);
     } else {
         fprintf(stderr, "Warning [%s]: %s\n", err->id, err->msg);
     }
+}
+
+/** @brief Raise a runtime error given an id
+ * @param v        the virtual machine
+ * @param id       error id
+ * @param ...      additional data for sprintf. */
+void morpho_runtimeerror(vm *v, errorid id, ...) {
+    va_list args;
+    error err;
+    error_init(&err);
+
+    va_start(args, id);
+    morpho_writeerrorwithidvalist(&err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
+    va_end(args);
+    
+    morpho_error(v, &err);
+    error_clear(&err);
+}
+
+/** @brief Raise a runtime warning given an id  */
+void morpho_runtimewarning(vm *v, errorid id, ...) {
+    va_list args;
+    error err;
+    error_init(&err);
+
+    va_start(args, id);
+    morpho_writeerrorwithidvalist(&err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
+    va_end(args);
+    
+    morpho_warning(v, &err);
+    error_clear(&err);
 }
 
 /** @brief Binds a set of objects to a Virtual Machine; public interface.

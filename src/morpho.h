@@ -80,7 +80,6 @@ typedef void compiler;
 
 #define MORPHO_THROW_METHOD "throw"
 #define MORPHO_WARNING_METHOD "warning"
-#define MORPHO_INFO_METHOD "info"
 
 extern value initselector;
 extern value indexselector;
@@ -132,10 +131,11 @@ int morpho_retainobjects(vm *v, int nobj, value *obj);
 void morpho_releaseobjects(vm *v, int handle);
 
 /* Raise runtime errors and warnings */
-void morpho_runtimeerror(vm *v, errorid id, ...);
-void morpho_usererror(vm *v, errorid id, char *message);
-
 void morpho_warning(vm *v, error *err);
+void morpho_error(vm *v, error *err);
+
+void morpho_runtimeerror(vm *v, errorid id, ...);
+void morpho_runtimewarning(vm *v, errorid id, ...);
 
 /* Compilation */
 compiler *morpho_newcompiler(program *out);

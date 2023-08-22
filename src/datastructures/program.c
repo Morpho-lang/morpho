@@ -8,6 +8,8 @@
 
 #include "core.h"
 #include "debug.h"
+#include "compile.h"
+#include "morpho.h"
 
 /* **********************************************************************
 * Programs
@@ -95,7 +97,7 @@ value program_internsymbol(program *p, value symbol) {
     value new = symbol, out;
 #ifdef MORPHO_DEBUG_SYMBOLTABLE
     fprintf(stderr, "Interning symbol '");
-    morpho_printvalue(symbol);
+    morpho_printvalue(NULL, symbol);
 #endif
     
     if (builtin_checksymbol(symbol)) { // Check if this is part of the built in symbol table already
@@ -105,6 +107,7 @@ value program_internsymbol(program *p, value symbol) {
     if (!dictionary_get(&p->symboltable, symbol, NULL)) {
        new = object_clonestring(symbol);
     }
+    
     out = dictionary_intern(&p->symboltable, new);
 #ifdef MORPHO_DEBUG_SYMBOLTABLE
     fprintf(stderr, "' at %p\n", (void *) MORPHO_GETOBJECT(out));

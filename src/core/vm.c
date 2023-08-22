@@ -34,6 +34,10 @@ value enumerateselector = MORPHO_NIL;
 value countselector = MORPHO_NIL;
 value cloneselector = MORPHO_NIL;
 
+#ifdef MORPHO_DEBUG_GCSIZETRACKING
+dictionary sizecheck;
+#endif
+
 /* **********************************************************************
 * VM objects
 * ********************************************************************** */
@@ -145,10 +149,6 @@ void vm_freeobjects(vm *v) {
     morpho_printf(v, "--- Freed %li objects bound to VM ---\n", k);
 #endif
 }
-
-#ifdef MORPHO_DEBUG_GCSIZETRACKING
-dictionary sizecheck;
-#endif
 
 /* **********************************************************************
 * Binding and unbinding objects to the VM
@@ -1776,7 +1776,9 @@ int morpho_printf(vm *v, char *format, ...) {
             printf("%s", v->buffer.data);
         }
     } else { // If no VM available, resort to regular printf
+        va_start(args, format);
         nchars=vprintf(format, args);
+        va_end(args); 
     }
     
     return nchars;

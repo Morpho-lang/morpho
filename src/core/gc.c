@@ -9,6 +9,13 @@
 
 extern vm *globalvm;
 
+#include "compile.h"
+#include "morpho.h"
+
+#ifdef MORPHO_DEBUG_GCSIZETRACKING
+extern dictionary sizecheck;
+#endif
+
 /* **********************************************************************
  * Gray list
  * ********************************************************************** */
@@ -59,7 +66,7 @@ void vm_gcmarkobject(vm *v, object *obj) {
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
     morpho_printf(v, "Marking %p ", obj);
-    morpho_printf(v, MORPHO_OBJECT(obj));
+    morpho_printvalue(v, MORPHO_OBJECT(obj));
     morpho_printf(v, "\n");
 #endif
     obj->status=OBJECT_ISMARKED;
@@ -203,7 +210,7 @@ void vm_gcsweep(vm *v) {
             if (dictionary_get(&sizecheck, MORPHO_OBJECT(unreached), &xsize)) {
                 size_t isize = MORPHO_GETINTEGERVALUE(xsize);
                 if (size!=isize) {
-                    morpho_printvalue(MORPHO_OBJECT(unreached));
+                    morpho_printvalue(v, MORPHO_OBJECT(unreached));
                     UNREACHABLE("Object doesn't match its declared size");
                 }
             }
@@ -251,7 +258,7 @@ void vm_collectgarbage(vm *v) {
 
         if (vc->bound>init) {
 #ifdef MORPHO_DEBUG_GCSIZETRACKING
-            morpho_printf(v, printf("GC collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->bound*MORPHO_GCGROWTHFACTOR);
+            morpho_printf(v, "GC collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->bound*MORPHO_GCGROWTHFACTOR);
             UNREACHABLE("VM bound object size < 0");
 #else
             // This catch has been put in to prevent the garbarge collector from completely seizing up.

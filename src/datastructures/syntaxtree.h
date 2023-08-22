@@ -123,6 +123,7 @@ typedef struct {
 } syntaxtree;
 
 void syntaxtree_init(syntaxtree *tree);
+void syntaxtree_wipe(syntaxtree *tree);
 void syntaxtree_clear(syntaxtree *tree);
 void syntaxtree_print(syntaxtree *tree);
 

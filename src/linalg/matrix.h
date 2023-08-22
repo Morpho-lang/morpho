@@ -166,6 +166,8 @@ bool matrix_getcolumn(objectmatrix *matrix, unsigned int col, double **v);
 bool matrix_setcolumn(objectmatrix *matrix, unsigned int col, double *v);
 bool matrix_addtocolumn(objectmatrix *m, unsigned int col, double alpha, double *v);
 
+unsigned int matrix_countdof(objectmatrix *a);
+
 objectmatrixerror matrix_copy(objectmatrix *a, objectmatrix *out);
 objectmatrixerror matrix_copyat(objectmatrix *a, objectmatrix *out, int row0, int col0);
 objectmatrixerror matrix_add(objectmatrix *a, objectmatrix *b, objectmatrix *out);
@@ -182,8 +184,13 @@ objectmatrixerror matrix_trace(objectmatrix *a, double *out);
 objectmatrixerror matrix_scale(objectmatrix *a, double scale);
 objectmatrixerror matrix_identity(objectmatrix *a);
 double matrix_sum(objectmatrix *a);
-//objectmatrixerror matrix_det(objectmatrix *a, double *out);
-//objectmatrixerror matrix_eigensystem(objectmatrix *a, double *val, objectmatrix *vec);
+objectmatrixerror matrix_eigensystem(objectmatrix *a, double *wr, double *wi, objectmatrix *vec);
+bool matrix_eigen(vm *v, objectmatrix *a, value *evals, value *evecs);
+
+double matrix_norm(objectmatrix *a);
+double matrix_L1norm(objectmatrix *a);
+double matrix_Lnnorm(objectmatrix *a, double n);
+double matrix_Linfnorm(objectmatrix *a);
 
 void matrix_print(objectmatrix *m);
 

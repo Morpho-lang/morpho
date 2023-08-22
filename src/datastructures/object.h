@@ -101,4 +101,8 @@ void morpho_freeobject(value val);
 // Index type
 typedef ptrdiff_t indx;
 
+// Object initialization and finalization
+void object_initialize(void);
+void object_finalize(void);
+
 #endif /* object_h */

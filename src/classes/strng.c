@@ -42,12 +42,12 @@ value object_stringfromcstring(const char *in, size_t length) {
 
     if (new) {
         new->string=new->stringdata;
-        new->string[length] = '\0'; /* Zero terminate the string to be compatible with C */
         if (in) {
             memcpy(new->string, in, length);
         } else {
             memset(new->string, 0, length);
         }
+        new->string[length] = '\0'; /* Zero terminate the string to be compatible with C */
         new->length=strlen(new->string);
         out = MORPHO_OBJECT(new);
     }

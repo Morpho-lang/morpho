@@ -6,6 +6,7 @@
  *           Currently passes all except "n_multidigit_number_then_00.json"
  */
 
+#include <ctype.h>
 #include "morpho.h"
 #include "classes.h"
 

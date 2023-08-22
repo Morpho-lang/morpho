@@ -13,6 +13,9 @@
 #include "matrix.h"
 #include "selection.h"
 
+// Temporary include
+#include "integrate.h"
+
 #include <limits.h>
 
 void mesh_link(objectmesh *mesh, object *obj);
@@ -1302,6 +1305,8 @@ MORPHO_ENDCLASS
  * ********************************************************************** */
 
 void mesh_initialize(void) {
+    // integrate_test();
+    
     objectmeshtype=object_addtype(&objectmeshdefn);
     
     for (unsigned int i=0; i<mesh_nsections; i++) mesh_slength[i]=strlen(mesh_sections[i]);

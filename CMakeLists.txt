@@ -1,19 +1,19 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.13)
 project(morpho-libmorpho)
 
 add_library(morpho SHARED "") 
 add_subdirectory(src)
 
 # Include morpho header files across the project 
-include_directories("src")
-include_directories("src/builtin")
-include_directories("src/classes")
-include_directories("src/core")
-include_directories("src/datastructures")
-include_directories("src/debug")
-include_directories("src/geometry")
-include_directories("src/linalg")
-include_directories("src/support")
+target_include_directories(morpho PUBLIC src 
+                                  src/builtin
+                                  src/classes
+                                  src/core
+                                  src/datastructures
+                                  src/debug
+                                  src/geometry
+                                  src/linalg
+                                  src/support )
 
 # Create source groups for IDE
 source_group("builtin" REGULAR_EXPRESSION src/builtin/.*\\.[ch])
@@ -64,7 +64,12 @@ target_link_libraries(morpho ${SUITESPARSE_LIBRARY} ${CBLAS_LIBRARY} ${LAPACK_LI
 install(TARGETS morpho)
 
 # Install morpho header files
-install(TARGETS morpho 
-        FILE_SET public_headers 
-        DESTINATION include/morpho
-)
+# The below works in 3.23, which is too recent for Ubuntu
+# install(TARGETS morpho 
+#        FILE_SET public_headers 
+#        DESTINATION include/morpho
+#)
+
+# So we'll use a hacky way for now
+file(GLOB_RECURSE MORPHO_HEADER_FILES "src/*.h")
+install(FILES ${MORPHO_HEADER_FILES} DESTINATION include/morpho)

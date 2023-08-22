@@ -16,7 +16,7 @@
 
 /** Hold the object type definitions as they're created */
 objecttypedefn objectdefns[MORPHO_MAXIMUMOBJECTDEFNS];
-objecttype objectdefnnext = 0; /** Type of the next object definition */
+objecttype objectdefnnext; /** Type of the next object definition */
 
 /** Adds a new object type with a given definition.
  @returns: the objecttype identifier to be used henceforth */
@@ -124,4 +124,16 @@ void object_setveneerclass(objecttype type, value class) {
 /** @brief Gets the veneer for a particular object type */
 objectclass *object_getveneerclass(objecttype type) {
     return (objectclass *) objectdefns[type].veneer;
+}
+
+/* **********************************************************************
+ * Initialization
+ * ********************************************************************* */
+
+void object_initialize(void) {
+    objectdefnnext=0;
+}
+
+void object_finalize(void) {
+    objectdefnnext=0;
 }

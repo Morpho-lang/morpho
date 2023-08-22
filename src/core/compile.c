@@ -3461,8 +3461,7 @@ bool morpho_compile(char *in, compiler *c, bool opt, error *err) {
     /* Initialize lexer */
     lex_init(&c->lex, in, 1); /* Count lines from 1. */
 
-    parse(&c->parse);
-    if (!ERROR_SUCCEEDED(c->err)) {
+    if ((!morpho_parse(&c->parse)) || !ERROR_SUCCEEDED(c->err)) {
         *err = c->err;
     } else {
 #ifdef MORPHO_DEBUG_DISPLAYSYNTAXTREE

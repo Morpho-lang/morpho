@@ -29,9 +29,9 @@ size_t objectfunction_sizefn(object *obj) {
     return sizeof(objectfunction);
 }
 
-void objectfunction_printfn(object *obj) {
+void objectfunction_printfn(object *obj, void *v) {
     objectfunction *f = (objectfunction *) obj;
-    if (f) printf("<fn %s>", (MORPHO_ISNIL(f->name) ? "" : MORPHO_GETCSTRING(f->name)));
+    if (f) morpho_printf(v, "<fn %s>", (MORPHO_ISNIL(f->name) ? "" : MORPHO_GETCSTRING(f->name)));
 }
 
 objecttypedefn objectfunctiondefn = {

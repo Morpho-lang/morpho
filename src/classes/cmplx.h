@@ -84,9 +84,10 @@ void complex_div(objectcomplex *a, objectcomplex *b, objectcomplex *out);
 void complex_conj(objectcomplex *a, objectcomplex *out);
 void complex_abs(objectcomplex *a, double *out);
 void complex_angle(objectcomplex *a, double *out);
-void complex_print(objectcomplex *m);
 void complex_getreal(objectcomplex *c, double *value);
 void complex_getimag(objectcomplex *c, double *value);
+
+void complex_print(vm *v, objectcomplex *m);
 
 /* Built-in fucntions */
 

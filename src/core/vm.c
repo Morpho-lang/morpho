@@ -58,6 +58,7 @@ static void vm_init(vm *v) {
     varray_valueinit(&v->tlvars);
     varray_valueinit(&v->globals);
     varray_valueresize(&v->stack, MORPHO_STACKINITIALSIZE);
+    varray_charinit(&v->buffer);
     error_init(&v->err);
     v->errfp=NULL;
 #ifdef MORPHO_PROFILER
@@ -81,6 +82,7 @@ static void vm_clear(vm *v) {
     vm_graylistclear(&v->gray);
     vm_freeobjects(v);
     varray_vmclear(&v->subkernels);
+    varray_charclear(&v->buffer);
 }
 
 /** Configure print callback function */
@@ -130,7 +132,7 @@ bool vm_start(vm *v, program *p) {
 void vm_freeobjects(vm *v) {
     long k=0;
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("--- Freeing objects bound to VM ---\n");
+    morpho_printf(v, "--- Freeing objects bound to VM ---\n");
 #endif
     object *next=NULL;
     for (object *e=v->objects; e!=NULL; e=next) {
@@ -140,7 +142,7 @@ void vm_freeobjects(vm *v) {
     }
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("--- Freed %li objects bound to VM ---\n", k);
+    morpho_printf(v, "--- Freed %li objects bound to VM ---\n", k);
 #endif
 }
 
@@ -526,7 +528,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
     value left, right;
 
 #ifdef MORPHO_DEBUG_PRINT_INSTRUCTIONS
-#define MORPHO_DISASSEMBLE_INSRUCTION(bc,pc,k,r) { printf("  "); debug_disassembleinstruction(bc, pc-1, k, r); printf("\n"); }
+#define MORPHO_DISASSEMBLE_INSRUCTION(bc,pc,k,r) { morpho_printf(v, "  "); debug_disassembleinstruction(bc, pc-1, k, r); morpho_printf(v, "\n"); }
 #else
 #define MORPHO_DISASSEMBLE_INSRUCTION(bc,pc,k,r);
 #endif
@@ -1338,9 +1340,9 @@ callfunction: // Jump here if an instruction becomes a call
             a=DECODE_A(bc);
             left=reg[a];
             if (!vm_invoke(v, left, printselector, 0, NULL, &right)) {
-                morpho_printvalue(left);
+                morpho_printvalue(v, left);
             }
-            printf("\n");
+            morpho_printf(v, "\n");
             DISPATCH();
 
         CASE_CODE(BREAK):
@@ -1379,20 +1381,20 @@ callfunction: // Jump here if an instruction becomes a call
                 };
                 #undef OPCODE
                 for (unsigned int i=0; i<OP_END; i++) {
-                    printf("%s:\t\t%lu\n", opname[i], opcount[i]);
+                    morpho_printf(v, "%s:\t\t%lu\n", opname[i], opcount[i]);
                 }
 
-                printf(",");
-                for (unsigned int i=0; i<OP_END; i++) printf("%s, ", opname[i]);
-                printf("\n");
+                morpho_printf(v, ",");
+                for (unsigned int i=0; i<OP_END; i++) morpho_printf(v, "%s, ", opname[i]);
+                morpho_printf(v, "\n");
 
                 for (unsigned int i=0; i<OP_END; i++) {
-                    printf("%s, ", opname[i]);
+                    morpho_printf(v, "%s, ", opname[i]);
                     for (unsigned int j=0; j<OP_END; j++) {
-                        printf("%lu ", opopcount[i][j]);
-                        if (j<OP_END-1) printf(",");
+                        morpho_printf(v, "%lu ", opopcount[i][j]);
+                        if (j<OP_END-1) morpho_printf(v, ",");
                     }
-                    printf("\n");
+                    morpho_printf(v, "\n");
                 }
             }
             #endif
@@ -1743,6 +1745,41 @@ bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value
     inv.method=method;
 
     return morpho_call(v, MORPHO_OBJECT(&inv), nargs, args, ret);
+}
+
+/* **********************************************************************
+* Printing
+* ********************************************************************** */
+
+/** Prints a formatted string to the VM's output channel */
+int morpho_printf(vm *v, char *format, ...) {
+    int nchars=0;
+    
+    va_list args;
+    
+    if (v) {
+        for (;;) {
+            va_start(args, format);
+            nchars = vsnprintf(v->buffer.data, v->buffer.capacity, format, args);
+            va_end(args);
+            
+            if (nchars+1<=v->buffer.capacity) break;
+            
+            if (!varray_charresize(&v->buffer, nchars+1)) return 0;
+        }
+        
+        v->buffer.count=nchars;
+        
+        if (v->printfn) {
+            (v->printfn) (v, v->printref, v->buffer.data);
+        } else {
+            printf("%s", v->buffer.data);
+        }
+    } else { // If no VM available, resort to regular printf
+        nchars=vprintf(format, args);
+    }
+    
+    return nchars;
 }
 
 /* **********************************************************************

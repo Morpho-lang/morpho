@@ -112,9 +112,9 @@ bool builtin_iscallable(value val) {
  * ********************************************************************** */
 
 /** Instance object definitions */
-void objectbuiltinfunction_printfn(object *obj) {
+void objectbuiltinfunction_printfn(object *obj, void *v) {
     objectbuiltinfunction *f = (objectbuiltinfunction *) obj;
-    if (f) printf("<fn %s>", (MORPHO_ISNIL(f->name) ? "" : MORPHO_GETCSTRING(f->name)));
+    if (f) morpho_printf(v, "<fn %s>", (MORPHO_ISNIL(f->name) ? "" : MORPHO_GETCSTRING(f->name)));
 }
 
 void objectbuiltinfunction_freefn(object *obj) {
@@ -172,11 +172,6 @@ value builtin_findfunction(value name) {
     value out=MORPHO_NIL;
     dictionary_get(&builtin_functiontable, name, &out);
     return out;
-}
-
-/** Prints a builtin function */
-void builtin_printfunction(objectbuiltinfunction *f) {
-    if (f) printf("<fn %s>", (MORPHO_ISNIL(f->name) ? "" : MORPHO_GETCSTRING(f->name)));
 }
 
 /* **********************************************************************

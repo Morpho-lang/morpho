@@ -79,8 +79,8 @@ value Error_warning(vm *v, int nargs, value *args) {
 
 /** Print errors */
 value Error_print(vm *v, int nargs, value *args) {
-    object_print(MORPHO_SELF(args));
-
+    morpho_printvalue(v, MORPHO_SELF(args));
+    
     return MORPHO_SELF(args);
 }
 

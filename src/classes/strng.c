@@ -17,8 +17,8 @@
  * ********************************************************************** */
 
 /** String object definitions */
-void objectstring_printfn(object *obj) {
-    printf("%s", ((objectstring *) obj)->string);
+void objectstring_printfn(object *obj, void *v) {
+    morpho_printf(v, "%s", ((objectstring *) obj)->string);
 }
 
 size_t objectstring_sizefn(object *obj) {
@@ -191,7 +191,7 @@ value String_count(vm *v, int nargs, value *args) {
 
 /** Prints a string */
 value String_print(vm *v, int nargs, value *args) {
-    morpho_printvalue(MORPHO_SELF(args));
+    morpho_printvalue(v, MORPHO_SELF(args));
 
     return MORPHO_SELF(args);
 }

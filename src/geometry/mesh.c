@@ -29,8 +29,8 @@ DEFINE_VARRAY(elementid, elementid);
 objecttype objectmeshtype;
 
 /** Mesh object definitions */
-void objectmesh_printfn(object *obj) {
-    printf("<Mesh>");
+void objectmesh_printfn(object *obj, void *v) {
+    morpho_printf(v, "<Mesh>");
 }
 
 void objectmesh_markfn(object *obj, void *v) {
@@ -1073,9 +1073,9 @@ value Mesh_print(vm *v, int nargs, value *args) {
     if (!MORPHO_ISMESH(self)) return Object_print(v, nargs, args);
     
     objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
-    printf("<Mesh:");
-    if (m->vert) printf(" %u vertices", mesh_nvertices(m));
-    printf(">");
+    morpho_printf(v, "<Mesh:");
+    if (m->vert) morpho_printf(v, " %u vertices", mesh_nvertices(m));
+    morpho_printf(v, ">");
     return MORPHO_NIL;
 }
 

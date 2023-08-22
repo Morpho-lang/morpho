@@ -13,8 +13,8 @@
  * ********************************************************************** */
 
 /** Array object definitions */
-void objectarray_printfn(object *obj) {
-    printf("<Array>");
+void objectarray_printfn(object *obj, void *v) {
+    morpho_printf(v, "<Array>");
 }
 
 void objectarray_markfn(object *obj, void *v) {
@@ -168,7 +168,7 @@ void array_print(vm *v, objectarray *a) {
     unsigned int indx[a->ndim];
     if (array_print_recurse(v, a, indx, 0, &out)) {
         varray_charwrite(&out, '\0'); // Ensure zero terminated
-        printf("%s", out.data);
+        morpho_printf(v, "%s", out.data);
     }
 
     varray_charclear(&out);

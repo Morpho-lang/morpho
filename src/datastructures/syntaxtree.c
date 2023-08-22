@@ -25,7 +25,7 @@ void syntaxtree_wipe(syntaxtree *tree) {
 /** @brief Finalize a syntax tree */
 void syntaxtree_clear(syntaxtree *tree) {
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("--Freeing syntax tree %p.\n",(void *) tree);
+    fprintf(stderr, "--Freeing syntax tree %p.\n",(void *) tree);
 #endif
     /** Free attached objects */
     for (unsigned int i=0; i<tree->tree.count; i++) {
@@ -36,7 +36,7 @@ void syntaxtree_clear(syntaxtree *tree) {
     }
     varray_syntaxtreenodeclear(&tree->tree);
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("------\n");
+    fprintf(stderr, "------\n");
 #endif
 }
 
@@ -138,16 +138,16 @@ void syntaxtree_printnode(syntaxtreenode *base, syntaxtreeindx i, unsigned int i
             char *display = nodedisplay[node->type];
             if (display) printf("%s\n",display);
         } else {
-            morpho_printvalue(node->content);
+            morpho_printvalue(NULL, node->content);
             printf("\n");
         }
     } else {
         if (node->type==NODE_FUNCTION || node->type==NODE_CLASS) {
             printf(" ");
-            morpho_printvalue(node->content);
+            morpho_printvalue(NULL, node->content);
         } else if (node->type==NODE_INTERPOLATION) {
             printf("\" '");
-            morpho_printvalue(node->content);
+            morpho_printvalue(NULL, node->content);
             printf("'");
         }
         printf("\n");

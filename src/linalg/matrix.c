@@ -24,8 +24,8 @@ size_t objectmatrix_sizefn(object *obj) {
             ((objectmatrix *) obj)->nrows;
 }
 
-void objectmatrix_printfn(object *obj) {
-    printf("<Matrix>");
+void objectmatrix_printfn(object *obj, void *v) {
+    morpho_printf(v, "<Matrix>");
 }
 
 objecttypedefn objectmatrixdefn = {
@@ -612,15 +612,15 @@ objectmatrixerror matrix_identity(objectmatrix *a) {
 }
 
 /** Prints a matrix */
-void matrix_print(objectmatrix *m) {
+void matrix_print(vm *v, objectmatrix *m) {
     for (int i=0; i<m->nrows; i++) { // Rows run from 0...m
-        printf("[ ");
+        morpho_printf(v, "[ ");
         for (int j=0; j<m->ncols; j++) { // Columns run from 0...k
-            double v;
-            matrix_getelement(m, i, j, &v);
-            printf("%g ", (fabs(v)<MORPHO_EPS ? 0 : v));
+            double val;
+            matrix_getelement(m, i, j, &val);
+            morpho_printf(v, "%g ", (fabs(val)<MORPHO_EPS ? 0 : val));
         }
-        printf("]%s", (i<m->nrows-1 ? "\n" : ""));
+        morpho_printf(v, "]%s", (i<m->nrows-1 ? "\n" : ""));
     }
 }
 
@@ -927,7 +927,7 @@ value Matrix_print(vm *v, int nargs, value *args) {
     if (!MORPHO_ISMATRIX(self)) return Object_print(v, nargs, args);
     
     objectmatrix *m=MORPHO_GETMATRIX(MORPHO_SELF(args));
-    matrix_print(m);
+    matrix_print(v, m);
     return MORPHO_NIL;
 }
 

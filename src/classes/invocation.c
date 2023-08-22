@@ -13,13 +13,13 @@
  * ********************************************************************** */
 
 /** Invocation object definitions */
-void objectinvocation_printfn(object *obj) {
+void objectinvocation_printfn(object *obj, void *v) {
     objectinvocation *c = (objectinvocation *) obj;
 #ifndef MORPHO_LOXCOMPATIBILITY
-    object_print(c->receiver);
-    printf(".");
+    morpho_printvalue(v, c->receiver);
+    morpho_printf(v, ".");
 #endif
-    object_print(c->method);
+    morpho_printvalue(v, c->method);
 }
 
 void objectinvocation_markfn(object *obj, void *v) {

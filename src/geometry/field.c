@@ -19,8 +19,8 @@ static value field_gradeoption;
 objecttype objectfieldtype;
 
 /** Field object definitions */
-void objectfield_printfn(object *obj) {
-    printf("<Field>");
+void objectfield_printfn(object *obj, void *v) {
+    morpho_printf(v, "<Field>");
 }
 
 void objectfield_markfn(object *obj, void *v) {
@@ -772,8 +772,8 @@ value Field_print(vm *v, int nargs, value *args) {
     if (!MORPHO_ISFIELD(self)) return Object_print(v, nargs, args);
     
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
-    printf("<Field>\n");
-    matrix_print(&f->data);
+    morpho_printf(v, "<Field>\n");
+    matrix_print(v, &f->data);
     return MORPHO_NIL;
 }
 

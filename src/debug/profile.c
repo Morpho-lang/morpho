@@ -138,7 +138,7 @@ size_t profiler_calculatelength(profiler *p, value func) {
 /** Display the name */
 void profiler_display(profiler *p, value func) {
     value name, klass;
-    if (profiler_getname(func, &name, &klass)) {
+/*    if (profiler_getname(func, &name, &klass)) {
         if (MORPHO_ISSTRING(klass)) {
             morpho_printvalue(klass);
             printf(".");
@@ -152,7 +152,7 @@ void profiler_display(profiler *p, value func) {
             if (MORPHO_ISSAME(func, MORPHO_OBJECT(p->program->global))) printf(PROFILER_GLOBAL);
             else printf(PROFILER_ANON);
         }
-    }
+    }*/
 }
 
 /** Report the outcome of profiling */

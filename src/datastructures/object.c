@@ -59,9 +59,9 @@ void object_init(object *obj, objecttype type) {
 void object_free(object *obj) {
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
     if (obj) {
-        printf("Free object %p of type %d ", (void *) obj, obj->type);
-        object_print(MORPHO_OBJECT(obj));
-        printf("\n");
+        fprintf(stderr, "Free object %p of type %d ", (void *) obj, obj->type);
+        morpho_printvalue(NULL, MORPHO_OBJECT(obj));
+        fprintf(stderr, "\n");
     }
 #endif
     if (object_getdefn(obj)->freefn) object_getdefn(obj)->freefn(obj);
@@ -74,9 +74,9 @@ void object_freeifunmanaged(object *obj) {
 }
 
 /** Prints an object */
-void object_print(value v) {
-    object *obj = MORPHO_GETOBJECT(v);
-    object_getdefn(obj)->printfn(obj);
+void object_print(void *v, value val) {
+    object *obj = MORPHO_GETOBJECT(val);
+    object_getdefn(obj)->printfn(obj, v);
 }
 
 /** Gets the total size of an object */
@@ -93,7 +93,7 @@ object *object_new(size_t size, objecttype type) {
     if (new) object_init(new, type);
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("Create object %p of size %ld with type %d.\n", (void *) new, size, type);
+    fprintf(stderr, "Create object %p of size %ld with type %d.\n", (void *) new, size, type);
 #endif
 
     return new;

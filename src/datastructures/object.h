@@ -54,7 +54,7 @@ struct sobject {
     The object type is assigned at initialization by calling object_addtype */
 
 /** Called to print a short identifier for the object */
-typedef void (*objectprintfn) (object *obj);
+typedef void (*objectprintfn) (object *obj, void *v);
 
 /** Called to mark the contents of an object; called by the garbage collector to identify subsidiary objects */
 typedef void (*objectmarkfn) (object *obj, void *v);
@@ -86,7 +86,7 @@ objecttypedefn *object_getdefn(object *obj);
 void object_init(object *obj, objecttype type);
 void object_free(object *obj);
 void object_freeifunmanaged(object *obj);
-void object_print(value v);
+void object_print(void *v, value val);
 void object_printtobuffer(value v, varray_char *buffer);
 size_t object_size(object *obj);
 

@@ -586,7 +586,7 @@ static void compiler_regshow(compiler *c) {
             if (i==0 && FUNCTIONTYPE_ISMETHOD(f->type)) {
                 printf("self");
             } else if (!MORPHO_ISNIL(r->symbol)) {
-                morpho_printvalue(r->symbol);
+                morpho_printvalue(NULL, r->symbol);
             } else {
                 printf("temporary");
             }

@@ -12,8 +12,8 @@
  * ********************************************************************** */
 
 /** Dictionary object definitions */
-void objectdictionary_printfn(object *obj) {
-    printf("<Dictionary>");
+void objectdictionary_printfn(object *obj, void *v) {
+    morpho_printf(v, "<Dictionary>");
 }
 
 void objectdictionary_freefn(object *obj) {
@@ -157,18 +157,18 @@ value Dictionary_print(vm *v, int nargs, value *args) {
     
     objectdictionary *slf = MORPHO_GETDICTIONARY(self);
 
-    printf("{ ");
+    morpho_printf(v, "{ ");
     unsigned int k=0;
     for (unsigned int i=0; i<slf->dict.capacity; i++) {
         if (!MORPHO_ISNIL(slf->dict.contents[i].key)) {
-            if (k>0) printf(" , ");
-            morpho_printvalue(slf->dict.contents[i].key);
-            printf(" : ");
-            morpho_printvalue(slf->dict.contents[i].val);
+            if (k>0) morpho_printf(v, " , ");
+            morpho_printvalue(v, slf->dict.contents[i].key);
+            morpho_printf(v, " : ");
+            morpho_printvalue(v, slf->dict.contents[i].val);
             k++;
         }
     }
-    printf(" }");
+    morpho_printf(v, " }");
 
     return MORPHO_NIL;
 }

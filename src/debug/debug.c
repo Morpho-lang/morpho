@@ -196,7 +196,7 @@ bool debug_showcontents(debugcontents b, int i, value *konst, value *reg) {
     }
     if (!table) return false;
     printf("%s%i=", (b==CONST ? "c" : "r"), i);
-    morpho_printvalue(table[i]);
+    morpho_printvalue(NULL, table[i]);
     return true;
 }
 
@@ -259,7 +259,7 @@ void debug_errorlabel(varray_value *errorstack, instructionindx i) {
         value label = dict->dict.contents[k].key;
         if (!MORPHO_ISNIL(label)) {
             if (MORPHO_GETINTEGERVALUE(dict->dict.contents[k].val)==i) {
-                object_print(label);
+                morpho_printvalue(NULL, label);
                 printf(":\n");
             }
         }
@@ -309,7 +309,7 @@ void debug_disassemble(program *code, int *matchline) {
                     if (silent) break;
                     if (!MORPHO_ISNIL(func->name)) {
                         printf("fn ");
-                        morpho_printvalue(func->name);
+                        morpho_printvalue(NULL, func->name);
                         printf(":\n");
                     } else printf("\n");
                 }
@@ -320,7 +320,7 @@ void debug_disassemble(program *code, int *matchline) {
                     if (silent) break;
                     if (klass && !MORPHO_ISNIL(klass->name)) {
                         printf("class ");
-                        morpho_printvalue(klass->name);
+                        morpho_printvalue(NULL, klass->name);
                         printf(":\n");
                     }
                 }
@@ -482,7 +482,7 @@ void debug_showannotations(varray_debugannotation *list) {
                 if (!ann->content.klass.klass) {
                     printf("(none)");
                 } else {
-                    morpho_printvalue(MORPHO_OBJECT(ann->content.klass.klass));
+                    morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.klass.klass));
                 }
                 break;
             case DEBUG_ELEMENT:
@@ -492,26 +492,26 @@ void debug_showannotations(varray_debugannotation *list) {
                 break;
             case DEBUG_FUNCTION:
                 printf("Function: ");
-                morpho_printvalue(MORPHO_OBJECT(ann->content.function.function));
+                morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.function.function));
                 break;
             case DEBUG_MODULE:
                 printf("Module: ");
-                morpho_printvalue(ann->content.module.module);
+                morpho_printvalue(NULL, ann->content.module.module);
                 break;
             case DEBUG_PUSHERR:
                 printf("Pusherr: ");
-                morpho_printvalue(MORPHO_OBJECT(ann->content.errorhandler.handler));
+                morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.errorhandler.handler));
                 break;
             case DEBUG_POPERR:
                 printf("Poperr: ");
                 break;
             case DEBUG_REGISTER:
                 printf("Register: %ti ", ann->content.reg.reg);
-                morpho_printvalue(ann->content.reg.symbol);
+                morpho_printvalue(NULL, ann->content.reg.symbol);
                 break;
             case DEBUG_GLOBAL:
                 printf("Global: %ti ", ann->content.global.gindx);
-                morpho_printvalue(ann->content.reg.symbol);
+                morpho_printvalue(NULL, ann->content.reg.symbol);
                 break;
         }
         printf("\n");
@@ -528,18 +528,18 @@ void morpho_stacktrace(vm *v) {
         instructionindx indx = f->pc-v->current->code.data;
         if (indx>0) indx--; /* Because the pc always points to the NEXT instr. */
         
-        printf("  ");
-        printf("%s", (f==v->fp ? "  in " : "from "));
+        morpho_printf(v, "  ");
+        morpho_printf(v, "%s", (f==v->fp ? "  in " : "from "));
         
-        if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(f->function->name);
-        else printf("global");
+        if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(v, f->function->name);
+        else morpho_printf(v, "global");
         
         int line=0;
         if (debug_infofromindx(v->current, indx, NULL, &line, NULL, NULL, NULL)) {
-            printf(" at line %u", line);
+            morpho_printf(v, " at line %u", line);
         }
         
-        printf("\n");
+        morpho_printf(v, "\n");
     }
 }
 
@@ -974,17 +974,17 @@ void debug_showregisters(vm *v, callframe *frame) {
     instructionindx cinstr=frame->pc-v->current->code.data;
     bool sym = debug_symbolsforfunction(v->current, frame->function, &cinstr, symbols);
     
-    printf("Register contents:\n");
+    morpho_printf(v, "Register contents:\n");
     value *reg = v->stack.data + frame->roffset;
     for (unsigned int i=0; i<nreg; i++) {
-        printf("  r%u: ", i);
-        morpho_printvalue(reg[i]);
+        morpho_printf(v, "  r%u: ", i);
+        morpho_printvalue(NULL, reg[i]);
         if (sym && !MORPHO_ISNIL(symbols[i])) {
-            printf(" (");
-            morpho_printvalue(symbols[i]);
-            printf(")");
+            morpho_printf(v, " (");
+            morpho_printvalue(NULL, symbols[i]);
+            morpho_printf(v, ")");
         }
-        printf("\n");
+        morpho_printf(v, "\n");
     }
 }
 
@@ -1001,26 +1001,26 @@ void debug_showstack(vm *v) {
     fbounds[k]=f->roffset;
     
     f=v->frame; k=0;
-    printf("Stack contents:\n");
+    morpho_printf(v, "Stack contents:\n");
     for (unsigned int i=0; i<v->fp->roffset+v->fp->function->nregs; i++) {
         if (i==fbounds[k]) {
-            printf("---");
-            if (f->function) morpho_printvalue(f->function->name);
-            printf("\n");
+            morpho_printf(v, "---");
+            if (f->function) morpho_printvalue(v, f->function->name);
+            morpho_printf(v, "\n");
             k++; f++;
         }
-        printf("  s%u: ", i);
-        morpho_printvalue(v->stack.data[i]);
-        printf("\n");
+        morpho_printf(v, "  s%u: ", i);
+        morpho_printvalue(v, v->stack.data[i]);
+        morpho_printf(v, "\n");
     }
 }
 
 /** Shows current symbols */
 void debug_showsymbols(vm *v) {
     for (callframe *f=v->fp; f>=v->frame; f--) {
-        printf("in %s", (f==v->frame ? "global" : ""));
-        if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(f->function->name);
-        printf(":\n");
+        morpho_printf(v, "in %s", (f==v->frame ? "global" : ""));
+        if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(v, f->function->name);
+        morpho_printf(v, ":\n");
         
         value symbols[f->function->nregs];
         instructionindx indx = f->pc-v->current->code.data;
@@ -1029,11 +1029,11 @@ void debug_showsymbols(vm *v) {
         
         for (int i=0; i<f->function->nregs; i++) {
             if (!MORPHO_ISNIL(symbols[i])) {
-                printf("  ");
-                morpho_printvalue(symbols[i]);
-                printf("=");
-                morpho_printvalue(v->stack.data[f->roffset+i]);
-                printf("\n");
+                morpho_printf(v, "  ");
+                morpho_printvalue(v, symbols[i]);
+                morpho_printf(v, "=");
+                morpho_printvalue(v, v->stack.data[f->roffset+i]);
+                morpho_printf(v, "\n");
             }
         }
     }
@@ -1042,19 +1042,19 @@ void debug_showsymbols(vm *v) {
 /** Prints a global */
 void debug_showglobal(vm *v, int id) {
     if (id>=0 && id<v->globals.count) {
-        printf("  g%u:", id);
-        morpho_printvalue(v->globals.data[id]);
-        printf("\n");
-    } else printf("Invalid global number.\n");
+        morpho_printf(v, "  g%u:", id);
+        morpho_printvalue(v, v->globals.data[id]);
+        morpho_printf(v, "\n");
+    } else morpho_printf(v, "Invalid global number.\n");
 }
 
 /** Prints list of globals */
 void debug_showglobals(vm *v) {
-    printf("Globals:\n");
+    morpho_printf(v, "Globals:\n");
     for (unsigned int i=0; i<v->globals.count; i++) {
-        printf("  g%u: ", i);
-        morpho_printvalue(v->globals.data[i]);
-        printf("\n");
+        morpho_printf(v, "  g%u: ", i);
+        morpho_printvalue(v, v->globals.data[i]);
+        morpho_printf(v, "\n");
     }
 }
 
@@ -1107,7 +1107,7 @@ bool debug_printvalue(vm *v, value val) {
             return morpho_invoke(v, val, printmethod, 0, NULL, &out);
         }
     } else {
-        morpho_printvalue(val);
+        morpho_printvalue(v, val);
     }
     
     return true;
@@ -1115,31 +1115,31 @@ bool debug_printvalue(vm *v, value val) {
 
 /** Prints the location associated with the current context */
 bool debug_printlocation(vm *v, callframe *frame) {
-    printf("(in %s", (frame==v->frame ? "global" : ""));
+    morpho_printf(v, "(in %s", (frame==v->frame ? "global" : ""));
     if (frame->function->klass &&
         !MORPHO_ISNIL(frame->function->klass->name)) {
-        morpho_printvalue(frame->function->klass->name);
-        printf(".");
+        morpho_printvalue(v, frame->function->klass->name);
+        morpho_printf(v, ".");
     }
     if (!MORPHO_ISNIL(frame->function->name)) {
-        morpho_printvalue(frame->function->name);
-    } else if (frame!=v->frame) printf("anonymous");
-    printf(")");
+        morpho_printvalue(v, frame->function->name);
+    } else if (frame!=v->frame) morpho_printf(v, "anonymous");
+    morpho_printf(v, ")");
     return true;
 }
 
 /** Prints a specified symbol */
 bool debug_printsymbol(vm *v, value symbol, value property, callframe *frame, value val) {
-    morpho_printvalue(symbol);
+    morpho_printvalue(v, symbol);
     if (MORPHO_ISSTRING(property)) {
-        printf(".");
-        morpho_printvalue(property);
+        morpho_printf(v, ".");
+        morpho_printvalue(v, property);
     }
-    printf(" ");
+    morpho_printf(v, " ");
     debug_printlocation(v, frame);
-    printf(" = ");
+    morpho_printf(v, " = ");
     debug_printvalue(v, val);
-    printf("\n");
+    morpho_printf(v, "\n");
     
     return true;
 }
@@ -1173,9 +1173,7 @@ void debugger_enter(vm *v) {
  * @param[in] p - program to run
  * @returns true on success, false otherwise */
 bool morpho_debug(vm *v, program *p) {
-    return morpho_run(v, p);
-    
-    /*debugger debug;
+    debugger debug;
 
     debugger_init(&debug, p);
     v->debug=&debug;
@@ -1184,5 +1182,5 @@ bool morpho_debug(vm *v, program *p) {
     
     debugger_clear(&debug);
     
-    return success;*/
+    return success;
 }

@@ -264,7 +264,7 @@ void optimize_showreginfo(unsigned int regmax, reginfo *reg) {
             if (!MORPHO_ISNIL(reg[i].type)) {
                 printf(" (");
                 if (OPTIMIZER_ISAMBIGUOUS(reg[i].type)) printf("ambiguous");
-                else morpho_printvalue(reg[i].type);
+                else morpho_printvalue(NULL, reg[i].type);
                 printf(")");
             }
         }

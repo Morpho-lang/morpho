@@ -114,8 +114,7 @@ value System_clock(vm *v, int nargs, value *args) {
 
 /** Print */
 value System_print(vm *v, int nargs, value *args) {
-    for (int i=0; i<nargs; i++) morpho_printvalue(MORPHO_GETARG(args, i));
-    fflush(stdout);
+    for (int i=0; i<nargs; i++) morpho_printvalue(v, MORPHO_GETARG(args, i));
     return MORPHO_NIL;
 }
 

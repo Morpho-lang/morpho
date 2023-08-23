@@ -12,15 +12,15 @@
  * ********************************************************************** */
 
 /** Instance object definitions */
-void objectinstance_printfn(object *obj) {
+void objectinstance_printfn(object *obj, void *v) {
 #ifndef MORPHO_LOXCOMPATIBILITY
-    printf("<");
+    morpho_printf(v, "<");
 #endif
-    printf("%s", MORPHO_GETCSTRING(((objectinstance *) obj)->klass->name));
+    morpho_printf(v, "%s", MORPHO_GETCSTRING(((objectinstance *) obj)->klass->name));
 #ifndef MORPHO_LOXCOMPATIBILITY
-    printf(">");
+    morpho_printf(v, ">");
 #else
-    printf(" instance");
+    morpho_printf(v, " instance");
 #endif
 }
 
@@ -258,19 +258,19 @@ value Object_print(vm *v, int nargs, value *args) {
     if (MORPHO_ISCLASS(self)) {
         klass=MORPHO_GETCLASS(self);
 #ifndef MORPHO_LOXCOMPATIBILITY
-        printf("@%s", (MORPHO_ISSTRING(klass->name) ? MORPHO_GETCSTRING(klass->name): "Object"));
+        morpho_printf(v, "@%s", (MORPHO_ISSTRING(klass->name) ? MORPHO_GETCSTRING(klass->name): "Object"));
 #else
-        printf("%s", (MORPHO_ISSTRING(klass->name) ? MORPHO_GETCSTRING(klass->name): "Object"));
+        morpho_printf(v, "%s", (MORPHO_ISSTRING(klass->name) ? MORPHO_GETCSTRING(klass->name): "Object"));
 #endif
     } else if (MORPHO_ISINSTANCE(self)) {
         klass=MORPHO_GETINSTANCE(self)->klass;
 #ifndef MORPHO_LOXCOMPATIBILITY
-        if (klass) printf("<%s>", (MORPHO_ISSTRING(klass->name) ? MORPHO_GETCSTRING(klass->name): "Object") );
+        if (klass) morpho_printf(v, "<%s>", (MORPHO_ISSTRING(klass->name) ? MORPHO_GETCSTRING(klass->name): "Object") );
 #else
-        if (klass) printf("%s instance", (MORPHO_ISSTRING(klass->name) ? MORPHO_GETCSTRING(klass->name): "Object") );
+        if (klass) morpho_printf(v, "%s instance", (MORPHO_ISSTRING(klass->name) ? MORPHO_GETCSTRING(klass->name): "Object") );
 #endif
     } else {
-        morpho_printvalue(self);
+        morpho_printvalue(v, self);
     }
     return MORPHO_NIL;
 }

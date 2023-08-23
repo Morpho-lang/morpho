@@ -32,20 +32,46 @@ value Error_init(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Extract the tag and message for an error */
+bool _err_extract(vm *v, int nargs, value *args, value *tag, value *msg) {
+    objectinstance *slf = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+    if (!slf) return false;
+    
+    objectinstance_getpropertyinterned(slf, error_tagproperty, tag);
+    if (nargs==0) {
+        objectinstance_getpropertyinterned(slf, error_messageproperty, msg);
+    } else {
+        *msg=MORPHO_GETARG(args, 0);
+    }
+    
+    return true;
+}
+
 /** Throw an error */
 value Error_throw(vm *v, int nargs, value *args) {
-    objectinstance *slf = MORPHO_GETINSTANCE(MORPHO_SELF(args));
     value tag=MORPHO_NIL, msg=MORPHO_NIL;
 
-    if (slf) {
-        objectinstance_getpropertyinterned(slf, error_tagproperty, &tag);
-        if (nargs==0) {
-            objectinstance_getpropertyinterned(slf, error_messageproperty, &msg);
-        } else {
-            msg=MORPHO_GETARG(args, 0);
-        }
+    if (_err_extract(v, nargs, args, &tag, &msg)) {
+        error err;
+        error_init(&err);
+        morpho_writeusererror(&err, MORPHO_GETCSTRING(tag), MORPHO_GETCSTRING(msg));
+        morpho_error(v, &err);
+        error_clear(&err);
+    }
 
-        morpho_usererror(v, MORPHO_GETCSTRING(tag), MORPHO_GETCSTRING(msg));
+    return MORPHO_NIL;
+}
+
+/** Raise a warning */
+value Error_warning(vm *v, int nargs, value *args) {
+    value tag=MORPHO_NIL, msg=MORPHO_NIL;
+
+    if (_err_extract(v, nargs, args, &tag, &msg)) {
+        error err;
+        error_init(&err);
+        morpho_writeusererror(&err, MORPHO_GETCSTRING(tag), MORPHO_GETCSTRING(msg));
+        morpho_warning(v, &err);
+        error_clear(&err);
     }
 
     return MORPHO_NIL;
@@ -53,14 +79,15 @@ value Error_throw(vm *v, int nargs, value *args) {
 
 /** Print errors */
 value Error_print(vm *v, int nargs, value *args) {
-    object_print(MORPHO_SELF(args));
-
+    morpho_printvalue(v, MORPHO_SELF(args));
+    
     return MORPHO_SELF(args);
 }
 
 MORPHO_BEGINCLASS(Error)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Error_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_THROW_METHOD, Error_throw, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_WARNING_METHOD, Error_warning, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Error_print, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 

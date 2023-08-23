@@ -12,11 +12,11 @@
  * objectclosure definitions
  * ********************************************************************** */
 
-void objectclosure_printfn(object *obj) {
+void objectclosure_printfn(object *obj, void *v) {
     objectclosure *f = (objectclosure *) obj;
-    printf("<");
-    objectfunction_printfn((object *) f->func);
-    printf(">");
+    morpho_printf(v, "<");
+    objectfunction_printfn((object *) f->func, v);
+    morpho_printf(v, ">");
 }
 
 void objectclosure_markfn(object *obj, void *v) {

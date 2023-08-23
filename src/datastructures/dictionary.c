@@ -517,19 +517,6 @@ bool dictionary_difference(dictionary *a, dictionary *b, dictionary *out) {
 #ifdef MORPHO_DEBUG
 #include <time.h>
 
-/** @brief Prints the dictionary data structure for debugging purposes */
-void dictionary_inspect(dictionary *dict) {
-    printf("[");
-    for (unsigned int i=0; i<dict->capacity; i++) {
-        dictionaryentry *e = &dict->contents[i];
-        morpho_printvalue(e->key);
-        printf(" ");
-    }
-    printf("]");
-    
-    printf("\n");
-}
-
 /** @brief Runs a performance test */
 void dictionary_testforsize(unsigned int n) {
    clock_t start, end;

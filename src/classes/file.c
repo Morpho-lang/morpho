@@ -35,11 +35,11 @@ void objectfile_freefn(object *obj) {
     if (file->f) fclose(file->f);
 }
 
-void objectfile_printfn(object *obj) {
+void objectfile_printfn(object *obj, void *v) {
     objectfile *file = (objectfile *) obj;
-    printf("<File '");
-    morpho_printvalue(file->filename);
-    printf("'>");
+    morpho_printf(v, "<File '");
+    morpho_printvalue(v, file->filename);
+    morpho_printf(v, "'>");
 }
 
 objecttypedefn objectfiledefn = {

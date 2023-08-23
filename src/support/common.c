@@ -102,23 +102,23 @@ int morpho_comparevalue (value a, value b) {
 
 /** @brief Prints a value
  * @param v The value to print */
-void morpho_printvalue(value v) {
-    if (MORPHO_ISFLOAT(v)) {
-        printf("%g", MORPHO_GETFLOATVALUE(v) );
+void morpho_printvalue(vm *v, value val) {
+    if (MORPHO_ISFLOAT(val)) {
+        morpho_printf(v, "%g", MORPHO_GETFLOATVALUE(val));
         return;
     } else {
-        switch (MORPHO_GETTYPE(v)) {
+        switch (MORPHO_GETTYPE(val)) {
             case VALUE_NIL:
-                printf(COMMON_NILSTRING);
+                morpho_printf(v, COMMON_NILSTRING);
                 return;
             case VALUE_BOOL:
-                printf("%s", ( MORPHO_GETBOOLVALUE(v) ? COMMON_TRUESTRING : COMMON_FALSESTRING ));
+                morpho_printf(v, "%s", (MORPHO_GETBOOLVALUE(val) ? COMMON_TRUESTRING : COMMON_FALSESTRING));
                 return;
             case VALUE_INTEGER:
-                printf("%i", MORPHO_GETINTEGERVALUE(v) );
+                morpho_printf(v, "%i", MORPHO_GETINTEGERVALUE(val));
                 return;
             case VALUE_OBJECT:
-                object_print(v);
+                object_print(v, val);
                 return;
             default:
                 return;

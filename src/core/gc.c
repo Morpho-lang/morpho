@@ -9,6 +9,13 @@
 
 extern vm *globalvm;
 
+#include "compile.h"
+#include "morpho.h"
+
+#ifdef MORPHO_DEBUG_GCSIZETRACKING
+extern dictionary sizecheck;
+#endif
+
 /* **********************************************************************
  * Gray list
  * ********************************************************************** */
@@ -58,9 +65,9 @@ void vm_gcmarkobject(vm *v, object *obj) {
     if (!obj || obj->status!=OBJECT_ISUNMARKED) return;
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-        printf("Marking %p ", obj);
-        object_print(MORPHO_OBJECT(obj));
-        printf("\n");
+    morpho_printf(v, "Marking %p ", obj);
+    morpho_printvalue(v, MORPHO_OBJECT(obj));
+    morpho_printf(v, "\n");
 #endif
     obj->status=OBJECT_ISMARKED;
 
@@ -112,7 +119,7 @@ void morpho_markvarrayvalue(void *v, varray_value *array) {
 void vm_gcmarkroots(vm *v) {
     /** Mark anything on the stack */
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("> Stack.\n");
+    morpho_printf(v, "> Stack.\n");
 #endif
     value *stacktop = v->stack.data+v->fp->roffset+v->fp->function->nregs-1;
     
@@ -129,7 +136,7 @@ void vm_gcmarkroots(vm *v) {
     }
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("> Globals.\n");
+    morpho_printf(v, "> Globals.\n");
 #endif
     for (unsigned int i=0; i<v->globals.count; i++) {
         vm_gcmarkvalue(v, v->globals.data[i]);
@@ -137,36 +144,36 @@ void vm_gcmarkroots(vm *v) {
 
     /** Mark closure objects in use */
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("> Closures.\n");
+    morpho_printf(v, "> Closures.\n");
 #endif
     for (callframe *f=v->frame; f && v->fp && f<=v->fp; f++) {
         if (f->closure) vm_gcmarkobject(v, (object *) f->closure);
     }
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("> Open upvalues.\n");
+    morpho_printf(v, "> Open upvalues.\n");
 #endif
     for (objectupvalue *u=v->openupvalues; u!=NULL; u=u->next) {
         vm_gcmarkobject(v, (object *) u);
     }
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("> Thread local storage.\n");
+    morpho_printf(v, "> Thread local storage.\n");
 #endif
     for (int i=0; i<v->tlvars.count; i++) {
         vm_gcmarkvalue(v, v->tlvars.data[i]);
     }
     
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("> End mark roots.\n");
+    morpho_printf(v, "> End mark roots.\n");
 #endif
 }
 
 void vm_gcmarkretainobject(vm *v, object *obj) {
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("Searching object %p ", (void *) obj);
-    object_print(MORPHO_OBJECT(obj));
-    printf("\n");
+    morpho_printf(v, "Searching object %p ", (void *) obj);
+    morpho_printvalue(v, MORPHO_OBJECT(obj));
+    morpho_printf(v, "\n");
 #endif
     objecttypedefn *defn=object_getdefn(obj);
     if (defn->markfn) defn->markfn(obj, v);
@@ -203,7 +210,7 @@ void vm_gcsweep(vm *v) {
             if (dictionary_get(&sizecheck, MORPHO_OBJECT(unreached), &xsize)) {
                 size_t isize = MORPHO_GETINTEGERVALUE(xsize);
                 if (size!=isize) {
-                    morpho_printvalue(MORPHO_OBJECT(unreached));
+                    morpho_printvalue(v, MORPHO_OBJECT(unreached));
                     UNREACHABLE("Object doesn't match its declared size");
                 }
             }
@@ -243,7 +250,7 @@ void vm_collectgarbage(vm *v) {
     if (vc && vc->bound>0) {
         size_t init=vc->bound;
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-        printf("--- begin garbage collection ---\n");
+        morpho_printf(v, "--- begin garbage collection ---\n");
 #endif
         vm_gcmarkroots(vc);
         vm_gctrace(vc);
@@ -251,7 +258,7 @@ void vm_collectgarbage(vm *v) {
 
         if (vc->bound>init) {
 #ifdef MORPHO_DEBUG_GCSIZETRACKING
-            printf("GC collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->bound*MORPHO_GCGROWTHFACTOR);
+            morpho_printf(v, "GC collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->bound*MORPHO_GCGROWTHFACTOR);
             UNREACHABLE("VM bound object size < 0");
 #else
             // This catch has been put in to prevent the garbarge collector from completely seizing up.
@@ -262,8 +269,8 @@ void vm_collectgarbage(vm *v) {
         vc->nextgc=vc->bound*MORPHO_GCGROWTHFACTOR;
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-        printf("--- end garbage collection ---\n");
-        if (vc) printf("    collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->nextgc);
+        morpho_printf(v, "--- end garbage collection ---\n");
+        if (vc) morpho_printf(v, "    collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->nextgc);
 #endif
     }
     

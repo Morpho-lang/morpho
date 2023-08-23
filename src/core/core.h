@@ -179,8 +179,7 @@ typedef struct {
 #define VM_MAXIMUMREGISTERNUMBER 255
 
 /** Varrays of vms */
-struct svm;
-DECLARE_VARRAY(vm, struct svm*)
+DECLARE_VARRAY(vm, vm*)
 
 /** @brief A Morpho virtual machine and its current state */
 struct svm {
@@ -215,8 +214,15 @@ struct svm {
     
     objectupvalue *openupvalues; /** Linked list of open upvalues */
     
-    struct svm *parent; /** Parent vm */
+    vm *parent; /** Parent vm */
     varray_vm subkernels; /** Subkernels */
+    
+    morphoprintfn printfn; /** Print callback */
+    void *printref; /** Print callback reference */
+    varray_char buffer; /** Buffer for printing */
+    
+    morphowarningfn warningfn; /** Warning callback */
+    void *warningref; /** Warning callback reference */
     
     _MORPHO_PADDING; /** Ensure subkernels do not cause false sharing */
 };

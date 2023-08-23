@@ -34,6 +34,10 @@ value enumerateselector = MORPHO_NIL;
 value countselector = MORPHO_NIL;
 value cloneselector = MORPHO_NIL;
 
+#ifdef MORPHO_DEBUG_GCSIZETRACKING
+dictionary sizecheck;
+#endif
+
 /* **********************************************************************
 * VM objects
 * ********************************************************************** */
@@ -58,6 +62,7 @@ static void vm_init(vm *v) {
     varray_valueinit(&v->tlvars);
     varray_valueinit(&v->globals);
     varray_valueresize(&v->stack, MORPHO_STACKINITIALSIZE);
+    varray_charinit(&v->buffer);
     error_init(&v->err);
     v->errfp=NULL;
 #ifdef MORPHO_PROFILER
@@ -66,6 +71,11 @@ static void vm_init(vm *v) {
 #endif
     v->parent=NULL;
     varray_vminit(&v->subkernels);
+    
+    v->printfn=NULL;
+    v->printref=NULL;
+    v->warningfn=NULL;
+    v->warningref=NULL;
 }
 
 /** Clears a virtual machine */
@@ -76,6 +86,19 @@ static void vm_clear(vm *v) {
     vm_graylistclear(&v->gray);
     vm_freeobjects(v);
     varray_vmclear(&v->subkernels);
+    varray_charclear(&v->buffer);
+}
+
+/** Configure print callback function */
+void morpho_setprintfn(vm *v, morphoprintfn printfn, void *ref) {
+    v->printfn=printfn;
+    v->printref=ref;
+}
+
+/** Configure warning callback function */
+void morpho_setwarningfn(vm *v, morphowarningfn warningfn, void *ref) {
+    v->warningfn=warningfn;
+    v->warningref=ref;
 }
 
 /** Prepares a vm to run program p */
@@ -113,7 +136,7 @@ bool vm_start(vm *v, program *p) {
 void vm_freeobjects(vm *v) {
     long k=0;
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("--- Freeing objects bound to VM ---\n");
+    morpho_printf(v, "--- Freeing objects bound to VM ---\n");
 #endif
     object *next=NULL;
     for (object *e=v->objects; e!=NULL; e=next) {
@@ -123,13 +146,9 @@ void vm_freeobjects(vm *v) {
     }
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("--- Freed %li objects bound to VM ---\n", k);
+    morpho_printf(v, "--- Freed %li objects bound to VM ---\n", k);
 #endif
 }
-
-#ifdef MORPHO_DEBUG_GCSIZETRACKING
-dictionary sizecheck;
-#endif
 
 /* **********************************************************************
 * Binding and unbinding objects to the VM
@@ -509,7 +528,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
     value left, right;
 
 #ifdef MORPHO_DEBUG_PRINT_INSTRUCTIONS
-#define MORPHO_DISASSEMBLE_INSRUCTION(bc,pc,k,r) { printf("  "); debug_disassembleinstruction(bc, pc-1, k, r); printf("\n"); }
+#define MORPHO_DISASSEMBLE_INSRUCTION(bc,pc,k,r) { morpho_printf(v, "  "); debug_disassembleinstruction(bc, pc-1, k, r); morpho_printf(v, "\n"); }
 #else
 #define MORPHO_DISASSEMBLE_INSRUCTION(bc,pc,k,r);
 #endif
@@ -1320,16 +1339,10 @@ callfunction: // Jump here if an instruction becomes a call
         CASE_CODE(PRINT):
             a=DECODE_A(bc);
             left=reg[a];
-#ifdef MORPHO_COLORTERMINAL
-            printf("\033[1m");
-#endif
             if (!vm_invoke(v, left, printselector, 0, NULL, &right)) {
-                morpho_printvalue(left);
+                morpho_printvalue(v, left);
             }
-#ifdef MORPHO_COLORTERMINAL
-            printf("\033[0m");
-#endif
-            printf("\n");
+            morpho_printf(v, "\n");
             DISPATCH();
 
         CASE_CODE(BREAK):
@@ -1368,20 +1381,20 @@ callfunction: // Jump here if an instruction becomes a call
                 };
                 #undef OPCODE
                 for (unsigned int i=0; i<OP_END; i++) {
-                    printf("%s:\t\t%lu\n", opname[i], opcount[i]);
+                    morpho_printf(v, "%s:\t\t%lu\n", opname[i], opcount[i]);
                 }
 
-                printf(",");
-                for (unsigned int i=0; i<OP_END; i++) printf("%s, ", opname[i]);
-                printf("\n");
+                morpho_printf(v, ",");
+                for (unsigned int i=0; i<OP_END; i++) morpho_printf(v, "%s, ", opname[i]);
+                morpho_printf(v, "\n");
 
                 for (unsigned int i=0; i<OP_END; i++) {
-                    printf("%s, ", opname[i]);
+                    morpho_printf(v, "%s, ", opname[i]);
                     for (unsigned int j=0; j<OP_END; j++) {
-                        printf("%lu ", opopcount[i][j]);
-                        if (j<OP_END-1) printf(",");
+                        morpho_printf(v, "%lu ", opopcount[i][j]);
+                        if (j<OP_END-1) morpho_printf(v, ",");
                     }
-                    printf("\n");
+                    morpho_printf(v, "\n");
                 }
             }
             #endif
@@ -1471,24 +1484,53 @@ error *morpho_geterror(vm *v) {
     return &v->err;
 }
 
-/** @brief Public interface to raise a runtime error
+/** @brief Raises an error described by an error structure
+ * @param v        the virtual machine
+ * @param err    error to raise */
+void morpho_error(vm *v, error *err) {
+    if (err->cat!=ERROR_WARNING) { // Errors of category ERROR_WARNING are always raised as warnings
+        v->err = *err;
+    } else morpho_warning(v, err);
+}
+
+/** @brief Raises an warning described by an error structure  */
+void morpho_warning(vm *v, error *err) {
+    if (v->warningfn) {
+        (v->warningfn) (v, v->warningref, err);
+    } else {
+        fprintf(stderr, "Warning [%s]: %s\n", err->id, err->msg);
+    }
+}
+
+/** @brief Raise a runtime error given an id
  * @param v        the virtual machine
  * @param id       error id
  * @param ...      additional data for sprintf. */
 void morpho_runtimeerror(vm *v, errorid id, ...) {
     va_list args;
+    error err;
+    error_init(&err);
 
     va_start(args, id);
-    morpho_writeerrorwithidvalist(&v->err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
+    morpho_writeerrorwithidvalist(&err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
     va_end(args);
+    
+    morpho_error(v, &err);
+    error_clear(&err);
 }
 
-/** @brief Public interface to raise a user error
- * @param v        the virtual machine
- * @param id       error id
- * @param message error message */
-void morpho_usererror(vm *v, errorid id, char *message) {
-    morpho_writeusererror(&v->err, id, message);
+/** @brief Raise a runtime warning given an id  */
+void morpho_runtimewarning(vm *v, errorid id, ...) {
+    va_list args;
+    error err;
+    error_init(&err);
+
+    va_start(args, id);
+    morpho_writeerrorwithidvalist(&err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
+    va_end(args);
+    
+    morpho_warning(v, &err);
+    error_clear(&err);
 }
 
 /** @brief Binds a set of objects to a Virtual Machine; public interface.
@@ -1703,6 +1745,39 @@ bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value
     inv.method=method;
 
     return morpho_call(v, MORPHO_OBJECT(&inv), nargs, args, ret);
+}
+
+/* **********************************************************************
+* Printing
+* ********************************************************************** */
+
+/** Prints a formatted string to the VM's output channel */
+int morpho_printf(vm *v, char *format, ...) {
+    int nchars=0;
+    
+    va_list args;
+    
+    if (v && v->printfn) {
+        for (;;) {
+            va_start(args, format);
+            nchars = vsnprintf(v->buffer.data, v->buffer.capacity, format, args);
+            va_end(args);
+            
+            if (nchars+1<=v->buffer.capacity) break;
+            
+            if (!varray_charresize(&v->buffer, nchars+1)) return 0;
+        }
+        
+        v->buffer.count=nchars;
+    
+        (v->printfn) (v, v->printref, v->buffer.data);
+    } else { // If no VM or no print function available, resort to regular printf
+        va_start(args, format);
+        nchars=vprintf(format, args);
+        va_end(args); 
+    }
+    
+    return nchars;
 }
 
 /* **********************************************************************

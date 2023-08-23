@@ -70,7 +70,7 @@ objectfunction *object_newfunction(indx entry, value name, objectfunction *paren
 bool object_functionhasvargs(objectfunction *func);
 void object_functionsetvarg(objectfunction *func, unsigned int varg);
 
-void objectfunction_printfn(object *obj);
+void objectfunction_printfn(object *obj, void *v);
 
 /* Initialization/finalization */
 void function_initialize(void);

@@ -13,14 +13,14 @@
  * objectrange definitions
  * ********************************************************************** */
 
-void objectrange_printfn(object *obj) {
+void objectrange_printfn(object *obj, void *v) {
     objectrange *r = (objectrange *) obj;
-    morpho_printvalue(r->start);
-    printf("..");
-    morpho_printvalue(r->end);
+    morpho_printvalue(v, r->start);
+    morpho_printf(v, "..");
+    morpho_printvalue(v, r->end);
     if (!MORPHO_ISNIL(r->step)) {
-        printf(":");
-        morpho_printvalue(r->step);
+        morpho_printf(v, ":");
+        morpho_printvalue(v, r->step);
     }
 }
 

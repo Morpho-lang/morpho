@@ -8,7 +8,11 @@
  * Version
  * ********************************************************************** */
 
-#define MORPHO_VERSIONSTRING "0.5.7"
+#define MORPHO_VERSIONSTRING "0.6.0"
+
+#define MORPHO_VERSION_MAJOR 0
+#define MORPHO_VERSION_MINOR 6
+#define MORPHO_VERSION_PATCH 0
 
 /* **********************************************************************
  * Paths and file system
@@ -34,15 +38,6 @@
 #define MORPHO_EXTENSION "morpho"             // File extension for morpho files
 
 #define MORPHO_PACKAGELIST ".morphopackages"  // File in $HOME that contains package locations
-
-/* **********************************************************************
- * Features
- * ********************************************************************** */
-
-#ifndef DEBUG
-/** @brief Use coloring in output */
-#define MORPHO_COLORTERMINAL
-#endif
 
 /* **********************************************************************
  * Language features
@@ -106,7 +101,7 @@
 
 /** @brief Build Morpho VM with small but hacky value type [NaN boxing] */
 #ifndef _NO_NAN_BOXING
-//#define MORPHO_NAN_BOXING
+#define MORPHO_NAN_BOXING
 #endif
 /** @brief Number of bytes to bind before GC first runs */
 #define MORPHO_GCINITIAL 1024;

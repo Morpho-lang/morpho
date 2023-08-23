@@ -20,8 +20,8 @@
 objecttype objectselectiontype;
 
 /** Selection object definitions */
-void objectselection_printfn(object *obj) {
-    printf("<Selection>");
+void objectselection_printfn(object *obj, void *v) {
+    morpho_printf(v, "<Selection>");
 }
 
 void objectselection_freefn(object *obj) {
@@ -488,7 +488,7 @@ value Selection_removegrade(vm *v, int nargs, value *args) {
 value Selection_print(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     if (!MORPHO_ISSELECTION(self)) return Object_print(v, nargs, args);
-    printf("<Selection>");
+    morpho_printf(v, "<Selection>");
     return MORPHO_NIL;
 }
 

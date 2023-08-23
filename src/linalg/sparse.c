@@ -50,8 +50,8 @@ void sparse_csparsetoccs(cs *in, sparseccs *out) {
 objecttype objectdokkeytype;
 
 /** DOK key object definitions */
-void objectdokkey_printfn(object *obj) {
-    printf("<DOK key>");
+void objectdokkey_printfn(object *obj, void *v) {
+    morpho_printf(v, "<DOK key>");
 }
 
 size_t objectdokkey_sizefn(object *obj) {
@@ -165,19 +165,19 @@ bool sparsedok_expanddimensions(sparsedok *dok, int nrows, int ncols) {
 }
 
 /** Prints a sparsedok matrix */
-void sparsedok_print(sparsedok *dok) {
+void sparsedok_print(vm *v, sparsedok *dok) {
     value out;
     for (int i=0; i<dok->nrows; i++) {
-        printf("[ ");
+        morpho_printf(v, "[ ");
         for (int j=0; j<dok->ncols; j++) {
             if (sparsedok_get(dok, i, j, &out)) {
-                morpho_printvalue(out);
-                printf(" ");
+                morpho_printvalue(v, out);
+                morpho_printf(v, " ");
             } else {
-                printf("0 ");
+                morpho_printf(v, "0 ");
             }
         }
-        printf("]%s", (i<dok->nrows-1 ? "\n" : ""));
+        morpho_printf(v, "]%s", (i<dok->nrows-1 ? "\n" : ""));
     }
 }
 
@@ -490,15 +490,15 @@ bool sparseccs_doktoccs(sparsedok *in, sparseccs *out, bool copyvals) {
 }
 
 /** Prints a sparsedok matrix */
-void sparseccs_print(sparseccs *ccs) {
+void sparseccs_print(vm *v, sparseccs *ccs) {
     double val;
     for (int i=0; i<ccs->nrows; i++) {
-        printf("[ ");
+        morpho_printf(v, "[ ");
         for (int j=0; j<ccs->ncols; j++) {
-            if (sparseccs_get(ccs, i, j, &val)) printf("%g ", val);
-            else printf("0 ");
+            if (sparseccs_get(ccs, i, j, &val)) morpho_printf(v, "%g ", val);
+            else morpho_printf(v, "0 ");
         }
-        printf("]%s", (i<ccs->nrows-1 ? "\n" : ""));
+        morpho_printf(v, "]%s", (i<ccs->nrows-1 ? "\n" : ""));
     }
 }
 
@@ -586,46 +586,14 @@ void sparse_removeformat(objectsparse *s,  objectsparseformat format) {
 }
 
 /* ***************************************
- * Testing code
- * *************************************** */
-
-void sparse_test(void) {
-    sparsedok dok;
-    sparseccs ccs;
-    int nval=7;
-    int elements[] = {0,0, 1,1, 2,2, 3,3, 1,2, 2,1, 0,3};
-    value val[] = {MORPHO_INTEGER(1),MORPHO_INTEGER(2),MORPHO_INTEGER(3),MORPHO_INTEGER(4),MORPHO_INTEGER(-1),MORPHO_INTEGER(-1),MORPHO_INTEGER(5)};
-
-    sparsedok_init(&dok);
-
-    for (int i=0; i<nval; i++) {
-        sparsedok_insert(&dok, elements[2*i], elements[2*i+1], val[i]);
-    }
-
-    sparsedok_print(&dok);
-
-    sparseccs_doktoccs(&dok, &ccs, true);
-
-    for (int i=0; i<ccs.ncols; i++) printf("%u ", ccs.cptr[i]);
-    printf("\n");
-    for (int i=0; i<ccs.nentries; i++) printf("(%u %g) ", ccs.rix[i], ccs.values[i]);
-    printf("\n");
-
-    sparseccs_print(&ccs);
-
-    sparsedok_clear(&dok);
-    sparseccs_clear(&ccs);
-}
-
-/* ***************************************
  * objectsparse definition
  * *************************************** */
 
 objecttype objectsparsetype;
 
 /** Sparse object definitions */
-void objectsparse_printfn(object *obj) {
-    printf("<Sparse>");
+void objectsparse_printfn(object *obj, void *v) {
+    morpho_printf(v, "<Sparse>");
 }
 
 void objectsparse_markfn(object *obj, void *v) {
@@ -1282,9 +1250,9 @@ value Sparse_print(vm *v, int nargs, value *args) {
     objectsparse *s=MORPHO_GETSPARSE(MORPHO_SELF(args));
 
     if (sparse_checkformat(s, SPARSE_CCS, false, false)) {
-        sparseccs_print(&s->ccs);
+        sparseccs_print(v, &s->ccs);
     } else if (sparse_checkformat(s, SPARSE_DOK, false, false)) {
-        sparsedok_print(&s->dok);
+        sparsedok_print(v, &s->dok);
     }
 
     return MORPHO_NIL;

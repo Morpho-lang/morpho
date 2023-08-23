@@ -16,6 +16,7 @@
 #include "build.h"
 #include "value.h"
 #include "error.h"
+#include "version.h"
 
 /* **********************************************************************
 * VM types
@@ -73,10 +74,12 @@ typedef void compiler;
 #define MORPHO_CLONE_METHOD "clone"
 #define MORPHO_PRINT_METHOD "prnt"
 #define MORPHO_SAVE_METHOD "save"
-#define MORPHO_THROW_METHOD "throw"
 
 /* Non-standard methods */
 #define MORPHO_APPEND_METHOD "append"
+
+#define MORPHO_THROW_METHOD "throw"
+#define MORPHO_WARNING_METHOD "warning"
 
 extern value initselector;
 extern value indexselector;
@@ -93,6 +96,9 @@ extern value cloneselector;
 /* **********************************************************************
 * Public interfaces
 * ********************************************************************** */
+
+/* Version checking */
+void morpho_version(version *v);
 
 /* Error handling */
 void morpho_writeerrorwithid(error *err, errorid id, int line, int position, ...);
@@ -124,9 +130,12 @@ void morpho_resizeobject(vm *v, object *obj, size_t oldsize, size_t newsize);
 int morpho_retainobjects(vm *v, int nobj, value *obj);
 void morpho_releaseobjects(vm *v, int handle);
 
-/* Raise runtime errors */
+/* Raise runtime errors and warnings */
+void morpho_warning(vm *v, error *err);
+void morpho_error(vm *v, error *err);
+
 void morpho_runtimeerror(vm *v, errorid id, ...);
-void morpho_usererror(vm *v, errorid id, char *message);
+void morpho_runtimewarning(vm *v, errorid id, ...);
 
 /* Compilation */
 compiler *morpho_newcompiler(program *out);
@@ -145,7 +154,9 @@ bool morpho_call(vm *v, value fn, int nargs, value *args, value *ret);
 bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value *ret);
 error *morpho_geterror(vm *v);
 
-void morpho_printvalue(value v);
+/* Printing */
+int morpho_printf(vm *v, char *format, ...);
+void morpho_printvalue(vm *v, value val);
 
 /* Disassembly */
 void morpho_disassemble(program *code, int *matchline);

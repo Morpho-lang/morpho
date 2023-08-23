@@ -125,6 +125,9 @@
 #define HYDROGEL_ZEEROREFELEMENT       "HydrglZrRfVl"
 #define HYDROGEL_ZEEROREFELEMENT_MSG   "Reference element %u has tiny volume V=%g, V0=%g\n"
 
+#define HYDROGEL_BNDS                  "HydrglBnds"
+#define HYDROGEL_BNDS_MSG              "Phi outside bounds at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n"
+
 #define GRADSQ_ARGS                    "GradSqArgs"
 #define GRADSQ_ARGS_MSG                "GradSq requires a field as the argument."
 

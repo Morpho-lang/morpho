@@ -8,6 +8,8 @@
 
 #include "core.h"
 #include "debug.h"
+#include "compile.h"
+#include "morpho.h"
 
 /* **********************************************************************
 * Programs
@@ -34,7 +36,7 @@ static void vm_programclear(program *p) {
     p->global=NULL;
     /* Free any objects bound to the program */
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    printf("--Freeing objects bound to program.\n");
+    fprintf(stderr, "--Freeing objects bound to program.\n");
 #endif
     while (p->boundlist!=NULL) {
         object *next = p->boundlist->next;
@@ -42,7 +44,7 @@ static void vm_programclear(program *p) {
         p->boundlist=next;
     }
     #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-        printf("------\n");
+        fprintf(stderr, "------\n");
     #endif
     dictionary_clear(&p->symboltable); /* Note we don't free the contents as they should be bound to the program */
 }
@@ -94,8 +96,8 @@ void program_bindobject(program *p, object *obj) {
 value program_internsymbol(program *p, value symbol) {
     value new = symbol, out;
 #ifdef MORPHO_DEBUG_SYMBOLTABLE
-    printf("Interning symbol '");
-    morpho_printvalue(symbol);
+    fprintf(stderr, "Interning symbol '");
+    morpho_printvalue(NULL, symbol);
 #endif
     
     if (builtin_checksymbol(symbol)) { // Check if this is part of the built in symbol table already
@@ -105,9 +107,10 @@ value program_internsymbol(program *p, value symbol) {
     if (!dictionary_get(&p->symboltable, symbol, NULL)) {
        new = object_clonestring(symbol);
     }
+    
     out = dictionary_intern(&p->symboltable, new);
 #ifdef MORPHO_DEBUG_SYMBOLTABLE
-    printf("' at %p\n", (void *) MORPHO_GETOBJECT(out));
+    fprintf(stderr, "' at %p\n", (void *) MORPHO_GETOBJECT(out));
 #endif
     program_bindobject(p, MORPHO_GETOBJECT(out));
     return out;

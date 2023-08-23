@@ -2305,8 +2305,7 @@ bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
     if (!functional_elementsize(v, mesh, info->grade, id, nv, vid, &V)) return false;
 
     if (V0<1e-8) {
-        printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
-        //morpho_runtimeerror(v, HYDROGEL_ZEEROREFELEMENT, id, V, V0);
+        morpho_runtimewarning(v, HYDROGEL_ZEEROREFELEMENT, id, V, V0);
     }
 
     if (fabs(V)<MORPHO_EPS) return false;
@@ -2325,8 +2324,9 @@ bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
 
     double phi = phi0/(V/V0);
     double pr = info->phiref;
-    if (phi<0) printf("Warning: phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
-    if (1-phi<0) printf("Warning: 1-phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
+    if (phi<0 || 1-phi<0) {
+        morpho_runtimewarning(v, HYDROGEL_BNDS, id, V, V0, phi, 1-phi);
+    }
 
     if (phi>1-MORPHO_EPS) phi = 1-MORPHO_EPS;
     if (phi<MORPHO_EPS) phi = MORPHO_EPS;
@@ -2352,8 +2352,7 @@ bool hydrogel_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     if (!functional_elementsize(v, mesh, info->grade, id, nv, vid, &V)) return false;
 
     if (V0<1e-8) {
-        printf("Warning: Reference element %u has tiny volume V=%g, V0=%g\n", id, V, V0);
-        //morpho_runtimeerror(v, HYDROGEL_ZEEROREFELEMENT, id, V, V0);
+        morpho_runtimewarning(v, HYDROGEL_ZEEROREFELEMENT, id, V, V0);
     }
 
     if (fabs(V)<MORPHO_EPS) return false;
@@ -2372,8 +2371,9 @@ bool hydrogel_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
 
     double phi = phi0/(V/V0);
     double pr = info->phiref;
-    if (phi<0) printf("Warning: phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
-    if (1-phi<0) printf("Warning: 1-phi<0 at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n", id, V, V0, phi, 1-phi);
+    if (phi<0 || 1-phi<0) {
+        morpho_runtimewarning(v, HYDROGEL_BNDS, id, V, V0, phi, 1-phi);
+    }
 
     if (phi>1-MORPHO_EPS) phi = 1-MORPHO_EPS;
     if (phi<MORPHO_EPS) phi = MORPHO_EPS;
@@ -2670,9 +2670,6 @@ bool linecurvsq_dependencies(functional_mapinfo *info, elementid id, varray_elem
         }
     }
     success=true;
-    /*printf("Vertex %u: ", id);
-    for (int k=0; k<out->count; k++) printf("%u ", out->data[k]);
-    printf("\n");*/
 
 linecurvsq_dependencies_cleanup:
     varray_elementidclear(&nbrs);
@@ -3866,8 +3863,8 @@ size_t objectintegralelementref_sizefn(object *obj) {
     return sizeof(objectintegralelementref);
 }
 
-void objectintegralelementref_printfn(object *obj) {
-    printf("<Elementref>");
+void objectintegralelementref_printfn(object *obj, void *v) {
+    morpho_printf(v, "<Elementref>");
 }
 
 objecttypedefn objectintegralelementrefdefn = {
@@ -4558,6 +4555,7 @@ void functional_initialize(void) {
     morpho_defineerror(HYDROGEL_PRP, ERROR_HALT, HYDROGEL_PRP_MSG);
     morpho_defineerror(HYDROGEL_FLDGRD, ERROR_HALT, HYDROGEL_FLDGRD_MSG);
     morpho_defineerror(HYDROGEL_ZEEROREFELEMENT, ERROR_WARNING, HYDROGEL_ZEEROREFELEMENT_MSG);
+    morpho_defineerror(HYDROGEL_BNDS, ERROR_WARNING, HYDROGEL_BNDS_MSG);
 
     morpho_defineerror(EQUIELEMENT_ARGS, ERROR_HALT, EQUIELEMENT_ARGS_MSG);
     morpho_defineerror(GRADSQ_ARGS, ERROR_HALT, GRADSQ_ARGS_MSG);

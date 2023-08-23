@@ -20,8 +20,8 @@ size_t objectcomplex_sizefn(object *obj) {
     return sizeof(objectcomplextype)+sizeof(double) * 2;
 }
 
-void objectcomplex_printfn(object *obj) {
-    printf("<Complex>");
+void objectcomplex_printfn(object *obj, void *v) {
+    complex_print(v, (objectcomplex *) obj);
 }
 
 objecttypedefn objectcomplexdefn = {
@@ -93,14 +93,14 @@ bool complex_equality(objectcomplex *a, objectcomplex *b){
     return (a->Z == b->Z);
 }
 
-/** Prints a complex */
-void complex_print(objectcomplex *a) {
+/** Prints a complex number */
+void complex_print(vm *v, objectcomplex *a) {
     char sign = '+';
     if (cimag(a->Z)<0) {
         sign = '-';
     }
 
-    printf("%g %c %gim",(fabs(creal(a->Z))<2*MORPHO_EPS ? 0 : creal(a->Z)),sign,(fabs(cimag(a->Z))<2*MORPHO_EPS ? 0 : fabs(cimag(a->Z))));
+    morpho_printf(v, "%g %c %gim",(fabs(creal(a->Z))<2*MORPHO_EPS ? 0 : creal(a->Z)),sign,(fabs(cimag(a->Z))<2*MORPHO_EPS ? 0 : fabs(cimag(a->Z))));
 }
 
 /* **********************************************************************
@@ -373,7 +373,7 @@ value Complex_print(vm *v, int nargs, value *args) {
     if (!MORPHO_ISCOMPLEX(self)) return Object_print(v, nargs, args);
     
     objectcomplex *c=MORPHO_GETCOMPLEX(self);
-    complex_print(c);
+    complex_print(v, c);
     return MORPHO_NIL;
 }
 

@@ -39,7 +39,7 @@ static void error_printf(error *err, errorcategory cat, int line, int posn, char
     err->posn=posn; 
     
     /* Print the message with requested args */
-    vsprintf(err->msg, message, args);
+    vsnprintf(err->msg, MORPHO_ERRORSTRINGSIZE, message, args);
 }
 
 /** Clears an error structure
@@ -162,7 +162,7 @@ bool morpho_matcherror(error *err, errorid id) {
 
 #ifdef MORPHO_DEBUG
 void morpho_unreachable(const char *explanation) {
-    printf("Internal consistency error: Please contact developer. [Explanation: %s].\n", explanation);
+    fprintf(stderr, "Internal consistency error: Please contact developer. [Explanation: %s].\n", explanation);
     exit(BSD_EX_SOFTWARE);
 }
 #endif

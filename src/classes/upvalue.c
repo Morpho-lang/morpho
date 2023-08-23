@@ -12,8 +12,8 @@
  * ********************************************************************** */
 
 /** Upvalue object definitions */
-void objectupvalue_printfn(object *obj) {
-    printf("upvalue");
+void objectupvalue_printfn(object *obj, void *v) {
+    morpho_printf(v, "<Upvalue>");
 }
 
 void objectupvalue_markfn(object *obj, void *v) {

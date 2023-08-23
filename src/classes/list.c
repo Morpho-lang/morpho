@@ -12,8 +12,8 @@
  * objectlist definitions
  * ********************************************************************** */
 
-void objectlist_printfn(object *obj) {
-    printf("<List>");
+void objectlist_printfn(object *obj, void *v) {
+    morpho_printf(v, "<List>");
 }
 
 void objectlist_freefn(object *obj) {
@@ -454,12 +454,12 @@ value List_print(vm *v, int nargs, value *args) {
     
     objectlist *lst=MORPHO_GETLIST(self);
 
-    printf("[ ");
+    morpho_printf(v, "[ ");
     for (unsigned int i=0; i<lst->val.count; i++) {
-        morpho_printvalue(lst->val.data[i]);
-        if (i<lst->val.count-1) printf(", ");
+        morpho_printvalue(v, lst->val.data[i]);
+        if (i<lst->val.count-1) morpho_printf(v, ", ");
     }
-    printf(" ]");
+    morpho_printf(v, " ]");
 
     return MORPHO_NIL;
 }

@@ -104,7 +104,6 @@ typedef bool (*builtin_loopfunction) (vm *v, indx i, value item, void *ref);
 
 value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags flags);
 value builtin_findfunction(value name);
-void builtin_printfunction(objectbuiltinfunction *f);
 
 value builtin_addclass(char *name, builtinclassentry desc[], value superclass);
 value builtin_findclass(value name);

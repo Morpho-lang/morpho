@@ -192,7 +192,7 @@ double matrix_L1norm(objectmatrix *a);
 double matrix_Lnnorm(objectmatrix *a, double n);
 double matrix_Linfnorm(objectmatrix *a);
 
-void matrix_print(objectmatrix *m);
+void matrix_print(vm *v, objectmatrix *m);
 
 void matrix_initialize(void);
 

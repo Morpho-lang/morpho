@@ -12,11 +12,11 @@
  * ********************************************************************** */
 
 /** Class object definitions */
-void objectclass_printfn(object *obj) {
+void objectclass_printfn(object *obj, void *v) {
 #ifndef MORPHO_LOXCOMPATIBILITY
-    printf("@");
+    morpho_printf(v, "@");
 #endif
-    printf("%s", MORPHO_GETCSTRING(((objectclass *) obj)->name));
+    morpho_printf(v, "%s", MORPHO_GETCSTRING(((objectclass *) obj)->name));
 }
 
 void objectclass_markfn(object *obj, void *v) {

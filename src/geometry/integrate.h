@@ -106,7 +106,10 @@ typedef struct {
     integrandfunction *integrand; /** Function to integrate */
     
     int dim; /** Dimension of points in embedded space */
+    int nbary; /** Number of barycentric coordinates */
     int nquantity; /** Number of quantities to interpolate */
+    int nqdof; /** Number of quantity degrees of freedom */
+    int ndof; /** Number of degrees of freedom */
     
     bool adapt; /** Enable adaptive integration */
     quadraturerule *rule;  /** Quadrature rule to use */
@@ -119,8 +122,6 @@ typedef struct {
     varray_quadratureworkitem worklist; /** Work list */
     varray_double vertexstack; /** Stack of vertices */
     varray_int elementstack; /** Stack of elements */
-    
-    int nqdof; /** Number of quantity degrees of freedom */
     varray_value quantitystack; /** Stack of quantities */
     
     double ztol; /** Tolerance for zero detection */

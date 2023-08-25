@@ -10,8 +10,7 @@
 #include "classes.h"
 #include "matrix.h"
 #include "sparse.h"
-#include "mesh.h"
-#include "selection.h"
+#include "geometry.h"
 
 /* **********************************************************************
  * Selection object definitions

@@ -6,15 +6,11 @@
 
 #include "morpho.h"
 #include "classes.h"
-#include "mesh.h"
 #include "file.h"
 #include "parse.h"
 #include "sparse.h"
 #include "matrix.h"
-#include "selection.h"
-
-// Temporary include
-#include "integrate.h"
+#include "geometry.h"
 
 #include <limits.h>
 

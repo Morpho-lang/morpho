@@ -14,6 +14,7 @@
 #include "matrix.h"
 #include "sparse.h"
 #include "integrate.h"
+#include "selection.h"
 #include <math.h>
 
 #ifndef M_PI

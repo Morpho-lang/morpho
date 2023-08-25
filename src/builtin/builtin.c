@@ -10,10 +10,7 @@
 #include "functiondefs.h"
 #include "file.h"
 #include "system.h"
-#include "mesh.h"
-#include "selection.h"
-#include "functional.h"
-#include "field.h"
+#include "geometry.h"
 #include "classes.h"
 
 /* **********************************************************************
@@ -309,10 +306,7 @@ void builtin_initialize(void) {
     sparse_initialize();
     
     // Initialize geometry
-    mesh_initialize();
-    selection_initialize();
-    field_initialize();
-    functional_initialize();
+    geometry_initialize();
 }
 
 void builtin_finalize(void) {

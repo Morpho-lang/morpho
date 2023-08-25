@@ -9,6 +9,7 @@
 #include "classes.h"
 #include "common.h"
 #include "matrix.h"
+#include "sparse.h"
 
 static value field_gradeoption;
 

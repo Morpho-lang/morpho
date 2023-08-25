@@ -11,9 +11,7 @@
 
 #include "matrix.h"
 #include "sparse.h"
-#include "mesh.h"
-#include "selection.h"
-#include "functional.h"
+#include "geometry.h"
 
 bool integrate_recognizequantities(unsigned int nquantity, value *quantity, value *out) {
     if (nquantity>0) {

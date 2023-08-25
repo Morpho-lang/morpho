@@ -11,9 +11,7 @@
 #include "builtin.h"
 #include "common.h"
 #include "matrix.h"
-#include "mesh.h"
-#include "field.h"
-#include "selection.h"
+#include "geometry.h"
 #include "cmplx.h"
 
 #ifndef M_PI

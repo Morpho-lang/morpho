@@ -46,9 +46,9 @@ objectdiscretization *objectdiscretization_new(discretization *disc) {
 #define AREA_OPCODE 2
 #define QUANTITY_OPCODE 255
 
-#define LINE(id, v1, v2)      1, id, v1, v2           // Identify a grade 1 subelement given by two vertex indices
-#define AREA(id, v1, v2, v3)  2, id, v1, v2, v3       // Identify a grade 2 subelement given by three vertex indices
-#define QUANTITY(grade, id, qno) 128, grade, id, qno  // Fetch quantity from subelement of grade with id and quantity number
+#define LINE(id, v1, v2)      LINE_OPCODE, id, v1, v2           // Identify a grade 1 subelement given by two vertex indices
+#define AREA(id, v1, v2, v3)  AREA_OPCODE, id, v1, v2, v3       // Identify a grade 2 subelement given by three vertex indices
+#define QUANTITY(grade, id, qno) QUANTITY_OPCODE, grade, id, qno  // Fetch quantity from subelement of grade with id and quantity number
 #define ENDDEFN -1
 
 /* -------------------------------------------------------
@@ -196,24 +196,69 @@ discretization *discretization_find(char *name, grade g) {
     return NULL;
 }
 
-void discretization_process(objectmesh *mesh, discretization *disc) {
-    elementid subel[disc->nsubel+1];
+#define FETCH(instr) (*(instr++))
+
+bool discretization_processdefn(objectfield *field, discretization *disc, int nv, int *vids, int *dof) {
+    elementid subel[disc->nsubel+1]; // Element IDs of sub elements
+    int sid, svids[nv], nmatch, k=0;
+    
+    objectsparse *vmatrix[disc->grade+1]; // Vertex->elementid connectivity matrices
+    for (grade g=0; g<=disc->grade; g++) vmatrix[g]=mesh_addconnectivityelement(field->mesh, g, 0);
     
     for (eldefninstruction *instr=disc->eldefn; instr!=NULL && *instr!=ENDDEFN; ) {
-        switch(*instr) {
-            case LINE_OPCODE:
-                instr+=4;
+        switch(FETCH(instr)) {
+            case LINE_OPCODE: // Find the line element defined by two vertices 
+            {
+                sid = FETCH(instr);
+                svids[0] = vids[FETCH(instr)];
+                svids[1] = vids[FETCH(instr)];
+                
+                if (!mesh_matchelements(vmatrix[1], MESH_GRADE_LINE, 2, svids, 1, &nmatch, &subel[sid])) return false;
+            }
                 break;
-            case AREA_OPCODE:
-                instr+=5;
+            case AREA_OPCODE: // Find the area element defined by three vertices
+            {
+                int sid = FETCH(instr), v0 = FETCH(instr), v1 = FETCH(instr), v2 = FETCH(instr);
+                
+                sid = FETCH(instr);
+                svids[0] = vids[FETCH(instr)];
+                svids[1] = vids[FETCH(instr)];
+                svids[2] = vids[FETCH(instr)];
+                
+                if (!mesh_matchelements(vmatrix[2], MESH_GRADE_AREA, 3, svids, 1, &nmatch, &subel[sid])) return false;
+            }
                 break;
             case QUANTITY_OPCODE:
-                instr+=4;
+            {
+                grade g = FETCH(instr);
+                int sid = FETCH(instr), qno = FETCH(instr);
+                
+                if (!field_getindex(field, g, (g==0 ? vids[sid]: subel[sid]), qno, &dof[k])) return false;
+                printf("%i \n", dof[k]);
+                k++;
+            }
                 break;
             default:
                 UNREACHABLE("Error in finite element definition");
         }
     }
+    return true;
+}
+
+bool discretization_process(objectfield *field, discretization *disc) {
+    objectsparse *conn = mesh_getconnectivityelement(field->mesh, 0, disc->grade);
+    elementid nel=mesh_nelements(conn);
+    int indx[disc->nnodes];
+    
+
+    
+    for (elementid id=0; id<nel; id++) {
+        int nv, *vids;
+        if (!mesh_getconnectivity(conn, id, &nv, &vids)) return;
+        
+        if (!discretization_processdefn(field, disc, nv, vids, indx)) return false;
+    }
+    return true;
 }
 
 /* **********************************************************************
@@ -249,8 +294,17 @@ value functionspace_constructor(vm *v, int nargs, value *args) {
     return out;
 }
 
+value FunctionSpace_layout(vm *v, int nargs, value *args) {
+    objectdiscretization *slf = MORPHO_GETDISCRETIZATION(MORPHO_SELF(args));
+    if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
+        objectfield *field = MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
+        
+        discretization_process(field, slf->discretization);
+    }
+}
+
 MORPHO_BEGINCLASS(FunctionSpace)
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, NULL, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONSPACE_LAYOUT_METHOD, FunctionSpace_layout, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

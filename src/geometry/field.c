@@ -291,6 +291,21 @@ bool field_getelementwithindex(objectfield *field, int indx, value *out) {
     return false;
 }
 
+/** Constructs a single index, suitable for use with fieldgetelementwithindex from the grade, element id and quantity number
+ * @param[in] field - field to use
+ * @param[in] grade - grade to access
+ * @param[in] el - element id
+ * @param[in] indx - index within the element
+ * @param[out] out - the retrieved index
+ * @return true on success */
+bool field_getindex(objectfield *field, grade grade, elementid el, int indx, int *out) {
+    int ix=field->offset[grade]+field->dof[grade]*el+indx;
+    if (!(ix<field->offset[grade+1] && indx<field->dof[grade])) return false;
+    
+    *out=ix;
+    return true;
+}
+
 /** Retrieve the list of doubles that represent an entry in a field
  * @param[in] field - field to use
  * @param[in] grade - grade to access
@@ -532,10 +547,12 @@ value Field_setindex(vm *v, int nargs, value *args) {
         elementid el = (nindices>1 ? indx[1] : indx[0]);
         int elindx = (nindices>2 ? indx[2] : 0);
         
-        /* If only one index is specified, increment g to the lowest nonempty grade */
-        if (nindices==1 && f->dof) while (f->dof[g]==0 && g<f->ngrades) g++;
-        
-        if (!field_setelement(f, g, el, elindx, MORPHO_GETARG(args, nargs-1))) {
+        /* If only one index is specified, treat it as a single index */
+        if (nindices==1 && f->dof) {
+            if (!field_setelementwithindex(f, indx[0], MORPHO_GETARG(args, nargs-1))) {
+                morpho_runtimeerror(v, FIELD_INCOMPATIBLEVAL);
+            }
+        } else if (!field_setelement(f, g, el, elindx, MORPHO_GETARG(args, nargs-1))) {
             morpho_runtimeerror(v, FIELD_INCOMPATIBLEVAL);
         }
     } else morpho_runtimeerror(v, FIELD_INVLDINDICES);

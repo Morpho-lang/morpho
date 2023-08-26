@@ -97,6 +97,7 @@ unsigned int field_sizeprototype(value prototype);
 unsigned int field_dofforgrade(objectfield *f, grade g);
 bool field_getelement(objectfield *field, grade grade, elementid el, int indx, value *out);
 bool field_getelementwithindex(objectfield *field, int indx, value *out);
+bool field_getindex(objectfield *field, grade grade, elementid el, int indx, int *out);
 bool field_getelementaslist(objectfield *field, grade grade, elementid el, int indx, unsigned int *nentries, double **out);
 
 bool field_setelement(objectfield *field, grade grade, elementid el, int indx, value val);

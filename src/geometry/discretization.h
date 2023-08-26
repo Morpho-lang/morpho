@@ -54,6 +54,8 @@ typedef struct {
 
 #define FUNCTIONSPACE_CLASSNAME "FunctionSpace"
 
+#define FUNCTIONSPACE_LAYOUT_METHOD "layout"
+
 /* -------------------------------------------------------
  * Discretization error messages
  * ------------------------------------------------------- */

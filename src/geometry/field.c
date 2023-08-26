@@ -162,14 +162,83 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *do
     return new;
 }
 
+/** Applies an initialization function to every vertex */
+bool field_applyfunctiontovertices(vm *v, objectmesh *mesh, value fn, objectfield *field) {
+    value coords[mesh->dim]; // Vertex coords
+    value ret=MORPHO_NIL; // Return value
+    int nv = mesh_nvertices(mesh);
+    
+    for (elementid i=0; i<nv; i++) { // for each vertex
+        if (mesh_getvertexcoordinatesasvalues(mesh, i, coords)) {
+            //get the vertex coordinates
+            if (!morpho_call(v, fn, mesh->dim, coords, &ret)) return false;
+            
+            if (!field_setelement(field, MESH_GRADE_VERTEX, i, 0, ret)) {
+                // if we can't set the field value to the ouptut of the function clean up
+                morpho_runtimeerror(v, FIELD_OPRETURN);
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+/** Applies an initialization function to every DOF in an element */
+bool field_applyfunctiontoelements(vm *v, objectmesh *mesh, value fn, discretization *disc, objectfield *field) {
+    objectsparse *conn = mesh_getconnectivityelement(mesh, 0, disc->grade);
+    if (!conn) return false;
+    elementid nel = mesh_nelements(conn);
+    
+    for (elementid id=0; id<nel; id++) {
+        int nv, *vids;
+        if (!mesh_getconnectivity(conn, id, &nv, &vids)) return false;
+        
+        double *x[nv]; // Fetch vertex positions
+        for (int i=0; i<nv; i++) mesh_getvertexcoordinatesaslist(mesh, vids[i], &x[i]);
+        
+        int indx[disc->nnodes]; // Get indices corresponding to each degree of freedom per element
+        if (!discretization_doftofieldindx(field, disc, nv, vids, indx)) return false;
+        
+        for (int i=0; i<disc->nnodes; i++) { // Loop over nodes
+            double lambda[nv], ll=0.0; // Convert node positions in reference element to barycentric coordinates
+            for (int j=0; j<nv-1; j++) { lambda[j]=1-disc->nodes[i*disc->grade+j]; ll+=lambda[j]; }
+            lambda[nv-1]=1-ll;
+            
+            double xx[mesh->dim]; // Interpolate position in physical space using barycentric coordinates
+            for (int j=0; j<mesh->dim; j++) xx[j]=0.0;
+            for (int j=0; j<nv; j++) functional_vecaddscale(mesh->dim, xx, lambda[j], x[j], xx);
+            
+            printf("<<");
+            for (int j=0; j<nv-1; j++) printf("%g ", disc->nodes[i*disc->grade+j]);
+            printf(">> ");
+            for (int j=0; j<mesh->dim; j++) printf("%g ", xx[j]);
+            printf(": ");
+            
+            value coords[mesh->dim], ret;
+            for (int j=0; j<mesh->dim; j++) coords[j]=MORPHO_FLOAT(xx[j]);
+            
+            if (!morpho_call(v, fn, mesh->dim, coords, &ret)) return false;
+            
+            morpho_printvalue(v, ret);
+            printf(" -> %i\n", indx[i]);
+            
+            if (!field_setelementwithindex(field, indx[i], ret)) {
+                // if we can't set the field value to the ouptut of the function clean up
+                morpho_runtimeerror(v, FIELD_OPRETURN);
+                return false;
+            }
+        }
+    }
+    
+    return true;
+}
+
 /** Creates a field by applying a function to the vertices of a mesh
  * @param[in] v - virtual machine to use for function calls
  * @param[in] mesh - mesh to use
  * @param[in] fn - function to call
  * @returns field object or NULL on failure */
-objectfield *field_newwithfunction(vm *v, objectmesh *mesh, value fn) {
-    objectmatrix *vert=mesh->vert;
-    int nv = vert->ncols;
+objectfield *field_newwithfunction(vm *v, objectmesh *mesh, value fn, discretization *disc) {
     value ret=MORPHO_NIL; // Return value
     value coords[mesh->dim]; // Vertex coords
     objectfield *new = NULL;
@@ -181,23 +250,13 @@ objectfield *field_newwithfunction(vm *v, objectmesh *mesh, value fn) {
         if (MORPHO_ISOBJECT(ret)) handle=morpho_retainobjects(v, 1, &ret);
     }
     
-    new=object_newfield(mesh, ret, NULL);
+    new=object_newfield(mesh, ret, (disc ? disc->shape : NULL));
     
     if (new) {
-        for (elementid i=0; i<nv; i++) {
-            // for each element in the field
-            if (mesh_getvertexcoordinatesasvalues(mesh, i, coords)) {
-                //get the vertex coordinates
-                if (!morpho_call(v, fn, mesh->dim, coords, &ret)){
-                     // if the fn call fails go to clean up this should throw an error from morpho_call
-                     goto field_newwithfunction_cleanup;
-                     }
-                if (!field_setelement(new, MESH_GRADE_VERTEX, i, 0, ret)) {
-                    // if we can't set the field value to the ouptut of the function clean up
-                    morpho_runtimeerror(v,FIELD_OPRETURN);
-                    goto field_newwithfunction_cleanup;
-                }
-            }
+        if (disc) {
+            if (!field_applyfunctiontoelements(v, mesh, fn, disc, new)) goto field_newwithfunction_cleanup;
+        } else {
+            if (!field_applyfunctiontovertices(v, mesh, fn, new)) goto field_newwithfunction_cleanup;
         }
     }
     
@@ -489,9 +548,10 @@ value field_constructor(vm *v, int nargs, value *args) {
     unsigned int dof[ngrades];
     for (unsigned int i=0; i<ngrades; i++) dof[i]=0;
     
+    objectdiscretization *disc=NULL;
     /* Process optional grade argument */
     if (MORPHO_ISDISCRETIZATION(fnspc)) {
-        objectdiscretization *disc = MORPHO_GETDISCRETIZATION(fnspc);
+        disc = MORPHO_GETDISCRETIZATION(fnspc);
         for (int i=0; i<=disc->discretization->grade; i++) dof[i]=disc->discretization->shape[i];
         grd = MORPHO_INTEGER(disc->discretization->grade);
     } else if (MORPHO_ISINTEGER(grd)) {
@@ -504,7 +564,7 @@ value field_constructor(vm *v, int nargs, value *args) {
     if (MORPHO_ISNIL(fn)) {
         new = object_newfield(mesh, prototype, (MORPHO_ISNIL(grd) ? NULL: dof));
     } else {
-        new = field_newwithfunction(v, mesh, fn);
+        new = field_newwithfunction(v, mesh, fn, (disc ? disc->discretization : NULL));
     }
     
     if (new) {

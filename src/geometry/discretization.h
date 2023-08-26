@@ -21,7 +21,7 @@ typedef int eldefninstruction;
 typedef struct {
     char *name; /**  Name of the discretization */
     grade grade; /** Grade of element this discretization is defined on */
-    int *shape; /** Number of degrees of freedom on each grade; must have grade+1 entries */
+    unsigned int *shape; /** Number of degrees of freedom on each grade; must have grade+1 entries */
     int degree; /** Highest degree of polynomial represented by this element */
     int nnodes; /** Number of nodes for this element type */
     int nsubel; /** Number of subelements used by */
@@ -69,6 +69,9 @@ typedef struct {
 /* -------------------------------------------------------
  * Discretization interface
  * ------------------------------------------------------- */
+
+bool discretization_doftofieldindx(objectfield *field, discretization *disc, int nv, int *vids, int *dof);
+bool discretization_layout(objectfield *field, discretization *disc, objectsparse **out);
 
 void discretization_initialize(void);
 

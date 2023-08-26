@@ -101,6 +101,7 @@ bool field_getindex(objectfield *field, grade grade, elementid el, int indx, int
 bool field_getelementaslist(objectfield *field, grade grade, elementid el, int indx, unsigned int *nentries, double **out);
 
 bool field_setelement(objectfield *field, grade grade, elementid el, int indx, value val);
+bool field_setelementwithindex(objectfield *field, int ix, value val);
 
 void field_initialize(void);
 

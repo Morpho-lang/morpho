@@ -64,7 +64,7 @@ void cg1_1dinterpolate(double *lambda, double *wts) {
     wts[1]=lambda[0];
 }
 
-int cg1_1dshape[] = { 1, 0 };
+unsigned int cg1_1dshape[] = { 1, 0 };
 
 double cg1_1dnodes[] = { 0.0, 1.0 };
 
@@ -101,7 +101,7 @@ void cg2_1dinterpolate(double *lambda, double *wts) {
     wts[2]=-lambda[0]*dl;
 }
 
-int cg2_1dshape[] = { 1, 1 };
+unsigned int cg2_1dshape[] = { 1, 1 };
 
 double cg2_1dnodes[] = { 0.0, 1.0, 0.5 };
 
@@ -119,6 +119,7 @@ discretization cg2_1d = {
     .shape = cg2_1dshape,
     .degree = 2,
     .nnodes = 3,
+    .nodes = cg2_1dnodes,
     .ifn = cg2_1dinterpolate,
     .eldefn = cg2_1ddefn
 };
@@ -143,7 +144,7 @@ void cg2_2dinterpolate(double *lambda, double *wts) {
     wts[5]=4*lambda[1]*lambda[2];
 }
 
-int cg2_2dshape[] = { 1, 1, 0 };
+unsigned int cg2_2dshape[] = { 1, 1, 0 };
 
 double cg2_2dnodes[] = { 0.0, 0.0,
                          1.0, 0.0,
@@ -198,7 +199,8 @@ discretization *discretization_find(char *name, grade g) {
 
 #define FETCH(instr) (*(instr++))
 
-bool discretization_processdefn(objectfield *field, discretization *disc, int nv, int *vids, int *dof) {
+/** Steps through an element definition, generating subelements and identifying quantities */
+bool discretization_doftofieldindx(objectfield *field, discretization *disc, int nv, int *vids, int *dof) {
     elementid subel[disc->nsubel+1]; // Element IDs of sub elements
     int sid, svids[nv], nmatch, k=0;
     
@@ -209,7 +211,7 @@ bool discretization_processdefn(objectfield *field, discretization *disc, int nv
         eldefninstruction op=FETCH(instr);
         switch(op) {
             case LINE_OPCODE: // Find an element defined by n vertices
-            case AREA_OPCODE:
+            case AREA_OPCODE: // TODO: Need to cope with (mis) orientation of these subelements
             {
                 sid = FETCH(instr);
                 for (int i=0; i<=op; i++) svids[i] = vids[FETCH(instr)];
@@ -247,7 +249,7 @@ bool discretization_layout(objectfield *field, discretization *disc, objectspars
         if (!mesh_getconnectivity(conn, id, &nv, &vids)) goto discretization_layout_cleanup;
      
         new->ccs.cptr[id]=id*disc->nnodes;
-        if (!discretization_processdefn(field, disc, nv, vids, new->ccs.rix+new->ccs.cptr[id])) goto discretization_layout_cleanup;
+        if (!discretization_doftofieldindx(field, disc, nv, vids, new->ccs.rix+new->ccs.cptr[id])) goto discretization_layout_cleanup;
     }
     new->ccs.cptr[nel]=nel*disc->nnodes; // Last column pointer points to next column
     

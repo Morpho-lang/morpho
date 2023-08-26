@@ -201,29 +201,31 @@ bool field_applyfunctiontoelements(vm *v, objectmesh *mesh, value fn, discretiza
         
         for (int i=0; i<disc->nnodes; i++) { // Loop over nodes
             double lambda[nv], ll=0.0; // Convert node positions in reference element to barycentric coordinates
-            for (int j=0; j<nv-1; j++) { lambda[j]=1-disc->nodes[i*disc->grade+j]; ll+=lambda[j]; }
-            lambda[nv-1]=1-ll;
+            for (int j=0; j<nv-1; j++) { lambda[j+1]=disc->nodes[i*disc->grade+j]; ll+=lambda[j+1]; }
+            lambda[0]=1-ll;
             
             double xx[mesh->dim]; // Interpolate position in physical space using barycentric coordinates
             for (int j=0; j<mesh->dim; j++) xx[j]=0.0;
             for (int j=0; j<nv; j++) functional_vecaddscale(mesh->dim, xx, lambda[j], x[j], xx);
             
-            printf("<<");
+            /*printf("<<");
             for (int j=0; j<nv-1; j++) printf("%g ", disc->nodes[i*disc->grade+j]);
             printf(">> ");
+            printf("[");
+            for (int j=0; j<nv; j++) printf("%g ", lambda[j]);
+            printf("] ");
             for (int j=0; j<mesh->dim; j++) printf("%g ", xx[j]);
-            printf(": ");
+            printf(": ");*/
             
             value coords[mesh->dim], ret;
             for (int j=0; j<mesh->dim; j++) coords[j]=MORPHO_FLOAT(xx[j]);
             
             if (!morpho_call(v, fn, mesh->dim, coords, &ret)) return false;
             
-            morpho_printvalue(v, ret);
-            printf(" -> %i\n", indx[i]);
+            //morpho_printvalue(v, ret);
+            //printf(" -> %i\n", indx[i]);
             
             if (!field_setelementwithindex(field, indx[i], ret)) {
-                // if we can't set the field value to the ouptut of the function clean up
                 morpho_runtimeerror(v, FIELD_OPRETURN);
                 return false;
             }

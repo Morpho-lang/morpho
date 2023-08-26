@@ -60,8 +60,8 @@ objectdiscretization *objectdiscretization_new(discretization *disc) {
  */
 
 void cg1_1dinterpolate(double *lambda, double *wts) {
-    wts[0]=lambda[1];
-    wts[1]=lambda[0];
+    wts[0]=lambda[0];
+    wts[1]=lambda[1];
 }
 
 unsigned int cg1_1dshape[] = { 1, 0 };
@@ -95,10 +95,10 @@ discretization cg1_1d = {
  */
 
 void cg2_1dinterpolate(double *lambda, double *wts) {
-    double dl = (lambda[1]-lambda[0]);
-    wts[0]=lambda[1]*dl;
+    double dl = (lambda[0]-lambda[1]);
+    wts[0]=lambda[0]*dl;
     wts[1]=4*lambda[0]*lambda[1];
-    wts[2]=-lambda[0]*dl;
+    wts[2]=-lambda[1]*dl; // TODO: CHECK
 }
 
 unsigned int cg2_1dshape[] = { 1, 1 };
@@ -136,7 +136,7 @@ discretization cg2_1d = {
  */
 
 void cg2_2dinterpolate(double *lambda, double *wts) {
-    wts[0]=lambda[2]*(2*lambda[2]-1);
+    wts[0]=lambda[2]*(2*lambda[2]-1); // TODO: FIX THIS
     wts[1]=lambda[0]*(2*lambda[0]-1);
     wts[2]=lambda[1]*(2*lambda[1]-1);
     wts[3]=4*lambda[0]*lambda[2];

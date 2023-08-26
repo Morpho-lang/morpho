@@ -8,7 +8,7 @@ var l = FunctionSpace("CG2", grade=1)
 var f = Field(m, functionspace=l)
 for (i in 0...5) f[i] = i
 
-print f 
+//print f 
 
 print l.layout(f)
 

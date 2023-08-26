@@ -206,26 +206,15 @@ bool discretization_processdefn(objectfield *field, discretization *disc, int nv
     for (grade g=0; g<=disc->grade; g++) vmatrix[g]=mesh_addconnectivityelement(field->mesh, g, 0);
     
     for (eldefninstruction *instr=disc->eldefn; instr!=NULL && *instr!=ENDDEFN; ) {
-        switch(FETCH(instr)) {
-            case LINE_OPCODE: // Find the line element defined by two vertices 
+        eldefninstruction op=FETCH(instr);
+        switch(op) {
+            case LINE_OPCODE: // Find an element defined by n vertices
+            case AREA_OPCODE:
             {
                 sid = FETCH(instr);
-                svids[0] = vids[FETCH(instr)];
-                svids[1] = vids[FETCH(instr)];
+                for (int i=0; i<=op; i++) svids[i] = vids[FETCH(instr)];
                 
-                if (!mesh_matchelements(vmatrix[1], MESH_GRADE_LINE, 2, svids, 1, &nmatch, &subel[sid])) return false;
-            }
-                break;
-            case AREA_OPCODE: // Find the area element defined by three vertices
-            {
-                int sid = FETCH(instr), v0 = FETCH(instr), v1 = FETCH(instr), v2 = FETCH(instr);
-                
-                sid = FETCH(instr);
-                svids[0] = vids[FETCH(instr)];
-                svids[1] = vids[FETCH(instr)];
-                svids[2] = vids[FETCH(instr)];
-                
-                if (!mesh_matchelements(vmatrix[2], MESH_GRADE_AREA, 3, svids, 1, &nmatch, &subel[sid])) return false;
+                if (!mesh_matchelements(vmatrix[1], op, op+1, svids, 1, &nmatch, &subel[sid])) return false;
             }
                 break;
             case QUANTITY_OPCODE:
@@ -234,7 +223,6 @@ bool discretization_processdefn(objectfield *field, discretization *disc, int nv
                 int sid = FETCH(instr), qno = FETCH(instr);
                 
                 if (!field_getindex(field, g, (g==0 ? vids[sid]: subel[sid]), qno, &dof[k])) return false;
-                printf("%i \n", dof[k]);
                 k++;
             }
                 break;
@@ -245,20 +233,30 @@ bool discretization_processdefn(objectfield *field, discretization *disc, int nv
     return true;
 }
 
-bool discretization_process(objectfield *field, discretization *disc) {
+/** Constructs a layout matrix that maps element ids (columns) to degree of freedom indices in a field */
+bool discretization_layout(objectfield *field, discretization *disc, objectsparse **out) {
     objectsparse *conn = mesh_getconnectivityelement(field->mesh, 0, disc->grade);
     elementid nel=mesh_nelements(conn);
-    int indx[disc->nnodes];
     
-
+    objectsparse *new = object_newsparse(NULL, NULL);
+    if (!new) return false;
+    sparseccs_resize(&new->ccs, field->nelements, nel, nel*disc->nnodes, NULL);
     
     for (elementid id=0; id<nel; id++) {
         int nv, *vids;
-        if (!mesh_getconnectivity(conn, id, &nv, &vids)) return;
-        
-        if (!discretization_processdefn(field, disc, nv, vids, indx)) return false;
+        if (!mesh_getconnectivity(conn, id, &nv, &vids)) goto discretization_layout_cleanup;
+     
+        new->ccs.cptr[id]=id*disc->nnodes;
+        if (!discretization_processdefn(field, disc, nv, vids, new->ccs.rix+new->ccs.cptr[id])) goto discretization_layout_cleanup;
     }
+    new->ccs.cptr[nel]=nel*disc->nnodes; // Last column pointer points to next column
+    
+    *out=new;
     return true;
+    
+discretization_layout_cleanup:
+    if (new) object_free((object *) new);
+    return false;
 }
 
 /* **********************************************************************
@@ -295,12 +293,18 @@ value functionspace_constructor(vm *v, int nargs, value *args) {
 }
 
 value FunctionSpace_layout(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
     objectdiscretization *slf = MORPHO_GETDISCRETIZATION(MORPHO_SELF(args));
     if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
         objectfield *field = MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
+        objectsparse *new;
         
-        discretization_process(field, slf->discretization);
+        if (discretization_layout(field, slf->discretization, &new)) {
+            out=MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        }
     }
+    return out;
 }
 
 MORPHO_BEGINCLASS(FunctionSpace)

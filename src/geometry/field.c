@@ -10,8 +10,10 @@
 #include "common.h"
 #include "matrix.h"
 #include "sparse.h"
+#include "geometry.h"
 
 value field_gradeoption;
+value field_functionspaceoption;
 
 /* **********************************************************************
  * Field objects
@@ -451,14 +453,15 @@ value field_constructor(vm *v, int nargs, value *args) {
     value prototype=MORPHO_NIL; // Prototype object
     
     value grd = MORPHO_NIL;
+    value fnspc = MORPHO_NIL;
     int nfixed;
     
-    if (!builtin_options(v, nargs, args, &nfixed, 1, field_gradeoption, &grd))
+    if (!builtin_options(v, nargs, args, &nfixed, 2, field_gradeoption, &grd, field_functionspaceoption, &fnspc))
         morpho_runtimeerror(v, FIELD_ARGS);
     
     for (unsigned int i=0; i<nfixed; i++) {
         if (MORPHO_ISMESH(MORPHO_GETARG(args, i))) mesh = MORPHO_GETMESH(MORPHO_GETARG(args, i)); // if the ith argument is a mesh get that mesh and assign it
-        else if (morpho_iscallable(MORPHO_GETARG(args, i))) fn = MORPHO_GETARG(args, i); // if the ith argurment is a function to call put that in the fn spot
+        else if (morpho_iscallable(MORPHO_GETARG(args, i))) fn = MORPHO_GETARG(args, i); // if the ith argument is a function to call put that in the fn spot
         else if (field_checkprototype(MORPHO_GETARG(args, i))) prototype = MORPHO_GETARG(args, i); //if the ith argument is a prototype put that in the prototype spot
     }
     
@@ -472,7 +475,11 @@ value field_constructor(vm *v, int nargs, value *args) {
     for (unsigned int i=0; i<ngrades; i++) dof[i]=0;
     
     /* Process optional grade argument */
-    if (MORPHO_ISINTEGER(grd)) {
+    if (MORPHO_ISDISCRETIZATION(fnspc)) {
+        objectdiscretization *disc = MORPHO_GETDISCRETIZATION(fnspc);
+        for (int i=0; i<=disc->discretization->grade; i++) dof[i]=disc->discretization->shape[i];
+        grd = MORPHO_INTEGER(disc->discretization->grade);
+    } else if (MORPHO_ISINTEGER(grd)) {
         dof[MORPHO_GETINTEGERVALUE(grd)]=1;
     } else if (MORPHO_ISLIST(grd)) {
         objectlist *list = MORPHO_GETLIST(grd);
@@ -870,6 +877,7 @@ void field_initialize(void) {
     objectfieldtype=object_addtype(&objectfielddefn);
     
     field_gradeoption=builtin_internsymbolascstring(FIELD_GRADEOPTION);
+    field_functionspaceoption=builtin_internsymbolascstring(FIELD_FUNCTIONSPACEOPTION);
     
     builtin_addfunction(FIELD_CLASSNAME, field_constructor, BUILTIN_FLAGSEMPTY);
     

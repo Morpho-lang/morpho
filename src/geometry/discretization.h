@@ -42,6 +42,12 @@ typedef struct {
     discretization *discretization;
 } objectdiscretization;
 
+/** Tests whether an object is a discretization */
+#define MORPHO_ISDISCRETIZATION(val) object_istype(val, OBJECT_DISCRETIZATION)
+
+/** Gets the object as a discretization */
+#define MORPHO_GETDISCRETIZATION(val)   ((objectdiscretization *) MORPHO_GETOBJECT(val))
+
 /* -------------------------------------------------------
  * FunctionSpace veneer class
  * ------------------------------------------------------- */

@@ -52,6 +52,12 @@ typedef struct {
  * Discretization error messages
  * ------------------------------------------------------- */
 
+#define FNSPC_ARGS                       "FnSpcArgs"
+#define FNSPC_ARGS_MSG                   "Function space must be initialized with a label and a grade."
+
+#define FNSPC_NOTFOUND                   "FnSpcNtFnd"
+#define FNSPC_NOTFOUND_MSG               "Function space '%s' on grade %i not found."
+
 /* -------------------------------------------------------
  * Discretization interface
  * ------------------------------------------------------- */

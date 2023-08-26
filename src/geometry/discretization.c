@@ -29,6 +29,15 @@ objecttypedefn objectdiscretizationdefn = {
     .sizefn=objectdiscretization_sizefn
 };
 
+/** Creates a new discretization object
+ * @param[in] discretization - discretization definition to use */
+objectdiscretization *objectdiscretization_new(discretization *disc) {
+    objectdiscretization *new = (objectdiscretization *) object_new(sizeof(objectdiscretization), OBJECT_DISCRETIZATION);
+    if (new) new->discretization=disc;
+    
+    return new;
+}
+
 /* **********************************************************************
  * Discretization definitions
  * ********************************************************************** */
@@ -175,8 +184,17 @@ discretization *discretizations[] = {
 };
 
 /* **********************************************************************
- * Match DOFs to node numbers
+ * Discretization functions
  * ********************************************************************** */
+
+/** Find a discretization definition based on a name and grade */
+discretization *discretization_find(char *name, grade g) {
+    for (int i=0; discretizations[i]!=NULL; i++) {
+        if (strcmp(name, discretizations[i]->name)==0 &&
+            g==discretizations[i]->grade) return discretizations[i];
+    }
+    return NULL;
+}
 
 void discretization_process(objectmesh *mesh, discretization *disc) {
     elementid subel[disc->nsubel+1];
@@ -204,7 +222,31 @@ void discretization_process(objectmesh *mesh, discretization *disc) {
 
 /** Constructs a functionspace object */
 value functionspace_constructor(vm *v, int nargs, value *args) {
+    value grd=MORPHO_INTEGER(1);
+    value out=MORPHO_NIL;
+    int nfixed;
     
+    if (!builtin_options(v, nargs, args, &nfixed, 1, field_gradeoption, &grd))
+        morpho_runtimeerror(v, FNSPC_ARGS);
+    
+    if (nfixed==1 &&
+        MORPHO_ISSTRING(MORPHO_GETARG(args, 0)) &&
+        MORPHO_ISINTEGER(grd)) {
+        char *label = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)); 
+        
+        discretization *d=discretization_find(label, MORPHO_GETINTEGERVALUE(grd));
+        
+        if (d) {
+            objectdiscretization *obj=objectdiscretization_new(d);
+            if (obj) {
+                out = MORPHO_OBJECT(obj);
+                morpho_bindobjects(v, 1, &out);
+            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        } else morpho_runtimeerror(v, FNSPC_NOTFOUND, label, MORPHO_GETINTEGERVALUE(grd));
+        
+    } else morpho_runtimeerror(v, FNSPC_ARGS);
+    
+    return out;
 }
 
 MORPHO_BEGINCLASS(FunctionSpace)
@@ -225,4 +267,7 @@ void discretization_initialize(void) {
     
     value functionspaceclass=builtin_addclass(FUNCTIONSPACE_CLASSNAME, MORPHO_GETCLASSDEFINITION(FunctionSpace), objclass);
     object_setveneerclass(OBJECT_DISCRETIZATION, functionspaceclass);
+    
+    morpho_defineerror(FNSPC_ARGS, ERROR_HALT, FNSPC_ARGS_MSG);
+    morpho_defineerror(FNSPC_NOTFOUND, ERROR_HALT, FNSPC_NOTFOUND_MSG);
 }

@@ -50,6 +50,8 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *do
 
 #define FIELD_CLASSNAME "Field"
 
+extern value field_gradeoption;
+
 #define FIELD_GRADEOPTION "grade"
 #define FIELD_OP_METHOD      "op"
 #define FIELD_SHAPE_METHOD   "shape"

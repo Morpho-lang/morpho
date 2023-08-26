@@ -11,7 +11,7 @@
 #include "matrix.h"
 #include "sparse.h"
 
-static value field_gradeoption;
+value field_gradeoption;
 
 /* **********************************************************************
  * Field objects

@@ -136,12 +136,12 @@ discretization cg2_1d = {
  */
 
 void cg2_2dinterpolate(double *lambda, double *wts) {
-    wts[0]=lambda[2]*(2*lambda[2]-1); // TODO: FIX THIS
-    wts[1]=lambda[0]*(2*lambda[0]-1);
-    wts[2]=lambda[1]*(2*lambda[1]-1);
-    wts[3]=4*lambda[0]*lambda[2];
-    wts[4]=4*lambda[0]*lambda[1];
-    wts[5]=4*lambda[1]*lambda[2];
+    wts[0]=lambda[0]*(2*lambda[0]-1); // TODO: FIX THIS
+    wts[1]=lambda[1]*(2*lambda[1]-1);
+    wts[2]=lambda[2]*(2*lambda[2]-1);
+    wts[3]=4*lambda[0]*lambda[1];
+    wts[4]=4*lambda[1]*lambda[2];
+    wts[5]=4*lambda[2]*lambda[0];
 }
 
 unsigned int cg2_2dshape[] = { 1, 1, 0 };

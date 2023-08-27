@@ -32,6 +32,8 @@ typedef struct {
     unsigned int nelements; /** Total number of elements in the fireld */
     void *pool; /** Pool of statically allocated objects */
     
+    value fnspc; /** Function space used */
+    
     objectmatrix data; /** Underlying data store */
 } objectfield;
 
@@ -42,7 +44,7 @@ typedef struct {
 #define MORPHO_GETFIELD(val)   ((objectfield *) MORPHO_GETOBJECT(val))
 
 /** Creates an empty field object */
-objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *dof);
+objectfield *object_newfield(objectmesh *mesh, value prototype, value disc, unsigned int *shape);
 
 /* -------------------------------------------------------
  * Field class

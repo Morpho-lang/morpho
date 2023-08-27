@@ -8,4 +8,4 @@ var l = FunctionSpace("CG2", grade=1)
 var f = Field(m, fn (x,y,z) x^2, functionspace=l)
 print f 
 
-print LineIntegral(fn (x, g) g, f).total(m)
+//print LineIntegral(fn (x, g) g, f, method={ }).total(m)

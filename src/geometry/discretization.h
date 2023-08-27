@@ -7,6 +7,9 @@
 #ifndef discretization_h
 #define discretization_h
 
+#include "mesh.h"
+#include "field.h"
+
 /* -------------------------------------------------------
  * Discretization type definitions
  * ------------------------------------------------------- */

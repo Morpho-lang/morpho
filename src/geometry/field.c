@@ -29,6 +29,7 @@ void objectfield_printfn(object *obj, void *v) {
 void objectfield_markfn(object *obj, void *v) {
     objectfield *c = (objectfield *) obj;
     morpho_markvalue(v, c->prototype);
+    morpho_markvalue(v, c->fnspc);
 }
 
 void objectfield_freefn(object *obj) {
@@ -100,9 +101,19 @@ unsigned int field_size(objectmesh *mesh, value prototype, unsigned int ngrades,
 /** Creates a new field
  * @param[in] mesh - Mesh the field is attached to
  * @param[in] prototype - a prototype object
- * @param[in] dof -  umber of degrees of freedom per entry in each grade (should be maxgrade entries) */
-objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *dof) {
+ * @param[in] disc - a prototype object
+ * @param[in] shape -  (optional) number of degrees of freedom per entry in each grade (should be maxgrade entries) */
+objectfield *object_newfield(objectmesh *mesh, value prototype, value fnspc, unsigned int *shape) {
     int ngrades=mesh_maxgrade(mesh)+1;
+    
+    unsigned int dof[ngrades+1]; // Extract shape from discretization or the provided function space
+    if (MORPHO_ISDISCRETIZATION(fnspc)) {
+        discretization *disc = MORPHO_GETDISCRETIZATION(fnspc)->discretization;
+        for (int i=0; i<=disc->grade; i++) dof[i]=disc->shape[i];
+        for (int i=disc->grade+1; i<=ngrades; i++) dof[i]=0;
+    } else if (shape) {
+        for (int i=0; i<=ngrades; i++) dof[i]=shape[i];
+    }
     
     unsigned int offset[ngrades+1];
     unsigned int size=field_size(mesh, prototype, ngrades, dof, offset);
@@ -120,6 +131,7 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *do
         new->psize=field_sizeprototype(prototype);
         new->nelements=size/new->psize;
         new->ngrades=ngrades;
+        new->fnspc=(MORPHO_ISDISCRETIZATION(fnspc) ? fnspc : MORPHO_NIL);
         
         new->offset=noffset;
         memcpy(noffset, offset, sizeof(unsigned int)*(ngrades+1));
@@ -184,7 +196,10 @@ bool field_applyfunctiontovertices(vm *v, objectmesh *mesh, value fn, objectfiel
 }
 
 /** Applies an initialization function to every DOF in an element */
-bool field_applyfunctiontoelements(vm *v, objectmesh *mesh, value fn, discretization *disc, objectfield *field) {
+bool field_applyfunctiontoelements(vm *v, objectmesh *mesh, value fn, value fnspc, objectfield *field) {
+    if (!MORPHO_ISDISCRETIZATION(fnspc)) return false;
+    discretization *disc = MORPHO_GETDISCRETIZATION(fnspc)->discretization;
+    
     objectsparse *conn = mesh_getconnectivityelement(mesh, 0, disc->grade);
     if (!conn) return false;
     elementid nel = mesh_nelements(conn);
@@ -240,7 +255,7 @@ bool field_applyfunctiontoelements(vm *v, objectmesh *mesh, value fn, discretiza
  * @param[in] mesh - mesh to use
  * @param[in] fn - function to call
  * @returns field object or NULL on failure */
-objectfield *field_newwithfunction(vm *v, objectmesh *mesh, value fn, discretization *disc) {
+objectfield *field_newwithfunction(vm *v, objectmesh *mesh, value fn, value fnspc) {
     value ret=MORPHO_NIL; // Return value
     value coords[mesh->dim]; // Vertex coords
     objectfield *new = NULL;
@@ -252,11 +267,11 @@ objectfield *field_newwithfunction(vm *v, objectmesh *mesh, value fn, discretiza
         if (MORPHO_ISOBJECT(ret)) handle=morpho_retainobjects(v, 1, &ret);
     }
     
-    new=object_newfield(mesh, ret, (disc ? disc->shape : NULL));
+    new=object_newfield(mesh, ret, fnspc, NULL);
     
     if (new) {
-        if (disc) {
-            if (!field_applyfunctiontoelements(v, mesh, fn, disc, new)) goto field_newwithfunction_cleanup;
+        if (fnspc) {
+            if (!field_applyfunctiontoelements(v, mesh, fn, fnspc, new)) goto field_newwithfunction_cleanup;
         } else {
             if (!field_applyfunctiontovertices(v, mesh, fn, new)) goto field_newwithfunction_cleanup;
         }
@@ -298,7 +313,7 @@ bool field_addpool(objectfield *f) {
 
 /** Clones a field */
 objectfield *field_clone(objectfield *f) {
-    objectfield *new = object_newfield(f->mesh, f->prototype, f->dof);
+    objectfield *new = object_newfield(f->mesh, f->prototype, f->fnspc, f->dof);
     if (new) memcpy(new->data.elements, f->data.elements, f->data.nrows*sizeof(double));
     return new;
 }
@@ -499,7 +514,7 @@ bool field_op(vm *v, value fn, objectfield *f, int nargs, objectfield **args, va
             if (!fld) {
                 if (field_checkprototype(ret)) {
                     if (MORPHO_ISOBJECT(ret)) handle=morpho_retainobjects(v, 1, &ret);
-                    fld=object_newfield(f->mesh, ret, f->dof);
+                    fld=object_newfield(f->mesh, ret, f->fnspc, f->dof);
                     if (!fld) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
                 } else {
                     morpho_runtimeerror(v, FIELD_OPRETURN); return false;
@@ -550,12 +565,9 @@ value field_constructor(vm *v, int nargs, value *args) {
     unsigned int dof[ngrades];
     for (unsigned int i=0; i<ngrades; i++) dof[i]=0;
     
-    objectdiscretization *disc=NULL;
-    /* Process optional grade argument */
+    /* Process optional arguments */
     if (MORPHO_ISDISCRETIZATION(fnspc)) {
-        disc = MORPHO_GETDISCRETIZATION(fnspc);
-        for (int i=0; i<=disc->discretization->grade; i++) dof[i]=disc->discretization->shape[i];
-        grd = MORPHO_INTEGER(disc->discretization->grade);
+    
     } else if (MORPHO_ISINTEGER(grd)) {
         dof[MORPHO_GETINTEGERVALUE(grd)]=1;
     } else if (MORPHO_ISLIST(grd)) {
@@ -564,9 +576,9 @@ value field_constructor(vm *v, int nargs, value *args) {
     }
     
     if (MORPHO_ISNIL(fn)) {
-        new = object_newfield(mesh, prototype, (MORPHO_ISNIL(grd) ? NULL: dof));
+        new = object_newfield(mesh, prototype, fnspc, dof);
     } else {
-        new = field_newwithfunction(v, mesh, fn, (disc ? disc->discretization : NULL));
+        new = field_newwithfunction(v, mesh, fn, fnspc);
     }
     
     if (new) {
@@ -678,7 +690,7 @@ value Field_add(vm *v, int nargs, value *args) {
         objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
         
         if (field_compareshape(a, b)) {
-            objectfield *new = object_newfield(a->mesh, a->prototype, a->dof);
+            objectfield *new = object_newfield(a->mesh, a->prototype, a->fnspc, a->dof);
             
             if (new) {
                 out=MORPHO_OBJECT(new);
@@ -718,7 +730,7 @@ value Field_sub(vm *v, int nargs, value *args) {
         objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
         
         if (field_compareshape(a, b)) {
-            objectfield *new = object_newfield(a->mesh, a->prototype, a->dof);
+            objectfield *new = object_newfield(a->mesh, a->prototype, a->fnspc, a->dof);
             
             if (new) {
                 out=MORPHO_OBJECT(new);

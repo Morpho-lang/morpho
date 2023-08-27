@@ -2055,15 +2055,18 @@ int integrator_addquantity(integrator *integrate, int nq, value *quantity) {
     return qid;
 }
 
-/** Count degrees of freedom */
-void integrator_countquantitydof(integrator *integrate, int nq, value *quantity) {
+/** Count degrees of freedom for each quantity */
+void integrator_countquantitydof(integrator *integrate, int nq, quantity *quantity) {
     int ndof=0;
     for (int i=0; i<nq; i++) {
-        if (MORPHO_ISFLOAT(quantity[i])) {
+        value q = quantity[i].vals[0]; // Take the first element from each quantity list as paradigmatic
+        if (MORPHO_ISFLOAT(q)) {
+            quantity[i].ndof=1;
             ndof++;
-        } else if (MORPHO_ISMATRIX(quantity[i])) {
-            objectmatrix *m = MORPHO_GETMATRIX(quantity[i]);
-            ndof+=matrix_countdof(m);
+        } else if (MORPHO_ISMATRIX(q)) {
+            objectmatrix *m = MORPHO_GETMATRIX(q);
+            quantity[i].ndof=matrix_countdof(m);
+            ndof+=quantity[i].ndof;
         } else return;
     }
     integrate->nqdof=ndof;
@@ -2548,7 +2551,7 @@ bool integrator_configurewithdictionary(integrator *integrate, grade g, objectdi
  * @param[in] quantity       - List of quantities for each vertex.
  * @param[in] ref                  - a pointer to any data required by the function
  * @returns True on success */
-bool integrator_integrate(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, value **quantity, void *ref) {
+bool integrator_integrate(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, quantity *quantity, void *ref) {
     
     integrate->integrand=integrand;
     integrate->ref=ref;
@@ -2563,16 +2566,16 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
     error_clear(&integrate->emsg);
     
     // Quantities used for interpolation live at the start of the quantity stack
-    integrator_countquantitydof(integrate, nquantity, quantity[0]);
+    integrator_countquantitydof(integrate, nquantity, quantity);
     integrate->ndof = integrate->dim+integrate->nqdof; // Number of degrees of freedom
     
-    integrator_addquantity(integrate, nquantity, quantity[0]);
+    //integrator_addquantity(integrate, nquantity, quantity[0]);
     
     // Create first element
     int vids[integrate->nbary], qids[integrate->nbary];
     for (int i=0; i<integrate->nbary; i++) {
         vids[i]=integrator_addvertex(integrate, dim, x[i]);
-        if (nquantity) qids[i]=integrator_addquantity(integrate, nquantity, quantity[i]);
+        //if (nquantity) qids[i]=integrator_addquantity(integrate, nquantity, quantity[i]);
     }
     int elid = integrator_addelement(integrate, vids, qids);
     
@@ -2623,11 +2626,11 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
  * @param[in] grade            - Grade to integrate over
  * @param[in] x                     - vertices of the triangle x[0] = {x,y,z} etc.
  * @param[in] nquantity   - number of quantities per vertex
- * @param[in] quantity     - List of quantities for each endpoint.
+ * @param[in] quantity     - List of quantities
  * @param[in] ref                - a pointer to any data required by the function
  * @param[out] out              - value of the integral
  * @returns true on success. */
-bool integrate(integrandfunction *integrand, objectdictionary *method, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out, double *err) {
+bool integrate(integrandfunction *integrand, objectdictionary *method, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, quantity *quantity, void *ref, double *out, double *err) {
     bool success=false;
     integrator integrate;
     integrator_init(&integrate);
@@ -2649,6 +2652,7 @@ bool integrate(integrandfunction *integrand, objectdictionary *method, unsigned 
  * Testing code
  * -------------------------------- */
 
+/*
 int nevals;
 
 bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
@@ -2672,7 +2676,7 @@ void integrate_test1(double *out, double *err) {
     double *xx[] = { x0, x1, x2, x3 };
     value *quantities[] = { NULL, NULL, NULL, NULL };
     
-    integrate(test_integrand, NULL, 3, 3, xx, 0, quantities, NULL, out, err);
+    integrate(test_integrand, NULL, 3, 3, xx, 0, NULL, NULL, out, err);
     
     return;
 }
@@ -2687,7 +2691,7 @@ void integrate_test2(double *out) {
     double x3[3] = { 0, 0, 1 };
     double *xx[] = { x0, x1, x2, x3 };
     value *quantities[] = { NULL, NULL, NULL, NULL };
-    integrate_integrate(test_integrand, 3, 3, xx, 0, quantities, NULL, out);
+    integrate_integrate(test_integrand, 3, 3, xx, 0, NULL, NULL, out);
 }
 
 void integrate_test(void) {
@@ -2715,4 +2719,4 @@ void integrate_test(void) {
     printf("Old: %g (relative error %g) tol: %g\n", fabs(trueval-out), fabs(trueval-out)/trueval, INTEGRATE_ACCURACYGOAL);
     
     exit(0);
-}
+}*/

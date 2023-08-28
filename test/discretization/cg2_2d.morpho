@@ -18,3 +18,5 @@ var f = Field(m, functionspace=l)
 print l.layout(f)
 
 print f.shape()
+
+print AreaIntegral(fn (x) sqrt(x[0]*x[1]), method={ }).total(m)-4/9

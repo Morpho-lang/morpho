@@ -116,8 +116,11 @@ typedef struct {
 
 typedef struct {
     integrandfunction *integrand; /** Function to integrate */
+    void *ref; /** Reference to pass to integrand function */
     
     int dim; /** Dimension of points in embedded space */
+    double **x; /** Vertices defining the element */
+    
     int nbary; /** Number of barycentric coordinates */
     
     int nquantity; /** Number of quantities to interpolate */
@@ -127,10 +130,10 @@ typedef struct {
     
     int ndof; /** Number of degrees of freedom */
     
-    bool adapt; /** Enable adaptive integration */
     quadraturerule *rule;  /** Quadrature rule to use */
     quadraturerule *errrule; /** Additional rule for error estimation */
     
+    bool adapt; /** Enable adaptive integration */
     subdivisionrule *subdivide; /** Subdivision rule to use */
     
     int workp; /** Index of largest item in the work list */
@@ -148,8 +151,6 @@ typedef struct {
     double err; /** Estimated error of the integral */
     
     error emsg; /** Store error messages from the integrator */
-    
-    void *ref; /** Reference to pass to integrand */
 } integrator;
 
 /* -------------------------------------------------------

@@ -1974,7 +1974,6 @@ void integrator_init(integrator *integrate) {
     varray_quadratureworkiteminit(&integrate->worklist);
     varray_doubleinit(&integrate->vertexstack);
     varray_intinit(&integrate->elementstack);
-    varray_valueinit(&integrate->quantitystack);
     
     integrate->ztol = INTEGRATE_ZEROCHECK;
     integrate->tol = INTEGRATE_ACCURACYGOAL;
@@ -1994,11 +1993,7 @@ void integrator_clear(integrator *integrate) {
     varray_quadratureworkitemclear(&integrate->worklist);
     varray_intclear(&integrate->elementstack);
     varray_doubleclear(&integrate->vertexstack);
-    for (unsigned int i=0; i<integrate->quantitystack.count; i++) {
-        value v=integrate->quantitystack.data[i];
-        if (MORPHO_ISOBJECT(v)) morpho_freeobject(v);
-    }
-    varray_valueclear(&integrate->quantitystack);
+    for (int i=0; i<integrate->nquantity; i++) morpho_freeobject(integrate->qval[i]);
 }
 
 /** Adds a vertex to the integrators vertex stack, returning the id */
@@ -2016,43 +2011,6 @@ int integrator_addelement(integrator *integrate, int *vids, int *qids) {
     varray_intadd(&integrate->elementstack, vids, integrate->nbary);
     if (integrate->nquantity && qids) varray_intadd(&integrate->elementstack, qids, integrate->nbary);
     return elid;
-}
-
-/**
- Quantities are stored as needed on the quantity stack. The first n values are used
- to store interpolated values. As new vertices are added, n entries are added to the quantity stack
-
- | base:          | q list 0:      | q list 1:   |
- | q0, q1, ... qn | q0, q1, ... qn | q0, q1, ... |
-
- As elements are added, they include both vertex ids and references to entries on the quantity stack. Each element is 2*nbary entries long:
-
- nbary               nbary
- | vid0, vid1, ... : qid0, qid1, ... |
-
- For each element, we build an interpolation matrix,
-
- [ x0 y0 q0,0 q1,0 ... qn,0 ]
- [ x1 y1 q0,1 q1,1 ... qn,1 ]
- [ x2 y1 q0,2 q1,2 ... qn,2 ]
-
- which when multiplied by the barycentric coordinates yields the interpolated quantite
-
- [l0, l1, l2] . Interp -> [ x0, y0, q0, q1, ... qn ] */
-
-/** Adds nq quantities to the quantity stack, returning the id of the first element */
-int integrator_addquantity(integrator *integrate, int nq, value *quantity) {
-    int qid=integrate->quantitystack.count;
-    for (int i=0; i<nq; i++) {
-        if (MORPHO_ISFLOAT(quantity[i])) {
-            varray_valuewrite(&integrate->quantitystack, quantity[i]);
-        } else if (MORPHO_ISMATRIX(quantity[i])) {
-            objectmatrix *new = object_clonematrix(MORPHO_GETMATRIX(quantity[i]));
-            // TODO: Raise error on fail
-            varray_valuewrite(&integrate->quantitystack, MORPHO_OBJECT(new));
-        } else return false;
-    }
-    return qid;
 }
 
 /** Process the list of quantities given */
@@ -2086,15 +2044,6 @@ void integrator_getvertices(integrator *integrate, int elementid, double **vert)
     for (int i=0; i<integrate->nbary; i++) {
         int vid=integrate->elementstack.data[elementid+i];
         vert[i]=&(integrate->vertexstack.data[vid]);
-    }
-}
-
-/** Retrieves the quantity pointers given an elementid.
- @warning: The pointers returned become invalid after a subsequent call to integrator_addvertex */
-void integrator_getquantities(integrator *integrate, int elementid, value **quantities) {
-    for (int i=0; i<integrate->nbary; i++) {
-        int qid=integrate->elementstack.data[elementid+integrate->nbary+i]; // Note quantities stored after vertices
-        quantities[i]=&(integrate->quantitystack.data[qid]);
     }
 }
 
@@ -2225,6 +2174,7 @@ void prepareinterpolation(integrator *integrate, int elementid, double *vmat) {
     preparevertices(integrate, vert, vmat);
 }
 
+/** Interpolates quantities */
 void interpolatequantities(integrator *integrate, double *bary) {
     for (int i=0; i<integrate->nquantity; i++) {
         int nnodes = integrate->quantity[i].nnodes;
@@ -2233,21 +2183,6 @@ void interpolatequantities(integrator *integrate, double *bary) {
         
         double val=integrate_sumlistweighted(nnodes, (double *) integrate->quantity[i].vals, wts);
         integrate->qval[i]=MORPHO_FLOAT(val);
-    }
-}
-
-/** Processes the results of interpolation */
-void postprocessquantities(integrator *integrate, double *qout) {
-    int k=0; // DOF counter
-    for (int i=0; i<integrate->nquantity; i++) {
-        value q = integrate->quantitystack.data[i];
-        if (MORPHO_ISFLOAT(q)) {
-            integrate->quantitystack.data[i]=MORPHO_FLOAT(qout[k]);
-        } else if (MORPHO_ISMATRIX(q)) {
-            objectmatrix *m = MORPHO_GETMATRIX(q);
-            m->elements=&qout[k];
-            k+=m->ncols*m->nrows;
-        }
     }
 }
 
@@ -2283,7 +2218,7 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
     prepareinterpolation(integrate, work->elementid, vmat);
     
     // Evaluate function at quadrature points
-    double x[integrate->ndof],f[nmax];
+    double x[integrate->ndof], f[nmax];
     if (!integrate_evalfn(integrate, rule, 0, rule->nnodes, vmat, x, f)) return false;
     
     double r[np+1];
@@ -2332,6 +2267,8 @@ bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem 
 bool subdivide(integrator *integrate, quadratureworkitem *work, int *nels, quadratureworkitem *newitems) {
     subdivisionrule *rule = integrate->subdivide;
     
+    UNREACHABLE("Subdivision temporarily disabled.");
+    
     // Fetch the element data
     int npts = integrate->nbary+rule->npts;
     int vid[npts], qid[npts];
@@ -2347,10 +2284,10 @@ bool subdivide(integrator *integrate, quadratureworkitem *work, int *nels, quadr
         linearinterpolate(integrate, &rule->pts[j*integrate->nbary], vmat, x);
         vid[integrate->nbary+j]=integrator_addvertex(integrate, integrate->dim, x);
         
-        if (integrate->nquantity) {
+        /*if (integrate->nquantity) {
             postprocessquantities(integrate, x+integrate->dim);
             qid[integrate->nbary+j]=integrator_addquantity(integrate, integrate->nquantity, integrate->quantitystack.data);
-        }
+        }*/
     }
     
     // Create elements
@@ -2565,7 +2502,6 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
     integrate->worklist.count=0;    // Reset all these without deallocating
     integrate->vertexstack.count=0;
     integrate->elementstack.count=0;
-    integrate->quantitystack.count=0;
     error_clear(&integrate->emsg);
     
     // Quantities

@@ -97,8 +97,8 @@ discretization cg1_1d = {
 void cg2_1dinterpolate(double *lambda, double *wts) {
     double dl = (lambda[0]-lambda[1]);
     wts[0]=lambda[0]*dl;
-    wts[1]=4*lambda[0]*lambda[1];
-    wts[2]=-lambda[1]*dl; // TODO: CHECK
+    wts[1]=-lambda[1]*dl;
+    wts[2]=4*lambda[0]*lambda[1];
 }
 
 unsigned int cg2_1dshape[] = { 1, 1 };

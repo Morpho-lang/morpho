@@ -4204,26 +4204,45 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     integral_cleartlvars(v);
     vm_settlvar(v, elementhandle, MORPHO_OBJECT(&elref));
 
-    value q0[iref.nfields+1], q1[iref.nfields+1];
+    /*value q0[iref.nfields+1], q1[iref.nfields+1];
     value *q[2] = { q0, q1 };
     for (unsigned int k=0; k<iref.nfields; k++) {
         for (unsigned int i=0; i<nv; i++) {
             field_getelement(MORPHO_GETFIELD(iref.fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
         }
-    }
+    }*/
     
     quantity quantities[iref.nfields+1];
     for (int k=0; k<iref.nfields; k++) {
         objectfield *f=MORPHO_GETFIELD(iref.fields[k]);
         
-        
+        if (MORPHO_ISDISCRETIZATION(f->fnspc)) {
+            discretization *disc=MORPHO_GETDISCRETIZATION(f->fnspc)->discretization;
+            quantities[k].nnodes=disc->nnodes;
+            quantities[k].ifn=disc->ifn;
+            
+            int dof[disc->nnodes];
+            discretization_doftofieldindx(f, disc, nv, vid, dof);
+            
+            quantities[k].vals=malloc(sizeof(value)*disc->nnodes);
+            for (int i=0; i<disc->nnodes; i++) {
+                field_getelementwithindex(f, dof[i], &quantities[k].vals[i]);
+            }
+        } else {
+            quantities[k].nnodes=nv;
+            quantities[k].ifn=MORPHO_NIL;
+            quantities[k].vals=malloc(sizeof(value)*nv);
+            for (unsigned int i=0; i<nv; i++) {
+                field_getelement(f, MESH_GRADE_VERTEX, vid[i], 0, &quantities[k].vals[i]);
+            }
+        }
     }
 
     if (MORPHO_ISDICTIONARY(iref.method)) {
         double err;
-        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_LINE, x, iref.nfields, q, &iref, out, &err);
+        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_LINE, x, iref.nfields, quantities, &iref, out, &err);
     } else {
-        success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_LINE, x, iref.nfields, q, &iref, out);
+        //success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_LINE, x, iref.nfields, q, &iref, out);
     }
     
     if (success) *out *=elref.elementsize;

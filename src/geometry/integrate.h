@@ -121,8 +121,10 @@ typedef struct {
     int nbary; /** Number of barycentric coordinates */
     
     int nquantity; /** Number of quantities to interpolate */
-    quantity *quantities; /** Quantity list */
+    quantity *quantity; /** Quantity list */
+    value *qval; /** Interpolated quantity values */
     int nqdof; /** Number of quantity degrees of freedom */
+    
     int ndof; /** Number of degrees of freedom */
     
     bool adapt; /** Enable adaptive integration */

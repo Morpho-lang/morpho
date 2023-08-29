@@ -126,6 +126,47 @@ discretization cg2_1d = {
 };
 
 /* -------------------------------------------------------
+ * CG3 element in 1D
+ * ------------------------------------------------------- */
+
+/*
+ *   0 - 2 - 3 - 1    // One degree of freedom per vertex; two on the line
+ */
+
+void cg3_1dinterpolate(double *lambda, double *wts) {
+    double a = (9.0/2.0)*lambda[0]*lambda[1];
+    wts[0]=lambda[0]*(1-a);
+    wts[1]=lambda[1]*(1-a);
+    wts[2]=a*(2*lambda[0]-lambda[1]);
+    wts[3]=a*(2*lambda[1]-lambda[0]);
+}
+
+unsigned int cg3_1dshape[] = { 1, 2 };
+
+double cg3_1dnodes[] = { 0.0, 1.0, 1.0/3.0, 2.0/3.0 };
+
+eldefninstruction cg3_1ddefn[] = {
+    LINE(0,0,1),     // Identify line subelement with vertex indices (0,1)
+    QUANTITY(0,0,0), // Fetch quantity on vertex 0
+    QUANTITY(0,1,0), // Fetch quantity on vertex 1
+    QUANTITY(1,0,0), // Fetch quantity from line subelement
+    QUANTITY(1,0,1), // Fetch quantity from line subelement
+    ENDDEFN
+};
+
+discretization cg3_1d = {
+    .name = "CG3",
+    .grade = 1,
+    .shape = cg3_1dshape,
+    .degree = 3,
+    .nnodes = 4,
+    .nsubel = 1,
+    .nodes = cg3_1dnodes,
+    .ifn = cg3_1dinterpolate,
+    .eldefn = cg3_1ddefn
+};
+
+/* -------------------------------------------------------
  * CG1 element in 2D
  * ------------------------------------------------------- */
 

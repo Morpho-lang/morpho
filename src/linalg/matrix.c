@@ -44,9 +44,7 @@ objectmatrix *object_newmatrix(unsigned int nrows, unsigned int ncols, bool zero
         new->ncols=ncols;
         new->nrows=nrows;
         new->elements=new->matrixdata;
-        if (zero) {
-            memset(new->elements, 0, sizeof(double)*nel);
-        }
+        if (zero) matrix_zero(new);
     }
     
     return new;
@@ -599,6 +597,13 @@ objectmatrixerror matrix_trace(objectmatrix *a, double *out) {
 /** Scale a matrix */
 objectmatrixerror matrix_scale(objectmatrix *a, double scale) {
     cblas_dscal(a->ncols*a->nrows, scale, a->elements, 1);
+
+    return MATRIX_OK;
+}
+
+/** Sets a matrix to zero */
+objectmatrixerror matrix_zero(objectmatrix *a) {
+    memset(a->elements, 0, sizeof(double)*a->nrows*a->ncols);
     
     return MATRIX_OK;
 }
@@ -606,7 +611,7 @@ objectmatrixerror matrix_scale(objectmatrix *a, double scale) {
 /** Load the indentity matrix*/
 objectmatrixerror matrix_identity(objectmatrix *a) {
     if (a->ncols!=a->nrows) return MATRIX_NSQ;
-    memset(a->elements, 0, sizeof(double)*a->nrows*a->ncols);
+    matrix_zero(a);
     for (int i=0; i<a->nrows; i++) a->elements[i+a->nrows*i]=1.0;
     return MATRIX_OK;
 }

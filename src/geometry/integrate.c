@@ -2197,8 +2197,19 @@ void interpolatequantities(integrator *integrate, double *bary) {
         double wts[nnodes];
         (integrate->quantity[i].ifn) (bary, wts);
         
-        double val=integrate_sumlistweighted(nnodes, (double *) integrate->quantity[i].vals, wts);
-        integrate->qval[i]=MORPHO_FLOAT(val);
+        if (MORPHO_ISFLOAT(integrate->qval[i])) {
+            double qval[nnodes];
+            for (int j=0; j<nnodes; j++) qval[j]=MORPHO_GETFLOATVALUE(integrate->quantity[i].vals[j]);
+            double val=integrate_sumlistweighted(nnodes, qval, wts);
+            integrate->qval[i]=MORPHO_FLOAT(val);
+        } else if (MORPHO_ISMATRIX(integrate->qval[i])) {
+            objectmatrix *out = MORPHO_GETMATRIX(integrate->qval[i]);
+            matrix_zero(out);
+            for (int j=0; j<nnodes; j++) {
+                matrix_accumulate(out, wts[j], MORPHO_GETMATRIX(integrate->quantity[i].vals[j]));
+            }
+        }
+        
     }
 }
 

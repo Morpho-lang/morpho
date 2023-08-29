@@ -13,10 +13,14 @@ m.addgrade(1)
 
 var l = FunctionSpace("CG2", grade=2)
 
-var f = Field(m, functionspace=l)
+var f = Field(m, fn (x,y) Matrix([[x,y],[-y, x]]), functionspace=l)
 
 print l.layout(f)
 
 print f.shape()
 
+print f 
+
 print AreaIntegral(fn (x) sqrt(x[0]*x[1]), method={ }).total(m)-4/9
+
+print AreaIntegral(fn (x, q) q.trace()^2, f, method={ }).total(m)-4/3

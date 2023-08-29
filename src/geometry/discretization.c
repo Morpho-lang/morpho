@@ -126,6 +126,46 @@ discretization cg2_1d = {
 };
 
 /* -------------------------------------------------------
+ * CG1 element in 2D
+ * ------------------------------------------------------- */
+
+/*   2
+ *   |\
+ *   0-1    // One degree of freedom per vertex
+ */
+
+void cg1_2dinterpolate(double *lambda, double *wts) {
+    wts[0]=lambda[0];
+    wts[1]=lambda[1];
+    wts[2]=lambda[2];
+}
+
+unsigned int cg1_2dshape[] = { 1, 0, 0 };
+
+double cg1_2dnodes[] = { 0.0, 0.0,
+                         1.0, 0.0,
+                         0.0, 1.0 };
+
+eldefninstruction cg1_2deldefn[] = {
+    QUANTITY(0,0,0), // Fetch quantity on vertex 0
+    QUANTITY(0,1,0), // Fetch quantity on vertex 1
+    QUANTITY(0,2,0), // Fetch quantity on vertex 2
+    ENDDEFN
+};
+
+discretization cg1_2d = {
+    .name = "CG1",
+    .grade = 2,
+    .shape = cg1_2dshape,
+    .degree = 1,
+    .nnodes = 3,
+    .nsubel = 0,
+    .nodes = cg1_2dnodes,
+    .ifn = cg1_2dinterpolate,
+    .eldefn = cg1_2deldefn
+};
+
+/* -------------------------------------------------------
  * CG2 element in 2D
  * ------------------------------------------------------- */
 
@@ -137,7 +177,7 @@ discretization cg2_1d = {
  */
 
 void cg2_2dinterpolate(double *lambda, double *wts) {
-    wts[0]=lambda[0]*(2*lambda[0]-1); // TODO: FIX THIS
+    wts[0]=lambda[0]*(2*lambda[0]-1);
     wts[1]=lambda[1]*(2*lambda[1]-1);
     wts[2]=lambda[2]*(2*lambda[2]-1);
     wts[3]=4*lambda[0]*lambda[1];
@@ -182,6 +222,7 @@ discretization cg2_2d = {
 discretization *discretizations[] = {
     &cg1_1d,
     &cg2_1d,
+    &cg1_2d,
     &cg2_2d,
     NULL
 };

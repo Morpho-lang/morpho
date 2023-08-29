@@ -126,9 +126,6 @@ typedef struct {
     int nquantity; /** Number of quantities to interpolate */
     quantity *quantity; /** Quantity list */
     value *qval; /** Interpolated quantity values */
-    int nqdof; /** Number of quantity degrees of freedom */
-    
-    int ndof; /** Number of degrees of freedom */
     
     quadraturerule *rule;  /** Quadrature rule to use */
     quadraturerule *errrule; /** Additional rule for error estimation */
@@ -136,8 +133,6 @@ typedef struct {
     bool adapt; /** Enable adaptive integration */
     subdivisionrule *subdivide; /** Subdivision rule to use */
     
-    int workp; /** Index of largest item in the work list */
-    int freep; /** Index of a free item in the work list */
     varray_quadratureworkitem worklist; /** Work list */
     varray_double vertexstack; /** Stack of vertices */
     varray_int elementstack; /** Stack of elements */

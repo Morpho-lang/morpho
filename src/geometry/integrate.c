@@ -1213,6 +1213,7 @@ quadraturerule cubtri19 = {
     .nnodes = 19,
     .nodes = cubtripts,
     .weights = cubtri19wts,
+    .ext = NULL
 };
 
 quadraturerule cubtri7 = {
@@ -1222,6 +1223,7 @@ quadraturerule cubtri7 = {
     .nnodes = 7,
     .nodes = cubtripts,
     .weights = cubtri7wts,
+    .ext = NULL
 };
 
 /* --------------------------------
@@ -1766,7 +1768,7 @@ quadraturerule *quadrules[] = {
     &keast4, &keast5,
     &tet5, &tet6,
 
-    &grundmann1, &grundmann2, &grundmann3, &grundmann4,
+    &grundmann1, &grundmann2, &grundmann3, &grundmann4, &grundmann5,
     NULL
 };
 

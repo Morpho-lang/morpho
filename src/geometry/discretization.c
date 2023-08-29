@@ -240,6 +240,14 @@ discretization *discretization_find(char *name, grade g) {
     return NULL;
 }
 
+/** Finds a linear discretization for a given grade */
+discretization *discretization_findlinear(grade g) {
+    for (int i=0; discretizations[i]!=NULL; i++) {
+        if (discretizations[i]->grade && discretizations[i]->degree==1) return discretizations[i];
+    }
+    return NULL;
+}
+
 #define FETCH(instr) (*(instr++))
 
 /** Steps through an element definition, generating subelements and identifying quantities */

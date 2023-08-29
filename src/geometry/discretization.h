@@ -73,6 +73,9 @@ typedef struct {
  * Discretization interface
  * ------------------------------------------------------- */
 
+discretization *discretization_find(char *name, grade g);
+discretization *discretization_findlinear(grade g);
+
 bool discretization_doftofieldindx(objectfield *field, discretization *disc, int nv, int *vids, int *dof);
 bool discretization_layout(objectfield *field, discretization *disc, objectsparse **out);
 

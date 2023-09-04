@@ -226,6 +226,17 @@ void cg2_2dinterpolate(double *lambda, double *wts) {
     wts[5]=4*lambda[2]*lambda[0];
 }
 
+void cg2_2dgrad(double *lambda, double *grad) {
+    double g[] =
+    { 4*lambda[0]-1,             0,             0,
+                  0, 4*lambda[1]-1,             0,
+                  0,             0, 4*lambda[2]-1,
+        4*lambda[1],   4*lambda[0],             0,
+                  0,   4*lambda[2],   4*lambda[1],
+        4*lambda[2],             0,   4*lambda[0] };    
+    memcpy(grad, g, sizeof(g));
+}
+
 unsigned int cg2_2dshape[] = { 1, 1, 0 };
 
 double cg2_2dnodes[] = { 0.0, 0.0,
@@ -257,6 +268,7 @@ discretization cg2_2d = {
     .nsubel = 3,
     .nodes = cg2_2dnodes,
     .ifn = cg2_2dinterpolate,
+    .gfn = cg2_2dgrad,
     .eldefn = cg2_2deldefn
 };
 
@@ -351,6 +363,11 @@ bool discretization_layout(objectfield *field, discretization *disc, objectspars
 discretization_layout_cleanup:
     if (new) object_free((object *) new);
     return false;
+}
+
+void discretization_gradient(discretization *disc, double *lambda) {
+    
+    
 }
 
 /* **********************************************************************

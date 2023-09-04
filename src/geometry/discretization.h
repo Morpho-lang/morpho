@@ -30,6 +30,7 @@ typedef struct {
     int nsubel; /** Number of subelements used by */
     double *nodes; /** Node positions */
     interpolationfn ifn; /** Interpolation function; receives barycentric coordinates as input and returns weights per node */
+    interpolationfn gfn; /** Gradient interpolation function */
     eldefninstruction *eldefn; /** Element definition */
 } discretization;
 

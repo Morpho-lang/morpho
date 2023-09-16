@@ -209,9 +209,9 @@ class POVRaytracer {
     if (quiet) silent = "&> /dev/null"
     var disp = ""
     if (!display) disp = "-D"
-    system("povray ./\"${path}\" ${disp} +A +W${self.width} +H${self.height} ${silent}")
+    system("povray \"${path}\" ${disp} +A +W${self.width} +H${self.height} ${silent}")
     var out = self._slice(path, 0, path.count()-4)
-    if (!quiet && display) system("open ./${out}.png")
+    if (!quiet && display) system("open ${out}.png")
   }
   /*
   private method: slice a string given a start and an end

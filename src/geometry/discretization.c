@@ -384,7 +384,7 @@ void discretization_gradient(discretization *disc, double *lambda) {
     // Compute gradients of the basis functions
     double gdata[disc->nnodes*nbary];
     (disc->gfn) (lambda, gdata);
-    objectmatrix gmat = MORPHO_STATICMATRIX(g, nbary, disc->nnodes);
+    objectmatrix gmat = MORPHO_STATICMATRIX(gdata, nbary, disc->nnodes);
     
     
 }

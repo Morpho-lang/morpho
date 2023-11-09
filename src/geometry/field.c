@@ -26,6 +26,7 @@ void objectfield_printfn(object *obj, void *v) {
 void objectfield_markfn(object *obj, void *v) {
     objectfield *c = (objectfield *) obj;
     morpho_markvalue(v, c->prototype);
+    morpho_markobject(v, (object *) c->mesh);
 }
 
 void objectfield_freefn(object *obj) {

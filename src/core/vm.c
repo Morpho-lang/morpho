@@ -558,7 +558,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 #define ENTERDEBUGGER() { \
     v->fp->pc=pc; \
     v->fp->roffset=reg-v->stack.data; \
-    if (v->debuggerfn) (v->debuggerfn) (v, v->debuggerref); \
+    if (v->debug && v->debuggerfn) (v->debuggerfn) (v, v->debuggerref); \
 }
 
 /* Define the interpreter loop. Computed gotos or regular switch statements can be used here. */

@@ -40,8 +40,6 @@ void debugger_init(debugger *d, program *p);;
 void debugger_clear(debugger *d);
 bool debugger_insinglestep(debugger *d);
 
-void debugger_enter(vm *v);
-
 bool debug_shouldbreakatpc(vm *v, instruction *pc);
 bool debugger_isactive(debugger *d);
 

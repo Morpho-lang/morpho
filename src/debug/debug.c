@@ -544,7 +544,7 @@ void morpho_stacktrace(vm *v) {
 }
 
 /* **********************************************************************
- * Debugger structure
+ * Debugger backend structure
  * ********************************************************************** */
 
 /** Initializes a debugger structure with a specified program */
@@ -1153,15 +1153,6 @@ instructionindx debug_previnstruction(vm *v) {
 /** Return the current instruction index */
 instructionindx debug_currentinstruction(vm *v) {
     return v->fp->pc-v->current->code.data-1;
-}
-
-/* ----------------------
- * The debugger itself
- * ---------------------- */
-
-/** TODO: Remove this stub */
-void debugger_enter(vm *v) {
-  
 }
 
 /* **********************************************************************

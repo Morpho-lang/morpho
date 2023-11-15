@@ -28,8 +28,12 @@ typedef void (*morphoprintfn) (vm *v, void *ref, char *str);
 /* Callback function used to output a warning */
 typedef void (*morphowarningfn) (vm *v, void *ref, error *warning);
 
+/* Callback function used to enter debugger */
+typedef void (*morphodebuggerfn) (vm *v, void *ref);
+
 void morpho_setwarningfn(vm *v, morphowarningfn warningfn, void *ref);
 void morpho_setprintfn(vm *v, morphoprintfn printfn, void *ref);
+void morpho_setdebuggerfn(vm *v, morphodebuggerfn debuggerfn, void *ref);
 
 /* -----------------------------------------
  * Functions and macros for comparing values

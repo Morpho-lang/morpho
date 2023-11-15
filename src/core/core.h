@@ -224,6 +224,9 @@ struct svm {
     morphowarningfn warningfn; /** Warning callback */
     void *warningref; /** Warning callback reference */
     
+    morphodebuggerfn debuggerfn; /** Debugger callback */
+    void *debuggerref; /** Debugger callback reference */
+    
     _MORPHO_PADDING; /** Ensure subkernels do not cause false sharing */
 };
 

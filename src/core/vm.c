@@ -76,6 +76,8 @@ static void vm_init(vm *v) {
     v->printref=NULL;
     v->warningfn=NULL;
     v->warningref=NULL;
+    v->debuggerfn=NULL;
+    v->debuggerref=NULL;
 }
 
 /** Clears a virtual machine */
@@ -99,6 +101,12 @@ void morpho_setprintfn(vm *v, morphoprintfn printfn, void *ref) {
 void morpho_setwarningfn(vm *v, morphowarningfn warningfn, void *ref) {
     v->warningfn=warningfn;
     v->warningref=ref;
+}
+
+/** Configure debugger callback function */
+void morpho_setdebuggerfn(vm *v, morphodebuggerfn debuggerfn, void *ref) {
+    v->debuggerfn=debuggerfn;
+    v->debuggerref=ref;
 }
 
 /** Prepares a vm to run program p */
@@ -547,8 +555,12 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
     #define OPOPCODECNT(p, bc)
 #endif
 
-#define ENTERDEBUGGER() { v->fp->pc=pc; v->fp->roffset=reg-v->stack.data; debugger_enter(v); }
-    
+#define ENTERDEBUGGER() { \
+    v->fp->pc=pc; \
+    v->fp->roffset=reg-v->stack.data; \
+    if (v->debuggerfn) (v->debuggerfn) (v, v->debuggerref); \
+}
+
 /* Define the interpreter loop. Computed gotos or regular switch statements can be used here. */
 #ifdef MORPHO_COMPUTED_GOTO
     /* The dispatch table, containing the entry points for each opcode */

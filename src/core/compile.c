@@ -79,7 +79,7 @@ static inline syntaxtree *compiler_getsyntaxtree(compiler *c) {
 
 /** Adds an instruction to the current program */
 static instructionindx compiler_addinstruction(compiler *c, instruction instr, syntaxtreenode *node) {
-    debug_addnode(&c->out->annotations, node);
+    debugannotation_addnode(&c->out->annotations, node);
     return varray_instructionwrite(&c->out->code, instr);
 }
 
@@ -179,7 +179,7 @@ static void compiler_beginfunction(compiler *c, objectfunction *func, functionty
     compiler_functionstateinit(&c->fstack[c->fstackp]);
     c->fstack[c->fstackp].func=func;
     c->fstack[c->fstackp].type=type;
-    debug_setfunction(&c->out->annotations, func);
+    debugannotation_setfunction(&c->out->annotations, func);
 }
 
 /** Sets the function register count */
@@ -195,7 +195,7 @@ static void compiler_endfunction(compiler *c) {
     compiler_setfunctionregistercount(c);
     compiler_functionstateclear(f);
     c->fstackp--;
-    debug_setfunction(&c->out->annotations, c->fstack[c->fstackp].func);
+    debugannotation_setfunction(&c->out->annotations, c->fstack[c->fstackp].func);
 }
 
 /** Gets the current function */
@@ -257,14 +257,14 @@ static inline void compiler_beginclass(compiler *c, objectclass *klass) {
     if (c->currentclass) klass->obj.next = (object *) klass;
 
     c->currentclass=klass;
-    debug_setclass(&c->out->annotations, klass);
+    debugannotation_setclass(&c->out->annotations, klass);
 }
 
 static inline void compiler_endclass(compiler *c) {
     /* Delink current class from list */
     objectclass *current = c->currentclass;
     c->currentclass=(objectclass *) current->obj.next;
-    debug_setclass(&c->out->annotations, c->currentclass);
+    debugannotation_setclass(&c->out->annotations, c->currentclass);
     current->obj.next=NULL; /* as the class is no longer part of the list */
 }
 
@@ -374,7 +374,7 @@ static registerindx compiler_regallocwithstate(compiler *c, functionstate *f, va
     }
 
 regalloc_end:
-    if (!MORPHO_ISNIL(symbol)) debug_setreg(&c->out->annotations, i, symbol);
+    if (!MORPHO_ISNIL(symbol)) debugannotation_setreg(&c->out->annotations, i, symbol);
 
     return i;
 }
@@ -390,7 +390,7 @@ static void compiler_regsetsymbol(compiler *c, registerindx reg, value symbol) {
     functionstate *f = compiler_currentfunctionstate(c);
     if (reg<f->registers.count && f->registers.data[reg].isallocated) {
         f->registers.data[reg].symbol=symbol;
-        if (!MORPHO_ISNIL(symbol)) debug_setreg(&c->out->annotations, reg, symbol);
+        if (!MORPHO_ISNIL(symbol)) debugannotation_setreg(&c->out->annotations, reg, symbol);
     }
 }
 
@@ -447,7 +447,7 @@ static void compiler_regfree(compiler *c, functionstate *f, registerindx reg) {
         f->registers.data[reg].isallocated=false;
         f->registers.data[reg].scopedepth=0;
         if (!MORPHO_ISNIL(f->registers.data[reg].symbol)) {
-            debug_setreg(&c->out->annotations, reg, MORPHO_NIL);
+            debugannotation_setreg(&c->out->annotations, reg, MORPHO_NIL);
         }
         f->registers.data[reg].symbol=MORPHO_NIL;
     }
@@ -911,7 +911,7 @@ static globalindx compiler_addglobal(compiler *c, syntaxtreenode *node, value sy
         if (dictionary_insert(&c->globals, object_clonestring(symbol), MORPHO_INTEGER(c->out->nglobals))) {
             indx=c->out->nglobals;
             c->out->nglobals++;
-            debug_setglobal(&c->out->annotations, indx, symbol);
+            debugannotation_setglobal(&c->out->annotations, indx, symbol);
         }
     }
 
@@ -2102,7 +2102,7 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
     compiler_addinstruction(c, ENCODE_LONG(OP_PUSHERR, 0, cdictindx), node);
     out.ninstructions++;
 
-    debug_pusherr(&c->out->annotations, cdict);
+    debugannotation_pusherr(&c->out->annotations, cdict);
 
     /* Compile the body */
     if (node->left!=SYNTAXTREE_UNCONNECTED) {
@@ -2171,7 +2171,7 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
     varray_syntaxtreeindxclear(&switchnodes);
     varray_syntaxtreeindxclear(&labelnodes);
 
-    debug_poperr(&c->out->annotations);
+    debugannotation_poperr(&c->out->annotations);
 
     return out;
 }
@@ -3239,7 +3239,7 @@ void compiler_stripend(compiler *c) {
 
     if (last>0 && out->code.data[last-1] == ENCODE_BYTE(OP_END)) {
         out->code.count--;
-        debug_stripend(&out->annotations);
+        debugannotation_stripend(&out->annotations);
     }
 }
 
@@ -3353,7 +3353,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             compiler cc;
             compiler_init(src.data, c->out, &cc);
             compiler_setmodule(&cc, modname);
-            debug_setmodule(&c->out->annotations, modname);
+            debugannotation_setmodule(&c->out->annotations, modname);
             cc.parent=c; /* Ensures global variables can be found */
 
             morpho_compile(src.data, &cc, false, &c->err);
@@ -3365,7 +3365,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                 c->err.module = MORPHO_GETCSTRING(modname);
             }
             
-            debug_setmodule(&c->out->annotations, compiler_getmodule(c));
+            debugannotation_setmodule(&c->out->annotations, compiler_getmodule(c));
             
             compiler_clear(&cc);
 

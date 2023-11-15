@@ -20,8 +20,6 @@ void morpho_runtimeerror(vm *v, errorid id, ...);
  * Debugging annotations
  * ********************************************************************** */
 
-DEFINE_VARRAY(debugannotation, debugannotation);
-
 /** Retrieve the last annotation */
 debugannotation *debug_lastannotation(varray_debugannotation *list) {
     if (list->count>0) return &list->data[list->count-1];

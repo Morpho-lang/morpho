@@ -11,6 +11,7 @@
 #include "syntaxtree.h"
 #include "object.h"
 #include "program.h"
+#include "debugannotation.h"
 
 #define DEBUG_ISSINGLESTEP(d) ((d) && (d->singlestep))
 

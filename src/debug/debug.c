@@ -117,6 +117,200 @@ void debug_clearannotationlist(varray_debugannotation *list) {
 }
 
 /* **********************************************************************
+ * Retrieve debugging info
+ * ********************************************************************** */
+
+/** Finds debugging info asssociated with instruction at indx */
+bool debug_infofromindx(program *code, instructionindx indx, value *module, int *line, int *posn, objectfunction **func, objectclass **klass) {
+    if (module) *module=MORPHO_NIL; 
+    if (func) *func=code->global;
+    if (klass) *klass=NULL;
+    instructionindx i=0;
+    
+    for (unsigned int j=0; j<code->annotations.count; j++) {
+        debugannotation *ann = &code->annotations.data[j];
+        switch (ann->type) {
+            case DEBUG_ELEMENT: {
+                if (i+ann->content.element.ninstr>indx) {
+                    if (line) *line = ann->content.element.line;
+                    if (posn) *posn = ann->content.element.posn;
+                    return true;
+                }
+                i+=ann->content.element.ninstr;
+            }
+                break;
+            case DEBUG_FUNCTION: if (func) *func=ann->content.function.function; break;
+            case DEBUG_CLASS: if (klass) *klass=ann->content.klass.klass; break;
+            case DEBUG_MODULE: if (module) *module=ann->content.module.module; break;
+            default: break;
+        }
+    }
+    
+    return false;
+}
+
+/** Finds the instruction indx corresponding to a particular line of code */
+bool debug_indxfromline(program *code, int line, instructionindx *out) {
+    instructionindx i=0;
+    value module=MORPHO_NIL;
+    
+    for (unsigned int j=0; j<code->annotations.count; j++) {
+        debugannotation *ann = &code->annotations.data[j];
+        switch (ann->type) {
+            case DEBUG_ELEMENT:
+                if (ann->content.element.line==line) {
+                    *out=i;
+                    return true;
+                }
+                i+=ann->content.element.ninstr;
+                break;
+            case DEBUG_MODULE:
+                module=ann->content.module.module;
+                break;
+            default: break;
+        }
+    }
+    return false;
+}
+
+/** Finds the instruction index corresponding to the entry point of a function or method */
+bool debug_indxfromfunction(program *code, value klassname, value fname, instructionindx *indx) {
+    objectclass *cklass=NULL;
+    objectfunction *cfunc=NULL;
+    instructionindx i=0;
+    
+    for (unsigned int j=0; j<code->annotations.count; j++) {
+        debugannotation *ann = &code->annotations.data[j];
+        switch (ann->type) {
+            case DEBUG_ELEMENT:
+                i+=ann->content.element.ninstr;
+                break;
+            case DEBUG_FUNCTION:
+                cfunc=ann->content.function.function;
+                if (MORPHO_ISEQUAL(cfunc->name, fname) &&
+                    (MORPHO_ISNIL(klassname) || MORPHO_ISEQUAL(cklass->name, klassname))) {
+                    *indx=cfunc->entry;
+                    return true;
+                }
+                break;
+            case DEBUG_CLASS:
+                cklass=ann->content.klass.klass;
+                break;
+            default: break;
+        }
+    }
+    
+    return false;
+}
+
+/** Identifies symbols associated with registers
+ * @param[in] code - a program
+ * @param[in] func - the function of interest
+ * @param[in] indx - (optional) instruction to stop at
+ * @param[out] symbols - array of size func->negs; entries will contain associated register names on exit */
+bool debug_symbolsforfunction(program *code, objectfunction *func, instructionindx *indx, value *symbols) {
+    objectfunction *cfunc=code->global;
+    instructionindx i=0;
+    
+    for (unsigned int j=0; j<func->nregs; j++) symbols[j]=MORPHO_NIL;
+    
+    for (unsigned int j=0; j<code->annotations.count; j++) {
+        debugannotation *ann = &code->annotations.data[j];
+        switch (ann->type) {
+            case DEBUG_ELEMENT: {
+                if (indx && i+ann->content.element.ninstr>*indx) return true;
+                i+=ann->content.element.ninstr;
+            }
+                break;
+            case DEBUG_FUNCTION: cfunc=ann->content.function.function; break;
+            case DEBUG_REGISTER: {
+                if (cfunc==func) {
+                    symbols[ann->content.reg.reg]=ann->content.reg.symbol;
+                }
+            }
+                break;
+            default: break;
+        }
+    }
+    
+    return true;
+}
+
+/** Prints all the annotations for a program */
+void debug_showannotations(varray_debugannotation *list) {
+    indx ix = 0;
+    printf("Showing %u annotations.\n", list->count);
+    for (unsigned int j=0; j<list->count; j++) {
+        printf("%u: ", j);
+        debugannotation *ann = &list->data[j];
+        switch (ann->type) {
+            case DEBUG_CLASS:
+                printf("Class: ");
+                if (!ann->content.klass.klass) {
+                    printf("(none)");
+                } else {
+                    morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.klass.klass));
+                }
+                break;
+            case DEBUG_ELEMENT:
+                printf("Element: [%ti] instructions: %i line: %i posn: %i",
+                       ix, ann->content.element.ninstr, ann->content.element.line, ann->content.element.posn);
+                ix+=ann->content.element.ninstr;
+                break;
+            case DEBUG_FUNCTION:
+                printf("Function: ");
+                morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.function.function));
+                break;
+            case DEBUG_MODULE:
+                printf("Module: ");
+                morpho_printvalue(NULL, ann->content.module.module);
+                break;
+            case DEBUG_PUSHERR:
+                printf("Pusherr: ");
+                morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.errorhandler.handler));
+                break;
+            case DEBUG_POPERR:
+                printf("Poperr: ");
+                break;
+            case DEBUG_REGISTER:
+                printf("Register: %ti ", ann->content.reg.reg);
+                morpho_printvalue(NULL, ann->content.reg.symbol);
+                break;
+            case DEBUG_GLOBAL:
+                printf("Global: %ti ", ann->content.global.gindx);
+                morpho_printvalue(NULL, ann->content.reg.symbol);
+                break;
+        }
+        printf("\n");
+    }
+}
+
+/* **********************************************************************
+ * Stack traces
+ * ********************************************************************** */
+
+/** Prints a stacktrace */
+void morpho_stacktrace(vm *v) {
+    for (callframe *f = (v->errfp ? v->errfp : v->fp); f!=NULL && f>=v->frame; f--) {
+        instructionindx indx = f->pc-v->current->code.data;
+        if (indx>0) indx--; /* Because the pc always points to the NEXT instr. */
+        
+        morpho_printf(v, "  ");
+        morpho_printf(v, "%s", (f==v->fp ? "  in " : "from "));
+        
+        if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(v, f->function->name);
+        else morpho_printf(v, "global");
+        
+        int line=0;
+        if (debug_infofromindx(v->current, indx, NULL, &line, NULL, NULL, NULL)) {
+            morpho_printf(v, " at line %u", line);
+        }
+        
+        morpho_printf(v, "\n");
+    }
+}
+
+/* **********************************************************************
  * Disassembler
  * ********************************************************************** */
 
@@ -347,200 +541,6 @@ void debug_disassemble(program *code, int *matchline) {
 /** Wrapper onto debug_disassemble */
 void morpho_disassemble(program *code, int *matchline) {
     debug_disassemble(code, matchline);
-}
-
-/* **********************************************************************
- * Retrieve debugging info
- * ********************************************************************** */
-
-/** Finds debugging info asssociated with instruction at indx */
-bool debug_infofromindx(program *code, instructionindx indx, value *module, int *line, int *posn, objectfunction **func, objectclass **klass) {
-    if (module) *module=MORPHO_NIL; 
-    if (func) *func=code->global;
-    if (klass) *klass=NULL;
-    instructionindx i=0;
-    
-    for (unsigned int j=0; j<code->annotations.count; j++) {
-        debugannotation *ann = &code->annotations.data[j];
-        switch (ann->type) {
-            case DEBUG_ELEMENT: {
-                if (i+ann->content.element.ninstr>indx) {
-                    if (line) *line = ann->content.element.line;
-                    if (posn) *posn = ann->content.element.posn;
-                    return true;
-                }
-                i+=ann->content.element.ninstr;
-            }
-                break;
-            case DEBUG_FUNCTION: if (func) *func=ann->content.function.function; break;
-            case DEBUG_CLASS: if (klass) *klass=ann->content.klass.klass; break;
-            case DEBUG_MODULE: if (module) *module=ann->content.module.module; break;
-            default: break;
-        }
-    }
-    
-    return false;
-}
-
-/** Finds the instruction indx corresponding to a particular line of code */
-bool debug_indxfromline(program *code, int line, instructionindx *out) {
-    instructionindx i=0;
-    value module=MORPHO_NIL;
-    
-    for (unsigned int j=0; j<code->annotations.count; j++) {
-        debugannotation *ann = &code->annotations.data[j];
-        switch (ann->type) {
-            case DEBUG_ELEMENT:
-                if (ann->content.element.line==line) {
-                    *out=i;
-                    return true;
-                }
-                i+=ann->content.element.ninstr;
-                break;
-            case DEBUG_MODULE:
-                module=ann->content.module.module;
-                break;
-            default: break;
-        }
-    }
-    return false;
-}
-
-/** Finds the instruction index corresponding to the entry point of a function or method */
-bool debug_indxfromfunction(program *code, value klassname, value fname, instructionindx *indx) {
-    objectclass *cklass=NULL;
-    objectfunction *cfunc=NULL;
-    instructionindx i=0;
-    
-    for (unsigned int j=0; j<code->annotations.count; j++) {
-        debugannotation *ann = &code->annotations.data[j];
-        switch (ann->type) {
-            case DEBUG_ELEMENT:
-                i+=ann->content.element.ninstr;
-                break;
-            case DEBUG_FUNCTION:
-                cfunc=ann->content.function.function;
-                if (MORPHO_ISEQUAL(cfunc->name, fname) &&
-                    (MORPHO_ISNIL(klassname) || MORPHO_ISEQUAL(cklass->name, klassname))) {
-                    *indx=cfunc->entry;
-                    return true;
-                }
-                break;
-            case DEBUG_CLASS:
-                cklass=ann->content.klass.klass;
-                break;
-            default: break;
-        }
-    }
-    
-    return false;
-}
-
-/** Identifies symbols associated with registers
- * @param[in] code - a program
- * @param[in] func - the function of interest
- * @param[in] indx - (optional) instruction to stop at
- * @param[out] symbols - array of size func->negs; entries will contain associated register names on exit */
-bool debug_symbolsforfunction(program *code, objectfunction *func, instructionindx *indx, value *symbols) {
-    objectfunction *cfunc=code->global;
-    instructionindx i=0;
-    
-    for (unsigned int j=0; j<func->nregs; j++) symbols[j]=MORPHO_NIL;
-    
-    for (unsigned int j=0; j<code->annotations.count; j++) {
-        debugannotation *ann = &code->annotations.data[j];
-        switch (ann->type) {
-            case DEBUG_ELEMENT: {
-                if (indx && i+ann->content.element.ninstr>*indx) return true;
-                i+=ann->content.element.ninstr;
-            }
-                break;
-            case DEBUG_FUNCTION: cfunc=ann->content.function.function; break;
-            case DEBUG_REGISTER: {
-                if (cfunc==func) {
-                    symbols[ann->content.reg.reg]=ann->content.reg.symbol;
-                }
-            }
-                break;
-            default: break;
-        }
-    }
-    
-    return true;
-}
-
-/** Prints all the annotations for a program */
-void debug_showannotations(varray_debugannotation *list) {
-    indx ix = 0;
-    printf("Showing %u annotations.\n", list->count);
-    for (unsigned int j=0; j<list->count; j++) {
-        printf("%u: ", j);
-        debugannotation *ann = &list->data[j];
-        switch (ann->type) {
-            case DEBUG_CLASS:
-                printf("Class: ");
-                if (!ann->content.klass.klass) {
-                    printf("(none)");
-                } else {
-                    morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.klass.klass));
-                }
-                break;
-            case DEBUG_ELEMENT:
-                printf("Element: [%ti] instructions: %i line: %i posn: %i",
-                       ix, ann->content.element.ninstr, ann->content.element.line, ann->content.element.posn);
-                ix+=ann->content.element.ninstr;
-                break;
-            case DEBUG_FUNCTION:
-                printf("Function: ");
-                morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.function.function));
-                break;
-            case DEBUG_MODULE:
-                printf("Module: ");
-                morpho_printvalue(NULL, ann->content.module.module);
-                break;
-            case DEBUG_PUSHERR:
-                printf("Pusherr: ");
-                morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.errorhandler.handler));
-                break;
-            case DEBUG_POPERR:
-                printf("Poperr: ");
-                break;
-            case DEBUG_REGISTER:
-                printf("Register: %ti ", ann->content.reg.reg);
-                morpho_printvalue(NULL, ann->content.reg.symbol);
-                break;
-            case DEBUG_GLOBAL:
-                printf("Global: %ti ", ann->content.global.gindx);
-                morpho_printvalue(NULL, ann->content.reg.symbol);
-                break;
-        }
-        printf("\n");
-    }
-}
-
-/* **********************************************************************
- * Stack traces
- * ********************************************************************** */
-
-/** Prints a stacktrace */
-void morpho_stacktrace(vm *v) {
-    for (callframe *f = (v->errfp ? v->errfp : v->fp); f!=NULL && f>=v->frame; f--) {
-        instructionindx indx = f->pc-v->current->code.data;
-        if (indx>0) indx--; /* Because the pc always points to the NEXT instr. */
-        
-        morpho_printf(v, "  ");
-        morpho_printf(v, "%s", (f==v->fp ? "  in " : "from "));
-        
-        if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(v, f->function->name);
-        else morpho_printf(v, "global");
-        
-        int line=0;
-        if (debug_infofromindx(v->current, indx, NULL, &line, NULL, NULL, NULL)) {
-            morpho_printf(v, " at line %u", line);
-        }
-        
-        morpho_printf(v, "\n");
-    }
 }
 
 /* **********************************************************************

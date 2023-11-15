@@ -320,6 +320,11 @@ instructionindx vm_currentinstruction(vm *v) {
     return v->fp->pc-v->current->code.data-1;
 }
 
+/** Return the current debugger */
+debugger *vm_getdebugger(vm *v) {
+    return v->debug;
+}
+
 /** @brief Expands the stack by a specified amount
  *  @param v        the virtual machine
  *  @param reg      the current register base

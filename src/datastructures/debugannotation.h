@@ -8,6 +8,9 @@
 #define debugannotation_h
 
 #include "syntaxtree.h"
+#include "object.h"
+#include "program.h"
+#include "debugannotation.h"
 
 /* -------------------------------------------------------
  * Debug annotations contain debugging information
@@ -72,5 +75,7 @@ void debugannotation_pusherr(varray_debugannotation *list, objectdictionary *dic
 void debugannotation_poperr(varray_debugannotation *list);
 void debugannotation_addnode(varray_debugannotation *list, syntaxtreenode *node);
 void debugannotation_clear(varray_debugannotation *list);
+
+void debugannotation_showannotations(varray_debugannotation *list);
 
 #endif /* debugannotation_h */

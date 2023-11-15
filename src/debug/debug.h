@@ -15,20 +15,23 @@
 
 #define DEBUG_ISSINGLESTEP(d) ((d) && (d->singlestep))
 
+bool debug_infofromindx(program *code, instructionindx indx, value *module, int *line, int *posn, objectfunction **func, objectclass **klass);
+bool debug_indxfromline(program *code, int line, instructionindx *out);
+bool debug_indxfromfunction(program *code, value klassname, value fname, instructionindx *indx);
+bool debug_symbolsforfunction(program *code, objectfunction *func, instructionindx *indx, value *symbols);
+
 void debug_disassembleinstruction(instruction instruction, instructionindx indx, value *konst, value *reg);
 void debug_disassemble(program *code, int *matchline);
 
-bool debug_infofromindx(program *code, instructionindx indx, value *module, int *line, int *posn, objectfunction **func, objectclass **klass);
-
-void debug_showannotations(varray_debugannotation *list);
-
 void debug_showstack(vm *v);
 
-void debugger_init(debugger *d, program *p);;
+void debugger_init(debugger *d, program *p);
 void debugger_clear(debugger *d);
+void debugger_setsinglestep(debugger *d, bool singlestep);
 bool debugger_insinglestep(debugger *d);
-
-bool debug_shouldbreakatpc(vm *v, instruction *pc);
+void debugger_setbreakpoint(debugger *d, instructionindx indx);
+void debugger_clearbreakpoint(debugger *d, instructionindx indx);
+bool debugger_shouldbreakat(debugger *d, instructionindx indx);
 bool debugger_isactive(debugger *d);
 
 #endif /* debug_h */

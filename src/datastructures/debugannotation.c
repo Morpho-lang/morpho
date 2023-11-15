@@ -8,8 +8,8 @@
 
 #include "core.h"
 //#include "debug.h"
-//#include "compile.h"
-//#include "morpho.h"
+#include "compile.h"
+#include "morpho.h"
 
 #include "debugannotation.h"
 
@@ -111,4 +111,57 @@ void debugannotation_clear(varray_debugannotation *list) {
         if (MORPHO_ISOBJECT(sym)) object_free(MORPHO_GETOBJECT(sym));
     }
     varray_debugannotationclear(list);
+}
+
+/* **********************************************************************
+ * Display annotations
+ * ********************************************************************** */
+
+/** Prints all the annotations for a program */
+void debugannotation_showannotations(varray_debugannotation *list) {
+    indx ix = 0;
+    printf("Showing %u annotations.\n", list->count);
+    for (unsigned int j=0; j<list->count; j++) {
+        printf("%u: ", j);
+        debugannotation *ann = &list->data[j];
+        switch (ann->type) {
+            case DEBUG_CLASS:
+                printf("Class: ");
+                if (!ann->content.klass.klass) {
+                    printf("(none)");
+                } else {
+                    morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.klass.klass));
+                }
+                break;
+            case DEBUG_ELEMENT:
+                printf("Element: [%ti] instructions: %i line: %i posn: %i",
+                       ix, ann->content.element.ninstr, ann->content.element.line, ann->content.element.posn);
+                ix+=ann->content.element.ninstr;
+                break;
+            case DEBUG_FUNCTION:
+                printf("Function: ");
+                morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.function.function));
+                break;
+            case DEBUG_MODULE:
+                printf("Module: ");
+                morpho_printvalue(NULL, ann->content.module.module);
+                break;
+            case DEBUG_PUSHERR:
+                printf("Pusherr: ");
+                morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.errorhandler.handler));
+                break;
+            case DEBUG_POPERR:
+                printf("Poperr: ");
+                break;
+            case DEBUG_REGISTER:
+                printf("Register: %ti ", ann->content.reg.reg);
+                morpho_printvalue(NULL, ann->content.reg.symbol);
+                break;
+            case DEBUG_GLOBAL:
+                printf("Global: %ti ", ann->content.global.gindx);
+                morpho_printvalue(NULL, ann->content.reg.symbol);
+                break;
+        }
+        printf("\n");
+    }
 }

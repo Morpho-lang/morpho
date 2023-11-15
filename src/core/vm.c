@@ -91,24 +91,6 @@ static void vm_clear(vm *v) {
     varray_charclear(&v->buffer);
 }
 
-/** Configure print callback function */
-void morpho_setprintfn(vm *v, morphoprintfn printfn, void *ref) {
-    v->printfn=printfn;
-    v->printref=ref;
-}
-
-/** Configure warning callback function */
-void morpho_setwarningfn(vm *v, morphowarningfn warningfn, void *ref) {
-    v->warningfn=warningfn;
-    v->warningref=ref;
-}
-
-/** Configure debugger callback function */
-void morpho_setdebuggerfn(vm *v, morphodebuggerfn debuggerfn, void *ref) {
-    v->debuggerfn=debuggerfn;
-    v->debuggerref=ref;
-}
-
 /** Prepares a vm to run program p */
 bool vm_start(vm *v, program *p) {
     /* Set the current program */
@@ -316,6 +298,26 @@ static inline void vm_closeupvalues(vm *v, value *reg) {
         v->openupvalues=up->next; /* Delink from openupvalues list */
         up->next=NULL;
     }
+}
+
+/** Check if we should break at a given pc */
+bool vm_shouldbreakatpc(vm *v, instruction *pc) {
+    if (!v->debug) return false;
+    if (debugger_insinglestep(v->debug)) return true;
+    instructionindx iindx = pc-v->current->code.data-1;
+    if (debugger_shouldbreakat(v->debug, iindx)) return true;
+    return false;
+}
+
+/** Return the previous instruction index */
+instructionindx vm_previnstruction(vm *v) {
+    if (v->fp->pc>v->current->code.data) return v->fp->pc-v->current->code.data-1;
+    return 0;
+}
+
+/** Return the current instruction index */
+instructionindx vm_currentinstruction(vm *v) {
+    return v->fp->pc-v->current->code.data-1;
 }
 
 /** @brief Expands the stack by a specified amount
@@ -613,7 +615,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
         op=DECODE_OP(bc);                                                    \
         OPCODECNT(op)                                                        \
         MORPHO_DISASSEMBLE_INSRUCTION(bc,pc-v->instructions,v->konst, reg)   \
-        if (debug_shouldbreakatpc(v, pc)) ENTERDEBUGGER();                   \
+        if (vm_shouldbreakatpc(v, pc)) ENTERDEBUGGER();                   \
         switch (op)
 
     /* Each opcode generates a case statement */
@@ -1359,7 +1361,7 @@ callfunction: // Jump here if an instruction becomes a call
 
         CASE_CODE(BREAK):
             if (v->debug) {
-                if (debug_shouldbreakatpc(v, pc) ||
+                if (vm_shouldbreakatpc(v, pc) ||
                     op==OP_BREAK) {
                     ENTERDEBUGGER();
                     ERRORCHK();
@@ -1489,6 +1491,24 @@ vm *morpho_newvm(void) {
 void morpho_freevm(vm *v) {
     vm_clear(v);
     MORPHO_FREE(v);
+}
+
+/** Configure print callback function */
+void morpho_setprintfn(vm *v, morphoprintfn printfn, void *ref) {
+    v->printfn=printfn;
+    v->printref=ref;
+}
+
+/** Configure warning callback function */
+void morpho_setwarningfn(vm *v, morphowarningfn warningfn, void *ref) {
+    v->warningfn=warningfn;
+    v->warningref=ref;
+}
+
+/** Configure debugger callback function */
+void morpho_setdebuggerfn(vm *v, morphodebuggerfn debuggerfn, void *ref) {
+    v->debuggerfn=debuggerfn;
+    v->debuggerref=ref;
 }
 
 /** Returns a VM's error block */

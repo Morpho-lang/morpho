@@ -10,7 +10,6 @@
 #include "syntaxtree.h"
 #include "object.h"
 #include "program.h"
-#include "debugannotation.h"
 
 /* -------------------------------------------------------
  * Debug annotations contain debugging information

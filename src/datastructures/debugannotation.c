@@ -4,13 +4,7 @@
 *  @brief Debugging annotations for programs
 */
 
-#define MORPHO_CORE
-
-#include "core.h"
-//#include "debug.h"
-#include "compile.h"
 #include "morpho.h"
-
 #include "debugannotation.h"
 
 /* **********************************************************************

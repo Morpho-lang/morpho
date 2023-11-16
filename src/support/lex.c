@@ -423,7 +423,7 @@ bool lex_string(lexer *l, token *tok, error *err) {
  *  @param[out] err  error struct to fill out on errors
  *  @returns true on success, false if an error occurs */
 bool lex_number(lexer *l, token *tok, error *err) {
-    tokentype type=TOKEN_INTEGER;
+    tokentype type=l->inttype;
     while (lex_isdigit(lex_peek(l))) lex_advance(l);
     
     /* Fractional part */
@@ -441,7 +441,7 @@ bool lex_number(lexer *l, token *tok, error *err) {
     
     /* Exponent */
     if (lex_peek(l) == 'e' || lex_peek(l) == 'E') {
-        type=TOKEN_NUMBER;
+        type=l->flttype;
         lex_advance(l); /* Consume the 'e' */
         
         /* Optional sign */
@@ -454,7 +454,7 @@ bool lex_number(lexer *l, token *tok, error *err) {
     /* Imaginary Numbers */
     if (lex_peek(l) =='i' && lex_peekahead(l, 1) == 'm'){
         /* mark this as an imaginary number*/
-        type = TOKEN_IMAG;
+        type = l->imagtype;
         lex_advance(l); /* Consume the 'i' */
         lex_advance(l); /* Consume the 'm' */
     }
@@ -556,6 +556,9 @@ void lex_init(lexer *l, const char *start, int line) {
     l->prefn=lex_preprocess;
     l->whitespacefn=lex_skipwhitespace;
     l->eoftype=TOKEN_EOF;
+    l->inttype=TOKEN_INTEGER;
+    l->flttype=TOKEN_NUMBER;
+    l->imagtype=TOKEN_IMAG;
     l->defns=standardtokens;   // Use the standard morpho tokens by default
     l->ndefns=nstandardtokens;
     varray_tokendefninit(&l->defnstore); // Alternative definitions will be held here
@@ -594,6 +597,13 @@ void lex_settokendefns(lexer *l, tokendefn *defns) {
 /** @brief Sets the token type representing End Of File */
 void lex_seteof(lexer *l, tokentype eoftype) {
     l->eoftype = eoftype;
+}
+
+/** @brief Sets the token type representing integers, floats and complex */
+void lex_setnumbertype(lexer *l, tokentype inttype, tokentype flttype, tokentype imagtype) {
+    l->inttype=inttype;
+    l->flttype=flttype;
+    l->imagtype=imagtype;
 }
 
 /** @brief Choose whether the lexer should perform string interpolation. */

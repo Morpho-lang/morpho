@@ -69,9 +69,13 @@ struct slexer {
     
     bool matchkeywords; /** Whether to match keywords or not; default is true */
     bool stringinterpolation; /** Whether to perform string interpolation */
-    tokentype eoftype; /** End of file marker */
     processtokenfn whitespacefn; /** Called to skip whitespace */
     processtokenfn prefn; /** Called before attempting to match the token list */
+    
+    tokentype eoftype; /** End of file marker */
+    tokentype inttype; /** Integers */
+    tokentype flttype; /** Floats */
+    tokentype imagtype; /** Imaginary numbers */
     
     int interpolationlevel; /** Level of string interpolation */
     
@@ -188,6 +192,7 @@ void lex_clear(lexer *l);
 // Configure lexer
 void lex_settokendefns(lexer *l, tokendefn *defns);
 void lex_seteof(lexer *l, tokentype eoftype);
+void lex_setnumbertype(lexer *l, tokentype inttype, tokentype flttype, tokentype imagtype);
 void lex_setstringinterpolation(lexer *l, bool interpolation);
 void lex_setmatchkeywords(lexer *l, bool match);
 void lex_setwhitespacefn(lexer *l, processtokenfn whitespacefn);

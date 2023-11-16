@@ -268,6 +268,10 @@ parserule *parse_getrule(parser *p, tokentype type);
 bool parse_validatestrtol(parser *p, long f);
 bool parse_validatestrtod(parser *p, double f);
 
+// Convert tokens to C types
+bool parse_tokentointeger(parser *p, long *i);
+bool parse_tokentodouble(parser *p, double *x);
+
 // Recursion depth checking
 bool parse_incrementrecursiondepth(parser *p);
 bool parse_decrementrecursiondepth(parser *p);

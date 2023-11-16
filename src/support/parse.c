@@ -289,6 +289,18 @@ bool parse_validatestrtod(parser *p, double f) {
     return true;
 }
 
+/** Converts a token to an integer, returning true on success */
+bool parse_tokentointeger(parser *p, long *i) {
+    *i = strtol(p->previous.start, NULL, 10);
+    return parse_validatestrtol(p, *i);
+}
+
+/** Converts an token to a double, returning true on success */
+bool parse_tokentodouble(parser *p, double *x) {
+    *x = strtod(p->previous.start, NULL);
+    return parse_validatestrtod(p, *x);
+}
+
 /** Increments the recursion depth counter. If it exceeds PARSE_RECURSIONLIMIT an error is generated */
 bool parse_incrementrecursiondepth(parser *p) {
     if (!(p->recursiondepth<p->maxrecursiondepth)) {
@@ -458,16 +470,16 @@ bool parse_nil(parser *p, void *out) {
 
 /** Parses an integer */
 bool parse_integer(parser *p, void *out) {
-    long f = strtol(p->previous.start, NULL, 10);
-    PARSE_CHECK(parse_validatestrtol(p, f));
+    long f;
+    PARSE_CHECK(parse_tokentointeger(p, &f));
     
     return parse_addnode(p, NODE_INTEGER, MORPHO_INTEGER(f), &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
 
 /** Parses a number */
 bool parse_number(parser *p, void *out) {
-    double f = strtod(p->previous.start, NULL);
-    PARSE_CHECK(parse_validatestrtod(p, f));
+    double f;
+    PARSE_CHECK(parse_tokentodouble(p, &f));
     
     return parse_addnode(p, NODE_FLOAT, MORPHO_FLOAT(f), &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
@@ -478,8 +490,7 @@ bool parse_complex(parser *p, void *out) {
     if (p->previous.length==2) { // just a bare im symbol
         f = 1;
     } else {
-        f = strtod(p->previous.start, NULL);
-        PARSE_CHECK(parse_validatestrtod(p, f));
+        PARSE_CHECK(parse_tokentodouble(p, &f));
     }
     value c = MORPHO_OBJECT(object_newcomplex(0,f));
     parse_addobject(p, c);

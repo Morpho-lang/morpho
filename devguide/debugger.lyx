@@ -213,6 +213,7 @@ morpho-cli
  This implements an interactive REPL interface that allows the user to work
  with the debugger.
  It is not privileged, and exclusively works through the debugger API.
+ The interface is described above in part 1.
  
 \end_layout
 

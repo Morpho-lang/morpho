@@ -196,7 +196,11 @@ datastructures/debugannotation
 debugger, defined in debug/debug.c.
  This data structure maintains the state of the debugger, and provides a
  debugging API for debugger interfaces.
- Requests for information are fulfilled using morpho_printf.
+ Requests for information are fulfilled using 
+\family typewriter
+morpho_printf
+\family default
+.
  
 \end_layout
 

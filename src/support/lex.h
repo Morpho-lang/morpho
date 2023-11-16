@@ -76,6 +76,7 @@ struct slexer {
     tokentype inttype; /** Integers */
     tokentype flttype; /** Floats */
     tokentype imagtype; /** Imaginary numbers */
+    tokentype symboltype; /** Symbol numbers */
     
     int interpolationlevel; /** Level of string interpolation */
     
@@ -193,6 +194,7 @@ void lex_clear(lexer *l);
 void lex_settokendefns(lexer *l, tokendefn *defns);
 void lex_seteof(lexer *l, tokentype eoftype);
 void lex_setnumbertype(lexer *l, tokentype inttype, tokentype flttype, tokentype imagtype);
+void lex_setsymboltype(lexer *l, tokentype symboltype);
 void lex_setstringinterpolation(lexer *l, bool interpolation);
 void lex_setmatchkeywords(lexer *l, bool match);
 void lex_setwhitespacefn(lexer *l, processtokenfn whitespacefn);

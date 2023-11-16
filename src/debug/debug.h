@@ -34,4 +34,11 @@ void debugger_clearbreakpoint(debugger *d, instructionindx indx);
 bool debugger_shouldbreakat(debugger *d, instructionindx indx);
 bool debugger_isactive(debugger *d);
 
+bool debugger_showaddress(debugger *debug, indx reg);
+bool debugger_showbreakpoints(debugger *debug);
+bool debugger_showglobals(debugger *debug);
+bool debugger_showglobal(debugger *debug, indx g);
+bool debugger_showregisters(debugger *debug);
+bool debugger_showstack(debugger *debug);
+
 #endif /* debug_h */

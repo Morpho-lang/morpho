@@ -470,7 +470,7 @@ bool lex_number(lexer *l, token *tok, error *err) {
  *  @param[in]  length length to compare
  *  @param[in]  match  string to match with
  *  @param[in]  type   token type to use if the match is successful
- *  @returns type or TOKEN_SYMBOL if the match was not successful */
+ *  @returns type or symboltype if the match was not successful */
 tokentype lex_checksymbol(lexer *l, int start, int length, char *match, tokentype type) {
     int toklength = (int) (l->current - l->start);
     int expectedlength = start + length;
@@ -479,11 +479,11 @@ tokentype lex_checksymbol(lexer *l, int start, int length, char *match, tokentyp
     if ((toklength == expectedlength) && (memcmp(l->start+start, match, length) == 0))
             return type;
     
-    return TOKEN_SYMBOL;
+    return l->symboltype;
 }
 
 tokentype lex_symboltype(lexer *l) {
-    tokentype t = TOKEN_SYMBOL;
+    tokentype t = l->symboltype;
     tokendefn *def;
     
     if (lex_matchtoken(l, &def)) t = def->type;
@@ -499,7 +499,7 @@ tokentype lex_symboltype(lexer *l) {
 bool lex_symbol(lexer *l, token *tok, error *err) {
     while (lex_isalpha(lex_peek(l)) || lex_isdigit(lex_peek(l))) lex_advance(l);
     
-    tokentype typ = TOKEN_SYMBOL;
+    tokentype typ = l->symboltype;
     if (l->matchkeywords) typ = lex_symboltype(l);
     
     lex_recordtoken(l, typ, tok);
@@ -559,6 +559,7 @@ void lex_init(lexer *l, const char *start, int line) {
     l->inttype=TOKEN_INTEGER;
     l->flttype=TOKEN_NUMBER;
     l->imagtype=TOKEN_IMAG;
+    l->symboltype=TOKEN_SYMBOL;
     l->defns=standardtokens;   // Use the standard morpho tokens by default
     l->ndefns=nstandardtokens;
     varray_tokendefninit(&l->defnstore); // Alternative definitions will be held here
@@ -604,6 +605,11 @@ void lex_setnumbertype(lexer *l, tokentype inttype, tokentype flttype, tokentype
     l->inttype=inttype;
     l->flttype=flttype;
     l->imagtype=imagtype;
+}
+
+/** @brief Sets the token type representing symbols */
+void lex_setsymboltype(lexer *l, tokentype symboltype) {
+    l->symboltype=symboltype;
 }
 
 /** @brief Choose whether the lexer should perform string interpolation. */

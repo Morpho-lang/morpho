@@ -459,8 +459,32 @@ bool debugger_isactive(debugger *d) {
 }
 
 /* **********************************************************************
- * Debugger info commands
+ * Enter the debugger (called by the VM)
  * ********************************************************************** */
+
+/** Enters the debugger, if one is active. */
+bool debugger_enter(vm *v, debugger *debug) {
+    if (debug && v->debuggerfn) {
+        // Get instruction index
+        debug->iindx = vm_currentinstruction(v);
+        
+        // Retain previous line and function information
+        int oline=debug->currentline;
+        objectfunction *ofunc=debug->currentfunc;
+        
+        // Fetch info from annotations
+        debug_infofromindx(v->current, debug->iindx, &debug->currentmodule, &debug->currentline, NULL, &debug->currentfunc, NULL);
+        
+        // If we're in single step mode, only stop when we've changed line OR if a breakpoint is explicitly set
+        if (debugger_insinglestep(debug) &&
+            oline==debug->currentline &&
+            ofunc==debug->currentfunc &&
+            !debugger_shouldbreakat(debug, debug->iindx)) return;
+        
+        (v->debuggerfn) (v, v->debuggerref);
+    }
+    return debug;
+}
 
 /* **********************************************************************
  * Run a program with debugging active

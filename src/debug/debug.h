@@ -41,4 +41,6 @@ bool debugger_showglobal(debugger *debug, indx g);
 bool debugger_showregisters(debugger *debug);
 bool debugger_showstack(debugger *debug);
 
+bool debugger_enter(vm *v, debugger *debug);
+
 #endif /* debug_h */

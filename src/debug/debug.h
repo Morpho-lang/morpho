@@ -43,6 +43,7 @@ void debugger_quit(debugger *debug);
 bool debugger_setregister(debugger *debug, indx reg, value val);
 bool debugger_setsymbol(debugger *debug, char *symbol, value val);
 
+void debugger_showlocation(debugger *debug, instructionindx indx);
 bool debugger_showaddress(debugger *debug, indx rindx);
 bool debugger_showbreakpoints(debugger *debug);
 bool debugger_showglobals(debugger *debug);

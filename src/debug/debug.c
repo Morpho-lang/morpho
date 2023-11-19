@@ -10,6 +10,7 @@
 
 #include "compile.h"
 #include "vm.h"
+#include "gc.h"
 #include "debug.h"
 #include "morpho.h"
 #include "strng.h"
@@ -472,12 +473,41 @@ void debugger_garbagecollect(debugger *debug) {
 }
 
 void debugger_quit(debugger *debug) {
-    
+    morpho_runtimeerror(debug->currentvm, VM_DBGQUIT);
 }
 
 /* **********************************************************************
  * Show commands
  * ********************************************************************** */
+
+/** Prints the location information for a given instruction */
+void debugger_showlocation(debugger *debug, instructionindx indx) {
+    vm *v = debugger_currentvm(debug);
+    
+    value module=MORPHO_NIL; // Find location information
+    int line=0;
+    objectfunction *fn=NULL;
+    objectclass *klass=NULL;
+    debug_infofromindx(v->current, indx, &module, &line, NULL, &fn, &klass);
+    
+    morpho_printf(v, "in ");
+    
+    if (klass) {
+        morpho_printvalue(v, klass->name);
+        morpho_printf(v, ".");
+    }
+    
+    if (!MORPHO_ISNIL(fn->name)) morpho_printvalue(v, fn->name);
+    else if (v->current->global==fn) morpho_printf(v, "global");
+    else morpho_printf(v, "anonymous fn");
+    
+    if (!MORPHO_ISNIL(module)) {
+        morpho_printf(v, " in \"");
+        morpho_printvalue(v, module);
+        morpho_printf(v, "\"");
+    }
+    morpho_printf(v, " at line %i [instruction %ti]", line, indx);
+}
 
 /** Shows the address of an object */
 bool debugger_showaddress(debugger *debug, indx rindx) {

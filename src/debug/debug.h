@@ -23,17 +23,25 @@ bool debug_symbolsforfunction(program *code, objectfunction *func, instructionin
 void debug_disassembleinstruction(instruction instruction, instructionindx indx, value *konst, value *reg);
 void debug_disassemble(program *code, int *matchline);
 
-void debug_showstack(vm *v);
-
 void debugger_init(debugger *d, program *p);
 void debugger_clear(debugger *d);
+
+vm *debugger_currentvm(debugger *d);
+bool debugger_isactive(debugger *d);
+
 void debugger_setsinglestep(debugger *d, bool singlestep);
 bool debugger_insinglestep(debugger *d);
+
 void debugger_setbreakpoint(debugger *d, instructionindx indx);
 void debugger_clearbreakpoint(debugger *d, instructionindx indx);
 bool debugger_shouldbreakat(debugger *d, instructionindx indx);
-bool debugger_isactive(debugger *d);
-vm *debugger_currentvm(debugger *d);
+
+void debugger_garbagecollect(debugger *debug);
+
+void debugger_quit(debugger *debug);
+
+bool debugger_setregister(debugger *debug, indx reg, value val);
+bool debugger_setsymbol(debugger *debug, char *symbol, value val);
 
 bool debugger_showaddress(debugger *debug, indx reg);
 bool debugger_showbreakpoints(debugger *debug);

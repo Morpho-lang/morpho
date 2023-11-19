@@ -20,5 +20,6 @@ void morpho_finalize(void);
 instructionindx vm_previnstruction(vm *v);
 instructionindx vm_currentinstruction(vm *v);
 debugger *vm_getdebugger(vm *v);
+void vm_collectgarbage(vm *v);
 
 #endif /* vm_h */

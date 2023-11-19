@@ -464,6 +464,18 @@ vm *debugger_currentvm(debugger *d) {
 }
 
 /* **********************************************************************
+ * Debugger commands
+ * ********************************************************************** */
+
+void debugger_garbagecollect(debugger *debug) {
+    vm_collectgarbage(debug->currentvm);
+}
+
+void debugger_quit(debugger *debug) {
+    
+}
+
+/* **********************************************************************
  * Enter the debugger (called by the VM)
  * ********************************************************************** */
 

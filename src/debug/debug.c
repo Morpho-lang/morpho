@@ -476,6 +476,31 @@ void debugger_quit(debugger *debug) {
 }
 
 /* **********************************************************************
+ * Show commands
+ * ********************************************************************** */
+
+/** Shows the address of an object */
+bool debugger_showaddress(debugger *debug, indx rindx) {
+    bool success=false;
+    if (rindx>=0 && rindx<debug->currentvm->fp->function->nregs) {
+        value *reg = debug->currentvm->stack.data + debug->currentvm->fp->roffset;
+        if (MORPHO_ISOBJECT(reg[rindx])) {
+            morpho_printf(debug->currentvm, "Object in register %i at %p.\n", (int) rindx, (void *) MORPHO_GETOBJECT(reg[rindx]));
+            success=true;
+        } else {
+            morpho_printf(debug->currentvm, "Register %i does not contain an object.\n", (int) rindx);
+        }
+    } else morpho_printf(debug->currentvm, "Invalid register.\n");
+    return success;
+}
+
+bool debugger_showbreakpoints(debugger *debug);
+bool debugger_showglobals(debugger *debug);
+bool debugger_showglobal(debugger *debug, indx g);
+bool debugger_showregisters(debugger *debug);
+bool debugger_showstack(debugger *debug);
+
+/* **********************************************************************
  * Enter the debugger (called by the VM)
  * ********************************************************************** */
 
@@ -498,7 +523,7 @@ bool debugger_enter(debugger *debug, vm *v) {
         if (debugger_insinglestep(debug) &&
             oline==debug->currentline &&
             ofunc==debug->currentfunc &&
-            !debugger_shouldbreakat(debug, debug->iindx)) return;
+            !debugger_shouldbreakat(debug, debug->iindx)) return false;
         
         (v->debuggerfn) (v, v->debuggerref);
     }

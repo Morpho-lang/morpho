@@ -33,6 +33,7 @@ void debugger_setbreakpoint(debugger *d, instructionindx indx);
 void debugger_clearbreakpoint(debugger *d, instructionindx indx);
 bool debugger_shouldbreakat(debugger *d, instructionindx indx);
 bool debugger_isactive(debugger *d);
+vm *debugger_currentvm(debugger *d);
 
 bool debugger_showaddress(debugger *debug, indx reg);
 bool debugger_showbreakpoints(debugger *debug);
@@ -41,6 +42,6 @@ bool debugger_showglobal(debugger *debug, indx g);
 bool debugger_showregisters(debugger *debug);
 bool debugger_showstack(debugger *debug);
 
-bool debugger_enter(vm *v, debugger *debug);
+bool debugger_enter(debugger *debug, vm *v);
 
 #endif /* debug_h */

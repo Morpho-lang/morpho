@@ -458,13 +458,20 @@ bool debugger_isactive(debugger *d) {
     return (d->singlestep || (d->nbreakpoints>0));
 }
 
+/** Returns the current VM */
+vm *debugger_currentvm(debugger *d) {
+    return d->currentvm;
+}
+
 /* **********************************************************************
  * Enter the debugger (called by the VM)
  * ********************************************************************** */
 
 /** Enters the debugger, if one is active. */
-bool debugger_enter(vm *v, debugger *debug) {
+bool debugger_enter(debugger *debug, vm *v) {
     if (debug && v->debuggerfn) {
+        debug->currentvm = v;
+        
         // Get instruction index
         debug->iindx = vm_currentinstruction(v);
         

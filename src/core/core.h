@@ -137,6 +137,7 @@ typedef struct {
 typedef struct {
     bool singlestep; /** Is single step mode on? */
     
+    struct svm *currentvm; /** Current virtual machine on entry */
     int currentline; /** Record current line */
     objectfunction *currentfunc; /** Record current function */
     value currentmodule; /** Current module */

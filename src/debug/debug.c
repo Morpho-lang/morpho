@@ -165,239 +165,6 @@ void morpho_stacktrace(vm *v) {
 }
 
 /* **********************************************************************
- * Disassembler
- * ********************************************************************** */
-
-/** Formatting rules for disassembler */
-typedef struct {
-    instruction op;
-    char *label;
-    char *display;
-} assemblyrule;
-
-/* Order is not significant here */
-assemblyrule assemblyrules[] ={
-    { OP_NOP, "nop", "" },
-    { OP_MOV, "mov", "rA, rB" },
-    { OP_LCT, "lct", "rA, cX" }, // Custom
-    { OP_ADD, "add", "rA, rB, rC" },
-    { OP_SUB, "sub", "rA, rB, rC" },
-    { OP_MUL, "mul", "rA, rB, rC" },
-    { OP_DIV, "div", "rA, rB, rC" },
-    { OP_POW, "pow", "rA, rB, rC" },
-    { OP_NOT, "not", "rA, rB" },
-    
-    { OP_EQ, "eq ", "rA, rB, rC" },
-    { OP_NEQ, "neq", "rA, rB, rC" },
-    { OP_LT, "lt ", "rA, rB, rC" },
-    { OP_LE, "le ", "rA, rB, rC" },
-    
-    { OP_PRINT, "print", "rA" },
-    
-    { OP_B, "b", "+" },
-    { OP_BIF, "bif", "rA +" },
-    { OP_BIFF, "biff", "rA +" },
-    
-    { OP_CALL, "call", "rA, B" }, // b literal
-    { OP_INVOKE, "invoke", "rA, rB, C" }, // c literal
-    
-    { OP_RETURN, "return", "rB" }, // c literal
-
-    { OP_CLOSURE, "closure", "rA, pB" }, // b prototype
-    
-    { OP_LUP, "lup", "rA, uB" }, // b 'u'
-    { OP_SUP, "sup", "uA, rB" }, // a 'u', b c|r
-    
-    { OP_CLOSEUP, "closeup", "rA" },
-    { OP_LPR, "lpr", "rA, rB, rC" },
-    { OP_SPR, "spr", "rA, rB, rC" },
-    
-    { OP_LIX, "lix", "rA, rB, rC" },
-    { OP_SIX, "six", "rA, rB, rC" },
-    
-    { OP_LGL, "lgl", "rA, gX" }, //
-    { OP_SGL, "sgl", "rA, gX" }, // label b with 'g'
-    
-    { OP_PUSHERR, "pusherr", "cX" },
-    { OP_POPERR, "poperr", "+" },
-    
-    { OP_CAT, "cat", "rA, rB, rC" },
-    { OP_BREAK, "break", "" },
-    { OP_END, "end", "" },
-    { 0, NULL, "" } // Null terminate the list
-};
-
-assemblyrule *debug_getassemblyrule(unsigned int op) {
-    for (unsigned int i=0; assemblyrules[i].label!=NULL; i++) if (assemblyrules[i].op==op) return &assemblyrules[i];
-    return NULL;
-}
-
-typedef enum { NONE, REG, CONST} debugcontents;
-
-/** Shows the contents of a register or constant */
-bool debug_showcontents(debugcontents b, int i, value *konst, value *reg) {
-    value *table = NULL;
-    switch (b) {
-        case CONST: table=konst; break;
-        case REG: table = reg; break;
-        default: break;
-    }
-    if (!table) return false;
-    printf("%s%i=", (b==CONST ? "c" : "r"), i);
-    morpho_printvalue(NULL, table[i]);
-    return true;
-}
-
-/** @brief Disassembles a single instruction, writing the output to the console.
- *  @param instruction The instruction to disassemble
- *  @param indx        Instruction index to display
- *  @param konst current constant table
- *  @param reg   current registers */
-void debug_disassembleinstruction(instruction instruction, instructionindx indx, value *konst, value *reg) {
-    unsigned int op = DECODE_OP(instruction);
-    debugcontents mode=NONE, bm=NONE, cm=NONE;
-    int nb=0, nc=0;
-    printf("%4lu : ", indx);
-    int n=0; // Number of characters displayed
-    int width=25; // Width of display
-    
-    assemblyrule *show=debug_getassemblyrule(op);
-    if (show) {
-        n+=printf("%s ", show->label);
-        for (char *c=show->display; *c!='\0'; c++) {
-            switch (*c) {
-                case 'A': n+=printf("%u", DECODE_A(instruction)); break;
-                case 'B': {
-                    bm=mode; nb=DECODE_B(instruction); mode=NONE;
-                    n+=printf("%u", nb);
-                }
-                    break;
-                case 'X': {
-                    bm=mode; nb=DECODE_Bx(instruction); mode=NONE;
-                    n+=printf("%u", nb);
-                }
-                    break;
-                case '+': n+=printf("%i", DECODE_sBx(instruction)); break;
-                case 'C': {
-                    cm=mode; nc=DECODE_C(instruction);
-                    n+=printf("%u", DECODE_C(instruction));
-                }
-                    break;
-                case 'c': mode=CONST; n+=printf("%c", *c); break;
-                case 'r': mode=REG; n+=printf("%c", *c); break;
-                default: n+=printf("%c", *c); break;
-            }
-        }
-        
-        /* Show contents if any were produced by this instruction */
-        if ((!konst && !reg) || (bm==NONE && cm==NONE)) return;
-        for (int k=width-n; k>0; k--) printf(" ");
-        printf("; ");
-        if (debug_showcontents(bm, nb, konst, reg)) printf(" ");
-        debug_showcontents(cm, nc, konst, reg);
-    }
-}
-
-/** Checks if an instruction matches a label in the current error dictionary, and if so print it. */
-void debug_errorlabel(varray_value *errorstack, instructionindx i) {
-    objectdictionary *dict = MORPHO_GETDICTIONARY(errorstack->data[errorstack->count-1]);
-    
-    /* Search the current error handler to see if this line corresponds to a label */
-    for (unsigned int k=0; k<dict->dict.capacity; k++) {
-        value label = dict->dict.contents[k].key;
-        if (!MORPHO_ISNIL(label)) {
-            if (MORPHO_GETINTEGERVALUE(dict->dict.contents[k].val)==i) {
-                morpho_printvalue(NULL, label);
-                printf(":\n");
-            }
-        }
-    }
-}
-
-/** Disassembles a program
- *  @param code - program to disassemble
- *  @param matchline - optional line number to match */
-void debug_disassemble(program *code, int *matchline) {
-    instructionindx entry = program_getentry(code); // The entry point of the function
-    instructionindx i=0;
-    value *konst=(code->global ? code->global->konst.data : NULL);
-    bool silent = matchline;
-    
-    varray_value errorstack;
-    varray_valueinit(&errorstack);
-    
-    /* Loop over debugging information */
-    for (unsigned int j=0; j<code->annotations.count; j++) {
-        debugannotation *ann = &code->annotations.data[j];
-        
-        switch(ann->type) {
-            case DEBUG_ELEMENT:
-                {
-                    if (matchline) {
-                        if (ann->content.element.line<(*matchline)) {
-                            i+=ann->content.element.ninstr;
-                            break;
-                        }
-                        if (ann->content.element.line>(*matchline)) return;
-                    } else if (errorstack.count>0) {
-                        debug_errorlabel(&errorstack, i);
-                    }
-                    
-                    for (unsigned int k=0; k<ann->content.element.ninstr; k++, i++) {
-                        printf("%s",(i==entry ? "->" : "  "));
-                        debug_disassembleinstruction(code->code.data[i], i, konst, NULL);
-                        printf("\n");
-                    }
-                }
-                break;
-            case DEBUG_FUNCTION:
-                {
-                    objectfunction *func=ann->content.function.function;
-                    konst=func->konst.data;
-                    if (silent) break;
-                    if (!MORPHO_ISNIL(func->name)) {
-                        printf("fn ");
-                        morpho_printvalue(NULL, func->name);
-                        printf(":\n");
-                    } else printf("\n");
-                }
-                break;
-            case DEBUG_CLASS:
-                {
-                    objectclass *klass=ann->content.klass.klass;
-                    if (silent) break;
-                    if (klass && !MORPHO_ISNIL(klass->name)) {
-                        printf("class ");
-                        morpho_printvalue(NULL, klass->name);
-                        printf(":\n");
-                    }
-                }
-                break;
-            case DEBUG_PUSHERR:
-                {
-                    objectdictionary *errdict = ann->content.errorhandler.handler;
-                    varray_valuewrite(&errorstack, MORPHO_OBJECT(errdict));
-                }
-                break;
-            case DEBUG_POPERR:
-                {
-                    if (errorstack.count>0) errorstack.count--;
-                }
-                break;
-            default:
-                break;
-        }
-    }
-    
-    varray_valueclear(&errorstack);
-}
-
-/** Wrapper onto debug_disassemble */
-void morpho_disassemble(program *code, int *matchline) {
-    debug_disassemble(code, matchline);
-}
-
-/* **********************************************************************
  * Debugger data structure
  * ********************************************************************** */
 
@@ -477,6 +244,241 @@ void debugger_quit(debugger *debug) {
 }
 
 /* **********************************************************************
+ * Disassembler
+ * ********************************************************************** */
+
+/** Formatting rules for disassembler */
+typedef struct {
+    instruction op; /** Opcode */
+    char *label; /** Label to display in disasembler */
+    char *display; /** Display code - rX is register, cX is constant X, gX is global X, uX is upvalue, + refers to signed B */
+} assemblyrule;
+
+/* Define assembler by how to display each opcode */
+assemblyrule assemblyrules[] ={
+    { OP_NOP, "nop", "" },
+    { OP_MOV, "mov", "rA, rB" },
+    { OP_LCT, "lct", "rA, cX" },
+    { OP_ADD, "add", "rA, rB, rC" },
+    { OP_SUB, "sub", "rA, rB, rC" },
+    { OP_MUL, "mul", "rA, rB, rC" },
+    { OP_DIV, "div", "rA, rB, rC" },
+    { OP_POW, "pow", "rA, rB, rC" },
+    { OP_NOT, "not", "rA, rB" },
+    
+    { OP_EQ, "eq ", "rA, rB, rC" },
+    { OP_NEQ, "neq", "rA, rB, rC" },
+    { OP_LT, "lt ", "rA, rB, rC" },
+    { OP_LE, "le ", "rA, rB, rC" },
+    
+    { OP_PRINT, "print", "rA" },
+    
+    { OP_B, "b", "+" },
+    { OP_BIF, "bif", "rA +" },
+    { OP_BIFF, "biff", "rA +" },
+    
+    { OP_CALL, "call", "rA, B" }, // b literal
+    { OP_INVOKE, "invoke", "rA, rB, C" }, // c literal
+    
+    { OP_RETURN, "return", "rB" }, // c literal
+
+    { OP_CLOSURE, "closure", "rA, pB" }, // b prototype
+    
+    { OP_LUP, "lup", "rA, uB" }, // b 'u'
+    { OP_SUP, "sup", "uA, rB" }, // a 'u', b c|r
+    
+    { OP_CLOSEUP, "closeup", "rA" },
+    { OP_LPR, "lpr", "rA, rB, rC" },
+    { OP_SPR, "spr", "rA, rB, rC" },
+    
+    { OP_LIX, "lix", "rA, rB, rC" },
+    { OP_SIX, "six", "rA, rB, rC" },
+    
+    { OP_LGL, "lgl", "rA, gX" }, //
+    { OP_SGL, "sgl", "rA, gX" }, // label b with 'g'
+    
+    { OP_PUSHERR, "pusherr", "cX" },
+    { OP_POPERR, "poperr", "+" },
+    
+    { OP_CAT, "cat", "rA, rB, rC" },
+    { OP_BREAK, "break", "" },
+    { OP_END, "end", "" },
+    { 0, NULL, "" } // Null terminate the list
+};
+
+assemblyrule *debug_getassemblyrule(unsigned int op) {
+    for (unsigned int i=0; assemblyrules[i].label!=NULL; i++) if (assemblyrules[i].op==op) return &assemblyrules[i];
+    return NULL;
+}
+
+typedef enum { NONE, REG, CONST} debugcontents;
+
+/** Shows the contents of a register or constant */
+bool debugger_showcontents(vm *v, debugcontents b, int i, value *konst, value *reg) {
+    value *table = NULL;
+    switch (b) {
+        case CONST: table=konst; break;
+        case REG: table = reg; break;
+        default: break;
+    }
+    if (!table) return false;
+    morpho_printf(v, "%s%i=", (b==CONST ? "c" : "r"), i);
+    morpho_printvalue(v, table[i]);
+    return true;
+}
+
+/** @brief Disassembles a single instruction, writing the output to the console.
+ *  @param v VM to use for output
+ *  @param instruction The instruction to disassemble
+ *  @param indx        Instruction index to display
+ *  @param konst current constant table
+ *  @param reg   current registers */
+void debugger_disassembleinstruction(vm *v, instruction instruction, instructionindx indx, value *konst, value *reg) {
+    unsigned int op = DECODE_OP(instruction);
+    debugcontents mode=NONE, bm=NONE, cm=NONE;
+    int nb=0, nc=0;
+    morpho_printf(v, "%4lu : ", indx);
+    int n=0; // Number of characters displayed
+    int width=25; // Width of display
+    
+    assemblyrule *show=debug_getassemblyrule(op);
+    if (show) {
+        n+=morpho_printf(v, "%s ", show->label);
+        for (char *c=show->display; *c!='\0'; c++) {
+            switch (*c) {
+                case 'A': n+=morpho_printf(v, "%u", DECODE_A(instruction)); break;
+                case 'B': {
+                    bm=mode; nb=DECODE_B(instruction); mode=NONE;
+                    n+=morpho_printf(v, "%u", nb);
+                }
+                    break;
+                case 'X': {
+                    bm=mode; nb=DECODE_Bx(instruction); mode=NONE;
+                    n+=morpho_printf(v, "%u", nb);
+                }
+                    break;
+                case '+': n+=morpho_printf(v, "%i", DECODE_sBx(instruction)); break;
+                case 'C': {
+                    cm=mode; nc=DECODE_C(instruction);
+                    n+=morpho_printf(v, "%u", DECODE_C(instruction));
+                }
+                    break;
+                case 'c': mode=CONST; n+=morpho_printf(v, "%c", *c); break;
+                case 'r': mode=REG; n+=morpho_printf(v, "%c", *c); break;
+                default: n+=morpho_printf(v, "%c", *c); break;
+            }
+        }
+        
+        /* Show contents if any were produced by this instruction */
+        if ((!konst && !reg) || (bm==NONE && cm==NONE)) return;
+        for (int k=width-n; k>0; k--) morpho_printf(v, " ");
+        morpho_printf(v, "; ");
+        if (debugger_showcontents(v, bm, nb, konst, reg)) morpho_printf(v, " ");
+        debugger_showcontents(v, cm, nc, konst, reg);
+    }
+}
+
+/** Checks if an instruction matches a label in the current error dictionary, and if so print it. */
+void debugger_errorlabel(vm *v, varray_value *errorstack, instructionindx i) {
+    objectdictionary *dict = MORPHO_GETDICTIONARY(errorstack->data[errorstack->count-1]);
+    
+    /* Search the current error handler to see if this line corresponds to a label */
+    for (unsigned int k=0; k<dict->dict.capacity; k++) {
+        value label = dict->dict.contents[k].key;
+        if (!MORPHO_ISNIL(label)) {
+            if (MORPHO_GETINTEGERVALUE(dict->dict.contents[k].val)==i) {
+                morpho_printvalue(v, label);
+                morpho_printf(v, ":\n");
+            }
+        }
+    }
+}
+
+/** Disassembles a program
+ *  @param v - vm to use for output
+ *  @param code - program to disassemble
+ *  @param matchline - optional line number to match */
+void debugger_disassemble(vm *v, program *code, int *matchline) {
+    instructionindx entry = program_getentry(code); // The entry point of the function
+    instructionindx i=0;
+    value *konst=(code->global ? code->global->konst.data : NULL);
+    bool silent = matchline;
+    
+    varray_value errorstack;
+    varray_valueinit(&errorstack);
+    
+    /* Loop over debugging information */
+    for (unsigned int j=0; j<code->annotations.count; j++) {
+        debugannotation *ann = &code->annotations.data[j];
+        
+        switch(ann->type) {
+            case DEBUG_ELEMENT:
+                {
+                    if (matchline) {
+                        if (ann->content.element.line<(*matchline)) {
+                            i+=ann->content.element.ninstr;
+                            break;
+                        }
+                        if (ann->content.element.line>(*matchline)) return;
+                    } else if (errorstack.count>0) {
+                        debugger_errorlabel(v, &errorstack, i);
+                    }
+                    
+                    for (unsigned int k=0; k<ann->content.element.ninstr; k++, i++) {
+                        morpho_printf(v, "%s", (i==entry ? "->" : "  "));
+                        debugger_disassembleinstruction(v, code->code.data[i], i, konst, NULL);
+                        morpho_printf(v, "\n");
+                    }
+                }
+                break;
+            case DEBUG_FUNCTION:
+                {
+                    objectfunction *func=ann->content.function.function;
+                    konst=func->konst.data;
+                    if (silent) break;
+                    if (!MORPHO_ISNIL(func->name)) {
+                        morpho_printf(v, "fn ");
+                        morpho_printvalue(v, func->name);
+                        morpho_printf(v, ":\n");
+                    } else morpho_printf(v, "\n");
+                }
+                break;
+            case DEBUG_CLASS:
+                {
+                    objectclass *klass=ann->content.klass.klass;
+                    if (silent) break;
+                    if (klass && !MORPHO_ISNIL(klass->name)) {
+                        morpho_printf(v, "class ");
+                        morpho_printvalue(v, klass->name);
+                        morpho_printf(v, ":\n");
+                    }
+                }
+                break;
+            case DEBUG_PUSHERR:
+                {
+                    objectdictionary *errdict = ann->content.errorhandler.handler;
+                    varray_valuewrite(&errorstack, MORPHO_OBJECT(errdict));
+                }
+                break;
+            case DEBUG_POPERR:
+                {
+                    if (errorstack.count>0) errorstack.count--;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    
+    varray_valueclear(&errorstack);
+}
+
+/** Public interface to disassembler */
+void morpho_disassemble(vm *v, program *code, int *matchline) {
+    debugger_disassemble(NULL, code, matchline);
+}
+
+/* **********************************************************************
  * Show commands
  * ********************************************************************** */
 
@@ -511,24 +513,113 @@ void debugger_showlocation(debugger *debug, instructionindx indx) {
 
 /** Shows the address of an object */
 bool debugger_showaddress(debugger *debug, indx rindx) {
+    vm *v = debugger_currentvm(debug);
     bool success=false;
-    if (rindx>=0 && rindx<debug->currentvm->fp->function->nregs) {
-        value *reg = debug->currentvm->stack.data + debug->currentvm->fp->roffset;
+    if (rindx>=0 && rindx<v->fp->function->nregs) {
+        value *reg = v->stack.data + debug->currentvm->fp->roffset;
         if (MORPHO_ISOBJECT(reg[rindx])) {
-            morpho_printf(debug->currentvm, "Object in register %i at %p.\n", (int) rindx, (void *) MORPHO_GETOBJECT(reg[rindx]));
+            morpho_printf(v, "Object in register %i at %p.\n", (int) rindx, (void *) MORPHO_GETOBJECT(reg[rindx]));
             success=true;
         } else {
-            morpho_printf(debug->currentvm, "Register %i does not contain an object.\n", (int) rindx);
+            morpho_printf(v, "Register %i does not contain an object.\n", (int) rindx);
         }
-    } else morpho_printf(debug->currentvm, "Invalid register.\n");
+    } else morpho_printf(v, "Invalid register.\n");
     return success;
 }
 
-bool debugger_showbreakpoints(debugger *debug);
-bool debugger_showglobals(debugger *debug);
-bool debugger_showglobal(debugger *debug, indx g);
-bool debugger_showregisters(debugger *debug);
-bool debugger_showstack(debugger *debug);
+/** Shows active breakpoints */
+bool debugger_showbreakpoints(debugger *debug) {
+    vm *v = debugger_currentvm(debug);
+    morpho_printf(v, "Active breakpoints:\n");
+    for (instructionindx i=0; i<debug->breakpoints.count; i++) {
+        if (debug->breakpoints.data[i]!='\0') {
+            morpho_printf(v, "  Breakpoint ");
+            debugger_showlocation(debug, i);
+            morpho_printf(v, "\n");
+        } else if (DECODE_OP(v->current->code.data[i])==OP_BREAK) {
+            morpho_printf(v, "  Break ");
+            debugger_showlocation(debug, i);
+            morpho_printf(v, "\n");
+        }
+    }
+    return true;
+}
+
+/** List a particular global */
+bool debugger_showglobal(debugger *debug, indx id) {
+    bool success=false;
+    vm *v = debugger_currentvm(debug);
+    if (id>=0 && id<v->globals.count) {
+        morpho_printf(v, "  g%u:", id);
+        morpho_printvalue(v, v->globals.data[id]);
+        morpho_printf(v, "\n");
+        success=true;
+    } else morpho_printf(v, "Invalid global number.\n");
+    return success;
+}
+
+/** Show all globals */
+bool debugger_showglobals(debugger *debug) {
+    vm *v = debugger_currentvm(debug);
+    morpho_printf(v, "Globals:\n");
+    for (indx i=0; i<v->globals.count; i++) debugger_showglobal(debug, i);
+    return true;
+}
+
+/** Show the contents of all registers */
+bool debugger_showregisters(debugger *debug) {
+    vm *v = debugger_currentvm(debug);
+    callframe *frame = v->fp;
+    
+    unsigned int nreg=frame->function->nregs;
+    value symbols[nreg];
+    instructionindx cinstr=frame->pc-v->current->code.data;
+    bool sym = debug_symbolsforfunction(v->current, frame->function, &cinstr, symbols);
+    
+    morpho_printf(v, "Register contents:\n");
+    value *reg = v->stack.data + frame->roffset;
+    for (unsigned int i=0; i<nreg; i++) {
+        morpho_printf(v, "  r%u: ", i);
+        morpho_printvalue(v, reg[i]);
+        if (sym && !MORPHO_ISNIL(symbols[i])) {
+            morpho_printf(v, " (");
+            morpho_printvalue(v, symbols[i]);
+            morpho_printf(v, ")");
+        }
+        morpho_printf(v, "\n");
+    }
+    return true;
+}
+
+/** Show the contents of the stack */
+bool debugger_showstack(debugger *debug) {
+    vm *v = debugger_currentvm(debug);
+    
+    /* Determine points on the stack that correspond to different function calls. */
+    ptrdiff_t fbounds[MORPHO_CALLFRAMESTACKSIZE];
+    callframe *f;
+    unsigned int k=0;
+    for (f=v->frame; f!=v->fp; f++) {
+        fbounds[k]=f->roffset;
+        k++;
+    }
+    fbounds[k]=f->roffset;
+    
+    f=v->frame; k=0;
+    morpho_printf(v, "Stack contents:\n");
+    for (unsigned int i=0; i<v->fp->roffset+v->fp->function->nregs; i++) {
+        if (i==fbounds[k]) {
+            morpho_printf(v, "---");
+            if (f->function) morpho_printvalue(v, f->function->name);
+            morpho_printf(v, "\n");
+            k++; f++;
+        }
+        morpho_printf(v, "  s%u: ", i);
+        morpho_printvalue(v, v->stack.data[i]);
+        morpho_printf(v, "\n");
+    }
+    return true;
+}
 
 /* **********************************************************************
  * Enter the debugger (called by the VM)

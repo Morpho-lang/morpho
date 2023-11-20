@@ -543,7 +543,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
     value left, right;
 
 #ifdef MORPHO_DEBUG_PRINT_INSTRUCTIONS
-#define MORPHO_DISASSEMBLE_INSRUCTION(bc,pc,k,r) { morpho_printf(v, "  "); debug_disassembleinstruction(bc, pc-1, k, r); morpho_printf(v, "\n"); }
+#define MORPHO_DISASSEMBLE_INSRUCTION(bc,pc,k,r) { morpho_printf(v, "  ");  debugger_disassembleinstruction(v, bc, pc-1, k, r); morpho_printf(v, "\n"); }
 #else
 #define MORPHO_DISASSEMBLE_INSRUCTION(bc,pc,k,r);
 #endif

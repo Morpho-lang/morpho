@@ -20,9 +20,6 @@ bool debug_indxfromline(program *code, int line, instructionindx *out);
 bool debug_indxfromfunction(program *code, value klassname, value fname, instructionindx *indx);
 bool debug_symbolsforfunction(program *code, objectfunction *func, instructionindx *indx, value *symbols);
 
-void debug_disassembleinstruction(instruction instruction, instructionindx indx, value *konst, value *reg);
-void debug_disassemble(program *code, int *matchline);
-
 void debugger_init(debugger *d, program *p);
 void debugger_clear(debugger *d);
 
@@ -42,6 +39,9 @@ void debugger_quit(debugger *debug);
 
 bool debugger_setregister(debugger *debug, indx reg, value val);
 bool debugger_setsymbol(debugger *debug, char *symbol, value val);
+
+void debugger_disassembleinstruction(vm *v, instruction instruction, instructionindx indx, value *konst, value *reg);
+void debugger_disassemble(vm *v, program *code, int *matchline);
 
 void debugger_showlocation(debugger *debug, instructionindx indx);
 bool debugger_showaddress(debugger *debug, indx rindx);

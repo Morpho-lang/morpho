@@ -306,7 +306,7 @@ assemblyrule assemblyrules[] ={
     { 0, NULL, "" } // Null terminate the list
 };
 
-assemblyrule *debug_getassemblyrule(unsigned int op) {
+assemblyrule *debugger_getassemblyrule(unsigned int op) {
     for (unsigned int i=0; assemblyrules[i].label!=NULL; i++) if (assemblyrules[i].op==op) return &assemblyrules[i];
     return NULL;
 }
@@ -341,7 +341,7 @@ void debugger_disassembleinstruction(vm *v, instruction instruction, instruction
     int n=0; // Number of characters displayed
     int width=25; // Width of display
     
-    assemblyrule *show=debug_getassemblyrule(op);
+    assemblyrule *show=debugger_getassemblyrule(op);
     if (show) {
         n+=morpho_printf(v, "%s ", show->label);
         for (char *c=show->display; *c!='\0'; c++) {

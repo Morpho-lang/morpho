@@ -1611,6 +1611,34 @@ bool parse_stringtovaluearray(char *string, unsigned int nmax, value *v, unsigne
     return true;
 }
 
+/* Parses a literal string, returning a value */
+bool parse_value(const char *in, value *out) {
+    lexer l;
+    parser p;
+    syntaxtree tree;
+    error err;
+    bool success=false;
+    error_init(&err);
+    syntaxtree_init(&tree);
+    lex_init(&l, in, 1);
+    parse_init(&p, &l, &err, &tree);
+    if (parse(&p) && tree.tree.count>0) {
+        syntaxtreenode node = tree.tree.data[tree.entry];
+        
+        if (SYNTAXTREE_ISLEAF(node.type)) {
+            if (MORPHO_ISSTRING(node.content)) {
+                *out = object_clonestring(node.content);
+            } else *out = node.content;
+            
+            success=true;
+        }
+    }
+    
+    syntaxtree_clear(&tree);
+    return success;
+}
+
+
 void parse_initialize(void) {
     /* Parse errors */
     morpho_defineerror(PARSE_INCOMPLETEEXPRESSION, ERROR_PARSE, PARSE_INCOMPLETEEXPRESSION_MSG);

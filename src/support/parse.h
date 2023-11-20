@@ -349,6 +349,8 @@ bool morpho_parse(parser *p);
 
 bool parse_stringtovaluearray(char *string, unsigned int nmax, value *v, unsigned int *n, error *err);
 
+bool parse_value(const char *in, value *out);
+
 // Initialization/finalization
 void parse_initialize(void);
 void parse_finalize(void);

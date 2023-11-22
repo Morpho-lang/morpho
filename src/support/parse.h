@@ -256,6 +256,7 @@ bool parse_checkdisallowedtoken(parser *p, tokentype type, errorid id);
 bool parse_codepointfromhex(parser *p, const char *codestr, int nhex, bool raw, varray_char *out);
 bool parse_stringfromtoken(parser *p, unsigned int start, unsigned int length, value *out);
 value parse_tokenasstring(parser *p);
+bool parse_tokenassymbol(parser *p);
 
 // Functions for use when out is a syntaxtree
 bool parse_addnode(parser *p, syntaxtreenodetype type, value content, token *tok, syntaxtreeindx left, syntaxtreeindx right, syntaxtreeindx *out);

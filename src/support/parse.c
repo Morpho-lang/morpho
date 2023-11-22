@@ -251,6 +251,18 @@ value parse_tokenasstring(parser *p) {
     return s;
 }
 
+/** Parses the next token as a symbol ignoring keywords; returns true on success */
+bool parse_tokenassymbol(parser *p) {
+    bool oldmatch = lex_matchkeywords(p->lex);
+    lex_setmatchkeywords(p->lex, false);
+    
+    bool success=parse_checktokenadvance(p, lex_symboltype(p->lex));
+    
+    lex_setmatchkeywords(p->lex, oldmatch); // Restore state of lexer
+    
+    return success;
+}
+
 /** Adds a node to the syntax tree. */
 bool parse_addnode(parser *p, syntaxtreenodetype type, value content, token *tok, syntaxtreeindx left, syntaxtreeindx right, syntaxtreeindx *out) {
     syntaxtree *tree = (syntaxtree *) p->out;

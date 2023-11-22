@@ -482,7 +482,7 @@ tokentype lex_checksymbol(lexer *l, int start, int length, char *match, tokentyp
     return l->symboltype;
 }
 
-tokentype lex_symboltype(lexer *l) {
+tokentype lex_typeforsymboltoken(lexer *l) {
     tokentype t = l->symboltype;
     tokendefn *def;
     
@@ -500,7 +500,7 @@ bool lex_symbol(lexer *l, token *tok, error *err) {
     while (lex_isalpha(lex_peek(l)) || lex_isdigit(lex_peek(l))) lex_advance(l);
     
     tokentype typ = l->symboltype;
-    if (l->matchkeywords) typ = lex_symboltype(l);
+    if (l->matchkeywords) typ = lex_typeforsymboltoken(l);
     
     lex_recordtoken(l, typ, tok);
     
@@ -600,6 +600,11 @@ void lex_seteof(lexer *l, tokentype eoftype) {
     l->eoftype = eoftype;
 }
 
+/** @brief Gets the token type representing End Of File */
+tokentype lex_eof(lexer *l) {
+    return l->eoftype;
+}
+
 /** @brief Sets the token type representing integers, floats and complex */
 void lex_setnumbertype(lexer *l, tokentype inttype, tokentype flttype, tokentype imagtype) {
     l->inttype=inttype;
@@ -612,6 +617,11 @@ void lex_setsymboltype(lexer *l, tokentype symboltype) {
     l->symboltype=symboltype;
 }
 
+/** @brief Gets the token type representing symbols */
+tokentype lex_symboltype(lexer *l) {
+    return l->symboltype;
+}
+
 /** @brief Choose whether the lexer should perform string interpolation. */
 void lex_setstringinterpolation(lexer *l, bool interpolation) {
     l->stringinterpolation=interpolation;
@@ -621,6 +631,11 @@ void lex_setstringinterpolation(lexer *l, bool interpolation) {
 void lex_setmatchkeywords(lexer *l, bool match) {
     l->matchkeywords=match;
 }
+
+/** @brief Choose whether the lexer should attempt to match keywords or simply return them as symbols. */
+bool lex_matchkeywords(lexer *l) {
+    return l->matchkeywords;
+};
 
 /** @brief Provide a processing function to skip whitespace and comments. */
 void lex_setwhitespacefn(lexer *l, processtokenfn whitespacefn) {

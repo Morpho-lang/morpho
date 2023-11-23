@@ -680,7 +680,31 @@ bool debugger_showsymbol(debugger *debug, value match) {
 
 /** Show the current value of a property */
 bool debugger_showproperty(debugger *debug, value matchobj, value matchproperty) {
+    vm *v = debugger_currentvm(debug);
     
+    callframe *frame;
+    value symbol, *val;
+    
+    if (debug_findsymbol(v, matchobj, &frame, &symbol, &val)) {
+        if (MORPHO_ISINSTANCE(*val)) {
+            objectinstance *obj = MORPHO_GETINSTANCE(*val);
+            
+            if (objectinstance_getproperty(obj, matchproperty, val)) {
+                morpho_printvalue(v, symbol);
+                morpho_printf(v, ".");
+                morpho_printvalue(v, matchproperty);
+                morpho_printf(v, " = ");
+                morpho_printvalue(v, *val);
+                morpho_printf(v, "\n");
+            } else {
+                //morpho_printf("Symbol '%s' lacks property '", label);
+                //morpho_printvalue(property);
+                //morpho_printf("'\n");
+            }
+        }
+    }
+    
+    return false;
 }
 
 /* **********************************************************************

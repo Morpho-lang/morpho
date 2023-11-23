@@ -51,6 +51,9 @@ bool debugger_showglobal(debugger *debug, indx g);
 bool debugger_showregisters(debugger *debug);
 bool debugger_showstack(debugger *debug);
 
+bool debugger_showsymbol(debugger *debug, value symbol);
+bool debugger_showproperty(debugger *debug, value obj, value property);
+
 bool debugger_enter(debugger *debug, vm *v);
 
 #endif /* debug_h */

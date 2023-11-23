@@ -139,6 +139,45 @@ bool debug_symbolsforfunction(program *code, objectfunction *func, instructionin
     return true;
 }
 
+/** Attempts to find a symbol.
+ * @param[in] v - virtual machine to search
+ * @param[in] matchstr - string to match
+ * @param[out] frame - callframe matched
+ * @param[out] symbol - actual symbol found
+ * @param[out] val - value of the found symbol
+ * @returns true on success */
+bool debug_findsymbol(vm *v, value matchstr, callframe **frame, value *symbol, value **val) {
+    /* Check back through callframes */
+    for (callframe *f=v->fp; f>=v->frame; f--) {
+        value symbols[f->function->nregs];
+        instructionindx indx = f->pc-v->current->code.data;
+        
+        debug_symbolsforfunction(v->current, f->function, &indx, symbols);
+        
+        for (int i=0; i<f->function->nregs; i++) {
+            if (!MORPHO_ISNIL(symbols[i]) && MORPHO_ISEQUAL(symbols[i], matchstr)) {
+                if (frame) *frame = f;
+                if (symbol) *symbol = symbols[i];
+                if (val) *val = &v->stack.data[f->roffset+i];
+                return true;
+            }
+        }
+    }
+    
+    /* Otherwise is it a global? */
+    for (unsigned int j=0; j<v->current->annotations.count; j++) {
+        debugannotation *ann = &v->current->annotations.data[j];
+        if (ann->type==DEBUG_GLOBAL &&
+            MORPHO_ISEQUAL(ann->content.global.symbol, matchstr)) {
+            if (frame) *frame = v->frame;
+            if (symbol) *symbol = ann->content.global.symbol;
+            if (val) *val = &v->globals.data[ann->content.global.gindx];
+            return true;
+        }
+    }
+    return false;
+}
+
 /* **********************************************************************
  * Stack traces
  * ********************************************************************** */
@@ -619,6 +658,29 @@ bool debugger_showstack(debugger *debug) {
         morpho_printf(v, "\n");
     }
     return true;
+}
+
+/** Show the current value of a symbol */
+bool debugger_showsymbol(debugger *debug, value match) {
+    vm *v = debugger_currentvm(debug);
+    
+    callframe *frame;
+    value symbol, *val;
+    bool success=debug_findsymbol(v, match, &frame, &symbol, &val);
+    
+    if (success) {
+        morpho_printvalue(v, symbol);
+        morpho_printf(v, " = ");
+        morpho_printvalue(v, *val);
+        morpho_printf(v, "\n");
+    }
+    
+    return success;
+}
+
+/** Show the current value of a property */
+bool debugger_showproperty(debugger *debug, value matchobj, value matchproperty) {
+    
 }
 
 /* **********************************************************************

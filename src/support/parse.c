@@ -243,7 +243,7 @@ parse_stringfromtokencleanup:
     return success;
 }
 
-/** Parses a symbol token into a value with no processing. */
+/** Parses the previous token into a value with no processing. */
 value parse_tokenasstring(parser *p) {
     value s = object_stringfromcstring(p->previous.start, p->previous.length);
     if (MORPHO_ISNIL(s)) parse_error(p, true, ERROR_ALLOCATIONFAILED, OBJECT_SYMBOLLABEL);
@@ -251,13 +251,12 @@ value parse_tokenasstring(parser *p) {
     return s;
 }
 
-/** Parses the next token as a symbol ignoring keywords; returns true on success */
+/** Parses the next token as a symbol regardless of whether it is a keyword; returns true on success */
 bool parse_tokenassymbol(parser *p) {
     bool oldmatch = lex_matchkeywords(p->lex);
+    
     lex_setmatchkeywords(p->lex, false);
-    
     bool success=parse_checktokenadvance(p, lex_symboltype(p->lex));
-    
     lex_setmatchkeywords(p->lex, oldmatch); // Restore state of lexer
     
     return success;

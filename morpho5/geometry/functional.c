@@ -29,6 +29,20 @@ value functional_fieldproperty;
  * Utility functions
  * ********************************************************************** */
 
+// Estimates the correct stepsize for cell centered finite differences
+double functional_fdstepsize(double x) {
+    double h = pow(MORPHO_EPS, 1.0/3.0);
+    
+    // h should be multiplied by an estimate of the lengthscale over which f changes,
+    //      | f / f''' | ^ (1/3)
+    double absx = fabs(x);
+    if (absx>1) h*=absx; // In the absence of other information, and unless we're near 0, use x as the best estimate.
+    
+    // Ensure stepsize results in a representable number
+    volatile double temp = x+h; // Prevent compiler optimizing this away
+    return temp-x;
+}
+
 static void functional_clearmapinfo(functional_mapinfo *info) {
     info->mesh=NULL;
     info->field=NULL;
@@ -450,7 +464,7 @@ static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, 
 
 /* Calculates a numerical gradient */
 bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectmatrix *frc) {
-    double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
+    double f0,fp,fm,x0,eps=1e-6;
 
     // Loop over vertices in element
     for (unsigned int j=0; j<nv; j++) {
@@ -459,6 +473,9 @@ bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, int nv, 
             matrix_getelement(frc, k, vid[j], &f0);
 
             matrix_getelement(mesh->vert, k, vid[j], &x0);
+            
+            eps=functional_fdstepsize(x0);
+            
             matrix_setelement(mesh->vert, k, vid[j], x0+eps);
             if (!(*integrand) (v, mesh, i, nv, vid, ref, &fp)) return false;
             matrix_setelement(mesh->vert, k, vid[j], x0-eps);
@@ -503,13 +520,15 @@ bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, int nv, 
 
 static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
     objectmesh *mesh = info->mesh;
-    double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
+    double f0,fp,fm,x0,eps=1e-6;
 
     // Loop over coordinates
     for (unsigned int k=0; k<mesh->dim; k++) {
         matrix_getelement(frc, k, remoteid, &f0);
 
         matrix_getelement(mesh->vert, k, remoteid, &x0);
+        eps=functional_fdstepsize(x0);
+        
         matrix_setelement(mesh->vert, k, remoteid, x0+eps);
         if (!(*info->integrand) (v, mesh, i, nv, vid, info->ref, &fp)) return false;
         matrix_setelement(mesh->vert, k, remoteid, x0-eps);
@@ -714,7 +733,7 @@ bool functional_mapnumericalfieldgradientX(vm *v, functional_mapinfo *info, valu
     void *ref = info->ref;
     //symmetrybhvr sym = info->sym;
 
-    double eps=1e-10;
+    double eps=1e-6;
     bool ret=false;
     objectsparse *conn=mesh_getconnectivityelement(mesh, 0, grd); // Connectivity for the element
 
@@ -749,6 +768,9 @@ bool functional_mapnumericalfieldgradientX(vm *v, functional_mapinfo *info, valu
                     for (int j=0; j<field->psize*field->dof[g]; j++) {
                         int k=field->offset[g]+id*field->psize*field->dof[g]+j;
                         double fld=field->data.elements[k];
+                        
+                        eps=functional_fdstepsize(fld);
+                        
                         field->data.elements[k]+=eps;
 
                         if (!(*integrand) (v, mesh, id, nv, vid, ref, &fr)) goto functional_mapnumericalfieldgradient_cleanup;
@@ -1239,13 +1261,15 @@ functional_mapgradient_cleanup:
 
 /** Computes the gradient of element eid with respect to vertex i */
 bool functional_numericalgrad(vm *v, objectmesh *mesh, elementid eid, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectmatrix *frc) {
-    double f0,fp,fm,x0,eps=1e-8; // Should use sqrt(machineeps)*(1+|x|) here
+    double f0,fp,fm,x0,eps=1e-6;
     
     // Loop over coordinates
     for (unsigned int k=0; k<mesh->dim; k++) {
         matrix_getelement(frc, k, i, &f0);
 
         matrix_getelement(mesh->vert, k, i, &x0);
+        
+        eps=functional_fdstepsize(x0);
         matrix_setelement(mesh->vert, k, i, x0+eps);
         if (!(*integrand) (v, mesh, eid, nv, vid, ref, &fp)) return false;
         matrix_setelement(mesh->vert, k, i, x0-eps);
@@ -1400,12 +1424,15 @@ functional_mapfieldgradient_cleanup:
 
 /** Computes the field gradient of element eid with respect to field grade g element i */
 bool functional_numericalfieldgrad(vm *v, objectmesh *mesh, elementid eid, objectfield *field, grade g, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectfield *grad) {
-    double fr,fl,eps=1e-8; // Should use sqrt(machineeps)*(1+|x|) here
+    double fr,fl,eps=1e-6;
     
     /* Loop over dofs in field entry */
     for (int j=0; j<field->psize*field->dof[g]; j++) {
         int k=field->offset[g]+i*field->psize*field->dof[g]+j;
         double f0=field->data.elements[k];
+        
+        eps=functional_fdstepsize(f0);
+        
         field->data.elements[k]+=eps;
 
         if (!(*integrand) (v, mesh, eid, nv, vid, ref, &fr)) return false;

@@ -1,4 +1,5 @@
 build/*
+build-xcode/*
 .DS_Store
 test/FailedTests.txt
 *.out

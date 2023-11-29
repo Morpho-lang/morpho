@@ -15,3 +15,5 @@ and then,
     make install 
 
 You may need to use sudo make install.
+
+Experimental: Use -DCMAKE_BUILD_TYPE=Release with cmake to improve performance. 

@@ -198,6 +198,7 @@ void morpho_defineerror(errorid id, errorcategory cat, char *message);
 
 errorid morpho_geterrorid(error *err);
 bool morpho_matcherror(error *err, errorid id);
+bool morpho_checkerror(error *err);
 
 void error_initialize(void);
 void error_finalize(void);

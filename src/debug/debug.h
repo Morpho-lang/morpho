@@ -33,26 +33,27 @@ void debugger_setbreakpoint(debugger *d, instructionindx indx);
 void debugger_clearbreakpoint(debugger *d, instructionindx indx);
 bool debugger_shouldbreakat(debugger *d, instructionindx indx);
 
-void debugger_garbagecollect(debugger *debug);
-
-void debugger_quit(debugger *debug);
-
-bool debugger_setregister(debugger *debug, indx reg, value val);
-bool debugger_setsymbol(debugger *debug, char *symbol, value val);
-
 void debugger_disassembleinstruction(vm *v, instruction instruction, instructionindx indx, value *konst, value *reg);
 void debugger_disassemble(vm *v, program *code, int *matchline);
 
+void debugger_garbagecollect(debugger *debug);
+void debugger_quit(debugger *debug);
+
 void debugger_showlocation(debugger *debug, instructionindx indx);
 bool debugger_showaddress(debugger *debug, indx rindx);
-bool debugger_showbreakpoints(debugger *debug);
-bool debugger_showglobals(debugger *debug);
+void debugger_showbreakpoints(debugger *debug);
+void debugger_showglobals(debugger *debug);
 bool debugger_showglobal(debugger *debug, indx g);
-bool debugger_showregisters(debugger *debug);
-bool debugger_showstack(debugger *debug);
+void debugger_showregisters(debugger *debug);
+void debugger_showstack(debugger *debug);
 
 bool debugger_showsymbol(debugger *debug, value symbol);
 bool debugger_showproperty(debugger *debug, value obj, value property);
+void debugger_showsymbols(debugger *debug);
+
+bool debugger_setregister(debugger *debug, indx reg, value val);
+bool debugger_setsymbol(debugger *debug, value symbol, value val);
+bool debugger_setproperty(debugger *debug, value symbol, value val);
 
 bool debugger_enter(debugger *debug, vm *v);
 

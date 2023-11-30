@@ -271,18 +271,6 @@ vm *debugger_currentvm(debugger *d) {
 }
 
 /* **********************************************************************
- * Debugger commands
- * ********************************************************************** */
-
-void debugger_garbagecollect(debugger *debug) {
-    vm_collectgarbage(debug->currentvm);
-}
-
-void debugger_quit(debugger *debug) {
-    morpho_runtimeerror(debug->currentvm, VM_DBGQUIT);
-}
-
-/* **********************************************************************
  * Disassembler
  * ********************************************************************** */
 
@@ -518,6 +506,18 @@ void morpho_disassemble(vm *v, program *code, int *matchline) {
 }
 
 /* **********************************************************************
+ * General debugger commands
+ * ********************************************************************** */
+
+void debugger_garbagecollect(debugger *debug) {
+    vm_collectgarbage(debug->currentvm);
+}
+
+void debugger_quit(debugger *debug) {
+    morpho_runtimeerror(debug->currentvm, VM_DBGQUIT);
+}
+
+/* **********************************************************************
  * Show commands
  * ********************************************************************** */
 
@@ -567,7 +567,7 @@ bool debugger_showaddress(debugger *debug, indx rindx) {
 }
 
 /** Shows active breakpoints */
-bool debugger_showbreakpoints(debugger *debug) {
+void debugger_showbreakpoints(debugger *debug) {
     vm *v = debugger_currentvm(debug);
     morpho_printf(v, "Active breakpoints:\n");
     for (instructionindx i=0; i<debug->breakpoints.count; i++) {
@@ -581,7 +581,6 @@ bool debugger_showbreakpoints(debugger *debug) {
             morpho_printf(v, "\n");
         }
     }
-    return true;
 }
 
 /** List a particular global */
@@ -598,15 +597,14 @@ bool debugger_showglobal(debugger *debug, indx id) {
 }
 
 /** Show all globals */
-bool debugger_showglobals(debugger *debug) {
+void debugger_showglobals(debugger *debug) {
     vm *v = debugger_currentvm(debug);
     morpho_printf(v, "Globals:\n");
     for (indx i=0; i<v->globals.count; i++) debugger_showglobal(debug, i);
-    return true;
 }
 
 /** Show the contents of all registers */
-bool debugger_showregisters(debugger *debug) {
+void debugger_showregisters(debugger *debug) {
     vm *v = debugger_currentvm(debug);
     callframe *frame = v->fp;
     
@@ -627,11 +625,10 @@ bool debugger_showregisters(debugger *debug) {
         }
         morpho_printf(v, "\n");
     }
-    return true;
 }
 
 /** Show the contents of the stack */
-bool debugger_showstack(debugger *debug) {
+void debugger_showstack(debugger *debug) {
     vm *v = debugger_currentvm(debug);
     
     /* Determine points on the stack that correspond to different function calls. */
@@ -657,7 +654,6 @@ bool debugger_showstack(debugger *debug) {
         morpho_printvalue(v, v->stack.data[i]);
         morpho_printf(v, "\n");
     }
-    return true;
 }
 
 /** Show the current value of a symbol */
@@ -676,6 +672,32 @@ bool debugger_showsymbol(debugger *debug, value match) {
     }
     
     return success;
+}
+
+/** Shows all symbols currently in view */
+void debugger_showsymbols(debugger *debug) {
+    vm *v = debugger_currentvm(debug);
+    
+    for (callframe *f=v->fp; f>=v->frame; f--) {
+        morpho_printf(v, "in %s", (f==v->frame ? "global" : ""));
+        if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(v, f->function->name);
+        morpho_printf(v, ":\n");
+        
+        value symbols[f->function->nregs];
+        instructionindx indx = f->pc-v->current->code.data;
+        
+        debug_symbolsforfunction(v->current, f->function, &indx, symbols);
+        
+        for (int i=0; i<f->function->nregs; i++) {
+            if (!MORPHO_ISNIL(symbols[i])) {
+                morpho_printf(v, "  ");
+                morpho_printvalue(v, symbols[i]);
+                morpho_printf(v, "=");
+                morpho_printvalue(v, v->stack.data[f->roffset+i]);
+                morpho_printf(v, "\n");
+            }
+        }
+    }
 }
 
 /** Show the current value of a property */
@@ -704,6 +726,22 @@ bool debugger_showproperty(debugger *debug, value matchobj, value matchproperty)
         }
     }
     
+    return false;
+}
+
+/* **********************************************************************
+ * Set commands
+ * ********************************************************************** */
+
+bool debugger_setregister(debugger *debug, indx reg, value val) {
+    return false;
+}
+
+bool debugger_setsymbol(debugger *debug, value symbol, value val) {
+    return false;
+}
+
+bool debugger_setproperty(debugger *debug, value symbol, value val) {
     return false;
 }
 

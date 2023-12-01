@@ -711,18 +711,18 @@ bool debugger_showproperty(debugger *debug, value matchobj, value matchproperty)
     vm *v = debugger_currentvm(debug);
     
     callframe *frame;
-    value symbol, *val;
+    value symbol, *instance=NULL, *val=NULL;
     
-    if (debug_findsymbol(v, matchobj, &frame, &symbol, &val)) {
-        if (MORPHO_ISINSTANCE(*val)) {
-            objectinstance *obj = MORPHO_GETINSTANCE(*val);
-            
+    if (debug_findsymbol(v, matchobj, &frame, &symbol, &instance)) {
+        if (MORPHO_ISINSTANCE(*instance)) {
+            objectinstance *obj = MORPHO_GETINSTANCE(*instance);
+                    
             if (objectinstance_getproperty(obj, matchproperty, val)) {
                 morpho_printvalue(v, symbol);
                 morpho_printf(v, ".");
                 morpho_printvalue(v, matchproperty);
                 morpho_printf(v, " = ");
-                morpho_printvalue(v, *val);
+                morpho_printvalue(v, *instance);
                 morpho_printf(v, "\n");
             } else {
                 morpho_printf(v, "Symbol lacks property '");
@@ -770,8 +770,10 @@ bool debugger_setproperty(debugger *debug, value symbol, value property, value v
     
     if (debug_findsymbol(debugger_currentvm(debug), symbol, NULL, NULL, &dest) &&
         MORPHO_ISINSTANCE(*dest)) {
-        success=objectinstance_setproperty(MORPHO_GETINSTANCE(*dest), property, val);
-        
+        objectinstance *obj = MORPHO_GETINSTANCE(*dest);
+            
+        value key = dictionary_intern(&obj->fields, property);
+        success=objectinstance_setproperty(obj, key, val);
         printf("Set property.\n");
     }
     

@@ -725,9 +725,9 @@ bool debugger_showproperty(debugger *debug, value matchobj, value matchproperty)
                 morpho_printvalue(v, *val);
                 morpho_printf(v, "\n");
             } else {
-                //morpho_printf("Symbol '%s' lacks property '", label);
-                //morpho_printvalue(property);
-                //morpho_printf("'\n");
+                morpho_printf(v, "Symbol lacks property '");
+                morpho_printvalue(v, matchproperty);
+                morpho_printf(v, "'\n");
             }
         }
     }
@@ -771,6 +771,8 @@ bool debugger_setproperty(debugger *debug, value symbol, value property, value v
     if (debug_findsymbol(debugger_currentvm(debug), symbol, NULL, NULL, &dest) &&
         MORPHO_ISINSTANCE(*dest)) {
         success=objectinstance_setproperty(MORPHO_GETINSTANCE(*dest), property, val);
+        
+        printf("Set property.\n");
     }
     
     return success;

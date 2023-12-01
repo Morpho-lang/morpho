@@ -143,6 +143,8 @@ typedef struct {
     value currentmodule; /** Current module */
     instructionindx iindx; /** Record current instruction */
     
+    error *err; /** Report errors */
+    
     int nbreakpoints; /** Number of active breakpoints */
     varray_char breakpoints; /** Keep track of breakpoints */
 } debugger;

@@ -23,6 +23,8 @@ bool debug_symbolsforfunction(program *code, objectfunction *func, instructionin
 void debugger_init(debugger *d, program *p);
 void debugger_clear(debugger *d);
 
+void debugger_seterror(debugger *d, error *err);
+
 vm *debugger_currentvm(debugger *d);
 bool debugger_isactive(debugger *d);
 
@@ -53,7 +55,7 @@ void debugger_showsymbols(debugger *debug);
 
 bool debugger_setregister(debugger *debug, indx reg, value val);
 bool debugger_setsymbol(debugger *debug, value symbol, value val);
-bool debugger_setproperty(debugger *debug, value symbol, value val);
+bool debugger_setproperty(debugger *debug, value symbol, value property, value val);
 
 bool debugger_enter(debugger *debug, vm *v);
 

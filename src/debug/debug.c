@@ -213,6 +213,7 @@ void debugger_init(debugger *d, program *p) {
     
     d->nbreakpoints=0;
     
+    d->err=NULL;
     d->currentfunc=NULL;
     d->currentline=0;
     d->currentmodule=MORPHO_NIL;
@@ -228,6 +229,11 @@ void debugger_init(debugger *d, program *p) {
 /** Clears a debugger structure */
 void debugger_clear(debugger *d) {
     varray_charclear(&d->breakpoints);
+}
+
+/** Sets the error structure that the debugger will report errors to */
+void debugger_seterror(debugger *d, error *err) {
+    d->err=err;
 }
 
 /** Sets whether single step mode is in operation */
@@ -733,16 +739,41 @@ bool debugger_showproperty(debugger *debug, value matchobj, value matchproperty)
  * Set commands
  * ********************************************************************** */
 
+/** Sets the contents of a register to a given value */
 bool debugger_setregister(debugger *debug, indx reg, value val) {
-    return false;
+    vm *v=debugger_currentvm(debug);
+    bool success=false;
+    
+    if (reg>=0 && reg<v->fp->function->nregs) {
+        v->stack.data[v->fp->roffset+reg]=val;
+        success=true;
+    }
+    
+    return success;
 }
 
+/** Sets a symbol to a given value */
 bool debugger_setsymbol(debugger *debug, value symbol, value val) {
-    return false;
+    value *dest=NULL;
+    
+    if (debug_findsymbol(debugger_currentvm(debug), symbol, NULL, NULL, &dest)) {
+        *dest=val;
+    }
+    
+    return (dest!=NULL);
 }
 
-bool debugger_setproperty(debugger *debug, value symbol, value val) {
-    return false;
+/** Sets a property to a given value */
+bool debugger_setproperty(debugger *debug, value symbol, value property, value val) {
+    value *dest=NULL;
+    bool success=false;
+    
+    if (debug_findsymbol(debugger_currentvm(debug), symbol, NULL, NULL, &dest) &&
+        MORPHO_ISINSTANCE(*dest)) {
+        success=objectinstance_setproperty(MORPHO_GETINSTANCE(*dest), property, val);
+    }
+    
+    return success;
 }
 
 /* **********************************************************************

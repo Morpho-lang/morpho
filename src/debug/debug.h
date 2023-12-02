@@ -28,8 +28,14 @@
 #define DEBUGGER_INVLDREGISTER             "DbgInvldRg"
 #define DEBUGGER_INVLDREGISTER_MSG         "Invalid register."
 
+#define DEBUGGER_INVLDGLOBAL               "DbgInvldGlbl"
+#define DEBUGGER_INVLDGLOBAL_MSG           "Invalid global."
+
 #define DEBUGGER_REGISTEROBJ               "DbgRgObj"
 #define DEBUGGER_REGISTEROBJ_MSG           "Register %i does not contain an object."
+
+#define DEBUGGER_SYMBOLPROP                "DbgSymblPrpty"
+#define DEBUGGER_SYMBOLPROP_MSG            "Symbol lacks property '%s'."
 
 /* -------------------------------------------------------
  * Debugger interface

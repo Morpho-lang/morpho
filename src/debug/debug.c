@@ -528,7 +528,9 @@ void morpho_disassemble(vm *v, program *code, int *matchline) {
  * ********************************************************************** */
 
 void debugger_garbagecollect(debugger *debug) {
+    size_t init = debug->currentvm->bound;
     vm_collectgarbage(debug->currentvm);
+    morpho_printf(NULL, "Collected %ld bytes (from %zu to %zu). Next collection at %zu bytes.\n", init-debug->currentvm->bound, init, debug->currentvm->bound, debug->currentvm->nextgc);
 }
 
 void debugger_quit(debugger *debug) {
@@ -608,7 +610,7 @@ bool debugger_showglobal(debugger *debug, indx id) {
         morpho_printvalue(v, v->globals.data[id]);
         morpho_printf(v, "\n");
         success=true;
-    } else morpho_printf(v, "Invalid global number.\n");
+    } else debugger_error(debug, DEBUGGER_INVLDGLOBAL);
     return success;
 }
 
@@ -682,9 +684,7 @@ bool debugger_showsymbol(debugger *debug, value match) {
         morpho_printf(v, " = ");
         morpho_printvalue(v, *val);
         morpho_printf(v, "\n");
-    } else {
-        debugger_error(debug, DEBUGGER_SYMBOL, MORPHO_GETCSTRING(match));
-    }
+    } else debugger_error(debug, DEBUGGER_SYMBOL, MORPHO_GETCSTRING(match));
     
     return val;
 }
@@ -731,19 +731,13 @@ bool debugger_showproperty(debugger *debug, value matchobj, value matchproperty)
                 morpho_printf(v, ".");
                 morpho_printvalue(v, matchproperty);
                 morpho_printf(v, " = ");
-                morpho_printvalue(v, *instance);
+                morpho_printvalue(v, *val);
                 morpho_printf(v, "\n");
-            } else {
-                
-                
-                morpho_printf(v, "Symbol lacks property '");
-                morpho_printvalue(v, matchproperty);
-                morpho_printf(v, "'\n");
-            }
+            } else debugger_error(debug, DEBUGGER_SYMBOLPROP, MORPHO_GETCSTRING(matchproperty));
         }
     }
     
-    return false;
+    return val;
 }
 
 /* **********************************************************************
@@ -851,5 +845,7 @@ void debugger_initialize(void) {
     morpho_defineerror(DEBUGGER_SYMBOL, ERROR_DEBUGGER, DEBUGGER_SYMBOL_MSG);
     morpho_defineerror(DEBUGGER_SETPROPERTY, ERROR_DEBUGGER, DEBUGGER_SETPROPERTY_MSG);
     morpho_defineerror(DEBUGGER_INVLDREGISTER, ERROR_DEBUGGER, DEBUGGER_INVLDREGISTER_MSG);
+    morpho_defineerror(DEBUGGER_INVLDGLOBAL, ERROR_DEBUGGER, DEBUGGER_INVLDGLOBAL_MSG);
     morpho_defineerror(DEBUGGER_REGISTEROBJ, ERROR_DEBUGGER, DEBUGGER_REGISTEROBJ_MSG);
+    morpho_defineerror(DEBUGGER_SYMBOLPROP, ERROR_DEBUGGER, DEBUGGER_SYMBOLPROP_MSG);
 }

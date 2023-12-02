@@ -19,8 +19,8 @@
  * Debugger error messages
  * ------------------------------------------------------- */
 
-#define DEBUGGER_SYMBOL                    "DbgSymbl"
-#define DEBUGGER_SYMBOL_MSG                "Can't find symbol '%s' in current context."
+#define DEBUGGER_FINDSYMBOL                "DbgSymbl"
+#define DEBUGGER_FINDSYMBOL_MSG            "Can't find symbol '%s' in current context."
 
 #define DEBUGGER_SETPROPERTY               "DbgStPrp"
 #define DEBUGGER_SETPROPERTY_MSG           "Object does not support setting properties."

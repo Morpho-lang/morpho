@@ -684,7 +684,7 @@ bool debugger_showsymbol(debugger *debug, value match) {
         morpho_printf(v, " = ");
         morpho_printvalue(v, *val);
         morpho_printf(v, "\n");
-    } else debugger_error(debug, DEBUGGER_SYMBOL, MORPHO_GETCSTRING(match));
+    } else debugger_error(debug, DEBUGGER_FINDSYMBOL, MORPHO_GETCSTRING(match));
     
     return val;
 }
@@ -763,7 +763,7 @@ bool debugger_setsymbol(debugger *debug, value symbol, value val) {
     
     if (debug_findsymbol(debugger_currentvm(debug), symbol, NULL, NULL, &dest)) {
         *dest=val;
-    } else debugger_error(debug, DEBUGGER_SYMBOL, MORPHO_GETCSTRING(symbol));
+    } else debugger_error(debug, DEBUGGER_FINDSYMBOL, MORPHO_GETCSTRING(symbol));
     
     return (dest!=NULL);
 }
@@ -780,7 +780,7 @@ bool debugger_setproperty(debugger *debug, value symbol, value property, value v
             value key = dictionary_intern(&obj->fields, property);
             success=objectinstance_setproperty(obj, key, val);
         } else debugger_error(debug, DEBUGGER_SETPROPERTY);
-    } else debugger_error(debug, DEBUGGER_SYMBOL, MORPHO_GETCSTRING(symbol));
+    } else debugger_error(debug, DEBUGGER_FINDSYMBOL, MORPHO_GETCSTRING(symbol));
     
     return success;
 }
@@ -842,7 +842,7 @@ bool morpho_debug(vm *v, program *p) {
 
 /** Intialize the debugger library */
 void debugger_initialize(void) {
-    morpho_defineerror(DEBUGGER_SYMBOL, ERROR_DEBUGGER, DEBUGGER_SYMBOL_MSG);
+    morpho_defineerror(DEBUGGER_FINDSYMBOL, ERROR_DEBUGGER, DEBUGGER_FINDSYMBOL_MSG);
     morpho_defineerror(DEBUGGER_SETPROPERTY, ERROR_DEBUGGER, DEBUGGER_SETPROPERTY_MSG);
     morpho_defineerror(DEBUGGER_INVLDREGISTER, ERROR_DEBUGGER, DEBUGGER_INVLDREGISTER_MSG);
     morpho_defineerror(DEBUGGER_INVLDGLOBAL, ERROR_DEBUGGER, DEBUGGER_INVLDGLOBAL_MSG);

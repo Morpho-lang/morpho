@@ -231,9 +231,26 @@ void debugger_clear(debugger *d) {
     varray_charclear(&d->breakpoints);
 }
 
+/** Returns the current VM */
+vm *debugger_currentvm(debugger *d) {
+    return d->currentvm;
+}
+
 /** Sets the error structure that the debugger will report errors to */
 void debugger_seterror(debugger *d, error *err) {
     d->err=err;
+}
+
+/** @brief Raises a debugger error
+ * @param debug        the debugger
+ * @param id       error id
+ * @param ...      additional data for sprintf. */
+void debugger_error(debugger *debug, errorid id, ... ) {
+    if (!debug->err || debug->err->id!=ERROR_NONE) return; // Ensure errors are not overwritten.
+    va_list args;
+    va_start(args, id);
+    morpho_writeerrorwithidvalist(debug->err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
+    va_end(args);
 }
 
 /** Sets whether single step mode is in operation */
@@ -271,11 +288,6 @@ bool debugger_isactive(debugger *d) {
     return (d->singlestep || (d->nbreakpoints>0));
 }
 
-/** Returns the current VM */
-vm *debugger_currentvm(debugger *d) {
-    return d->currentvm;
-}
-
 /* **********************************************************************
  * Disassembler
  * ********************************************************************** */
@@ -287,7 +299,7 @@ typedef struct {
     char *display; /** Display code - rX is register, cX is constant X, gX is global X, uX is upvalue, + refers to signed B */
 } assemblyrule;
 
-/* Define assembler by how to display each opcode */
+/** Define disassembler by how to display each opcode */
 assemblyrule assemblyrules[] ={
     { OP_NOP, "nop", "" },
     { OP_MOV, "mov", "rA, rB" },
@@ -565,10 +577,8 @@ bool debugger_showaddress(debugger *debug, indx rindx) {
         if (MORPHO_ISOBJECT(reg[rindx])) {
             morpho_printf(v, "Object in register %i at %p.\n", (int) rindx, (void *) MORPHO_GETOBJECT(reg[rindx]));
             success=true;
-        } else {
-            morpho_printf(v, "Register %i does not contain an object.\n", (int) rindx);
-        }
-    } else morpho_printf(v, "Invalid register.\n");
+        } else debugger_error(debug, DEBUGGER_REGISTEROBJ, (int) rindx);
+    } else debugger_error(debug, DEBUGGER_INVLDREGISTER);
     return success;
 }
 
@@ -666,18 +676,17 @@ void debugger_showstack(debugger *debug) {
 bool debugger_showsymbol(debugger *debug, value match) {
     vm *v = debugger_currentvm(debug);
     
-    callframe *frame;
-    value symbol, *val;
-    bool success=debug_findsymbol(v, match, &frame, &symbol, &val);
-    
-    if (success) {
+    value symbol, *val=NULL;
+    if (debug_findsymbol(v, match, NULL, &symbol, &val)) {
         morpho_printvalue(v, symbol);
         morpho_printf(v, " = ");
         morpho_printvalue(v, *val);
         morpho_printf(v, "\n");
+    } else {
+        debugger_error(debug, DEBUGGER_SYMBOL, MORPHO_GETCSTRING(match));
     }
     
-    return success;
+    return val;
 }
 
 /** Shows all symbols currently in view */
@@ -725,6 +734,8 @@ bool debugger_showproperty(debugger *debug, value matchobj, value matchproperty)
                 morpho_printvalue(v, *instance);
                 morpho_printf(v, "\n");
             } else {
+                
+                
                 morpho_printf(v, "Symbol lacks property '");
                 morpho_printvalue(v, matchproperty);
                 morpho_printf(v, "'\n");
@@ -758,7 +769,7 @@ bool debugger_setsymbol(debugger *debug, value symbol, value val) {
     
     if (debug_findsymbol(debugger_currentvm(debug), symbol, NULL, NULL, &dest)) {
         *dest=val;
-    }
+    } else debugger_error(debug, DEBUGGER_SYMBOL, MORPHO_GETCSTRING(symbol));
     
     return (dest!=NULL);
 }
@@ -768,14 +779,14 @@ bool debugger_setproperty(debugger *debug, value symbol, value property, value v
     value *dest=NULL;
     bool success=false;
     
-    if (debug_findsymbol(debugger_currentvm(debug), symbol, NULL, NULL, &dest) &&
-        MORPHO_ISINSTANCE(*dest)) {
-        objectinstance *obj = MORPHO_GETINSTANCE(*dest);
+    if (debug_findsymbol(debugger_currentvm(debug), symbol, NULL, NULL, &dest)) {
+        if (MORPHO_ISINSTANCE(*dest)) {
+            objectinstance *obj = MORPHO_GETINSTANCE(*dest);
             
-        value key = dictionary_intern(&obj->fields, property);
-        success=objectinstance_setproperty(obj, key, val);
-        printf("Set property.\n");
-    }
+            value key = dictionary_intern(&obj->fields, property);
+            success=objectinstance_setproperty(obj, key, val);
+        } else debugger_error(debug, DEBUGGER_SETPROPERTY);
+    } else debugger_error(debug, DEBUGGER_SYMBOL, MORPHO_GETCSTRING(symbol));
     
     return success;
 }
@@ -829,4 +840,16 @@ bool morpho_debug(vm *v, program *p) {
     debugger_clear(&debug);
     
     return success;
+}
+
+/* **********************************************************************
+ * Initialization
+ * ********************************************************************** */
+
+/** Intialize the debugger library */
+void debugger_initialize(void) {
+    morpho_defineerror(DEBUGGER_SYMBOL, ERROR_DEBUGGER, DEBUGGER_SYMBOL_MSG);
+    morpho_defineerror(DEBUGGER_SETPROPERTY, ERROR_DEBUGGER, DEBUGGER_SETPROPERTY_MSG);
+    morpho_defineerror(DEBUGGER_INVLDREGISTER, ERROR_DEBUGGER, DEBUGGER_INVLDREGISTER_MSG);
+    morpho_defineerror(DEBUGGER_REGISTEROBJ, ERROR_DEBUGGER, DEBUGGER_REGISTEROBJ_MSG);
 }

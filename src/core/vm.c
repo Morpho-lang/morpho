@@ -1959,6 +1959,7 @@ void morpho_initialize(void) {
     lex_initialize();
     parse_initialize();
     compile_initialize();
+    debugger_initialize();
     extensions_initialize();
     
 #ifdef MORPHO_DEBUG_GCSIZETRACKING

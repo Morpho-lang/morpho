@@ -15,6 +15,26 @@
 
 #define DEBUG_ISSINGLESTEP(d) ((d) && (d->singlestep))
 
+/* -------------------------------------------------------
+ * Debugger error messages
+ * ------------------------------------------------------- */
+
+#define DEBUGGER_SYMBOL                    "DbgSymbl"
+#define DEBUGGER_SYMBOL_MSG                "Can't find symbol '%s' in current context."
+
+#define DEBUGGER_SETPROPERTY               "DbgStPrp"
+#define DEBUGGER_SETPROPERTY_MSG           "Object does not support setting properties."
+
+#define DEBUGGER_INVLDREGISTER             "DbgInvldRg"
+#define DEBUGGER_INVLDREGISTER_MSG         "Invalid register."
+
+#define DEBUGGER_REGISTEROBJ               "DbgRgObj"
+#define DEBUGGER_REGISTEROBJ_MSG           "Register %i does not contain an object."
+
+/* -------------------------------------------------------
+ * Debugger interface
+ * ------------------------------------------------------- */
+
 bool debug_infofromindx(program *code, instructionindx indx, value *module, int *line, int *posn, objectfunction **func, objectclass **klass);
 bool debug_indxfromline(program *code, int line, instructionindx *out);
 bool debug_indxfromfunction(program *code, value klassname, value fname, instructionindx *indx);
@@ -58,5 +78,7 @@ bool debugger_setsymbol(debugger *debug, value symbol, value val);
 bool debugger_setproperty(debugger *debug, value symbol, value property, value val);
 
 bool debugger_enter(debugger *debug, vm *v);
+
+void debugger_initialize(void);
 
 #endif /* debug_h */

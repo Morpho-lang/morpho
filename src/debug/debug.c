@@ -538,6 +538,22 @@ void debugger_quit(debugger *debug) {
 }
 
 /* **********************************************************************
+ * Breakpoints
+ * ********************************************************************** */
+
+bool debugger_breakatinstruction(debugger *debug, bool set, instructionindx indx) {
+    return false;
+}
+
+bool debugger_breakatline(debugger *debug, bool set, char *file, int line) {
+    return false;
+}
+
+bool debugger_breakatfunction(debugger *debug, bool set, value klass, value function) {
+    return false; 
+}
+
+/* **********************************************************************
  * Show commands
  * ********************************************************************** */
 

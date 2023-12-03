@@ -67,6 +67,10 @@ void debugger_disassemble(vm *v, program *code, int *matchline);
 void debugger_garbagecollect(debugger *debug);
 void debugger_quit(debugger *debug);
 
+bool debugger_breakatinstruction(debugger *debug, bool set, instructionindx indx);
+bool debugger_breakatline(debugger *debug, bool set, char *file, int line);
+bool debugger_breakatfunction(debugger *debug, bool set, value klass, value function);
+
 void debugger_showlocation(debugger *debug, instructionindx indx);
 bool debugger_showaddress(debugger *debug, indx rindx);
 void debugger_showbreakpoints(debugger *debug);

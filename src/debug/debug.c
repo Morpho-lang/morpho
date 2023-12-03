@@ -236,6 +236,11 @@ vm *debugger_currentvm(debugger *d) {
     return d->currentvm;
 }
 
+/** Returns the current program */
+program *debugger_currentprogram(debugger *d) {
+    return d->currentvm->current;
+}
+
 /** Sets the error structure that the debugger will report errors to */
 void debugger_seterror(debugger *d, error *err) {
     d->err=err;
@@ -264,17 +269,19 @@ bool debugger_insinglestep(debugger *d) {
 }
 
 /** Sets a breakpoint */
-void debugger_setbreakpoint(debugger *d, instructionindx indx) {
-    if (indx>d->breakpoints.count) return;
+bool debugger_setbreakpoint(debugger *d, instructionindx indx) {
+    if (indx>d->breakpoints.count) return false;
     d->breakpoints.data[indx]='b';
     d->nbreakpoints++;
+    return true;
 }
 
 /** Clears a breakpoint */
-void debugger_clearbreakpoint(debugger *d, instructionindx indx) {
-    if (indx>d->breakpoints.count) return;
+bool debugger_clearbreakpoint(debugger *d, instructionindx indx) {
+    if (indx>d->breakpoints.count) return false;
     d->breakpoints.data[indx]='\0';
     d->nbreakpoints--;
+    return true;
 }
 
 /** Tests if we should break at a given point */
@@ -542,15 +549,27 @@ void debugger_quit(debugger *debug) {
  * ********************************************************************** */
 
 bool debugger_breakatinstruction(debugger *debug, bool set, instructionindx indx) {
-    return false;
+    bool success=false;
+    if (set) success=debugger_setbreakpoint(debug, indx);
+    else success=debugger_clearbreakpoint(debug, indx);
+    
+    if (!success) debugger_error(debug, DEBUGGER_INVLDINSTR);
+    
+    return success;
 }
 
+/** Break at a particular line */
 bool debugger_breakatline(debugger *debug, bool set, char *file, int line) {
-    return false;
+    instructionindx indx;
+    return (debug_indxfromline(debugger_currentprogram(debug), line, &indx) &&
+                  debugger_breakatinstruction(debug, set, indx));
 }
 
+/** Break at a function or method */
 bool debugger_breakatfunction(debugger *debug, bool set, value klass, value function) {
-    return false; 
+    instructionindx indx;
+    return (debug_indxfromfunction(debugger_currentprogram(debug), klass, function, &indx) &&
+                  debugger_breakatinstruction(debug, set, indx));
 }
 
 /* **********************************************************************
@@ -565,7 +584,7 @@ void debugger_showlocation(debugger *debug, instructionindx indx) {
     int line=0;
     objectfunction *fn=NULL;
     objectclass *klass=NULL;
-    debug_infofromindx(v->current, indx, &module, &line, NULL, &fn, &klass);
+    debug_infofromindx(debugger_currentprogram(debug), indx, &module, &line, NULL, &fn, &klass);
     
     morpho_printf(v, "in ");
     
@@ -609,7 +628,7 @@ void debugger_showbreakpoints(debugger *debug) {
             morpho_printf(v, "  Breakpoint ");
             debugger_showlocation(debug, i);
             morpho_printf(v, "\n");
-        } else if (DECODE_OP(v->current->code.data[i])==OP_BREAK) {
+        } else if (DECODE_OP(debugger_currentprogram(debug)->code.data[i])==OP_BREAK) {
             morpho_printf(v, "  Break ");
             debugger_showlocation(debug, i);
             morpho_printf(v, "\n");
@@ -818,7 +837,7 @@ bool debugger_enter(debugger *debug, vm *v) {
         objectfunction *ofunc=debug->currentfunc;
         
         // Fetch info from annotations
-        debug_infofromindx(v->current, debug->iindx, &debug->currentmodule, &debug->currentline, NULL, &debug->currentfunc, NULL);
+        debug_infofromindx(debugger_currentprogram(debug), debug->iindx, &debug->currentmodule, &debug->currentline, NULL, &debug->currentfunc, NULL);
         
         // If we're in single step mode, only stop when we've changed line OR if a breakpoint is explicitly set
         if (debugger_insinglestep(debug) &&
@@ -862,6 +881,7 @@ void debugger_initialize(void) {
     morpho_defineerror(DEBUGGER_SETPROPERTY, ERROR_DEBUGGER, DEBUGGER_SETPROPERTY_MSG);
     morpho_defineerror(DEBUGGER_INVLDREGISTER, ERROR_DEBUGGER, DEBUGGER_INVLDREGISTER_MSG);
     morpho_defineerror(DEBUGGER_INVLDGLOBAL, ERROR_DEBUGGER, DEBUGGER_INVLDGLOBAL_MSG);
+    morpho_defineerror(DEBUGGER_INVLDINSTR, ERROR_DEBUGGER, DEBUGGER_INVLDINSTR_MSG);
     morpho_defineerror(DEBUGGER_REGISTEROBJ, ERROR_DEBUGGER, DEBUGGER_REGISTEROBJ_MSG);
     morpho_defineerror(DEBUGGER_SYMBOLPROP, ERROR_DEBUGGER, DEBUGGER_SYMBOLPROP_MSG);
 }

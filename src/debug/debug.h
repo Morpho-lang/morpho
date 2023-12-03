@@ -31,6 +31,9 @@
 #define DEBUGGER_INVLDGLOBAL               "DbgInvldGlbl"
 #define DEBUGGER_INVLDGLOBAL_MSG           "Invalid global."
 
+#define DEBUGGER_INVLDINSTR                "DbgInvldInstr"
+#define DEBUGGER_INVLDINSTR_MSG            "Invalid instruction."
+
 #define DEBUGGER_REGISTEROBJ               "DbgRgObj"
 #define DEBUGGER_REGISTEROBJ_MSG           "Register %i does not contain an object."
 
@@ -57,8 +60,8 @@ bool debugger_isactive(debugger *d);
 void debugger_setsinglestep(debugger *d, bool singlestep);
 bool debugger_insinglestep(debugger *d);
 
-void debugger_setbreakpoint(debugger *d, instructionindx indx);
-void debugger_clearbreakpoint(debugger *d, instructionindx indx);
+bool debugger_setbreakpoint(debugger *d, instructionindx indx);
+bool debugger_clearbreakpoint(debugger *d, instructionindx indx);
 bool debugger_shouldbreakat(debugger *d, instructionindx indx);
 
 void debugger_disassembleinstruction(vm *v, instruction instruction, instructionindx indx, value *konst, value *reg);

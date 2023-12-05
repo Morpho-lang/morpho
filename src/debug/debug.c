@@ -178,6 +178,22 @@ bool debug_findsymbol(vm *v, value matchstr, callframe **frame, value *symbol, v
     return false;
 }
 
+/** Identifies a symbol for a given global number
+ * @param[in] p - program to search
+ * @param[in] id - global number to find
+ * @param[out] frame - callframe matched*/
+bool debug_symbolforglobal(program *p, indx id, value *symbol) {
+    for (unsigned int j=0; j<p->annotations.count; j++) {
+        debugannotation *ann = &p->annotations.data[j];
+        if (ann->type==DEBUG_GLOBAL &&
+            ann->content.global.gindx==id) {
+            *symbol = ann->content.global.symbol;
+            return true;
+        }
+    }
+    return false;
+}
+
 /* **********************************************************************
  * Stack traces
  * ********************************************************************** */
@@ -641,8 +657,14 @@ bool debugger_showglobal(debugger *debug, indx id) {
     bool success=false;
     vm *v = debugger_currentvm(debug);
     if (id>=0 && id<v->globals.count) {
+        value symbol;
         morpho_printf(v, "  g%u:", id);
         morpho_printvalue(v, v->globals.data[id]);
+        if (debug_symbolforglobal(v->current, id, &symbol)) {
+            morpho_printf(v, " (");
+            morpho_printvalue(v, symbol);
+            morpho_printf(v, ")");
+        }
         morpho_printf(v, "\n");
         success=true;
     } else debugger_error(debug, DEBUGGER_INVLDGLOBAL);

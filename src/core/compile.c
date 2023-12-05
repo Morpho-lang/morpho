@@ -3421,6 +3421,7 @@ void compiler_init(const char *source, program *out, compiler *c) {
     c->currentmethod = NULL;
     c->currentmodule = MORPHO_NIL;
     c->parent = NULL;
+    c->line = 1; // Count from 1
 }
 
 /** @brief Clear attached data structures from a compiler
@@ -3457,9 +3458,9 @@ bool morpho_compile(char *in, compiler *c, bool opt, error *err) {
     /* Remove any previous END instruction */
     compiler_stripend(c);
     instructionindx last = out->code.count; /* End of old code */
-
+    
     /* Initialize lexer */
-    lex_init(&c->lex, in, 1); /* Count lines from 1. */
+    lex_init(&c->lex, in, c->line); /* Count lines from 1. */
 
     if ((!morpho_parse(&c->parse)) || !ERROR_SUCCEEDED(c->err)) {
         *err = c->err;
@@ -3483,8 +3484,10 @@ bool morpho_compile(char *in, compiler *c, bool opt, error *err) {
         }
     }
 
-    if (success && opt) {
-        optimize(c->out);
+    if (success) {
+        if (opt) optimize(c->out);
+        
+        c->line=c->lex.line+1; // Update the line counter if compilation was a success; assumes a new line every time morpho_compile is called.
     }
 
     return success;

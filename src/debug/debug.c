@@ -350,7 +350,7 @@ assemblyrule assemblyrules[] ={
     { OP_CALL, "call", "rA, B" }, // b literal
     { OP_INVOKE, "invoke", "rA, rB, C" }, // c literal
     
-    { OP_RETURN, "return", "rB" }, // c literal
+    { OP_RETURN, "return", "?rB" }, // Return register B is A nonzero
 
     { OP_CLOSURE, "closure", "rA, pB" }, // b prototype
     
@@ -435,6 +435,9 @@ void debugger_disassembleinstruction(vm *v, instruction instruction, instruction
                     break;
                 case 'c': mode=CONST; n+=morpho_printf(v, "%c", *c); break;
                 case 'r': mode=REG; n+=morpho_printf(v, "%c", *c); break;
+                case '?':
+                    if (DECODE_A(instruction)==0) return;
+                    break;
                 default: n+=morpho_printf(v, "%c", *c); break;
             }
         }

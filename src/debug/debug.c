@@ -53,7 +53,7 @@ bool debug_infofromindx(program *code, instructionindx indx, value *module, int 
 }
 
 /** Finds the instruction indx corresponding to a particular line of code */
-bool debug_indxfromline(program *code, int line, instructionindx *out) {
+bool debug_indxfromline(program *code, value file, int line, instructionindx *out) {
     instructionindx i=0;
     value module=MORPHO_NIL;
     
@@ -61,6 +61,8 @@ bool debug_indxfromline(program *code, int line, instructionindx *out) {
         debugannotation *ann = &code->annotations.data[j];
         switch (ann->type) {
             case DEBUG_ELEMENT:
+                if (MORPHO_ISSTRING(file) && !MORPHO_ISEQUAL(file, module)) break; // Check we're in the right module
+                
                 if (ann->content.element.line==line) {
                     *out=i;
                     return true;
@@ -575,9 +577,9 @@ bool debugger_breakatinstruction(debugger *debug, bool set, instructionindx indx
 }
 
 /** Break at a particular line */
-bool debugger_breakatline(debugger *debug, bool set, char *file, int line) {
+bool debugger_breakatline(debugger *debug, bool set, value file, int line) {
     instructionindx indx;
-    return (debug_indxfromline(debugger_currentprogram(debug), line, &indx) &&
+    return (debug_indxfromline(debugger_currentprogram(debug), file, line, &indx) &&
                   debugger_breakatinstruction(debug, set, indx));
 }
 

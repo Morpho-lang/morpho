@@ -45,9 +45,6 @@
  * ------------------------------------------------------- */
 
 bool debug_infofromindx(program *code, instructionindx indx, value *module, int *line, int *posn, objectfunction **func, objectclass **klass);
-bool debug_indxfromline(program *code, int line, instructionindx *out);
-bool debug_indxfromfunction(program *code, value klassname, value fname, instructionindx *indx);
-bool debug_symbolsforfunction(program *code, objectfunction *func, instructionindx *indx, value *symbols);
 
 void debugger_init(debugger *d, program *p);
 void debugger_clear(debugger *d);
@@ -71,7 +68,7 @@ void debugger_garbagecollect(debugger *debug);
 void debugger_quit(debugger *debug);
 
 bool debugger_breakatinstruction(debugger *debug, bool set, instructionindx indx);
-bool debugger_breakatline(debugger *debug, bool set, char *file, int line);
+bool debugger_breakatline(debugger *debug, bool set, value file, int line);
 bool debugger_breakatfunction(debugger *debug, bool set, value klass, value function);
 
 void debugger_showlocation(debugger *debug, instructionindx indx);

@@ -57,8 +57,6 @@ bool debug_indxfromline(program *code, value file, int line, instructionindx *ou
     instructionindx i=0;
     value module=MORPHO_NIL;
     
-    debugannotation_showannotations(&code->annotations);
-    
     for (unsigned int j=0; j<code->annotations.count; j++) {
         debugannotation *ann = &code->annotations.data[j];
         switch (ann->type) {

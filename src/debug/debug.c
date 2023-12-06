@@ -57,13 +57,14 @@ bool debug_indxfromline(program *code, value file, int line, instructionindx *ou
     instructionindx i=0;
     value module=MORPHO_NIL;
     
+    debugannotation_showannotations(&code->annotations);
+    
     for (unsigned int j=0; j<code->annotations.count; j++) {
         debugannotation *ann = &code->annotations.data[j];
         switch (ann->type) {
             case DEBUG_ELEMENT:
-                if (MORPHO_ISSTRING(file) && !MORPHO_ISEQUAL(file, module)) break; // Check we're in the right module
-                
-                if (ann->content.element.line==line) {
+                if (MORPHO_ISEQUAL(file, module) &&
+                    ann->content.element.line==line) {
                     *out=i;
                     return true;
                 }
@@ -71,6 +72,8 @@ bool debug_indxfromline(program *code, value file, int line, instructionindx *ou
                 break;
             case DEBUG_MODULE:
                 module=ann->content.module.module;
+                morpho_printvalue(NULL, module);
+                printf("\n");
                 break;
             default: break;
         }

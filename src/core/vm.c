@@ -592,8 +592,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
     int nopcodes;
     for (nopcodes=0; dispatchtable[nopcodes]!=&&code_END; ) nopcodes++;
     
-    #define DEBUG_ENABLE() { if (v->debug) for (int i=0; i<=nopcodes; i++) dispatchtable[i]=&&code_BREAK; }
-    #define DEBUG_DISABLE() { if (v->debug) for (int i=0; i<=nopcodes; i++) dispatchtable[i]=debugdispatchtable[i]; }
+    #define DEBUG_ENABLE() { if (v->debug) for (int i=0; i<nopcodes; i++) dispatchtable[i]=&&code_BREAK; }
+    #define DEBUG_DISABLE() { if (v->debug) for (int i=0; i<nopcodes; i++) dispatchtable[i]=debugdispatchtable[i]; }
     
     /* Dispatch here means fetch the next instruction, decode and jump */
     #define FETCHANDDECODE()                                                 \

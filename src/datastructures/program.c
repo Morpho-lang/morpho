@@ -32,7 +32,7 @@ static void vm_programinit(program *p) {
 static void vm_programclear(program *p) {
     if (p->global) object_free((object *) p->global);
     varray_instructionclear(&p->code);
-    debug_clearannotationlist(&p->annotations);
+    debugannotation_clear(&p->annotations);
     p->global=NULL;
     /* Free any objects bound to the program */
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR

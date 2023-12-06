@@ -1471,7 +1471,7 @@ void optimize_printblock(optimizer *opt, codeblockindx block) {
         optimizer_currentindx(opt)<=end;
         optimize_advance(opt)) {
         optimize_fetch(opt);
-        debug_disassembleinstruction(opt->current, optimizer_currentindx(opt), NULL, NULL);
+        debugger_disassembleinstruction(NULL, opt->current, optimizer_currentindx(opt), NULL, NULL);
         printf("\n");
     }
 }

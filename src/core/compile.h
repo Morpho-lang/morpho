@@ -229,6 +229,9 @@ typedef struct scompiler {
     
     error err;
     
+    /* Line number */
+    int line; 
+    
     /* Globals */
     dictionary globals;
     
@@ -252,7 +255,7 @@ typedef struct scompiler {
     program *out;
     
     /* Modules included */
-    dictionary modules; 
+    dictionary modules;
     
     /* The parent compiler */
     struct scompiler *parent;

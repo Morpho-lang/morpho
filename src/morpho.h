@@ -158,9 +158,11 @@ error *morpho_geterror(vm *v);
 int morpho_printf(vm *v, char *format, ...);
 void morpho_printvalue(vm *v, value val);
 
-/* Disassembly */
-void morpho_disassemble(program *code, int *matchline);
+/* Stack trace */
 void morpho_stacktrace(vm *v);
+
+/* Disassembler */
+void morpho_disassemble(vm *v, program *code, int *matchline);
 
 /* Multithreading */
 void morpho_setthreadnumber(int nthreads);

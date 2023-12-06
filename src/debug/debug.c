@@ -70,8 +70,6 @@ bool debug_indxfromline(program *code, value file, int line, instructionindx *ou
                 break;
             case DEBUG_MODULE:
                 module=ann->content.module.module;
-                morpho_printvalue(NULL, module);
-                printf("\n");
                 break;
             default: break;
         }

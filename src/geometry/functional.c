@@ -865,6 +865,7 @@ functional_mapnumericalhessian_cleanup:
  * ********************************************************************** */
 
 threadpool functional_pool;
+bool functional_poolinitialized;
 
 /** Gradient function */
 typedef bool (functional_mapfn) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out);
@@ -979,6 +980,11 @@ bool functional_mapfn_elements(void *arg) {
 
 /** Dispatches tasks to threadpool */
 bool functional_parallelmap(int ntasks, functional_task *tasks) {
+    if (!functional_poolinitialized) {
+        functional_poolinitialized=threadpool_init(&functional_pool, morpho_threadnumber());
+        if (!functional_poolinitialized) return false;
+    }
+    
     for (int i=0; i<ntasks; i++) {
        threadpool_add_task(&functional_pool, functional_mapfn_elements, (void *) &tasks[i]);
     }
@@ -4624,7 +4630,7 @@ void functional_initialize(void) {
     morpho_defineerror(INTEGRAL_AMBGSFLD, ERROR_HALT, INTEGRAL_AMBGSFLD_MSG);
     morpho_defineerror(INTEGRAL_SPCLFN, ERROR_HALT, INTEGRAL_SPCLFN_MSG);
     
-    threadpool_init(&functional_pool, morpho_threadnumber());
+    functional_poolinitialized = false;
     
     objectintegralelementreftype=object_addtype(&objectintegralelementrefdefn);
     elementhandle=vm_addtlvar();

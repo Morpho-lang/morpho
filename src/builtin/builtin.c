@@ -285,6 +285,7 @@ void builtin_initialize(void) {
     string_initialize(); 
     function_initialize();
     class_initialize();
+    upvalue_initialize();
     invocation_initialize();
     dict_initialize();
     list_initialize();

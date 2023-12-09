@@ -131,16 +131,19 @@ typedef struct {
 } errorhandler;
 
 /* **********************************************************************
- * Debugger
+ * Debugger backend
  * ********************************************************************** */
 
 typedef struct {
     bool singlestep; /** Is single step mode on? */
     
+    struct svm *currentvm; /** Current virtual machine on entry */
     int currentline; /** Record current line */
     objectfunction *currentfunc; /** Record current function */
     value currentmodule; /** Current module */
     instructionindx iindx; /** Record current instruction */
+    
+    error *err; /** Report errors */
     
     int nbreakpoints; /** Number of active breakpoints */
     varray_char breakpoints; /** Keep track of breakpoints */
@@ -223,6 +226,9 @@ struct svm {
     
     morphowarningfn warningfn; /** Warning callback */
     void *warningref; /** Warning callback reference */
+    
+    morphodebuggerfn debuggerfn; /** Debugger callback */
+    void *debuggerref; /** Debugger callback reference */
     
     _MORPHO_PADDING; /** Ensure subkernels do not cause false sharing */
 };

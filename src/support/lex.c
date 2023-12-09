@@ -423,7 +423,7 @@ bool lex_string(lexer *l, token *tok, error *err) {
  *  @param[out] err  error struct to fill out on errors
  *  @returns true on success, false if an error occurs */
 bool lex_number(lexer *l, token *tok, error *err) {
-    tokentype type=TOKEN_INTEGER;
+    tokentype type=l->inttype;
     while (lex_isdigit(lex_peek(l))) lex_advance(l);
     
     /* Fractional part */
@@ -441,7 +441,7 @@ bool lex_number(lexer *l, token *tok, error *err) {
     
     /* Exponent */
     if (lex_peek(l) == 'e' || lex_peek(l) == 'E') {
-        type=TOKEN_NUMBER;
+        type=l->flttype;
         lex_advance(l); /* Consume the 'e' */
         
         /* Optional sign */
@@ -454,7 +454,7 @@ bool lex_number(lexer *l, token *tok, error *err) {
     /* Imaginary Numbers */
     if (lex_peek(l) =='i' && lex_peekahead(l, 1) == 'm'){
         /* mark this as an imaginary number*/
-        type = TOKEN_IMAG;
+        type = l->imagtype;
         lex_advance(l); /* Consume the 'i' */
         lex_advance(l); /* Consume the 'm' */
     }
@@ -470,7 +470,7 @@ bool lex_number(lexer *l, token *tok, error *err) {
  *  @param[in]  length length to compare
  *  @param[in]  match  string to match with
  *  @param[in]  type   token type to use if the match is successful
- *  @returns type or TOKEN_SYMBOL if the match was not successful */
+ *  @returns type or symboltype if the match was not successful */
 tokentype lex_checksymbol(lexer *l, int start, int length, char *match, tokentype type) {
     int toklength = (int) (l->current - l->start);
     int expectedlength = start + length;
@@ -479,11 +479,11 @@ tokentype lex_checksymbol(lexer *l, int start, int length, char *match, tokentyp
     if ((toklength == expectedlength) && (memcmp(l->start+start, match, length) == 0))
             return type;
     
-    return TOKEN_SYMBOL;
+    return l->symboltype;
 }
 
-tokentype lex_symboltype(lexer *l) {
-    tokentype t = TOKEN_SYMBOL;
+tokentype lex_typeforsymboltoken(lexer *l) {
+    tokentype t = l->symboltype;
     tokendefn *def;
     
     if (lex_matchtoken(l, &def)) t = def->type;
@@ -499,8 +499,8 @@ tokentype lex_symboltype(lexer *l) {
 bool lex_symbol(lexer *l, token *tok, error *err) {
     while (lex_isalpha(lex_peek(l)) || lex_isdigit(lex_peek(l))) lex_advance(l);
     
-    tokentype typ = TOKEN_SYMBOL;
-    if (l->matchkeywords) typ = lex_symboltype(l);
+    tokentype typ = l->symboltype;
+    if (l->matchkeywords) typ = lex_typeforsymboltoken(l);
     
     lex_recordtoken(l, typ, tok);
     
@@ -556,6 +556,10 @@ void lex_init(lexer *l, const char *start, int line) {
     l->prefn=lex_preprocess;
     l->whitespacefn=lex_skipwhitespace;
     l->eoftype=TOKEN_EOF;
+    l->inttype=TOKEN_INTEGER;
+    l->flttype=TOKEN_NUMBER;
+    l->imagtype=TOKEN_IMAG;
+    l->symboltype=TOKEN_SYMBOL;
     l->defns=standardtokens;   // Use the standard morpho tokens by default
     l->ndefns=nstandardtokens;
     varray_tokendefninit(&l->defnstore); // Alternative definitions will be held here
@@ -596,6 +600,28 @@ void lex_seteof(lexer *l, tokentype eoftype) {
     l->eoftype = eoftype;
 }
 
+/** @brief Gets the token type representing End Of File */
+tokentype lex_eof(lexer *l) {
+    return l->eoftype;
+}
+
+/** @brief Sets the token type representing integers, floats and complex */
+void lex_setnumbertype(lexer *l, tokentype inttype, tokentype flttype, tokentype imagtype) {
+    l->inttype=inttype;
+    l->flttype=flttype;
+    l->imagtype=imagtype;
+}
+
+/** @brief Sets the token type representing symbols */
+void lex_setsymboltype(lexer *l, tokentype symboltype) {
+    l->symboltype=symboltype;
+}
+
+/** @brief Gets the token type representing symbols */
+tokentype lex_symboltype(lexer *l) {
+    return l->symboltype;
+}
+
 /** @brief Choose whether the lexer should perform string interpolation. */
 void lex_setstringinterpolation(lexer *l, bool interpolation) {
     l->stringinterpolation=interpolation;
@@ -605,6 +631,11 @@ void lex_setstringinterpolation(lexer *l, bool interpolation) {
 void lex_setmatchkeywords(lexer *l, bool match) {
     l->matchkeywords=match;
 }
+
+/** @brief Choose whether the lexer should attempt to match keywords or simply return them as symbols. */
+bool lex_matchkeywords(lexer *l) {
+    return l->matchkeywords;
+};
 
 /** @brief Provide a processing function to skip whitespace and comments. */
 void lex_setwhitespacefn(lexer *l, processtokenfn whitespacefn) {

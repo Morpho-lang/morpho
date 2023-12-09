@@ -261,8 +261,8 @@ json_parsestring_cleanup:
 
 /** Parses an integer */
 bool json_parsenumber(parser *p, void *out) {
-    long f = strtol(p->previous.start, NULL, 10);
-    if (!parse_validatestrtol(p, f)) return false;
+    long f;
+    if (!parse_tokentointeger(p, &f)) return false;
     
     json_setoutput(out, MORPHO_INTEGER((int) f));
     
@@ -271,8 +271,8 @@ bool json_parsenumber(parser *p, void *out) {
 
 /** Parses an floating point value */
 bool json_parsefloat(parser *p, void *out) {
-    double f = strtod(p->previous.start, NULL);
-    if (!parse_validatestrtod(p, f)) return false;
+    double f;
+    if (!parse_tokentodouble(p, &f)) return false;
     
     json_setoutput(out, MORPHO_FLOAT((double) f));
     

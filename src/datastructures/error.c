@@ -156,6 +156,11 @@ bool morpho_matcherror(error *err, errorid id) {
     return (strcmp(err->id, id)==0);
 }
 
+/** Tests if an error block is showing an error */
+bool morpho_checkerror(error *err) {
+    return (err->cat!=ERROR_NONE);
+}
+
 /* **********************************************************************
 * Unreachable code
 * ********************************************************************** */

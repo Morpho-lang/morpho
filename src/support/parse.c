@@ -243,12 +243,23 @@ parse_stringfromtokencleanup:
     return success;
 }
 
-/** Parses a symbol token into a value with no processing. */
+/** Parses the previous token into a value with no processing. */
 value parse_tokenasstring(parser *p) {
     value s = object_stringfromcstring(p->previous.start, p->previous.length);
     if (MORPHO_ISNIL(s)) parse_error(p, true, ERROR_ALLOCATIONFAILED, OBJECT_SYMBOLLABEL);
 
     return s;
+}
+
+/** Parses the next token as a symbol regardless of whether it is a keyword; returns true on success */
+bool parse_tokenassymbol(parser *p) {
+    bool oldmatch = lex_matchkeywords(p->lex);
+    
+    lex_setmatchkeywords(p->lex, false);
+    bool success=parse_checktokenadvance(p, lex_symboltype(p->lex));
+    lex_setmatchkeywords(p->lex, oldmatch); // Restore state of lexer
+    
+    return success;
 }
 
 /** Adds a node to the syntax tree. */
@@ -287,6 +298,18 @@ bool parse_validatestrtod(parser *p, double f) {
         return false;
     }
     return true;
+}
+
+/** Converts a token to an integer, returning true on success */
+bool parse_tokentointeger(parser *p, long *i) {
+    *i = strtol(p->previous.start, NULL, 10);
+    return parse_validatestrtol(p, *i);
+}
+
+/** Converts an token to a double, returning true on success */
+bool parse_tokentodouble(parser *p, double *x) {
+    *x = strtod(p->previous.start, NULL);
+    return parse_validatestrtod(p, *x);
 }
 
 /** Increments the recursion depth counter. If it exceeds PARSE_RECURSIONLIMIT an error is generated */
@@ -458,16 +481,16 @@ bool parse_nil(parser *p, void *out) {
 
 /** Parses an integer */
 bool parse_integer(parser *p, void *out) {
-    long f = strtol(p->previous.start, NULL, 10);
-    PARSE_CHECK(parse_validatestrtol(p, f));
+    long f;
+    PARSE_CHECK(parse_tokentointeger(p, &f));
     
     return parse_addnode(p, NODE_INTEGER, MORPHO_INTEGER(f), &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
 
 /** Parses a number */
 bool parse_number(parser *p, void *out) {
-    double f = strtod(p->previous.start, NULL);
-    PARSE_CHECK(parse_validatestrtod(p, f));
+    double f;
+    PARSE_CHECK(parse_tokentodouble(p, &f));
     
     return parse_addnode(p, NODE_FLOAT, MORPHO_FLOAT(f), &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
@@ -478,8 +501,7 @@ bool parse_complex(parser *p, void *out) {
     if (p->previous.length==2) { // just a bare im symbol
         f = 1;
     } else {
-        f = strtod(p->previous.start, NULL);
-        PARSE_CHECK(parse_validatestrtod(p, f));
+        PARSE_CHECK(parse_tokentodouble(p, &f));
     }
     value c = MORPHO_OBJECT(object_newcomplex(0,f));
     parse_addobject(p, c);
@@ -1599,6 +1621,34 @@ bool parse_stringtovaluearray(char *string, unsigned int nmax, value *v, unsigne
     
     return true;
 }
+
+/* Parses a literal string, returning a value */
+bool parse_value(const char *in, value *out) {
+    lexer l;
+    parser p;
+    syntaxtree tree;
+    error err;
+    bool success=false;
+    error_init(&err);
+    syntaxtree_init(&tree);
+    lex_init(&l, in, 1);
+    parse_init(&p, &l, &err, &tree);
+    if (parse(&p) && tree.tree.count>0) {
+        syntaxtreenode node = tree.tree.data[tree.entry];
+        
+        if (SYNTAXTREE_ISLEAF(node.type)) {
+            if (MORPHO_ISSTRING(node.content)) {
+                *out = object_clonestring(node.content);
+            } else *out = node.content;
+            
+            success=true;
+        }
+    }
+    
+    syntaxtree_clear(&tree);
+    return success;
+}
+
 
 void parse_initialize(void) {
     /* Parse errors */

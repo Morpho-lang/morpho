@@ -10,352 +10,22 @@
 
 #include "compile.h"
 #include "vm.h"
+#include "gc.h"
 #include "debug.h"
 #include "morpho.h"
 #include "strng.h"
 
+#include "debugannotation.h"
+
 void morpho_runtimeerror(vm *v, errorid id, ...);
 
 /* **********************************************************************
- * Debugging annotations
- * ********************************************************************** */
-
-DEFINE_VARRAY(debugannotation, debugannotation);
-
-/** Retrieve the last annotation */
-debugannotation *debug_lastannotation(varray_debugannotation *list) {
-    if (list->count>0) return &list->data[list->count-1];
-    return NULL;
-}
-
-/** Adds an annotation to a list */
-void debug_addannotation(varray_debugannotation *list, debugannotation *annotation) {
-    varray_debugannotationadd(list, annotation, 1);
-}
-
-/** Removes the last annotation */
-void debug_stripend(varray_debugannotation *list) {
-    if (list->count>0) list->data[list->count-1].content.element.ninstr--;
-}
-
-/** Sets the current function */
-void debug_setfunction(varray_debugannotation *list, objectfunction *func) {
-    debugannotation ann = { .type = DEBUG_FUNCTION, .content.function.function = func};
-    debug_addannotation(list, &ann);
-}
-
-/** Sets the current class */
-void debug_setclass(varray_debugannotation *list, objectclass *klass) {
-    debugannotation ann = { .type = DEBUG_CLASS, .content.klass.klass = klass};
-    debug_addannotation(list, &ann);
-}
-
-/** Sets the current module */
-void debug_setmodule(varray_debugannotation *list, value module) {
-    debugannotation ann = { .type = DEBUG_MODULE, .content.module.module = module };
-    debug_addannotation(list, &ann);
-}
-
-/** Pushes an error handler onto the stack */
-void debug_pusherr(varray_debugannotation *list, objectdictionary *dict) {
-    debugannotation ann = { .type = DEBUG_PUSHERR, .content.errorhandler.handler = dict};
-    debug_addannotation(list, &ann);
-}
-
-/** Pops an error handler from the stack */
-void debug_poperr(varray_debugannotation *list) {
-    debugannotation ann = { .type = DEBUG_POPERR };
-    debug_addannotation(list, &ann);
-}
-
-/** Associates a register with a symbol */
-void debug_setreg(varray_debugannotation *list, indx reg, value symbol) {
-    if (!MORPHO_ISSTRING(symbol)) return;
-    value sym = object_clonestring(symbol);
-    debugannotation ann = { .type = DEBUG_REGISTER, .content.reg.reg = reg, .content.reg.symbol = sym };
-    debug_addannotation(list, &ann);
-}
-
-/** Associates a global with a symbol */
-void debug_setglobal(varray_debugannotation *list, indx gindx, value symbol) {
-    if (!MORPHO_ISSTRING(symbol)) return;
-    value sym = object_clonestring(symbol);
-    debugannotation ann = { .type = DEBUG_GLOBAL, .content.global.gindx = gindx, .content.global.symbol = sym };
-    debug_addannotation(list, &ann);
-}
-
-/** Uses information from a syntaxtreenode to associate a sequence of instructions with source */
-void debug_addnode(varray_debugannotation *list, syntaxtreenode *node) {
-    if (!node) return; 
-    debugannotation *last = debug_lastannotation(list);
-    if (last && last->type==DEBUG_ELEMENT &&
-        node->line==last->content.element.line &&
-        node->posn==last->content.element.posn) {
-        last->content.element.ninstr++;
-    } else {
-        debugannotation ann = { .type = DEBUG_ELEMENT, .content.element.line = node->line, .content.element.posn = node->posn, .content.element.ninstr=1 };
-        debug_addannotation(list, &ann);
-    }
-}
-
-/** Clear debugging list, freeing attached info */
-void debug_clearannotationlist(varray_debugannotation *list) {
-    for (unsigned int j=0; j<list->count; j++) {
-        value sym=MORPHO_NIL;
-        switch (list->data[j].type) {
-            case DEBUG_REGISTER:
-                sym = list->data[j].content.reg.symbol;
-                break;
-            case DEBUG_GLOBAL:
-                sym=list->data[j].content.global.symbol;
-                break;
-            default: break;
-        }
-        if (MORPHO_ISOBJECT(sym)) object_free(MORPHO_GETOBJECT(sym));
-    }
-    varray_debugannotationclear(list);
-}
-
-/* **********************************************************************
- * Disassembler
- * ********************************************************************** */
-
-/** Formatting rules for disassembler */
-typedef struct {
-    instruction op;
-    char *label;
-    char *display;
-} assemblyrule;
-
-/* Order is not significant here */
-assemblyrule assemblyrules[] ={
-    { OP_NOP, "nop", "" },
-    { OP_MOV, "mov", "rA, rB" },
-    { OP_LCT, "lct", "rA, cX" }, // Custom
-    { OP_ADD, "add", "rA, rB, rC" },
-    { OP_SUB, "sub", "rA, rB, rC" },
-    { OP_MUL, "mul", "rA, rB, rC" },
-    { OP_DIV, "div", "rA, rB, rC" },
-    { OP_POW, "pow", "rA, rB, rC" },
-    { OP_NOT, "not", "rA, rB" },
-    
-    { OP_EQ, "eq ", "rA, rB, rC" },
-    { OP_NEQ, "neq", "rA, rB, rC" },
-    { OP_LT, "lt ", "rA, rB, rC" },
-    { OP_LE, "le ", "rA, rB, rC" },
-    
-    { OP_PRINT, "print", "rA" },
-    
-    { OP_B, "b", "+" },
-    { OP_BIF, "bif", "rA +" },
-    { OP_BIFF, "biff", "rA +" },
-    
-    { OP_CALL, "call", "rA, B" }, // b literal
-    { OP_INVOKE, "invoke", "rA, rB, C" }, // c literal
-    
-    { OP_RETURN, "return", "rB" }, // c literal
-
-    { OP_CLOSURE, "closure", "rA, pB" }, // b prototype
-    
-    { OP_LUP, "lup", "rA, uB" }, // b 'u'
-    { OP_SUP, "sup", "uA, rB" }, // a 'u', b c|r
-    
-    { OP_CLOSEUP, "closeup", "rA" },
-    { OP_LPR, "lpr", "rA, rB, rC" },
-    { OP_SPR, "spr", "rA, rB, rC" },
-    
-    { OP_LIX, "lix", "rA, rB, rC" },
-    { OP_SIX, "six", "rA, rB, rC" },
-    
-    { OP_LGL, "lgl", "rA, gX" }, //
-    { OP_SGL, "sgl", "rA, gX" }, // label b with 'g'
-    
-    { OP_PUSHERR, "pusherr", "cX" },
-    { OP_POPERR, "poperr", "+" },
-    
-    { OP_CAT, "cat", "rA, rB, rC" },
-    { OP_BREAK, "break", "" },
-    { OP_END, "end", "" },
-    { 0, NULL, "" } // Null terminate the list
-};
-
-assemblyrule *debug_getassemblyrule(unsigned int op) {
-    for (unsigned int i=0; assemblyrules[i].label!=NULL; i++) if (assemblyrules[i].op==op) return &assemblyrules[i];
-    return NULL;
-}
-
-typedef enum { NONE, REG, CONST} debugcontents;
-
-/** Shows the contents of a register or constant */
-bool debug_showcontents(debugcontents b, int i, value *konst, value *reg) {
-    value *table = NULL;
-    switch (b) {
-        case CONST: table=konst; break;
-        case REG: table = reg; break;
-        default: break;
-    }
-    if (!table) return false;
-    printf("%s%i=", (b==CONST ? "c" : "r"), i);
-    morpho_printvalue(NULL, table[i]);
-    return true;
-}
-
-/** @brief Disassembles a single instruction, writing the output to the console.
- *  @param instruction The instruction to disassemble
- *  @param indx        Instruction index to display
- *  @param konst current constant table
- *  @param reg   current registers */
-void debug_disassembleinstruction(instruction instruction, instructionindx indx, value *konst, value *reg) {
-    unsigned int op = DECODE_OP(instruction);
-    debugcontents mode=NONE, bm=NONE, cm=NONE;
-    int nb=0, nc=0;
-    printf("%4lu : ", indx);
-    int n=0; // Number of characters displayed
-    int width=25; // Width of display
-    
-    assemblyrule *show=debug_getassemblyrule(op);
-    if (show) {
-        n+=printf("%s ", show->label);
-        for (char *c=show->display; *c!='\0'; c++) {
-            switch (*c) {
-                case 'A': n+=printf("%u", DECODE_A(instruction)); break;
-                case 'B': {
-                    bm=mode; nb=DECODE_B(instruction); mode=NONE;
-                    n+=printf("%u", nb);
-                }
-                    break;
-                case 'X': {
-                    bm=mode; nb=DECODE_Bx(instruction); mode=NONE;
-                    n+=printf("%u", nb);
-                }
-                    break;
-                case '+': n+=printf("%i", DECODE_sBx(instruction)); break;
-                case 'C': {
-                    cm=mode; nc=DECODE_C(instruction);
-                    n+=printf("%u", DECODE_C(instruction));
-                }
-                    break;
-                case 'c': mode=CONST; n+=printf("%c", *c); break;
-                case 'r': mode=REG; n+=printf("%c", *c); break;
-                default: n+=printf("%c", *c); break;
-            }
-        }
-        
-        /* Show contents if any were produced by this instruction */
-        if ((!konst && !reg) || (bm==NONE && cm==NONE)) return;
-        for (int k=width-n; k>0; k--) printf(" ");
-        printf("; ");
-        if (debug_showcontents(bm, nb, konst, reg)) printf(" ");
-        debug_showcontents(cm, nc, konst, reg);
-    }
-}
-
-/** Checks if an instruction matches a label in the current error dictionary, and if so print it. */
-void debug_errorlabel(varray_value *errorstack, instructionindx i) {
-    objectdictionary *dict = MORPHO_GETDICTIONARY(errorstack->data[errorstack->count-1]);
-    
-    /* Search the current error handler to see if this line corresponds to a label */
-    for (unsigned int k=0; k<dict->dict.capacity; k++) {
-        value label = dict->dict.contents[k].key;
-        if (!MORPHO_ISNIL(label)) {
-            if (MORPHO_GETINTEGERVALUE(dict->dict.contents[k].val)==i) {
-                morpho_printvalue(NULL, label);
-                printf(":\n");
-            }
-        }
-    }
-}
-
-/** Disassembles a program
- *  @param code - program to disassemble
- *  @param matchline - optional line number to match */
-void debug_disassemble(program *code, int *matchline) {
-    instructionindx entry = program_getentry(code); // The entry point of the function
-    instructionindx i=0;
-    value *konst=(code->global ? code->global->konst.data : NULL);
-    bool silent = matchline;
-    
-    varray_value errorstack;
-    varray_valueinit(&errorstack);
-    
-    /* Loop over debugging information */
-    for (unsigned int j=0; j<code->annotations.count; j++) {
-        debugannotation *ann = &code->annotations.data[j];
-        
-        switch(ann->type) {
-            case DEBUG_ELEMENT:
-                {
-                    if (matchline) {
-                        if (ann->content.element.line<(*matchline)) {
-                            i+=ann->content.element.ninstr;
-                            break;
-                        }
-                        if (ann->content.element.line>(*matchline)) return;
-                    } else if (errorstack.count>0) {
-                        debug_errorlabel(&errorstack, i);
-                    }
-                    
-                    for (unsigned int k=0; k<ann->content.element.ninstr; k++, i++) {
-                        printf("%s",(i==entry ? "->" : "  "));
-                        debug_disassembleinstruction(code->code.data[i], i, konst, NULL);
-                        printf("\n");
-                    }
-                }
-                break;
-            case DEBUG_FUNCTION:
-                {
-                    objectfunction *func=ann->content.function.function;
-                    konst=func->konst.data;
-                    if (silent) break;
-                    if (!MORPHO_ISNIL(func->name)) {
-                        printf("fn ");
-                        morpho_printvalue(NULL, func->name);
-                        printf(":\n");
-                    } else printf("\n");
-                }
-                break;
-            case DEBUG_CLASS:
-                {
-                    objectclass *klass=ann->content.klass.klass;
-                    if (silent) break;
-                    if (klass && !MORPHO_ISNIL(klass->name)) {
-                        printf("class ");
-                        morpho_printvalue(NULL, klass->name);
-                        printf(":\n");
-                    }
-                }
-                break;
-            case DEBUG_PUSHERR:
-                {
-                    objectdictionary *errdict = ann->content.errorhandler.handler;
-                    varray_valuewrite(&errorstack, MORPHO_OBJECT(errdict));
-                }
-                break;
-            case DEBUG_POPERR:
-                {
-                    if (errorstack.count>0) errorstack.count--;
-                }
-                break;
-            default:
-                break;
-        }
-    }
-    
-    varray_valueclear(&errorstack);
-}
-
-/** Wrapper onto debug_disassemble */
-void morpho_disassemble(program *code, int *matchline) {
-    debug_disassemble(code, matchline);
-}
-
-/* **********************************************************************
- * Retrieve debugging info
+ * Extract debugging information using annotations
  * ********************************************************************** */
 
 /** Finds debugging info asssociated with instruction at indx */
 bool debug_infofromindx(program *code, instructionindx indx, value *module, int *line, int *posn, objectfunction **func, objectclass **klass) {
-    if (module) *module=MORPHO_NIL; 
+    if (module) *module=MORPHO_NIL;
     if (func) *func=code->global;
     if (klass) *klass=NULL;
     instructionindx i=0;
@@ -383,7 +53,7 @@ bool debug_infofromindx(program *code, instructionindx indx, value *module, int 
 }
 
 /** Finds the instruction indx corresponding to a particular line of code */
-bool debug_indxfromline(program *code, int line, instructionindx *out) {
+bool debug_indxfromline(program *code, value file, int line, instructionindx *out) {
     instructionindx i=0;
     value module=MORPHO_NIL;
     
@@ -391,7 +61,8 @@ bool debug_indxfromline(program *code, int line, instructionindx *out) {
         debugannotation *ann = &code->annotations.data[j];
         switch (ann->type) {
             case DEBUG_ELEMENT:
-                if (ann->content.element.line==line) {
+                if (MORPHO_ISEQUAL(file, module) &&
+                    ann->content.element.line==line) {
                     *out=i;
                     return true;
                 }
@@ -469,53 +140,59 @@ bool debug_symbolsforfunction(program *code, objectfunction *func, instructionin
     return true;
 }
 
-/** Prints all the annotations for a program */
-void debug_showannotations(varray_debugannotation *list) {
-    indx ix = 0;
-    printf("Showing %u annotations.\n", list->count);
-    for (unsigned int j=0; j<list->count; j++) {
-        printf("%u: ", j);
-        debugannotation *ann = &list->data[j];
-        switch (ann->type) {
-            case DEBUG_CLASS:
-                printf("Class: ");
-                if (!ann->content.klass.klass) {
-                    printf("(none)");
-                } else {
-                    morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.klass.klass));
-                }
-                break;
-            case DEBUG_ELEMENT:
-                printf("Element: [%ti] instructions: %i line: %i posn: %i",
-                       ix, ann->content.element.ninstr, ann->content.element.line, ann->content.element.posn);
-                ix+=ann->content.element.ninstr;
-                break;
-            case DEBUG_FUNCTION:
-                printf("Function: ");
-                morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.function.function));
-                break;
-            case DEBUG_MODULE:
-                printf("Module: ");
-                morpho_printvalue(NULL, ann->content.module.module);
-                break;
-            case DEBUG_PUSHERR:
-                printf("Pusherr: ");
-                morpho_printvalue(NULL, MORPHO_OBJECT(ann->content.errorhandler.handler));
-                break;
-            case DEBUG_POPERR:
-                printf("Poperr: ");
-                break;
-            case DEBUG_REGISTER:
-                printf("Register: %ti ", ann->content.reg.reg);
-                morpho_printvalue(NULL, ann->content.reg.symbol);
-                break;
-            case DEBUG_GLOBAL:
-                printf("Global: %ti ", ann->content.global.gindx);
-                morpho_printvalue(NULL, ann->content.reg.symbol);
-                break;
+/** Attempts to find a symbol.
+ * @param[in] v - virtual machine to search
+ * @param[in] matchstr - string to match
+ * @param[out] frame - callframe matched
+ * @param[out] symbol - actual symbol found
+ * @param[out] val - value of the found symbol
+ * @returns true on success */
+bool debug_findsymbol(vm *v, value matchstr, callframe **frame, value *symbol, value **val) {
+    /* Check back through callframes */
+    for (callframe *f=v->fp; f>=v->frame; f--) {
+        value symbols[f->function->nregs];
+        instructionindx indx = f->pc-v->current->code.data;
+        
+        debug_symbolsforfunction(v->current, f->function, &indx, symbols);
+        
+        for (int i=0; i<f->function->nregs; i++) {
+            if (!MORPHO_ISNIL(symbols[i]) && MORPHO_ISEQUAL(symbols[i], matchstr)) {
+                if (frame) *frame = f;
+                if (symbol) *symbol = symbols[i];
+                if (val) *val = &v->stack.data[f->roffset+i];
+                return true;
+            }
         }
-        printf("\n");
     }
+    
+    /* Otherwise is it a global? */
+    for (unsigned int j=0; j<v->current->annotations.count; j++) {
+        debugannotation *ann = &v->current->annotations.data[j];
+        if (ann->type==DEBUG_GLOBAL &&
+            MORPHO_ISEQUAL(ann->content.global.symbol, matchstr)) {
+            if (frame) *frame = v->frame;
+            if (symbol) *symbol = ann->content.global.symbol;
+            if (val) *val = &v->globals.data[ann->content.global.gindx];
+            return true;
+        }
+    }
+    return false;
+}
+
+/** Identifies a symbol for a given global number
+ * @param[in] p - program to search
+ * @param[in] id - global number to find
+ * @param[out] frame - callframe matched*/
+bool debug_symbolforglobal(program *p, indx id, value *symbol) {
+    for (unsigned int j=0; j<p->annotations.count; j++) {
+        debugannotation *ann = &p->annotations.data[j];
+        if (ann->type==DEBUG_GLOBAL &&
+            ann->content.global.gindx==id) {
+            *symbol = ann->content.global.symbol;
+            return true;
+        }
+    }
+    return false;
 }
 
 /* **********************************************************************
@@ -544,7 +221,7 @@ void morpho_stacktrace(vm *v) {
 }
 
 /* **********************************************************************
- * Debugger structure
+ * Debugger data structure
  * ********************************************************************** */
 
 /** Initializes a debugger structure with a specified program */
@@ -553,6 +230,7 @@ void debugger_init(debugger *d, program *p) {
     
     d->nbreakpoints=0;
     
+    d->err=NULL;
     d->currentfunc=NULL;
     d->currentline=0;
     d->currentmodule=MORPHO_NIL;
@@ -570,6 +248,33 @@ void debugger_clear(debugger *d) {
     varray_charclear(&d->breakpoints);
 }
 
+/** Returns the current VM */
+vm *debugger_currentvm(debugger *d) {
+    return d->currentvm;
+}
+
+/** Returns the current program */
+program *debugger_currentprogram(debugger *d) {
+    return d->currentvm->current;
+}
+
+/** Sets the error structure that the debugger will report errors to */
+void debugger_seterror(debugger *d, error *err) {
+    d->err=err;
+}
+
+/** @brief Raises a debugger error
+ * @param debug        the debugger
+ * @param id       error id
+ * @param ...      additional data for sprintf. */
+void debugger_error(debugger *debug, errorid id, ... ) {
+    if (!debug->err || debug->err->id!=ERROR_NONE) return; // Ensure errors are not overwritten.
+    va_list args;
+    va_start(args, id);
+    morpho_writeerrorwithidvalist(debug->err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
+    va_end(args);
+}
+
 /** Sets whether single step mode is in operation */
 void debugger_setsinglestep(debugger *d, bool singlestep) {
     d->singlestep=singlestep;
@@ -581,17 +286,19 @@ bool debugger_insinglestep(debugger *d) {
 }
 
 /** Sets a breakpoint */
-void debugger_setbreakpoint(debugger *d, instructionindx indx) {
-    if (indx>d->breakpoints.count) return;
+bool debugger_setbreakpoint(debugger *d, instructionindx indx) {
+    if (indx>d->breakpoints.count) return false;
     d->breakpoints.data[indx]='b';
     d->nbreakpoints++;
+    return true;
 }
 
 /** Clears a breakpoint */
-void debugger_clearbreakpoint(debugger *d, instructionindx indx) {
-    if (indx>d->breakpoints.count) return;
+bool debugger_clearbreakpoint(debugger *d, instructionindx indx) {
+    if (indx>d->breakpoints.count) return false;
     d->breakpoints.data[indx]='\0';
     d->nbreakpoints--;
+    return true;
 }
 
 /** Tests if we should break at a given point */
@@ -600,375 +307,386 @@ bool debugger_shouldbreakat(debugger *d, instructionindx indx) {
     return (d->breakpoints.data[indx]!='\0');
 }
 
-/** Should we break */
-bool debug_shouldbreakatpc(vm *v, instruction *pc) {
-    if (!v->debug) return false;
-    if (debugger_insinglestep(v->debug)) return true;
-    instructionindx iindx = pc-v->current->code.data-1;
-    if (debugger_shouldbreakat(v->debug, iindx)) return true;
-    return false;
-}
-
 /** Tests if the debugger is in a mode that could cause breaks at arbitrary instructions */
 bool debugger_isactive(debugger *d) {
     return (d->singlestep || (d->nbreakpoints>0));
 }
 
 /* **********************************************************************
- * Debugger
+ * Disassembler
  * ********************************************************************** */
 
-/* ---------------
- * Parse commands
- * --------------- */
+/** Formatting rules for disassembler */
+typedef struct {
+    instruction op; /** Opcode */
+    char *label; /** Label to display in disasembler */
+    char *display; /** Display code - rX is register, cX is constant X, gX is global X, uX is upvalue, + refers to signed B */
+} assemblyrule;
 
-enum {
-    DEBUGTOKEN_ASTERISK,
-    DEBUGTOKEN_DOT,
-    DEBUGTOKEN_EQ,
+/** Define disassembler by how to display each opcode */
+assemblyrule assemblyrules[] ={
+    { OP_NOP, "nop", "" },
+    { OP_MOV, "mov", "rA, rB" },
+    { OP_LCT, "lct", "rA, cX" },
+    { OP_ADD, "add", "rA, rB, rC" },
+    { OP_SUB, "sub", "rA, rB, rC" },
+    { OP_MUL, "mul", "rA, rB, rC" },
+    { OP_DIV, "div", "rA, rB, rC" },
+    { OP_POW, "pow", "rA, rB, rC" },
+    { OP_NOT, "not", "rA, rB" },
     
-    DEBUGTOKEN_INTEGER,
+    { OP_EQ, "eq ", "rA, rB, rC" },
+    { OP_NEQ, "neq", "rA, rB, rC" },
+    { OP_LT, "lt ", "rA, rB, rC" },
+    { OP_LE, "le ", "rA, rB, rC" },
     
-    DEBUGTOKEN_ADDRESS,
-    DEBUGTOKEN_BREAK,
-    DEBUGTOKEN_CLEAR,
-    DEBUGTOKEN_CONTINUE,
-    DEBUGTOKEN_DISASSEMBLE,
-    DEBUGTOKEN_GARBAGECOLLECT,
-    DEBUGTOKEN_GLOBALS,
-    DEBUGTOKEN_G,
-    DEBUGTOKEN_HELP,
-    DEBUGTOKEN_INFO,
-    DEBUGTOKEN_LIST,
-    DEBUGTOKEN_PRINT,
-    DEBUGTOKEN_QUIT,
-    DEBUGTOKEN_REGISTERS,
-    DEBUGTOKEN_SET,
-    DEBUGTOKEN_STACK,
-    DEBUGTOKEN_STEP,
-    DEBUGTOKEN_TRACE,
+    { OP_PRINT, "print", "rA" },
     
-    DEBUGTOKEN_SYMBOL,
+    { OP_B, "b", "+" },
+    { OP_BIF, "bif", "rA +" },
+    { OP_BIFF, "biff", "rA +" },
     
-    DEBUGTOKEN_EOF
+    { OP_CALL, "call", "rA, B" }, // b literal
+    { OP_INVOKE, "invoke", "rA, rB, C" }, // c literal
+    
+    { OP_RETURN, "return", "?rB" }, // Return register B is A nonzero
+
+    { OP_CLOSURE, "closure", "rA, pB" }, // b prototype
+    
+    { OP_LUP, "lup", "rA, uB" }, // b 'u'
+    { OP_SUP, "sup", "uA, rB" }, // a 'u', b c|r
+    
+    { OP_CLOSEUP, "closeup", "rA" },
+    { OP_LPR, "lpr", "rA, rB, rC" },
+    { OP_SPR, "spr", "rA, rB, rC" },
+    
+    { OP_LIX, "lix", "rA, rB, rC" },
+    { OP_SIX, "six", "rA, rB, rC" },
+    
+    { OP_LGL, "lgl", "rA, gX" }, //
+    { OP_SGL, "sgl", "rA, gX" }, // label b with 'g'
+    
+    { OP_PUSHERR, "pusherr", "cX" },
+    { OP_POPERR, "poperr", "+" },
+    
+    { OP_CAT, "cat", "rA, rB, rC" },
+    { OP_BREAK, "break", "" },
+    { OP_END, "end", "" },
+    { 0, NULL, "" } // Null terminate the list
 };
 
-typedef int debugtokentype;
-
-/** List of commands and corresponding token types */
-typedef struct {
-    char *string;
-    debugtokentype type;
-} debuggercommand;
-
-/* Note that these are matched in order so single letter commands
-   should come AFTER the full command */
-debuggercommand commandlist[] =
-{
-  { "address", DEBUGTOKEN_ADDRESS },
-    
-  { "break", DEBUGTOKEN_BREAK },
-  { "bt", DEBUGTOKEN_TRACE },
-  { "b", DEBUGTOKEN_BREAK },
-    
-  { "clear", DEBUGTOKEN_CLEAR },
-  { "x", DEBUGTOKEN_CLEAR },
-    
-  { "continue", DEBUGTOKEN_CONTINUE },
-  { "c", DEBUGTOKEN_CONTINUE },
-    
-  { "disassemble", DEBUGTOKEN_DISASSEMBLE },
-  { "disassem", DEBUGTOKEN_DISASSEMBLE },
-  { "d", DEBUGTOKEN_DISASSEMBLE },
-  
-  { "garbage", DEBUGTOKEN_GARBAGECOLLECT },
-  { "gc", DEBUGTOKEN_GARBAGECOLLECT },
-    
-  { "globals", DEBUGTOKEN_GLOBALS },
-  { "global", DEBUGTOKEN_GLOBALS },
-    
-  { "g", DEBUGTOKEN_G },
-    
-  { "help", DEBUGTOKEN_HELP },
-  { "h", DEBUGTOKEN_HELP },
-    
-  { "info", DEBUGTOKEN_INFO },
-  { "i", DEBUGTOKEN_INFO },
-  
-  { "list", DEBUGTOKEN_LIST },
-  { "l", DEBUGTOKEN_LIST },
-  
-  { "print", DEBUGTOKEN_PRINT },
-  { "p", DEBUGTOKEN_PRINT },
-
-  { "quit", DEBUGTOKEN_QUIT },
-  { "q", DEBUGTOKEN_QUIT },
-    
-  { "registers", DEBUGTOKEN_REGISTERS },
-  { "register", DEBUGTOKEN_REGISTERS },
-  { "reg", DEBUGTOKEN_REGISTERS },
-  { "r", DEBUGTOKEN_REGISTERS },
-
-  { "stack", DEBUGTOKEN_STACK },
-    
-  { "step", DEBUGTOKEN_STEP },
-
-  { "set", DEBUGTOKEN_SET },
-    
-  { "s", DEBUGTOKEN_STEP },
-  
-  { "trace", DEBUGTOKEN_TRACE },
-  { "t", DEBUGTOKEN_TRACE },
-    
-  { "", DEBUGTOKEN_EOF }
-};
-
-typedef struct {
-    debugtokentype type;
-    char *start;
-    int length;
-} debugtoken;
-
-typedef struct {
-    char *start;
-    char *current;
-} debuglexer;
-
-/** Initialize the lexer */
-void debuglexer_init(debuglexer *l, char *start) {
-    l->start=start;
-    l->current=start;
+assemblyrule *debugger_getassemblyrule(unsigned int op) {
+    for (unsigned int i=0; assemblyrules[i].label!=NULL; i++) if (assemblyrules[i].op==op) return &assemblyrules[i];
+    return NULL;
 }
 
-/** Are we at the end? */
-bool debuglexer_isatend(debuglexer *l) {
-    return (*(l->current) == '\0');
-}
+typedef enum { NONE, REG, CONST} debugcontents;
 
-/** @brief Checks if a character is a digit. Doesn't advance. */
-bool debuglexer_isdigit(char c) {
-    return (c>='0' && c<= '9');
-}
-
-/** @brief Checks if a character is alphanumeric or underscore.  Doesn't advance. */
-bool debuglexer_isalpha(char c) {
-    return (c>='a' && c<= 'z') || (c>='A' && c<= 'Z') || (c=='_');
-}
-
-/** @brief Returns the next character */
-char debuglexer_peek(debuglexer *l) {
-    return *(l->current);
-}
-
-/** Advance by one character */
-char debuglexer_advance(debuglexer *l) {
-    char c=*(l->current);
-    l->current++;
-    return c;
-}
-
-/** Skip whitespace */
-bool debuglexer_skipwhitespace(debuglexer *l, debugtoken *tok) {
-    do {
-        switch (debuglexer_peek(l)) {
-            case ' ': case '\t': case '\r':
-                debuglexer_advance(l);
-                break;
-            default:
-                return true;
-        }
-    } while (true);
-    return false;
-}
-
-/** Record a token */
-void debuglexer_recordtoken(debuglexer *l, debugtokentype type, debugtoken *tok) {
-    tok->type=type;
-    tok->start=l->start;
-    tok->length=(int) (l->current - l->start);
-}
-
-/** Lex an integer */
-bool debuglexer_integer(debuglexer *l, debugtoken *tok) {
-    while (debuglexer_isdigit(debuglexer_peek(l))) debuglexer_advance(l);
-    debuglexer_recordtoken(l, DEBUGTOKEN_INTEGER, tok);
+/** Shows the contents of a register or constant */
+bool debugger_showcontents(vm *v, debugcontents b, int i, value *konst, value *reg) {
+    value *table = NULL;
+    switch (b) {
+        case CONST: table=konst; break;
+        case REG: table = reg; break;
+        default: break;
+    }
+    if (!table) return false;
+    morpho_printf(v, "%s%i=", (b==CONST ? "c" : "r"), i);
+    morpho_printvalue(v, table[i]);
     return true;
 }
 
-/** Case indep comparison of a with command */
-bool debuglexer_comparesymbol(char *a, char *command) {
-    for (int i=0; command[i]!='\0'; i++) {
-        char c = tolower(a[i]);
-        if (c!=command[i]) return false;
-        if (c=='\0') return false;
-    }
-    return true;
-}
-
-/** Determines if a token matches a command */
-debugtokentype debuglexer_matchkeyword(debuglexer *l) {
-    for (int i=0; commandlist[i].type!=DEBUGTOKEN_EOF; i++) {
-        if (debuglexer_comparesymbol(l->start, commandlist[i].string)) return commandlist[i].type;
-    }
+/** @brief Disassembles a single instruction, writing the output to the console.
+ *  @param v VM to use for output
+ *  @param instruction The instruction to disassemble
+ *  @param indx        Instruction index to display
+ *  @param konst current constant table
+ *  @param reg   current registers */
+void debugger_disassembleinstruction(vm *v, instruction instruction, instructionindx indx, value *konst, value *reg) {
+    unsigned int op = DECODE_OP(instruction);
+    debugcontents mode=NONE, bm=NONE, cm=NONE;
+    int nb=0, nc=0;
+    morpho_printf(v, "%4lu : ", indx);
+    int n=0; // Number of characters displayed
+    int width=25; // Width of display
     
-    return DEBUGTOKEN_SYMBOL;
-}
-
-/** Lex a symbol */
-static bool debuglexer_symbol(debuglexer *l, debugtoken *tok, bool match) {
-    while (debuglexer_isalpha(debuglexer_peek(l)) || debuglexer_isdigit(debuglexer_peek(l))) debuglexer_advance(l);
-    
-    debugtokentype type = DEBUGTOKEN_SYMBOL;
-    if (match) type=debuglexer_matchkeyword(l);
-    
-    /* It's a symbol for now... */
-    debuglexer_recordtoken(l, type, tok);
-    
-    return true;
-}
-
-/** Lex */
-bool debuglex(debuglexer *l, debugtoken *tok, bool command) {
-    /* Handle leading whitespace */
-    if (! debuglexer_skipwhitespace(l, tok)) return false; /* Check for failure */
-    
-    l->start=l->current;
-    
-    if (debuglexer_isatend(l)) {
-        debuglexer_recordtoken(l, DEBUGTOKEN_EOF, tok);
-        return true;
-    }
-    
-    char c = debuglexer_advance(l);
-    if (debuglexer_isalpha(c)) return debuglexer_symbol(l, tok, command);
-    if (debuglexer_isdigit(c)) return debuglexer_integer(l, tok);
-    
-    switch(c) {
-        /* Single character tokens */
-        case '*': debuglexer_recordtoken(l, DEBUGTOKEN_ASTERISK, tok); return true;
-        case '.': debuglexer_recordtoken(l, DEBUGTOKEN_DOT, tok); return true;
-        case '?': debuglexer_recordtoken(l, DEBUGTOKEN_HELP, tok); return true;
-        case '=': debuglexer_recordtoken(l, DEBUGTOKEN_EQ, tok); return true;
-        default:
-            break;
-    }
-    
-    return false;
-}
-
-/** Copies a token to a null-terminated string */
-void debugger_tokentostring(debugtoken *tok, char *string) {
-    strncpy(string, tok->start, tok->length);
-    string[tok->length]='\0';
-}
-
-/** Converts a token to an integer; returns true on success */
-bool debugger_tokentoint(debugtoken *tok, int *out) {
-    if (tok->type==DEBUGTOKEN_INTEGER) {
-        char str[tok->length+1];
-        debugger_tokentostring(tok, str);
-        *out=atoi(str);
-        return true;
-    }
-    return false;
-}
-
-/** Attempts to parse an integer */
-bool debugger_parseint(debuglexer *lex, debugtoken *tok, int *out) {
-    return (debuglex(lex, tok, false) &&
-            debugger_tokentoint(tok, out));
-}
-
-/** Advances the lexer and matches a specified token type */
-bool debugger_parsematch(debuglexer *lex, debugtokentype match) {
-    debugtoken tok;
-    return (debuglex(lex, &tok, false) &&
-            tok.type==match);
-}
-
-/** Parse a breakpoint command */
-bool debugger_parsebreakpoint(vm *v, debugger *debug, debuglexer *lex, instructionindx *out) {
-    debugtoken tok;
-    bool instruction=false; // Detect if we're parsing an instruction
-    bool success=false;
-    debugtoken symbol[2];
-    int nsymbol=0;
-    
-    while (!debuglexer_isatend(lex) && nsymbol<2) {
-        if (!debuglex(lex, &tok, false)) return false;
-        
-        switch (tok.type) {
-            case DEBUGTOKEN_ASTERISK:
-            case DEBUGTOKEN_ADDRESS:
-                instruction=true;
-                break;
-            case DEBUGTOKEN_INTEGER:
-            {
-                int iindx;
-                if (!debugger_tokentoint(&tok, &iindx)) return false;
-                if (instruction) { // The integer is an instruction index
-                    *out = iindx;
-                    return true;
-                } else if (debug_indxfromline(v->current, iindx, out)) return true;
+    assemblyrule *show=debugger_getassemblyrule(op);
+    if (show) {
+        n+=morpho_printf(v, "%s ", show->label);
+        for (char *c=show->display; *c!='\0'; c++) {
+            switch (*c) {
+                case 'A': n+=morpho_printf(v, "%u", DECODE_A(instruction)); break;
+                case 'B': {
+                    bm=mode; nb=DECODE_B(instruction); mode=NONE;
+                    n+=morpho_printf(v, "%u", nb);
+                }
+                    break;
+                case 'X': {
+                    bm=mode; nb=DECODE_Bx(instruction); mode=NONE;
+                    n+=morpho_printf(v, "%u", nb);
+                }
+                    break;
+                case '+': n+=morpho_printf(v, "%i", DECODE_sBx(instruction)); break;
+                case 'C': {
+                    cm=mode; nc=DECODE_C(instruction);
+                    n+=morpho_printf(v, "%u", DECODE_C(instruction));
+                }
+                    break;
+                case 'c': mode=CONST; n+=morpho_printf(v, "%c", *c); break;
+                case 'r': mode=REG; n+=morpho_printf(v, "%c", *c); break;
+                case '?':
+                    if (DECODE_A(instruction)==0) return;
+                    break;
+                default: n+=morpho_printf(v, "%c", *c); break;
             }
+        }
+        
+        /* Show contents if any were produced by this instruction */
+        if ((!konst && !reg) || (bm==NONE && cm==NONE)) return;
+        for (int k=width-n; k>0; k--) morpho_printf(v, " ");
+        morpho_printf(v, "; ");
+        if (debugger_showcontents(v, bm, nb, konst, reg)) morpho_printf(v, " ");
+        debugger_showcontents(v, cm, nc, konst, reg);
+    }
+}
+
+/** Checks if an instruction matches a label in the current error dictionary, and if so print it. */
+void debugger_errorlabel(vm *v, varray_value *errorstack, instructionindx i) {
+    objectdictionary *dict = MORPHO_GETDICTIONARY(errorstack->data[errorstack->count-1]);
+    
+    /* Search the current error handler to see if this line corresponds to a label */
+    for (unsigned int k=0; k<dict->dict.capacity; k++) {
+        value label = dict->dict.contents[k].key;
+        if (!MORPHO_ISNIL(label)) {
+            if (MORPHO_GETINTEGERVALUE(dict->dict.contents[k].val)==i) {
+                morpho_printvalue(v, label);
+                morpho_printf(v, ":\n");
+            }
+        }
+    }
+}
+
+/** Disassembles a program
+ *  @param v - vm to use for output
+ *  @param code - program to disassemble
+ *  @param matchline - optional line number to match */
+void debugger_disassemble(vm *v, program *code, int *matchline) {
+    instructionindx entry = program_getentry(code); // The entry point of the function
+    instructionindx i=0;
+    value *konst=(code->global ? code->global->konst.data : NULL);
+    bool silent = matchline;
+    
+    varray_value errorstack;
+    varray_valueinit(&errorstack);
+    
+    /* Loop over debugging information */
+    for (unsigned int j=0; j<code->annotations.count; j++) {
+        debugannotation *ann = &code->annotations.data[j];
+        
+        switch(ann->type) {
+            case DEBUG_ELEMENT:
+                {
+                    if (matchline) {
+                        if (ann->content.element.line<(*matchline)) {
+                            i+=ann->content.element.ninstr;
+                            break;
+                        }
+                        if (ann->content.element.line>(*matchline)) return;
+                    } else if (errorstack.count>0) {
+                        debugger_errorlabel(v, &errorstack, i);
+                    }
+                    
+                    for (unsigned int k=0; k<ann->content.element.ninstr; k++, i++) {
+                        morpho_printf(v, "%s", (i==entry ? "->" : "  "));
+                        debugger_disassembleinstruction(v, code->code.data[i], i, konst, NULL);
+                        morpho_printf(v, "\n");
+                    }
+                }
                 break;
-            case DEBUGTOKEN_SYMBOL:
-                symbol[nsymbol]=tok;
-                nsymbol++;
+            case DEBUG_FUNCTION:
+                {
+                    objectfunction *func=ann->content.function.function;
+                    konst=func->konst.data;
+                    if (silent) break;
+                    if (!MORPHO_ISNIL(func->name)) {
+                        morpho_printf(v, "fn ");
+                        morpho_printvalue(v, func->name);
+                        morpho_printf(v, ":\n");
+                    } else morpho_printf(v, "\n");
+                }
+                break;
+            case DEBUG_CLASS:
+                {
+                    objectclass *klass=ann->content.klass.klass;
+                    if (silent) break;
+                    if (klass && !MORPHO_ISNIL(klass->name)) {
+                        morpho_printf(v, "class ");
+                        morpho_printvalue(v, klass->name);
+                        morpho_printf(v, ":\n");
+                    }
+                }
+                break;
+            case DEBUG_PUSHERR:
+                {
+                    objectdictionary *errdict = ann->content.errorhandler.handler;
+                    varray_valuewrite(&errorstack, MORPHO_OBJECT(errdict));
+                }
+                break;
+            case DEBUG_POPERR:
+                {
+                    if (errorstack.count>0) errorstack.count--;
+                }
                 break;
             default:
                 break;
         }
     }
     
-    if (nsymbol>0) { // Process function or method names
-        value fnname = object_stringfromcstring(symbol[nsymbol-1].start, symbol[nsymbol-1].length);
-        value klassname = object_stringfromcstring(symbol[0].start, symbol[0].length);
-        
-        if (debug_indxfromfunction(v->current, (nsymbol>1 ? klassname : MORPHO_NIL), fnname, out)) success=true;
-        
-        morpho_freeobject(fnname);
-        morpho_freeobject(klassname);
-    }
+    varray_valueclear(&errorstack);
+}
 
+/** Public interface to disassembler */
+void morpho_disassemble(vm *v, program *code, int *matchline) {
+    debugger_disassemble(NULL, code, matchline);
+}
+
+/* **********************************************************************
+ * General debugger commands
+ * ********************************************************************** */
+
+void debugger_garbagecollect(debugger *debug) {
+    size_t init = debug->currentvm->bound;
+    vm_collectgarbage(debug->currentvm);
+    morpho_printf(NULL, "Collected %ld bytes (from %zu to %zu). Next collection at %zu bytes.\n", init-debug->currentvm->bound, init, debug->currentvm->bound, debug->currentvm->nextgc);
+}
+
+void debugger_quit(debugger *debug) {
+    morpho_runtimeerror(debug->currentvm, VM_DBGQUIT);
+}
+
+/* **********************************************************************
+ * Breakpoints
+ * ********************************************************************** */
+
+bool debugger_breakatinstruction(debugger *debug, bool set, instructionindx indx) {
+    bool success=false;
+    if (set) success=debugger_setbreakpoint(debug, indx);
+    else success=debugger_clearbreakpoint(debug, indx);
+    
+    if (!success) debugger_error(debug, DEBUGGER_INVLDINSTR);
+    
     return success;
 }
 
-/* Parses a string into a value */
-bool debugger_parsevalue(char *in, value *out) {
-    lexer l;
-    parser p;
-    syntaxtree tree;
-    error err;
-    bool success=false;
-    error_init(&err);
-    syntaxtree_init(&tree);
-    lex_init(&l, in, 1);
-    parse_init(&p, &l, &err, &tree);
-    if (parse(&p) && tree.tree.count>0) {
-        syntaxtreenode node = tree.tree.data[tree.entry];
-        
-        if (SYNTAXTREE_ISLEAF(node.type)) {
-            if (MORPHO_ISSTRING(node.content)) {
-                *out = object_clonestring(node.content);
-            } else *out = node.content;
-            
-            success=true;
-        }
+/** Break at a particular line */
+bool debugger_breakatline(debugger *debug, bool set, value file, int line) {
+    instructionindx indx;
+    return (debug_indxfromline(debugger_currentprogram(debug), file, line, &indx) &&
+                  debugger_breakatinstruction(debug, set, indx));
+}
+
+/** Break at a function or method */
+bool debugger_breakatfunction(debugger *debug, bool set, value klass, value function) {
+    instructionindx indx;
+    return (debug_indxfromfunction(debugger_currentprogram(debug), klass, function, &indx) &&
+                  debugger_breakatinstruction(debug, set, indx));
+}
+
+/* **********************************************************************
+ * Show commands
+ * ********************************************************************** */
+
+/** Prints the location information for a given instruction */
+void debugger_showlocation(debugger *debug, instructionindx indx) {
+    vm *v = debugger_currentvm(debug);
+    
+    value module=MORPHO_NIL; // Find location information
+    int line=0;
+    objectfunction *fn=NULL;
+    objectclass *klass=NULL;
+    debug_infofromindx(debugger_currentprogram(debug), indx, &module, &line, NULL, &fn, &klass);
+    
+    morpho_printf(v, "in ");
+    
+    if (klass) {
+        morpho_printvalue(v, klass->name);
+        morpho_printf(v, ".");
     }
     
-    lex_clear(&l);
-    parse_clear(&p);
-    syntaxtree_clear(&tree);
+    if (!MORPHO_ISNIL(fn->name)) morpho_printvalue(v, fn->name);
+    else if (v->current->global==fn) morpho_printf(v, "global");
+    else morpho_printf(v, "anonymous fn");
+    
+    if (!MORPHO_ISNIL(module)) {
+        morpho_printf(v, " in \"");
+        morpho_printvalue(v, module);
+        morpho_printf(v, "\"");
+    }
+    morpho_printf(v, " at line %i [instruction %ti]", line, indx);
+}
+
+/** Shows the address of an object */
+bool debugger_showaddress(debugger *debug, indx rindx) {
+    vm *v = debugger_currentvm(debug);
+    bool success=false;
+    if (rindx>=0 && rindx<v->fp->function->nregs) {
+        value *reg = v->stack.data + debug->currentvm->fp->roffset;
+        if (MORPHO_ISOBJECT(reg[rindx])) {
+            morpho_printf(v, "Object in register %i at %p.\n", (int) rindx, (void *) MORPHO_GETOBJECT(reg[rindx]));
+            success=true;
+        } else debugger_error(debug, DEBUGGER_REGISTEROBJ, (int) rindx);
+    } else debugger_error(debug, DEBUGGER_INVLDREGISTER);
     return success;
 }
 
-/* ----------------------
- * Debugger functionality
- * ---------------------- */
+/** Shows active breakpoints */
+void debugger_showbreakpoints(debugger *debug) {
+    vm *v = debugger_currentvm(debug);
+    morpho_printf(v, "Active breakpoints:\n");
+    for (instructionindx i=0; i<debug->breakpoints.count; i++) {
+        if (debug->breakpoints.data[i]!='\0') {
+            morpho_printf(v, "  Breakpoint ");
+            debugger_showlocation(debug, i);
+            morpho_printf(v, "\n");
+        } else if (DECODE_OP(debugger_currentprogram(debug)->code.data[i])==OP_BREAK) {
+            morpho_printf(v, "  Break ");
+            debugger_showlocation(debug, i);
+            morpho_printf(v, "\n");
+        }
+    }
+}
 
-/** Shows the contents of the registers for a given frame */
-void debug_showregisters(vm *v, callframe *frame) {
+/** List a particular global */
+bool debugger_showglobal(debugger *debug, indx id) {
+    bool success=false;
+    vm *v = debugger_currentvm(debug);
+    if (id>=0 && id<v->globals.count) {
+        value symbol;
+        morpho_printf(v, "  g%u:", id);
+        morpho_printvalue(v, v->globals.data[id]);
+        if (debug_symbolforglobal(v->current, id, &symbol)) {
+            morpho_printf(v, " (");
+            morpho_printvalue(v, symbol);
+            morpho_printf(v, ")");
+        }
+        morpho_printf(v, "\n");
+        success=true;
+    } else debugger_error(debug, DEBUGGER_INVLDGLOBAL);
+    return success;
+}
+
+/** Show all globals */
+void debugger_showglobals(debugger *debug) {
+    vm *v = debugger_currentvm(debug);
+    morpho_printf(v, "Globals:\n");
+    for (indx i=0; i<v->globals.count; i++) debugger_showglobal(debug, i);
+}
+
+/** Show the contents of all registers */
+void debugger_showregisters(debugger *debug) {
+    vm *v = debugger_currentvm(debug);
+    callframe *frame = v->fp;
+    
     unsigned int nreg=frame->function->nregs;
     value symbols[nreg];
     instructionindx cinstr=frame->pc-v->current->code.data;
@@ -978,18 +696,20 @@ void debug_showregisters(vm *v, callframe *frame) {
     value *reg = v->stack.data + frame->roffset;
     for (unsigned int i=0; i<nreg; i++) {
         morpho_printf(v, "  r%u: ", i);
-        morpho_printvalue(NULL, reg[i]);
+        morpho_printvalue(v, reg[i]);
         if (sym && !MORPHO_ISNIL(symbols[i])) {
             morpho_printf(v, " (");
-            morpho_printvalue(NULL, symbols[i]);
+            morpho_printvalue(v, symbols[i]);
             morpho_printf(v, ")");
         }
         morpho_printf(v, "\n");
     }
 }
 
-/** Shows the contents of the stack */
-void debug_showstack(vm *v) {
+/** Show the contents of the stack */
+void debugger_showstack(debugger *debug) {
+    vm *v = debugger_currentvm(debug);
+    
     /* Determine points on the stack that correspond to different function calls. */
     ptrdiff_t fbounds[MORPHO_CALLFRAMESTACKSIZE];
     callframe *f;
@@ -1015,8 +735,25 @@ void debug_showstack(vm *v) {
     }
 }
 
-/** Shows current symbols */
-void debug_showsymbols(vm *v) {
+/** Show the current value of a symbol */
+bool debugger_showsymbol(debugger *debug, value match) {
+    vm *v = debugger_currentvm(debug);
+    
+    value symbol, *val=NULL;
+    if (debug_findsymbol(v, match, NULL, &symbol, &val)) {
+        morpho_printvalue(v, symbol);
+        morpho_printf(v, " = ");
+        morpho_printvalue(v, *val);
+        morpho_printf(v, "\n");
+    } else debugger_error(debug, DEBUGGER_FINDSYMBOL, MORPHO_GETCSTRING(match));
+    
+    return val;
+}
+
+/** Shows all symbols currently in view */
+void debugger_showsymbols(debugger *debug) {
+    vm *v = debugger_currentvm(debug);
+    
     for (callframe *f=v->fp; f>=v->frame; f--) {
         morpho_printf(v, "in %s", (f==v->frame ? "global" : ""));
         if (!MORPHO_ISNIL(f->function->name)) morpho_printvalue(v, f->function->name);
@@ -1039,129 +776,104 @@ void debug_showsymbols(vm *v) {
     }
 }
 
-/** Prints a global */
-void debug_showglobal(vm *v, int id) {
-    if (id>=0 && id<v->globals.count) {
-        morpho_printf(v, "  g%u:", id);
-        morpho_printvalue(v, v->globals.data[id]);
-        morpho_printf(v, "\n");
-    } else morpho_printf(v, "Invalid global number.\n");
-}
-
-/** Prints list of globals */
-void debug_showglobals(vm *v) {
-    morpho_printf(v, "Globals:\n");
-    for (unsigned int i=0; i<v->globals.count; i++) {
-        morpho_printf(v, "  g%u: ", i);
-        morpho_printvalue(v, v->globals.data[i]);
-        morpho_printf(v, "\n");
-    }
-}
-
-/** Attempts to find a symbol. If successful val is updated to give its storage location */
-bool debug_findsymbol(vm *v, debugtoken *tok, callframe **frame, value *symbol, value **val) {
-    value matchstr = object_stringfromcstring(tok->start, tok->length);
+/** Show the current value of a property */
+bool debugger_showproperty(debugger *debug, value matchobj, value matchproperty) {
+    vm *v = debugger_currentvm(debug);
     
-    /* Check back through callframes */
-    for (callframe *f=v->fp; f>=v->frame; f--) {
-        value symbols[f->function->nregs];
-        instructionindx indx = f->pc-v->current->code.data;
+    callframe *frame;
+    value symbol, *instance=NULL, *val=NULL;
+    
+    if (debug_findsymbol(v, matchobj, &frame, &symbol, &instance)) {
+        if (MORPHO_ISINSTANCE(*instance)) {
+            objectinstance *obj = MORPHO_GETINSTANCE(*instance);
+                    
+            if (objectinstance_getproperty(obj, matchproperty, val)) {
+                morpho_printvalue(v, symbol);
+                morpho_printf(v, ".");
+                morpho_printvalue(v, matchproperty);
+                morpho_printf(v, " = ");
+                morpho_printvalue(v, *val);
+                morpho_printf(v, "\n");
+            } else debugger_error(debug, DEBUGGER_SYMBOLPROP, MORPHO_GETCSTRING(matchproperty));
+        }
+    }
+    
+    return val;
+}
+
+/* **********************************************************************
+ * Set commands
+ * ********************************************************************** */
+
+/** Sets the contents of a register to a given value */
+bool debugger_setregister(debugger *debug, indx reg, value val) {
+    vm *v=debugger_currentvm(debug);
+    bool success=false;
+    
+    if (reg>=0 && reg<v->fp->function->nregs) {
+        v->stack.data[v->fp->roffset+reg]=val;
+        success=true;
+    }
+    
+    return success;
+}
+
+/** Sets a symbol to a given value */
+bool debugger_setsymbol(debugger *debug, value symbol, value val) {
+    value *dest=NULL;
+    
+    if (debug_findsymbol(debugger_currentvm(debug), symbol, NULL, NULL, &dest)) {
+        *dest=val;
+    } else debugger_error(debug, DEBUGGER_FINDSYMBOL, MORPHO_GETCSTRING(symbol));
+    
+    return (dest!=NULL);
+}
+
+/** Sets a property to a given value */
+bool debugger_setproperty(debugger *debug, value symbol, value property, value val) {
+    value *dest=NULL;
+    bool success=false;
+    
+    if (debug_findsymbol(debugger_currentvm(debug), symbol, NULL, NULL, &dest)) {
+        if (MORPHO_ISINSTANCE(*dest)) {
+            objectinstance *obj = MORPHO_GETINSTANCE(*dest);
+            
+            value key = dictionary_intern(&obj->fields, property);
+            success=objectinstance_setproperty(obj, key, val);
+        } else debugger_error(debug, DEBUGGER_SETPROPERTY);
+    } else debugger_error(debug, DEBUGGER_FINDSYMBOL, MORPHO_GETCSTRING(symbol));
+    
+    return success;
+}
+
+/* **********************************************************************
+ * Enter the debugger (called by the VM)
+ * ********************************************************************** */
+
+/** Enters the debugger, if one is active. */
+bool debugger_enter(debugger *debug, vm *v) {
+    if (debug && v->debuggerfn) {
+        debug->currentvm = v;
         
-        debug_symbolsforfunction(v->current, f->function, &indx, symbols);
+        // Get instruction index
+        debug->iindx = vm_currentinstruction(v);
         
-        for (int i=0; i<f->function->nregs; i++) {
-            if (!MORPHO_ISNIL(symbols[i]) && MORPHO_ISEQUAL(symbols[i], matchstr)) {
-                if (frame) *frame = f;
-                if (symbol) *symbol = symbols[i];
-                if (val) *val = &v->stack.data[f->roffset+i];
-                morpho_freeobject(matchstr);
-                return true;
-            }
-        }
+        // Retain previous line and function information
+        int oline=debug->currentline;
+        objectfunction *ofunc=debug->currentfunc;
+        
+        // Fetch info from annotations
+        debug_infofromindx(debugger_currentprogram(debug), debug->iindx, &debug->currentmodule, &debug->currentline, NULL, &debug->currentfunc, NULL);
+        
+        // If we're in single step mode, only stop when we've changed line OR if a breakpoint is explicitly set
+        if (debugger_insinglestep(debug) &&
+            oline==debug->currentline &&
+            ofunc==debug->currentfunc &&
+            !debugger_shouldbreakat(debug, debug->iindx)) return false;
+        
+        (v->debuggerfn) (v, v->debuggerref);
     }
-    
-    /* Otherwise is it a global? */
-    for (unsigned int j=0; j<v->current->annotations.count; j++) {
-        debugannotation *ann = &v->current->annotations.data[j];
-        if (ann->type==DEBUG_GLOBAL &&
-            MORPHO_ISEQUAL(ann->content.global.symbol, matchstr)) {
-            if (frame) *frame = v->frame;
-            if (symbol) *symbol = ann->content.global.symbol;
-            if (val) *val = &v->globals.data[ann->content.global.gindx];
-            morpho_freeobject(matchstr);
-            return true;
-        }
-    }
-    
-    morpho_freeobject(matchstr);
-    return false;
-}
-
-/** Prints a value, looking up the print method if necessary */
-bool debug_printvalue(vm *v, value val) {
-    objectstring prntlabel = MORPHO_STATICSTRING(MORPHO_PRINT_METHOD);
-    
-    if (MORPHO_ISOBJECT(val)) {
-        value printmethod, out;
-        if (morpho_lookupmethod(val, MORPHO_OBJECT(&prntlabel), &printmethod)) {
-            return morpho_invoke(v, val, printmethod, 0, NULL, &out);
-        }
-    } else {
-        morpho_printvalue(v, val);
-    }
-    
-    return true;
-}
-
-/** Prints the location associated with the current context */
-bool debug_printlocation(vm *v, callframe *frame) {
-    morpho_printf(v, "(in %s", (frame==v->frame ? "global" : ""));
-    if (frame->function->klass &&
-        !MORPHO_ISNIL(frame->function->klass->name)) {
-        morpho_printvalue(v, frame->function->klass->name);
-        morpho_printf(v, ".");
-    }
-    if (!MORPHO_ISNIL(frame->function->name)) {
-        morpho_printvalue(v, frame->function->name);
-    } else if (frame!=v->frame) morpho_printf(v, "anonymous");
-    morpho_printf(v, ")");
-    return true;
-}
-
-/** Prints a specified symbol */
-bool debug_printsymbol(vm *v, value symbol, value property, callframe *frame, value val) {
-    morpho_printvalue(v, symbol);
-    if (MORPHO_ISSTRING(property)) {
-        morpho_printf(v, ".");
-        morpho_printvalue(v, property);
-    }
-    morpho_printf(v, " ");
-    debug_printlocation(v, frame);
-    morpho_printf(v, " = ");
-    debug_printvalue(v, val);
-    morpho_printf(v, "\n");
-    
-    return true;
-}
-
-/** Return the previous instruction index */
-instructionindx debug_previnstruction(vm *v) {
-    if (v->fp->pc>v->current->code.data) return v->fp->pc-v->current->code.data-1;
-    return 0;
-}
-
-/** Return the current instruction index */
-instructionindx debug_currentinstruction(vm *v) {
-    return v->fp->pc-v->current->code.data-1;
-}
-
-/* ----------------------
- * The debugger itself
- * ---------------------- */
-
-/** TODO: Remove this stub */
-void debugger_enter(vm *v) {
-  
+    return debug;
 }
 
 /* **********************************************************************
@@ -1183,4 +895,19 @@ bool morpho_debug(vm *v, program *p) {
     debugger_clear(&debug);
     
     return success;
+}
+
+/* **********************************************************************
+ * Initialization
+ * ********************************************************************** */
+
+/** Intialize the debugger library */
+void debugger_initialize(void) {
+    morpho_defineerror(DEBUGGER_FINDSYMBOL, ERROR_DEBUGGER, DEBUGGER_FINDSYMBOL_MSG);
+    morpho_defineerror(DEBUGGER_SETPROPERTY, ERROR_DEBUGGER, DEBUGGER_SETPROPERTY_MSG);
+    morpho_defineerror(DEBUGGER_INVLDREGISTER, ERROR_DEBUGGER, DEBUGGER_INVLDREGISTER_MSG);
+    morpho_defineerror(DEBUGGER_INVLDGLOBAL, ERROR_DEBUGGER, DEBUGGER_INVLDGLOBAL_MSG);
+    morpho_defineerror(DEBUGGER_INVLDINSTR, ERROR_DEBUGGER, DEBUGGER_INVLDINSTR_MSG);
+    morpho_defineerror(DEBUGGER_REGISTEROBJ, ERROR_DEBUGGER, DEBUGGER_REGISTEROBJ_MSG);
+    morpho_defineerror(DEBUGGER_SYMBOLPROP, ERROR_DEBUGGER, DEBUGGER_SYMBOLPROP_MSG);
 }

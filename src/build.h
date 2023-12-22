@@ -83,6 +83,9 @@
 /** @brief Size of the error handler stack. */
 #define MORPHO_ERRORHANDLERSTACKSIZE 64
 
+/** @brief Maximum number of types that a value could contain */
+#define MORPHO_MAXIMUMVALUETYPES 8
+
 /** @brief Maximum number of object types */
 #define MORPHO_MAXIMUMOBJECTDEFNS 64
 

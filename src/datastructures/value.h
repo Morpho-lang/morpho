@@ -44,6 +44,9 @@ typedef uint64_t value;
 #define QNAN        ((uint64_t) 0x7ffc000000000000)
 #define LOWER_WORD  ((uint64_t) 0x00000000ffffffff)
 
+/** Get a non-object's type field as an integer */
+#define MORPHO_GETORDEREDTYPE(x)  ((((x) & TYPE_BITS)>>47) & 0x7)
+
 /** Store the type in bits 47-49 */
 #define TAG_NIL     (1ull<<47) // 001
 #define TAG_BOOL    (2ull<<47) // 010
@@ -229,5 +232,8 @@ bool varray_valuefindsame(varray_value *varray, value v, unsigned int *out);
 
 bool value_promotenumberlist(unsigned int nv, value *v);
 bool value_minmax(unsigned int nval, value *list, value *min, value *max);
+
+void value_initialize(void);
+void value_finalize(void);
 
 #endif /* value_h */

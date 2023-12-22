@@ -108,9 +108,6 @@ value builtin_findfunction(value name);
 value builtin_addclass(char *name, builtinclassentry desc[], value superclass);
 value builtin_findclass(value name);
 
-void object_setveneerclass(objecttype type, value class);
-objectclass *object_getveneerclass(objecttype type);
-
 void builtin_copysymboltable(dictionary *out);
 
 value builtin_internsymbol(value symbol);
@@ -121,6 +118,16 @@ bool builtin_options(vm *v, int nargs, value *args, int *nfixed, int noptions, .
 bool builtin_iscallable(value val);
 
 bool builtin_enumerateloop(vm *v, value obj, builtin_loopfunction fn, void *ref);
+
+/* -------------------------------------------------------
+ * Veneer classes
+ * ------------------------------------------------------- */
+
+void object_setveneerclass(objecttype type, value class);
+objectclass *object_getveneerclass(objecttype type);
+
+void value_setveneerclass(value type, value class);
+objectclass *value_getveneerclass(value type);
 
 void builtin_initialize(void);
 void builtin_finalize(void);

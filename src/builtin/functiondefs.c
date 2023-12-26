@@ -408,7 +408,6 @@ value builtin_mod(vm *v, int nargs, value *args) {
     return out;
 }
 
-
 /** Find the minimum and maximum values in an enumerable object */
 typedef struct {
     value min;

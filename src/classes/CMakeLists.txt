@@ -8,6 +8,7 @@ target_sources(morpho
         dict.c        dict.h
         err.c         err.h
         file.c        file.h
+        flt.c         flt.h
         function.c    function.h
         instance.c    instance.h
         invocation.c  invocation.h
@@ -32,6 +33,7 @@ target_sources(morpho
         dict.h
         err.h
         file.h
+        floatveneer.h
         function.h
         instance.h
         invocation.h

@@ -121,15 +121,16 @@ void value_setveneerclass(value type, value clss) {
     if (MORPHO_ISOBJECT(type)) {
         UNREACHABLE("Cannot define a veneer class for generic objects.");
     } else if (MORPHO_ISFLOAT(type)) {
-        _valueveneers[0]=clss;
+        _valueveneers[0]=MORPHO_GETCLASS(clss);
     } else {
         int type = MORPHO_GETORDEREDTYPE(type);
-        _valueveneers[type]=clss;
+        _valueveneers[type]=MORPHO_GETCLASS(clss);
     }
 }
 
 /** @brief Gets the veneer class for a particular value type */
 objectclass *value_getveneerclass(value type) {
+    value klss;
     if (MORPHO_ISFLOAT(type)) {
         return _valueveneers[0];
     } else {

@@ -285,7 +285,7 @@ void builtin_initialize(void) {
     /* Initialize builtin classes and functions */
     instance_initialize(); // Must initialize first so that Object exists
     
-    string_initialize(); 
+    string_initialize();  // Classes
     function_initialize();
     class_initialize();
     upvalue_initialize();
@@ -297,6 +297,8 @@ void builtin_initialize(void) {
     range_initialize();
     complex_initialize();
     err_initialize();
+    
+    float_initialize();// Veneer classes
     
     file_initialize();
     system_initialize();
@@ -330,6 +332,8 @@ void builtin_finalize(void) {
     json_finalize();
     system_finalize();
     file_finalize();
+    
+    float_finalize(); // Veneer classes
     
     err_finalize();
     complex_finalize();

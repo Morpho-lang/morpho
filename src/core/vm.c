@@ -1073,9 +1073,12 @@ callfunction: // Jump here if an instruction becomes a call
                     char *p = (MORPHO_ISSTRING(right) ? MORPHO_GETCSTRING(right) : "");
                     VERROR(VM_CLASSLACKSPROPERTY, p);
                 }
-            } else if (MORPHO_ISOBJECT(left)) {
+            } else {
                 /* If it's an object, it may have a veneer class */
-                objectclass *klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
+                objectclass *klass;
+                if (MORPHO_ISOBJECT(left)) klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
+                else klass = value_getveneerclass(left);
+                
                 if (klass) {
                     value ifunc;
                     if (dictionary_getintern(&klass->methods, right, &ifunc)) {
@@ -1098,8 +1101,6 @@ callfunction: // Jump here if an instruction becomes a call
                 } else {
                     ERROR(VM_NOTANINSTANCE);
                 }
-            } else {
-                ERROR(VM_NOTANINSTANCE);
             }
 
             DISPATCH();
@@ -2027,6 +2028,6 @@ void morpho_finalize(void) {
     lex_finalize();
     parse_finalize();
     
-    object_finalize(); // }
+    object_finalize(); //
     value_finalize();  // } Must be first
 }

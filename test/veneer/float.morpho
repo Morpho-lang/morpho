@@ -1,0 +1,4 @@
+//Test float veneer class
+
+print 123.2323.format("%.2g")
+// expect: 123.23

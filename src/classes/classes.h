@@ -22,6 +22,9 @@
 #include "strng.h"
 #include "dict.h"
 #include "err.h"
+
+#include "flt.h"
+
 //#include "file.h"
 //#include "system.h"
 #include "json.h"

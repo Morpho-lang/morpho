@@ -1,28 +1,28 @@
-/** @file flt.h
+/** @file int.h
  *  @author T J Atherton
  *
- *  @brief Veneer class for float values
+ *  @brief Veneer class for integer values
  */
 
-#ifndef float_h
-#define float_h
+#ifndef int_h
+#define int_h
 
 /* -------------------------------------------------------
- * Float veneer class
+ * Int veneer class
  * ------------------------------------------------------- */
 
-#define FLOAT_CLASSNAME "Float"
+#define INT_CLASSNAME "Int"
 
 /* -------------------------------------------------------
- * Float error messages
+ * Int error messages
  * ------------------------------------------------------- */
 
 /* -------------------------------------------------------
- * Float interface
+ * Int interface
  * ------------------------------------------------------- */
 
 /* Initialization/finalization */
-void float_initialize(void);
-void float_finalize(void);
+void int_initialize(void);
+void int_finalize(void);
 
 #endif

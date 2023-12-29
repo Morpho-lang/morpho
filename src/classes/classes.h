@@ -24,6 +24,7 @@
 #include "err.h"
 
 #include "flt.h"
+#include "int.h"
 
 //#include "file.h"
 //#include "system.h"
@@ -31,4 +32,4 @@
 
 #include "matrix.h"
 
-#endif /* veneer_h */
+#endif /* classes_h */

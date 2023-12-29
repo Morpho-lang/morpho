@@ -299,6 +299,7 @@ void builtin_initialize(void) {
     err_initialize();
     
     float_initialize();// Veneer classes
+    int_initialize();
     
     file_initialize();
     system_initialize();
@@ -333,7 +334,8 @@ void builtin_finalize(void) {
     system_finalize();
     file_finalize();
     
-    float_finalize(); // Veneer classes
+    int_finalize(); // Veneer classes
+    float_finalize();
     
     err_finalize();
     complex_finalize();

@@ -123,8 +123,8 @@ void value_setveneerclass(value type, value clss) {
     } else if (MORPHO_ISFLOAT(type)) {
         _valueveneers[0]=MORPHO_GETCLASS(clss);
     } else {
-        int type = MORPHO_GETORDEREDTYPE(type);
-        _valueveneers[type]=MORPHO_GETCLASS(clss);
+        int k = MORPHO_GETORDEREDTYPE(type);
+        _valueveneers[k]=MORPHO_GETCLASS(clss);
     }
 }
 
@@ -134,8 +134,8 @@ objectclass *value_getveneerclass(value type) {
     if (MORPHO_ISFLOAT(type)) {
         return _valueveneers[0];
     } else {
-        int type = MORPHO_GETORDEREDTYPE(type);
-        return _valueveneers[type];
+        int k = MORPHO_GETORDEREDTYPE(type);
+        return _valueveneers[k];
     }
 }
 

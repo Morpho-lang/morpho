@@ -44,9 +44,6 @@ typedef uint64_t value;
 #define QNAN        ((uint64_t) 0x7ffc000000000000)
 #define LOWER_WORD  ((uint64_t) 0x00000000ffffffff)
 
-/** Get a non-object's type field as an integer */
-#define MORPHO_GETORDEREDTYPE(x)  ((((x) & TYPE_BITS)>>47) & 0x7)
-
 /** Store the type in bits 47-49 */
 #define TAG_NIL     (1ull<<47) // 001
 #define TAG_BOOL    (2ull<<47) // 010
@@ -59,6 +56,9 @@ typedef uint64_t value;
 
 /** Bit mask used to select type bits */
 #define TYPE_BITS (TAG_OBJ | TAG_NIL | TAG_BOOL | TAG_INT)
+
+/** Get a non-object's type field as an integer */
+#define MORPHO_GETORDEREDTYPE(x)  ((((x) & TYPE_BITS)>>47) & 0x7)
 
 /** Map VALUE_XXX macros to type bits  */
 #define VALUE_NIL       (TAG_NIL)

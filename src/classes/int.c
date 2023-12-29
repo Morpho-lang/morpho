@@ -1,4 +1,4 @@
-/** @file flt.c
+/** @file int.c
  *  @author T J Atherton
  *
  *  @brief Veneer class for float values

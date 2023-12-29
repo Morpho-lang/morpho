@@ -1,6 +1,6 @@
 target_sources(morpho
     PRIVATE
-        #classes.h
+        classes.h
         array.c       array.h
         closure.c     closure.h
         clss.c        clss.h
@@ -11,6 +11,7 @@ target_sources(morpho
         flt.c         flt.h
         function.c    function.h
         instance.c    instance.h
+        int.c         int.h
         invocation.c  invocation.h
         json.c        json.h
         list.c        list.h

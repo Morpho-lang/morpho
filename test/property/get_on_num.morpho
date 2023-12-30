@@ -1,1 +1,3 @@
-123.foo // expect error 'NotAnObj'
+// Try to get a property from an object
+
+123.foo // expect error 'ClssLcksMthd'

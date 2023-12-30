@@ -1074,7 +1074,7 @@ callfunction: // Jump here if an instruction becomes a call
                     VERROR(VM_CLASSLACKSPROPERTY, p);
                 }
             } else {
-                /* If it's an object, it may have a veneer class */
+                /* Check if the operand has a veneer class */
                 objectclass *klass;
                 if (MORPHO_ISOBJECT(left)) klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
                 else klass = value_getveneerclass(left);
@@ -1245,9 +1245,12 @@ callfunction: // Jump here if an instruction becomes a call
                     char *p = (MORPHO_ISSTRING(right) ? MORPHO_GETCSTRING(right) : "");
                     VERROR(VM_CLASSLACKSPROPERTY, p);
                 }
-            } else if (MORPHO_ISOBJECT(left)) {
-                /* If it's an object, it may have a veneer class */
-                objectclass *klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
+            } else {
+                /* Check for veneer class */
+                objectclass *klass;
+                if (MORPHO_ISOBJECT(left)) klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
+                else klass = value_getveneerclass(left);
+                
                 if (klass) {
                     value ifunc;
                     if (dictionary_get(&klass->methods, right, &ifunc)) {
@@ -1264,8 +1267,6 @@ callfunction: // Jump here if an instruction becomes a call
                 } else {
                     ERROR(VM_NOTANOBJECT);
                 }
-            } else {
-                ERROR(VM_NOTANOBJECT);
             }
             DISPATCH();
 

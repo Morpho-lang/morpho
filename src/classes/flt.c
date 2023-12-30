@@ -44,7 +44,7 @@ MORPHO_ENDCLASS
 
 void float_initialize(void) {
     // Create Float veneer class
-    value floatclass=builtin_addclass(FLOAT_CLASSNAME, MORPHO_GETCLASSDEFINITION(Float), NULL);
+    value floatclass=builtin_addclass(FLOAT_CLASSNAME, MORPHO_GETCLASSDEFINITION(Float), MORPHO_NIL);
     value_setveneerclass(MORPHO_FLOAT(0.0), floatclass);
 }
 

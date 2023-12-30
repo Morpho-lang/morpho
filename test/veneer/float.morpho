@@ -1,15 +1,14 @@
-//Test float veneer class
+//Test Float veneer class
 
-print "000000000011111111112222222222"
-print "012345678901234567890123456789"
-print "${123.2323.format("%20.5f")}"
+print 123.2323.format("%.2f")
 // expect: 123.23
 
-print "${100.format("%x")}"
+var a = 2e-5
+print a.format("%.4e")
+// expect: 2.0000e-05
 
-//print "I like the number ${12.2+1}!"
+print 123.4444.format("%10.1f")
+// expect:      123.4
 
-//var b = a.format
-
-//print a.foo() 
-// expect error 'ClssLcksMthd'
+print 1e10.format("%g")
+// expect: 1e+10

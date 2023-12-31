@@ -164,16 +164,16 @@ void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
             varray_charwrite(buffer, '>');
         }
     } else if (MORPHO_ISFLOAT(val)) {
-        nv=sprintf(tmp, "%g", MORPHO_GETFLOATVALUE(val));
+        nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%g", MORPHO_GETFLOATVALUE(val));
         varray_charadd(buffer, tmp, nv);
     } else if (MORPHO_ISINTEGER(val)) {
-        nv=sprintf(tmp, "%i", MORPHO_GETINTEGERVALUE(val));
+        nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%i", MORPHO_GETINTEGERVALUE(val));
         varray_charadd(buffer, tmp, nv);
     } else if (MORPHO_ISBOOL(val)) {
-        nv=sprintf(tmp, "%s", (MORPHO_ISTRUE(val) ? COMMON_TRUESTRING : COMMON_FALSESTRING));
+        nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%s", (MORPHO_ISTRUE(val) ? COMMON_TRUESTRING : COMMON_FALSESTRING));
         varray_charadd(buffer, tmp, nv);
     } else if (MORPHO_ISNIL(val)) {
-        nv=sprintf(tmp, "%s", COMMON_NILSTRING);
+        nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%s", COMMON_NILSTRING);
         varray_charadd(buffer, tmp, nv);
     }
 }

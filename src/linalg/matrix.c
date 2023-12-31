@@ -633,7 +633,7 @@ bool matrix_printtobuffer(objectmatrix *m, char *format, varray_char *out) {
         for (int j=0; j<m->ncols; j++) { // Columns run from 0...k
             double val;
             matrix_getelement(m, i, j, &val);
-            format_printtobuffer(MORPHO_FLOAT(val), format, out);
+            if (!format_printtobuffer(MORPHO_FLOAT(val), format, out)) return false; 
             varray_charadd(out, " ", 1);
         }
         varray_charadd(out, "]", 1);
@@ -963,11 +963,11 @@ value Matrix_format(vm *v, int nargs, value *args) {
                                  &str)) {
             out = object_stringfromvarraychar(&str);
             if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
-        }
+        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
         
         varray_charclear(&str);
     } else {
-        
+        morpho_runtimeerror(v, VALUE_FRMTARG);
     }
     
     return out;

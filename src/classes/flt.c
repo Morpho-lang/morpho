@@ -16,15 +16,17 @@ value Value_format(vm *v, int nargs, value *args) {
         varray_char str;
         varray_charinit(&str);
         
-        format_printtobuffer(MORPHO_SELF(args),
+        if (format_printtobuffer(MORPHO_SELF(args),
                             MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)),
-                            &str);
+                                 &str)) {
+            
+            out = object_stringfromvarraychar(&str);
+            if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
+        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
         
-        out = object_stringfromvarraychar(&str);
-        if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
         varray_charclear(&str);
     } else {
-        
+        morpho_runtimeerror(v, VALUE_FRMTARG);
     }
     
     return out;
@@ -46,6 +48,8 @@ void float_initialize(void) {
     // Create Float veneer class
     value floatclass=builtin_addclass(FLOAT_CLASSNAME, MORPHO_GETCLASSDEFINITION(Float), MORPHO_NIL);
     value_setveneerclass(MORPHO_FLOAT(0.0), floatclass);
+    
+    morpho_defineerror(VALUE_FRMTARG, ERROR_HALT, VALUE_FRMTARG_MSG);
 }
 
 void float_finalize(void) {

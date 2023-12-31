@@ -1,0 +1,4 @@
+// Format called with no format string
+
+print 123.2323.format()
+// expect error 'FrmtArg'

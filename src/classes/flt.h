@@ -17,6 +17,9 @@
  * Float error messages
  * ------------------------------------------------------- */
 
+#define VALUE_FRMTARG                     "FrmtArg"
+#define VALUE_FRMTARG_MSG                 "Format method requires a format string as its argument."
+
 /* -------------------------------------------------------
  * Float interface
  * ------------------------------------------------------- */

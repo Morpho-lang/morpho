@@ -977,13 +977,14 @@ bool parse_classdeclaration(parser *p, void *out) {
 /** Parse an import declaration.
  *          IMPORT
  *         /              \
- *     module           FOR   or as
- *                    \
- *                   ( items )
+ *     module           FOR / AS
+ *                   \
+ *                    (additional FOR/AS)
  */
 bool parse_importdeclaration(parser *p, void *out) {
     syntaxtreeindx modulename=SYNTAXTREE_UNCONNECTED, right=SYNTAXTREE_UNCONNECTED;
     token start = p->previous;
+    bool setas=false;
     
     if (parse_checktokenadvance(p, TOKEN_STRING)) {
         PARSE_CHECK(parse_string(p, &modulename));
@@ -994,10 +995,17 @@ bool parse_importdeclaration(parser *p, void *out) {
         return false;
     }
     
-    if (!parse_checkstatementterminator(p)) {
+    while (!parse_checkstatementterminator(p)) {
         if (parse_checktokenadvance(p, TOKEN_AS)) {
+            if (setas) { // Only one 'as' allowed per import
+                parse_error(p, true, PARSE_IMPORTMLTPLAS);
+                return false;
+            } else setas=true;
+            
             if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
-                if (!parse_symbol(p, &right)) return false;
+                syntaxtreeindx symbl;
+                PARSE_CHECK(parse_symbol(p, &symbl));
+                PARSE_CHECK(parse_addnode(p, NODE_AS, MORPHO_NIL, &p->previous, right, symbl, &right));
             } else {
                 parse_error(p, true, PARSE_IMPORTASSYMBL);
                 return false;
@@ -1680,6 +1688,7 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_INCOMPLETESTRINGINT, ERROR_PARSE, PARSE_INCOMPLETESTRINGINT_MSG);
     morpho_defineerror(PARSE_VARBLANKINDEX, ERROR_COMPILE, PARSE_VARBLANKINDEX_MSG);
     morpho_defineerror(PARSE_IMPORTMISSINGNAME, ERROR_PARSE, PARSE_IMPORTMISSINGNAME_MSG);
+    morpho_defineerror(PARSE_IMPORTMLTPLAS, ERROR_PARSE, PARSE_IMPORTMLTPLAS_MSG);
     morpho_defineerror(PARSE_IMPORTUNEXPCTDTOK, ERROR_PARSE, PARSE_IMPORTUNEXPCTDTOK_MSG);
     morpho_defineerror(PARSE_IMPORTASSYMBL, ERROR_PARSE, PARSE_IMPORTASSYMBL_MSG);
     morpho_defineerror(PARSE_IMPORTFORSYMBL, ERROR_PARSE, PARSE_IMPORTFORSYMBL_MSG);

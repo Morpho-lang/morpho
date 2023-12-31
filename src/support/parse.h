@@ -186,6 +186,9 @@ struct sparser {
 #define PARSE_IMPORTMISSINGNAME           "ImprtMssngNm"
 #define PARSE_IMPORTMISSINGNAME_MSG       "Import expects a module or file name."
 
+#define PARSE_IMPORTMLTPLAS               "ImprtMltplAs"
+#define PARSE_IMPORTMLTPLAS_MSG           "Import statement can only include one 'as' clause."
+
 #define PARSE_IMPORTUNEXPCTDTOK           "ImprtExpctFrAs"
 #define PARSE_IMPORTUNEXPCTDTOK_MSG       "Import expects a module or file name followed by for or as."
 

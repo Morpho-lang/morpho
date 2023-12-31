@@ -130,8 +130,8 @@ enum {
     NODE_INDEX,
     NODE_LIST,
     NODE_IMPORT,
+    NODE_AS,
     NODE_BREAKPOINT
-
 };
 
 /* -------------------------------------------------------

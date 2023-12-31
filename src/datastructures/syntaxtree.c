@@ -114,6 +114,7 @@ static char * nodedisplay[] = {
     "index",   // NODE_INDEX
     "list",    // NODE_LIST
     "import",  // NODE_IMPORT
+    "as",      // NODE_AS
     "@",       // NODE_BREAKPOINT
     
     "",        // NODE_STRUCTURAL
@@ -190,7 +191,7 @@ syntaxtreenode *syntaxtree_nodefromindx(syntaxtree *tree, syntaxtreeindx indx) {
     return tree->tree.data+indx;
 }
 
-/* @brief Flattens a tree into a list of node pointers
+/* @brief Flattens a tree into a list of node indices
  * @param[in] tree - the syntaxtree to traverse
  * @param[in] node - the starting node
  * @param[in] ntypes - number of node types to match (these will be flattened)

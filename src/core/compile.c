@@ -3306,7 +3306,9 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                 } else UNREACHABLE("Import encountered non symbolic in for clause.");
                 qual=compiler_getnode(c, qual->left);
             }
-        } else UNREACHABLE("AS not implemented.");
+        } else {
+            UNREACHABLE("AS not implemented.");
+        }
     }
 
     if (module) {

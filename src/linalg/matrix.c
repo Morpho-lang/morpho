@@ -10,6 +10,7 @@
 
 #include "matrix.h"
 #include "sparse.h"
+#include "format.h"
 
 /* **********************************************************************
  * Matrix objects
@@ -624,6 +625,23 @@ void matrix_print(vm *v, objectmatrix *m) {
     }
 }
 
+/** Prints a matrix to a buffer */
+bool matrix_printtobuffer(objectmatrix *m, char *format, varray_char *out) {
+    for (int i=0; i<m->nrows; i++) { // Rows run from 0...m
+        varray_charadd(out, "[ ", 2);
+        
+        for (int j=0; j<m->ncols; j++) { // Columns run from 0...k
+            double val;
+            matrix_getelement(m, i, j, &val);
+            if (!format_printtobuffer(MORPHO_FLOAT(val), format, out)) return false; 
+            varray_charadd(out, " ", 1);
+        }
+        varray_charadd(out, "]", 1);
+        if (i<m->nrows-1) varray_charadd(out, "\n", 1);
+    }
+    return true;
+}
+
 /** Matrix eigensystem */
 bool matrix_eigen(vm *v, objectmatrix *a, value *evals, value *evecs) {
     double *ev = MORPHO_MALLOC(sizeof(double)*a->nrows*2); // Allocate temporary memory for eigenvalues
@@ -929,6 +947,30 @@ value Matrix_print(vm *v, int nargs, value *args) {
     objectmatrix *m=MORPHO_GETMATRIX(MORPHO_SELF(args));
     matrix_print(v, m);
     return MORPHO_NIL;
+}
+
+/** Formatted conversion to a string */
+value Matrix_format(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    
+    if (nargs==1 &&
+        MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
+        varray_char str;
+        varray_charinit(&str);
+        
+        if (matrix_printtobuffer(MORPHO_GETMATRIX(MORPHO_SELF(args)),
+                                 MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)),
+                                 &str)) {
+            out = object_stringfromvarraychar(&str);
+            if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
+        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        
+        varray_charclear(&str);
+    } else {
+        morpho_runtimeerror(v, VALUE_FRMTARG);
+    }
+    
+    return out;
 }
 
 /** Matrix add */
@@ -1460,6 +1502,7 @@ MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Matrix_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_GETCOLUMN_METHOD, Matrix_getcolumn, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MATRIX_SETCOLUMN_METHOD, Matrix_setcolumn, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Matrix_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_FORMAT_METHOD, Matrix_format, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ASSIGN_METHOD, Matrix_assign, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADD_METHOD, Matrix_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ADDR_METHOD, Matrix_addr, BUILTIN_FLAGSEMPTY),

@@ -1,0 +1,15 @@
+//Test Int veneer class
+
+var a = 100
+
+print a.format("%i")
+// expect: 100
+
+print a.format("0x%.4x")
+// expect: 0x0064
+
+print a.format("0o%o")
+// expect: 0o144
+
+print "'${a.format("%10o")}"
+// expect: '       144

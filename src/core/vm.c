@@ -1073,9 +1073,12 @@ callfunction: // Jump here if an instruction becomes a call
                     char *p = (MORPHO_ISSTRING(right) ? MORPHO_GETCSTRING(right) : "");
                     VERROR(VM_CLASSLACKSPROPERTY, p);
                 }
-            } else if (MORPHO_ISOBJECT(left)) {
-                /* If it's an object, it may have a veneer class */
-                objectclass *klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
+            } else {
+                /* Check if the operand has a veneer class */
+                objectclass *klass;
+                if (MORPHO_ISOBJECT(left)) klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
+                else klass = value_getveneerclass(left);
+                
                 if (klass) {
                     value ifunc;
                     if (dictionary_getintern(&klass->methods, right, &ifunc)) {
@@ -1098,8 +1101,6 @@ callfunction: // Jump here if an instruction becomes a call
                 } else {
                     ERROR(VM_NOTANINSTANCE);
                 }
-            } else {
-                ERROR(VM_NOTANINSTANCE);
             }
 
             DISPATCH();
@@ -1244,9 +1245,12 @@ callfunction: // Jump here if an instruction becomes a call
                     char *p = (MORPHO_ISSTRING(right) ? MORPHO_GETCSTRING(right) : "");
                     VERROR(VM_CLASSLACKSPROPERTY, p);
                 }
-            } else if (MORPHO_ISOBJECT(left)) {
-                /* If it's an object, it may have a veneer class */
-                objectclass *klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
+            } else {
+                /* Check for veneer class */
+                objectclass *klass;
+                if (MORPHO_ISOBJECT(left)) klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
+                else klass = value_getveneerclass(left);
+                
                 if (klass) {
                     value ifunc;
                     if (dictionary_get(&klass->methods, right, &ifunc)) {
@@ -1263,8 +1267,6 @@ callfunction: // Jump here if an instruction becomes a call
                 } else {
                     ERROR(VM_NOTANOBJECT);
                 }
-            } else {
-                ERROR(VM_NOTANOBJECT);
             }
             DISPATCH();
 
@@ -1951,7 +1953,8 @@ void morpho_initialize(void) {
     random_initialize();
     error_initialize();
     
-    object_initialize(); // Must be first
+    value_initialize(); // } Must be first
+    object_initialize(); // }
     
     builtin_initialize(); // Must come before initialization of any classes or similar
     resources_initialize(); // Must come before compiler and extensions
@@ -2026,5 +2029,6 @@ void morpho_finalize(void) {
     lex_finalize();
     parse_finalize();
     
-    object_finalize(); // Must be last
+    object_finalize(); //
+    value_finalize();  // } Must be first
 }

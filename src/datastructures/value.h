@@ -57,6 +57,9 @@ typedef uint64_t value;
 /** Bit mask used to select type bits */
 #define TYPE_BITS (TAG_OBJ | TAG_NIL | TAG_BOOL | TAG_INT)
 
+/** Get a non-object's type field as an integer */
+#define MORPHO_GETORDEREDTYPE(x)  ((((x) & TYPE_BITS)>>47) & 0x7)
+
 /** Map VALUE_XXX macros to type bits  */
 #define VALUE_NIL       (TAG_NIL)
 #define VALUE_INTEGER   (TAG_INT)
@@ -229,5 +232,8 @@ bool varray_valuefindsame(varray_value *varray, value v, unsigned int *out);
 
 bool value_promotenumberlist(unsigned int nv, value *v);
 bool value_minmax(unsigned int nval, value *list, value *min, value *max);
+
+void value_initialize(void);
+void value_finalize(void);
 
 #endif /* value_h */

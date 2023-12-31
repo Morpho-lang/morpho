@@ -62,7 +62,7 @@ typedef struct svm vm;
 #define ENCODE_DOUBLE(op, A, B) ( (((unsigned) op) & 0xff)  | ((A & 0xff) << 8) | ((B & 0xff) << 16))
 
 /** Encodes an instruction with operand A and long operand Bx */
-#define ENCODE_LONG(op, A, Bx) ( (((unsigned) op) & 0xff) | ((A & 0xff) << 8) | ((Bx & 0xffff) << 16) )
+#define ENCODE_LONG(op, A, Bx) ( (instruction) (((unsigned) op) & 0xff) | (instruction) ((A & 0xff) << 8) | (instruction) ((Bx & 0xffff) << 16) )
 
 /** Encodes an instruction with operand Ax and extended operand Bl */
 #define ENCODE_EXTENDED(op, Ax) ( (((unsigned) op) & 0xff) | ((A & 0xffffff) << 8) )

@@ -15,7 +15,7 @@
  * ********************************************************************** */
 
 /** Hold the object type definitions as they're created */
-objecttypedefn objectdefns[MORPHO_MAXIMUMOBJECTDEFNS];
+objecttypedefn _objectdefns[MORPHO_MAXIMUMOBJECTDEFNS];
 objecttype objectdefnnext; /** Type of the next object definition */
 
 /** Adds a new object type with a given definition.
@@ -29,8 +29,8 @@ objecttype object_addtype(objecttypedefn *def) {
         UNREACHABLE("Too many object definitions (increase MORPHO_MAXIMUMOBJECTDEFNS).");
     }
 
-    objectdefns[objectdefnnext]=*def;
-    objectdefns[objectdefnnext].veneer = NULL;
+    _objectdefns[objectdefnnext]=*def;
+    _objectdefns[objectdefnnext].veneer = NULL;
     objectdefnnext+=1;
 
     return objectdefnnext-1;
@@ -38,7 +38,7 @@ objecttype object_addtype(objecttypedefn *def) {
 
 /** Gets the appropriate definition given an object */
 objecttypedefn *object_getdefn(object *obj) {
-    return &objectdefns[obj->type];
+    return &_objectdefns[obj->type];
 }
 
 /* **********************************************************************
@@ -115,15 +115,15 @@ void morpho_freeobject(value val) {
 
 /** @brief Sets the veneer class for a particular object type */
 void object_setveneerclass(objecttype type, value class) {
-    if (objectdefns[type].veneer!=NULL) {
+    if (_objectdefns[type].veneer!=NULL) {
         UNREACHABLE("Veneer class redefined.\n");
     }
-    objectdefns[type].veneer=(object *) MORPHO_GETCLASS(class);
+    _objectdefns[type].veneer=(object *) MORPHO_GETCLASS(class);
 }
 
 /** @brief Gets the veneer for a particular object type */
 objectclass *object_getveneerclass(objecttype type) {
-    return (objectclass *) objectdefns[type].veneer;
+    return (objectclass *) _objectdefns[type].veneer;
 }
 
 /* **********************************************************************

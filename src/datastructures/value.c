@@ -105,3 +105,47 @@ bool value_minmax(unsigned int nval, value *list, value *min, value *max) {
     
     return true;
 }
+
+/* **********************************************************************
+ * Veneer classes
+ * ********************************************************************** */
+
+objectclass *_valueveneers[MORPHO_MAXIMUMVALUETYPES];
+
+/** @brief Sets the veneer class for a particular value type */
+void value_setveneerclass(value type, value clss) {
+    if (!MORPHO_ISCLASS(clss)) {
+        UNREACHABLE("Veneer class must be a class.");
+    }
+    
+    if (MORPHO_ISOBJECT(type)) {
+        UNREACHABLE("Cannot define a veneer class for generic objects.");
+    } else if (MORPHO_ISFLOAT(type)) {
+        _valueveneers[0]=MORPHO_GETCLASS(clss);
+    } else {
+        int k = MORPHO_GETORDEREDTYPE(type);
+        _valueveneers[k]=MORPHO_GETCLASS(clss);
+    }
+}
+
+/** @brief Gets the veneer class for a particular value type */
+objectclass *value_getveneerclass(value type) {
+    value klss;
+    if (MORPHO_ISFLOAT(type)) {
+        return _valueveneers[0];
+    } else {
+        int k = MORPHO_GETORDEREDTYPE(type);
+        return _valueveneers[k];
+    }
+}
+
+/* **********************************************************************
+ * Initialization/Finalization
+ * ********************************************************************** */
+
+void value_initialize(void) {
+    for (int i=0; i<MORPHO_MAXIMUMVALUETYPES; i++) _valueveneers[i]=NULL;
+}
+
+void value_finalize(void) {
+}

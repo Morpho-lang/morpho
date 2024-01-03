@@ -74,9 +74,6 @@ value object_concatenatestring(value a, value b);
  * String error messages
  * ------------------------------------------------------- */
 
-#define STRING_IMMTBL                     "StrngImmtbl"
-#define STRING_IMMTBL_MSG                 "Strings are immutable."
-
 /* -------------------------------------------------------
  * String interface
  * ------------------------------------------------------- */

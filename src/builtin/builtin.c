@@ -297,6 +297,7 @@ void builtin_initialize(void) {
     range_initialize();
     complex_initialize();
     err_initialize();
+    tuple_initialize();
     
     float_initialize();// Veneer classes
     int_initialize();
@@ -337,6 +338,7 @@ void builtin_finalize(void) {
     int_finalize(); // Veneer classes
     float_finalize();
     
+    tuple_finalize();
     err_finalize();
     complex_finalize();
     range_finalize();

@@ -110,7 +110,7 @@ hash dictionary_hashcstring(const char* key, size_t length) {
 
   for (unsigned int i=0; i < length; i++) {
     hash ^= key[i];
-    hash *= 16777619u;
+    hash *= 16777619u; // FNV prime number for 32 bits
   }
 
   return dictionary_hashint(hash);

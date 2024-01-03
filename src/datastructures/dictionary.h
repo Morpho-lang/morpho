@@ -39,6 +39,14 @@ typedef struct {
 } dictionary;
 
 /* -------------------------------------------------------
+ * Hash functions that can be used in object definitions
+ * ------------------------------------------------------- */
+
+hash dictionary_hashint( uint32_t a);
+hash dictionary_hashpointer(void *hash);
+hash dictionary_hashcstring(const char* key, size_t length);
+
+/* -------------------------------------------------------
  * Dictionary interface
  * ------------------------------------------------------- */
 

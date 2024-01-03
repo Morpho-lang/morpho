@@ -76,7 +76,7 @@
 
 /** Integer hash function from 32 ubit int to 32 bit uint due to Robert Jenkins */
 #ifdef DICTIONARY_INTEGERHASH_JENKINS
-static inline hash dictionary_hashint( uint32_t a) {
+hash dictionary_hashint( uint32_t a) {
    a = (a+0x7ed55d16) + (a<<12);
    a = (a^0xc761c23c) ^ (a>>19);
    a = (a+0x165667b1) + (a<<5);
@@ -88,12 +88,12 @@ static inline hash dictionary_hashint( uint32_t a) {
 #endif
 
 #ifdef DICTIONARY_INTEGERHASH_FIBONACCI
-static inline hash dictionary_hashint(uint32_t hash) {
+hash dictionary_hashint(uint32_t hash) {
     return (hash * 2654435769u);
 }
 #endif
 
-static inline hash dictionary_hashpointer(void *hash) {
+hash dictionary_hashpointer(void *hash) {
     uintptr_t ptr = (uintptr_t) hash;
 #if UINTPTR_MAX == UINT64_MAX
     return (ptr * 11400714819323198485llu) >> 32;
@@ -105,7 +105,7 @@ static inline hash dictionary_hashpointer(void *hash) {
 }
 
 /** String hashing function FNV-1a combined with Fibonacci hash */
-static inline hash dictionary_hashstring(const char* key, size_t length) {
+hash dictionary_hashcstring(const char* key, size_t length) {
   uint32_t hash = 2166136261u;
 
   for (unsigned int i=0; i < length; i++) {
@@ -114,18 +114,6 @@ static inline hash dictionary_hashstring(const char* key, size_t length) {
   }
 
   return dictionary_hashint(hash);
-}
-
-/** Hash an object */
-hash dictionary_hashobject(object *obj) {
-    object_getdefn(obj);
-}
-
-/** Fibonacci hash function for pairs of integers. */
-static inline hash dictionary_hashdokkey(objectdokkey *key) {
-    uint64_t i1 = MORPHO_GETDOKKEYROW(key);
-    uint64_t i2 = MORPHO_GETDOKKEYCOL(key);
-    return ((i1<<32 | i2) * 11400714819323198485llu)>> 32;
 }
 
 /* **********************************************************************
@@ -142,15 +130,7 @@ static hash dictionary_hash(value key, bool intern) {
     } else if (MORPHO_ISOBJECT(key)){
         if (intern) {
             return MORPHO_GETOBJECTHASH(key);
-        } else {
-            if (MORPHO_ISSTRING(key)) {
-                return dictionary_hashstring(MORPHO_GETCSTRING(key), MORPHO_GETSTRINGLENGTH(key));
-            } else if (MORPHO_ISDOKKEY(key)) {
-                return dictionary_hashdokkey(MORPHO_GETDOKKEY(key));
-            } else {
-                return dictionary_hashpointer(MORPHO_GETOBJECT(key));
-            }
-        }
+        } else return object_hash(MORPHO_GETOBJECT(key));
     }
     return 0;
 }
@@ -178,7 +158,6 @@ void dictionary_wipe(dictionary *dict) {
     for (unsigned int i=0; i<dict->capacity; i++) dict->contents[i].key=MORPHO_NIL;
     dict->count=0;
 }
-
 
 /** @brief Frees a dictionary's contents
  *  @param dict     the dictionary to clear

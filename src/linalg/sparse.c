@@ -58,12 +58,20 @@ size_t objectdokkey_sizefn(object *obj) {
     return sizeof(objectdokkey);
 }
 
+/** Fibonacci hash function for pairs of integers. */
+hash objectdokkey_hashfn(object *obj) {
+    objectdokkey *key = (objectdokkey *) obj;
+    uint64_t i1 = MORPHO_GETDOKKEYROW(key);
+    uint64_t i2 = MORPHO_GETDOKKEYCOL(key);
+    return ((i1<<32 | i2) * 11400714819323198485llu)>> 32;
+}
+
 objecttypedefn objectdokkeydefn = {
     .printfn=objectdokkey_printfn,
     .markfn=NULL,
     .freefn=NULL,
     .sizefn=objectdokkey_sizefn,
-    .hashfn=NULL
+    .hashfn=objectdokkey_hashfn
 };
 
 

@@ -66,7 +66,7 @@ typedef void (*objectfreefn) (object *obj);
 typedef size_t (*objectsizefn) (object *obj);
 
 /** Called to hash an object */
-typedef hash (*objecthashfn) (void *);
+typedef hash (*objecthashfn) (object *obj);
 
 /** Defines a custom object type. */
 typedef struct {
@@ -93,6 +93,7 @@ void object_freeifunmanaged(object *obj);
 void object_print(void *v, value val);
 void object_printtobuffer(value v, varray_char *buffer);
 size_t object_size(object *obj);
+hash object_hash(object *obj);
 
 bool object_istype(value val, objecttype type);
 

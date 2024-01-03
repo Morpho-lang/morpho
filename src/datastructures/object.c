@@ -84,6 +84,14 @@ size_t object_size(object *obj) {
     return object_getdefn(obj)->sizefn(obj);
 }
 
+/** Hash an object, either by calling its hash function or by hashing its pointer */
+hash object_hash(object *obj) {
+    objecttypedefn *defn = object_getdefn(obj);
+    if (defn->hashfn) return (defn->hashfn) (obj);
+    
+    return dictionary_hashpointer(obj);
+}
+
 /** @brief Allocates an object
  *  @param size   size of memory to reserve
  *  @param type   type to initialize with */

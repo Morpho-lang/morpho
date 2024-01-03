@@ -25,12 +25,17 @@ size_t objectstring_sizefn(object *obj) {
     return sizeof(objectstring)+((objectstring *) obj)->length+1;
 }
 
+hash objectstring_hashfn(object *obj) {
+    objectstring *str = (objectstring *) obj;
+    return dictionary_hashcstring(str->string, str->length);
+}
+
 objecttypedefn objectstringdefn = {
     .printfn = objectstring_printfn,
     .markfn = NULL,
     .freefn = NULL,
     .sizefn = objectstring_sizefn,
-    .hashfn = NULL
+    .hashfn = objectstring_hashfn
 };
 
 /** @brief Creates a string from an existing character array with given length

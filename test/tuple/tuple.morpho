@@ -12,5 +12,8 @@ print t
 print t[0]
 // expect: 1
 
+print t.clss()
+// expect: @Tuple
+
 t[0]=5
 // expect error 'ObjImmutable'

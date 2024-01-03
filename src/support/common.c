@@ -29,7 +29,7 @@
 #define NOTEQUAL 1
 #define BIGGER 1
 #define SMALLER -1
-int morpho_comparevalue (value a, value b) {
+int morpho_comparevalue(value a, value b) {
 
     // if comparing a number to complex cast the number to complex
     // we don't need to bind here beacues the value never needs to exist beyond this scope

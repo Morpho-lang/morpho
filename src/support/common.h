@@ -63,14 +63,14 @@ void morpho_setdebuggerfn(vm *v, morphodebuggerfn debuggerfn, void *ref);
         } \
     }
 
-int morpho_comparevalue (value a, value b);
+int morpho_comparevalue(value a, value b);
 
 /** @brief Compares two values, checking if two values are identical
  * @details Faster than morpho_comparevalue
  * @param a value to compare
  * @param b value to compare
  * @returns true if a and b are identical, false otherwise */
-static inline bool morpho_comparevaluesame (value a, value b) {
+static inline bool morpho_comparevaluesame(value a, value b) {
 #ifdef MORPHO_NAN_BOXING
     return (a==b);
 #else

@@ -29,7 +29,8 @@ objecttypedefn objectstringdefn = {
     .printfn = objectstring_printfn,
     .markfn = NULL,
     .freefn = NULL,
-    .sizefn = objectstring_sizefn
+    .sizefn = objectstring_sizefn,
+    .hashfn = NULL
 };
 
 /** @brief Creates a string from an existing character array with given length

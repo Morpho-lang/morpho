@@ -28,7 +28,8 @@ objecttypedefn objectupvaluedefn = {
     .printfn=objectupvalue_printfn,
     .markfn=objectupvalue_markfn,
     .freefn=NULL,
-    .sizefn=objectupvalue_sizefn
+    .sizefn=objectupvalue_sizefn,
+    .hashfn=NULL
 };
 
 

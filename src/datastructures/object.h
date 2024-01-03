@@ -65,6 +65,9 @@ typedef void (*objectfreefn) (object *obj);
 /** Called to return the size of an object and attached data (anything NOT stored in a value) */
 typedef size_t (*objectsizefn) (object *obj);
 
+/** Called to hash an object */
+typedef hash (*objecthashfn) (void *);
+
 /** Defines a custom object type. */
 typedef struct {
     object *veneer; // Veneer class
@@ -72,6 +75,7 @@ typedef struct {
     objectmarkfn markfn;
     objectsizefn sizefn;
     objectprintfn printfn;
+    objecthashfn hashfn; 
 } objecttypedefn;
 
 /* -------------------------------------------------------

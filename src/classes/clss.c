@@ -40,6 +40,7 @@ objecttypedefn objectclassdefn = {
     .markfn=objectclass_markfn,
     .freefn=objectclass_freefn,
     .sizefn=objectclass_sizefn,
+    .hashfn=NULL
 };
 
 objectclass *object_newclass(value name) {

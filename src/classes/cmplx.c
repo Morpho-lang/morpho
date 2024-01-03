@@ -28,7 +28,8 @@ objecttypedefn objectcomplexdefn = {
     .printfn=objectcomplex_printfn,
     .markfn=NULL,
     .freefn=NULL,
-    .sizefn=objectcomplex_sizefn
+    .sizefn=objectcomplex_sizefn,
+    .hashfn=NULL
 };
 
 /** Creates a complex object */

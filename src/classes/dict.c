@@ -34,7 +34,8 @@ objecttypedefn objectdictionarydefn = {
     .printfn=objectdictionary_printfn,
     .markfn=objectdictionary_markfn,
     .freefn=objectdictionary_freefn,
-    .sizefn=objectdictionary_sizefn
+    .sizefn=objectdictionary_sizefn,
+    .hashfn=NULL
 };
 
 /** Creates a new dictionary */

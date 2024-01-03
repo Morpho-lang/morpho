@@ -12,9 +12,9 @@
 #include "object.h"
 #include "sparse.h"
 
-/*
+/* **********************************************************************
  * Macros that control the behavior of the dictionary.
- */
+ * ********************************************************************** */
 
 /** The initial size of non-empty dictionary */
 #define DICTIONARY_DEFAULTSIZE 16
@@ -60,6 +60,7 @@
 
 /** Integer modulo */
 //#define DICTIONARY_REDUCE(x, size) (x % size)
+
 /** Faster version for power of two sizes */
 #define DICTIONARY_REDUCE(x, size) (x & (size-1))
 
@@ -69,12 +70,11 @@
 }*/
 //#define DICTIONARY_REDUCE(x, size) (dictionary_reduce64(x,size))
 
-/*
- * Raw hash functions
- */
+/* **********************************************************************
+ * Hash functions
+ * ********************************************************************** */
 
 /** Integer hash function from 32 ubit int to 32 bit uint due to Robert Jenkins */
-
 #ifdef DICTIONARY_INTEGERHASH_JENKINS
 static inline hash dictionary_hashint( uint32_t a) {
    a = (a+0x7ed55d16) + (a<<12);
@@ -116,6 +116,11 @@ static inline hash dictionary_hashstring(const char* key, size_t length) {
   return dictionary_hashint(hash);
 }
 
+/** Hash an object */
+hash dictionary_hashobject(object *obj) {
+    object_getdefn(obj);
+}
+
 /** Fibonacci hash function for pairs of integers. */
 static inline hash dictionary_hashdokkey(objectdokkey *key) {
     uint64_t i1 = MORPHO_GETDOKKEYROW(key);
@@ -123,12 +128,14 @@ static inline hash dictionary_hashdokkey(objectdokkey *key) {
     return ((i1<<32 | i2) * 11400714819323198485llu)>> 32;
 }
 
-/*
- * Implementation
- */
+/* **********************************************************************
+ * Dictionary implementation
+ * ********************************************************************** */
 
 /** @brief Hashes a value
- * @param key the key to hash */
+ * @param key the key to hash
+ * @param intern set to true to use a precomputed hash (i.e. if it has been interned).
+ * @returns the corresponding hash */
 static hash dictionary_hash(value key, bool intern) {
     if (MORPHO_ISINTEGER(key)) {
         return dictionary_hashint((uint32_t) MORPHO_GETINTEGERVALUE(key));
@@ -452,9 +459,9 @@ bool dictionary_copy(dictionary *src, dictionary *dest) {
     return true;
 }
 
-/* ---------------------------
- * Set functions
- * --------------------------- */
+/* **********************************************************************
+ * Set functions, i.e. union, intersection, etc.
+ * ********************************************************************** */
 
 /** @brief Computes the union of two dictionaries, i.e. the output dictionary contains all keys that occur in either a or b
  * @param[in]  a - input dictionary (values from this dictionary take priority)
@@ -559,8 +566,8 @@ void dictionary_testforsize(unsigned int n) {
 
 /** @define Test the hashtable implementation */
 void dictionary_test(void) {
-    /*for (unsigned int n=1; n<10000000; n=n*2) {
+    for (unsigned int n=1; n<10000000; n=n*2) {
         dictionary_testforsize(n);
-    }*/
+    }
 }
 #endif

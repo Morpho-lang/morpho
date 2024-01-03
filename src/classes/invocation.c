@@ -36,7 +36,8 @@ objecttypedefn objectinvocationdefn = {
     .printfn=objectinvocation_printfn,
     .markfn=objectinvocation_markfn,
     .freefn=NULL,
-    .sizefn=objectinvocation_sizefn
+    .sizefn=objectinvocation_sizefn,
+    .hashfn=NULL
 };
 
 /* **********************************************************************

@@ -3904,7 +3904,8 @@ objecttypedefn objectintegralelementrefdefn = {
     .printfn=objectintegralelementref_printfn,
     .markfn=NULL,
     .freefn=NULL,
-    .sizefn=objectintegralelementref_sizefn
+    .sizefn=objectintegralelementref_sizefn,
+    .hashfn=NULL
 };
 
 objecttype objectintegralelementreftype;

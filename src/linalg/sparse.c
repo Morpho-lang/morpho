@@ -62,7 +62,8 @@ objecttypedefn objectdokkeydefn = {
     .printfn=objectdokkey_printfn,
     .markfn=NULL,
     .freefn=NULL,
-    .sizefn=objectdokkey_sizefn
+    .sizefn=objectdokkey_sizefn,
+    .hashfn=NULL
 };
 
 
@@ -613,7 +614,8 @@ objecttypedefn objectsparsedefn = {
     .printfn=objectsparse_printfn,
     .markfn=objectsparse_markfn,
     .freefn=objectsparse_freefn,
-    .sizefn=objectsparse_sizefn
+    .sizefn=objectsparse_sizefn,
+    .hashfn=NULL
 };
 
 /* ***************************************

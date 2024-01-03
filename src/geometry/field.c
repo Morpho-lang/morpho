@@ -45,7 +45,8 @@ objecttypedefn objectfielddefn = {
     .printfn=objectfield_printfn,
     .markfn=objectfield_markfn,
     .freefn=objectfield_freefn,
-    .sizefn=objectfield_sizefn
+    .sizefn=objectfield_sizefn,
+    .hashfn=NULL
 };
 
 /* **********************************************************************

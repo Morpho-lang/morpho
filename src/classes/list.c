@@ -35,7 +35,8 @@ objecttypedefn objectlistdefn = {
     .printfn=objectlist_printfn,
     .markfn=objectlist_markfn,
     .freefn=objectlist_freefn,
-    .sizefn=objectlist_sizefn
+    .sizefn=objectlist_sizefn,
+    .hashfn=NULL
 };
 
 /** Creates a new list */

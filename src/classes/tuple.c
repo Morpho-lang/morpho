@@ -35,7 +35,8 @@ objecttypedefn objecttupledefn = {
     .printfn = objecttuple_printfn,
     .markfn = objecttuple_markfn,
     .freefn = NULL,
-    .sizefn = objecttuple_sizefn
+    .sizefn = objecttuple_sizefn,
+    .hashfn = NULL
 };
 
 /** @brief Creates a tuple from an existing C array of values

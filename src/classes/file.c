@@ -46,7 +46,8 @@ objecttypedefn objectfiledefn = {
     .printfn=objectfile_printfn,
     .markfn=objectfile_markfn,
     .freefn=objectfile_freefn,
-    .sizefn=objectfile_sizefn
+    .sizefn=objectfile_sizefn,
+    .hashfn=NULL
 };
 
 /** Creates a file object */

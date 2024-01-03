@@ -9,14 +9,26 @@
 
 #include "value.h"
 
+/* -------------------------------------------------------
+ * Hash type definition
+ * ------------------------------------------------------- */
+
 typedef uint32_t hash;
 #define HASH_EMPTY 0
+
+/* -------------------------------------------------------
+ * Dictionary entry type definition
+ * ------------------------------------------------------- */
 
 /** @brief A single dictionary entry */
 typedef struct {
     value key;
     value val;
 } dictionaryentry;
+
+/* -------------------------------------------------------
+ * Dictionary type definition
+ * ------------------------------------------------------- */
 
 /** @brief dictionary data structure that maps keys to values */
 typedef struct {
@@ -25,6 +37,10 @@ typedef struct {
     
     dictionaryentry *contents; /** contents of the dictionary */
 } dictionary;
+
+/* -------------------------------------------------------
+ * Dictionary interface
+ * ------------------------------------------------------- */
 
 void dictionary_init(dictionary *dict);
 void dictionary_clear(dictionary *dict);
@@ -46,7 +62,5 @@ bool dictionary_difference(dictionary *a, dictionary *b, dictionary *out);
 void dictionary_inspect(dictionary *dict);
 void dictionary_test(void);
 #endif
-
-void morpho_markdictionary(void *v, dictionary *dict);
 
 #endif /* dictionary_h */

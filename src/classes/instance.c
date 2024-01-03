@@ -52,7 +52,8 @@ objecttypedefn objectinstancedefn = {
     .printfn=objectinstance_printfn,
     .markfn=objectinstance_markfn,
     .freefn=objectinstance_freefn,
-    .sizefn=objectinstance_sizefn
+    .sizefn=objectinstance_sizefn,
+    .hashfn=NULL
 };
 
 /** Create an instance */

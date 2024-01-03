@@ -38,7 +38,8 @@ objecttypedefn objectfunctiondefn = {
     .printfn=objectfunction_printfn,
     .markfn=objectfunction_markfn,
     .freefn=objectfunction_freefn,
-    .sizefn=objectfunction_sizefn
+    .sizefn=objectfunction_sizefn,
+    .hashfn=NULL
 };
 
 /* **********************************************************************

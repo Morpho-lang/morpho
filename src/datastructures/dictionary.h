@@ -52,7 +52,6 @@ hash dictionary_hashcstring(const char* key, size_t length);
 
 void dictionary_init(dictionary *dict);
 void dictionary_clear(dictionary *dict);
-void dictionary_wipe(dictionary *dict);
 void dictionary_freecontents(dictionary *dict, bool freekeys, bool freevals);
 bool dictionary_insert(dictionary *dict, value key, value val);
 bool dictionary_insertintern(dictionary *dict, value key, value val);

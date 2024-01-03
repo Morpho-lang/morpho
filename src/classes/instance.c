@@ -31,16 +31,6 @@ void objectinstance_markfn(object *obj, void *v) {
 
 void objectinstance_freefn(object *obj) {
     objectinstance *instance = (objectinstance *) obj;
-
-#ifdef MORPHO_REUSEPOOL
-    if (npool<POOLMAX) {
-        obj->next=pool;
-        pool=obj;
-        npool++;
-        return;
-    }
-#endif
-
     dictionary_clear(&instance->fields);
 }
 
@@ -58,25 +48,7 @@ objecttypedefn objectinstancedefn = {
 
 /** Create an instance */
 objectinstance *object_newinstance(objectclass *klass) {
-    objectinstance *new;
-
-#ifdef MORPHO_REUSEPOOL
-    if (npool>0) {
-        new = (objectinstance *) pool;
-        pool = new->obj.next;
-        npool--;
-
-        new->obj.next=NULL;
-        new->obj.hsh=HASH_EMPTY;
-        new->obj.status=OBJECT_ISUNMANAGED;
-        dictionary_wipe(&new->fields);
-
-        new->klass=klass;
-        return new;
-    }
-#endif
-
-    new = (objectinstance *) object_new(sizeof(objectinstance), OBJECT_INSTANCE);
+    objectinstance *new= (objectinstance *) object_new(sizeof(objectinstance), OBJECT_INSTANCE);
 
     if (new) {
         new->klass=klass;

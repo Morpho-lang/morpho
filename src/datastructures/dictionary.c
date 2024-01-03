@@ -151,14 +151,6 @@ void dictionary_clear(dictionary *dict) {
     dictionary_init(dict);
 }
 
-/** @brief Wipes a dictionary's contents
- *  @param dict the dictionary to wipe
- *  @warning This doens't free keys or values in the dictionary. */
-void dictionary_wipe(dictionary *dict) {
-    for (unsigned int i=0; i<dict->capacity; i++) dict->contents[i].key=MORPHO_NIL;
-    dict->count=0;
-}
-
 /** @brief Frees a dictionary's contents
  *  @param dict     the dictionary to clear
  *  @param freekeys whether to free the keys

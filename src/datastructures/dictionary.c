@@ -124,7 +124,7 @@ hash dictionary_hashcstring(const char* key, size_t length) {
  * @param key the key to hash
  * @param intern set to true to use a precomputed hash (i.e. if it has been interned).
  * @returns the corresponding hash */
-static hash dictionary_hash(value key, bool intern) {
+hash dictionary_hash(value key, bool intern) {
     if (MORPHO_ISINTEGER(key)) {
         return dictionary_hashint((uint32_t) MORPHO_GETINTEGERVALUE(key));
     } else if (MORPHO_ISOBJECT(key)){
@@ -133,6 +133,11 @@ static hash dictionary_hash(value key, bool intern) {
         } else return object_hash(MORPHO_GETOBJECT(key));
     }
     return 0;
+}
+
+/** Veneer onto interned hash */
+hash dictionary_hashvalue(value key) {
+    return dictionary_hash(key, false);
 }
 
 /** @brief Initializes a dictionary

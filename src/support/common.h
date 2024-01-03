@@ -100,6 +100,7 @@ static inline bool morpho_comparevaluesame(value a, value b) {
 
 /** Use this one to carefully compare the values in each object */
 #define MORPHO_ISEQUAL(a,b) (!morpho_comparevalue(a,b))
+
 /** Use this one where we want to check the values refer to the same object */
 #define MORPHO_ISSAME(a,b) (morpho_comparevaluesame(a,b))
 

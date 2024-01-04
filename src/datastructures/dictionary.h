@@ -66,9 +66,4 @@ bool dictionary_union(dictionary *a, dictionary *b, dictionary *out);
 bool dictionary_intersection(dictionary *a, dictionary *b, dictionary *out);
 bool dictionary_difference(dictionary *a, dictionary *b, dictionary *out);
 
-#ifdef MORPHO_DEBUG
-void dictionary_inspect(dictionary *dict);
-void dictionary_test(void);
-#endif
-
 #endif /* dictionary_h */

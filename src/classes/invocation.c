@@ -161,6 +161,3 @@ void invocation_initialize(void) {
     morpho_defineerror(INVOCATION_ARGS, ERROR_HALT, INVOCATION_ARGS_MSG);
     morpho_defineerror(INVOCATION_METHOD, ERROR_HALT, INVOCATION_METHOD_MSG);
 }
-
-void invocation_finalize(void) {
-}

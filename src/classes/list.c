@@ -702,6 +702,3 @@ void list_initialize(void) {
     morpho_defineerror(LIST_ARGS, ERROR_HALT, LIST_ARGS_MSG);
     morpho_defineerror(LIST_NUMARGS, ERROR_HALT, LIST_NUMARGS_MSG);
 }
-
-void list_finalize(void) {
-}

@@ -706,5 +706,3 @@ void complex_initialize(void) {
     morpho_defineerror(COMPLEX_INVLDNARG, ERROR_HALT, COMPLEX_INVLDNARG_MSG);
 }
 
-void complex_finalize(void) {
-}

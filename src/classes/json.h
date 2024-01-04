@@ -44,8 +44,6 @@
 /* Parse JSON into a value */
 bool json_parse(char *in, error *err, value *out, varray_value *objects);
 
-/* Initialization/finalization */
 void json_initialize(void);
-void json_finalize(void);
 
 #endif

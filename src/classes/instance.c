@@ -357,6 +357,3 @@ void instance_initialize(void) {
     morpho_defineerror(HAS_ARG, ERROR_HALT, HAS_ARG_MSG);
     morpho_defineerror(ISMEMBER_ARG, ERROR_HALT, ISMEMBER_ARG_MSG);
 }
-
-void instance_finalize(void) {
-}

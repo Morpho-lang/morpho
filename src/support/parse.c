@@ -1700,7 +1700,3 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_UNESCPDCTRL, ERROR_PARSE, PARSE_UNESCPDCTRL_MSG);
     morpho_defineerror(PARSE_INVLDUNCD, ERROR_PARSE, PARSE_INVLDUNCD_MSG);
 }
-
-void parse_finalize(void) {
-    
-}

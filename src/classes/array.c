@@ -616,6 +616,3 @@ void array_initialize(void) {
     morpho_defineerror(ARRAY_INIT, ERROR_HALT, ARRAY_INIT_MSG);
     morpho_defineerror(ARRAY_CMPT, ERROR_HALT, ARRAY_CMPT_MSG);
 }
-
-void array_finalize(void) {
-}

@@ -510,6 +510,3 @@ void json_initialize(void) {
     morpho_defineerror(JSON_BLNKELMNT, ERROR_PARSE, JSON_BLNKELMNT_MSG);
 }
 
-void json_finalize(void) {
-    
-}

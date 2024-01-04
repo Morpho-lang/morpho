@@ -182,6 +182,3 @@ void function_initialize(void) {
     
     // Function error messages
 }
-
-void function_finalize(void) {
-}

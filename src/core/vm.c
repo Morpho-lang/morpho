@@ -1902,11 +1902,23 @@ bool vm_gettlvar(vm *v, int handle, value *out) {
 }
 
 /* **********************************************************************
+ * Finalize functions
+ * ********************************************************************** */
+
+varray_value _finalizefns;
+
+void morpho_addfinalizefn(morpho_finalizefn finalizefn) {
+    varray_valuewrite(&_finalizefns, MORPHO_OBJECT(finalizefn));
+}
+
+/* **********************************************************************
 * Initialization
 * ********************************************************************** */
 
 /** Initializes morpho */
 void morpho_initialize(void) {
+    varray_valueinit(&_finalizefns);
+    
     random_initialize();
     error_initialize();
     
@@ -1976,16 +1988,12 @@ void morpho_initialize(void) {
     printselector=builtin_internsymbolascstring(MORPHO_PRINT_METHOD);
 }
 
-/** Finalizes morpho */
+/** Finalizes morpho, calling all finalize functions */
 void morpho_finalize(void) {
-    extensions_finalize();
-    error_finalize();
-    compile_finalize();
-    builtin_finalize();
-    resources_finalize();
-    lex_finalize();
-    parse_finalize();
+    for (int i=_finalizefns.count-1; i>=0; i--) {
+        morpho_finalizefn fn=(morpho_finalizefn) MORPHO_GETOBJECT(_finalizefns.data[i]);
+        fn();
+    }
     
-    object_finalize(); //
-    value_finalize();  // } Must be first
+    varray_valueclear(&_finalizefns);
 }

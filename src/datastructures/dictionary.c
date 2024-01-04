@@ -8,9 +8,7 @@
 #include <inttypes.h>
 #include "dictionary.h"
 #include "common.h"
-#include "memory.h"
 #include "object.h"
-#include "sparse.h"
 
 /* **********************************************************************
  * Macros that control the behavior of the dictionary.

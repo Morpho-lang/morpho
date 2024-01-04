@@ -54,6 +54,5 @@ typedef struct {
 value object_tuplefromvaluelist(size_t length, value *v);
 
 void tuple_initialize(void);
-void tuple_finalize(void);
 
 #endif

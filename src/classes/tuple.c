@@ -131,6 +131,3 @@ void tuple_initialize(void) {
     value tupleclass=builtin_addclass(TUPLE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Tuple), objclass);
     object_setveneerclass(OBJECT_TUPLE, tupleclass);
 }
-
-void tuple_finalize(void) {
-}

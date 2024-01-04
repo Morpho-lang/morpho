@@ -172,6 +172,8 @@ void morpho_setthreadnumber(int nthreads);
 int morpho_threadnumber(void);
 
 /* Initialization and finalization */
+typedef void (*morpho_finalizefn) (void);
+void morpho_addfinalizefn(morpho_finalizefn finalizefn);
 void morpho_setbaseclass(value clss);
 void morpho_initialize(void);
 void morpho_finalize(void);

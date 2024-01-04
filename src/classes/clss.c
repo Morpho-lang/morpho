@@ -83,6 +83,3 @@ void class_initialize(void) {
     // Class error messages
     morpho_defineerror(CLASS_INVK, ERROR_HALT, CLASS_INVK_MSG);
 }
-
-void class_finalize(void) {
-}

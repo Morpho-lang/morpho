@@ -51,6 +51,3 @@ void float_initialize(void) {
     
     morpho_defineerror(VALUE_FRMTARG, ERROR_HALT, VALUE_FRMTARG_MSG);
 }
-
-void float_finalize(void) {
-}

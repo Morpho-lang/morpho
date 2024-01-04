@@ -319,6 +319,8 @@ void builtin_initialize(void) {
     selection_initialize();
     field_initialize();
     functional_initialize();
+    
+    morpho_addfinalizefn(builtin_finalize);
 }
 
 void builtin_finalize(void) {
@@ -329,26 +331,4 @@ void builtin_finalize(void) {
     dictionary_clear(&builtin_classtable);
     dictionary_clear(&builtin_symboltable);
     varray_valueclear(&builtin_objects);
-    
-    functional_finalize();
-    
-    json_finalize();
-    system_finalize();
-    file_finalize();
-    
-    int_finalize(); // Veneer classes
-    float_finalize();
-    
-    tuple_finalize();
-    err_finalize();
-    complex_finalize();
-    range_finalize();
-    array_finalize();
-    closure_finalize();
-    list_finalize();
-    dict_finalize();
-    invocation_finalize();
-    instance_finalize();
-    function_finalize();
-    string_finalize();
 }

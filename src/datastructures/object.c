@@ -149,6 +149,8 @@ objectclass *object_getveneerclass(objecttype type) {
 
 void object_initialize(void) {
     objectdefnnext=0;
+    
+    morpho_addfinalizefn(object_finalize);
 }
 
 void object_finalize(void) {

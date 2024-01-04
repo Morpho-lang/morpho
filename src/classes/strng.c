@@ -319,6 +319,3 @@ void string_initialize(void) {
     value stringclass=builtin_addclass(STRING_CLASSNAME, MORPHO_GETCLASSDEFINITION(String), objclass);
     object_setveneerclass(OBJECT_STRING, stringclass);
 }
-
-void string_finalize(void) {
-}

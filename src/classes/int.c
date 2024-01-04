@@ -28,6 +28,3 @@ void int_initialize(void) {
     value intclass=builtin_addclass(INT_CLASSNAME, MORPHO_GETCLASSDEFINITION(Int), MORPHO_NIL);
     value_setveneerclass(MORPHO_INTEGER(1), intclass);
 }
-
-void int_finalize(void) {
-}

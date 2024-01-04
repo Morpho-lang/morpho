@@ -251,6 +251,5 @@ bool value_promotenumberlist(unsigned int nv, value *v);
 bool value_minmax(unsigned int nval, value *list, value *min, value *max);
 
 void value_initialize(void);
-void value_finalize(void);
 
 #endif /* value_h */

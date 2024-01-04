@@ -198,6 +198,3 @@ void range_initialize(void) {
     // Range error messages
     morpho_defineerror(RANGE_ARGS, ERROR_HALT, RANGE_ARGS_MSG);
 }
-
-void range_finalize(void) {
-}

@@ -4638,6 +4638,8 @@ void functional_initialize(void) {
     elementhandle=vm_addtlvar();
     tangenthandle=vm_addtlvar();
     normlhandle=vm_addtlvar();
+    
+    morpho_addfinalizefn(functional_finalize);
 }
 
 void functional_finalize(void) {

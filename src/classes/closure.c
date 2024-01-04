@@ -128,5 +128,3 @@ void closure_initialize(void) {
     object_setveneerclass(OBJECT_CLOSURE, closureclass);
 }
 
-void closure_finalize(void) {
-}

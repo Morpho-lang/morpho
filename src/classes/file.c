@@ -474,6 +474,8 @@ void file_initialize(void) {
     
     morpho_defineerror(FOLDER_EXPCTPATH, ERROR_HALT, FOLDER_EXPCTPATH_MSG);
     morpho_defineerror(FOLDER_NTFLDR, ERROR_HALT, FOLDER_NTFLDR_MSG);
+    
+    morpho_addfinalizefn(file_finalize);
 }
 
 void file_finalize(void) {

@@ -296,6 +296,3 @@ void dict_initialize(void) {
     morpho_defineerror(DICT_DCTKYNTFND, ERROR_HALT, DICT_DCTKYNTFND_MSG);
     morpho_defineerror(DICT_DCTSTARG, ERROR_HALT, DICT_DCTSTARG_MSG);
 }
-
-void dict_finalize(void) {
-}

@@ -228,6 +228,3 @@ objectclass *value_getveneerclass(value type) {
 void value_initialize(void) {
     for (int i=0; i<MORPHO_MAXIMUMVALUETYPES; i++) _valueveneers[i]=NULL;
 }
-
-void value_finalize(void) {
-}

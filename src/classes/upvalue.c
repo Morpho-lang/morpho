@@ -71,6 +71,3 @@ void upvalue_initialize(void) {
     // Define upvalue object type
     objectupvaluetype=object_addtype(&objectupvaluedefn);
 }
-
-void upvalue_finalize(void) {
-}

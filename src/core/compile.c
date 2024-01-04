@@ -3556,6 +3556,8 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_NSTDCLSS, ERROR_COMPILE, COMPILE_NSTDCLSS_MSG);
     morpho_defineerror(COMPILE_VARPRMLST, ERROR_COMPILE, COMPILE_VARPRMLST_MSG);
     morpho_defineerror(COMPILE_INVLDLBL, ERROR_COMPILE, COMPILE_INVLDLBL_MSG);
+    
+    morpho_addfinalizefn(compile_finalize);
 }
 
 /** Finalizes the compiler */

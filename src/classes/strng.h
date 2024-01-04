@@ -83,6 +83,5 @@ int string_countchars(objectstring *s);
 char *string_index(objectstring *s, int i);
 
 void string_initialize(void);
-void string_finalize(void);
 
 #endif

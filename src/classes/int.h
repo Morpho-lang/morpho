@@ -21,8 +21,6 @@
  * Int interface
  * ------------------------------------------------------- */
 
-/* Initialization/finalization */
 void int_initialize(void);
-void int_finalize(void);
 
 #endif

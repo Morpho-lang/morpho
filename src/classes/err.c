@@ -110,6 +110,3 @@ void err_initialize(void) {
     // Error error messages
     morpho_defineerror(ERROR_ARGS, ERROR_HALT, ERROR_ARGS_MSG);
 }
-
-void err_finalize(void) {
-}

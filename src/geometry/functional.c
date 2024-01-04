@@ -3905,7 +3905,8 @@ objecttypedefn objectintegralelementrefdefn = {
     .markfn=NULL,
     .freefn=NULL,
     .sizefn=objectintegralelementref_sizefn,
-    .hashfn=NULL
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 objecttype objectintegralelementreftype;

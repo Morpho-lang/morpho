@@ -34,7 +34,8 @@ objecttypedefn objectarraydefn = {
     .markfn=objectarray_markfn,
     .freefn=NULL,
     .sizefn=objectarray_sizefn,
-    .hashfn=NULL
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /** Initializes an array given the size */

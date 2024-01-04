@@ -39,7 +39,8 @@ objecttypedefn objectfunctiondefn = {
     .markfn=objectfunction_markfn,
     .freefn=objectfunction_freefn,
     .sizefn=objectfunction_sizefn,
-    .hashfn=NULL
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /* **********************************************************************

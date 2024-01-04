@@ -38,7 +38,8 @@ objecttypedefn objectselectiondefn = {
     .markfn=NULL,
     .freefn=objectselection_freefn,
     .sizefn=objectselection_sizefn,
-    .hashfn=NULL
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /* **********************************************************************

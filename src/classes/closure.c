@@ -36,7 +36,8 @@ objecttypedefn objectclosuredefn = {
     .markfn=objectclosure_markfn,
     .freefn=NULL,
     .sizefn=objectclosure_sizefn,
-    .hashfn=NULL
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /** Closure functions */

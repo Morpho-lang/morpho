@@ -33,7 +33,8 @@ objecttypedefn objectrangedefn = {
     .markfn=NULL,
     .freefn=NULL,
     .sizefn=objectrange_sizefn,
-    .hashfn=NULL
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /** Create a new range. Step may be set to MORPHO_NIL to use the default value of 1 */

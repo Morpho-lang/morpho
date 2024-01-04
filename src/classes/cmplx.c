@@ -24,17 +24,13 @@ void objectcomplex_printfn(object *obj, void *v) {
     complex_print(v, (objectcomplex *) obj);
 }
 
-
-/*bool objectcomplex_cmpfn(object *a, value b, value *out) {
-    
-}*/
-
 objecttypedefn objectcomplexdefn = {
     .printfn=objectcomplex_printfn,
     .markfn=NULL,
     .freefn=NULL,
     .sizefn=objectcomplex_sizefn,
-    .hashfn=NULL
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /** Creates a complex object */

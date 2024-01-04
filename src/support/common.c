@@ -20,36 +20,6 @@
 * Utility functions
 * ********************************************************************** */
 
-int morpho_compare(value a, value b) {
-    if (!morpho_ofsametype(a, b)) return MORPHO_NOTEQUAL;
-    
-    if (MORPHO_ISFLOAT(a)) {
-        double x = MORPHO_GETFLOATVALUE(b) - MORPHO_GETFLOATVALUE(a);
-        if (x>DBL_EPSILON) return MORPHO_BIGGER; /* Fast way out for clear cut cases */
-        if (x<-DBL_EPSILON) return MORPHO_SMALLER;
-        /* Assumes absolute tolerance is the same as relative tolerance. */
-        if (fabs(x)<=DBL_EPSILON*fmax(1.0, fmax(MORPHO_GETFLOATVALUE(a), MORPHO_GETFLOATVALUE(b)))) return MORPHO_EQUAL;
-        return (x>0 ? MORPHO_BIGGER : MORPHO_SMALLER);
-    } else {
-        switch (MORPHO_GETTYPE(a)) {
-            case VALUE_NIL:
-                return MORPHO_EQUAL; /** Nones are always the same */
-            case VALUE_INTEGER:
-                return (MORPHO_GETINTEGERVALUE(b) - MORPHO_GETINTEGERVALUE(a));
-            case VALUE_BOOL:
-                return (MORPHO_GETBOOLVALUE(b) != MORPHO_GETBOOLVALUE(a));
-            case VALUE_OBJECT:
-                if (MORPHO_GETOBJECTTYPE(a)!=MORPHO_GETOBJECTTYPE(b)) {
-                    return 1; /* Objects of different type are always different */
-                } else return object_cmp(MORPHO_GETOBJECT(a), MORPHO_GETOBJECT(b));
-            default:
-                UNREACHABLE("unhandled value type for comparison [Check morpho_comparevalue]");
-        }
-    }
-    
-    return MORPHO_NOTEQUAL;
-}
-
 #define EQUAL 0
 #define NOTEQUAL 1
 #define BIGGER 1
@@ -60,7 +30,7 @@ int morpho_compare(value a, value b) {
  * @param b value to compare
  * @returns 0 if a and b are equal, a positive number if b\>a and a negative number if a\<b
  * @warning does not work if a and b are not the same type (use MORPHO_CHECKCMPTYPE to promote types if ordering is important) */
-int morpho_comparevalue(value a, value b) {
+int morpho_comparevaluex(value a, value b) {
 
     // if comparing a number to complex cast the number to complex
     // we don't need to bind here beacues the value never needs to exist beyond this scope
@@ -115,7 +85,7 @@ int morpho_comparevalue(value a, value b) {
                     } else if (MORPHO_ISCOMPLEX(a) && MORPHO_ISCOMPLEX(b)) {
                         objectcomplex *acomp = MORPHO_GETCOMPLEX(a);
                         objectcomplex *bcomp = MORPHO_GETCOMPLEX(b);
-                        return (complex_equality(acomp,bcomp)? EQUAL: NOTEQUAL);
+                        return (complex_isequal(acomp,bcomp)? EQUAL: NOTEQUAL);
                     } else {
                         return (MORPHO_GETOBJECT(a) == MORPHO_GETOBJECT(b)? EQUAL: NOTEQUAL);
                     }
@@ -140,10 +110,10 @@ void morpho_printvalue(vm *v, value val) {
     } else {
         switch (MORPHO_GETTYPE(val)) {
             case VALUE_NIL:
-                morpho_printf(v, COMMON_NILSTRING);
+                morpho_printf(v, MORPHO_NILSTRING);
                 return;
             case VALUE_BOOL:
-                morpho_printf(v, "%s", (MORPHO_GETBOOLVALUE(val) ? COMMON_TRUESTRING : COMMON_FALSESTRING));
+                morpho_printf(v, "%s", (MORPHO_GETBOOLVALUE(val) ? MORPHO_TRUESTRING : MORPHO_FALSESTRING));
                 return;
             case VALUE_INTEGER:
                 morpho_printf(v, "%i", MORPHO_GETINTEGERVALUE(val));
@@ -201,10 +171,10 @@ void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
         nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%i", MORPHO_GETINTEGERVALUE(val));
         varray_charadd(buffer, tmp, nv);
     } else if (MORPHO_ISBOOL(val)) {
-        nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%s", (MORPHO_ISTRUE(val) ? COMMON_TRUESTRING : COMMON_FALSESTRING));
+        nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%s", (MORPHO_ISTRUE(val) ? MORPHO_TRUESTRING : MORPHO_FALSESTRING));
         varray_charadd(buffer, tmp, nv);
     } else if (MORPHO_ISNIL(val)) {
-        nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%s", COMMON_NILSTRING);
+        nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%s", MORPHO_NILSTRING);
         varray_charadd(buffer, tmp, nv);
     }
 }
@@ -230,7 +200,7 @@ value morpho_concatenate(vm *v, int nval, value *val) {
  *  @warning Caller must call MALLOC_FREE on the allocated string */
 char *morpho_strdup(char *string) {
     size_t len = strlen(string) + 1;
-    char* output = (char*) malloc ((len + 1) * sizeof(char));
+    char* output = (char *) MORPHO_MALLOC((len + 1) * sizeof(char));
     if (output) memcpy(output, string, len);
 
     return output;

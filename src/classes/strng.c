@@ -30,13 +30,21 @@ hash objectstring_hashfn(object *obj) {
     return dictionary_hashcstring(str->string, str->length);
 }
 
+int objectstring_cmpfn(object *a, object *b) {
+    objectstring *astring = (objectstring *) a;
+    objectstring *bstring = (objectstring *) b;
+    size_t len = (astring->length > bstring->length ? astring->length : bstring->length);
+
+    return -strncmp(astring->string, bstring->string, len);
+}
+
 objecttypedefn objectstringdefn = {
     .printfn = objectstring_printfn,
     .markfn = NULL,
     .freefn = NULL,
     .sizefn = objectstring_sizefn,
     .hashfn = objectstring_hashfn,
-    .cmpfn = NULL
+    .cmpfn = objectstring_cmpfn
 };
 
 /** @brief Creates a string from an existing character array with given length

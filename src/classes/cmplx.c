@@ -24,13 +24,19 @@ void objectcomplex_printfn(object *obj, void *v) {
     complex_print(v, (objectcomplex *) obj);
 }
 
+int objectcomplex_cmpfn(object *a, object *b) {
+    objectcomplex *acomp = (objectcomplex *) a;
+    objectcomplex *bcomp = (objectcomplex *) b;
+    return (complex_isequal(acomp,bcomp)? MORPHO_EQUAL: MORPHO_NOTEQUAL);
+}
+
 objecttypedefn objectcomplexdefn = {
     .printfn=objectcomplex_printfn,
     .markfn=NULL,
     .freefn=NULL,
     .sizefn=objectcomplex_sizefn,
     .hashfn=NULL,
-    .cmpfn=NULL
+    .cmpfn=objectcomplex_cmpfn
 };
 
 /** Creates a complex object */
@@ -91,7 +97,7 @@ void complex_getimag(objectcomplex *c, double *value) {
 }
 
 /** @brief checks equality on two complex numbers */
-bool complex_equality(objectcomplex *a, objectcomplex *b){
+bool complex_isequal(objectcomplex *a, objectcomplex *b) {
     return (a->Z == b->Z);
 }
 

@@ -28,7 +28,7 @@ typedef struct sobject object;
         VALUE_BOOL       - boolean type
         VALUE_OBJECT   - pointer to an object
     The implementation of a value is intentionally opaque and can be NAN boxed into a 64-bit double or left as a struct.
-    This file therfore defines several kinds of macro to:
+    This file therefore defines several kinds of macro to:
         * create values of a given type, e.g. MORPHO_INTEGER.
         * Test the type of a value, e.g. MORPHO_ISINTEGER
         * Extract a given type from a value and cast to the relevant C type, e.g. MORPHO_GETINTEGERVALUE */
@@ -190,7 +190,23 @@ static inline bool morpho_ofsametype(value a, value b) {
 #endif
 
 /* -------------------------------------------------------
- * Functions and macros for working with values
+ * Comparing values
+ * ------------------------------------------------------- */
+
+/** Check if two values are the same, i.e. identical or refer to the same object */
+bool morpho_issame(value a, value b);
+
+/** Test if two values are identical, i.e. identical or refer to the same object */
+#define MORPHO_ISSAME(a,b) (morpho_issame(a,b))
+
+/** Compare two values, checking contents of objects where supported */
+int morpho_comparevalue(value a, value b);
+
+/** Macro to test if two values are equal, checking contents of objects where supported */
+#define MORPHO_ISEQUAL(a,b) (!morpho_comparevalue(a,b))
+
+/* -------------------------------------------------------
+ * Type checking and conversion
  * ------------------------------------------------------- */
 
 /** Detect if a value is a number */

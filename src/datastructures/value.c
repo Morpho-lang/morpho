@@ -7,7 +7,79 @@
 #include "value.h"
 #include "common.h"
 
-DEFINE_VARRAY(value, value);
+/* **********************************************************************
+* Comparison of values
+* ********************************************************************** */
+
+/** @brief Compares where two values are the same, i.e. are identical or refer to the same object. 
+ * @details Faster than morpho_comparevalue
+ * @param a value to compare
+ * @param b value to compare
+ * @returns true if a and b are identical, false otherwise */
+bool morpho_issame(value a, value b) {
+#ifdef MORPHO_NAN_BOXING
+    return (a==b);
+#else
+    if (a.type!=b.type) return false;
+
+    switch (a.type) {
+        case VALUE_NIL:
+            return true; /** Nils are always the same */
+        case VALUE_INTEGER:
+            return (b.as.integer == a.as.integer);
+        case VALUE_DOUBLE:
+            /* The sign bit comparison is required to distinguish between -0 and 0. */
+            return ((b.as.real == a.as.real) && (signbit(b.as.real)==signbit(a.as.real)));
+        case VALUE_BOOL:
+            return (b.as.boolean == a.as.boolean);
+        case VALUE_OBJECT:
+            return MORPHO_GETOBJECT(a) == MORPHO_GETOBJECT(b);
+        default:
+            UNREACHABLE("unhandled value type for comparison [Check morpho_issame]");
+    }
+
+    return false;
+#endif
+}
+
+/** @brief Compares two values
+ * @param a value to compare
+ * @param b value to compare
+ * @returns 0 if a and b are equal, a positive number if b\>a and a negative number if a\<b
+ * @warning Requires that both values have the same type */
+int morpho_comparevalue(value a, value b) {
+    if (!morpho_ofsametype(a, b)) return MORPHO_NOTEQUAL;
+    
+    if (MORPHO_ISFLOAT(a)) {
+        double x = MORPHO_GETFLOATVALUE(b) - MORPHO_GETFLOATVALUE(a);
+        if (x>DBL_EPSILON) return MORPHO_BIGGER; /* Fast way out for clear cut cases */
+        if (x<-DBL_EPSILON) return MORPHO_SMALLER;
+        /* Assumes absolute tolerance is the same as relative tolerance. */
+        if (fabs(x)<=DBL_EPSILON*fmax(1.0, fmax(MORPHO_GETFLOATVALUE(a), MORPHO_GETFLOATVALUE(b)))) return MORPHO_EQUAL;
+        return (x>0 ? MORPHO_BIGGER : MORPHO_SMALLER);
+    } else {
+        switch (MORPHO_GETTYPE(a)) {
+            case VALUE_NIL:
+                return MORPHO_EQUAL; /** Nones are always the same */
+            case VALUE_INTEGER:
+                return (MORPHO_GETINTEGERVALUE(b) - MORPHO_GETINTEGERVALUE(a));
+            case VALUE_BOOL:
+                return (MORPHO_GETBOOLVALUE(b) != MORPHO_GETBOOLVALUE(a));
+            case VALUE_OBJECT:
+                if (MORPHO_GETOBJECTTYPE(a)!=MORPHO_GETOBJECTTYPE(b)) {
+                    return 1; /* Objects of different type are always different */
+                } else return object_cmp(MORPHO_GETOBJECT(a), MORPHO_GETOBJECT(b));
+            default:
+                UNREACHABLE("unhandled value type for comparison [Check morpho_comparevalue]");
+        }
+    }
+    
+    return MORPHO_NOTEQUAL;
+}
+
+/* **********************************************************************
+* Type check and conversion
+* ********************************************************************** */
 
 /** Detect if a value is a number */
 bool morpho_isnumber(value a) {
@@ -33,35 +105,9 @@ bool morpho_valuetofloat(value v, double *out) {
     return false;
 }
 
-/** @brief Finds a value in an varray using a loose equality test (MORPHO_ISEQUAL)
- *  @param[in]  varray     the array to search
- *  @param[in]  v          value to find
- *  @param[out] out        index of the match
- *  @returns whether the value was found or not. */
-bool varray_valuefind(varray_value *varray, value v, unsigned int *out) {
-    for (unsigned int i=0; i<varray->count; i++) {
-        if (MORPHO_ISEQUAL(varray->data[i], v)) {
-            if (out) *out=i;
-            return true;
-        }
-    }
-    return false;
-}
-
-/** @brief Finds a value in an varray using strict equality test (MORPHO_ISSAME)
- *  @param[in]  varray     the array to search
- *  @param[in]  v          value to find
- *  @param[out] out        index of the match
- *  @returns whether the value was found or not. */
-bool varray_valuefindsame(varray_value *varray, value v, unsigned int *out) {
-    for (unsigned int i=0; i<varray->count; i++) {
-        if (MORPHO_ISSAME(varray->data[i], v)) {
-            if (out) *out=i;
-            return true;
-        }
-    }
-    return false;
-}
+/* **********************************************************************
+* Utility functions
+* ********************************************************************** */
 
 /** Promotes a list of numbers to floats if any are floating point.
  * @param[in] nv - number of values
@@ -104,6 +150,42 @@ bool value_minmax(unsigned int nval, value *list, value *min, value *max) {
     }
     
     return true;
+}
+
+/* **********************************************************************
+* Varray_values and utility functions
+* ********************************************************************** */
+
+DEFINE_VARRAY(value, value);
+
+/** @brief Finds a value in an varray using a loose equality test (MORPHO_ISEQUAL)
+ *  @param[in]  varray     the array to search
+ *  @param[in]  v          value to find
+ *  @param[out] out        index of the match
+ *  @returns whether the value was found or not. */
+bool varray_valuefind(varray_value *varray, value v, unsigned int *out) {
+    for (unsigned int i=0; i<varray->count; i++) {
+        if (MORPHO_ISEQUAL(varray->data[i], v)) {
+            if (out) *out=i;
+            return true;
+        }
+    }
+    return false;
+}
+
+/** @brief Finds a value in an varray using strict equality test (MORPHO_ISSAME)
+ *  @param[in]  varray     the array to search
+ *  @param[in]  v          value to find
+ *  @param[out] out        index of the match
+ *  @returns whether the value was found or not. */
+bool varray_valuefindsame(varray_value *varray, value v, unsigned int *out) {
+    for (unsigned int i=0; i<varray->count; i++) {
+        if (MORPHO_ISSAME(varray->data[i], v)) {
+            if (out) *out=i;
+            return true;
+        }
+    }
+    return false;
 }
 
 /* **********************************************************************

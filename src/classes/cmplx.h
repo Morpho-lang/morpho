@@ -45,7 +45,7 @@ value object_clonecomplexvalue(value val);
 objectcomplex *object_complexfromfloat(double val);
 
 /** tests the equality of two complex numbers */
-bool complex_equality(objectcomplex *a, objectcomplex *b);
+bool complex_isequal(objectcomplex *a, objectcomplex *b);
 
 /* -------------------------------------------------------
  * Complex class

@@ -66,15 +66,22 @@ hash objectdokkey_hashfn(object *obj) {
     return ((i1<<32 | i2) * 11400714819323198485llu)>> 32;
 }
 
+int objectdokkey_cmpfn(object *a, object *b) {
+    objectdokkey *akey = (objectdokkey *) a;
+    objectdokkey *bkey = (objectdokkey *) b;
+
+    return ((MORPHO_GETDOKKEYCOL(akey)==MORPHO_GETDOKKEYCOL(bkey) &&
+             MORPHO_GETDOKKEYROW(akey)==MORPHO_GETDOKKEYROW(bkey)) ? MORPHO_EQUAL : MORPHO_NOTEQUAL);
+}
+
 objecttypedefn objectdokkeydefn = {
     .printfn=objectdokkey_printfn,
     .markfn=NULL,
     .freefn=NULL,
     .sizefn=objectdokkey_sizefn,
     .hashfn=objectdokkey_hashfn,
-    .cmpfn=NULL
+    .cmpfn=objectdokkey_cmpfn
 };
-
 
 DEFINE_VARRAY(dokkey, objectdokkey);
 

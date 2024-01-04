@@ -127,4 +127,3 @@ void closure_initialize(void) {
     value closureclass=builtin_addclass(CLOSURE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Closure), objclass);
     object_setveneerclass(OBJECT_CLOSURE, closureclass);
 }
-

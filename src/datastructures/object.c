@@ -92,6 +92,15 @@ hash object_hash(object *obj) {
     return dictionary_hashpointer(obj);
 }
 
+/** Compare two objects */
+int object_cmp(object *a, object *b) {
+    objecttypedefn *defn = object_getdefn(a);
+    
+    if (defn->cmpfn) return (defn->cmpfn) (a, b);
+    
+    return (a == b? MORPHO_EQUAL: MORPHO_NOTEQUAL);
+}
+
 /** @brief Allocates an object
  *  @param size   size of memory to reserve
  *  @param type   type to initialize with */

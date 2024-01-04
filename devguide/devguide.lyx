@@ -1910,6 +1910,14 @@ MORPHO_FALSE
 \family default
 .
  You can also use 
+\family typewriter
+MORPHO_INTEGER()
+\family default
+ and 
+\family typewriter
+MORPHO_FLOAT()
+\family default
+ to create integers and floats respectively.
 \end_layout
 
 \begin_layout Itemize

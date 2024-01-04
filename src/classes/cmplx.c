@@ -15,7 +15,7 @@
 
 objecttype objectcomplextype;
 
-/** Function object definitions */
+/** Complex object definitions */
 size_t objectcomplex_sizefn(object *obj) {
     return sizeof(objectcomplextype)+sizeof(double) * 2;
 }
@@ -23,6 +23,11 @@ size_t objectcomplex_sizefn(object *obj) {
 void objectcomplex_printfn(object *obj, void *v) {
     complex_print(v, (objectcomplex *) obj);
 }
+
+
+/*bool objectcomplex_cmpfn(object *a, value b, value *out) {
+    
+}*/
 
 objecttypedefn objectcomplexdefn = {
     .printfn=objectcomplex_printfn,

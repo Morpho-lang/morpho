@@ -1,7 +1,7 @@
 /** @file common.c
  *  @author T J Atherton
  *
- *  @brief Common types, data structures and functions for the Morpho VM
+ *  @brief Utility functions for the Morpho VM
  */
 
 #include <stdio.h>
@@ -20,15 +20,46 @@
 * Utility functions
 * ********************************************************************** */
 
+int morpho_compare(value a, value b) {
+    if (!morpho_ofsametype(a, b)) return MORPHO_NOTEQUAL;
+    
+    if (MORPHO_ISFLOAT(a)) {
+        double x = MORPHO_GETFLOATVALUE(b) - MORPHO_GETFLOATVALUE(a);
+        if (x>DBL_EPSILON) return MORPHO_BIGGER; /* Fast way out for clear cut cases */
+        if (x<-DBL_EPSILON) return MORPHO_SMALLER;
+        /* Assumes absolute tolerance is the same as relative tolerance. */
+        if (fabs(x)<=DBL_EPSILON*fmax(1.0, fmax(MORPHO_GETFLOATVALUE(a), MORPHO_GETFLOATVALUE(b)))) return MORPHO_EQUAL;
+        return (x>0 ? MORPHO_BIGGER : MORPHO_SMALLER);
+    } else {
+        switch (MORPHO_GETTYPE(a)) {
+            case VALUE_NIL:
+                return MORPHO_EQUAL; /** Nones are always the same */
+            case VALUE_INTEGER:
+                return (MORPHO_GETINTEGERVALUE(b) - MORPHO_GETINTEGERVALUE(a));
+            case VALUE_BOOL:
+                return (MORPHO_GETBOOLVALUE(b) != MORPHO_GETBOOLVALUE(a));
+            case VALUE_OBJECT:
+                if (MORPHO_GETOBJECTTYPE(a)!=MORPHO_GETOBJECTTYPE(b)) {
+                    return 1; /* Objects of different type are always different */
+                } else return object_cmp(MORPHO_GETOBJECT(a), MORPHO_GETOBJECT(b));
+            default:
+                UNREACHABLE("unhandled value type for comparison [Check morpho_comparevalue]");
+        }
+    }
+    
+    return MORPHO_NOTEQUAL;
+}
+
+#define EQUAL 0
+#define NOTEQUAL 1
+#define BIGGER 1
+#define SMALLER -1
+
 /** @brief Compares two values
  * @param a value to compare
  * @param b value to compare
  * @returns 0 if a and b are equal, a positive number if b\>a and a negative number if a\<b
  * @warning does not work if a and b are not the same type (use MORPHO_CHECKCMPTYPE to promote types if ordering is important) */
-#define EQUAL 0
-#define NOTEQUAL 1
-#define BIGGER 1
-#define SMALLER -1
 int morpho_comparevalue(value a, value b) {
 
     // if comparing a number to complex cast the number to complex
@@ -196,7 +227,7 @@ value morpho_concatenate(vm *v, int nval, value *val) {
 
 /** @brief   Duplicates a string.
  *  @param   string String to duplicate
- *  @warning Caller should call MALLOC_FREE on the allocated string */
+ *  @warning Caller must call MALLOC_FREE on the allocated string */
 char *morpho_strdup(char *string) {
     size_t len = strlen(string) + 1;
     char* output = (char*) malloc ((len + 1) * sizeof(char));
@@ -283,18 +314,6 @@ bool morpho_isdirectory(const char *path) {
    if (stat(path, &statbuf) != 0)
        return 0;
    return (bool) S_ISDIR(statbuf.st_mode);
-}
-
-/** Determine weather the rest of a string is white space */
-bool white_space_remainder(const char *s, int start){
-	s += start;
-	while (*s){
-		if (!isspace(*s)){
-			return false;
-		}
-		s++;
-	}
-	return true;
 }
 
 /** Count the number of fixed parameters in a callable object

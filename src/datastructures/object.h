@@ -68,6 +68,14 @@ typedef size_t (*objectsizefn) (object *obj);
 /** Called to hash an object */
 typedef hash (*objecthashfn) (object *obj);
 
+/** Called to compare two objects */
+typedef int (*objectcmpfn) (object *a, object *b);
+/** This function should return one of: */
+#define MORPHO_EQUAL 0
+#define MORPHO_NOTEQUAL 1
+#define MORPHO_BIGGER 1
+#define MORPHO_SMALLER -1
+
 /** Defines a custom object type. */
 typedef struct {
     object *veneer; // Veneer class
@@ -75,7 +83,8 @@ typedef struct {
     objectmarkfn markfn;
     objectsizefn sizefn;
     objectprintfn printfn;
-    objecthashfn hashfn; 
+    objecthashfn hashfn;
+    objectcmpfn cmpfn;
 } objecttypedefn;
 
 /* -------------------------------------------------------
@@ -94,6 +103,7 @@ void object_print(void *v, value val);
 void object_printtobuffer(value v, varray_char *buffer);
 size_t object_size(object *obj);
 hash object_hash(object *obj);
+int object_cmp(object *a, object *b);
 
 bool object_istype(value val, objecttype type);
 

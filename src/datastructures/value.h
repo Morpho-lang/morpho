@@ -126,23 +126,20 @@ static inline bool morpho_ofsametype(value a, value b) {
     return false;
 }
 
-/* Computes an ordered type for a value  */
-/*static inline unsigned int morpho_getorderedtype(value v) {
-    if (MORPHO_ISFLOAT(v)) return 0;
-    return ((v & (TAG_NIL | TAG_BOOL | TAG_INT))>>47) + ((v & TAG_OBJ) >> (63-2));
-}*/
-
 /** Alternatively, we represent a value through a struct. */
 #else
 
 /** @brief A enumerated type defining the different types available in Morpho. */
-typedef enum {
-    VALUE_NIL,
-    VALUE_INTEGER,
-    VALUE_DOUBLE,
+enum {
+    VALUE_NIL, // Note that the order of these must match the boxed version above
     VALUE_BOOL,
-    VALUE_OBJECT
-} valuetype;
+    VALUE_INTEGER,
+    
+    VALUE_OBJECT,
+    VALUE_DOUBLE
+};
+
+typedef int valuetype;
 
 /** @brief The unboxed value type. */
 typedef struct {
@@ -158,6 +155,10 @@ typedef struct {
 /** This macro gets the type of the value.
     @warning Not intended for broad use. */
 #define MORPHO_GETTYPE(v) ((v).type)
+
+/** Gets the ordered type of the value
+    @warning Not intended for broad use. */
+#define MORPHO_GETORDEREDTYPE(v) ((v).type)
 
 /** Test for the type of a value */
 #define MORPHO_ISNIL(v) ((v).type==VALUE_NIL)

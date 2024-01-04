@@ -1,0 +1,19 @@
+/* **********************************
+ * morpho test suite
+ * tuple_in_dictionary.morpho
+ * Check that tuples work in dictionaries
+ * ********************************** */
+
+var a = Tuple(1,2,3)
+var b = Tuple(1,2,3)
+var c = Tuple(2,2,3)
+
+var dict = {} 
+
+dict[a]=1
+
+print dict[a] // expect: 1
+
+print dict[b] // expect: 1
+
+print dict[c] // expect error 'DctKyNtFnd'

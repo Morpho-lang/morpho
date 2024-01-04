@@ -31,13 +31,32 @@ size_t objecttuple_sizefn(object *obj) {
     return sizeof(objecttuple)+(((objecttuple *) obj)->length)*sizeof(value);
 }
 
+hash objecttuple_hashfn(object *obj) {
+    objecttuple *tuple = (objecttuple *) obj;
+    return dictionary_hashvaluelist(tuple->length, tuple->tuple);
+}
+
+int objecttuple_cmpfn(object *a, object *b) {
+    objecttuple *atuple = (objecttuple *) a;
+    objecttuple *btuple = (objecttuple *) b;
+    
+    if (atuple->length!=btuple->length) return MORPHO_NOTEQUAL;
+
+    int cmp=0;
+    for (size_t i=0; i<atuple->length && cmp==0; i++) {
+        cmp=morpho_comparevalue(atuple->tuple[i], btuple->tuple[i]);
+    }
+    
+    return cmp;
+}
+
 objecttypedefn objecttupledefn = {
     .printfn = objecttuple_printfn,
     .markfn = objecttuple_markfn,
     .freefn = NULL,
     .sizefn = objecttuple_sizefn,
-    .hashfn = NULL,
-    .cmpfn = NULL
+    .hashfn = objecttuple_hashfn,
+    .cmpfn = objecttuple_cmpfn
 };
 
 /** @brief Creates a tuple from an existing C array of values

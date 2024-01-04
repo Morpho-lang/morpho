@@ -1,0 +1,14 @@
+/* **********************************
+ * morpho test suite
+ * tuple_compare.morpho
+ * Compare tuples
+ * ********************************** */
+
+var a = Tuple(1,2,3)
+var b = Tuple(1,2,3)
+var c = Tuple(1,2,3,4) // Different length
+var d = Tuple(2,2,3) // Different contents
+
+print a==b // expect: true
+print a==c // expect: false
+print a==d // expect: false

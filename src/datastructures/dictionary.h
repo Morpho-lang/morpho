@@ -45,7 +45,8 @@ typedef struct {
 hash dictionary_hashvalue(value key);
 hash dictionary_hashint(uint32_t a);
 hash dictionary_hashpointer(void *hash);
-hash dictionary_hashcstring(const char* key, size_t length);
+hash dictionary_hashcstring(const char *key, size_t length);
+hash dictionary_hashvaluelist(size_t nel, value *key);
 
 /* -------------------------------------------------------
  * Dictionary interface

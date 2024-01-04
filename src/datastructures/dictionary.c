@@ -114,6 +114,18 @@ hash dictionary_hashcstring(const char* key, size_t length) {
   return dictionary_hashint(hash);
 }
 
+/** Hash multiple values with FNV-1a */
+hash dictionary_hashvaluelist(size_t length, value *key) {
+    uint32_t hash = 2166136261u;
+
+    for (unsigned int i=0; i < length; i++) {
+      hash ^= dictionary_hashvalue(key[i]);
+      hash *= 16777619u;
+    }
+
+    return dictionary_hashint(hash);
+}
+
 /* **********************************************************************
  * Dictionary implementation
  * ********************************************************************** */

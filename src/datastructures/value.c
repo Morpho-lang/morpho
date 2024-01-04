@@ -4,6 +4,8 @@
  *  @brief Fundamental data type for morpho
 */
 
+#include <float.h>
+
 #include "value.h"
 #include "common.h"
 

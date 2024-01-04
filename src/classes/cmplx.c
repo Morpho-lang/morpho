@@ -27,7 +27,7 @@ void objectcomplex_printfn(object *obj, void *v) {
 int objectcomplex_cmpfn(object *a, object *b) {
     objectcomplex *acomp = (objectcomplex *) a;
     objectcomplex *bcomp = (objectcomplex *) b;
-    return (complex_isequal(acomp,bcomp)? MORPHO_EQUAL: MORPHO_NOTEQUAL);
+    return (complex_isequal(acomp, bcomp)? MORPHO_EQUAL: MORPHO_NOTEQUAL);
 }
 
 objecttypedefn objectcomplexdefn = {
@@ -99,6 +99,16 @@ void complex_getimag(objectcomplex *c, double *value) {
 /** @brief checks equality on two complex numbers */
 bool complex_isequal(objectcomplex *a, objectcomplex *b) {
     return (a->Z == b->Z);
+}
+
+/** @brief checks equality between a complex number and a value */
+bool complex_isequaltonumber(objectcomplex *a, value b) {
+    if (MORPHO_ISNUMBER(b)){
+        double val;
+        morpho_valuetofloat(b,&val);
+        return (a->Z==val);
+    }
+    return false;
 }
 
 /** Prints a complex number */

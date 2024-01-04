@@ -47,6 +47,9 @@ objectcomplex *object_complexfromfloat(double val);
 /** tests the equality of two complex numbers */
 bool complex_isequal(objectcomplex *a, objectcomplex *b);
 
+/** tests equality between a complex number and a value */
+bool complex_isequaltonumber(objectcomplex *a, value b);
+
 /* -------------------------------------------------------
  * Complex class
  * ------------------------------------------------------- */

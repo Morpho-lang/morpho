@@ -51,18 +51,6 @@ void morpho_setdebuggerfn(vm *v, morphodebuggerfn debuggerfn, void *ref);
         } \
     }
 
-/** @brief Compares two values
- * @param l value to compare
- * @param r value to compare */
-#define MORPHO_CHECKCMPTYPE(l, r) \
-    if (!morpho_ofsametype(l, r)) { \
-        if (MORPHO_ISINTEGER(l) && MORPHO_ISFLOAT(r)) { \
-            l = MORPHO_INTEGERTOFLOAT(l); \
-        } else if (MORPHO_ISFLOAT(l) && MORPHO_ISINTEGER(r)) { \
-            r = MORPHO_INTEGERTOFLOAT(r); \
-        } \
-    }
-
 /** Check if a value is callable */
 static inline bool morpho_iscallable(value a) {
     return (MORPHO_ISFUNCTION(a) ||

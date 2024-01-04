@@ -1,0 +1,10 @@
+/* **********************************
+ * morpho test suite
+ * tuple_join.morpho
+ * Test tuple joining
+ * ********************************** */
+
+var t = Tuple(1,2,3)
+
+print t.join(t)
+// expect: (1, 2, 3, 1, 2, 3)

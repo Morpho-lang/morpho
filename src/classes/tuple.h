@@ -50,8 +50,8 @@ typedef struct {
  * Tuple interface
  * ------------------------------------------------------- */
 
-/** Create a tuple from a list of values */
-value object_tuplefromvaluelist(size_t length, value *v);
+/** Create a tuple with an (optional) list of values */
+objecttuple *object_newtuple(size_t length, value *v);
 
 void tuple_initialize(void);
 

@@ -62,18 +62,35 @@ objecttypedefn objecttupledefn = {
 /** @brief Creates a tuple from an existing C array of values
  *  @param length length of list
  *  @param in list of values
- *  @returns the object (as a value) which will be MORPHO_NIL on failure */
-value object_tuplefromvaluelist(size_t length, value *in) {
-    value out = MORPHO_NIL;
+ *  @returns the object or NULL on failure */
+objecttuple *object_newtuple(size_t length, value *in) {
     objecttuple *new = (objecttuple *) object_new(sizeof(objecttuple) + sizeof(value)*length, OBJECT_TUPLE);
 
     if (new) {
         new->tuple=new->tupledata;
         new->length=length;
-        memcpy(new->tuple, in, sizeof(value)*length);
-        out = MORPHO_OBJECT(new);
+        if (in) memcpy(new->tuple, in, sizeof(value)*length);
+        else for (size_t i=0; i<length; i++) new->tuple[i]=MORPHO_NIL;
     }
-    return out;
+    return new;
+}
+
+/* **********************************************************************
+ * Tuple interface
+ * ********************************************************************** */
+
+/** Concatenates two tuples */
+objecttuple *tuple_concatenate(objecttuple *a, objecttuple *b) {
+    size_t newlength = a->length+b->length;
+    objecttuple *new=object_newtuple(newlength, NULL);
+
+    if (new) {
+        memcpy(new->tuple, a->tuple, sizeof(value)*a->length);
+        memcpy(new->tuple + a->length, b->tuple, sizeof(value)*b->length);
+        new->length=newlength;
+    }
+
+    return new;
 }
 
 /* **********************************************************************
@@ -82,8 +99,12 @@ value object_tuplefromvaluelist(size_t length, value *in) {
 
 /** Constructor function for tuples */
 value tuple_constructor(vm *v, int nargs, value *args) {
-    value out=object_tuplefromvaluelist(nargs, & MORPHO_GETARG(args, 0));
-    if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
+    value out = MORPHO_NIL;
+    objecttuple *new=object_newtuple(nargs, & MORPHO_GETARG(args, 0));
+    if (new) {
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     return out;
 }
 
@@ -94,16 +115,21 @@ value Tuple_count(vm *v, int nargs, value *args) {
     return MORPHO_INTEGER(slf->length);
 }
 
-/** Clones a string */
+/** Clones a tuple */
 value Tuple_clone(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
-    value out = object_tuplefromvaluelist(slf->length, slf->tuple);
-    if (MORPHO_ISNIL(out)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    morpho_bindobjects(v, 1, &out);
+    objecttuple *new = object_newtuple(slf->length, slf->tuple);
+    
+    if (new) {
+        out = MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    
     return out;
 }
 
-/** Enumerate members of a string */
+/** Enumerate members of a tuple */
 value Tuple_enumerate(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
     value out=MORPHO_NIL;
@@ -123,12 +149,32 @@ value Tuple_enumerate(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Joins two tuples together  */
+value Tuple_join(vm *v, int nargs, value *args) {
+    objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+
+    if (nargs==1 && MORPHO_ISTUPLE(MORPHO_GETARG(args, 0))) {
+        objecttuple *operand = MORPHO_GETTUPLE(MORPHO_GETARG(args, 0));
+        objecttuple *new = tuple_concatenate(slf, operand);
+
+        if (new) {
+            out = MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        }
+
+    } else morpho_runtimeerror(v, LIST_ADDARGS);
+
+    return out;
+}
+
 MORPHO_BEGINCLASS(Tuple)
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Tuple_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Tuple_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_JOIN_METHOD, Tuple_join, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

@@ -130,9 +130,10 @@ objecttypedefn objectbuiltinfunctiondefn = {
     .printfn=objectbuiltinfunction_printfn,
     .markfn=NULL,
     .freefn=objectbuiltinfunction_freefn,
-    .sizefn=objectbuiltinfunction_sizefn
+    .sizefn=objectbuiltinfunction_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
-
 
 /* **********************************************************************
  * Create and find builtin functions

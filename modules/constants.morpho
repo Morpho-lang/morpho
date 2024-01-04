@@ -1,0 +1,9 @@
+/*
+ * Constants
+ * Various mathematical and Physical constants
+ */
+
+var Pi = 3.14159265358979323846
+var E = exp(1)
+
+var Inf = 1/0 

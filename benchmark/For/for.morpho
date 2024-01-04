@@ -1,0 +1,10 @@
+var list = List()
+
+var start = clock()
+for (i in 0..1000000-1) list.append(i)
+
+var sum = 0.0
+for (i in list) sum = sum + i
+
+print sum
+print "elapsed: ${clock() - start}"

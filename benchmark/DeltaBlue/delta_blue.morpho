@@ -1,0 +1,669 @@
+// Delta Blue constraint solver benchmark
+// Converted from the wren version
+
+var ORDERED
+
+class Strength {
+	init(value, name) {
+		self.value = value
+		self.name = name
+	}
+
+	nextWeaker() { return ORDERED[self.value] }
+
+	stronger(s1,s2) {
+		return s1.value < s2.value
+	}
+	weaker(s1,s2) {
+		return s1.value > s2.value
+	}
+	weakest(s1,s2) {
+		if (Strength.weaker(s1,s2)) {
+			return s1
+		} else {
+			return s2
+		}
+	}
+	strongest(s1,s2) {
+		if (Strength.stronger(s1,s2)) {
+			return s1
+		} else {
+			return s2
+		}
+	}
+}
+
+var REQUIRED					= Strength(0, "required")
+var STRONG_PREFERRED	= Strength(1, "strongPreferred")
+var PREFERRED					= Strength(2, "preferred")
+var STRONG_DEFAULT	  = Strength(3, "strongDefault")
+var NORMAL 						= Strength(4, "normal")
+var WEAK_DEFAULT			= Strength(5, "weakDefault")
+var WEAKEST					  = Strength(6, "weakest")
+
+ORDERED = List(
+  WEAKEST, WEAK_DEFAULT, NORMAL, STRONG_DEFAULT, PREFERRED, STRONG_PREFERRED
+)
+
+var ThePlanner
+
+class Constraint {
+  init (strength) {
+    self.strength = strength
+  }
+
+  // Activate this constraint and attempt to satisfy it.
+  addConstraint() {
+    self.addToGraph()
+    ThePlanner.incrementalAdd(self)
+  }
+
+  // Attempt to find a way to enforce this constraint. If successful,
+  // record the solution, perhaps modifying the current dataflow
+  // graph. Answer the constraint that this constraint overrides, if
+  // there is one, or nil, if there isn't.
+  // Assume: I am not already satisfied.
+  satisfy(mark) {
+    self.chooseMethod(mark)
+    if (!self.isSatisfied()) {
+      if (self.strength == REQUIRED) {
+        print "Could not satisfy a required constraint!"
+      }
+      return nil
+    }
+
+    self.markInputs(mark)
+    var out = self.output()
+    var overridden = out.determinedBy
+    if (overridden != nil) overridden.markUnsatisfied()
+    out.determinedBy = self
+    if (!ThePlanner.addPropagate(self, mark)) print "Cycle encountered"
+    out.mark = mark
+    return overridden
+  }
+
+  destroyConstraint() {
+    if (self.isSatisfied()) ThePlanner.incrementalRemove(self)
+    self.removeFromGraph()
+  }
+
+  // Normal constraints are not input constraints.  An input constraint
+  // is one that depends on external state, such as the mouse, the
+  // keyboard, a clock, or some arbitrary piece of imperative code.
+  isInput() { return false; }
+}
+
+// Abstract superclass for constraints having a single possible output variable.
+class UnaryConstraint < Constraint {
+  init(myOutput, strength) {
+    super.init(strength)
+    self.satisfied = false
+    self.myOutput = myOutput
+    self.addConstraint()
+  }
+
+  // Adds this constraint to the constraint graph.
+  addToGraph() {
+    self.myOutput.addConstraint(self)
+    self.satisfied = false
+  }
+
+  // Decides if this constraint can be satisfied and records that decision.
+  chooseMethod(mark) {
+    self.satisfied = (self.myOutput.mark != mark) &&
+        Strength.stronger(self.strength, self.myOutput.walkStrength)
+  }
+
+  // Returns true if this constraint is satisfied in the current solution.
+  isSatisfied() { return self.satisfied; }
+
+  markInputs(mark) {
+    // has no inputs.
+  }
+
+  // Returns the current output variable.
+  output() { return self.myOutput; }
+
+  // Calculate the walkabout strength, the stay flag, and, if it is
+  // 'stay', the value for the current output of this constraint. Assume
+  // this constraint is satisfied.
+  recalculate() {
+    self.myOutput.walkStrength = self.strength
+    self.myOutput.stay = !self.isInput()
+    if (self.myOutput.stay) self.execute() // Stay optimization.
+  }
+
+  // Records that this constraint is unsatisfied.
+  markUnsatisfied() {
+    self.satisfied = false
+  }
+
+  inputsKnown(mark) { return true }
+
+  removeFromGraph() {
+    if (self.myOutput != nil) self.myOutput.removeConstraint(self)
+    self.satisfied = false
+  }
+}
+
+// Variables that should, with some level of preference, stay the same.
+// Planners may exploit the fact that instances, if satisfied, will not
+// change their output during plan execution.  This is called "stay
+// optimization".
+class StayConstraint < UnaryConstraint {
+  init(variable, strength) {
+    super.init(variable, strength)
+  }
+
+  execute() {
+    // Stay constraints do nothing.
+  }
+}
+
+// A unary input constraint used to mark a variable that the client
+// wishes to change.
+class EditConstraint < UnaryConstraint {
+  init(variable, strength) {
+    super.init(variable, strength)
+  }
+
+  // Edits indicate that a variable is to be changed by imperative code.
+  isInput() { return true }
+
+  execute() {
+    // Edit constraints do nothing.
+  }
+}
+
+// Directions.
+var NONE = 1
+var FORWARD = 2
+var BACKWARD = 0
+
+
+// Abstract superclass for constraints having two possible output
+// variables.
+class BinaryConstraint < Constraint {
+  init(v1, v2, strength) {
+    super.init(strength)
+    self.v1 = v1
+    self.v2 = v2
+    self.direction = NONE
+    self.addConstraint()
+  }
+
+  // Decides if this constraint can be satisfied and which way it
+  // should flow based on the relative strength of the variables related,
+  // and record that decision.
+  chooseMethod(mark) {
+    if (self.v1.mark == mark) {
+      if (self.v2.mark != mark &&
+          Strength.stronger(self.strength, self.v2.walkStrength)) {
+        self.direction = FORWARD
+      } else {
+        self.direction = NONE
+      }
+    }
+
+    if (self.v2.mark == mark) {
+      if (self.v1.mark != mark &&
+          Strength.stronger(self.strength, self.v1.walkStrength)) {
+        self.direction = BACKWARD
+      } else {
+        self.direction = NONE
+      }
+    }
+
+    if (Strength.weaker(self.v1.walkStrength, self.v2.walkStrength)) {
+      if (Strength.stronger(self.strength, self.v1.walkStrength)) {
+        self.direction = BACKWARD
+      } else {
+        self.direction = NONE
+      }
+    } else {
+      if (Strength.stronger(self.strength, self.v2.walkStrength)) {
+        self.direction = FORWARD
+      } else {
+        self.direction = BACKWARD
+      }
+    }
+  }
+
+  // Add this constraint to the constraint graph.
+  addToGraph() {
+    self.v1.addConstraint(self)
+    self.v2.addConstraint(self)
+    self.direction = NONE
+  }
+
+  // Answer true if this constraint is satisfied in the current solution.
+  isSatisfied() { return self.direction != NONE; }
+
+  // Mark the input variable with the given mark.
+  markInputs(mark) {
+    self.input().mark = mark
+  }
+
+  // Returns the current input variable
+  input() {
+		if (self.direction == FORWARD) {
+			return self.v1
+		} else {
+			return self.v2
+		}
+	}
+
+  // Returns the current output variable.
+	output() {
+		if (self.direction == FORWARD) {
+			return self.v2
+		} else {
+			return self.v1
+		}
+	}
+
+  // Calculate the walkabout strength, the stay flag, and, if it is
+  // 'stay', the value for the current output of this
+  // constraint. Assume this constraint is satisfied.
+  recalculate() {
+    var ihn = self.input()
+    var out = self.output()
+    out.walkStrength = Strength.weakest(self.strength, ihn.walkStrength)
+    out.stay = ihn.stay
+    if (out.stay) self.execute()
+  }
+
+  // Record the fact that this constraint is unsatisfied.
+  markUnsatisfied() {
+    self.direction = NONE
+  }
+
+  inputsKnown(mark) {
+    var i = self.input()
+    return i.mark == mark || i.stay || i.determinedBy == nil
+  }
+
+  removeFromGraph() {
+    if (self.v1 != nil) self.v1.removeConstraint(self)
+    if (self.v2 != nil) self.v2.removeConstraint(self)
+    self.direction = NONE
+  }
+}
+
+// Relates two variables by the linear scaling relationship: "v2 =
+// (v1 * scale) + offset". Either v1 or v2 may be changed to maintain
+// this relationship but the scale factor and offset are considered
+// read-only.
+class ScaleConstraint < BinaryConstraint {
+  init(src, scale, offset, dest, strength) {
+    self.scale = scale
+    self.offset = offset
+		self.direction = NONE
+    super.init(src, dest, strength)
+  }
+
+  // Adds this constraint to the constraint graph.
+  addToGraph() {
+    super.addToGraph()
+    self.scale.addConstraint(self)
+    self.offset.addConstraint(self)
+  }
+
+  removeFromGraph() {
+    super.removeFromGraph()
+    if (self.scale != nil) self.scale.removeConstraint(self)
+    if (self.offset != nil) self.offset.removeConstraint(self)
+  }
+
+  markInputs(mark) {
+    super.markInputs(mark)
+    self.scale.mark = self.offset.mark = mark
+  }
+
+  // Enforce this constraint. Assume that it is satisfied.
+  execute() {
+    if (self.direction == FORWARD) {
+      self.v2.value = self.v1.value * self.scale.value + self.offset.value
+    } else {
+      // TODO: Is this the same semantics as ~/?
+      self.v1.value = floor((self.v2.value - self.offset.value) / self.scale.value)
+    }
+  }
+
+  // Calculate the walkabout strength, the stay flag, and, if it is
+  // 'stay', the value for the current output of this constraint. Assume
+  // this constraint is satisfied.
+  recalculate() {
+    var ihn = self.input()
+    var out = self.output()
+    out.walkStrength = Strength.weakest(self.strength, ihn.walkStrength)
+    out.stay = ihn.stay && self.scale.stay && self.offset.stay
+    if (out.stay) self.execute()
+  }
+}
+
+// Constrains two variables to have the same value.
+class EqualityConstraint < BinaryConstraint {
+  init(v1, v2, strength) {
+    super.init(v1, v2, strength)
+  }
+
+  // Enforce this constraint. Assume that it is satisfied.
+  execute() {
+    self.output().value = self.input().value
+  }
+}
+
+// A constrained variable. In addition to its value, it maintains the
+// structure of the constraint graph, the current dataflow graph, and
+// various parameters of interest to the DeltaBlue incremental
+// constraint solver.
+class Variable {
+  init(name, value) {
+    self.constraints = List()
+    self.determinedBy = nil
+    self.mark = 0
+    self.walkStrength = WEAKEST
+    self.stay = true
+    self.name = name
+    self.value = value
+  }
+
+  // Add the given constraint to the set of all constraints that refer
+  // this variable.
+  addConstraint(constraint) {
+    self.constraints.append(constraint)
+  }
+
+  // Removes all traces of c from this variable.
+  removeConstraint(constraint) {
+		var new = List()
+		for (c in self.constraints) if (c!=constraint) new.append(c)
+    self.constraints = new
+    if (self.determinedBy == constraint) self.determinedBy = nil
+  }
+}
+
+
+// A Plan is an ordered list of constraints to be executed in sequence
+// to resatisfy all currently satisfiable constraints in the face of
+// one or more changing inputs.
+class Plan {
+  init() {
+    self.list = List()
+  }
+
+  addConstraint(constraint) {
+    self.list.append(constraint)
+  }
+
+  size() { return self.list.count() }
+
+  execute() {
+    for (constraint in self.list) {
+      constraint.execute()
+    }
+  }
+}
+
+class Planner {
+  init() {
+    self.currentMark = 0
+  }
+
+  // Attempt to satisfy the given constraint and, if successful,
+  // incrementally update the dataflow graph.  Details: If satifying
+  // the constraint is successful, it may override a weaker constraint
+  // on its output. The algorithm attempts to resatisfy that
+  // constraint using some other method. This process is repeated
+  // until either a) it reaches a variable that was not previously
+  // determined by any constraint or b) it reaches a constraint that
+  // is too weak to be satisfied using any of its methods. The
+  // variables of constraints that have been processed are marked with
+  // a unique mark value so that we know where we've been. This allows
+  // the algorithm to avoid getting into an infinite loop even if the
+  // constraint graph has an inadvertent cycle.
+  incrementalAdd(constraint) {
+    var mark = self.newMark()
+    var overridden = constraint.satisfy(mark)
+    while (overridden != nil) {
+      overridden = overridden.satisfy(mark)
+    }
+  }
+
+  // Entry point for retracting a constraint. Remove the given
+  // constraint and incrementally update the dataflow graph.
+  // Details: Retracting the given constraint may allow some currently
+  // unsatisfiable downstream constraint to be satisfied. We therefore collect
+  // a list of unsatisfied downstream constraints and attempt to
+  // satisfy each one in turn. This list is traversed by constraint
+  // strength, strongest first, as a heuristic for avoiding
+  // unnecessarily adding and then overriding weak constraints.
+  // Assume: [c] is satisfied.
+  incrementalRemove(constraint) {
+    var out = constraint.output()
+    constraint.markUnsatisfied()
+    constraint.removeFromGraph()
+    var unsatisfied = self.removePropagateFrom(out)
+    var strength = REQUIRED
+    while (true) {
+      for (u in unsatisfied) {
+        if (u.strength == strength) self.incrementalAdd(u)
+      }
+      strength = strength.nextWeaker()
+      if (strength == WEAKEST) break
+    }
+  }
+
+  // Select a previously unused mark value.
+  newMark() { self.currentMark += 1; return self.currentMark; }
+
+  // Extract a plan for resatisfaction starting from the given source
+  // constraints, usually a set of input constraints. This method
+  // assumes that stay optimization is desired; the plan will contain
+  // only constraints whose output variables are not stay. Constraints
+  // that do no computation, such as stay and edit constraints, are
+  // not included in the plan.
+  // Details: The outputs of a constraint are marked when it is added
+  // to the plan under construction. A constraint may be appended to
+  // the plan when all its input variables are known. A variable is
+  // known if either a) the variable is marked (indicating that has
+  // been computed by a constraint appearing earlier in the plan), b)
+  // the variable is 'stay' (i.e. it is a constant at plan execution
+  // time), or c) the variable is not determined by any
+  // constraint. The last provision is for past states of history
+  // variables, which are not stay but which are also not computed by
+  // any constraint.
+  // Assume: [sources] are all satisfied.
+  makePlan(sources) {
+    var mark = self.newMark()
+    var plan = Plan()
+    var todo = sources
+    while (todo.count() > 0) {
+      var constraint = todo.pop()
+      if (constraint.output().mark != mark && constraint.inputsKnown(mark)) {
+        plan.addConstraint(constraint)
+        constraint.output().mark = mark
+        self.addConstraintsConsumingTo(constraint.output(), todo)
+      }
+    }
+    return plan
+  }
+
+  // Extract a plan for resatisfying starting from the output of the
+  // given [constraints], usually a set of input constraints.
+  extractPlanFromConstraints(constraints) {
+    var sources = List()
+    for (constraint in constraints) {
+      // if not in plan already and eligible for inclusion.
+      if (constraint.isInput() && constraint.isSatisfied()) sources.append(constraint)
+    }
+    return self.makePlan(sources)
+  }
+
+  // Recompute the walkabout strengths and stay flags of all variables
+  // downstream of the given constraint and recompute the actual
+  // values of all variables whose stay flag is true. If a cycle is
+  // detected, remove the given constraint and answer
+  // false. Otherwise, answer true.
+  // Details: Cycles are detected when a marked variable is
+  // encountered downstream of the given constraint. The sender is
+  // assumed to have marked the inputs of the given constraint with
+  // the given mark. Thus, encountering a marked node downstream of
+  // the output constraint means that there is a path from the
+  // constraint's output to one of its inputs.
+  addPropagate(constraint, mark) {
+		var todo = List(constraint)
+    while (todo.count() > 0) {
+      var d = todo.pop()
+      if (d.output().mark == mark) {
+        self.incrementalRemove(constraint)
+        return false
+      }
+      d.recalculate()
+      self.addConstraintsConsumingTo(d.output(), todo)
+    }
+    return true
+  }
+
+  // Update the walkabout strengths and stay flags of all variables
+  // downstream of the given constraint. Answer a collection of
+  // unsatisfied constraints sorted in order of decreasing strength.
+  removePropagateFrom(out) {
+    out.determinedBy = nil
+    out.walkStrength = WEAKEST
+    out.stay = true
+		var unsatisfied = List()
+    var todo = List(out)
+    while (todo.count() > 0) {
+      var v = todo.pop()
+
+      for (constraint in v.constraints) {
+        if (!constraint.isSatisfied()) unsatisfied.append(constraint)
+      }
+
+      var determining = v.determinedBy
+      for (next in v.constraints) {
+        if (next != determining && next.isSatisfied()) {
+          next.recalculate()
+          todo.append(next.output())
+        }
+      }
+    }
+
+    return unsatisfied
+  }
+
+  addConstraintsConsumingTo(v, coll) {
+    var determining = v.determinedBy
+    for (constraint in v.constraints) {
+      if (constraint != determining && constraint.isSatisfied()) {
+        coll.append(constraint)
+      }
+    }
+  }
+}
+
+var total = 0
+
+// This is the standard DeltaBlue benchmark. A long chain of equality
+// constraints is constructed with a stay constraint on one end. An
+// edit constraint is then added to the opposite end and the time is
+// measured for adding and removing this constraint, and extracting
+// and executing a constraint satisfaction plan. There are two cases.
+// In case 1, the added constraint is stronger than the stay
+// constraint and values must propagate down the entire length of the
+// chain. In case 2, the added constraint is weaker than the stay
+// constraint so it cannot be accomodated. The cost in this case is,
+// of course, very low. Typical situations lie somewhere between these
+// two extremes.
+fn chainTest(n) {
+  ThePlanner = Planner()
+  var prev = nil
+  var first = nil
+  var last = nil
+
+  // Build chain of n equality constraints.
+  for (i in 0..n) {
+    var v = Variable("v", 0)
+    if (prev != nil) EqualityConstraint(prev, v, REQUIRED)
+    if (i == 0) first = v
+    if (i == n) last = v
+    prev = v
+  }
+
+  StayConstraint(last, STRONG_DEFAULT)
+  var edit = EditConstraint(first, PREFERRED)
+  var plan = ThePlanner.extractPlanFromConstraints(List(edit))
+  for (i in 0..99) {
+    first.value = i
+    plan.execute()
+    total = total + last.value
+  }
+}
+
+fn change(v, newValue) {
+  var edit = EditConstraint(v, PREFERRED)
+  var plan = ThePlanner.extractPlanFromConstraints(List(edit))
+  for (i in 0..9) {
+    v.value = newValue
+    plan.execute()
+  }
+
+  edit.destroyConstraint()
+}
+
+// This test constructs a two sets of variables related to each
+// other by a simple linear transformation (scale and offset). The
+// time is measured to change a variable on either side of the
+// mapping and to change the scale and offset factors.
+fn projectionTest(n) {
+  ThePlanner = Planner()
+  var scale = Variable("scale", 10)
+  var offset = Variable("offset", 1000)
+  var src = nil
+  var dst = nil
+
+  var dests = List()
+  for (i in 0..n-1) {
+    src = Variable("src", i)
+    dst = Variable("dst", i)
+    dests.append(dst)
+    StayConstraint(src, NORMAL)
+    ScaleConstraint(src, scale, offset, dst, REQUIRED)
+  }
+
+  change(src, 17)
+  total = total + dst.value
+  if (dst.value != 1170) print "Projection 1 failed"
+
+  change(dst, 1050)
+  total = total + src.value
+  if (src.value != 5) print "Projection 2 failed"
+
+  change(scale, 5)
+  for (i in 0..n - 2) {
+    total = total + dests[i].value
+    if (dests[i].value != i * 5 + 1000) print "Projection 3 failed"
+  }
+
+  change(offset, 2000)
+  for (i in 0..n - 2) {
+    total = total + dests[i].value
+    if (dests[i].value != i * 5 + 2000) print "Projection 4 failed"
+  }
+}
+
+/*
+ * Run the test
+ */
+
+var start = clock()
+
+for (i in 1..40) {
+  chainTest(100)
+	projectionTest(100)
+}
+
+print total
+print "elapsed: ${clock()-start}"

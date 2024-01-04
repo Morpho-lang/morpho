@@ -1,0 +1,23 @@
+var N = 4000
+var a = Matrix(N,N)
+var b = Matrix(N)
+
+for (var i = 0; i<N; i=i+1) {
+	for (var j = 0; j<N; j=j+1) {
+		a[i,j]=random()
+	}
+}
+
+for (var i = 0; i<N; i=i+1) {
+	b[i]=random()
+}
+
+var start = clock()
+
+var c = b/a
+
+var end = clock()
+
+//print c
+
+print end-start

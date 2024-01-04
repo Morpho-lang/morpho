@@ -1,0 +1,8 @@
+import implicitmesh
+
+// Torus
+var r=1
+var a=0.35
+
+var impl = ImplicitMeshBuilder(fn (x,y,z) (x^2+y^2+z^2+r^2-a^2)^2 - 4*r^2*(x^2+y^2))
+var mesh = impl.build(start=Matrix([1,0,0.5]), stepsize=0.1, maxiterations=1000)

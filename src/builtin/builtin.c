@@ -10,11 +10,12 @@
 #include "functiondefs.h"
 #include "file.h"
 #include "system.h"
+#include "classes.h"
+
 #include "mesh.h"
 #include "selection.h"
 #include "functional.h"
 #include "field.h"
-#include "classes.h"
 
 /* **********************************************************************
  * Global data

@@ -20,17 +20,17 @@
 * Utility functions
 * ********************************************************************** */
 
-#define EQUAL 0
+/*#define EQUAL 0
 #define NOTEQUAL 1
 #define BIGGER 1
-#define SMALLER -1
+#define SMALLER -1*/
 
 /** @brief Compares two values
  * @param a value to compare
  * @param b value to compare
  * @returns 0 if a and b are equal, a positive number if b\>a and a negative number if a\<b
  * @warning does not work if a and b are not the same type (use MORPHO_CHECKCMPTYPE to promote types if ordering is important) */
-int morpho_comparevaluex(value a, value b) {
+/*int morpho_comparevaluex(value a, value b) {
 
     // if comparing a number to complex cast the number to complex
     // we don't need to bind here beacues the value never needs to exist beyond this scope
@@ -53,15 +53,15 @@ int morpho_comparevaluex(value a, value b) {
 
     if (MORPHO_ISFLOAT(a)) {
         double x = MORPHO_GETFLOATVALUE(b) - MORPHO_GETFLOATVALUE(a);
-        if (x>DBL_EPSILON) return BIGGER; /* Fast way out for clear cut cases */
+        if (x>DBL_EPSILON) return BIGGER; // Fast way out for clear cut cases
         if (x<-DBL_EPSILON) return SMALLER;
-        /* Assumes absolute tolerance is the same as relative tolerance. */
+        // Assumes absolute tolerance is the same as relative tolerance.
         if (fabs(x)<=DBL_EPSILON*fmax(1.0, fmax(MORPHO_GETFLOATVALUE(a), MORPHO_GETFLOATVALUE(b)))) return EQUAL;
         return (x>0 ? BIGGER : SMALLER);
     } else {
         switch (MORPHO_GETTYPE(a)) {
             case VALUE_NIL:
-                return EQUAL; /** Nones are always the same */
+                return EQUAL; // Nones are always the same
             case VALUE_INTEGER:
                 return (MORPHO_GETINTEGERVALUE(b) - MORPHO_GETINTEGERVALUE(a));
             case VALUE_BOOL:
@@ -69,7 +69,7 @@ int morpho_comparevaluex(value a, value b) {
             case VALUE_OBJECT:
                 {
                     if (MORPHO_GETOBJECTTYPE(a)!=MORPHO_GETOBJECTTYPE(b)) {
-                        return 1; /* Objects of different type are always different */
+                        return 1; // Objects of different type are always different
                     } else if (MORPHO_ISSTRING(a)) {
                         objectstring *astring = MORPHO_GETSTRING(a);
                         objectstring *bstring = MORPHO_GETSTRING(b);
@@ -100,7 +100,8 @@ int morpho_comparevaluex(value a, value b) {
 #undef NOTEQUAL
 #undef BIGGER
 #undef SMALLER
-
+*/
+ 
 /** @brief Prints a value
  * @param v The value to print */
 void morpho_printvalue(vm *v, value val) {

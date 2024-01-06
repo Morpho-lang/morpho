@@ -335,10 +335,17 @@ value list_constructor(vm *v, int nargs, value *args) {
     value init=MORPHO_NIL;
     objectlist *new=NULL;
 
-    if (nargs==1 && MORPHO_ISRANGE(MORPHO_GETARG(args, 0))) {
-        init = MORPHO_GETARG(args, 0);
-        new = object_newlist(0, NULL);
-    } else new = object_newlist(nargs, args+1);
+    if (nargs==1) {
+        value x = MORPHO_GETARG(args, 0);
+        if (MORPHO_ISRANGE(MORPHO_GETARG(args, 0))) {
+            init = x; // Enumerate will handle this
+            new = object_newlist(0, NULL);
+        } else if (MORPHO_ISTUPLE(MORPHO_GETARG(args, 0))) {
+            new = object_newlist(MORPHO_GETTUPLELENGTH(x), MORPHO_GETTUPLEVALUES(x));
+        }
+    }
+    
+    if (!new) new = object_newlist(nargs, args+1);
 
     if (new) {
         out=MORPHO_OBJECT(new);

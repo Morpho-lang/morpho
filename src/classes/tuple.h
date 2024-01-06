@@ -30,6 +30,12 @@ typedef struct {
 /** Extracts the objecttuple from a value */
 #define MORPHO_GETTUPLE(val)             ((objecttuple *) MORPHO_GETOBJECT(val))
 
+/** Extracts the length from a value */
+#define MORPHO_GETTUPLELENGTH(val)             ((MORPHO_GETTUPLE(val))->length)
+
+/** Extracts the value list from a value */
+#define MORPHO_GETTUPLEVALUES(val)             ((MORPHO_GETTUPLE(val))->tuple)
+
 /** Use to create static tuples on the C stack */
 #define MORPHO_STATICTUPLE(list, len)      { .obj.type=OBJECT_TUPLE, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .tuple=list, .length=len }
 
@@ -52,6 +58,9 @@ typedef struct {
 
 /** Create a tuple with an (optional) list of values */
 objecttuple *object_newtuple(unsigned int length, value *v);
+
+unsigned int tuple_length(objecttuple *tuple);
+value *tuple_valuelist(objecttuple *tuple);
 
 void tuple_initialize(void);
 

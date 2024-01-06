@@ -84,6 +84,11 @@ unsigned int tuple_length(objecttuple *tuple) {
     return tuple->length;
 }
 
+/** Returns the values in of a tuple */
+value *tuple_valuelist(objecttuple *tuple) {
+    return tuple->tuple;
+}
+
 /** Tests if a value is a member of a list */
 bool tuple_ismember(objecttuple *tuple, value v) {
     for (unsigned int i=0; i<tuple->length; i++) {

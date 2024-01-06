@@ -262,7 +262,6 @@ objectarrayerror getslice(value *a, bool dimFcn(value *,unsigned int),\
     unsigned int indx[ndim];
     unsigned int newindx[ndim];
     return setslicerecursive(a, out, copy, ndim, 0, indx, newindx, slices);
-
 }
 
 /** Iterates though the a ndim number of provided slices recursivly and copies the data from a to out.

@@ -275,7 +275,7 @@ static bool list_enumerableinitializer(vm *v, indx i, value val, void *ref) {
 }
 
 /* Constructs a new list of a given size with a generic interface */
-void list_sliceconstructor(unsigned int *slicesize,unsigned int ndim,value* out){
+void list_sliceconstructor(unsigned int *slicesize, unsigned int ndim, value* out){
     objectlist *list = object_newlist(slicesize[0], NULL);
     list->val.count = slicesize[0];
     *out = MORPHO_OBJECT(list);
@@ -554,12 +554,6 @@ value List_clone(vm *v, int nargs, value *args) {
     return out;
 }
 
-/** Arithmetic add of two lists  */
-value List_add(vm *v, int nargs, value *args) {
-    UNREACHABLE("API for list add has changed.\n");
-    return MORPHO_NIL;
-}
-
 /** Joins two lists together  */
 value List_join(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
@@ -664,7 +658,7 @@ MORPHO_METHOD(MORPHO_COUNT_METHOD, List_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_TUPLES_METHOD, List_tuples, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_SETS_METHOD, List_sets, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, List_clone, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ADD_METHOD, List_add, BUILTIN_FLAGSEMPTY),
+//MORPHO_METHOD(MORPHO_ADD_METHOD, List_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_JOIN_METHOD, List_join, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ROLL_METHOD, List_roll, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_SORT_METHOD, List_sort, BUILTIN_FLAGSEMPTY),

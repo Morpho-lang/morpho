@@ -84,6 +84,14 @@ unsigned int tuple_length(objecttuple *tuple) {
     return tuple->length;
 }
 
+/** Tests if a value is a member of a list */
+bool tuple_ismember(objecttuple *tuple, value v) {
+    for (unsigned int i=0; i<tuple->length; i++) {
+        if (MORPHO_ISEQUAL(tuple->tuple[i], v)) return true;
+    }
+    return false;
+}
+
 /** Concatenates two tuples */
 objecttuple *tuple_concatenate(objecttuple *a, objecttuple *b) {
     unsigned int newlength = a->length+b->length;
@@ -173,13 +181,26 @@ value Tuple_join(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Tests if a tuple has a value as a member */
+value Tuple_ismember(vm *v, int nargs, value *args) {
+    objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+
+    if (nargs==1) {
+        return MORPHO_BOOL(tuple_ismember(slf, MORPHO_GETARG(args, 0)));
+    } else morpho_runtimeerror(v, ISMEMBER_ARG, 1, nargs);
+
+    return MORPHO_NIL;
+}
+
 MORPHO_BEGINCLASS(Tuple)
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Tuple_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Tuple_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_JOIN_METHOD, Tuple_join, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_JOIN_METHOD, Tuple_join, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(LIST_ISMEMBER_METHOD, Tuple_ismember, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_CONTAINS_METHOD, Tuple_ismember, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

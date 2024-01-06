@@ -15,7 +15,7 @@
 void objecttuple_printfn(object *obj, void *v) {
     objecttuple *t = (objecttuple *) obj;
     morpho_printf(v, "(");
-    for (size_t i=0; i<t->length; i++) {
+    for (unsigned int i=0; i<t->length; i++) {
         morpho_printvalue(v, t->tuple[i]);
         if (i<t->length-1) morpho_printf(v, ", ");
     }
@@ -24,7 +24,7 @@ void objecttuple_printfn(object *obj, void *v) {
 
 void objecttuple_markfn(object *obj, void *v) {
     objecttuple *t = (objecttuple *) obj;
-    for (size_t i=0; i<t->length; i++) morpho_markvalue(v, t->tuple[i]);
+    for (unsigned int i=0; i<t->length; i++) morpho_markvalue(v, t->tuple[i]);
 }
 
 size_t objecttuple_sizefn(object *obj) {
@@ -43,7 +43,7 @@ int objecttuple_cmpfn(object *a, object *b) {
     if (atuple->length!=btuple->length) return MORPHO_NOTEQUAL;
 
     int cmp=0;
-    for (size_t i=0; i<atuple->length && cmp==0; i++) {
+    for (unsigned int i=0; i<atuple->length && cmp==0; i++) {
         cmp=morpho_comparevalue(atuple->tuple[i], btuple->tuple[i]);
     }
     
@@ -63,14 +63,14 @@ objecttypedefn objecttupledefn = {
  *  @param length length of list
  *  @param in list of values
  *  @returns the object or NULL on failure */
-objecttuple *object_newtuple(size_t length, value *in) {
+objecttuple *object_newtuple(unsigned int length, value *in) {
     objecttuple *new = (objecttuple *) object_new(sizeof(objecttuple) + sizeof(value)*length, OBJECT_TUPLE);
 
     if (new) {
         new->tuple=new->tupledata;
         new->length=length;
         if (in) memcpy(new->tuple, in, sizeof(value)*length);
-        else for (size_t i=0; i<length; i++) new->tuple[i]=MORPHO_NIL;
+        else for (unsigned int i=0; i<length; i++) new->tuple[i]=MORPHO_NIL;
     }
     return new;
 }
@@ -79,9 +79,14 @@ objecttuple *object_newtuple(size_t length, value *in) {
  * Tuple interface
  * ********************************************************************** */
 
+/** Returns the length of a tuple */
+unsigned int tuple_length(objecttuple *tuple) {
+    return tuple->length;
+}
+
 /** Concatenates two tuples */
 objecttuple *tuple_concatenate(objecttuple *a, objecttuple *b) {
-    size_t newlength = a->length+b->length;
+    unsigned int newlength = a->length+b->length;
     objecttuple *new=object_newtuple(newlength, NULL);
 
     if (new) {

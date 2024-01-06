@@ -19,7 +19,7 @@ extern objecttype objecttupletype;
 /** A string object */
 typedef struct {
     object obj;
-    size_t length;
+    unsigned int length;
     value *tuple;
     value tupledata[];
 } objecttuple;
@@ -51,7 +51,7 @@ typedef struct {
  * ------------------------------------------------------- */
 
 /** Create a tuple with an (optional) list of values */
-objecttuple *object_newtuple(size_t length, value *v);
+objecttuple *object_newtuple(unsigned int length, value *v);
 
 void tuple_initialize(void);
 

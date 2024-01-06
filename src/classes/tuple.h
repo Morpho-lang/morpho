@@ -60,7 +60,7 @@ typedef struct {
 objecttuple *object_newtuple(unsigned int length, value *v);
 
 unsigned int tuple_length(objecttuple *tuple);
-value *tuple_valuelist(objecttuple *tuple);
+bool tuple_getelement(objecttuple *tuple, int i, value *out);
 
 void tuple_initialize(void);
 

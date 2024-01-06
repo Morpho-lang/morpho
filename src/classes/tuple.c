@@ -84,9 +84,12 @@ unsigned int tuple_length(objecttuple *tuple) {
     return tuple->length;
 }
 
-/** Returns the values in of a tuple */
-value *tuple_valuelist(objecttuple *tuple) {
-    return tuple->tuple;
+/** Gets an element from the tuple */
+bool tuple_getelement(objecttuple *tuple, int i, value *out) {
+    if (!(i>=-(int) tuple->length && i<(int) tuple->length)) return false;
+    if (i>=0) *out=tuple->tuple[i];
+    else *out=tuple->tuple[tuple->length+i];
+    return true;
 }
 
 /** Tests if a value is a member of a list */
@@ -147,6 +150,29 @@ value Tuple_clone(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Get an element */
+value Tuple_getindex(vm *v, int nargs, value *args) {
+    objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+
+    if (nargs==1) {
+        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+            int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+
+            if (!tuple_getelement(slf, i, &out)) morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+        } else {
+            /*objectarrayerror err = getslice(&MORPHO_SELF(args),&list_slicedim,&list_sliceconstructor,&list_slicecopy,nargs,&MORPHO_GETARG(args, 0),&out);
+            if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_list_error(err) );
+            if (MORPHO_ISOBJECT(out)){
+                morpho_bindobjects(v,1,&out);
+            } else MORPHO_RAISE(v, VM_NONNUMINDX);*/
+
+        }
+    } else MORPHO_RAISE(v, LIST_NUMARGS)
+
+    return out;
+}
+
 /** Enumerate members of a tuple */
 value Tuple_enumerate(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
@@ -201,7 +227,7 @@ MORPHO_BEGINCLASS(Tuple)
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Tuple_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Tuple_clone, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_JOIN_METHOD, Tuple_join, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_ISMEMBER_METHOD, Tuple_ismember, BUILTIN_FLAGSEMPTY),

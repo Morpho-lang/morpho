@@ -235,12 +235,12 @@ objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned in
  * @param[in] slices - a set of indices that can be lists ranges or ints.
  * @param[out] out - returns the requested slice of a.
 */
-objectarrayerror getslice(value *a, bool dimFcn(value *,unsigned int),\
-                          void constuctor(unsigned int *,unsigned int,value *),\
-                          objectarrayerror copy(value * ,value *, unsigned int, unsigned int *,unsigned int *),\
-                          unsigned int ndim, value *slices, value *out){
+objectarrayerror getslice(value *a, bool dimFcn(value *, unsigned int),
+                          void constructor(unsigned int *, unsigned int,value *),
+                          objectarrayerror copy(value * ,value *, unsigned int, unsigned int *, unsigned int *),
+                          unsigned int ndim, value *slices, value *out) {
     //dimension checking
-    if (!(*dimFcn)(a,ndim)) return ARRAY_WRONGDIM;
+    if (!(*dimFcn) (a,ndim)) return ARRAY_WRONGDIM;
 
     unsigned int slicesize[ndim];
     for (unsigned int i=0; i<ndim; i++) {
@@ -256,7 +256,7 @@ objectarrayerror getslice(value *a, bool dimFcn(value *,unsigned int),\
     }
 
     // initalize out with the right size
-    (*constuctor)(slicesize,ndim,out);
+    (constructor) (slicesize,ndim,out);
 
     // fill it out recurivly
     unsigned int indx[ndim];

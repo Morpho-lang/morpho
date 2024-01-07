@@ -220,17 +220,6 @@ objectlist *list_clone(objectlist *list) {
     return object_newlist(list->val.count, list->val.data);
 }
 
-/* Copies data from list a at position indx to list out at position newindx with a generic interface */
-objectarrayerror list_slicecopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx){
-    value data;
-    objectlist *outList = MORPHO_GETLIST(*out);
-
-    if (list_getelement(MORPHO_GETLIST(*a),indx[0],&data)){
-        outList->val.data[newindx[0]] = data;
-    } else return ARRAY_OUTOFBOUNDS;
-    return ARRAY_OK;
-}
-
 /** Concatenates two lists */
 objectlist *list_concatenate(objectlist *a, objectlist *b) {
     objectlist *new=object_newlist(a->val.count+b->val.count, NULL);
@@ -285,6 +274,17 @@ void list_sliceconstructor(unsigned int *slicesize, unsigned int ndim, value* ou
 bool list_slicedim(value * a, unsigned int ndim){
     if (ndim>1||ndim<0) return false;
     return true;
+}
+
+/* Copies data from list a at position indx to list out at position newindx with a generic interface */
+objectarrayerror list_slicecopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx){
+    value data;
+    objectlist *outList = MORPHO_GETLIST(*out);
+
+    if (list_getelement(MORPHO_GETLIST(*a),indx[0],&data)){
+        outList->val.data[newindx[0]] = data;
+    } else return ARRAY_OUTOFBOUNDS;
+    return ARRAY_OK;
 }
 
 /** Generate sets/tuples and return as a list of lists */

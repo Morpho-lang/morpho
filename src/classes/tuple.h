@@ -49,8 +49,11 @@ typedef struct {
  * Tuple error messages
  * ------------------------------------------------------- */
 
-#define TUPLE_IMMTBL                     "StrngImmtbl"
-#define TUPLE_IMMTBL_MSG                 "Strings are immutable."
+#define TUPLE_ARGS                         "TplArgs"
+#define TUPLE_ARGS_MSG                     "Tuples must be called with integer dimensions as arguments."
+
+#define TUPLE_NUMARGS                      "TpmNumArgs"
+#define TUPLE_NUMARGS_MSG                  "Tuples can only be indexed with one argument."
 
 /* -------------------------------------------------------
  * Tuple interface

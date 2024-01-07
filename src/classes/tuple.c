@@ -114,6 +114,45 @@ objecttuple *tuple_concatenate(objecttuple *a, objecttuple *b) {
     return new;
 }
 
+/* -------------------------------------------------------
+ * Slicing
+ * ------------------------------------------------------- */
+
+/* Constructs a new list of a given size with a generic interface */
+void tuple_sliceconstructor(unsigned int *slicesize, unsigned int ndim, value *out){
+    objecttuple *tuple = object_newtuple(slicesize[0], NULL);
+    *out = MORPHO_OBJECT(tuple);
+}
+
+/* Return number of dimensions to slice-there's only one */
+bool tuple_slicedim(value *a, unsigned int ndim){
+    if (ndim>1||ndim<0) return false;
+    return true;
+}
+
+/* Copies data from tuple a at position indx to tuple out at position newindx with a generic interface */
+objectarrayerror tuple_slicecopy(value *a,value *out, unsigned int ndim, unsigned int *indx, unsigned int *newindx){
+    value data;
+    objecttuple *outtuple = MORPHO_GETTUPLE(*out);
+
+    if (tuple_getelement(MORPHO_GETTUPLE(*a),indx[0],&data)){
+        outtuple->tuple[newindx[0]] = data;
+    } else return ARRAY_OUTOFBOUNDS;
+    return ARRAY_OK;
+}
+
+/** Converts an array error into an list error code for use in slices*/
+errorid array_to_tuple_error(objectarrayerror err) {
+    switch (err) {
+        case ARRAY_OUTOFBOUNDS: return VM_OUTOFBOUNDS;
+        case ARRAY_WRONGDIM: return TUPLE_NUMARGS;
+        case ARRAY_NONINTINDX: return TUPLE_ARGS;
+        case ARRAY_OK: UNREACHABLE("array_to_tuple_error called incorrectly.");
+    }
+    UNREACHABLE("Unhandled array error.");
+    return VM_OUTOFBOUNDS;
+}
+
 /* **********************************************************************
  * Tuple class
  * ********************************************************************** */
@@ -161,12 +200,11 @@ value Tuple_getindex(vm *v, int nargs, value *args) {
 
             if (!tuple_getelement(slf, i, &out)) morpho_runtimeerror(v, VM_OUTOFBOUNDS);
         } else {
-            /*objectarrayerror err = getslice(&MORPHO_SELF(args),&list_slicedim,&list_sliceconstructor,&list_slicecopy,nargs,&MORPHO_GETARG(args, 0),&out);
-            if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_list_error(err) );
+            objectarrayerror err = getslice(&MORPHO_SELF(args), tuple_slicedim, tuple_sliceconstructor, tuple_slicecopy, nargs, &MORPHO_GETARG(args, 0), &out);
+            if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_tuple_error(err) );
             if (MORPHO_ISOBJECT(out)){
                 morpho_bindobjects(v,1,&out);
-            } else MORPHO_RAISE(v, VM_NONNUMINDX);*/
-
+            } else MORPHO_RAISE(v, VM_NONNUMINDX);
         }
     } else MORPHO_RAISE(v, LIST_NUMARGS)
 
@@ -252,4 +290,8 @@ void tuple_initialize(void) {
     builtin_addfunction(TUPLE_CLASSNAME, tuple_constructor, BUILTIN_FLAGSEMPTY);
     value tupleclass=builtin_addclass(TUPLE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Tuple), objclass);
     object_setveneerclass(OBJECT_TUPLE, tupleclass);
+    
+    // Tuple error messages
+    morpho_defineerror(TUPLE_ARGS, ERROR_HALT, TUPLE_ARGS_MSG);
+    morpho_defineerror(TUPLE_NUMARGS, ERROR_HALT, TUPLE_NUMARGS_MSG);
 }

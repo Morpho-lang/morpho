@@ -1271,6 +1271,7 @@ compilenoderule noderules[] = {
     { compiler_call          },      // NODE_CALL
     { compiler_index         },      // NODE_INDEX
     { compiler_list          },      // NODE_LIST
+    { compiler_list          },      // NODE_TUPLE
     { compiler_import        },      // NODE_IMPORT
     { compiler_breakpoint    }       // NODE_BREAKPOINT
 };
@@ -1286,13 +1287,15 @@ static codeinfo compiler_constant(compiler *c, syntaxtreenode *node, registerind
     return CODEINFO(CONSTANT, indx, 0);
 }
 
-/** Compiles a list */
+/** Compiles a list or tuple */
 static codeinfo compiler_list(compiler *c, syntaxtreenode *node, registerindx reqout) {
     syntaxtreenodetype dictentrytype[] = { NODE_ARGLIST };
     varray_syntaxtreeindx entries;
 
     /* Set up a call to the List() function */
-    codeinfo out = compiler_findbuiltin(c, node, LIST_CLASSNAME, reqout);
+    char *classname = LIST_CLASSNAME;
+    if (node->type==NODE_TUPLE) classname = TUPLE_CLASSNAME;
+    codeinfo out = compiler_findbuiltin(c, node, classname, reqout);
 
     varray_syntaxtreeindxinit(&entries);
     if (node->right!=SYNTAXTREE_UNCONNECTED) syntaxtree_flatten(compiler_getsyntaxtree(c), node->right, 1, dictentrytype, &entries);

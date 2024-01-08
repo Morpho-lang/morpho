@@ -25,7 +25,8 @@ languages = { "morpho6": "morpho5",
 Dictionary of languages as keys mapping to corresponding extension
 """
 languages = { "morpho5" : "morpho",
-              "morpho6" : "morpho" }
+              "morpho6" : "morpho",
+              "python3" : "py" }
 samples = 10
 
 # Gets the output generated

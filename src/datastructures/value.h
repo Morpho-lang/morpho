@@ -202,6 +202,9 @@ bool morpho_issame(value a, value b);
 /** Compare two values, checking contents of objects where supported */
 int morpho_comparevalue(value a, value b);
 
+/** Compare two values, even if they have inequivalent types e.g. int and float */
+int morpho_extendedcomparevalue(value a, value b);
+
 /** Macro to test if two values are equal, checking contents of objects where supported */
 #define MORPHO_ISEQUAL(a,b) (!morpho_comparevalue(a,b))
 

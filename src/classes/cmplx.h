@@ -33,6 +33,9 @@ typedef struct {
 /** Gets the object as a complex */
 #define MORPHO_GETCOMPLEX(val)   ((objectcomplex *) MORPHO_GETOBJECT(val))
 
+/** Gets the object as a C-style double complex */
+#define MORPHO_GETDOUBLECOMPLEX(val)   ((double complex) ((objectcomplex *) MORPHO_GETOBJECT(val))->Z)
+
 /** Creates a complex object */
 objectcomplex *object_newcomplex(double real, double imag);
 

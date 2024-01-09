@@ -9,8 +9,7 @@
 
 #include <stdbool.h>
 
-/** Extensions are libraries written in C, or a langauge that links with C, that are loaded dynamically at runtime using dlopen() */
-
+/** Extensions are libraries written in C, or a language that links with C, that are loaded dynamically at runtime using dlopen() */
 bool morpho_loadextension(char *name);
 
 void extensions_initialize(void);

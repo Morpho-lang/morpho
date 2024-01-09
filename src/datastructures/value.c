@@ -79,6 +79,39 @@ int morpho_comparevalue(value a, value b) {
     return MORPHO_NOTEQUAL;
 }
 
+/** @brief Compares two values, even for inequivalent values e.g. int to float
+ * @param a value to compare
+ * @param b value to compare
+ * @returns 0 if a and b are equal, a positive number if b\>a and a negative number if a\<b*/
+int morpho_extendedcomparevalue(value a, value b) {
+    if (morpho_ofsametype(a, b)) return morpho_comparevalue(a, b);
+    
+    value aa=a, bb=b;
+    
+    if (MORPHO_ISINTEGER(a) && MORPHO_ISFLOAT(b)) {
+        aa = MORPHO_INTEGERTOFLOAT(aa);
+        return morpho_comparevalue(aa, bb);
+    } else if (MORPHO_ISFLOAT(a) && MORPHO_ISINTEGER(b)) {
+        bb = MORPHO_INTEGERTOFLOAT(bb);
+        return morpho_comparevalue(aa, bb);
+    } else if (MORPHO_ISCOMPLEX(bb) && MORPHO_ISNUMBER(aa)) {
+        aa=b; bb=a;
+    }
+    
+    if (MORPHO_ISCOMPLEX(aa) && MORPHO_ISNUMBER(bb)) {
+        double complex z = MORPHO_GETDOUBLECOMPLEX(aa);
+        if (cimag(z) > -MORPHO_EPS  && cimag(z) < MORPHO_EPS) { // Ensure imaginary part is zero
+            aa=MORPHO_FLOAT(creal(z));
+            double real;
+            morpho_valuetofloat(bb, &real);
+            bb=MORPHO_FLOAT(real);
+        } else return MORPHO_NOTEQUAL;
+        return morpho_comparevalue(aa, bb);
+    }
+    
+    return MORPHO_NOTEQUAL;
+}
+
 /* **********************************************************************
 * Type check and conversion
 * ********************************************************************** */
@@ -140,14 +173,12 @@ bool value_minmax(unsigned int nval, value *list, value *min, value *max) {
     for (unsigned int i=1; i<nval; i++) {
         if (min) {
             value l=*min, r=list[i];
-            MORPHO_CMPPROMOTETYPE(l, r);
-            if (morpho_comparevalue(l, r)<0) *min = list[i];
+            if (morpho_extendedcomparevalue(l, r)<0) *min = list[i];
         }
         
         if (max) {
             value l=*max, r=list[i];
-            MORPHO_CMPPROMOTETYPE(l, r);
-            if (morpho_comparevalue(l, r)>0) *max = list[i];
+            if (morpho_extendedcomparevalue(l, r)>0) *max = list[i];
         }
     }
     

@@ -832,8 +832,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             left = reg[b];
             right = reg[c];
 
-            MORPHO_CMPPROMOTETYPE(left,right);
-            reg[a] = (morpho_comparevalue(left, right)==0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
+            reg[a] = (morpho_extendedcomparevalue(left, right)==0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
 
         CASE_CODE(NEQ):
@@ -841,8 +840,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             left = reg[b];
             right = reg[c];
 
-            MORPHO_CMPPROMOTETYPE(left,right);
-            reg[a] = (morpho_comparevalue(left, right)!=0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
+            reg[a] = (morpho_extendedcomparevalue(left, right)!=0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
 
         CASE_CODE(LT):
@@ -855,8 +853,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                 OPERROR("Compare");
             }
 
-            MORPHO_CMPPROMOTETYPE(left,right);
-            reg[a] = (morpho_comparevalue(left, right)>0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
+            reg[a] = (morpho_extendedcomparevalue(left, right)>0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
 
         CASE_CODE(LE):
@@ -869,8 +866,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                 OPERROR("Compare");
             }
 
-            MORPHO_CMPPROMOTETYPE(left,right);
-            reg[a] = (morpho_comparevalue(left, right)>=0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
+            reg[a] = (morpho_extendedcomparevalue(left, right)>=0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
 
         CASE_CODE(B):

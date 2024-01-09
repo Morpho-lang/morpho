@@ -55,8 +55,6 @@ objectdictionary *object_newdictionary(void);
  * Dictionary interface
  * ------------------------------------------------------- */
 
-/* Initialization/finalization */
 void dict_initialize(void);
-void dict_finalize(void);
 
 #endif

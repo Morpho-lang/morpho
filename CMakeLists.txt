@@ -73,3 +73,11 @@ install(TARGETS morpho)
 # So we'll use a hacky way for now
 file(GLOB_RECURSE MORPHO_HEADER_FILES "src/*.h")
 install(FILES ${MORPHO_HEADER_FILES} DESTINATION include/morpho)
+
+# Similarly install morpho modules
+file(GLOB_RECURSE MORPHO_MODULES_FILES "modules/*.morpho")
+install(FILES ${MORPHO_MODULES_FILES} DESTINATION share/morpho/modules)
+
+# Similarly install morpho help files
+file(GLOB_RECURSE MORPHO_HELP_FILES "help/*.md")
+install(FILES ${MORPHO_HELP_FILES} DESTINATION share/morpho/help)

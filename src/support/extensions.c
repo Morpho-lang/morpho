@@ -11,6 +11,7 @@
 #include <dlfcn.h>
 #include <string.h>
 #include "varray.h"
+#include "morpho.h"
 #include "value.h"
 #include "object.h"
 #include "strng.h"
@@ -69,6 +70,8 @@ bool morpho_loadextension(char *name) {
 
 void extensions_initialize(void) {
     varray_extensioninit(&extensions);
+ 
+    morpho_addfinalizefn(extensions_finalize);
 }
 
 void extensions_finalize(void) {

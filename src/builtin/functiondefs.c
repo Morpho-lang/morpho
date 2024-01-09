@@ -417,12 +417,10 @@ typedef struct {
 static bool minmaxfn(vm *v, indx i, value val, void *ref) {
     minmaxstruct *m=(minmaxstruct *) ref;
     value l=m->min, r=val;
-    MORPHO_CMPPROMOTETYPE(l, r);
-    if (i==0 || morpho_comparevalue(l, r)<0) m->min=val;
+    if (i==0 || morpho_extendedcomparevalue(l, r)<0) m->min=val;
     
     l=m->max; r=val;
-    MORPHO_CMPPROMOTETYPE(l, r);
-    if (i==0 || morpho_comparevalue(l, r)>0) m->max=val;
+    if (i==0 || morpho_extendedcomparevalue(l, r)>0) m->max=val;
     
     return true;
 }
@@ -545,11 +543,20 @@ value builtin_apply(vm *v, int nargs, value *args) {
     value ret = MORPHO_NIL;
     
     if (nargs<2) morpho_runtimeerror(v, APPLY_ARGS);
-        
+    
     value fn =  MORPHO_GETARG(args, 0);
     value x =  MORPHO_GETARG(args, 1);
     
-    if (nargs==2 && MORPHO_ISLIST(x)) {
+    if (!morpho_iscallable(fn)) {
+        morpho_runtimeerror(v, APPLY_NOTCALLABLE);
+        return MORPHO_NIL;
+    }
+    
+    if (nargs==2 && MORPHO_ISTUPLE(x)) {
+        objecttuple *t = MORPHO_GETTUPLE(x);
+        
+        morpho_call(v, fn, t->length, t->tuple, &ret);
+    } else if (nargs==2 && MORPHO_ISLIST(x)) {
         objectlist *lst = MORPHO_GETLIST(x);
         
         morpho_call(v, fn, lst->val.count, lst->val.data, &ret);
@@ -670,6 +677,7 @@ void functiondefs_initialize(void) {
     morpho_defineerror(TYPE_NUMARGS, ERROR_HALT, TYPE_NUMARGS_MSG);
     morpho_defineerror(MAX_ARGS, ERROR_HALT, MAX_ARGS_MSG);
     morpho_defineerror(APPLY_ARGS, ERROR_HALT, APPLY_ARGS_MSG);
+    morpho_defineerror(APPLY_NOTCALLABLE, ERROR_HALT, APPLY_NOTCALLABLE_MSG);
 }
 
 #undef BUILTIN_MATH

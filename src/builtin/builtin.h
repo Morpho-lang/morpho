@@ -129,6 +129,10 @@ objectclass *object_getveneerclass(objecttype type);
 void value_setveneerclass(value type, value class);
 objectclass *value_getveneerclass(value type);
 
+/* -------------------------------------------------------
+ * Initialization/finalization
+ * ------------------------------------------------------- */
+
 void builtin_initialize(void);
 void builtin_finalize(void);
 

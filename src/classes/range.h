@@ -53,8 +53,6 @@ objectrange *object_newrange(value start, value end, value step);
 int range_count(objectrange *range);
 value range_iterate(objectrange *range, unsigned int i);
 
-/* Initialization/finalization */
 void range_initialize(void);
-void range_finalize(void);
 
 #endif

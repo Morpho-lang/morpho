@@ -33,7 +33,9 @@ objecttypedefn objectarraydefn = {
     .printfn=objectarray_printfn,
     .markfn=objectarray_markfn,
     .freefn=NULL,
-    .sizefn=objectarray_sizefn
+    .sizefn=objectarray_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /** Initializes an array given the size */
@@ -233,12 +235,12 @@ objectarrayerror array_getelement(objectarray *a, unsigned int ndim, unsigned in
  * @param[in] slices - a set of indices that can be lists ranges or ints.
  * @param[out] out - returns the requested slice of a.
 */
-objectarrayerror getslice(value *a, bool dimFcn(value *,unsigned int),\
-                          void constuctor(unsigned int *,unsigned int,value *),\
-                          objectarrayerror copy(value * ,value *, unsigned int, unsigned int *,unsigned int *),\
-                          unsigned int ndim, value *slices, value *out){
+objectarrayerror getslice(value *a, bool dimFcn(value *, unsigned int),
+                          void constructor(unsigned int *, unsigned int,value *),
+                          objectarrayerror copy(value * ,value *, unsigned int, unsigned int *, unsigned int *),
+                          unsigned int ndim, value *slices, value *out) {
     //dimension checking
-    if (!(*dimFcn)(a,ndim)) return ARRAY_WRONGDIM;
+    if (!(*dimFcn) (a,ndim)) return ARRAY_WRONGDIM;
 
     unsigned int slicesize[ndim];
     for (unsigned int i=0; i<ndim; i++) {
@@ -254,13 +256,12 @@ objectarrayerror getslice(value *a, bool dimFcn(value *,unsigned int),\
     }
 
     // initalize out with the right size
-    (*constuctor)(slicesize,ndim,out);
+    (constructor) (slicesize,ndim,out);
 
     // fill it out recurivly
     unsigned int indx[ndim];
     unsigned int newindx[ndim];
     return setslicerecursive(a, out, copy, ndim, 0, indx, newindx, slices);
-
 }
 
 /** Iterates though the a ndim number of provided slices recursivly and copies the data from a to out.
@@ -613,7 +614,4 @@ void array_initialize(void) {
     morpho_defineerror(ARRAY_ARGS, ERROR_HALT, ARRAY_ARGS_MSG);
     morpho_defineerror(ARRAY_INIT, ERROR_HALT, ARRAY_INIT_MSG);
     morpho_defineerror(ARRAY_CMPT, ERROR_HALT, ARRAY_CMPT_MSG);
-}
-
-void array_finalize(void) {
 }

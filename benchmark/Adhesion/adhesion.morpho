@@ -1,0 +1,34 @@
+import graphics
+import meshtools
+import shapeopt
+
+var m = Mesh("sphere.mesh")
+var mref = Mesh("sphere.mesh")
+
+var le = LinearElasticity(mref)
+le.poissonratio = 0.4
+
+var y0 = -1
+var lf = ScalarPotential(
+  fn (x,y,z) (y-y0), // Allowed region should be positive
+  fn (x,y,z) Matrix([0,1,0])
+)
+
+// Find boundary edges and add in vertices
+var bnd = Selection(m, boundary=true)
+bnd.addgrade(0)
+
+var s = ShapeOptimizer(m)
+s.addenergy(le)
+
+var levelset=s.addlocalconstraint(lf)
+
+s.stepsize=0.1
+
+for (i in 1..1) {
+  var lower = Selection(m, fn (x,y,z) y<-0.9)
+  var attach = bnd.intersection(lower)
+  levelset.selection=attach
+
+  s.relax(50)
+}

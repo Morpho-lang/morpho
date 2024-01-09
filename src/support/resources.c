@@ -216,6 +216,8 @@ void resources_initialize(void) {
     varray_valuewrite(&resourcelocations, v);
 
     resources_loadpackagelist();
+    
+    morpho_addfinalizefn(resources_finalize);
 }
 
 void resources_finalize(void) {

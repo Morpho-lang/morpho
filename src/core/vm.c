@@ -568,9 +568,9 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
     debugger_enter(v->debug, v); \
 }
 
-/* Define the interpreter loop. Computed gotos or regular switch statements can be used here. */
+/** Define the interpreter loop. Computed gotos or regular switch statements can be used here. */
 #ifdef MORPHO_COMPUTED_GOTO
-    /* The dispatch table, containing the entry points for each opcode */
+    /** The dispatch table, containing the entry points for each opcode */
     static void* dispatchtable[] = {
       #define OPCODE(name) &&code_##name,
       #include "opcodes.h"
@@ -583,10 +583,10 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
       #undef OPCODE
     };
     
-    /* The interpret loop begins by dispatching an instruction */
+    /** The interpret loop begins by dispatching an instruction */
     #define INTERPRET_LOOP    DISPATCH();
 
-    /* Create a label corresponding to each opcode */
+    /** Create a label corresponding to each opcode */
     #define CASE_CODE(name)   code_##name
     
     int nopcodes;
@@ -595,7 +595,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
     #define DEBUG_ENABLE() { if (v->debug) for (int i=0; i<nopcodes; i++) dispatchtable[i]=&&code_BREAK; }
     #define DEBUG_DISABLE() { if (v->debug) for (int i=0; i<nopcodes; i++) dispatchtable[i]=debugdispatchtable[i]; }
     
-    /* Dispatch here means fetch the next instruction, decode and jump */
+    /** Dispatch here means fetch the next instruction, decode and jump */
     #define FETCHANDDECODE()                                                 \
         {                                                                    \
             bc=*pc++;                                                        \
@@ -612,7 +612,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
         } while(false);
     
 #else
-    /* Every iteration of the interpret loop we fetch, decode and switch */
+    /** Every iteration of the interpret loop we fetch, decode and switch */
     #define INTERPRET_LOOP                                                   \
         loop:                                                                \
         bc=*pc++;                                                            \
@@ -623,17 +623,33 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
         if (vm_shouldbreakatpc(v, pc)) ENTERDEBUGGER();                   \
         switch (op)
 
-    /* Each opcode generates a case statement */
+    /** Each opcode generates a case statement */
     #define CASE_CODE(name)  case OP_##name
 
-    /* Dispatch means return to the beginning of the loop */
+    /** Dispatch means return to the beginning of the loop */
     #define DISPATCH() goto loop;
 #endif
 
+/** Macros for error checking */
 #define ERROR(id) { vm_runtimeerror(v, pc-v->instructions, id); goto vm_error; }
 #define VERROR(id, ...) { vm_runtimeerror(v, pc-v->instructions, id, __VA_ARGS__); goto vm_error; }
 #define OPERROR(op){vm_throwOpError(v,pc-v->instructions,VM_INVLDOP,op,left,right); goto vm_error; }
 #define ERRORCHK() if (v->err.cat!=ERROR_NONE) goto vm_error;
+    
+/** Macro to redirect an opcode to a method call on an object */
+#define OPREDIRECT(leftselector, rightselector, regout) \
+    if (MORPHO_ISOBJECT(left)) { \
+        if (vm_invoke(v, left, leftselector, 1, &right, &reg[regout])) { \
+            ERRORCHK(); \
+            if (!MORPHO_ISNIL(reg[a])) DISPATCH(); \
+        } \
+    } \
+    if (MORPHO_ISOBJECT(right)) { \
+        if (vm_invoke(v, right, rightselector, 1, &left, &reg[regout])) { \
+            ERRORCHK(); \
+            DISPATCH(); \
+        } \
+    }
     
     INTERPRET_LOOP
     {
@@ -678,22 +694,12 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                     DISPATCH();
                 } else {
                     ERROR(VM_CNCTFLD);
-                }
-            }
-
-            if (MORPHO_ISOBJECT(left)) {
-                if (vm_invoke(v, left, addselector, 1, &right, &reg[a])) {
-                    ERRORCHK();
-                    if (!MORPHO_ISNIL(reg[a])) DISPATCH();
-                }
-            }
-
-            if (MORPHO_ISOBJECT(right)) {
-                if (vm_invoke(v, right, addrselector, 1, &left, &reg[a])) {
-                    ERRORCHK();
                     DISPATCH();
                 }
             }
+
+            OPREDIRECT(addselector, addrselector, a);
+            
             OPERROR("Add");
             DISPATCH();
 
@@ -719,20 +725,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                     DISPATCH();
                 }
             }
-
-            if (MORPHO_ISOBJECT(left)) {
-                if (vm_invoke(v, left, subselector, 1, &right, &reg[a])) {
-                    ERRORCHK();
-                    if (!MORPHO_ISNIL(reg[a])) DISPATCH();
-                }
-            }
-
-            if (MORPHO_ISOBJECT(right)) {
-                if (vm_invoke(v, right, subrselector, 1, &left, &reg[a])) {
-                    ERRORCHK();
-                    DISPATCH();
-                }
-            }
+        
+            OPREDIRECT(subselector, subrselector, a);
 
             OPERROR("Subtract")
             DISPATCH();
@@ -760,19 +754,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                 }
             }
 
-            if (MORPHO_ISOBJECT(left)) {
-                if (vm_invoke(v, left, mulselector, 1, &right, &reg[a])) {
-                    ERRORCHK();
-                    if (!MORPHO_ISNIL(reg[a])) DISPATCH();
-                }
-            }
-
-            if (MORPHO_ISOBJECT(right)) {
-                if (vm_invoke(v, right, mulrselector, 1, &left, &reg[a])) {
-                    ERRORCHK();
-                    DISPATCH();
-                }
-            }
+            OPREDIRECT(mulselector, mulrselector, a);
 
             OPERROR("Multiply")
             DISPATCH();
@@ -799,20 +781,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                     DISPATCH();
                 }
             }
-
-            if (MORPHO_ISOBJECT(left)) {
-                if (vm_invoke(v, left, divselector, 1, &right, &reg[a])) {
-                    ERRORCHK();
-                    if (!MORPHO_ISNIL(reg[a])) DISPATCH();
-                }
-            }
-
-            if (MORPHO_ISOBJECT(right)) {
-                if (vm_invoke(v, right, divrselector, 1, &left, &reg[a])) {
-                    ERRORCHK();
-                    DISPATCH();
-                }
-            }
+        
+            OPREDIRECT(divselector, divrselector, a);
 
             OPERROR("Divide");
             DISPATCH();
@@ -840,20 +810,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                 }
             }
 
-            if (MORPHO_ISOBJECT(left)) {
-                if (vm_invoke(v, left, powselector, 1, &right, &reg[a])) {
-                    ERRORCHK();
-                    if (!MORPHO_ISNIL(reg[a])) DISPATCH();
-                }
-            }
-
-            if (MORPHO_ISOBJECT(right)) {
-                if (vm_invoke(v, right, powrselector, 1, &left, &reg[a])) {
-                    ERRORCHK();
-                    DISPATCH();
-                }
-            }
-
+            OPREDIRECT(powselector, powrselector, a);
 
             OPERROR("Exponentiate")
             DISPATCH();
@@ -875,8 +832,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             left = reg[b];
             right = reg[c];
 
-            MORPHO_CMPPROMOTETYPE(left,right);
-            reg[a] = (morpho_comparevalue(left, right)==0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
+            reg[a] = (morpho_extendedcomparevalue(left, right)==0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
 
         CASE_CODE(NEQ):
@@ -884,8 +840,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             left = reg[b];
             right = reg[c];
 
-            MORPHO_CMPPROMOTETYPE(left,right);
-            reg[a] = (morpho_comparevalue(left, right)!=0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
+            reg[a] = (morpho_extendedcomparevalue(left, right)!=0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
 
         CASE_CODE(LT):
@@ -898,8 +853,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                 OPERROR("Compare");
             }
 
-            MORPHO_CMPPROMOTETYPE(left,right);
-            reg[a] = (morpho_comparevalue(left, right)>0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
+            reg[a] = (morpho_extendedcomparevalue(left, right)>0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
 
         CASE_CODE(LE):
@@ -912,8 +866,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
                 OPERROR("Compare");
             }
 
-            MORPHO_CMPPROMOTETYPE(left,right);
-            reg[a] = (morpho_comparevalue(left, right)>=0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
+            reg[a] = (morpho_extendedcomparevalue(left, right)>=0 ? MORPHO_BOOL(true) : MORPHO_BOOL(false));
             DISPATCH();
 
         CASE_CODE(B):
@@ -1945,11 +1898,23 @@ bool vm_gettlvar(vm *v, int handle, value *out) {
 }
 
 /* **********************************************************************
+ * Finalize functions
+ * ********************************************************************** */
+
+varray_value _finalizefns;
+
+void morpho_addfinalizefn(morpho_finalizefn finalizefn) {
+    varray_valuewrite(&_finalizefns, MORPHO_OBJECT(finalizefn));
+}
+
+/* **********************************************************************
 * Initialization
 * ********************************************************************** */
 
 /** Initializes morpho */
 void morpho_initialize(void) {
+    varray_valueinit(&_finalizefns);
+    
     random_initialize();
     error_initialize();
     
@@ -2019,16 +1984,12 @@ void morpho_initialize(void) {
     printselector=builtin_internsymbolascstring(MORPHO_PRINT_METHOD);
 }
 
-/** Finalizes morpho */
+/** Finalizes morpho, calling all finalize functions */
 void morpho_finalize(void) {
-    extensions_finalize();
-    error_finalize();
-    compile_finalize();
-    builtin_finalize();
-    resources_finalize();
-    lex_finalize();
-    parse_finalize();
+    for (int i=_finalizefns.count-1; i>=0; i--) {
+        morpho_finalizefn fn=(morpho_finalizefn) MORPHO_GETOBJECT(_finalizefns.data[i]);
+        fn();
+    }
     
-    object_finalize(); //
-    value_finalize();  // } Must be first
+    varray_valueclear(&_finalizefns);
 }

@@ -1,0 +1,229 @@
+
+class Camera {
+    init(antialias = true, width = 2048, height = 1536, viewangle = 24, viewpoint = nil, look_at = nil, sky = nil) {
+        self.antialias = antialias
+        self.width = width
+        self.height = height
+        self.viewangle = viewangle
+        self.viewpoint = viewpoint
+        self.look_at = look_at
+        self.sky = sky
+        self.light = nil
+        if (!self.viewpoint) self.viewpoint = Matrix([0,0,5])
+        if (!self.look_at) self.look_at = Matrix([0,0,0])
+        if (!self.sky) self.sky = Matrix([0,1,0])
+    }
+}
+
+
+class POVRaytracer {
+  init(graphic, camera = nil) {
+
+    self.camera = camera
+    if (!self.camera) self.camera = Camera() // Default Camera
+    self.graphic = graphic
+
+    self.antialias = self.camera.antialias
+    self.width = self.camera.width
+    self.height = self.camera.height
+    self.viewangle = self.camera.viewangle
+    self.viewpoint = self.camera.viewpoint
+    self.look_at = self.camera.look_at
+    self.sky = self.camera.sky
+    self.light = nil
+  }
+
+  vector(v) {
+    return "<${v[0]}, ${v[1]}, ${v[2]}>"
+  }
+
+  color(c) {
+    if (isnil(c)) return "<0.5, 0.5, 0.5>"
+    if (ismatrix(c)) return self.vector(c)
+    else return self.vector(c.rgb(0))
+  }
+
+  optionalarg(item){
+    
+    var arg = ""
+  
+    if(isnil(item.filter) && !isnil(item.transmit)){
+      arg = "transmit ${item.transmit}"
+    }
+    else if(!isnil(item.filter) && isnil(item.transmit)){
+      arg = "filter ${item.filter}"
+    }
+    else if(!isnil(item.filter) && !isnil(item.transmit)){
+      arg = "filter ${item.filter} transmit ${item.transmit}"
+    }
+    return arg
+  }
+
+  visittext(item, out) {
+    var arg = self.optionalarg(item)
+    out.write("text {" +
+              "  ttf \"cyrvetic.ttf\" \"${item.string}\" 0.1, 0 \n" + 
+              "  pigment { rgb ${self.color(item.color)} ${arg} }")
+    out.write("  scale ${item.size / 75} ")
+    out.write("  translate ${item.posn[0]}*x + ${item.posn[1]}*y + ${item.posn[2]}*z ")
+    var m = item.transformationmatrix() 
+    var str
+    if (m) {
+      str = "  matrix <"
+      for (i in 0..3) {
+        for (j in 0..2) {
+          str+=" "+String(m[i,j])
+          if (i==3 && j==2) str += "> \n }"
+          else str += ", "
+          if (j==2) str +="\n"
+        }
+      }
+    }
+    else {
+        str = " } "
+    }
+    out.write(str)
+  }
+
+  visitsphere(item, out) {
+    var arg = self.optionalarg(item)
+    out.write("sphere {"+
+              " ${self.vector(item.center)}, ${item.r}"+
+              " texture { "+
+              " pigment { rgb ${self.color(item.color)} ${arg}"+
+              "} } }")
+  }
+
+  visitcylinder(item, out) {
+    var radius = 0.5*(item.end - item.start).norm()*item.aspectratio
+    var arg = self.optionalarg(item)
+    out.write("cylinder {"+
+              " ${self.vector(item.start)}, ${self.vector(item.end)}, ${radius}"+
+              " texture { "+
+              " pigment { rgb ${self.color(item.color)} ${arg}"+
+              "} } }")
+  }
+
+  visitarrow(item, out) {
+    var dx = (item.end - item.start).norm()
+    var radius = 0.5*dx*item.aspectratio
+    var cylend = item.start + (item.end - item.start)*(1-item.aspectratio)
+    var arg = self.optionalarg(item)
+    out.write("cylinder {"+
+              " ${self.vector(item.start)}, ${self.vector(cylend)}, ${radius}"+
+              " texture { "+
+              " pigment { rgb ${self.color(item.color)} ${arg} "+
+              "} } }")
+    out.write("cone {"+
+              " ${self.vector(cylend)}, ${2*radius}, ${self.vector(item.end)}, 0"+
+              " texture { "+
+              " pigment { rgb ${self.color(item.color)} ${arg} "+
+              "} } }")
+  }
+
+  visittube(item, out) {
+    self.visittrianglecomplex(item.totrianglecomplex(), out)
+  }
+
+  visittrianglecomplex(item, out) {
+
+    var arg = self.optionalarg(item)
+
+    out.write("mesh2 {");
+
+    var nv=item.position.dimensions()[1]
+
+    out.write("vertex_vectors { ${nv}, ")
+    for (i in 0...nv) {
+      var s = self.vector(item.position.column(i))
+      if (i<nv-1) s+=", "
+      out.write(s)
+    }
+    out.write("}");
+
+    out.write("normal_vectors { ${nv}, ")
+    for (i in 0...nv) {
+      var s = self.vector(item.normals.column(i))
+      if (i<nv-1) s+=", "
+      out.write(s)
+    }
+    out.write("}");
+
+    var individualcolors = ismatrix(item.colors)
+    if (individualcolors) {
+      out.write("texture_list { ${nv}, ")
+      for (i in 0...nv) {
+        var s = "texture{ pigment{ rgb ${self.vector(item.colors.column(i))} ${arg} } }"
+        if (i<nv-1) s+=", "
+        out.write(s)
+      }
+      out.write("}");
+    }
+
+    var nfaces=item.connectivity.dimensions()[1]
+    out.write("face_indices { ${nfaces}, ")
+    for (i in 0...nfaces) {
+      var indx = item.connectivity.rowindices(i)
+      var s = self.vector(indx)
+      if (individualcolors) s += ",${indx[0]},${indx[1]},${indx[2]}"
+      if (i<nv-1) s+=", "
+      out.write(s)
+    }
+    out.write("}");
+
+    if (!individualcolors) {
+      out.write(" texture { "+
+                " pigment { rgb ${self.color(item.colors)} ${arg} "+
+                "} }")
+    }
+
+    out.write("}");
+
+  }
+
+  write(file) {
+    var out = File(file, "write")
+
+    out.write("#include \"colors.inc\"")
+    out.write("background { rgb ${self.vector(self.graphic.background.rgb(0))} }")
+    out.write("camera {"+
+              "location ${self.vector(self.viewpoint)}"+
+              "up <0,1,0> right <-1.33,0,0> angle ${self.viewangle}"+
+              "look_at ${self.vector(self.look_at)} sky ${self.vector(self.sky)} }")
+
+    for (item in self.graphic.displaylist) item.accept(self, out)
+
+    if (self.light) {
+      for (light in self.light) {
+        out.write("light_source {${self.vector(light)} color White}")
+      }
+    } else out.write("light_source {<-5, -5, 8> color White}")
+
+    out.close()
+    return out.relativepath()
+  }
+
+  render(file, quiet=false, display=true) {
+    var path = self.write(file)
+    var silent = ""
+    if (quiet) silent = "&> /dev/null"
+    var disp = ""
+    if (!display) disp = "-D"
+    system("povray ./\"${path}\" ${disp} +A +W${self.width} +H${self.height} ${silent}")
+    var out = self._slice(path, 0, path.count()-4)
+    if (!quiet && display) system("open ./${out}.png")
+  }
+  /*
+  private method: slice a string given a start and an end
+  @param string: string to be slice
+  @param start: starting index
+  @param end: ending index(exclusive)
+  */
+  _slice(string, start, end) {
+    var s = ""
+    for (i in start...end) {
+      s += string[i]
+    }
+    return s
+  }
+}

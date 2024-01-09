@@ -36,7 +36,9 @@ objecttypedefn objectinvocationdefn = {
     .printfn=objectinvocation_printfn,
     .markfn=objectinvocation_markfn,
     .freefn=NULL,
-    .sizefn=objectinvocation_sizefn
+    .sizefn=objectinvocation_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /* **********************************************************************
@@ -158,7 +160,4 @@ void invocation_initialize(void) {
     // Invocation error messages
     morpho_defineerror(INVOCATION_ARGS, ERROR_HALT, INVOCATION_ARGS_MSG);
     morpho_defineerror(INVOCATION_METHOD, ERROR_HALT, INVOCATION_METHOD_MSG);
-}
-
-void invocation_finalize(void) {
 }

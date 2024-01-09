@@ -1,0 +1,411 @@
+/* Meshgen - a simple morpho mesh generator
+ *
+ * Inspired by the distmesh algorithm presented in:
+ *   A Simple Mesh Generator in MATLAB, Per-Olof Persson and Gilbert Strang, SIAM Rev., 46(2), 329–345 (2004)
+ * Reimplemented using Morpho's optimization capabilities */
+
+import functionals
+import optimize
+import meshtools
+import delaunay
+
+/* ********************************************************
+ * The Domain of interest is specified by a generalization
+ * of a signed distance function: wherever the function is
+ * positive will be meshed. Domains are constructed with
+ * the function of interest and can be composed by set
+ * operations intersection, union, difference.
+ * ******************************************************** */
+
+class Domain {
+  init (func) {
+    self.func = func
+  }
+
+  intersection(dom) { //
+    fn fint (x) {
+      return min(self.func(x), dom.func(x))
+    }
+    return Domain(fint)
+  }
+
+  difference(dom) {
+    fn fdiff (x) {
+      return min(self.func(x), -dom.func(x))
+    }
+    return Domain(fdiff)
+  }
+
+  union(dom) {
+    fn funion (x) {
+      return max(self.func(x), dom.func(x))
+    }
+    return Domain(funion)
+  }
+}
+
+fn CircularDomain(x0, r) {
+  var xx = x0 
+  if (islist(x0)) xx = Matrix(x0)
+
+  fn circle (x) {
+    var dx = x - xx
+    return (r^2-dx.inner(dx))
+  }
+
+  return Domain(circle)
+}
+
+// A Half Space defined by a plane at x0 and a normal n. 
+// n is an "outward" normal, so points into the excluded region
+fn HalfSpaceDomain(x0, n) {
+  var xx0 = x0 
+  if (islist(x0)) xx0=Matrix(x0)
+  var nn = n
+  if (islist(nn)) nn=Matrix(n)
+
+  return Domain(fn (x) -(x-xx0).inner(nn))
+}
+
+// A rectangular domain defined by a list of ranges. 
+// Works in arbitrary dimensions
+fn RectangularDomain(ranges) {
+  var dim = ranges.count() 
+  var x0 = []
+  var w = []
+  for (r in ranges) {
+    var bnds = bounds(r)
+    w.append((bnds[1]-bnds[0])/2)
+    x0.append((bnds[1]+bnds[0])/2)
+  }
+
+  fn rectsdf (x) {
+    var sdf
+    for (xoff, k in x0) {
+      var f = 1-abs((x[k]-xoff)/w[k])
+      if (!sdf || f<sdf) sdf = f 
+    }
+    return sdf 
+  }
+
+  return Domain(rectsdf)
+}
+
+/* ********************************************************
+ * Functionals to control mesh quality
+ * ******************************************************** */
+
+/* -------------------------------------------------------
+ * One sided hookean elasticity:
+ * Energy F = 1/2 ((L-L0)/L0)^2 for L<L0, 0 otherwise
+ * Construct with a Field of reference lengths L0
+ * ------------------------------------------------------- */
+class OneSidedHookeElasticity is Functional {
+  init(l0) {
+    self.ref = l0
+    super.init(1)
+  }
+
+  integrandfn(mesh, vert, id, el) {
+    var len = (vert.column(el[0])-vert.column(el[1])).norm()
+    var len0 = self.ref[self.grade, id]
+    if (len>len0) return 0
+    return ((len-len0)/len0)^2/2
+  }
+
+  gradientfn(mesh, vert, id, el, grd) {
+    var x0 = vert.column(el[0])
+    var x1 = vert.column(el[1])
+    var dx = x0-x1
+
+    var len = dx.norm()
+    var len0 = self.ref[self.grade, id]
+    if (len>len0) return
+    var g = dx*(len-len0)/(len0^2*len)
+
+    grd.setcolumn(el[0], g+grd.column(el[0]))
+    grd.setcolumn(el[1], -g+grd.column(el[1]))
+  }
+}
+
+/* -------------------------------------------------------
+ * Evaluates a scalar potential at the midpoint of
+ * an element. Will be used to detect elements inside
+ * forbidden areas.
+ * ------------------------------------------------------- */
+class ScalarPotentialMidpoint is Functional {
+  init(hbar) {
+    self.func = hbar
+    super.init(1)
+  }
+
+  integrandfn(mesh, vert, id, el) {
+    var dim = el.count()
+    var x = vert.column(el[0])
+    for (var i=1; i<dim; i+=1) x+=vert.column(el[i])
+    x/=dim
+    return self.func(x)
+  }
+}
+
+/* ********************************************************
+ * Shape optimizer
+ * We subclass ShapeOptimizer to add a special convergence
+ * criterion, which additionally tests if the mesh has
+ * moved too far from its starting point
+ * ******************************************************** */
+
+class MGShapeOptimizer is ShapeOptimizer {
+  init (problem, mesh, ttol=0.1, localcheck=false) {
+    super.init(problem, mesh)
+    self.x0 = mesh.vertexmatrix().clone()
+    self.nv = self.x0.dimensions()[1]
+    self.ttol = ttol
+    self.localcheck = localcheck
+  }
+
+  hasconverged() { // Replacement method stops if mesh moved too far
+    var dx = self.target.vertexmatrix()-self.x0
+    
+    if (self.localcheck) {
+      // Did any vertex move too far? 
+      for (id in 0...self.nv) {
+        if (dx.column(id).norm()>self.ttol) return true
+      }
+    }
+
+    if (dx.norm()>self.ttol) return true // old criterion
+    return super.hasconverged()
+  }
+
+  didconverge() { // Checks if we converged according to superclass
+    return super.hasconverged()
+  }
+}
+
+/* ********************************************************
+ * Mesh generator
+ * ******************************************************** */
+
+var MshGnDim = Error("MshGnDim", "MeshGen only supports 2 or 3 dimensions")
+
+class MeshGen {
+  init (f, bbox, weight=nil, quiet=false, method=nil) {
+    self.func = f            // The function to call
+    if (!iscallable(f) && isobject(f) && f.has("func")) self.func = f.func // You can give a Domain object directly
+
+    self.bbox = bbox         // Bounding box
+    self.weight = weight     // Weight function
+
+    fn defaultweight (x) { return 1 } // Provide a default weight function
+    if (isnil(weight)) self.weight = defaultweight
+
+    self.dim = bbox.count()  // Dimensionality of problem
+
+    self.quiet = quiet       // Whether to report output
+
+    var sep = []
+    for (range in bbox) sep.append(range[1]-range[0]) // Get stepsize
+    self.h0 = min(sep)       // Element separation
+
+    self.stepsize = self.h0/5    // Stepsize for optimizer 
+    self.steplimit = self.h0/2   // Steplm for optimizer 
+
+    self.mesh = nil          // Mesh
+    self.problem = nil       // Optimization problem
+
+    self.fscale = 1.2        // Internal pressure
+    if (self.dim>2) self.fscale = 1.1
+
+    self.etol = 1e-3 // Energy tolerance for optimization problem (it's deliberately loose)
+    self.ttol = 0.5 // How much motion of the vertices before retriangulation
+    self.xtol = 1e-12 // Tolerance for point comparisons
+
+    self.method = []         // Method selection
+    if (isstring(method)) self.method.append(method)
+    if (islist(method)) for (m in method) self.method.append(m)
+
+    self.maxiterations = 100
+  }
+
+  initialgridmesh() { // Create the initial mesh
+    if (!self.quiet) print "Creating initial mesh on regular grid"
+    var f = self.func
+    var vert = []
+    if (self.dim==2) {
+      for (v in self.bbox[1]) {
+        for (u in self.bbox[0]) {
+          if (f(Matrix([u,v]))>0) vert.append([u,v])
+        }
+      }
+    } else if (self.dim==3) {
+      for (w in self.bbox[2]) {
+        for (v in self.bbox[1]) {
+          for (u in self.bbox[0]) {
+            if (f(Matrix([u,v,w]))>0) vert.append([u,v,w])
+          }
+        }
+      }
+    } else {
+      MshGnDim.throw()
+    }
+    self.retriangulate(vert)
+  }
+
+  initialrandommesh() { // Create an initial mesh from random points
+    var vert = []
+    var bnds = []
+    var vol = 1 // compute the generalized volume of the element 
+    for (b in self.bbox) {
+      var sep = b[b.enumerate(-1)-1]-b[0] // range of this dimension
+      bnds.append([b[0], sep])
+      vol *= sep
+    }
+
+    var n = ceil(vol/(self.h0)^(self.dim))
+    if (!self.quiet) print "Creating initial mesh with ${n} random points"
+
+    for (var nsuccess=0; nsuccess<n; ) {
+      var pt = []
+
+      for (i in 0...self.dim) pt.append(bnds[i][0]+bnds[i][1]*random())
+      
+      if (self.func(Matrix(pt))>0) {
+        vert.append(pt)
+        nsuccess+=1
+      }
+    }
+
+    self.retriangulate(vert)
+  }
+
+  selectbboxpts() {
+    var bnds = [], xtol = self.xtol
+    for (range,k in self.bbox) {
+        bnds.append(bounds(range))
+    }
+
+    fn selectOnBbox2D(x,y) {
+        return ( abs(x-bnds[0][0])<xtol || abs(x-bnds[0][1])<xtol ||
+                abs(y-bnds[1][0])<xtol || abs(y-bnds[1][1])<xtol )
+    }
+
+    fn selectOnBbox3D(x,y,z) {
+        return ( abs(x-bnds[0][0])<xtol || abs(x-bnds[0][1])<xtol ||
+                abs(y-bnds[1][0])<xtol || abs(y-bnds[1][1])<xtol ||
+                abs(z-bnds[2][0])<xtol || abs(z-bnds[2][1])<xtol )
+    }
+
+    var selfn = selectOnBbox2D
+    if (self.dim==3) selfn = selectOnBbox3D
+
+    return Selection(self.mesh, selfn) 
+  }
+
+  retriangulate(vert) { // Retriangulate the mesh
+    if (!self.quiet) print "Retriangulating."
+    var mb = MeshBuilder(dimension=self.dim)
+
+    for (x in vert) mb.addvertex(x)
+
+    var del = Delaunay(mb.vertices) // Triangulate
+    var tri = del.triangulate()
+
+    for (t in tri) { // Filter out any triangles whose midpoints are outside the feasible region
+      var mp = mb.vertices[t[0]]
+      for (i in 1...t.count()) mp+=mb.vertices[t[i]]
+      mp/=t.count()
+
+      if (self.func(mp)>0) {
+        mb.addelement(self.dim, t)
+      }
+    }
+
+    self.mesh=mb.build()
+    self.mesh.addgrade(1)
+  }
+
+  vertices() { // Extract a list of vertices from the current mesh
+    var v = self.mesh.vertexmatrix()
+    var vlist = []
+    for (id in 0...v.dimensions()[1]) vlist.append(v.column(id))
+    return vlist
+  }
+
+  setupproblem() { // Setup optimization problem
+    self.problem = OptimizationProblem(self.mesh)
+    // Build reference lengths
+    var lengths = Length().integrand(self.mesh)
+
+    // Evaluate the weight function at the midpoint
+    var hbar = ScalarPotentialMidpoint(self.weight).integrand(self.mesh)
+
+    // Calculate preferred lengths
+    var len0 = Field(self.mesh, grade=1)
+
+    fn lnorm(l, n) { // n-norm of a matrix
+      var sum = 0 
+      for (a in l) sum+=a^n
+      return sum^(1/n)
+    }
+
+    var lscale=self.fscale*(lnorm(lengths, self.dim)/lnorm(hbar, self.dim))
+    for (id in 0...self.mesh.count(1)) len0[id]=lscale*hbar[id]
+
+    // Impose elasticity
+    var lel = OneSidedHookeElasticity(len0)
+    self.problem.addenergy(lel)
+
+    // Use a one sided level set constraint to keep things in the domain
+    var ls
+    if (self.dim==2) { // [TODO]: Rewrite this with varargs when available
+      ls = ScalarPotential(fn (x,y) self.func(Matrix([x,y])))
+    } else if (self.dim==3) {
+      ls = ScalarPotential(fn (x,y,z) self.func(Matrix([x,y,z])))
+    }
+    self.problem.addlocalconstraint(ls, onesided=true)
+  }
+
+  optimize() { // Perform optimization
+    var opt = MGShapeOptimizer(self.problem, self.mesh, ttol=self.ttol*self.h0, localcheck=self.method.ismember("LocalCheck"))
+    opt.fix(self.selectbboxpts())
+    // set steplimit such that the first step doesn't take vertices
+    // further than ttol
+
+    // Calculate the initial force
+    var frc = opt.totalforcewithconstraints()
+    var normfrc = frc.norm()
+    // set initial force to be the minimum of the provided steplimit and
+    // the stepsize required to move a distance of ttol
+    opt.steplimit = min(self.steplimit, self.ttol/normfrc)
+    // Similar for stepsize
+    opt.stepsize = min(self.stepsize, self.ttol/normfrc/5)
+    opt.etol = self.etol // Use a fairly loose convergence criterion
+    opt.quiet = self.quiet
+    if (self.method.ismember("FixedStepSize")) {
+      opt.relax(100)
+    } else {
+      opt.linesearch(1)
+      opt.conjugategradient(100)
+    }
+
+    return opt.didconverge() // Returns true if we converged
+  }
+
+  build(outputdim=3) { // Build the mesh
+    if (self.method.ismember("StartRandom")) {
+      self.initialrandommesh()
+    } else self.initialgridmesh()
+
+    for (iter in 0...self.maxiterations) {
+      if (!self.quiet) print "Mesh generator iteration ${iter}."
+      self.setupproblem()
+
+      if (self.optimize()) break // Converged
+
+      self.retriangulate(self.vertices())
+    }
+
+    return self.mesh
+  }
+}

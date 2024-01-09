@@ -16,6 +16,7 @@
 #include "build.h"
 #include "value.h"
 #include "error.h"
+#include "dictionary.h"
 #include "version.h"
 
 /* **********************************************************************
@@ -121,6 +122,7 @@ void morpho_bindobjects(vm *v, int nobj, value *obj);
 void morpho_markobject(void *v, object *obj);
 void morpho_markvalue(void *v, value val);
 void morpho_markvarrayvalue(void *v, varray_value *array);
+void morpho_markdictionary(void *v, dictionary *dict);
 void morpho_searchunmanagedobject(void *v, object *obj);
 bool morpho_ismanagedobject(object *obj); 
 
@@ -170,6 +172,8 @@ void morpho_setthreadnumber(int nthreads);
 int morpho_threadnumber(void);
 
 /* Initialization and finalization */
+typedef void (*morpho_finalizefn) (void);
+void morpho_addfinalizefn(morpho_finalizefn finalizefn);
 void morpho_setbaseclass(value clss);
 void morpho_initialize(void);
 void morpho_finalize(void);

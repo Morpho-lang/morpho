@@ -14,9 +14,9 @@
 #include "object.h"
 #include "classes.h"
 
-#define COMMON_NILSTRING   "nil"
-#define COMMON_TRUESTRING  "true"
-#define COMMON_FALSESTRING "false"
+#define MORPHO_NILSTRING   "nil"
+#define MORPHO_TRUESTRING  "true"
+#define MORPHO_FALSESTRING "false"
 
 /* -----------------------------------------
  * VM Callback functions
@@ -42,66 +42,14 @@ void morpho_setdebuggerfn(vm *v, morphodebuggerfn debuggerfn, void *ref);
 /** @brief Promotes l and r to types that can be compared
  * @param l value to compare
  * @param r value to compare */
-#define MORPHO_CMPPROMOTETYPE(l, r) \
+/*#define MORPHO_CMPPROMOTETYPE(l, r) \
     if (!morpho_ofsametype(l, r)) { \
         if (MORPHO_ISINTEGER(l) && MORPHO_ISFLOAT(r)) { \
             l = MORPHO_INTEGERTOFLOAT(l); \
         } else if (MORPHO_ISFLOAT(l) && MORPHO_ISINTEGER(r)) { \
             r = MORPHO_INTEGERTOFLOAT(r); \
         } \
-    }
-
-/** @brief Compares two values
- * @param l value to compare
- * @param r value to compare */
-#define MORPHO_CHECKCMPTYPE(l, r) \
-    if (!morpho_ofsametype(l, r)) { \
-        if (MORPHO_ISINTEGER(l) && MORPHO_ISFLOAT(r)) { \
-            l = MORPHO_INTEGERTOFLOAT(l); \
-        } else if (MORPHO_ISFLOAT(l) && MORPHO_ISINTEGER(r)) { \
-            r = MORPHO_INTEGERTOFLOAT(r); \
-        } \
-    }
-
-int morpho_comparevalue (value a, value b);
-
-/** @brief Compares two values, checking if two values are identical
- * @details Faster than morpho_comparevalue
- * @param a value to compare
- * @param b value to compare
- * @returns true if a and b are identical, false otherwise */
-static inline bool morpho_comparevaluesame (value a, value b) {
-#ifdef MORPHO_NAN_BOXING
-    return (a==b);
-#else
-    if (a.type!=b.type) return false;
-
-    switch (a.type) {
-        case VALUE_NIL:
-            return true; /** Nils are always the same */
-        case VALUE_INTEGER:
-            return (b.as.integer == a.as.integer);
-        case VALUE_DOUBLE:
-            /* The sign bit comparison is required to distinguish between -0 and 0. */
-            return ((b.as.real == a.as.real) && (signbit(b.as.real)==signbit(a.as.real)));
-        case VALUE_BOOL:
-            return (b.as.boolean == a.as.boolean);
-        case VALUE_OBJECT:
-            return MORPHO_GETOBJECT(a) == MORPHO_GETOBJECT(b);
-        default:
-            UNREACHABLE("unhandled value type for comparison [Check morpho_comparevaluesame]");
-    }
-
-    return false;
-#endif
-}
-
-/** Macros to compare values  */
-
-/** Use this one to carefully compare the values in each object */
-#define MORPHO_ISEQUAL(a,b) (!morpho_comparevalue(a,b))
-/** Use this one where we want to check the values refer to the same object */
-#define MORPHO_ISSAME(a,b) (morpho_comparevaluesame(a,b))
+    }*/
 
 /** Check if a value is callable */
 static inline bool morpho_iscallable(value a) {
@@ -125,7 +73,6 @@ int morpho_encodeutf8(int c, char *out);
 unsigned int morpho_powerof2ceiling(unsigned int n);
 
 bool morpho_isdirectory(const char *path);
-bool white_space_remainder(const char *s, int start);
 
 #ifdef MORPHO_DEBUG
 void morpho_unreachable(const char *explanation);

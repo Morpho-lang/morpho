@@ -74,9 +74,6 @@ value object_concatenatestring(value a, value b);
  * String error messages
  * ------------------------------------------------------- */
 
-#define STRING_IMMTBL                     "StrngImmtbl"
-#define STRING_IMMTBL_MSG                 "Strings are immutable."
-
 /* -------------------------------------------------------
  * String interface
  * ------------------------------------------------------- */
@@ -86,6 +83,5 @@ int string_countchars(objectstring *s);
 char *string_index(objectstring *s, int i);
 
 void string_initialize(void);
-void string_finalize(void);
 
 #endif

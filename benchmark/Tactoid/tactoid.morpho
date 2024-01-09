@@ -1,0 +1,128 @@
+import meshtools
+import plot
+import optimize
+
+// Create mesh and director field
+var m = Mesh("disk.mesh")
+var nn = Field(m, fn (x,y,z) Matrix([1,0,0]))
+
+// Create functionals
+var lf=Nematic(nn, ksplay=0.2, kbend=0.2)
+var ln=NormSq(nn)
+var la=LineIntegral(fn (x, n) n.inner(tangent())^2, nn)
+var lt=Length()
+var laa=Area()
+var leq=EquiElement()
+
+// Initial boundary selection
+var bnd=Selection(m, boundary=true)
+bnd.addgrade(0)
+
+// Material parameters
+var sigma=5.0*0.04 // Surface tension
+var W=4.0*0.4  // Anchoring
+
+var itermax = 2
+
+// Set up the optimization problem
+var problem = OptimizationProblem(m)
+problem.addenergy(lf)
+problem.addenergy(la, selection=bnd, prefactor=-W/2)
+problem.addenergy(lt, selection=bnd, prefactor=sigma+W)
+problem.addconstraint(laa)
+problem.addlocalconstraint(ln, field=nn, target=1)
+
+// Set up a regularization problem
+var reg = OptimizationProblem(m)
+reg.addenergy(leq)
+
+// Create shape and field optimizers
+var sopt = ShapeOptimizer(problem, m)
+var fopt = FieldOptimizer(problem, nn)
+var ropt = ShapeOptimizer(reg, m)
+ropt.fix(bnd)
+
+// Set up initial stepsize
+sopt.stepsize=0.05
+sopt.steplimit=0.1
+
+var mr, refmap // Refinement
+
+// A function we'll use to check each contribution to the energy
+fn checkenergy(problem, opt) {
+  print "--Contributions to energy"
+  for (en in problem.energies) {
+    print en.functional.clss()
+    print opt.total(en)
+  }
+}
+
+fopt.linesearch(50)
+
+// Main optimization loop
+for (iter in 1..itermax) {
+  for (i in 1..10) {
+      if (iter<itermax) {
+        print "-Regularize"
+        leq.weight=lf.integrand(nn)
+        ropt.stepsize=0.0001
+        ropt.steplimit=0.0001
+        ropt.linesearch(1)
+        equiangulate(m)
+      }
+
+      print "-Field"
+      fopt.linesearch(20)
+      print "-Shape"
+      sopt.linesearch(1)
+  }
+
+  // Check each contribution to the energy
+  checkenergy(problem, sopt)
+
+  // Refine if necessary
+  if (iter<itermax) {
+    // Select elements that have a large contribution to the energy
+    var en = lf.integrand(nn)
+    var mean = en.sum()/en.count()
+    var srefine = Selection(m)
+    for (id in 0...en.count()) if (en[0,id]>1.5*mean) srefine[2,id]=true
+
+    // Create a mesh refiner
+    mr=MeshRefiner([m, nn, bnd])
+    if (srefine.count(2)>0) {
+       refmap = mr.refine(selection=srefine)
+    } else {
+       refmap = mr.refine()
+    }
+
+    // Now refinement is done update the problems and optimizers
+    for (el in [problem, reg, sopt, fopt, ropt]) el.update(refmap)
+
+    // Use the new mesh and field
+    m = refmap[m]
+    nn = refmap[nn]
+    bnd = refmap[bnd]
+    // Must ensure boundary remains correctly fixed
+    ropt.fix(Selection(m, boundary=true))
+
+    // Equiangulate
+    equiangulate(m)
+  }
+
+  // Reduce stepsize
+  sopt.stepsize=0.05/iter
+  sopt.steplimit=0.1/iter
+}
+
+// Function to visualize a director field
+fn visualize(m, nn, dl) {
+  var v = m.vertexmatrix()
+  var nv = v.dimensions()[1]
+  var g = Graphics()
+  for (i in 0...nv) {
+    var x = v.column(i)
+    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.3))
+  }
+  return g
+}

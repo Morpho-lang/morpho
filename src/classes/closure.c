@@ -35,7 +35,9 @@ objecttypedefn objectclosuredefn = {
     .printfn=objectclosure_printfn,
     .markfn=objectclosure_markfn,
     .freefn=NULL,
-    .sizefn=objectclosure_sizefn
+    .sizefn=objectclosure_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /** Closure functions */
@@ -124,7 +126,4 @@ void closure_initialize(void) {
     // Create Closure veneer class
     value closureclass=builtin_addclass(CLOSURE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Closure), objclass);
     object_setveneerclass(OBJECT_CLOSURE, closureclass);
-}
-
-void closure_finalize(void) {
 }

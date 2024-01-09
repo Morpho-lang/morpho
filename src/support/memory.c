@@ -20,4 +20,3 @@ void *morpho_allocate(void *old, size_t oldsize, size_t newsize) {
 
     return realloc(old, newsize);
 }
-

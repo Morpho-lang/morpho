@@ -92,6 +92,5 @@ void array_sliceconstructor(unsigned int *slicesize,unsigned int ndim,value* out
 bool array_slicedim(value * a, unsigned int ndim);
 
 void array_initialize(void);
-void array_finalize(void);
 
 #endif

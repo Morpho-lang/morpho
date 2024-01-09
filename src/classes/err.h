@@ -29,8 +29,6 @@
  * Error interface
  * ------------------------------------------------------- */
 
-/* Initialization/finalization */
 void err_initialize(void);
-void err_finalize(void);
 
 #endif

@@ -35,7 +35,9 @@ objecttypedefn objectlistdefn = {
     .printfn=objectlist_printfn,
     .markfn=objectlist_markfn,
     .freefn=objectlist_freefn,
-    .sizefn=objectlist_sizefn
+    .sizefn=objectlist_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /** Creates a new list */
@@ -65,7 +67,7 @@ void list_append(objectlist *list, value v) {
     varray_valuewrite(&list->val, v);
 }
 
-/** Appends an item to a list */
+/** Returns the length of a list */
 unsigned int list_length(objectlist *list) {
     return list->val.count;
 }
@@ -122,8 +124,7 @@ bool list_getelement(objectlist *list, int i, value *out) {
 /** Sort function for list_sort */
 int list_sortfunction(const void *a, const void *b) {
     value l=*(value *) a, r=*(value *) b;
-    MORPHO_CMPPROMOTETYPE(l, r);
-    return -morpho_comparevalue(l, r);
+    return -morpho_extendedcomparevalue(l, r);
 }
 
 /** Sort the contents of a list */
@@ -218,17 +219,6 @@ objectlist *list_clone(objectlist *list) {
     return object_newlist(list->val.count, list->val.data);
 }
 
-/* Copies data from list a at position indx to list out at position newindx with a generic interface */
-objectarrayerror list_slicecopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx){
-    value data;
-    objectlist *outList = MORPHO_GETLIST(*out);
-
-    if (list_getelement(MORPHO_GETLIST(*a),indx[0],&data)){
-        outList->val.data[newindx[0]] = data;
-    } else return ARRAY_OUTOFBOUNDS;
-    return ARRAY_OK;
-}
-
 /** Concatenates two lists */
 objectlist *list_concatenate(objectlist *a, objectlist *b) {
     objectlist *new=object_newlist(a->val.count+b->val.count, NULL);
@@ -273,7 +263,7 @@ static bool list_enumerableinitializer(vm *v, indx i, value val, void *ref) {
 }
 
 /* Constructs a new list of a given size with a generic interface */
-void list_sliceconstructor(unsigned int *slicesize,unsigned int ndim,value* out){
+void list_sliceconstructor(unsigned int *slicesize, unsigned int ndim, value* out){
     objectlist *list = object_newlist(slicesize[0], NULL);
     list->val.count = slicesize[0];
     *out = MORPHO_OBJECT(list);
@@ -283,6 +273,17 @@ void list_sliceconstructor(unsigned int *slicesize,unsigned int ndim,value* out)
 bool list_slicedim(value * a, unsigned int ndim){
     if (ndim>1||ndim<0) return false;
     return true;
+}
+
+/* Copies data from list a at position indx to list out at position newindx with a generic interface */
+objectarrayerror list_slicecopy(value * a,value * out, unsigned int ndim, unsigned int *indx,unsigned int *newindx){
+    value data;
+    objectlist *outList = MORPHO_GETLIST(*out);
+
+    if (list_getelement(MORPHO_GETLIST(*a),indx[0],&data)){
+        outList->val.data[newindx[0]] = data;
+    } else return ARRAY_OUTOFBOUNDS;
+    return ARRAY_OK;
 }
 
 /** Generate sets/tuples and return as a list of lists */
@@ -333,10 +334,17 @@ value list_constructor(vm *v, int nargs, value *args) {
     value init=MORPHO_NIL;
     objectlist *new=NULL;
 
-    if (nargs==1 && MORPHO_ISRANGE(MORPHO_GETARG(args, 0))) {
-        init = MORPHO_GETARG(args, 0);
-        new = object_newlist(0, NULL);
-    } else new = object_newlist(nargs, args+1);
+    if (nargs==1) {
+        value x = MORPHO_GETARG(args, 0);
+        if (MORPHO_ISRANGE(MORPHO_GETARG(args, 0))) {
+            init = x; // Enumerate will handle this
+            new = object_newlist(0, NULL);
+        } else if (MORPHO_ISTUPLE(MORPHO_GETARG(args, 0))) {
+            new = object_newlist(MORPHO_GETTUPLELENGTH(x), MORPHO_GETTUPLEVALUES(x));
+        }
+    }
+    
+    if (!new) new = object_newlist(nargs, args+1);
 
     if (new) {
         out=MORPHO_OBJECT(new);
@@ -552,12 +560,6 @@ value List_clone(vm *v, int nargs, value *args) {
     return out;
 }
 
-/** Arithmetic add of two lists  */
-value List_add(vm *v, int nargs, value *args) {
-    UNREACHABLE("API for list add has changed.\n");
-    return MORPHO_NIL;
-}
-
 /** Joins two lists together  */
 value List_join(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
@@ -662,7 +664,7 @@ MORPHO_METHOD(MORPHO_COUNT_METHOD, List_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_TUPLES_METHOD, List_tuples, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_SETS_METHOD, List_sets, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, List_clone, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ADD_METHOD, List_add, BUILTIN_FLAGSEMPTY),
+//MORPHO_METHOD(MORPHO_ADD_METHOD, List_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_JOIN_METHOD, List_join, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ROLL_METHOD, List_roll, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_SORT_METHOD, List_sort, BUILTIN_FLAGSEMPTY),
@@ -699,7 +701,4 @@ void list_initialize(void) {
     morpho_defineerror(LIST_SRTFN, ERROR_HALT, LIST_SRTFN_MSG);
     morpho_defineerror(LIST_ARGS, ERROR_HALT, LIST_ARGS_MSG);
     morpho_defineerror(LIST_NUMARGS, ERROR_HALT, LIST_NUMARGS_MSG);
-}
-
-void list_finalize(void) {
 }

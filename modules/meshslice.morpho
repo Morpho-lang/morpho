@@ -1,0 +1,249 @@
+/* Meshslice - Slices a Mesh along a plane */
+
+import meshtools
+import delaunay
+
+var _errSlcEmpty = Error("SlcEmpty", "No slice has yet been taken.")
+
+class Intersection {
+  init(u, x) {
+    self.u = u
+    self.x = x
+  }
+}
+
+class MeshSlicer {
+  init(mesh, ptol=1e-8) {
+    self.mesh = mesh
+    self.newmesh = nil 
+    self.pt = nil
+    self.dirn = nil
+    self.basis = nil 
+    self.ptol = ptol
+    self.pairs = nil
+    self.map = nil
+    self.vert = nil
+    self.mb = nil
+  }
+
+  basis() { // Creates a basis perpendicular to the dirn 
+    var d = []
+    for (x in self.dirn) d.append(abs(x))
+    var order = d.order()
+
+    var e = [self.dirn]
+    for (i in 0..1) {
+      var ei = Matrix(self.dirn.count()) // Build a vector in that direction 
+      ei[order[i]]=1
+      e.append(ei)
+    }
+
+    var f = self.orthogonalize(e) 
+    self.basis = [ f[1], f[2] ]
+  }
+
+  orthogonalize(v) {  
+    var u = []
+    for (i in 0...v.count()) {
+      var ui = v[i]
+      for (uj in u) ui -= uj*uj.inner(v[i])/uj.inner(uj) 
+      u.append(ui/ui.norm())
+    }
+    return u
+  } 
+
+  setpt(pt, dirn) {
+    self.pt = nil
+    self.dirn = nil
+    if (islist(pt)) self.pt = Matrix(pt)
+    if (islist(dirn)) self.dirn = Matrix(dirn)
+    self.basis()
+  }
+
+  testintersection(indices) { // Finds if an element with indices intersects with the plane
+    var minus=false, plus=false
+    for (i in indices) {
+      var x = self.vert.column(i)
+      var t = sign((x - self.pt).inner(self.dirn))
+      if (t>0) plus=true
+      if (t<0) minus=true
+    }
+    return (plus && minus)
+  }
+
+  findintersection(i,j) { // returns the point between i,j that lies on the intersection plane
+    var x0 = self.vert.column(i)
+    var x1 = self.vert.column(j)
+
+    var t0 = (x0 - self.pt).inner(self.dirn)
+    var t1 = (x1 - self.pt).inner(self.dirn)
+    if (t0*t1>0) return nil // check if the points lie on the same side of the plane
+
+    var u = t0/(t0-t1)
+
+    return Intersection(u, (1-u)*x0 + u*x1)
+  }
+
+  vertexpairs(el) { // return all possible pairs of vertices from a list of vertices
+    var out = []
+    var n = el.count()
+    for (i in 0...n-1) for (j in i+1...n) {
+      var a=el[i], b=el[j]
+      if (a<b) out.append([a,b]) else out.append([b,a])
+    }
+    return out
+  }
+
+  checkpair(i,j) {
+    var intersection = self.pairs[i,j]
+    return (!intersection || isobject(intersection))
+  }
+
+  triangulate(newel) { // Triangulates a set of points 
+    var pts = []
+    for (i in newel) {
+      var x = self.mb.vertices[i]-self.pt
+      // Project onto 2D plane
+      var xp = Matrix([x.inner(self.basis[0]), 
+                       x.inner(self.basis[1])])
+      pts.append(xp)
+    }
+
+    // Do the triangulation 
+    var del = Delaunay(pts)
+    del.sscale = 100 // Use a large outer simplex
+    var tri = del.triangulate() 
+
+    var el = []
+
+    for (t in tri) { 
+      var ntri = []
+      for (ix in t) { // Replace with the correct indices
+        ntri.append(newel[ix])
+      }
+      el.append(self.mb.addelement(2, ntri)) // and add the element
+    }
+
+    return el 
+  }
+
+  project(g, el) { // project element of grade g onto next lower grade
+    var pairs = self.vertexpairs(el)
+    var ret // Return the projected element(s)
+
+    // Find the intersections of all the boundaries
+    for (pair in pairs) {
+      var i=pair[0], j=pair[1]
+      if (self.checkpair(i,j)) continue
+
+      var intersection = self.findintersection(i,j)
+      if (intersection) {
+        ret = self.mb.addvertex(intersection.x)
+        intersection.id = ret
+        self.pairs[i,j] = intersection // record the pair
+      }
+    }
+
+    if (g<2) return ret // Skip if a line element
+
+    // Create a new element
+    var newel = [] // First create a list of the vertices on the plane
+    for (pair in pairs) {
+      var intersection = self.pairs[pair[0],pair[1]]
+      if (isobject(intersection)) newel.append(intersection.id)
+    }
+
+    if (newel.count()==g) {
+      ret=self.mb.addelement(newel.count()-1, newel)
+    } else {
+      ret=self.triangulate(newel)
+    }
+
+    return ret
+  }
+
+  select(pt, dirn) { // Returns a selection of all elements intersecting with a plane
+    self.setpt(pt, dirn)
+    var sel = Selection(self.mesh)
+    for (g in 1..self.mesh.maxgrade()) { // Loop over grades
+      var conn = self.mesh.connectivitymatrix(0, g) // Get the connectivity matrix
+      if (!conn) continue
+
+      for (id in 0...self.mesh.count(g)) { // Loop over elements
+        var el = conn.rowindices(id)
+        if (self.testintersection(el)) { // Check if the element intersects
+          sel[g, id]=true
+        }
+      }
+    }
+    return sel
+  }
+
+  slice(pt, dirn) {
+    self.setpt(pt, dirn)
+    self.pairs = Sparse([]) // Used to keep track vertices created from pairs of vertices
+    self.map = List(0..self.mesh.maxgrade())
+    self.vert = self.mesh.vertexmatrix()
+    self.mb = MeshBuilder()
+
+    for (g in 1..self.mesh.maxgrade()) { // Loop over grades
+      var conn = self.mesh.connectivitymatrix(0, g) // Get the connectivity matrix
+      if (!conn) continue
+      var dict = Dictionary() 
+
+      for (id in 0...self.mesh.count(g)) { // Loop over elements
+        var el = conn.rowindices(id)
+        if (self.testintersection(el)) { // Check if the element intersects
+          var nid = self.project(g, el)
+          dict[id] = nid
+        }
+      }
+
+      self.map[g] = dict 
+    }
+
+    self.newmesh = self.mb.build()
+    return self.newmesh
+  }
+
+  slicefield(fld, interpolate=true) {
+    if (!self.newmesh) _errSlcEmpty.throw() 
+
+    // Determine the new shape of the field 
+    var shape = fld.shape() 
+    var newshape = []
+    for (i in 1...shape.count()) newshape.append(shape[i])
+    if (shape[0]>0) newshape[0]=max(shape[0], shape[1])
+
+    var f = Field(self.newmesh, fld[0], grade=newshape) 
+
+    // Interpolate vertex-based fields first 
+    if (interpolate) for (k in 0...shape[0]) { 
+      for (j in 0...self.pairs.dimensions()[1]) {
+        var ri=self.pairs.rowindices(j)
+        for (i in ri) {
+          var fi = fld[0,i,k], fj = fld[0,j,k]
+          var u = self.pairs[i,j].u
+          var id = self.pairs[i,j].id
+          f[0,id,k]=(1-u)*fi + u*fj
+        }
+      }
+    }
+
+    // Then copy information from higher elements
+    for (g in 1..self.mesh.maxgrade()) {
+      var nvar = shape[g]
+      var dict = self.map[g]
+      if (nvar==0) continue
+      if (!isdictionary(dict)) continue
+
+      for (id in dict) { // Copy the contents down into the next grade 
+        var fid = dict[id]
+        if (isint(fid)) for (k in 0...nvar) f[g-1,fid,k]=fld[g,id,k]
+        else for (l in fid) for (k in 0...nvar) f[g-1,l,k]=fld[g,id,k]
+      }
+    }
+
+    return f 
+  }
+}

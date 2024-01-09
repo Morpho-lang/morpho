@@ -59,6 +59,5 @@ objectupvalue *object_newupvalue(value *reg);
 
 /* Initialization/finalization */
 void upvalue_initialize(void);
-void upvalue_finalize(void);
 
 #endif

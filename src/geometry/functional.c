@@ -4062,19 +4062,20 @@ void integral_evaluategradient(vm *v, value q, value *out) {
         if (!mgrad) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return; }
         memcpy(mgrad->elements, grad, sizeof(grad));
         *out = MORPHO_OBJECT(mgrad);
+        // Don't bind these; this will be freed by the integrand caller
     } else {
         if (!MORPHO_ISMATRIX(fld->prototype)) UNREACHABLE("Field type not supported in grad");
         objectmatrix *proto = MORPHO_GETMATRIX(fld->prototype);
         for (int i=0; i<dim; i++) {
             objectmatrix *mgrad=object_newmatrix(proto->nrows, proto->ncols, false); // Should copy prototype dimensions!
             if (!mgrad) goto integral_evaluategradient_cleanup;
-            //memcpy(mgrad->elements, &grad[i*ndof], sizeof(double)*ndof);
             for (int k=0; k<ndof; k++) mgrad->elements[k]=grad[k*dim+i];
             gradx[i]=MORPHO_OBJECT(mgrad);
         }
         objectlist *glst = object_newlist(dim, gradx);
         if (!glst) goto integral_evaluategradient_cleanup;
         *out = MORPHO_OBJECT(glst);
+        // Don't bind these; they will be freed by the integrand caller
     }
     
     // Store for further use
@@ -4394,7 +4395,13 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     if (success) *out *= elref.elementsize;
 
     integral_freetlvars(v);
-    for (int i=0; i<iref.nfields; i++) morpho_freeobject(qgrad[i]);
+    for (int i=0; i<iref.nfields; i++) {
+        if (MORPHO_ISLIST(qgrad[i])) {
+            objectlist *l = MORPHO_GETLIST(qgrad[i]);
+            for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
+        }
+        morpho_freeobject(qgrad[i]);
+    }
     
     return success;
 }
@@ -4481,7 +4488,13 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
     if (success) *out *=elref.elementsize;
 
     integral_freetlvars(v);
-    for (int i=0; i<iref.nfields; i++) morpho_freeobject(qgrad[i]);
+    for (int i=0; i<iref.nfields; i++) {
+        if (MORPHO_ISLIST(qgrad[i])) {
+            objectlist *l = MORPHO_GETLIST(qgrad[i]);
+            for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
+        }
+        morpho_freeobject(qgrad[i]);
+    }
     
     return success;
 }

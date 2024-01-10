@@ -14,7 +14,8 @@ var r
 
 fn integrand(x, n) {
     var g = grad(n) 
-    r = g.clone() 
+    r = []
+    for (u in g) r.append(u.clone())
     return 0
 }
 

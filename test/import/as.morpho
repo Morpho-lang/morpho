@@ -1,5 +1,9 @@
 // Import modules into a namespace
-import color as col 
 
-print col.Red
+import color, graphics, plot
+import histogram as hist 
+import color as col for Red, Green, Blue
+
+//import color as col for Red, Green, Blue
+//print col.Red
 // expect: Red

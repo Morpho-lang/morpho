@@ -1154,6 +1154,15 @@ bool compiler_checkoutstandingforwardreference(compiler *c) {
 }
 
 /* ------------------------------------------
+ * Namespaces
+ * ------------------------------------------- */
+
+bool compiler_addnamespace(compiler *c, syntaxtreenode *node, value symbol) {
+    morpho_printvalue(NULL, symbol);
+    printf("\n");
+}
+
+/* ------------------------------------------
  * Compiler node implementation functions
  * ------------------------------------------- */
 
@@ -1240,6 +1249,7 @@ compilenoderule noderules[] = {
     { compiler_property      },      // NODE_DOT
 
     { compiler_range         },      // NODE_RANGE
+    { compiler_range         },      // NODE_EXCLUSIVERANGE
 
     NODE_UNDEFINED,                  // NODE_OPERATOR
 
@@ -1272,6 +1282,7 @@ compilenoderule noderules[] = {
     { compiler_index         },      // NODE_INDEX
     { compiler_list          },      // NODE_LIST
     { compiler_import        },      // NODE_IMPORT
+    NODE_UNDEFINED,                  // NODE_AS
     { compiler_breakpoint    }       // NODE_BREAKPOINT
 };
 
@@ -3306,8 +3317,13 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                 } else UNREACHABLE("Import encountered non symbolic in for clause.");
                 qual=compiler_getnode(c, qual->left);
             }
-        } else {
+        } else if (qual->type==NODE_AS) {
+            compiler_addnamespace(c, qual, qual->content);
+            
+            
             UNREACHABLE("AS not implemented.");
+        } else {
+            UNREACHABLE("Unexpected node type.");
         }
     }
 

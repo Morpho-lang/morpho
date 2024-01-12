@@ -3307,16 +3307,12 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
 
     if (compiler_checkerror(c)) return CODEINFO_EMPTY;
 
-    if (qual) {
+    while (qual) {
         if (qual->type==NODE_FOR) {
-            /* Convert list of symbols following for into a dictionary */
-            while (qual!=NULL) {
-                syntaxtreenode *l = compiler_getnode(c, qual->right);
-                if (l && l->type==NODE_SYMBOL) {
-                    dictionary_insert(&fordict, l->content, MORPHO_NIL);
-                } else UNREACHABLE("Import encountered non symbolic in for clause.");
-                qual=compiler_getnode(c, qual->left);
-            }
+            syntaxtreenode *l = compiler_getnode(c, qual->left);
+            if (l && l->type==NODE_SYMBOL) {
+                dictionary_insert(&fordict, l->content, MORPHO_NIL);
+            } else UNREACHABLE("Import encountered non symbolic in for clause--should have been caught in parser.");
         } else if (qual->type==NODE_AS) {
             compiler_addnamespace(c, qual, qual->content);
             
@@ -3325,6 +3321,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
         } else {
             UNREACHABLE("Unexpected node type.");
         }
+        qual=compiler_getnode(c, qual->right);
     }
 
     if (module) {

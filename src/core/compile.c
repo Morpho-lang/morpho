@@ -1159,7 +1159,8 @@ bool compiler_checkoutstandingforwardreference(compiler *c) {
 
 bool compiler_addnamespace(compiler *c, syntaxtreenode *node, value symbol) {
     morpho_printvalue(NULL, symbol);
-    printf("\n");
+    UNREACHABLE("Namespace incomplete.");
+    return false;
 }
 
 /* ------------------------------------------

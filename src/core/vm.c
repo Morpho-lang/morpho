@@ -2042,5 +2042,5 @@ void morpho_finalize(void) {
     parse_finalize();
     
     object_finalize(); //
-    value_finalize();  // } Must be first
+    value_finalize();  // } Must be last
 }

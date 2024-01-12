@@ -1157,10 +1157,48 @@ bool compiler_checkoutstandingforwardreference(compiler *c) {
  * Namespaces
  * ------------------------------------------- */
 
-bool compiler_addnamespace(compiler *c, syntaxtreenode *node, value symbol) {
-    morpho_printvalue(NULL, symbol);
-    UNREACHABLE("Namespace incomplete.");
+/** Adds a namespace to the compiler */
+namespc *compiler_addnamespace(compiler *c, value symbol) {
+    namespc *new=MORPHO_MALLOC(sizeof(namespc));
+    
+    if (new) {
+        new->label=symbol;
+        dictionary_init(&new->symbols);
+        
+        new->next=c->namespaces; // Link namespace to compiler
+        c->namespaces=new;
+    }
+    
+    return new;
+}
+
+/** Attempts to locate a symbol given a namespace label */
+bool compiler_findsymbolfromnamespace(compiler *c, value label, value symbol, value *out) {
+    namespc *spc;
+    
+    // Find the namespace
+    for (spc=c->namespaces; spc!=NULL; spc=spc->next) {
+        if (MORPHO_ISEQUAL(spc->label, label)) break;
+    }
+    
+    // Now try to find the symbol
+    if (spc) return dictionary_get(&spc->symbols, symbol, out);
+    
     return false;
+}
+
+/** Clears the namespace list, freeing attached data */
+void compiler_clearnamespacelist(compiler *c) {
+    namespc *next=NULL;
+    
+    for (namespc *spc=c->namespaces; spc!=NULL; spc=next) {
+        next=spc->next;
+        
+        dictionary_clear(&spc->symbols);
+        MORPHO_FREE(spc);
+    }
+    
+    c->namespaces=NULL;
 }
 
 /* ------------------------------------------
@@ -3259,18 +3297,18 @@ void compiler_stripend(compiler *c) {
  * @param[in] src source dictionary
  * @param[in] dest destination dictionary
  * @param[in] compare (optional) a dictionary to check the contents against; globals are only copied if they also appear in compare */
-void compiler_copyglobals(compiler *src, compiler *dest, dictionary *compare) {
-    for (unsigned int i=0; i<src->globals.capacity; i++) {
-        if (!MORPHO_ISNIL(src->globals.contents[i].key)) {
-            if (compare && !dictionary_get(compare, src->globals.contents[i].key, NULL)) continue;
+void compiler_copysymbols(dictionary *src, dictionary *dest, dictionary *compare) {
+    for (unsigned int i=0; i<src->capacity; i++) {
+        if (!MORPHO_ISNIL(src->contents[i].key)) {
+            if (compare && !dictionary_get(compare, src->contents[i].key, NULL)) continue;
 
-            value key = src->globals.contents[i].key;
+            value key = src->contents[i].key;
 
-            if (!dictionary_get(&dest->globals, key, NULL)) {
-                key=object_clonestring(key);
+            if (!dictionary_get(dest, key, NULL)) {
+                key=object_clonestring(key); // TODO: I think there's a memory leak here
             }
 
-            dictionary_insert(&dest->globals, key, src->globals.contents[i].val);
+            dictionary_insert(dest, key, src->contents[i].val);
         }
     }
 }
@@ -3299,6 +3337,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
     syntaxtreenode *module = compiler_getnode(c, node->left);
     syntaxtreenode *qual = compiler_getnode(c, node->right);
     dictionary fordict;
+    namespc *nmspace=NULL;
     char *fname=NULL;
     unsigned int start=0, end=0;
     FILE *f = NULL;
@@ -3315,10 +3354,8 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                 dictionary_insert(&fordict, l->content, MORPHO_NIL);
             } else UNREACHABLE("Import encountered non symbolic in for clause--should have been caught in parser.");
         } else if (qual->type==NODE_AS) {
-            compiler_addnamespace(c, qual, qual->content);
-            
-            
-            UNREACHABLE("AS not implemented.");
+            nmspace=compiler_addnamespace(c, qual->content);
+            if (!nmspace) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return CODEINFO_EMPTY; }
         } else {
             UNREACHABLE("Unexpected node type.");
         }
@@ -3376,7 +3413,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
 
             if (ERROR_SUCCEEDED(c->err)) {
                 compiler_stripend(c);
-                compiler_copyglobals(&cc, c, (fordict.count>0 ? &fordict : NULL));
+                compiler_copysymbols(&cc.globals, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
             } else {
                 c->err.module = MORPHO_GETCSTRING(modname);
             }
@@ -3435,6 +3472,7 @@ void compiler_init(const char *source, program *out, compiler *c) {
     c->prevfunction = NULL;
     c->currentclass = NULL;
     c->currentmethod = NULL;
+    c->namespaces = NULL; 
     c->currentmodule = MORPHO_NIL;
     c->parent = NULL;
     c->line = 1; // Count from 1
@@ -3447,6 +3485,7 @@ void compiler_clear(compiler *c) {
     parse_clear(&c->parse);
     compiler_fstackclear(c);
     syntaxtree_clear(&c->tree);
+    compiler_clearnamespacelist(c);
     dictionary_freecontents(&c->globals, true, false);
     dictionary_clear(&c->globals);
     dictionary_freecontents(&c->modules, true, false);

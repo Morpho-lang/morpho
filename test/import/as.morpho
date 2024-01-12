@@ -1,15 +1,6 @@
 // Import modules into a namespace
 
-//import color, graphics, plot
-//import histogram as hist 
-import color for Red, Green, Blue
-//import color as boo for Red, histogram as hist // If you use for it must be on a separate line
-// expect error 'ImprtMltplAs'
+import color as col
 
-import color for "Oops"
-
-print Red
-
-//import color as col for Red, Green, Blue
-//print col.Red
-// expect: Red
+print col.Red
+// expect: <Red>

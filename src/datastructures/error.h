@@ -161,6 +161,9 @@ void morpho_unreachable(const char *explanation);
 #define VM_INVALIDARGS                    "InvldArgs"
 #define VM_INVALIDARGS_MSG                "Expected %u arguments but got %u."
 
+#define VM_UNKNWNOPTARG                   "UnkwnOptArg"
+#define VM_UNKNWNOPTARG_MSG               "Unknown optional argument '%s'."
+
 #define VM_INVALIDARGSDETAIL              "InvldArgsBltn"
 #define VM_INVALIDARGSDETAIL_MSG          "Function %s expects %u arguments of type %s."
 

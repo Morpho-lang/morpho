@@ -1,0 +1,8 @@
+// Unknown optional argument
+
+fn func(x, foo=nil) {
+  return foo
+}
+
+func(1, boo="hoo")
+// expect error 'UnkwnOptArg'

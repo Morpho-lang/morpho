@@ -3317,14 +3317,15 @@ void compiler_stripend(compiler *c) {
  * @param[in] compare (optional) a dictionary to check the contents against; globals are only copied if they also appear in compare */
 void compiler_copysymbols(dictionary *src, dictionary *dest, dictionary *compare) {
     for (unsigned int i=0; i<src->capacity; i++) {
-        if (!MORPHO_ISNIL(src->contents[i].key)) {
-            if (compare && !dictionary_get(compare, src->contents[i].key, NULL)) continue;
-            // TODO: Should also enforce symbols beginning with _ aren't exported.
-
-            value key = src->contents[i].key;
+        value key = src->contents[i].key;
+        if (!MORPHO_ISNIL(key)) {
+            if (compare && !dictionary_get(compare, key, NULL)) continue;
+            
+            if (MORPHO_ISSTRING(key) &&
+                MORPHO_GETCSTRING(key)[0]=='_') continue;
             
             if (!dictionary_get(dest, key, NULL)) {
-                key=object_clonestring(key); // TODO: I think there's a memory leak here
+                key=object_clonestring(key);
             }
 
             dictionary_insert(dest, key, src->contents[i].val);

@@ -3,4 +3,6 @@
 import color as col
 
 print col.Red
-// expect: <Red>
+// expect: <Color>
+
+//print Red

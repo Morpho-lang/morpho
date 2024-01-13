@@ -1173,7 +1173,7 @@ namespc *compiler_addnamespace(compiler *c, value symbol) {
 }
 
 /** Attempts to locate a symbol given a namespace label */
-bool compiler_findsymbolfromnamespace(compiler *c, value label, value symbol, value *out) {
+bool compiler_findsymbolwithnamespace(compiler *c, value label, value symbol, value *out) {
     namespc *spc;
     
     // Find the namespace
@@ -1213,6 +1213,7 @@ static codeinfo compiler_negate(compiler *c, syntaxtreenode *node, registerindx 
 static codeinfo compiler_not(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerindx reqout);
+static codeinfo compiler_dot(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_grouping(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_sequence(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_interpolation(compiler *c, syntaxtreenode *node, registerindx out);
@@ -1285,7 +1286,7 @@ compilenoderule noderules[] = {
     { compiler_logical       },      // NODE_AND
     { compiler_logical       },      // NODE_OR
 
-    { compiler_property      },      // NODE_DOT
+    { compiler_dot           },      // NODE_DOT
 
     { compiler_range         },      // NODE_RANGE
     { compiler_range         },      // NODE_EXCLUSIVERANGE
@@ -3191,6 +3192,23 @@ static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerind
     return CODEINFO(REGISTER, out, ninstructions);
 }
 
+/** Compiles the dot operator, which may be property lookup or a method call */
+static codeinfo compiler_dot(compiler *c, syntaxtreenode *node, registerindx reqout) {
+    syntaxtreenode *left = compiler_getnode(c, node->left),
+                   *right = compiler_getnode(c, node->right);
+    value globalindx=MORPHO_NIL;
+    
+    if (left->type==NODE_SYMBOL && 
+        right->type==NODE_SYMBOL &&
+        compiler_findsymbolwithnamespace(c, left->content, right->content, &globalindx)) {
+        
+        if (!MORPHO_ISINTEGER(globalindx)) UNREACHABLE("Global dictionary contains noninteger value");
+        return CODEINFO(GLOBAL, MORPHO_GETINTEGERVALUE(globalindx), 0);
+    }
+    
+    return compiler_property(c, node, reqout);
+}
+
 /* Moves the result of a calculation to an object property */
 static codeinfo compiler_movetoproperty(compiler *c, syntaxtreenode *node, codeinfo in, syntaxtreenode *obj) {
     codeinfo prop = CODEINFO_EMPTY;
@@ -3293,7 +3311,7 @@ void compiler_stripend(compiler *c) {
     }
 }
 
-/** Copies the globals across from one compiler to another.
+/** Copies the globals across from one compiler to another. The globals dictionary maps keys to global numbers
  * @param[in] src source dictionary
  * @param[in] dest destination dictionary
  * @param[in] compare (optional) a dictionary to check the contents against; globals are only copied if they also appear in compare */
@@ -3301,9 +3319,10 @@ void compiler_copysymbols(dictionary *src, dictionary *dest, dictionary *compare
     for (unsigned int i=0; i<src->capacity; i++) {
         if (!MORPHO_ISNIL(src->contents[i].key)) {
             if (compare && !dictionary_get(compare, src->contents[i].key, NULL)) continue;
+            // TODO: Should also enforce symbols beginning with _ aren't exported.
 
             value key = src->contents[i].key;
-
+            
             if (!dictionary_get(dest, key, NULL)) {
                 key=object_clonestring(key); // TODO: I think there's a memory leak here
             }
@@ -3352,10 +3371,14 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             syntaxtreenode *l = compiler_getnode(c, qual->left);
             if (l && l->type==NODE_SYMBOL) {
                 dictionary_insert(&fordict, l->content, MORPHO_NIL);
-            } else UNREACHABLE("Import encountered non symbolic in for clause--should have been caught in parser.");
+            } else UNREACHABLE("Incorrect syntax tree structure in FOR node.");
         } else if (qual->type==NODE_AS) {
-            nmspace=compiler_addnamespace(c, qual->content);
-            if (!nmspace) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return CODEINFO_EMPTY; }
+            syntaxtreenode *l = compiler_getnode(c, qual->left);
+            if (l && l->type==NODE_SYMBOL) {
+                nmspace=compiler_addnamespace(c, l->content);
+                
+                if (!nmspace) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return CODEINFO_EMPTY; }
+            } else UNREACHABLE("Incorrect syntax tree structure in AS node.");
         } else {
             UNREACHABLE("Unexpected node type.");
         }

@@ -3400,9 +3400,15 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
         compiler *root = c;
         while (root->parent!=NULL) root=root->parent;
 
+        // Check if the module was previously imported
         if (fname) {
             objectstring chkmodname = MORPHO_STATICSTRING(fname);
-            if (dictionary_get(&root->modules, MORPHO_OBJECT(&chkmodname), NULL)) {
+            value symboldict=MORPHO_NIL;
+            
+            if (dictionary_get(&root->modules, MORPHO_OBJECT(&chkmodname), &symboldict)) {
+                // If so, copy its symbols into the compiler
+                compiler_copysymbols(&(MORPHO_GETDICTIONARY(symboldict)->dict), (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
+                
                 goto compiler_import_cleanup;
             }
         }
@@ -3412,7 +3418,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
 
         if (f) {
             value modname=object_stringfromcstring(fname, strlen(fname));
-            dictionary_insert(&root->modules, modname, MORPHO_NIL);
+            value symboldict=MORPHO_NIL;
 
             /* Read in source */
             varray_char src;
@@ -3437,17 +3443,25 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             if (ERROR_SUCCEEDED(c->err)) {
                 compiler_stripend(c);
                 compiler_copysymbols(&cc.globals, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
-            } else {
+                
+                objectdictionary *dict = object_newdictionary(); // Preserve all symbols for further imports
+                if (dict) {
+                    compiler_copysymbols(&cc.globals, &dict->dict, NULL);
+                    symboldict = MORPHO_OBJECT(dict);
+                }
+                
+            } else { // TODO: This is wrong!
                 c->err.module = MORPHO_GETCSTRING(modname);
             }
             
             debugannotation_setmodule(&c->out->annotations, compiler_getmodule(c));
             
-            compiler_clear(&cc);
-
             end=c->out->code.count;
-
+            
+            compiler_clear(&cc);
             varray_charclear(&src);
+            
+            dictionary_insert(&root->modules, modname, symboldict);
         } else compiler_error(c, module, COMPILE_FILENOTFOUND, fname);
     }
 
@@ -3511,7 +3525,7 @@ void compiler_clear(compiler *c) {
     compiler_clearnamespacelist(c);
     dictionary_freecontents(&c->globals, true, false);
     dictionary_clear(&c->globals);
-    dictionary_freecontents(&c->modules, true, false);
+    dictionary_freecontents(&c->modules, true, true);
     dictionary_clear(&c->modules);
 }
 

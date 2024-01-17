@@ -2002,9 +2002,6 @@ void morpho_finalize(void) {
         morpho_finalizefn fn=(morpho_finalizefn) MORPHO_GETOBJECT(_finalizefns.data[i]);
         fn();
     }
-    
-    object_finalize(); //
-    value_finalize();  // } Must be last
   
     varray_valueclear(&_finalizefns);
 

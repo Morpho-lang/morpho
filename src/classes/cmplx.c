@@ -15,7 +15,7 @@
 
 objecttype objectcomplextype;
 
-/** Function object definitions */
+/** Complex object definitions */
 size_t objectcomplex_sizefn(object *obj) {
     return sizeof(objectcomplextype)+sizeof(double) * 2;
 }
@@ -24,11 +24,19 @@ void objectcomplex_printfn(object *obj, void *v) {
     complex_print(v, (objectcomplex *) obj);
 }
 
+int objectcomplex_cmpfn(object *a, object *b) {
+    objectcomplex *acomp = (objectcomplex *) a;
+    objectcomplex *bcomp = (objectcomplex *) b;
+    return (complex_isequal(acomp, bcomp)? MORPHO_EQUAL: MORPHO_NOTEQUAL);
+}
+
 objecttypedefn objectcomplexdefn = {
     .printfn=objectcomplex_printfn,
     .markfn=NULL,
     .freefn=NULL,
-    .sizefn=objectcomplex_sizefn
+    .sizefn=objectcomplex_sizefn,
+    .hashfn=NULL,
+    .cmpfn=objectcomplex_cmpfn
 };
 
 /** Creates a complex object */
@@ -89,8 +97,18 @@ void complex_getimag(objectcomplex *c, double *value) {
 }
 
 /** @brief checks equality on two complex numbers */
-bool complex_equality(objectcomplex *a, objectcomplex *b){
+bool complex_isequal(objectcomplex *a, objectcomplex *b) {
     return (a->Z == b->Z);
+}
+
+/** @brief checks equality between a complex number and a value */
+bool complex_isequaltonumber(objectcomplex *a, value b) {
+    if (MORPHO_ISNUMBER(b)){
+        double val;
+        morpho_valuetofloat(b,&val);
+        return (a->Z==val);
+    }
+    return false;
 }
 
 /** Prints a complex number */
@@ -686,7 +704,4 @@ void complex_initialize(void) {
     morpho_defineerror(COMPLEX_CONSTRUCTOR, ERROR_HALT, COMPLEX_CONSTRUCTOR_MSG);
     morpho_defineerror(COMPLEX_ARITHARGS, ERROR_HALT, COMPLEX_ARITHARGS_MSG);
     morpho_defineerror(COMPLEX_INVLDNARG, ERROR_HALT, COMPLEX_INVLDNARG_MSG);
-}
-
-void complex_finalize(void) {
 }

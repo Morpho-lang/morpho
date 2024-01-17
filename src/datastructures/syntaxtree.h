@@ -130,6 +130,7 @@ enum {
     NODE_CALL,
     NODE_INDEX,
     NODE_LIST,
+    NODE_TUPLE,
     NODE_IMPORT,
     NODE_AS,
     NODE_BREAKPOINT

@@ -33,7 +33,9 @@ objecttypedefn objectmatrixdefn = {
     .printfn=objectmatrix_printfn,
     .markfn=NULL,
     .freefn=NULL,
-    .sizefn=objectmatrix_sizefn
+    .sizefn=objectmatrix_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /** Creates a matrix object */

@@ -612,11 +612,40 @@ parse_interpolation_cleanup:
     return false;
 }
 
+/** Helper function to parse a tuple
+ @param[in] p - current parser
+ @param[in] start - token for starting '(' of the tuple
+ @param[in] first - syntax tree index of first expression, already parsed
+ @param[out] out - syntax tree entry of the output tuple node
+ @returns true on success */
+bool parse_tuple(parser *p, token *start, syntaxtreeindx first, void *out) {
+    syntaxtreeindx prev=first, current=SYNTAXTREE_UNCONNECTED;
+    // First entry was already parsed by calling function
+    PARSE_CHECK(parse_addnode(p, NODE_ARGLIST, MORPHO_NIL, &p->previous, prev, current, &current));
+    
+    if (!parse_checktoken(p, TOKEN_RIGHTPAREN)) {
+        do {
+            PARSE_CHECK(parse_pseudoexpression(p, &current));
+            PARSE_CHECK(parse_addnode(p, NODE_ARGLIST, MORPHO_NIL, &p->previous, prev, current, &current));
+            prev = current;
+        } while (parse_checktokenadvance(p, TOKEN_COMMA));
+    }
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_MSSNGSQBRC));
+
+    return parse_addnode(p, NODE_TUPLE, MORPHO_NIL, start, SYNTAXTREE_UNCONNECTED, current, out);
+}
+
 /** Parses an expression in parentheses */
 bool parse_grouping(parser *p, void *out) {
+    token start = p->previous;
     syntaxtreeindx new;
     PARSE_CHECK(parse_expression(p, &new));
+    
+    // Detect a tuple from a comma after the first expression
+    if (parse_checktokenadvance(p, TOKEN_COMMA)) return parse_tuple(p, &start, new, out);
+    
     PARSE_CHECK(parse_addnode(p, NODE_GROUPING, MORPHO_NIL, &p->previous, new, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out));
+    
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_MISSINGPARENTHESIS));
     return true;
 }
@@ -792,11 +821,9 @@ bool parse_index(parser *p, void *out) {
 
 /** Parse list  */
 bool parse_list(parser *p, void *out) {
-    unsigned int nindx;
     token start = p->previous;
-    
     syntaxtreeindx right;
-    PARSE_CHECK(parse_arglist(p, TOKEN_RIGHTSQBRACKET, &nindx, &right));
+    PARSE_CHECK(parse_arglist(p, TOKEN_RIGHTSQBRACKET, NULL, &right));
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTSQBRACKET, PARSE_MSSNGSQBRC));
 
     return parse_addnode(p, NODE_LIST, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, right, out);
@@ -1734,8 +1761,4 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_RCRSNLMT, ERROR_PARSE, PARSE_RCRSNLMT_MSG);
     morpho_defineerror(PARSE_UNESCPDCTRL, ERROR_PARSE, PARSE_UNESCPDCTRL_MSG);
     morpho_defineerror(PARSE_INVLDUNCD, ERROR_PARSE, PARSE_INVLDUNCD_MSG);
-}
-
-void parse_finalize(void) {
-    
 }

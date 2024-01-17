@@ -114,6 +114,7 @@ static char * nodedisplay[] = {
     "call",    // NODE_CALL
     "index",   // NODE_INDEX
     "list",    // NODE_LIST
+    "tuple",   // NODE_TUPLE
     "import",  // NODE_IMPORT
     "as",      // NODE_AS
     "@",       // NODE_BREAKPOINT

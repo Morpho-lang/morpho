@@ -58,13 +58,30 @@ size_t objectdokkey_sizefn(object *obj) {
     return sizeof(objectdokkey);
 }
 
+/** Fibonacci hash function for pairs of integers. */
+hash objectdokkey_hashfn(object *obj) {
+    objectdokkey *key = (objectdokkey *) obj;
+    uint64_t i1 = MORPHO_GETDOKKEYROW(key);
+    uint64_t i2 = MORPHO_GETDOKKEYCOL(key);
+    return ((i1<<32 | i2) * 11400714819323198485llu)>> 32;
+}
+
+int objectdokkey_cmpfn(object *a, object *b) {
+    objectdokkey *akey = (objectdokkey *) a;
+    objectdokkey *bkey = (objectdokkey *) b;
+
+    return ((MORPHO_GETDOKKEYCOL(akey)==MORPHO_GETDOKKEYCOL(bkey) &&
+             MORPHO_GETDOKKEYROW(akey)==MORPHO_GETDOKKEYROW(bkey)) ? MORPHO_EQUAL : MORPHO_NOTEQUAL);
+}
+
 objecttypedefn objectdokkeydefn = {
     .printfn=objectdokkey_printfn,
     .markfn=NULL,
     .freefn=NULL,
-    .sizefn=objectdokkey_sizefn
+    .sizefn=objectdokkey_sizefn,
+    .hashfn=objectdokkey_hashfn,
+    .cmpfn=objectdokkey_cmpfn
 };
-
 
 DEFINE_VARRAY(dokkey, objectdokkey);
 
@@ -613,7 +630,9 @@ objecttypedefn objectsparsedefn = {
     .printfn=objectsparse_printfn,
     .markfn=objectsparse_markfn,
     .freefn=objectsparse_freefn,
-    .sizefn=objectsparse_sizefn
+    .sizefn=objectsparse_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /* ***************************************

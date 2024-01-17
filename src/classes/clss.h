@@ -52,8 +52,6 @@ typedef struct sobjectclass {
 objectclass *object_newclass(value name);
 objectclass *morpho_lookupclass(value obj);
 
-/* Initialization/finalization */
 void class_initialize(void);
-void class_finalize(void);
 
 #endif

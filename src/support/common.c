@@ -1,7 +1,7 @@
 /** @file common.c
  *  @author T J Atherton
  *
- *  @brief Common types, data structures and functions for the Morpho VM
+ *  @brief Utility functions for the Morpho VM
  */
 
 #include <stdio.h>
@@ -13,93 +13,12 @@
 #include <sys/stat.h>
 
 #include "common.h"
-#include "sparse.h"
 #include "resources.h"
 
 /* **********************************************************************
-* Utility functions
+* Printing
 * ********************************************************************** */
-
-/** @brief Compares two values
- * @param a value to compare
- * @param b value to compare
- * @returns 0 if a and b are equal, a positive number if b\>a and a negative number if a\<b
- * @warning does not work if a and b are not the same type (use MORPHO_CHECKCMPTYPE to promote types if ordering is important) */
-#define EQUAL 0
-#define NOTEQUAL 1
-#define BIGGER 1
-#define SMALLER -1
-int morpho_comparevalue (value a, value b) {
-
-    // if comparing a number to complex cast the number to complex
-    // we don't need to bind here beacues the value never needs to exist beyond this scope
-    // valgrin/check with tim to be sure
-    if (MORPHO_ISCOMPLEX(a) && MORPHO_ISNUMBER(b)){
-        // cast b to complex
-        double val;
-        morpho_valuetofloat(b,&val);
-        return (MORPHO_GETCOMPLEX(a)->Z==val ? EQUAL: NOTEQUAL);
-    }
-    if (MORPHO_ISCOMPLEX(b) && MORPHO_ISNUMBER(a)){
-        // cast b to complex
-        double val;
-        morpho_valuetofloat(a,&val);
-        return (MORPHO_GETCOMPLEX(b)->Z==val ? EQUAL: NOTEQUAL);
-    }
-
-
-    if (!morpho_ofsametype(a, b)) return NOTEQUAL;
-
-    if (MORPHO_ISFLOAT(a)) {
-        double x = MORPHO_GETFLOATVALUE(b) - MORPHO_GETFLOATVALUE(a);
-        if (x>DBL_EPSILON) return BIGGER; /* Fast way out for clear cut cases */
-        if (x<-DBL_EPSILON) return SMALLER;
-        /* Assumes absolute tolerance is the same as relative tolerance. */
-        if (fabs(x)<=DBL_EPSILON*fmax(1.0, fmax(MORPHO_GETFLOATVALUE(a), MORPHO_GETFLOATVALUE(b)))) return EQUAL;
-        return (x>0 ? BIGGER : SMALLER);
-    } else {
-        switch (MORPHO_GETTYPE(a)) {
-            case VALUE_NIL:
-                return EQUAL; /** Nones are always the same */
-            case VALUE_INTEGER:
-                return (MORPHO_GETINTEGERVALUE(b) - MORPHO_GETINTEGERVALUE(a));
-            case VALUE_BOOL:
-                return (MORPHO_GETBOOLVALUE(b) != MORPHO_GETBOOLVALUE(a));
-            case VALUE_OBJECT:
-                {
-                    if (MORPHO_GETOBJECTTYPE(a)!=MORPHO_GETOBJECTTYPE(b)) {
-                        return 1; /* Objects of different type are always different */
-                    } else if (MORPHO_ISSTRING(a)) {
-                        objectstring *astring = MORPHO_GETSTRING(a);
-                        objectstring *bstring = MORPHO_GETSTRING(b);
-                        size_t len = (astring->length > bstring->length ? astring->length : bstring->length);
-
-                        return -strncmp(astring->string, bstring->string, len);
-                    } else if (MORPHO_ISDOKKEY(a) && MORPHO_ISDOKKEY(b)) {
-                        objectdokkey *akey = MORPHO_GETDOKKEY(a);
-                        objectdokkey *bkey = MORPHO_GETDOKKEY(b);
-
-                        return ((MORPHO_GETDOKKEYCOL(akey)==MORPHO_GETDOKKEYCOL(bkey) &&
-                                 MORPHO_GETDOKKEYROW(akey)==MORPHO_GETDOKKEYROW(bkey)) ? EQUAL : NOTEQUAL);
-                    } else if (MORPHO_ISCOMPLEX(a) && MORPHO_ISCOMPLEX(b)) {
-                        objectcomplex *acomp = MORPHO_GETCOMPLEX(a);
-                        objectcomplex *bcomp = MORPHO_GETCOMPLEX(b);
-                        return (complex_equality(acomp,bcomp)? EQUAL: NOTEQUAL);
-                    } else {
-                        return (MORPHO_GETOBJECT(a) == MORPHO_GETOBJECT(b)? EQUAL: NOTEQUAL);
-                    }
-                }
-            default:
-                UNREACHABLE("unhandled value type for comparison [Check morpho_comparevalue]");
-        }
-    }
-    return NOTEQUAL;
-}
-#undef EQUAL
-#undef NOTEQUAL
-#undef BIGGER
-#undef SMALLER
-
+ 
 /** @brief Prints a value
  * @param v The value to print */
 void morpho_printvalue(vm *v, value val) {
@@ -109,10 +28,10 @@ void morpho_printvalue(vm *v, value val) {
     } else {
         switch (MORPHO_GETTYPE(val)) {
             case VALUE_NIL:
-                morpho_printf(v, COMMON_NILSTRING);
+                morpho_printf(v, MORPHO_NILSTRING);
                 return;
             case VALUE_BOOL:
-                morpho_printf(v, "%s", (MORPHO_GETBOOLVALUE(val) ? COMMON_TRUESTRING : COMMON_FALSESTRING));
+                morpho_printf(v, "%s", (MORPHO_GETBOOLVALUE(val) ? MORPHO_TRUESTRING : MORPHO_FALSESTRING));
                 return;
             case VALUE_INTEGER:
                 morpho_printf(v, "%i", MORPHO_GETINTEGERVALUE(val));
@@ -170,10 +89,10 @@ void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
         nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%i", MORPHO_GETINTEGERVALUE(val));
         varray_charadd(buffer, tmp, nv);
     } else if (MORPHO_ISBOOL(val)) {
-        nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%s", (MORPHO_ISTRUE(val) ? COMMON_TRUESTRING : COMMON_FALSESTRING));
+        nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%s", (MORPHO_ISTRUE(val) ? MORPHO_TRUESTRING : MORPHO_FALSESTRING));
         varray_charadd(buffer, tmp, nv);
     } else if (MORPHO_ISNIL(val)) {
-        nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%s", COMMON_NILSTRING);
+        nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%s", MORPHO_NILSTRING);
         varray_charadd(buffer, tmp, nv);
     }
 }
@@ -196,14 +115,18 @@ value morpho_concatenate(vm *v, int nval, value *val) {
 
 /** @brief   Duplicates a string.
  *  @param   string String to duplicate
- *  @warning Caller should call MALLOC_FREE on the allocated string */
+ *  @warning Caller must call MALLOC_FREE on the allocated string */
 char *morpho_strdup(char *string) {
     size_t len = strlen(string) + 1;
-    char* output = (char*) malloc ((len + 1) * sizeof(char));
+    char* output = (char *) MORPHO_MALLOC((len + 1) * sizeof(char));
     if (output) memcpy(output, string, len);
 
     return output;
 }
+
+/* **********************************************************************
+* UTF8 support
+* ********************************************************************** */
 
 /** @brief Returns the number of bytes in the next character of a given utf8 string
     @returns number of bytes */
@@ -261,6 +184,10 @@ int morpho_encodeutf8(int c, char *out) {
     return 0;
 }
 
+/* **********************************************************************
+* Other utility functions
+* ********************************************************************** */
+
 /** @brief Computes the nearest power of 2 above an integer
  * @param   n An integer
  * @returns Nearest power of 2 above n
@@ -283,18 +210,6 @@ bool morpho_isdirectory(const char *path) {
    if (stat(path, &statbuf) != 0)
        return 0;
    return (bool) S_ISDIR(statbuf.st_mode);
-}
-
-/** Determine weather the rest of a string is white space */
-bool white_space_remainder(const char *s, int start){
-	s += start;
-	while (*s){
-		if (!isspace(*s)){
-			return false;
-		}
-		s++;
-	}
-	return true;
 }
 
 /** Count the number of fixed parameters in a callable object

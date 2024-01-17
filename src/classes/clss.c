@@ -40,6 +40,8 @@ objecttypedefn objectclassdefn = {
     .markfn=objectclass_markfn,
     .freefn=objectclass_freefn,
     .sizefn=objectclass_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 objectclass *object_newclass(value name) {
@@ -80,7 +82,4 @@ void class_initialize(void) {
     
     // Class error messages
     morpho_defineerror(CLASS_INVK, ERROR_HALT, CLASS_INVK_MSG);
-}
-
-void class_finalize(void) {
 }

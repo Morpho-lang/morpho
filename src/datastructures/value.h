@@ -28,7 +28,7 @@ typedef struct sobject object;
         VALUE_BOOL       - boolean type
         VALUE_OBJECT   - pointer to an object
     The implementation of a value is intentionally opaque and can be NAN boxed into a 64-bit double or left as a struct.
-    This file therfore defines several kinds of macro to:
+    This file therefore defines several kinds of macro to:
         * create values of a given type, e.g. MORPHO_INTEGER.
         * Test the type of a value, e.g. MORPHO_ISINTEGER
         * Extract a given type from a value and cast to the relevant C type, e.g. MORPHO_GETINTEGERVALUE */
@@ -126,23 +126,20 @@ static inline bool morpho_ofsametype(value a, value b) {
     return false;
 }
 
-/* Computes an ordered type for a value  */
-/*static inline unsigned int morpho_getorderedtype(value v) {
-    if (MORPHO_ISFLOAT(v)) return 0;
-    return ((v & (TAG_NIL | TAG_BOOL | TAG_INT))>>47) + ((v & TAG_OBJ) >> (63-2));
-}*/
-
 /** Alternatively, we represent a value through a struct. */
 #else
 
 /** @brief A enumerated type defining the different types available in Morpho. */
-typedef enum {
-    VALUE_NIL,
-    VALUE_INTEGER,
-    VALUE_DOUBLE,
+enum {
+    VALUE_NIL, // Note that the order of these must match the boxed version above
     VALUE_BOOL,
-    VALUE_OBJECT
-} valuetype;
+    VALUE_INTEGER,
+    
+    VALUE_OBJECT,
+    VALUE_DOUBLE
+};
+
+typedef int valuetype;
 
 /** @brief The unboxed value type. */
 typedef struct {
@@ -158,6 +155,10 @@ typedef struct {
 /** This macro gets the type of the value.
     @warning Not intended for broad use. */
 #define MORPHO_GETTYPE(v) ((v).type)
+
+/** Gets the ordered type of the value
+    @warning Not intended for broad use. */
+#define MORPHO_GETORDEREDTYPE(v) ((v).type)
 
 /** Test for the type of a value */
 #define MORPHO_ISNIL(v) ((v).type==VALUE_NIL)
@@ -189,7 +190,26 @@ static inline bool morpho_ofsametype(value a, value b) {
 #endif
 
 /* -------------------------------------------------------
- * Functions and macros for working with values
+ * Comparing values
+ * ------------------------------------------------------- */
+
+/** Check if two values are the same, i.e. identical or refer to the same object */
+bool morpho_issame(value a, value b);
+
+/** Test if two values are identical, i.e. identical or refer to the same object */
+#define MORPHO_ISSAME(a,b) (morpho_issame(a,b))
+
+/** Compare two values, checking contents of objects where supported */
+int morpho_comparevalue(value a, value b);
+
+/** Compare two values, even if they have inequivalent types e.g. int and float */
+int morpho_extendedcomparevalue(value a, value b);
+
+/** Macro to test if two values are equal, checking contents of objects where supported */
+#define MORPHO_ISEQUAL(a,b) (!morpho_comparevalue(a,b))
+
+/* -------------------------------------------------------
+ * Type checking and conversion
  * ------------------------------------------------------- */
 
 /** Detect if a value is a number */
@@ -234,6 +254,5 @@ bool value_promotenumberlist(unsigned int nv, value *v);
 bool value_minmax(unsigned int nval, value *list, value *min, value *max);
 
 void value_initialize(void);
-void value_finalize(void);
 
 #endif /* value_h */

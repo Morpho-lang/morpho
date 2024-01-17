@@ -21,6 +21,7 @@
 #include "range.h"
 #include "strng.h"
 #include "dict.h"
+#include "tuple.h"
 #include "err.h"
 
 #include "flt.h"

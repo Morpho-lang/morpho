@@ -72,8 +72,6 @@ bool objectinstance_setproperty(objectinstance *obj, value key, value val);
 bool objectinstance_getproperty(objectinstance *obj, value key, value *val);
 bool objectinstance_getpropertyinterned(objectinstance *obj, value key, value *val);
 
-/* Initialization/finalization */
 void instance_initialize(void);
-void instance_finalize(void);
 
 #endif

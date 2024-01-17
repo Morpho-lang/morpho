@@ -32,7 +32,9 @@ objecttypedefn objectrangedefn = {
     .printfn=objectrange_printfn,
     .markfn=NULL,
     .freefn=NULL,
-    .sizefn=objectrange_sizefn
+    .sizefn=objectrange_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /** Create a new range. Step may be set to MORPHO_NIL to use the default value of 1 */
@@ -195,7 +197,4 @@ void range_initialize(void) {
     
     // Range error messages
     morpho_defineerror(RANGE_ARGS, ERROR_HALT, RANGE_ARGS_MSG);
-}
-
-void range_finalize(void) {
 }

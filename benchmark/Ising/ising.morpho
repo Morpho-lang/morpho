@@ -1,0 +1,108 @@
+/*
+ * The 2D Ising Model
+ */
+
+var N=20 // Size of the board
+var Niter=1000 // Number of iterations in sweeps
+var T=2 // Temperature
+
+var a[N,N] // The board
+
+/* Initialize the board */
+for (var i=0; i<N; i=i+1) {
+	for (var j=0; j<N; j=j+1) {
+		if (random()<0.5) {
+			a[i,j]=-1
+		} else {
+			a[i,j]=1
+		}
+	}
+}
+
+/* Calculate the energy of lattice site (i,j) */
+fn energy(a, i, j) {
+	var il=i-1
+	if (il<0) il=N-1
+	var ir=i+1
+	if (ir>N-1) ir=0
+	var jl=j-1
+	if (jl<0) jl=N-1
+	var jr=j+1
+	if (jr>N-1) jr=0
+	return -a[i,j]*(a[il,j]+a[ir,j]+a[i,jl]+a[i,jr])
+}
+
+/* Calculate the total energy of the system */
+fn total(a) {
+	var en=0;
+	for (var i=0; i<N; i=i+1) {
+		for (var j=0; j<N; j=j+1) {
+			en = en + energy(a, i, j)
+		}
+	}
+	return en
+}
+
+/* Calculate the total energy of the system */
+fn magnetization(a) {
+	var m=0;
+	for (var i=0; i<N; i+=1) {
+		 for (var j=0; j<N; j+=1) {
+			 m = m + a[i,j]
+		 }
+	}
+	return m/(N*N)
+}
+
+/* Visualize the state of the sytem */
+fn vis(a) {
+	for (var i=0; i<N; i+=1) {
+		var str=""
+		for (var j=0; j<N; j+=1) {
+			if (a[i,j]<0) {
+				str = str + "-"
+			} else {
+				str = str + "X"
+			}
+		}
+		print str
+	}
+}
+
+vis(a)
+
+print "Run:"
+
+var start = clock()
+
+/* Main loop */
+for (var n=0; n<Niter; n+=1) {
+	for (var k=0; k<N*N; k+=1) {
+		// Select a random lattice site
+		var i=randomint(N)
+		var j=randomint(N)
+		// Calculate the energy
+		var old = energy(a, i, j)
+		// Swap
+		a[i,j]=-a[i,j]
+		// Calculate new energy
+		var new = energy(a, i, j)
+
+		// If the energy increases, check if we should swap back
+		if (new>=old) {
+			//print "comparing ${u} ${v}";
+			if (exp(-(new-old)/T)<random()) {
+				a[i,j]=-a[i,j]
+			}
+		}
+	}
+// 	print "${n}: ${total(a)}";
+}
+
+var end = clock()
+
+vis(a)
+
+print "Magnetization: ${magnetization(a)}"
+
+print "Time: ${end-start}"

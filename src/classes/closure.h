@@ -48,8 +48,6 @@ objectclosure *object_newclosure(objectfunction *sf, objectfunction *func, indx 
  * Closure interface
  * ------------------------------------------------------- */
 
-/* Initialization/finalization */
 void closure_initialize(void);
-void closure_finalize(void);
 
 #endif

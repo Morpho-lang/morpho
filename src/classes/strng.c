@@ -25,11 +25,26 @@ size_t objectstring_sizefn(object *obj) {
     return sizeof(objectstring)+((objectstring *) obj)->length+1;
 }
 
+hash objectstring_hashfn(object *obj) {
+    objectstring *str = (objectstring *) obj;
+    return dictionary_hashcstring(str->string, str->length);
+}
+
+int objectstring_cmpfn(object *a, object *b) {
+    objectstring *astring = (objectstring *) a;
+    objectstring *bstring = (objectstring *) b;
+    size_t len = (astring->length > bstring->length ? astring->length : bstring->length);
+
+    return -strncmp(astring->string, bstring->string, len);
+}
+
 objecttypedefn objectstringdefn = {
     .printfn = objectstring_printfn,
     .markfn = NULL,
     .freefn = NULL,
-    .sizefn = objectstring_sizefn
+    .sizefn = objectstring_sizefn,
+    .hashfn = objectstring_hashfn,
+    .cmpfn = objectstring_cmpfn
 };
 
 /** @brief Creates a string from an existing character array with given length
@@ -299,14 +314,8 @@ void string_initialize(void) {
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
-    // Create range veneer class
+    // Create string veneer class
     builtin_addfunction(STRING_CLASSNAME, string_constructor, BUILTIN_FLAGSEMPTY);
     value stringclass=builtin_addclass(STRING_CLASSNAME, MORPHO_GETCLASSDEFINITION(String), objclass);
     object_setveneerclass(OBJECT_STRING, stringclass);
-    
-    // String error messages
-    morpho_defineerror(STRING_IMMTBL, ERROR_HALT, STRING_IMMTBL_MSG);
-}
-
-void string_finalize(void) {
 }

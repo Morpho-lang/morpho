@@ -78,8 +78,6 @@ bool list_getelement(objectlist *list, int i, value *out);
 void list_sort(objectlist *list);
 objectlist *list_clone(objectlist *list);
 
-// Initialization/Finalization
 void list_initialize(void);
-void list_finalize(void);
 
 #endif

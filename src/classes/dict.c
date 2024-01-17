@@ -34,7 +34,9 @@ objecttypedefn objectdictionarydefn = {
     .printfn=objectdictionary_printfn,
     .markfn=objectdictionary_markfn,
     .freefn=objectdictionary_freefn,
-    .sizefn=objectdictionary_sizefn
+    .sizefn=objectdictionary_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /** Creates a new dictionary */
@@ -293,7 +295,4 @@ void dict_initialize(void) {
     // Dictionary error messages
     morpho_defineerror(DICT_DCTKYNTFND, ERROR_HALT, DICT_DCTKYNTFND_MSG);
     morpho_defineerror(DICT_DCTSTARG, ERROR_HALT, DICT_DCTSTARG_MSG);
-}
-
-void dict_finalize(void) {
 }

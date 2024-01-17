@@ -29,6 +29,7 @@ enum {
     PREC_NONE,
     PREC_LOWEST,
     PREC_ASSIGN,
+    PREC_COMMA,
     PREC_OR,
     PREC_AND,
     PREC_EQUALITY,

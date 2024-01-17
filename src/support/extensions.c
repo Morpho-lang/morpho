@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "varray.h"
+#include "morpho.h"
 #include "value.h"
 #include "common.h"
 #include "object.h"
@@ -190,6 +191,8 @@ bool extension_load(char *name, dictionary **functiontable, dictionary **classta
 
 void extensions_initialize(void) {
     varray_extensioninit(&extensionlist);
+ 
+    morpho_addfinalizefn(extensions_finalize);
 }
 
 void extensions_finalize(void) {

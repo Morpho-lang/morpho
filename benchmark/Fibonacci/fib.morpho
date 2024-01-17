@@ -1,0 +1,18 @@
+// Tests functions and function calls
+
+fn f(x) {
+	if (x<2) return x
+	return f(x-1) + f(x-2)
+}
+
+var start = clock()
+
+print f(28)
+print f(28)
+print f(28)
+print f(28)
+print f(28)
+
+var end = clock()
+
+print end-start

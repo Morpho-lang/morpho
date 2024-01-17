@@ -1,0 +1,38 @@
+import graphics
+import shapeopt
+import meshtools
+
+var Nlevels = 3
+var Nsteps = 100
+
+var m = Mesh("cube.mesh")
+
+var opt = ShapeOptimizer(m)
+
+var la = Area()
+var lv = VolumeEnclosed()
+
+opt.addenergy(la)
+opt.addconstraint(lv)
+
+opt.etol=1e-16 // Make this unfeasible small to turn off early exit
+
+opt.relax(Nsteps)
+
+for (i in 1..Nlevels) {
+  m = refinemesh(m)
+  opt.mesh=m
+  opt.relax(Nsteps)
+}
+
+//m.save("sphere5.mesh")
+
+//var g = plotmesh(m, nil, 2)
+//g.title="Cube"
+//Show(g)
+
+var V0=lv.total(m)
+var Af=la.total(m)
+var R=(V0/(4/3*Pi))^(1/3)
+var area = 4*Pi*R^2
+print "Final area: ${Af} True area: ${area} diff: ${abs(Af-area)}"

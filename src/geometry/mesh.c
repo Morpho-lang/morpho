@@ -59,7 +59,9 @@ objecttypedefn objectmeshdefn = {
     .printfn=objectmesh_printfn,
     .markfn=objectmesh_markfn,
     .freefn=objectmesh_freefn,
-    .sizefn=objectmesh_sizefn
+    .sizefn=objectmesh_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /* **********************************************************************

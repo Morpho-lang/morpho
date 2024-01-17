@@ -713,7 +713,3 @@ void lex_initialize(void) {
     morpho_defineerror(LEXER_UNTERMINATEDCOMMENT, ERROR_LEX, LEXER_UNTERMINATEDCOMMENT_MSG);
     morpho_defineerror(LEXER_UNTERMINATEDSTRING, ERROR_LEX, LEXER_UNTERMINATEDSTRING_MSG);
 }
-
-void lex_finalize(void) {
-    
-}

@@ -10,11 +10,12 @@
 #include "functiondefs.h"
 #include "file.h"
 #include "system.h"
+#include "classes.h"
+
 #include "mesh.h"
 #include "selection.h"
 #include "functional.h"
 #include "field.h"
-#include "classes.h"
 
 /* **********************************************************************
  * Global data
@@ -134,9 +135,10 @@ objecttypedefn objectbuiltinfunctiondefn = {
     .printfn=objectbuiltinfunction_printfn,
     .markfn=NULL,
     .freefn=objectbuiltinfunction_freefn,
-    .sizefn=objectbuiltinfunction_sizefn
+    .sizefn=objectbuiltinfunction_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
-
 
 /* **********************************************************************
  * Create and find builtin functions
@@ -324,6 +326,7 @@ void builtin_initialize(void) {
     range_initialize();
     complex_initialize();
     err_initialize();
+    tuple_initialize();
     
     float_initialize();// Veneer classes
     int_initialize();
@@ -344,6 +347,8 @@ void builtin_initialize(void) {
     selection_initialize();
     field_initialize();
     functional_initialize();
+    
+    morpho_addfinalizefn(builtin_finalize);
 }
 
 void builtin_finalize(void) {
@@ -354,25 +359,4 @@ void builtin_finalize(void) {
     dictionary_clear(&builtin_classtable);
     dictionary_clear(&builtin_symboltable);
     varray_valueclear(&builtin_objects);
-    
-    functional_finalize();
-    
-    json_finalize();
-    system_finalize();
-    file_finalize();
-    
-    int_finalize(); // Veneer classes
-    float_finalize();
-    
-    err_finalize();
-    complex_finalize();
-    range_finalize();
-    array_finalize();
-    closure_finalize();
-    list_finalize();
-    dict_finalize();
-    invocation_finalize();
-    instance_finalize();
-    function_finalize();
-    string_finalize();
 }

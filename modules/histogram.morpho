@@ -1,0 +1,45 @@
+/*
+ * Histogram
+ * Simple command line histograms.
+ */
+
+// Find the minimum of an enumerable object
+fn hmin(x) {
+  var mn=x[0]
+  for (i in x) {
+    if (i<mn) mn=i
+  }
+  return mn
+}
+
+// Find the maximum of an enumerable object
+fn hmax(x) {
+  var mx=x[0]
+  for (i in x) {
+    if (i>mx) mx=i
+  }
+  return mx
+}
+
+// Display a histogram
+fn histogram(lst, nbins) {
+  var cnt[nbins]
+  var bins[nbins+1]
+  // Calculate the bin bounds
+  var mx = hmax(lst), mn = hmin(lst)
+  for (i in 0..nbins) {
+    bins[i]=mn+i*(mx-mn)/(nbins)
+  }
+
+  // Assign each element of lst to a bin
+  for (x in lst) {
+    var k=0
+    while (x>bins[k+1]) k+=1
+    cnt[k]+=1
+  }
+
+  // Show histogram
+  for (i in 0..nbins-1) {
+    print "${bins[i]}-${bins[i+1]}: ${cnt[i]}"
+  }
+}

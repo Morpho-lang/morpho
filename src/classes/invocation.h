@@ -59,8 +59,6 @@ objectinvocation *object_newinvocation(value receiver, value method);
  * Invocation interface
  * ------------------------------------------------------- */
 
-/* Initialization/finalization */
 void invocation_initialize(void);
-void invocation_finalize(void);
 
 #endif

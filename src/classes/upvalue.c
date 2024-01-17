@@ -28,7 +28,9 @@ objecttypedefn objectupvaluedefn = {
     .printfn=objectupvalue_printfn,
     .markfn=objectupvalue_markfn,
     .freefn=NULL,
-    .sizefn=objectupvalue_sizefn
+    .sizefn=objectupvalue_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 
@@ -68,7 +70,4 @@ objecttype objectupvaluetype;
 void upvalue_initialize(void) {
     // Define upvalue object type
     objectupvaluetype=object_addtype(&objectupvaluedefn);
-}
-
-void upvalue_finalize(void) {
 }

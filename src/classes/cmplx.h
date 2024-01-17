@@ -33,6 +33,9 @@ typedef struct {
 /** Gets the object as a complex */
 #define MORPHO_GETCOMPLEX(val)   ((objectcomplex *) MORPHO_GETOBJECT(val))
 
+/** Gets the object as a C-style double complex */
+#define MORPHO_GETDOUBLECOMPLEX(val)   ((double complex) ((objectcomplex *) MORPHO_GETOBJECT(val))->Z)
+
 /** Creates a complex object */
 objectcomplex *object_newcomplex(double real, double imag);
 
@@ -45,7 +48,10 @@ value object_clonecomplexvalue(value val);
 objectcomplex *object_complexfromfloat(double val);
 
 /** tests the equality of two complex numbers */
-bool complex_equality(objectcomplex *a, objectcomplex *b);
+bool complex_isequal(objectcomplex *a, objectcomplex *b);
+
+/** tests equality between a complex number and a value */
+bool complex_isequaltonumber(objectcomplex *a, value b);
 
 /* -------------------------------------------------------
  * Complex class
@@ -125,8 +131,6 @@ value Complex_getimag(vm *v, int nargs, value *args);
 value Complex_angle(vm *v, int nargs, value *args);
 value Complex_conj(vm *v, int nargs, value *args);
 
-/* Initialization/finalization */
 void complex_initialize(void);
-void complex_finalize(void);
 
 #endif /* complex_h */

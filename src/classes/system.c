@@ -183,6 +183,8 @@ void system_initialize(void) {
     
     objectlist *alist = object_newlist(0, NULL);
     if (alist) arglist = MORPHO_OBJECT(alist);
+    
+    morpho_addfinalizefn(system_finalize);
 }
 
 void system_finalize(void) {

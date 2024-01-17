@@ -27,8 +27,6 @@
 /** Method for format strings */
 value Value_format(vm *v, int nargs, value *args);
 
-/* Initialization/finalization */
 void float_initialize(void);
-void float_finalize(void);
 
 #endif

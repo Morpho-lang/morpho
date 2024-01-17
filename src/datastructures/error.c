@@ -180,13 +180,14 @@ void morpho_unreachable(const char *explanation) {
 void error_initialize(void) {
     dictionary_init(&error_table);
     varray_errordefinitioninit(&error_messages);
+    
+    morpho_addfinalizefn(error_finalize);
 }
 
 /** Finalizes the error handling system */
 void error_finalize(void) {
     dictionary_freecontents(&error_table, true, false);
     dictionary_clear(&error_table);
-    /* Free error messages */
     for (unsigned int i=0; i<error_messages.count; i++) {
         MORPHO_FREE(error_messages.data[i].msg);
     }

@@ -62,6 +62,9 @@
 #define APPLY_ARGS                   "ApplyArgs"
 #define APPLY_ARGS_MSG               "Function 'apply' expects at least two arguments."
 
+#define APPLY_NOTCALLABLE            "ApplyNtCllble"
+#define APPLY_NOTCALLABLE_MSG        "Function 'apply' requires a callable object as its first argument."
+
 /* -------------------------------------------------------
  * Interface to define builtin functions
  * ------------------------------------------------------- */

@@ -8,13 +8,11 @@
 #include <inttypes.h>
 #include "dictionary.h"
 #include "common.h"
-#include "memory.h"
 #include "object.h"
-#include "sparse.h"
 
-/*
+/* **********************************************************************
  * Macros that control the behavior of the dictionary.
- */
+ * ********************************************************************** */
 
 /** The initial size of non-empty dictionary */
 #define DICTIONARY_DEFAULTSIZE 16
@@ -60,6 +58,7 @@
 
 /** Integer modulo */
 //#define DICTIONARY_REDUCE(x, size) (x % size)
+
 /** Faster version for power of two sizes */
 #define DICTIONARY_REDUCE(x, size) (x & (size-1))
 
@@ -69,14 +68,13 @@
 }*/
 //#define DICTIONARY_REDUCE(x, size) (dictionary_reduce64(x,size))
 
-/*
- * Raw hash functions
- */
+/* **********************************************************************
+ * Hash functions
+ * ********************************************************************** */
 
 /** Integer hash function from 32 ubit int to 32 bit uint due to Robert Jenkins */
-
 #ifdef DICTIONARY_INTEGERHASH_JENKINS
-static inline hash dictionary_hashint( uint32_t a) {
+hash dictionary_hashint( uint32_t a) {
    a = (a+0x7ed55d16) + (a<<12);
    a = (a^0xc761c23c) ^ (a>>19);
    a = (a+0x165667b1) + (a<<5);
@@ -88,12 +86,12 @@ static inline hash dictionary_hashint( uint32_t a) {
 #endif
 
 #ifdef DICTIONARY_INTEGERHASH_FIBONACCI
-static inline hash dictionary_hashint(uint32_t hash) {
+hash dictionary_hashint(uint32_t hash) {
     return (hash * 2654435769u);
 }
 #endif
 
-static inline hash dictionary_hashpointer(void *hash) {
+hash dictionary_hashpointer(void *hash) {
     uintptr_t ptr = (uintptr_t) hash;
 #if UINTPTR_MAX == UINT64_MAX
     return (ptr * 11400714819323198485llu) >> 32;
@@ -105,47 +103,51 @@ static inline hash dictionary_hashpointer(void *hash) {
 }
 
 /** String hashing function FNV-1a combined with Fibonacci hash */
-static inline hash dictionary_hashstring(const char* key, size_t length) {
+hash dictionary_hashcstring(const char* key, size_t length) {
   uint32_t hash = 2166136261u;
 
   for (unsigned int i=0; i < length; i++) {
     hash ^= key[i];
-    hash *= 16777619u;
+    hash *= 16777619u; // FNV prime number for 32 bits
   }
 
   return dictionary_hashint(hash);
 }
 
-/** Fibonacci hash function for pairs of integers. */
-static inline hash dictionary_hashdokkey(objectdokkey *key) {
-    uint64_t i1 = MORPHO_GETDOKKEYROW(key);
-    uint64_t i2 = MORPHO_GETDOKKEYCOL(key);
-    return ((i1<<32 | i2) * 11400714819323198485llu)>> 32;
+/** Hash multiple values with FNV-1a */
+hash dictionary_hashvaluelist(size_t length, value *key) {
+    uint32_t hash = 2166136261u;
+
+    for (unsigned int i=0; i < length; i++) {
+      hash ^= dictionary_hashvalue(key[i]);
+      hash *= 16777619u;
+    }
+
+    return dictionary_hashint(hash);
 }
 
-/*
- * Implementation
- */
+/* **********************************************************************
+ * Dictionary implementation
+ * ********************************************************************** */
 
 /** @brief Hashes a value
- * @param key the key to hash */
-static hash dictionary_hash(value key, bool intern) {
+ * @param key the key to hash
+ * @param intern set to true to use a precomputed hash (i.e. if it has been interned).
+ * @returns the corresponding hash */
+hash dictionary_hash(value key, bool intern) {
     if (MORPHO_ISINTEGER(key)) {
         return dictionary_hashint((uint32_t) MORPHO_GETINTEGERVALUE(key));
     } else if (MORPHO_ISOBJECT(key)){
         if (intern) {
             return MORPHO_GETOBJECTHASH(key);
-        } else {
-            if (MORPHO_ISSTRING(key)) {
-                return dictionary_hashstring(MORPHO_GETCSTRING(key), MORPHO_GETSTRINGLENGTH(key));
-            } else if (MORPHO_ISDOKKEY(key)) {
-                return dictionary_hashdokkey(MORPHO_GETDOKKEY(key));
-            } else {
-                return dictionary_hashpointer(MORPHO_GETOBJECT(key));
-            }
-        }
+        } else return object_hash(MORPHO_GETOBJECT(key));
     }
     return 0;
+}
+
+/** Veneer onto interned hash */
+hash dictionary_hashvalue(value key) {
+    return dictionary_hash(key, false);
 }
 
 /** @brief Initializes a dictionary
@@ -163,15 +165,6 @@ void dictionary_clear(dictionary *dict) {
     if (dict->contents) MORPHO_FREE(dict->contents);
     dictionary_init(dict);
 }
-
-/** @brief Wipes a dictionary's contents
- *  @param dict the dictionary to wipe
- *  @warning This doens't free keys or values in the dictionary. */
-void dictionary_wipe(dictionary *dict) {
-    for (unsigned int i=0; i<dict->capacity; i++) dict->contents[i].key=MORPHO_NIL;
-    dict->count=0;
-}
-
 
 /** @brief Frees a dictionary's contents
  *  @param dict     the dictionary to clear
@@ -452,9 +445,9 @@ bool dictionary_copy(dictionary *src, dictionary *dest) {
     return true;
 }
 
-/* ---------------------------
- * Set functions
- * --------------------------- */
+/* **********************************************************************
+ * Set functions, i.e. union, intersection, etc.
+ * ********************************************************************** */
 
 /** @brief Computes the union of two dictionaries, i.e. the output dictionary contains all keys that occur in either a or b
  * @param[in]  a - input dictionary (values from this dictionary take priority)
@@ -509,58 +502,3 @@ bool dictionary_difference(dictionary *a, dictionary *b, dictionary *out) {
     }
     return success;
 }
-
-/* ---------------------------
- * Debugging and performance
- * --------------------------- */
-
-#ifdef MORPHO_DEBUG
-#include <time.h>
-
-/** @brief Runs a performance test */
-void dictionary_testforsize(unsigned int n) {
-   clock_t start, end;
-   dictionary dict;
-   
-   /* Test the dictionary */
-   dictionary_init(&dict);
-   
-   printf("%i ", n);
-    
-   start = clock();
-   for (unsigned int i=0; i<n; i++) {
-       dictionary_insert(&dict, MORPHO_INTEGER(i), MORPHO_INTEGER(i));
-   }
-   end = clock();
-   
-   printf("%g ",((double) end-start)/((double) CLOCKS_PER_SEC)/((double) n));
-   
-   start = clock();
-   value res=MORPHO_INTEGER(0);
-   for (unsigned int i=0; i<n; i++) {
-       dictionary_get(&dict, MORPHO_INTEGER(i), &res);
-   }
-   end = clock();
-   
-   printf("%g ", ((double) end-start)/((double) CLOCKS_PER_SEC)/((double) n));
-    
-   start = clock();
-   for (unsigned int i=0; i<n; i++) {
-       dictionary_remove(&dict, MORPHO_INTEGER(i));
-   }
-   end = clock();
-   
-   printf("%g", ((double) end-start)/((double) CLOCKS_PER_SEC)/((double) n));
-    
-   printf("\n");
-   
-   dictionary_clear(&dict);
-}
-
-/** @define Test the hashtable implementation */
-void dictionary_test(void) {
-    /*for (unsigned int n=1; n<10000000; n=n*2) {
-        dictionary_testforsize(n);
-    }*/
-}
-#endif

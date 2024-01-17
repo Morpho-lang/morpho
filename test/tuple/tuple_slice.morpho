@@ -1,0 +1,16 @@
+/* **********************************
+ * morpho test suite
+ * tuple_join.morpho
+ * Test tuple slicing
+ * ********************************** */
+
+var t = Tuple(1,2,3,4,5,6,7,8,9)
+
+print t[0..2]
+// expect: (1, 2, 3)
+
+print t[5..8]
+// expect: (6, 7, 8, 9)
+
+print t[0..10]
+// expect error 'IndxBnds'

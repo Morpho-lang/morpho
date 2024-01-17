@@ -1,6 +1,0 @@
-// Import extensions into a namespace
-
-import zeromq as zmq for ZMQPull
-
-print zmq.ZMQRequest
-// expect error 'SymblUndfNmSpc'

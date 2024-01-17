@@ -3391,7 +3391,12 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             dictionary *fndict, *clssdict;
             
             if (extension_load(MORPHO_GETCSTRING(module->content), &fndict, &clssdict)) {
-                
+                if (!nmspace) { // Copy into global symbol table
+                    compiler_copysymbols(fndict, builtin_getfunctiontable(), (fordict.count>0 ? &fordict : NULL));
+                    compiler_copysymbols(clssdict, builtin_getclasstable(), (fordict.count>0 ? &fordict : NULL));
+                } else {
+                    UNREACHABLE("Namespaces don't yet work with extensions");
+                }
                 
                 /*compiler_copysymbols(clssdict, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
                 compiler_copysymbols(fndict, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));*/

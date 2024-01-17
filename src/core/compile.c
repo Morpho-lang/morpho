@@ -3388,8 +3388,12 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
 
     if (module) {
         if (module->type==NODE_SYMBOL) {
-            if (morpho_loadextension(MORPHO_GETCSTRING(module->content))) {
+            dictionary *fndict, *clssdict;
+            
+            if (extension_load(MORPHO_GETCSTRING(module->content), &fndict, &clssdict)) {
                 
+                
+                //compiler_copysymbols(&(MORPHO_GETDICTIONARY(symboldict)->dict), (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
             } else if (compiler_findmodule(MORPHO_GETCSTRING(module->content), &filename)) {
                 fname=filename.data;
             } else {
@@ -3452,7 +3456,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                     symboldict = MORPHO_OBJECT(dict);
                 }
                 
-            } else { // TODO: This is wrong!
+            } else { // TODO: This is wrong! The module name gets overwritten, which shouldn't happen
                 c->err.module = MORPHO_GETCSTRING(modname);
             }
             

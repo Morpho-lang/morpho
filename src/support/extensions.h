@@ -15,10 +15,7 @@
 #define MORPHO_EXTENSIONINITIALIZE "initialize" // Function to call upon initialization
 #define MORPHO_EXTENSIONFINALIZE "finalize"     // Function to call upon finalization
 
-bool morpho_loadextension(char *name);
-
-value extensions_findfunction(value name);
-value extensions_findclass(value name);
+bool extension_load(char *name, dictionary **functiontable, dictionary **classtable);
 
 void extensions_initialize(void);
 void extensions_finalize(void);

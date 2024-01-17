@@ -28,6 +28,9 @@ typedef struct {
 /** Gets the object as a dictionary */
 #define MORPHO_GETDICTIONARY(val)   ((objectdictionary *) MORPHO_GETOBJECT(val))
 
+/** Gets the object's underlying dictionary structure */
+#define MORPHO_GETDICTIONARYSTRUCT(val)   (&(((objectdictionary *) MORPHO_GETOBJECT(val))->dict))
+
 objectdictionary *object_newdictionary(void);
 
 /* -------------------------------------------------------

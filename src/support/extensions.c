@@ -10,6 +10,7 @@
 
 #include <dlfcn.h>
 #include <string.h>
+
 #include "varray.h"
 #include "value.h"
 #include "common.h"
@@ -137,14 +138,17 @@ bool extension_initialize(extension *e) {
                *oclss=builtin_getclasstable();
     
     dictionary *fntable = MORPHO_GETDICTIONARYSTRUCT(e->functiontable);
+    dictionary *clsstable = MORPHO_GETDICTIONARYSTRUCT(e->classtable);
     
     builtin_setfunctiontable(MORPHO_GETDICTIONARYSTRUCT(e->functiontable));
-    builtin_setfunctiontable(MORPHO_GETDICTIONARYSTRUCT(e->classtable));
+    builtin_setclasstable(MORPHO_GETDICTIONARYSTRUCT(e->classtable));
     
     bool success=extension_call(e, MORPHO_GETCSTRING(e->name), MORPHO_EXTENSIONINITIALIZE);
     
     builtin_setfunctiontable(ofunc);
     builtin_setclasstable(oclss);
+    
+    return success; 
 }
 
 /** Call the extension's finalizer */

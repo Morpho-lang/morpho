@@ -2,7 +2,7 @@
 
 import zeromq as zmq
 
-//print zmq.ZMQRequest
+print zmq.ZMQRequest
 // expect: <fn ZMQRequest>
 
 print ZMQRequest

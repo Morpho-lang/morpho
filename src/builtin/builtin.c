@@ -21,13 +21,13 @@
  * ********************************************************************** */
 
 /** A table of built in functions */
-static dictionary builtin_functiontable;
+dictionary builtin_functiontable;
 
 /** A table of built in classes */
-static dictionary builtin_classtable;
+dictionary builtin_classtable;
 
 /** A table of symbols used by built in classes */
-static dictionary builtin_symboltable;
+dictionary builtin_symboltable;
 
 /** Keep a list of objects created by builtin */
 varray_value builtin_objects;
@@ -181,8 +181,8 @@ value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags
         
         value selector = dictionary_intern(&builtin_symboltable, new->name);
         
-        if (dictionary_get(&builtin_functiontable, new->name, NULL)) {
-            UNREACHABLE("redefinition of builtin function (check builtin.c)");
+        if (dictionary_get(_currentfunctiontable, new->name, NULL)) {
+            UNREACHABLE("Redefinition of function in same extension [in builtin.c]");
         }
         
         dictionary_insert(_currentfunctiontable, selector, out);
@@ -247,7 +247,7 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
     }
     
     if (dictionary_get(_currentclasstable, label, NULL)) {
-        UNREACHABLE("redefinition of class in same extension [in builtin.c]");
+        UNREACHABLE("Redefinition of class in same extension [in builtin.c]");
     }
     
     dictionary_insert(_currentclasstable, label, MORPHO_OBJECT(new));

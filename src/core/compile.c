@@ -3393,7 +3393,8 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             if (extension_load(MORPHO_GETCSTRING(module->content), &fndict, &clssdict)) {
                 
                 
-                //compiler_copysymbols(&(MORPHO_GETDICTIONARY(symboldict)->dict), (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
+                /*compiler_copysymbols(clssdict, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
+                compiler_copysymbols(fndict, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));*/
             } else if (compiler_findmodule(MORPHO_GETCSTRING(module->content), &filename)) {
                 fname=filename.data;
             } else {
@@ -3413,7 +3414,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             
             if (dictionary_get(&root->modules, MORPHO_OBJECT(&chkmodname), &symboldict)) {
                 // If so, copy its symbols into the compiler
-                compiler_copysymbols(&(MORPHO_GETDICTIONARY(symboldict)->dict), (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
+                compiler_copysymbols(MORPHO_GETDICTIONARYSTRUCT(symboldict), (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
                 
                 goto compiler_import_cleanup;
             }

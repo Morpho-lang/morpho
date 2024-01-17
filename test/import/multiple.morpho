@@ -1,0 +1,12 @@
+// Import multiple libraries per line
+
+import color, graphics, plot
+
+print Red
+// expect: <Color>
+
+print Graphics
+// expect: @Graphics
+
+print plotmesh
+// expect: <fn plotmesh>

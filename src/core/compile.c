@@ -1154,6 +1154,59 @@ bool compiler_checkoutstandingforwardreference(compiler *c) {
 }
 
 /* ------------------------------------------
+ * Namespaces
+ * ------------------------------------------- */
+
+/** Adds a namespace to the compiler */
+namespc *compiler_addnamespace(compiler *c, value symbol) {
+    namespc *new=MORPHO_MALLOC(sizeof(namespc));
+    
+    if (new) {
+        new->label=symbol;
+        dictionary_init(&new->symbols);
+        
+        new->next=c->namespaces; // Link namespace to compiler
+        c->namespaces=new;
+    }
+    
+    return new;
+}
+
+/** Attempts to locate a symbol given a namespace label */
+bool compiler_findsymbolwithnamespace(compiler *c, syntaxtreenode *node, value label, value symbol, value *out) {
+    namespc *spc;
+    bool success=false;
+    
+    // Find the namespace
+    for (spc=c->namespaces; spc!=NULL; spc=spc->next) {
+        if (MORPHO_ISEQUAL(spc->label, label)) break;
+    }
+    
+    // Now try to find the symbol
+    if (spc) {
+        success=dictionary_get(&spc->symbols, symbol, out);
+        
+        if (!success) compiler_error(c, node, COMPILE_SYMBOLNOTDEFINEDNMSPC, MORPHO_GETCSTRING(symbol), MORPHO_GETCSTRING(label));
+    }
+    
+    return success;
+}
+
+/** Clears the namespace list, freeing attached data */
+void compiler_clearnamespacelist(compiler *c) {
+    namespc *next=NULL;
+    
+    for (namespc *spc=c->namespaces; spc!=NULL; spc=next) {
+        next=spc->next;
+        
+        dictionary_clear(&spc->symbols);
+        MORPHO_FREE(spc);
+    }
+    
+    c->namespaces=NULL;
+}
+
+/* ------------------------------------------
  * Compiler node implementation functions
  * ------------------------------------------- */
 
@@ -1165,6 +1218,7 @@ static codeinfo compiler_negate(compiler *c, syntaxtreenode *node, registerindx 
 static codeinfo compiler_not(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerindx reqout);
+static codeinfo compiler_dot(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_grouping(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_sequence(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_interpolation(compiler *c, syntaxtreenode *node, registerindx out);
@@ -1237,9 +1291,10 @@ compilenoderule noderules[] = {
     { compiler_logical       },      // NODE_AND
     { compiler_logical       },      // NODE_OR
 
-    { compiler_property      },      // NODE_DOT
+    { compiler_dot           },      // NODE_DOT
 
     { compiler_range         },      // NODE_RANGE
+    { compiler_range         },      // NODE_EXCLUSIVERANGE
 
     NODE_UNDEFINED,                  // NODE_OPERATOR
 
@@ -1273,6 +1328,7 @@ compilenoderule noderules[] = {
     { compiler_list          },      // NODE_LIST
     { compiler_list          },      // NODE_TUPLE
     { compiler_import        },      // NODE_IMPORT
+    NODE_UNDEFINED,                  // NODE_AS
     { compiler_breakpoint    }       // NODE_BREAKPOINT
 };
 
@@ -3144,6 +3200,29 @@ static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerind
     return CODEINFO(REGISTER, out, ninstructions);
 }
 
+/** Compiles the dot operator, which may be property lookup or a method call */
+static codeinfo compiler_dot(compiler *c, syntaxtreenode *node, registerindx reqout) {
+    syntaxtreenode *left = compiler_getnode(c, node->left),
+                   *right = compiler_getnode(c, node->right);
+    value out=MORPHO_NIL;
+    
+    if (left->type==NODE_SYMBOL && 
+        right->type==NODE_SYMBOL &&
+        compiler_findsymbolwithnamespace(c, node, left->content, right->content, &out)) {
+        
+        if (MORPHO_ISINTEGER(out)) {
+            return CODEINFO(GLOBAL, MORPHO_GETINTEGERVALUE(out), 0);
+        } else if (MORPHO_ISBUILTINFUNCTION(out) || MORPHO_ISCLASS(out)) {
+            registerindx indx = compiler_addconstant(c, node, out, true, false);
+            return CODEINFO(CONSTANT, indx, 0);
+        } else {
+            UNREACHABLE("Namespace dictionary contains noninteger value");
+        }
+    }
+    
+    return compiler_property(c, node, reqout);
+}
+
 /* Moves the result of a calculation to an object property */
 static codeinfo compiler_movetoproperty(compiler *c, syntaxtreenode *node, codeinfo in, syntaxtreenode *obj) {
     codeinfo prop = CODEINFO_EMPTY;
@@ -3246,22 +3325,24 @@ void compiler_stripend(compiler *c) {
     }
 }
 
-/** Copies the globals across from one compiler to another.
+/** Copies the globals across from one compiler to another. The globals dictionary maps keys to global numbers
  * @param[in] src source dictionary
  * @param[in] dest destination dictionary
  * @param[in] compare (optional) a dictionary to check the contents against; globals are only copied if they also appear in compare */
-void compiler_copyglobals(compiler *src, compiler *dest, dictionary *compare) {
-    for (unsigned int i=0; i<src->globals.capacity; i++) {
-        if (!MORPHO_ISNIL(src->globals.contents[i].key)) {
-            if (compare && !dictionary_get(compare, src->globals.contents[i].key, NULL)) continue;
-
-            value key = src->globals.contents[i].key;
-
-            if (!dictionary_get(&dest->globals, key, NULL)) {
+void compiler_copysymbols(dictionary *src, dictionary *dest, dictionary *compare) {
+    for (unsigned int i=0; i<src->capacity; i++) {
+        value key = src->contents[i].key;
+        if (!MORPHO_ISNIL(key)) {
+            if (compare && !dictionary_get(compare, key, NULL)) continue;
+            
+            if (MORPHO_ISSTRING(key) &&
+                MORPHO_GETCSTRING(key)[0]=='_') continue;
+            
+            if (!dictionary_get(dest, key, NULL)) {
                 key=object_clonestring(key);
             }
 
-            dictionary_insert(&dest->globals, key, src->globals.contents[i].val);
+            dictionary_insert(dest, key, src->contents[i].val);
         }
     }
 }
@@ -3290,6 +3371,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
     syntaxtreenode *module = compiler_getnode(c, node->left);
     syntaxtreenode *qual = compiler_getnode(c, node->right);
     dictionary fordict;
+    namespc *nmspace=NULL;
     char *fname=NULL;
     unsigned int start=0, end=0;
     FILE *f = NULL;
@@ -3299,22 +3381,32 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
 
     if (compiler_checkerror(c)) return CODEINFO_EMPTY;
 
-    if (qual) {
+    while (qual) {
         if (qual->type==NODE_FOR) {
-            /* Convert list of symbols following for into a dictionary */
-            while (qual!=NULL) {
-                syntaxtreenode *l = compiler_getnode(c, qual->right);
-                if (l && l->type==NODE_SYMBOL) {
-                    dictionary_insert(&fordict, l->content, MORPHO_NIL);
-                } else UNREACHABLE("Import encountered non symbolic in for clause.");
-                qual=compiler_getnode(c, qual->left);
-            }
-        } else UNREACHABLE("AS not implemented.");
+            syntaxtreenode *l = compiler_getnode(c, qual->left);
+            if (l && l->type==NODE_SYMBOL) {
+                dictionary_insert(&fordict, l->content, MORPHO_NIL);
+            } else UNREACHABLE("Incorrect syntax tree structure in FOR node.");
+        } else if (qual->type==NODE_AS) {
+            syntaxtreenode *l = compiler_getnode(c, qual->left);
+            if (l && l->type==NODE_SYMBOL) {
+                nmspace=compiler_addnamespace(c, l->content);
+                
+                if (!nmspace) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return CODEINFO_EMPTY; }
+            } else UNREACHABLE("Incorrect syntax tree structure in AS node.");
+        } else {
+            UNREACHABLE("Unexpected node type.");
+        }
+        qual=compiler_getnode(c, qual->right);
     }
 
     if (module) {
         if (module->type==NODE_SYMBOL) {
-            if (morpho_loadextension(MORPHO_GETCSTRING(module->content))) {
+            dictionary *fndict, *clssdict;
+            
+            if (extension_load(MORPHO_GETCSTRING(module->content), &fndict, &clssdict)) {
+                compiler_copysymbols(clssdict, (nmspace ? &nmspace->symbols: builtin_getclasstable()), (fordict.count>0 ? &fordict : NULL));
+                compiler_copysymbols(fndict, (nmspace ? &nmspace->symbols: builtin_getfunctiontable()), (fordict.count>0 ? &fordict : NULL));
             } else if (compiler_findmodule(MORPHO_GETCSTRING(module->content), &filename)) {
                 fname=filename.data;
             } else {
@@ -3327,9 +3419,15 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
         compiler *root = c;
         while (root->parent!=NULL) root=root->parent;
 
+        // Check if the module was previously imported
         if (fname) {
             objectstring chkmodname = MORPHO_STATICSTRING(fname);
-            if (dictionary_get(&root->modules, MORPHO_OBJECT(&chkmodname), NULL)) {
+            value symboldict=MORPHO_NIL;
+            
+            if (dictionary_get(&root->modules, MORPHO_OBJECT(&chkmodname), &symboldict)) {
+                // If so, copy its symbols into the compiler
+                compiler_copysymbols(MORPHO_GETDICTIONARYSTRUCT(symboldict), (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
+                
                 goto compiler_import_cleanup;
             }
         }
@@ -3339,7 +3437,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
 
         if (f) {
             value modname=object_stringfromcstring(fname, strlen(fname));
-            dictionary_insert(&root->modules, modname, MORPHO_NIL);
+            value symboldict=MORPHO_NIL;
 
             /* Read in source */
             varray_char src;
@@ -3363,18 +3461,26 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
 
             if (ERROR_SUCCEEDED(c->err)) {
                 compiler_stripend(c);
-                compiler_copyglobals(&cc, c, (fordict.count>0 ? &fordict : NULL));
-            } else {
+                compiler_copysymbols(&cc.globals, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
+                
+                objectdictionary *dict = object_newdictionary(); // Preserve all symbols for further imports
+                if (dict) {
+                    compiler_copysymbols(&cc.globals, &dict->dict, NULL);
+                    symboldict = MORPHO_OBJECT(dict);
+                }
+                
+            } else { // TODO: This is wrong! The module name gets overwritten, which shouldn't happen
                 c->err.module = MORPHO_GETCSTRING(modname);
             }
             
             debugannotation_setmodule(&c->out->annotations, compiler_getmodule(c));
             
-            compiler_clear(&cc);
-
             end=c->out->code.count;
-
+            
+            compiler_clear(&cc);
             varray_charclear(&src);
+            
+            dictionary_insert(&root->modules, modname, symboldict);
         } else compiler_error(c, module, COMPILE_FILENOTFOUND, fname);
     }
 
@@ -3422,6 +3528,7 @@ void compiler_init(const char *source, program *out, compiler *c) {
     c->prevfunction = NULL;
     c->currentclass = NULL;
     c->currentmethod = NULL;
+    c->namespaces = NULL; 
     c->currentmodule = MORPHO_NIL;
     c->parent = NULL;
     c->line = 1; // Count from 1
@@ -3434,9 +3541,10 @@ void compiler_clear(compiler *c) {
     parse_clear(&c->parse);
     compiler_fstackclear(c);
     syntaxtree_clear(&c->tree);
+    compiler_clearnamespacelist(c);
     dictionary_freecontents(&c->globals, true, false);
     dictionary_clear(&c->globals);
-    dictionary_freecontents(&c->modules, true, false);
+    dictionary_freecontents(&c->modules, true, true);
     dictionary_clear(&c->modules);
 }
 
@@ -3533,6 +3641,7 @@ void compile_initialize(void) {
 
     /* Compile errors */
     morpho_defineerror(COMPILE_SYMBOLNOTDEFINED, ERROR_COMPILE, COMPILE_SYMBOLNOTDEFINED_MSG);
+    morpho_defineerror(COMPILE_SYMBOLNOTDEFINEDNMSPC, ERROR_COMPILE, COMPILE_SYMBOLNOTDEFINEDNMSPC_MSG);
     morpho_defineerror(COMPILE_TOOMANYCONSTANTS, ERROR_COMPILE, COMPILE_TOOMANYCONSTANTS_MSG);
     morpho_defineerror(COMPILE_ARGSNOTSYMBOLS, ERROR_COMPILE, COMPILE_ARGSNOTSYMBOLS_MSG);
     morpho_defineerror(COMPILE_PROPERTYNAMERQD, ERROR_COMPILE, COMPILE_PROPERTYNAMERQD_MSG);

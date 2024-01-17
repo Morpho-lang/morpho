@@ -102,6 +102,12 @@ typedef bool (*builtin_loopfunction) (vm *v, indx i, value item, void *ref);
  * Interface
  * ------------------------------------------------------- */
 
+dictionary *builtin_getfunctiontable(void);
+void builtin_setfunctiontable(dictionary *dict);
+
+dictionary *builtin_getclasstable(void);
+void builtin_setclasstable(dictionary *dict);
+
 value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags flags);
 value builtin_findfunction(value name);
 

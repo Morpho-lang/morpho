@@ -869,7 +869,7 @@ bool parse_switch(parser *p, void *out) {
         /* Create an entry node */
         PARSE_CHECK(parse_addnode(p, NODE_DICTENTRY, MORPHO_NIL, &tok, key, statements, &pair));
         
-        /* These are linked into a chain of sequence nodes */
+        /* These are linked into a chain of dictionary nodes */
         PARSE_CHECK(parse_addnode(p, NODE_DICTIONARY, MORPHO_NIL, &tok, last, pair, &last));
     };
     
@@ -1001,40 +1001,35 @@ bool parse_classdeclaration(parser *p, void *out) {
     return parse_addnode(p, NODE_CLASS, name, &start, sclass, current, (syntaxtreeindx *) out);
 }
 
-/** Parse an import declaration.
- *          IMPORT
- *         /              \
- *     module           FOR   or as
- *                    \
- *                   ( items )
+/** Parse an import qualifier list. This list consists of elements introduced by for and as in any order.
  */
-bool parse_importdeclaration(parser *p, void *out) {
-    syntaxtreeindx modulename=SYNTAXTREE_UNCONNECTED, right=SYNTAXTREE_UNCONNECTED;
-    token start = p->previous;
+bool parse_importqualifierlist(parser *p, void *out) {
+    syntaxtreeindx list=SYNTAXTREE_UNCONNECTED;
+    bool asincluded=false; // Only one as is allowed
     
-    if (parse_checktokenadvance(p, TOKEN_STRING)) {
-        PARSE_CHECK(parse_string(p, &modulename));
-    } else if (parse_checktokenadvance(p, TOKEN_SYMBOL)){
-        PARSE_CHECK(parse_symbol(p, &modulename));
-    } else {
-        parse_error(p, true, PARSE_IMPORTMISSINGNAME);
-        return false;
-    }
-    
-    if (!parse_checkstatementterminator(p)) {
+    while (!parse_checkstatementterminator(p) && !parse_checktoken(p, TOKEN_COMMA)) {
         if (parse_checktokenadvance(p, TOKEN_AS)) {
+            if (asincluded) { // Only one 'as' allowed per import
+                parse_error(p, true, PARSE_IMPORTMLTPLAS);
+                return false;
+            }
+            
             if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
-                if (!parse_symbol(p, &right)) return false;
+                syntaxtreeindx symbl;
+                PARSE_CHECK(parse_symbol(p, &symbl));
+                PARSE_CHECK(parse_addnode(p, NODE_AS, MORPHO_NIL, &p->previous, symbl, list, &list));
             } else {
                 parse_error(p, true, PARSE_IMPORTASSYMBL);
                 return false;
             }
+            
+            asincluded=true;
         } else if (parse_checktokenadvance(p, TOKEN_FOR)) {
             do {
                 if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
                     syntaxtreeindx symbl;
                     PARSE_CHECK(parse_symbol(p, &symbl));
-                    PARSE_CHECK(parse_addnode(p, NODE_FOR, MORPHO_NIL, &p->previous, right, symbl, &right));
+                    PARSE_CHECK(parse_addnode(p, NODE_FOR, MORPHO_NIL, &p->previous, symbl, list, &list));
                 } else {
                     parse_error(p, true, PARSE_IMPORTFORSYMBL);
                     return false;
@@ -1045,10 +1040,49 @@ bool parse_importdeclaration(parser *p, void *out) {
             return false;
         }
     }
+        
+    *((syntaxtreeindx *) out)=list;
+    
+    return true;
+}
+
+/** Parse an import declaration. Each import has the following structure:
+ *          IMPORT
+ *         /              \
+ *     module           import qualifier list
+ * These are chained together as sequence nodes if there's more than one
+ */
+bool parse_importdeclaration(parser *p, void *out) {
+    syntaxtreeindx prev=SYNTAXTREE_UNCONNECTED, // Use to construct list
+                   current=SYNTAXTREE_UNCONNECTED;
+    
+    do {
+        syntaxtreeindx modulename=SYNTAXTREE_UNCONNECTED,
+                       qualifier=SYNTAXTREE_UNCONNECTED;
+        token start = p->previous;
+        
+        if (parse_checktokenadvance(p, TOKEN_STRING)) {
+            PARSE_CHECK(parse_string(p, &modulename));
+        } else if (parse_checktokenadvance(p, TOKEN_SYMBOL)){
+            PARSE_CHECK(parse_symbol(p, &modulename));
+        } else {
+            parse_error(p, true, PARSE_IMPORTMISSINGNAME);
+            return false;
+        }
+        
+        PARSE_CHECK(parse_importqualifierlist(p, &qualifier));
+        
+        PARSE_CHECK(parse_addnode(p, NODE_IMPORT, MORPHO_NIL, &start, modulename, qualifier, &current));
+        
+        PARSE_CHECK(parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, prev, current, &current));
+        prev = current;
+    } while (parse_checktokenadvance(p, TOKEN_COMMA));
     
     PARSE_CHECK(parse_statementterminator(p));
     
-    return parse_addnode(p, NODE_IMPORT, MORPHO_NIL, &start, modulename, right, (syntaxtreeindx *) out);
+    *((syntaxtreeindx *) out)=current;
+    
+    return true;
 }
 
 /* -------------------------------
@@ -1707,6 +1741,7 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_INCOMPLETESTRINGINT, ERROR_PARSE, PARSE_INCOMPLETESTRINGINT_MSG);
     morpho_defineerror(PARSE_VARBLANKINDEX, ERROR_COMPILE, PARSE_VARBLANKINDEX_MSG);
     morpho_defineerror(PARSE_IMPORTMISSINGNAME, ERROR_PARSE, PARSE_IMPORTMISSINGNAME_MSG);
+    morpho_defineerror(PARSE_IMPORTMLTPLAS, ERROR_PARSE, PARSE_IMPORTMLTPLAS_MSG);
     morpho_defineerror(PARSE_IMPORTUNEXPCTDTOK, ERROR_PARSE, PARSE_IMPORTUNEXPCTDTOK_MSG);
     morpho_defineerror(PARSE_IMPORTASSYMBL, ERROR_PARSE, PARSE_IMPORTASSYMBL_MSG);
     morpho_defineerror(PARSE_IMPORTFORSYMBL, ERROR_PARSE, PARSE_IMPORTFORSYMBL_MSG);

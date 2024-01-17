@@ -1,0 +1,4 @@
+// Ensure whatever is after for is a symbol
+
+import color for "Ooops"
+// expect error: 'ExpctSymblAftrFr'

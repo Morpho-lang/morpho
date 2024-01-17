@@ -21,6 +21,9 @@
 #define COMPILE_SYMBOLNOTDEFINED          "SymblUndf"
 #define COMPILE_SYMBOLNOTDEFINED_MSG      "Symbol '%s' not defined."
 
+#define COMPILE_SYMBOLNOTDEFINEDNMSPC     "SymblUndfNmSpc"
+#define COMPILE_SYMBOLNOTDEFINEDNMSPC_MSG "Symbol '%s' not defined in namespace '%s'."
+
 #define COMPILE_TOOMANYCONSTANTS          "TooMnyCnst"
 #define COMPILE_TOOMANYCONSTANTS_MSG      "Too many constants."
 
@@ -205,7 +208,6 @@ typedef struct {
     bool inargs; /* Set while compiling function calls to ensure allocations are at the top of the stack */
 } functionstate;
 
-
 /* -------------------------------------------------------
  * Lists
  * ------------------------------------------------------- */
@@ -215,6 +217,17 @@ typedef struct scompilerlist {
     varray_value entries;
     struct scompilerlist *next;
 } compilerlist;
+
+/* -------------------------------------------------------
+ * Namespaces
+ * ------------------------------------------------------- */
+
+typedef struct _namespc {
+    value label; /** Label  */
+    dictionary symbols; /** Symbol table */
+    
+    struct _namespc *next; /** Make a linked list of namespaces */
+} namespc;
 
 /* -------------------------------------------------------
  * Overall state of the compiler
@@ -247,6 +260,9 @@ typedef struct scompiler {
     
     /* Syntax tree node of the current method being compiled */
     syntaxtreenode *currentmethod;
+    
+    /* Namespaces */
+    namespc *namespaces;
     
     /* Current module */
     value currentmodule;

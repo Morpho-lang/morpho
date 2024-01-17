@@ -11,10 +11,53 @@
 #include "value.h"
 #include "varray.h"
 
+
+/** Syntax trees in morpho are binary trees: they consist of nodes, which may contain a value and reference two child elements */
+
+/* -------------------------------------------------------
+ * Nodes
+ * ------------------------------------------------------- */
+
+/** Syntax tree node types are left as a generic int to facilitate reprogrammability */
+typedef int syntaxtreenodetype;
+
+/** @brief A reference to an element of the tree is by an index */
 typedef ptrdiff_t syntaxtreeindx;
 
+/** @brief A node on the syntax tree */
+typedef struct _syntaxtreenode {
+    syntaxtreenodetype type; /** Type of node */
+    
+    value content; /** A value that represents the node contents */
+    syntaxtreeindx left; /** left child element */
+    syntaxtreeindx right; /** right child element */
+    
+    int line; /** line in the source that the element was created from. */
+    int posn; /** column in the source that the element was created from. */
+} syntaxtreenode;
+
+/** Macro used to represent unconnected nodes  */
+#define SYNTAXTREE_UNCONNECTED -1
+
+/* -------------------------------------------------------
+ * Syntax tree
+ * ------------------------------------------------------- */
+
+DECLARE_VARRAY(syntaxtreenode, syntaxtreenode);
+DECLARE_VARRAY(syntaxtreeindx, syntaxtreeindx);
+
+/** @brief A syntax tree data structure */
+typedef struct {
+    varray_syntaxtreenode tree; /** List of nodes */
+    syntaxtreeindx entry; /** Entry point into the syntax tree */
+} syntaxtree;
+
+/* -------------------------------------------------------
+ * Node types
+ * ------------------------------------------------------- */
+
 /** @brief Type of node */
-typedef enum {
+enum {
     NODE_BASE,
     
     NODE_NIL,
@@ -55,6 +98,7 @@ typedef enum {
     NODE_DOT,
     
     NODE_RANGE,
+    NODE_EXCLUSIVERANGE,
     
     NODE_OPERATOR, /* ^ All operators should be above this enum value */
     
@@ -88,40 +132,28 @@ typedef enum {
     NODE_LIST,
     NODE_TUPLE,
     NODE_IMPORT,
+    NODE_AS,
     NODE_BREAKPOINT
+};
 
-} syntaxtreenodetype;
+/* -------------------------------------------------------
+ * Macros to check node types
+ * ------------------------------------------------------- */
 
+/** @brief Check if a node type lies between two values */
 static inline bool syntaxtree_istype(syntaxtreenodetype type, syntaxtreenodetype lower, syntaxtreenodetype upper) {
     return ((type > lower) && (type < upper));
 }
 
+/** Check if a node is a leaf, unary operator, binary operator or a statement */
 #define SYNTAXTREE_ISLEAF(x) syntaxtree_istype(x, NODE_BASE, NODE_LEAF)
 #define SYNTAXTREE_ISUNARY(x) syntaxtree_istype(x, NODE_LEAF, NODE_UNARY)
 #define SYNTAXTREE_ISOPERATOR(x) syntaxtree_istype(x, NODE_UNARY, NODE_OPERATOR)
 #define SYNTAXTREE_ISSTATEMENT(x) syntaxtree_istype(x, NODE_OPERATOR, NODE_STATEMENT)
 
-/** @brief A node on the syntax tree is defined by a value and indices of the left and right elements */
-typedef struct _syntaxtreenode {
-    syntaxtreenodetype type;
-    value content;
-    int line;
-    int posn;
-    syntaxtreeindx left;
-    syntaxtreeindx right;
-} syntaxtreenode;
-
-#define SYNTAXTREE_UNCONNECTED -1
-
-DECLARE_VARRAY(syntaxtreenode, syntaxtreenode);
-
-DECLARE_VARRAY(syntaxtreeindx, syntaxtreeindx);
-
-/* @brief A syntax tree data structure */
-typedef struct {
-    varray_syntaxtreenode tree;
-    syntaxtreeindx entry;
-} syntaxtree;
+/* -------------------------------------------------------
+ * Interface
+ * ------------------------------------------------------- */
 
 void syntaxtree_init(syntaxtree *tree);
 void syntaxtree_wipe(syntaxtree *tree);

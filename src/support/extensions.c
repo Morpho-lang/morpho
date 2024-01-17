@@ -10,29 +10,99 @@
 
 #include <dlfcn.h>
 #include <string.h>
+
 #include "varray.h"
 #include "morpho.h"
 #include "value.h"
+#include "common.h"
 #include "object.h"
+#include "builtin.h"
 #include "strng.h"
+#include "dict.h"
 #include "resources.h"
 #include "extensions.h"
 
+/* -------------------------------------------------------
+ * Extension structure
+ * ------------------------------------------------------- */
+
 typedef struct {
     value name;
+    value path;
+    value functiontable;
+    value classtable;
     void *handle;
 } extension;
 
 DECLARE_VARRAY(extension, extension)
 DEFINE_VARRAY(extension, extension)
 
-#define MORPHO_EXTENSIONINITIALIZE "initialize" // Function to call upon initialization
-#define MORPHO_EXTENSIONFINALIZE "finalize"     // Function to call upon finalization
+varray_extension extensionlist; // List of loaded extensions
 
-varray_extension extensions;
+/* -------------------------------------------------------
+ * Extension interface
+ * ------------------------------------------------------- */
+
+/** Open the dynamic library associated with an extension */
+bool extension_dlopen(extension *e) {
+    if (e->handle) return true; // Prevent multiple loads
+    if (MORPHO_ISSTRING(e->path)) e->handle=dlopen(MORPHO_GETCSTRING(e->path), RTLD_LAZY);
+    return e->handle;
+}
+
+/** Close the dynamic library associated with an extension */
+void extension_dlclose(extension *e) {
+    if (e->handle) dlclose(e->handle);
+    e->handle=NULL;
+}
+
+/** Initializes an extension structure with empty values */
+void extension_init(extension *e) {
+    e->name=MORPHO_NIL;
+    e->path=MORPHO_NIL;
+    e->functiontable=MORPHO_NIL;
+    e->classtable=MORPHO_NIL;
+    e->handle=NULL;
+}
+
+/** Clears an extension structure */
+void extension_clear(extension *e) {
+    if (MORPHO_ISOBJECT(e->name)) morpho_freeobject(e->name);
+    if (MORPHO_ISOBJECT(e->path)) morpho_freeobject(e->path);
+    
+    // The functions and classes are freed from the builtin_objects list. 
+    if (MORPHO_ISOBJECT(e->functiontable)) morpho_freeobject(e->functiontable);
+    if (MORPHO_ISOBJECT(e->classtable)) morpho_freeobject(e->classtable);
+    
+    extension_dlclose(e);
+    extension_init(e);
+}
+
+/** Initializes an extension structure with a name and path, creating associated data structures */
+bool extension_initwithname(extension *e, char *name, char *path) {
+    extension_init(e);
+    e->name=object_stringfromcstring(name, strlen(name));
+    e->path=object_stringfromcstring(path, strlen(path));
+    
+    objectdictionary *functiontable = object_newdictionary(),
+                     *classtable = object_newdictionary();
+    
+    if (functiontable) e->functiontable=MORPHO_OBJECT(functiontable);
+    if (classtable) e->classtable=MORPHO_OBJECT(classtable);
+    e->handle=NULL;
+    
+    if (!MORPHO_ISSTRING(e->name) ||
+        !MORPHO_ISSTRING(e->path) ||
+        !MORPHO_ISDICTIONARY(e->functiontable) ||
+        !MORPHO_ISDICTIONARY(e->classtable)) {
+        extension_clear(e);
+        return false;
+    }
+    return true;
+}
 
 /** Trys to locate a function with NAME_FN in extension e, and calls it if found */
-bool extensions_call(extension *e, char *name, char *fn) {
+bool extension_call(extension *e, char *name, char *fn) {
     void (*fptr) (void);
     char fnname[strlen(name)+strlen(fn)+2];
     strcpy(fnname, name);
@@ -44,44 +114,92 @@ bool extensions_call(extension *e, char *name, char *fn) {
     return fptr;
 }
 
-/** Attempts to load an extension with given name. Returns true if it was found and loaded successfully */
-bool morpho_loadextension(char *name) {
+/** Finds the path for an extension using the resource finder */
+bool extension_find(char *name, value *path) {
     char *ext[] = { MORPHO_DYLIBEXTENSION, "dylib", "so", "" };
-    value out = MORPHO_NIL;
-    
-    if (!morpho_findresource(MORPHO_EXTENSIONSDIR, name, ext, true, &out)) return false;
-    
-    extension e;
-    e.handle = dlopen(MORPHO_GETCSTRING(out), RTLD_LAZY);
-    morpho_freeobject(out);
-    
-    if (e.handle) {
-        e.name = object_stringfromcstring(name, strlen(name));
-        varray_extensionwrite(&extensions, e);
-        
-        if (!extensions_call(&e, name, MORPHO_EXTENSIONINITIALIZE)) {
-            dlclose(e.handle);
-            return false; // Check extension initialized correctly.
-        }
-    }
-    
-    return e.handle;
+    return morpho_findresource(MORPHO_EXTENSIONSDIR, name, ext, true, path);
 }
 
+/** Checks if an extension is already loaded;  returns it in out if found */
+bool extension_isloaded(value path, extension *out) {
+    for (int i=0; i<extensionlist.count; i++) {
+        extension *e = &extensionlist.data[i];
+        
+        if (MORPHO_ISEQUAL(path, e->path)) {
+            if (out) *out = *e;
+            return true;
+        }
+    }
+    return false;
+}
+
+/** Call the extension's initializer */
+bool extension_initialize(extension *e) {
+    dictionary *ofunc=builtin_getfunctiontable(),
+               *oclss=builtin_getclasstable();
+    
+    dictionary *fntable = MORPHO_GETDICTIONARYSTRUCT(e->functiontable);
+    dictionary *clsstable = MORPHO_GETDICTIONARYSTRUCT(e->classtable);
+    
+    builtin_setfunctiontable(MORPHO_GETDICTIONARYSTRUCT(e->functiontable));
+    builtin_setclasstable(MORPHO_GETDICTIONARYSTRUCT(e->classtable));
+    
+    bool success=extension_call(e, MORPHO_GETCSTRING(e->name), MORPHO_EXTENSIONINITIALIZE);
+    
+    builtin_setfunctiontable(ofunc);
+    builtin_setclasstable(oclss);
+    
+    return success; 
+}
+
+/** Call the extension's finalizer */
+bool extension_finalize(extension *e) {
+    return extension_call(e, MORPHO_GETCSTRING(e->name), MORPHO_EXTENSIONFINALIZE);
+}
+
+/** Load an extension, optionally returning a dictionary of functions and classes defined by the extension */
+bool extension_load(char *name, dictionary **functiontable, dictionary **classtable) {
+    value path;
+    if (!extension_find(name, &path)) return false;
+    
+    bool success=false;
+    
+    extension e;
+    extension_init(&e);
+    
+    if (extension_isloaded(path, &e)) {
+        success=true;
+    } else if (extension_initwithname(&e, name, MORPHO_GETCSTRING(path)) &&
+               extension_dlopen(&e)) {
+        success=extension_initialize(&e);
+        if (success) varray_extensionwrite(&extensionlist, e);
+    }
+    
+    if (success) {
+        if (functiontable) *functiontable = MORPHO_GETDICTIONARYSTRUCT(e.functiontable);
+        if (classtable) *classtable = MORPHO_GETDICTIONARYSTRUCT(e.classtable);
+    } else extension_clear(&e);
+    
+    morpho_freeobject(path);
+    
+    return success;
+}
+
+/* -------------------------------------------------------
+ * Extensions initialization/finalization
+ * ------------------------------------------------------- */
+
 void extensions_initialize(void) {
-    varray_extensioninit(&extensions);
+    varray_extensioninit(&extensionlist);
  
     morpho_addfinalizefn(extensions_finalize);
 }
 
 void extensions_finalize(void) {
-    for (int i=0; i<extensions.count; i++) {
-        /* Finalize and close each extension */
-        value name = extensions.data[i].name;
-        extensions_call(&extensions.data[i], MORPHO_GETCSTRING(name), MORPHO_EXTENSIONFINALIZE);
-        morpho_freeobject(name);
-        dlclose(extensions.data[i].handle);
+    for (int i=0; i<extensionlist.count; i++) {
+        extension *e = &extensionlist.data[i];
+        extension_finalize(e);
+        extension_clear(e);
     }
-    varray_extensionclear(&extensions);
+    varray_extensionclear(&extensionlist);
 }
-

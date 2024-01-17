@@ -3389,6 +3389,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
     if (module) {
         if (module->type==NODE_SYMBOL) {
             if (morpho_loadextension(MORPHO_GETCSTRING(module->content))) {
+                
             } else if (compiler_findmodule(MORPHO_GETCSTRING(module->content), &filename)) {
                 fname=filename.data;
             } else {

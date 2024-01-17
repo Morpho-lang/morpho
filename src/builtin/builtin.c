@@ -32,6 +32,10 @@ static dictionary builtin_symboltable;
 /** Keep a list of objects created by builtin */
 varray_value builtin_objects;
 
+/** Current function and class tables */
+dictionary *_currentfunctiontable;
+dictionary *_currentclasstable;
+
 /* **********************************************************************
  * Utility functions
  * ********************************************************************** */
@@ -138,6 +142,26 @@ objecttypedefn objectbuiltinfunctiondefn = {
  * Create and find builtin functions
  * ********************************************************************** */
 
+/** Gets the current function table */
+dictionary *builtin_getfunctiontable(void) {
+    return _currentfunctiontable;
+}
+
+/** Sets the current function table */
+void builtin_setfunctiontable(dictionary *dict) {
+    _currentfunctiontable=dict;
+}
+
+/** Gets the current class table */
+dictionary *builtin_getclasstable(void) {
+    return _currentclasstable;
+}
+
+/** Sets the current class table */
+void builtin_setclasstable(dictionary *dict) {
+    _currentclasstable=dict;
+}
+
 /** Add a builtin function.
  * @param name  name of the function
  * @param func  the corresponding C function
@@ -161,7 +185,7 @@ value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags
             UNREACHABLE("redefinition of builtin function (check builtin.c)");
         }
         
-        dictionary_insert(&builtin_functiontable, selector, out);
+        dictionary_insert(_currentfunctiontable, selector, out);
     }
     
     return out;
@@ -222,11 +246,11 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
         }
     }
     
-    if (dictionary_get(&builtin_classtable, label, NULL)) {
-        UNREACHABLE("redefinition of builtin class (check builtin.c)");
+    if (dictionary_get(_currentclasstable, label, NULL)) {
+        UNREACHABLE("redefinition of class in same extension [in builtin.c]");
     }
     
-    dictionary_insert(&builtin_classtable, label, MORPHO_OBJECT(new));
+    dictionary_insert(_currentclasstable, label, MORPHO_OBJECT(new));
     
     return MORPHO_OBJECT(new);
 }
@@ -248,7 +272,7 @@ value builtin_internsymbol(value symbol) {
     return dictionary_intern(&builtin_symboltable, symbol);
 }
 
-/** Interns a symbo given as a C string. */
+/** Interns a symbol given as a C string. */
 value builtin_internsymbolascstring(char *symbol) {
     value selector = object_stringfromcstring(symbol, strlen(symbol));
     varray_valuewrite(&builtin_objects, selector);
@@ -276,6 +300,9 @@ void builtin_initialize(void) {
     dictionary_init(&builtin_classtable);
     dictionary_init(&builtin_symboltable);
     varray_valueinit(&builtin_objects);
+    
+    builtin_setfunctiontable(&builtin_functiontable);
+    builtin_setclasstable(&builtin_classtable);
     
     // Initialize core object types
     objectstringtype=object_addtype(&objectstringdefn);

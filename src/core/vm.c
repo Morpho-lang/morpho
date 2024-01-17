@@ -2004,5 +2004,4 @@ void morpho_finalize(void) {
     }
   
     varray_valueclear(&_finalizefns);
-
 }

@@ -1,9 +1,6 @@
 // Import extensions into a namespace
 
-import zeromq as zmq for ZMQRequest
+import zeromq as zmq for ZMQPull
 
 print zmq.ZMQRequest
-// expect: <fn ZMQRequest>
-
-//print ZMQRequest
-// expect error 'SymblUndf'
+// expect error 'SymblUndfNmSpc'

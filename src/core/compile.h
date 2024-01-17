@@ -21,6 +21,9 @@
 #define COMPILE_SYMBOLNOTDEFINED          "SymblUndf"
 #define COMPILE_SYMBOLNOTDEFINED_MSG      "Symbol '%s' not defined."
 
+#define COMPILE_SYMBOLNOTDEFINEDNMSPC     "SymblUndfNmSpc"
+#define COMPILE_SYMBOLNOTDEFINEDNMSPC_MSG "Symbol '%s' not defined in namespace '%s'."
+
 #define COMPILE_TOOMANYCONSTANTS          "TooMnyCnst"
 #define COMPILE_TOOMANYCONSTANTS_MSG      "Too many constants."
 

@@ -1173,8 +1173,9 @@ namespc *compiler_addnamespace(compiler *c, value symbol) {
 }
 
 /** Attempts to locate a symbol given a namespace label */
-bool compiler_findsymbolwithnamespace(compiler *c, value label, value symbol, value *out) {
+bool compiler_findsymbolwithnamespace(compiler *c, syntaxtreenode *node, value label, value symbol, value *out) {
     namespc *spc;
+    bool success=false;
     
     // Find the namespace
     for (spc=c->namespaces; spc!=NULL; spc=spc->next) {
@@ -1182,9 +1183,13 @@ bool compiler_findsymbolwithnamespace(compiler *c, value label, value symbol, va
     }
     
     // Now try to find the symbol
-    if (spc) return dictionary_get(&spc->symbols, symbol, out);
+    if (spc) {
+        success=dictionary_get(&spc->symbols, symbol, out);
+        
+        if (!success) compiler_error(c, node, COMPILE_SYMBOLNOTDEFINEDNMSPC, MORPHO_GETCSTRING(symbol), MORPHO_GETCSTRING(label));
+    }
     
-    return false;
+    return success;
 }
 
 /** Clears the namespace list, freeing attached data */
@@ -3200,7 +3205,7 @@ static codeinfo compiler_dot(compiler *c, syntaxtreenode *node, registerindx req
     
     if (left->type==NODE_SYMBOL && 
         right->type==NODE_SYMBOL &&
-        compiler_findsymbolwithnamespace(c, left->content, right->content, &out)) {
+        compiler_findsymbolwithnamespace(c, node, left->content, right->content, &out)) {
         
         if (MORPHO_ISINTEGER(out)) {
             return CODEINFO(GLOBAL, MORPHO_GETINTEGERVALUE(out), 0);
@@ -3633,6 +3638,7 @@ void compile_initialize(void) {
 
     /* Compile errors */
     morpho_defineerror(COMPILE_SYMBOLNOTDEFINED, ERROR_COMPILE, COMPILE_SYMBOLNOTDEFINED_MSG);
+    morpho_defineerror(COMPILE_SYMBOLNOTDEFINEDNMSPC, ERROR_COMPILE, COMPILE_SYMBOLNOTDEFINEDNMSPC_MSG);
     morpho_defineerror(COMPILE_TOOMANYCONSTANTS, ERROR_COMPILE, COMPILE_TOOMANYCONSTANTS_MSG);
     morpho_defineerror(COMPILE_ARGSNOTSYMBOLS, ERROR_COMPILE, COMPILE_ARGSNOTSYMBOLS_MSG);
     morpho_defineerror(COMPILE_PROPERTYNAMERQD, ERROR_COMPILE, COMPILE_PROPERTYNAMERQD_MSG);

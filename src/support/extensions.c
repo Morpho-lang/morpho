@@ -50,7 +50,7 @@ bool extension_dlopen(extension *e) {
 }
 
 /** Close the dynamic library associated with an extension */
-bool extension_dlclose(extension *e) {
+void extension_dlclose(extension *e) {
     if (e->handle) dlclose(e->handle);
     e->handle=NULL;
 }

@@ -3196,14 +3196,20 @@ static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerind
 static codeinfo compiler_dot(compiler *c, syntaxtreenode *node, registerindx reqout) {
     syntaxtreenode *left = compiler_getnode(c, node->left),
                    *right = compiler_getnode(c, node->right);
-    value globalindx=MORPHO_NIL;
+    value out=MORPHO_NIL;
     
     if (left->type==NODE_SYMBOL && 
         right->type==NODE_SYMBOL &&
-        compiler_findsymbolwithnamespace(c, left->content, right->content, &globalindx)) {
+        compiler_findsymbolwithnamespace(c, left->content, right->content, &out)) {
         
-        if (!MORPHO_ISINTEGER(globalindx)) UNREACHABLE("Global dictionary contains noninteger value");
-        return CODEINFO(GLOBAL, MORPHO_GETINTEGERVALUE(globalindx), 0);
+        if (MORPHO_ISINTEGER(out)) {
+            return CODEINFO(GLOBAL, MORPHO_GETINTEGERVALUE(out), 0);
+        } else if (MORPHO_ISBUILTINFUNCTION(out) || MORPHO_ISCLASS(out)) {
+            registerindx indx = compiler_addconstant(c, node, out, true, false);
+            return CODEINFO(CONSTANT, indx, 0);
+        } else {
+            UNREACHABLE("Namespace dictionary contains noninteger value");
+        }
     }
     
     return compiler_property(c, node, reqout);
@@ -3391,15 +3397,8 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             dictionary *fndict, *clssdict;
             
             if (extension_load(MORPHO_GETCSTRING(module->content), &fndict, &clssdict)) {
-                if (!nmspace) { // Copy into global symbol table
-                    compiler_copysymbols(fndict, builtin_getfunctiontable(), (fordict.count>0 ? &fordict : NULL));
-                    compiler_copysymbols(clssdict, builtin_getclasstable(), (fordict.count>0 ? &fordict : NULL));
-                } else {
-                    UNREACHABLE("Namespaces don't yet work with extensions");
-                }
-                
-                /*compiler_copysymbols(clssdict, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
-                compiler_copysymbols(fndict, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));*/
+                compiler_copysymbols(clssdict, (nmspace ? &nmspace->symbols: builtin_getclasstable()), (fordict.count>0 ? &fordict : NULL));
+                compiler_copysymbols(fndict, (nmspace ? &nmspace->symbols: builtin_getfunctiontable()), (fordict.count>0 ? &fordict : NULL));
             } else if (compiler_findmodule(MORPHO_GETCSTRING(module->content), &filename)) {
                 fname=filename.data;
             } else {

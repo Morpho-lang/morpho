@@ -26,6 +26,7 @@ jobs:
         cd build
         cmake -DCMAKE_BUILD_TYPE=Release ..
         sudo make install
+        sudo mkdir /usr/local/lib/morpho
     - name: getcli
       run: |
         git clone https://github.com/Morpho-lang/morpho-cli.git

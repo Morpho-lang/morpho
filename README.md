@@ -1,4 +1,6 @@
 # morpho-libmorpho
+
+[![Build](https://github.com/Morpho-lang/morpho-libmorpho/actions/workflows/build.yml/badge.svg)](https://github.com/Morpho-lang/morpho-libmorpho/actions/workflows/build.yml)
  
 The morpho language built as a dynamic library for embedding in other applications. Part of development efforts for version 0.6.0 - presently not recommended for public use.
 

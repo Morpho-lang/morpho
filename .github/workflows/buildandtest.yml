@@ -37,5 +37,4 @@ jobs:
     - name: test 
       run: |
         cd test
-        ls
         python3 test.py 

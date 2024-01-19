@@ -1,0 +1,24 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: configure
+      run:  |
+        sudo apt update
+        sudo apt install libsuitesparse-dev
+        sudo apt install liblapacke-dev
+        python -m pip install --upgrade pip
+        python -m pip install regex colored
+    - name: make
+      run: (mkdir build; cd build; cmake ..; sudo make install)

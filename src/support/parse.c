@@ -595,21 +595,17 @@ bool parse_interpolation(parser *p, void *out) {
     
     syntaxtreeindx left=SYNTAXTREE_UNCONNECTED, right=SYNTAXTREE_UNCONNECTED;
     
-    if (!parse_expression(p, &left)) goto parse_interpolation_cleanup;
+    if (!parse_expression(p, &left)) return false;
     if (parse_checktokenadvance(p, TOKEN_STRING)) {
-        if (!parse_string(p, &right)) goto parse_interpolation_cleanup;
+        if (!parse_string(p, &right)) return false;
     } else if (parse_checktokenadvance(p, TOKEN_INTERPOLATION)) {
-        if (!parse_interpolation(p, &right)) goto parse_interpolation_cleanup;
+        if (!parse_interpolation(p, &right)) return false;
     } else {
         parse_error(p, false, PARSE_INCOMPLETESTRINGINT);
-        goto parse_interpolation_cleanup;
+        return false;
     }
     
     return parse_addnode(p, NODE_INTERPOLATION, s, &tok, left, right, (syntaxtreeindx *) out);
-    
-parse_interpolation_cleanup:
-    morpho_freeobject(s);
-    return false;
 }
 
 /** Helper function to parse a tuple

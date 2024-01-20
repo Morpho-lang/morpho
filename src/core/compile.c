@@ -1172,6 +1172,14 @@ namespc *compiler_addnamespace(compiler *c, value symbol) {
     return new;
 }
 
+/** Checks if a given label corresponds to a namespace */
+bool compiler_isnamespace(compiler *c, value label) {
+    for (namespc *spc=c->namespaces; spc!=NULL; spc=spc->next) {
+        if (MORPHO_ISEQUAL(spc->label, label)) return true;
+    }
+    return false;
+}
+
 /** Attempts to locate a symbol given a namespace label */
 bool compiler_findsymbolwithnamespace(compiler *c, syntaxtreenode *node, value label, value symbol, value *out) {
     namespc *spc;
@@ -2600,10 +2608,17 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
 /** Is this a method invocation? */
 static bool compiler_isinvocation(compiler *c, syntaxtreenode *call) {
     bool isinvocation=false;
-    syntaxtreenode *selector, *method;
+    syntaxtreenode *selector, *target, *method;
     /* Get the selector node */
     selector=compiler_getnode(c, call->left);
     if (selector->type==NODE_DOT) {
+        /* Check that if the target is a namespace */
+        target=compiler_getnode(c, selector->left);
+        if (target->type==NODE_SYMBOL &&
+            compiler_isnamespace(c, target->content)) {
+            return false;
+        }
+        
         /* Check that the method is a symbol */
         method=compiler_getnode(c, selector->right);
         if (method->type==NODE_SYMBOL) isinvocation=true;

@@ -1,0 +1,15 @@
+// Variadic args with apply
+
+fn f(...x) {
+    for (i in x) print i
+}
+
+f(1,2,3)
+// expect: 1
+// expect: 2
+// expect: 3
+
+apply(f, [1,2,3])
+// expect: 1
+// expect: 2
+// expect: 3

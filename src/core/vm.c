@@ -372,10 +372,11 @@ static inline void vm_expandstack(vm *v, value **reg, unsigned int n) {
  * @param[in] func    - function being called
  * @param[in] regcall - Register for the call
  * @param[in] nargs  - number of arguments being called with
+ * @param[in] offargs - original arguments used, if they are off the stack
  * @param[in] reg       - register base
  * @param[in] newreg - new register base
  */
-static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int regcall, unsigned int nargs, value *reg, value *newreg) {
+static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int regcall, unsigned int nargs, value *offargs, value *reg, value *newreg) {
     unsigned int nopt = func->opt.count, // No. of optional params
                  nfixed = func->nargs-nopt, // No. of fixed params
                  roffset = nfixed+1, // Position of first optional parameter in output
@@ -388,7 +389,7 @@ static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsign
 
     /* Identify the optional arguments by searching back from the end */
     for (n=0; 2*n<nargs; n+=1) {
-        value key = reg[regcall+nargs-1-2*n];
+        value key = reg[regcall+nargs-1-2*n]; // TODO: Will need to change for off-stack calls
         // TODO: Is a dictionary lookup faster here?
         unsigned int k=0;
         for (; k<nopt; k++) if (MORPHO_ISSAME(func->opt.data[k].symbol, key)) break;
@@ -411,7 +412,7 @@ static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsign
             return false;
         }
 
-        objectlist *new = object_newlist(nargs-2*n-(nfixed-1), reg+regcall+nfixed);
+        objectlist *new = object_newlist(nargs-2*n-(nfixed-1), (offargs ? offargs+nfixed-1 :  reg+regcall+nfixed));
         if (new) {
             newreg[nfixed] = MORPHO_OBJECT(new);
             vm_bindobjectwithoutcollect(v, newreg[nfixed]);
@@ -431,6 +432,7 @@ static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsign
  *           2. Advancing the frame pointer;
  *           3. Extracting the function from a closure if necessary;
  *           4. Expanding the stack if necessary
+ *             Copy arguments to appropriate registers
  *           5. Loading the constant table from the function definition
  *           6. Shifting the register base
  *           7. Moving the program counter to the function
@@ -438,11 +440,24 @@ static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsign
  * @param[in]  fn                       Function to call
  * @param[in]  regcall            rshift becomes r0 in the new call frame
  * @param[in]  nargs                number of arguments
+ * @param[in]  args                  pointer to the list of args
  * @param[out] pc                       program counter, updated
  * @param[out] reg                     register/stack pointer, updated */
-static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int nargs, instruction **pc, value **reg) {
+static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int nargs, value *args, instruction **pc, value **reg) {
     objectfunction *func = MORPHO_GETFUNCTION(fn);
+    bool argsonstack=true;
+    ptrdiff_t aoffset=0;
 
+    value *arglist=args;
+    if (arglist) {
+        /** Determine whether the arguments provided are on the stack or not */
+        argsonstack=(v->stack.data && arglist>v->stack.data && arglist<v->stack.data+v->stack.capacity);
+    } else { /** Otherwise use the registers after regcall */
+        arglist=(*reg)+regcall+1;
+    }
+    
+    if (argsonstack) aoffset=arglist-v->stack.data; /** If args on stack retain where they are */
+    
     /* In the old frame... */
     v->fp->pc=*pc; /* Save the program counter */
     v->fp->stackcount=v->fp->function->nregs+(unsigned int) v->fp->roffset; /* Store the stacksize */
@@ -482,13 +497,20 @@ static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int n
     value *oreg = *reg; /* Old register frame */
     *reg += oldnregs; /* Shift the register frame */
     v->fp->roffset=*reg-v->stack.data; /* Store the register index */
-
-    /* Copy args */
-    for (unsigned int i=0; i<=nargs; i++) (*reg)[i] = oreg[regcall+i];
+    
+    /* Copy arguments into new register window */
+    if (argsonstack) {
+        arglist = v->stack.data+aoffset; // If they were on the stack, the pointer may be invalid so update it.
+        (*reg)[0] = arglist[-1]; // Copy the caller into r0
+    } else {
+        (*reg)[0] = fn;
+    }
+    
+    for (unsigned int i=0; i<nargs; i++) (*reg)[i+1] = arglist[i];
 
     /* Handle optional args */
     if (func->opt.count>0 || func->varg>=0) {
-        if (!vm_vargs(v, (*pc) - v->instructions, func, regcall, nargs, oreg, *reg)) return false;
+        if (!vm_vargs(v, (*pc) - v->instructions, func, regcall, nargs, arglist, oreg, *reg)) return false;
     } else if (func->nargs!=nargs) {
         vm_runtimeerror(v, (*pc) - v->instructions, VM_INVALIDARGS, func->nargs, nargs);
         return false;
@@ -913,7 +935,7 @@ callfunction: // Jump here if an instruction becomes a call
             }
 
             if (MORPHO_ISFUNCTION(left) || MORPHO_ISCLOSURE(left)) {
-                if (!vm_call(v, left, a, c, &pc, &reg)) goto vm_error;
+                if (!vm_call(v, left, a, c, NULL, &pc, &reg)) goto vm_error;
 
             } else if (MORPHO_ISBUILTINFUNCTION(left)) {
                 /* Save program counter in the old callframe */
@@ -945,7 +967,7 @@ callfunction: // Jump here if an instruction becomes a call
                     if (dictionary_getintern(&klass->methods, initselector, &ifunc)) {
                         /* If so, call it */
                         if (MORPHO_ISFUNCTION(ifunc)) {
-                            if (!vm_call(v, ifunc, a, c, &pc, &reg)) goto vm_error;
+                            if (!vm_call(v, ifunc, a, c, NULL, &pc, &reg)) goto vm_error;
                         } else if (MORPHO_ISBUILTINFUNCTION(ifunc)) {
 #ifdef MORPHO_PROFILER
                             v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
@@ -984,7 +1006,7 @@ callfunction: // Jump here if an instruction becomes a call
                 if (dictionary_getintern(&instance->klass->methods, right, &ifunc)) {
                     /* If so, call it */
                     if (MORPHO_ISFUNCTION(ifunc)) {
-                        if (!vm_call(v, ifunc, a, c, &pc, &reg)) goto vm_error;
+                        if (!vm_call(v, ifunc, a, c, NULL, &pc, &reg)) goto vm_error;
                     } else if (MORPHO_ISBUILTINFUNCTION(ifunc)) {
 #ifdef MORPHO_PROFILER
                         v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
@@ -1019,7 +1041,7 @@ callfunction: // Jump here if an instruction becomes a call
                     if (v->fp>v->frame) reg[a]=reg[0]; /* Copy self into r[a] and call */
 
                     if (MORPHO_ISFUNCTION(ifunc)) {
-                        if (!vm_call(v, ifunc, a, c, &pc, &reg)) goto vm_error;
+                        if (!vm_call(v, ifunc, a, c, NULL, &pc, &reg)) goto vm_error;
                     } else if (MORPHO_ISBUILTINFUNCTION(ifunc)) {
 #ifdef MORPHO_PROFILER
                         v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
@@ -1679,23 +1701,13 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
 #endif
         success=true;
     } else if (MORPHO_ISFUNCTION(fn) || MORPHO_ISCLOSURE(fn)) {
-        ptrdiff_t aoffset=0;
-        value *xargs=args;
-
-        /* If the arguments are on the stack, we need to keep to track of this */
-        bool argsonstack=(v->stack.data && args>v->stack.data && args<v->stack.data+v->stack.capacity);
-        if (argsonstack) aoffset=args-v->stack.data;
-
         value *reg=v->stack.data+v->fp->roffset;
         instruction *pc=v->fp->pc;
 
         /* Set up the function call, advancing the frame pointer and expanding the stack if necessary */
-        if (vm_call(v, fn, v->fp->function->nregs, nargs, &pc, &reg)) {
-            if (argsonstack) xargs=v->stack.data+aoffset;
-
-            /* Now place the function (or self) and arguments on the stack */
+        if (vm_call(v, fn, v->fp->function->nregs, nargs, args, &pc, &reg)) {
+            /* Now ensure the function (or self) is in r0 */
             reg[0]=r0;
-            for (unsigned int i=0; i<nargs; i++) reg[i+1]=xargs[i];
 
             /* Set return to true in this callframe */
             v->fp->ret=true;

@@ -1,0 +1,23 @@
+// Variadic args in a method
+
+class Foo {
+    foo(...u) {
+        print u
+    }
+
+    boo() {
+        var a = [1,2,3]
+        apply(self.foo, a)
+    }
+}
+
+var a = Foo()
+
+a.foo(1,2,3)
+// expect: [ 1, 2, 3 ]
+
+a.boo()
+// expect: [ 1, 2, 3 ]
+
+apply(a.foo, [1,2,3])
+// expect: [ 1, 2, 3 ]

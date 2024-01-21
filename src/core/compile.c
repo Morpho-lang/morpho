@@ -2909,23 +2909,6 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
         }
         
         varray_syntaxtreeindxclear(&entries);
-        
-        /*if (snode->type==NODE_SYMBOL) {
-            objectclass *superclass=compiler_findclass(c->out->global, snode->content);
-
-            if (superclass) {
-                if (superclass!=klass) {
-                    klass->superclass=superclass;
-                    dictionary_copy(&superclass->methods, &klass->methods);
-                } else {
-                    compiler_error(c, snode, COMPILE_CLASSINHERITSELF);
-                }
-            } else {
-                compiler_error(c, snode, COMPILE_SUPERCLASSNOTFOUND, MORPHO_GETCSTRING( snode->content));
-            }
-        } else {
-            UNREACHABLE("Superclass node should be a symbol.");
-        }*/
     } else {
         klass->superclass=baseclass;
         if (baseclass) dictionary_copy(&baseclass->methods, &klass->methods);
@@ -3409,9 +3392,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                 
                 if (!nmspace) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return CODEINFO_EMPTY; }
             } else UNREACHABLE("Incorrect syntax tree structure in AS node.");
-        } else {
-            UNREACHABLE("Unexpected node type.");
-        }
+        } else UNREACHABLE("Unexpected node type.");
         qual=compiler_getnode(c, qual->right);
     }
 

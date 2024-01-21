@@ -225,6 +225,7 @@ typedef struct scompilerlist {
 typedef struct _namespc {
     value label; /** Label  */
     dictionary symbols; /** Symbol table */
+    dictionary classes; /** Class table */
     
     struct _namespc *next; /** Make a linked list of namespaces */
 } namespc;

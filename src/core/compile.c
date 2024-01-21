@@ -1180,6 +1180,7 @@ namespc *compiler_addnamespace(compiler *c, value symbol) {
     if (new) {
         new->label=symbol;
         dictionary_init(&new->symbols);
+        dictionary_init(&new->classes);
         
         new->next=c->namespaces; // Link namespace to compiler
         c->namespaces=new;
@@ -1189,26 +1190,36 @@ namespc *compiler_addnamespace(compiler *c, value symbol) {
 }
 
 /** Checks if a given label corresponds to a namespace */
-bool compiler_isnamespace(compiler *c, value label) {
+namespc *compiler_isnamespace(compiler *c, value label) {
     for (namespc *spc=c->namespaces; spc!=NULL; spc=spc->next) {
-        if (MORPHO_ISEQUAL(spc->label, label)) return true;
+        if (MORPHO_ISEQUAL(spc->label, label)) return spc;
     }
-    return false;
+    return NULL;
 }
 
 /** Attempts to locate a symbol given a namespace label */
 bool compiler_findsymbolwithnamespace(compiler *c, syntaxtreenode *node, value label, value symbol, value *out) {
-    namespc *spc;
     bool success=false;
-    
-    // Find the namespace
-    for (spc=c->namespaces; spc!=NULL; spc=spc->next) {
-        if (MORPHO_ISEQUAL(spc->label, label)) break;
-    }
+    namespc *spc = compiler_isnamespace(c, label);
     
     // Now try to find the symbol
     if (spc) {
         success=dictionary_get(&spc->symbols, symbol, out);
+        
+        if (!success) compiler_error(c, node, COMPILE_SYMBOLNOTDEFINEDNMSPC, MORPHO_GETCSTRING(symbol), MORPHO_GETCSTRING(label));
+    }
+    
+    return success;
+}
+
+/** Attempts to locate a class given a namespace label */
+bool compiler_findclasswithnamespace(compiler *c, syntaxtreenode *node, value label, value symbol, value *out) {
+    bool success=false;
+    namespc *spc = compiler_isnamespace(c, label);
+    
+    // Now try to find the symbol
+    if (spc) {
+        success=dictionary_get(&spc->classes, symbol, out);
         
         if (!success) compiler_error(c, node, COMPILE_SYMBOLNOTDEFINEDNMSPC, MORPHO_GETCSTRING(symbol), MORPHO_GETCSTRING(label));
     }
@@ -1224,6 +1235,7 @@ void compiler_clearnamespacelist(compiler *c) {
         next=spc->next;
         
         dictionary_clear(&spc->symbols);
+        dictionary_clear(&spc->classes);
         MORPHO_FREE(spc);
     }
     
@@ -2889,21 +2901,39 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
                                                  // As super will be LAST in this list
             syntaxtreenode *snode = syntaxtree_nodefromindx(compiler_getsyntaxtree(c), entries.data[i]) ;
             
+            objectclass *superclass=NULL;
+            value classlabel=MORPHO_NIL;
+            
             if (snode->type==NODE_SYMBOL) {
-                objectclass *superclass=compiler_findclass(c, snode->content);
+                classlabel=snode->content;
+                superclass=compiler_findclass(c, classlabel);
+            } else if (snode->type==NODE_DOT) {
+                syntaxtreenode *left = compiler_getnode(c, snode->left),
+                               *right = compiler_getnode(c, snode->right);
                 
-                if (superclass) {
-                    if (superclass!=klass) {
-                        if (!klass->superclass) klass->superclass=superclass; // Only the first class is the super class, all others are mixins.
-                        dictionary_copy(&superclass->methods, &klass->methods);
-                    } else {
-                        compiler_error(c, snode, COMPILE_CLASSINHERITSELF);
-                    }
+                if (left->type!=NODE_SYMBOL || right->type!=NODE_SYMBOL) UNREACHABLE("Superclass or mixin namespace node should have symbols");
+                
+                classlabel=right->content;
+                
+                value klass=MORPHO_NIL;
+                compiler_findclasswithnamespace(c, snode, left->content, classlabel, &klass);
+                
+                if (MORPHO_ISCLASS(klass)) superclass=MORPHO_GETCLASS(klass);
+            } else {
+                UNREACHABLE("Superclass or mixin node should be a symbol.");
+            }
+                
+            if (superclass) {
+                if (superclass!=klass) {
+                    if (!klass->superclass) klass->superclass=superclass; // Only the first class is the super class, all others are mixins.
+                    dictionary_copy(&superclass->methods, &klass->methods);
                 } else {
-                    compiler_error(c, snode, COMPILE_SUPERCLASSNOTFOUND, MORPHO_GETCSTRING( snode->content));
+                    compiler_error(c, snode, COMPILE_CLASSINHERITSELF);
                 }
             } else {
-                UNREACHABLE("Superclass node should be a symbol.");
+                if (MORPHO_ISSTRING(classlabel)) {
+                    compiler_error(c, snode, COMPILE_SUPERCLASSNOTFOUND, MORPHO_GETCSTRING(classlabel));
+                } else UNREACHABLE("No class label available");
             }
         }
         
@@ -3402,6 +3432,10 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             if (extension_load(MORPHO_GETCSTRING(module->content), &fndict, &clssdict)) {
                 compiler_copysymbols(clssdict, (nmspace ? &nmspace->symbols: builtin_getclasstable()), (fordict.count>0 ? &fordict : NULL));
                 compiler_copysymbols(fndict, (nmspace ? &nmspace->symbols: builtin_getfunctiontable()), (fordict.count>0 ? &fordict : NULL));
+                
+                if (nmspace) { // Copy classes into the namespace's class table
+                    compiler_copysymbols(clssdict, &nmspace->classes, (fordict.count>0 ? &fordict : NULL));
+                }
             } else if (compiler_findmodule(MORPHO_GETCSTRING(module->content), &filename)) {
                 fname=filename.data;
             } else {
@@ -3457,7 +3491,11 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             if (ERROR_SUCCEEDED(c->err)) {
                 compiler_stripend(c);
                 compiler_copysymbols(&cc.globals, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
-                if (!nmspace) compiler_copysymbols(&cc.classes, &c->classes, (fordict.count>0 ? &fordict : NULL));
+                if (nmspace) { // If we're in a namespace, copy the class table into that
+                    compiler_copysymbols(&cc.classes, &nmspace->classes, (fordict.count>0 ? &fordict : NULL));
+                } else { // Otherwise just put it into the parent compiler's class table
+                    compiler_copysymbols(&cc.classes, &c->classes, (fordict.count>0 ? &fordict : NULL));
+                }
                 
                 objectdictionary *dict = object_newdictionary(); // Preserve all symbols for further imports
                 if (dict) {

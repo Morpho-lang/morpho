@@ -616,7 +616,11 @@ bool parse_interpolation(parser *p, void *out) {
     
     syntaxtreeindx left=SYNTAXTREE_UNCONNECTED, right=SYNTAXTREE_UNCONNECTED;
     
-    if (!parse_expression(p, &left)) return false;
+    if (!(parse_checktoken(p, TOKEN_STRING) &&
+        *p->current.start=='}')) {
+        PARSE_CHECK(parse_expression(p, &left));
+    }
+    
     if (parse_checktokenadvance(p, TOKEN_STRING)) {
         if (!parse_string(p, &right)) return false;
     } else if (parse_checktokenadvance(p, TOKEN_INTERPOLATION)) {

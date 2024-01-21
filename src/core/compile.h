@@ -248,6 +248,9 @@ typedef struct scompiler {
     /* Globals */
     dictionary globals;
     
+    /* Classes */
+    dictionary classes;
+    
     /* Function state stack */
     functionstate fstack[MORPHO_CALLFRAMESTACKSIZE];
     indx fstackp;

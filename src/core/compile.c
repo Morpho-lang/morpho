@@ -273,6 +273,19 @@ static objectclass *compiler_getcurrentclass(compiler *c) {
     return c->currentclass;
 }
 
+/** Adds an objectclass to the compilers dictionary of classes */
+void compiler_addclass(compiler *c, objectclass *klass) {
+    dictionary_insert(&c->classes, klass->name, MORPHO_OBJECT(klass));
+}
+
+/** Finds a class in the compiler's dictionary of classes */
+objectclass *compiler_findclass(compiler *c, value name) {
+    value val;
+    if (dictionary_get(&c->classes, name, &val) &&
+        MORPHO_ISCLASS(val)) return MORPHO_GETCLASS(val);
+    return NULL;
+}
+
 /* ------------------------------------------
  * Modules
  * ------------------------------------------- */
@@ -2841,26 +2854,6 @@ static codeinfo compiler_method(compiler *c, syntaxtreenode *node, registerindx 
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
 
-/** Finds a class in the constant table of a function */
-objectclass *compiler_findclass(objectfunction *f, value name) {
-    /* Search the constant table */
-    for (unsigned int i=0; i<f->konst.count; i++) {
-        if (MORPHO_ISCLASS(f->konst.data[i])) {
-            objectclass *k = MORPHO_GETCLASS(f->konst.data[i]);
-
-            if (morpho_comparevalue(k->name, name)==0) {
-                return k;
-            }
-        }
-    }
-
-    /* If we don't find it, try searching the parent */
-    if (f->parent!=NULL) return compiler_findclass(f->parent, name);
-
-    return NULL;
-}
-
-
 /** Compiles a class declaration */
 static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
@@ -2891,7 +2884,7 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
             syntaxtreenode *snode = syntaxtree_nodefromindx(compiler_getsyntaxtree(c), entries.data[i]) ;
             
             if (snode->type==NODE_SYMBOL) {
-                objectclass *superclass=compiler_findclass(c->out->global, snode->content);
+                objectclass *superclass=compiler_findclass(c, snode->content);
                 
                 if (superclass) {
                     if (superclass!=klass) {
@@ -2923,6 +2916,8 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
 
     /* End class definition */
     compiler_endclass(c);
+    
+    if (ERROR_SUCCEEDED(c->err)) compiler_addclass(c, klass);
 
     /* Allocate a variable to refer to the class definition */
     codeinfo cvar=compiler_addvariable(c, node, node->content);
@@ -3023,7 +3018,7 @@ static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx 
     }
 
     /* Is it a class? */
-    objectclass *klass = compiler_findclass(compiler_getcurrentfunction(c), node->content);
+    objectclass *klass = compiler_findclass(c, node->content);
     if (klass) {
         /* It is; so add it to the constant table */
         ret.returntype=CONSTANT;
@@ -3458,6 +3453,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             if (ERROR_SUCCEEDED(c->err)) {
                 compiler_stripend(c);
                 compiler_copysymbols(&cc.globals, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
+                if (!nmspace) compiler_copysymbols(&cc.classes, &c->classes, (fordict.count>0 ? &fordict : NULL));
                 
                 objectdictionary *dict = object_newdictionary(); // Preserve all symbols for further imports
                 if (dict) {
@@ -3465,8 +3461,8 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                     symboldict = MORPHO_OBJECT(dict);
                 }
                 
-            } else { // TODO: This is wrong! The module name gets overwritten, which shouldn't happen
-                c->err.module = MORPHO_GETCSTRING(modname);
+            } else {
+                c->err.module = cc.err.module;
             }
             
             debugannotation_setmodule(&c->out->annotations, compiler_getmodule(c));
@@ -3518,6 +3514,7 @@ void compiler_init(const char *source, program *out, compiler *c) {
     parse_init(&c->parse, &c->lex, &c->err, &c->tree);
     compiler_fstackinit(c);
     dictionary_init(&c->globals);
+    dictionary_init(&c->classes);
     dictionary_init(&c->modules);
     if (out) c->fstack[0].func=out->global; /* The global pseudofunction */
     c->out = out;
@@ -3542,6 +3539,7 @@ void compiler_clear(compiler *c) {
     dictionary_clear(&c->globals);
     dictionary_freecontents(&c->modules, true, true);
     dictionary_clear(&c->modules);
+    dictionary_clear(&c->classes);
 }
 
 /* **********************************************************************

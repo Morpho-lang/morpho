@@ -1136,14 +1136,14 @@ static codeinfo compiler_addforwardreference(compiler *c, syntaxtreenode *node, 
     return ret;
 }
 
-/** Checks if a function definition resolves a forward reference */
-static bool compiler_resolveforwardreference(compiler *c, objectfunction *func, codeinfo *out) {
+/** Checks if a symbol resolves a forward reference */
+static bool compiler_resolveforwardreference(compiler *c, value symbol, codeinfo *out) {
     bool success=false;
     functionstate *f = compiler_currentfunctionstate(c);
 
     for (unsigned int i=0; i<f->forwardref.count; i++) {
         forwardreference *ref = f->forwardref.data+i;
-        if (MORPHO_ISEQUAL(func->name, ref->symbol) &&
+        if (MORPHO_ISEQUAL(symbol, ref->symbol) &&
             ref->scopedepth==compiler_currentscope(c)) {
             out->returntype=ref->returntype;
             out->dest=ref->dest;
@@ -2536,7 +2536,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
             fvar.returntype=REGISTER;
         } else {
             /* Check if this resolves a forward reference */
-            if (!compiler_resolveforwardreference(c, func, &fvar)) {
+            if (!compiler_resolveforwardreference(c, func->name, &fvar)) {
                 fvar=compiler_addvariable(c, node, node->content);
             }
         }
@@ -2871,8 +2871,11 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
     objectclass *klass=object_newclass(node->content);
     compiler_beginclass(c, klass);
 
-    /* Store the object class as a constant */
+    /** Store the object class as a constant */
     kindx=compiler_addconstant(c, node, MORPHO_OBJECT(klass), false, false);
+    
+    /** Add the class to the class table */
+    if (ERROR_SUCCEEDED(c->err)) compiler_addclass(c, klass);
     
     /* Is there a superclass and/or mixins? */
     if (node->left!=SYNTAXTREE_UNCONNECTED) {
@@ -2919,8 +2922,6 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
 
     /* End class definition */
     compiler_endclass(c);
-    
-    if (ERROR_SUCCEEDED(c->err)) compiler_addclass(c, klass);
 
     /* Allocate a variable to refer to the class definition */
     codeinfo cvar=compiler_addvariable(c, node, node->content);

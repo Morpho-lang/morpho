@@ -283,6 +283,9 @@ objectclass *compiler_findclass(compiler *c, value name) {
     value val;
     if (dictionary_get(&c->classes, name, &val) &&
         MORPHO_ISCLASS(val)) return MORPHO_GETCLASS(val);
+    
+    if (c->parent) return compiler_findclass(c->parent, name);
+    
     return NULL;
 }
 

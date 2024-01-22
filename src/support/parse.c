@@ -412,6 +412,27 @@ bool parse_variable(parser *p, errorid id, void *out) {
     return parse_symbol(p, out);
 }
 
+/** Parses a reference that could be a symbol or a namespace.symbol reference */
+bool parse_reference(parser *p, errorid errid, void *out) {
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_SYMBOL, errid));
+    
+    syntaxtreeindx symbol, selector=SYNTAXTREE_UNCONNECTED;
+    PARSE_CHECK(parse_symbol(p, &symbol));
+    
+    if (parse_checktokenadvance(p, TOKEN_DOT)) {
+        PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_SYMBOL, errid));
+        PARSE_CHECK(parse_symbol(p, &selector));
+    }
+    
+    if (selector!=SYNTAXTREE_UNCONNECTED) {
+        PARSE_CHECK(parse_addnode(p, NODE_DOT, MORPHO_NIL, &p->previous, symbol, selector, &symbol));
+    }
+    
+    *((syntaxtreeindx *) out)=symbol;
+    
+    return true;
+}
+
 /** Parse a statement terminator  */
 bool parse_statementterminator(parser *p) {
     if (parse_checktoken(p, TOKEN_SEMICOLON)) {
@@ -595,21 +616,21 @@ bool parse_interpolation(parser *p, void *out) {
     
     syntaxtreeindx left=SYNTAXTREE_UNCONNECTED, right=SYNTAXTREE_UNCONNECTED;
     
-    if (!parse_expression(p, &left)) goto parse_interpolation_cleanup;
+    if (!(parse_checktoken(p, TOKEN_STRING) &&
+        *p->current.start=='}')) {
+        PARSE_CHECK(parse_expression(p, &left));
+    }
+    
     if (parse_checktokenadvance(p, TOKEN_STRING)) {
-        if (!parse_string(p, &right)) goto parse_interpolation_cleanup;
+        if (!parse_string(p, &right)) return false;
     } else if (parse_checktokenadvance(p, TOKEN_INTERPOLATION)) {
-        if (!parse_interpolation(p, &right)) goto parse_interpolation_cleanup;
+        if (!parse_interpolation(p, &right)) return false;
     } else {
         parse_error(p, false, PARSE_INCOMPLETESTRINGINT);
-        goto parse_interpolation_cleanup;
+        return false;
     }
     
     return parse_addnode(p, NODE_INTERPOLATION, s, &tok, left, right, (syntaxtreeindx *) out);
-    
-parse_interpolation_cleanup:
-    morpho_freeobject(s);
-    return false;
 }
 
 /** Helper function to parse a tuple
@@ -961,21 +982,13 @@ bool parse_classdeclaration(parser *p, void *out) {
     
     /* Extract a superclass name */
     if (parse_checktokenadvance(p, TOKEN_LT) || parse_checktokenadvance(p, TOKEN_IS)) {
-        PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_SYMBOL, PARSE_EXPECTSUPER));
-        sname=parse_tokenasstring(p);
-        parse_addobject(p, sname);
-        PARSE_CHECK(parse_addnode(p, NODE_SYMBOL, sname, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, &sclass));
+        PARSE_CHECK(parse_reference(p, PARSE_EXPECTSUPER, &sclass));
     }
     
     if (parse_checktokenadvance(p, TOKEN_WITH)) {
         do {
-            parse_checkrequiredtoken(p, TOKEN_SYMBOL, PARSE_EXPECTSUPER);
-            value mixin=parse_tokenasstring(p);
-            parse_addobject(p, mixin);
-            
             syntaxtreeindx smixin;
-            PARSE_CHECK(parse_addnode(p, NODE_SYMBOL, mixin, &p->previous, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, &smixin));
-                
+            PARSE_CHECK(parse_reference(p, PARSE_EXPECTMIXIN, &smixin));
             PARSE_CHECK(parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &p->previous, smixin, sclass, &sclass)); // Mixins end up being recorded in reverse order
             
         } while (parse_checktokenadvance(p, TOKEN_COMMA));
@@ -1746,7 +1759,8 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_IMPORTASSYMBL, ERROR_PARSE, PARSE_IMPORTASSYMBL_MSG);
     morpho_defineerror(PARSE_IMPORTFORSYMBL, ERROR_PARSE, PARSE_IMPORTFORSYMBL_MSG);
     morpho_defineerror(PARSE_EXPECTSUPER, ERROR_COMPILE, PARSE_EXPECTSUPER_MSG);
-
+    morpho_defineerror(PARSE_EXPECTMIXIN, ERROR_COMPILE, PARSE_EXPECTMIXIN_MSG);
+    
     morpho_defineerror(PARSE_UNRECGNZEDTOK, ERROR_PARSE, PARSE_UNRECGNZEDTOK_MSG);
     morpho_defineerror(PARSE_DCTSPRTR, ERROR_PARSE, PARSE_DCTSPRTR_MSG);
     morpho_defineerror(PARSE_DCTTRMNTR, ERROR_PARSE, PARSE_DCTTRMNTR_MSG);

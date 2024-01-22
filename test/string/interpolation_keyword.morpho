@@ -1,0 +1,3 @@
+
+print "The keyword is ${while}"
+// expect error 'ExpExpr'

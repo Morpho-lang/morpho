@@ -225,6 +225,7 @@ typedef struct scompilerlist {
 typedef struct _namespc {
     value label; /** Label  */
     dictionary symbols; /** Symbol table */
+    dictionary classes; /** Class table */
     
     struct _namespc *next; /** Make a linked list of namespaces */
 } namespc;
@@ -247,6 +248,9 @@ typedef struct scompiler {
     
     /* Globals */
     dictionary globals;
+    
+    /* Classes */
+    dictionary classes;
     
     /* Function state stack */
     functionstate fstack[MORPHO_CALLFRAMESTACKSIZE];

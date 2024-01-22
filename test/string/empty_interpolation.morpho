@@ -1,0 +1,5 @@
+// Empty string interpolation
+
+print "${}x"
+// expect: x
+

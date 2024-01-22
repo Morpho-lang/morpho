@@ -202,6 +202,9 @@ struct sparser {
 #define PARSE_EXPECTSUPER                 "SprNmMssng"
 #define PARSE_EXPECTSUPER_MSG             "Expect superclass name."
 
+#define PARSE_EXPECTMIXIN                 "MxnNmMssng"
+#define PARSE_EXPECTMIXIN_MSG             "Expect mixin class name."
+
 #define PARSE_UNRECGNZEDTOK               "UnrcgnzdTok"
 #define PARSE_UNRECGNZEDTOK_MSG           "Encountered an unrecognized token."
 

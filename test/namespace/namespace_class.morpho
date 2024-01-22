@@ -1,0 +1,11 @@
+// Check that classes are imported correctly
+
+import color as c
+
+print c.Color
+// expect: @Color
+
+var gray = c.Color(0.5,0.5,0.5)
+
+print gray
+// expect: <Color>

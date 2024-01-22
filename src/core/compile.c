@@ -273,6 +273,22 @@ static objectclass *compiler_getcurrentclass(compiler *c) {
     return c->currentclass;
 }
 
+/** Adds an objectclass to the compilers dictionary of classes */
+void compiler_addclass(compiler *c, objectclass *klass) {
+    dictionary_insert(&c->classes, klass->name, MORPHO_OBJECT(klass));
+}
+
+/** Finds a class in the compiler's dictionary of classes */
+objectclass *compiler_findclass(compiler *c, value name) {
+    value val;
+    if (dictionary_get(&c->classes, name, &val) &&
+        MORPHO_ISCLASS(val)) return MORPHO_GETCLASS(val);
+    
+    if (c->parent) return compiler_findclass(c->parent, name);
+    
+    return NULL;
+}
+
 /* ------------------------------------------
  * Modules
  * ------------------------------------------- */
@@ -671,9 +687,8 @@ static registerindx compiler_addconstant(compiler *c, syntaxtreenode *node, valu
                 out=konst->count-1;
                 if (!success) compiler_error(c, node, ERROR_ALLOCATIONFAILED);
 
-                /* If the object is a constant we make sure its bound to the program */
-                if (MORPHO_ISOBJECT(constant)) {
-                    /* Bind the object to the program */
+                /* If the constant is an object and we cloned it, make sure it's bound to the program */
+                if (clone && MORPHO_ISOBJECT(add)) {
                     program_bindobject(c->out, MORPHO_GETOBJECT(add));
                 }
             }
@@ -1120,14 +1135,14 @@ static codeinfo compiler_addforwardreference(compiler *c, syntaxtreenode *node, 
     return ret;
 }
 
-/** Checks if a function definition resolves a forward reference */
-static bool compiler_resolveforwardreference(compiler *c, objectfunction *func, codeinfo *out) {
+/** Checks if a symbol resolves a forward reference */
+static bool compiler_resolveforwardreference(compiler *c, value symbol, codeinfo *out) {
     bool success=false;
     functionstate *f = compiler_currentfunctionstate(c);
 
     for (unsigned int i=0; i<f->forwardref.count; i++) {
         forwardreference *ref = f->forwardref.data+i;
-        if (MORPHO_ISEQUAL(func->name, ref->symbol) &&
+        if (MORPHO_ISEQUAL(symbol, ref->symbol) &&
             ref->scopedepth==compiler_currentscope(c)) {
             out->returntype=ref->returntype;
             out->dest=ref->dest;
@@ -1164,6 +1179,7 @@ namespc *compiler_addnamespace(compiler *c, value symbol) {
     if (new) {
         new->label=symbol;
         dictionary_init(&new->symbols);
+        dictionary_init(&new->classes);
         
         new->next=c->namespaces; // Link namespace to compiler
         c->namespaces=new;
@@ -1172,19 +1188,37 @@ namespc *compiler_addnamespace(compiler *c, value symbol) {
     return new;
 }
 
+/** Checks if a given label corresponds to a namespace */
+namespc *compiler_isnamespace(compiler *c, value label) {
+    for (namespc *spc=c->namespaces; spc!=NULL; spc=spc->next) {
+        if (MORPHO_ISEQUAL(spc->label, label)) return spc;
+    }
+    return NULL;
+}
+
 /** Attempts to locate a symbol given a namespace label */
 bool compiler_findsymbolwithnamespace(compiler *c, syntaxtreenode *node, value label, value symbol, value *out) {
-    namespc *spc;
     bool success=false;
-    
-    // Find the namespace
-    for (spc=c->namespaces; spc!=NULL; spc=spc->next) {
-        if (MORPHO_ISEQUAL(spc->label, label)) break;
-    }
+    namespc *spc = compiler_isnamespace(c, label);
     
     // Now try to find the symbol
     if (spc) {
         success=dictionary_get(&spc->symbols, symbol, out);
+        
+        if (!success) compiler_error(c, node, COMPILE_SYMBOLNOTDEFINEDNMSPC, MORPHO_GETCSTRING(symbol), MORPHO_GETCSTRING(label));
+    }
+    
+    return success;
+}
+
+/** Attempts to locate a class given a namespace label */
+bool compiler_findclasswithnamespace(compiler *c, syntaxtreenode *node, value label, value symbol, value *out) {
+    bool success=false;
+    namespc *spc = compiler_isnamespace(c, label);
+    
+    // Now try to find the symbol
+    if (spc) {
+        success=dictionary_get(&spc->classes, symbol, out);
         
         if (!success) compiler_error(c, node, COMPILE_SYMBOLNOTDEFINEDNMSPC, MORPHO_GETCSTRING(symbol), MORPHO_GETCSTRING(label));
     }
@@ -1200,6 +1234,7 @@ void compiler_clearnamespacelist(compiler *c) {
         next=spc->next;
         
         dictionary_clear(&spc->symbols);
+        dictionary_clear(&spc->classes);
         MORPHO_FREE(spc);
     }
     
@@ -2512,7 +2547,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
             fvar.returntype=REGISTER;
         } else {
             /* Check if this resolves a forward reference */
-            if (!compiler_resolveforwardreference(c, func, &fvar)) {
+            if (!compiler_resolveforwardreference(c, func->name, &fvar)) {
                 fvar=compiler_addvariable(c, node, node->content);
             }
         }
@@ -2546,6 +2581,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo arginfo;
     unsigned int ninstructions=0;
+    bool optstarted=false;
 
     varray_syntaxtreeindx argnodes;
     varray_syntaxtreeindxinit(&argnodes);
@@ -2561,6 +2597,16 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
 
         syntaxtreenode *arg = compiler_getnode(c, argnodes.data[i]);
         if (arg->type==NODE_ASSIGN) {
+            if (!optstarted) { // Add the optional marker object before the first optional argument
+                optstarted=true;
+                
+                registerindx k = compiler_addconstant(c, arg, vm_optmarker, true, false);
+                compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, k), node);
+                ninstructions++;
+                
+                reg=compiler_regalloctop(c);
+            }
+            
             syntaxtreenode *symbol = compiler_getnode(c, arg->left);
 
             /* Intern the symbol and add to the constant table */
@@ -2600,10 +2646,17 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
 /** Is this a method invocation? */
 static bool compiler_isinvocation(compiler *c, syntaxtreenode *call) {
     bool isinvocation=false;
-    syntaxtreenode *selector, *method;
+    syntaxtreenode *selector, *target, *method;
     /* Get the selector node */
     selector=compiler_getnode(c, call->left);
     if (selector->type==NODE_DOT) {
+        /* Check that if the target is a namespace */
+        target=compiler_getnode(c, selector->left);
+        if (target->type==NODE_SYMBOL &&
+            compiler_isnamespace(c, target->content)) {
+            return false;
+        }
+        
         /* Check that the method is a symbol */
         method=compiler_getnode(c, selector->right);
         if (method->type==NODE_SYMBOL) isinvocation=true;
@@ -2826,26 +2879,6 @@ static codeinfo compiler_method(compiler *c, syntaxtreenode *node, registerindx 
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
 
-/** Finds a class in the constant table of a function */
-objectclass *compiler_findclass(objectfunction *f, value name) {
-    /* Search the constant table */
-    for (unsigned int i=0; i<f->konst.count; i++) {
-        if (MORPHO_ISCLASS(f->konst.data[i])) {
-            objectclass *k = MORPHO_GETCLASS(f->konst.data[i]);
-
-            if (morpho_comparevalue(k->name, name)==0) {
-                return k;
-            }
-        }
-    }
-
-    /* If we don't find it, try searching the parent */
-    if (f->parent!=NULL) return compiler_findclass(f->parent, name);
-
-    return NULL;
-}
-
-
 /** Compiles a class declaration */
 static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
@@ -2860,8 +2893,11 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
     objectclass *klass=object_newclass(node->content);
     compiler_beginclass(c, klass);
 
-    /* Store the object class as a constant */
+    /** Store the object class as a constant */
     kindx=compiler_addconstant(c, node, MORPHO_OBJECT(klass), false, false);
+    
+    /** Add the class to the class table */
+    if (ERROR_SUCCEEDED(c->err)) compiler_addclass(c, klass);
     
     /* Is there a superclass and/or mixins? */
     if (node->left!=SYNTAXTREE_UNCONNECTED) {
@@ -2875,42 +2911,43 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
                                                  // As super will be LAST in this list
             syntaxtreenode *snode = syntaxtree_nodefromindx(compiler_getsyntaxtree(c), entries.data[i]) ;
             
+            objectclass *superclass=NULL;
+            value classlabel=MORPHO_NIL;
+            
             if (snode->type==NODE_SYMBOL) {
-                objectclass *superclass=compiler_findclass(c->out->global, snode->content);
+                classlabel=snode->content;
+                superclass=compiler_findclass(c, classlabel);
+            } else if (snode->type==NODE_DOT) {
+                syntaxtreenode *left = compiler_getnode(c, snode->left),
+                               *right = compiler_getnode(c, snode->right);
                 
-                if (superclass) {
-                    if (superclass!=klass) {
-                        if (!klass->superclass) klass->superclass=superclass; // Only the first class is the super class, all others are mixins.
-                        dictionary_copy(&superclass->methods, &klass->methods);
-                    } else {
-                        compiler_error(c, snode, COMPILE_CLASSINHERITSELF);
-                    }
-                } else {
-                    compiler_error(c, snode, COMPILE_SUPERCLASSNOTFOUND, MORPHO_GETCSTRING( snode->content));
-                }
+                if (left->type!=NODE_SYMBOL || right->type!=NODE_SYMBOL) UNREACHABLE("Superclass or mixin namespace node should have symbols");
+                
+                classlabel=right->content;
+                
+                value klass=MORPHO_NIL;
+                compiler_findclasswithnamespace(c, snode, left->content, classlabel, &klass);
+                
+                if (MORPHO_ISCLASS(klass)) superclass=MORPHO_GETCLASS(klass);
             } else {
-                UNREACHABLE("Superclass node should be a symbol.");
+                UNREACHABLE("Superclass or mixin node should be a symbol.");
             }
-        }
-        
-        varray_syntaxtreeindxclear(&entries);
-        
-        /*if (snode->type==NODE_SYMBOL) {
-            objectclass *superclass=compiler_findclass(c->out->global, snode->content);
-
+                
             if (superclass) {
                 if (superclass!=klass) {
-                    klass->superclass=superclass;
+                    if (!klass->superclass) klass->superclass=superclass; // Only the first class is the super class, all others are mixins.
                     dictionary_copy(&superclass->methods, &klass->methods);
                 } else {
                     compiler_error(c, snode, COMPILE_CLASSINHERITSELF);
                 }
             } else {
-                compiler_error(c, snode, COMPILE_SUPERCLASSNOTFOUND, MORPHO_GETCSTRING( snode->content));
+                if (MORPHO_ISSTRING(classlabel)) {
+                    compiler_error(c, snode, COMPILE_SUPERCLASSNOTFOUND, MORPHO_GETCSTRING(classlabel));
+                } else UNREACHABLE("No class label available");
             }
-        } else {
-            UNREACHABLE("Superclass node should be a symbol.");
-        }*/
+        }
+        
+        varray_syntaxtreeindxclear(&entries);
     } else {
         klass->superclass=baseclass;
         if (baseclass) dictionary_copy(&baseclass->methods, &klass->methods);
@@ -3025,7 +3062,7 @@ static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx 
     }
 
     /* Is it a class? */
-    objectclass *klass = compiler_findclass(compiler_getcurrentfunction(c), node->content);
+    objectclass *klass = compiler_findclass(c, node->content);
     if (klass) {
         /* It is; so add it to the constant table */
         ret.returntype=CONSTANT;
@@ -3394,9 +3431,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                 
                 if (!nmspace) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return CODEINFO_EMPTY; }
             } else UNREACHABLE("Incorrect syntax tree structure in AS node.");
-        } else {
-            UNREACHABLE("Unexpected node type.");
-        }
+        } else UNREACHABLE("Unexpected node type.");
         qual=compiler_getnode(c, qual->right);
     }
 
@@ -3407,6 +3442,10 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             if (extension_load(MORPHO_GETCSTRING(module->content), &fndict, &clssdict)) {
                 compiler_copysymbols(clssdict, (nmspace ? &nmspace->symbols: builtin_getclasstable()), (fordict.count>0 ? &fordict : NULL));
                 compiler_copysymbols(fndict, (nmspace ? &nmspace->symbols: builtin_getfunctiontable()), (fordict.count>0 ? &fordict : NULL));
+                
+                if (nmspace) { // Copy classes into the namespace's class table
+                    compiler_copysymbols(clssdict, &nmspace->classes, (fordict.count>0 ? &fordict : NULL));
+                }
             } else if (compiler_findmodule(MORPHO_GETCSTRING(module->content), &filename)) {
                 fname=filename.data;
             } else {
@@ -3462,6 +3501,11 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             if (ERROR_SUCCEEDED(c->err)) {
                 compiler_stripend(c);
                 compiler_copysymbols(&cc.globals, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
+                if (nmspace) { // If we're in a namespace, copy the class table into that
+                    compiler_copysymbols(&cc.classes, &nmspace->classes, (fordict.count>0 ? &fordict : NULL));
+                } else { // Otherwise just put it into the parent compiler's class table
+                    compiler_copysymbols(&cc.classes, &c->classes, (fordict.count>0 ? &fordict : NULL));
+                }
                 
                 objectdictionary *dict = object_newdictionary(); // Preserve all symbols for further imports
                 if (dict) {
@@ -3469,8 +3513,8 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                     symboldict = MORPHO_OBJECT(dict);
                 }
                 
-            } else { // TODO: This is wrong! The module name gets overwritten, which shouldn't happen
-                c->err.module = MORPHO_GETCSTRING(modname);
+            } else {
+                c->err.module = cc.err.module;
             }
             
             debugannotation_setmodule(&c->out->annotations, compiler_getmodule(c));
@@ -3522,6 +3566,7 @@ void compiler_init(const char *source, program *out, compiler *c) {
     parse_init(&c->parse, &c->lex, &c->err, &c->tree);
     compiler_fstackinit(c);
     dictionary_init(&c->globals);
+    dictionary_init(&c->classes);
     dictionary_init(&c->modules);
     if (out) c->fstack[0].func=out->global; /* The global pseudofunction */
     c->out = out;
@@ -3546,6 +3591,7 @@ void compiler_clear(compiler *c) {
     dictionary_clear(&c->globals);
     dictionary_freecontents(&c->modules, true, true);
     dictionary_clear(&c->modules);
+    dictionary_clear(&c->classes);
 }
 
 /* **********************************************************************

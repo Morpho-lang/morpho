@@ -687,9 +687,8 @@ static registerindx compiler_addconstant(compiler *c, syntaxtreenode *node, valu
                 out=konst->count-1;
                 if (!success) compiler_error(c, node, ERROR_ALLOCATIONFAILED);
 
-                /* If the object is a constant we make sure its bound to the program */
-                if (MORPHO_ISOBJECT(constant)) {
-                    /* Bind the object to the program */
+                /* If the constant is an object and we cloned it, make sure it's bound to the program */
+                if (clone && MORPHO_ISOBJECT(add)) {
                     program_bindobject(c->out, MORPHO_GETOBJECT(add));
                 }
             }
@@ -2582,6 +2581,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo arginfo;
     unsigned int ninstructions=0;
+    bool optstarted=false;
 
     varray_syntaxtreeindx argnodes;
     varray_syntaxtreeindxinit(&argnodes);
@@ -2597,6 +2597,16 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
 
         syntaxtreenode *arg = compiler_getnode(c, argnodes.data[i]);
         if (arg->type==NODE_ASSIGN) {
+            if (!optstarted) { // Add the optional marker object before the first optional argument
+                optstarted=true;
+                
+                registerindx k = compiler_addconstant(c, arg, vm_optmarker, true, false);
+                compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, k), node);
+                ninstructions++;
+                
+                reg=compiler_regalloctop(c);
+            }
+            
             syntaxtreenode *symbol = compiler_getnode(c, arg->left);
 
             /* Intern the symbol and add to the constant table */

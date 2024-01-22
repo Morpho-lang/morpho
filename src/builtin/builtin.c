@@ -80,24 +80,31 @@ bool builtin_enumerateloop(vm *v, value obj, builtin_loopfunction fn, void *ref)
  * Optional arguments
  * ********************************************************************** */
 
+extern value vm_optmarker;
+
 /** Process optional arguments */
 bool builtin_options(vm *v, int nargs, value *args, int *nfixed, int noptions, ...) {
     va_list optlist;
     va_start(optlist, noptions);
-    int np=nargs;
+    int nposn=nargs;
+    
+    for (unsigned int i=1; i<=nargs; i++) {
+        if (MORPHO_ISSAME(args[i], vm_optmarker)) { nposn=i-1; break; }
+    }
     
     for (unsigned int i=0; i<noptions; i++) {
         value symbol = va_arg(optlist, value);
         value *dest = va_arg(optlist, value*);
-        for (unsigned int k=0; 2*k<nargs && k<noptions; k+=1) {
-            if (MORPHO_ISSAME(symbol, args[nargs-2*k-1])) {
-                *dest = args[nargs-2*k];
-                if (nargs-2*k-2<np) np=nargs-2*k-2;
+        
+        for (int k=nposn+2; k<nargs; k+=2) {
+            if (MORPHO_ISSAME(symbol, args[k])) {
+                *dest = args[k+1];
+                break;
             }
         }
-        // Should raise an error for unexpected options here by looking for arguments that are strings and unmanaged?
+        // TODO: Should raise an error for unexpected options here by looking for arguments that are strings and unmanaged?
     }
-    if (nfixed) *nfixed = np;
+    if (nfixed) *nfixed = nposn; // Exclude register 0
     
     va_end(optlist);
     

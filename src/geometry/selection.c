@@ -161,7 +161,7 @@ void selection_selectwithfunction(vm *v, objectselection *sel, value fn) {
     int nv = vert->ncols;
     
     value ret=MORPHO_NIL; // Return value
-    value coords[sel->mesh->dim]; // Vertex coords
+    value coords[sel->mesh->dim+1]; // Vertex coords
     
     for (elementid i=0; i<nv; i++) {
         if (mesh_getvertexcoordinatesasvalues(sel->mesh, i, coords)) {

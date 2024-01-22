@@ -366,30 +366,38 @@ static inline void vm_expandstack(vm *v, value **reg, unsigned int n) {
     v->stack.count+=n;
 }
 
+/** Marker for optional arguments */
+value vm_optmarker;
+
 /** Process variadic and optional arguments
  * @param[in] v          - the VM
  * @param[in] iindx - instruction index (used to raise errors if need be)
  * @param[in] func    - function being called
  * @param[in] regcall - Register for the call
  * @param[in] nargs  - number of arguments being called with
- * @param[in] offargs - original arguments used, if they are off the stack
+ * @param[in] args - arguments used
  * @param[in] reg       - register base
  * @param[in] newreg - new register base
  */
-static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int regcall, unsigned int nargs, value *offargs, value *reg, value *newreg) {
-    unsigned int nopt = func->opt.count, // No. of optional params
-                 nfixed = func->nargs-nopt, // No. of fixed params
-                 roffset = nfixed+1, // Position of first optional parameter in output
-                 n=0;
+static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int regcall, unsigned int nargs, value *args, value *reg, value *newreg) {
+    int nopt = func->opt.count, // No. of optional params in function def'n
+        nfixed = func->nargs-nopt, // No. of fixed params in function def'n
+        roffset = nfixed+1, // Position of first optional parameter in output
+        nposn=nargs; // No. of positional arguments this function was called with
 
     /* Copy across default values */
     for (unsigned int i=0; i<nopt; i++) {
         newreg[roffset+i]=func->konst.data[func->opt.data[i].def];
     }
+    
+    /** Identify the number of optional arguments */
+    for (unsigned int i=0; i<nargs; i++) {
+        if (MORPHO_ISSAME(args[i], vm_optmarker)) { nposn=i; break; }
+    }
 
-    /* Identify the optional arguments by searching back from the end */
-    for (n=0; 2*n<(nargs-nfixed); n+=1) {
-        value key = reg[regcall+nargs-1-2*n]; // TODO: Will need to change for off-stack calls
+    /* Put optional arguments in the correct place */
+    for (int n=nposn+1; n<nargs; n+=2) {
+        value key = args[n];
         // TODO: Is a dictionary lookup faster here?
         unsigned int k=0;
         for (; k<nopt; k++) if (MORPHO_ISSAME(func->opt.data[k].symbol, key)) break;
@@ -403,22 +411,22 @@ static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsign
             }
             break;
         }
-        newreg[roffset+k]=reg[regcall+nargs-2*n];
+        newreg[roffset+k]=args[n+1];
     }
 
     if (func->varg>=0) {
-        if (nargs-2*n<nfixed-1) {
-            vm_runtimeerror(v, iindx, VM_INVALIDARGS, nfixed-1, nargs-2*n);
+        if (nposn<nfixed-1) {
+            vm_runtimeerror(v, iindx, VM_INVALIDARGS, nfixed-1, nposn);
             return false;
         }
 
-        objectlist *new = object_newlist(nargs-2*n-(nfixed-1), (offargs ? offargs+nfixed-1 :  reg+regcall+nfixed));
+        objectlist *new = object_newlist(nposn-nfixed+1, args+nfixed-1 );
         if (new) {
             newreg[nfixed] = MORPHO_OBJECT(new);
             vm_bindobjectwithoutcollect(v, newreg[nfixed]);
         }
-    } else if (nargs-2*n!=nfixed) { // Verify number of fixed args is correct
-        vm_runtimeerror(v, iindx, VM_INVALIDARGS, nfixed, nargs-2*n);
+    } else if (nposn!=nfixed) { // Verify number of fixed args is correct
+        vm_runtimeerror(v, iindx, VM_INVALIDARGS, nfixed, nposn);
         return false;
     }
 
@@ -1956,7 +1964,9 @@ void morpho_initialize(void) {
 #ifdef MORPHO_DEBUG_GCSIZETRACKING
     dictionary_init(&sizecheck);
 #endif
-
+    
+    vm_optmarker=object_stringfromcstring("OPT", 3);
+    
     morpho_defineerror(ERROR_ALLOCATIONFAILED, ERROR_EXIT, ERROR_ALLOCATIONFAILED_MSG);
     morpho_defineerror(ERROR_INTERNALERROR, ERROR_EXIT, ERROR_INTERNALERROR_MSG);
     
@@ -2010,6 +2020,8 @@ void morpho_initialize(void) {
 
 /** Finalizes morpho, calling all finalize functions */
 void morpho_finalize(void) {
+    morpho_freeobject(vm_optmarker);
+    
     for (int i=_finalizefns.count-1; i>=0; i--) {
         morpho_finalizefn fn=(morpho_finalizefn) MORPHO_GETOBJECT(_finalizefns.data[i]);
         fn();

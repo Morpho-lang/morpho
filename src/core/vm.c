@@ -388,7 +388,7 @@ static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsign
     }
 
     /* Identify the optional arguments by searching back from the end */
-    for (n=0; 2*n<nargs; n+=1) {
+    for (n=0; 2*n<(nargs-nfixed); n+=1) {
         value key = reg[regcall+nargs-1-2*n]; // TODO: Will need to change for off-stack calls
         // TODO: Is a dictionary lookup faster here?
         unsigned int k=0;

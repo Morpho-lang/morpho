@@ -3,6 +3,8 @@ project(morpho-libmorpho)
 
 option(MORPHO_DISABLENANBOXING "Disables NAN Boxing" OFF)
 
+option(MORPHO_GCSTRESSTEST "Stress tests the garbage collector" OFF)
+
 add_library(morpho SHARED "") 
 add_subdirectory(src)
 
@@ -20,6 +22,11 @@ target_include_directories(morpho PUBLIC src
 # Option to disable NAN Boxing
 if(MORPHO_DISABLENANBOXING)
 target_compile_definitions(morpho PUBLIC _NO_NAN_BOXING)
+endif() 
+
+# Option to stress test Garbage Collector
+if(MORPHO_GCSTRESSTEST)
+target_compile_definitions(morpho PUBLIC _DEBUG_STRESSGARBAGECOLLECTOR)
 endif() 
 
 # Create source groups for IDE

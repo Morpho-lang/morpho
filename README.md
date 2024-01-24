@@ -18,3 +18,5 @@ and then,
     make install 
 
 You may need to use sudo make install.
+
+[![No NAN Boxing](https://github.com/Morpho-lang/morpho-libmorpho/actions/workflows/nonanboxing.yml/badge.svg)](https://github.com/Morpho-lang/morpho-libmorpho/actions/workflows/nonanboxing.yml)

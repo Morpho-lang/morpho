@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.13)
 project(morpho-libmorpho)
 
+option(MORPHO_DISABLENANBOXING "Disables NAN Boxing" OFF)
+
 add_library(morpho SHARED "") 
 add_subdirectory(src)
 
@@ -14,6 +16,11 @@ target_include_directories(morpho PUBLIC src
                                   src/geometry
                                   src/linalg
                                   src/support )
+
+# Option to disable NAN Boxing
+if(MORPHO_DISABLENANBOXING)
+target_compile_definitions(morpho PUBLIC _NO_NAN_BOXING)
+endif() 
 
 # Create source groups for IDE
 source_group("builtin" REGULAR_EXPRESSION src/builtin/.*\\.[ch])

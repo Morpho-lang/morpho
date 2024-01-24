@@ -131,12 +131,11 @@ static inline bool morpho_ofsametype(value a, value b) {
 
 /** @brief A enumerated type defining the different types available in Morpho. */
 enum {
-    VALUE_NIL, // Note that the order of these must match the boxed version above
+    VALUE_DOUBLE, // Note that the order of these must match the boxed version above
+    VALUE_NIL,
     VALUE_BOOL,
     VALUE_INTEGER,
-    
-    VALUE_OBJECT,
-    VALUE_DOUBLE
+    VALUE_OBJECT
 };
 
 typedef int valuetype;

@@ -33,6 +33,7 @@ jobs:
         cd morpho-cli 
         mkdir build
         cd build
+        cmake ..
         sudo make install
     - name: test 
       run: |

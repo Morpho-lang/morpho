@@ -415,7 +415,16 @@ bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, voi
                 varg = true; vargthis = true;
             }
             
-            PARSE_CHECK(parse_pseudoexpression(p, &current));
+            if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
+                PARSE_CHECK(parse_symbol(p, &current));
+                
+                if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
+                    syntaxtreeindx label;
+                    PARSE_CHECK(parse_symbol(p, &label));
+                    
+                    PARSE_CHECK(parse_addnode(p, NODE_TYPE, MORPHO_NIL, &start, current, label, &current));
+                }
+            } else PARSE_CHECK(parse_pseudoexpression(p, &current));
 
             if (vargthis) PARSE_CHECK(parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, current, &current));
             
@@ -680,6 +689,7 @@ bool parse_tuple(parser *p, token *start, syntaxtreeindx first, void *out) {
             prev = current;
         } while (parse_checktokenadvance(p, TOKEN_COMMA));
     }
+    
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_MSSNGSQBRC));
 
     return parse_addnode(p, NODE_TUPLE, MORPHO_NIL, start, SYNTAXTREE_UNCONNECTED, current, out);

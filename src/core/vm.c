@@ -61,6 +61,7 @@ static void vm_init(vm *v) {
     varray_valueinit(&v->stack);
     varray_valueinit(&v->tlvars);
     varray_valueinit(&v->globals);
+    varray_valueinit(&v->retain);
     varray_valueresize(&v->stack, MORPHO_STACKINITIALSIZE);
     varray_charinit(&v->buffer);
     error_init(&v->err);
@@ -85,6 +86,7 @@ static void vm_clear(vm *v) {
     varray_valueclear(&v->stack);
     varray_valueclear(&v->globals);
     varray_valueclear(&v->tlvars);
+    varray_valueclear(&v->retain);
     vm_graylistclear(&v->gray);
     vm_freeobjects(v);
     varray_vmclear(&v->subkernels);
@@ -1591,13 +1593,11 @@ void morpho_bindobjects(vm *v, int nobj, value *obj) {
     if (v->bound>v->nextgc)
 #endif
     {
-        /* Temporarily store these objects at the top of the globals array */
-        int gcount=v->globals.count;
-        varray_valueadd(&v->globals, obj, nobj);
-
+        int handle=morpho_retainobjects(v, nobj, obj);
+        
         vm_collectgarbage(v);
-        /* Restore globals count */
-        v->globals.count=gcount;
+        
+        morpho_releaseobjects(v, handle);
     }
 }
 
@@ -1607,8 +1607,8 @@ void morpho_bindobjects(vm *v, int nobj, value *obj) {
  *  @param obj    objects to retain
  *  @returns an integer handle to pass to releaseobjects */
 int morpho_retainobjects(vm *v, int nobj, value *obj) {
-    int gcount=v->globals.count;
-    varray_valueadd(&v->globals, obj, nobj);
+    int gcount=v->retain.count;
+    varray_valueadd(&v->retain, obj, nobj);
     return gcount;
 }
 
@@ -1616,7 +1616,7 @@ int morpho_retainobjects(vm *v, int nobj, value *obj) {
  *  @param v      the virtual machine
  *  @param handle a handle returned by morpho_retainobjects. */
 void morpho_releaseobjects(vm *v, int handle) {
-    if (handle>=0) v->globals.count=handle;
+    if (handle>=0) v->retain.count=handle;
 }
 
 /** @brief Inform the VM that the size of an object has changed

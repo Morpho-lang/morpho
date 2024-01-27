@@ -197,6 +197,7 @@ struct svm {
     varray_value globals; /** Global variables */
     varray_value tlvars; /** Thread-local variables */
     varray_value stack; /** The stack */
+    varray_value retain; /** List of values to retain across GC */
     callframe frame[MORPHO_CALLFRAMESTACKSIZE]; /** The call frame stack */
     errorhandler errorhandlers[MORPHO_ERRORHANDLERSTACKSIZE]; /** Error handler stack */
 

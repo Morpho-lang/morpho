@@ -158,6 +158,13 @@ void vm_gcmarkroots(vm *v) {
     }
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
+    morpho_printf(v, "> Retain list.\n");
+#endif
+    for (int i=0; i<v->retain.count; i++) {
+        vm_gcmarkvalue(v, v->retain.data[i]);
+    }
+    
+#ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
     morpho_printf(v, "> Thread local storage.\n");
 #endif
     for (int i=0; i<v->tlvars.count; i++) {

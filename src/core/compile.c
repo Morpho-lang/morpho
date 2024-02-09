@@ -2182,9 +2182,22 @@ static codeinfo compiler_break(compiler *c, syntaxtreenode *node, registerindx r
     return out;
 }
 
-/** @brief Compiles a try/catch block.
- *  @details Break and continue statements are inserted as NOP instructions with the a register set to a marker.
- *  */
+/** Checks through a catch block, fixing any references
+ * @param[in] c the current compiler
+ * @param[in] start first instruction in the loop body
+ * @param[in] inc position of the loop increment section (continue statements redirect here)
+ * @param[in] end position of the first instruction AFTER the loop (break sections redirect here) */
+static void compiler_fixcatch(compiler *c, instructionindx start, instructionindx inc, instructionindx end) {
+    instruction *code=c->out->code.data;
+    for (instructionindx i=start; i<end; i++) {
+        if (DECODE_OP(code[i])==OP_NOP &&
+            (DECODE_A(code[i])=='s' || DECODE_A(code[i])=='b')) {
+            code[i]=ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, end-i-1);
+        }
+    }
+}
+
+/** @brief Compiles a try/catch block. */
 static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo out = CODEINFO_EMPTY;
 
@@ -2229,9 +2242,9 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
             compiler_releaseoperand(c, entrybody);
         }
 
-        // Add a break instruction after each entry body except for the last
+        // Add an effective 'break' instruction after each entry body except for the last
         if (i!=switchnodes.count-1) {
-            compiler_addinstruction(c, ENCODE(OP_NOP, 'b', 0, 0), node);
+            compiler_addinstruction(c, ENCODE(OP_NOP, 's', 0, 0), node);
             out.ninstructions++;
         }
 
@@ -2259,8 +2272,8 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
 
     /* Fix the poperr instruction that jumps around the switch block */
     compiler_setinstruction(c, popindx, ENCODE_LONG(OP_POPERR, 0, endindx-popindx-1));
-    /* Fix the nop instructions in the switch block to jump to the end of block */
-    compiler_fixloop(c, popindx, popindx, endindx);
+    /* Fix any nop instructions in the switch block to jump to the end of block */
+    compiler_fixcatch(c, popindx, popindx, endindx);
 
     varray_syntaxtreeindxclear(&switchnodes);
     varray_syntaxtreeindxclear(&labelnodes);

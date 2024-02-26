@@ -2976,6 +2976,8 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
     /* End class definition */
     compiler_endclass(c);
 
+    compiler_checkoutstandingforwardreference(c);
+    
     /* Allocate a variable to refer to the class definition */
     codeinfo cvar=compiler_addvariable(c, node, node->content);
     registerindx reg=cvar.dest;
@@ -2993,7 +2995,7 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
         ninstructions+=mv.ninstructions;
         compiler_regfreetemp(c, reg);
     }
-
+    
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
 

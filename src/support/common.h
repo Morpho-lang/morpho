@@ -56,7 +56,8 @@ static inline bool morpho_iscallable(value a) {
     return (MORPHO_ISFUNCTION(a) ||
             MORPHO_ISBUILTINFUNCTION(a) ||
             MORPHO_ISINVOCATION(a) ||
-            MORPHO_ISCLOSURE(a));
+            MORPHO_ISCLOSURE(a) ||
+            MORPHO_ISCLASS(a));
 }
 
 #define MORPHO_ISCALLABLE(x) (morpho_iscallable(x))

@@ -1030,8 +1030,9 @@ callfunction: // Jump here if an instruction becomes a call
                         ERRORCHK();
                     }
                 } else if (dictionary_getintern(&instance->fields, right, &left)) {
+                    
                     /* Otherwise, if it's a property, try to call it */
-                    if (MORPHO_ISFUNCTION(left) || MORPHO_ISCLOSURE(left) || MORPHO_ISBUILTINFUNCTION(left) || MORPHO_ISINVOCATION(left)) {
+                    if (morpho_iscallable(left)) {
                         reg[a]=left; // Make sure the function is in r0
                         goto callfunction; // Transmute into a call instruction
                     } else {

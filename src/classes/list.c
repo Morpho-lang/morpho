@@ -404,6 +404,13 @@ value List_pop(vm *v, int nargs, value *args) {
     if (slf->val.count>0) {
         if (nargs>0 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
             int indx = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+            
+            if (indx<0) indx+=slf->val.count;
+            if (indx<0 || indx>slf->val.count) {
+                morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+                return MORPHO_NIL;
+            }
+            
             out=slf->val.data[indx];
             memmove(slf->val.data+indx, slf->val.data+indx+1, sizeof(value)*(slf->val.count-indx-1));
         } else {

@@ -3122,11 +3122,11 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
             varnode=compiler_getnode(c, varnode->left);
             var = varnode->content;
 
-            if (varnode->type==NODE_DOT) {
+            if (varnode->type==NODE_DOT || varnode->type==NODE_SELF) {
                 codeinfo mv=compiler_nodetobytecode(c, indxnode->left, reg);
                 ninstructions+=mv.ninstructions;
                 reg=mv.dest;
-            }
+            } 
         }
     }
 

@@ -1504,10 +1504,16 @@ static codeinfo compiler_range(compiler *c, syntaxtreenode *node, registerindx r
  * @param[in] indxnode - the root syntaxtreenode (should be of type NODE_INDEX)
  * @param[out] start   - first register used
  * @param[out] end     - last register used
- * @returns number of instructions */
-static codeinfo compiler_compileindexlist(compiler *c, syntaxtreenode *indxnode, registerindx *start, registerindx *end) {
+ * @param[out] out     - codeinfo struct with number of instructions used
+ * @returns true on success */
+codeinfo compiler_compileindexlist(compiler *c, syntaxtreenode *indxnode, registerindx *start, registerindx *end) {
     registerindx istart=compiler_regtop(c), iend;
 
+    if (indxnode->right==SYNTAXTREE_UNCONNECTED) {
+        compiler_error(c, indxnode, COMPILE_MSSNGINDX);
+        return CODEINFO_EMPTY;
+    }
+    
     compiler_beginargs(c);
     codeinfo right = compiler_nodetobytecode(c, indxnode->right, REGISTER_UNALLOCATED);
     compiler_endargs(c);
@@ -1536,6 +1542,7 @@ static codeinfo compiler_index(compiler *c, syntaxtreenode *node, registerindx r
 
     /* Compile indices */
     codeinfo out = compiler_compileindexlist(c, node, &start, &end);
+    if (compiler_haserror(c)) return CODEINFO_EMPTY;
     ninstructions+=out.ninstructions;
 
     /* Compile instruction */
@@ -3729,6 +3736,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_NSTDCLSS, ERROR_COMPILE, COMPILE_NSTDCLSS_MSG);
     morpho_defineerror(COMPILE_VARPRMLST, ERROR_COMPILE, COMPILE_VARPRMLST_MSG);
     morpho_defineerror(COMPILE_INVLDLBL, ERROR_COMPILE, COMPILE_INVLDLBL_MSG);
+    morpho_defineerror(COMPILE_MSSNGINDX, ERROR_COMPILE, COMPILE_MSSNGINDX_MSG);
     
     morpho_addfinalizefn(compile_finalize);
 }

@@ -781,18 +781,18 @@ bool debugger_showproperty(debugger *debug, value matchobj, value matchproperty)
     vm *v = debugger_currentvm(debug);
     
     callframe *frame;
-    value symbol, *instance=NULL, *val=NULL;
+    value symbol, *instance=NULL, val;
     
     if (debug_findsymbol(v, matchobj, &frame, &symbol, &instance)) {
         if (MORPHO_ISINSTANCE(*instance)) {
             objectinstance *obj = MORPHO_GETINSTANCE(*instance);
                     
-            if (objectinstance_getproperty(obj, matchproperty, val)) {
+            if (objectinstance_getproperty(obj, matchproperty, &val)) {
                 morpho_printvalue(v, symbol);
                 morpho_printf(v, ".");
                 morpho_printvalue(v, matchproperty);
                 morpho_printf(v, " = ");
-                morpho_printvalue(v, *val);
+                morpho_printvalue(v, val);
                 morpho_printf(v, "\n");
             } else debugger_error(debug, DEBUGGER_SYMBOLPROP, MORPHO_GETCSTRING(matchproperty));
         }

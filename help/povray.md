@@ -50,10 +50,12 @@ These attributes can also be set directly for the `POVRaytracer` object:
 
     pov.look_at = Matrix([0,0,1])
 
-The `render` method supports two optional boolean arguments:
+The `render` method supports a few optional boolean arguments:
 
 * `quiet` - whether to suppress the parser and render statistics from `povray` or not (`false` by default)
 * `display` - whether to turn on the graphic display while rendering or not (`true` by default) 
+* `shadowless` - whether to turn off the shadows while rendering (`false` by default)
+* `transparent` - whether to render the graphic with a transparent background in the output PNG (`false` by default)
 
 # Camera
 [tagcamera]: # (camera)

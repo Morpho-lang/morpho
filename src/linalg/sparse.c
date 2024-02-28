@@ -755,7 +755,7 @@ objectsparseerror sparse_docat(objectlist *in, void *dest, sparse_catcopyfn copy
     unsigned int dim[2] = {0,0}, ndim;
 
     if (!matrix_getlistdimensions(in, dim, 2, &ndim) ||
-        ndim>2) return SPARSE_INVLDINIT;
+        ndim!=2) return SPARSE_INVLDINIT;
 
     /* Keep track of rows and columns of the matrix */
     int nrows[dim[0]], ncols[dim[1]];
@@ -853,7 +853,7 @@ objectsparseerror object_sparsefromlist(objectlist *list, objectsparse **out) {
 
     objectsparse *new=object_newsparse(NULL, NULL);
 
-    if (dim[1]!=3) { // If this isn't a list of entries, it may be a concatenation operation
+    if (dim[0]>0 && dim[1]!=3) { // If this isn't a list of entries, it may be a concatenation operation
         err=sparse_cat(list, new);
         if (err==SPARSE_OK) goto object_sparsefromlist_succeeded;
         goto object_sparsefromlist_cleanup;
@@ -1201,6 +1201,8 @@ value sparse_constructor(vm *v, int nargs, value *args) {
         objectsparseerror err = object_sparsefromlist(MORPHO_GETLIST(MORPHO_GETARG(args, 0)), &new);
 
         if (!new) sparse_raiseerror(v, err);
+    } else if (nargs==0) {
+        new = object_newsparse(NULL, NULL);
     } else {
         morpho_runtimeerror(v, SPARSE_CONSTRUCTOR);
     }

@@ -3126,7 +3126,7 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
                 codeinfo mv=compiler_nodetobytecode(c, indxnode->left, reg);
                 ninstructions+=mv.ninstructions;
                 reg=mv.dest;
-            } 
+            }
         }
     }
 

@@ -662,8 +662,14 @@ bool parse_grouping(parser *p, void *out) {
     syntaxtreeindx new;
     PARSE_CHECK(parse_expression(p, &new));
     
-    // Detect a tuple from a comma after the first expression
-    if (parse_checktokenadvance(p, TOKEN_COMMA)) return parse_tuple(p, &start, new, out);
+    syntaxtreenode *node = parse_lookupnode(p, new);
+    
+    // Detect a tuple from a comma after the first expression or if the
+    // grouping encloses a tuple.
+    if (parse_checktokenadvance(p, TOKEN_COMMA) ||
+        node->type==NODE_TUPLE) {
+        return parse_tuple(p, &start, new, out);
+    }
     
     PARSE_CHECK(parse_addnode(p, NODE_GROUPING, MORPHO_NIL, &p->previous, new, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out));
     

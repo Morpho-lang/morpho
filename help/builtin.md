@@ -28,7 +28,7 @@ The `randomnormal` function generates a random number from a normal (gaussian) d
 See also `random` and `randomint`.
 
 ## Randomint
-[tagrandomnormal]: # (randomnormal)
+[tagrandomint]: # (randomint)
 
 The `randomint` function generates a random integer with a specified maximum value.
 
@@ -168,6 +168,15 @@ There is one edge case that occurs when you want to call a function that accepts
 Returns the absolute value of a number: 
 
     print abs(-10) // prints 10 
+
+## Sign
+[tagsign]: # (sign)
+
+Gives the sign of a number: 
+
+    print sign(4) // expect: 1
+    print sign(-10.0) // expect: -1
+    print sign(0) // expect: 0
 
 ## Arctan
 [tagarctan]: # (arctan)

@@ -2,9 +2,26 @@
 [version]: # (0.5)
 
 # Errors
+[tagerror]: # (error)
 [tagerrors]: # (errors)
 
 When an error occurs in running a morpho program, an error message is displayed together with an explanation of where in the program that the error happened.
+
+You can make your own custom errors using the `Error` class: 
+
+    var myerr = Error("Tag", "A message")
+
+Use the `throw` method to raise the error, interrupting execution unless the error is caught: 
+
+    myerr.throw() 
+
+or 
+
+    myerr.throw("A custom message") 
+
+You can also use the `warning` method to alert the user of a potential issue that doesn't need the program to be interrupted. 
+
+    myerr.warning() 
 
 [showsubtopics]: # (subtopics)
 

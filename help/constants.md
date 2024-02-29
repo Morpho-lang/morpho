@@ -4,7 +4,7 @@
 # Constants
 [tagconstants]: # (constants)
 
-The constants module contains a number of useful mathematical and physical constants. Import it like any other module:
+The constants module contains a number of useful mathematical constants. Import it like any other module:
 
     import constants
 

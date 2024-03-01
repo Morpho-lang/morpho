@@ -31,6 +31,14 @@ Once a matrix is created, you can use all the regular arithmetic operators with 
     a+b
     a*b
 
+You can retrieved individual matrix entries with specified indices:
+
+    print a[0,0]
+
+or create a submatrix using slices:
+
+	print a[0..1,0..1]
+
 The division operator is used to solve a linear system, e.g.
 
     var a = Matrix([[1,2],[3,4]])

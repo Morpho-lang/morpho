@@ -14,7 +14,7 @@ Values can be retrieved with appropriate indices:
 
     print a[0,0]
 
-Array can be indexed with slices:
+Arrays can be indexed with slices:
 
 	print a[[0,2,4],2]
 	print a[1,0..2]

@@ -22,7 +22,7 @@ value Value_format(vm *v, int nargs, value *args) {
             
             out = object_stringfromvarraychar(&str);
             if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
-        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        } else morpho_runtimeerror(v, VALUE_INVLDFRMT);
         
         varray_charclear(&str);
     } else {
@@ -50,4 +50,5 @@ void float_initialize(void) {
     value_setveneerclass(MORPHO_FLOAT(0.0), floatclass);
     
     morpho_defineerror(VALUE_FRMTARG, ERROR_HALT, VALUE_FRMTARG_MSG);
+    morpho_defineerror(VALUE_INVLDFRMT, ERROR_HALT, VALUE_INVLDFRMT_MSG);
 }

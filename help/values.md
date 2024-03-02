@@ -43,3 +43,20 @@ Returns the smallest integer larger than or equal to its argument:
 Returns the largest integer smaller than or equal to its argument:
 
     print floor(1.3) // expect: 1
+
+## Format
+[tagformat]: # (format)
+
+The format method converts a number to a `String` using a given format specifier: 
+
+    print (1/3).format("%4.2g") // Outputs 0.33
+
+The specifier must begin with '%' and may include: 
+
+* A minimum width, given as an integer. 
+* Number of decimal places to show, with '.' in front.
+* A formatting option, either 'f' or 'g' where:
+    - 'f' displays the number in decimal form, e.g. 0.01
+    - 'g' uses scientific notation, e.g. 1e-2
+
+The syntax for the formatting string is similar to that used in C and Python.

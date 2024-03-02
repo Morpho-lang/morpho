@@ -53,12 +53,20 @@ int morpho_comparevalue(value a, value b) {
     if (!morpho_ofsametype(a, b)) return MORPHO_NOTEQUAL;
     
     if (MORPHO_ISFLOAT(a)) {
-        double x = MORPHO_GETFLOATVALUE(b) - MORPHO_GETFLOATVALUE(a);
-        if (x>DBL_EPSILON) return MORPHO_BIGGER; /* Fast way out for clear cut cases */
-        if (x<-DBL_EPSILON) return MORPHO_SMALLER;
-        /* Assumes absolute tolerance is the same as relative tolerance. */
-        if (fabs(x)<=DBL_EPSILON*fmax(1.0, fmax(MORPHO_GETFLOATVALUE(a), MORPHO_GETFLOATVALUE(b)))) return MORPHO_EQUAL;
-        return (x>0 ? MORPHO_BIGGER : MORPHO_SMALLER);
+        double aa = MORPHO_GETFLOATVALUE(a);
+        double bb = MORPHO_GETFLOATVALUE(b);
+        double diff = fabs(aa-bb);
+        double sum = fabs(aa) + fabs(bb);
+        
+        if (aa == bb) {
+            return MORPHO_EQUAL; // Handles infinity
+        } else if (aa == 0 || bb == 0 || sum < DBL_MIN) {
+            if (diff < DBL_EPSILON*DBL_MIN) return MORPHO_EQUAL;
+        } else {
+            if (diff < DBL_EPSILON*fmin(sum, DBL_MAX)) return MORPHO_EQUAL;
+        }
+        
+        return (bb>aa ? MORPHO_BIGGER : MORPHO_SMALLER);
     } else {
         switch (MORPHO_GETTYPE(a)) {
             case VALUE_NIL:

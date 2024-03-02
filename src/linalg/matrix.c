@@ -712,7 +712,7 @@ value matrix_constructor(vm *v, int nargs, value *args) {
     objectmatrix *new=NULL;
     value out=MORPHO_NIL;
     
-    if ( nargs==2 &&
+    if (nargs==2 &&
          MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
          MORPHO_ISINTEGER(MORPHO_GETARG(args, 1)) ) {
         nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));

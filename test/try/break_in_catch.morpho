@@ -1,0 +1,18 @@
+// Continue in catch block
+
+for (_ in 1..3) {
+  try {
+    Error("Err", "Error").throw() 
+  } catch {
+    "Err": 
+      break 
+  }
+  print "yes"
+}
+// expect: yes
+// expect: yes
+// expect: yes
+
+
+print "ok"
+// expect: ok

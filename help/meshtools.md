@@ -109,6 +109,11 @@ Attempts to equiangulate a mesh, exchanging elements to improve their regularity
 
     equiangulate(mesh)
 
+This function takes optional arguments:
+
+* `quiet`: Set to true to silence messages.
+* `fix`: Supply a `Selection` containing edges that should not be modified by equiangulation.
+
 *Note* this function modifies the mesh in place; it does not create a new mesh.
 
 ## ChangeMeshDimension

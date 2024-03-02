@@ -194,6 +194,8 @@ You can also integrate functions that involve fields:
 
 where `n` is a vector field. The local interpolated value of this field is passed to your integrand function. More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `LineIntegral`.
 
+The gradient of a field is available within an integrand function using the `gradient()` function.
+
 ## AreaIntegral
 [tagareaintegral]: # (areaintegral)
 
@@ -207,7 +209,13 @@ You can also integrate functions that involve fields:
 
     var la=AreaIntegral(fn (x, phi) phi^2, phi)
 
+The local facet normal can be accessed in an integrand using the `normal()` function:
+
+    var la=AreaIntegral(fn (x) x.inner(normal())^2)
+
 More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `AreaIntegral`.
+
+The gradient of a field is available within an integrand function using the `gradient()` function.
 
 ## VolumeIntegral
 [tagvolumeintegral]: # (volumeintegral)
@@ -223,6 +231,8 @@ You can also integrate functions that involve fields:
     var la=VolumeIntegral(fn (x, phi) phi^2, phi)
 
 More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `VolumeIntegral`.
+
+The gradient of a field is available within an integrand function using the `gradient()` function.
 
 ## Hydrogel
 [taghydrogel]: # (hydrogel)

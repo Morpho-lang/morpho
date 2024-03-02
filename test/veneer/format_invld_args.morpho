@@ -1,0 +1,4 @@
+// Format called with no format string
+
+print 1.format("%d")
+// expect error 'InvldFrmt'

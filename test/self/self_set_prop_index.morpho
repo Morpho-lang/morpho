@@ -1,0 +1,13 @@
+
+class A {
+  a(prop) {
+    self[prop]=true
+  }
+}
+
+var b = A()
+
+b.a("foo")
+
+print b.foo
+// expect: true

@@ -1,6 +1,6 @@
 // Sparse matrices
 
-var a = Sparse([])
+var a = Sparse()
 
 for (i in 0..10:2) {
   a[i,i]=1

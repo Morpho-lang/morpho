@@ -5,9 +5,10 @@
 
 # Classes
 [tagclass]: # (class)
+[tagmethod]: # (method)
 
 Classes are defined using the `class` keyword followed by the name of the class.
-The definition includes methods  that the class responds to. The special `init` method
+The definition includes methods that the class responds to. The special `init` method
 is called whenever an object is created.
 
     class Cake {
@@ -24,9 +25,9 @@ Objects are created by calling the class as if it was a function:
 
     var c = Cake("carrot")
 
-Methods are called using the . operator:
+Note that all objects in Morpho inherit from a base `Object` class, which provides a set of standard methods.
 
-    c.eat()
+See also `Object`.
 
 [showsubtopics]: # (subtopics)
 
@@ -83,3 +84,73 @@ For example, consider the following pair of classes:
     }
 
 The subclass Soup uses `super` to call the original initializer.
+
+# Objects
+[tagobject]: # (object)
+[tagobjects]: # (objects)
+[tagproperty]: # (property)
+[tagproperties]: # (properties)
+
+Objects in Morpho are created by calling a constructor function, which usually has the same name as the class of the object: 
+
+    var a = Color(0.5,0.5,0.5) // 50% gray 
+
+You can store information in an object by assigning to its properties: 
+
+    a.prop = "Foo" 
+
+and you can read from them similarly:
+
+    print a.prop
+
+An object's `class` determines the methods that can be used on the object. You call them using the . operator:
+
+    print a.clone() 
+
+See also `class`. 
+
+[showsubtopics]: # (subtopics)
+
+## Has
+[taghas]: # (has)
+
+The `has` method is used to test if an object has a particular property:
+
+    print a.has("foo")
+
+If you call `has` with no parameters, 
+
+    print a.has()
+
+it returns a list of all property labels that an object has. 
+
+## Respondsto
+[tagrespondsto]: # (respondsto)
+
+The `respondsto` method is used to test if an object provides a particular method: 
+
+    print a.respondsto("foo")
+
+If you call `respondsto` with no parameters, 
+
+    print a.respondsto()
+
+it returns a list of all methods that an object has available. 
+
+## Invoke
+[taginvoke]: # (invoke)
+
+The `invoke` method is used to invoke a method from its label and a list of parameters: 
+
+    print a.invoke("has", "foo")
+
+is equivalent to:
+
+    print a.has("foo")
+
+## Clss
+[tagclss]: # (clss)
+
+The `clss` method is used to get the class to which an object belongs. 
+
+    print a.clss() 

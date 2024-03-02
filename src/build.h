@@ -40,24 +40,6 @@
 #define MORPHO_PACKAGELIST ".morphopackages"  // File in $HOME that contains package locations
 
 /* **********************************************************************
- * Language features
- * ********************************************************************** */
-
-/** @brief Support string interpolation */
-#define MORPHO_STRINGINTERPOLATION
-
-/** @brief Newlines as statement terminators */
-#define MORPHO_NEWLINETERMINATORS
-
-/** @brief Enable compatibility with Lox language */
-//#define MORPHO_LOXCOMPATIBILITY
-
-/** Turn off features incompatible with lox */
-#ifdef MORPHO_LOXCOMPATIBILITY
-#undef MORPHO_NEWLINETERMINATORS
-#endif
-
-/* **********************************************************************
  * Numeric tolerances
  * ********************************************************************** */
 
@@ -121,9 +103,6 @@
 
 /** @brief Limits size of statically allocated arrays on the C stack */
 #define MORPHO_MAXIMUMSTACKALLOC 256
-
-/** @brief Avoid using global variables (suitable for small programs only) */
-//#define MORPHO_NOGLOBALS
 
 /** @brief Default number of threads */
 #define MORPHO_DEFAULTTHREADNUMBER 0
@@ -194,10 +173,3 @@
 
 /** @brief Buiild with profile support */
 #define MORPHO_PROFILER
-
-/* **********************************************************************
-* UI
-* ********************************************************************** */
-
-/** @brief Full welcome message in CLI */
-// #define MORPHO_LONG_BANNER

@@ -268,10 +268,6 @@ tokendefn standardtokens[] = {
     { "var",        TOKEN_VAR               , NULL },
     { "while",      TOKEN_WHILE             , NULL },
     { "with",       TOKEN_WITH              , NULL },
-#ifdef MORPHO_LOXCOMPATIBILITY
-    { "fun",        TOKEN_FUNCTION          , NULL },
-    { "this",       TOKEN_SELF              , NULL },
-#endif
     { "",           TOKEN_NONE              , NULL }  // Token list should be terminated by an empty token
 };
 
@@ -429,11 +425,7 @@ bool lex_number(lexer *l, token *tok, error *err) {
     /* Fractional part */
     char next = '\0';
     if (lex_peek(l)!='\0') next=lex_peekahead(l, 1); // Prevent looking beyond buffer
-    if (lex_peek(l) == '.' && (lex_isdigit(next)
-#ifndef MORPHO_LOXCOMPATIBILITY
-                               || lex_isspace(next) || next=='\0'
-#endif
-                               ) ) {
+    if (lex_peek(l) == '.' && (lex_isdigit(next) || lex_isspace(next) || next=='\0') ) {
         type=TOKEN_NUMBER;
         lex_advance(l); /* Consume the '.' */
         while (lex_isdigit(lex_peek(l))) lex_advance(l);
@@ -547,11 +539,7 @@ void lex_init(lexer *l, const char *start, int line) {
     l->line=line;
     l->posn=0;
     l->matchkeywords=true;
-#ifdef MORPHO_STRINGINTERPOLATION
     l->stringinterpolation=true;
-#else
-    l->stringinterpolation=false;
-#endif
     l->interpolationlevel=0;
     l->prefn=lex_preprocess;
     l->whitespacefn=lex_skipwhitespace;

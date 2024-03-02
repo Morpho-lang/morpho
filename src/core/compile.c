@@ -897,11 +897,7 @@ bool compiler_hasvariadicarg(compiler *c) {
 
 /** Should we use global variables or registers?  */
 static bool compiler_checkglobal(compiler *c) {
-#ifdef MORPHO_NOGLOBALS
-    return false;
-#else
     return ((c->fstackp==0) && (c->fstack[0].scopedepth==0));
-#endif
 }
 
 /** Finds a global symbol, optionally searching successively through parent compilers */
@@ -2531,13 +2527,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     //if (DECODE_OP(compiler_previousinstruction(c))!=OP_RETURN) { // 8/11/21 -> fix for final return in if
     if (true) {
         /* Methods automatically return self unless another argument is specified */
-
-#ifndef MORPHO_LOXCOMPATIBILITY
-        if (ismethod)
-#else
-        if (ismethod && isinitializer)
-#endif
-        {
+        if (ismethod) {
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, 0), node); /* Add a return */
         } else {
             compiler_addinstruction(c, ENCODE_BYTE(OP_RETURN), node); /* Add a return */

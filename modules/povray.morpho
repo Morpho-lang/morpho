@@ -185,7 +185,13 @@ class POVRaytracer {
     var out = File(file, "write")
 
     out.write("#include \"colors.inc\"")
-    out.write("background { rgb ${self.vector(self.graphic.background.rgb(0))} }")
+    if (self.transparent) {
+      var col = self.graphic.background.rgb(0)
+      out.write("background { rgb <${col[0]}, ${col[1]}, ${col[2]}, 1> }") // Transparent background by setting alpha to 1
+    }
+    else {
+      out.write("background { rgb ${self.vector(self.graphic.background.rgb(0))} }")
+    }
     out.write("camera {"+
               "location ${self.vector(self.viewpoint)}"+
               "up <0,1,0> right <-1.33,0,0> angle ${self.viewangle}"+
@@ -193,23 +199,29 @@ class POVRaytracer {
 
     for (item in self.graphic.displaylist) item.accept(self, out)
 
+    var shadowless = ""
+    if (self.shadowless) shadowless = " shadowless"
     if (self.light) {
       for (light in self.light) {
-        out.write("light_source {${self.vector(light)} color White}")
+        out.write("light_source {${self.vector(light)} color White${shadowless}}")
       }
-    } else out.write("light_source {<-5, -5, 8> color White}")
+    } else out.write("light_source {<-5, -5, 8> color White${shadowless}}")
 
     out.close()
     return out.relativepath()
   }
 
-  render(file, quiet=false, display=true) {
+  render(file, quiet=false, display=true, shadowless=false, transparent=false) {
+    self.shadowless = shadowless // Sets the attribute to be used in the write method
+    self.transparent = transparent // Sets the attribute to be used in the write method and in the command line argument for povray
     var path = self.write(file)
     var silent = ""
     if (quiet) silent = "&> /dev/null"
     var disp = ""
     if (!display) disp = "-D"
-    system("povray ./\"${path}\" ${disp} +A +W${self.width} +H${self.height} ${silent}")
+    var ua = "+A"
+    if (self.transparent) ua = "+UA" // Sets alpha output on 
+    system("povray ./\"${path}\" ${disp} ${ua} +W${self.width} +H${self.height} ${silent}")
     var out = self._slice(path, 0, path.count()-4)
     if (!quiet && display) system("open ./${out}.png")
   }

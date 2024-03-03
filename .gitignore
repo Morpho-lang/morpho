@@ -4,3 +4,4 @@ build-xcode/*
 test/FailedTests.txt
 *.out
 .vscode/settings.json
+*.png

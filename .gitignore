@@ -5,3 +5,4 @@ test/FailedTests.txt
 *.out
 .vscode/settings.json
 *.png
+*.pov

@@ -1,0 +1,103 @@
+/* Finds a minimal surface that connects two ellipsoids.
+This models a fluid interface between two colloidal particles, for example */
+
+import graphics
+import meshtools
+import plot
+import optimize
+
+// Create a initial cube
+var L = 2
+
+var cube = [[-L, -L, -L], [-L, -L, L], [-L, L, -L],
+            [-L, L, L], [L, -L, -L], [L, -L, L],
+            [L, L, -L], [L, L, L]]
+
+var faces = [[7, 3, 1, 5], [7, 5, 4, 6], [7, 6, 2, 3], [3, 2, 0, 1], [0, 2, 6,
+  4], [1, 0, 4, 5]]
+
+var m=PolyhedronMesh(cube, faces)
+m=refinemesh(m)
+
+// Make a class to manufacture axis aligned ellipsoids.
+// To create one, call Ellipsoid(origin, principalradii)
+class Ellipsoid {
+  init(x, r) {
+    self.origin = x
+    self.principalradii = r
+  }
+
+  // Returns a level set function for this Ellipsoid
+  levelset() {
+    fn phi (x,y,z) {
+      var x0 = self.origin, rr = self.principalradii
+      return ((x-x0[0])/rr[0])^2 + ((y-x0[1])/rr[1])^2 + ((z-x0[2])/rr[2])^2 - 1
+    }
+
+    return phi
+  }
+
+  // Returns the a function that returns the gradient
+  // of the level set function for this Ellipsoid
+  gradient() {
+    fn dphi (x,y,z) {
+      var x0 = self.origin, rr = self.principalradii
+      return Matrix([2*(x-x0[0])/rr[0]^2,
+                     2*(y-x0[1])/rr[1]^2,
+                     2*(z-x0[2])/rr[2]^2])
+    }
+
+    return dphi
+  }
+}
+
+// Now use this to manufacture some Ellipsoids
+var ell1 = Ellipsoid([0,1/2,0],[1/2,1/2,1])
+var ell2 = Ellipsoid([0,-1/2,0],[1,1/2,1/2])
+
+// We want to minimize the area
+var la = Area()
+// Subject to level set constraints
+var ls1 = ScalarPotential( ell1.levelset(), ell1.gradient() )
+var ls2 = ScalarPotential( ell2.levelset(), ell2.gradient() )
+var leq = EquiElement()
+
+var problem = OptimizationProblem(m)
+problem.addenergy(la)
+problem.addlocalconstraint(ls1, onesided=true)
+problem.addlocalconstraint(ls2, onesided=true)
+
+var reg = OptimizationProblem(m)
+reg.addenergy(leq)
+reg.addlocalconstraint(ls1, onesided=true)
+reg.addlocalconstraint(ls2, onesided=true)
+
+var sopt = ShapeOptimizer(problem, m)
+var ropt = ShapeOptimizer(reg, m)
+
+sopt.stepsize=0.025
+sopt.steplimit=0.1
+sopt.ctol = 1e-9
+sopt.maxconstraintsteps = 100
+
+ropt.stepsize=0.01
+ropt.steplimit=0.2
+
+for (refine in 1..3) {
+  for (i in 1..100) {
+    sopt.relax(5)
+    ropt.conjugategradient(5)
+    equiangulate(m)
+  }
+
+  var mr=MeshRefiner([m])
+  var refmap = mr.refine()
+  for (el in [problem, reg, sopt, ropt]) el.update(refmap)
+  m = refmap[m]
+}
+
+var g = plotmesh(m, grade=2)
+
+import "../raytrace.morpho" 
+
+raytrace(g, "wrap.pov", viewpoint=Matrix([6,6,4]), viewangle=18)

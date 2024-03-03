@@ -1,0 +1,108 @@
+\hypertarget{classes}{%
+\section{Classes}\label{classes}}
+
+Classes are defined using the \texttt{class} keyword followed by the
+name of the class. The definition includes methods that the class
+responds to. The special \texttt{init} method is called whenever an
+object is created.
+
+\begin{lstlisting}
+class Cake {
+    init(type) {
+        self.type = type
+    }
+
+    eat() {
+        print "A delicious "+self.type+" cake"
+    }
+}
+\end{lstlisting}
+
+Objects are created by calling the class as if it was a function:
+
+\begin{lstlisting}
+var c = Cake("carrot")
+\end{lstlisting}
+
+Methods are called using the . operator:
+
+\begin{lstlisting}
+c.eat()
+\end{lstlisting}
+
+\hypertarget{is}{%
+\subsection{Is}\label{is}}
+
+The \texttt{is} keyword is used to specify a class's superclass:
+
+\begin{lstlisting}
+class A is B {
+
+}
+\end{lstlisting}
+
+All methods defined by the superclass \texttt{B} are copied into the new
+class \texttt{A}, \emph{before} any methods specified in the class
+definition. Hence, you can replace methods from the superclass simply by
+defining a method with the same name.
+
+\hypertarget{with}{%
+\subsection{With}\label{with}}
+
+The \texttt{with} keyword is used together with \texttt{is} to insert
+additional methods into a class definition \emph{without} making them
+the superclass. These are often called \texttt{mixins}. These methods
+are inserted after the superclass's methods. Multiple classes can be
+specified after \texttt{with}; they are added in the order specified.
+
+\begin{lstlisting}
+class A is B with C, D {
+
+}
+\end{lstlisting}
+
+Here \texttt{B} is the superclass of \texttt{A}, but methods defined by
+\texttt{C} and \texttt{D} are also available to \texttt{A}. If
+\texttt{B}, \texttt{C} and \texttt{D} define methods with the same name,
+those in \texttt{C} take precedence over any in \texttt{B} and those in
+\texttt{D} take precedence over \texttt{B} and \texttt{C}.
+
+\hypertarget{self}{%
+\subsection{Self}\label{self}}
+
+The \texttt{self} keyword is used to access an object's properties and
+methods from within its definition.
+
+\begin{lstlisting}
+class Vehicle {
+  init (type) { self.type = type }
+
+  drive () { print "Driving my ${self.type}." }
+}
+\end{lstlisting}
+
+\hypertarget{super}{%
+\subsection{Super}\label{super}}
+
+The keyword \texttt{super} allows you to access methods provided by an
+object's superclass rather than its own. This is particularly useful
+when the programmer wants a class to extend the functionality of a
+parent class, but needs to make sure the old behavior is still
+maintained.
+
+For example, consider the following pair of classes:
+
+\begin{lstlisting}
+class Lunch {
+    init(type) { self.type=type }
+}
+
+class Soup is Lunch {
+    init(type) {
+        print "Delicious soup!"
+        super.init(type)
+    }
+}
+\end{lstlisting}
+
+The subclass Soup uses \texttt{super} to call the original initializer.

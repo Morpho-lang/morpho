@@ -1,0 +1,64 @@
+\hypertarget{delaunay}{%
+\section{Delaunay}\label{delaunay}}
+
+The \texttt{delaunay} module creates Delaunay triangulations from point
+clouds. It is dimensionally independent, so generates tetrahedra in 3D
+and higher order simplices beyond.
+
+To use the module, first import it:
+
+\begin{lstlisting}
+import delaunay
+\end{lstlisting}
+
+To create a Delaunary triangulation from a list of points:
+
+\begin{lstlisting}
+var pts = []
+for (i in 0...100) pts.append(Matrix([random(), random()]))
+var del=Delaunay(pts)
+print del.triangulate()
+\end{lstlisting}
+
+The module also provides \texttt{DelaunayMesh} to directly create meshes
+from Delaunay triangulations.
+
+\hypertarget{triangulate}{%
+\subsection{Triangulate}\label{triangulate}}
+
+The \texttt{triangulate} method performs the delaunay triangulation. To
+use it, first construct a \texttt{Delaunay} object with the point cloud
+of interest:
+
+\begin{lstlisting}
+var del=Delaunay(pts)
+\end{lstlisting}
+
+Then call \texttt{triangulate}:
+
+\begin{lstlisting}
+var tri = del.triangulate()
+\end{lstlisting}
+
+This returns a list of triangles
+\texttt{{[}\ {[}i,\ j,\ k{]},\ ...\ {]}}.
+
+\hypertarget{circumsphere}{%
+\subsection{Circumsphere}\label{circumsphere}}
+
+The \texttt{Circumsphere} class calculates the circumsphere of a set of
+points, i.e.~a sphere such that all the points are on the surface of the
+sphere. It is used internally by the \texttt{delaunay} module.
+
+Create a \texttt{Circumsphere} from a list of points and a triangle
+specified by indices into that list:
+
+\begin{lstlisting}
+var sph = Circumsphere(pts, [i,j,k]) 
+\end{lstlisting}
+
+Test if an arbitrary point is inside the \texttt{Circumsphere} or not:
+
+\begin{lstlisting}
+print sph.pointinsphere(pt)
+\end{lstlisting}

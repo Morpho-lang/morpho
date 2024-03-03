@@ -1,0 +1,87 @@
+import "../raytrace.morpho" 
+
+import meshtools
+import plot
+import optimize
+import symmetry
+
+import povray
+
+var vp = Matrix([-5,-5,10])
+
+var a = 0.5 // Layer spacing 
+var r = 0.5 // Size of hole 
+var L = 1  // Size of box 
+
+// Construct upper octant
+var vertices = [ [r,0,a], [L,0,a], [L,r,a], [L,L,a], [r,L,a], [0,L,a], [0,r,a], [r,r,a],
+                 [r,0,0], [r,r,0], [0,r,0] ]
+
+var faces = [ [0,1,2,7], [2,3,4,7], [7,4,5,6], [0,8,9,7], [6,7,9,10] ]
+
+class MeshReflector {
+  init(mesh) {
+    self.mesh = mesh 
+    self.dim = mesh.vertexmatrix().dimensions()[0] // Mesh dimension 
+  }
+
+  _reflectionmatrix(axis) { // Create a matrix that reflects about one or more axes
+    var rmat = Matrix(self.dim,self.dim) 
+    for (i in 0...self.dim) rmat[i,i]=1
+    if (isint(axis)) rmat[axis,axis]*=-1
+    else if (isobject(axis)) for (i in axis) rmat[i,i]*=-1
+    return rmat 
+  }
+
+  reflect(axis) {
+    var rmat = self._reflectionmatrix(axis)
+    // Clone and transform the mesh 
+    var m = self.mesh.clone() 
+    for (vid in 0...m.count()) m.setvertexposition(vid, rmat * m.vertexposition(vid))
+    return m 
+  }
+} 
+
+// Create the rest of the mesh by reflection
+/*fn reflect(mesh, axis) {
+  // Set up reflection matrix 
+  var rmat = Matrix(dim,dim) 
+  for (i in 0...dim) rmat[i,i]=1
+  if (isint(axis)) rmat[axis,axis]*=-1
+  else if (isobject(axis)) for (i in axis) rmat[i,i]*=-1
+
+  // Transform the mesh 
+  var m = mesh.clone()
+  for (vid in 0...m.count()) m.setvertexposition(vid, rmat * m.vertexposition(vid))
+
+  return m
+}*/
+
+var m1 = PolyhedronMesh(vertices, faces)
+m1.addgrade(1)
+
+print m1.count(1) 
+
+var g1 = plotmesh(m1, grade=[0,1,2])
+raytrace(g1, "unit.pov", viewpoint=vp, viewangle=20)
+
+var mr = MeshReflector(m1)
+
+// Merge reflected meshed together
+var merge = MeshMerge([ m1,
+                        mr.reflect(0),
+                        mr.reflect(1),
+                        mr.reflect(2),
+                        mr.reflect([0,1]),
+                        mr.reflect([1,2]),
+                        mr.reflect([2,0]),
+                        mr.reflect([0,1,2])
+                      ])
+
+
+var m = merge.merge()
+
+print m.count(1) 
+
+var g2 = plotmesh(m, grade=[0,1,2])
+raytrace(g2, "final.pov", viewpoint=vp, viewangle=20)

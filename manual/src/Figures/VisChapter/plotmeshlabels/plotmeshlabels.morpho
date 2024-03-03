@@ -1,0 +1,20 @@
+import meshtools 
+import meshgen 
+import plot 
+
+import "../raytrace.morpho"
+
+var m = AreaMesh(fn (u,v) [u, v, 0], -1..1:0.5, -1..1:0.5)
+m.addgrade(1)
+
+var g1=plotmesh(m, grade=[0,1])
+var g2 = plotmeshlabels(m, grade=0, color=Black, offset=[0.025,0.025,0])
+var g = g1+g2
+
+raytrace(g, "meshlabels.pov", viewpoint = [0,0,10])
+
+var g1=plotmesh(m, grade=[0,1])
+var g2 = plotmeshlabels(m, grade=1, color=Red, offset=[-0.05,-0.05,-0.03])
+var g = g1+g2
+
+raytrace(g, "meshlabels2.pov", viewpoint = [0,0,10])

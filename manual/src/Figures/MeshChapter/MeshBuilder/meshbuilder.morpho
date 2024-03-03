@@ -1,0 +1,30 @@
+import meshtools 
+import plot 
+import povray 
+
+fn raytrace(g, fname, viewpoint=nil) {
+  var vp = viewpoint
+  if (!vp) vp = Matrix([0,0,10])
+  var pov = POVRaytracer(g)
+  g.background = White
+  pov.viewpoint = vp
+  pov.viewangle = 18
+  pov.background = White
+  pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]
+  pov.render(fname, quiet=true)
+}
+
+var mb = MeshBuilder() 
+
+mb.addvertex([0, 0, 0.612372])
+mb.addvertex([-0.288675, -0.5, -0.204124])
+mb.addvertex([-0.288675, 0.5, -0.204124])
+mb.addvertex([0.57735, 0, -0.204124])
+
+var vids = [0,1,2,3]
+for (s in vids.sets(2)) mb.addedge(s)
+for (s in vids.sets(3)) mb.addface(s)
+mb.addvolume(vids)
+
+var g=plotmesh(mb.build(), grade=[0,1,2])
+raytrace(g, "tetrahedron.pov")

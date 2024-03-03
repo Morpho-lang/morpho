@@ -1,0 +1,44 @@
+\hypertarget{help}{%
+\section{Help}\label{help}}
+
+Morpho provides an online help system. To get help about a topic called
+\texttt{topicname}, type
+
+\begin{lstlisting}
+help topicname
+\end{lstlisting}
+
+A list of available topics is provided below and includes language
+keywords like \texttt{class}, \texttt{fn} and \texttt{for}, built in
+classes like \texttt{Matrix} and \texttt{File} or information about
+functions like \texttt{exp} and \texttt{random}.
+
+Some topics have additional subtopics: to access these type
+
+\begin{lstlisting}
+help topic subtopic
+\end{lstlisting}
+
+For example, to get help on a method for a particular class, you could
+type
+
+\begin{lstlisting}
+help Classname.methodname
+\end{lstlisting}
+
+Note that \texttt{help} ignores all punctuation.
+
+You can also use \texttt{?} as a shorthand synonym for \texttt{help}
+
+\begin{lstlisting}
+? topic
+\end{lstlisting}
+
+A useful feature is that, if an error occurs, simply type \texttt{help}
+to get more information about the error.
+
+\hypertarget{quit}{%
+\section{Quit}\label{quit}}
+
+The \texttt{quit} CLI command quits \texttt{morpho} run in interactive
+mode and returns to the shell.

@@ -1,0 +1,39 @@
+import meshtools 
+import plot
+import povray  
+
+fn raytrace(g, fname, viewpoint=nil) {
+  var vp = viewpoint
+  if (!vp) vp = 10*Matrix([3,8,10])/sqrt(10^2+8^2+3^2)
+  var pov = POVRaytracer(g)
+  g.background = White
+  pov.viewpoint = vp
+  pov.viewangle = 15
+  pov.background = White
+  pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]
+  pov.render(fname, quiet=true)
+}
+
+// Create an initial cube
+var vertices =  [ [-0.5, -0.5, -0.5],
+                  [ 0.5, -0.5, -0.5],
+                  [-0.5,  0.5, -0.5],
+                  [ 0.5,  0.5, -0.5],
+                  [-0.5, -0.5,  0.5],
+                  [ 0.5, -0.5,  0.5],
+                  [-0.5,  0.5,  0.5],
+                  [ 0.5,  0.5,  0.5] ]
+
+var mb=MeshBuilder()
+for (v in vertices) mb.addvertex(v)
+
+mb.addedge([4,5]) 
+mb.addedge([5,7]) 
+mb.addedge([7,6]) 
+mb.addedge([6,4]) 
+
+var m = mb.build() 
+var g=plotmesh(m,grade=[0,1])+plotmeshlabels(m, offset=Matrix([0,0,-0.05])) 
+
+//Show(g) 
+raytrace(g, "cubeface.pov")

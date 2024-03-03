@@ -1,0 +1,188 @@
+\hypertarget{color}{%
+\section{Color}\label{color}}
+
+The \texttt{color} module provides support for working with color.
+Colors are represented in morpho by \texttt{Color} objects. The module
+predefines some colors including \texttt{Red}, \texttt{Green},
+\texttt{Blue}, \texttt{Black}, \texttt{White}.
+
+To use the module, use import as usual:
+
+\begin{lstlisting}
+import color
+\end{lstlisting}
+
+Create a Color object from an RGB pair:
+
+\begin{lstlisting}
+var col = Color(0.5,0.5,0.5) // A 50% gray
+\end{lstlisting}
+
+The \texttt{color} module also provides \texttt{ColorMap}s, which are
+give a sequence of colors as a function of a parameter; these are useful
+for plotting the values of a \texttt{Field} for example.
+
+\hypertarget{rgb}{%
+\subsection{RGB}\label{rgb}}
+
+Gets the rgb components of a \texttt{Color} or \texttt{ColorMap} object
+as a list. Takes a single argument in the range 0 to 1, although the
+result will only depend on this argument if the object is a
+\texttt{ColorMap}.
+
+\begin{lstlisting}
+var col = Color(0.1,0.5,0.7)
+print col.rgb(0)
+\end{lstlisting}
+
+\hypertarget{red}{%
+\subsection{Red}\label{red}}
+
+Built in \texttt{Color} object for use with the \texttt{graphics} and
+\texttt{plot} modules.
+
+\hypertarget{green}{%
+\subsection{Green}\label{green}}
+
+Built in \texttt{Color} object for use with the \texttt{graphics} and
+\texttt{plot} modules.
+
+\hypertarget{blue}{%
+\subsection{Blue}\label{blue}}
+
+Built in \texttt{Color} object for use with the \texttt{graphics} and
+\texttt{plot} modules.
+
+\hypertarget{white}{%
+\subsection{White}\label{white}}
+
+Built in \texttt{Color} object for use with the \texttt{graphics} and
+\texttt{plot} modules.
+
+\hypertarget{black}{%
+\subsection{Black}\label{black}}
+
+Built in \texttt{Color} object for use with the \texttt{graphics} and
+\texttt{plot} modules.
+
+\hypertarget{cyan}{%
+\subsection{Cyan}\label{cyan}}
+
+Built in \texttt{Color} object for use with the \texttt{graphics} and
+\texttt{plot} modules.
+
+\hypertarget{magenta}{%
+\subsection{Magenta}\label{magenta}}
+
+Built in \texttt{Color} object for use with the \texttt{graphics} and
+\texttt{plot} modules.
+
+\hypertarget{yellow}{%
+\subsection{Yellow}\label{yellow}}
+
+Built in \texttt{Color} object for use with the \texttt{graphics} and
+\texttt{plot} modules.
+
+\hypertarget{brown}{%
+\subsection{Brown}\label{brown}}
+
+Built in \texttt{Color} object for use with the \texttt{graphics} and
+\texttt{plot} modules.
+
+\hypertarget{orange}{%
+\subsection{Orange}\label{orange}}
+
+Built in \texttt{Color} object for use with the \texttt{graphics} and
+\texttt{plot} modules.
+
+\hypertarget{pink}{%
+\subsection{Pink}\label{pink}}
+
+Built in \texttt{Color} object for use with the \texttt{graphics} and
+\texttt{plot} modules.
+
+\hypertarget{purple}{%
+\subsection{Purple}\label{purple}}
+
+Built in \texttt{Color} object for use with the \texttt{graphics} and
+\texttt{plot} modules.
+
+\hypertarget{colormap}{%
+\subsection{Colormap}\label{colormap}}
+
+The \texttt{color} module provides \texttt{ColorMap}s which are
+subclasses of \texttt{Color} that map a single parameter in the range 0
+to 1 onto a continuum of colors. \texttt{Color}s and \texttt{Colormap}s
+have the same interface.
+
+Get the red, green or blue components of a color or colormap:
+
+\begin{lstlisting}
+var col = HueMap()
+print col.red(0.5) // argument can be in range 0 to 1
+\end{lstlisting}
+
+Get all three components as a list:
+
+\begin{lstlisting}
+col.rgb(0)
+\end{lstlisting}
+
+Create a grayscale:
+
+\begin{lstlisting}
+var c = Gray(0.2) // 20% gray
+\end{lstlisting}
+
+Available ColorMaps: \texttt{GradientMap}, \texttt{GrayMap},
+\texttt{HueMap}, \texttt{ViridisMap}, \texttt{MagmaMap},
+\texttt{InfernoMap} and \texttt{PlasmaMap}.
+
+\hypertarget{gradientmap}{%
+\subsection{GradientMap}\label{gradientmap}}
+
+\texttt{GradientMap} is a \texttt{Colormap} that displays a
+white-green-purple sequence.
+
+\hypertarget{graymap}{%
+\subsection{GrayMap}\label{graymap}}
+
+\texttt{GrayMap} is a \texttt{Colormap} that displays grayscales.
+
+\hypertarget{huemap}{%
+\subsection{HueMap}\label{huemap}}
+
+\texttt{HueMap} is a \texttt{Colormap} that displays vivid colors. It is
+periodic on the interval 0 to 1.
+
+\hypertarget{viridismap}{%
+\subsection{ViridisMap}\label{viridismap}}
+
+\texttt{ViridisMap} is a \texttt{Colormap} that displays a
+purple-green-yellow sequence. It is perceptually uniform and intended to
+be improve the accessibility of visualizations for viewers with color
+vision deficiency.
+
+\hypertarget{magmamap}{%
+\subsection{MagmaMap}\label{magmamap}}
+
+\texttt{MagmaMap} is a \texttt{Colormap} that displays a
+black-red-yellow sequence. It is perceptually uniform and intended to be
+improve the accessibility of visualizations for viewers with color
+vision deficiency.
+
+\hypertarget{infernomap}{%
+\subsection{InfernoMap}\label{infernomap}}
+
+\texttt{InfernoMap} is a \texttt{Colormap} that displays a
+black-red-yellow sequence. It is perceptually uniform and intended to be
+improve the accessibility of visualizations for viewers with color
+vision deficiency.
+
+\hypertarget{plasmamap}{%
+\subsection{PlasmaMap}\label{plasmamap}}
+
+\texttt{InfernoMap} is a \texttt{Colormap} that displays a
+blue-red-yellow sequence. It is perceptually uniform and intended to be
+improve the accessibility of visualizations for viewers with color
+vision deficiency.

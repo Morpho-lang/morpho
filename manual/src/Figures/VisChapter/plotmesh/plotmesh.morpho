@@ -1,0 +1,20 @@
+import meshtools 
+import plot 
+
+import "../raytrace.morpho"
+
+var m = AreaMesh(fn (u,v) [u, v, 0], -1..1:0.5, -1..1:0.5)
+m.addgrade(1)
+var g=plotmesh(m)
+raytrace(g, "square.pov", viewpoint = [0,0,10])
+
+var g=plotmesh(m,grade=[0,1])
+raytrace(g, "square2.pov", viewpoint = [0,0,10])
+
+var g=plotmesh(m, grade=[0], color=Red)
+raytrace(g, "square3.pov", viewpoint = [0,0,10])
+
+var sel = Selection(m, fn (x,y,z) x^2+y^2<1)
+sel.addgrade(2)
+var g=plotmesh(m, grade=[0,2], selection=sel)
+raytrace(g, "square4.pov", viewpoint = [0,0,10])

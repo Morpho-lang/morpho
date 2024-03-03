@@ -1,0 +1,112 @@
+\hypertarget{field}{%
+\section{Field}\label{field}}
+
+Fields are used to store information, including numbers or matrices,
+associated with the elements of a \texttt{Mesh} object.
+
+You can create a \texttt{Field} by applying a function to each of the
+vertices,
+
+\begin{lstlisting}
+var f = Field(mesh, fn (x, y, z) x+y+z)
+\end{lstlisting}
+
+or by supplying a single constant value,
+
+\begin{lstlisting}
+var f = Field(mesh, Matrix([1,0,0]))
+\end{lstlisting}
+
+Fields can then be added and subtracted using the \texttt{+} and
+\texttt{-} operators.
+
+To access elements of a \texttt{Field}, use index notation:
+
+\begin{lstlisting}
+print f[grade, element, index]
+\end{lstlisting}
+
+where * \texttt{grade} is the grade to select * \texttt{element} is the
+element id * \texttt{index} is the element index
+
+As a shorthand, it's possible to omit the grade and index; these are
+then both assumed to be \texttt{0}:
+
+\begin{lstlisting}
+print f[2]
+\end{lstlisting}
+
+\hypertarget{mesh}{%
+\subsection{Mesh}\label{mesh}}
+
+Returns the Mesh associated with a Field object:
+
+\begin{lstlisting}
+var f.mesh() 
+\end{lstlisting}
+
+\hypertarget{grade}{%
+\subsection{Grade}\label{grade}}
+
+To create fields that include grades other than just vertices, use the
+\texttt{grade} option to \texttt{Field}. This can be just a grade index,
+
+\begin{lstlisting}
+var f = Field(mesh, 0, grade=2)
+\end{lstlisting}
+
+which creates an empty field with \texttt{0} for each of the facets of
+the mesh \texttt{mesh}.
+
+You can store more than one item per element by supplying a list to the
+\texttt{grade} option indicating how many items you want to store on
+each grade. For example,
+
+\begin{lstlisting}
+var f = Field(mesh, 1.0, grade=[0,2,1])
+\end{lstlisting}
+
+stores two numbers on the line (grade 1) elements and one number on the
+facets (grade 2) elements. Each number in the field is initialized to
+the value \texttt{1.0}.
+
+\hypertarget{shape}{%
+\subsection{Shape}\label{shape}}
+
+The \texttt{shape} method returns a list indicating the number of items
+stored on each element of a particular grade. This has the same format
+as the list you supply to the \texttt{grade} option of the
+\texttt{Field} constructor. For example,
+
+\begin{lstlisting}
+[1,0,2]
+\end{lstlisting}
+
+would indicate one item stored on each vertex and two items stored on
+each facet.
+
+\hypertarget{op}{%
+\subsection{Op}\label{op}}
+
+The \texttt{op} method applies a function to every item stored in a
+\texttt{Field}, returning the result as elements of a new \texttt{Field}
+object. For example,
+
+\begin{lstlisting}
+f.op(fn (x) x.norm())
+\end{lstlisting}
+
+calls the \texttt{norm} method on each element stored in \texttt{f}.
+
+Additional \texttt{Field} objects may be supplied as extra arguments to
+\texttt{op}. These must have the same shape (the same number of items
+stored on each grade). The function supplied to \texttt{op} will now be
+called with the corresponding element from each field as arguments. For
+example,
+
+\begin{lstlisting}
+f.op(fn (x,y) x.inner(y), g)
+\end{lstlisting}
+
+calculates an elementwise inner product between the elements of Fields
+\texttt{f} and \texttt{g}.

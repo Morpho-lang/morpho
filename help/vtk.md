@@ -5,14 +5,15 @@
 [tagvtk]: # (vtk)
 
 The vtk module contains classes to allow I/O of meshes and fields using
-the VTK Legacy Format.
+the VTK Legacy Format. Note that this currently only supports scalar or 2D/3D vector (column matrix) fields that live on the vertices ( shape `[1,0,0]`). Support for
+tensorial fields and fields on cells coming soon.
 
 [showsubtopics]: # (subtopics)
 
 ## VTKExporter
 [tagvtkexporter]: # (VTKExporter)
 
-This class can be used to export the field(s) and/or at a given state
+This class can be used to export the field(s) and/or a mesh at a given state
 to a single .vtk file. To use it, import the `vtk` module:
 
     import vtk
@@ -44,7 +45,7 @@ where,
   string without embedded whitespace. If not provided, the name would be
   either "scalars" or "vectors" depending on the field type**. 
 
-** Note that this currently only supports scalar or vector (column
+** Note that this currently only supports scalar or 2D/3D vector (column
 matrix) fields that live on the vertices ( shape `[1,0,0]`). Support for
 tensorial fields and fields on cells coming soon.
 

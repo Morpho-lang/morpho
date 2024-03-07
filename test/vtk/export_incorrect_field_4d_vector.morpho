@@ -1,0 +1,10 @@
+// Trying to export a field of dimension not currently supported by the VTKExporter
+import vtk
+import meshtools
+
+var m = AreaMesh(fn (u,v) [u,v,0], -1..1:0.5, -1..1:0.5)
+m.addgrade(1)
+
+var f3 = Field(m, Matrix([0,1,2,3])) // Vector field of >3 dimensions
+
+VTKExporter(f3).export() // expect: Error 'FieldDimErr' : Expected a scalar or a 2D/3D vector field, but received a vector field with 4 dimensions.

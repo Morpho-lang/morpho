@@ -47,17 +47,18 @@ void morpho_printvalue(vm *v, value val) {
 
 /** @brief Prints a value to a buffer */
 #define MORPHO_TOSTRINGTMPBUFFERSIZE   64
-void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
+bool morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
+    bool success=false;
     char tmp[MORPHO_TOSTRINGTMPBUFFERSIZE];
     int nv;
 
     if (MORPHO_ISSTRING(val)) {
         objectstring *s = MORPHO_GETSTRING(val);
-        varray_charadd(buffer, s->string, (int) s->length);
+        success=varray_charadd(buffer, s->string, (int) s->length);
     } else if (MORPHO_ISCLASS(val)) {
         objectclass *klass = MORPHO_GETCLASS(val);
         varray_charwrite(buffer, '@');
-        morpho_printtobuffer(v, klass->name, buffer);
+        success=morpho_printtobuffer(v, klass->name, buffer);
     } else if (MORPHO_ISOBJECT(val)) {
         objectclass *klass = morpho_lookupclass(val);
 
@@ -69,32 +70,34 @@ void morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
             if (morpho_lookupmethod(val, label, &method) &&
                 morpho_invoke(v, val, method, 0, NULL, &ret)) {
                 if (MORPHO_ISSTRING(ret)) {
-                    varray_charadd(buffer, MORPHO_GETCSTRING(ret), (int) MORPHO_GETSTRINGLENGTH(ret));
+                    success=varray_charadd(buffer, MORPHO_GETCSTRING(ret), (int) MORPHO_GETSTRINGLENGTH(ret));
                 }
             } else {
                 varray_charwrite(buffer, '<');
-                morpho_printtobuffer(v, klass->name, buffer);
+                success=morpho_printtobuffer(v, klass->name, buffer);
                 varray_charwrite(buffer, '>');
             }
         } else if (MORPHO_ISBUILTINFUNCTION(val)) {
             objectbuiltinfunction *fn = MORPHO_GETBUILTINFUNCTION(val);
             varray_charadd(buffer, "<fn ", 4);
-            morpho_printtobuffer(v, fn->name, buffer);
+            success=morpho_printtobuffer(v, fn->name, buffer);
             varray_charwrite(buffer, '>');
         }
     } else if (MORPHO_ISFLOAT(val)) {
         nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%g", MORPHO_GETFLOATVALUE(val));
-        varray_charadd(buffer, tmp, nv);
+        success=varray_charadd(buffer, tmp, nv);
     } else if (MORPHO_ISINTEGER(val)) {
         nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%i", MORPHO_GETINTEGERVALUE(val));
-        varray_charadd(buffer, tmp, nv);
+        success=varray_charadd(buffer, tmp, nv);
     } else if (MORPHO_ISBOOL(val)) {
         nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%s", (MORPHO_ISTRUE(val) ? MORPHO_TRUESTRING : MORPHO_FALSESTRING));
-        varray_charadd(buffer, tmp, nv);
+        success=varray_charadd(buffer, tmp, nv);
     } else if (MORPHO_ISNIL(val)) {
         nv=snprintf(tmp, MORPHO_TOSTRINGTMPBUFFERSIZE, "%s", MORPHO_NILSTRING);
-        varray_charadd(buffer, tmp, nv);
+        success=varray_charadd(buffer, tmp, nv);
     }
+    
+    return success; 
 }
 
 /** @brief Concatenates a sequence of values as a string */

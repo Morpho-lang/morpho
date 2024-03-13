@@ -10,6 +10,8 @@
 #include "object.h"
 #include "dictionary.h"
 
+#define JSON_NULL_LABEL             "null"
+
 /* -------------------------------------------------------
  * JSON class
  * ------------------------------------------------------- */

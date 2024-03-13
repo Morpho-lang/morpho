@@ -38,10 +38,16 @@ Morpho now supports Tuples, an ordered immutable collection. The syntax is simil
 
 Tuples act much like Lists, but can be used as keys in a Dictionary. 
 
+## JSON import and export
+
+Morpho now provides a `JSON` class which supports import and output using the JavaScript Object Notation (JSON) format, widely used for data interchange.
+
+    var a = JSON.parse("[1,2,3]")
+    print a 
+
 ## Minor new features
 
 * Formatted output for numbers is now available using the `format` method on the `Int` and `Float` classes. 
-* JSON parser to enable data interchange with other applications.
 * Errors can now be raised as "warnings", which are alerts to the user that do not interrupt execution.
 
 ## Improved documentation

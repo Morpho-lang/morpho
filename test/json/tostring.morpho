@@ -1,0 +1,36 @@
+// Output morpho values as JSON
+  
+var vals = [1, 1.5, true, false, nil, "hello world", [1,2,3]]
+
+for (v in vals) print JSON.tostring(v)
+// expect: 1
+// expect: 1.5
+// expect: true
+// expect: false
+// expect: null
+// expect: "hello world"
+// expect: [1,2,3]
+
+var str = ["\b", "\f", "\n", "\t", "\r", "\u0001", "👋 world"]
+
+for (v in str) print JSON.tostring(v)
+// expect: "\b"
+// expect: "\f"
+// expect: "\n"
+// expect: "\t"
+// expect: "\r"
+// expect: "\u0001"
+// expect: "👋 world"
+
+var dict = { "Foo": "Bar", "Boo": 2, "Woo": true, "false": true }
+
+var dstr = JSON.tostring(dict)
+var dict2 = JSON.parse(dstr)
+
+for (key in dict.keys()) {
+    print dict2[key] == dict[key]
+}
+// expect: true
+// expect: true
+// expect: true
+// expect: true

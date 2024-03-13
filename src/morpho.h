@@ -111,6 +111,10 @@ errorid morpho_geterrorid(error *err);
 program *morpho_newprogram(void);
 void morpho_freeprogram(program *p);
 
+/* Optimizers */
+typedef bool (*optimizerfn) (program *in);
+void morpho_setoptimizer(optimizerfn *optimizer);
+
 /* Virtual machine */
 vm *morpho_newvm(void);
 void morpho_freevm(vm *v);

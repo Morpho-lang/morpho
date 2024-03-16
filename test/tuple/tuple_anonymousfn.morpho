@@ -1,0 +1,9 @@
+// Construct a tuple of anonymous functions
+
+var a = (fn (x) x, fn (x) x^2, fn (x) x^3, fn (x) x^4)
+
+for (f in a) print f(2)
+// expect: 2
+// expect: 4
+// expect: 8
+// expect: 16

@@ -1,7 +1,7 @@
 /** @file json.c
  *  @author T J Atherton
  *
- *  @brief JSON parser
+ *  @brief JSON class
  *  @details Aims to be compliant with RFC 8259, tested against https://github.com/nst/JSONTestSuite
  *           Currently passes all except "n_multidigit_number_then_00.json"
  */
@@ -465,6 +465,105 @@ bool json_parse(char *in, error *err, value *out, varray_value *objects) {
 }
 
 /* **********************************************************************
+ * JSON output
+ * ********************************************************************** */
+
+bool json_valuetovarraychar(vm *v, value in, varray_char *out) {
+    bool success=false;
+    if (MORPHO_ISINTEGER(in) ||
+        MORPHO_ISFLOAT(in) ||
+        MORPHO_ISBOOL(in)) {
+        success=morpho_printtobuffer(v, in, out);
+    } else if (MORPHO_ISNIL(in)) {
+        success=varray_charadd(out, JSON_NULL_LABEL, strlen(JSON_NULL_LABEL));
+    } else if (MORPHO_ISSTRING(in)) {
+        objectstring *str = MORPHO_GETSTRING(in);
+        
+        success=varray_charadd(out, "\"", 1);
+        
+        for (char *c = str->string; c<str->string+str->length; ) {
+            int nbytes = morpho_utf8numberofbytes(c);
+            if (!nbytes) return false;
+            
+            if (nbytes==1 && iscntrl(*c)) {
+                switch (*c) {
+                    case '\b': success=varray_charadd(out, "\\b", 2); break;
+                    case '\f': success=varray_charadd(out, "\\f", 2); break;
+                    case '\n': success=varray_charadd(out, "\\n", 2); break;
+                    case '\r': success=varray_charadd(out, "\\r", 2); break;
+                    case '\t': success=varray_charadd(out, "\\t", 2); break;
+                    case '\\': success=varray_charadd(out, "\\\\", 2); break;
+                    default: {
+                        char temp[10];
+                        int n = sprintf(temp, "\\u%04x", (int) *c);
+                        success=varray_charadd(out, temp, n);
+                    }
+                }
+            } else {
+                success=varray_charadd(out, c, nbytes);
+            }
+            
+            c+=nbytes;
+        }
+        
+        success=varray_charadd(out, "\"", 1);
+        
+    } else if (MORPHO_ISLIST(in)) {
+        objectlist *lst = MORPHO_GETLIST(in);
+        varray_charadd(out, "[", 1);
+        
+        for (int i=0; i<lst->val.count; i++)  {
+            if (!json_valuetovarraychar(v, lst->val.data[i], out)) return false;
+            if (i<lst->val.count-1) varray_charadd(out, ",", 1);
+        }
+        
+        success=varray_charadd(out, "]", 1);
+    } else if (MORPHO_ISDICTIONARY(in)) {
+        objectdictionary *dict = MORPHO_GETDICTIONARY(in);
+        varray_charadd(out, "{", 1);
+        
+        for (unsigned int i=0, k=0; i<dict->dict.capacity; i++) {
+            value key = dict->dict.contents[i].key;
+            if (MORPHO_ISNIL(key)) continue;
+            
+            if (!MORPHO_ISSTRING(key)) success=varray_charadd(out, "\"", 1);
+            if (!json_valuetovarraychar(v, key, out)) return false;
+            if (!MORPHO_ISSTRING(key)) success=varray_charadd(out, "\"", 1);
+            
+            success=varray_charadd(out, ":", 1);
+            
+            if (!json_valuetovarraychar(v, dict->dict.contents[i].val, out)) return false;
+            
+            if (k<dict->dict.count-1) varray_charadd(out, ",", 1);
+            
+            k++;
+        }
+        
+        success=varray_charadd(out, "}", 1);
+    }
+    return success;
+}
+
+bool json_tostring(vm *v, value in, value *out) {
+    bool success=false;
+    varray_char str;
+    varray_charinit(&str);
+    
+    success=json_valuetovarraychar(v, in, &str);
+    
+    if (success) {
+        *out=object_stringfromvarraychar(&str);
+        if (!MORPHO_ISSTRING(*out)) {
+            morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+            success=false;
+        }
+    }
+    
+    varray_charclear(&str);
+    return success;
+}
+
+/* **********************************************************************
  * JSON class
  * ********************************************************************** */
 
@@ -483,12 +582,26 @@ value JSON_parse(vm *v, int nargs, value *args) {
             morpho_runtimeerror(v, err.id);
         }
         varray_valueclear(&objects);
+    } else morpho_runtimeerror(v, JSON_PRSARGS);
+    
+    return out;
+}
+
+value JSON_tostring(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    
+    if (nargs==1) {
+        if (json_tostring(v, MORPHO_GETARG(args, 0), &out)) {
+            morpho_bindobjects(v, 1, &out);
+        }
     }
+    
     return out;
 }
 
 MORPHO_BEGINCLASS(JSON)
-MORPHO_METHOD(JSON_PARSEMETHOD, JSON_parse, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(JSON_PARSEMETHOD, JSON_parse, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, JSON_tostring, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

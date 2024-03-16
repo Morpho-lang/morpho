@@ -654,7 +654,7 @@ bool parse_tuple(parser *p, token *start, syntaxtreeindx first, void *out) {
 bool parse_grouping(parser *p, void *out) {
     token start = p->previous;
     syntaxtreeindx new;
-    PARSE_CHECK(parse_expression(p, &new));
+    PARSE_CHECK(parse_pseudoexpression(p, &new));
     
     syntaxtreenode *node = parse_lookupnode(p, new);
     

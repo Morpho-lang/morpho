@@ -12,12 +12,13 @@
 #include "morpho.h"
 #include "classes.h"
 #include "file.h"
-#include "optimize.h"
 #include "resources.h"
 #include "extensions.h"
 
 /** Base class for instances */
 static objectclass *baseclass;
+
+static optimizerfn *optimizer;
 
 /* **********************************************************************
 * Bytecode compiler
@@ -3654,7 +3655,7 @@ bool morpho_compile(char *in, compiler *c, bool opt, error *err) {
     }
 
     if (success) {
-        if (opt) optimize(c->out);
+        if (opt && optimizer) (*optimizer) (c->out);
         
         c->line=c->lex.line+1; // Update the line counter if compilation was a success; assumes a new line every time morpho_compile is called.
     }
@@ -3693,9 +3694,15 @@ void morpho_setbaseclass(value klss) {
     }
 }
 
+void morpho_setoptimizer(optimizerfn *opt) {
+    optimizer = opt;
+}
+
 /** Initializes the compiler */
 void compile_initialize(void) {
     _selfsymbol=builtin_internsymbolascstring("self");
+    
+    optimizer = NULL;
 
     /* Compile errors */
     morpho_defineerror(COMPILE_SYMBOLNOTDEFINED, ERROR_COMPILE, COMPILE_SYMBOLNOTDEFINED_MSG);
@@ -3733,5 +3740,4 @@ void compile_initialize(void) {
 
 /** Finalizes the compiler */
 void compile_finalize(void) {
-    optimize_finalize();
 }

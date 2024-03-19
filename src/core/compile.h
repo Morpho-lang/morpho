@@ -102,6 +102,9 @@
 #define COMPILE_INVLDLBL                  "InvldLbl"
 #define COMPILE_INVLDLBL_MSG              "Invalid label in catch statment."
 
+#define COMPILE_MSSNGINDX                 "MssngIndx"
+#define COMPILE_MSSNGINDX_MSG             "Missing index or indices."
+
 /* **********************************************************************
  * Compiler typedefs
  * ********************************************************************** */

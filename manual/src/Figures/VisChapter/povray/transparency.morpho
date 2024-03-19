@@ -1,0 +1,15 @@
+import plot 
+
+import "../raytrace.morpho"
+
+var g = Graphics() 
+
+fn randompt(R) {
+    return R*Matrix([random()-1/2, random()-1/2, random()-1/2])
+}
+
+for (i in 1..50) {
+    g.display(Sphere(randompt(1.5), random()/5, transmit=random())) 
+}
+
+raytrace(g, "transparency.pov", viewpoint = [0,0,10])

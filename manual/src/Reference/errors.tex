@@ -1,0 +1,242 @@
+\hypertarget{errors}{%
+\section{Errors}\label{errors}}
+
+When an error occurs in running a morpho program, an error message is
+displayed together with an explanation of where in the program that the
+error happened.
+
+\hypertarget{alloc}{%
+\subsection{Alloc}\label{alloc}}
+
+This error may occur when creating new objects or resizing them. It
+typically indicates that the computer is under memory pressure.
+
+\hypertarget{intrnl}{%
+\subsection{Intrnl}\label{intrnl}}
+
+This error indicates an internal problem with morpho. Please contact the
+developers for support.
+
+\hypertarget{invldop}{%
+\subsection{InvldOp}\label{invldop}}
+
+This error occurs when an operator like \texttt{+} or \texttt{-} is
+given operands that it doesn't understand. For example,
+
+\begin{lstlisting}
+print "Hello" * "Goodbye" // Causes 'InvldOp'
+\end{lstlisting}
+
+causes this error because the multiplication operator doesn't know how
+to multiply strings.
+
+If the operands are objects, this means that the objects don't provide a
+method for the requested operation, e.g.~for
+
+\begin{lstlisting}
+print object1 / object2
+\end{lstlisting}
+
+\texttt{object1} would need to provide a \texttt{div()} method that can
+successfully handle \texttt{object2}.
+
+\hypertarget{cnctfld}{%
+\subsection{CnctFld}\label{cnctfld}}
+
+This error occurs when concatenation of strings or other objects fails,
+typically because of low memory.
+
+\hypertarget{uncallable}{%
+\subsection{Uncallable}\label{uncallable}}
+
+This error occurs when you try to call something that isn't a method or
+a function. Here, we initialize a variable with a string and call it:
+
+\begin{lstlisting}
+var f = "Not a function"
+f() // Causes 'Uncallable'
+\end{lstlisting}
+
+\hypertarget{glblrtrn}{%
+\subsection{GlblRtrn}\label{glblrtrn}}
+
+This error occurs when morpho encounters a \texttt{return} keyword
+outside of a function or method definition.
+
+\hypertarget{instfail}{%
+\subsection{InstFail}\label{instfail}}
+
+This error occurs when morpho tried to create a new object, but
+something went wrong.
+
+\hypertarget{notanobj}{%
+\subsection{NotAnObj}\label{notanobj}}
+
+This error occurs if you try to access a property of something that
+isn't an object:
+
+\begin{lstlisting}
+var a = 1
+a.size = 5
+\end{lstlisting}
+
+\hypertarget{objlcksprp}{%
+\subsection{ObjLcksPrp}\label{objlcksprp}}
+
+This error occurs if you try to access a property or method that hasn't
+been defined for an object:
+
+\begin{lstlisting}
+var a = Object()
+print a.pifflepaffle
+\end{lstlisting}
+
+or
+
+\begin{lstlisting}
+print a.foo()
+\end{lstlisting}
+
+\hypertarget{noinit}{%
+\subsection{NoInit}\label{noinit}}
+
+This error can occur if you try to create a new object from a class that
+doesn't have an \texttt{init} method:
+
+\begin{lstlisting}
+class Foo { }
+var a = Foo(0.3)
+\end{lstlisting}
+
+Here, the argument to \texttt{Foo} causes the \texttt{NoInit} error
+because no \texttt{init} method is available to process it.
+
+\hypertarget{notaninst}{%
+\subsection{NotAnInst}\label{notaninst}}
+
+This error occurs if you try to invoke a method on something that isn't
+an object:
+
+\begin{lstlisting}
+var a = 4
+print a.foo()
+\end{lstlisting}
+
+\hypertarget{clsslcksmthd}{%
+\subsection{ClssLcksMthd}\label{clsslcksmthd}}
+
+This error occurs if you try to invoke a method on a class that doesn't
+exist:
+
+\begin{lstlisting}
+class Foo { }
+print Foo.foo()
+\end{lstlisting}
+
+\hypertarget{invldargs}{%
+\subsection{InvldArgs}\label{invldargs}}
+
+This error occurs if you call a function with the wrong number of
+arguments:
+
+\begin{lstlisting}
+fn f(x) { return x }
+f(1,2)
+\end{lstlisting}
+
+\hypertarget{notindxbl}{%
+\subsection{NotIndxbl}\label{notindxbl}}
+
+This error occurs if you try to index something that isn't a collection:
+
+\begin{lstlisting}
+var a = 0.3
+print a[1]
+\end{lstlisting}
+
+\hypertarget{indxbnds}{%
+\subsection{IndxBnds}\label{indxbnds}}
+
+This error can occur when selecting an entry from a collection object
+(such as a list) if the index supplied is bigger than the number of
+entries:
+
+\begin{lstlisting}
+var a = [1,2,3]
+print a[10]
+\end{lstlisting}
+
+\hypertarget{nonnmindx}{%
+\subsection{NonNmIndx}\label{nonnmindx}}
+
+This error occurs if you try to index an array with a non-numerical
+index:
+
+\begin{lstlisting}
+var a[2,2]
+print a["foo","bar"]
+\end{lstlisting}
+
+\hypertarget{arraydim}{%
+\subsection{ArrayDim}\label{arraydim}}
+
+This error occurs if you try to index an array with the wrong number of
+indices:
+
+\begin{lstlisting}
+var a[2,2]
+print a[1]
+\end{lstlisting}
+
+\hypertarget{dbgquit}{%
+\subsection{DbgQuit}\label{dbgquit}}
+
+This notification is generated after selecting \texttt{Quit} within the
+debugger. Execution of the program is halted and control returns to the
+user.
+
+\hypertarget{symblundf}{%
+\subsection{SymblUndf}\label{symblundf}}
+
+This error occurs if you refer to something that has not been previously
+declared, for example trying to use a variable of call a function that
+doesn't exist. It's possible that the symbol is spelt incorrectly, or
+that the capitalization doesn't match the definition (\emph{morpho}
+symbols are case-sensitive).
+
+A common problem is to try to assign to a variable that hasn't yet been
+declared:
+
+\begin{lstlisting}
+a = 5
+\end{lstlisting}
+
+To fix this, prefix with \texttt{var}:
+
+\begin{lstlisting}
+var a = 5
+\end{lstlisting}
+
+\hypertarget{mtrxincmptbl}{%
+\subsection{MtrxIncmptbl}\label{mtrxincmptbl}}
+
+This error occurs when an arithmetic operation is performed on two
+`incompatible' matrices. For example, two matrices must have the same
+dimensions, i.e.~the same number of rows and columns, to be added or
+subtracted,
+
+\begin{lstlisting}
+var a = Matrix([[1,2],[3,4]])
+var b = Matrix([[1]])
+print a+b // generates a `MtrxIncmptbl` error.
+\end{lstlisting}
+
+Or to be multiplied together, the number of columns of the left hand
+matrix must equal the number of rows of the right hand matrix.
+
+\begin{lstlisting}
+var a = Matrix([[1,2],[3,4]])
+var b = Matrix([1,2])
+print a*b // ok
+print b*a // generates a `MtrxIncmptbl` error.
+\end{lstlisting}

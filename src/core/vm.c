@@ -1030,8 +1030,9 @@ callfunction: // Jump here if an instruction becomes a call
                         ERRORCHK();
                     }
                 } else if (dictionary_getintern(&instance->fields, right, &left)) {
+                    
                     /* Otherwise, if it's a property, try to call it */
-                    if (MORPHO_ISFUNCTION(left) || MORPHO_ISCLOSURE(left) || MORPHO_ISBUILTINFUNCTION(left) || MORPHO_ISINVOCATION(left)) {
+                    if (morpho_iscallable(left)) {
                         reg[a]=left; // Make sure the function is in r0
                         goto callfunction; // Transmute into a call instruction
                     } else {
@@ -1731,6 +1732,26 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
 
             if (success) *ret=reg[0]; /* Return value */
         }
+    } else if (MORPHO_ISCLASS(fn)) {
+        /* A function call on a class instantiates it */
+        objectclass *klass = MORPHO_GETCLASS(fn);
+        objectinstance *instance = object_newinstance(klass);
+        if (instance) {
+            value obj = MORPHO_OBJECT(instance);
+
+            /* Call the initializer if the class provides one */
+            value ifunc;
+            if (morpho_lookupmethod(obj, initselector, &ifunc)) {
+                success=morpho_invoke(v, obj, ifunc, nargs, args, ret);
+            } else if (nargs==0) {
+                success=true;
+            } else morpho_runtimeerror(v, VM_NOINITIALIZER, MORPHO_GETCSTRING(klass->name));
+            
+            if (success) {
+                vm_bindobject(v, obj);
+                *ret = obj;
+            } else morpho_freeobject(obj);
+        } else morpho_runtimeerror(v, VM_INSTANTIATEFAILED);
     }
 
     return success;

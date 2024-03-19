@@ -1,0 +1,186 @@
+\hypertarget{plot}{%
+\section{Plot}\label{plot}}
+
+The \texttt{plot} module provides visualization capabilities for Meshes,
+Selections and Fields. These functions produce Graphics objects that can
+be displayed with \texttt{Show}.
+
+To use the module, first import it:
+
+\begin{lstlisting}
+import plot
+\end{lstlisting}
+
+\hypertarget{plotmesh}{%
+\subsection{Plotmesh}\label{plotmesh}}
+
+Visualizes a \texttt{Mesh} object:
+
+\begin{lstlisting}
+var g = plotmesh(mesh)
+\end{lstlisting}
+
+Plotmesh accepts a number of optional arguments to control what is
+displayed:
+
+\begin{itemize}
+
+\item
+  \texttt{selection} - Only elements in a provided \texttt{Selection}
+  are drawn.
+\item
+  \texttt{grade} - Only draw the specified grade. This can also be a
+  list of multiple grades to draw.
+\item
+  \texttt{color} - Draw the mesh in a provided \texttt{Color}.
+\item
+  \texttt{filter} and \texttt{transmit} - Used by the \texttt{povray}
+  module to indicate transparency.
+\end{itemize}
+
+\hypertarget{plotmeshlabels}{%
+\subsection{Plotmeshlabels}\label{plotmeshlabels}}
+
+Draws the ids for elements in a \texttt{Mesh}:
+
+\begin{lstlisting}
+var g = plotmeshlabels(mesh) 
+\end{lstlisting}
+
+Plotmeshlabels accepts a number of optional arguments to control the
+output:
+
+\begin{itemize}
+
+\item
+  \texttt{grade} - Only draw the specified grade. This can also be a
+  list of multiple grades to draw.
+\item
+  \texttt{selection} - Only labels in a provided \texttt{Selection} are
+  drawn.
+\item
+  \texttt{offset} - Local offset vector for labels. Can be a
+  \texttt{List}, a \texttt{Matrix} or a function.
+\item
+  \texttt{dirn} - Text direction for labels. Can be a \texttt{List}, a
+  \texttt{Matrix} or a function.
+\item
+  \texttt{vertical} - Text vertical direction. Can be a \texttt{List}, a
+  \texttt{Matrix} or a function.
+\item
+  \texttt{color} - Label color. Can be a \texttt{Color} object or a
+  \texttt{Dictionary} of colors for each grade.
+\item
+  \texttt{fontsize} - Font size to use.
+\end{itemize}
+
+\hypertarget{plotselection}{%
+\subsection{Plotselection}\label{plotselection}}
+
+Visualizes a \texttt{Selection} object:
+
+\begin{lstlisting}
+var g = plotselection(mesh, sel)
+\end{lstlisting}
+
+Plotselection accepts a number of optional arguments to control what is
+displayed:
+
+\begin{itemize}
+
+\item
+  \texttt{grade} - Only draw the specified grade. This can also be a
+  list of multiple grades to draw.
+\item
+  \texttt{filter} and \texttt{transmit} - Used by the \texttt{povray}
+  module to indicate transparency.
+\end{itemize}
+
+\hypertarget{plotfield}{%
+\subsection{Plotfield}\label{plotfield}}
+
+Visualizes a scalar \texttt{Field} object:
+
+\begin{lstlisting}
+var g = plotfield(field)
+\end{lstlisting}
+
+Plotfield accepts a number of optional arguments to control what is
+displayed:
+
+\begin{itemize}
+
+\item
+  \texttt{grade} - Draw the specified grade.
+\item
+  \texttt{colormap} - A \texttt{Colormap} object to use. The field is
+  automatically scaled.
+\item
+  \texttt{scalebar} - A \texttt{Scalebar} object to use.
+\item
+  \texttt{style} - Plot style. See below.
+\item
+  \texttt{filter} and \texttt{transmit} - Used by the \texttt{povray}
+  module to indicate transparency.
+\item
+  \texttt{cmin} and \texttt{cmax} - Can be used to define the data range
+  covered. Values beyond these limits will be colored by the lower/upper
+  bound of the colormap accordingly.
+\end{itemize}
+
+Supported plot styles:
+
+\begin{itemize}
+
+\item
+  \texttt{default} - Color \texttt{Mesh} elements by the corresponding
+  value of the \texttt{Field}.
+\item
+  \texttt{interpolate} - Interpolate \texttt{Field} quantities onto
+  higher elements.
+\end{itemize}
+
+\hypertarget{scalebar}{%
+\subsection{ScaleBar}\label{scalebar}}
+
+Represents a scalebar for a plot:
+
+\begin{lstlisting}
+Show(plotfield(field, scalebar=ScaleBar(posn=[1.2,0,0])))
+\end{lstlisting}
+
+\texttt{ScaleBar}s can be created with many adjustable parameters:
+
+\begin{itemize}
+
+\item
+  \texttt{nticks} - Maximum number of ticks to show.\\
+\item
+  \texttt{posn} - Position to draw the \texttt{ScaleBar}.
+\item
+  \texttt{length} - Length of \texttt{ScaleBar} to draw.
+\item
+  \texttt{dirn} - Direction to draw the \texttt{ScaleBar} in.
+\item
+  \texttt{tickdirn} - Direction to draw the ticks in.
+\item
+  \texttt{colormap} - \texttt{ColorMap} to use.
+\item
+  \texttt{textdirn} - Direction to draw labels in.
+\item
+  \texttt{textvertical} - Label vertical direction.
+\item
+  \texttt{fontsize} - Fontsize for labels
+\item
+  \texttt{textcolor} - Color for labels
+\end{itemize}
+
+You can draw the \texttt{ScaleBar} directly by calling the \texttt{draw}
+method:
+
+\begin{lstlisting}
+sb.draw(min, max)
+\end{lstlisting}
+
+where \texttt{min} and \texttt{max} are the minimum and maximum values
+to display on the scalebar.

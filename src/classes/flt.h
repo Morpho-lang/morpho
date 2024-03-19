@@ -20,6 +20,9 @@
 #define VALUE_FRMTARG                     "FrmtArg"
 #define VALUE_FRMTARG_MSG                 "Format method requires a format string as its argument."
 
+#define VALUE_INVLDFRMT                   "InvldFrmt"
+#define VALUE_INVLDFRMT_MSG               "Invalid format string."
+
 /* -------------------------------------------------------
  * Float interface
  * ------------------------------------------------------- */

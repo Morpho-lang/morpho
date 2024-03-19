@@ -1,0 +1,40 @@
+\hypertarget{array}{%
+\section{Array}\label{array}}
+
+Arrays are collection objects that can have any number of indices. Their
+size is set when they are created:
+
+\begin{lstlisting}
+var a[5]
+var b[2,2]
+var c[nv,nv,nv]
+\end{lstlisting}
+
+Values can be retrieved with appropriate indices:
+
+\begin{lstlisting}
+print a[0,0]
+\end{lstlisting}
+
+Array can be indexed with slices:
+
+\begin{lstlisting}
+print a[[0,2,4],2]
+print a[1,0..2]
+\end{lstlisting}
+
+Any morpho value can be stored in an array element
+
+\begin{lstlisting}
+a[0,0] = [1,2,3]
+\end{lstlisting}
+
+\hypertarget{dimensions}{%
+\subsection{Dimensions}\label{dimensions}}
+
+Get the dimensions of an Array object:
+
+\begin{lstlisting}
+var a[2,2]
+print a.dimensions() // expect: [ 2, 2 ]
+\end{lstlisting}

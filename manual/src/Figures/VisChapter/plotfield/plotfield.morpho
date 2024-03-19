@@ -1,0 +1,19 @@
+import meshtools 
+import meshgen 
+import plot 
+
+import "../raytrace.morpho"
+
+var m = AreaMesh(fn (u,v) [u, v, 0], -1..1:0.1, -1..1:0.1)
+
+var f = Field(m, fn (x,y,z) sin(Pi*x)*sin(Pi*y))
+
+var g = plotfield(f)
+raytrace(g, "fieldpts.pov", viewpoint = [0,0,10], viewangle = 20)
+
+var g = plotfield(f, style="interpolate")
+raytrace(g, "interpolate.pov", viewpoint = [0,0,10], viewangle = 20)
+
+var sb = ScaleBar(posn=[1.2,0,0], length=1, textcolor=Black)
+var g = plotfield(f, style="interpolate", scalebar=sb, colormap=PlasmaMap())
+raytrace(g, "scalebar.pov", viewpoint = [0,0,10], viewangle = 20)

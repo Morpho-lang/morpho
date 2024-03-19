@@ -15,10 +15,8 @@
 /** Invocation object definitions */
 void objectinvocation_printfn(object *obj, void *v) {
     objectinvocation *c = (objectinvocation *) obj;
-#ifndef MORPHO_LOXCOMPATIBILITY
     morpho_printvalue(v, c->receiver);
     morpho_printf(v, ".");
-#endif
     morpho_printvalue(v, c->method);
 }
 

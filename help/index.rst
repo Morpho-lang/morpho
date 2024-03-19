@@ -27,6 +27,7 @@ Morpho
    range
    sparse
    string
+   tuple
 
 .. toctree::
    :caption: Computational Geometry
@@ -43,6 +44,7 @@ Morpho
 
    file
    system
+   json
 
 .. toctree::
    :caption: Modules

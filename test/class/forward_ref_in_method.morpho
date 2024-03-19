@@ -1,0 +1,15 @@
+// Forward reference in method 
+
+class A {
+  foo() {
+    print boo() 
+  }
+}
+
+fn boo() {
+  return "woo!"
+}
+
+var a = A() 
+a.foo() 
+// expect error 'UnrslvdFrwdRf'

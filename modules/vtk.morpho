@@ -282,7 +282,35 @@ class VTKExporter is VTK {
             self.err = Error("ObjNotField", "Expected a Field object, but received `${field}`.")
             self.err.throw()
         }
-    
+
+        // Check whether the field has the right shape
+        var shp = field.shape()
+        var maxgrade = field.mesh().maxgrade()
+        var wrongShape = (shp[0]!=1)
+        for (i in 1...maxgrade) {
+            wrongShape = wrongShape or (shp[i]!=0)
+        }
+        if (wrongShape) {
+            self.err = Error("FieldShapeErr", "Received a field with shape `${shp}`. Fields with shape other than [1,0,0] are not currently supported.")
+            self.err.throw()
+        }
+
+        // Check that the field is either a scalar or a 2/3D vector
+        // Figure out the quantity sitting on the field 
+        var f0 = field[0,0,0]
+
+        if ( isfloat(f0) ) {
+            return // It's a scalar, so we're good
+        }
+        self.dim = f0.dimensions()
+        if (self.dim[1] != 1) {
+            self.err = Error("FieldDimErr", "Expected a scalar or a 2D/3D vector field, but received a non-columnar matrix with dimensions ${self.dim}.")
+            self.err.throw()
+        }
+        if (self.dim[0] != 2 and self.dim[0] != 3) {
+            self.err = Error("FieldDimErr", "Expected a scalar or a 2D/3D vector field, but received a vector field with ${self.dim[0]} dimensions.")
+            self.err.throw()
+        }
     }
 
     // Function to add a field to the exporter.

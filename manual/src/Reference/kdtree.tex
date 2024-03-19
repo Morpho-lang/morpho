@@ -1,0 +1,110 @@
+\hypertarget{kdtree}{%
+\section{KDTree}\label{kdtree}}
+
+The \texttt{kdtree} module implements a k-dimensional tree, a space
+partitioning data structure that can be used to accelerate computational
+geometry calculations.
+
+To use the module, first import it:
+
+\begin{lstlisting}
+import kdtree
+\end{lstlisting}
+
+To create a tree from a list of points:
+
+\begin{lstlisting}
+var pts = []
+for (i in 0...100) pts.append(Matrix([random(), random(), random()]))
+var tree=KDTree(pts)
+\end{lstlisting}
+
+Add further points:
+
+\begin{lstlisting}
+tree.insert(Matrix([0,0,0]))
+\end{lstlisting}
+
+Test whether a given point is present in the tree:
+
+\begin{lstlisting}
+tree.ismember(Matrix([1,0,0]))
+\end{lstlisting}
+
+Find all points within a given bounding box:
+
+\begin{lstlisting}
+var pts = tree.search([[-1,1], [-1,1], [-1,1]])
+for (x in pts) print x.location
+\end{lstlisting}
+
+Find the nearest point to a given point:
+
+\begin{lstlisting}
+var pt = tree.nearest(Matrix([0.1, 0.1, 0.5]))
+print pt.location
+\end{lstlisting}
+
+\hypertarget{insert}{%
+\subsection{Insert}\label{insert}}
+
+Inserts a new point into a k-d tree. Returns a KDTreeNode object.
+
+\begin{lstlisting}
+var node = tree.insert(Matrix([0,0,0]))
+\end{lstlisting}
+
+Note that, for performance reasons, if the set of points is known ahead
+of time, it is generally better to build the tree using the constructor
+function KDTree rather than one-by-one with insert.
+
+\hypertarget{ismember}{%
+\subsection{Ismember}\label{ismember}}
+
+Checks if a point is a member of a k-d tree. Returns \texttt{true} or
+\texttt{false}.
+
+\begin{lstlisting}
+print tree.ismember(Matrix([0,0,0]))
+\end{lstlisting}
+
+\hypertarget{nearest}{%
+\subsection{Nearest}\label{nearest}}
+
+Finds the point in a k-d tree nearest to a point of interest. Returns a
+KDTreeNode object.
+
+\begin{lstlisting}
+var pt = tree.nearest(Matrix([0.1, 0.1, 0.5]))
+\end{lstlisting}
+
+To get the location of this nearest point, access the location property:
+
+\begin{lstlisting}
+print pt.location
+\end{lstlisting}
+
+\hypertarget{search}{%
+\subsection{Search}\label{search}}
+
+Finds all points in a k-d tree that lie within a cuboidal bounding box.
+Returns a list of KDTreeNode objects.
+
+Find and display all points that lie in a cuboid
+0\textless=x\textless=1, 0\textless=y\textless=2,
+1\textless=z\textless=2:
+
+\begin{lstlisting}
+var result = tree.search([[0,1], [0,2], [1,2]])
+for (x in result) print x.location
+\end{lstlisting}
+
+\hypertarget{kdtreenode}{%
+\subsection{KDTreeNode}\label{kdtreenode}}
+
+An object corresponding to a single node in a k-d tree. To get the
+location of the node, access the \texttt{location} property:
+
+\begin{lstlisting}
+print node.location
+\end{lstlisting}

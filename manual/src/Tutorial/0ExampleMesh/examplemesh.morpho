@@ -1,0 +1,19 @@
+import meshtools
+import optimize
+import plot
+import povray
+
+var m = Mesh("examplemesh.mesh")
+
+// Visualize the result
+for (grade in 0..2) {
+  var g=plotmesh(m, grade=grade)
+  var pov = POVRaytracer(g)
+
+  g.background = White
+  pov.viewpoint = Matrix([0,0,10])
+  pov.viewangle = 28
+  pov.background = White
+  pov.light=[Matrix([10,10,10]), Matrix([-10,10,10]), Matrix([0,-10,10])]
+  pov.render("meshgrade${grade}.pov", quiet=true)
+}

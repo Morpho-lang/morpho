@@ -1,0 +1,4 @@
+// Block matrix constructor with single list 
+
+print Matrix([Matrix(2)])
+// expect error 'MtrxInvldInit'

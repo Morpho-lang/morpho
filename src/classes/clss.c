@@ -13,10 +13,7 @@
 
 /** Class object definitions */
 void objectclass_printfn(object *obj, void *v) {
-#ifndef MORPHO_LOXCOMPATIBILITY
-    morpho_printf(v, "@");
-#endif
-    morpho_printf(v, "%s", MORPHO_GETCSTRING(((objectclass *) obj)->name));
+    morpho_printf(v, "@%s", MORPHO_GETCSTRING(((objectclass *) obj)->name));
 }
 
 void objectclass_markfn(object *obj, void *v) {

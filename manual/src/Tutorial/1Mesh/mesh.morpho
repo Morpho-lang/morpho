@@ -1,0 +1,18 @@
+import meshtools
+import optimize
+import plot
+import povray
+
+// Create mesh and director field
+var m = Mesh("disk.mesh")
+
+// Visualize the result
+var g=plotmesh(m, grade=1)
+var pov = POVRaytracer(g)
+
+g.background = White
+pov.viewpoint = Matrix([0,0,10])
+pov.viewangle = 20
+pov.background = White
+pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]
+pov.render("mesh.pov", quiet=true)

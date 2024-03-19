@@ -1,0 +1,109 @@
+\hypertarget{optimize}{%
+\section{Optimize}\label{optimize}}
+
+The \texttt{optimize} package contains a number of functions and classes
+to perform shape optimization.
+
+\hypertarget{optimizationproblem}{%
+\subsection{OptimizationProblem}\label{optimizationproblem}}
+
+An \texttt{OptimizationProblem} object defines an optimization problem,
+which may include functionals to optimize as well as global and local
+constraints.
+
+Create an \texttt{OptimizationProblem} with a mesh:
+
+\begin{lstlisting}
+var problem = OptimizationProblem(mesh)
+\end{lstlisting}
+
+Add an energy:
+
+\begin{lstlisting}
+var la = Area()
+problem.addenergy(la)
+\end{lstlisting}
+
+Add an energy that operates on a selected region, and with an optional
+prefactor:
+
+\begin{lstlisting}
+problem.addenergy(la, selection=sel, prefactor=2)
+\end{lstlisting}
+
+Add a constraint:
+
+\begin{lstlisting}
+problem.addconstraint(la)
+\end{lstlisting}
+
+Add a local constraint (here a onesided level set constraint):
+
+\begin{lstlisting}
+var ls = ScalarPotential(fn (x,y,z) z, fn (x,y,z) Matrix([0,0,1]))
+problem.addlocalconstraint(ls, onesided=true)
+\end{lstlisting}
+
+\hypertarget{optimizer}{%
+\subsection{Optimizer}\label{optimizer}}
+
+\texttt{Optimizer} objects are used to optimize \texttt{Mesh}es and
+\texttt{Field}s. You should use the appropriate subclass:
+\texttt{ShapeOptimizer} or \texttt{FieldOptimizer} respectively.
+
+\hypertarget{shapeoptimizer}{%
+\subsection{ShapeOptimizer}\label{shapeoptimizer}}
+
+A \texttt{ShapeOptimizer} object performs shape optimization: it moves
+the vertex positions to reduce an overall energy.
+
+Create a \texttt{ShapeOptimizer} object with an
+\texttt{OptimizationProblem} and a \texttt{Mesh}:
+
+\begin{lstlisting}
+var sopt = ShapeOptimizer(problem, m)
+\end{lstlisting}
+
+Take a step down the gradient with fixed stepsize:
+
+\begin{lstlisting}
+sopt.relax(5) // Takes five steps
+\end{lstlisting}
+
+Linesearch down the gradient:
+
+\begin{lstlisting}
+sopt.linesearch(5) // Performs five linesearches
+\end{lstlisting}
+
+Perform conjugate gradient (usually gives faster convergence):
+
+\begin{lstlisting}
+sopt.conjugategradient(5) // Performs five conjugate gradient steps.
+\end{lstlisting}
+
+Control a number of properties of the optimizer:
+
+\begin{lstlisting}
+sopt.stepsize=0.1 // The stepsize to take
+sopt.steplimit=0.5 // Maximum stepsize for optimizing methods
+sopt.etol = 1e-8 // Energy convergence tolerance
+sopt.ctol = 1e-9 // Tolerance to which constraints are satisfied
+sopt.maxconstraintsteps = 20 // Maximum number of constraint steps to use
+\end{lstlisting}
+
+\hypertarget{fieldoptimizer}{%
+\subsection{FieldOptimizer}\label{fieldoptimizer}}
+
+A \texttt{FieldOptimizer} object performs field optimization: it changes
+elements of a \texttt{Field} to reduce an overall energy.
+
+Create a \texttt{FieldOptimizer} object with an
+\texttt{OptimizationProblem} and a \texttt{Field}:
+
+\begin{lstlisting}
+var sopt = FieldOptimizer(problem, fld)
+\end{lstlisting}
+
+Field optimizers provide the same options and methods as Shape
+optimizers: see the \texttt{ShapeOptimizer} documentation for details.

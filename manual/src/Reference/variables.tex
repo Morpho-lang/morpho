@@ -1,0 +1,85 @@
+\hypertarget{variables}{%
+\section{Variables}\label{variables}}
+
+Variables are defined using the \texttt{var} keyword followed by the
+variable name:
+
+\begin{lstlisting}
+var a
+\end{lstlisting}
+
+Optionally, an initial assignment may be given:
+
+\begin{lstlisting}
+var a = 1
+\end{lstlisting}
+
+Variables defined in a block of code are visible only within that block,
+so
+
+\begin{lstlisting}
+var greeting = "Hello"
+{
+    var greeting = "Goodbye"
+    print greeting
+}
+print greeting
+\end{lstlisting}
+
+will print
+
+\emph{Goodbye} \emph{Hello}
+
+Multiple variables can be defined at once by separating them with commas
+
+\begin{lstlisting}
+var a, b=2, c[2]=[1,2]
+\end{lstlisting}
+
+where each can have its own initializer (or not).
+
+\hypertarget{indexing}{%
+\subsection{Indexing}\label{indexing}}
+
+Morpho provides a number of collection objects, such as \texttt{List},
+\texttt{Range}, \texttt{Array}, \texttt{Dictionary}, \texttt{Matrix} and
+\texttt{Sparse}, that can contain more than one value. Index notation
+(sometimes called subscript notation) is used to access elements of
+these objects.
+
+To retrieve an item from a collection, you use the \texttt{{[}} and
+\texttt{{]}} brackets like this:
+
+\begin{lstlisting}
+var a = List("Apple", "Bag", "Cat")
+print a[0]
+\end{lstlisting}
+
+which prints \emph{Apple}. Note that the first element is accessed with
+\texttt{0} not \texttt{1}.
+
+Similarly, to set an entry in a collection, use:
+
+\begin{lstlisting}
+a[0]="Adder"
+\end{lstlisting}
+
+which would replaces the first element in \texttt{a} with
+\texttt{"Adder"}.
+
+Some collection objects need more than one index,
+
+\begin{lstlisting}
+var a = Matrix([[1,0],[0,1]])
+print a[0,0]
+\end{lstlisting}
+
+and others such as \texttt{Dictionary} use non-numerical indices,
+
+\begin{lstlisting}
+var b = Dictionary()
+b["Massachusetts"]="Boston"
+b["California"]="Sacramento"
+\end{lstlisting}
+
+as in this dictionary of state capitals.

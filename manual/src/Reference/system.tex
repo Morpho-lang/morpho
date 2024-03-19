@@ -1,0 +1,89 @@
+\hypertarget{system}{%
+\section{System}\label{system}}
+
+The \texttt{System} class provides information and access to some
+features of the runtime environment.
+
+\hypertarget{platform}{%
+\subsection{Platform}\label{platform}}
+
+Detect which platform morpho was compiled for:
+
+\begin{lstlisting}
+print System.platform() 
+\end{lstlisting}
+
+which returns \texttt{"macos"}, \texttt{"linux"}, \texttt{"unix"} or
+\texttt{"windows"}.
+
+\hypertarget{version}{%
+\subsection{Version}\label{version}}
+
+Find the current version of morpho:
+
+\begin{lstlisting}
+print System.version() 
+\end{lstlisting}
+
+\hypertarget{clock}{%
+\subsection{Clock}\label{clock}}
+
+Returns the system time in seconds, with at least millisecond
+granularity. Primarily intended for timing:
+
+\begin{lstlisting}
+var start=System.clock() 
+// Do something 
+print System.clock()-start 
+\end{lstlisting}
+
+Note that \texttt{System.clock} measures the actual physical time
+elapsed, not the time spent in a process.
+
+\hypertarget{sleep}{%
+\subsection{Sleep}\label{sleep}}
+
+Pauses the program for a specified number of seconds:
+
+\begin{lstlisting}
+System.sleep(0.5) // Sleep for half a second
+\end{lstlisting}
+
+\hypertarget{readline}{%
+\subsection{Readline}\label{readline}}
+
+Reads a line of input from the console:
+
+\begin{lstlisting}
+var in = System.readline() 
+\end{lstlisting}
+
+\hypertarget{arguments}{%
+\subsection{Arguments}\label{arguments}}
+
+Returns a \texttt{List} of arguments passed to the current morpho on the
+command line.
+
+\begin{lstlisting}
+var args = System.arguments() 
+for (e in args) print e 
+\end{lstlisting}
+
+Run a morpho program with arguments:
+
+\begin{lstlisting}
+morpho5 program.morpho hello world
+\end{lstlisting}
+
+Note that, in line with UNIX conventions, command line arguments before
+the program file name are passed to the \texttt{morpho5} runtime; those
+after are passed to the morpho program via \texttt{System.arguments}.
+
+\hypertarget{exit}{%
+\subsection{Exit}\label{exit}}
+
+Stop execution of a program:
+
+\begin{lstlisting}
+System.exit() 
+\end{lstlisting}

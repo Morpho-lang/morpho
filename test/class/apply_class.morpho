@@ -1,0 +1,15 @@
+// Ensure a property can store a class and be callable
+
+class A {
+  init(a) {
+    self.a = a
+  }
+}
+
+var a = apply(A, "foo")
+
+print a
+// expect: <A>
+
+print a.a
+// expect: foo

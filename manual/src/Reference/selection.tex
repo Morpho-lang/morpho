@@ -1,0 +1,93 @@
+\hypertarget{selection}{%
+\section{Selection}\label{selection}}
+
+The Selection class enables you to select components of a mesh for later
+use. You can supply a function that is applied to the coordinates of
+every vertex in the mesh, or select components like boundaries.
+
+Create an empty selection:
+
+\begin{lstlisting}
+var s = Selection(mesh)
+\end{lstlisting}
+
+Select vertices above the z=0 plane using an anonymous function:
+
+\begin{lstlisting}
+var s = Selection(mesh, fn (x,y,z) z>0)
+\end{lstlisting}
+
+Select the boundary of a mesh:
+
+\begin{lstlisting}
+var s = Selection(mesh, boundary=true)
+\end{lstlisting}
+
+Selection objects can be composed using set operations:
+
+\begin{lstlisting}
+var s = s1.union(s2)
+\end{lstlisting}
+
+or var s = s1.intersection(s2)
+
+To add additional grades, use the addgrade method. For example, to add
+areas: s.addgrade(2)
+
+\hypertarget{addgrade}{%
+\subsection{addgrade}\label{addgrade}}
+
+Adds elements of the specified grade to a Selection. For example, to add
+edges to an existing selection, use
+
+\begin{lstlisting}
+s.addgrade(1)
+\end{lstlisting}
+
+By default, this only adds an element if \emph{all} vertices in the
+element are currently selected. Sometimes, it's useful to be able to add
+elements for which only some vertices are selected. The optional
+argument \texttt{partials} allows you to do this:
+
+\begin{lstlisting}
+s.addgrade(1, partials=true)
+\end{lstlisting}
+
+Note that this method modifies the existing selection, and does not
+generate a new Selection object.
+
+\hypertarget{removegrade}{%
+\subsection{removegrade}\label{removegrade}}
+
+Removes elements of the specified grade from a Selection. For example,
+to remove edges from an existing selection, use
+
+\begin{lstlisting}
+s.removegrade(1)
+\end{lstlisting}
+
+Note that this method modifies the existing selection, and does not
+generate a new Selection object.
+
+\hypertarget{idlistforgrade}{%
+\subsection{idlistforgrade}\label{idlistforgrade}}
+
+Returns a list of element ids included in the selection.
+
+To find out which edges are selected:
+
+\begin{lstlisting}
+var edges = s.idlistforgrade(1)
+\end{lstlisting}
+
+\hypertarget{isselected}{%
+\subsection{isselected}\label{isselected}}
+
+Checks if an element id is selected, returning \texttt{true} or
+\texttt{false} accordingly.
+
+To check if edge number 5 is selected:
+
+\begin{lstlisting}
+var f = s.isselected(1, 5))
+\end{lstlisting}

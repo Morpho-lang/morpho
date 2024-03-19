@@ -86,10 +86,8 @@ bool parse_precedence(parser *p, precedence prec, void *out) {
     /* Now keep parsing while the tokens have lower precedence */
     rule=parse_getrule(p, p->current.type);
     while (rule!=NULL && prec <= rule->precedence) {
-#ifdef MORPHO_NEWLINETERMINATORS
         /* Break if a newline is encountered before a function call */
         if (p->current.type==TOKEN_LEFTPAREN && p->nl) break;
-#endif
         
         PARSE_CHECK(parse_advance(p));
         
@@ -437,9 +435,7 @@ bool parse_reference(parser *p, errorid errid, void *out) {
 bool parse_statementterminator(parser *p) {
     if (parse_checktoken(p, TOKEN_SEMICOLON)) {
         PARSE_CHECK(parse_advance(p));
-#ifdef MORPHO_NEWLINETERMINATORS
     } else if (p->nl || parse_checktoken(p, TOKEN_EOF) || parse_checktoken(p, TOKEN_RIGHTCURLYBRACKET)) {
-#endif
     } else if (parse_checktoken(p, TOKEN_IN) || parse_checktoken(p, TOKEN_ELSE)) {
     } else {
         parse_error(p, true, PARSE_MISSINGSEMICOLONEXP);
@@ -451,11 +447,9 @@ bool parse_statementterminator(parser *p) {
 /** Checks whether a possible statement terminator is next */
 bool parse_checkstatementterminator(parser *p) {
     return (parse_checktoken(p, TOKEN_SEMICOLON)
-#ifdef MORPHO_NEWLINETERMINATORS
             || (p->nl)
             || parse_checktoken(p, TOKEN_EOF)
             || parse_checktoken(p, TOKEN_RIGHTCURLYBRACKET)
-#endif
             || parse_checktoken(p, TOKEN_IN)
             ) ;
 }
@@ -660,10 +654,16 @@ bool parse_tuple(parser *p, token *start, syntaxtreeindx first, void *out) {
 bool parse_grouping(parser *p, void *out) {
     token start = p->previous;
     syntaxtreeindx new;
-    PARSE_CHECK(parse_expression(p, &new));
+    PARSE_CHECK(parse_pseudoexpression(p, &new));
     
-    // Detect a tuple from a comma after the first expression
-    if (parse_checktokenadvance(p, TOKEN_COMMA)) return parse_tuple(p, &start, new, out);
+    syntaxtreenode *node = parse_lookupnode(p, new);
+    
+    // Detect a tuple from a comma after the first expression or if the
+    // grouping encloses a tuple.
+    if (parse_checktokenadvance(p, TOKEN_COMMA) ||
+        node->type==NODE_TUPLE) {
+        return parse_tuple(p, &start, new, out);
+    }
     
     PARSE_CHECK(parse_addnode(p, NODE_GROUPING, MORPHO_NIL, &p->previous, new, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out));
     

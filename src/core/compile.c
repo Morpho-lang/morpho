@@ -12,12 +12,13 @@
 #include "morpho.h"
 #include "classes.h"
 #include "file.h"
-#include "optimize.h"
 #include "resources.h"
 #include "extensions.h"
 
 /** Base class for instances */
 static objectclass *baseclass;
+
+static optimizerfn *optimizer;
 
 /* **********************************************************************
 * Bytecode compiler
@@ -897,11 +898,7 @@ bool compiler_hasvariadicarg(compiler *c) {
 
 /** Should we use global variables or registers?  */
 static bool compiler_checkglobal(compiler *c) {
-#ifdef MORPHO_NOGLOBALS
-    return false;
-#else
     return ((c->fstackp==0) && (c->fstack[0].scopedepth==0));
-#endif
 }
 
 /** Finds a global symbol, optionally searching successively through parent compilers */
@@ -1504,10 +1501,16 @@ static codeinfo compiler_range(compiler *c, syntaxtreenode *node, registerindx r
  * @param[in] indxnode - the root syntaxtreenode (should be of type NODE_INDEX)
  * @param[out] start   - first register used
  * @param[out] end     - last register used
- * @returns number of instructions */
-static codeinfo compiler_compileindexlist(compiler *c, syntaxtreenode *indxnode, registerindx *start, registerindx *end) {
+ * @param[out] out     - codeinfo struct with number of instructions used
+ * @returns true on success */
+codeinfo compiler_compileindexlist(compiler *c, syntaxtreenode *indxnode, registerindx *start, registerindx *end) {
     registerindx istart=compiler_regtop(c), iend;
 
+    if (indxnode->right==SYNTAXTREE_UNCONNECTED) {
+        compiler_error(c, indxnode, COMPILE_MSSNGINDX);
+        return CODEINFO_EMPTY;
+    }
+    
     compiler_beginargs(c);
     codeinfo right = compiler_nodetobytecode(c, indxnode->right, REGISTER_UNALLOCATED);
     compiler_endargs(c);
@@ -1536,6 +1539,7 @@ static codeinfo compiler_index(compiler *c, syntaxtreenode *node, registerindx r
 
     /* Compile indices */
     codeinfo out = compiler_compileindexlist(c, node, &start, &end);
+    if (compiler_haserror(c)) return CODEINFO_EMPTY;
     ninstructions+=out.ninstructions;
 
     /* Compile instruction */
@@ -2182,9 +2186,22 @@ static codeinfo compiler_break(compiler *c, syntaxtreenode *node, registerindx r
     return out;
 }
 
-/** @brief Compiles a try/catch block.
- *  @details Break and continue statements are inserted as NOP instructions with the a register set to a marker.
- *  */
+/** Checks through a catch block, fixing any references
+ * @param[in] c the current compiler
+ * @param[in] start first instruction in the loop body
+ * @param[in] inc position of the loop increment section (continue statements redirect here)
+ * @param[in] end position of the first instruction AFTER the loop (break sections redirect here) */
+static void compiler_fixcatch(compiler *c, instructionindx start, instructionindx inc, instructionindx end) {
+    instruction *code=c->out->code.data;
+    for (instructionindx i=start; i<end; i++) {
+        if (DECODE_OP(code[i])==OP_NOP &&
+            (DECODE_A(code[i])=='s' || DECODE_A(code[i])=='b')) {
+            code[i]=ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, end-i-1);
+        }
+    }
+}
+
+/** @brief Compiles a try/catch block. */
 static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo out = CODEINFO_EMPTY;
 
@@ -2229,9 +2246,9 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
             compiler_releaseoperand(c, entrybody);
         }
 
-        // Add a break instruction after each entry body except for the last
+        // Add an effective 'break' instruction after each entry body except for the last
         if (i!=switchnodes.count-1) {
-            compiler_addinstruction(c, ENCODE(OP_NOP, 'b', 0, 0), node);
+            compiler_addinstruction(c, ENCODE(OP_NOP, 's', 0, 0), node);
             out.ninstructions++;
         }
 
@@ -2259,8 +2276,8 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
 
     /* Fix the poperr instruction that jumps around the switch block */
     compiler_setinstruction(c, popindx, ENCODE_LONG(OP_POPERR, 0, endindx-popindx-1));
-    /* Fix the nop instructions in the switch block to jump to the end of block */
-    compiler_fixloop(c, popindx, popindx, endindx);
+    /* Fix any nop instructions in the switch block to jump to the end of block */
+    compiler_fixcatch(c, popindx, popindx, endindx);
 
     varray_syntaxtreeindxclear(&switchnodes);
     varray_syntaxtreeindxclear(&labelnodes);
@@ -2511,13 +2528,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     //if (DECODE_OP(compiler_previousinstruction(c))!=OP_RETURN) { // 8/11/21 -> fix for final return in if
     if (true) {
         /* Methods automatically return self unless another argument is specified */
-
-#ifndef MORPHO_LOXCOMPATIBILITY
-        if (ismethod)
-#else
-        if (ismethod && isinitializer)
-#endif
-        {
+        if (ismethod) {
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, 0), node); /* Add a return */
         } else {
             compiler_addinstruction(c, ENCODE_BYTE(OP_RETURN), node); /* Add a return */
@@ -2963,6 +2974,8 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
     /* End class definition */
     compiler_endclass(c);
 
+    compiler_checkoutstandingforwardreference(c);
+    
     /* Allocate a variable to refer to the class definition */
     codeinfo cvar=compiler_addvariable(c, node, node->content);
     registerindx reg=cvar.dest;
@@ -2980,7 +2993,7 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
         ninstructions+=mv.ninstructions;
         compiler_regfreetemp(c, reg);
     }
-
+    
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
 
@@ -3100,7 +3113,7 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
             varnode=compiler_getnode(c, varnode->left);
             var = varnode->content;
 
-            if (varnode->type==NODE_DOT) {
+            if (varnode->type==NODE_DOT || varnode->type==NODE_SELF) {
                 codeinfo mv=compiler_nodetobytecode(c, indxnode->left, reg);
                 ninstructions+=mv.ninstructions;
                 reg=mv.dest;
@@ -3642,7 +3655,7 @@ bool morpho_compile(char *in, compiler *c, bool opt, error *err) {
     }
 
     if (success) {
-        if (opt) optimize(c->out);
+        if (opt && optimizer) (*optimizer) (c->out);
         
         c->line=c->lex.line+1; // Update the line counter if compilation was a success; assumes a new line every time morpho_compile is called.
     }
@@ -3681,9 +3694,15 @@ void morpho_setbaseclass(value klss) {
     }
 }
 
+void morpho_setoptimizer(optimizerfn *opt) {
+    optimizer = opt;
+}
+
 /** Initializes the compiler */
 void compile_initialize(void) {
     _selfsymbol=builtin_internsymbolascstring("self");
+    
+    optimizer = NULL;
 
     /* Compile errors */
     morpho_defineerror(COMPILE_SYMBOLNOTDEFINED, ERROR_COMPILE, COMPILE_SYMBOLNOTDEFINED_MSG);
@@ -3714,11 +3733,11 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_NSTDCLSS, ERROR_COMPILE, COMPILE_NSTDCLSS_MSG);
     morpho_defineerror(COMPILE_VARPRMLST, ERROR_COMPILE, COMPILE_VARPRMLST_MSG);
     morpho_defineerror(COMPILE_INVLDLBL, ERROR_COMPILE, COMPILE_INVLDLBL_MSG);
+    morpho_defineerror(COMPILE_MSSNGINDX, ERROR_COMPILE, COMPILE_MSSNGINDX_MSG);
     
     morpho_addfinalizefn(compile_finalize);
 }
 
 /** Finalizes the compiler */
 void compile_finalize(void) {
-    optimize_finalize();
 }

@@ -18,6 +18,7 @@ jobs:
         sudo apt update
         sudo apt install libsuitesparse-dev
         sudo apt install liblapacke-dev
+        sudo apt install libunistring-dev
         python -m pip install --upgrade pip
         python -m pip install regex colored
     - name: make

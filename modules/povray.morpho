@@ -221,9 +221,9 @@ class POVRaytracer {
     if (!display) disp = "-D"
     var ua = "+A"
     if (self.transparent) ua = "+UA" // Sets alpha output on 
-    system("povray ./\"${path}\" ${disp} ${ua} +W${self.width} +H${self.height} ${silent}")
+    system("povray \"${path}\" ${disp} ${ua} +W${self.width} +H${self.height} ${silent}")
     var out = self._slice(path, 0, path.count()-4)
-    if (!quiet && display) system("open ./${out}.png")
+    if (!quiet && display) system("open ${out}.png")
   }
   /*
   private method: slice a string given a start and an end

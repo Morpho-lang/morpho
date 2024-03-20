@@ -178,9 +178,8 @@ value System_workingdirectory(vm *v, int nargs, value *args) {
     size_t size = pathconf(".", _PC_PATH_MAX);
     char str[size];
     if (getcwd(str, size)) {
-        objectstring *new = object_stringfromcstring(str, strlen(str));
-        if (new) {
-            out = MORPHO_OBJECT(new);
+        out = object_stringfromcstring(str, strlen(str));
+        if (MORPHO_ISOBJECT(out)) {
             morpho_bindobjects(v, 1, &out);
         } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);

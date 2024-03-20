@@ -6,6 +6,8 @@
 
 #define _POSIX_C_SOURCE 199309L
 
+#include <unistd.h>
+
 #include <stdio.h>
 #include <time.h>
 
@@ -157,6 +159,34 @@ value System_exit(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Set working directory */
+value System_setworkingdirectory(vm *v, int nargs, value *args) {
+    if (nargs==1 &&
+        MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
+        char *path = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
+        
+        if (chdir(path)==-1) morpho_runtimeerror(v, SYS_STWRKDR);
+    } else morpho_runtimeerror(v, STWRKDR_ARGS);
+    
+    return MORPHO_NIL;
+}
+
+/** Get working directory */
+value System_workingdirectory(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    
+    size_t size = pathconf(".", _PC_PATH_MAX);
+    char str[size];
+    if (getcwd(str, size)) {
+        out = object_stringfromcstring(str, strlen(str));
+        if (MORPHO_ISOBJECT(out)) {
+            morpho_bindobjects(v, 1, &out);
+        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    
+    return out;
+}
+
 MORPHO_BEGINCLASS(System)
 MORPHO_METHOD(SYSTEM_PLATFORM_METHOD, System_platform, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_VERSION_METHOD, System_version, BUILTIN_FLAGSEMPTY),
@@ -165,7 +195,9 @@ MORPHO_METHOD(MORPHO_PRINT_METHOD, System_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_SLEEP_METHOD, System_sleep, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_READLINE_METHOD, System_readline, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_ARGUMENTS_METHOD, System_arguments, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SYSTEM_EXIT_METHOD, System_exit, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(SYSTEM_EXIT_METHOD, System_exit, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SYSTEM_SETWORKINGDIR_METHOD, System_setworkingdirectory, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SYSTEM_WORKINGDIR_METHOD, System_workingdirectory, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -180,6 +212,8 @@ void system_initialize(void) {
     
     morpho_defineerror(SLEEP_ARGS, ERROR_HALT, SLEEP_ARGS_MSG);
     morpho_defineerror(VM_EXIT, ERROR_EXIT, VM_EXIT_MSG);
+    morpho_defineerror(SYS_STWRKDR, ERROR_EXIT, SYS_STWRKDR_MSG);
+    morpho_defineerror(STWRKDR_ARGS, ERROR_EXIT, STWRKDR_ARGS_MSG);
     
     objectlist *alist = object_newlist(0, NULL);
     if (alist) arglist = MORPHO_OBJECT(alist);

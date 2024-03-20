@@ -494,7 +494,7 @@ bool json_valuetovarraychar(vm *v, value in, varray_char *out) {
                     case '\t': success=varray_charadd(out, "\\t", 2); break;
                     case '\\': success=varray_charadd(out, "\\\\", 2); break;
                     default: {
-                        char temp[10];
+                        char temp[12];
                         int n = sprintf(temp, "\\u%04x", (int) *c);
                         success=varray_charadd(out, temp, n);
                     }

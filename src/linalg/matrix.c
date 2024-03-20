@@ -498,7 +498,8 @@ objectmatrixerror matrix_eigensystem(objectmatrix *a, double *wr, double *wi, ob
     if (vec && ((a->nrows!=vec->nrows) || (a->nrows!=vec->ncols))) return MATRIX_INCMPTBLDIM;
     
     // Copy a to prevent destruction
-    double *acopy=MORPHO_MALLOC(n*n*sizeof(double));
+    size_t size = ((size_t) n) * ((size_t) n) * sizeof(double);
+    double *acopy=MORPHO_MALLOC(size);
     if (!acopy) return MATRIX_ALLOC;
     cblas_dcopy(n*n, a->elements, 1, acopy, 1);
     

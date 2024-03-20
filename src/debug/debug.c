@@ -662,7 +662,7 @@ bool debugger_showglobal(debugger *debug, indx id) {
     vm *v = debugger_currentvm(debug);
     if (id>=0 && id<v->globals.count) {
         value symbol;
-        morpho_printf(v, "  g%u:", id);
+        morpho_printf(v, "  g%lu:", id);
         morpho_printvalue(v, v->globals.data[id]);
         if (debug_symbolforglobal(v->current, id, &symbol)) {
             morpho_printf(v, " (");

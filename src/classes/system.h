@@ -24,6 +24,9 @@
 #define SYSTEM_ARGUMENTS_METHOD       "arguments"
 #define SYSTEM_EXIT_METHOD            "exit"
 
+#define SYSTEM_WORKINGDIR_METHOD      "workingdirectory"
+#define SYSTEM_SETWORKINGDIR_METHOD   "setworkingdirectory"
+
 #define SYSTEM_MACOS                  "macos"
 #define SYSTEM_LINUX                  "linux"
 #define SYSTEM_UNIX                   "unix"
@@ -35,6 +38,12 @@
 
 #define SLEEP_ARGS                    "SystmSlpArgs"
 #define SLEEP_ARGS_MSG                "Sleep method expects a time in seconds."
+
+#define STWRKDR_ARGS                  "SystmStWrkDrArgs"
+#define STWRKDR_ARGS_MSG              "Setworkingdirectory method expects a path name."
+
+#define SYS_STWRKDR                   "SystmStWrkDr"
+#define SYS_STWRKDR_MSG               "Couldn't set working directory."
 
 void system_initialize(void);
 void system_finalize(void);

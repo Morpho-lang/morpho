@@ -1,0 +1,10 @@
+
+import "../numericalderivatives.morpho"
+
+var m = Mesh("tetrahedron.mesh")
+var a = VolumeEnclosed()
+
+var h = a.hessian(m)
+var h2 = numericalhessian(a, m)
+
+print (Matrix(h) - h2).norm() < 1e-6 // expect: true

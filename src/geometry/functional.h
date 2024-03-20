@@ -296,6 +296,21 @@ value name##_total(vm *v, int nargs, value *args) { \
     return out; \
 }
 
+/** Hessian */
+#define FUNCTIONAL_HESSIAN(name, grade, totalfn) \
+value name##_hessian(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    value out=MORPHO_NIL; \
+    \
+    if (functional_validateargs(v, nargs, args, &info)) { \
+        info.g = grade; info.integrand = totalfn; \
+        functional_mapnumericalhessian(v, &info, &out); \
+    } \
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
+    \
+    return out; \
+}
+
 /* Alternative way of defining methods that use a reference */
 #define FUNCTIONAL_METHOD(class, name, grade, reftype, prepare, integrandfn, integrandmapfn, deps, err, symbhvr) value class##_##name(vm *v, int nargs, value *args) { \
     functional_mapinfo info; \

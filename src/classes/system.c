@@ -7,6 +7,8 @@
 #define _POSIX_C_SOURCE 199309L
 
 #include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
 
 #include <stdio.h>
 #include <time.h>
@@ -159,8 +161,8 @@ value System_exit(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-/** Set working directory */
-value System_setworkingdirectory(vm *v, int nargs, value *args) {
+/** Set working folder */
+value System_setworkingfolder(vm *v, int nargs, value *args) {
     if (nargs==1 &&
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         char *path = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
@@ -171,14 +173,34 @@ value System_setworkingdirectory(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-/** Get working directory */
-value System_workingdirectory(vm *v, int nargs, value *args) {
+/** Get working folder */
+value System_workingfolder(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
     
     size_t size = pathconf(".", _PC_PATH_MAX);
     char str[size];
     if (getcwd(str, size)) {
         out = object_stringfromcstring(str, strlen(str));
+        if (MORPHO_ISOBJECT(out)) {
+            morpho_bindobjects(v, 1, &out);
+        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    
+    return out;
+}
+
+/** Get current user's home folder */
+value System_homefolder(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    
+    const char *homedir = NULL;
+
+    if ((homedir = getenv("HOME")) == NULL) {
+        homedir = getpwuid(getuid())->pw_dir;
+    }
+    
+    if (homedir) {
+        out = object_stringfromcstring(homedir, strlen(homedir));
         if (MORPHO_ISOBJECT(out)) {
             morpho_bindobjects(v, 1, &out);
         } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
@@ -196,8 +218,9 @@ MORPHO_METHOD(SYSTEM_SLEEP_METHOD, System_sleep, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_READLINE_METHOD, System_readline, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_ARGUMENTS_METHOD, System_arguments, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_EXIT_METHOD, System_exit, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SYSTEM_SETWORKINGDIR_METHOD, System_setworkingdirectory, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SYSTEM_WORKINGDIR_METHOD, System_workingdirectory, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(SYSTEM_SETWORKINGFOLDER_METHOD, System_setworkingfolder, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SYSTEM_WORKINGFOLDER_METHOD, System_workingfolder, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SYSTEM_HOMEFOLDER_METHOD, System_homefolder, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

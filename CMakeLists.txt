@@ -45,7 +45,8 @@ find_file(SUITESPARSE_HEADER cs.h
             /usr/local/include
             /usr/local/include/suitesparse
             /usr/include/suitesparse
-            /opt/homebrew/include/suitesparse)
+            /opt/homebrew/include/suitesparse
+            /home/linuxbrew/.linuxbrew/include/suitesparse)
 
 # Identify folder that cs.h is located in from SUITESPARSE_HEADER and store in SUITESPARSE_INCLUDE
 get_filename_component(SUITESPARSE_INCLUDE ${SUITESPARSE_HEADER} DIRECTORY)

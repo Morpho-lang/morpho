@@ -1665,27 +1665,12 @@ bool length_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, vo
     return length_gradient_scale(v, mesh, id, nv, vid, NULL, frc, 1.0);
 }
 
-/** Evaluate a hessian */
-value Length_hessian(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    value out=MORPHO_NIL;
-
-    if (functional_validateargs(v, nargs, args, &info)) {
-        info.g=MESH_GRADE_LINE;
-        info.integrand=length_integrand;
-        functional_mapnumericalhessian(v, &info, &out);
-    }
-
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-
-    return out;
-}
-
 FUNCTIONAL_INIT(Length, MESH_GRADE_LINE)
 FUNCTIONAL_INTEGRAND(Length, MESH_GRADE_LINE, length_integrand)
 FUNCTIONAL_INTEGRANDFORELEMENT(Length, MESH_GRADE_LINE, length_integrand)
 FUNCTIONAL_GRADIENT(Length, MESH_GRADE_LINE, length_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(Length, MESH_GRADE_LINE, length_integrand)
+FUNCTIONAL_HESSIAN(Length, MESH_GRADE_LINE, length_integrand)
 
 MORPHO_BEGINCLASS(Length)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Length_init, BUILTIN_FLAGSEMPTY),
@@ -1742,28 +1727,13 @@ bool areaenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *v
     return true;
 }
 
-/** Evaluate a hessian */
-value AreaEnclosed_hessian(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    value out=MORPHO_NIL;
-
-    if (functional_validateargs(v, nargs, args, &info)) {
-        info.g=MESH_GRADE_LINE;
-        info.integrand=areaenclosed_integrand;
-        functional_mapnumericalhessian(v, &info, &out);
-    }
-
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-
-    return out;
-}
-
 FUNCTIONAL_INIT(AreaEnclosed, MESH_GRADE_LINE)
 FUNCTIONAL_INTEGRAND(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 FUNCTIONAL_INTEGRANDFORELEMENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 FUNCTIONAL_NUMERICALGRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, SYMMETRY_ADD)
 //FUNCTIONAL_GRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
+FUNCTIONAL_HESSIAN(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 
 MORPHO_BEGINCLASS(AreaEnclosed)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, AreaEnclosed_init, BUILTIN_FLAGSEMPTY),
@@ -1830,13 +1800,15 @@ FUNCTIONAL_INTEGRAND(Area, MESH_GRADE_AREA, area_integrand)
 FUNCTIONAL_INTEGRANDFORELEMENT(Area, MESH_GRADE_AREA, area_integrand)
 FUNCTIONAL_GRADIENT(Area, MESH_GRADE_AREA, area_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(Area, MESH_GRADE_AREA, area_integrand)
+FUNCTIONAL_HESSIAN(Area, MESH_GRADE_AREA, area_integrand)
 
 MORPHO_BEGINCLASS(Area)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Area_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Area_integrand, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRANDFORELEMENT_METHOD, Area_integrandForElement, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Area_gradient, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Area_total, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Area_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Area_hessian, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -1878,12 +1850,14 @@ FUNCTIONAL_INIT(VolumeEnclosed, MESH_GRADE_AREA)
 FUNCTIONAL_INTEGRAND(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
 FUNCTIONAL_GRADIENT(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
+FUNCTIONAL_HESSIAN(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
 
 MORPHO_BEGINCLASS(VolumeEnclosed)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, VolumeEnclosed_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, VolumeEnclosed_integrand, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, VolumeEnclosed_gradient, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, VolumeEnclosed_total, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, VolumeEnclosed_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, VolumeEnclosed_hessian, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -1944,12 +1918,14 @@ FUNCTIONAL_INIT(Volume, MESH_GRADE_VOLUME)
 FUNCTIONAL_INTEGRAND(Volume, MESH_GRADE_VOLUME, volume_integrand)
 FUNCTIONAL_GRADIENT(Volume, MESH_GRADE_VOLUME, volume_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(Volume, MESH_GRADE_VOLUME, volume_integrand)
+FUNCTIONAL_HESSIAN(Volume, MESH_GRADE_VOLUME, volume_integrand)
 
 MORPHO_BEGINCLASS(Volume)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Volume_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Volume_integrand, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Volume_gradient, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Volume_total, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Volume_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Volume_hessian, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------

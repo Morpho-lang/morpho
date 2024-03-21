@@ -47,6 +47,9 @@ fn _hessianelement(func, m, x, i, j, k, l, dim, eps) {
     x[k,i]=tempi+eps
     x[l,j]=tempj-eps
     var frl=func.total(m)
+    x[k,i]=tempi
+    x[l,j]=tempj
+
     return (frr + fll - flr - frl)/(4*eps^2)
 }
 

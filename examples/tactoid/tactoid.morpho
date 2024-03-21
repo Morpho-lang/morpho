@@ -1,0 +1,164 @@
+import meshtools
+import optimize
+import plot
+import povray
+
+// Create mesh and director field
+var m = Mesh("disk.mesh")
+var nn = Field(m, Matrix([1,0,0]))
+
+// Create functionals
+var lf=Nematic(nn, kbend=1)
+var ln=NormSq(nn)
+var la=LineIntegral(fn (x, n) n.inner(tangent())^2, nn)
+var lt=Length()
+var laa=Area()
+var leq=EquiElement()
+
+// Initial boundary selection
+var bnd=Selection(m, boundary=true)
+bnd.addgrade(0)
+
+// Material parameters
+var sigma=5.0*0.04 // Surface tension
+var W=3.0  // Anchoring
+
+var itermax = 4
+
+// Set up the optimization problem
+var problem = OptimizationProblem(m)
+problem.addenergy(lf)
+problem.addenergy(la, selection=bnd, prefactor=-W/2)
+problem.addenergy(lt, selection=bnd, prefactor=sigma+W)
+problem.addconstraint(laa)
+problem.addlocalconstraint(ln, field=nn, target=1)
+
+// Set up a regularization problem
+var reg = OptimizationProblem(m)
+reg.addenergy(leq)
+
+// Create shape and field optimizers
+var sopt = ShapeOptimizer(problem, m)
+var fopt = FieldOptimizer(problem, nn)
+var ropt = ShapeOptimizer(reg, m)
+ropt.fix(bnd)
+
+// Set up initial stepsize
+sopt.stepsize=0.05
+sopt.steplimit=0.1
+
+var mr, refmap // Refinement
+
+// A function we'll use to check each contribution to the energy
+fn checkenergy(problem, opt) {
+  print "--Contributions to energy"
+  for (en in problem.energies) {
+    print en.functional.clss()
+    print opt.total(en)
+  }
+}
+
+// Main optimization loop
+for (iter in 1..itermax) {
+  for (i in 1..10) {
+      if (iter<itermax) {
+        print "-Regularize"
+        leq.weight=lf.integrand(nn)
+        ropt.stepsize=0.0001/iter
+        ropt.steplimit=0.0001/iter
+        ropt.linesearch(2)
+        equiangulate(m)
+      }
+
+      print "-Field"
+      fopt.conjugategradient(200)
+      print "-Shape"
+      sopt.conjugategradient(50)
+  }
+
+  // Check each contribution to the energy
+  checkenergy(problem, sopt)
+
+  // Refine if necessary
+  if (iter<itermax) {
+    // Select elements that have a large contribution to the energy
+    var en = lf.integrand(nn)
+    var mean = en.sum()/en.count()
+    var srefine = Selection(m)
+    for (id in 0...en.count()) if (en[0,id]>1.5*mean) srefine[2,id]=true
+
+    // Create a mesh refiner
+    mr=MeshRefiner([m, nn, bnd])
+    if (srefine.count(2)>0) {
+       refmap = mr.refine(selection=srefine)
+    } else {
+       refmap = mr.refine()
+    }
+
+    // Now refinement is done update the problems and optimizers
+    for (el in [problem, reg, sopt, fopt, ropt]) el.update(refmap)
+
+    // Use the new mesh and field
+    m = refmap[m]
+    nn = refmap[nn]
+    bnd = refmap[bnd]
+    // Must ensure boundary remains correctly fixed
+    ropt.fixed=[]
+    ropt.fix(Selection(m, boundary=true))
+
+    // Equiangulate
+    equiangulate(m)
+  }
+
+  // Reduce stepsize
+  sopt.stepsize=0.05/iter
+  sopt.steplimit=0.1/iter
+}
+
+// Function to visualize a director field
+// m - the mesh
+// nn - the director Field to visualize
+// dl - scale the director
+fn visualize(m, nn, dl) {
+  var v = m.vertexmatrix()
+  var nv = m.count()
+  var g = Graphics()
+  for (i in 0...nv) {
+    var x = v.column(i)
+    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.3))
+  }
+  return g
+}
+
+// Visualize the result
+var g=plotmesh(m, grade=1)
+var gnn=visualize(m, nn, 0.2/itermax)
+var gdisp = g+gnn
+Show(gdisp)
+
+// Visualize the elastic energy density
+var fe = lf.integrand(nn)
+var ff = Field(m, grade=2)
+for (i in 0...m.count(2)) {
+  ff[2,i]=fe[0,i]
+}
+
+var sb = ScaleBar(nticks=3,          // Maximum number of ticks
+                  length=1,          // Length of scalebar
+                  posn=[0,-1,0],   // Position of scalebar  
+                  dirn=[1,0,0],      // Direction in which scalebar is to be drawn
+                  tickdirn=[0,-1,0], // Direction in which to draw ticks
+                  textdirn=[1,0,0],  // Direction to draw text
+                  textvertical=[0,1,0], // Vertical direction for text 
+                  textcolor=White,   // Text color
+                  fontsize=6 )      // Font size 
+
+
+Show(plotfield(ff, colormap=GrayMap(), scalebar=sb))
+
+gdisp.background = White
+var pov = POVRaytracer(gdisp)
+pov.viewpoint = Matrix([0,0,10])
+pov.background = White
+pov.light=[Matrix([10,10,10]), Matrix([-10,-10,10])]
+pov.render("out.pov")

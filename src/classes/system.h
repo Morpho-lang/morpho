@@ -24,8 +24,9 @@
 #define SYSTEM_ARGUMENTS_METHOD       "arguments"
 #define SYSTEM_EXIT_METHOD            "exit"
 
-#define SYSTEM_WORKINGDIR_METHOD      "workingdirectory"
-#define SYSTEM_SETWORKINGDIR_METHOD   "setworkingdirectory"
+#define SYSTEM_HOMEFOLDER_METHOD      "homefolder"
+#define SYSTEM_WORKINGFOLDER_METHOD   "workingfolder"
+#define SYSTEM_SETWORKINGFOLDER_METHOD "setworkingfolder"
 
 #define SYSTEM_MACOS                  "macos"
 #define SYSTEM_LINUX                  "linux"

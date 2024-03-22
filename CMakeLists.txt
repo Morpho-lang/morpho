@@ -42,11 +42,11 @@ source_group("support" REGULAR_EXPRESSION src/support/.*\\.[ch])
 # Find suitesparse cs.h header file 
 find_file(SUITESPARSE_HEADER cs.h 
           HINTS 
+            /home/linuxbrew/.linuxbrew/include/suitesparse 
             /usr/local/include
             /usr/local/include/suitesparse
-            /usr/include/suitesparse
             /opt/homebrew/include/suitesparse
-            /home/linuxbrew/.linuxbrew/include/suitesparse)
+            /usr/include/suitesparse)
 
 # Identify folder that cs.h is located in from SUITESPARSE_HEADER and store in SUITESPARSE_INCLUDE
 get_filename_component(SUITESPARSE_INCLUDE ${SUITESPARSE_HEADER} DIRECTORY)

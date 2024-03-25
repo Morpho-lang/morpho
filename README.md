@@ -1,4 +1,4 @@
-![Morpho](manual/src/Figures/morphologosmall.png#gh-light-mode-only)![Morpho](manual/src/Figures/morphologosmall-white.png#gh-dark-mode-only)
+![Morpho](https://github.com/Morpho-lang/morpho-manual/blob/main/src/Figures/morphologosmall.png#gh-light-mode-only)![Morpho](https://github.com/Morpho-lang/morpho-manual/blob/main/src/Figures/morphologosmall-white.png#gh-dark-mode-only)
 
 [![Build](https://github.com/Morpho-lang/morpho-libmorpho/actions/workflows/build.yml/badge.svg)](https://github.com/Morpho-lang/morpho-libmorpho/actions/workflows/build.yml)
 [![Test suite](https://github.com/Morpho-lang/morpho-libmorpho/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/Morpho-lang/morpho-libmorpho/actions/workflows/buildandtest.yml)

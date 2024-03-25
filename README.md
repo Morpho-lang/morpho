@@ -157,11 +157,15 @@ sudo make install
 
 3. Check it works by typing:
 
-```morphoview```
+```
+morphoview
+```
 
 which should simply run and quit normally. You can then type
 
-```cd ../../``` 
+```
+cd ../../
+``` 
 
 to navigate back out of the morpho-morphoview folder. 
 

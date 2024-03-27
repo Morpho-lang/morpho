@@ -28,7 +28,7 @@
 #define MORPHO_MODULEDIR "share/modules"      // Folder structure where modules are found
 
 #ifndef MORPHO_DYLIBEXTENSION
-#define MORPHO_DYLIBEXTENSION "dylib"         // File extension for extensions
+    #define MORPHO_DYLIBEXTENSION "dylib"         // File extension for extensions
 #endif
 #define MORPHO_EXTENSIONSDIR "lib"            // Folder structure where extensions are found
 

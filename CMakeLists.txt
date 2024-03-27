@@ -29,6 +29,11 @@ if(MORPHO_GCSTRESSTEST)
 target_compile_definitions(morpho PUBLIC _DEBUG_STRESSGARBAGECOLLECTOR)
 endif() 
 
+# Set resources directory
+if(MORPHO_RESOURCESDIR)
+target_compile_definitions(morpho PUBLIC MORPHO_RESOURCESDIR=\"${MORPHO_RESOURCESDIR}\")
+endif() 
+
 # Create source groups for IDE
 source_group("builtin" REGULAR_EXPRESSION src/builtin/.*\\.[ch])
 source_group("classes" REGULAR_EXPRESSION src/classes/.*\\.[ch])

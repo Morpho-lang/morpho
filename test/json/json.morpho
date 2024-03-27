@@ -1,0 +1,43 @@
+// Parse various kinds of JSON 
+
+//print JSON.parse("]")//{ \"min\": -1.0e+28, \"max\": 1.0e+28 }")
+
+//print JSON.parse("\"'\\u03a9'\"")
+//print JSON.parse("\"'\\uD83E\\uDD8B'\"")
+
+/*
+print "Hello"
+for (i in 1..100000) {
+    try {
+        //print JSON.parse("[[ 1, 2, 3 ], $#$%$]")
+        print JSON.parse("{ \"Hello\": 1, 2: 3 }")
+    } catch {
+        "JSONObjctKey":
+        "UnrgnzdTkn": 
+    }
+}*/
+
+var dict = JSON.parse("{ \"Hello\" : \"World\", \"Goodbye\" : 2 }")
+
+print isdictionary(dict) 
+// expect: true
+print dict["Hello"]
+// expect: World
+print dict["Goodbye"]
+// expect: 2
+
+var a = JSON.parse("  [ 1213, 1.2, 1.3e-02, 1.4e-03 ] ")
+for (e in a) print e
+// expect: 1213
+// expect: 1.2
+// expect: 0.013
+// expect: 0.0014
+
+print JSON.parse("   \"hel\\\"lo\"");
+// expect: hel"lo
+
+print JSON.parse("true")
+// expect: true
+
+print JSON.parse(" \r \t   [ true, false, null ]");
+// expect: [ true, false, nil ]

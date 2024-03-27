@@ -1,0 +1,5 @@
+// Import a module with protected symbols 
+import "underscoreimporttest.m"
+
+print _b
+// expect error 'SymblUndf'

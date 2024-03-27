@@ -1,0 +1,20 @@
+/* **********************************
+ * morpho test suite
+ * tuple_apply.morpho
+ * Apply with tuples
+ * ********************************** */
+
+fn f(x, y, z) {
+    print x
+    print y
+    print z
+}
+
+var a = (1,2,3)
+print a
+// expect: (1, 2, 3)
+
+apply(f, a)
+// expect: 1
+// expect: 2
+// expect: 3

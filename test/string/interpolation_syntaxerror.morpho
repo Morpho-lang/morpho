@@ -1,0 +1,5 @@
+
+var a = 1.21321321213
+
+print "${a:###sasdsad}"
+// expect error 'IntrpIncmp'

@@ -1,0 +1,4 @@
+// Empty dictionary literal
+
+var a = { 
+// expect error 'DctTrmntr'

@@ -1,0 +1,79 @@
+// Test underlying integration routine
+
+import meshtools
+import "counter.morpho"
+
+var mb = MeshBuilder() 
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+
+fn circ(x,y) {
+    var rsq = (x-1/2)^2+(y-1/2)^2
+    if (rsq<=1/4) return 1
+    return 0
+}
+
+// List of integrals to evaluate and precalculated exact values 
+// See ACM Transactions on Mathematical Software, Vol 8, No. 2, June 1982,Pages 210-218
+var tests = [ [ fn (x, y) (x^2+3*y^2)^(-1/2), 0.93313202062943577716 ],
+              // [ circ, 0.39269908169872415481 ], 
+              [ fn (x, y) exp(sin(x)*cos(y)), 0.691810450659522 ],
+              [ fn (x, y) x^2/(1+x^2), 0.061175426882524345093 ],
+              [ fn (x, y) sin(3*x+6*y), 0.031203084128814462056 ],
+              [ fn (x, y) sin(x+y)^(-1/2), 0.691684734029392 ] 
+              ]
+
+var out = []
+
+for (t in tests) {
+    var c = EvaluationCounter(t[0]) 
+    var r1 = AreaIntegral(c.eval, method={  } ).total(m)
+    print (abs((r1-t[1])/t[1])<1e-6) 
+}
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+
+/*
+for (t in tests) {
+    var c = EvaluationCounter(t[0]) 
+    
+    var r1 = AreaIntegral(c.eval, method={  } ).total(m)
+    var c1 = c.count()
+    c.reset()
+    var r2 = AreaIntegral(c.eval).total(m)
+    var c2 = c.count()
+
+    out.append([r1, abs((r1-t[1])/t[1]), c1, r2, abs((r2-t[1])/t[1]), c2])
+}
+
+for (res in out) print Array(res)
+
+var times = []
+var ntimes = 10
+
+print "Timing tests"
+for (t in tests) {
+    var start = System.clock() 
+    for (i in 1..ntimes) {
+        var r1 = AreaIntegral(fn (x) apply(t[0], x[0], x[1]), method={ } ).total(m)
+    }
+    var time1 = System.clock()-start
+
+    start = System.clock() 
+    for (i in 1..ntimes) {
+        var r1 = AreaIntegral(fn (x) apply(t[0], x[0], x[1]) ).total(m)
+    }
+    var time2 = System.clock() - start
+    
+    times.append([time1, time2])
+}
+
+for (t in times) print Array(t)
+
+*/

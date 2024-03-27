@@ -1,0 +1,26 @@
+/* **********************************
+ * morpho test suite
+ * tuple_syntax.morpho
+ * Tuple syntax
+ * ********************************** */
+
+var a = (1) 
+print a
+// expect: 1
+
+print (1,) // Python-like syntax works
+// expect: (1)
+
+var b = (1,2) 
+print b
+// expect: (1, 2)
+
+var c = (1,2,3)
+print c
+// expect: (1, 2, 3)
+
+print (1,2,3)[-2]
+// expect: 2
+
+print (1,2,3).join((4,5,6))
+// expect: (1, 2, 3, 4, 5, 6)

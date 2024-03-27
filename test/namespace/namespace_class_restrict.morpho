@@ -1,0 +1,7 @@
+// Check that classes that imported into a namespace are not visible in the global context
+
+import color as c
+
+print Color
+// expect error 'SymblUndf'
+

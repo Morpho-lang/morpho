@@ -9,8 +9,8 @@ from colored import stylize
 import subprocess
 
 """
-languages = { "morpho": "morpho5",
-              "m3": "morpho3",
+languages = { "morpho6": "morpho5",
+              "morpho6": "morpho6",
               "fe": "evolver",
               "lua": "lua",
               "wren": "wren",
@@ -21,7 +21,12 @@ languages = { "morpho": "morpho5",
             }
 """
 
-languages = { "morpho": "morpho5" }
+"""
+Dictionary of languages as keys mapping to corresponding extension
+"""
+languages = { "morpho5" : "morpho",
+              "morpho6" : "morpho",
+              "python3" : "py" }
 samples = 10
 
 # Gets the output generated
@@ -63,11 +68,11 @@ def benchmark(folder):
     dict = {};
     print(stylize(folder[:-1],colored.fg("green")))
     for lang in languages.keys():
-        test = glob.glob(folder + '**.' + lang, recursive=False)
+        test = glob.glob(folder + '**.' + languages[lang], recursive=False)
         if (len(test)>0):
             time = []
             for i in range(1,samples):
-                time.append(run(languages[lang], test[0]))
+                time.append(run(lang, test[0]))
             dict[lang]=min(time)
     return dict
 

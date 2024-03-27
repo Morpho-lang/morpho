@@ -1,0 +1,8 @@
+{
+    "cmake.configureOnOpen": true,
+    "files.associations": {
+        "builtin.h": "c",
+        "value.h": "c",
+        "error.h": "c"
+    }
+}

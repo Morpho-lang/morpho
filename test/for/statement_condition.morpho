@@ -1,4 +1,4 @@
-// Loop condition can't be a block
+// Loop condition can't be a statement
 
-for (var a = 1; {}; a+=1) {}
+for (var a = 1; var b = 2; a+=1) {}
 // expect error 'ExpExpr'

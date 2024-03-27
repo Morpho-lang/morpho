@@ -1,0 +1,8 @@
+// Ensure regular args aren't checked for interned literals
+
+fn f(name, size, id=nil) {
+  print name 
+}
+
+f("Helvetica", 1)
+// expect: Helvetica

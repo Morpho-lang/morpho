@@ -1,0 +1,19 @@
+[1m===================================[0m
+[1mRunning test suite: @power_spec[0m
+[1m===================================[0m
+[1mRunning test higher_exponents_happen_first:[0m
+[1mPassed[0m
+[1mRunning test exponent_binds_before_uminus:[0m
+[1mPassed[0m
+[1mRunning test integer_raised_to_a_float:[0m
+[1mPassed[0m
+[1mRunning test float_raised_to_a_float:[0m
+[1mPassed[0m
+[1mRunning test integer_raised_to_an_integer:[0m
+[1mPassed[0m
+[1mRunning test float_raised_to_an_integer:[0m
+[1mPassed[0m
+[1m===================================[0m
+[1m       Ran 6 tests  [0m
+[1m       No Failures Detected        [0m
+[1m===================================[0m

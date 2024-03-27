@@ -1,0 +1,7 @@
+// Import modules into a namespace
+
+import color as col
+
+print Red
+// expect error 'SymblUndf'
+

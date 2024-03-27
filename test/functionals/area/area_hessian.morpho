@@ -1,0 +1,19 @@
+
+import meshtools
+import "../numericalderivatives.morpho"
+
+var mb = MeshBuilder() 
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+
+mb.addface([0,1,2])
+
+var m = mb.build() 
+
+var a = Area() 
+
+var h = a.hessian(m)
+var h2 = numericalhessian(a, m)
+
+print (Matrix(h) - h2).norm() < 1e-6 // expect: true

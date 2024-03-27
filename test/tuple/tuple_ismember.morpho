@@ -1,0 +1,13 @@
+/* **********************************
+ * morpho test suite
+ * tuple_ismember.morpho
+ * Test ismember method
+ * ********************************** */
+
+var t = Tuple(1,2,3,4,5)
+
+print t.ismember(4)
+// expect: true
+
+print t.ismember(8)
+// expect: false

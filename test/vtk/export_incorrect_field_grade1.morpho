@@ -1,0 +1,10 @@
+// Trying to export a field of dimension not currently supported by the VTKExporter
+import vtk
+import meshtools
+
+var m = AreaMesh(fn (u,v) [u,v,0], -1..1:0.5, -1..1:0.5)
+m.addgrade(1)
+
+var f1 = Field(m, 0, grade=1) // Field defined on the edges
+
+VTKExporter(f1).export() // expect: Error 'FieldShapeErr' : Received a field with shape `[0,1,0]`. Fields with shape other than [1,0,0] are not currently supported.

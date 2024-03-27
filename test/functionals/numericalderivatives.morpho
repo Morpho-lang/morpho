@@ -18,7 +18,7 @@ fn numericalgradient(func, m, eps=1e-8) {
    }
 
    return grad
-} 
+}
 
 fn _hessianelement(func, m, x, i, j, k, l, dim, eps) {
     var s = i*dim+k, t = j*dim+l
@@ -32,7 +32,7 @@ fn _hessianelement(func, m, x, i, j, k, l, dim, eps) {
       var fl=func.total(m)
       x[k,i]=temp
       return (fr + fl - 2*fc)/(eps^2)
-    } 
+    }
 
     var tempi=x[k,i], tempj=x[l,j]
     x[k,i]=tempi+eps
@@ -47,13 +47,16 @@ fn _hessianelement(func, m, x, i, j, k, l, dim, eps) {
     x[k,i]=tempi+eps
     x[l,j]=tempj-eps
     var frl=func.total(m)
+    x[k,i]=tempi
+    x[l,j]=tempj
+
     return (frr + fll - flr - frl)/(4*eps^2)
 }
 
 fn numericalhessian(func, m, eps=1e-3) {
   var x=m.vertexmatrix()
   var dim = x.dimensions()
-  var hess = Matrix(dim[0]*dim[1], dim[0]*dim[1]) 
+  var hess = Matrix(dim[0]*dim[1], dim[0]*dim[1])
 
   for (i in 0...m.count()) {
     for (j in 0...m.count()) {
@@ -66,4 +69,4 @@ fn numericalhessian(func, m, eps=1e-3) {
   }
 
   return hess
-} 
+}

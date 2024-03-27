@@ -1,0 +1,11 @@
+// Check that classes imported into a namespace can be referred to in a class statement
+
+import color as c
+
+class Beep is c.Color {
+
+}
+
+var a = Beep(1,1,1)
+print a
+// expect: <Beep>

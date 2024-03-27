@@ -1,0 +1,82 @@
+// Test underlying integration routine
+
+import meshtools
+import "counter.morpho"
+
+var mb = MeshBuilder() 
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([0,0,1])
+mb.addvolume([0,1,2,3])
+var m = mb.build()
+
+// List of integrals to evaluate and precalculated values from mathematica
+var tests = [ [ fn (x, y, z) x*y*z, 1/720 ],
+              [ fn (x, y, z) (x*y*z)^2, 1/45360 ],
+              [ fn (x, y, z) (x*y*z)^3, 1/2217600 ],
+              [ fn (x, y, z) (x*y*z)^4, 1/94594500 ],
+              //[ fn (x, y, z) (x^2+3*y^2+2*z^2)^(-1/2), 0.2638364274 ],
+              [ fn (x, y, z) (1+x^2+3*y^2+2*z^2)^(-1/2), 0.1342458110 ],  
+              [ fn (x, y, z) exp(sin(x)*cos(y)*sin(2*z)), 0.1823550880 ],
+              [ fn (x, y, z) x^2/(1+x^2), 0.01324025695 ],
+              [ fn (x, y, z) sin(3*x+6*y+2*z), 0.04353873237 ]
+              //[ fn (x, y, z) sin(x+y+z)^(-1/2), 0.2097719308 ] 
+              ]
+
+var out = []
+
+for (t in tests) {
+    var c = EvaluationCounter(t[0]) 
+    
+    var r1 = VolumeIntegral(c.eval, method={ "rule" : "grundmann1" } ).total(m)
+
+    print (abs((r1-t[1])/t[1])<1e-6)
+}
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+
+/*
+for (t in tests) {
+    var c = EvaluationCounter(t[0]) 
+    
+    var r1 = VolumeIntegral(c.eval, method={ "rule" : "grundmann1" } ).total(m)
+    var c1 = c.count()
+    c.reset()
+    var r2 = VolumeIntegral(c.eval).total(m)
+    var c2 = c.count()
+
+    out.append([r1, abs((r1-t[1])/t[1]), c1, r2, abs((r2-t[1])/t[1]), c2])
+}
+
+for (res in out) print Array(res)
+
+
+var times = []
+var ntimes = 100
+
+print "Timing tests"
+for (t in tests) {
+    var start = System.clock() 
+    for (i in 1..ntimes) {
+        var r1 = VolumeIntegral(fn (x) apply(t[0], x[0], x[1], x[2]), method={ "rule" : "grundmann1" } ).total(m)
+    }
+    var time1 = System.clock()-start
+
+    start = System.clock() 
+    for (i in 1..ntimes) {
+        var r1 = VolumeIntegral(fn (x) apply(t[0], x[0], x[1], x[2]) ).total(m)
+    }
+    var time2 = System.clock() - start
+    
+    times.append([time1, time2])
+}
+
+for (t in times) print Array(t)
+*/

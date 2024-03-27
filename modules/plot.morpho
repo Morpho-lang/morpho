@@ -1,0 +1,463 @@
+/* Plotting and visualization */
+
+import graphics
+import color
+import meshtools
+
+var _pltmshcolerr = Error("PltMshCl", "Color specification for plotmesh should be either a color, a list of [r,g,b] values or a list of colors for each grade.")
+var _pltinvldcolerr = Error("PltInvldCl", "Could not convert color to matrix.")
+
+/* 3d cross product */
+fn cross3d(a, b) {
+  return Matrix([ a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0] ])
+}
+
+/* Finds a bounding box from a vertex matrix */
+fn _bbox(m) {
+  var col = m.transpose()
+  var bnds = []
+  for (i in 0...col.dimensions()[1]) bnds.append(bounds(col.column(i)))
+  return bnds
+}
+
+/** Deduces the plot color for a given grade */
+fn _plotcolorforgrade(grade, color) {
+  if (isnil(color)) return Gray(0.5) // No color provided, so use a default color
+  if (islist(color) || isarray(color)) {
+      if (color.count()==3 && isnumber(color[0]) && isnumber(color[1]) && isnumber(color[2])) return color // Color was given as a simple list
+
+      // Different colors for each grade
+      if (isobject(color[grade]) ||
+          islist(color[grade]) ||
+          ismatrix(color[grade])) return color[grade]
+
+      if (isnil(color[grade])) return Gray(0.5)
+  }
+  if (isobject(color)) return color
+  _pltmshcolerr.throw() 
+}
+
+/** Finds the appropriate color for a given element */
+fn _plotcolorforelement(color, element) {
+  var col=color
+  if (ismatrix(col)) col=color.column(element)
+  return col
+}
+
+/** Converts a color to a matrix */
+fn _plotcolortomatrix(color) {
+  if (ismatrix(color)) return color
+  if (islist(color)) return Matrix(color)
+  if (isobject(color)) return Matrix(color.rgb(0))
+  _pltinvldcolerr.throw() 
+  return nil
+}
+
+/** Converts a vertex matrix to a list of 3D points */
+fn _vertto3d(vert) {
+  var out = []
+  var dim = vert.dimensions()[0]
+  var nv = vert.dimensions()[1]
+  if (dim>3) dim=3
+
+  for (i in 0...nv) {
+    var pt = Matrix(3)
+    var v = vert.column(i)
+    for (j in 0...dim) pt[j]=v[j]
+    out.append(pt)
+  }
+
+  return out
+}
+
+/** Plots elements of a mesh
+ * @param[in] mesh - mesh to plot
+ * @param[in] selection - selection
+ * @param[in] grade - Grade to show
+ * @param[in] color - How to color elements:
+                      can be a single color
+                      a matrix with columns corresponding to elements
+                      a list of such matrices for each grade */
+fn plotmesh(mesh, selection=nil, grade=nil, color=nil,  filter=nil, transmit=nil) {
+  var g = Graphics()
+  var glist = []
+  if (isnil(grade)) glist.append(mesh.maxgrade())
+  if (islist(grade)) for (q in grade) glist.append(q)
+  if (isnumber(grade)) glist.append(grade)
+
+  var vert = _vertto3d(mesh.vertexmatrix())
+  var flat = nil
+
+  var bb = _bbox(mesh.vertexmatrix())
+  var centroid = Matrix(3)
+  var size[bb.count()]
+  for (x, i in bb) {
+    size[i]=x[1]-x[0]
+    centroid[i]=x[0]+size[i]/2
+    if (abs(size[i])<1e-10) flat = i
+  }
+
+  if (glist.ismember(0)) { // Show points as spheres
+    var vcol=_plotcolorforgrade(0, color) // Will either be a color or a matrix
+    var np = mesh.count(0)
+    for (i in 0...np) {
+      if (isselection(selection) && !selection.isselected(0, i)) continue // Skip unselected components
+
+      g.display(Sphere(vert[i], 0.025, color=_plotcolorforelement(vcol, i), filter=filter, transmit=transmit))
+    }
+  }
+
+  if (glist.ismember(1)) { // Show lines as cylinders
+    var lcol=_plotcolorforgrade(1, color) // Will either be a color or a matrix
+    var lines=mesh.connectivitymatrix(0,1)
+    if (issparse(lines)) {
+      var nl = mesh.count(1)
+      for (i in 0...nl) {
+        if (isselection(selection) && !selection.isselected(1, i)) continue // Skip unselected components
+        var el = lines.rowindices(i)
+        g.display(Cylinder(vert[el[0]], vert[el[1]],
+                          aspectratio=0.05, color=_plotcolorforelement(lcol, i), filter=filter, transmit=transmit))
+      }
+    }
+  }
+
+  if (glist.ismember(2)) { // Show faces
+    var fcol=_plotcolorforgrade(2, color) // Will either be a color or a matrix
+    var faces=mesh.connectivitymatrix(0,2)
+    var interpolate=false
+
+    if (issparse(faces)) {
+      var nf = mesh.count(2)
+      var nnv = 0, nnt = nf // Count number of triangles and vertices generated
+      if (isselection(selection)) nnt=selection.idlistforgrade(2).count()
+
+      if (ismatrix(fcol) &&
+          fcol.dimensions()[1]!=nf &&
+          fcol.dimensions()[1]==mesh.count(0)) interpolate = true
+
+      var nvert = Matrix(3, 3*nnt) // New array of vertices
+      var norm = Matrix(3, 3*nnt) // New array of normals
+      var ncol = Matrix(3, 3*nnt) // New array of normals
+      var tri = Sparse(3*nnt, nnt) // Connectivity
+
+      nnt=0
+      for (i in 0...nf) { // Draw a triangle for each face
+        if (isselection(selection) && !selection.isselected(2, i)) continue // Skip unselected components
+
+        var el = faces.rowindices(i)
+        var v[3]
+        for (p, i in el) v[i]=vert[p]
+        var normal 
+        if (flat) {
+          normal=Matrix(bb.count())
+          normal[flat]=1
+        } else {
+          normal=cross3d(v[2]-v[1], v[1]-v[0])
+          if (normal.inner(v[0]-centroid)<0) {
+            normal=-normal
+          }
+        }
+
+        var tcol
+        if (!interpolate) tcol = _plotcolortomatrix(_plotcolorforelement(fcol, i))
+        for (j in 0...3) {
+          tri[nnv,nnt]=1
+          nvert.setcolumn(nnv, v[j])
+          norm.setcolumn(nnv, normal)
+          if (interpolate) tcol = _plotcolortomatrix(_plotcolorforelement(fcol, el[j]))
+          ncol.setcolumn(nnv, tcol)
+          nnv+=1
+        }
+        nnt+=1
+      }
+
+      g.display(TriangleComplex(nvert, norm, ncol, tri, filter=filter, transmit=transmit))
+    }
+
+  }
+
+  return g
+}
+
+/** Visualizes a selection
+ * @param[in] mesh - mesh to plot
+ * @param[in] selection - selection
+ * @param[in] grade - Grades to show */
+fn plotselection(mesh, selection, grade=nil, filter=nil, transmit=nil) {
+  var ngrades = mesh.maxgrade()
+  var col[ngrades+1]
+
+  for (g in 0..ngrades) {
+    col[g]=nil
+    if (islist(grade) && !grade.ismember(g)) continue // Skip over grades
+    else if (isint(grade) && grade!=g) continue
+
+    var selected = selection.idlistforgrade(g)
+    if (selected.count()==0) continue                 // Skip over empty grade
+
+    var nel = mesh.count(g)                           // Make a color matrix
+    var cmat = Matrix(3, nel)
+    for (i in 0...nel) {
+      cmat.setcolumn(i, Matrix([0.5,0.5,0.5]))
+    }
+
+    for (i in selected) {                             // Highlight selected
+      cmat.setcolumn(i, Matrix([1,0,0]))
+    }
+
+    col[g]=cmat
+  }
+
+  return plotmesh(mesh, grade=grade, color=col, filter=filter, transmit=transmit)
+}
+
+/** Visualizes a field
+ * @param[in] field - the field
+ * @param[in] grade - Grade to show
+ * @param[in] colormap - Colormap to use
+ * @param[in] style - style to use
+ * @param[in] scale - whether or not to scale values */
+fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, transmit=nil, scalebar=nil, cmin=nil, cmax=nil) {
+  var mesh = field.mesh()
+  var shape = field.shape()
+
+  var ngrades = shape.count()
+  var showgrades = [] // Grades to show
+  var col[ngrades+1]
+
+  var cm=colormap
+  if (cm==nil) cm = ViridisMap()    // Default color map
+
+  var bnd=bounds(field)         // Find bounds for the field
+  if (!isnil(cmin)) bnd[0] = cmin
+  if (!isnil(cmax)) bnd[1] = cmax
+  var sc = bnd[1]-bnd[0]
+  if (abs(sc)>1e-16) sc=1/sc else sc = 1
+
+  if (style=="interpolate") { // Interpolate scalar field onto areas
+    var nv=mesh.count(0)       // Number of elements in this grade
+    var cmat = Matrix(3, nv)   // Make a color matrix
+
+    if (field.shape()[0]==0) {
+      Error("PltFldInt", "Can't use 'interpolate' style: Field lacks values on vertices.").throw() 
+    }
+
+    for (i in 0...nv) {
+      var val = field[0, i]
+      if (!isnil(cmin)) val = max(cmin, val)
+      if (!isnil(cmax)) val = min(cmax, val)
+      if (scale) val=(val-bnd[0])*sc
+      cmat.setcolumn(i, Matrix(cm.rgb(val)))
+    }
+
+    col[2]=cmat
+    showgrades.append(2)
+  } else {
+    for (g in 0...ngrades) {
+      if (shape[g]==0) continue
+
+      var nel=mesh.count(g)       // Number of elements in this grade
+      var cmat = Matrix(3, nel)   // Make a color matrix
+
+      for (i in 0...nel) {
+        var val = field[g, i]
+        if (!isnil(cmin)) val = max(cmin, val)
+        if (!isnil(cmax)) val = min(cmax, val)
+        if (scale) val=(val-bnd[0])*sc
+        cmat.setcolumn(i, Matrix(cm.rgb(val)))
+      }
+
+      col[g]=cmat
+      showgrades.append(g)
+    }
+  }
+
+  var out = plotmesh(mesh, grade=showgrades, color=col, filter=filter, transmit=transmit)
+
+  if (isobject(scalebar)) {
+    var s = scalebar
+    s.colormap=cm
+    out+=s.draw(bnd[0], bnd[1]) 
+  }
+
+  return out 
+}
+
+/** Plots a set of axes
+  * @param[in] xx0 - a point at which to plot the axes */
+fn plotaxes(xx0, size=1) {
+  var x0 = xx0 
+  if (islist(xx0)) x0 = Matrix(xx0)
+  var axes = Graphics() 
+  axes.display(Arrow(x0, x0+Matrix([size,0,0]), color=Red))
+  axes.display(Arrow(x0, x0+Matrix([0,size,0]), color=Green))
+  axes.display(Arrow(x0, x0+Matrix([0,0,size]), color=Blue))
+  return axes 
+} 
+
+fn _centroid(m, g, id) {
+  if (g==0) return m.vertexposition(id) 
+  var el=m.connectivitymatrix(0,g).rowindices(id)
+  var x = 0 
+  for (vid in el) x+=m.vertexposition(vid)
+  x/=el.count() 
+  return x 
+}
+
+fn _to3d(x) {
+  var y = Matrix(3)
+  for (i in 0...min(x.count(),3)) y[i]=x[i]
+  return y
+}
+
+fn plotmeshlabels(mesh, grade=0, selection=nil, fontsize=10, offset=nil, dirn=nil, vertical=nil, color=nil) {
+  var gradelist = grade 
+  if (!islist(grade)) gradelist = [grade]
+
+  var gout = Graphics()
+  var dir = dirn 
+  if (isnil(dir)) dir = [1,0,0]
+
+  var vert = vertical
+  if (isnil(vert)) vert = [0,1,0]
+
+  fn _defaultoffset(x) { return 0.05*(x+Matrix([0.001,0,0])) }
+
+  var off = offset 
+  if (islist(off)) off = Matrix(offset)
+  if (isnil(off)) off = _defaultoffset
+
+  var dcol = color
+  if (isnil(color)) dcol = White 
+
+  for (g in gradelist) {
+    var col = dcol
+    if (isdictionary(color)) {  
+      if (color.contains(g)) col = color[g]
+      else col = White 
+    } 
+
+    for (id in 0...mesh.count(g)) {
+      if (selection && !selection[g,id]) continue 
+      var x = _to3d(_centroid(mesh, g, id))
+      if (iscallable(dirn)) dir=dirn(x)
+      if (iscallable(vertical)) vert=vertical(x)
+      var offset = off 
+      if (iscallable(off)) offset = off(x)
+
+      if (abs(Matrix(vert).inner(Matrix(dir))-1) < 1e-10) {
+        Error("PltLblDirn", "Text direction and vertical are colinear for element ${id} at [${x[0]}, ${x[1]}, ${x[2]}].").throw()        
+      }
+
+      gout.display(Text("${id}", x+offset, size=fontsize, dirn=dir, vertical=vert, color=col))
+    }
+  }
+
+  return gout 
+}
+
+// Scalebars 
+class ScaleBar {
+  _vector(val, default, normalize=false) {
+    var out
+    if (ismatrix(val)) { out=val 
+    } else if (islist(val)) { out=Matrix(val)
+    } else { out=Matrix(default) }
+    if (normalize) out/=out.norm() 
+    return out 
+  }
+
+  init(nticks=5, colormap=nil, length=1, posn=nil, dirn=nil, tickdirn=nil, textdirn=nil, textvertical=nil, textcolor=nil, fontsize=16) {
+    self.nticks = nticks 
+    self.length = length // Length of scalebar 
+    self.radius = 0.1*length // Radius of scalebar
+    self.nptsamples = 5 // Number of samples 
+    self.npts = 16 // Number of azimuthal samples
+    self.fontsize = fontsize // Maximum font size for labels 
+    self.colormap = colormap 
+    if (!self.colormap) self.colormap=ViridisMap()
+
+    self.posn = self._vector(posn, [1,0,0])
+    self.dirn = self._vector(dirn, [0,1,0], normalize=true)  
+    self.tickdirn = self._vector(tickdirn, [1,0,0], normalize=true) 
+    var lambda = self.tickdirn.inner(self.dirn)
+    if (abs(lambda-1)>1e-8) { self.tickdirn -= lambda*self.dirn }
+    self.tickdirn/=self.tickdirn.norm() 
+
+    self.perp = cross3d(self.tickdirn, self.dirn)
+
+    self.textdirn = self._vector(textdirn, self.tickdirn, normalize=true) 
+    self.textvertical = self._vector(textvertical, self.dirn, normalize=true) 
+    self.textcolor = textcolor
+  }
+
+  _ticksforstep(a, b, dw) { // Creates a possible range given bounds and a stepsize
+    var la=dw*ceil(a/dw), lb=dw*floor(b/dw) // Multiples of dw such that la>a and lb<b
+    return la..lb:dw
+  }  
+
+  /* Creates a range corresponding to a sequence of ticks for 
+   and interval [a,b] and with no more than nmax ticks */
+  ticks(a, b, nmax) {
+    var width=(b-a)
+    var dw = 10^(floor(log10(width/nmax))-1) // Guess an initial order of magnitude for the tick spacing
+
+    while(dw<width) {
+      for (x in [dw,2*dw,5*dw]) {
+        var r = self._ticksforstep(a, b, x) 
+        if (r.count()<=nmax) return r 
+      }
+      dw*=10
+    }
+
+    return a..b:(b-a)/nmax
+  }
+
+  coords(x,y,z) {
+    return self.posn + x*self.tickdirn + y*self.perp + z*self.dirn
+  }
+
+  getfontsize(ticks) {
+    var size = self.fontsize 
+    var csize = (size/72) // Size of a line in our units 
+    var vsep = self.length/ticks.count() // Separation between ticks 
+    if (csize>vsep) size = floor((vsep/csize)*size)
+    return size 
+  }
+
+  drawbar() { // Draws the actual color bar 
+    var L = self.length/2
+    var r = self.radius 
+    var m1 = AreaMesh(fn (u,v) self.coords(r*cos(u),r*sin(u),v), -Pi..Pi:Pi/self.npts, -L..L:L/self.nptsamples,  closed=[true,false]) 
+    var m2 = AreaMesh(fn (u,R) self.coords(R*cos(u),R*sin(u),-L), -Pi..Pi:Pi/self.npts, 0..r:r) 
+    var m3 = AreaMesh(fn (u,R) self.coords(R*cos(u),R*sin(u),L), -Pi..Pi:Pi/self.npts, 0..r:r) 
+    var m =  MeshMerge([m1,m2,m3]).merge()
+
+    return plotfield(Field(m, fn (x,y,z) Matrix([x,y,z]).inner(self.dirn) ), style="interpolate", colormap=self.colormap)
+  }
+
+  drawlabel(min, max) { // Draws the labels and ticks 
+    var ticks = self.ticks(min, max, self.nticks)
+    var w = (max-min)
+    var g=Graphics() 
+    var fsize = self.getfontsize(ticks) 
+    var toffset = abs(self.dirn.inner(self.textdirn))
+    var tvert = sqrt(1-toffset^2)
+
+    for (t in ticks) {
+      var x=(t-min)/w - 0.5
+      var label = String(t)
+      var width = (0.6*label.count()*fsize/72)/2 // Estimate the width
+      var height = fsize/72 // Estimate the height 
+      g.display(Cylinder(self.coords(1.2*self.radius,0,x*self.length),self.coords(1.5*self.radius,0,x*self.length),color=White))
+      g.display(
+        Text(label, self.coords((1.8+toffset)*self.radius,0,x*self.length-0.25*height*tvert-width*toffset), size=fsize, dirn=self.textdirn, vertical=self.textvertical, color=self.textcolor)
+        )
+    }
+    return g 
+  }
+
+  draw(min, max) {
+    return self.drawbar() + self.drawlabel(min,max) 
+  }
+}

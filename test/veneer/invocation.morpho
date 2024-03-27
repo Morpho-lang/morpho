@@ -1,0 +1,7 @@
+//Test forming invocations from values
+
+var a = 100
+var b = a.format
+
+print b("%x")
+// expect: 64

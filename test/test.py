@@ -16,7 +16,7 @@ import colored
 from colored import stylize
 
 # define what command to use to invoke the interpreter
-command = 'morpho5'
+command = 'morpho6'
 
 # define the file extension to test
 ext = 'morpho'
@@ -194,8 +194,8 @@ with open("FailedTests.txt",'w') as testLog:
         success+=test(f,testLog,CI)
         total+=1
 
-if (not CI) and (not success == total):
-    os.system("emacs FailedTests.txt &")
+# if (not CI) and (not success == total):
+#     os.system("emacs FailedTests.txt &")
 
 print('--End testing-----------------------')
 print(success, 'out of', total, 'tests passed.')

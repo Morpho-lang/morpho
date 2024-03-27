@@ -1,0 +1,3 @@
+#! /usr/bin/env morpho6
+print "Hello world!"
+// expect: Hello world!

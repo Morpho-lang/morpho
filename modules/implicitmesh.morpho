@@ -1,0 +1,298 @@
+/* Create meshes that are level sets of an implicit function
+  Marching method for implicit surfaces
+  E. Hartmann, The Visual Computer (1998) 14:95-108 */
+
+import constants
+import meshtools
+
+class ImplicitPoint {
+  init (pt, normal) {
+    self.location = pt
+    var n = normal/normal.norm()
+    self.normal = n
+    if (n[0]>0.5 || n[1]>0.5) self.t1 = Matrix([n[1], -n[0], 0])
+    else self.t1 = Matrix([-n[2], 0, n[0]])
+
+    self.t1 /= self.t1.norm()
+    self.t2 = self.cross(n, self.t1)
+    self.t2 /= self.t2.norm()
+
+    self.frontangle = 0.0
+    self.border_point = false
+    self.exclude = false
+    self.angle_changed = false
+  }
+
+  cross(a, b) {
+    return Matrix([ a[1]*b[2]-a[2]*b[1],
+                    a[2]*b[0]-a[0]*b[2],
+                    a[0]*b[1]-a[1]*b[0] ])
+  }
+}
+
+class ImplicitMeshBuilder < MeshBuilder {
+  init(f, gradient=nil) {
+    self.func = f
+    self.grad = gradient
+    self.tol = 1e-10
+    self.eps = 1e-8
+    self.maxiter = 100
+    self.points = []
+    super.init()
+  }
+
+  // Evaluate the gradient of the function
+  gradient(x) {
+    if (self.grad) {
+      return self.grad(x[0], x[1], x[2])
+    } else {
+      return Matrix([ (self.func(x[0]+self.eps, x[1], x[2])-self.func(x[0]-self.eps, x[1], x[2]))/2/self.eps,
+                     (self.func(x[0], x[1]+self.eps, x[2])-self.func(x[0], x[1]-self.eps, x[2]))/2/self.eps,
+                     (self.func(x[0], x[1], x[2]+self.eps)-self.func(x[0], x[1], x[2]-self.eps))/2/self.eps ])
+    }
+  }
+
+  // Finds a nearby point on the level set by gradient descent
+  surfacepoint(x0) {
+    var x=x0, grad
+    for (iter in 1..self.maxiter) {
+      var f = self.func(x[0], x[1], x[2])
+      grad = self.gradient(x)
+      var df = grad.norm()^2
+      if (df<self.tol) { print "Zero gradient detected."; return nil }
+      var dx=f/df*grad
+      x-=dx
+      if (dx.norm()<self.tol) return ImplicitPoint(x, grad)
+    }
+    print "Too many iterations in surfacepoint: Try a different starting point."
+    return ImplicitPoint(x, grad)
+  }
+
+  addpoint(x) {
+    self.points.append(x)
+    return self.addvertex(x.location)
+  }
+
+  initialhexagon(start, stepsize) {
+    var x0 = self.surfacepoint(start)
+    self.addpoint(x0)
+
+    for (theta in 0...2*Pi:Pi/3) {
+      var x = x0.location + stepsize*cos(theta)*x0.t1 + stepsize*sin(theta)*x0.t2
+      var xi = self.surfacepoint(x)
+      self.addpoint(xi)
+    }
+
+    var tri = [[0,1,2], [0,2,3], [0,3,4], [0,4,5], [0,5,6], [0,6,1]]
+    for (t in tri) self.addface(t)
+
+    self.front = [[1,2,3,4,5,6]] // First front polygon
+    for (id in self.front[0]) self.points[id].angle_changed=true
+  }
+
+  calculatefrontangle(il, ii, ir) {
+    // shift into local coordinates
+    var x1 = self.points[il].location - self.points[ii].location
+    // Project this position into the (t1, t2, n) frame at point i
+    var omega1 = arctan( x1.inner(self.points[ii].t1), x1.inner(self.points[ii].t2) )
+
+    // And again
+    var x2 = self.points[ir].location - self.points[ii].location
+    var omega2 = arctan( x2.inner(self.points[ii].t1), x2.inner(self.points[ii].t2) )
+
+    if (omega2>=omega1) return omega2-omega1
+    return omega2-omega1+2*Pi
+  }
+
+  recalculatefrontangles(poly) {
+    var minfa = 2*Pi
+    var np=poly.count()
+    for (i in 0...np) {
+      var pt = self.points[poly[i]]
+      if (pt.angle_changed && !pt.border_point) {
+        var ir = i+1
+        if (i==np-1) ir = 0
+        var fa =self.calculatefrontangle(poly[i-1], poly[i], poly[ir])
+        self.points[poly[i]].frontangle = fa
+        if (fa<minfa) minfa = fa
+        pt.angle_changed=false
+      }
+    }
+    return minfa
+  }
+
+  generatetriangles(poly, stepsize, force=nil) {
+    var omega = nil
+    var k, n=poly.count()
+
+    for (i in 0...n) {
+      if (isnil(omega) || self.points[poly[i]].frontangle < omega || poly[i]==force) {
+        omega = self.points[poly[i]].frontangle
+        k = i
+        if (poly[i]==force) break
+      }
+    }
+
+    // 1. Determine the neighbors of the selected vertex
+    var vk = poly[k]
+    var v1 = poly[k-1], v2
+    if (k==n-1) v2=poly[0] else v2=poly[k+1]
+
+    // 2. Determine number of triangles to be generated
+    var nnewt = floor(3*omega/Pi)+1
+    var deltaomega=omega/nnewt
+
+    // Correct for extreme cases
+    if (deltaomega<0.8 && nnewt>1) {
+        nnewt-=1; deltaomega=omega/nnewt
+    } else if (nnewt==1 && deltaomega>0.8) {
+        var xl = self.points[v1].location - self.points[v2].location
+        if (xl.norm()>1.2*stepsize) {
+          nnewt=2; deltaomega=deltaomega/2
+        }
+    } else if (omega<3) {
+        var xl = self.points[v1].location - self.points[vk].location
+        var s1 = xl.norm()
+        xl = self.points[v2].location - self.points[vk].location
+        var s2 = xl.norm()
+        if (s1<=0.5*stepsize || s2 <= 0.5*stepsize) nnewt=1
+    }
+
+    // 3. Generate the triangles
+    var vi[nnewt+1] // Store indices of new vertices
+    vi[0] = v1; vi[nnewt] = v2
+    if (nnewt==1) {
+      self.addface([v1,vk,v2])
+    } else {
+      var pt = self.points[vk]
+      // Project (v1-vk) onto tangent plane
+      var xl = self.points[v1].location - pt.location
+      var q0 = Matrix([xl.inner(pt.t1), xl.inner(pt.t2)])
+      q0 /= q0.norm()
+
+      for (i in 1...nnewt) {
+        var theta = i*deltaomega
+        var qi[2]
+        qi[0]=q0[0]*cos(theta) - q0[1]*sin(theta)
+        qi[1]=q0[0]*sin(theta) + q0[1]*cos(theta)
+
+        var x = pt.location+stepsize*(qi[0]*pt.t1+qi[1]*pt.t2)
+        var xi = self.surfacepoint(x)
+        vi[i]=self.addpoint(xi)
+      }
+
+      // Generate triangles
+      for (i in 0...nnewt) self.addface([vi[i], vi[i+1], vk])
+    }
+
+    // Correct the front polygon
+    for (i in 0..nnewt) self.points[vi[i]].angle_changed=true
+    poly.pop(k)
+    for (i in 1...nnewt) poly.insert(k, vi[nnewt-i])
+
+  }
+
+  splitpolygon(poly, i, j) {
+    self.points[poly[i]].exclude = true
+    self.points[poly[j]].exclude = true
+    self.points[poly[i]].angle_changed = true
+    self.points[poly[j]].angle_changed = true
+
+    var new = []
+    for (k in i..j) new.append(poly[k])
+    for (k in i+1...j) poly.pop(i+1)
+    return new
+  }
+
+  mergepolygons(poly, i, poly2, j) {
+    self.points[poly[i]].exclude = true
+    self.points[poly2[j]].exclude = true
+    self.points[poly[i]].angle_changed = true
+    self.points[poly2[j]].angle_changed = true
+
+    var cut = []
+    for (k in j...poly2.count()) cut.append(poly2[k])
+    for (k in 0..j) cut.append(poly2[k])
+    cut.append(poly[i])
+    for (p, k in cut) poly.insert(i+k+1, p)
+
+    self.front.remove(poly2)
+  }
+
+  pointcheck(poly1, i, poly2, j, stepsize) {
+    var pt1 = self.points[poly1[i]], pt2 = self.points[poly2[j]]
+    // Are either of the pts excluded from distance checks
+    if (pt1.exclude || pt2.exclude) return false
+
+    var sep = self.points[poly1[i]].location - self.points[poly2[j]].location
+    if (sep.norm() > stepsize) return false
+
+    // Todo: Check for "bad" near points by testing front angles
+
+    return true
+  }
+
+  proximitycheck(poly, stepsize) {
+    var split
+    var np = poly.count()
+    // Ensure there are no front angles < ~ 60deg
+    for (id in poly) if (self.points[id].frontangle<Pi/3) return
+
+    // Distance check within polygon
+    for (i in 0...np) {
+      // Check all points that are not neigbors or neighbors of neighbors
+      var npmax = np
+      if (i<2) npmax-=(2-i) // Deals with wraparound
+      for (j in i+3...npmax) {
+        if (self.pointcheck(poly, i, poly, j, stepsize)) {
+          split = self.splitpolygon(poly, i, j)
+          self.front.insert(0, split)
+          return
+        }
+      }
+    }
+
+    // Distance check between polygons
+    for (p in self.front) {
+      if (p==poly || p==split) continue
+
+      for (i in 0...np) for (j in 0...p.count()) {
+        if (self.pointcheck(poly, i, p, j, stepsize)) {
+          self.mergepolygons(poly, i, p, j)
+          //
+          return
+        }
+      }
+    }
+  }
+
+  build(start=nil, stepsize=0.5, maxiterations=nil) {
+    var iter = 0
+    var x = start
+    if (!start) x = Matrix([1,1,1])
+    self.initialhexagon(x, stepsize)
+
+    do {
+      var poly = self.front[-1]
+
+      // 1: Calculate front angles
+      self.recalculatefrontangles(poly)
+
+      // 2: Proximity check between polygons
+      self.proximitycheck(poly, stepsize)
+
+      // 3: Create new triangles
+      self.generatetriangles(poly, stepsize)
+
+      // Check if front polygon is now a triangle
+      if (poly.count()==3) {
+        self.addface(poly)
+        self.front.pop()
+      }
+      iter+=1
+      if (maxiterations) if (iter>maxiterations) break
+    } while (self.front.count()>0)
+
+    return super.build()
+  }
+}

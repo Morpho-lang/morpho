@@ -1,0 +1,5 @@
+// Lists of symbols after for are parsed as one
+// Hence using for requires one import per line
+
+import color as boo for Red, histogram as hist 
+// expect error 'ImprtMltplAs'

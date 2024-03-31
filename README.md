@@ -171,11 +171,11 @@ to navigate back out of the morpho-morphoview folder.
 
 ### Windows via Windows Subsystem for Linux (WSL2)
 
-Windows support is provided through Windows Subsystem for Linux (WSL), which is an environment that enables windows to run linux applications. We highly recommend using WSL2, which is the most recent version and provides better support for GUI applications; some instructions for WSL1 are provided [in the manual](https://github.com/Morpho-lang/morpho-manual/blob/main/manual.pdf).
+Windows support is provided through Windows Subsystem for Linux (WSL), which is an environment that enables windows to run linux applications. We highly recommend using WSL2, which is the most recent version and provides better support for GUI applications; some instructions for WSL1 are provided [in the manual](https://github.com/Morpho-lang/morpho-manual/blob/main/manual.pdf). Detailed information on running GUI applications in WSL2 is found on the [Microsoft WSL support page](https://learn.microsoft.com/en-us/windows/wsl/tutorials/gui-apps).
 
-1. Begin by installing the [Ubuntu App](https://ubuntu.com/desktop/wsl) from the Microsoft store.
+1. Begin by installing the [Ubuntu App](https://ubuntu.com/desktop/wsl) from the Microsoft store. 
 
-2. Once the Ubuntu terminal is working in Windows, you can install morpho either through homebrew or by building from source.
+2. Once the Ubuntu terminal is working in Windows, you can install morpho either through homebrew or by building from source. 
 
 ---
 ### Other Tests

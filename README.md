@@ -1,7 +1,7 @@
 ![Morpho](https://github.com/Morpho-lang/morpho-manual/blob/main/src/Figures/morphologosmall.png#gh-light-mode-only)![Morpho](https://github.com/Morpho-lang/morpho-manual/blob/main/src/Figures/morphologosmall-white.png#gh-dark-mode-only)
 
-[![Build](https://github.com/Morpho-lang/morpho-libmorpho/actions/workflows/build.yml/badge.svg)](https://github.com/Morpho-lang/morpho-libmorpho/actions/workflows/build.yml)
-[![Test suite](https://github.com/Morpho-lang/morpho-libmorpho/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/Morpho-lang/morpho-libmorpho/actions/workflows/buildandtest.yml)
+[![Build](https://github.com/Morpho-lang/morpho/actions/workflows/build.yml/badge.svg)](https://github.com/Morpho-lang/morpho/actions/workflows/build.yml)
+[![Test suite](https://github.com/Morpho-lang/morpho/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/Morpho-lang/morpho/actions/workflows/buildandtest.yml)
 
 The Morpho language. Morpho is a programmable environment for shape optimization and scientific computing tasks more generally. Morpho aims to be:
 
@@ -179,4 +179,4 @@ Windows support is provided through Windows Subsystem for Linux (WSL), which is 
 
 ---
 ### Other Tests
-[![No NAN Boxing](https://github.com/Morpho-lang/morpho-libmorpho/actions/workflows/nonanboxing.yml/badge.svg)](https://github.com/Morpho-lang/morpho-libmorpho/actions/workflows/nonanboxing.yml)
+[![No NAN Boxing](https://github.com/Morpho-lang/morpho/actions/workflows/nonanboxing.yml/badge.svg)](https://github.com/Morpho-lang/morpho/actions/workflows/nonanboxing.yml)

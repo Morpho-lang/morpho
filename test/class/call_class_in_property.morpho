@@ -1,0 +1,16 @@
+// Ensure a property can store a class and be callable
+
+class A {
+  init(a) {
+    self.a = a
+  }
+
+  make() {
+    return self.a("foo") 
+  }
+}
+
+var a = A(A) 
+
+print a.make() 
+// expect: <A>

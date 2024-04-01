@@ -1,11 +1,11 @@
 
-import meshgen 
-import plot 
+import meshgen
+import plot
 import meshtools
 
 import "../numericalderivatives.morpho"
 
-// Some random points 
+// Some random points
 var pts = [ [ 0.118625, 0.966611 ],
             [ 0.868882, 0.854463 ],
             [ 0.237799, 0.284121 ],

@@ -125,10 +125,10 @@ for (Z in compList){
 // expect: true
 }
 
-// comparison 
+// comparison
 print (1+0im == 1)
 // expect: true
 
-//sqrt of negitive number
+//sqrt of negative number
 print sqrt(-1)
 // expect: 0 + 1im

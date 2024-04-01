@@ -1,0 +1,7 @@
+import "function.xmorpho" as func
+
+print func.f 
+// expect: <fn f>
+
+print func.f(1)
+// expect: 1

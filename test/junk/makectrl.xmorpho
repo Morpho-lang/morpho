@@ -1,0 +1,5 @@
+var str = "{\x04"
+
+var f = File("ctrl.morpho", "w")
+f.write(str)
+f.close()

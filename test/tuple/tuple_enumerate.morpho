@@ -1,0 +1,12 @@
+/* **********************************
+ * morpho test suite
+ * tuple_index_out_of_bounds.morpho
+ * Test bounds checking in tuples
+ * ********************************** */
+
+var t = Tuple(1,2,3)
+
+for (i in t) print i
+// expect: 1
+// expect: 2
+// expect: 3

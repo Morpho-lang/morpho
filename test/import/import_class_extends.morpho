@@ -1,0 +1,9 @@
+// Import a class and extend it
+import color 
+
+class Beep is Color {
+
+}
+
+print Beep(1,1,1) 
+// expect: <Beep>

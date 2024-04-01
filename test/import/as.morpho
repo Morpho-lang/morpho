@@ -1,0 +1,8 @@
+// Import modules into a namespace
+
+import color as col
+
+print col.Red
+// expect: <Color>
+
+//print Red

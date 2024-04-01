@@ -1,0 +1,19 @@
+/* **********************************
+ * morpho test suite
+ * tuple.morpho
+ * Test tuple creation
+ * ********************************** */
+
+var t = Tuple(1,2,3)
+
+print t
+// expect: (1, 2, 3)
+
+print t[0]
+// expect: 1
+
+print t.clss()
+// expect: @Tuple
+
+t[0]=5
+// expect error 'ObjImmutable'

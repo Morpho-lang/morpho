@@ -1,0 +1,10 @@
+/* **********************************
+ * morpho test suite
+ * tuple_index_out_of_bounds.morpho
+ * Test bounds checking in tuples
+ * ********************************** */
+
+var t = Tuple(1,2,3)
+
+print t[3]
+// expect error 'IndxBnds'

@@ -1,0 +1,17 @@
+// Check whether apply works correctly
+
+fn f(x,y,z) { 
+  print x+y+z
+} 
+
+apply(f, (1,2,3))
+// expect: 6
+
+apply(f, [1,2,3])
+// expect: 6
+
+apply(f, 1,2,3)
+// expect: 6
+
+apply([1,2,3], f)
+// expect error 'ApplyNtCllble'

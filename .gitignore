@@ -56,9 +56,11 @@ dkms.conf
 
 .DS_Store
 .entitlements
+.vscode/settings.json
 
 test/FailedTests.txt
 *.png
+*.out
 manual/src/manual.lyx~
 test/vtk/data.case2.vtk
 test/vtk/data.case3.0.vtk
@@ -68,3 +70,5 @@ test/vtk/data.vtk
 test/vtk/square.vtk
 test/vtk/tetrahedron.vtk
 devguide/devguide.lyx~
+build/*
+build-xcode/*

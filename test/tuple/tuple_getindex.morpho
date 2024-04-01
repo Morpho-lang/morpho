@@ -1,0 +1,39 @@
+/* **********************************
+ * morpho test suite
+ * tuple_join.morpho
+ * Test tuple indexing
+ * ********************************** */
+
+var t = Tuple(1,2,3)
+
+print t[0]
+// expect: 1
+
+print t[1]
+// expect: 2
+
+print t[2]
+// expect: 3
+
+print t[-1]
+// expect: 3
+
+print t[-2]
+// expect: 2
+
+print t[-3]
+// expect: 1
+
+try {
+    print t[3]
+} catch {
+    "IndxBnds": print "success"
+}
+// expect: success
+
+try {
+    print t[-4]
+} catch {
+    "IndxBnds": print "success"
+}
+// expect: success

@@ -1,0 +1,4 @@
+// Check that a variable name with a dictionary produces an error
+
+var {} 
+// expect error: 'VarExpct'

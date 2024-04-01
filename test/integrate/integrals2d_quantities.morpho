@@ -1,0 +1,20 @@
+// Test integration using quantities
+
+import meshtools
+
+var mb = MeshBuilder() 
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+
+var f = Field(m, Matrix([0,0]))
+f[0,1]=Matrix([3,0])
+f[0,2]=Matrix([0,6])
+
+print abs(AreaIntegral(fn (x, q) q[0]+q[1], f, method={  } ).total(m) - 1.5) < 1e-6
+// expect: true
+
+print abs(AreaIntegral(fn (x, q) sin(q[0]+q[1]), f, method={  } ).total(m) - 0.031203084128814462056) < 1e-8
+// expect: true

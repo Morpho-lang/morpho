@@ -1,0 +1,4 @@
+// Check for overflow in complex literals
+
+var err = 0.11e55555im
+// expect error 'ValRng'

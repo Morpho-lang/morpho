@@ -1,0 +1,14 @@
+// Continue in catch block
+
+for (_ in 1..10) {
+  try {
+    Error("Err", "Error").throw() 
+  } catch {
+    "Err": 
+      continue 
+  }
+  print "Nope"
+}
+
+print "ok"
+// expect: ok

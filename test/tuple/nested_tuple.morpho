@@ -1,0 +1,9 @@
+// Nested tuples 
+
+var a = ( ( 1, 2 ), ( 3, 4 ) )
+
+for (u in a) {
+    print "${u[0]},${u[1]}"
+}
+// expect: 1,2
+// expect: 3,4

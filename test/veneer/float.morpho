@@ -1,0 +1,14 @@
+//Test Float veneer class
+
+print 123.2323.format("%.2f")
+// expect: 123.23
+
+var a = 2e-5
+print a.format("%.4e")
+// expect: 2.0000e-05
+
+print 123.4444.format("%10.1f")
+// expect:      123.4
+
+print 1e10.format("%g")
+// expect: 1e+10

@@ -1,0 +1,20 @@
+// Comparisong of floating point values
+
+var eps = 1e-16
+
+var min = 1e-309
+
+print 0 < eps // expect: true
+print 0 == eps // expect: false
+
+print 1 == 1+eps // expect: true
+print 1 == 1+10*eps // expect: false
+
+print -eps < 0 // expect: true
+print -eps == 0 // expect: false
+
+print min == 0 // expect: false
+print eps*min == 0 // expect: true
+
+print -eps*min == eps*min // expect: true
+print -1000*eps*min == 1000*eps*min // expect: false

@@ -1,0 +1,11 @@
+// Nested imports
+import color for Blue 
+
+var a = Blue
+
+import "nestedimporttest.m"
+
+print a
+// expect: <Color>
+print b
+// expect: <Color>

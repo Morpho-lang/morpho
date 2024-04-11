@@ -13,7 +13,7 @@ fn f(Float x) {
 }
 
 f("Hi")
-// expect: [ "Hi ]
+// expect: Hi
 
 f(1.5)
 // expect: 2.5

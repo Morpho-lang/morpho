@@ -1332,6 +1332,7 @@ compilenoderule noderules[] = {
 
     { compiler_print         },      // NODE_PRINT
     { compiler_declaration   },      // NODE_DECLARATION
+    { NODE_NORULE            },      // NODE_TYPE
     { compiler_function      },      // NODE_FUNCTION
     { NODE_NORULE            },      // NODE_METHOD
     { compiler_class         },      // NODE_CLASS

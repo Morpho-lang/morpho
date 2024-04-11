@@ -416,7 +416,7 @@ bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, voi
             if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
                 PARSE_CHECK(parse_symbol(p, &current));
                 
-                if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
+                if (parse_checktokenadvance(p, TOKEN_SYMBOL)) { // If two symbols in a row, then the first is the type
                     syntaxtreeindx label;
                     PARSE_CHECK(parse_symbol(p, &label));
                     

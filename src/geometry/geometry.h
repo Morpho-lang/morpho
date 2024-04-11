@@ -16,6 +16,4 @@
 
 void geometry_initialize(void);
 
-
-
 #endif

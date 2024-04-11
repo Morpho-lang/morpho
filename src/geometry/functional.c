@@ -4192,7 +4192,7 @@ void integral_preparequantities(integralref *iref, int nv, int *vid, quantity *q
             }
         } else {
             quantities[k].nnodes=nv;
-            quantities[k].ifn=MORPHO_NIL;
+            quantities[k].ifn=NULL;
             quantities[k].vals=MORPHO_MALLOC(sizeof(value)*nv);
             for (unsigned int i=0; i<nv; i++) {
                 field_getelement(f, MESH_GRADE_VERTEX, vid[i], 0, &quantities[k].vals[i]);
@@ -4502,7 +4502,12 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
 
     if (MORPHO_ISDICTIONARY(iref.method)) {
         double err;
-        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, q, &iref, out, &err);
+        quantity quantities[iref.nfields+1];
+        integral_preparequantities(&iref, nv, vid, quantities);
+        
+        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, quantities, &iref, out, &err);
+        
+        integral_clearquantities(iref.nfields, quantities);
     } else {
         success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, q, &iref, out);
     }

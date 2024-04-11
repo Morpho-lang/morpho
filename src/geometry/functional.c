@@ -1935,10 +1935,20 @@ MORPHO_ENDCLASS
 static value scalarpotential_functionproperty;
 static value scalarpotential_gradfunctionproperty;
 
+typedef struct {
+    value fn;
+} scalarpotentialref;
+
+bool scalarpotential_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, scalarpotentialref *ref) {
+    ref->fn=MORPHO_NIL;
+    return (objectinstance_getpropertyinterned(self, scalarpotential_functionproperty, &ref->fn) &&
+            MORPHO_ISCALLABLE(ref->fn));
+}
+
 /** Evaluate the scalar potential */
 bool scalarpotential_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     double *x;
-    value fn = *(value *) ref;
+    value fn = ((scalarpotentialref *) ref)->fn;
     value args[mesh->dim];
     value ret;
 
@@ -1975,7 +1985,6 @@ bool scalarpotential_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int
     return false;
 }
 
-
 /** Initialize a scalar potential */
 value ScalarPotential_init(vm *v, int nargs, value *args) {
     objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), functional_gradeproperty, MORPHO_INTEGER(MESH_GRADE_VERTEX));
@@ -1996,25 +2005,11 @@ value ScalarPotential_init(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-/** Integrand function */
-value ScalarPotential_integrand(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    value out=MORPHO_NIL;
+FUNCTIONAL_METHOD(ScalarPotential, integrand, MESH_GRADE_VERTEX, scalarpotentialref, scalarpotential_prepareref, functional_mapintegrand, scalarpotential_integrand, NULL, SCALARPOTENTIAL_FNCLLBL, SYMMETRY_NONE)
 
-    if (functional_validateargs(v, nargs, args, &info)) {
-        value fn;
-        if (objectinstance_getpropertyinterned(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
-            info.g = MESH_GRADE_VERTEX;
-            info.integrand = scalarpotential_integrand;
-            info.ref = &fn;
-            if (MORPHO_ISCALLABLE(fn)) {
-                functional_mapintegrand(v, &info, &out);
-            } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
-        } else morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, SCALARPOTENTIAL_FUNCTION_PROPERTY);
-    }
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-    return out;
-}
+FUNCTIONAL_METHOD(ScalarPotential, total, MESH_GRADE_VERTEX, scalarpotentialref, scalarpotential_prepareref, functional_sumintegrand, scalarpotential_integrand, NULL, SCALARPOTENTIAL_FNCLLBL, SYMMETRY_NONE)
+
+FUNCTIONAL_METHOD(ScalarPotential, hessian, MESH_GRADE_VERTEX, scalarpotentialref, scalarpotential_prepareref, functional_mapnumericalhessian, scalarpotential_integrand, NULL, SCALARPOTENTIAL_FNCLLBL, SYMMETRY_NONE)
 
 /** Evaluate a gradient */
 value ScalarPotential_gradient(vm *v, int nargs, value *args) {
@@ -2051,30 +2046,12 @@ value ScalarPotential_gradient(vm *v, int nargs, value *args) {
     return out;
 }
 
-/** Total function */
-value ScalarPotential_total(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    value out=MORPHO_NIL;
-
-    if (functional_validateargs(v, nargs, args, &info)) {
-        value fn;
-        if (objectinstance_getpropertyinterned(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
-            info.g = MESH_GRADE_VERTEX;
-            info.integrand = scalarpotential_integrand;
-            info.ref = &fn;
-            if (MORPHO_ISCALLABLE(fn)) {
-                functional_sumintegrand(v, &info, &out);
-            } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
-        } else morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, SCALARPOTENTIAL_FUNCTION_PROPERTY);
-    }
-    return out;
-}
-
 MORPHO_BEGINCLASS(ScalarPotential)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, ScalarPotential_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, ScalarPotential_integrand, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, ScalarPotential_gradient, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, ScalarPotential_total, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, ScalarPotential_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, ScalarPotential_hessian, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------

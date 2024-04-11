@@ -28,9 +28,13 @@ value functional_fieldproperty;
  * Utility functions
  * ********************************************************************** */
 
+double fddelta1, // = pow(MORPHO_EPS, 1.0/3.0),
+       fddelta2; // = pow(MORPHO_EPS, 1.0/4.0);
+
 // Estimates the correct stepsize for cell centered finite differences
-double functional_fdstepsize(double x) {
-    double h = pow(MORPHO_EPS, 1.0/3.0);
+double functional_fdstepsize(double x, int order) {
+    double h = fddelta1;
+    if (order==2) h = fddelta2;
     
     // h should be multiplied by an estimate of the lengthscale over which f changes,
     //      | f / f''' | ^ (1/3)
@@ -473,7 +477,7 @@ bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, int nv, 
 
             matrix_getelement(mesh->vert, k, vid[j], &x0);
             
-            eps=functional_fdstepsize(x0);
+            eps=functional_fdstepsize(x0, 1);
             
             matrix_setelement(mesh->vert, k, vid[j], x0+eps);
             if (!(*integrand) (v, mesh, i, nv, vid, ref, &fp)) return false;
@@ -487,36 +491,6 @@ bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, int nv, 
     return true;
 }
 
-/* Calculates a numerical gradient for a remote vertex */
-/*static bool functional_numericalremotegradientold(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
-    objectmesh *mesh = info->mesh;
-    double f0,fp,fm,x0,eps=1e-10; // Should use sqrt(machineeps)*(1+|x|) here
-
-    int *rvid=(info->g==0 ? &remoteid : NULL),
-        rnv=(info->g==0 ? 1 : 0); // The vertex indices
-
-    if (conn) sparseccs_getrowindices(&conn->ccs, remoteid, &rnv, &rvid);
-
-    // Loop over vertices in element
-    for (unsigned int j=0; j<nv; j++) {
-        // Loop over coordinates
-        for (unsigned int k=0; k<mesh->dim; k++) {
-            matrix_getelement(frc, k, vid[j], &f0);
-
-            matrix_getelement(mesh->vert, k, vid[j], &x0);
-            matrix_setelement(mesh->vert, k, vid[j], x0+eps);
-            if (!(*info->integrand) (v, mesh, remoteid, rnv, rvid, info->ref, &fp)) return false;
-            matrix_setelement(mesh->vert, k, vid[j], x0-eps);
-            if (!(*info->integrand) (v, mesh, remoteid, rnv, rvid, info->ref, &fm)) return false;
-            matrix_setelement(mesh->vert, k, vid[j], x0);
-
-            matrix_setelement(frc, k, vid[j], f0+(fp-fm)/(2*eps));
-        }
-    }
-
-    return true;
-}*/
-
 static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
     objectmesh *mesh = info->mesh;
     double f0,fp,fm,x0,eps=1e-6;
@@ -526,7 +500,7 @@ static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, 
         matrix_getelement(frc, k, remoteid, &f0);
 
         matrix_getelement(mesh->vert, k, remoteid, &x0);
-        eps=functional_fdstepsize(x0);
+        eps=functional_fdstepsize(x0, 1);
         
         matrix_setelement(mesh->vert, k, remoteid, x0+eps);
         if (!(*info->integrand) (v, mesh, i, nv, vid, info->ref, &fp)) return false;
@@ -768,7 +742,7 @@ bool functional_mapnumericalfieldgradientX(vm *v, functional_mapinfo *info, valu
                         int k=field->offset[g]+id*field->psize*field->dof[g]+j;
                         double fld=field->data.elements[k];
                         
-                        eps=functional_fdstepsize(fld);
+                        eps=functional_fdstepsize(fld, 1);
                         
                         field->data.elements[k]+=eps;
 
@@ -801,7 +775,7 @@ functional_mapnumericalfieldgradient_cleanup:
  * @param[in] info - map info
  * @param[out] out - a matrix of integrand values
  * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out) {
+bool functional_mapnumericalhessianX(vm *v, functional_mapinfo *info, value *out) {
     objectmesh *mesh = info->mesh;
     objectselection *sel = info->sel;
     if (sel) UNREACHABLE("Selections not implemented in hessian");
@@ -980,8 +954,11 @@ bool functional_mapfn_elements(void *arg) {
 
 /** Dispatches tasks to threadpool */
 bool functional_parallelmap(int ntasks, functional_task *tasks) {
+    int nthreads = morpho_threadnumber();
+    if (!nthreads) nthreads=1;
+    
     if (!functional_poolinitialized) {
-        functional_poolinitialized=threadpool_init(&functional_pool, morpho_threadnumber());
+        functional_poolinitialized=threadpool_init(&functional_pool, nthreads);
         if (!functional_poolinitialized) return false;
     }
     
@@ -1274,7 +1251,7 @@ bool functional_numericalgrad(vm *v, objectmesh *mesh, elementid eid, elementid 
 
         matrix_getelement(mesh->vert, k, i, &x0);
         
-        eps=functional_fdstepsize(x0);
+        eps=functional_fdstepsize(x0, 1);
         matrix_setelement(mesh->vert, k, i, x0+eps);
         if (!(*integrand) (v, mesh, eid, nv, vid, ref, &fp)) return false;
         matrix_setelement(mesh->vert, k, i, x0-eps);
@@ -1436,14 +1413,12 @@ bool functional_numericalfieldgrad(vm *v, objectmesh *mesh, elementid eid, objec
         int k=field->offset[g]+i*field->psize*field->dof[g]+j;
         double f0=field->data.elements[k];
         
-        eps=functional_fdstepsize(f0);
+        eps=functional_fdstepsize(f0, 1);
         
         field->data.elements[k]+=eps;
-
         if (!(*integrand) (v, mesh, eid, nv, vid, ref, &fr)) return false;
 
         field->data.elements[k]=f0-eps;
-
         if (!(*integrand) (v, mesh, eid, nv, vid, ref, &fl)) return false;
 
         field->data.elements[k]=f0;
@@ -1541,6 +1516,167 @@ functional_mapfieldgradient_cleanup:
     
     return success;
 }
+
+/* ----------------------------
+ * Map numerical hessians
+ * ---------------------------- */
+
+/** Adds a value to an element of a sparse matrix */
+bool functional_sparseaccumulate(objectsparse *A, int i, int j, double val) {
+    double f0 = 0.0;
+    value h0;
+    if (sparsedok_get(&A->dok, i, j, &h0)) {
+        if (!morpho_valuetofloat(h0, &f0)) return false;
+    }
+    
+    sparsedok_insert(&A->dok, i, j, MORPHO_FLOAT(f0+val));
+}
+
+/** Computes the contribution to the hessian of element eid with respect to vertices i and j */
+bool functional_numericalhess(vm *v, objectmesh *mesh, elementid eid, elementid i, elementid j, int nv, int *vid, functional_integrand *integrand, void *ref, objectsparse *hess) {
+    double x0,y0,epsx=1e-4,epsy=1e-4;
+    
+    for (unsigned int k=0; k<mesh->dim; k++) { // Loop over coordinates in vertex i
+        matrix_getelement(mesh->vert, k, i, &x0);
+        epsx=functional_fdstepsize(x0, 2);
+        
+        if (i==j) { // Use a special formula for diagonal elements
+            double fc, fr, fl;
+            if (!(*integrand) (v, mesh, eid, nv, vid, ref, &fc)) return false;
+            
+            matrix_setelement(mesh->vert, k, i, x0+epsx);
+            if (!(*integrand) (v, mesh, eid, nv, vid, ref, &fr)) return false;
+            
+            matrix_setelement(mesh->vert, k, i, x0-epsx);
+            if (!(*integrand) (v, mesh, eid, nv, vid, ref, &fl)) return false;
+            
+            matrix_setelement(mesh->vert, k, i, x0); // Restore vertex to original position
+            
+            functional_sparseaccumulate(hess, i*mesh->dim+k, i*mesh->dim+k, (fr + fl - 2*fc)/(epsx*epsx));
+        }
+        
+        // Loop over coordinates in vertex j
+        for (unsigned int l=(i==j? k+1 : k); // Detect whether we're in an off diagonal block
+             l<mesh->dim; l++) {
+            double fll,frr,flr,frl;
+            
+            matrix_getelement(mesh->vert, l, j, &y0);
+            epsy=functional_fdstepsize(y0, 2);
+            
+            matrix_setelement(mesh->vert, k, i, x0+epsx);
+            matrix_setelement(mesh->vert, l, j, y0+epsy);
+            if (!(*integrand) (v, mesh, eid, nv, vid, ref, &frr)) return false;
+            
+            matrix_setelement(mesh->vert, l, j, y0-epsy);
+            if (!(*integrand) (v, mesh, eid, nv, vid, ref, &frl)) return false;
+            
+            matrix_setelement(mesh->vert, k, i, x0-epsx);
+            if (!(*integrand) (v, mesh, eid, nv, vid, ref, &fll)) return false;
+            
+            matrix_setelement(mesh->vert, l, j, y0+epsy);
+            if (!(*integrand) (v, mesh, eid, nv, vid, ref, &flr)) return false;
+            
+            matrix_setelement(mesh->vert, k, i, x0); // Restore vertices to original position
+            matrix_setelement(mesh->vert, l, j, y0);
+            
+            functional_sparseaccumulate(hess, i*mesh->dim+k, j*mesh->dim+l, (frr + fll - flr - frl)/(4*epsx*epsy));
+            functional_sparseaccumulate(hess, j*mesh->dim+l, i*mesh->dim+k, (frr + fll - flr - frl)/(4*epsx*epsy));
+        }
+    }
+    
+    return true;
+}
+
+/** Computes the gradient of element id with respect to its constituent vertices and any dependencies */
+bool functional_numericalhessianmapfn(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out) {
+    bool success=true;
+    functional_mapinfo *info=(functional_mapinfo *) ref;
+    
+    for (int i=0; i<nv; i++) {
+        for (int j=0; j<nv; j++) {
+            if (!functional_numericalhess(v, mesh, id, vid[i], vid[j], nv, vid, info->integrand, info->ref, out)) return false;
+        }
+    }
+    
+    // Now handle dependencies
+    if (info->dependencies) {
+        varray_elementid dependencies;
+        varray_elementidinit(&dependencies);
+        
+        // Get list of vertices this element depends on
+        if ((info->dependencies) (info, id, &dependencies)) {
+            for (int j=0; j<dependencies.count; j++) {
+                //if (functional_containsvertex(nv, vid, dependencies.data[j])) continue;
+                //if (!functional_numericalgrad(v, mesh, id, dependencies.data[j], nv, vid, info->integrand, info->ref, out)) success=false;
+            }
+        }
+        
+        varray_elementidclear(&dependencies);
+    }
+    
+    return success;
+}
+
+/** Compute the hessian numerically */
+bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out) {
+    int success=false;
+    int ntask=morpho_threadnumber();
+    if (ntask==0) ntask = 1;
+    functional_task task[ntask];
+    
+    varray_elementid imageids;
+    varray_elementidinit(&imageids);
+    
+    objectsparse *new[ntask]; // Create an output matrix for each thread
+    for (int i=0; i<ntask; i++) new[i]=NULL;
+    
+    objectmesh meshclones[ntask]; // Create shallow clones of the mesh with different vertex matrices
+    
+    if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
+    
+    for (int i=0; i<ntask; i++) {
+        int N = info->mesh->dim*mesh_nvertices(info->mesh);
+        
+        // Create one output matrix per thread
+        new[i]=object_newsparse(&N, &N);
+        if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_maphessian_cleanup; }
+        
+        // Clone the vertex matrix for each thread
+        meshclones[i]=*info->mesh;
+        meshclones[i].vert=object_clonematrix(info->mesh->vert);
+        task[i].mesh=&meshclones[i];
+        
+        task[i].ref=(void *) info; // Use this to pass the info structure
+        task[i].mapfn=functional_numericalhessianmapfn;
+        task[i].result=(void *) new[i];
+    }
+    
+    functional_parallelmap(ntask, task);
+    
+    /* Then add up all the matrices */
+    sparse_checkformat(new[0], SPARSE_CCS, true, true);
+    for (int i=1; i<ntask; i++) sparse_add(new[0], new[i], 1.0, 1.0, new[0]);
+    
+    success=true;
+    
+    // Use symmetry actions
+    //if (info->sym==SYMMETRY_ADD) functional_symmetrysumforces(info->mesh, new[0]);
+    
+    // ...and return the result
+    *out = MORPHO_OBJECT(new[0]);
+    
+functional_maphessian_cleanup:
+    // Free the temporary copies of the vertex matrices
+    for (int i=0; i<ntask; i++) object_free((object *) meshclones[i].vert);
+    // Free spare output matrices
+    for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
+    
+    functional_cleanuptasks(v, ntask, task);
+    varray_elementidclear(&imageids);
+    
+    return success;
+}
+
 
 /* **********************************************************************
  * Common library functions
@@ -2721,13 +2857,15 @@ FUNCTIONAL_METHOD(LineCurvatureSq, integrand, MESH_GRADE_VERTEX, curvatureref, c
 FUNCTIONAL_METHOD(LineCurvatureSq, integrandForElement, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapintegrandforelement, linecurvsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
 FUNCTIONAL_METHOD(LineCurvatureSq, total, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_sumintegrand, linecurvsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
 FUNCTIONAL_METHOD(LineCurvatureSq, gradient, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapnumericalgradient, linecurvsq_integrand, linecurvsq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
+FUNCTIONAL_METHOD(LineCurvatureSq, hessian, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapnumericalhessian, linecurvsq_integrand, linecurvsq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(LineCurvatureSq)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineCurvatureSq_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LineCurvatureSq_integrand, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRANDFORELEMENT_METHOD, LineCurvatureSq_integrandForElement, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineCurvatureSq_gradient, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineCurvatureSq_total, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineCurvatureSq_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, LineCurvatureSq_hessian, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -4514,7 +4652,7 @@ void functional_fdtest(void) {
     
         double f1=(ff(x+h1)-ff(x-h1))/(2*h1);
         
-        double h2=functional_fdstepsize(x);
+        double h2=functional_fdstepsize(x, 1);
         double f2=(ff(x+h2)-ff(x-h2))/(2*h2);
         
         printf("%g: %g %g %g\n", x, fex, fabs((f1-fex)/fex), fabs((f2-fex)/fex));
@@ -4523,6 +4661,9 @@ void functional_fdtest(void) {
 }
 
 void functional_initialize(void) {
+    fddelta1 = pow(MORPHO_EPS, 1.0/3.0);
+    fddelta2 = pow(MORPHO_EPS, 1.0/4.0);
+    
     functional_gradeproperty=builtin_internsymbolascstring(FUNCTIONAL_GRADE_PROPERTY);
     functional_fieldproperty=builtin_internsymbolascstring(FUNCTIONAL_FIELD_PROPERTY);
     scalarpotential_functionproperty=builtin_internsymbolascstring(SCALARPOTENTIAL_FUNCTION_PROPERTY);

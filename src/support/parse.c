@@ -356,11 +356,40 @@ bool parse_synchronize(parser *p);
  * Utility functions for this parser
  * ------------------------------------------- */
 
+/** @brief Parses a list of expressions
+ * @param[in]  p     the parser
+ * @param[in]  rightdelimiter  token type that denotes the end of the arguments list
+ * @param[out] nel the number of elements
+ * @details Note that the arguments are output in reverse order, i.e. the
+ *          first argument is deepest in the tree. */
+bool parse_expressionlist(parser *p, tokentype rightdelimiter, unsigned int *nel, void *out) {
+    syntaxtreeindx prev=SYNTAXTREE_UNCONNECTED, current=SYNTAXTREE_UNCONNECTED;
+    token start = p->current;
+    unsigned int n=0;
+    
+    if (!parse_checktoken(p, rightdelimiter)) {
+        do {
+            PARSE_CHECK(parse_pseudoexpression(p, &current));
+            PARSE_CHECK(parse_addnode(p, NODE_ARGLIST, MORPHO_NIL, &start, prev, current, &current));
+            prev = current;
+            n++;
+        } while (parse_checktokenadvance(p, TOKEN_COMMA));
+    }
+    
+    /* Output the number of args */
+    if (nel) *nel=n;
+    
+    *((syntaxtreeindx *) out)=current;
+    
+    return true;
+}
+
 /** @brief Parses an argument list
  * @param[in]  p     the parser
  * @param[in]  rightdelimiter  token type that denotes the end of the arguments list
  * @param[out] nargs the number of arguments
- * @returns indx of the arguments list
+ * @param[out] out the syntaxtreeindex, updated
+ * @returns true on success
  * @details Note that the arguments are output in reverse order, i.e. the
  *          first argument is deepest in the tree. */
 bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, void *out) {
@@ -384,7 +413,16 @@ bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, voi
                 varg = true; vargthis = true;
             }
             
-            PARSE_CHECK(parse_pseudoexpression(p, &current));
+            if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
+                PARSE_CHECK(parse_symbol(p, &current));
+                
+                if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
+                    syntaxtreeindx label;
+                    PARSE_CHECK(parse_symbol(p, &label));
+                    
+                    PARSE_CHECK(parse_addnode(p, NODE_TYPE, MORPHO_NIL, &start, current, label, &current));
+                }
+            } else PARSE_CHECK(parse_pseudoexpression(p, &current));
 
             if (vargthis) PARSE_CHECK(parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, current, &current));
             
@@ -645,6 +683,7 @@ bool parse_tuple(parser *p, token *start, syntaxtreeindx first, void *out) {
             prev = current;
         } while (parse_checktokenadvance(p, TOKEN_COMMA));
     }
+    
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_MSSNGSQBRC));
 
     return parse_addnode(p, NODE_TUPLE, MORPHO_NIL, start, SYNTAXTREE_UNCONNECTED, current, out);
@@ -817,7 +856,7 @@ bool parse_call(parser *p, void *out) {
     syntaxtreeindx right;
     unsigned int nargs;
     
-    PARSE_CHECK(parse_arglist(p, TOKEN_RIGHTPAREN, &nargs, &right));
+    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTPAREN, &nargs, &right));
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_CALLRGHTPARENMISSING));
     
     return parse_addnode(p, NODE_CALL, MORPHO_NIL, &start, left, right, out);
@@ -834,7 +873,7 @@ bool parse_index(parser *p, void *out) {
     syntaxtreeindx right;
     unsigned int nindx;
     
-    PARSE_CHECK(parse_arglist(p, TOKEN_RIGHTSQBRACKET, &nindx, &right));
+    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTSQBRACKET, &nindx, &right));
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTSQBRACKET, PARSE_CALLRGHTPARENMISSING));
     
     return parse_addnode(p, NODE_INDEX, MORPHO_NIL, &start, left, right, (syntaxtreeindx *) out);
@@ -844,7 +883,7 @@ bool parse_index(parser *p, void *out) {
 bool parse_list(parser *p, void *out) {
     token start = p->previous;
     syntaxtreeindx right;
-    PARSE_CHECK(parse_arglist(p, TOKEN_RIGHTSQBRACKET, NULL, &right));
+    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTSQBRACKET, NULL, &right));
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTSQBRACKET, PARSE_MSSNGSQBRC));
 
     return parse_addnode(p, NODE_LIST, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, right, out);
@@ -1405,7 +1444,9 @@ bool parse_declaration(parser *p, void *out) {
         success=parse_classdeclaration(p, out);
     } else if (parse_checktokenadvance(p, TOKEN_IMPORT)) {
         success=parse_importdeclaration(p, out);
-    } else {
+    } /*else if (parse_checktoken(p, TOKEN_SYMBOL)) {
+        // Detect Typed variable declarations here
+    } */else {
         success=parse_statement(p, out);
     }
     

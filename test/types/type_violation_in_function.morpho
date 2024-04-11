@@ -1,0 +1,10 @@
+// Type definition in function
+
+fn f() {
+    String u 
+
+    u = Matrix(1)
+}
+
+f() 
+// expect error 'TypeErr'

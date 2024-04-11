@@ -136,6 +136,7 @@ typedef struct {
     bool iscaptured; /** Whether the register becomes an upvalue */
     unsigned int scopedepth; /** Scope depth at which the register was allocated */
     value symbol; /** Symbol associated with the register */
+    value type; /** Type associated with the register */
 } registeralloc;
 
 DECLARE_VARRAY(registeralloc, registeralloc)

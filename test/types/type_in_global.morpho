@@ -1,0 +1,7 @@
+// Check type 
+
+String a = "Foo"
+
+print a 
+// expect: Foo 
+

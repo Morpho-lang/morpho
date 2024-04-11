@@ -10,12 +10,8 @@
 #include "functiondefs.h"
 #include "file.h"
 #include "system.h"
+#include "geometry.h"
 #include "classes.h"
-
-#include "mesh.h"
-#include "selection.h"
-#include "functional.h"
-#include "field.h"
 
 /* **********************************************************************
  * Global data
@@ -59,20 +55,20 @@ static void builtin_init(objectbuiltinfunction *func) {
 bool builtin_enumerateloop(vm *v, value obj, builtin_loopfunction fn, void *ref) {
     value enumerate=MORPHO_NIL;
     value count=MORPHO_NIL, in=MORPHO_INTEGER(-1), val=MORPHO_NIL;
-    
+
     if (morpho_lookupmethod(obj, enumerateselector, &enumerate)) {
         if (!morpho_invoke(v, obj, enumerate, 1, &in, &count)) return false;
         if (!MORPHO_ISINTEGER(count)) return false;
-        
+
         for (indx i=0; i<MORPHO_GETINTEGERVALUE(count); i++) {
             in=MORPHO_INTEGER(i);
-            
+
             if (!morpho_invoke(v, obj, enumerate, 1, &in, &val)) return false;
-            
+
             if (!(*fn) (v, i, val, ref)) return false;
         }
     }
-    
+
     return true;
 }
 
@@ -87,15 +83,15 @@ bool builtin_options(vm *v, int nargs, value *args, int *nfixed, int noptions, .
     va_list optlist;
     va_start(optlist, noptions);
     int nposn=nargs;
-    
+
     for (unsigned int i=1; i<=nargs; i++) {
         if (MORPHO_ISSAME(args[i], vm_optmarker)) { nposn=i-1; break; }
     }
-    
+
     for (unsigned int i=0; i<noptions; i++) {
         value symbol = va_arg(optlist, value);
         value *dest = va_arg(optlist, value*);
-        
+
         for (int k=nposn+2; k<nargs; k+=2) {
             if (MORPHO_ISSAME(symbol, args[k])) {
                 *dest = args[k+1];
@@ -105,9 +101,9 @@ bool builtin_options(vm *v, int nargs, value *args, int *nfixed, int noptions, .
         // TODO: Should raise an error for unexpected options here by looking for arguments that are strings and unmanaged?
     }
     if (nfixed) *nfixed = nposn; // Exclude register 0
-    
+
     va_end(optlist);
-    
+
     return true;
 }
 
@@ -180,23 +176,23 @@ value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags
     objectbuiltinfunction *new = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
     value out = MORPHO_NIL;
     varray_valuewrite(&builtin_objects, MORPHO_OBJECT(new));
-    
+
     if (new) {
         builtin_init(new);
         new->function=func;
         new->name=object_stringfromcstring(name, strlen(name));
         new->flags=flags;
         out = MORPHO_OBJECT(new);
-        
+
         value selector = dictionary_intern(&builtin_symboltable, new->name);
-        
+
         if (dictionary_get(_currentfunctiontable, new->name, NULL)) {
             UNREACHABLE("Redefinition of function in same extension [in builtin.c]");
         }
-        
+
         dictionary_insert(_currentfunctiontable, selector, out);
     }
-    
+
     return out;
 }
 
@@ -222,16 +218,16 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
     objectclass *new = object_newclass(label);
     varray_valuewrite(&builtin_objects, MORPHO_OBJECT(new));
     objectclass *superklass = NULL;
-    
+
     if (!new) return MORPHO_NIL;
-    
+
     /** Copy methods from superclass */
     if (MORPHO_ISCLASS(superclass)) {
         superklass = MORPHO_GETCLASS(superclass);
         dictionary_copy(&superklass->methods, &new->methods);
         new->superclass=superklass;
     }
-    
+
     for (unsigned int i=0; desc[i].name!=NULL; i++) {
         if (desc[i].type==BUILTIN_METHOD) {
             objectbuiltinfunction *method = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
@@ -240,27 +236,27 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
             method->klass=new;
             method->name=object_stringfromcstring(desc[i].name, strlen(desc[i].name));
             method->flags=desc[i].flags;
-            
+
             value selector = dictionary_intern(&builtin_symboltable, method->name);
-            
+
             varray_valuewrite(&builtin_objects, MORPHO_OBJECT(method));
-            
+
             if (dictionary_get(&new->methods, method->name, NULL) &&
-                ( !superklass || // Ok to redefine methods in the superclass 
+                ( !superklass || // Ok to redefine methods in the superclass
                   !dictionary_get(&superklass->methods, method->name, NULL)) ) {
                 UNREACHABLE("redefinition of method in builtin class (check builtin.c)");
             }
-            
+
             dictionary_insert(&new->methods, selector, MORPHO_OBJECT(method));
         }
     }
-    
+
     if (dictionary_get(_currentclasstable, label, NULL)) {
         UNREACHABLE("Redefinition of class in same extension [in builtin.c]");
     }
-    
+
     dictionary_insert(_currentclasstable, label, MORPHO_OBJECT(new));
-    
+
     return MORPHO_OBJECT(new);
 }
 
@@ -309,18 +305,18 @@ void builtin_initialize(void) {
     dictionary_init(&builtin_classtable);
     dictionary_init(&builtin_symboltable);
     varray_valueinit(&builtin_objects);
-    
+
     builtin_setfunctiontable(&builtin_functiontable);
     builtin_setclasstable(&builtin_classtable);
-    
+
     // Initialize core object types
     objectstringtype=object_addtype(&objectstringdefn);
     objectclasstype=object_addtype(&objectclassdefn);
     objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
-    
+
     /* Initialize builtin classes and functions */
     instance_initialize(); // Must initialize first so that Object exists
-    
+
     string_initialize();  // Classes
     function_initialize();
     class_initialize();
@@ -334,27 +330,24 @@ void builtin_initialize(void) {
     complex_initialize();
     err_initialize();
     tuple_initialize();
-    
+
     float_initialize();// Veneer classes
     int_initialize();
-    
+
     file_initialize();
     system_initialize();
     json_initialize();
-    
+
     // Initialize function definitions
     functiondefs_initialize();
-    
+
     // Initialize linear algebra
     matrix_initialize();
     sparse_initialize();
-    
+
     // Initialize geometry
-    mesh_initialize();
-    selection_initialize();
-    field_initialize();
-    functional_initialize();
-    
+    geometry_initialize();
+
     morpho_addfinalizefn(builtin_finalize);
 }
 

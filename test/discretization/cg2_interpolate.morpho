@@ -1,0 +1,15 @@
+
+import meshtools 
+
+var m = LineMesh(fn (t) [t,0,0], 0..1) 
+
+var l = FunctionSpace("CG2", grade=1)
+
+var f = Field(m, fn (x,y,z) x^2, functionspace=l)
+print f 
+
+print LineIntegral(fn (x) 1-x[0]^20, method={ }).total(m)
+
+print LineIntegral(fn (x, g) 1-x[0]^20, f, method={ }).total(m)
+
+print LineIntegral(fn (x, g) 1-g^10, f, method={ }).total(m)

@@ -1,0 +1,13 @@
+
+import meshtools
+import "../numericalderivatives.morpho"
+
+var m = LineMesh(fn (t) [t,0,0], 0..1:0.5)
+
+// A line integral with only spatial dependence
+var lc = LineIntegral(fn (x) (x[0]*(1-x[0]))^2)
+
+var h = lc.hessian(m)
+var h2 = numericalhessian(lc, m)
+
+print (Matrix(h) - h2).norm() < 1e-5 // expect: true

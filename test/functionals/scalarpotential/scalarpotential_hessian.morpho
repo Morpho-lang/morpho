@@ -1,0 +1,15 @@
+
+import "../numericalderivatives.morpho"
+
+var m = Mesh("tetrahedron.mesh")
+
+fn phi(x,y,z) {
+  return x^2+y^2+z^2
+}
+
+var a = ScalarPotential(phi)
+
+var h = a.hessian() 
+var h2 = numericalhessian(a, m)
+
+//print (Matrix(h) - h2).norm() < 1e-5 // expect: true

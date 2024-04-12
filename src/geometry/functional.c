@@ -1594,6 +1594,8 @@ bool functional_numericalhessianmapfn(vm *v, objectmesh *mesh, elementid id, int
     bool success=true;
     functional_mapinfo *info=(functional_mapinfo *) ref;
     
+    // TODO: Exploit symmetry of hessian to reduce work
+    
     for (int i=0; i<nv; i++) {
         for (int j=0; j<nv; j++) {
             if (!functional_numericalhess(v, mesh, id, vid[i], vid[j], nv, vid, info->integrand, info->ref, out)) return false;

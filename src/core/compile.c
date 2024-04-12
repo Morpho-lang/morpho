@@ -1332,7 +1332,7 @@ compilenoderule noderules[] = {
 
     { compiler_print         },      // NODE_PRINT
     { compiler_declaration   },      // NODE_DECLARATION
-    { NODE_NORULE            },      // NODE_TYPE
+    { compiler_declaration   },      // NODE_TYPE
     { compiler_function      },      // NODE_FUNCTION
     { NODE_NORULE            },      // NODE_METHOD
     { compiler_class         },      // NODE_CLASS
@@ -2330,13 +2330,23 @@ static codeinfo compiler_logical(compiler *c, syntaxtreenode *node, registerindx
 
 /** Compile declarations */
 static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, registerindx reqout) {
-    syntaxtreenode *varnode = compiler_getnode(c, node->left);
+    syntaxtreenode *decnode = node;
+    syntaxtreenode *typenode = NULL;
+    
+    if (node->type==NODE_TYPE) {
+        typenode=compiler_getnode(c, node->left);
+        decnode=compiler_getnode(c, node->right);
+    }
+    
+    syntaxtreenode *varnode = NULL;
     syntaxtreenode *lftnode = NULL, *indxnode = NULL;
     codeinfo right;
     value var=MORPHO_NIL;
     registerindx reg;
     unsigned int ninstructions = 0;
-
+    
+    varnode=compiler_getnode(c, decnode->left);
+    
     /* Find the symbol */
     if (varnode) {
         if (varnode->type==NODE_SYMBOL) {
@@ -2368,7 +2378,7 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
         /* If this is an array, we must create it */
         if (indxnode) {
             /* Set up a call to the Array() function */
-            array=compiler_findbuiltin(c, node, ARRAY_CLASSNAME, reqout);
+            array=compiler_findbuiltin(c, decnode, ARRAY_CLASSNAME, reqout);
             ninstructions+=array.ninstructions;
 
             // Dimensions
@@ -2377,13 +2387,13 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
             ninstructions+=indxinfo.ninstructions;
 
             // Initializer
-            if (node->right!=SYNTAXTREE_UNCONNECTED) {
+            if (decnode->right!=SYNTAXTREE_UNCONNECTED) {
                 iend=compiler_regalloctop(c);
 
-                right = compiler_nodetobytecode(c, node->right, iend);
+                right = compiler_nodetobytecode(c, decnode->right, iend);
                 ninstructions+=right.ninstructions;
 
-                right=compiler_movetoregister(c, node, right, iend); // Ensure in register
+                right=compiler_movetoregister(c, decnode, right, iend); // Ensure in register
                 ninstructions+=right.ninstructions;
             }
 
@@ -2394,27 +2404,27 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
             compiler_regfreetoend(c, istart);
 
             if (vloc.returntype==REGISTER && array.dest!=vloc.dest) { // Move to correct register
-                codeinfo move=compiler_movetoregister(c, node, array, vloc.dest);
+                codeinfo move=compiler_movetoregister(c, decnode, array, vloc.dest);
                 ninstructions+=move.ninstructions;
             } else reg=array.dest;
 
         } else if (node->right!=SYNTAXTREE_UNCONNECTED) { /* Not an array, but has an initializer */
-            right = compiler_nodetobytecode(c, node->right, reg);
+            right = compiler_nodetobytecode(c, decnode->right, reg);
             ninstructions+=right.ninstructions;
 
             /* Ensure operand is in the desired register  */
-            right=compiler_movetoregister(c, node, right, reg);
+            right=compiler_movetoregister(c, decnode, right, reg);
             ninstructions+=right.ninstructions;
 
             compiler_releaseoperand(c, right);
         } else { /* Otherwise, we should zero out the register */
-            registerindx cnil = compiler_addconstant(c, node, MORPHO_NIL, false, false);
+            registerindx cnil = compiler_addconstant(c, decnode, MORPHO_NIL, false, false);
             compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, cnil), node);
             ninstructions++;
         }
 
         if (vloc.returntype!=REGISTER) {
-            codeinfo mv=compiler_movefromregister(c, node, vloc, reg);
+            codeinfo mv=compiler_movefromregister(c, decnode, vloc, reg);
             ninstructions+=mv.ninstructions;
 
             compiler_regfreetemp(c, reg);

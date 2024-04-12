@@ -64,6 +64,18 @@ bool parse_advance(parser *p) {
     return ERROR_SUCCEEDED(*p->err);
 }
 
+/** Saves the state of the parser and attached lexer */
+bool parse_savestate(parser *p, parser *op, lexer *ol) {
+    *ol = *p->lex; // Save the state of the parser and lexer
+    *op = *p;
+}
+
+/** Restores the parser from a saved position */
+bool parse_restorestate(parser *op, lexer *ol, parser *out) {
+    *out = *op;
+    *out->lex = *ol;
+}
+
 /** @brief Continues parsing while tokens have a lower or equal precendece than a specified value.
  *  @param   p    the parser in use
  *  @param   precendence precedence value to keep below or equal to
@@ -421,6 +433,11 @@ bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, voi
                     PARSE_CHECK(parse_symbol(p, &label));
                     
                     PARSE_CHECK(parse_addnode(p, NODE_TYPE, MORPHO_NIL, &start, current, label, &current));
+                } else if (parse_checktokenadvance(p, TOKEN_EQUAL)) { // Symbol followed by equals is an optional argument
+                    syntaxtreeindx val;
+                    PARSE_CHECK(parse_pseudoexpression(p, &val));
+                    
+                    PARSE_CHECK(parse_addnode(p, NODE_ASSIGN, MORPHO_NIL, &start, current, val, &current));
                 }
             } else PARSE_CHECK(parse_pseudoexpression(p, &current));
 
@@ -975,6 +992,32 @@ bool parse_vardeclaration(parser *p, void *out) {
     return true;
 }
 
+/** Parses a typed var declaration */
+bool parse_typedvardeclaration(parser *p, void *out) {
+    syntaxtreeindx new=SYNTAXTREE_UNCONNECTED;
+    token start = p->previous;
+    
+    lexer ol;
+    parser op;
+    parse_savestate(p, &op, &ol);
+    
+    parse_advance(p);
+    
+    if (parse_checktoken(p, TOKEN_SYMBOL)) { // It is a typed variable declaration
+        syntaxtreeindx type=SYNTAXTREE_UNCONNECTED, var=SYNTAXTREE_UNCONNECTED;
+        PARSE_CHECK(parse_symbol(p, &type));
+        PARSE_CHECK(parse_vardeclaration(p, &var));
+        PARSE_CHECK(parse_addnode(p, NODE_TYPE, MORPHO_NIL, &start, type, var, &new));
+    } else { // It was really an expression statement
+        parse_restorestate(&op, &ol, p);
+        PARSE_CHECK(parse_statement(p, &new));
+    }
+    
+    *((syntaxtreeindx *) out) = new;
+    
+    return true;
+}
+
 /** Parses a function declaration */
 bool parse_functiondeclaration(parser *p, void *out) {
     value name=MORPHO_NIL;
@@ -1444,9 +1487,9 @@ bool parse_declaration(parser *p, void *out) {
         success=parse_classdeclaration(p, out);
     } else if (parse_checktokenadvance(p, TOKEN_IMPORT)) {
         success=parse_importdeclaration(p, out);
-    } /*else if (parse_checktoken(p, TOKEN_SYMBOL)) {
-        // Detect Typed variable declarations here
-    } */else {
+    } else if (parse_checktoken(p, TOKEN_SYMBOL)) { // Typed var declaration ?
+        success=parse_typedvardeclaration(p, out);
+    } else {
         success=parse_statement(p, out);
     }
     

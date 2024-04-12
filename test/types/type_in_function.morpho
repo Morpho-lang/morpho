@@ -7,4 +7,4 @@ fn f() {
 }
 
 f() 
-// expect: Boo 
+// expect: Boo

@@ -3009,12 +3009,14 @@ FUNCTIONAL_INIT(LineTorsionSq, MESH_GRADE_LINE)
 FUNCTIONAL_METHOD(LineTorsionSq, integrand, MESH_GRADE_LINE, curvatureref, curvature_prepareref, functional_mapintegrand, linetorsionsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
 FUNCTIONAL_METHOD(LineTorsionSq, total, MESH_GRADE_LINE, curvatureref, curvature_prepareref, functional_sumintegrand, linetorsionsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
 FUNCTIONAL_METHOD(LineTorsionSq, gradient, MESH_GRADE_LINE, curvatureref, curvature_prepareref, functional_mapnumericalgradient, linetorsionsq_integrand, linetorsionsq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
+FUNCTIONAL_METHOD(LineTorsionSq, hessian, MESH_GRADE_LINE, curvatureref, curvature_prepareref, functional_mapnumericalhessian, linetorsionsq_integrand, linetorsionsq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(LineTorsionSq)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineTorsionSq_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LineTorsionSq_integrand, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineTorsionSq_gradient, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineTorsionSq_total, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineTorsionSq_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, LineTorsionSq_hessian, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------

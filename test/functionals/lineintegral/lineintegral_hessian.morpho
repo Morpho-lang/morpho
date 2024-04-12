@@ -2,7 +2,7 @@
 import meshtools
 import "../numericalderivatives.morpho"
 
-var m = LineMesh(fn (t) [t,0,0], 0..1:0.5)
+var m = LineMesh(fn (t) [t,0,0], 0..1:1)
 
 // A line integral with only spatial dependence
 var lc = LineIntegral(fn (x) (x[0]*(1-x[0]))^2)

@@ -1530,6 +1530,7 @@ bool functional_sparseaccumulate(objectsparse *A, int i, int j, double val) {
     }
     
     sparsedok_insert(&A->dok, i, j, MORPHO_FLOAT(f0+val));
+    return true;
 }
 
 /** Computes the contribution to the hessian of element eid with respect to vertices i and j */
@@ -1556,8 +1557,9 @@ bool functional_numericalhess(vm *v, objectmesh *mesh, elementid eid, elementid 
         }
         
         // Loop over coordinates in vertex j
-        for (unsigned int l=(i==j? k+1 : k); // Detect whether we're in an off diagonal block
+        for (unsigned int l=0; //(i==j? k+1 : k); // Detect whether we're in an off diagonal block
              l<mesh->dim; l++) {
+            if (i==j && k==l) continue;
             double fll,frr,flr,frl;
             
             matrix_getelement(mesh->vert, l, j, &y0);
@@ -1580,7 +1582,7 @@ bool functional_numericalhess(vm *v, objectmesh *mesh, elementid eid, elementid 
             matrix_setelement(mesh->vert, l, j, y0);
             
             functional_sparseaccumulate(hess, i*mesh->dim+k, j*mesh->dim+l, (frr + fll - flr - frl)/(4*epsx*epsy));
-            functional_sparseaccumulate(hess, j*mesh->dim+l, i*mesh->dim+k, (frr + fll - flr - frl)/(4*epsx*epsy));
+            //functional_sparseaccumulate(hess, j*mesh->dim+l, i*mesh->dim+k, (frr + fll - flr - frl)/(4*epsx*epsy));
         }
     }
     

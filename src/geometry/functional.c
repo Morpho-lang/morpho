@@ -1607,9 +1607,11 @@ bool functional_numericalhessianmapfn(vm *v, objectmesh *mesh, elementid id, int
         
         // Get list of vertices this element depends on
         if ((info->dependencies) (info, id, &dependencies)) {
-            for (int j=0; j<dependencies.count; j++) {
-                //if (functional_containsvertex(nv, vid, dependencies.data[j])) continue;
-                //if (!functional_numericalgrad(v, mesh, id, dependencies.data[j], nv, vid, info->integrand, info->ref, out)) success=false;
+            for (int i=0; i<dependencies.count; i++) {
+                for (int j=0; j<dependencies.count; j++) {
+                    if (functional_containsvertex(nv, vid, dependencies.data[i]) && functional_containsvertex(nv, vid, dependencies.data[j])) continue;
+                    if (!functional_numericalhess(v, mesh, id, dependencies.data[i], dependencies.data[j], nv, vid, info->integrand, info->ref, out)) success=false;
+                }
             }
         }
         
@@ -2638,6 +2640,8 @@ bool equielement_dependencies(functional_mapinfo *info, elementid id, varray_ele
     varray_elementid nbrs;
     varray_elementidinit(&nbrs);
 
+    // varray_elementidwrite(out, id); // EquiElement is a vertex element, and hence depends on itself
+    
     if (mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, eref->grade, &nbrs)>0) {
         for (unsigned int i=0; i<nbrs.count; i++) {
             int nentries, *entries; // Get the vertices for this element
@@ -2783,6 +2787,8 @@ bool linecurvsq_dependencies(functional_mapinfo *info, elementid id, varray_elem
     varray_elementid nbrs;
     varray_elementidinit(&nbrs);
 
+    varray_elementidwrite(out, id); // LinecurvSq is a vertex element, and hence depends on itself
+    
     if (mesh_findneighbors(mesh, MESH_GRADE_VERTEX, id, MESH_GRADE_LINE, &nbrs)>0) {
         for (unsigned int i=0; i<nbrs.count; i++) {
             int nentries, *entries; // Get the vertices for this edge

@@ -992,12 +992,12 @@ bool parse_vardeclaration(parser *p, void *out) {
     return true;
 }
 
-/** Parses a typed var declaration */
+/** Parses a possible typed var declaration */
 bool parse_typedvardeclaration(parser *p, void *out) {
     syntaxtreeindx new=SYNTAXTREE_UNCONNECTED;
     token start = p->previous;
     
-    lexer ol;
+    lexer ol; // Store the state of the parser
     parser op;
     parse_savestate(p, &op, &ol);
     
@@ -1008,7 +1008,7 @@ bool parse_typedvardeclaration(parser *p, void *out) {
         PARSE_CHECK(parse_symbol(p, &type));
         PARSE_CHECK(parse_vardeclaration(p, &var));
         PARSE_CHECK(parse_addnode(p, NODE_TYPE, MORPHO_NIL, &start, type, var, &new));
-    } else { // It was really an expression statement
+    } else { // It was really an expression statement 
         parse_restorestate(&op, &ol, p);
         PARSE_CHECK(parse_statement(p, &new));
     }

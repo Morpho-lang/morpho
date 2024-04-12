@@ -137,6 +137,7 @@ typedef struct {
     unsigned int scopedepth; /** Scope depth at which the register was allocated */
     value symbol; /** Symbol associated with the register */
     value type; /** Type associated with the register */
+    value currenttype; /** Current type held by the register */
 } registeralloc;
 
 DECLARE_VARRAY(registeralloc, registeralloc)

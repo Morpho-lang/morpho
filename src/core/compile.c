@@ -356,12 +356,30 @@ static bool compiler_inloop(compiler *c) {
 }
 
 /* ------------------------------------------
+ * Types
+ * ------------------------------------------- */
+
+/** Identifies a type from a label */
+bool compiler_findtype(compiler *c, value label, value *out) {
+    value type=MORPHO_NIL;
+    
+    objectclass *clss=compiler_findclass(c, label); // A class we defined
+    if (clss) {
+        type = MORPHO_OBJECT(clss);
+    } else type = builtin_findclass(label); // Or a built in one
+    
+    if (!MORPHO_ISNIL(type)) *out = type;
+    
+    return (!MORPHO_ISNIL(type));
+}
+
+/* ------------------------------------------
  * Register allocation and deallocation
  * ------------------------------------------- */
 
 /** Finds a free register in the current function state and claims it */
 static registerindx compiler_regallocwithstate(compiler *c, functionstate *f, value symbol) {
-    registeralloc r = (registeralloc) {.isallocated=true, .iscaptured=false, .scopedepth=f->scopedepth, .symbol=symbol};
+    registeralloc r = (registeralloc) {.isallocated=true, .iscaptured=false, .scopedepth=f->scopedepth, .symbol=symbol, .type=MORPHO_NIL, .currenttype=MORPHO_NIL };
     registerindx i = REGISTER_UNALLOCATED;
 
     if (compiler_inargs(c)) {
@@ -415,7 +433,7 @@ static void compiler_regsetsymbol(compiler *c, registerindx reg, value symbol) {
 static registerindx compiler_regalloctop(compiler *c) {
     functionstate *f = compiler_currentfunctionstate(c);
     registerindx i = REGISTER_UNALLOCATED;
-    registeralloc r = (registeralloc) {.isallocated=true, .iscaptured=false, .scopedepth=f->scopedepth, .symbol=MORPHO_NIL};
+    registeralloc r = (registeralloc) {.isallocated=true, .iscaptured=false, .scopedepth=f->scopedepth, .symbol=MORPHO_NIL, .type=MORPHO_NIL, .currenttype=MORPHO_NIL};
 
     /* Search backwards from the end to find the register AFTER
        the last allocated register */
@@ -467,6 +485,8 @@ static void compiler_regfree(compiler *c, functionstate *f, registerindx reg) {
             debugannotation_setreg(&c->out->annotations, reg, MORPHO_NIL);
         }
         f->registers.data[reg].symbol=MORPHO_NIL;
+        f->registers.data[reg].type=MORPHO_NIL;
+        f->registers.data[reg].currenttype=MORPHO_NIL;
     }
 }
 
@@ -506,6 +526,13 @@ static void compiler_regfreeatscope(compiler *c, unsigned int scopedepth) {
             compiler_regfree(c, f, i);
         }
     }
+}
+
+/** Sets the type associated with a register */
+void compiler_regsettype(compiler *c, registerindx reg, value type) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (reg>=f->registers.count) return;
+    f->registers.data[reg].type=type;
 }
 
 /** @brief Finds the register that contains symbol in a given functionstate
@@ -611,6 +638,11 @@ static void compiler_regshow(compiler *c) {
             if (r->iscaptured) printf(" (captured)");
         } else {
             printf("unallocated");
+        }
+        if (!MORPHO_ISNIL(r->type)) {
+            printf(" [");
+            morpho_printvalue(NULL, r->type);
+            printf("]");
         }
         printf("\n");
     }
@@ -2341,7 +2373,7 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
     syntaxtreenode *varnode = NULL;
     syntaxtreenode *lftnode = NULL, *indxnode = NULL;
     codeinfo right;
-    value var=MORPHO_NIL;
+    value var=MORPHO_NIL, type=MORPHO_NIL;
     registerindx reg;
     unsigned int ninstructions = 0;
     
@@ -2375,6 +2407,11 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
             reg=compiler_regtemp(c, REGISTER_UNALLOCATED);
         }
 
+        if (typenode &&
+            compiler_findtype(c, typenode->content, &type)) {
+            compiler_regsettype(c, reg, type);
+        }
+        
         /* If this is an array, we must create it */
         if (indxnode) {
             /* Set up a call to the Array() function */

@@ -291,6 +291,56 @@ objectclass *compiler_findclass(compiler *c, value name) {
 }
 
 /* ------------------------------------------
+ * Types
+ * ------------------------------------------- */
+
+/** Identifies a type from a label */
+bool compiler_findtype(compiler *c, value label, value *out) {
+    value type=MORPHO_NIL;
+    
+    objectclass *clss=compiler_findclass(c, label); // A class we defined
+    if (clss) {
+        type = MORPHO_OBJECT(clss);
+    } else type = builtin_findclass(label); // Or a built in one
+    
+    if (!MORPHO_ISNIL(type)) *out = type;
+    
+    return (!MORPHO_ISNIL(type));
+}
+
+/** Identifies a type from a value */
+bool compiler_typefromvalue(compiler *c, value v, value *out) {
+    objectclass *clss = NULL;
+    value type = MORPHO_NIL;
+    
+    if (MORPHO_ISINSTANCE(v)) {
+        clss=MORPHO_GETINSTANCE(v)->klass;
+    } else if (MORPHO_ISOBJECT(v)) {
+        clss = object_getveneerclass(MORPHO_GETOBJECT(v)->type);
+    } else type = value_getveneerclass(v);
+    
+    if (clss) type = MORPHO_OBJECT(clss);
+    
+    if (!MORPHO_ISNIL(type)) *out = type;
+    
+    return (!MORPHO_ISNIL(type));
+}
+
+/** Checks if type "match" matches a given type "type"  */
+bool compiler_checktype(compiler *c, value type, value match) {
+    if (MORPHO_ISNIL(type) || // If type is unset, we always match
+        MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same
+    
+    return false;
+}
+
+/** Determines the type associated with a constant */
+bool compiler_getconstanttype(compiler *c, unsigned int i, value *type) {
+    value val = compiler_getconstant(c, i);
+    return compiler_typefromvalue(c, val, type);
+}
+
+/* ------------------------------------------
  * Modules
  * ------------------------------------------- */
 
@@ -353,24 +403,6 @@ static void compiler_endloop(compiler *c) {
 static bool compiler_inloop(compiler *c) {
     functionstate *f = compiler_currentfunctionstate(c);
     return (f->loopdepth>0);
-}
-
-/* ------------------------------------------
- * Types
- * ------------------------------------------- */
-
-/** Identifies a type from a label */
-bool compiler_findtype(compiler *c, value label, value *out) {
-    value type=MORPHO_NIL;
-    
-    objectclass *clss=compiler_findclass(c, label); // A class we defined
-    if (clss) {
-        type = MORPHO_OBJECT(clss);
-    } else type = builtin_findclass(label); // Or a built in one
-    
-    if (!MORPHO_ISNIL(type)) *out = type;
-    
-    return (!MORPHO_ISNIL(type));
 }
 
 /* ------------------------------------------
@@ -533,6 +565,17 @@ void compiler_regsettype(compiler *c, registerindx reg, value type) {
     functionstate *f = compiler_currentfunctionstate(c);
     if (reg>=f->registers.count) return;
     f->registers.data[reg].type=type;
+}
+
+/** Sets the current type of a register. Raises a type violation error if this is not compatible with the required type  */
+bool compiler_regsetcurrenttype(compiler *c, syntaxtreenode *node, registerindx reg, value type) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (reg>=f->registers.count) return false;
+    
+    if (compiler_checktype(c, f->registers.data[reg].type, type)) return true;
+    
+    compiler_error(c, node, COMPILE_TYPEVIOLATION);
+    return false;
 }
 
 /** @brief Finds the register that contains symbol in a given functionstate
@@ -829,14 +872,19 @@ static registerindx compiler_getlocal(compiler *c, value symbol) {
  *  @param   reg    destination register, or REGISTER_UNALLOCATED to allocate a new one
  *  @returns Number of instructions generated */
 static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codeinfo info, registerindx reg) {
+    value type = MORPHO_NIL;
     codeinfo out = info;
     out.ninstructions=0;
 
     if (CODEINFO_ISCONSTANT(info)) {
         out.returntype=REGISTER;
         out.dest=compiler_regtemp(c, reg);
+        
+        if (compiler_getconstanttype(c, info.dest, &type)) {
+            compiler_regsetcurrenttype(c, node, out.dest, type);
+        }
+        
         compiler_addinstruction(c, ENCODE_LONG(OP_LCT, out.dest, info.dest), node);
-
         out.ninstructions++;
     } else if (CODEINFO_ISUPVALUE(info)) {
         /* Move upvalues */
@@ -3782,6 +3830,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_VARPRMLST, ERROR_COMPILE, COMPILE_VARPRMLST_MSG);
     morpho_defineerror(COMPILE_INVLDLBL, ERROR_COMPILE, COMPILE_INVLDLBL_MSG);
     morpho_defineerror(COMPILE_MSSNGINDX, ERROR_COMPILE, COMPILE_MSSNGINDX_MSG);
+    morpho_defineerror(COMPILE_TYPEVIOLATION, ERROR_COMPILE, COMPILE_TYPEVIOLATION_MSG);
     
     morpho_addfinalizefn(compile_finalize);
 }

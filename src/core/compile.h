@@ -105,6 +105,9 @@
 #define COMPILE_MSSNGINDX                 "MssngIndx"
 #define COMPILE_MSSNGINDX_MSG             "Missing index or indices."
 
+#define COMPILE_TYPEVIOLATION             "TypErr"
+#define COMPILE_TYPEVIOLATION_MSG         "Type violation."
+
 /* **********************************************************************
  * Compiler typedefs
  * ********************************************************************** */

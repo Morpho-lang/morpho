@@ -105,7 +105,7 @@
 #define COMPILE_MSSNGINDX                 "MssngIndx"
 #define COMPILE_MSSNGINDX_MSG             "Missing index or indices."
 
-#define COMPILE_TYPEVIOLATION             "TypErr"
+#define COMPILE_TYPEVIOLATION             "TypeErr"
 #define COMPILE_TYPEVIOLATION_MSG         "Type violation: Attempting to assign type %s to %s variable %s."
 
 /* **********************************************************************
@@ -142,6 +142,8 @@ typedef struct {
     value type; /** Type associated with the register */
     value currenttype; /** Current type held by the register */
 } registeralloc;
+
+#define REGISTERALLOC_EMPTY(sdepth, symb) ((registeralloc) {.isallocated=true, .iscaptured=false, .scopedepth=sdepth, .symbol=symb, .type=MORPHO_NIL, .currenttype=MORPHO_NIL})
 
 DECLARE_VARRAY(registeralloc, registeralloc)
 

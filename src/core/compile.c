@@ -417,7 +417,7 @@ static bool compiler_inloop(compiler *c) {
 
 /** Finds a free register in the current function state and claims it */
 static registerindx compiler_regallocwithstate(compiler *c, functionstate *f, value symbol) {
-    registeralloc r = (registeralloc) {.isallocated=true, .iscaptured=false, .scopedepth=f->scopedepth, .symbol=symbol, .type=MORPHO_NIL, .currenttype=MORPHO_NIL };
+    registeralloc r = REGISTERALLOC_EMPTY(f->scopedepth, symbol);
     registerindx i = REGISTER_UNALLOCATED;
 
     if (compiler_inargs(c)) {
@@ -471,7 +471,7 @@ static void compiler_regsetsymbol(compiler *c, registerindx reg, value symbol) {
 static registerindx compiler_regalloctop(compiler *c) {
     functionstate *f = compiler_currentfunctionstate(c);
     registerindx i = REGISTER_UNALLOCATED;
-    registeralloc r = (registeralloc) {.isallocated=true, .iscaptured=false, .scopedepth=f->scopedepth, .symbol=MORPHO_NIL, .type=MORPHO_NIL, .currenttype=MORPHO_NIL};
+    registeralloc r = REGISTERALLOC_EMPTY(f->scopedepth, MORPHO_NIL);
 
     /* Search backwards from the end to find the register AFTER
        the last allocated register */
@@ -500,7 +500,7 @@ static registerindx compiler_regtemp(compiler *c, registerindx reqreg) {
 static registerindx compiler_regtempwithindx(compiler *c, registerindx reg) {
     functionstate *f = compiler_currentfunctionstate(c);
     if (reg>=f->registers.count) {
-        registeralloc empty = (registeralloc) {.isallocated=false, .iscaptured=false, .scopedepth=f->scopedepth, .symbol=MORPHO_NIL};
+        registeralloc empty = REGISTERALLOC_EMPTY(f->scopedepth, MORPHO_NIL);
         while (reg>=f->registers.count) {
             if (!varray_registerallocadd(&f->registers, &empty, 1)) break;
             if (f->registers.count>f->nreg) f->nreg=f->registers.count;
@@ -1535,6 +1535,11 @@ static codeinfo compiler_dictionary(compiler *c, syntaxtreenode *node, registeri
     /* Set up a call to the Dictionary() function */
     codeinfo out = compiler_findbuiltin(c, node, DICTIONARY_CLASSNAME, reqout);
 
+    value dicttype=MORPHO_NIL; /* Set the type associated with the register */
+    if (compiler_findtypefromcstring(c, DICTIONARY_CLASSNAME, &dicttype)) {
+        if (!compiler_regsetcurrenttype(c, node, out.dest, dicttype)) return CODEINFO_EMPTY;
+    }
+    
     varray_syntaxtreeindxinit(&entries);
     /* Flatten all the child nodes; these end up as a sequence: key, val, key, val, ... */
     if (node->left!=SYNTAXTREE_UNCONNECTED) syntaxtree_flatten(compiler_getsyntaxtree(c), node->left, 2, dictentrytype, &entries);
@@ -1582,6 +1587,11 @@ static codeinfo compiler_range(compiler *c, syntaxtreenode *node, registerindx r
 
     /* Set up a call to the Range() function */
     codeinfo rng = compiler_findbuiltin(c, node, RANGE_CLASSNAME, reqout);
+    
+    value rngtype=MORPHO_NIL; /* Set the type associated with the register */
+    if (compiler_findtypefromcstring(c, RANGE_CLASSNAME, &rngtype)) {
+        if (!compiler_regsetcurrenttype(c, node, rng.dest, rngtype)) return CODEINFO_EMPTY;
+    }
 
     /* Construct the arguments */
     unsigned int n;

@@ -106,7 +106,7 @@
 #define COMPILE_MSSNGINDX_MSG             "Missing index or indices."
 
 #define COMPILE_TYPEVIOLATION             "TypErr"
-#define COMPILE_TYPEVIOLATION_MSG         "Type violation."
+#define COMPILE_TYPEVIOLATION_MSG         "Type violation: Attempting to assign type %s to %s variable %s."
 
 /* **********************************************************************
  * Compiler typedefs

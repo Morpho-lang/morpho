@@ -308,6 +308,12 @@ bool compiler_findtype(compiler *c, value label, value *out) {
     return (!MORPHO_ISNIL(type));
 }
 
+/** Identify a type from a label */
+bool compiler_findtypefromcstring(compiler *c, char *label, value *out) {
+    objectstring str = MORPHO_STATICSTRING(label);
+    return compiler_findtype(c, MORPHO_OBJECT(&str), out);
+}
+
 /** Identifies a type from a value */
 bool compiler_typefromvalue(compiler *c, value v, value *out) {
     objectclass *clss = NULL;
@@ -317,7 +323,7 @@ bool compiler_typefromvalue(compiler *c, value v, value *out) {
         clss=MORPHO_GETINSTANCE(v)->klass;
     } else if (MORPHO_ISOBJECT(v)) {
         clss = object_getveneerclass(MORPHO_GETOBJECT(v)->type);
-    } else type = value_getveneerclass(v);
+    } else clss = value_getveneerclass(v);
     
     if (clss) type = MORPHO_OBJECT(clss);
     
@@ -567,14 +573,30 @@ void compiler_regsettype(compiler *c, registerindx reg, value type) {
     f->registers.data[reg].type=type;
 }
 
+/** Raises a type violation error */
+void compiler_typeviolation(compiler *c, syntaxtreenode *node, value type, value badtype, value symbol) {
+    char *tname="(unknown)", *bname="(unknown)";
+    char *sym="";
+
+    if (MORPHO_ISCLASS(type)) tname=MORPHO_GETCSTRING(MORPHO_GETCLASS(type)->name);
+    if (MORPHO_ISCLASS(badtype)) bname=MORPHO_GETCSTRING(MORPHO_GETCLASS(badtype)->name);
+    if (MORPHO_ISSTRING(symbol)) sym = MORPHO_GETCSTRING(symbol);
+    
+    compiler_error(c, node, COMPILE_TYPEVIOLATION, bname, tname, sym);
+}
+
 /** Sets the current type of a register. Raises a type violation error if this is not compatible with the required type  */
 bool compiler_regsetcurrenttype(compiler *c, syntaxtreenode *node, registerindx reg, value type) {
     functionstate *f = compiler_currentfunctionstate(c);
     if (reg>=f->registers.count) return false;
     
-    if (compiler_checktype(c, f->registers.data[reg].type, type)) return true;
+    if (compiler_checktype(c, f->registers.data[reg].type, type)) {
+        f->registers.data[reg].currenttype=type;
+        return true;
+    }
     
-    compiler_error(c, node, COMPILE_TYPEVIOLATION);
+    compiler_typeviolation(c, node, f->registers.data[reg].type, type, f->registers.data[reg].symbol);
+    
     return false;
 }
 
@@ -686,6 +708,10 @@ static void compiler_regshow(compiler *c) {
             printf(" [");
             morpho_printvalue(NULL, r->type);
             printf("]");
+        }
+        if (!MORPHO_ISNIL(r->currenttype)) {
+            printf(" contains: ");
+            morpho_printvalue(NULL, r->currenttype);
         }
         printf("\n");
     }
@@ -1465,6 +1491,11 @@ static codeinfo compiler_list(compiler *c, syntaxtreenode *node, registerindx re
     char *classname = LIST_CLASSNAME;
     if (node->type==NODE_TUPLE) classname = TUPLE_CLASSNAME;
     codeinfo out = compiler_findbuiltin(c, node, classname, reqout);
+    
+    value listtype=MORPHO_NIL; /* Set the type associated with the register */
+    if (compiler_findtypefromcstring(c, classname, &listtype)) {
+        if (!compiler_regsetcurrenttype(c, node, out.dest, listtype)) return CODEINFO_EMPTY;
+    }
 
     varray_syntaxtreeindxinit(&entries);
     if (node->right!=SYNTAXTREE_UNCONNECTED) syntaxtree_flatten(compiler_getsyntaxtree(c), node->right, 1, dictentrytype, &entries);
@@ -2493,7 +2524,7 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
                 ninstructions+=move.ninstructions;
             } else reg=array.dest;
 
-        } else if (node->right!=SYNTAXTREE_UNCONNECTED) { /* Not an array, but has an initializer */
+        } else if (decnode->right!=SYNTAXTREE_UNCONNECTED) { /* Not an array, but has an initializer */
             right = compiler_nodetobytecode(c, decnode->right, reg);
             ninstructions+=right.ninstructions;
 

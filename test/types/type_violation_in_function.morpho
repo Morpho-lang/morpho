@@ -1,9 +1,9 @@
-// Type definition in function
+// Type violation in function
 
 fn f() {
     String u 
 
-    u = Matrix(1)
+    u = []
 }
 
 f() 

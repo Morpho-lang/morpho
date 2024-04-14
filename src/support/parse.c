@@ -65,13 +65,13 @@ bool parse_advance(parser *p) {
 }
 
 /** Saves the state of the parser and attached lexer */
-bool parse_savestate(parser *p, parser *op, lexer *ol) {
+void parse_savestate(parser *p, parser *op, lexer *ol) {
     *ol = *p->lex; // Save the state of the parser and lexer
     *op = *p;
 }
 
 /** Restores the parser from a saved position */
-bool parse_restorestate(parser *op, lexer *ol, parser *out) {
+void parse_restorestate(parser *op, lexer *ol, parser *out) {
     *out = *op;
     *out->lex = *ol;
 }

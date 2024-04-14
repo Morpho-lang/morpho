@@ -569,7 +569,7 @@ static void compiler_regfreeatscope(compiler *c, unsigned int scopedepth) {
 /** Sets the type associated with a register */
 void compiler_regsettype(compiler *c, registerindx reg, value type) {
     functionstate *f = compiler_currentfunctionstate(c);
-    if (reg>=f->registers.count) return;
+    if (reg<0 || reg>=f->registers.count) return;
     f->registers.data[reg].type=type;
 }
 
@@ -2571,16 +2571,27 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
 }
 
 /** Compiles an parameter declaration */
-static void compiler_functionparameters(compiler *c, syntaxtreeindx indx) {
+static registerindx compiler_functionparameters(compiler *c, syntaxtreeindx indx) {
     syntaxtreenode *node = compiler_getnode(c, indx);
-    if (!node) return;
+    if (!node) return REGISTER_UNALLOCATED;
 
     switch(node->type) {
         case NODE_SYMBOL:
         {
             if (!compiler_hasvariadicarg(c)) {
-                compiler_addlocal(c, node, node->content);
+                return compiler_addlocal(c, node, node->content);
             } else compiler_error(c, node, COMPILE_VARPRMLST);
+        }
+            break;
+        case NODE_TYPE:
+        {
+            value type=MORPHO_NIL;
+            syntaxtreenode *typenode = compiler_getnode(c, node->left);
+            compiler_findtype(c, typenode->content, &type);
+            
+            registerindx reg = compiler_functionparameters(c, node->right);
+            compiler_regsettype(c, reg, type);
+            compiler_regsetcurrenttype(c, node, reg, type);
         }
             break;
         case NODE_ASSIGN:
@@ -2610,6 +2621,8 @@ static void compiler_functionparameters(compiler *c, syntaxtreeindx indx) {
             compiler_error(c, node, COMPILE_ARGSNOTSYMBOLS);
             break;
     }
+    
+    return REGISTER_UNALLOCATED;;
 }
 
 value _selfsymbol;
@@ -2834,10 +2847,16 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
 
     compiler_beginargs(c);
     
-    /* Compile the function selector */
+    // Compile the function selector
     syntaxtreenode *selnode=compiler_getnode(c, node->left);
     codeinfo func = compiler_nodetobytecode(c, node->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
 
+    // Check if this a constructor?
+    value rtype=MORPHO_NIL;
+    if (selnode->type==NODE_SYMBOL) {
+        compiler_findtype(c, selnode->content, &rtype);
+    }
+    
     // Detect possible forward reference
     if (selnode->type==NODE_SYMBOL && compiler_catch(c, COMPILE_SYMBOLNOTDEFINED)) {
         syntaxtreenode *symbol=compiler_getnode(c, node->left);
@@ -2875,11 +2894,14 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
 
     /* Free all the registers used for the call */
     compiler_regfreetoend(c, func.dest+1);
+    
+    /* Set the current type of the register */
+    compiler_regsetcurrenttype(c, selnode, func.dest, rtype);
 
     /* Move the result to the requested register */
     if (reqout!=REGISTER_UNALLOCATED && func.dest!=reqout) {
-        compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, reqout, func.dest), node);
-        ninstructions++;
+        codeinfo mv = compiler_movetoregister(c, node, func, reqout);
+        ninstructions+=mv.ninstructions;
         compiler_regfreetemp(c, func.dest);
         func.dest=reqout;
     }

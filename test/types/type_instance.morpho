@@ -4,4 +4,4 @@ class A { }
 
 A a = A()
 
-print a 
+print a // expect: <A>

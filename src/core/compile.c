@@ -600,6 +600,14 @@ bool compiler_regsetcurrenttype(compiler *c, syntaxtreenode *node, registerindx 
     return false;
 }
 
+/** Gets the current type of a register */
+bool compiler_regcurrenttype(compiler *c, registerindx reg, value *type) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (reg>=f->registers.count) return false;
+    *type = f->registers.data[reg].currenttype;
+    return true;
+}
+
 /** @brief Finds the register that contains symbol in a given functionstate
  *  @details Searches backwards so that the innermost scope has priority */
 static registerindx compiler_findsymbol(functionstate *f, value symbol) {
@@ -933,6 +941,8 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         }
 
         if (out.dest!=info.dest) {
+            if (compiler_regcurrenttype(c, info.dest, &type)) compiler_regsetcurrenttype(c, node, out.dest, type);
+            
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, out.dest, info.dest), node);
             out.ninstructions++;
         }
@@ -2823,7 +2833,7 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     registerindx top=compiler_regtop(c);
 
     compiler_beginargs(c);
-
+    
     /* Compile the function selector */
     syntaxtreenode *selnode=compiler_getnode(c, node->left);
     codeinfo func = compiler_nodetobytecode(c, node->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));

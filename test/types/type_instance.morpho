@@ -1,0 +1,7 @@
+// Check type of an instance
+
+class A { } 
+
+A a = A()
+
+print a 

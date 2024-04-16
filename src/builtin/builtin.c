@@ -323,6 +323,7 @@ void builtin_initialize(void) {
     
     string_initialize();  // Classes
     function_initialize();
+    metafunction_initialize();
     class_initialize();
     upvalue_initialize();
     invocation_initialize();

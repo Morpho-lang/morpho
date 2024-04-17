@@ -19,6 +19,8 @@ extern objecttype objectmetafunctiontype;
 /** A metafunction object */
 typedef struct sobjectmetafunction {
     object obj;
+    value name;
+    varray_value fns; 
 } objectmetafunction;
 
 /** Gets an objectmetafunction from a value */
@@ -40,6 +42,11 @@ typedef struct sobjectmetafunction {
 /* -------------------------------------------------------
  * Metafunction interface
  * ------------------------------------------------------- */
+
+objectmetafunction *object_newmetafunction(value name);
+
+bool metafunction_add(objectmetafunction *f, value fn);
+bool metafunction_resolve(objectmetafunction *f, int nargs, value *args, value *fn);
 
 void metafunction_initialize(void);
 

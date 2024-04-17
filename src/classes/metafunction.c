@@ -13,7 +13,8 @@
  * ********************************************************************** */
 
 void objectmetafunction_freefn(object *obj) {
-    objectmetafunction *func = (objectmetafunction *) obj;
+    objectmetafunction *f = (objectmetafunction *) obj;
+    varray_valueclear(f->fns);
 }
 
 void objectmetafunction_markfn(object *obj, void *v) {
@@ -21,12 +22,13 @@ void objectmetafunction_markfn(object *obj, void *v) {
 }
 
 size_t objectmetafunction_sizefn(object *obj) {
-    return sizeof(objectmetafunction);
+    objectmetafunction *f = (objectmetafunction *) obj;
+    return sizeof(objectmetafunction)+sizeof(value)*f->fns.count;
 }
 
 void objectmetafunction_printfn(object *obj, void *v) {
     objectmetafunction *f = (objectmetafunction *) obj;
-    //if (f) morpho_printf(v, "<fn %s>", (MORPHO_ISNIL(f->name) ? "" : MORPHO_GETCSTRING(f->name)));
+    if (f) morpho_printf(v, "<fn %s>", (MORPHO_ISNIL(f->name) ? "" : MORPHO_GETCSTRING(f->name)));
 }
 
 objecttypedefn objectmetafunctiondefn = {
@@ -42,6 +44,28 @@ objecttypedefn objectmetafunctiondefn = {
  * objectmetafunction utility functions
  * ********************************************************************** */
 
+/** Creates a new metafunction */
+objectmetafunction *object_newmetafunction(value name) {
+    objectmetafunction *new = (objectmetafunction *) object_new(sizeof(objectmetafunction), OBJECT_LIST);
+
+    if (new) {
+        new->name=MORPHO_NIL;
+        if (MORPHO_ISSTRING(name)) new->name=object_clonestring(name);
+        varray_valueinit(new->fns);
+    }
+
+    return new;
+}
+
+/** Adds a function to a metafunction */
+bool metafunction_add(objectmetafunction *f, value fn) {
+    return varray_valuewrite(&f->fns, fn);
+}
+
+/** Resolves a metafunction given calling arguments */
+bool metafunction_resolve(objectmetafunction *f, int nargs, value *args, value *fn) {
+    return false;
+}
 
 /* **********************************************************************
  * Metafunction veneer class

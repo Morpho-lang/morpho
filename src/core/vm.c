@@ -1051,6 +1051,7 @@ callfunction: // Jump here if an instruction becomes a call
                     /* If we're not in the global context, invoke the method on self which is in r0 */
                     if (v->fp>v->frame) reg[a]=reg[0]; /* Copy self into r[a] and call */
 
+                    invoke_on_class:
                     if (MORPHO_ISFUNCTION(ifunc)) {
                         if (!vm_call(v, ifunc, a, c, NULL, &pc, &reg)) goto vm_error;
                     } else if (MORPHO_ISBUILTINFUNCTION(ifunc)) {
@@ -1064,6 +1065,8 @@ callfunction: // Jump here if an instruction becomes a call
                         v->fp->inbuiltinfunction=NULL;
 #endif
                         ERRORCHK();
+                    } else if (MORPHO_ISMETAFUNCTION(ifunc)) {
+                        if (metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &ifunc)) goto invoke_on_class;
                     }
                 } else {
                     /* Otherwise, raise an error */
@@ -1692,7 +1695,7 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
         fn=inv->method;
         r0=inv->receiver;
     }
-
+    
     if (MORPHO_ISBUILTINFUNCTION(fn)) {
         objectbuiltinfunction *f = MORPHO_GETBUILTINFUNCTION(fn);
 

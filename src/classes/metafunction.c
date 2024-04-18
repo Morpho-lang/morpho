@@ -14,7 +14,7 @@
 
 void objectmetafunction_freefn(object *obj) {
     objectmetafunction *f = (objectmetafunction *) obj;
-    varray_valueclear(f->fns);
+    varray_valueclear(&f->fns);
 }
 
 void objectmetafunction_markfn(object *obj, void *v) {
@@ -46,15 +46,28 @@ objecttypedefn objectmetafunctiondefn = {
 
 /** Creates a new metafunction */
 objectmetafunction *object_newmetafunction(value name) {
-    objectmetafunction *new = (objectmetafunction *) object_new(sizeof(objectmetafunction), OBJECT_LIST);
+    objectmetafunction *new = (objectmetafunction *) object_new(sizeof(objectmetafunction), OBJECT_METAFUNCTION);
 
     if (new) {
         new->name=MORPHO_NIL;
         if (MORPHO_ISSTRING(name)) new->name=object_clonestring(name);
-        varray_valueinit(new->fns);
+        varray_valueinit(&new->fns);
     }
 
     return new;
+}
+
+/** Wraps a function in a metafunction */
+bool metafunction_wrap(value name, value fn, value *out) {
+    if (!MORPHO_ISCALLABLE(fn)) return false;
+    
+    objectmetafunction *mf = object_newmetafunction(name);
+    if (!mf) return false;
+    
+    metafunction_add(mf, fn);
+    *out = MORPHO_OBJECT(mf);
+    
+    return true;
 }
 
 /** Adds a function to a metafunction */
@@ -62,8 +75,44 @@ bool metafunction_add(objectmetafunction *f, value fn) {
     return varray_valuewrite(&f->fns, fn);
 }
 
+/** Extracts a type from a value */
+bool metafunction_typefromvalue(value v, value *out) {
+    objectclass *clss = NULL;
+    value type = MORPHO_NIL;
+    
+    if (MORPHO_ISINSTANCE(v)) {
+        clss=MORPHO_GETINSTANCE(v)->klass;
+    } else if (MORPHO_ISOBJECT(v)) {
+        clss = object_getveneerclass(MORPHO_GETOBJECT(v)->type);
+    } else clss = value_getveneerclass(v);
+    
+    if (clss) *out = MORPHO_OBJECT(clss);
+    return clss;
+}
+
+/** Checks if val matches a given type */
+bool metafunction_matchtype(value type, value val) {
+    value match;
+    if (!metafunction_typefromvalue(val, &match)) return false;
+    
+    if (MORPHO_ISNIL(type) || // If type is unset, we always match
+        MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same
+    
+    return false;
+}
+
 /** Resolves a metafunction given calling arguments */
-bool metafunction_resolve(objectmetafunction *f, int nargs, value *args, value *fn) {
+bool metafunction_resolve(objectmetafunction *f, int nargs, value *args, value *out) {
+    for (int i=0; i<f->fns.count; i++) {
+        objectfunction *fn = MORPHO_GETFUNCTION(f->fns.data[i]);
+        if (nargs!=fn->nargs) continue;
+        bool match=true;
+        for (int j=0; j<fn->signature.count && match; j++) {
+            if (!metafunction_matchtype(fn->signature.data[j], args[j])) match=false;
+        }
+        if (match) { *out=f->fns.data[i]; return true; }
+    }
+    
     return false;
 }
 

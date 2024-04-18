@@ -17,6 +17,7 @@ void objectfunction_freefn(object *obj) {
     morpho_freeobject(func->name);
     varray_optionalparamclear(&func->opt);
     object_functionclear(func);
+    varray_valueclear(&func->signature);
 }
 
 void objectfunction_markfn(object *obj, void *v) {
@@ -57,6 +58,7 @@ void object_functioninit(objectfunction *func) {
     func->nregs=0;
     varray_valueinit(&func->konst);
     varray_varray_upvalueinit(&func->prototype);
+    varray_valueinit(&func->signature);
 }
 
 /** @brief Clears a function */
@@ -67,6 +69,7 @@ void object_functionclear(objectfunction *func) {
         varray_upvalueclear(&func->prototype.data[i]);
     }
     varray_varray_upvalueclear(&func->prototype);
+    varray_valueclear(&func->signature);
 }
 
 /** @brief Creates a new function */
@@ -129,6 +132,14 @@ bool object_functionaddprototype(objectfunction *func, varray_upvalue *v, indx *
     if (success) varray_varray_upvalueadd(&func->prototype, &new, 1);
     if (success && ix) *ix = (indx) func->prototype.count-1;
     return success;
+}
+
+/** Sets the signature of a function
+ * @param[in]  func   function object
+ * @param[in]  signature list of types for each parameter (length from func->nargs) */
+bool function_setsignature(objectfunction *func, value *signature) {
+    func->signature.count=0; // Reset signature;
+    return varray_valueadd(&func->signature, signature, func->nargs);
 }
 
 /* **********************************************************************

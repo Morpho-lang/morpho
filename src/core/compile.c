@@ -316,20 +316,7 @@ bool compiler_findtypefromcstring(compiler *c, char *label, value *out) {
 
 /** Identifies a type from a value */
 bool compiler_typefromvalue(compiler *c, value v, value *out) {
-    objectclass *clss = NULL;
-    value type = MORPHO_NIL;
-    
-    if (MORPHO_ISINSTANCE(v)) {
-        clss=MORPHO_GETINSTANCE(v)->klass;
-    } else if (MORPHO_ISOBJECT(v)) {
-        clss = object_getveneerclass(MORPHO_GETOBJECT(v)->type);
-    } else clss = value_getveneerclass(v);
-    
-    if (clss) type = MORPHO_OBJECT(clss);
-    
-    if (!MORPHO_ISNIL(type)) *out = type;
-    
-    return (!MORPHO_ISNIL(type));
+    return metafunction_typefromvalue(v, out);
 }
 
 /** Checks if type "match" matches a given type "type"  */
@@ -571,6 +558,14 @@ void compiler_regsettype(compiler *c, registerindx reg, value type) {
     functionstate *f = compiler_currentfunctionstate(c);
     if (reg<0 || reg>=f->registers.count) return;
     f->registers.data[reg].type=type;
+}
+
+/** Gets the current type of a register */
+bool compiler_regtype(compiler *c, registerindx reg, value *type) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (reg>=f->registers.count) return false;
+    *type = f->registers.data[reg].type;
+    return true;
 }
 
 /** Raises a type violation error */
@@ -2673,6 +2668,10 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     compiler_functionparameters(c, node->left);
 
     func->nargs=compiler_regtop(c);
+    
+    value signature[func->nargs+1];
+    for (int i=0; i<func->nargs; i++) compiler_regtype(c, i+1, &signature[i]);
+    function_setsignature(func, signature);
 
     /* Check we don't have too many arguments */
     if (func->nargs>MORPHO_MAXARGS) {
@@ -3031,8 +3030,20 @@ static codeinfo compiler_method(compiler *c, syntaxtreenode *node, registerindx 
                 /* Insert the compiled function into the method dictionary, making sure the method name is interned */
                 objectfunction *method = compiler_getpreviousfunction(c);
                 if (method) {
-                    value symbol = program_internsymbol(c->out, node->content);
-                    dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(method));
+                    value omethod = MORPHO_OBJECT(method);
+                    value symbol = program_internsymbol(c->out, node->content),
+                          prev=MORPHO_NIL;
+                    
+                    if (dictionary_get(&klass->methods, symbol, &prev)) {
+                        if (MORPHO_ISMETAFUNCTION(prev)) {
+                            metafunction_add(MORPHO_GETMETAFUNCTION(prev), omethod);
+                            break;
+                        } else {
+                            metafunction_wrap(symbol, prev, &prev);
+                            metafunction_add(MORPHO_GETMETAFUNCTION(prev), omethod);
+                            dictionary_insert(&klass->methods, symbol, prev);
+                        }
+                    } else dictionary_insert(&klass->methods, symbol, omethod);
                 }
             }
             break;

@@ -1016,7 +1016,7 @@ callfunction: // Jump here if an instruction becomes a call
                 if (dictionary_getintern(&instance->klass->methods, right, &ifunc)) {
 
                     if (MORPHO_ISMETAFUNCTION(ifunc)) {
-                        metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &ifunc);
+                        if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &ifunc)) ERROR(VM_MLTPLDSPTCHFLD);
                     }
                     
                     /* If so, call it */
@@ -1057,7 +1057,7 @@ callfunction: // Jump here if an instruction becomes a call
                     if (v->fp>v->frame) reg[a]=reg[0]; /* Copy self into r[a] and call */
 
                     if (MORPHO_ISMETAFUNCTION(ifunc)) {
-                        metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &ifunc);
+                        if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &ifunc)) ERROR(VM_MLTPLDSPTCHFLD);
                     }
                     
                     if (MORPHO_ISFUNCTION(ifunc)) {
@@ -2021,6 +2021,7 @@ void morpho_initialize(void) {
     morpho_defineerror(VM_ARRAYWRONGDIM, ERROR_HALT, VM_ARRAYWRONGDIM_MSG);
     morpho_defineerror(VM_DVZR, ERROR_HALT, VM_DVZR_MSG);
 	morpho_defineerror(VM_GETINDEXARGS, ERROR_HALT, VM_GETINDEXARGS_MSG);
+    morpho_defineerror(VM_MLTPLDSPTCHFLD, ERROR_HALT, VM_MLTPLDSPTCHFLD_MSG);
 
     morpho_defineerror(VM_DBGQUIT, ERROR_HALT, VM_DBGQUIT_MSG);
 

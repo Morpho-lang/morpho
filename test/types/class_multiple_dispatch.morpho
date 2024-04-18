@@ -23,6 +23,7 @@ A.f(1.5)
 // expect: 2.5
 
 A.f([1,2])
+// expect: 2
 
 var q = a.f
 

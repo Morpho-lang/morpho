@@ -3035,15 +3035,20 @@ static codeinfo compiler_method(compiler *c, syntaxtreenode *node, registerindx 
                           prev=MORPHO_NIL;
                     
                     if (dictionary_get(&klass->methods, symbol, &prev)) {
-                        if (MORPHO_ISMETAFUNCTION(prev)) {
+                        if (MORPHO_ISMETAFUNCTION(prev)) { // Add the method to the mf.
                             metafunction_add(MORPHO_GETMETAFUNCTION(prev), omethod);
-                            break;
-                        } else {
-                            metafunction_wrap(symbol, prev, &prev);
-                            metafunction_add(MORPHO_GETMETAFUNCTION(prev), omethod);
-                            dictionary_insert(&klass->methods, symbol, prev);
+                        } else { // Check if we're replacing an inherited method
+                            if ((MORPHO_ISFUNCTION(prev) &&
+                                MORPHO_GETFUNCTION(prev)->klass!=klass) ||
+                                (MORPHO_ISBUILTINFUNCTION(prev))) { // Just overwrite it
+                                    dictionary_insert(&klass->methods, symbol, omethod);
+                            } else { // We're not, so wrap in a mf.
+                                metafunction_wrap(symbol, prev, &prev);
+                                metafunction_add(MORPHO_GETMETAFUNCTION(prev), omethod);
+                                dictionary_insert(&klass->methods, symbol, prev);
+                            }
                         }
-                    } else dictionary_insert(&klass->methods, symbol, omethod);
+                    } else dictionary_insert(&klass->methods, symbol, omethod); // Just insert
                 }
             }
             break;

@@ -1014,6 +1014,11 @@ callfunction: // Jump here if an instruction becomes a call
 
                 /* Check if we have this method */
                 if (dictionary_getintern(&instance->klass->methods, right, &ifunc)) {
+
+                    if (MORPHO_ISMETAFUNCTION(ifunc)) {
+                        metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &ifunc);
+                    }
+                    
                     /* If so, call it */
                     if (MORPHO_ISFUNCTION(ifunc)) {
                         if (!vm_call(v, ifunc, a, c, NULL, &pc, &reg)) goto vm_error;
@@ -1051,7 +1056,10 @@ callfunction: // Jump here if an instruction becomes a call
                     /* If we're not in the global context, invoke the method on self which is in r0 */
                     if (v->fp>v->frame) reg[a]=reg[0]; /* Copy self into r[a] and call */
 
-                    invoke_on_class:
+                    if (MORPHO_ISMETAFUNCTION(ifunc)) {
+                        metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &ifunc);
+                    }
+                    
                     if (MORPHO_ISFUNCTION(ifunc)) {
                         if (!vm_call(v, ifunc, a, c, NULL, &pc, &reg)) goto vm_error;
                     } else if (MORPHO_ISBUILTINFUNCTION(ifunc)) {
@@ -1065,8 +1073,6 @@ callfunction: // Jump here if an instruction becomes a call
                         v->fp->inbuiltinfunction=NULL;
 #endif
                         ERRORCHK();
-                    } else if (MORPHO_ISMETAFUNCTION(ifunc)) {
-                        if (metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &ifunc)) goto invoke_on_class;
                     }
                 } else {
                     /* Otherwise, raise an error */

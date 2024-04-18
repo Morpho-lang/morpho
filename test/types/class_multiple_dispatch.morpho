@@ -14,10 +14,17 @@ class A {
     }
 }
 
-A.f("Hi")
+var a = A()
+
+a.f("Hi")
 // expect: Hi
 
 A.f(1.5)
 // expect: 2.5
 
 A.f([1,2])
+
+var q = a.f
+
+a.f("Souper")
+// expect: Souper

@@ -922,7 +922,7 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         compiler_addinstruction(c, ENCODE_DOUBLE(OP_LUP, out.dest, info.dest), node);
         out.ninstructions++;
     } else if (CODEINFO_ISGLOBAL(info)) {
-        /* Move upvalues */
+        /* Move globals */
         out.dest=compiler_regtemp(c, reg);
         out.returntype=REGISTER;
         compiler_addinstruction(c, ENCODE_LONG(OP_LGL, out.dest, info.dest), node);
@@ -1041,6 +1041,45 @@ globalindx compiler_addglobal(compiler *c, syntaxtreenode *node, value symbol) {
     return indx;
 }
 
+/** Sets the type of a global variable */
+void compiler_setglobaltype(compiler *c, globalindx indx, value type) {
+    program_globalsettype(c->out, indx, type);
+}
+
+/** Checks if the type match satisfies the type of the global variable indx */
+bool compiler_checkglobaltype(compiler *c, syntaxtreenode *node, globalindx indx, value match) {
+    value type=MORPHO_NIL;
+    if (!program_globaltype(c->out, indx, &type)) return false;
+    
+    bool success=compiler_checktype(c, type, match);
+    
+    if (!success) {
+        value symbol=MORPHO_NIL;
+        program_globalsymbol(c->out, indx, &symbol);
+        compiler_typeviolation(c, node, type, match, symbol);
+    }
+    
+    return success;
+}
+
+/** Shows all currently allocated globals */
+void compiler_globalshow(compiler *c) {
+    int nglobals = program_countglobals(c->out);
+    printf("--Globals (%u in use)\n", nglobals);
+    for (unsigned int i=0; i<nglobals; i++) {
+        globalinfo *r=&c->out->globals.data[i];
+        printf("g%u ",i);
+        if (!MORPHO_ISNIL(r->symbol)) morpho_printvalue(NULL, r->symbol);
+        if (!MORPHO_ISNIL(r->type)) {
+            printf(" [");
+            morpho_printvalue(NULL, r->type);
+            printf("]");
+        }
+        printf("\n");
+    }
+    printf("--End globals\n");
+}
+
 /* Moves the result of a calculation to an global variable */
 codeinfo compiler_movetoglobal(compiler *c, syntaxtreenode *node, codeinfo in, globalindx slot) {
     codeinfo use = in;
@@ -1053,16 +1092,19 @@ codeinfo compiler_movetoglobal(compiler *c, syntaxtreenode *node, codeinfo in, g
         tmp=true;
     }
 
+    value type=MORPHO_NIL;
+    if (compiler_regcurrenttype(c, in.dest, &type)) {
+        if (!compiler_checkglobaltype(c, node, slot, type)) goto compiler_movetoglobal_cleanup;
+    }
+    
     compiler_addinstruction(c, ENCODE_LONG(OP_SGL, use.dest, slot) , node);
     out.ninstructions++;
 
-    if (tmp) {
-        compiler_releaseoperand(c, use);
-    }
-
+compiler_movetoglobal_cleanup:
+    
+    if (tmp) compiler_releaseoperand(c, use);
     return out;
 }
-
 
 codeinfo compiler_addvariable(compiler *c, syntaxtreenode *node, value symbol) {
     codeinfo out=CODEINFO_EMPTY;
@@ -2466,7 +2508,7 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
     
     syntaxtreenode *varnode = NULL;
     syntaxtreenode *lftnode = NULL, *indxnode = NULL;
-    codeinfo right;
+    codeinfo right=CODEINFO_EMPTY;
     value var=MORPHO_NIL, type=MORPHO_NIL;
     registerindx reg;
     unsigned int ninstructions = 0;
@@ -2504,6 +2546,7 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
         if (typenode &&
             compiler_findtype(c, typenode->content, &type)) {
             compiler_regsettype(c, reg, type);
+            if (vloc.returntype==GLOBAL) compiler_setglobaltype(c, vloc.dest, type);
         }
         
         /* If this is an array, we must create it */
@@ -2546,8 +2589,6 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
             /* Ensure operand is in the desired register  */
             right=compiler_movetoregister(c, decnode, right, reg);
             ninstructions+=right.ninstructions;
-
-            compiler_releaseoperand(c, right);
         } else { /* Otherwise, we should zero out the register */
             registerindx cnil = compiler_addconstant(c, decnode, MORPHO_NIL, false, false);
             compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, cnil), node);
@@ -2560,6 +2601,8 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
 
             compiler_regfreetemp(c, reg);
         }
+        
+        compiler_releaseoperand(c, right);
     }
 
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);

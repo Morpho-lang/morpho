@@ -62,6 +62,9 @@ void program_bindobject(program *p, object *obj);
 value program_internsymbol(program *p, value symbol);
 
 globalindx program_addglobal(program *p, value symbol);
+void program_globalsettype(program *p, globalindx indx, value type);
+bool program_globaltype(program *p, globalindx indx, value *type);
+bool program_globalsymbol(program *p, globalindx indx, value *symbol);
 int program_countglobals(program *p);
 
 #endif /* MORPHO_CORE */

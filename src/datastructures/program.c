@@ -125,6 +125,27 @@ globalindx program_addglobal(program *p, value symbol) {
     return (globalindx) varray_globalinfowrite(&p->globals, info);
 }
 
+/** @brief Sets the type associated with a global variable */
+void program_globalsettype(program *p, globalindx indx, value type) {
+    if (indx<0 || indx>p->globals.count) return;
+    
+    p->globals.data[indx].type=type;
+}
+
+/** @brief Gets the type associated with a global variable */
+bool program_globaltype(program *p, globalindx indx, value *type) {
+    if (indx<0 || indx>p->globals.count) return false;
+    *type = p->globals.data[indx].type;
+    return true; 
+}
+
+/** @brief Gets the symbol associated with a global variable */
+bool program_globalsymbol(program *p, globalindx indx, value *symbol) {
+    if (indx<0 || indx>p->globals.count) return false;
+    *symbol = p->globals.data[indx].symbol;
+    return true; 
+}
+
 /** @brief Returns the number of globals allocated in the program */
 int program_countglobals(program *p) {
     return p->globals.count;

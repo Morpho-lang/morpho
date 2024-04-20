@@ -205,6 +205,7 @@ void _addmatchingfunctionref(compiler *c, value symbol, value fn, value *out) {
     }
 }
 
+/** Determines whether a symbol refers to one (or more) functions. If so, returns either a single function or a metafunction as appropriate. */
 bool compiler_resolvefunctionref(compiler *c, value symbol, value *out) {
     functionstate *f=compiler_currentfunctionstate(c);
     value fnd=MORPHO_NIL;

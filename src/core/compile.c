@@ -197,7 +197,10 @@ void compiler_functionreffreeatscope(compiler *c, unsigned int scope) {
 void _addmatchingfunctionref(compiler *c, value symbol, value fn, value *out) {
     value in = *out;
     if (MORPHO_ISNIL(in)) {
-        *out=fn; return;
+        // If the function has a signature, will need to wrap in a metafunction
+        if (MORPHO_ISFUNCTION(fn) && function_hastypedparameters(MORPHO_GETFUNCTION(fn))) {
+            metafunction_wrap(symbol, fn, out);
+        } else *out=fn;
     } else if (MORPHO_ISFUNCTION(in)) {
         if (metafunction_wrap(symbol, in, out)) metafunction_add(MORPHO_GETMETAFUNCTION(*out), fn);
     } else if (MORPHO_ISMETAFUNCTION(in)) {

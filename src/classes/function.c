@@ -142,6 +142,12 @@ bool function_setsignature(objectfunction *func, value *signature) {
     return varray_valueadd(&func->signature, signature, func->nargs);
 }
 
+/** Returns true if any of the parameters are typed */
+bool function_hastypedparameters(objectfunction *func) {
+    for (int i=0; i<func->signature.count; i++) if (!MORPHO_ISNIL(func->signature.data[i])) return true;
+    return false; 
+}
+
 /* **********************************************************************
  * Function veneer class
  * ********************************************************************** */

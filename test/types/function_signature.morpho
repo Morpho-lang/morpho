@@ -8,4 +8,4 @@ f("Hello", [])
 // expect: Hello
 
 f([], [])
-// expect error ''
+// expect error 'MltplDsptchFld'

@@ -71,6 +71,7 @@ objectfunction *object_newfunction(indx entry, value name, objectfunction *paren
 bool object_functionhasvargs(objectfunction *func);
 void object_functionsetvarg(objectfunction *func, unsigned int varg);
 bool function_setsignature(objectfunction *func, value *signature);
+bool function_hastypedparameters(objectfunction *func);
 
 void objectfunction_printfn(object *obj, void *v);
 

@@ -207,6 +207,16 @@ value builtin_findfunction(value name) {
     return out;
 }
 
+/** Sets the signature of a function */
+bool builtin_setsignature(objectbuiltinfunction *fn, value *signature) {
+    
+}
+
+/** Parses a function signature */
+bool builtin_parsesignature(char *signature, varray_value *out) {
+    
+}
+
 /* **********************************************************************
  * Create and find builtin classes
  * ********************************************************************** */

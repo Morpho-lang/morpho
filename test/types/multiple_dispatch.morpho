@@ -1,12 +1,12 @@
-// Dipatch on multiple types
+// Dipatch a function on multiple types
 
 fn f(String x) {
     print x
 }
 
-/*fn f(List x) {
-    print x.append("Ho")
-}*/
+fn f(List x) {
+    x.append("Ho")
+}
 
 fn f(Float x) {
     print x+1
@@ -15,12 +15,11 @@ fn f(Float x) {
 f("Hi")
 // expect: Hi
 
+
 f(1.5)
 // expect: 2.5
 
-/*
 var a = []
 f(a)
 print a 
-// expect: [ "Ho" ]
-*/
+// expect: [ Ho ]

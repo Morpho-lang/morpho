@@ -123,6 +123,7 @@ static void compiler_functionstateinit(functionstate *state) {
     varray_registerallocinit(&state->registers);
     varray_forwardreferenceinit(&state->forwardref);
     varray_upvalueinit(&state->upvalues);
+    varray_functionrefinit(&state->functionref);
 }
 
 /** Clears a functionstate structure */
@@ -134,6 +135,7 @@ static void compiler_functionstateclear(functionstate *state) {
     varray_registerallocclear(&state->registers);
     varray_forwardreferenceclear(&state->forwardref);
     varray_upvalueclear(&state->upvalues);
+    varray_functionrefclear(&state->functionref);
 }
 
 /** Initializes the function stack */
@@ -171,11 +173,61 @@ static inline bool compiler_ininitializer(compiler *c) {
 }
 
 /* ------------------------------------------
+ * Manage the functionref stack
+ * ------------------------------------------- */
+
+DEFINE_VARRAY(functionref, functionref)
+
+/** Adds a reference to a function in the current functionstate */
+void compiler_addfunctionref(compiler *c, objectfunction *func) {
+    functionstate *f=compiler_currentfunctionstate(c);
+    functionref ref = { .function = MORPHO_OBJECT(func), .symbol = func->name, .scopedepth = f->scopedepth};
+    varray_functionrefwrite(&f->functionref, ref);
+}
+
+/** Removes functions only visible within a */
+void compiler_functionreffreeatscope(compiler *c, unsigned int scope) {
+    functionstate *f=compiler_currentfunctionstate(c);
+    
+    /*for (int i=f->functionref.count-1; i>=0; i--) {
+        
+    }*/
+}
+
+void _addmatchingfunctionref(compiler *c, value symbol, value fn, value *out) {
+    value in = *out;
+    if (MORPHO_ISNIL(in)) {
+        *out=fn; return;
+    } else if (MORPHO_ISFUNCTION(in)) {
+        if (metafunction_wrap(symbol, in, out)) metafunction_add(MORPHO_GETMETAFUNCTION(*out), fn);
+    } else if (MORPHO_ISMETAFUNCTION(in)) {
+        metafunction_add(MORPHO_GETMETAFUNCTION(in), fn);
+    }
+}
+
+bool compiler_resolvefunctionref(compiler *c, value symbol, value *out) {
+    functionstate *f=compiler_currentfunctionstate(c);
+    value fnd=MORPHO_NIL;
+    int match=0;
+    
+    for (int i=0; i<f->functionref.count; i++) {
+        functionref *ref=&f->functionref.data[i];
+        if (MORPHO_ISEQUAL(ref->symbol, symbol)) {
+            _addmatchingfunctionref(c, ref->symbol, ref->function, &fnd);
+            match++;
+        }
+    }
+
+    if (match) *out=fnd;
+    return match;
+}
+
+/* ------------------------------------------
  * Increment and decrement the fstack
  * ------------------------------------------- */
 
 /** Begins a new function, advancing the fstack pointer */
-static void compiler_beginfunction(compiler *c, objectfunction *func, functiontype type) {
+void compiler_beginfunction(compiler *c, objectfunction *func, functiontype type) {
     c->fstackp++;
     compiler_functionstateinit(&c->fstack[c->fstackp]);
     c->fstack[c->fstackp].func=func;
@@ -184,13 +236,13 @@ static void compiler_beginfunction(compiler *c, objectfunction *func, functionty
 }
 
 /** Sets the function register count */
-static void compiler_setfunctionregistercount(compiler *c) {
+void compiler_setfunctionregistercount(compiler *c) {
     functionstate *f=&c->fstack[c->fstackp];
     if (f->nreg>f->func->nregs) f->func->nregs=f->nreg;
 }
 
 /** Ends a function, decrementing the fstack pointer  */
-static void compiler_endfunction(compiler *c) {
+void compiler_endfunction(compiler *c) {
     functionstate *f=&c->fstack[c->fstackp];
     c->prevfunction=f->func; /* Retain the function in case it needs to be bound as a method */
     compiler_setfunctionregistercount(c);
@@ -200,12 +252,12 @@ static void compiler_endfunction(compiler *c) {
 }
 
 /** Gets the current function */
-static objectfunction *compiler_getcurrentfunction(compiler *c) {
+objectfunction *compiler_getcurrentfunction(compiler *c) {
     return c->fstack[c->fstackp].func;
 }
 
 /** Gets the current constant table */
-static varray_value *compiler_getcurrentconstanttable(compiler *c) {
+varray_value *compiler_getcurrentconstanttable(compiler *c) {
     objectfunction *f = compiler_getcurrentfunction(c);
     if (!f) {
         UNREACHABLE("find current constant table [No current function defined].");
@@ -215,7 +267,7 @@ static varray_value *compiler_getcurrentconstanttable(compiler *c) {
 }
 
 /** Gets constant i from the current constant table */
-static value compiler_getconstant(compiler *c, unsigned int i) {
+value compiler_getconstant(compiler *c, unsigned int i) {
     value ret = MORPHO_NIL;
     objectfunction *f = compiler_getcurrentfunction(c);
     if (f && i<f->konst.count) ret = f->konst.data[i];
@@ -223,9 +275,11 @@ static value compiler_getconstant(compiler *c, unsigned int i) {
 }
 
 /** Gets the most recently compiled function */
-static objectfunction *compiler_getpreviousfunction(compiler *c) {
+objectfunction *compiler_getpreviousfunction(compiler *c) {
     return c->prevfunction;
 }
+
+
 
 /* ------------------------------------------
  * Argument declarations
@@ -735,6 +789,7 @@ void compiler_beginscope(compiler *c) {
 void compiler_endscope(compiler *c) {
     functionstate *f=compiler_currentfunctionstate(c);
     compiler_regfreeatscope(c, f->scopedepth);
+    compiler_functionreffreeatscope(c, f->scopedepth);
     f->scopedepth--;
 }
 
@@ -2693,6 +2748,9 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     
     /* Add the function as a constant */
     kindx=compiler_addconstant(c, node, MORPHO_OBJECT(func), false, false);
+    
+    /* Keep a reference to the function */
+    if (!ismethod) compiler_addfunctionref(c, func);
 
     /* Begin the new function definition, finding whether the current function
        is a regular function or a method declaration by looking at currentmethod */
@@ -3272,11 +3330,20 @@ static codeinfo compiler_super(compiler *c, syntaxtreenode *node, registerindx r
 /** Lookup a symbol */
 static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo ret=CODEINFO_EMPTY;
-
+    
     /* Is it a local variable? */
     ret.dest=compiler_getlocal(c, node->content);
     if (ret.dest!=REGISTER_UNALLOCATED) return ret;
 
+    /* Is it a reference to a function? */
+    value fn=MORPHO_NIL;
+    if (compiler_resolvefunctionref(c, node->content, &fn)) {
+        /* It is; so add it to the constant table */
+        ret.returntype=CONSTANT;
+        ret.dest=compiler_addconstant(c, node, fn, false, false);
+        return ret;
+    }
+    
     /* Is it an upvalue? */
     ret.dest = compiler_resolveupvalue(c, node->content);
     if (ret.dest!=REGISTER_UNALLOCATED) {

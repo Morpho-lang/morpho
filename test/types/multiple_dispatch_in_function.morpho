@@ -1,0 +1,20 @@
+// Multiple dispatch on locally defined functions
+
+fn g(x) {
+    fn f(String x) {
+        print x
+    }
+
+    fn f(Float x) {
+        print x+1
+    }
+
+    f(x)
+}
+
+g("Hi")
+// expect: Hi
+
+
+g(1.5)
+// expect: 2.5

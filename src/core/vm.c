@@ -936,6 +936,11 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             left=reg[a];
             c=DECODE_B(bc); // We use c for consistency between call and invoke...
 
+            if (MORPHO_ISMETAFUNCTION(left) &&
+                !metafunction_resolve(MORPHO_GETMETAFUNCTION(left), c, reg+a+1, &left)) {
+                ERROR(VM_MLTPLDSPTCHFLD);
+            }
+        
 callfunction: // Jump here if an instruction becomes a call
             if (MORPHO_ISINVOCATION(left)) {
                 /* An method invocation */

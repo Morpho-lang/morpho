@@ -187,6 +187,18 @@ typedef struct {
 DECLARE_VARRAY(forwardreference, forwardreference)
 
 /* -------------------------------------------------------
+ * Visible functions
+ * ------------------------------------------------------- */
+
+typedef struct {
+    value symbol; /** Symbol associated with the reference */
+    value function; /** The function itself */
+    unsigned int scopedepth; /** Scope depth at which the function was seen */
+} functionref;
+
+DECLARE_VARRAY(functionref, functionref)
+
+/* -------------------------------------------------------
  * Function types
  * ------------------------------------------------------- */
 
@@ -208,6 +220,7 @@ typedef struct {
     varray_registeralloc registers;
     varray_upvalue upvalues;
     varray_forwardreference forwardref;
+    varray_functionref functionref; /* Functions visible within this state */
     registerindx varg;
     unsigned int nreg; /* Largest number of registers used */
     unsigned int scopedepth;

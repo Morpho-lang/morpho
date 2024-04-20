@@ -1701,6 +1701,12 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
     value fn=f;
     value r0=f;
 
+    if (MORPHO_ISMETAFUNCTION(fn) &&
+        !metafunction_resolve(MORPHO_GETMETAFUNCTION(fn), nargs, args, &fn)) {
+        morpho_runtimeerror(v, VM_MLTPLDSPTCHFLD);
+        return false;
+    }
+    
     if (MORPHO_ISINVOCATION(fn)) {
         /* An method invocation */
         objectinvocation *inv = MORPHO_GETINVOCATION(f);

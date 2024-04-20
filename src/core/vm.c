@@ -1662,9 +1662,10 @@ bool morpho_run(vm *v, program *p) {
     
     /* Initialize global variables */
     int oldsize = v->globals.count;
-    varray_valueresize(&v->globals, p->nglobals);
-    v->globals.count=p->nglobals;
-    for (int i=oldsize; i<p->nglobals; i++) v->globals.data[i]=MORPHO_NIL; /* Zero out globals */
+    int nglobals = program_countglobals(p);
+    varray_valueresize(&v->globals, nglobals);
+    v->globals.count=nglobals;
+    for (int i=oldsize; i<nglobals; i++) v->globals.data[i]=MORPHO_NIL; /* Zero out globals */
 
     /* and initially set the register pointer to the bottom of the stack */
     value *reg = v->stack.data;

@@ -1008,12 +1008,12 @@ bool compiler_hasvariadicarg(compiler *c) {
  * ------------------------------------------- */
 
 /** Should we use global variables or registers?  */
-static bool compiler_checkglobal(compiler *c) {
+bool compiler_checkglobal(compiler *c) {
     return ((c->fstackp==0) && (c->fstack[0].scopedepth==0));
 }
 
 /** Finds a global symbol, optionally searching successively through parent compilers */
-static globalindx compiler_getglobal(compiler *c, value symbol, bool recurse) {
+globalindx compiler_findglobal(compiler *c, value symbol, bool recurse) {
     for (compiler *cc=c; cc!=NULL; cc=cc->parent) {
         value indx;
         if (dictionary_get(&cc->globals, symbol, &indx)) {
@@ -1027,13 +1027,13 @@ static globalindx compiler_getglobal(compiler *c, value symbol, bool recurse) {
 }
 
 /** Adds a global variable to */
-static globalindx compiler_addglobal(compiler *c, syntaxtreenode *node, value symbol) {
-    globalindx indx=compiler_getglobal(c, symbol, false);
+globalindx compiler_addglobal(compiler *c, syntaxtreenode *node, value symbol) {
+    globalindx indx=compiler_findglobal(c, symbol, false);
 
     if (indx==GLOBAL_UNALLOCATED) {
-        if (dictionary_insert(&c->globals, object_clonestring(symbol), MORPHO_INTEGER(c->out->nglobals))) {
-            indx=c->out->nglobals;
-            c->out->nglobals++;
+        indx = program_addglobal(c->out, symbol);
+        
+        if (dictionary_insert(&c->globals, object_clonestring(symbol), MORPHO_INTEGER(indx))) {
             debugannotation_setglobal(&c->out->annotations, indx, symbol);
         }
     }
@@ -1042,7 +1042,7 @@ static globalindx compiler_addglobal(compiler *c, syntaxtreenode *node, value sy
 }
 
 /* Moves the result of a calculation to an global variable */
-static codeinfo compiler_movetoglobal(compiler *c, syntaxtreenode *node, codeinfo in, globalindx slot) {
+codeinfo compiler_movetoglobal(compiler *c, syntaxtreenode *node, codeinfo in, globalindx slot) {
     codeinfo use = in;
     codeinfo out = CODEINFO_EMPTY;
     bool tmp=false;
@@ -1064,7 +1064,7 @@ static codeinfo compiler_movetoglobal(compiler *c, syntaxtreenode *node, codeinf
 }
 
 
-static codeinfo compiler_addvariable(compiler *c, syntaxtreenode *node, value symbol) {
+codeinfo compiler_addvariable(compiler *c, syntaxtreenode *node, value symbol) {
     codeinfo out=CODEINFO_EMPTY;
 
     if (compiler_checkglobal(c)) {
@@ -3242,7 +3242,7 @@ static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx 
     }
 
     /* Is it a global variable */
-    ret.dest=compiler_getglobal(c, node->content, true);
+    ret.dest=compiler_findglobal(c, node->content, true);
     if (ret.dest!=REGISTER_UNALLOCATED) {
         ret.returntype=GLOBAL;
         return ret;
@@ -3319,7 +3319,7 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
 
             /* .. or a global? */
             if (reg==REGISTER_UNALLOCATED) {
-                reg=compiler_getglobal(c, var, true);
+                reg=compiler_findglobal(c, var, true);
                 if (reg!=REGISTER_UNALLOCATED) {
                     if (indxnode) {
                         /* If an indexed global, move the global into a register */

@@ -116,9 +116,6 @@
  * Track globals
  * ------------------------------------------------------- */
 
-/** @brief Index of a global */
-typedef int globalindx;
-
 /** @brief Value to indicate a global has not been allocated */
 #define GLOBAL_UNALLOCATED -1
 

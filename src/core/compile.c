@@ -2811,14 +2811,16 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         /* Generate a closure prototype if necessary */
         closure=compiler_closure(c, node, REGISTER_UNALLOCATED);
 
-        /* Allocate a variable to refer to the function definition */
+        /* Allocate a variable to refer to the function definition, but only in global
+           context */
         codeinfo fvar=CODEINFO_EMPTY;
-        if (isanonymous) {
-            fvar.dest=compiler_regtemp(c, reqout);
-            fvar.returntype=REGISTER;
-        } else {
-            /* Check if this resolves a forward reference */
-            if (!compiler_resolveforwardreference(c, func->name, &fvar)) {
+        fvar.dest=compiler_regtemp(c, reqout);
+        fvar.returntype=REGISTER;
+        
+        if (!isanonymous) {
+            if (!compiler_resolveforwardreference(c, func->name, &fvar) &&
+                compiler_checkglobal(c)) {
+                compiler_regfreetemp(c, fvar.dest);
                 fvar=compiler_addvariable(c, node, node->content);
             }
         }
@@ -2833,6 +2835,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 
         /* Wrap in a closure if necessary */
         if (closure!=REGISTER_UNALLOCATED) {
+            compiler_regsetsymbol(c, reg, node->content);
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_CLOSURE, reg, (registerindx) closure), node);
             ninstructions++;
         }
@@ -3335,19 +3338,19 @@ static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx 
     ret.dest=compiler_getlocal(c, node->content);
     if (ret.dest!=REGISTER_UNALLOCATED) return ret;
 
+    /* Is it an upvalue? */
+    ret.dest = compiler_resolveupvalue(c, node->content);
+    if (ret.dest!=REGISTER_UNALLOCATED) {
+        ret.returntype=UPVALUE;
+        return ret;
+    }
+    
     /* Is it a reference to a function? */
     value fn=MORPHO_NIL;
     if (compiler_resolvefunctionref(c, node->content, &fn)) {
         /* It is; so add it to the constant table */
         ret.returntype=CONSTANT;
         ret.dest=compiler_addconstant(c, node, fn, false, false);
-        return ret;
-    }
-    
-    /* Is it an upvalue? */
-    ret.dest = compiler_resolveupvalue(c, node->content);
-    if (ret.dest!=REGISTER_UNALLOCATED) {
-        ret.returntype=UPVALUE;
         return ret;
     }
 

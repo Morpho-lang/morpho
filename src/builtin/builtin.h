@@ -42,6 +42,7 @@ typedef struct  {
     builtinfunctionflags flags;
     builtinfunction function;
     objectclass *klass; 
+    varray_value signature; 
 } objectbuiltinfunction;
 
 /** Gets an objectfunction from a value */
@@ -115,6 +116,7 @@ void builtin_setclasstable(dictionary *dict);
 
 value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags flags);
 value builtin_findfunction(value name);
+bool builtin_setsignature(value, char *signature);
 
 value builtin_addclass(char *name, builtinclassentry desc[], value superclass);
 value builtin_findclass(value name);

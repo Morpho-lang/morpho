@@ -11,6 +11,8 @@
 #include "file.h"
 #include "system.h"
 #include "classes.h"
+#include "lex.h"
+#include "parse.h"
 
 #include "mesh.h"
 #include "selection.h"
@@ -42,11 +44,12 @@ dictionary *_currentclasstable;
  * ********************************************************************** */
 
 /** Initialize an objectbuiltinfunction */
-static void builtin_init(objectbuiltinfunction *func) {
+void builtin_init(objectbuiltinfunction *func) {
     func->flags=BUILTIN_FLAGSEMPTY;
     func->function=NULL;
     func->name=MORPHO_NIL;
     func->klass=NULL;
+    varray_valueinit(&func->signature);
 }
 
 /** @brief An enumerate loop.
@@ -131,6 +134,7 @@ void objectbuiltinfunction_printfn(object *obj, void *v) {
 
 void objectbuiltinfunction_freefn(object *obj) {
     objectbuiltinfunction *func = (objectbuiltinfunction *) obj;
+    varray_valueclear(&func->signature);
     morpho_freeobject(func->name);
 }
 
@@ -207,14 +211,92 @@ value builtin_findfunction(value name) {
     return out;
 }
 
-/** Sets the signature of a function */
-bool builtin_setsignature(objectbuiltinfunction *fn, value *signature) {
-    
+/* **********************************************************************
+ * Parse and set signatures
+ * ********************************************************************** */
+
+enum {
+    SIGNATURE_LEFTBRACE,
+    SIGNATURE_RIGHTBRACE,
+    SIGNATURE_COMMA,
+    SIGNATURE_DOTDOTDOT,
+    SIGNATURE_SYMBOL,
+    SIGNATURE_EOF
+};
+
+tokendefn sigtokens[] = {
+    { "(",          SIGNATURE_LEFTBRACE         , NULL },
+    { ")",          SIGNATURE_RIGHTBRACE        , NULL },
+    { ",",          SIGNATURE_COMMA             , NULL },
+    { "...",        SIGNATURE_DOTDOTDOT         , NULL },
+    { "",           SIGNATURE_EOF               , NULL }
+};
+
+void builtin_initializelexer(lexer *l, char *signature) {
+    lex_init(l, signature, 0);
+    lex_settokendefns(l, sigtokens);
+    lex_seteof(l, SIGNATURE_EOF);
+    lex_setsymboltype(l, SIGNATURE_SYMBOL);
 }
 
-/** Parses a function signature */
-bool builtin_parsesignature(char *signature, varray_value *out) {
+bool builtin_parsesymbol(parser *p, void *out) {
+    objectbuiltinfunction *func = (objectbuiltinfunction *) out;
+    bool success=false;
     
+    if (p->previous.length==1 && *p->previous.start=='_') {
+        value blank = MORPHO_NIL;
+        success=varray_valueadd(&func->signature, &blank, 1);
+    } else {
+        value symbol;
+        if (!parse_stringfromtoken(p, 0, p->previous.length, &symbol)) return false;
+        value klass = builtin_findclass(symbol);
+        morpho_freeobject(symbol);
+        
+        if (MORPHO_ISCLASS(klass)) success=varray_valueadd(&func->signature, &klass, 1);
+    }
+    return success;
+}
+
+bool builtin_parsesignature(parser *p, void *out) {
+    if (parse_checktokenadvance(p, SIGNATURE_SYMBOL)) {
+        // Return type
+    }
+    
+    if (!parse_checktokenadvance(p, SIGNATURE_LEFTBRACE)) return false;
+    
+    while (!parse_checktoken(p, SIGNATURE_RIGHTBRACE) &&
+           !parse_checktoken(p, SIGNATURE_EOF)) {
+        if (parse_checktokenadvance(p, SIGNATURE_SYMBOL)) {
+            if (!builtin_parsesymbol(p, out)) return false;
+        } else if (parse_checktokenadvance(p, SIGNATURE_DOTDOTDOT)) {
+            
+        } else return false;
+        
+        parse_checktokenadvance(p, SIGNATURE_COMMA);
+    }
+    
+    if (!parse_checktokenadvance(p, SIGNATURE_RIGHTBRACE)) return false;
+    
+    return true;
+}
+
+/** Sets the signature of a builtin function */
+bool builtin_setsignature(value fn, char *signature) {
+    error err;
+    error_init(&err);
+    
+    lexer l;
+    builtin_initializelexer(&l, signature);
+    
+    parser p;
+    parse_init(&p, &l, &err, MORPHO_GETBUILTINFUNCTION(fn));
+    parse_setbaseparsefn(&p, builtin_parsesignature);
+    parse_setskipnewline(&p, false, TOKEN_NONE);
+    
+    bool success=parse(&p);
+    
+    parse_clear(&p);
+    return success;
 }
 
 /* **********************************************************************

@@ -101,19 +101,30 @@ bool metafunction_matchtype(value type, value val) {
     return false;
 }
 
+signature *_getsignature(value fn) {
+    if (MORPHO_ISFUNCTION(fn)) {
+        return &MORPHO_GETFUNCTION(fn)->sig;
+    } else if (MORPHO_ISBUILTINFUNCTION(fn)) {
+        return &MORPHO_GETBUILTINFUNCTION(fn)->sig;
+    }
+    return NULL;
+}
+
 /** Resolves a metafunction given calling arguments */
 bool metafunction_resolve(objectmetafunction *f, int nargs, value *args, value *out) {
     for (int i=0; i<f->fns.count; i++) {
-        objectfunction *fn = MORPHO_GETFUNCTION(f->fns.data[i]);
-        if (nargs!=fn->nargs) continue;
-        bool match=true;
-        int nparams; value *ptypes;
-        signature_paramlist(&fn->sig, &nparams, &ptypes);
+        signature *s = _getsignature(f->fns.data[i]);
+        if (!s) continue;
         
-        for (int j=0; j<nparams && match; j++) {
-            if (!metafunction_matchtype(ptypes[j], args[j])) match=false;
+        int nparams; value *ptypes;
+        signature_paramlist(s, &nparams, &ptypes);
+        if (nargs!=nparams) continue;
+        
+        int j;
+        for (j=0; j<nparams; j++) {
+            if (!metafunction_matchtype(ptypes[j], args[j])) break;
         }
-        if (match) { *out=f->fns.data[i]; return true; }
+        if (j==nparams) { *out=f->fns.data[i]; return true; }
     }
     
     return false;

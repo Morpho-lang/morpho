@@ -1093,6 +1093,10 @@ callfunction: // Jump here if an instruction becomes a call
                 if (klass) {
                     value ifunc;
                     if (dictionary_getintern(&klass->methods, right, &ifunc)) {
+                        if (MORPHO_ISMETAFUNCTION(ifunc)) {
+                            if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &ifunc)) ERROR(VM_MLTPLDSPTCHFLD);
+                        }
+                        
                         if (MORPHO_ISBUILTINFUNCTION(ifunc)) {
 #ifdef MORPHO_PROFILER
                             v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);

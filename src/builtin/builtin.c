@@ -47,7 +47,7 @@ void builtin_init(objectbuiltinfunction *func) {
     func->function=NULL;
     func->name=MORPHO_NIL;
     func->klass=NULL;
-    varray_valueinit(&func->signature);
+    signature_init(&func->sig);
 }
 
 /** @brief An enumerate loop.
@@ -132,7 +132,7 @@ void objectbuiltinfunction_printfn(object *obj, void *v) {
 
 void objectbuiltinfunction_freefn(object *obj) {
     objectbuiltinfunction *func = (objectbuiltinfunction *) obj;
-    varray_valueclear(&func->signature);
+    signature_clear(&func->sig);
     morpho_freeobject(func->name);
 }
 
@@ -236,24 +236,35 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
     
     for (unsigned int i=0; desc[i].name!=NULL; i++) {
         if (desc[i].type==BUILTIN_METHOD) {
-            objectbuiltinfunction *method = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
-            builtin_init(method);
-            method->function=desc[i].function;
-            method->klass=new;
-            method->name=object_stringfromcstring(desc[i].name, strlen(desc[i].name));
-            method->flags=desc[i].flags;
-            
-            value selector = dictionary_intern(&builtin_symboltable, method->name);
-            
-            varray_valuewrite(&builtin_objects, MORPHO_OBJECT(method));
-            
-            if (dictionary_get(&new->methods, method->name, NULL) &&
-                ( !superklass || // Ok to redefine methods in the superclass 
-                  !dictionary_get(&superklass->methods, method->name, NULL)) ) {
-                UNREACHABLE("redefinition of method in builtin class (check builtin.c)");
+            objectbuiltinfunction *newmethod = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
+            builtin_init(newmethod);
+            newmethod->function=desc[i].function;
+            newmethod->klass=new;
+            newmethod->name=object_stringfromcstring(desc[i].name, strlen(desc[i].name));
+            newmethod->flags=desc[i].flags;
+            if (desc[i].signature) {
+                signature_parse(desc[i].signature, &newmethod->sig);
             }
             
-            dictionary_insert(&new->methods, selector, MORPHO_OBJECT(method));
+            value selector = dictionary_intern(&builtin_symboltable, newmethod->name);
+            value method = MORPHO_OBJECT(newmethod);
+            
+            varray_valuewrite(&builtin_objects, method);
+            
+            value prev=MORPHO_NIL;
+            if (dictionary_get(&new->methods, newmethod->name, &prev)) {
+                if (MORPHO_ISBUILTINFUNCTION(prev)) {
+                    objectbuiltinfunction *func = MORPHO_GETBUILTINFUNCTION(prev);
+                    if (func->klass!=new) { // Override superclass methods for now
+                        dictionary_insert(&new->methods, selector, method);
+                    } else if (metafunction_wrap(newmethod->name, prev, &prev)) {
+                        metafunction_add(MORPHO_GETMETAFUNCTION(prev), method);
+                        dictionary_insert(&new->methods, selector, prev);
+                    }
+                } else if (MORPHO_ISMETAFUNCTION(prev)) {
+                    metafunction_add(MORPHO_GETMETAFUNCTION(prev), method);
+                }
+            } else dictionary_insert(&new->methods, selector, method);
         }
     }
     

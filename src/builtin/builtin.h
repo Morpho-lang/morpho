@@ -14,6 +14,8 @@
 #include "morpho.h"
 #endif
 
+#include "signature.h"
+
 /* -------------------------------------------------------
  * Built in function objects
  * ------------------------------------------------------- */
@@ -42,7 +44,7 @@ typedef struct  {
     builtinfunctionflags flags;
     builtinfunction function;
     objectclass *klass; 
-    varray_value signature; 
+    signature sig;
 } objectbuiltinfunction;
 
 /** Gets an objectfunction from a value */
@@ -77,7 +79,7 @@ typedef struct {
 
 #define MORPHO_METHOD(label, func, flg)  ((builtinclassentry) { .type=(BUILTIN_METHOD), .name=(label), .signature=NULL, .flags=flg, .function=func})
 
-#define MORPHO_METHODSIG(label, sig, func, flg)  ((builtinclassentry) { .type=(BUILTIN_METHOD), .name=(label), .signature=sig, .flags=flg, .function=func})
+#define MORPHO_METHOD_SIGNATURE(label, sig, func, flg)  ((builtinclassentry) { .type=(BUILTIN_METHOD), .name=(label), .signature=sig, .flags=flg, .function=func})
 
 #define MORPHO_ENDCLASS         , MORPHO_PROPERTY(NULL) \
                                 };

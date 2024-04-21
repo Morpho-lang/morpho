@@ -1669,7 +1669,7 @@ void sparse_initialize(void) {
     objectdokkeytype=object_addtype(&objectdokkeydefn);
     objectsparsetype=object_addtype(&objectsparsedefn);
 
-    builtin_addfunction(SPARSE_CLASSNAME, sparse_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(SPARSE_CLASSNAME, sparse_constructor, MORPHO_FN_CONSTRUCTOR);
 
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));

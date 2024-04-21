@@ -59,6 +59,7 @@ typedef struct  {
 typedef struct {
     enum { BUILTIN_METHOD, BUILTIN_PROPERTY } type;
     char *name;
+    char *signature;
     builtinfunctionflags flags;
     builtinfunction function;
 } builtinclassentry;
@@ -74,7 +75,9 @@ typedef struct {
 
 #define MORPHO_PROPERTY(label)  ((builtinclassentry) { .type=(BUILTIN_PROPERTY), .name=(label), .flags=BUILTIN_FLAGSEMPTY, .function=NULL})
 
-#define MORPHO_METHOD(label, func, flg)  ((builtinclassentry) { .type=(BUILTIN_METHOD), .name=(label), .flags=flg, .function=func})
+#define MORPHO_METHOD(label, func, flg)  ((builtinclassentry) { .type=(BUILTIN_METHOD), .name=(label), .signature=NULL, .flags=flg, .function=func})
+
+#define MORPHO_METHODSIG(label, sig, func, flg)  ((builtinclassentry) { .type=(BUILTIN_METHOD), .name=(label), .signature=sig, .flags=flg, .function=func})
 
 #define MORPHO_ENDCLASS         , MORPHO_PROPERTY(NULL) \
                                 };
@@ -116,7 +119,7 @@ void builtin_setclasstable(dictionary *dict);
 
 value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags flags);
 value builtin_findfunction(value name);
-bool builtin_setsignature(value, char *signature);
+bool builtin_setsignature(value fn, char *signature);
 
 value builtin_addclass(char *name, builtinclassentry desc[], value superclass);
 value builtin_findclass(value name);

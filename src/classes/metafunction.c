@@ -107,8 +107,11 @@ bool metafunction_resolve(objectmetafunction *f, int nargs, value *args, value *
         objectfunction *fn = MORPHO_GETFUNCTION(f->fns.data[i]);
         if (nargs!=fn->nargs) continue;
         bool match=true;
-        for (int j=0; j<fn->signature.count && match; j++) {
-            if (!metafunction_matchtype(fn->signature.data[j], args[j])) match=false;
+        int nparams; value *ptypes;
+        signature_paramlist(&fn->sig, &nparams, &ptypes);
+        
+        for (int j=0; j<nparams && match; j++) {
+            if (!metafunction_matchtype(ptypes[j], args[j])) match=false;
         }
         if (match) { *out=f->fns.data[i]; return true; }
     }

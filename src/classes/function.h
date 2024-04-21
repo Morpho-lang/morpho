@@ -8,6 +8,7 @@
 #define function_h
 
 #include "object.h"
+#include "signature.h"
 
 /* -------------------------------------------------------
  * Function objects
@@ -38,7 +39,7 @@ typedef struct sobjectfunction {
     varray_value konst;
     varray_varray_upvalue prototype;
     varray_optionalparam opt;
-    varray_value signature;
+    signature sig;
 } objectfunction;
 
 /** Gets an objectfunction from a value */
@@ -70,7 +71,7 @@ varray_value *object_functiongetconstanttable(objectfunction *func);
 objectfunction *object_newfunction(indx entry, value name, objectfunction *parent, unsigned int nargs);
 bool object_functionhasvargs(objectfunction *func);
 void object_functionsetvarg(objectfunction *func, unsigned int varg);
-bool function_setsignature(objectfunction *func, value *signature);
+void function_setsignature(objectfunction *func, value *signature);
 bool function_hastypedparameters(objectfunction *func);
 
 void objectfunction_printfn(object *obj, void *v);

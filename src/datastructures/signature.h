@@ -18,6 +18,7 @@ void signature_init(signature *s);
 void signature_clear(signature *s);
 
 bool signature_istyped(signature *s);
+bool signature_isequal(signature *a, signature *b);
 bool signature_paramlist(signature *s, int *nparams, value **ptypes);
 
 void signature_set(signature *s, int nparam, value *types);

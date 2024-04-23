@@ -20,14 +20,7 @@ extern objecttype objectmetafunctiontype;
 typedef struct {
     int opcode;
     union {
-        struct {
-            value type;
-            int bsuccess;
-            int bfail;
-        } match;
-        struct  {
-            value fn;
-        } resolve;
+        value resolvefn;
     } data;
 } mfinstruction;
 

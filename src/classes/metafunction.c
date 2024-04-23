@@ -135,24 +135,69 @@ bool metafunction_slowresolve(objectmetafunction *f, int nargs, value *args, val
  * ********************************************************************** */
 
 enum {
-    MF_BRANCH_ON_NARG,
-    MF_MATCH,
     MF_RESOLVE,
     MF_FAIL
 };
 
 DEFINE_VARRAY(mfinstruction, mfinstruction);
 
+typedef int mfindx;
+
+typedef struct {
+    objectmetafunction *fn;
+    varray_int checkedargs; /** List of arguments already checked */
+} mfcompiler;
+
+typedef struct {
+    signature *sig; /** Signature of the target */
+    value fn; /** The target */
+} mfresult;
+
+/** Initialize the metafunction compiler */
+void mfcompiler_init(mfcompiler *c, objectmetafunction *fn) {
+    c->fn=fn;
+    varray_intinit(&c->checkedargs);
+}
+
+/** Clear the metafunction compiler */
+void mfcompiler_clear(mfcompiler *c, objectmetafunction *fn) {
+    varray_intclear(&c->checkedargs);
+}
+
+mfindx mfcompile_insertinstruction(mfcompiler *c, mfinstruction instr) {
+    return varray_mfinstructionwrite(&c->fn->resolver, instr);
+}
+
+/** Compiles a single result */
+void mfcompile_singleresult(mfcompiler *c, mfresult *result) {
+    /** Should check remaining args */
+    
+    mfinstruction instr = { .opcode=MF_RESOLVE, .data.resolvefn=result->fn };
+    mfcompile_insertinstruction(c, instr);
+}
+
+/** Attempts to discriminate between a list of possible signatures */
+void mfcompile_set(mfcompiler *fn, int nres, mfresult *rlist) {
+    if (nres==1) mfcompile_singleresult(fn, rlist);
+}
+
 /** Compiles the metafunction resolver */
 void metafunction_compile(objectmetafunction *fn) {
     int nfn = fn->fns.count;
     if (!nfn) return;
     
-    signature *sig[nfn];
-    for (int i=0; i<nfn; i++) sig[i]=_getsignature(fn->fns.data[i]);
+    mfresult rlist[nfn];
+    for (int i=0; i<nfn; i++) {
+        rlist[i].sig=_getsignature(fn->fns.data[i]);
+        rlist[i].fn=fn->fns.data[i];
+    }
     
+    mfcompiler compiler;
+    mfcompiler_init(&compiler, fn);
     
+    mfcompile_set(&compiler, nfn, rlist);
     
+    mfcompiler_clear(&compiler, fn);
 }
 
 /** Execute the metafunction's resolver */
@@ -162,18 +207,14 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value 
     
     do {
         switch(pc->opcode) {
-            case MF_MATCH:
-                
-                break;
             case MF_RESOLVE:
-                *out = pc->data.resolve.fn;
+                *out = pc->data.resolvefn;
                 return true;
             case MF_FAIL:
                 return false;
         }
     } while(true);
 }
-
 
 /* **********************************************************************
  * Metafunction veneer class

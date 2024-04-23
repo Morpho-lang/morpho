@@ -16,11 +16,29 @@
 extern objecttype objectmetafunctiontype;
 #define OBJECT_METAFUNCTION objectmetafunctiontype
 
+/** Compiled metafunction instruction set */
+typedef struct {
+    int opcode;
+    union {
+        struct {
+            value type;
+            int bsuccess;
+            int bfail;
+        } match;
+        struct  {
+            value fn;
+        } resolve;
+    } data;
+} mfinstruction;
+
+DECLARE_VARRAY(mfinstruction, mfinstruction);
+
 /** A metafunction object */
 typedef struct sobjectmetafunction {
     object obj;
     value name;
     varray_value fns; 
+    varray_mfinstruction resolver;
 } objectmetafunction;
 
 /** Gets an objectmetafunction from a value */
@@ -45,6 +63,7 @@ typedef struct sobjectmetafunction {
 
 objectmetafunction *object_newmetafunction(value name);
 bool metafunction_wrap(value name, value fn, value *out);
+void metafunction_compile(objectmetafunction *fn);
 
 bool metafunction_add(objectmetafunction *f, value fn);
 bool metafunction_typefromvalue(value v, value *out);

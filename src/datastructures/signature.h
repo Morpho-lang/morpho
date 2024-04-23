@@ -23,4 +23,6 @@ bool signature_paramlist(signature *s, int *nparams, value **ptypes);
 void signature_set(signature *s, int nparam, value *types);
 bool signature_parse(char *sig, signature *out);
 
+void signature_print(signature *s);
+
 #endif

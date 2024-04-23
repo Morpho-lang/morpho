@@ -134,3 +134,16 @@ bool signature_parse(char *sig, signature *out) {
     parse_clear(&p);
     return success;
 }
+
+/** Print a signature for debugging purposes */
+void signature_print(signature *s) {
+    printf("(");
+    for (int i=0; i<s->types.count; i++) {
+        value type=s->types.data[i];
+        if (MORPHO_ISNIL(type)) printf("_");
+        else if (MORPHO_ISCLASS(type)) morpho_printvalue(NULL, MORPHO_GETCLASS(type)->name);
+        
+        if (i<s->types.count-1) printf(",");
+    }
+    printf(")\n");
+}

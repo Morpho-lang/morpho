@@ -221,7 +221,10 @@ bool compiler_resolvefunctionref(compiler *c, value symbol, value *out) {
             match++;
         }
     }
-
+    
+    // Compile the metafunction ready for use
+    if (MORPHO_ISMETAFUNCTION(fnd)) metafunction_compile(MORPHO_GETMETAFUNCTION(fnd));
+    
     if (match) *out=fnd;
     return match;
 }

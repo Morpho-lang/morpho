@@ -111,7 +111,7 @@ signature *_getsignature(value fn) {
 }
 
 /** Resolves a metafunction given calling arguments */
-bool metafunction_resolve(objectmetafunction *f, int nargs, value *args, value *out) {
+bool metafunction_slowresolve(objectmetafunction *f, int nargs, value *args, value *out) {
     for (int i=0; i<f->fns.count; i++) {
         signature *s = _getsignature(f->fns.data[i]);
         if (!s) continue;
@@ -129,6 +129,51 @@ bool metafunction_resolve(objectmetafunction *f, int nargs, value *args, value *
     
     return false;
 }
+
+/* **********************************************************************
+ * Fast metafunction resolver
+ * ********************************************************************** */
+
+enum {
+    MF_BRANCH_ON_NARG,
+    MF_MATCH,
+    MF_RESOLVE,
+    MF_FAIL
+};
+
+DEFINE_VARRAY(mfinstruction, mfinstruction);
+
+/** Compiles the metafunction resolver */
+void metafunction_compile(objectmetafunction *fn) {
+    int nfn = fn->fns.count;
+    if (!nfn) return;
+    
+    signature *sig[nfn];
+    for (int i=0; i<nfn; i++) sig[i]=_getsignature(fn->fns.data[i]);
+    
+    
+    
+}
+
+/** Execute the metafunction's resolver */
+bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value *out) {
+    mfinstruction *pc = fn->resolver.data;
+    if (!pc) return metafunction_slowresolve(fn, nargs, args, out);
+    
+    do {
+        switch(pc->opcode) {
+            case MF_MATCH:
+                
+                break;
+            case MF_RESOLVE:
+                *out = pc->data.resolve.fn;
+                return true;
+            case MF_FAIL:
+                return false;
+        }
+    } while(true);
+}
+
 
 /* **********************************************************************
  * Metafunction veneer class

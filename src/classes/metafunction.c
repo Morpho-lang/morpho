@@ -135,11 +135,18 @@ bool metafunction_slowresolve(objectmetafunction *f, int nargs, value *args, val
  * ********************************************************************** */
 
 enum {
+    MF_CHECKNARGS,
     MF_RESOLVE,
     MF_FAIL
 };
 
 DEFINE_VARRAY(mfinstruction, mfinstruction);
+
+#define MFINSTRUCTION_EMPTY -1
+
+#define MFINSTRUCTION_FAIL { .opcode=MF_FAIL }
+#define MFINSTRUCTION_RESOLVE(fn) { .opcode=MF_RESOLVE, .data.resolvefn=fn, .branch=MFINSTRUCTION_EMPTY }
+#define MFINSTRUCTION_CHECKNARG(n, brnch) { .opcode=MF_CHECKNARGS, .data.nargs=n, .branch=brnch }
 
 typedef int mfindx;
 
@@ -185,6 +192,30 @@ bool mfcompiler_popset(mfcompiler *c, mfset *set) {
     if (c->set.count<=0) return false;
     if (set) *set = c->set.data[c->set.count-1];
     c->set.count--;
+}
+
+void mfcompiler_disassemble(mfcompiler *c) {
+    int ninstr = c->fn->resolver.count;
+    for (int i=0; i<ninstr; i++) {
+        mfinstruction *instr = &c->fn->resolver.data[i];
+        printf("%5i : ", i) ;
+        switch(instr->opcode) {
+            case MF_RESOLVE: {
+                printf("resolve ");
+                morpho_printvalue(NULL, instr->data.resolvefn);
+                signature *sig = _getsignature(instr->data.resolvefn);
+                printf(" ");
+                if (sig) signature_print(sig);
+                break;
+            }
+            case MF_CHECKNARGS: {
+                printf("checkargs (%i) -> (%ti)", instr->data.nargs, i+instr->branch+1);
+                break;
+            }
+            case MF_FAIL: printf("fail"); break;
+        }
+        printf("\n");
+    }
 }
 
 /** Counts the range of parameters for the function call */
@@ -238,12 +269,12 @@ bool mfcompile_countoutcomes(mfcompiler *c, mfset *set, int *best) {
 mfindx mfcompile_insertinstruction(mfcompiler *c, mfinstruction instr) {
     return varray_mfinstructionwrite(&c->fn->resolver, instr);
 }
-
+ 
 /** Compiles a single result */
 mfindx mfcompile_resolve(mfcompiler *c, mfset *set) {
     // Should check all arguments have been resolved
 
-    mfinstruction instr = { .opcode=MF_RESOLVE, .data.resolvefn=set->rlist->fn };
+    mfinstruction instr = MFINSTRUCTION_RESOLVE(set->rlist->fn);
     return mfcompile_insertinstruction(c, instr);
 }
 
@@ -255,8 +286,24 @@ mfindx mfcompiler_dispatchonparam(mfcompiler *c, mfset *set, int i) {
 /** Attempts to dispatch based on the number of arguments */
 mfindx mfcompiler_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
     if (set->count==2) {
+        for (int i=0; i<2; i++) {
+            signature *sig = set->rlist[i].sig;
+            int nparams;
+            signature_paramlist(sig, &nparams, NULL);
+            mfinstruction instr = MFINSTRUCTION_CHECKNARG(nparams, 1);
+            mfcompile_insertinstruction(c, instr);
+            
+            mfinstruction res = MFINSTRUCTION_RESOLVE(set->rlist[i].fn);
+            mfcompile_insertinstruction(c, res);
+        }
+        mfinstruction fail = MFINSTRUCTION_FAIL;
+        mfcompile_insertinstruction(c, fail);
         
     }; // else branch table
+    
+    mfcompiler_disassemble(c);
+    
+    return 0;
 }
 
 /** Attempts to discriminate between a list of possible signatures */
@@ -306,12 +353,16 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value 
     
     do {
         switch(pc->opcode) {
+            case MF_CHECKNARGS:
+                if (pc->data.nargs!=nargs) pc+=pc->branch;
+                break;
             case MF_RESOLVE:
                 *out = pc->data.resolvefn;
                 return true;
             case MF_FAIL:
                 return false;
         }
+        pc++;
     } while(true);
 }
 

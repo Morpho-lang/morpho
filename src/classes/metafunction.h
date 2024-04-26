@@ -20,9 +20,10 @@ extern objecttype objectmetafunctiontype;
 typedef struct {
     int opcode;
     union {
+        int nargs;
         value resolvefn;
     } data;
-    indx bto; /* Branch to this instruction on failure */
+    indx branch; /* Branch the pc by this amount on fail */
 } mfinstruction;
 
 DECLARE_VARRAY(mfinstruction, mfinstruction);

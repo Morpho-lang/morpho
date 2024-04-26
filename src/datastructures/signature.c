@@ -152,5 +152,5 @@ void signature_print(signature *s) {
         
         if (i<s->types.count-1) printf(",");
     }
-    printf(")\n");
+    printf(")");
 }

@@ -144,24 +144,95 @@ DEFINE_VARRAY(mfinstruction, mfinstruction);
 typedef int mfindx;
 
 typedef struct {
-    objectmetafunction *fn;
-    varray_int checkedargs; /** List of arguments already checked */
-} mfcompiler;
-
-typedef struct {
     signature *sig; /** Signature of the target */
     value fn; /** The target */
 } mfresult;
 
+typedef struct {
+    int count;
+    mfresult *rlist;
+} mfset;
+
+DECLARE_VARRAY(mfset, mfset)
+DEFINE_VARRAY(mfset, mfset)
+
+typedef struct {
+    objectmetafunction *fn;
+    dictionary pcount;
+    varray_mfset set; /** A stack of possible sets */
+} mfcompiler;
+
 /** Initialize the metafunction compiler */
 void mfcompiler_init(mfcompiler *c, objectmetafunction *fn) {
     c->fn=fn;
-    varray_intinit(&c->checkedargs);
+    dictionary_init(&c->pcount);
+    varray_mfsetinit(&c->set);
 }
 
 /** Clear the metafunction compiler */
 void mfcompiler_clear(mfcompiler *c, objectmetafunction *fn) {
-    varray_intclear(&c->checkedargs);
+    dictionary_clear(&c->pcount);
+    varray_mfsetclear(&c->set);
+}
+
+/** Pushes a set onto the stack */
+void mfcompiler_pushset(mfcompiler *c, mfset *set) {
+    varray_mfsetadd(&c->set, set, 1);
+}
+
+/** Pops a set off the stack, optionally returning it */
+bool mfcompiler_popset(mfcompiler *c, mfset *set) {
+    if (c->set.count<=0) return false;
+    if (set) *set = c->set.data[c->set.count-1];
+    c->set.count--;
+}
+
+/** Counts the range of parameters for the function call */
+void mfcompiler_countparams(mfcompiler *c, mfset *set, int *min, int *max) {
+    int imin=INT_MAX, imax=INT_MIN;
+    for (int i=0; i<set->count; i++) {
+        int nparams;
+        signature_paramlist(set->rlist[i].sig, &nparams, NULL);
+        if (nparams<imin) imin=nparams;
+        if (nparams>imax) imax=nparams;
+    }
+    if (min) *min = imin;
+    if (max) *max = imax;
+}
+
+/** Places the various outcomes for a parameter into a dictionary */
+bool mfcompile_outcomes(mfcompiler *c, mfset *set, int i, dictionary *out) {
+    out->count=0;
+    for (int k=0; i<set->count; i++) { // Loop over outcomes
+        int nparams; value *ptypes;
+        signature_paramlist(set->rlist[k].sig, &nparams, &ptypes);
+        if (i>=nparams) continue;
+        value val = MORPHO_INTEGER(1);
+        if (dictionary_get(out, ptypes[i], &val)) val=MORPHO_INTEGER(MORPHO_GETINTEGERVALUE(val)+1);
+        if (!dictionary_insert(out, ptypes[i], val)) return false;
+    }
+    return true;
+}
+
+/** Count the divergent outcomes of each parameter */
+bool mfcompile_countoutcomes(mfcompiler *c, mfset *set, int *best) {
+    varray_int count;
+    varray_intinit(&count);
+    
+    dictionary dict;
+    dictionary_init(&dict);
+    
+    int k=0; // Loop over parameters
+    do {
+        mfcompile_outcomes(c, set, k, &dict);
+        varray_intwrite(&count, dict.count);
+        k++;
+    } while (dict.count);
+    
+    dictionary_clear(&dict);
+    varray_intclear(&count);
+    
+    return false;
 }
 
 mfindx mfcompile_insertinstruction(mfcompiler *c, mfinstruction instr) {
@@ -169,25 +240,53 @@ mfindx mfcompile_insertinstruction(mfcompiler *c, mfinstruction instr) {
 }
 
 /** Compiles a single result */
-void mfcompile_singleresult(mfcompiler *c, mfresult *result) {
-    /** Should check remaining args */
+mfindx mfcompile_resolve(mfcompiler *c, mfset *set) {
+    // Should check all arguments have been resolved
+
+    mfinstruction instr = { .opcode=MF_RESOLVE, .data.resolvefn=set->rlist->fn };
+    return mfcompile_insertinstruction(c, instr);
+}
+
+/** Attempts to dispatch based on a parameter i */
+mfindx mfcompiler_dispatchonparam(mfcompiler *c, mfset *set, int i) {
     
-    mfinstruction instr = { .opcode=MF_RESOLVE, .data.resolvefn=result->fn };
-    mfcompile_insertinstruction(c, instr);
+}
+
+/** Attempts to dispatch based on the number of arguments */
+mfindx mfcompiler_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
+    if (set->count==2) {
+        
+    }; // else branch table
 }
 
 /** Attempts to discriminate between a list of possible signatures */
-void mfcompile_set(mfcompiler *fn, int nres, mfresult *rlist) {
-    if (nres==1) mfcompile_singleresult(fn, rlist);
+mfindx mfcompile_set(mfcompiler *c, mfset *set) {
+    if (set->count==1) mfcompile_resolve(c, set);
+    
+    int min, max; // Count the range of possible parameters
+    mfcompiler_countparams(c, set, &min, &max);
+    
+    // Dispatch on the number of parameters if it's in doubt
+    if (min!=max) return mfcompiler_dispatchonnarg(c, set, min, max);
+    
+    // If just one parameter, dispatch on it
+    if (min==1) return mfcompiler_dispatchonparam(c, set, 0);
+    
+    int best;
+    if (mfcompile_countoutcomes(c, set, &best)) return mfcompiler_dispatchonparam(c, set, best);
+    
+    return -1;
 }
 
 /** Compiles the metafunction resolver */
 void metafunction_compile(objectmetafunction *fn) {
-    int nfn = fn->fns.count;
-    if (!nfn) return;
+    mfset set;
+    set.count = fn->fns.count;
+    if (!set.count) return;
     
-    mfresult rlist[nfn];
-    for (int i=0; i<nfn; i++) {
+    mfresult rlist[set.count];
+    set.rlist=rlist;
+    for (int i=0; i<set.count; i++) {
         rlist[i].sig=_getsignature(fn->fns.data[i]);
         rlist[i].fn=fn->fns.data[i];
     }
@@ -195,7 +294,7 @@ void metafunction_compile(objectmetafunction *fn) {
     mfcompiler compiler;
     mfcompiler_init(&compiler, fn);
     
-    mfcompile_set(&compiler, nfn, rlist);
+    mfcompile_set(&compiler, &set);
     
     mfcompiler_clear(&compiler, fn);
 }

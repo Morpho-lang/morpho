@@ -22,6 +22,7 @@ typedef struct {
     union {
         value resolvefn;
     } data;
+    indx bto; /* Branch to this instruction on failure */
 } mfinstruction;
 
 DECLARE_VARRAY(mfinstruction, mfinstruction);

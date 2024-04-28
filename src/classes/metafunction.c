@@ -148,8 +148,6 @@ DEFINE_VARRAY(mfinstruction, mfinstruction);
 #define MFINSTRUCTION_RESOLVE(fn) { .opcode=MF_RESOLVE, .data.resolvefn=fn, .branch=MFINSTRUCTION_EMPTY }
 #define MFINSTRUCTION_CHECKNARG(n, brnch) { .opcode=MF_CHECKNARGS, .data.nargs=n, .branch=brnch }
 
-typedef int mfindx;
-
 typedef struct {
     signature *sig; /** Signature of the target */
     value fn; /** The target */
@@ -159,6 +157,9 @@ typedef struct {
     int count;
     mfresult *rlist;
 } mfset;
+
+/** Static intiializer for the mfset */
+#define MFSET(c, l) { .count=c, .rlist=l }
 
 DECLARE_VARRAY(mfset, mfset)
 DEFINE_VARRAY(mfset, mfset)
@@ -196,20 +197,21 @@ bool mfcompiler_popset(mfcompiler *c, mfset *set) {
 
 void mfcompiler_disassemble(mfcompiler *c) {
     int ninstr = c->fn->resolver.count;
+    morpho_printvalue(NULL, MORPHO_OBJECT(c->fn));
+    printf(":\n");
     for (int i=0; i<ninstr; i++) {
         mfinstruction *instr = &c->fn->resolver.data[i];
         printf("%5i : ", i) ;
         switch(instr->opcode) {
             case MF_RESOLVE: {
                 printf("resolve ");
-                morpho_printvalue(NULL, instr->data.resolvefn);
                 signature *sig = _getsignature(instr->data.resolvefn);
                 printf(" ");
                 if (sig) signature_print(sig);
                 break;
             }
             case MF_CHECKNARGS: {
-                printf("checkargs (%i) -> (%ti)", instr->data.nargs, i+instr->branch+1);
+                printf("checkargs (%i) -> (%i)", instr->data.nargs, i+instr->branch+1);
                 break;
             }
             case MF_FAIL: printf("fail"); break;
@@ -269,46 +271,55 @@ bool mfcompile_countoutcomes(mfcompiler *c, mfset *set, int *best) {
 mfindx mfcompile_insertinstruction(mfcompiler *c, mfinstruction instr) {
     return varray_mfinstructionwrite(&c->fn->resolver, instr);
 }
- 
+
+mfindx mfcompiler_currentinstruction(mfcompiler *c) {
+    return c->fn->resolver.count-1;
+}
+
+void mfcompiler_setbranch(mfcompiler *c, mfindx i, mfindx branch) {
+    if (i>=c->fn->resolver.count) return;
+    c->fn->resolver.data[i].branch=branch;
+}
+
 /** Compiles a single result */
-mfindx mfcompile_resolve(mfcompiler *c, mfset *set) {
+void mfcompiler_resolve(mfcompiler *c, mfset *set) {
     // Should check all arguments have been resolved
 
     mfinstruction instr = MFINSTRUCTION_RESOLVE(set->rlist->fn);
-    return mfcompile_insertinstruction(c, instr);
+    mfcompile_insertinstruction(c, instr);
 }
 
 /** Attempts to dispatch based on a parameter i */
-mfindx mfcompiler_dispatchonparam(mfcompiler *c, mfset *set, int i) {
+void mfcompiler_dispatchonparam(mfcompiler *c, mfset *set, int i) {
     
 }
 
 /** Attempts to dispatch based on the number of arguments */
-mfindx mfcompiler_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
+void mfcompiler_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
     if (set->count==2) {
         for (int i=0; i<2; i++) {
             signature *sig = set->rlist[i].sig;
             int nparams;
-            signature_paramlist(sig, &nparams, NULL);
-            mfinstruction instr = MFINSTRUCTION_CHECKNARG(nparams, 1);
-            mfcompile_insertinstruction(c, instr);
+            signature_paramlist(sig, &nparams, NULL); // Get the number of parameters
+            mfinstruction instr = MFINSTRUCTION_CHECKNARG(nparams, 0);
+            mfindx cindx = mfcompile_insertinstruction(c, instr); // Write the check nargs instruction
             
-            mfinstruction res = MFINSTRUCTION_RESOLVE(set->rlist[i].fn);
-            mfcompile_insertinstruction(c, res);
+            mfset res = MFSET(1, &set->rlist[i]); // If it works, resolve on this implementation
+            mfcompiler_resolve(c, &res);
+            
+            // Fix the branch instruction
+            mfindx eindx = mfcompiler_currentinstruction(c);
+            mfcompiler_setbranch(c, cindx, eindx-cindx);
         }
         mfinstruction fail = MFINSTRUCTION_FAIL;
         mfcompile_insertinstruction(c, fail);
         
     }; // else branch table
-    
-    mfcompiler_disassemble(c);
-    
-    return 0;
 }
 
 /** Attempts to discriminate between a list of possible signatures */
-mfindx mfcompile_set(mfcompiler *c, mfset *set) {
-    if (set->count==1) mfcompile_resolve(c, set);
+void mfcompile_set(mfcompiler *c, mfset *set) {
+    if (set->count==1) mfcompiler_resolve(c, set);
     
     int min, max; // Count the range of possible parameters
     mfcompiler_countparams(c, set, &min, &max);
@@ -321,8 +332,6 @@ mfindx mfcompile_set(mfcompiler *c, mfset *set) {
     
     int best;
     if (mfcompile_countoutcomes(c, set, &best)) return mfcompiler_dispatchonparam(c, set, best);
-    
-    return -1;
 }
 
 /** Compiles the metafunction resolver */
@@ -342,6 +351,8 @@ void metafunction_compile(objectmetafunction *fn) {
     mfcompiler_init(&compiler, fn);
     
     mfcompile_set(&compiler, &set);
+    
+    mfcompiler_disassemble(&compiler);
     
     mfcompiler_clear(&compiler, fn);
 }

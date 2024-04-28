@@ -16,6 +16,9 @@
 extern objecttype objectmetafunctiontype;
 #define OBJECT_METAFUNCTION objectmetafunctiontype
 
+/** Index type for metafunction resolver */
+typedef int mfindx;
+
 /** Compiled metafunction instruction set */
 typedef struct {
     int opcode;
@@ -23,7 +26,7 @@ typedef struct {
         int nargs;
         value resolvefn;
     } data;
-    indx branch; /* Branch the pc by this amount on fail */
+    mfindx branch; /* Branch the pc by this amount on fail */
 } mfinstruction;
 
 DECLARE_VARRAY(mfinstruction, mfinstruction);

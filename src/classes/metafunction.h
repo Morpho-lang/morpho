@@ -25,6 +25,7 @@ typedef struct {
     union {
         int nargs;
         value resolvefn;
+        varray_int btable;
     } data;
     mfindx branch; /* Branch the pc by this amount on fail */
 } mfinstruction;

@@ -51,6 +51,11 @@ bool signature_paramlist(signature *s, int *nparams, value **ptypes) {
     return s->types.data;
 }
 
+/** @brief Count the number of parameters in a signature */
+int signature_countparams(signature *s) {
+    return s->types.count;
+}
+
 /* **********************************************************************
  * Parse signatures
  * ********************************************************************** */

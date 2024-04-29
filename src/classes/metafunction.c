@@ -136,6 +136,7 @@ bool metafunction_slowresolve(objectmetafunction *f, int nargs, value *args, val
 
 enum {
     MF_CHECKNARGS,
+    MF_BRANCHNARGS,
     MF_RESOLVE,
     MF_FAIL
 };
@@ -144,9 +145,10 @@ DEFINE_VARRAY(mfinstruction, mfinstruction);
 
 #define MFINSTRUCTION_EMPTY -1
 
-#define MFINSTRUCTION_FAIL { .opcode=MF_FAIL }
+#define MFINSTRUCTION_FAIL { .opcode=MF_FAIL, .branch=MFINSTRUCTION_EMPTY }
 #define MFINSTRUCTION_RESOLVE(fn) { .opcode=MF_RESOLVE, .data.resolvefn=fn, .branch=MFINSTRUCTION_EMPTY }
 #define MFINSTRUCTION_CHECKNARG(n, brnch) { .opcode=MF_CHECKNARGS, .data.nargs=n, .branch=brnch }
+#define MFINSTRUCTION_BRANCHNARG(table, brnch) { .opcode=MF_BRANCHNARGS, .data.btable=table, .branch=brnch }
 
 typedef struct {
     signature *sig; /** Signature of the target */
@@ -195,6 +197,7 @@ bool mfcompiler_popset(mfcompiler *c, mfset *set) {
     c->set.count--;
 }
 
+/** Disassemble */
 void mfcompiler_disassemble(mfcompiler *c) {
     int ninstr = c->fn->resolver.count;
     morpho_printvalue(NULL, MORPHO_OBJECT(c->fn));
@@ -203,15 +206,23 @@ void mfcompiler_disassemble(mfcompiler *c) {
         mfinstruction *instr = &c->fn->resolver.data[i];
         printf("%5i : ", i) ;
         switch(instr->opcode) {
+            case MF_CHECKNARGS: {
+                printf("checkargs (%i) -> (%i)", instr->data.nargs, i+instr->branch+1);
+                break;
+            }
+            case MF_BRANCHNARGS: {
+                printf("branchargs (%i) -> (%i)\n", instr->data.nargs, i+instr->branch+1);
+                for (int k=0; k<instr->data.btable.count; k++) {
+                    printf("        %i -> %i\n", k, i+instr->data.btable.data[k]+1);
+                }
+                
+                break;
+            }
             case MF_RESOLVE: {
                 printf("resolve ");
                 signature *sig = _getsignature(instr->data.resolvefn);
                 printf(" ");
                 if (sig) signature_print(sig);
-                break;
-            }
-            case MF_CHECKNARGS: {
-                printf("checkargs (%i) -> (%i)", instr->data.nargs, i+instr->branch+1);
                 break;
             }
             case MF_FAIL: printf("fail"); break;
@@ -221,7 +232,7 @@ void mfcompiler_disassemble(mfcompiler *c) {
 }
 
 /** Counts the range of parameters for the function call */
-void mfcompiler_countparams(mfcompiler *c, mfset *set, int *min, int *max) {
+void mfcompile_countparams(mfcompiler *c, mfset *set, int *min, int *max) {
     int imin=INT_MAX, imax=INT_MIN;
     for (int i=0; i<set->count; i++) {
         int nparams;
@@ -272,17 +283,29 @@ mfindx mfcompile_insertinstruction(mfcompiler *c, mfinstruction instr) {
     return varray_mfinstructionwrite(&c->fn->resolver, instr);
 }
 
-mfindx mfcompiler_currentinstruction(mfcompiler *c) {
+mfindx mfcompile_currentinstruction(mfcompiler *c) {
     return c->fn->resolver.count-1;
 }
 
-void mfcompiler_setbranch(mfcompiler *c, mfindx i, mfindx branch) {
+void mfcompile_setbranch(mfcompiler *c, mfindx i, mfindx branch) {
     if (i>=c->fn->resolver.count) return;
     c->fn->resolver.data[i].branch=branch;
 }
 
+void mfcompile_fail(mfcompiler *c);
+void mfcompile_resolve(mfcompiler *c, mfset *set);
+void mfcompile_dispatchonparam(mfcompiler *c, mfset *set, int i);
+void mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max);
+void mfcompile_set(mfcompiler *c, mfset *set);
+
+/** Inserts a fail instruction */
+void mfcompile_fail(mfcompiler *c) {
+    mfinstruction fail = MFINSTRUCTION_FAIL;
+    mfcompile_insertinstruction(c, fail);
+}
+
 /** Compiles a single result */
-void mfcompiler_resolve(mfcompiler *c, mfset *set) {
+void mfcompile_resolve(mfcompiler *c, mfset *set) {
     // Should check all arguments have been resolved
 
     mfinstruction instr = MFINSTRUCTION_RESOLVE(set->rlist->fn);
@@ -290,12 +313,12 @@ void mfcompiler_resolve(mfcompiler *c, mfset *set) {
 }
 
 /** Attempts to dispatch based on a parameter i */
-void mfcompiler_dispatchonparam(mfcompiler *c, mfset *set, int i) {
+void mfcompile_dispatchonparam(mfcompiler *c, mfset *set, int i) {
     
 }
 
 /** Attempts to dispatch based on the number of arguments */
-void mfcompiler_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
+void mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
     if (set->count==2) {
         for (int i=0; i<2; i++) {
             signature *sig = set->rlist[i].sig;
@@ -305,33 +328,63 @@ void mfcompiler_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
             mfindx cindx = mfcompile_insertinstruction(c, instr); // Write the check nargs instruction
             
             mfset res = MFSET(1, &set->rlist[i]); // If it works, resolve on this implementation
-            mfcompiler_resolve(c, &res);
+            mfcompile_resolve(c, &res);
             
             // Fix the branch instruction
-            mfindx eindx = mfcompiler_currentinstruction(c);
-            mfcompiler_setbranch(c, cindx, eindx-cindx);
+            mfindx eindx = mfcompile_currentinstruction(c);
+            mfcompile_setbranch(c, cindx, eindx-cindx);
         }
-        mfinstruction fail = MFINSTRUCTION_FAIL;
-        mfcompile_insertinstruction(c, fail);
+        mfcompile_fail(c);
+    } else {
+        varray_int btable;
+        varray_intinit(&btable);
+        for (int i=0; i<=max; i++) varray_intwrite(&btable, 0);
         
-    }; // else branch table
+        // Insert the branch table instruction
+        mfinstruction table = MFINSTRUCTION_BRANCHNARG(btable, 0);
+        mfindx tindx=mfcompile_insertinstruction(c, table);
+        // Immediately follow by a fail instruction if this falls through
+        mfcompile_fail(c);
+        
+        // Count the number of implementations for each parameter count
+        for (int k=0; k<set->count; k++) {
+            btable.data[signature_countparams(set->rlist[k].sig)]++;
+        }
+
+        // Compile the outcomes for each parameter count
+        for (int n=0; n<=max; n++) {
+            int nimp = btable.data[n];
+            if (!nimp) continue;
+            
+            // Select all implementations that match this parameter value
+            mfresult rlist[nimp];
+            mfset iset = MFSET(nimp, rlist);
+            for (int k=0, j=0; k<set->count; k++) {
+                int m=signature_countparams(set->rlist[k].sig);
+                if (m==n) { rlist[j]=set->rlist[k]; j++; }
+            }
+            
+            btable.data[n]=mfcompile_currentinstruction(c)-tindx;
+            mfcompile_set(c, &iset);
+        }
+    }
 }
 
 /** Attempts to discriminate between a list of possible signatures */
 void mfcompile_set(mfcompiler *c, mfset *set) {
-    if (set->count==1) mfcompiler_resolve(c, set);
+    if (set->count==1) mfcompile_resolve(c, set);
     
     int min, max; // Count the range of possible parameters
-    mfcompiler_countparams(c, set, &min, &max);
+    mfcompile_countparams(c, set, &min, &max);
     
     // Dispatch on the number of parameters if it's in doubt
-    if (min!=max) return mfcompiler_dispatchonnarg(c, set, min, max);
+    if (min!=max) return mfcompile_dispatchonnarg(c, set, min, max);
     
     // If just one parameter, dispatch on it
-    if (min==1) return mfcompiler_dispatchonparam(c, set, 0);
+    if (min==1) return mfcompile_dispatchonparam(c, set, 0);
     
     int best;
-    if (mfcompile_countoutcomes(c, set, &best)) return mfcompiler_dispatchonparam(c, set, best);
+    if (mfcompile_countoutcomes(c, set, &best)) return mfcompile_dispatchonparam(c, set, best);
 }
 
 /** Compiles the metafunction resolver */
@@ -352,7 +405,7 @@ void metafunction_compile(objectmetafunction *fn) {
     
     mfcompile_set(&compiler, &set);
     
-    mfcompiler_disassemble(&compiler);
+    //mfcompiler_disassemble(&compiler);
     
     mfcompiler_clear(&compiler, fn);
 }
@@ -366,6 +419,11 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value 
         switch(pc->opcode) {
             case MF_CHECKNARGS:
                 if (pc->data.nargs!=nargs) pc+=pc->branch;
+                break;
+            case MF_BRANCHNARGS:
+                if (nargs<=pc->data.btable.count) {
+                    pc+=pc->data.btable.data[nargs];
+                } else pc+=pc->branch;
                 break;
             case MF_RESOLVE:
                 *out = pc->data.resolvefn;

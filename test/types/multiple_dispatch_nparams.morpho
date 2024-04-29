@@ -27,3 +27,6 @@ print f(1, 2)
 
 print f(1,2,3)
 // expect: 3
+
+print f(1,2,3,4)
+// expect error 'MltplDsptchFld'

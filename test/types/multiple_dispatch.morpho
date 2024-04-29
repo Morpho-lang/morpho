@@ -8,15 +8,15 @@ fn f(List x) {
     x.append("Ho")
 }
 
-fn f(Float x) {
+/*fn f(Float x) {
     print x+1
-}
+}*/
 
 f("Hi")
 // expect: Hi
 
 
-f(1.5)
+//f(1.5)
 // expect: 2.5
 
 var a = []

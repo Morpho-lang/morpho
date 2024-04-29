@@ -56,6 +56,13 @@ int signature_countparams(signature *s) {
     return s->types.count;
 }
 
+/** @brief Returns the type of the i'th parameter, if it exists */
+bool signature_getparamtype(signature *s, int i, value *type) {
+    if (i>=s->types.count) return false;
+    if (type) *type = s->types.data[i];
+    return true; 
+}
+
 /* **********************************************************************
  * Parse signatures
  * ********************************************************************** */

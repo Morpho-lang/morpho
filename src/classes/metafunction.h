@@ -22,10 +22,11 @@ typedef int mfindx;
 /** Compiled metafunction instruction set */
 typedef struct {
     int opcode;
+    int narg;
     union {
-        int nargs;
         value resolvefn;
         varray_int btable;
+        dictionary bdict; 
     } data;
     mfindx branch; /* Branch the pc by this amount on fail */
 } mfinstruction;

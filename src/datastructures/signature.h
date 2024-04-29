@@ -20,6 +20,7 @@ void signature_clear(signature *s);
 bool signature_istyped(signature *s);
 bool signature_isequal(signature *a, signature *b);
 bool signature_paramlist(signature *s, int *nparams, value **ptypes);
+bool signature_getparamtype(signature *s, int i, value *type);
 int signature_countparams(signature *s);
 
 void signature_set(signature *s, int nparam, value *types);

@@ -137,6 +137,9 @@ bool metafunction_slowresolve(objectmetafunction *f, int nargs, value *args, val
 enum {
     MF_CHECKNARGS,
     MF_BRANCHNARGS,
+    MF_BRANCHVALUETYPE,
+    MF_BRANCHOBJECTTYPE,
+    MF_BRANCHCLASS,
     MF_RESOLVE,
     MF_FAIL
 };
@@ -147,8 +150,9 @@ DEFINE_VARRAY(mfinstruction, mfinstruction);
 
 #define MFINSTRUCTION_FAIL { .opcode=MF_FAIL, .branch=MFINSTRUCTION_EMPTY }
 #define MFINSTRUCTION_RESOLVE(fn) { .opcode=MF_RESOLVE, .data.resolvefn=fn, .branch=MFINSTRUCTION_EMPTY }
-#define MFINSTRUCTION_CHECKNARG(n, brnch) { .opcode=MF_CHECKNARGS, .data.nargs=n, .branch=brnch }
+#define MFINSTRUCTION_CHECKNARG(n, brnch) { .opcode=MF_CHECKNARGS, .narg=n, .branch=brnch }
 #define MFINSTRUCTION_BRANCHNARG(table, brnch) { .opcode=MF_BRANCHNARGS, .data.btable=table, .branch=brnch }
+#define MFINSTRUCTION_BRANCHOBJECTTYPE(n, table, brnch) { .opcode=MF_BRANCHOBJECTTYPE, .narg=n, .data.btable=table, .branch=brnch }
 
 typedef struct {
     signature *sig; /** Signature of the target */
@@ -165,6 +169,16 @@ typedef struct {
 
 DECLARE_VARRAY(mfset, mfset)
 DEFINE_VARRAY(mfset, mfset)
+
+typedef bool (mfset_selectfn) (mfresult *res, void *ref);
+
+/** Select subset of elements from a set given a match function */
+void mfset_select(mfset *set, mfset *out, mfset_selectfn matchfn, void *ref) {
+    out->count=0;
+    for (int k=0; k<set->count; k++) {
+        if (matchfn(set->rlist+k, ref)) { out->rlist[out->count++]=set->rlist[k]; }
+    }
+}
 
 typedef struct {
     objectmetafunction *fn;
@@ -197,6 +211,12 @@ bool mfcompiler_popset(mfcompiler *c, mfset *set) {
     c->set.count--;
 }
 
+void _mfcompiler_disassemblebranchtable(mfinstruction *instr, mfindx i) {
+    for (int k=0; k<instr->data.btable.count; k++) {
+        printf("        %i -> %i\n", k, i+instr->data.btable.data[k]+1);
+    }
+}
+
 /** Disassemble */
 void mfcompiler_disassemble(mfcompiler *c) {
     int ninstr = c->fn->resolver.count;
@@ -207,15 +227,26 @@ void mfcompiler_disassemble(mfcompiler *c) {
         printf("%5i : ", i) ;
         switch(instr->opcode) {
             case MF_CHECKNARGS: {
-                printf("checkargs (%i) -> (%i)", instr->data.nargs, i+instr->branch+1);
+                printf("checkargs (%i) -> (%i)", instr->narg, i+instr->branch+1);
                 break;
             }
             case MF_BRANCHNARGS: {
-                printf("branchargs (%i) -> (%i)\n", instr->data.nargs, i+instr->branch+1);
+                printf("branchargs (%i) -> (%i)\n", instr->narg, i+instr->branch+1);
+                _mfcompiler_disassemblebranchtable(instr, i);
+                break;
+            }
+            case MF_BRANCHVALUETYPE: {
+                printf("branchvalue (%i)\n", instr->narg);
+                _mfcompiler_disassemblebranchtable(instr, i);
+                break;
+            }
+            case MF_BRANCHOBJECTTYPE: {
+                printf("branchobjtype (%i)\n", instr->narg);
                 for (int k=0; k<instr->data.btable.count; k++) {
-                    printf("        %i -> %i\n", k, i+instr->data.btable.data[k]+1);
+                    if (instr->data.btable.data[k]==0) continue;
+                    objectclass *klass=object_getveneerclass(k);
+                    printf("        %i [%s] -> %i\n", k, MORPHO_GETCSTRING(klass->name), i+instr->data.btable.data[k]+1);
                 }
-                
                 break;
             }
             case MF_RESOLVE: {
@@ -312,9 +343,103 @@ void mfcompile_resolve(mfcompiler *c, mfset *set) {
     mfcompile_insertinstruction(c, instr);
 }
 
+enum {
+    MF_VENEERVALUE,
+    MF_VENEEROBJECT,
+    MF_INSTANCE,
+    MF_FREE
+};
+
+/** Detects the kind of type */
+int _detecttype(value type, int *tindx) {
+    if (MORPHO_ISCLASS(type)) {
+        objectclass *klass = MORPHO_GETCLASS(type);
+        if (object_veneerclasstotype(klass, tindx)) {
+            return MF_VENEEROBJECT;
+        } else if (value_veneerclasstotype(klass, tindx)) {
+            return MF_VENEERVALUE;
+        } else return MF_INSTANCE;
+    }
+    return MF_FREE;
+}
+
+typedef struct {
+    int i;
+    int tindx;
+} _selectobjectyperef;
+
+bool _selectobjtype(mfresult *res, void *ref) {
+    _selectobjectyperef *sobj = (_selectobjectyperef *) ref;
+    value type;
+    if (!signature_getparamtype(res->sig, sobj->i, &type)) return false;
+    
+    int tindx;
+    if (_detecttype(type, &tindx)!=MF_VENEEROBJECT) return false;
+    
+    return (tindx==sobj->tindx);
+}
+
+void mfcompile_dispatchveneerobj(mfcompiler *c, mfset *set, int i) {
+    int typecount[MORPHO_MAXIMUMOBJECTDEFNS], maxindx=0;
+    for (int i=0; i<MORPHO_MAXIMUMOBJECTDEFNS; i++) typecount[i]=0;
+    
+    for (int k=0; k<set->count; k++) {
+        value type;
+        if (!signature_getparamtype(set->rlist[k].sig, i, &type)) return;
+        int typindx;
+        if (_detecttype(type, &typindx)!=MF_VENEEROBJECT) continue;
+        typecount[typindx]++;
+        if (typindx>maxindx) maxindx=typindx;
+    }
+    
+    varray_int btable;
+    varray_intinit(&btable);
+    for (int i=0; i<=maxindx; i++) varray_intwrite(&btable, 0);
+    
+    // Insert the branch instruction
+    mfinstruction instr = MFINSTRUCTION_BRANCHOBJECTTYPE(i, btable, 0);
+    mfindx bindx = mfcompile_insertinstruction(c, instr);
+    
+    // Immediately follow by a fail instruction if this falls through
+    mfcompile_fail(c);
+    
+    mfresult rlist[set->count];
+    mfset out = { .count=0, .rlist = rlist };
+    
+    // Deal with each outcome
+    for (int j=0; j<=maxindx; j++) {
+        if (!typecount[j]) continue;
+        
+        _selectobjectyperef ref = { .i = i, .tindx = j };
+        mfset_select(set, &out, _selectobjtype, &ref);
+        
+        // Set the branch point
+        btable.data[j]=mfcompile_currentinstruction(c)-bindx;
+        mfcompile_set(c, &out);
+    }
+}
+
 /** Attempts to dispatch based on a parameter i */
 void mfcompile_dispatchonparam(mfcompiler *c, mfset *set, int i) {
+    int typecount[MF_FREE+1] = { 0, 0, 0, 0};
     
+    // Determine what types are present
+    for (int k=0; k<set->count; k++) {
+        value type;
+        if (!signature_getparamtype(set->rlist[i].sig, i, &type)) return;
+        typecount[_detecttype(type, NULL)]++;
+    }
+    
+    mfcompile_dispatchveneerobj(c, set, i);
+    
+    
+}
+
+
+bool _selectnparam(mfresult *res, void *ref) {
+    int n=*(int *) ref;
+    int m=signature_countparams(res->sig);
+    return (m==n);
 }
 
 /** Attempts to dispatch based on the number of arguments */
@@ -335,7 +460,7 @@ void mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
             mfcompile_setbranch(c, cindx, eindx-cindx);
         }
         mfcompile_fail(c);
-    } else {
+    } else { // If more than two options, generate a branch table
         varray_int btable;
         varray_intinit(&btable);
         for (int i=0; i<=max; i++) varray_intwrite(&btable, 0);
@@ -359,11 +484,9 @@ void mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
             // Select all implementations that match this parameter value
             mfresult rlist[nimp];
             mfset iset = MFSET(nimp, rlist);
-            for (int k=0, j=0; k<set->count; k++) {
-                int m=signature_countparams(set->rlist[k].sig);
-                if (m==n) { rlist[j]=set->rlist[k]; j++; }
-            }
+            mfset_select(set, &iset, _selectnparam, &n);
             
+            // Set the branch point
             btable.data[n]=mfcompile_currentinstruction(c)-tindx;
             mfcompile_set(c, &iset);
         }
@@ -372,7 +495,7 @@ void mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
 
 /** Attempts to discriminate between a list of possible signatures */
 void mfcompile_set(mfcompiler *c, mfset *set) {
-    if (set->count==1) mfcompile_resolve(c, set);
+    if (set->count==1) return mfcompile_resolve(c, set);
     
     int min, max; // Count the range of possible parameters
     mfcompile_countparams(c, set, &min, &max);
@@ -405,7 +528,7 @@ void metafunction_compile(objectmetafunction *fn) {
     
     mfcompile_set(&compiler, &set);
     
-    //mfcompiler_disassemble(&compiler);
+    mfcompiler_disassemble(&compiler);
     
     mfcompiler_clear(&compiler, fn);
 }
@@ -418,12 +541,24 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value 
     do {
         switch(pc->opcode) {
             case MF_CHECKNARGS:
-                if (pc->data.nargs!=nargs) pc+=pc->branch;
+                if (pc->narg!=nargs) pc+=pc->branch;
                 break;
             case MF_BRANCHNARGS:
-                if (nargs<=pc->data.btable.count) {
+                if (nargs<pc->data.btable.count) {
                     pc+=pc->data.btable.data[nargs];
                 } else pc+=pc->branch;
+                break;
+            case MF_BRANCHVALUETYPE: {
+                int type = (int) MORPHO_GETORDEREDTYPE(args[pc->narg]);
+                pc+=pc->data.btable.data[type];
+            }
+                break;
+            case MF_BRANCHOBJECTTYPE: {
+                int type = MORPHO_GETOBJECTTYPE(args[pc->narg]);
+                pc+=pc->data.btable.data[type];
+            }
+                break;
+            case MF_BRANCHCLASS:
                 break;
             case MF_RESOLVE:
                 *out = pc->data.resolvefn;

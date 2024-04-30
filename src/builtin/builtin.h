@@ -147,6 +147,7 @@ bool object_veneerclasstotype(objectclass *clss, objecttype *type);
 
 void value_setveneerclass(value type, value class);
 objectclass *value_getveneerclass(value type);
+objectclass *value_veneerclassfromtype(int type);
 bool value_veneerclasstotype(objectclass *clss, int *type);
 
 /* -------------------------------------------------------

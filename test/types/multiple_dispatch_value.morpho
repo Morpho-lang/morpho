@@ -1,11 +1,11 @@
 // Dipatch a function on value types
 
 fn f(Int x) {
-    print 0
+    return 0
 }
 
 fn f(Float x) {
-    print 1 
+    return 1 
 }
 
 print f(1) 

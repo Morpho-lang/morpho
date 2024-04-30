@@ -231,7 +231,7 @@ void mfcompiler_disassemble(mfcompiler *c) {
                 printf("branchvalue (%i) -> (%i)\n", instr->narg, i+instr->branch+1);
                 for (int k=0; k<instr->data.btable.count; k++) {
                     if (instr->data.btable.data[k]==0) continue;
-                    objectclass *klass=value_getveneerclass(k);
+                    objectclass *klass=value_veneerclassfromtype(k);
                     printf("        %i [%s] -> %i\n", k, MORPHO_GETCSTRING(klass->name), i+instr->data.btable.data[k]+1);
                 }
                 break;

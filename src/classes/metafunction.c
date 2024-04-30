@@ -157,6 +157,7 @@ DEFINE_VARRAY(mfinstruction, mfinstruction);
 typedef struct {
     signature *sig; /** Signature of the target */
     value fn; /** The target */
+    int indx; /** Used to sort */
 } mfresult;
 
 typedef struct {
@@ -363,35 +364,25 @@ int _detecttype(value type, int *tindx) {
     return MF_FREE;
 }
 
-typedef struct {
-    int i;
-    int tindx;
-} _selectobjectyperef;
-
-bool _selectobjtype(mfresult *res, void *ref) {
-    _selectobjectyperef *sobj = (_selectobjectyperef *) ref;
-    value type;
-    if (!signature_getparamtype(res->sig, sobj->i, &type)) return false;
-    
-    int tindx;
-    if (_detecttype(type, &tindx)!=MF_VENEEROBJECT) return false;
-    
-    return (tindx==sobj->tindx);
+int _mfresultsortfn (const void *a, const void *b) {
+    mfresult *aa = (mfresult *) a, *bb = (mfresult *) b;
+    return aa->indx-bb->indx;
 }
 
 void mfcompile_dispatchveneerobj(mfcompiler *c, mfset *set, int i) {
-    int typecount[MORPHO_MAXIMUMOBJECTDEFNS], maxindx=0;
-    for (int i=0; i<MORPHO_MAXIMUMOBJECTDEFNS; i++) typecount[i]=0;
+    value type;
     
+    // Extract the type index for each member of the set
     for (int k=0; k<set->count; k++) {
-        value type;
         if (!signature_getparamtype(set->rlist[k].sig, i, &type)) return;
-        int typindx;
-        if (_detecttype(type, &typindx)!=MF_VENEEROBJECT) continue;
-        typecount[typindx]++;
-        if (typindx>maxindx) maxindx=typindx;
+        if (_detecttype(type, &set->rlist[k].indx)!=MF_VENEEROBJECT) set->rlist[k].indx=-1;
     }
     
+    // Sort the set on the type index
+    qsort(set->rlist, set->count, sizeof(mfresult), _mfresultsortfn);
+    
+    // Create the branch table
+    int maxindx=set->rlist[set->count-1].indx;
     varray_int btable;
     varray_intinit(&btable);
     for (int i=0; i<=maxindx; i++) varray_intwrite(&btable, 0);
@@ -403,19 +394,22 @@ void mfcompile_dispatchveneerobj(mfcompiler *c, mfset *set, int i) {
     // Immediately follow by a fail instruction if this falls through
     mfcompile_fail(c);
     
-    mfresult rlist[set->count];
-    mfset out = { .count=0, .rlist = rlist };
+    int k=0;
+    // Skip anything that isn't
+    while (set->rlist[k].indx<0 && k<set->count) k++;
     
     // Deal with each outcome
-    for (int j=0; j<=maxindx; j++) {
-        if (!typecount[j]) continue;
+    while (k<set->count) {
+        int indx=set->rlist[k].indx, n=0;
+        while (k+n<set->count && set->rlist[k+n].indx==indx) n++;
         
-        _selectobjectyperef ref = { .i = i, .tindx = j };
-        mfset_select(set, &out, _selectobjtype, &ref);
+        mfset out = MFSET(n, &set->rlist[k]);
         
         // Set the branch point
-        btable.data[j]=mfcompile_currentinstruction(c)-bindx;
+        btable.data[indx]=mfcompile_currentinstruction(c)-bindx;
         mfcompile_set(c, &out);
+        
+        k+=n;
     }
 }
 
@@ -434,7 +428,6 @@ void mfcompile_dispatchonparam(mfcompiler *c, mfset *set, int i) {
     
     
 }
-
 
 bool _selectnparam(mfresult *res, void *ref) {
     int n=*(int *) ref;
@@ -465,16 +458,18 @@ void mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
         varray_intinit(&btable);
         for (int i=0; i<=max; i++) varray_intwrite(&btable, 0);
         
-        // Insert the branch table instruction
-        mfinstruction table = MFINSTRUCTION_BRANCHNARG(btable, 0);
-        mfindx tindx=mfcompile_insertinstruction(c, table);
-        // Immediately follow by a fail instruction if this falls through
-        mfcompile_fail(c);
-        
         // Count the number of implementations for each parameter count
         for (int k=0; k<set->count; k++) {
             btable.data[signature_countparams(set->rlist[k].sig)]++;
         }
+        
+        // Insert the branch table instruction
+        mfinstruction table = MFINSTRUCTION_BRANCHNARG(btable, 0);
+        mfindx tindx=mfcompile_insertinstruction(c, table);
+        
+        // Immediately follow by a fail instruction if this falls through
+        mfcompile_fail(c);
+        
 
         // Compile the outcomes for each parameter count
         for (int n=0; n<=max; n++) {

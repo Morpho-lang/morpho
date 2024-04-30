@@ -266,7 +266,7 @@ objectclass *value_getveneerclass(value type) {
 bool value_veneerclasstotype(objectclass *clss, int *type) {
     for (int i=0; i<MORPHO_MAXIMUMVALUETYPES; i++) {
         if (_valueveneers[i]==clss) {
-            if (*type) *type = i;
+            if (type) *type = i;
             return true;
         }
     }

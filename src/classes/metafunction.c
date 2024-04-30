@@ -171,16 +171,6 @@ typedef struct {
 DECLARE_VARRAY(mfset, mfset)
 DEFINE_VARRAY(mfset, mfset)
 
-typedef bool (mfset_selectfn) (mfresult *res, void *ref);
-
-/** Select subset of elements from a set given a match function */
-void mfset_select(mfset *set, mfset *out, mfset_selectfn matchfn, void *ref) {
-    out->count=0;
-    for (int k=0; k<set->count; k++) {
-        if (matchfn(set->rlist+k, ref)) { out->rlist[out->count++]=set->rlist[k]; }
-    }
-}
-
 typedef struct {
     objectmetafunction *fn;
     dictionary pcount;
@@ -344,6 +334,27 @@ void mfcompile_resolve(mfcompiler *c, mfset *set) {
     mfcompile_insertinstruction(c, instr);
 }
 
+/** Compile a branch table from a sorted set */
+void mfcompile_branchtable(mfcompiler *c, mfset *set, mfindx bindx, varray_int *btable) {
+    int k=0;
+    // Values with negative indices shouldn't be included in the branch table
+    while (set->rlist[k].indx<0 && k<set->count) k++;
+    
+    // Deal with each outcome
+    while (k<set->count) {
+        int indx=set->rlist[k].indx, n=0;
+        while (k+n<set->count && set->rlist[k+n].indx==indx) n++;
+        
+        mfset out = MFSET(n, &set->rlist[k]);
+        
+        // Set the branch point
+        btable->data[indx]=mfcompile_currentinstruction(c)-bindx;
+        mfcompile_set(c, &out);
+        
+        k+=n;
+    }
+}
+
 enum {
     MF_VENEERVALUE,
     MF_VENEEROBJECT,
@@ -394,23 +405,8 @@ void mfcompile_dispatchveneerobj(mfcompiler *c, mfset *set, int i) {
     // Immediately follow by a fail instruction if this falls through
     mfcompile_fail(c);
     
-    int k=0;
-    // Skip anything that isn't
-    while (set->rlist[k].indx<0 && k<set->count) k++;
-    
-    // Deal with each outcome
-    while (k<set->count) {
-        int indx=set->rlist[k].indx, n=0;
-        while (k+n<set->count && set->rlist[k+n].indx==indx) n++;
-        
-        mfset out = MFSET(n, &set->rlist[k]);
-        
-        // Set the branch point
-        btable.data[indx]=mfcompile_currentinstruction(c)-bindx;
-        mfcompile_set(c, &out);
-        
-        k+=n;
-    }
+    // Compile the branch table
+    mfcompile_branchtable(c, set, bindx, &btable);
 }
 
 /** Attempts to dispatch based on a parameter i */
@@ -427,12 +423,6 @@ void mfcompile_dispatchonparam(mfcompiler *c, mfset *set, int i) {
     mfcompile_dispatchveneerobj(c, set, i);
     
     
-}
-
-bool _selectnparam(mfresult *res, void *ref) {
-    int n=*(int *) ref;
-    int m=signature_countparams(res->sig);
-    return (m==n);
 }
 
 /** Attempts to dispatch based on the number of arguments */
@@ -460,31 +450,21 @@ void mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
         
         // Count the number of implementations for each parameter count
         for (int k=0; k<set->count; k++) {
-            btable.data[signature_countparams(set->rlist[k].sig)]++;
+            set->rlist[k].indx=signature_countparams(set->rlist[k].sig);
         }
+        
+        // Sort the set on the type index
+        qsort(set->rlist, set->count, sizeof(mfresult), _mfresultsortfn);
         
         // Insert the branch table instruction
         mfinstruction table = MFINSTRUCTION_BRANCHNARG(btable, 0);
-        mfindx tindx=mfcompile_insertinstruction(c, table);
+        mfindx bindx = mfcompile_insertinstruction(c, table);
         
         // Immediately follow by a fail instruction if this falls through
         mfcompile_fail(c);
-        
 
-        // Compile the outcomes for each parameter count
-        for (int n=0; n<=max; n++) {
-            int nimp = btable.data[n];
-            if (!nimp) continue;
-            
-            // Select all implementations that match this parameter value
-            mfresult rlist[nimp];
-            mfset iset = MFSET(nimp, rlist);
-            mfset_select(set, &iset, _selectnparam, &n);
-            
-            // Set the branch point
-            btable.data[n]=mfcompile_currentinstruction(c)-tindx;
-            mfcompile_set(c, &iset);
-        }
+        // Compile the branch table
+        mfcompile_branchtable(c, set, bindx, &btable);
     }
 }
 

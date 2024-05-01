@@ -285,19 +285,15 @@ void mfcompile_countparams(mfcompiler *c, mfset *set, int *min, int *max) {
 
 /** Places the various outcomes for a parameter into a dictionary */
 bool mfcompile_outcomes(mfcompiler *c, mfset *set, int i, dictionary *out) {
-    out->count=0;
-    for (int k=0; i<set->count; i++) { // Loop over outcomes
-        int nparams; value *ptypes;
-        signature_paramlist(set->rlist[k].sig, &nparams, &ptypes);
-        if (i>=nparams) continue;
-        value val = MORPHO_INTEGER(1);
-        if (dictionary_get(out, ptypes[i], &val)) val=MORPHO_INTEGER(MORPHO_GETINTEGERVALUE(val)+1);
-        if (!dictionary_insert(out, ptypes[i], val)) return false;
+    for (int k=0; k<set->count; k++) { // Loop over outcomes
+        value type;
+        if (!signature_getparamtype(set->rlist[k].sig, i, &type)) continue;
+        if (!dictionary_insert(out, (MORPHO_ISNIL(type) ? MORPHO_FALSE : type), MORPHO_NIL)) return false;
     }
     return true;
 }
 
-/** Count the divergent outcomes of each parameter */
+/** Find the parameter number that has most variety in types */
 bool mfcompile_countoutcomes(mfcompiler *c, mfset *set, int *best) {
     varray_int count;
     varray_intinit(&count);
@@ -305,17 +301,24 @@ bool mfcompile_countoutcomes(mfcompiler *c, mfset *set, int *best) {
     dictionary dict;
     dictionary_init(&dict);
     
-    int k=0; // Loop over parameters
-    do {
-        mfcompile_outcomes(c, set, k, &dict);
+    // Loop over parameters, counting the number of outcomes.
+    while (true) {
+        mfcompile_outcomes(c, set, count.count, &dict);
+        if (!dict.count) break;
         varray_intwrite(&count, dict.count);
-        k++;
-    } while (dict.count);
+        dictionary_clear(&dict); // Not needed if dict.count was zero
+    };
     
-    dictionary_clear(&dict);
+    // Find the parameter that has most variability
+    int max=count.data[0], maxindx=0;
+    for (int i=1; i<count.count; i++) {
+        if (count.data[i]>max) { max=count.data[i]; maxindx=i; }
+    }
+    if (best) *best = maxindx;
+    
     varray_intclear(&count);
     
-    return false;
+    return true;
 }
 
 mfindx mfcompile_insertinstruction(mfcompiler *c, mfinstruction instr) {

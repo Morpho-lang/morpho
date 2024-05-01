@@ -49,6 +49,7 @@ typedef struct {
     varray_debugannotation annotations; /** Information about how the code connects to the source */
     objectfunction *global;  /** Pseudofunction containing global data */
     varray_globalinfo globals; /** Global variables */
+    varray_value classes; /** Classes defined by this program */
     object *boundlist; /** Linked list of static objects bound to this program */
     dictionary symboltable; /** The symbol table */
 } program;
@@ -66,6 +67,9 @@ void program_globalsettype(program *p, globalindx indx, value type);
 bool program_globaltype(program *p, globalindx indx, value *type);
 bool program_globalsymbol(program *p, globalindx indx, value *symbol);
 int program_countglobals(program *p);
+
+int program_addclass(program *p, value klass);
+int program_countclasses(program *p, value klass);
 
 #endif /* MORPHO_CORE */
 

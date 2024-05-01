@@ -140,7 +140,7 @@ enum {
     MF_BRANCHNARGS,
     MF_BRANCHVALUETYPE,
     MF_BRANCHOBJECTTYPE,
-    MF_BRANCHCLASS,
+    MF_BRANCHINSTANCE,
     MF_RESOLVE,
     MF_FAIL
 };
@@ -156,6 +156,7 @@ DEFINE_VARRAY(mfinstruction, mfinstruction);
 #define MFINSTRUCTION_BRANCHNARG(table, brnch) { .opcode=MF_BRANCHNARGS, .data.btable=table, .branch=brnch }
 #define MFINSTRUCTION_BRANCHOBJECTTYPE(n, table, brnch) { .opcode=MF_BRANCHOBJECTTYPE, .narg=n, .data.btable=table, .branch=brnch }
 #define MFINSTRUCTION_BRANCHVALUETYPE(n, table, brnch) { .opcode=MF_BRANCHVALUETYPE, .narg=n, .data.btable=table, .branch=brnch }
+#define MFINSTRUCTION_BRANCHINSTANCE(n, table, brnch) { .opcode=MF_BRANCHINSTANCE, .narg=n, .data.btable=table, .branch=brnch }
 
 typedef struct {
     signature *sig; /** Signature of the target */
@@ -249,6 +250,11 @@ void mfcompiler_disassemble(mfcompiler *c) {
                     objectclass *klass=object_getveneerclass(k);
                     printf("        %i [%s] -> %i\n", k, MORPHO_GETCSTRING(klass->name), i+instr->data.btable.data[k]+1);
                 }
+                break;
+            }
+            case MF_BRANCHINSTANCE: {
+                printf("branchinstance (%i) -> (%i)\n", instr->narg, i+instr->branch+1);
+                _mfcompiler_disassemblebranchtable(instr, i);
                 break;
             }
             case MF_RESOLVE: {
@@ -390,7 +396,10 @@ int _detecttype(value type, int *tindx) {
             return MF_VENEEROBJECT;
         } else if (value_veneerclasstotype(klass, tindx)) {
             return MF_VENEERVALUE;
-        } else return MF_INSTANCE;
+        } else {
+            if (tindx) *tindx=klass->uid;
+            return MF_INSTANCE;
+        }
     }
     return MF_ANY;
 }
@@ -466,12 +475,44 @@ mfindx mfcompile_dispatchveneervalue(mfcompiler *c, mfset *set, int i) {
     return bindx;
 }
 
+/** Branch table on instance type */
+mfindx mfcompile_dispatchinstance(mfcompiler *c, mfset *set, int i) {
+    value type;
+    
+    // Extract the type index for each member of the set
+    for (int k=0; k<set->count; k++) {
+        if (!signature_getparamtype(set->rlist[k].sig, i, &type)) return MFINSTRUCTION_EMPTY;
+        if (_detecttype(type, &set->rlist[k].indx)!=MF_INSTANCE) set->rlist[k].indx=-1;
+    }
+    
+    // Sort the set on the type index
+    qsort(set->rlist, set->count, sizeof(mfresult), _mfresultsortfn);
+    
+    // Create the branch table
+    int maxindx=set->rlist[set->count-1].indx;
+    varray_int btable;
+    varray_intinit(&btable);
+    for (int i=0; i<=maxindx; i++) varray_intwrite(&btable, 0);
+    
+    // Insert the branch instruction
+    mfinstruction instr = MFINSTRUCTION_BRANCHINSTANCE(i, btable, 0);
+    mfindx bindx = mfcompile_insertinstruction(c, instr);
+    
+    // Fail if an object type isn't in the table
+    mfcompile_fail(c);
+    
+    // Compile the branch table
+    mfcompile_branchtable(c, set, bindx, &btable);
+    
+    return bindx;
+}
+
 /** Handle implementations that accept any type */
 mfindx mfcompile_dispatchany(mfcompiler *c, mfset *set, int i) {
     mfresult rlist[set->count];
     int n=0;
     
-    // Find implementations that accept any time
+    // Find implementations that accept any type
     for (int k=0; k<set->count; k++) {
         value type;
         if (!signature_getparamtype(set->rlist[k].sig, i, &type)) return MFINSTRUCTION_EMPTY;
@@ -508,7 +549,7 @@ mfindx mfcompile_dispatchonparam(mfcompiler *c, mfset *set, int i) {
     mfindx bindx[MF_ANY+1];
     mfcompile_dispatchfn *dfn[MF_ANY+1] = { mfcompile_dispatchveneervalue,
                                             mfcompile_dispatchveneerobj,
-                                            NULL,
+                                            mfcompile_dispatchinstance,
                                             mfcompile_dispatchany};
     
     // Cycle through all value types, building a chain of branchtables
@@ -636,6 +677,7 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value 
                 break;
             case MF_BRANCHVALUETYPE: {
                 if (!MORPHO_ISOBJECT(args[pc->narg])) {
+                    // TODO: Check for btable bound
                     int type = (int) MORPHO_GETORDEREDTYPE(args[pc->narg]);
                     pc+=pc->data.btable.data[type];
                 } else pc+=pc->branch;
@@ -643,12 +685,19 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value 
                 break;
             case MF_BRANCHOBJECTTYPE: {
                 if (MORPHO_ISOBJECT(args[pc->narg])) {
+                    // TODO: Check for btable bound
                     int type = MORPHO_GETOBJECTTYPE(args[pc->narg]);
                     pc+=pc->data.btable.data[type];
                 } else pc+=pc->branch;
             }
                 break;
-            case MF_BRANCHCLASS:
+            case MF_BRANCHINSTANCE: {
+                if (MORPHO_ISINSTANCE(args[pc->narg])) {
+                    // TODO: Check for btable bound
+                    objectclass *klass = MORPHO_GETINSTANCE(args[pc->narg])->klass;
+                    pc+=pc->data.btable.data[klass->uid];
+                } else pc+=pc->branch;
+            }
                 break;
             case MF_RESOLVE:
                 *out = pc->data.resolvefn;

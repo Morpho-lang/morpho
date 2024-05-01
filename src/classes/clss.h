@@ -21,6 +21,7 @@ typedef struct sobjectclass {
     struct sobjectclass *superclass;
     value name;
     dictionary methods;
+    int uid; 
 } objectclass;
 
 /** Tests whether an object is a class */

@@ -1,0 +1,18 @@
+// Dipatch a function on instance
+
+class A {}
+class B {}
+
+fn f(A x) {
+    return "A"
+}
+
+fn f(B x) {
+    return "B"
+}
+
+print f(A()) 
+// expect: A
+
+print f(B())
+// expect: B

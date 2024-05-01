@@ -337,6 +337,8 @@ static objectclass *compiler_getcurrentclass(compiler *c) {
 
 /** Adds an objectclass to the compilers dictionary of classes */
 void compiler_addclass(compiler *c, objectclass *klass) {
+    klass->uid = program_addclass(c->out, MORPHO_OBJECT(klass));
+    
     dictionary_insert(&c->classes, klass->name, MORPHO_OBJECT(klass));
 }
 

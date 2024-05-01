@@ -48,6 +48,7 @@ objectclass *object_newclass(value name) {
         newclass->name=object_clonestring(name);
         dictionary_init(&newclass->methods);
         newclass->superclass=NULL;
+        newclass->uid=0;
     }
 
     return newclass;

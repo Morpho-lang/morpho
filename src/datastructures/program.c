@@ -26,6 +26,7 @@ void program_init(program *p) {
     p->boundlist=NULL;
     dictionary_init(&p->symboltable);
     varray_globalinfoinit(&p->globals);
+    varray_valueinit(&p->classes);
 }
 
 /** @brief Clears a program, freeing associated data structures */
@@ -49,6 +50,7 @@ void program_clear(program *p) {
     /* Note we don't free the contents as they are already interned */
     varray_globalinfoclear(&p->globals);
     dictionary_clear(&p->symboltable);
+    varray_valueclear(&p->classes);
 }
 
 /** @brief Creates and initializes a new program */
@@ -149,4 +151,14 @@ bool program_globalsymbol(program *p, globalindx indx, value *symbol) {
 /** @brief Returns the number of globals allocated in the program */
 int program_countglobals(program *p) {
     return p->globals.count;
+}
+
+/** @brief Adds a class to the program's class list */
+int program_addclass(program *p, value klass) {
+    return varray_valuewrite(&p->classes, klass);
+}
+
+/** @brief Returns the number of classes allocated in the program */
+int program_countclasses(program *p, value klass) {
+    return p->classes.count;
 }

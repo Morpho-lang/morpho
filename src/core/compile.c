@@ -199,10 +199,14 @@ void _addmatchingfunctionref(compiler *c, value symbol, value fn, value *out) {
     if (MORPHO_ISNIL(in)) {
         // If the function has a signature, will need to wrap in a metafunction
         if (MORPHO_ISFUNCTION(fn) && function_hastypedparameters(MORPHO_GETFUNCTION(fn))) {
-            metafunction_wrap(symbol, fn, out);
+            if (metafunction_wrap(symbol, fn, out)) {
+                program_bindobject(c->out, MORPHO_GETOBJECT(*out));
+            }
         } else *out=fn;
     } else if (MORPHO_ISFUNCTION(in)) {
-        if (metafunction_wrap(symbol, in, out)) metafunction_add(MORPHO_GETMETAFUNCTION(*out), fn);
+        if (metafunction_wrap(symbol, in, out)) { metafunction_add(MORPHO_GETMETAFUNCTION(*out), fn);
+            program_bindobject(c->out, MORPHO_GETOBJECT(*out));
+        }
     } else if (MORPHO_ISMETAFUNCTION(in)) {
         metafunction_add(MORPHO_GETMETAFUNCTION(in), fn);
     }

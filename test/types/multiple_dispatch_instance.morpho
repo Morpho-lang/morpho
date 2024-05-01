@@ -1,4 +1,4 @@
-// Dipatch a function on instance
+// Dispatch a function on instance types
 
 class A {}
 class B {}

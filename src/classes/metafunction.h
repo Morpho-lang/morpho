@@ -24,9 +24,9 @@ typedef struct {
     int opcode;
     int narg;
     union {
+        int tindx;
         value resolvefn;
         varray_int btable;
-        dictionary bdict; 
     } data;
     mfindx branch; /* Branch the pc by this amount on fail */
 } mfinstruction;

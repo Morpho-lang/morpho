@@ -64,6 +64,7 @@ typedef struct sobjectmetafunction {
 objectmetafunction *object_newmetafunction(value name);
 bool metafunction_wrap(value name, value fn, value *out);
 void metafunction_compile(objectmetafunction *fn);
+void metafunction_clearinstructions(objectmetafunction *fn);
 
 bool metafunction_add(objectmetafunction *f, value fn);
 bool metafunction_typefromvalue(value v, value *out);

@@ -15,6 +15,7 @@
 void objectmetafunction_freefn(object *obj) {
     objectmetafunction *f = (objectmetafunction *) obj;
     varray_valueclear(&f->fns);
+    metafunction_clearinstructions(f);
 }
 
 void objectmetafunction_markfn(object *obj, void *v) {
@@ -135,6 +136,8 @@ bool metafunction_slowresolve(objectmetafunction *f, int nargs, value *args, val
  * ********************************************************************** */
 
 enum {
+    MF_RESOLVE,
+    MF_FAIL,
     MF_CHECKNARGS,
     MF_CHECKVALUE,
     MF_CHECKOBJECT,
@@ -143,9 +146,7 @@ enum {
     MF_BRANCHNARGS,
     MF_BRANCHVALUETYPE,
     MF_BRANCHOBJECTTYPE,
-    MF_BRANCHINSTANCE,
-    MF_RESOLVE,
-    MF_FAIL
+    MF_BRANCHINSTANCE
 };
 
 DEFINE_VARRAY(mfinstruction, mfinstruction);
@@ -686,6 +687,15 @@ mfindx mfcompile_set(mfcompiler *c, mfset *set) {
     
     int best;
     if (mfcompile_countoutcomes(c, set, &best)) return mfcompile_dispatchonparam(c, set, best);
+}
+
+/** Clears the compiled code from a given metafunction */
+void metafunction_clearinstructions(objectmetafunction *fn) {
+    for (int i=0; i<fn->resolver.count; i++) {
+        mfinstruction *mf = &fn->resolver.data[i];
+        if (mf->opcode>=MF_BRANCHNARGS && mf->opcode<=MF_BRANCHINSTANCE) varray_intclear(&mf->data.btable);
+    }
+    varray_mfinstructionclear(&fn->resolver);
 }
 
 /** Compiles the metafunction resolver */

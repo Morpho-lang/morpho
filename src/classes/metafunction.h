@@ -63,11 +63,15 @@ typedef struct sobjectmetafunction {
 
 objectmetafunction *object_newmetafunction(value name);
 bool metafunction_wrap(value name, value fn, value *out);
+bool metafunction_add(objectmetafunction *f, value fn);
+bool metafunction_typefromvalue(value v, value *out);
+
+bool metafunction_matchfn(objectmetafunction *fn, value f);
+bool metafunction_matchset(objectmetafunction *fn, int n, value *fns);
+
 void metafunction_compile(objectmetafunction *fn);
 void metafunction_clearinstructions(objectmetafunction *fn);
 
-bool metafunction_add(objectmetafunction *f, value fn);
-bool metafunction_typefromvalue(value v, value *out);
 bool metafunction_resolve(objectmetafunction *f, int nargs, value *args, value *fn);
 
 void metafunction_initialize(void);

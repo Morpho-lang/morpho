@@ -102,6 +102,20 @@ bool metafunction_matchtype(value type, value val) {
     return false;
 }
 
+/** Finds whether an implementation f occurs in a metafunction */
+bool metafunction_matchfn(objectmetafunction *fn, value f) {
+    for (int i=0; i<fn->fns.count; i++) if (MORPHO_ISEQUAL(fn->fns.data[i], f)) return true;
+    return false;
+}
+
+/** Checks if a metafunction matches a given list of implementations */
+bool metafunction_matchset(objectmetafunction *fn, int n, value *fns) {
+    for (int i=0; i<n; i++) {
+        if (!metafunction_matchfn(fn, fns[i])) return false;
+    }
+    return true;
+}
+
 signature *_getsignature(value fn) {
     if (MORPHO_ISFUNCTION(fn)) {
         return &MORPHO_GETFUNCTION(fn)->sig;

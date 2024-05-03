@@ -212,25 +212,50 @@ void _addmatchingfunctionref(compiler *c, value symbol, value fn, value *out) {
     }
 }
 
-/** Determines whether a symbol refers to one (or more) functions. If so, returns either a single function or a metafunction as appropriate. */
-bool compiler_resolvefunctionref(compiler *c, value symbol, value *out) {
+/** Finds an existing metafunction in the current context that matches a given set of implementations */
+bool compiler_findmetafunction(compiler *c, value symbol, int n, value *fns, value *out) {
     functionstate *f=compiler_currentfunctionstate(c);
-    value fnd=MORPHO_NIL;
-    int match=0;
     
-    for (int i=0; i<f->functionref.count; i++) {
-        functionref *ref=&f->functionref.data[i];
-        if (MORPHO_ISEQUAL(ref->symbol, symbol)) {
-            _addmatchingfunctionref(c, ref->symbol, ref->function, &fnd);
-            match++;
+    for (int i=0; i<f->func->konst.count; i++) {
+        value v = f->func->konst.data[i];
+        if (MORPHO_ISMETAFUNCTION(v) &&
+            MORPHO_ISEQUAL(MORPHO_GETMETAFUNCTION(v)->name, symbol) &&
+            metafunction_matchset(MORPHO_GETMETAFUNCTION(v), n, fns)) {
+            *out = v;
+            return true;
         }
     }
     
-    // Compile the metafunction ready for use
-    if (MORPHO_ISMETAFUNCTION(fnd)) metafunction_compile(MORPHO_GETMETAFUNCTION(fnd));
+    return false;
+}
+
+/** Determines whether a symbol refers to one (or more) functions. If so, returns either a single function or a metafunction as appropriate. */
+bool compiler_resolvefunctionref(compiler *c, value symbol, value *out) {
+    functionstate *f=compiler_currentfunctionstate(c);
     
-    if (match) *out=fnd;
-    return match;
+    varray_value fns;
+    varray_valueinit(&fns);
+    
+    for (int i=0; i<f->functionref.count; i++) {
+        functionref *ref=&f->functionref.data[i];
+        if (MORPHO_ISEQUAL(ref->symbol, symbol)) varray_valuewrite(&fns, ref->function);
+    }
+ 
+    if (!fns.count) return false; // No need to clear an empty varray
+    
+    if (!compiler_findmetafunction(c, symbol, fns.count, fns.data, out)) {
+        *out=MORPHO_NIL;
+        for (int i=0; i<fns.count; i++) {
+            _addmatchingfunctionref(c, symbol, fns.data[i], out);
+        }
+        
+        // Compile the metafunction ready for use
+        if (MORPHO_ISMETAFUNCTION(*out)) metafunction_compile(MORPHO_GETMETAFUNCTION(*out));
+    }
+    
+    varray_valueclear(&fns);
+    
+    return !MORPHO_ISNIL(*out);
 }
 
 /* ------------------------------------------

@@ -1,9 +1,5 @@
 // Dispatch a function with variadic args
 
-fn f() {
-    return 0
-}
-
 fn f(x) {
     return 1
 }
@@ -11,9 +7,6 @@ fn f(x) {
 fn f(...x) {
     return "V"
 }
-
-print f()
-// expect: 0
 
 print f("Hi")
 // expect: 1

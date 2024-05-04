@@ -12,10 +12,14 @@
 
 typedef struct {
     varray_value types;
+    bool varg; /** Is the function variadic? */
 } signature;
 
 void signature_init(signature *s);
 void signature_clear(signature *s);
+
+void signature_setvarg(signature *s, bool varg);
+bool signature_isvarg(signature *s);
 
 bool signature_istyped(signature *s);
 bool signature_isequal(signature *a, signature *b);

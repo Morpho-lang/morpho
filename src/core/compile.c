@@ -2811,6 +2811,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     value signature[func->nargs+1];
     for (int i=0; i<func->nargs; i++) compiler_regtype(c, i+1, &signature[i]);
     function_setsignature(func, signature);
+    signature_setvarg(&func->sig, object_functionhasvargs(func));
 
     /* Check we don't have too many arguments */
     if (func->nargs>MORPHO_MAXARGS) {

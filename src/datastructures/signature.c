@@ -31,6 +31,16 @@ void signature_set(signature *s, int nparam, value *types) {
     varray_valueadd(&s->types, types, nparam);
 }
 
+/** @brief Sets whether a signature contains variadic arguments */
+void signature_setvarg(signature *s, bool varg) {
+    s->varg=varg;
+}
+
+/** @brief Sets whether a signature contains variadic arguments */
+bool signature_isvarg(signature *s) {
+    return s->varg;
+}
+
 /** @brief Returns true if any entries in the signature are typed*/
 bool signature_istyped(signature *s) {
     for (int i=0; i<s->types.count; i++) if (!MORPHO_ISNIL(s->types.data[i])) return true;

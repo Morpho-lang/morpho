@@ -153,7 +153,8 @@ bool metafunction_slowresolve(objectmetafunction *f, int nargs, value *args, val
 enum {
     MF_RESOLVE,
     MF_FAIL,
-    MF_CHECKNARGS,
+    MF_CHECKNARGSNEQ,
+    MF_CHECKNARGSLT,
     MF_CHECKVALUE,
     MF_CHECKOBJECT,
     MF_CHECKINSTANCE,
@@ -170,7 +171,7 @@ DEFINE_VARRAY(mfinstruction, mfinstruction);
 
 #define MFINSTRUCTION_FAIL { .opcode=MF_FAIL, .branch=MFINSTRUCTION_EMPTY }
 #define MFINSTRUCTION_RESOLVE(fn) { .opcode=MF_RESOLVE, .data.resolvefn=fn, .branch=MFINSTRUCTION_EMPTY }
-#define MFINSTRUCTION_CHECKNARG(n, brnch) { .opcode=MF_CHECKNARGS, .narg=n, .branch=brnch }
+#define MFINSTRUCTION_CHECKNARGS(op, n, brnch) { .opcode=op, .narg=n, .branch=brnch }
 #define MFINSTRUCTION_CHECKTYPE(op, n, t, brnch) { .opcode=op, .data.tindx=t, .narg=n, .branch=brnch }
 #define MFINSTRUCTION_BRANCH(brnch) { .opcode=MF_BRANCH, .branch=brnch }
 #define MFINSTRUCTION_BRANCHNARG(table, brnch) { .opcode=MF_BRANCHNARGS, .data.btable=table, .branch=brnch }
@@ -243,8 +244,12 @@ void mfcompiler_disassemble(mfcompiler *c) {
         mfinstruction *instr = &c->fn->resolver.data[i];
         printf("%5i : ", i) ;
         switch(instr->opcode) {
-            case MF_CHECKNARGS: {
-                printf("checkargs (%i) -> (%i)", instr->narg, i+instr->branch+1);
+            case MF_CHECKNARGSNEQ: {
+                printf("checknargsneq %i -> (%i)", instr->narg, i+instr->branch+1);
+                break;
+            }
+            case MF_CHECKNARGSLT: {
+                printf("checknargslt %i -> (%i)", instr->narg, i+instr->branch+1);
                 break;
             }
             case MF_CHECKVALUE: {
@@ -312,6 +317,7 @@ void mfcompile_countparams(mfcompiler *c, mfset *set, int *min, int *max) {
     for (int i=0; i<set->count; i++) {
         int nparams;
         signature_paramlist(set->rlist[i].sig, &nparams, NULL);
+        if (signature_isvarg(set->rlist[i].sig)) imax=INT_MAX;
         if (nparams<imin) imin=nparams;
         if (nparams>imax) imax=nparams;
     }
@@ -646,12 +652,19 @@ mfindx mfcompile_dispatchonparam(mfcompiler *c, mfset *set, int i) {
 mfindx mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
     mfindx bindx = MFINSTRUCTION_EMPTY;
     
+    // Sort the set into order given by number of parameters
+    for (int k=0; k<set->count; k++) {
+        set->rlist[k].indx=signature_countparams(set->rlist[k].sig);
+    }
+    qsort(set->rlist, set->count, sizeof(mfresult), _mfresultsortfn);
+    
     if (set->count==2) {
         for (int i=0; i<2; i++) {
             signature *sig = set->rlist[i].sig;
             int nparams;
             signature_paramlist(sig, &nparams, NULL); // Get the number of parameters
-            mfinstruction instr = MFINSTRUCTION_CHECKNARG(nparams, 0);
+            int opcode = (signature_isvarg(sig) ? MF_CHECKNARGSLT : MF_CHECKNARGSNEQ );
+            mfinstruction instr = MFINSTRUCTION_CHECKNARGS(opcode, nparams, 0);
             bindx = mfcompile_insertinstruction(c, instr); // Write the check nargs instruction
             
             mfset res = MFSET(1, &set->rlist[i]); // If it works, resolve on this implementation
@@ -666,14 +679,6 @@ mfindx mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
         varray_int btable;
         varray_intinit(&btable);
         for (int i=0; i<=max; i++) varray_intwrite(&btable, 0);
-        
-        // Count the number of implementations for each parameter count
-        for (int k=0; k<set->count; k++) {
-            set->rlist[k].indx=signature_countparams(set->rlist[k].sig);
-        }
-        
-        // Sort the set on the type index
-        qsort(set->rlist, set->count, sizeof(mfresult), _mfresultsortfn);
         
         // Insert the branch table instruction
         mfinstruction table = MFINSTRUCTION_BRANCHNARG(btable, 0);
@@ -734,7 +739,7 @@ void metafunction_compile(objectmetafunction *fn) {
     
     mfcompile_set(&compiler, &set);
     
-    //mfcompiler_disassemble(&compiler);
+    mfcompiler_disassemble(&compiler);
     
     mfcompiler_clear(&compiler, fn);
 }
@@ -746,8 +751,11 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value 
     
     do {
         switch(pc->opcode) {
-            case MF_CHECKNARGS:
-                if (pc->narg!=nargs) pc+=pc->branch;
+            case MF_CHECKNARGSNEQ:
+                if (nargs!=pc->narg) pc+=pc->branch;
+                break;
+            case MF_CHECKNARGSLT:
+                if (nargs<pc->narg) pc+=pc->branch;
                 break;
             case MF_CHECKVALUE: {
                 if (!MORPHO_ISOBJECT(args[pc->narg])) {

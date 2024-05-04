@@ -16,6 +16,7 @@ print f("Hello")
 // expect: -1
 
 print f(true)
+// expect: -1
 
 print f(1) 
 // expect: 0

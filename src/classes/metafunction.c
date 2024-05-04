@@ -53,6 +53,7 @@ objectmetafunction *object_newmetafunction(value name) {
         new->name=MORPHO_NIL;
         if (MORPHO_ISSTRING(name)) new->name=object_clonestring(name);
         varray_valueinit(&new->fns);
+        varray_mfinstructioninit(&new->resolver);
     }
 
     return new;
@@ -217,7 +218,8 @@ void mfcompiler_pushcheck(mfcompiler *c, int i) {
 
 /** Pops a parameter check from the stack*/
 int mfcompiler_popcheck(mfcompiler *c) {
-    return c->checked.data[c->checked.count--];
+    c->checked.count--;
+    return c->checked.data[c->checked.count];
 }
 
 /** Tests if a parameter has been checked according to the check stack */
@@ -701,6 +703,8 @@ mfindx mfcompile_set(mfcompiler *c, mfset *set) {
     
     int best;
     if (mfcompile_countoutcomes(c, set, &best)) return mfcompile_dispatchonparam(c, set, best);
+    
+    return MFINSTRUCTION_EMPTY;
 }
 
 /** Clears the compiled code from a given metafunction */

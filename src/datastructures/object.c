@@ -146,7 +146,7 @@ objectclass *object_getveneerclass(objecttype type) {
 /** @brief Finds the object type associated with a veneer class; returns false if it is not a veneer class */
 bool object_veneerclasstotype(objectclass *clss, objecttype *type) {
     for (int i=0; i<objectdefnnext; i++) {
-        if (_objectdefns[i].veneer==clss) {
+        if (_objectdefns[i].veneer==(object *) clss) {
             if (type) *type = i;
             return true;
         }

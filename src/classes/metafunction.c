@@ -280,7 +280,7 @@ void mfcompiler_disassemble(mfcompiler *c) {
                 for (int k=0; k<instr->data.btable.count; k++) {
                     if (instr->data.btable.data[k]==0) continue;
                     objectclass *klass=value_veneerclassfromtype(k);
-                    printf("        %i [%s] -> %i\n", k, MORPHO_GETCSTRING(klass->name), i+instr->data.btable.data[k]+1);
+                    printf("        %i [%s] -> %i\n", k, (klass ? MORPHO_GETCSTRING(klass->name) : ""), i+instr->data.btable.data[k]+1);
                 }
                 break;
             }
@@ -289,7 +289,7 @@ void mfcompiler_disassemble(mfcompiler *c) {
                 for (int k=0; k<instr->data.btable.count; k++) {
                     if (instr->data.btable.data[k]==0) continue;
                     objectclass *klass=object_getveneerclass(k);
-                    printf("        %i [%s] -> %i\n", k, MORPHO_GETCSTRING(klass->name), i+instr->data.btable.data[k]+1);
+                    printf("        %i [%s] -> %i\n", k, (klass ? MORPHO_GETCSTRING(klass->name) : ""), i+instr->data.btable.data[k]+1);
                 }
                 break;
             }
@@ -317,7 +317,6 @@ void mfcompile_countparams(mfcompiler *c, mfset *set, int *min, int *max) {
     for (int i=0; i<set->count; i++) {
         int nparams;
         signature_paramlist(set->rlist[i].sig, &nparams, NULL);
-        if (signature_isvarg(set->rlist[i].sig)) imax=INT_MAX;
         if (nparams<imin) imin=nparams;
         if (nparams>imax) imax=nparams;
     }
@@ -409,7 +408,7 @@ int _detecttype(value type, int *tindx) {
 }
 
 mfindx mfcompile_fail(mfcompiler *c);
-mfindx mfcompile_resolve(mfcompiler *c, mfset *set);
+mfindx mfcompile_resolve(mfcompiler *c, mfresult *res);
 mfindx mfcompile_dispatchonparam(mfcompiler *c, mfset *set, int i);
 mfindx mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max);
 mfindx mfcompile_set(mfcompiler *c, mfset *set);
@@ -433,11 +432,11 @@ mfindx mfcompile_check(mfcompiler *c, int i, value type) {
 }
 
 /** Compiles a single result */
-mfindx mfcompile_resolve(mfcompiler *c, mfset *set) {
+mfindx mfcompile_resolve(mfcompiler *c, mfresult *res) {
     mfindx start = mfcompile_nextinstruction(c);
     
     // Check all arguments have been resolved
-    signature *sig = set->rlist->sig;
+    signature *sig = res->sig;
     for (int i=0; i<sig->types.count; i++) {
         if (MORPHO_ISNIL(sig->types.data[i]) ||
             mfcompiler_ischecked(c, i)) continue;
@@ -447,7 +446,7 @@ mfindx mfcompile_resolve(mfcompiler *c, mfset *set) {
     
     mfindx end = mfcompile_nextinstruction(c);
     
-    mfinstruction instr = MFINSTRUCTION_RESOLVE(set->rlist->fn);
+    mfinstruction instr = MFINSTRUCTION_RESOLVE(res->fn);
     mfcompile_insertinstruction(c, instr);
     
     if (start!=end) {
@@ -648,6 +647,16 @@ mfindx mfcompile_dispatchonparam(mfcompiler *c, mfset *set, int i) {
     return bindx[0];
 }
 
+/** Compiles an argument number check for a single result */
+mfindx mfcompile_checknarg(mfcompiler *c, mfresult *res) {
+    mfinstruction instr = MFINSTRUCTION_CHECKNARGS((signature_isvarg(res->sig) ? MF_CHECKNARGSLT : MF_CHECKNARGSNEQ ), signature_countparams(res->sig), 0);
+    mfindx bindx = mfcompile_insertinstruction(c, instr); // Write the check nargs instruction
+    
+    mfcompile_resolve(c, res);
+    
+    return bindx;
+}
+
 /** Attempts to dispatch based on the number of arguments */
 mfindx mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
     mfindx bindx = MFINSTRUCTION_EMPTY;
@@ -660,17 +669,8 @@ mfindx mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
     
     if (set->count==2) {
         for (int i=0; i<2; i++) {
-            signature *sig = set->rlist[i].sig;
-            int nparams;
-            signature_paramlist(sig, &nparams, NULL); // Get the number of parameters
-            int opcode = (signature_isvarg(sig) ? MF_CHECKNARGSLT : MF_CHECKNARGSNEQ );
-            mfinstruction instr = MFINSTRUCTION_CHECKNARGS(opcode, nparams, 0);
-            bindx = mfcompile_insertinstruction(c, instr); // Write the check nargs instruction
+            bindx = mfcompile_checknarg(c, &set->rlist[i]);
             
-            mfset res = MFSET(1, &set->rlist[i]); // If it works, resolve on this implementation
-            mfcompile_resolve(c, &res);
-            
-            // Fix the branch instruction
             mfindx eindx = mfcompile_currentinstruction(c);
             mfcompile_setbranch(c, bindx, eindx-bindx);
         }
@@ -689,13 +689,18 @@ mfindx mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
 
         // Compile the branch table
         mfcompile_branchtable(c, set, bindx, &btable);
+        
+        // Correct branchargs branch destination to point to the varg resolution
+        if (signature_isvarg(set->rlist[set->count-1].sig)) {
+            mfcompile_setbranch(c, bindx, btable.data[btable.count-1]);
+        }
     }
     return bindx;
 }
 
 /** Attempts to discriminate between a list of possible signatures */
 mfindx mfcompile_set(mfcompiler *c, mfset *set) {
-    if (set->count==1) return mfcompile_resolve(c, set);
+    if (set->count==1) return mfcompile_resolve(c, set->rlist);
     
     int min, max; // Count the range of possible parameters
     mfcompile_countparams(c, set, &min, &max);
@@ -739,7 +744,7 @@ void metafunction_compile(objectmetafunction *fn) {
     
     mfcompile_set(&compiler, &set);
     
-    mfcompiler_disassemble(&compiler);
+    //mfcompiler_disassemble(&compiler);
     
     mfcompiler_clear(&compiler, fn);
 }

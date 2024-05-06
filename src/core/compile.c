@@ -185,13 +185,11 @@ void compiler_addfunctionref(compiler *c, objectfunction *func) {
     varray_functionrefwrite(&f->functionref, ref);
 }
 
-/** Removes functions only visible within a */
+/** Removes functions visible at a given scope level */
 void compiler_functionreffreeatscope(compiler *c, unsigned int scope) {
     functionstate *f=compiler_currentfunctionstate(c);
     
-    /*for (int i=f->functionref.count-1; i>=0; i--) {
-        
-    }*/
+    while (f->functionref.count>0 && f->functionref.data[f->functionref.count-1].scopedepth>=scope) f->functionref.count--;
 }
 
 void _addmatchingfunctionref(compiler *c, value symbol, value fn, value *out) {

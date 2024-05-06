@@ -744,7 +744,7 @@ void metafunction_compile(objectmetafunction *fn) {
     
     mfcompile_set(&compiler, &set);
     
-    mfcompiler_disassemble(&compiler);
+    //mfcompiler_disassemble(&compiler);
     
     mfcompiler_clear(&compiler, fn);
 }

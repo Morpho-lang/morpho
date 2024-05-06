@@ -121,6 +121,17 @@ bool signature_parsesymbol(parser *p, void *out) {
     return success;
 }
 
+/** @brief Parser function to process varg */
+bool signature_parsevarg(parser *p, void *out) {
+    signature *sig = (signature *) out;
+    
+    value blank = MORPHO_NIL;
+    bool success=varray_valueadd(&sig->types, &blank, 1);
+    sig->varg=true;
+    
+    return success;
+}
+
 /** @brief Main parser function for signatures */
 bool signature_parsesignature(parser *p, void *out) {
     if (parse_checktokenadvance(p, SIGNATURE_SYMBOL)) {
@@ -134,7 +145,7 @@ bool signature_parsesignature(parser *p, void *out) {
         if (parse_checktokenadvance(p, SIGNATURE_SYMBOL)) {
             if (!signature_parsesymbol(p, out)) return false;
         } else if (parse_checktokenadvance(p, SIGNATURE_DOTDOTDOT)) {
-            
+            if (!signature_parsevarg(p, out)) return false; 
         } else return false;
         
         parse_checktokenadvance(p, SIGNATURE_COMMA);
@@ -169,7 +180,9 @@ void signature_print(signature *s) {
     printf("(");
     for (int i=0; i<s->types.count; i++) {
         value type=s->types.data[i];
-        if (MORPHO_ISNIL(type)) printf("_");
+        
+        if (s->varg && i==s->types.count-1) printf("...");
+        else if (MORPHO_ISNIL(type)) printf("_");
         else if (MORPHO_ISCLASS(type)) morpho_printvalue(NULL, MORPHO_GETCLASS(type)->name);
         
         if (i<s->types.count-1) printf(",");

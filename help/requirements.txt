@@ -5,3 +5,4 @@ sphinx==3.5.3
 sphinx_rtd_theme==0.5.1
 myst-parser==0.13.5
 Jinja2<3.1
+recommonmark

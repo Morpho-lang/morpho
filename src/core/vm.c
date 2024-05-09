@@ -371,6 +371,14 @@ static inline void vm_expandstack(vm *v, value **reg, unsigned int n) {
 /** Marker for optional arguments */
 value vm_optmarker;
 
+/** Counts the number of positional arguments in a call */
+unsigned int vm_countpositionalargs(unsigned int nargs, value *args) {
+    for (int i=0; i<nargs; i++) {
+        if (MORPHO_ISSAME(args[i], vm_optmarker)) return i;
+    }
+    return nargs;
+}
+
 /** Process variadic and optional arguments
  * @param[in] v          - the VM
  * @param[in] iindx - instruction index (used to raise errors if need be)

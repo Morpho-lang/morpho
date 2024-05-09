@@ -1076,7 +1076,7 @@ static inline void compiler_addvariadicarg(compiler *c, syntaxtreenode *node, va
     functionstate *f = compiler_currentfunctionstate(c);
 
     if (f) {
-        if (object_functionhasvargs(f->func)) {
+        if (function_hasvargs(f->func)) {
             compiler_error(c, node, COMPILE_MLTVARPRMTR);
             return;
         }
@@ -1084,14 +1084,14 @@ static inline void compiler_addvariadicarg(compiler *c, syntaxtreenode *node, va
         value sym=program_internsymbol(c->out, symbol);
         registerindx reg = compiler_addlocal(c, node, sym);
 
-        object_functionsetvarg(f->func, reg-1);
+        function_setvarg(f->func, reg-1);
     }
 }
 
 /** Check if the current function has variadic parameters */
 bool compiler_hasvariadicarg(compiler *c) {
     functionstate *f = compiler_currentfunctionstate(c);
-    return object_functionhasvargs(f->func);
+    return function_hasvargs(f->func);
 }
 
 /* ------------------------------------------
@@ -2809,7 +2809,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     value signature[func->nargs+1];
     for (int i=0; i<func->nargs; i++) compiler_regtype(c, i+1, &signature[i]);
     function_setsignature(func, signature);
-    signature_setvarg(&func->sig, object_functionhasvargs(func));
+    signature_setvarg(&func->sig, function_hasvargs(func));
 
     /* Check we don't have too many arguments */
     if (func->nargs>MORPHO_MAXARGS) {

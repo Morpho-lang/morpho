@@ -1,0 +1,17 @@
+// Use namespaces
+
+fn f(String x) {
+    print x
+}
+
+fn f(List x) {
+    x.append("Ho")
+}
+
+fn f(Float x) {
+    print x+1
+}
+
+fn f(x) {
+    print "Foo"
+}

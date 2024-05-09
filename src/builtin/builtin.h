@@ -29,6 +29,7 @@ typedef unsigned int builtinfunctionflags;
 #define MORPHO_FN_PUREFN      (1<<1)
 #define MORPHO_FN_CONSTRUCTOR (1<<2)
 #define MORPHO_FN_REENTRANT   (1<<3)
+#define MORPHO_FN_OPTARGS     (1<<4)
 
 /** Type of C function that implements a built in Morpho function */
 typedef value (*builtinfunction) (vm *v, int nargs, value *args);

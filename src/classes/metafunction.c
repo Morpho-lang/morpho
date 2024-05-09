@@ -126,6 +126,15 @@ signature *_getsignature(value fn) {
     return NULL;
 }
 
+bool _hasoptargs(value fn) {
+    if (MORPHO_ISFUNCTION(fn)) {
+        return function_countoptionalargs(MORPHO_GETFUNCTION(fn));
+    } else if (MORPHO_ISBUILTINFUNCTION(fn)) {
+        return MORPHO_GETBUILTINFUNCTION(fn)->flags & MORPHO_FN_OPTARGS;
+    }
+    else false;
+}
+
 /** Resolves a metafunction given calling arguments */
 bool metafunction_slowresolve(objectmetafunction *f, int nargs, value *args, value *out) {
     for (int i=0; i<f->fns.count; i++) {
@@ -153,6 +162,7 @@ bool metafunction_slowresolve(objectmetafunction *f, int nargs, value *args, val
 enum {
     MF_RESOLVE,
     MF_FAIL,
+    MF_OPTARGS,
     MF_CHECKNARGSNEQ,
     MF_CHECKNARGSLT,
     MF_CHECKVALUE,
@@ -171,6 +181,7 @@ DEFINE_VARRAY(mfinstruction, mfinstruction);
 
 #define MFINSTRUCTION_FAIL { .opcode=MF_FAIL, .branch=MFINSTRUCTION_EMPTY }
 #define MFINSTRUCTION_RESOLVE(fn) { .opcode=MF_RESOLVE, .data.resolvefn=fn, .branch=MFINSTRUCTION_EMPTY }
+#define MFINSTRUCTION_OPTARGS { .opcode=MF_OPTARGS, .branch=MFINSTRUCTION_EMPTY }
 #define MFINSTRUCTION_CHECKNARGS(op, n, brnch) { .opcode=op, .narg=n, .branch=brnch }
 #define MFINSTRUCTION_CHECKTYPE(op, n, t, brnch) { .opcode=op, .data.tindx=t, .narg=n, .branch=brnch }
 #define MFINSTRUCTION_BRANCH(brnch) { .opcode=MF_BRANCH, .branch=brnch }
@@ -305,6 +316,7 @@ void mfcompiler_disassemble(mfcompiler *c) {
                 if (sig) signature_print(sig);
                 break;
             }
+            case MF_OPTARGS: printf("optargs"); break;
             case MF_FAIL: printf("fail"); break;
         }
         printf("\n");
@@ -417,6 +429,12 @@ mfindx mfcompile_set(mfcompiler *c, mfset *set);
 mfindx mfcompile_fail(mfcompiler *c) {
     mfinstruction fail = MFINSTRUCTION_FAIL;
     return mfcompile_insertinstruction(c, fail);
+}
+
+/** Inserts resolver check for optional arguments */
+mfindx mfcompile_optargs(mfcompiler *c) {
+    mfinstruction optarg = MFINSTRUCTION_OPTARGS;
+    return mfcompile_insertinstruction(c, optarg);
 }
 
 /** Checks a parameter i for type */
@@ -731,36 +749,46 @@ void metafunction_compile(objectmetafunction *fn) {
     mfset set;
     set.count = fn->fns.count;
     if (!set.count) return;
+    bool optargs=false;
     
     mfresult rlist[set.count];
     set.rlist=rlist;
     for (int i=0; i<set.count; i++) {
         rlist[i].sig=_getsignature(fn->fns.data[i]);
         rlist[i].fn=fn->fns.data[i];
+        optargs |= _hasoptargs(fn->fns.data[i]);
     }
     
     mfcompiler compiler;
     mfcompiler_init(&compiler, fn);
     
+    if (optargs) mfcompile_optargs(&compiler);
+    
     mfcompile_set(&compiler, &set);
     
-    //mfcompiler_disassemble(&compiler);
+    mfcompiler_disassemble(&compiler);
     
     mfcompiler_clear(&compiler, fn);
 }
 
+unsigned int vm_countpositionalargs(unsigned int nargs, value *args);
+
 /** Execute the metafunction's resolver */
 bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value *out) {
+    int n=nargs;
     mfinstruction *pc = fn->resolver.data;
-    if (!pc) return metafunction_slowresolve(fn, nargs, args, out);
+    if (!pc) return metafunction_slowresolve(fn, n, args, out);
     
     do {
         switch(pc->opcode) {
+            case MF_OPTARGS:
+                n=vm_countpositionalargs(nargs, args);
+                break;
             case MF_CHECKNARGSNEQ:
-                if (nargs!=pc->narg) pc+=pc->branch;
+                if (n!=pc->narg) pc+=pc->branch;
                 break;
             case MF_CHECKNARGSLT:
-                if (nargs<pc->narg) pc+=pc->branch;
+                if (n<pc->narg) pc+=pc->branch;
                 break;
             case MF_CHECKVALUE: {
                 if (!MORPHO_ISOBJECT(args[pc->narg])) {
@@ -787,8 +815,8 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value 
                 pc+=pc->branch;
                 break;
             case MF_BRANCHNARGS:
-                if (nargs<pc->data.btable.count) {
-                    pc+=pc->data.btable.data[nargs];
+                if (n<pc->data.btable.count) {
+                    pc+=pc->data.btable.data[n];
                 } else pc+=pc->branch;
                 break;
             case MF_BRANCHVALUETYPE: {

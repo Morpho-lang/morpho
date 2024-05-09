@@ -1,0 +1,4 @@
+// Dispatch a function defined in a namespace
+
+import "namespace.xmorpho" as nm
+

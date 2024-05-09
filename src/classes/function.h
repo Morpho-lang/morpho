@@ -69,8 +69,10 @@ objectfunction *object_getfunctionparent(objectfunction *func);
 value object_getfunctionname(objectfunction *func);
 varray_value *object_functiongetconstanttable(objectfunction *func);
 objectfunction *object_newfunction(indx entry, value name, objectfunction *parent, unsigned int nargs);
-bool object_functionhasvargs(objectfunction *func);
-void object_functionsetvarg(objectfunction *func, unsigned int varg);
+int function_countpositionalargs(objectfunction *func);
+int function_countoptionalargs(objectfunction *func);
+bool function_hasvargs(objectfunction *func);
+void function_setvarg(objectfunction *func, unsigned int varg);
 void function_setsignature(objectfunction *func, value *signature);
 bool function_hastypedparameters(objectfunction *func);
 

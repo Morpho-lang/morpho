@@ -1,0 +1,6 @@
+// Ensure optional arguments are treated separately from positional arguments
+
+fn f(x,y,z,a) { return -1 }
+
+print f(1,z=3) 
+// expect error 'InvldArgs'

@@ -144,6 +144,11 @@ void function_setvarg(objectfunction *func, unsigned int varg) {
     func->varg=varg;
 }
 
+/** Checks if a function is enclosed in a closure */
+bool function_isclosure(objectfunction *func) {
+    return (func->nupvalues>0);
+}
+
 /** Sets the signature of a function
  * @param[in]  func   function object
  * @param[in]  signature list of types for each parameter (length from func->nargs) */

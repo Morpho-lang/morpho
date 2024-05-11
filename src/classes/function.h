@@ -73,6 +73,8 @@ int function_countpositionalargs(objectfunction *func);
 int function_countoptionalargs(objectfunction *func);
 bool function_hasvargs(objectfunction *func);
 void function_setvarg(objectfunction *func, unsigned int varg);
+bool function_isclosure(objectfunction *func);
+
 void function_setsignature(objectfunction *func, value *signature);
 bool function_hastypedparameters(objectfunction *func);
 

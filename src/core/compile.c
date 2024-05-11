@@ -1286,8 +1286,8 @@ static codeinfo compiler_movetoupvalue(compiler *c, syntaxtreenode *node, codein
 indx compiler_closure(compiler *c, syntaxtreenode *node, registerindx reg) {
     functionstate *f=compiler_currentfunctionstate(c);
     objectfunction *func = f->func;
+    
     indx ix=REGISTER_UNALLOCATED;
-
     if (f->upvalues.count>0) {
         object_functionaddprototype(func, &f->upvalues, &ix);
     }

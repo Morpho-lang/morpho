@@ -1,0 +1,11 @@
+// Multiple dispatch with recursion
+
+fn f() {
+    return 0
+}
+
+fn f(x) {
+    return "V"
+}
+
+print "Not written"

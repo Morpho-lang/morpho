@@ -2716,7 +2716,13 @@ static registerindx compiler_functionparameters(compiler *c, syntaxtreeindx indx
         {
             value type=MORPHO_NIL;
             syntaxtreenode *typenode = compiler_getnode(c, node->left);
-            compiler_findtype(c, typenode->content, &type);
+            if (!typenode) UNREACHABLE("Incorrectly formed type node.");
+            if (!MORPHO_ISSTRING(typenode->content)) UNREACHABLE("Type node should have string label.");
+            
+            if (!compiler_findtype(c, typenode->content, &type)) {
+                compiler_error(c, node, COMPILE_UNKNWNTYPE, MORPHO_GETCSTRING(typenode->content));
+                return REGISTER_UNALLOCATED;
+            }
             
             registerindx reg = compiler_functionparameters(c, node->right);
             compiler_regsettype(c, reg, type);
@@ -4070,6 +4076,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_INVLDLBL, ERROR_COMPILE, COMPILE_INVLDLBL_MSG);
     morpho_defineerror(COMPILE_MSSNGINDX, ERROR_COMPILE, COMPILE_MSSNGINDX_MSG);
     morpho_defineerror(COMPILE_TYPEVIOLATION, ERROR_COMPILE, COMPILE_TYPEVIOLATION_MSG);
+    morpho_defineerror(COMPILE_UNKNWNTYPE, ERROR_COMPILE, COMPILE_UNKNWNTYPE_MSG);
     
     morpho_addfinalizefn(compile_finalize);
 }

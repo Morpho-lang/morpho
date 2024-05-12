@@ -817,17 +817,15 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value 
                 break;
             case MF_BRANCHVALUETYPE: {
                 if (!MORPHO_ISOBJECT(args[pc->narg])) {
-                    // TODO: Check for btable bound
                     int type = (int) MORPHO_GETORDEREDTYPE(args[pc->narg]);
-                    pc+=pc->data.btable.data[type];
+                    if (type<pc->data.btable.count) pc+=pc->data.btable.data[type];
                 } else pc+=pc->branch;
             }
                 break;
             case MF_BRANCHOBJECTTYPE: {
                 if (MORPHO_ISOBJECT(args[pc->narg])) {
-                    // TODO: Check for btable bound
                     int type = MORPHO_GETOBJECTTYPE(args[pc->narg]);
-                    pc+=pc->data.btable.data[type];
+                    if (type<pc->data.btable.count) pc+=pc->data.btable.data[type];
                 } else pc+=pc->branch;
             }
                 break;
@@ -835,7 +833,7 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value 
                 if (MORPHO_ISINSTANCE(args[pc->narg])) {
                     // TODO: Check for btable bound
                     objectclass *klass = MORPHO_GETINSTANCE(args[pc->narg])->klass;
-                    pc+=pc->data.btable.data[klass->uid];
+                    if (klass->uid<pc->data.btable.count) pc+=pc->data.btable.data[klass->uid];
                 } else pc+=pc->branch;
             }
                 break;

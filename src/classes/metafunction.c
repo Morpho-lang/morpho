@@ -9,6 +9,25 @@
 #include "common.h"
 
 /* **********************************************************************
+ * Metafunction opcodes
+ * ********************************************************************** */
+
+enum {
+    MF_RESOLVE,
+    MF_FAIL,
+    MF_CHECKNARGSNEQ,
+    MF_CHECKNARGSLT,
+    MF_CHECKVALUE,
+    MF_CHECKOBJECT,
+    MF_CHECKINSTANCE,
+    MF_BRANCH,
+    MF_BRANCHNARGS,
+    MF_BRANCHVALUETYPE,
+    MF_BRANCHOBJECTTYPE,
+    MF_BRANCHINSTANCE
+};
+
+/* **********************************************************************
  * objectmetafunction definitions
  * ********************************************************************** */
 
@@ -145,44 +164,9 @@ value _getname(value fn) {
     return MORPHO_NIL;
 }
 
-/** Resolves a metafunction given calling arguments */
-bool metafunction_slowresolve(objectmetafunction *f, int nargs, value *args, value *out) {
-    for (int i=0; i<f->fns.count; i++) {
-        signature *s = _getsignature(f->fns.data[i]);
-        if (!s) continue;
-        
-        int nparams; value *ptypes;
-        signature_paramlist(s, &nparams, &ptypes);
-        if (nargs!=nparams) continue;
-        
-        int j;
-        for (j=0; j<nparams; j++) {
-            if (!metafunction_matchtype(ptypes[j], args[j])) break;
-        }
-        if (j==nparams) { *out=f->fns.data[i]; return true; }
-    }
-    
-    return false;
-}
-
 /* **********************************************************************
  * Fast metafunction resolver
  * ********************************************************************** */
-
-enum {
-    MF_RESOLVE,
-    MF_FAIL,
-    MF_CHECKNARGSNEQ,
-    MF_CHECKNARGSLT,
-    MF_CHECKVALUE,
-    MF_CHECKOBJECT,
-    MF_CHECKINSTANCE,
-    MF_BRANCH,
-    MF_BRANCHNARGS,
-    MF_BRANCHVALUETYPE,
-    MF_BRANCHOBJECTTYPE,
-    MF_BRANCHINSTANCE
-};
 
 DEFINE_VARRAY(mfinstruction, mfinstruction);
 
@@ -773,8 +757,9 @@ unsigned int vm_countpositionalargs(unsigned int nargs, value *args);
 /** Execute the metafunction's resolver */
 bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value *out) {
     int n=vm_countpositionalargs(nargs, args);;
+    if (!fn->resolver.data) metafunction_compile(fn);
     mfinstruction *pc = fn->resolver.data;
-    if (!pc) return metafunction_slowresolve(fn, n, args, out);
+    if (!pc) return false;
     
     do {
         switch(pc->opcode) {

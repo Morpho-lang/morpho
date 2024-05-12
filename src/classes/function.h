@@ -32,8 +32,8 @@ typedef struct sobjectfunction {
     int varg; // The parameter number of a variadic parameter.
     value name;
     indx entry;
+    int creg; // Closure register
     struct sobjectfunction *parent;
-    int nupvalues;
     int nregs;
     objectclass *klass;
     varray_value konst;
@@ -72,7 +72,8 @@ objectfunction *object_newfunction(indx entry, value name, objectfunction *paren
 int function_countpositionalargs(objectfunction *func);
 int function_countoptionalargs(objectfunction *func);
 bool function_hasvargs(objectfunction *func);
-void function_setvarg(objectfunction *func, unsigned int varg);
+void function_setvarg(objectfunction *func, int varg);
+void function_setclosure(objectfunction *func, int creg);
 bool function_isclosure(objectfunction *func);
 
 void function_setsignature(objectfunction *func, value *signature);

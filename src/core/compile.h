@@ -197,6 +197,7 @@ typedef struct {
     value symbol; /** Symbol associated with the reference */
     value function; /** The function itself */
     unsigned int scopedepth; /** Scope depth at which the function was seen */
+    registerindx reg; /** Register corresponding to the closure */
 } functionref;
 
 DECLARE_VARRAY(functionref, functionref)

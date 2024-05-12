@@ -713,7 +713,7 @@ void list_initialize(void) {
     // List constructor function
     builtin_addfunction(LIST_CLASSNAME, list_constructor, MORPHO_FN_CONSTRUCTOR);
     
-    // List constructor function
+    // Define List class
     value listclass=builtin_addclass(LIST_CLASSNAME, MORPHO_GETCLASSDEFINITION(List), objclass);
     object_setveneerclass(OBJECT_LIST, listclass);
     

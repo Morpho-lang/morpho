@@ -54,7 +54,7 @@ void object_functioninit(objectfunction *func) {
     func->name=MORPHO_NIL;
     func->nargs=0;
     func->parent=NULL;
-    func->nupvalues=0;
+    func->creg=-1;
     func->nregs=0;
     varray_valueinit(&func->konst);
     varray_varray_upvalueinit(&func->prototype);
@@ -140,13 +140,18 @@ bool function_hasvargs(objectfunction *func) {
 }
 
 /** Sets the parameter number of a variadic argument */
-void function_setvarg(objectfunction *func, unsigned int varg) {
+void function_setvarg(objectfunction *func, int varg) {
     func->varg=varg;
 }
 
-/** Checks if a function is enclosed in a closure */
+/** Sets that a function must be enclosed */
+void function_setclosure(objectfunction *func, int creg) {
+    func->creg=creg;
+}
+
+/** Checks if a function is enclosed */
 bool function_isclosure(objectfunction *func) {
-    return (func->nupvalues>0);
+    return (func->creg>=0);
 }
 
 /** Sets the signature of a function

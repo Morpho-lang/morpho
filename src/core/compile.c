@@ -173,90 +173,6 @@ static inline bool compiler_ininitializer(compiler *c) {
 }
 
 /* ------------------------------------------
- * Manage the functionref stack
- * ------------------------------------------- */
-
-DEFINE_VARRAY(functionref, functionref)
-
-/** Adds a reference to a function in the current functionstate */
-void compiler_addfunctionref(compiler *c, objectfunction *func) {
-    functionstate *f=compiler_currentfunctionstate(c);
-    functionref ref = { .function = MORPHO_OBJECT(func), .symbol = func->name, .scopedepth = f->scopedepth};
-    varray_functionrefwrite(&f->functionref, ref);
-}
-
-/** Removes functions visible at a given scope level */
-void compiler_functionreffreeatscope(compiler *c, unsigned int scope) {
-    functionstate *f=compiler_currentfunctionstate(c);
-    
-    while (f->functionref.count>0 && f->functionref.data[f->functionref.count-1].scopedepth>=scope) f->functionref.count--;
-}
-
-void _addmatchingfunctionref(compiler *c, value symbol, value fn, value *out) {
-    value in = *out;
-    if (MORPHO_ISNIL(in)) {
-        // If the function has a signature, will need to wrap in a metafunction
-        if (MORPHO_ISFUNCTION(fn) && function_hastypedparameters(MORPHO_GETFUNCTION(fn))) {
-            if (metafunction_wrap(symbol, fn, out)) {
-                program_bindobject(c->out, MORPHO_GETOBJECT(*out));
-            }
-        } else *out=fn;
-    } else if (MORPHO_ISFUNCTION(in)) {
-        if (metafunction_wrap(symbol, in, out)) { metafunction_add(MORPHO_GETMETAFUNCTION(*out), fn);
-            program_bindobject(c->out, MORPHO_GETOBJECT(*out));
-        }
-    } else if (MORPHO_ISMETAFUNCTION(in)) {
-        metafunction_add(MORPHO_GETMETAFUNCTION(in), fn);
-    }
-}
-
-/** Finds an existing metafunction in the current context that matches a given set of implementations */
-bool compiler_findmetafunction(compiler *c, value symbol, int n, value *fns, value *out) {
-    functionstate *f=compiler_currentfunctionstate(c);
-    
-    for (int i=0; i<f->func->konst.count; i++) {
-        value v = f->func->konst.data[i];
-        if (MORPHO_ISMETAFUNCTION(v) &&
-            MORPHO_ISEQUAL(MORPHO_GETMETAFUNCTION(v)->name, symbol) &&
-            metafunction_matchset(MORPHO_GETMETAFUNCTION(v), n, fns)) {
-            *out = v;
-            return true;
-        }
-    }
-    
-    return false;
-}
-
-/** Determines whether a symbol refers to one (or more) functions. If so, returns either a single function or a metafunction as appropriate. */
-bool compiler_resolvefunctionref(compiler *c, value symbol, value *out) {
-    functionstate *f=compiler_currentfunctionstate(c);
-    
-    varray_value fns;
-    varray_valueinit(&fns);
-    
-    for (int i=0; i<f->functionref.count; i++) {
-        functionref *ref=&f->functionref.data[i];
-        if (MORPHO_ISEQUAL(ref->symbol, symbol)) varray_valuewrite(&fns, ref->function);
-    }
- 
-    if (!fns.count) return false; // No need to clear an empty varray
-    
-    if (!compiler_findmetafunction(c, symbol, fns.count, fns.data, out)) {
-        *out=MORPHO_NIL;
-        for (int i=0; i<fns.count; i++) {
-            _addmatchingfunctionref(c, symbol, fns.data[i], out);
-        }
-        
-        // Compile the metafunction ready for use
-        if (MORPHO_ISMETAFUNCTION(*out)) metafunction_compile(MORPHO_GETMETAFUNCTION(*out));
-    }
-    
-    varray_valueclear(&fns);
-    
-    return !MORPHO_ISNIL(*out);
-}
-
-/* ------------------------------------------
  * Increment and decrement the fstack
  * ------------------------------------------- */
 
@@ -821,6 +737,8 @@ void compiler_beginscope(compiler *c) {
     f->scopedepth++;
 }
 
+void compiler_functionreffreeatscope(compiler *c, unsigned int scope);
+
 /** Decrements the scope counter in the current functionstate */
 void compiler_endscope(compiler *c) {
     functionstate *f=compiler_currentfunctionstate(c);
@@ -1292,6 +1210,133 @@ indx compiler_closure(compiler *c, syntaxtreenode *node, registerindx reg) {
         object_functionaddprototype(func, &f->upvalues, &ix);
     }
     return ix;
+}
+
+/* ------------------------------------------
+ * Manage the functionref stack
+ * ------------------------------------------- */
+
+DEFINE_VARRAY(functionref, functionref)
+
+/** Adds a reference to a function in the current functionstate */
+int compiler_addfunctionref(compiler *c, objectfunction *func) {
+    functionstate *f=compiler_currentfunctionstate(c);
+    functionref ref = { .function = MORPHO_OBJECT(func), .symbol = func->name, .scopedepth = f->scopedepth};
+    return varray_functionrefwrite(&f->functionref, ref);
+}
+
+/** Removes functions visible at a given scope level */
+void compiler_functionreffreeatscope(compiler *c, unsigned int scope) {
+    functionstate *f=compiler_currentfunctionstate(c);
+    
+    while (f->functionref.count>0 && f->functionref.data[f->functionref.count-1].scopedepth>=scope) f->functionref.count--;
+}
+
+void _addmatchingfunctionref(compiler *c, value symbol, value fn, value *out) {
+    value in = *out;
+    if (MORPHO_ISNIL(in)) {
+        // If the function has a signature, will need to wrap in a metafunction
+        if (MORPHO_ISFUNCTION(fn) && function_hastypedparameters(MORPHO_GETFUNCTION(fn))) {
+            if (metafunction_wrap(symbol, fn, out)) {
+                program_bindobject(c->out, MORPHO_GETOBJECT(*out));
+            }
+        } else *out=fn;
+    } else if (MORPHO_ISFUNCTION(in)) {
+        if (metafunction_wrap(symbol, in, out)) { metafunction_add(MORPHO_GETMETAFUNCTION(*out), fn);
+            program_bindobject(c->out, MORPHO_GETOBJECT(*out));
+        }
+    } else if (MORPHO_ISMETAFUNCTION(in)) {
+        metafunction_add(MORPHO_GETMETAFUNCTION(in), fn);
+    }
+}
+
+/** Finds an existing metafunction in the current context that matches a given set of implementations */
+bool compiler_findmetafunction(compiler *c, value symbol, int n, value *fns, codeinfo *out) {
+    functionstate *f=compiler_currentfunctionstate(c);
+    
+    for (int i=0; i<f->func->konst.count; i++) {
+        value v = f->func->konst.data[i];
+        if (MORPHO_ISMETAFUNCTION(v) &&
+            MORPHO_ISEQUAL(MORPHO_GETMETAFUNCTION(v)->name, symbol) &&
+            metafunction_matchset(MORPHO_GETMETAFUNCTION(v), n, fns)) {
+            *out = CODEINFO(CONSTANT, i, 0);
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/** Compile a metafunction constructor by setting up a call to the Metafunction() constructor */
+codeinfo compiler_metafunction(compiler *c, syntaxtreenode *node, int n, value *fns) {
+    codeinfo out = compiler_findbuiltin(c, node, METAFUNCTION_CLASSNAME, REGISTER_UNALLOCATED);
+
+    for (int i=0; i<n; i++) { // Loop over the implementations
+        registerindx reg=compiler_regalloctop(c);
+        codeinfo val = CODEINFO(CONSTANT, REGISTER_UNALLOCATED, 0);
+        
+        if (MORPHO_ISFUNCTION(fns[i]) && function_isclosure(MORPHO_GETFUNCTION(fns[i]))) {
+            val.returntype=REGISTER;
+            val.dest = (registerindx) MORPHO_GETFUNCTION(fns[i])->creg;
+        } else {
+            val.dest = compiler_addconstant(c, node, fns[i], true, false);
+        }
+        
+        val=compiler_movetoregister(c, node, val, reg);
+        out.ninstructions+=val.ninstructions;
+    }
+
+    /* Make the function call */
+    compiler_addinstruction(c, ENCODE_DOUBLE(OP_CALL, out.dest, n), node);
+    out.ninstructions++;
+    compiler_regfreetoend(c, out.dest+1);
+    
+    return out;
+}
+
+/** Determines whether a symbol refers to one (or more) functions. If so, returns either a single function or a metafunction as appropriate. */
+bool compiler_resolvefunctionref(compiler *c, syntaxtreenode *node, value symbol, codeinfo *out) {
+    functionstate *f=compiler_currentfunctionstate(c);
+    value outfn=MORPHO_NIL;
+    bool closure=false; // Set if one of the references contains a closure.
+    
+    varray_value fns;
+    varray_valueinit(&fns);
+    
+    for (int i=0; i<f->functionref.count; i++) {
+        functionref *ref=&f->functionref.data[i];
+        if (MORPHO_ISEQUAL(ref->symbol, symbol)) {
+            closure |= function_isclosure(MORPHO_GETFUNCTION(ref->function));
+            varray_valuewrite(&fns, ref->function);
+        }
+    }
+ 
+    if (!fns.count) return false; // No need to clear an empty varray
+    
+    if (closure) {
+        if (fns.count>1) { // If the list contains a closure, we must build the MF at runtime
+            *out = compiler_metafunction(c, node, fns.count, fns.data);
+        } else { // If just one closure, no need to build a metafunction
+            out->returntype=REGISTER;
+            out->dest=MORPHO_GETFUNCTION(fns.data[0])->creg;
+            out->ninstructions=0;
+        }
+    } else if (!compiler_findmetafunction(c, symbol, fns.count, fns.data, out)) {
+        // If a suitable MF doesn't exist in the constant table, we should build one
+        for (int i=0; i<fns.count; i++) {
+            _addmatchingfunctionref(c, symbol, fns.data[i], &outfn);
+        }
+        
+        if (MORPHO_ISMETAFUNCTION(outfn)) metafunction_compile(MORPHO_GETMETAFUNCTION(outfn));
+        
+        out->returntype=CONSTANT;
+        out->dest=compiler_addconstant(c, node, outfn, true, false);
+        out->ninstructions=0;
+    }
+    
+    varray_valueclear(&fns);
+    
+    return true;
 }
 
 /* ------------------------------------------
@@ -2856,6 +2901,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 
         /* Allocate a variable to refer to the function definition, but only in global
            context */
+        /* TODO: Do we need to do this now functionstates capture function info? */
         codeinfo fvar=CODEINFO_EMPTY;
         fvar.dest=compiler_regtemp(c, reqout);
         fvar.returntype=REGISTER;
@@ -2878,7 +2924,8 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 
         /* Wrap in a closure if necessary */
         if (closure!=REGISTER_UNALLOCATED) {
-            compiler_regsetsymbol(c, reg, node->content);
+            // Save the register where the closure is to be found
+            function_setclosure(func, reg);
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_CLOSURE, reg, (registerindx) closure), node);
             ninstructions++;
         }
@@ -3389,11 +3436,7 @@ static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx 
     }
     
     /* Is it a reference to a function? */
-    value fn=MORPHO_NIL;
-    if (compiler_resolvefunctionref(c, node->content, &fn)) {
-        /* It is; so add it to the constant table */
-        ret.returntype=CONSTANT;
-        ret.dest=compiler_addconstant(c, node, fn, false, false);
+    if (compiler_resolvefunctionref(c, node, node->content, &ret)) {
         return ret;
     }
 

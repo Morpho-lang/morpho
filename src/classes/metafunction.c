@@ -20,6 +20,12 @@ void objectmetafunction_freefn(object *obj) {
 
 void objectmetafunction_markfn(object *obj, void *v) {
     objectmetafunction *f = (objectmetafunction *) obj;
+    morpho_markvalue(v, f->name); // Mark the name
+    
+    for (int i=0; i<f->resolver.count; i++) { // Mark any functions in the resolver
+        mfinstruction *instr = &f->resolver.data[i];
+        if (instr->opcode==MF_RESOLVE) morpho_markvalue(v,instr->data.resolvefn);
+    }
 }
 
 size_t objectmetafunction_sizefn(object *obj) {

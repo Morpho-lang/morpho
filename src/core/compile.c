@@ -3422,6 +3422,11 @@ static codeinfo compiler_super(compiler *c, syntaxtreenode *node, registerindx r
 static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo ret=CODEINFO_EMPTY;
     
+    /* Is it a reference to a function? */
+    if (compiler_resolvefunctionref(c, node, node->content, &ret)) {
+        return ret;
+    }
+    
     /* Is it a local variable? */
     ret.dest=compiler_getlocal(c, node->content);
     if (ret.dest!=REGISTER_UNALLOCATED) return ret;
@@ -3430,11 +3435,6 @@ static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx 
     ret.dest = compiler_resolveupvalue(c, node->content);
     if (ret.dest!=REGISTER_UNALLOCATED) {
         ret.returntype=UPVALUE;
-        return ret;
-    }
-    
-    /* Is it a reference to a function? */
-    if (compiler_resolvefunctionref(c, node, node->content, &ret)) {
         return ret;
     }
 

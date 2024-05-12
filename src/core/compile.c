@@ -2875,17 +2875,12 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     ninstructions+=bodyinfo.ninstructions;
 
     /* Add a return instruction if necessary */
-    //if (DECODE_OP(compiler_previousinstruction(c))!=OP_RETURN) { // 8/11/21 -> fix for final return in if
-    if (true) {
-        /* Methods automatically return self unless another argument is specified */
-        if (ismethod) {
-            compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, 0), node); /* Add a return */
-        } else {
-            compiler_addinstruction(c, ENCODE_BYTE(OP_RETURN), node); /* Add a return */
-        }
-
-        ninstructions++;
+    if (ismethod) { // Methods automatically return self unless another argument is specified
+        compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, 0), node); /* Add a return */
+    } else {
+        compiler_addinstruction(c, ENCODE_BYTE(OP_RETURN), node); /* Add a return */
     }
+    ninstructions++;
 
     /* Verify if we have any outstanding forward references */
     compiler_checkoutstandingforwardreference(c);
@@ -2927,6 +2922,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         /* Wrap in a closure if necessary */
         if (closure!=REGISTER_UNALLOCATED) {
             // Save the register where the closure is to be found
+            compiler_regsetsymbol(c, reg, func->name);
             function_setclosure(func, reg);
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_CLOSURE, reg, (registerindx) closure), node);
             ninstructions++;

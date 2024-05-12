@@ -1327,7 +1327,9 @@ bool compiler_resolvefunctionref(compiler *c, syntaxtreenode *node, value symbol
             _addmatchingfunctionref(c, symbol, fns.data[i], &outfn);
         }
         
-        if (MORPHO_ISMETAFUNCTION(outfn)) metafunction_compile(MORPHO_GETMETAFUNCTION(outfn));
+        if (MORPHO_ISMETAFUNCTION(outfn)) {
+            metafunction_compile(MORPHO_GETMETAFUNCTION(outfn), &c->err);
+        }
         
         out->returntype=CONSTANT;
         out->dest=compiler_addconstant(c, node, outfn, true, false);

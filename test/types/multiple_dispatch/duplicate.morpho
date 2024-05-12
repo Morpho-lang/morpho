@@ -8,5 +8,7 @@ fn f(x, Int y) {
     return 1 
 }
 
+f(1,1)
+
 // expect error 'MltplDisptchAmbg'
 

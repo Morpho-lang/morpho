@@ -203,17 +203,25 @@ DEFINE_VARRAY(mfset, mfset)
 typedef struct {
     objectmetafunction *fn;
     varray_int checked; // Stack of checked parameters
+    error err;
 } mfcompiler;
 
 /** Initialize the metafunction compiler */
 void mfcompiler_init(mfcompiler *c, objectmetafunction *fn) {
     c->fn=fn;
     varray_intinit(&c->checked);
+    error_init(&c->err);
 }
 
 /** Clear the metafunction compiler */
 void mfcompiler_clear(mfcompiler *c, objectmetafunction *fn) {
     varray_intclear(&c->checked);
+    error_clear(&c->err);
+}
+
+/** Report an error during metafunction compilation */
+void mfcompiler_error(mfcompiler *c, errorid id) {
+    morpho_writeerrorwithid(&c->err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE);
 }
 
 /** Pushes a parameter check onto the stack*/
@@ -354,11 +362,13 @@ bool mfcompile_countoutcomes(mfcompiler *c, mfset *set, int *best) {
         dictionary_clear(&dict); // Not needed if dict.count was zero
     };
     
-    // Find the parameter that has most variability
-    int max=count.data[0], maxindx=0;
-    for (int i=1; i<count.count; i++) {
+    // Find the parameter that has most variability that has not already been checked
+    int max=0, maxindx=-1;
+    for (int i=0; i<count.count; i++) {
+        if (mfcompiler_ischecked(c, i)) continue;
         if (count.data[i]>max) { max=count.data[i]; maxindx=i; }
     }
+    if (maxindx<0) return false;
     if (best) *best = maxindx;
     
     varray_intclear(&count);
@@ -718,6 +728,7 @@ mfindx mfcompile_set(mfcompiler *c, mfset *set) {
     int best;
     if (mfcompile_countoutcomes(c, set, &best)) return mfcompile_dispatchonparam(c, set, best);
     
+    mfcompiler_error(c, METAFUNCTION_CMPLAMBGS);
     return MFINSTRUCTION_EMPTY;
 }
 
@@ -731,10 +742,10 @@ void metafunction_clearinstructions(objectmetafunction *fn) {
 }
 
 /** Compiles the metafunction resolver */
-void metafunction_compile(objectmetafunction *fn) {
+bool metafunction_compile(objectmetafunction *fn, error *err) {
     mfset set;
     set.count = fn->fns.count;
-    if (!set.count) return;
+    if (!set.count) return false;
     
     mfresult rlist[set.count];
     set.rlist=rlist;
@@ -749,7 +760,12 @@ void metafunction_compile(objectmetafunction *fn) {
     mfcompile_set(&compiler, &set);
     //mfcompiler_disassemble(&compiler);
     
+    bool success=!morpho_checkerror(&compiler.err);
+    if (!success && err) *err=compiler.err;
+    
     mfcompiler_clear(&compiler, fn);
+    
+    return success;
 }
 
 unsigned int vm_countpositionalargs(unsigned int nargs, value *args);
@@ -757,7 +773,8 @@ unsigned int vm_countpositionalargs(unsigned int nargs, value *args);
 /** Execute the metafunction's resolver */
 bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value *out) {
     int n=vm_countpositionalargs(nargs, args);;
-    if (!fn->resolver.data) metafunction_compile(fn);
+    if (!fn->resolver.data &&
+        !metafunction_compile(fn, NULL)) return false;
     mfinstruction *pc = fn->resolver.data;
     if (!pc) return false;
     
@@ -852,7 +869,11 @@ value metafunction_constructor(vm *v, int nargs, value *args) {
             metafunction_add(new, MORPHO_GETARG(args, i));
         }
         
-        metafunction_compile(new);
+        error err;
+        error_init(&err);
+        if (!metafunction_compile(new, &err)) morpho_runtimeerror(v, err.id);
+        error_clear(&err);
+        
         out=MORPHO_OBJECT(new);
     }
     
@@ -892,4 +913,5 @@ void metafunction_initialize(void) {
     object_setveneerclass(OBJECT_METAFUNCTION, metafunctionclass);
     
     // Metafunction error messages
+    morpho_defineerror(METAFUNCTION_CMPLAMBGS, ERROR_PARSE, METAFUNCTION_CMPLAMBGS_MSG);
 }

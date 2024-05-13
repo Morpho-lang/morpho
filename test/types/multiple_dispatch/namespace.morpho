@@ -12,9 +12,9 @@ nm.f(1.5)
 // expect: 2.5
 
 var a = []
-f(a)
+nm.f(a)
 print a 
 // expect: [ Ho ]
 
-f({})
+nm.f({})
 // expect: Foo

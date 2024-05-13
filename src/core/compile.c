@@ -3779,6 +3779,14 @@ void compiler_copysymbols(dictionary *src, dictionary *dest, dictionary *compare
     }
 }
 
+/** Copies the global function ref into the destination compiler's current function ref */
+void compiler_copyfunctionref(compiler *src, compiler *dest) {
+    functionstate *in=compiler_currentfunctionstate(src);
+    functionstate *out=compiler_currentfunctionstate(dest);
+    
+    varray_functionrefadd(&out->functionref, in->functionref.data, in->functionref.count);
+}
+
 /** Searches for a module with given name, returns the file name for inclusion. */
 bool compiler_findmodule(char *name, varray_char *fname) {
     char *ext[] = { MORPHO_EXTENSION, "" };
@@ -3900,6 +3908,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                     compiler_copysymbols(&cc.classes, &nmspace->classes, (fordict.count>0 ? &fordict : NULL));
                 } else { // Otherwise just put it into the parent compiler's class table
                     compiler_copysymbols(&cc.classes, &c->classes, (fordict.count>0 ? &fordict : NULL));
+                    compiler_copyfunctionref(&cc, c);
                 }
                 
                 objectdictionary *dict = object_newdictionary(); // Preserve all symbols for further imports

@@ -15,3 +15,15 @@ fn f(Float x) {
 fn f(x) {
     print "Foo"
 }
+
+fn g() {
+    return 0
+}
+
+fn g(x) {
+    return 1
+}
+
+fn h() {
+    return 0
+}

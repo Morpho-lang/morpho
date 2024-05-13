@@ -28,6 +28,7 @@ static optimizerfn *optimizer;
  * Utility functions
  * ------------------------------------------- */
 
+/** Checks if the compiler is in an error state */
 static bool compiler_haserror(compiler *c) {
     return (c->err.cat!=ERROR_NONE);
 }
@@ -88,16 +89,6 @@ static instructionindx compiler_addinstruction(compiler *c, instruction instr, s
 static instructionindx compiler_currentinstructionindex(compiler *c) {
     return (instructionindx) c->out->code.count;
 }
-
-/** Adds an instruction to the current program */
-/*static instruction compiler_previousinstruction(compiler *c) {
-    return c->out->code.data[c->out->code.count-1];
-}*/
-
-/** Finds the current instruction index */
-/*static instructionindx compiler_currentinstruction(compiler *c) {
-    return c->out->code.count;
-}*/
 
 /** Modifies the instruction at a given index */
 static void compiler_setinstruction(compiler *c, instructionindx indx,  instruction instr) {
@@ -1221,7 +1212,7 @@ DEFINE_VARRAY(functionref, functionref)
 /** Adds a reference to a function in the current functionstate */
 int compiler_addfunctionref(compiler *c, objectfunction *func) {
     functionstate *f=compiler_currentfunctionstate(c);
-    functionref ref = { .function = MORPHO_OBJECT(func), .symbol = func->name, .scopedepth = f->scopedepth};
+    functionref ref = { .function = func, .symbol = func->name, .scopedepth = f->scopedepth};
     return varray_functionrefwrite(&f->functionref, ref);
 }
 
@@ -1306,8 +1297,8 @@ bool compiler_resolvefunctionref(compiler *c, syntaxtreenode *node, value symbol
     for (int i=0; i<f->functionref.count; i++) {
         functionref *ref=&f->functionref.data[i];
         if (MORPHO_ISEQUAL(ref->symbol, symbol)) {
-            closure |= function_isclosure(MORPHO_GETFUNCTION(ref->function));
-            varray_valuewrite(&fns, ref->function);
+            closure |= function_isclosure(ref->function);
+            varray_valuewrite(&fns, MORPHO_OBJECT(ref->function));
         }
     }
  
@@ -3644,7 +3635,10 @@ static codeinfo compiler_dot(compiler *c, syntaxtreenode *node, registerindx req
         
         if (MORPHO_ISINTEGER(out)) {
             return CODEINFO(GLOBAL, MORPHO_GETINTEGERVALUE(out), 0);
-        } else if (MORPHO_ISBUILTINFUNCTION(out) || MORPHO_ISCLASS(out)) {
+        } else if (MORPHO_ISFUNCTION(out) ||
+                   MORPHO_ISMETAFUNCTION(out) ||
+                   MORPHO_ISBUILTINFUNCTION(out) ||
+                   MORPHO_ISCLASS(out)) {
             registerindx indx = compiler_addconstant(c, node, out, true, false);
             return CODEINFO(CONSTANT, indx, 0);
         } else {
@@ -3780,11 +3774,42 @@ void compiler_copysymbols(dictionary *src, dictionary *dest, dictionary *compare
 }
 
 /** Copies the global function ref into the destination compiler's current function ref */
-void compiler_copyfunctionref(compiler *src, compiler *dest) {
+void compiler_copyfunctionref(compiler *src, compiler *dest, dictionary *fordict) {
     functionstate *in=compiler_currentfunctionstate(src);
     functionstate *out=compiler_currentfunctionstate(dest);
     
-    varray_functionrefadd(&out->functionref, in->functionref.data, in->functionref.count);
+    if (fordict) {
+        for (int i=0; i<in->functionref.count; i++) {
+            functionref *ref=&in->functionref.data[i];
+            if (!dictionary_get(fordict, ref->function->name, NULL)) continue;
+            
+            varray_functionrefwrite(&out->functionref, in->functionref.data[i]);
+        }
+    } else varray_functionrefadd(&out->functionref, in->functionref.data, in->functionref.count);
+}
+
+/** Copies the global function ref into the designated namespace, checking whether the functions are present in the dictionary, and creating metafunctions where necessary */
+void compiler_copyfunctionreftonamespace(compiler *src, namespc *dest, dictionary *fordict) {
+    functionstate *f=compiler_currentfunctionstate(src);
+    
+    dictionary symbols;
+    dictionary_init(&symbols);
+    
+    for (int i=0; i<f->functionref.count; i++) {
+        functionref *ref=&f->functionref.data[i];
+        // Skip if not in the fordict
+        if (fordict && !dictionary_get(fordict, ref->function->name, NULL)) continue;
+        
+        value fn=MORPHO_OBJECT(ref->function);
+        if (dictionary_get(&symbols, ref->function->name, &fn)) {
+            // If the function already exists, wrap in a metafunction
+            _addmatchingfunctionref(src, ref->function->name, MORPHO_OBJECT(ref->function), &fn);
+        }
+        dictionary_insert(&symbols, ref->function->name, fn);
+    }
+    
+    compiler_copysymbols(&symbols, &dest->symbols, NULL);
+    dictionary_clear(&symbols);
 }
 
 /** Searches for a module with given name, returns the file name for inclusion. */
@@ -3906,9 +3931,10 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                 compiler_copysymbols(&cc.globals, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
                 if (nmspace) { // If we're in a namespace, copy the class table into that
                     compiler_copysymbols(&cc.classes, &nmspace->classes, (fordict.count>0 ? &fordict : NULL));
+                    compiler_copyfunctionreftonamespace(&cc, nmspace, (fordict.count>0 ? &fordict : NULL));
                 } else { // Otherwise just put it into the parent compiler's class table
                     compiler_copysymbols(&cc.classes, &c->classes, (fordict.count>0 ? &fordict : NULL));
-                    compiler_copyfunctionref(&cc, c);
+                    compiler_copyfunctionref(&cc, c, (fordict.count>0 ? &fordict : NULL));
                 }
                 
                 objectdictionary *dict = object_newdictionary(); // Preserve all symbols for further imports
@@ -4062,9 +4088,7 @@ bool morpho_compile(char *in, compiler *c, bool opt, error *err) {
 compiler *morpho_newcompiler(program *out) {
     compiler *new = MORPHO_MALLOC(sizeof(compiler));
 
-    if (new) {
-        compiler_init("", out, new);
-    }
+    if (new) compiler_init("", out, new);
 
     return new;
 }
@@ -4080,9 +4104,7 @@ void morpho_freecompiler(compiler *c) {
 * ********************************************************************** */
 
 void morpho_setbaseclass(value klss) {
-    if (MORPHO_ISCLASS(klss)) {
-        baseclass=MORPHO_GETCLASS(klss);
-    }
+    if (MORPHO_ISCLASS(klss)) baseclass=MORPHO_GETCLASS(klss);
 }
 
 void morpho_setoptimizer(optimizerfn *opt) {

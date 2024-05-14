@@ -275,7 +275,7 @@ void mfcompiler_disassemble(mfcompiler *c) {
                 break;
             }
             case MF_CHECKINSTANCE: {
-                printf("checkinstance (%i) -> (%i)", instr->narg, i+instr->branch+1);
+                printf("checkinstance (%i) [%i] -> (%i)", instr->narg, instr->data.tindx, i+instr->branch+1);
                 break;
             }
             case MF_BRANCH: {
@@ -400,8 +400,8 @@ void mfcompile_replaceinstruction(mfcompiler *c, mfindx i, mfinstruction instr) 
 
 enum {
     MF_VENEERVALUE,
-    MF_VENEEROBJECT,
     MF_INSTANCE,
+    MF_VENEEROBJECT,
     MF_ANY
 };
 
@@ -436,7 +436,7 @@ mfindx mfcompile_fail(mfcompiler *c) {
 /** Checks a parameter i for type */
 mfindx mfcompile_check(mfcompiler *c, int i, value type) {
     int tindx;
-    int opcode[MF_ANY] = { MF_CHECKVALUE, MF_CHECKOBJECT, MF_CHECKINSTANCE };
+    int opcode[MF_ANY] = { MF_CHECKVALUE, MF_CHECKINSTANCE, MF_CHECKOBJECT };
     int k=_detecttype(type, &tindx);
     
     if (k==MF_ANY) return MFINSTRUCTION_EMPTY;
@@ -475,7 +475,7 @@ mfindx mfcompile_resolve(mfcompiler *c, mfresult *res) {
 void mfcompile_branchtable(mfcompiler *c, mfset *set, mfindx bindx, varray_int *btable) {
     int k=0;
     // Values with negative indices shouldn't be included in the branch table
-    while (set->rlist[k].indx<0 && k<set->count) k++;
+    while (k<set->count && set->rlist[k].indx<0) k++;
     
     // Deal with each outcome
     while (k<set->count) {
@@ -637,8 +637,8 @@ mfindx mfcompile_dispatchonparam(mfcompiler *c, mfset *set, int i) {
     
     mfindx bindx[MF_ANY+1];
     mfcompile_dispatchfn *dfn[MF_ANY+1] = { mfcompile_dispatchveneervalue,
-                                            mfcompile_dispatchveneerobj,
                                             mfcompile_dispatchinstance,
+                                            mfcompile_dispatchveneerobj,
                                             mfcompile_dispatchany};
     
     // Cycle through all value types, building a chain of branchtables

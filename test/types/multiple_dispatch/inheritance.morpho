@@ -6,7 +6,9 @@ class B is A {}
 
 class C is B {} 
 
-class D is Object with A { }
+class D { }
+
+class E is D with A { }
 
 fn f(A x) { return "A" }
 
@@ -18,4 +20,6 @@ print f(B()) // expect: B
 
 print f(C()) // expect: B
 
-print f(D()) // expect: A
+print f(E()) // expect: A
+
+print f(D()) // expect error 'MltplDsptchFld'

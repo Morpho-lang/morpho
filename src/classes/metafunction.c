@@ -179,9 +179,7 @@ DEFINE_VARRAY(mfinstruction, mfinstruction);
 #define MFINSTRUCTION_CHECKTYPE(op, n, t, brnch) { .opcode=op, .data.tindx=t, .narg=n, .branch=brnch }
 #define MFINSTRUCTION_BRANCH(brnch) { .opcode=MF_BRANCH, .branch=brnch }
 #define MFINSTRUCTION_BRANCHNARG(table, brnch) { .opcode=MF_BRANCHNARGS, .data.btable=table, .branch=brnch }
-#define MFINSTRUCTION_BRANCHOBJECTTYPE(n, table, brnch) { .opcode=MF_BRANCHOBJECTTYPE, .narg=n, .data.btable=table, .branch=brnch }
-#define MFINSTRUCTION_BRANCHVALUETYPE(n, table, brnch) { .opcode=MF_BRANCHVALUETYPE, .narg=n, .data.btable=table, .branch=brnch }
-#define MFINSTRUCTION_BRANCHINSTANCE(n, table, brnch) { .opcode=MF_BRANCHINSTANCE, .narg=n, .data.btable=table, .branch=brnch }
+#define MFINSTRUCTION_BRANCHTABLE(op, n, table, brnch) { .opcode=op, .narg=n, .data.btable=table, .branch=brnch }
 
 typedef struct {
     signature *sig; /** Signature of the target */
@@ -499,14 +497,13 @@ int _mfresultsortfn (const void *a, const void *b) {
 
 typedef mfindx (mfcompile_dispatchfn) (mfcompiler *c, mfset *set, int i);
 
-/** Branch table on object type */
-mfindx mfcompile_dispatchveneerobj(mfcompiler *c, mfset *set, int i) {
+mfindx mfcompile_dispatchtable(mfcompiler *c, mfset *set, int i, int otype, int opcode) {
     value type;
     
     // Extract the type index for each member of the set
     for (int k=0; k<set->count; k++) {
         if (!signature_getparamtype(set->rlist[k].sig, i, &type)) return MFINSTRUCTION_EMPTY;
-        if (_detecttype(type, &set->rlist[k].indx)!=MF_VENEEROBJECT) set->rlist[k].indx=-1;
+        if (_detecttype(type, &set->rlist[k].indx)!=otype) set->rlist[k].indx=-1;
     }
     
     // Sort the set on the type index
@@ -519,7 +516,7 @@ mfindx mfcompile_dispatchveneerobj(mfcompiler *c, mfset *set, int i) {
     for (int i=0; i<=maxindx; i++) varray_intwrite(&btable, 0);
     
     // Insert the branch instruction
-    mfinstruction instr = MFINSTRUCTION_BRANCHOBJECTTYPE(i, btable, 0);
+    mfinstruction instr = MFINSTRUCTION_BRANCHTABLE(opcode, i, btable, 0);
     mfindx bindx = mfcompile_insertinstruction(c, instr);
     
     // Fail if an object type isn't in the table
@@ -529,70 +526,22 @@ mfindx mfcompile_dispatchveneerobj(mfcompiler *c, mfset *set, int i) {
     mfcompile_branchtable(c, set, bindx, &btable);
     
     return bindx;
+}
+
+
+/** Branch table on object type */
+mfindx mfcompile_dispatchveneerobj(mfcompiler *c, mfset *set, int i) {
+    return mfcompile_dispatchtable(c, set, i, MF_VENEEROBJECT, MF_BRANCHOBJECTTYPE);
 }
 
 /** Branch table on value type */
 mfindx mfcompile_dispatchveneervalue(mfcompiler *c, mfset *set, int i) {
-    value type;
-    
-    // Extract the type index for each member of the set
-    for (int k=0; k<set->count; k++) {
-        if (!signature_getparamtype(set->rlist[k].sig, i, &type)) return MFINSTRUCTION_EMPTY;
-        if (_detecttype(type, &set->rlist[k].indx)!=MF_VENEERVALUE) set->rlist[k].indx=-1;
-    }
-    
-    // Sort the set on the type index
-    qsort(set->rlist, set->count, sizeof(mfresult), _mfresultsortfn);
-    
-    // Create the branch table
-    int maxindx=set->rlist[set->count-1].indx;
-    varray_int btable;
-    varray_intinit(&btable);
-    for (int i=0; i<=maxindx; i++) varray_intwrite(&btable, 0);
-    
-    // Insert the branch instruction
-    mfinstruction instr = MFINSTRUCTION_BRANCHVALUETYPE(i, btable, 0);
-    mfindx bindx = mfcompile_insertinstruction(c, instr);
-    
-    // Fail if an object type isn't in the table
-    mfcompile_fail(c);
-    
-    // Compile the branch table
-    mfcompile_branchtable(c, set, bindx, &btable);
-    
-    return bindx;
+    return mfcompile_dispatchtable(c, set, i, MF_VENEERVALUE, MF_BRANCHVALUETYPE);
 }
 
 /** Branch table on instance type */
 mfindx mfcompile_dispatchinstance(mfcompiler *c, mfset *set, int i) {
-    value type;
-    
-    // Extract the type index for each member of the set
-    for (int k=0; k<set->count; k++) {
-        if (!signature_getparamtype(set->rlist[k].sig, i, &type)) return MFINSTRUCTION_EMPTY;
-        if (_detecttype(type, &set->rlist[k].indx)!=MF_INSTANCE) set->rlist[k].indx=-1;
-    }
-    
-    // Sort the set on the type index
-    qsort(set->rlist, set->count, sizeof(mfresult), _mfresultsortfn);
-    
-    // Create the branch table
-    int maxindx=set->rlist[set->count-1].indx;
-    varray_int btable;
-    varray_intinit(&btable);
-    for (int i=0; i<=maxindx; i++) varray_intwrite(&btable, 0);
-    
-    // Insert the branch instruction
-    mfinstruction instr = MFINSTRUCTION_BRANCHINSTANCE(i, btable, 0);
-    mfindx bindx = mfcompile_insertinstruction(c, instr);
-    
-    // Fail if an object type isn't in the table
-    mfcompile_fail(c);
-    
-    // Compile the branch table
-    mfcompile_branchtable(c, set, bindx, &btable);
-    
-    return bindx;
+    return mfcompile_dispatchtable(c, set, i, MF_INSTANCE, MF_BRANCHINSTANCE);
 }
 
 /** Handle implementations that accept any type */

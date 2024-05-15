@@ -1,0 +1,18 @@
+// Types and inheritance
+
+class A { } 
+
+class B is A { } 
+
+class C is B { } 
+
+class D is A { } 
+
+fn f() {
+    A a = B()
+    A x = C() 
+    B y = C()
+    B z = D() // expect error 'TypeErr'
+}
+
+f()

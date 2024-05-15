@@ -287,6 +287,12 @@ objectclass *compiler_findclass(compiler *c, value name) {
     return NULL;
 }
 
+/** Adds a class to a class's parent list, and also links the class into the parent's child list */
+void compiler_addparent(compiler *c, objectclass *klass, objectclass *parent) {
+    varray_valuewrite(&klass->parents, MORPHO_OBJECT(parent));
+    varray_valuewrite(&parent->children, MORPHO_OBJECT(klass));
+}
+
 /* ------------------------------------------
  * Types
  * ------------------------------------------- */
@@ -316,10 +322,22 @@ bool compiler_typefromvalue(compiler *c, value v, value *out) {
     return metafunction_typefromvalue(v, out);
 }
 
+/** Recursively searches the parents list of classes to see if the type 'match' is present */
+bool compiler_findtypeinparent(compiler *c, objectclass *type, value match) {
+    for (int i=0; i<type->parents.count; i++) {
+        if (MORPHO_ISEQUAL(type->parents.data[i], match) ||
+            compiler_findtypeinparent(c, MORPHO_GETCLASS(type->parents.data[i]), match)) return true;
+    }
+    return false;
+}
+
 /** Checks if type "match" matches a given type "type"  */
 bool compiler_checktype(compiler *c, value type, value match) {
     if (MORPHO_ISNIL(type) || // If type is unset, we always match
         MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same
+    
+    // Also match if 'match' inherits from 'type'
+    if (MORPHO_ISCLASS(match)) return compiler_findtypeinparent(c, MORPHO_GETCLASS(match), type);
     
     return false;
 }
@@ -3315,6 +3333,7 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
             if (superclass) {
                 if (superclass!=klass) {
                     if (!klass->superclass) klass->superclass=superclass; // Only the first class is the super class, all others are mixins.
+                    compiler_addparent(c, klass, superclass);
                     dictionary_copy(&superclass->methods, &klass->methods);
                 } else {
                     compiler_error(c, snode, COMPILE_CLASSINHERITSELF);

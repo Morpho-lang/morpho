@@ -18,10 +18,12 @@ extern objecttype objectclasstype;
 
 typedef struct sobjectclass {
     object obj;
-    struct sobjectclass *superclass;
-    value name;
-    dictionary methods;
-    int uid; 
+    struct sobjectclass *superclass; /** The class's superclass */
+    value name; /** Class name */
+    dictionary methods; /** Method dictionary */
+    varray_value parents; /** Classes this class inherits from */
+    varray_value children; /** Classes that inherit from this class */
+    int uid;
 } objectclass;
 
 /** Tests whether an object is a class */

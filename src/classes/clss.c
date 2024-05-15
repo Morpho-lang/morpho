@@ -20,12 +20,16 @@ void objectclass_markfn(object *obj, void *v) {
     objectclass *c = (objectclass *) obj;
     morpho_markvalue(v, c->name);
     morpho_markdictionary(v, &c->methods);
+    morpho_markvarrayvalue(v, &c->parents);
+    morpho_markvarrayvalue(v, &c->children);
 }
 
 void objectclass_freefn(object *obj) {
     objectclass *klass = (objectclass *) obj;
     morpho_freeobject(klass->name);
     dictionary_clear(&klass->methods);
+    varray_valueclear(&klass->parents);
+    varray_valueclear(&klass->children);
 }
 
 size_t objectclass_sizefn(object *obj) {
@@ -47,6 +51,8 @@ objectclass *object_newclass(value name) {
     if (newclass) {
         newclass->name=object_clonestring(name);
         dictionary_init(&newclass->methods);
+        varray_valueinit(&newclass->parents);
+        varray_valueinit(&newclass->children);
         newclass->superclass=NULL;
         newclass->uid=0;
     }

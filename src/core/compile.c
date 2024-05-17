@@ -3350,6 +3350,11 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
         klass->superclass=baseclass;
         if (baseclass) dictionary_copy(&baseclass->methods, &klass->methods);
     }
+    
+    /* Now compute the class linearization */
+    if (!class_linearize(klass)) {
+        // TODO: Raise an error
+    }
 
     /* Compile method declarations */
     if (node->right!=SYNTAXTREE_UNCONNECTED) {

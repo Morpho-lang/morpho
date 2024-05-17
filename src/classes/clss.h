@@ -23,6 +23,7 @@ typedef struct sobjectclass {
     dictionary methods; /** Method dictionary */
     varray_value parents; /** Classes this class inherits from */
     varray_value children; /** Classes that inherit from this class */
+    varray_value linearization; /** Classes that inherit from this class */
     int uid;
 } objectclass;
 
@@ -54,6 +55,8 @@ typedef struct sobjectclass {
 
 objectclass *object_newclass(value name);
 objectclass *morpho_lookupclass(value obj);
+
+bool class_linearize(objectclass *klass);
 
 void class_initialize(void);
 

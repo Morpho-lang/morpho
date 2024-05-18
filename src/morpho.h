@@ -79,6 +79,7 @@ typedef void compiler;
 
 /* Non-standard methods */
 #define MORPHO_APPEND_METHOD "append"
+#define MORPHO_LINEARIZATION_METHOD "linearization"
 
 #define MORPHO_THROW_METHOD "throw"
 #define MORPHO_WARNING_METHOD "warning"

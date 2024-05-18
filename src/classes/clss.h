@@ -40,7 +40,8 @@ typedef struct sobjectclass {
  * Class veneer class
  * ------------------------------------------------------- */
 
-#define CLASS_CLASSNAME                   "Class"
+// #define CLASS_CLASSNAME                   "Class"
+// #define CLASS_LINEARIZATION               "linearization"
 
 /* -------------------------------------------------------
  * Class error messages

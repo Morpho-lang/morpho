@@ -1,0 +1,23 @@
+// Class linearization
+
+class O { }
+
+class F is O { }
+
+class E is O { }
+
+class D is O { }
+
+class C is D with F { }
+
+class B is D with E { }
+
+class A is B with C { }
+
+print O.linearization() // expect: [ @O ]
+print F.linearization() // expect: [ @F, @O ]
+print E.linearization() // expect: [ @E, @O ]
+print D.linearization() // expect: [ @D, @O ]
+print C.linearization() // expect: [ @C, @D, @F, @O ]
+print B.linearization() // expect: [ @B, @D, @E, @O ]
+print A.linearization() // expect: [ @A, @B, @C, @D, @E, @F, @O ]

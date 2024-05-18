@@ -82,12 +82,12 @@ bool _intail(varray_value *list, value v) {
     return false;
 }
 
-/** Remove value v from the list in  */
-void _remove(varray_value *in, value v) {
-    for (int i=0; i<in->count; i++) {
-        if (MORPHO_ISEQUAL(in->data[i], v)) {
-            memcpy(in->data+i, in->data+i+1, sizeof(value)*in->count-i-1);
-            in->count--;
+/** Remove value v from a list in  */
+void _remove(varray_value *list, value v) {
+    for (int i=0; i<list->count; i++) {
+        if (MORPHO_ISEQUAL(list->data[i], v)) {
+            memcpy(list->data+i, list->data+i+1, sizeof(value)*list->count-i-1);
+            list->count--;
         }
     }
 }

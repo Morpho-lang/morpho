@@ -62,8 +62,18 @@ objectclass *object_newclass(value name) {
 }
 
 /* **********************************************************************
- * objectclass utility functions
+ * C3 Linearization algorithm
  * ********************************************************************** */
+
+/** C3 linearization aims to provide a linear ordering for a class hierarchy. It respects:
+ 
+ * 1. Consistency with the hierarchy of classes (i.e. a class should appear AFTER any of its children).
+ * 2. Consistency with the local precedence order for each class definition.
+ * 3. Consistency with the extended precedence graph.
+ 
+ * see: - Barrett et al. "A Monotonic Superclass Linearization for Dylan" [https://opendylan.org/_static/c3-linearization.pdf]
+ *    - Simionato, "The Python 2.3 Method Resolution Order" Python 2.3 [https://www.python.org/download/releases/2.3/mro/]
+ *    - Hivert & Thierry "Controlling the C3 super class linearization algorithm for large hierarchies of classes" [https://arxiv.org/pdf/2401.12740] */
 
 void _print(varray_value *list) {
     printf("[ ");
@@ -126,6 +136,7 @@ void _init(objectclass *parent, varray_value *out) {
     if (parent->linearization.count) varray_valueadd(out, parent->linearization.data, parent->linearization.count);
 }
 
+/** Compute the linearization of a given class */
 bool _linearize(objectclass *klass, varray_value *out) {
     // Add this class to the start of the list
     varray_valuewrite(out, MORPHO_OBJECT(klass));
@@ -148,7 +159,7 @@ bool _linearize(objectclass *klass, varray_value *out) {
     return success;
 }
 
-/** Computes the linearization of a class */
+/** Public wrapper function to computer linearization */
 bool class_linearize(objectclass *klass) {
     klass->linearization.count=0;
     return _linearize(klass, &klass->linearization);

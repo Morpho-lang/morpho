@@ -144,17 +144,18 @@ bool _linearize(objectclass *klass, varray_value *out) {
     int n = klass->parents.count;
     if (n==0) return true;
     
-    // Start with the linearizations of the parent classes
-    varray_value lin[n];
-    for (int i=0; i<n; i++) varray_valueinit(&lin[i]);
+    // Start with the linearizations of the parent classes & the list of parent classes themselves
+    varray_value lin[n+1];
+    for (int i=0; i<n+1; i++) varray_valueinit(&lin[i]);
     for (int i=0; i<n; i++) _init(MORPHO_GETCLASS(klass->parents.data[i]), &lin[i]);
+    varray_valueadd(&lin[n], klass->parents.data, klass->parents.count); // Also add the parents to preserve their order
     
     bool success=true;
     while (success && !_done(n, lin)) {
         success=_merge(n, lin, out);
     }
 
-    for (int i=0; i<n; i++) varray_valueclear(&lin[i]);
+    for (int i=0; i<n+1; i++) varray_valueclear(&lin[i]);
     
     return success;
 }

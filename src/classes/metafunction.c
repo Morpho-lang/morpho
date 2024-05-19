@@ -497,6 +497,7 @@ int _mfresultsortfn (const void *a, const void *b) {
 
 typedef mfindx (mfcompile_dispatchfn) (mfcompiler *c, mfset *set, int i);
 
+/** Constructs a dispatch table from the set of implementations */
 mfindx mfcompile_dispatchtable(mfcompiler *c, mfset *set, int i, int otype, int opcode) {
     value type;
     
@@ -528,7 +529,6 @@ mfindx mfcompile_dispatchtable(mfcompiler *c, mfset *set, int i, int otype, int 
     return bindx;
 }
 
-
 /** Branch table on object type */
 mfindx mfcompile_dispatchveneerobj(mfcompiler *c, mfset *set, int i) {
     return mfcompile_dispatchtable(c, set, i, MF_VENEEROBJECT, MF_BRANCHOBJECTTYPE);
@@ -539,10 +539,39 @@ mfindx mfcompile_dispatchveneervalue(mfcompiler *c, mfset *set, int i) {
     return mfcompile_dispatchtable(c, set, i, MF_VENEERVALUE, MF_BRANCHVALUETYPE);
 }
 
+void mfcompile_inheritance(mfcompiler *c, mfset *set, int i, int otype) {
+    dictionary children;
+    dictionary_init(&children);
+    
+    // Find children of every member of the set
+    for (int k=0; k<set->count; k++) {
+        value type;
+        if (!signature_getparamtype(set->rlist[k].sig, i, &type)) return;
+        if (_detecttype(type, NULL)!=otype) continue;
+        
+        if (MORPHO_ISCLASS(type)) {
+            objectclass *klass = MORPHO_GETCLASS(type);
+            for (int i=0; i<klass->children.count; i++) dictionary_insert(&children, type, MORPHO_NIL);
+        }
+    }
+    
+    // For each child class
+    for (int i=0; i<children.count; i++) {
+        if (!MORPHO_ISCLASS(children.contents[i].key)) continue;
+        
+        objectclass *klass = MORPHO_GETCLASS(children.contents[i].key);
+        
+    }
+    
+    dictionary_clear(&children);
+}
+
 /** Branch table on instance type */
 mfindx mfcompile_dispatchinstance(mfcompiler *c, mfset *set, int i) {
+    mfcompile_inheritance(c, set, i, MF_INSTANCE);
     return mfcompile_dispatchtable(c, set, i, MF_INSTANCE, MF_BRANCHINSTANCE);
 }
+
 
 /** Handle implementations that accept any type */
 mfindx mfcompile_dispatchany(mfcompiler *c, mfset *set, int i) {

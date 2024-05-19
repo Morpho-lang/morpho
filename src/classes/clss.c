@@ -54,6 +54,7 @@ objectclass *object_newclass(value name) {
         dictionary_init(&newclass->methods);
         varray_valueinit(&newclass->parents);
         varray_valueinit(&newclass->children);
+        varray_valueinit(&newclass->linearization);
         newclass->superclass=NULL;
         newclass->uid=0;
     }
@@ -96,7 +97,7 @@ bool _intail(varray_value *list, value v) {
 void _remove(varray_value *list, value v) {
     for (int i=0; i<list->count; i++) {
         if (MORPHO_ISEQUAL(list->data[i], v)) {
-            memcpy(list->data+i, list->data+i+1, sizeof(value)*list->count-i-1);
+            if (i<list->count-1) memmove(list->data+i, list->data+i+1, sizeof(value)*(list->count-i-1));
             list->count--;
         }
     }
@@ -160,7 +161,7 @@ bool _linearize(objectclass *klass, varray_value *out) {
     return success;
 }
 
-/** Public wrapper function to computer linearization */
+/** Public wrapper function to compute linearization */
 bool class_linearize(objectclass *klass) {
     klass->linearization.count=0;
     return _linearize(klass, &klass->linearization);

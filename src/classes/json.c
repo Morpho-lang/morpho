@@ -621,4 +621,3 @@ void json_initialize(void) {
     morpho_defineerror(JSON_NMBRFRMT, ERROR_PARSE, JSON_NMBRFRMT_MSG);
     morpho_defineerror(JSON_BLNKELMNT, ERROR_PARSE, JSON_BLNKELMNT_MSG);
 }
-

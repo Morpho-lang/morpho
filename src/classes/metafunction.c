@@ -4,6 +4,8 @@
  *  @brief Implement objectmetafunctions and the Metafunction veneer class
  */
 
+#include <limits.h>
+
 #include "morpho.h"
 #include "classes.h"
 #include "common.h"

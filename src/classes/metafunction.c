@@ -180,7 +180,7 @@ DEFINE_VARRAY(mfinstruction, mfinstruction);
 #define MFINSTRUCTION_BRANCH(brnch) { .opcode=MF_BRANCH, .branch=brnch }
 #define MFINSTRUCTION_BRANCHNARG(table, brnch) { .opcode=MF_BRANCHNARGS, .data.btable=table, .branch=brnch }
 #define MFINSTRUCTION_BRANCHTABLE(op, n, table, brnch) { .opcode=op, .narg=n, .data.btable=table, .branch=brnch }
-
+    
 typedef struct {
     signature *sig; /** Signature of the target */
     value fn; /** The target */
@@ -768,6 +768,14 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
 
 unsigned int vm_countpositionalargs(unsigned int nargs, value *args);
 
+/** Attempt to find the desired class uid in the linearization of a given class */
+bool _finduidinlinearization(objectclass *klass, int uid) {
+    for (int k=0; k<klass->linearization.count; k++) {
+        if (MORPHO_GETCLASS(klass->linearization.data[k])->uid == uid) return true;
+    }
+    return false;
+}
+
 /** Execute the metafunction's resolver */
 bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value *out) {
     int n=vm_countpositionalargs(nargs, args);;
@@ -800,8 +808,12 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value 
                 break;
             case MF_CHECKINSTANCE: {
                 if (MORPHO_ISINSTANCE(args[pc->narg])) {
-                    int tindx = MORPHO_GETINSTANCE(args[pc->narg])->klass->uid;
-                    if (pc->data.tindx!=tindx) pc+=pc->branch;
+                    objectclass *klass = MORPHO_GETINSTANCE(args[pc->narg])->klass;
+                    
+                    if (!(klass->uid==pc->data.tindx ||
+                        _finduidinlinearization(klass, pc->data.tindx))) {
+                        pc+=pc->branch;
+                    }
                 } else pc+=pc->branch;
             }
                 break;

@@ -510,12 +510,10 @@ bool _resolve(objectclass *klass, dictionary *types, value *out) {
 }
 
 int _maxindx(dictionary *dict) {
-    int indx, maxindx=0;
+    int indx=0, maxindx=0;
     for (int i=0; i<dict->capacity; i++) {
-        if (_detecttype(dict->contents[i].key, &indx) &&
-            indx>maxindx) {
-            maxindx=indx;
-        }
+        _detecttype(dict->contents[i].key, &indx);
+        if (indx>maxindx) maxindx=indx;
     }
     return maxindx;
 }

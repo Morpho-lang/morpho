@@ -113,7 +113,7 @@ bool _inanytail(int n, varray_value *in, value v) {
 
 /** Check if any of the sets contain elements */
 bool _done(int n, varray_value *in) {
-    for (int i=0; i<n; i++) if (in->count>0) return false;
+    for (int i=0; i<n; i++) if (in[i].count>0) return false;
     return true;
 }
 
@@ -142,21 +142,21 @@ bool _linearize(objectclass *klass, varray_value *out) {
     // Add this class to the start of the list
     varray_valuewrite(out, MORPHO_OBJECT(klass));
     
-    int n = klass->parents.count;
-    if (n==0) return true;
+    if (klass->parents.count==0) return true;
+    int n=klass->parents.count+1;
     
     // Start with the linearizations of the parent classes & the list of parent classes themselves
-    varray_value lin[n+1];
-    for (int i=0; i<n+1; i++) varray_valueinit(&lin[i]);
-    for (int i=0; i<n; i++) _init(MORPHO_GETCLASS(klass->parents.data[i]), &lin[i]);
-    varray_valueadd(&lin[n], klass->parents.data, klass->parents.count); // Also add the parents to preserve their order
+    varray_value lin[n];
+    for (int i=0; i<n; i++) varray_valueinit(&lin[i]);
+    for (int i=0; i<n-1; i++) _init(MORPHO_GETCLASS(klass->parents.data[i]), &lin[i]);
+    varray_valueadd(&lin[n-1], klass->parents.data, klass->parents.count); // Also add the parents to preserve their order
     
     bool success=true;
     while (success && !_done(n, lin)) {
         success=_merge(n, lin, out);
     }
 
-    for (int i=0; i<n+1; i++) varray_valueclear(&lin[i]);
+    for (int i=0; i<n; i++) varray_valueclear(&lin[i]);
     
     return success;
 }

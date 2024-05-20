@@ -8,13 +8,17 @@ class C is B {}
 
 class D { }
 
-class E is D with A { }
+class E is A with D { }
+
+class F { }
 
 fn f(A x) { return "A" }
 
-fn b(B x) { return "B" }
+fn f(B x) { return "B" }
 
-print f(A()) // expect: A 
+fn f(D x) { return "D" }
+
+print f(A()) // expect: A
 
 print f(B()) // expect: B
 
@@ -22,4 +26,6 @@ print f(C()) // expect: B
 
 print f(E()) // expect: A
 
-print f(D()) // expect error 'MltplDsptchFld'
+print f(D()) // expect: D
+
+print f(F()) // expect error 'MltplDsptchFld'

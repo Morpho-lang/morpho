@@ -490,28 +490,62 @@ void mfcompile_branchtable(mfcompiler *c, mfset *set, mfindx bindx, varray_int *
     }
 }
 
+void _insertchildren(dictionary *dict, value v) {
+    if (!MORPHO_ISCLASS(v) ||
+        dictionary_get(dict, v, NULL)) return;
+    
+    dictionary_insert(dict, v, MORPHO_NIL); // Insert the class
+    objectclass *klass = MORPHO_GETCLASS(v); // and its children
+    for (int i=0; i<klass->children.count; i++) _insertchildren(dict, klass->children.data[i]);
+}
+
+bool _resolve(objectclass *klass, dictionary *types, value *out) {
+    for (int k=0; k<klass->linearization.count; k++) {
+        if (dictionary_get(types, klass->linearization.data[k], NULL)) {
+            *out = klass->linearization.data[k];
+            return true;
+        }
+    }
+    return false;
+}
+
+int _maxindx(dictionary *dict) {
+    int indx, maxindx=0;
+    for (int i=0; i<dict->capacity; i++) {
+        if (_detecttype(dict->contents[i].key, &indx) &&
+            indx>maxindx) {
+            maxindx=indx;
+        }
+    }
+    return maxindx;
+}
+
 int _mfresultsortfn (const void *a, const void *b) {
     mfresult *aa = (mfresult *) a, *bb = (mfresult *) b;
     return aa->indx-bb->indx;
 }
 
-typedef mfindx (mfcompile_dispatchfn) (mfcompiler *c, mfset *set, int i);
-
 /** Constructs a dispatch table from the set of implementations */
 mfindx mfcompile_dispatchtable(mfcompiler *c, mfset *set, int i, int otype, int opcode) {
-    value type;
+    dictionary types, children;
+    dictionary_init(&types); // Keep track of the available types provided by the implementation
+    dictionary_init(&children); // and all of their children
     
     // Extract the type index for each member of the set
     for (int k=0; k<set->count; k++) {
-        if (!signature_getparamtype(set->rlist[k].sig, i, &type)) return MFINSTRUCTION_EMPTY;
-        if (_detecttype(type, &set->rlist[k].indx)!=otype) set->rlist[k].indx=-1;
+        value type;
+        if (!signature_getparamtype(set->rlist[k].sig, i, &type)) UNREACHABLE("Incorrect parameter type");
+        if (_detecttype(type, &set->rlist[k].indx)==otype) {
+            dictionary_insert(&types, type, MORPHO_NIL);
+            _insertchildren(&children, type);
+        } else set->rlist[k].indx=-1; // Exclude from the branch table
     }
     
     // Sort the set on the type index
     qsort(set->rlist, set->count, sizeof(mfresult), _mfresultsortfn);
     
     // Create the branch table
-    int maxindx=set->rlist[set->count-1].indx;
+    int maxindx=_maxindx(&children);
     varray_int btable;
     varray_intinit(&btable);
     for (int i=0; i<=maxindx; i++) varray_intwrite(&btable, 0);
@@ -526,6 +560,21 @@ mfindx mfcompile_dispatchtable(mfcompiler *c, mfset *set, int i, int otype, int 
     // Compile the branch table
     mfcompile_branchtable(c, set, bindx, &btable);
     
+    // Fix branch table to include child classes
+    for (int i=0; i<children.capacity; i++) {
+        int ifrom, ito;
+        value mapto;
+        if (_detecttype(children.contents[i].key, &ifrom)==otype &&
+            _resolve(MORPHO_GETCLASS(children.contents[i].key), &types, &mapto) &&
+            _detecttype(mapto, &ito)==otype) {
+            btable.data[ifrom]=btable.data[ito];
+        }
+    }
+    
+    // Clear temporary data structures
+    dictionary_clear(&types);
+    dictionary_clear(&children);
+    
     return bindx;
 }
 
@@ -539,39 +588,10 @@ mfindx mfcompile_dispatchveneervalue(mfcompiler *c, mfset *set, int i) {
     return mfcompile_dispatchtable(c, set, i, MF_VENEERVALUE, MF_BRANCHVALUETYPE);
 }
 
-void mfcompile_inheritance(mfcompiler *c, mfset *set, int i, int otype) {
-    dictionary children;
-    dictionary_init(&children);
-    
-    // Find children of every member of the set
-    for (int k=0; k<set->count; k++) {
-        value type;
-        if (!signature_getparamtype(set->rlist[k].sig, i, &type)) return;
-        if (_detecttype(type, NULL)!=otype) continue;
-        
-        if (MORPHO_ISCLASS(type)) {
-            objectclass *klass = MORPHO_GETCLASS(type);
-            for (int i=0; i<klass->children.count; i++) dictionary_insert(&children, type, MORPHO_NIL);
-        }
-    }
-    
-    // For each child class
-    for (int i=0; i<children.count; i++) {
-        if (!MORPHO_ISCLASS(children.contents[i].key)) continue;
-        
-        objectclass *klass = MORPHO_GETCLASS(children.contents[i].key);
-        
-    }
-    
-    dictionary_clear(&children);
-}
-
 /** Branch table on instance type */
 mfindx mfcompile_dispatchinstance(mfcompiler *c, mfset *set, int i) {
-    mfcompile_inheritance(c, set, i, MF_INSTANCE);
     return mfcompile_dispatchtable(c, set, i, MF_INSTANCE, MF_BRANCHINSTANCE);
 }
-
 
 /** Handle implementations that accept any type */
 mfindx mfcompile_dispatchany(mfcompiler *c, mfset *set, int i) {
@@ -600,6 +620,8 @@ void mfcompile_fixfallthrough(mfcompiler *c, mfindx i, mfindx branchto) {
     mfinstruction instr = MFINSTRUCTION_BRANCH(branchto-i-1);
     mfcompile_replaceinstruction(c, i, instr);
 }
+
+typedef mfindx (mfcompile_dispatchfn) (mfcompiler *c, mfset *set, int i);
 
 /** Attempts to dispatch based on a parameter i */
 mfindx mfcompile_dispatchonparam(mfcompiler *c, mfset *set, int i) {

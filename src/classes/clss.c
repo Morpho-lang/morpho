@@ -133,7 +133,7 @@ bool _merge(int n, varray_value *in, varray_value *out) {
 }
 
 /** Initialize the varray from the parent class's linearization */
-void _init(objectclass *parent, varray_value *out) {
+static void _init(objectclass *parent, varray_value *out) {
     if (parent->linearization.count) varray_valueadd(out, parent->linearization.data, parent->linearization.count);
 }
 

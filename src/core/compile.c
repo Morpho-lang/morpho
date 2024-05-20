@@ -3353,7 +3353,7 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
     
     /* Now compute the class linearization */
     if (!class_linearize(klass)) {
-        // TODO: Raise an error
+        compiler_error(c, node, COMPILE_CLSSLNRZ, MORPHO_GETCSTRING(klass->name));
     }
 
     /* Compile method declarations */
@@ -4173,6 +4173,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_MSSNGINDX, ERROR_COMPILE, COMPILE_MSSNGINDX_MSG);
     morpho_defineerror(COMPILE_TYPEVIOLATION, ERROR_COMPILE, COMPILE_TYPEVIOLATION_MSG);
     morpho_defineerror(COMPILE_UNKNWNTYPE, ERROR_COMPILE, COMPILE_UNKNWNTYPE_MSG);
+    morpho_defineerror(COMPILE_CLSSLNRZ, ERROR_COMPILE, COMPILE_CLSSLNRZ_MSG);
     
     morpho_addfinalizefn(compile_finalize);
 }

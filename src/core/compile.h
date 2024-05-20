@@ -111,6 +111,9 @@
 #define COMPILE_UNKNWNTYPE                "UnknwnType"
 #define COMPILE_UNKNWNTYPE_MSG            "Unknown type %s."
 
+#define COMPILE_CLSSLNRZ                  "ClssLnrz"
+#define COMPILE_CLSSLNRZ_MSG              "Can't linearize class %s: Check parent and ancestor classes for conflicting inheritance order."
+
 /* **********************************************************************
  * Compiler typedefs
  * ********************************************************************** */

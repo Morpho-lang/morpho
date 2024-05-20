@@ -1,12 +1,12 @@
 // Types and inheritance
 
-class A { } 
+class A { }   
 
 class B is A { } 
 
 class C is B { } 
 
-class D is A with B { } 
+class D is B { } 
 
 fn f() {
     A a = B()

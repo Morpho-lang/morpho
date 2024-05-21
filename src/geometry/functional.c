@@ -1505,9 +1505,12 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
     varray_elementidinit(&imageids);
     
     objectsparse *new[ntask]; // Create an output matrix for each thread
-    for (int i=0; i<ntask; i++) new[i]=NULL;
-    
     objectmesh meshclones[ntask]; // Create shallow clones of the mesh with different vertex matrices
+    
+    for (int i=0; i<ntask; i++) {
+        new[i]=NULL;
+        meshclones[i].vert=NULL;
+    }
     
     if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
     
@@ -1521,6 +1524,7 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
         // Clone the vertex matrix for each thread
         meshclones[i]=*info->mesh;
         meshclones[i].vert=object_clonematrix(info->mesh->vert);
+        if (!meshclones[i].vert) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_maphessian_cleanup; }
         task[i].mesh=&meshclones[i];
         
         task[i].ref=(void *) info; // Use this to pass the info structure
@@ -1530,14 +1534,31 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
     
     functional_parallelmap(ntask, task);
     
-    /* Then add up all the matrices */
-    sparse_checkformat(new[0], SPARSE_CCS, true, true);
-    for (int i=1; i<ntask; i++) sparse_add(new[0], new[i], 1.0, 1.0, new[0]);
+    if (!sparse_checkformat(new[0], SPARSE_CCS, true, true)) {
+        morpho_runtimeerror(v, SPARSE_OPFAILEDERR);
+        goto functional_maphessian_cleanup;
+    }
     
+    /* Then add up all the matrices */
+    for (int i=1; i<ntask; i++) {
+        objectsparse out = MORPHO_STATICSPARSE();
+        sparsedok_init(&out.dok);
+        sparseccs_init(&out.ccs);
+        
+        if (sparse_add(new[0], new[i], 1.0, 1.0, &out)==SPARSE_OK) {
+            sparseccs_clear(&new[0]->ccs);
+            new[0]->ccs = out.ccs;
+        } else {
+            morpho_runtimeerror(v, SPARSE_OPFAILEDERR);
+            goto functional_maphessian_cleanup;
+        }
+    }
     success=true;
     
     // Use symmetry actions
     //if (info->sym==SYMMETRY_ADD) functional_symmetrysumforces(info->mesh, new[0]);
+    
+    sparsedok_clear(&new[0]->dok); // Remove dok info
     
     // ...and return the result
     *out = MORPHO_OBJECT(new[0]);

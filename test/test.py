@@ -183,11 +183,23 @@ total=0   # total number of tests
 # look for a command line arguement that says
 # this is being run for continous integration
 CI = False
-if (len(sys.argv) > 1):
-    CI = sys.argv[1] == '-c'
+# Also look for a command line argument that says this is being run with multiple threads
+MP = False
+if (len(sys.argv) == 2):
+    CI = sys.argv[1] == '-c' # if the argument is -c, then we are running in CI mode
+    MP = sys.argv[1] == '-m' # if the argument is -m, then we are running in multi-thread mode
+elif (len(sys.argv) == 3):
+    CI = sys.argv[1] == '-c' or sys.argv[2] == '-c'
+    MP = sys.argv[1] == '-m' or sys.argv[2] == '-m'
+
+failedTestsFileName = "FailedTests.txt"
+if MP:
+    failedTestsFileName = "FailedTestsMultiThreaded.txt"
+    command = "morpho6 -w2"
+    print("Running tests with 2 threads")
 
 files=glob.glob('**/**.'+ext, recursive=True)
-with open("FailedTests.txt",'w') as testLog:
+with open(failedTestsFileName,'w') as testLog:
 
     for f in files:
         # print(f)

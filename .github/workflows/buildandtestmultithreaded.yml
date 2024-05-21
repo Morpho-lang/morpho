@@ -1,0 +1,42 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: configure
+      run:  |
+        sudo apt update
+        sudo apt install libsuitesparse-dev
+        sudo apt install liblapacke-dev
+        sudo apt install libunistring-dev
+        python -m pip install --upgrade pip
+        python -m pip install regex colored
+    - name: make
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release ..
+        sudo make install
+        sudo mkdir /usr/local/lib/morpho
+    - name: getcli
+      run: |
+        git clone https://github.com/Morpho-lang/morpho-cli.git
+        cd morpho-cli 
+        mkdir build
+        cd build
+        cmake ..
+        sudo make install
+    - name: test 
+      run: |
+        cd test
+        python3 test.py -c -m

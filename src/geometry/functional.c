@@ -1494,6 +1494,12 @@ bool functional_numericalhessianmapfn(vm *v, objectmesh *mesh, elementid id, int
     return success;
 }
 
+static int _sparsecmp(const void *a, const void *b) {
+    objectsparse *aa = *(objectsparse **) a;
+    objectsparse *bb = *(objectsparse **) b;
+    return bb->dok.dict.count - aa->dok.dict.count;
+}
+
 /** Compute the hessian numerically */
 bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
@@ -1534,6 +1540,8 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
     
     functional_parallelmap(ntask, task);
     
+    qsort(new, ntask, sizeof(objectsparse *), _sparsecmp);
+    
     if (!sparse_checkformat(new[0], SPARSE_CCS, true, true)) {
         morpho_runtimeerror(v, SPARSE_OPFAILEDERR);
         goto functional_maphessian_cleanup;
@@ -1541,6 +1549,7 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
     
     /* Then add up all the matrices */
     for (int i=1; i<ntask; i++) {
+        if (!new[i]->dok.dict.count) continue; 
         objectsparse out = MORPHO_STATICSPARSE();
         sparsedok_init(&out.dok);
         sparseccs_init(&out.ccs);

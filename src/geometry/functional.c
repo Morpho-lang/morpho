@@ -881,6 +881,15 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
     int bins[ntask+1];
     functional_binbounds(cmax, ntask, bins);
     
+    /* Ensure all mesh topology matrices have CCS */
+    int maxgrade=mesh_maxgrade(info->mesh);
+    for (int i=0; i<=maxgrade; i++) {
+        for (int j=0; j<=maxgrade; j++) {
+            objectsparse *s = mesh_getconnectivityelement(info->mesh, i, j);
+            if (s) sparse_checkformat(s, SPARSE_CCS, true, false);
+        }
+    }
+    
     /* Find any image elements so they can be skipped */
     functional_symmetryimagelist(info->mesh, info->g, true, imageids);
     if (info->field) field_addpool(info->field);
@@ -1549,7 +1558,7 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
     
     /* Then add up all the matrices */
     for (int i=1; i<ntask; i++) {
-        if (!new[i]->dok.dict.count) continue; 
+        if (!new[i]->dok.dict.count) continue;
         objectsparse out = MORPHO_STATICSPARSE();
         sparsedok_init(&out.dok);
         sparseccs_init(&out.ccs);

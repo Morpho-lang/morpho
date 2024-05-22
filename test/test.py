@@ -185,18 +185,17 @@ total=0   # total number of tests
 CI = False
 # Also look for a command line argument that says this is being run with multiple threads
 MP = False
-if (len(sys.argv) == 2):
-    CI = sys.argv[1] == '-c' # if the argument is -c, then we are running in CI mode
-    MP = sys.argv[1] == '-m' # if the argument is -m, then we are running in multi-thread mode
-elif (len(sys.argv) == 3):
-    CI = sys.argv[1] == '-c' or sys.argv[2] == '-c'
-    MP = sys.argv[1] == '-m' or sys.argv[2] == '-m'
+for arg in sys.argv:
+    if arg == '-c': # if the argument is -c, then we are running in CI mode
+        CI = True
+    if arg == '-m': # if the argument is -m, then we are running in multi-thread mode
+        MP = True
 
 failedTestsFileName = "FailedTests.txt"
 if MP:
     failedTestsFileName = "FailedTestsMultiThreaded.txt"
-    command = "morpho6 -w2"
-    print("Running tests with 2 threads")
+    command += " -w4" 
+    print("Running tests with 4 threads")
 
 files=glob.glob('**/**.'+ext, recursive=True)
 with open(failedTestsFileName,'w') as testLog:

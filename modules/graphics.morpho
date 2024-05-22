@@ -654,7 +654,7 @@ class Show {
 
   visit(Cylinder item, out) { self.visitgeneric(item, out) }
   visit(Arrow item, out) { self.visitgeneric(item, out) }
-  visit(Tube item, out) { self.visitgeneric(item, out) }  
+  visit(Tube item, out) { self.visitgeneric(item, out) }
 
   trianglecomplexobjectdata(item, out) {
     var x = item.position

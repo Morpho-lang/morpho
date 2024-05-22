@@ -76,9 +76,6 @@ class TriangleComplex {
     self.transmit = transmit
   }
 
-  accept(visitor, out) {
-    visitor.visittrianglecomplex(self, out)
-  }
 }
 
 /** Draws a cylinder
@@ -178,9 +175,6 @@ class Cylinder {
       return TriangleComplex(vertices, normals, col, conn)
   }
 
-  accept(visitor, out) {
-    visitor.visitcylinder(self, out)
-  }
 }
 
 var _sphere = [ PolyhedronMesh(
@@ -257,9 +251,6 @@ class Sphere {
     return TriangleComplex(v, normals, col, conn)
   }
 
-  accept(visitor, out) {
-    visitor.visitsphere(self, out)
-  }
 }
 
 /** Draws an arrow
@@ -371,9 +362,6 @@ class Arrow {
     return TriangleComplex(vertices, normals, col, conn)
   }
 
-  accept(visitor, out) {
-    visitor.visitarrow(self, out)
-  }
 }
 
 /** Draws a tube
@@ -517,9 +505,6 @@ class Tube {
       return TriangleComplex(vertices, normals, col, conn, filter=self.filter, transmit=self.transmit)
   }
 
-  accept(visitor, out) {
-    visitor.visittube(self, out)
-  }
 }
 
 /* **************************************
@@ -564,9 +549,6 @@ class Text {
     return m.transpose() 
   }
 
-  accept(visitor, out) {
-    visitor.visittext(self, out)
-  }
 }
 
 class Font {
@@ -647,10 +629,10 @@ class Show {
   }
 
   visitgeneric(item, out) {
-    self.visittrianglecomplex(item.totrianglecomplex(), out) 
+    self.visit(item.totrianglecomplex(), out) 
   }
 
-  visitsphere(item, out) {
+  visit(Sphere item, out) {
     var n = item.refinementlevel()
     
     if (item.color) {
@@ -670,9 +652,9 @@ class Show {
     out.write("d ${self.spheres[n].id}")
   }
 
-  visitcylinder(item, out) { self.visitgeneric(item, out) }
-  visitarrow(item, out) { self.visitgeneric(item, out) }
-  visittube(item, out) { self.visitgeneric(item, out) }
+  visit(Cylinder item, out) { self.visitgeneric(item, out) }
+  visit(Arrow item, out) { self.visitgeneric(item, out) }
+  visit(Tube item, out) { self.visitgeneric(item, out) }  
 
   trianglecomplexobjectdata(item, out) {
     var x = item.position
@@ -718,7 +700,7 @@ class Show {
     }
   }
 
-  visittrianglecomplex(item, out) {
+  visit(TriangleComplex item, out) {
     var id = self.uid() 
     out.write("o ${id}")
     self.trianglecomplexobjectdata(item, out)
@@ -795,7 +777,7 @@ class Show {
     return self.addfont(font, size, out) 
   }
 
-  visittext(item, out) {
+  visit(Text item, out) {
     var font = item.font
     if (!font) font = self.defaultfontname()
     var id = self.findfontid(font, item.size, out)
@@ -819,6 +801,6 @@ class Show {
   write(graphic, out) {
     self.preamble(graphic, out)
 
-    for (item in graphic.displaylist) item.accept(self, out)
+    for (item in graphic.displaylist) self.visit(item, out)
   }
 }

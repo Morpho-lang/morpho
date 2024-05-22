@@ -17,11 +17,11 @@
 # -- Project information -----------------------------------------------------
 
 project = 'morpho'
-copyright = '2021, T J Atherton'
+copyright = '2020-2024, T J Atherton'
 author = 'T J Atherton'
 
 # The full version, including alpha/beta/rc tags
-release = '0.5.0'
+release = '0.6.0'
 
 
 # -- General configuration ---------------------------------------------------

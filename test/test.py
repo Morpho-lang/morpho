@@ -184,15 +184,15 @@ total=0   # total number of tests
 # this is being run for continous integration
 CI = False
 # Also look for a command line argument that says this is being run with multiple threads
-MP = False
+MT = False
 for arg in sys.argv:
     if arg == '-c': # if the argument is -c, then we are running in CI mode
         CI = True
     if arg == '-m': # if the argument is -m, then we are running in multi-thread mode
-        MP = True
+        MT = True
 
 failedTestsFileName = "FailedTests.txt"
-if MP:
+if MT:
     failedTestsFileName = "FailedTestsMultiThreaded.txt"
     command += " -w4" 
     print("Running tests with 4 threads")

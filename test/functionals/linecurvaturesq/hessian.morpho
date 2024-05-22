@@ -1,0 +1,24 @@
+// Line curvature Sq hessian
+import constants
+import meshtools
+
+import "../numericalderivatives.morpho"
+
+var np=10
+var R=1
+
+var m = LineMesh(fn (t) [R*cos(t), R*sin(t),0], 0...2*Pi:2*Pi/np, closed=true)
+
+// Create the manifold
+var lc = LineCurvatureSq()
+
+print abs(lc.total(m) - 6.38774) < 1e-5
+// expect: true
+
+var h = lc.hessian(m) 
+var h2 = numericalhessian(lc, m)
+
+//print Matrix(h).format("%10.4g") 
+//print h2.format("%10.4g") 
+
+print (Matrix(h) - h2).norm()/h2.count() < 1e-5 // expect: true

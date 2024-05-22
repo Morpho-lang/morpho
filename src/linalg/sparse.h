@@ -76,6 +76,9 @@ typedef struct {
 /** Gets the object as a sparse matrix */
 #define MORPHO_GETSPARSE(val)   ((objectsparse *) MORPHO_GETOBJECT(val))
 
+/** @brief Use to create static sparse matrices on the C stack. Note that the entries should be initialized */
+#define MORPHO_STATICSPARSE()      { .obj.type=OBJECT_SPARSE, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL }
+
 objectsparse *object_newsparse(int *nrows, int *ncols);
 objectsparse *sparse_sparsefromarray(objectarray *array);
 
@@ -130,6 +133,7 @@ bool sparsedok_copy(sparsedok *src, sparsedok *dest);
 bool sparsedok_copyat(sparsedok *src, sparsedok *dest, int row0, int col0);
 bool sparsedok_copymatrixat(objectmatrix *src, sparsedok *dest, int row0, int col0);
 bool sparsedok_copytomatrix(sparsedok *src, objectmatrix *dest, int row0, int col0);
+void sparsedok_print(vm *v, sparsedok *dok);
 
 /* ***************************************
  * Compressed Column Storage Format
@@ -149,6 +153,7 @@ bool sparseccs_doktoccs(sparsedok *in, sparseccs *out, bool copyvals);
 bool sparseccs_copy(sparseccs *src, sparseccs *dest);
 bool sparseccs_copytodok(sparseccs *src, sparsedok *dest, int row0, int col0);
 bool sparseccs_copytomatrix(sparseccs *src, objectmatrix *dest, int row0, int col0);
+void sparseccs_print(vm *v, sparseccs *ccs);
 
 typedef enum { SPARSE_DOK, SPARSE_CCS } objectsparseformat;
 

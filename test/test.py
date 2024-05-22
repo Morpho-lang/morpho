@@ -16,7 +16,7 @@ import colored
 from colored import stylize
 
 # define what command to use to invoke the interpreter
-command = 'morpho6'
+command = 'morpho6 -w4'
 
 # define the file extension to test
 ext = 'morpho'
@@ -183,11 +183,22 @@ total=0   # total number of tests
 # look for a command line arguement that says
 # this is being run for continous integration
 CI = False
-if (len(sys.argv) > 1):
-    CI = sys.argv[1] == '-c'
+# Also look for a command line argument that says this is being run with multiple threads
+MT = False
+for arg in sys.argv:
+    if arg == '-c': # if the argument is -c, then we are running in CI mode
+        CI = True
+    if arg == '-m': # if the argument is -m, then we are running in multi-thread mode
+        MT = True
+
+failedTestsFileName = "FailedTests.txt"
+if MT:
+    failedTestsFileName = "FailedTestsMultiThreaded.txt"
+    command += " -w4" 
+    print("Running tests with 4 threads")
 
 files=glob.glob('**/**.'+ext, recursive=True)
-with open("FailedTests.txt",'w') as testLog:
+with open(failedTestsFileName,'w') as testLog:
 
     for f in files:
         # print(f)

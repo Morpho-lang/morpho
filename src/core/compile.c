@@ -1328,7 +1328,7 @@ static void _findfunctionref(compiler *c, value symbol, bool *hasclosure, varray
             if (MORPHO_ISEQUAL(ref->symbol, symbol)) {
                 bool iscl = function_isclosure(ref->function);
                 if (iscl) {
-                    UNREACHABLE("Closure in upvalue");
+                    //UNREACHABLE("Closure in upvalue");
                 }
                 
                 closure |= iscl;

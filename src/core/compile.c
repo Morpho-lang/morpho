@@ -1303,22 +1303,30 @@ codeinfo compiler_metafunction(compiler *c, syntaxtreenode *node, int n, value *
     return out;
 }
 
+/** Collects function implementations that match a given symbol */
+static void _findfunctionref(compiler *c, value symbol, bool *hasclosure, varray_value *out) {
+    bool closure=false;
+    for (functionstate *f=compiler_currentfunctionstate(c); f>=c->fstack; f--) {
+        for (int i=0; i<f->functionref.count; i++) {
+            functionref *ref=&f->functionref.data[i];
+            if (MORPHO_ISEQUAL(ref->symbol, symbol)) {
+                closure |= function_isclosure(ref->function);
+                varray_valuewrite(out, MORPHO_OBJECT(ref->function));
+            }
+        }
+    }
+    *hasclosure=closure;
+}
+
 /** Determines whether a symbol refers to one (or more) functions. If so, returns either a single function or a metafunction as appropriate. */
 bool compiler_resolvefunctionref(compiler *c, syntaxtreenode *node, value symbol, codeinfo *out) {
-    functionstate *f=compiler_currentfunctionstate(c);
     value outfn=MORPHO_NIL;
     bool closure=false; // Set if one of the references contains a closure.
     
     varray_value fns;
     varray_valueinit(&fns);
     
-    for (int i=0; i<f->functionref.count; i++) {
-        functionref *ref=&f->functionref.data[i];
-        if (MORPHO_ISEQUAL(ref->symbol, symbol)) {
-            closure |= function_isclosure(ref->function);
-            varray_valuewrite(&fns, MORPHO_OBJECT(ref->function));
-        }
-    }
+    _findfunctionref(c, symbol, &closure, &fns);
  
     if (!fns.count) return false; // No need to clear an empty varray
     
@@ -2931,7 +2939,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         /* Wrap in a closure if necessary */
         if (closure!=REGISTER_UNALLOCATED) {
             // Save the register where the closure is to be found
-            compiler_regsetsymbol(c, reg, func->name);
+            //compiler_regsetsymbol(c, reg, func->name);
             function_setclosure(func, reg);
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_CLOSURE, reg, (registerindx) closure), node);
             ninstructions++;
@@ -3050,7 +3058,7 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     // Compile the function selector
     syntaxtreenode *selnode=compiler_getnode(c, node->left);
     codeinfo func = compiler_nodetobytecode(c, node->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
-
+    
     // Check if this a constructor?
     value rtype=MORPHO_NIL;
     if (selnode->type==NODE_SYMBOL) {
@@ -3437,11 +3445,6 @@ static codeinfo compiler_super(compiler *c, syntaxtreenode *node, registerindx r
 static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo ret=CODEINFO_EMPTY;
     
-    /* Is it a reference to a function? */
-    if (compiler_resolvefunctionref(c, node, node->content, &ret)) {
-        return ret;
-    }
-    
     /* Is it a local variable? */
     ret.dest=compiler_getlocal(c, node->content);
     if (ret.dest!=REGISTER_UNALLOCATED) return ret;
@@ -3453,6 +3456,11 @@ static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx 
         return ret;
     }
 
+    /* Is it a reference to a function? */
+    if (compiler_resolvefunctionref(c, node, node->content, &ret)) {
+        return ret;
+    }
+    
     /* Is it a global variable */
     ret.dest=compiler_findglobal(c, node->content, true);
     if (ret.dest!=REGISTER_UNALLOCATED) {

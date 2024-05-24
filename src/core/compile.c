@@ -220,7 +220,11 @@ objectfunction *compiler_getpreviousfunction(compiler *c) {
     return c->prevfunction;
 }
 
+/* ------------------------------------------
+ * Types
+ * ------------------------------------------- */
 
+value _closuretype;
 
 /* ------------------------------------------
  * Argument declarations
@@ -1160,6 +1164,19 @@ registerindx compiler_addupvalue(functionstate *f, bool islocal, indx ix) {
     return (registerindx) f->upvalues.count-1;
 }
 
+/** Propagates upvalues up the functionstate stack.
+    @param c    the compiler
+    @param start    the initial functionstate
+    @param sindx    starting index
+    @returns register index at the top of the function state */
+registerindx compiler_propagateupvalues(compiler *c, functionstate *start, registerindx sindx) {
+    registerindx indx=sindx;
+    for (functionstate *f = start; f<c->fstack+c->fstackp; f++) {
+        indx=compiler_addupvalue(f, f==start, indx);
+    }
+    return indx;
+}
+
 /** @brief Determines whether a symbol refers to something outside its scope
     @param c      the compiler
     @param symbol symbol to resolve
@@ -1180,9 +1197,7 @@ static registerindx compiler_resolveupvalue(compiler *c, value symbol) {
     }
 
     /* Now walk up the functionstate stack adding in the upvalues */
-    if (found) for (functionstate *f = found; f<c->fstack+c->fstackp; f++) {
-        indx=compiler_addupvalue(f, f==found, indx);
-    }
+    if (found) indx=compiler_propagateupvalues(c, found, indx);
 
     return indx;
 }
@@ -1306,11 +1321,17 @@ codeinfo compiler_metafunction(compiler *c, syntaxtreenode *node, int n, value *
 /** Collects function implementations that match a given symbol */
 static void _findfunctionref(compiler *c, value symbol, bool *hasclosure, varray_value *out) {
     bool closure=false;
-    for (functionstate *f=compiler_currentfunctionstate(c); f>=c->fstack; f--) {
+    functionstate *fc = compiler_currentfunctionstate(c);
+    for (functionstate *f=fc; f>=c->fstack; f--) {
         for (int i=0; i<f->functionref.count; i++) {
             functionref *ref=&f->functionref.data[i];
             if (MORPHO_ISEQUAL(ref->symbol, symbol)) {
-                closure |= function_isclosure(ref->function);
+                bool iscl = function_isclosure(ref->function);
+                if (iscl) {
+                    UNREACHABLE("Closure in upvalue");
+                }
+                
+                closure |= iscl;
                 varray_valuewrite(out, MORPHO_OBJECT(ref->function));
             }
         }
@@ -1401,9 +1422,7 @@ static registerindx compiler_resolveself(compiler *c) {
     }
 
     /* Now walk up the functionstate stack adding in the upvalues */
-    if (found) for (functionstate *f = found; f<c->fstack+c->fstackp; f++) {
-        indx=compiler_addupvalue(f, f==found, indx);
-    }
+    if (found) indx = compiler_propagateupvalues(c, found, indx);
 
     return indx;
 }
@@ -2939,7 +2958,8 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         /* Wrap in a closure if necessary */
         if (closure!=REGISTER_UNALLOCATED) {
             // Save the register where the closure is to be found
-            //compiler_regsetsymbol(c, reg, func->name);
+            compiler_regsetsymbol(c, reg, func->name);
+            compiler_regsettype(c, reg, _closuretype);
             function_setclosure(func, reg);
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_CLOSURE, reg, (registerindx) closure), node);
             ninstructions++;
@@ -3444,10 +3464,15 @@ static codeinfo compiler_super(compiler *c, syntaxtreenode *node, registerindx r
 /** Lookup a symbol */
 static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo ret=CODEINFO_EMPTY;
+    value type;
     
     /* Is it a local variable? */
     ret.dest=compiler_getlocal(c, node->content);
-    if (ret.dest!=REGISTER_UNALLOCATED) return ret;
+    if (ret.dest!=REGISTER_UNALLOCATED &&
+        compiler_regtype(c, ret.dest, &type) && // If it's a closure it should be resolved later
+        !MORPHO_ISEQUAL(type, _closuretype)) {
+        return ret;
+    }
 
     /* Is it an upvalue? */
     ret.dest = compiler_resolveupvalue(c, node->content);
@@ -4146,6 +4171,9 @@ void morpho_setoptimizer(optimizerfn *opt) {
 /** Initializes the compiler */
 void compile_initialize(void) {
     _selfsymbol=builtin_internsymbolascstring("self");
+    
+    /** Types we need to refer to */
+    _closuretype = MORPHO_OBJECT(object_getveneerclass(OBJECT_CLOSURE));
     
     optimizer = NULL;
 

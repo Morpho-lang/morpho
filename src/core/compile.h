@@ -109,7 +109,13 @@
 #define COMPILE_TYPEVIOLATION_MSG         "Type violation: Attempting to assign type %s to %s variable %s."
 
 #define COMPILE_UNKNWNTYPE                "UnknwnType"
-#define COMPILE_UNKNWNTYPE_MSG            "Unknown type %s."
+#define COMPILE_UNKNWNTYPE_MSG            "Unknown type '%s'."
+
+#define COMPILE_UNKNWNNMSPC               "UnknwnNmSpc"
+#define COMPILE_UNKNWNNMSPC_MSG           "Unknown namespace '%s'."
+
+#define COMPILE_UNKNWNTYPENMSPC           "UnknwnTypeNmSpc"
+#define COMPILE_UNKNWNTYPENMSPC_MSG       "Unknown type '%s' in namespace '%s'."
 
 #define COMPILE_CLSSLNRZ                  "ClssLnrz"
 #define COMPILE_CLSSLNRZ_MSG              "Can't linearize class %s: Check parent and ancestor classes for conflicting inheritance order."

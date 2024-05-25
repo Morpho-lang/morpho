@@ -1,0 +1,9 @@
+// Use a type that doesn't exist from a namespace in a function definition 
+
+import "type_namespace.xmorpho" as ns 
+
+fn f(ns.Hamster x) {
+    x.hiss()
+}
+
+f(ns.Cat("Moggies")) // expect error 'SymblUndfNmSpc'

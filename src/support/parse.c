@@ -433,6 +433,16 @@ bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, voi
                     PARSE_CHECK(parse_symbol(p, &label));
                     
                     PARSE_CHECK(parse_addnode(p, NODE_TYPE, MORPHO_NIL, &start, current, label, &current));
+                } else if (parse_checktokenadvance(p, TOKEN_DOT)) { // Symbol followed by dot is a type in a namespace
+                    syntaxtreeindx type, label;
+                    
+                    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_SYMBOL, PARSE_SYMBLEXPECTED));
+                    PARSE_CHECK(parse_symbol(p, &type));
+                    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_SYMBOL, PARSE_SYMBLEXPECTED));
+                    PARSE_CHECK(parse_symbol(p, &label));
+                    
+                    PARSE_CHECK(parse_addnode(p, NODE_DOT, MORPHO_NIL, &start, current, type, &current));
+                    PARSE_CHECK(parse_addnode(p, NODE_TYPE, MORPHO_NIL, &start, current, label, &current));
                 } else if (parse_checktokenadvance(p, TOKEN_EQUAL)) { // Symbol followed by equals is an optional argument
                     syntaxtreeindx val;
                     PARSE_CHECK(parse_pseudoexpression(p, &val));
@@ -1817,6 +1827,7 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_MISSINGSEMICOLONEXP, ERROR_PARSE, PARSE_MISSINGSEMICOLONEXP_MSG);
     morpho_defineerror(PARSE_MISSINGSEMICOLONVAR, ERROR_PARSE, PARSE_MISSINGSEMICOLONVAR_MSG);
     morpho_defineerror(PARSE_VAREXPECTED, ERROR_PARSE, PARSE_VAREXPECTED_MSG);
+    morpho_defineerror(PARSE_SYMBLEXPECTED, ERROR_PARSE, PARSE_SYMBLEXPECTED_MSG);
     morpho_defineerror(PARSE_BLOCKTERMINATOREXP, ERROR_PARSE, PARSE_BLOCKTERMINATOREXP_MSG);
     morpho_defineerror(PARSE_MSSNGSQBRC, ERROR_PARSE, PARSE_MSSNGSQBRC_MSG);
     morpho_defineerror(PARSE_MSSNGCOMMA, ERROR_PARSE, PARSE_MSSNGCOMMA_MSG);

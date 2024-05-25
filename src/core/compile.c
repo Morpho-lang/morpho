@@ -2800,12 +2800,31 @@ static registerindx compiler_functionparameters(compiler *c, syntaxtreeindx indx
             value type=MORPHO_NIL;
             syntaxtreenode *typenode = compiler_getnode(c, node->left);
             if (!typenode) UNREACHABLE("Incorrectly formed type node.");
-            if (!MORPHO_ISSTRING(typenode->content)) UNREACHABLE("Type node should have string label.");
-            
-            if (!compiler_findtype(c, typenode->content, &type)) {
-                compiler_error(c, node, COMPILE_UNKNWNTYPE, MORPHO_GETCSTRING(typenode->content));
-                return REGISTER_UNALLOCATED;
-            }
+            if (typenode->type==NODE_DOT) {
+                syntaxtreenode *nsnode = compiler_getnode(c, typenode->left);
+                syntaxtreenode *labelnode = compiler_getnode(c, typenode->right);
+                
+                if (!(nsnode &&
+                    labelnode &&
+                    MORPHO_ISSTRING(nsnode->content) &&
+                    MORPHO_ISSTRING(labelnode->content))) UNREACHABLE("Incorrectly formed type namespace node.");
+                
+                if (!compiler_isnamespace(c, nsnode->content)) {
+                    compiler_error(c, nsnode, COMPILE_UNKNWNNMSPC, MORPHO_GETCSTRING(nsnode->content));
+                    return REGISTER_UNALLOCATED;
+                }
+                
+                if (!compiler_findclasswithnamespace(c, typenode, nsnode->content, labelnode->content, &type)) {
+                    compiler_error(c, typenode, COMPILE_SYMBOLNOTDEFINEDNMSPC, MORPHO_GETCSTRING(nsnode->content), MORPHO_GETCSTRING(labelnode->content));
+                    return REGISTER_UNALLOCATED;
+                }
+                    
+            } else if (MORPHO_ISSTRING(typenode->content)) {
+                if (!compiler_findtype(c, typenode->content, &type)) {
+                    compiler_error(c, node, COMPILE_UNKNWNTYPE, MORPHO_GETCSTRING(typenode->content));
+                    return REGISTER_UNALLOCATED;
+                }
+            } else UNREACHABLE("Type node should have string label.");
             
             registerindx reg = compiler_functionparameters(c, node->right);
             compiler_regsettype(c, reg, type);
@@ -4209,6 +4228,9 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_MSSNGINDX, ERROR_COMPILE, COMPILE_MSSNGINDX_MSG);
     morpho_defineerror(COMPILE_TYPEVIOLATION, ERROR_COMPILE, COMPILE_TYPEVIOLATION_MSG);
     morpho_defineerror(COMPILE_UNKNWNTYPE, ERROR_COMPILE, COMPILE_UNKNWNTYPE_MSG);
+    morpho_defineerror(COMPILE_UNKNWNNMSPC, ERROR_COMPILE, COMPILE_UNKNWNNMSPC_MSG);
+    morpho_defineerror(COMPILE_UNKNWNTYPENMSPC, ERROR_COMPILE, COMPILE_UNKNWNTYPENMSPC_MSG);
+    
     morpho_defineerror(COMPILE_CLSSLNRZ, ERROR_COMPILE, COMPILE_CLSSLNRZ_MSG);
     
     morpho_addfinalizefn(compile_finalize);

@@ -70,7 +70,8 @@ void parse_savestate(parser *p, parser *op, lexer *ol) {
     *op = *p;
 }
 
-/** Restores the parser from a saved position */
+/** Restores the parser from a saved position.
+ @warning: You must take care to ensure no new objects have been allocated prior to calling this. */
 void parse_restorestate(parser *op, lexer *ol, parser *out) {
     *out = *op;
     *out->lex = *ol;
@@ -1010,7 +1011,6 @@ bool parse_typedvardeclaration(parser *p, void *out) {
     lexer ol; // Store the state of the parser
     parser op;
     parse_savestate(p, &op, &ol);
-    
     parse_advance(p);
     
     if (parse_checktoken(p, TOKEN_SYMBOL)) { // It is a typed variable declaration
@@ -1018,7 +1018,24 @@ bool parse_typedvardeclaration(parser *p, void *out) {
         PARSE_CHECK(parse_symbol(p, &type));
         PARSE_CHECK(parse_vardeclaration(p, &var));
         PARSE_CHECK(parse_addnode(p, NODE_TYPE, MORPHO_NIL, &start, type, var, &new));
-    } else { // It was really an expression statement 
+    } else if (parse_checktokenadvance(p, TOKEN_DOT) && // Check that we actually match a var declaration
+               parse_checktokenadvance(p, TOKEN_SYMBOL) &&
+               parse_checktokenadvance(p, TOKEN_SYMBOL)) {
+        parse_restorestate(&op, &ol, p); // Match successful, so rewind the parser
+        parse_advance(p);
+        
+        syntaxtreeindx namespace=SYNTAXTREE_UNCONNECTED, type=SYNTAXTREE_UNCONNECTED, var=SYNTAXTREE_UNCONNECTED;
+        
+        PARSE_CHECK(parse_symbol(p, &namespace));
+        parse_advance(p);
+        parse_advance(p); // Advance over TOKEN_DOT
+        
+        PARSE_CHECK(parse_symbol(p, &type));
+        PARSE_CHECK(parse_vardeclaration(p, &var));
+        
+        PARSE_CHECK(parse_addnode(p, NODE_DOT, MORPHO_NIL, &start, namespace, type, &type));
+        PARSE_CHECK(parse_addnode(p, NODE_TYPE, MORPHO_NIL, &start, type, var, &new));
+    } else { // Perhaps it was really an expression statement
         parse_restorestate(&op, &ol, p);
         PARSE_CHECK(parse_statement(p, &new));
     }

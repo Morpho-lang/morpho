@@ -3094,15 +3094,24 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
 
     compiler_beginargs(c);
     
-    // Compile the function selector
+    // Check if the call is a constructor
     syntaxtreenode *selnode=compiler_getnode(c, node->left);
-    codeinfo func = compiler_nodetobytecode(c, node->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
     
-    // Check if this a constructor?
     value rtype=MORPHO_NIL;
-    if (selnode->type==NODE_SYMBOL) {
+    if (selnode->type==NODE_SYMBOL) { // A regular call from a symbol
         compiler_findtype(c, selnode->content, &rtype);
+    } else if (selnode->type==NODE_DOT) { // An constructor in a namespace?
+        syntaxtreenode *nsnode = compiler_getnode(c, selnode->left);
+        syntaxtreenode *snode = compiler_getnode(c, selnode->right);
+        if (nsnode && snode &&
+            compiler_isnamespace(c, nsnode->content)) {
+            compiler_findclasswithnamespace(c, snode, nsnode->content, snode->content, &rtype);
+            compiler_catch(c, COMPILE_SYMBOLNOTDEFINEDNMSPC); // We don't care if it wasn't there
+        }
     }
+    
+    // Compile the selector
+    codeinfo func = compiler_nodetobytecode(c, node->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
     
     // Detect possible forward reference
     if (selnode->type==NODE_SYMBOL && compiler_catch(c, COMPILE_SYMBOLNOTDEFINED)) {

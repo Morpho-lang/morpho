@@ -50,8 +50,8 @@ bool signature_istyped(signature *s) {
 /** @brief Check if two signatures are equal */
 bool signature_isequal(signature *a, signature *b) {
     if (a->types.count!=b->types.count) return false;
-    for (int i=0; i<a->types.count; i++) if (!MORPHO_ISEQUAL(a->types.data[i], a->types.data[i])) return false;
-    return false; 
+    for (int i=0; i<a->types.count; i++) if (!MORPHO_ISEQUAL(a->types.data[i], b->types.data[i])) return false;
+    return true; 
 }
 
 /** @brief Return list of types */

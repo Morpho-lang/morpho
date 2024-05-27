@@ -1318,24 +1318,50 @@ codeinfo compiler_metafunction(compiler *c, syntaxtreenode *node, int n, value *
     return out;
 }
 
+/** Checks for duplicate function refs */
+static bool _checkduplicateref(varray_functionref *refs, functionref *match) {
+    for (int i=0; i<refs->count; i++) {
+        functionref *r = &refs->data[i];
+        // Match functionrefs with the same signature, but only if they're
+        // in a different scope or parent 
+        if (signature_isequal(&r->function->sig, &match->function->sig) &&
+            (r->function->parent!=match->function->parent ||
+             r->scopedepth!=match->scopedepth)) return true;
+    }
+    return false;
+}
+
 /** Collects function implementations that match a given symbol */
 static void _findfunctionref(compiler *c, value symbol, bool *hasclosure, varray_value *out) {
     bool closure=false;
+    
+    varray_functionref refs;
+    varray_functionrefinit(&refs);
+    
     functionstate *fc = compiler_currentfunctionstate(c);
-    for (functionstate *f=fc; f>=c->fstack; f--) {
-        for (int i=0; i<f->functionref.count; i++) {
+    for (functionstate *f=fc; f>=c->fstack; f--) { // Go backwards to prioritize recent def'ns
+        for (int i=f->functionref.count-1; i>=0; i--) { // Go backwards
             functionref *ref=&f->functionref.data[i];
-            if (MORPHO_ISEQUAL(ref->symbol, symbol)) {
+            if (MORPHO_ISEQUAL(ref->symbol, symbol) &&
+                !_checkduplicateref(&refs, ref)) {
                 bool iscl = function_isclosure(ref->function);
                 if (iscl) {
                     // TODO: Handle closures correctly deep in the stack
                 }
                 
                 closure |= iscl;
-                varray_valuewrite(out, MORPHO_OBJECT(ref->function));
+                varray_functionrefadd(&refs, ref, 1);
             }
         }
     }
+    
+    // Return the collected implementations
+    for (int i=0; i<refs.count; i++) {
+        varray_valuewrite(out, MORPHO_OBJECT(refs.data[i].function));
+    }
+    
+    varray_functionrefclear(&refs);
+    
     *hasclosure=closure;
 }
 

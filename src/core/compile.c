@@ -1291,6 +1291,28 @@ bool compiler_findmetafunction(compiler *c, value symbol, int n, value *fns, cod
     return false;
 }
 
+/** Finds a closure, looking back up the functionstate stack and propagating upvalues as necessary */
+void _findclosure(compiler *c, objectfunction *closure, codeinfo *out) {
+    functionstate *fc = compiler_currentfunctionstate(c);
+    
+    if (fc->func==closure->parent) {
+        out->returntype=REGISTER;
+        out->dest = (registerindx) closure->creg;
+    } else {
+        out->returntype=UPVALUE;
+        
+        for (functionstate *f=fc; f>=c->fstack; f--) {
+            if (f->func==closure->parent) {
+                f->registers.data[closure->creg].iscaptured=true;
+                out->dest=compiler_propagateupvalues(c, f, closure->creg);
+                return;
+            }
+        }
+
+        UNREACHABLE("Couldn't locate parent of closure.");
+    }
+}
+
 /** Compile a metafunction constructor by setting up a call to the Metafunction() constructor */
 codeinfo compiler_metafunction(compiler *c, syntaxtreenode *node, int n, value *fns) {
     codeinfo out = compiler_findbuiltin(c, node, METAFUNCTION_CLASSNAME, REGISTER_UNALLOCATED);
@@ -1300,8 +1322,7 @@ codeinfo compiler_metafunction(compiler *c, syntaxtreenode *node, int n, value *
         codeinfo val = CODEINFO(CONSTANT, REGISTER_UNALLOCATED, 0);
         
         if (MORPHO_ISFUNCTION(fns[i]) && function_isclosure(MORPHO_GETFUNCTION(fns[i]))) {
-            val.returntype=REGISTER;
-            val.dest = (registerindx) MORPHO_GETFUNCTION(fns[i])->creg;
+            _findclosure(c, MORPHO_GETFUNCTION(fns[i]), &val);
         } else {
             val.dest = compiler_addconstant(c, node, fns[i], true, false);
         }
@@ -1344,12 +1365,7 @@ static void _findfunctionref(compiler *c, value symbol, bool *hasclosure, varray
             functionref *ref=&f->functionref.data[i];
             if (MORPHO_ISEQUAL(ref->symbol, symbol) &&
                 !_checkduplicateref(&refs, ref)) {
-                bool iscl = function_isclosure(ref->function);
-                if (iscl) {
-                    // TODO: Handle closures correctly deep in the stack
-                }
-                
-                closure |= iscl;
+                closure |= function_isclosure(ref->function);
                 varray_functionrefadd(&refs, ref, 1);
             }
         }
@@ -1381,8 +1397,7 @@ bool compiler_resolvefunctionref(compiler *c, syntaxtreenode *node, value symbol
         if (fns.count>1) { // If the list contains a closure, we must build the MF at runtime
             *out = compiler_metafunction(c, node, fns.count, fns.data);
         } else { // If just one closure, no need to build a metafunction
-            out->returntype=REGISTER;
-            out->dest=MORPHO_GETFUNCTION(fns.data[0])->creg;
+            _findclosure(c, MORPHO_GETFUNCTION(fns.data[0]), out);
             out->ninstructions=0;
         }
     } else if (!compiler_findmetafunction(c, symbol, fns.count, fns.data, out)) {
@@ -3528,15 +3543,15 @@ static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx 
         return ret;
     }
 
+    /* Is it a reference to a function? */
+    if (compiler_resolvefunctionref(c, node, node->content, &ret)) {
+        return ret;
+    }
+    
     /* Is it an upvalue? */
     ret.dest = compiler_resolveupvalue(c, node->content);
     if (ret.dest!=REGISTER_UNALLOCATED) {
         ret.returntype=UPVALUE;
-        return ret;
-    }
-
-    /* Is it a reference to a function? */
-    if (compiler_resolvefunctionref(c, node, node->content, &ret)) {
         return ret;
     }
     

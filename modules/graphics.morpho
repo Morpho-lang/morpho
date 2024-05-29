@@ -628,8 +628,18 @@ class Show {
     out.write("W \"${graphic.title}\"")
   }
 
+  /* The visit method for a generic `item`. 
+
+  Here, we define this separate `visitgeneric` method that performs the intended generic task, and have the actual generic `visit` method call `visitgeneric`. This enables calls to the generic fallback from *within a specific implementation*. 
+  For example, the `visit` method for a `Sphere` object can call `self.visitgeneric(item, out)` to visit the `TriangleComplex` representation of the sphere, but calling `self.visit(item, out)` would result in an infinite loop.
+  */
   visitgeneric(item, out) {
     self.visit(item.totrianglecomplex(), out) 
+  }
+
+  // Will be used by Cylinder, Arrow and Tube
+  visit(item, out) {
+    self.visitgeneric(item, out)
   }
 
   visit(Sphere item, out) {
@@ -651,10 +661,6 @@ class Show {
     out.write("t ${item.center[0]} ${item.center[1]} ${item.center[2]}")
     out.write("d ${self.spheres[n].id}")
   }
-
-  visit(Cylinder item, out) { self.visitgeneric(item, out) }
-  visit(Arrow item, out) { self.visitgeneric(item, out) }
-  visit(Tube item, out) { self.visitgeneric(item, out) }
 
   trianglecomplexobjectdata(item, out) {
     var x = item.position

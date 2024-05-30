@@ -1,0 +1,13 @@
+// Namespace with 'for' keyword, with new implementation in local file
+
+import "namespace.xmorpho" for f 
+
+// Here, we add a new implementation for a Matrix input
+
+fn f(Matrix a) {
+    print a.dimensions()
+
+}
+
+f(Matrix(2,2))
+// expect: [ 2, 2 ]

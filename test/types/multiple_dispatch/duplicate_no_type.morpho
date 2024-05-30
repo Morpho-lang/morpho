@@ -1,4 +1,4 @@
-// Duplicate implementations with no Type annotations.
+// Duplicate implementations with one argument no Type annotations.
 // This one currently segfaults due to an infinite loop.
 
 /* Backtrace from LLDB: (the loop goes mfcompile_set -> mfcompile_dispatchany -> mfcompile_dispatchonparam -> mfcompile_set)

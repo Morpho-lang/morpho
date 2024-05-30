@@ -1,0 +1,13 @@
+// Duplicate implementations
+
+fn f(Int x) {
+    return 0
+}
+
+fn f(Int x) {
+    return 1 
+}
+
+print f(1)
+// expect error 'MltplDisptchAmbg'
+

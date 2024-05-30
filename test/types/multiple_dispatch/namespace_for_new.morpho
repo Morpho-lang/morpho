@@ -9,5 +9,6 @@ fn f(Matrix a) {
 
 }
 
+// Do we want this to be a new implementation for the namespace function, or this is not intended / allowed?
 f(Matrix(2,2))
 // expect: [ 2, 2 ]

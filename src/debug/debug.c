@@ -212,8 +212,16 @@ void morpho_stacktrace(vm *v) {
         else morpho_printf(v, "global");
         
         int line=0;
-        if (debug_infofromindx(v->current, indx, NULL, &line, NULL, NULL, NULL)) {
+        
+        value module = MORPHO_NIL;
+        if (debug_infofromindx(v->current, indx, &module, &line, NULL, NULL, NULL)) {
             morpho_printf(v, " at line %u", line);
+            
+            if (!MORPHO_ISNIL(module)) {
+                morpho_printf(v, " in module '");
+                morpho_printvalue(v, module);
+                morpho_printf(v, "'");
+            }
         }
         
         morpho_printf(v, "\n");

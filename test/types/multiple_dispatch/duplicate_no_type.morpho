@@ -1,22 +1,6 @@
 // Duplicate implementations with one argument no Type annotations.
 // This one currently segfaults due to an infinite loop.
 
-/* Backtrace from LLDB: (the loop goes mfcompile_set -> mfcompile_dispatchany -> mfcompile_dispatchonparam -> mfcompile_set)
-    frame #62738: 0x00000001005335f8 libmorpho.dylib`mfcompile_set + 252
-    frame #62739: 0x0000000100533f20 libmorpho.dylib`mfcompile_dispatchany + 332
-    frame #62740: 0x00000001005341c4 libmorpho.dylib`mfcompile_dispatchonparam + 520
-    frame #62741: 0x00000001005335f8 libmorpho.dylib`mfcompile_set + 252
-    frame #62742: 0x0000000100534878 libmorpho.dylib`metafunction_compile + 344
-    frame #62743: 0x000000010053aa9c libmorpho.dylib`compiler_resolvefunctionref + 848
-    frame #62744: 0x000000010053b134 libmorpho.dylib`compiler_symbol + 228
-    frame #62745: 0x0000000100543198 libmorpho.dylib`compiler_call + 2156
-    frame #62746: 0x000000010053d820 libmorpho.dylib`compiler_print + 88
-    frame #62747: 0x0000000100541664 libmorpho.dylib`compiler_sequence + 412
-    frame #62748: 0x00000001005450f0 libmorpho.dylib`morpho_compile + 220
-    frame #62749: 0x0000000100001dc4 morpho6`cli_run + 224
-    frame #62750: 0x000000010000bb3c morpho6`main + 424
-    frame #62751: 0x000000018385a0e0 dyld`start + 2360
-*/
 fn f(x) {
     return 0
 }

@@ -279,7 +279,7 @@ void debugger_error(debugger *debug, errorid id, ... ) {
     if (!debug->err || debug->err->id!=ERROR_NONE) return; // Ensure errors are not overwritten.
     va_list args;
     va_start(args, id);
-    morpho_writeerrorwithidvalist(debug->err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
+    morpho_writeerrorwithidvalist(debug->err, id, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
     va_end(args);
 }
 
@@ -626,9 +626,9 @@ void debugger_showlocation(debugger *debug, instructionindx indx) {
     else morpho_printf(v, "anonymous fn");
     
     if (!MORPHO_ISNIL(module)) {
-        morpho_printf(v, " in \"");
+        morpho_printf(v, " in '");
         morpho_printvalue(v, module);
-        morpho_printf(v, "\"");
+        morpho_printf(v, "'");
     }
     morpho_printf(v, " at line %i [instruction %ti]", line, indx);
 }

@@ -723,7 +723,9 @@ mfindx mfcompile_set(mfcompiler *c, mfset *set) {
     if (min!=max) return mfcompile_dispatchonnarg(c, set, min, max);
     
     // If just one parameter, dispatch on it
-    if (min==1) return mfcompile_dispatchonparam(c, set, 0);
+    if (min==1 && !mfcompiler_ischecked(c, 0)) {
+        return mfcompile_dispatchonparam(c, set, 0);
+    }
     
     int best;
     if (mfcompile_countoutcomes(c, set, &best)) return mfcompile_dispatchonparam(c, set, best);

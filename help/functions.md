@@ -106,6 +106,7 @@ Note that optional and variadic parameters are not typed.
 # Multiple dispatch
 [tagmultiple]: # (multiple)
 [tagdispatch]: # (dispatch)
+[tagmultipledispatch]: # (multipledispatch)
 
 Morpho supports *multiple dispatch*, whereby you can define several implementations of a function that accept different types:
 

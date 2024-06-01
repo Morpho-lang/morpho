@@ -1,5 +1,4 @@
 // Duplicate implementations with one argument no Type annotations.
-// This one currently segfaults due to an infinite loop.
 
 fn f(x) {
     return 0

@@ -221,7 +221,7 @@ void mfcompiler_clear(mfcompiler *c, objectmetafunction *fn) {
 
 /** Report an error during metafunction compilation */
 void mfcompiler_error(mfcompiler *c, errorid id) {
-    morpho_writeerrorwithid(&c->err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE);
+    morpho_writeerrorwithid(&c->err, id, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE);
 }
 
 /** Pushes a parameter check onto the stack*/

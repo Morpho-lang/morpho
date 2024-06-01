@@ -216,10 +216,11 @@ static void vm_bindobjectwithoutcollect(vm *v, value obj) {
 void vm_runtimeerror(vm *v, ptrdiff_t iindx, errorid id, ...) {
     va_list args;
     int line=ERROR_POSNUNIDENTIFIABLE, posn=ERROR_POSNUNIDENTIFIABLE;
-    debug_infofromindx(v->current, iindx, NULL, &line, &posn, NULL, NULL);
-
+    value module=MORPHO_NIL;
+    debug_infofromindx(v->current, iindx, &module, &line, &posn, NULL, NULL);
+    
     va_start(args, id);
-    morpho_writeerrorwithidvalist(&v->err, id, line, posn, args);
+    morpho_writeerrorwithidvalist(&v->err, id, NULL, line, posn, args);
     va_end(args);
 }
 
@@ -1548,7 +1549,7 @@ void morpho_runtimeerror(vm *v, errorid id, ...) {
     error_init(&err);
 
     va_start(args, id);
-    morpho_writeerrorwithidvalist(&err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
+    morpho_writeerrorwithidvalist(&err, id, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
     va_end(args);
     
     morpho_error(v, &err);
@@ -1562,7 +1563,7 @@ void morpho_runtimewarning(vm *v, errorid id, ...) {
     error_init(&err);
 
     va_start(args, id);
-    morpho_writeerrorwithidvalist(&err, id, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
+    morpho_writeerrorwithidvalist(&err, id, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
     va_end(args);
     
     morpho_warning(v, &err);

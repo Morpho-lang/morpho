@@ -103,7 +103,7 @@ extern value cloneselector;
 void morpho_version(version *v);
 
 /* Error handling */
-void morpho_writeerrorwithid(error *err, errorid id, int line, int position, ...);
+void morpho_writeerrorwithid(error *err, errorid id, char *file, int line, int posn, ...);
 void morpho_defineerror(errorid id, errorcategory cat, char *message);
 errorid morpho_geterrorid(error *err);
 

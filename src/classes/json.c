@@ -90,7 +90,7 @@ bool json_lexstring(lexer *l, token *tok, error *err) {
     }
     
     if (lex_isatend(l)) {
-        morpho_writeerrorwithid(err, LEXER_UNTERMINATEDSTRING, tok->line, tok->posn);
+        morpho_writeerrorwithid(err, LEXER_UNTERMINATEDSTRING, NULL, tok->line, tok->posn);
         return false;
     }
     
@@ -144,7 +144,7 @@ bool json_lexnumber(lexer *l, token *tok, error *err) {
     return true;
 
 json_lexnumberinvld:
-    morpho_writeerrorwithid(err, JSON_NMBRFRMT, tok->line, tok->posn);
+    morpho_writeerrorwithid(err, JSON_NMBRFRMT, NULL, tok->line, tok->posn);
     return false;
 }
 

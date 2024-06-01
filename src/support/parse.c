@@ -38,7 +38,7 @@ void parse_error(parser *p, bool use_prev, errorid id, ... ) {
     if (ERROR_FAILED(*p->err)) return;
     
     va_start(args, id);
-    morpho_writeerrorwithid(p->err, id, tok->line, tok->posn, args);
+    morpho_writeerrorwithid(p->err, id, NULL, tok->line, tok->posn, args);
     va_end(args);
 }
 
@@ -1794,7 +1794,7 @@ bool parse_stringtovaluearray(char *string, unsigned int nmax, value *v, unsigne
             case TOKEN_EOF:
                 break;
             default:
-                morpho_writeerrorwithid(err, PARSE_UNRECGNZEDTOK, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE);
+                morpho_writeerrorwithid(err, PARSE_UNRECGNZEDTOK, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE);
                 return false; 
                 break;
         }

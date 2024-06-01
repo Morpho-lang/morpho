@@ -58,7 +58,7 @@ dkms.conf
 .entitlements
 .vscode/settings.json
 
-test/FailedTests.txt
+test/FailedTests*.txt
 *.png
 *.out
 manual/src/manual.lyx~

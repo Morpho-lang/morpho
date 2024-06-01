@@ -44,9 +44,10 @@ static void compiler_error(compiler *c, syntaxtreenode *node, errorid id, ... ) 
     int line = (node ? node->line : ERROR_POSNUNIDENTIFIABLE);
     int posn = (node ? node->posn : ERROR_POSNUNIDENTIFIABLE);
 
+    char *file = (MORPHO_ISSTRING(c->currentmodule) ? MORPHO_GETCSTRING(c->currentmodule) : NULL);
+    
     va_start(args, id);
-    morpho_writeerrorwithidvalist(&c->err, id, line, posn, args);
-
+    morpho_writeerrorwithidvalist(&c->err, id, NULL, line, posn, args);
     va_end(args);
 }
 
@@ -4070,7 +4071,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                 }
                 
             } else {
-                c->err.module = cc.err.module;
+                c->err.file = (cc.err.file ? cc.err.file : MORPHO_GETCSTRING(modname));
             }
             
             debugannotation_setmodule(&c->out->annotations, compiler_getmodule(c));

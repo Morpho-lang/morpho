@@ -65,7 +65,7 @@ typedef errorcategory morphoerror;
 typedef struct {
     errorcategory cat;
     errorid id;
-    char *module; 
+    char *file; 
     int line, posn;
     char msg[MORPHO_ERRORSTRINGSIZE];
 } error;
@@ -198,8 +198,8 @@ void morpho_unreachable(const char *explanation);
 void error_init(error *err);
 void error_clear(error *err);
 
-void morpho_writeerrorwithid(error *err, errorid id, int line, int posn, ...);
-void morpho_writeerrorwithidvalist(error *err, errorid id, int line, int posn, va_list args);
+void morpho_writeerrorwithid(error *err, errorid id, char *file, int line, int posn, ...);
+void morpho_writeerrorwithidvalist(error *err, errorid id, char *file, int line, int posn, va_list args);
 void morpho_writeusererror(error *err, errorid id, char *message);
 void morpho_defineerror(errorid id, errorcategory cat, char *message);
 

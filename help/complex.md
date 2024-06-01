@@ -25,7 +25,7 @@ or alternatively:
     print a.real()
     print a.imag() 
 
-[showsuptopics]: # subtopics
+[showsubtopics]: # (subtopics)
 
 ## Angle
 [tagangle]: # (angle)

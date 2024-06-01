@@ -1,0 +1,11 @@
+// Typed parameters in function signature
+
+fn f(String x, List y) {
+    print x
+}
+
+f("Hello", []) 
+// expect: Hello
+
+f([], [])
+// expect error 'MltplDsptchFld'

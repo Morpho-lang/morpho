@@ -1,0 +1,30 @@
+// Multiple dispatch version of the visitor pattern
+
+class A { }
+
+class Visitor {
+  init(...set) {
+    self.lst = []
+    for (s in set) self.lst.append(s)
+  }   
+
+  visit(A x) { return "A" }
+  visit(List x) { return "List" }
+  visit(String x) { return "String" }
+  visit(Int x) { return "Int" }
+  visit(Dictionary x) { return "Dictionary" }
+
+  process() {
+    for (l in self.lst) { print self.visit(l) }
+  }
+}
+
+var a = Visitor(A(), "Hello", 1, {}, [1], A()) 
+
+a.process()
+// expect: A
+// expect: String
+// expect: Int
+// expect: Dictionary
+// expect: List
+// expect: A

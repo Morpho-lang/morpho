@@ -1539,7 +1539,7 @@ MORPHO_ENDCLASS
 void matrix_initialize(void) {
     objectmatrixtype=object_addtype(&objectmatrixdefn);
     
-    builtin_addfunction(MATRIX_CLASSNAME, matrix_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(MATRIX_CLASSNAME, matrix_constructor, MORPHO_FN_CONSTRUCTOR);
     builtin_addfunction(MATRIX_IDENTITYCONSTRUCTOR, matrix_identityconstructor, BUILTIN_FLAGSEMPTY);
     
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);

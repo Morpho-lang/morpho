@@ -18,9 +18,13 @@ extern objecttype objectclasstype;
 
 typedef struct sobjectclass {
     object obj;
-    struct sobjectclass *superclass;
-    value name;
-    dictionary methods;
+    struct sobjectclass *superclass; /** The class's superclass */
+    value name; /** Class name */
+    dictionary methods; /** Method dictionary */
+    varray_value parents; /** Classes this class inherits from */
+    varray_value children; /** Classes that inherit from this class */
+    varray_value linearization; /** Classes that inherit from this class */
+    int uid;
 } objectclass;
 
 /** Tests whether an object is a class */
@@ -36,7 +40,8 @@ typedef struct sobjectclass {
  * Class veneer class
  * ------------------------------------------------------- */
 
-#define CLASS_CLASSNAME                   "Class"
+// #define CLASS_CLASSNAME                   "Class"
+// #define CLASS_LINEARIZATION               "linearization"
 
 /* -------------------------------------------------------
  * Class error messages
@@ -51,6 +56,8 @@ typedef struct sobjectclass {
 
 objectclass *object_newclass(value name);
 objectclass *morpho_lookupclass(value obj);
+
+bool class_linearize(objectclass *klass);
 
 void class_initialize(void);
 

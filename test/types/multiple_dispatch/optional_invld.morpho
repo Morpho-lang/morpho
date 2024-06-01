@@ -1,0 +1,13 @@
+// Multiple dispatch that doesn't include optional arguments
+
+fn f() { return 0 } 
+
+fn f(x) { return x }
+
+fn f(x,y,z,a) { return -1 }
+
+print f() 
+// expect: 0
+
+print f(1,z=3) 
+// expect error 'InvldArgs'

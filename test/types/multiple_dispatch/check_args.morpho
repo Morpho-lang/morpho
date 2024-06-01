@@ -1,0 +1,19 @@
+// Arg checking
+
+fn f(Int x, Int y) {
+    return 0
+}
+
+fn f(Int x, Float y) {
+    return 1 
+}
+
+print f(1,2) 
+// expect: 0
+
+print f(1,0.5) 
+// expect: 1
+
+print f(0.1,0.5)
+// expect error 'MltplDsptchFld'
+

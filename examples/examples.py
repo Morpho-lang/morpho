@@ -14,7 +14,7 @@ from colored import stylize
 
 sys.path.append('../test')
 ext = "morpho"
-command = 'morpho5'
+command = 'morpho6'
 stk = '@stacktrace'
 err = '@error'
 

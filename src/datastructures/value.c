@@ -262,6 +262,24 @@ objectclass *value_getveneerclass(value type) {
     }
 }
 
+/** @brief Returns the veneer class given the type index */
+objectclass *value_veneerclassfromtype(int type) {
+    if (type<MORPHO_MAXIMUMVALUETYPES) {
+        return _valueveneers[type];
+    } else return NULL;
+}
+
+/** @brief Returns an type index for the class */
+bool value_veneerclasstotype(objectclass *clss, int *type) {
+    for (int i=0; i<MORPHO_MAXIMUMVALUETYPES; i++) {
+        if (_valueveneers[i]==clss) {
+            if (type) *type = i;
+            return true;
+        }
+    }
+    return false;
+}
+
 /* **********************************************************************
  * Initialization/Finalization
  * ********************************************************************** */

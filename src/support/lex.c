@@ -87,7 +87,6 @@ char lex_advance(lexer *l) {
 
 /** @brief Advances the lexer by n characters, returning the last character */
 char lex_advanceby(lexer *l, size_t n) {
-    char c = *(l->current);
     l->current+=n;
     l->posn+=n;
     return *(l->current-1);

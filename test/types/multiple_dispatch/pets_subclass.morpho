@@ -1,0 +1,43 @@
+
+
+class Pet {
+    init(name) {
+        self.name = name
+    }
+}
+
+class Dog is Pet {} 
+class Cat is Pet {}
+
+fn meets(Dog a, Dog b) {
+    return "wags its tail"
+}
+
+fn meets(Dog a, Cat b) {
+    return "barks"
+}
+
+fn meets(Cat a, Dog b) {
+    return "hisses"
+}
+
+fn meets(Cat a, Cat b) {
+    return "purrs"
+}
+
+fn encounter(Pet a, Pet b) {
+    var verb = meets(a, b)
+    print("${a.name} meets ${b.name} and ${verb}")
+}
+
+var fido = Dog("Fido")
+var whiskers = Cat("Whiskers")
+var rex = Dog("Rex")
+var simba = Cat("Simba")
+
+encounter(fido, rex)       // expect: Fido meets Rex and wags its tail
+encounter(fido, whiskers)  // expect: Fido meets Whiskers and barks
+encounter(whiskers, rex)   // expect: Whiskers meets Rex and hisses
+encounter(whiskers, simba) // expect: Whiskers meets Simba and purrs
+
+encounter([], rex) // expect error 'MltplDsptchFld'

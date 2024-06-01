@@ -57,9 +57,6 @@ typedef uint64_t value;
 /** Bit mask used to select type bits */
 #define TYPE_BITS (TAG_OBJ | TAG_NIL | TAG_BOOL | TAG_INT)
 
-/** Get a non-object's type field as an integer */
-#define MORPHO_GETORDEREDTYPE(x)  ((((x) & TYPE_BITS)>>47) & 0x7)
-
 /** Map VALUE_XXX macros to type bits  */
 #define VALUE_NIL       (TAG_NIL)
 #define VALUE_INTEGER   (TAG_INT)
@@ -125,6 +122,12 @@ static inline bool morpho_ofsametype(value a, value b) {
 
     return false;
 }
+
+/** Get a non-object's type field as an integer */
+static inline int _getorderedtype(value x) {
+    return (MORPHO_ISFLOAT(x) ? 0 : (((x) & TYPE_BITS)>>47) & 0x7);
+}
+#define MORPHO_GETORDEREDTYPE(x) _getorderedtype(x)
 
 /** Alternatively, we represent a value through a struct. */
 #else

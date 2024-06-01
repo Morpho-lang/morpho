@@ -55,6 +55,7 @@ void morpho_setdebuggerfn(vm *v, morphodebuggerfn debuggerfn, void *ref);
 static inline bool morpho_iscallable(value a) {
     return (MORPHO_ISFUNCTION(a) ||
             MORPHO_ISBUILTINFUNCTION(a) ||
+            MORPHO_ISMETAFUNCTION(a) ||
             MORPHO_ISINVOCATION(a) ||
             MORPHO_ISCLOSURE(a) ||
             MORPHO_ISCLASS(a));

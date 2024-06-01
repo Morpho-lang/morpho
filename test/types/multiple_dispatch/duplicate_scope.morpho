@@ -1,0 +1,13 @@
+// Duplicate implementations separated by scope
+
+fn f(Int x, Int y) {
+    return 0
+}
+
+{
+    fn f(Int x, Int y) {
+        return 1 
+    }
+
+    print f(1,1) // expect: 1
+}

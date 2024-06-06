@@ -1,0 +1,20 @@
+// Dispatch a function defined in a module
+
+import "namespace.xmorpho" 
+
+f("Hi")
+// expect: Hi
+
+f(1)
+// expect: Foo
+
+f(1.5)
+// expect: 2.5
+
+var a = []
+f(a)
+print a 
+// expect: [ Ho ]
+
+f({})
+// expect: Foo

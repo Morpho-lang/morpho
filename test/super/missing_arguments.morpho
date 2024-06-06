@@ -4,7 +4,7 @@ class Base {
   }
 }
 
-class Derived < Base {
+class Derived is Base {
   foo() {
     super.foo(1) // expect error 'InvldArgs'
   }

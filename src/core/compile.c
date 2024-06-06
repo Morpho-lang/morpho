@@ -28,6 +28,7 @@ static optimizerfn *optimizer;
  * Utility functions
  * ------------------------------------------- */
 
+/** Checks if the compiler is in an error state */
 static bool compiler_haserror(compiler *c) {
     return (c->err.cat!=ERROR_NONE);
 }
@@ -43,9 +44,10 @@ static void compiler_error(compiler *c, syntaxtreenode *node, errorid id, ... ) 
     int line = (node ? node->line : ERROR_POSNUNIDENTIFIABLE);
     int posn = (node ? node->posn : ERROR_POSNUNIDENTIFIABLE);
 
+    char *file = (MORPHO_ISSTRING(c->currentmodule) ? MORPHO_GETCSTRING(c->currentmodule) : NULL);
+    
     va_start(args, id);
-    morpho_writeerrorwithidvalist(&c->err, id, line, posn, args);
-
+    morpho_writeerrorwithidvalist(&c->err, id, NULL, line, posn, args);
     va_end(args);
 }
 
@@ -89,16 +91,6 @@ static instructionindx compiler_currentinstructionindex(compiler *c) {
     return (instructionindx) c->out->code.count;
 }
 
-/** Adds an instruction to the current program */
-/*static instruction compiler_previousinstruction(compiler *c) {
-    return c->out->code.data[c->out->code.count-1];
-}*/
-
-/** Finds the current instruction index */
-/*static instructionindx compiler_currentinstruction(compiler *c) {
-    return c->out->code.count;
-}*/
-
 /** Modifies the instruction at a given index */
 static void compiler_setinstruction(compiler *c, instructionindx indx,  instruction instr) {
     c->out->code.data[indx]=instr;
@@ -123,6 +115,7 @@ static void compiler_functionstateinit(functionstate *state) {
     varray_registerallocinit(&state->registers);
     varray_forwardreferenceinit(&state->forwardref);
     varray_upvalueinit(&state->upvalues);
+    varray_functionrefinit(&state->functionref);
 }
 
 /** Clears a functionstate structure */
@@ -134,6 +127,7 @@ static void compiler_functionstateclear(functionstate *state) {
     varray_registerallocclear(&state->registers);
     varray_forwardreferenceclear(&state->forwardref);
     varray_upvalueclear(&state->upvalues);
+    varray_functionrefclear(&state->functionref);
 }
 
 /** Initializes the function stack */
@@ -175,7 +169,7 @@ static inline bool compiler_ininitializer(compiler *c) {
  * ------------------------------------------- */
 
 /** Begins a new function, advancing the fstack pointer */
-static void compiler_beginfunction(compiler *c, objectfunction *func, functiontype type) {
+void compiler_beginfunction(compiler *c, objectfunction *func, functiontype type) {
     c->fstackp++;
     compiler_functionstateinit(&c->fstack[c->fstackp]);
     c->fstack[c->fstackp].func=func;
@@ -184,13 +178,13 @@ static void compiler_beginfunction(compiler *c, objectfunction *func, functionty
 }
 
 /** Sets the function register count */
-static void compiler_setfunctionregistercount(compiler *c) {
+void compiler_setfunctionregistercount(compiler *c) {
     functionstate *f=&c->fstack[c->fstackp];
     if (f->nreg>f->func->nregs) f->func->nregs=f->nreg;
 }
 
 /** Ends a function, decrementing the fstack pointer  */
-static void compiler_endfunction(compiler *c) {
+void compiler_endfunction(compiler *c) {
     functionstate *f=&c->fstack[c->fstackp];
     c->prevfunction=f->func; /* Retain the function in case it needs to be bound as a method */
     compiler_setfunctionregistercount(c);
@@ -200,12 +194,12 @@ static void compiler_endfunction(compiler *c) {
 }
 
 /** Gets the current function */
-static objectfunction *compiler_getcurrentfunction(compiler *c) {
+objectfunction *compiler_getcurrentfunction(compiler *c) {
     return c->fstack[c->fstackp].func;
 }
 
 /** Gets the current constant table */
-static varray_value *compiler_getcurrentconstanttable(compiler *c) {
+varray_value *compiler_getcurrentconstanttable(compiler *c) {
     objectfunction *f = compiler_getcurrentfunction(c);
     if (!f) {
         UNREACHABLE("find current constant table [No current function defined].");
@@ -215,7 +209,7 @@ static varray_value *compiler_getcurrentconstanttable(compiler *c) {
 }
 
 /** Gets constant i from the current constant table */
-static value compiler_getconstant(compiler *c, unsigned int i) {
+value compiler_getconstant(compiler *c, unsigned int i) {
     value ret = MORPHO_NIL;
     objectfunction *f = compiler_getcurrentfunction(c);
     if (f && i<f->konst.count) ret = f->konst.data[i];
@@ -223,9 +217,15 @@ static value compiler_getconstant(compiler *c, unsigned int i) {
 }
 
 /** Gets the most recently compiled function */
-static objectfunction *compiler_getpreviousfunction(compiler *c) {
+objectfunction *compiler_getpreviousfunction(compiler *c) {
     return c->prevfunction;
 }
+
+/* ------------------------------------------
+ * Types
+ * ------------------------------------------- */
+
+value _closuretype;
 
 /* ------------------------------------------
  * Argument declarations
@@ -276,6 +276,8 @@ static objectclass *compiler_getcurrentclass(compiler *c) {
 
 /** Adds an objectclass to the compilers dictionary of classes */
 void compiler_addclass(compiler *c, objectclass *klass) {
+    klass->uid = program_addclass(c->out, MORPHO_OBJECT(klass));
+    
     dictionary_insert(&c->classes, klass->name, MORPHO_OBJECT(klass));
 }
 
@@ -288,6 +290,67 @@ objectclass *compiler_findclass(compiler *c, value name) {
     if (c->parent) return compiler_findclass(c->parent, name);
     
     return NULL;
+}
+
+/** Adds a class to a class's parent list, and also links the class into the parent's child list */
+void compiler_addparent(compiler *c, objectclass *klass, objectclass *parent) {
+    varray_valuewrite(&klass->parents, MORPHO_OBJECT(parent));
+    varray_valuewrite(&parent->children, MORPHO_OBJECT(klass));
+}
+
+/* ------------------------------------------
+ * Types
+ * ------------------------------------------- */
+
+/** Identifies a type from a label */
+bool compiler_findtype(compiler *c, value label, value *out) {
+    value type=MORPHO_NIL;
+    
+    objectclass *clss=compiler_findclass(c, label); // A class we defined
+    if (clss) {
+        type = MORPHO_OBJECT(clss);
+    } else type = builtin_findclass(label); // Or a built in one
+    
+    if (!MORPHO_ISNIL(type)) *out = type;
+    
+    return (!MORPHO_ISNIL(type));
+}
+
+/** Identify a type from a label */
+bool compiler_findtypefromcstring(compiler *c, char *label, value *out) {
+    objectstring str = MORPHO_STATICSTRING(label);
+    return compiler_findtype(c, MORPHO_OBJECT(&str), out);
+}
+
+/** Identifies a type from a value */
+bool compiler_typefromvalue(compiler *c, value v, value *out) {
+    return metafunction_typefromvalue(v, out);
+}
+
+/** Recursively searches the parents list of classes to see if the type 'match' is present */
+bool compiler_findtypeinparent(compiler *c, objectclass *type, value match) {
+    for (int i=0; i<type->parents.count; i++) {
+        if (MORPHO_ISEQUAL(type->parents.data[i], match) ||
+            compiler_findtypeinparent(c, MORPHO_GETCLASS(type->parents.data[i]), match)) return true;
+    }
+    return false;
+}
+
+/** Checks if type "match" matches a given type "type"  */
+bool compiler_checktype(compiler *c, value type, value match) {
+    if (MORPHO_ISNIL(type) || // If type is unset, we always match
+        MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same
+    
+    // Also match if 'match' inherits from 'type'
+    if (MORPHO_ISCLASS(match)) return compiler_findtypeinparent(c, MORPHO_GETCLASS(match), type);
+    
+    return false;
+}
+
+/** Determines the type associated with a constant */
+bool compiler_getconstanttype(compiler *c, unsigned int i, value *type) {
+    value val = compiler_getconstant(c, i);
+    return compiler_typefromvalue(c, val, type);
 }
 
 /* ------------------------------------------
@@ -361,7 +424,7 @@ static bool compiler_inloop(compiler *c) {
 
 /** Finds a free register in the current function state and claims it */
 static registerindx compiler_regallocwithstate(compiler *c, functionstate *f, value symbol) {
-    registeralloc r = (registeralloc) {.isallocated=true, .iscaptured=false, .scopedepth=f->scopedepth, .symbol=symbol};
+    registeralloc r = REGISTERALLOC_EMPTY(f->scopedepth, symbol);
     registerindx i = REGISTER_UNALLOCATED;
 
     if (compiler_inargs(c)) {
@@ -415,7 +478,7 @@ static void compiler_regsetsymbol(compiler *c, registerindx reg, value symbol) {
 static registerindx compiler_regalloctop(compiler *c) {
     functionstate *f = compiler_currentfunctionstate(c);
     registerindx i = REGISTER_UNALLOCATED;
-    registeralloc r = (registeralloc) {.isallocated=true, .iscaptured=false, .scopedepth=f->scopedepth, .symbol=MORPHO_NIL};
+    registeralloc r = REGISTERALLOC_EMPTY(f->scopedepth, MORPHO_NIL);
 
     /* Search backwards from the end to find the register AFTER
        the last allocated register */
@@ -444,7 +507,7 @@ static registerindx compiler_regtemp(compiler *c, registerindx reqreg) {
 static registerindx compiler_regtempwithindx(compiler *c, registerindx reg) {
     functionstate *f = compiler_currentfunctionstate(c);
     if (reg>=f->registers.count) {
-        registeralloc empty = (registeralloc) {.isallocated=false, .iscaptured=false, .scopedepth=f->scopedepth, .symbol=MORPHO_NIL};
+        registeralloc empty = REGISTERALLOC_EMPTY(f->scopedepth, MORPHO_NIL);
         while (reg>=f->registers.count) {
             if (!varray_registerallocadd(&f->registers, &empty, 1)) break;
             if (f->registers.count>f->nreg) f->nreg=f->registers.count;
@@ -467,6 +530,8 @@ static void compiler_regfree(compiler *c, functionstate *f, registerindx reg) {
             debugannotation_setreg(&c->out->annotations, reg, MORPHO_NIL);
         }
         f->registers.data[reg].symbol=MORPHO_NIL;
+        f->registers.data[reg].type=MORPHO_NIL;
+        f->registers.data[reg].currenttype=MORPHO_NIL;
     }
 }
 
@@ -506,6 +571,56 @@ static void compiler_regfreeatscope(compiler *c, unsigned int scopedepth) {
             compiler_regfree(c, f, i);
         }
     }
+}
+
+/** Sets the type associated with a register */
+void compiler_regsettype(compiler *c, registerindx reg, value type) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (reg<0 || reg>=f->registers.count) return;
+    f->registers.data[reg].type=type;
+}
+
+/** Gets the current type of a register */
+bool compiler_regtype(compiler *c, registerindx reg, value *type) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (reg>=f->registers.count) return false;
+    *type = f->registers.data[reg].type;
+    return true;
+}
+
+/** Raises a type violation error */
+void compiler_typeviolation(compiler *c, syntaxtreenode *node, value type, value badtype, value symbol) {
+    char *tname="(unknown)", *bname="(unknown)";
+    char *sym="";
+
+    if (MORPHO_ISCLASS(type)) tname=MORPHO_GETCSTRING(MORPHO_GETCLASS(type)->name);
+    if (MORPHO_ISCLASS(badtype)) bname=MORPHO_GETCSTRING(MORPHO_GETCLASS(badtype)->name);
+    if (MORPHO_ISSTRING(symbol)) sym = MORPHO_GETCSTRING(symbol);
+    
+    compiler_error(c, node, COMPILE_TYPEVIOLATION, bname, tname, sym);
+}
+
+/** Sets the current type of a register. Raises a type violation error if this is not compatible with the required type  */
+bool compiler_regsetcurrenttype(compiler *c, syntaxtreenode *node, registerindx reg, value type) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (reg>=f->registers.count) return false;
+    
+    if (compiler_checktype(c, f->registers.data[reg].type, type)) {
+        f->registers.data[reg].currenttype=type;
+        return true;
+    }
+    
+    compiler_typeviolation(c, node, f->registers.data[reg].type, type, f->registers.data[reg].symbol);
+    
+    return false;
+}
+
+/** Gets the current type of a register */
+bool compiler_regcurrenttype(compiler *c, registerindx reg, value *type) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (reg>=f->registers.count) return false;
+    *type = f->registers.data[reg].currenttype;
+    return true;
 }
 
 /** @brief Finds the register that contains symbol in a given functionstate
@@ -612,6 +727,15 @@ static void compiler_regshow(compiler *c) {
         } else {
             printf("unallocated");
         }
+        if (!MORPHO_ISNIL(r->type)) {
+            printf(" [");
+            morpho_printvalue(NULL, r->type);
+            printf("]");
+        }
+        if (!MORPHO_ISNIL(r->currenttype)) {
+            printf(" contains: ");
+            morpho_printvalue(NULL, r->currenttype);
+        }
         printf("\n");
     }
     printf("--End registers\n");
@@ -627,10 +751,13 @@ void compiler_beginscope(compiler *c) {
     f->scopedepth++;
 }
 
+void compiler_functionreffreeatscope(compiler *c, unsigned int scope);
+
 /** Decrements the scope counter in the current functionstate */
 void compiler_endscope(compiler *c) {
     functionstate *f=compiler_currentfunctionstate(c);
     compiler_regfreeatscope(c, f->scopedepth);
+    compiler_functionreffreeatscope(c, f->scopedepth);
     f->scopedepth--;
 }
 
@@ -797,14 +924,19 @@ static registerindx compiler_getlocal(compiler *c, value symbol) {
  *  @param   reg    destination register, or REGISTER_UNALLOCATED to allocate a new one
  *  @returns Number of instructions generated */
 static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codeinfo info, registerindx reg) {
+    value type = MORPHO_NIL;
     codeinfo out = info;
     out.ninstructions=0;
 
     if (CODEINFO_ISCONSTANT(info)) {
         out.returntype=REGISTER;
         out.dest=compiler_regtemp(c, reg);
+        
+        if (compiler_getconstanttype(c, info.dest, &type)) {
+            compiler_regsetcurrenttype(c, node, out.dest, type);
+        }
+        
         compiler_addinstruction(c, ENCODE_LONG(OP_LCT, out.dest, info.dest), node);
-
         out.ninstructions++;
     } else if (CODEINFO_ISUPVALUE(info)) {
         /* Move upvalues */
@@ -813,7 +945,7 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         compiler_addinstruction(c, ENCODE_DOUBLE(OP_LUP, out.dest, info.dest), node);
         out.ninstructions++;
     } else if (CODEINFO_ISGLOBAL(info)) {
-        /* Move upvalues */
+        /* Move globals */
         out.dest=compiler_regtemp(c, reg);
         out.returntype=REGISTER;
         compiler_addinstruction(c, ENCODE_LONG(OP_LGL, out.dest, info.dest), node);
@@ -827,6 +959,8 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         }
 
         if (out.dest!=info.dest) {
+            if (compiler_regcurrenttype(c, info.dest, &type)) compiler_regsetcurrenttype(c, node, out.dest, type);
+            
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, out.dest, info.dest), node);
             out.ninstructions++;
         }
@@ -874,7 +1008,7 @@ static inline void compiler_addvariadicarg(compiler *c, syntaxtreenode *node, va
     functionstate *f = compiler_currentfunctionstate(c);
 
     if (f) {
-        if (object_functionhasvargs(f->func)) {
+        if (function_hasvargs(f->func)) {
             compiler_error(c, node, COMPILE_MLTVARPRMTR);
             return;
         }
@@ -882,14 +1016,14 @@ static inline void compiler_addvariadicarg(compiler *c, syntaxtreenode *node, va
         value sym=program_internsymbol(c->out, symbol);
         registerindx reg = compiler_addlocal(c, node, sym);
 
-        object_functionsetvarg(f->func, reg-1);
+        function_setvarg(f->func, reg-1);
     }
 }
 
 /** Check if the current function has variadic parameters */
 bool compiler_hasvariadicarg(compiler *c) {
     functionstate *f = compiler_currentfunctionstate(c);
-    return object_functionhasvargs(f->func);
+    return function_hasvargs(f->func);
 }
 
 /* ------------------------------------------
@@ -897,12 +1031,12 @@ bool compiler_hasvariadicarg(compiler *c) {
  * ------------------------------------------- */
 
 /** Should we use global variables or registers?  */
-static bool compiler_checkglobal(compiler *c) {
+bool compiler_checkglobal(compiler *c) {
     return ((c->fstackp==0) && (c->fstack[0].scopedepth==0));
 }
 
 /** Finds a global symbol, optionally searching successively through parent compilers */
-static globalindx compiler_getglobal(compiler *c, value symbol, bool recurse) {
+globalindx compiler_findglobal(compiler *c, value symbol, bool recurse) {
     for (compiler *cc=c; cc!=NULL; cc=cc->parent) {
         value indx;
         if (dictionary_get(&cc->globals, symbol, &indx)) {
@@ -916,13 +1050,13 @@ static globalindx compiler_getglobal(compiler *c, value symbol, bool recurse) {
 }
 
 /** Adds a global variable to */
-static globalindx compiler_addglobal(compiler *c, syntaxtreenode *node, value symbol) {
-    globalindx indx=compiler_getglobal(c, symbol, false);
+globalindx compiler_addglobal(compiler *c, syntaxtreenode *node, value symbol) {
+    globalindx indx=compiler_findglobal(c, symbol, false);
 
     if (indx==GLOBAL_UNALLOCATED) {
-        if (dictionary_insert(&c->globals, object_clonestring(symbol), MORPHO_INTEGER(c->out->nglobals))) {
-            indx=c->out->nglobals;
-            c->out->nglobals++;
+        indx = program_addglobal(c->out, symbol);
+        
+        if (dictionary_insert(&c->globals, object_clonestring(symbol), MORPHO_INTEGER(indx))) {
             debugannotation_setglobal(&c->out->annotations, indx, symbol);
         }
     }
@@ -930,8 +1064,47 @@ static globalindx compiler_addglobal(compiler *c, syntaxtreenode *node, value sy
     return indx;
 }
 
+/** Sets the type of a global variable */
+void compiler_setglobaltype(compiler *c, globalindx indx, value type) {
+    program_globalsettype(c->out, indx, type);
+}
+
+/** Checks if the type match satisfies the type of the global variable indx */
+bool compiler_checkglobaltype(compiler *c, syntaxtreenode *node, globalindx indx, value match) {
+    value type=MORPHO_NIL;
+    if (!program_globaltype(c->out, indx, &type)) return false;
+    
+    bool success=compiler_checktype(c, type, match);
+    
+    if (!success) {
+        value symbol=MORPHO_NIL;
+        program_globalsymbol(c->out, indx, &symbol);
+        compiler_typeviolation(c, node, type, match, symbol);
+    }
+    
+    return success;
+}
+
+/** Shows all currently allocated globals */
+void compiler_globalshow(compiler *c) {
+    int nglobals = program_countglobals(c->out);
+    printf("--Globals (%u in use)\n", nglobals);
+    for (unsigned int i=0; i<nglobals; i++) {
+        globalinfo *r=&c->out->globals.data[i];
+        printf("g%u ",i);
+        if (!MORPHO_ISNIL(r->symbol)) morpho_printvalue(NULL, r->symbol);
+        if (!MORPHO_ISNIL(r->type)) {
+            printf(" [");
+            morpho_printvalue(NULL, r->type);
+            printf("]");
+        }
+        printf("\n");
+    }
+    printf("--End globals\n");
+}
+
 /* Moves the result of a calculation to an global variable */
-static codeinfo compiler_movetoglobal(compiler *c, syntaxtreenode *node, codeinfo in, globalindx slot) {
+codeinfo compiler_movetoglobal(compiler *c, syntaxtreenode *node, codeinfo in, globalindx slot) {
     codeinfo use = in;
     codeinfo out = CODEINFO_EMPTY;
     bool tmp=false;
@@ -942,18 +1115,21 @@ static codeinfo compiler_movetoglobal(compiler *c, syntaxtreenode *node, codeinf
         tmp=true;
     }
 
+    value type=MORPHO_NIL;
+    if (compiler_regcurrenttype(c, in.dest, &type)) {
+        if (!compiler_checkglobaltype(c, node, slot, type)) goto compiler_movetoglobal_cleanup;
+    }
+    
     compiler_addinstruction(c, ENCODE_LONG(OP_SGL, use.dest, slot) , node);
     out.ninstructions++;
 
-    if (tmp) {
-        compiler_releaseoperand(c, use);
-    }
-
+compiler_movetoglobal_cleanup:
+    
+    if (tmp) compiler_releaseoperand(c, use);
     return out;
 }
 
-
-static codeinfo compiler_addvariable(compiler *c, syntaxtreenode *node, value symbol) {
+codeinfo compiler_addvariable(compiler *c, syntaxtreenode *node, value symbol) {
     codeinfo out=CODEINFO_EMPTY;
 
     if (compiler_checkglobal(c)) {
@@ -989,6 +1165,19 @@ registerindx compiler_addupvalue(functionstate *f, bool islocal, indx ix) {
     return (registerindx) f->upvalues.count-1;
 }
 
+/** Propagates upvalues up the functionstate stack.
+    @param c    the compiler
+    @param start    the initial functionstate
+    @param sindx    starting index
+    @returns register index at the top of the function state */
+registerindx compiler_propagateupvalues(compiler *c, functionstate *start, registerindx sindx) {
+    registerindx indx=sindx;
+    for (functionstate *f = start; f<c->fstack+c->fstackp; f++) {
+        indx=compiler_addupvalue(f, f==start, indx);
+    }
+    return indx;
+}
+
 /** @brief Determines whether a symbol refers to something outside its scope
     @param c      the compiler
     @param symbol symbol to resolve
@@ -1009,9 +1198,7 @@ static registerindx compiler_resolveupvalue(compiler *c, value symbol) {
     }
 
     /* Now walk up the functionstate stack adding in the upvalues */
-    if (found) for (functionstate *f = found; f<c->fstack+c->fstackp; f++) {
-        indx=compiler_addupvalue(f, f==found, indx);
-    }
+    if (found) indx=compiler_propagateupvalues(c, found, indx);
 
     return indx;
 }
@@ -1042,12 +1229,196 @@ static codeinfo compiler_movetoupvalue(compiler *c, syntaxtreenode *node, codein
 indx compiler_closure(compiler *c, syntaxtreenode *node, registerindx reg) {
     functionstate *f=compiler_currentfunctionstate(c);
     objectfunction *func = f->func;
+    
     indx ix=REGISTER_UNALLOCATED;
-
     if (f->upvalues.count>0) {
         object_functionaddprototype(func, &f->upvalues, &ix);
     }
     return ix;
+}
+
+/* ------------------------------------------
+ * Manage the functionref stack
+ * ------------------------------------------- */
+
+DEFINE_VARRAY(functionref, functionref)
+
+/** Adds a reference to a function in the current functionstate */
+int compiler_addfunctionref(compiler *c, objectfunction *func) {
+    functionstate *f=compiler_currentfunctionstate(c);
+    functionref ref = { .function = func, .symbol = func->name, .scopedepth = f->scopedepth};
+    return varray_functionrefwrite(&f->functionref, ref);
+}
+
+/** Removes functions visible at a given scope level */
+void compiler_functionreffreeatscope(compiler *c, unsigned int scope) {
+    functionstate *f=compiler_currentfunctionstate(c);
+    
+    while (f->functionref.count>0 && f->functionref.data[f->functionref.count-1].scopedepth>=scope) f->functionref.count--;
+}
+
+void _addmatchingfunctionref(compiler *c, value symbol, value fn, value *out) {
+    value in = *out;
+    if (MORPHO_ISNIL(in)) {
+        // If the function has a signature, will need to wrap in a metafunction
+        if (MORPHO_ISFUNCTION(fn) && function_hastypedparameters(MORPHO_GETFUNCTION(fn))) {
+            if (metafunction_wrap(symbol, fn, out)) {
+                program_bindobject(c->out, MORPHO_GETOBJECT(*out));
+            }
+        } else *out=fn;
+    } else if (MORPHO_ISFUNCTION(in)) {
+        if (metafunction_wrap(symbol, in, out)) { metafunction_add(MORPHO_GETMETAFUNCTION(*out), fn);
+            program_bindobject(c->out, MORPHO_GETOBJECT(*out));
+        }
+    } else if (MORPHO_ISMETAFUNCTION(in)) {
+        metafunction_add(MORPHO_GETMETAFUNCTION(in), fn);
+    }
+}
+
+/** Finds an existing metafunction in the current context that matches a given set of implementations */
+bool compiler_findmetafunction(compiler *c, value symbol, int n, value *fns, codeinfo *out) {
+    functionstate *f=compiler_currentfunctionstate(c);
+    
+    for (int i=0; i<f->func->konst.count; i++) {
+        value v = f->func->konst.data[i];
+        if (MORPHO_ISMETAFUNCTION(v) &&
+            MORPHO_ISEQUAL(MORPHO_GETMETAFUNCTION(v)->name, symbol) &&
+            metafunction_matchset(MORPHO_GETMETAFUNCTION(v), n, fns)) {
+            *out = CODEINFO(CONSTANT, i, 0);
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/** Finds a closure, looking back up the functionstate stack and propagating upvalues as necessary */
+void _findclosure(compiler *c, objectfunction *closure, codeinfo *out) {
+    functionstate *fc = compiler_currentfunctionstate(c);
+    
+    if (fc->func==closure->parent) {
+        out->returntype=REGISTER;
+        out->dest = (registerindx) closure->creg;
+    } else {
+        out->returntype=UPVALUE;
+        
+        for (functionstate *f=fc; f>=c->fstack; f--) {
+            if (f->func==closure->parent) {
+                f->registers.data[closure->creg].iscaptured=true;
+                out->dest=compiler_propagateupvalues(c, f, closure->creg);
+                return;
+            }
+        }
+
+        UNREACHABLE("Couldn't locate parent of closure.");
+    }
+}
+
+/** Compile a metafunction constructor by setting up a call to the Metafunction() constructor */
+codeinfo compiler_metafunction(compiler *c, syntaxtreenode *node, int n, value *fns) {
+    codeinfo out = compiler_findbuiltin(c, node, METAFUNCTION_CLASSNAME, REGISTER_UNALLOCATED);
+
+    for (int i=0; i<n; i++) { // Loop over the implementations
+        registerindx reg=compiler_regalloctop(c);
+        codeinfo val = CODEINFO(CONSTANT, REGISTER_UNALLOCATED, 0);
+        
+        if (MORPHO_ISFUNCTION(fns[i]) && function_isclosure(MORPHO_GETFUNCTION(fns[i]))) {
+            _findclosure(c, MORPHO_GETFUNCTION(fns[i]), &val);
+        } else {
+            val.dest = compiler_addconstant(c, node, fns[i], true, false);
+        }
+        
+        val=compiler_movetoregister(c, node, val, reg);
+        out.ninstructions+=val.ninstructions;
+    }
+
+    /* Make the function call */
+    compiler_addinstruction(c, ENCODE_DOUBLE(OP_CALL, out.dest, n), node);
+    out.ninstructions++;
+    compiler_regfreetoend(c, out.dest+1);
+    
+    return out;
+}
+
+/** Checks for duplicate function refs */
+static bool _checkduplicateref(varray_functionref *refs, functionref *match) {
+    for (int i=0; i<refs->count; i++) {
+        functionref *r = &refs->data[i];
+        // Match functionrefs with the same signature, but only if they're
+        // in a different scope or parent 
+        if (signature_isequal(&r->function->sig, &match->function->sig) &&
+            (r->function->parent!=match->function->parent ||
+             r->scopedepth!=match->scopedepth)) return true;
+    }
+    return false;
+}
+
+/** Collects function implementations that match a given symbol */
+static void _findfunctionref(compiler *c, value symbol, bool *hasclosure, varray_value *out) {
+    bool closure=false;
+    
+    varray_functionref refs;
+    varray_functionrefinit(&refs);
+    
+    functionstate *fc = compiler_currentfunctionstate(c);
+    for (functionstate *f=fc; f>=c->fstack; f--) { // Go backwards to prioritize recent def'ns
+        for (int i=f->functionref.count-1; i>=0; i--) { // Go backwards
+            functionref *ref=&f->functionref.data[i];
+            if (MORPHO_ISEQUAL(ref->symbol, symbol) &&
+                !_checkduplicateref(&refs, ref)) {
+                closure |= function_isclosure(ref->function);
+                varray_functionrefadd(&refs, ref, 1);
+            }
+        }
+    }
+    
+    // Return the collected implementations
+    for (int i=0; i<refs.count; i++) {
+        varray_valuewrite(out, MORPHO_OBJECT(refs.data[i].function));
+    }
+    
+    varray_functionrefclear(&refs);
+    
+    *hasclosure=closure;
+}
+
+/** Determines whether a symbol refers to one (or more) functions. If so, returns either a single function or a metafunction as appropriate. */
+bool compiler_resolvefunctionref(compiler *c, syntaxtreenode *node, value symbol, codeinfo *out) {
+    value outfn=MORPHO_NIL;
+    bool closure=false; // Set if one of the references contains a closure.
+    
+    varray_value fns;
+    varray_valueinit(&fns);
+    
+    _findfunctionref(c, symbol, &closure, &fns);
+ 
+    if (!fns.count) return false; // No need to clear an empty varray
+    
+    if (closure) {
+        if (fns.count>1) { // If the list contains a closure, we must build the MF at runtime
+            *out = compiler_metafunction(c, node, fns.count, fns.data);
+        } else { // If just one closure, no need to build a metafunction
+            _findclosure(c, MORPHO_GETFUNCTION(fns.data[0]), out);
+            out->ninstructions=0;
+        }
+    } else if (!compiler_findmetafunction(c, symbol, fns.count, fns.data, out)) {
+        // If a suitable MF doesn't exist in the constant table, we should build one
+        for (int i=0; i<fns.count; i++) {
+            _addmatchingfunctionref(c, symbol, fns.data[i], &outfn);
+        }
+        
+        if (MORPHO_ISMETAFUNCTION(outfn)) {
+            metafunction_compile(MORPHO_GETMETAFUNCTION(outfn), &c->err);
+        }
+        
+        out->returntype=CONSTANT;
+        out->dest=compiler_addconstant(c, node, outfn, true, false);
+        out->ninstructions=0;
+    }
+    
+    varray_valueclear(&fns);
+    
+    return true;
 }
 
 /* ------------------------------------------
@@ -1093,9 +1464,7 @@ static registerindx compiler_resolveself(compiler *c) {
     }
 
     /* Now walk up the functionstate stack adding in the upvalues */
-    if (found) for (functionstate *f = found; f<c->fstack+c->fstackp; f++) {
-        indx=compiler_addupvalue(f, f==found, indx);
-    }
+    if (found) indx = compiler_propagateupvalues(c, found, indx);
 
     return indx;
 }
@@ -1332,6 +1701,7 @@ compilenoderule noderules[] = {
 
     { compiler_print         },      // NODE_PRINT
     { compiler_declaration   },      // NODE_DECLARATION
+    { compiler_declaration   },      // NODE_TYPE
     { compiler_function      },      // NODE_FUNCTION
     { NODE_NORULE            },      // NODE_METHOD
     { compiler_class         },      // NODE_CLASS
@@ -1384,6 +1754,11 @@ static codeinfo compiler_list(compiler *c, syntaxtreenode *node, registerindx re
     char *classname = LIST_CLASSNAME;
     if (node->type==NODE_TUPLE) classname = TUPLE_CLASSNAME;
     codeinfo out = compiler_findbuiltin(c, node, classname, reqout);
+    
+    value listtype=MORPHO_NIL; /* Set the type associated with the register */
+    if (compiler_findtypefromcstring(c, classname, &listtype)) {
+        if (!compiler_regsetcurrenttype(c, node, out.dest, listtype)) return CODEINFO_EMPTY;
+    }
 
     varray_syntaxtreeindxinit(&entries);
     if (node->right!=SYNTAXTREE_UNCONNECTED) syntaxtree_flatten(compiler_getsyntaxtree(c), node->right, 1, dictentrytype, &entries);
@@ -1423,6 +1798,11 @@ static codeinfo compiler_dictionary(compiler *c, syntaxtreenode *node, registeri
     /* Set up a call to the Dictionary() function */
     codeinfo out = compiler_findbuiltin(c, node, DICTIONARY_CLASSNAME, reqout);
 
+    value dicttype=MORPHO_NIL; /* Set the type associated with the register */
+    if (compiler_findtypefromcstring(c, DICTIONARY_CLASSNAME, &dicttype)) {
+        if (!compiler_regsetcurrenttype(c, node, out.dest, dicttype)) return CODEINFO_EMPTY;
+    }
+    
     varray_syntaxtreeindxinit(&entries);
     /* Flatten all the child nodes; these end up as a sequence: key, val, key, val, ... */
     if (node->left!=SYNTAXTREE_UNCONNECTED) syntaxtree_flatten(compiler_getsyntaxtree(c), node->left, 2, dictentrytype, &entries);
@@ -1470,6 +1850,11 @@ static codeinfo compiler_range(compiler *c, syntaxtreenode *node, registerindx r
 
     /* Set up a call to the Range() function */
     codeinfo rng = compiler_findbuiltin(c, node, RANGE_CLASSNAME, reqout);
+    
+    value rngtype=MORPHO_NIL; /* Set the type associated with the register */
+    if (compiler_findtypefromcstring(c, RANGE_CLASSNAME, &rngtype)) {
+        if (!compiler_regsetcurrenttype(c, node, rng.dest, rngtype)) return CODEINFO_EMPTY;
+    }
 
     /* Construct the arguments */
     unsigned int n;
@@ -2329,13 +2714,23 @@ static codeinfo compiler_logical(compiler *c, syntaxtreenode *node, registerindx
 
 /** Compile declarations */
 static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, registerindx reqout) {
-    syntaxtreenode *varnode = compiler_getnode(c, node->left);
+    syntaxtreenode *decnode = node;
+    syntaxtreenode *typenode = NULL;
+    
+    if (node->type==NODE_TYPE) {
+        typenode=compiler_getnode(c, node->left);
+        decnode=compiler_getnode(c, node->right);
+    }
+    
+    syntaxtreenode *varnode = NULL;
     syntaxtreenode *lftnode = NULL, *indxnode = NULL;
-    codeinfo right;
-    value var=MORPHO_NIL;
+    codeinfo right=CODEINFO_EMPTY;
+    value var=MORPHO_NIL, type=MORPHO_NIL;
     registerindx reg;
     unsigned int ninstructions = 0;
-
+    
+    varnode=compiler_getnode(c, decnode->left);
+    
     /* Find the symbol */
     if (varnode) {
         if (varnode->type==NODE_SYMBOL) {
@@ -2364,10 +2759,16 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
             reg=compiler_regtemp(c, REGISTER_UNALLOCATED);
         }
 
+        if (typenode &&
+            compiler_findtype(c, typenode->content, &type)) {
+            compiler_regsettype(c, reg, type);
+            if (vloc.returntype==GLOBAL) compiler_setglobaltype(c, vloc.dest, type);
+        }
+        
         /* If this is an array, we must create it */
         if (indxnode) {
             /* Set up a call to the Array() function */
-            array=compiler_findbuiltin(c, node, ARRAY_CLASSNAME, reqout);
+            array=compiler_findbuiltin(c, decnode, ARRAY_CLASSNAME, reqout);
             ninstructions+=array.ninstructions;
 
             // Dimensions
@@ -2376,13 +2777,13 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
             ninstructions+=indxinfo.ninstructions;
 
             // Initializer
-            if (node->right!=SYNTAXTREE_UNCONNECTED) {
+            if (decnode->right!=SYNTAXTREE_UNCONNECTED) {
                 iend=compiler_regalloctop(c);
 
-                right = compiler_nodetobytecode(c, node->right, iend);
+                right = compiler_nodetobytecode(c, decnode->right, iend);
                 ninstructions+=right.ninstructions;
 
-                right=compiler_movetoregister(c, node, right, iend); // Ensure in register
+                right=compiler_movetoregister(c, decnode, right, iend); // Ensure in register
                 ninstructions+=right.ninstructions;
             }
 
@@ -2393,47 +2794,83 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
             compiler_regfreetoend(c, istart);
 
             if (vloc.returntype==REGISTER && array.dest!=vloc.dest) { // Move to correct register
-                codeinfo move=compiler_movetoregister(c, node, array, vloc.dest);
+                codeinfo move=compiler_movetoregister(c, decnode, array, vloc.dest);
                 ninstructions+=move.ninstructions;
             } else reg=array.dest;
 
-        } else if (node->right!=SYNTAXTREE_UNCONNECTED) { /* Not an array, but has an initializer */
-            right = compiler_nodetobytecode(c, node->right, reg);
+        } else if (decnode->right!=SYNTAXTREE_UNCONNECTED) { /* Not an array, but has an initializer */
+            right = compiler_nodetobytecode(c, decnode->right, reg);
             ninstructions+=right.ninstructions;
 
             /* Ensure operand is in the desired register  */
-            right=compiler_movetoregister(c, node, right, reg);
+            right=compiler_movetoregister(c, decnode, right, reg);
             ninstructions+=right.ninstructions;
-
-            compiler_releaseoperand(c, right);
         } else { /* Otherwise, we should zero out the register */
-            registerindx cnil = compiler_addconstant(c, node, MORPHO_NIL, false, false);
+            registerindx cnil = compiler_addconstant(c, decnode, MORPHO_NIL, false, false);
             compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, cnil), node);
             ninstructions++;
         }
 
         if (vloc.returntype!=REGISTER) {
-            codeinfo mv=compiler_movefromregister(c, node, vloc, reg);
+            codeinfo mv=compiler_movefromregister(c, decnode, vloc, reg);
             ninstructions+=mv.ninstructions;
 
             compiler_regfreetemp(c, reg);
         }
+        
+        compiler_releaseoperand(c, right);
     }
 
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
 
 /** Compiles an parameter declaration */
-static void compiler_functionparameters(compiler *c, syntaxtreeindx indx) {
+static registerindx compiler_functionparameters(compiler *c, syntaxtreeindx indx) {
     syntaxtreenode *node = compiler_getnode(c, indx);
-    if (!node) return;
+    if (!node) return REGISTER_UNALLOCATED;
 
     switch(node->type) {
         case NODE_SYMBOL:
         {
             if (!compiler_hasvariadicarg(c)) {
-                compiler_addlocal(c, node, node->content);
+                return compiler_addlocal(c, node, node->content);
             } else compiler_error(c, node, COMPILE_VARPRMLST);
+        }
+            break;
+        case NODE_TYPE:
+        {
+            value type=MORPHO_NIL;
+            syntaxtreenode *typenode = compiler_getnode(c, node->left);
+            if (!typenode) UNREACHABLE("Incorrectly formed type node.");
+            if (typenode->type==NODE_DOT) {
+                syntaxtreenode *nsnode = compiler_getnode(c, typenode->left);
+                syntaxtreenode *labelnode = compiler_getnode(c, typenode->right);
+                
+                if (!(nsnode &&
+                    labelnode &&
+                    MORPHO_ISSTRING(nsnode->content) &&
+                    MORPHO_ISSTRING(labelnode->content))) UNREACHABLE("Incorrectly formed type namespace node.");
+                
+                if (!compiler_isnamespace(c, nsnode->content)) {
+                    compiler_error(c, nsnode, COMPILE_UNKNWNNMSPC, MORPHO_GETCSTRING(nsnode->content));
+                    return REGISTER_UNALLOCATED;
+                }
+                
+                if (!compiler_findclasswithnamespace(c, typenode, nsnode->content, labelnode->content, &type)) {
+                    compiler_error(c, typenode, COMPILE_SYMBOLNOTDEFINEDNMSPC, MORPHO_GETCSTRING(nsnode->content), MORPHO_GETCSTRING(labelnode->content));
+                    return REGISTER_UNALLOCATED;
+                }
+                    
+            } else if (MORPHO_ISSTRING(typenode->content)) {
+                if (!compiler_findtype(c, typenode->content, &type)) {
+                    compiler_error(c, node, COMPILE_UNKNWNTYPE, MORPHO_GETCSTRING(typenode->content));
+                    return REGISTER_UNALLOCATED;
+                }
+            } else UNREACHABLE("Type node should have string label.");
+            
+            registerindx reg = compiler_functionparameters(c, node->right);
+            compiler_regsettype(c, reg, type);
+            compiler_regsetcurrenttype(c, node, reg, type);
         }
             break;
         case NODE_ASSIGN:
@@ -2463,6 +2900,8 @@ static void compiler_functionparameters(compiler *c, syntaxtreeindx indx) {
             compiler_error(c, node, COMPILE_ARGSNOTSYMBOLS);
             break;
     }
+    
+    return REGISTER_UNALLOCATED;;
 }
 
 value _selfsymbol;
@@ -2495,6 +2934,9 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     
     /* Add the function as a constant */
     kindx=compiler_addconstant(c, node, MORPHO_OBJECT(func), false, false);
+    
+    /* Keep a reference to the function */
+    if (!ismethod) compiler_addfunctionref(c, func);
 
     /* Begin the new function definition, finding whether the current function
        is a regular function or a method declaration by looking at currentmethod */
@@ -2513,6 +2955,11 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     compiler_functionparameters(c, node->left);
 
     func->nargs=compiler_regtop(c);
+    
+    value signature[func->nargs+1];
+    for (int i=0; i<func->nargs; i++) compiler_regtype(c, i+1, &signature[i]);
+    function_setsignature(func, signature);
+    signature_setvarg(&func->sig, function_hasvargs(func));
 
     /* Check we don't have too many arguments */
     if (func->nargs>MORPHO_MAXARGS) {
@@ -2525,17 +2972,12 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     ninstructions+=bodyinfo.ninstructions;
 
     /* Add a return instruction if necessary */
-    //if (DECODE_OP(compiler_previousinstruction(c))!=OP_RETURN) { // 8/11/21 -> fix for final return in if
-    if (true) {
-        /* Methods automatically return self unless another argument is specified */
-        if (ismethod) {
-            compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, 0), node); /* Add a return */
-        } else {
-            compiler_addinstruction(c, ENCODE_BYTE(OP_RETURN), node); /* Add a return */
-        }
-
-        ninstructions++;
+    if (ismethod) { // Methods automatically return self unless another argument is specified
+        compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, 0), node); /* Add a return */
+    } else {
+        compiler_addinstruction(c, ENCODE_BYTE(OP_RETURN), node); /* Add a return */
     }
+    ninstructions++;
 
     /* Verify if we have any outstanding forward references */
     compiler_checkoutstandingforwardreference(c);
@@ -2551,14 +2993,17 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         /* Generate a closure prototype if necessary */
         closure=compiler_closure(c, node, REGISTER_UNALLOCATED);
 
-        /* Allocate a variable to refer to the function definition */
+        /* Allocate a variable to refer to the function definition, but only in global
+           context */
+        /* TODO: Do we need to do this now functionstates capture function info? */
         codeinfo fvar=CODEINFO_EMPTY;
-        if (isanonymous) {
-            fvar.dest=compiler_regtemp(c, reqout);
-            fvar.returntype=REGISTER;
-        } else {
-            /* Check if this resolves a forward reference */
-            if (!compiler_resolveforwardreference(c, func->name, &fvar)) {
+        fvar.dest=compiler_regtemp(c, reqout);
+        fvar.returntype=REGISTER;
+        
+        if (!isanonymous) {
+            if (!compiler_resolveforwardreference(c, func->name, &fvar) &&
+                compiler_checkglobal(c)) {
+                compiler_regfreetemp(c, fvar.dest);
                 fvar=compiler_addvariable(c, node, node->content);
             }
         }
@@ -2573,6 +3018,10 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 
         /* Wrap in a closure if necessary */
         if (closure!=REGISTER_UNALLOCATED) {
+            // Save the register where the closure is to be found
+            compiler_regsetsymbol(c, reg, func->name);
+            compiler_regsettype(c, reg, _closuretype);
+            function_setclosure(func, reg);
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_CLOSURE, reg, (registerindx) closure), node);
             ninstructions++;
         }
@@ -2686,11 +3135,26 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     registerindx top=compiler_regtop(c);
 
     compiler_beginargs(c);
-
-    /* Compile the function selector */
+    
+    // Check if the call is a constructor
     syntaxtreenode *selnode=compiler_getnode(c, node->left);
+    
+    value rtype=MORPHO_NIL;
+    if (selnode->type==NODE_SYMBOL) { // A regular call from a symbol
+        compiler_findtype(c, selnode->content, &rtype);
+    } else if (selnode->type==NODE_DOT) { // An constructor in a namespace?
+        syntaxtreenode *nsnode = compiler_getnode(c, selnode->left);
+        syntaxtreenode *snode = compiler_getnode(c, selnode->right);
+        if (nsnode && snode &&
+            compiler_isnamespace(c, nsnode->content)) {
+            compiler_findclasswithnamespace(c, snode, nsnode->content, snode->content, &rtype);
+            compiler_catch(c, COMPILE_SYMBOLNOTDEFINEDNMSPC); // We don't care if it wasn't there
+        }
+    }
+    
+    // Compile the selector
     codeinfo func = compiler_nodetobytecode(c, node->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
-
+    
     // Detect possible forward reference
     if (selnode->type==NODE_SYMBOL && compiler_catch(c, COMPILE_SYMBOLNOTDEFINED)) {
         syntaxtreenode *symbol=compiler_getnode(c, node->left);
@@ -2728,11 +3192,14 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
 
     /* Free all the registers used for the call */
     compiler_regfreetoend(c, func.dest+1);
+    
+    /* Set the current type of the register */
+    compiler_regsetcurrenttype(c, selnode, func.dest, rtype);
 
     /* Move the result to the requested register */
     if (reqout!=REGISTER_UNALLOCATED && func.dest!=reqout) {
-        compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, reqout, func.dest), node);
-        ninstructions++;
+        codeinfo mv = compiler_movetoregister(c, node, func, reqout);
+        ninstructions+=mv.ninstructions;
         compiler_regfreetemp(c, func.dest);
         func.dest=reqout;
     }
@@ -2862,8 +3329,25 @@ static codeinfo compiler_method(compiler *c, syntaxtreenode *node, registerindx 
                 /* Insert the compiled function into the method dictionary, making sure the method name is interned */
                 objectfunction *method = compiler_getpreviousfunction(c);
                 if (method) {
-                    value symbol = program_internsymbol(c->out, node->content);
-                    dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(method));
+                    value omethod = MORPHO_OBJECT(method);
+                    value symbol = program_internsymbol(c->out, node->content),
+                          prev=MORPHO_NIL;
+                    
+                    if (dictionary_get(&klass->methods, symbol, &prev)) {
+                        if (MORPHO_ISMETAFUNCTION(prev)) { // Add the method to the mf.
+                            metafunction_add(MORPHO_GETMETAFUNCTION(prev), omethod);
+                        } else { // Check if we're replacing an inherited method
+                            if ((MORPHO_ISFUNCTION(prev) &&
+                                MORPHO_GETFUNCTION(prev)->klass!=klass) ||
+                                (MORPHO_ISBUILTINFUNCTION(prev))) { // Just overwrite it
+                                    dictionary_insert(&klass->methods, symbol, omethod);
+                            } else { // We're not, so wrap in a mf.
+                                metafunction_wrap(symbol, prev, &prev);
+                                metafunction_add(MORPHO_GETMETAFUNCTION(prev), omethod);
+                                dictionary_insert(&klass->methods, symbol, prev);
+                            }
+                        }
+                    } else dictionary_insert(&klass->methods, symbol, omethod); // Just insert
                 }
             }
             break;
@@ -2947,6 +3431,7 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
             if (superclass) {
                 if (superclass!=klass) {
                     if (!klass->superclass) klass->superclass=superclass; // Only the first class is the super class, all others are mixins.
+                    compiler_addparent(c, klass, superclass);
                     dictionary_copy(&superclass->methods, &klass->methods);
                 } else {
                     compiler_error(c, snode, COMPILE_CLASSINHERITSELF);
@@ -2962,6 +3447,11 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
     } else {
         klass->superclass=baseclass;
         if (baseclass) dictionary_copy(&baseclass->methods, &klass->methods);
+    }
+    
+    /* Now compute the class linearization */
+    if (!class_linearize(klass)) {
+        compiler_error(c, node, COMPILE_CLSSLNRZ, MORPHO_GETCSTRING(klass->name));
     }
 
     /* Compile method declarations */
@@ -3044,20 +3534,30 @@ static codeinfo compiler_super(compiler *c, syntaxtreenode *node, registerindx r
 /** Lookup a symbol */
 static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo ret=CODEINFO_EMPTY;
-
+    value type;
+    
     /* Is it a local variable? */
     ret.dest=compiler_getlocal(c, node->content);
-    if (ret.dest!=REGISTER_UNALLOCATED) return ret;
+    if (ret.dest!=REGISTER_UNALLOCATED &&
+        compiler_regtype(c, ret.dest, &type) && // If it's a closure it should be resolved later
+        !MORPHO_ISEQUAL(type, _closuretype)) {
+        return ret;
+    }
 
+    /* Is it a reference to a function? */
+    if (compiler_resolvefunctionref(c, node, node->content, &ret)) {
+        return ret;
+    }
+    
     /* Is it an upvalue? */
     ret.dest = compiler_resolveupvalue(c, node->content);
     if (ret.dest!=REGISTER_UNALLOCATED) {
         ret.returntype=UPVALUE;
         return ret;
     }
-
+    
     /* Is it a global variable */
-    ret.dest=compiler_getglobal(c, node->content, true);
+    ret.dest=compiler_findglobal(c, node->content, true);
     if (ret.dest!=REGISTER_UNALLOCATED) {
         ret.returntype=GLOBAL;
         return ret;
@@ -3134,7 +3634,7 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
 
             /* .. or a global? */
             if (reg==REGISTER_UNALLOCATED) {
-                reg=compiler_getglobal(c, var, true);
+                reg=compiler_findglobal(c, var, true);
                 if (reg!=REGISTER_UNALLOCATED) {
                     if (indxnode) {
                         /* If an indexed global, move the global into a register */
@@ -3262,7 +3762,10 @@ static codeinfo compiler_dot(compiler *c, syntaxtreenode *node, registerindx req
         
         if (MORPHO_ISINTEGER(out)) {
             return CODEINFO(GLOBAL, MORPHO_GETINTEGERVALUE(out), 0);
-        } else if (MORPHO_ISBUILTINFUNCTION(out) || MORPHO_ISCLASS(out)) {
+        } else if (MORPHO_ISFUNCTION(out) ||
+                   MORPHO_ISMETAFUNCTION(out) ||
+                   MORPHO_ISBUILTINFUNCTION(out) ||
+                   MORPHO_ISCLASS(out)) {
             registerindx indx = compiler_addconstant(c, node, out, true, false);
             return CODEINFO(CONSTANT, indx, 0);
         } else {
@@ -3397,6 +3900,45 @@ void compiler_copysymbols(dictionary *src, dictionary *dest, dictionary *compare
     }
 }
 
+/** Copies the global function ref into the destination compiler's current function ref */
+void compiler_copyfunctionref(compiler *src, compiler *dest, dictionary *fordict) {
+    functionstate *in=compiler_currentfunctionstate(src);
+    functionstate *out=compiler_currentfunctionstate(dest);
+    
+    if (fordict) {
+        for (int i=0; i<in->functionref.count; i++) {
+            functionref *ref=&in->functionref.data[i];
+            if (!dictionary_get(fordict, ref->function->name, NULL)) continue;
+            
+            varray_functionrefwrite(&out->functionref, in->functionref.data[i]);
+        }
+    } else varray_functionrefadd(&out->functionref, in->functionref.data, in->functionref.count);
+}
+
+/** Copies the global function ref into the designated namespace, checking whether the functions are present in the dictionary, and creating metafunctions where necessary */
+void compiler_copyfunctionreftonamespace(compiler *src, namespc *dest, dictionary *fordict) {
+    functionstate *f=compiler_currentfunctionstate(src);
+    
+    dictionary symbols;
+    dictionary_init(&symbols);
+    
+    for (int i=0; i<f->functionref.count; i++) {
+        functionref *ref=&f->functionref.data[i];
+        // Skip if not in the fordict
+        if (fordict && !dictionary_get(fordict, ref->function->name, NULL)) continue;
+        
+        value fn=MORPHO_OBJECT(ref->function);
+        if (dictionary_get(&symbols, ref->function->name, &fn)) {
+            // If the function already exists, wrap in a metafunction
+            _addmatchingfunctionref(src, ref->function->name, MORPHO_OBJECT(ref->function), &fn);
+        }
+        dictionary_insert(&symbols, ref->function->name, fn);
+    }
+    
+    compiler_copysymbols(&symbols, &dest->symbols, NULL);
+    dictionary_clear(&symbols);
+}
+
 /** Searches for a module with given name, returns the file name for inclusion. */
 bool compiler_findmodule(char *name, varray_char *fname) {
     char *ext[] = { MORPHO_EXTENSION, "" };
@@ -3516,8 +4058,10 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                 compiler_copysymbols(&cc.globals, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
                 if (nmspace) { // If we're in a namespace, copy the class table into that
                     compiler_copysymbols(&cc.classes, &nmspace->classes, (fordict.count>0 ? &fordict : NULL));
+                    compiler_copyfunctionreftonamespace(&cc, nmspace, (fordict.count>0 ? &fordict : NULL));
                 } else { // Otherwise just put it into the parent compiler's class table
                     compiler_copysymbols(&cc.classes, &c->classes, (fordict.count>0 ? &fordict : NULL));
+                    compiler_copyfunctionref(&cc, c, (fordict.count>0 ? &fordict : NULL));
                 }
                 
                 objectdictionary *dict = object_newdictionary(); // Preserve all symbols for further imports
@@ -3527,7 +4071,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                 }
                 
             } else {
-                c->err.module = cc.err.module;
+                c->err.file = (cc.err.file ? cc.err.file : MORPHO_GETCSTRING(modname));
             }
             
             debugannotation_setmodule(&c->out->annotations, compiler_getmodule(c));
@@ -3671,9 +4215,7 @@ bool morpho_compile(char *in, compiler *c, bool opt, error *err) {
 compiler *morpho_newcompiler(program *out) {
     compiler *new = MORPHO_MALLOC(sizeof(compiler));
 
-    if (new) {
-        compiler_init("", out, new);
-    }
+    if (new) compiler_init("", out, new);
 
     return new;
 }
@@ -3689,9 +4231,7 @@ void morpho_freecompiler(compiler *c) {
 * ********************************************************************** */
 
 void morpho_setbaseclass(value klss) {
-    if (MORPHO_ISCLASS(klss)) {
-        baseclass=MORPHO_GETCLASS(klss);
-    }
+    if (MORPHO_ISCLASS(klss)) baseclass=MORPHO_GETCLASS(klss);
 }
 
 void morpho_setoptimizer(optimizerfn *opt) {
@@ -3701,6 +4241,9 @@ void morpho_setoptimizer(optimizerfn *opt) {
 /** Initializes the compiler */
 void compile_initialize(void) {
     _selfsymbol=builtin_internsymbolascstring("self");
+    
+    /** Types we need to refer to */
+    _closuretype = MORPHO_OBJECT(object_getveneerclass(OBJECT_CLOSURE));
     
     optimizer = NULL;
 
@@ -3734,6 +4277,12 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_VARPRMLST, ERROR_COMPILE, COMPILE_VARPRMLST_MSG);
     morpho_defineerror(COMPILE_INVLDLBL, ERROR_COMPILE, COMPILE_INVLDLBL_MSG);
     morpho_defineerror(COMPILE_MSSNGINDX, ERROR_COMPILE, COMPILE_MSSNGINDX_MSG);
+    morpho_defineerror(COMPILE_TYPEVIOLATION, ERROR_COMPILE, COMPILE_TYPEVIOLATION_MSG);
+    morpho_defineerror(COMPILE_UNKNWNTYPE, ERROR_COMPILE, COMPILE_UNKNWNTYPE_MSG);
+    morpho_defineerror(COMPILE_UNKNWNNMSPC, ERROR_COMPILE, COMPILE_UNKNWNNMSPC_MSG);
+    morpho_defineerror(COMPILE_UNKNWNTYPENMSPC, ERROR_COMPILE, COMPILE_UNKNWNTYPENMSPC_MSG);
+    
+    morpho_defineerror(COMPILE_CLSSLNRZ, ERROR_COMPILE, COMPILE_CLSSLNRZ_MSG);
     
     morpho_addfinalizefn(compile_finalize);
 }

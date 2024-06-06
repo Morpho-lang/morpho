@@ -302,6 +302,25 @@ value Object_clone(vm *v, int nargs, value *args) {
     return out;
 }
 
+value Object_linearization(vm *v, int nargs, value *args) {
+    value slf=MORPHO_SELF(args);
+    objectclass *klass=NULL;
+    
+    if (MORPHO_ISCLASS(slf)) klass=MORPHO_GETCLASS(slf);
+    else if (MORPHO_ISINSTANCE(slf)) klass=MORPHO_GETINSTANCE(slf)->klass;
+    else return MORPHO_NIL;
+    
+    value out = MORPHO_NIL;
+    
+    objectlist *new = object_newlist(klass->linearization.count, klass->linearization.data);
+    if (new) {
+        out = MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    }
+    
+    return out;
+}
+
 MORPHO_BEGINCLASS(Object)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Object_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Object_setindex, BUILTIN_FLAGSEMPTY),
@@ -314,7 +333,8 @@ MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Object_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Object_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SERIALIZE_METHOD, Object_serialize, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Object_clone, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_CLONE_METHOD, Object_clone, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_LINEARIZATION_METHOD, Object_linearization, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

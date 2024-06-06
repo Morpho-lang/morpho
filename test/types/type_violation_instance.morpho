@@ -1,0 +1,11 @@
+// Type violation by assigning incorrect instance
+
+class A { } 
+
+class B { } 
+
+fn f() {
+    A a = B() // expect error 'TypeErr'
+}
+
+f()

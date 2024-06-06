@@ -1,0 +1,12 @@
+// Namespace with 'for' keyword, and try to overwrite an existing signature
+
+import "namespace.xmorpho" for f 
+
+// Here, we define an implementation for a String input, which already exists in the namespace, so it should raise an error.
+
+fn f(String a) {
+    print a.count()
+}
+
+f("Hi")
+// expect error 'MltplDisptchAmbg'

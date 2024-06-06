@@ -25,6 +25,21 @@ DECLARE_VARRAY(instruction, instruction);
 typedef indx instructionindx;
 
 /* -------------------------------------------------------
+ * Global variables
+ * ------------------------------------------------------- */
+
+/** @brief Index of a global */
+typedef int globalindx;
+
+/** @brief Record information about each global variable */
+typedef struct {
+    value symbol;
+    value type;
+} globalinfo;
+
+DECLARE_VARRAY(globalinfo, globalinfo)
+
+/* -------------------------------------------------------
  * Programs comprise instructions and debugging information
  * ------------------------------------------------------- */
 
@@ -33,7 +48,8 @@ typedef struct {
     varray_instruction code; /** Compiled instructions */
     varray_debugannotation annotations; /** Information about how the code connects to the source */
     objectfunction *global;  /** Pseudofunction containing global data */
-    unsigned int nglobals;
+    varray_globalinfo globals; /** Global variables */
+    varray_value classes; /** Classes defined by this program */
     object *boundlist; /** Linked list of static objects bound to this program */
     dictionary symboltable; /** The symbol table */
 } program;
@@ -45,6 +61,15 @@ varray_value *program_getconstanttable(program *p);
 void program_bindobject(program *p, object *obj);
 
 value program_internsymbol(program *p, value symbol);
+
+globalindx program_addglobal(program *p, value symbol);
+void program_globalsettype(program *p, globalindx indx, value type);
+bool program_globaltype(program *p, globalindx indx, value *type);
+bool program_globalsymbol(program *p, globalindx indx, value *symbol);
+int program_countglobals(program *p);
+
+int program_addclass(program *p, value klass);
+int program_countclasses(program *p, value klass);
 
 #endif /* MORPHO_CORE */
 

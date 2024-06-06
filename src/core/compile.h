@@ -105,6 +105,21 @@
 #define COMPILE_MSSNGINDX                 "MssngIndx"
 #define COMPILE_MSSNGINDX_MSG             "Missing index or indices."
 
+#define COMPILE_TYPEVIOLATION             "TypeErr"
+#define COMPILE_TYPEVIOLATION_MSG         "Type violation: Attempting to assign type %s to %s variable %s."
+
+#define COMPILE_UNKNWNTYPE                "UnknwnType"
+#define COMPILE_UNKNWNTYPE_MSG            "Unknown type '%s'."
+
+#define COMPILE_UNKNWNNMSPC               "UnknwnNmSpc"
+#define COMPILE_UNKNWNNMSPC_MSG           "Unknown namespace '%s'."
+
+#define COMPILE_UNKNWNTYPENMSPC           "UnknwnTypeNmSpc"
+#define COMPILE_UNKNWNTYPENMSPC_MSG       "Unknown type '%s' in namespace '%s'."
+
+#define COMPILE_CLSSLNRZ                  "ClssLnrz"
+#define COMPILE_CLSSLNRZ_MSG              "Can't linearize class %s: Check parent and ancestor classes for conflicting inheritance order."
+
 /* **********************************************************************
  * Compiler typedefs
  * ********************************************************************** */
@@ -112,9 +127,6 @@
 /* -------------------------------------------------------
  * Track globals
  * ------------------------------------------------------- */
-
-/** @brief Index of a global */
-typedef int globalindx;
 
 /** @brief Value to indicate a global has not been allocated */
 #define GLOBAL_UNALLOCATED -1
@@ -136,7 +148,11 @@ typedef struct {
     bool iscaptured; /** Whether the register becomes an upvalue */
     unsigned int scopedepth; /** Scope depth at which the register was allocated */
     value symbol; /** Symbol associated with the register */
+    value type; /** Type associated with the register */
+    value currenttype; /** Current type held by the register */
 } registeralloc;
+
+#define REGISTERALLOC_EMPTY(sdepth, symb) ((registeralloc) {.isallocated=true, .iscaptured=false, .scopedepth=sdepth, .symbol=symb, .type=MORPHO_NIL, .currenttype=MORPHO_NIL})
 
 DECLARE_VARRAY(registeralloc, registeralloc)
 
@@ -183,6 +199,19 @@ typedef struct {
 DECLARE_VARRAY(forwardreference, forwardreference)
 
 /* -------------------------------------------------------
+ * Visible functions
+ * ------------------------------------------------------- */
+
+typedef struct {
+    value symbol; /** Symbol associated with the reference */
+    objectfunction *function; /** The function itself */
+    unsigned int scopedepth; /** Scope depth at which the function was seen */
+    registerindx reg; /** Register corresponding to the closure */
+} functionref;
+
+DECLARE_VARRAY(functionref, functionref)
+
+/* -------------------------------------------------------
  * Function types
  * ------------------------------------------------------- */
 
@@ -204,6 +233,7 @@ typedef struct {
     varray_registeralloc registers;
     varray_upvalue upvalues;
     varray_forwardreference forwardref;
+    varray_functionref functionref; /* Functions visible within this state */
     registerindx varg;
     unsigned int nreg; /* Largest number of registers used */
     unsigned int scopedepth;

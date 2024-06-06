@@ -1,0 +1,15 @@
+// Dipatch a function on value types
+
+fn f(Int x) {
+    return 0
+}
+
+fn f(Float x) {
+    return 1 
+}
+
+print f(1) 
+// expect: 0
+
+print f(0.1)
+// expect: 1

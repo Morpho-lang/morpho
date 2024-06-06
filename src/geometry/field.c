@@ -140,7 +140,7 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, value fnspc, uns
         memcpy(noffset, offset, sizeof(unsigned int)*(ngrades+1));
 
         new->dof=ndof;
-        if (dof) {
+        if (ndof) {
             memcpy(ndof, dof, sizeof(unsigned int)*ngrades);
         } else {
             for (unsigned int i=0; i<ngrades; i++) ndof[i]=0;

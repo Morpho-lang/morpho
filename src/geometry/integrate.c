@@ -11,7 +11,9 @@
 
 #include "matrix.h"
 #include "sparse.h"
-#include "geometry.h"
+#include "mesh.h"
+#include "selection.h"
+#include "functional.h"
 
 bool integrate_recognizequantities(unsigned int nquantity, value *quantity, value *out) {
     if (nquantity>0) {
@@ -1213,7 +1215,6 @@ quadraturerule cubtri19 = {
     .nnodes = 19,
     .nodes = cubtripts,
     .weights = cubtri19wts,
-    .ext = NULL
 };
 
 quadraturerule cubtri7 = {
@@ -1223,7 +1224,6 @@ quadraturerule cubtri7 = {
     .nnodes = 7,
     .nodes = cubtripts,
     .weights = cubtri7wts,
-    .ext = NULL
 };
 
 /* --------------------------------
@@ -1768,7 +1768,7 @@ quadraturerule *quadrules[] = {
     &keast4, &keast5,
     &tet5, &tet6,
 
-    &grundmann1, &grundmann2, &grundmann3, &grundmann4, &grundmann5,
+    &grundmann1, &grundmann2, &grundmann3, &grundmann4,
     NULL
 };
 
@@ -1962,6 +1962,8 @@ void integrator_init(integrator *integrate) {
     integrate->dim=0;
     integrate->nbary=0;
     integrate->nquantity=0;
+    integrate->nqdof=0;
+    integrate->ndof=0;
     
     integrate->adapt=true;
     integrate->rule = NULL;
@@ -1969,9 +1971,12 @@ void integrator_init(integrator *integrate) {
     
     integrate->subdivide = NULL;
     
+    integrate->workp = -1;
+    integrate->freep = -1;
     varray_quadratureworkiteminit(&integrate->worklist);
     varray_doubleinit(&integrate->vertexstack);
     varray_intinit(&integrate->elementstack);
+    varray_valueinit(&integrate->quantitystack);
     
     integrate->ztol = INTEGRATE_ZEROCHECK;
     integrate->tol = INTEGRATE_ACCURACYGOAL;
@@ -1991,7 +1996,11 @@ void integrator_clear(integrator *integrate) {
     varray_quadratureworkitemclear(&integrate->worklist);
     varray_intclear(&integrate->elementstack);
     varray_doubleclear(&integrate->vertexstack);
-    for (int i=0; i<integrate->nquantity; i++) morpho_freeobject(integrate->qval[i]);
+    for (unsigned int i=0; i<integrate->quantitystack.count; i++) {
+        value v=integrate->quantitystack.data[i];
+        if (MORPHO_ISOBJECT(v)) morpho_freeobject(v);
+    }
+    varray_valueclear(&integrate->quantitystack);
 }
 
 /** Adds a vertex to the integrators vertex stack, returning the id */
@@ -2001,31 +2010,65 @@ int integrator_addvertex(integrator *integrate, int ndof, double *v) {
     return vid;
 }
 
-/** Adds an element to the element stack, returning the id. Elements are specified by their coordinates in the reference element */
-int integrator_addelement(integrator *integrate, int *vids) {
+/** Adds an element to the element stack, returning the id. Elements consist of :
+    - vertex ids
+    - a number of quantity ids. */
+int integrator_addelement(integrator *integrate, int *vids, int *qids) {
     int elid=integrate->elementstack.count;
     varray_intadd(&integrate->elementstack, vids, integrate->nbary);
+    if (integrate->nquantity && qids) varray_intadd(&integrate->elementstack, qids, integrate->nbary);
     return elid;
 }
 
-/** Process the list of quantities given */
-void integrator_initializequantities(integrator *integrate, int nq, quantity *quantity) {
-    integrate->nquantity=nq;
-    integrate->quantity=quantity;
-    
+/**
+ Quantities are stored as needed on the quantity stack. The first n values are used
+ to store interpolated values. As new vertices are added, n entries are added to the quantity stack
+
+ | base:          | q list 0:      | q list 1:   |
+ | q0, q1, ... qn | q0, q1, ... qn | q0, q1, ... |
+
+ As elements are added, they include both vertex ids and references to entries on the quantity stack. Each element is 2*nbary entries long:
+
+ nbary               nbary
+ | vid0, vid1, ... : qid0, qid1, ... |
+
+ For each element, we build an interpolation matrix,
+
+ [ x0 y0 q0,0 q1,0 ... qn,0 ]
+ [ x1 y1 q0,1 q1,1 ... qn,1 ]
+ [ x2 y1 q0,2 q1,2 ... qn,2 ]
+
+ which when multiplied by the barycentric coordinates yields the interpolated quantite
+
+ [l0, l1, l2] . Interp -> [ x0, y0, q0, q1, ... qn ] */
+
+/** Adds nq quantities to the quantity stack, returning the id of the first element */
+int integrator_addquantity(integrator *integrate, int nq, value *quantity) {
+    int qid=integrate->quantitystack.count;
     for (int i=0; i<nq; i++) {
-        value q = quantity[i].vals[0]; // Take the first element from each quantity list as paradigmatic
-        if (MORPHO_ISFLOAT(q)) {
-            quantity[i].ndof=1;
-            integrate->qval[i]=q;
-        } else if (MORPHO_ISMATRIX(q)) {
-            objectmatrix *m = MORPHO_GETMATRIX(q);
-            quantity[i].ndof=matrix_countdof(m);
-            
-            objectmatrix *new = object_clonematrix(m); // Use a copy of the matrix
-            integrate->qval[i]=MORPHO_OBJECT(new);
+        if (MORPHO_ISFLOAT(quantity[i])) {
+            varray_valuewrite(&integrate->quantitystack, quantity[i]);
+        } else if (MORPHO_ISMATRIX(quantity[i])) {
+            objectmatrix *new = object_clonematrix(MORPHO_GETMATRIX(quantity[i]));
+            // TODO: Raise error on fail
+            varray_valuewrite(&integrate->quantitystack, MORPHO_OBJECT(new));
+        } else return false;
+    }
+    return qid;
+}
+
+/** Count degrees of freedom */
+void integrator_countquantitydof(integrator *integrate, int nq, value *quantity) {
+    int ndof=0;
+    for (int i=0; i<nq; i++) {
+        if (MORPHO_ISFLOAT(quantity[i])) {
+            ndof++;
+        } else if (MORPHO_ISMATRIX(quantity[i])) {
+            objectmatrix *m = MORPHO_GETMATRIX(quantity[i]);
+            ndof+=matrix_countdof(m);
         } else return;
     }
+    integrate->nqdof=ndof;
 }
 
 /** Retrieves the vertex pointers given an elementid.
@@ -2037,10 +2080,20 @@ void integrator_getvertices(integrator *integrate, int elementid, double **vert)
     }
 }
 
+/** Retrieves the quantity pointers given an elementid.
+ @warning: The pointers returned become invalid after a subsequent call to integrator_addvertex */
+void integrator_getquantities(integrator *integrate, int elementid, value **quantities) {
+    for (int i=0; i<integrate->nbary; i++) {
+        int qid=integrate->elementstack.data[elementid+integrate->nbary+i]; // Note quantities stored after vertices
+        quantities[i]=&(integrate->quantitystack.data[qid]);
+    }
+}
+
 /** Retrieves an element with elementid */
-void integrator_getelement(integrator *integrate, int elementid, int *vid) {
+void integrator_getelement(integrator *integrate, int elementid, int *vid, int *qid) {
     for (int i=0; i<integrate->nbary; i++) {
         vid[i]=integrate->elementstack.data[elementid+i];
+        if (integrate->nquantity && qid) qid[i]=integrate->elementstack.data[elementid+integrate->nbary+i];
     }
 }
 
@@ -2117,73 +2170,74 @@ void integrator_estimate(integrator *integrate) {
  * Linear interpolation
  * -------------------------------- */
 
-/** Construct vertex transformation matrices
- @param[in] integrate - the integrator
- @param[in] vref - vertices specified in reference element (length integrate->nbary)
- @param[out] r - matrix mapping local node coordinates to ref. el coordinates [r has nbary rows and nbary columns]
- @param[out] v - matrix mapping ref. el coordinates to physical coordinates [v has dim rows and nbary columns] */
-void integrator_preparevertices(integrator *integrate, double **vref, double *r, double *v) {
-    int l=0;
-    if (r) for (int i=0; i<integrate->nbary; i++) { // Loop over vertices [defined rel. to ref. element]
-        for (int k=0; k<integrate->nbary; k++) { // Sum over barycentric coordinates
-            r[l]=vref[i][k];
-            l++;
+/*void xlinearinterpolate(int nbary, double *bary, int nels, double **v, double *x) {
+    for (int j=0; j<nels; j++) x[j]=0.0;
+    for (int j=0; j<nels; j++) {
+        for (int k=0; k<nbary; k++) {
+            x[j]+=v[k][j]*bary[k];
         }
     }
-    
-    l=0;
-    if (v) for (int i=0; i<integrate->nbary; i++) { // Loop over vertices [defined rel. to ref. element]
-        for (int j=0; j<integrate->dim; j++) { // Loop over dimensions
-            v[l]=integrate->x[i][j];
-            l++;
+}*/
+
+void linearinterpolate(integrator *integrate, double *bary, double *vmat, double *x) {
+    // Multiply 1 x nbary (lambda) with nbary x dim (vmat)
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 1, integrate->dim+integrate->nqdof, integrate->nbary, 1.0, bary, 1, vmat, integrate->nbary, 0.0, x, 1);
+}
+
+/** Also provide a version using BLAS to accelerate multiplication */
+void preparevertices(integrator *integrate, double **v, double *vv) {
+    int k=0;
+    for (int j=0; j<integrate->dim; j++) {
+        for (int i=0; i<integrate->nbary; i++) {
+            vv[k]=v[i][j];
+            k++;
         }
+    }
+}
+
+/** Prepares quantities for interpolation */
+void preparequantities(integrator *integrate, value **quantity, double *qmat) {
+    int k=0; // DOF counter
+    for (int i=0; i<integrate->nquantity; i++) {
+        if (MORPHO_ISFLOAT(quantity[0][i])) {
+            for (int j=0; j<integrate->nbary; j++) morpho_valuetofloat(quantity[j][i], &qmat[k*integrate->nbary+j]);
+            k++;
+        } else if (MORPHO_ISMATRIX(quantity[0][i])) {
+            for (int j=0; j<integrate->nbary; j++) {
+                objectmatrix *m = MORPHO_GETMATRIX(quantity[j][i]);
+                int mdof=m->ncols*m->nrows;
+                for (int l=0; l<mdof; l++) qmat[(k+l)*integrate->nbary+j]=m->elements[l];
+            }
+        } else return;
     }
 }
 
 /** Sets up interpolation matrix */
-void integrator_prepareinterpolation(integrator *integrate, int elementid, double *rmat, double *vmat) {
+void prepareinterpolation(integrator *integrate, int elementid, double *vmat) {
     double *vert[integrate->nbary]; // Vertex information
+    value *quantity[integrate->nbary]; // Quantities
+    
     integrator_getvertices(integrate, elementid, vert);
-    integrator_preparevertices(integrate, vert, rmat, vmat);
+    preparevertices(integrate, vert, vmat);
+    
+    if (integrate->nquantity) {
+        integrator_getquantities(integrate, elementid, quantity);
+        preparequantities(integrate, quantity, vmat+integrate->nbary*integrate->dim);
+    }
 }
 
-/** Weighted sum of a list */
-double integrator_sumlistweighted(unsigned int nel, double *list, double *wts) {
-    return cblas_ddot(nel, list, 1, wts, 1);
-}
-
-/** Transforms local element coordinates to reference element coordinates */
-void integrator_transformtorefelement(integrator *integrate, double *rmat, double *local, double *bary) {
-    // Multiply nbary x nbary (rmat) with nbary x 1 (local) to get nbary x 1 (bary)
-    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, integrate->nbary, 1, integrate->nbary, 1.0, rmat, integrate->nbary, local, integrate->nbary, 0.0, bary, integrate->nbary);
-}
-
-/** Transform from reference element barycentric coordinates to physical coordinates */
-void integrator_interpolatecoordinates(integrator *integrate, double *lambda, double *vmat, double *x) {
-    // Multiply dim x nbary (vmat) with nbary x 1 (lambda) to get dim x 1 (x)
-    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, integrate->dim, 1, integrate->nbary, 1.0, vmat, integrate->dim, lambda, integrate->nbary, 0.0, x, integrate->dim);
-}
-
-/** Interpolates quantities */
-void integrator_interpolatequantities(integrator *integrate, double *bary) {
+/** Processes the results of interpolation */
+void postprocessquantities(integrator *integrate, double *qout) {
+    int k=0; // DOF counter
     for (int i=0; i<integrate->nquantity; i++) {
-        int nnodes = integrate->quantity[i].nnodes;
-        double wts[nnodes];
-        (integrate->quantity[i].ifn) (bary, wts);
-        
-        if (MORPHO_ISFLOAT(integrate->qval[i])) {
-            double qval[nnodes];
-            for (int j=0; j<nnodes; j++) qval[j]=MORPHO_GETFLOATVALUE(integrate->quantity[i].vals[j]);
-            double val=integrator_sumlistweighted(nnodes, qval, wts);
-            integrate->qval[i]=MORPHO_FLOAT(val);
-        } else if (MORPHO_ISMATRIX(integrate->qval[i])) {
-            objectmatrix *out = MORPHO_GETMATRIX(integrate->qval[i]);
-            matrix_zero(out);
-            for (int j=0; j<nnodes; j++) {
-                matrix_accumulate(out, wts[j], MORPHO_GETMATRIX(integrate->quantity[i].vals[j]));
-            }
+        value q = integrate->quantitystack.data[i];
+        if (MORPHO_ISFLOAT(q)) {
+            integrate->quantitystack.data[i]=MORPHO_FLOAT(qout[k]);
+        } else if (MORPHO_ISMATRIX(q)) {
+            objectmatrix *m = MORPHO_GETMATRIX(q);
+            m->elements=&qout[k];
+            k+=m->ncols*m->nrows;
         }
-        
     }
 }
 
@@ -2191,23 +2245,26 @@ void integrator_interpolatequantities(integrator *integrate, double *bary) {
  * Function to perform quadrature
  * -------------------------------- */
 
+/** Weighted sum of a list */
+double integrate_sumlistweighted(unsigned int nel, double *list, double *wts) {
+    return cblas_ddot(nel, list, 1, wts, 1);
+}
+
 /** Evaluates the integrand at specified places */
-bool integrator_evalfn(integrator *integrate, quadraturerule *rule, int imin, int imax, double *rmat, double *vmat, double *x, double *f) {
-    double node[integrate->nbary];
-    
+bool integrate_evalfn(integrator *integrate, quadraturerule *rule, int imin, int imax, double *vmat, double *x, double *f) {
     for (int i=imin; i<imax; i++) {
-        integrator_transformtorefelement(integrate, rmat, &rule->nodes[integrate->nbary*i], node);
-        integrator_interpolatecoordinates(integrate, node, vmat, x);
-        integrator_interpolatequantities(integrate, node);
+        // Interpolate the point and quantities
+        linearinterpolate(integrate, &rule->nodes[integrate->nbary*i], vmat, x);
+        if (integrate->nquantity) postprocessquantities(integrate, x+integrate->dim);
         
         // Evaluate function
-        if (!(*integrate->integrand) (rule->grade, node, x, integrate->nquantity, integrate->qval, integrate->ref, &f[i])) return false;
+        if (!(*integrate->integrand) (rule->grade, &rule->nodes[integrate->nbary*i], x, integrate->nquantity, integrate->quantitystack.data, integrate->ref, &f[i])) return false;
     }
     return true;
 }
 
 /** Integrates a function over an element specified in work, filling out the integral and error estimate if provided */
-bool integrator_quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem *work) {
+bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem *work) {
     int n = rule->nnodes;
     
     int nmax = rule->nnodes;
@@ -2217,19 +2274,18 @@ bool integrator_quadrature(integrator *integrate, quadraturerule *rule, quadratu
         np++;
     }
     
-    double rmat[integrate->nbary*integrate->nbary]; // Transform local element coordinates to ref. el.
-    double vmat[integrate->nbary*integrate->dim]; // Transform barycentric coordinates in ref. el. to physical coordinates
-    integrator_prepareinterpolation(integrate, work->elementid, rmat, vmat);
+    double vmat[integrate->nbary*integrate->ndof]; // Interpolation matrix
+    prepareinterpolation(integrate, work->elementid, vmat);
     
     // Evaluate function at quadrature points
-    double x[integrate->nbary], f[nmax];
-    if (!integrator_evalfn(integrate, rule, 0, rule->nnodes, rmat, vmat, x, f)) return false;
+    double x[integrate->ndof],f[nmax];
+    if (!integrate_evalfn(integrate, rule, 0, rule->nnodes, vmat, x, f)) return false;
     
     double r[np+1];
     double eps[np+1]; eps[0]=0.0;
     
     // Obtain estimate
-    r[0]=integrator_sumlistweighted(rule->nnodes, f, rule->weights);
+    r[0]=integrate_sumlistweighted(rule->nnodes, f, rule->weights);
     work->lval = work->val = work->weight*r[0];
     
     // Estimate error
@@ -2239,9 +2295,9 @@ bool integrator_quadrature(integrator *integrate, quadraturerule *rule, quadratu
         // Attempt p-refinement if available
         for (quadraturerule *q=rule->ext; q!=NULL; q=q->ext) {
             ip++;
-            if (!integrator_evalfn(integrate, q, nmin, q->nnodes, rmat, vmat, x, f)) return false;
+            if (!integrate_evalfn(integrate, q, nmin, q->nnodes, vmat, x, f)) return false;
             
-            r[ip]=integrator_sumlistweighted(q->nnodes, f, q->weights);
+            r[ip]=integrate_sumlistweighted(q->nnodes, f, q->weights);
             eps[ip]=fabs(r[ip]-r[ip-1]);
             nmin = q->nnodes;
             
@@ -2254,7 +2310,7 @@ bool integrator_quadrature(integrator *integrate, quadraturerule *rule, quadratu
     } else if (integrate->errrule) {  // Otherwise, use the error rule to obtain the estimate
         if (rule==integrate->errrule) return true; // We already are using the error rule
         double temp = work->val; // Retain the lower order estimate
-        if (!integrator_quadrature(integrate, integrate->errrule, work)) return false;
+        if (!quadrature(integrate, integrate->errrule, work)) return false;
         work->lval=temp;
         work->err=fabs(work->val-temp); // Estimate error from difference of rules
     } else {
@@ -2268,22 +2324,28 @@ bool integrator_quadrature(integrator *integrate, quadraturerule *rule, quadratu
  * Subdivision
  * -------------------------------- */
 
-bool integrator_subdivide(integrator *integrate, quadratureworkitem *work, int *nels, quadratureworkitem *newitems) {
+bool subdivide(integrator *integrate, quadratureworkitem *work, int *nels, quadratureworkitem *newitems) {
     subdivisionrule *rule = integrate->subdivide;
     
     // Fetch the element data
-    int vid[integrate->nbary+rule->npts];
-    integrator_getelement(integrate, work->elementid, vid);
+    int npts = integrate->nbary+rule->npts;
+    int vid[npts], qid[npts];
+    integrator_getelement(integrate, work->elementid, vid, qid);
     
     // Get ready for interpolation
-    double rmat[integrate->nbary*integrate->nbary]; // Vertex information
-    integrator_prepareinterpolation(integrate, work->elementid, rmat, NULL);
+    double vmat[integrate->nbary*integrate->ndof]; // Vertex information
+    prepareinterpolation(integrate, work->elementid, vmat);
     
-    // Interpolate vertices
-    double lambda[integrate->nbary];
+    // Interpolate vertices and quantities, and add these new vertices and quantities
+    double x[integrate->ndof];
     for (int j=0; j<rule->npts; j++) {
-        integrator_transformtorefelement(integrate, rmat, &rule->pts[j*integrate->nbary], lambda);
-        vid[integrate->nbary+j]=integrator_addvertex(integrate, integrate->nbary, lambda);
+        linearinterpolate(integrate, &rule->pts[j*integrate->nbary], vmat, x);
+        vid[integrate->nbary+j]=integrator_addvertex(integrate, integrate->dim, x);
+        
+        if (integrate->nquantity) {
+            postprocessquantities(integrate, x+integrate->dim);
+            qid[integrate->nbary+j]=integrator_addquantity(integrate, integrate->nquantity, integrate->quantitystack.data);
+        }
     }
     
     // Create elements
@@ -2292,14 +2354,15 @@ bool integrator_subdivide(integrator *integrate, quadratureworkitem *work, int *
         newitems[i].err=0.0;
         newitems[i].weight=work->weight*rule->weights[i];
         
-        // Construct new element from the vertex ids
-        int vids[integrate->nbary];
+        // Construct new element from the vertex ids and quantity ids
+        int vids[integrate->nbary], qids[integrate->nbary];
         for (int k=0; k<integrate->nbary; k++) {
             vids[k]=vid[rule->newels[integrate->nbary*i+k]];
+            if (integrate->nquantity) qids[k]=qid[rule->newels[integrate->nbary*i+k]];
         }
         
         // Define the new element
-        newitems[i].elementid=integrator_addelement(integrate, vids);
+        newitems[i].elementid=integrator_addelement(integrate, vids, qids);
     }
     
     *nels = rule->nels;
@@ -2314,7 +2377,7 @@ bool integrator_subdivide(integrator *integrate, quadratureworkitem *work, int *
 /** Laurie's sharper error estimator: BIT 23 (1983), 258-261
     The norm of the difference between two rules |A-B| is usually too pessimistic;
     this attempts to extrapolate a sharper estimate if convergence looks good */
-void integrator_sharpenerrorestimate(integrator *integrate, quadratureworkitem *work, int nels, quadratureworkitem *newitems) {
+void sharpenerrorestimate(integrator *integrate, quadratureworkitem *work, int nels, quadratureworkitem *newitems) {
     double a1=work->val, b1=work->lval, a2=0, b2=0;
     for (int k=0; k<nels; k++) {
         a2+=newitems[k].val;
@@ -2331,7 +2394,7 @@ void integrator_sharpenerrorestimate(integrator *integrate, quadratureworkitem *
 }
 
 /** Adds newitems to the work list and updates the value and error */
-void integrator_update(integrator *integrate, quadratureworkitem *work, int nels, quadratureworkitem *newitems) {
+void update(integrator *integrate, quadratureworkitem *work, int nels, quadratureworkitem *newitems) {
     double dval=0, derr=0;
     integrate->val-=work->val;
     integrate->err-=work->err;
@@ -2487,40 +2550,39 @@ bool integrator_configurewithdictionary(integrator *integrate, grade g, objectdi
  * @param[in] quantity       - List of quantities for each vertex.
  * @param[in] ref                  - a pointer to any data required by the function
  * @returns True on success */
-bool integrator_integrate(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, quantity *quantity, void *ref) {
+bool integrator_integrate(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, value **quantity, void *ref) {
     
-    integrate->integrand=integrand; // Integrand function
+    integrate->integrand=integrand;
     integrate->ref=ref;
     
-    integrate->x=x; // Vertices
-    integrate->dim=dim;
+    integrate->dim=dim; // Dimensionality of vertices
+    integrate->nquantity=nquantity;
     
-    integrate->worklist.count=0;    // Reset these
+    integrate->worklist.count=0;    // Reset all these without deallocating
     integrate->vertexstack.count=0;
     integrate->elementstack.count=0;
+    integrate->quantitystack.count=0;
     error_clear(&integrate->emsg);
     
-    // Quantities
-    value qval[nquantity+1];
-    integrate->qval=qval;
+    // Quantities used for interpolation live at the start of the quantity stack
+    integrator_countquantitydof(integrate, nquantity, quantity[0]);
+    integrate->ndof = integrate->dim+integrate->nqdof; // Number of degrees of freedom
     
-    integrator_initializequantities(integrate, nquantity, quantity);
+    integrator_addquantity(integrate, nquantity, quantity[0]);
     
-    // Create first element, which corresponds to the reference element
-    int vids[integrate->nbary];
+    // Create first element
+    int vids[integrate->nbary], qids[integrate->nbary];
     for (int i=0; i<integrate->nbary; i++) {
-        double xref[integrate->nbary];
-        for (int j=0; j<integrate->nbary; j++) xref[j]=0.0;
-        xref[i]=1.0;
-        vids[i]=integrator_addvertex(integrate, integrate->nbary, xref);
+        vids[i]=integrator_addvertex(integrate, dim, x[i]);
+        if (nquantity) qids[i]=integrator_addquantity(integrate, nquantity, quantity[i]);
     }
-    int elid = integrator_addelement(integrate, vids);
+    int elid = integrator_addelement(integrate, vids, qids);
     
     // Add it to the work list
     quadratureworkitem work;
     work.weight = 1.0;
     work.elementid = elid;
-    integrator_quadrature(integrate, integrate->rule, &work); // Perform initial quadrature
+    quadrature(integrate, integrate->rule, &work); // Perform initial quadrature
     
     integrator_pushworkitem(integrate, &work);
     integrator_estimate(integrate); // Initial estimate
@@ -2536,14 +2598,14 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
         int nels; // Number of elements created
         quadratureworkitem newitems[integrate->subdivide->nels];
         
-        integrator_subdivide(integrate, &work, &nels, newitems);
-        for (int k=0; k<nels; k++) integrator_quadrature(integrate, integrate->rule, &newitems[k]);
+        subdivide(integrate, &work, &nels, newitems);
+        for (int k=0; k<nels; k++) quadrature(integrate, integrate->rule, &newitems[k]);
         
         // Error estimate
-        integrator_sharpenerrorestimate(integrate, &work, nels, newitems);
+        sharpenerrorestimate(integrate, &work, nels, newitems);
         
         // Add new items to heap and update error estimates
-        integrator_update(integrate, &work, nels, newitems);
+        update(integrate, &work, nels, newitems);
     }
     
     // Final estimate by Kahan summing heap
@@ -2563,11 +2625,11 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
  * @param[in] grade            - Grade to integrate over
  * @param[in] x                     - vertices of the triangle x[0] = {x,y,z} etc.
  * @param[in] nquantity   - number of quantities per vertex
- * @param[in] quantity     - List of quantities
+ * @param[in] quantity     - List of quantities for each endpoint.
  * @param[in] ref                - a pointer to any data required by the function
  * @param[out] out              - value of the integral
  * @returns true on success. */
-bool integrate(integrandfunction *integrand, objectdictionary *method, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, quantity *quantity, void *ref, double *out, double *err) {
+bool integrate(integrandfunction *integrand, objectdictionary *method, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out, double *err) {
     bool success=false;
     integrator integrate;
     integrator_init(&integrate);
@@ -2589,11 +2651,10 @@ bool integrate(integrandfunction *integrand, objectdictionary *method, unsigned 
  * Testing code
  * -------------------------------- */
 
-/*
 int nevals;
 
 bool test_integrand(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *data, double *fout) {
-    //double val = pow(sin(x[0]+x[1]),-0.5); //x[0]*x[1]*x[2]; // exp(-x[0]*x[0]); //sqrt(x[0]); //exp(-x[0]*x[0]); // *x[1]*x[2];
+    //double val = pow(sin(x[0]+x[1]),-0.5); //x[0]*x[1]*x[2]; // exp(-x[0]*x[0]); //sqrt(x[0]); //exp(-x[0]*x[0]); //*x[1]*x[2];
     //if (x[0]-x[1]<0.5) val=1.0;
     double val = sin(3*x[0]+6*x[1]);
     
@@ -2613,7 +2674,7 @@ void integrate_test1(double *out, double *err) {
     double *xx[] = { x0, x1, x2, x3 };
     value *quantities[] = { NULL, NULL, NULL, NULL };
     
-    integrate(test_integrand, NULL, 3, 3, xx, 0, NULL, NULL, out, err);
+    integrate(test_integrand, NULL, 3, 3, xx, 0, quantities, NULL, out, err);
     
     return;
 }
@@ -2628,7 +2689,7 @@ void integrate_test2(double *out) {
     double x3[3] = { 0, 0, 1 };
     double *xx[] = { x0, x1, x2, x3 };
     value *quantities[] = { NULL, NULL, NULL, NULL };
-    integrate_integrate(test_integrand, 3, 3, xx, 0, NULL, NULL, out);
+    integrate_integrate(test_integrand, 3, 3, xx, 0, quantities, NULL, out);
 }
 
 void integrate_test(void) {
@@ -2656,4 +2717,4 @@ void integrate_test(void) {
     printf("Old: %g (relative error %g) tol: %g\n", fabs(trueval-out), fabs(trueval-out)/trueval, INTEGRATE_ACCURACYGOAL);
     
     exit(0);
-}*/
+}

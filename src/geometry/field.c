@@ -9,11 +9,8 @@
 #include "classes.h"
 #include "common.h"
 #include "matrix.h"
-#include "sparse.h"
-#include "geometry.h"
 
-value field_gradeoption;
-value field_functionspaceoption;
+static value field_gradeoption;
 
 /* **********************************************************************
  * Field objects
@@ -29,13 +26,12 @@ void objectfield_printfn(object *obj, void *v) {
 void objectfield_markfn(object *obj, void *v) {
     objectfield *c = (objectfield *) obj;
     morpho_markvalue(v, c->prototype);
-    morpho_markvalue(v, c->fnspc);
     morpho_markobject(v, (object *) c->mesh);
-  }
+}
 
 void objectfield_freefn(object *obj) {
     objectfield *f = (objectfield *) obj;
-
+    
     if (f->dof) MORPHO_FREE(f->dof);
     if (f->offset) MORPHO_FREE(f->offset);
     if (f->pool) MORPHO_FREE(f->pool);
@@ -65,12 +61,12 @@ bool field_checkprototype(value v) {
 
 unsigned int field_sizeprototype(value prototype) {
     unsigned int size = 1;
-
+    
     if (MORPHO_ISMATRIX(prototype)) {
         objectmatrix *m = (MORPHO_GETMATRIX(prototype));
         size = m->ncols*m->nrows;
     }
-
+    
     return size;
 }
 
@@ -85,7 +81,7 @@ unsigned int field_size(objectmesh *mesh, value prototype, unsigned int ngrades,
     unsigned int size = 0;
     unsigned int psize = field_sizeprototype(prototype);
     for (unsigned int i=0; i<=ngrades; i++) offsets[i]=0;
-
+    
     if (!dof) { // Assume 1 element per vertex
         size=offsets[1]=mesh_nvertices(mesh)*psize;
         for (grade i=2; i<=ngrades; i++) offsets[i]=offsets[1];
@@ -96,7 +92,7 @@ unsigned int field_size(objectmesh *mesh, value prototype, unsigned int ngrades,
             size=offsets[i+1]*psize;
         }
     }
-
+    
     return size;
 }
 
@@ -104,41 +100,30 @@ unsigned int field_size(objectmesh *mesh, value prototype, unsigned int ngrades,
 /** Creates a new field
  * @param[in] mesh - Mesh the field is attached to
  * @param[in] prototype - a prototype object
- * @param[in] disc - a prototype object
- * @param[in] shape -  (optional) number of degrees of freedom per entry in each grade (should be maxgrade entries) */
-objectfield *object_newfield(objectmesh *mesh, value prototype, value fnspc, unsigned int *shape) {
+ * @param[in] dof -  umber of degrees of freedom per entry in each grade (should be maxgrade entries) */
+objectfield *object_newfield(objectmesh *mesh, value prototype, unsigned int *dof) {
     int ngrades=mesh_maxgrade(mesh)+1;
-
-    unsigned int dof[ngrades+1]; // Extract shape from discretization or the provided function space
-    if (MORPHO_ISDISCRETIZATION(fnspc)) {
-        discretization *disc = MORPHO_GETDISCRETIZATION(fnspc)->discretization;
-        for (int i=0; i<=disc->grade; i++) dof[i]=disc->shape[i];
-        for (int i=disc->grade+1; i<=ngrades; i++) dof[i]=0;
-    } else if (shape) {
-        for (int i=0; i<=ngrades; i++) dof[i]=shape[i];
-    }
-
+    
     unsigned int offset[ngrades+1];
     unsigned int size=field_size(mesh, prototype, ngrades, dof, offset);
     objectfield *new=NULL;
     unsigned int *ndof = MORPHO_MALLOC(sizeof(int)*ngrades);
     unsigned int *noffset = MORPHO_MALLOC(sizeof(unsigned int)*(ngrades+1));
-
+    
     if (ndof && noffset) {
         new = (objectfield *) object_new(sizeof(objectfield)+sizeof(double)*size, OBJECT_FIELD);
     }
-
+    
     if (new) {
         new->mesh=mesh;
         new->prototype=(MORPHO_ISNUMBER(prototype)? MORPHO_NIL : prototype);
         new->psize=field_sizeprototype(prototype);
         new->nelements=size/new->psize;
         new->ngrades=ngrades;
-        new->fnspc=(MORPHO_ISDISCRETIZATION(fnspc) ? fnspc : MORPHO_NIL);
-
+        
         new->offset=noffset;
         memcpy(noffset, offset, sizeof(unsigned int)*(ngrades+1));
-
+        
         new->dof=ndof;
         if (dof) {
             memcpy(ndof, dof, sizeof(unsigned int)*ngrades);
@@ -146,15 +131,15 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, value fnspc, uns
             for (unsigned int i=0; i<ngrades; i++) ndof[i]=0;
             ndof[0]=1;
         }
-
+        
         new->pool=NULL;
-
+        
         /* Initialize the store */
         object_init(&new->data.obj, OBJECT_MATRIX);
         new->data.ncols=1;
         new->data.nrows=size;
         new->data.elements=new->data.matrixdata;
-
+        
         if (MORPHO_ISMATRIX(prototype)) {
             objectmatrix *mat = MORPHO_GETMATRIX(prototype);
             int mel = mat->ncols*mat->nrows;
@@ -164,93 +149,17 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, value fnspc, uns
         } else if(MORPHO_ISNUMBER(prototype)){
             // if we have a number for our prototype set all the elements equal to it
             for (elementid i=0; i<mesh->vert->ncols; i++) {
-                field_setelement(new, MESH_GRADE_VERTEX, i, 0, prototype);
+                field_setelement(new, MESH_GRADE_VERTEX, i, 0, prototype);          
             }
 
         } else memset(new->data.elements, 0, sizeof(double)*size);
-
+        
     } else { // Cleanup partially allocated structure
         if (noffset) MORPHO_FREE(noffset);
         if (ndof) MORPHO_FREE(ndof);
     }
-
+    
     return new;
-}
-
-/** Applies an initialization function to every vertex */
-bool field_applyfunctiontovertices(vm *v, objectmesh *mesh, value fn, objectfield *field) {
-    value coords[mesh->dim]; // Vertex coords
-    value ret=MORPHO_NIL; // Return value
-    int nv = mesh_nvertices(mesh);
-
-    for (elementid i=0; i<nv; i++) { // for each vertex
-        if (mesh_getvertexcoordinatesasvalues(mesh, i, coords)) {
-            //get the vertex coordinates
-            if (!morpho_call(v, fn, mesh->dim, coords, &ret)) return false;
-
-            if (!field_setelement(field, MESH_GRADE_VERTEX, i, 0, ret)) {
-                // if we can't set the field value to the ouptut of the function clean up
-                morpho_runtimeerror(v, FIELD_OPRETURN);
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-/** Applies an initialization function to every DOF in an element */
-bool field_applyfunctiontoelements(vm *v, objectmesh *mesh, value fn, value fnspc, objectfield *field) {
-    if (!MORPHO_ISDISCRETIZATION(fnspc)) return false;
-    discretization *disc = MORPHO_GETDISCRETIZATION(fnspc)->discretization;
-
-    objectsparse *conn = mesh_getconnectivityelement(mesh, 0, disc->grade);
-    if (!conn) return false;
-    elementid nel = mesh_nelements(conn);
-
-    for (elementid id=0; id<nel; id++) {
-        int nv, *vids;
-        if (!mesh_getconnectivity(conn, id, &nv, &vids)) return false;
-
-        double *x[nv]; // Fetch vertex positions
-        for (int i=0; i<nv; i++) mesh_getvertexcoordinatesaslist(mesh, vids[i], &x[i]);
-
-        int indx[disc->nnodes]; // Get indices corresponding to each degree of freedom per element
-        if (!discretization_doftofieldindx(field, disc, nv, vids, indx)) return false;
-
-        for (int i=0; i<disc->nnodes; i++) { // Loop over nodes
-            double lambda[nv], ll=0.0; // Convert node positions in reference element to barycentric coordinates
-            for (int j=0; j<nv-1; j++) { lambda[j+1]=disc->nodes[i*disc->grade+j]; ll+=lambda[j+1]; }
-            lambda[0]=1-ll;
-
-            double xx[mesh->dim]; // Interpolate position in physical space using barycentric coordinates
-            for (int j=0; j<mesh->dim; j++) xx[j]=0.0;
-            for (int j=0; j<nv; j++) functional_vecaddscale(mesh->dim, xx, lambda[j], x[j], xx);
-
-            /*printf("<<");
-            for (int j=0; j<nv-1; j++) printf("%g ", disc->nodes[i*disc->grade+j]);
-            printf(">> ");
-            printf("[");
-            for (int j=0; j<nv; j++) printf("%g ", lambda[j]);
-            printf("] ");
-            for (int j=0; j<mesh->dim; j++) printf("%g ", xx[j]);
-            printf(": ");*/
-
-            value coords[mesh->dim], ret;
-            for (int j=0; j<mesh->dim; j++) coords[j]=MORPHO_FLOAT(xx[j]);
-
-            if (!morpho_call(v, fn, mesh->dim, coords, &ret)) return false;
-
-            //morpho_printvalue(v, ret);
-            //printf(" -> %i\n", indx[i]);
-
-            if (!field_setelementwithindex(field, indx[i], ret)) {
-                morpho_runtimeerror(v, FIELD_OPRETURN);
-                return false;
-            }
-        }
-    }
-
-    return true;
 }
 
 /** Creates a field by applying a function to the vertices of a mesh
@@ -258,31 +167,43 @@ bool field_applyfunctiontoelements(vm *v, objectmesh *mesh, value fn, value fnsp
  * @param[in] mesh - mesh to use
  * @param[in] fn - function to call
  * @returns field object or NULL on failure */
-objectfield *field_newwithfunction(vm *v, objectmesh *mesh, value fn, value fnspc) {
+objectfield *field_newwithfunction(vm *v, objectmesh *mesh, value fn) {
+    objectmatrix *vert=mesh->vert;
+    int nv = vert->ncols;
     value ret=MORPHO_NIL; // Return value
     value coords[mesh->dim]; // Vertex coords
     objectfield *new = NULL;
     int handle = -1;
-
+    
     /* Use the first element to find a prototype **/
     if (mesh_getvertexcoordinatesasvalues(mesh, 0, coords)) {
         if (!morpho_call(v, fn, mesh->dim, coords, &ret)) goto field_newwithfunction_cleanup;
         if (MORPHO_ISOBJECT(ret)) handle=morpho_retainobjects(v, 1, &ret);
     }
-
-    new=object_newfield(mesh, ret, fnspc, NULL);
-
+    
+    new=object_newfield(mesh, ret, NULL);
+    
     if (new) {
-        if (fnspc) {
-            if (!field_applyfunctiontoelements(v, mesh, fn, fnspc, new)) goto field_newwithfunction_cleanup;
-        } else {
-            if (!field_applyfunctiontovertices(v, mesh, fn, new)) goto field_newwithfunction_cleanup;
+        for (elementid i=0; i<nv; i++) {
+            // for each element in the field
+            if (mesh_getvertexcoordinatesasvalues(mesh, i, coords)) {
+                //get the vertex coordinates
+                if (!morpho_call(v, fn, mesh->dim, coords, &ret)){
+                     // if the fn call fails go to clean up this should throw an error from morpho_call
+                     goto field_newwithfunction_cleanup;
+                     }
+                if (!field_setelement(new, MESH_GRADE_VERTEX, i, 0, ret)) {
+                    // if we can't set the field value to the ouptut of the function clean up
+                    morpho_runtimeerror(v,FIELD_OPRETURN);
+                    goto field_newwithfunction_cleanup;
+                }
+            }
         }
     }
-
+    
     if (handle>=0) morpho_releaseobjects(v, handle);
     return new;
-
+    
 field_newwithfunction_cleanup:
     if (new) object_free((object *) new);
     if (handle>=0) morpho_releaseobjects(v, handle);
@@ -316,7 +237,7 @@ bool field_addpool(objectfield *f) {
 
 /** Clones a field */
 objectfield *field_clone(objectfield *f) {
-    objectfield *new = object_newfield(f->mesh, f->prototype, f->fnspc, f->dof);
+    objectfield *new = object_newfield(f->mesh, f->prototype, f->dof);
     if (new) memcpy(new->data.elements, f->data.elements, f->data.nrows*sizeof(double));
     return new;
 }
@@ -335,7 +256,7 @@ objectfield *field_clone(objectfield *f) {
 bool field_getelement(objectfield *field, grade grade, elementid el, int indx, value *out) {
     unsigned int ix=field->offset[grade]+field->dof[grade]*el+indx;
     if (!(ix<field->offset[grade+1] && indx<field->dof[grade])) return false;
-
+    
     if (MORPHO_ISNIL(field->prototype)) {
         *out=MORPHO_FLOAT(field->data.elements[ix]);
         return true;
@@ -370,21 +291,6 @@ bool field_getelementwithindex(objectfield *field, int indx, value *out) {
     return false;
 }
 
-/** Constructs a single index, suitable for use with fieldgetelementwithindex from the grade, element id and quantity number
- * @param[in] field - field to use
- * @param[in] grade - grade to access
- * @param[in] el - element id
- * @param[in] indx - index within the element
- * @param[out] out - the retrieved index
- * @return true on success */
-bool field_getindex(objectfield *field, grade grade, elementid el, int indx, int *out) {
-    int ix=field->offset[grade]+field->dof[grade]*el+indx;
-    if (!(ix<field->offset[grade+1] && indx<field->dof[grade])) return false;
-
-    *out=ix;
-    return true;
-}
-
 /** Retrieve the list of doubles that represent an entry in a field
  * @param[in] field - field to use
  * @param[in] grade - grade to access
@@ -397,7 +303,7 @@ bool field_getelementaslist(objectfield *field, grade grade, elementid el, int i
     bool success=false;
     unsigned int ix=field->offset[grade]+field->dof[grade]*el+indx;
     if (!(ix<field->offset[grade+1] && indx<field->dof[grade])) return false;
-
+    
     if (MORPHO_ISNIL(field->prototype)) {
         *out = &field->data.elements[ix];
         *nentries=1;
@@ -420,7 +326,7 @@ bool field_getelementaslist(objectfield *field, grade grade, elementid el, int i
 bool field_setelement(objectfield *field, grade grade, elementid el, int indx, value val) {
     unsigned int ix=field->offset[grade]+field->dof[grade]*el+indx;
     if (!(ix<field->offset[grade+1] && indx<field->dof[grade])) return false;
-
+    
     if (MORPHO_ISNIL(field->prototype)) {
         if (MORPHO_ISNUMBER(val)) {
             return morpho_valuetofloat(val, &field->data.elements[ix]);
@@ -445,7 +351,7 @@ bool field_setelement(objectfield *field, grade grade, elementid el, int indx, v
  * @return true on success */
 bool field_setelementwithindex(objectfield *field, int ix, value val) {
     if (ix>=field->nelements) return false;
-
+    
     if (MORPHO_ISNIL(field->prototype)) {
         if (MORPHO_ISNUMBER(val)) {
             return morpho_valuetofloat(val, &field->data.elements[ix]);
@@ -506,31 +412,31 @@ bool field_op(vm *v, value fn, objectfield *f, int nargs, objectfield **args, va
     value fargs[nargs+1];
     objectfield *fld=NULL;
     int handle = -1;
-
+    
     for (int i=0; i<nel; i++) {
         if (!field_getelementwithindex(f, i, &fargs[0])) return false;
         for (unsigned int k=0; k<nargs; k++) {
             if (!field_getelementwithindex(args[k], i, &fargs[k+1])) return false;
         }
-
+        
         if (morpho_call(v, fn, nargs+1, fargs, &ret)) {
             if (!fld) {
                 if (field_checkprototype(ret)) {
                     if (MORPHO_ISOBJECT(ret)) handle=morpho_retainobjects(v, 1, &ret);
-                    fld=object_newfield(f->mesh, ret, f->fnspc, f->dof);
+                    fld=object_newfield(f->mesh, ret, f->dof);
                     if (!fld) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
                 } else {
                     morpho_runtimeerror(v, FIELD_OPRETURN); return false;
                 }
             }
-
+            
             if (!field_setelementwithindex(fld, i, ret)) return false;
         } else return false;
     }
-
+    
     if (handle>=0) morpho_releaseobjects(v, handle);
     if (fld) *out = MORPHO_OBJECT(fld);
-
+    
     return true;
 }
 
@@ -545,50 +451,47 @@ value field_constructor(vm *v, int nargs, value *args) {
     objectmesh *mesh=NULL; // The mesh used by the object
     value fn = MORPHO_NIL; // A function to call
     value prototype=MORPHO_NIL; // Prototype object
-
+    
     value grd = MORPHO_NIL;
-    value fnspc = MORPHO_NIL;
     int nfixed;
-
-    if (!builtin_options(v, nargs, args, &nfixed, 2, field_gradeoption, &grd, field_functionspaceoption, &fnspc))
+    
+    if (!builtin_options(v, nargs, args, &nfixed, 1, field_gradeoption, &grd))
         morpho_runtimeerror(v, FIELD_ARGS);
-
+    
     for (unsigned int i=0; i<nfixed; i++) {
         if (MORPHO_ISMESH(MORPHO_GETARG(args, i))) mesh = MORPHO_GETMESH(MORPHO_GETARG(args, i)); // if the ith argument is a mesh get that mesh and assign it
-        else if (morpho_iscallable(MORPHO_GETARG(args, i))) fn = MORPHO_GETARG(args, i); // if the ith argument is a function to call put that in the fn spot
+        else if (morpho_iscallable(MORPHO_GETARG(args, i))) fn = MORPHO_GETARG(args, i); // if the ith argurment is a function to call put that in the fn spot
         else if (field_checkprototype(MORPHO_GETARG(args, i))) prototype = MORPHO_GETARG(args, i); //if the ith argument is a prototype put that in the prototype spot
     }
-
+    
     if (!mesh) {
         // if we don't have a mesh return a nil and thorw and error
         morpho_runtimeerror(v,FIELD_MESHARG);
         return MORPHO_NIL;
-    }
+    } 
     unsigned int ngrades = mesh_maxgrade(mesh)+1;
     unsigned int dof[ngrades];
     for (unsigned int i=0; i<ngrades; i++) dof[i]=0;
-
-    /* Process optional arguments */
-    if (MORPHO_ISDISCRETIZATION(fnspc)) {
-
-    } else if (MORPHO_ISINTEGER(grd)) {
+    
+    /* Process optional grade argument */
+    if (MORPHO_ISINTEGER(grd)) {
         dof[MORPHO_GETINTEGERVALUE(grd)]=1;
     } else if (MORPHO_ISLIST(grd)) {
         objectlist *list = MORPHO_GETLIST(grd);
         if (!array_valuelisttoindices(list->val.count, list->val.data, dof)) return MORPHO_NIL;
     }
-
+    
     if (MORPHO_ISNIL(fn)) {
-        new = object_newfield(mesh, prototype, fnspc, dof);
+        new = object_newfield(mesh, prototype, (MORPHO_ISNIL(grd) ? NULL: dof));
     } else {
-        new = field_newwithfunction(v, mesh, fn, fnspc);
+        new = field_newwithfunction(v, mesh, fn);
     }
-
+    
     if (new) {
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
     }
-
+    
     return out;
 }
 
@@ -597,18 +500,18 @@ value Field_getindex(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
     unsigned int indx[nargs];
     value out = MORPHO_NIL;
-
+    
     if (array_valuelisttoindices(nargs, args+1, indx)) {
         grade g = (nargs>1 ? indx[0] : MESH_GRADE_VERTEX);
         elementid el = (nargs>1 ? indx[1] : indx[0]);
         int elindx = (nargs>2 ? indx[2] : 0);
-
+        
         /* If only one index is specified, increment g to the lowest nonempty grade */
         if (nargs==1 && f->dof) while (f->dof[g]==0 && g<f->ngrades) g++;
-
+        
         if (!field_getelement(f, g, el, elindx, &out)) morpho_runtimeerror(v, FIELD_INDICESOUTSIDEBOUNDS);
     } else morpho_runtimeerror(v, FIELD_INVLDINDICES);
-
+    
     return out;
 }
 
@@ -618,22 +521,20 @@ value Field_setindex(vm *v, int nargs, value *args) {
     unsigned int indx[nargs];
     value out = MORPHO_NIL;
     int nindices = nargs-1;
-
+    
     if (array_valuelisttoindices(nindices, args+1, indx)) {
         grade g = (nindices>1 ? indx[0] : MESH_GRADE_VERTEX);
         elementid el = (nindices>1 ? indx[1] : indx[0]);
         int elindx = (nindices>2 ? indx[2] : 0);
-
-        /* If only one index is specified, treat it as a single index */
-        if (nindices==1 && f->dof) {
-            if (!field_setelementwithindex(f, indx[0], MORPHO_GETARG(args, nargs-1))) {
-                morpho_runtimeerror(v, FIELD_INCOMPATIBLEVAL);
-            }
-        } else if (!field_setelement(f, g, el, elindx, MORPHO_GETARG(args, nargs-1))) {
+        
+        /* If only one index is specified, increment g to the lowest nonempty grade */
+        if (nindices==1 && f->dof) while (f->dof[g]==0 && g<f->ngrades) g++;
+        
+        if (!field_setelement(f, g, el, elindx, MORPHO_GETARG(args, nargs-1))) {
             morpho_runtimeerror(v, FIELD_INCOMPATIBLEVAL);
         }
     } else morpho_runtimeerror(v, FIELD_INVLDINDICES);
-
+    
     return out;
 }
 
@@ -641,11 +542,11 @@ value Field_setindex(vm *v, int nargs, value *args) {
 value Field_enumerate(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-
+    
     if (nargs==1) {
         if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
             int i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
+            
             if (i<0) out=MORPHO_INTEGER(a->nelements);
             else if (i<a->nelements) {
                 if (!field_getelementwithindex(a, i, &out)) UNREACHABLE("Could not get field element.");
@@ -653,7 +554,7 @@ value Field_enumerate(vm *v, int nargs, value *args) {
             /* Note no need to bind as we are an object pool */
         }
     }
-
+    
     return out;
 }
 
@@ -661,26 +562,26 @@ value Field_enumerate(vm *v, int nargs, value *args) {
 /** Number of field elements */
 value Field_count(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
-
+    
     return MORPHO_INTEGER(f->nelements);
 }
 
 /** Field assign */
 value Field_assign(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
-
+ 
     if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
         objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
-
+        
         if (field_compareshape(a, b)) {
             matrix_copy(&b->data, &a->data);
         } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
     } else if (nargs==1 && MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
         objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
-
+        
         if (matrix_copy(b, &a->data)!=MATRIX_OK) morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
     } else morpho_runtimeerror(v, FIELD_ARITHARGS);
-
+    
     return MORPHO_NIL;
 }
 
@@ -688,13 +589,13 @@ value Field_assign(vm *v, int nargs, value *args) {
 value Field_add(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-
+ 
     if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
         objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
-
+        
         if (field_compareshape(a, b)) {
-            objectfield *new = object_newfield(a->mesh, a->prototype, a->fnspc, a->dof);
-
+            objectfield *new = object_newfield(a->mesh, a->prototype, a->dof);
+            
             if (new) {
                 out=MORPHO_OBJECT(new);
                 field_add(a, b, new);
@@ -702,25 +603,25 @@ value Field_add(vm *v, int nargs, value *args) {
             }
         } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
     } else morpho_runtimeerror(v, FIELD_ARITHARGS);
-
+    
     return out;
 }
 
 /** Right add */
 value Field_addr(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
-
+ 
     if (nargs==1 && (MORPHO_ISNIL(MORPHO_GETARG(args, 0)) ||
                      MORPHO_ISNUMBER(MORPHO_GETARG(args, 0)))) {
         int i=0;
         if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         if (MORPHO_ISFLOAT(MORPHO_GETARG(args, 0))) i=(fabs(MORPHO_GETFLOATVALUE(MORPHO_GETARG(args, 0)))<MORPHO_EPS ? 0 : 1);
-
+        
         if (i==0) {
             out=MORPHO_SELF(args);
         } else UNREACHABLE("Right addition to non-zero value.");
     } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
-
+    
     return out;
 }
 
@@ -728,13 +629,13 @@ value Field_addr(vm *v, int nargs, value *args) {
 value Field_sub(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-
+ 
     if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
         objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
-
+        
         if (field_compareshape(a, b)) {
-            objectfield *new = object_newfield(a->mesh, a->prototype, a->fnspc, a->dof);
-
+            objectfield *new = object_newfield(a->mesh, a->prototype, a->dof);
+            
             if (new) {
                 out=MORPHO_OBJECT(new);
                 field_sub(a, b, new);
@@ -742,7 +643,7 @@ value Field_sub(vm *v, int nargs, value *args) {
             }
         } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
     } else morpho_runtimeerror(v, FIELD_ARITHARGS);
-
+    
     return out;
 }
 
@@ -750,11 +651,11 @@ value Field_sub(vm *v, int nargs, value *args) {
 value Field_subr(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-
+ 
     if (nargs==1 && (MORPHO_ISNIL(MORPHO_GETARG(args, 0)) ||
                      MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)))) {
         int i=(MORPHO_ISNIL(MORPHO_GETARG(args, 0)) ? 0 : MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)));
-
+        
         if (i==0) {
             objectfield *new=field_clone(a);
             if (new) {
@@ -764,25 +665,25 @@ value Field_subr(vm *v, int nargs, value *args) {
             }
         } else morpho_runtimeerror(v, VM_INVALIDARGS);
     } else morpho_runtimeerror(v, VM_INVALIDARGS);
-
+    
     return out;
 }
 
 /** Field accumulate */
 value Field_acc(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
-
+ 
     if (nargs==2 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0)) &&
         MORPHO_ISFIELD(MORPHO_GETARG(args, 1))) {
         objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 1));
-
+        
         if (field_compareshape(a, b)) {
             double lambda=1.0;
             morpho_valuetofloat(MORPHO_GETARG(args, 0), &lambda);
             field_accumulate(a, lambda, b);
         } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
     } else morpho_runtimeerror(v, FIELD_ARITHARGS);
-
+    
     return MORPHO_NIL;
 }
 
@@ -790,7 +691,7 @@ value Field_acc(vm *v, int nargs, value *args) {
 value Field_mul(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-
+ 
     if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
         double scale=1.0;
         if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale)) {
@@ -802,7 +703,7 @@ value Field_mul(vm *v, int nargs, value *args) {
             }
         }
     } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
-
+    
     return out;
 }
 
@@ -810,13 +711,13 @@ value Field_mul(vm *v, int nargs, value *args) {
 value Field_div(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-
+ 
     if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
         /* Division by a scalar */
         double scale=1.0;
         if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale)) {
             if (fabs(scale)<MORPHO_EPS) MORPHO_RAISE(v, VM_DVZR);
-
+            
             objectfield *new = field_clone(a);
             if (new) {
                 out=MORPHO_OBJECT(new);
@@ -825,7 +726,7 @@ value Field_div(vm *v, int nargs, value *args) {
             }
         }
     }
-
+    
     return out;
 }
 
@@ -833,16 +734,16 @@ value Field_div(vm *v, int nargs, value *args) {
 value Field_inner(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
     value out=MORPHO_NIL;
-
+ 
     if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
         objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
-
+        
         double prod=0.0;
         if (field_inner(a, b, &prod)) {
             out = MORPHO_FLOAT(prod);
         } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
     } else morpho_runtimeerror(v, FIELD_ARITHARGS);
-
+    
     return out;
 }
 
@@ -852,19 +753,19 @@ value Field_op(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     value fn=MORPHO_NIL;
     objectfield *flds[nargs];
-
+    
     if (nargs>0) fn=MORPHO_GETARG(args, 0);
     if (morpho_iscallable(fn)) {
         for (unsigned int i=1; i<nargs; i++) {
             if (MORPHO_ISFIELD(MORPHO_GETARG(args, i))) flds[i-1]=MORPHO_GETFIELD(MORPHO_GETARG(args, i));
             else { morpho_runtimeerror(v, FIELD_OP); return MORPHO_NIL; }
         }
-
+        
         if (field_op(v, fn, slf, nargs-1, flds, &out)) {
             morpho_bindobjects(v, 1, &out);
         }
     } else morpho_runtimeerror(v, FIELD_OP);
-
+    
     return out;
 }
 
@@ -872,7 +773,7 @@ value Field_op(vm *v, int nargs, value *args) {
 value Field_print(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
     if (!MORPHO_ISFIELD(self)) return Object_print(v, nargs, args);
-
+    
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
     morpho_printf(v, "<Field>\n");
     matrix_print(v, &f->data);
@@ -900,20 +801,20 @@ value Field_shape(vm *v, int nargs, value *args) {
     for (unsigned int i=0; i<f->ngrades; i++) {
         shape[i]=MORPHO_INTEGER(f->dof[i]);
     }
-
+    
     objectlist *new=object_newlist(f->ngrades, shape);
     if (new) {
         out = MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
     }
-
+    
     return out;
 }
 
 /** Get the mesh associated with a field */
 value Field_mesh(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
-
+    
     return MORPHO_OBJECT(f->mesh);
 }
 
@@ -921,13 +822,13 @@ value Field_mesh(vm *v, int nargs, value *args) {
 value Field_linearize(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
     value out = MORPHO_NIL;
-
+    
     objectmatrix *m=object_clonematrix(&f->data);
     if (m) {
         out = MORPHO_OBJECT(m);
         morpho_bindobjects(v, 1, &out);
     }
-
+    
     return out;
 }
 
@@ -935,7 +836,7 @@ value Field_linearize(vm *v, int nargs, value *args) {
  @warning only use when you know what you're doing.  */
 value Field_unsafelinearize(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
-
+    
     return MORPHO_OBJECT(&f->data);
 }
 
@@ -969,18 +870,17 @@ MORPHO_ENDCLASS
 
 void field_initialize(void) {
     objectfieldtype=object_addtype(&objectfielddefn);
-
+    
     field_gradeoption=builtin_internsymbolascstring(FIELD_GRADEOPTION);
-    field_functionspaceoption=builtin_internsymbolascstring(FIELD_FUNCTIONSPACEOPTION);
-
+    
     builtin_addfunction(FIELD_CLASSNAME, field_constructor, BUILTIN_FLAGSEMPTY);
-
+    
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
-
+    
     value fieldclass=builtin_addclass(FIELD_CLASSNAME, MORPHO_GETCLASSDEFINITION(Field), objclass);
     object_setveneerclass(OBJECT_FIELD, fieldclass);
-
+    
     morpho_defineerror(FIELD_INDICESOUTSIDEBOUNDS, ERROR_HALT, FIELD_INDICESOUTSIDEBOUNDS_MSG);
     morpho_defineerror(FIELD_INVLDINDICES, ERROR_HALT, FIELD_INVLDINDICES_MSG);
     morpho_defineerror(FIELD_ARITHARGS, ERROR_HALT, FIELD_ARITHARGS_MSG);

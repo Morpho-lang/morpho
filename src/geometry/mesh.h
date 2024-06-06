@@ -144,7 +144,6 @@ objectsparse *mesh_addgrade(objectmesh *mesh, grade g);
 objectsparse *mesh_addconnectivityelement(objectmesh *mesh, unsigned int row, unsigned int col);
 objectsparse *mesh_getconnectivityelement(objectmesh *mesh, unsigned int row, unsigned int col);
 
-bool mesh_matchelements(objectsparse *vmatrix, grade g, int nids, int *ids, int maxmatches, int *nmatches, int *matches);
 
 bool mesh_getconnectivity(objectsparse *conn, elementid id, int *nentries, int **entries);
 void mesh_freezeconnectivity(objectmesh *mesh);

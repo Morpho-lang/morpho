@@ -6,11 +6,15 @@
 
 #include "morpho.h"
 #include "classes.h"
+#include "mesh.h"
 #include "file.h"
 #include "parse.h"
 #include "sparse.h"
 #include "matrix.h"
-#include "geometry.h"
+#include "selection.h"
+
+// Temporary include
+#include "integrate.h"
 
 #include <limits.h>
 
@@ -529,7 +533,7 @@ static int mesh_compareid(const void *a, const void *b) {
  * @param[out] nmatches - the number of matches found
  * @param[out] matches - matched vertex ids
  * @returns true on success, false otherwise */
-bool mesh_matchelements(objectsparse *vmatrix, grade g, int nids, int *ids, int maxmatches, int *nmatches, int *matches) {
+static bool mesh_matchelements(objectsparse *vmatrix, grade g, int nids, int *ids, int maxmatches, int *nmatches, int *matches) {
     int nentries[nids], *entries[nids], length=0, k=0;
 
     /* Obtain connectivity information from the columns of vertex connectivity matrix */

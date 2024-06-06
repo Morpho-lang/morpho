@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include "morpho.h"
 #include "dict.h"
+#include "discretization.h"
 
 #define INTEGRATE_RULELABEL "rule"
 #define INTEGRATE_DEGREELABEL "degree"
@@ -99,30 +100,42 @@ typedef struct {
 DECLARE_VARRAY(quadratureworkitem, quadratureworkitem)
 
 /* ----------------------------------
+ * Quantities
+ * ---------------------------------- */
+
+typedef struct {
+    int nnodes;  /** Number of quantity values per element */
+    value *vals; /** List of quantity values */
+    interpolationfn ifn; /** Interpolation function */
+    int ndof; /** Number of degrees of freedom (this will be filled out by the integrator) */
+} quantity;
+
+/* ----------------------------------
  * Integrator
  * ---------------------------------- */
 
 typedef struct {
     integrandfunction *integrand; /** Function to integrate */
+    void *ref; /** Reference to pass to integrand function */
     
     int dim; /** Dimension of points in embedded space */
-    int nbary; /** Number of barycentric coordinates */
-    int nquantity; /** Number of quantities to interpolate */
-    int nqdof; /** Number of quantity degrees of freedom */
-    int ndof; /** Number of degrees of freedom */
+    double **x; /** Vertices defining the element */
     
-    bool adapt; /** Enable adaptive integration */
+    int nbary; /** Number of barycentric coordinates */
+    
+    int nquantity; /** Number of quantities to interpolate */
+    quantity *quantity; /** Quantity list */
+    value *qval; /** Interpolated quantity values */
+    
     quadraturerule *rule;  /** Quadrature rule to use */
     quadraturerule *errrule; /** Additional rule for error estimation */
     
+    bool adapt; /** Enable adaptive integration */
     subdivisionrule *subdivide; /** Subdivision rule to use */
     
-    int workp; /** Index of largest item in the work list */
-    int freep; /** Index of a free item in the work list */
     varray_quadratureworkitem worklist; /** Work list */
     varray_double vertexstack; /** Stack of vertices */
     varray_int elementstack; /** Stack of elements */
-    varray_value quantitystack; /** Stack of quantities */
     
     double ztol; /** Tolerance for zero detection */
     double tol; /** Tolerance for relative error */
@@ -133,8 +146,6 @@ typedef struct {
     double err; /** Estimated error of the integral */
     
     error emsg; /** Store error messages from the integrator */
-    
-    void *ref; /** Reference to pass to integrand */
 } integrator;
 
 /* -------------------------------------------------------
@@ -153,7 +164,7 @@ typedef struct {
 
 bool integrate_integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out);
 
-bool integrate(integrandfunction *integrand, objectdictionary *method, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out, double *err);
+bool integrate(integrandfunction *integrand, objectdictionary *method, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, quantity *quantity, void *ref, double *out, double *err);
 
 void integrate_test(void);
 

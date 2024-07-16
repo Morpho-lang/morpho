@@ -79,10 +79,22 @@ objectmetafunction *object_newmetafunction(value name) {
     if (new) {
         new->name=MORPHO_NIL;
         if (MORPHO_ISSTRING(name)) new->name=object_clonestring(name);
+        new->klass=NULL; 
         varray_valueinit(&new->fns);
         varray_mfinstructioninit(&new->resolver);
     }
 
+    return new;
+}
+
+/** Clone a metafunction */
+objectmetafunction *metafunction_clone(objectmetafunction *f) {
+    objectmetafunction *new = object_newmetafunction(f->name);
+    
+    if (new) {
+        varray_valueadd(&new->fns, f->fns.data, f->fns.count);
+    }
+    
     return new;
 }
 
@@ -128,6 +140,16 @@ bool metafunction_matchtype(value type, value val) {
         MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same
     
     return false;
+}
+
+/** Sets the parent class of a metafunction */
+void metafunction_setclass(objectmetafunction *f, objectclass *klass) {
+    f->klass=klass;
+}
+
+/** Returns a metafunction's class if any */
+objectclass *metafunction_class(objectmetafunction *f) {
+    return f->klass;
 }
 
 /** Finds whether an implementation f occurs in a metafunction */
@@ -760,7 +782,7 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
     mfcompiler_init(&compiler, fn);
     
     mfcompile_set(&compiler, &set);
-    //mfcompiler_disassemble(&compiler);
+    mfcompiler_disassemble(&compiler);
     
     bool success=!morpho_checkerror(&compiler.err);
     if (!success && err) *err=compiler.err;

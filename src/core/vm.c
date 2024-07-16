@@ -1001,6 +1001,9 @@ callfunction: // Jump here if an instruction becomes a call
                             v->fp->inbuiltinfunction=NULL;
 #endif
                             ERRORCHK();
+                        } else if (MORPHO_ISMETAFUNCTION(ifunc) &&
+                                   !metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a, &ifunc)) {
+                            ERROR(VM_MLTPLDSPTCHFLD);
                         }
                     } else {
                         if (c>0) {

@@ -37,7 +37,8 @@ DECLARE_VARRAY(mfinstruction, mfinstruction);
 typedef struct sobjectmetafunction {
     object obj;
     value name;
-    varray_value fns; 
+    objectclass *klass; // Parent class for metafunction methods
+    varray_value fns;
     varray_mfinstruction resolver;
 } objectmetafunction;
 
@@ -65,9 +66,14 @@ typedef struct sobjectmetafunction {
  * ------------------------------------------------------- */
 
 objectmetafunction *object_newmetafunction(value name);
+objectmetafunction *metafunction_clone(objectmetafunction *f);
+
 bool metafunction_wrap(value name, value fn, value *out);
 bool metafunction_add(objectmetafunction *f, value fn);
 bool metafunction_typefromvalue(value v, value *out);
+
+void metafunction_setclass(objectmetafunction *f, objectclass *klass);
+objectclass *metafunction_class(objectmetafunction *f);
 
 bool metafunction_matchfn(objectmetafunction *fn, value f);
 bool metafunction_matchset(objectmetafunction *fn, int n, value *fns);

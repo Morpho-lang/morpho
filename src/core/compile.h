@@ -120,6 +120,9 @@
 #define COMPILE_CLSSLNRZ                  "ClssLnrz"
 #define COMPILE_CLSSLNRZ_MSG              "Can't linearize class %s: Check parent and ancestor classes for conflicting inheritance order."
 
+#define COMPILE_CLSSDPLCTIMPL             "ClssDplctImpl"
+#define COMPILE_CLSSDPLCTIMPL_MSG         "Duplicate implementation of method %s with same signature in class %s"
+
 /* **********************************************************************
  * Compiler typedefs
  * ********************************************************************** */

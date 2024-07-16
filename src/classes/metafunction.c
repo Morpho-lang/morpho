@@ -305,7 +305,7 @@ void mfcompiler_disassemble(mfcompiler *c) {
                 break;
             }
             case MF_BRANCHNARGS: {
-                printf("branchargs (%i) -> (%i)\n", instr->narg, i+instr->branch+1);
+                printf("branchnargs (%i) -> (%i)\n", instr->narg, i+instr->branch+1);
                 _mfcompiler_disassemblebranchtable(instr, i);
                 break;
             }
@@ -802,9 +802,14 @@ bool _finduidinlinearization(objectclass *klass, int uid) {
     return false;
 }
 
-/** Execute the metafunction's resolver */
+/** Execute the metafunction's resolver 
+ @param[in] fn - the metafunction to resolve
+ @param[in] nargs - number of positional arguments
+ @param[in] args - positional arguments @warning: the first user-visible argument should be in the zero position
+ @param[out] out - resolved function
+ @returns true if the metafunction was successfully resolved */
 bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value *out) {
-    int n=vm_countpositionalargs(nargs, args);;
+    int n=vm_countpositionalargs(nargs, args);
     if (!fn->resolver.data &&
         !metafunction_compile(fn, NULL)) return false;
     mfinstruction *pc = fn->resolver.data;

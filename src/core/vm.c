@@ -989,6 +989,11 @@ callfunction: // Jump here if an instruction becomes a call
                     /* Call the initializer if class provides one */
                     value ifunc;
                     if (dictionary_getintern(&klass->methods, initselector, &ifunc)) {
+                        if (MORPHO_ISMETAFUNCTION(ifunc) &&
+                            !metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &ifunc)) {
+                            ERROR(VM_MLTPLDSPTCHFLD);
+                        }
+                        
                         /* If so, call it */
                         if (MORPHO_ISFUNCTION(ifunc)) {
                             if (!vm_call(v, ifunc, a, c, NULL, &pc, &reg)) goto vm_error;
@@ -1001,9 +1006,6 @@ callfunction: // Jump here if an instruction becomes a call
                             v->fp->inbuiltinfunction=NULL;
 #endif
                             ERRORCHK();
-                        } else if (MORPHO_ISMETAFUNCTION(ifunc) &&
-                                   !metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a, &ifunc)) {
-                            ERROR(VM_MLTPLDSPTCHFLD);
                         }
                     } else {
                         if (c>0) {

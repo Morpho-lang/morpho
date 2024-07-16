@@ -3480,29 +3480,11 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
         compiler_error(c, node, COMPILE_CLSSLNRZ, MORPHO_GETCSTRING(klass->name));
     }
 
-    objectstring str = MORPHO_STATICSTRING("XProblemAdapter");
-    if (MORPHO_ISEQUAL(klass->name, MORPHO_OBJECT(&str))) {
-        
-    }
-    
     /* Compile method declarations */
     if (node->right!=SYNTAXTREE_UNCONNECTED) {
         syntaxtreenode *child = compiler_getnode(c, node->right);
         mout=compiler_method(c, child, reqout);
         ninstructions+=mout.ninstructions;
-    }
-    
-    /* Compile any metafunctions */
-    for (unsigned int i=0; i<klass->methods.capacity; i++) {
-        dictionaryentry *e = &klass->methods.contents[i];
-        if (MORPHO_ISNIL(e->key)) continue;
-        if (MORPHO_ISMETAFUNCTION(e->val)) {
-            morpho_printvalue(NULL, klass->name);
-            printf(".");
-            morpho_printvalue(NULL, e->key);
-            printf("=>\n");
-            metafunction_compile(MORPHO_GETMETAFUNCTION(e->val), &c->err);
-        }
     }
 
     /* End class definition */

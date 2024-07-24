@@ -77,11 +77,12 @@ objectclass *metafunction_class(objectmetafunction *f);
 
 bool metafunction_matchfn(objectmetafunction *fn, value f);
 bool metafunction_matchset(objectmetafunction *fn, int n, value *fns);
+signature *metafunction_getsignature(value fn);
 
 bool metafunction_compile(objectmetafunction *fn, error *err);
 void metafunction_clearinstructions(objectmetafunction *fn);
 
-bool metafunction_resolve(objectmetafunction *f, int nargs, value *args, value *fn);
+bool metafunction_resolve(objectmetafunction *f, int nargs, value *args, error *err, value *fn);
 
 void metafunction_initialize(void);
 

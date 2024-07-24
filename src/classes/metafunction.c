@@ -166,7 +166,7 @@ bool metafunction_matchset(objectmetafunction *fn, int n, value *fns) {
     return true;
 }
 
-signature *_getsignature(value fn) {
+signature *metafunction_getsignature(value fn) {
     if (MORPHO_ISFUNCTION(fn)) {
         return &MORPHO_GETFUNCTION(fn)->sig;
     } else if (MORPHO_ISBUILTINFUNCTION(fn)) {
@@ -334,7 +334,7 @@ void mfcompiler_disassemble(mfcompiler *c) {
             }
             case MF_RESOLVE: {
                 printf("resolve ");
-                signature *sig = _getsignature(instr->data.resolvefn);
+                signature *sig = metafunction_getsignature(instr->data.resolvefn);
                 printf(" ");
                 if (sig) signature_print(sig);
                 break;
@@ -774,7 +774,8 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
     mfresult rlist[set.count];
     set.rlist=rlist;
     for (int i=0; i<set.count; i++) {
-        rlist[i].sig=_getsignature(fn->fns.data[i]);
+        rlist[i].sig=metafunction_getsignature(fn->fns.data[i]);
+        signature_print(rlist[i].sig);
         rlist[i].fn=fn->fns.data[i];
     }
     
@@ -782,7 +783,7 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
     mfcompiler_init(&compiler, fn);
     
     mfcompile_set(&compiler, &set);
-    //mfcompiler_disassemble(&compiler);
+    mfcompiler_disassemble(&compiler);
     
     bool success=!morpho_checkerror(&compiler.err);
     if (!success && err) *err=compiler.err;
@@ -806,12 +807,13 @@ bool _finduidinlinearization(objectclass *klass, int uid) {
  @param[in] fn - the metafunction to resolve
  @param[in] nargs - number of positional arguments
  @param[in] args - positional arguments @warning: the first user-visible argument should be in the zero position
+ @param[out] err - error block to be filled out
  @param[out] out - resolved function
  @returns true if the metafunction was successfully resolved */
-bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, value *out) {
+bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error *err, value *out) {
     int n=vm_countpositionalargs(nargs, args);
     if (!fn->resolver.data &&
-        !metafunction_compile(fn, NULL)) return false;
+        !metafunction_compile(fn, err)) return false;
     mfinstruction *pc = fn->resolver.data;
     if (!pc) return false;
     

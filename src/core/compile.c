@@ -3314,12 +3314,6 @@ void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *
     value symbol = method->name;
     objectclass *klass=compiler_getcurrentclass(c);
     
-    char *str = "ScaleConstraint";
-    objectstring sc = MORPHO_STATICSTRING(str);
-    if (MORPHO_ISEQUAL(MORPHO_OBJECT(&sc), klass->name)) {
-        
-    }   
-    
     if (MORPHO_ISMETAFUNCTION(prev)) {
         objectmetafunction *f = MORPHO_GETMETAFUNCTION(prev);
         if (f->klass!=klass) f=metafunction_clone(f);
@@ -3333,6 +3327,7 @@ void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *
                 if (sig && signature_isequal(sig, &method->sig)) {
                     // TODO: Should check for duplicate implementation here
                     f->fns.data[i] = MORPHO_OBJECT(method);
+                    return;
                 }
             }
             

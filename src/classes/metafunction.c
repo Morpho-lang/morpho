@@ -775,7 +775,6 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
     set.rlist=rlist;
     for (int i=0; i<set.count; i++) {
         rlist[i].sig=metafunction_getsignature(fn->fns.data[i]);
-        signature_print(rlist[i].sig);
         rlist[i].fn=fn->fns.data[i];
     }
     
@@ -783,7 +782,7 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
     mfcompiler_init(&compiler, fn);
     
     mfcompile_set(&compiler, &set);
-    mfcompiler_disassemble(&compiler);
+    //mfcompiler_disassemble(&compiler);
     
     bool success=!morpho_checkerror(&compiler.err);
     if (!success && err) *err=compiler.err;

@@ -1116,7 +1116,7 @@ callfunction: // Jump here if an instruction becomes a call
                     value ifunc;
                     if (dictionary_getintern(&klass->methods, right, &ifunc)) {
                         if (MORPHO_ISMETAFUNCTION(ifunc)) {
-                            if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, &v->err, reg+a+1, &ifunc)) {
+                            if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c,  reg+a+1, &v->err, &ifunc)) {
                                 ERRORCHK();
                                 ERROR(VM_MLTPLDSPTCHFLD);
                             }

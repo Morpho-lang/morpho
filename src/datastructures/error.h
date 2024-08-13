@@ -115,6 +115,9 @@ void morpho_unreachable(const char *explanation);
 #define ERROR_INTERNALERROR               "Intrnl"
 #define ERROR_INTERNALERROR_MSG           "Internal error (contact developer)."
 
+#define ERROR_ERROR                       "Err"
+#define ERROR_ERROR_MSG                   "Error."
+
 /* -------------------------------------------------------
  * VM error messages
  * ------------------------------------------------------- */

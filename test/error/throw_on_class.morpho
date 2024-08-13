@@ -1,0 +1,4 @@
+// Calling throw on the class
+
+Error.throw("FooFoo", "Can't foo foos.")
+// expect: Error 'FooFoo': Can't foo foos.

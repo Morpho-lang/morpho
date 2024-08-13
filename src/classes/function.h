@@ -35,7 +35,7 @@ typedef struct sobjectfunction {
     int creg; // Closure register
     struct sobjectfunction *parent;
     int nregs;
-    objectclass *klass;
+    objectclass *klass; // Parent class for methods
     varray_value konst;
     varray_varray_upvalue prototype;
     varray_optionalparam opt;

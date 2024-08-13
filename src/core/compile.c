@@ -3309,6 +3309,55 @@ static codeinfo compiler_return(compiler *c, syntaxtreenode *node, registerindx 
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
 
+/** Overrides or adds to an existing method implementation */
+void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *method, value prev) {
+    value symbol = method->name;
+    objectclass *klass=compiler_getcurrentclass(c);
+    
+    if (MORPHO_ISMETAFUNCTION(prev)) {
+        objectmetafunction *f = MORPHO_GETMETAFUNCTION(prev);
+        if (f->klass!=klass) f=metafunction_clone(f);
+        
+        if (f) {
+            metafunction_setclass(f, klass);
+            dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(f));
+            
+            for (int i=0; i<f->fns.count; i++) { // Check if this overrides
+                signature *sig = metafunction_getsignature(f->fns.data[i]);
+                if (sig && signature_isequal(sig, &method->sig)) {
+                    // TODO: Should check for duplicate implementation here
+                    f->fns.data[i] = MORPHO_OBJECT(method);
+                    return;
+                }
+            }
+            
+            metafunction_add(f, MORPHO_OBJECT(method));
+        }
+        
+    } else if (MORPHO_ISFUNCTION(prev)) {
+        objectfunction *prevmethod = MORPHO_GETFUNCTION(prev);
+        
+        if (signature_isequal(&prevmethod->sig, &method->sig)) { // Does the method overshadow an old one?
+            if (prevmethod->klass!=klass) { // If so, is the old one in the parent or ancestor class?
+                dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(method));
+            } else { // It's a redefinition
+                compiler_error(c, node, COMPILE_CLSSDPLCTIMPL, MORPHO_GETCSTRING(symbol), MORPHO_GETCSTRING(klass->name));
+            }
+        } else { // It doesn't override the old definition so wrap in a metafunction
+            objectmetafunction *f = object_newmetafunction(symbol);
+            
+            if (f) {
+                metafunction_add(f, prev);
+                metafunction_add(f, MORPHO_OBJECT(method));
+                metafunction_setclass(f, klass);
+                dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(f));
+            }
+        }
+    } else if (MORPHO_ISBUILTINFUNCTION(prev)) { // A builtin function can only come from a parent class, so overwrite it
+        dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(method));
+    }
+}
+
 /** Compiles a list of method declarations. */
 static codeinfo compiler_method(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo out;
@@ -3334,19 +3383,7 @@ static codeinfo compiler_method(compiler *c, syntaxtreenode *node, registerindx 
                           prev=MORPHO_NIL;
                     
                     if (dictionary_get(&klass->methods, symbol, &prev)) {
-                        if (MORPHO_ISMETAFUNCTION(prev)) { // Add the method to the mf.
-                            metafunction_add(MORPHO_GETMETAFUNCTION(prev), omethod);
-                        } else { // Check if we're replacing an inherited method
-                            if ((MORPHO_ISFUNCTION(prev) &&
-                                MORPHO_GETFUNCTION(prev)->klass!=klass) ||
-                                (MORPHO_ISBUILTINFUNCTION(prev))) { // Just overwrite it
-                                    dictionary_insert(&klass->methods, symbol, omethod);
-                            } else { // We're not, so wrap in a mf.
-                                metafunction_wrap(symbol, prev, &prev);
-                                metafunction_add(MORPHO_GETMETAFUNCTION(prev), omethod);
-                                dictionary_insert(&klass->methods, symbol, prev);
-                            }
-                        }
+                        compiler_overridemethod(c, node, method, prev); // Override or create a metafunction
                     } else dictionary_insert(&klass->methods, symbol, omethod); // Just insert
                 }
             }
@@ -4281,8 +4318,8 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_UNKNWNTYPE, ERROR_COMPILE, COMPILE_UNKNWNTYPE_MSG);
     morpho_defineerror(COMPILE_UNKNWNNMSPC, ERROR_COMPILE, COMPILE_UNKNWNNMSPC_MSG);
     morpho_defineerror(COMPILE_UNKNWNTYPENMSPC, ERROR_COMPILE, COMPILE_UNKNWNTYPENMSPC_MSG);
-    
     morpho_defineerror(COMPILE_CLSSLNRZ, ERROR_COMPILE, COMPILE_CLSSLNRZ_MSG);
+    morpho_defineerror(COMPILE_CLSSDPLCTIMPL, ERROR_COMPILE, COMPILE_CLSSDPLCTIMPL_MSG);
     
     morpho_addfinalizefn(compile_finalize);
 }

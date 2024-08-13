@@ -946,7 +946,8 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             c=DECODE_B(bc); // We use c for consistency between call and invoke...
 
             if (MORPHO_ISMETAFUNCTION(left) &&
-                !metafunction_resolve(MORPHO_GETMETAFUNCTION(left), c, reg+a+1, &left)) {
+                !metafunction_resolve(MORPHO_GETMETAFUNCTION(left), c, reg+a+1,                 &v->err, &left)) {
+                ERRORCHK();
                 ERROR(VM_MLTPLDSPTCHFLD);
             }
         
@@ -989,6 +990,12 @@ callfunction: // Jump here if an instruction becomes a call
                     /* Call the initializer if class provides one */
                     value ifunc;
                     if (dictionary_getintern(&klass->methods, initselector, &ifunc)) {
+                        if (MORPHO_ISMETAFUNCTION(ifunc) &&
+                            !metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &v->err, &ifunc)) {
+                            ERRORCHK();
+                            ERROR(VM_MLTPLDSPTCHFLD);
+                        }
+                        
                         /* If so, call it */
                         if (MORPHO_ISFUNCTION(ifunc)) {
                             if (!vm_call(v, ifunc, a, c, NULL, &pc, &reg)) goto vm_error;
@@ -1030,7 +1037,10 @@ callfunction: // Jump here if an instruction becomes a call
                 if (dictionary_getintern(&instance->klass->methods, right, &ifunc)) {
 
                     if (MORPHO_ISMETAFUNCTION(ifunc)) {
-                        if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &ifunc)) ERROR(VM_MLTPLDSPTCHFLD);
+                        if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &v->err, &ifunc)) {
+                            ERRORCHK();
+                            ERROR(VM_MLTPLDSPTCHFLD);
+                        }
                     }
                     
                     /* If so, call it */
@@ -1071,7 +1081,10 @@ callfunction: // Jump here if an instruction becomes a call
                     if (v->fp>v->frame) reg[a]=reg[0]; /* Copy self into r[a] and call */
 
                     if (MORPHO_ISMETAFUNCTION(ifunc)) {
-                        if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &ifunc)) ERROR(VM_MLTPLDSPTCHFLD);
+                        if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &v->err, &ifunc)) {
+                            ERRORCHK();
+                            ERROR(VM_MLTPLDSPTCHFLD);
+                        }
                     }
                     
                     if (MORPHO_ISFUNCTION(ifunc)) {
@@ -1103,7 +1116,10 @@ callfunction: // Jump here if an instruction becomes a call
                     value ifunc;
                     if (dictionary_getintern(&klass->methods, right, &ifunc)) {
                         if (MORPHO_ISMETAFUNCTION(ifunc)) {
-                            if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c, reg+a+1, &ifunc)) ERROR(VM_MLTPLDSPTCHFLD);
+                            if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), c,  reg+a+1, &v->err, &ifunc)) {
+                                ERRORCHK();
+                                ERROR(VM_MLTPLDSPTCHFLD);
+                            }
                         }
                         
                         if (MORPHO_ISBUILTINFUNCTION(ifunc)) {
@@ -1715,8 +1731,8 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
     value r0=f;
 
     if (MORPHO_ISMETAFUNCTION(fn) &&
-        !metafunction_resolve(MORPHO_GETMETAFUNCTION(fn), nargs, args, &fn)) {
-        morpho_runtimeerror(v, VM_MLTPLDSPTCHFLD);
+        !metafunction_resolve(MORPHO_GETMETAFUNCTION(fn), nargs, args, &v->err, &fn)) {
+        if (!morpho_checkerror(&v->err)) morpho_runtimeerror(v, VM_MLTPLDSPTCHFLD);
         return false;
     }
     

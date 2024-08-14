@@ -39,13 +39,13 @@ objecttypedefn objectcomplexmatrixdefn = {
  * Veneer class
  * ********************************************************************** */
 
-/** Matrix add */
+/** ComplexMatrix add */
 value ComplexMatrix_add_Matrix(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
 MORPHO_BEGINCLASS(ComplexMatrix)
-MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "(Matrix)", ComplexMatrix_add_Matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "(XMatrix)", ComplexMatrix_add_Matrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "(ComplexMatrix)", ComplexMatrix_add_Matrix, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 

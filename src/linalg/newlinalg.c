@@ -7,6 +7,7 @@
 #include <string.h>
 #include "morpho.h"
 #include "classes.h"
+#include "builtin.h"
 #include "newlinalg.h"
 
 /* **********************************************************************
@@ -34,6 +35,29 @@ objecttypedefn objectxmatrixdefn = {
     .cmpfn=NULL
 };
 
+/** Creates a new matrix object */
+objectmatrix *object_newxmatrix(int nrows, int ncols, long nels, bool zero) {
+    objectxmatrix *new = (objectxmatrix *) object_new(sizeof(objectxmatrix)+nels*sizeof(double), OBJECT_MATRIX);
+    
+    if (new) {
+        new->ncols=ncols;
+        new->nrows=nrows;
+        new->nels=nels;
+        new->elements=new->matrixdata;
+        if (zero) memset(new->elements, 0, sizeof(double)*nels);
+    }
+    
+    return new;
+}
+
+/* **********************************************************************
+ * Constructors
+ * ********************************************************************** */
+
+value xmatrix_constructor(vm *v, int nargs, value *args) {
+    
+}
+
 /* **********************************************************************
  * Veneer classes
  * ********************************************************************** */
@@ -59,4 +83,7 @@ void xmatrix_initialize(void) {
     
     value xmatrixclass=builtin_addclass(XMATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(XMatrix), objclass);
     object_setveneerclass(OBJECT_XMATRIX, xmatrixclass);
+    
+    value consfn = builtin_addfunction(XMATRIX_CLASSNAME, xmatrix_constructor, MORPHO_FN_CONSTRUCTOR);
+    builtin_setsignature(consfn, "(Int, Int)");
 }

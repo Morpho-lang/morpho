@@ -12,6 +12,9 @@
 #include "sparse.h"
 #include "format.h"
 
+#include "newlinalg.h"
+#include "complexmatrix.h"
+
 /* **********************************************************************
  * Matrix objects
  * ********************************************************************** */
@@ -1562,4 +1565,7 @@ void matrix_initialize(void) {
     morpho_defineerror(MATRIX_SETCOLARGS, ERROR_HALT, MATRIX_SETCOLARGS_MSG);
     morpho_defineerror(MATRIX_NORMARGS, ERROR_HALT, MATRIX_NORMARGS_MSG);
     morpho_defineerror(MATRIX_IDENTCONSTRUCTOR, ERROR_HALT, MATRIX_IDENTCONSTRUCTOR_MSG);
+    
+    xmatrix_initialize();
+    complexmatrix_initialize();
 }

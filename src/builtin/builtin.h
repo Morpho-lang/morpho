@@ -123,7 +123,7 @@ void builtin_setclasstable(dictionary *dict);
 value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags flags);
 value builtin_findfunction(value name);
 
-value morpho_addfunction(char *name, char *signature, builtinfunction func, builtinfunctionflags flags);
+bool morpho_addfunction(char *name, char *signature, builtinfunction func, builtinfunctionflags flags, value *out);
 
 value builtin_addclass(char *name, builtinclassentry desc[], value superclass);
 value builtin_findclass(value name);

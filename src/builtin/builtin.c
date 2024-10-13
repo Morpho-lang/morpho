@@ -50,6 +50,12 @@ void builtin_init(objectbuiltinfunction *func) {
     signature_init(&func->sig);
 }
 
+/** Clear an objectbuiltinfunction */
+void builtin_clear(objectbuiltinfunction *func) {
+    morpho_freeobject(func->name);
+    signature_clear(&func->sig);
+}
+
 /** @brief An enumerate loop.
     @details Successively calls enumerate on obj, passing the result to the supplied function.
     @param[in] v - the virtual machine
@@ -132,9 +138,7 @@ void objectbuiltinfunction_printfn(object *obj, void *v) {
 }
 
 void objectbuiltinfunction_freefn(object *obj) {
-    objectbuiltinfunction *func = (objectbuiltinfunction *) obj;
-    signature_clear(&func->sig);
-    morpho_freeobject(func->name);
+    builtin_clear((objectbuiltinfunction *) obj);
 }
 
 size_t objectbuiltinfunction_sizefn(object *obj) {
@@ -180,7 +184,9 @@ void builtin_setclasstable(dictionary *dict) {
  * @param flags flags to define the function
  * @returns value referring to the objectbuiltinfunction */
 value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags flags) {
-    morpho_addfunction(name, NULL, func, flags);
+    value out=MORPHO_NIL;
+    morpho_addfunction(name, NULL, func, flags, &out);
+    return out;
 }
 
 /** Finds a builtin function from its name */
@@ -195,29 +201,44 @@ value builtin_findfunction(value name) {
  * @param signature [optional] signature for the function
  * @param func  the corresponding C function
  * @param flags flags to define the function
- * @returns value referring to the objectbuiltinfunction */
-value morpho_addfunction(char *name, char *signature, builtinfunction func, builtinfunctionflags flags) {
+ * @param[out] value referring to the objectbuiltinfunction
+ * @returns true on success */
+bool morpho_addfunction(char *name, char *signature, builtinfunction func, builtinfunctionflags flags, value *out) {
     objectbuiltinfunction *new = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
-    value out = MORPHO_NIL;
-    varray_valuewrite(&builtin_objects, MORPHO_OBJECT(new));
+    if (!new) goto morpho_addfunction_cleanup;
     
-    if (new) {
-        builtin_init(new);
-        new->function=func;
-        new->name=object_stringfromcstring(name, strlen(name));
-        new->flags=flags;
-        out = MORPHO_OBJECT(new);
-        
-        value selector = dictionary_intern(&builtin_symboltable, new->name);
-        
-        if (dictionary_get(_currentfunctiontable, new->name, NULL)) {
-            UNREACHABLE("Redefinition of function in same extension [in builtin.c]");
-        }
-        
-        dictionary_insert(_currentfunctiontable, selector, out);
+    builtin_init(new);
+    new->function=func;
+    new->flags=flags;
+    
+    new->name=object_stringfromcstring(name, strlen(name));
+    if (!name) goto morpho_addfunction_cleanup;
+    
+    // Parse function signature if provided
+    if (signature &&
+        !signature_parse(signature, &new->sig)) goto morpho_addfunction_cleanup;
+    
+    value selector = dictionary_intern(&builtin_symboltable, new->name);
+    if (dictionary_get(_currentfunctiontable, new->name, NULL)) {
+        UNREACHABLE("Redefinition of function in same extension [in builtin.c]");
     }
     
-    return out;
+    value newfn = MORPHO_OBJECT(new);
+    dictionary_insert(_currentfunctiontable, selector, newfn);
+    
+    // Retain the objectbuiltinfunction in the builtin_objects table
+    varray_valuewrite(&builtin_objects, newfn);
+    *out = newfn;
+    
+    return true;
+    
+morpho_addfunction_cleanup:
+    if (new) {
+        builtin_clear(new);
+        object_free((object *) new);
+    }
+    
+    return false;
 }
 
 /* **********************************************************************

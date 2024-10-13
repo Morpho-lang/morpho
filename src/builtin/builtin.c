@@ -180,6 +180,23 @@ void builtin_setclasstable(dictionary *dict) {
  * @param flags flags to define the function
  * @returns value referring to the objectbuiltinfunction */
 value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags flags) {
+    morpho_addfunction(name, NULL, func, flags);
+}
+
+/** Finds a builtin function from its name */
+value builtin_findfunction(value name) {
+    value out=MORPHO_NIL;
+    dictionary_get(&builtin_functiontable, name, &out);
+    return out;
+}
+
+/** Add a function to the morpho runtime
+ * @param name  name of the function
+ * @param signature [optional] signature for the function
+ * @param func  the corresponding C function
+ * @param flags flags to define the function
+ * @returns value referring to the objectbuiltinfunction */
+value morpho_addfunction(char *name, char *signature, builtinfunction func, builtinfunctionflags flags) {
     objectbuiltinfunction *new = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
     value out = MORPHO_NIL;
     varray_valuewrite(&builtin_objects, MORPHO_OBJECT(new));
@@ -200,13 +217,6 @@ value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags
         dictionary_insert(_currentfunctiontable, selector, out);
     }
     
-    return out;
-}
-
-/** Finds a builtin function from its name */
-value builtin_findfunction(value name) {
-    value out=MORPHO_NIL;
-    dictionary_get(&builtin_functiontable, name, &out);
     return out;
 }
 

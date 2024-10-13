@@ -16,6 +16,7 @@
 
 void signature_init(signature *s) {
     varray_valueinit(&s->types);
+    s->varg=false;
 }
 
 void signature_clear(signature *s) {

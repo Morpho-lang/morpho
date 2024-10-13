@@ -196,12 +196,39 @@ value builtin_findfunction(value name) {
     return out;
 }
 
+/** Adds a new builtinfunction to a given dictionary.
+ * @param[in] dict  the dictionary
+ * @param[in] name  name of the function to add
+ * @param[in] fn function to add
+ * @param[out] out the function added (which may be a metafunction)
+ * @returns true on success */
+bool builtin_addfunctiontodict(dictionary *dict, value name, value fn, value *out) {
+    bool success=false;
+    value entry=fn; // Dictionary entry for this name
+    value selector = dictionary_intern(&builtin_symboltable, name); // Use interned name
+    
+    if (dictionary_get(dict, selector, &entry)) { // There was an existing function
+        if (MORPHO_ISBUILTINFUNCTION(entry)) { // It was a builtinfunction, so we need to create a metafunction
+            if (metafunction_wrap(name, entry, &entry)) { // Wrap the old definition in a metafunction
+                metafunction_add(MORPHO_GETMETAFUNCTION(entry), fn); // Add the new definition
+                success=dictionary_insert(dict, selector, entry);
+            }
+        } else if (MORPHO_ISMETAFUNCTION(entry)) { // It was already a metafunction so simply add the new function
+            success=metafunction_add(MORPHO_GETMETAFUNCTION(entry), fn);
+        }
+    } else success=dictionary_insert(dict, selector, fn);
+    
+    if (success && out) *out = entry;
+    
+    return success;
+}
+
 /** Add a function to the morpho runtime
  * @param name  name of the function
  * @param signature [optional] signature for the function
  * @param func  the corresponding C function
  * @param flags flags to define the function
- * @param[out] value referring to the objectbuiltinfunction
+ * @param[out] value the function created as usable with morpho_call
  * @returns true on success */
 bool morpho_addfunction(char *name, char *signature, builtinfunction func, builtinfunctionflags flags, value *out) {
     objectbuiltinfunction *new = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
@@ -218,17 +245,15 @@ bool morpho_addfunction(char *name, char *signature, builtinfunction func, built
     if (signature &&
         !signature_parse(signature, &new->sig)) goto morpho_addfunction_cleanup;
     
-    value selector = dictionary_intern(&builtin_symboltable, new->name);
-    if (dictionary_get(_currentfunctiontable, new->name, NULL)) {
+    value newfn = MORPHO_OBJECT(new);
+    
+    if (!builtin_addfunctiontodict(_currentfunctiontable, new->name, newfn, NULL)) {
         UNREACHABLE("Redefinition of function in same extension [in builtin.c]");
     }
     
-    value newfn = MORPHO_OBJECT(new);
-    dictionary_insert(_currentfunctiontable, selector, newfn);
-    
     // Retain the objectbuiltinfunction in the builtin_objects table
     varray_valuewrite(&builtin_objects, newfn);
-    *out = newfn;
+    if (out) *out = newfn;
     
     return true;
     
@@ -349,6 +374,16 @@ extern objecttypedefn objectclassdefn;
 
 objecttype objectbuiltinfunctiontype;
 
+value builtin_testint(vm *v, int nargs, value *args) {
+    printf("Int\n");
+    return MORPHO_NIL;
+}
+
+value builtin_testflt(vm *v, int nargs, value *args) {
+    printf("Float\n");
+    return MORPHO_NIL;
+}
+
 void builtin_initialize(void) {
     dictionary_init(&builtin_functiontable);
     dictionary_init(&builtin_classtable);
@@ -400,6 +435,9 @@ void builtin_initialize(void) {
     selection_initialize();
     field_initialize();
     functional_initialize();
+    
+    morpho_addfunction("hello", "(Int)", builtin_testint, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction("hello", "(Float)", builtin_testflt, MORPHO_FN_PUREFN, NULL);
     
     morpho_addfinalizefn(builtin_finalize);
 }

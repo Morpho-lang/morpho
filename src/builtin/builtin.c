@@ -373,21 +373,6 @@ extern objecttypedefn objectclassdefn;
 
 objecttype objectbuiltinfunctiontype;
 
-value builtin_test(vm *v, int nargs, value *args) {
-    printf("None\n");
-    return MORPHO_NIL;
-}
-
-value builtin_testint(vm *v, int nargs, value *args) {
-    printf("Int\n");
-    return MORPHO_NIL;
-}
-
-value builtin_testflt(vm *v, int nargs, value *args) {
-    printf("Float\n");
-    return MORPHO_NIL;
-}
-
 void builtin_initialize(void) {
     dictionary_init(&builtin_functiontable);
     dictionary_init(&builtin_classtable);
@@ -439,10 +424,6 @@ void builtin_initialize(void) {
     selection_initialize();
     field_initialize();
     functional_initialize();
-    
-    morpho_addfunction("hello", "()", builtin_test, MORPHO_FN_PUREFN, NULL);
-    morpho_addfunction("hello", "(Int)", builtin_testint, MORPHO_FN_PUREFN, NULL);
-    morpho_addfunction("hello", "(Float)", builtin_testflt, MORPHO_FN_PUREFN, NULL);
     
     morpho_addfinalizefn(builtin_finalize);
 }

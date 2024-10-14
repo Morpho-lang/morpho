@@ -11,7 +11,8 @@
 #include "varray.h"
 
 typedef struct {
-    varray_value types;
+    varray_value types; /** Signature of parameters */
+    value ret; /** Return type */
     bool varg; /** Is the function variadic? */
 } signature;
 
@@ -25,6 +26,7 @@ bool signature_istyped(signature *s);
 bool signature_isequal(signature *a, signature *b);
 bool signature_paramlist(signature *s, int *nparams, value **ptypes);
 bool signature_getparamtype(signature *s, int i, value *type);
+value signature_getreturntype(signature *s);
 int signature_countparams(signature *s);
 
 void signature_set(signature *s, int nparam, value *types);

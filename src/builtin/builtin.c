@@ -196,6 +196,15 @@ value builtin_findfunction(value name) {
     return out;
 }
 
+objectclass *builtin_getparentclass(value fn) {
+    if (MORPHO_ISFUNCTION(fn)) return MORPHO_GETFUNCTION(fn)->klass;
+    else if (MORPHO_ISBUILTINFUNCTION(fn)) return MORPHO_GETBUILTINFUNCTION(fn)->klass;
+    else if (MORPHO_ISMETAFUNCTION(fn)) return MORPHO_GETMETAFUNCTION(fn)->klass;
+    else if (MORPHO_ISCLASS(fn)) return MORPHO_GETCLASS(fn)->superclass;
+    
+    return NULL;
+}
+
 /** Adds a new builtinfunction to a given dictionary.
  * @param[in] dict  the dictionary
  * @param[in] name  name of the function to add
@@ -209,7 +218,10 @@ bool builtin_addfunctiontodict(dictionary *dict, value name, value fn, value *ou
     
     if (dictionary_get(dict, selector, &entry)) { // There was an existing function
         if (MORPHO_ISBUILTINFUNCTION(entry)) { // It was a builtinfunction, so we need to create a metafunction
-            if (metafunction_wrap(name, entry, &entry)) { // Wrap the old definition in a metafunction
+            if (builtin_getparentclass(fn) !=
+                MORPHO_GETBUILTINFUNCTION(entry)->klass) { // Override superclass methods for now
+                dictionary_insert(dict, selector, fn);
+            } else if (metafunction_wrap(name, entry, &entry)) { // Wrap the old definition in a metafunction
                 metafunction_add(MORPHO_GETMETAFUNCTION(entry), fn); // Add the new definition
                 success=dictionary_insert(dict, selector, entry);
             }
@@ -308,20 +320,7 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
             
             varray_valuewrite(&builtin_objects, method);
             
-            value prev=MORPHO_NIL;
-            if (dictionary_get(&new->methods, newmethod->name, &prev)) {
-                if (MORPHO_ISBUILTINFUNCTION(prev)) {
-                    objectbuiltinfunction *func = MORPHO_GETBUILTINFUNCTION(prev);
-                    if (func->klass!=new) { // Override superclass methods for now
-                        dictionary_insert(&new->methods, selector, method);
-                    } else if (metafunction_wrap(newmethod->name, prev, &prev)) {
-                        metafunction_add(MORPHO_GETMETAFUNCTION(prev), method);
-                        dictionary_insert(&new->methods, selector, prev);
-                    }
-                } else if (MORPHO_ISMETAFUNCTION(prev)) {
-                    metafunction_add(MORPHO_GETMETAFUNCTION(prev), method);
-                }
-            } else dictionary_insert(&new->methods, selector, method);
+            builtin_addfunctiontodict(&new->methods, newmethod->name, method, NULL);
         }
     }
     
@@ -373,6 +372,11 @@ extern objecttypedefn objectstringdefn;
 extern objecttypedefn objectclassdefn;
 
 objecttype objectbuiltinfunctiontype;
+
+value builtin_test(vm *v, int nargs, value *args) {
+    printf("None\n");
+    return MORPHO_NIL;
+}
 
 value builtin_testint(vm *v, int nargs, value *args) {
     printf("Int\n");
@@ -436,6 +440,7 @@ void builtin_initialize(void) {
     field_initialize();
     functional_initialize();
     
+    morpho_addfunction("hello", "()", builtin_test, MORPHO_FN_PUREFN, NULL);
     morpho_addfunction("hello", "(Int)", builtin_testint, MORPHO_FN_PUREFN, NULL);
     morpho_addfunction("hello", "(Float)", builtin_testflt, MORPHO_FN_PUREFN, NULL);
     

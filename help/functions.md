@@ -18,6 +18,24 @@ Once a function has been defined you can evaluate it like any other morpho funct
 
     print sqr(2)
 
+Functions can accept optional parameters:
+
+    fn fun(x, quiet=true ) { if (!quiet) print "Loud!" }
+
+Morpho functions can also be defined to restrict the type of accepted parameters:
+
+    fn f(List x) { print "A list!" }
+
+Multiple implementations can be defined that accept different numbers of parameters and parameter types:
+
+    fn f() { print "No parameters!" }
+    fn f(String x) { print "A string!" }
+    fn f(Tuple x) { print "A tuple!" }
+
+The correct implementation is then selected at runtime: 
+
+    f("Hello World!") // expect: A string! 
+
 [show]: # (subtopics) 
 
 ## Variadic
@@ -57,6 +75,8 @@ Each optional parameter must be defined with a default value (here `1`). The fun
     func()    // a == 1 due to default value
     func(a=2) // a == 2 supplied by the user
 
+Note that optional parameters may not be typed. 
+
 ## Return
 [tagreturn]: # (return)
 
@@ -68,6 +88,51 @@ The `return` keyword is used to exit from a function, optionally passing a given
     }
 
 by returning early if `n<2`, otherwise returning the result by recursively calling itself.
+
+## Signature
+[tagsignature]: # (signature)
+
+The *signature* of a function is a list of the types of arguments in its definition: 
+
+    fn f(x) {}         // Accepts one parameter of any type
+    fn f(x,y) {}       // Accepts two parameters of any type
+    fn f(List x, y) {} // The first parameter must be a list
+    fn f(List x, List y) {} // Both parameters must be lists
+
+While you can define multiple implementations of a function that accept different parameter types, you can only define one implementation with a unique signature.
+
+Note that optional and variadic parameters are not typed.
+
+# Multiple dispatch
+[tagmultiple]: # (multiple)
+[tagdispatch]: # (dispatch)
+[tagmultipledispatch]: # (multipledispatch)
+
+Morpho supports *multiple dispatch*, whereby you can define several implementations of a function that accept different types:
+
+    fn f(List x) { return "Accepts a list" }
+    fn f(String x) { return "Accepts a string" }
+
+Morpho chooses the appropriate implementation at runtime: 
+
+    f([1,2,3]) // Selects the List implementation
+
+Any classes you define can be used as types:
+
+    class A {} 
+    class B is A {} 
+    class C is B {} 
+
+    fn f(A x) { return "A" }
+    fn f(B x) { return "B" }
+
+Morpho selects the *closest match*, so that: 
+
+    print f(A()) // expect: A
+    print f(B()) // expect: B
+    print f(C()) // expect: B
+
+Class `C` inherits from both `B` and `A`, but because it directly inherits from `B`, that's the closer match. 
 
 # Closures
 [tagclosures]: # (closures)

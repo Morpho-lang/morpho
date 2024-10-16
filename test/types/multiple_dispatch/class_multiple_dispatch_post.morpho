@@ -1,0 +1,28 @@
+// Dipatch methods on multiple types with a type defined after the class
+
+class A {
+    f(String x) {
+        print x
+    }
+
+    f(Float x) {
+        print x+1
+    }
+
+    f(List x) {
+        print x[-1]
+    }
+
+    f(x) {
+        print "Backup"
+    }
+}
+
+class B {
+
+}
+
+var a = A()
+
+a.f(B())
+// expect: Backup

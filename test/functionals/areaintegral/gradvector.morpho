@@ -10,22 +10,17 @@ mb.addface([0,1,2])
 var m = mb.build()
 
 var f = Field(m, fn (x,y) Matrix([x,2*y]))
-var r
+
+var r = [ Matrix([[1],[0]]), Matrix([[0],[2]]) ]
+var out = true
 
 fn integrand(x, n) {
     var g = grad(n)
-    r = []
-    for (u in g) r.append(u.clone())
+    for (gg, k in g) if ((gg-r[k]).norm()>1e-4) out = false
     return 0
 }
 
 print AreaIntegral(integrand, f).total(m)
 // expect: 0
 
-print r[0]
-// expect: [ 1 ]
-// expect: [ 0 ]
-
-print r[1]
-// expect: [ 0 ]
-// expect: [ 2 ]
+print out // expect: true

@@ -65,7 +65,7 @@ typedef errorcategory morphoerror;
 typedef struct {
     errorcategory cat;
     errorid id;
-    char *module; 
+    char *file; 
     int line, posn;
     char msg[MORPHO_ERRORSTRINGSIZE];
 } error;
@@ -114,6 +114,9 @@ void morpho_unreachable(const char *explanation);
 
 #define ERROR_INTERNALERROR               "Intrnl"
 #define ERROR_INTERNALERROR_MSG           "Internal error (contact developer)."
+
+#define ERROR_ERROR                       "Err"
+#define ERROR_ERROR_MSG                   "Error."
 
 /* -------------------------------------------------------
  * VM error messages
@@ -188,6 +191,9 @@ void morpho_unreachable(const char *explanation);
 #define VM_GETINDEXARGS                   "NonintIndex"
 #define VM_GETINDEXARGS_MSG               "Noninteger array index."
 
+#define VM_MLTPLDSPTCHFLD                 "MltplDsptchFld"
+#define VM_MLTPLDSPTCHFLD_MSG             "Multiple dispatch could not find an implementation that matches these arguments."
+
 /* -------------------------------------------------------
  * Error interface
  * ------------------------------------------------------- */
@@ -195,8 +201,8 @@ void morpho_unreachable(const char *explanation);
 void error_init(error *err);
 void error_clear(error *err);
 
-void morpho_writeerrorwithid(error *err, errorid id, int line, int posn, ...);
-void morpho_writeerrorwithidvalist(error *err, errorid id, int line, int posn, va_list args);
+void morpho_writeerrorwithid(error *err, errorid id, char *file, int line, int posn, ...);
+void morpho_writeerrorwithidvalist(error *err, errorid id, char *file, int line, int posn, va_list args);
 void morpho_writeusererror(error *err, errorid id, char *message);
 void morpho_defineerror(errorid id, errorcategory cat, char *message);
 

@@ -1,0 +1,16 @@
+// Multiple dispatch with closures
+
+fn f(a) {
+    fn g() { return a }
+    fn g(x) { return x + a }
+
+    return g
+}
+
+var p = f(1)
+
+print p() 
+// expect: 1
+
+print p(1) 
+// expect: 2

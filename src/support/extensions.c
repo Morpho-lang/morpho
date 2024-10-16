@@ -138,9 +138,6 @@ bool extension_initialize(extension *e) {
     dictionary *ofunc=builtin_getfunctiontable(),
                *oclss=builtin_getclasstable();
     
-    dictionary *fntable = MORPHO_GETDICTIONARYSTRUCT(e->functiontable);
-    dictionary *clsstable = MORPHO_GETDICTIONARYSTRUCT(e->classtable);
-    
     builtin_setfunctiontable(MORPHO_GETDICTIONARYSTRUCT(e->functiontable));
     builtin_setclasstable(MORPHO_GETDICTIONARYSTRUCT(e->classtable));
     

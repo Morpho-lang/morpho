@@ -1,0 +1,15 @@
+// Single implementation with typecheck and inheritance
+
+class A {}
+
+class B is A {} 
+
+class C {} 
+
+fn f(A x) { return "A" }
+
+print f(A()) // expect: A
+
+print f(B()) // expect: A
+
+print f(C()) // expect error 'MltplDsptchFld'

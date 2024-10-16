@@ -1,0 +1,17 @@
+// Multiple dispatch with recursion
+
+fn f(String x) {
+  print x
+}
+
+fn f(List x) {
+  if (x.count()>0) {
+    f(String(x.pop()))
+    f(x)
+  }
+}
+
+f([1,2,3])
+// expect: 3
+// expect: 2
+// expect: 1

@@ -31,6 +31,26 @@ See also `Object`.
 
 [showsubtopics]: # (subtopics)
 
+## Methods
+[tagmethods]: # (methods)
+
+Classes in morpho can define *methods* to manipulate the objects defined by the class. Like functions, multiple implementations can be defined that accept different parameter types [see also topic: `signature`]:
+
+    class Foo {
+        a(List x) { print "A list!" } 
+        a(String x) { print "A string!" } 
+        a(Matrix x) { print "A matrix!" } 
+    }
+
+Having created an object with the class,
+
+    var x = Foo() 
+
+the correct implementation is selected at runtime:
+
+    x.a([1,2]) // expect: A list! 
+    x.a("Hello") // expect: A string! 
+
 ## Is
 [tagis]: # (is)
 

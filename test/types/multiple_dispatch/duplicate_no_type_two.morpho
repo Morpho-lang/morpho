@@ -1,0 +1,13 @@
+// Duplicate implementations with one argument no Type annotations.
+
+fn f(x, y) {
+    return 0
+}
+
+fn f(x, y) {
+    return 1 
+}
+
+print f(1)
+// expect error 'MltplDisptchAmbg'
+

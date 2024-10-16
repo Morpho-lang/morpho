@@ -1,0 +1,19 @@
+// Multiple dispatch with optional arguments
+
+fn f() { return 0 } 
+
+fn f(x) { return x }
+
+fn f(x,y,z=0) { return x + y + z }
+
+print f() 
+// expect: 0
+
+print f(1) 
+// expect: 1
+
+print f(1,2) 
+// expect: 3
+
+print f(1,2,z=3) 
+// expect: 6

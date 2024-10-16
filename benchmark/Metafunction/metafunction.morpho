@@ -1,0 +1,34 @@
+// Call a meta function
+
+
+fn f(Int x) { return x }
+
+fn f(Float x) { return x }
+
+fn f(String x) { return x }
+
+fn g(x) { return x }
+
+var a = "Hello"
+
+var n = 10000000
+
+var start = System.clock()
+for (i in 1..n) {
+    g(1)
+    g(2.0)
+    g(a)
+}
+var end = System.clock()
+
+print "Regular function ${end-start}"
+
+var start = System.clock()
+for (i in 1..n) {
+    f(1)
+    f(2.0)
+    f(a)
+}
+var end = System.clock()
+
+print "Metafunction ${end-start}"

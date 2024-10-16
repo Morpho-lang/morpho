@@ -1,0 +1,12 @@
+// Detect type violations from propagation
+
+fn f() {
+    String u 
+
+    var a = 1
+
+    u = a
+}
+
+f() 
+// expect error 'TypeErr'

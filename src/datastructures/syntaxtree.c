@@ -88,6 +88,7 @@ static char * nodedisplay[] = {
     
     "print",   // NODE_PRINT
     ":=",      // NODE_DECLARATION
+    "type",    // NODE_TYPE
     "fn",      // NODE_FUNCTION
     "",        // NODE_METHOD
     "class",   // NODE_CLASS

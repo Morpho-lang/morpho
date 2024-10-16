@@ -1,0 +1,22 @@
+// Nested closures 
+
+fn g(String x) {
+    return x.count() 
+}
+
+fn f(Int x) {
+    fn g(Int y) {
+        return y + x 
+    }
+
+    fn g(List y) {
+        return y.count() + x 
+    }
+
+    return g
+}
+
+var a = f(2)
+print a(1) // expect: 3
+print a([1,1,1]) // expect: 5
+print a("Hello!") // expect: 6

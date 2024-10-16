@@ -2,6 +2,8 @@
 import constants
 import meshtools
 
+import "../numericalderivatives.morpho"
+
 var np=10
 var R=1
 
@@ -14,23 +16,6 @@ print lc.total(m)
 // expect: 6.38774
 
 var grad = lc.gradient(m)
-
-var dim = grad.dimensions()
-var ngrad = Matrix(dim[0], dim[1])
-
-// Manually calculate the gradient
-var vert = m.vertexmatrix()
-var eps = 1e-8
-
-for (i in 0...dim[0]) {
-  for (j in 0...dim[1]) {
-    var v = vert[i, j]
-    vert[i, j] = v + eps
-    var fp = lc.total(m)
-    vert[i, j] = v - eps
-    var fm = lc.total(m)
-    ngrad[i,j] = (fp-fm)/(2*eps)
-  }
-}
+var ngrad = numericalgradient(lc, m)
 
 print (grad-ngrad).norm()/grad.count() < 1e-6 // expect: true

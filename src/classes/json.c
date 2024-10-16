@@ -90,7 +90,7 @@ bool json_lexstring(lexer *l, token *tok, error *err) {
     }
     
     if (lex_isatend(l)) {
-        morpho_writeerrorwithid(err, LEXER_UNTERMINATEDSTRING, tok->line, tok->posn);
+        morpho_writeerrorwithid(err, LEXER_UNTERMINATEDSTRING, NULL, tok->line, tok->posn);
         return false;
     }
     
@@ -102,7 +102,7 @@ bool json_lexstring(lexer *l, token *tok, error *err) {
 
 /** Record JSON numbers as a token */
 bool json_lexnumber(lexer *l, token *tok, error *err) {
-    bool hasdot=false, hasexp=false;
+    bool hasexp=false;
     tokentype type = JSON_NUMBER;
     
     // Detect if we are missing digits (ie an isolated '-')
@@ -120,7 +120,6 @@ bool json_lexnumber(lexer *l, token *tok, error *err) {
     // Detect fractional separator
     if (lex_peek(l)=='.') {
         lex_advance(l);
-        hasdot=true;
         type = JSON_FLOAT;
         
         // Digits are required after fractional separator
@@ -144,7 +143,7 @@ bool json_lexnumber(lexer *l, token *tok, error *err) {
     return true;
 
 json_lexnumberinvld:
-    morpho_writeerrorwithid(err, JSON_NMBRFRMT, tok->line, tok->posn);
+    morpho_writeerrorwithid(err, JSON_NMBRFRMT, NULL, tok->line, tok->posn);
     return false;
 }
 
@@ -622,4 +621,3 @@ void json_initialize(void) {
     morpho_defineerror(JSON_NMBRFRMT, ERROR_PARSE, JSON_NMBRFRMT_MSG);
     morpho_defineerror(JSON_BLNKELMNT, ERROR_PARSE, JSON_BLNKELMNT_MSG);
 }
-

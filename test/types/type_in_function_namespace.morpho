@@ -1,0 +1,11 @@
+// Use types from a namespace in a function definition 
+
+import "type_namespace.xmorpho" as ns 
+
+print ns.Cat // expect: @Cat
+
+fn f(ns.Cat x) {
+    x.hiss()
+}
+
+f(ns.Cat("Moggies")) // expect: Moggies hisses

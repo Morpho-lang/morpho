@@ -1,0 +1,10 @@
+// Type violation in function
+
+fn f() {
+    String u 
+
+    u = []
+}
+
+f() 
+// expect error 'TypeErr'

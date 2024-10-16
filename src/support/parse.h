@@ -124,6 +124,9 @@ struct sparser {
 #define PARSE_VAREXPECTED                 "VarExpct"
 #define PARSE_VAREXPECTED_MSG             "Variable name expected after var."
 
+#define PARSE_SYMBLEXPECTED               "SymblExpct"
+#define PARSE_SYMBLEXPECTED_MSG           "Symbol expected."
+
 #define PARSE_BLOCKTERMINATOREXP          "MssngBrc"
 #define PARSE_BLOCKTERMINATOREXP_MSG      "Expected '}' to finish block."
 

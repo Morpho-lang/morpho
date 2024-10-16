@@ -190,7 +190,7 @@ void resources_loadpackagelist(void) {
     varray_charinit(&line);
 
     char *home = getenv("HOME");
-    varray_charadd(&line, home, (int) strlen(home));
+    if (home) varray_charadd(&line, home, (int) strlen(home));
     varray_charwrite(&line, MORPHO_SEPARATOR);
     varray_charadd(&line, MORPHO_PACKAGELIST, (int) strlen(MORPHO_PACKAGELIST));
     varray_charwrite(&line, '\0');

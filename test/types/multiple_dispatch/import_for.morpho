@@ -1,0 +1,8 @@
+// Import functions with 'for' keyword
+
+import "namespace.xmorpho" for f 
+
+f("Hi") // Never gets to execute
+
+g()
+// expect error 'SymblUndf'

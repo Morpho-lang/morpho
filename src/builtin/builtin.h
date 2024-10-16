@@ -14,6 +14,8 @@
 #include "morpho.h"
 #endif
 
+#include "signature.h"
+
 /* -------------------------------------------------------
  * Built in function objects
  * ------------------------------------------------------- */
@@ -21,7 +23,13 @@
 /** Flags that describe properties of the built in function */
 typedef unsigned int builtinfunctionflags;
 
-#define BUILTIN_FLAGSEMPTY  0
+#define BUILTIN_FLAGSEMPTY    0
+
+#define MORPHO_FN_FLAGSEMPTY  (0)
+#define MORPHO_FN_PUREFN      (1<<1)
+#define MORPHO_FN_CONSTRUCTOR (1<<2)
+#define MORPHO_FN_REENTRANT   (1<<3)
+#define MORPHO_FN_OPTARGS     (1<<4)
 
 /** Type of C function that implements a built in Morpho function */
 typedef value (*builtinfunction) (vm *v, int nargs, value *args);
@@ -37,6 +45,7 @@ typedef struct  {
     builtinfunctionflags flags;
     builtinfunction function;
     objectclass *klass; 
+    signature sig;
 } objectbuiltinfunction;
 
 /** Gets an objectfunction from a value */
@@ -53,6 +62,7 @@ typedef struct  {
 typedef struct {
     enum { BUILTIN_METHOD, BUILTIN_PROPERTY } type;
     char *name;
+    char *signature;
     builtinfunctionflags flags;
     builtinfunction function;
 } builtinclassentry;
@@ -68,7 +78,9 @@ typedef struct {
 
 #define MORPHO_PROPERTY(label)  ((builtinclassentry) { .type=(BUILTIN_PROPERTY), .name=(label), .flags=BUILTIN_FLAGSEMPTY, .function=NULL})
 
-#define MORPHO_METHOD(label, func, flg)  ((builtinclassentry) { .type=(BUILTIN_METHOD), .name=(label), .flags=flg, .function=func})
+#define MORPHO_METHOD(label, func, flg)  ((builtinclassentry) { .type=(BUILTIN_METHOD), .name=(label), .signature=NULL, .flags=flg, .function=func})
+
+#define MORPHO_METHOD_SIGNATURE(label, sig, func, flg)  ((builtinclassentry) { .type=(BUILTIN_METHOD), .name=(label), .signature=sig, .flags=flg, .function=func})
 
 #define MORPHO_ENDCLASS         , MORPHO_PROPERTY(NULL) \
                                 };
@@ -111,6 +123,8 @@ void builtin_setclasstable(dictionary *dict);
 value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags flags);
 value builtin_findfunction(value name);
 
+bool morpho_addfunction(char *name, char *signature, builtinfunction func, builtinfunctionflags flags, value *out);
+
 value builtin_addclass(char *name, builtinclassentry desc[], value superclass);
 value builtin_findclass(value name);
 
@@ -131,9 +145,12 @@ bool builtin_enumerateloop(vm *v, value obj, builtin_loopfunction fn, void *ref)
 
 void object_setveneerclass(objecttype type, value class);
 objectclass *object_getveneerclass(objecttype type);
+bool object_veneerclasstotype(objectclass *clss, objecttype *type);
 
 void value_setveneerclass(value type, value class);
 objectclass *value_getveneerclass(value type);
+objectclass *value_veneerclassfromtype(int type);
+bool value_veneerclasstotype(objectclass *clss, int *type);
 
 /* -------------------------------------------------------
  * Initialization/finalization

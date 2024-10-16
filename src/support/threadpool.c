@@ -110,7 +110,7 @@ bool threadpool_add_task(threadpool *pool, workfn func, void *arg) {
 
     pthread_cond_broadcast(&pool->work_available_cond); /* Signal there is work to be done */
     pthread_mutex_unlock(&pool->lock_mutex);
-    return true;
+    return success;
 }
 
 /** Blocks until all tasks in the thread pool are complete */

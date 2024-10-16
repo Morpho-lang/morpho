@@ -1,0 +1,10 @@
+// Type violation in function from a Dictionary
+
+fn f() {
+    String u 
+
+    u = { "a" : "b" }
+}
+
+f() 
+// expect error 'TypeErr'

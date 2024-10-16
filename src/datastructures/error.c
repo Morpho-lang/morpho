@@ -32,9 +32,10 @@ DEFINE_VARRAY(errordefinition, errordefinition)
 /** Prints to an error block
  *  @param err      Error struct to fill out
  *  @param cat      The category of error */
-static void error_printf(error *err, errorcategory cat, int line, int posn, char *message, va_list args) {
+static void error_printf(error *err, errorcategory cat, char *file, int line, int posn, char *message, va_list args) {
     
     err->cat=cat;
+    err->file=file;
     err->line=line;
     err->posn=posn; 
     
@@ -47,7 +48,7 @@ static void error_printf(error *err, errorcategory cat, int line, int posn, char
 void error_clear(error *err) {
     err->cat=ERROR_NONE;
     err->id=NULL;
-    err->module=NULL;
+    err->file=NULL;
     err->line=ERROR_POSNUNIDENTIFIABLE; err->posn=ERROR_POSNUNIDENTIFIABLE;
 }
 
@@ -84,14 +85,14 @@ bool morpho_getdefinitionfromid(errorid id, errordefinition **def) {
  *  @param line The line at which the error occurred, if identifiable.
  *  @param posn The position in the line at which the error occurred, if identifiable.
  *  @param args Additional parameters (the data for the printf commands in the message) */
-void morpho_writeerrorwithidvalist(error *err, errorid id, int line, int posn, va_list args) {
+void morpho_writeerrorwithidvalist(error *err, errorid id, char *file, int line, int posn, va_list args) {
     error_init(err);
     errordefinition *def;
     
     err->id=id;
     if (morpho_getdefinitionfromid(id, &def)) {
         /* Print the message with requested args */
-        error_printf(err, def->cat, line, posn, def->msg, args);
+        error_printf(err, def->cat, file, line, posn, def->msg, args);
     } else {
         UNREACHABLE("Undefined error generated.");
     }
@@ -100,13 +101,14 @@ void morpho_writeerrorwithidvalist(error *err, errorid id, int line, int posn, v
 /** @brief Writes an error message to an error structure
  *  @param err  The error structure
  *  @param id   The error id.
+ *  @param file The file in which the error ocdured, if relevant.
  *  @param line The line at which the error occurred, if identifiable.
  *  @param posn The position in the line at which the error occurred, if identifiable. 
  *  @param ...  Additional parameters (the data for the printf commands in the message) */
-void morpho_writeerrorwithid(error *err, errorid id, int line, int posn, ...) {
+void morpho_writeerrorwithid(error *err, errorid id, char *file, int line, int posn, ...) {
     va_list args;
     va_start(args, posn);
-    morpho_writeerrorwithidvalist(err, id, line, posn, args);
+    morpho_writeerrorwithidvalist(err, id, file, line, posn, args);
     va_end(args);
 }
 

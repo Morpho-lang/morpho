@@ -1,0 +1,6 @@
+// Namespace with 'for' keyword 
+
+import "namespace.xmorpho" as nm for f 
+
+nm.g()
+// expect error 'SymblUndfNmSpc'

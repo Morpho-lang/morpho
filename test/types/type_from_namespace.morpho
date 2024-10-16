@@ -1,0 +1,7 @@
+// Use a type that doesn't exist from a namespace in a function definition 
+
+import "type_namespace.xmorpho" as ns 
+
+ns.Cat x = ns.Cat("Phineas")
+
+x.hiss() // expect: Phineas hisses

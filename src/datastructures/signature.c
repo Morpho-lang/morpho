@@ -16,6 +16,8 @@
 
 void signature_init(signature *s) {
     varray_valueinit(&s->types);
+    s->ret=MORPHO_NIL;
+    s->varg=false;
 }
 
 void signature_clear(signature *s) {
@@ -61,16 +63,21 @@ bool signature_paramlist(signature *s, int *nparams, value **ptypes) {
     return s->types.data;
 }
 
-/** @brief Count the number of parameters in a signature */
-int signature_countparams(signature *s) {
-    return s->types.count;
-}
-
 /** @brief Returns the type of the i'th parameter, if it exists */
 bool signature_getparamtype(signature *s, int i, value *type) {
     if (i>=s->types.count) return false;
     if (type) *type = s->types.data[i];
     return true; 
+}
+
+/** @brief Returns the return type from the signature if defined */
+value signature_getreturntype(signature *s) {
+    return s->ret;
+}
+
+/** @brief Count the number of parameters in a signature */
+int signature_countparams(signature *s) {
+    return s->types.count;
 }
 
 /* **********************************************************************
@@ -102,6 +109,17 @@ void signature_initializelexer(lexer *l, char *signature) {
     lex_setsymboltype(l, SIGNATURE_SYMBOL);
 }
 
+/** @brief Parses a type name held in the parser's previous type */
+bool signature_parsetype(parser *p, value *type) {
+    value symbol;
+    if (!parse_stringfromtoken(p, 0, p->previous.length, &symbol)) return false;
+    value klass = builtin_findclass(symbol);
+    morpho_freeobject(symbol);
+    
+    if (MORPHO_ISCLASS(klass)) *type=klass;
+    return MORPHO_ISCLASS(klass);
+}
+
 /** @brief Parser function to process a symbol held in p->previous */
 bool signature_parsesymbol(parser *p, void *out) {
     signature *sig = (signature *) out;
@@ -111,12 +129,8 @@ bool signature_parsesymbol(parser *p, void *out) {
         value blank = MORPHO_NIL;
         success=varray_valueadd(&sig->types, &blank, 1);
     } else {
-        value symbol;
-        if (!parse_stringfromtoken(p, 0, p->previous.length, &symbol)) return false;
-        value klass = builtin_findclass(symbol);
-        morpho_freeobject(symbol);
-        
-        if (MORPHO_ISCLASS(klass)) success=varray_valueadd(&sig->types, &klass, 1);
+        value type;
+        if (signature_parsetype(p, &type)) success=varray_valueadd(&sig->types, &type, 1);
     }
     return success;
 }
@@ -134,8 +148,11 @@ bool signature_parsevarg(parser *p, void *out) {
 
 /** @brief Main parser function for signatures */
 bool signature_parsesignature(parser *p, void *out) {
+    signature *sig = (signature *) out;
+    
     if (parse_checktokenadvance(p, SIGNATURE_SYMBOL)) {
-        // Return type
+        value type;
+        if (signature_parsetype(p, &type)) sig->ret=type;
     }
     
     if (!parse_checktokenadvance(p, SIGNATURE_LEFTBRACE)) return false;

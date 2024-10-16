@@ -9,6 +9,7 @@
 
 static value error_tagproperty;
 static value error_messageproperty;
+static value error_errtag;
 
 /* **********************************************************************
  * Error class
@@ -34,17 +35,23 @@ value Error_init(vm *v, int nargs, value *args) {
 
 /** Extract the tag and message for an error */
 bool _err_extract(vm *v, int nargs, value *args, value *tag, value *msg) {
-    objectinstance *slf = MORPHO_GETINSTANCE(MORPHO_SELF(args));
-    if (!slf) return false;
-    
-    objectinstance_getpropertyinterned(slf, error_tagproperty, tag);
-    if (nargs==0) {
-        objectinstance_getpropertyinterned(slf, error_messageproperty, msg);
-    } else {
-        *msg=MORPHO_GETARG(args, 0);
+    // If an instance, extract the tag and message from the object
+    if (MORPHO_ISINSTANCE(MORPHO_SELF(args))) {
+        objectinstance *slf = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+        
+        objectinstance_getpropertyinterned(slf, error_tagproperty, tag);
+        if (nargs==0) objectinstance_getpropertyinterned(slf, error_messageproperty, msg);
     }
     
-    return true;
+    if (nargs==1) {
+        if (!MORPHO_ISSTRING(*tag)) *tag = builtin_internsymbolascstring(ERROR_ERROR);
+        *msg=MORPHO_GETARG(args, 0);
+    } else if (nargs==2) {
+        *tag=MORPHO_GETARG(args, 0);
+        *msg=MORPHO_GETARG(args, 1);
+    }
+    
+    return (MORPHO_ISSTRING(*tag) && MORPHO_ISSTRING(*msg));
 }
 
 /** Throw an error */
@@ -106,6 +113,7 @@ void err_initialize(void) {
     // Create labels for Error property names
     error_tagproperty=builtin_internsymbolascstring(ERROR_TAG_PROPERTY);
     error_messageproperty=builtin_internsymbolascstring(ERROR_MESSAGE_PROPERTY);
+    error_errtag=builtin_internsymbolascstring(ERROR_ERROR);
     
     // Error error messages
     morpho_defineerror(ERROR_ARGS, ERROR_HALT, ERROR_ARGS_MSG);

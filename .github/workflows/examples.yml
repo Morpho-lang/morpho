@@ -16,6 +16,9 @@ jobs:
     - name: configure
       run:  |
         sudo apt update
+        sudo apt install libglfw3-dev 
+        sudo apt install povray
+        sudo apt install libfreetype6-dev
         sudo apt install libsuitesparse-dev
         sudo apt install liblapacke-dev
         sudo apt install libunistring-dev
@@ -32,6 +35,14 @@ jobs:
       run: |
         git clone https://github.com/Morpho-lang/morpho-cli.git
         cd morpho-cli 
+        mkdir build
+        cd build
+        cmake ..
+        sudo make install
+    - name: morphoview
+      run: |
+        git clone https://github.com/morpho-lang/morpho-morphoview.git
+        cd morpho-morphoview
         mkdir build
         cd build
         cmake ..

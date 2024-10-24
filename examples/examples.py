@@ -118,8 +118,11 @@ total=0   # total number of examples
 
 # look for a command line arguement that says
 # this is being run for continous integration
-CI = sys.argv == '-c'
 
+CI = False
+for arg in sys.argv:
+    if arg == '-c': # if the argument is -c, then we are running in CI mode
+        CI = True
 
 files=glob.glob('**/**.'+ext, recursive=True)
 with open("FailedExamples.txt",'w') as testLog:

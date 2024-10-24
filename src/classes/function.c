@@ -17,6 +17,7 @@ void objectfunction_freefn(object *obj) {
     morpho_freeobject(func->name);
     varray_optionalparamclear(&func->opt);
     object_functionclear(func);
+    signature_clear(&func->sig);
 }
 
 void objectfunction_markfn(object *obj, void *v) {
@@ -53,10 +54,11 @@ void object_functioninit(objectfunction *func) {
     func->name=MORPHO_NIL;
     func->nargs=0;
     func->parent=NULL;
-    func->nupvalues=0;
+    func->creg=-1;
     func->nregs=0;
     varray_valueinit(&func->konst);
     varray_varray_upvalueinit(&func->prototype);
+    signature_init(&func->sig);
 }
 
 /** @brief Clears a function */
@@ -67,6 +69,7 @@ void object_functionclear(objectfunction *func) {
         varray_upvalueclear(&func->prototype.data[i]);
     }
     varray_varray_upvalueclear(&func->prototype);
+    signature_clear(&func->sig);
 }
 
 /** @brief Creates a new function */
@@ -105,16 +108,6 @@ varray_value *object_functiongetconstanttable(objectfunction *func) {
     return NULL;
 }
 
-/** Does a function have variadic args? */
-bool object_functionhasvargs(objectfunction *func) {
-    return (func->varg>=0);
-}
-
-/** Sets the parameter number of a variadic argument */
-void object_functionsetvarg(objectfunction *func, unsigned int varg) {
-    func->varg=varg;
-}
-
 /** Adds an upvalue prototype to a function
  * @param[in]  func   function object to add to
  * @param[in]  v      a varray of upvalues that will be copied into the function
@@ -129,6 +122,48 @@ bool object_functionaddprototype(objectfunction *func, varray_upvalue *v, indx *
     if (success) varray_varray_upvalueadd(&func->prototype, &new, 1);
     if (success && ix) *ix = (indx) func->prototype.count-1;
     return success;
+}
+
+/** Returns the number of positional arguments (including a variadic arg if any) */
+int function_countpositionalargs(objectfunction *func) {
+    return func->nargs-func->opt.count;
+}
+
+/** Returns the number of optional arguments */
+int function_countoptionalargs(objectfunction *func) {
+    return func->opt.count;
+}
+
+/** Does a function have variadic args? */
+bool function_hasvargs(objectfunction *func) {
+    return (func->varg>=0);
+}
+
+/** Sets the parameter number of a variadic argument */
+void function_setvarg(objectfunction *func, int varg) {
+    func->varg=varg;
+}
+
+/** Sets that a function must be enclosed */
+void function_setclosure(objectfunction *func, int creg) {
+    func->creg=creg;
+}
+
+/** Checks if a function is enclosed */
+bool function_isclosure(objectfunction *func) {
+    return (func->creg>=0);
+}
+
+/** Sets the signature of a function
+ * @param[in]  func   function object
+ * @param[in]  signature list of types for each parameter (length from func->nargs) */
+void function_setsignature(objectfunction *func, value *signature) {
+    signature_set(&func->sig, function_countpositionalargs(func), signature);
+}
+
+/** Returns true if any of the parameters are typed */
+bool function_hastypedparameters(objectfunction *func) {
+    return signature_istyped(&func->sig);
 }
 
 /* **********************************************************************

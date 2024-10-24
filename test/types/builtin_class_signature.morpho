@@ -1,0 +1,10 @@
+// Test multiple dispatch on builtin class
+
+var lst = [4,3,2,1]
+
+lst.sort()
+print lst  // expect: [ 1, 2, 3, 4 ]
+
+fn f (a, b) { return b-a }
+lst.sort(f)
+print lst // expect: [ 4, 3, 2, 1 ]

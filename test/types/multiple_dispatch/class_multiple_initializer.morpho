@@ -1,0 +1,22 @@
+// Multiple dispatch in ititializer
+
+class A {
+    init(problem) {
+        self.problem = problem
+    }
+}
+
+class B is A {
+    init(problem, List target) {
+        super.init(problem)
+        self.target = target 
+    }
+
+    init(x, String s) { self.init(x, [s]) }
+    init(x, Dictionary d) { self.init(x, [d]) }
+}
+
+var b = B("", "Hello")
+
+print b.target
+// expect: [ Hello ]

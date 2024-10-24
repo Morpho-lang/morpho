@@ -254,7 +254,6 @@ fn _equiangulatetest (v, ev, cv) {
       c = (v.column(ev[1])-v.column(cv[0])).norm(),
       d = (v.column(ev[0])-v.column(cv[1])).norm(), // Edges of face 2
       e = (v.column(ev[1])-v.column(cv[1])).norm()
-
    return ((b*b + c*c - a*a)*d*e + (d*d + e*e - a*a)*b*c) < 0
 }
 
@@ -289,6 +288,7 @@ fn equiangulate(m, quiet=false, fix=nil) {
   for (iedge in 0...ne) {
     if (fix && fix[1,iedge]) continue
     var ev=edges.rowindices(iedge) // vertices for this edge
+
     if (verttoedge.rowindices(ev[0]).count()<4 ||
         verttoedge.rowindices(ev[1]).count()<4) continue // skip if connectivity deficient
 
@@ -1116,17 +1116,21 @@ class MeshPruner is MeshAdaptiveRefiner {
     for (g in 1..m.maxgrade()) {
       var conn = m.connectivitymatrix(0, g)
       var dict = Dictionary() 
-      var clist = []
+      var dup = Dictionary()
 
       for (id in 0...m.count(g)) {
         var el = conn.rowindices(id)
         var nvcl = self.countvertices(el) // Number of vertices in a cluster
         if (nvcl<2 || self.countmaxverticesincluster(el)==1) {
           var newel = self.updateelement(vmap, el)
-          if (nvcl==1) { // Skip if this element is a duplicate
-            if (_elinlist(clist, newel)) continue 
-            clist.append(newel) // Only track elements connected to a cluster
-          }
+
+          var indices = newel.clone()
+          indices.sort()
+          indices = apply(Tuple, indices)
+
+          if (dup.contains(indices)) continue 
+          dup[indices]=true
+
           var newid = mb.addelement(g, newel)
           dict[newid] = id
         }

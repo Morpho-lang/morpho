@@ -1,0 +1,8 @@
+// Type definition in function
+
+fn f() {
+    String u = 1
+}
+
+f() 
+// expect error 'TypeErr'

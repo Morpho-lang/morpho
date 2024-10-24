@@ -1,0 +1,31 @@
+// Attempt to use an object type that exceeds the bounds
+// of the metafunction's branch table
+
+fn f(String x) {
+    return 0
+}
+
+fn f(Float x) {
+    return 2 
+}
+
+try {
+    print f(1.0) 
+} catch {
+    "MltplDsptchFld": print "ok"
+}
+// expect: 2
+
+try {
+    print f(1) 
+} catch {
+    "MltplDsptchFld": print "ok"
+}
+// expect: ok
+
+try {
+    print f(Matrix(1,1))
+} catch {
+    "MltplDsptchFld": print "ok"
+}
+// expect: ok

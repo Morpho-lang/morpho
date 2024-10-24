@@ -691,7 +691,7 @@ void complex_initialize(void) {
     objectcomplextype=object_addtype(&objectcomplexdefn);
     
     // Complex constructor function
-    builtin_addfunction(COMPLEX_CLASSNAME, complex_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(COMPLEX_CLASSNAME, complex_constructor, MORPHO_FN_CONSTRUCTOR);
     
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));

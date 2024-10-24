@@ -5,6 +5,7 @@ target_sources(morpho
         error.c             error.h
         object.c            object.h
         program.c           program.h
+        signature.c         signature.h
         syntaxtree.c        syntaxtree.h
         value.c             value.h
         varray.c            varray.h
@@ -21,6 +22,7 @@ target_sources(morpho
         error.h
         object.h
         program.h
+        signature.h
         syntaxtree.h
         value.h
         varray.h

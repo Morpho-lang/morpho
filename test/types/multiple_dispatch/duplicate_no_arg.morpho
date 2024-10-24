@@ -1,0 +1,12 @@
+// Duplicate implementations with no arguments. 
+
+fn f() {
+    return 0
+}
+
+fn f() {
+    return 1 
+}
+
+print f()
+// expect error 'MltplDisptchAmbg'

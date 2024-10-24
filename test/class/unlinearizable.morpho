@@ -1,0 +1,13 @@
+// Unlinearizable classes
+
+class A { }
+
+class B { }
+
+class C is A with B { }
+
+class D is B with A { }
+
+class E is C with D { }
+
+// expect error 'ClssLnrz'

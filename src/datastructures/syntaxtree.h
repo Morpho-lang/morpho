@@ -104,6 +104,7 @@ enum {
     
     NODE_PRINT,
     NODE_DECLARATION,
+    NODE_TYPE,
     NODE_FUNCTION,
     NODE_METHOD,
     NODE_CLASS,

@@ -1,0 +1,13 @@
+// Syntax err. in call to constructor
+
+class A {
+    init(m, a=1, b=1, c=1) {
+    }
+}
+
+class B {} 
+
+var b = B() 
+
+var a = A(b., a=1.0, b=1.0, c=1.0)
+// expect error 'ExpExpr'

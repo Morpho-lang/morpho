@@ -1,0 +1,21 @@
+// Types and inheritance
+
+class A { }   
+
+class B is A { } 
+
+class C is B { } 
+
+class D is B { } 
+
+fn f() {
+    A a = B()
+    A x = C() 
+    B y = D()
+
+    print a // expect: <B>
+    print x // expect: <C>
+    print y // expect: <D>
+}
+
+f()

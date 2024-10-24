@@ -16,20 +16,21 @@
 * ********************************************************************** */
 
 DEFINE_VARRAY(instruction, instruction);
+DEFINE_VARRAY(globalinfo, globalinfo);
 
 /** @brief Initializes a program */
-static void vm_programinit(program *p) {
+void program_init(program *p) {
     varray_instructioninit(&p->code);
     varray_debugannotationinit(&p->annotations);
     p->global=object_newfunction(MORPHO_PROGRAMSTART, MORPHO_NIL, NULL, 0);
     p->boundlist=NULL;
     dictionary_init(&p->symboltable);
-    //builtin_copysymboltable(&p->symboltable);
-    p->nglobals=0;
+    varray_globalinfoinit(&p->globals);
+    varray_valueinit(&p->classes);
 }
 
 /** @brief Clears a program, freeing associated data structures */
-static void vm_programclear(program *p) {
+void program_clear(program *p) {
     if (p->global) object_free((object *) p->global);
     varray_instructionclear(&p->code);
     debugannotation_clear(&p->annotations);
@@ -46,21 +47,24 @@ static void vm_programclear(program *p) {
     #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
         fprintf(stderr, "------\n");
     #endif
-    dictionary_clear(&p->symboltable); /* Note we don't free the contents as they should be bound to the program */
+    /* Note we don't free the contents as they are already interned */
+    varray_globalinfoclear(&p->globals);
+    dictionary_clear(&p->symboltable);
+    varray_valueclear(&p->classes);
 }
 
 /** @brief Creates and initializes a new program */
 program *morpho_newprogram(void) {
     program *new = MORPHO_MALLOC(sizeof(program));
 
-    if (new) vm_programinit(new);
+    if (new) program_init(new);
 
     return new;
 }
 
 /** @brief Frees a program */
 void morpho_freeprogram(program *p) {
-    vm_programclear(p);
+    program_clear(p);
     MORPHO_FREE(p);
 }
 
@@ -81,10 +85,9 @@ instructionindx program_getentry(program *p) {
 void program_bindobject(program *p, object *obj) {
     if (!obj->next && /* Object is not already bound to the program (or something else) */
         obj->status==OBJECT_ISUNMANAGED && /* Object is unmanaged */
-        (!MORPHO_ISBUILTINFUNCTION(MORPHO_OBJECT(obj))) && /* Object is not a built in function that is freed separately */
-        (p->boundlist!=obj->next && p->boundlist!=NULL) /* To handle the case where the object is the only object */
+        (!MORPHO_ISBUILTINFUNCTION(MORPHO_OBJECT(obj))) /* Object is not a built in function that is freed separately */
         ) {
-
+        obj->status=OBJECT_ISPROGRAM;
         obj->next=p->boundlist;
         p->boundlist=obj;
     }
@@ -114,4 +117,47 @@ value program_internsymbol(program *p, value symbol) {
 #endif
     program_bindobject(p, MORPHO_GETOBJECT(out));
     return out;
+}
+
+/** @brief Adds a global to the program */
+globalindx program_addglobal(program *p, value symbol) {
+    globalinfo info = { .symbol = program_internsymbol(p, symbol), .type=MORPHO_NIL };
+    
+    return (globalindx) varray_globalinfowrite(&p->globals, info);
+}
+
+/** @brief Sets the type associated with a global variable */
+void program_globalsettype(program *p, globalindx indx, value type) {
+    if (indx<0 || indx>p->globals.count) return;
+    
+    p->globals.data[indx].type=type;
+}
+
+/** @brief Gets the type associated with a global variable */
+bool program_globaltype(program *p, globalindx indx, value *type) {
+    if (indx<0 || indx>p->globals.count) return false;
+    *type = p->globals.data[indx].type;
+    return true; 
+}
+
+/** @brief Gets the symbol associated with a global variable */
+bool program_globalsymbol(program *p, globalindx indx, value *symbol) {
+    if (indx<0 || indx>p->globals.count) return false;
+    *symbol = p->globals.data[indx].symbol;
+    return true; 
+}
+
+/** @brief Returns the number of globals allocated in the program */
+int program_countglobals(program *p) {
+    return p->globals.count;
+}
+
+/** @brief Adds a class to the program's class list */
+int program_addclass(program *p, value klass) {
+    return varray_valuewrite(&p->classes, klass);
+}
+
+/** @brief Returns the number of classes allocated in the program */
+int program_countclasses(program *p, value klass) {
+    return p->classes.count;
 }

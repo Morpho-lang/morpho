@@ -83,6 +83,9 @@
 #define FUNC_INTEGRAND_MESH            "FnctlIntMsh"
 #define FUNC_INTEGRAND_MESH_MSG        "Method 'integrand' requires a mesh as the argument."
 
+#define FUNC_INTEGRAND_MESH            "FnctlIntMsh"
+#define FUNC_INTEGRAND_MESH_MSG        "Method 'integrand' requires a mesh as the argument."
+
 #define FUNC_ELNTFND                   "FnctlELNtFnd"
 #define FUNC_ELNTFND_MSG               "Mesh does not provide elements of grade %u."
 

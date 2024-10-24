@@ -11,7 +11,7 @@ print a.respondsto("squiggle")
 var r = a.respondsto()
 r.sort()
 print r
-// expect: [ clone, clss, count, enumerate, has, index, invoke, prnt, respondsto, serialize, setindex, superclass ]
+// expect: [ clone, clss, count, enumerate, has, index, invoke, linearization, prnt, respondsto, serialize, setindex, superclass ]
 class bar {
     method1(){
         1+1
@@ -22,7 +22,7 @@ var b = bar()
 r = b.respondsto()
 r.sort()
 print r
-// expect: [ clone, clss, count, enumerate, has, index, invoke, method1, prnt, respondsto, serialize, setindex, superclass ]
+// expect: [ clone, clss, count, enumerate, has, index, invoke, linearization, method1, prnt, respondsto, serialize, setindex, superclass ]
 
 
 print a.respondsto("squiggle","foo")

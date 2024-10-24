@@ -1,0 +1,23 @@
+// Dipatch methods on multiple types
+
+class A {
+    f(Float x, Int y) {
+        print x + y 
+    }
+
+    f(Float x, String y) {
+        print y
+    }
+
+    f(List x) {
+        print x[-1]
+    }
+}
+
+A.f([1]) // expect: 1
+
+A.f(1.2, 1) // expect: 2.2
+
+A.f(1.2, "Hello") // expect: Hello
+
+A.f(4) // expect error 'MltplDsptchFld'

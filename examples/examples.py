@@ -68,12 +68,11 @@ def run(file,testLog,CI):
     ret = 1
     print(file+":", end=" ")
 
-
     # Create a temporary file in the same directory
     tmp = file + '.out'
 
     # Run the test
-    os.system(command + ' ' +file) # + ' > ' + tmp)
+    os.system(command + ' ' +file + ' > ' + tmp)
 
     # If we produced output
     if os.path.exists(tmp):

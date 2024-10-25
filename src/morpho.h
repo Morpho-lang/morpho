@@ -79,6 +79,7 @@ typedef void compiler;
 
 /* Non-standard methods */
 #define MORPHO_APPEND_METHOD "append"
+#define MORPHO_LINEARIZATION_METHOD "linearization"
 
 #define MORPHO_THROW_METHOD "throw"
 #define MORPHO_WARNING_METHOD "warning"
@@ -103,7 +104,7 @@ extern value cloneselector;
 void morpho_version(version *v);
 
 /* Error handling */
-void morpho_writeerrorwithid(error *err, errorid id, int line, int position, ...);
+void morpho_writeerrorwithid(error *err, errorid id, char *file, int line, int posn, ...);
 void morpho_defineerror(errorid id, errorcategory cat, char *message);
 errorid morpho_geterrorid(error *err);
 

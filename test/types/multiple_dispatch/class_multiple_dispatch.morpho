@@ -1,0 +1,31 @@
+// Dipatch methods on multiple types
+
+class A {
+    f(String x) {
+        print x
+    }
+
+    f(Float x) {
+        print x+1
+    }
+
+    f(List x) {
+        print x[-1]
+    }
+}
+
+var a = A()
+
+a.f("Hi")
+// expect: Hi
+
+A.f(1.5)
+// expect: 2.5
+
+A.f([1,2])
+// expect: 2
+
+var q = a.f
+
+a.f("Souper")
+// expect: Souper

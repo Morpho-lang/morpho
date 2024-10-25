@@ -286,7 +286,7 @@ void dict_initialize(void) {
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
     // Dictionary constructor function
-    builtin_addfunction(DICTIONARY_CLASSNAME, dictionary_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(DICTIONARY_CLASSNAME, dictionary_constructor, MORPHO_FN_CONSTRUCTOR);
     
     // Create dictionary veneer class
     value dictionaryclass=builtin_addclass(DICTIONARY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Dictionary), objclass);

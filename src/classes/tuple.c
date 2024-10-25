@@ -287,7 +287,7 @@ void tuple_initialize(void) {
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
     // Create tuple veneer class
-    builtin_addfunction(TUPLE_CLASSNAME, tuple_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(TUPLE_CLASSNAME, tuple_constructor, MORPHO_FN_CONSTRUCTOR);
     value tupleclass=builtin_addclass(TUPLE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Tuple), objclass);
     object_setveneerclass(OBJECT_TUPLE, tupleclass);
     

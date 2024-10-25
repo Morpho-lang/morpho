@@ -1,0 +1,4 @@
+// Calling throw on the class without a tag
+
+Error.throw("Can't foo foos.")
+// expect: Error 'Err': Can't foo foos.

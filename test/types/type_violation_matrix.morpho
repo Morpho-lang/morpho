@@ -1,0 +1,10 @@
+// Type violation in function from a Matrix
+
+fn f() {
+    String u 
+
+    u = Matrix(2,2)
+}
+
+f() 
+// expect error 'TypeErr'

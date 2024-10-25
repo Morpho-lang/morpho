@@ -1,0 +1,28 @@
+// Multiple implementations with nested closures 
+
+fn foo(List x) {
+    return x.count() 
+}
+
+fn f(Int x) {
+    fn foo(Int y) {
+        return y + x 
+    }
+
+    fn g() {
+        fn foo(Float y) {
+            return y + 2*x 
+        }
+
+        return foo 
+    }
+
+    return g
+}
+
+var a = f(1) 
+var b = a()
+
+print b(1) // expect: 2
+print b(1.5) // expect: 3.5
+print b([1,2,3]) // expect: 3

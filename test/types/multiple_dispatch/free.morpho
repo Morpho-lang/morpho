@@ -1,0 +1,26 @@
+// Dispatch a function with an implementation that catches any type
+
+fn f(Int x) {
+    return 0
+}
+
+fn f(Float x) {
+    return 1 
+}
+
+fn f(x) {
+    return -1
+}
+
+print f("Hello")
+// expect: -1
+
+print f(true)
+// expect: -1
+
+print f(1) 
+// expect: 0
+
+print f(0.1)
+// expect: 1
+

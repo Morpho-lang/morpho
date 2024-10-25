@@ -1,0 +1,42 @@
+class Dog {
+    init(name) {
+        self.name = name
+    }
+}
+
+class Cat {
+    init(name) {
+        self.name = name
+    }
+}
+
+fn encounter(a, b) {
+    var verb = meets(a, b)
+    print("${a.name} meets ${b.name} and ${verb}")
+}
+
+fn meets(Dog a, Dog b) {
+    return "wags its tail"
+}
+
+fn meets(Dog a, Cat b) {
+    return "barks"
+}
+
+fn meets(Cat a, Dog b) {
+    return "hisses"
+}
+
+fn meets(Cat a, Cat b) {
+    return "purrs"
+}
+
+var fido = Dog("Fido")
+var whiskers = Cat("Whiskers")
+var rex = Dog("Rex")
+var simba = Cat("Simba")
+
+encounter(fido, rex)
+encounter(fido, whiskers)
+encounter(whiskers, rex)
+encounter(whiskers, simba)

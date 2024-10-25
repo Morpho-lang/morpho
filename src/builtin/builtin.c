@@ -42,11 +42,18 @@ dictionary *_currentclasstable;
  * ********************************************************************** */
 
 /** Initialize an objectbuiltinfunction */
-static void builtin_init(objectbuiltinfunction *func) {
+void builtin_init(objectbuiltinfunction *func) {
     func->flags=BUILTIN_FLAGSEMPTY;
     func->function=NULL;
     func->name=MORPHO_NIL;
     func->klass=NULL;
+    signature_init(&func->sig);
+}
+
+/** Clear an objectbuiltinfunction */
+void builtin_clear(objectbuiltinfunction *func) {
+    morpho_freeobject(func->name);
+    signature_clear(&func->sig);
 }
 
 /** @brief An enumerate loop.
@@ -116,7 +123,8 @@ bool builtin_iscallable(value val) {
     return (MORPHO_ISOBJECT(val) && (MORPHO_ISFUNCTION(val) ||
                                      MORPHO_ISCLOSURE(val) ||
                                      MORPHO_ISINVOCATION(val) ||
-                                     MORPHO_ISBUILTINFUNCTION(val)));
+                                     MORPHO_ISBUILTINFUNCTION(val) ||
+                                     MORPHO_ISMETAFUNCTION(val)));
 }
 
 /* **********************************************************************
@@ -130,8 +138,7 @@ void objectbuiltinfunction_printfn(object *obj, void *v) {
 }
 
 void objectbuiltinfunction_freefn(object *obj) {
-    objectbuiltinfunction *func = (objectbuiltinfunction *) obj;
-    morpho_freeobject(func->name);
+    builtin_clear((objectbuiltinfunction *) obj);
 }
 
 size_t objectbuiltinfunction_sizefn(object *obj) {
@@ -177,26 +184,8 @@ void builtin_setclasstable(dictionary *dict) {
  * @param flags flags to define the function
  * @returns value referring to the objectbuiltinfunction */
 value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags flags) {
-    objectbuiltinfunction *new = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
-    value out = MORPHO_NIL;
-    varray_valuewrite(&builtin_objects, MORPHO_OBJECT(new));
-    
-    if (new) {
-        builtin_init(new);
-        new->function=func;
-        new->name=object_stringfromcstring(name, strlen(name));
-        new->flags=flags;
-        out = MORPHO_OBJECT(new);
-        
-        value selector = dictionary_intern(&builtin_symboltable, new->name);
-        
-        if (dictionary_get(_currentfunctiontable, new->name, NULL)) {
-            UNREACHABLE("Redefinition of function in same extension [in builtin.c]");
-        }
-        
-        dictionary_insert(_currentfunctiontable, selector, out);
-    }
-    
+    value out=MORPHO_NIL;
+    morpho_addfunction(name, NULL, func, flags, &out);
     return out;
 }
 
@@ -205,6 +194,88 @@ value builtin_findfunction(value name) {
     value out=MORPHO_NIL;
     dictionary_get(&builtin_functiontable, name, &out);
     return out;
+}
+
+objectclass *builtin_getparentclass(value fn) {
+    if (MORPHO_ISFUNCTION(fn)) return MORPHO_GETFUNCTION(fn)->klass;
+    else if (MORPHO_ISBUILTINFUNCTION(fn)) return MORPHO_GETBUILTINFUNCTION(fn)->klass;
+    else if (MORPHO_ISMETAFUNCTION(fn)) return MORPHO_GETMETAFUNCTION(fn)->klass;
+    else if (MORPHO_ISCLASS(fn)) return MORPHO_GETCLASS(fn)->superclass;
+    
+    return NULL;
+}
+
+/** Adds a new builtinfunction to a given dictionary.
+ * @param[in] dict  the dictionary
+ * @param[in] name  name of the function to add
+ * @param[in] fn function to add
+ * @param[out] out the function added (which may be a metafunction)
+ * @returns true on success */
+bool builtin_addfunctiontodict(dictionary *dict, value name, value fn, value *out) {
+    bool success=false;
+    value entry=fn; // Dictionary entry for this name
+    value selector = dictionary_intern(&builtin_symboltable, name); // Use interned name
+    
+    if (dictionary_get(dict, selector, &entry)) { // There was an existing function
+        if (MORPHO_ISBUILTINFUNCTION(entry)) { // It was a builtinfunction, so we need to create a metafunction
+            if (builtin_getparentclass(fn) !=
+                MORPHO_GETBUILTINFUNCTION(entry)->klass) { // Override superclass methods for now
+                dictionary_insert(dict, selector, fn);
+            } else if (metafunction_wrap(name, entry, &entry)) { // Wrap the old definition in a metafunction
+                metafunction_add(MORPHO_GETMETAFUNCTION(entry), fn); // Add the new definition
+                success=dictionary_insert(dict, selector, entry);
+            }
+        } else if (MORPHO_ISMETAFUNCTION(entry)) { // It was already a metafunction so simply add the new function
+            success=metafunction_add(MORPHO_GETMETAFUNCTION(entry), fn);
+        }
+    } else success=dictionary_insert(dict, selector, fn);
+    
+    if (success && out) *out = entry;
+    
+    return success;
+}
+
+/** Add a function to the morpho runtime
+ * @param name  name of the function
+ * @param signature [optional] signature for the function
+ * @param func  the corresponding C function
+ * @param flags flags to define the function
+ * @param[out] value the function created as usable with morpho_call
+ * @returns true on success */
+bool morpho_addfunction(char *name, char *signature, builtinfunction func, builtinfunctionflags flags, value *out) {
+    objectbuiltinfunction *new = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
+    if (!new) goto morpho_addfunction_cleanup;
+    
+    builtin_init(new);
+    new->function=func;
+    new->flags=flags;
+    
+    new->name=object_stringfromcstring(name, strlen(name));
+    if (!name) goto morpho_addfunction_cleanup;
+    
+    // Parse function signature if provided
+    if (signature &&
+        !signature_parse(signature, &new->sig)) goto morpho_addfunction_cleanup;
+    
+    value newfn = MORPHO_OBJECT(new);
+    
+    if (!builtin_addfunctiontodict(_currentfunctiontable, new->name, newfn, NULL)) {
+        UNREACHABLE("Redefinition of function in same extension [in builtin.c]");
+    }
+    
+    // Retain the objectbuiltinfunction in the builtin_objects table
+    varray_valuewrite(&builtin_objects, newfn);
+    if (out) *out = newfn;
+    
+    return true;
+    
+morpho_addfunction_cleanup:
+    if (new) {
+        builtin_clear(new);
+        object_free((object *) new);
+    }
+    
+    return false;
 }
 
 /* **********************************************************************
@@ -234,24 +305,22 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
     
     for (unsigned int i=0; desc[i].name!=NULL; i++) {
         if (desc[i].type==BUILTIN_METHOD) {
-            objectbuiltinfunction *method = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
-            builtin_init(method);
-            method->function=desc[i].function;
-            method->klass=new;
-            method->name=object_stringfromcstring(desc[i].name, strlen(desc[i].name));
-            method->flags=desc[i].flags;
-            
-            value selector = dictionary_intern(&builtin_symboltable, method->name);
-            
-            varray_valuewrite(&builtin_objects, MORPHO_OBJECT(method));
-            
-            if (dictionary_get(&new->methods, method->name, NULL) &&
-                ( !superklass || // Ok to redefine methods in the superclass 
-                  !dictionary_get(&superklass->methods, method->name, NULL)) ) {
-                UNREACHABLE("redefinition of method in builtin class (check builtin.c)");
+            objectbuiltinfunction *newmethod = (objectbuiltinfunction *) object_new(sizeof(objectbuiltinfunction), OBJECT_BUILTINFUNCTION);
+            builtin_init(newmethod);
+            newmethod->function=desc[i].function;
+            newmethod->klass=new;
+            newmethod->name=object_stringfromcstring(desc[i].name, strlen(desc[i].name));
+            newmethod->flags=desc[i].flags;
+            if (desc[i].signature) {
+                signature_parse(desc[i].signature, &newmethod->sig);
             }
             
-            dictionary_insert(&new->methods, selector, MORPHO_OBJECT(method));
+            value selector = dictionary_intern(&builtin_symboltable, newmethod->name);
+            value method = MORPHO_OBJECT(newmethod);
+            
+            varray_valuewrite(&builtin_objects, method);
+            
+            builtin_addfunctiontodict(&new->methods, newmethod->name, method, NULL);
         }
     }
     
@@ -323,6 +392,7 @@ void builtin_initialize(void) {
     
     string_initialize();  // Classes
     function_initialize();
+    metafunction_initialize();
     class_initialize();
     upvalue_initialize();
     invocation_initialize();

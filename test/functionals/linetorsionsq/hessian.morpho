@@ -1,0 +1,18 @@
+// Line torsion Sq
+import constants
+import meshtools
+
+import "../numericalderivatives.morpho"
+
+var np=4
+var R=1
+
+var m = LineMesh(fn (t) [R*cos(t), R*sin(t), t], 0..2*Pi:2*Pi/np, closed=false)
+
+// Create the manifold
+var lc = LineTorsionSq()
+
+var h = lc.hessian(m) 
+var h2 = numericalhessian(lc, m)
+
+print (Matrix(h) - h2).norm()/h2.count() < 1e-5 // expect: true

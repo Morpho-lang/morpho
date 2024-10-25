@@ -1,0 +1,15 @@
+// Define some classes in a namespace
+ 
+class Pet { 
+    init(name) {
+        self.name = name
+    }
+}
+
+class Dog is Pet { } 
+
+class Cat is Pet { 
+    hiss() {
+        print "${self.name} hisses"
+    }
+}

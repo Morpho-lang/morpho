@@ -11,6 +11,7 @@
 
 #include "upvalue.h"
 #include "function.h"
+#include "metafunction.h"
 #include "clss.h"
 #include "cmplx.h"
 #include "closure.h"

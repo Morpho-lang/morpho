@@ -609,7 +609,7 @@ value List_roll(vm *v, int nargs, value *args) {
 }
 
 /** Sorts a list */
-value List_sort(vm *v, int nargs, value *args) {
+value XList_sort(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
 
     if (nargs==0) {
@@ -620,6 +620,20 @@ value List_sort(vm *v, int nargs, value *args) {
         }
     }
 
+    return MORPHO_NIL;
+}
+
+/** Sorts a list */
+value List_sort(vm *v, int nargs, value *args) {
+    list_sort(MORPHO_GETLIST(MORPHO_SELF(args)));
+    return MORPHO_NIL;
+}
+
+value List_sort_fn(vm *v, int nargs, value *args) {
+    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    if (!list_sortwithfn(v, MORPHO_GETARG(args, 0), slf)) {
+        morpho_runtimeerror(v, LIST_SRTFN);
+    }
     return MORPHO_NIL;
 }
 
@@ -674,7 +688,8 @@ MORPHO_METHOD(MORPHO_CLONE_METHOD, List_clone, BUILTIN_FLAGSEMPTY),
 //MORPHO_METHOD(MORPHO_ADD_METHOD, List_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_JOIN_METHOD, List_join, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ROLL_METHOD, List_roll, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(LIST_SORT_METHOD, List_sort, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "()", List_sort, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "(_)", List_sort_fn, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_ORDER_METHOD, List_order, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_REVERSE_METHOD, List_reverse, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_ISMEMBER_METHOD, List_ismember, BUILTIN_FLAGSEMPTY),
@@ -696,9 +711,9 @@ void list_initialize(void) {
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
     // List constructor function
-    builtin_addfunction(LIST_CLASSNAME, list_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(LIST_CLASSNAME, list_constructor, MORPHO_FN_CONSTRUCTOR);
     
-    // List constructor function
+    // Define List class
     value listclass=builtin_addclass(LIST_CLASSNAME, MORPHO_GETCLASSDEFINITION(List), objclass);
     object_setveneerclass(OBJECT_LIST, listclass);
     

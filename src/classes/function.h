@@ -8,6 +8,7 @@
 #define function_h
 
 #include "object.h"
+#include "signature.h"
 
 /* -------------------------------------------------------
  * Function objects
@@ -31,13 +32,14 @@ typedef struct sobjectfunction {
     int varg; // The parameter number of a variadic parameter.
     value name;
     indx entry;
+    int creg; // Closure register
     struct sobjectfunction *parent;
-    int nupvalues;
     int nregs;
-    objectclass *klass;
+    objectclass *klass; // Parent class for methods
     varray_value konst;
     varray_varray_upvalue prototype;
     varray_optionalparam opt;
+    signature sig;
 } objectfunction;
 
 /** Gets an objectfunction from a value */
@@ -67,8 +69,15 @@ objectfunction *object_getfunctionparent(objectfunction *func);
 value object_getfunctionname(objectfunction *func);
 varray_value *object_functiongetconstanttable(objectfunction *func);
 objectfunction *object_newfunction(indx entry, value name, objectfunction *parent, unsigned int nargs);
-bool object_functionhasvargs(objectfunction *func);
-void object_functionsetvarg(objectfunction *func, unsigned int varg);
+int function_countpositionalargs(objectfunction *func);
+int function_countoptionalargs(objectfunction *func);
+bool function_hasvargs(objectfunction *func);
+void function_setvarg(objectfunction *func, int varg);
+void function_setclosure(objectfunction *func, int creg);
+bool function_isclosure(objectfunction *func);
+
+void function_setsignature(objectfunction *func, value *signature);
+bool function_hastypedparameters(objectfunction *func);
 
 void objectfunction_printfn(object *obj, void *v);
 

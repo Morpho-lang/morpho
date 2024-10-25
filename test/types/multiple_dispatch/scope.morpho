@@ -1,0 +1,24 @@
+// Dispatch a function on multiple types
+
+fn f() {
+    return 0
+}
+
+fn f(x) {
+    return 1
+}
+
+{
+    fn f(x,y) {
+        return 1
+    }
+}
+
+print f()
+// expect: 0
+
+print f(1)
+// expect: 1
+
+print f(1,2)
+// expect error 'MltplDsptchFld'

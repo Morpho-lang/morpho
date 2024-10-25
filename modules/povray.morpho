@@ -59,7 +59,7 @@ class POVRaytracer {
     return arg
   }
 
-  visittext(item, out) {
+  visit(Text item, out) {
     var arg = self.optionalarg(item)
     out.write("text {" +
               "  ttf \"cyrvetic.ttf\" \"${item.string}\" 0.1, 0 \n" + 
@@ -85,7 +85,7 @@ class POVRaytracer {
     out.write(str)
   }
 
-  visitsphere(item, out) {
+  visit(Sphere item, out) {
     var arg = self.optionalarg(item)
     out.write("sphere {"+
               " ${self.vector(item.center)}, ${item.r}"+
@@ -94,7 +94,7 @@ class POVRaytracer {
               "} } }")
   }
 
-  visitcylinder(item, out) {
+  visit(Cylinder item, out) {
     var radius = 0.5*(item.end - item.start).norm()*item.aspectratio
     var arg = self.optionalarg(item)
     out.write("cylinder {"+
@@ -104,7 +104,7 @@ class POVRaytracer {
               "} } }")
   }
 
-  visitarrow(item, out) {
+  visit(Arrow item, out) {
     var dx = (item.end - item.start).norm()
     var radius = 0.5*dx*item.aspectratio
     var cylend = item.start + (item.end - item.start)*(1-item.aspectratio)
@@ -121,11 +121,11 @@ class POVRaytracer {
               "} } }")
   }
 
-  visittube(item, out) {
-    self.visittrianglecomplex(item.totrianglecomplex(), out)
+  visit(Tube item, out) {
+    self.visit(item.totrianglecomplex(), out)
   }
 
-  visittrianglecomplex(item, out) {
+  visit(TriangleComplex item, out) {
 
     var arg = self.optionalarg(item)
 
@@ -197,7 +197,7 @@ class POVRaytracer {
               "up <0,1,0> right <-1.33,0,0> angle ${self.viewangle}"+
               "look_at ${self.vector(self.look_at)} sky ${self.vector(self.sky)} }")
 
-    for (item in self.graphic.displaylist) item.accept(self, out)
+    for (item in self.graphic.displaylist) self.visit(item, out)
 
     var shadowless = ""
     if (self.shadowless) shadowless = " shadowless"

@@ -14,7 +14,7 @@ from colored import stylize
 
 sys.path.append('../test')
 ext = "morpho"
-command = 'morpho5'
+command = 'morpho6'
 stk = '@stacktrace'
 err = '@error'
 
@@ -63,10 +63,10 @@ def getoutput(filepath):
                 lines[i+1]=stk
     # and remove them
     return list(filter(lambda x: x!=stk, lines))
+
 def run(file,testLog,CI):
     ret = 1
     print(file+":", end=" ")
-
 
     # Create a temporary file in the same directory
     tmp = file + '.out'
@@ -118,8 +118,11 @@ total=0   # total number of examples
 
 # look for a command line arguement that says
 # this is being run for continous integration
-CI = sys.argv == '-c'
 
+CI = False
+for arg in sys.argv:
+    if arg == '-c': # if the argument is -c, then we are running in CI mode
+        CI = True
 
 files=glob.glob('**/**.'+ext, recursive=True)
 with open("FailedExamples.txt",'w') as testLog:

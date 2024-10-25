@@ -87,7 +87,6 @@ char lex_advance(lexer *l) {
 
 /** @brief Advances the lexer by n characters, returning the last character */
 char lex_advanceby(lexer *l, size_t n) {
-    char c = *(l->current);
     l->current+=n;
     l->posn+=n;
     return *(l->current-1);
@@ -291,7 +290,7 @@ bool lex_skipmultilinecomment(lexer *l, token *tok, error *err) {
         switch (c) {
             case '\0':
                 /* If we come to the end of the file, the token is marked as incomplete. */
-                morpho_writeerrorwithid(err, LEXER_UNTERMINATEDCOMMENT, startline, startpsn);
+                morpho_writeerrorwithid(err, LEXER_UNTERMINATEDCOMMENT, NULL, startline, startpsn);
                 lex_recordtoken(l, TOKEN_INCOMPLETE, tok);
                 return false;
             case '\n':
@@ -400,7 +399,7 @@ bool lex_string(lexer *l, token *tok, error *err) {
     
     if (lex_isatend(l)) {
         /* Unterminated string */
-        morpho_writeerrorwithid(err, LEXER_UNTERMINATEDSTRING, startline, startpsn);
+        morpho_writeerrorwithid(err, LEXER_UNTERMINATEDSTRING, NULL, startline, startpsn);
         lex_recordtoken(l, TOKEN_INCOMPLETE, tok);
         return false;
     }
@@ -672,7 +671,7 @@ bool lex(lexer *l, token *tok, error *err) {
     if (lex_identifytoken(l, &defn)) {
         lex_recordtoken(l, defn->type, tok);
     } else {
-        morpho_writeerrorwithid(err, LEXER_UNRECOGNIZEDTOKEN, l->line, l->posn);
+        morpho_writeerrorwithid(err, LEXER_UNRECOGNIZEDTOKEN, NULL, l->line, l->posn);
         return false;
     }
     

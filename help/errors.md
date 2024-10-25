@@ -4,6 +4,8 @@
 # Errors
 [tagerror]: # (error)
 [tagerrors]: # (errors)
+[tagerrors]: # (throw)
+[tagerrors]: # (warning)
 
 When an error occurs in running a morpho program, an error message is displayed together with an explanation of where in the program that the error happened.
 

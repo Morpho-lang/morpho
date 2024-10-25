@@ -63,6 +63,7 @@ def getoutput(filepath):
                 lines[i+1]=stk
     # and remove them
     return list(filter(lambda x: x!=stk, lines))
+
 def run(file,testLog,CI):
     ret = 1
     print(file+":", end=" ")
@@ -72,7 +73,7 @@ def run(file,testLog,CI):
     tmp = file + '.out'
 
     # Run the test
-    os.system(command + ' ' +file + ' > ' + tmp)
+    os.system(command + ' ' +file) # + ' > ' + tmp)
 
     # If we produced output
     if os.path.exists(tmp):

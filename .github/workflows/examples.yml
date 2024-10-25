@@ -19,6 +19,7 @@ jobs:
         sudo apt install libglfw3-dev 
         sudo apt install povray
         sudo apt install libfreetype6-dev
+        sudo apt install ttf-freefont
         sudo apt install libsuitesparse-dev
         sudo apt install liblapacke-dev
         sudo apt install libunistring-dev

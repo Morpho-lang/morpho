@@ -1037,8 +1037,6 @@ objectsparseerror sparse_mul(objectsparse *a, objectsparse *b, objectsparse *out
  * @param[in] b - dense matrix
  * @param[out] out - out + a*b. */
 objectsparseerror sparse_mulsxd(objectsparse *a, objectmatrix *b, objectmatrix *out) {
-    if (!(sparse_checkformat(a, SPARSE_CCS, true, true))) return SPARSE_CONVFAILED;
-
     if (a->ccs.ncols!=b->nrows) return SPARSE_INCMPTBLDIM;
 
 #ifdef MORPHO_LINALG_USE_CSPARSE
@@ -1356,14 +1354,16 @@ value Sparse_mul(vm *v, int nargs, value *args) {
                 morpho_resizeobject(v, (object *) b, bsize, sparse_size(b)); // Check for size change
             } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
         } else if (MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
-            objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
-
-            objectmatrix *out=object_newmatrix(b->nrows, b->ncols, true);
-            new = (objectsparse *) out; // Munge type to ensure binding/deallocation
-
-            if (out) {
-                err=sparse_mulsxd(a, b, out);
-            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+            if (sparse_checkformat(a, SPARSE_CCS, true, true)) {
+                objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
+                
+                objectmatrix *out=object_newmatrix(a->ccs.nrows, b->ncols, true);
+                new = (objectsparse *) out; // Munge type to ensure binding/deallocation
+                
+                if (out) {
+                    err=sparse_mulsxd(a, b, out);
+                } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+            } else err=SPARSE_CONVFAILED;
         } else if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
             double scale;
             if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale)) return MORPHO_NIL;

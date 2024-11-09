@@ -763,13 +763,17 @@ objectsparseerror sparse_docat(objectlist *in, void *dest, sparse_catcopyfn copy
     objectsparseerror err = sparse_catcheckdimensions(in, ndim, dim, ncols, nrows);
     if (err!=SPARSE_OK) return err;
     
-    if (!dest) { // If dest is NULL on entry, return the size of the matrix
-        if (!outrows || !outcols) return false;
-        *outrows=0; *outcols=0;
+    if (outrows) {
+        *outrows=0;
         for (int i=0; i<dim[0]; i++) *outrows+=nrows[i];
-        for (int i=0; i<dim[1]; i++) *outcols+=ncols[i];
-        return true;
     }
+        
+    if (outcols) {
+        *outcols=0;
+        for (int i=0; i<dim[1]; i++) *outcols+=ncols[i];
+    }
+    
+    if (!dest) return SPARSE_OK;
 
     int irow=0;
 
@@ -792,26 +796,26 @@ objectsparseerror sparse_docat(objectlist *in, void *dest, sparse_catcopyfn copy
 
 /** Veneer onto sparse_docat for sparse matrices */
 objectsparseerror sparse_cat(objectlist *in, objectsparse *dest) {
-    return sparse_docat(in, dest, sparse_catcopyentry, NULL, NULL);
+    return sparse_docat(in, dest, sparse_catcopyentry, &dest->dok.nrows, &dest->dok.ncols);
 }
 
 /** Veneer onto sparse_docat for dense matrices. Allocates a dense matrix of the correct size */
 objectsparseerror sparse_catmatrix(objectlist *in, objectmatrix **out) {
     int nrows, ncols;
     objectmatrix *new = NULL;
+    objectsparseerror err=sparse_docat(in, NULL, matrix_catcopyentry, &nrows, &ncols);
     
-    if (!sparse_docat(in, NULL, matrix_catcopyentry, &nrows, &ncols)) goto sparse_catmatrix_error;
+    if (err!=SPARSE_OK) goto sparse_catmatrix_error;
     new = object_newmatrix(nrows, ncols, true);
     
-    objectsparseerror err=sparse_docat(in, new, matrix_catcopyentry, NULL, NULL);
-    
+    err=sparse_docat(in, new, matrix_catcopyentry, NULL, NULL);
     if (err==SPARSE_OK) *out = new;
     
     return err;
     
 sparse_catmatrix_error:
     if (new) object_free((object *) new);
-    return SPARSE_INVLDINIT;
+    return err;
 }
 
 /* *******************************
@@ -1173,7 +1177,7 @@ void sparse_raiseerror(vm *v, objectsparseerror err) {
     }
 }
 
-/** Constructs a Matrix object */
+/** Constructs a Sparse object */
 value sparse_constructor(vm *v, int nargs, value *args) {
     int nrows, ncols;
     objectsparse *new=NULL;

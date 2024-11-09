@@ -1,0 +1,19 @@
+// Ensure a block contructor produces the correct matrix dimensions
+
+var a = Sparse()
+
+for (i in 0..4:2) {
+  a[i,i]=1
+  a[i+1,i]=2
+  a[i+3,i]=3
+}
+
+print Sparse([[a.column(0),a.column(1)]])
+// expect: [ 1 0 ]
+// expect: [ 2 0 ]
+// expect: [ 0 0 ]
+// expect: [ 3 0 ]
+// expect: [ 0 0 ]
+// expect: [ 0 0 ]
+// expect: [ 0 0 ]
+// expect: [ 0 0 ]

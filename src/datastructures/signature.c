@@ -189,6 +189,8 @@ bool signature_parse(char *sig, signature *out) {
     bool success=parse(&p);
     
     parse_clear(&p);
+    lex_clear(&l);
+    
     return success;
 }
 

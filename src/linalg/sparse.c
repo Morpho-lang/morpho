@@ -1549,7 +1549,8 @@ value Sparse_getcolumn(vm *v, int nargs, value *args) {
                 
                 if (nentries>0) {
                     if (sparseccs_resize(&new->ccs, s->ccs.nrows, 1, nentries, true)) {
-                        new->ccs.cptr[1]=nentries; // cptr must point to next entry
+                        new->ccs.cptr[0]=0;
+                        new->ccs.cptr[1]=nentries;
                         
                         for (int i=0; i<nentries; i++) {
                             new->ccs.rix[i]=entries[i];

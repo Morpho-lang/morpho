@@ -224,8 +224,10 @@ objectlist *list_concatenate(objectlist *a, objectlist *b) {
     objectlist *new=object_newlist(a->val.count+b->val.count, NULL);
 
     if (new) {
-        memcpy(new->val.data, a->val.data, sizeof(value)*a->val.count);
-        memcpy(new->val.data+a->val.count, b->val.data, sizeof(value)*b->val.count);
+        if (new->val.data) {
+            memcpy(new->val.data, a->val.data, sizeof(value)*a->val.count);
+            memcpy(new->val.data+a->val.count, b->val.data, sizeof(value)*b->val.count);
+        }
         new->val.count=a->val.count+b->val.count;
     }
 

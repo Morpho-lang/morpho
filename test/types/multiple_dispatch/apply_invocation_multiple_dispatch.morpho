@@ -1,0 +1,14 @@
+class A {
+    a() { return 0 }
+    a(x) { return 1 }
+    a(x, y) { return 2 }
+    a(x, y, z) { return 3 }
+}
+
+var a = A()
+var b = a.a
+
+print apply(b, [])       // expect: 0
+print apply(b, [1])      // expect: 1
+print apply(b, [1,1])    // expect: 2
+print apply(b, [1,1,1])  // expect: 3

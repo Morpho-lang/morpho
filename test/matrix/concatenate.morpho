@@ -7,6 +7,10 @@ print a
 // expect: [ 0 1 ]
 // expect: [ 1 0 ]
 
+print b 
+// expect: [ 2 ]
+// expect: [ 3 ]
+
 var c = Matrix([[a, b], [b.transpose(), 0]])
 
 print c

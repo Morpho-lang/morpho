@@ -35,6 +35,7 @@ enum {
 
 void objectmetafunction_freefn(object *obj) {
     objectmetafunction *f = (objectmetafunction *) obj;
+    morpho_freeobject(f->name);
     varray_valueclear(&f->fns);
     metafunction_clearinstructions(f);
 }

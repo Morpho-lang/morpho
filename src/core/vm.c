@@ -944,12 +944,6 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             a=DECODE_A(bc);
             left=reg[a];
             c=DECODE_B(bc); // We use c for consistency between call and invoke...
-
-            if (MORPHO_ISMETAFUNCTION(left) &&
-                !metafunction_resolve(MORPHO_GETMETAFUNCTION(left), c, reg+a+1,                 &v->err, &left)) {
-                ERRORCHK();
-                ERROR(VM_MLTPLDSPTCHFLD);
-            }
         
 callfunction: // Jump here if an instruction becomes a call
             if (MORPHO_ISINVOCATION(left)) {
@@ -957,6 +951,12 @@ callfunction: // Jump here if an instruction becomes a call
                 objectinvocation *inv = MORPHO_GETINVOCATION(left);
                 left=inv->method;
                 reg[a]=inv->receiver;
+            }
+        
+            if (MORPHO_ISMETAFUNCTION(left) &&
+                !metafunction_resolve(MORPHO_GETMETAFUNCTION(left), c, reg+a+1,                 &v->err, &left)) {
+                ERRORCHK();
+                ERROR(VM_MLTPLDSPTCHFLD);
             }
 
             if (MORPHO_ISFUNCTION(left) || MORPHO_ISCLOSURE(left)) {
@@ -1730,17 +1730,17 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
     value fn=f;
     value r0=f;
 
-    if (MORPHO_ISMETAFUNCTION(fn) &&
-        !metafunction_resolve(MORPHO_GETMETAFUNCTION(fn), nargs, args, &v->err, &fn)) {
-        if (!morpho_checkerror(&v->err)) morpho_runtimeerror(v, VM_MLTPLDSPTCHFLD);
-        return false;
-    }
-    
     if (MORPHO_ISINVOCATION(fn)) {
         /* An method invocation */
         objectinvocation *inv = MORPHO_GETINVOCATION(f);
         fn=inv->method;
         r0=inv->receiver;
+    }
+    
+    if (MORPHO_ISMETAFUNCTION(fn) &&
+        !metafunction_resolve(MORPHO_GETMETAFUNCTION(fn), nargs, args, &v->err, &fn)) {
+        if (!morpho_checkerror(&v->err)) morpho_runtimeerror(v, VM_MLTPLDSPTCHFLD);
+        return false;
     }
     
     if (MORPHO_ISBUILTINFUNCTION(fn)) {

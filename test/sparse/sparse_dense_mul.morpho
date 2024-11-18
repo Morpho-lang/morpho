@@ -5,12 +5,12 @@ var B = Matrix([[1,2,3,4],[5,6,7,8]])
 print B 
 // expect: [ 1 2 3 4 ]
 // expect: [ 5 6 7 8 ]
+
+print A*B.transpose() 
 // expect: [ 2 10 ]
 // expect: [ 4 12 ]
 // expect: [ 6 14 ]
 // expect: [ 8 16 ]
-
-print A*B.transpose() 
 
 print A*B 
 // expect error 'MtrxIncmptbl'

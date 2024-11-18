@@ -1,0 +1,40 @@
+// Sparse matrices
+
+var a = Sparse()
+
+for (i in 0..4:2) {
+  a[i,i]=1
+  a[i+1,i]=2
+  a[i+3,i]=3
+}
+
+print a.column(0)
+// expect: [ 1 ]
+// expect: [ 2 ]
+// expect: [ 0 ]
+// expect: [ 3 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+
+print a.column(1)
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+
+print a.column(4)
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 0 ]
+// expect: [ 1 ]
+// expect: [ 2 ]
+// expect: [ 0 ]
+// expect: [ 3 ]
+

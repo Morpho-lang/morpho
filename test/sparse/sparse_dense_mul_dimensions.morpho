@@ -1,0 +1,24 @@
+// 
+
+var N = 3
+
+var A = Sparse(2*N,N)
+for (i in 0...N) {
+    A[i,i]=1
+    A[i+N,i]=1
+}
+
+var b = Matrix(List(1..N))
+
+print A.dimensions() // expect: [ 6, 3 ]
+print b.dimensions() // expect: [ 3, 1 ]
+
+print (A*b).dimensions() // expect: [ 6, 1 ]
+
+print A*b
+// expect: [ 1 ]
+// expect: [ 2 ]
+// expect: [ 3 ]
+// expect: [ 1 ]
+// expect: [ 2 ]
+// expect: [ 3 ]

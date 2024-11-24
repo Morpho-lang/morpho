@@ -425,7 +425,7 @@ bool lex_number(lexer *l, token *tok, error *err) {
     char next = '\0';
     if (lex_peek(l)!='\0') next=lex_peekahead(l, 1); // Prevent looking beyond buffer
     if (lex_peek(l) == '.' && (lex_isdigit(next) || lex_isspace(next) || next=='\0') ) {
-        type=TOKEN_NUMBER;
+        type=l->flttype;
         lex_advance(l); /* Consume the '.' */
         while (lex_isdigit(lex_peek(l))) lex_advance(l);
     }

@@ -2928,6 +2928,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     bindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
 
     objectfunction *func = object_newfunction(bindx+1, node->content, compiler_getcurrentfunction(c), 0);
+    program_bindobject(c->out, (object *) func);
     
     /* Record the class is a method */
     if (ismethod) func->klass=compiler_getcurrentclass(c);

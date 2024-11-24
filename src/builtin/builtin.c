@@ -222,6 +222,7 @@ bool builtin_addfunctiontodict(dictionary *dict, value name, value fn, value *ou
                 MORPHO_GETBUILTINFUNCTION(entry)->klass) { // Override superclass methods for now
                 dictionary_insert(dict, selector, fn);
             } else if (metafunction_wrap(name, entry, &entry)) { // Wrap the old definition in a metafunction
+                varray_valuewrite(&builtin_objects, entry); // Ensure metafunction is removed
                 metafunction_add(MORPHO_GETMETAFUNCTION(entry), fn); // Add the new definition
                 success=dictionary_insert(dict, selector, entry);
             }

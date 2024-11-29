@@ -94,6 +94,8 @@ enum {
     
     NODE_AND,
     NODE_OR,
+    
+    NODE_TERNARY,
 
     NODE_DOT,
     

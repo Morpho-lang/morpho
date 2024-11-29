@@ -1,0 +1,6 @@
+// Ternary operator with missing colon
+
+var a = 1
+var b = 2 
+
+print (a < b ? 1) // expect error 'TrnryMssngColon'

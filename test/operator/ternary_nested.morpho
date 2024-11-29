@@ -1,0 +1,13 @@
+// Nested ternary operators
+
+var a = 3
+
+for (i in 1..5) {
+    print (i<a ? "less" : (i==a ? "same" : "more"))
+}
+
+// expect: less
+// expect: less
+// expect: same
+// expect: more
+// expect: more

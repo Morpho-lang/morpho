@@ -816,6 +816,19 @@ bool parse_binary(parser *p, void *out) {
     return parse_addnode(p, nodetype, MORPHO_NIL, &start, left, right, (syntaxtreeindx *) out);
 }
 
+/** Parse ternary operator */
+bool parse_ternary(parser *p, void *out) {
+    token start = p->previous;
+    syntaxtreeindx cond=p->left;
+    syntaxtreeindx left, right, outcomes;
+    PARSE_CHECK(parse_expression(p, &left));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_COLON, PARSE_TRNRYMSSNGCOLON));
+    PARSE_CHECK(parse_expression(p, &right));
+    
+    PARSE_CHECK(parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, left, right, &outcomes));
+    return parse_addnode(p, NODE_TERNARY, MORPHO_NIL, &start, cond, outcomes, (syntaxtreeindx *) out);
+}
+
 /** Parse operators like +=, -=, *= etc. */
 bool parse_assignby(parser *p, void *out) {
     token start = p->previous;
@@ -1563,7 +1576,7 @@ bool parse_program(parser *p, void *out) {
 
 parserule rules[] = {
     PARSERULE_UNUSED(TOKEN_NEWLINE),
-    PARSERULE_UNUSED(TOKEN_QUESTION),
+    PARSERULE_INFIX(TOKEN_QUESTION, parse_ternary, PREC_TERNARY),
     
     PARSERULE_PREFIX(TOKEN_STRING, parse_string),
     PARSERULE_PREFIX(TOKEN_INTERPOLATION, parse_interpolation),
@@ -1848,6 +1861,7 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_BLOCKTERMINATOREXP, ERROR_PARSE, PARSE_BLOCKTERMINATOREXP_MSG);
     morpho_defineerror(PARSE_MSSNGSQBRC, ERROR_PARSE, PARSE_MSSNGSQBRC_MSG);
     morpho_defineerror(PARSE_MSSNGCOMMA, ERROR_PARSE, PARSE_MSSNGCOMMA_MSG);
+    morpho_defineerror(PARSE_TRNRYMSSNGCOLON, ERROR_PARSE, PARSE_TRNRYMSSNGCOLON_MSG);
     morpho_defineerror(PARSE_IFLFTPARENMISSING, ERROR_PARSE, PARSE_IFLFTPARENMISSING_MSG);
     morpho_defineerror(PARSE_IFRGHTPARENMISSING, ERROR_PARSE, PARSE_IFRGHTPARENMISSING_MSG);
     morpho_defineerror(PARSE_WHILELFTPARENMISSING, ERROR_PARSE, PARSE_WHILELFTPARENMISSING_MSG);

@@ -8,11 +8,11 @@
  * Version
  * ********************************************************************** */
 
-#define MORPHO_VERSIONSTRING "0.6.1"
+#define MORPHO_VERSIONSTRING "0.6.2"
 
 #define MORPHO_VERSION_MAJOR 0
 #define MORPHO_VERSION_MINOR 6
-#define MORPHO_VERSION_PATCH 1
+#define MORPHO_VERSION_PATCH 2
 
 /* **********************************************************************
  * Paths and file system

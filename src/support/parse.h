@@ -29,6 +29,7 @@ enum {
     PREC_NONE,
     PREC_LOWEST,
     PREC_ASSIGN,
+    PREC_TERNARY,
     PREC_COMMA,
     PREC_OR,
     PREC_AND,
@@ -135,6 +136,9 @@ struct sparser {
 
 #define PARSE_MSSNGCOMMA                  "MssngComma"
 #define PARSE_MSSNGCOMMA_MSG              "Expected ','."
+
+#define PARSE_TRNRYMSSNGCOLON             "TrnryMssngColon"
+#define PARSE_TRNRYMSSNGCOLON_MSG         "Expected ':' after expression in ternary operator."
 
 #define PARSE_IFLFTPARENMISSING           "IfMssngLftPrn"
 #define PARSE_IFLFTPARENMISSING_MSG       "Expected '(' after if."

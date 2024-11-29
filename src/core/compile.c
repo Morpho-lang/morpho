@@ -1618,6 +1618,7 @@ static codeinfo compiler_index(compiler *c, syntaxtreenode *node, registerindx r
 static codeinfo compiler_negate(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_not(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx out);
+static codeinfo compiler_ternary(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_dot(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_grouping(compiler *c, syntaxtreenode *node, registerindx out);
@@ -1682,6 +1683,7 @@ compilenoderule noderules[] = {
     { compiler_binary        },      // NODE_POW
 
     { compiler_assign        },      // NODE_ASSIGN
+    
     { compiler_binary        },      // NODE_EQ
     { compiler_binary        },      // NODE_NEQ
     { compiler_binary        },      // NODE_LT
@@ -1691,6 +1693,8 @@ compilenoderule noderules[] = {
 
     { compiler_logical       },      // NODE_AND
     { compiler_logical       },      // NODE_OR
+    
+    { compiler_ternary       },      // NODE_TERNARY
 
     { compiler_dot           },      // NODE_DOT
 
@@ -2046,6 +2050,80 @@ static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx 
     compiler_releaseoperand(c, right);
 
     return CODEINFO(REGISTER, out, ninstructions);
+}
+
+/** @brief Compiles the ternary operator
+ *  @details Ternary operators are encoded in the syntax tree
+ *
+ *           <pre>
+ *                 TERNARY
+ *                  /  \
+ *              cond    SEQUENCE
+ *                       /    \
+ *            true outcome    false outcome
+ *           </pre> 
+ *   and are compiled to:
+ *              <cond>
+ *              bif    <cond>, fail:  ; branch if condition isn't met
+ *              .. true outcome
+ *              b      end            ; generated if an else statement is present
+ *           fail:
+ *              .. false outcome
+ *           end:
+ */
+static codeinfo compiler_ternary(compiler *c, syntaxtreenode *node, registerindx reqout) {
+    unsigned int ninstructions=0;
+    
+    // Compile the condition
+    codeinfo cond = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
+    ninstructions+=cond.ninstructions;
+    
+    // And make sure it's in a register */
+    if (!CODEINFO_ISREGISTER(cond)) {
+       cond=compiler_movetoregister(c, node, cond, REGISTER_UNALLOCATED);
+       ninstructions+=cond.ninstructions; /* Keep track of instructions */
+    }
+
+    // Generate empty instruction to contain the conditional branch
+    instructionindx cbrnchindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
+    ninstructions++;
+    
+    // We're now done with the result of the condition
+    compiler_releaseoperand(c, cond);
+    
+    // Claim an output register
+    registerindx rout=compiler_regtemp(c, reqout);
+    
+    // Get the possible outcomes
+    syntaxtreenode *outcomes = compiler_getnode(c, node->right);
+    
+    // Compile true outcome
+    codeinfo left = compiler_nodetobytecode(c, outcomes->left, rout);
+    ninstructions+=left.ninstructions;
+    
+    // Ensure the result is in the output register
+    left = compiler_movetoregister(c, outcomes, left, rout);
+    ninstructions+=left.ninstructions;
+    
+    // Generate empty instruction to branch to the end
+    instructionindx brnchendindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
+    ninstructions++;
+    
+    // Compile false outcome
+    codeinfo right = compiler_nodetobytecode(c, outcomes->right, rout);
+    ninstructions+=right.ninstructions;
+    
+    // Ensure the result is in the output register
+    right = compiler_movetoregister(c, outcomes, right, rout);
+    ninstructions+=right.ninstructions;
+    
+    instructionindx end=compiler_currentinstructionindex(c);
+    
+    // Patch up branches
+    compiler_setinstruction(c, cbrnchindx, ENCODE_LONG(OP_BIFF, cond.dest, brnchendindx-cbrnchindx));
+    compiler_setinstruction(c, brnchendindx, ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, end-brnchendindx-1));
+    
+    return CODEINFO(REGISTER, rout, ninstructions);
 }
 
 /** Compiles a group (used to modify precedence) */

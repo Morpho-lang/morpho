@@ -216,7 +216,7 @@ class POVRaytracer {
     self.transparent = transparent // Sets the attribute to be used in the write method and in the command line argument for povray
     var path = self.write(file)
     var silent = ""
-    if (quiet) silent = "&> /dev/null"
+    if (quiet) silent = "> /dev/null 2>&1"
     var disp = ""
     if (!display) disp = "-D"
     var ua = "+A"

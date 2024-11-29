@@ -142,7 +142,6 @@ void lex_newline(lexer *l) {
     l->line++; l->posn=0;
 }
 
-
 /** @brief Attempts to find a matching token for the current token.
  *  @param[in] l The lexer in use
  *  @param[out] defn Type of token, if found
@@ -637,6 +636,12 @@ void lex_setprefn(lexer *l, processtokenfn prefn) {
 /* **********************************************************************
  * Lexer public interface
  * ********************************************************************** */
+
+/** @brief Checks if a token contains a keyword */
+bool lex_tokeniskeyword(lexer *l, token *tok) {
+    if (tok->type==TOKEN_SYMBOL) return false;
+    return lex_isalpha(tok->start[0]);
+}
 
 /** @brief Identifies the next token
  *  @param[in]  l     The lexer in use

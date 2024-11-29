@@ -12,5 +12,5 @@ class A {
 
 var a = A("foo")
 
-A.print() 
+a.print() 
 // expect: foo

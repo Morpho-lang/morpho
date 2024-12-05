@@ -314,9 +314,10 @@ void string_initialize(void) {
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
-    // Create string veneer class
-    builtin_addfunction(STRING_CLASSNAME, string_constructor, MORPHO_FN_CONSTRUCTOR);
-    
+    // Create String veneer class
     value stringclass=builtin_addclass(STRING_CLASSNAME, MORPHO_GETCLASSDEFINITION(String), objclass);
     object_setveneerclass(OBJECT_STRING, stringclass);
+    
+    // String constructor function
+    morpho_addfunction(STRING_CLASSNAME, "String (...)", string_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
 }

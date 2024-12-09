@@ -291,7 +291,7 @@ void tuple_initialize(void) {
     object_setveneerclass(OBJECT_TUPLE, tupleclass);
     
     // Tuple constructor function
-    morpho_addfunction(TUPLE_CLASSNAME, "Tuple (...)", tuple_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(TUPLE_CLASSNAME, TUPLE_CLASSNAME " (...)", tuple_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     // Tuple error messages
     morpho_defineerror(TUPLE_ARGS, ERROR_HALT, TUPLE_ARGS_MSG);

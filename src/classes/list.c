@@ -717,7 +717,7 @@ void list_initialize(void) {
     object_setveneerclass(OBJECT_LIST, listclass);
     
     // List constructor function
-    morpho_addfunction(LIST_CLASSNAME, "List (...)", list_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(LIST_CLASSNAME, LIST_CLASSNAME " (...)", list_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     // List error messages
     morpho_defineerror(LIST_ENTRYNTFND, ERROR_HALT, LIST_ENTRYNTFND_MSG);

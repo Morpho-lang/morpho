@@ -946,8 +946,8 @@ void metafunction_initialize(void) {
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
-    // List constructor function
-    builtin_addfunction(METAFUNCTION_CLASSNAME, metafunction_constructor, MORPHO_FN_CONSTRUCTOR);
+    // Metafunction constructor function
+    morpho_addfunction(METAFUNCTION_CLASSNAME, METAFUNCTION_CLASSNAME " (...)", metafunction_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     // Create function veneer class
     value metafunctionclass=builtin_addclass(METAFUNCTION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Metafunction), objclass);

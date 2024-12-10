@@ -368,8 +368,10 @@ assemblyrule assemblyrules[] ={
     { OP_LPR, "lpr", "rA, rB, rC" },
     { OP_SPR, "spr", "rA, rB, rC" },
     
-    { OP_LIX, "lix", "rA, rB, rC" },
-    { OP_SIX, "six", "rA, rB, rC" },
+    { OP_LIX,  "lix", "rA, rB, rC" },
+    { OP_LIXL, "lixl", "rA, rB, rC" },
+    
+    { OP_SIX,  "six", "rA, rB, rC" },
     
     { OP_LGL, "lgl", "rA, gX" }, //
     { OP_SGL, "sgl", "rA, gX" }, // label b with 'g'

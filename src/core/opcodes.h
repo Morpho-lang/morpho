@@ -84,6 +84,9 @@ OPCODE(SPR)
 /** Load index */
 OPCODE(LIX)
 
+/** Load index list */
+OPCODE(LIXL)
+
 /** Store index */
 OPCODE(SIX)
 

@@ -1332,20 +1332,20 @@ callfunction: // Jump here if an instruction becomes a call
             if (MORPHO_ISARRAY(left)) {
                 unsigned int ndim = c-b+1;
                 unsigned int indx[ndim];
-        				if (array_valuelisttoindices(ndim, &reg[b], indx)){
-        					objectarrayerror err=array_getelement(MORPHO_GETARRAY(left), ndim, indx, &reg[b]);
-        					if (err!=ARRAY_OK) ERROR( array_error(err) );
-        				} else {
-        					value newval = MORPHO_NIL;
-        					objectarrayerror err = getslice(&left,&array_slicedim,&array_sliceconstructor,\
-        													&array_slicecopy,ndim,&reg[b],&newval);
-        					if (err!=ARRAY_OK) ERROR(array_error(err));
+                if (array_valuelisttoindices(ndim, &reg[b], indx)){
+                    objectarrayerror err=array_getelement(MORPHO_GETARRAY(left), ndim, indx, &reg[b]);
+                    if (err!=ARRAY_OK) ERROR( array_error(err) );
+                } else {
+                    value newval = MORPHO_NIL;
+                    objectarrayerror err = getslice(&left,&array_slicedim,&array_sliceconstructor,\
+                                                    &array_slicecopy,ndim,&reg[b],&newval);
+                    if (err!=ARRAY_OK) ERROR(array_error(err));
 
-        					if (!MORPHO_ISNIL(newval)) {
-        						reg[b] = newval;
-        						vm_bindobject(v, reg[b]);
-        					} else  ERROR(VM_NONNUMINDX);
-        				}
+                    if (!MORPHO_ISNIL(newval)) {
+                        reg[b] = newval;
+                        vm_bindobject(v, reg[b]);
+                    } else  ERROR(VM_NONNUMINDX);
+                }
             } else {
                 if (!vm_invoke(v, left, indexselector, c-b+1, &reg[b], &reg[b])) {
                     ERROR(VM_NOTINDEXABLE);
@@ -1354,6 +1354,24 @@ callfunction: // Jump here if an instruction becomes a call
             }
 
             DISPATCH();
+        
+        CASE_CODE(LIXL):
+        {
+            a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);
+            
+            /* Variant 1: */
+             value args[2] = { reg[b], reg[c] };
+             reg[a] = List_getindex(v, 1, args);
+             ERRORCHK();
+            
+            /* Variant 2: Potentially even faster 
+            objectlist *list = MORPHO_GETLIST(reg[b]);
+            int i=MORPHO_GETINTEGERVALUE(reg[c]);
+            if (i>list->val.count) ERROR(VM_OUTOFBOUNDS);
+            reg[a]=list->val.data[i];*/
+            
+            DISPATCH();
+        }
 
         CASE_CODE(SIX):
             a=DECODE_A(bc); b=DECODE_B(bc); c=DECODE_C(bc);

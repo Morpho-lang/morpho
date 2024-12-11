@@ -1,0 +1,13 @@
+// Ternary operator in a loop
+
+var a = 3
+
+for (i in 1..5) {
+    print (i<a ? "less" : "more")
+}
+
+// expect: less
+// expect: less
+// expect: more
+// expect: more
+// expect: more

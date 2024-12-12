@@ -1831,6 +1831,7 @@ objectclass *morpho_lookupclass(value v) {
     if (MORPHO_ISINSTANCE(v)) klass=MORPHO_GETINSTANCE(v)->klass;
     else if (MORPHO_ISCLASS(v)) klass=MORPHO_GETCLASS(v);
     else if (MORPHO_ISOBJECT(v)) klass=object_getveneerclass(MORPHO_GETOBJECTTYPE(v));
+    else klass=value_getveneerclass(v);
     return klass;
 }
 

@@ -65,8 +65,11 @@ objectinstance *object_newinstance(objectclass *klass);
  * Instance interface
  * ------------------------------------------------------- */
 
-/* Expose Object_print */
+/* Expose a few methods for veneer classes */
+value Object_class(vm *v, int nargs, value *args);
+value Object_respondsto(vm *v, int nargs, value *args);
 value Object_print(vm *v, int nargs, value *args);
+value Object_invoke(vm *v, int nargs, value *args);
 
 bool objectinstance_setproperty(objectinstance *obj, value key, value val);
 bool objectinstance_getproperty(objectinstance *obj, value key, value *val);

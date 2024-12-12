@@ -408,6 +408,7 @@ void builtin_initialize(void) {
     
     float_initialize();// Veneer classes
     int_initialize();
+    bool_initialize();
     
     file_initialize();
     system_initialize();

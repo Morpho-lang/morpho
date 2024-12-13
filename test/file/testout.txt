@@ -1,6 +1,0 @@
-I have 0 apples.
-I have 1 apples.
-I have 2 apples.
-I have 3 apples.
-I have 4 apples.
-I have 5 apples.

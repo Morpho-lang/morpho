@@ -87,17 +87,17 @@ bool builtin_enumerateloop(vm *v, value obj, builtin_loopfunction fn, void *ref)
  * Optional arguments
  * ********************************************************************** */
 
-extern value vm_optmarker;
-
 /** Process optional arguments */
 bool builtin_options(vm *v, int nargs, value *args, int *nfixed, int noptions, ...) {
     va_list optlist;
     va_start(optlist, noptions);
     int nposn=nargs;
     
-    for (unsigned int i=1; i<=nargs; i++) {
+//TODO: BROKEN. MUST FIND OUT NUMBER OF OPTIONAL ARGS FROM VM 
+    
+    /*for (unsigned int i=1; i<=nargs; i++) {
         if (MORPHO_ISSAME(args[i], vm_optmarker)) { nposn=i-1; break; }
-    }
+    }*/
     
     for (unsigned int i=0; i<noptions; i++) {
         value symbol = va_arg(optlist, value);

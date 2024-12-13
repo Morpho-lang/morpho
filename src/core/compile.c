@@ -109,6 +109,8 @@ static void compiler_functionstateinit(functionstate *state) {
     state->scopedepth=0;
     state->loopdepth=0;
     state->inargs=false;
+    state->nopt=0;
+    state->nposn=0;
     state->nreg=0;
     state->type=FUNCTION;
     state->varg=REGISTER_UNALLOCATED;
@@ -247,6 +249,24 @@ static inline void compiler_endargs(compiler *c) {
 static inline bool compiler_inargs(compiler *c) {
     functionstate *f = compiler_currentfunctionstate(c);
     return f->inargs;
+}
+
+/** Sets the number of args in an argument specifier*/
+void compiler_setnargs(compiler *c, int nposn, int nopt) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (f) {
+        f->nposn=nposn;
+        f->nopt=nopt;
+    }
+}
+
+/** Gets the number of args in an argument specifier*/
+void compiler_getnargs(compiler *c, int *nposn, int *nopt) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (f) {
+        *nposn = f->nposn;
+        *nopt = f->nopt;
+    }
 }
 
 /* ------------------------------------------
@@ -988,11 +1008,28 @@ codeinfo compiler_addsymbolwithsizecheck(compiler *c, syntaxtreenode *node, valu
 
 DEFINE_VARRAY(optionalparam, optionalparam);
 
+/** Adds  a variadic parameter */
+static inline registerindx compiler_addpositionalarg(compiler *c, syntaxtreenode *node, value symbol) {
+    functionstate *f = compiler_currentfunctionstate(c);
+
+    if (f) {
+        if (!function_hasvargs(f->func)) {
+            f->func->nargs++;
+            value sym=program_internsymbol(c->out, symbol);
+            return compiler_addlocal(c, node, sym);
+        } else compiler_error(c, node, COMPILE_VARPRMLST);
+    }
+    
+    return REGISTER_UNALLOCATED;
+}
+
 /** Adds  an optional argument */
 static inline void compiler_addoptionalarg(compiler *c, syntaxtreenode *node, value symbol, value def) {
     functionstate *f = compiler_currentfunctionstate(c);
 
     if (f) {
+        f->func->nopt++;
+        
         value sym=program_internsymbol(c->out, symbol);
         registerindx reg = compiler_addlocal(c, node, sym);
         registerindx val = compiler_addconstant(c, node, def, false, true);
@@ -1018,12 +1055,6 @@ static inline void compiler_addvariadicarg(compiler *c, syntaxtreenode *node, va
 
         function_setvarg(f->func, reg-1);
     }
-}
-
-/** Check if the current function has variadic parameters */
-bool compiler_hasvariadicarg(compiler *c) {
-    functionstate *f = compiler_currentfunctionstate(c);
-    return function_hasvargs(f->func);
 }
 
 /* ------------------------------------------
@@ -2831,11 +2862,7 @@ static registerindx compiler_functionparameters(compiler *c, syntaxtreeindx indx
 
     switch(node->type) {
         case NODE_SYMBOL:
-        {
-            if (!compiler_hasvariadicarg(c)) {
-                return compiler_addlocal(c, node, node->content);
-            } else compiler_error(c, node, COMPILE_VARPRMLST);
-        }
+            return compiler_addpositionalarg(c, node, node->content);
             break;
         case NODE_TYPE:
         {
@@ -2954,8 +2981,6 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 
     /* -- Compile the parameters -- */
     compiler_functionparameters(c, node->left);
-
-    func->nargs=compiler_regtop(c);
     
     value signature[func->nargs+1];
     for (int i=0; i<func->nargs; i++) compiler_regtype(c, i+1, &signature[i]);
@@ -2963,7 +2988,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     signature_setvarg(&func->sig, function_hasvargs(func));
 
     /* Check we don't have too many arguments */
-    if (func->nargs>MORPHO_MAXARGS) {
+    if (func->nargs+func->nopt>MORPHO_MAXARGS) {
         compiler_error(c, node, COMPILE_TOOMANYPARAMS);
         return CODEINFO_EMPTY;
     }
@@ -3043,6 +3068,7 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
     codeinfo arginfo;
     unsigned int ninstructions=0;
     bool optstarted=false;
+    int nposn=0, nopt=0; // Number of positional and optional args.
 
     varray_syntaxtreeindx argnodes;
     varray_syntaxtreeindxinit(&argnodes);
@@ -3058,16 +3084,6 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
 
         syntaxtreenode *arg = compiler_getnode(c, argnodes.data[i]);
         if (arg->type==NODE_ASSIGN) {
-            if (!optstarted) { // Add the optional marker object before the first optional argument
-                optstarted=true;
-                
-                registerindx k = compiler_addconstant(c, arg, vm_optmarker, true, false);
-                compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, k), node);
-                ninstructions++;
-                
-                reg=compiler_regalloctop(c);
-            }
-            
             syntaxtreenode *symbol = compiler_getnode(c, arg->left);
 
             /* Intern the symbol and add to the constant table */
@@ -3080,8 +3096,12 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
             reg=compiler_regalloctop(c);
 
             arginfo=compiler_nodetobytecode(c, arg->right, reg);
+            
+            nopt++;
         } else {
             arginfo=compiler_nodetobytecode(c, argnodes.data[i], reg);
+            
+            nposn++;
         }
         ninstructions+=arginfo.ninstructions;
 
@@ -3099,6 +3119,8 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
         }
     }
 
+    compiler_setnargs(c, nposn, nopt);
+    
     varray_syntaxtreeindxclear(&argnodes);
 
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
@@ -3188,7 +3210,9 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     compiler_endargs(c);
 
     /* Generate the call instruction */
-    compiler_addinstruction(c, ENCODE_DOUBLE(OP_CALL, func.dest, lastarg-func.dest), node);
+    int nposn=0, nopt=0;
+    compiler_getnargs(c, &nposn, &nopt);
+    compiler_addinstruction(c, ENCODE(OP_CALL, func.dest, nposn, nopt), node);
     ninstructions++;
 
     /* Free all the registers used for the call */

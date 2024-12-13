@@ -242,6 +242,8 @@ typedef struct {
     unsigned int scopedepth;
     unsigned int loopdepth; /* Count number of nesting depths of a loop */
     bool inargs; /* Set while compiling function calls to ensure allocations are at the top of the stack */
+    unsigned int nposn; /* Number of positional args recorded in latest call */
+    unsigned int nopt; /* Number of optional args recorded in latest call */
 } functionstate;
 
 /* -------------------------------------------------------

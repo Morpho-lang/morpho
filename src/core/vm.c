@@ -383,8 +383,8 @@ bool vm_optargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int nopt,
         value key = args[2*i];
         // TODO: Is a dictionary lookup faster here?
         unsigned int k=0;
-        for (; k<nopt; k++) if (MORPHO_ISSAME(func->opt.data[k].symbol, key)) break;
-        if (k>nopt) { // If we didn't find a match, we're done with optional arguments
+        for (; k<func->nopt; k++) if (MORPHO_ISSAME(func->opt.data[k].symbol, key)) break;
+        if (k>=func->nopt) { // If we didn't find a match, we're done with optional arguments
             if (MORPHO_ISSTRING(key)) {
                 vm_runtimeerror(v, iindx, VM_UNKNWNOPTARG, MORPHO_GETCSTRING(key));
                 return false;
@@ -407,21 +407,21 @@ bool vm_optargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int nopt,
  * @param[in] newreg - new register base
  */
 static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int nargs, value *args, value *newreg) {
-    int nfnopt = func->opt.count, // No. of optional params in function def'n
-        nfixed = func->nargs-nfnopt, // No. of fixed params in function def'n
-        roffset = nfixed+1, // Position of first optional parameter in output
+    int nfnopt = func->nopt, // No. of optional params in function def'n
+        nfixed = func->nargs, // No. of fixed params
+        rVarg = nfixed+1, // Position of first optional parameter in output
         nposn=nargs; // No. of positional arguments this function was called with
 
     if (func->varg>=0) {
-        if (nposn<nfixed-1) {
+        if (nposn<nfixed) {
             vm_runtimeerror(v, iindx, VM_INVALIDARGS, nfixed-1, nposn);
             return false;
         }
 
-        objectlist *new = object_newlist(nposn-nfixed+1, args+nfixed-1 );
+        objectlist *new = object_newlist(nposn-nfixed, args+nfixed);
         if (new) {
-            newreg[nfixed] = MORPHO_OBJECT(new);
-            vm_bindobjectwithoutcollect(v, newreg[nfixed]);
+            newreg[rVarg] = MORPHO_OBJECT(new);
+            vm_bindobjectwithoutcollect(v, newreg[rVarg]);
         }
     } else if (nposn!=nfixed) { // Verify number of fixed args is correct
         vm_runtimeerror(v, iindx, VM_INVALIDARGS, nfixed, nposn);
@@ -515,24 +515,26 @@ static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int n
     
     for (unsigned int i=0; i<nargs; i++) (*reg)[i+1] = arglist[i];
 
-    /* Handle optional args */
-    if (func->opt.count>0) {
-        if (!vm_optargs(v, (*pc) - v->instructions, func, nopt, arglist+nargs, (*reg)+nargs+1)) return false;
-    } else if (nopt>0) {
-        vm_runtimeerror(v, (*pc) - v->instructions, VM_NOOPTARG);
+    int nvarg=0;
+    if (func->varg>=0) {
+        if (!vm_vargs(v, (*pc) - v->instructions, func, nargs, arglist, *reg)) return false;
+        nvarg=1;
+    } else if (func->nargs!=nargs) {
+        vm_runtimeerror(v, (*pc) - v->instructions, VM_INVALIDARGS, func->nargs, nargs);
         return false;
     }
     
-    if (func->varg>=0) {
-        if (!vm_vargs(v, (*pc) - v->instructions, func, nargs, arglist, *reg)) return false;
-    } else if (func->nargs!=nargs) {
-        vm_runtimeerror(v, (*pc) - v->instructions, VM_INVALIDARGS, func->nargs, nargs);
+    /* Handle optional args */
+    if (func->opt.count>0) {
+        if (!vm_optargs(v, (*pc) - v->instructions, func, nopt, arglist+nargs, (*reg)+func->nargs+nvarg+1)) return false;
+    } else if (nopt>0) {
+        vm_runtimeerror(v, (*pc) - v->instructions, VM_NOOPTARG);
         return false;
     }
 
     /* Zero out registers beyond args up to the top of the stack
        This has to be fast: memset was too slow. Zero seems to be faster than MORPHO_NIL */
-    for (value *r = *reg + func->nregs-1; r > *reg + func->nargs + func->nopt; r--) *r = MORPHO_INTEGER(0);
+    for (value *r = *reg + func->nregs-1; r > *reg + func->nargs + func->nopt + nvarg; r--) *r = MORPHO_INTEGER(0);
 
     *pc=v->instructions+func->entry; /* Jump to the function */
     return true;

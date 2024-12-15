@@ -3278,31 +3278,25 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     syntaxtreenode *selector=compiler_getnode(c, node->left);
 
     compiler_beginargs(c);
+    
+    registerindx rSel = compiler_regalloctop(c);
+    registerindx rObj = compiler_regalloctop(c);
 
     syntaxtreenode *methodnode=compiler_getnode(c, selector->right);
-    codeinfo method=compiler_addsymbolwithsizecheck(c, methodnode, methodnode->content);
+    codeinfo cSel = CODEINFO(CONSTANT, 0, 0);
+    cSel.dest = compiler_addsymbol(c, methodnode, methodnode->content);
+    codeinfo method=compiler_movetoregister(c, methodnode, cSel, rSel);
     ninstructions+=method.ninstructions;
-    
-    if (!compiler_iscodeinfotop(c, method)) {
-        registerindx otop = compiler_regalloctop(c);
-        method=compiler_movetoregister(c, node, method, otop);
-        ninstructions+=method.ninstructions;
-    }
-
-    registerindx top=compiler_regtop(c);
 
     /* Fetch the object */
-    object=compiler_nodetobytecode(c, selector->left, REGISTER_UNALLOCATED);
+    object=compiler_nodetobytecode(c, selector->left, rObj);
     ninstructions+=object.ninstructions;
-
-    /* Move object into a temporary register unless we already have one
-       that's at the top of the stack */
-    if (!compiler_iscodeinfotop(c, object)) {
-        registerindx otop = compiler_regalloctop(c);
-        object=compiler_movetoregister(c, node, object, otop);
-        ninstructions+=object.ninstructions;
+    if (object.returntype==REGISTER && object.dest!=rObj) {
+        compiler_regfreetemp(c, object.dest);
     }
-
+    object=compiler_movetoregister(c, selector, object, rObj);
+    ninstructions+=object.ninstructions;
+    
     /* Compile the arguments */
     codeinfo args = CODEINFO_EMPTY;
     if (node->right!=SYNTAXTREE_UNCONNECTED) args=compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
@@ -3312,7 +3306,7 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     registerindx lastarg=compiler_regtop(c);
 
     /* Check we don't have too many arguments */
-    if (lastarg-method.dest>MORPHO_MAXARGS) {
+    if (lastarg-rSel>MORPHO_MAXARGS) {
         compiler_error(c, node, COMPILE_TOOMANYARGS);
         return CODEINFO_EMPTY;
     }
@@ -3322,18 +3316,18 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     /* Generate the call instruction */
     int nposn=0, nopt=0;
     compiler_getnargs(c, &nposn, &nopt);
-    compiler_addinstruction(c, ENCODE(OP_INVOKE, method.dest, nposn, nopt), node);
+    compiler_addinstruction(c, ENCODE(OP_INVOKE, rSel, nposn, nopt), node);
     ninstructions++;
 
     /* Free all the registers used for the call */
-    compiler_regfreetoend(c, object.dest+1);
-    compiler_regfreetemp(c, method.dest);
+    compiler_regfreetemp(c, rSel);
+    compiler_regfreetoend(c, rObj+1);
 
     /* Move the result to the requested register */
     if (reqout!=REGISTER_UNALLOCATED && object.dest!=reqout) {
-        compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, reqout, object.dest), node);
+        compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, reqout, rObj), node);
         ninstructions++;
-        compiler_regfreetemp(c, object.dest);
+        compiler_regfreetemp(c, rObj);
         object.dest=reqout;
     }
 

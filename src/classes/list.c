@@ -46,8 +46,10 @@ objectlist *object_newlist(unsigned int nval, value *val) {
 
     if (new) {
         varray_valueinit(&new->val);
-        if (val) varray_valueadd(&new->val, val, nval);
-        else varray_valueresize(&new->val, nval);
+        if (nval>0) {
+            if (val) varray_valueadd(&new->val, val, nval);
+            else varray_valueresize(&new->val, nval);
+        }
     }
 
     return new;

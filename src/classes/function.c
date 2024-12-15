@@ -127,7 +127,7 @@ bool object_functionaddprototype(objectfunction *func, varray_upvalue *v, indx *
 
 /** Returns the number of positional arguments (including a variadic arg if any) */
 int function_countpositionalargs(objectfunction *func) {
-    return func->nargs;
+    return func->nargs + (func->varg>=0 ? 1 : 0);
 }
 
 /** Returns the number of optional arguments */

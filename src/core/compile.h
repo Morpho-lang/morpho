@@ -149,13 +149,14 @@ typedef int registerindx;
 typedef struct {
     bool isallocated; /** Whether the register has been allocated */
     bool iscaptured; /** Whether the register becomes an upvalue */
+    bool isoptionalarg; /** Whether the register contains an optional argument */
     unsigned int scopedepth; /** Scope depth at which the register was allocated */
     value symbol; /** Symbol associated with the register */
     value type; /** Type associated with the register */
     value currenttype; /** Current type held by the register */
 } registeralloc;
 
-#define REGISTERALLOC_EMPTY(sdepth, symb) ((registeralloc) {.isallocated=true, .iscaptured=false, .scopedepth=sdepth, .symbol=symb, .type=MORPHO_NIL, .currenttype=MORPHO_NIL})
+#define REGISTERALLOC_EMPTY(sdepth, symb) ((registeralloc) {.isallocated=true, .iscaptured=false, .isoptionalarg=false, .scopedepth=sdepth, .symbol=symb, .type=MORPHO_NIL, .currenttype=MORPHO_NIL})
 
 DECLARE_VARRAY(registeralloc, registeralloc)
 
@@ -242,8 +243,8 @@ typedef struct {
     unsigned int scopedepth;
     unsigned int loopdepth; /* Count number of nesting depths of a loop */
     bool inargs; /* Set while compiling function calls to ensure allocations are at the top of the stack */
-    unsigned int nposn; /* Number of positional args recorded in latest call */
-    unsigned int nopt; /* Number of optional args recorded in latest call */
+    //unsigned int nposn; /* Number of positional args recorded in latest call */
+    //unsigned int nopt; /* Number of optional args recorded in latest call */
 } functionstate;
 
 /* -------------------------------------------------------

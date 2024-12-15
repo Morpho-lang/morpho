@@ -109,8 +109,6 @@ static void compiler_functionstateinit(functionstate *state) {
     state->scopedepth=0;
     state->loopdepth=0;
     state->inargs=false;
-    state->nopt=0;
-    state->nposn=0;
     state->nreg=0;
     state->type=FUNCTION;
     state->varg=REGISTER_UNALLOCATED;
@@ -237,8 +235,6 @@ value _closuretype;
 static inline void compiler_beginargs(compiler *c) {
     functionstate *f = compiler_currentfunctionstate(c);
     if (f) {
-        f->nposn=0;
-        f->nopt=0;
         f->inargs=true;
     }
 }
@@ -253,24 +249,6 @@ static inline void compiler_endargs(compiler *c) {
 static inline bool compiler_inargs(compiler *c) {
     functionstate *f = compiler_currentfunctionstate(c);
     return f->inargs;
-}
-
-/** Sets the number of args in an argument specifier*/
-void compiler_setnargs(compiler *c, int nposn, int nopt) {
-    functionstate *f = compiler_currentfunctionstate(c);
-    if (f) {
-        f->nposn=nposn;
-        f->nopt=nopt;
-    }
-}
-
-/** Gets the number of args in an argument specifier*/
-void compiler_getnargs(compiler *c, int *nposn, int *nopt) {
-    functionstate *f = compiler_currentfunctionstate(c);
-    if (f) {
-        *nposn = f->nposn;
-        *nopt = f->nopt;
-    }
 }
 
 /* ------------------------------------------
@@ -549,6 +527,7 @@ static registerindx compiler_regtempwithindx(compiler *c, registerindx reg) {
 static void compiler_regfree(compiler *c, functionstate *f, registerindx reg) {
     if (reg<f->registers.count) {
         f->registers.data[reg].isallocated=false;
+        f->registers.data[reg].isoptionalarg=false;
         f->registers.data[reg].scopedepth=0;
         if (!MORPHO_ISNIL(f->registers.data[reg].symbol)) {
             debugannotation_setreg(&c->out->annotations, reg, MORPHO_NIL);
@@ -702,6 +681,35 @@ static bool compiler_isregalloc(compiler *c, registerindx indx) {
     return (indx<f->registers.count && f->registers.data[indx].isallocated);
 }
 
+/** @brief Sets that a register contains an optional argument */
+void compiler_regsetoptionalarg(compiler *c, registerindx reg) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (reg<0 || reg>=f->registers.count) return;
+    f->registers.data[reg].isoptionalarg=true;
+}
+
+/** @brief Checks if a register contains an optional argument */
+static bool compiler_isregoptionalarg(compiler *c, registerindx indx) {
+    functionstate *f = compiler_currentfunctionstate(c);
+
+    return (indx<f->registers.count && f->registers.data[indx].isoptionalarg);
+}
+
+/** Gets the number of args from the most recent argument specifier*/
+void compiler_regcountargs(compiler *c, registerindx start, registerindx end, int *nposn, int *nopt) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    int np=0, nop=0;
+    if (f) {
+        for (registerindx r=start; r<=end; r++) {
+            if (compiler_isregoptionalarg(c, r)) nop++;
+            else np++;
+        }
+        
+        *nposn=np;
+        *nopt=nop/2;
+    }
+}
+
 /** @brief Get the scope level associated with a register
  *  @param[in] c        compiler
  *  @param[in] indx register to examine
@@ -748,6 +756,7 @@ static void compiler_regshow(compiler *c) {
             }
             printf(" [%u]", r->scopedepth);
             if (r->iscaptured) printf(" (captured)");
+            if (r->isoptionalarg) printf(" (optarg)");
         } else {
             printf("unallocated");
         }
@@ -3103,7 +3112,6 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
     codeinfo arginfo;
     unsigned int ninstructions=0;
     bool optstarted=false;
-    int nposn=0, nopt=0; // Number of positional and optional args.
 
     varray_syntaxtreeindx argnodes;
     varray_syntaxtreeindxinit(&argnodes);
@@ -3114,6 +3122,7 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
     syntaxtree_flatten(compiler_getsyntaxtree(c), node->right, 1, match, &argnodes);
 
     for (unsigned int i=0; i<argnodes.count; i++) {
+        bool isOptional=false;
         /* Claim a new register */
         registerindx reg=compiler_regalloctop(c);
 
@@ -3126,17 +3135,18 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
             registerindx sym=compiler_addconstant(c, arg, s, true, false);
             /* For the call, move the interned symbol to a register */
             codeinfo info=CODEINFO(CONSTANT, sym, 0);
+            
             info=compiler_movetoregister(c, arg, info, reg);
             ninstructions+=info.ninstructions;
-            reg=compiler_regalloctop(c);
-
-            arginfo=compiler_nodetobytecode(c, arg->right, reg);
+            compiler_regsetoptionalarg(c, info.dest);
             
-            nopt++;
+            reg=compiler_regalloctop(c);
+            arginfo=compiler_nodetobytecode(c, arg->right, reg);
+            if (CODEINFO_ISREGISTER(arginfo)) compiler_regsetoptionalarg(c, arginfo.dest);
+            
+            isOptional=true;
         } else {
             arginfo=compiler_nodetobytecode(c, argnodes.data[i], reg);
-            
-            nposn++;
         }
         ninstructions+=arginfo.ninstructions;
 
@@ -3146,6 +3156,7 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
             compiler_regtempwithindx(c, reg);
             arginfo=compiler_movetoregister(c, node, arginfo, reg);
             ninstructions+=arginfo.ninstructions;
+            if (isOptional) compiler_regsetoptionalarg(c, arginfo.dest);
         }
 
         if (!compiler_haserror(c) && compiler_regtop(c)!=reg) {
@@ -3153,8 +3164,6 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
             UNREACHABLE("Incorrectly freed registers in compiling argument list.");
         }
     }
-
-    compiler_setnargs(c, nposn, nopt);
     
     varray_syntaxtreeindxclear(&argnodes);
 
@@ -3246,7 +3255,7 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
 
     /* Generate the call instruction */
     int nposn=0, nopt=0;
-    compiler_getnargs(c, &nposn, &nopt);
+    compiler_regcountargs(c, func.dest+1, lastarg, &nposn, &nopt);
     compiler_addinstruction(c, ENCODE(OP_CALL, func.dest, nposn, nopt), node);
     ninstructions++;
 
@@ -3315,7 +3324,7 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
 
     /* Generate the call instruction */
     int nposn=0, nopt=0;
-    compiler_getnargs(c, &nposn, &nopt);
+    compiler_regcountargs(c, object.dest+1, lastarg, &nposn, &nopt);
     compiler_addinstruction(c, ENCODE(OP_INVOKE, rSel, nposn, nopt), node);
     ninstructions++;
 

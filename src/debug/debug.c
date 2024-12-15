@@ -354,8 +354,8 @@ assemblyrule assemblyrules[] ={
     { OP_BIF, "bif", "rA +" },
     { OP_BIFF, "biff", "rA +" },
     
-    { OP_CALL, "call", "rA, B" }, // b literal
-    { OP_INVOKE, "invoke", "rA, rB, C" }, // c literal
+    { OP_CALL, "call", "rA, B, C" }, // b, c literal
+    { OP_INVOKE, "invoke", "rA, B, C" }, // b, c literal
     
     { OP_RETURN, "return", "?rB" }, // Return register B is A nonzero
 

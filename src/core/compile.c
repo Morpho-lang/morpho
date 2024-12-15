@@ -236,7 +236,11 @@ value _closuretype;
 /** Begins arguments */
 static inline void compiler_beginargs(compiler *c) {
     functionstate *f = compiler_currentfunctionstate(c);
-    if (f) f->inargs=true;
+    if (f) {
+        f->nposn=0;
+        f->nopt=0;
+        f->inargs=true;
+    }
 }
 
 /** Ends arguments */
@@ -996,9 +1000,7 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
 codeinfo compiler_addsymbolwithsizecheck(compiler *c, syntaxtreenode *node, value symbol) {
     codeinfo out = CODEINFO(CONSTANT, 0, 0);
     out.dest = compiler_addsymbol(c, node, symbol);
-    //if (out.dest>MORPHO_MAXREGISTERS) {
-        out = compiler_movetoregister(c, node, out, REGISTER_UNALLOCATED);
-    //}
+    out = compiler_movetoregister(c, node, out, REGISTER_UNALLOCATED);
     return out;
 }
 
@@ -2404,14 +2406,33 @@ static codeinfo compiler_while(compiler *c, syntaxtreenode *node, registerindx r
  *              /   \
  *            init     collection
  * This works by successively calling enumerate() on the collections, first with no arguments to get the bound, then
- * with the integer counter.
- *
- * The body of the loop is then evaluated with the value set up as a local variable.
+ * with the integer counter as in the below code
  *
  * Register allocation
- *  +0 - loop counter
- *  +1 - maximum value of loop counter
- *  +2 - value from the collection
+ *  |  rObj  | rIndx  | | rMax  | rEnum |  rVal   | rTmp   |  ...
+ *
+ *  Find maximum value of counter
+ *   lct   rEnum,  c             ; "enumerate"
+ *   mov   rVal,   rObj          ;
+ *   lct   rTmp, c               ; -1
+ *   invoke rEnum, 1, 0
+ *   mov   rMax, rVal
+
+ *  loopstart:
+ *   lt    rTmp,  rIndx,  rMax
+ *   biff  rTmp,  <loopend>
+
+ *   mov   rVal, rObj
+ *   mov   rTmp, rIndx
+ *   invoke rEnum, 1, 0
+
+ *   ... Loop body ...
+
+ *   lct   rTmp, c               ; 1
+ *   add   rIndx, rIndx, rTmp    ;
+
+ *   b     <loopstart>
+ *  loopend:
  */
 static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo body;
@@ -2437,51 +2458,66 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
         collnode=compiler_getnode(c, innode->right);
     }
 
-    /* Allocate a register for the (usually hidden) counter */
-    registerindx rcount=compiler_regalloc(c, MORPHO_NIL);
-    registerindx cnil = compiler_addconstant(c, node, MORPHO_INTEGER(0), false, false);
-    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rcount, cnil), node);
-    ninstructions++;
+    // Register allocation for the loop
+    // |  rObj  | rIndx  || rMax  | rEnum |  rVal   | rTmp   |  ...
 
-    /* Find the collection symbol */
+    // Fetch the collection object
     codeinfo coll=compiler_nodetobytecode(c, innode->right, REGISTER_UNALLOCATED);
     ninstructions+=coll.ninstructions;
+    if (!CODEINFO_ISREGISTER(coll)) {
+        coll=compiler_movetoregister(c, collnode, coll, REGISTER_UNALLOCATED);
+        ninstructions+=coll.ninstructions;
+    }
+    registerindx rObj = coll.dest;
+    
+    // Initialize the index variable
+    registerindx rIndx=compiler_regalloc(c, MORPHO_NIL);
+    if (indxnode) compiler_regsetsymbol(c, rIndx, indxnode->content);
+    int cNil = compiler_addconstant(c, node, MORPHO_INTEGER(0), false, false);
+    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rIndx, cNil), node);
+    ninstructions++;
+    
+    /* Obtain the maximum value of rIndx by invoking enumerate */
+    
+    // Allocate register to contain maximum value of the counter
+    registerindx rMax=compiler_regalloctop(c);
+    
+    // Initialize enumerate selector
+    registerindx rEnum=compiler_regalloctop(c);
+    int cEnum = compiler_addconstant(c, node, enumerateselector, false, false);
+    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rEnum, cEnum), node);
+    ninstructions++;
 
-    /* Now obtain the maximum value for the counter by invoking enumerate on the collection */
-    codeinfo method=compiler_addsymbolwithsizecheck(c, node, enumerateselector);
-    ninstructions+=method.ninstructions;
+    // Place the object into the register after rEnum
+    registerindx rVal=compiler_regalloctop(c);
+    compiler_regsetsymbol(c, rVal, initnode->content);
+    compiler_addinstruction(c, ENCODE_LONG(OP_MOV, rVal, rObj), node);
+    ninstructions++;
 
-    registerindx rmax=compiler_regalloctop(c);
-    registerindx rmone=compiler_regalloctop(c);
-    registerindx cmone = compiler_addconstant(c, node, MORPHO_INTEGER(-1), false, false);
-    codeinfo mv=compiler_movetoregister(c, collnode, coll, rmax);
-    ninstructions+=mv.ninstructions;
-
-    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rmone, cmone), node);
-    compiler_addinstruction(c, ENCODE(OP_INVOKE, rmax, method.dest, 1), collnode);
+    // Parameter is -1 to query size of collection
+    registerindx rTmp=compiler_regalloctop(c);
+    registerindx cNegOne = compiler_addconstant(c, node, MORPHO_INTEGER(-1), false, false);
+    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rTmp, cNegOne), node);
+    ninstructions++;
+    
+    compiler_addinstruction(c, ENCODE(OP_INVOKE, rEnum, 1, 0), collnode);
+    ninstructions++;
+    
+    // Store the maximum value
+    compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, rMax, rVal), collnode);
+    ninstructions++;
+    
+    /* Test index against the maximum value */
+    instructionindx tst=compiler_addinstruction(c, ENCODE(OP_LT, rTmp, rIndx, rMax), node);
+    condindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node); // Placeholder for branch
     ninstructions+=2;
-    compiler_regfreetemp(c, rmone);
-
-    /* The test instruction */
-    registerindx rcond=compiler_regtemp(c, REGISTER_UNALLOCATED);
-    instructionindx tst=compiler_addinstruction(c, ENCODE(OP_LT, rcond, rcount, rmax), node);
-    condindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
-    ninstructions+=2;
-    compiler_regfreetemp(c, rcond);
-
-    /* Call enumerate again to retrieve the value */
-    registerindx rval=compiler_regalloctop(c);
-    mv=compiler_movetoregister(c, collnode, coll, rval);
-    ninstructions+=mv.ninstructions;
-
-    registerindx rarg=compiler_regalloctop(c);
-    compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, rarg, rcount), node);
-    compiler_addinstruction(c, ENCODE(OP_INVOKE, rval, method.dest, 1), collnode);
-    ninstructions+=2;
-
-    compiler_regsetsymbol(c, rval, initnode->content);
-    if (indxnode) compiler_regsetsymbol(c, rcount, indxnode->content);
-
+    
+    /* Load enumerated value */
+    compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, rVal, rObj), node);
+    compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, rTmp, rIndx), node);
+    compiler_addinstruction(c, ENCODE(OP_INVOKE, rEnum, 1, 0), collnode);
+    ninstructions+=3;
+    
     compiler_beginloop(c);
 
     /* Compile the body */
@@ -2498,24 +2534,23 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     /* Increment the counter */
     instructionindx inc=compiler_currentinstructionindex(c);
 
-    registerindx cone = compiler_addconstant(c, node, MORPHO_INTEGER(1), false, false);
-    codeinfo oneinfo = CODEINFO(CONSTANT, cone, 0);
-    oneinfo = compiler_movetoregister(c, node, oneinfo, REGISTER_UNALLOCATED);
-    ninstructions+=oneinfo.ninstructions;
-
-    instructionindx add=compiler_addinstruction(c, ENCODE(OP_ADD, rcount, rcount, oneinfo.dest), node);
-    ninstructions++;
-
+    int cOne = compiler_addconstant(c, node, MORPHO_INTEGER(1), false, false);
+    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rTmp, cOne), node);
+    instructionindx add=compiler_addinstruction(c, ENCODE(OP_ADD, rIndx, rIndx, rTmp), node);
+    ninstructions+=2;
+    
     /* Compile the unconditional branch back to the test instruction */
     instructionindx end=compiler_addinstruction(c, ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, -(add-tst)-2), node);
     ninstructions++;
 
     /* Go back and generate the condition instruction */
-    compiler_setinstruction(c, condindx, ENCODE_LONG(OP_BIFF, rcond, (add-tst) ));
+    compiler_setinstruction(c, condindx, ENCODE_LONG(OP_BIFF, rTmp, (add-tst) ));
 
     compiler_fixloop(c, tst, inc, end+1);
 
-    if (CODEINFO_ISREGISTER(method)) compiler_regfreetemp(c, method.dest);
+    compiler_regfreetemp(c, rObj);
+    compiler_regfreetemp(c, rIndx);
+    compiler_regfreetoend(c, rMax);
 
     compiler_endscope(c);
 
@@ -3247,11 +3282,17 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     syntaxtreenode *methodnode=compiler_getnode(c, selector->right);
     codeinfo method=compiler_addsymbolwithsizecheck(c, methodnode, methodnode->content);
     ninstructions+=method.ninstructions;
+    
+    if (!compiler_iscodeinfotop(c, method)) {
+        registerindx otop = compiler_regalloctop(c);
+        method=compiler_movetoregister(c, node, method, otop);
+        ninstructions+=method.ninstructions;
+    }
 
     registerindx top=compiler_regtop(c);
 
     /* Fetch the object */
-    object=compiler_nodetobytecode(c, selector->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
+    object=compiler_nodetobytecode(c, selector->left, REGISTER_UNALLOCATED);
     ninstructions+=object.ninstructions;
 
     /* Move object into a temporary register unless we already have one
@@ -3271,7 +3312,7 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     registerindx lastarg=compiler_regtop(c);
 
     /* Check we don't have too many arguments */
-    if (lastarg-object.dest>MORPHO_MAXARGS) {
+    if (lastarg-method.dest>MORPHO_MAXARGS) {
         compiler_error(c, node, COMPILE_TOOMANYARGS);
         return CODEINFO_EMPTY;
     }
@@ -3279,11 +3320,14 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     compiler_endargs(c);
 
     /* Generate the call instruction */
-    compiler_addinstruction(c, ENCODE(OP_INVOKE, object.dest, method.dest, lastarg-object.dest), node);
+    int nposn=0, nopt=0;
+    compiler_getnargs(c, &nposn, &nopt);
+    compiler_addinstruction(c, ENCODE(OP_INVOKE, method.dest, nposn, nopt), node);
     ninstructions++;
 
     /* Free all the registers used for the call */
     compiler_regfreetoend(c, object.dest+1);
+    compiler_regfreetemp(c, method.dest);
 
     /* Move the result to the requested register */
     if (reqout!=REGISTER_UNALLOCATED && object.dest!=reqout) {
@@ -3292,8 +3336,6 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
         compiler_regfreetemp(c, object.dest);
         object.dest=reqout;
     }
-
-    if (CODEINFO_ISREGISTER(method)) compiler_regfreetemp(c, method.dest);
 
     return CODEINFO(REGISTER, object.dest, ninstructions);
 }

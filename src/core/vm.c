@@ -1013,7 +1013,7 @@ callfunction: // Jump here if an instruction becomes a call
                             ERRORCHK();
                         }
                     } else {
-                        if (c>0) {
+                        if (b>0) {
                             VERROR(VM_NOINITIALIZER, MORPHO_GETCSTRING(klass->name));
                         }
                     }
@@ -1040,7 +1040,7 @@ callfunction: // Jump here if an instruction becomes a call
                 if (dictionary_getintern(&instance->klass->methods, right, &ifunc)) {
 
                     if (MORPHO_ISMETAFUNCTION(ifunc)) {
-                        if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), b, reg+a+1, &v->err, &ifunc)) {
+                        if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), b, reg+a+2, &v->err, &ifunc)) {
                             ERRORCHK();
                             ERROR(VM_MLTPLDSPTCHFLD);
                         }
@@ -1056,7 +1056,7 @@ callfunction: // Jump here if an instruction becomes a call
 #endif
                         value ret = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, b, reg+a+1);
                         reg=v->fp->roffset+v->stack.data; /* Restore registers */
-                        reg[a] = ret;
+                        reg[a+1] = ret;
 #ifdef MORPHO_PROFILER
                         v->fp->inbuiltinfunction=NULL;
 #endif
@@ -1066,6 +1066,7 @@ callfunction: // Jump here if an instruction becomes a call
                     
                     /* Otherwise, if it's a property, try to call it */
                     if (morpho_iscallable(left)) {
+                        a+=1;
                         reg[a]=left; // Make sure the function is in r0
                         goto callfunction; // Transmute into a call instruction
                     } else {
@@ -1082,10 +1083,10 @@ callfunction: // Jump here if an instruction becomes a call
 
                 if (dictionary_getintern(&klass->methods, right, &ifunc)) {
                     /* If we're not in the global context, invoke the method on self which is in r0 */
-                    if (v->fp>v->frame) reg[a+1]=reg[0]; /* Copy self into r[a] and call */
+                    if (v->fp>v->frame) reg[a+1]=reg[0]; /* Copy self into r[a+1] and call */
 
                     if (MORPHO_ISMETAFUNCTION(ifunc)) {
-                        if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), b, reg+a+1, &v->err, &ifunc)) {
+                        if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), b, reg+a+2, &v->err, &ifunc)) {
                             ERRORCHK();
                             ERROR(VM_MLTPLDSPTCHFLD);
                         }
@@ -1098,9 +1099,9 @@ callfunction: // Jump here if an instruction becomes a call
 #ifdef MORPHO_PROFILER
                         v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
 #endif
-                        value ret = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, b, reg+a);
+                        value ret = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, b, reg+a+1);
                         reg=v->fp->roffset+v->stack.data; /* Restore registers */
-                        reg[a] = ret;
+                        reg[a+1] = ret;
 #ifdef MORPHO_PROFILER
                         v->fp->inbuiltinfunction=NULL;
 #endif
@@ -1121,7 +1122,7 @@ callfunction: // Jump here if an instruction becomes a call
                     value ifunc;
                     if (dictionary_getintern(&klass->methods, right, &ifunc)) {
                         if (MORPHO_ISMETAFUNCTION(ifunc)) {
-                            if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), b,  reg+a+1, &v->err, &ifunc)) {
+                            if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(ifunc), b,  reg+a+2, &v->err, &ifunc)) {
                                 ERRORCHK();
                                 ERROR(VM_MLTPLDSPTCHFLD);
                             }
@@ -1132,9 +1133,9 @@ callfunction: // Jump here if an instruction becomes a call
 #ifdef MORPHO_PROFILER
                             v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
 #endif
-                            value ret = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, b, reg+a);
+                            value ret = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, b, reg+a+1);
                             reg=v->fp->roffset+v->stack.data; /* Restore registers */
-                            reg[a] = ret;
+                            reg[a+1] = ret;
 #ifdef MORPHO_PROFILER
                             v->fp->inbuiltinfunction=NULL;
 #endif

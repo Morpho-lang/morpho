@@ -1,0 +1,15 @@
+// Ensure a class can use keywords for property labels
+
+class A {
+  init(a) {
+    self.while = a
+  }
+}
+
+var a = A("foo")
+
+print a
+// expect: <A>
+
+print a.while 
+// expect: foo

@@ -191,9 +191,11 @@ void range_initialize(void) {
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
     // Create range veneer class
-    builtin_addfunction(RANGE_CLASSNAME, range_constructor, MORPHO_FN_CONSTRUCTOR);
     value rangeclass=builtin_addclass(RANGE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Range), objclass);
     object_setveneerclass(OBJECT_RANGE, rangeclass);
+    
+    // Range constructor function
+    morpho_addfunction(RANGE_CLASSNAME, "Range (...)", range_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     // Range error messages
     morpho_defineerror(RANGE_ARGS, ERROR_HALT, RANGE_ARGS_MSG);

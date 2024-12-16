@@ -113,7 +113,7 @@ program *morpho_newprogram(void);
 void morpho_freeprogram(program *p);
 
 /* Optimizers */
-typedef bool (*optimizerfn) (program *in);
+typedef bool (optimizerfn) (program *in);
 void morpho_setoptimizer(optimizerfn *optimizer);
 
 /* Virtual machine */

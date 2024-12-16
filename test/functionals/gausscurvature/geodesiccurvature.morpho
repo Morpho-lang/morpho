@@ -1,24 +1,21 @@
 // Geodesic curvature 
-//import constants
-//import meshtools 
-//import meshgen 
-//import implicitmesh
-//import plot
+import constants
+import meshtools 
+import meshgen 
+import implicitmesh
+import plot
 
 // Computes the euler characteristic of a mesh
-/*fn euler(mesh) {
+fn euler(mesh) {
     return mesh.count(0) - mesh.count(1) + mesh.count(2)
-}*/
+}
 
-/*
 // For surfaces with zero Gaussian curvature, the geodesic curvature integral will be equal to 2Pi * Euler characteristic of the surface.
 fn testzerogaussmesh(mesh, lgc) {
     mesh.addgrade(1)
     var bnd = Selection(mesh, boundary=true)
 
-    print lgc.total(mesh, selection=bnd)
-
-    //print abs(lgc.total(mesh, selection=bnd)-2*Pi*euler(mesh))<1e-6
+    print abs(lgc.total(mesh, bnd)-2*Pi*euler(mesh))<1e-6
 }
 
 var lgc = GaussCurvature()
@@ -27,16 +24,8 @@ lgc.geodesic = true
 // Disk mesh (Euler characteristic = 1)
 var mesh = Mesh("disk.mesh")
 testzerogaussmesh(mesh, lgc)
-// expect: true*/
+// expect: true
 
-var mesh = Mesh("disk.mesh")
-var bnd = Selection(mesh, boundary=true)
-
-var lgc = GaussCurvature()
-lgc.geodesic = true
-print lgc.total(mesh, selection=bnd)
-
-/*
 // Tube mesh (Euler characteristic = 0)
 
 var mesh = AreaMesh(fn (u, v) [v, cos(u), sin(u)], -Pi...Pi:Pi/4,-1..1:0.1, closed=[true, false])
@@ -78,10 +67,9 @@ var whole = Selection(hemisphere, fn(x,y,z) true)
 var interior = whole.difference(bnd)
 
 // The hemisphere is an approximate one, so the value is off, but the gauss integral and the geodesic integral add up to 2Pi.
-var g1 = GaussCurvature().total(hemisphere, selection=interior)
+var g1 = GaussCurvature().total(hemisphere, interior)
 
-var g2 = lgc.total(hemisphere, selection=bnd)
+var g2 = lgc.total(hemisphere, bnd)
 var lhs = g1+g2
 print abs(lhs-2*Pi*euler(hemisphere))<1e-6 
 // expect: true
-*/

@@ -2093,6 +2093,8 @@ static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx 
             UNREACHABLE("in compiling binary instruction [check bytecode compiler table]");
     }
 
+    if (compiler_haserror(c)) return CODEINFO_EMPTY;
+    
     compiler_addinstruction(c, ENCODE(op, out, left.dest, right.dest), node);
     ninstructions++;
     compiler_releaseoperand(c, left);

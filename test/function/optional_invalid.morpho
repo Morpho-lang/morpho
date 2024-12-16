@@ -1,0 +1,5 @@
+// Function that doesn't support optional arguments called with them 
+
+fn f(x,y,z,a) { return -1 }
+
+print f(1,z=3) // expect error 'InvldArgs'

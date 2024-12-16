@@ -1956,7 +1956,7 @@ static codeinfo compiler_index(compiler *c, syntaxtreenode *node, registerindx r
     registerindx start, end;
 
     /* Compile the index selector */
-    codeinfo left = compiler_nodetobytecode(c, node->left, reqout);
+    codeinfo left = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
     unsigned int ninstructions=left.ninstructions;
 
     if (!CODEINFO_ISREGISTER(left)) {
@@ -1972,12 +1972,23 @@ static codeinfo compiler_index(compiler *c, syntaxtreenode *node, registerindx r
     /* Compile instruction */
     compiler_addinstruction(c, ENCODE(OP_LIX, left.dest, start, end), node);
     ninstructions++;
-
+    
     /* Free anything we're done with */
     compiler_releaseoperand(c, left);
     compiler_regfreetoend(c, start+1);
+    
+    codeinfo iout = CODEINFO(REGISTER, start, ninstructions);
+    
+    if (reqout>=0 &&
+        start!=reqout) {
+        compiler_regfreetemp(c, start);
+        iout = compiler_movetoregister(c, node, iout, reqout);
+        ninstructions+=iout.ninstructions;
+    }
+    
+    iout.ninstructions=ninstructions;
 
-    return CODEINFO(REGISTER, start, ninstructions);
+    return iout;
 }
 
 /** Compile negation. Note that this is compiled as A=(0-B) */
@@ -3302,6 +3313,7 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     ninstructions+=object.ninstructions;
     if (object.returntype==REGISTER && object.dest!=rObj) {
         compiler_regfreetemp(c, object.dest);
+        compiler_regtempwithindx(c, rObj); // Ensure rObj remains allocated
     }
     object=compiler_movetoregister(c, selector, object, rObj);
     ninstructions+=object.ninstructions;

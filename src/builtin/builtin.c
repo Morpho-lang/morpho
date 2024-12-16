@@ -99,9 +99,10 @@ bool builtin_options(vm *v, int nargs, value *args, int *nfixed, int noptions, .
         value symbol = va_arg(optlist, value);
         value *dest = va_arg(optlist, value*);
         
-        for (int k=nargs+2; k<nargs; k+=2) {
-            if (MORPHO_ISSAME(symbol, args[k])) {
-                *dest = args[k+1];
+        for (int k=0; k<nopt; k++) {
+            int r = nargs + 1 + 2*k; // Corresponding register
+            if (MORPHO_ISSAME(symbol, args[r])) {
+                *dest = args[r+1];
                 break;
             }
         }

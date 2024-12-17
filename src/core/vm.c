@@ -1026,6 +1026,39 @@ callfunction: // Jump here if an instruction becomes a call
                 ERROR(VM_UNCALLABLE);
             }
             DISPATCH();
+        
+        CASE_CODE(METHOD): // Direct method call
+            a=DECODE_A(bc);
+            b=DECODE_B(bc);
+            c=DECODE_C(bc);
+        
+            right=reg[a]; // The method
+            left=reg[a+1]; // The object
+        
+            if (MORPHO_ISMETAFUNCTION(right)) {
+                if (!metafunction_resolve(MORPHO_GETMETAFUNCTION(right), b, reg+a+2, &v->err, &right)) {
+                    ERRORCHK();
+                    ERROR(VM_MLTPLDSPTCHFLD);
+                }
+            }
+        
+            if (MORPHO_ISFUNCTION(right)) {
+                if (!vm_call(v, right, a+1, b, c, NULL, &pc, &reg)) goto vm_error;
+            } else if (MORPHO_ISBUILTINFUNCTION(right)) {
+                v->fp->nopt=c;
+    #ifdef MORPHO_PROFILER
+                v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(right);
+    #endif
+                value ret = (MORPHO_GETBUILTINFUNCTION(right)->function) (v, b, reg+a+1);
+                reg=v->fp->roffset+v->stack.data; /* Restore registers */
+                reg[a+1] = ret;
+    #ifdef MORPHO_PROFILER
+                v->fp->inbuiltinfunction=NULL;
+    #endif
+                ERRORCHK();
+            }
+        
+        DISPATCH();
 
         CASE_CODE(INVOKE):
             a=DECODE_A(bc);

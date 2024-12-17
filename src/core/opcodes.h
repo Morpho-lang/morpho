@@ -60,6 +60,9 @@ OPCODE(CALL)
 /** Invoke */
 OPCODE(INVOKE)
 
+/** Method call */
+OPCODE(METHOD)
+
 /** Return */
 OPCODE(RETURN)
 

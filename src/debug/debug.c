@@ -356,6 +356,7 @@ assemblyrule assemblyrules[] ={
     
     { OP_CALL, "call", "rA, B, C" }, // b, c literal
     { OP_INVOKE, "invoke", "rA, B, C" }, // b, c literal
+    { OP_METHOD, "method", "rA, B, C" }, // b, c literal
     
     { OP_RETURN, "return", "?rB" }, // Return register B is A nonzero
 

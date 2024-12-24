@@ -85,9 +85,7 @@ instructionindx program_getentry(program *p) {
 void program_bindobject(program *p, object *obj) {
     if (!obj->next && /* Object is not already bound to the program (or something else) */
         p->boundlist!=obj &&
-        obj->status==OBJECT_ISUNMANAGED && /* Object is unmanaged */
-        (!MORPHO_ISBUILTINFUNCTION(MORPHO_OBJECT(obj))) /* Object is not a built in function that is freed separately */
-        ) {
+        obj->status==OBJECT_ISUNMANAGED) {
         obj->status=OBJECT_ISPROGRAM;
         obj->next=p->boundlist;
         p->boundlist=obj;

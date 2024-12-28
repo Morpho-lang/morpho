@@ -1,3 +1,8 @@
 
 import newlinalg 
 
+var a = XMatrix(2,2)
+//var b = XMatrix([1,2,3])
+
+print a
+//print b 

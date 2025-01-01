@@ -1,4 +1,23 @@
+// Basic tokenizer
 
+class StringStream {
+  init(str) {
+    self.str = str
+    self.len = str.count() 
+    self.n = 0
+  }
+
+  readchar() {
+    if (self.n>=self.len) return nil 
+    var out = self.str[self.n]
+    self.n+=1 
+    return out
+  }
+
+  eof() {
+    return (self.n >= self.len)
+  }
+} 
 
 class Tokenizer {
   init(stream, whitespace=" \n") {

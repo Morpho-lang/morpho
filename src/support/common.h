@@ -22,6 +22,14 @@
  * VM Callback functions
  * ----------------------------------------- */
 
+typedef enum {
+    MORPHO_INPUT_KEYPRESS,
+    MORPHO_INPUT_LINE
+} morphoinputmode;
+
+/* Callback function used to obtain input from stdin */
+typedef void (*morphoinputfn) (vm *v, void *ref, morphoinputmode mode, varray_char *str);
+
 /* Callback function used to print text to stdout */
 typedef void (*morphoprintfn) (vm *v, void *ref, char *str);
 
@@ -33,6 +41,7 @@ typedef void (*morphodebuggerfn) (vm *v, void *ref);
 
 void morpho_setwarningfn(vm *v, morphowarningfn warningfn, void *ref);
 void morpho_setprintfn(vm *v, morphoprintfn printfn, void *ref);
+void morpho_setinputfn(vm *v, morphoinputfn inputfn, void *ref);
 void morpho_setdebuggerfn(vm *v, morphodebuggerfn debuggerfn, void *ref);
 
 /* -----------------------------------------

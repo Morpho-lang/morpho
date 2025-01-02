@@ -231,6 +231,9 @@ struct svm {
     void *printref; /** Print callback reference */
     varray_char buffer; /** Buffer for printing */
     
+    morphoinputfn inputfn; /** Input callback */
+    void *inputref; /** Input callback reference */
+    
     morphowarningfn warningfn; /** Warning callback */
     void *warningref; /** Warning callback reference */
     

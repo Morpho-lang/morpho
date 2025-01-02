@@ -23,3 +23,4 @@ Morpho now provides the ternary operator similar to other C-family languages:
 * The povray module now produces silent output on linux if the quiet option is set.
 * apply() now works properly with metafunctions.
 * Bugfixes in the Sparse class.
+* Improvements to resource locator.

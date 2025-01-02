@@ -75,6 +75,8 @@ static void vm_init(vm *v) {
     
     v->printfn=NULL;
     v->printref=NULL;
+    v->inputfn=NULL;
+    v->inputref=NULL;
     v->warningfn=NULL;
     v->warningref=NULL;
     v->debuggerfn=NULL;
@@ -1540,6 +1542,12 @@ void morpho_freevm(vm *v) {
     MORPHO_FREE(v);
 }
 
+/** Configure input callback function */
+void morpho_setinputfn(vm *v, morphoinputfn inputfn, void *ref) {
+    v->inputfn=inputfn;
+    v->inputref=ref;
+}
+
 /** Configure print callback function */
 void morpho_setprintfn(vm *v, morphoprintfn printfn, void *ref) {
     v->printfn=printfn;
@@ -1842,7 +1850,7 @@ bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value
 }
 
 /* **********************************************************************
-* Printing
+* I/O
 * ********************************************************************** */
 
 /** Prints a formatted string to the VM's output channel */
@@ -1872,6 +1880,21 @@ int morpho_printf(vm *v, char *format, ...) {
     }
     
     return nchars;
+}
+
+/** Reads a line of text from the VM's input channel; returns the number of bytes read */
+int morpho_readline(vm *v, varray_char *buffer) {
+    int start=buffer->count;
+    if (v && v->inputfn) {
+        (v->inputfn) (v, v->inputref, MORPHO_INPUT_LINE, buffer);
+    } else { // If no VM or no input function available, resort to regular fgetc
+        do {
+            int c = fgetc(stdin);
+            if (c==EOF || c=='\n') break;
+            varray_charwrite(buffer, (char) c);
+        } while (true);
+    }
+    return buffer->count-start;
 }
 
 /* **********************************************************************

@@ -162,9 +162,10 @@ bool morpho_call(vm *v, value fn, int nargs, value *args, value *ret);
 bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value *ret);
 error *morpho_geterror(vm *v);
 
-/* Printing */
+/* I/O */
 int morpho_printf(vm *v, char *format, ...);
 void morpho_printvalue(vm *v, value val);
+int morpho_readline(vm *v, varray_char *buffer);
 
 /* Stack trace */
 void morpho_stacktrace(vm *v);

@@ -136,16 +136,16 @@ value System_sleep(vm *v, int nargs, value *args) {
 
 /** Readline */
 value System_readline(vm *v, int nargs, value *args) {
-    char buffer[MORPHO_INPUTBUFFERDEFAULTSIZE];
     value out = MORPHO_NIL;
-     
-    if (fgets(buffer, sizeof(buffer), stdin)) {
-        char *p = strchr(buffer, '\n');
-        if (p) *p = '\0';
-        
-        out = object_stringfromcstring(buffer, strlen(buffer));
+    varray_char buffer;
+    varray_charinit(&buffer);
+    
+    if (morpho_readline(v, &buffer)) {
+        out = object_stringfromvarraychar(&buffer);
         if (MORPHO_ISSTRING(out)) morpho_bindobjects(v, 1, &out);
     }
+
+    varray_charclear(&buffer);
     
     return out;
 }

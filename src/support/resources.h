@@ -12,6 +12,16 @@
 #include "value.h"
 
 /* -----------------------------------------
+ * Resource types
+ * ----------------------------------------- */
+
+typedef enum {
+    MORPHO_RESOURCE_HELP,
+    MORPHO_RESOURCE_MODULE,
+    MORPHO_RESOURCE_EXTENSION
+} morphoresourcetype;
+
+/* -----------------------------------------
  * Resource enumerator structure
  * ----------------------------------------- */
 
@@ -29,6 +39,8 @@ typedef struct {
 void morpho_resourceenumeratorinit(resourceenumerator *en, char *folder, char *fname, char *ext[], bool recurse);
 void morpho_resourceenumeratorclear(resourceenumerator *en);
 
+void morpho_defaultfolder(resourceenumerator *en, morphoresourcetype type);
+
 /** Locate resources given a current query; returns true if one was found */
 bool morpho_enumerateresources(resourceenumerator *en, value *out);
 
@@ -37,13 +49,11 @@ bool morpho_enumerateresources(resourceenumerator *en, value *out);
  * ----------------------------------------- */
 
 /** Interface to locate a specified resource
- @param[in] folder - folder specification to scan
+ @param[in] type - type of resource to find
  @param[in] fname - filename to match
- @param[in] ext - list of possible extensions, terminated by an empty string
- @param[in] recurse - whether to search recursively
  @param[out] out - an objectstring that contains the resource file location
  @warning: You must free the objectstring after use.*/
-bool morpho_findresource(char *folder, char *fname, char *ext[], bool recurse, value *out);
+bool morpho_findresource(morphoresourcetype type, char *fname, value *out);
 
 void resources_initialize(void);
 void resources_finalize(void);

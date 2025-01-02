@@ -4068,9 +4068,8 @@ void compiler_copyfunctionreftonamespace(compiler *src, namespc *dest, dictionar
 
 /** Searches for a module with given name, returns the file name for inclusion. */
 bool compiler_findmodule(char *name, varray_char *fname) {
-    char *ext[] = { MORPHO_EXTENSION, "" };
     value out=MORPHO_NIL;
-    bool success=morpho_findresource(MORPHO_MODULEDIR, name, ext, true, &out);
+    bool success=morpho_findresource(MORPHO_RESOURCE_MODULE, name, &out);
     
     if (success) {
         fname->count=0;

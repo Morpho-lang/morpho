@@ -23,22 +23,9 @@ void resources_matchbasefolder(resourceenumerator *en, char *path) {
     varray_char fname;
     varray_charinit(&fname);
     varray_charadd(&fname, path, (int) strlen(path));
-    varray_charwrite(&fname, MORPHO_SEPARATOR);
+    varray_charwrite(&fname, MORPHO_DIRSEPARATOR);
 
-    if (en->folder) {
-        int i=0;
-        for (; en->folder[i]!='\0' && en->folder[i]!=MORPHO_SEPARATOR; i++) varray_charwrite(&fname, en->folder[i]);
-
-        int nfldr=fname.count;
-        varray_charwrite(&fname, MORPHO_SEPARATOR);
-        varray_charadd(&fname, MORPHO_MORPHOSUBDIR, strlen(MORPHO_MORPHOSUBDIR));
-        varray_charwrite(&fname, '\0');
-        if (morpho_isdirectory(fname.data)) {
-            fname.count--;
-        } else fname.count=nfldr;
-
-        for (; en->folder[i]!='\0'; i++) varray_charwrite(&fname, en->folder[i]);
-    }
+    if (en->folder) varray_charadd(&fname, en->folder, (int) strlen(en->folder));
     varray_charwrite(&fname, '\0');
 
     if (morpho_isdirectory(fname.data)) {
@@ -78,8 +65,8 @@ bool resources_matchfile(resourceenumerator *en, char *file) {
 
     if (en->fname) { // Match filename if requested
         char *f = ext;
-        while (f>=file && *f!=MORPHO_SEPARATOR) f--; // Find last separator
-        if (*f==MORPHO_SEPARATOR) f++; // If we stopped at a separator, skip it
+        while (f>=file && *f!=MORPHO_DIRSEPARATOR) f--; // Find last separator
+        if (*f==MORPHO_DIRSEPARATOR) f++; // If we stopped at a separator, skip it
         
         size_t len = strlen(en->fname);
         if (strncmp(en->fname, f, len)!=0) return false; // Compare string
@@ -175,10 +162,62 @@ bool morpho_enumerateresources(resourceenumerator *en, value *out) {
  @param[in] ext - list of possible extensions, terminated by an empty string
  @param[in] recurse - search recursively
  @param[out] out - an objectstring that contains the resource file location */
-bool morpho_findresource(char *folder, char *fname, char *ext[], bool recurse, value *out) {
+bool morpho_Xfindresource(char *folder, char *fname, char *ext[], bool recurse, value *out) {
     bool success=false;
     resourceenumerator en;
     morpho_resourceenumeratorinit(&en, folder, fname, ext, recurse);
+    success=morpho_enumerateresources(&en, out);
+    morpho_resourceenumeratorclear(&en);
+    return success;
+}
+
+/** Map morphoresourcetypes to package subfolders.
+   @warning: These must match the order of the morphoresourcetypeenum */
+static char *_dir[] = {
+    MORPHO_HELPDIR,
+    MORPHO_MODULEDIR,
+    MORPHO_EXTENSIONDIR
+};
+
+/* Map morphoresourcetypes to extensions */
+static char *_helpext[] =      { MORPHO_HELPEXTENSION, "" };
+static char *_moduleext[] =    { MORPHO_EXTENSION, "" };
+static char *_extensionext[] = { MORPHO_DYLIBEXTENSION, "dylib", "so", "" };
+
+static char **_ext[] = { _helpext, _moduleext, _extensionext };
+
+/* Map morphoresourcetypes to base folders */
+static char *_basedir[] = {
+    MORPHO_HELP_BASEDIR,
+    MORPHO_MODULE_BASEDIR,
+    NULL
+};
+
+char *_folderfortype(morphoresourcetype type) { return _dir[type]; }
+char **_extfortype(morphoresourcetype type) { return _ext[type]; }
+char *_basedirfortype(morphoresourcetype type) { return _basedir[type]; }
+
+/** Adds the default folder for a given resource type */
+void morpho_defaultfolder(resourceenumerator *en, morphoresourcetype type) {
+    char *basedir = _basedirfortype(type);
+    if (basedir) {
+        value v = object_stringfromcstring(basedir, strlen(basedir));
+        if (MORPHO_ISSTRING(v)) varray_valuewrite(&en->resources, v);
+    }
+}
+
+/** Locates a resource
+ @param[in] type - type of resource to locate
+ @param[in] fname - filename to match
+ @param[out] out - an objectstring that contains the resource file location */
+bool morpho_findresource(morphoresourcetype type, char *fname, value *out) {
+    char *folder = _folderfortype(type);
+    char **ext = _extfortype(type);
+    
+    bool success=false;
+    resourceenumerator en;
+    morpho_resourceenumeratorinit(&en, folder, fname, ext, true);
+    morpho_defaultfolder(&en, type);
     success=morpho_enumerateresources(&en, out);
     morpho_resourceenumeratorclear(&en);
     return success;
@@ -191,7 +230,7 @@ void resources_loadpackagelist(void) {
 
     char *home = getenv("HOME");
     if (home) varray_charadd(&line, home, (int) strlen(home));
-    varray_charwrite(&line, MORPHO_SEPARATOR);
+    varray_charwrite(&line, MORPHO_DIRSEPARATOR);
     varray_charadd(&line, MORPHO_PACKAGELIST, (int) strlen(MORPHO_PACKAGELIST));
     varray_charwrite(&line, '\0');
 
@@ -214,10 +253,6 @@ void resources_initialize(void) {
     varray_valueinit(&resourcelocations);
 
     resources_loadpackagelist();
-    
-    // Insert the base folders *last* so that packages can override files present in the base system.
-    value v = object_stringfromcstring(MORPHO_RESOURCESDIR, strlen(MORPHO_RESOURCESDIR));
-    varray_valuewrite(&resourcelocations, v);
     
     morpho_addfinalizefn(resources_finalize);
 }

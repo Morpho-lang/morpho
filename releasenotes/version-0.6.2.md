@@ -6,7 +6,7 @@ The benchmarks folder, which used to contain a number of basic benchmarks for mo
 
 ## Ternary operator
 
-Morpho now provides the ternary operator, like many other C-family languages:
+Morpho now provides the ternary operator similar to other C-family languages:
 
     var a = (b < c ? b : c)
 

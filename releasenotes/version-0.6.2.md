@@ -2,6 +2,8 @@
 
 We're pleased to announce Morpho 0.6.2, which is primarily a maintenance release and incorporates a number of minor bugfixes.
 
+The benchmarks folder, which used to contain a number of basic benchmarks for morpho, has been moved to a [new repository](https://github.com/Morpho-lang/morpho-benchmark) with several new benchmarks added. We will be using these to continue to improve morpho's performance.
+
 ## Ternary operator
 
 Morpho now provides the ternary operator, like many other C-family languages:

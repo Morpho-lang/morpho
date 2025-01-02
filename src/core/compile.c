@@ -3291,7 +3291,7 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
 /** Compiles a method invocation */
 static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
-    codeinfo object;
+    codeinfo object=CODEINFO_EMPTY;
 
     /* Get the selector node */
     syntaxtreenode *selector=compiler_getnode(c, node->left);
@@ -3304,8 +3304,19 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
 
     registerindx top=compiler_regtop(c);
 
-    /* Fetch the object */
-    object=compiler_nodetobytecode(c, selector->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
+    /* Fetch the object. We patch to ensure that builtin classes are prioritized over constructor functions. */
+    syntaxtreenode *objectnode=compiler_getnode(c, selector->left);
+    if (objectnode->type==NODE_SYMBOL) {
+        value klass=builtin_findclass(objectnode->content);
+        if (MORPHO_ISCLASS(klass)) {
+            registerindx kindx = compiler_addconstant(c, objectnode, klass, true, false);
+            object=CODEINFO(CONSTANT, kindx, 0);
+        }
+    }
+    
+    // Otherwise just fetch the object normally
+    if (object.returntype==REGISTER && object.dest==REGISTER_UNALLOCATED) { object=compiler_nodetobytecode(c, selector->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
+    }
     ninstructions+=object.ninstructions;
 
     /* Move object into a temporary register unless we already have one

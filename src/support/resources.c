@@ -212,10 +212,12 @@ void resources_loadpackagelist(void) {
 
 void resources_initialize(void) {
     varray_valueinit(&resourcelocations);
-    value v = object_stringfromcstring(MORPHO_RESOURCESDIR, strlen(MORPHO_RESOURCESDIR));
-    varray_valuewrite(&resourcelocations, v);
 
     resources_loadpackagelist();
+    
+    // Insert the base folders *last* so that packages can override files present in the base system.
+    value v = object_stringfromcstring(MORPHO_RESOURCESDIR, strlen(MORPHO_RESOURCESDIR));
+    varray_valuewrite(&resourcelocations, v);
     
     morpho_addfinalizefn(resources_finalize);
 }

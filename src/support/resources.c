@@ -13,8 +13,53 @@
 #include "file.h"
 
 /* **********************************************************************
-* Resources
-* ********************************************************************** */
+ * Resource enumerator structure
+ * ********************************************************************** */
+
+/** A resource enumerator contains state information to enable the resources system to recursively search various resource locations (e.g. /usr/local/share/morpho/ ) for a specified query. You initialize the  resourceenumerator with a query,
+    then call morpho_enumerateresources until no further resources are found, which is indicated by it returning false. */
+
+typedef struct {
+    char *folder; // folder specification to scan
+    char *fname;  // filename to match
+    char **ext;   // list of possible extensions, terminated by an empty string
+    bool recurse; // whether to search recursively
+    varray_value resources;
+} resourceenumerator;
+
+/* **********************************************************************
+ * Resource types
+ * ********************************************************************** */
+
+/** Map morphoresourcetypes to package subfolders.
+   @warning: These must match the order of the morphoresourcetypeenum */
+static char *_dir[] = {
+    MORPHO_HELPDIR,
+    MORPHO_MODULEDIR,
+    MORPHO_EXTENSIONDIR
+};
+
+/* Map morphoresourcetypes to extensions */
+static char *_helpext[] =      { MORPHO_HELPEXTENSION, "" };
+static char *_moduleext[] =    { MORPHO_EXTENSION, "" };
+static char *_extensionext[] = { MORPHO_DYLIBEXTENSION, "dylib", "so", "" };
+
+static char **_ext[] = { _helpext, _moduleext, _extensionext };
+
+/* Map morphoresourcetypes to base folders */
+static char *_basedir[] = {
+    MORPHO_HELP_BASEDIR,
+    MORPHO_MODULE_BASEDIR,
+    NULL
+};
+
+char *_folderfortype(morphoresourcetype type) { return _dir[type]; }
+char **_extfortype(morphoresourcetype type) { return _ext[type]; }
+char *_basedirfortype(morphoresourcetype type) { return _basedir[type]; }
+
+/* **********************************************************************
+ * Resources
+ * ********************************************************************** */
 
 varray_value resourcelocations;
 
@@ -122,7 +167,7 @@ void resources_searchfolder(resourceenumerator *en, char *path) {
  @param[in] fname - filename to match
  @param[in] ext - list of possible extensions, terminated by an empty string
  @param[in] recurse - search recursively */
-void morpho_resourceenumeratorinit(resourceenumerator *en, char *folder, char *fname, char *ext[], bool recurse) {
+void resourceenumerator_init(resourceenumerator *en, char *folder, char *fname, char *ext[], bool recurse) {
     en->folder = folder;
     en->fname = fname;
     en->ext = ext;
@@ -133,7 +178,7 @@ void morpho_resourceenumeratorinit(resourceenumerator *en, char *folder, char *f
 
 /** Clears a resource enumerator
  @param[in] en - enumerator to clear */
-void morpho_resourceenumeratorclear(resourceenumerator *en) {
+void resourceenumerator_clear(resourceenumerator *en) {
     for (int i=0; i<en->resources.count; i++) morpho_freeobject(en->resources.data[i]);
     varray_valueclear(&en->resources);
 }
@@ -141,7 +186,7 @@ void morpho_resourceenumeratorclear(resourceenumerator *en) {
 /** Enumerates resources
  @param[in] en - enumerator to use
  @param[out] out - next resource */
-bool morpho_enumerateresources(resourceenumerator *en, value *out) {
+bool resourceenumerator_enumerate(resourceenumerator *en, value *out) {
     if (en->resources.count==0) return false;
     value next = en->resources.data[--en->resources.count];
 
@@ -156,49 +201,8 @@ bool morpho_enumerateresources(resourceenumerator *en, value *out) {
     return true;
 }
 
-/** Locates a resource
- @param[in] folder - folder specification to scan
- @param[in] fname - filename to match
- @param[in] ext - list of possible extensions, terminated by an empty string
- @param[in] recurse - search recursively
- @param[out] out - an objectstring that contains the resource file location */
-bool morpho_Xfindresource(char *folder, char *fname, char *ext[], bool recurse, value *out) {
-    bool success=false;
-    resourceenumerator en;
-    morpho_resourceenumeratorinit(&en, folder, fname, ext, recurse);
-    success=morpho_enumerateresources(&en, out);
-    morpho_resourceenumeratorclear(&en);
-    return success;
-}
-
-/** Map morphoresourcetypes to package subfolders.
-   @warning: These must match the order of the morphoresourcetypeenum */
-static char *_dir[] = {
-    MORPHO_HELPDIR,
-    MORPHO_MODULEDIR,
-    MORPHO_EXTENSIONDIR
-};
-
-/* Map morphoresourcetypes to extensions */
-static char *_helpext[] =      { MORPHO_HELPEXTENSION, "" };
-static char *_moduleext[] =    { MORPHO_EXTENSION, "" };
-static char *_extensionext[] = { MORPHO_DYLIBEXTENSION, "dylib", "so", "" };
-
-static char **_ext[] = { _helpext, _moduleext, _extensionext };
-
-/* Map morphoresourcetypes to base folders */
-static char *_basedir[] = {
-    MORPHO_HELP_BASEDIR,
-    MORPHO_MODULE_BASEDIR,
-    NULL
-};
-
-char *_folderfortype(morphoresourcetype type) { return _dir[type]; }
-char **_extfortype(morphoresourcetype type) { return _ext[type]; }
-char *_basedirfortype(morphoresourcetype type) { return _basedir[type]; }
-
 /** Adds the default folder for a given resource type */
-void morpho_defaultfolder(resourceenumerator *en, morphoresourcetype type) {
+void resourceenumerator_defaultfolder(resourceenumerator *en, morphoresourcetype type) {
     char *basedir = _basedirfortype(type);
     if (basedir) {
         value v = object_stringfromcstring(basedir, strlen(basedir));
@@ -216,11 +220,29 @@ bool morpho_findresource(morphoresourcetype type, char *fname, value *out) {
     
     bool success=false;
     resourceenumerator en;
-    morpho_resourceenumeratorinit(&en, folder, fname, ext, true);
-    morpho_defaultfolder(&en, type);
-    success=morpho_enumerateresources(&en, out);
-    morpho_resourceenumeratorclear(&en);
+    resourceenumerator_init(&en, folder, fname, ext, true);
+    resourceenumerator_defaultfolder(&en, type);
+    success=resourceenumerator_enumerate(&en, out);
+    resourceenumerator_clear(&en);
     return success;
+}
+
+/** Locates all resources of a given type
+ @param[in] type - type of resource to locate
+ @param[out] out - a varray_value that contains the resource file locations */
+bool morpho_listresources(morphoresourcetype type, varray_value *out) {
+    char *folder = _folderfortype(type);
+    char **ext = _extfortype(type);
+    
+    resourceenumerator en;
+    resourceenumerator_init(&en, folder, NULL, ext, true);
+    resourceenumerator_defaultfolder(&en, type);
+    value file;
+    while (resourceenumerator_enumerate(&en, &file)) {
+        varray_valuewrite(out, file);
+    }
+    resourceenumerator_clear(&en);
+    return (out->count>0);
 }
 
 /** Loads a list of packages in ~/.morphopackages */

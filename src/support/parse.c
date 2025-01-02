@@ -136,6 +136,13 @@ bool parse_checktokenadvance(parser *p, tokentype type) {
     return true;
 }
 
+/** Checks whether the current token is a keyword */
+bool parse_checktokeniskeywordadvance(parser *p) {
+    PARSE_CHECK(lex_tokeniskeyword(p->lex, &p->current));
+    PARSE_CHECK(parse_advance(p));
+    return true;
+}
+
 /** @brief Checks if the next token has the required type and advance if it does, otherwise generates an error.
  *  @param   p    the parser in use
  *  @param   type type to check
@@ -807,6 +814,9 @@ bool parse_binary(parser *p, void *out) {
         if (nodetype==NODE_ASSIGN &&
             parse_checktokenadvance(p, TOKEN_FUNCTION)) {
             PARSE_CHECK(parse_anonymousfunction(p, &right));
+        } else if (nodetype==NODE_DOT &&
+                   parse_checktokeniskeywordadvance(p)) {
+            PARSE_CHECK(parse_symbol(p, &right));
         } else {
             PARSE_CHECK(parse_precedence(p, rule->precedence + (assoc == LEFT ? 1 : 0), &right));
         }
@@ -1066,7 +1076,8 @@ bool parse_functiondeclaration(parser *p, void *out) {
                    body=SYNTAXTREE_UNCONNECTED;
     
     /* Function name */
-    if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
+    if (parse_checktokenadvance(p, TOKEN_SYMBOL) ||
+        parse_checktokeniskeywordadvance(p)) {
         name=parse_tokenasstring(p);
         parse_addobject(p, name);
     } else {

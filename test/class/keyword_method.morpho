@@ -1,0 +1,16 @@
+// Ensure a class can use keywords for method labels
+
+class A {
+  init(a) {
+    self.a = a
+  }
+
+  print() {
+    print self.a
+  }
+}
+
+var a = A("foo")
+
+a.print() 
+// expect: foo

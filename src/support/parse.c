@@ -879,6 +879,7 @@ bool parse_range(parser *p, void *out) {
     
     syntaxtreeindx left=p->left;
     syntaxtreeindx right;
+    
     PARSE_CHECK(parse_expression(p, &right));
     syntaxtreeindx one=SYNTAXTREE_UNCONNECTED;
     if (!inclusive) {

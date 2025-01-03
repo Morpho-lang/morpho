@@ -3372,7 +3372,7 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
 /** Compiles a method invocation */
 static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
-    codeinfo object;
+    codeinfo object=CODEINFO_EMPTY;
 
     /* Get the selector node */
     syntaxtreenode *selector=compiler_getnode(c, node->left);
@@ -3388,8 +3388,23 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     codeinfo method=compiler_movetoregister(c, methodnode, cSel, rSel);
     ninstructions+=method.ninstructions;
 
-    /* Fetch the object */
-    object=compiler_nodetobytecode(c, selector->left, rObj);
+    registerindx top=compiler_regtop(c);
+
+    /* Fetch the object. We patch to ensure that builtin classes are prioritized over constructor functions. */
+    syntaxtreenode *objectnode=compiler_getnode(c, selector->left);
+    if (objectnode->type==NODE_SYMBOL) {
+        value klass=builtin_findclass(objectnode->content);
+        if (MORPHO_ISCLASS(klass)) {
+            registerindx kindx = compiler_addconstant(c, objectnode, klass, true, false);
+            object=CODEINFO(CONSTANT, kindx, 0);
+        }
+    }
+    
+    // Otherwise just fetch the object normally
+    if (object.returntype==REGISTER && object.dest==REGISTER_UNALLOCATED) { 
+      object=compiler_nodetobytecode(c, selector->left, rObj);
+    }
+
     ninstructions+=object.ninstructions;
     if (object.returntype==REGISTER && object.dest!=rObj) {
         compiler_regfreetemp(c, object.dest);
@@ -4140,9 +4155,8 @@ void compiler_copyfunctionreftonamespace(compiler *src, namespc *dest, dictionar
 
 /** Searches for a module with given name, returns the file name for inclusion. */
 bool compiler_findmodule(char *name, varray_char *fname) {
-    char *ext[] = { MORPHO_EXTENSION, "" };
     value out=MORPHO_NIL;
-    bool success=morpho_findresource(MORPHO_MODULEDIR, name, ext, true, &out);
+    bool success=morpho_findresource(MORPHO_RESOURCE_MODULE, name, &out);
     
     if (success) {
         fname->count=0;

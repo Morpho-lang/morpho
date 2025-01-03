@@ -116,8 +116,7 @@ bool extension_call(extension *e, char *name, char *fn) {
 
 /** Finds the path for an extension using the resource finder */
 bool extension_find(char *name, value *path) {
-    char *ext[] = { MORPHO_DYLIBEXTENSION, "dylib", "so", "" };
-    return morpho_findresource(MORPHO_EXTENSIONSDIR, name, ext, true, path);
+    return morpho_findresource(MORPHO_RESOURCE_EXTENSION, name, path);
 }
 
 /** Checks if an extension is already loaded;  returns it in out if found */

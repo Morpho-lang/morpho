@@ -60,6 +60,9 @@ OPCODE(CALL)
 /** Invoke */
 OPCODE(INVOKE)
 
+/** Method call */
+OPCODE(METHOD)
+
 /** Return */
 OPCODE(RETURN)
 
@@ -83,6 +86,9 @@ OPCODE(SPR)
 
 /** Load index */
 OPCODE(LIX)
+
+/** Load index list */
+OPCODE(LIXL)
 
 /** Store index */
 OPCODE(SIX)

@@ -793,8 +793,6 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
     return success;
 }
 
-unsigned int vm_countpositionalargs(unsigned int nargs, value *args);
-
 /** Attempt to find the desired class uid in the linearization of a given class */
 bool _finduidinlinearization(objectclass *klass, int uid) {
     for (int k=0; k<klass->linearization.count; k++) {
@@ -811,7 +809,6 @@ bool _finduidinlinearization(objectclass *klass, int uid) {
  @param[out] out - resolved function
  @returns true if the metafunction was successfully resolved */
 bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error *err, value *out) {
-    int n=vm_countpositionalargs(nargs, args);
     if (!fn->resolver.data &&
         !metafunction_compile(fn, err)) return false;
     mfinstruction *pc = fn->resolver.data;
@@ -820,10 +817,10 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error 
     do {
         switch(pc->opcode) {
             case MF_CHECKNARGSNEQ:
-                if (n!=pc->narg) pc+=pc->branch;
+                if (nargs!=pc->narg) pc+=pc->branch;
                 break;
             case MF_CHECKNARGSLT:
-                if (n<pc->narg) pc+=pc->branch;
+                if (nargs<pc->narg) pc+=pc->branch;
                 break;
             case MF_CHECKVALUE: {
                 if (!MORPHO_ISOBJECT(args[pc->narg])) {
@@ -854,8 +851,8 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error 
                 pc+=pc->branch;
                 break;
             case MF_BRANCHNARGS:
-                if (n<pc->data.btable.count) {
-                    pc+=pc->data.btable.data[n];
+                if (nargs<pc->data.btable.count) {
+                    pc+=pc->data.btable.data[nargs];
                 } else pc+=pc->branch;
                 break;
             case MF_BRANCHVALUETYPE: {
@@ -946,8 +943,8 @@ void metafunction_initialize(void) {
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
-    // List constructor function
-    builtin_addfunction(METAFUNCTION_CLASSNAME, metafunction_constructor, MORPHO_FN_CONSTRUCTOR);
+    // Metafunction constructor function
+    morpho_addfunction(METAFUNCTION_CLASSNAME, METAFUNCTION_CLASSNAME " (...)", metafunction_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     // Create function veneer class
     value metafunctionclass=builtin_addclass(METAFUNCTION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Metafunction), objclass);

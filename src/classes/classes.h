@@ -25,6 +25,7 @@
 #include "tuple.h"
 #include "err.h"
 
+#include "bool.h"
 #include "flt.h"
 #include "int.h"
 

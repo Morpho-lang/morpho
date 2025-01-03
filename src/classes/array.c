@@ -604,7 +604,7 @@ void array_initialize(void) {
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
     // Array constructor function
-    builtin_addfunction(ARRAY_CLASSNAME, array_constructor, MORPHO_FN_CONSTRUCTOR);
+    morpho_addfunction(ARRAY_CLASSNAME, ARRAY_CLASSNAME " (...)", array_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     // Create Array veneer class
     value arrayclass=builtin_addclass(ARRAY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Array), objclass);

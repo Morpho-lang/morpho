@@ -195,7 +195,7 @@ void range_initialize(void) {
     object_setveneerclass(OBJECT_RANGE, rangeclass);
     
     // Range constructor function
-    morpho_addfunction(RANGE_CLASSNAME, "Range (...)", range_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(RANGE_CLASSNAME, RANGE_CLASSNAME " (...)", range_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     // Range error messages
     morpho_defineerror(RANGE_ARGS, ERROR_HALT, RANGE_ARGS_MSG);

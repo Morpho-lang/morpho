@@ -30,8 +30,8 @@ dictionary builtin_classtable;
 /** A table of symbols used by built in classes */
 dictionary builtin_symboltable;
 
-/** Keep a list of objects created by builtin */
-varray_value builtin_objects;
+/** Maintain a list of objects created by builtin */
+object *builtin_objects;
 
 /** Current function and class tables */
 dictionary *_currentfunctiontable;
@@ -83,35 +83,43 @@ bool builtin_enumerateloop(vm *v, value obj, builtin_loopfunction fn, void *ref)
     return true;
 }
 
+/** Binds an object to the builtin environment */
+void builtin_bindobject(object *obj) {
+    if (!obj->next && /* Object is not already bound to the program (or something else) */
+        builtin_objects!=obj &&
+        obj->status==OBJECT_ISUNMANAGED) {
+        obj->status=OBJECT_ISBUILTIN;
+        obj->next=builtin_objects;
+        builtin_objects=obj;
+    }
+}
+
 /* **********************************************************************
  * Optional arguments
  * ********************************************************************** */
 
-extern value vm_optmarker;
+int vm_getoptionalargs(vm *v);
 
 /** Process optional arguments */
 bool builtin_options(vm *v, int nargs, value *args, int *nfixed, int noptions, ...) {
     va_list optlist;
     va_start(optlist, noptions);
-    int nposn=nargs;
-    
-    for (unsigned int i=1; i<=nargs; i++) {
-        if (MORPHO_ISSAME(args[i], vm_optmarker)) { nposn=i-1; break; }
-    }
+    int nopt=vm_getoptionalargs(v);
     
     for (unsigned int i=0; i<noptions; i++) {
         value symbol = va_arg(optlist, value);
         value *dest = va_arg(optlist, value*);
         
-        for (int k=nposn+2; k<nargs; k+=2) {
-            if (MORPHO_ISSAME(symbol, args[k])) {
-                *dest = args[k+1];
+        for (int k=0; k<nopt; k++) {
+            int r = nargs + 1 + 2*k; // Corresponding register
+            if (MORPHO_ISSAME(symbol, args[r])) {
+                *dest = args[r+1];
                 break;
             }
         }
         // TODO: Should raise an error for unexpected options here by looking for arguments that are strings and unmanaged?
     }
-    if (nfixed) *nfixed = nposn; // Exclude register 0
+    if (nfixed) *nfixed = nargs; // Exclude register 0
     
     va_end(optlist);
     
@@ -222,7 +230,8 @@ bool builtin_addfunctiontodict(dictionary *dict, value name, value fn, value *ou
                 MORPHO_GETBUILTINFUNCTION(entry)->klass) { // Override superclass methods for now
                 dictionary_insert(dict, selector, fn);
             } else if (metafunction_wrap(name, entry, &entry)) { // Wrap the old definition in a metafunction
-                varray_valuewrite(&builtin_objects, entry); // Ensure metafunction is removed
+                
+                builtin_bindobject(MORPHO_GETOBJECT(entry));
                 metafunction_add(MORPHO_GETMETAFUNCTION(entry), fn); // Add the new definition
                 success=dictionary_insert(dict, selector, entry);
             }
@@ -265,7 +274,7 @@ bool morpho_addfunction(char *name, char *signature, builtinfunction func, built
     }
     
     // Retain the objectbuiltinfunction in the builtin_objects table
-    varray_valuewrite(&builtin_objects, newfn);
+    builtin_bindobject(MORPHO_GETOBJECT(newfn));
     if (out) *out = newfn;
     
     return true;
@@ -290,9 +299,9 @@ morpho_addfunction_cleanup:
  * @returns the class object */
 value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
     value label = object_stringfromcstring(name, strlen(name));
-    varray_valuewrite(&builtin_objects, label);
+    builtin_bindobject(MORPHO_GETOBJECT(label));
     objectclass *new = object_newclass(label);
-    varray_valuewrite(&builtin_objects, MORPHO_OBJECT(new));
+    builtin_bindobject((object *) new);
     objectclass *superklass = NULL;
     
     if (!new) return MORPHO_NIL;
@@ -319,7 +328,7 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
             value selector = dictionary_intern(&builtin_symboltable, newmethod->name);
             value method = MORPHO_OBJECT(newmethod);
             
-            varray_valuewrite(&builtin_objects, method);
+            builtin_bindobject((object *) newmethod);
             
             builtin_addfunctiontodict(&new->methods, newmethod->name, method, NULL);
         }
@@ -354,7 +363,7 @@ value builtin_internsymbol(value symbol) {
 /** Interns a symbol given as a C string. */
 value builtin_internsymbolascstring(char *symbol) {
     value selector = object_stringfromcstring(symbol, strlen(symbol));
-    varray_valuewrite(&builtin_objects, selector);
+    builtin_bindobject(MORPHO_GETOBJECT(selector));
     value internselector = builtin_internsymbol(selector);
     return internselector;
 }
@@ -378,7 +387,7 @@ void builtin_initialize(void) {
     dictionary_init(&builtin_functiontable);
     dictionary_init(&builtin_classtable);
     dictionary_init(&builtin_symboltable);
-    varray_valueinit(&builtin_objects);
+    builtin_objects=NULL;
     
     builtin_setfunctiontable(&builtin_functiontable);
     builtin_setclasstable(&builtin_classtable);
@@ -408,6 +417,7 @@ void builtin_initialize(void) {
     
     float_initialize();// Veneer classes
     int_initialize();
+    bool_initialize();
     
     file_initialize();
     system_initialize();
@@ -430,11 +440,13 @@ void builtin_initialize(void) {
 }
 
 void builtin_finalize(void) {
-    for (unsigned int i=0; i<builtin_objects.count; i++) {
-        morpho_freeobject(builtin_objects.data[i]);
+    while (builtin_objects!=NULL) {
+        object *next = builtin_objects->next;
+        object_free(builtin_objects);
+        builtin_objects=next;
     }
+    
     dictionary_clear(&builtin_functiontable);
     dictionary_clear(&builtin_classtable);
     dictionary_clear(&builtin_symboltable);
-    varray_valueclear(&builtin_objects);
 }

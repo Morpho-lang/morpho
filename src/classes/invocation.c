@@ -149,7 +149,7 @@ void invocation_initialize(void) {
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
     // Invocation constructor function
-    builtin_addfunction(INVOCATION_CLASSNAME, invocation_constructor, BUILTIN_FLAGSEMPTY);
+    morpho_addfunction(INVOCATION_CLASSNAME, INVOCATION_CLASSNAME " (...)", invocation_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     // Create invocation veneer class
     value invocationclass=builtin_addclass(INVOCATION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Invocation), objclass);

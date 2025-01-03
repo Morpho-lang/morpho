@@ -46,8 +46,10 @@ objectlist *object_newlist(unsigned int nval, value *val) {
 
     if (new) {
         varray_valueinit(&new->val);
-        if (val) varray_valueadd(&new->val, val, nval);
-        else varray_valueresize(&new->val, nval);
+        if (nval>0) {
+            if (val) varray_valueadd(&new->val, val, nval);
+            else varray_valueresize(&new->val, nval);
+        }
     }
 
     return new;
@@ -717,7 +719,7 @@ void list_initialize(void) {
     object_setveneerclass(OBJECT_LIST, listclass);
     
     // List constructor function
-    morpho_addfunction(LIST_CLASSNAME, "List (...)", list_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(LIST_CLASSNAME, LIST_CLASSNAME " (...)", list_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     // List error messages
     morpho_defineerror(LIST_ENTRYNTFND, ERROR_HALT, LIST_ENTRYNTFND_MSG);

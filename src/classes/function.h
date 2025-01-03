@@ -28,8 +28,9 @@ DECLARE_VARRAY(optionalparam, optionalparam)
 /** A function object */
 typedef struct sobjectfunction {
     object obj;
-    int nargs;
-    int varg; // The parameter number of a variadic parameter.
+    int nargs; // Number of positional parameters
+    int nopt; // Number of optional parameters
+    int varg; // The parameter number of a variadic parameter. TODO: Rationalize
     value name;
     indx entry;
     int creg; // Closure register

@@ -1,0 +1,10 @@
+// Bool veneer class 
+ 
+true.prnt() // expect: true
+print ""
+false.prnt() // expect: false
+print ""
+
+print islist(true.respondsto()) // expect: true
+
+print true.clss() // expect: @Bool

@@ -319,5 +319,5 @@ void string_initialize(void) {
     object_setveneerclass(OBJECT_STRING, stringclass);
     
     // String constructor function
-    morpho_addfunction(STRING_CLASSNAME, "String (...)", string_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(STRING_CLASSNAME, STRING_CLASSNAME " (...)", string_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
 }

@@ -71,6 +71,8 @@ objectlist *object_newlist(unsigned int nval, value *val);
  * List interface
  * ------------------------------------------------------- */
 
+value List_getindex(vm *v, int nargs, value *args);
+
 bool list_resize(objectlist *list, int size);
 void list_append(objectlist *list, value v);
 unsigned int list_length(objectlist *list);

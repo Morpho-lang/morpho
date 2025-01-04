@@ -118,6 +118,31 @@ value range_constructor(vm *v, int nargs, value *args) {
     return out;
 }
 
+value range_inclusiveconstructor(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+    objectrange *new=NULL;
+
+    /* Check args are numerical */
+    for (unsigned int i=0; i<nargs; i++) {
+        if (!(MORPHO_ISINTEGER(MORPHO_GETARG(args, i)) || MORPHO_ISFLOAT(MORPHO_GETARG(args, i)))) {
+            MORPHO_RAISE(v, RANGE_ARGS);
+        }
+    }
+
+    if (nargs==2) {
+        new=object_newrange(MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1), MORPHO_NIL);
+    } else if (nargs==3) {
+        new=object_newrange(MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1), MORPHO_GETARG(args, 2));
+    } else MORPHO_RAISE(v, RANGE_ARGS);
+
+    if (new) {
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    }
+
+    return out;
+}
+
 /** Gets a specified element from a range */
 value Range_getindex(vm *v, int nargs, value *args) {
     objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
@@ -196,6 +221,9 @@ void range_initialize(void) {
     
     // Range constructor function
     morpho_addfunction(RANGE_CLASSNAME, RANGE_CLASSNAME " (...)", range_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    
+    // Inclusive range constructor
+    morpho_addfunction(RANGE_INCLUSIVE_CONSTRUCTOR, RANGE_CLASSNAME " (...)", range_inclusiveconstructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     // Range error messages
     morpho_defineerror(RANGE_ARGS, ERROR_HALT, RANGE_ARGS_MSG);

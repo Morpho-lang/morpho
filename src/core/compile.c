@@ -1741,7 +1741,7 @@ compilenoderule noderules[] = {
     { compiler_dot           },      // NODE_DOT
 
     { compiler_range         },      // NODE_RANGE
-    { compiler_range         },      // NODE_EXCLUSIVERANGE
+    { compiler_range         },      // NODE_INCLUSIVERANGE
 
     NODE_UNDEFINED,                  // NODE_OPERATOR
 
@@ -1885,17 +1885,19 @@ static codeinfo compiler_dictionary(compiler *c, syntaxtreenode *node, registeri
 /** Compiles a range */
 static codeinfo compiler_range(compiler *c, syntaxtreenode *node, registerindx reqout) {
     syntaxtreeindx s[3]={ SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED};
+    bool inclusive = node->type==NODE_INCLUSIVERANGE;
 
     /* Determine whether we have start..end or start..end:step */
     syntaxtreenode *left=compiler_getnode(c, node->left);
-    if (left && left->type==NODE_RANGE) {
+    if (left && (left->type==NODE_RANGE || left->type==NODE_INCLUSIVERANGE)) {
         s[0]=left->left; s[1]=left->right; s[2]=node->right;
+        inclusive = left->type==NODE_INCLUSIVERANGE;
     } else {
         s[0]=node->left; s[1]=node->right;
     }
 
     /* Set up a call to the Range() function */
-    codeinfo rng = compiler_findbuiltin(c, node, RANGE_CLASSNAME, reqout);
+    codeinfo rng = compiler_findbuiltin(c, node, (inclusive ? RANGE_INCLUSIVE_CONSTRUCTOR: RANGE_CLASSNAME), reqout);
     
     value rngtype=MORPHO_NIL; /* Set the type associated with the register */
     if (compiler_findtypefromcstring(c, RANGE_CLASSNAME, &rngtype)) {

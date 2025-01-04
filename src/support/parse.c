@@ -875,14 +875,14 @@ bool parse_assignby(parser *p, void *out) {
 /** Parses a range */
 bool parse_range(parser *p, void *out) {
     token start = p->previous;
-    bool exclusive = (start.type==TOKEN_DOTDOTDOT);
+    bool inclusive = (start.type==TOKEN_DOTDOT);
     
     syntaxtreeindx left=p->left;
     syntaxtreeindx right;
     
     PARSE_CHECK(parse_expression(p, &right));
     syntaxtreeindx new;
-    PARSE_CHECK(parse_addnode(p, (exclusive ? NODE_EXCLUSIVERANGE : NODE_RANGE), MORPHO_NIL, &start, left, right, &new));
+    PARSE_CHECK(parse_addnode(p, (inclusive ? NODE_INCLUSIVERANGE : NODE_RANGE), MORPHO_NIL, &start, left, right, &new));
     
     if (parse_checktokenadvance(p, TOKEN_COLON)) { // Wrap in an outer NODE_RANGE
         syntaxtreeindx step;

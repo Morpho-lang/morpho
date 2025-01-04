@@ -39,6 +39,8 @@ objectrange *object_newrange(value start, value end, value step);
 
 #define RANGE_CLASSNAME                   "Range"
 
+#define RANGE_INCLUSIVE_CONSTRUCTOR       "InclusiveRange"
+
 /* -------------------------------------------------------
  * Range error messages
  * ------------------------------------------------------- */

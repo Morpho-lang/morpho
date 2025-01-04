@@ -1,0 +1,5 @@
+// Ensure povray imports correctly
+
+import povray
+
+print "ok" // expect: ok

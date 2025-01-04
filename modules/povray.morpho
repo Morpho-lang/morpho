@@ -1,4 +1,6 @@
 
+import graphics 
+
 class Camera {
     init(antialias = true, width = 2048, height = 1536, viewangle = 24, viewpoint = nil, look_at = nil, sky = nil) {
         self.antialias = antialias
@@ -14,7 +16,6 @@ class Camera {
         if (!self.sky) self.sky = Matrix([0,1,0])
     }
 }
-
 
 class POVRaytracer {
   init(graphic, camera = nil) {

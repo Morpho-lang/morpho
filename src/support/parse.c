@@ -875,25 +875,19 @@ bool parse_assignby(parser *p, void *out) {
 /** Parses a range */
 bool parse_range(parser *p, void *out) {
     token start = p->previous;
-    bool inclusive = (start.type==TOKEN_DOTDOT);
+    bool exclusive = (start.type==TOKEN_DOTDOTDOT);
     
     syntaxtreeindx left=p->left;
     syntaxtreeindx right;
     
     PARSE_CHECK(parse_expression(p, &right));
-    syntaxtreeindx one=SYNTAXTREE_UNCONNECTED;
-    if (!inclusive) {
-        PARSE_CHECK(parse_addnode(p, NODE_INTEGER, MORPHO_INTEGER(1), &start, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, &one));
-        PARSE_CHECK(parse_addnode(p, NODE_SUBTRACT, MORPHO_NIL, &start, right, one, &right));
-    }
     syntaxtreeindx new;
-    PARSE_CHECK(parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, left, right, &new));
+    PARSE_CHECK(parse_addnode(p, (exclusive ? NODE_EXCLUSIVERANGE : NODE_RANGE), MORPHO_NIL, &start, left, right, &new));
     
-    if (parse_checktokenadvance(p, TOKEN_COLON)) {
+    if (parse_checktokenadvance(p, TOKEN_COLON)) { // Wrap in an outer NODE_RANGE
         syntaxtreeindx step;
         PARSE_CHECK(parse_expression(p, &step));
         
-        if (!inclusive) parse_lookupnode(p, right)->right = step;
         PARSE_CHECK(parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, new, step, &new));
     }
     

@@ -1,0 +1,4 @@
+// Construct a List from a Range with a problematic version
+
+print List(1.0 ... 1.2 : 0.15)
+// expect: [ 1, 1.15 ]

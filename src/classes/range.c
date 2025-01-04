@@ -50,6 +50,7 @@ objectrange *object_newrange(value start, value end, value step, bool inclusive)
         new->start=v[0];
         new->end=v[1];
         new->step=v[2];
+        new->inclusive=inclusive;
         new->nsteps=range_count(new);
     }
 
@@ -67,11 +68,18 @@ int range_count(objectrange *range) {
         double diff=MORPHO_GETFLOATVALUE(range->end)-MORPHO_GETFLOATVALUE(range->start);
         double stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETFLOATVALUE(range->step));
         double cnt = floor(diff / stp);
-        if (isfinite(cnt)) out = cnt + (fabs(cnt * stp - diff) <= DBL_EPSILON);
+        if (isfinite(cnt)) out = (int) cnt;
+        
+        if (range->inclusive) {
+            while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(out*stp)))<=0) out++;
+        } else {
+            while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(out*stp)))<0) out++;
+        }
     } else {
         int diff=MORPHO_GETINTEGERVALUE(range->end)-MORPHO_GETINTEGERVALUE(range->start);
         int stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETINTEGERVALUE(range->step));
-        if (stp != 0) out = diff / stp ;
+        if (stp) out = diff / stp ;
+        if (range->inclusive && out*stp<=diff) out++;
     }
     if (out < 0) out=0;
     return out;

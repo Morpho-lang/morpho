@@ -26,3 +26,5 @@ Morpho now provides the ternary operator similar to other C-family languages:
 * apply() now works properly with metafunctions.
 * Bugfixes in the Sparse class.
 * Improvements to resource locator.
+* Fixes to multiple dispatch with variadic parameters.
+* Fixes to Range class.

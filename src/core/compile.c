@@ -3700,6 +3700,9 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
         compiler_regfreetemp(c, reg);
     }
     
+    /* Bind the klass to the program to be freed on exit */
+    if (klass) program_bindobject(c->out, (object *) klass);
+    
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
 

@@ -22,6 +22,7 @@ typedef struct {
     value start;
     value end;
     value step;
+    bool inclusive; 
 } objectrange;
 
 /** Tests whether an object is a range */
@@ -31,7 +32,7 @@ typedef struct {
 #define MORPHO_GETRANGE(val)   ((objectrange *) MORPHO_GETOBJECT(val))
 
 /** Creates a new range object */
-objectrange *object_newrange(value start, value end, value step);
+objectrange *object_newrange(value start, value end, value step, bool inclusive);
 
 /* -------------------------------------------------------
  * Range veneer class

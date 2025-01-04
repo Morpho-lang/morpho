@@ -1,0 +1,3 @@
+// Ranges
+
+var a = Range() // expect error: ''

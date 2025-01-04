@@ -1713,6 +1713,19 @@ void morpho_bindobjects(vm *v, int nobj, value *obj) {
     }
 }
 
+/** @brief   Convenience function to wrap a single object into a value and bind to the VM
+ *  @param   v VM to use
+ *  @param   out Object to wrap
+ *  @returns object wrapped in a value, or MORPHO_NIL if obj is NULL */
+value morpho_wrapandbind(vm *v, object *obj) {
+    value out = MORPHO_NIL;
+    if (obj) {
+        out=MORPHO_OBJECT(obj);
+        morpho_bindobjects(v, 1, &out);
+    }
+    return out;
+}
+
 /** @brief Temporarily retain objects across multiple reentrant calls to the VM.
  *  @param v      the virtual machine
  *  @param nobj  number of objects to retain

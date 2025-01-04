@@ -38,7 +38,7 @@ objecttypedefn objectrangedefn = {
 };
 
 /** Create a new range. Step may be set to MORPHO_NIL to use the default value of 1 */
-objectrange *object_newrange(value start, value end, value step) {
+objectrange *object_newrange(value start, value end, value step, bool inclusive) {
     value v[3]={start, end, step};
 
     /* Ensure all three values are either integer or floating point */
@@ -66,12 +66,12 @@ int range_count(objectrange *range) {
     if (MORPHO_ISFLOAT(range->start)) {
         double diff=MORPHO_GETFLOATVALUE(range->end)-MORPHO_GETFLOATVALUE(range->start);
         double stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETFLOATVALUE(range->step));
-        double cnt = ceil(diff / stp);
+        double cnt = floor(diff / stp);
         if (isfinite(cnt)) out = cnt + (fabs(cnt * stp - diff) <= DBL_EPSILON);
     } else {
         int diff=MORPHO_GETINTEGERVALUE(range->end)-MORPHO_GETINTEGERVALUE(range->start);
         int stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETINTEGERVALUE(range->step));
-        if (stp != 0) out = diff / stp + 1;
+        if (stp != 0) out = diff / stp ;
     }
     if (out < 0) out=0;
     return out;
@@ -92,55 +92,35 @@ value range_iterate(objectrange *range, unsigned int i) {
  * Range veneer class
  * ********************************************************************** */
 
-/** Constructor function for ranges */
-value range_constructor(vm *v, int nargs, value *args) {
+static value _rangeconstructor(vm *v, int nargs, value *args, bool inclusive) {
     value out=MORPHO_NIL;
     objectrange *new=NULL;
 
-    /* Check args are numerical */
-    for (unsigned int i=0; i<nargs; i++) {
-        if (!(MORPHO_ISINTEGER(MORPHO_GETARG(args, i)) || MORPHO_ISFLOAT(MORPHO_GETARG(args, i)))) {
-            MORPHO_RAISE(v, RANGE_ARGS);
-        }
-    }
-
-    if (nargs==2) {
-        new=object_newrange(MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1), MORPHO_NIL);
-    } else if (nargs==3) {
-        new=object_newrange(MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1), MORPHO_GETARG(args, 2));
-    } else MORPHO_RAISE(v, RANGE_ARGS);
-
+    value in[3] = { MORPHO_NIL, MORPHO_NIL, MORPHO_NIL};
+    for (int i=0; i<nargs; i++) in[i]=MORPHO_GETARG(args, i);
+    
+    new=object_newrange(in[0], in[1], in[2], inclusive);
+    
     if (new) {
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    }
+        out = morpho_wrapandbind(v, (object *) new);
+    } else morpho_runtimeerror(v, RANGE_ARGS);
 
     return out;
 }
 
+/** Constructor functions for ranges */
+value range_constructor(vm *v, int nargs, value *args) {
+    return _rangeconstructor(v, nargs, args, false);
+}
+
 value range_inclusiveconstructor(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
-    objectrange *new=NULL;
+    return _rangeconstructor(v, nargs, args, true);
+}
 
-    /* Check args are numerical */
-    for (unsigned int i=0; i<nargs; i++) {
-        if (!(MORPHO_ISINTEGER(MORPHO_GETARG(args, i)) || MORPHO_ISFLOAT(MORPHO_GETARG(args, i)))) {
-            MORPHO_RAISE(v, RANGE_ARGS);
-        }
-    }
-
-    if (nargs==2) {
-        new=object_newrange(MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1), MORPHO_NIL);
-    } else if (nargs==3) {
-        new=object_newrange(MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1), MORPHO_GETARG(args, 2));
-    } else MORPHO_RAISE(v, RANGE_ARGS);
-
-    if (new) {
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    }
-
-    return out;
+/** Default if incorrect args passed */
+value range_invldconstructor(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, RANGE_ARGS);
+    return MORPHO_NIL;
 }
 
 /** Gets a specified element from a range */
@@ -183,7 +163,7 @@ value Range_count(vm *v, int nargs, value *args) {
 value Range_clone(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
     objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
-    objectrange *new = object_newrange(slf->start, slf->end, slf->step);
+    objectrange *new = object_newrange(slf->start, slf->end, slf->step, slf->inclusive);
 
     if (new) {
         out = MORPHO_OBJECT(new);
@@ -220,10 +200,14 @@ void range_initialize(void) {
     object_setveneerclass(OBJECT_RANGE, rangeclass);
     
     // Range constructor function
-    morpho_addfunction(RANGE_CLASSNAME, RANGE_CLASSNAME " (...)", range_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(RANGE_CLASSNAME, RANGE_CLASSNAME " (_,_)", range_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(RANGE_CLASSNAME, RANGE_CLASSNAME " (_,_,_)", range_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(RANGE_CLASSNAME, RANGE_CLASSNAME " (...)", range_invldconstructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     // Inclusive range constructor
-    morpho_addfunction(RANGE_INCLUSIVE_CONSTRUCTOR, RANGE_CLASSNAME " (...)", range_inclusiveconstructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(RANGE_INCLUSIVE_CONSTRUCTOR, RANGE_CLASSNAME " (_,_)", range_inclusiveconstructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(RANGE_INCLUSIVE_CONSTRUCTOR, RANGE_CLASSNAME " (_,_,_)", range_inclusiveconstructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(RANGE_INCLUSIVE_CONSTRUCTOR, RANGE_CLASSNAME " (...)", range_invldconstructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     // Range error messages
     morpho_defineerror(RANGE_ARGS, ERROR_HALT, RANGE_ARGS_MSG);

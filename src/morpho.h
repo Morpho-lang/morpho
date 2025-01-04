@@ -122,6 +122,7 @@ void morpho_freevm(vm *v);
 
 /* Bind new objects to the virtual machine */
 void morpho_bindobjects(vm *v, int nobj, value *obj);
+value morpho_wrapandbind(vm *v, object *obj);
 
 /* Interact with the garbage collector in an object definition */
 void morpho_markobject(void *v, object *obj);

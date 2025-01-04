@@ -16,7 +16,7 @@
 void objectrange_printfn(object *obj, void *v) {
     objectrange *r = (objectrange *) obj;
     morpho_printvalue(v, r->start);
-    morpho_printf(v, "..");
+    morpho_printf(v, (r->inclusive ? ".." : "..."));
     morpho_printvalue(v, r->end);
     if (!MORPHO_ISNIL(r->step)) {
         morpho_printf(v, ":");
@@ -66,12 +66,15 @@ int range_count(objectrange *range) {
     int out=0;
     if (MORPHO_ISFLOAT(range->start)) {
         double diff=MORPHO_GETFLOATVALUE(range->end)-MORPHO_GETFLOATVALUE(range->start);
+        
         double stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETFLOATVALUE(range->step));
         double cnt = floor(diff / stp);
         if (isfinite(cnt)) out = (int) cnt;
         
         if (range->inclusive) {
-            while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(out*stp)))<=0) out++;
+            if (MORPHO_ISEQUAL(range->start, range->end)) out=1;
+            else while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(out*stp)))<=0) out++;
+            
         } else {
             while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(out*stp)))<0) out++;
         }
@@ -79,7 +82,10 @@ int range_count(objectrange *range) {
         int diff=MORPHO_GETINTEGERVALUE(range->end)-MORPHO_GETINTEGERVALUE(range->start);
         int stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETINTEGERVALUE(range->step));
         if (stp) out = diff / stp ;
-        if (range->inclusive && out*stp<=diff) out++;
+        if (range->inclusive) {
+            if (diff==0) out=1;
+            else if (out*stp<=diff) out++;
+        }
     }
     if (out < 0) out=0;
     return out;

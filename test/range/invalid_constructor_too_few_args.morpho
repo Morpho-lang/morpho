@@ -1,3 +1,3 @@
-// Ranges
+// Too few arguments to constructor function
 
-var a = Range() // expect error: ''
+var a = Range() // expect error 'RngArgs'

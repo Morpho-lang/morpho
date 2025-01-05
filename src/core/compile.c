@@ -2761,6 +2761,8 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
     objectdictionary *cdict = object_newdictionary();
     if (!cdict) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return out; }
 
+    program_bindobject(c->out, (object *) cdict);
+    
     registerindx cdictindx = compiler_addconstant(c, node, MORPHO_OBJECT(cdict), false, false);
 
     compiler_addinstruction(c, ENCODE_LONG(OP_PUSHERR, 0, cdictindx), node);
@@ -3092,6 +3094,8 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     bindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
 
     objectfunction *func = object_newfunction(bindx+1, node->content, compiler_getcurrentfunction(c), 0);
+    if (!func) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return CODEINFO_EMPTY; }
+    
     program_bindobject(c->out, (object *) func);
     
     /* Record the class is a method */
@@ -3594,7 +3598,7 @@ static codeinfo compiler_method(compiler *c, syntaxtreenode *node, registerindx 
 static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
     registerindx kindx;
-    codeinfo mout;
+    codeinfo mout=CODEINFO_EMPTY;
 
     if (compiler_getcurrentclass(c)) {
         compiler_error(c, node, COMPILE_NSTDCLSS);
@@ -3602,6 +3606,8 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
     }
 
     objectclass *klass=object_newclass(node->content);
+    if (!klass) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return CODEINFO_EMPTY; }
+    
     compiler_beginclass(c, klass);
 
     /** Store the object class as a constant */

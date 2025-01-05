@@ -1302,6 +1302,7 @@ value Sparse_add(vm *v, int nargs, value *args) {
                 out=MORPHO_OBJECT(new);
                 morpho_bindobjects(v, 1, &out);
             } else {
+                morpho_freeobject(MORPHO_OBJECT(new));
                 sparse_raiseerror(v, err);
             }
         } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);

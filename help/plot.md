@@ -67,6 +67,7 @@ Plotfield accepts a number of optional arguments to control what is displayed:
 * `grade` - Draw the specified grade.
 * `colormap` - A `Colormap` object to use. The field is automatically scaled.
 * `scalebar` - A `Scalebar` object to use. 
+* `selection` - Only elements in a provided `Selection` are drawn.
 * `style` - Plot style. See below. 
 * `filter` and `transmit` - Used by the `povray` module to indicate transparency.
 * `cmin` and `cmax` - Can be used to define the data range covered.

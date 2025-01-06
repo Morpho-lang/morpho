@@ -3500,7 +3500,10 @@ void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *
     
     if (MORPHO_ISMETAFUNCTION(prev)) {
         objectmetafunction *f = MORPHO_GETMETAFUNCTION(prev);
-        if (f->klass!=klass) f=metafunction_clone(f);
+        if (f->klass!=klass) {
+            f=metafunction_clone(f);
+            if (f) program_bindobject(c->out, (object *) f);
+        }
         
         if (f) {
             metafunction_setclass(f, klass);
@@ -3535,6 +3538,7 @@ void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *
                 metafunction_add(f, MORPHO_OBJECT(method));
                 metafunction_setclass(f, klass);
                 dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(f));
+                program_bindobject(c->out, (object *) f);
             }
         }
     } else if (MORPHO_ISBUILTINFUNCTION(prev)) { // A builtin function can only come from a parent class, so overwrite it

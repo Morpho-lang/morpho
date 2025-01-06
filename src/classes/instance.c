@@ -93,13 +93,14 @@ value Object_getindex(vm *v, int nargs, value *args) {
     value self=MORPHO_SELF(args);
     value out=MORPHO_NIL;
     
-    if (nargs==1 &&
-        MORPHO_ISSTRING(MORPHO_GETARG(args, 0)) &&
-        MORPHO_ISINSTANCE(self)) {
-        if (!dictionary_get(&MORPHO_GETINSTANCE(self)->fields, MORPHO_GETARG(args, 0), &out)) {
-            morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)));
-        }
-    }
+    if (MORPHO_ISINSTANCE(self)) {
+        if (nargs==1 &&
+            MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
+            if (!dictionary_get(&MORPHO_GETINSTANCE(self)->fields, MORPHO_GETARG(args, 0), &out)) {
+                morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)));
+            }
+        } else morpho_runtimeerror(v, GETINDEX_ARGS);
+    } else morpho_runtimeerror(v, OBJECT_NOPRP);
 
     return out;
 }
@@ -113,9 +114,7 @@ value Object_setindex(vm *v, int nargs, value *args) {
             MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
             dictionary_insert(&MORPHO_GETINSTANCE(self)->fields, MORPHO_GETARG(args, 0), MORPHO_GETARG(args, 1));
         } else morpho_runtimeerror(v, SETINDEX_ARGS);
-    } else {
-        morpho_runtimeerror(v, OBJECT_IMMUTABLE);
-    }
+    } else morpho_runtimeerror(v, OBJECT_NOPRP);
 
     return MORPHO_NIL;
 }
@@ -354,8 +353,9 @@ void instance_initialize(void) {
     // Object error messages
     morpho_defineerror(OBJECT_CANTCLONE, ERROR_HALT, OBJECT_CANTCLONE_MSG);
     morpho_defineerror(OBJECT_IMMUTABLE, ERROR_HALT, OBJECT_IMMUTABLE_MSG);
-    
+    morpho_defineerror(OBJECT_NOPRP, ERROR_HALT, OBJECT_NOPRP_MSG);
     morpho_defineerror(ENUMERATE_ARGS, ERROR_HALT, ENUMERATE_ARGS_MSG);
+    morpho_defineerror(GETINDEX_ARGS, ERROR_HALT, GETINDEX_ARGS_MSG);
     morpho_defineerror(SETINDEX_ARGS, ERROR_HALT, SETINDEX_ARGS_MSG);
     morpho_defineerror(RESPONDSTO_ARG, ERROR_HALT, RESPONDSTO_ARG_MSG);
     morpho_defineerror(HAS_ARG, ERROR_HALT, HAS_ARG_MSG);

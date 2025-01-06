@@ -46,6 +46,12 @@ objectinstance *object_newinstance(objectclass *klass);
 #define OBJECT_IMMUTABLE                  "ObjImmutable"
 #define OBJECT_IMMUTABLE_MSG              "Cannot modify this object."
 
+#define OBJECT_NOPRP                      "ObjNoPrp"
+#define OBJECT_NOPRP_MSG                  "Object does not provide properties."
+
+#define GETINDEX_ARGS                     "IndxArgs"
+#define GETINDEX_ARGS_MSG                 "Index method expects a String property name as its argument."
+
 #define SETINDEX_ARGS                     "SetIndxArgs"
 #define SETINDEX_ARGS_MSG                 "Setindex method expects an index and a value as arguments."
 

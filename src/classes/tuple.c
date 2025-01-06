@@ -211,6 +211,12 @@ value Tuple_getindex(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Setindex just raises an error */
+value Tuple_setindex(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, OBJECT_IMMUTABLE);
+    return MORPHO_NIL;
+}
+
 /** Enumerate members of a tuple */
 value Tuple_enumerate(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
@@ -266,6 +272,7 @@ MORPHO_METHOD(MORPHO_COUNT_METHOD, Tuple_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Tuple_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_getindex, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Tuple_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_JOIN_METHOD, Tuple_join, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_ISMEMBER_METHOD, Tuple_ismember, BUILTIN_FLAGSEMPTY),

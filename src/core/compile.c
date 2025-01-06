@@ -1097,8 +1097,9 @@ globalindx compiler_addglobal(compiler *c, syntaxtreenode *node, value symbol) {
 
     if (indx==GLOBAL_UNALLOCATED) {
         indx = program_addglobal(c->out, symbol);
+        value key = program_internsymbol(c->out, symbol);
         
-        if (dictionary_insert(&c->globals, object_clonestring(symbol), MORPHO_INTEGER(indx))) {
+        if (dictionary_insert(&c->globals, key, MORPHO_INTEGER(indx))) {
             debugannotation_setglobal(&c->out->annotations, indx, symbol);
         }
     }
@@ -4115,10 +4116,6 @@ void compiler_copysymbols(dictionary *src, dictionary *dest, dictionary *compare
             
             if (MORPHO_ISSTRING(key) &&
                 MORPHO_GETCSTRING(key)[0]=='_') continue;
-            
-            if (!dictionary_get(dest, key, NULL)) {
-                key=object_clonestring(key);
-            }
 
             dictionary_insert(dest, key, src->contents[i].val);
         }
@@ -4368,8 +4365,7 @@ void compiler_clear(compiler *c) {
     compiler_fstackclear(c);
     syntaxtree_clear(&c->tree);
     compiler_clearnamespacelist(c);
-    dictionary_freecontents(&c->globals, true, false);
-    dictionary_clear(&c->globals);
+    dictionary_clear(&c->globals); // Keys are bound to the program
     dictionary_freecontents(&c->modules, true, true);
     dictionary_clear(&c->modules);
     dictionary_clear(&c->classes);

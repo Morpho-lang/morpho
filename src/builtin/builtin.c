@@ -327,7 +327,7 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
                 signature_parse(desc[i].signature, &newmethod->sig);
             }
             
-            value selector = dictionary_intern(&builtin_symboltable, newmethod->name);
+            dictionary_intern(&builtin_symboltable, newmethod->name);
             value method = MORPHO_OBJECT(newmethod);
             
             builtin_bindobject((object *) newmethod);

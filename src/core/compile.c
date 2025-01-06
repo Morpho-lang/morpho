@@ -47,7 +47,7 @@ static void compiler_error(compiler *c, syntaxtreenode *node, errorid id, ... ) 
     char *file = (MORPHO_ISSTRING(c->currentmodule) ? MORPHO_GETCSTRING(c->currentmodule) : NULL);
     
     va_start(args, id);
-    morpho_writeerrorwithidvalist(&c->err, id, NULL, line, posn, args);
+    morpho_writeerrorwithidvalist(&c->err, id, file, line, posn, args);
     va_end(args);
 }
 
@@ -3209,7 +3209,6 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo arginfo;
     unsigned int ninstructions=0;
-    bool optstarted=false;
 
     varray_syntaxtreeindx argnodes;
     varray_syntaxtreeindxinit(&argnodes);
@@ -3394,8 +3393,6 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     cSel.dest = compiler_addsymbol(c, methodnode, methodnode->content);
     codeinfo method=compiler_movetoregister(c, methodnode, cSel, rSel);
     ninstructions+=method.ninstructions;
-
-    registerindx top=compiler_regtop(c);
 
     /* Fetch the object. We patch to ensure that builtin classes are prioritized over constructor functions. */
     syntaxtreenode *objectnode=compiler_getnode(c, selector->left);

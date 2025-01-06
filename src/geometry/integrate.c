@@ -2265,8 +2265,6 @@ bool integrate_evalfn(integrator *integrate, quadraturerule *rule, int imin, int
 
 /** Integrates a function over an element specified in work, filling out the integral and error estimate if provided */
 bool quadrature(integrator *integrate, quadraturerule *rule, quadratureworkitem *work) {
-    int n = rule->nnodes;
-    
     int nmax = rule->nnodes;
     int np = 0; // Number of levels of p-refinement
     for (quadraturerule *q = rule->ext; q!=NULL; q=q->ext) {
@@ -2693,8 +2691,8 @@ void integrate_test2(double *out) {
 }
 
 void integrate_test(void) {
-    double out, out1, err1;
-    int evals1;
+    double out=0.0, out1=0.0, err1=0.0;
+    int evals1=0;
     
     nevals = 0;
     int Nmax = 1;

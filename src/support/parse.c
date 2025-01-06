@@ -1095,7 +1095,6 @@ bool parse_functiondeclaration(parser *p, void *out) {
 /* Parses a class declaration */
 bool parse_classdeclaration(parser *p, void *out) {
     value name=MORPHO_NIL;
-    value sname=MORPHO_NIL;
     syntaxtreeindx sclass=SYNTAXTREE_UNCONNECTED;
     token start = p->previous;
     
@@ -1255,8 +1254,7 @@ bool parse_expressionstatement(parser *p, void *out) {
  *                   -       body
  **/
 bool parse_blockstatement(parser *p, void *out) {
-    syntaxtreeindx body = SYNTAXTREE_UNCONNECTED,
-                   scope = SYNTAXTREE_UNCONNECTED;
+    syntaxtreeindx body = SYNTAXTREE_UNCONNECTED;
     token start = p->previous;
     tokentype terminator[] = { TOKEN_RIGHTCURLYBRACKET };
     

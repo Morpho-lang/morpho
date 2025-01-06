@@ -409,8 +409,7 @@ bool vm_optargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int nopt,
  * @param[in] newreg - new register base
  */
 static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int nargs, value *args, value *newreg) {
-    int nfnopt = func->nopt, // No. of optional params in function def'n
-        nfixed = func->nargs, // No. of fixed params
+    int nfixed = func->nargs, // No. of fixed params
         rVarg = nfixed+1, // Position of first optional parameter in output
         nposn=nargs; // No. of positional arguments this function was called with
 
@@ -503,7 +502,6 @@ static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int n
     }
 
     v->konst = func->konst.data; /* Load the constant table */
-    value *oreg = *reg; /* Old register frame */
     *reg += oldnregs; /* Shift the register frame */
     v->fp->roffset=*reg-v->stack.data; /* Store the register index */
     

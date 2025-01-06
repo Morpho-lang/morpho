@@ -253,7 +253,6 @@ void value_setveneerclass(value type, value clss) {
 
 /** @brief Gets the veneer class for a particular value type */
 objectclass *value_getveneerclass(value type) {
-    value klss;
     if (MORPHO_ISFLOAT(type)) {
         return _valueveneers[0];
     } else {

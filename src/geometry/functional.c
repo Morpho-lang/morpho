@@ -988,7 +988,6 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
  * @returns true on success, false otherwise. Error reporting through VM. */
 bool functional_mapintegrandforelement(vm *v, functional_mapinfo *info, value *out) {
     objectmesh *mesh = info->mesh;
-    objectselection *sel = info->sel;
     grade g = info->g;
     elementid id = info->id;
     functional_integrand *integrand = info->integrand;
@@ -1008,7 +1007,7 @@ bool functional_mapintegrandforelement(vm *v, functional_mapinfo *info, value *o
     if (s) sparseccs_getrowindices(&s->ccs, id, &nv, &vid);
     else vertexid=id;
 
-    double result;
+    double result=0.0;
     if (vid && nv>0) {
         if (! (*integrand) (v, mesh, id, nv, vid, ref, &result)) {
             return false;
@@ -4568,7 +4567,7 @@ double dff(double x) {
 void functional_fdtest(void) {
     double h1 = 1e-8;
     
-    double xi[] = { -100, -10, -1.0, 0.0, 1e-7, 1e-5, 1e-2, 0.1, 1, 10, 100, 1e100 /* Terminator */};
+    //double xi[] = { -100, -10, -1.0, 0.0, 1e-7, 1e-5, 1e-2, 0.1, 1, 10, 100, 1e100 /* Terminator */};
     
     for (int i=-6; i<3; i++) {
         double x = pow(10.0, (double) i);

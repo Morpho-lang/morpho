@@ -120,7 +120,6 @@ bool metafunction_add(objectmetafunction *f, value fn) {
 /** Extracts a type from a value */
 bool metafunction_typefromvalue(value v, value *out) {
     objectclass *clss = NULL;
-    value type = MORPHO_NIL;
     
     if (MORPHO_ISINSTANCE(v)) {
         clss=MORPHO_GETINSTANCE(v)->klass;

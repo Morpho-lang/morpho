@@ -934,7 +934,7 @@ objectmesh *mesh_load(vm *v, char *file) {
         line.count=0; // Reset buffer contents.
         file_readlineintovarray(f, &line);
         fline++;
-
+        
         /* Check if this is a section header */
         if (line.count>0 && !mesh_checksection(line.data, &g)) {
             /* Convert the string to an array of values */
@@ -946,7 +946,7 @@ objectmesh *mesh_load(vm *v, char *file) {
                         morpho_runtimeerror(v, MESH_LOADVERTEXNUM, fline);
                         goto meshload_cleanup;
                     }
-
+                    
                     for (unsigned int i=0; i<g+1; i++) {
                         /* Look up our corresponding vertex id */
                         value vx;
@@ -962,19 +962,19 @@ objectmesh *mesh_load(vm *v, char *file) {
                             goto meshload_cleanup;
                         }
                     }
-
+                    
                     mesh_addelementwithvertices(out, g, vid);
                 }
             }
         }
-
     }
-    fclose(f);
 
     mesh_freezeconnectivity(out);
 
 meshload_cleanup:
 
+    fclose(f);
+    
     varray_charclear(&line);
     dictionary_clear(&vdict);
     varray_doubleclear(&vert);

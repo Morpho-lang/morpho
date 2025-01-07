@@ -923,7 +923,7 @@ value metafunction_constructor(vm *v, int nargs, value *args) {
         if (!metafunction_compile(new, &err)) morpho_runtimeerror(v, err.id);
         error_clear(&err);
         
-        out=MORPHO_OBJECT(new);
+        out=morpho_wrapandbind(v, (object *) new);
     }
     
     return out;

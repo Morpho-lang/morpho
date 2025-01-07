@@ -182,17 +182,20 @@ errorid array_error(objectarrayerror err) {
         case ARRAY_OUTOFBOUNDS: return VM_OUTOFBOUNDS;
         case ARRAY_WRONGDIM: return VM_ARRAYWRONGDIM;
         case ARRAY_NONINTINDX: return VM_NONNUMINDX;
+        case ARRAY_ALLOC_FAILED: return ERROR_ALLOCATIONFAILED;
         case ARRAY_OK: UNREACHABLE("array_error called incorrectly.");
     }
     UNREACHABLE("Unhandled array error.");
     return VM_OUTOFBOUNDS;
 }
+
 /** Converts an array error into an matrix error code for use in slices*/
 errorid array_to_matrix_error(objectarrayerror err) {
     switch (err) {
         case ARRAY_OUTOFBOUNDS: return MATRIX_INDICESOUTSIDEBOUNDS;
         case ARRAY_WRONGDIM: return MATRIX_INVLDNUMINDICES;
         case ARRAY_NONINTINDX: return MATRIX_INVLDINDICES;
+        case ARRAY_ALLOC_FAILED: return ERROR_ALLOCATIONFAILED;
         case ARRAY_OK: UNREACHABLE("array_to_matrix_error called incorrectly.");
     }
     UNREACHABLE("Unhandled array error.");
@@ -205,6 +208,7 @@ errorid array_to_list_error(objectarrayerror err) {
         case ARRAY_OUTOFBOUNDS: return VM_OUTOFBOUNDS;
         case ARRAY_WRONGDIM: return LIST_NUMARGS;
         case ARRAY_NONINTINDX: return LIST_ARGS;
+        case ARRAY_ALLOC_FAILED: return ERROR_ALLOCATIONFAILED;
         case ARRAY_OK: UNREACHABLE("array_to_list_error called incorrectly.");
     }
     UNREACHABLE("Unhandled array error.");
@@ -255,13 +259,22 @@ objectarrayerror getslice(value *a, bool dimFcn(value *, unsigned int),
         } else return ARRAY_NONINTINDX; // by returning array a VM_NONNUMIDX will be thrown
     }
 
-    // initalize out with the right size
-    (constructor) (slicesize,ndim,out);
+    // initialize out with the right size
+    (constructor) (slicesize, ndim, out);
+    
+    if (!MORPHO_ISOBJECT(*out)) return ARRAY_ALLOC_FAILED;
 
     // fill it out recurivly
     unsigned int indx[ndim];
     unsigned int newindx[ndim];
-    return setslicerecursive(a, out, copy, ndim, 0, indx, newindx, slices);
+    objectarrayerror err = setslicerecursive(a, out, copy, ndim, 0, indx, newindx, slices);
+    
+    if (err!=ARRAY_OK) { // Free allocated object if an error has occurred
+        morpho_freeobject(*out);
+        *out = MORPHO_NIL;
+    }
+    
+    return err;
 }
 
 /** Iterates though the a ndim number of provided slices recursivly and copies the data from a to out.

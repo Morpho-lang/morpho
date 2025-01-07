@@ -147,6 +147,7 @@ errorid array_to_tuple_error(objectarrayerror err) {
         case ARRAY_OUTOFBOUNDS: return VM_OUTOFBOUNDS;
         case ARRAY_WRONGDIM: return TUPLE_NUMARGS;
         case ARRAY_NONINTINDX: return TUPLE_ARGS;
+        case ARRAY_ALLOC_FAILED: return ERROR_ALLOCATIONFAILED;
         case ARRAY_OK: UNREACHABLE("array_to_tuple_error called incorrectly.");
     }
     UNREACHABLE("Unhandled array error.");

@@ -90,9 +90,17 @@ static void vm_clear(vm *v) {
     varray_valueclear(&v->tlvars);
     varray_valueclear(&v->retain);
     vm_graylistclear(&v->gray);
-    vm_freeobjects(v);
-    varray_vmclear(&v->subkernels);
     varray_charclear(&v->buffer);
+    vm_freeobjects(v);
+    
+    for (int i=0; i<v->subkernels.count; i++) {
+        vm *subkernel = v->subkernels.data[i];
+        subkernel->globals.capacity=0; // Globals duplicates the parent vm so ignore
+        subkernel->globals.data=NULL;
+        vm_clear(subkernel);
+        MORPHO_FREE(subkernel);
+    }
+    varray_vmclear(&v->subkernels);
 }
 
 /** Prepares a vm to run program p */

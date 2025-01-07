@@ -390,10 +390,11 @@ bool mfcompile_countoutcomes(mfcompiler *c, mfset *set, int *best) {
         if (mfcompiler_ischecked(c, i)) continue;
         if (count.data[i]>max) { max=count.data[i]; maxindx=i; }
     }
-    if (maxindx<0) return false;
-    if (best) *best = maxindx;
     
     varray_intclear(&count);
+    
+    if (maxindx<0) return false;
+    if (best) *best = maxindx;
     
     return true;
 }

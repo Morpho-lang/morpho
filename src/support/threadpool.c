@@ -8,6 +8,8 @@
 #include "build.h"
 #include "threadpool.h"
 
+DEFINE_VARRAY(pthread_t, pthread_t);
+
 /* **********************************************************************
 * Thread pools
 * ********************************************************************** */
@@ -67,6 +69,7 @@ bool threadpool_init(threadpool *pool, int nworkers) {
     if (nworkers<1) return false;
 
     varray_taskinit(&pool->queue);
+    varray_pthread_tinit(&pool->threads);
 
     pthread_mutex_init(&pool->lock_mutex, NULL);
     pthread_cond_init(&pool->work_available_cond, NULL);
@@ -79,7 +82,7 @@ bool threadpool_init(threadpool *pool, int nworkers) {
     for (int i=0; i<pool->nthreads; i++) {
         pthread_t thread;
         pthread_create(&thread, NULL, threadpool_worker, pool);
-        pthread_detach(thread);
+        varray_pthread_tadd(&pool->threads, &thread, 1);
     }
 
     return true;
@@ -93,11 +96,13 @@ void threadpool_clear(threadpool *pool) {
     pthread_cond_broadcast(&pool->work_available_cond); /* Signal to workers */
     pthread_mutex_unlock(&pool->lock_mutex);
 
-    threadpool_fence(pool); /* Await workers to terminate */
+    for (int i=0; i<pool->threads.count; i++) pthread_join(pool->threads.data[i], NULL);
 
     pthread_mutex_destroy(&pool->lock_mutex);
     pthread_cond_destroy(&pool->work_available_cond);
     pthread_cond_destroy(&pool->work_halted_cond);
+    
+    varray_pthread_tclear(&pool->threads);
 }
 
 /** Adds a task to the threadpool */

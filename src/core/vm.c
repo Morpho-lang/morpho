@@ -90,9 +90,17 @@ static void vm_clear(vm *v) {
     varray_valueclear(&v->tlvars);
     varray_valueclear(&v->retain);
     vm_graylistclear(&v->gray);
-    vm_freeobjects(v);
-    varray_vmclear(&v->subkernels);
     varray_charclear(&v->buffer);
+    vm_freeobjects(v);
+    
+    for (int i=0; i<v->subkernels.count; i++) {
+        vm *subkernel = v->subkernels.data[i];
+        subkernel->globals.capacity=0; // Globals duplicates the parent vm so ignore
+        subkernel->globals.data=NULL;
+        vm_clear(subkernel);
+        MORPHO_FREE(subkernel);
+    }
+    varray_vmclear(&v->subkernels);
 }
 
 /** Prepares a vm to run program p */
@@ -409,8 +417,7 @@ bool vm_optargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int nopt,
  * @param[in] newreg - new register base
  */
 static inline bool vm_vargs(vm *v, ptrdiff_t iindx, objectfunction *func, unsigned int nargs, value *args, value *newreg) {
-    int nfnopt = func->nopt, // No. of optional params in function def'n
-        nfixed = func->nargs, // No. of fixed params
+    int nfixed = func->nargs, // No. of fixed params
         rVarg = nfixed+1, // Position of first optional parameter in output
         nposn=nargs; // No. of positional arguments this function was called with
 
@@ -503,7 +510,6 @@ static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int n
     }
 
     v->konst = func->konst.data; /* Load the constant table */
-    value *oreg = *reg; /* Old register frame */
     *reg += oldnregs; /* Shift the register frame */
     v->fp->roffset=*reg-v->stack.data; /* Store the register index */
     
@@ -1711,6 +1717,19 @@ void morpho_bindobjects(vm *v, int nobj, value *obj) {
         
         morpho_releaseobjects(v, handle);
     }
+}
+
+/** @brief   Convenience function to wrap a single object into a value and bind to the VM
+ *  @param   v VM to use
+ *  @param   out Object to wrap
+ *  @returns object wrapped in a value, or MORPHO_NIL if obj is NULL */
+value morpho_wrapandbind(vm *v, object *obj) {
+    value out = MORPHO_NIL;
+    if (obj) {
+        out=MORPHO_OBJECT(obj);
+        morpho_bindobjects(v, 1, &out);
+    }
+    return out;
 }
 
 /** @brief Temporarily retain objects across multiple reentrant calls to the VM.

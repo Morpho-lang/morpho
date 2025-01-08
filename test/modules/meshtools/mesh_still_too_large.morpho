@@ -1,0 +1,8 @@
+// Individual stepsize is ok, but the product is too large
+
+import meshtools
+
+var L = 0.5
+var dx = 0.0000001
+
+var m = AreaMesh(fn (u, v) [u, v, 0], -L..L:dx, -L..L:dx) // expect error 'MltMaxVrt'

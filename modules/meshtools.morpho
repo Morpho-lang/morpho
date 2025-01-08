@@ -13,6 +13,9 @@ import delaunay
 var _errMshBldDimIncnstnt = Error("MshBldDimIncnstnt", "Vertex dimension inconsistent with mesh dimension.")
 var _errMshBldDimUnknwn = Error("MshBldDimUnknwn", "Cannot add elements until a vertex has been added or MeshBuilder initialized with a specified dimension.")
 var _errMltVClstrFxd = Error("MltVClstrFxd", "More than one vertex in a selected cluster is fixed.")
+var _errMshMaxVrt = Error("MltMaxVrt", "Maximum number of vertices in Mesh exceeded.")
+
+var _MAX_VERTICES = 2147483647
 
 /* **************************
  * Manual mesh creation
@@ -41,6 +44,7 @@ class MeshBuilder {
   }
 
   addvertex(v) {
+    if (self.vertices.count()==_MAX_VERTICES) _errMshMaxVrt.throw() 
     var x = v
     if (islist(v)) x = Matrix(v)
     if (self.dimension==nil) self.initdim(x.count())
@@ -119,9 +123,11 @@ fn AreaMesh(f, r1, r2, closed=false) {
   var dim = f(r1[0],r2[0]).count()
   var mb = MeshBuilder(dimension=dim)
 
+  var nu = r1.count(), nv = r2.count() // How many points
+  if (Float(nu)*Float(nv)>_MAX_VERTICES) _errMshMaxVrt.throw() 
+
   for (v in r2) for (u in r1) mb.addvertex(f(u,v))
 
-  var nu = r1.count(), nv = r2.count() // How many points
   var np = nu*nv
   var nfaces = (nu-1)*(nv-1)
 

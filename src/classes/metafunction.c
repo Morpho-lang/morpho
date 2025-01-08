@@ -120,7 +120,6 @@ bool metafunction_add(objectmetafunction *f, value fn) {
 /** Extracts a type from a value */
 bool metafunction_typefromvalue(value v, value *out) {
     objectclass *clss = NULL;
-    value type = MORPHO_NIL;
     
     if (MORPHO_ISINSTANCE(v)) {
         clss=MORPHO_GETINSTANCE(v)->klass;
@@ -391,10 +390,11 @@ bool mfcompile_countoutcomes(mfcompiler *c, mfset *set, int *best) {
         if (mfcompiler_ischecked(c, i)) continue;
         if (count.data[i]>max) { max=count.data[i]; maxindx=i; }
     }
-    if (maxindx<0) return false;
-    if (best) *best = maxindx;
     
     varray_intclear(&count);
+    
+    if (maxindx<0) return false;
+    if (best) *best = maxindx;
     
     return true;
 }
@@ -545,7 +545,12 @@ int _maxindx(dictionary *dict) {
 
 int _mfresultsortfn (const void *a, const void *b) {
     mfresult *aa = (mfresult *) a, *bb = (mfresult *) b;
-    return aa->indx-bb->indx;
+    
+    int ai = aa->indx, bi = bb->indx;
+    if (aa->sig->varg) ai=-1; // Ensure vargs end up first
+    if (bb->sig->varg) bi=-1;
+    
+    return ai-bi;
 }
 
 /** Constructs a dispatch table from the set of implementations */
@@ -698,14 +703,14 @@ mfindx mfcompile_checknarg(mfcompiler *c, mfresult *res) {
 mfindx mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
     mfindx bindx = MFINSTRUCTION_EMPTY;
     
-    // Sort the set into order given by number of parameters
+    // Sort the set into order given by number of parameters; resolution with varg is always first
     for (int k=0; k<set->count; k++) {
         set->rlist[k].indx=signature_countparams(set->rlist[k].sig);
     }
     qsort(set->rlist, set->count, sizeof(mfresult), _mfresultsortfn);
     
     if (set->count==2) {
-        for (int i=0; i<2; i++) {
+        for (int i=1; i>=0; i--) {
             bindx = mfcompile_checknarg(c, &set->rlist[i]);
             
             mfindx eindx = mfcompile_currentinstruction(c);
@@ -722,14 +727,20 @@ mfindx mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
         bindx = mfcompile_insertinstruction(c, table);
         
         // Immediately follow by a fail instruction if this falls through
-        mfcompile_fail(c);
-
+        mfindx fail = mfcompile_fail(c);
+        
         // Compile the branch table
         mfcompile_branchtable(c, set, bindx, &btable);
         
-        // Correct branchargs branch destination to point to the varg resolution
-        if (signature_isvarg(set->rlist[set->count-1].sig)) {
-            mfcompile_setbranch(c, bindx, btable.data[btable.count-1]);
+        // Correct branch table for varg resolution
+        if (set->rlist[0].sig->varg) {
+            mfindx varg = bindx+1;
+            int nmin = set->rlist[0].sig->types.count-1; // varg can match this many args or more
+            for (int i=nmin; i<btable.count; i++) {
+                if (btable.data[i]==fail-1) btable.data[i]=varg;
+            }
+            
+            mfcompile_setbranch(c, bindx, varg); // Correct branchargs branch destination to point to the varg resolution
         }
     }
     return bindx;
@@ -912,7 +923,7 @@ value metafunction_constructor(vm *v, int nargs, value *args) {
         if (!metafunction_compile(new, &err)) morpho_runtimeerror(v, err.id);
         error_clear(&err);
         
-        out=MORPHO_OBJECT(new);
+        out=morpho_wrapandbind(v, (object *) new);
     }
     
     return out;

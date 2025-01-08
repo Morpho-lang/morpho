@@ -4,6 +4,7 @@ import meshtools
 import delaunay
 
 var _errSlcEmpty = Error("SlcEmpty", "No slice has yet been taken.")
+var _errSlcPrmType = Error("SlcPrmType", "Slice point and direction must be a List or Matrix.")
 
 class Intersection {
   init(u, x) {
@@ -52,13 +53,19 @@ class MeshSlicer {
     return u
   } 
 
-  setpt(pt, dirn) {
-    self.pt = nil
-    self.dirn = nil
-    if (islist(pt)) self.pt = Matrix(pt)
-    if (islist(dirn)) self.dirn = Matrix(dirn)
+  setpt(Matrix pt, Matrix dirn) {
+    self.pt = pt
+    self.dirn = dirn
     self.basis()
   }
+
+  setpt(List pt, List dirn) {
+    self.pt = Matrix(pt)
+    self.dirn = Matrix(dirn)
+    self.basis()
+  }
+
+  setpt(pt, dirn) { _errSlcPrmType.throw() }
 
   testintersection(indices) { // Finds if an element with indices intersects with the plane
     var minus=false, plus=false

@@ -81,8 +81,6 @@ bool json_lexwhitespace(lexer *l, token *tok, error *err) {
 
 /** Record JSON strings as a token */
 bool json_lexstring(lexer *l, token *tok, error *err) {
-    char c;
-    
     while (lex_peek(l) != '"' && !lex_isatend(l)) {
         if (lex_peek(l)=='\\') lex_advance(l); // Detect an escaped character
 
@@ -613,7 +611,7 @@ void json_initialize(void) {
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
     // JSON class
-    value jsonclass=builtin_addclass(JSON_CLASSNAME, MORPHO_GETCLASSDEFINITION(JSON), objclass);
+    builtin_addclass(JSON_CLASSNAME, MORPHO_GETCLASSDEFINITION(JSON), objclass);
     
     morpho_defineerror(JSON_OBJCTKEY, ERROR_PARSE, JSON_OBJCTKEY_MSG);
     morpho_defineerror(JSON_PRSARGS, ERROR_PARSE, JSON_PRSARGS_MSG);

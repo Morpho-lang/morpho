@@ -1,0 +1,27 @@
+import delaunay
+import meshtools 
+import plot 
+import meshslice
+
+var pts = [ Matrix([0,0,0]),
+            Matrix([1,0,0]),
+            Matrix([0,1,0]),
+            Matrix([0,0,1]) ]
+var m = DelaunayMesh(pts)
+
+for (g in 0..m.maxgrade()) print m.count(g)
+// expect: 4
+// expect: 0
+// expect: 0
+// expect: 1
+
+var slice = MeshSlicer(m)
+var sc = slice.slice(Matrix([0.5,0,0]), Matrix([1,0,0]))
+
+for (g in 0..sc.maxgrade()) print sc.count(g)
+// expect: 3
+// expect: 0
+// expect: 1
+
+//Show(plotmesh(sc, grade=[0,1,2]) + plotmesh(m, grade=[0,1], color=Red))
+

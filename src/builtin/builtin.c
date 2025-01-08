@@ -265,7 +265,9 @@ bool morpho_addfunction(char *name, char *signature, builtinfunction func, built
     
     // Parse function signature if provided
     if (signature &&
-        !signature_parse(signature, &new->sig)) goto morpho_addfunction_cleanup;
+        !signature_parse(signature, &new->sig)) {
+        UNREACHABLE("Syntax error in signature definition.");
+    }
     
     value newfn = MORPHO_OBJECT(new);
     
@@ -325,7 +327,7 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
                 signature_parse(desc[i].signature, &newmethod->sig);
             }
             
-            value selector = dictionary_intern(&builtin_symboltable, newmethod->name);
+            dictionary_intern(&builtin_symboltable, newmethod->name);
             value method = MORPHO_OBJECT(newmethod);
             
             builtin_bindobject((object *) newmethod);

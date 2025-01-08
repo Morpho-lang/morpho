@@ -1,0 +1,3 @@
+// Incorrect type of args to constructor function
+
+var a = Range(1,5.0,"Hello") // expect error 'RngArgs'

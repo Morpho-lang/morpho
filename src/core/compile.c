@@ -47,7 +47,7 @@ static void compiler_error(compiler *c, syntaxtreenode *node, errorid id, ... ) 
     char *file = (MORPHO_ISSTRING(c->currentmodule) ? MORPHO_GETCSTRING(c->currentmodule) : NULL);
     
     va_start(args, id);
-    morpho_writeerrorwithidvalist(&c->err, id, NULL, line, posn, args);
+    morpho_writeerrorwithidvalist(&c->err, id, file, line, posn, args);
     va_end(args);
 }
 
@@ -1097,8 +1097,9 @@ globalindx compiler_addglobal(compiler *c, syntaxtreenode *node, value symbol) {
 
     if (indx==GLOBAL_UNALLOCATED) {
         indx = program_addglobal(c->out, symbol);
+        value key = program_internsymbol(c->out, symbol);
         
-        if (dictionary_insert(&c->globals, object_clonestring(symbol), MORPHO_INTEGER(indx))) {
+        if (dictionary_insert(&c->globals, key, MORPHO_INTEGER(indx))) {
             debugannotation_setglobal(&c->out->annotations, indx, symbol);
         }
     }
@@ -1741,7 +1742,7 @@ compilenoderule noderules[] = {
     { compiler_dot           },      // NODE_DOT
 
     { compiler_range         },      // NODE_RANGE
-    { compiler_range         },      // NODE_EXCLUSIVERANGE
+    { compiler_range         },      // NODE_INCLUSIVERANGE
 
     NODE_UNDEFINED,                  // NODE_OPERATOR
 
@@ -1885,17 +1886,19 @@ static codeinfo compiler_dictionary(compiler *c, syntaxtreenode *node, registeri
 /** Compiles a range */
 static codeinfo compiler_range(compiler *c, syntaxtreenode *node, registerindx reqout) {
     syntaxtreeindx s[3]={ SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED};
+    bool inclusive = node->type==NODE_INCLUSIVERANGE;
 
     /* Determine whether we have start..end or start..end:step */
     syntaxtreenode *left=compiler_getnode(c, node->left);
-    if (left && left->type==NODE_RANGE) {
+    if (left && (left->type==NODE_RANGE || left->type==NODE_INCLUSIVERANGE)) {
         s[0]=left->left; s[1]=left->right; s[2]=node->right;
+        inclusive = left->type==NODE_INCLUSIVERANGE;
     } else {
         s[0]=node->left; s[1]=node->right;
     }
 
     /* Set up a call to the Range() function */
-    codeinfo rng = compiler_findbuiltin(c, node, RANGE_CLASSNAME, reqout);
+    codeinfo rng = compiler_findbuiltin(c, node, (inclusive ? RANGE_INCLUSIVE_CONSTRUCTOR: RANGE_CLASSNAME), reqout);
     
     value rngtype=MORPHO_NIL; /* Set the type associated with the register */
     if (compiler_findtypefromcstring(c, RANGE_CLASSNAME, &rngtype)) {
@@ -2759,6 +2762,8 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
     objectdictionary *cdict = object_newdictionary();
     if (!cdict) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return out; }
 
+    program_bindobject(c->out, (object *) cdict);
+    
     registerindx cdictindx = compiler_addconstant(c, node, MORPHO_OBJECT(cdict), false, false);
 
     compiler_addinstruction(c, ENCODE_LONG(OP_PUSHERR, 0, cdictindx), node);
@@ -3090,6 +3095,8 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     bindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
 
     objectfunction *func = object_newfunction(bindx+1, node->content, compiler_getcurrentfunction(c), 0);
+    if (!func) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return CODEINFO_EMPTY; }
+    
     program_bindobject(c->out, (object *) func);
     
     /* Record the class is a method */
@@ -3202,7 +3209,6 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo arginfo;
     unsigned int ninstructions=0;
-    bool optstarted=false;
 
     varray_syntaxtreeindx argnodes;
     varray_syntaxtreeindxinit(&argnodes);
@@ -3388,8 +3394,6 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     codeinfo method=compiler_movetoregister(c, methodnode, cSel, rSel);
     ninstructions+=method.ninstructions;
 
-    registerindx top=compiler_regtop(c);
-
     /* Fetch the object. We patch to ensure that builtin classes are prioritized over constructor functions. */
     syntaxtreenode *objectnode=compiler_getnode(c, selector->left);
     if (objectnode->type==NODE_SYMBOL) {
@@ -3493,7 +3497,10 @@ void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *
     
     if (MORPHO_ISMETAFUNCTION(prev)) {
         objectmetafunction *f = MORPHO_GETMETAFUNCTION(prev);
-        if (f->klass!=klass) f=metafunction_clone(f);
+        if (f->klass!=klass) {
+            f=metafunction_clone(f);
+            if (f) program_bindobject(c->out, (object *) f);
+        }
         
         if (f) {
             metafunction_setclass(f, klass);
@@ -3528,6 +3535,7 @@ void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *
                 metafunction_add(f, MORPHO_OBJECT(method));
                 metafunction_setclass(f, klass);
                 dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(f));
+                program_bindobject(c->out, (object *) f);
             }
         }
     } else if (MORPHO_ISBUILTINFUNCTION(prev)) { // A builtin function can only come from a parent class, so overwrite it
@@ -3592,7 +3600,7 @@ static codeinfo compiler_method(compiler *c, syntaxtreenode *node, registerindx 
 static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
     registerindx kindx;
-    codeinfo mout;
+    codeinfo mout=CODEINFO_EMPTY;
 
     if (compiler_getcurrentclass(c)) {
         compiler_error(c, node, COMPILE_NSTDCLSS);
@@ -3600,6 +3608,8 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
     }
 
     objectclass *klass=object_newclass(node->content);
+    if (!klass) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return CODEINFO_EMPTY; }
+    
     compiler_beginclass(c, klass);
 
     /** Store the object class as a constant */
@@ -3697,6 +3707,9 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
         ninstructions+=mv.ninstructions;
         compiler_regfreetemp(c, reg);
     }
+    
+    /* Bind the klass to the program to be freed on exit */
+    if (klass) program_bindobject(c->out, (object *) klass);
     
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
@@ -4104,10 +4117,6 @@ void compiler_copysymbols(dictionary *src, dictionary *dest, dictionary *compare
             
             if (MORPHO_ISSTRING(key) &&
                 MORPHO_GETCSTRING(key)[0]=='_') continue;
-            
-            if (!dictionary_get(dest, key, NULL)) {
-                key=object_clonestring(key);
-            }
 
             dictionary_insert(dest, key, src->contents[i].val);
         }
@@ -4357,8 +4366,7 @@ void compiler_clear(compiler *c) {
     compiler_fstackclear(c);
     syntaxtree_clear(&c->tree);
     compiler_clearnamespacelist(c);
-    dictionary_freecontents(&c->globals, true, false);
-    dictionary_clear(&c->globals);
+    dictionary_clear(&c->globals); // Keys are bound to the program
     dictionary_freecontents(&c->modules, true, true);
     dictionary_clear(&c->modules);
     dictionary_clear(&c->classes);

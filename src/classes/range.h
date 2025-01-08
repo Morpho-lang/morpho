@@ -32,7 +32,7 @@ typedef struct {
 #define MORPHO_GETRANGE(val)   ((objectrange *) MORPHO_GETOBJECT(val))
 
 /** Creates a new range object */
-objectrange *object_newrange(value start, value end, value step, bool inclusive);
+objectrange *object_newrange(value start, value end, value step, bool inclusive, errorid *errid);
 
 /* -------------------------------------------------------
  * Range veneer class
@@ -48,6 +48,9 @@ objectrange *object_newrange(value start, value end, value step, bool inclusive)
 
 #define RANGE_ARGS                        "RngArgs"
 #define RANGE_ARGS_MSG                    "Range expects numerical arguments: a start, an end and an optional stepsize."
+
+#define RANGE_STPSZ                       "RngStpSz"
+#define RANGE_STPSZ_MSG                   "Range stepsize too small."
 
 /* -------------------------------------------------------
  * Range interface

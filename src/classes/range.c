@@ -37,12 +37,50 @@ objecttypedefn objectrangedefn = {
     .cmpfn=NULL
 };
 
-/** Create a new range. Step may be set to MORPHO_NIL to use the default value of 1 */
-objectrange *object_newrange(value start, value end, value step, bool inclusive) {
+/** Determine the number of steps in a range */
+bool _range_count(objectrange *range) {
+    range->nsteps=0;
+    if (MORPHO_ISFLOAT(range->start)) {
+        double diff=MORPHO_GETFLOATVALUE(range->end)-MORPHO_GETFLOATVALUE(range->start);
+        
+        double stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETFLOATVALUE(range->step));
+        double cnt = floor(diff / stp);
+        
+        if (cnt>(double) INT_MAX) return false;
+        
+        if (isfinite(cnt)) range->nsteps = (int) cnt;
+        
+        if (range->inclusive) {
+            if (MORPHO_ISEQUAL(range->start, range->end)) range->nsteps=1;
+            else while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(range->nsteps*stp)))<=0) range->nsteps++;
+            
+        } else {
+            while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(range->nsteps*stp)))<0) range->nsteps++;
+        }
+    } else {
+        int diff=MORPHO_GETINTEGERVALUE(range->end)-MORPHO_GETINTEGERVALUE(range->start);
+        int stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETINTEGERVALUE(range->step));
+        if (stp) range->nsteps = diff / stp ;
+        if (range->inclusive) {
+            if (diff==0) range->nsteps=1;
+            else if (range->nsteps*stp<=diff) range->nsteps++;
+        }
+    }
+    if (range->nsteps < 0) range->nsteps=0;
+
+    return true;
+}
+
+/** Create a new range. Step may be set to MORPHO_NIL to use the default value of 1.
+    @param[out] errid - errid is filled in if the range can't be initialized */
+objectrange *object_newrange(value start, value end, value step, bool inclusive, errorid *errid) {
     value v[3]={start, end, step};
 
     /* Ensure all three values are either integer or floating point */
-    if (!value_promotenumberlist((MORPHO_ISNIL(step) ? 2 : 3), v)) return NULL;
+    if (!value_promotenumberlist((MORPHO_ISNIL(step) ? 2 : 3), v)) {
+        *errid = RANGE_ARGS;
+        return NULL;
+    }
 
     objectrange *new = (objectrange *) object_new(sizeof(objectrange), OBJECT_RANGE);
 
@@ -51,8 +89,12 @@ objectrange *object_newrange(value start, value end, value step, bool inclusive)
         new->end=v[1];
         new->step=v[2];
         new->inclusive=inclusive;
-        new->nsteps=range_count(new);
-    }
+        if (!_range_count(new)) {
+            *errid = RANGE_STPSZ;
+            object_free((object *) new);
+            new=NULL;
+        }
+    } else *errid = ERROR_ALLOCATIONFAILED;
 
     return new;
 }
@@ -61,34 +103,9 @@ objectrange *object_newrange(value start, value end, value step, bool inclusive)
  * objectrange utility functions
  * ********************************************************************** */
 
-/** Calculate the number of steps in a range */
+/** Return the number of steps in a range */
 int range_count(objectrange *range) {
-    int out=0;
-    if (MORPHO_ISFLOAT(range->start)) {
-        double diff=MORPHO_GETFLOATVALUE(range->end)-MORPHO_GETFLOATVALUE(range->start);
-        
-        double stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETFLOATVALUE(range->step));
-        double cnt = floor(diff / stp);
-        if (isfinite(cnt)) out = (int) cnt;
-        
-        if (range->inclusive) {
-            if (MORPHO_ISEQUAL(range->start, range->end)) out=1;
-            else while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(out*stp)))<=0) out++;
-            
-        } else {
-            while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(out*stp)))<0) out++;
-        }
-    } else {
-        int diff=MORPHO_GETINTEGERVALUE(range->end)-MORPHO_GETINTEGERVALUE(range->start);
-        int stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETINTEGERVALUE(range->step));
-        if (stp) out = diff / stp ;
-        if (range->inclusive) {
-            if (diff==0) out=1;
-            else if (out*stp<=diff) out++;
-        }
-    }
-    if (out < 0) out=0;
-    return out;
+    return range->nsteps;
 }
 
 /** Find the ith value of a range object */
@@ -113,11 +130,12 @@ static value _rangeconstructor(vm *v, int nargs, value *args, bool inclusive) {
     value in[3] = { MORPHO_NIL, MORPHO_NIL, MORPHO_NIL};
     for (int i=0; i<nargs; i++) in[i]=MORPHO_GETARG(args, i);
     
-    new=object_newrange(in[0], in[1], in[2], inclusive);
+    errorid errid=RANGE_ARGS;
+    new=object_newrange(in[0], in[1], in[2], inclusive, &errid);
     
     if (new) {
         out = morpho_wrapandbind(v, (object *) new);
-    } else morpho_runtimeerror(v, RANGE_ARGS);
+    } else morpho_runtimeerror(v, errid);
 
     return out;
 }
@@ -177,12 +195,13 @@ value Range_count(vm *v, int nargs, value *args) {
 value Range_clone(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
     objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
-    objectrange *new = object_newrange(slf->start, slf->end, slf->step, slf->inclusive);
+    errorid errid=RANGE_ARGS;
+    objectrange *new = object_newrange(slf->start, slf->end, slf->step, slf->inclusive, &errid);
 
     if (new) {
         out = MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);
-    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    } else morpho_runtimeerror(v, errid);
     
     return out;
 }
@@ -225,4 +244,5 @@ void range_initialize(void) {
     
     // Range error messages
     morpho_defineerror(RANGE_ARGS, ERROR_HALT, RANGE_ARGS_MSG);
+    morpho_defineerror(RANGE_STPSZ, ERROR_HALT, RANGE_STPSZ_MSG);
 }

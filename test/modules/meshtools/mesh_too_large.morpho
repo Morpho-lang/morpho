@@ -1,0 +1,8 @@
+// Generate too large a mesh 
+
+import meshtools
+
+var L = 0.5
+var dx = 0.00000000001
+
+var m = AreaMesh(fn (u, v) [u, v, 0], -L..L:dx, -L..L:dx) // expect error 'RngStpSz'

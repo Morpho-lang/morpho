@@ -28,3 +28,4 @@ Morpho now provides the ternary operator similar to other C-family languages:
 * Improvements to resource locator.
 * Fixes to multiple dispatch with variadic parameters.
 * Fixes to Range class.
+* Morpho running the test suite now passes valgrind memory checker.

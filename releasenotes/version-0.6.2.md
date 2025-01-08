@@ -29,3 +29,4 @@ Morpho now provides the ternary operator similar to other C-family languages:
 * Fixes to multiple dispatch with variadic parameters.
 * Fixes to Range class.
 * Morpho running the test suite now passes valgrind memory checker.
+* meshtools now explicitly checks that the Mesh generated isn't too large.

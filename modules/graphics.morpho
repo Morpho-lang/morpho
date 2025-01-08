@@ -604,7 +604,7 @@ class Show {
 
     out.close()
     // 1/7/25 Redirect error output to /dev/null to suppress annoying errors on macOS
-    system("morphoview -t ${tempfolder}/morpho${fname}.draw & 2>/dev/null")
+    system("morphoview -t ${tempfolder}/morpho${fname}.draw & 2> /dev/null")
   }
 
   /** Generate a random name */

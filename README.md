@@ -16,16 +16,16 @@ The Morpho language. Morpho is a programmable environment for shape optimization
 
 Documentation is available on [readthedocs](https://morpho-lang.readthedocs.io/en/latest/), an extensive [user manual](https://github.com/Morpho-lang/morpho-manual/blob/main/manual.pdf) and a [developer guide](https://github.com/Morpho-lang/morpho-devguide/blob/main/devguide.pdf). A [Slack community](https://join.slack.com/t/morphoco/shared_invite/zt-1o6azavwl-XMtjjFwxW~P6C8rc~YbBlA) is also available for people interested in using morpho and seeking support.
 
-**New!** We now have a sequence of tutorial videos on our [Youtube channel](https://www.youtube.com/@Morpho-lang) to help you learn Morpho: 
+We now have a sequence of tutorial videos on our [Youtube channel](https://www.youtube.com/@Morpho-lang) to help you learn Morpho: 
 
 * An [introduction to the Morpho language](https://youtu.be/eVPGWpNDeq4)
 * Introduction to [shape optimization with Morpho](https://youtu.be/odCkR0PDKa0)
 
 In academic publications, please cite morpho as:
 
-*Joshi, C. et al., "Morpho -- A programmable environment for shape optimization and shapeshifting problems", [arXiv:2208.07859](https://arxiv.org/abs/2208.07859) (2022)*
+* Joshi, C. et al. ["A programmable environment for shape optimization and shapeshifting problems", Nat Comput Sci (2024). doi.org/10.1038/s43588-024-00749-7](https://doi.org/10.1038/s43588-024-00749-7)
 
-We expect to update this once the paper is published.
+A preprint of the paper is also available on the [arXiv preprint server](https://arxiv.org/abs/2208.07859)
 
 Participation in the morpho community, both as users and developers, is bound by our [Code of Conduct](CODE_OF_CONDUCT.md).
 

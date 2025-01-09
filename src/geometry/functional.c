@@ -4,6 +4,8 @@
  *  @brief Functionals
  */
 
+#include <float.h>
+
 #include "functional.h"
 #include "morpho.h"
 #include "classes.h"
@@ -1886,6 +1888,11 @@ bool volumeenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int 
 
     functional_veccross(x[0], x[1], cx);
     dot=functional_vecdot(mesh->dim, cx, x[2]);
+    if (fabs(dot)<=DBL_MIN) {
+        morpho_runtimeerror(v, VOLUMEENCLOSED_ZERO);
+        return false;
+    }
+    
     dot/=fabs(dot);
 
     matrix_addtocolumn(frc, vid[2], dot/6.0, cx);
@@ -4638,6 +4645,7 @@ void functional_initialize(void) {
     builtin_addfunction(NORMAL_FUNCTION, integral_normal, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(GRAD_FUNCTION, integral_gradfn, BUILTIN_FLAGSEMPTY);
 
+    morpho_defineerror(VOLUMEENCLOSED_ZERO, ERROR_HALT, VOLUMEENCLOSED_ZERO_MSG);
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
     morpho_defineerror(FUNC_ELNTFND, ERROR_HALT, FUNC_ELNTFND_MSG);
 

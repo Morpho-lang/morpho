@@ -107,6 +107,9 @@
 #define LINEINTEGRAL_NFLDS             "IntgrlNFlds"
 #define LINEINTEGRAL_NFLDS_MSG         "Incorrect number of Fields provided for integrand function."
 
+#define VOLUMEENCLOSED_ZERO            "VolEnclZero"
+#define VOLUMEENCLOSED_ZERO_MSG        "VolumeEnclosed detected an element of zero size. Check that a mesh point is not coincident with the origin."
+
 #define LINEARELASTICITY_REF           "LnElstctyRef"
 #define LINEARELASTICITY_REF_MSG       "LinearElasticity requires a mesh as the argument."
 

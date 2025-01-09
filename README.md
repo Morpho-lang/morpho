@@ -12,6 +12,12 @@ The Morpho language. Morpho is a programmable environment for shape optimization
 
 *Morpho is based upon work supported by the National Science Foundation under grants DMR-1654283 and OAC-2003820.*
 
+In academic publications, please cite morpho as:
+
+* Joshi, C. et al. "A programmable environment for shape optimization and shapeshifting problems", Nat Comput Sci (2024). [doi.org/10.1038/s43588-024-00749-7](https://doi.org/10.1038/s43588-024-00749-7)
+
+A preprint of the paper is also available on the [arXiv preprint server](https://arxiv.org/abs/2208.07859)
+
 ## Learn and use morpho
 
 Documentation is available on [readthedocs](https://morpho-lang.readthedocs.io/en/latest/), an extensive [user manual](https://github.com/Morpho-lang/morpho-manual/blob/main/manual.pdf) and a [developer guide](https://github.com/Morpho-lang/morpho-devguide/blob/main/devguide.pdf). A [Slack community](https://join.slack.com/t/morphoco/shared_invite/zt-1o6azavwl-XMtjjFwxW~P6C8rc~YbBlA) is also available for people interested in using morpho and seeking support.
@@ -20,12 +26,6 @@ We now have a sequence of tutorial videos on our [Youtube channel](https://www.y
 
 * An [introduction to the Morpho language](https://youtu.be/eVPGWpNDeq4)
 * Introduction to [shape optimization with Morpho](https://youtu.be/odCkR0PDKa0)
-
-In academic publications, please cite morpho as:
-
-* Joshi, C. et al. ["A programmable environment for shape optimization and shapeshifting problems", Nat Comput Sci (2024). doi.org/10.1038/s43588-024-00749-7](https://doi.org/10.1038/s43588-024-00749-7)
-
-A preprint of the paper is also available on the [arXiv preprint server](https://arxiv.org/abs/2208.07859)
 
 Participation in the morpho community, both as users and developers, is bound by our [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -54,10 +54,10 @@ The simplest way to install morpho is through the [homebrew package manager](htt
 ```
 brew update
 brew tap morpho-lang/morpho
-brew install morpho morpho-cli morpho-morphoview
+brew install morpho morpho-cli morpho-morphoview morpho-morphopm
 ```
 
-If you need to uninstall morpho, simply open a terminal and type `brew uninstall morpho-cli morpho-morphoview morpho`. It's very important to uninstall the homebrew morpho in this way before attempting to install from source as below.
+If you need to uninstall morpho, simply open a terminal and type `brew uninstall morpho-morphopm morpho-cli morpho-morphoview morpho`. It's very important to uninstall the homebrew morpho in this way before attempting to install from source as below.
 
 ### Install from source
 
@@ -65,12 +65,15 @@ The second way to install morpho is by compiling the source code directly. Morph
 
 #### Gather dependencies
 
-You can use any appropriate package manager to install morpho's dependencies via the terminal. Using homebrew (preferred on macOS):
+You can use any appropriate package manager to install morpho's dependencies via the terminal. 
+
+Using homebrew (preferred on macOS):
 
 ```
 brew update
 brew install cmake glfw suite-sparse freetype povray libgrapheme
 ```
+
 Using apt (preferred on Ubuntu):
 
 ```
@@ -178,10 +181,6 @@ to navigate back out of the morpho-morphoview folder.
 
 Windows support is provided through Windows Subsystem for Linux (WSL), which is an environment that enables windows to run linux applications. We highly recommend using WSL2, which is the most recent version and provides better support for GUI applications; some instructions for WSL1 are provided [in the manual](https://github.com/Morpho-lang/morpho-manual/blob/main/manual.pdf). Detailed information on running GUI applications in WSL2 is found on the [Microsoft WSL support page](https://learn.microsoft.com/en-us/windows/wsl/tutorials/gui-apps).
 
-1. Begin by installing the [Ubuntu App](https://ubuntu.com/desktop/wsl) from the Microsoft store. 
+1. Begin by installing the [Ubuntu App](https://ubuntu.com/desktop/wsl) from the Microsoft store.
 
-2. Once the Ubuntu terminal is working in Windows, you can install morpho either through homebrew or by building from source. 
-
----
-### Other Tests
-[![No NAN Boxing](https://github.com/Morpho-lang/morpho/actions/workflows/nonanboxing.yml/badge.svg)](https://github.com/Morpho-lang/morpho/actions/workflows/nonanboxing.yml)
+2. Once the Ubuntu terminal is working in Windows, you can install morpho either through homebrew or by building from source.

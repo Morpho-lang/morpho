@@ -8,15 +8,15 @@ The Morpho language. Morpho is a programmable environment for shape optimization
 * **Familiar**. Morpho uses syntax similar to other C-family languages. The syntax fits on a postcard, so it's easy to learn.
 * **Fast**. Morpho programs run as efficiently as other well-implemented dynamic languages like *wren* or *lua* (Morpho is often significantly faster than Python, for example). Morpho leverages numerical libraries like *BLAS*, *LAPACK* and *SUITESPARSE* to provide high performance.
 * **Class-based**. Morpho is highly object-oriented, which simplifies coding and enables reusability.
-* **Extendable**. Functionality is easy to add via packages, both in Morpho and in C or other compiled languages.
+* **Extendable**. Functionality is easy to add via packages, both in Morpho and in C or other compiled languages. Packages can be downloaded, installed and distributed via the [morphopm](https://github.com/Morpho-lang/morpho-morphopm) package manager.
 
 *Morpho is based upon work supported by the National Science Foundation under grants DMR-1654283 and OAC-2003820.*
 
 In academic publications, please cite morpho as:
 
-* Joshi, C. et al. "A programmable environment for shape optimization and shapeshifting problems", Nat Comput Sci (2024). [doi.org/10.1038/s43588-024-00749-7](https://doi.org/10.1038/s43588-024-00749-7)
+* Joshi, C. et al. "A programmable environment for shape optimization and shapeshifting problems", Nat Comput Sci (2024) [doi.org/10.1038/s43588-024-00749-7](https://doi.org/10.1038/s43588-024-00749-7).
 
-A preprint of the paper is also available on the [arXiv preprint server](https://arxiv.org/abs/2208.07859)
+A preprint of the paper is also available on the [arXiv preprint server](https://arxiv.org/abs/2208.07859).
 
 ## Learn and use morpho
 
@@ -42,6 +42,8 @@ We also welcome bug reports and suggestions: Please feel free to use the *Issues
 Code in this repository builds morpho as a shared library. Morpho also requires two subsidiary programs, a [terminal app](https://github.com/Morpho-lang/morpho-cli), and a [viewer application](https://github.com/Morpho-lang/morpho-morphoview).
 
 For this release, morpho can be installed on all supported platforms using the homebrew package manager. Alternatively, the program can be installed from source as described below. We are continuously working on improving morpho installation, and hope to provide additional mechanisms for installation in upcoming releases.
+
+Morpho packages to extend the program's capability can be downloaded, installed and distributed via the associated [morphopm](https://github.com/Morpho-lang/morpho-morphopm) package manager.
 
 ### Installation with homebrew
 

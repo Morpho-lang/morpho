@@ -70,7 +70,7 @@ objectarray *object_arrayfromvalueindices(unsigned int ndim, value *dim);
  * ------------------------------------------------------- */
 
 /* Public interfaces to various data structures */
-typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_OUTOFBOUNDS,ARRAY_NONINTINDX } objectarrayerror;
+typedef enum { ARRAY_OK, ARRAY_WRONGDIM, ARRAY_OUTOFBOUNDS, ARRAY_NONINTINDX, ARRAY_ALLOC_FAILED } objectarrayerror;
 
 errorid array_error(objectarrayerror err);
 errorid array_to_matrix_error(objectarrayerror err);

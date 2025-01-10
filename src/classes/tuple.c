@@ -147,6 +147,7 @@ errorid array_to_tuple_error(objectarrayerror err) {
         case ARRAY_OUTOFBOUNDS: return VM_OUTOFBOUNDS;
         case ARRAY_WRONGDIM: return TUPLE_NUMARGS;
         case ARRAY_NONINTINDX: return TUPLE_ARGS;
+        case ARRAY_ALLOC_FAILED: return ERROR_ALLOCATIONFAILED;
         case ARRAY_OK: UNREACHABLE("array_to_tuple_error called incorrectly.");
     }
     UNREACHABLE("Unhandled array error.");
@@ -211,6 +212,12 @@ value Tuple_getindex(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Setindex just raises an error */
+value Tuple_setindex(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, OBJECT_IMMUTABLE);
+    return MORPHO_NIL;
+}
+
 /** Enumerate members of a tuple */
 value Tuple_enumerate(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
@@ -266,6 +273,7 @@ MORPHO_METHOD(MORPHO_COUNT_METHOD, Tuple_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Tuple_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_getindex, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Tuple_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_JOIN_METHOD, Tuple_join, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_ISMEMBER_METHOD, Tuple_ismember, BUILTIN_FLAGSEMPTY),
@@ -287,9 +295,11 @@ void tuple_initialize(void) {
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
     // Create tuple veneer class
-    builtin_addfunction(TUPLE_CLASSNAME, tuple_constructor, MORPHO_FN_CONSTRUCTOR);
     value tupleclass=builtin_addclass(TUPLE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Tuple), objclass);
     object_setveneerclass(OBJECT_TUPLE, tupleclass);
+    
+    // Tuple constructor function
+    morpho_addfunction(TUPLE_CLASSNAME, TUPLE_CLASSNAME " (...)", tuple_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     // Tuple error messages
     morpho_defineerror(TUPLE_ARGS, ERROR_HALT, TUPLE_ARGS_MSG);

@@ -603,7 +603,8 @@ class Show {
     self.write(g, out)
 
     out.close()
-    system("morphoview -t ${tempfolder}/morpho${fname}.draw &")
+    // 1/7/25 Redirect error output to /dev/null to suppress annoying errors on macOS
+    system("morphoview -t ${tempfolder}/morpho${fname}.draw > /dev/null 2>&1 &")
   }
 
   /** Generate a random name */

@@ -26,6 +26,7 @@ struct sobject {
     objecttype type;            // Type
     enum {                      // Memory management status for the object:
         OBJECT_ISUNMANAGED,     // - UNMANAGED means the object is manually alloc'd/dealloc'd
+        OBJECT_ISBUILTIN,       // - BUILTIN means the object was created by the builtin environment
         OBJECT_ISPROGRAM,       // - PROGRAM means the object is bound to the program
         OBJECT_ISUNMARKED,      // - UNMARKED means the object is managed by the GC
         OBJECT_ISMARKED         // - MARKED is used internally by the GC

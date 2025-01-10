@@ -1,6 +1,6 @@
 # Contributing to Morpho
 
-Thankyou for your interest in helping to improve Morpho. We welcome contributions from everyone. If you are unsure of anything, feel free to reach out via the Github, submit an issue or make a pull request.
+Thankyou for your interest in helping to improve Morpho! We welcome contributions from everyone. If you are unsure of anything, feel free to reach out via the Github, submit an issue or make a pull request.
 
 There are many ways you can contribute to Morpho:
 
@@ -12,15 +12,15 @@ There are many ways you can contribute to Morpho:
 
 * If you use Morpho but are new to GitHub, or to contributing to Morpho, the issues labeled [`good first issue`](https://github.com/Morpho-lang/morpho/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) highlight easy-to-fix bugs that will get you started. [Here](https://gist.github.com/Chaser324/ce0505fbed06b947d962) is a guide that explains the best practices for making a pull request.
 
-* Morpho is highly modular and modules providing new features are especially welcome. The [devguide](https://github.com/Morpho-lang/morpho-devguide/blob/main/devguide.pdf) explains how to package morpho code into an easily downloadable module. 
+* Morpho is highly modular and modules providing new features are especially welcome. The [devguide](https://github.com/Morpho-lang/morpho-devguide) explains how to package morpho code into an easily downloadable module. The [morphopm](https://github.com/Morpho-lang/morpho-morphopm) package manager can be used to download and install modules.
 
 * Help with unit tests, additional documentation etc. are also great ways to contribute to the project.
 
 All contributors are expected to follow the [Morpho Code of Conduct](https://github.com/Morpho-lang/morpho/blob/main/CODE_OF_CONDUCT.md).
 
-For further guidance and pointers, a developer's guide gradually being assembled [devguide](https://github.com/Morpho-lang/morpho-devguide/blob/main/devguide.pdf). In the meantime, we encourage you to [join our Slack community](https://join.slack.com/t/morphoco/shared_invite/zt-1hiby4iqv-UhqKEeqZih0vSG3k4gEfXQ) or get in touch via email.
+For further guidance and pointers, a developer's guide is gradually being assembled [devguide](https://github.com/Morpho-lang/morpho-devguide/blob/main/devguide.pdf). We also encourage you to [join our Slack community](https://join.slack.com/t/morphoco/shared_invite/zt-1hiby4iqv-UhqKEeqZih0vSG3k4gEfXQ) or get in touch via email.
 
-## Unit-tests
+## Unit tests
 
 Morpho has an extensive set of unit-tests to make sure any new piece of code doesn't break essential functionality. Moreover, code within any pull requests to `dev` or `main` is automatically put through the test suite. While this will catch failing tests, if any, you can make sure all the tests are passing on your branch beforehand by running the test suite locally:
 
@@ -31,7 +31,7 @@ If you have fixed a new bug, chances are the existing unit-tests didn't capture 
 
 We highly welcome contributions to the testing suite. Try writing tests that don't overlap with the existing tests, and help us lock down any remaining bugs in Morpho's functionality.
 
-### Formatting a unit-test
+### Formatting a unit test
 
 While a new unit-testing module is [in the works](https://github.com/Morpho-lang/morpho/pull/147), the current unit-test are executed in `python` by looking for the keyword `expect`. For instance, here is an example from the test `power.morpho` that tests the arithmetic power operator:
 

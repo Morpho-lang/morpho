@@ -94,11 +94,13 @@ enum {
     
     NODE_AND,
     NODE_OR,
+    
+    NODE_TERNARY,
 
     NODE_DOT,
     
     NODE_RANGE,
-    NODE_EXCLUSIVERANGE,
+    NODE_INCLUSIVERANGE,
     
     NODE_OPERATOR, /* ^ All operators should be above this enum value */
     

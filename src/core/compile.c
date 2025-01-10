@@ -47,7 +47,7 @@ static void compiler_error(compiler *c, syntaxtreenode *node, errorid id, ... ) 
     char *file = (MORPHO_ISSTRING(c->currentmodule) ? MORPHO_GETCSTRING(c->currentmodule) : NULL);
     
     va_start(args, id);
-    morpho_writeerrorwithidvalist(&c->err, id, NULL, line, posn, args);
+    morpho_writeerrorwithidvalist(&c->err, id, file, line, posn, args);
     va_end(args);
 }
 
@@ -234,7 +234,9 @@ value _closuretype;
 /** Begins arguments */
 static inline void compiler_beginargs(compiler *c) {
     functionstate *f = compiler_currentfunctionstate(c);
-    if (f) f->inargs=true;
+    if (f) {
+        f->inargs=true;
+    }
 }
 
 /** Ends arguments */
@@ -525,6 +527,7 @@ static registerindx compiler_regtempwithindx(compiler *c, registerindx reg) {
 static void compiler_regfree(compiler *c, functionstate *f, registerindx reg) {
     if (reg<f->registers.count) {
         f->registers.data[reg].isallocated=false;
+        f->registers.data[reg].isoptionalarg=false;
         f->registers.data[reg].scopedepth=0;
         if (!MORPHO_ISNIL(f->registers.data[reg].symbol)) {
             debugannotation_setreg(&c->out->annotations, reg, MORPHO_NIL);
@@ -678,6 +681,35 @@ static bool compiler_isregalloc(compiler *c, registerindx indx) {
     return (indx<f->registers.count && f->registers.data[indx].isallocated);
 }
 
+/** @brief Sets that a register contains an optional argument */
+void compiler_regsetoptionalarg(compiler *c, registerindx reg) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (reg<0 || reg>=f->registers.count) return;
+    f->registers.data[reg].isoptionalarg=true;
+}
+
+/** @brief Checks if a register contains an optional argument */
+static bool compiler_isregoptionalarg(compiler *c, registerindx indx) {
+    functionstate *f = compiler_currentfunctionstate(c);
+
+    return (indx<f->registers.count && f->registers.data[indx].isoptionalarg);
+}
+
+/** Gets the number of args from the most recent argument specifier*/
+void compiler_regcountargs(compiler *c, registerindx start, registerindx end, int *nposn, int *nopt) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    int np=0, nop=0;
+    if (f) {
+        for (registerindx r=start; r<=end; r++) {
+            if (compiler_isregoptionalarg(c, r)) nop++;
+            else np++;
+        }
+        
+        *nposn=np;
+        *nopt=nop/2;
+    }
+}
+
 /** @brief Get the scope level associated with a register
  *  @param[in] c        compiler
  *  @param[in] indx register to examine
@@ -724,6 +756,7 @@ static void compiler_regshow(compiler *c) {
             }
             printf(" [%u]", r->scopedepth);
             if (r->iscaptured) printf(" (captured)");
+            if (r->isoptionalarg) printf(" (optarg)");
         } else {
             printf("unallocated");
         }
@@ -976,9 +1009,7 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
 codeinfo compiler_addsymbolwithsizecheck(compiler *c, syntaxtreenode *node, value symbol) {
     codeinfo out = CODEINFO(CONSTANT, 0, 0);
     out.dest = compiler_addsymbol(c, node, symbol);
-    //if (out.dest>MORPHO_MAXREGISTERS) {
-        out = compiler_movetoregister(c, node, out, REGISTER_UNALLOCATED);
-    //}
+    out = compiler_movetoregister(c, node, out, REGISTER_UNALLOCATED);
     return out;
 }
 
@@ -988,11 +1019,28 @@ codeinfo compiler_addsymbolwithsizecheck(compiler *c, syntaxtreenode *node, valu
 
 DEFINE_VARRAY(optionalparam, optionalparam);
 
+/** Adds  a variadic parameter */
+static inline registerindx compiler_addpositionalarg(compiler *c, syntaxtreenode *node, value symbol) {
+    functionstate *f = compiler_currentfunctionstate(c);
+
+    if (f) {
+        if (!function_hasvargs(f->func)) {
+            f->func->nargs++;
+            value sym=program_internsymbol(c->out, symbol);
+            return compiler_addlocal(c, node, sym);
+        } else compiler_error(c, node, COMPILE_VARPRMLST);
+    }
+    
+    return REGISTER_UNALLOCATED;
+}
+
 /** Adds  an optional argument */
 static inline void compiler_addoptionalarg(compiler *c, syntaxtreenode *node, value symbol, value def) {
     functionstate *f = compiler_currentfunctionstate(c);
 
     if (f) {
+        f->func->nopt++;
+        
         value sym=program_internsymbol(c->out, symbol);
         registerindx reg = compiler_addlocal(c, node, sym);
         registerindx val = compiler_addconstant(c, node, def, false, true);
@@ -1018,12 +1066,6 @@ static inline void compiler_addvariadicarg(compiler *c, syntaxtreenode *node, va
 
         function_setvarg(f->func, reg-1);
     }
-}
-
-/** Check if the current function has variadic parameters */
-bool compiler_hasvariadicarg(compiler *c) {
-    functionstate *f = compiler_currentfunctionstate(c);
-    return function_hasvargs(f->func);
 }
 
 /* ------------------------------------------
@@ -1055,8 +1097,9 @@ globalindx compiler_addglobal(compiler *c, syntaxtreenode *node, value symbol) {
 
     if (indx==GLOBAL_UNALLOCATED) {
         indx = program_addglobal(c->out, symbol);
+        value key = program_internsymbol(c->out, symbol);
         
-        if (dictionary_insert(&c->globals, object_clonestring(symbol), MORPHO_INTEGER(indx))) {
+        if (dictionary_insert(&c->globals, key, MORPHO_INTEGER(indx))) {
             debugannotation_setglobal(&c->out->annotations, indx, symbol);
         }
     }
@@ -1618,6 +1661,7 @@ static codeinfo compiler_index(compiler *c, syntaxtreenode *node, registerindx r
 static codeinfo compiler_negate(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_not(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx out);
+static codeinfo compiler_ternary(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_dot(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_grouping(compiler *c, syntaxtreenode *node, registerindx out);
@@ -1682,6 +1726,7 @@ compilenoderule noderules[] = {
     { compiler_binary        },      // NODE_POW
 
     { compiler_assign        },      // NODE_ASSIGN
+    
     { compiler_binary        },      // NODE_EQ
     { compiler_binary        },      // NODE_NEQ
     { compiler_binary        },      // NODE_LT
@@ -1691,11 +1736,13 @@ compilenoderule noderules[] = {
 
     { compiler_logical       },      // NODE_AND
     { compiler_logical       },      // NODE_OR
+    
+    { compiler_ternary       },      // NODE_TERNARY
 
     { compiler_dot           },      // NODE_DOT
 
     { compiler_range         },      // NODE_RANGE
-    { compiler_range         },      // NODE_EXCLUSIVERANGE
+    { compiler_range         },      // NODE_INCLUSIVERANGE
 
     NODE_UNDEFINED,                  // NODE_OPERATOR
 
@@ -1839,17 +1886,19 @@ static codeinfo compiler_dictionary(compiler *c, syntaxtreenode *node, registeri
 /** Compiles a range */
 static codeinfo compiler_range(compiler *c, syntaxtreenode *node, registerindx reqout) {
     syntaxtreeindx s[3]={ SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED};
+    bool inclusive = node->type==NODE_INCLUSIVERANGE;
 
     /* Determine whether we have start..end or start..end:step */
     syntaxtreenode *left=compiler_getnode(c, node->left);
-    if (left && left->type==NODE_RANGE) {
+    if (left && (left->type==NODE_RANGE || left->type==NODE_INCLUSIVERANGE)) {
         s[0]=left->left; s[1]=left->right; s[2]=node->right;
+        inclusive = left->type==NODE_INCLUSIVERANGE;
     } else {
         s[0]=node->left; s[1]=node->right;
     }
 
     /* Set up a call to the Range() function */
-    codeinfo rng = compiler_findbuiltin(c, node, RANGE_CLASSNAME, reqout);
+    codeinfo rng = compiler_findbuiltin(c, node, (inclusive ? RANGE_INCLUSIVE_CONSTRUCTOR: RANGE_CLASSNAME), reqout);
     
     value rngtype=MORPHO_NIL; /* Set the type associated with the register */
     if (compiler_findtypefromcstring(c, RANGE_CLASSNAME, &rngtype)) {
@@ -1914,7 +1963,7 @@ static codeinfo compiler_index(compiler *c, syntaxtreenode *node, registerindx r
     registerindx start, end;
 
     /* Compile the index selector */
-    codeinfo left = compiler_nodetobytecode(c, node->left, reqout);
+    codeinfo left = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
     unsigned int ninstructions=left.ninstructions;
 
     if (!CODEINFO_ISREGISTER(left)) {
@@ -1930,12 +1979,23 @@ static codeinfo compiler_index(compiler *c, syntaxtreenode *node, registerindx r
     /* Compile instruction */
     compiler_addinstruction(c, ENCODE(OP_LIX, left.dest, start, end), node);
     ninstructions++;
-
+    
     /* Free anything we're done with */
     compiler_releaseoperand(c, left);
     compiler_regfreetoend(c, start+1);
+    
+    codeinfo iout = CODEINFO(REGISTER, start, ninstructions);
+    
+    if (reqout>=0 &&
+        start!=reqout) {
+        compiler_regfreetemp(c, start);
+        iout = compiler_movetoregister(c, node, iout, reqout);
+        ninstructions+=iout.ninstructions;
+    }
+    
+    iout.ninstructions=ninstructions;
 
-    return CODEINFO(REGISTER, start, ninstructions);
+    return iout;
 }
 
 /** Compile negation. Note that this is compiled as A=(0-B) */
@@ -2040,12 +2100,88 @@ static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx 
             UNREACHABLE("in compiling binary instruction [check bytecode compiler table]");
     }
 
+    if (compiler_haserror(c)) return CODEINFO_EMPTY;
+    
     compiler_addinstruction(c, ENCODE(op, out, left.dest, right.dest), node);
     ninstructions++;
     compiler_releaseoperand(c, left);
     compiler_releaseoperand(c, right);
 
     return CODEINFO(REGISTER, out, ninstructions);
+}
+
+/** @brief Compiles the ternary operator
+ *  @details Ternary operators are encoded in the syntax tree
+ *
+ *           <pre>
+ *                 TERNARY
+ *                  /  \
+ *              cond    SEQUENCE
+ *                       /    \
+ *            true outcome    false outcome
+ *           </pre> 
+ *   and are compiled to:
+ *              <cond>
+ *              bif    <cond>, fail:  ; branch if condition isn't met
+ *              .. true outcome
+ *              b      end            ; generated if an else statement is present
+ *           fail:
+ *              .. false outcome
+ *           end:
+ */
+static codeinfo compiler_ternary(compiler *c, syntaxtreenode *node, registerindx reqout) {
+    unsigned int ninstructions=0;
+    
+    // Compile the condition
+    codeinfo cond = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
+    ninstructions+=cond.ninstructions;
+    
+    // And make sure it's in a register */
+    if (!CODEINFO_ISREGISTER(cond)) {
+       cond=compiler_movetoregister(c, node, cond, REGISTER_UNALLOCATED);
+       ninstructions+=cond.ninstructions; /* Keep track of instructions */
+    }
+
+    // Generate empty instruction to contain the conditional branch
+    instructionindx cbrnchindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
+    ninstructions++;
+    
+    // We're now done with the result of the condition
+    compiler_releaseoperand(c, cond);
+    
+    // Claim an output register
+    registerindx rout=compiler_regtemp(c, reqout);
+    
+    // Get the possible outcomes
+    syntaxtreenode *outcomes = compiler_getnode(c, node->right);
+    
+    // Compile true outcome
+    codeinfo left = compiler_nodetobytecode(c, outcomes->left, rout);
+    ninstructions+=left.ninstructions;
+    
+    // Ensure the result is in the output register
+    left = compiler_movetoregister(c, outcomes, left, rout);
+    ninstructions+=left.ninstructions;
+    
+    // Generate empty instruction to branch to the end
+    instructionindx brnchendindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
+    ninstructions++;
+    
+    // Compile false outcome
+    codeinfo right = compiler_nodetobytecode(c, outcomes->right, rout);
+    ninstructions+=right.ninstructions;
+    
+    // Ensure the result is in the output register
+    right = compiler_movetoregister(c, outcomes, right, rout);
+    ninstructions+=right.ninstructions;
+    
+    instructionindx end=compiler_currentinstructionindex(c);
+    
+    // Patch up branches
+    compiler_setinstruction(c, cbrnchindx, ENCODE_LONG(OP_BIFF, cond.dest, brnchendindx-cbrnchindx));
+    compiler_setinstruction(c, brnchendindx, ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, end-brnchendindx-1));
+    
+    return CODEINFO(REGISTER, rout, ninstructions);
 }
 
 /** Compiles a group (used to modify precedence) */
@@ -2373,14 +2509,33 @@ static codeinfo compiler_while(compiler *c, syntaxtreenode *node, registerindx r
  *              /   \
  *            init     collection
  * This works by successively calling enumerate() on the collections, first with no arguments to get the bound, then
- * with the integer counter.
- *
- * The body of the loop is then evaluated with the value set up as a local variable.
+ * with the integer counter as in the below code
  *
  * Register allocation
- *  +0 - loop counter
- *  +1 - maximum value of loop counter
- *  +2 - value from the collection
+ *  |  rObj  | rIndx  | | rMax  | rEnum |  rVal   | rTmp   |  ...
+ *
+ *  Find maximum value of counter
+ *   lct   rEnum,  c             ; "enumerate"
+ *   mov   rVal,   rObj          ;
+ *   lct   rTmp, c               ; -1
+ *   invoke rEnum, 1, 0
+ *   mov   rMax, rVal
+
+ *  loopstart:
+ *   lt    rTmp,  rIndx,  rMax
+ *   biff  rTmp,  <loopend>
+
+ *   mov   rVal, rObj
+ *   mov   rTmp, rIndx
+ *   invoke rEnum, 1, 0
+
+ *   ... Loop body ...
+
+ *   lct   rTmp, c               ; 1
+ *   add   rIndx, rIndx, rTmp    ;
+
+ *   b     <loopstart>
+ *  loopend:
  */
 static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo body;
@@ -2406,51 +2561,66 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
         collnode=compiler_getnode(c, innode->right);
     }
 
-    /* Allocate a register for the (usually hidden) counter */
-    registerindx rcount=compiler_regalloc(c, MORPHO_NIL);
-    registerindx cnil = compiler_addconstant(c, node, MORPHO_INTEGER(0), false, false);
-    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rcount, cnil), node);
-    ninstructions++;
+    // Register allocation for the loop
+    // |  rObj  | rIndx  || rMax  | rEnum |  rVal   | rTmp   |  ...
 
-    /* Find the collection symbol */
+    // Fetch the collection object
     codeinfo coll=compiler_nodetobytecode(c, innode->right, REGISTER_UNALLOCATED);
     ninstructions+=coll.ninstructions;
+    if (!CODEINFO_ISREGISTER(coll)) {
+        coll=compiler_movetoregister(c, collnode, coll, REGISTER_UNALLOCATED);
+        ninstructions+=coll.ninstructions;
+    }
+    registerindx rObj = coll.dest;
+    
+    // Initialize the index variable
+    registerindx rIndx=compiler_regalloc(c, MORPHO_NIL);
+    if (indxnode) compiler_regsetsymbol(c, rIndx, indxnode->content);
+    int cNil = compiler_addconstant(c, node, MORPHO_INTEGER(0), false, false);
+    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rIndx, cNil), node);
+    ninstructions++;
+    
+    /* Obtain the maximum value of rIndx by invoking enumerate */
+    
+    // Allocate register to contain maximum value of the counter
+    registerindx rMax=compiler_regalloctop(c);
+    
+    // Initialize enumerate selector
+    registerindx rEnum=compiler_regalloctop(c);
+    int cEnum = compiler_addconstant(c, node, enumerateselector, false, false);
+    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rEnum, cEnum), node);
+    ninstructions++;
 
-    /* Now obtain the maximum value for the counter by invoking enumerate on the collection */
-    codeinfo method=compiler_addsymbolwithsizecheck(c, node, enumerateselector);
-    ninstructions+=method.ninstructions;
+    // Place the object into the register after rEnum
+    registerindx rVal=compiler_regalloctop(c);
+    compiler_regsetsymbol(c, rVal, initnode->content);
+    compiler_addinstruction(c, ENCODE_LONG(OP_MOV, rVal, rObj), node);
+    ninstructions++;
 
-    registerindx rmax=compiler_regalloctop(c);
-    registerindx rmone=compiler_regalloctop(c);
-    registerindx cmone = compiler_addconstant(c, node, MORPHO_INTEGER(-1), false, false);
-    codeinfo mv=compiler_movetoregister(c, collnode, coll, rmax);
-    ninstructions+=mv.ninstructions;
-
-    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rmone, cmone), node);
-    compiler_addinstruction(c, ENCODE(OP_INVOKE, rmax, method.dest, 1), collnode);
+    // Parameter is -1 to query size of collection
+    registerindx rTmp=compiler_regalloctop(c);
+    registerindx cNegOne = compiler_addconstant(c, node, MORPHO_INTEGER(-1), false, false);
+    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rTmp, cNegOne), node);
+    ninstructions++;
+    
+    compiler_addinstruction(c, ENCODE(OP_INVOKE, rEnum, 1, 0), collnode);
+    ninstructions++;
+    
+    // Store the maximum value
+    compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, rMax, rVal), collnode);
+    ninstructions++;
+    
+    /* Test index against the maximum value */
+    instructionindx tst=compiler_addinstruction(c, ENCODE(OP_LT, rTmp, rIndx, rMax), node);
+    condindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node); // Placeholder for branch
     ninstructions+=2;
-    compiler_regfreetemp(c, rmone);
-
-    /* The test instruction */
-    registerindx rcond=compiler_regtemp(c, REGISTER_UNALLOCATED);
-    instructionindx tst=compiler_addinstruction(c, ENCODE(OP_LT, rcond, rcount, rmax), node);
-    condindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
-    ninstructions+=2;
-    compiler_regfreetemp(c, rcond);
-
-    /* Call enumerate again to retrieve the value */
-    registerindx rval=compiler_regalloctop(c);
-    mv=compiler_movetoregister(c, collnode, coll, rval);
-    ninstructions+=mv.ninstructions;
-
-    registerindx rarg=compiler_regalloctop(c);
-    compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, rarg, rcount), node);
-    compiler_addinstruction(c, ENCODE(OP_INVOKE, rval, method.dest, 1), collnode);
-    ninstructions+=2;
-
-    compiler_regsetsymbol(c, rval, initnode->content);
-    if (indxnode) compiler_regsetsymbol(c, rcount, indxnode->content);
-
+    
+    /* Load enumerated value */
+    compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, rVal, rObj), node);
+    compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, rTmp, rIndx), node);
+    compiler_addinstruction(c, ENCODE(OP_INVOKE, rEnum, 1, 0), collnode);
+    ninstructions+=3;
+    
     compiler_beginloop(c);
 
     /* Compile the body */
@@ -2467,24 +2637,23 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     /* Increment the counter */
     instructionindx inc=compiler_currentinstructionindex(c);
 
-    registerindx cone = compiler_addconstant(c, node, MORPHO_INTEGER(1), false, false);
-    codeinfo oneinfo = CODEINFO(CONSTANT, cone, 0);
-    oneinfo = compiler_movetoregister(c, node, oneinfo, REGISTER_UNALLOCATED);
-    ninstructions+=oneinfo.ninstructions;
-
-    instructionindx add=compiler_addinstruction(c, ENCODE(OP_ADD, rcount, rcount, oneinfo.dest), node);
-    ninstructions++;
-
+    int cOne = compiler_addconstant(c, node, MORPHO_INTEGER(1), false, false);
+    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rTmp, cOne), node);
+    instructionindx add=compiler_addinstruction(c, ENCODE(OP_ADD, rIndx, rIndx, rTmp), node);
+    ninstructions+=2;
+    
     /* Compile the unconditional branch back to the test instruction */
     instructionindx end=compiler_addinstruction(c, ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, -(add-tst)-2), node);
     ninstructions++;
 
     /* Go back and generate the condition instruction */
-    compiler_setinstruction(c, condindx, ENCODE_LONG(OP_BIFF, rcond, (add-tst) ));
+    compiler_setinstruction(c, condindx, ENCODE_LONG(OP_BIFF, rTmp, (add-tst) ));
 
     compiler_fixloop(c, tst, inc, end+1);
 
-    if (CODEINFO_ISREGISTER(method)) compiler_regfreetemp(c, method.dest);
+    compiler_regfreetemp(c, rObj);
+    compiler_regfreetemp(c, rIndx);
+    compiler_regfreetoend(c, rMax);
 
     compiler_endscope(c);
 
@@ -2593,6 +2762,8 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
     objectdictionary *cdict = object_newdictionary();
     if (!cdict) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return out; }
 
+    program_bindobject(c->out, (object *) cdict);
+    
     registerindx cdictindx = compiler_addconstant(c, node, MORPHO_OBJECT(cdict), false, false);
 
     compiler_addinstruction(c, ENCODE_LONG(OP_PUSHERR, 0, cdictindx), node);
@@ -2831,11 +3002,7 @@ static registerindx compiler_functionparameters(compiler *c, syntaxtreeindx indx
 
     switch(node->type) {
         case NODE_SYMBOL:
-        {
-            if (!compiler_hasvariadicarg(c)) {
-                return compiler_addlocal(c, node, node->content);
-            } else compiler_error(c, node, COMPILE_VARPRMLST);
-        }
+            return compiler_addpositionalarg(c, node, node->content);
             break;
         case NODE_TYPE:
         {
@@ -2928,6 +3095,9 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     bindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
 
     objectfunction *func = object_newfunction(bindx+1, node->content, compiler_getcurrentfunction(c), 0);
+    if (!func) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return CODEINFO_EMPTY; }
+    
+    program_bindobject(c->out, (object *) func);
     
     /* Record the class is a method */
     if (ismethod) func->klass=compiler_getcurrentclass(c);
@@ -2953,8 +3123,6 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 
     /* -- Compile the parameters -- */
     compiler_functionparameters(c, node->left);
-
-    func->nargs=compiler_regtop(c);
     
     value signature[func->nargs+1];
     for (int i=0; i<func->nargs; i++) compiler_regtype(c, i+1, &signature[i]);
@@ -2962,7 +3130,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     signature_setvarg(&func->sig, function_hasvargs(func));
 
     /* Check we don't have too many arguments */
-    if (func->nargs>MORPHO_MAXARGS) {
+    if (func->nargs+func->nopt>MORPHO_MAXARGS) {
         compiler_error(c, node, COMPILE_TOOMANYPARAMS);
         return CODEINFO_EMPTY;
     }
@@ -3041,7 +3209,6 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo arginfo;
     unsigned int ninstructions=0;
-    bool optstarted=false;
 
     varray_syntaxtreeindx argnodes;
     varray_syntaxtreeindxinit(&argnodes);
@@ -3052,21 +3219,12 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
     syntaxtree_flatten(compiler_getsyntaxtree(c), node->right, 1, match, &argnodes);
 
     for (unsigned int i=0; i<argnodes.count; i++) {
+        bool isOptional=false;
         /* Claim a new register */
         registerindx reg=compiler_regalloctop(c);
 
         syntaxtreenode *arg = compiler_getnode(c, argnodes.data[i]);
         if (arg->type==NODE_ASSIGN) {
-            if (!optstarted) { // Add the optional marker object before the first optional argument
-                optstarted=true;
-                
-                registerindx k = compiler_addconstant(c, arg, vm_optmarker, true, false);
-                compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, k), node);
-                ninstructions++;
-                
-                reg=compiler_regalloctop(c);
-            }
-            
             syntaxtreenode *symbol = compiler_getnode(c, arg->left);
 
             /* Intern the symbol and add to the constant table */
@@ -3074,11 +3232,16 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
             registerindx sym=compiler_addconstant(c, arg, s, true, false);
             /* For the call, move the interned symbol to a register */
             codeinfo info=CODEINFO(CONSTANT, sym, 0);
+            
             info=compiler_movetoregister(c, arg, info, reg);
             ninstructions+=info.ninstructions;
+            compiler_regsetoptionalarg(c, info.dest);
+            
             reg=compiler_regalloctop(c);
-
             arginfo=compiler_nodetobytecode(c, arg->right, reg);
+            if (CODEINFO_ISREGISTER(arginfo)) compiler_regsetoptionalarg(c, arginfo.dest);
+            
+            isOptional=true;
         } else {
             arginfo=compiler_nodetobytecode(c, argnodes.data[i], reg);
         }
@@ -3090,6 +3253,7 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
             compiler_regtempwithindx(c, reg);
             arginfo=compiler_movetoregister(c, node, arginfo, reg);
             ninstructions+=arginfo.ninstructions;
+            if (isOptional) compiler_regsetoptionalarg(c, arginfo.dest);
         }
 
         if (!compiler_haserror(c) && compiler_regtop(c)!=reg) {
@@ -3097,7 +3261,7 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
             UNREACHABLE("Incorrectly freed registers in compiling argument list.");
         }
     }
-
+    
     varray_syntaxtreeindxclear(&argnodes);
 
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
@@ -3187,7 +3351,9 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     compiler_endargs(c);
 
     /* Generate the call instruction */
-    compiler_addinstruction(c, ENCODE_DOUBLE(OP_CALL, func.dest, lastarg-func.dest), node);
+    int nposn=0, nopt=0;
+    compiler_regcountargs(c, func.dest+1, lastarg, &nposn, &nopt);
+    compiler_addinstruction(c, ENCODE(OP_CALL, func.dest, nposn, nopt), node);
     ninstructions++;
 
     /* Free all the registers used for the call */
@@ -3212,31 +3378,45 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
 /** Compiles a method invocation */
 static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
-    codeinfo object;
+    codeinfo object=CODEINFO_EMPTY;
 
     /* Get the selector node */
     syntaxtreenode *selector=compiler_getnode(c, node->left);
 
     compiler_beginargs(c);
+    
+    registerindx rSel = compiler_regalloctop(c);
+    registerindx rObj = compiler_regalloctop(c);
 
     syntaxtreenode *methodnode=compiler_getnode(c, selector->right);
-    codeinfo method=compiler_addsymbolwithsizecheck(c, methodnode, methodnode->content);
+    codeinfo cSel = CODEINFO(CONSTANT, 0, 0);
+    cSel.dest = compiler_addsymbol(c, methodnode, methodnode->content);
+    codeinfo method=compiler_movetoregister(c, methodnode, cSel, rSel);
     ninstructions+=method.ninstructions;
 
-    registerindx top=compiler_regtop(c);
-
-    /* Fetch the object */
-    object=compiler_nodetobytecode(c, selector->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
-    ninstructions+=object.ninstructions;
-
-    /* Move object into a temporary register unless we already have one
-       that's at the top of the stack */
-    if (!compiler_iscodeinfotop(c, object)) {
-        registerindx otop = compiler_regalloctop(c);
-        object=compiler_movetoregister(c, node, object, otop);
-        ninstructions+=object.ninstructions;
+    /* Fetch the object. We patch to ensure that builtin classes are prioritized over constructor functions. */
+    syntaxtreenode *objectnode=compiler_getnode(c, selector->left);
+    if (objectnode->type==NODE_SYMBOL) {
+        value klass=builtin_findclass(objectnode->content);
+        if (MORPHO_ISCLASS(klass)) {
+            registerindx kindx = compiler_addconstant(c, objectnode, klass, true, false);
+            object=CODEINFO(CONSTANT, kindx, 0);
+        }
+    }
+    
+    // Otherwise just fetch the object normally
+    if (object.returntype==REGISTER && object.dest==REGISTER_UNALLOCATED) { 
+      object=compiler_nodetobytecode(c, selector->left, rObj);
     }
 
+    ninstructions+=object.ninstructions;
+    if (object.returntype==REGISTER && object.dest!=rObj) {
+        compiler_regfreetemp(c, object.dest);
+        compiler_regtempwithindx(c, rObj); // Ensure rObj remains allocated
+    }
+    object=compiler_movetoregister(c, selector, object, rObj);
+    ninstructions+=object.ninstructions;
+    
     /* Compile the arguments */
     codeinfo args = CODEINFO_EMPTY;
     if (node->right!=SYNTAXTREE_UNCONNECTED) args=compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
@@ -3246,7 +3426,7 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     registerindx lastarg=compiler_regtop(c);
 
     /* Check we don't have too many arguments */
-    if (lastarg-object.dest>MORPHO_MAXARGS) {
+    if (lastarg-rSel>MORPHO_MAXARGS) {
         compiler_error(c, node, COMPILE_TOOMANYARGS);
         return CODEINFO_EMPTY;
     }
@@ -3254,21 +3434,22 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     compiler_endargs(c);
 
     /* Generate the call instruction */
-    compiler_addinstruction(c, ENCODE(OP_INVOKE, object.dest, method.dest, lastarg-object.dest), node);
+    int nposn=0, nopt=0;
+    compiler_regcountargs(c, object.dest+1, lastarg, &nposn, &nopt);
+    compiler_addinstruction(c, ENCODE(OP_INVOKE, rSel, nposn, nopt), node);
     ninstructions++;
 
     /* Free all the registers used for the call */
-    compiler_regfreetoend(c, object.dest+1);
+    compiler_regfreetemp(c, rSel);
+    compiler_regfreetoend(c, rObj+1);
 
     /* Move the result to the requested register */
     if (reqout!=REGISTER_UNALLOCATED && object.dest!=reqout) {
-        compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, reqout, object.dest), node);
+        compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, reqout, rObj), node);
         ninstructions++;
-        compiler_regfreetemp(c, object.dest);
+        compiler_regfreetemp(c, rObj);
         object.dest=reqout;
     }
-
-    if (CODEINFO_ISREGISTER(method)) compiler_regfreetemp(c, method.dest);
 
     return CODEINFO(REGISTER, object.dest, ninstructions);
 }
@@ -3316,7 +3497,10 @@ void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *
     
     if (MORPHO_ISMETAFUNCTION(prev)) {
         objectmetafunction *f = MORPHO_GETMETAFUNCTION(prev);
-        if (f->klass!=klass) f=metafunction_clone(f);
+        if (f->klass!=klass) {
+            f=metafunction_clone(f);
+            if (f) program_bindobject(c->out, (object *) f);
+        }
         
         if (f) {
             metafunction_setclass(f, klass);
@@ -3351,6 +3535,7 @@ void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *
                 metafunction_add(f, MORPHO_OBJECT(method));
                 metafunction_setclass(f, klass);
                 dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(f));
+                program_bindobject(c->out, (object *) f);
             }
         }
     } else if (MORPHO_ISBUILTINFUNCTION(prev)) { // A builtin function can only come from a parent class, so overwrite it
@@ -3415,7 +3600,7 @@ static codeinfo compiler_method(compiler *c, syntaxtreenode *node, registerindx 
 static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
     registerindx kindx;
-    codeinfo mout;
+    codeinfo mout=CODEINFO_EMPTY;
 
     if (compiler_getcurrentclass(c)) {
         compiler_error(c, node, COMPILE_NSTDCLSS);
@@ -3423,6 +3608,8 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
     }
 
     objectclass *klass=object_newclass(node->content);
+    if (!klass) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return CODEINFO_EMPTY; }
+    
     compiler_beginclass(c, klass);
 
     /** Store the object class as a constant */
@@ -3520,6 +3707,9 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
         ninstructions+=mv.ninstructions;
         compiler_regfreetemp(c, reg);
     }
+    
+    /* Bind the klass to the program to be freed on exit */
+    if (klass) program_bindobject(c->out, (object *) klass);
     
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
@@ -3927,10 +4117,6 @@ void compiler_copysymbols(dictionary *src, dictionary *dest, dictionary *compare
             
             if (MORPHO_ISSTRING(key) &&
                 MORPHO_GETCSTRING(key)[0]=='_') continue;
-            
-            if (!dictionary_get(dest, key, NULL)) {
-                key=object_clonestring(key);
-            }
 
             dictionary_insert(dest, key, src->contents[i].val);
         }
@@ -3978,9 +4164,8 @@ void compiler_copyfunctionreftonamespace(compiler *src, namespc *dest, dictionar
 
 /** Searches for a module with given name, returns the file name for inclusion. */
 bool compiler_findmodule(char *name, varray_char *fname) {
-    char *ext[] = { MORPHO_EXTENSION, "" };
     value out=MORPHO_NIL;
-    bool success=morpho_findresource(MORPHO_MODULEDIR, name, ext, true, &out);
+    bool success=morpho_findresource(MORPHO_RESOURCE_MODULE, name, &out);
     
     if (success) {
         fname->count=0;
@@ -4181,8 +4366,7 @@ void compiler_clear(compiler *c) {
     compiler_fstackclear(c);
     syntaxtree_clear(&c->tree);
     compiler_clearnamespacelist(c);
-    dictionary_freecontents(&c->globals, true, false);
-    dictionary_clear(&c->globals);
+    dictionary_clear(&c->globals); // Keys are bound to the program
     dictionary_freecontents(&c->modules, true, true);
     dictionary_clear(&c->modules);
     dictionary_clear(&c->classes);

@@ -179,7 +179,6 @@ char lex_peek(lexer *l);
 char lex_peekahead(lexer *l, int n);
 char lex_peekprevious(lexer *l);
 void lex_newline(lexer *l);
-
 bool lex_skipshebang(lexer *l);
 
 /* -------------------------------------------------------
@@ -202,6 +201,9 @@ void lex_setmatchkeywords(lexer *l, bool match);
 bool lex_matchkeywords(lexer *l);
 void lex_setwhitespacefn(lexer *l, processtokenfn whitespacefn);
 void lex_setprefn(lexer *l, processtokenfn prefn);
+
+// Get information about a token
+bool lex_tokeniskeyword(lexer *l, token *tok);
 
 // Obtain the next token
 bool lex(lexer *l, token *tok, error *err);

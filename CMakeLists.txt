@@ -29,9 +29,13 @@ if(MORPHO_GCSTRESSTEST)
 target_compile_definitions(morpho PUBLIC _DEBUG_STRESSGARBAGECOLLECTOR)
 endif() 
 
-# Set resources directory
-if(MORPHO_RESOURCESDIR)
-target_compile_definitions(morpho PUBLIC MORPHO_RESOURCESDIR=\"${MORPHO_RESOURCESDIR}\")
+# Set help directory
+if(MORPHO_HELP_BASEDIR)
+target_compile_definitions(morpho PUBLIC MORPHO_HELP_BASEDIR=\"${MORPHO_HELP_BASEDIR}\")
+endif() 
+
+if(MORPHO_MODULE_BASEDIR)
+target_compile_definitions(morpho PUBLIC MORPHO_MODULE_BASEDIR=\"${MORPHO_MODULE_BASEDIR}\")
 endif() 
 
 # Create source groups for IDE

@@ -136,6 +136,13 @@ bool parse_checktokenadvance(parser *p, tokentype type) {
     return true;
 }
 
+/** Checks whether the current token is a keyword */
+bool parse_checktokeniskeywordadvance(parser *p) {
+    PARSE_CHECK(lex_tokeniskeyword(p->lex, &p->current));
+    PARSE_CHECK(parse_advance(p));
+    return true;
+}
+
 /** @brief Checks if the next token has the required type and advance if it does, otherwise generates an error.
  *  @param   p    the parser in use
  *  @param   type type to check
@@ -807,6 +814,9 @@ bool parse_binary(parser *p, void *out) {
         if (nodetype==NODE_ASSIGN &&
             parse_checktokenadvance(p, TOKEN_FUNCTION)) {
             PARSE_CHECK(parse_anonymousfunction(p, &right));
+        } else if (nodetype==NODE_DOT &&
+                   parse_checktokeniskeywordadvance(p)) {
+            PARSE_CHECK(parse_symbol(p, &right));
         } else {
             PARSE_CHECK(parse_precedence(p, rule->precedence + (assoc == LEFT ? 1 : 0), &right));
         }
@@ -814,6 +824,19 @@ bool parse_binary(parser *p, void *out) {
     
     /* Now add this node */
     return parse_addnode(p, nodetype, MORPHO_NIL, &start, left, right, (syntaxtreeindx *) out);
+}
+
+/** Parse ternary operator */
+bool parse_ternary(parser *p, void *out) {
+    token start = p->previous;
+    syntaxtreeindx cond=p->left;
+    syntaxtreeindx left, right, outcomes;
+    PARSE_CHECK(parse_expression(p, &left));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_COLON, PARSE_TRNRYMSSNGCOLON));
+    PARSE_CHECK(parse_expression(p, &right));
+    
+    PARSE_CHECK(parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, left, right, &outcomes));
+    return parse_addnode(p, NODE_TERNARY, MORPHO_NIL, &start, cond, outcomes, (syntaxtreeindx *) out);
 }
 
 /** Parse operators like +=, -=, *= etc. */
@@ -856,20 +879,15 @@ bool parse_range(parser *p, void *out) {
     
     syntaxtreeindx left=p->left;
     syntaxtreeindx right;
-    PARSE_CHECK(parse_expression(p, &right));
-    syntaxtreeindx one=SYNTAXTREE_UNCONNECTED;
-    if (!inclusive) {
-        PARSE_CHECK(parse_addnode(p, NODE_INTEGER, MORPHO_INTEGER(1), &start, SYNTAXTREE_UNCONNECTED, SYNTAXTREE_UNCONNECTED, &one));
-        PARSE_CHECK(parse_addnode(p, NODE_SUBTRACT, MORPHO_NIL, &start, right, one, &right));
-    }
-    syntaxtreeindx new;
-    PARSE_CHECK(parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, left, right, &new));
     
-    if (parse_checktokenadvance(p, TOKEN_COLON)) {
+    PARSE_CHECK(parse_expression(p, &right));
+    syntaxtreeindx new;
+    PARSE_CHECK(parse_addnode(p, (inclusive ? NODE_INCLUSIVERANGE : NODE_RANGE), MORPHO_NIL, &start, left, right, &new));
+    
+    if (parse_checktokenadvance(p, TOKEN_COLON)) { // Wrap in an outer NODE_RANGE
         syntaxtreeindx step;
         PARSE_CHECK(parse_expression(p, &step));
         
-        if (!inclusive) parse_lookupnode(p, right)->right = step;
         PARSE_CHECK(parse_addnode(p, NODE_RANGE, MORPHO_NIL, &start, new, step, &new));
     }
     
@@ -1053,7 +1071,8 @@ bool parse_functiondeclaration(parser *p, void *out) {
                    body=SYNTAXTREE_UNCONNECTED;
     
     /* Function name */
-    if (parse_checktokenadvance(p, TOKEN_SYMBOL)) {
+    if (parse_checktokenadvance(p, TOKEN_SYMBOL) ||
+        parse_checktokeniskeywordadvance(p)) {
         name=parse_tokenasstring(p);
         parse_addobject(p, name);
     } else {
@@ -1076,7 +1095,6 @@ bool parse_functiondeclaration(parser *p, void *out) {
 /* Parses a class declaration */
 bool parse_classdeclaration(parser *p, void *out) {
     value name=MORPHO_NIL;
-    value sname=MORPHO_NIL;
     syntaxtreeindx sclass=SYNTAXTREE_UNCONNECTED;
     token start = p->previous;
     
@@ -1236,8 +1254,7 @@ bool parse_expressionstatement(parser *p, void *out) {
  *                   -       body
  **/
 bool parse_blockstatement(parser *p, void *out) {
-    syntaxtreeindx body = SYNTAXTREE_UNCONNECTED,
-                   scope = SYNTAXTREE_UNCONNECTED;
+    syntaxtreeindx body = SYNTAXTREE_UNCONNECTED;
     token start = p->previous;
     tokentype terminator[] = { TOKEN_RIGHTCURLYBRACKET };
     
@@ -1563,7 +1580,7 @@ bool parse_program(parser *p, void *out) {
 
 parserule rules[] = {
     PARSERULE_UNUSED(TOKEN_NEWLINE),
-    PARSERULE_UNUSED(TOKEN_QUESTION),
+    PARSERULE_INFIX(TOKEN_QUESTION, parse_ternary, PREC_TERNARY),
     
     PARSERULE_PREFIX(TOKEN_STRING, parse_string),
     PARSERULE_PREFIX(TOKEN_INTERPOLATION, parse_interpolation),
@@ -1848,6 +1865,7 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_BLOCKTERMINATOREXP, ERROR_PARSE, PARSE_BLOCKTERMINATOREXP_MSG);
     morpho_defineerror(PARSE_MSSNGSQBRC, ERROR_PARSE, PARSE_MSSNGSQBRC_MSG);
     morpho_defineerror(PARSE_MSSNGCOMMA, ERROR_PARSE, PARSE_MSSNGCOMMA_MSG);
+    morpho_defineerror(PARSE_TRNRYMSSNGCOLON, ERROR_PARSE, PARSE_TRNRYMSSNGCOLON_MSG);
     morpho_defineerror(PARSE_IFLFTPARENMISSING, ERROR_PARSE, PARSE_IFLFTPARENMISSING_MSG);
     morpho_defineerror(PARSE_IFRGHTPARENMISSING, ERROR_PARSE, PARSE_IFRGHTPARENMISSING_MSG);
     morpho_defineerror(PARSE_WHILELFTPARENMISSING, ERROR_PARSE, PARSE_WHILELFTPARENMISSING_MSG);

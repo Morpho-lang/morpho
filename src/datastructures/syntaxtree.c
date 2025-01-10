@@ -79,10 +79,12 @@ static char * nodedisplay[] = {
     "and",     // NODE_AND
     "or",      // NODE_OR
     
+    "?",       // NODE_TERNARY
+    
     ".",       // NODE_DOT
     
-    "..",      // NODE_RANGE
-    "...",      // NODE_EXCLUSIVERANGE
+    "..",      // NODE_INCLUSIVERANGE
+    "...",     // NODE_RANGE
     
     "",        // NODE_OPERATOR, /* ^ All operators should be above this enum value */
     

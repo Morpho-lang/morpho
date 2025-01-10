@@ -1,0 +1,8 @@
+// Ternary operator 
+
+fn f(a,b) {
+    return 1 + (a < b ? 1 : 0) 
+}
+
+print f(1,2) // expect: 2
+print f(2,1) // expect: 1

@@ -19,6 +19,7 @@ void morpho_finalize(void);
 
 instructionindx vm_previnstruction(vm *v);
 instructionindx vm_currentinstruction(vm *v);
+int vm_getoptionalargs(vm *v);
 debugger *vm_getdebugger(vm *v);
 
 #endif /* vm_h */

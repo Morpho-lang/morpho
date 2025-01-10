@@ -46,6 +46,12 @@ objectinstance *object_newinstance(objectclass *klass);
 #define OBJECT_IMMUTABLE                  "ObjImmutable"
 #define OBJECT_IMMUTABLE_MSG              "Cannot modify this object."
 
+#define OBJECT_NOPRP                      "ObjNoPrp"
+#define OBJECT_NOPRP_MSG                  "Object does not provide properties."
+
+#define GETINDEX_ARGS                     "IndxArgs"
+#define GETINDEX_ARGS_MSG                 "Index method expects a String property name as its argument."
+
 #define SETINDEX_ARGS                     "SetIndxArgs"
 #define SETINDEX_ARGS_MSG                 "Setindex method expects an index and a value as arguments."
 
@@ -65,8 +71,11 @@ objectinstance *object_newinstance(objectclass *klass);
  * Instance interface
  * ------------------------------------------------------- */
 
-/* Expose Object_print */
+/* Expose a few methods for veneer classes */
+value Object_class(vm *v, int nargs, value *args);
+value Object_respondsto(vm *v, int nargs, value *args);
 value Object_print(vm *v, int nargs, value *args);
+value Object_invoke(vm *v, int nargs, value *args);
 
 bool objectinstance_setproperty(objectinstance *obj, value key, value val);
 bool objectinstance_getproperty(objectinstance *obj, value key, value *val);

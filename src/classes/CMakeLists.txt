@@ -2,6 +2,7 @@ target_sources(morpho
     PRIVATE
         classes.h
         array.c        array.h
+        bool.c         bool.h 
         closure.c      closure.h
         clss.c         clss.h
         cmplx.c        cmplx.h

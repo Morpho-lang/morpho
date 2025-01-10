@@ -281,7 +281,7 @@ void random_initialize(void) {
     /* Initialize from OS random bits */
     urandom=fopen("/dev/urandom", "r");
     if (urandom) {
-        for(int i=0;i<sizeof(unsigned long);i++) bytes[i]=(char) fgetc(urandom);
+        for(int i=0; i<sizeof(uint64_t); i++) bytes[i]=(char) fgetc(urandom);
         seed = *((uint64_t *) bytes);
         
         fclose(urandom);

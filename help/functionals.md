@@ -34,12 +34,24 @@ Evaluate the length of a circular loop:
     var le = Length()
     print le.total(m)
 
+See the `Functionals` entry for general information about functionals.
+
 ## AreaEnclosed
 [tagareaenclosed]: # (areaenclosed)
 
 An `AreaEnclosed` functional calculates the area enclosed by a loop of line elements.
 
     var la = AreaEnclosed()
+
+Evaluate the area enclosed of a circular loop:
+
+    import constants
+    import meshtools
+    var m = LineMesh(fn (t) [cos(t), sin(t), 0], 0...2*Pi:Pi/20, closed=true)
+    var larea = AreaEnclosed()
+    print larea.total(m)
+
+See the `Functionals` entry for general information about functionals.
 
 ## Area
 [tagarea]: # (area)
@@ -49,12 +61,17 @@ An `Area` functional calculates the area of the area elements in a mesh:
     var la = Area()
     print la.total(mesh)
 
+See the `Functionals` entry for general information about functionals.
+
 ## VolumeEnclosed
 [tagvolumeenclosed]: # (volumeenclosed)
 
 A `VolumeEnclosed` functional is used to calculate the volume enclosed by a surface. Note that this estimate may become inaccurate for highly deformed surfaces.
 
     var lv = VolumeEnclosed()
+    print lv.total(mesh)
+
+See the `Functionals` entry for general information about functionals.
 
 ## Volume
 [tagvolume]: # (volume)
@@ -62,6 +79,8 @@ A `VolumeEnclosed` functional is used to calculate the volume enclosed by a surf
 A `Volume` functional calculates the volume of volume elements.
 
     var lv = Volume()
+
+See the `Functionals` entry for general information about functionals.
 
 ## ScalarPotential
 [tagscalarpotential]: # (scalarpotential)
@@ -84,10 +103,12 @@ This functional is often used to constrain the mesh to the level set of a functi
 
 See the thomson example for use of this technique.
 
+See the `Functionals` entry for general information about functionals.
+
 ## LinearElasticity
 [taglinearelasticity]: # (linearelasticity)
 
-The `LinearElasticity` functional measures the linear elastic energy away from a reference state.
+The `LinearElasticity` functional measures the linear elastic energy away from a reference state. 
 
 You must initialize with a reference mesh:
 
@@ -98,25 +119,69 @@ Manually set the poisson's ratio and grade to operate on:
     le.poissonratio = 0.2
     le.grade = 2
 
+The energy for each element in the Mesh is computed as follows: First the Gram matrix `S` is computed for the element as well as the Gram matrix `F` for the corresponding element in the reference Mesh. These quantities are used to compute the Cauchy-Green strain tensor:
+
+    C = (F S^-1 - I)/2
+
+The energy density is then: 
+
+    mu*Tr(C^2) + 1/2*lambda*Tr(C)^2
+
+where mu and lambda are the Lamé parameters. The total energy is found by multiplying the energy density by the volume or area of the element as appropriate. 
+
+See the `Functionals` entry for general information about functionals.
+
 ## EquiElement
 [tagequielement]: # (equielement)
 
 The `EquiElement` functional measures the discrepency between the size of elements adjacent to each vertex. It can be used to equalize elements for regularization purposes.
+
+See the `Functionals` entry for general information about functionals.
 
 ## LineCurvatureSq
 [taglinecurvaturesq]: # (linecurvaturesq)
 
 The `LineCurvatureSq` functional measures the integrated curvature squared of a sequence of line elements.
 
+Compute the total squared curvature of a loop:
+
+    import constants
+    import meshtools
+    var m = LineMesh(fn (t) [cos(t), sin(t), 0], 0...2*Pi:Pi/20, closed=true)
+    var larea = LineCurvatureSq()
+    print larea.total(m)
+
+See the `Functionals` entry for general information about functionals.
+
 ## LineTorsionSq
 [taglinetorsionsq]: # (linetorsionsq)
 
 The `LineTorsionSq` functional measures the integrated torsion squared of a sequence of line elements.
 
+Compute the total squared torsion of a helix:
+
+    import constants
+    import meshtools
+    var m = LineMesh(fn (t) [cos(t), sin(t), t], 0...2*Pi:Pi/20, closed=true)
+    var larea = LineTorsionSq()
+    print larea.total(m)
+
+See the `Functionals` entry for general information about functionals.
+
 ## MeanCurvatureSq
 [tagmeancurvsq]: # (meancurvaturesq)
 
 The `MeanCurvatureSq` functional computes the integrated mean curvature over a surface.
+
+Compute the integrated mean squared curvature of the unit sphere:
+
+    import implicitmesh
+    var impl = ImplicitMeshBuilder(fn (x,y,z) x^2+y^2+z^2-1)
+    var mesh = impl.build(stepsize=0.25)
+    var lmsq = MeanCurvatureSq() 
+    print lmsq.total(mesh) 
+
+See the `Functionals` entry for general information about functionals.
 
 ## GaussCurvature
 [taggausscurv]: # (gausscurvature)
@@ -138,6 +203,8 @@ Here is an example for a 2D disk mesh.
     gauss.geodesic = true
     print gauss.total(mesh, selection=bnd) // expect: 2*Pi
 
+See the `Functionals` entry for general information about functionals.
+
 ## GradSq
 [taggradsq]: # (gradsq)
 
@@ -146,6 +213,12 @@ The `GradSq` functional measures the integral of the gradient squared of a field
 Initialize with the required field:
 
     var le=GradSq(phi)
+
+Compute the integral of GradSq(phi):
+
+    print le.total(mesh)
+
+See the `Functionals` entry for general information about functionals.
 
 ## Nematic
 [tagnematic]: # (nematic)
@@ -162,6 +235,8 @@ These are stored as properties of the object and can be retrieved as follows:
 
     print lf.ksplay
 
+See the `Functionals` entry for general information about functionals.
+
 ## NematicElectric
 [tagnematic]: # (nematic)
 
@@ -170,10 +245,14 @@ The `NematicElectric` functional measures the integral of a nematic and electric
 Initialize with a director field `nn` and a scalar potential `phi`:
     var lne = NematicElectric(nn, phi)
 
+See the `Functionals` entry for general information about functionals.
+
 ## NormSq
 [tagnormsq]: # (normsq)
 
 The `NormSq` functional measures the elementwise L2 norm squared of a field.
+
+See the `Functionals` entry for general information about functionals.
 
 ## LineIntegral
 [taglineintegral]: # (lineintegral)
@@ -196,6 +275,8 @@ where `n` is a vector field. The local interpolated value of this field is passe
 
 The gradient of a field is available within an integrand function using the `gradient()` function.
 
+See the `Functionals` entry for general information about functionals.
+
 ## AreaIntegral
 [tagareaintegral]: # (areaintegral)
 
@@ -217,6 +298,8 @@ More than one field can be used; they are passed as arguments to the integrand f
 
 The gradient of a field is available within an integrand function using the `gradient()` function.
 
+See the `Functionals` entry for general information about functionals.
+
 ## VolumeIntegral
 [tagvolumeintegral]: # (volumeintegral)
 
@@ -233,6 +316,8 @@ You can also integrate functions that involve fields:
 More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `VolumeIntegral`.
 
 The gradient of a field is available within an integrand function using the `gradient()` function.
+
+See the `Functionals` entry for general information about functionals.
 
 ## Hydrogel
 [taghydrogel]: # (hydrogel)
@@ -259,3 +344,5 @@ Manually set the coefficients and grade to operate on:
 
     lfh.a = 1; lfh.b = 1; lfh.c = 1; lfh.d = 1;
     lfh.grade = 2, lfh.phi0 = 0.5, lfh.phiref = 0.1
+
+See the `Functionals` entry for general information about functionals.

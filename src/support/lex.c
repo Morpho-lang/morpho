@@ -142,7 +142,6 @@ void lex_newline(lexer *l) {
     l->line++; l->posn=0;
 }
 
-
 /** @brief Attempts to find a matching token for the current token.
  *  @param[in] l The lexer in use
  *  @param[out] defn Type of token, if found
@@ -425,7 +424,7 @@ bool lex_number(lexer *l, token *tok, error *err) {
     char next = '\0';
     if (lex_peek(l)!='\0') next=lex_peekahead(l, 1); // Prevent looking beyond buffer
     if (lex_peek(l) == '.' && (lex_isdigit(next) || lex_isspace(next) || next=='\0') ) {
-        type=TOKEN_NUMBER;
+        type=l->flttype;
         lex_advance(l); /* Consume the '.' */
         while (lex_isdigit(lex_peek(l))) lex_advance(l);
     }
@@ -637,6 +636,12 @@ void lex_setprefn(lexer *l, processtokenfn prefn) {
 /* **********************************************************************
  * Lexer public interface
  * ********************************************************************** */
+
+/** @brief Checks if a token contains a keyword */
+bool lex_tokeniskeyword(lexer *l, token *tok) {
+    if (tok->type==TOKEN_SYMBOL) return false;
+    return lex_isalpha(tok->start[0]);
+}
 
 /** @brief Identifies the next token
  *  @param[in]  l     The lexer in use

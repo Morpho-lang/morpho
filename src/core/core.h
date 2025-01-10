@@ -116,6 +116,7 @@ typedef struct {
     unsigned int stackcount;
     unsigned int returnreg; // Stores where any return value should be placed
     bool ret; // Should the interpreter return from this frame?
+    int nopt; // Number of optional arguments called 
 #ifdef MORPHO_PROFILER
     objectbuiltinfunction *inbuiltinfunction; // Keep track if we're in a built in function
 #endif
@@ -129,12 +130,6 @@ typedef struct {
     callframe *fp;
     value dict;
 } errorhandler;
-
-/* **********************************************************************
- * Marker object to indicate start of optional arguments
- * ********************************************************************** */
-
-extern value vm_optmarker;
 
 /* **********************************************************************
  * Debugger backend
@@ -230,6 +225,9 @@ struct svm {
     morphoprintfn printfn; /** Print callback */
     void *printref; /** Print callback reference */
     varray_char buffer; /** Buffer for printing */
+    
+    morphoinputfn inputfn; /** Input callback */
+    void *inputref; /** Input callback reference */
     
     morphowarningfn warningfn; /** Warning callback */
     void *warningref; /** Warning callback reference */

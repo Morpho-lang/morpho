@@ -459,7 +459,7 @@ void file_initialize(void) {
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
-    builtin_addfunction(FILE_CLASSNAME, file_constructor, MORPHO_FN_CONSTRUCTOR);
+    morpho_addfunction(FILE_CLASSNAME, FILE_CLASSNAME " (...)", file_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     value fileclass=builtin_addclass(FILE_CLASSNAME, MORPHO_GETCLASSDEFINITION(File), objclass);
     object_setveneerclass(OBJECT_FILE, fileclass);

@@ -1,0 +1,5 @@
+// Object indices need to be property labels
+
+var a = Object()
+
+print a[1] // expect error 'IndxArgs'

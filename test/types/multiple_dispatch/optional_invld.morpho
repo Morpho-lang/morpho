@@ -10,4 +10,4 @@ print f()
 // expect: 0
 
 print f(1,z=3) 
-// expect error 'InvldArgs'
+// expect error 'NoOptArg'

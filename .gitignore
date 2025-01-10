@@ -57,6 +57,7 @@ dkms.conf
 .DS_Store
 .entitlements
 .vscode/settings.json
+.vscode/
 
 test/FailedTests*.txt
 *.png
@@ -72,3 +73,4 @@ test/vtk/tetrahedron.vtk
 devguide/devguide.lyx~
 build/*
 build-xcode/*
+*.valgrind

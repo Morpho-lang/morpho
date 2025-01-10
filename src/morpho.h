@@ -113,7 +113,7 @@ program *morpho_newprogram(void);
 void morpho_freeprogram(program *p);
 
 /* Optimizers */
-typedef bool (*optimizerfn) (program *in);
+typedef bool (optimizerfn) (program *in);
 void morpho_setoptimizer(optimizerfn *optimizer);
 
 /* Virtual machine */
@@ -122,6 +122,7 @@ void morpho_freevm(vm *v);
 
 /* Bind new objects to the virtual machine */
 void morpho_bindobjects(vm *v, int nobj, value *obj);
+value morpho_wrapandbind(vm *v, object *obj);
 
 /* Interact with the garbage collector in an object definition */
 void morpho_markobject(void *v, object *obj);
@@ -162,9 +163,10 @@ bool morpho_call(vm *v, value fn, int nargs, value *args, value *ret);
 bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value *ret);
 error *morpho_geterror(vm *v);
 
-/* Printing */
+/* I/O */
 int morpho_printf(vm *v, char *format, ...);
 void morpho_printvalue(vm *v, value val);
+int morpho_readline(vm *v, varray_char *buffer);
 
 /* Stack trace */
 void morpho_stacktrace(vm *v);

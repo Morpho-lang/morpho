@@ -213,13 +213,15 @@ fn plotselection(mesh, selection, grade=nil, filter=nil, transmit=nil) {
 
 /** Visualizes a field
  * @param[in] field - the field
+ * @param[in] selection - Selection to use
  * @param[in] grade - Grade to show
  * @param[in] colormap - Colormap to use
  * @param[in] style - style to use
  * @param[in] scale - whether or not to scale values */
-fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, transmit=nil, scalebar=nil, cmin=nil, cmax=nil) {
+fn plotfield(field, selection=nil, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, transmit=nil, scalebar=nil, cmin=nil, cmax=nil) {
   var mesh = field.mesh()
   var shape = field.shape()
+  var sel = selection
 
   var ngrades = shape.count()
   var showgrades = [] // Grades to show
@@ -242,7 +244,20 @@ fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, 
       Error("PltFldInt", "Can't use 'interpolate' style: Field lacks values on vertices.").throw() 
     }
 
+    if (sel) { // Ensure we have elements to plot 
+      if (sel.count(2)==0) { // If the selection didn't include facets, infer them from the vertices
+        sel=sel.clone()
+        sel.addgrade(2)
+      } else if (sel.count(0)==0) { // If the selection didn't include vertices, infer them from the facets
+        sel=sel.clone()
+        sel.addgrade(0)
+      }
+
+      if (sel.count(2)==0 || sel.count(0)==0) Error("PltSlctnEmpty", "Selection is empty.").throw() 
+    }
+
     for (i in 0...nv) {
+      if (sel && !sel[0, i]) continue 
       var val = field[0, i]
       if (!isnil(cmin)) val = max(cmin, val)
       if (!isnil(cmax)) val = min(cmax, val)
@@ -260,6 +275,7 @@ fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, 
       var cmat = Matrix(3, nel)   // Make a color matrix
 
       for (i in 0...nel) {
+        if (sel && !sel[g, i]) continue 
         var val = field[g, i]
         if (!isnil(cmin)) val = max(cmin, val)
         if (!isnil(cmax)) val = min(cmax, val)
@@ -272,7 +288,7 @@ fn plotfield(field, grade=nil, colormap=nil, style=nil, scale=true, filter=nil, 
     }
   }
 
-  var out = plotmesh(mesh, grade=showgrades, color=col, filter=filter, transmit=transmit)
+  var out = plotmesh(mesh, selection=sel, grade=showgrades, color=col, filter=filter, transmit=transmit)
 
   if (isobject(scalebar)) {
     var s = scalebar

@@ -11,6 +11,8 @@
 #include <stdbool.h>
 #include "varray.h"
 
+DECLARE_VARRAY(pthread_t, pthread_t);
+
 /* -----------------------------------------
  * Tasks
  * ----------------------------------------- */
@@ -41,6 +43,7 @@ typedef struct {
     bool stop; /* Indicates threads should terminate */
 
     varray_task queue; /* Queue of tasks lined up */
+    varray_pthread_t threads; /* Threads created by this pool */
 } threadpool;
 
 bool threadpool_init(threadpool *pool, int nworkers);

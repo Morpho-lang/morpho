@@ -56,6 +56,7 @@
 #define TANGENT_FUNCTION               "tangent"
 #define NORMAL_FUNCTION                "normal"
 #define GRAD_FUNCTION                  "grad"
+#define CGTENSOR_FUNCTION              "cgtensor"
 
 /* Functional names */
 #define LENGTH_CLASSNAME               "Length"

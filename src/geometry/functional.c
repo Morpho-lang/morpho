@@ -3888,6 +3888,7 @@ typedef struct {
     value *fields;
     value *originalfields; // Original fields
     value method; // Method dictionary
+    objectmesh *mref; // Reference mesh
     vm *v;
 } integralref;
 
@@ -4121,13 +4122,61 @@ static value integral_gradfn(vm *v, int nargs, value *args) {
     return out;
 }
 
+/* -------------------
+ * Cauchy green strain
+ * ------------------- */
+
+int cauchygreenhandle; // TL storage handle for CG tensor
+
+/** Evaluates the cg strain tensor */
+void integral_evaluatecg(vm *v, value *out) {
+    objectintegralelementref *elref = integral_getelementref(v);
+    
+    if (!elref || !elref->iref->mref) {
+        morpho_runtimeerror(v, INTEGRAL_SPCLFN, CGTENSOR_FUNCTION); return;
+    }
+    
+    int gdim=elref->nv-1; // Dimension of Gram matrix
+    
+    objectmatrix *cg=object_newmatrix(gdim, gdim, true);
+    if (!cg) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return; }
+    
+    double gramrefel[gdim*gdim], gramdefel[gdim*gdim], qel[gdim*gdim], rel[gdim*gdim];
+    objectmatrix gramref = MORPHO_STATICMATRIX(gramrefel, gdim, gdim); // Gram matrices
+    objectmatrix gramdef = MORPHO_STATICMATRIX(gramdefel, gdim, gdim); //
+    objectmatrix q = MORPHO_STATICMATRIX(qel, gdim, gdim); // Inverse of Gram in source domain
+    objectmatrix r = MORPHO_STATICMATRIX(rel, gdim, gdim); // Intermediate calculations
+    
+    linearelasticity_calculategram(elref->iref->mref->vert, elref->mesh->dim, elref->nv, elref->vid, &gramref);
+    linearelasticity_calculategram(elref->mesh->vert, elref->mesh->dim, elref->nv, elref->vid, &gramdef);
+    
+    if (matrix_inverse(&gramref, &q)!=MATRIX_OK) return;
+    if (matrix_mul(&gramdef, &q, &r)!=MATRIX_OK) return;
+
+    matrix_identity(cg);
+    matrix_scale(cg, -0.5);
+    matrix_accumulate(cg, 0.5, &r);
+    
+    vm_settlvar(v, cauchygreenhandle, MORPHO_OBJECT(cg));
+    *out = MORPHO_OBJECT(cg);
+}
+
+static value integral_cgfn(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+
+    vm_gettlvar(v, cauchygreenhandle, &out);
+    if (MORPHO_ISNIL(out)) integral_evaluatecg(v, &out);
+    
+    return out;
+}
+
 /* ----------------------
  * General initialization
  * ---------------------- */
 
 /** Clears threadlocal storage */
 void integral_cleartlvars(vm *v) {
-    int handles[] = { elementhandle, normlhandle, tangenthandle, -1 };
+    int handles[] = { elementhandle, normlhandle, tangenthandle, cauchygreenhandle, -1 };
     
     for (int i=0; handles[i]>=0; i++) {
         vm_settlvar(v, handles[i], MORPHO_NIL);
@@ -4135,7 +4184,7 @@ void integral_cleartlvars(vm *v) {
 }
 
 void integral_freetlvars(vm *v) {
-    int handles[] = { normlhandle, tangenthandle, -1 };
+    int handles[] = { normlhandle, tangenthandle, cauchygreenhandle, -1 };
     
     for (int i=0; handles[i]>=0; i++) {
         value val;
@@ -4156,16 +4205,22 @@ value functional_methodproperty;
 bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, integralref *ref) {
     bool success=false;
     value func=MORPHO_NIL;
+    value mref=MORPHO_NIL;
     value field=MORPHO_NIL;
     value method=MORPHO_NIL;
     ref->v=NULL;
     ref->nfields=0;
     ref->method=MORPHO_NIL;
+    ref->mref=NULL;
 
     if (objectinstance_getpropertyinterned(self, scalarpotential_functionproperty, &func) &&
         MORPHO_ISCALLABLE(func)) {
         ref->integrand=func;
         success=true;
+    }
+    if (objectinstance_getpropertyinterned(self, linearelasticity_referenceproperty, &mref) &&
+        MORPHO_ISMESH(mref)) {
+        ref->mref=MORPHO_GETMESH(mref);
     }
     if (objectinstance_getpropertyinterned(self, functional_methodproperty, &method)) {
         ref->method=method;
@@ -4296,10 +4351,13 @@ value LineIntegral_init(vm *v, int nargs, value *args) {
     int nparams = -1;
     int nfixed;
     value method=MORPHO_NIL;
+    value mref=MORPHO_NIL;
 
-    if (builtin_options(v, nargs, args, &nfixed, 1,
-                        functional_methodproperty, &method)) {
+    if (builtin_options(v, nargs, args, &nfixed, 2,
+                        functional_methodproperty, &method,
+                        linearelasticity_referenceproperty, &mref)) {
         if (MORPHO_ISDICTIONARY(method)) objectinstance_setproperty(self, functional_methodproperty, method);
+        if (MORPHO_ISMESH(mref)) objectinstance_setproperty(self, linearelasticity_referenceproperty, mref);
     } else {
         morpho_runtimeerror(v, LINEINTEGRAL_ARGS);
         return MORPHO_NIL;
@@ -4644,6 +4702,7 @@ void functional_initialize(void) {
     builtin_addfunction(TANGENT_FUNCTION, integral_tangent, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(NORMAL_FUNCTION, integral_normal, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(GRAD_FUNCTION, integral_gradfn, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(CGTENSOR_FUNCTION, integral_cgfn, BUILTIN_FLAGSEMPTY);
 
     morpho_defineerror(VOLUMEENCLOSED_ZERO, ERROR_HALT, VOLUMEENCLOSED_ZERO_MSG);
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
@@ -4679,6 +4738,7 @@ void functional_initialize(void) {
     elementhandle=vm_addtlvar();
     tangenthandle=vm_addtlvar();
     normlhandle=vm_addtlvar();
+    cauchygreenhandle=vm_addtlvar();
     
     morpho_addfinalizefn(functional_finalize);
 }

@@ -1,0 +1,26 @@
+import meshtools
+import optimize
+
+var vertexlist = [[0.5,0.5,0.5], [0.5,1.5,0.5], [1.5,1.5,0.5], [1.5,0.5,0.5], [0.5,0.5,1.5],[0.5,1.5,1.5], [1.5,1.5,1.5], [1.5,0.5,1.5]]
+
+var facelist = [[0,3,2,1], [0,4,5,1], [0,3,7,4], [2,3,7,6], [4,5,6,7], [1,2,6,5]]
+
+var m = PolyhedronMesh(vertexlist, facelist)
+
+for (id in 0...m.count()) {
+    var x = m.vertexposition(id)
+    x -= Matrix([1,1,1])/2
+    m.setvertexposition(id, x)
+}
+
+var problem = OptimizationProblem(m)
+
+var la = Area()
+var lv = VolumeEnclosed()
+
+problem.addenergy(la)
+problem.addconstraint(lv)
+
+var opt = ShapeOptimizer(problem, m)
+
+opt.relax(1) // expect error 'VolEnclZero'

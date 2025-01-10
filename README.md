@@ -27,15 +27,15 @@ We now have a sequence of tutorial videos on our [Youtube channel](https://www.y
 * An [introduction to the Morpho language](https://youtu.be/eVPGWpNDeq4)
 * Introduction to [shape optimization with Morpho](https://youtu.be/odCkR0PDKa0)
 
-Participation in the morpho community, both as users and developers, is bound by our [Code of Conduct](CODE_OF_CONDUCT.md).
-
-## Contributing
+## Community and Contributions
 
 Morpho is under active development and we welcome contributions! Please see the [Contributor's guide](CONTRIBUTING.md) for more information about how you can get involved in the morpho project. For those interested in extending morpho or working with the source a [Developer guide](https://github.com/Morpho-lang/morpho-devguide) is also provided in a separate repository. 
 
 We provide a [Roadmap](https://github.com/Morpho-lang/morpho/wiki/Road-Map) for future development plans that might give you ideas for how you could contribute.
 
 We also welcome bug reports and suggestions: Please feel free to use the *Issues* feature on our github repository to bring these to the developers' attention.
+
+Participation in the morpho community, both as users and developers, is bound by our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Installation
 

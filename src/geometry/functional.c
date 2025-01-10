@@ -4144,8 +4144,8 @@ void integral_evaluatecg(vm *v, value *out) {
     linearelasticity_calculategram(elref->iref->mref->vert, elref->mesh->dim, elref->nv, elref->vid, &gramref);
     linearelasticity_calculategram(elref->mesh->vert, elref->mesh->dim, elref->nv, elref->vid, &gramdef);
     
-    if (matrix_inverse(&gramref, &q)!=MATRIX_OK) return false;
-    if (matrix_mul(&gramdef, &q, &r)!=MATRIX_OK) return false;
+    if (matrix_inverse(&gramref, &q)!=MATRIX_OK) return;
+    if (matrix_mul(&gramdef, &q, &r)!=MATRIX_OK) return;
 
     matrix_identity(cg);
     matrix_scale(cg, -0.5);

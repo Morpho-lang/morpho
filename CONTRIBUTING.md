@@ -1,6 +1,6 @@
 # Contributing to Morpho
 
-Thankyou for your interest in helping to improve Morpho. We welcome contributions from everyone. If you are unsure of anything, feel free to reach out via the Github, submit an issue or make a pull request.
+Thankyou for your interest in helping to improve Morpho! We welcome contributions from everyone. If you are unsure of anything, feel free to reach out via the Github, submit an issue or make a pull request.
 
 There are many ways you can contribute to Morpho:
 

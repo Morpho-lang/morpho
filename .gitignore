@@ -57,6 +57,7 @@ dkms.conf
 .DS_Store
 .entitlements
 .vscode/settings.json
+.vscode/
 
 test/FailedTests*.txt
 *.png

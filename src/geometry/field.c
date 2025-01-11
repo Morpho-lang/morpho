@@ -620,17 +620,19 @@ value Field_setindex(vm *v, int nargs, value *args) {
     int nindices = nargs-1;
     
     if (array_valuelisttoindices(nindices, args+1, indx)) {
-        grade g = (nindices>1 ? indx[0] : MESH_GRADE_VERTEX);
-        elementid el = (nindices>1 ? indx[1] : indx[0]);
-        int elindx = (nindices>2 ? indx[2] : 0);
-        
-        /* If only one index is specified, increment g to the lowest nonempty grade */
-        if (nindices==1 && f->dof) while (f->dof[g]==0 && g<f->ngrades) g++;
-        
-        if (!field_setelement(f, g, el, elindx, MORPHO_GETARG(args, nargs-1))) {
-            morpho_runtimeerror(v, FIELD_INCOMPATIBLEVAL);
-        }
-    } else morpho_runtimeerror(v, FIELD_INVLDINDICES);
+            grade g = (nindices>1 ? indx[0] : MESH_GRADE_VERTEX);
+            elementid el = (nindices>1 ? indx[1] : indx[0]);
+            int elindx = (nindices>2 ? indx[2] : 0);
+
+            /* If only one index is specified, treat it as a single index */
+            if (nindices==1 && f->dof) {
+                if (!field_setelementwithindex(f, indx[0], MORPHO_GETARG(args, nargs-1))) {
+                    morpho_runtimeerror(v, FIELD_INCOMPATIBLEVAL);
+                }
+            } else if (!field_setelement(f, g, el, elindx, MORPHO_GETARG(args, nargs-1))) {
+                morpho_runtimeerror(v, FIELD_INCOMPATIBLEVAL);
+            }
+        } else morpho_runtimeerror(v, FIELD_INVLDINDICES);
     
     return out;
 }

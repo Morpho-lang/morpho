@@ -4272,6 +4272,41 @@ void integral_freeref(void *ref) {
     MORPHO_FREE(ref);
 }
 
+/** Prepares quantity list */
+void integral_preparequantities(integralref *iref, int nv, int *vid, quantity *quantities) {
+    for (int k=0; k<iref->nfields; k++) {
+        objectfield *f=MORPHO_GETFIELD(iref->fields[k]);
+        
+        if (MORPHO_ISDISCRETIZATION(f->fnspc)) {
+            discretization *disc=MORPHO_GETDISCRETIZATION(f->fnspc)->discretization;
+            quantities[k].nnodes=disc->nnodes;
+            quantities[k].ifn=disc->ifn;
+            
+            int dof[disc->nnodes];
+            discretization_doftofieldindx(f, disc, nv, vid, dof);
+            
+            quantities[k].vals=MORPHO_MALLOC(sizeof(value)*disc->nnodes);
+            for (int i=0; i<disc->nnodes; i++) {
+                field_getelementwithindex(f, dof[i], &quantities[k].vals[i]);
+            }
+        } else {
+            quantities[k].nnodes=nv;
+            quantities[k].ifn=NULL;
+            quantities[k].vals=MORPHO_MALLOC(sizeof(value)*nv);
+            for (unsigned int i=0; i<nv; i++) {
+                field_getelement(f, MESH_GRADE_VERTEX, vid[i], 0, &quantities[k].vals[i]);
+            }
+        }
+    }
+}
+
+/** Clears a list of quantities */
+void integral_clearquantities(int nq, quantity *quantities) {
+    for (int k=0; k<nq; k++) {
+        if (quantities[k].vals) MORPHO_FREE(quantities[k].vals);
+    }
+}
+
 bool integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *ref, double *fout) {
     integralref *iref = ref;
     objectmatrix posn = MORPHO_STATICMATRIX(x, dim, 1);
@@ -4315,18 +4350,23 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     integral_cleartlvars(v);
     vm_settlvar(v, elementhandle, MORPHO_OBJECT(&elref));
 
-    value q0[iref.nfields+1], q1[iref.nfields+1];
-    value *q[2] = { q0, q1 };
-    for (unsigned int k=0; k<iref.nfields; k++) {
-        for (unsigned int i=0; i<nv; i++) {
-            field_getelement(MORPHO_GETFIELD(iref.fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
-        }
-    }
-
     if (MORPHO_ISDICTIONARY(iref.method)) {
         double err;
-        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_LINE, x, iref.nfields, q, &iref, out, &err);
-    } else {
+        quantity quantities[iref.nfields+1];
+        integral_preparequantities(&iref, nv, vid, quantities);
+        
+        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_LINE, x, iref.nfields, quantities, &iref, out, &err);
+        
+        integral_clearquantities(iref.nfields, quantities);
+    } else { // Old integrator
+        value q0[iref.nfields+1], q1[iref.nfields+1];
+        value *q[2] = { q0, q1 };
+        for (unsigned int k=0; k<iref.nfields; k++) {
+            for (unsigned int i=0; i<nv; i++) {
+                field_getelement(MORPHO_GETFIELD(iref.fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
+            }
+        }
+        
         success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_LINE, x, iref.nfields, q, &iref, out);
     }
     
@@ -4458,19 +4498,24 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     /* Set up quantities */
     integral_cleartlvars(v);
     vm_settlvar(v, elementhandle, MORPHO_OBJECT(&elref));
-
-    value q0[iref.nfields+1], q1[iref.nfields+1], q2[iref.nfields+1];
-    value *q[3] = { q0, q1, q2 };
-    for (unsigned int k=0; k<iref.nfields; k++) {
-        for (unsigned int i=0; i<nv; i++) {
-            field_getelement(MORPHO_GETFIELD(iref.fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
-        }
-    }
-
+    
     if (MORPHO_ISDICTIONARY(iref.method)) {
         double err;
-        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_AREA, x, iref.nfields, q, &iref, out, &err);
+        quantity quantities[iref.nfields+1];
+        integral_preparequantities(&iref, nv, vid, quantities);
+        
+        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_AREA, x, iref.nfields, quantities, &iref, out, &err);
+        
+        integral_clearquantities(iref.nfields, quantities);
     } else {
+        value q0[iref.nfields+1], q1[iref.nfields+1], q2[iref.nfields+1];
+        value *q[3] = { q0, q1, q2 };
+        for (unsigned int k=0; k<iref.nfields; k++) {
+            for (unsigned int i=0; i<nv; i++) {
+                field_getelement(MORPHO_GETFIELD(iref.fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
+            }
+        }
+        
         success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_AREA, x, iref.nfields, q, &iref, out);
     }
     
@@ -4562,7 +4607,12 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
 
     if (MORPHO_ISDICTIONARY(iref.method)) {
         double err;
-        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, q, &iref, out, &err);
+        quantity quantities[iref.nfields+1];
+        integral_preparequantities(&iref, nv, vid, quantities);
+        
+        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, quantities, &iref, out, &err);
+        
+        integral_clearquantities(iref.nfields, quantities);
     } else {
         success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, q, &iref, out);
     }

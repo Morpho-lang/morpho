@@ -615,6 +615,13 @@ objectmatrixerror matrix_identity(objectmatrix *a) {
     return MATRIX_OK;
 }
 
+/** Sets a matrix to zero */
+objectmatrixerror matrix_zero(objectmatrix *a) {
+    memset(a->elements, 0, sizeof(double)*a->nrows*a->ncols);
+    
+    return MATRIX_OK;
+}
+
 /** Prints a matrix */
 void matrix_print(vm *v, objectmatrix *m) {
     for (int i=0; i<m->nrows; i++) { // Rows run from 0...m

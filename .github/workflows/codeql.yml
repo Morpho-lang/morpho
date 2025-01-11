@@ -77,9 +77,7 @@ jobs:
     # ℹ️ Command-line programs to run using the OS shell.
     # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
     - if: matrix.build-mode == 'manual'
-    - uses: actions/checkout@v3
-    - name: configure
-      shell: bash
+      uses: actions/checkout@v3
       run: |
         sudo apt update
         sudo apt install libsuitesparse-dev

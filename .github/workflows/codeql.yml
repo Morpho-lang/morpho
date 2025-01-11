@@ -13,7 +13,7 @@ name: "CodeQL Advanced"
 
 on:
   push:
-    branches: [ "main", "softmattertheory-patch-1" ]
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
   schedule:

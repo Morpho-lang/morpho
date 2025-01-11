@@ -8,7 +8,7 @@
  * Version
  * ********************************************************************** */
 
-#define MORPHO_VERSIONSTRING "0.6.2"
+#define MORPHO_VERSIONSTRING "0.6.2-newdiscretization"
 
 #define MORPHO_VERSION_MAJOR 0
 #define MORPHO_VERSION_MINOR 6

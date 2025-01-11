@@ -421,7 +421,7 @@ bool functional_mapfieldgradientX(vm *v, functional_mapinfo *info, value *out) {
 
     /* Create the output field */
     if (n>0) {
-        grad=object_newfield(mesh, field->prototype, field->dof);
+        grad=object_newfield(mesh, field->prototype, field->fnspc, field->dof);
         if (!grad) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
         field_zero(grad);
     }
@@ -648,7 +648,7 @@ bool functional_mapnumericalfieldgradientX(vm *v, functional_mapinfo *info, valu
     objectsparse *conn=mesh_getconnectivityelement(mesh, 0, grd); // Connectivity for the element
 
     /* Create the output field */
-    objectfield *grad=object_newfield(mesh, field->prototype, field->dof);
+    objectfield *grad=object_newfield(mesh, field->prototype, field->fnspc, field->dof);
     if (!grad) return false;
 
     field_zero(grad);
@@ -1252,7 +1252,7 @@ bool functional_mapfieldgradient(vm *v, functional_mapinfo *info, value *out) {
     /* Create output fields */
     for (int i=0; i<ntask; i++) {
         // Create one per thread
-        new[i]=object_newfield(info->mesh, info->field->prototype, info->field->dof);
+        new[i]=object_newfield(info->mesh, info->field->prototype, info->field->fnspc, info->field->dof);
         if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapfieldgradient_cleanup; }
         field_zero(new[i]);
         
@@ -1351,7 +1351,7 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
     
     for (int i=0; i<ntask; i++) {
         // Create one output field per thread
-        new[i] = object_newfield(info->mesh, info->field->prototype, info->field->dof);
+        new[i]=object_newfield(info->mesh, info->field->prototype, info->field->fnspc, info->field->dof);
         if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapfieldgradient_cleanup; }
         field_zero(new[i]);
         

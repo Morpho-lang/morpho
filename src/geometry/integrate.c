@@ -1223,7 +1223,7 @@ quadraturerule cubtri7 = {
     .nnodes = 7,
     .nodes = cubtripts,
     .weights = cubtri7wts,
-    .ext = NULL
+    .ext = &cubtri19
 };
 
 /* --------------------------------
@@ -2172,7 +2172,7 @@ void integrator_interpolatequantities(integrator *integrate, double *bary) {
         if (integrate->quantity[i].ifn) {
             (integrate->quantity[i].ifn) (bary, wts);
         } else {
-            for (int k=0; k<nnodes; k++) wts[k]=bary[k]; // Linear interpolation by default
+            for (int k=0; k<nnodes; k++) wts[k]=bary[k];
         }
         
         if (MORPHO_ISFLOAT(integrate->qval[i])) {
@@ -2570,6 +2570,7 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
  * @param[in] quantity     - List of quantities
  * @param[in] ref                - a pointer to any data required by the function
  * @param[out] out              - value of the integral
+ * @param[out] err              - an estimate of the error
  * @returns true on success. */
 bool integrate(integrandfunction *integrand, objectdictionary *method, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, quantity *quantity, void *ref, double *out, double *err) {
     bool success=false;

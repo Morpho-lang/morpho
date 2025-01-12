@@ -2169,7 +2169,11 @@ void integrator_interpolatequantities(integrator *integrate, double *bary) {
     for (int i=0; i<integrate->nquantity; i++) {
         int nnodes = integrate->quantity[i].nnodes;
         double wts[nnodes];
-        (integrate->quantity[i].ifn) (bary, wts);
+        if (integrate->quantity[i].ifn) {
+            (integrate->quantity[i].ifn) (bary, wts);
+        } else {
+            for (int k=0; k<nnodes; k++) wts[k]=bary[k]; // Linear interpolation by default
+        }
         
         if (MORPHO_ISFLOAT(integrate->qval[i])) {
             double qval[nnodes];

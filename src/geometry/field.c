@@ -584,7 +584,9 @@ value field_constructor(vm *v, int nargs, value *args) {
 
     if (new) {
         out=morpho_wrapandbind(v, (object *) new);
-    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    } else if (!morpho_checkerror(morpho_geterror(v))) {
+        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    }
 
     return out;
 }

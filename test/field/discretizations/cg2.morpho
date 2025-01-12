@@ -18,4 +18,4 @@ print f.shape()
 // expect: [ 1, 1 ]
 
 print (LineIntegral(fn (x, u) u, f, method={ }).total(m) - 1/3) < 1e-10
-// expect: true 
+// expect: true

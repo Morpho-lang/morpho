@@ -1,3 +1,6 @@
+
+
 var m = Mesh("square.mesh")
-var f = Field(m,fn(x,y,z) [1,2])
+
+var f = Field(m, fn(x,y,z) [1,2])
 // expect error: 'FldOpFn'

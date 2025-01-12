@@ -4,11 +4,11 @@ var m = Mesh("square.mesh")
 print m
 // expect: <Mesh: 4 vertices>
 
+// Create a convenience function for output
+fn write(f) { print "[${f[0]}, ${f[1]}, ${f[2]}, ${f[3]}]" }
+
 var f = Field(m)
 var g = Field(m)
-
-// Create a convenient function for output
-fn write(f) { print "[${f[0]}, ${f[1]}, ${f[2]}, ${f[3]}]" }
 
 write(f)
 // expect: [0, 0, 0, 0]

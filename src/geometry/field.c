@@ -84,11 +84,11 @@ unsigned int field_sizeprototype(value prototype) {
 unsigned int field_size(objectmesh *mesh, value prototype, unsigned int ngrades, unsigned int *dof, unsigned int *offsets) {
     unsigned int size = 0;
     unsigned int psize = field_sizeprototype(prototype);
-    for (unsigned int i=0; i<=ngrades; i++) offsets[i]=0;
+    for (unsigned int i=0; i<ngrades; i++) offsets[i]=0;
     
     if (!dof) { // Assume 1 element per vertex
         size=offsets[1]=mesh_nvertices(mesh)*psize;
-        for (grade i=2; i<=ngrades; i++) offsets[i]=offsets[1];
+        for (grade i=2; i<ngrades; i++) offsets[i]=offsets[1];
     } else {
         for (grade i=0; i<ngrades; i++) {
             unsigned int nel=mesh_nelementsforgrade(mesh, i);
@@ -108,13 +108,16 @@ unsigned int field_size(objectmesh *mesh, value prototype, unsigned int ngrades,
 objectfield *object_newfield(objectmesh *mesh, value prototype, value fnspc, unsigned int *shape) {
     int ngrades=mesh_maxgrade(mesh)+1;
 
-    unsigned int dof[ngrades+1]; // Extract shape from discretization or the provided function space
+    unsigned int dof[ngrades]; // Extract shape from discretization or the provided function space
     if (MORPHO_ISDISCRETIZATION(fnspc)) {
         discretization *disc = MORPHO_GETDISCRETIZATION(fnspc)->discretization;
         for (int i=0; i<=disc->grade; i++) dof[i]=disc->shape[i];
-        for (int i=disc->grade+1; i<=ngrades; i++) dof[i]=0;
+        for (int i=disc->grade+1; i<ngrades; i++) dof[i]=0;
     } else if (shape) {
-        for (int i=0; i<=ngrades; i++) dof[i]=shape[i];
+        for (int i=0; i<ngrades; i++) dof[i]=shape[i];
+    } else { // Default is simply functions on vertices
+        for (unsigned int i=0; i<ngrades; i++) dof[i]=0;
+        dof[0]=1;
     }
 
     unsigned int offset[ngrades+1];
@@ -139,12 +142,7 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, value fnspc, uns
         memcpy(noffset, offset, sizeof(unsigned int)*(ngrades+1));
 
         new->dof=ndof;
-        if (ndof) {
-            memcpy(ndof, dof, sizeof(unsigned int)*ngrades);
-        } else {
-            for (unsigned int i=0; i<ngrades; i++) ndof[i]=0;
-            ndof[0]=1;
-        }
+        memcpy(ndof, dof, sizeof(unsigned int)*ngrades);
 
         new->pool=NULL;
 
@@ -272,7 +270,7 @@ objectfield *field_newwithfunction(vm *v, objectmesh *mesh, value fn, value fnsp
     new=object_newfield(mesh, ret, fnspc, NULL);
 
     if (new) {
-        if (fnspc) {
+        if (MORPHO_ISDISCRETIZATION(fnspc)) {
             if (!field_applyfunctiontoelements(v, mesh, fn, fnspc, new)) goto field_newwithfunction_cleanup;
         } else {
             if (!field_applyfunctiontovertices(v, mesh, fn, new)) goto field_newwithfunction_cleanup;
@@ -563,13 +561,14 @@ value field_constructor(vm *v, int nargs, value *args) {
         morpho_runtimeerror(v,FIELD_MESHARG);
         return MORPHO_NIL;
     }
+    
     unsigned int ngrades = mesh_maxgrade(mesh)+1;
     unsigned int dof[ngrades];
     for (unsigned int i=0; i<ngrades; i++) dof[i]=0;
 
     /* Process optional arguments */
     if (MORPHO_ISDISCRETIZATION(fnspc)) {
-
+        
     } else if (MORPHO_ISINTEGER(grd)) {
         dof[MORPHO_GETINTEGERVALUE(grd)]=1;
     } else if (MORPHO_ISLIST(grd)) {
@@ -578,15 +577,14 @@ value field_constructor(vm *v, int nargs, value *args) {
     }
 
     if (MORPHO_ISNIL(fn)) {
-        new = object_newfield(mesh, prototype, fnspc, dof);
+        new = object_newfield(mesh, prototype, fnspc, (MORPHO_ISNIL(grd) ? NULL: dof));
     } else {
         new = field_newwithfunction(v, mesh, fn, fnspc);
     }
 
     if (new) {
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    }
+        out=morpho_wrapandbind(v, (object *) new);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
 
     return out;
 }
@@ -604,7 +602,7 @@ value Field_getindex(vm *v, int nargs, value *args) {
         int elindx = (nargs>2 ? indx[2] : 0);
         
         /* If only one index is specified, increment g to the lowest nonempty grade */
-        if (nargs==1 && f->dof) while (f->dof[g]==0 && g<f->ngrades) g++;
+        if (nargs==1) while (g<f->ngrades && f->dof[g]==0) g++;
         
         if (!field_getelement(f, g, el, elindx, &out)) morpho_runtimeerror(v, FIELD_INDICESOUTSIDEBOUNDS);
     } else morpho_runtimeerror(v, FIELD_INVLDINDICES);
@@ -616,25 +614,26 @@ value Field_getindex(vm *v, int nargs, value *args) {
 value Field_setindex(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
     unsigned int indx[nargs];
-    value out = MORPHO_NIL;
     int nindices = nargs-1;
     
     if (array_valuelisttoindices(nindices, args+1, indx)) {
-            grade g = (nindices>1 ? indx[0] : MESH_GRADE_VERTEX);
-            elementid el = (nindices>1 ? indx[1] : indx[0]);
-            int elindx = (nindices>2 ? indx[2] : 0);
+        grade g = (nindices>1 ? indx[0] : MESH_GRADE_VERTEX);
+        elementid el = (nindices>1 ? indx[1] : indx[0]);
+        int elindx = (nindices>2 ? indx[2] : 0);
 
-            /* If only one index is specified, treat it as a single index */
-            if (nindices==1 && f->dof) {
-                if (!field_setelementwithindex(f, indx[0], MORPHO_GETARG(args, nargs-1))) {
-                    morpho_runtimeerror(v, FIELD_INCOMPATIBLEVAL);
-                }
-            } else if (!field_setelement(f, g, el, elindx, MORPHO_GETARG(args, nargs-1))) {
+        /* If only one index is specified, treat it as a single index */
+        if (nindices==1) {
+            if (!field_setelementwithindex(f, indx[0], MORPHO_GETARG(args, nargs-1))) {
                 morpho_runtimeerror(v, FIELD_INCOMPATIBLEVAL);
+                return MORPHO_NIL;
             }
-        } else morpho_runtimeerror(v, FIELD_INVLDINDICES);
+        } else if (!field_setelement(f, g, el, elindx, MORPHO_GETARG(args, nargs-1))) {
+            morpho_runtimeerror(v, FIELD_INCOMPATIBLEVAL);
+            return MORPHO_NIL;
+        }
+    } else morpho_runtimeerror(v, FIELD_INVLDINDICES);
     
-    return out;
+    return MORPHO_NIL;
 }
 
 /** Enumerate protocol */

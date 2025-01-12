@@ -71,8 +71,12 @@ int morpho_comparevalue(value a, value b) {
         switch (MORPHO_GETTYPE(a)) {
             case VALUE_NIL:
                 return MORPHO_EQUAL; /** Nones are always the same */
-            case VALUE_INTEGER:
-                return (MORPHO_GETINTEGERVALUE(b) - MORPHO_GETINTEGERVALUE(a));
+            case VALUE_INTEGER: {
+                int aa = MORPHO_GETINTEGERVALUE(a);
+                int bb = MORPHO_GETINTEGERVALUE(b);
+                if (aa==bb) return MORPHO_EQUAL;
+                else return (bb>aa ? MORPHO_BIGGER : MORPHO_SMALLER);
+            }
             case VALUE_BOOL:
                 return (MORPHO_GETBOOLVALUE(b) != MORPHO_GETBOOLVALUE(a));
             case VALUE_OBJECT:

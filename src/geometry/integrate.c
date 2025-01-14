@@ -2365,7 +2365,7 @@ bool integrator_quadrature(integrator *integrate, quadraturerule *rule, quadratu
     
     int nmax = rule->nnodes;
     int np = 0; // Number of levels of p-refinement
-    for (quadraturerule *q = rule->ext; q!=NULL; q=q->ext) {
+    for (quadraturerule *q = rule->ext; q!=NULL; q=q->ext) { // Find maximum number of pts 
         nmax = q->nnodes;
         np++;
     }

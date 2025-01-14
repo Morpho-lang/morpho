@@ -2295,13 +2295,22 @@ double integrator_sumlistweighted(unsigned int nel, double *list, double *wts) {
 /** Transforms local element coordinates to reference element coordinates */
 void integrator_transformtorefelement(integrator *integrate, double *rmat, double *local, double *bary) {
     // Multiply nbary x nbary (rmat) with nbary x 1 (local) to get nbary x 1 (bary)
-    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, integrate->nbary, 1, integrate->nbary, 1.0, rmat, integrate->nbary, local, integrate->nbary, 0.0, bary, integrate->nbary);
+    // [1/13/25] Manual matrix multiply is faster on macOS/Intel. TODO: Check on other platforms
+    int nbary=integrate->nbary;
+    for (int j=0; j<nbary; j++) bary[j]=0;
+    for (int k=0; k<nbary; k++) for (int j=0; j<nbary; j++) bary[j]+=rmat[k*nbary+j]*local[k];
+    
+    //cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, integrate->nbary, 1, integrate->nbary, 1.0, rmat, integrate->nbary, local, integrate->nbary, 0.0, bary, integrate->nbary);
 }
 
 /** Transform from reference element barycentric coordinates to physical coordinates */
 void integrator_interpolatecoordinates(integrator *integrate, double *lambda, double *vmat, double *x) {
     // Multiply dim x nbary (vmat) with nbary x 1 (lambda) to get dim x 1 (x)
-    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, integrate->dim, 1, integrate->nbary, 1.0, vmat, integrate->dim, lambda, integrate->nbary, 0.0, x, integrate->dim);
+    int dim=integrate->dim, nbary=integrate->nbary;
+    for (int j=0; j<dim; j++) x[j]=0;
+    for (int k=0; k<nbary; k++) for (int j=0; j<dim; j++) x[j]+=vmat[k*dim+j]*lambda[k];
+
+    //cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, integrate->dim, 1, integrate->nbary, 1.0, vmat, integrate->dim, lambda, integrate->nbary, 0.0, x, integrate->dim);
 }
 
 /** Interpolates quantities */
@@ -2342,7 +2351,7 @@ bool integrator_evalfn(integrator *integrate, quadraturerule *rule, int imin, in
     for (int i=imin; i<imax; i++) {
         integrator_transformtorefelement(integrate, rmat, &rule->nodes[integrate->nbary*i], node);
         integrator_interpolatecoordinates(integrate, node, vmat, x);
-        integrator_interpolatequantities(integrate, node);
+        if (integrate->nquantity) integrator_interpolatequantities(integrate, node);
         
         // Evaluate function
         if (!(*integrate->integrand) (rule->grade, node, x, integrate->nquantity, integrate->qval, integrate->ref, &f[i])) return false;
@@ -2652,11 +2661,12 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
     
     // Create first element, which corresponds to the reference element
     int vids[integrate->nbary];
+    double xref[integrate->nbary];
+    for (int i=0; i<integrate->nbary; i++) xref[i]=0.0;
     for (int i=0; i<integrate->nbary; i++) {
-        double xref[integrate->nbary];
-        for (int j=0; j<integrate->nbary; j++) xref[j]=0.0;
         xref[i]=1.0;
         vids[i]=integrator_addvertex(integrate, integrate->nbary, xref);
+        xref[i]=0.0;
     }
     int elid = integrator_addelement(integrate, vids);
     

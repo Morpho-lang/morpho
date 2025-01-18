@@ -45,12 +45,14 @@ const char *platform_name(void) {
  * ********************************************************************** */
 
 /* Tells if an object at path corresponds to a directory */
-bool morpho_isdirectory(const char *path) {
-   //struct stat statbuf;
-   //if (stat(path, &statbuf) != 0)
-   //    return 0;
-   //return (bool) S_ISDIR(statbuf.st_mode);
-   return false; 
+bool platform_isdirectory(const char *path) {
+#ifdef _WIN32
+#else
+   struct stat statbuf;
+   if (stat(path, &statbuf) != 0)
+       return 0;
+   return (bool) S_ISDIR(statbuf.st_mode);
+#endif
 }
 
 /** Returns the maximum size of a file path */

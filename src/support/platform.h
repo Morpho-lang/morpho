@@ -32,6 +32,7 @@ size_t platform_maxpathsize(void);
 bool platform_setcurrentdirectory(const char *path);
 bool platform_getcurrentdirectory(char *buffer, size_t size);
 bool platform_gethomedirectory(char *buffer, size_t size);
+bool platform_isdirectory(const char *path);
 
 /* -------------------------------------------------------
  * Dynamic libraries

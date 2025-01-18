@@ -73,7 +73,7 @@ void resources_matchbasefolder(resourceenumerator *en, char *path) {
     if (en->folder) varray_charadd(&fname, en->folder, (int) strlen(en->folder));
     varray_charwrite(&fname, '\0');
 
-    if (morpho_isdirectory(fname.data)) {
+    if (platform_isdirectory(fname.data)) {
         value v = object_stringfromcstring(fname.data, fname.count);
         if (MORPHO_ISSTRING(v)) varray_valuewrite(&en->resources, v);
     }
@@ -147,7 +147,7 @@ void resources_searchfolder(resourceenumerator *en, char *path) {
             strcat(file, "/");
             strcat(file, entry->d_name);
 
-            if (morpho_isdirectory(file)) {
+            if (platform_isdirectory(file)) {
                 if (!en->recurse) continue;
             } else {
                 if (!resources_matchfile(en, file)) continue;
@@ -190,7 +190,7 @@ bool resourceenumerator_enumerate(resourceenumerator *en, value *out) {
     if (en->resources.count==0) return false;
     value next = en->resources.data[--en->resources.count];
 
-    while (morpho_isdirectory(MORPHO_GETCSTRING(next))) {
+    while (platform_isdirectory(MORPHO_GETCSTRING(next))) {
         resources_searchfolder(en, MORPHO_GETCSTRING(next));
         morpho_freeobject(next);
         if (en->resources.count==0) return false;

@@ -381,8 +381,6 @@ MORPHO_ENDCLASS
  * Folder objects
  * ********************************************************************** */
 
-#include <dirent.h>
-
 /** Detect whether a resource is a folder  */
 value Folder_isfolder(vm *v, int nargs, value *args) {
     value ret = MORPHO_FALSE;
@@ -407,30 +405,29 @@ value Folder_contents(vm *v, int nargs, value *args) {
         varray_charinit(&name);
         file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
 
-        DIR *dir = opendir(name.data);
-        struct dirent *dp;
-        if (dir) {
-            varray_value contents;
-            varray_valueinit(&contents);
+        size_t size = platform_maxpathsize();
+        char buffer[size];
+        
+        MorphoDirContents contents;
+        if (platform_directorycontentsinit(&contents, name.data)) {
+            varray_value list;
+            varray_valueinit(&list);
             
-            do {
-                dp = readdir(dir);
-                if (dp) {
-                    if (strcmp(dp->d_name, ".")==0 || strcmp(dp->d_name, "..")==0) continue; // Skip unix parent and current folder references
-                    value entry = object_stringfromcstring(dp->d_name, strlen(dp->d_name));
-                    if (MORPHO_ISSTRING(entry)) varray_valuewrite(&contents, entry);
-                }
-            } while (dp!=NULL);
+            while (platform_directorycontents(&contents, buffer, size)) {
+                value entry = object_stringfromcstring(buffer, strlen(buffer));
+                if (MORPHO_ISSTRING(entry)) varray_valuewrite(&list, entry);
+            };
             
-            closedir(dir);
-            objectlist *clist = object_newlist(contents.count, contents.data);
+            platform_directorycontentsclear(&contents);
+            
+            objectlist *clist = object_newlist(list.count, list.data);
             if (clist) {
                 ret = MORPHO_OBJECT(clist);
-                varray_valuewrite(&contents, ret);
-                morpho_bindobjects(v, contents.count, contents.data);
+                varray_valuewrite(&list, ret);
+                morpho_bindobjects(v, list.count, list.data);
             } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
             
-            varray_valueclear(&contents);
+            varray_valueclear(&list);
         } else morpho_runtimeerror(v, FOLDER_NTFLDR);
         
         varray_charclear(&name);

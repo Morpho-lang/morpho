@@ -21,6 +21,23 @@
 #endif
 
 /* **********************************************************************
+ * Platform name
+ * ********************************************************************** */
+
+const char *platform_name(void) {
+#if __APPLE__
+    return PLATFORM_MACOS;
+#elif __linux__
+    return PLATFORM_LINUX;
+#elif __UNIX__
+    return PLATFORM_UNIX;
+#elif defined(_WIN32)
+    return PLATFORM_WINDOWS;
+#endif
+    return NULL; // Unrecognized platform
+}
+
+/* **********************************************************************
  * File system functions
  * ********************************************************************** */
 

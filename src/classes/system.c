@@ -53,18 +53,8 @@ void system_freeargs(void) {
 
 /** Returns a platform description */
 value System_platform(vm *v, int nargs, value *args) {
-    char *platform = NULL;
+    const char *platform = platform_name();
     value ret = MORPHO_NIL;
-    
-#if __APPLE__
-    platform = SYSTEM_MACOS;
-#elif __linux__
-    platform = SYSTEM_LINUX;
-#elif __UNIX__
-    platform = SYSTEM_UNIX;
-#elif defined(_WIN32)
-    platform = SYSTEM_WINDOWS;
-#endif
     
     if (platform) {
         ret = object_stringfromcstring(platform, strlen(platform));

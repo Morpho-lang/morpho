@@ -14,6 +14,17 @@
 #endif
 
 /* -------------------------------------------------------
+ * Detecting platform 
+ * ------------------------------------------------------- */
+
+#define PLATFORM_MACOS                  "macos"
+#define PLATFORM_LINUX                  "linux"
+#define PLATFORM_UNIX                   "unix"
+#define PLATFORM_WINDOWS                "windows"
+
+const char *platform_name(void);
+
+/* -------------------------------------------------------
  * Navigating the file system
  * ------------------------------------------------------- */
 

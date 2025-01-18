@@ -16,6 +16,7 @@
 #include "morpho.h"
 #include "classes.h"
 #include "system.h"
+#include "platform.h"
 
 #ifndef WIN32
 #include <sys/time.h>
@@ -167,7 +168,7 @@ value System_setworkingfolder(vm *v, int nargs, value *args) {
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         char *path = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
         
-        if (chdir(path)==-1) morpho_runtimeerror(v, SYS_STWRKDR);
+        if (platform_setcurrentdirectory(path)) morpho_runtimeerror(v, SYS_STWRKDR);
     } else morpho_runtimeerror(v, STWRKDR_ARGS);
     
     return MORPHO_NIL;
@@ -179,7 +180,7 @@ value System_workingfolder(vm *v, int nargs, value *args) {
     
     size_t size = pathconf(".", _PC_PATH_MAX);
     char str[size];
-    if (getcwd(str, size)) {
+    if (platform_getcurrentdirectory(str, size)) {
         out = object_stringfromcstring(str, strlen(str));
         if (MORPHO_ISOBJECT(out)) {
             morpho_bindobjects(v, 1, &out);

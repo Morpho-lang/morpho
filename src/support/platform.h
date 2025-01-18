@@ -14,6 +14,13 @@
 #endif
 
 /* -------------------------------------------------------
+ * Navigating the file system
+ * ------------------------------------------------------- */
+
+bool platform_setcurrentdirectory(const char *path);
+bool platform_getcurrentdirectory(char *buffer, size_t size);
+
+/* -------------------------------------------------------
  * Dynamic libraries
  * ------------------------------------------------------- */
 

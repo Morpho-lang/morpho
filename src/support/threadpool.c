@@ -131,39 +131,3 @@ void threadpool_fence(threadpool *pool) {
 
     pthread_mutex_unlock(&pool->lock_mutex);
 }
-
-/*
-bool worker(void *arg) {
-    int *val = arg;
-    int  old = *val;
-
-    *val += 1000;
-    printf("tid=%p, old=%d, val=%d\n", pthread_self(), old, *val);
-
-   // if (*val%2)
-   //     usleep(100000);
-
-    return false;
-}
-
-void threadpool_test(void) {
-    threadpool pool;
-    int num_items = 100;
-    int vals[num_items];
-
-    threadpool_init(&pool, 4);
-
-    for (int i=0; i<num_items; i++) {
-        vals[i] = i;
-        threadpool_add_task(&pool, worker, vals+i);
-    }
-
-    threadpool_fence(&pool);
-
-    for (int i=0; i<num_items; i++) {
-        printf("%d\n", vals[i]);
-    }
-
-    threadpool_clear(&pool);
-}
-*/

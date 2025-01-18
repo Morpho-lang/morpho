@@ -7,6 +7,7 @@
 #ifndef strng_h
 #define strng_h
 
+#include <string.h>
 #include "object.h"
 
 /* -------------------------------------------------------

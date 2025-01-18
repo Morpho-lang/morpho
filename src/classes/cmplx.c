@@ -553,7 +553,7 @@ value Complex_divr(vm *v, int nargs, value *args) {
                 morpho_bindobjects(v, 1, &out);
             }
         } else UNREACHABLE("Number did not return float value");
-    } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
+    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
     
     return out;
 }

@@ -4,6 +4,9 @@
  *  @brief Veneer class over the objectmatrix type that interfaces with blas and lapack
  */
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_LINALG
+
 #include <string.h>
 #include "morpho.h"
 #include "classes.h"
@@ -1563,3 +1566,5 @@ void matrix_initialize(void) {
     morpho_defineerror(MATRIX_NORMARGS, ERROR_HALT, MATRIX_NORMARGS_MSG);
     morpho_defineerror(MATRIX_IDENTCONSTRUCTOR, ERROR_HALT, MATRIX_IDENTCONSTRUCTOR_MSG);
 }
+
+#endif

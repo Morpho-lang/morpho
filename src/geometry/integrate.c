@@ -4,6 +4,9 @@
  *  @brief Numerical integration
 */
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_GEOMETRY
+
 #include <limits.h>
 #include "integrate.h"
 #include "morpho.h"
@@ -2716,3 +2719,5 @@ void integrate_test(void) {
     
     exit(0);
 }
+
+#endif

@@ -4,6 +4,9 @@
  *  @brief Veneer class over the objectsparse type that provides sparse matrices
  */
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_SPARSE
+
 #include <limits.h>
 #include <stdlib.h>
 
@@ -1735,3 +1738,5 @@ void sparse_initialize(void) {
 
     //sparse_test();
 }
+
+#endif

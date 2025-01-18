@@ -7,6 +7,9 @@
 #ifndef functional_h
 #define functional_h
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_GEOMETRY
+
 #include <stdio.h>
 #include "morpho.h"
 #include "mesh.h"
@@ -344,5 +347,7 @@ value name##_hessian(vm *v, int nargs, value *args) { \
 
 void functional_initialize(void);
 void functional_finalize(void);
+
+#endif
 
 #endif /* functional_h */

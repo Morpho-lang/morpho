@@ -7,6 +7,9 @@
 #ifndef sparse_h
 #define sparse_h
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_SPARSE
+
 #include <stdio.h>
 #include "object.h"
 #include "morpho.h"
@@ -193,5 +196,7 @@ value Sparse_divr(vm *v, int nargs, value *args);
 
 /** Intialization */
 void sparse_initialize(void);
+
+#endif
 
 #endif /* sparse_h */

@@ -4,6 +4,9 @@
  *  @brief Mesh class and associated functionality
  */
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_GEOMETRY
+
 #include "morpho.h"
 #include "classes.h"
 #include "mesh.h"
@@ -1339,3 +1342,5 @@ void mesh_initialize(void) {
     morpho_defineerror(MESH_ADDSYMMSNGTRNSFRM, ERROR_HALT, MESH_ADDSYMMSNGTRNSFRM_MSG);
     morpho_defineerror(MESH_CONSTRUCTORARGS, ERROR_HALT, MESH_CONSTRUCTORARGS_MSG);
 }
+
+#endif

@@ -4,12 +4,6 @@
  *  @brief Defines System class to provide access to the runtime and system
  */
 
-#define _POSIX_C_SOURCE 199309L
-
-#include <unistd.h>
-#include <sys/types.h>
-#include <pwd.h>
-
 #include <stdio.h>
 
 #include "morpho.h"
@@ -138,8 +132,9 @@ value System_setworkingfolder(vm *v, int nargs, value *args) {
 value System_workingfolder(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
     
-    size_t size = pathconf(".", _PC_PATH_MAX);
+    size_t size = platform_maxpathsize();
     char str[size];
+
     if (platform_getcurrentdirectory(str, size)) {
         out = object_stringfromcstring(str, strlen(str));
         if (MORPHO_ISOBJECT(out)) {
@@ -153,15 +148,12 @@ value System_workingfolder(vm *v, int nargs, value *args) {
 /** Get current user's home folder */
 value System_homefolder(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
-    
-    const char *homedir = NULL;
 
-    if ((homedir = getenv("HOME")) == NULL) {
-        homedir = getpwuid(getuid())->pw_dir;
-    }
-    
-    if (homedir) {
-        out = object_stringfromcstring(homedir, strlen(homedir));
+    size_t size = platform_maxpathsize();
+    char str[size];
+
+    if (platform_gethomedirectory(str, size)) {
+        out = object_stringfromcstring(str, strlen(str));
         if (MORPHO_ISOBJECT(out)) {
             morpho_bindobjects(v, 1, &out);
         } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);

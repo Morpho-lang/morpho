@@ -14,8 +14,11 @@
 #ifndef _WIN32
 #define _POSIX_C_SOURCE 199309L
 
+#include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <pwd.h>
 #include <time.h>
 #include <dlfcn.h>
 #endif
@@ -50,6 +53,15 @@ bool morpho_isdirectory(const char *path) {
    return false; 
 }
 
+/** Returns the maximum size of a file path */
+size_t platform_maxpathsize(void) {
+#ifdef _WIN32 
+    return (size_t) MAX_PATH;
+#else
+    return pathconf("/", _PC_PATH_MAX);
+#endif 
+}
+
 /** Sets the current working directory to path */
 bool platform_setcurrentdirectory(const char *path) {
 #ifdef _WIN32
@@ -59,19 +71,29 @@ bool platform_setcurrentdirectory(const char *path) {
 #endif
 }
 
-size_t platform_sizepath(const char *path) {
-#ifdef _WIN32 
-    return (size_t) MAX_PATH;
-#else
-#endif 
-}
-
 /** Gets the path for the current working directory */
 bool platform_getcurrentdirectory(char *buffer, size_t size) {
 #ifdef _WIN32 
     return GetCurrentDirectory(size, buffer);
 #else 
     return getcwd(buffer, size);
+#endif
+}
+
+/** Gets a path containing the user's home directory */
+bool platform_gethomedirectory(char *buffer, size_t size) {
+#ifdef _WIN32
+    DWORD length = GetEnvironmentVariable("USERPROFILE", buffer, size);
+    return (length!=0 && length<size);
+#else
+    const char *homedir=getenv("HOME"); 
+    if (!homedir) {
+        struct passwd *pwd = getpwuid(getuid());
+        if (pwd) homedir = pwd->pw_dir;
+    }
+    if (homedir) strncpy(buffer, homedir, size);
+
+    return homedir;
 #endif
 }
 

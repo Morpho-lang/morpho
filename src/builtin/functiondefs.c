@@ -30,21 +30,21 @@
 
 #define BUILTIN_MATH(function) \
 value builtin_##function(vm *v, int nargs, value *args) { \
-        if (nargs==1) { \
-            value arg = MORPHO_GETARG(args, 0); \
-            if (MORPHO_ISFLOAT(arg)) { \
-                return MORPHO_FLOAT(function(MORPHO_GETFLOATVALUE(arg))); \
-            } else if (MORPHO_ISINTEGER(arg)) { \
-                return MORPHO_FLOAT(function((double) MORPHO_GETINTEGERVALUE(arg))); \
-            } else if (MORPHO_ISCOMPLEX(arg)){\
-                return complex_builtin##function(v,MORPHO_GETCOMPLEX(arg));\
-            } else { \
-                morpho_runtimeerror(v, MATH_ARGS, #function);\
-            } \
+    if (nargs==1) { \
+        value arg = MORPHO_GETARG(args, 0); \
+        if (MORPHO_ISFLOAT(arg)) { \
+            return MORPHO_FLOAT(function(MORPHO_GETFLOATVALUE(arg))); \
+        } else if (MORPHO_ISINTEGER(arg)) { \
+            return MORPHO_FLOAT(function((double) MORPHO_GETINTEGERVALUE(arg))); \
+        } else if (MORPHO_ISCOMPLEX(arg)){\
+            return complex_builtin##function(v,MORPHO_GETCOMPLEX(arg));\
+        } else { \
+            morpho_runtimeerror(v, MATH_ARGS, #function);\
         } \
-        morpho_runtimeerror(v, MATH_NUMARGS, #function);\
-        return MORPHO_NIL; \
-        }
+    } \
+    morpho_runtimeerror(v, MATH_NUMARGS, #function);\
+    return MORPHO_NIL; \
+}
 
 /** Math functions */
 BUILTIN_MATH(fabs)
@@ -71,21 +71,21 @@ BUILTIN_MATH(ceil)
 
 #define BUILTIN_MATH_BOOL(function) \
 value builtin_##function(vm *v, int nargs, value *args) { \
-        if (nargs==1) { \
-            value arg = MORPHO_GETARG(args, 0); \
-            if (MORPHO_ISFLOAT(arg)) { \
-                    return MORPHO_BOOL(function(MORPHO_GETFLOATVALUE(arg))); \
-            } else if (MORPHO_ISINTEGER(arg)) { \
-                return MORPHO_BOOL(function((double) MORPHO_GETINTEGERVALUE(arg))); \
-            } else if (MORPHO_ISCOMPLEX(arg)){\
-                return complex_builtin##function(MORPHO_GETCOMPLEX(arg));\
-            } else { \
-                morpho_runtimeerror(v, MATH_ARGS, #function);\
-            } \
+    if (nargs==1) { \
+        value arg = MORPHO_GETARG(args, 0); \
+        if (MORPHO_ISFLOAT(arg)) { \
+                return MORPHO_BOOL(function(MORPHO_GETFLOATVALUE(arg))); \
+        } else if (MORPHO_ISINTEGER(arg)) { \
+            return MORPHO_BOOL(function((double) MORPHO_GETINTEGERVALUE(arg))); \
+        } else if (MORPHO_ISCOMPLEX(arg)){\
+            return complex_builtin##function(MORPHO_GETCOMPLEX(arg));\
+        } else { \
+            morpho_runtimeerror(v, MATH_ARGS, #function);\
         } \
-        morpho_runtimeerror(v, MATH_NUMARGS, #function);\
-        return MORPHO_NIL; \
-        }
+    } \
+    morpho_runtimeerror(v, MATH_NUMARGS, #function);\
+    return MORPHO_NIL; \
+}
 
 
 BUILTIN_MATH_BOOL(isfinite)
@@ -118,7 +118,6 @@ value builtin_sqrt(vm *v, int nargs, value *args) {
 
 /** The arctan function is special; it can either take one or two arguments */
 value builtin_arctan(vm *v, int nargs, value *args) {
-
     bool useComplex = false;
     for (unsigned int i=0; i<nargs; i++) {
         if (MORPHO_ISNUMBER(MORPHO_GETARG(args,i))) {
@@ -140,7 +139,6 @@ value builtin_arctan(vm *v, int nargs, value *args) {
         morpho_runtimeerror(v, MATH_NUMARGS, "arctan");
         return MORPHO_NIL;
     } else {
-
         double x[2];
         for (unsigned int i=0; i<nargs; i++) {
             morpho_valuetofloat(MORPHO_GETARG(args, i), x+i);
@@ -323,6 +321,7 @@ BUILTIN_TYPECHECK(isclass, MORPHO_ISCLASS)
 BUILTIN_TYPECHECK(isrange, MORPHO_ISRANGE)
 BUILTIN_TYPECHECK(isdictionary, MORPHO_ISDICTIONARY)
 BUILTIN_TYPECHECK(islist, MORPHO_ISLIST)
+BUILTIN_TYPECHECK(istuple, MORPHO_ISTUPLE)
 BUILTIN_TYPECHECK(isarray, MORPHO_ISARRAY)
 BUILTIN_TYPECHECK(ismatrix, MORPHO_ISMATRIX)
 BUILTIN_TYPECHECK(issparse, MORPHO_ISSPARSE)
@@ -630,7 +629,6 @@ void functiondefs_initialize(void) {
     BUILTIN_MATH_BOOL(isfinite)
     BUILTIN_MATH_BOOL(isinf)
     BUILTIN_MATH_BOOL(isnan)
-
     
     BUILTIN_TYPECHECK(isnil)
     BUILTIN_TYPECHECK(isint)
@@ -643,6 +641,7 @@ void functiondefs_initialize(void) {
     BUILTIN_TYPECHECK(isrange)
     BUILTIN_TYPECHECK(isdictionary)
     BUILTIN_TYPECHECK(islist)
+    BUILTIN_TYPECHECK(istuple)
     BUILTIN_TYPECHECK(isarray)
     BUILTIN_TYPECHECK(ismatrix)
     BUILTIN_TYPECHECK(issparse)

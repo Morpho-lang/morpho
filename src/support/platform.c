@@ -128,7 +128,7 @@ void platform_directorycontentsclear(MorphoDirContents *contents) {
 /** Call this function repeatedly to extract the next file in the directory. Returns true if a file is found; the filename is in the buffer. */
 bool platform_directorycontents(MorphoDirContents *contents, char *buffer, size_t size) {
 #ifdef _WIN32
-    
+    UNREACHABLE("platform_directorycontents not implemented.");
 #else
     struct dirent *entry;
     do {

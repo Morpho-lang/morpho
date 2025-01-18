@@ -105,9 +105,29 @@ bool platform_gethomedirectory(char *buffer, size_t size) {
 #endif
 }
 
-// opendir 
-// readdir
-// closedir 
+/** Initializes a MorphoDirContents structure with a given path */
+bool platform_directorycontentsinit(MorphoDirContents *contents, const char *path) {
+    contents->dir=opendir(path);
+    return contents->dir;
+}
+
+/** Clears the contents of a MorphoDirContents structure */
+void platform_directorycontentsclear(MorphoDirContents *contents) {
+    closedir(contents->dir);
+}
+
+/** Call this function repeatedly to extract the next file in the directory. Returns true if a file is found; the filename is in the buffer. */
+bool platform_directorycontents(MorphoDirContents *contents, char *buffer, size_t size) {
+    struct dirent *entry;
+    do {
+        entry = readdir(contents->dir);
+        if (!entry) return false;
+    } while (strcmp(entry->d_name, ".")==0 ||
+             strcmp(entry->d_name, "..")==0); // Skip links to this and parent folder
+    
+    strncpy(buffer, entry->d_name, size);
+    return true;
+}
 
 /* **********************************************************************
  * Dynamic libraries

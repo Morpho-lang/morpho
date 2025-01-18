@@ -5,7 +5,6 @@
  */
 
 #include <stdio.h>
-#include <dirent.h>
 
 #include "common.h"
 #include "resources.h"
@@ -130,21 +129,20 @@ bool resources_matchfile(resourceenumerator *en, char *file) {
 /** Searches a given folder, adding all resources to the enumerator
  @param[in] en - initialized enumerator */
 void resources_searchfolder(resourceenumerator *en, char *path) {
-    DIR *d; /* Handle for the directory */
-    struct dirent *entry; /* Entries in the directory */
-    d = opendir(path);
-
-    if (d) {
-        while ((entry = readdir(d)) != NULL) { // Loop over directory entries
-            if (strcmp(entry->d_name, ".")==0 ||
-                strcmp(entry->d_name, "..")==0) continue;
-
+    MorphoDirContents contents;
+    
+    size_t size = platform_maxpathsize();
+    char buffer[size];
+    
+    if (platform_directorycontentsinit(&contents, path)) {
+        while (platform_directorycontents(&contents, buffer, size)) {
             /* Construct the file name */
-            size_t len = strlen(path)+strlen(entry->d_name)+2;
+            size_t len = strlen(path)+strlen(buffer)+2;
+            
             char file[len];
             strcpy(file, path);
             strcat(file, "/");
-            strcat(file, entry->d_name);
+            strcat(file, buffer);
 
             if (platform_isdirectory(file)) {
                 if (!en->recurse) continue;
@@ -156,7 +154,7 @@ void resources_searchfolder(resourceenumerator *en, char *path) {
             value v = object_stringfromcstring(file, len);
             if (MORPHO_ISSTRING(v)) varray_valuewrite(&en->resources, v);
         }
-        closedir(d);
+        platform_directorycontentsclear(&contents);
     }
 }
 

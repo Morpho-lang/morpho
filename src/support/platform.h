@@ -12,6 +12,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <dirent.h>
 #endif
 
 /* -------------------------------------------------------
@@ -34,6 +36,14 @@ bool platform_setcurrentdirectory(const char *path);
 bool platform_getcurrentdirectory(char *buffer, size_t size);
 bool platform_gethomedirectory(char *buffer, size_t size);
 bool platform_isdirectory(const char *path);
+
+typedef struct {
+    DIR *dir;
+} MorphoDirContents;
+
+bool platform_directorycontentsinit(MorphoDirContents *contents, const char *path);
+void platform_directorycontentsclear(MorphoDirContents *contents);
+bool platform_directorycontents(MorphoDirContents *contents, char *buffer, size_t size);
 
 /* -------------------------------------------------------
  * Dynamic libraries

@@ -133,6 +133,7 @@ void resources_searchfolder(resourceenumerator *en, char *path) {
     
     size_t size = platform_maxpathsize();
     char buffer[size];
+    char sep[2] = { MORPHO_DIRSEPARATOR, '\0' };
     
     if (platform_directorycontentsinit(&contents, path)) {
         while (platform_directorycontents(&contents, buffer, size)) {
@@ -141,7 +142,7 @@ void resources_searchfolder(resourceenumerator *en, char *path) {
             
             char file[len];
             strcpy(file, path);
-            strcat(file, "/");
+            strcat(file, sep);
             strcat(file, buffer);
 
             if (platform_isdirectory(file)) {

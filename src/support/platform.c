@@ -107,17 +107,29 @@ bool platform_gethomedirectory(char *buffer, size_t size) {
 
 /** Initializes a MorphoDirContents structure with a given path */
 bool platform_directorycontentsinit(MorphoDirContents *contents, const char *path) {
+#ifdef _WIN32
+    contents->handle = FindFirstFile(path, &contents->finddata);
+    return (contents->handle != INVALID_HANDLE_VALUE);
+#else
     contents->dir=opendir(path);
     return contents->dir;
+#endif
 }
 
 /** Clears the contents of a MorphoDirContents structure */
 void platform_directorycontentsclear(MorphoDirContents *contents) {
+#ifdef _WIN32
+    FindClose(contents->handle);
+#else
     closedir(contents->dir);
+#endif
 }
 
 /** Call this function repeatedly to extract the next file in the directory. Returns true if a file is found; the filename is in the buffer. */
 bool platform_directorycontents(MorphoDirContents *contents, char *buffer, size_t size) {
+#ifdef _WIN32
+    
+#else
     struct dirent *entry;
     do {
         entry = readdir(contents->dir);
@@ -127,6 +139,7 @@ bool platform_directorycontents(MorphoDirContents *contents, char *buffer, size_
     
     strncpy(buffer, entry->d_name, size);
     return true;
+#endif
 }
 
 /* **********************************************************************

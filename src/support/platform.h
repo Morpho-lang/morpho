@@ -38,7 +38,12 @@ bool platform_gethomedirectory(char *buffer, size_t size);
 bool platform_isdirectory(const char *path);
 
 typedef struct {
+#ifdef _WIN32
+    WIN32_FIND_DATA finddata;
+    HANDLE handle;
+#else
     DIR *dir;
+#endif
 } MorphoDirContents;
 
 bool platform_directorycontentsinit(MorphoDirContents *contents, const char *path);

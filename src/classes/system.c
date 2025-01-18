@@ -11,16 +11,11 @@
 #include <pwd.h>
 
 #include <stdio.h>
-#include <time.h>
 
 #include "morpho.h"
 #include "classes.h"
 #include "system.h"
 #include "platform.h"
-
-#ifndef WIN32
-#include <sys/time.h>
-#endif
 
 /* **********************************************************************
  * System utility functions
@@ -50,31 +45,6 @@ void system_freeargs(void) {
         morpho_freeobject(el);
     }
     morpho_freeobject(arglist);
-}
-
-/** Returns the system clock */
-double system_clock(void) {
-#ifdef WIN32
-    SYSTEMTIME st;
-    GetSystemTime (&st);
-    return ((double) st.wSecond) + st.wMilliseconds * 1e-6;
-#else
-    struct timeval tv;
-    gettimeofday (&tv, NULL);
-    return ((double) tv.tv_sec) + tv.tv_usec * 1e-6;
-#endif
-}
-
-/** Sleep for a specified number of milliseconds */
-void system_sleep(int msecs) {
-#ifdef WIN32
-    Sleep (msecs);
-#else
-    struct timespec t;
-    t.tv_sec  =  msecs / 1000;
-    t.tv_nsec = (msecs % 1000) * 1000000;
-    nanosleep (&t, NULL);
-#endif
 }
 
 /* **********************************************************************
@@ -114,7 +84,7 @@ value System_version(vm *v, int nargs, value *args) {
 
 /** Clock */
 value System_clock(vm *v, int nargs, value *args) {
-    return MORPHO_FLOAT(system_clock());
+    return MORPHO_FLOAT(platform_clock());
 }
 
 /** Print */
@@ -128,7 +98,7 @@ value System_sleep(vm *v, int nargs, value *args) {
     if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
         double t;
         if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &t)) {
-            system_sleep((int) (1000*t));
+            platform_sleep((int) (1000*t));
         }
     } else morpho_runtimeerror(v, SLEEP_ARGS);
     

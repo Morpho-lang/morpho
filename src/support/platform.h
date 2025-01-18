@@ -36,4 +36,11 @@ void *platform_dlsym(MorphoDLHandle handle, const char *symbol);
 
 bool morpho_isdirectory(const char *path);
 
+/* -------------------------------------------------------
+ * Time
+ * ------------------------------------------------------- */
+
+double platform_clock(void);
+void platform_sleep(int msecs);
+
 #endif

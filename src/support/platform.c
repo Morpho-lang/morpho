@@ -7,13 +7,16 @@
  *  - Navigating the file system 
  *  - APIs for opening dynamic libraries
  *  - APIs for using threads 
- * */
+ *  - Functions that involve time */
 
 #include "platform.h"
 
 #ifndef _WIN32
+#define _POSIX_C_SOURCE 199309L
+
 #include <dirent.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <dlfcn.h>
 #endif
 
@@ -83,5 +86,38 @@ void *platform_dlsym(MorphoDLHandle handle, const char *symbol) {
     return (void *) GetProcAddress(handle, symbol);
 #else 
     return dlsym(handle, symbol);
+#endif
+}
+
+/* **********************************************************************
+ * Time
+ * ********************************************************************** */
+
+/** Returns the system clock time in seconds. */
+double platform_clock(void) {
+#ifdef _WIN32
+    SYSTEMTIME st;
+    GetSystemTime(&st);
+    double seconds = st.wMilliseconds*1e-3 +
+                     st.wSecond +
+                     st.wMinute*60 +
+                     st.wHour*3600; 
+    return seconds;
+#else
+    struct timeval tv;
+    gettimeofday (&tv, NULL);
+    return ((double) tv.tv_sec) + tv.tv_usec * 1e-6;
+#endif
+}
+
+/** Sleep for a specified number of milliseconds */
+void platform_sleep(int msecs) {
+#ifdef _WIN32
+    Sleep(msecs);
+#else
+    struct timespec t;
+    t.tv_sec  =  msecs / 1000;
+    t.tv_nsec = (msecs % 1000) * 1000000;
+    nanosleep(&t, NULL);
 #endif
 }

@@ -11,7 +11,7 @@
 
 #include "platform.h"
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <dirent.h>
 #include <sys/stat.h>
 #include <dlfcn.h>
@@ -33,24 +33,24 @@ bool morpho_isdirectory(const char *path) {
  * Dynamic libraries
  * ********************************************************************** */
 
-Morphodlhandle platform_dlopen(const char *path) {
-#ifdef WIN32
+MorphoDLHandle platform_dlopen(const char *path) {
+#ifdef _WIN32
     return LoadLibrary((LPCSTR) path);
 #else
     return dlopen(path, RTLD_LAZY);
 #endif
 }
 
-void platform_dlclose(Morphodlhandle handle) {
-#ifdef WIN32
+void platform_dlclose(MorphoDLHandle handle) {
+#ifdef _WIN32
     FreeLibrary(handle);
 #else
     dlclose(handle);
 #endif
 }
 
-void *platform_dlsym(Morphodlhandle handle, const char *symbol) {
-#ifdef WIN32
+void *platform_dlsym(MorphoDLHandle handle, const char *symbol) {
+#ifdef _WIN32
     return (void *) GetProcAddress(handle, symbol);
 #else 
     return dlsym(handle, symbol);

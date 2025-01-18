@@ -47,6 +47,9 @@ const char *platform_name(void) {
 /* Tells if an object at path corresponds to a directory */
 bool platform_isdirectory(const char *path) {
 #ifdef _WIN32
+    DWORD attributes = GetFileAttributes(path);
+    if (attributes==INVALID_FILE_ATTRIBUTES) return false; 
+    return (attributes & FILE_ATTRIBUTE_DIRECTORY);
 #else
    struct stat statbuf;
    if (stat(path, &statbuf) != 0)

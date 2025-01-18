@@ -6,6 +6,7 @@ target_sources(morpho
         lex.c         lex.h
         memory.c      memory.h
         parse.c       parse.h
+        platform.c    platform.h
         random.c      random.h
         resources.c   resources.h
         threadpool.c  threadpool.h

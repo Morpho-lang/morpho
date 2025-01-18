@@ -1,5 +1,5 @@
 /** @file complex.c
- *  @author D Hellstein and T J Atherton
+ *  @author Danny Goldstein
  *
  *  @brief Complex number type
  */
@@ -17,7 +17,7 @@ objecttype objectcomplextype;
 
 /** Complex object definitions */
 size_t objectcomplex_sizefn(object *obj) {
-    return sizeof(objectcomplextype);
+    return sizeof(objectcomplextype)+sizeof(double) * 2;
 }
 
 void objectcomplex_printfn(object *obj, void *v) {
@@ -40,11 +40,11 @@ objecttypedefn objectcomplexdefn = {
 };
 
 /** Creates a complex object */
-objectcomplex *object_newcomplex(double real, double imag) {
+objectcomplex *object_newcomplex(double real,double imag) {
     objectcomplex *new = (objectcomplex *) object_new(sizeof(objectcomplex), OBJECT_COMPLEX);
     
     if (new) {
-        new->Z=real + I * imag;
+        new->Z=real+ I * imag;
     }
     
     return new;
@@ -61,7 +61,7 @@ objectcomplex *object_complexfromfloat(double val) {
 }
 
 /** Create complex number from a complex */
-objectcomplex *object_complexfromcomplex(DblComplex val) {
+objectcomplex *object_complexfromcomplex(double complex val) {
     objectcomplex *ret=object_newcomplex(creal(val),cimag(val));
     return ret;
 }
@@ -221,38 +221,38 @@ value complex_builtinfabs(vm * v, objectcomplex *c) {
     return MORPHO_FLOAT(val);
 }
 
-COMPLEX_BUILTIN(exp,DblComplex,RET_COMPLEX)
-COMPLEX_BUILTIN(log,DblComplex,RET_COMPLEX)
+COMPLEX_BUILTIN(exp,double complex,RET_COMPLEX)
+COMPLEX_BUILTIN(log,double complex,RET_COMPLEX)
 
 value complex_builtinlog10(vm * v, objectcomplex *c) {
     value out = MORPHO_NIL;
-    DblComplex val = clog(c->Z)/log(10);
+    double complex val = clog(c->Z)/log(10);
     RET_COMPLEX(val,out)
     return out;
 }
 
 
-COMPLEX_BUILTIN(sin,DblComplex,RET_COMPLEX)
-COMPLEX_BUILTIN(cos,DblComplex,RET_COMPLEX)
-COMPLEX_BUILTIN(tan,DblComplex,RET_COMPLEX)
-COMPLEX_BUILTIN(asin,DblComplex,RET_COMPLEX)
-COMPLEX_BUILTIN(acos,DblComplex,RET_COMPLEX)
+COMPLEX_BUILTIN(sin,double complex,RET_COMPLEX)
+COMPLEX_BUILTIN(cos,double complex,RET_COMPLEX)
+COMPLEX_BUILTIN(tan,double complex,RET_COMPLEX)
+COMPLEX_BUILTIN(asin,double complex,RET_COMPLEX)
+COMPLEX_BUILTIN(acos,double complex,RET_COMPLEX)
 
-COMPLEX_BUILTIN(sinh,DblComplex,RET_COMPLEX)
-COMPLEX_BUILTIN(cosh,DblComplex,RET_COMPLEX)
-COMPLEX_BUILTIN(tanh,DblComplex,RET_COMPLEX)
-COMPLEX_BUILTIN(sqrt,DblComplex,RET_COMPLEX)
+COMPLEX_BUILTIN(sinh,double complex,RET_COMPLEX)
+COMPLEX_BUILTIN(cosh,double complex,RET_COMPLEX)
+COMPLEX_BUILTIN(tanh,double complex,RET_COMPLEX)
+COMPLEX_BUILTIN(sqrt,double complex,RET_COMPLEX)
 
 value complex_builtinfloor(vm * v, objectcomplex *c) {
     value out = MORPHO_NIL;
-    DblComplex val = floor(creal(c->Z))+I*floor(cimag(c->Z));
+    double complex val = floor(creal(c->Z))+I*floor(cimag(c->Z));
     RET_COMPLEX(val,out)
     return out;
 }
 
 value complex_builtinceil(vm * v, objectcomplex *c) {
     value out = MORPHO_NIL;
-    DblComplex val = ceil(creal(c->Z))+I*ceil(cimag(c->Z));
+    double complex val = ceil(creal(c->Z))+I*ceil(cimag(c->Z));
     RET_COMPLEX(val,out)
     return out;
 }
@@ -275,7 +275,7 @@ COMPLEX_BUILTIN_BOOL(isnan,||)
 
 value complex_builtinatan(vm *v, value c){
     value out = MORPHO_NIL;
-    DblComplex val = catan(MORPHO_GETCOMPLEX(c)->Z);
+    double complex val = catan(MORPHO_GETCOMPLEX(c)->Z);
     objectcomplex *new = NULL;
     new = object_complexfromcomplex(val);
     if (new) {
@@ -287,7 +287,7 @@ value complex_builtinatan(vm *v, value c){
 
 value complex_builtinatan2(vm *v, value c1, value c2){
     value out = MORPHO_NIL;
-    DblComplex val=0;
+    double complex val=0;
     
     if (MORPHO_ISCOMPLEX(c1) && MORPHO_ISCOMPLEX(c2)) {
         val = catan(MORPHO_GETCOMPLEX(c1)->Z/MORPHO_GETCOMPLEX(c2)->Z);

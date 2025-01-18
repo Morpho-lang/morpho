@@ -11,8 +11,6 @@
 #include <complex.h>
 #include "classes.h"
 
-typedef double _Complex DblComplex;
-
 /* -------------------------------------------------------
  * Complex objects
  * ------------------------------------------------------- */
@@ -22,7 +20,7 @@ extern objecttype objectcomplextype;
 
 typedef struct {
     object obj;
-    DblComplex Z;
+    double complex Z;
 } objectcomplex;
 
 /** Creates a static complex number */
@@ -34,8 +32,8 @@ typedef struct {
 /** Gets the object as a complex */
 #define MORPHO_GETCOMPLEX(val)   ((objectcomplex *) MORPHO_GETOBJECT(val))
 
-/** Gets the object as a C-style DblComplex */
-#define MORPHO_GETDOUBLECOMPLEX(val)   ((DblComplex) ((objectcomplex *) MORPHO_GETOBJECT(val))->Z)
+/** Gets the object as a C-style double complex */
+#define MORPHO_GETDOUBLECOMPLEX(val)   ((double complex) ((objectcomplex *) MORPHO_GETOBJECT(val))->Z)
 
 /** Creates a complex object */
 objectcomplex *object_newcomplex(double real, double imag);

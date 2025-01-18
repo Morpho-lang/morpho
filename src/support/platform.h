@@ -8,6 +8,7 @@
 #define platform_h
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -17,10 +18,10 @@
  * Detecting platform 
  * ------------------------------------------------------- */
 
-#define PLATFORM_MACOS                  "macos"
-#define PLATFORM_LINUX                  "linux"
-#define PLATFORM_UNIX                   "unix"
-#define PLATFORM_WINDOWS                "windows"
+#define MORPHO_PLATFORM_MACOS                  "macos"
+#define MORPHO_PLATFORM_LINUX                  "linux"
+#define MORPHO_PLATFORM_UNIX                   "unix"
+#define MORPHO_PLATFORM_WINDOWS                "windows"
 
 const char *platform_name(void);
 

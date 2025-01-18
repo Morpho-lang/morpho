@@ -9,6 +9,8 @@
  *  - APIs for using threads 
  *  - Functions that involve time */
 
+#include <stdlib.h>
+#include <string.h>
 #include "platform.h"
 
 #ifndef _WIN32
@@ -18,6 +20,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <pwd.h>
 #include <time.h>
 #include <dlfcn.h>
@@ -29,13 +32,13 @@
 
 const char *platform_name(void) {
 #if __APPLE__
-    return PLATFORM_MACOS;
+    return MORPHO_PLATFORM_MACOS;
 #elif __linux__
-    return PLATFORM_LINUX;
+    return MORPHO_PLATFORM_LINUX;
 #elif __UNIX__
-    return PLATFORM_UNIX;
+    return MORPHO_PLATFORM_UNIX;
 #elif defined(_WIN32)
-    return PLATFORM_WINDOWS;
+    return MORPHO_PLATFORM_WINDOWS;
 #endif
     return NULL; // Unrecognized platform
 }
@@ -153,7 +156,7 @@ double platform_clock(void) {
     return seconds;
 #else
     struct timeval tv;
-    gettimeofday (&tv, NULL);
+    gettimeofday(&tv, NULL);
     return ((double) tv.tv_sec) + tv.tv_usec * 1e-6;
 #endif
 }

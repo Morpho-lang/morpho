@@ -9,8 +9,6 @@
 #include <float.h>
 #include <string.h>
 #include <ctype.h>
-#include <dirent.h>
-#include <sys/stat.h>
 
 #include "common.h"
 #include "resources.h"
@@ -205,14 +203,6 @@ unsigned int morpho_powerof2ceiling(unsigned int n) {
     n++;
 
     return n;
-}
-
-/* Tells if an object at path corresponds to a directory */
-bool morpho_isdirectory(const char *path) {
-   struct stat statbuf;
-   if (stat(path, &statbuf) != 0)
-       return 0;
-   return (bool) S_ISDIR(statbuf.st_mode);
 }
 
 /** Count the number of fixed parameters in a callable object

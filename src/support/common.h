@@ -83,8 +83,6 @@ int morpho_encodeutf8(int c, char *out);
 
 unsigned int morpho_powerof2ceiling(unsigned int n);
 
-bool morpho_isdirectory(const char *path);
-
 #ifdef MORPHO_DEBUG
 void morpho_unreachable(const char *explanation);
 #endif

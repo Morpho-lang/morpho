@@ -26,7 +26,6 @@ typedef struct {
 /** Creates a static complex number */
 #define MORPHO_STATICCOMPLEX(real,imag)      { .obj.type=OBJECT_COMPLEX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .Z=real + I * imag}
 
-
 /** Tests whether an object is a complex */
 #define MORPHO_ISCOMPLEX(val) object_istype(val, OBJECT_COMPLEX)
 

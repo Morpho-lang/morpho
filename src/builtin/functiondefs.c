@@ -262,7 +262,6 @@ value builtin_randomint(vm *v, int nargs, value *args) {
     /* Otherwise, generate a number in range. */
     int r=0;
     if (!morpho_valuetoint(MORPHO_GETARG(args, 0), &r)||r<0) {
-
         morpho_runtimeerror(v, VM_INVALIDARGSDETAIL,FUNCTION_RANDOMINT, 1, "positive integer");
     }
     
@@ -290,14 +289,6 @@ value builtin_randomint(vm *v, int nargs, value *args) {
  * Type checking and conversion
  * *************************************/
 
-/*value builtin_isint(vm *v, int nargs, value *args) {
-    if (nargs==1) {
-        return MORPHO_BOOL(MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)));
-    } else morpho_runtimeerror(v, TYPE_NUMARGS, FUNCTION_INT);
-    
-    return MORPHO_NIL;
-}*/
-
 /** Typecheck functions to test for the type of a quantity */
 #define BUILTIN_TYPECHECK(type, test) \
     value builtin_##type(vm *v, int nargs, value *args) { \
@@ -308,7 +299,6 @@ value builtin_randomint(vm *v, int nargs, value *args) {
         return MORPHO_NIL; \
     }
     
-
 BUILTIN_TYPECHECK(isnil, MORPHO_ISNIL)
 BUILTIN_TYPECHECK(isint, MORPHO_ISINTEGER)
 BUILTIN_TYPECHECK(isfloat, MORPHO_ISFLOAT)

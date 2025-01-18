@@ -102,6 +102,10 @@ bool platform_gethomedirectory(char *buffer, size_t size) {
 #endif
 }
 
+// opendir 
+// readdir
+// closedir 
+
 /* **********************************************************************
  * Dynamic libraries
  * ********************************************************************** */

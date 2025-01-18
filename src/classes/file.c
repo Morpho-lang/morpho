@@ -10,6 +10,7 @@
 #include "morpho.h"
 #include "classes.h"
 #include "file.h"
+#include "platform.h"
 
 /** Store the current working directory (relative to the filing systems cwd) */
 static varray_char workingdir;
@@ -380,7 +381,6 @@ MORPHO_ENDCLASS
  * Folder objects
  * ********************************************************************** */
 
-#include <sys/stat.h>
 #include <dirent.h>
 
 /** Detect whether a resource is a folder  */
@@ -390,12 +390,9 @@ value Folder_isfolder(vm *v, int nargs, value *args) {
         varray_char name;
         varray_charinit(&name);
         file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
-        struct stat path_stat;
-
-        if (stat(name.data, &path_stat)==0 &&
-            S_ISDIR(path_stat.st_mode)) {
-            ret = MORPHO_TRUE;
-        }
+        
+        if (platform_isdirectory(name.data)) ret=MORPHO_TRUE;
+        
         varray_charclear(&name);
     } else morpho_runtimeerror(v, FOLDER_EXPCTPATH);
     

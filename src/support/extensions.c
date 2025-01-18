@@ -8,7 +8,6 @@
 * Extensions
 * ********************************************************************** */
 
-#include <dlfcn.h>
 #include <string.h>
 
 #include "varray.h"
@@ -21,6 +20,7 @@
 #include "dict.h"
 #include "resources.h"
 #include "extensions.h"
+#include "platform.h"
 
 /* -------------------------------------------------------
  * Extension structure
@@ -31,7 +31,7 @@ typedef struct {
     value path;
     value functiontable;
     value classtable;
-    void *handle;
+    MorphoDLHandle handle;
 } extension;
 
 DECLARE_VARRAY(extension, extension)
@@ -46,13 +46,13 @@ varray_extension extensionlist; // List of loaded extensions
 /** Open the dynamic library associated with an extension */
 bool extension_dlopen(extension *e) {
     if (e->handle) return true; // Prevent multiple loads
-    if (MORPHO_ISSTRING(e->path)) e->handle=dlopen(MORPHO_GETCSTRING(e->path), RTLD_LAZY);
+    if (MORPHO_ISSTRING(e->path)) e->handle=platform_dlopen(MORPHO_GETCSTRING(e->path));
     return e->handle;
 }
 
 /** Close the dynamic library associated with an extension */
 void extension_dlclose(extension *e) {
-    if (e->handle) dlclose(e->handle);
+    if (e->handle) platform_dlclose(e->handle);
     e->handle=NULL;
 }
 
@@ -109,7 +109,7 @@ bool extension_call(extension *e, char *name, char *fn) {
     strcat(fnname, "_");
     strcat(fnname, fn);
     
-    fptr = dlsym(e->handle, fnname);
+    fptr = platform_dlsym(e->handle, fnname);
     if (fptr) (*fptr) ();
     return fptr;
 }

@@ -4,7 +4,6 @@
  *  @brief Function signatures and their declarations
 */
 
-#include "morpho.h"
 #include "classes.h"
 
 #include "signature.h"

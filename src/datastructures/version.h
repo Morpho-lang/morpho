@@ -7,7 +7,6 @@
 #ifndef version_h
 #define version_h
 
-#include <stddef.h>
 #include <stdbool.h>
 
 #define VERSION_MAXSTRINGLENGTH 64

@@ -11,13 +11,10 @@
 #include <string.h>
 
 #include "varray.h"
-#include "morpho.h"
 #include "value.h"
 #include "common.h"
 #include "object.h"
 #include "builtin.h"
-#include "strng.h"
-#include "dict.h"
 #include "resources.h"
 #include "extensions.h"
 #include "platform.h"

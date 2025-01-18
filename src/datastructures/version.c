@@ -4,8 +4,10 @@
  *  @brief Version comparison
 */
 
+#include <stdio.h>
+
+#include "build.h"
 #include "version.h"
-#include "morpho.h"
 
 /** @brief Initialize a version structure
  * @param[in] v - Version structure to intialize

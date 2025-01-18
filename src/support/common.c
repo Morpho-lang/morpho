@@ -11,7 +11,6 @@
 #include <ctype.h>
 
 #include "common.h"
-#include "resources.h"
 
 /* **********************************************************************
 * Printing

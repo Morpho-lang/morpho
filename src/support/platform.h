@@ -25,7 +25,7 @@ typedef void* MorphoDLHandle;
 
 MorphoDLHandle platform_dlopen(const char *path);
 void platform_dlclose(MorphoDLHandle handle);
-void *platform_dlsym(MorphoDLHandle handle, const char *symbol)
+void *platform_dlsym(MorphoDLHandle handle, const char *symbol);
 
 bool morpho_isdirectory(const char *path);
 

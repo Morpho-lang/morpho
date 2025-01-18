@@ -7,7 +7,9 @@
 #ifndef platform_h
 #define platform_h
 
-#ifdef WIN32
+#include <stdbool.h>
+
+#ifdef _WIN32
 #include <windows.h>
 #endif
 
@@ -15,7 +17,7 @@
  * Dynamic libraries
  * ------------------------------------------------------- */
 
-#ifdef WIN32
+#ifdef _WIN32
 typedef HMODULE MorphoDLHandle;
 #else 
 typedef void* MorphoDLHandle;

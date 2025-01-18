@@ -160,12 +160,6 @@
 /** @brief Fill global constant table */
 //#define MORPHO_DEBUG_FILLGLOBALCONSTANTTABLE
 
-/** @brief Log optimizer */
-//#define MORPHO_DEBUG_LOGOPTIMIZER
-
-/** @brief Log help file parsing */
-//#define MORPHO_DEBUG_LOGHELPFILES
-
 /** @brief Debug symbol table */
 //#define MORPHO_DEBUG_SYMBOLTABLE
 

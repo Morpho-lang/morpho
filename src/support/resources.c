@@ -6,10 +6,10 @@
 
 #include <stdio.h>
 #include <dirent.h>
-#include <sys/stat.h>
 
 #include "common.h"
 #include "resources.h"
+#include "platform.h"
 #include "file.h"
 
 /* **********************************************************************
@@ -103,7 +103,6 @@ char *resources_findextension(char *f) {
 /** Checks if a filename matches all criteria in a resourceenumerator
  @param[in] en - initialized enumerator */
 bool resources_matchfile(resourceenumerator *en, char *file) {
-    
     // Skip extension
     char *ext = resources_findextension(file);
     if (!ext) ext = file+strlen(file); // If no extension found, just go to the end of the filename
@@ -250,8 +249,12 @@ void resources_loadpackagelist(void) {
     varray_char line;
     varray_charinit(&line);
 
-    char *home = getenv("HOME");
-    if (home) varray_charadd(&line, home, (int) strlen(home));
+    size_t len = platform_maxpathsize();
+    char home[len];
+    if (platform_gethomedirectory(home, len)) {
+        varray_charadd(&line, home, (int) strlen(home));
+    }
+
     varray_charwrite(&line, MORPHO_DIRSEPARATOR);
     varray_charadd(&line, MORPHO_PACKAGELIST, (int) strlen(MORPHO_PACKAGELIST));
     varray_charwrite(&line, '\0');

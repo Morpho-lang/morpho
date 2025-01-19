@@ -188,4 +188,4 @@
 //#define MORPHO_OPCODE_USAGE
 
 /** @brief Buiild with profile support */
-#define MORPHO_PROFILER
+//#define MORPHO_PROFILER

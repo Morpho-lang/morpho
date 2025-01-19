@@ -14,6 +14,7 @@
 #include <float.h>
 #include "build.h"
 #include "platform.h"
+#include "error.h"
 
 #ifndef _WIN32
 #define _POSIX_C_SOURCE 199309L
@@ -161,6 +162,7 @@ void platform_directorycontentsclear(MorphoDirContents *contents) {
 bool platform_directorycontents(MorphoDirContents *contents, char *buffer, size_t size) {
 #ifdef _WIN32
     UNREACHABLE("platform_directorycontents not implemented.");
+    return false; 
 #else
     struct dirent *entry;
     do {

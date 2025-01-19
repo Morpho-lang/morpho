@@ -99,12 +99,13 @@ bool extension_initwithname(extension *e, char *name, char *path) {
 }
 
 /** Trys to locate a function with NAME_FN in extension e, and calls it if found */
-bool extension_call(extension *e, char *name, char *fn) {
+bool extension_call(extension *e, const char *name, const char *fn) {
     void (*fptr) (void);
-    char fnname[strlen(name)+strlen(fn)+2];
-    strcpy(fnname, name);
-    strcat(fnname, "_");
-    strcat(fnname, fn);
+    size_t size = strlen(name) + strlen(fn) + 2;
+    char fnname[size];
+    strncpy(fnname, name, size);
+    strncat(fnname, "_", size);
+    strncat(fnname, fn, size);
     
     fptr = platform_dlsym(e->handle, fnname);
     if (fptr) (*fptr) ();

@@ -5,6 +5,9 @@ option(MORPHO_DISABLENANBOXING "Disables NAN Boxing" OFF)
 
 option(MORPHO_GCSTRESSTEST "Stress tests the garbage collector" OFF)
 
+option(MORPHO_NOLINALG "Builds without linear algebra" OFF)
+option(MORPHO_NOSPARSE "Builds without sparse matrices" OFF)
+
 add_library(morpho SHARED "") 
 add_subdirectory(src)
 
@@ -48,6 +51,7 @@ source_group("geometry" REGULAR_EXPRESSION src/geometry/.*\\.[ch])
 source_group("linalg" REGULAR_EXPRESSION src/linalg/.*\\.[ch])
 source_group("support" REGULAR_EXPRESSION src/support/.*\\.[ch])
 
+if (!MORPHO_NOSPARSE)
 # Find suitesparse cs.h header file 
 find_file(SUITESPARSE_HEADER cs.h 
           HINTS 
@@ -60,9 +64,16 @@ find_file(SUITESPARSE_HEADER cs.h
 # Identify folder that cs.h is located in from SUITESPARSE_HEADER and store in SUITESPARSE_INCLUDE
 get_filename_component(SUITESPARSE_INCLUDE ${SUITESPARSE_HEADER} DIRECTORY)
 
-# Add morpho headers to MORPHO_INCLUDE
+# Add suitesparse headers to include folders
 target_include_directories(morpho PUBLIC ${SUITESPARSE_INCLUDE})
 
+# Locate suitesparse
+find_library(SUITESPARSE_LIBRARY
+    NAMES cxsparse libcxsparse
+)
+endif()
+
+if (!MORPHO_NOLINALG)
 # Locate a lapack version
 # Currently we prefer LAPACKE 
 # TODO: Fix morpho source to select between lapack and lapacke
@@ -74,11 +85,7 @@ find_library(LAPACK_LIBRARY
 find_library(CBLAS_LIBRARY
     NAMES cblas libcblas blas libblas
 )
-
-# Locate suitesparse
-find_library(SUITESPARSE_LIBRARY
-    NAMES cxsparse libcxsparse
-)
+endif()
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)

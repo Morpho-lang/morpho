@@ -81,14 +81,10 @@ bool debug_indxfromline(program *code, value file, int line, instructionindx *ou
 bool debug_indxfromfunction(program *code, value klassname, value fname, instructionindx *indx) {
     objectclass *cklass=NULL;
     objectfunction *cfunc=NULL;
-    instructionindx i=0;
     
     for (unsigned int j=0; j<code->annotations.count; j++) {
         debugannotation *ann = &code->annotations.data[j];
         switch (ann->type) {
-            case DEBUG_ELEMENT:
-                i+=ann->content.element.ninstr;
-                break;
             case DEBUG_FUNCTION:
                 cfunc=ann->content.function.function;
                 if (MORPHO_ISEQUAL(cfunc->name, fname) &&

@@ -279,8 +279,9 @@ void MorphoMutex_unlock(MorphoMutex *mutex) {
 bool MorphoCond_init(MorphoCond *cond) {
 #ifdef _WIN32
     InitializeConditionVariable(cond);
+    return true;
 #else 
-    pthread_cond_init(cond, NULL);
+    return (pthread_cond_init(cond, NULL)==0);
 #endif
 }
 

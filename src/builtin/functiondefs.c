@@ -6,6 +6,8 @@
 
 #include <time.h>
 #include <stdlib.h>
+#include <complex.h>
+
 #include "functiondefs.h"
 #include "random.h"
 #include "builtin.h"
@@ -93,7 +95,7 @@ BUILTIN_MATH_BOOL(isinf)
 BUILTIN_MATH_BOOL(isnan)
 
 #undef BUILTIN_MATH_BOOL
-/** The sqrt function is needs to be able to return a complex number for negitive arguments */
+/** The sqrt function is needs to be able to return a complex number for negative arguments */
 value builtin_sqrt(vm *v, int nargs, value *args) { 
     if (nargs==1) { 
         value arg = MORPHO_GETARG(args, 0); 
@@ -104,8 +106,8 @@ value builtin_sqrt(vm *v, int nargs, value *args) {
             double val;
             if (morpho_valuetofloat(arg,&val)) {
                 if (val<0) {// need to use complex sqrt
-                    objectcomplex C = MORPHO_STATICCOMPLEX(val,0);
-                    return complex_builtinsqrt(v,&C);
+                    objectcomplex C = MORPHO_STATICCOMPLEX(val, 0);
+                    return complex_builtinsqrt(v, &C);
                 } else { 
                     return MORPHO_FLOAT(sqrt(val));
                 }

@@ -9,6 +9,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <complex.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -17,7 +18,7 @@
 #endif
 
 /* -------------------------------------------------------
- * Detecting platform 
+ * Detecting platform name
  * ------------------------------------------------------- */
 
 #define MORPHO_PLATFORM_MACOS                  "macos"
@@ -26,6 +27,42 @@
 #define MORPHO_PLATFORM_WINDOWS                "windows"
 
 const char *platform_name(void);
+
+/* -------------------------------------------------------
+ * Complex numbers
+ * ------------------------------------------------------- */
+
+/** The windows C library has only partial support for C99 complex numbers, 
+ *  which are implemented as a struct rather than a native type. While
+ *  C99 complex functions are provided, basic arithmetic operations don't
+ *  work. Hence we provide a type, as well as several macros and functions 
+ *  to fill in missing functionality: */
+
+#ifdef _WIN32
+typedef _Dcomplex MorphoComplex;  
+#define MCBuild(re,im) _Cbuild(re, im)
+#else
+typedef double complex MorphoComplex;
+#define MCBuild(re,im) (re + I * im)
+#endif
+
+#ifdef _WIN32
+MorphoComplex MCAdd(MorphoComplex a, MorphoComplex b);
+MorphoComplex MCSub(MorphoComplex a, MorphoComplex b);
+#define MCMul(a,b) (_Cmulcc(a,b))
+#define MCScale(a,b) (_Cmulcr(a,b))
+MorphoComplex MCDiv(MorphoComplex a, MorphoComplex b);
+bool MCSame(MorphoComplex a, MorphoComplex b);
+#else
+#define MCAdd(a, b) (a + b)
+#define MCSub(a, b) (a - b)
+#define MCMul(a, b) (a * b)
+#define MCScale(a, b) (a * b)
+#define MCDiv(a, b) (a / b)
+#define MCSame(a, b) (a == b)
+#endif
+
+bool MCEq(MorphoComplex a, MorphoComplex b);
 
 /* -------------------------------------------------------
  * Navigating the file system

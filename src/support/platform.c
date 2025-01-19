@@ -11,6 +11,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>
+#include "build.h"
 #include "platform.h"
 
 #ifndef _WIN32
@@ -41,6 +43,36 @@ const char *platform_name(void) {
     return MORPHO_PLATFORM_WINDOWS;
 #endif
     return NULL; // Unrecognized platform
+}
+
+/* **********************************************************************
+ * Complex arithmetic
+ * ********************************************************************** */
+
+#ifdef _WIN32
+MorphoComplex MCAdd(MorphoComplex a, MorphoComplex b) {
+    return MCBuild(creal(a)+creal(b), cimag(a)+cimag(b)); 
+}
+
+MorphoComplex MCSub(MorphoComplex a, MorphoComplex b) {
+    return MCBuild(creal(a)-creal(b), cimag(a)-cimag(b)); 
+}
+
+MorphoComplex MCDiv(MorphoComplex a, MorphoComplex b) {
+    return _Cmulcr(MCMul(a, conj(b)), 1.0/norm(b));
+}
+
+bool MCSame(MorphoComplex a, MorphoComplex b) {
+    return (creal(a)==creal(b) && cimag(a)==cimag(b));
+}
+#endif
+
+/** Compare two complex numbers using both absolute and relative tolerance */
+bool MCEq(MorphoComplex a, MorphoComplex b) {
+    double diff = cabs(MCSub(a,b));
+    double absa = cabs(a), absb = cabs(b);
+    double absmax = (absa>absb, absa, absb);
+    return (diff <= MORPHO_ABSOLUTE_EPS) || (absmax > DBL_MIN && diff/absmax <= MORPHO_RELATIVE_EPS);
 }
 
 /* **********************************************************************

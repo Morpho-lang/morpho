@@ -4,6 +4,8 @@
  *  @brief Define constants that choose how Morpho is built
  */
 
+#include <float.h>
+
 /* **********************************************************************
  * Version
  * ********************************************************************** */
@@ -45,7 +47,13 @@
  * ********************************************************************** */
 
 /** Value used to detect zero */
-#define MORPHO_EPS 1e-16
+#define MORPHO_EPS DBL_EPSILON
+
+/** Absolute epsilon used to compare double precision equality */
+#define MORPHO_ABSOLUTE_EPS (1e8 * DBL_MIN)
+
+/** Relative tolerance used to compare double precision equality */
+#define MORPHO_RELATIVE_EPS DBL_EPSILON
 
 /* **********************************************************************
  * Size limits
@@ -119,13 +127,13 @@
  * ********************************************************************** */
 
 /** Build with Matrix class using BLAS/LAPACK */
-#define MORPHO_INCLUDE_LINALG
+//#define MORPHO_INCLUDE_LINALG
 
 /** Build with Sparse class */
-#define MORPHO_INCLUDE_SPARSE
+//#define MORPHO_INCLUDE_SPARSE
 
 /** Build with geometry classes */
-#define MORPHO_INCLUDE_GEOMETRY
+//#define MORPHO_INCLUDE_GEOMETRY
 
 /* **********************************************************************
  * Libraries

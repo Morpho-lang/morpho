@@ -39,14 +39,9 @@ const char *platform_name(void);
  *  to fill in missing functionality: */
 
 #ifdef _WIN32
-typedef _Dcomplex MorphoComplex;  
+typedef _Dcomplex MorphoComplex;
 #define MCBuild(re,im) _Cbuild(re, im)
-#else
-typedef double complex MorphoComplex;
-#define MCBuild(re,im) (re + I * im)
-#endif
 
-#ifdef _WIN32
 MorphoComplex MCAdd(MorphoComplex a, MorphoComplex b);
 MorphoComplex MCSub(MorphoComplex a, MorphoComplex b);
 #define MCMul(a,b) (_Cmulcc(a,b))
@@ -54,6 +49,9 @@ MorphoComplex MCSub(MorphoComplex a, MorphoComplex b);
 MorphoComplex MCDiv(MorphoComplex a, MorphoComplex b);
 bool MCSame(MorphoComplex a, MorphoComplex b);
 #else
+typedef double complex MorphoComplex;
+#define MCBuild(re,im) (re + I * im)
+
 #define MCAdd(a, b) (a + b)
 #define MCSub(a, b) (a - b)
 #define MCMul(a, b) (a * b)

@@ -71,7 +71,7 @@ bool MCSame(MorphoComplex a, MorphoComplex b) {
 bool MCEq(MorphoComplex a, MorphoComplex b) {
     double diff = cabs(MCSub(a,b));
     double absa = cabs(a), absb = cabs(b);
-    double absmax = (absa>absb, absa, absb);
+    double absmax = (absa>absb ? absa : absb);
     return (diff <= MORPHO_ABSOLUTE_EPS) || (absmax > DBL_MIN && diff/absmax <= MORPHO_RELATIVE_EPS);
 }
 

@@ -49,8 +49,8 @@ bool morpho_doubleeqtest(double a, double b) {
     if (a==b) return true; 
     double diff = fabs(a-b);
     double absa = fabs(a), absb=fabs(b);
-    double absmax = (absa>absb, absa, absb);
-    return (diff <= MORPHO_ABSOLUTE_EPS) || (absmax > DBL_MIN && diff/absmax <= MORPHO_RELATIVE_EPS); 
+    double absmax = (absa>absb ? absa : absb);
+    return (diff <= MORPHO_ABSOLUTE_EPS) || (absmax > DBL_MIN && diff/absmax <= MORPHO_RELATIVE_EPS);
 }
 
 /** @brief Compares two values

@@ -10,11 +10,13 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <complex.h>
+#include "varray.h"
 
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <dirent.h>
+#include <pthread.h>
 #endif
 
 /* -------------------------------------------------------
@@ -100,6 +102,40 @@ void platform_dlclose(MorphoDLHandle handle);
 void *platform_dlsym(MorphoDLHandle handle, const char *symbol);
 
 bool morpho_isdirectory(const char *path);
+
+/* -------------------------------------------------------
+ * Threads
+ * ------------------------------------------------------- */
+
+#ifdef _WIN32
+typedef HANDLE             MorphoThread;
+typedef CRITICAL_SECTION   MorphoMutex;
+typedef CONDITION_VARIABLE MorphoCond;
+typedef DWORD              MorphoThreadFnReturnType; 
+typedef DWORD (*MorphoThreadFn)(void *);
+#else 
+typedef pthread_t          MorphoThread;
+typedef pthread_mutex_t    MorphoMutex;
+typedef pthread_cond_t     MorphoCond;
+typedef void*              MorphoThreadFnReturnType;
+typedef void* (*MorphoThreadFn)(void *);
+#endif
+
+DECLARE_VARRAY(MorphoThread, MorphoThread);
+
+void MorphoThread_create(MorphoThread *thread, MorphoThreadFn threadfn, void *ref);
+void MorphoThread_join(MorphoThread *thread);
+
+bool MorphoMutex_init(MorphoMutex *mutex);
+void MorphoMutex_clear(MorphoMutex *mutex);
+void MorphoMutex_lock(MorphoMutex *mutex);
+void MorphoMutex_unlock(MorphoMutex *mutex);
+
+bool MorphoCond_init(MorphoCond *cond);
+void MorphoCond_clear(MorphoCond *cond);
+void MorphoCond_signal(MorphoCond *cond);
+void MorphoCond_broadcast(MorphoCond *cond);
+void MorphoCond_wait(MorphoCond *cond, MorphoMutex *mutex);
 
 /* -------------------------------------------------------
  * Time

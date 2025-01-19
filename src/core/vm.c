@@ -137,15 +137,17 @@ bool vm_start(vm *v, program *p) {
 
 /** Frees all objects bound to a virtual machine */
 void vm_freeobjects(vm *v) {
-    long k=0;
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
+    long k = 0;
     morpho_printf(v, "--- Freeing objects bound to VM ---\n");
 #endif
     object *next=NULL;
     for (object *e=v->objects; e!=NULL; e=next) {
         next = e->next;
         object_free(e);
+#ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
         k++;
+#endif
     }
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR

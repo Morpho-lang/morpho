@@ -4,7 +4,8 @@
  *  @brief Isolates platform dependent code in morpho */
 
 /** Platform-dependent code in morpho arises in several ways: 
- *  - Navigating the file system 
+ *  - Complex numbers for platforms that do not fully implement C99.
+ *  - Navigating the file system
  *  - APIs for opening dynamic libraries
  *  - APIs for using threads 
  *  - Functions that involve time */
@@ -204,6 +205,118 @@ void *platform_dlsym(MorphoDLHandle handle, const char *symbol) {
     return (void *) GetProcAddress(handle, symbol);
 #else 
     return dlsym(handle, symbol);
+#endif
+}
+
+/* **********************************************************************
+ * Threads
+ * ********************************************************************** */
+
+DEFINE_VARRAY(MorphoThread, MorphoThread);
+
+/** Creates a thread */
+void MorphoThread_create(MorphoThread *thread, MorphoThreadFn threadfn, void *ref) {
+#ifdef _WIN32
+    DWORD threadId; 
+    *thread = CreateThread(NULL, // Default security attributes
+                           0, // Default stack size
+                           threadfn, 
+                           ref,
+                           0, // Default creation flags
+                           &threadId); 
+#else
+    pthread_create(thread, NULL, threadfn, ref);
+#endif
+}
+
+/** Waits for a thread to finish */
+void MorphoThread_join(MorphoThread *thread) {
+#ifdef _WIN32
+    WaitForSingleObject(*thread, INFINITE);
+#else 
+    pthread_join(thread, NULL);
+#endif  
+}
+
+/** Initializes a mutex */
+bool MorphoMutex_init(MorphoMutex *mutex) {
+#ifdef _WIN32
+    InitializeCriticalSection(mutex);
+    return true; 
+#else 
+    return pthread_mutex_init(mutex, NULL)==0;
+#endif
+}
+
+/** Clears a mutex */
+void MorphoMutex_clear(MorphoMutex *mutex) {
+#ifdef _WIN32
+    DeleteCriticalSection(mutex);
+#else 
+    pthread_mutex_destroy(mutex);
+#endif
+}
+
+/** Locks a mutex */
+void MorphoMutex_lock(MorphoMutex *mutex) {
+#ifdef _WIN32
+    EnterCriticalSection(mutex);
+#else 
+    pthread_mutex_lock(&pool->lock_mutex);
+#endif
+}
+
+/** Unlocks a mutex */
+void MorphoMutex_unlock(MorphoMutex *mutex) {
+#ifdef _WIN32
+    LeaveCriticalSection(mutex);
+#else 
+    pthread_mutex_unlock(mutex);
+#endif
+}
+
+/** Initializes a condition variable */
+bool MorphoCond_init(MorphoCond *cond) {
+#ifdef _WIN32
+    InitializeConditionVariable(cond);
+#else 
+    pthread_cond_init(cond, NULL);
+#endif
+}
+
+/** Clears a condition variable */
+void MorphoCond_clear(MorphoCond *cond) {
+#ifdef _WIN32
+    /* Condition variables don't require cleanup on windows */
+#else 
+    pthread_cond_destroy(cond);
+#endif
+}
+
+/** Signals condition variable, waking up a waiting thread */
+void MorphoCond_signal(MorphoCond *cond) {
+#ifdef _WIN32
+    WakeConditionVariable(cond);
+#else 
+    pthread_cond_signal(cond);
+#endif
+}
+
+/** Wake all threads waiting on a condition variable */
+void MorphoCond_broadcast(MorphoCond *cond) {
+#ifdef _WIN32
+    WakeAllConditionVariable(cond);
+#else 
+    pthread_cond_broadcast(cond);
+#endif
+}
+
+/** Waits for the condition variable to be signalled */
+void MorphoCond_wait(MorphoCond *cond, MorphoMutex *mutex) {
+#ifdef _WIN32
+    SleepConditionVariableCS(cond, mutex, INFINITE);
+#else 
+    pthread_cond_wait(cond, mutex);
 #endif
 }
 

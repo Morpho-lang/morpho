@@ -2683,7 +2683,6 @@ static codeinfo compiler_do(compiler *c, syntaxtreenode *node, registerindx reqo
     codeinfo cond = CODEINFO_EMPTY,
              body = CODEINFO_EMPTY;
     unsigned int ninstructions=0;
-    instructionindx condindx=REGISTER_UNALLOCATED; /* Where is the condition located */
     instructionindx startindx=compiler_currentinstructionindex(c);
     instructionindx nextindx=REGISTER_UNALLOCATED; /* Where should continue jump to? */
 
@@ -2712,7 +2711,7 @@ static codeinfo compiler_do(compiler *c, syntaxtreenode *node, registerindx reqo
         }
 
         /* Generate empty instruction to contain the conditional branch */
-        condindx=compiler_addinstruction(c, ENCODE_LONG(OP_BIF, cond.dest, -ninstructions-1), node);
+        compiler_addinstruction(c, ENCODE_LONG(OP_BIF, cond.dest, -ninstructions-1), node);
         ninstructions++;
 
         compiler_releaseoperand(c, cond);

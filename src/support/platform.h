@@ -124,7 +124,7 @@ typedef void* (*MorphoThreadFn)(void *);
 DECLARE_VARRAY(MorphoThread, MorphoThread);
 
 void MorphoThread_create(MorphoThread *thread, MorphoThreadFn threadfn, void *ref);
-void MorphoThread_join(MorphoThread *thread);
+void MorphoThread_join(MorphoThread thread);
 
 bool MorphoMutex_init(MorphoMutex *mutex);
 void MorphoMutex_clear(MorphoMutex *mutex);

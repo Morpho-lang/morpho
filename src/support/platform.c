@@ -4,7 +4,7 @@
  *  @brief Isolates platform dependent code in morpho */
 
 /** Platform-dependent code in morpho arises in several ways: 
- *  - Complex numbers for platforms that do not fully implement C99.
+ *  - Complex numbers for platforms that do not fully implement C99
  *  - Navigating the file system
  *  - APIs for opening dynamic libraries
  *  - APIs for using threads 
@@ -230,12 +230,12 @@ void MorphoThread_create(MorphoThread *thread, MorphoThreadFn threadfn, void *re
 }
 
 /** Waits for a thread to finish */
-void MorphoThread_join(MorphoThread *thread) {
+void MorphoThread_join(MorphoThread thread) {
 #ifdef _WIN32
-    WaitForSingleObject(*thread, INFINITE);
+    WaitForSingleObject(thread, INFINITE);
 #else 
     pthread_join(thread, NULL);
-#endif  
+#endif
 }
 
 /** Initializes a mutex */
@@ -262,7 +262,7 @@ void MorphoMutex_lock(MorphoMutex *mutex) {
 #ifdef _WIN32
     EnterCriticalSection(mutex);
 #else 
-    pthread_mutex_lock(&pool->lock_mutex);
+    pthread_mutex_lock(mutex);
 #endif
 }
 

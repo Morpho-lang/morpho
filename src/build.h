@@ -130,7 +130,7 @@
 //#define MORPHO_INCLUDE_LINALG
 
 /** Build with Sparse class */
-//#define MORPHO_INCLUDE_SPARSE 
+//#define MORPHO_INCLUDE_SPARSE
 
 /** Build with geometry classes */
 //#define MORPHO_INCLUDE_GEOMETRY

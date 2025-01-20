@@ -8,6 +8,8 @@ option(MORPHO_GCSTRESSTEST "Stress tests the garbage collector" OFF)
 option(MORPHO_NOLINALG "Builds without linear algebra" OFF)
 option(MORPHO_NOSPARSE "Builds without sparse matrices" OFF)
 
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
 add_library(morpho SHARED "") 
 add_subdirectory(src)
 

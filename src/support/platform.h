@@ -76,6 +76,7 @@ bool platform_isdirectory(const char *path);
 
 typedef struct {
 #ifdef _WIN32
+    bool isvalid; 
     WIN32_FIND_DATA finddata;
     HANDLE handle;
 #else

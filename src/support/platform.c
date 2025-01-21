@@ -11,6 +11,7 @@
  *  - Functions that involve time */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <float.h>
 #include "build.h"
@@ -142,8 +143,19 @@ bool platform_gethomedirectory(char *buffer, size_t size) {
 /** Initializes a MorphoDirContents structure with a given path */
 bool platform_directorycontentsinit(MorphoDirContents *contents, const char *path) {
 #ifdef _WIN32
-    contents->handle = FindFirstFile(path, &contents->finddata);
-    return (contents->handle != INVALID_HANDLE_VALUE);
+    size_t len = strlen(path)+3;
+    char srch[len];
+    strcpy(srch,path);
+    strcat(srch, "/*"); // Add required wildcard
+
+    bool success=false;
+    contents->handle = FindFirstFile(srch, &contents->finddata);
+    if (contents->handle != INVALID_HANDLE_VALUE) {
+        contents->isvalid=true; // Used by platform_directorcontentsnext to check that finddata contains valid information
+        success=true; 
+    }
+
+    return success; 
 #else
     contents->dir=opendir(path);
     return contents->dir;
@@ -162,8 +174,19 @@ void platform_directorycontentsclear(MorphoDirContents *contents) {
 /** Call this function repeatedly to extract the next file in the directory. Returns true if a file is found; the filename is in the buffer. */
 bool platform_directorycontents(MorphoDirContents *contents, char *buffer, size_t size) {
 #ifdef _WIN32
-    UNREACHABLE("platform_directorycontents not implemented.");
-    return false; 
+    if (!contents->isvalid) return false;
+
+    while (strcmp(contents->finddata.cFileName, ".")==0 ||
+           strcmp(contents->finddata.cFileName, "..")==0) {
+
+        if (FindNextFile(contents->handle, &contents->finddata)==0) return false; 
+    }
+
+    strncpy(buffer, contents->finddata.cFileName, size);
+
+    // Fetch next file and record whether it succeeded
+    contents->isvalid=(FindNextFile(contents->handle, &contents->finddata)!=0);
+    return true; 
 #else
     struct dirent *entry;
     do {

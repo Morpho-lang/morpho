@@ -18,9 +18,11 @@
 #include "platform.h"
 #include "error.h"
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include <windows.h>
+#include <wincrypt.h>
+#else 
 #define _POSIX_C_SOURCE 199309L
-
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
@@ -46,6 +48,33 @@ const char *platform_name(void) {
     return MORPHO_PLATFORM_WINDOWS;
 #endif
     return NULL; // Unrecognized platform
+}
+
+/* **********************************************************************
+ * Random numbers
+ * ********************************************************************** */
+
+/** Obtain a number of random bytes from the host platform */
+bool platform_randombytes(char *buffer, size_t nbytes) {
+    bool success=false;
+#ifdef _WIN32
+    HCRYPTPROV hProvider = 0;
+    if (CryptAcquireContext(&hProvider, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT) &&
+        CryptGenRandom(hProvider, nbytes, buffer)) {
+        CryptReleaseContext(hProvider, 0);
+        success=true; 
+    }
+#else 
+    FILE *urandom;
+    /* Initialize from OS random bits */
+    urandom=fopen("/dev/urandom", "r");
+    if (urandom) {
+        for(int i=0; i<nbytes; i++) buffer[i]=(char) fgetc(urandom);
+        fclose(urandom);
+        success=true; 
+    }
+#endif 
+    return success; 
 }
 
 /* **********************************************************************

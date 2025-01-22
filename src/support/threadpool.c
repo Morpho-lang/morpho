@@ -99,6 +99,8 @@ void threadpool_clear(threadpool *pool) {
     MorphoMutex_clear(&pool->lock_mutex);
     MorphoCond_clear(&pool->work_available_cond);
     MorphoCond_clear(&pool->work_halted_cond);
+
+    for (int i=0; i<pool->threads.count; i++) MorphoThread_clear(pool->threads.data[i]);
     
     varray_MorphoThreadclear(&pool->threads);
 }

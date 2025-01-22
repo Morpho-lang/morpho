@@ -267,7 +267,7 @@ void *platform_dlsym(MorphoDLHandle handle, const char *symbol) {
 DEFINE_VARRAY(MorphoThread, MorphoThread);
 
 /** Creates a thread */
-void MorphoThread_create(MorphoThread *thread, MorphoThreadFn threadfn, void *ref) {
+bool MorphoThread_create(MorphoThread *thread, MorphoThreadFn threadfn, void *ref) {
 #ifdef _WIN32
     DWORD threadId; 
     *thread = CreateThread(NULL, // Default security attributes
@@ -276,8 +276,9 @@ void MorphoThread_create(MorphoThread *thread, MorphoThreadFn threadfn, void *re
                            ref,
                            0, // Default creation flags
                            &threadId); 
+    return (*thread!=NULL);
 #else
-    pthread_create(thread, NULL, threadfn, ref);
+    return (pthread_create(thread, NULL, threadfn, ref)==0);
 #endif
 }
 
@@ -287,6 +288,22 @@ void MorphoThread_join(MorphoThread thread) {
     WaitForSingleObject(thread, INFINITE);
 #else 
     pthread_join(thread, NULL);
+#endif
+}
+
+/** Clears a thread, releasing any resources used */
+void MorphoThread_clear(MorphoThread thread) {
+#ifdef _WIN32
+    CloseHandle(thread);
+#endif
+}
+
+/** Exits a thread */
+void MorphoThread_exit(void) {
+#ifdef _WIN32
+    ExitThread(0);
+#else 
+    pthread_exit(NULL);
 #endif
 }
 

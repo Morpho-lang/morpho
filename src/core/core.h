@@ -20,6 +20,7 @@ typedef struct svm vm;
 #include "common.h"
 #include "dictionary.h"
 #include "builtin.h"
+#include "platform.h"
 
 #include "program.h"
 
@@ -155,12 +156,11 @@ typedef struct {
  * ********************************************************************** */
 
 #ifdef MORPHO_PROFILER
-#include <pthread.h>
 /** @brief Morpho profiler */
 typedef struct {
-    pthread_t profiler;
+    MorphoThread profiler;
+    MorphoMutex profile_lock;
     bool profiler_quit;
-    pthread_mutex_t profile_lock;
     dictionary profile_dict;
     clock_t start;
     clock_t end;

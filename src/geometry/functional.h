@@ -19,11 +19,11 @@
 
 /* Functional properties */
 #define FUNCTIONAL_GRADE_PROPERTY             "grade"
-#define FUNCTIONAL_ONESIDED_PROPERTY          "onesided"
 #define FUNCTIONAL_FIELD_PROPERTY             "field"
 #define SCALARPOTENTIAL_FUNCTION_PROPERTY     "function"
 #define SCALARPOTENTIAL_GRADFUNCTION_PROPERTY "gradfunction"
 #define LINEARELASTICITY_REFERENCE_PROPERTY   "reference"
+#define LINEARELASTICITY_WTBYREF_PROPERTY     "weightByReference"
 #define LINEARELASTICITY_POISSON_PROPERTY     "poissonratio"
 #define HYDROGEL_A_PROPERTY                   "a"
 #define HYDROGEL_B_PROPERTY                   "b"

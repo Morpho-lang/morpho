@@ -1,3 +1,5 @@
+// Cauchy-Green tensor in integrals 
+
 import constants
 import meshtools
 
@@ -13,12 +15,31 @@ var mref = m.clone()
 
 m.setvertexmatrix(2*m.vertexmatrix())
 
-var phi = Field(m, fn (x,y) 1+x)
-
-fn integrand(x, f) {
+fn integrand(x) {
     var cg = cgtensor()
     return cg.trace()
 }
 
-var a = AreaIntegral(integrand, phi, reference=mref)
+var a = AreaIntegral(integrand, reference=mref)
 print a.total(m) // expect: 6
+
+var b = AreaIntegral(integrand, reference=mref, weightByReference=true)
+print b.total(m) // expect: 1.5
+
+// Ensure equivalence of LinearElasticity and AreaIntegral formulations
+var nu = 0.3 
+var mu = 1/2/(1+nu)
+var lambda = nu/(1+nu)/(1-2*nu)
+
+fn elasticity(x) {
+    var cg = cgtensor()
+
+    var trCG=cg.trace()
+    var trCGCG = (cg * cg).trace() 
+
+    return mu*trCGCG + lambda*trCG^2/2 
+}
+
+print (LinearElasticity(mref).total(m) -
+       AreaIntegral(elasticity, reference=mref, weightByReference=true).total(m)) < 1e-8
+// expect: true

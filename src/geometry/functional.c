@@ -2119,6 +2119,7 @@ MORPHO_ENDCLASS
  * ---------------------------------------------- */
 
 static value linearelasticity_referenceproperty;
+static value linearelasticity_weightbyreferenceproperty;
 static value linearelasticity_poissonproperty;
 
 typedef struct {
@@ -3890,6 +3891,7 @@ typedef struct {
     value method; // Method dictionary
     objectmesh *mref; // Reference mesh
     vm *v;
+    bool weightbyref; // Use reference mesh for the element
 } integralref;
 
 /* ----------------------------------------------
@@ -4206,12 +4208,14 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
     bool success=false;
     value func=MORPHO_NIL;
     value mref=MORPHO_NIL;
+    value wtbyref=MORPHO_NIL;
     value field=MORPHO_NIL;
     value method=MORPHO_NIL;
     ref->v=NULL;
     ref->nfields=0;
     ref->method=MORPHO_NIL;
     ref->mref=NULL;
+    ref->weightbyref=false;
 
     if (objectinstance_getpropertyinterned(self, scalarpotential_functionproperty, &func) &&
         MORPHO_ISCALLABLE(func)) {
@@ -4221,6 +4225,9 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
     if (objectinstance_getpropertyinterned(self, linearelasticity_referenceproperty, &mref) &&
         MORPHO_ISMESH(mref)) {
         ref->mref=MORPHO_GETMESH(mref);
+    }
+    if (objectinstance_getpropertyinterned(self, linearelasticity_weightbyreferenceproperty, &wtbyref)) {
+        ref->weightbyref=!morpho_isfalse(wtbyref);
     }
     if (objectinstance_getpropertyinterned(self, functional_methodproperty, &method)) {
         ref->method=method;
@@ -4352,12 +4359,15 @@ value LineIntegral_init(vm *v, int nargs, value *args) {
     int nfixed;
     value method=MORPHO_NIL;
     value mref=MORPHO_NIL;
+    value wtbyref=MORPHO_NIL;
 
-    if (builtin_options(v, nargs, args, &nfixed, 2,
+    if (builtin_options(v, nargs, args, &nfixed, 3,
                         functional_methodproperty, &method,
-                        linearelasticity_referenceproperty, &mref)) {
+                        linearelasticity_referenceproperty, &mref,
+                        linearelasticity_weightbyreferenceproperty, &wtbyref)) {
         if (MORPHO_ISDICTIONARY(method)) objectinstance_setproperty(self, functional_methodproperty, method);
         if (MORPHO_ISMESH(mref)) objectinstance_setproperty(self, linearelasticity_referenceproperty, mref);
+        if (MORPHO_ISBOOL(wtbyref)) objectinstance_setproperty(self, linearelasticity_weightbyreferenceproperty, wtbyref);
     } else {
         morpho_runtimeerror(v, LINEINTEGRAL_ARGS);
         return MORPHO_NIL;
@@ -4447,8 +4457,12 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     elref.iref = &iref;
     elref.vertexposn = x;
     elref.qgrad=qgrad;
-
-    if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &elref.elementsize)) return false;
+    
+    if (iref.weightbyref) {
+        if (!functional_elementsize(v, iref.mref, MESH_GRADE_AREA, id, nv, vid, &elref.elementsize)) return false;
+    } else {
+        if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &elref.elementsize)) return false;
+    }
 
     iref.v=v;
     for (unsigned int i=0; i<nv; i++) {
@@ -4621,7 +4635,7 @@ MORPHO_ENDCLASS
  * Initialization
  * ********************************************************************** */
 
-double ff(double x) {
+/*double ff(double x) {
     return exp(x);
 }
 
@@ -4632,7 +4646,7 @@ double dff(double x) {
 void functional_fdtest(void) {
     double h1 = 1e-8;
     
-    //double xi[] = { -100, -10, -1.0, 0.0, 1e-7, 1e-5, 1e-2, 0.1, 1, 10, 100, 1e100 /* Terminator */};
+    //double xi[] = { -100, -10, -1.0, 0.0, 1e-7, 1e-5, 1e-2, 0.1, 1, 10, 100, 1e100 };
     
     for (int i=-6; i<3; i++) {
         double x = pow(10.0, (double) i);
@@ -4646,7 +4660,7 @@ void functional_fdtest(void) {
         printf("%g: %g %g %g\n", x, fex, fabs((f1-fex)/fex), fabs((f2-fex)/fex));
     }
     
-}
+}*/
 
 void functional_initialize(void) {
     fddelta1 = pow(MORPHO_EPS, 1.0/3.0);
@@ -4657,6 +4671,7 @@ void functional_initialize(void) {
     scalarpotential_functionproperty=builtin_internsymbolascstring(SCALARPOTENTIAL_FUNCTION_PROPERTY);
     scalarpotential_gradfunctionproperty=builtin_internsymbolascstring(SCALARPOTENTIAL_GRADFUNCTION_PROPERTY);
     linearelasticity_referenceproperty=builtin_internsymbolascstring(LINEARELASTICITY_REFERENCE_PROPERTY);
+    linearelasticity_weightbyreferenceproperty=builtin_internsymbolascstring(LINEARELASTICITY_WTBYREF_PROPERTY);
     linearelasticity_poissonproperty=builtin_internsymbolascstring(LINEARELASTICITY_POISSON_PROPERTY);
     hydrogel_aproperty=builtin_internsymbolascstring(HYDROGEL_A_PROPERTY);
     hydrogel_bproperty=builtin_internsymbolascstring(HYDROGEL_B_PROPERTY);

@@ -123,17 +123,17 @@
 #define _MORPHO_PADDING char __padding[_MORPHO_L1CACHELINESIZE]
 
 /* **********************************************************************
- * Core library
+ * Core library [options set in CMake]
  * ********************************************************************** */
 
 /** Build with Matrix class using BLAS/LAPACK */
-#define MORPHO_INCLUDE_LINALG
+//#define MORPHO_INCLUDE_LINALG
 
 /** Build with Sparse class */
-#define MORPHO_INCLUDE_SPARSE
+//#define MORPHO_INCLUDE_SPARSE
 
 /** Build with geometry classes */
-#define MORPHO_INCLUDE_GEOMETRY
+//#define MORPHO_INCLUDE_GEOMETRY
 
 /* **********************************************************************
  * Libraries

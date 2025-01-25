@@ -1,28 +1,26 @@
+#-------------------------------------------------------------------------------
+# Morpho/CMakeLists.txt
+#-------------------------------------------------------------------------------
+
 cmake_minimum_required(VERSION 3.13)
+
 project(morpho-libmorpho)
 
-option(MORPHO_DISABLENANBOXING "Disables NAN Boxing" OFF)
-
-option(MORPHO_GCSTRESSTEST "Stress tests the garbage collector" OFF)
-
-option(MORPHO_NOLINALG "Builds without linear algebra" OFF)
-option(MORPHO_NOSPARSE "Builds without sparse matrices" OFF)
-
-set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-
 add_library(morpho SHARED "") 
-add_subdirectory(src)
 
-# Include morpho header files across the project 
-target_include_directories(morpho PUBLIC src 
-                                  src/builtin
-                                  src/classes
-                                  src/core
-                                  src/datastructures
-                                  src/debug
-                                  src/geometry
-                                  src/linalg
-                                  src/support )
+#-------------------------------------------------------------------------------
+# Options
+#-------------------------------------------------------------------------------
+
+option(MORPHO_DISABLENANBOXING "Disables NAN Boxing" OFF)
+option(MORPHO_GCSTRESSTEST "Stress tests the garbage collector" OFF)
+option(MORPHO_BUILD_LINALG "Builds with linear algebra" ON)
+option(MORPHO_BUILD_SPARSE "Builds with sparse matrix support" ON)
+option(MORPHO_BUILD_GEOMETRY "Builds with geometry library" ON)
+
+#-------------------------------------------------------------------------------
+# Process options
+#-------------------------------------------------------------------------------
 
 # Option to disable NAN Boxing
 if(MORPHO_DISABLENANBOXING)
@@ -39,28 +37,75 @@ if(MORPHO_HELP_BASEDIR)
 target_compile_definitions(morpho PUBLIC MORPHO_HELP_BASEDIR=\"${MORPHO_HELP_BASEDIR}\")
 endif() 
 
+# Set directory for modules supplied with morpho
 if(MORPHO_MODULE_BASEDIR)
 target_compile_definitions(morpho PUBLIC MORPHO_MODULE_BASEDIR=\"${MORPHO_MODULE_BASEDIR}\")
 endif() 
 
-# Create source groups for IDE
-source_group("builtin" REGULAR_EXPRESSION src/builtin/.*\\.[ch])
-source_group("classes" REGULAR_EXPRESSION src/classes/.*\\.[ch])
-source_group("core" REGULAR_EXPRESSION src/core/.*\\.[ch])
-source_group("datastructures" REGULAR_EXPRESSION src/datastructures/.*\\.[ch])
-source_group("debug" REGULAR_EXPRESSION src/debug/.*\\.[ch])
-source_group("geometry" REGULAR_EXPRESSION src/geometry/.*\\.[ch])
-source_group("linalg" REGULAR_EXPRESSION src/linalg/.*\\.[ch])
-source_group("support" REGULAR_EXPRESSION src/support/.*\\.[ch])
+# Include geometry as part of the build
+if(MORPHO_BUILD_GEOMETRY)
+target_compile_definitions(morpho PUBLIC MORPHO_INCLUDE_GEOMETRY)
+endif()
 
-#if (!MORPHO_NOSPARSE)
+#-------------------------------------------------------------------------------
+# BLAS and LAPACK
+#-------------------------------------------------------------------------------
+
+if (MORPHO_BUILD_LINALG)
+message(STATUS "Searching for BLAS and LAPACK")
+# Locate a lapack version
+# Currently we prefer LAPACKE 
+# TODO: Fix morpho source to select between lapack and lapacke
+find_library(LAPACK_LIBRARY
+    NAMES lapacke liblapacke lapack liblapack libopenblas
+    HINTS 
+        "C:\\Program Files\\Morpho\\lib\\"
+)
+if (LAPACK_LIBRARY)
+message(STATUS "Found LAPACK at ${LAPACK_LIBRARY}")
+endif()
+
+# Locate cblas
+find_library(CBLAS_LIBRARY
+    NAMES cblas libcblas blas libblas openblas libopenblas
+    HINTS
+        "C:\\Program Files\\Morpho\\lib\\"
+)
+if (CBLAS_LIBRARY)
+message(STATUS "Found blas at ${CBLAS_LIBRARY}")
+endif()
+
+# Find cblas.h header file 
+find_file(CBLAS_HEADER cblas.h 
+          HINTS 
+            "C:\\Program Files\\Morpho\\include\\lapack")
+
+# Identify folder that cblas.h is located in from CBLAS_HEADER and store in CBLAS_INCLUDE
+get_filename_component(CBLAS_INCLUDE ${CBLAS_HEADER} DIRECTORY)
+
+# Add suitesparse headers to include folders
+target_include_directories(morpho PUBLIC ${CBLAS_INCLUDE})
+
+message(STATUS "Found cblas headers at ${CBLAS_INCLUDE}")
+
+target_compile_definitions(morpho PUBLIC MORPHO_INCLUDE_LINALG)
+endif()
+
+#-------------------------------------------------------------------------------
+# SuiteSparse
+#-------------------------------------------------------------------------------
+
+if (MORPHO_BUILD_SPARSE)
+message(STATUS "Searching for Suitesparse")
 # Locate suitesparse
 find_library(SUITESPARSE_LIBRARY
     NAMES cxsparse libcxsparse
     HINTS 
         "C:\\Program Files\\Morpho\\lib\\"
 )
+if (SUITESPARSE_LIBRARY)
 message(STATUS "Found suitesparse at ${SUITESPARSE_LIBRARY}")
+endif()
 
 # Find suitesparse cs.h header file 
 find_file(SUITESPARSE_HEADER cs.h 
@@ -78,46 +123,55 @@ get_filename_component(SUITESPARSE_INCLUDE ${SUITESPARSE_HEADER} DIRECTORY)
 # Add suitesparse headers to include folders
 target_include_directories(morpho PUBLIC ${SUITESPARSE_INCLUDE})
 message(STATUS "Found cs.h at ${SUITESPARSE_INCLUDE}")
-#endif()
 
-#if (!MORPHO_NOLINALG)
-message(STATUS "Searching for BLAS and LAPACK")
-# Locate a lapack version
-# Currently we prefer LAPACKE 
-# TODO: Fix morpho source to select between lapack and lapacke
-find_library(LAPACK_LIBRARY
-    NAMES lapacke liblapacke lapack liblapack libopenblas
-    HINTS 
-        "C:\\Program Files\\Morpho\\lib\\"
-)
-message(STATUS "Found LAPACK at ${LAPACK_LIBRARY}")
+target_compile_definitions(morpho PUBLIC MORPHO_INCLUDE_SPARSE)
+endif()
 
-# Locate cblas
-find_library(CBLAS_LIBRARY
-    NAMES cblas libcblas blas libblas openblas libopenblas
-    HINTS
-        "C:\\Program Files\\Morpho\\lib\\"
-)
-message(STATUS "Found blas at ${CBLAS_LIBRARY}")
-
-# Find cblas.h header file 
-find_file(CBLAS_HEADER cblas.h 
-          HINTS 
-            "C:\\Program Files\\Morpho\\include\\lapack")
-
-# Identify folder that cblas.h is located in from CBLAS_HEADER and store in CBLAS_INCLUDE
-get_filename_component(CBLAS_INCLUDE ${CBLAS_HEADER} DIRECTORY)
-
-# Add suitesparse headers to include folders
-target_include_directories(morpho PUBLIC ${CBLAS_INCLUDE})
-
-message(STATUS "Found cblas headers at ${CBLAS_INCLUDE}")
-#endif()
+#-------------------------------------------------------------------------------
+# Threads
+#-------------------------------------------------------------------------------
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
+#-------------------------------------------------------------------------------
+# Platform dependent options
+#-------------------------------------------------------------------------------
+
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
+#-------------------------------------------------------------------------------
+# Add morpho sources
+#-------------------------------------------------------------------------------
+
+add_subdirectory(src)
+
+# Include morpho header files across the project 
+target_include_directories(morpho PUBLIC src 
+                                  src/builtin
+                                  src/classes
+                                  src/core
+                                  src/datastructures
+                                  src/debug
+                                  src/geometry
+                                  src/linalg
+                                  src/support )
+
+# Create source groups for IDE
+source_group("builtin" REGULAR_EXPRESSION src/builtin/.*\\.[ch])
+source_group("classes" REGULAR_EXPRESSION src/classes/.*\\.[ch])
+source_group("core" REGULAR_EXPRESSION src/core/.*\\.[ch])
+source_group("datastructures" REGULAR_EXPRESSION src/datastructures/.*\\.[ch])
+source_group("debug" REGULAR_EXPRESSION src/debug/.*\\.[ch])
+source_group("geometry" REGULAR_EXPRESSION src/geometry/.*\\.[ch])
+source_group("linalg" REGULAR_EXPRESSION src/linalg/.*\\.[ch])
+source_group("support" REGULAR_EXPRESSION src/support/.*\\.[ch])
+
 target_link_libraries(morpho ${SUITESPARSE_LIBRARY} ${CBLAS_LIBRARY} ${LAPACK_LIBRARY} ${SUITESPARSE_LIBRARY} ${CMAKE_DL_LIBS} Threads::Threads)
+
+#-------------------------------------------------------------------------------
+# Install
+#-------------------------------------------------------------------------------
 
 # Install the resulting library
 install(TARGETS morpho)

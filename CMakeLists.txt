@@ -6,6 +6,12 @@ cmake_minimum_required(VERSION 3.13)
 
 project(morpho-libmorpho)
 
+#-------------------------------------------------------------------------------
+# Platform dependent options
+#-------------------------------------------------------------------------------
+
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
 add_library(morpho SHARED "") 
 
 #-------------------------------------------------------------------------------
@@ -133,12 +139,6 @@ endif()
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-
-#-------------------------------------------------------------------------------
-# Platform dependent options
-#-------------------------------------------------------------------------------
-
-set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 #-------------------------------------------------------------------------------
 # Add morpho sources

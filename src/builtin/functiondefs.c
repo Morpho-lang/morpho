@@ -12,11 +12,14 @@
 #include "random.h"
 #include "builtin.h"
 #include "common.h"
+#include "cmplx.h"
+
 #include "matrix.h"
+#include "sparse.h"
+
 #include "mesh.h"
 #include "field.h"
 #include "selection.h"
-#include "cmplx.h"
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846

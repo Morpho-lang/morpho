@@ -53,7 +53,15 @@ source_group("geometry" REGULAR_EXPRESSION src/geometry/.*\\.[ch])
 source_group("linalg" REGULAR_EXPRESSION src/linalg/.*\\.[ch])
 source_group("support" REGULAR_EXPRESSION src/support/.*\\.[ch])
 
-if (!MORPHO_NOSPARSE)
+#if (!MORPHO_NOSPARSE)
+# Locate suitesparse
+find_library(SUITESPARSE_LIBRARY
+    NAMES cxsparse libcxsparse
+    HINTS 
+        "C:\\Program Files\\Morpho\\lib\\"
+)
+message(STATUS "Found suitesparse at ${SUITESPARSE_LIBRARY}")
+
 # Find suitesparse cs.h header file 
 find_file(SUITESPARSE_HEADER cs.h 
           HINTS 
@@ -61,38 +69,55 @@ find_file(SUITESPARSE_HEADER cs.h
             /usr/local/include
             /usr/local/include/suitesparse
             /opt/homebrew/include/suitesparse
-            /usr/include/suitesparse)
+            /usr/include/suitesparse
+            "C:\\Program Files\\Morpho\\include\\suitesparse")
 
 # Identify folder that cs.h is located in from SUITESPARSE_HEADER and store in SUITESPARSE_INCLUDE
 get_filename_component(SUITESPARSE_INCLUDE ${SUITESPARSE_HEADER} DIRECTORY)
 
 # Add suitesparse headers to include folders
 target_include_directories(morpho PUBLIC ${SUITESPARSE_INCLUDE})
+message(STATUS "Found cs.h at ${SUITESPARSE_INCLUDE}")
+#endif()
 
-# Locate suitesparse
-find_library(SUITESPARSE_LIBRARY
-    NAMES cxsparse libcxsparse
-)
-endif()
-
-if (!MORPHO_NOLINALG)
+#if (!MORPHO_NOLINALG)
+message(STATUS "Searching for BLAS and LAPACK")
 # Locate a lapack version
 # Currently we prefer LAPACKE 
 # TODO: Fix morpho source to select between lapack and lapacke
 find_library(LAPACK_LIBRARY
-    NAMES lapacke liblapacke lapack liblapack 
+    NAMES lapacke liblapacke lapack liblapack libopenblas
+    HINTS 
+        "C:\\Program Files\\Morpho\\lib\\"
 )
+message(STATUS "Found LAPACK at ${LAPACK_LIBRARY}")
 
 # Locate cblas
 find_library(CBLAS_LIBRARY
-    NAMES cblas libcblas blas libblas
+    NAMES cblas libcblas blas libblas openblas libopenblas
+    HINTS
+        "C:\\Program Files\\Morpho\\lib\\"
 )
-endif()
+message(STATUS "Found blas at ${CBLAS_LIBRARY}")
+
+# Find cblas.h header file 
+find_file(CBLAS_HEADER cblas.h 
+          HINTS 
+            "C:\\Program Files\\Morpho\\include\\lapack")
+
+# Identify folder that cblas.h is located in from CBLAS_HEADER and store in CBLAS_INCLUDE
+get_filename_component(CBLAS_INCLUDE ${CBLAS_HEADER} DIRECTORY)
+
+# Add suitesparse headers to include folders
+target_include_directories(morpho PUBLIC ${CBLAS_INCLUDE})
+
+message(STATUS "Found cblas headers at ${CBLAS_INCLUDE}")
+#endif()
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-target_link_libraries(morpho ${SUITESPARSE_LIBRARY} ${CBLAS_LIBRARY} ${LAPACK_LIBRARY} ${CMAKE_DL_LIBS} Threads::Threads)
+target_link_libraries(morpho ${SUITESPARSE_LIBRARY} ${CBLAS_LIBRARY} ${LAPACK_LIBRARY} ${SUITESPARSE_LIBRARY} ${CMAKE_DL_LIBS} Threads::Threads)
 
 # Install the resulting library
 install(TARGETS morpho)

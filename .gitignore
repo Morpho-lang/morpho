@@ -75,3 +75,4 @@ build/*
 build-xcode/*
 build-win/*
 *.valgrind
+/.vs

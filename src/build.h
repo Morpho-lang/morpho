@@ -127,13 +127,13 @@
  * ********************************************************************** */
 
 /** Build with Matrix class using BLAS/LAPACK */
-//#define MORPHO_INCLUDE_LINALG
+#define MORPHO_INCLUDE_LINALG
 
 /** Build with Sparse class */
-//#define MORPHO_INCLUDE_SPARSE
+#define MORPHO_INCLUDE_SPARSE
 
 /** Build with geometry classes */
-//#define MORPHO_INCLUDE_GEOMETRY
+#define MORPHO_INCLUDE_GEOMETRY
 
 /* **********************************************************************
  * Libraries

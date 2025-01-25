@@ -12,6 +12,7 @@
 #include "system.h"
 #include "classes.h"
 
+#include "sparse.h"
 #include "mesh.h"
 #include "selection.h"
 #include "functional.h"

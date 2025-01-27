@@ -169,7 +169,7 @@ def test(file,testLog,CI):
 
 
         # Delete the temporary file
-        os.system('rm ' + tmp)
+        os.remove(tmp)
 
     return ret
 

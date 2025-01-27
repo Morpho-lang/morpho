@@ -113,7 +113,8 @@ void file_setworkingdirectory(const char *path) {
 /** Gets the relative path for a given file */
 void file_relativepath(const char *fname, varray_char *name) {
     /* Check the fname passed isn't a global file reference (i.e. starts with / or ~) */
-    if (fname[0]!='~' && fname[0]!='/') {
+    if (fname[0]!='~' && fname[0]!='/' && 
+        !(fname[0]!='\0' && fname[1]==':')) {
         if (workingdir.count>0) {
             for (unsigned int i=0; i<workingdir.count && workingdir.data[i]!='\0'; i++) {
                 varray_charwrite(name, workingdir.data[i]);

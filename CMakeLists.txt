@@ -58,6 +58,7 @@ endif()
 #-------------------------------------------------------------------------------
 
 if (MORPHO_BUILD_LINALG)
+
 message(STATUS "Searching for BLAS and LAPACK")
 # Locate a lapack version
 # Currently we prefer LAPACKE 
@@ -82,19 +83,20 @@ message(STATUS "Found blas at ${CBLAS_LIBRARY}")
 endif()
 
 # Find cblas.h header file 
-find_file(CBLAS_HEADER cblas.h 
+find_path(CBLAS_INCLUDE cblas.h 
           HINTS 
             "C:\\Program Files\\Morpho\\include\\lapack")
 
-# Identify folder that cblas.h is located in from CBLAS_HEADER and store in CBLAS_INCLUDE
-get_filename_component(CBLAS_INCLUDE ${CBLAS_HEADER} DIRECTORY)
-
-# Add suitesparse headers to include folders
+# Add cblas headers to include folders
 target_include_directories(morpho PUBLIC ${CBLAS_INCLUDE})
 
 message(STATUS "Found cblas headers at ${CBLAS_INCLUDE}")
 
+target_link_libraries(morpho ${CBLAS_LIBRARY})
+target_link_libraries(morpho ${LAPACK_LIBRARY})
+
 target_compile_definitions(morpho PUBLIC MORPHO_INCLUDE_LINALG)
+
 endif()
 
 #-------------------------------------------------------------------------------
@@ -131,6 +133,8 @@ target_include_directories(morpho PUBLIC ${SUITESPARSE_INCLUDE})
 message(STATUS "Found cs.h at ${SUITESPARSE_INCLUDE}")
 
 target_compile_definitions(morpho PUBLIC MORPHO_INCLUDE_SPARSE)
+
+target_link_libraries(morpho ${SUITESPARSE_LIBRARY})
 endif()
 
 #-------------------------------------------------------------------------------
@@ -167,7 +171,7 @@ source_group("geometry" REGULAR_EXPRESSION src/geometry/.*\\.[ch])
 source_group("linalg" REGULAR_EXPRESSION src/linalg/.*\\.[ch])
 source_group("support" REGULAR_EXPRESSION src/support/.*\\.[ch])
 
-target_link_libraries(morpho ${SUITESPARSE_LIBRARY} ${CBLAS_LIBRARY} ${LAPACK_LIBRARY} ${SUITESPARSE_LIBRARY} ${CMAKE_DL_LIBS} Threads::Threads)
+target_link_libraries(morpho ${CMAKE_DL_LIBS} Threads::Threads)
 
 #-------------------------------------------------------------------------------
 # Install

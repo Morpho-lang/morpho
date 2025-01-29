@@ -31,7 +31,7 @@ print abs(a1.angle())<1e-15
 // expect: true
 
 a1 = -a1
-print abs(a1.angle()-Pi)<1e-15
+print abs(abs(a1.angle())-Pi)<1e-15
 // expect: true
 
 a1 = -im

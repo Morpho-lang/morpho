@@ -1,0 +1,20 @@
+// Complex number testing
+import constants
+
+// constructor
+var Z = Complex(1,2);
+print Z
+// expect: 1 + 2im
+
+var C = Complex(3.2,-1.1);
+print C 
+// expect: 3.2 - 1.1im
+print Z.real()
+// expect: 1
+print Z.imag()
+// expect: 2
+print C.real()
+// expect: 3.2
+print C.imag()
+// expect: -1.1
+

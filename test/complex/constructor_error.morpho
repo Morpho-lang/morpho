@@ -1,0 +1,14 @@
+// constructor error
+try {
+    var X = Complex(1)    
+} catch {
+    "CmplxCns" : print "ok"
+// expect: ok
+}    
+
+try {
+    var C = Complex(1,"text")    
+} catch {
+    "CmplxCns" : print "ok"
+// expect: ok
+}    

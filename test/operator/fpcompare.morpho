@@ -1,20 +1,25 @@
-// Comparisong of floating point values
+// Floating point limits
 
-var eps = 1e-16
+var eps = 2^-53 // Machine epsilon ~ 2.22e-16
 
-var min = 1e-309
+var min = 2^-1022 // Smallest normalized representable number
 
 print 0 < eps // expect: true
 print 0 == eps // expect: false
 
+// Adding eps to 1 should yield the same number
 print 1 == 1+eps // expect: true
 print 1 == 1+10*eps // expect: false
 
 print -eps < 0 // expect: true
 print -eps == 0 // expect: false
 
+// DBL_EPS shouldn't equal zero
 print min == 0 // expect: false
 print eps*min == 0 // expect: true
 
+// Ensure signs don't matter
 print -eps*min == eps*min // expect: true
-print -1000*eps*min == 1000*eps*min // expect: false
+
+// 1000*eps is not normalized
+print -(1000*eps)*min == (1000*eps)*min // expect: false

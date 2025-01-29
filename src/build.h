@@ -49,9 +49,6 @@
 /** Value used to detect zero */
 #define MORPHO_EPS DBL_EPSILON
 
-/** Absolute epsilon used to compare double precision equality */
-#define MORPHO_ABSOLUTE_EPS (1e8 * DBL_MIN)
-
 /** Relative tolerance used to compare double precision equality */
 #define MORPHO_RELATIVE_EPS DBL_EPSILON
 

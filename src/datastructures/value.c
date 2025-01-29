@@ -50,7 +50,7 @@ bool morpho_doubleeqtest(double a, double b) {
     double diff = fabs(a-b);
     double absa = fabs(a), absb=fabs(b);
     double absmax = (absa>absb ? absa : absb);
-    return (diff <= MORPHO_ABSOLUTE_EPS) || (absmax > DBL_MIN && diff/absmax <= MORPHO_RELATIVE_EPS);
+    return (diff == 0.0) || (absmax > DBL_MIN && diff/absmax <= MORPHO_RELATIVE_EPS);
 }
 
 /** @brief Compares two values
@@ -107,7 +107,7 @@ int morpho_extendedcomparevalue(value a, value b) {
     
     if (MORPHO_ISCOMPLEX(aa) && MORPHO_ISNUMBER(bb)) {
         MorphoComplex z = MORPHO_GETDOUBLECOMPLEX(aa);
-        if (cimag(z) > -MORPHO_ABSOLUTE_EPS  && cimag(z) < MORPHO_ABSOLUTE_EPS) { // Ensure imaginary part is zero
+        if (fabs(cimag(z)) < cabs(z)*MORPHO_RELATIVE_EPS) { // Ensure imaginary part is zero
             aa=MORPHO_FLOAT(creal(z));
             double real;
             morpho_valuetofloat(bb, &real);

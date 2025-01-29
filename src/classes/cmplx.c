@@ -120,7 +120,12 @@ void complex_print(vm *v, objectcomplex *a) {
         sign = '-';
     }
 
-    morpho_printf(v, "%g %c %gim",(fabs(creal(a->Z))<2*MORPHO_ABSOLUTE_EPS ? 0 : creal(a->Z)),sign,(fabs(cimag(a->Z))<2*MORPHO_ABSOLUTE_EPS ? 0 : fabs(cimag(a->Z))));
+    double Zr = creal(a->Z), Zi = cimag(a->Z), R = cabs(a->Z);
+
+    double showZr = ( fabs(Zr) < MORPHO_RELATIVE_EPS*R ? 0 : Zr);
+    double showZi = ( fabs(Zi) < MORPHO_RELATIVE_EPS*R ? 0 : fabs(Zi));
+
+    morpho_printf(v, "%g %c %gim", showZr, sign, showZi);
 }
 
 /* **********************************************************************

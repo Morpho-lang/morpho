@@ -214,16 +214,18 @@ bool parse_stringfromtoken(parser *p, unsigned int start, unsigned int length, v
     varray_char str;
     varray_charinit(&str);
     
-    for (unsigned int i=start; i<length; i++) {
-
-        if (input[i]=='\n') {
+    for (unsigned int i=start, nbytes; i<length; i+=nbytes) {
+        nbytes=morpho_utf8numberofbytes(&input[i]);
+        if (!nbytes) return false;
+        
+        if (nbytes>1) { // Unicode literals
+            varray_charadd(&str, (char *) &input[i], nbytes);
+        } else if (input[i]=='\n') { // Newlines are ok 
             varray_charwrite(&str, input[i]);
-        } else if (iscntrl(input[i])) {
+        } else if (iscntrl((unsigned char) input[i])) { // Unescaped control codes are not
             parse_error(p, true, PARSE_UNESCPDCTRL);
             goto parse_stringfromtokencleanup;
-        } else if (input[i]!='\\') {
-            varray_charwrite(&str, input[i]);
-        } else {
+        } else if (nbytes==1 && input[i]=='\\') { // Escape sequence
             i++;
             switch (input[i]) {
                 case 'b': varray_charwrite(&str, '\b'); break;
@@ -246,7 +248,7 @@ bool parse_stringfromtoken(parser *p, unsigned int start, unsigned int length, v
                 default:
                     varray_charwrite(&str, input[i]); break;
             }
-        }
+        } else varray_charwrite(&str, input[i]); // Any other single character
     }
     
     success=true;

@@ -1,10 +1,12 @@
 /** @file complex.c
- *  @author Danny Goldstein
+ *  @author D Hellstein and T J Atherton
  *
  *  @brief Complex number type
  */
 
 #include <string.h>
+#include <complex.h>
+
 #include "morpho.h"
 #include "classes.h"
 #include "common.h"
@@ -17,7 +19,7 @@ objecttype objectcomplextype;
 
 /** Complex object definitions */
 size_t objectcomplex_sizefn(object *obj) {
-    return sizeof(objectcomplextype)+sizeof(double) * 2;
+    return sizeof(objectcomplex);
 }
 
 void objectcomplex_printfn(object *obj, void *v) {
@@ -44,7 +46,7 @@ objectcomplex *object_newcomplex(double real,double imag) {
     objectcomplex *new = (objectcomplex *) object_new(sizeof(objectcomplex), OBJECT_COMPLEX);
     
     if (new) {
-        new->Z=real+ I * imag;
+        new->Z=MCBuild(real,imag);
     }
     
     return new;
@@ -61,7 +63,7 @@ objectcomplex *object_complexfromfloat(double val) {
 }
 
 /** Create complex number from a complex */
-objectcomplex *object_complexfromcomplex(double complex val) {
+objectcomplex *object_complexfromcomplex(MorphoComplex val) {
     objectcomplex *ret=object_newcomplex(creal(val),cimag(val));
     return ret;
 }
@@ -98,7 +100,7 @@ void complex_getimag(objectcomplex *c, double *value) {
 
 /** @brief checks equality on two complex numbers */
 bool complex_isequal(objectcomplex *a, objectcomplex *b) {
-    return (a->Z == b->Z);
+    return MCEq(a->Z,b->Z);
 }
 
 /** @brief checks equality between a complex number and a value */
@@ -106,7 +108,7 @@ bool complex_isequaltonumber(objectcomplex *a, value b) {
     if (MORPHO_ISNUMBER(b)){
         double val;
         morpho_valuetofloat(b,&val);
-        return (a->Z==val);
+        return MCEq(a->Z, MCBuild(val,0.0));
     }
     return false;
 }
@@ -118,7 +120,12 @@ void complex_print(vm *v, objectcomplex *a) {
         sign = '-';
     }
 
-    morpho_printf(v, "%g %c %gim",(fabs(creal(a->Z))<2*MORPHO_EPS ? 0 : creal(a->Z)),sign,(fabs(cimag(a->Z))<2*MORPHO_EPS ? 0 : fabs(cimag(a->Z))));
+    double Zr = creal(a->Z), Zi = cimag(a->Z), R = cabs(a->Z);
+
+    double showZr = ( fabs(Zr) < MORPHO_RELATIVE_EPS*R ? 0 : Zr);
+    double showZi = ( fabs(Zi) < MORPHO_RELATIVE_EPS*R ? 0 : fabs(Zi));
+
+    morpho_printf(v, "%g %c %gim", showZr, sign, showZi);
 }
 
 /* **********************************************************************
@@ -127,28 +134,27 @@ void complex_print(vm *v, objectcomplex *a) {
 
 /** performs out = a + b */
 void complex_add(objectcomplex *a, objectcomplex *b, objectcomplex *out){
-    out->Z = a->Z + b->Z;
-
+    out->Z = MCAdd(a->Z,b->Z);
 }
 
 /** performs out = a + b where a is not complex */
 void complex_add_real(objectcomplex *a, double b, objectcomplex *out){
-    out->Z = a->Z + b;
+    out->Z = MCAdd(a->Z, MCBuild(b,0));
 }
 
 /** performs out = a - b  */
 void complex_sub(objectcomplex *a, objectcomplex *b, objectcomplex *out) {
-    out->Z = a->Z - b->Z;
+    out->Z = MCSub(a->Z, b->Z);
 }
 
 /** performs out = a * b */
 void complex_mul(objectcomplex *a, objectcomplex *b, objectcomplex *out){
-    out->Z = a->Z * b->Z;
+    out->Z = MCMul(a->Z, b->Z);
 }
 
 /** performs out = a * b where b is real */
 void complex_mul_real(objectcomplex *a, double b, objectcomplex *out){
-    out->Z = a->Z * b;
+    out->Z = MCScale(a->Z, b);
 }
 
 /** performs out = a */
@@ -158,7 +164,7 @@ void complex_copy(objectcomplex *a, objectcomplex *out) {
 
 /** performs out = a ^ b  where b is real*/
 void complex_power(objectcomplex *a, double exponent, objectcomplex *out){
-    out->Z = cpow(a->Z,exponent);
+    out->Z = cpow(a->Z,MCBuild(exponent, 0));
 }
 
 /** performs out = a ^ b  for complex numbers*/
@@ -168,12 +174,12 @@ void complex_cpower(objectcomplex *a, objectcomplex *b, objectcomplex *out){
 
 /** performs out = a / b */
 void complex_div(objectcomplex *a, objectcomplex *b, objectcomplex *out){
-    out->Z = a->Z/b->Z;
+    out->Z = MCDiv(a->Z,b->Z);
 }
 
 /** performs out = 1/a */
 void complex_invert(objectcomplex *a, objectcomplex *out){
-    out->Z = 1/a->Z;
+    out->Z = MCDiv(MCBuild(1,0), a->Z);
 }
 
 /** performs out = conj(a) by negating the imaginary part */
@@ -221,38 +227,38 @@ value complex_builtinfabs(vm * v, objectcomplex *c) {
     return MORPHO_FLOAT(val);
 }
 
-COMPLEX_BUILTIN(exp,double complex,RET_COMPLEX)
-COMPLEX_BUILTIN(log,double complex,RET_COMPLEX)
+COMPLEX_BUILTIN(exp,MorphoComplex,RET_COMPLEX)
+COMPLEX_BUILTIN(log,MorphoComplex,RET_COMPLEX)
 
 value complex_builtinlog10(vm * v, objectcomplex *c) {
     value out = MORPHO_NIL;
-    double complex val = clog(c->Z)/log(10);
+    MorphoComplex val = MCScale(clog(c->Z), 1.0/log(10));
     RET_COMPLEX(val,out)
     return out;
 }
 
 
-COMPLEX_BUILTIN(sin,double complex,RET_COMPLEX)
-COMPLEX_BUILTIN(cos,double complex,RET_COMPLEX)
-COMPLEX_BUILTIN(tan,double complex,RET_COMPLEX)
-COMPLEX_BUILTIN(asin,double complex,RET_COMPLEX)
-COMPLEX_BUILTIN(acos,double complex,RET_COMPLEX)
+COMPLEX_BUILTIN(sin,MorphoComplex,RET_COMPLEX)
+COMPLEX_BUILTIN(cos,MorphoComplex,RET_COMPLEX)
+COMPLEX_BUILTIN(tan,MorphoComplex,RET_COMPLEX)
+COMPLEX_BUILTIN(asin,MorphoComplex,RET_COMPLEX)
+COMPLEX_BUILTIN(acos,MorphoComplex,RET_COMPLEX)
 
-COMPLEX_BUILTIN(sinh,double complex,RET_COMPLEX)
-COMPLEX_BUILTIN(cosh,double complex,RET_COMPLEX)
-COMPLEX_BUILTIN(tanh,double complex,RET_COMPLEX)
-COMPLEX_BUILTIN(sqrt,double complex,RET_COMPLEX)
+COMPLEX_BUILTIN(sinh,MorphoComplex,RET_COMPLEX)
+COMPLEX_BUILTIN(cosh,MorphoComplex,RET_COMPLEX)
+COMPLEX_BUILTIN(tanh,MorphoComplex,RET_COMPLEX)
+COMPLEX_BUILTIN(sqrt,MorphoComplex,RET_COMPLEX)
 
 value complex_builtinfloor(vm * v, objectcomplex *c) {
     value out = MORPHO_NIL;
-    double complex val = floor(creal(c->Z))+I*floor(cimag(c->Z));
+    MorphoComplex val = MCBuild(floor(creal(c->Z)),floor(cimag(c->Z)));
     RET_COMPLEX(val,out)
     return out;
 }
 
 value complex_builtinceil(vm * v, objectcomplex *c) {
     value out = MORPHO_NIL;
-    double complex val = ceil(creal(c->Z))+I*ceil(cimag(c->Z));
+    MorphoComplex val = MCBuild(ceil(creal(c->Z)), ceil(cimag(c->Z)));
     RET_COMPLEX(val,out)
     return out;
 }
@@ -275,7 +281,7 @@ COMPLEX_BUILTIN_BOOL(isnan,||)
 
 value complex_builtinatan(vm *v, value c){
     value out = MORPHO_NIL;
-    double complex val = catan(MORPHO_GETCOMPLEX(c)->Z);
+    MorphoComplex val = catan(MORPHO_GETCOMPLEX(c)->Z);
     objectcomplex *new = NULL;
     new = object_complexfromcomplex(val);
     if (new) {
@@ -287,18 +293,18 @@ value complex_builtinatan(vm *v, value c){
 
 value complex_builtinatan2(vm *v, value c1, value c2){
     value out = MORPHO_NIL;
-    double complex val=0;
+    MorphoComplex val=MCBuild(0,0);
     
     if (MORPHO_ISCOMPLEX(c1) && MORPHO_ISCOMPLEX(c2)) {
-        val = catan(MORPHO_GETCOMPLEX(c1)->Z/MORPHO_GETCOMPLEX(c2)->Z);
+        val = catan(MCDiv(MORPHO_GETCOMPLEX(c1)->Z, MORPHO_GETCOMPLEX(c2)->Z));
     } else if (MORPHO_ISCOMPLEX(c1) && MORPHO_ISNUMBER(c2)) {
         double num;
         morpho_valuetofloat(c2,&num);
-        val = catan(MORPHO_GETCOMPLEX(c1)->Z/num);
+        val = catan(MCScale(MORPHO_GETCOMPLEX(c1)->Z, 1.0/num));
     } else if (MORPHO_ISNUMBER(c1) && MORPHO_ISCOMPLEX(c2)) {
         double num;
         morpho_valuetofloat(c1,&num);
-        val = catan(num/MORPHO_GETCOMPLEX(c2)->Z);
+        val = catan(MCDiv(MCBuild(num,0), MORPHO_GETCOMPLEX(c2)->Z));
     } else {
         morpho_runtimeerror(v, COMPLEX_INVLDNARG);
         return MORPHO_NIL;
@@ -553,7 +559,7 @@ value Complex_divr(vm *v, int nargs, value *args) {
                 morpho_bindobjects(v, 1, &out);
             }
         } else UNREACHABLE("Number did not return float value");
-    } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
+    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
     
     return out;
 }

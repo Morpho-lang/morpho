@@ -77,13 +77,11 @@ value morpho_concatenate(vm *v, int nval, value *val);
 
 char *morpho_strdup(char *string);
 
-int morpho_utf8numberofbytes(char *string);
-int morpho_utf8toint(char *c);
+int morpho_utf8numberofbytes(const char *string);
+int morpho_utf8toint(const char *c);
 int morpho_encodeutf8(int c, char *out);
 
 unsigned int morpho_powerof2ceiling(unsigned int n);
-
-bool morpho_isdirectory(const char *path);
 
 #ifdef MORPHO_DEBUG
 void morpho_unreachable(const char *explanation);

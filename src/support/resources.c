@@ -5,11 +5,10 @@
  */
 
 #include <stdio.h>
-#include <dirent.h>
-#include <sys/stat.h>
 
 #include "common.h"
 #include "resources.h"
+#include "platform.h"
 #include "file.h"
 
 /* **********************************************************************
@@ -73,7 +72,7 @@ void resources_matchbasefolder(resourceenumerator *en, char *path) {
     if (en->folder) varray_charadd(&fname, en->folder, (int) strlen(en->folder));
     varray_charwrite(&fname, '\0');
 
-    if (morpho_isdirectory(fname.data)) {
+    if (platform_isdirectory(fname.data)) {
         value v = object_stringfromcstring(fname.data, fname.count);
         if (MORPHO_ISSTRING(v)) varray_valuewrite(&en->resources, v);
     }
@@ -103,7 +102,6 @@ char *resources_findextension(char *f) {
 /** Checks if a filename matches all criteria in a resourceenumerator
  @param[in] en - initialized enumerator */
 bool resources_matchfile(resourceenumerator *en, char *file) {
-    
     // Skip extension
     char *ext = resources_findextension(file);
     if (!ext) ext = file+strlen(file); // If no extension found, just go to the end of the filename
@@ -131,23 +129,23 @@ bool resources_matchfile(resourceenumerator *en, char *file) {
 /** Searches a given folder, adding all resources to the enumerator
  @param[in] en - initialized enumerator */
 void resources_searchfolder(resourceenumerator *en, char *path) {
-    DIR *d; /* Handle for the directory */
-    struct dirent *entry; /* Entries in the directory */
-    d = opendir(path);
-
-    if (d) {
-        while ((entry = readdir(d)) != NULL) { // Loop over directory entries
-            if (strcmp(entry->d_name, ".")==0 ||
-                strcmp(entry->d_name, "..")==0) continue;
-
+    MorphoDirContents contents;
+    
+    size_t size = platform_maxpathsize();
+    char buffer[size];
+    char sep[2] = { MORPHO_DIRSEPARATOR, '\0' };
+    
+    if (platform_directorycontentsinit(&contents, path)) {
+        while (platform_directorycontents(&contents, buffer, size)) {
             /* Construct the file name */
-            size_t len = strlen(path)+strlen(entry->d_name)+2;
+            size_t len = strlen(path)+strlen(buffer)+2;
+            
             char file[len];
             strcpy(file, path);
-            strcat(file, "/");
-            strcat(file, entry->d_name);
+            strcat(file, sep);
+            strcat(file, buffer);
 
-            if (morpho_isdirectory(file)) {
+            if (platform_isdirectory(file)) {
                 if (!en->recurse) continue;
             } else {
                 if (!resources_matchfile(en, file)) continue;
@@ -157,7 +155,7 @@ void resources_searchfolder(resourceenumerator *en, char *path) {
             value v = object_stringfromcstring(file, len);
             if (MORPHO_ISSTRING(v)) varray_valuewrite(&en->resources, v);
         }
-        closedir(d);
+        platform_directorycontentsclear(&contents);
     }
 }
 
@@ -190,7 +188,7 @@ bool resourceenumerator_enumerate(resourceenumerator *en, value *out) {
     if (en->resources.count==0) return false;
     value next = en->resources.data[--en->resources.count];
 
-    while (morpho_isdirectory(MORPHO_GETCSTRING(next))) {
+    while (platform_isdirectory(MORPHO_GETCSTRING(next))) {
         resources_searchfolder(en, MORPHO_GETCSTRING(next));
         morpho_freeobject(next);
         if (en->resources.count==0) return false;
@@ -250,8 +248,12 @@ void resources_loadpackagelist(void) {
     varray_char line;
     varray_charinit(&line);
 
-    char *home = getenv("HOME");
-    if (home) varray_charadd(&line, home, (int) strlen(home));
+    size_t len = platform_maxpathsize();
+    char home[len];
+    if (platform_gethomedirectory(home, len)) {
+        varray_charadd(&line, home, (int) strlen(home));
+    }
+
     varray_charwrite(&line, MORPHO_DIRSEPARATOR);
     varray_charadd(&line, MORPHO_PACKAGELIST, (int) strlen(MORPHO_PACKAGELIST));
     varray_charwrite(&line, '\0');

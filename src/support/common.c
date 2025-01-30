@@ -9,11 +9,8 @@
 #include <float.h>
 #include <string.h>
 #include <ctype.h>
-#include <dirent.h>
-#include <sys/stat.h>
 
 #include "common.h"
-#include "resources.h"
 
 /* **********************************************************************
 * Printing
@@ -133,7 +130,7 @@ char *morpho_strdup(char *string) {
 
 /** @brief Returns the number of bytes in the next character of a given utf8 string
     @returns number of bytes */
-int morpho_utf8numberofbytes(char *string) {
+int morpho_utf8numberofbytes(const char *string) {
     uint8_t byte = * ((uint8_t *) string);
 
     if ((byte & 0xc0) == 0x80) return 0; // In the middle of a utf8 string
@@ -146,7 +143,7 @@ int morpho_utf8numberofbytes(char *string) {
 }
 
 /** Decodes a utf8 encoded character pointed to by c into an int */
-int morpho_utf8toint(char *c) {
+int morpho_utf8toint(const char *c) {
     unsigned int ret = -1;
     int nbytes=morpho_utf8numberofbytes(c);
     switch (nbytes) {
@@ -205,14 +202,6 @@ unsigned int morpho_powerof2ceiling(unsigned int n) {
     n++;
 
     return n;
-}
-
-/* Tells if an object at path corresponds to a directory */
-bool morpho_isdirectory(const char *path) {
-   struct stat statbuf;
-   if (stat(path, &statbuf) != 0)
-       return 0;
-   return (bool) S_ISDIR(statbuf.st_mode);
 }
 
 /** Count the number of fixed parameters in a callable object

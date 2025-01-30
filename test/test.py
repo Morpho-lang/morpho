@@ -83,7 +83,7 @@ def findexpected(str):
 # Works out what we expect from the input file
 def getexpect(filepath):
     # Load the file
-    file_object = open(filepath, 'r')
+    file_object = open(filepath, 'r', encoding="utf8")
     lines = file_object.readlines()
     file_object.close()
     #Find any expected values over all lines
@@ -97,7 +97,7 @@ def getexpect(filepath):
 # Gets the output generated
 def getoutput(filepath):
     # Load the file
-    file_object = open(filepath, 'r')
+    file_object = open(filepath, 'r', encoding="utf8")
     lines = file_object.readlines()
     file_object.close()
     # remove all control characters
@@ -119,7 +119,6 @@ def test(file,testLog,CI):
     if not CI:
         print(file+":", end=" ")
 
-
     # Create a temporary file in the same directory
     tmp = file + '.out'
 
@@ -137,7 +136,6 @@ def test(file,testLog,CI):
         # Was it expected?
         if(expected==out):
             if not CI:
-                print(file+":", end=" ")
                 print(stylize("Passed",colored.fg("green")))
             ret = 1
         else:
@@ -169,7 +167,7 @@ def test(file,testLog,CI):
 
 
         # Delete the temporary file
-        os.system('rm ' + tmp)
+        os.remove(tmp)
 
     return ret
 
@@ -198,7 +196,7 @@ if MT:
     print("Running tests with 4 threads")
 
 files=glob.glob('**/**.'+ext, recursive=True)
-with open(failedTestsFileName,'w') as testLog:
+with open(failedTestsFileName,'w', encoding="utf8") as testLog:
 
     for f in files:
         # print(f)

@@ -4,22 +4,12 @@
  *  @brief Defines System class to provide access to the runtime and system
  */
 
-#define _POSIX_C_SOURCE 199309L
-
-#include <unistd.h>
-#include <sys/types.h>
-#include <pwd.h>
-
 #include <stdio.h>
-#include <time.h>
 
 #include "morpho.h"
 #include "classes.h"
 #include "system.h"
-
-#ifndef WIN32
-#include <sys/time.h>
-#endif
+#include "platform.h"
 
 /* **********************************************************************
  * System utility functions
@@ -51,49 +41,14 @@ void system_freeargs(void) {
     morpho_freeobject(arglist);
 }
 
-/** Returns the system clock */
-double system_clock(void) {
-#ifdef WIN32
-    SYSTEMTIME st;
-    GetSystemTime (&st);
-    return ((double) st.wSecond) + st.wMilliseconds * 1e-6;
-#else
-    struct timeval tv;
-    gettimeofday (&tv, NULL);
-    return ((double) tv.tv_sec) + tv.tv_usec * 1e-6;
-#endif
-}
-
-/** Sleep for a specified number of milliseconds */
-void system_sleep(int msecs) {
-#ifdef WIN32
-    Sleep (msecs);
-#else
-    struct timespec t;
-    t.tv_sec  =  msecs / 1000;
-    t.tv_nsec = (msecs % 1000) * 1000000;
-    nanosleep (&t, NULL);
-#endif
-}
-
 /* **********************************************************************
  * System class
  * ********************************************************************* */
 
 /** Returns a platform description */
 value System_platform(vm *v, int nargs, value *args) {
-    char *platform = NULL;
+    const char *platform = platform_name();
     value ret = MORPHO_NIL;
-    
-#if __APPLE__
-    platform = SYSTEM_MACOS;
-#elif __linux__
-    platform = SYSTEM_LINUX;
-#elif __UNIX__
-    platform = SYSTEM_UNIX;
-#elif defined(_WIN32)
-    platform = SYSTEM_WINDOWS;
-#endif
     
     if (platform) {
         ret = object_stringfromcstring(platform, strlen(platform));
@@ -113,7 +68,7 @@ value System_version(vm *v, int nargs, value *args) {
 
 /** Clock */
 value System_clock(vm *v, int nargs, value *args) {
-    return MORPHO_FLOAT(system_clock());
+    return MORPHO_FLOAT(platform_clock());
 }
 
 /** Print */
@@ -127,7 +82,7 @@ value System_sleep(vm *v, int nargs, value *args) {
     if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
         double t;
         if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &t)) {
-            system_sleep((int) (1000*t));
+            platform_sleep((int) (1000*t));
         }
     } else morpho_runtimeerror(v, SLEEP_ARGS);
     
@@ -167,7 +122,7 @@ value System_setworkingfolder(vm *v, int nargs, value *args) {
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         char *path = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
         
-        if (chdir(path)==-1) morpho_runtimeerror(v, SYS_STWRKDR);
+        if (platform_setcurrentdirectory(path)) morpho_runtimeerror(v, SYS_STWRKDR);
     } else morpho_runtimeerror(v, STWRKDR_ARGS);
     
     return MORPHO_NIL;
@@ -177,9 +132,10 @@ value System_setworkingfolder(vm *v, int nargs, value *args) {
 value System_workingfolder(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
     
-    size_t size = pathconf(".", _PC_PATH_MAX);
+    size_t size = platform_maxpathsize();
     char str[size];
-    if (getcwd(str, size)) {
+
+    if (platform_getcurrentdirectory(str, size)) {
         out = object_stringfromcstring(str, strlen(str));
         if (MORPHO_ISOBJECT(out)) {
             morpho_bindobjects(v, 1, &out);
@@ -192,15 +148,12 @@ value System_workingfolder(vm *v, int nargs, value *args) {
 /** Get current user's home folder */
 value System_homefolder(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
-    
-    const char *homedir = NULL;
 
-    if ((homedir = getenv("HOME")) == NULL) {
-        homedir = getpwuid(getuid())->pw_dir;
-    }
-    
-    if (homedir) {
-        out = object_stringfromcstring(homedir, strlen(homedir));
+    size_t size = platform_maxpathsize();
+    char str[size];
+
+    if (platform_gethomedirectory(str, size)) {
+        out = object_stringfromcstring(str, strlen(str));
         if (MORPHO_ISOBJECT(out)) {
             morpho_bindobjects(v, 1, &out);
         } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);

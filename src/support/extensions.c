@@ -8,19 +8,16 @@
 * Extensions
 * ********************************************************************** */
 
-#include <dlfcn.h>
 #include <string.h>
 
 #include "varray.h"
-#include "morpho.h"
 #include "value.h"
 #include "common.h"
 #include "object.h"
 #include "builtin.h"
-#include "strng.h"
-#include "dict.h"
 #include "resources.h"
 #include "extensions.h"
+#include "platform.h"
 
 /* -------------------------------------------------------
  * Extension structure
@@ -31,7 +28,7 @@ typedef struct {
     value path;
     value functiontable;
     value classtable;
-    void *handle;
+    MorphoDLHandle handle;
 } extension;
 
 DECLARE_VARRAY(extension, extension)
@@ -46,13 +43,13 @@ varray_extension extensionlist; // List of loaded extensions
 /** Open the dynamic library associated with an extension */
 bool extension_dlopen(extension *e) {
     if (e->handle) return true; // Prevent multiple loads
-    if (MORPHO_ISSTRING(e->path)) e->handle=dlopen(MORPHO_GETCSTRING(e->path), RTLD_LAZY);
+    if (MORPHO_ISSTRING(e->path)) e->handle=platform_dlopen(MORPHO_GETCSTRING(e->path));
     return e->handle;
 }
 
 /** Close the dynamic library associated with an extension */
 void extension_dlclose(extension *e) {
-    if (e->handle) dlclose(e->handle);
+    if (e->handle) platform_dlclose(e->handle);
     e->handle=NULL;
 }
 
@@ -102,14 +99,15 @@ bool extension_initwithname(extension *e, char *name, char *path) {
 }
 
 /** Trys to locate a function with NAME_FN in extension e, and calls it if found */
-bool extension_call(extension *e, char *name, char *fn) {
+bool extension_call(extension *e, const char *name, const char *fn) {
     void (*fptr) (void);
-    char fnname[strlen(name)+strlen(fn)+2];
-    strcpy(fnname, name);
-    strcat(fnname, "_");
-    strcat(fnname, fn);
+    size_t size = strlen(name) + strlen(fn) + 2;
+    char fnname[size];
+    strncpy(fnname, name, size);
+    strncat(fnname, "_", size);
+    strncat(fnname, fn, size);
     
-    fptr = dlsym(e->handle, fnname);
+    fptr = platform_dlsym(e->handle, fnname);
     if (fptr) (*fptr) ();
     return fptr;
 }

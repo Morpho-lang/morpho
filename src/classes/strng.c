@@ -4,7 +4,6 @@
  *  @brief Defines string object type and String class
  */
 
-#include <string.h>
 #include <stdio.h>
 
 #include "morpho.h"

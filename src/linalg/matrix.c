@@ -4,6 +4,9 @@
  *  @brief Veneer class over the objectmatrix type that interfaces with blas and lapack
  */
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_LINALG
+
 #include <string.h>
 #include "morpho.h"
 #include "classes.h"
@@ -728,6 +731,7 @@ value matrix_constructor(vm *v, int nargs, value *args) {
                MORPHO_ISARRAY(MORPHO_GETARG(args, 0))) {
         new=object_matrixfromarray(MORPHO_GETARRAY(MORPHO_GETARG(args, 0)));
         if (!new) morpho_runtimeerror(v, MATRIX_INVLDARRAYINIT);
+#ifdef MORPHO_INCLUDE_SPARSE
     } else if (nargs==1 &&
                MORPHO_ISLIST(MORPHO_GETARG(args, 0))) {
         new=object_matrixfromlist(MORPHO_GETLIST(MORPHO_GETARG(args, 0)));
@@ -738,14 +742,17 @@ value matrix_constructor(vm *v, int nargs, value *args) {
                 morpho_runtimeerror(v, MATRIX_INVLDARRAYINIT);
             } else if (err!=SPARSE_OK) sparse_raiseerror(v, err);
         }
+#endif
     } else if (nargs==1 &&
                MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
         new=object_clonematrix(MORPHO_GETMATRIX(MORPHO_GETARG(args, 0)));
         if (!new) morpho_runtimeerror(v, MATRIX_INVLDARRAYINIT);
+#ifdef MORPHO_INCLUDE_SPARSE
     } else if (nargs==1 &&
                MORPHO_ISSPARSE(MORPHO_GETARG(args, 0))) {
         objectsparseerror err=sparse_tomatrix(MORPHO_GETSPARSE(MORPHO_GETARG(args, 0)), &new);
         if (err!=SPARSE_OK) morpho_runtimeerror(v, MATRIX_INVLDARRAYINIT);
+#endif
     } else morpho_runtimeerror(v, MATRIX_CONSTRUCTOR);
     
     if (new) {
@@ -1143,8 +1150,10 @@ value Matrix_mul(vm *v, int nargs, value *args) {
                 morpho_bindobjects(v, 1, &out);
             }
         }
+#ifdef MORPHO_INCLUDE_SPARSE
     } else if (nargs==1 && MORPHO_ISSPARSE(MORPHO_GETARG(args, 0))) {
         // Returns nil to ensure it gets passed to mulr on Sparse
+#endif
     } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
     
     return out;
@@ -1196,10 +1205,12 @@ value Matrix_div(vm *v, int nargs, value *args) {
                 }
             }
         } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+#ifdef MORPHO_INCLUDE_SPARSE
     } else if (nargs==1 && MORPHO_ISSPARSE(MORPHO_GETARG(args, 0))) {
         /* Division by a sparse matrix: redirect to the divr selector of Sparse. */
         value vargs[2]={args[1],args[0]};
         return Sparse_divr(v, nargs, vargs);
+#endif
     } else if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
         /* Division by a scalar */
         double scale=1.0;
@@ -1563,3 +1574,5 @@ void matrix_initialize(void) {
     morpho_defineerror(MATRIX_NORMARGS, ERROR_HALT, MATRIX_NORMARGS_MSG);
     morpho_defineerror(MATRIX_IDENTCONSTRUCTOR, ERROR_HALT, MATRIX_IDENTCONSTRUCTOR_MSG);
 }
+
+#endif

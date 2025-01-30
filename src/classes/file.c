@@ -10,6 +10,7 @@
 #include "morpho.h"
 #include "classes.h"
 #include "file.h"
+#include "platform.h"
 
 /** Store the current working directory (relative to the filing systems cwd) */
 static varray_char workingdir;
@@ -112,7 +113,8 @@ void file_setworkingdirectory(const char *path) {
 /** Gets the relative path for a given file */
 void file_relativepath(const char *fname, varray_char *name) {
     /* Check the fname passed isn't a global file reference (i.e. starts with / or ~) */
-    if (fname[0]!='~' && fname[0]!='/') {
+    if (fname[0]!='~' && fname[0]!='/' && 
+        !(fname[0]!='\0' && fname[1]==':')) {
         if (workingdir.count>0) {
             for (unsigned int i=0; i<workingdir.count && workingdir.data[i]!='\0'; i++) {
                 varray_charwrite(name, workingdir.data[i]);
@@ -380,9 +382,6 @@ MORPHO_ENDCLASS
  * Folder objects
  * ********************************************************************** */
 
-#include <sys/stat.h>
-#include <dirent.h>
-
 /** Detect whether a resource is a folder  */
 value Folder_isfolder(vm *v, int nargs, value *args) {
     value ret = MORPHO_FALSE;
@@ -390,12 +389,9 @@ value Folder_isfolder(vm *v, int nargs, value *args) {
         varray_char name;
         varray_charinit(&name);
         file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
-        struct stat path_stat;
-
-        if (stat(name.data, &path_stat)==0 &&
-            S_ISDIR(path_stat.st_mode)) {
-            ret = MORPHO_TRUE;
-        }
+        
+        if (platform_isdirectory(name.data)) ret=MORPHO_TRUE;
+        
         varray_charclear(&name);
     } else morpho_runtimeerror(v, FOLDER_EXPCTPATH);
     
@@ -410,30 +406,29 @@ value Folder_contents(vm *v, int nargs, value *args) {
         varray_charinit(&name);
         file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
 
-        DIR *dir = opendir(name.data);
-        struct dirent *dp;
-        if (dir) {
-            varray_value contents;
-            varray_valueinit(&contents);
+        size_t size = platform_maxpathsize();
+        char buffer[size];
+        
+        MorphoDirContents contents;
+        if (platform_directorycontentsinit(&contents, name.data)) {
+            varray_value list;
+            varray_valueinit(&list);
             
-            do {
-                dp = readdir(dir);
-                if (dp) {
-                    if (strcmp(dp->d_name, ".")==0 || strcmp(dp->d_name, "..")==0) continue; // Skip unix parent and current folder references
-                    value entry = object_stringfromcstring(dp->d_name, strlen(dp->d_name));
-                    if (MORPHO_ISSTRING(entry)) varray_valuewrite(&contents, entry);
-                }
-            } while (dp!=NULL);
+            while (platform_directorycontents(&contents, buffer, size)) {
+                value entry = object_stringfromcstring(buffer, strlen(buffer));
+                if (MORPHO_ISSTRING(entry)) varray_valuewrite(&list, entry);
+            };
             
-            closedir(dir);
-            objectlist *clist = object_newlist(contents.count, contents.data);
+            platform_directorycontentsclear(&contents);
+            
+            objectlist *clist = object_newlist(list.count, list.data);
             if (clist) {
                 ret = MORPHO_OBJECT(clist);
-                varray_valuewrite(&contents, ret);
-                morpho_bindobjects(v, contents.count, contents.data);
+                varray_valuewrite(&list, ret);
+                morpho_bindobjects(v, list.count, list.data);
             } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
             
-            varray_valueclear(&contents);
+            varray_valueclear(&list);
         } else morpho_runtimeerror(v, FOLDER_NTFLDR);
         
         varray_charclear(&name);

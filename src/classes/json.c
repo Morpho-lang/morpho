@@ -214,7 +214,7 @@ bool json_parsestring(parser *p, void *out) {
     unsigned int length = p->previous.length;
     
     for (unsigned int i=1; i<length-1; i++) {
-        if (iscntrl(input[i]) && input[i]<='\x1f') { // RFC 8259 mandates that ctrl characters are 0x00 - 0x1f
+        if (iscntrl((unsigned char) input[i]) && input[i]<='\x1f') { // RFC 8259 mandates that ctrl characters are 0x00 - 0x1f
             parse_error(p, true, PARSE_UNESCPDCTRL);
             goto json_parsestring_cleanup;
         } else if (input[i]!='\\') {
@@ -482,7 +482,7 @@ bool json_valuetovarraychar(vm *v, value in, varray_char *out) {
             int nbytes = morpho_utf8numberofbytes(c);
             if (!nbytes) return false;
             
-            if (nbytes==1 && iscntrl(*c)) {
+            if (nbytes==1 && iscntrl((unsigned char) *c)) {
                 switch (*c) {
                     case '\b': success=varray_charadd(out, "\\b", 2); break;
                     case '\f': success=varray_charadd(out, "\\f", 2); break;

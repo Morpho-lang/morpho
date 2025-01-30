@@ -1,5 +1,5 @@
 /** @file cmplx.h
- *  @author Danny Goldstein
+ *  @author D Hellstein and T J Atherton
  *
  *  @brief Veneer class over the objectcomplex type
  */
@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <complex.h>
 #include "classes.h"
+#include "platform.h"
 
 /* -------------------------------------------------------
  * Complex objects
@@ -20,12 +21,11 @@ extern objecttype objectcomplextype;
 
 typedef struct {
     object obj;
-    double complex Z;
+    MorphoComplex Z;
 } objectcomplex;
 
 /** Creates a static complex number */
-#define MORPHO_STATICCOMPLEX(real,imag)      { .obj.type=OBJECT_COMPLEX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .Z=real + I * imag}
-
+#define MORPHO_STATICCOMPLEX(real,imag)      { .obj.type=OBJECT_COMPLEX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .Z=MCBuild(real,imag)}
 
 /** Tests whether an object is a complex */
 #define MORPHO_ISCOMPLEX(val) object_istype(val, OBJECT_COMPLEX)
@@ -33,8 +33,8 @@ typedef struct {
 /** Gets the object as a complex */
 #define MORPHO_GETCOMPLEX(val)   ((objectcomplex *) MORPHO_GETOBJECT(val))
 
-/** Gets the object as a C-style double complex */
-#define MORPHO_GETDOUBLECOMPLEX(val)   ((double complex) ((objectcomplex *) MORPHO_GETOBJECT(val))->Z)
+/** Gets the object as a C-style MorphoComplex */
+#define MORPHO_GETDOUBLECOMPLEX(val)   ((MorphoComplex) ((objectcomplex *) MORPHO_GETOBJECT(val))->Z)
 
 /** Creates a complex object */
 objectcomplex *object_newcomplex(double real, double imag);

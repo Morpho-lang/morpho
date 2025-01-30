@@ -5,6 +5,7 @@
 */
 
 #include "random.h"
+#include "platform.h"
 
 /* **********************************************************************
  * Splitmix64 (used for initialization purposes only)
@@ -274,21 +275,18 @@ unsigned int random_int(void) {
 
 /** Initialize the random number generator */
 void random_initialize(void) {
-    FILE *urandom;
     uint64_t seed = (uint64_t) time(NULL);
     char bytes[sizeof(uint64_t)];
-    
-    /* Initialize from OS random bits */
-    urandom=fopen("/dev/urandom", "r");
-    if (urandom) {
-        for(int i=0; i<sizeof(uint64_t); i++) bytes[i]=(char) fgetc(urandom);
+
+    if (platform_randombytes(bytes, sizeof(uint64_t))) {
         seed = *((uint64_t *) bytes);
-        
-        fclose(urandom);
-    } else fprintf(stderr, "Warning: initializing random number generator using time-not recommended for production runs.\n");
+    } else {
+        fprintf(stderr, "Warning: initializing random number generator using time-not recommended for production runs.\n");
+    }
     
     /* Use this to initialize splitmix64 */
     splitmix64_seed(seed);
+    
     /* Then initialize xoshiro256pp */
     xoshiro256pp_state[0]=splitmix64_next();
     xoshiro256pp_state[1]=splitmix64_next();

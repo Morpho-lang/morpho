@@ -1,0 +1,47 @@
+// Complex number testing
+import constants
+
+var Z = 1 + 2im 
+var C = 3.2 - 1.1im
+
+print Z.real()
+// expect: 1
+
+print C.real()
+// expect: 3.2
+
+print Z.imag()
+// expect: 2
+
+print C.imag()
+// expect: -1.1
+
+print abs(Z.angle()-arctan(Z.real(),Z.imag()))<1e-15
+// expect: true
+
+print abs(C.angle()-arctan(C.real(),C.imag()))<1e-15
+// expect: true
+
+var a1 = im
+print abs(a1.angle()-Pi/2)<1e-15
+// expect: true
+
+a1 = a1+(1-im)
+print abs(a1.angle())<1e-15
+// expect: true
+
+a1 = -a1
+print abs(abs(a1.angle())-Pi)<1e-15
+// expect: true
+
+a1 = -im
+print abs(a1.angle()+Pi/2)<1e-15
+// expect: true
+
+a1 = 1+im
+print abs(a1.angle()-Pi/4)<1e-15
+// expect: true
+
+a1 = 3+4im
+print a1.abs()
+// expect: 5

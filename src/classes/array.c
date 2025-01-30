@@ -97,7 +97,7 @@ objectarray *object_newarray(unsigned int ndim, unsigned int *dim) {
  * ********************************************************************** */
 
 /** Converts a list of values to a list of integers */
-inline bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out) {
+bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out) {
 
     for (unsigned int i=0; i<ndim; i++) {
         if (MORPHO_ISINTEGER(in[i])) out[i]=MORPHO_GETINTEGERVALUE(in[i]);
@@ -191,6 +191,7 @@ errorid array_error(objectarrayerror err) {
 
 /** Converts an array error into an matrix error code for use in slices*/
 errorid array_to_matrix_error(objectarrayerror err) {
+#ifdef MORPHO_INCLUDE_LINALG
     switch (err) {
         case ARRAY_OUTOFBOUNDS: return MATRIX_INDICESOUTSIDEBOUNDS;
         case ARRAY_WRONGDIM: return MATRIX_INVLDNUMINDICES;
@@ -200,6 +201,9 @@ errorid array_to_matrix_error(objectarrayerror err) {
     }
     UNREACHABLE("Unhandled array error.");
     return VM_OUTOFBOUNDS;
+#else
+    return array_error(err);
+#endif
 }
 
 /** Converts an array error into an list error code for use in slices*/

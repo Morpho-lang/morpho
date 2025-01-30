@@ -4,6 +4,9 @@
  *  @brief Selections
  */
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_GEOMETRY
+
 #include "morpho.h"
 #include "object.h"
 #include "builtin.h"
@@ -581,3 +584,5 @@ void selection_initialize(void) {
     morpho_defineerror(SELECTION_STARG, ERROR_HALT, SELECTION_STARG_MSG);
     morpho_defineerror(SELECTION_BND, ERROR_HALT, SELECTION_BND_MSG);
 }
+
+#endif

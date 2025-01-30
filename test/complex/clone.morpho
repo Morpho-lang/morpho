@@ -1,0 +1,8 @@
+
+var Z = 1 + 2im 
+var C = 3.2 - 1.1im
+
+// clone
+var X = Z
+print X
+// expect: 1 + 2im

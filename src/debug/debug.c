@@ -81,14 +81,10 @@ bool debug_indxfromline(program *code, value file, int line, instructionindx *ou
 bool debug_indxfromfunction(program *code, value klassname, value fname, instructionindx *indx) {
     objectclass *cklass=NULL;
     objectfunction *cfunc=NULL;
-    instructionindx i=0;
     
     for (unsigned int j=0; j<code->annotations.count; j++) {
         debugannotation *ann = &code->annotations.data[j];
         switch (ann->type) {
-            case DEBUG_ELEMENT:
-                i+=ann->content.element.ninstr;
-                break;
             case DEBUG_FUNCTION:
                 cfunc=ann->content.function.function;
                 if (MORPHO_ISEQUAL(cfunc->name, fname) &&
@@ -391,18 +387,18 @@ assemblyrule *debugger_getassemblyrule(unsigned int op) {
     return NULL;
 }
 
-typedef enum { NONE, REG, CONST} debugcontents;
+typedef enum { DBG_CONTENTS_NONE, DBG_CONTENTS_REG, DBG_CONTENTS_CONST} debugcontents;
 
 /** Shows the contents of a register or constant */
 bool debugger_showcontents(vm *v, debugcontents b, int i, value *konst, value *reg) {
     value *table = NULL;
     switch (b) {
-        case CONST: table=konst; break;
-        case REG: table = reg; break;
+        case DBG_CONTENTS_CONST: table=konst; break;
+        case DBG_CONTENTS_REG: table = reg; break;
         default: break;
     }
     if (!table) return false;
-    morpho_printf(v, "%s%i=", (b==CONST ? "c" : "r"), i);
+    morpho_printf(v, "%s%i=", (b==DBG_CONTENTS_CONST ? "c" : "r"), i);
     morpho_printvalue(v, table[i]);
     return true;
 }
@@ -415,7 +411,7 @@ bool debugger_showcontents(vm *v, debugcontents b, int i, value *konst, value *r
  *  @param reg   current registers */
 void debugger_disassembleinstruction(vm *v, instruction instruction, instructionindx indx, value *konst, value *reg) {
     unsigned int op = DECODE_OP(instruction);
-    debugcontents mode=NONE, bm=NONE, cm=NONE;
+    debugcontents mode=DBG_CONTENTS_NONE, bm=DBG_CONTENTS_NONE, cm=DBG_CONTENTS_NONE;
     int nb=0, nc=0;
     morpho_printf(v, "%4lu : ", indx);
     int n=0; // Number of characters displayed
@@ -428,12 +424,12 @@ void debugger_disassembleinstruction(vm *v, instruction instruction, instruction
             switch (*c) {
                 case 'A': n+=morpho_printf(v, "%u", DECODE_A(instruction)); break;
                 case 'B': {
-                    bm=mode; nb=DECODE_B(instruction); mode=NONE;
+                    bm=mode; nb=DECODE_B(instruction); mode=DBG_CONTENTS_NONE;
                     n+=morpho_printf(v, "%u", nb);
                 }
                     break;
                 case 'X': {
-                    bm=mode; nb=DECODE_Bx(instruction); mode=NONE;
+                    bm=mode; nb=DECODE_Bx(instruction); mode=DBG_CONTENTS_NONE;
                     n+=morpho_printf(v, "%u", nb);
                 }
                     break;
@@ -443,8 +439,8 @@ void debugger_disassembleinstruction(vm *v, instruction instruction, instruction
                     n+=morpho_printf(v, "%u", DECODE_C(instruction));
                 }
                     break;
-                case 'c': mode=CONST; n+=morpho_printf(v, "%c", *c); break;
-                case 'r': mode=REG; n+=morpho_printf(v, "%c", *c); break;
+                case 'c': mode=DBG_CONTENTS_CONST; n+=morpho_printf(v, "%c", *c); break;
+                case 'r': mode=DBG_CONTENTS_REG; n+=morpho_printf(v, "%c", *c); break;
                 case '?':
                     if (DECODE_A(instruction)==0) return;
                     break;
@@ -453,7 +449,7 @@ void debugger_disassembleinstruction(vm *v, instruction instruction, instruction
         }
         
         /* Show contents if any were produced by this instruction */
-        if ((!konst && !reg) || (bm==NONE && cm==NONE)) return;
+        if ((!konst && !reg) || (bm==DBG_CONTENTS_NONE && cm==DBG_CONTENTS_NONE)) return;
         for (int k=width-n; k>0; k--) morpho_printf(v, " ");
         morpho_printf(v, "; ");
         if (debugger_showcontents(v, bm, nb, konst, reg)) morpho_printf(v, " ");

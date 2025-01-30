@@ -73,4 +73,6 @@ test/vtk/tetrahedron.vtk
 devguide/devguide.lyx~
 build/*
 build-xcode/*
+build-win/*
 *.valgrind
+/.vs

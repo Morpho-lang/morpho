@@ -8,6 +8,9 @@
 #ifndef mesh_h
 #define mesh_h
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_GEOMETRY
+
 #include "varray.h"
 #include "matrix.h"
 #include "sparse.h"
@@ -157,5 +160,7 @@ bool mesh_getsynonyms(objectmesh *mesh, grade g, elementid id, varray_elementid 
 int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, varray_elementid *neighbors);
 
 void mesh_initialize(void);
+
+#endif
 
 #endif /* mesh_h */

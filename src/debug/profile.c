@@ -6,6 +6,7 @@
 
 #include "profile.h"
 #include "strng.h"
+#include "platform.h"
 
 /* **********************************************************************
 * Profiler
@@ -34,19 +35,19 @@ void profiler_sample(profiler *profile, value func) {
 }
 
 /** Profiler monitor thread */
-void *profiler_thread(void *arg) {
+MorphoThreadFnReturnType profiler_thread(void *arg) {
     vm *v = (vm *) arg;
     profiler *profile = v->profiler;
-    if (!v->profiler) return NULL;
+    if (!v->profiler) MorphoThread_exit();
     clock_t last = clock();
     clock_t time = last;
     
     while (true) {
-        pthread_mutex_lock(&profile->profile_lock);
+        MorphoMutex_lock(&profile->profile_lock);
         bool quit=profile->profiler_quit;
-        pthread_mutex_unlock(&profile->profile_lock);
+        MorphoMutex_unlock(&profile->profile_lock);
         
-        if (quit) pthread_exit(NULL);
+        if (quit) MorphoThread_exit(); 
         
         while (time-last<PROFILER_SAMPLINGINTERVAL) time = clock();
         last = time;
@@ -66,23 +67,24 @@ void *profiler_thread(void *arg) {
 /** Initialize profiler data structure */
 void profiler_init(profiler *profile, program *p) {
     dictionary_init(&profile->profile_dict);
-    pthread_mutex_init(&profile->profile_lock, NULL);
+    MorphoMutex_init(&profile->profile_lock);
     profile->profiler_quit=false;
     profile->program=p;
 }
 
 /** Clear profiler data structure */
 void profiler_clear(profiler *profile) {
-    pthread_mutex_destroy(&profile->profile_lock);
+    MorphoMutex_clear(&profile->profile_lock);
     dictionary_clear(&profile->profile_dict);
 }
 
 /** Kills a profiler thread */
 void profiler_kill(profiler *profile) {
-    pthread_mutex_lock(&profile->profile_lock);
+    MorphoMutex_lock(&profile->profile_lock);
     profile->profiler_quit=true;
-    pthread_mutex_unlock(&profile->profile_lock);
-    pthread_join(profile->profiler, NULL);
+    MorphoMutex_unlock(&profile->profile_lock);
+    MorphoThread_join(profile->profiler);
+    MorphoThread_clear(profile->profiler);
 }
 
 /** Sorting function */
@@ -203,7 +205,7 @@ bool morpho_profile(vm *v, program *p) {
 
     profiler_init(&profile, p);
     
-    if (pthread_create(&profile.profiler, NULL, profiler_thread, v)) { // Returns 0 on success
+    if (MorphoThread_create(&profile.profiler, profiler_thread, v)) {
         UNREACHABLE("Unable to run profiler.");
     }
     

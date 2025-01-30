@@ -12,6 +12,7 @@
 #include "system.h"
 #include "classes.h"
 
+#include "sparse.h"
 #include "mesh.h"
 #include "selection.h"
 #include "functional.h"
@@ -429,14 +430,21 @@ void builtin_initialize(void) {
     functiondefs_initialize();
     
     // Initialize linear algebra
+#ifdef MORPHO_INCLUDE_LINALG
     matrix_initialize();
-    sparse_initialize();
+#endif
     
+#ifdef MORPHO_INCLUDE_SPARSE
+    sparse_initialize();
+#endif
+    
+#ifdef MORPHO_INCLUDE_GEOMETRY
     // Initialize geometry
     mesh_initialize();
     selection_initialize();
     field_initialize();
     functional_initialize();
+#endif
     
     morpho_addfinalizefn(builtin_finalize);
 }

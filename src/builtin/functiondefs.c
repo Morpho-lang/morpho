@@ -6,15 +6,20 @@
 
 #include <time.h>
 #include <stdlib.h>
+#include <complex.h>
+
 #include "functiondefs.h"
 #include "random.h"
 #include "builtin.h"
 #include "common.h"
+#include "cmplx.h"
+
 #include "matrix.h"
+#include "sparse.h"
+
 #include "mesh.h"
 #include "field.h"
 #include "selection.h"
-#include "cmplx.h"
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
@@ -30,21 +35,21 @@
 
 #define BUILTIN_MATH(function) \
 value builtin_##function(vm *v, int nargs, value *args) { \
-        if (nargs==1) { \
-            value arg = MORPHO_GETARG(args, 0); \
-            if (MORPHO_ISFLOAT(arg)) { \
-                return MORPHO_FLOAT(function(MORPHO_GETFLOATVALUE(arg))); \
-            } else if (MORPHO_ISINTEGER(arg)) { \
-                return MORPHO_FLOAT(function((double) MORPHO_GETINTEGERVALUE(arg))); \
-            } else if (MORPHO_ISCOMPLEX(arg)){\
-                return complex_builtin##function(v,MORPHO_GETCOMPLEX(arg));\
-            } else { \
-                morpho_runtimeerror(v, MATH_ARGS, #function);\
-            } \
+    if (nargs==1) { \
+        value arg = MORPHO_GETARG(args, 0); \
+        if (MORPHO_ISFLOAT(arg)) { \
+            return MORPHO_FLOAT(function(MORPHO_GETFLOATVALUE(arg))); \
+        } else if (MORPHO_ISINTEGER(arg)) { \
+            return MORPHO_FLOAT(function((double) MORPHO_GETINTEGERVALUE(arg))); \
+        } else if (MORPHO_ISCOMPLEX(arg)){\
+            return complex_builtin##function(v,MORPHO_GETCOMPLEX(arg));\
+        } else { \
+            morpho_runtimeerror(v, MATH_ARGS, #function);\
         } \
-        morpho_runtimeerror(v, MATH_NUMARGS, #function);\
-        return MORPHO_NIL; \
-        }
+    } \
+    morpho_runtimeerror(v, MATH_NUMARGS, #function);\
+    return MORPHO_NIL; \
+}
 
 /** Math functions */
 BUILTIN_MATH(fabs)
@@ -71,21 +76,21 @@ BUILTIN_MATH(ceil)
 
 #define BUILTIN_MATH_BOOL(function) \
 value builtin_##function(vm *v, int nargs, value *args) { \
-        if (nargs==1) { \
-            value arg = MORPHO_GETARG(args, 0); \
-            if (MORPHO_ISFLOAT(arg)) { \
-                    return MORPHO_BOOL(function(MORPHO_GETFLOATVALUE(arg))); \
-            } else if (MORPHO_ISINTEGER(arg)) { \
-                return MORPHO_BOOL(function((double) MORPHO_GETINTEGERVALUE(arg))); \
-            } else if (MORPHO_ISCOMPLEX(arg)){\
-                return complex_builtin##function(MORPHO_GETCOMPLEX(arg));\
-            } else { \
-                morpho_runtimeerror(v, MATH_ARGS, #function);\
-            } \
+    if (nargs==1) { \
+        value arg = MORPHO_GETARG(args, 0); \
+        if (MORPHO_ISFLOAT(arg)) { \
+                return MORPHO_BOOL(function(MORPHO_GETFLOATVALUE(arg))); \
+        } else if (MORPHO_ISINTEGER(arg)) { \
+            return MORPHO_BOOL(function((double) MORPHO_GETINTEGERVALUE(arg))); \
+        } else if (MORPHO_ISCOMPLEX(arg)){\
+            return complex_builtin##function(MORPHO_GETCOMPLEX(arg));\
+        } else { \
+            morpho_runtimeerror(v, MATH_ARGS, #function);\
         } \
-        morpho_runtimeerror(v, MATH_NUMARGS, #function);\
-        return MORPHO_NIL; \
-        }
+    } \
+    morpho_runtimeerror(v, MATH_NUMARGS, #function);\
+    return MORPHO_NIL; \
+}
 
 
 BUILTIN_MATH_BOOL(isfinite)
@@ -93,7 +98,7 @@ BUILTIN_MATH_BOOL(isinf)
 BUILTIN_MATH_BOOL(isnan)
 
 #undef BUILTIN_MATH_BOOL
-/** The sqrt function is needs to be able to return a complex number for negitive arguments */
+/** The sqrt function is needs to be able to return a complex number for negative arguments */
 value builtin_sqrt(vm *v, int nargs, value *args) { 
     if (nargs==1) { 
         value arg = MORPHO_GETARG(args, 0); 
@@ -104,8 +109,8 @@ value builtin_sqrt(vm *v, int nargs, value *args) {
             double val;
             if (morpho_valuetofloat(arg,&val)) {
                 if (val<0) {// need to use complex sqrt
-                    objectcomplex C = MORPHO_STATICCOMPLEX(val,0);
-                    return complex_builtinsqrt(v,&C);
+                    objectcomplex C = MORPHO_STATICCOMPLEX(val, 0);
+                    return complex_builtinsqrt(v, &C);
                 } else { 
                     return MORPHO_FLOAT(sqrt(val));
                 }
@@ -118,7 +123,6 @@ value builtin_sqrt(vm *v, int nargs, value *args) {
 
 /** The arctan function is special; it can either take one or two arguments */
 value builtin_arctan(vm *v, int nargs, value *args) {
-
     bool useComplex = false;
     for (unsigned int i=0; i<nargs; i++) {
         if (MORPHO_ISNUMBER(MORPHO_GETARG(args,i))) {
@@ -140,7 +144,6 @@ value builtin_arctan(vm *v, int nargs, value *args) {
         morpho_runtimeerror(v, MATH_NUMARGS, "arctan");
         return MORPHO_NIL;
     } else {
-
         double x[2];
         for (unsigned int i=0; i<nargs; i++) {
             morpho_valuetofloat(MORPHO_GETARG(args, i), x+i);
@@ -264,7 +267,6 @@ value builtin_randomint(vm *v, int nargs, value *args) {
     /* Otherwise, generate a number in range. */
     int r=0;
     if (!morpho_valuetoint(MORPHO_GETARG(args, 0), &r)||r<0) {
-
         morpho_runtimeerror(v, VM_INVALIDARGSDETAIL,FUNCTION_RANDOMINT, 1, "positive integer");
     }
     
@@ -292,14 +294,6 @@ value builtin_randomint(vm *v, int nargs, value *args) {
  * Type checking and conversion
  * *************************************/
 
-/*value builtin_isint(vm *v, int nargs, value *args) {
-    if (nargs==1) {
-        return MORPHO_BOOL(MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)));
-    } else morpho_runtimeerror(v, TYPE_NUMARGS, FUNCTION_INT);
-    
-    return MORPHO_NIL;
-}*/
-
 /** Typecheck functions to test for the type of a quantity */
 #define BUILTIN_TYPECHECK(type, test) \
     value builtin_##type(vm *v, int nargs, value *args) { \
@@ -310,7 +304,6 @@ value builtin_randomint(vm *v, int nargs, value *args) {
         return MORPHO_NIL; \
     }
     
-
 BUILTIN_TYPECHECK(isnil, MORPHO_ISNIL)
 BUILTIN_TYPECHECK(isint, MORPHO_ISINTEGER)
 BUILTIN_TYPECHECK(isfloat, MORPHO_ISFLOAT)
@@ -323,12 +316,22 @@ BUILTIN_TYPECHECK(isclass, MORPHO_ISCLASS)
 BUILTIN_TYPECHECK(isrange, MORPHO_ISRANGE)
 BUILTIN_TYPECHECK(isdictionary, MORPHO_ISDICTIONARY)
 BUILTIN_TYPECHECK(islist, MORPHO_ISLIST)
+BUILTIN_TYPECHECK(istuple, MORPHO_ISTUPLE)
 BUILTIN_TYPECHECK(isarray, MORPHO_ISARRAY)
+
+#ifdef MORPHO_INCLUDE_LINALG
 BUILTIN_TYPECHECK(ismatrix, MORPHO_ISMATRIX)
+#endif
+
+#ifdef MORPHO_INCLUDE_SPARSE
 BUILTIN_TYPECHECK(issparse, MORPHO_ISSPARSE)
+#endif
+
+#ifdef MORPHO_INCLUDE_GEOMETRY
 BUILTIN_TYPECHECK(ismesh, MORPHO_ISMESH)
 BUILTIN_TYPECHECK(isselection, MORPHO_ISSELECTION)
 BUILTIN_TYPECHECK(isfield, MORPHO_ISFIELD)
+#endif
 
 #undef BUILTIN_TYPECHECK
 
@@ -630,7 +633,6 @@ void functiondefs_initialize(void) {
     BUILTIN_MATH_BOOL(isfinite)
     BUILTIN_MATH_BOOL(isinf)
     BUILTIN_MATH_BOOL(isnan)
-
     
     BUILTIN_TYPECHECK(isnil)
     BUILTIN_TYPECHECK(isint)
@@ -643,12 +645,22 @@ void functiondefs_initialize(void) {
     BUILTIN_TYPECHECK(isrange)
     BUILTIN_TYPECHECK(isdictionary)
     BUILTIN_TYPECHECK(islist)
+    BUILTIN_TYPECHECK(istuple)
     BUILTIN_TYPECHECK(isarray)
+    
+#ifdef MORPHO_INCLUDE_LINALG
     BUILTIN_TYPECHECK(ismatrix)
+#endif
+    
+#ifdef MORPHO_INCLUDE_SPARSE
     BUILTIN_TYPECHECK(issparse)
+#endif
+    
+#ifdef MORPHO_INCLUDE_GEOMETRY
     BUILTIN_TYPECHECK(ismesh)
     BUILTIN_TYPECHECK(isselection)
     BUILTIN_TYPECHECK(isfield)
+#endif
 
     builtin_addfunction(FUNCTION_REAL,builtin_real,BUILTIN_FLAGSEMPTY);
     builtin_addfunction(FUNCTION_IMAG,builtin_imag,BUILTIN_FLAGSEMPTY);

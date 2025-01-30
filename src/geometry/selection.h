@@ -7,6 +7,9 @@
 #ifndef selection_h
 #define selection_h
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_GEOMETRY
+
 #include "mesh.h"
 
 /* -------------------------------------------------------
@@ -71,5 +74,7 @@ void selection_clear(objectselection *s);
 
 bool selection_isselected(objectselection *sel, grade g, elementid id);
 void selection_initialize(void);
+
+#endif
 
 #endif /* selection_h */

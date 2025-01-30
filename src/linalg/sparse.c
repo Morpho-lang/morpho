@@ -4,6 +4,9 @@
  *  @brief Veneer class over the objectsparse type that provides sparse matrices
  */
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_SPARSE
+
 #include <limits.h>
 #include <stdlib.h>
 
@@ -306,24 +309,43 @@ void sparseccs_init(sparseccs *ccs) {
     ccs->values=NULL;
 }
 
+/** These wrappers enable us to ensure that we're using the same allocator as CSparse */
+static void _ccsfree(void *p) {
+#ifdef MORPHO_LINALG_USE_CSPARSE
+    cs_free(p);
+#else 
+    MORPHO_FREE(p);
+#endif
+}
+
+static void *_ccsrealloc(void *p, size_t newsize) {
+#ifdef MORPHO_LINALG_USE_CSPARSE
+    CS_INT ok;
+    return cs_realloc(p, 1, newsize, &ok);
+#else
+    return MORPHO_REALLOC(P, newsize);
+#endif
+}
+
 /** Clears all data structures associated with a sparseccs */
 void sparseccs_clear(sparseccs *ccs) {
-    if (ccs->cptr) MORPHO_FREE(ccs->cptr);
-    if (ccs->rix) MORPHO_FREE(ccs->rix);
-    if (ccs->values) MORPHO_FREE(ccs->values);
+    if (ccs->cptr) _ccsfree(ccs->cptr);
+    if (ccs->rix) _ccsfree(ccs->rix);
+    if (ccs->values) _ccsfree(ccs->values);
     sparseccs_init(ccs);
 }
 
 /** Resizes a sparseccs */
 bool sparseccs_resize(sparseccs *ccs, int nrows, int ncols, unsigned int nentries, bool values) {
     if (ncols>ccs->ncols) {
-        ccs->cptr=MORPHO_REALLOC(ccs->cptr, sizeof(int)*(ncols+1));
+        ccs->cptr=_ccsrealloc(ccs->cptr, sizeof(int)*(ncols+1));
         if (ccs->values || values) {
-            ccs->values=MORPHO_REALLOC(ccs->values, sizeof(double)*nentries);
+            ccs->values=_ccsrealloc(ccs->values, sizeof(double)*nentries);
             if (!ccs->values) goto sparseccs_resize_error;
         }
-    }
-    ccs->rix=MORPHO_REALLOC(ccs->rix, sizeof(int)*nentries);
+    } 
+
+    ccs->rix=_ccsrealloc(ccs->rix, sizeof(int)*nentries);
     if (!(ccs->cptr && ccs->rix)) goto sparseccs_resize_error;
 
     ccs->ncols=ncols;
@@ -1004,7 +1026,7 @@ objectsparseerror sparse_add(objectsparse *a, objectsparse *b, double alpha, dou
     cs *ret=cs_add(&A, &B, alpha, beta);
     if (ret) {
         sparse_csparsetoccs(ret, &out->ccs);
-        free(ret);
+        cs_free(ret);
         return SPARSE_OK;
     }
 #endif
@@ -1029,7 +1051,7 @@ objectsparseerror sparse_mul(objectsparse *a, objectsparse *b, objectsparse *out
     cs *ret=cs_multiply(&A, &B);
     if (ret) {
         sparse_csparsetoccs(ret, &out->ccs);
-        free(ret);
+        cs_free(ret);
         return SPARSE_OK;
     }
 #endif
@@ -1141,7 +1163,7 @@ objectsparseerror sparse_transpose(objectsparse *a, objectsparse *out) {
     cs *ret=cs_transpose(&A, true);
     if (ret) {
         sparse_csparsetoccs(ret, &out->ccs);
-        free(ret);
+        cs_free(ret);
         return SPARSE_OK;
     }
 #endif
@@ -1735,3 +1757,5 @@ void sparse_initialize(void) {
 
     //sparse_test();
 }
+
+#endif

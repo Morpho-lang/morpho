@@ -44,6 +44,15 @@ bool morpho_issame(value a, value b) {
 #endif
 }
 
+/**  @brief Compare two doubles for equality using both absolute and relative tolerances */
+bool morpho_doubleeqtest(double a, double b) {
+    if (a==b) return true; 
+    double diff = fabs(a-b);
+    double absa = fabs(a), absb=fabs(b);
+    double absmax = (absa>absb ? absa : absb);
+    return (diff == 0.0) || (absmax > DBL_MIN && diff/absmax <= MORPHO_RELATIVE_EPS);
+}
+
 /** @brief Compares two values
  * @param a value to compare
  * @param b value to compare
@@ -55,17 +64,7 @@ int morpho_comparevalue(value a, value b) {
     if (MORPHO_ISFLOAT(a)) {
         double aa = MORPHO_GETFLOATVALUE(a);
         double bb = MORPHO_GETFLOATVALUE(b);
-        double diff = fabs(aa-bb);
-        double sum = fabs(aa) + fabs(bb);
-        
-        if (aa == bb) {
-            return MORPHO_EQUAL; // Handles infinity
-        } else if (aa == 0 || bb == 0 || sum < DBL_MIN) {
-            if (diff < DBL_EPSILON*DBL_MIN) return MORPHO_EQUAL;
-        } else {
-            if (diff < DBL_EPSILON*fmin(sum, DBL_MAX)) return MORPHO_EQUAL;
-        }
-        
+        if (morpho_doubleeqtest(aa,bb)) return MORPHO_EQUAL;
         return (bb>aa ? MORPHO_BIGGER : MORPHO_SMALLER);
     } else {
         switch (MORPHO_GETTYPE(a)) {
@@ -107,8 +106,8 @@ int morpho_extendedcomparevalue(value a, value b) {
     }
     
     if (MORPHO_ISCOMPLEX(aa) && MORPHO_ISNUMBER(bb)) {
-        double complex z = MORPHO_GETDOUBLECOMPLEX(aa);
-        if (cimag(z) > -MORPHO_EPS  && cimag(z) < MORPHO_EPS) { // Ensure imaginary part is zero
+        MorphoComplex z = MORPHO_GETDOUBLECOMPLEX(aa);
+        if (fabs(cimag(z)) < cabs(z)*MORPHO_RELATIVE_EPS) { // Ensure imaginary part is zero
             aa=MORPHO_FLOAT(creal(z));
             double real;
             morpho_valuetofloat(bb, &real);

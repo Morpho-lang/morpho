@@ -7,11 +7,9 @@
 #ifndef threadpool_h
 #define threadpool_h
 
-#include <pthread.h>
 #include <stdbool.h>
 #include "varray.h"
-
-DECLARE_VARRAY(pthread_t, pthread_t);
+#include "platform.h"
 
 /* -----------------------------------------
  * Tasks
@@ -35,15 +33,15 @@ DECLARE_VARRAY(task, task);
  * ----------------------------------------- */
 
 typedef struct {
-    pthread_mutex_t lock_mutex; /* Lock for access to threadpool structure. */
-    pthread_cond_t work_available_cond; /* Signals that work is available. */
-    pthread_cond_t work_halted_cond; /* Signals when no threads are processing. */
+    MorphoMutex lock_mutex; /* Lock for access to threadpool structure. */
+    MorphoCond work_available_cond; /* Signals that work is available. */
+    MorphoCond work_halted_cond; /* Signals when no threads are processing. */
     int nprocessing; /* Number of threads actively processing work */
     int nthreads; /* Number of active threads. */
     bool stop; /* Indicates threads should terminate */
 
     varray_task queue; /* Queue of tasks lined up */
-    varray_pthread_t threads; /* Threads created by this pool */
+    varray_MorphoThread threads; /* Threads created by this pool */
 } threadpool;
 
 bool threadpool_init(threadpool *pool, int nworkers);

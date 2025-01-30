@@ -4,7 +4,6 @@
 *  @brief Debugging annotations for programs
 */
 
-#include "morpho.h"
 #include "debugannotation.h"
 
 /* **********************************************************************

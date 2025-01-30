@@ -28,11 +28,6 @@
 #define SYSTEM_WORKINGFOLDER_METHOD   "workingfolder"
 #define SYSTEM_SETWORKINGFOLDER_METHOD "setworkingfolder"
 
-#define SYSTEM_MACOS                  "macos"
-#define SYSTEM_LINUX                  "linux"
-#define SYSTEM_UNIX                   "unix"
-#define SYSTEM_WINDOWS                "windows"
-
 /* -------------------------------------------------------
  * System error messages
  * ------------------------------------------------------- */

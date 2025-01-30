@@ -219,7 +219,7 @@ bool parse_stringfromtoken(parser *p, unsigned int start, unsigned int length, v
         if (!nbytes) return false;
         
         if (nbytes>1) { // Unicode literals
-            varray_charadd(&str, &input[i], nbytes);
+            varray_charadd(&str, (char *) &input[i], nbytes);
         } else if (input[i]=='\n') { // Newlines are ok 
             varray_charwrite(&str, input[i]);
         } else if (iscntrl((unsigned char) input[i])) { // Unescaped control codes are not

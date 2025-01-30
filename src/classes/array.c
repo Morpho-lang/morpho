@@ -97,7 +97,7 @@ objectarray *object_newarray(unsigned int ndim, unsigned int *dim) {
  * ********************************************************************** */
 
 /** Converts a list of values to a list of integers */
-inline bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out) {
+bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out) {
 
     for (unsigned int i=0; i<ndim; i++) {
         if (MORPHO_ISINTEGER(in[i])) out[i]=MORPHO_GETINTEGERVALUE(in[i]);

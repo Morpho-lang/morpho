@@ -368,6 +368,13 @@ discretization_layout_cleanup:
 void discretization_gradient(discretization *disc, double *lambda) {
     int nbary = disc->grade+1;
     
+    // Compute gradients of the basis functions
+    double gdata[disc->nnodes*nbary];
+    (disc->gfn) (lambda, gdata);
+    objectmatrix gmat = MORPHO_STATICMATRIX(gdata, nbary, disc->nnodes);
+    
+    
+    /*
     // Compute Jacobian for element
     double jdata[disc->grade*disc->grade];
     objectmatrix jacobian = MORPHO_STATICMATRIX(jdata, disc->grade, disc->grade);
@@ -380,12 +387,7 @@ void discretization_gradient(discretization *disc, double *lambda) {
         ldata[disc->grade*(i+1)+i]=1;
     }
     objectmatrix lmat = MORPHO_STATICMATRIX(ldata, disc->grade, nbary);
-    
-    // Compute gradients of the basis functions
-    double gdata[disc->nnodes*nbary];
-    (disc->gfn) (lambda, gdata);
-    objectmatrix gmat = MORPHO_STATICMATRIX(gdata, nbary, disc->nnodes);
-    
+    */
     
 }
 

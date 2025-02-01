@@ -3903,15 +3903,24 @@ typedef struct {
 typedef struct {
     object obj;
     objectmesh *mesh;    // The current mesh object
+    
+    integralref *iref;   // The current integral ref structure
+    
+// Information about the element
     grade g;             // Current grade
     elementid id;        // Current element
     int nv;              // Number of vertices
     int *vid;            // Vertex ids
     double **vertexposn; // List of vertex positions
     double elementsize;  // Size of the element
-    value *qinterpolated; // List of interpolated quantities (this allows us to identify operators on fields)
+    
+// Interpolated quantities:
+    double *lambda;      // Barycentric coordinates
+    double *posn;        // Position in physical space
+
     value *qgrad;        // Gradients
-    integralref *iref;
+    
+    value *qinterpolated; // List of interpolated quantities (this allows us to identify operators on fields
 } objectintegralelementref;
 
 size_t objectintegralelementref_sizefn(object *obj) {
@@ -4059,6 +4068,11 @@ void integral_evaluategradient(vm *v, value q, value *out) {
     if (!MORPHO_ISNIL(*out)) return;
     
     objectfield *fld = MORPHO_GETFIELD(elref->iref->fields[ifld]);
+    
+    if (MORPHO_ISDISCRETIZATION(fld->fnspc)) {
+        discretization_gradient(MORPHO_GETDISCRETIZATION(fld->fnspc)->discretization, 
+                                elref->lambda);
+    }
     
     // Evaluate the gradient
     int dim = elref->mesh->dim;
@@ -4312,14 +4326,19 @@ bool integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int n
     objectmatrix posn = MORPHO_STATICMATRIX(x, dim, 1);
     value args[nquantity+1], out;
 
+    // The integrand function is called with the position and then interpolated quantities.
     args[0]=MORPHO_OBJECT(&posn);
     for (unsigned int i=0; i<nquantity; i++) args[i+1]=quantity[i];
     
     objectintegralelementref *elref = integral_getelementref(iref->v);
-    if (elref) elref->qinterpolated=quantity;
+    if (elref) {
+        elref->lambda=t;
+        elref->posn=x;
+        elref->qinterpolated=quantity;
+    }
     
     if (morpho_call(iref->v, iref->integrand, nquantity+1, args, &out)) {
-        morpho_valuetofloat(out,fout);
+        morpho_valuetofloat(out, fout);
         return true;
     }
 

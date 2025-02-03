@@ -181,6 +181,14 @@ void cg1_2dinterpolate(double *lambda, double *wts) {
     wts[2]=lambda[2];
 }
 
+void cg1_2dgrad(double *lambda, double *grad) {
+    double g[] =
+    { 1, 0, 0,
+      0, 1, 0,
+      0, 0, 1 };
+    memcpy(grad, g, sizeof(g));
+}
+
 unsigned int cg1_2dshape[] = { 1, 0, 0 };
 
 double cg1_2dnodes[] = { 0.0, 0.0,
@@ -203,6 +211,7 @@ discretization cg1_2d = {
     .nsubel = 0,
     .nodes = cg1_2dnodes,
     .ifn = cg1_2dinterpolate,
+    .gfn = cg1_2dgrad,
     .eldefn = cg1_2deldefn
 };
 
@@ -227,13 +236,18 @@ void cg2_2dinterpolate(double *lambda, double *wts) {
 }
 
 void cg2_2dgrad(double *lambda, double *grad) {
+    // Gij = d Xi[i] / d lambda[j]
     double g[] =
-    { 4*lambda[0]-1,             0,             0,
+    { 4*lambda[0]-1,             0,             0, 4*lambda[1],           0, 4*lambda[2],
+                  0, 4*lambda[1]-1,             0, 4*lambda[0], 4*lambda[2],           0,
+                  0,             0, 4*lambda[2]-1,           0, 4*lambda[1], 4*lambda[0] };
+    
+    /*{ 4*lambda[0]-1,             0,             0,
                   0, 4*lambda[1]-1,             0,
                   0,             0, 4*lambda[2]-1,
         4*lambda[1],   4*lambda[0],             0,
                   0,   4*lambda[2],   4*lambda[1],
-        4*lambda[2],             0,   4*lambda[0] };    
+        4*lambda[2],             0,   4*lambda[0] }; */
     memcpy(grad, g, sizeof(g));
 }
 
@@ -365,30 +379,21 @@ discretization_layout_cleanup:
     return false;
 }
 
-void discretization_gradient(discretization *disc, double *lambda) {
+/** @brief Calculates the gradient of the basis functions with respect to the reference coordinates.
+ *  @param[in] disc - discretization to query
+ *  @param[in] lambda - position in barycentric coordinates
+ *  @param[out] grad - gradient of basis functions with respect to reference coordinates (disc->nnodes x disc->grade)
+ */
+void discretization_gradient(discretization *disc, double *lambda, objectmatrix *grad) {
     int nbary = disc->grade+1;
     
-    // Compute gradients of the basis functions
+    // Compute gradients of the basis functions with respect to barycentric coordinates
     double gdata[disc->nnodes*nbary];
     (disc->gfn) (lambda, gdata);
-    objectmatrix gmat = MORPHO_STATICMATRIX(gdata, nbary, disc->nnodes);
     
-    
-    /*
-    // Compute Jacobian for element
-    double jdata[disc->grade*disc->grade];
-    objectmatrix jacobian = MORPHO_STATICMATRIX(jdata, disc->grade, disc->grade);
-    
-    // How the barycentric coordinates depend on the local coordinates
-    double ldata[disc->grade*nbary];
-    memset(ldata, 0, sizeof(double)*disc->grade*nbary);
     for (int i=0; i<disc->grade; i++) {
-        ldata[i]=-1;
-        ldata[disc->grade*(i+1)+i]=1;
+        functional_vecsub(disc->nnodes, gdata+(i+1)*disc->nnodes, gdata, grad->elements+i*disc->nnodes);
     }
-    objectmatrix lmat = MORPHO_STATICMATRIX(ldata, disc->grade, nbary);
-    */
-    
 }
 
 /* **********************************************************************

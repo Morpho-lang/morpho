@@ -2313,6 +2313,24 @@ void integrator_interpolatecoordinates(integrator *integrate, double *lambda, do
     //cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, integrate->dim, 1, integrate->nbary, 1.0, vmat, integrate->dim, lambda, integrate->nbary, 0.0, x, integrate->dim);
 }
 
+/** Sums a weighted list of quantities */
+bool integrator_sumquantityweighted(int n, double *wts, value *q, value *out) {
+    bool success=false;
+    if (MORPHO_ISFLOAT(q[0])) {
+        double qval[n];
+        for (int j=0; j<n; j++) qval[j]=MORPHO_GETFLOATVALUE(q[j]);
+        double val=integrator_sumlistweighted(n, qval, wts);
+        *out=MORPHO_FLOAT(val);
+        success=true;
+    } else if (MORPHO_ISMATRIX(q[0])) {
+        objectmatrix *sum = MORPHO_GETMATRIX(*out);
+        matrix_zero(sum);
+        for (int j=0; j<n; j++) matrix_accumulate(sum, wts[j], MORPHO_GETMATRIX(q[j]));
+        success=true;
+    }
+    return success;
+}
+
 /** Interpolates quantities */
 void integrator_interpolatequantities(integrator *integrate, double *bary) {
     for (int i=0; i<integrate->nquantity; i++) {
@@ -2324,7 +2342,9 @@ void integrator_interpolatequantities(integrator *integrate, double *bary) {
             for (int k=0; k<nnodes; k++) wts[k]=bary[k];
         }
         
-        if (MORPHO_ISFLOAT(integrate->qval[i])) {
+        integrator_sumquantityweighted(nnodes, wts, integrate->quantity[i].vals, &integrate->qval[i]);
+        
+/*        if (MORPHO_ISFLOAT(integrate->qval[i])) {
             double qval[nnodes];
             for (int j=0; j<nnodes; j++) qval[j]=MORPHO_GETFLOATVALUE(integrate->quantity[i].vals[j]);
             double val=integrator_sumlistweighted(nnodes, qval, wts);
@@ -2335,8 +2355,7 @@ void integrator_interpolatequantities(integrator *integrate, double *bary) {
             for (int j=0; j<nnodes; j++) {
                 matrix_accumulate(out, wts[j], MORPHO_GETMATRIX(integrate->quantity[i].vals[j]));
             }
-        }
-        
+        }*/
     }
 }
 

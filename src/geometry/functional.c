@@ -3917,7 +3917,8 @@ typedef struct {
 // Interpolated quantities:
     double *lambda;      // Barycentric coordinates
     double *posn;        // Position in physical space
-
+    objectmatrix *invj;  // Inverse jacobian for the element
+    
     value *qgrad;        // Gradients
     
     value *qinterpolated; // List of interpolated quantities (this allows us to identify operators on fields
@@ -4043,6 +4044,8 @@ static value integral_normal(vm *v, int nargs, value *args) {
  * Gradient
  * -------- */
 
+bool integrator_sumquantityweighted(int n, double *wts, value *q, value *out);
+
 void integral_evaluategradient(vm *v, value q, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);
     if (!elref) { morpho_runtimeerror(v, INTEGRAL_SPCLFN, GRAD_FUNCTION); return; }
@@ -4069,12 +4072,7 @@ void integral_evaluategradient(vm *v, value q, value *out) {
     
     objectfield *fld = MORPHO_GETFIELD(elref->iref->fields[ifld]);
     
-    if (MORPHO_ISDISCRETIZATION(fld->fnspc)) {
-        discretization_gradient(MORPHO_GETDISCRETIZATION(fld->fnspc)->discretization, 
-                                elref->lambda);
-    }
-    
-    // Evaluate the gradient
+    // Extract information from the field
     int dim = elref->mesh->dim;
     int ndof = fld->psize; // Number of degrees of freedom per element
     double grad[ndof*dim]; // Storage for gradient
@@ -4083,9 +4081,33 @@ void integral_evaluategradient(vm *v, value q, value *out) {
     
     bool gsucc = false;
     
-    // Evaluate correct gradient
-    if (elref->g==2) gsucc=gradsq_evaluategradient(elref->mesh, fld, elref->nv, elref->vid, grad);
-    else if (elref->g==3) gsucc=gradsq_evaluategradient3d(elref->mesh, fld, elref->nv, elref->vid, grad);
+    // Evaluate gradient
+    if (MORPHO_ISDISCRETIZATION(fld->fnspc)) {
+        int nnodes = MORPHO_GETDISCRETIZATION(fld->fnspc)->discretization->nnodes;
+        double gdata[nnodes * elref->g];
+        objectmatrix gmat = MORPHO_STATICMATRIX(gdata, nnodes, elref->g);
+        
+        discretization_gradient(MORPHO_GETDISCRETIZATION(fld->fnspc)->discretization,
+                                elref->lambda, &gmat);
+        
+        matrix_print(NULL, &gmat);
+        printf("\n--\n");
+        matrix_print(NULL, elref->invj);
+        
+        double res[nnodes * dim];
+        objectmatrix fmat = MORPHO_STATICMATRIX(res, nnodes, dim);
+        
+        matrix_mul(&gmat, elref->invj, &fmat);
+        
+        printf("\n--\n");
+        matrix_print(NULL, &fmat);
+        
+        
+    } else {
+        // Evaluate correct gradient
+        if (elref->g==2) gsucc=gradsq_evaluategradient(elref->mesh, fld, elref->nv, elref->vid, grad);
+        else if (elref->g==3) gsucc=gradsq_evaluategradient3d(elref->mesh, fld, elref->nv, elref->vid, grad);
+    }
     
     if (!gsucc) {
         UNREACHABLE("Couldn't evaluate gradient");
@@ -4321,6 +4343,29 @@ void integral_clearquantities(int nq, quantity *quantities) {
     }
 }
 
+/** @brief Prepares an inverse jacobian matrix.
+    @param[in] dim - dimension of physical space
+    @param[in] g - grade of the object
+    @param[in] x - list of vertex positions (grade+1 entries, each of length dim)
+    @param[out] invj - inverse jacobian for the transformation (dim*g entries) */
+void integral_prepareinvjacobian(unsigned int dim, grade g, double **x, objectmatrix *invj) {
+    bool success=false;
+    
+    // Construct the (dim x g) matrix of edge vectors
+    double s[dim*g];
+    for (int i=0; i<dim; i++) functional_vecsub(dim, x[i+1], x[0], s + i*dim);
+    
+    if (g==dim) {
+        objectmatrix smat = MORPHO_STATICMATRIX(s, dim, dim);
+        success=(matrix_inverse(&smat, invj)==MATRIX_OK);
+    } else if (g==1) {
+        
+    } else if (g==2 && dim==3) {
+        
+    }
+    return success;
+}
+
 bool integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *ref, double *fout) {
     integralref *iref = ref;
     objectmatrix posn = MORPHO_STATICMATRIX(x, dim, 1);
@@ -4504,8 +4549,9 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     
     objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_AREA, id, nv, vid);
     elref.iref = &iref;
-    elref.vertexposn = x;
+    elref.vertexposn=x;
     elref.qgrad=qgrad;
+    elref.invj=NULL;
 
     if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &elref.elementsize)) return false;
 
@@ -4513,7 +4559,7 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     for (unsigned int i=0; i<nv; i++) {
         mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
     }
-
+    
     /* Set up quantities */
     integral_cleartlvars(v);
     vm_settlvar(v, elementhandle, MORPHO_OBJECT(&elref));
@@ -4522,6 +4568,11 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
         double err;
         quantity quantities[iref.nfields+1];
         integral_preparequantities(&iref, nv, vid, quantities);
+        
+        double invjdata[(MESH_GRADE_AREA)*mesh->dim];
+        objectmatrix invj = MORPHO_STATICMATRIX(invjdata, mesh->dim, MESH_GRADE_AREA);
+        integral_prepareinvjacobian(mesh->dim, MESH_GRADE_AREA, x, &invj);
+        elref.invj = &invj;
         
         success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_AREA, x, iref.nfields, quantities, &iref, out, &err);
         

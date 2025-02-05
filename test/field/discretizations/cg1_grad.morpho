@@ -1,0 +1,23 @@
+// Gradient of CG1 field
+
+import meshtools 
+
+var mb = MeshBuilder() 
+mb.addvertex([0,0])
+mb.addvertex([2,0])
+mb.addvertex([0,2])
+mb.addvertex([2,2])
+mb.addface([0,1,2])
+mb.addface([1,3,2])
+var m = mb.build()
+m.addgrade(1)
+
+var l = FunctionSpace("CG1", grade=2)
+
+fn integrand(x, q) {
+    var g = grad(q)
+    return g.norm()^2
+}
+
+var f = Field(m, fn (x,y) 3 - 4*x + 2*y, functionspace=l)
+print abs(AreaIntegral(integrand, f, method={ }).total(m) - 80) < 1e-8

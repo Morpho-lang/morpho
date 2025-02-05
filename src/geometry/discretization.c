@@ -237,17 +237,11 @@ void cg2_2dinterpolate(double *lambda, double *wts) {
 
 void cg2_2dgrad(double *lambda, double *grad) {
     // Gij = d Xi[i] / d lambda[j]
+    // Note this is in column-major order!
     double g[] =
     { 4*lambda[0]-1,             0,             0, 4*lambda[1],           0, 4*lambda[2],
                   0, 4*lambda[1]-1,             0, 4*lambda[0], 4*lambda[2],           0,
                   0,             0, 4*lambda[2]-1,           0, 4*lambda[1], 4*lambda[0] };
-    
-    /*{ 4*lambda[0]-1,             0,             0,
-                  0, 4*lambda[1]-1,             0,
-                  0,             0, 4*lambda[2]-1,
-        4*lambda[1],   4*lambda[0],             0,
-                  0,   4*lambda[2],   4*lambda[1],
-        4*lambda[2],             0,   4*lambda[0] }; */
     memcpy(grad, g, sizeof(g));
 }
 

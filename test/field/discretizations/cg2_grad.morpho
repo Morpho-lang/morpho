@@ -1,3 +1,4 @@
+// Compute the gradient of a quantity
 
 import meshtools 
 
@@ -13,11 +14,16 @@ m.addgrade(1)
 
 var l = FunctionSpace("CG2", grade=2)
 
-var f = Field(m, fn (x,y) x*y, functionspace=l)
-
 fn integrand(x, q) {
     var g = grad(q)
     return g.norm()^2
 }
 
-print AreaIntegral(integrand, f, method={ }).total(m)-4/3
+var f = Field(m, fn (x,y) 3 - 2*x + 4*y, functionspace=l)
+print abs(AreaIntegral(integrand, f, method={ }).total(m) - 80) < 1e-8
+
+var g = Field(m, fn (x,y) x^2 + y^2, functionspace=l)
+print abs(AreaIntegral(integrand, g, method={ }).total(m) - 128/3) < 1e-8
+
+var h = Field(m, fn (x,y) 3 - 2*x + 4*y)
+print abs(AreaIntegral(integrand, h, method={ }).total(m) - 80) < 1e-8

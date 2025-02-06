@@ -1,0 +1,18 @@
+// Gradient of CG1 field on a line 
+
+import meshtools 
+
+var mb = MeshBuilder() 
+mb.addvertex([0,0,0])
+mb.addvertex([2,2,1])
+mb.addedge([0,1])
+var m = mb.build()
+
+fn integrand(x, q) {
+    var g = grad(q)
+    return g.norm()^2
+}
+
+var f = Field(m, fn (x,y,z) x + y + 0.5*z, functionspace=FunctionSpace("CG1", grade=1))
+
+print abs(LineIntegral(integrand, f, method={ }).total(m) - 6.75) < 1e-8

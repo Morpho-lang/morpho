@@ -64,6 +64,13 @@ void cg1_1dinterpolate(double *lambda, double *wts) {
     wts[1]=lambda[1];
 }
 
+void cg1_1dgrad(double *lambda, double *grad) {
+    double g[] =
+    { 1, 0,
+      0, 1 };
+    memcpy(grad, g, sizeof(g));
+}
+
 unsigned int cg1_1dshape[] = { 1, 0 };
 
 double cg1_1dnodes[] = { 0.0, 1.0 };
@@ -83,6 +90,7 @@ discretization cg1_1d = {
     .nsubel = 0,
     .nodes = cg1_1dnodes,
     .ifn = cg1_1dinterpolate,
+    .gfn = cg1_1dgrad,
     .eldefn = cg1_1ddefn
 };
 
@@ -100,6 +108,16 @@ void cg2_1dinterpolate(double *lambda, double *wts) {
     wts[1]=-lambda[1]*dl;
     wts[2]=4*lambda[0]*lambda[1];
 }
+
+void cg2_1dgrad(double *lambda, double *grad) {
+    // Gij = d Xi[i] / d lambda[j]
+    // Note this is in column-major order!
+    double g[] =
+    { 2*lambda[0]-lambda[1],            -lambda[1], 4*lambda[1],
+                 -lambda[0], 2*lambda[1]-lambda[0], 4*lambda[0] };
+    memcpy(grad, g, sizeof(g));
+}
+
 
 unsigned int cg2_1dshape[] = { 1, 1 };
 
@@ -122,6 +140,7 @@ discretization cg2_1d = {
     .nsubel = 1,
     .nodes = cg2_1dnodes,
     .ifn = cg2_1dinterpolate,
+    .gfn = cg2_1dgrad,
     .eldefn = cg2_1ddefn
 };
 

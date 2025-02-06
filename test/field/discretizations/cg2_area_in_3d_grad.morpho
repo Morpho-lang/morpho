@@ -1,0 +1,30 @@
+// Compute the gradient of a quantity
+
+import meshtools 
+
+var mb = MeshBuilder() 
+mb.addvertex([0,0,1])
+mb.addvertex([2,0,1])
+mb.addvertex([0,2,1])
+mb.addvertex([2,2,1])
+mb.addface([0,1,2])
+mb.addface([1,3,2])
+var m = mb.build()
+m.addgrade(1)
+
+var l = FunctionSpace("CG2", grade=2)
+
+fn integrand(x, q) {
+    print x
+    var g = grad(q)
+    return g.norm()^2
+}
+
+var f = Field(m, fn (x,y,z) 3 - 2*x + 4*y, functionspace=l)
+print abs(AreaIntegral(integrand, f, method={ }).total(m) - 80) < 1e-8
+
+var g = Field(m, fn (x,y,z) x^2 + y^2, functionspace=l)
+print abs(AreaIntegral(integrand, g, method={ }).total(m) - 128/3) < 1e-8
+
+var h = Field(m, fn (x,y,z) 3 - 2*x + 4*y)
+print abs(AreaIntegral(integrand, h, method={ }).total(m) - 80) < 1e-8

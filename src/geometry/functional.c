@@ -4160,7 +4160,7 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
         double fmatdata[nnodes * dim];
         objectmatrix fmat = MORPHO_STATICMATRIX(fmatdata, nnodes, dim);
         
-        matrix_mul(&gmat, elref->invj, &fmat);
+        if (matrix_mul(&gmat, elref->invj, &fmat)!=MATRIX_OK) return false; 
         
         for (int i=0; i<dim; i++) {
             value sum;
@@ -4393,13 +4393,17 @@ void integral_prepareinvjacobian(unsigned int dim, grade g, double **x, objectma
     
     // Construct the (dim x g) matrix of edge vectors
     double s[dim*g];
-    for (int i=0; i<dim; i++) functional_vecsub(dim, x[i+1], x[0], s + i*dim);
+    for (int i=0; i<g; i++) functional_vecsub(dim, x[i+1], x[0], s + i*dim);
     
     if (g==dim) {
         objectmatrix smat = MORPHO_STATICMATRIX(s, dim, dim);
         success=(matrix_inverse(&smat, invj)==MATRIX_OK);
     } else if (g==1) {
-        
+        double s01norm = functional_vecdot(dim, s, s);
+        if (s01norm>0) {
+            functional_vecscale(dim, 1.0/s01norm, s, invj->elements);
+            success=true; 
+        }
     } else if (g==2 && dim==3) {
         
     }
@@ -4442,6 +4446,7 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     elref.iref = &iref;
     elref.vertexposn = x;
     elref.qgrad=qgrad;
+    elref.invj=NULL;
     
     if (!functional_elementsize(v, mesh, MESH_GRADE_LINE, id, nv, vid, &elref.elementsize)) return false;
 
@@ -4458,6 +4463,12 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
         double err;
         quantity quantities[iref.nfields+1];
         integral_preparequantities(&iref, nv, vid, quantities);
+        elref.quantities=quantities;
+        
+        double invjdata[MESH_GRADE_LINE*mesh->dim];
+        objectmatrix invj = MORPHO_STATICMATRIX(invjdata, MESH_GRADE_LINE, mesh->dim);
+        integral_prepareinvjacobian(mesh->dim, MESH_GRADE_LINE, x, &invj);
+        elref.invj = &invj;
         
         success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_LINE, x, iref.nfields, quantities, &iref, out, &err);
         

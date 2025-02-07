@@ -15,7 +15,6 @@ m.addgrade(1)
 var l = FunctionSpace("CG2", grade=2)
 
 fn integrand(x, q) {
-    print x
     var g = grad(q)
     return g.norm()^2
 }

@@ -4405,7 +4405,22 @@ void integral_prepareinvjacobian(unsigned int dim, grade g, double **x, objectma
             success=true; 
         }
     } else if (g==2 && dim==3) {
-        
+        double *s0 = s, *s1 = s+dim, s0xs1[dim], u[dim], v[dim*g];
+        functional_veccross(s0, s1, s0xs1);
+        double s0xs1norm = functional_vecnorm(dim, s0xs1);
+        if (s0xs1norm>0) {
+            double invs0xs1norm = 1/(s0xs1norm*s0xs1norm);
+            functional_veccross(s1, s0xs1, u);
+            functional_vecscale(dim, invs0xs1norm, u, v);
+            functional_veccross(s0xs1, s0, u);
+            functional_vecscale(dim, invs0xs1norm, u, v+dim);
+            
+            objectmatrix invjt = MORPHO_STATICMATRIX(v, dim, g);
+            
+            matrix_transpose(&invjt, invj);
+            
+            success=true;
+        }
     }
     return success;
 }
@@ -4622,7 +4637,7 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
         elref.quantities=quantities;
         
         double invjdata[(MESH_GRADE_AREA)*mesh->dim];
-        objectmatrix invj = MORPHO_STATICMATRIX(invjdata, mesh->dim, MESH_GRADE_AREA);
+        objectmatrix invj = MORPHO_STATICMATRIX(invjdata, MESH_GRADE_AREA, mesh->dim);
         integral_prepareinvjacobian(mesh->dim, MESH_GRADE_AREA, x, &invj);
         elref.invj = &invj;
         

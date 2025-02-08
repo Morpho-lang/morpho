@@ -10,12 +10,8 @@ var f = Field(m, fn (x,y) x^2+y^2, functionspace=l)
 
 fn integrand(x, u) {
     var g = grad(u)
-    print x
-    print "-"
-    print g 
-    print "---"
     return g.norm()^2
 }
 
-print LineIntegral(integrand, f, method={ }).total(m) 
+print abs(LineIntegral(integrand, f, method={ }).total(m) - 8*sqrt(2)/3) < 1e-8
 // expect: true

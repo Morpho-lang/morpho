@@ -21,9 +21,19 @@ fn integrand(x, q) {
 
 var f = Field(m, fn (x,y,z) 3 - 2*x + 4*y, functionspace=l)
 print abs(AreaIntegral(integrand, f, method={ }).total(m) - 80) < 1e-8
+// expect: true
 
 var g = Field(m, fn (x,y,z) x^2 + y^2, functionspace=l)
 print abs(AreaIntegral(integrand, g, method={ }).total(m) - 128/3) < 1e-8
+// expect: true
 
 var h = Field(m, fn (x,y,z) 3 - 2*x + 4*y)
 print abs(AreaIntegral(integrand, h, method={ }).total(m) - 80) < 1e-8
+// expect: true
+
+var p = Field(m, fn (x,y,z) 3 - 2*x + 4*y)
+print abs(AreaIntegral(fn (x, q) grad(q)[0], p, method={}).total(m) - (-8)) < 1e-8
+// expect: true
+
+print abs(AreaIntegral(fn (x, q) grad(q)[1], p, method={}).total(m) - 16) < 1e-8
+// expect: true

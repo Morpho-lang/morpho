@@ -19,6 +19,7 @@ fn f0(x,y) {
 var f = Field(m, f0, functionspace=FunctionSpace("CG2", grade=2))
 
 print abs(AreaIntegral(fn (x, q) q[0,0], f, method={ }).total(m) - 8) < 1e-8
+// expect: true
 
 fn integrand(x, q) {
     var g = grad(q)
@@ -28,3 +29,4 @@ fn integrand(x, q) {
 }
 
 print abs(AreaIntegral(integrand, f, method={ }).total(m) - 304/3) < 1e-8
+// expect: true

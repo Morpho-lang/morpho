@@ -4059,6 +4059,7 @@ bool integral_gradalloc(int dim, value prototype, value *out) {
         if (mlst) *out = MORPHO_OBJECT(mlst);
         return mlst;
     } else UNREACHABLE("Field type not supported in grad");
+    return false;
 }
 
 /** Prepares the gradient sum to hold the component of the gradient */
@@ -4083,16 +4084,19 @@ bool integral_gradsuminit(int i, value prototype, value dest, value *sum) {
 /** Copies the component of the gradient into the relevant destination if needed */
 bool integral_gradsumcopy(int i, value sum, value dest) {
     if (MORPHO_ISMATRIX(dest)) {
-        morpho_valuetofloat(sum, &MORPHO_GETMATRIX(dest)->elements[i]);
-    }
+        return morpho_valuetofloat(sum, &MORPHO_GETMATRIX(dest)->elements[i]);
+    } else return true;
 }
 
 /** Copies the component of the gradient into the relevant destination */
 bool integral_oldgradcopy(int dim, int ndof, double *grad, value dest) {
+    bool success=false;
     if (MORPHO_ISMATRIX(dest)) {
         objectmatrix *mdest = MORPHO_GETMATRIX(dest);
         memcpy(mdest->elements, grad, sizeof(double)*dim);
+        success=true;
     }
+    return success;
     // Copy into a list or matrix as appropriate
     /*
     } else {
@@ -4388,7 +4392,7 @@ void integral_clearquantities(int nq, quantity *quantities) {
     @param[in] g - grade of the object
     @param[in] x - list of vertex positions (grade+1 entries, each of length dim)
     @param[out] invj - inverse jacobian for the transformation (dim*g entries) */
-void integral_prepareinvjacobian(unsigned int dim, grade g, double **x, objectmatrix *invj) {
+bool integral_prepareinvjacobian(unsigned int dim, grade g, double **x, objectmatrix *invj) {
     bool success=false;
     
     // Construct the (dim x g) matrix of edge vectors

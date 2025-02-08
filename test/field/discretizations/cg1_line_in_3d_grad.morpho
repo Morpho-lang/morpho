@@ -16,3 +16,4 @@ fn integrand(x, q) {
 var f = Field(m, fn (x,y,z) x + y + 0.5*z, functionspace=FunctionSpace("CG1", grade=1))
 
 print abs(LineIntegral(integrand, f, method={ }).total(m) - 6.75) < 1e-8
+// expect: true

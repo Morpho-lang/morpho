@@ -4728,6 +4728,7 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
     elref.iref = &iref;
     elref.vertexposn = x;
     elref.qgrad=qgrad;
+    elref.invj=NULL;
 
     if (!functional_elementsize(v, mesh, MESH_GRADE_VOLUME, id, nv, vid, &elref.elementsize)) return false;
 
@@ -4752,6 +4753,7 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
         double err;
         quantity quantities[iref.nfields+1];
         integral_preparequantities(&iref, nv, vid, quantities);
+        elref.quantities=quantities;
         
         success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, quantities, &iref, out, &err);
         

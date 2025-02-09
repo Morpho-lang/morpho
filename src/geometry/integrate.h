@@ -143,7 +143,9 @@ typedef struct {
     
     int niterations; /** Number of iterations performed */
     double val; /** Estimated value of the integral */
-    double err; /** Estimated error of the integral */
+    double errest; /** Estimated error of the integral */
+    
+    error *err; /** Error structure to report errors */
 } integrator;
 
 /* -------------------------------------------------------
@@ -154,7 +156,10 @@ typedef struct {
 #define INTEGRATE_QDRTRMXSBDVSNS_MSG  "Maximum number of subdivisions reached in integrator."
 
 #define INTEGRATE_QDRTRRLNTFND        "IntgrtrRlNtFnd"
-#define INTEGRATE_QDRTRRLNTFND_MSG    "Integrator quadrature rule not found."
+#define INTEGRATE_QDRTRRLNTFND_MSG    "Integrator quadrature rule '%s' not found."
+
+#define INTEGRATE_MTHDTYP             "IntgrtrMthdTyp"
+#define INTEGRATE_MTHDTYP_MSG         "Option '%s' requires a value of type '%s in integrator method dictionary."
 
 #define INTEGRATE_UNRCGNZOPT          "IntgrtrUnrcgnzdOpt"
 #define INTEGRATE_UNRCGNZOPT_MSG      "Unrecognized option in integrator method dictionary."
@@ -165,9 +170,9 @@ typedef struct {
 
 bool integrate_integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out);
 
-bool integrate(integrandfunction *integrand, objectdictionary *method, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, quantity *quantity, void *ref, double *out, double *err);
+bool integrate(integrandfunction *integrand, objectdictionary *method, error *err, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, quantity *quantity, void *ref, double *out, double *errest);
 
-void integrate_test(void);
+void integrate_initialize(void);
 
 #endif /* integration_h */
 

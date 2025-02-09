@@ -4493,7 +4493,7 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
         integral_prepareinvjacobian(mesh->dim, MESH_GRADE_LINE, x, &invj);
         elref.invj = &invj;
         
-        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_LINE, x, iref.nfields, quantities, &iref, out, &err);
+        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), morpho_geterror(v), mesh->dim, MESH_GRADE_LINE, x, iref.nfields, quantities, &iref, out, &err);
         
         integral_clearquantities(iref.nfields, quantities);
     } else { // Old integrator
@@ -4653,7 +4653,7 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
         integral_prepareinvjacobian(mesh->dim, MESH_GRADE_AREA, x, &invj);
         elref.invj = &invj;
         
-        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_AREA, x, iref.nfields, quantities, &iref, out, &err);
+        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), morpho_geterror(v), mesh->dim, MESH_GRADE_AREA, x, iref.nfields, quantities, &iref, out, &err);
         
         integral_clearquantities(iref.nfields, quantities);
     } else {
@@ -4763,7 +4763,7 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
         integral_preparequantities(&iref, nv, vid, quantities);
         elref.quantities=quantities;
         
-        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, quantities, &iref, out, &err);
+        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), morpho_geterror(v), mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, quantities, &iref, out, &err);
         
         integral_clearquantities(iref.nfields, quantities);
     } else {

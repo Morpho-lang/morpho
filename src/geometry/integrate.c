@@ -2248,7 +2248,7 @@ void integrator_estimate(integrator *integrate) {
     }
     
     integrate->val = sumval;
-    integrate->err = sumerr;
+    integrate->errest = sumerr;
 }
 
 /* --------------------------------
@@ -2504,14 +2504,14 @@ void integrator_sharpenerrorestimate(integrator *integrate, quadratureworkitem *
 void integrator_update(integrator *integrate, quadratureworkitem *work, int nels, quadratureworkitem *newitems) {
     double dval=0, derr=0;
     integrate->val-=work->val;
-    integrate->err-=work->err;
+    integrate->errest-=work->err;
     for (int k=0; k<nels; k++) {
         dval+=newitems[k].val;
         derr+=newitems[k].err;
         integrator_pushworkitem(integrate, &newitems[k]);
     }
     integrate->val+=dval;
-    integrate->err+=derr;
+    integrate->errest+=derr;
 }
 
 /* --------------------------------
@@ -2562,20 +2562,25 @@ bool integrator_matchrulebyorder(int grade, int minorder, int maxorder, bool hig
 
 /** Configures an integrator based on the grade to integrate and hints for order and rule type
  * @param[in] integrate     - integrator structure to be configured
+ * @param[in] err                  - error structure to report errors to
  * @param[in] adapt             - enable adaptive refinement
  * @param[in] grade              - Dimension of the vertices
  * @param[in] order              - Requested order of quadrature rule
  * @param[in] name                - Alternatively, supply the name of a known rule
  * @returns true if the configuration was successful */
-bool integrator_configure(integrator *integrate, bool adapt, int grade, int order, char *name) {
+bool integrator_configure(integrator *integrate, error *err, bool adapt, int grade, int order, char *name) {
     integrate->rule=NULL;
     integrate->errrule=NULL;
     integrate->adapt=adapt;
+    integrate->err=err;
     
     integrate->nbary=grade+1; // Number of barycentric coordinates
     
     if (name) {
-        if (!integrator_matchrulebyname(grade, name, &integrate->rule)) return false;
+        if (!integrator_matchrulebyname(grade, name, &integrate->rule)) {
+            morpho_writeerrorwithid(err, INTEGRATE_QDRTRRLNTFND, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, name);
+            return false;
+        }
     } else if (order<0) { // If no order requested find the highest order rule available
         if (!integrator_matchrulebyorder(grade, 0, INT_MAX, true, &integrate->rule)) return false;
     } else { // Prefer a rule that integrates at least order, but otherwise find the best
@@ -2616,7 +2621,7 @@ bool integrator_configure(integrator *integrate, bool adapt, int grade, int orde
 }
 
 /** Configures the integrator based on the contents of a dictionary */
-bool integrator_configurewithdictionary(integrator *integrate, grade g, objectdictionary *dict) {
+bool integrator_configurewithdictionary(integrator *integrate, error *err, grade g, objectdictionary *dict) {
     char *name=NULL;
     bool adapt=true;
     int order=-1;
@@ -2641,7 +2646,7 @@ bool integrator_configurewithdictionary(integrator *integrate, grade g, objectdi
         adapt = MORPHO_GETBOOLVALUE(val);
     }
     
-    return integrator_configure(integrate, adapt, g, order, name);
+    return integrator_configure(integrate, err, adapt, g, order, name);
 }
 
 /* --------------------------------
@@ -2697,7 +2702,7 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
     
     if (integrate->adapt) for (integrate->niterations=0; integrate->niterations<=integrate->maxiterations; integrate->niterations++) {
         // Convergence check
-        if (fabs(integrate->val)<integrate->ztol || fabs(integrate->err/integrate->val)<integrate->tol) break;
+        if (fabs(integrate->val)<integrate->ztol || fabs(integrate->errest/integrate->val)<integrate->tol) break;
         
         // Get worst interval
         integrator_popworkitem(integrate, &work);
@@ -2722,13 +2727,14 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
     return true;
 }
 
-/* -------------------------------------
- * Public interface matching old version
- * ------------------------------------- */
+/* ---------------------------------------
+ * Public interface resembling old version
+ * --------------------------------------- */
 
 /** Integrate over an element - public interface for one off integrals.
  * @param[in] integrand   - integrand
  * @param[in] method         - Dictionary with method selection (optional)
+ * @param[in] err                - Error structure to report errors (optional)
  * @param[in] dim                - Dimension of the vertices
  * @param[in] grade            - Grade to integrate over
  * @param[in] x                     - vertices of the triangle x[0] = {x,y,z} etc.
@@ -2736,22 +2742,33 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
  * @param[in] quantity     - List of quantities
  * @param[in] ref                - a pointer to any data required by the function
  * @param[out] out              - value of the integral
- * @param[out] err              - an estimate of the error
+ * @param[out] errest        - an estimate of the error
  * @returns true on success. */
-bool integrate(integrandfunction *integrand, objectdictionary *method, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, quantity *quantity, void *ref, double *out, double *err) {
+bool integrate(integrandfunction *integrand, objectdictionary *method, error *err, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, quantity *quantity, void *ref, double *out, double *errest) {
     bool success=false;
     integrator integrate;
     integrator_init(&integrate);
     
     if (method) {
-        if (!integrator_configurewithdictionary(&integrate, grade, method)) return false;
-    } else if (!integrator_configure(&integrate, true, grade, -1, NULL)) return false;
+        if (!integrator_configurewithdictionary(&integrate, err, grade, method)) return false;
+    } else if (!integrator_configure(&integrate, err, true, grade, -1, NULL)) return false;
     success=integrator_integrate(&integrate, integrand, dim, x, nquantity, quantity, ref);
     
     *out = integrate.val;
-    *err = integrate.err;
+    if (errest) *errest = integrate.errest;
     
     integrator_clear(&integrate);
     
     return success;
+}
+
+/* -------------------------------------
+ * Public interface matching old version
+ * ------------------------------------- */
+
+void integrate_initialize(void) {
+    morpho_defineerror(INTEGRATE_QDRTRMXSBDVSNS, ERROR_HALT, INTEGRATE_QDRTRMXSBDVSNS_MSG);
+    morpho_defineerror(INTEGRATE_QDRTRRLNTFND, ERROR_HALT, INTEGRATE_QDRTRRLNTFND_MSG);
+    morpho_defineerror(INTEGRATE_MTHDTYP, ERROR_HALT, INTEGRATE_MTHDTYP_MSG);
+    morpho_defineerror(INTEGRATE_UNRCGNZOPT, ERROR_HALT, INTEGRATE_UNRCGNZOPT_MSG);
 }

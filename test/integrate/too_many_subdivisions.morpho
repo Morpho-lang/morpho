@@ -1,0 +1,13 @@
+// Test underlying integration routine
+
+import meshtools
+import "counter.morpho"
+
+var mb = MeshBuilder() 
+mb.addvertex([0])
+mb.addvertex([1])
+mb.addedge([0,1])
+var m = mb.build()
+
+print LineIntegral(fn (x) 1/x[0], method={ } ).total(m)
+// expect error 'IntgrtrSbdvns' 

@@ -152,17 +152,17 @@ typedef struct {
  * Integrator errors
  * ------------------------------------------------------- */
 
-#define INTEGRATE_QDRTRMXSBDVSNS      "IntgrtrMxSbdvns"
-#define INTEGRATE_QDRTRMXSBDVSNS_MSG  "Maximum number of subdivisions reached in integrator."
+#define INTEGRATE_SBDVSNS             "IntgrtrSbdvns"
+#define INTEGRATE_SBDVSNS_MSG         "Too many subdivisions in evaluating integral; possible singularity detected."
 
-#define INTEGRATE_QDRTRRLNTFND        "IntgrtrRlNtFnd"
-#define INTEGRATE_QDRTRRLNTFND_MSG    "Integrator quadrature rule '%s' not found."
+#define INTEGRATE_RLNTFND             "IntgrtrRlNtFnd"
+#define INTEGRATE_RLNTFND_MSG         "Integrator quadrature rule '%s' not found."
+
+#define INTEGRATE_RLUNAVLB            "IntgrtrRlUnavlb"
+#define INTEGRATE_RLUNAVLB_MSG        "No quadrature rule is available that matches the provided integrator method dictionary."
 
 #define INTEGRATE_MTHDTYP             "IntgrtrMthdTyp"
-#define INTEGRATE_MTHDTYP_MSG         "Option '%s' requires a value of type '%s in integrator method dictionary."
-
-#define INTEGRATE_UNRCGNZOPT          "IntgrtrUnrcgnzdOpt"
-#define INTEGRATE_UNRCGNZOPT_MSG      "Unrecognized option in integrator method dictionary."
+#define INTEGRATE_MTHDTYP_MSG         "Integrator method dictionary option '%s' must be a %s."
 
 /* -------------------------------------------------------
  * Integrator interface

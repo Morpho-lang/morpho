@@ -204,8 +204,9 @@ void morpho_unreachable(const char *explanation);
 void error_init(error *err);
 void error_clear(error *err);
 
-void morpho_writeerrorwithid(error *err, errorid id, char *file, int line, int posn, ...);
 void morpho_writeerrorwithidvalist(error *err, errorid id, char *file, int line, int posn, va_list args);
+void morpho_writeerrorwithid(error *err, errorid id, char *file, int line, int posn, ...);
+void error_writewithid(error *err, errorid id, ... );
 void morpho_writeusererror(error *err, errorid id, char *message);
 void morpho_defineerror(errorid id, errorcategory cat, char *message);
 

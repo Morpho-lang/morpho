@@ -1,4 +1,4 @@
-// Raise an error if the quadrature rule isn't found
+// Raise an err if the quadrature rule isn't found
 
 import meshtools
 

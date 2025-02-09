@@ -2461,6 +2461,10 @@ bool integrator_subdivide(integrator *integrate, quadratureworkitem *work, int *
         newitems[i].val=0.0;
         newitems[i].err=0.0;
         newitems[i].weight=work->weight*rule->weights[i];
+        if (newitems[i].weight<integrate->val*DBL_EPSILON) {
+            error_writewithid(integrate->err, INTEGRATE_SBDVSNS);
+            return false; 
+        }
         
         // Construct new element from the vertex ids
         int vids[integrate->nbary];
@@ -2573,23 +2577,22 @@ bool integrator_configure(integrator *integrate, error *err, bool adapt, int gra
     integrate->errrule=NULL;
     integrate->adapt=adapt;
     integrate->err=err;
-    
     integrate->nbary=grade+1; // Number of barycentric coordinates
     
     if (name) {
         if (!integrator_matchrulebyname(grade, name, &integrate->rule)) {
-            morpho_writeerrorwithid(err, INTEGRATE_QDRTRRLNTFND, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, name);
+            error_writewithid(err, INTEGRATE_RLNTFND, name);
             return false;
         }
-    } else if (order<0) { // If no order requested find the highest order rule available
-        if (!integrator_matchrulebyorder(grade, 0, INT_MAX, true, &integrate->rule)) return false;
-    } else { // Prefer a rule that integrates at least order, but otherwise find the best
-        if (!(integrator_matchrulebyorder(grade, order, INT_MAX, false, &integrate->rule) ||
-            integrator_matchrulebyorder(grade, 0, order, true, &integrate->rule))) return false;
+    } else {
+        integrator_matchrulebyorder(grade, (order<0 ? 0 : order), INT_MAX, (order<0), &integrate->rule);
     }
     
     // Check we succeeded in finding a rule
-    if (!integrate->rule) return false;
+    if (!integrate->rule) {
+        error_writewithid(err, INTEGRATE_RLUNAVLB);
+        return false;
+    }
     
     // Do we need to find an extension rule?
     if (adapt && integrate->rule->ext==NULL) {
@@ -2631,19 +2634,31 @@ bool integrator_configurewithdictionary(integrator *integrate, error *err, grade
     objectstring degreelabel = MORPHO_STATICSTRING(INTEGRATE_DEGREELABEL);
     objectstring adaptlabel = MORPHO_STATICSTRING(INTEGRATE_ADAPTLABEL);
     
-    if (dictionary_get(&dict->dict, MORPHO_OBJECT(&rulelabel), &val) &&
-        MORPHO_ISSTRING(val)) {
-        name = MORPHO_GETCSTRING(val);
+    if (dictionary_get(&dict->dict, MORPHO_OBJECT(&rulelabel), &val)) {
+        if (MORPHO_ISSTRING(val)) {
+            name = MORPHO_GETCSTRING(val);
+        } else {
+            error_writewithid(err, INTEGRATE_MTHDTYP, INTEGRATE_RULELABEL, STRING_CLASSNAME);
+            return false;
+        }
     }
 
-    if (dictionary_get(&dict->dict, MORPHO_OBJECT(&degreelabel), &val) &&
-        MORPHO_ISINTEGER(val)) {
-        order = MORPHO_GETINTEGERVALUE(val);
+    if (dictionary_get(&dict->dict, MORPHO_OBJECT(&degreelabel), &val)) {
+        if (MORPHO_ISINTEGER(val)) {
+            order = MORPHO_GETINTEGERVALUE(val);
+        } else {
+            error_writewithid(err, INTEGRATE_MTHDTYP, INTEGRATE_DEGREELABEL, INT_CLASSNAME);
+            return false;
+        }
     }
     
-    if (dictionary_get(&dict->dict, MORPHO_OBJECT(&adaptlabel), &val) &&
-        MORPHO_ISBOOL(val)) {
-        adapt = MORPHO_GETBOOLVALUE(val);
+    if (dictionary_get(&dict->dict, MORPHO_OBJECT(&adaptlabel), &val)) {
+        if (MORPHO_ISBOOL(val)) {
+            adapt = MORPHO_GETBOOLVALUE(val);
+        } else {
+            error_writewithid(err, INTEGRATE_MTHDTYP, INTEGRATE_ADAPTLABEL, BOOL_CLASSNAME);
+            return false;
+        }
     }
     
     return integrator_configure(integrate, err, adapt, g, order, name);
@@ -2711,7 +2726,7 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
         int nels; // Number of elements created
         quadratureworkitem newitems[integrate->subdivide->nels];
         
-        integrator_subdivide(integrate, &work, &nels, newitems);
+        if (!integrator_subdivide(integrate, &work, &nels, newitems)) return false;
         for (int k=0; k<nels; k++) integrator_quadrature(integrate, integrate->rule, &newitems[k]);
         
         // Error estimate
@@ -2767,8 +2782,8 @@ bool integrate(integrandfunction *integrand, objectdictionary *method, error *er
  * ------------------------------------- */
 
 void integrate_initialize(void) {
-    morpho_defineerror(INTEGRATE_QDRTRMXSBDVSNS, ERROR_HALT, INTEGRATE_QDRTRMXSBDVSNS_MSG);
-    morpho_defineerror(INTEGRATE_QDRTRRLNTFND, ERROR_HALT, INTEGRATE_QDRTRRLNTFND_MSG);
+    morpho_defineerror(INTEGRATE_SBDVSNS, ERROR_HALT, INTEGRATE_SBDVSNS_MSG);
+    morpho_defineerror(INTEGRATE_RLNTFND, ERROR_HALT, INTEGRATE_RLNTFND_MSG);
+    morpho_defineerror(INTEGRATE_RLUNAVLB, ERROR_HALT, INTEGRATE_RLUNAVLB_MSG);
     morpho_defineerror(INTEGRATE_MTHDTYP, ERROR_HALT, INTEGRATE_MTHDTYP_MSG);
-    morpho_defineerror(INTEGRATE_UNRCGNZOPT, ERROR_HALT, INTEGRATE_UNRCGNZOPT_MSG);
 }

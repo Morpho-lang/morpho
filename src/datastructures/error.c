@@ -112,6 +112,17 @@ void morpho_writeerrorwithid(error *err, errorid id, char *file, int line, int p
     va_end(args);
 }
 
+/** @brief Writes an error message to an error structure without position information
+ *  @param err  The error structure
+ *  @param id   The error id.
+ *  @param ...  Additional parameters (the data for the printf commands in the message) */
+void error_writewithid(error *err, errorid id, ... ) {
+    va_list args;
+    va_start(args, id);
+    morpho_writeerrorwithidvalist(err, id, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
+    va_end(args);
+}
+
 /** @brief Writes a user error to an error structure
  *  @param err  The error structure
  *  @param id   The error id.

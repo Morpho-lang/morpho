@@ -2121,8 +2121,6 @@ void integrator_init(integrator *integrate) {
     integrate->val = 0;
     integrate->err = 0;
     
-    error_init(&integrate->emsg);
-    
     integrate->ref = NULL;
 }
 
@@ -2670,7 +2668,6 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
     integrate->worklist.count=0;    // Reset these
     integrate->vertexstack.count=0;
     integrate->elementstack.count=0;
-    error_clear(&integrate->emsg);
     
     // Quantities
     value qval[nquantity+1];

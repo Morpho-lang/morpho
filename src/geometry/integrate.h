@@ -144,19 +144,20 @@ typedef struct {
     int niterations; /** Number of iterations performed */
     double val; /** Estimated value of the integral */
     double err; /** Estimated error of the integral */
-    
-    error emsg; /** Store error messages from the integrator */
 } integrator;
 
 /* -------------------------------------------------------
  * Integrator errors
  * ------------------------------------------------------- */
 
-#define INTEGRATE_QDRTRMXSBDVSNS      "QdrtrMxSbdvns"
+#define INTEGRATE_QDRTRMXSBDVSNS      "IntgrtrMxSbdvns"
 #define INTEGRATE_QDRTRMXSBDVSNS_MSG  "Maximum number of subdivisions reached in integrator."
 
-#define INTEGRATE_QDRTRRLNTFND        "QdrtrRlNtFnd"
-#define INTEGRATE_QDRTRRLNTFND_MSG    "Quadrature rule not found."
+#define INTEGRATE_QDRTRRLNTFND        "IntgrtrRlNtFnd"
+#define INTEGRATE_QDRTRRLNTFND_MSG    "Integrator quadrature rule not found."
+
+#define INTEGRATE_UNRCGNZOPT          "IntgrtrUnrcgnzdOpt"
+#define INTEGRATE_UNRCGNZOPT_MSG      "Unrecognized option in integrator method dictionary."
 
 /* -------------------------------------------------------
  * Integrator interface

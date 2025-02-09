@@ -4276,7 +4276,7 @@ void integral_freetlvars(vm *v) {
 }
 
 /* ----------------------------------------------
- * LineIntegral
+ * Generic integral support functions
  * ---------------------------------------------- */
 
 value functional_methodproperty;
@@ -4453,6 +4453,10 @@ bool integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int n
     return false;
 }
 
+/* ----------------------------------------------
+ * LineIntegral
+ * ---------------------------------------------- */
+
 /** Integrate a function over a line */
 bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     integralref iref = *(integralref *) ref;
@@ -4530,10 +4534,14 @@ value LineIntegral_init(vm *v, int nargs, value *args) {
     if (builtin_options(v, nargs, args, &nfixed, 2,
                         functional_methodproperty, &method,
                         linearelasticity_referenceproperty, &mref)) {
-        if (MORPHO_ISDICTIONARY(method)) objectinstance_setproperty(self, functional_methodproperty, method);
+        if (MORPHO_ISDICTIONARY(method)) {
+            objectinstance_setproperty(self, functional_methodproperty, method);
+        } else if (!MORPHO_ISNIL(method)) {
+            morpho_runtimeerror(v, INTEGRAL_MTHDDCT);
+        }
         if (MORPHO_ISMESH(mref)) objectinstance_setproperty(self, linearelasticity_referenceproperty, mref);
     } else {
-        morpho_runtimeerror(v, LINEINTEGRAL_ARGS);
+        morpho_runtimeerror(v, INTEGRAL_ARGS);
         return MORPHO_NIL;
     }
     
@@ -4543,13 +4551,13 @@ value LineIntegral_init(vm *v, int nargs, value *args) {
         if (morpho_countparameters(f, &nparams)) {
             objectinstance_setproperty(self, scalarpotential_functionproperty, MORPHO_GETARG(args, 0));
         } else {
-            morpho_runtimeerror(v, LINEINTEGRAL_ARGS);
+            morpho_runtimeerror(v, INTEGRAL_ARGS);
             return MORPHO_NIL;
         }
     }
 
     if (nparams!=nfixed) {
-        morpho_runtimeerror(v, LINEINTEGRAL_NFLDS);
+        morpho_runtimeerror(v, INTEGRAL_NFLDS);
         return MORPHO_NIL;
     }
 
@@ -4560,7 +4568,7 @@ value LineIntegral_init(vm *v, int nargs, value *args) {
 
         for (unsigned int i=1; i<nfixed; i++) {
             if (!MORPHO_ISFIELD(MORPHO_GETARG(args, i))) {
-                morpho_runtimeerror(v, LINEINTEGRAL_ARGS);
+                morpho_runtimeerror(v, INTEGRAL_ARGS);
                 object_free((object *) list);
                 return MORPHO_NIL;
             }
@@ -4921,8 +4929,9 @@ void functional_initialize(void) {
 
     morpho_defineerror(FUNCTIONAL_ARGS, ERROR_HALT, FUNCTIONAL_ARGS_MSG);
 
-    morpho_defineerror(LINEINTEGRAL_ARGS, ERROR_HALT, LINEINTEGRAL_ARGS_MSG);
-    morpho_defineerror(LINEINTEGRAL_NFLDS, ERROR_HALT, LINEINTEGRAL_NFLDS_MSG);
+    morpho_defineerror(INTEGRAL_ARGS, ERROR_HALT, INTEGRAL_ARGS_MSG);
+    morpho_defineerror(INTEGRAL_NFLDS, ERROR_HALT, INTEGRAL_NFLDS_MSG);
+    morpho_defineerror(INTEGRAL_MTHDDCT, ERROR_HALT, INTEGRAL_MTHDDCT_MSG);
     morpho_defineerror(INTEGRAL_FLD, ERROR_HALT, INTEGRAL_FLD_MSG);
     morpho_defineerror(INTEGRAL_AMBGSFLD, ERROR_HALT, INTEGRAL_AMBGSFLD_MSG);
     morpho_defineerror(INTEGRAL_SPCLFN, ERROR_HALT, INTEGRAL_SPCLFN_MSG);

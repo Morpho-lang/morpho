@@ -93,8 +93,11 @@
 #define SCALARPOTENTIAL_FNCLLBL        "SclrPtFnCllbl"
 #define SCALARPOTENTIAL_FNCLLBL_MSG    "ScalarPotential function is not callable."
 
-#define LINEINTEGRAL_ARGS              "IntgrlArgs"
-#define LINEINTEGRAL_ARGS_MSG          "Integral functionals require a callable argument, followed by zero or more Fields."
+#define INTEGRAL_ARGS                  "IntgrlArgs"
+#define INTEGRAL_ARGS_MSG              "Integral functionals require a callable argument, followed by zero or more Fields."
+
+#define INTEGRAL_MTHDDCT               "IntgrlMthdDct"
+#define INTEGRAL_MTHDDCT_MSG           "The method argument requires a Dictionary containing configuration settings."
 
 #define INTEGRAL_FLD                   "IntgrlFld"
 #define INTEGRAL_FLD_MSG               "Can't identify field."
@@ -105,8 +108,8 @@
 #define INTEGRAL_SPCLFN                "IntgrlSpclFn"
 #define INTEGRAL_SPCLFN_MSG            "Special function '%s' must not be called outside of an Integral."
 
-#define LINEINTEGRAL_NFLDS             "IntgrlNFlds"
-#define LINEINTEGRAL_NFLDS_MSG         "Incorrect number of Fields provided for integrand function."
+#define INTEGRAL_NFLDS                 "IntgrlNFlds"
+#define INTEGRAL_NFLDS_MSG             "Incorrect number of Fields provided for integrand function."
 
 #define VOLUMEENCLOSED_ZERO            "VolEnclZero"
 #define VOLUMEENCLOSED_ZERO_MSG        "VolumeEnclosed detected an element of zero size. Check that a mesh point is not coincident with the origin."

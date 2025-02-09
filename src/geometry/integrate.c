@@ -2309,7 +2309,7 @@ void integrator_interpolatecoordinates(integrator *integrate, double *lambda, do
     int dim=integrate->dim, nbary=integrate->nbary;
     for (int j=0; j<dim; j++) x[j]=0;
     for (int k=0; k<nbary; k++) for (int j=0; j<dim; j++) x[j]+=vmat[k*dim+j]*lambda[k];
-
+    
     //cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, integrate->dim, 1, integrate->nbary, 1.0, vmat, integrate->dim, lambda, integrate->nbary, 0.0, x, integrate->dim);
 }
 
@@ -2373,7 +2373,7 @@ bool integrator_evalfn(integrator *integrate, quadraturerule *rule, int imin, in
         if (integrate->nquantity) integrator_interpolatequantities(integrate, node);
         
         // Evaluate function
-        if (!(*integrate->integrand) (rule->grade, node, x, integrate->nquantity, integrate->qval, integrate->ref, &f[i])) return false;
+        if (!(*integrate->integrand) (integrate->dim, node, x, integrate->nquantity, integrate->qval, integrate->ref, &f[i])) return false;
     }
     return true;
 }
@@ -2394,7 +2394,7 @@ bool integrator_quadrature(integrator *integrate, quadraturerule *rule, quadratu
     integrator_prepareinterpolation(integrate, work->elementid, rmat, vmat);
     
     // Evaluate function at quadrature points
-    double x[integrate->nbary], f[nmax];
+    double x[integrate->dim], f[nmax];
     if (!integrator_evalfn(integrate, rule, 0, rule->nnodes, rmat, vmat, x, f)) return false;
     
     double r[np+1];

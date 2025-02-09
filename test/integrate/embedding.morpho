@@ -1,0 +1,16 @@
+// Ensure position interpolation works correctly
+
+import meshtools
+
+var m1 = LineMesh(fn (t) [t],     0..1:0.5)
+var m2 = LineMesh(fn (t) [t,t],   0..1:0.5)
+var m3 = LineMesh(fn (t) [t,t,t], 0..1:0.5)
+
+print abs(LineIntegral(fn (x) x[0], method={}).total(m1) - 1/2) < 1e-8
+// expect: true
+
+print abs(LineIntegral(fn (x) x[0] + x[1], method={}).total(m2) - sqrt(2)) < 1e-8
+// expect: true
+
+print abs(LineIntegral(fn (x) x[0] + x[1] + x[2], method={}).total(m3) - 3*sqrt(3)/2) < 1e-8
+// expect: true

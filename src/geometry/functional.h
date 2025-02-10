@@ -102,6 +102,9 @@
 #define INTEGRAL_FLD                   "IntgrlFld"
 #define INTEGRAL_FLD_MSG               "Can't identify field."
 
+#define INTEGRAL_GRDEVL                "IntgrlGrdEvl"
+#define INTEGRAL_GRDEVL_MSG            "Gradient evaluation failed."
+
 #define INTEGRAL_AMBGSFLD              "IntgrlAmbgsFld"
 #define INTEGRAL_AMBGSFLD_MSG          "Field reference is ambigious: call with a Field object."
 

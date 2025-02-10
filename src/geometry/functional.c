@@ -4164,7 +4164,10 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
         double fmatdata[nnodes * dim];
         objectmatrix fmat = MORPHO_STATICMATRIX(fmatdata, nnodes, dim);
         
-        if (matrix_mul(&gmat, elref->invj, &fmat)!=MATRIX_OK) return false; 
+        if (matrix_mul(&gmat, elref->invj, &fmat)!=MATRIX_OK) {
+            morpho_runtimeerror(v, INTEGRAL_GRDEVL);
+            return false;
+        }
         
         for (int i=0; i<dim; i++) {
             value sum;
@@ -4172,7 +4175,10 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
             if (integral_gradsuminit(i, fld->prototype, elref->qgrad[ifld], &sum) &&
                 integrator_sumquantityweighted(nnodes, fmat.elements+i*nnodes, elref->quantities[ifld].vals, &sum)) {
                 integral_gradsumcopy(i, sum, elref->qgrad[ifld]);
-            } else return false;
+            } else {
+                morpho_runtimeerror(v, INTEGRAL_GRDEVL);
+                return false;
+            }
         }
         
         success=true;
@@ -4936,6 +4942,7 @@ void functional_initialize(void) {
     morpho_defineerror(INTEGRAL_FLD, ERROR_HALT, INTEGRAL_FLD_MSG);
     morpho_defineerror(INTEGRAL_AMBGSFLD, ERROR_HALT, INTEGRAL_AMBGSFLD_MSG);
     morpho_defineerror(INTEGRAL_SPCLFN, ERROR_HALT, INTEGRAL_SPCLFN_MSG);
+    morpho_defineerror(INTEGRAL_GRDEVL, ERROR_HALT, INTEGRAL_GRDEVL_MSG);
     
     functional_poolinitialized = false;
     

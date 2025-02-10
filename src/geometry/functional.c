@@ -4168,14 +4168,15 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
         
         for (int i=0; i<dim; i++) {
             value sum;
-            integral_gradsuminit(i, fld->prototype, elref->qgrad[ifld], &sum);
             
-            integrator_sumquantityweighted(nnodes, fmat.elements+i*nnodes, elref->quantities[ifld].vals, &sum);
-            integral_gradsumcopy(i, sum, elref->qgrad[ifld]);
+            if (integral_gradsuminit(i, fld->prototype, elref->qgrad[ifld], &sum) &&
+                integrator_sumquantityweighted(nnodes, fmat.elements+i*nnodes, elref->quantities[ifld].vals, &sum)) {
+                integral_gradsumcopy(i, sum, elref->qgrad[ifld]);
+            } else return false;
         }
         
         success=true;
-    } else {
+    } else { // Old gradient calculation
         int ndof = fld->psize; // Number of degrees of freedom per element
         double grad[ndof*dim]; // Storage for gradient
         

@@ -4089,30 +4089,30 @@ bool integral_gradsumcopy(int i, value sum, value dest) {
 }
 
 /** Copies the component of the gradient into the relevant destination */
-bool integral_oldgradcopy(int dim, int ndof, double *grad, value dest) {
+bool integral_oldgradcopy(int dim, int ndof, double *grad, value prototype, value dest) {
     bool success=false;
     if (MORPHO_ISMATRIX(dest)) {
         objectmatrix *mdest = MORPHO_GETMATRIX(dest);
         memcpy(mdest->elements, grad, sizeof(double)*dim);
         success=true;
+    } else if (MORPHO_ISLIST(dest)) {
+        objectlist *lst = MORPHO_GETLIST(dest);
+        objectmatrix *proto = MORPHO_GETMATRIX(prototype);
+        for (int i=0; i<dim; i++) {
+            objectmatrix *mgrad=NULL;
+            value el;
+            
+            if (i>=list_length(lst)) {
+                mgrad=object_newmatrix(proto->nrows, proto->ncols, false); // Should copy prototype dimensions!
+                if (mgrad) {
+                    for (int k=0; k<ndof; k++) mgrad->elements[k]=grad[k*dim+i];
+                    list_append(lst, MORPHO_OBJECT(mgrad));
+                    success=true;
+                }
+            }
+        }
     }
     return success;
-    // Copy into a list or matrix as appropriate
-    /*
-    } else {
-        if (!MORPHO_ISMATRIX(fld->prototype)) UNREACHABLE("Field type not supported in grad");
-        objectmatrix *proto = MORPHO_GETMATRIX(fld->prototype);
-        for (int i=0; i<dim; i++) {
-            objectmatrix *mgrad=object_newmatrix(proto->nrows, proto->ncols, false); // Should copy prototype dimensions!
-            if (!mgrad) goto integral_evaluategradient_cleanup;
-            for (int k=0; k<ndof; k++) mgrad->elements[k]=grad[k*dim+i];
-            gradx[i]=MORPHO_OBJECT(mgrad);
-        }
-        objectlist *glst = object_newlist(dim, gradx);
-        if (!glst) goto integral_evaluategradient_cleanup;
-        *out = MORPHO_OBJECT(glst);
-        // Don't bind these; they will be freed by the integrand caller
-    }*/
 }
 
 /** Evaluates the gradient of a field */
@@ -4183,7 +4183,7 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
         if (elref->g==2) success=gradsq_evaluategradient(elref->mesh, fld, elref->nv, elref->vid, grad);
         else if (elref->g==3) success=gradsq_evaluategradient3d(elref->mesh, fld, elref->nv, elref->vid, grad);
         
-        integral_oldgradcopy(dim, ndof, grad, elref->qgrad[ifld]);
+        integral_oldgradcopy(dim, ndof, grad, fld->prototype, elref->qgrad[ifld]);
         success=true;
     }
     

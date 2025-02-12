@@ -4152,7 +4152,10 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
     
     // Evaluate gradient
     if (MORPHO_ISDISCRETIZATION(fld->fnspc)) {
-        if (!elref->invj) return false;
+        if (!elref->invj) {
+            morpho_runtimeerror(v, INTEGRAL_GRDEVL);
+            return false;
+        }
         
         int nnodes = MORPHO_GETDISCRETIZATION(fld->fnspc)->discretization->nnodes;
         double gdata[nnodes * elref->g];
@@ -4205,7 +4208,7 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
 static value integral_gradfn(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     if (nargs==1) {
-        if (!integral_evaluategradient(v, MORPHO_GETARG(args, 0), &out)) morpho_runtimeerror(v, INTEGRAL_GRDEVL);
+        integral_evaluategradient(v, MORPHO_GETARG(args, 0), &out);
     } else morpho_runtimeerror(v, INTEGRAL_FLD);
     
     return out;

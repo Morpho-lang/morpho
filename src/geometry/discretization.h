@@ -21,7 +21,7 @@ typedef void (*interpolationfn) (double *, double *);
 typedef int eldefninstruction;
 
 /** @brief Discretization definitions */
-typedef struct {
+typedef struct sdiscretization {
     char *name; /**  Name of the discretization */
     grade grade; /** Grade of element this discretization is defined on */
     unsigned int *shape; /** Number of degrees of freedom on each grade; must have grade+1 entries */
@@ -32,6 +32,7 @@ typedef struct {
     interpolationfn ifn; /** Interpolation function; receives barycentric coordinates as input and returns weights per node */
     interpolationfn gfn; /** Gradient interpolation function */
     eldefninstruction *eldefn; /** Element definition */
+    struct sdiscretization **lower; /** Discretization to be used for interpolation on lower grades */
 } discretization;
 
 /* -------------------------------------------------------
@@ -78,8 +79,10 @@ discretization *discretization_find(char *name, grade g);
 discretization *discretization_findlinear(grade g);
 
 bool discretization_doftofieldindx(objectfield *field, discretization *disc, int nv, int *vids, int *dof);
-bool discretization_layout(objectfield *field, discretization *disc, objectsparse **out);
 
+bool discretization_lower(discretization *disc, grade target, discretization **out);
+
+bool discretization_layout(objectfield *field, discretization *disc, objectsparse **out);
 void discretization_gradient(discretization *disc, double *lambda, objectmatrix *grad);
 
 void discretization_initialize(void);

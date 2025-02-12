@@ -4360,12 +4360,17 @@ void integral_freeref(void *ref) {
 }
 
 /** Prepares quantity list */
-void integral_preparequantities(integralref *iref, int nv, int *vid, quantity *quantities) {
+bool integral_preparequantities(integralref *iref, int nv, int *vid, quantity *quantities) {
+    bool success=false;
     for (int k=0; k<iref->nfields; k++) {
         objectfield *f=MORPHO_GETFIELD(iref->fields[k]);
         
         if (MORPHO_ISDISCRETIZATION(f->fnspc)) {
             discretization *disc=MORPHO_GETDISCRETIZATION(f->fnspc)->discretization;
+            if (nv-1<disc->grade) {
+                if (!discretization_lower(disc, nv-1, &disc)) return false;
+            }
+            
             quantities[k].nnodes=disc->nnodes;
             quantities[k].ifn=disc->ifn;
             
@@ -4376,6 +4381,7 @@ void integral_preparequantities(integralref *iref, int nv, int *vid, quantity *q
             for (int i=0; i<disc->nnodes; i++) {
                 field_getelementwithindex(f, dof[i], &quantities[k].vals[i]);
             }
+            success=true;
         } else {
             quantities[k].nnodes=nv;
             quantities[k].ifn=NULL;
@@ -4383,8 +4389,10 @@ void integral_preparequantities(integralref *iref, int nv, int *vid, quantity *q
             for (unsigned int i=0; i<nv; i++) {
                 field_getelement(f, MESH_GRADE_VERTEX, vid[i], 0, &quantities[k].vals[i]);
             }
+            success=true; 
         }
     }
+    return success;
 }
 
 /** Clears a list of quantities */

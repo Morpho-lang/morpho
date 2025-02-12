@@ -17,5 +17,5 @@ fn integrand(x, q) {
 
 var f = Field(m, fn(x,y) 3 + 4*x - 2*y, functionspace=FunctionSpace("CG1", grade=2))
 
-print LineIntegral(integrand, f, method={ }).total(m)
+print abs(LineIntegral(integrand, f, method={ }).total(m) - (7 + 4*sqrt(2))) < 1e-8
 // expect: true

@@ -91,7 +91,8 @@ discretization cg1_1d = {
     .nodes = cg1_1dnodes,
     .ifn = cg1_1dinterpolate,
     .gfn = cg1_1dgrad,
-    .eldefn = cg1_1ddefn
+    .eldefn = cg1_1ddefn,
+    .lower = NULL
 };
 
 /* -------------------------------------------------------
@@ -141,7 +142,8 @@ discretization cg2_1d = {
     .nodes = cg2_1dnodes,
     .ifn = cg2_1dinterpolate,
     .gfn = cg2_1dgrad,
-    .eldefn = cg2_1ddefn
+    .eldefn = cg2_1ddefn,
+    .lower = NULL
 };
 
 /* -------------------------------------------------------
@@ -182,7 +184,8 @@ discretization cg3_1d = {
     .nsubel = 1,
     .nodes = cg3_1dnodes,
     .ifn = cg3_1dinterpolate,
-    .eldefn = cg3_1ddefn
+    .eldefn = cg3_1ddefn,
+    .lower = NULL
 };
 
 /* -------------------------------------------------------
@@ -221,6 +224,11 @@ eldefninstruction cg1_2deldefn[] = {
     ENDDEFN
 };
 
+discretization *cg1_2d_lower[] = {
+    &cg1_1d,
+    NULL
+};
+
 discretization cg1_2d = {
     .name = "CG1",
     .grade = 2,
@@ -231,7 +239,8 @@ discretization cg1_2d = {
     .nodes = cg1_2dnodes,
     .ifn = cg1_2dinterpolate,
     .gfn = cg1_2dgrad,
-    .eldefn = cg1_2deldefn
+    .eldefn = cg1_2deldefn,
+    .lower = cg1_2d_lower
 };
 
 /* -------------------------------------------------------
@@ -286,6 +295,11 @@ eldefninstruction cg2_2deldefn[] = {
     ENDDEFN
 };
 
+discretization *cg2_2d_lower[] = {
+    &cg2_1d,
+    NULL
+};
+
 discretization cg2_2d = {
     .name = "CG2",
     .grade = 2,
@@ -296,7 +310,8 @@ discretization cg2_2d = {
     .nodes = cg2_2dnodes,
     .ifn = cg2_2dinterpolate,
     .gfn = cg2_2dgrad,
-    .eldefn = cg2_2deldefn
+    .eldefn = cg2_2deldefn,
+    .lower = cg2_2d_lower
 };
 
 discretization *discretizations[] = {
@@ -364,6 +379,17 @@ bool discretization_doftofieldindx(objectfield *field, discretization *disc, int
         }
     }
     return true;
+}
+
+/** Searches a discretization's lower list to find a discretization to use on a lower grade */
+bool discretization_lower(discretization *disc, grade target, discretization **out) {
+    if (disc->lower) for (int i=0; disc->lower[i]!=NULL; i++) {
+        if (disc->lower[i]->grade==target) {
+            *out = disc->lower[i];
+            return true;
+        }
+    }
+    return false;
 }
 
 /** Constructs a layout matrix that maps element ids (columns) to degree of freedom indices in a field */

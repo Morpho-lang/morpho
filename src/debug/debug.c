@@ -9,6 +9,7 @@
 #include <ctype.h>
 
 #include "compile.h"
+#include "program.h"
 #include "vm.h"
 #include "gc.h"
 #include "debug.h"
@@ -597,6 +598,63 @@ bool debugger_breakatfunction(debugger *debug, bool set, value klass, value func
     instructionindx indx;
     return (debug_indxfromfunction(debugger_currentprogram(debug), klass, function, &indx) &&
                   debugger_breakatinstruction(debug, set, indx));
+}
+
+/* **********************************************************************
+ * Execute
+ * ********************************************************************** */
+
+bool _resolver(value symbol, void *ref, value *out) {
+    bool success=false;
+    debugger *debug = (debugger *) ref;
+    
+    vm *v = debugger_currentvm(debug);
+    
+    value *val=NULL;
+    success=debug_findsymbol(v, symbol, NULL, NULL, &val);
+    if (success) *out = *val;
+    
+    return success;
+}
+
+/** Executes an expression */
+bool debugger_execute(debugger *debug, char *expr, value *result) {
+    vm *v = debugger_currentvm(debug);
+    
+    // We need to reuse the current program so that we have access to all the existing code
+    program *p = v->current;
+    
+    // Backup a few things about the program
+    unsigned int ninstr = p->code.count;
+    unsigned int nannotations = p->annotations.count;
+    indx oentry = p->global->entry;
+    
+    compiler *c = morpho_newcompiler(p);
+    compiler_setresolver(c, _resolver, debug);
+    compiler_nostripend(c); 
+    
+    error err; /* Error structure that received messages from the compiler and VM */
+    error_init(&err);
+    
+    if (morpho_compile(expr, c, false, &err)) {
+        vm *newvm = morpho_newvm();
+        morpho_run(newvm, p);
+        morpho_freevm(newvm);
+    }
+    
+    morpho_freecompiler(c);
+    
+    // Restore program to original state
+    p->code.count = ninstr;
+    p->annotations.count = nannotations;
+    p->global->entry = oentry;
+    
+    // Update data structures that may have changes by reallocation
+    v->instructions = p->code.data;
+    v->globals.data = p->global->konst.data;
+    v->fp->
+    
+    return true;
 }
 
 /* **********************************************************************

@@ -3809,6 +3809,17 @@ static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx 
         return ret;
     }
 
+    /* Use an external resolver if provided (used by the debugger) */
+    value out;
+    if (c->resolverfn &&
+        c->resolverfn(node->content, c->resolverref, &out)) {
+        
+        /* It is; so add it to the constant table */
+        ret.returntype=CONSTANT;
+        ret.dest=compiler_addconstant(c, node, out, false, false);
+        return ret;
+    }
+    
     char *label = MORPHO_GETCSTRING(node->content);
     compiler_error(c, node, COMPILE_SYMBOLNOTDEFINED, label);
 
@@ -4353,7 +4364,10 @@ void compiler_init(const char *source, program *out, compiler *c) {
     c->currentmethod = NULL;
     c->namespaces = NULL; 
     c->currentmodule = MORPHO_NIL;
+    c->resolverfn=NULL;
+    c->resolverref=NULL;
     c->parent = NULL;
+    c->nostripend=false; 
     c->line = 1; // Count from 1
 }
 
@@ -4390,7 +4404,7 @@ bool morpho_compile(char *in, compiler *c, bool opt, error *err) {
     error_clear(err);
 
     /* Remove any previous END instruction */
-    compiler_stripend(c);
+    if (!c->nostripend) compiler_stripend(c);
     instructionindx last = out->code.count; /* End of old code */
     
     /* Initialize lexer */
@@ -4444,6 +4458,17 @@ compiler *morpho_newcompiler(program *out) {
 void morpho_freecompiler(compiler *c) {
     compiler_clear(c);
     MORPHO_FREE(c);
+}
+
+/** Provide a resolver function */
+void compiler_setresolver(compiler *c, compilerresolverfn rfn, void *ref) {
+    c->resolverfn=rfn;
+    c->resolverref=ref;
+}
+
+/** Suppresses end stripping */
+void compiler_nostripend(compiler *c) {
+    c->nostripend=true;
 }
 
 /* **********************************************************************

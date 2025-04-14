@@ -64,6 +64,8 @@ bool debugger_shouldbreakat(debugger *d, instructionindx indx);
 void debugger_disassembleinstruction(vm *v, instruction instruction, instructionindx indx, value *konst, value *reg);
 void debugger_disassemble(vm *v, program *code, int *matchline);
 
+bool debugger_execute(debugger *debug, char *expr, value *result);
+
 void debugger_garbagecollect(debugger *debug);
 void debugger_quit(debugger *debug);
 

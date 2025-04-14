@@ -270,6 +270,13 @@ typedef struct _namespc {
 } namespc;
 
 /* -------------------------------------------------------
+ * External symbol resolver function
+ * ------------------------------------------------------- */
+
+/* Callback function used to lookup external symbols */
+typedef bool (*compilerresolverfn) (value symbol, void *ref, value *out);
+
+/* -------------------------------------------------------
  * Overall state of the compiler
  * ------------------------------------------------------- */
 
@@ -316,6 +323,13 @@ typedef struct scompiler {
     /* Modules included */
     dictionary modules;
     
+    /* Resolver function */
+    compilerresolverfn resolverfn;
+    void *resolverref;
+    
+    /* Suppress end stripper */
+    bool nostripend; 
+    
     /* The parent compiler */
     struct scompiler *parent;
 } compiler;
@@ -332,6 +346,9 @@ typedef codeinfo (*compiler_nodefn) (compiler *c, syntaxtreenode *node, register
 typedef struct {
     compiler_nodefn nodefn;
 } compilenoderule;
+
+void compiler_setresolver(compiler *c, compilerresolverfn rfn, void *ref);
+void compiler_nostripend(compiler *c);
 
 void compiler_init(const char *source, program *out, compiler *c);
 void compiler_clear(compiler *c);

@@ -315,6 +315,90 @@ fespace cg2_2d = {
 };
 
 /* -------------------------------------------------------
+ * CG3 element in 2D
+ * ------------------------------------------------------- */
+
+/*   2
+ *   | \
+ *   7  6
+ *   |   \
+ *   8 10 5
+ *   |     \
+ *   0-3--4-1
+ */
+
+void cg3_2dinterpolate(double *lambda, double *wts) {
+    wts[0]=lambda[0]*(1.0 + 4.5*(lambda[0]-1)*lambda[0]);
+    wts[1]=lambda[1]*(1.0 + 4.5*(lambda[1]-1)*lambda[1]);
+    wts[2]=lambda[2]*(1.0 + 4.5*(lambda[2]-1)*lambda[2]);
+    wts[3]=4.5*lambda[0]*lambda[1]*(3*lambda[0]-1.0);
+    wts[4]=4.5*lambda[0]*lambda[1]*(3*lambda[1]-1.0);
+    wts[5]=4.5*lambda[1]*lambda[2]*(3*lambda[1]-1.0);
+    wts[6]=4.5*lambda[1]*lambda[2]*(3*lambda[2]-1.0);
+    wts[7]=4.5*lambda[0]*lambda[2]*(3*lambda[2]-1.0);
+    wts[8]=4.5*lambda[0]*lambda[2]*(3*lambda[0]-1.0);
+    wts[9]=27.0*lambda[0]*lambda[1]*lambda[2];
+}
+
+void cg3_2dgrad(double *lambda, double *grad) {
+    // Gij = d Xi[i] / d lambda[j]
+    // Note this is in column-major order!
+    double g[] =
+    { };
+    memcpy(grad, g, sizeof(g));
+}
+
+unsigned int cg3_2dshape[] = { 1, 1, 0 };
+
+double cg3_2dnodes[] = { 0.0, 0.0,
+                         1.0, 0.0,
+                         0.0, 1.0,
+                         0.3333333333333333,0.0,
+                         0.6666666666666666,0.0,
+                         0.6666666666666666,0.3333333333333333,
+                         0.3333333333333333,0.6666666666666666,
+                         0,0.6666666666666666,
+                         0,0.3333333333333333,
+                         0.3333333333333333,0.3333333333333333 };
+
+eldefninstruction cg3_2deldefn[] = {
+    LINE(0,0,1),     // Identify line subelement with vertex indices (0,1)
+    LINE(1,1,2),     // Identify line subelement with vertex indices (1,2)
+    LINE(2,2,0),     // Identify line subelement with vertex indices (2,0)
+    AREA(0,0,1,2),   // Identify area subelement with vertex indices (0,1,2)
+    QUANTITY(0,0,0), // Fetch quantity on vertex 0
+    QUANTITY(0,1,0), // Fetch quantity on vertex 1
+    QUANTITY(0,2,0), // Fetch quantity on vertex 2
+    QUANTITY(1,0,0), // Fetch quantity 0 from line 0
+    QUANTITY(1,0,1), // Fetch quantity 1 from line 0
+    QUANTITY(1,1,0), // Fetch quantity 0 from line 1
+    QUANTITY(1,1,1), // Fetch quantity 1 from line 1
+    QUANTITY(1,2,0), // Fetch quantity 0 from line 2
+    QUANTITY(1,2,1), // Fetch quantity 1 from line 2
+    QUANTITY(2,0,0), // Fetch quantity 0 from area 0
+    ENDDEFN
+};
+
+fespace *cg3_2d_lower[] = {
+    &cg2_1d,
+    NULL
+};
+
+fespace cg3_2d = {
+    .name = "CG3",
+    .grade = 2,
+    .shape = cg3_2dshape,
+    .degree = 3,
+    .nnodes = 10,
+    .nsubel = 4,
+    .nodes = cg3_2dnodes,
+    .ifn = cg3_2dinterpolate,
+    .gfn = cg3_2dgrad,
+    .eldefn = cg3_2deldefn,
+    .lower = cg3_2d_lower
+};
+
+/* -------------------------------------------------------
  * CG1 element in 3D
  * ------------------------------------------------------- */
 

@@ -155,11 +155,24 @@ fespace cg2_1d = {
  */
 
 void cg3_1dinterpolate(double *lambda, double *wts) {
-    double a = (9.0/2.0)*lambda[0]*lambda[1];
+    double a = 4.5*lambda[0]*lambda[1];
     wts[0]=lambda[0]*(1-a);
     wts[1]=lambda[1]*(1-a);
     wts[2]=a*(2*lambda[0]-lambda[1]);
     wts[3]=a*(2*lambda[1]-lambda[0]);
+}
+
+void cg3_1dgrad(double *lambda, double *grad) {
+    // Gij = d Xi[i] / d lambda[j]
+    // Note this is in column-major order!
+    double g[] =
+    { 1-9*lambda[0]*lambda[1], -4.5*lambda[1]*lambda[1],
+        4.5*(4*lambda[0]-lambda[1])*lambda[1], 9*lambda[1]*(lambda[1]-lambda[0]),
+        
+      -4.5*lambda[0]*lambda[0], 1-9*lambda[0]*lambda[1],
+        9*lambda[0]*(lambda[0]-lambda[1]), 4.5*(4*lambda[1]-lambda[0])*lambda[0]
+    };
+    memcpy(grad, g, sizeof(g));
 }
 
 unsigned int cg3_1dshape[] = { 1, 2 };
@@ -184,6 +197,7 @@ fespace cg3_1d = {
     .nsubel = 1,
     .nodes = cg3_1dnodes,
     .ifn = cg3_1dinterpolate,
+    .gfn = cg3_1dgrad,
     .eldefn = cg3_1ddefn,
     .lower = NULL
 };
@@ -341,14 +355,30 @@ void cg3_2dinterpolate(double *lambda, double *wts) {
 }
 
 void cg3_2dgrad(double *lambda, double *grad) {
-    // Gij = d Xi[i] / d lambda[j]
-    // Note this is in column-major order!
+    // Gij = d Xi[i] / d lambda[j] in col. major order
     double g[] =
-    { };
+    { 1.0 + 4.5*lambda[0]*(3*lambda[0]-2), 0, 0,
+        4.5*lambda[1]*(6*lambda[0]-1), 4.5*lambda[1]*(3*lambda[0]-1),
+        0, 0,
+        4.5*lambda[2]*(3*lambda[2]-1), 4.5*lambda[2]*(6*lambda[0]-1),
+        27*lambda[1]*lambda[2],
+        
+      0, 1.0 + 4.5*lambda[1]*(3*lambda[1]-2), 0,
+        4.5*lambda[0]*(3*lambda[0]-1), 4.5*lambda[0]*(6*lambda[1]-1),
+        4.5*lambda[2]*(6*lambda[1]-1), 4.5*lambda[2]*(3*lambda[2]-1),
+        0, 0,
+        27*lambda[0]*lambda[2],
+        
+      0, 0, 1.0 + 4.5*lambda[2]*(3*lambda[2]-2),
+        0, 0,
+        4.5*lambda[1]*(3*lambda[1]-1), 4.5*lambda[1]*(6*lambda[2]-1),
+        4.5*lambda[0]*(6*lambda[2]-1), 4.5*lambda[0]*(3*lambda[0]-1),
+        27*lambda[0]*lambda[1],
+    };
     memcpy(grad, g, sizeof(g));
 }
 
-unsigned int cg3_2dshape[] = { 1, 1, 0 };
+unsigned int cg3_2dshape[] = { 1, 2, 1 };
 
 double cg3_2dnodes[] = { 0.0, 0.0,
                          1.0, 0.0,
@@ -380,7 +410,7 @@ eldefninstruction cg3_2deldefn[] = {
 };
 
 fespace *cg3_2d_lower[] = {
-    &cg2_1d,
+    &cg3_1d,
     NULL
 };
 

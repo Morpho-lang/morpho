@@ -594,8 +594,10 @@ fespace cg2_3d = {
 fespace *fespaces[] = {
     &cg1_1d,
     &cg2_1d,
+    &cg3_1d,
     &cg1_2d,
     &cg2_2d,
+    &cg3_2d,
     &cg1_3d,
     &cg2_3d,
     NULL

@@ -1,0 +1,10 @@
+// Type violation due to a constructor
+
+fn f() {
+    String u 
+
+    u = Tuple(1,2,3)
+}
+
+f() 
+// expect error 'TypeErr'

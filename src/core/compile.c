@@ -2052,9 +2052,35 @@ static codeinfo compiler_not(compiler *c, syntaxtreenode *node, registerindx req
     return CODEINFO(REGISTER, out, ninstructions);
 }
 
+bool compiler_arithmetictype(compiler *c, registerindx left, registerindx right, value *type) {
+    bool success=false;
+    value ltype=MORPHO_NIL, rtype=MORPHO_NIL;
+    value inttype=MORPHO_NIL, floattype=MORPHO_NIL;
+    if (!compiler_findtypefromcstring(c, INT_CLASSNAME, &inttype)) return success;
+    if (!compiler_findtypefromcstring(c, FLOAT_CLASSNAME, &floattype)) return success;
+    
+    if (compiler_regcurrenttype(c, left, &ltype) &&
+        compiler_regcurrenttype(c, right, &rtype)) {
+        
+        if (ltype==inttype && rtype==inttype) {
+            *type=inttype;
+        } else if ((ltype==inttype && rtype==floattype) ||
+                   (ltype==floattype && rtype==inttype) ||
+                   (ltype==floattype && rtype==floattype)) {
+            *type=floattype;
+        } else {
+            *type=MORPHO_NIL; // TODO: Lookup appropriate selector
+        }
+        
+        success=true;
+    }
+    return success;
+}
+
 /** Compile arithmetic operators */
 static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo left = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
+    
     unsigned int ninstructions=left.ninstructions;
     if (!(CODEINFO_ISREGISTER(left))) {
         /* Ensure we're working with a register */
@@ -2104,8 +2130,24 @@ static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx 
     
     compiler_addinstruction(c, ENCODE(op, out, left.dest, right.dest), node);
     ninstructions++;
-    compiler_releaseoperand(c, left);
+    
+    /* Set the output type of the operation */
+    // TODO: Check input types?
+    value type = MORPHO_NIL;
+    if (op<=OP_DIV) { // Arithmetic type
+        compiler_arithmetictype(c, left.dest, right.dest, &type);
+    } else if (op==OP_POW) { // Powers always generate floats
+        compiler_findtypefromcstring(c, FLOAT_CLASSNAME, &type);
+    } else { // Comparison operations
+        compiler_findtypefromcstring(c, BOOL_CLASSNAME, &type);
+    }
+    
+    compiler_releaseoperand(c, left); // Release operands after type information determined
     compiler_releaseoperand(c, right);
+    
+    if (!MORPHO_ISNIL(type) &&
+        !compiler_regsetcurrenttype(c, node, out, type)) return CODEINFO_EMPTY;
+    // TODO: This should change; we always need to set the output type!
 
     return CODEINFO(REGISTER, out, ninstructions);
 }

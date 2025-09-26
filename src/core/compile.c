@@ -221,6 +221,29 @@ objectfunction *compiler_getpreviousfunction(compiler *c) {
     return c->prevfunction;
 }
 
+bool compiler_regcurrenttype(compiler *c, registerindx reg, value *type);
+
+/** Sets the return type of a function */
+void compiler_setreturntypefromregister(compiler *c, registerindx ix) {
+    objectfunction *func = compiler_getcurrentfunction(c);
+    
+    value type=MORPHO_NIL;
+    compiler_regcurrenttype(c, ix, &type);
+    
+    if (MORPHO_ISOBJECT(type)) signature_setreturntype(&func->sig, type); // TODO: Should check for current type
+}
+
+/** Infer the return type of a call target */
+void compiler_getreturntype(compiler *c, value target, value *type) {
+    signature *sig=metafunction_getsignature(target);
+    
+    if (sig) {
+        *type=signature_getreturntype(sig);
+    } else if (MORPHO_ISMETAFUNCTION(target)) {
+        metafunction_inferreturntype(MORPHO_GETMETAFUNCTION(target), type);
+    }
+}
+
 /* ------------------------------------------
  * Types
  * ------------------------------------------- */
@@ -3366,6 +3389,7 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     // Check if the call is a constructor
     syntaxtreenode *selnode=compiler_getnode(c, node->left);
     
+    // Attempt to infer type for constructors
     value rtype=MORPHO_NIL;
     if (selnode->type==NODE_SYMBOL) { // A regular call from a symbol
         compiler_findtype(c, selnode->content, &rtype);
@@ -3381,6 +3405,13 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     
     // Compile the selector
     codeinfo func = compiler_nodetobytecode(c, node->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
+    
+    // Attempt to infer return type
+    if (func.returntype==CONSTANT && MORPHO_ISNIL(rtype)) {
+        value target=MORPHO_NIL;
+        target=compiler_getconstant(c, func.dest);
+        compiler_getreturntype(c, target, &rtype);
+    }
     
     // Detect possible forward reference
     if (selnode->type==NODE_SYMBOL && compiler_catch(c, COMPILE_SYMBOLNOTDEFINED)) {
@@ -3559,6 +3590,7 @@ static codeinfo compiler_return(compiler *c, syntaxtreenode *node, registerindx 
                 ninstructions+=left.ninstructions;
             }
 
+            compiler_setreturntypefromregister(c, left.dest);
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1,  left.dest), node);
             ninstructions++;
         }

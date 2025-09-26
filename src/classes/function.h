@@ -80,6 +80,9 @@ bool function_isclosure(objectfunction *func);
 void function_setsignature(objectfunction *func, value *signature);
 bool function_hastypedparameters(objectfunction *func);
 
+void function_setreturntype(objectfunction *func, value type);
+value function_getreturntype(objectfunction *func);
+
 void objectfunction_printfn(object *obj, void *v);
 
 void function_initialize(void);

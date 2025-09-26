@@ -162,6 +162,16 @@ void function_setsignature(objectfunction *func, value *signature) {
     signature_set(&func->sig, function_countpositionalargs(func), signature);
 }
 
+/** Sets the return type of a function */
+void function_setreturntype(objectfunction *func, value type) {
+    signature_setreturntype(&func->sig, type);
+}
+
+/** Get the return type of a function */
+value function_getreturntype(objectfunction *func) {
+    return signature_getreturntype(&func->sig);
+}
+
 /** Returns true if any of the parameters are typed */
 bool function_hastypedparameters(objectfunction *func) {
     return signature_istyped(&func->sig);

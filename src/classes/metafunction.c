@@ -177,6 +177,22 @@ signature *metafunction_getsignature(value fn) {
     return NULL;
 }
 
+/** Infer the return type from the contents of a metafunction, if known */
+void metafunction_inferreturntype(objectmetafunction *fn, value *type) {
+    value rtype = MORPHO_NIL;
+    
+    for (int i=0; i<fn->fns.count; i++) {
+        signature *sig = metafunction_getsignature(fn->fns.data[i]);
+        if (i==0) {
+            rtype=sig->ret;
+        } else {
+            if (sig->ret!=rtype) rtype=MORPHO_NIL; 
+        }
+    }
+    
+    *type=rtype;
+}
+
 value _getname(value fn) {
     if (MORPHO_ISFUNCTION(fn)) {
         return MORPHO_GETFUNCTION(fn)->name;

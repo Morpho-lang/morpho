@@ -79,6 +79,8 @@ bool metafunction_matchfn(objectmetafunction *fn, value f);
 bool metafunction_matchset(objectmetafunction *fn, int n, value *fns);
 signature *metafunction_getsignature(value fn);
 
+void metafunction_inferreturntype(objectmetafunction *fn, value *type);
+
 bool metafunction_compile(objectmetafunction *fn, error *err);
 void metafunction_clearinstructions(objectmetafunction *fn);
 

@@ -69,6 +69,11 @@ bool signature_getparamtype(signature *s, int i, value *type) {
     return true; 
 }
 
+/** @brief Sets the return type of a function */
+void signature_setreturntype(signature *s, value type) {
+    s->ret=type;
+}
+
 /** @brief Returns the return type from the signature if defined */
 value signature_getreturntype(signature *s) {
     return s->ret;

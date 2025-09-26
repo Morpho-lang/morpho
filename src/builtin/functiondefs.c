@@ -602,10 +602,11 @@ value builtin_clock(vm *v, int nargs, value *args) {
     builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
 
 void functiondefs_initialize(void) {
-    builtin_addfunction(FUNCTION_CLOCK, builtin_clock, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_RANDOM, builtin_random, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_RANDOMINT, builtin_randomint, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_RANDOMNORMAL, builtin_randomnormal, BUILTIN_FLAGSEMPTY);
+    morpho_addfunction(FUNCTION_CLOCK, "Float ()", builtin_clock, BUILTIN_FLAGSEMPTY, NULL);
+
+    morpho_addfunction(FUNCTION_RANDOM, "Float ()", builtin_random, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_RANDOMINT, "Int ()", builtin_randomint, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_RANDOMNORMAL, "Float ()", builtin_randomnormal, BUILTIN_FLAGSEMPTY, NULL);
     
     builtin_addfunction(FUNCTION_SYSTEM, builtin_system, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(FUNCTION_ARCTAN, builtin_arctan, BUILTIN_FLAGSEMPTY);

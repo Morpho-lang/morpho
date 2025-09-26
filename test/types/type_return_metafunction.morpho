@@ -12,6 +12,6 @@ Int a = sqr(2)
 
 Int b = sqr(2.5)
 
-print a.clss() // expect: @Int 
+print a.clss() // expect: @Int
 
-print b.clss() // expect: @Int 
+print b.clss() // expect: @Int

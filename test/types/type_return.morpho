@@ -6,4 +6,4 @@ fn sqr(Int x) {
 
 Int a = sqr(2)
 
-print a.clss() // expect: @Int 
+print a.clss() // expect: @Int

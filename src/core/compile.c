@@ -2068,6 +2068,10 @@ static codeinfo compiler_not(compiler *c, syntaxtreenode *node, registerindx req
         ninstructions+=left.ninstructions;
     }
 
+    value type=MORPHO_NIL;
+    compiler_findtypefromcstring(c, BOOL_CLASSNAME, &type);
+    compiler_regsetcurrenttype(c, node, out, type);
+    
     compiler_addinstruction(c, ENCODE_DOUBLE(OP_NOT, out, left.dest), node);
     ninstructions++;
     compiler_releaseoperand(c, left);
@@ -2310,7 +2314,7 @@ static codeinfo compiler_interpolation(compiler *c, syntaxtreenode *node, regist
             compiler_regfreetoend(c, r+1);
         }
     }
-
+    
     compiler_addinstruction(c, ENCODE(OP_CAT, (reqout!=REGISTER_UNALLOCATED ? reqout : start), start, r), node);
     ninstructions++;
 
@@ -3252,7 +3256,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         if (closure!=REGISTER_UNALLOCATED) {
             // Save the register where the closure is to be found
             compiler_regsetsymbol(c, reg, func->name);
-            compiler_regsettype(c, reg, _closuretype);
+            compiler_regsetcurrenttype(c, node, reg, _closuretype);
             function_setclosure(func, reg);
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_CLOSURE, reg, (registerindx) closure), node);
             ninstructions++;

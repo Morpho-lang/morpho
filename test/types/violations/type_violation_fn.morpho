@@ -1,0 +1,7 @@
+// Assign a function to a type protected variable
+
+fn sqr(x) { return x^2 }
+
+Int a = sqr
+
+// expect: 'TypErr'

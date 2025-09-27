@@ -3256,6 +3256,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         if (closure!=REGISTER_UNALLOCATED) {
             // Save the register where the closure is to be found
             compiler_regsetsymbol(c, reg, func->name);
+            compiler_regsettype(c, reg, _closuretype);
             compiler_regsetcurrenttype(c, node, reg, _closuretype);
             function_setclosure(func, reg);
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_CLOSURE, reg, (registerindx) closure), node);

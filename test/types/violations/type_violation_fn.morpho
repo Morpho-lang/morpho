@@ -4,4 +4,4 @@ fn sqr(x) { return x^2 }
 
 Int a = sqr
 
-// expect: 'TypErr'
+// expect error 'TypeErr'

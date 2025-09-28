@@ -34,6 +34,27 @@
  * *************************************/
 
 #define BUILTIN_MATH(function) \
+value builtin_float_##function(vm *v, int nargs, value *args) {                \
+    value arg = MORPHO_GETARG(args, 0);                                        \
+    return MORPHO_FLOAT(function(MORPHO_GETFLOATVALUE(arg)));                  \
+}                                                                              \
+                                                                               \
+value builtin_int_##function(vm *v, int nargs, value *args) {                  \
+    value arg = MORPHO_GETARG(args, 0);                                        \
+    return MORPHO_FLOAT(function((double) MORPHO_GETINTEGERVALUE(arg)));       \
+}                                                                              \
+                                                                               \
+value builtin_cmplx_##function(vm *v, int nargs, value *args) {                \
+    value arg = MORPHO_GETARG(args, 0);                                        \
+    return complex_builtin##function(v, MORPHO_GETCOMPLEX(arg));               \
+}                                                                              \
+                                                                               \
+value builtin_numargserr_##function(vm *v, int nargs, value *args) {           \
+    morpho_runtimeerror(v, MATH_NUMARGS, #function);                           \
+    return MORPHO_NIL;                                                         \
+}                                                                              \
+
+#define BUILTIN_MATH_OLD(function) \
 value builtin_##function(vm *v, int nargs, value *args) { \
     if (nargs==1) { \
         value arg = MORPHO_GETARG(args, 0); \
@@ -592,8 +613,16 @@ value builtin_clock(vm *v, int nargs, value *args) {
     return MORPHO_FLOAT( ((double) time)/((double) CLOCKS_PER_SEC) );
 }
 
-#define BUILTIN_MATH(function) \
+#define BUILTIN_MATH_OLD2(function) \
     builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
+
+#define BUILTIN_VARMATH(label, function) \
+    morpho_addfunction(label, "Float (Int)", builtin_int_##function, MORPHO_FN_PUREFN, NULL); \
+    morpho_addfunction(label, "Float (Float)", builtin_float_##function, MORPHO_FN_PUREFN, NULL); \
+    morpho_addfunction(label, "Complex (Complex)", builtin_cmplx_##function, MORPHO_FN_PUREFN, NULL); \
+    morpho_addfunction(label, "(...)", builtin_numargserr_##function, MORPHO_FN_PUREFN, NULL);
+
+#define BUILTIN_MATH(function) BUILTIN_VARMATH(#function, function)
 
 #define BUILTIN_MATH_BOOL(function) \
     builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
@@ -611,7 +640,7 @@ void functiondefs_initialize(void) {
     builtin_addfunction(FUNCTION_SYSTEM, builtin_system, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(FUNCTION_ARCTAN, builtin_arctan, BUILTIN_FLAGSEMPTY);
     
-    builtin_addfunction(FUNCTION_ABS, builtin_fabs, BUILTIN_FLAGSEMPTY);
+    BUILTIN_VARMATH(FUNCTION_ABS, fabs)
     
     BUILTIN_MATH(exp)
     BUILTIN_MATH(log)
@@ -626,7 +655,7 @@ void functiondefs_initialize(void) {
     BUILTIN_MATH(sinh)
     BUILTIN_MATH(cosh)
     BUILTIN_MATH(tanh)
-    BUILTIN_MATH(sqrt)
+    BUILTIN_MATH_OLD2(sqrt)
 
     BUILTIN_MATH(floor)
     BUILTIN_MATH(ceil)

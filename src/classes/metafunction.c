@@ -952,7 +952,28 @@ value Metafunction_count(vm *v, int nargs, value *args) {
     return MORPHO_INTEGER(fn->fns.count);
 }
 
+value Metafunction_tostring(vm *v, int nargs, value *args) {
+    objectmetafunction *func=MORPHO_GETMETAFUNCTION(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+
+    varray_char buffer;
+    varray_charinit(&buffer);
+
+    varray_charadd(&buffer, "<fn ", 4);
+    morpho_printtobuffer(v, func->name, &buffer);
+    varray_charwrite(&buffer, '>');
+
+    out = object_stringfromvarraychar(&buffer);
+    if (MORPHO_ISSTRING(out)) {
+        morpho_bindobjects(v, 1, &out);
+    }
+    varray_charclear(&buffer);
+
+    return out;
+}
+
 MORPHO_BEGINCLASS(Metafunction)
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Metafunction_tostring, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Metafunction_count, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 

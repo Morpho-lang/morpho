@@ -48,7 +48,7 @@
 #define MATH_ARGS_MSG                "Function '%s' expects numerical arguments."
 
 #define MATH_NUMARGS                 "ExpctArgNm"
-#define MATH_NUMARGS_MSG             "Function '%s' expects 1 numerical argument."
+#define MATH_NUMARGS_MSG             "Function '%s' expects a single numerical argument."
 
 #define MATH_ATANARGS                "AtanArgNm"
 #define MATH_ATANARGS_MSG            "Function 'arctan' expects either 1 or 2 numerical arguments."

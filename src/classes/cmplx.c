@@ -268,7 +268,7 @@ value complex_builtinceil(vm * v, objectcomplex *c) {
 #undef RET_DOUBLE
 
 #define COMPLEX_BUILTIN_BOOL(fcn,logicalop)\
-value complex_builtin##fcn(objectcomplex *c) {\
+value complex_builtin##fcn(vm *v, objectcomplex *c) {\
     bool val = fcn(creal(c->Z)) logicalop fcn(cimag(c->Z));\
     return MORPHO_BOOL(val);\
 }

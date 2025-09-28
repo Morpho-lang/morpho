@@ -33,15 +33,15 @@
  * Math
  * *************************************/
 
-#define BUILTIN_MATH(function) \
+#define BUILTIN_VARMATH(function, type) \
 value builtin_float_##function(vm *v, int nargs, value *args) {                \
     value arg = MORPHO_GETARG(args, 0);                                        \
-    return MORPHO_FLOAT(function(MORPHO_GETFLOATVALUE(arg)));                  \
+    return type(function(MORPHO_GETFLOATVALUE(arg)));                          \
 }                                                                              \
                                                                                \
 value builtin_int_##function(vm *v, int nargs, value *args) {                  \
     value arg = MORPHO_GETARG(args, 0);                                        \
-    return MORPHO_FLOAT(function((double) MORPHO_GETINTEGERVALUE(arg)));       \
+    return type(function((double) MORPHO_GETINTEGERVALUE(arg)));               \
 }                                                                              \
                                                                                \
 value builtin_cmplx_##function(vm *v, int nargs, value *args) {                \
@@ -54,23 +54,9 @@ value builtin_numargserr_##function(vm *v, int nargs, value *args) {           \
     return MORPHO_NIL;                                                         \
 }                                                                              \
 
-#define BUILTIN_MATH_OLD(function) \
-value builtin_##function(vm *v, int nargs, value *args) { \
-    if (nargs==1) { \
-        value arg = MORPHO_GETARG(args, 0); \
-        if (MORPHO_ISFLOAT(arg)) { \
-            return MORPHO_FLOAT(function(MORPHO_GETFLOATVALUE(arg))); \
-        } else if (MORPHO_ISINTEGER(arg)) { \
-            return MORPHO_FLOAT(function((double) MORPHO_GETINTEGERVALUE(arg))); \
-        } else if (MORPHO_ISCOMPLEX(arg)){\
-            return complex_builtin##function(v,MORPHO_GETCOMPLEX(arg));\
-        } else { \
-            morpho_runtimeerror(v, MATH_ARGS, #function);\
-        } \
-    } \
-    morpho_runtimeerror(v, MATH_NUMARGS, #function);\
-    return MORPHO_NIL; \
-}
+#define BUILTIN_MATH(function) BUILTIN_VARMATH(function, MORPHO_FLOAT)
+
+#define BUILTIN_MATH_BOOL(function) BUILTIN_VARMATH(function, MORPHO_BOOL)
 
 /** Math functions */
 BUILTIN_MATH(fabs)
@@ -91,34 +77,14 @@ BUILTIN_MATH(tanh)
 BUILTIN_MATH(floor)
 BUILTIN_MATH(ceil)
 
-#undef BUILTIN_MATH
-
-/** Boolean output function need to output morpho true or false **/
-
-#define BUILTIN_MATH_BOOL(function) \
-value builtin_##function(vm *v, int nargs, value *args) { \
-    if (nargs==1) { \
-        value arg = MORPHO_GETARG(args, 0); \
-        if (MORPHO_ISFLOAT(arg)) { \
-                return MORPHO_BOOL(function(MORPHO_GETFLOATVALUE(arg))); \
-        } else if (MORPHO_ISINTEGER(arg)) { \
-            return MORPHO_BOOL(function((double) MORPHO_GETINTEGERVALUE(arg))); \
-        } else if (MORPHO_ISCOMPLEX(arg)){\
-            return complex_builtin##function(MORPHO_GETCOMPLEX(arg));\
-        } else { \
-            morpho_runtimeerror(v, MATH_ARGS, #function);\
-        } \
-    } \
-    morpho_runtimeerror(v, MATH_NUMARGS, #function);\
-    return MORPHO_NIL; \
-}
-
-
 BUILTIN_MATH_BOOL(isfinite)
 BUILTIN_MATH_BOOL(isinf)
 BUILTIN_MATH_BOOL(isnan)
 
+#undef BUILTIN_VARMATH
 #undef BUILTIN_MATH_BOOL
+#undef BUILTIN_MATH
+
 /** The sqrt function is needs to be able to return a complex number for negative arguments */
 value builtin_sqrt(vm *v, int nargs, value *args) { 
     if (nargs==1) { 
@@ -622,10 +588,13 @@ value builtin_clock(vm *v, int nargs, value *args) {
     morpho_addfunction(label, "Complex (Complex)", builtin_cmplx_##function, MORPHO_FN_PUREFN, NULL); \
     morpho_addfunction(label, "(...)", builtin_numargserr_##function, MORPHO_FN_PUREFN, NULL);
 
-#define BUILTIN_MATH(function) BUILTIN_VARMATH(#function, function)
-
 #define BUILTIN_MATH_BOOL(function) \
-    builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
+    morpho_addfunction(#function, "Bool (Int)", builtin_int_##function, MORPHO_FN_PUREFN, NULL); \
+    morpho_addfunction(#function, "Bool (Float)", builtin_float_##function, MORPHO_FN_PUREFN, NULL); \
+    morpho_addfunction(#function, "Bool (Complex)", builtin_cmplx_##function, MORPHO_FN_PUREFN, NULL); \
+    morpho_addfunction(#function, "(...)", builtin_numargserr_##function, MORPHO_FN_PUREFN, NULL);
+
+#define BUILTIN_MATH(function) BUILTIN_VARMATH(#function, function)
 
 #define BUILTIN_TYPECHECK(function) \
     builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
@@ -713,6 +682,7 @@ void functiondefs_initialize(void) {
 
     builtin_addfunction(FUNCTION_APPLY, builtin_apply, BUILTIN_FLAGSEMPTY);
     
+    /* Define errors */
     morpho_defineerror(MATH_ARGS, ERROR_HALT, MATH_ARGS_MSG);
     morpho_defineerror(MATH_NUMARGS, ERROR_HALT, MATH_NUMARGS_MSG);
     morpho_defineerror(MATH_ATANARGS, ERROR_HALT, MATH_ATANARGS_MSG);

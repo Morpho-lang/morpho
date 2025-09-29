@@ -30,6 +30,149 @@
  * ********************************************************************** */
 
 /* ************************************
+ * System
+ * *************************************/
+
+/** Call the operating system */
+value builtin_system(vm *v, int nargs, value *args) {
+    if (nargs==1) {
+        value arg=MORPHO_GETARG(args, 0);
+        if (MORPHO_ISSTRING(arg)) {
+            return MORPHO_INTEGER(system(MORPHO_GETCSTRING(arg)));
+        }
+    }
+    return MORPHO_NIL;
+}
+
+/** Clock */
+value builtin_clock(vm *v, int nargs, value *args) {
+    clock_t time;
+    time = clock();
+    return MORPHO_FLOAT( ((double) time)/((double) CLOCKS_PER_SEC) );
+}
+
+/* ************************************
+ * Random numbers
+ * *************************************/
+
+/** Generate a random float between 0 and 1 */
+value builtin_random(vm *v, int nargs, value *args) {
+    return MORPHO_FLOAT(random_double());
+}
+
+/** Generate a random integer with a bound.
+ Efficient and unbiased algorithm from: https://www.pcg-random.org/posts/bounded-rands.html */
+value builtin_randomint_norange(vm *v, int nargs, value *args) {
+    uint32_t x = random_int();
+    return MORPHO_INTEGER((int) x);
+}
+
+value builtin_randomint(vm *v, int nargs, value *args) {
+    uint32_t x = random_int();
+    
+    /* Generate a number in range. */
+    int r=0;
+    if (!morpho_valuetoint(MORPHO_GETARG(args, 0), &r)||r<0) {
+        morpho_runtimeerror(v, VM_INVALIDARGSDETAIL,FUNCTION_RANDOMINT, 1, "positive integer");
+    }
+    
+    uint32_t range=(uint32_t) r;
+    uint64_t m = (uint64_t) x  * (uint64_t) range;
+    uint32_t l = (uint32_t) m;
+    
+    if (l < range) {
+        uint32_t t = -range;
+        if (t >= range) {
+            t -= range;
+            if (t >= range)
+                t %= range;
+        }
+        while (l < t) {
+            x = random_int();
+            m = (uint64_t) x * (uint64_t) range;
+            l = (uint32_t) m;
+        }
+    }
+    return MORPHO_INTEGER(m >> 32);
+}
+
+/** Generate a random normally distributed number */
+value builtin_randomnormal(vm *v, int nargs, value *args) {
+    double x,y,r;
+
+    do {
+        x=2.0*random_double()-1.0;
+        y=2.0*random_double()-1.0;
+      
+        r=x*x+y*y;
+    } while (r>=1.0);
+    
+    return MORPHO_FLOAT(x*sqrt((-2.0*log(r))/r));
+}
+
+/* ************************************
+ * Value constructors
+ * *************************************/
+
+/** Convert something to an integer */
+value builtin_int__int(vm *v, int nargs, value *args) {
+    return MORPHO_GETARG(args, 0);
+}
+
+value builtin_int__float(vm *v, int nargs, value *args) {
+    return MORPHO_FLOATTOINTEGER(MORPHO_GETARG(args, 0));
+}
+
+value builtin_int__string(vm *v, int nargs, value *args) {
+    value arg = MORPHO_GETARG(args, 0);
+    string_tonumber(MORPHO_GETSTRING(arg), &arg);
+    if (MORPHO_ISFLOAT(arg)) return MORPHO_FLOATTOINTEGER(arg);
+    else if (MORPHO_ISINTEGER(arg)) return arg;
+    
+    morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_INT);
+    return MORPHO_INTEGER(0);
+}
+
+value builtin_int__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_INT);
+    return MORPHO_INTEGER(0);
+}
+
+/** Convert to a floating point number */
+value builtin_float__int(vm *v, int nargs, value *args) {
+    return MORPHO_INTEGERTOFLOAT(MORPHO_GETARG(args, 0));
+}
+
+value builtin_float__float(vm *v, int nargs, value *args) {
+    return MORPHO_GETARG(args, 0);
+}
+
+value builtin_float__string(vm *v, int nargs, value *args) {
+    value arg = MORPHO_GETARG(args, 0);
+    string_tonumber(MORPHO_GETSTRING(arg), &arg);
+    if (MORPHO_ISFLOAT(arg)) return arg;
+    else if (MORPHO_ISINTEGER(arg)) return MORPHO_INTEGERTOFLOAT(arg);
+    
+    morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_FLOAT);
+    return MORPHO_INTEGER(0);
+}
+
+value builtin_float__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_FLOAT);
+    return MORPHO_FLOAT(0.0);
+}
+
+/** Convert to a boolean */
+value builtin_bool(vm *v, int nargs, value *args) {
+    return MORPHO_BOOL(MORPHO_ISTRUE(MORPHO_GETARG(args, 0)));
+}
+
+value builtin_bool_err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_BOOL);
+    return MORPHO_FALSE;
+}
+
+/* ************************************
  * Math
  * *************************************/
 
@@ -222,89 +365,36 @@ value builtin_conj(vm *v, int nargs, value *args) {
 }
 
 /* ************************************
- * Random numbers
- * *************************************/
-
-/** Generate a random float between 0 and 1 */
-value builtin_random(vm *v, int nargs, value *args) {
-    return MORPHO_FLOAT(random_double());
-}
-
-/** Generate a random normally distributed number */
-value builtin_randomnormal(vm *v, int nargs, value *args) {
-    double x,y,r;
-
-    do {
-        x=2.0*random_double()-1.0;
-        y=2.0*random_double()-1.0;
-      
-        r=x*x+y*y;
-    } while (r>=1.0);
-    
-    return MORPHO_FLOAT(x*sqrt((-2.0*log(r))/r));
-}
-
-/** Generate a random integer with a bound.
- Efficient and unbiased algorithm from: https://www.pcg-random.org/posts/bounded-rands.html */
-value builtin_randomint(vm *v, int nargs, value *args) {
-    uint32_t x = random_int();
-    /* Leave quickly if no range was asked for */
-    if (nargs==0) return MORPHO_INTEGER((int) x);
-    
-    /* Otherwise, generate a number in range. */
-    int r=0;
-    if (!morpho_valuetoint(MORPHO_GETARG(args, 0), &r)||r<0) {
-        morpho_runtimeerror(v, VM_INVALIDARGSDETAIL,FUNCTION_RANDOMINT, 1, "positive integer");
-    }
-    
-    uint32_t range=(uint32_t) r;
-    uint64_t m = (uint64_t) x  * (uint64_t) range;
-    uint32_t l = (uint32_t) m;
-    
-    if (l < range) {
-        uint32_t t = -range;
-        if (t >= range) {
-            t -= range;
-            if (t >= range)
-                t %= range;
-        }
-        while (l < t) {
-            x = random_int();
-            m = (uint64_t) x * (uint64_t) range;
-            l = (uint32_t) m;
-        }
-    }
-    return MORPHO_INTEGER(m >> 32);
-}
-
-/* ************************************
  * Type checking and conversion
  * *************************************/
 
 /** Typecheck functions to test for the type of a quantity */
+
 #define BUILTIN_TYPECHECK(type, test) \
-    value builtin_##type(vm *v, int nargs, value *args) { \
-        if (nargs==1) { \
-            return MORPHO_BOOL(test(MORPHO_GETARG(args, 0))); \
-            } else morpho_runtimeerror(v, TYPE_NUMARGS, #type); \
-        \
-        return MORPHO_NIL; \
-    }
+value builtin_##type(vm *v, int nargs, value *args) {                          \
+    return MORPHO_BOOL(test(MORPHO_GETARG(args, 0)));                          \
+}                                                                              \
+                                                                               \
+value builtin_numargserr_##type(vm *v, int nargs, value *args) {               \
+    morpho_runtimeerror(v, TYPE_NUMARGS, #type);                               \
+    return MORPHO_FALSE;                                                       \
+}                                                                              \
     
 BUILTIN_TYPECHECK(isnil, MORPHO_ISNIL)
 BUILTIN_TYPECHECK(isint, MORPHO_ISINTEGER)
 BUILTIN_TYPECHECK(isfloat, MORPHO_ISFLOAT)
 BUILTIN_TYPECHECK(isnumber, MORPHO_ISNUMBER)
-BUILTIN_TYPECHECK(iscomplex, MORPHO_ISCOMPLEX)
+BUILTIN_TYPECHECK(isarray, MORPHO_ISARRAY)
 BUILTIN_TYPECHECK(isbool, MORPHO_ISBOOL)
+BUILTIN_TYPECHECK(isclass, MORPHO_ISCLASS)
+BUILTIN_TYPECHECK(isclosure, MORPHO_ISCLOSURE)
+BUILTIN_TYPECHECK(iscomplex, MORPHO_ISCOMPLEX)
+BUILTIN_TYPECHECK(isdictionary, MORPHO_ISDICTIONARY)
 BUILTIN_TYPECHECK(isobject, MORPHO_ISOBJECT)
 BUILTIN_TYPECHECK(isstring, MORPHO_ISSTRING)
-BUILTIN_TYPECHECK(isclass, MORPHO_ISCLASS)
 BUILTIN_TYPECHECK(isrange, MORPHO_ISRANGE)
-BUILTIN_TYPECHECK(isdictionary, MORPHO_ISDICTIONARY)
 BUILTIN_TYPECHECK(islist, MORPHO_ISLIST)
 BUILTIN_TYPECHECK(istuple, MORPHO_ISTUPLE)
-BUILTIN_TYPECHECK(isarray, MORPHO_ISARRAY)
 
 #ifdef MORPHO_INCLUDE_LINALG
 BUILTIN_TYPECHECK(ismatrix, MORPHO_ISMATRIX)
@@ -328,53 +418,6 @@ value builtin_iscallablefunction(vm *v, int nargs, value *args) {
         if (builtin_iscallable(MORPHO_GETARG(args, 0))) return MORPHO_TRUE;
     } else morpho_runtimeerror(v, TYPE_NUMARGS, FUNCTION_ISCALLABLE);
     return MORPHO_FALSE;
-}
-
-/** Convert something to an integer */
-value builtin_int(vm *v, int nargs, value *args) {
-    if (nargs==1) {
-        value arg = MORPHO_GETARG(args, 0);
-        
-        if (MORPHO_ISSTRING(arg)) {
-            string_tonumber(MORPHO_GETSTRING(arg), &arg);
-        }
-        
-        if (MORPHO_ISFLOAT(arg)) {
-            return MORPHO_FLOATTOINTEGER(arg);
-        } else if (MORPHO_ISINTEGER(arg)) {
-            return arg;
-        }
-    }
-    morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_INT);
-    return MORPHO_NIL;
-}
-
-/** Convert to a floating point number */
-value builtin_float(vm *v, int nargs, value *args) {
-    if (nargs==1) {
-        value arg = MORPHO_GETARG(args, 0);
-        
-        if (MORPHO_ISSTRING(arg)) {
-            string_tonumber(MORPHO_GETSTRING(arg), &arg);
-        }
-        
-        if (MORPHO_ISINTEGER(arg)) {
-            return MORPHO_INTEGERTOFLOAT(arg);
-        } else if (MORPHO_ISFLOAT(arg)){
-            return arg;
-        }
-    }
-    morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_FLOAT);
-    return MORPHO_NIL;
-}
-
-/** Convert to a boolean */
-value builtin_bool(vm *v, int nargs, value *args) {
-    if (nargs==1) {
-        return MORPHO_BOOL(MORPHO_ISTRUE(MORPHO_GETARG(args, 0)));
-    }
-    morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_BOOL);
-    return MORPHO_NIL;
 }
 
 /** Remainder */
@@ -557,28 +600,6 @@ value builtin_apply(vm *v, int nargs, value *args) {
     return ret;
 }
 
-/* ************************************
- * System
- * *************************************/
-
-/** Call the operating system */
-value builtin_system(vm *v, int nargs, value *args) {
-    if (nargs==1) {
-        value arg=MORPHO_GETARG(args, 0);
-        if (MORPHO_ISSTRING(arg)) {
-            return MORPHO_INTEGER(system(MORPHO_GETCSTRING(arg)));
-        }
-    }
-    return MORPHO_NIL;
-}
-
-/** Clock */
-value builtin_clock(vm *v, int nargs, value *args) {
-    clock_t time;
-    time = clock();
-    return MORPHO_FLOAT( ((double) time)/((double) CLOCKS_PER_SEC) );
-}
-
 #define BUILTIN_MATH_OLD2(function) \
     builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
 
@@ -597,18 +618,40 @@ value builtin_clock(vm *v, int nargs, value *args) {
 #define BUILTIN_MATH(function) BUILTIN_VARMATH(#function, function)
 
 #define BUILTIN_TYPECHECK(function) \
-    builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
+    morpho_addfunction(#function, "Bool (_)", builtin_##function, MORPHO_FN_PUREFN, NULL); \
+    morpho_addfunction(#function, "Bool (_,...)", builtin_numargserr_##function, MORPHO_FN_PUREFN, NULL);
 
 void functiondefs_initialize(void) {
+    // System
+    builtin_addfunction(FUNCTION_SYSTEM, builtin_system, BUILTIN_FLAGSEMPTY);
+    
+    // Clock
     morpho_addfunction(FUNCTION_CLOCK, "Float ()", builtin_clock, BUILTIN_FLAGSEMPTY, NULL);
 
+    // Random numbers
     morpho_addfunction(FUNCTION_RANDOM, "Float ()", builtin_random, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_RANDOMINT, "Int ()", builtin_randomint, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_RANDOMINT, "Int ()", builtin_randomint_norange, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_RANDOMINT, "Int (_)", builtin_randomint, BUILTIN_FLAGSEMPTY, NULL);
     morpho_addfunction(FUNCTION_RANDOMNORMAL, "Float ()", builtin_randomnormal, BUILTIN_FLAGSEMPTY, NULL);
     
-    builtin_addfunction(FUNCTION_SYSTEM, builtin_system, BUILTIN_FLAGSEMPTY);
+    // Value constructors
+    morpho_addfunction(FUNCTION_INT, "Int (Int)", builtin_int__int, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_INT, "Int (Float)", builtin_int__float, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_INT, "Int (String)", builtin_int__string, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_INT, "Int (...)", builtin_int__err, BUILTIN_FLAGSEMPTY, NULL);
+    
+    morpho_addfunction(FUNCTION_FLOAT, "Float (Int)", builtin_float__int, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_FLOAT, "Float (Float)", builtin_float__float, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_FLOAT, "Float (String)", builtin_float__string, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_FLOAT, "Float (...)", builtin_float__err, BUILTIN_FLAGSEMPTY, NULL);
+    
+    morpho_addfunction(FUNCTION_BOOL, "Bool (_)", builtin_bool, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_BOOL, "Bool (_,...)", builtin_bool_err, BUILTIN_FLAGSEMPTY, NULL);
+    
+    //
     builtin_addfunction(FUNCTION_ARCTAN, builtin_arctan, BUILTIN_FLAGSEMPTY);
     
+    // Math functions
     BUILTIN_VARMATH(FUNCTION_ABS, fabs)
     
     BUILTIN_MATH(exp)
@@ -667,10 +710,6 @@ void functiondefs_initialize(void) {
     builtin_addfunction(FUNCTION_CONJ,builtin_conj,BUILTIN_FLAGSEMPTY);
     
     builtin_addfunction(FUNCTION_ISCALLABLE, builtin_iscallablefunction, BUILTIN_FLAGSEMPTY);
-    
-    builtin_addfunction(FUNCTION_INT, builtin_int, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_FLOAT, builtin_float, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_BOOL, builtin_bool, BUILTIN_FLAGSEMPTY);
     
     builtin_addfunction(FUNCTION_MOD, builtin_mod, BUILTIN_FLAGSEMPTY);
     

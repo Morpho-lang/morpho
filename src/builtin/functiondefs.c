@@ -672,10 +672,12 @@ void functiondefs_initialize(void) {
     BUILTIN_MATH(floor)
     BUILTIN_MATH(ceil)
 
+    // Math properties
     BUILTIN_MATH_BOOL(isfinite)
     BUILTIN_MATH_BOOL(isinf)
     BUILTIN_MATH_BOOL(isnan)
     
+    // Type checking
     BUILTIN_TYPECHECK(isnil)
     BUILTIN_TYPECHECK(isint)
     BUILTIN_TYPECHECK(isfloat)

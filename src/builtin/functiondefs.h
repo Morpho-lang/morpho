@@ -13,32 +13,34 @@
  * Built in function labels
  * ------------------------------------------------------- */
 
+#define FUNCTION_SYSTEM        "system"
+#define FUNCTION_CLOCK         "clock"
+
+#define FUNCTION_APPLY         "apply"
+
 #define FUNCTION_RANDOM        "random"
 #define FUNCTION_RANDOMINT     "randomint"
 #define FUNCTION_RANDOMNORMAL  "randomnormal"
-#define FUNCTION_CLOCK         "clock"
-#define FUNCTION_SYSTEM        "system"
 
 #define FUNCTION_INT           "Int"
 #define FUNCTION_FLOAT         "Float"
 #define FUNCTION_BOOL          "Bool"
+
 #define FUNCTION_MOD           "mod"
 #define FUNCTION_ABS           "abs"
-#define FUNCTION_ISCALLABLE    "iscallable"
+#define FUNCTION_SIGN          "sign"
+#define FUNCTION_ARCTAN        "arctan"
+
+#define FUNCTION_REAL          "real"
+#define FUNCTION_IMAG          "imag"
+#define FUNCTION_ANGLE         "angle"
+#define FUNCTION_CONJ          "conj"
+
 #define FUNCTION_MIN           "min"
 #define FUNCTION_MAX           "max"
 #define FUNCTION_BOUNDS        "bounds"
 
-#define FUNCTION_REAL           "real"
-#define FUNCTION_IMAG           "imag"
-#define FUNCTION_ANGLE          "angle"
-#define FUNCTION_CONJ           "conj"
-
-#define FUNCTION_SIGN           "sign"
-
-#define FUNCTION_APPLY         "apply"
-
-#define FUNCTION_ARCTAN        "arctan"
+#define FUNCTION_ISCALLABLE    "iscallable"
 
 /* -------------------------------------------------------
  * Errors thrown by builtin functions

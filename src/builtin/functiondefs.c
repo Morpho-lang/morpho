@@ -52,6 +52,39 @@ value builtin_clock(vm *v, int nargs, value *args) {
 }
 
 /* ************************************
+ * Apply
+ * *************************************/
+
+/** Apply a function to a list of arguments */
+value builtin_apply(vm *v, int nargs, value *args) {
+    value ret = MORPHO_NIL;
+    
+    if (nargs<2) morpho_runtimeerror(v, APPLY_ARGS);
+    
+    value fn =  MORPHO_GETARG(args, 0);
+    value x =  MORPHO_GETARG(args, 1);
+    
+    if (!morpho_iscallable(fn)) {
+        morpho_runtimeerror(v, APPLY_NOTCALLABLE);
+        return MORPHO_NIL;
+    }
+    
+    if (nargs==2 && MORPHO_ISTUPLE(x)) {
+        objecttuple *t = MORPHO_GETTUPLE(x);
+        
+        morpho_call(v, fn, t->length, t->tuple, &ret);
+    } else if (nargs==2 && MORPHO_ISLIST(x)) {
+        objectlist *lst = MORPHO_GETLIST(x);
+        
+        morpho_call(v, fn, lst->val.count, lst->val.data, &ret);
+    } else {
+        morpho_call(v, fn, nargs-1, &MORPHO_GETARG(args, 1), &ret);
+    }
+    
+    return ret;
+}
+
+/* ************************************
  * Random numbers
  * *************************************/
 
@@ -228,6 +261,10 @@ BUILTIN_MATH_BOOL(isnan)
 #undef BUILTIN_MATH_BOOL
 #undef BUILTIN_MATH
 
+/* ************************************
+ * Math functions with special cases
+ * *************************************/
+
 /** The sqrt function is needs to be able to return a complex number for negative arguments */
 value builtin_sqrt(vm *v, int nargs, value *args) { 
     if (nargs==1) { 
@@ -289,6 +326,61 @@ value builtin_arctan(vm *v, int nargs, value *args) {
         return MORPHO_NIL;
     }
 }
+
+/** Remainder */
+value builtin_mod(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    if (nargs==2) {
+        value a = MORPHO_GETARG(args, 0);
+        value b = MORPHO_GETARG(args, 1);
+        
+        if (MORPHO_ISINTEGER(a) && MORPHO_ISINTEGER(b)) {
+            out=MORPHO_INTEGER(MORPHO_GETINTEGERVALUE(a) % MORPHO_GETINTEGERVALUE(b));
+        } else {
+            if (MORPHO_ISINTEGER(a)) a=MORPHO_INTEGERTOFLOAT(a);
+            if (MORPHO_ISINTEGER(b)) b=MORPHO_INTEGERTOFLOAT(b);
+            
+            if (MORPHO_ISFLOAT(a) && MORPHO_ISFLOAT(b)) {
+                out=MORPHO_FLOAT(fmod(MORPHO_GETFLOATVALUE(a), MORPHO_GETFLOATVALUE(b)));
+            } else morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_INT);
+        }
+    } else morpho_runtimeerror(v, VM_INVALIDARGS, 2, nargs);
+    return out;
+}
+
+/** find the sign of a number */
+static value builtin_sign(vm *v, int nargs, value *args){
+    if (nargs==1) {
+        value arg = MORPHO_GETARG(args, 0);
+        if (MORPHO_ISFLOAT(arg)) {
+
+            if (MORPHO_GETFLOATVALUE(arg)>0) {
+                return MORPHO_FLOAT(1);
+            }
+            else if (MORPHO_GETFLOATVALUE(arg)<0){
+                return MORPHO_FLOAT(-1);
+            }
+            else return MORPHO_FLOAT(0);
+
+        } else if (MORPHO_ISINTEGER(arg)) {
+            if (MORPHO_GETINTEGERVALUE(arg)>0) {
+                return MORPHO_FLOAT(1);
+            }
+            else if (MORPHO_GETINTEGERVALUE(arg)<0){
+                return MORPHO_FLOAT(-1);
+            }
+            else return MORPHO_FLOAT(0);
+        } else {
+            morpho_runtimeerror(v, MATH_ARGS,FUNCTION_SIGN);
+        }
+    }
+    morpho_runtimeerror(v, MATH_NUMARGS,FUNCTION_SIGN);
+    return MORPHO_NIL;
+}
+
+/* ************************************
+ * Elementary complex functions
+ * *************************************/
 
 value builtin_real(vm *v, int nargs, value *args) {
     if (nargs==1) { 
@@ -365,81 +457,8 @@ value builtin_conj(vm *v, int nargs, value *args) {
 }
 
 /* ************************************
- * Type checking and conversion
+ * Min/max
  * *************************************/
-
-/** Typecheck functions to test for the type of a quantity */
-
-#define BUILTIN_TYPECHECK(type, test) \
-value builtin_##type(vm *v, int nargs, value *args) {                          \
-    return MORPHO_BOOL(test(MORPHO_GETARG(args, 0)));                          \
-}                                                                              \
-                                                                               \
-value builtin_numargserr_##type(vm *v, int nargs, value *args) {               \
-    morpho_runtimeerror(v, TYPE_NUMARGS, #type);                               \
-    return MORPHO_FALSE;                                                       \
-}                                                                              \
-    
-BUILTIN_TYPECHECK(isnil, MORPHO_ISNIL)
-BUILTIN_TYPECHECK(isint, MORPHO_ISINTEGER)
-BUILTIN_TYPECHECK(isfloat, MORPHO_ISFLOAT)
-BUILTIN_TYPECHECK(isnumber, MORPHO_ISNUMBER)
-BUILTIN_TYPECHECK(isarray, MORPHO_ISARRAY)
-BUILTIN_TYPECHECK(isbool, MORPHO_ISBOOL)
-BUILTIN_TYPECHECK(isclass, MORPHO_ISCLASS)
-BUILTIN_TYPECHECK(isclosure, MORPHO_ISCLOSURE)
-BUILTIN_TYPECHECK(iscomplex, MORPHO_ISCOMPLEX)
-BUILTIN_TYPECHECK(isdictionary, MORPHO_ISDICTIONARY)
-BUILTIN_TYPECHECK(isobject, MORPHO_ISOBJECT)
-BUILTIN_TYPECHECK(isstring, MORPHO_ISSTRING)
-BUILTIN_TYPECHECK(isrange, MORPHO_ISRANGE)
-BUILTIN_TYPECHECK(islist, MORPHO_ISLIST)
-BUILTIN_TYPECHECK(istuple, MORPHO_ISTUPLE)
-
-#ifdef MORPHO_INCLUDE_LINALG
-BUILTIN_TYPECHECK(ismatrix, MORPHO_ISMATRIX)
-#endif
-
-#ifdef MORPHO_INCLUDE_SPARSE
-BUILTIN_TYPECHECK(issparse, MORPHO_ISSPARSE)
-#endif
-
-#ifdef MORPHO_INCLUDE_GEOMETRY
-BUILTIN_TYPECHECK(ismesh, MORPHO_ISMESH)
-BUILTIN_TYPECHECK(isselection, MORPHO_ISSELECTION)
-BUILTIN_TYPECHECK(isfield, MORPHO_ISFIELD)
-#endif
-
-#undef BUILTIN_TYPECHECK
-
-/** Check if something is callable */
-value builtin_iscallablefunction(vm *v, int nargs, value *args) {
-    if (nargs==1) {
-        if (builtin_iscallable(MORPHO_GETARG(args, 0))) return MORPHO_TRUE;
-    } else morpho_runtimeerror(v, TYPE_NUMARGS, FUNCTION_ISCALLABLE);
-    return MORPHO_FALSE;
-}
-
-/** Remainder */
-value builtin_mod(vm *v, int nargs, value *args) {
-    value out = MORPHO_NIL;
-    if (nargs==2) {
-        value a = MORPHO_GETARG(args, 0);
-        value b = MORPHO_GETARG(args, 1);
-        
-        if (MORPHO_ISINTEGER(a) && MORPHO_ISINTEGER(b)) {
-            out=MORPHO_INTEGER(MORPHO_GETINTEGERVALUE(a) % MORPHO_GETINTEGERVALUE(b));
-        } else {
-            if (MORPHO_ISINTEGER(a)) a=MORPHO_INTEGERTOFLOAT(a);
-            if (MORPHO_ISINTEGER(b)) b=MORPHO_INTEGERTOFLOAT(b);
-            
-            if (MORPHO_ISFLOAT(a) && MORPHO_ISFLOAT(b)) {
-                out=MORPHO_FLOAT(fmod(MORPHO_GETFLOATVALUE(a), MORPHO_GETFLOATVALUE(b)));
-            } else morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_INT);
-        }
-    } else morpho_runtimeerror(v, VM_INVALIDARGS, 2, nargs);
-    return out;
-}
 
 /** Find the minimum and maximum values in an enumerable object */
 typedef struct {
@@ -537,68 +556,68 @@ static value builtin_max(vm *v, int nargs, value *args) {
     return out;
 }
 
-/** find the sign of a number */
-static value builtin_sign(vm *v, int nargs, value *args){
-    if (nargs==1) { 
-        value arg = MORPHO_GETARG(args, 0); 
-        if (MORPHO_ISFLOAT(arg)) { 
-
-            if (MORPHO_GETFLOATVALUE(arg)>0) {
-                return MORPHO_FLOAT(1); 
-            }
-            else if (MORPHO_GETFLOATVALUE(arg)<0){
-                return MORPHO_FLOAT(-1); 
-            }
-            else return MORPHO_FLOAT(0);
-
-        } else if (MORPHO_ISINTEGER(arg)) { 
-            if (MORPHO_GETINTEGERVALUE(arg)>0) {
-                return MORPHO_FLOAT(1); 
-            }
-            else if (MORPHO_GETINTEGERVALUE(arg)<0){
-                return MORPHO_FLOAT(-1); 
-            }
-            else return MORPHO_FLOAT(0);
-        } else { 
-            morpho_runtimeerror(v, MATH_ARGS,FUNCTION_SIGN);
-        } 
-    } 
-    morpho_runtimeerror(v, MATH_NUMARGS,FUNCTION_SIGN);
-    return MORPHO_NIL; 
-}
-
 /* ************************************
- * Apply
+ * Type checking and conversion
  * *************************************/
 
-/** Apply a function to a list of arguments */
-value builtin_apply(vm *v, int nargs, value *args) {
-    value ret = MORPHO_NIL;
+/** Typecheck functions to test for the type of a quantity */
+
+#define BUILTIN_TYPECHECK(type, test) \
+value builtin_##type(vm *v, int nargs, value *args) {                          \
+    return MORPHO_BOOL(test(MORPHO_GETARG(args, 0)));                          \
+}                                                                              \
+                                                                               \
+value builtin_numargserr_##type(vm *v, int nargs, value *args) {               \
+    morpho_runtimeerror(v, TYPE_NUMARGS, #type);                               \
+    return MORPHO_FALSE;                                                       \
+}                                                                              \
     
-    if (nargs<2) morpho_runtimeerror(v, APPLY_ARGS);
-    
-    value fn =  MORPHO_GETARG(args, 0);
-    value x =  MORPHO_GETARG(args, 1);
-    
-    if (!morpho_iscallable(fn)) {
-        morpho_runtimeerror(v, APPLY_NOTCALLABLE);
-        return MORPHO_NIL;
-    }
-    
-    if (nargs==2 && MORPHO_ISTUPLE(x)) {
-        objecttuple *t = MORPHO_GETTUPLE(x);
-        
-        morpho_call(v, fn, t->length, t->tuple, &ret);
-    } else if (nargs==2 && MORPHO_ISLIST(x)) {
-        objectlist *lst = MORPHO_GETLIST(x);
-        
-        morpho_call(v, fn, lst->val.count, lst->val.data, &ret);
-    } else {
-        morpho_call(v, fn, nargs-1, &MORPHO_GETARG(args, 1), &ret);
-    }
-    
-    return ret;
+BUILTIN_TYPECHECK(isnil, MORPHO_ISNIL)
+BUILTIN_TYPECHECK(isint, MORPHO_ISINTEGER)
+BUILTIN_TYPECHECK(isfloat, MORPHO_ISFLOAT)
+BUILTIN_TYPECHECK(isnumber, MORPHO_ISNUMBER)
+BUILTIN_TYPECHECK(isarray, MORPHO_ISARRAY)
+BUILTIN_TYPECHECK(isbool, MORPHO_ISBOOL)
+BUILTIN_TYPECHECK(isclass, MORPHO_ISCLASS)
+BUILTIN_TYPECHECK(isclosure, MORPHO_ISCLOSURE)
+BUILTIN_TYPECHECK(iscomplex, MORPHO_ISCOMPLEX)
+BUILTIN_TYPECHECK(isdictionary, MORPHO_ISDICTIONARY)
+BUILTIN_TYPECHECK(isobject, MORPHO_ISOBJECT)
+BUILTIN_TYPECHECK(isstring, MORPHO_ISSTRING)
+BUILTIN_TYPECHECK(isrange, MORPHO_ISRANGE)
+BUILTIN_TYPECHECK(islist, MORPHO_ISLIST)
+BUILTIN_TYPECHECK(istuple, MORPHO_ISTUPLE)
+
+#ifdef MORPHO_INCLUDE_LINALG
+BUILTIN_TYPECHECK(ismatrix, MORPHO_ISMATRIX)
+#endif
+
+#ifdef MORPHO_INCLUDE_SPARSE
+BUILTIN_TYPECHECK(issparse, MORPHO_ISSPARSE)
+#endif
+
+#ifdef MORPHO_INCLUDE_GEOMETRY
+BUILTIN_TYPECHECK(ismesh, MORPHO_ISMESH)
+BUILTIN_TYPECHECK(isselection, MORPHO_ISSELECTION)
+BUILTIN_TYPECHECK(isfield, MORPHO_ISFIELD)
+#endif
+
+#undef BUILTIN_TYPECHECK
+
+/** Check if something is callable */
+value builtin_iscallablefunction(vm *v, int nargs, value *args) {
+    if (builtin_iscallable(MORPHO_GETARG(args, 0))) return MORPHO_TRUE;
+    return MORPHO_FALSE;
 }
+
+value builtin_iscallablefunction_err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, TYPE_NUMARGS, FUNCTION_ISCALLABLE);
+    return MORPHO_FALSE;
+}
+
+/* **********************************************************************
+ * Initialization
+ * ********************************************************************** */
 
 #define BUILTIN_MATH_OLD2(function) \
     builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
@@ -628,6 +647,9 @@ void functiondefs_initialize(void) {
     // Clock
     morpho_addfunction(FUNCTION_CLOCK, "Float ()", builtin_clock, BUILTIN_FLAGSEMPTY, NULL);
 
+    // Apply
+    builtin_addfunction(FUNCTION_APPLY, builtin_apply, BUILTIN_FLAGSEMPTY);
+    
     // Random numbers
     morpho_addfunction(FUNCTION_RANDOM, "Float ()", builtin_random, BUILTIN_FLAGSEMPTY, NULL);
     morpho_addfunction(FUNCTION_RANDOMINT, "Int ()", builtin_randomint_norange, BUILTIN_FLAGSEMPTY, NULL);
@@ -648,9 +670,6 @@ void functiondefs_initialize(void) {
     morpho_addfunction(FUNCTION_BOOL, "Bool (_)", builtin_bool, BUILTIN_FLAGSEMPTY, NULL);
     morpho_addfunction(FUNCTION_BOOL, "Bool (_,...)", builtin_bool_err, BUILTIN_FLAGSEMPTY, NULL);
     
-    //
-    builtin_addfunction(FUNCTION_ARCTAN, builtin_arctan, BUILTIN_FLAGSEMPTY);
-    
     // Math functions
     BUILTIN_VARMATH(FUNCTION_ABS, fabs)
     
@@ -667,7 +686,6 @@ void functiondefs_initialize(void) {
     BUILTIN_MATH(sinh)
     BUILTIN_MATH(cosh)
     BUILTIN_MATH(tanh)
-    BUILTIN_MATH_OLD2(sqrt)
 
     BUILTIN_MATH(floor)
     BUILTIN_MATH(ceil)
@@ -676,6 +694,23 @@ void functiondefs_initialize(void) {
     BUILTIN_MATH_BOOL(isfinite)
     BUILTIN_MATH_BOOL(isinf)
     BUILTIN_MATH_BOOL(isnan)
+    
+    // Math functions with special cases
+    builtin_addfunction(FUNCTION_ARCTAN, builtin_arctan, BUILTIN_FLAGSEMPTY);
+    BUILTIN_MATH_OLD2(sqrt);
+    builtin_addfunction(FUNCTION_MOD, builtin_mod, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FUNCTION_SIGN, builtin_sign, BUILTIN_FLAGSEMPTY);
+    
+    // Complex
+    builtin_addfunction(FUNCTION_REAL, builtin_real, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FUNCTION_IMAG, builtin_imag, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FUNCTION_ANGLE, builtin_angle, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FUNCTION_CONJ, builtin_conj, BUILTIN_FLAGSEMPTY);
+    
+    // Min/max
+    builtin_addfunction(FUNCTION_BOUNDS, builtin_bounds, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FUNCTION_MIN, builtin_min, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FUNCTION_MAX, builtin_max, BUILTIN_FLAGSEMPTY);
     
     // Type checking
     BUILTIN_TYPECHECK(isnil)
@@ -705,23 +740,9 @@ void functiondefs_initialize(void) {
     BUILTIN_TYPECHECK(isselection)
     BUILTIN_TYPECHECK(isfield)
 #endif
-
-    builtin_addfunction(FUNCTION_REAL,builtin_real,BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_IMAG,builtin_imag,BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_ANGLE,builtin_angle,BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_CONJ,builtin_conj,BUILTIN_FLAGSEMPTY);
     
-    builtin_addfunction(FUNCTION_ISCALLABLE, builtin_iscallablefunction, BUILTIN_FLAGSEMPTY);
-    
-    builtin_addfunction(FUNCTION_MOD, builtin_mod, BUILTIN_FLAGSEMPTY);
-    
-    builtin_addfunction(FUNCTION_BOUNDS, builtin_bounds, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_MIN, builtin_min, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_MAX, builtin_max, BUILTIN_FLAGSEMPTY);
-    
-    builtin_addfunction(FUNCTION_SIGN, builtin_sign, BUILTIN_FLAGSEMPTY);
-
-    builtin_addfunction(FUNCTION_APPLY, builtin_apply, BUILTIN_FLAGSEMPTY);
+    morpho_addfunction(FUNCTION_ISCALLABLE, "Bool (_)", builtin_iscallablefunction, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_ISCALLABLE, "Bool (_,...)", builtin_iscallablefunction_err, BUILTIN_FLAGSEMPTY, NULL);
     
     /* Define errors */
     morpho_defineerror(MATH_ARGS, ERROR_HALT, MATH_ARGS_MSG);

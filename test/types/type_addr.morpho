@@ -1,0 +1,7 @@
+// Type propagation through add
+
+{
+    var A = Matrix([1,1])
+    Matrix b = 1+A
+    print b
+}

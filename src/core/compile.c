@@ -2079,7 +2079,38 @@ static codeinfo compiler_not(compiler *c, syntaxtreenode *node, registerindx req
     return CODEINFO(REGISTER, out, ninstructions);
 }
 
-bool compiler_arithmetictype(compiler *c, registerindx left, registerindx right, value *type) {
+/** Finds a method */
+bool compiler_findmethodreturntype(value klass, char *label, value *type) {
+    if (!MORPHO_ISCLASS(klass)) return false;
+    
+    objectstring selector = MORPHO_STATICSTRING(label);
+    value method = MORPHO_NIL;
+    if (dictionary_get(&MORPHO_GETCLASS(klass)->methods, MORPHO_OBJECT(&selector), &method)) {
+        signature *s = metafunction_getsignature(method);
+        *type = signature_getreturntype(s);
+        return true;
+    }
+
+    return false;
+}
+
+/** Opcode redirection */
+typedef struct {
+    instruction op; /** Opcode */
+    char *lfunc; /** Label for reg */
+    char *rfunc; /** Display code - rX is register, cX is constant X, gX is global X, uX is upvalue, + refers to signed B */
+} opcodedispatchrule;
+
+/** Define how opcodes are redirected @warning: Must match opcode definition order */
+opcodedispatchrule opcodedispatchrules[] ={
+    { OP_ADD, MORPHO_ADD_METHOD, MORPHO_ADDR_METHOD },
+    { OP_SUB, MORPHO_SUB_METHOD, MORPHO_SUBR_METHOD },
+    { OP_MUL, MORPHO_MUL_METHOD, MORPHO_MULR_METHOD },
+    { OP_DIV, MORPHO_DIV_METHOD, MORPHO_DIVR_METHOD },
+    { OP_POW, MORPHO_POW_METHOD, MORPHO_POWR_METHOD },
+};
+
+bool compiler_arithmetictype(compiler *c, opcode op, registerindx left, registerindx right, value *type) {
     bool success=false;
     value ltype=MORPHO_NIL, rtype=MORPHO_NIL;
     value inttype=MORPHO_NIL, floattype=MORPHO_NIL;
@@ -2091,15 +2122,16 @@ bool compiler_arithmetictype(compiler *c, registerindx left, registerindx right,
         
         if (ltype==inttype && rtype==inttype) {
             *type=inttype;
+            success=true;
         } else if ((ltype==inttype && rtype==floattype) ||
                    (ltype==floattype && rtype==inttype) ||
                    (ltype==floattype && rtype==floattype)) {
             *type=floattype;
+            success=true;
         } else {
-            *type=MORPHO_NIL; // TODO: Lookup appropriate selector
+            success=compiler_findmethodreturntype(ltype, opcodedispatchrules[op-OP_ADD].lfunc, type);
+            if (!success) success=compiler_findmethodreturntype(rtype, opcodedispatchrules[op-OP_ADD].rfunc, type);
         }
-        
-        success=true;
     }
     return success;
 }
@@ -2162,7 +2194,7 @@ static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx 
     // TODO: Check input types?
     value type = MORPHO_NIL;
     if (op<=OP_DIV) { // Arithmetic type
-        compiler_arithmetictype(c, left.dest, right.dest, &type);
+        compiler_arithmetictype(c, op, left.dest, right.dest, &type);
     } else if (op==OP_POW) { // Powers always generate floats
         compiler_findtypefromcstring(c, FLOAT_CLASSNAME, &type);
     } else { // Comparison operations
@@ -2172,9 +2204,7 @@ static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx 
     compiler_releaseoperand(c, left); // Release operands after type information determined
     compiler_releaseoperand(c, right);
     
-    if (!MORPHO_ISNIL(type) &&
-        !compiler_regsetcurrenttype(c, node, out, type)) return CODEINFO_EMPTY;
-    // TODO: This should change; we always need to set the output type!
+    if (!compiler_regsetcurrenttype(c, node, out, type)) return CODEINFO_EMPTY;
 
     return CODEINFO(REGISTER, out, ninstructions);
 }

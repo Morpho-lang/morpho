@@ -306,6 +306,12 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
     
     if (!new) return MORPHO_NIL;
     
+    if (dictionary_get(_currentclasstable, label, NULL)) {
+        UNREACHABLE("Redefinition of class in same extension [in builtin.c]");
+    }
+    
+    dictionary_insert(_currentclasstable, label, MORPHO_OBJECT(new));
+    
     /** Copy methods from superclass */
     if (MORPHO_ISCLASS(superclass)) {
         superklass = MORPHO_GETCLASS(superclass);
@@ -333,12 +339,6 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
             builtin_addfunctiontodict(&new->methods, newmethod->name, method, NULL);
         }
     }
-    
-    if (dictionary_get(_currentclasstable, label, NULL)) {
-        UNREACHABLE("Redefinition of class in same extension [in builtin.c]");
-    }
-    
-    dictionary_insert(_currentclasstable, label, MORPHO_OBJECT(new));
     
     return MORPHO_OBJECT(new);
 }

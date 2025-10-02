@@ -3,6 +3,7 @@ target_sources(morpho
         classes.h
         array.c        array.h
         bool.c         bool.h 
+        cfunction.c    cfunction.h 
         closure.c      closure.h
         clss.c         clss.h
         cmplx.c        cmplx.h
@@ -31,6 +32,8 @@ target_sources(morpho
     FILES
         classes.h
         array.h
+        bool.h
+        cfunction.h 
         closure.h
         clss.h
         cmplx.h

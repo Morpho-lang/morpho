@@ -1,7 +1,7 @@
 // Type propagation through add
 
 {
-    var A = Matrix([1,1])
+    var A = Matrix([1])
     Matrix b = A+1
-    print b
+    print b // expect: [ 2 ]
 }

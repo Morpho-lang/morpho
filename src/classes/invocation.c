@@ -144,9 +144,8 @@ void invocation_initialize(void) {
     // Create invocation object type
     objectinvocationtype=object_addtype(&objectinvocationdefn);
     
-    // Locate the Object class to use as the parent class of Invocation
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    // Locate the Callable class to use as the parent class of Closure
+    value objclass = builtin_findclassfromcstring(CALLABLE_CLASSNAME);
     
     // Invocation constructor function
     morpho_addfunction(INVOCATION_CLASSNAME, INVOCATION_CLASSNAME " (...)", invocation_constructor, MORPHO_FN_CONSTRUCTOR, NULL);

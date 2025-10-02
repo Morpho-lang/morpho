@@ -711,8 +711,7 @@ void list_initialize(void) {
     objectlisttype=object_addtype(&objectlistdefn);
     
     // Locate the Object class to use as the parent class of List
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Define List class
     value listclass=builtin_addclass(LIST_CLASSNAME, MORPHO_GETCLASSDEFINITION(List), objclass);

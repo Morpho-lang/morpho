@@ -607,8 +607,7 @@ MORPHO_ENDCLASS
 
 void json_initialize(void) {
     // Locate the Object class to use as the parent class of JSON
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // JSON class
     builtin_addclass(JSON_CLASSNAME, MORPHO_GETCLASSDEFINITION(JSON), objclass);

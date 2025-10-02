@@ -1,0 +1,11 @@
+// Dispatch with apply
+
+fn f(Metafunction g, x) {
+    print g(x)
+}
+
+fn f(Float x, y) {
+    print x+y
+}
+
+f(cos, 0) // expect: 1

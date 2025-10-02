@@ -282,8 +282,7 @@ void dict_initialize(void) {
     objectdictionarytype=object_addtype(&objectdictionarydefn);
     
     // Locate the Object class to use as the parent class of Dictionary
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Dictionary constructor function
     morpho_addfunction(DICTIONARY_CLASSNAME, DICTIONARY_CLASSNAME " (...)", dictionary_constructor, MORPHO_FN_CONSTRUCTOR, NULL);

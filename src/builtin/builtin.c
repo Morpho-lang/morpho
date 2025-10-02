@@ -343,11 +343,17 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
     return MORPHO_OBJECT(new);
 }
 
-/** Finds a builtin class from its name */
+/** Finds a builtin class from its label */
 value builtin_findclass(value name) {
     value out=MORPHO_NIL;
     dictionary_get(&builtin_classtable, name, &out);
     return out;
+}
+
+/** Finds a builtin class from a cstring label */
+value builtin_findclassfromcstring(char *label) {
+    objectstring objname = MORPHO_STATICSTRING(label);
+    return builtin_findclass(MORPHO_OBJECT(&objname));
 }
 
 /** Copies the built in symbol table into a new dictionary */

@@ -42,9 +42,10 @@ MORPHO_ENDCLASS
  * ********************************************************************** */
 
 void cfunction_initialize(void) {
-    // Locate the Object class to use as the parent class of CFunction
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    // Locate the Callable class to use as the parent class of CFunction
+    value objclass = builtin_findclassfromcstring(CALLABLE_CLASSNAME);
+    
+    // No constructor function; cfunctions are defined in C.
     
     // Create CFunction veneer class
     value cfunctionclass=builtin_addclass(CFUNCTION_CLASSNAME, MORPHO_GETCLASSDEFINITION(CFunction), objclass);

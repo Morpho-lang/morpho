@@ -127,6 +127,7 @@ bool morpho_addfunction(char *name, char *signature, builtinfunction func, built
 
 value builtin_addclass(char *name, builtinclassentry desc[], value superclass);
 value builtin_findclass(value name);
+value builtin_findclassfromcstring(char *label);
 
 void builtin_copysymboltable(dictionary *out);
 

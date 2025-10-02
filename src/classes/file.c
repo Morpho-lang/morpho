@@ -451,8 +451,7 @@ void file_initialize(void) {
     
     objectfiletype=object_addtype(&objectfiledefn);
     
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     morpho_addfunction(FILE_CLASSNAME, FILE_CLASSNAME " (...)", file_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     

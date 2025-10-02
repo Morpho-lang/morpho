@@ -988,8 +988,7 @@ void metafunction_initialize(void) {
     objectmetafunctiontype=object_addtype(&objectmetafunctiondefn);
     
     // Locate the Object class to use as the parent class of Metafunction
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(CALLABLE_CLASSNAME);
     
     // Metafunction constructor function
     morpho_addfunction(METAFUNCTION_CLASSNAME, METAFUNCTION_CLASSNAME " (...)", metafunction_constructor, MORPHO_FN_CONSTRUCTOR, NULL);

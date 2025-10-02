@@ -188,8 +188,7 @@ void class_initialize(void) {
     // objectclass is a core type so is intialized earlier
     
     // Locate the Object class to use as the parent class of Class
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     value classclass=builtin_addclass(CLASS_CLASSNAME, MORPHO_GETCLASSDEFINITION(Class), objclass);
     object_setveneerclass(OBJECT_CLASS, classclass);

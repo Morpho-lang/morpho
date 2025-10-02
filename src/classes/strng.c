@@ -309,9 +309,8 @@ void string_initialize(void) {
     // Create string object type
     //objectstringtype=object_addtype(&objectstringdefn);
     
-    // Locate the Object class to use as the parent class of Range
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    // Locate the Object class to use as the parent class of String
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Create String veneer class
     value stringclass=builtin_addclass(STRING_CLASSNAME, MORPHO_GETCLASSDEFINITION(String), objclass);

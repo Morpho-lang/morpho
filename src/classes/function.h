@@ -55,6 +55,8 @@ typedef struct sobjectfunction {
 
 #define FUNCTION_CLASSNAME "Function"
 
+#define CALLABLE_CLASSNAME "Callable"
+
 /* -------------------------------------------------------
  * Function error messages
  * ------------------------------------------------------- */

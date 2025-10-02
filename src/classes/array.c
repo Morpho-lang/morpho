@@ -616,12 +616,11 @@ void array_initialize(void) {
     // Create array object type
     objectarraytype=object_addtype(&objectarraydefn);
     
-    // Locate the Object class to use as the parent class of Array
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
-    
     // Array constructor function
     morpho_addfunction(ARRAY_CLASSNAME, ARRAY_CLASSNAME " (...)", array_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    
+    // Locate the Object class to use as the parent class of Array
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Create Array veneer class
     value arrayclass=builtin_addclass(ARRAY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Array), objclass);

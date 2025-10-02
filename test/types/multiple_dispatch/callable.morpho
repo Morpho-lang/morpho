@@ -1,6 +1,7 @@
-// Dispatch with apply
+// Dispatch on Callable
 
-fn f(Metafunction g, x) {
+/*
+fn f(Callable g, x) {
     print g(x)
 }
 
@@ -9,3 +10,4 @@ fn f(Float x, y) {
 }
 
 f(cos, 0) // expect: 1
+*/

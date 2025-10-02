@@ -1,0 +1,5 @@
+// Type propagation through a method call
+
+var a = Array(2,2)
+
+Int b = a.count() 

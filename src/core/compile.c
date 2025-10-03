@@ -6,6 +6,7 @@
 
 #include <stdarg.h>
 #include <string.h>
+#include <stdint.h>
 #include "compile.h"
 #include "error.h"
 #include "vm.h"
@@ -241,6 +242,15 @@ void compiler_getreturntype(compiler *c, value target, value *type) {
         *type=signature_getreturntype(sig);
     } else if (MORPHO_ISMETAFUNCTION(target)) {
         metafunction_inferreturntype(MORPHO_GETMETAFUNCTION(target), type);
+    }
+}
+
+/** Infer the return type of an invocation target */
+void compiler_getmethodreturntype(compiler *c, value klass, value target, value *type) {
+    value method=MORPHO_NIL;
+    if (MORPHO_ISCLASS(klass) &&
+        dictionary_get(&MORPHO_GETCLASS(klass)->methods, target, &method)) {
+        compiler_getreturntype(c, method, type);
     }
 }
 
@@ -972,6 +982,8 @@ static registerindx compiler_getlocal(compiler *c, value symbol) {
     return false;
 }*/
 
+bool compiler_getglobaltype(compiler *c, globalindx indx, value *type);
+
 /** @brief Moves the results of a codeinfo block into a register
  *  @details includes constants, upvalues etc.
  *  @param   c      the current compiler
@@ -1004,6 +1016,11 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         /* Move globals */
         out.dest=compiler_regtemp(c, reg);
         out.returntype=REGISTER;
+        
+        if (compiler_getglobaltype(c, info.dest, &type)) {
+            compiler_regsetcurrenttype(c, node, out.dest, type);
+        }
+        
         compiler_addinstruction(c, ENCODE_LONG(OP_LGL, out.dest, info.dest), node);
         out.ninstructions++;
     } else {
@@ -1133,6 +1150,11 @@ globalindx compiler_addglobal(compiler *c, syntaxtreenode *node, value symbol) {
 /** Sets the type of a global variable */
 void compiler_setglobaltype(compiler *c, globalindx indx, value type) {
     program_globalsettype(c->out, indx, type);
+}
+
+/** Gets the type of a global variable */
+bool compiler_getglobaltype(compiler *c, globalindx indx, value *type) {
+    return program_globaltype(c->out, indx, type);
 }
 
 /** Checks if the type match satisfies the type of the global variable indx */
@@ -3502,7 +3524,7 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     return CODEINFO(REGISTER, func.dest, ninstructions);
 }
 
-#include <stdint.h>
+
 
 /* Compiles a method invocation:
         node              |          node
@@ -3569,6 +3591,14 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     object=compiler_movetoregister(c, selectornode, object, rObj);
     ninstructions+=object.ninstructions;
     
+    // Attempt to infer return type
+    value otype=MORPHO_NIL, rtype=MORPHO_NIL;
+    if (compiler_regcurrenttype(c, rObj, &otype) &&
+        !MORPHO_ISNIL(otype) &&
+        MORPHO_ISSTRING(methodnode->content)) {
+        compiler_getmethodreturntype(c, otype, methodnode->content, &rtype);
+    }
+    
     // Compile the arguments
     codeinfo args = CODEINFO_EMPTY;
     if (node->right!=SYNTAXTREE_UNCONNECTED) args=compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
@@ -3585,7 +3615,7 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
 
     compiler_endargs(c);
 
-    // Generate the call instruction
+    // Generate the invoke instruction
     int nposn=0, nopt=0;
     compiler_regcountargs(c, object.dest+1, lastarg, &nposn, &nopt);
     compiler_addinstruction(c, ENCODE(OP_INVOKE, rSel, nposn, nopt), node);
@@ -3595,10 +3625,14 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     compiler_regfreetemp(c, rSel);
     compiler_regfreetoend(c, rObj+1);
 
+    /* Set the current type of the register */
+    compiler_regsetcurrenttype(c, node, rObj, rtype);
+    
     // Move the result to the requested register
     if (reqout!=REGISTER_UNALLOCATED && object.dest!=reqout) {
-        compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, reqout, rObj), node);
-        ninstructions++;
+        codeinfo cmov=compiler_movetoregister(c, node, object, reqout);
+        ninstructions+=cmov.ninstructions;
+        
         compiler_regfreetemp(c, rObj);
         object.dest=reqout;
     }

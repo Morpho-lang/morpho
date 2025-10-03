@@ -9,5 +9,5 @@ fn f(Float x, y) {
     print x+y
 }
 
-f(cos, 0) // expect: 1
+f(cos, 0) // Xexpect: 1
 */

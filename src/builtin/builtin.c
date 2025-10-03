@@ -406,6 +406,10 @@ void builtin_initialize(void) {
     /* Initialize builtin classes and functions */
     instance_initialize(); // Must initialize first so that Object exists
     
+    float_initialize(); // Veneer classes
+    int_initialize();
+    bool_initialize();
+    
     string_initialize();  // Classes
     function_initialize();
     cfunction_initialize();
@@ -421,10 +425,6 @@ void builtin_initialize(void) {
     complex_initialize();
     err_initialize();
     tuple_initialize();
-    
-    float_initialize();// Veneer classes
-    int_initialize();
-    bool_initialize();
     
     file_initialize();
     system_initialize();

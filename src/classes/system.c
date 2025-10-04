@@ -10,6 +10,7 @@
 #include "classes.h"
 #include "system.h"
 #include "platform.h"
+#include "help.h"
 
 /* **********************************************************************
  * System utility functions
@@ -128,6 +129,30 @@ value System_setworkingfolder(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Help query */
+value System_help(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    
+    if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
+        char *query = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
+        
+        varray_char result;
+        varray_charinit(&result);
+        
+        if (morpho_help(query, &result)) {
+            objectstring *new=object_stringfromvarraychar(&result);
+            if (new) {
+                out = MORPHO_OBJECT(new);
+                morpho_bindobjects(v, 1, &out);
+            }
+        }
+        
+        varray_charclear(&result);
+    }
+    
+    return out;
+}
+
 /** Get working folder */
 value System_workingfolder(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
@@ -172,6 +197,7 @@ MORPHO_METHOD(SYSTEM_READLINE_METHOD, System_readline, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_ARGUMENTS_METHOD, System_arguments, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_EXIT_METHOD, System_exit, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_SETWORKINGFOLDER_METHOD, System_setworkingfolder, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SYSTEM_HELP_METHOD, System_help, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_WORKINGFOLDER_METHOD, System_workingfolder, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_HOMEFOLDER_METHOD, System_homefolder, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS

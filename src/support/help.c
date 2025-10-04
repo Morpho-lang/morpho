@@ -4,7 +4,15 @@
  *  @brief Morpho help
 */
 
-#include <string.h>
 #include <ctype.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <varray.h>
 
 #include "help.h"
+
+/** Interface to the morpho help system */
+bool morpho_help(char *query, varray_char *result) {
+    return false;
+}
+

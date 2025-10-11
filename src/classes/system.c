@@ -122,7 +122,7 @@ value System_setworkingfolder(vm *v, int nargs, value *args) {
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         char *path = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
         
-        if (platform_setcurrentdirectory(path)) morpho_runtimeerror(v, SYS_STWRKDR);
+        if (!platform_setcurrentdirectory(path)) morpho_runtimeerror(v, SYS_STWRKDR);
     } else morpho_runtimeerror(v, STWRKDR_ARGS);
     
     return MORPHO_NIL;

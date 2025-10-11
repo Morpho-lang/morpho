@@ -1,0 +1,4 @@
+// Test workingfolder 
+
+print isstring(System.workingfolder())
+// expect: true

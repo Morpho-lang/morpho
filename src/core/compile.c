@@ -3097,6 +3097,7 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
             right=compiler_movetoregister(c, decnode, right, reg);
             ninstructions+=right.ninstructions;
         } else { /* Otherwise, we should zero out the register */
+            // TODO: Raise error if typed and missing initializer
             registerindx cnil = compiler_addconstant(c, decnode, MORPHO_NIL, false, false);
             compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, cnil), node);
             ninstructions++;

@@ -1,0 +1,5 @@
+// Interior type in loop
+
+for (Int a=0; i<3; i+=1) {
+    print i 
+}

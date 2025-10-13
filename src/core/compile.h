@@ -108,6 +108,9 @@
 #define COMPILE_TYPEVIOLATION             "TypeErr"
 #define COMPILE_TYPEVIOLATION_MSG         "Type violation: Attempting to assign type %s to %s variable %s."
 
+#define COMPILE_NOINITIALIZER             "MssngIntlzr"
+#define COMPILE_NOINITIALIZER_MSG         "Missing initializer for typed variable %s."
+
 #define COMPILE_UNKNWNTYPE                "UnknwnType"
 #define COMPILE_UNKNWNTYPE_MSG            "Unknown type '%s'."
 

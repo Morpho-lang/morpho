@@ -1,7 +1,7 @@
 // Type violation in function from a power operation
 
 fn f() {
-    String u 
+    String u = ""
 
     u = 2^2
 }

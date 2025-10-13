@@ -3100,8 +3100,9 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
             /* Ensure operand is in the desired register  */
             right=compiler_movetoregister(c, decnode, right, reg);
             ninstructions+=right.ninstructions;
-        } else { /* Otherwise, we should zero out the register */
-            // TODO: Raise error if typed and missing initializer
+        } else if (MORPHO_ISOBJECT(type)) { // A typed variable must have an initializer
+            //compiler_error(c, node, COMPILE_NOINITIALIZER, MORPHO_GETCSTRING(var));
+        } else { // An untyped variable is simply initialized to nil
             registerindx cnil = compiler_addconstant(c, decnode, MORPHO_NIL, false, false);
             compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, cnil), node);
             ninstructions++;
@@ -4696,6 +4697,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_INVLDLBL, ERROR_COMPILE, COMPILE_INVLDLBL_MSG);
     morpho_defineerror(COMPILE_MSSNGINDX, ERROR_COMPILE, COMPILE_MSSNGINDX_MSG);
     morpho_defineerror(COMPILE_TYPEVIOLATION, ERROR_COMPILE, COMPILE_TYPEVIOLATION_MSG);
+    morpho_defineerror(COMPILE_NOINITIALIZER, ERROR_COMPILE, COMPILE_NOINITIALIZER_MSG);
     morpho_defineerror(COMPILE_UNKNWNTYPE, ERROR_COMPILE, COMPILE_UNKNWNTYPE_MSG);
     morpho_defineerror(COMPILE_UNKNWNNMSPC, ERROR_COMPILE, COMPILE_UNKNWNNMSPC_MSG);
     morpho_defineerror(COMPILE_UNKNWNTYPENMSPC, ERROR_COMPILE, COMPILE_UNKNWNTYPENMSPC_MSG);

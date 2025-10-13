@@ -1,7 +1,7 @@
 // Type violation in function from a type comparison
 
 fn f() {
-    String u 
+    String u = ""
 
     u = 1<3
 }

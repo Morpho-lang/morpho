@@ -1,7 +1,7 @@
 // Type violation in function from an arithmetic operation
 
 fn f() {
-    String u 
+    String u = ""
 
     u = 1+3
 }

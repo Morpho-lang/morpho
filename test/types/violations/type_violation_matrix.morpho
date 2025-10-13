@@ -1,7 +1,7 @@
 // Type violation in function from a Matrix
 
 fn f() {
-    String u 
+    String u = ""
 
     u = Matrix(2,2)
 }

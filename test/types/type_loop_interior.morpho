@@ -1,5 +1,9 @@
 // Interior type in loop
 
-for (Int a=0; i<3; i+=1) {
+for (Int i=0; i<3; i+=1) {
     print i 
 }
+
+// expect: 0
+// expect: 1
+// expect: 2

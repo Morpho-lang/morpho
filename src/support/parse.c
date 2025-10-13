@@ -1055,9 +1055,9 @@ bool parse_typedvardeclaration(parser *p, void *out) {
         
         PARSE_CHECK(parse_addnode(p, NODE_DOT, MORPHO_NIL, &start, namespace, type, &type));
         PARSE_CHECK(parse_addnode(p, NODE_TYPE, MORPHO_NIL, &start, type, var, &new));
-    } else { // Perhaps it was really an expression statement
+    } else { // Return failure
         parse_restorestate(&op, &ol, p);
-        PARSE_CHECK(parse_statement(p, &new));
+        return false;
     }
     
     *((syntaxtreeindx *) out) = new;
@@ -1324,6 +1324,8 @@ bool parse_forstatement(parser *p, void *out) {
         
     } else if (parse_checktokenadvance(p, TOKEN_VAR)) {
         PARSE_CHECK(parse_vardeclaration(p, &init));
+    } else if (parse_checktoken(p, TOKEN_SYMBOL) &&
+               parse_typedvardeclaration(p, &init)) {
     } else {
         PARSE_CHECK(parse_expression(p, &init));
         while (parse_checktokenadvance(p, TOKEN_COMMA)) {
@@ -1535,6 +1537,7 @@ bool parse_declaration(parser *p, void *out) {
         success=parse_importdeclaration(p, out);
     } else if (parse_checktoken(p, TOKEN_SYMBOL)) { // Typed var declaration ?
         success=parse_typedvardeclaration(p, out);
+        if (!success) success=parse_statement(p, out); // Try statement instead
     } else {
         success=parse_statement(p, out);
     }

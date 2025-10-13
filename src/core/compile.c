@@ -259,6 +259,7 @@ void compiler_getmethodreturntype(compiler *c, value klass, value target, value 
  * ------------------------------------------- */
 
 value _closuretype;
+value _stringtype;
 
 /* ------------------------------------------
  * Argument declarations
@@ -2367,13 +2368,16 @@ static codeinfo compiler_interpolation(compiler *c, syntaxtreenode *node, regist
         }
     }
     
-    compiler_addinstruction(c, ENCODE(OP_CAT, (reqout!=REGISTER_UNALLOCATED ? reqout : start), start, r), node);
+    registerindx rout = (reqout!=REGISTER_UNALLOCATED ? reqout : start);
+    compiler_addinstruction(c, ENCODE(OP_CAT, rout, start, r), node);
     ninstructions++;
+    
+    compiler_regsetcurrenttype(c, node, rout, _stringtype);
 
     /* Free all the registers used, including start if it wasn't the destination for the output */
     if (start!=REGISTER_UNALLOCATED) compiler_regfreetoend(c, start + (reqout!=REGISTER_UNALLOCATED ? 0: 1));
 
-    return CODEINFO(REGISTER, (reqout!=REGISTER_UNALLOCATED ? reqout : start), ninstructions);
+    return CODEINFO(REGISTER, rout, ninstructions);
 }
 
 /** Inserts instructions to close upvalues */
@@ -4657,6 +4661,7 @@ void compile_initialize(void) {
     
     /** Types we need to refer to */
     _closuretype = MORPHO_OBJECT(object_getveneerclass(OBJECT_CLOSURE));
+    _stringtype = MORPHO_OBJECT(object_getveneerclass(OBJECT_STRING));
     
     optimizer = NULL;
 

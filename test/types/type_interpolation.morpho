@@ -1,0 +1,7 @@
+// Type propagation from interpolation
+
+{
+    var a = 1 
+    String b = "a=${a}"
+    print b // expect: a=1
+}

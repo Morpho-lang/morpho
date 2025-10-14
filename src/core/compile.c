@@ -261,6 +261,10 @@ void compiler_getmethodreturntype(compiler *c, value klass, value target, value 
 value _closuretype;
 value _stringtype;
 
+value _inttype;
+value _floattype;
+value _booltype;
+
 /* ------------------------------------------
  * Argument declarations
  * ------------------------------------------- */
@@ -2091,9 +2095,7 @@ static codeinfo compiler_not(compiler *c, syntaxtreenode *node, registerindx req
         ninstructions+=left.ninstructions;
     }
 
-    value type=MORPHO_NIL;
-    compiler_findtypefromcstring(c, BOOL_CLASSNAME, &type);
-    compiler_regsetcurrenttype(c, node, out, type);
+    compiler_regsetcurrenttype(c, node, out, _booltype);
     
     compiler_addinstruction(c, ENCODE_DOUBLE(OP_NOT, out, left.dest), node);
     ninstructions++;
@@ -2136,20 +2138,17 @@ opcodedispatchrule opcodedispatchrules[] ={
 bool compiler_arithmetictype(compiler *c, opcode op, registerindx left, registerindx right, value *type) {
     bool success=false;
     value ltype=MORPHO_NIL, rtype=MORPHO_NIL;
-    value inttype=MORPHO_NIL, floattype=MORPHO_NIL;
-    if (!compiler_findtypefromcstring(c, INT_CLASSNAME, &inttype)) return success;
-    if (!compiler_findtypefromcstring(c, FLOAT_CLASSNAME, &floattype)) return success;
     
     if (compiler_regcurrenttype(c, left, &ltype) &&
         compiler_regcurrenttype(c, right, &rtype)) {
         
-        if (ltype==inttype && rtype==inttype) {
-            *type=inttype;
+        if (ltype==_inttype && rtype==_inttype) {
+            *type=_inttype;
             success=true;
-        } else if ((ltype==inttype && rtype==floattype) ||
-                   (ltype==floattype && rtype==inttype) ||
-                   (ltype==floattype && rtype==floattype)) {
-            *type=floattype;
+        } else if ((ltype==_inttype && rtype==_floattype) ||
+                   (ltype==_floattype && rtype==_inttype) ||
+                   (ltype==_floattype && rtype==_floattype)) {
+            *type=_floattype;
             success=true;
         } else {
             success=compiler_findmethodreturntype(ltype, opcodedispatchrules[op-OP_ADD].lfunc, type);
@@ -2705,6 +2704,8 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rIndx, cNil), node);
     ninstructions++;
     
+    compiler_regsetcurrenttype(c, node, rIndx, _inttype);
+    
     /* Obtain the maximum value of rIndx by invoking enumerate */
     
     // Allocate register to contain maximum value of the counter
@@ -3101,7 +3102,7 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
             right=compiler_movetoregister(c, decnode, right, reg);
             ninstructions+=right.ninstructions;
         } else if (MORPHO_ISOBJECT(type)) { // A typed variable must have an initializer
-            //compiler_error(c, node, COMPILE_NOINITIALIZER, MORPHO_GETCSTRING(var));
+            compiler_error(c, node, COMPILE_NOINITIALIZER, MORPHO_GETCSTRING(var));
         } else { // An untyped variable is simply initialized to nil
             registerindx cnil = compiler_addconstant(c, decnode, MORPHO_NIL, false, false);
             compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, cnil), node);
@@ -4663,6 +4664,10 @@ void compile_initialize(void) {
     /** Types we need to refer to */
     _closuretype = MORPHO_OBJECT(object_getveneerclass(OBJECT_CLOSURE));
     _stringtype = MORPHO_OBJECT(object_getveneerclass(OBJECT_STRING));
+    
+    _inttype = MORPHO_OBJECT(value_getveneerclass(MORPHO_INTEGER(0)));
+    _floattype = MORPHO_OBJECT(value_getveneerclass(MORPHO_FLOAT(0.0)));
+    _booltype = MORPHO_OBJECT(value_getveneerclass(MORPHO_TRUE));
     
     optimizer = NULL;
 

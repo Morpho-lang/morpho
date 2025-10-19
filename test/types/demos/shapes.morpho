@@ -82,7 +82,7 @@ Shape rectangle = Rectangle(10.0, 8.0)
     area(polygon)
 }
 
-Shape comparison = compare_shapes(circle, rectangle)
+String comparison = compare_shapes(circle, rectangle)
 print "Shape comparison: ${comparison}"
 
 // expect: Shape comparison: rectangle is larger

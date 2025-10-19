@@ -621,12 +621,17 @@ void compiler_regsettype(compiler *c, registerindx reg, value type) {
     f->registers.data[reg].type=type;
 }
 
-/** Gets the current type of a register */
-bool compiler_regtype(compiler *c, registerindx reg, value *type) {
-    functionstate *f = compiler_currentfunctionstate(c);
+/** Gets the current type of a register in a given functionstate */
+bool compiler_regtypefromfunctionstate(functionstate *f, registerindx reg, value *type) {
     if (reg>=f->registers.count) return false;
     *type = f->registers.data[reg].type;
     return true;
+}
+
+/** Gets the current type of a register */
+bool compiler_regtype(compiler *c, registerindx reg, value *type) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    return compiler_regtypefromfunctionstate(f, reg, type);
 }
 
 /** Raises a type violation error */
@@ -988,6 +993,7 @@ static registerindx compiler_getlocal(compiler *c, value symbol) {
 }*/
 
 bool compiler_getglobaltype(compiler *c, globalindx indx, value *type);
+bool compiler_getupvaluetype(compiler *c, registerindx ix, value *type);
 
 /** @brief Moves the results of a codeinfo block into a register
  *  @details includes constants, upvalues etc.
@@ -1017,6 +1023,10 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         out.returntype=REGISTER;
         compiler_addinstruction(c, ENCODE_DOUBLE(OP_LUP, out.dest, info.dest), node);
         out.ninstructions++;
+        
+        if (compiler_getupvaluetype(c, info.dest, &type)) {
+            compiler_regsetcurrenttype(c, node, out.dest, type);
+        }
     } else if (CODEINFO_ISGLOBAL(info)) {
         /* Move globals */
         out.dest=compiler_regtemp(c, reg);
@@ -1241,8 +1251,8 @@ codeinfo compiler_addvariable(compiler *c, syntaxtreenode *node, value symbol) {
  * ------------------------------------------- */
 
 /** Adds an upvalue to a functionstate */
-registerindx compiler_addupvalue(functionstate *f, bool islocal, indx ix) {
-    upvalue v = (upvalue) { .islocal = islocal, .reg = ix};
+registerindx compiler_addupvalue(functionstate *f, bool islocal, registerindx ix) {
+    upvalue v = (upvalue) { .islocal = islocal, .reg = ix, .type=MORPHO_NIL };
 
     /* Does this upvalue already exist? */
     for (registerindx i=0; i<f->upvalues.count; i++) {
@@ -1253,7 +1263,11 @@ registerindx compiler_addupvalue(functionstate *f, bool islocal, indx ix) {
         }
     }
 
-    /* If not, add it */
+    /* If not, get type information and add it */
+    if (islocal) {
+        compiler_regtypefromfunctionstate(f, (registerindx) ix, &v.type);
+    }
+    
     varray_upvalueadd(&f->upvalues, &v, 1);
     return (registerindx) f->upvalues.count-1;
 }
@@ -1270,6 +1284,24 @@ registerindx compiler_propagateupvalues(compiler *c, functionstate *start, regis
     }
     return indx;
 }
+
+/** Determines the type associated with an upvalue in the current scope */
+bool compiler_getupvaluetype(compiler *c, registerindx ix, value *type) {
+    registerindx i=ix;
+    for (functionstate *f = compiler_currentfunctionstate(c)-1; f>=c->fstack; f--) {
+        upvalue *u = &f->upvalues.data[i];
+      
+        if (u->islocal) {
+            *type=u->type;
+            return true;
+        } else {
+            i=(registerindx) u->reg;
+        }
+    }
+    
+    return false;
+}
+
 
 /** @brief Determines whether a symbol refers to something outside its scope
     @param c      the compiler

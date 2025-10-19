@@ -1360,7 +1360,7 @@ static codeinfo compiler_movetoupvalue(compiler *c, syntaxtreenode *node, codein
         tmp=true;
     }
 
-    // Typecheck the assignment 
+    // Typecheck the assignment
     value uptype, rtype;
     if (compiler_getupvaluetype(c, slot, &uptype) &&
         compiler_regcurrenttype(c, use.dest, &rtype) &&

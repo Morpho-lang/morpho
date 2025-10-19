@@ -628,6 +628,15 @@ bool compiler_regtypefromfunctionstate(functionstate *f, registerindx reg, value
     return true;
 }
 
+/** Gets the symbol associated with a register */
+bool compiler_regsymbolfromfunctionstate(functionstate *f, registerindx reg, value *symbol) {
+    if (reg<f->registers.count && f->registers.data[reg].isallocated) {
+        *symbol = f->registers.data[reg].symbol;
+        return true;
+    }
+    return false;
+}
+
 /** Gets the current type of a register */
 bool compiler_regtype(compiler *c, registerindx reg, value *type) {
     functionstate *f = compiler_currentfunctionstate(c);
@@ -1252,7 +1261,7 @@ codeinfo compiler_addvariable(compiler *c, syntaxtreenode *node, value symbol) {
 
 /** Adds an upvalue to a functionstate */
 registerindx compiler_addupvalue(functionstate *f, bool islocal, registerindx ix) {
-    upvalue v = (upvalue) { .islocal = islocal, .reg = ix, .type=MORPHO_NIL };
+    upvalue v = (upvalue) { .islocal = islocal, .reg = ix, .type=MORPHO_NIL, .symbol=MORPHO_NIL };
 
     /* Does this upvalue already exist? */
     for (registerindx i=0; i<f->upvalues.count; i++) {
@@ -1266,6 +1275,7 @@ registerindx compiler_addupvalue(functionstate *f, bool islocal, registerindx ix
     /* If not, get type information and add it */
     if (islocal) {
         compiler_regtypefromfunctionstate(f, (registerindx) ix, &v.type);
+        compiler_regsymbolfromfunctionstate(f, ix, &v.symbol);
     }
     
     varray_upvalueadd(&f->upvalues, &v, 1);
@@ -1285,23 +1295,33 @@ registerindx compiler_propagateupvalues(compiler *c, functionstate *start, regis
     return indx;
 }
 
-/** Determines the type associated with an upvalue in the current scope */
-bool compiler_getupvaluetype(compiler *c, registerindx ix, value *type) {
+/** Find the original upvalue from the */
+bool compiler_getupvalue(compiler *c, registerindx ix, upvalue **v) {
     registerindx i=ix;
     for (functionstate *f = compiler_currentfunctionstate(c)-1; f>=c->fstack; f--) {
         upvalue *u = &f->upvalues.data[i];
       
         if (u->islocal) {
-            *type=u->type;
-            return true;
-        } else {
-            i=(registerindx) u->reg;
-        }
+            *v = u; return true;
+        } else i=(registerindx) u->reg;
     }
     
     return false;
 }
 
+/** Determines the type associated with an upvalue in the current scope */
+bool compiler_getupvaluetype(compiler *c, registerindx ix, value *type) {
+    upvalue *u = NULL;
+    if (compiler_getupvalue(c, ix, &u)) *type=u->type;
+    return u;
+}
+
+/** Determines the symbol associated with an upvalue in the current scope */
+bool compiler_getupvaluesymbol(compiler *c, registerindx ix, value *symbol) {
+    upvalue *u = NULL;
+    if (compiler_getupvalue(c, ix, &u)) *symbol=u->symbol;
+    return u;
+}
 
 /** @brief Determines whether a symbol refers to something outside its scope
     @param c      the compiler
@@ -1340,6 +1360,18 @@ static codeinfo compiler_movetoupvalue(compiler *c, syntaxtreenode *node, codein
         tmp=true;
     }
 
+    // Typecheck the assignment 
+    value uptype, rtype;
+    if (compiler_getupvaluetype(c, slot, &uptype) &&
+        compiler_regcurrenttype(c, use.dest, &rtype) &&
+        !compiler_checktype(c, uptype, rtype)) {
+        
+        value upsymbol=MORPHO_NIL;
+        compiler_getupvaluesymbol(c, slot, &upsymbol);
+        
+        compiler_typeviolation(c, node, uptype, rtype, upsymbol);
+    }
+    
     compiler_addinstruction(c, ENCODE_DOUBLE(OP_SUP, slot, use.dest), node);
     out.ninstructions++;
 

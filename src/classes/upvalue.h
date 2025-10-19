@@ -22,6 +22,7 @@ typedef struct {
                   if islocal - refers to the register
                OR otherwise  - refers to the upvalue array in the current closure */
     value type; /** Type of the upvalue, if type protected (only set if islocal is true */
+    value symbol; /** Symbol associated with the upvalue (only set if islocal is true) */
 } upvalue;
 
 DECLARE_VARRAY(upvalue, upvalue)

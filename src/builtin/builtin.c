@@ -4,6 +4,8 @@
  *  @brief Morpho built in functions and classes
 */
 
+#include <stdarg.h>
+
 #include "builtin.h"
 #include "common.h"
 #include "object.h"
@@ -184,7 +186,7 @@ void builtin_setclasstable(dictionary *dict) {
     _currentclasstable=dict;
 }
 
-/** Add a builtin function.
+/** Add a builtin function (old interface)
  * @param name  name of the function
  * @param func  the corresponding C function
  * @param flags flags to define the function
@@ -295,16 +297,17 @@ morpho_addfunction_cleanup:
 /** Defines a built in class
  * @param[in] name          the name of the class
  * @param[in] desc          class description; use MORPHO_GETCLASSDEFINITION(name) to obtain this
- * @param[in] superclass the class's superclass
- * @returns the class object */
-value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
+ * @param[in] nparents  number of parent classes
+ * @param[in] parents    the parent classes
+ * @param[out] out          the class object
+ * @returns true on success */
+bool morpho_addclass(char *name, builtinclassentry desc[], int nparents, value *parents, value *out) {
     value label = object_stringfromcstring(name, strlen(name));
     builtin_bindobject(MORPHO_GETOBJECT(label));
     objectclass *new = object_newclass(label);
     builtin_bindobject((object *) new);
-    objectclass *superklass = NULL;
     
-    if (!new) return MORPHO_NIL;
+    if (!new) return false;
     
     if (dictionary_get(_currentclasstable, label, NULL)) {
         UNREACHABLE("Redefinition of class in same extension [in builtin.c]");
@@ -313,10 +316,19 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
     dictionary_insert(_currentclasstable, label, MORPHO_OBJECT(new));
     
     /** Copy methods from superclass */
-    if (MORPHO_ISCLASS(superclass)) {
-        superklass = MORPHO_GETCLASS(superclass);
-        dictionary_copy(&superklass->methods, &new->methods);
-        new->superclass=superklass;
+    for (int i=0; i<nparents; i++) {
+        if (MORPHO_ISCLASS(parents[i])) {
+            objectclass *parentclass = MORPHO_GETCLASS(parents[i]);
+            dictionary_copy(&parentclass->methods, &new->methods);
+            if (i==0) new->superclass=parentclass;
+            varray_valuewrite(&new->parents, parents[i]);
+            varray_valuewrite(&parentclass->children, MORPHO_OBJECT(new));
+        }
+    }
+    
+    /** Compute the class linearization */
+    if (!class_linearize(new)) {
+        UNREACHABLE("Class definition not linearizable.");
     }
     
     for (unsigned int i=0; desc[i].name!=NULL; i++) {
@@ -340,7 +352,19 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
         }
     }
     
-    return MORPHO_OBJECT(new);
+    *out = MORPHO_OBJECT(new);
+    return true; 
+}
+
+/** Defines a built in class (old interface)
+ * @param[in] name          the name of the class
+ * @param[in] desc          class description; use MORPHO_GETCLASSDEFINITION(name) to obtain this
+ * @param[in] superclass the class's superclass
+ * @returns the class object */
+value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
+    value out = MORPHO_NIL;
+    morpho_addclass(name, desc, 1, &superclass, &out);
+    return out;
 }
 
 /** Finds a builtin class from its label */

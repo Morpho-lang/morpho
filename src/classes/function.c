@@ -207,6 +207,34 @@ MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
+ * objectcallable definitions
+ * ********************************************************************** */
+
+/** A callable object */
+typedef struct  {
+    object obj;
+    value name;
+} objectcallable;
+
+size_t objectcallable_sizefn(object *obj) {
+    return sizeof(objectcallable);
+}
+
+void objectcallable_printfn(object *obj, void *v) {
+    objectcallable *f = (objectcallable *) obj;
+    if (f) morpho_printf(v, "<fn %s>", (MORPHO_ISNIL(f->name) ? "" : MORPHO_GETCSTRING(f->name)));
+}
+
+objecttypedefn objectcallabledefn = {
+    .printfn=objectcallable_printfn,
+    .markfn=NULL,
+    .freefn=NULL,
+    .sizefn=objectcallable_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
+};
+
+/* **********************************************************************
  * Callable class
  * ********************************************************************** */
 
@@ -219,16 +247,20 @@ MORPHO_ENDCLASS
  * ********************************************************************** */
 
 objecttype objectfunctiontype;
+objecttype objectcallabletype;
 
 void function_initialize(void) {
     // Create function object type
     objectfunctiontype=object_addtype(&objectfunctiondefn);
+    
+    objectcallabletype=object_addtype(&objectcallabledefn);
     
     // Locate the Object class to use as the parent class of Callable
     value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Create callable class
     value callableclass=builtin_addclass(CALLABLE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Callable), objclass);
+    object_setveneerclass(objectcallabletype, callableclass);
     
     // Create function veneer class
     value functionclass=builtin_addclass(FUNCTION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Function), callableclass);

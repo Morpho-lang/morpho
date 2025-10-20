@@ -1,6 +1,5 @@
 // Dispatch on Callable
 
-/*
 fn f(Callable g, x) {
     print g(x)
 }
@@ -9,5 +8,9 @@ fn f(Float x, y) {
     print x+y
 }
 
-f(cos, 0) // Xexpect: 1
-*/
+fn h(x) { return 1 }
+
+f(h, 0)   // expect: 1
+f(cos, 0) // expect: 1
+
+f("H", 0) // expect error 'MltplDsptchFld'

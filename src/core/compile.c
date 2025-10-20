@@ -3919,7 +3919,7 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
                 if (superclass!=klass) {
                     if (!klass->superclass) klass->superclass=superclass; // Only the first class is the super class, all others are mixins.
                     compiler_addparent(c, klass, superclass);
-                    dictionary_copy(&superclass->methods, &klass->methods);
+                    dictionary_copy(&superclass->methods, &klass->methods); // TODO: Need clearer inheritance rule for metamethods
                 } else {
                     compiler_error(c, snode, COMPILE_CLASSINHERITSELF);
                 }

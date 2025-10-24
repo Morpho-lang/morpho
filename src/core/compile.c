@@ -791,9 +791,7 @@ static bool compiler_iscodeinfotop(compiler *c, codeinfo func) {
 }
 
 /** @brief Shows the current allocation of the registers */
-static void compiler_regshow(compiler *c) {
-    functionstate *f = compiler_currentfunctionstate(c);
-
+void compiler_regshowwithfunctionstate(functionstate *f) {
     printf("--Registers (%u in use)\n",f->nreg);
     for (unsigned int i=0; i<f->registers.count; i++) {
         registeralloc *r=f->registers.data+i;
@@ -824,6 +822,11 @@ static void compiler_regshow(compiler *c) {
         printf("\n");
     }
     printf("--End registers\n");
+}
+
+void compiler_regshow(compiler *c) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    compiler_regshowwithfunctionstate(f);
 }
 
 /* ------------------------------------------
@@ -1518,7 +1521,7 @@ static void _findfunctionref(compiler *c, value symbol, bool *hasclosure, varray
     varray_functionrefinit(&refs);
     
     functionstate *fc = compiler_currentfunctionstate(c);
-    for (functionstate *f=fc; f>=c->fstack; f--) { // Go backwards to prioritize recent def'ns
+    for (functionstate *f=fc; f>=c->fstack; f--) { // Go backwards on the functionstate stack to prioritize recent def'ns
         for (int i=f->functionref.count-1; i>=0; i--) { // Go backwards
             functionref *ref=&f->functionref.data[i];
             if (MORPHO_ISEQUAL(ref->symbol, symbol) &&
@@ -1526,6 +1529,15 @@ static void _findfunctionref(compiler *c, value symbol, bool *hasclosure, varray
                 closure |= function_isclosure(ref->function);
                 varray_functionrefadd(&refs, ref, 1);
             }
+        }
+        
+        // Check to see if there was a matching symbol in this scope that *isn't* a closure
+        registerindx rsym = compiler_findsymbol(f, symbol);
+        value type;
+        if (rsym>=0 &&
+            compiler_regcurrenttype(c, rsym, &type) &&
+            type!=_closuretype) {
+            break; // If there is, then we halt the search
         }
     }
     
@@ -4032,8 +4044,8 @@ static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx 
         !MORPHO_ISEQUAL(type, _closuretype)) {
         return ret;
     }
-
-    /* Is it a reference to a function? */
+    
+    /* Is it (unambiguously) a reference to a function? */
     if (compiler_resolvefunctionref(c, node, node->content, &ret)) {
         return ret;
     }

@@ -1,0 +1,17 @@
+// Dispatch on Callable
+
+fn f(Callable g, x) {
+    print g(x)
+}
+
+fn f(Float x, y) {
+    print x+y
+}
+
+class Foo {
+    boo(x) {
+        return 2*x
+    }
+}
+
+f(Foo().boo, 1)   // expect: 2

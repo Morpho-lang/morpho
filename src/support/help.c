@@ -13,6 +13,9 @@
 #include "help.h"
 #include "resources.h"
 
+#include "lex.h"
+#include "file.h"
+
 /** The interactive help system uses a collection of Markdown files, located in
  *  MORPHO_HELPFOLDER, that define available topics. Help files are all
  *  valid Markdown, although only a subset is used, and the help system interprets
@@ -27,6 +30,59 @@
  *
  *  The help system also recognizes code blocks etc. */
 
+/* **********************************************************************
+ * Markdown lexer
+ * ********************************************************************** */
+
+enum {
+    MD_LEFTBRACE,
+    MD_RIGHTBRACE,
+    MD_LEFTSQUAREBRACE,
+    MD_RIGHTSQUAREBRACE,
+    MD_BOLD,
+    MD_ITALIC,
+    MD_BOLDITALIC,
+    MD_EOF
+};
+
+tokendefn mdtokens[] = {
+    { "(",          MD_LEFTBRACE                , NULL },
+    { ")",          MD_RIGHTBRACE               , NULL },
+    { "[",          MD_LEFTSQUAREBRACE          , NULL },
+    { "]",          MD_RIGHTSQUAREBRACE         , NULL },
+    { "*",          MD_ITALIC                   , NULL },
+    { "_",          MD_ITALIC                   , NULL },
+    { "**",         MD_BOLD                     , NULL },
+    { "__",         MD_BOLD                     , NULL },
+    { "***",        MD_BOLDITALIC               , NULL },
+    { "___",        MD_BOLDITALIC               , NULL },
+    { "",           TOKEN_NONE                  , NULL }
+};
+
+
+/* -------------------------------------------------------
+ * Initialize a JSON lexer
+ * ------------------------------------------------------- */
+
+void help_initializemdlexer(lexer *l, char *src) {
+    lex_init(l, src, 0);
+    lex_settokendefns(l, mdtokens);
+    //lex_setprefn(l, json_lexpreprocess);
+    //lex_setwhitespacefn(l, json_lexwhitespace);
+    lex_seteof(l, MD_EOF);
+}
+
+/* **********************************************************************
+ * Parse help files
+ * ********************************************************************** */
+
+bool help_parse(char *src) {
+    lexer l;
+    help_initializemdlexer(&l, src);
+    
+    
+    return false;
+}
 
 /* **********************************************************************
  * Morpho help files
@@ -35,8 +91,24 @@
 /** Loads a help file
  *  @param file     file to load
  *  @returns true if any help entries were successfully loaded */
-bool help_load(char *file) {
+bool help_load(char *filename) {
+    bool success=false;
     
+    FILE *f = fopen(filename, "r");
+    if (f) {
+        varray_char contents;
+        varray_charinit(&contents);
+        
+        if (file_readintovarray(f, &contents)) {
+            success=help_parse(contents.data);
+        }
+        
+        varray_charclear(&contents);
+        
+        fclose(f);
+    }
+    
+    return success;
 }
 
 /** Searches for help files

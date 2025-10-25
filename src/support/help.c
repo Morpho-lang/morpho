@@ -14,6 +14,7 @@
 #include "resources.h"
 
 #include "lex.h"
+#include "parse.h"
 #include "file.h"
 
 /** The interactive help system uses a collection of Markdown files, located in
@@ -61,7 +62,7 @@ tokendefn mdtokens[] = {
 
 
 /* -------------------------------------------------------
- * Initialize a JSON lexer
+ * Initialize a Markdown lexer
  * ------------------------------------------------------- */
 
 void help_initializemdlexer(lexer *l, char *src) {
@@ -72,14 +73,56 @@ void help_initializemdlexer(lexer *l, char *src) {
     lex_seteof(l, MD_EOF);
 }
 
+/* -------------------------------------------------------
+ * Markdown parse rules
+ * ------------------------------------------------------- */
+
+/** Parses a markdown link  */
+bool md_parselink(parser *p, void *out) {
+    return true;
+}
+
+/** Base markdown parse type */
+bool md_parse(parser *p, void *out) {
+    return true;
+}
+
+/* -------------------------------------------------------
+ * Markdown parse table
+ * ------------------------------------------------------- */
+
+parserule md_rules[] = {
+    PARSERULE_PREFIX(MD_LEFTSQUAREBRACE, md_parselink),
+    PARSERULE_UNUSED(TOKEN_NONE)
+};
+
+/* -------------------------------------------------------
+ * Initialize a Markdown parser
+ * ------------------------------------------------------- */
+
+/** Initializes a parser to parse JSON */
+void help_initializemdparser(parser *p, lexer *l, error *err, void *out) {
+    parse_init(p, l, err, out);
+    parse_setbaseparsefn(p, md_parse);
+    parse_setparsetable(p, md_rules);
+    parse_setskipnewline(p, false, TOKEN_NONE);
+}
+
 /* **********************************************************************
  * Parse help files
  * ********************************************************************** */
 
 bool help_parse(char *src) {
+    error err;
+    error_init(&err);
+    
     lexer l;
     help_initializemdlexer(&l, src);
     
+    parser p;
+    help_initializemdparser(&p, &l, &err, NULL);
+    
+    parse(&p);
     
     return false;
 }

@@ -45,9 +45,16 @@ enum {
     MD_RIGHTPAREN,
     MD_LEFTSQUAREBRACE,
     MD_RIGHTSQUAREBRACE,
-    MD_BOLD,
-    MD_ITALIC,
-    MD_BOLDITALIC,
+    MD_ASTERISK,
+    MD_PLUS,
+    MD_DASH,
+    MD_UNDERSCORE,
+    MD_ASTERISK2,
+    MD_UNDERSCORE2,
+    MD_ASTERISK3,
+    MD_UNDERSCORE3,
+    MD_FOURSPACES,
+    MD_TAB,
     MD_NEWLINE,
     MD_EOF
 };
@@ -66,12 +73,16 @@ tokendefn mdtokens[] = {
     { ")",          MD_RIGHTPAREN               , NULL },
     { "[",          MD_LEFTSQUAREBRACE          , NULL },
     { "]",          MD_RIGHTSQUAREBRACE         , NULL },
-    { "*",          MD_ITALIC                   , NULL },
-    { "_",          MD_ITALIC                   , NULL },
-    { "**",         MD_BOLD                     , NULL },
-    { "__",         MD_BOLD                     , NULL },
-    { "***",        MD_BOLDITALIC               , NULL },
-    { "___",        MD_BOLDITALIC               , NULL },
+    { "*",          MD_ASTERISK                 , NULL },
+    { "+",          MD_PLUS                     , NULL },
+    { "-",          MD_DASH                     , NULL },
+    { "_",          MD_UNDERSCORE               , NULL },
+    { "**",         MD_ASTERISK2                , NULL },
+    { "__",         MD_UNDERSCORE2              , NULL },
+    { "***",        MD_ASTERISK3                , NULL },
+    { "___",        MD_UNDERSCORE3              , NULL },
+    { "    ",       MD_FOURSPACES               , NULL },
+    { "\t",         MD_TAB                      , NULL },
     { "\n",         MD_NEWLINE                  , md_lexnewline },
     { "",           TOKEN_NONE                  , NULL }
 };
@@ -109,11 +120,41 @@ void help_initializemdlexer(lexer *l, char *src) {
  * Markdown parse rules
  * ------------------------------------------------------- */
 
+/** Parses text writen in markdown; stops at a non-textual token  */
+bool md_parsetext(parser *p, void *out) {
+    tokentype intokens[] = { MD_TEXT, MD_COLON, MD_LEFTPAREN, MD_RIGHTPAREN };
+    
+    while (parse_checktokenmulti(p, 4, intokens)) {
+        parse_advance(p);
+    }
+    
+    parse_checktokenadvance(p, MD_NEWLINE);
+    
+    return true;
+}
+
 /** Parses a markdown header  */
 bool md_parseheader(parser *p, void *out) {
     PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
-    PARSE_CHECK(parse_checktokenadvance(p, MD_NEWLINE));
+    parse_checktokenadvance(p, MD_NEWLINE);
     return true;
+}
+
+/** Parses markdown code. */
+bool md_parsecode(parser *p, void *out) {
+    while (!parse_checktoken(p, MD_NEWLINE) &&
+           !parse_checktoken(p, MD_EOF)) {
+        parse_advance(p);
+    }
+    
+    parse_checktokenadvance(p, MD_NEWLINE);
+    
+    return true;
+}
+
+/** Parses a markdown list. */
+bool md_parselist(parser *p, void *out) {
+    return md_parsetext(p, out);
 }
 
 bool md_parseurl(parser *p, void *out) { // TODO: This is a placeholder
@@ -133,20 +174,7 @@ bool md_parselink(parser *p, void *out) {
         PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
         PARSE_CHECK(parse_checktokenadvance(p, MD_RIGHTPAREN));
     }
-    PARSE_CHECK(parse_checktokenadvance(p, MD_NEWLINE));
-    
-    return true;
-}
-
-/** Parses a markdown paragraph  */
-bool md_parseparagraph(parser *p, void *out) {
-    tokentype intokens[] = { MD_TEXT, MD_COLON, MD_LEFTPAREN, MD_RIGHTPAREN };
-    
-    while (parse_checktokenmulti(p, 4, intokens)) {
-        parse_advance(p);
-    }
-    
-    PARSE_CHECK(parse_checktokenadvance(p, MD_NEWLINE));
+    parse_checktokenadvance(p, MD_NEWLINE);
     
     return true;
 }
@@ -154,15 +182,23 @@ bool md_parseparagraph(parser *p, void *out) {
 /** Parse a markdown 'block'  */
 bool md_parseblock(parser *p, void *out) {
     if (parse_checktokenadvance(p, MD_TEXT)) {
-        return md_parseparagraph(p, out);
+        return md_parsetext(p, out);
+    } else if (parse_checktokenadvance(p, MD_HASH) ||
+               parse_checktokenadvance(p, MD_HASH2)) {
+        return md_parseheader(p, out);
+    } else if (parse_checktokenadvance(p, MD_FOURSPACES) ||
+               parse_checktokenadvance(p, MD_TAB)) {
+        return md_parsecode(p, out);
+    } else if (parse_checktokenadvance(p, MD_ASTERISK) ||
+               parse_checktokenadvance(p, MD_PLUS) ||
+               parse_checktokenadvance(p, MD_DASH)) {
+        return md_parselist(p, out);
     } else if (parse_checktokenadvance(p, MD_LEFTSQUAREBRACE)) {
         return md_parselink(p, out);
-    } else if (parse_checktokenadvance(p, MD_HASH)) {
-        return md_parseheader(p, out);
     } else if (parse_checktokenadvance(p, MD_NEWLINE)) { // A blank line
         return true;
     } else {
-        return md_parseparagraph(p, out);
+        UNREACHABLE("Unrecognized token.");
     }
     
     return false;
@@ -170,7 +206,8 @@ bool md_parseblock(parser *p, void *out) {
 
 /** Base markdown parse type */
 bool md_parse(parser *p, void *out) {
-    while(md_parseblock(p, out)) {
+    while (parse_checktoken(p, MD_EOF)) {
+        PARSE_CHECK(md_parseblock(p, out));
     }
     
     return true;
@@ -183,7 +220,7 @@ bool md_parse(parser *p, void *out) {
 parserule md_rules[] = {
     PARSERULE_PREFIX(MD_HASH,            NULL           ),
     PARSERULE_PREFIX(MD_LEFTSQUAREBRACE, NULL           ),
-    PARSERULE_PREFIX(MD_BOLD,            NULL           ),
+    PARSERULE_PREFIX(MD_ASTERISK,        NULL           ),
     PARSERULE_UNUSED(TOKEN_NONE)
 };
 

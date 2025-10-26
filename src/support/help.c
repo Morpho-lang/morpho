@@ -41,23 +41,29 @@ enum {
     MD_HASH2,
     MD_HASH3,
     MD_COLON,
-    MD_LEFTBRACE,
-    MD_RIGHTBRACE,
+    MD_LEFTPAREN,
+    MD_RIGHTPAREN,
     MD_LEFTSQUAREBRACE,
     MD_RIGHTSQUAREBRACE,
     MD_BOLD,
     MD_ITALIC,
     MD_BOLDITALIC,
+    MD_NEWLINE,
     MD_EOF
 };
+
+bool md_lexnewline(lexer *l, token *tok, error *err) {
+    lex_newline(l);
+    return true;
+}
 
 tokendefn mdtokens[] = {
     { "#",          MD_HASH                     , NULL },
     { "##",         MD_HASH2                    , NULL },
     { "###",        MD_HASH3                    , NULL },
     { ":",          MD_COLON                    , NULL },
-    { "(",          MD_LEFTBRACE                , NULL },
-    { ")",          MD_RIGHTBRACE               , NULL },
+    { "(",          MD_LEFTPAREN                , NULL },
+    { ")",          MD_RIGHTPAREN               , NULL },
     { "[",          MD_LEFTSQUAREBRACE          , NULL },
     { "]",          MD_RIGHTSQUAREBRACE         , NULL },
     { "*",          MD_ITALIC                   , NULL },
@@ -66,6 +72,7 @@ tokendefn mdtokens[] = {
     { "__",         MD_BOLD                     , NULL },
     { "***",        MD_BOLDITALIC               , NULL },
     { "___",        MD_BOLDITALIC               , NULL },
+    { "\n",         MD_NEWLINE                  , md_lexnewline },
     { "",           TOKEN_NONE                  , NULL }
 };
 
@@ -102,13 +109,62 @@ void help_initializemdlexer(lexer *l, char *src) {
  * Markdown parse rules
  * ------------------------------------------------------- */
 
+/** Parses a markdown header  */
+bool md_parseheader(parser *p, void *out) {
+    PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
+    PARSE_CHECK(parse_checktokenadvance(p, MD_NEWLINE));
+    return true;
+}
+
+bool md_parseurl(parser *p, void *out) { // TODO: This is a placeholder
+    PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
+    PARSE_CHECK(parse_checktokenadvance(p, MD_HASH));
+    PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
+    return true;
+}
+
 /** Parses a markdown link  */
 bool md_parselink(parser *p, void *out) {
+    PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
+    PARSE_CHECK(parse_checktokenadvance(p, MD_RIGHTSQUAREBRACE));
+    PARSE_CHECK(parse_checktokenadvance(p, MD_COLON));
+    PARSE_CHECK(md_parseurl(p, out));
+    if (parse_checktokenadvance(p, MD_LEFTPAREN)) {
+        PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
+        PARSE_CHECK(parse_checktokenadvance(p, MD_RIGHTPAREN));
+    }
+    PARSE_CHECK(parse_checktokenadvance(p, MD_NEWLINE));
+    
     return true;
+}
+
+/** Parses a markdown paragraph  */
+bool md_parseparagraph(parser *p, void *out) {
+    return true;
+}
+
+/** Parse a markdown 'block'  */
+bool md_parseblock(parser *p, void *out) {
+    if (parse_checktokenadvance(p, MD_TEXT)) {
+        return md_parseparagraph(p, out);
+    } else if (parse_checktokenadvance(p, MD_LEFTSQUAREBRACE)) {
+        return md_parselink(p, out);
+    } else if (parse_checktokenadvance(p, MD_HASH)) {
+        return md_parseheader(p, out);
+    } else if (parse_checktokenadvance(p, MD_NEWLINE)) { // A blank line
+        return true;
+    } else {
+        return md_parseparagraph(p, out);
+    }
+    
+    return false;
 }
 
 /** Base markdown parse type */
 bool md_parse(parser *p, void *out) {
+    while(md_parseblock(p, out)) {
+    }
+    
     return true;
 }
 
@@ -117,7 +173,9 @@ bool md_parse(parser *p, void *out) {
  * ------------------------------------------------------- */
 
 parserule md_rules[] = {
-    PARSERULE_PREFIX(MD_LEFTSQUAREBRACE, md_parselink),
+    PARSERULE_PREFIX(MD_HASH,            NULL           ),
+    PARSERULE_PREFIX(MD_LEFTSQUAREBRACE, NULL           ),
+    PARSERULE_PREFIX(MD_BOLD,            NULL           ),
     PARSERULE_UNUSED(TOKEN_NONE)
 };
 
@@ -144,16 +202,15 @@ bool help_parse(char *src) {
     lexer l;
     help_initializemdlexer(&l, src);
     
-    token tok;
+    /*token tok;
     while (lex(&l, &tok, &err)) {
         if (tok.type==MD_EOF) break;
-    }
+    }*/
     
-    /*
     parser p;
     help_initializemdparser(&p, &l, &err, NULL);
     
-    parse(&p);*/
+    parse(&p);
     
     return true;
 }

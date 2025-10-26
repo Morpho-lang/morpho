@@ -140,6 +140,14 @@ bool md_parselink(parser *p, void *out) {
 
 /** Parses a markdown paragraph  */
 bool md_parseparagraph(parser *p, void *out) {
+    tokentype intokens[] = { MD_TEXT, MD_COLON, MD_LEFTPAREN, MD_RIGHTPAREN };
+    
+    while (parse_checktokenmulti(p, 4, intokens)) {
+        parse_advance(p);
+    }
+    
+    PARSE_CHECK(parse_checktokenadvance(p, MD_NEWLINE));
+    
     return true;
 }
 
@@ -201,11 +209,6 @@ bool help_parse(char *src) {
     
     lexer l;
     help_initializemdlexer(&l, src);
-    
-    /*token tok;
-    while (lex(&l, &tok, &err)) {
-        if (tok.type==MD_EOF) break;
-    }*/
     
     parser p;
     help_initializemdparser(&p, &l, &err, NULL);

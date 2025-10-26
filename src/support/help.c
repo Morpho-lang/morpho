@@ -36,6 +36,11 @@
  * ********************************************************************** */
 
 enum {
+    MD_TEXT,
+    MD_HASH,
+    MD_HASH2,
+    MD_HASH3,
+    MD_COLON,
     MD_LEFTBRACE,
     MD_RIGHTBRACE,
     MD_LEFTSQUAREBRACE,
@@ -47,6 +52,10 @@ enum {
 };
 
 tokendefn mdtokens[] = {
+    { "#",          MD_HASH                     , NULL },
+    { "##",         MD_HASH2                    , NULL },
+    { "###",        MD_HASH3                    , NULL },
+    { ":",          MD_COLON                    , NULL },
     { "(",          MD_LEFTBRACE                , NULL },
     { ")",          MD_RIGHTBRACE               , NULL },
     { "[",          MD_LEFTSQUAREBRACE          , NULL },
@@ -60,6 +69,22 @@ tokendefn mdtokens[] = {
     { "",           TOKEN_NONE                  , NULL }
 };
 
+/** Lexer token preprocessor function */
+bool md_lexpreprocess(lexer *l, token *tok, error *err) {
+    // Keep going until we match a token or reach the end
+    while (!lex_identifytoken(l, false, NULL) &&
+           !lex_isatend(l)) {
+        lex_advance(l);
+    }
+    
+    // If we captured anything, record it as text
+    if (l->current>l->start) {
+        lex_recordtoken(l, MD_TEXT, tok);
+        return true;
+    }
+    
+    return false;
+}
 
 /* -------------------------------------------------------
  * Initialize a Markdown lexer
@@ -68,8 +93,8 @@ tokendefn mdtokens[] = {
 void help_initializemdlexer(lexer *l, char *src) {
     lex_init(l, src, 0);
     lex_settokendefns(l, mdtokens);
-    //lex_setprefn(l, json_lexpreprocess);
-    //lex_setwhitespacefn(l, json_lexwhitespace);
+    lex_setprefn(l, md_lexpreprocess);
+    lex_setwhitespacefn(l, NULL);
     lex_seteof(l, MD_EOF);
 }
 
@@ -119,12 +144,18 @@ bool help_parse(char *src) {
     lexer l;
     help_initializemdlexer(&l, src);
     
+    token tok;
+    while (lex(&l, &tok, &err)) {
+        if (tok.type==MD_EOF) break;
+    }
+    
+    /*
     parser p;
     help_initializemdparser(&p, &l, &err, NULL);
     
-    parse(&p);
+    parse(&p);*/
     
-    return false;
+    return true;
 }
 
 /* **********************************************************************

@@ -168,6 +168,7 @@ enum {
 
 bool lex_findtoken(lexer *l, tokendefn **defn);
 bool lex_matchtoken(lexer *l, tokendefn **defn);
+bool lex_identifytoken(lexer *l, bool advance, tokendefn **defn);
 void lex_recordtoken(lexer *l, tokentype type, token *tok);
 char lex_advance(lexer *l);
 bool lex_back(lexer *l);

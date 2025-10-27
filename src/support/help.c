@@ -184,7 +184,8 @@ bool md_parseblock(parser *p, void *out) {
     if (parse_checktokenadvance(p, MD_TEXT)) {
         return md_parsetext(p, out);
     } else if (parse_checktokenadvance(p, MD_HASH) ||
-               parse_checktokenadvance(p, MD_HASH2)) {
+               parse_checktokenadvance(p, MD_HASH2) ||
+               parse_checktokenadvance(p, MD_HASH3)) {
         return md_parseheader(p, out);
     } else if (parse_checktokenadvance(p, MD_FOURSPACES) ||
                parse_checktokenadvance(p, MD_TAB)) {

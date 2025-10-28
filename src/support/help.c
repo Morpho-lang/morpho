@@ -45,6 +45,7 @@ enum {
     MD_RIGHTPAREN,
     MD_LEFTSQUAREBRACE,
     MD_RIGHTSQUAREBRACE,
+    MD_BACKTICK,
     MD_ASTERISK,
     MD_PLUS,
     MD_DASH,
@@ -73,6 +74,7 @@ tokendefn mdtokens[] = {
     { ")",          MD_RIGHTPAREN               , NULL },
     { "[",          MD_LEFTSQUAREBRACE          , NULL },
     { "]",          MD_RIGHTSQUAREBRACE         , NULL },
+    { "`",          MD_BACKTICK                 , NULL },
     { "*",          MD_ASTERISK                 , NULL },
     { "+",          MD_PLUS                     , NULL },
     { "-",          MD_DASH                     , NULL },
@@ -117,15 +119,46 @@ void help_initializemdlexer(lexer *l, char *src) {
 }
 
 /* -------------------------------------------------------
+ * Markdown parse table (for inline syntax)
+ * ------------------------------------------------------- */
+
+bool md_parseinlinecode(parser *p, void *out) {
+    while (parse_checktokenadvance(p, MD_TEXT));
+    parse_checktokenadvance(p, MD_BACKTICK);
+    return true;
+}
+
+bool md_parsebold(parser *p, void *out) {
+    
+}
+
+parserule md_rules[] = {
+    PARSERULE_PREFIX(MD_ASTERISK2,       md_parsebold        ),
+    PARSERULE_PREFIX(MD_UNDERSCORE2,     md_parsebold        ),
+    PARSERULE_PREFIX(MD_BACKTICK,        md_parseinlinecode  ),
+    PARSERULE_UNUSED(TOKEN_NONE)
+};
+
+/* -------------------------------------------------------
  * Markdown parse rules
  * ------------------------------------------------------- */
 
+/** Check if a token type is a 'textual' token */
+tokentype _inlinetokens[] = { MD_TEXT, MD_COLON, MD_BACKTICK, MD_LEFTPAREN, MD_RIGHTPAREN };
+int _ninlinetokens = sizeof(_inlinetokens)/sizeof(tokentype);
+
+bool md_checktexttoken(parser *p) {
+    return parse_checktokenmulti(p, _ninlinetokens, _inlinetokens);
+}
+
 /** Parses text writen in markdown; stops at a non-textual token  */
 bool md_parsetext(parser *p, void *out) {
-    tokentype intokens[] = { MD_TEXT, MD_COLON, MD_LEFTPAREN, MD_RIGHTPAREN };
-    
-    while (parse_checktokenmulti(p, 4, intokens)) {
+    while (md_checktexttoken(p)) {
         parse_advance(p);
+        parserule *rule = parse_getrule(p, p->previous.type);
+        if (rule && rule->prefix) {
+            if (!rule->prefix(p, out)) return false;
+        }
     }
     
     parse_checktokenadvance(p, MD_NEWLINE);
@@ -181,7 +214,7 @@ bool md_parselink(parser *p, void *out) {
 
 /** Parse a markdown 'block'  */
 bool md_parseblock(parser *p, void *out) {
-    if (parse_checktokenadvance(p, MD_TEXT)) {
+    if (md_checktexttoken(p)) {
         return md_parsetext(p, out);
     } else if (parse_checktokenadvance(p, MD_HASH) ||
                parse_checktokenadvance(p, MD_HASH2) ||
@@ -207,23 +240,12 @@ bool md_parseblock(parser *p, void *out) {
 
 /** Base markdown parse type */
 bool md_parse(parser *p, void *out) {
-    while (parse_checktoken(p, MD_EOF)) {
+    while (!parse_checktoken(p, MD_EOF)) {
         PARSE_CHECK(md_parseblock(p, out));
     }
     
     return true;
 }
-
-/* -------------------------------------------------------
- * Markdown parse table
- * ------------------------------------------------------- */
-
-parserule md_rules[] = {
-    PARSERULE_PREFIX(MD_HASH,            NULL           ),
-    PARSERULE_PREFIX(MD_LEFTSQUAREBRACE, NULL           ),
-    PARSERULE_PREFIX(MD_ASTERISK,        NULL           ),
-    PARSERULE_UNUSED(TOKEN_NONE)
-};
 
 /* -------------------------------------------------------
  * Initialize a Markdown parser

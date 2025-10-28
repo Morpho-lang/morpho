@@ -129,7 +129,11 @@ bool md_parseinlinecode(parser *p, void *out) {
 }
 
 bool md_parsebold(parser *p, void *out) {
+    while (parse_checktokenadvance(p, MD_TEXT));
+    if (parse_checktoken(p, MD_ASTERISK2) ||
+        parse_checktoken(p, MD_UNDERSCORE2)) parse_advance(p);
     
+    return true;
 }
 
 parserule md_rules[] = {

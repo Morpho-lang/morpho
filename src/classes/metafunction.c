@@ -241,6 +241,7 @@ DEFINE_VARRAY(mfset, mfset)
 typedef struct {
     objectmetafunction *fn;
     varray_int checked; // Stack of checked parameters
+    bool varchecked; // Have we checked for a variadic function?
     error err;
 } mfcompiler;
 
@@ -249,6 +250,7 @@ void mfcompiler_init(mfcompiler *c, objectmetafunction *fn) {
     c->fn=fn;
     varray_intinit(&c->checked);
     error_init(&c->err);
+    c->varchecked=false;
 }
 
 /** Clear the metafunction compiler */
@@ -767,6 +769,7 @@ mfindx mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
             mfcompile_setbranch(c, bindx, varg); // Correct branchargs branch destination to point to the varg resolution
         }
     }
+    
     return bindx;
 }
 
@@ -780,7 +783,10 @@ mfindx mfcompile_set(mfcompiler *c, mfset *set) {
     bool isvariadic = mfcompile_containsvariadic(c, set);
     
     // Dispatch on the number of parameters if it's in doubt
-    if (min!=max) return mfcompile_dispatchonnarg(c, set, min, max);
+    if (min!=max || (isvariadic && !c->varchecked)) {
+        c->varchecked=true;
+        return mfcompile_dispatchonnarg(c, set, min, max);
+    }
     
     // If just one parameter, dispatch on it
     if (min==1 && !mfcompiler_ischecked(c, 0)) {
@@ -820,7 +826,7 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
     mfcompiler_init(&compiler, fn);
     
     mfcompile_set(&compiler, &set);
-    mfcompiler_disassemble(&compiler);
+    //mfcompiler_disassemble(&compiler);
     
     bool success=!morpho_checkerror(&compiler.err);
     if (!success && err) *err=compiler.err;

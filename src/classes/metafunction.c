@@ -374,6 +374,14 @@ void mfcompile_countparams(mfcompiler *c, mfset *set, int *min, int *max) {
     if (max) *max = imax;
 }
 
+/** Check if a set contains a variadic */
+bool mfcompile_containsvariadic(mfcompiler *c, mfset *set) {
+    for (int i=0; i<set->count; i++) {
+        if (signature_isvarg(set->rlist[i].sig)) return true;
+    }
+    return false;
+}
+
 /** Places the various outcomes for a parameter into a dictionary */
 bool mfcompile_outcomes(mfcompiler *c, mfset *set, int i, dictionary *out) {
     for (int k=0; k<set->count; k++) { // Loop over outcomes
@@ -769,6 +777,8 @@ mfindx mfcompile_set(mfcompiler *c, mfset *set) {
     int min, max; // Count the range of possible parameters
     mfcompile_countparams(c, set, &min, &max);
     
+    bool isvariadic = mfcompile_containsvariadic(c, set);
+    
     // Dispatch on the number of parameters if it's in doubt
     if (min!=max) return mfcompile_dispatchonnarg(c, set, min, max);
     
@@ -810,7 +820,7 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
     mfcompiler_init(&compiler, fn);
     
     mfcompile_set(&compiler, &set);
-    //mfcompiler_disassemble(&compiler);
+    mfcompiler_disassemble(&compiler);
     
     bool success=!morpho_checkerror(&compiler.err);
     if (!success && err) *err=compiler.err;

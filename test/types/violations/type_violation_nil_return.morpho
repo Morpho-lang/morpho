@@ -1,0 +1,7 @@
+// Assign nil result to a type protected variable
+
+fn foo(x) { }
+
+Int a = foo(1)
+
+// expect error 'TypeErr'

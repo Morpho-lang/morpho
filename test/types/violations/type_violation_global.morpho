@@ -1,5 +1,6 @@
-// Type definition in global context
+// Type violation due to a constructor
 
-String u = 1
+String u = "" 
+u = 1
 
 // expect error 'TypeErr'

@@ -1,0 +1,5 @@
+// Type definition in global context
+
+String u = 1
+
+// expect error 'TypeErr'

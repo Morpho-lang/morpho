@@ -1231,7 +1231,7 @@ codeinfo compiler_movetoglobal(compiler *c, syntaxtreenode *node, codeinfo in, g
     }
 
     value type=MORPHO_NIL;
-    if (compiler_regcurrenttype(c, in.dest, &type)) {
+    if (compiler_regcurrenttype(c, use.dest, &type)) {
         if (!compiler_checkglobaltype(c, node, slot, type)) goto compiler_movetoglobal_cleanup;
     }
     

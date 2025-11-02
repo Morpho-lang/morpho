@@ -1,0 +1,5 @@
+// Dispatch on number of arguments
+
+print sin(1,2,3)
+
+// expect error 'ExpctArgNm'

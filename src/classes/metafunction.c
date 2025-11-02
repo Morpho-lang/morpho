@@ -758,9 +758,11 @@ mfindx mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
         // Compile the branch table
         mfcompile_branchtable(c, set, bindx, &btable);
         
-        // Correct branch table for varg resolution
+        // Insert variadic resolution into branch table if necessary
         if (set->rlist[0].sig->varg) {
-            mfindx varg = bindx+1;
+            mfinstruction vargres = MFINSTRUCTION_RESOLVE(set->rlist[0].fn);
+            mfindx varg = mfcompile_insertinstruction(c, vargres)-1;
+            
             int nmin = set->rlist[0].sig->types.count-1; // varg can match this many args or more
             for (int i=nmin; i<btable.count; i++) {
                 if (btable.data[i]==fail-1) btable.data[i]=varg;

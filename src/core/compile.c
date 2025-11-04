@@ -364,7 +364,7 @@ bool compiler_findtypefromcstring(compiler *c, char *label, value *out) {
 
 /** Identifies a type from a value */
 bool compiler_typefromvalue(compiler *c, value v, value *out) {
-    return metafunction_typefromvalue(v, out);
+    return value_type(v, out);
 }
 
 /** Recursively searches the parents list of classes to see if the type 'match' is present */

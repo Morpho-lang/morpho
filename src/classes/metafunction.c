@@ -117,24 +117,10 @@ bool metafunction_add(objectmetafunction *f, value fn) {
     return varray_valuewrite(&f->fns, fn);
 }
 
-/** Extracts a type from a value */
-bool metafunction_typefromvalue(value v, value *out) {
-    objectclass *clss = NULL;
-    
-    if (MORPHO_ISINSTANCE(v)) {
-        clss=MORPHO_GETINSTANCE(v)->klass;
-    } else if (MORPHO_ISOBJECT(v)) {
-        clss = object_getveneerclass(MORPHO_GETOBJECT(v)->type);
-    } else clss = value_getveneerclass(v);
-    
-    if (clss) *out = MORPHO_OBJECT(clss);
-    return clss;
-}
-
 /** Checks if val matches a given type */
 bool metafunction_matchtype(value type, value val) {
     value match;
-    if (!metafunction_typefromvalue(val, &match)) return false;
+    if (!value_type(val, &match)) return false;
     
     if (MORPHO_ISNIL(type) || // If type is unset, we always match
         MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same

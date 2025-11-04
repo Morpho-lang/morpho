@@ -241,6 +241,13 @@ bool morpho_valuetofloat(value v, double *out);
 #define MORPHO_ISTRUE(x) (!morpho_isfalse(x))
 
 /* -------------------------------------------------------
+ * Type checking
+ * ------------------------------------------------------- */
+
+/** Get the type associated with a value */
+bool value_type(value v, value *type);
+
+/* -------------------------------------------------------
  * Varrays of values
  * ------------------------------------------------------- */
 

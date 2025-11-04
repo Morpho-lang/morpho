@@ -595,7 +595,7 @@ bool _findtypeinparent(objectclass *type, value match) {
 
 static inline bool vm_typecheck(vm *v, value val, value match) {
     value type;
-    if (!metafunction_typefromvalue(val, &type)) return false;
+    if (!value_type(val, &type)) return false;
     
     if (MORPHO_ISNIL(type) || // If type is unset, we always match
         MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same
@@ -1503,7 +1503,7 @@ callfunction: // Jump here if an instruction becomes a call
         
             if (!vm_typecheck(v, reg[a], v->konst[b])) {
                 value type;
-                metafunction_typefromvalue(reg[a], &type);
+                value_type(reg[a], &type);
                 
                 VERROR(VM_TYPECHK,
                        MORPHO_GETCSTRING(MORPHO_GETCLASS(type)->name),

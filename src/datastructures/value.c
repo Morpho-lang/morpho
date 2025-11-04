@@ -196,6 +196,20 @@ bool value_minmax(unsigned int nval, value *list, value *min, value *max) {
     return true;
 }
 
+/** Extracts a type from a value */
+bool value_type(value v, value *type) {
+    objectclass *clss = NULL;
+    
+    if (MORPHO_ISINSTANCE(v)) {
+        clss=MORPHO_GETINSTANCE(v)->klass;
+    } else if (MORPHO_ISOBJECT(v)) {
+        clss = object_getveneerclass(MORPHO_GETOBJECT(v)->type);
+    } else clss = value_getveneerclass(v);
+    
+    if (clss) *type = MORPHO_OBJECT(clss);
+    return clss;
+}
+
 /* **********************************************************************
 * Varray_values and utility functions
 * ********************************************************************** */

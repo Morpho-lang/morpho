@@ -459,6 +459,76 @@ static bool compiler_inloop(compiler *c) {
 }
 
 /* ------------------------------------------
+ * Constants
+ * ------------------------------------------- */
+
+/** Writes a constant to the current constant table
+ *  @param c        the compiler
+ *  @param node     current syntaxtree node
+ *  @param constant the constant to add
+ *  @param usestrict whether to use a strict e
+ *  @param clone    whether to clone the constant if it's not already present
+ *                  (typically this is set to copy strings from the syntax tree) */
+registerindx compiler_addconstant(compiler *c, syntaxtreenode *node, value constant, bool usestrict, bool clone) {
+    varray_value *konst = compiler_getcurrentconstanttable(c);
+    if (!konst) return REGISTER_UNALLOCATED;
+
+    registerindx out=REGISTER_UNALLOCATED;
+    unsigned int prev=0;
+
+    if (konst) {
+        /* Was a similar previous constant already added? */
+        if (usestrict) {
+            if (varray_valuefindsame(konst, constant, &prev)) out=(registerindx) prev;
+        } else {
+            if (varray_valuefind(konst, constant, &prev)) out=(registerindx) prev;
+        }
+
+        /* No, so create a new one */
+        if (out==REGISTER_UNALLOCATED) {
+            if (konst->count>=MORPHO_MAXCONSTANTS) {
+                compiler_error(c, node, COMPILE_TOOMANYCONSTANTS);
+                return REGISTER_UNALLOCATED;
+            } else {
+                value add = constant;
+                if (clone && MORPHO_ISOBJECT(add)) {
+                    /* If clone is set, we should try to clone the contents if the thing is an object. */
+                    if (MORPHO_ISSTRING(add)) {
+                        add=object_clonestring(add);
+                    } else if (MORPHO_ISCOMPLEX(add)) {
+                        add=object_clonecomplexvalue(add);
+                    } else {
+                        UNREACHABLE("Erroneously being asked to clone a non-string non-complex constant.");
+                    }
+                }
+
+                bool success=varray_valueadd(konst, &add, 1);
+                out=konst->count-1;
+                if (!success) compiler_error(c, node, ERROR_ALLOCATIONFAILED);
+
+                /* If the constant is an object and we cloned it, make sure it's bound to the program */
+                if (clone && MORPHO_ISOBJECT(add)) {
+                    program_bindobject(c->out, MORPHO_GETOBJECT(add));
+                }
+            }
+        }
+    }
+
+    return out;
+}
+
+/** Write a symbol to the constant table, performing interning.
+ * @param c        the compiler
+ * @param node     current syntaxtree node
+ *  @param symbol the constant to add */
+static registerindx compiler_addsymbol(compiler *c, syntaxtreenode *node, value symbol) {
+    /* Intern the symbol */
+    value add=program_internsymbol(c->out, symbol);
+
+    return compiler_addconstant(c, node, add, true, false);
+}
+
+/* ------------------------------------------
  * Register allocation and deallocation
  * ------------------------------------------- */
 
@@ -678,6 +748,38 @@ bool compiler_regcurrenttype(compiler *c, registerindx reg, value *type) {
     return true;
 }
 
+/** Sets the current type of a register. Raises a type violation error if this is not compatible with the required type  */
+bool compiler_regsetcurrenttypeX(compiler *c, registerindx reg, value type) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (reg>=f->registers.count) return false;
+    f->registers.data[reg].currenttype=type;
+    return true;
+}
+
+/** Performs a type check on register reg against a given type. Codeinfo is updated if a typecheck instruction needs to be generated */
+bool compiler_regtypecheck(compiler *c, syntaxtreenode *node, registerindx reg, value type, codeinfo *info) {
+    bool success=false;
+    functionstate *f = compiler_currentfunctionstate(c);
+    
+    value rtype=MORPHO_NIL; // Get the current type held in register reg
+    compiler_regcurrenttype(c, reg, &rtype);
+    
+    if (MORPHO_ISNIL(type)) { // Not type protected
+        success=true;
+    } else if (MORPHO_ISNIL(rtype)) { // Type unknown; generate dynamic typecheck against type
+        registerindx ctype = compiler_addconstant(c, node, type, false, false);
+        compiler_addinstruction(c, ENCODE_LONG(OP_TYPECHECK, reg, ctype), node);
+        info->ninstructions++;
+        success=true;
+    } else if (compiler_checktype(c, type, rtype)) { // Successful type check
+        success=true;
+    } else { // Type is incompatible
+        compiler_typeviolation(c, node, type, rtype, f->registers.data[reg].symbol);
+    }
+    
+    return success;
+}
+
 /** @brief Finds the register that contains symbol in a given functionstate
  *  @details Searches backwards so that the innermost scope has priority */
 static registerindx compiler_findsymbol(functionstate *f, value symbol) {
@@ -830,100 +932,8 @@ void compiler_regshow(compiler *c) {
 }
 
 /* ------------------------------------------
- * Track scope
+ * Materialize a builtin function
  * ------------------------------------------- */
-
-/** Increments the scope counter in the current functionstate */
-void compiler_beginscope(compiler *c) {
-    functionstate *f=compiler_currentfunctionstate(c);
-    f->scopedepth++;
-}
-
-void compiler_functionreffreeatscope(compiler *c, unsigned int scope);
-
-/** Decrements the scope counter in the current functionstate */
-void compiler_endscope(compiler *c) {
-    functionstate *f=compiler_currentfunctionstate(c);
-    compiler_regfreeatscope(c, f->scopedepth);
-    compiler_functionreffreeatscope(c, f->scopedepth);
-    f->scopedepth--;
-}
-
-/** Gets the scope counter in the current functionstate */
-unsigned int compiler_currentscope(compiler *c) {
-    functionstate *f=compiler_currentfunctionstate(c);
-    return f->scopedepth;
-}
-
-/* ------------------------------------------
- * Constants
- * ------------------------------------------- */
-
-/** Writes a constant to the current constant table
- *  @param c        the compiler
- *  @param node     current syntaxtree node
- *  @param constant the constant to add
- *  @param usestrict whether to use a strict e
- *  @param clone    whether to clone the constant if it's not already present
- *                  (typically this is set to copy strings from the syntax tree) */
-static registerindx compiler_addconstant(compiler *c, syntaxtreenode *node, value constant, bool usestrict, bool clone) {
-    varray_value *konst = compiler_getcurrentconstanttable(c);
-    if (!konst) return REGISTER_UNALLOCATED;
-
-    registerindx out=REGISTER_UNALLOCATED;
-    unsigned int prev=0;
-
-    if (konst) {
-        /* Was a similar previous constant already added? */
-        if (usestrict) {
-            if (varray_valuefindsame(konst, constant, &prev)) out=(registerindx) prev;
-        } else {
-            if (varray_valuefind(konst, constant, &prev)) out=(registerindx) prev;
-        }
-
-        /* No, so create a new one */
-        if (out==REGISTER_UNALLOCATED) {
-            if (konst->count>=MORPHO_MAXCONSTANTS) {
-                compiler_error(c, node, COMPILE_TOOMANYCONSTANTS);
-                return REGISTER_UNALLOCATED;
-            } else {
-                value add = constant;
-                if (clone && MORPHO_ISOBJECT(add)) {
-                    /* If clone is set, we should try to clone the contents if the thing is an object. */
-                    if (MORPHO_ISSTRING(add)) {
-                        add=object_clonestring(add);
-                    } else if (MORPHO_ISCOMPLEX(add)) {
-                        add=object_clonecomplexvalue(add);
-                    } else {
-                        UNREACHABLE("Erroneously being asked to clone a non-string non-complex constant.");
-                    }
-                }
-
-                bool success=varray_valueadd(konst, &add, 1);
-                out=konst->count-1;
-                if (!success) compiler_error(c, node, ERROR_ALLOCATIONFAILED);
-
-                /* If the constant is an object and we cloned it, make sure it's bound to the program */
-                if (clone && MORPHO_ISOBJECT(add)) {
-                    program_bindobject(c->out, MORPHO_GETOBJECT(add));
-                }
-            }
-        }
-    }
-
-    return out;
-}
-
-/** Write a symbol to the constant table, performing interning.
- * @param c        the compiler
- * @param node     current syntaxtree node
- *  @param symbol the constant to add */
-static registerindx compiler_addsymbol(compiler *c, syntaxtreenode *node, value symbol) {
-    /* Intern the symbol */
-    value add=program_internsymbol(c->out, symbol);
-
-    return compiler_addconstant(c, node, add, true, false);
-}
 
 /** Finds a builtin function and loads it into a register at the top of the stack
  *  @param c the compiler
@@ -954,6 +964,32 @@ codeinfo compiler_findbuiltin(compiler *c, syntaxtreenode *node, char *name, reg
     ret.dest=rfn;
 
     return ret;
+}
+
+/* ------------------------------------------
+ * Track scope
+ * ------------------------------------------- */
+
+/** Increments the scope counter in the current functionstate */
+void compiler_beginscope(compiler *c) {
+    functionstate *f=compiler_currentfunctionstate(c);
+    f->scopedepth++;
+}
+
+void compiler_functionreffreeatscope(compiler *c, unsigned int scope);
+
+/** Decrements the scope counter in the current functionstate */
+void compiler_endscope(compiler *c) {
+    functionstate *f=compiler_currentfunctionstate(c);
+    compiler_regfreeatscope(c, f->scopedepth);
+    compiler_functionreffreeatscope(c, f->scopedepth);
+    f->scopedepth--;
+}
+
+/** Gets the scope counter in the current functionstate */
+unsigned int compiler_currentscope(compiler *c) {
+    functionstate *f=compiler_currentfunctionstate(c);
+    return f->scopedepth;
 }
 
 /* ------------------------------------------
@@ -1059,7 +1095,11 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         }
 
         if (out.dest!=info.dest) {
-            if (compiler_regcurrenttype(c, info.dest, &type)) compiler_regsetcurrenttype(c, node, out.dest, type);
+            if (compiler_regtype(c, out.dest, &type) &&
+                compiler_regtypecheck(c, node, info.dest, type, &out) &&
+                compiler_regcurrenttype(c, info.dest, &type)) {
+                compiler_regsetcurrenttypeX(c, out.dest, type); // TODO: Should we instead set the type to the known result of the typecheck? 
+            }
             
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, out.dest, info.dest), node);
             out.ninstructions++;

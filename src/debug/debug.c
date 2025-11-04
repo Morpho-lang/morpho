@@ -345,6 +345,7 @@ assemblyrule assemblyrules[] ={
     { OP_LE, "le ", "rA, rB, rC" },
     
     { OP_PRINT, "print", "rA" },
+    { OP_TYPECHECK, "typecheck", "rA, cX" },
     
     { OP_B, "b", "+" },
     { OP_BIF, "bif", "rA +" },

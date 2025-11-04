@@ -584,6 +584,28 @@ static inline bool vm_invoke(vm *v, value obj, value method, int nargs, value *a
     return false;
 }
 
+/** Recursively searches the parents list of classes to see if the type 'match' is present */
+bool _findtypeinparent(objectclass *type, value match) {
+    for (int i=0; i<type->parents.count; i++) {
+        if (MORPHO_ISEQUAL(type->parents.data[i], match) ||
+            _findtypeinparent(MORPHO_GETCLASS(type->parents.data[i]), match)) return true;
+    }
+    return false;
+}
+
+static inline bool vm_typecheck(vm *v, value val, value match) {
+    value type;
+    if (!metafunction_typefromvalue(val, &type)) return false;
+    
+    if (MORPHO_ISNIL(type) || // If type is unset, we always match
+        MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same
+    
+    // Also match if 'match' inherits from 'type'
+    if (MORPHO_ISCLASS(match)) return _findtypeinparent( MORPHO_GETCLASS(match), type);
+    
+    return false;
+}
+
 /** Recovers the number of optional arguments */
 int vm_getoptionalargs(vm *v) {
     return v->fp->nopt;
@@ -1476,6 +1498,20 @@ callfunction: // Jump here if an instruction becomes a call
             morpho_printf(v, "\n");
             DISPATCH();
 
+        CASE_CODE(TYPECHECK):
+            a=DECODE_A(bc); b=DECODE_Bx(bc);
+        
+            if (!vm_typecheck(v, reg[a], v->konst[b])) {
+                value type;
+                metafunction_typefromvalue(reg[a], &type);
+                
+                VERROR(VM_TYPECHK,
+                       MORPHO_GETCSTRING(MORPHO_GETCLASS(type)->name),
+                       MORPHO_GETCSTRING(MORPHO_GETCLASS(v->konst[b])->name));
+            }
+            
+            DISPATCH();
+        
         CASE_CODE(BREAK):
             if (v->debug) {
                 if (vm_shouldbreakatpc(v, pc) ||
@@ -2169,6 +2205,7 @@ void morpho_initialize(void) {
     morpho_defineerror(VM_DVZR, ERROR_HALT, VM_DVZR_MSG);
 	morpho_defineerror(VM_GETINDEXARGS, ERROR_HALT, VM_GETINDEXARGS_MSG);
     morpho_defineerror(VM_MLTPLDSPTCHFLD, ERROR_HALT, VM_MLTPLDSPTCHFLD_MSG);
+    morpho_defineerror(VM_TYPECHK, ERROR_HALT, VM_TYPECHK_MSG);
 
     morpho_defineerror(VM_DBGQUIT, ERROR_HALT, VM_DBGQUIT_MSG);
 

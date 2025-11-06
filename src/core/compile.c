@@ -260,6 +260,9 @@ void compiler_getmethodreturntype(compiler *c, value klass, value target, value 
 
 value _closuretype;
 value _stringtype;
+value _dicttype;
+value _listtype;
+value _rangetype;
 
 value _inttype;
 value _floattype;
@@ -756,6 +759,10 @@ bool compiler_regsetcurrenttypeX(compiler *c, registerindx reg, value type) {
     return true;
 }
 
+bool compiler_regcheckandsetcurrenttype(compiler *c, syntaxtreenode *node, registerindx reg, value type) {
+    return compiler_regsetcurrenttype(c, node, reg, type);
+}
+
 /** Performs a type check on register reg against a given type. Codeinfo is updated if a typecheck instruction needs to be generated */
 bool compiler_regtypecheck(compiler *c, syntaxtreenode *node, registerindx reg, value type, codeinfo *info) {
     bool success=false;
@@ -1060,7 +1067,7 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         out.dest=compiler_regtemp(c, reg);
         
         if (compiler_getconstanttype(c, info.dest, &type)) {
-            compiler_regsetcurrenttype(c, node, out.dest, type);
+            if (!compiler_regcheckandsetcurrenttype(c, node, out.dest, type)) return CODEINFO_EMPTY;
         }
         
         compiler_addinstruction(c, ENCODE_LONG(OP_LCT, out.dest, info.dest), node);
@@ -1972,10 +1979,7 @@ static codeinfo compiler_list(compiler *c, syntaxtreenode *node, registerindx re
     if (node->type==NODE_TUPLE) classname = TUPLE_CLASSNAME;
     codeinfo out = compiler_findbuiltin(c, node, classname, reqout);
     
-    value listtype=MORPHO_NIL; /* Set the type associated with the register */
-    if (compiler_findtypefromcstring(c, classname, &listtype)) {
-        if (!compiler_regsetcurrenttype(c, node, out.dest, listtype)) return CODEINFO_EMPTY;
-    }
+    if (!compiler_regcheckandsetcurrenttype(c, node, out.dest, _listtype)) return CODEINFO_EMPTY;
 
     varray_syntaxtreeindxinit(&entries);
     if (node->right!=SYNTAXTREE_UNCONNECTED) syntaxtree_flatten(compiler_getsyntaxtree(c), node->right, 1, dictentrytype, &entries);
@@ -2015,10 +2019,7 @@ static codeinfo compiler_dictionary(compiler *c, syntaxtreenode *node, registeri
     /* Set up a call to the Dictionary() function */
     codeinfo out = compiler_findbuiltin(c, node, DICTIONARY_CLASSNAME, reqout);
 
-    value dicttype=MORPHO_NIL; /* Set the type associated with the register */
-    if (compiler_findtypefromcstring(c, DICTIONARY_CLASSNAME, &dicttype)) {
-        if (!compiler_regsetcurrenttype(c, node, out.dest, dicttype)) return CODEINFO_EMPTY;
-    }
+    if (!compiler_regcheckandsetcurrenttype(c, node, out.dest, _dicttype)) return CODEINFO_EMPTY;
     
     varray_syntaxtreeindxinit(&entries);
     /* Flatten all the child nodes; these end up as a sequence: key, val, key, val, ... */
@@ -2070,10 +2071,7 @@ static codeinfo compiler_range(compiler *c, syntaxtreenode *node, registerindx r
     /* Set up a call to the Range() function */
     codeinfo rng = compiler_findbuiltin(c, node, (inclusive ? RANGE_INCLUSIVE_CONSTRUCTOR: RANGE_CLASSNAME), reqout);
     
-    value rngtype=MORPHO_NIL; /* Set the type associated with the register */
-    if (compiler_findtypefromcstring(c, RANGE_CLASSNAME, &rngtype)) {
-        if (!compiler_regsetcurrenttype(c, node, rng.dest, rngtype)) return CODEINFO_EMPTY;
-    }
+    if (!compiler_regcheckandsetcurrenttype(c, node, rng.dest, _rangetype)) return CODEINFO_EMPTY;
 
     /* Construct the arguments */
     unsigned int n;
@@ -2215,7 +2213,7 @@ static codeinfo compiler_not(compiler *c, syntaxtreenode *node, registerindx req
         ninstructions+=left.ninstructions;
     }
 
-    compiler_regsetcurrenttype(c, node, out, _booltype);
+    if (!compiler_regcheckandsetcurrenttype(c, node, out, _booltype)) return CODEINFO_EMPTY;
     
     compiler_addinstruction(c, ENCODE_DOUBLE(OP_NOT, out, left.dest), node);
     ninstructions++;
@@ -2337,10 +2335,10 @@ static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx 
     value type = MORPHO_NIL;
     if (op<=OP_DIV) { // Arithmetic type
         compiler_arithmetictype(c, op, left.dest, right.dest, &type);
-    } else if (op==OP_POW) { // Powers always generate floats
-        compiler_findtypefromcstring(c, FLOAT_CLASSNAME, &type);
+    } else if (op==OP_POW) { // Powers always generate floats TODO: THIS IS NOT TRUE
+        type=_floattype;
     } else { // Comparison operations
-        compiler_findtypefromcstring(c, BOOL_CLASSNAME, &type);
+        type=_booltype;
     }
     
     compiler_releaseoperand(c, left); // Release operands after type information determined
@@ -2491,7 +2489,7 @@ static codeinfo compiler_interpolation(compiler *c, syntaxtreenode *node, regist
     compiler_addinstruction(c, ENCODE(OP_CAT, rout, start, r), node);
     ninstructions++;
     
-    compiler_regsetcurrenttype(c, node, rout, _stringtype);
+    if (!compiler_regcheckandsetcurrenttype(c, node, rout, _stringtype)) return CODEINFO_EMPTY;
 
     /* Free all the registers used, including start if it wasn't the destination for the output */
     if (start!=REGISTER_UNALLOCATED) compiler_regfreetoend(c, start + (reqout!=REGISTER_UNALLOCATED ? 0: 1));
@@ -4782,12 +4780,15 @@ void compile_initialize(void) {
     _selfsymbol=builtin_internsymbolascstring("self");
     
     /** Types we need to refer to */
-    _closuretype = MORPHO_OBJECT(object_getveneerclass(OBJECT_CLOSURE));
-    _stringtype = MORPHO_OBJECT(object_getveneerclass(OBJECT_STRING));
+    _closuretype = builtin_findclassfromcstring(CLOSURE_CLASSNAME);
+    _stringtype = builtin_findclassfromcstring(STRING_CLASSNAME);
+    _dicttype = builtin_findclassfromcstring(DICTIONARY_CLASSNAME);
+    _listtype = builtin_findclassfromcstring(LIST_CLASSNAME);
+    _rangetype = builtin_findclassfromcstring(RANGE_CLASSNAME);
     
-    _inttype = MORPHO_OBJECT(value_getveneerclass(MORPHO_INTEGER(0)));
-    _floattype = MORPHO_OBJECT(value_getveneerclass(MORPHO_FLOAT(0.0)));
-    _booltype = MORPHO_OBJECT(value_getveneerclass(MORPHO_TRUE));
+    _inttype = builtin_findclassfromcstring(INT_CLASSNAME);
+    _floattype = builtin_findclassfromcstring(FLOAT_CLASSNAME);
+    _booltype = builtin_findclassfromcstring(BOOL_CLASSNAME);
     
     optimizer = NULL;
 

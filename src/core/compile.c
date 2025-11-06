@@ -751,7 +751,7 @@ bool compiler_regcurrenttype(compiler *c, registerindx reg, value *type) {
     return true;
 }
 
-/** Sets the current type of a register. Raises a type violation error if this is not compatible with the required type  */
+/** Sets the current type of a register.  */
 bool compiler_regsetcurrenttypeX(compiler *c, registerindx reg, value type) {
     functionstate *f = compiler_currentfunctionstate(c);
     if (reg>=f->registers.count) return false;
@@ -1080,19 +1080,22 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         out.ninstructions++;
         
         if (compiler_getupvaluetype(c, info.dest, &type)) {
-            compiler_regsetcurrenttype(c, node, out.dest, type);
+            compiler_regsetcurrenttypeX(c, out.dest, type);
+        }
+        
+        if (compiler_regtype(c, out.dest, &type)) { // Check that the value loaded is valid
+            compiler_regtypecheck(c, node, out.dest, type, &out);
         }
     } else if (CODEINFO_ISGLOBAL(info)) {
         /* Move globals */
         out.dest=compiler_regtemp(c, reg);
         out.returntype=REGISTER;
+        compiler_addinstruction(c, ENCODE_LONG(OP_LGL, out.dest, info.dest), node);
+        out.ninstructions++;
         
         if (compiler_getglobaltype(c, info.dest, &type)) {
             compiler_regsetcurrenttypeX(c, out.dest, type);
         }
-        
-        compiler_addinstruction(c, ENCODE_LONG(OP_LGL, out.dest, info.dest), node);
-        out.ninstructions++;
         
         if (compiler_regtype(c, out.dest, &type)) { // Check that the value loaded is valid
             compiler_regtypecheck(c, node, out.dest, type, &out);
@@ -2822,7 +2825,7 @@ static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx req
     compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rIndx, cNil), node);
     ninstructions++;
     
-    compiler_regsetcurrenttype(c, node, rIndx, _inttype);
+    if (!compiler_regcheckandsetcurrenttype(c, node, rIndx, _inttype)) return CODEINFO_EMPTY;
     
     /* Obtain the maximum value of rIndx by invoking enumerate */
     

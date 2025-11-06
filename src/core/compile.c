@@ -1081,11 +1081,15 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         out.returntype=REGISTER;
         
         if (compiler_getglobaltype(c, info.dest, &type)) {
-            compiler_regsetcurrenttype(c, node, out.dest, type);
+            compiler_regsetcurrenttypeX(c, out.dest, type);
         }
         
         compiler_addinstruction(c, ENCODE_LONG(OP_LGL, out.dest, info.dest), node);
         out.ninstructions++;
+        
+        if (compiler_regtype(c, out.dest, &type)) { // Check that the value loaded is valid
+            compiler_regtypecheck(c, node, out.dest, type, &out);
+        }
     } else {
         /* Move between registers */
         if (reg==REGISTER_UNALLOCATED) {

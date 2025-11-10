@@ -716,6 +716,12 @@ bool compiler_regtype(compiler *c, registerindx reg, value *type) {
     return compiler_regtypefromfunctionstate(f, reg, type);
 }
 
+/** Gets the current type of a register */
+bool compiler_regsymbol(compiler *c, registerindx reg, value *symbol) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    return compiler_regsymbolfromfunctionstate(f, reg, symbol);
+}
+
 /** Raises a type violation error */
 void compiler_typeviolation(compiler *c, syntaxtreenode *node, value type, value badtype, value symbol) {
     char *tname="(unknown)", *bname="(unknown)";
@@ -764,7 +770,7 @@ bool compiler_regcheckandsetcurrenttype(compiler *c, syntaxtreenode *node, regis
 }
 
 /** Performs a type check on register reg against a given type. Codeinfo is updated if a typecheck instruction needs to be generated */
-bool compiler_regtypecheck(compiler *c, syntaxtreenode *node, registerindx reg, value type, codeinfo *info) {
+bool compiler_regtypecheck(compiler *c, syntaxtreenode *node, registerindx reg, value type, value symbol, codeinfo *info) {
     bool success=false;
     functionstate *f = compiler_currentfunctionstate(c);
     
@@ -781,7 +787,7 @@ bool compiler_regtypecheck(compiler *c, syntaxtreenode *node, registerindx reg, 
     } else if (compiler_checktype(c, type, rtype)) { // Successful type check
         success=true;
     } else { // Type is incompatible
-        compiler_typeviolation(c, node, type, rtype, f->registers.data[reg].symbol);
+        compiler_typeviolation(c, node, type, rtype, symbol);
     }
     
     return success;
@@ -1048,7 +1054,9 @@ static registerindx compiler_getlocal(compiler *c, value symbol) {
 }*/
 
 bool compiler_getglobaltype(compiler *c, globalindx indx, value *type);
+bool compiler_getglobalsymbol(compiler *c, globalindx indx, value *symbol);
 bool compiler_getupvaluetype(compiler *c, registerindx ix, value *type);
+bool compiler_getupvaluesymbol(compiler *c, registerindx ix, value *symbol);
 
 /** @brief Moves the results of a codeinfo block into a register
  *  @details includes constants, upvalues etc.
@@ -1058,7 +1066,7 @@ bool compiler_getupvaluetype(compiler *c, registerindx ix, value *type);
  *  @param   reg    destination register, or REGISTER_UNALLOCATED to allocate a new one
  *  @returns Number of instructions generated */
 static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codeinfo info, registerindx reg) {
-    value type = MORPHO_NIL;
+    value type = MORPHO_NIL, symbol = MORPHO_NIL;
     codeinfo out = info;
     out.ninstructions=0;
 
@@ -1084,7 +1092,8 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         }
         
         if (compiler_regtype(c, out.dest, &type)) { // Check that the value loaded is valid
-            compiler_regtypecheck(c, node, out.dest, type, &out);
+            compiler_getupvaluesymbol(c, info.dest, &symbol);
+            compiler_regtypecheck(c, node, out.dest, type, symbol, &out);
         }
     } else if (CODEINFO_ISGLOBAL(info)) {
         /* Move globals */
@@ -1098,7 +1107,8 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         }
         
         if (compiler_regtype(c, out.dest, &type)) { // Check that the value loaded is valid
-            compiler_regtypecheck(c, node, out.dest, type, &out);
+            compiler_getglobalsymbol(c, info.dest, &symbol);
+            compiler_regtypecheck(c, node, out.dest, type, symbol, &out);
         }
     } else {
         /* Move between registers */
@@ -1110,7 +1120,8 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
 
         if (out.dest!=info.dest) {
             if (compiler_regtype(c, out.dest, &type) &&
-                compiler_regtypecheck(c, node, info.dest, type, &out) &&
+                compiler_regsymbol(c, out.dest, &symbol) &&
+                compiler_regtypecheck(c, node, info.dest, type, symbol, &out) &&
                 compiler_regcurrenttype(c, info.dest, &type)) {
                 compiler_regsetcurrenttypeX(c, out.dest, type); // TODO: Should we instead set the type to the known result of the typecheck? 
             }
@@ -1238,20 +1249,9 @@ bool compiler_getglobaltype(compiler *c, globalindx indx, value *type) {
     return program_globaltype(c->out, indx, type);
 }
 
-/** Checks if the type match satisfies the type of the global variable indx */
-bool compiler_checkglobaltype(compiler *c, syntaxtreenode *node, globalindx indx, value match) {
-    value type=MORPHO_NIL;
-    if (!program_globaltype(c->out, indx, &type)) return false;
-    
-    bool success=compiler_checktype(c, type, match);
-    
-    if (!success) {
-        value symbol=MORPHO_NIL;
-        program_globalsymbol(c->out, indx, &symbol);
-        compiler_typeviolation(c, node, type, match, symbol);
-    }
-    
-    return success;
+/** Gets the type of a global variable */
+bool compiler_getglobalsymbol(compiler *c, globalindx indx, value *symbol) {
+    return program_globalsymbol(c->out, indx, symbol);
 }
 
 /** Shows all currently allocated globals */
@@ -1284,9 +1284,10 @@ codeinfo compiler_movetoglobal(compiler *c, syntaxtreenode *node, codeinfo in, g
         tmp=true;
     }
 
-    value type=MORPHO_NIL;
-    if (compiler_regcurrenttype(c, use.dest, &type)) {
-        if (!compiler_checkglobaltype(c, node, slot, type)) goto compiler_movetoglobal_cleanup;
+    value type=MORPHO_NIL, symbol=MORPHO_NIL;
+    if (compiler_getglobaltype(c, slot, &type)) {
+        compiler_getglobalsymbol(c, slot, &symbol);
+        if (!compiler_regtypecheck(c, node, use.dest, type, symbol, &out)) goto compiler_movetoglobal_cleanup;
     }
     
     compiler_addinstruction(c, ENCODE_LONG(OP_SGL, use.dest, slot) , node);
@@ -2147,21 +2148,31 @@ static codeinfo compiler_index(compiler *c, syntaxtreenode *node, registerindx r
     if (compiler_haserror(c)) return CODEINFO_EMPTY;
     ninstructions+=out.ninstructions;
 
+    /* Destination register */
+    codeinfo iout = CODEINFO(REGISTER, start, ninstructions);
+
     /* Compile instruction */
     compiler_addinstruction(c, ENCODE(OP_LIX, left.dest, start, end), node);
     ninstructions++;
+    
+    // Update type information
+    compiler_regsetcurrenttypeX(c, start, MORPHO_NIL); // Result of LIX is always unknown type
+    value type;
+    if (compiler_regtype(c, start, &type)) {
+        value symbol=MORPHO_NIL;
+        compiler_regsymbol(c, start, &symbol);
+        compiler_regtypecheck(c, node, start, type, symbol, &iout);
+    }
     
     /* Free anything we're done with */
     compiler_releaseoperand(c, left);
     compiler_regfreetoend(c, start+1);
     
-    codeinfo iout = CODEINFO(REGISTER, start, ninstructions);
-    
     if (reqout>=0 &&
         start!=reqout) {
-        compiler_regfreetemp(c, start);
         iout = compiler_movetoregister(c, node, iout, reqout);
         ninstructions+=iout.ninstructions;
+        compiler_regfreetemp(c, start);
     }
     
     iout.ninstructions=ninstructions;

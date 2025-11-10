@@ -1504,9 +1504,12 @@ callfunction: // Jump here if an instruction becomes a call
             if (!vm_typecheck(v, reg[a], v->konst[b])) {
                 value type;
                 value_type(reg[a], &type);
+                char *typename = MORPHO_NILSTRING;
+                if (MORPHO_ISCLASS(type)) typename = MORPHO_GETCSTRING(MORPHO_GETCLASS(type)->name);
+                
                 
                 VERROR(VM_TYPECHK,
-                       MORPHO_GETCSTRING(MORPHO_GETCLASS(type)->name),
+                       typename,
                        MORPHO_GETCSTRING(MORPHO_GETCLASS(v->konst[b])->name));
             }
             

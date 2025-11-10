@@ -4280,7 +4280,7 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
 /* Compiles property lookup */
 static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo left = CODEINFO_EMPTY, prop = CODEINFO_EMPTY;
-    registerindx out = compiler_regtemp(c, reqout);
+    registerindx rout = compiler_regtemp(c, reqout);
 
     /* The left hand side should evaluate to the object in question */
     left = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
@@ -4301,14 +4301,23 @@ static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerind
         compiler_error(c, selector, COMPILE_PROPERTYNAMERQD);
     }
 
-    if (out !=REGISTER_UNALLOCATED) {
-        compiler_addinstruction(c, ENCODE(OP_LPR, out, left.dest, prop.dest), node);
-        ninstructions++;
+    codeinfo out=CODEINFO(REGISTER, rout, ninstructions);
+    
+    if (rout!=REGISTER_UNALLOCATED) {
+        compiler_addinstruction(c, ENCODE(OP_LPR, rout, left.dest, prop.dest), node);
+        out.ninstructions++;
+        
+        value type=MORPHO_NIL, symbol=MORPHO_NIL;
+        if (compiler_regtype(c, rout, &type) &&
+            compiler_regsymbol(c, rout, &symbol)) {
+            compiler_regtypecheck(c, node, rout, type, symbol, &out);
+        }
+        
         compiler_releaseoperand(c, left);
         if (CODEINFO_ISREGISTER(prop)) compiler_releaseoperand(c, prop);
     }
 
-    return CODEINFO(REGISTER, out, ninstructions);
+    return out;
 }
 
 /** Compiles the dot operator, which may be property lookup or a method call */

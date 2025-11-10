@@ -1,0 +1,8 @@
+
+var a = Object() 
+a.a = 1.5
+
+{
+    Int b = a.a
+}
+// expect error 'TypeChk'

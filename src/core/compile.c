@@ -2309,7 +2309,7 @@ static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx 
         ninstructions+=right.ninstructions;
     }
 
-    registerindx out = compiler_regtemp(c, reqout);
+    registerindx rout = compiler_regtemp(c, reqout);
 
     opcode op=OP_NOP;
 
@@ -2341,7 +2341,7 @@ static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx 
 
     if (compiler_haserror(c)) return CODEINFO_EMPTY;
     
-    compiler_addinstruction(c, ENCODE(op, out, left.dest, right.dest), node);
+    compiler_addinstruction(c, ENCODE(op, rout, left.dest, right.dest), node);
     ninstructions++;
     
     /* Set the output type of the operation */
@@ -2358,9 +2358,16 @@ static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx 
     compiler_releaseoperand(c, left); // Release operands after type information determined
     compiler_releaseoperand(c, right);
     
-    if (!compiler_regsetcurrenttype(c, node, out, type)) return CODEINFO_EMPTY;
+    codeinfo out = CODEINFO(REGISTER, rout, ninstructions);
+    
+    value rtype=MORPHO_NIL, symbol = MORPHO_NIL;
+    if (compiler_regtype(c, rout, &rtype) &&
+        compiler_regsymbol(c, rout, &symbol)) {
+        compiler_regsetcurrenttypeX(c, rout, type);
+        compiler_regtypecheck(c, node, rout, rtype, symbol, &out);
+    }
 
-    return CODEINFO(REGISTER, out, ninstructions);
+    return out;
 }
 
 /** @brief Compiles the ternary operator

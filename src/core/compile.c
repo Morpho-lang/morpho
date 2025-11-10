@@ -3303,7 +3303,7 @@ static registerindx compiler_functionparameters(compiler *c, syntaxtreeindx indx
             
             registerindx reg = compiler_functionparameters(c, node->right);
             compiler_regsettype(c, reg, type);
-            compiler_regsetcurrenttype(c, node, reg, type);
+            compiler_regsetcurrenttypeX(c, reg, type);
         }
             break;
         case NODE_ASSIGN:
@@ -3455,7 +3455,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
             // Save the register where the closure is to be found
             compiler_regsetsymbol(c, reg, func->name);
             compiler_regsettype(c, reg, _closuretype);
-            compiler_regsetcurrenttype(c, node, reg, _closuretype);
+            compiler_regsetcurrenttypeX(c, reg, _closuretype);
             function_setclosure(func, reg);
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_CLOSURE, reg, (registerindx) closure), node);
             ninstructions++;
@@ -3656,8 +3656,9 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     /* Free all the registers used for the call */
     compiler_regfreetoend(c, func.dest+1);
     
-    /* Set the current type of the register */
-    compiler_regsetcurrenttype(c, selnode, func.dest, rtype);
+    /* Set the current type of the destination register */
+    compiler_regsetcurrenttypeX(c, func.dest, rtype);
+    // TODO: Should we do a typecheck here or leave it to the movetoregister below?
 
     /* Move the result to the requested register */
     if (reqout!=REGISTER_UNALLOCATED && func.dest!=reqout) {
@@ -3772,7 +3773,7 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     compiler_regfreetoend(c, rObj+1);
 
     /* Set the current type of the register */
-    compiler_regsetcurrenttype(c, node, rObj, rtype);
+    compiler_regsetcurrenttypeX(c, rObj, rtype);
     
     // Move the result to the requested register
     if (reqout!=REGISTER_UNALLOCATED && object.dest!=reqout) {

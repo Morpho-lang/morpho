@@ -734,8 +734,24 @@ void compiler_typeviolation(compiler *c, syntaxtreenode *node, value type, value
     compiler_error(c, node, COMPILE_TYPEVIOLATION, bname, tname, sym);
 }
 
-/** Sets the current type of a register. Raises a type violation error if this is not compatible with the required type  */
-bool compiler_regsetcurrenttype(compiler *c, syntaxtreenode *node, registerindx reg, value type) {
+/** Gets the current type of a register */
+bool compiler_regcurrenttype(compiler *c, registerindx reg, value *type) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (reg>=f->registers.count) return false;
+    *type = f->registers.data[reg].currenttype;
+    return true;
+}
+
+/** Sets the current type of a register.  */
+bool compiler_regsetcurrenttype(compiler *c, registerindx reg, value type) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    if (reg>=f->registers.count) return false;
+    f->registers.data[reg].currenttype=type;
+    return true;
+}
+
+/** Tests if assigning a value of given type to a register is acceptable. If so, the type of the register is set; if not a type violation is raised */
+bool compiler_regcheckandsetcurrenttype(compiler *c, syntaxtreenode *node, registerindx reg, value type) {
     functionstate *f = compiler_currentfunctionstate(c);
     if (reg>=f->registers.count) return false;
     
@@ -747,26 +763,6 @@ bool compiler_regsetcurrenttype(compiler *c, syntaxtreenode *node, registerindx 
     compiler_typeviolation(c, node, f->registers.data[reg].type, type, f->registers.data[reg].symbol);
     
     return false;
-}
-
-/** Gets the current type of a register */
-bool compiler_regcurrenttype(compiler *c, registerindx reg, value *type) {
-    functionstate *f = compiler_currentfunctionstate(c);
-    if (reg>=f->registers.count) return false;
-    *type = f->registers.data[reg].currenttype;
-    return true;
-}
-
-/** Sets the current type of a register.  */
-bool compiler_regsetcurrenttypeX(compiler *c, registerindx reg, value type) {
-    functionstate *f = compiler_currentfunctionstate(c);
-    if (reg>=f->registers.count) return false;
-    f->registers.data[reg].currenttype=type;
-    return true;
-}
-
-bool compiler_regcheckandsetcurrenttype(compiler *c, syntaxtreenode *node, registerindx reg, value type) {
-    return compiler_regsetcurrenttype(c, node, reg, type);
 }
 
 /** Performs a type check on register reg against a given type. Codeinfo is updated if a typecheck instruction needs to be generated */
@@ -1088,7 +1084,7 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         out.ninstructions++;
         
         if (compiler_getupvaluetype(c, info.dest, &type)) {
-            compiler_regsetcurrenttypeX(c, out.dest, type);
+            compiler_regsetcurrenttype(c, out.dest, type);
         }
         
         if (compiler_regtype(c, out.dest, &type)) { // Check that the value loaded is valid
@@ -1103,7 +1099,7 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         out.ninstructions++;
         
         if (compiler_getglobaltype(c, info.dest, &type)) {
-            compiler_regsetcurrenttypeX(c, out.dest, type);
+            compiler_regsetcurrenttype(c, out.dest, type);
         }
         
         if (compiler_regtype(c, out.dest, &type)) { // Check that the value loaded is valid
@@ -1123,7 +1119,7 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
                 compiler_regsymbol(c, out.dest, &symbol) &&
                 compiler_regtypecheck(c, node, info.dest, type, symbol, &out) &&
                 compiler_regcurrenttype(c, info.dest, &type)) {
-                compiler_regsetcurrenttypeX(c, out.dest, type); // TODO: Should we instead set the type to the known result of the typecheck? 
+                compiler_regsetcurrenttype(c, out.dest, type); // TODO: Should we instead set the type to the known result of the typecheck? 
             }
             
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, out.dest, info.dest), node);
@@ -2156,7 +2152,7 @@ static codeinfo compiler_index(compiler *c, syntaxtreenode *node, registerindx r
     ninstructions++;
     
     // Update type information
-    compiler_regsetcurrenttypeX(c, start, MORPHO_NIL); // Result of LIX is always unknown type
+    compiler_regsetcurrenttype(c, start, MORPHO_NIL); // Result of LIX is always unknown type
     value type;
     if (compiler_regtype(c, start, &type)) {
         value symbol=MORPHO_NIL;
@@ -2363,7 +2359,7 @@ static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx 
     value rtype=MORPHO_NIL, symbol = MORPHO_NIL;
     if (compiler_regtype(c, rout, &rtype) &&
         compiler_regsymbol(c, rout, &symbol)) {
-        compiler_regsetcurrenttypeX(c, rout, type);
+        compiler_regsetcurrenttype(c, rout, type);
         compiler_regtypecheck(c, node, rout, rtype, symbol, &out);
     }
 
@@ -3303,7 +3299,7 @@ static registerindx compiler_functionparameters(compiler *c, syntaxtreeindx indx
             
             registerindx reg = compiler_functionparameters(c, node->right);
             compiler_regsettype(c, reg, type);
-            compiler_regsetcurrenttypeX(c, reg, type);
+            compiler_regsetcurrenttype(c, reg, type);
         }
             break;
         case NODE_ASSIGN:
@@ -3455,7 +3451,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
             // Save the register where the closure is to be found
             compiler_regsetsymbol(c, reg, func->name);
             compiler_regsettype(c, reg, _closuretype);
-            compiler_regsetcurrenttypeX(c, reg, _closuretype);
+            compiler_regsetcurrenttype(c, reg, _closuretype);
             function_setclosure(func, reg);
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_CLOSURE, reg, (registerindx) closure), node);
             ninstructions++;
@@ -3657,7 +3653,7 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     compiler_regfreetoend(c, func.dest+1);
     
     /* Set the current type of the destination register */
-    compiler_regsetcurrenttypeX(c, func.dest, rtype);
+    compiler_regsetcurrenttype(c, func.dest, rtype);
     // TODO: Should we do a typecheck here or leave it to the movetoregister below?
 
     /* Move the result to the requested register */
@@ -3773,7 +3769,7 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     compiler_regfreetoend(c, rObj+1);
 
     /* Set the current type of the register */
-    compiler_regsetcurrenttypeX(c, rObj, rtype);
+    compiler_regsetcurrenttype(c, rObj, rtype);
     
     // Move the result to the requested register
     if (reqout!=REGISTER_UNALLOCATED && object.dest!=reqout) {

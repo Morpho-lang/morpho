@@ -265,7 +265,7 @@ static bool _retrieve(dictionary *dict, value *out) {
     return false;
 }
 
-/** Resolve return type */
+/** Resolve return type from the collection of possible types presented */
 void compiler_resolvereturntype(compiler *c) {
     functionstate *f = compiler_currentfunctionstate(c);
     objectfunction *func = compiler_getcurrentfunction(c);

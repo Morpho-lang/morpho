@@ -436,6 +436,20 @@ bool compiler_checktype(compiler *c, value type, value match) {
     return false;
 }
 
+/** Select the more specific type of two types; returns false if the types are contradictory*/
+bool compiler_mostspecifictype(compiler *c, value a, value b, value *out) {
+    if (MORPHO_ISNIL(a)) {
+        *out=b; return true;
+    } else if (MORPHO_ISNIL(b)) {
+        *out=a; return true;
+    } else if (compiler_checktype(c, a, b)) {
+        *out=b; return true;
+    } else if (compiler_checktype(c, b, a)) {
+        *out=a; return true;
+    }
+    return false;
+}
+
 /** Determines the type associated with a constant */
 bool compiler_getconstanttype(compiler *c, unsigned int i, value *type) {
     value val = compiler_getconstant(c, i);
@@ -1185,11 +1199,14 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
         }
 
         if (out.dest!=info.dest) {
+            value ctype=MORPHO_NIL; 
             if (compiler_regtype(c, out.dest, &type) &&
                 compiler_regsymbol(c, out.dest, &symbol) &&
                 compiler_regtypecheck(c, node, info.dest, type, symbol, &out) &&
-                compiler_regcurrenttype(c, info.dest, &type)) {
-                compiler_regsetcurrenttype(c, out.dest, type); // TODO: Should we instead set the type to the known result of the typecheck? 
+                compiler_regcurrenttype(c, info.dest, &ctype) &&
+                compiler_mostspecifictype(c, type, ctype, &type)) {
+                
+                compiler_regsetcurrenttype(c, out.dest, type);
             }
             
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, out.dest, info.dest), node);

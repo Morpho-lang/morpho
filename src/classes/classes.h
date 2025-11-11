@@ -29,6 +29,7 @@
 #include "bool.h"
 #include "flt.h"
 #include "int.h"
+#include "nil.h"
 
 //#include "file.h"
 //#include "system.h"

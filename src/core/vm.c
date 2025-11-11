@@ -1181,9 +1181,9 @@ callfunction: // Jump here if an instruction becomes a call
                 }
             } else {
                 /* Check if the operand has a veneer class */
-                objectclass *klass;
+                objectclass *klass=NULL;
                 if (MORPHO_ISOBJECT(left)) klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
-                else klass = value_getveneerclass(left);
+                else if (!MORPHO_ISNIL(left)) klass = value_getveneerclass(left);
                 
                 if (klass) {
                     value ifunc;
@@ -1361,9 +1361,9 @@ callfunction: // Jump here if an instruction becomes a call
                 }
             } else {
                 /* Check for veneer class */
-                objectclass *klass;
+                objectclass *klass=NULL;
                 if (MORPHO_ISOBJECT(left)) klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
-                else klass = value_getveneerclass(left);
+                else if (!MORPHO_ISNIL(left)) klass = value_getveneerclass(left);
                 
                 if (klass) {
                     value ifunc;

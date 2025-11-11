@@ -267,6 +267,7 @@ value _rangetype;
 value _inttype;
 value _floattype;
 value _booltype;
+value _niltype;
 
 /* ------------------------------------------
  * Argument declarations
@@ -4816,6 +4817,7 @@ void compile_initialize(void) {
     _inttype = builtin_findclassfromcstring(INT_CLASSNAME);
     _floattype = builtin_findclassfromcstring(FLOAT_CLASSNAME);
     _booltype = builtin_findclassfromcstring(BOOL_CLASSNAME);
+    _niltype = builtin_findclassfromcstring(NIL_CLASSNAME);
     
     optimizer = NULL;
 

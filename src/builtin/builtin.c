@@ -433,6 +433,7 @@ void builtin_initialize(void) {
     float_initialize(); // Veneer classes
     int_initialize();
     bool_initialize();
+    nil_initialize();
     
     string_initialize();  // Classes
     function_initialize();

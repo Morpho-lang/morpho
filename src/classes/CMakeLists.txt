@@ -18,6 +18,7 @@ target_sources(morpho
         json.c         json.h
         list.c         list.h
         metafunction.c metafunction.h
+        nil.c          nil.h
         range.c        range.h
         strng.c        strng.h
         system.c       system.h
@@ -47,6 +48,7 @@ target_sources(morpho
         json.h
         list.h
         metafunction.h
+        nil.h
         range.h
         strng.h
         system.h

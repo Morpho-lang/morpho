@@ -109,7 +109,9 @@ static void compiler_functionstateinit(functionstate *state) {
     state->func=NULL;
     state->scopedepth=0;
     state->loopdepth=0;
+    state->cfdepth=0;
     state->inargs=false;
+    state->hasreturn=false;
     state->nreg=0;
     state->type=FUNCTION;
     state->varg=REGISTER_UNALLOCATED;
@@ -222,16 +224,32 @@ objectfunction *compiler_getpreviousfunction(compiler *c) {
     return c->prevfunction;
 }
 
+/** Sets the 'hasreturn' flag for the current function state */
+void compiler_sethasreturn(compiler *c) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    f->hasreturn=true;
+}
+
+/** Retrieves the 'hasreturn' flag for the current function state */
+bool compiler_hasreturn(compiler *c) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    return f->hasreturn;
+}
+
 bool compiler_regcurrenttype(compiler *c, registerindx reg, value *type);
 
 /** Sets the return type of a function */
-void compiler_setreturntypefromregister(compiler *c, registerindx ix) {
+void compiler_setreturntype(compiler *c, value type) {
     objectfunction *func = compiler_getcurrentfunction(c);
     
+    if (MORPHO_ISOBJECT(type)) signature_setreturntype(&func->sig, type); // TODO: Should check for current type
+}
+
+/** Sets the return type of a function from the contents of a given register */
+void compiler_setreturntypefromregister(compiler *c, registerindx ix) {
     value type=MORPHO_NIL;
     compiler_regcurrenttype(c, ix, &type);
-    
-    if (MORPHO_ISOBJECT(type)) signature_setreturntype(&func->sig, type); // TODO: Should check for current type
+    compiler_setreturntype(c, type);
 }
 
 /** Infer the return type of a call target */
@@ -412,6 +430,28 @@ static value compiler_getmodule(compiler *c) {
 }
 
 /* ------------------------------------------
+ * Control flow statements
+ * ------------------------------------------- */
+
+ /** Begin a control flow statement */
+ static void compiler_begincontrolflow(compiler *c) {
+     functionstate *f = compiler_currentfunctionstate(c);
+     f->cfdepth++;
+ }
+
+ /** End a control flow statement */
+ static void compiler_endcontrolflow(compiler *c) {
+     functionstate *f = compiler_currentfunctionstate(c);
+     f->cfdepth--;
+ }
+
+ /** Check if we are in a control flow statement */
+ static bool compiler_incontrolflow(compiler *c) {
+     functionstate *f = compiler_currentfunctionstate(c);
+     return (f->cfdepth>0);
+ }
+
+/* ------------------------------------------
  * Loops
  * ------------------------------------------- */
 
@@ -446,12 +486,14 @@ static void compiler_fixloop(compiler *c, instructionindx start, instructionindx
 
 /** Begin a loop */
 static void compiler_beginloop(compiler *c) {
+    compiler_begincontrolflow(c);
     functionstate *f = compiler_currentfunctionstate(c);
     f->loopdepth++;
 }
 
 /** End a loop */
 static void compiler_endloop(compiler *c) {
+    compiler_endcontrolflow(c);
     functionstate *f = compiler_currentfunctionstate(c);
     f->loopdepth--;
 }
@@ -461,7 +503,7 @@ static bool compiler_inloop(compiler *c) {
     functionstate *f = compiler_currentfunctionstate(c);
     return (f->loopdepth>0);
 }
-
+ 
 /* ------------------------------------------
  * Constants
  * ------------------------------------------- */
@@ -2633,6 +2675,8 @@ static codeinfo compiler_if(compiler *c, syntaxtreenode *node, registerindx reqo
     ifindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
     ninstructions++;
 
+    compiler_begincontrolflow(c);
+    
     if (right->type==NODE_THEN) {
         /* If the right node is a THEN node, the then/else statements are located off it. */
         if (!unreachable) {
@@ -2656,6 +2700,8 @@ static codeinfo compiler_if(compiler *c, syntaxtreenode *node, registerindx reqo
         ninstructions+=then.ninstructions;
     }
 
+    compiler_endcontrolflow(c);
+    
     /* Now generate the conditional branch over the then clause */
     compiler_setinstruction(c, ifindx, ENCODE_LONG(OP_BIFF, cond.dest, then.ninstructions+nextra));
 
@@ -3030,8 +3076,10 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
     compiler_addinstruction(c, ENCODE_LONG(OP_PUSHERR, 0, cdictindx), node);
     out.ninstructions++;
 
+    compiler_begincontrolflow(c);
+    
     debugannotation_pusherr(&c->out->annotations, cdict);
-
+    
     /* Compile the body */
     if (node->left!=SYNTAXTREE_UNCONNECTED) {
         codeinfo body = compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
@@ -3100,6 +3148,8 @@ static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx req
     varray_syntaxtreeindxclear(&labelnodes);
 
     debugannotation_poperr(&c->out->annotations);
+    
+    compiler_endcontrolflow(c);
 
     return out;
 }
@@ -3403,12 +3453,16 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     ninstructions+=bodyinfo.ninstructions;
 
     /* Add a return instruction if necessary */
-    if (ismethod) { // Methods automatically return self unless another argument is specified
-        compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, 0), node); /* Add a return */
-    } else {
-        compiler_addinstruction(c, ENCODE_BYTE(OP_RETURN), node); /* Add a return */
+    if (!compiler_hasreturn(c)) {
+        if (ismethod) { // Methods automatically return self unless another argument is specified
+            if (func->klass) compiler_setreturntype(c, MORPHO_OBJECT(func->klass));
+            compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, 0), node); /* Add a return */
+        } else {
+            compiler_setreturntype(c, _niltype);
+            compiler_addinstruction(c, ENCODE_BYTE(OP_RETURN), node); /* Add a return */
+        }
+        ninstructions++;
     }
-    ninstructions++;
 
     /* Verify if we have any outstanding forward references */
     compiler_checkoutstandingforwardreference(c);
@@ -3809,15 +3863,25 @@ static codeinfo compiler_return(compiler *c, syntaxtreenode *node, registerindx 
         }
         compiler_releaseoperand(c, left);
     } else {
+        objectclass *klass = compiler_getcurrentclass(c);
         /* Methods return self unless a return value is specified */
-        if (compiler_getcurrentclass(c)) {
+        if (klass) {
+            compiler_setreturntype(c, MORPHO_OBJECT(klass));
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, 0), node); /* Add a return */
         } else {
+            compiler_setreturntype(c, _niltype);
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 0, 0), node);
         }
         ninstructions++;
     }
 
+    /* If we generated a return instruction and we are not in a control flow statement,
+       set the unconditional return flag */
+    if (ninstructions>0 &&
+        !compiler_incontrolflow(c)) {
+        compiler_sethasreturn(c);
+    }
+    
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
 

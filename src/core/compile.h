@@ -241,6 +241,7 @@ typedef struct {
     varray_upvalue upvalues;
     varray_forwardreference forwardref;
     varray_functionref functionref; /* Functions visible within this state */
+    dictionary returntypes; /** Possible return types */
     registerindx varg;
     unsigned int nreg; /* Largest number of registers used */
     unsigned int scopedepth;

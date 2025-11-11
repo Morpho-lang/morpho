@@ -119,6 +119,7 @@ static void compiler_functionstateinit(functionstate *state) {
     varray_forwardreferenceinit(&state->forwardref);
     varray_upvalueinit(&state->upvalues);
     varray_functionrefinit(&state->functionref);
+    dictionary_init(&state->returntypes);
 }
 
 /** Clears a functionstate structure */
@@ -131,6 +132,7 @@ static void compiler_functionstateclear(functionstate *state) {
     varray_forwardreferenceclear(&state->forwardref);
     varray_upvalueclear(&state->upvalues);
     varray_functionrefclear(&state->functionref);
+    dictionary_clear(&state->returntypes);
 }
 
 /** Initializes the function stack */
@@ -239,17 +241,42 @@ bool compiler_hasreturn(compiler *c) {
 bool compiler_regcurrenttype(compiler *c, registerindx reg, value *type);
 
 /** Sets the return type of a function */
-void compiler_setreturntype(compiler *c, value type) {
-    objectfunction *func = compiler_getcurrentfunction(c);
+void compiler_addreturntype(compiler *c, value type) {
+    functionstate *f = compiler_currentfunctionstate(c);
     
-    if (MORPHO_ISOBJECT(type)) signature_setreturntype(&func->sig, type); // TODO: Should check for current type
+    if (MORPHO_ISOBJECT(type)) dictionary_insert(&f->returntypes, type, MORPHO_NIL);
+    else dictionary_insert(&f->returntypes, MORPHO_FALSE, MORPHO_NIL);
 }
 
 /** Sets the return type of a function from the contents of a given register */
-void compiler_setreturntypefromregister(compiler *c, registerindx ix) {
+void compiler_addreturntypefromregister(compiler *c, registerindx ix) {
     value type=MORPHO_NIL;
     compiler_regcurrenttype(c, ix, &type);
-    compiler_setreturntype(c, type);
+    compiler_addreturntype(c, type);
+}
+
+static bool _retrieve(dictionary *dict, value *out) {
+    for (unsigned int i=0; i<dict->capacity; i++) {
+        if (!MORPHO_ISNIL(dict->contents[i].key)) {
+            *out = dict->contents[i].key;
+            return true;
+        }
+    }
+    return false;
+}
+
+/** Resolve return type */
+void compiler_resolvereturntype(compiler *c) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    objectfunction *func = compiler_getcurrentfunction(c);
+    value type=MORPHO_NIL;
+    
+    if (f->returntypes.count==1 &&
+        _retrieve(&f->returntypes, &type)) {
+        if (MORPHO_ISEQUAL(type, MORPHO_FALSE)) type=MORPHO_NIL; // Check for ambiguous type
+    }
+    
+    signature_setreturntype(&func->sig, type);
 }
 
 /** Infer the return type of a call target */
@@ -3455,10 +3482,10 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     /* Add a return instruction if necessary */
     if (!compiler_hasreturn(c)) {
         if (ismethod) { // Methods automatically return self unless another argument is specified
-            if (func->klass) compiler_setreturntype(c, MORPHO_OBJECT(func->klass));
+            if (func->klass) compiler_addreturntype(c, MORPHO_OBJECT(func->klass));
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, 0), node); /* Add a return */
         } else {
-            compiler_setreturntype(c, _niltype);
+            compiler_addreturntype(c, _niltype);
             compiler_addinstruction(c, ENCODE_BYTE(OP_RETURN), node); /* Add a return */
         }
         ninstructions++;
@@ -3471,6 +3498,9 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     compiler_setinstruction(c, bindx, ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, ninstructions));
     ninstructions++;
 
+    /* Resolve the return type*/
+    compiler_resolvereturntype(c);
+    
     /* Restore the old function */
     compiler_endfunction(c);
 
@@ -3857,7 +3887,7 @@ static codeinfo compiler_return(compiler *c, syntaxtreenode *node, registerindx 
                 ninstructions+=left.ninstructions;
             }
 
-            compiler_setreturntypefromregister(c, left.dest);
+            compiler_addreturntypefromregister(c, left.dest);
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1,  left.dest), node);
             ninstructions++;
         }
@@ -3866,10 +3896,10 @@ static codeinfo compiler_return(compiler *c, syntaxtreenode *node, registerindx 
         objectclass *klass = compiler_getcurrentclass(c);
         /* Methods return self unless a return value is specified */
         if (klass) {
-            compiler_setreturntype(c, MORPHO_OBJECT(klass));
+            compiler_addreturntype(c, MORPHO_OBJECT(klass));
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, 0), node); /* Add a return */
         } else {
-            compiler_setreturntype(c, _niltype);
+            compiler_addreturntype(c, _niltype);
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 0, 0), node);
         }
         ninstructions++;

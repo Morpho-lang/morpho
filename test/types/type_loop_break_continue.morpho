@@ -1,0 +1,13 @@
+// Type checking with break and continue
+
+Int sum = 0
+for (Int i = 0; i < 10; i = i + 1) {
+    if (i == 5) {
+        continue  // Type should be preserved
+    }
+    if (i == 8) {
+        break  // Type should be preserved
+    }
+    sum = sum + i
+}
+print sum  // expect: 23

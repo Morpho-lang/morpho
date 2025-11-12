@@ -1,0 +1,17 @@
+// Type narrowing through conditional checks
+
+fn process(x) {
+    if (isint(x)) {
+        Int i = x  // Should work - type narrowed
+        return i * 2
+    } else if (isstring(x)) {
+        String s = x  // Should work - type narrowed
+        return s
+    }
+    return nil
+}
+
+print process(5)    // expect: 10
+print process("hi") // expect: hi
+
+

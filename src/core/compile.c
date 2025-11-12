@@ -308,6 +308,7 @@ value _stringtype;
 value _dicttype;
 value _listtype;
 value _rangetype;
+value _tupletype;
 
 value _inttype;
 value _floattype;
@@ -1204,7 +1205,7 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
                 compiler_regcurrenttype(c, info.dest, &ctype) &&
                 compiler_mostspecifictype(c, type, ctype, &type)) {
                 
-                compiler_regsetcurrenttype(c, out.dest, type); 
+                compiler_regsetcurrenttype(c, out.dest, type);
             }
             
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, out.dest, info.dest), node);
@@ -2059,12 +2060,17 @@ static codeinfo compiler_list(compiler *c, syntaxtreenode *node, registerindx re
     syntaxtreenodetype dictentrytype[] = { NODE_ARGLIST };
     varray_syntaxtreeindx entries;
 
-    /* Set up a call to the List() function */
+    /* Set up a call to the List() or Tuple() function as appropriate */
     char *classname = LIST_CLASSNAME;
-    if (node->type==NODE_TUPLE) classname = TUPLE_CLASSNAME;
+    value type = _listtype;
+    if (node->type==NODE_TUPLE) {
+        classname = TUPLE_CLASSNAME;
+        type = _tupletype;
+    }
+    
     codeinfo out = compiler_findbuiltin(c, node, classname, reqout);
     
-    if (!compiler_regcheckandsetcurrenttype(c, node, out.dest, _listtype)) return CODEINFO_EMPTY;
+    if (!compiler_regcheckandsetcurrenttype(c, node, out.dest, type)) return CODEINFO_EMPTY;
 
     varray_syntaxtreeindxinit(&entries);
     if (node->right!=SYNTAXTREE_UNCONNECTED) syntaxtree_flatten(compiler_getsyntaxtree(c), node->right, 1, dictentrytype, &entries);
@@ -4922,6 +4928,7 @@ void compile_initialize(void) {
     _dicttype = builtin_findclassfromcstring(DICTIONARY_CLASSNAME);
     _listtype = builtin_findclassfromcstring(LIST_CLASSNAME);
     _rangetype = builtin_findclassfromcstring(RANGE_CLASSNAME);
+    _tupletype = builtin_findclassfromcstring(TUPLE_CLASSNAME);
     
     _inttype = builtin_findclassfromcstring(INT_CLASSNAME);
     _floattype = builtin_findclassfromcstring(FLOAT_CLASSNAME);

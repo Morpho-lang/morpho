@@ -1,0 +1,13 @@
+// Type propagation through deeply nested closures
+
+fn outer(Int x) {
+    fn inner(Int y) {
+        Int result = x + y
+        return result
+    }
+    return inner
+}
+
+var inner_fn = outer(1)
+Int result = inner_fn(2)
+print result  // expect: 3

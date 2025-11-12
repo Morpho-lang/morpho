@@ -1,0 +1,10 @@
+// Type checking with range operations
+
+Range r = 1...10
+Int sum = 0
+
+for (i in r) {
+    sum = sum + i
+}
+
+print sum  // expect: 45

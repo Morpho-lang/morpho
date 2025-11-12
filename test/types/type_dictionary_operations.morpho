@@ -1,0 +1,12 @@
+// Type checking with dictionary operations
+
+Dictionary dict = { "a": 1, "b": 2, "c": 3 }
+
+Int total = 0
+for (key in dict.keys()) {
+    Int val = dict[key]  // Type should be inferred
+    total = total + val
+}
+print total  // expect: 6
+
+

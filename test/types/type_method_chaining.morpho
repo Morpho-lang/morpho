@@ -1,0 +1,12 @@
+// Type propagation through method chains
+
+class Counter {
+    init() { self.value = 0 }
+    add(Int x) { self.value = self.value + x; return self }
+    get() { return self.value }
+}
+
+Int result = Counter().add(5).add(3).get()
+print result  // expect: 8
+
+

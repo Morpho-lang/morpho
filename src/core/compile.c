@@ -438,10 +438,8 @@ bool compiler_checktype(compiler *c, value type, value match) {
 
 /** Select the more specific type of two types; returns false if the types are contradictory*/
 bool compiler_mostspecifictype(compiler *c, value a, value b, value *out) {
-    if (MORPHO_ISNIL(a)) {
-        *out=b; return true;
-    } else if (MORPHO_ISNIL(b)) {
-        *out=a; return true;
+    if (MORPHO_ISNIL(a) || MORPHO_ISNIL(b)) {
+        *out=MORPHO_NIL; return true;
     } else if (compiler_checktype(c, a, b)) {
         *out=b; return true;
     } else if (compiler_checktype(c, b, a)) {
@@ -1206,7 +1204,7 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
                 compiler_regcurrenttype(c, info.dest, &ctype) &&
                 compiler_mostspecifictype(c, type, ctype, &type)) {
                 
-                compiler_regsetcurrenttype(c, out.dest, type);
+                compiler_regsetcurrenttype(c, out.dest, type); 
             }
             
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, out.dest, info.dest), node);

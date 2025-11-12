@@ -9,4 +9,4 @@ fn f(x) {
     Float a = b 
 }
 
-// expect error 'TypeErr'
+// expect error 'TypeChk'

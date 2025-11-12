@@ -1,0 +1,14 @@
+// Type violation with complex inheritance
+
+class A { }
+class B is A { }
+class C is A { }
+
+fn f() {
+    B b = C()  // expect error 'TypeErr' - C is not a subclass of B
+}
+
+f()
+
+
+

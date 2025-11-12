@@ -1,0 +1,15 @@
+// Type violation with multiple dispatch
+
+class Animal { }
+class Dog is Animal { }
+class Cat is Animal { }
+
+fn speak(Animal a) {
+    return "animal sound"
+}
+
+fn speak(Dog d) {
+    return "woof"
+}
+
+Int result = speak(Cat())  // expect error 'TypeErr' - speak returns String, not Int

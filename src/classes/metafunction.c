@@ -172,7 +172,7 @@ void metafunction_inferreturntype(objectmetafunction *fn, value *type) {
         if (i==0) {
             rtype=sig->ret;
         } else {
-            if (sig->ret!=rtype) rtype=MORPHO_NIL; 
+            if (!MORPHO_ISEQUAL(sig->ret,rtype)) rtype=MORPHO_NIL; 
         }
     }
     

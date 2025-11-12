@@ -1673,7 +1673,7 @@ static void _findfunctionref(compiler *c, value symbol, bool *hasclosure, varray
         value type;
         if (rsym>=0 &&
             compiler_regcurrenttype(c, rsym, &type) &&
-            type!=_closuretype) {
+            !MORPHO_ISEQUAL(type, _closuretype)) {
             break; // If there is, then we halt the search
         }
     }
@@ -2361,12 +2361,12 @@ bool compiler_arithmetictype(compiler *c, opcode op, registerindx left, register
     if (compiler_regcurrenttype(c, left, &ltype) &&
         compiler_regcurrenttype(c, right, &rtype)) {
         
-        if (ltype==_inttype && rtype==_inttype) {
+        if (MORPHO_ISEQUAL(ltype,_inttype) && MORPHO_ISEQUAL(rtype,_inttype)) {
             *type=_inttype;
             success=true;
-        } else if ((ltype==_inttype && rtype==_floattype) ||
-                   (ltype==_floattype && rtype==_inttype) ||
-                   (ltype==_floattype && rtype==_floattype)) {
+        } else if ((MORPHO_ISEQUAL(ltype,_inttype) && MORPHO_ISEQUAL(rtype,_floattype)) ||
+                   (MORPHO_ISEQUAL(ltype,_floattype) && MORPHO_ISEQUAL(rtype,_inttype)) ||
+                   (MORPHO_ISEQUAL(ltype,_floattype) && MORPHO_ISEQUAL(rtype,_floattype))) {
             *type=_floattype;
             success=true;
         } else {

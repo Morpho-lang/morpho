@@ -115,6 +115,7 @@ static void compiler_functionstateinit(functionstate *state) {
     state->nreg=0;
     state->type=FUNCTION;
     state->varg=REGISTER_UNALLOCATED;
+    state->typedec=MORPHO_NIL; 
     varray_registerallocinit(&state->registers);
     varray_forwardreferenceinit(&state->forwardref);
     varray_upvalueinit(&state->upvalues);
@@ -453,6 +454,18 @@ bool compiler_mostspecifictype(compiler *c, value a, value b, value *out) {
 bool compiler_getconstanttype(compiler *c, unsigned int i, value *type) {
     value val = compiler_getconstant(c, i);
     return compiler_typefromvalue(c, val, type);
+}
+
+/** Sets typedec in the current functionstate; used to compile typed declarations */
+void compiler_settypedec(compiler *c, value type) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    f->typedec=type;
+}
+
+/** Returns the value of typedec in the current functionstate */
+value compiler_gettypedec(compiler *c) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    return f->typedec;
 }
 
 /* ------------------------------------------
@@ -1941,6 +1954,7 @@ static codeinfo compiler_break(compiler *c, syntaxtreenode *node, registerindx r
 static codeinfo compiler_try(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_logical(compiler *c, syntaxtreenode *node, registerindx reqout);
 static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, registerindx out);
+static codeinfo compiler_typeddeclaration(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx out);
 static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx out);
@@ -2011,7 +2025,7 @@ compilenoderule noderules[] = {
 
     { compiler_print         },      // NODE_PRINT
     { compiler_declaration   },      // NODE_DECLARATION
-    { compiler_declaration   },      // NODE_TYPE
+    { compiler_typeddeclaration },   // NODE_TYPE
     { compiler_function      },      // NODE_FUNCTION
     { NODE_NORULE            },      // NODE_METHOD
     { compiler_class         },      // NODE_CLASS
@@ -3244,28 +3258,20 @@ static codeinfo compiler_logical(compiler *c, syntaxtreenode *node, registerindx
 
 /** Compile declarations */
 static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, registerindx reqout) {
-    syntaxtreenode *decnode = node;
-    syntaxtreenode *typenode = NULL;
-    
-    if (node->type==NODE_TYPE) {
-        typenode=compiler_getnode(c, node->left);
-        decnode=compiler_getnode(c, node->right);
-    }
-    
     syntaxtreenode *varnode = NULL;
     syntaxtreenode *lftnode = NULL, *indxnode = NULL;
     codeinfo right=CODEINFO_EMPTY;
-    value var=MORPHO_NIL, type=MORPHO_NIL;
+    value var=MORPHO_NIL, type=compiler_gettypedec(c);
     registerindx reg;
     unsigned int ninstructions = 0;
     
-    varnode=compiler_getnode(c, decnode->left);
+    varnode=compiler_getnode(c, node->left);
     
     /* Find the symbol */
     if (varnode) {
-        if (varnode->type==NODE_SYMBOL) {
+        if (varnode->type==NODE_SYMBOL) { // Just a regular symbol
             var = varnode->content;
-        } else if (varnode->type==NODE_INDEX) {
+        } else if (varnode->type==NODE_INDEX) { // It's part of an index assignment
             lftnode=compiler_getnode(c, varnode->left);
             if (lftnode && lftnode->type==NODE_SYMBOL) {
                 indxnode=varnode;
@@ -3289,8 +3295,7 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
             reg=compiler_regtemp(c, REGISTER_UNALLOCATED);
         }
 
-        if (typenode &&
-            compiler_findtype(c, typenode->content, &type)) {
+        if (MORPHO_ISOBJECT(type)) {
             compiler_regsettype(c, reg, type);
             if (vloc.returntype==GLOBAL) compiler_setglobaltype(c, vloc.dest, type);
         }
@@ -3298,7 +3303,7 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
         /* If this is an array, we must create it */
         if (indxnode) {
             /* Set up a call to the Array() function */
-            array=compiler_findbuiltin(c, decnode, ARRAY_CLASSNAME, reqout);
+            array=compiler_findbuiltin(c, node, ARRAY_CLASSNAME, reqout);
             ninstructions+=array.ninstructions;
 
             // Dimensions
@@ -3307,13 +3312,13 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
             ninstructions+=indxinfo.ninstructions;
 
             // Initializer
-            if (decnode->right!=SYNTAXTREE_UNCONNECTED) {
+            if (node->right!=SYNTAXTREE_UNCONNECTED) {
                 iend=compiler_regalloctop(c);
 
-                right = compiler_nodetobytecode(c, decnode->right, iend);
+                right = compiler_nodetobytecode(c, node->right, iend);
                 ninstructions+=right.ninstructions;
 
-                right=compiler_movetoregister(c, decnode, right, iend); // Ensure in register
+                right=compiler_movetoregister(c, node, right, iend); // Ensure in register
                 ninstructions+=right.ninstructions;
             }
 
@@ -3324,27 +3329,27 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
             compiler_regfreetoend(c, istart);
 
             if (vloc.returntype==REGISTER && array.dest!=vloc.dest) { // Move to correct register
-                codeinfo move=compiler_movetoregister(c, decnode, array, vloc.dest);
+                codeinfo move=compiler_movetoregister(c, node, array, vloc.dest);
                 ninstructions+=move.ninstructions;
             } else reg=array.dest;
 
-        } else if (decnode->right!=SYNTAXTREE_UNCONNECTED) { /* Not an array, but has an initializer */
-            right = compiler_nodetobytecode(c, decnode->right, reg);
+        } else if (node->right!=SYNTAXTREE_UNCONNECTED) { /* Not an array, but has an initializer */
+            right = compiler_nodetobytecode(c, node->right, reg);
             ninstructions+=right.ninstructions;
 
             /* Ensure operand is in the desired register  */
-            right=compiler_movetoregister(c, decnode, right, reg);
+            right=compiler_movetoregister(c, node, right, reg);
             ninstructions+=right.ninstructions;
         } else if (MORPHO_ISOBJECT(type)) { // A typed variable must have an initializer
             compiler_error(c, node, COMPILE_NOINITIALIZER, MORPHO_GETCSTRING(var));
         } else { // An untyped variable is simply initialized to nil
-            registerindx cnil = compiler_addconstant(c, decnode, MORPHO_NIL, false, false);
+            registerindx cnil = compiler_addconstant(c, node, MORPHO_NIL, false, false);
             compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, cnil), node);
             ninstructions++;
         }
 
         if (vloc.returntype!=REGISTER) {
-            codeinfo mv=compiler_movefromregister(c, decnode, vloc, reg);
+            codeinfo mv=compiler_movefromregister(c, node, vloc, reg);
             ninstructions+=mv.ninstructions;
 
             compiler_regfreetemp(c, reg);
@@ -3354,6 +3359,54 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
     }
 
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
+}
+
+bool _extracttype(compiler *c, syntaxtreenode *node, value *out) {
+    value type=MORPHO_NIL;
+    syntaxtreenode *typenode = compiler_getnode(c, node->left);
+    if (!typenode) UNREACHABLE("Incorrectly formed type node.");
+    if (typenode->type==NODE_DOT) {
+        syntaxtreenode *nsnode = compiler_getnode(c, typenode->left);
+        syntaxtreenode *labelnode = compiler_getnode(c, typenode->right);
+        
+        if (!(nsnode &&
+            labelnode &&
+            MORPHO_ISSTRING(nsnode->content) &&
+            MORPHO_ISSTRING(labelnode->content))) UNREACHABLE("Incorrectly formed type namespace node.");
+        
+        if (!compiler_isnamespace(c, nsnode->content)) {
+            compiler_error(c, nsnode, COMPILE_UNKNWNNMSPC, MORPHO_GETCSTRING(nsnode->content));
+            return false;
+        }
+        
+        if (!compiler_findclasswithnamespace(c, typenode, nsnode->content, labelnode->content, &type)) {
+            compiler_error(c, typenode, COMPILE_SYMBOLNOTDEFINEDNMSPC, MORPHO_GETCSTRING(nsnode->content), MORPHO_GETCSTRING(labelnode->content));
+            return false;
+        }
+            
+    } else if (MORPHO_ISSTRING(typenode->content)) {
+        if (!compiler_findtype(c, typenode->content, &type)) {
+            compiler_error(c, typenode, COMPILE_UNKNWNTYPE, MORPHO_GETCSTRING(typenode->content));
+            return false;
+        }
+    } else UNREACHABLE("Type node should have string label.");
+    
+    *out = type;
+    return true;
+}
+
+/** Compile typed declarations */
+static codeinfo compiler_typeddeclaration(compiler *c, syntaxtreenode *node, registerindx reqout) {
+    codeinfo out = CODEINFO_EMPTY;
+    value type = MORPHO_NIL;
+    
+    if (_extracttype(c, node, &type)) {
+        compiler_settypedec(c, type);
+        out = compiler_nodetobytecode(c, node->right, reqout);
+        compiler_settypedec(c, MORPHO_NIL);
+    }
+    
+    return out;
 }
 
 /** Compiles an parameter declaration */
@@ -3368,33 +3421,7 @@ static registerindx compiler_functionparameters(compiler *c, syntaxtreeindx indx
         case NODE_TYPE:
         {
             value type=MORPHO_NIL;
-            syntaxtreenode *typenode = compiler_getnode(c, node->left);
-            if (!typenode) UNREACHABLE("Incorrectly formed type node.");
-            if (typenode->type==NODE_DOT) {
-                syntaxtreenode *nsnode = compiler_getnode(c, typenode->left);
-                syntaxtreenode *labelnode = compiler_getnode(c, typenode->right);
-                
-                if (!(nsnode &&
-                    labelnode &&
-                    MORPHO_ISSTRING(nsnode->content) &&
-                    MORPHO_ISSTRING(labelnode->content))) UNREACHABLE("Incorrectly formed type namespace node.");
-                
-                if (!compiler_isnamespace(c, nsnode->content)) {
-                    compiler_error(c, nsnode, COMPILE_UNKNWNNMSPC, MORPHO_GETCSTRING(nsnode->content));
-                    return REGISTER_UNALLOCATED;
-                }
-                
-                if (!compiler_findclasswithnamespace(c, typenode, nsnode->content, labelnode->content, &type)) {
-                    compiler_error(c, typenode, COMPILE_SYMBOLNOTDEFINEDNMSPC, MORPHO_GETCSTRING(nsnode->content), MORPHO_GETCSTRING(labelnode->content));
-                    return REGISTER_UNALLOCATED;
-                }
-                    
-            } else if (MORPHO_ISSTRING(typenode->content)) {
-                if (!compiler_findtype(c, typenode->content, &type)) {
-                    compiler_error(c, node, COMPILE_UNKNWNTYPE, MORPHO_GETCSTRING(typenode->content));
-                    return REGISTER_UNALLOCATED;
-                }
-            } else UNREACHABLE("Type node should have string label.");
+            if (!_extracttype(c, node, &type)) return REGISTER_UNALLOCATED;
             
             registerindx reg = compiler_functionparameters(c, node->right);
             compiler_regsettype(c, reg, type);

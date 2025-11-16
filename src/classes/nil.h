@@ -11,7 +11,7 @@
  * Nil veneer class
  * ------------------------------------------------------- */
 
-#define NIL_CLASSNAME "nil"
+#define NIL_CLASSNAME "Nil"
 
 /* -------------------------------------------------------
  * Nil error messages

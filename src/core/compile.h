@@ -249,6 +249,7 @@ typedef struct {
     unsigned int cfdepth; /* Count depth inside control flow; allows us to identify where returns are */
     bool inargs; /* Set while compiling function calls to ensure allocations are at the top of the stack */
     bool hasreturn; /* Set if the compiling function has an unconditional return */
+    value typedec; /* Set to the current type of a type declaration */
     //unsigned int nposn; /* Number of positional args recorded in latest call */
     //unsigned int nopt; /* Number of optional args recorded in latest call */
 } functionstate;

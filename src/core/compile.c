@@ -3714,6 +3714,7 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     if (compiler_isinvocation(c, node)) {
         return compiler_invoke(c, node, reqout);
     }
+    
     registerindx top=compiler_regtop(c);
 
     compiler_beginargs(c);
@@ -3735,8 +3736,17 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
         }
     }
     
+    // Use the requested register for the call if it's on top and isn't typed
+    registerindx rCallReq = (reqout<top ? REGISTER_UNALLOCATED : reqout);
+    value rcalltype=MORPHO_NIL;
+    if (reqout!=REGISTER_UNALLOCATED &&
+        compiler_regtype(c, reqout, &rcalltype) &&
+        MORPHO_ISOBJECT(rcalltype)) {
+        rCallReq = REGISTER_UNALLOCATED;
+    }
+    
     // Compile the selector
-    codeinfo func = compiler_nodetobytecode(c, node->left, (reqout<top ? REGISTER_UNALLOCATED : reqout));
+    codeinfo func = compiler_nodetobytecode(c, node->left, rCallReq);
     
     // Attempt to infer return type
     if (func.returntype==CONSTANT && MORPHO_ISNIL(rtype)) {

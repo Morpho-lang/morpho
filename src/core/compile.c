@@ -310,6 +310,7 @@ value _dicttype;
 value _listtype;
 value _rangetype;
 value _tupletype;
+value _complextype;
 
 value _inttype;
 value _floattype;
@@ -2368,6 +2369,10 @@ opcodedispatchrule opcodedispatchrules[] ={
     { OP_POW, MORPHO_POW_METHOD, MORPHO_POWR_METHOD },
 };
 
+bool _isreal(value r) {
+    return MORPHO_ISEQUAL(r, _inttype) || MORPHO_ISEQUAL(r, _floattype);
+}
+
 bool compiler_arithmetictype(compiler *c, opcode op, registerindx left, registerindx right, value *type) {
     bool success=false;
     value ltype=MORPHO_NIL, rtype=MORPHO_NIL;
@@ -2375,12 +2380,10 @@ bool compiler_arithmetictype(compiler *c, opcode op, registerindx left, register
     if (compiler_regcurrenttype(c, left, &ltype) &&
         compiler_regcurrenttype(c, right, &rtype)) {
         
-        if (MORPHO_ISEQUAL(ltype,_inttype) && MORPHO_ISEQUAL(rtype,_inttype)) {
+        if (MORPHO_ISEQUAL(ltype,_inttype) && MORPHO_ISEQUAL(rtype,_inttype) && op!=OP_POW) {
             *type=_inttype;
             success=true;
-        } else if ((MORPHO_ISEQUAL(ltype,_inttype) && MORPHO_ISEQUAL(rtype,_floattype)) ||
-                   (MORPHO_ISEQUAL(ltype,_floattype) && MORPHO_ISEQUAL(rtype,_inttype)) ||
-                   (MORPHO_ISEQUAL(ltype,_floattype) && MORPHO_ISEQUAL(rtype,_floattype))) {
+        } else if (_isreal(ltype) && _isreal(rtype)) {
             *type=_floattype;
             success=true;
         } else {
@@ -2448,10 +2451,8 @@ static codeinfo compiler_binary(compiler *c, syntaxtreenode *node, registerindx 
     /* Set the output type of the operation */
     // TODO: Check input types?
     value type = MORPHO_NIL;
-    if (op<=OP_DIV) { // Arithmetic type
+    if (op<=OP_POW) { // Arithmetic type
         compiler_arithmetictype(c, op, left.dest, right.dest, &type);
-    } else if (op==OP_POW) { // Powers always generate floats TODO: THIS IS NOT TRUE
-        type=_floattype;
     } else { // Comparison operations
         type=_booltype;
     }
@@ -3296,8 +3297,9 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
         }
 
         if (MORPHO_ISOBJECT(type)) {
-            compiler_regsettype(c, reg, type);
+            // TODO: This should probably be an either/or...
             if (vloc.returntype==GLOBAL) compiler_setglobaltype(c, vloc.dest, type);
+            compiler_regsettype(c, reg, type);
         }
         
         /* If this is an array, we must create it */
@@ -4966,6 +4968,7 @@ void compile_initialize(void) {
     _listtype = builtin_findclassfromcstring(LIST_CLASSNAME);
     _rangetype = builtin_findclassfromcstring(RANGE_CLASSNAME);
     _tupletype = builtin_findclassfromcstring(TUPLE_CLASSNAME);
+    _complextype = builtin_findclassfromcstring(COMPLEX_CLASSNAME);
     
     _inttype = builtin_findclassfromcstring(INT_CLASSNAME);
     _floattype = builtin_findclassfromcstring(FLOAT_CLASSNAME);

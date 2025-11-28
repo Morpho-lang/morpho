@@ -1,0 +1,18 @@
+// Check type detection for add 
+
+{
+    Complex a = 1+1im 
+
+    Float b = a.real()
+    Float c = a.imag()
+    Float d = a.abs()
+    Float e = a.angle()
+
+    Complex f = a + a 
+    Complex g = a - a 
+    Complex h = a * a 
+    Complex p = a / a 
+    Complex q = a ^ a 
+}
+
+print "ok" // expect: ok

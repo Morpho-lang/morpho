@@ -7,6 +7,12 @@ print a
 
 var b = XMatrix(2,2)
 b[0,0]=1
+b[0,1]=2
+b[1,0]=3
+b[1,1]=4
+
 print b
 print b[0]
 print b[0,0]
+
+print b+b

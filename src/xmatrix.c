@@ -80,6 +80,33 @@ bool xmatrix_getelement(objectxmatrix *matrix, unsigned int row, unsigned int co
 }
 
 /* ----------------------
+ * Arithmetic operations
+ * ---------------------- */
+
+/** Performs a + b -> out. */
+objectmatrixerror xmatrix_add(objectxmatrix *a, objectxmatrix *b, objectxmatrix *out) {
+    if (a->ncols==b->ncols && a->ncols==out->ncols &&
+        a->nrows==b->nrows && a->nrows==out->nrows) {
+        if (a!=out) cblas_dcopy(a->ncols * a->nrows, a->elements, 1, out->elements, 1);
+        cblas_daxpy(a->ncols * a->nrows, 1.0, b->elements, 1, out->elements, 1);
+        return MATRIX_OK;
+    }
+    return MATRIX_INCMPTBLDIM;
+}
+
+/** Performs lambda*a + beta -> out. */
+objectmatrixerror xmatrix_addscalar(objectxmatrix *a, double lambda, double beta, objectxmatrix *out) {
+    if (a->ncols==out->ncols && a->nrows==out->nrows) {
+        for (unsigned int i=0; i<out->nrows*out->ncols; i++) {
+            out->elements[i]=lambda*a->elements[i]+beta;
+        }
+        return MATRIX_OK;
+    }
+
+    return MATRIX_INCMPTBLDIM;
+}
+
+/* ----------------------
  * Display
  * ---------------------- */
 
@@ -129,8 +156,25 @@ value XMatrix_print(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-value XMatrix_add(vm *v, int nargs, value *args) {
-    return MORPHO_NIL;
+/* ---------
+ * add()
+ * --------- */
+
+value XMatrix_add__xmatrix(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
+    objectxmatrix *new = NULL;
+    value out=MORPHO_NIL;
+    
+    if (a->ncols==b->ncols && a->nrows==b->nrows) {
+        new=xmatrix_new(a->nrows, a->ncols, false);
+        if (new) {
+            xmatrix_add(a, b, new);
+            out = morpho_wrapandbind(v, (object *) new);
+        }
+    } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    
+    return out;
 }
 
 /* ---------
@@ -183,7 +227,8 @@ value XMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
 
 MORPHO_BEGINCLASS(XMatrix)
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "(XMatrix)", XMatrix_add, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "(XMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
+//MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "(_)", XMatrix_add__x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),

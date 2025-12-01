@@ -46,7 +46,7 @@ find_library(MORPHO_LIBRARY
     NAMES morpho libmorpho
 )
 
-target_link_libraries(newlinalg ${MORPHO_LIBRARY} ${ZMQ_LIBRARY} ${CZMQ_LIBRARY})
+target_link_libraries(newlinalg ${MORPHO_LIBRARY})
 
 set(CMAKE_INSTALL_PREFIX ..)
 

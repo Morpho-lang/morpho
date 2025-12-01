@@ -5,7 +5,10 @@
 */
 
 #include "newlinalg.h"
-#include "xmatrix.h"
+#include "xmatrix.h" 
+
+#define MORPHO_INCLUDE_LINALG
+#include <matrix.h>
 
 /* **********************************************************************
  * XMatrix objects
@@ -36,6 +39,10 @@ objecttypedefn objectxmatrixdefn = {
  * XMatrix utility functions
  * ********************************************************************** */
 
+/* ----------------------
+ * Constructors
+ * ---------------------- */
+
 objectxmatrix *xmatrix_new(int nrows, int ncols, bool zero) {
     int nels = nrows*ncols;
     objectxmatrix *new = (objectxmatrix *) object_new(sizeof(objectxmatrix) + nels*sizeof(double), OBJECT_XMATRIX);
@@ -51,34 +58,65 @@ objectxmatrix *xmatrix_new(int nrows, int ncols, bool zero) {
     return new;
 }
 
+/* ----------------------
+ * Accessing elements
+ * ---------------------- */
+
+/** @brief Sets a matrix element.
+    @returns true if the element is in the range of the matrix, false otherwise */
+bool xmatrix_setelement(objectxmatrix *matrix, unsigned int row, unsigned int col, double value) {
+    if (!(col<matrix->ncols && row<matrix->nrows)) return false;
+        
+    matrix->elements[col*matrix->nrows+row]=value;
+    return true;
+}
+
+/** @brief Gets a matrix element
+ *  @returns true if the element is in the range of the matrix, false otherwise */
+bool xmatrix_getelement(objectxmatrix *matrix, unsigned int row, unsigned int col, double *value) {
+    if (!(col<matrix->ncols && row<matrix->nrows)) return false;
+    
+    if (value) *value=matrix->elements[col*matrix->nrows+row];
+    return true;
+}
+
+/* ----------------------
+ * Display
+ * ---------------------- */
+
+/** Prints a matrix */
+void xmatrix_print(vm *v, objectxmatrix *m) {
+    for (int i=0; i<m->nrows; i++) { // Rows run from 0...m
+        morpho_printf(v, "[ ");
+        for (int j=0; j<m->ncols; j++) { // Columns run from 0...k
+            double val=0.0;
+            xmatrix_getelement(m, i, j, &val);
+            morpho_printf(v, "%g ", (fabs(val)<MORPHO_EPS ? 0 : val));
+        }
+        morpho_printf(v, "]%s", (i<m->nrows-1 ? "\n" : ""));
+    }
+}
+
+
 /* **********************************************************************
  * XMatrix constructor
  * ********************************************************************** */
 
 value xmatrix_constructor(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
-    
     int nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     int ncols = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
     
     objectxmatrix *new=xmatrix_new(nrows, ncols, true);
     
-    if (new) {
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    }
-    
-    return out;
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 value xmatrix_list_constructor(vm *v, int nargs, value *args) {
-    
-    
     return MORPHO_NIL;
 }
 
 value xmatrix_invalid_constructor(vm *v, int nargs, value *args) {
-    morpho_runtimeerror(v, MATRIX_CONSTRUCTOR);
+    //morpho_runtimeerror(v, MATRIX_CONSTRUCTOR);
     return MORPHO_NIL;
 }
 
@@ -86,12 +124,72 @@ value xmatrix_invalid_constructor(vm *v, int nargs, value *args) {
  * XMatrix veneer class
  * ********************************************************************** */
 
+/** Prints a matrix */
+value XMatrix_print(vm *v, int nargs, value *args) {
+    objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    xmatrix_print(v, m);
+    return MORPHO_NIL;
+}
+
 value XMatrix_add(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/* ---------
+ * index()
+ * --------- */
+
+value _getindex(vm *v, objectxmatrix *m, unsigned int i, unsigned int j) {
+    double out;
+    if (xmatrix_getelement(m, i, j, &out)) return MORPHO_FLOAT(out);
+    //morpho_runtimeerror(v, XMATRIX_INDICESOUTSIDEBOUNDS);
+    return MORPHO_NIL;
+}
+
+value XMatrix_index__int(vm *v, int nargs, value *args) {
+    objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    unsigned int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    return _getindex(v, m, i, 0);
+}
+
+value XMatrix_index__int_int(vm *v, int nargs, value *args) {
+    objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    unsigned int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    unsigned int j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    return _getindex(v, m, i, j);
+}
+
+/* ---------
+ * setindex()
+ * --------- */
+
+value _setindex(vm *v, objectxmatrix *m, unsigned int i, unsigned int j, value in) {
+    double val=0.0;
+    if (!morpho_valuetofloat(in, &val)) true; // Should raise an error (Matrix doesn't!)
+    if (!xmatrix_setelement(m, i, j, val)) true; //morpho_runtimeerror(v, XMATRIX_INDICESOUTSIDEBOUNDS);
+    return MORPHO_NIL;
+}
+
+value XMatrix_setindex__int(vm *v, int nargs, value *args) {
+    objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    unsigned int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    return _setindex(v, m, i, 0, MORPHO_GETARG(args, 1));
+}
+
+value XMatrix_setindex__int_int(vm *v, int nargs, value *args) {
+    objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    unsigned int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    unsigned int j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    return _setindex(v, m, i, j, MORPHO_GETARG(args, 2));
+}
+
 MORPHO_BEGINCLASS(XMatrix)
-MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "(XMatrix)", XMatrix_add, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "(XMatrix)", XMatrix_add, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", XMatrix_setindex__int, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

@@ -1,8 +1,12 @@
 
 import newlinalg 
 
-var a = XMatrix(2,2)
-//var b = XMatrix([1,2,3])
-
+var a = XMatrix(2,1)
+a[0]=1
 print a
-//print b 
+
+var b = XMatrix(2,2)
+b[0,0]=1
+print b
+print b[0]
+print b[0,0]

@@ -9,4 +9,6 @@
 
 #include "newlinalg.h"
 
+void complexmatrix_initialize(void);
+
 #endif

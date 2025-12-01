@@ -4,10 +4,12 @@
  *  @brief New matrices
 */
 
+#define ACCELERATE_NEW_LAPACK
 #define MORPHO_INCLUDE_LINALG
 
 #include "newlinalg.h"
-#include "xmatrix.h" 
+#include "xmatrix.h"
+#include "xcomplexmatrix.h"
 
 /* **********************************************************************
  * XMatrix objects
@@ -42,6 +44,7 @@ objecttypedefn objectxmatrixdefn = {
  * Constructors
  * ---------------------- */
 
+/** Create a new matrix */
 objectxmatrix *xmatrix_new(int nrows, int ncols, bool zero) {
     int nels = nrows*ncols;
     objectxmatrix *new = (objectxmatrix *) object_new(sizeof(objectxmatrix) + nels*sizeof(double), OBJECT_XMATRIX);
@@ -54,6 +57,14 @@ objectxmatrix *xmatrix_new(int nrows, int ncols, bool zero) {
         if (zero) memset(new->elements, 0, nels*sizeof(double));
     }
     
+    return new;
+}
+
+/** Clone a matrix */
+objectxmatrix *xmatrix_clone(objectxmatrix *in) {
+    objectxmatrix *new = xmatrix_new(in->nrows, in->ncols, false);
+    
+    if (new) cblas_dcopy(in->ncols * in->nrows, in->elements, 1, new->elements, 1);
     return new;
 }
 
@@ -83,26 +94,14 @@ bool xmatrix_getelement(objectxmatrix *matrix, unsigned int row, unsigned int co
  * Arithmetic operations
  * ---------------------- */
 
-/** Performs a + b -> out. */
-objectmatrixerror xmatrix_add(objectxmatrix *a, objectxmatrix *b, objectxmatrix *out) {
-    if (a->ncols==b->ncols && a->ncols==out->ncols &&
-        a->nrows==b->nrows && a->nrows==out->nrows) {
-        if (a!=out) cblas_dcopy(a->ncols * a->nrows, a->elements, 1, out->elements, 1);
-        cblas_daxpy(a->ncols * a->nrows, 1.0, b->elements, 1, out->elements, 1);
+/** Performs out <- alpha*x + y */
+objectmatrixerror xmatrix_axpy(double alpha, objectxmatrix *x, objectxmatrix *y, objectxmatrix *out) {
+    if (x->ncols==y->ncols && y->ncols==out->ncols &&
+        x->nrows==y->nrows && y->nrows==out->nrows) {
+        if (x!=out) cblas_dcopy(x->ncols * x->nrows, x->elements, 1, out->elements, 1);
+        cblas_daxpy(x->ncols * x->nrows, alpha, y->elements, 1, out->elements, 1);
         return MATRIX_OK;
     }
-    return MATRIX_INCMPTBLDIM;
-}
-
-/** Performs lambda*a + beta -> out. */
-objectmatrixerror xmatrix_addscalar(objectxmatrix *a, double lambda, double beta, objectxmatrix *out) {
-    if (a->ncols==out->ncols && a->nrows==out->nrows) {
-        for (unsigned int i=0; i<out->nrows*out->ncols; i++) {
-            out->elements[i]=lambda*a->elements[i]+beta;
-        }
-        return MATRIX_OK;
-    }
-
     return MATRIX_INCMPTBLDIM;
 }
 
@@ -149,6 +148,10 @@ value xmatrix_constructor__err(vm *v, int nargs, value *args) {
  * XMatrix veneer class
  * ********************************************************************** */
 
+/* ----------------------
+ * Common utility methods
+ * ---------------------- */
+
 /** Prints a matrix */
 value XMatrix_print(vm *v, int nargs, value *args) {
     objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
@@ -156,11 +159,22 @@ value XMatrix_print(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-/* ---------
- * add()
- * --------- */
+/** Clones a matrix */
+value XMatrix_clone(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectxmatrix *new=xmatrix_clone(a);
+    if (new) {
+        out = morpho_wrapandbind(v, (object *) new);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    return out;
+}
 
-value XMatrix_add__xmatrix(vm *v, int nargs, value *args) {
+/* ----------
+ * Arithmetic
+ * ---------- */
+
+static value _axpy(vm *v, int nargs, value *args, double alpha) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
     objectxmatrix *new = NULL;
@@ -169,7 +183,7 @@ value XMatrix_add__xmatrix(vm *v, int nargs, value *args) {
     if (a->ncols==b->ncols && a->nrows==b->nrows) {
         new=xmatrix_new(a->nrows, a->ncols, false);
         if (new) {
-            xmatrix_add(a, b, new);
+            xmatrix_axpy(alpha, a, b, new);
             out = morpho_wrapandbind(v, (object *) new);
         }
     } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
@@ -177,11 +191,19 @@ value XMatrix_add__xmatrix(vm *v, int nargs, value *args) {
     return out;
 }
 
+value XMatrix_add__xmatrix(vm *v, int nargs, value *args) {
+    return _axpy(v,nargs,args,1.0);
+}
+
+value XMatrix_sub__xmatrix(vm *v, int nargs, value *args) {
+    return _axpy(v,nargs,args,-1.0);
+}
+
 /* ---------
  * index()
  * --------- */
 
-value _getindex(vm *v, objectxmatrix *m, unsigned int i, unsigned int j) {
+static value _getindex(vm *v, objectxmatrix *m, unsigned int i, unsigned int j) {
     double out;
     if (xmatrix_getelement(m, i, j, &out)) return MORPHO_FLOAT(out);
     //morpho_runtimeerror(v, XMATRIX_INDICESOUTSIDEBOUNDS);
@@ -227,8 +249,9 @@ value XMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
 
 MORPHO_BEGINCLASS(XMatrix)
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "XMatrix ()", XMatrix_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "(XMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
-//MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "(_)", XMatrix_add__x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "(XMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
@@ -243,11 +266,11 @@ void xmatrix_initialize(void) {
     objectxmatrixtype=object_addtype(&objectxmatrixdefn);
     
     value xmatrixclass=builtin_addclass(XMATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(XMatrix), MORPHO_NIL);
-    
     object_setveneerclass(OBJECT_XMATRIX, xmatrixclass);
     
     morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (Int, Int)", xmatrix_constructor__int_int, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (List)", xmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(XMATRIX_CLASSNAME, "(...)", xmatrix_constructor__err, MORPHO_FN_CONSTRUCTOR, NULL);
+    
+    complexmatrix_initialize();
 }
-

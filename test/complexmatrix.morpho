@@ -1,0 +1,5 @@
+
+import newlinalg 
+
+var a = ComplexMatrix(2,2)
+print a

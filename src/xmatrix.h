@@ -14,6 +14,8 @@
 extern objecttype objectxmatrixtype;
 #define OBJECT_XMATRIX objectxmatrixtype
 
+extern objecttypedefn objectxmatrixdefn;
+
 /** Matrices are a purely numerical collection type oriented toward linear algebra.
     Elements are stored in column-major format, i.e.
         [ 1 2 ]

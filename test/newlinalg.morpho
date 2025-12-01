@@ -16,3 +16,9 @@ print b[0]
 print b[0,0]
 
 print b+b
+
+print b-b 
+
+var c = b.clone() 
+
+print b+c

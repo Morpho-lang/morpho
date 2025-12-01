@@ -4,11 +4,10 @@
  *  @brief New matrices
 */
 
+#define MORPHO_INCLUDE_LINALG
+
 #include "newlinalg.h"
 #include "xmatrix.h" 
-
-#define MORPHO_INCLUDE_LINALG
-#include <matrix.h>
 
 /* **********************************************************************
  * XMatrix objects
@@ -97,12 +96,11 @@ void xmatrix_print(vm *v, objectxmatrix *m) {
     }
 }
 
-
 /* **********************************************************************
  * XMatrix constructor
  * ********************************************************************** */
 
-value xmatrix_constructor(vm *v, int nargs, value *args) {
+value xmatrix_constructor__int_int(vm *v, int nargs, value *args) {
     int nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     int ncols = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
     
@@ -111,12 +109,12 @@ value xmatrix_constructor(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
-value xmatrix_list_constructor(vm *v, int nargs, value *args) {
+value xmatrix_constructor__list(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-value xmatrix_invalid_constructor(vm *v, int nargs, value *args) {
-    //morpho_runtimeerror(v, MATRIX_CONSTRUCTOR);
+value xmatrix_constructor__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, MATRIX_CONSTRUCTOR);
     return MORPHO_NIL;
 }
 
@@ -170,13 +168,13 @@ value _setindex(vm *v, objectxmatrix *m, unsigned int i, unsigned int j, value i
     return MORPHO_NIL;
 }
 
-value XMatrix_setindex__int(vm *v, int nargs, value *args) {
+value XMatrix_setindex__int_x(vm *v, int nargs, value *args) {
     objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     unsigned int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     return _setindex(v, m, i, 0, MORPHO_GETARG(args, 1));
 }
 
-value XMatrix_setindex__int_int(vm *v, int nargs, value *args) {
+value XMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
     objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     unsigned int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     unsigned int j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
@@ -188,8 +186,8 @@ MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSE
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "(XMatrix)", XMatrix_add, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", XMatrix_setindex__int, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", XMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -203,8 +201,8 @@ void xmatrix_initialize(void) {
     
     object_setveneerclass(OBJECT_XMATRIX, xmatrixclass);
     
-    morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (Int, Int)", xmatrix_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
-    morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (List)", xmatrix_list_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
-    morpho_addfunction(XMATRIX_CLASSNAME, "(...)", xmatrix_invalid_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (Int, Int)", xmatrix_constructor__int_int, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (List)", xmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(XMATRIX_CLASSNAME, "(...)", xmatrix_constructor__err, MORPHO_FN_CONSTRUCTOR, NULL);
 }
 

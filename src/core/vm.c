@@ -577,7 +577,7 @@ static inline bool vm_invoke(vm *v, value obj, value method, int nargs, value *a
                     for (unsigned int i=0; i<nargs; i++) sargs[i+1]=args[i];
                     *out = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, nargs, sargs);
                     return true;
-                }
+                } else return morpho_invoke(v, obj, ifunc, nargs, args, out);
             }
         }
     }

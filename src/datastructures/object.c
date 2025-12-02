@@ -131,11 +131,11 @@ void morpho_freeobject(value val) {
  * ********************************************************************** */
 
 /** @brief Sets the veneer class for a particular object type */
-void object_setveneerclass(objecttype type, value class) {
+void object_setveneerclass(objecttype type, value klass) {
     if (_objectdefns[type].veneer!=NULL) {
         UNREACHABLE("Veneer class redefined.\n");
     }
-    _objectdefns[type].veneer=(object *) MORPHO_GETCLASS(class);
+    _objectdefns[type].veneer=(object *) MORPHO_GETCLASS(klass);
 }
 
 /** @brief Gets the veneer for a particular object type */

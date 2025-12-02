@@ -144,11 +144,11 @@ bool builtin_enumerateloop(vm *v, value obj, builtin_loopfunction fn, void *ref)
  * Veneer classes
  * ------------------------------------------------------- */
 
-void object_setveneerclass(objecttype type, value class);
+void object_setveneerclass(objecttype type, value klass);
 objectclass *object_getveneerclass(objecttype type);
 bool object_veneerclasstotype(objectclass *clss, objecttype *type);
 
-void value_setveneerclass(value type, value class);
+void value_setveneerclass(value type, value klass);
 objectclass *value_getveneerclass(value type);
 objectclass *value_veneerclassfromtype(int type);
 bool value_veneerclasstotype(objectclass *clss, int *type);

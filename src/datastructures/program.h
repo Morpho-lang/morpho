@@ -57,7 +57,8 @@ typedef struct {
 #define MORPHO_PROGRAMSTART 0
 void program_setentry(program *p, instructionindx entry);
 instructionindx program_getentry(program *p);
-varray_value *program_getconstanttable(program *p);
+varray_instruction *program_getbytecode(program *p);
+objectfunction *program_getglobalfn(program *p);
 void program_bindobject(program *p, object *obj);
 
 value program_internsymbol(program *p, value symbol);

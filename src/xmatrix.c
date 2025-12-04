@@ -123,7 +123,7 @@ void xmatrix_print(vm *v, objectxmatrix *m) {
 }
 
 /* **********************************************************************
- * XMatrix constructor
+ * XMatrix constructors
  * ********************************************************************** */
 
 value xmatrix_constructor__int_int(vm *v, int nargs, value *args) {

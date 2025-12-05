@@ -33,7 +33,7 @@ objectcomplexmatrix *complexmatrix_new(MatrixIdx_t nrows, MatrixIdx_t ncols, boo
 bool complexmatrix_setelement(objectcomplexmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, MorphoComplex value) {
     if (!(col<matrix->ncols && row<matrix->nrows)) return false;
         
-    MatrixCount_t ix = 2*(col*matrix->nrows+row);
+    MatrixCount_t ix = matrix->nvals*(col*matrix->nrows+row);
     matrix->elements[ix]=creal(value);
     matrix->elements[ix+1]=cimag(value);
     return true;

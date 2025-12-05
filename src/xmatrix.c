@@ -85,7 +85,7 @@ objectxmatrix *xmatrix_clone(objectxmatrix *in) {
 bool xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value) {
     if (!(col<matrix->ncols && row<matrix->nrows)) return false;
         
-    matrix->elements[col*matrix->nrows+row]=value;
+    matrix->elements[matrix->nvals*(col*matrix->nrows+row)]=value;
     return true;
 }
 
@@ -94,7 +94,7 @@ bool xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col,
 bool xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value) {
     if (!(col<matrix->ncols && row<matrix->nrows)) return false;
     
-    if (value) *value=matrix->elements[col*matrix->nrows+row];
+    if (value) *value=matrix->elements[matrix->nvals*(col*matrix->nrows+row)];
     return true;
 }
 

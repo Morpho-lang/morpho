@@ -9,6 +9,12 @@
 
 #include "newlinalg.h"
 
+/* -------------------------------------------------------
+ * ComplexMatrix veneer class
+ * ------------------------------------------------------- */
+
+#define COMPLEXMATRIX_CLASSNAME                   "ComplexMatrix"
+
 void complexmatrix_initialize(void);
 
 #endif

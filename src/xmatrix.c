@@ -19,8 +19,7 @@ objecttype objectxmatrixtype;
 
 /** Matrix object definitions */
 size_t objectxmatrix_sizefn(object *obj) {
-    return sizeof(objectxmatrix)+sizeof(double) *
-            ((objectxmatrix *) obj)->nels;
+    return sizeof(objectxmatrix)+sizeof(double) * ((objectxmatrix *) obj)->nels;
 }
 
 void objectxmatrix_printfn(object *obj, void *v) {
@@ -45,19 +44,24 @@ objecttypedefn objectxmatrixdefn = {
  * ---------------------- */
 
 /** Create a new matrix */
-objectxmatrix *xmatrix_new(int nrows, int ncols, bool zero) {
-    int nels = nrows*ncols;
-    objectxmatrix *new = (objectxmatrix *) object_new(sizeof(objectxmatrix) + nels*sizeof(double), OBJECT_XMATRIX);
+objectxmatrix *xmatrix_newwithtype(objecttype type, MatrixIdx_t nrows, MatrixIdx_t ncols, MatrixIdx_t nvals, bool zero) {
+    MatrixCount_t nels = nrows*ncols*nvals;
+    objectxmatrix *new = (objectxmatrix *) object_new(sizeof(objectxmatrix) + nels*sizeof(double), type);
     
     if (new) {
         new->nrows=nrows;
         new->ncols=ncols;
+        new->nvals=nvals;
         new->nels=nels;
         new->elements=new->matrixdata;
         if (zero) memset(new->elements, 0, nels*sizeof(double));
     }
     
     return new;
+}
+
+objectxmatrix *xmatrix_new(MatrixIdx_t nrows, MatrixIdx_t ncols, bool zero) {
+    return xmatrix_newwithtype(OBJECT_XMATRIX, nrows, ncols, 1, zero);
 }
 
 /** Clone a matrix */
@@ -74,7 +78,7 @@ objectxmatrix *xmatrix_clone(objectxmatrix *in) {
 
 /** @brief Sets a matrix element.
     @returns true if the element is in the range of the matrix, false otherwise */
-bool xmatrix_setelement(objectxmatrix *matrix, unsigned int row, unsigned int col, double value) {
+bool xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value) {
     if (!(col<matrix->ncols && row<matrix->nrows)) return false;
         
     matrix->elements[col*matrix->nrows+row]=value;
@@ -83,7 +87,7 @@ bool xmatrix_setelement(objectxmatrix *matrix, unsigned int row, unsigned int co
 
 /** @brief Gets a matrix element
  *  @returns true if the element is in the range of the matrix, false otherwise */
-bool xmatrix_getelement(objectxmatrix *matrix, unsigned int row, unsigned int col, double *value) {
+bool xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value) {
     if (!(col<matrix->ncols && row<matrix->nrows)) return false;
     
     if (value) *value=matrix->elements[col*matrix->nrows+row];
@@ -111,9 +115,9 @@ objectmatrixerror xmatrix_axpy(double alpha, objectxmatrix *x, objectxmatrix *y,
 
 /** Prints a matrix */
 void xmatrix_print(vm *v, objectxmatrix *m) {
-    for (int i=0; i<m->nrows; i++) { // Rows run from 0...m
+    for (MatrixIdx_t i=0; i<m->nrows; i++) { // Rows run from 0...m
         morpho_printf(v, "[ ");
-        for (int j=0; j<m->ncols; j++) { // Columns run from 0...k
+        for (MatrixIdx_t j=0; j<m->ncols; j++) { // Columns run from 0...k
             double val=0.0;
             xmatrix_getelement(m, i, j, &val);
             morpho_printf(v, "%g ", (fabs(val)<MORPHO_EPS ? 0 : val));
@@ -203,7 +207,7 @@ value XMatrix_sub__xmatrix(vm *v, int nargs, value *args) {
  * index()
  * --------- */
 
-static value _getindex(vm *v, objectxmatrix *m, unsigned int i, unsigned int j) {
+static value _getindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
     double out;
     if (xmatrix_getelement(m, i, j, &out)) return MORPHO_FLOAT(out);
     //morpho_runtimeerror(v, XMATRIX_INDICESOUTSIDEBOUNDS);
@@ -212,14 +216,14 @@ static value _getindex(vm *v, objectxmatrix *m, unsigned int i, unsigned int j) 
 
 value XMatrix_index__int(vm *v, int nargs, value *args) {
     objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    unsigned int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     return _getindex(v, m, i, 0);
 }
 
 value XMatrix_index__int_int(vm *v, int nargs, value *args) {
     objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    unsigned int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    unsigned int j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    MatrixIdx_t j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
     return _getindex(v, m, i, j);
 }
 
@@ -227,7 +231,7 @@ value XMatrix_index__int_int(vm *v, int nargs, value *args) {
  * setindex()
  * --------- */
 
-value _setindex(vm *v, objectxmatrix *m, unsigned int i, unsigned int j, value in) {
+value _setindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j, value in) {
     double val=0.0;
     if (!morpho_valuetofloat(in, &val)) true; // Should raise an error (Matrix doesn't!)
     if (!xmatrix_setelement(m, i, j, val)) true; //morpho_runtimeerror(v, XMATRIX_INDICESOUTSIDEBOUNDS);
@@ -236,14 +240,14 @@ value _setindex(vm *v, objectxmatrix *m, unsigned int i, unsigned int j, value i
 
 value XMatrix_setindex__int_x(vm *v, int nargs, value *args) {
     objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    unsigned int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     return _setindex(v, m, i, 0, MORPHO_GETARG(args, 1));
 }
 
 value XMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
     objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    unsigned int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    unsigned int j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    MatrixIdx_t j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
     return _setindex(v, m, i, j, MORPHO_GETARG(args, 2));
 }
 

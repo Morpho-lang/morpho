@@ -16,6 +16,9 @@ extern objecttype objectxmatrixtype;
 
 extern objecttypedefn objectxmatrixdefn;
 
+typedef int MatrixIdx_t;
+typedef size_t MatrixCount_t;
+
 /** Matrices are a purely numerical collection type oriented toward linear algebra.
     Elements are stored in column-major format, i.e.
         [ 1 2 ]
@@ -24,9 +27,10 @@ extern objecttypedefn objectxmatrixdefn;
 
 typedef struct {
     object obj;
-    int nrows;
-    int ncols;
-    int nels;
+    MatrixIdx_t nrows;    // Number of rows
+    MatrixIdx_t ncols;    // Number of columns
+    MatrixIdx_t nvals;    // Number of doubles per entry
+    MatrixCount_t nels;   // Total number of entries (nrows*ncols*nvals)
     double *elements;
     double matrixdata[];
 } objectxmatrix;

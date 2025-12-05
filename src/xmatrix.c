@@ -23,7 +23,10 @@ size_t objectxmatrix_sizefn(object *obj) {
 }
 
 void objectxmatrix_printfn(object *obj, void *v) {
-    morpho_printf(v, "<" XMATRIX_CLASSNAME ">");
+    objectclass *klass=object_getveneerclass(obj->type);
+    morpho_printf(v, "<");
+    morpho_printvalue(v, klass->name);
+    morpho_printf(v, ">");
 }
 
 objecttypedefn objectxmatrixdefn = {

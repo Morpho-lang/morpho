@@ -43,6 +43,16 @@ objecttypedefn objectxmatrixdefn = {
  * ********************************************************************** */
 
 /* ----------------------
+ * XMatrix callbacks
+ * ---------------------- */
+
+static void _printelfn(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
+    double val;
+    xmatrix_getelement(m, i, j, &val);
+    morpho_printf(v, "%g", (fabs(val)<MORPHO_EPS ? 0 : val));
+}
+
+/* ----------------------
  * Constructors
  * ---------------------- */
 
@@ -98,6 +108,15 @@ bool xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col,
     return true;
 }
 
+/** @brief Gets a pointer to a matrix element
+ *  @returns true if the element is in the range of the matrix, false otherwise */
+bool xmatrix_getelementptr(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value) {
+    if (!(col<matrix->ncols && row<matrix->nrows)) return false;
+    
+    if (value) *value=matrix->elements+matrix->nvals*(col*matrix->nrows+row);
+    return true;
+}
+
 /* ----------------------
  * Arithmetic operations
  * ---------------------- */
@@ -118,13 +137,12 @@ objectmatrixerror xmatrix_axpy(double alpha, objectxmatrix *x, objectxmatrix *y,
  * ---------------------- */
 
 /** Prints a matrix */
-void xmatrix_print(vm *v, objectxmatrix *m) {
+void xmatrix_print(vm *v, objectxmatrix *m, xmatrix_elprintfn fn) {
     for (MatrixIdx_t i=0; i<m->nrows; i++) { // Rows run from 0...m
         morpho_printf(v, "[ ");
         for (MatrixIdx_t j=0; j<m->ncols; j++) { // Columns run from 0...k
-            double val=0.0;
-            xmatrix_getelement(m, i, j, &val);
-            morpho_printf(v, "%g ", (fabs(val)<MORPHO_EPS ? 0 : val));
+            (*fn) (v, m, i, j);
+            morpho_printf(v, " ");
         }
         morpho_printf(v, "]%s", (i<m->nrows-1 ? "\n" : ""));
     }
@@ -163,7 +181,7 @@ value xmatrix_constructor__err(vm *v, int nargs, value *args) {
 /** Prints a matrix */
 value XMatrix_print(vm *v, int nargs, value *args) {
     objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    xmatrix_print(v, m);
+    xmatrix_print(v, m, _printelfn);
     return MORPHO_NIL;
 }
 
@@ -260,6 +278,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSE
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "XMatrix ()", XMatrix_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "(XMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "(XMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY),
+//MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "(Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),

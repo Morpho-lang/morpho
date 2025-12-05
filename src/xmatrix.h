@@ -42,6 +42,12 @@ typedef struct {
 #define MORPHO_GETXMATRIX(val)   ((objectxmatrix *) MORPHO_GETOBJECT(val))
 
 /* -------------------------------------------------------
+ * Matrix callback types
+ * ------------------------------------------------------- */
+
+typedef void (*xmatrix_elprintfn) (vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j);
+
+/* -------------------------------------------------------
  * Matrix veneer class
  * ------------------------------------------------------- */
 
@@ -54,5 +60,11 @@ void xmatrix_initialize(void);
  * ------------------------------------------------------- */
 
 objectxmatrix *xmatrix_newwithtype(objecttype type, MatrixIdx_t nrows, MatrixIdx_t ncols, MatrixIdx_t nvals, bool zero);
+
+bool xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value);
+bool xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value);
+bool xmatrix_getelementptr(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value);
+
+void xmatrix_print(vm *v, objectxmatrix *m, xmatrix_elprintfn fn);
 
 #endif

@@ -17,6 +17,17 @@ typedef objectxmatrix objectcomplexmatrix;
  * ********************************************************************** */
 
 /* ----------------------
+ * Callbacks
+ * ---------------------- */
+
+static void _printelfn(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
+    double *elptr;
+    xmatrix_getelementptr(m, i, j, &elptr);
+    objectcomplex cmplx = MORPHO_STATICCOMPLEX(elptr[0], elptr[1]);
+    complex_print(v, &cmplx);
+}
+
+/* ----------------------
  * Constructor
  * ---------------------- */
 
@@ -40,7 +51,7 @@ bool complexmatrix_setelement(objectcomplexmatrix *matrix, MatrixIdx_t row, Matr
 }
 
 /** Gets a matrix element */
-bool complexmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, MorphoComplex *value) {
+bool complexmatrix_getelement(objectcomplexmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, MorphoComplex *value) {
     if (!(col<matrix->ncols && row<matrix->nrows)) return false;
     
     MatrixCount_t ix = 2*(col*matrix->nrows+row);
@@ -65,15 +76,45 @@ value complexmatrix_constructor__int_int(vm *v, int nargs, value *args) {
  * ComplexMatrix veneer class
  * ********************************************************************** */
 
+/* ----------------------
+ * Common utility methods
+ * ---------------------- */
+
+/** Prints a matrix */
+value ComplexMatrix_print(vm *v, int nargs, value *args) {
+    objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    xmatrix_print(v, m, _printelfn);
+    return MORPHO_NIL;
+}
+
+/* ---------
+ * index()
+ * --------- */
+
+static value _getindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
+    double *el;
+    xmatrix_getelementptr(m, i, j, &el); //morpho_runtimeerror(v, XMATRIX_INDICESOUTSIDEBOUNDS);
+    objectcomplex *new = object_newcomplex(el[0], el[1]);
+    return morpho_wrapandbind(v, (object *) new);
+    return MORPHO_NIL;
+}
+
+value ComplexMatrix_index__int(vm *v, int nargs, value *args) {
+    objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    return _getindex(v, m, i, 0);
+}
+
 value ComplexMatrix_index__int_int(vm *v, int nargs, value *args) {
     objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     unsigned int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     unsigned int j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
-    //return _getindex(v, m, i, j);
-    return MORPHO_NIL; 
+    return _getindex(v, m, i, j);
 }
 
 MORPHO_BEGINCLASS(ComplexMatrix)
+MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", ComplexMatrix_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int)", ComplexMatrix_index__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int, Int)", ComplexMatrix_index__int_int, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 

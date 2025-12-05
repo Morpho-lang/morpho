@@ -1,5 +1,11 @@
 
 import newlinalg 
 
+var a = XMatrix(2,2)
+print a
+
 var a = ComplexMatrix(2,2)
 print a
+
+print a[0]
+print a[0,0]

@@ -43,7 +43,7 @@ objecttypedefn objectxmatrixdefn = {
  * Constructors
  * ---------------------- */
 
-/** Create a new matrix */
+/** Create a generic matrix with given type and layout */
 objectxmatrix *xmatrix_newwithtype(objecttype type, MatrixIdx_t nrows, MatrixIdx_t ncols, MatrixIdx_t nvals, bool zero) {
     MatrixCount_t nels = nrows*ncols*nvals;
     objectxmatrix *new = (objectxmatrix *) object_new(sizeof(objectxmatrix) + nels*sizeof(double), type);
@@ -60,13 +60,14 @@ objectxmatrix *xmatrix_newwithtype(objecttype type, MatrixIdx_t nrows, MatrixIdx
     return new;
 }
 
+/** Create a new real matrix */
 objectxmatrix *xmatrix_new(MatrixIdx_t nrows, MatrixIdx_t ncols, bool zero) {
     return xmatrix_newwithtype(OBJECT_XMATRIX, nrows, ncols, 1, zero);
 }
 
 /** Clone a matrix */
 objectxmatrix *xmatrix_clone(objectxmatrix *in) {
-    objectxmatrix *new = xmatrix_new(in->nrows, in->ncols, false);
+    objectxmatrix *new = xmatrix_newwithtype(in->obj.type, in->nrows, in->ncols, in->nvals, false);
     
     if (new) cblas_dcopy(in->ncols * in->nrows, in->elements, 1, new->elements, 1);
     return new;

@@ -49,4 +49,10 @@ typedef struct {
 
 void xmatrix_initialize(void);
 
+/* -------------------------------------------------------
+ * Interface
+ * ------------------------------------------------------- */
+
+objectxmatrix *xmatrix_newwithtype(objecttype type, MatrixIdx_t nrows, MatrixIdx_t ncols, MatrixIdx_t nvals, bool zero);
+
 #endif

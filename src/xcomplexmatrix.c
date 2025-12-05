@@ -12,23 +12,39 @@ objecttype objectcomplexmatrixtype;
 
 typedef objectxmatrix objectcomplexmatrix;
 
+/* **********************************************************************
+ * ComplexMatrix utility functions
+ * ********************************************************************** */
+
+/* ----------------------
+ * Constructor
+ * ---------------------- */
+
+/** Create a new complex matrix */
+objectcomplexmatrix *complexmatrix_new(MatrixIdx_t nrows, MatrixIdx_t ncols, bool zero) {
+    return (objectcomplexmatrix *) xmatrix_newwithtype(OBJECT_COMPLEXMATRIX, nrows, ncols, 2, zero);
+}
+
+/* ----------------------
+ * Element access
+ * ---------------------- */
+
 /** Sets a matrix element. */
-bool complexmatrix_setelement(objectcomplexmatrix *matrix, unsigned int row, unsigned int col, MorphoComplex value) {
+bool complexmatrix_setelement(objectcomplexmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, MorphoComplex value) {
     if (!(col<matrix->ncols && row<matrix->nrows)) return false;
         
-    int ix = 2*(col*matrix->nrows+row);
+    MatrixCount_t ix = 2*(col*matrix->nrows+row);
     matrix->elements[ix]=creal(value);
     matrix->elements[ix+1]=cimag(value);
     return true;
 }
 
 /** Gets a matrix element */
-bool complexmatrix_getelement(objectxmatrix *matrix, unsigned int row, unsigned int col, MorphoComplex *value) {
+bool complexmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, MorphoComplex *value) {
     if (!(col<matrix->ncols && row<matrix->nrows)) return false;
     
-    int ix = 2*(col*matrix->nrows+row);
-    if (value) *value=MCBuild(0.0,0.0);
-        //matrix->elements[col*matrix->nrows+row];
+    MatrixCount_t ix = 2*(col*matrix->nrows+row);
+    if (value) *value=MCBuild(matrix->elements[ix],matrix->elements[ix+1]);
     return true;
 }
 
@@ -37,10 +53,10 @@ bool complexmatrix_getelement(objectxmatrix *matrix, unsigned int row, unsigned 
  * ********************************************************************** */
 
 value complexmatrix_constructor__int_int(vm *v, int nargs, value *args) {
-    int nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    int ncols = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    MatrixIdx_t nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    MatrixIdx_t ncols = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
     
-    objectcomplexmatrix *new=NULL; //xmatrix_new(nrows, ncols, true);
+    objectcomplexmatrix *new=complexmatrix_new(nrows, ncols, true);
     
     return morpho_wrapandbind(v, (object *) new);
 }

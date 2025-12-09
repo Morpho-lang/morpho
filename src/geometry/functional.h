@@ -56,6 +56,7 @@
 #define FUNCTIONAL_INTEGRANDFORELEMENT_METHOD      "integrandForElement"
 
 /* Special functions that can be used in integrands */
+#define ELEMENTID_FUNCTION             "elementid"
 #define TANGENT_FUNCTION               "tangent"
 #define NORMAL_FUNCTION                "normal"
 #define GRAD_FUNCTION                  "grad"

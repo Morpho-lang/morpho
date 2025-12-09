@@ -3990,6 +3990,17 @@ objectintegralelementref *integral_getelementref(vm *v) {
     return NULL;
 }
 
+/* ---------
+ * Elementid
+ * --------- */
+
+static value integral_elementid(vm *v, int nargs, value *args) {
+    objectintegralelementref *elref = integral_getelementref(v);
+    if (!elref) { morpho_runtimeerror(v, INTEGRAL_SPCLFN, ELEMENTID_FUNCTION); return MORPHO_NIL; }
+    
+    return MORPHO_INTEGER(elref->id);
+}
+
 /* --------
  * Tangent
  * -------- */
@@ -4036,6 +4047,7 @@ int normlhandle; // TL storage handle for normal vectors
 /** Evaluates the normal vector */
 void integral_evaluatenormal(vm *v, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);
+    
     if (!elref) { morpho_runtimeerror(v, INTEGRAL_SPCLFN, NORMAL_FUNCTION); return; }
     
     int dim = elref->mesh->dim;
@@ -5040,6 +5052,7 @@ void functional_initialize(void) {
     builtin_addclass(NEMATIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(Nematic), objclass);
     builtin_addclass(NEMATICELECTRIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(NematicElectric), objclass);
 
+    builtin_addfunction(ELEMENTID_FUNCTION, integral_elementid, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(TANGENT_FUNCTION, integral_tangent, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(NORMAL_FUNCTION, integral_normal, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(GRAD_FUNCTION, integral_gradfn, BUILTIN_FLAGSEMPTY);

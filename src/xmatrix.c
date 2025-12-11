@@ -130,22 +130,20 @@ objectmatrixerror xmatrix_axpy(double alpha, objectxmatrix *x, objectxmatrix *y)
     return MATRIX_INCMPTBLDIM;
 }
 
-/** Scales a matrix */
+/** Scales a matrix a <- scale * a >*/
 objectmatrixerror xmatrix_scale(objectxmatrix *a, double scale) {
     cblas_dscal((__LAPACK_int) a->nels, scale, a->elements, 1);
     return MATRIX_OK;
 }
 
-/** Performs a * b -> out */
-objectmatrixerror xmatrix_mul(objectxmatrix *a, objectxmatrix *b, objectxmatrix *out) {
-    if (a->ncols==b->nrows && a->nrows==out->nrows && b->ncols==out->ncols) {
-        cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, a->nrows, b->ncols, a->ncols, 1.0, a->elements, a->nrows, b->elements, b->nrows, 0.0, out->elements, out->nrows);
+/** Performs c <- alpha*(a*b) + beta*c*/
+objectmatrixerror xmatrix_mmul(double alpha, objectxmatrix *a, objectxmatrix *b, double beta, objectxmatrix *c) {
+    if (a->ncols==b->nrows && a->nrows==c->nrows && b->ncols==c->ncols) {
+        cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, a->nrows, b->ncols, a->ncols, alpha, a->elements, a->nrows, b->elements, b->nrows, beta, c->elements, c->nrows);
         return MATRIX_OK;
     }
     return MATRIX_INCMPTBLDIM;
 }
-//double complex alpha, beta;
-//cblas_zgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, a->nrows, b->ncols, a->ncols, &alpha, a->elements, a->nrows, b->elements, b->nrows, &beta, out->elements, out->nrows);
 
 /* ----------------------
  * Display
@@ -263,7 +261,7 @@ value XMatrix_mul__xmatrix(vm *v, int nargs, value *args) {
     if (a->ncols==b->nrows) {
         objectxmatrix *new = xmatrix_new(a->nrows, b->ncols, false);
         if (new) {
-            xmatrix_mul(a, b, new);
+            xmatrix_mmul(1.0, a, b, 0.0, new);
             out = morpho_wrapandbind(v, (object *) new);
         }
     } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
@@ -321,10 +319,10 @@ value XMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
 MORPHO_BEGINCLASS(XMatrix)
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "XMatrix ()", XMatrix_clone, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "(XMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "(XMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "(Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "(XMatrix)", XMatrix_mul__xmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "XMatrix (XMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "XMatrix (XMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "XMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "XMatrix (XMatrix)", XMatrix_mul__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),

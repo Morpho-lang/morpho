@@ -4,8 +4,14 @@
  *  @brief New linear algebra library
 */
 
-#include "xcomplexmatrix.h"
+#define ACCELERATE_NEW_LAPACK
+#define MORPHO_INCLUDE_LINALG
+
 #include <platform.h>
+
+#include "newlinalg.h"
+#include "xmatrix.h"
+#include "xcomplexmatrix.h"
 
 objecttype objectcomplexmatrixtype;
 #define OBJECT_COMPLEXMATRIX objectcomplexmatrixtype
@@ -59,6 +65,23 @@ bool complexmatrix_getelement(objectcomplexmatrix *matrix, MatrixIdx_t row, Matr
     return true;
 }
 
+/* ----------------------
+ * Complex arithmetic
+ * ---------------------- */
+
+/** Performs c <- alpha*(a*b) + beta*c with complex matrices */
+objectmatrixerror complexmatrix_mmul(MorphoComplex alpha, objectxmatrix *a, objectxmatrix *b, MorphoComplex beta, objectxmatrix *c) {
+    if (a->ncols==b->nrows && a->nrows==c->nrows && b->ncols==c->ncols) {
+        cblas_zgemm(CblasColMajor, CblasNoTrans, CblasNoTrans,
+                    a->nrows, b->ncols, a->ncols,
+                    &alpha, (__LAPACK_double_complex *) a->elements,
+                    a->nrows, (__LAPACK_double_complex *) b->elements, b->nrows,
+                    &beta, (__LAPACK_double_complex *) c->elements, c->nrows);
+        return MATRIX_OK;
+    }
+    return MATRIX_INCMPTBLDIM;
+}
+
 /* **********************************************************************
  * ComplexMatrix constructors
  * ********************************************************************** */
@@ -85,6 +108,26 @@ value ComplexMatrix_print(vm *v, int nargs, value *args) {
     objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     xmatrix_print(v, m, _printelfn);
     return MORPHO_NIL;
+}
+
+/* ----------------------
+ * Arithmetic
+ * ---------------------- */
+
+value ComplexMatrix_mul__complexmatrix(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
+    value out=MORPHO_NIL;
+    
+    if (a->ncols==b->nrows) {
+        objectcomplexmatrix *new=complexmatrix_new(a->nrows, b->ncols, false);
+        if (new) {
+            MorphoComplex alpha = MCBuild(1.0, 0.0), beta = MCBuild(0.0, 0.0);
+            complexmatrix_mmul(alpha, a, b, beta, new);
+            out = morpho_wrapandbind(v, (object *) new);
+        }
+    } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    return out;
 }
 
 /* ---------
@@ -144,7 +187,9 @@ MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int, Int)", ComplexMat
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Complex)", ComplexMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int, Complex)", ComplexMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (ComplexMatrix)", ComplexMatrix_mul__complexmatrix, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

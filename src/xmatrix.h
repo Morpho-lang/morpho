@@ -57,6 +57,7 @@ void xmatrix_initialize(void);
 
 value XMatrix_add__xmatrix(vm *v, int nargs, value *args);
 value XMatrix_sub__xmatrix(vm *v, int nargs, value *args);
+value XMatrix_mul__float(vm *v, int nargs, value *args);
 
 /* -------------------------------------------------------
  * Interface

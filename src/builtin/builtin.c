@@ -306,6 +306,7 @@ bool morpho_addclass(char *name, builtinclassentry desc[], int nparents, value *
     builtin_bindobject(MORPHO_GETOBJECT(label));
     objectclass *new = object_newclass(label);
     builtin_bindobject((object *) new);
+    bool success=true;
     
     if (!new) return false;
     
@@ -340,7 +341,7 @@ bool morpho_addclass(char *name, builtinclassentry desc[], int nparents, value *
             newmethod->name=object_stringfromcstring(desc[i].name, strlen(desc[i].name));
             newmethod->flags=desc[i].flags;
             if (desc[i].signature) {
-                signature_parse(desc[i].signature, &newmethod->sig);
+                success &= signature_parse(desc[i].signature, &newmethod->sig);
             }
             
             dictionary_intern(&builtin_symboltable, newmethod->name);
@@ -352,8 +353,8 @@ bool morpho_addclass(char *name, builtinclassentry desc[], int nparents, value *
         }
     }
     
-    *out = MORPHO_OBJECT(new);
-    return true; 
+    if (success)*out = MORPHO_OBJECT(new);
+    return success;
 }
 
 /** Defines a built in class (old interface)
@@ -370,7 +371,8 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
 /** Finds a builtin class from its label */
 value builtin_findclass(value name) {
     value out=MORPHO_NIL;
-    dictionary_get(&builtin_classtable, name, &out);
+    if (_currentclasstable) dictionary_get(_currentclasstable, name, &out);
+    if (MORPHO_ISNIL(out)) dictionary_get(&builtin_classtable, name, &out);
     return out;
 }
 

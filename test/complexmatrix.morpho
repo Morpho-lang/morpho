@@ -6,6 +6,8 @@ a[0,0]=2
 a[1,1]=2
 print a
 
+print 2*a
+
 var a = ComplexMatrix(2,2)
 print a
 

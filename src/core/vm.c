@@ -1763,13 +1763,14 @@ void morpho_bindobjects(vm *v, int nobj, value *obj) {
 /** @brief   Convenience function to wrap a single object into a value and bind to the VM
  *  @param   v VM to use
  *  @param   out Object to wrap
- *  @returns object wrapped in a value, or MORPHO_NIL if obj is NULL */
+ *  @returns object wrapped in a value, or MORPHO_NIL if obj is NULL
+ *  Also raises ERROR_ALLOCATIONFAILED if passed a null pointer */
 value morpho_wrapandbind(vm *v, object *obj) {
     value out = MORPHO_NIL;
     if (obj) {
         out=MORPHO_OBJECT(obj);
         morpho_bindobjects(v, 1, &out);
-    }
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     return out;
 }
 

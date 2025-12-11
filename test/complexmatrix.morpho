@@ -5,6 +5,7 @@ var a = XMatrix(2,2)
 a[0,0]=2
 a[1,1]=2
 print a
+print a.dimensions() 
 
 print 2*a
 
@@ -22,3 +23,6 @@ print a+a
 print a*3.0
 
 print a*a 
+
+Complex b = a[0,0]
+print b 

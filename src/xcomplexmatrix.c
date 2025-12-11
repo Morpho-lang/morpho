@@ -91,7 +91,6 @@ value complexmatrix_constructor__int_int(vm *v, int nargs, value *args) {
     MatrixIdx_t ncols = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
     
     objectcomplexmatrix *new=complexmatrix_new(nrows, ncols, true);
-    
     return morpho_wrapandbind(v, (object *) new);
 }
 
@@ -124,8 +123,8 @@ value ComplexMatrix_mul__complexmatrix(vm *v, int nargs, value *args) {
         if (new) {
             MorphoComplex alpha = MCBuild(1.0, 0.0), beta = MCBuild(0.0, 0.0);
             complexmatrix_mmul(alpha, a, b, beta, new);
-            out = morpho_wrapandbind(v, (object *) new);
         }
+        out = morpho_wrapandbind(v, (object *) new);
     } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
     return out;
 }
@@ -139,20 +138,17 @@ static value _getindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
     xmatrix_getelementptr(m, i, j, &el); //morpho_runtimeerror(v, XMATRIX_INDICESOUTSIDEBOUNDS);
     objectcomplex *new = object_newcomplex(el[0], el[1]);
     return morpho_wrapandbind(v, (object *) new);
-    return MORPHO_NIL;
 }
 
 value ComplexMatrix_index__int(vm *v, int nargs, value *args) {
-    objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    return _getindex(v, m, i, 0);
+    return _getindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, 0);
 }
 
 value ComplexMatrix_index__int_int(vm *v, int nargs, value *args) {
-    objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    unsigned int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    unsigned int j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
-    return _getindex(v, m, i, j);
+    unsigned int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+                 j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    return _getindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, j);
 }
 
 /* ---------
@@ -182,6 +178,7 @@ value ComplexMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
 
 MORPHO_BEGINCLASS(ComplexMatrix)
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", ComplexMatrix_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_DIMENSIONS_METHOD, "Tuple ()", XMatrix_dimensions, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int)", ComplexMatrix_index__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int, Int)", ComplexMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Complex)", ComplexMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),

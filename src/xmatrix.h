@@ -53,11 +53,15 @@ typedef void (*xmatrix_elprintfn) (vm *v, objectxmatrix *m, MatrixIdx_t i, Matri
 
 #define XMATRIX_CLASSNAME                   "XMatrix"
 
+#define XMATRIX_DIMENSIONS_METHOD           "dimensions"
+
 void xmatrix_initialize(void);
 
 value XMatrix_add__xmatrix(vm *v, int nargs, value *args);
 value XMatrix_sub__xmatrix(vm *v, int nargs, value *args);
 value XMatrix_mul__float(vm *v, int nargs, value *args);
+
+value XMatrix_dimensions(vm *v, int nargs, value *args);
 
 /* -------------------------------------------------------
  * Interface

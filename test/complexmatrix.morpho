@@ -6,6 +6,7 @@ a[0,0]=2
 a[1,1]=2
 print a
 print a.dimensions() 
+print a.count() 
 
 print 2*a
 

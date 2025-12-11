@@ -305,6 +305,12 @@ value XMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
  * Metadata
  * --------- */
 
+/** Number of matrix elements */
+value XMatrix_count(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    return MORPHO_INTEGER(a->ncols*a->nrows);
+}
+
 /** Matrix dimensions */
 value XMatrix_dimensions(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
@@ -328,7 +334,8 @@ MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__in
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", XMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_DIMENSIONS_METHOD, "Tuple ()", XMatrix_dimensions, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(XMATRIX_DIMENSIONS_METHOD, "Tuple ()", XMatrix_dimensions, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", XMatrix_count, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

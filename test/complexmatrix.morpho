@@ -2,6 +2,8 @@
 import newlinalg 
 
 var a = XMatrix(2,2)
+a[0,0]=2
+a[1,1]=2
 print a
 
 var a = ComplexMatrix(2,2)
@@ -9,3 +11,8 @@ print a
 
 print a[0]
 print a[0,0]
+
+a[0,0] = 1+im
+a[1,1] = 1-im
+
+print a+a

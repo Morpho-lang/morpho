@@ -55,6 +55,9 @@ typedef void (*xmatrix_elprintfn) (vm *v, objectxmatrix *m, MatrixIdx_t i, Matri
 
 void xmatrix_initialize(void);
 
+value XMatrix_add__xmatrix(vm *v, int nargs, value *args);
+value XMatrix_sub__xmatrix(vm *v, int nargs, value *args);
+
 /* -------------------------------------------------------
  * Interface
  * ------------------------------------------------------- */

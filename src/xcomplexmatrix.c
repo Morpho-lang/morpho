@@ -112,10 +112,39 @@ value ComplexMatrix_index__int_int(vm *v, int nargs, value *args) {
     return _getindex(v, m, i, j);
 }
 
+/* ---------
+ * setIndex()
+ * --------- */
+
+static value _setindex(vm *v, objectcomplexmatrix *m, MatrixIdx_t i, MatrixIdx_t j, value in) {
+    if (MORPHO_ISCOMPLEX(in) &&
+        !complexmatrix_setelement(m, i, j, MORPHO_GETCOMPLEX(in)->Z)) {
+        // Should raise an error
+    }
+    return MORPHO_NIL;
+}
+
+value ComplexMatrix_setindex__int_x(vm *v, int nargs, value *args) {
+    objectcomplexmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    return _setindex(v, m, i, 0, MORPHO_GETARG(args, 1));
+}
+
+value ComplexMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
+    objectcomplexmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    MatrixIdx_t j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    return _setindex(v, m, i, j, MORPHO_GETARG(args, 2));
+}
+
 MORPHO_BEGINCLASS(ComplexMatrix)
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", ComplexMatrix_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int)", ComplexMatrix_index__int, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int, Int)", ComplexMatrix_index__int_int, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int, Int)", ComplexMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Complex)", ComplexMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int, Complex)", ComplexMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

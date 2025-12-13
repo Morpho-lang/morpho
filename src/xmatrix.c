@@ -145,6 +145,33 @@ objectmatrixerror xmatrix_mmul(double alpha, objectxmatrix *a, objectxmatrix *b,
     return MATRIX_INCMPTBLDIM;
 }
 
+/** Finds the Frobenius inner product of two matrices  */
+objectmatrixerror xmatrix_inner(objectxmatrix *a, objectxmatrix *b, double *out) {
+    if (a->ncols==b->ncols && a->nrows==b->nrows) {
+        *out=cblas_ddot((__LAPACK_int) a->nels, a->elements, 1, b->elements, 1);
+        return MATRIX_OK;
+    }
+    return MATRIX_INCMPTBLDIM;
+}
+
+/** Solve the linear system a.x = b
+ * @param[in|out] a  lhs — overwritten by the LU decomposition
+ * @param[in|out] b  rhs — overwritten by the solution
+ * @param[out] pivot - you must provide an array with the same number of rows as a.
+ * @returns objectmatrixerror indicating the status; MATRIX_OK indicates success. */
+static objectmatrixerror xmatrix_solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
+    int n=a->nrows, nrhs = b->ncols, info;
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    info=LAPACKE_dgesv(LAPACK_COL_MAJOR, n, nrhs, a->elements, n, pivot, b->elements, n);
+#else
+    dgesv_(&n, &nrhs, a->elements, &n, pivot, b->elements, &n, &info);
+#endif
+    
+    return (info==0 ? MATRIX_OK : (info>0 ? MATRIX_SING : MATRIX_INVLD));
+}
+
+
 /* ----------------------
  * Display
  * ---------------------- */
@@ -257,6 +284,51 @@ value XMatrix_mul__xmatrix(vm *v, int nargs, value *args) {
     return out;
 }
 
+value XMatrix_div__float(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    
+    double scale;
+    morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale);
+    scale = 1.0/scale;
+    if (isnan(scale)) morpho_runtimeerror(v, VM_DVZR);
+    
+    objectxmatrix *new = xmatrix_clone(a);
+    if (new) xmatrix_scale(new, scale);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value XMatrix_div__xmatrix(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    
+    double scale;
+    morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale);
+    scale = 1.0/scale;
+    if (isnan(scale)) morpho_runtimeerror(v, VM_DVZR);
+    
+    objectxmatrix *new = xmatrix_clone(a);
+    if (new) xmatrix_scale(new, scale);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/* ---------
+ * Products
+ * --------- */
+
+/** Frobenius inner product */
+value XMatrix_inner(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
+    double prod=0.0;
+    
+    if (xmatrix_inner(a, b, &prod)!=MATRIX_OK) {
+        morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    }
+    
+    return MORPHO_FLOAT(prod);
+}
+
 /* ---------
  * index()
  * --------- */
@@ -330,6 +402,9 @@ MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "XMatrix (XMatrix)", XMatrix_sub__xma
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "XMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "XMatrix (XMatrix)", XMatrix_mul__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "XMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (XMatrix)", XMatrix_div__xmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (Float)", XMatrix_div__float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Float (XMatrix)", XMatrix_inner, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),

@@ -82,6 +82,17 @@ objectmatrixerror complexmatrix_mmul(MorphoComplex alpha, objectxmatrix *a, obje
     return MATRIX_INCMPTBLDIM;
 }
 
+/** Finds the Frobenius inner product of two complex matrices (a, b) = \sum_{i,j} conj(a)_ij * b_ij */
+objectmatrixerror complexmatrix_inner(objectcomplexmatrix *a, objectcomplexmatrix *b, MorphoComplex *out) {
+    if (a->ncols==b->ncols && a->nrows==b->nrows) {
+        cblas_zdotc_sub(a->nrows * a->ncols, (__LAPACK_double_complex *) a->elements, 1,
+                         (__LAPACK_double_complex *) b->elements, 1,
+                         (__LAPACK_double_complex *) out);
+        return MATRIX_OK;
+    }
+    return MATRIX_INCMPTBLDIM;
+}
+
 /* **********************************************************************
  * ComplexMatrix constructors
  * ********************************************************************** */
@@ -126,6 +137,25 @@ value ComplexMatrix_mul__complexmatrix(vm *v, int nargs, value *args) {
         }
         out = morpho_wrapandbind(v, (object *) new);
     } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    return out;
+}
+
+/* ---------
+ * Products
+ * --------- */
+
+/** Frobenius inner product */
+value ComplexMatrix_inner(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
+    MorphoComplex prod=MCBuild(0.0, 0.0);
+    value out = MORPHO_NIL;
+    
+    if (complexmatrix_inner(a, b, &prod)==MATRIX_OK) {
+        objectcomplex *new = object_newcomplex(creal(prod), cimag(prod));
+        out = morpho_wrapandbind(v, (object *) new);
+    } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    
     return out;
 }
 
@@ -187,6 +217,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (ComplexMatrix)", XMat
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (ComplexMatrix)", ComplexMatrix_mul__complexmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Complex (XMatrix)", ComplexMatrix_inner, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_DIMENSIONS_METHOD, "Tuple ()", XMatrix_dimensions, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", XMatrix_count, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS

@@ -8,6 +8,8 @@ print a
 print a.dimensions() 
 print a.count() 
 
+print a.inner(a)
+
 print 2*a
 
 var a = ComplexMatrix(2,2)
@@ -27,3 +29,9 @@ print a*a
 
 Complex b = a[0,0]
 print b 
+
+var A = ComplexMatrix(2,1)
+A[0,0] = 1+im
+A[1,0] = 1-im
+
+print A.inner(A)

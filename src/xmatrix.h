@@ -54,6 +54,7 @@ typedef void (*xmatrix_elprintfn) (vm *v, objectxmatrix *m, MatrixIdx_t i, Matri
 #define XMATRIX_CLASSNAME                   "XMatrix"
 
 #define XMATRIX_DIMENSIONS_METHOD           "dimensions"
+#define XMATRIX_INNER_METHOD                "inner"
 
 void xmatrix_initialize(void);
 

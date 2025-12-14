@@ -1,6 +1,9 @@
 
 import newlinalg 
 
+var I = IdentityXMatrix(2)
+print I 
+
 var a = XMatrix(2,2)
 a[0,0]=2
 a[1,1]=2

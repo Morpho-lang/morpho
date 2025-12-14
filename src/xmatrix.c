@@ -136,6 +136,14 @@ objectmatrixerror xmatrix_scale(objectxmatrix *a, double scale) {
     return MATRIX_OK;
 }
 
+/** Loads the identity matrix a <- I(n) */
+objectmatrixerror xmatrix_identity(objectxmatrix *a) {
+    if (a->ncols!=a->nrows) return MATRIX_NSQ;
+    memset(a->elements, 0, sizeof(double)*a->nrows*a->ncols);
+    for (int i=0; i<a->nrows; i++) a->elements[a->nvals*(i+a->nrows*i)]=1.0;
+    return MATRIX_OK;
+}
+
 /** Performs c <- alpha*(a*b) + beta*c*/
 objectmatrixerror xmatrix_mmul(double alpha, objectxmatrix *a, objectxmatrix *b, double beta, objectxmatrix *c) {
     if (a->ncols==b->nrows && a->nrows==c->nrows && b->ncols==c->ncols) {
@@ -207,6 +215,16 @@ value xmatrix_constructor__list(vm *v, int nargs, value *args) {
 value xmatrix_constructor__err(vm *v, int nargs, value *args) {
     morpho_runtimeerror(v, MATRIX_CONSTRUCTOR);
     return MORPHO_NIL;
+}
+
+/** Creates an identity matrix */
+value xmatrix_identityconstructor(vm *v, int nargs, value *args) {
+    MatrixIdx_t n = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    
+    objectxmatrix *new = xmatrix_new(n,n,false);
+    if (new) xmatrix_identity(new);
+    
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 /* **********************************************************************
@@ -426,6 +444,8 @@ void xmatrix_initialize(void) {
     morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (Int, Int)", xmatrix_constructor__int_int, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (List)", xmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(XMATRIX_CLASSNAME, "(...)", xmatrix_constructor__err, MORPHO_FN_CONSTRUCTOR, NULL);
+    
+    morpho_addfunction(XMATRIX_IDENTITYCONSTRUCTOR, "XMatrix (Int)", xmatrix_identityconstructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
     complexmatrix_initialize();
 }

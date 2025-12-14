@@ -56,6 +56,8 @@ typedef void (*xmatrix_elprintfn) (vm *v, objectxmatrix *m, MatrixIdx_t i, Matri
 #define XMATRIX_DIMENSIONS_METHOD           "dimensions"
 #define XMATRIX_INNER_METHOD                "inner"
 
+#define XMATRIX_IDENTITYCONSTRUCTOR         "IdentityXMatrix"
+
 void xmatrix_initialize(void);
 
 value XMatrix_clone(vm *v, int nargs, value *args);

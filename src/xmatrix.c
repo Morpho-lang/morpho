@@ -130,48 +130,57 @@ objectmatrixerror xmatrix_axpy(double alpha, objectxmatrix *x, objectxmatrix *y)
     return MATRIX_INCMPTBLDIM;
 }
 
-/** Scales a matrix a <- scale * a >*/
-objectmatrixerror xmatrix_scale(objectxmatrix *a, double scale) {
-    cblas_dscal((__LAPACK_int) a->nels, scale, a->elements, 1);
+/** Copies a matrix  y <- a */
+objectmatrixerror xmatrix_copy(objectxmatrix *x, objectxmatrix *y) {
+    if (x->ncols==y->ncols && x->nrows==y->nrows) {
+        cblas_dcopy((__LAPACK_int) x->nels, x->elements, 1, y->elements, 1);
+        return MATRIX_OK;
+    }
+    return MATRIX_INCMPTBLDIM;
+}
+
+/** Scales a matrix x <- scale * x >*/
+objectmatrixerror xmatrix_scale(objectxmatrix *x, double scale) {
+    cblas_dscal((__LAPACK_int) x->nels, scale, x->elements, 1);
     return MATRIX_OK;
 }
 
 /** Loads the identity matrix a <- I(n) */
-objectmatrixerror xmatrix_identity(objectxmatrix *a) {
-    if (a->ncols!=a->nrows) return MATRIX_NSQ;
-    memset(a->elements, 0, sizeof(double)*a->nrows*a->ncols);
-    for (int i=0; i<a->nrows; i++) a->elements[a->nvals*(i+a->nrows*i)]=1.0;
+objectmatrixerror xmatrix_identity(objectxmatrix *x) {
+    if (x->ncols!=x->nrows) return MATRIX_NSQ;
+    memset(x->elements, 0, sizeof(double)*x->nrows*x->ncols);
+    for (int i=0; i<x->nrows; i++) x->elements[x->nvals*(i+x->nrows*i)]=1.0;
     return MATRIX_OK;
 }
 
-/** Performs c <- alpha*(a*b) + beta*c*/
-objectmatrixerror xmatrix_mmul(double alpha, objectxmatrix *a, objectxmatrix *b, double beta, objectxmatrix *c) {
-    if (a->ncols==b->nrows && a->nrows==c->nrows && b->ncols==c->ncols) {
-        cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, a->nrows, b->ncols, a->ncols, alpha, a->elements, a->nrows, b->elements, b->nrows, beta, c->elements, c->nrows);
+/** Performs z <- alpha*(x*y) + beta*z */
+objectmatrixerror xmatrix_mmul(double alpha, objectxmatrix *x, objectxmatrix *y, double beta, objectxmatrix *z) {
+    if (x->ncols==y->nrows && x->nrows==z->nrows && y->ncols==z->ncols) {
+        cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, x->nrows, y->ncols, x->ncols, alpha, x->elements, x->nrows, y->elements, y->nrows, beta, z->elements, z->nrows);
         return MATRIX_OK;
     }
     return MATRIX_INCMPTBLDIM;
 }
 
 /** Finds the Frobenius inner product of two matrices  */
-objectmatrixerror xmatrix_inner(objectxmatrix *a, objectxmatrix *b, double *out) {
-    if (a->ncols==b->ncols && a->nrows==b->nrows) {
-        *out=cblas_ddot((__LAPACK_int) a->nels, a->elements, 1, b->elements, 1);
+objectmatrixerror xmatrix_inner(objectxmatrix *x, objectxmatrix *y, double *out) {
+    if (x->ncols==y->ncols && x->nrows==y->nrows) {
+        *out=cblas_ddot((__LAPACK_int) x->nels, x->elements, 1, y->elements, 1);
         return MATRIX_OK;
     }
     return MATRIX_INCMPTBLDIM;
 }
 
-/** Solve the linear system a.x = b
+/** Solve the linear system a.x = b;
  * @param[in|out] a  lhs — overwritten by the LU decomposition
  * @param[in|out] b  rhs — overwritten by the solution
  * @param[out] pivot - you must provide an array with the same number of rows as a.
  * @returns objectmatrixerror indicating the status; MATRIX_OK indicates success. */
-static objectmatrixerror xmatrix_solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
+static objectmatrixerror _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
     int n=a->nrows, nrhs = b->ncols, info;
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
-    info=LAPACKE_dgesv(LAPACK_COL_MAJOR, n, nrhs, a->elements, n, pivot, b->elements, n);
+    info=LAPACKE_dgesv(LAPACK_COL_MAJOR, n, nrhs, x->elements, n, pivot, y->elements, n);
 #else
     dgesv_(&n, &nrhs, a->elements, &n, pivot, b->elements, &n, &info);
 #endif
@@ -179,6 +188,32 @@ static objectmatrixerror xmatrix_solve(objectxmatrix *a, objectxmatrix *b, int *
     return (info==0 ? MATRIX_OK : (info>0 ? MATRIX_SING : MATRIX_INVLD));
 }
 
+/** Solve the linear system a.x = b using stack allocated memory for temporary */
+objectmatrixerror xmatrix_solvesmall(objectxmatrix *a, objectxmatrix *b) {
+    int pivot[a->nrows];
+    double els[a->nels];
+    objectxmatrix A = MORPHO_STATICXMATRIX(els, a->nrows, a->ncols);
+    xmatrix_copy(a, &A);
+    return _solve(&A, b, pivot);
+}
+
+/** Solve the linear system a.x = b using heap allocated memory for temporary */
+objectmatrixerror xmatrix_solvelarge(objectxmatrix *a, objectxmatrix *b) {
+    int *pivot = MORPHO_MALLOC(sizeof(double)*a->nrows);
+    objectxmatrix *A = xmatrix_clone(a);
+    objectmatrixerror out = MATRIX_ALLOC;
+    if (pivot && A) {
+        out = _solve(A, b, pivot);
+    }
+    if (A) object_free((object *) A);
+    if (pivot) MORPHO_FREE(pivot);
+    return out;
+}
+
+objectmatrixerror xmatrix_solve(objectxmatrix *a, objectxmatrix *b) {
+    if (MATRIX_ISSMALL(a)) return xmatrix_solvesmall(a, b);
+    else return xmatrix_solvelarge(a, b);
+}
 
 /* ----------------------
  * Display
@@ -317,17 +352,17 @@ value XMatrix_div__float(vm *v, int nargs, value *args) {
 }
 
 value XMatrix_div__xmatrix(vm *v, int nargs, value *args) {
-    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_SELF(args)); // Note that the rhs is the receiver
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0)); // ... the lhs is the argument
     value out=MORPHO_NIL;
     
-    double scale;
-    morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale);
-    scale = 1.0/scale;
-    if (isnan(scale)) morpho_runtimeerror(v, VM_DVZR);
+    objectxmatrix *sol = xmatrix_clone(b);
+    if (sol) {
+        xmatrix_solve(a, sol); // TODO: Check for errors
+        out = morpho_wrapandbind(v, (object *) sol);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     
-    objectxmatrix *new = xmatrix_clone(a);
-    if (new) xmatrix_scale(new, scale);
-    return morpho_wrapandbind(v, (object *) new);
+    return out;
 }
 
 /* ---------

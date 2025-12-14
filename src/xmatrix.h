@@ -41,6 +41,13 @@ typedef struct {
 /** Gets the object as an matrix */
 #define MORPHO_GETXMATRIX(val)   ((objectxmatrix *) MORPHO_GETOBJECT(val))
 
+/** @brief Use to create static matrices on the C stack
+    @details Intended for small matrices; Caller needs to supply a double array of size nr*nc. */
+#define MORPHO_STATICXMATRIX(darray, nr, nc)      { .obj.type=OBJECT_XMATRIX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .elements=darray, .nrows=nr, .ncols=nc, .nels=nr*nc }
+
+/** Macro to decide if a matrix is 'small' or 'large' and hence static or dynamic allocation should be used. */
+#define MATRIX_ISSMALL(m) (m->nrows*m->ncols<MORPHO_MAXIMUMSTACKALLOC)
+
 /* -------------------------------------------------------
  * Matrix callback types
  * ------------------------------------------------------- */

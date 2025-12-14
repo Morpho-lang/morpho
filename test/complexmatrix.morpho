@@ -1,6 +1,24 @@
 
 import newlinalg 
 
+var A = XMatrix(2,2)
+A[0,0]=1
+A[0,1]=2
+A[1,0]=3
+A[1,1]=4
+
+var b = XMatrix(2,1)
+b[0]=1
+b[1]=2
+
+print A 
+print b 
+
+print b/A
+
+print A 
+
+System.exit() 
 var I = IdentityXMatrix(2)
 print I 
 

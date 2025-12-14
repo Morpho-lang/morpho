@@ -7,6 +7,8 @@
 #ifndef xmatrix_h
 #define xmatrix_h
 
+#define LINALG_MAXMATRIXDEFNS 4
+
 /* -------------------------------------------------------
  * Matrix object type
  * ------------------------------------------------------- */
@@ -48,11 +50,24 @@ typedef struct {
 /** Macro to decide if a matrix is 'small' or 'large' and hence static or dynamic allocation should be used. */
 #define MATRIX_ISSMALL(m) (m->nrows*m->ncols<MORPHO_MAXIMUMSTACKALLOC)
 
+
 /* -------------------------------------------------------
- * Matrix callback types
+ * Matrix interface definitions
  * ------------------------------------------------------- */
 
-typedef void (*xmatrix_elprintfn) (vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j);
+/** Function that prints a single matrix element */
+typedef void (*xmatrix_printelfn_t) (vm *, objectxmatrix *, MatrixIdx_t, MatrixIdx_t);
+
+/** Function that solves a linear system */
+typedef objectmatrixerror (*xmatrix_solvefn_t) (objectxmatrix *, objectxmatrix *, int *);
+
+typedef struct {
+    xmatrix_printelfn_t printelfn;
+    xmatrix_solvefn_t   solvefn;
+} matrixinterfacedefn;
+
+void xmatrix_addinterface(matrixinterfacedefn *defn);
+matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a);
 
 /* -------------------------------------------------------
  * Matrix veneer class
@@ -67,6 +82,7 @@ typedef void (*xmatrix_elprintfn) (vm *v, objectxmatrix *m, MatrixIdx_t i, Matri
 
 void xmatrix_initialize(void);
 
+value XMatrix_print(vm *v, int nargs, value *args);
 value XMatrix_clone(vm *v, int nargs, value *args);
 
 value XMatrix_add__xmatrix(vm *v, int nargs, value *args);
@@ -88,6 +104,6 @@ bool xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col,
 bool xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value);
 bool xmatrix_getelementptr(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value);
 
-void xmatrix_print(vm *v, objectxmatrix *m, xmatrix_elprintfn fn);
+void xmatrix_print(vm *v, objectxmatrix *m, xmatrix_printelfn_t fn);
 
 #endif

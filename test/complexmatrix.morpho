@@ -1,6 +1,20 @@
 
 import newlinalg 
 
+var A = ComplexMatrix(2,2)
+A[0,0] = 1+im
+A[1,1] = 1-im
+print A
+
+var b = ComplexMatrix(2,1)
+b[0,0] = Complex(0.5,0)
+b[1,0] = Complex(-0.5,0)
+print b
+
+print b/A
+
+System.exit()
+
 var A = XMatrix(2,2)
 A[0,0]=1
 A[0,1]=2
@@ -18,8 +32,6 @@ print b/A
 
 print A 
 
-/*
-System.exit() 
 var I = IdentityXMatrix(2)
 print I 
 
@@ -57,4 +69,3 @@ A[0,0] = 1+im
 A[1,0] = 1-im
 
 print A.inner(A)
-*/

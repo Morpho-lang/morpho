@@ -105,11 +105,20 @@ static objectmatrixerror _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) 
     info=LAPACKE_zgesv(LAPACK_COL_MAJOR, n, nrhs, a->elements, n, pivot, b->elements, n);
 #else
     zgesv_(&n, &nrhs, (__LAPACK_double_complex *) a->elements,
-           &n, pivot, (__LAPACK_double_complex *) b->elements, n, &info);
+           &n, pivot, (__LAPACK_double_complex *) b->elements, &n, &info);
 #endif
     
     return (info==0 ? MATRIX_OK : (info>0 ? MATRIX_SING : MATRIX_INVLD));
 }
+
+/* **********************************************************************
+ * Interface definition
+ * ********************************************************************** */
+
+matrixinterfacedefn complexmatrixdefn = {
+    .printelfn = _printelfn,
+    .solvefn = _solve
+};
 
 /* **********************************************************************
  * ComplexMatrix constructors
@@ -126,17 +135,6 @@ value complexmatrix_constructor__int_int(vm *v, int nargs, value *args) {
 /* **********************************************************************
  * ComplexMatrix veneer class
  * ********************************************************************** */
-
-/* ----------------------
- * Common utility methods
- * ---------------------- */
-
-/** Prints a matrix */
-value ComplexMatrix_print(vm *v, int nargs, value *args) {
-    objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    xmatrix_print(v, m, _printelfn);
-    return MORPHO_NIL;
-}
 
 /* ----------------------
  * Arithmetic
@@ -225,7 +223,7 @@ value ComplexMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(ComplexMatrix)
-MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", ComplexMatrix_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "ComplexMatrix ()", XMatrix_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY),
@@ -233,6 +231,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (Float)", XMatrix_mul_
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (ComplexMatrix)", ComplexMatrix_mul__complexmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "ComplexMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (Float)", XMatrix_div__float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_div__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Complex (XMatrix)", ComplexMatrix_inner, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int)", ComplexMatrix_index__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int, Int)", ComplexMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
@@ -248,6 +247,7 @@ MORPHO_ENDCLASS
 
 void complexmatrix_initialize(void) {
     objectcomplexmatrixtype=object_addtype(&objectxmatrixdefn);
+    xmatrix_addinterface(&complexmatrixdefn);
     
     value complexmatrixclass=builtin_addclass(COMPLEXMATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(ComplexMatrix), MORPHO_NIL);
     object_setveneerclass(OBJECT_COMPLEXMATRIX, complexmatrixclass);

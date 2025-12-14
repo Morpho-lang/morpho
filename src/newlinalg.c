@@ -4,6 +4,9 @@
  *  @brief New linear algebra library
 */
 
+#define ACCELERATE_NEW_LAPACK
+#define MORPHO_INCLUDE_LINALG
+
 #include "newlinalg.h"
 
 /* -------------------------------------------------------

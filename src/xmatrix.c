@@ -12,6 +12,26 @@
 #include "xcomplexmatrix.h"
 
 /* **********************************************************************
+ * Matrix interface definitions
+ * ********************************************************************** */
+
+/** Hold the matrix interface definitions as they're created */
+static matrixinterfacedefn _matrixdefn[LINALG_MAXMATRIXDEFNS];
+objecttype matrixinterfacedefnnext=0; /** Type of the next object definition */
+
+void xmatrix_addinterface(matrixinterfacedefn *defn) {
+    if (matrixinterfacedefnnext<LINALG_MAXMATRIXDEFNS) {
+        _matrixdefn[matrixinterfacedefnnext]=*defn;
+        matrixinterfacedefnnext++;
+    } else UNREACHABLE("Too many matrix interface definitions.");
+}
+
+matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a) {
+    int iindx = a->obj.type-OBJECT_XMATRIX;
+    if (iindx<LINALG_MAXMATRIXDEFNS) return &_matrixdefn[iindx];
+}
+
+/* **********************************************************************
  * XMatrix objects
  * ********************************************************************** */
 
@@ -194,16 +214,16 @@ objectmatrixerror xmatrix_solvesmall(objectxmatrix *a, objectxmatrix *b) {
     double els[a->nels];
     objectxmatrix A = MORPHO_STATICXMATRIX(els, a->nrows, a->ncols);
     xmatrix_copy(a, &A);
-    return _solve(&A, b, pivot);
+    return (xmatrix_getinterface(a)->solvefn) (&A, b, pivot);
 }
 
 /** Solve the linear system a.x = b using heap allocated memory for temporary */
 objectmatrixerror xmatrix_solvelarge(objectxmatrix *a, objectxmatrix *b) {
-    int *pivot = MORPHO_MALLOC(sizeof(double)*a->nrows);
+    int *pivot = MORPHO_MALLOC(sizeof(int)*a->nrows);
     objectxmatrix *A = xmatrix_clone(a);
     objectmatrixerror out = MATRIX_ALLOC;
     if (pivot && A) {
-        out = _solve(A, b, pivot);
+        out = (xmatrix_getinterface(a)->solvefn) (A, b, pivot);
     }
     if (A) object_free((object *) A);
     if (pivot) MORPHO_FREE(pivot);
@@ -224,7 +244,7 @@ objectmatrixerror xmatrix_solve(objectxmatrix *a, objectxmatrix *b) {
  * ---------------------- */
 
 /** Prints a matrix */
-void xmatrix_print(vm *v, objectxmatrix *m, xmatrix_elprintfn fn) {
+void xmatrix_print(vm *v, objectxmatrix *m, xmatrix_printelfn_t fn) {
     for (MatrixIdx_t i=0; i<m->nrows; i++) { // Rows run from 0...m
         morpho_printf(v, "[ ");
         for (MatrixIdx_t j=0; j<m->ncols; j++) { // Columns run from 0...k
@@ -234,6 +254,15 @@ void xmatrix_print(vm *v, objectxmatrix *m, xmatrix_elprintfn fn) {
         morpho_printf(v, "]%s", (i<m->nrows-1 ? "\n" : ""));
     }
 }
+
+/* **********************************************************************
+ * Interface definition
+ * ********************************************************************** */
+
+matrixinterfacedefn xmatrixdefn = {
+    .printelfn = _printelfn,
+    .solvefn = _solve
+};
 
 /* **********************************************************************
  * XMatrix constructors
@@ -277,7 +306,8 @@ value xmatrix_identityconstructor(vm *v, int nargs, value *args) {
 /** Prints a matrix */
 value XMatrix_print(vm *v, int nargs, value *args) {
     objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    xmatrix_print(v, m, _printelfn);
+    matrixinterfacedefn *interface=xmatrix_getinterface(m);
+    xmatrix_print(v, m, interface->printelfn);
     return MORPHO_NIL;
 }
 
@@ -476,6 +506,7 @@ MORPHO_ENDCLASS
 
 void xmatrix_initialize(void) {
     objectxmatrixtype=object_addtype(&objectxmatrixdefn);
+    xmatrix_addinterface(&xmatrixdefn);
     
     value xmatrixclass=builtin_addclass(XMATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(XMatrix), MORPHO_NIL);
     object_setveneerclass(OBJECT_XMATRIX, xmatrixclass);

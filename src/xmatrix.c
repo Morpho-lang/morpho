@@ -171,11 +171,11 @@ objectmatrixerror xmatrix_inner(objectxmatrix *x, objectxmatrix *y, double *out)
     return MATRIX_INCMPTBLDIM;
 }
 
-/** Solve the linear system a.x = b;
- * @param[in|out] a  lhs — overwritten by the LU decomposition
- * @param[in|out] b  rhs — overwritten by the solution
+/** Low level solve for linear system a.x = b
+ * @param[in|out] a - lhs; overwritten by LU decomposition
+ * @param[in|out] b - rhs; overwritten by solution
  * @param[out] pivot - you must provide an array with the same number of rows as a.
- * @returns objectmatrixerror indicating the status; MATRIX_OK indicates success. */
+ * @returns a matrix error code */
 static objectmatrixerror _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
     int n=a->nrows, nrhs = b->ncols, info;
     
@@ -210,6 +210,10 @@ objectmatrixerror xmatrix_solvelarge(objectxmatrix *a, objectxmatrix *b) {
     return out;
 }
 
+/** Solve the linear system a.x = b; automatrically allocates storage depending on size of the matrix
+ * @param[in]     a  lhs
+ * @param[in|out]  b  rhs — overwritten by the solution
+ * @returns objectmatrixerror indicating the status; MATRIX_OK indicates success. */
 objectmatrixerror xmatrix_solve(objectxmatrix *a, objectxmatrix *b) {
     if (MATRIX_ISSMALL(a)) return xmatrix_solvesmall(a, b);
     else return xmatrix_solvelarge(a, b);

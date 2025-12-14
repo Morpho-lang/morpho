@@ -93,6 +93,24 @@ objectmatrixerror complexmatrix_inner(objectcomplexmatrix *a, objectcomplexmatri
     return MATRIX_INCMPTBLDIM;
 }
 
+/** Low level solve for linear system a.x = b
+ * @param[in|out] a - lhs; overwritten by LU decomposition
+ * @param[in|out] b - rhs; overwritten by solution
+ * @param[out] pivot - you must provide an array with the same number of rows as a.
+ * @returns a matrix error code */
+static objectmatrixerror _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
+    int n=a->nrows, nrhs = b->ncols, info;
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    info=LAPACKE_zgesv(LAPACK_COL_MAJOR, n, nrhs, a->elements, n, pivot, b->elements, n);
+#else
+    zgesv_(&n, &nrhs, (__LAPACK_double_complex *) a->elements,
+           &n, pivot, (__LAPACK_double_complex *) b->elements, n, &info);
+#endif
+    
+    return (info==0 ? MATRIX_OK : (info>0 ? MATRIX_SING : MATRIX_INVLD));
+}
+
 /* **********************************************************************
  * ComplexMatrix constructors
  * ********************************************************************** */
@@ -214,6 +232,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (ComplexMatrix)", XMat
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (ComplexMatrix)", ComplexMatrix_mul__complexmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "ComplexMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (Float)", XMatrix_div__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Complex (XMatrix)", ComplexMatrix_inner, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int)", ComplexMatrix_index__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int, Int)", ComplexMatrix_index__int_int, BUILTIN_FLAGSEMPTY),

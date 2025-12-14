@@ -72,6 +72,8 @@ value XMatrix_clone(vm *v, int nargs, value *args);
 value XMatrix_add__xmatrix(vm *v, int nargs, value *args);
 value XMatrix_sub__xmatrix(vm *v, int nargs, value *args);
 value XMatrix_mul__float(vm *v, int nargs, value *args);
+value XMatrix_div__float(vm *v, int nargs, value *args);
+value XMatrix_div__xmatrix(vm *v, int nargs, value *args);
 
 value XMatrix_dimensions(vm *v, int nargs, value *args);
 value XMatrix_count(vm *v, int nargs, value *args);

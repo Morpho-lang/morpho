@@ -6,14 +6,17 @@ A[0,0] = 1+im
 A[1,1] = 1-im
 print A
 
+A.reshape(4,1)
+print A 
+
+System.exit()
+
 var b = ComplexMatrix(2,1)
 b[0,0] = Complex(0.5,0)
 b[1,0] = Complex(-0.5,0)
 print b
 
 print b/A
-
-System.exit()
 
 var A = XMatrix(2,2)
 A[0,0]=1

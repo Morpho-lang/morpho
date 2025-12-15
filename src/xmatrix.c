@@ -29,6 +29,7 @@ void xmatrix_addinterface(matrixinterfacedefn *defn) {
 matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a) {
     int iindx = a->obj.type-OBJECT_XMATRIX;
     if (iindx<LINALG_MAXMATRIXDEFNS) return &_matrixdefn[iindx];
+    return NULL;
 }
 
 /* **********************************************************************
@@ -464,6 +465,20 @@ value XMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
  * Metadata
  * --------- */
 
+/** Reshape a matrix */
+value XMatrix_reshape(vm *v, int nargs, value *args) {
+    objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
+    int nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+        ncols = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    
+    if (nrows*ncols==a->nrows*a->ncols) {
+        a->nrows=nrows;
+        a->ncols=ncols;
+    } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    
+    return MORPHO_NIL;
+}
+
 /** Number of matrix elements */
 value XMatrix_count(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
@@ -496,6 +511,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__in
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", XMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_DIMENSIONS_METHOD, "Tuple ()", XMatrix_dimensions, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", XMatrix_count, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS

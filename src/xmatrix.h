@@ -77,6 +77,7 @@ matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a);
 
 #define XMATRIX_DIMENSIONS_METHOD           "dimensions"
 #define XMATRIX_INNER_METHOD                "inner"
+#define XMATRIX_RESHAPE_METHOD              "reshape"
 
 #define XMATRIX_IDENTITYCONSTRUCTOR         "IdentityXMatrix"
 
@@ -91,6 +92,7 @@ value XMatrix_mul__float(vm *v, int nargs, value *args);
 value XMatrix_div__float(vm *v, int nargs, value *args);
 value XMatrix_div__xmatrix(vm *v, int nargs, value *args);
 
+value XMatrix_reshape(vm *v, int nargs, value *args);
 value XMatrix_dimensions(vm *v, int nargs, value *args);
 value XMatrix_count(vm *v, int nargs, value *args);
 

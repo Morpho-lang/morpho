@@ -11,8 +11,6 @@
 #include <morpho.h>
 #include <classes.h>
 
-#include "xmatrix.h"
-
 /* -------------------------------------------------------
  * objectmatrixerror type
  * ------------------------------------------------------- */
@@ -23,6 +21,7 @@ typedef enum {
     LINALGERR_INDX_OUT_OF_BNDS,  // Index out of bounds, e.g. for access.
     LINALGERR_MATRIX_SINGULAR,   // Matrix is singular
     LINALGERR_NOT_SQUARE,        // Matrix is required to be square for this algorithm
+    LINALGERR_LAPACK_INVLD_ARGS, // Invalid arguments to LAPACK routine
     LINALGERR_ALLOC              // Memory allocation failed
 } linalgError_t;
 
@@ -41,5 +40,15 @@ typedef enum {
 
 #define LINALG_NOTSQ                      "LnAlgMtrxNtSq"
 #define LINALG_NOTSQ_MSG                  "Matrix is not square."
+
+#define LINALG_LAPACK_ARGS                "LnAlgLapackArgs"
+#define LINALG_LAPACK_ARGS_MSG            "Lapack function called with invalid arguments."
+
+/* -------------------------------------------------------
+ * Include the rest of the library
+ * ------------------------------------------------------- */
+
+#include "xmatrix.h"
+#include "xcomplexmatrix.h"
 
 #endif

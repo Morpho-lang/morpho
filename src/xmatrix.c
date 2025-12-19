@@ -8,8 +8,6 @@
 #define MORPHO_INCLUDE_LINALG
 
 #include "newlinalg.h"
-#include "xmatrix.h"
-#include "xcomplexmatrix.h"
 
 /* **********************************************************************
  * Matrix interface definitions
@@ -219,12 +217,11 @@ double xmatrix_linfnorm(objectxmatrix *a) {
  * ---------------------- */
 
 /** Finds the Frobenius inner product of two matrices  */
-objectmatrixerror xmatrix_inner(objectxmatrix *x, objectxmatrix *y, double *out) {
-    if (x->ncols==y->ncols && x->nrows==y->nrows) {
-        *out=cblas_ddot((__LAPACK_int) x->nels, x->elements, 1, y->elements, 1);
-        return MATRIX_OK;
-    }
-    return MATRIX_INCMPTBLDIM;
+linalgError_t xmatrix_inner(objectxmatrix *x, objectxmatrix *y, double *out) {
+    if (!(x->ncols==y->ncols && x->nrows==y->nrows)) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    *out=cblas_ddot((__LAPACK_int) x->nels, x->elements, 1, y->elements, 1);
+    return LINALGERR_OK;
 }
 
 /** Low level solve for linear system a.x = b
@@ -232,7 +229,7 @@ objectmatrixerror xmatrix_inner(objectxmatrix *x, objectxmatrix *y, double *out)
  * @param[in|out] b - rhs; overwritten by solution
  * @param[out] pivot - you must provide an array with the same number of rows as a.
  * @returns a matrix error code */
-static objectmatrixerror _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
+static linalgError_t _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
     int n=a->nrows, nrhs = b->ncols, info;
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
@@ -241,11 +238,11 @@ static objectmatrixerror _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) 
     dgesv_(&n, &nrhs, a->elements, &n, pivot, b->elements, &n, &info);
 #endif
     
-    return (info==0 ? MATRIX_OK : (info>0 ? MATRIX_SING : MATRIX_INVLD));
+    return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_MATRIX_SINGULAR : LINALGERR_LAPACK_INVLD_ARGS));
 }
 
 /** Solve the linear system a.x = b using stack allocated memory for temporary */
-objectmatrixerror xmatrix_solvesmall(objectxmatrix *a, objectxmatrix *b) {
+linalgError_t xmatrix_solvesmall(objectxmatrix *a, objectxmatrix *b) {
     int pivot[a->nrows];
     double els[a->nels];
     objectxmatrix A = MORPHO_STATICXMATRIX(els, a->nrows, a->ncols);
@@ -254,7 +251,7 @@ objectmatrixerror xmatrix_solvesmall(objectxmatrix *a, objectxmatrix *b) {
 }
 
 /** Solve the linear system a.x = b using heap allocated memory for temporary */
-objectmatrixerror xmatrix_solvelarge(objectxmatrix *a, objectxmatrix *b) {
+linalgError_t xmatrix_solvelarge(objectxmatrix *a, objectxmatrix *b) {
     int *pivot = MORPHO_MALLOC(sizeof(int)*a->nrows);
     objectxmatrix *A = xmatrix_clone(a);
     objectmatrixerror out = MATRIX_ALLOC;
@@ -270,7 +267,7 @@ objectmatrixerror xmatrix_solvelarge(objectxmatrix *a, objectxmatrix *b) {
  * @param[in]     a  lhs
  * @param[in|out]  b  rhs — overwritten by the solution
  * @returns objectmatrixerror indicating the status; MATRIX_OK indicates success. */
-objectmatrixerror xmatrix_solve(objectxmatrix *a, objectxmatrix *b) {
+linalgError_t xmatrix_solve(objectxmatrix *a, objectxmatrix *b) {
     if (MATRIX_ISSMALL(a)) return xmatrix_solvesmall(a, b);
     else return xmatrix_solvelarge(a, b);
 }

@@ -7,8 +7,6 @@
 #ifndef xcomplexmatrix_h
 #define xcomplexmatrix_h
 
-#include "newlinalg.h"
-
 /* -------------------------------------------------------
  * ComplexMatrix veneer class
  * ------------------------------------------------------- */

@@ -59,7 +59,7 @@ typedef struct {
 typedef void (*xmatrix_printelfn_t) (vm *, objectxmatrix *, MatrixIdx_t, MatrixIdx_t);
 
 /** Function that solves a linear system */
-typedef objectmatrixerror (*xmatrix_solvefn_t) (objectxmatrix *, objectxmatrix *, int *);
+typedef linalgError_t (*xmatrix_solvefn_t) (objectxmatrix *, objectxmatrix *, int *);
 
 typedef struct {
     xmatrix_printelfn_t printelfn;

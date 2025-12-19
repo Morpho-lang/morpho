@@ -98,7 +98,7 @@ objectmatrixerror complexmatrix_inner(objectcomplexmatrix *a, objectcomplexmatri
  * @param[in|out] b - rhs; overwritten by solution
  * @param[out] pivot - you must provide an array with the same number of rows as a.
  * @returns a matrix error code */
-static objectmatrixerror _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
+static linalgError_t _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
     int n=a->nrows, nrhs = b->ncols, info;
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
@@ -108,7 +108,7 @@ static objectmatrixerror _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) 
            &n, pivot, (__LAPACK_double_complex *) b->elements, &n, &info);
 #endif
     
-    return (info==0 ? MATRIX_OK : (info>0 ? MATRIX_SING : MATRIX_INVLD));
+    return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_MATRIX_SINGULAR : LINALGERR_LAPACK_INVLD_ARGS));
 }
 
 /* **********************************************************************

@@ -20,6 +20,7 @@ void linalg_raiseerror(vm *v, linalgError_t err) {
         case LINALGERR_INDX_OUT_OF_BNDS: morpho_runtimeerror(v, LINALG_INDICESOUTSIDEBOUNDS); break;
         case LINALGERR_MATRIX_SINGULAR: morpho_runtimeerror(v, LINALG_SINGULAR); break;
         case LINALGERR_NOT_SQUARE: morpho_runtimeerror(v, LINALG_NOTSQ); break;
+        case LINALGERR_LAPACK_INVLD_ARGS: morpho_runtimeerror(v, LINALG_LAPACK_ARGS); break;
         case LINALGERR_ALLOC: morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); break;
     }
 }
@@ -35,6 +36,7 @@ void newlinalg_initialize(void) {
     morpho_defineerror(LINALG_INDICESOUTSIDEBOUNDS, ERROR_HALT, LINALG_INDICESOUTSIDEBOUNDS_MSG);
     morpho_defineerror(LINALG_SINGULAR,             ERROR_HALT, LINALG_SINGULAR_MSG);
     morpho_defineerror(LINALG_NOTSQ,                ERROR_HALT, LINALG_NOTSQ_MSG);
+    morpho_defineerror(LINALG_LAPACK_ARGS,          ERROR_HALT, LINALG_LAPACK_ARGS_MSG);
 }
 
 void newlinalg_finalize(void) { 

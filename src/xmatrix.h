@@ -107,6 +107,6 @@ bool xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col,
 bool xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value);
 bool xmatrix_getelementptr(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value);
 
-void xmatrix_print(vm *v, objectxmatrix *m, xmatrix_printelfn_t fn);
+void xmatrix_print(vm *v, objectxmatrix *m);
 
 #endif

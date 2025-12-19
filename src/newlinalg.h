@@ -45,6 +45,17 @@ typedef enum {
 #define LINALG_LAPACK_ARGS_MSG            "Lapack function called with invalid arguments."
 
 /* -------------------------------------------------------
+ * Interface
+ * ------------------------------------------------------- */
+
+void linalg_raiseerror(vm *v, linalgError_t err);
+
+/** Macro to simplify error checking:
+    - evaluates expression f that returns linalgError_t;
+    - if an error occurred, raises the corresponding error in a vm called v */
+#define LINALG_ERRCHECKVM(f) { linalgError_t err = f; if (err!=LINALGERR_OK) linalg_raiseerror(v, err); }
+
+/* -------------------------------------------------------
  * Include the rest of the library
  * ------------------------------------------------------- */
 

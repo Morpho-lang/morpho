@@ -277,11 +277,12 @@ linalgError_t xmatrix_solve(objectxmatrix *a, objectxmatrix *b) {
  * ---------------------- */
 
 /** Prints a matrix */
-void xmatrix_print(vm *v, objectxmatrix *m, xmatrix_printelfn_t fn) {
+void xmatrix_print(vm *v, objectxmatrix *m) {
+    matrixinterfacedefn *interface=xmatrix_getinterface(m);
     for (MatrixIdx_t i=0; i<m->nrows; i++) { // Rows run from 0...m
         morpho_printf(v, "[ ");
         for (MatrixIdx_t j=0; j<m->ncols; j++) { // Columns run from 0...k
-            (*fn) (v, m, i, j);
+            (*interface->printelfn) (v, m, i, j);
             morpho_printf(v, " ");
         }
         morpho_printf(v, "]%s", (i<m->nrows-1 ? "\n" : ""));
@@ -339,8 +340,7 @@ value xmatrix_identityconstructor(vm *v, int nargs, value *args) {
 /** Prints a matrix */
 value XMatrix_print(vm *v, int nargs, value *args) {
     objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    matrixinterfacedefn *interface=xmatrix_getinterface(m);
-    xmatrix_print(v, m, interface->printelfn);
+    xmatrix_print(v, m);
     return MORPHO_NIL;
 }
 
@@ -364,9 +364,9 @@ static value _axpy(vm *v, int nargs, value *args, double alpha) {
     
     if (a->ncols==b->ncols && a->nrows==b->nrows) {
         new=xmatrix_clone(b);
-        if (new) xmatrix_axpy(alpha, a, new);
+        if (new) xmatrix_axpy(alpha, a, new); // TODO: Error check
         out = morpho_wrapandbind(v, (object *) new);
-    } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    } else morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
     
     return out;
 }
@@ -400,7 +400,7 @@ value XMatrix_mul__xmatrix(vm *v, int nargs, value *args) {
         objectxmatrix *new = xmatrix_new(a->nrows, b->ncols, false);
         if (new) xmatrix_mmul(1.0, a, b, 0.0, new);
         out = morpho_wrapandbind(v, (object *) new);
-    } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    } else morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
     return out;
 }
 
@@ -425,7 +425,7 @@ value XMatrix_div__xmatrix(vm *v, int nargs, value *args) {
     
     objectxmatrix *sol = xmatrix_clone(b);
     if (sol) {
-        xmatrix_solve(a, sol); // TODO: Check for errors
+        xmatrix_solve(a, sol); // TODO: Error check
         out = morpho_wrapandbind(v, (object *) sol);
     } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     
@@ -472,9 +472,7 @@ value XMatrix_inner(vm *v, int nargs, value *args) {
     objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
     double prod=0.0;
     
-    if (xmatrix_inner(a, b, &prod)!=MATRIX_OK) {
-        morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
-    }
+    LINALG_ERRCHECKVM(xmatrix_inner(a, b, &prod));
     
     return MORPHO_FLOAT(prod);
 }
@@ -484,10 +482,10 @@ value XMatrix_inner(vm *v, int nargs, value *args) {
  * --------- */
 
 static value _getindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
-    double out;
-    if (xmatrix_getelement(m, i, j, &out)) return MORPHO_FLOAT(out);
-    //morpho_runtimeerror(v, XMATRIX_INDICESOUTSIDEBOUNDS);
-    return MORPHO_NIL;
+    double out=0.0;
+    
+    LINALG_ERRCHECKVM(xmatrix_getelement(m, i, j, &out));
+    return MORPHO_FLOAT(out);
 }
 
 value XMatrix_index__int(vm *v, int nargs, value *args) {
@@ -507,8 +505,8 @@ value XMatrix_index__int_int(vm *v, int nargs, value *args) {
 
 value _setindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j, value in) {
     double val=0.0;
-    if (!morpho_valuetofloat(in, &val)) true; // Should raise an error (Matrix doesn't!)
-    if (!xmatrix_setelement(m, i, j, val)) true; //morpho_runtimeerror(v, XMATRIX_INDICESOUTSIDEBOUNDS);
+    if (!morpho_valuetofloat(in, &val)) true; // TODO: Should raise an error (Matrix doesn't!)
+    if (!xmatrix_setelement(m, i, j, val)) morpho_runtimeerror(v, LINALG_INDICESOUTSIDEBOUNDS);
     return MORPHO_NIL;
 }
 
@@ -536,7 +534,7 @@ value XMatrix_reshape(vm *v, int nargs, value *args) {
     if (nrows*ncols==a->nrows*a->ncols) {
         a->nrows=nrows;
         a->ncols=ncols;
-    } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    } else morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
     
     return MORPHO_NIL;
 }

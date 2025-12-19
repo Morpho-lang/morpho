@@ -170,7 +170,7 @@ value ComplexMatrix_inner(vm *v, int nargs, value *args) {
     if (complexmatrix_inner(a, b, &prod)==MATRIX_OK) {
         objectcomplex *new = object_newcomplex(creal(prod), cimag(prod));
         out = morpho_wrapandbind(v, (object *) new);
-    } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    } else morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
     
     return out;
 }
@@ -181,7 +181,7 @@ value ComplexMatrix_inner(vm *v, int nargs, value *args) {
 
 static value _getindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
     double *el;
-    xmatrix_getelementptr(m, i, j, &el); //morpho_runtimeerror(v, XMATRIX_INDICESOUTSIDEBOUNDS);
+    if (!xmatrix_getelementptr(m, i, j, &el)) morpho_runtimeerror(v, LINALG_INDICESOUTSIDEBOUNDS);
     objectcomplex *new = object_newcomplex(el[0], el[1]);
     return morpho_wrapandbind(v, (object *) new);
 }
@@ -204,7 +204,7 @@ value ComplexMatrix_index__int_int(vm *v, int nargs, value *args) {
 static value _setindex(vm *v, objectcomplexmatrix *m, MatrixIdx_t i, MatrixIdx_t j, value in) {
     if (MORPHO_ISCOMPLEX(in) &&
         !complexmatrix_setelement(m, i, j, MORPHO_GETCOMPLEX(in)->Z)) {
-        // Should raise an error
+        // TODO: Raise error
     }
     return MORPHO_NIL;
 }

@@ -1,5 +1,20 @@
 
 import newlinalg 
+import constants
+
+var A = XMatrix(2,2)
+A[0,0]=1
+A[0,1]=2
+A[1,0]=3
+A[1,1]=4
+
+print A 
+
+print A.norm()
+print A.norm(1)
+print A.norm(Inf)
+
+System.exit()
 
 var A = ComplexMatrix(2,2)
 A[0,0] = 1+im

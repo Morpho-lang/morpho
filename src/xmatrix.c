@@ -183,6 +183,45 @@ objectmatrixerror xmatrix_mmul(double alpha, objectxmatrix *x, objectxmatrix *y,
     return MATRIX_INCMPTBLDIM;
 }
 
+/* ----------------------
+ * Unary operations
+ * ---------------------- */
+
+// TODO: Fix with correct norms! 
+
+/** Computes the Frobenius norm of a matrix */
+double xmatrix_norm(objectxmatrix *a) {
+    return cblas_dnrm2((__LAPACK_int) a->nels, a->elements, 1);
+}
+
+/** Computes the L1 norm of a matrix */
+double xmatrix_l1norm(objectxmatrix *a) {
+    return cblas_dasum((__LAPACK_int) a->nels, a->elements, 1);
+}
+
+/** Computes the Ln norm of a matrix */
+double xmatrix_lnnorm(objectxmatrix *a, double n) {
+    double sum=0.0, c=0.0, y,t;
+    
+    for (MatrixCount_t i=0; i<a->nels; i++) {
+        y=pow(a->elements[i],n)-c; // Kahan summation
+        t=sum+y;
+        c=(t-sum)-y;
+        sum=t;
+    }
+    return pow(sum,1.0/n);
+}
+
+/** Computes the infinity norm of a matrix */
+double xmatrix_linfnorm(objectxmatrix *a) {
+    int imax=cblas_idamax((__LAPACK_int) a->nels, a->elements, 1);
+    return a->elements[imax];
+}
+
+/* ----------------------
+ * Products
+ * ---------------------- */
+
 /** Finds the Frobenius inner product of two matrices  */
 objectmatrixerror xmatrix_inner(objectxmatrix *x, objectxmatrix *y, double *out) {
     if (x->ncols==y->ncols && x->nrows==y->nrows) {
@@ -400,6 +439,36 @@ value XMatrix_div__xmatrix(vm *v, int nargs, value *args) {
     return out;
 }
 
+/* ----------------
+ * Unary operations
+ * ---------------- */
+
+/** Matrix norm */
+value XMatrix_norm__x(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+    double n;
+    
+    if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &n)) {
+        if (fabs(n-1.0)<MORPHO_EPS) {
+            out=MORPHO_FLOAT(xmatrix_l1norm(a));
+        } else if (fabs(n-2.0)<MORPHO_EPS) {
+            out=MORPHO_FLOAT(xmatrix_norm(a));
+        } else if (isinf(n)) {
+            out=MORPHO_FLOAT(xmatrix_linfnorm(a));
+        } else {
+            out=MORPHO_FLOAT(xmatrix_lnnorm(a, n));
+        }
+    } else morpho_runtimeerror(v, MATRIX_NORMARGS);
+    
+    return out;
+}
+
+value XMatrix_norm(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    return MORPHO_FLOAT(xmatrix_norm(a));
+}
+
 /* ---------
  * Products
  * --------- */
@@ -511,6 +580,8 @@ MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__in
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", XMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "(_)", XMatrix_norm__x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "()", XMatrix_norm, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_DIMENSIONS_METHOD, "Tuple ()", XMatrix_dimensions, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", XMatrix_count, BUILTIN_FLAGSEMPTY)

@@ -77,6 +77,7 @@ matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a);
 
 #define XMATRIX_DIMENSIONS_METHOD           "dimensions"
 #define XMATRIX_INNER_METHOD                "inner"
+#define XMATRIX_NORM_METHOD                 "norm"
 #define XMATRIX_RESHAPE_METHOD              "reshape"
 
 #define XMATRIX_IDENTITYCONSTRUCTOR         "IdentityXMatrix"

@@ -143,51 +143,47 @@ bool xmatrix_getelementptr(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t c
  * ---------------------- */
 
 /** Vector addition: Performs y <- alpha*x + y */
-objectmatrixerror xmatrix_axpy(double alpha, objectxmatrix *x, objectxmatrix *y) {
-    if (x->ncols==y->ncols && x->nrows==y->nrows) {
-        cblas_daxpy((__LAPACK_int) x->nels, alpha, x->elements, 1, y->elements, 1);
-        return MATRIX_OK;
-    }
-    return MATRIX_INCMPTBLDIM;
+linalgError_t xmatrix_axpy(double alpha, objectxmatrix *x, objectxmatrix *y) {
+    if (!(x->ncols==y->ncols && x->nrows==y->nrows)) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    cblas_daxpy((__LAPACK_int) x->nels, alpha, x->elements, 1, y->elements, 1);
+    return LINALGERR_OK;
 }
 
 /** Copies a matrix  y <- a */
-objectmatrixerror xmatrix_copy(objectxmatrix *x, objectxmatrix *y) {
-    if (x->ncols==y->ncols && x->nrows==y->nrows) {
-        cblas_dcopy((__LAPACK_int) x->nels, x->elements, 1, y->elements, 1);
-        return MATRIX_OK;
-    }
-    return MATRIX_INCMPTBLDIM;
+linalgError_t xmatrix_copy(objectxmatrix *x, objectxmatrix *y) {
+    if (!(x->ncols==y->ncols && x->nrows==y->nrows)) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    cblas_dcopy((__LAPACK_int) x->nels, x->elements, 1, y->elements, 1);
+    return LINALGERR_OK;
 }
 
 /** Scales a matrix x <- scale * x >*/
-objectmatrixerror xmatrix_scale(objectxmatrix *x, double scale) {
+void xmatrix_scale(objectxmatrix *x, double scale) {
     cblas_dscal((__LAPACK_int) x->nels, scale, x->elements, 1);
-    return MATRIX_OK;
 }
 
 /** Loads the identity matrix a <- I(n) */
-objectmatrixerror xmatrix_identity(objectxmatrix *x) {
-    if (x->ncols!=x->nrows) return MATRIX_NSQ;
+linalgError_t xmatrix_identity(objectxmatrix *x) {
+    if (x->ncols!=x->nrows) return LINALGERR_NOT_SQUARE;
     memset(x->elements, 0, sizeof(double)*x->nrows*x->ncols);
     for (int i=0; i<x->nrows; i++) x->elements[x->nvals*(i+x->nrows*i)]=1.0;
-    return MATRIX_OK;
+    return LINALGERR_OK;
 }
 
 /** Performs z <- alpha*(x*y) + beta*z */
-objectmatrixerror xmatrix_mmul(double alpha, objectxmatrix *x, objectxmatrix *y, double beta, objectxmatrix *z) {
-    if (x->ncols==y->nrows && x->nrows==z->nrows && y->ncols==z->ncols) {
-        cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, x->nrows, y->ncols, x->ncols, alpha, x->elements, x->nrows, y->elements, y->nrows, beta, z->elements, z->nrows);
-        return MATRIX_OK;
-    }
-    return MATRIX_INCMPTBLDIM;
+linalgError_t xmatrix_mmul(double alpha, objectxmatrix *x, objectxmatrix *y, double beta, objectxmatrix *z) {
+    if (!(x->ncols==y->nrows && x->nrows==z->nrows && y->ncols==z->ncols)) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, x->nrows, y->ncols, x->ncols, alpha, x->elements, x->nrows, y->elements, y->nrows, beta, z->elements, z->nrows);
+    return LINALGERR_OK;
 }
 
 /* ----------------------
  * Unary operations
  * ---------------------- */
 
-// TODO: Fix with correct norms! 
+// TODO: Fix with correct norms!
 
 /** Computes the Frobenius norm of a matrix */
 double xmatrix_norm(objectxmatrix *a) {

@@ -12,7 +12,7 @@
 #include "newlinalg.h"
 #include "xmatrix.h"
 #include "xcomplexmatrix.h"
-`
+
 objecttype objectcomplexmatrixtype;
 #define OBJECT_COMPLEXMATRIX objectcomplexmatrixtype
 

@@ -1,0 +1,21 @@
+// Get elements of a Matrix
+
+import newlinalg 
+
+var A = XMatrix(2,2)
+A[0,0] = 1
+A[0,1] = 2
+A[1,0] = 3
+A[1,1] = 4
+
+// Array-like access
+print A[0,0] // expect: 1
+print A[0,1] // expect: 2
+print A[1,0] // expect: 3
+print A[1,1] // expect: 4
+
+// Vector-like access
+print A[0] // expect: 1
+print A[1] // expect: 2
+print A[2] // expect: 3
+print A[3] // expect: 4

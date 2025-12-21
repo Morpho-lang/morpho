@@ -103,6 +103,7 @@ value XMatrix_sub__xmatrix(vm *v, int nargs, value *args);
 value XMatrix_mul__float(vm *v, int nargs, value *args);
 value XMatrix_div__float(vm *v, int nargs, value *args);
 value XMatrix_div__xmatrix(vm *v, int nargs, value *args);
+value XMatrix_acc__x_xmatrix(vm *v, int nargs, value *args);
 
 value XMatrix_getcolumn__int(vm *v, int nargs, value *args);
 value XMatrix_setcolumn__int_xmatrix(vm *v, int nargs, value *args);

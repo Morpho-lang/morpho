@@ -465,6 +465,18 @@ value XMatrix_div__xmatrix(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Accumulate in place */
+value XMatrix_acc__x_xmatrix(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 1));
+    
+    double alpha=1.0;
+    if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &alpha)) morpho_runtimeerror(v, MATRIX_ARITHARGS);
+    
+    LINALG_ERRCHECKVM(xmatrix_axpy(alpha, b, a));
+    return MORPHO_NIL;
+}
+
 /* ----------------
  * Unary operations
  * ---------------- */
@@ -643,6 +655,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "XMatrix (XMatrix)", XMatrix_mul__xma
 MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "XMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (XMatrix)", XMatrix_div__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (Float)", XMatrix_div__float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, XMatrix)", XMatrix_acc__x_xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Float (XMatrix)", XMatrix_inner, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),

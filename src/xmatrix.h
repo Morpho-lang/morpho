@@ -87,6 +87,7 @@ matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a);
 void xmatrix_initialize(void);
 
 value XMatrix_print(vm *v, int nargs, value *args);
+value XMatrix_assign(vm *v, int nargs, value *args);
 value XMatrix_clone(vm *v, int nargs, value *args);
 
 value XMatrix_add__xmatrix(vm *v, int nargs, value *args);

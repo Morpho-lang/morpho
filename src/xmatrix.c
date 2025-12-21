@@ -362,6 +362,14 @@ value XMatrix_print(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Copies the contents of one matrix into another */
+value XMatrix_assign(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
+    LINALG_ERRCHECKVM(xmatrix_copy(b, a));
+    return MORPHO_NIL;
+}
+
 /** Clones a matrix */
 value XMatrix_clone(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
@@ -600,7 +608,9 @@ value XMatrix_dimensions(vm *v, int nargs, value *args) {
 
 
 MORPHO_BEGINCLASS(XMatrix)
+
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(XMatrix)", XMatrix_assign, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "XMatrix ()", XMatrix_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "XMatrix (XMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "XMatrix (XMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY),

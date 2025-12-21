@@ -1,0 +1,16 @@
+// Assign one matrix to another
+
+import newlinalg 
+
+var A = XMatrix(2,2)
+A[0,0] = 1
+A[0,1] = 2
+A[1,0] = 3
+A[1,1] = 4
+
+var B = XMatrix(2,2)
+B.assign(A)
+
+print B 
+// expect: [ 1 2 ]
+// expect: [ 3 4 ]

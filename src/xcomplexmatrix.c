@@ -26,10 +26,8 @@ typedef objectxmatrix objectcomplexmatrix;
  * Callbacks
  * ---------------------- */
 
-static void _printelfn(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
-    double *elptr;
-    xmatrix_getelementptr(m, i, j, &elptr);
-    objectcomplex cmplx = MORPHO_STATICCOMPLEX(elptr[0], elptr[1]);
+static void _printelfn(vm *v, double *el) {
+    objectcomplex cmplx = MORPHO_STATICCOMPLEX(el[0], el[1]);
     complex_print(v, &cmplx);
 }
 

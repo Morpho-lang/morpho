@@ -65,9 +65,8 @@ objecttypedefn objectxmatrixdefn = {
  * XMatrix callbacks
  * ---------------------- */
 
-static void _printelfn(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
-    double val;
-    xmatrix_getelement(m, i, j, &val);
+static void _printelfn(vm *v, double *el) {
+    double val=*el;
     morpho_printf(v, "%g", (fabs(val)<MORPHO_EPS ? 0 : val));
 }
 
@@ -301,10 +300,12 @@ linalgError_t xmatrix_solve(objectxmatrix *a, objectxmatrix *b) {
 /** Prints a matrix */
 void xmatrix_print(vm *v, objectxmatrix *m) {
     matrixinterfacedefn *interface=xmatrix_getinterface(m);
+    double *elptr;
     for (MatrixIdx_t i=0; i<m->nrows; i++) { // Rows run from 0...m
         morpho_printf(v, "[ ");
         for (MatrixIdx_t j=0; j<m->ncols; j++) { // Columns run from 0...k
-            (*interface->printelfn) (v, m, i, j);
+            xmatrix_getelementptr(m, i, j, &elptr);
+            (*interface->printelfn) (v, elptr);
             morpho_printf(v, " ");
         }
         morpho_printf(v, "]%s", (i<m->nrows-1 ? "\n" : ""));

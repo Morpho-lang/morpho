@@ -56,7 +56,7 @@ typedef struct {
  * ------------------------------------------------------- */
 
 /** Function that prints a single matrix element */
-typedef void (*xmatrix_printelfn_t) (vm *, objectxmatrix *, MatrixIdx_t, MatrixIdx_t);
+typedef void (*xmatrix_printelfn_t) (vm *, double *);
 
 /** Function that materializes a value from a pointer to an element */
 typedef value (*xmatrix_getelfn_t) (vm *, double *);

@@ -58,12 +58,20 @@ typedef struct {
 /** Function that prints a single matrix element */
 typedef void (*xmatrix_printelfn_t) (vm *, objectxmatrix *, MatrixIdx_t, MatrixIdx_t);
 
+/** Function that materializes a value from a pointer to an element */
+typedef value (*xmatrix_getelfn_t) (vm *, double *);
+
 /** Function that solves a linear system */
 typedef linalgError_t (*xmatrix_solvefn_t) (objectxmatrix *, objectxmatrix *, int *);
 
+/** Function that sets a given entry given a value */
+//typedef void (*xmatrix_setfn_t) (objectxmatrix *, void *, value v);
+
 typedef struct {
     xmatrix_printelfn_t printelfn;
+    xmatrix_getelfn_t   getelfn;
     xmatrix_solvefn_t   solvefn;
+//    xmatrix_setfn_t     setfn;
 } matrixinterfacedefn;
 
 void xmatrix_addinterface(matrixinterfacedefn *defn);
@@ -100,8 +108,9 @@ value XMatrix_getcolumn__int(vm *v, int nargs, value *args);
 value XMatrix_setcolumn__int_xmatrix(vm *v, int nargs, value *args);
 
 value XMatrix_reshape(vm *v, int nargs, value *args);
-value XMatrix_dimensions(vm *v, int nargs, value *args);
+value XMatrix_enumerate(vm *v, int nargs, value *args);
 value XMatrix_count(vm *v, int nargs, value *args);
+value XMatrix_dimensions(vm *v, int nargs, value *args);
 
 /* -------------------------------------------------------
  * Interface

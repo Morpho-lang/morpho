@@ -71,6 +71,10 @@ static void _printelfn(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
     morpho_printf(v, "%g", (fabs(val)<MORPHO_EPS ? 0 : val));
 }
 
+static value _getelfn(vm *v, double *el) {
+    return MORPHO_FLOAT(*el);
+}
+
 /* ----------------------
  * Constructors
  * ---------------------- */
@@ -313,6 +317,7 @@ void xmatrix_print(vm *v, objectxmatrix *m) {
 
 matrixinterfacedefn xmatrixdefn = {
     .printelfn = _printelfn,
+    .getelfn = _getelfn,
     .solvefn = _solve
 };
 
@@ -329,6 +334,7 @@ value xmatrix_constructor__int_int(vm *v, int nargs, value *args) {
 }
 
 value xmatrix_constructor__list(vm *v, int nargs, value *args) {
+    
     return MORPHO_NIL;
 }
 
@@ -590,6 +596,23 @@ value XMatrix_reshape(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Enumerate protocol */
+value XMatrix_enumerate(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    value out=MORPHO_NIL;
+    
+    if (i<0) {
+        out=MORPHO_INTEGER(a->ncols*a->nrows);
+    } else if (i<a->ncols*a->nrows) {
+        out=xmatrix_getinterface(a)->getelfn(v, a->elements+i*a->nvals);
+    } else {
+        linalg_raiseerror(v, LINALGERR_INDX_OUT_OF_BNDS);
+    }
+    
+    return out;
+}
+
 /** Number of matrix elements */
 value XMatrix_count(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
@@ -629,8 +652,9 @@ MORPHO_METHOD_SIGNATURE(XMATRIX_SETCOLUMN_METHOD, "(Int, XMatrix)", XMatrix_setc
 MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "(_)", XMatrix_norm__x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "()", XMatrix_norm, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_DIMENSIONS_METHOD, "Tuple ()", XMatrix_dimensions, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", XMatrix_count, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", XMatrix_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", XMatrix_count, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_DIMENSIONS_METHOD, "Tuple ()", XMatrix_dimensions, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

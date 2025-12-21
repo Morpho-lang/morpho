@@ -76,7 +76,7 @@ matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a);
 #define XMATRIX_CLASSNAME                   "XMatrix"
 
 #define XMATRIX_GETCOLUMN_METHOD            "column"
-#define XMATRIX_SETCOLUMN_METHOD            "setcolumn"
+#define XMATRIX_SETCOLUMN_METHOD            "setColumn"
 #define XMATRIX_DIMENSIONS_METHOD           "dimensions"
 #define XMATRIX_INNER_METHOD                "inner"
 #define XMATRIX_NORM_METHOD                 "norm"
@@ -95,6 +95,9 @@ value XMatrix_mul__float(vm *v, int nargs, value *args);
 value XMatrix_div__float(vm *v, int nargs, value *args);
 value XMatrix_div__xmatrix(vm *v, int nargs, value *args);
 
+value XMatrix_getcolumn__int(vm *v, int nargs, value *args);
+value XMatrix_setcolumn__int_xmatrix(vm *v, int nargs, value *args);
+
 value XMatrix_reshape(vm *v, int nargs, value *args);
 value XMatrix_dimensions(vm *v, int nargs, value *args);
 value XMatrix_count(vm *v, int nargs, value *args);
@@ -105,9 +108,9 @@ value XMatrix_count(vm *v, int nargs, value *args);
 
 objectxmatrix *xmatrix_newwithtype(objecttype type, MatrixIdx_t nrows, MatrixIdx_t ncols, MatrixIdx_t nvals, bool zero);
 
-bool xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value);
-bool xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value);
-bool xmatrix_getelementptr(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value);
+linalgError_t xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value);
+linalgError_t xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value);
+linalgError_t xmatrix_getelementptr(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value);
 
 void xmatrix_print(vm *v, objectxmatrix *m);
 

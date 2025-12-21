@@ -47,22 +47,22 @@ objectcomplexmatrix *complexmatrix_new(MatrixIdx_t nrows, MatrixIdx_t ncols, boo
  * ---------------------- */
 
 /** Sets a matrix element. */
-bool complexmatrix_setelement(objectcomplexmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, MorphoComplex value) {
-    if (!(col<matrix->ncols && row<matrix->nrows)) return false;
+linalgError_t complexmatrix_setelement(objectcomplexmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, MorphoComplex value) {
+    if (!(col<matrix->ncols && row<matrix->nrows)) return LINALGERR_INDX_OUT_OF_BNDS;
         
     MatrixCount_t ix = matrix->nvals*(col*matrix->nrows+row);
     matrix->elements[ix]=creal(value);
     matrix->elements[ix+1]=cimag(value);
-    return true;
+    return LINALGERR_OK;
 }
 
 /** Gets a matrix element */
-bool complexmatrix_getelement(objectcomplexmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, MorphoComplex *value) {
-    if (!(col<matrix->ncols && row<matrix->nrows)) return false;
+linalgError_t complexmatrix_getelement(objectcomplexmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, MorphoComplex *value) {
+    if (!(col<matrix->ncols && row<matrix->nrows)) return LINALGERR_INDX_OUT_OF_BNDS;
     
     MatrixCount_t ix = 2*(col*matrix->nrows+row);
     if (value) *value=MCBuild(matrix->elements[ix],matrix->elements[ix+1]);
-    return true;
+    return LINALGERR_OK;
 }
 
 /* ----------------------
@@ -181,7 +181,7 @@ value ComplexMatrix_inner(vm *v, int nargs, value *args) {
 
 static value _getindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
     double *el;
-    if (!xmatrix_getelementptr(m, i, j, &el)) morpho_runtimeerror(v, LINALG_INDICESOUTSIDEBOUNDS);
+    LINALG_ERRCHECKVM(xmatrix_getelementptr(m, i, j, &el));
     objectcomplex *new = object_newcomplex(el[0], el[1]);
     return morpho_wrapandbind(v, (object *) new);
 }
@@ -202,9 +202,8 @@ value ComplexMatrix_index__int_int(vm *v, int nargs, value *args) {
  * --------- */
 
 static value _setindex(vm *v, objectcomplexmatrix *m, MatrixIdx_t i, MatrixIdx_t j, value in) {
-    if (MORPHO_ISCOMPLEX(in) &&
-        !complexmatrix_setelement(m, i, j, MORPHO_GETCOMPLEX(in)->Z)) {
-        // TODO: Raise error
+    if (MORPHO_ISCOMPLEX(in)) {
+        LINALG_ERRCHECKVM(complexmatrix_setelement(m, i, j, MORPHO_GETCOMPLEX(in)->Z));
     }
     return MORPHO_NIL;
 }
@@ -237,6 +236,8 @@ MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int)", ComplexMatrix_i
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int, Int)", ComplexMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Complex)", ComplexMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int, Complex)", ComplexMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_GETCOLUMN_METHOD, "ComplexMatrix (Int)", XMatrix_getcolumn__int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_SETCOLUMN_METHOD, "(Int, ComplexMatrix)", XMatrix_setcolumn__int_xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_DIMENSIONS_METHOD, "Tuple ()", XMatrix_dimensions, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", XMatrix_count, BUILTIN_FLAGSEMPTY)

@@ -1,4 +1,4 @@
-// Set elements of a Matrix
+// Get columns of a Matrix
 
 import newlinalg 
 

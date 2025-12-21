@@ -111,43 +111,47 @@ objectxmatrix *xmatrix_clone(objectxmatrix *in) {
 
 /** @brief Sets a matrix element.
     @returns true if the element is in the range of the matrix, false otherwise */
-bool xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value) {
-    if (!(col<matrix->ncols && row<matrix->nrows)) return false;
+linalgError_t xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value) {
+    if (!(col<matrix->ncols && row<matrix->nrows)) return LINALGERR_INDX_OUT_OF_BNDS;
         
     matrix->elements[matrix->nvals*(col*matrix->nrows+row)]=value;
-    return true;
+    return LINALGERR_OK;
 }
 
 /** @brief Gets a matrix element
  *  @returns true if the element is in the range of the matrix, false otherwise */
-bool xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value) {
-    if (!(col<matrix->ncols && row<matrix->nrows)) return false;
+linalgError_t xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value) {
+    if (!(col<matrix->ncols && row<matrix->nrows)) return LINALGERR_INDX_OUT_OF_BNDS;
     
     if (value) *value=matrix->elements[matrix->nvals*(col*matrix->nrows+row)];
-    return true;
+    return LINALGERR_OK;
 }
 
 /** @brief Gets a pointer to a matrix element
  *  @returns true if the element is in the range of the matrix, false otherwise */
-bool xmatrix_getelementptr(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value) {
-    if (!(col<matrix->ncols && row<matrix->nrows)) return false;
+linalgError_t xmatrix_getelementptr(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value) {
+    if (!(col<matrix->ncols && row<matrix->nrows)) return LINALGERR_INDX_OUT_OF_BNDS;
     
     if (value) *value=matrix->elements+matrix->nvals*(col*matrix->nrows+row);
-    return true;
+    return LINALGERR_OK;
 }
 
 /** Copies the column col of matrix a into the column vector b */
-bool xmatrix_getcolumn(objectxmatrix *a, MatrixIdx_t col, objectxmatrix *b) {
-    if (b->nels!=a->nrows*a->nvals) return false;
+linalgError_t xmatrix_getcolumn(objectxmatrix *a, MatrixIdx_t col, objectxmatrix *b) {
+    if (col<0 || col>=a->ncols) return LINALGERR_INDX_OUT_OF_BNDS;
+    if (b->nels!=a->nrows*a->nvals) return LINALGERR_INCOMPATIBLE_DIM;
     
     cblas_dcopy((__LAPACK_int) b->nels, a->elements+a->nvals*col*a->nrows, 1, b->elements, 1);
+    return LINALGERR_OK;
 }
 
 /** Copies the column vector b into column col of matrix a */
-bool xmatrix_setcolumn(objectxmatrix *a, MatrixIdx_t col, objectxmatrix *b) {
-    if (b->nels!=a->nrows*a->nvals) return false;
+linalgError_t xmatrix_setcolumn(objectxmatrix *a, MatrixIdx_t col, objectxmatrix *b) {
+    if (col<0 || col>=a->ncols) return LINALGERR_INDX_OUT_OF_BNDS;
+    if (b->nels!=a->nrows*a->nvals) return LINALGERR_INCOMPATIBLE_DIM;
     
     cblas_dcopy((__LAPACK_int) b->nels, b->elements, 1, a->elements+a->nvals*col*a->nrows, 1);
+    return LINALGERR_OK;
 }
 
 /* ----------------------
@@ -268,7 +272,7 @@ linalgError_t xmatrix_solvesmall(objectxmatrix *a, objectxmatrix *b) {
 linalgError_t xmatrix_solvelarge(objectxmatrix *a, objectxmatrix *b) {
     int *pivot = MORPHO_MALLOC(sizeof(int)*a->nrows);
     objectxmatrix *A = xmatrix_clone(a);
-    objectmatrixerror out = MATRIX_ALLOC;
+    linalgError_t out = LINALGERR_ALLOC;
     if (pivot && A) {
         out = (xmatrix_getinterface(a)->solvefn) (A, b, pivot);
     }
@@ -520,7 +524,7 @@ value XMatrix_index__int_int(vm *v, int nargs, value *args) {
 value _setindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j, value in) {
     double val=0.0;
     if (!morpho_valuetofloat(in, &val)) true; // TODO: Should raise an error (Matrix doesn't!)
-    if (!xmatrix_setelement(m, i, j, val)) morpho_runtimeerror(v, LINALG_INDICESOUTSIDEBOUNDS);
+    LINALG_ERRCHECKVM(xmatrix_setelement(m, i, j, val));
     return MORPHO_NIL;
 }
 
@@ -554,7 +558,9 @@ value XMatrix_getcolumn__int(vm *v, int nargs, value *args) {
 }
 
 value XMatrix_setcolumn__int_xmatrix(vm *v, int nargs, value *args) {
-    
+    LINALG_ERRCHECKVM(xmatrix_setcolumn(MORPHO_GETXMATRIX(MORPHO_SELF(args)),
+                                        MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+                                        MORPHO_GETXMATRIX(MORPHO_GETARG(args, 1))));
     return MORPHO_NIL;
 }
 

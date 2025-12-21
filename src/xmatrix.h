@@ -75,6 +75,8 @@ matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a);
 
 #define XMATRIX_CLASSNAME                   "XMatrix"
 
+#define XMATRIX_GETCOLUMN_METHOD            "column"
+#define XMATRIX_SETCOLUMN_METHOD            "setcolumn"
 #define XMATRIX_DIMENSIONS_METHOD           "dimensions"
 #define XMATRIX_INNER_METHOD                "inner"
 #define XMATRIX_NORM_METHOD                 "norm"

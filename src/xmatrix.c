@@ -136,6 +136,20 @@ bool xmatrix_getelementptr(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t c
     return true;
 }
 
+/** Copies the column col of matrix a into the column vector b */
+bool xmatrix_getcolumn(objectxmatrix *a, MatrixIdx_t col, objectxmatrix *b) {
+    if (b->nels!=a->nrows*a->nvals) return false;
+    
+    cblas_dcopy((__LAPACK_int) b->nels, a->elements+a->nvals*col*a->nrows, 1, b->elements, 1);
+}
+
+/** Copies the column vector b into column col of matrix a */
+bool xmatrix_setcolumn(objectxmatrix *a, MatrixIdx_t col, objectxmatrix *b) {
+    if (b->nels!=a->nrows*a->nvals) return false;
+    
+    cblas_dcopy((__LAPACK_int) b->nels, b->elements, 1, a->elements+a->nvals*col*a->nrows, 1);
+}
+
 /* ----------------------
  * Arithmetic operations
  * ---------------------- */
@@ -522,6 +536,29 @@ value XMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
 }
 
 /* ---------
+ * column
+ * --------- */
+
+value XMatrix_getcolumn__int(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    value out=MORPHO_NIL;
+    
+    if (i>=0 && i<a->ncols) {
+        objectxmatrix *new=xmatrix_newwithtype(a->obj.type, a->nrows, 1, a->nvals, false);
+        if (new) xmatrix_getcolumn(a, i, new);
+        out=morpho_wrapandbind(v, (object *)new);
+    } else linalg_raiseerror(v, LINALGERR_INDX_OUT_OF_BNDS);
+    
+    return out;
+}
+
+value XMatrix_setcolumn__int_xmatrix(vm *v, int nargs, value *args) {
+    
+    return MORPHO_NIL;
+}
+
+/* ---------
  * Metadata
  * --------- */
 
@@ -571,6 +608,8 @@ MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__in
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", XMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_GETCOLUMN_METHOD, "XMatrix (Int)", XMatrix_getcolumn__int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_SETCOLUMN_METHOD, "(Int, XMatrix)", XMatrix_setcolumn__int_xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "(_)", XMatrix_norm__x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "()", XMatrix_norm, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),

@@ -15,3 +15,5 @@ print A.column(0)
 print A.column(1)
 // expect: [ 2 ]
 // expect: [ 4 ]
+
+print A.column(2) // expect error 'LnAlgMtrxIndxBnds'

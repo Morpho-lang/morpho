@@ -561,10 +561,13 @@ value XMatrix_inner(vm *v, int nargs, value *args) {
  * --------- */
 
 static value _getindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
-    double out=0.0;
+    value out=MORPHO_NIL;
     
-    LINALG_ERRCHECKVM(xmatrix_getelement(m, i, j, &out));
-    return MORPHO_FLOAT(out);
+    double *elptr=NULL;
+    LINALG_ERRCHECKVM(xmatrix_getelementptr(m, i, j, &elptr));
+
+    if (elptr) out=xmatrix_getinterface(m)->getelfn(v, elptr);
+    return out;
 }
 
 value XMatrix_index__int(vm *v, int nargs, value *args) {

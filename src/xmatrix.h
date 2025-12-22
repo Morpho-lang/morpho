@@ -106,6 +106,10 @@ value XMatrix_div__float(vm *v, int nargs, value *args);
 value XMatrix_div__xmatrix(vm *v, int nargs, value *args);
 value XMatrix_acc__x_xmatrix(vm *v, int nargs, value *args);
 
+
+value XMatrix_index__int(vm *v, int nargs, value *args);
+value XMatrix_index__int_int(vm *v, int nargs, value *args);
+
 value XMatrix_getcolumn__int(vm *v, int nargs, value *args);
 value XMatrix_setcolumn__int_xmatrix(vm *v, int nargs, value *args);
 

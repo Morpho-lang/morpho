@@ -216,28 +216,6 @@ value ComplexMatrix_inner(vm *v, int nargs, value *args) {
 }
 
 /* ---------
- * index()
- * --------- */
-
-static value _getindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
-    double *el;
-    LINALG_ERRCHECKVM(xmatrix_getelementptr(m, i, j, &el));
-    objectcomplex *new = object_newcomplex(el[0], el[1]);
-    return morpho_wrapandbind(v, (object *) new);
-}
-
-value ComplexMatrix_index__int(vm *v, int nargs, value *args) {
-    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    return _getindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, 0);
-}
-
-value ComplexMatrix_index__int_int(vm *v, int nargs, value *args) {
-    unsigned int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
-                 j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
-    return _getindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, j);
-}
-
-/* ---------
  * setIndex()
  * --------- */
 
@@ -275,8 +253,8 @@ MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (ComplexMatrix)", XMat
 MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, ComplexMatrix)", XMatrix_acc__x_xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INVERSE_METHOD, "ComplexMatrix ()", ComplexMatrix_inverse, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Complex (XMatrix)", ComplexMatrix_inner, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int)", ComplexMatrix_index__int, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int, Int)", ComplexMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Complex)", ComplexMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int, Complex)", ComplexMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_GETCOLUMN_METHOD, "ComplexMatrix (Int)", XMatrix_getcolumn__int, BUILTIN_FLAGSEMPTY),

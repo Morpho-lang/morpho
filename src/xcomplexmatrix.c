@@ -91,27 +91,33 @@ linalgError_t complexmatrix_getelement(objectcomplexmatrix *matrix, MatrixIdx_t 
  * ---------------------- */
 
 /** Performs c <- alpha*(a*b) + beta*c with complex matrices */
-objectmatrixerror complexmatrix_mmul(MorphoComplex alpha, objectxmatrix *a, objectxmatrix *b, MorphoComplex beta, objectxmatrix *c) {
-    if (a->ncols==b->nrows && a->nrows==c->nrows && b->ncols==c->ncols) {
-        cblas_zgemm(CblasColMajor, CblasNoTrans, CblasNoTrans,
-                    a->nrows, b->ncols, a->ncols,
-                    &alpha, (__LAPACK_double_complex *) a->elements,
-                    a->nrows, (__LAPACK_double_complex *) b->elements, b->nrows,
-                    &beta, (__LAPACK_double_complex *) c->elements, c->nrows);
-        return MATRIX_OK;
-    }
-    return MATRIX_INCMPTBLDIM;
+linalgError_t complexmatrix_mmul(MorphoComplex alpha, objectxmatrix *a, objectxmatrix *b, MorphoComplex beta, objectxmatrix *c) {
+    if (!(a->ncols==b->nrows && a->nrows==c->nrows && b->ncols==c->ncols)) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    cblas_zgemm(CblasColMajor, CblasNoTrans, CblasNoTrans,
+                a->nrows, b->ncols, a->ncols,
+                &alpha, (__LAPACK_double_complex *) a->elements,
+                a->nrows, (__LAPACK_double_complex *) b->elements, b->nrows,
+                &beta, (__LAPACK_double_complex *) c->elements, c->nrows);
+    return LINALGERR_OK;
 }
 
 /** Finds the Frobenius inner product of two complex matrices (a, b) = \sum_{i,j} conj(a)_ij * b_ij */
-objectmatrixerror complexmatrix_inner(objectcomplexmatrix *a, objectcomplexmatrix *b, MorphoComplex *out) {
-    if (a->ncols==b->ncols && a->nrows==b->nrows) {
-        cblas_zdotc_sub(a->nrows * a->ncols, (__LAPACK_double_complex *) a->elements, 1,
-                         (__LAPACK_double_complex *) b->elements, 1,
-                         (__LAPACK_double_complex *) out);
-        return MATRIX_OK;
-    }
-    return MATRIX_INCMPTBLDIM;
+linalgError_t complexmatrix_inner(objectcomplexmatrix *a, objectcomplexmatrix *b, MorphoComplex *out) {
+    if (!(a->ncols==b->ncols && a->nrows==b->nrows)) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    cblas_zdotc_sub(a->nrows * a->ncols, (__LAPACK_double_complex *) a->elements, 1,
+                     (__LAPACK_double_complex *) b->elements, 1,
+                     (__LAPACK_double_complex *) out);
+    return LINALGERR_OK;
+}
+
+/** Calculate the trace of a matrix */
+linalgError_t complexmatrix_trace(objectcomplexmatrix *a, MorphoComplex *out) {
+    if (a->nrows!=a->ncols) return LINALGERR_NOT_SQUARE;
+    MorphoComplex one = MCBuild(1.0, 0.0);
+    cblas_zdotu_sub(a->nrows, (__LAPACK_double_complex *) a->elements, a->ncols+1, (__LAPACK_double_complex *) &one, 0, (__LAPACK_double_complex *) out);
+    return LINALGERR_OK;
 }
 
 /** Inverts the matrix a
@@ -184,6 +190,15 @@ value ComplexMatrix_mul__complexmatrix(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Computes the trace */
+value ComplexMatrix_trace(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    MorphoComplex tr=MCBuild(0,0);
+    LINALG_ERRCHECKVM(complexmatrix_trace(a, &tr));
+    objectcomplex *new = object_newcomplex(creal(tr), cimag(tr));
+    return morpho_wrapandbind(v, (object *) new);
+}
+
 /** Inverts a matrix */
 value ComplexMatrix_inverse(vm *v, int nargs, value *args) {
     objectcomplexmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
@@ -207,7 +222,7 @@ value ComplexMatrix_inner(vm *v, int nargs, value *args) {
     MorphoComplex prod=MCBuild(0.0, 0.0);
     value out = MORPHO_NIL;
     
-    if (complexmatrix_inner(a, b, &prod)==MATRIX_OK) {
+    if (complexmatrix_inner(a, b, &prod)==LINALGERR_OK) {
         objectcomplex *new = object_newcomplex(creal(prod), cimag(prod));
         out = morpho_wrapandbind(v, (object *) new);
     } else morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
@@ -259,6 +274,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Complex)", ComplexMatrix_
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int, Complex)", ComplexMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_GETCOLUMN_METHOD, "ComplexMatrix (Int)", XMatrix_getcolumn__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_SETCOLUMN_METHOD, "(Int, ComplexMatrix)", XMatrix_setcolumn__int_xmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_TRACE_METHOD, "Complex ()", ComplexMatrix_trace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", XMatrix_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", XMatrix_count, BUILTIN_FLAGSEMPTY),

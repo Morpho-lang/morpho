@@ -90,6 +90,7 @@ matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a);
 #define XMATRIX_INVERSE_METHOD              "inverse"
 #define XMATRIX_NORM_METHOD                 "norm"
 #define XMATRIX_RESHAPE_METHOD              "reshape"
+#define XMATRIX_TRACE_METHOD                "trace"
 
 #define XMATRIX_IDENTITYCONSTRUCTOR         "IdentityXMatrix"
 

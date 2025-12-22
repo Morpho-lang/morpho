@@ -250,8 +250,17 @@ double xmatrix_linfnorm(objectxmatrix *a) {
     return a->elements[imax];
 }
 
+/** Calculate the trace of a matrix */
+linalgError_t xmatrix_trace(objectxmatrix *a, double *out) {
+    if (a->nrows!=a->ncols) return LINALGERR_NOT_SQUARE;
+    *out=1.0;
+    *out=cblas_ddot(a->nrows, a->elements, a->ncols+1, out, 0);
+    
+    return LINALGERR_OK;
+}
+
 /* ----------------------
- * Products
+ * Binary operations
  * ---------------------- */
 
 /** Finds the Frobenius inner product of two matrices  */
@@ -529,6 +538,14 @@ value XMatrix_norm(vm *v, int nargs, value *args) {
     return MORPHO_FLOAT(xmatrix_norm(a));
 }
 
+/** Computes the trace */
+value XMatrix_trace(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    double out=0.0;
+    LINALG_ERRCHECKVM(xmatrix_trace(a, &out));
+    return MORPHO_FLOAT(out);
+}
+
 /** Inverts a matrix */
 value XMatrix_inverse(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
@@ -701,8 +718,9 @@ MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", XMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_GETCOLUMN_METHOD, "XMatrix (Int)", XMatrix_getcolumn__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_SETCOLUMN_METHOD, "(Int, XMatrix)", XMatrix_setcolumn__int_xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "(_)", XMatrix_norm__x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "()", XMatrix_norm, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float (_)", XMatrix_norm__x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float ()", XMatrix_norm, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_TRACE_METHOD, "Float ()", XMatrix_trace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", XMatrix_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", XMatrix_count, BUILTIN_FLAGSEMPTY),

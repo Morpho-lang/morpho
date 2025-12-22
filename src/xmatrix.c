@@ -74,6 +74,23 @@ static value _getelfn(vm *v, double *el) {
     return MORPHO_FLOAT(*el);
 }
 
+/** Low level solve for linear system a.x = b
+ * @param[in|out] a - lhs; overwritten by LU decomposition
+ * @param[in|out] b - rhs; overwritten by solution
+ * @param[out] pivot - you must provide an array with the same number of rows as a.
+ * @returns a matrix error code */
+static linalgError_t _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
+    int n=a->nrows, nrhs = b->ncols, info;
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    info=LAPACKE_dgesv(LAPACK_COL_MAJOR, n, nrhs, x->elements, n, pivot, y->elements, n);
+#else
+    dgesv_(&n, &nrhs, a->elements, &n, pivot, b->elements, &n, &info);
+#endif
+    
+    return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_MATRIX_SINGULAR : LINALGERR_LAPACK_INVLD_ARGS));
+}
+
 /* ----------------------
  * Constructors
  * ---------------------- */
@@ -245,23 +262,6 @@ linalgError_t xmatrix_inner(objectxmatrix *x, objectxmatrix *y, double *out) {
     return LINALGERR_OK;
 }
 
-/** Low level solve for linear system a.x = b
- * @param[in|out] a - lhs; overwritten by LU decomposition
- * @param[in|out] b - rhs; overwritten by solution
- * @param[out] pivot - you must provide an array with the same number of rows as a.
- * @returns a matrix error code */
-static linalgError_t _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
-    int n=a->nrows, nrhs = b->ncols, info;
-    
-#ifdef MORPHO_LINALG_USE_LAPACKE
-    info=LAPACKE_dgesv(LAPACK_COL_MAJOR, n, nrhs, x->elements, n, pivot, y->elements, n);
-#else
-    dgesv_(&n, &nrhs, a->elements, &n, pivot, b->elements, &n, &info);
-#endif
-    
-    return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_MATRIX_SINGULAR : LINALGERR_LAPACK_INVLD_ARGS));
-}
-
 /** Solve the linear system a.x = b using stack allocated memory for temporary */
 linalgError_t xmatrix_solvesmall(objectxmatrix *a, objectxmatrix *b) {
     int pivot[a->nrows];
@@ -291,6 +291,30 @@ linalgError_t xmatrix_solvelarge(objectxmatrix *a, objectxmatrix *b) {
 linalgError_t xmatrix_solve(objectxmatrix *a, objectxmatrix *b) {
     if (MATRIX_ISSMALL(a)) return xmatrix_solvesmall(a, b);
     else return xmatrix_solvelarge(a, b);
+}
+
+/** Inverts the matrix a
+ * @param[in] a  matrix to be inverted
+ * @returns linalgError_t indicating the status; MATRIX_OK indicates success. */
+linalgError_t xmatrix_inverse(objectxmatrix *a) {
+    int nrows=a->nrows, ncols=a->ncols, info;
+    int pivot[nrows];
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    info=LAPACKE_dgetrf(LAPACK_COL_MAJOR, nrows, ncols, a->elements, nrows, pivot);
+#else
+    dgetrf_(&nrows, &ncols, a->elements, &nrows, pivot, &info);
+#endif
+    if (info!=0) return (info>0 ? LINALGERR_MATRIX_SINGULAR : LINALGERR_LAPACK_INVLD_ARGS);
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    info=LAPACKE_dgetri(LAPACK_COL_MAJOR, nrows, a->elements, nrows, pivot);
+#else
+    int lwork=nrows*ncols; double work[nrows*ncols];
+    dgetri_(&nrows, a->elements, &nrows, pivot, work, &lwork, &info);
+#endif
+    
+    return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_MATRIX_SINGULAR : LINALGERR_LAPACK_INVLD_ARGS));
 }
 
 /* ----------------------
@@ -457,10 +481,8 @@ value XMatrix_div__xmatrix(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     
     objectxmatrix *sol = xmatrix_clone(b);
-    if (sol) {
-        xmatrix_solve(a, sol); // TODO: Error check
-        out = morpho_wrapandbind(v, (object *) sol);
-    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    out = morpho_wrapandbind(v, (object *) sol);
+    if (sol) LINALG_ERRCHECKVM(xmatrix_solve(a, sol));
     
     return out;
 }
@@ -505,6 +527,18 @@ value XMatrix_norm__x(vm *v, int nargs, value *args) {
 value XMatrix_norm(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     return MORPHO_FLOAT(xmatrix_norm(a));
+}
+
+/** Inverts a matrix */
+value XMatrix_inverse(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    
+    objectxmatrix *new = xmatrix_clone(a);
+    out = morpho_wrapandbind(v, (object *) new);
+    if (new) LINALG_ERRCHECKVM(xmatrix_inverse(new));
+    
+    return out;
 }
 
 /* ---------
@@ -656,6 +690,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "XMatrix (Float)", XMatrix_mul__floa
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (XMatrix)", XMatrix_div__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (Float)", XMatrix_div__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, XMatrix)", XMatrix_acc__x_xmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_INVERSE_METHOD, "XMatrix ()", XMatrix_inverse, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Float (XMatrix)", XMatrix_inner, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),

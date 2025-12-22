@@ -36,6 +36,24 @@ static value _getelfn(vm *v, double *el) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
+/** Low level solve for linear system a.x = b
+ * @param[in|out] a - lhs; overwritten by LU decomposition
+ * @param[in|out] b - rhs; overwritten by solution
+ * @param[out] pivot - you must provide an array with the same number of rows as a.
+ * @returns a matrix error code */
+static linalgError_t _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
+    int n=a->nrows, nrhs = b->ncols, info;
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    info=LAPACKE_zgesv(LAPACK_COL_MAJOR, n, nrhs, a->elements, n, pivot, b->elements, n);
+#else
+    zgesv_(&n, &nrhs, (__LAPACK_double_complex *) a->elements,
+           &n, pivot, (__LAPACK_double_complex *) b->elements, &n, &info);
+#endif
+    
+    return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_MATRIX_SINGULAR : LINALGERR_LAPACK_INVLD_ARGS));
+}
+
 /* ----------------------
  * Constructor
  * ---------------------- */
@@ -96,19 +114,25 @@ objectmatrixerror complexmatrix_inner(objectcomplexmatrix *a, objectcomplexmatri
     return MATRIX_INCMPTBLDIM;
 }
 
-/** Low level solve for linear system a.x = b
- * @param[in|out] a - lhs; overwritten by LU decomposition
- * @param[in|out] b - rhs; overwritten by solution
- * @param[out] pivot - you must provide an array with the same number of rows as a.
- * @returns a matrix error code */
-static linalgError_t _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
-    int n=a->nrows, nrhs = b->ncols, info;
+/** Inverts the matrix a
+ * @param[in] a  matrix to be inverted
+ * @returns linalgError_t indicating the status; MATRIX_OK indicates success. */
+linalgError_t complexmatrix_inverse(objectcomplexmatrix *a) {
+    int nrows=a->nrows, ncols=a->ncols, info;
+    int pivot[nrows];
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
-    info=LAPACKE_zgesv(LAPACK_COL_MAJOR, n, nrhs, a->elements, n, pivot, b->elements, n);
+    info=LAPACKE_zgetrf(LAPACK_COL_MAJOR, nrows, ncols, a->elements, nrows, pivot);
 #else
-    zgesv_(&n, &nrhs, (__LAPACK_double_complex *) a->elements,
-           &n, pivot, (__LAPACK_double_complex *) b->elements, &n, &info);
+    zgetrf_(&nrows, &ncols, (__LAPACK_double_complex *) a->elements, &nrows, pivot, &info);
+#endif
+    if (info!=0) return (info>0 ? LINALGERR_MATRIX_SINGULAR : LINALGERR_LAPACK_INVLD_ARGS);
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    info=LAPACKE_zgetri(LAPACK_COL_MAJOR, nrows, a->elements, nrows, pivot);
+#else
+    int lwork=nrows*ncols; __LAPACK_double_complex work[nrows*ncols];
+    zgetri_(&nrows, (__LAPACK_double_complex *) a->elements, &nrows, pivot, work, &lwork, &info);
 #endif
     
     return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_MATRIX_SINGULAR : LINALGERR_LAPACK_INVLD_ARGS));
@@ -157,6 +181,18 @@ value ComplexMatrix_mul__complexmatrix(vm *v, int nargs, value *args) {
         }
         out = morpho_wrapandbind(v, (object *) new);
     } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    return out;
+}
+
+/** Inverts a matrix */
+value ComplexMatrix_inverse(vm *v, int nargs, value *args) {
+    objectcomplexmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    
+    objectcomplexmatrix *new = xmatrix_clone(a);
+    out = morpho_wrapandbind(v, (object *) new);
+    if (new) LINALG_ERRCHECKVM(complexmatrix_inverse(new));
+    
     return out;
 }
 
@@ -237,6 +273,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "ComplexMatrix (Float)", XMatrix_mul
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (Float)", XMatrix_div__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_div__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, ComplexMatrix)", XMatrix_acc__x_xmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_INVERSE_METHOD, "ComplexMatrix ()", ComplexMatrix_inverse, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Complex (XMatrix)", ComplexMatrix_inner, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int)", ComplexMatrix_index__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int, Int)", ComplexMatrix_index__int_int, BUILTIN_FLAGSEMPTY),

@@ -87,6 +87,7 @@ matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a);
 #define XMATRIX_SETCOLUMN_METHOD            "setColumn"
 #define XMATRIX_DIMENSIONS_METHOD           "dimensions"
 #define XMATRIX_INNER_METHOD                "inner"
+#define XMATRIX_INVERSE_METHOD              "inverse"
 #define XMATRIX_NORM_METHOD                 "norm"
 #define XMATRIX_RESHAPE_METHOD              "reshape"
 
@@ -118,6 +119,7 @@ value XMatrix_dimensions(vm *v, int nargs, value *args);
  * ------------------------------------------------------- */
 
 objectxmatrix *xmatrix_newwithtype(objecttype type, MatrixIdx_t nrows, MatrixIdx_t ncols, MatrixIdx_t nvals, bool zero);
+objectxmatrix *xmatrix_clone(objectxmatrix *in);
 
 linalgError_t xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value);
 linalgError_t xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value);

@@ -1,0 +1,10 @@
+// Subtract a scalar
+import newlinalg 
+
+var A = XMatrix(2,2)
+A[0,0]=1
+A[1,1]=1
+
+print 2 - A 
+// expect: [ 1 2 ]
+// expect: [ 2 1 ]

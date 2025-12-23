@@ -121,7 +121,11 @@ value XMatrix_getcolumn__int(vm *v, int nargs, value *args);
 value XMatrix_setcolumn__int_xmatrix(vm *v, int nargs, value *args);
 
 value XMatrix_add__xmatrix(vm *v, int nargs, value *args);
+value XMatrix_add__nil(vm *v, int nargs, value *args);
+value XMatrix_add__x(vm *v, int nargs, value *args);
 value XMatrix_sub__xmatrix(vm *v, int nargs, value *args);
+value XMatrix_sub__x(vm *v, int nargs, value *args);
+value XMatrix_subr__x(vm *v, int nargs, value *args);
 value XMatrix_mul__float(vm *v, int nargs, value *args);
 value XMatrix_div__float(vm *v, int nargs, value *args);
 value XMatrix_div__xmatrix(vm *v, int nargs, value *args);

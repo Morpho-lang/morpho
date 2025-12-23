@@ -226,10 +226,13 @@ linalgError_t xmatrix_mmul(double alpha, objectxmatrix *x, objectxmatrix *y, dou
     return LINALGERR_OK;
 }
 
-/** Performs x <- z + alpha */
-linalgError_t xmatrix_addscalar(objectxmatrix *a, double alpha) {
+/** Performs z <- alpha*z + beta */
+linalgError_t xmatrix_addscalar(objectxmatrix *a, double alpha, double beta) {
     for (MatrixCount_t i=0; i<a->ncols*a->nrows; i++) {
-        a->elements[i*a->nvals]+=alpha;
+        for (int k=0; k<a->nvals; k++) {
+            a->elements[i*a->nvals+k]*=alpha;
+            if (k==0) a->elements[i*a->nvals+k]+=beta;
+        }
     }
     return MATRIX_OK;
 }
@@ -544,14 +547,14 @@ static value _axpy(vm *v, int nargs, value *args, double alpha) {
 }
 
 /** Add a scalar */
-static value _xpa(vm *v, int nargs, value *args, double beta) {
+static value _xpa(vm *v, int nargs, value *args, double sgna, double sgnb) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     value out=MORPHO_NIL;
     
-    double alpha;
-    if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &alpha)) {
+    double beta;
+    if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &beta)) {
         objectxmatrix *new = xmatrix_clone(a);
-        if (new) xmatrix_addscalar(new, alpha*beta);
+        if (new) xmatrix_addscalar(new, sgna, beta*sgnb);
         out = morpho_wrapandbind(v, (object *) new);
     } else morpho_runtimeerror(v, LINALG_INVLDARGS);
     
@@ -567,7 +570,7 @@ value XMatrix_add__nil(vm *v, int nargs, value *args) {
 }
 
 value XMatrix_add__x(vm *v, int nargs, value *args) {
-    return _xpa(v,nargs,args,1.0);
+    return _xpa(v,nargs,args,1.0,1.0);
 }
 
 value XMatrix_sub__xmatrix(vm *v, int nargs, value *args) {
@@ -575,7 +578,11 @@ value XMatrix_sub__xmatrix(vm *v, int nargs, value *args) {
 }
 
 value XMatrix_sub__x(vm *v, int nargs, value *args) {
-    return _xpa(v,nargs,args,-1.0);
+    return _xpa(v,nargs,args,1.0,-1.0);
+}
+
+value XMatrix_subr__x(vm *v, int nargs, value *args) {
+    return _xpa(v,nargs,args,-1.0,1.0);
 }
 
 value XMatrix_mul__float(vm *v, int nargs, value *args) {
@@ -836,7 +843,6 @@ value XMatrix_dimensions(vm *v, int nargs, value *args) {
 
 
 MORPHO_BEGINCLASS(XMatrix)
-
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(XMatrix)", XMatrix_assign, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "XMatrix ()", XMatrix_clone, BUILTIN_FLAGSEMPTY),
@@ -849,9 +855,12 @@ MORPHO_METHOD_SIGNATURE(XMATRIX_SETCOLUMN_METHOD, "(Int, XMatrix)", XMatrix_setc
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "XMatrix (XMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "XMatrix (Nil)", XMatrix_add__nil, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "XMatrix (_)", XMatrix_add__x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "XMatrix (_)", XMatrix_add__x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "XMatrix (Nil)", XMatrix_add__nil, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "XMatrix (XMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "XMatrix (Nil)", XMatrix_add__nil, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "XMatrix (_)", XMatrix_sub__x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "XMatrix (_)", XMatrix_subr__x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "XMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "XMatrix (XMatrix)", XMatrix_mul__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "XMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),

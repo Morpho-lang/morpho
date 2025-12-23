@@ -52,6 +52,9 @@ typedef enum {
 #define LINALG_NOTSUPPORTED               "LnAlgMtrxNtSpprtd"
 #define LINALG_NOTSUPPORTED_MSG           "Operation not supported for this matrix type."
 
+#define LINALG_INVLDARGS                  "LnAlgMtrxInvldArg"
+#define LINALG_INVLDARGS_MSG              "Invalid arguments to matrix method."
+
 /* -------------------------------------------------------
  * Interface
  * ------------------------------------------------------- */

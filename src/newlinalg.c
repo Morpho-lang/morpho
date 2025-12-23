@@ -41,6 +41,7 @@ void newlinalg_initialize(void) {
     morpho_defineerror(LINALG_LAPACK_ARGS,          ERROR_HALT, LINALG_LAPACK_ARGS_MSG);
     morpho_defineerror(LINALG_OPFAILED,             ERROR_HALT, LINALG_OPFAILED_MSG);
     morpho_defineerror(LINALG_NOTSUPPORTED,         ERROR_HALT, LINALG_NOTSUPPORTED_MSG);
+    morpho_defineerror(LINALG_INVLDARGS,            ERROR_HALT, LINALG_INVLDARGS_MSG);
 }
 
 void newlinalg_finalize(void) { 

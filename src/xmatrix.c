@@ -226,6 +226,14 @@ linalgError_t xmatrix_mmul(double alpha, objectxmatrix *x, objectxmatrix *y, dou
     return LINALGERR_OK;
 }
 
+/** Performs x <- z + alpha */
+linalgError_t xmatrix_addscalar(objectxmatrix *a, double alpha) {
+    for (MatrixCount_t i=0; i<a->ncols*a->nrows; i++) {
+        a->elements[i*a->nvals]+=alpha;
+    }
+    return MATRIX_OK;
+}
+
 /* ----------------------
  * Unary operations
  * ---------------------- */
@@ -519,6 +527,7 @@ value XMatrix_setcolumn__int_xmatrix(vm *v, int nargs, value *args) {
  * Arithmetic
  * ---------- */
 
+/** Add a vector */
 static value _axpy(vm *v, int nargs, value *args, double alpha) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
@@ -534,12 +543,39 @@ static value _axpy(vm *v, int nargs, value *args, double alpha) {
     return out;
 }
 
+/** Add a scalar */
+static value _xpa(vm *v, int nargs, value *args, double beta) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    
+    double alpha;
+    if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &alpha)) {
+        objectxmatrix *new = xmatrix_clone(a);
+        if (new) xmatrix_addscalar(new, alpha*beta);
+        out = morpho_wrapandbind(v, (object *) new);
+    } else morpho_runtimeerror(v, LINALG_INVLDARGS);
+    
+    return out;
+}
+
 value XMatrix_add__xmatrix(vm *v, int nargs, value *args) {
     return _axpy(v,nargs,args,1.0);
 }
 
+value XMatrix_add__nil(vm *v, int nargs, value *args) {
+    return MORPHO_SELF(args);
+}
+
+value XMatrix_add__x(vm *v, int nargs, value *args) {
+    return _xpa(v,nargs,args,1.0);
+}
+
 value XMatrix_sub__xmatrix(vm *v, int nargs, value *args) {
     return _axpy(v,nargs,args,-1.0);
+}
+
+value XMatrix_sub__x(vm *v, int nargs, value *args) {
+    return _xpa(v,nargs,args,-1.0);
 }
 
 value XMatrix_mul__float(vm *v, int nargs, value *args) {
@@ -811,7 +847,11 @@ MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", XMatrix_setindex_
 MORPHO_METHOD_SIGNATURE(XMATRIX_GETCOLUMN_METHOD, "XMatrix (Int)", XMatrix_getcolumn__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_SETCOLUMN_METHOD, "(Int, XMatrix)", XMatrix_setcolumn__int_xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "XMatrix (XMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "XMatrix (Nil)", XMatrix_add__nil, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "XMatrix (_)", XMatrix_add__x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "XMatrix (XMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "XMatrix (Nil)", XMatrix_add__nil, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "XMatrix (_)", XMatrix_sub__x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "XMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "XMatrix (XMatrix)", XMatrix_mul__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "XMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),

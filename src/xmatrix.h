@@ -61,8 +61,19 @@ typedef void (*xmatrix_printelfn_t) (vm *, double *);
 /** Function that materializes a value from a pointer to an element */
 typedef value (*xmatrix_getelfn_t) (vm *, double *);
 
-/** Function that solves a linear system */
-typedef linalgError_t (*xmatrix_solvefn_t) (objectxmatrix *, objectxmatrix *, int *);
+/** Function that solves the linear system a.x = b
+ * @param[in|out] a - lhs; overwritten by LU decomposition
+ * @param[in|out] b - rhs; overwritten by solution
+ * @param[out] pivot - you must provide an array with the same number of rows as a.
+ * @returns a matrix error code */
+typedef linalgError_t (*xmatrix_solvefn_t) (objectxmatrix *a, objectxmatrix *b, int *pivot);
+
+/** Function that finds the eigenvalues of a matrix
+ * @param[in|out] a - lhs; overwritten
+ * @param[out] w -  eigenvalues; dimension N
+ * @param[out] vec - right eigenvectors. Can be NULL if only eigenvalues requested
+ * @returns a matrix error code */
+typedef linalgError_t (*xmatrix_eigenfn_t) (objectxmatrix *a, MorphoComplex *w, objectxmatrix *vec);
 
 /** Function that sets a given entry given a value */
 //typedef void (*xmatrix_setfn_t) (objectxmatrix *, void *, value v);
@@ -71,6 +82,7 @@ typedef struct {
     xmatrix_printelfn_t printelfn;
     xmatrix_getelfn_t   getelfn;
     xmatrix_solvefn_t   solvefn;
+    xmatrix_eigenfn_t   eigenfn;
 //    xmatrix_setfn_t     setfn;
 } matrixinterfacedefn;
 
@@ -86,6 +98,8 @@ matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a);
 #define XMATRIX_GETCOLUMN_METHOD            "column"
 #define XMATRIX_SETCOLUMN_METHOD            "setColumn"
 #define XMATRIX_DIMENSIONS_METHOD           "dimensions"
+#define XMATRIX_EIGENVALUES_METHOD          "eigenvalues"
+#define XMATRIX_EIGENSYSTEM_METHOD          "eigensystem"
 #define XMATRIX_INNER_METHOD                "inner"
 #define XMATRIX_INVERSE_METHOD              "inverse"
 #define XMATRIX_NORM_METHOD                 "norm"
@@ -100,6 +114,12 @@ value XMatrix_print(vm *v, int nargs, value *args);
 value XMatrix_assign(vm *v, int nargs, value *args);
 value XMatrix_clone(vm *v, int nargs, value *args);
 
+value XMatrix_index__int(vm *v, int nargs, value *args);
+value XMatrix_index__int_int(vm *v, int nargs, value *args);
+
+value XMatrix_getcolumn__int(vm *v, int nargs, value *args);
+value XMatrix_setcolumn__int_xmatrix(vm *v, int nargs, value *args);
+
 value XMatrix_add__xmatrix(vm *v, int nargs, value *args);
 value XMatrix_sub__xmatrix(vm *v, int nargs, value *args);
 value XMatrix_mul__float(vm *v, int nargs, value *args);
@@ -107,12 +127,8 @@ value XMatrix_div__float(vm *v, int nargs, value *args);
 value XMatrix_div__xmatrix(vm *v, int nargs, value *args);
 value XMatrix_acc__x_xmatrix(vm *v, int nargs, value *args);
 
-
-value XMatrix_index__int(vm *v, int nargs, value *args);
-value XMatrix_index__int_int(vm *v, int nargs, value *args);
-
-value XMatrix_getcolumn__int(vm *v, int nargs, value *args);
-value XMatrix_setcolumn__int_xmatrix(vm *v, int nargs, value *args);
+value XMatrix_eigenvalues(vm *v, int nargs, value *args);
+value XMatrix_eigensystem(vm *v, int nargs, value *args);
 
 value XMatrix_reshape(vm *v, int nargs, value *args);
 value XMatrix_enumerate(vm *v, int nargs, value *args);

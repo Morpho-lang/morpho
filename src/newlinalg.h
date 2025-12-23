@@ -22,6 +22,8 @@ typedef enum {
     LINALGERR_MATRIX_SINGULAR,   // Matrix is singular
     LINALGERR_NOT_SQUARE,        // Matrix is required to be square for this algorithm
     LINALGERR_LAPACK_INVLD_ARGS, // Invalid arguments to LAPACK routine
+    LINALGERR_OP_FAILED,         // Matrix operation failed
+    LINALGERR_NOT_SUPPORTED,     // Operation not supported for this matrix type
     LINALGERR_ALLOC              // Memory allocation failed
 } linalgError_t;
 
@@ -43,6 +45,12 @@ typedef enum {
 
 #define LINALG_LAPACK_ARGS                "LnAlgLapackArgs"
 #define LINALG_LAPACK_ARGS_MSG            "Lapack function called with invalid arguments."
+
+#define LINALG_OPFAILED                   "LnAlgMtrxOpFld"
+#define LINALG_OPFAILED_MSG               "Matrix operation failed."
+
+#define LINALG_NOTSUPPORTED               "LnAlgMtrxNtSpprtd"
+#define LINALG_NOTSUPPORTED_MSG           "Operation not supported for this matrix type."
 
 /* -------------------------------------------------------
  * Interface

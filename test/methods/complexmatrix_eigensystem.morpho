@@ -1,0 +1,17 @@
+// Eigenvalues and eigenvectors
+import newlinalg 
+
+var A = ComplexMatrix(2,2)
+A[0,0]=0im
+A[0,1]=im
+A[1,0]=im
+A[1,1]=0im
+
+var es=A.eigensystem() 
+print es
+// expect: ((0 + 1im, 0 - 1im), <ComplexMatrix>)
+
+print es[0]
+// expect: (0 + 1im, 0 - 1im)
+
+print es[1]

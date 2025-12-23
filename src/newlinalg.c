@@ -21,6 +21,8 @@ void linalg_raiseerror(vm *v, linalgError_t err) {
         case LINALGERR_MATRIX_SINGULAR: morpho_runtimeerror(v, LINALG_SINGULAR); break;
         case LINALGERR_NOT_SQUARE: morpho_runtimeerror(v, LINALG_NOTSQ); break;
         case LINALGERR_LAPACK_INVLD_ARGS: morpho_runtimeerror(v, LINALG_LAPACK_ARGS); break;
+        case LINALGERR_OP_FAILED: morpho_runtimeerror(v, LINALG_OPFAILED); break;
+        case LINALGERR_NOT_SUPPORTED: morpho_runtimeerror(v, LINALG_NOTSUPPORTED); break;
         case LINALGERR_ALLOC: morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); break;
     }
 }
@@ -37,6 +39,8 @@ void newlinalg_initialize(void) {
     morpho_defineerror(LINALG_SINGULAR,             ERROR_HALT, LINALG_SINGULAR_MSG);
     morpho_defineerror(LINALG_NOTSQ,                ERROR_HALT, LINALG_NOTSQ_MSG);
     morpho_defineerror(LINALG_LAPACK_ARGS,          ERROR_HALT, LINALG_LAPACK_ARGS_MSG);
+    morpho_defineerror(LINALG_OPFAILED,             ERROR_HALT, LINALG_OPFAILED_MSG);
+    morpho_defineerror(LINALG_NOTSUPPORTED,         ERROR_HALT, LINALG_NOTSUPPORTED_MSG);
 }
 
 void newlinalg_finalize(void) { 

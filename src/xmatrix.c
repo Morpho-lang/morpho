@@ -74,11 +74,7 @@ static value _getelfn(vm *v, double *el) {
     return MORPHO_FLOAT(*el);
 }
 
-/** Low level solve for linear system a.x = b
- * @param[in|out] a - lhs; overwritten by LU decomposition
- * @param[in|out] b - rhs; overwritten by solution
- * @param[out] pivot - you must provide an array with the same number of rows as a.
- * @returns a matrix error code */
+/** Low level linear solve */
 static linalgError_t _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
     int n=a->nrows, nrhs = b->ncols, info;
     
@@ -89,6 +85,21 @@ static linalgError_t _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
 #endif
     
     return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_MATRIX_SINGULAR : LINALGERR_LAPACK_INVLD_ARGS));
+}
+
+/** Low level eigensolver */
+static linalgError_t _eigen(objectxmatrix *a, MorphoComplex *w, objectxmatrix *vec) {
+    int info, n=a->nrows;
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    info=LAPACKE_dgeev(LAPACK_COL_MAJOR, 'N', (vec ? 'V' : 'N'), n, a->elements, n, wr, wi, NULL, n, (vec ? vec->elements : NULL), n);
+#else
+    int lwork=4*n; double work[4*n], wr[n], wi[n];
+    dgeev_("N", (vec ? "V" : "N"), &n, a->elements, &n, wr, wi, NULL, &n, (vec ? vec->elements : NULL), &n, work, &lwork, &info);
+    for (int i=0; i<n; i++) w[i]=MCBuild(wr[i], wi[i]);
+#endif
+    
+    return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS));
 }
 
 /* ----------------------
@@ -326,6 +337,20 @@ linalgError_t xmatrix_inverse(objectxmatrix *a) {
     return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_MATRIX_SINGULAR : LINALGERR_LAPACK_INVLD_ARGS));
 }
 
+/** Interface to eigensystem */
+linalgError_t xmatrix_eigen(objectxmatrix *a, MorphoComplex *w, objectxmatrix *vec) {
+    if (a->nrows!=a->ncols) return LINALGERR_NOT_SQUARE;
+    if (vec && ((a->nrows!=vec->nrows) || (a->nrows!=vec->ncols))) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    xmatrix_eigenfn_t efn = xmatrix_getinterface(a)->eigenfn;
+    if (!efn) return LINALGERR_NOT_SUPPORTED;
+    
+    objectxmatrix *temp = xmatrix_clone(a);
+    if (!temp) return LINALGERR_ALLOC;
+        
+    return efn(temp, w, vec);
+}
+
 /* ----------------------
  * Display
  * ---------------------- */
@@ -352,7 +377,8 @@ void xmatrix_print(vm *v, objectxmatrix *m) {
 matrixinterfacedefn xmatrixdefn = {
     .printelfn = _printelfn,
     .getelfn = _getelfn,
-    .solvefn = _solve
+    .solvefn = _solve,
+    .eigenfn = _eigen
 };
 
 /* **********************************************************************
@@ -368,7 +394,6 @@ value xmatrix_constructor__int_int(vm *v, int nargs, value *args) {
 }
 
 value xmatrix_constructor__list(vm *v, int nargs, value *args) {
-    
     return MORPHO_NIL;
 }
 
@@ -416,6 +441,78 @@ value XMatrix_clone(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     objectxmatrix *new=xmatrix_clone(a);
     return morpho_wrapandbind(v, (object *) new);
+}
+
+/* ---------
+ * index()
+ * --------- */
+
+static value _getindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
+    value out=MORPHO_NIL;
+    
+    double *elptr=NULL;
+    LINALG_ERRCHECKVM(xmatrix_getelementptr(m, i, j, &elptr));
+
+    if (elptr) out=xmatrix_getinterface(m)->getelfn(v, elptr);
+    return out;
+}
+
+value XMatrix_index__int(vm *v, int nargs, value *args) {
+    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    return _getindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, 0);
+}
+
+value XMatrix_index__int_int(vm *v, int nargs, value *args) {
+    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+                j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    return _getindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, j);
+}
+
+/* ---------
+ * setindex()
+ * --------- */
+
+value _setindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j, value in) {
+    double val=0.0;
+    if (!morpho_valuetofloat(in, &val)) true; // TODO: Should raise an error (Matrix doesn't!)
+    LINALG_ERRCHECKVM(xmatrix_setelement(m, i, j, val));
+    return MORPHO_NIL;
+}
+
+value XMatrix_setindex__int_x(vm *v, int nargs, value *args) {
+    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    return _setindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, 0, MORPHO_GETARG(args, 1));
+}
+
+value XMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
+    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    MatrixIdx_t j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    return _setindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, j, MORPHO_GETARG(args, 2));
+}
+
+/* ---------
+ * column
+ * --------- */
+
+value XMatrix_getcolumn__int(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    value out=MORPHO_NIL;
+    
+    if (i>=0 && i<a->ncols) {
+        objectxmatrix *new=xmatrix_newwithtype(a->obj.type, a->nrows, 1, a->nvals, false);
+        if (new) xmatrix_getcolumn(a, i, new);
+        out=morpho_wrapandbind(v, (object *)new);
+    } else linalg_raiseerror(v, LINALGERR_INDX_OUT_OF_BNDS);
+    
+    return out;
+}
+
+value XMatrix_setcolumn__int_xmatrix(vm *v, int nargs, value *args) {
+    LINALG_ERRCHECKVM(xmatrix_setcolumn(MORPHO_GETXMATRIX(MORPHO_SELF(args)),
+                                        MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+                                        MORPHO_GETXMATRIX(MORPHO_GETARG(args, 1))));
+    return MORPHO_NIL;
 }
 
 /* ----------
@@ -558,6 +655,83 @@ value XMatrix_inverse(vm *v, int nargs, value *args) {
     return out;
 }
 
+bool _processeigenvalues(vm *v, MatrixIdx_t n, MorphoComplex *w, value *out) {
+    value ev[n];
+    for (int i=0; i<n; i++) ev[i]=MORPHO_NIL;
+    for (int i=0; i<n; i++) {
+        if (fabs(cimag(w[i])) < MORPHO_EPS*cabs(w[i])) {
+            ev[i]=MORPHO_FLOAT(creal(w[i]));
+        } else {
+            objectcomplex *new = object_newcomplex(creal(w[i]), cimag(w[i]));
+            if (new) ev[i]=MORPHO_OBJECT(new);
+            else goto _processeigenvalues_cleanup;
+        }
+    }
+    
+    objecttuple *new = object_newtuple(n, ev);
+    if (!new) goto _processeigenvalues_cleanup;
+    
+    *out = MORPHO_OBJECT(new);
+    return true;
+    
+_processeigenvalues_cleanup:
+    for (int i=0; i<n; i++) morpho_freeobject(ev[i]);
+    return false;
+}
+
+/** Finds the eigenvalues of a matrix */
+value XMatrix_eigenvalues(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+    
+    MatrixIdx_t n=a->ncols;
+    MorphoComplex w[n];
+    linalgError_t err=xmatrix_eigen(a, w, NULL);
+    if (err==LINALGERR_OK) {
+        if (_processeigenvalues(v, n, w, &out)) {
+            morpho_bindobjects(v, 1, &out); // TODO: Correctly bind subsidiary values
+        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    } else linalg_raiseerror(v, err);
+    
+    return out;
+}
+
+#define _CHK(x) if (!x) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto _eigensystem_cleanup; }
+
+/** Finds the eigenvalues and eigenvectors of a matrix */
+value XMatrix_eigensystem(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    
+    value ev=MORPHO_NIL; // Will hold eigenvalues
+    objectxmatrix *evec=NULL; // Holds eigenvectors
+    objecttuple *otuple=NULL; // Tuple to return everything
+    
+    MatrixIdx_t n=a->ncols;
+    MorphoComplex w[n];
+    
+    evec=xmatrix_clone(a);
+    _CHK(evec);
+    
+    linalgError_t err=xmatrix_eigen(a, w, evec);
+    if (err!=LINALGERR_OK) { linalg_raiseerror(v, err); goto _eigensystem_cleanup; }
+    
+    _CHK(_processeigenvalues(v, n, w, &ev));
+    
+    value outtuple[2] = { ev, MORPHO_OBJECT(evec) };
+    otuple = object_newtuple(2, outtuple);
+    _CHK(otuple);
+    
+    return morpho_wrapandbind(v, (object *) otuple); // TODO: Correctly bind subsidiary values
+    
+_eigensystem_cleanup:
+    if (evec) object_free((object *) evec);
+    if (otuple) object_free((object *) otuple);
+    morpho_freeobject(ev); // TODO: Free contents? 
+    
+    return MORPHO_NIL;
+}
+#undef _CHK
+
 /* ---------
  * Products
  * --------- */
@@ -571,78 +745,6 @@ value XMatrix_inner(vm *v, int nargs, value *args) {
     LINALG_ERRCHECKVM(xmatrix_inner(a, b, &prod));
     
     return MORPHO_FLOAT(prod);
-}
-
-/* ---------
- * index()
- * --------- */
-
-static value _getindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
-    value out=MORPHO_NIL;
-    
-    double *elptr=NULL;
-    LINALG_ERRCHECKVM(xmatrix_getelementptr(m, i, j, &elptr));
-
-    if (elptr) out=xmatrix_getinterface(m)->getelfn(v, elptr);
-    return out;
-}
-
-value XMatrix_index__int(vm *v, int nargs, value *args) {
-    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    return _getindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, 0);
-}
-
-value XMatrix_index__int_int(vm *v, int nargs, value *args) {
-    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
-                j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
-    return _getindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, j);
-}
-
-/* ---------
- * setindex()
- * --------- */
-
-value _setindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j, value in) {
-    double val=0.0;
-    if (!morpho_valuetofloat(in, &val)) true; // TODO: Should raise an error (Matrix doesn't!)
-    LINALG_ERRCHECKVM(xmatrix_setelement(m, i, j, val));
-    return MORPHO_NIL;
-}
-
-value XMatrix_setindex__int_x(vm *v, int nargs, value *args) {
-    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    return _setindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, 0, MORPHO_GETARG(args, 1));
-}
-
-value XMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
-    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    MatrixIdx_t j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
-    return _setindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, j, MORPHO_GETARG(args, 2));
-}
-
-/* ---------
- * column
- * --------- */
-
-value XMatrix_getcolumn__int(vm *v, int nargs, value *args) {
-    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    value out=MORPHO_NIL;
-    
-    if (i>=0 && i<a->ncols) {
-        objectxmatrix *new=xmatrix_newwithtype(a->obj.type, a->nrows, 1, a->nvals, false);
-        if (new) xmatrix_getcolumn(a, i, new);
-        out=morpho_wrapandbind(v, (object *)new);
-    } else linalg_raiseerror(v, LINALGERR_INDX_OUT_OF_BNDS);
-    
-    return out;
-}
-
-value XMatrix_setcolumn__int_xmatrix(vm *v, int nargs, value *args) {
-    LINALG_ERRCHECKVM(xmatrix_setcolumn(MORPHO_GETXMATRIX(MORPHO_SELF(args)),
-                                        MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
-                                        MORPHO_GETXMATRIX(MORPHO_GETARG(args, 1))));
-    return MORPHO_NIL;
 }
 
 /* ---------
@@ -702,6 +804,12 @@ MORPHO_BEGINCLASS(XMatrix)
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(XMatrix)", XMatrix_assign, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "XMatrix ()", XMatrix_clone, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", XMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_GETCOLUMN_METHOD, "XMatrix (Int)", XMatrix_getcolumn__int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_SETCOLUMN_METHOD, "(Int, XMatrix)", XMatrix_setcolumn__int_xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "XMatrix (XMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "XMatrix (XMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "XMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
@@ -710,17 +818,13 @@ MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "XMatrix (Float)", XMatrix_mul__floa
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (XMatrix)", XMatrix_div__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (Float)", XMatrix_div__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, XMatrix)", XMatrix_acc__x_xmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_TRACE_METHOD, "Float ()", XMatrix_trace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INVERSE_METHOD, "XMatrix ()", XMatrix_inverse, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENVALUES_METHOD, "Tuple ()", XMatrix_eigenvalues, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENSYSTEM_METHOD, "Tuple ()", XMatrix_eigensystem, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Float (XMatrix)", XMatrix_inner, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", XMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_GETCOLUMN_METHOD, "XMatrix (Int)", XMatrix_getcolumn__int, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_SETCOLUMN_METHOD, "(Int, XMatrix)", XMatrix_setcolumn__int_xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float (_)", XMatrix_norm__x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float ()", XMatrix_norm, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_TRACE_METHOD, "Float ()", XMatrix_trace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", XMatrix_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", XMatrix_count, BUILTIN_FLAGSEMPTY),

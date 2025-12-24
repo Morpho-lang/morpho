@@ -55,7 +55,7 @@ static linalgError_t _eigen(objectxmatrix *a, MorphoComplex *w, objectxmatrix *v
     int info, n=a->nrows;
 
 #ifdef MORPHO_LINALG_USE_LAPACKE
-    info=LAPACKE_zgeev(LAPACK_COL_MAJOR, 'N', (vec ? 'V' : 'N'), n, acopy, n, wr, wi, NULL, n, (vec ? vec->elements : NULL), n);
+    info=LAPACKE_zgeev(LAPACK_COL_MAJOR, 'N', (vec ? 'V' : 'N'), n, a->elements, n, (__LAPACK_double_complex *) w, NULL, n, (vec ? vec->elements : NULL), n);
 #else
     int lwork=4*n; MorphoComplex work[4*n]; double rwork[2*n];
     zgeev_("N", (vec ? "V" : "N"), &n, (__LAPACK_double_complex *) a->elements, &n, (__LAPACK_double_complex *) w, NULL, &n, (__LAPACK_double_complex *) (vec ? vec->elements : NULL), &n, work, &lwork, rwork, &info);

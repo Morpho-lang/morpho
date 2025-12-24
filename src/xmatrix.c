@@ -79,7 +79,7 @@ static linalgError_t _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
     int n=a->nrows, nrhs = b->ncols, info;
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
-    info=LAPACKE_dgesv(LAPACK_COL_MAJOR, n, nrhs, x->elements, n, pivot, y->elements, n);
+    info=LAPACKE_dgesv(LAPACK_COL_MAJOR, n, nrhs, a->elements, n, pivot, b->elements, n);
 #else
     dgesv_(&n, &nrhs, a->elements, &n, pivot, b->elements, &n, &info);
 #endif
@@ -826,7 +826,7 @@ value XMatrix_inner(vm *v, int nargs, value *args) {
 
 /** Reshape a matrix */
 value XMatrix_reshape(vm *v, int nargs, value *args) {
-    objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
+    objectmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     int nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
         ncols = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
     

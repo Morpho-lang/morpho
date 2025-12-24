@@ -400,6 +400,52 @@ void xmatrix_print(vm *v, objectxmatrix *m) {
     }
 }
 
+/* ----------------------
+ * Roll
+ * ---------------------- */
+
+/** Rolls the matrix list */
+static void _rollflat(objectxmatrix *a, objectxmatrix *b, int nplaces) {
+    MatrixCount_t N=a->nrows*a->ncols*a->nvals;
+    MatrixCount_t n = abs(nplaces)*a->nvals;
+    if (n>N) n = n % N;
+    MatrixCount_t Np = N - n; // Number of elements to roll
+    
+    if (nplaces<0) {
+        memcpy(b->matrixdata, a->matrixdata+n, sizeof(double)*Np);
+        memcpy(b->matrixdata+Np, a->matrixdata, sizeof(double)*n);
+    } else {
+        memcpy(b->matrixdata+n, a->matrixdata, sizeof(double)*Np);
+        if (n>0) memcpy(b->matrixdata, a->matrixdata+Np, sizeof(double)*n);
+    }
+}
+
+/** Copies a arow from matrix a into brow for matrix b */
+static void _copyrow(objectxmatrix *a, MatrixIdx_t arow, objectxmatrix *b, MatrixIdx_t brow) {
+    for (MatrixIdx_t i=0; i<a->ncols; i++)
+        for (int k=0; k<a->nvals; k++)
+            b->elements[b->nvals*(i*b->nrows+brow)+k]=a->elements[a->nvals*(i*a->nrows+arow)+k];
+}
+
+/** Rolls a list by a number of elements along a given axis; stores the result in b */
+linalgError_t xmatrix_roll(objectxmatrix *a, int nplaces, int axis, objectxmatrix *b) {
+    if (!(a->nrows==b->nrows && a->ncols==b->ncols && a->nvals==b->nvals)) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    switch(axis) {
+        case 0:
+            for (int i=0; i<a->nrows; i++) {
+                int j = (i+nplaces);
+                while (j<0) j+=a->nrows;
+                _copyrow(a, i, b, j % a->nrows);
+            }
+            break;
+        case 1: _rollflat(a, b, nplaces*a->nrows); break;
+        default: return LINALGERR_NOT_SUPPORTED;
+    }
+
+    return LINALGERR_OK;
+}
+
 /* **********************************************************************
  * Interface definition
  * ********************************************************************** */
@@ -733,7 +779,7 @@ value XMatrix_transpose(vm *v, int nargs, value *args) {
     return out;
 }
 
-bool _processeigenvalues(vm *v, MatrixIdx_t n, MorphoComplex *w, value *out) {
+static bool _processeigenvalues(vm *v, MatrixIdx_t n, MorphoComplex *w, value *out) {
     value ev[n];
     for (int i=0; i<n; i++) ev[i]=MORPHO_NIL;
     for (int i=0; i<n; i++) {
@@ -843,6 +889,27 @@ value XMatrix_reshape(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+static value _roll(vm *v, objectxmatrix *a, int roll, int axis) {
+    objectxmatrix *new = xmatrix_clone(a);
+    if (new) xmatrix_roll(a, roll, axis, new);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Roll a matrix */
+value XMatrix_roll__int_int(vm *v, int nargs, value *args) {
+    objectxmatrix *a = MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    int roll = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+        axis = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    return _roll(v, a, roll, axis);
+}
+
+/** Roll a matrix by row */
+value XMatrix_roll__int(vm *v, int nargs, value *args) {
+    objectxmatrix *a = MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    int roll = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    return _roll(v, a, roll, 0);
+}
+
 /** Enumerate protocol */
 value XMatrix_enumerate(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
@@ -911,6 +978,8 @@ MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Float (XMatrix)", XMatrix_inner, 
 MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float (_)", XMatrix_norm__x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float ()", XMatrix_norm, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_ROLL_METHOD, "XMatrix (Int)", XMatrix_roll__int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_ROLL_METHOD, "XMatrix (Int,Int)", XMatrix_roll__int_int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", XMatrix_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", XMatrix_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_DIMENSIONS_METHOD, "Tuple ()", XMatrix_dimensions, BUILTIN_FLAGSEMPTY)

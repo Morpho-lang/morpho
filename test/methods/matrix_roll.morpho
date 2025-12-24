@@ -1,0 +1,51 @@
+// Roll contents of a matrix
+import newlinalg 
+
+var A = XMatrix(3,3)
+var k=0
+for (i in 0...3) for (j in 0...3) { A[i,j] = k; k+=1 }
+
+print A 
+// expect: [ 0 1 2 ]
+// expect: [ 3 4 5 ]
+// expect: [ 6 7 8 ]
+
+print A.roll(1,1)
+// expect: [ 2 0 1 ]
+// expect: [ 5 3 4 ]
+// expect: [ 8 6 7 ]
+
+print A.roll(2,1)
+// expect: [ 1 2 0 ]
+// expect: [ 4 5 3 ]
+// expect: [ 7 8 6 ]
+
+print A.roll(3,1)
+// expect: [ 0 1 2 ]
+// expect: [ 3 4 5 ]
+// expect: [ 6 7 8 ]
+
+print A.roll(4,1)
+// expect: [ 2 0 1 ]
+// expect: [ 5 3 4 ]
+// expect: [ 8 6 7 ]
+
+print A.roll(-1,0)
+// expect: [ 3 4 5 ]
+// expect: [ 6 7 8 ]
+// expect: [ 0 1 2 ]
+
+print A.roll(-2,0)
+// expect: [ 6 7 8 ]
+// expect: [ 0 1 2 ]
+// expect: [ 3 4 5 ]
+
+print A.roll(-3,0)
+// expect: [ 0 1 2 ]
+// expect: [ 3 4 5 ]
+// expect: [ 6 7 8 ]
+
+print A.roll(-4,0)
+// expect: [ 3 4 5 ]
+// expect: [ 6 7 8 ]
+// expect: [ 0 1 2 ]

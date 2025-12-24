@@ -103,6 +103,7 @@ matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a);
 #define XMATRIX_INVERSE_METHOD              "inverse"
 #define XMATRIX_NORM_METHOD                 "norm"
 #define XMATRIX_RESHAPE_METHOD              "reshape"
+#define XMATRIX_ROLL_METHOD                 "roll"
 #define XMATRIX_SETCOLUMN_METHOD            "setColumn"
 #define XMATRIX_TRACE_METHOD                "trace"
 #define XMATRIX_TRANSPOSE_METHOD            "transpose"
@@ -140,6 +141,8 @@ IMPLEMENTATIONFN(XMatrix_transpose);
 IMPLEMENTATIONFN(XMatrix_eigenvalues);
 IMPLEMENTATIONFN(XMatrix_eigensystem);
 IMPLEMENTATIONFN(XMatrix_reshape);
+IMPLEMENTATIONFN(XMatrix_roll__int);
+IMPLEMENTATIONFN(XMatrix_roll__int_int);
 IMPLEMENTATIONFN(XMatrix_enumerate);
 IMPLEMENTATIONFN(XMatrix_count);
 IMPLEMENTATIONFN(XMatrix_dimensions);

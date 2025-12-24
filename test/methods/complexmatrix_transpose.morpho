@@ -1,0 +1,14 @@
+// Inverse
+import newlinalg 
+
+var A = ComplexMatrix(3,2)
+A[0,0]=1+1im
+A[0,1]=2+2im
+A[1,0]=3+3im
+A[1,1]=4+4im
+A[2,0]=5+5im
+A[2,1]=6+6im
+
+print A.transpose()
+// expect: [ 1 + 1im 3 + 3im 5 + 5im ]
+// expect: [ 2 + 2im 4 + 4im 6 + 6im ]

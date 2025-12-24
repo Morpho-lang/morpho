@@ -226,15 +226,29 @@ linalgError_t xmatrix_mmul(double alpha, objectxmatrix *x, objectxmatrix *y, dou
     return LINALGERR_OK;
 }
 
-/** Performs z <- alpha*z + beta */
-linalgError_t xmatrix_addscalar(objectxmatrix *a, double alpha, double beta) {
-    for (MatrixCount_t i=0; i<a->ncols*a->nrows; i++) {
-        for (int k=0; k<a->nvals; k++) {
-            a->elements[i*a->nvals+k]*=alpha;
-            if (k==0) a->elements[i*a->nvals+k]+=beta;
+/** Performs x <- alpha*x + beta */
+linalgError_t xmatrix_addscalar(objectxmatrix *x, double alpha, double beta) {
+    for (MatrixCount_t i=0; i<x->ncols*x->nrows; i++) {
+        for (int k=0; k<x->nvals; k++) {
+            x->elements[i*x->nvals+k]*=alpha;
+            if (k==0) x->elements[i*x->nvals+k]+=beta;
         }
     }
-    return MATRIX_OK;
+    return LINALGERR_OK;
+}
+
+/** Performs y <- x^T>*/
+linalgError_t xmatrix_transpose(objectxmatrix *x, objectxmatrix *y) {
+    if (!(x->ncols==y->nrows && x->nrows==y->ncols)) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    for (MatrixCount_t i=0; i<x->ncols; i++) {
+        for (MatrixCount_t j=0; j<x->nrows; j++) {
+            for (int k=0; k<x->nvals; k++) {
+                y->elements[j*y->nrows*y->nvals+i*y->nvals+k] = x->elements[i*x->nrows*x->nvals+j*x->nvals+k];
+            }
+        }
+    }
+    return LINALGERR_OK;
 }
 
 /* ----------------------
@@ -698,6 +712,22 @@ value XMatrix_inverse(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Inverts a matrix */
+value XMatrix_transpose(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    
+    objectxmatrix *new = xmatrix_clone(a);
+    if (new) {
+        new->ncols=a->nrows;
+        new->nrows=a->ncols;
+        LINALG_ERRCHECKVM(xmatrix_transpose(a, new));
+    }
+    out = morpho_wrapandbind(v, (object *) new);
+    
+    return out;
+}
+
 bool _processeigenvalues(vm *v, MatrixIdx_t n, MorphoComplex *w, value *out) {
     value ev[n];
     for (int i=0; i<n; i++) ev[i]=MORPHO_NIL;
@@ -869,6 +899,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (Float)", XMatrix_div__float
 MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, XMatrix)", XMatrix_acc__x_xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_TRACE_METHOD, "Float ()", XMatrix_trace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INVERSE_METHOD, "XMatrix ()", XMatrix_inverse, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_TRANSPOSE_METHOD, "XMatrix ()", XMatrix_transpose, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENVALUES_METHOD, "Tuple ()", XMatrix_eigenvalues, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENSYSTEM_METHOD, "Tuple ()", XMatrix_eigensystem, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Float (XMatrix)", XMatrix_inner, BUILTIN_FLAGSEMPTY),

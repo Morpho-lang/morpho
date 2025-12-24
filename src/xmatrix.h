@@ -96,7 +96,6 @@ matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a);
 #define XMATRIX_CLASSNAME                   "XMatrix"
 
 #define XMATRIX_GETCOLUMN_METHOD            "column"
-#define XMATRIX_SETCOLUMN_METHOD            "setColumn"
 #define XMATRIX_DIMENSIONS_METHOD           "dimensions"
 #define XMATRIX_EIGENVALUES_METHOD          "eigenvalues"
 #define XMATRIX_EIGENSYSTEM_METHOD          "eigensystem"
@@ -104,7 +103,9 @@ matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a);
 #define XMATRIX_INVERSE_METHOD              "inverse"
 #define XMATRIX_NORM_METHOD                 "norm"
 #define XMATRIX_RESHAPE_METHOD              "reshape"
+#define XMATRIX_SETCOLUMN_METHOD            "setColumn"
 #define XMATRIX_TRACE_METHOD                "trace"
+#define XMATRIX_TRANSPOSE_METHOD            "transpose"
 
 #define XMATRIX_IDENTITYCONSTRUCTOR         "IdentityXMatrix"
 
@@ -130,6 +131,8 @@ value XMatrix_mul__float(vm *v, int nargs, value *args);
 value XMatrix_div__float(vm *v, int nargs, value *args);
 value XMatrix_div__xmatrix(vm *v, int nargs, value *args);
 value XMatrix_acc__x_xmatrix(vm *v, int nargs, value *args);
+
+value XMatrix_transpose(vm *v, int nargs, value *args);
 
 value XMatrix_eigenvalues(vm *v, int nargs, value *args);
 value XMatrix_eigensystem(vm *v, int nargs, value *args);

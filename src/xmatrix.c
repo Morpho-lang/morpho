@@ -423,8 +423,7 @@ static void _rollflat(objectxmatrix *a, objectxmatrix *b, int nplaces) {
 /** Copies a arow from matrix a into brow for matrix b */
 static void _copyrow(objectxmatrix *a, MatrixIdx_t arow, objectxmatrix *b, MatrixIdx_t brow) {
     for (MatrixIdx_t i=0; i<a->ncols; i++)
-        for (int k=0; k<a->nvals; k++)
-            b->elements[b->nvals*(i*b->nrows+brow)+k]=a->elements[a->nvals*(i*a->nrows+arow)+k];
+        memcpy(b->elements+b->nvals*(i*b->nrows+brow), a->elements+a->nvals*(i*a->nrows+arow), sizeof(double)*a->nvals);
 }
 
 /** Rolls a list by a number of elements along a given axis; stores the result in b */

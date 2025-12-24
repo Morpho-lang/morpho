@@ -58,6 +58,13 @@ typedef struct {
 /** Function that prints a single matrix element */
 typedef void (*xmatrix_printelfn_t) (vm *, double *);
 
+/** Function that prints a single matrix element to a text buffer
+ * @param[in] out - buffer to write to
+ * @param[in] format - format string
+ * @param[in] el - pointer to matrix element data
+ * @returns true on success */
+typedef bool (*xmatrix_printeltobufffn_t) (varray_char *out, char *format, double *el);
+
 /** Function that materializes a value from a pointer to an element */
 typedef value (*xmatrix_getelfn_t) (vm *, double *);
 
@@ -80,6 +87,7 @@ typedef linalgError_t (*xmatrix_eigenfn_t) (objectxmatrix *a, MorphoComplex *w, 
 
 typedef struct {
     xmatrix_printelfn_t printelfn;
+    xmatrix_printeltobufffn_t printeltobufffn;
     xmatrix_getelfn_t   getelfn;
     xmatrix_setelfn_t   setelfn;
     xmatrix_solvefn_t   solvefn;
@@ -115,6 +123,7 @@ void xmatrix_initialize(void);
 #define IMPLEMENTATIONFN(fn) value fn (vm *v, int nargs, value *args)
 
 IMPLEMENTATIONFN(XMatrix_print);
+IMPLEMENTATIONFN(XMatrix_format);
 IMPLEMENTATIONFN(XMatrix_assign);
 IMPLEMENTATIONFN(XMatrix_clone);
 

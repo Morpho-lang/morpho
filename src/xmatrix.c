@@ -8,6 +8,7 @@
 #define MORPHO_INCLUDE_LINALG
 
 #include "newlinalg.h"
+#include "format.h"
 
 /* **********************************************************************
  * Matrix interface definitions
@@ -62,12 +63,16 @@ objecttypedefn objectxmatrixdefn = {
  * ********************************************************************** */
 
 /* ----------------------
- * XMatrix callbacks
+ * XMatrix interface
  * ---------------------- */
 
 static void _printelfn(vm *v, double *el) {
     double val=*el;
     morpho_printf(v, "%g", (fabs(val)<MORPHO_EPS ? 0 : val));
+}
+
+static bool _printeltobufffn(varray_char *out, char *format, double *el) {
+    return format_printtobuffer(MORPHO_FLOAT(*el), format, out);
 }
 
 static value _getelfn(vm *v, double *el) {
@@ -106,6 +111,19 @@ static linalgError_t _eigen(objectxmatrix *a, MorphoComplex *w, objectxmatrix *v
     
     return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS));
 }
+
+/* ----------------------
+ * Interface definition
+ * ---------------------- */
+
+matrixinterfacedefn xmatrixdefn = {
+    .printelfn = _printelfn,
+    .printeltobufffn = _printeltobufffn,
+    .getelfn = _getelfn,
+    .setelfn = _setelfn,
+    .solvefn = _solve,
+    .eigenfn = _eigen
+};
 
 /* ----------------------
  * Constructors
@@ -415,6 +433,24 @@ void xmatrix_print(vm *v, objectxmatrix *m) {
     }
 }
 
+/** Prints a matrix to a buffer */
+bool xmatrix_printtobuffer(objectxmatrix *m, char *format, varray_char *out) {
+    matrixinterfacedefn *interface=xmatrix_getinterface(m);
+    double *elptr;
+    for (MatrixIdx_t i=0; i<m->nrows; i++) { // Rows run from 0...m
+        varray_charadd(out, "[ ", 2);
+        
+        for (MatrixIdx_t j=0; j<m->ncols; j++) { // Columns run from 0...k
+            xmatrix_getelementptr(m, i, j, &elptr);
+            if (!(*interface->printeltobufffn) (out, format, elptr)) return false;
+            varray_charadd(out, " ", 1);
+        }
+        varray_charadd(out, "]", 1);
+        if (i<m->nrows-1) varray_charadd(out, "\n", 1);
+    }
+    return true;
+}
+
 /* ----------------------
  * Roll
  * ---------------------- */
@@ -461,18 +497,6 @@ linalgError_t xmatrix_roll(objectxmatrix *a, int nplaces, int axis, objectxmatri
 }
 
 /* **********************************************************************
- * Interface definition
- * ********************************************************************** */
-
-matrixinterfacedefn xmatrixdefn = {
-    .printelfn = _printelfn,
-    .getelfn = _getelfn,
-    .setelfn = _setelfn,
-    .solvefn = _solve,
-    .eigenfn = _eigen
-};
-
-/* **********************************************************************
  * XMatrix constructors
  * ********************************************************************** */
 
@@ -516,6 +540,23 @@ value XMatrix_print(vm *v, int nargs, value *args) {
     objectxmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     xmatrix_print(v, m);
     return MORPHO_NIL;
+}
+
+/** Formatted conversion to a string */
+value XMatrix_format(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+    varray_char str;
+    varray_charinit(&str);
+    
+    if (xmatrix_printtobuffer(MORPHO_GETXMATRIX(MORPHO_SELF(args)),
+                              MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)),
+                             &str)) {
+        out = object_stringfromvarraychar(&str);
+        if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    
+    varray_charclear(&str);
+    return out;
 }
 
 /** Copies the contents of one matrix into another */
@@ -969,6 +1010,7 @@ value XMatrix_dimensions(vm *v, int nargs, value *args) {
 
 MORPHO_BEGINCLASS(XMatrix)
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_FORMAT_METHOD, "(String)", XMatrix_format, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(XMatrix)", XMatrix_assign, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "XMatrix ()", XMatrix_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),

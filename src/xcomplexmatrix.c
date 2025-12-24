@@ -12,6 +12,7 @@
 #include "newlinalg.h"
 #include "xmatrix.h"
 #include "xcomplexmatrix.h"
+#include "format.h"
 
 objecttype objectcomplexmatrixtype;
 #define OBJECT_COMPLEXMATRIX objectcomplexmatrixtype
@@ -29,6 +30,15 @@ typedef objectxmatrix objectcomplexmatrix;
 static void _printelfn(vm *v, double *el) {
     objectcomplex cmplx = MORPHO_STATICCOMPLEX(el[0], el[1]);
     complex_print(v, &cmplx);
+}
+
+static bool _printeltobufffn(varray_char *out, char *format, double *el) { // TODO: format should support complex numbers
+    if (!format_printtobuffer(MORPHO_FLOAT(el[0]), format, out)) return false;
+    varray_charadd(out, " ", 1);
+    varray_charadd(out, (el[1]<0 ? "-" : "+"), 1);
+    if (!format_printtobuffer(MORPHO_FLOAT(fabs(el[1])), format, out)) return false;
+    varray_charadd(out, "im", 2);
+    return true;
 }
 
 static value _getelfn(vm *v, double *el) {
@@ -72,6 +82,19 @@ static linalgError_t _eigen(objectxmatrix *a, MorphoComplex *w, objectxmatrix *v
     
     return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS));
 }
+
+/* ----------------------
+ * Interface definition
+ * ---------------------- */
+
+matrixinterfacedefn complexmatrixdefn = {
+    .printelfn = _printelfn,
+    .printeltobufffn = _printeltobufffn,
+    .getelfn = _getelfn,
+    .setelfn = _setelfn,
+    .solvefn = _solve,
+    .eigenfn = _eigen
+};
 
 /* ----------------------
  * Constructor
@@ -164,18 +187,6 @@ linalgError_t complexmatrix_inverse(objectcomplexmatrix *a) {
 }
 
 /* **********************************************************************
- * Interface definition
- * ********************************************************************** */
-
-matrixinterfacedefn complexmatrixdefn = {
-    .printelfn = _printelfn,
-    .getelfn = _getelfn,
-    .setelfn = _setelfn,
-    .solvefn = _solve,
-    .eigenfn = _eigen
-};
-
-/* **********************************************************************
  * ComplexMatrix constructors
  * ********************************************************************** */
 
@@ -253,6 +264,7 @@ value ComplexMatrix_inner(vm *v, int nargs, value *args) {
 
 MORPHO_BEGINCLASS(ComplexMatrix)
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_FORMAT_METHOD, "(String)", XMatrix_format, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(ComplexMatrix)", XMatrix_assign, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "ComplexMatrix ()", XMatrix_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),

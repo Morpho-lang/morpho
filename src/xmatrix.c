@@ -74,6 +74,11 @@ static value _getelfn(vm *v, double *el) {
     return MORPHO_FLOAT(*el);
 }
 
+static linalgError_t _setelfn(vm *v, value in, double *el) {
+    if (!morpho_valuetofloat(in, el)) return LINALGERR_NON_NUMERICAL;
+    return LINALGERR_OK;
+}
+
 /** Low level linear solve */
 static linalgError_t _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
     int n=a->nrows, nrhs = b->ncols, info;
@@ -332,7 +337,7 @@ linalgError_t xmatrix_solvelarge(objectxmatrix *a, objectxmatrix *b) {
 /** Solve the linear system a.x = b; automatrically allocates storage depending on size of the matrix
  * @param[in]     a  lhs
  * @param[in|out]  b  rhs — overwritten by the solution
- * @returns objectmatrixerror indicating the status; MATRIX_OK indicates success. */
+ * @returns linalgError_t indicating the status; MATRIX_OK indicates success. */
 linalgError_t xmatrix_solve(objectxmatrix *a, objectxmatrix *b) {
     if (MATRIX_ISSMALL(a)) return xmatrix_solvesmall(a, b);
     else return xmatrix_solvelarge(a, b);
@@ -402,6 +407,7 @@ void xmatrix_print(vm *v, objectxmatrix *m) {
 matrixinterfacedefn xmatrixdefn = {
     .printelfn = _printelfn,
     .getelfn = _getelfn,
+    .setelfn = _setelfn,
     .solvefn = _solve,
     .eigenfn = _eigen
 };
@@ -497,22 +503,21 @@ value XMatrix_index__int_int(vm *v, int nargs, value *args) {
  * setindex()
  * --------- */
 
-value _setindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j, value in) {
-    double val=0.0;
-    if (!morpho_valuetofloat(in, &val)) true; // TODO: Should raise an error (Matrix doesn't!)
-    LINALG_ERRCHECKVM(xmatrix_setelement(m, i, j, val));
-    return MORPHO_NIL;
+static void _setindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j, value in) {
+    double *elptr=NULL;
+    LINALG_ERRCHECKVM(xmatrix_getelementptr(m, i, j, &elptr));
+    if (elptr) LINALG_ERRCHECKVM(xmatrix_getinterface(m)->setelfn(v, in, elptr));
 }
 
 value XMatrix_setindex__int_x(vm *v, int nargs, value *args) {
     MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    return _setindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, 0, MORPHO_GETARG(args, 1));
+    _setindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, 0, MORPHO_GETARG(args, 1));
 }
 
 value XMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
     MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     MatrixIdx_t j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
-    return _setindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, j, MORPHO_GETARG(args, 2));
+    _setindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, j, MORPHO_GETARG(args, 2));
 }
 
 /* ---------
@@ -826,7 +831,7 @@ value XMatrix_inner(vm *v, int nargs, value *args) {
 
 /** Reshape a matrix */
 value XMatrix_reshape(vm *v, int nargs, value *args) {
-    objectmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     int nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
         ncols = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
     

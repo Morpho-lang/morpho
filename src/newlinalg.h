@@ -24,6 +24,7 @@ typedef enum {
     LINALGERR_LAPACK_INVLD_ARGS, // Invalid arguments to LAPACK routine
     LINALGERR_OP_FAILED,         // Matrix operation failed
     LINALGERR_NOT_SUPPORTED,     // Operation not supported for this matrix type
+    LINALGERR_NON_NUMERICAL,     // Non numerical args supplied
     LINALGERR_ALLOC              // Memory allocation failed
 } linalgError_t;
 
@@ -54,6 +55,9 @@ typedef enum {
 
 #define LINALG_INVLDARGS                  "LnAlgMtrxInvldArg"
 #define LINALG_INVLDARGS_MSG              "Invalid arguments to matrix method."
+
+#define LINALG_NNNMRCL_ARG                "LnAlgMtrxNnNmrclArg"
+#define LINALG_NNNMRCL_ARG_MSG            "Matrix method requires numerical arguments."
 
 /* -------------------------------------------------------
  * Interface

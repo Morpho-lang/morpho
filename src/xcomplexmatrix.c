@@ -36,6 +36,15 @@ static value _getelfn(vm *v, double *el) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
+static linalgError_t _setelfn(vm *v, value in, double *el) {
+    if (MORPHO_ISCOMPLEX(in)) {
+        *((MorphoComplex *) el) = MORPHO_GETCOMPLEX(in)->Z;
+    } else if (morpho_valuetofloat(in, el)) {
+        el[1] = 0.0; // Set real part to zero
+    } else return LINALGERR_NON_NUMERICAL;
+    return LINALGERR_OK;
+}
+
 /** Low level linear solve */
 static linalgError_t _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
     int n=a->nrows, nrhs = b->ncols, info;
@@ -161,6 +170,7 @@ linalgError_t complexmatrix_inverse(objectcomplexmatrix *a) {
 matrixinterfacedefn complexmatrixdefn = {
     .printelfn = _printelfn,
     .getelfn = _getelfn,
+    .setelfn = _setelfn,
     .solvefn = _solve,
     .eigenfn = _eigen
 };
@@ -241,38 +251,14 @@ value ComplexMatrix_inner(vm *v, int nargs, value *args) {
     return out;
 }
 
-/* ---------
- * setIndex()
- * --------- */
-
-static value _setindex(vm *v, objectcomplexmatrix *m, MatrixIdx_t i, MatrixIdx_t j, value in) {
-    if (MORPHO_ISCOMPLEX(in)) {
-        LINALG_ERRCHECKVM(complexmatrix_setelement(m, i, j, MORPHO_GETCOMPLEX(in)->Z));
-    }
-    return MORPHO_NIL;
-}
-
-value ComplexMatrix_setindex__int_x(vm *v, int nargs, value *args) {
-    objectcomplexmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    return _setindex(v, m, i, 0, MORPHO_GETARG(args, 1));
-}
-
-value ComplexMatrix_setindex__int_int_x(vm *v, int nargs, value *args) {
-    objectcomplexmatrix *m=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    MatrixIdx_t j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
-    return _setindex(v, m, i, j, MORPHO_GETARG(args, 2));
-}
-
 MORPHO_BEGINCLASS(ComplexMatrix)
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(ComplexMatrix)", XMatrix_assign, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "ComplexMatrix ()", XMatrix_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int)", XMatrix_index__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Complex)", ComplexMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int, Complex)", ComplexMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", XMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_GETCOLUMN_METHOD, "ComplexMatrix (Int)", XMatrix_getcolumn__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_SETCOLUMN_METHOD, "(Int, ComplexMatrix)", XMatrix_setcolumn__int_xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),

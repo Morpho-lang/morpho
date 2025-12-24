@@ -1,0 +1,10 @@
+// Index out of bounds error
+import newlinalg 
+
+var A = ComplexMatrix(2,2)
+A[0,0]=1+1im
+
+// Try to access out of bounds
+print A[5,5]
+// expect error 'LnAlgMtrxIndxBnds'
+

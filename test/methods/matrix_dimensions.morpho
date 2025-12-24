@@ -1,0 +1,9 @@
+// Get dimensions of XMatrix
+import newlinalg 
+
+var A = XMatrix(2,3)
+A[0,0]=1
+
+print A.dimensions()
+// expect: (2, 3)
+

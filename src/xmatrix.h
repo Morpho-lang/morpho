@@ -137,6 +137,7 @@ IMPLEMENTATIONFN(XMatrix_div__float);
 IMPLEMENTATIONFN(XMatrix_div__xmatrix);
 IMPLEMENTATIONFN(XMatrix_acc__x_xmatrix);
 
+IMPLEMENTATIONFN(XMatrix_sum);
 IMPLEMENTATIONFN(XMatrix_transpose);
 IMPLEMENTATIONFN(XMatrix_eigenvalues);
 IMPLEMENTATIONFN(XMatrix_eigensystem);

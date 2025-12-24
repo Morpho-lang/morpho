@@ -291,6 +291,21 @@ double xmatrix_linfnorm(objectxmatrix *a) {
     return a->elements[imax];
 }
 
+/** Computes the sum of all elements in a matrix */
+void xmatrix_sum(objectxmatrix *a, double *sum) {
+    double c[a->nvals], y, t;
+    for (int i=0; i<a->nvals; i++) { sum[i]=0; c[i]=0; }
+    
+    for (MatrixCount_t i=0; i<a->nels; i+=a->nvals) {
+        for (int k=0; k<a->nvals; k++) {
+            y=a->elements[i+k]-c[k];
+            t=sum[k]+y;
+            c[k]=(t-sum[k])-y;
+            sum[k]=t;
+        }
+    }
+}
+
 /** Calculate the trace of a matrix */
 linalgError_t xmatrix_trace(objectxmatrix *a, double *out) {
     if (a->nrows!=a->ncols) return LINALGERR_NOT_SQUARE;
@@ -742,24 +757,21 @@ value XMatrix_norm(vm *v, int nargs, value *args) {
     return MORPHO_FLOAT(xmatrix_norm(a));
 }
 
+/** Sums all matrix values */
+value XMatrix_sum(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    double sum[a->nvals];
+    
+    xmatrix_sum(a, sum);
+    return xmatrix_getinterface(a)->getelfn(v, sum);
+}
+
 /** Computes the trace */
 value XMatrix_trace(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     double out=0.0;
     LINALG_ERRCHECKVM(xmatrix_trace(a, &out));
     return MORPHO_FLOAT(out);
-}
-
-/** Inverts a matrix */
-value XMatrix_inverse(vm *v, int nargs, value *args) {
-    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
-    
-    objectxmatrix *new = xmatrix_clone(a);
-    out = morpho_wrapandbind(v, (object *) new);
-    if (new) LINALG_ERRCHECKVM(xmatrix_inverse(new));
-    
-    return out;
 }
 
 /** Inverts a matrix */
@@ -774,6 +786,18 @@ value XMatrix_transpose(vm *v, int nargs, value *args) {
         LINALG_ERRCHECKVM(xmatrix_transpose(a, new));
     }
     out = morpho_wrapandbind(v, (object *) new);
+    
+    return out;
+}
+
+/** Inverts a matrix */
+value XMatrix_inverse(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    
+    objectxmatrix *new = xmatrix_clone(a);
+    out = morpho_wrapandbind(v, (object *) new);
+    if (new) LINALG_ERRCHECKVM(xmatrix_inverse(new));
     
     return out;
 }
@@ -968,12 +992,13 @@ MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "XMatrix (Float)", XMatrix_mul__floa
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (XMatrix)", XMatrix_div__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (Float)", XMatrix_div__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, XMatrix)", XMatrix_acc__x_xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_TRACE_METHOD, "Float ()", XMatrix_trace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INVERSE_METHOD, "XMatrix ()", XMatrix_inverse, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUM_METHOD, "Float ()", XMatrix_sum, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_TRACE_METHOD, "Float ()", XMatrix_trace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_TRANSPOSE_METHOD, "XMatrix ()", XMatrix_transpose, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Float (XMatrix)", XMatrix_inner, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENVALUES_METHOD, "Tuple ()", XMatrix_eigenvalues, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENSYSTEM_METHOD, "Tuple ()", XMatrix_eigensystem, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Float (XMatrix)", XMatrix_inner, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float (_)", XMatrix_norm__x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float ()", XMatrix_norm, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),

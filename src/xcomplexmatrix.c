@@ -32,7 +32,7 @@ static void _printelfn(vm *v, double *el) {
     complex_print(v, &cmplx);
 }
 
-static bool _printeltobufffn(varray_char *out, char *format, double *el) { // TODO: format should support complex numbers
+static bool _printeltobufffn(varray_char *out, char *format, double *el) {
     if (!format_printtobuffer(MORPHO_FLOAT(el[0]), format, out)) return false;
     varray_charadd(out, " ", 1);
     varray_charadd(out, (el[1]<0 ? "-" : "+"), 1);

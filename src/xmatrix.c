@@ -84,6 +84,30 @@ static linalgError_t _setelfn(vm *v, value in, double *el) {
     return LINALGERR_OK;
 }
 
+/** Convert xmatrix_norm_t to a character for use with lapack routines */
+char xmatrix_normtolapack(xmatrix_norm_t norm) {
+    switch (norm) {
+        case XMATRIX_NORM_MAX: return 'M';
+        case XMATRIX_NORM_L1: return '1';
+        case XMATRIX_NORM_INF: return 'I';
+        case XMATRIX_NORM_FROBENIUS: return 'F';
+    }
+    return '\0';
+}
+
+/** Evaluate norms */
+static double _normfn(objectxmatrix *a, xmatrix_norm_t nrm) {
+    char cnrm = xmatrix_normtolapack(nrm);
+    int nrows=a->nrows, ncols=a->ncols, info;
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    return LAPACKE_dlange(LAPACK_COL_MAJOR, cnrm, a->nrows, a->ncols, a->elements, a->nrows);
+#else
+    double work[a->nrows];
+    return dlange_(&cnrm, &nrows, &ncols, a->elements, &nrows, work);
+#endif
+}
+
 /** Low level linear solve */
 static linalgError_t _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
     int n=a->nrows, nrhs = b->ncols, info;
@@ -121,6 +145,7 @@ matrixinterfacedefn xmatrixdefn = {
     .printeltobufffn = _printeltobufffn,
     .getelfn = _getelfn,
     .setelfn = _setelfn,
+    .normfn = _normfn,
     .solvefn = _solve,
     .eigenfn = _eigen
 };
@@ -345,35 +370,9 @@ linalgError_t xmatrix_transpose(objectxmatrix *x, objectxmatrix *y) {
  * Unary operations
  * ---------------------- */
 
-// TODO: Fix with correct norms!
-
-/** Computes the Frobenius norm of a matrix */
-double xmatrix_norm(objectxmatrix *a) {
-    return cblas_dnrm2((__LAPACK_int) a->nels, a->elements, 1);
-}
-
-/** Computes the L1 norm of a matrix */
-double xmatrix_l1norm(objectxmatrix *a) {
-    return cblas_dasum((__LAPACK_int) a->nels, a->elements, 1);
-}
-
-/** Computes the Ln norm of a matrix */
-double xmatrix_lnnorm(objectxmatrix *a, double n) {
-    double sum=0.0, c=0.0, y,t;
-    
-    for (MatrixCount_t i=0; i<a->nels; i++) {
-        y=pow(a->elements[i],n)-c; // Kahan summation
-        t=sum+y;
-        c=(t-sum)-y;
-        sum=t;
-    }
-    return pow(sum,1.0/n);
-}
-
-/** Computes the infinity norm of a matrix */
-double xmatrix_linfnorm(objectxmatrix *a) {
-    int imax=cblas_idamax((__LAPACK_int) a->nels, a->elements, 1);
-    return a->elements[imax];
+/** Computes various matrix norms */
+double xmatrix_norm(objectxmatrix *a, xmatrix_norm_t norm) {
+    return xmatrix_getinterface(a)->normfn(a, norm);
 }
 
 /** Computes the sum of all elements in a matrix */
@@ -853,27 +852,23 @@ value XMatrix_acc__x_xmatrix(vm *v, int nargs, value *args) {
 /** Matrix norm */
 value XMatrix_norm__x(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    value out = MORPHO_NIL;
     double n;
     
     if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &n)) {
         if (fabs(n-1.0)<MORPHO_EPS) {
-            out=MORPHO_FLOAT(xmatrix_l1norm(a));
-        } else if (fabs(n-2.0)<MORPHO_EPS) {
-            out=MORPHO_FLOAT(xmatrix_norm(a));
+            return MORPHO_FLOAT(xmatrix_norm(a, XMATRIX_NORM_L1));
         } else if (isinf(n)) {
-            out=MORPHO_FLOAT(xmatrix_linfnorm(a));
-        } else {
-            out=MORPHO_FLOAT(xmatrix_lnnorm(a, n));
+            return MORPHO_FLOAT(xmatrix_norm(a, XMATRIX_NORM_INF));
         }
-    } else morpho_runtimeerror(v, MATRIX_NORMARGS);
-    
-    return out;
+    }
+    morpho_runtimeerror(v, LINALG_NORMARGS);
+    return MORPHO_NIL;
 }
 
+/** Frobenius norm */
 value XMatrix_norm(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    return MORPHO_FLOAT(xmatrix_norm(a));
+    return MORPHO_FLOAT(xmatrix_norm(a, XMATRIX_NORM_FROBENIUS));
 }
 
 /** Sums all matrix values */
@@ -1112,14 +1107,14 @@ MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (XMatrix)", XMatrix_div__xma
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (_)", XMatrix_div__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, XMatrix)", XMatrix_acc__x_xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INVERSE_METHOD, "XMatrix ()", XMatrix_inverse, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float (_)", XMatrix_norm__x, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float ()", XMatrix_norm, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUM_METHOD, "Float ()", XMatrix_sum, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(XMATRIX_TRACE_METHOD, "Float ()", XMatrix_trace, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(XMATRIX_TRANSPOSE_METHOD, "XMatrix ()", XMatrix_transpose, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Float (XMatrix)", XMatrix_inner, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENVALUES_METHOD, "Tuple ()", XMatrix_eigenvalues, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENSYSTEM_METHOD, "Tuple ()", XMatrix_eigensystem, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float (_)", XMatrix_norm__x, MORPHO_FN_PUREFN),
-MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float ()", XMatrix_norm, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_ROLL_METHOD, "XMatrix (Int)", XMatrix_roll__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_ROLL_METHOD, "XMatrix (Int,Int)", XMatrix_roll__int_int, BUILTIN_FLAGSEMPTY),

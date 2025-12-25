@@ -71,6 +71,19 @@ typedef value (*xmatrix_getelfn_t) (vm *, double *);
 /** Function that sets the an element given a value */
 typedef linalgError_t (*xmatrix_setelfn_t) (vm *, value, double *);
 
+typedef enum {
+    XMATRIX_NORM_MAX,
+    XMATRIX_NORM_L1,
+    XMATRIX_NORM_INF,
+    XMATRIX_NORM_FROBENIUS,
+} xmatrix_norm_t;
+
+/** Convert xmatrix_norm_t to a character for use with lapack routines */
+char xmatrix_normtolapack(xmatrix_norm_t norm);
+
+/** Compute various matrix norms */
+typedef double (*xmatrix_normfn_t) (objectxmatrix *a, xmatrix_norm_t nrm);
+
 /** Function that solves the linear system a.x = b
  * @param[in|out] a - lhs; overwritten by LU decomposition
  * @param[in|out] b - rhs; overwritten by solution
@@ -90,6 +103,7 @@ typedef struct {
     xmatrix_printeltobufffn_t printeltobufffn;
     xmatrix_getelfn_t   getelfn;
     xmatrix_setelfn_t   setelfn;
+    xmatrix_normfn_t    normfn;
     xmatrix_solvefn_t   solvefn;
     xmatrix_eigenfn_t   eigenfn;
 } matrixinterfacedefn;
@@ -148,6 +162,8 @@ IMPLEMENTATIONFN(XMatrix_div__float);
 IMPLEMENTATIONFN(XMatrix_div__xmatrix);
 IMPLEMENTATIONFN(XMatrix_acc__x_xmatrix);
 
+IMPLEMENTATIONFN(XMatrix_norm__x);
+IMPLEMENTATIONFN(XMatrix_norm);
 IMPLEMENTATIONFN(XMatrix_sum);
 IMPLEMENTATIONFN(XMatrix_transpose);
 IMPLEMENTATIONFN(XMatrix_eigenvalues);

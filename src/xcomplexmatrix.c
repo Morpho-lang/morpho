@@ -55,6 +55,19 @@ static linalgError_t _setelfn(vm *v, value in, double *el) {
     return LINALGERR_OK;
 }
 
+/** Evaluate norms */
+static double _normfn(objectxmatrix *a, xmatrix_norm_t nrm) {
+    char cnrm = xmatrix_normtolapack(nrm);
+    int nrows=a->nrows, ncols=a->ncols, info;
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    return LAPACKE_zlange(LAPACK_COL_MAJOR, cnrm, a->nrows, a->ncols, a->elements, a->nrows);
+#else
+    double work[a->nrows];
+    return zlange_(&cnrm, &nrows, &ncols, (__LAPACK_double_complex *) a->elements, &nrows, work);
+#endif
+}
+
 /** Low level linear solve */
 static linalgError_t _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
     int n=a->nrows, nrhs = b->ncols, info;
@@ -92,6 +105,7 @@ matrixinterfacedefn complexmatrixdefn = {
     .printeltobufffn = _printeltobufffn,
     .getelfn = _getelfn,
     .setelfn = _setelfn,
+    .normfn = _normfn,
     .solvefn = _solve,
     .eigenfn = _eigen
 };
@@ -304,6 +318,8 @@ MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (_)", XMatrix_div__flo
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_div__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, ComplexMatrix)", XMatrix_acc__x_xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INVERSE_METHOD, "ComplexMatrix ()", ComplexMatrix_inverse, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float (_)", XMatrix_norm__x, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float ()", XMatrix_norm, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUM_METHOD, "Complex ()", XMatrix_sum, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_TRACE_METHOD, "Complex ()", ComplexMatrix_trace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_TRANSPOSE_METHOD, "ComplexMatrix ()", XMatrix_transpose, BUILTIN_FLAGSEMPTY),

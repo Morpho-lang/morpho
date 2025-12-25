@@ -59,6 +59,9 @@ typedef enum {
 #define LINALG_NNNMRCL_ARG                "LnAlgMtrxNnNmrclArg"
 #define LINALG_NNNMRCL_ARG_MSG            "Matrix method requires numerical arguments."
 
+#define LINALG_NORMARGS                   "LnAlgMtrxNrmArgs"
+#define LINALG_NORMARGS_MSG               "Method 'norm' requires a supported argument: 1 or inf."
+
 /* -------------------------------------------------------
  * Interface
  * ------------------------------------------------------- */

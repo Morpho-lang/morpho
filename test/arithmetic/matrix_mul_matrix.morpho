@@ -17,3 +17,20 @@ print A * B
 // expect: [ 1 2 ]
 // expect: [ 3 4 ]
 
+var a = XMatrix([[1, 2], [3, 4]])
+var b = XMatrix([[0, 1], [1, 0]])
+
+print "A*B:"
+print a*b
+// expect: A*B:
+// expect: [ 2 1 ]
+// expect: [ 4 3 ]
+
+var c = Matrix([[1,2,3], [4,5,6]])
+var d = Matrix([[1,2], [3,4], [5,6]])
+
+print "C*D:"
+print c*d
+// expect: C*D:
+// expect: [ 22 28 ]
+// expect: [ 49 64 ]

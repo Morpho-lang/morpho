@@ -729,14 +729,14 @@ value XMatrix_setcolumn__int_xmatrix(vm *v, int nargs, value *args) {
 
 /** Add a vector */
 static value _axpy(vm *v, int nargs, value *args, double alpha) {
-    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));      // Receiver is left hand operand
+    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0)); // Argument is right hand operand
     objectxmatrix *new = NULL;
     value out=MORPHO_NIL;
     
     if (a->ncols==b->ncols && a->nrows==b->nrows) {
-        new=xmatrix_clone(b);
-        if (new) xmatrix_axpy(alpha, a, new); // TODO: Error check
+        new=xmatrix_clone(a);
+        if (new) xmatrix_axpy(alpha, b, new); // TODO: Error check
         out = morpho_wrapandbind(v, (object *) new);
     } else morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
     

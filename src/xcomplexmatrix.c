@@ -220,6 +220,13 @@ value complexmatrix_constructor__int_int(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
+value complexmatrix_constructor__int(vm *v, int nargs, value *args) {
+    MatrixIdx_t nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    
+    objectcomplexmatrix *new=complexmatrix_new(nrows, 1, true);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
 value complexmatrix_constructor__xmatrix(vm *v, int nargs, value *args) {
     objectxmatrix *a = MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
     
@@ -362,6 +369,7 @@ void complexmatrix_initialize(void) {
     object_setveneerclass(OBJECT_COMPLEXMATRIX, complexmatrixclass);
     
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Int, Int)", complexmatrix_constructor__int_int, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Int)", complexmatrix_constructor__int, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (ComplexMatrix)", xmatrix_constructor__xmatrix, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (XMatrix)", complexmatrix_constructor__xmatrix, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (List)", complexmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);

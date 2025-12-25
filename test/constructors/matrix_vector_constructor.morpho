@@ -1,0 +1,9 @@
+// Create a Matrix
+
+import newlinalg 
+
+var A = XMatrix(2)
+
+print A 
+// expect: [ 0 ]
+// expect: [ 0 ]

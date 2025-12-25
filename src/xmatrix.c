@@ -574,6 +574,13 @@ value xmatrix_constructor__int_int(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
+value xmatrix_constructor__int(vm *v, int nargs, value *args) {
+    MatrixIdx_t nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    
+    objectxmatrix *new=xmatrix_new(nrows, 1, true);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
 /** Clones a matrix */
 value xmatrix_constructor__xmatrix(vm *v, int nargs, value *args) {
     objectxmatrix *a = MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
@@ -1135,6 +1142,7 @@ void xmatrix_initialize(void) {
     object_setveneerclass(OBJECT_XMATRIX, xmatrixclass);
     
     morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (Int, Int)", xmatrix_constructor__int_int, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (Int)", xmatrix_constructor__int, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (XMatrix)", xmatrix_constructor__xmatrix, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (List)", xmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (Tuple)", xmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);

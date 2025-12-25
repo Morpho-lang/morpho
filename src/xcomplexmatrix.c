@@ -198,6 +198,21 @@ value complexmatrix_constructor__int_int(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
+/** Constructs a complexmatrix from a list of lists or tuples */
+value complexmatrix_constructor__list(vm *v, int nargs, value *args) {
+    objectxmatrix *new = xmatrix_listconstructor(v, MORPHO_GETARG(args, 0), OBJECT_COMPLEXMATRIX, 2);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Constructs a matrix from an array */
+value complexmatrix_constructor__array(vm *v, int nargs, value *args) {
+    objectarray *a = MORPHO_GETARRAY(MORPHO_GETARG(args, 0));
+    if (a->ndim!=2) { morpho_runtimeerror(v, LINALG_INVLDARGS); return MORPHO_NIL; }
+    
+    objectxmatrix *new = xmatrix_arrayconstructor(v, a, OBJECT_COMPLEXMATRIX, 2);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
 /* **********************************************************************
  * ComplexMatrix veneer class
  * ********************************************************************** */
@@ -315,4 +330,8 @@ void complexmatrix_initialize(void) {
     object_setveneerclass(OBJECT_COMPLEXMATRIX, complexmatrixclass);
     
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Int, Int)", complexmatrix_constructor__int_int, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (ComplexMatrix)", xmatrix_constructor__xmatrix, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (List)", complexmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Tuple)", complexmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Array)", complexmatrix_constructor__array, MORPHO_FN_CONSTRUCTOR, NULL);
 }

@@ -122,6 +122,8 @@ void xmatrix_initialize(void);
 
 #define IMPLEMENTATIONFN(fn) value fn (vm *v, int nargs, value *args)
 
+IMPLEMENTATIONFN(xmatrix_constructor__xmatrix);
+
 IMPLEMENTATIONFN(XMatrix_print);
 IMPLEMENTATIONFN(XMatrix_format);
 IMPLEMENTATIONFN(XMatrix_assign);
@@ -165,6 +167,8 @@ IMPLEMENTATIONFN(XMatrix_dimensions);
 
 objectxmatrix *xmatrix_newwithtype(objecttype type, MatrixIdx_t nrows, MatrixIdx_t ncols, MatrixIdx_t nvals, bool zero);
 objectxmatrix *xmatrix_clone(objectxmatrix *in);
+objectxmatrix *xmatrix_listconstructor(vm *v, value lst, objecttype type, MatrixIdx_t nvals);
+objectxmatrix *xmatrix_arrayconstructor(vm *v, objectarray *a, objecttype type, MatrixIdx_t nvals);
 
 linalgError_t xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value);
 linalgError_t xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value);

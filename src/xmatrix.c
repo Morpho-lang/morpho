@@ -159,6 +159,73 @@ objectxmatrix *xmatrix_clone(objectxmatrix *in) {
     return new;
 }
 
+static bool _getelement(value v, int i, value *out) {
+    if (MORPHO_ISLIST(v)) {
+        return list_getelement(MORPHO_GETLIST(v), i, out);
+    } else if (MORPHO_ISTUPLE(v)) {
+        return tuple_getelement(MORPHO_GETTUPLE(v), i, out);
+    }
+    return false;
+}
+
+static bool _length(value v, int *len) {
+    if (MORPHO_ISLIST(v)) {
+        *len = list_length(MORPHO_GETLIST(v)); return true;
+    } else if (MORPHO_ISTUPLE(v)) {
+        *len = tuple_length(MORPHO_GETTUPLE(v)); return true;
+    }
+    return false;
+}
+
+/** Create a matrix from a list of lists (or tuples) */
+objectxmatrix *xmatrix_listconstructor(vm *v, value lst, objecttype type, MatrixIdx_t nvals) {
+    value iel, jel;
+    
+    int nrows=0, ncols=0, rlen;
+    _length(lst, &nrows);
+    for (int i=0; i<nrows; i++) {
+        if (_getelement(lst, i, &iel) &&
+            _length(iel, &rlen) &&
+            rlen>ncols) {
+            ncols=rlen;
+        }
+    }
+    
+    objectxmatrix *new=xmatrix_newwithtype(type, nrows, ncols, nvals, true);
+    if (!new) return NULL;
+    
+    for (int i=0; i<nrows; i++) {
+        _getelement(lst, i, &iel);
+        for (int j=0; j<ncols; j++) {
+            if (_getelement(iel, j, &jel)) {
+                xmatrix_getinterface(new)->setelfn(v, jel, new->elements+(j*ncols + i)*new->nvals);
+            }
+        }
+    }
+    
+    return new;
+}
+
+/** Construct a matrix from an array */
+objectxmatrix *xmatrix_arrayconstructor(vm *v, objectarray *a, objecttype type, MatrixIdx_t nvals) {
+    int nrows = MORPHO_GETINTEGERVALUE(a->dimensions[0]);
+    int ncols = MORPHO_GETINTEGERVALUE(a->dimensions[1]);
+    
+    objectxmatrix *new=xmatrix_newwithtype(type, nrows, ncols, nvals, true);
+    if (!new) return NULL;
+    
+    for (int i=0; i<nrows; i++) {
+        for (int j=0; j<ncols; j++) {
+            unsigned int indx[2]={ i, j };
+            value el;
+            if (array_getelement(a, 2, indx, &el)==ARRAY_OK) {
+                xmatrix_getinterface(new)->setelfn(v, el, new->elements+(j*ncols + i)*new->nvals);
+            }
+        }
+    }
+    return new;
+}
+
 /* ----------------------
  * Accessing elements
  * ---------------------- */
@@ -514,79 +581,20 @@ value xmatrix_constructor__xmatrix(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) xmatrix_clone(a));
 }
 
-static bool _getelement(value v, int i, value *out) {
-    if (MORPHO_ISLIST(v)) {
-        return list_getelement(MORPHO_GETLIST(v), i, out);
-    } else if (MORPHO_ISTUPLE(v)) {
-        return tuple_getelement(MORPHO_GETTUPLE(v), i, out);
-    }
-    return false;
-}
-
-static bool _length(value v, int *len) {
-    if (MORPHO_ISLIST(v)) {
-        *len = list_length(MORPHO_GETLIST(v)); return true;
-    } else if (MORPHO_ISTUPLE(v)) {
-        *len = tuple_length(MORPHO_GETTUPLE(v)); return true;
-    }
-    return false;
-}
-
 /** Constructs a matrix from a list of lists or tuples */
 value xmatrix_constructor__list(vm *v, int nargs, value *args) {
-    value lst = MORPHO_GETARG(args, 0);
-    value iel, jel;
-    
-    int nrows=0, ncols=0, rlen;
-    _length(lst, &nrows);
-    for (int i=0; i<nrows; i++) {
-        if (_getelement(lst, i, &iel) &&
-            _length(iel, &rlen) &&
-            rlen>ncols) {
-            ncols=rlen;
-        }
-    }
-    
-    objectxmatrix *new=xmatrix_new(nrows, ncols, true);
-    if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
-    
-    for (int i=0; i<nrows; i++) {
-        _getelement(lst, i, &iel);
-        for (int j=0; j<ncols; j++) {
-            if (_getelement(iel, j, &jel)) {
-                xmatrix_getinterface(new)->setelfn(v, jel, new->elements+(j*ncols + i)*new->nvals);
-            }
-        }
-    }
-    
+    objectxmatrix *new = xmatrix_listconstructor(v, MORPHO_GETARG(args, 0), OBJECT_XMATRIX, 1);
     return morpho_wrapandbind(v, (object *) new);
 }
 
-/** Constructs a matrix from a list of lists or tuples */
+/** Constructs a matrix from an array */
 value xmatrix_constructor__array(vm *v, int nargs, value *args) {
     objectarray *a = MORPHO_GETARRAY(MORPHO_GETARG(args, 0));
-    
     if (a->ndim!=2) { morpho_runtimeerror(v, LINALG_INVLDARGS); return MORPHO_NIL; }
     
-    int nrows = MORPHO_GETINTEGERVALUE(a->dimensions[0]);
-    int ncols = MORPHO_GETINTEGERVALUE(a->dimensions[1]);
-    
-    objectxmatrix *new=xmatrix_new(nrows, ncols, true);
-    if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
-    
-    for (int i=0; i<nrows; i++) {
-        for (int j=0; j<ncols; j++) {
-            unsigned int indx[2]={ i, j };
-            value el;
-            if (array_getelement(a, 2, indx, &el)==ARRAY_OK) {
-                xmatrix_getinterface(new)->setelfn(v, el, new->elements+(j*ncols + i)*new->nvals);
-            }
-        }
-    }
-    
+    objectxmatrix *new = xmatrix_arrayconstructor(v, a, OBJECT_XMATRIX, 1);
     return morpho_wrapandbind(v, (object *) new);
 }
-
 
 value xmatrix_constructor__err(vm *v, int nargs, value *args) {
     morpho_runtimeerror(v, MATRIX_CONSTRUCTOR);

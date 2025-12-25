@@ -1,4 +1,4 @@
-// Create a Matrix from a Tuple of Tuples
+// Create a Matrix from an Array
 
 import newlinalg 
 

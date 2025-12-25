@@ -1,4 +1,4 @@
-// Non-square matrix error (for operations requiring square matrices)
+// Non-square matrix err. (for operations requiring square matrices)
 import newlinalg 
 
 var A = ComplexMatrix(2,3)

@@ -14,4 +14,12 @@ print es
 print es[0]
 // expect: (0 + 1im, 0 - 1im)
 
-print es[1]
+// Compare to analytical eigenvectors 
+var v = ComplexMatrix(2,2)
+v[0,0]=sqrt(2)/2 
+v[1,0]=sqrt(2)/2 
+v[0,1]=sqrt(2)/2
+v[1,1]=-sqrt(2)/2
+
+print abs((es[1]-v).sum()) < 1e-15
+// expect: true

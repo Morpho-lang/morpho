@@ -508,9 +508,85 @@ value xmatrix_constructor__int_int(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
-value xmatrix_constructor__list(vm *v, int nargs, value *args) {
-    return MORPHO_NIL;
+/** Clones a matrix */
+value xmatrix_constructor__xmatrix(vm *v, int nargs, value *args) {
+    objectxmatrix *a = MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
+    return morpho_wrapandbind(v, (object *) xmatrix_clone(a));
 }
+
+static bool _getelement(value v, int i, value *out) {
+    if (MORPHO_ISLIST(v)) {
+        return list_getelement(MORPHO_GETLIST(v), i, out);
+    } else if (MORPHO_ISTUPLE(v)) {
+        return tuple_getelement(MORPHO_GETTUPLE(v), i, out);
+    }
+    return false;
+}
+
+static bool _length(value v, int *len) {
+    if (MORPHO_ISLIST(v)) {
+        *len = list_length(MORPHO_GETLIST(v)); return true;
+    } else if (MORPHO_ISTUPLE(v)) {
+        *len = tuple_length(MORPHO_GETTUPLE(v)); return true;
+    }
+    return false;
+}
+
+/** Constructs a matrix from a list of lists or tuples */
+value xmatrix_constructor__list(vm *v, int nargs, value *args) {
+    value lst = MORPHO_GETARG(args, 0);
+    value iel, jel;
+    
+    int nrows=0, ncols=0, rlen;
+    _length(lst, &nrows);
+    for (int i=0; i<nrows; i++) {
+        if (_getelement(lst, i, &iel) &&
+            _length(iel, &rlen) &&
+            rlen>ncols) {
+            ncols=rlen;
+        }
+    }
+    
+    objectxmatrix *new=xmatrix_new(nrows, ncols, true);
+    if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
+    
+    for (int i=0; i<nrows; i++) {
+        _getelement(lst, i, &iel);
+        for (int j=0; j<ncols; j++) {
+            if (_getelement(iel, j, &jel)) {
+                xmatrix_getinterface(new)->setelfn(v, jel, new->elements+(j*ncols + i)*new->nvals);
+            }
+        }
+    }
+    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Constructs a matrix from a list of lists or tuples */
+value xmatrix_constructor__array(vm *v, int nargs, value *args) {
+    objectarray *a = MORPHO_GETARRAY(MORPHO_GETARG(args, 0));
+    
+    if (a->ndim!=2) { morpho_runtimeerror(v, LINALG_INVLDARGS); return MORPHO_NIL; }
+    
+    int nrows = MORPHO_GETINTEGERVALUE(a->dimensions[0]);
+    int ncols = MORPHO_GETINTEGERVALUE(a->dimensions[1]);
+    
+    objectxmatrix *new=xmatrix_new(nrows, ncols, true);
+    if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
+    
+    for (int i=0; i<nrows; i++) {
+        for (int j=0; j<ncols; j++) {
+            unsigned int indx[2]={ i, j };
+            value el;
+            if (array_getelement(a, 2, indx, &el)==ARRAY_OK) {
+                xmatrix_getinterface(new)->setelfn(v, el, new->elements+(j*ncols + i)*new->nvals);
+            }
+        }
+    }
+    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
 
 value xmatrix_constructor__err(vm *v, int nargs, value *args) {
     morpho_runtimeerror(v, MATRIX_CONSTRUCTOR);
@@ -1030,11 +1106,11 @@ MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "XMatrix (XMatrix)", XMatrix_sub__xma
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "XMatrix (Nil)", XMatrix_add__nil, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "XMatrix (_)", XMatrix_sub__x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "XMatrix (_)", XMatrix_subr__x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "XMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "XMatrix (_)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "XMatrix (XMatrix)", XMatrix_mul__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "XMatrix (Float)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "XMatrix (_)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (XMatrix)", XMatrix_div__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (Float)", XMatrix_div__float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "XMatrix (_)", XMatrix_div__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, XMatrix)", XMatrix_acc__x_xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INVERSE_METHOD, "XMatrix ()", XMatrix_inverse, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUM_METHOD, "Float ()", XMatrix_sum, MORPHO_FN_PUREFN),
@@ -1065,7 +1141,10 @@ void xmatrix_initialize(void) {
     object_setveneerclass(OBJECT_XMATRIX, xmatrixclass);
     
     morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (Int, Int)", xmatrix_constructor__int_int, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (XMatrix)", xmatrix_constructor__xmatrix, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (List)", xmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (Tuple)", xmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (Array)", xmatrix_constructor__array, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(XMATRIX_CLASSNAME, "(...)", xmatrix_constructor__err, MORPHO_FN_CONSTRUCTOR, NULL);
     
     morpho_addfunction(XMATRIX_IDENTITYCONSTRUCTOR, "XMatrix (Int)", xmatrix_identityconstructor, MORPHO_FN_CONSTRUCTOR, NULL);

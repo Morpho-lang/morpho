@@ -10,3 +10,5 @@ A[1,1]=1
 A.acc(2,A)
 
 print A
+// expect: [ 3 3 ]
+// expect: [ 3 3 ]

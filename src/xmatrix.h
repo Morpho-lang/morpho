@@ -186,6 +186,14 @@ objectxmatrix *xmatrix_clone(objectxmatrix *in);
 objectxmatrix *xmatrix_listconstructor(vm *v, value lst, objecttype type, MatrixIdx_t nvals);
 objectxmatrix *xmatrix_arrayconstructor(vm *v, objectarray *a, objecttype type, MatrixIdx_t nvals);
 
+linalgError_t xmatrix_axpy(double alpha, objectxmatrix *x, objectxmatrix *y);
+linalgError_t xmatrix_copy(objectxmatrix *x, objectxmatrix *y);
+void xmatrix_scale(objectxmatrix *x, double scale);
+linalgError_t xmatrix_identity(objectxmatrix *x);
+linalgError_t xmatrix_mmul(double alpha, objectxmatrix *x, objectxmatrix *y, double beta, objectxmatrix *z);
+linalgError_t xmatrix_addscalar(objectxmatrix *x, double alpha, double beta);
+linalgError_t xmatrix_transpose(objectxmatrix *x, objectxmatrix *y);
+
 linalgError_t xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value);
 linalgError_t xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value);
 linalgError_t xmatrix_getelementptr(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value);

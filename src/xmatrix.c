@@ -312,7 +312,7 @@ linalgError_t xmatrix_axpy(double alpha, objectxmatrix *x, objectxmatrix *y) {
     return LINALGERR_OK;
 }
 
-/** Copies a matrix  y <- a */
+/** Copies a matrix  y <- x */
 linalgError_t xmatrix_copy(objectxmatrix *x, objectxmatrix *y) {
     if (!(x->ncols==y->ncols && x->nrows==y->nrows)) return LINALGERR_INCOMPATIBLE_DIM;
     

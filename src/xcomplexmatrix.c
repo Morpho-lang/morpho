@@ -142,6 +142,14 @@ linalgError_t complexmatrix_getelement(objectcomplexmatrix *matrix, MatrixIdx_t 
     return LINALGERR_OK;
 }
 
+/** Copies a real matrix x into a complex matrix y */
+linalgError_t complexmatrix_promote(objectxmatrix *x, objectcomplexmatrix *y) {
+    if (!(x->ncols==y->ncols && x->nrows==y->nrows)) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    cblas_dcopy((__LAPACK_int) x->nels, x->elements, 1, y->elements, 2);
+    return LINALGERR_OK;
+}
+
 /* ----------------------
  * Complex arithmetic
  * ---------------------- */
@@ -209,6 +217,14 @@ value complexmatrix_constructor__int_int(vm *v, int nargs, value *args) {
     MatrixIdx_t ncols = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
     
     objectcomplexmatrix *new=complexmatrix_new(nrows, ncols, true);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value complexmatrix_constructor__xmatrix(vm *v, int nargs, value *args) {
+    objectxmatrix *a = MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
+    
+    objectcomplexmatrix *new=complexmatrix_new(a->nrows, a->ncols, true);
+    if (new) complexmatrix_promote(a, new);
     return morpho_wrapandbind(v, (object *) new);
 }
 
@@ -347,6 +363,7 @@ void complexmatrix_initialize(void) {
     
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Int, Int)", complexmatrix_constructor__int_int, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (ComplexMatrix)", xmatrix_constructor__xmatrix, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (XMatrix)", complexmatrix_constructor__xmatrix, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (List)", complexmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Tuple)", complexmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Array)", complexmatrix_constructor__array, MORPHO_FN_CONSTRUCTOR, NULL);

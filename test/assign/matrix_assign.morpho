@@ -14,3 +14,7 @@ B.assign(A)
 print B 
 // expect: [ 1 2 ]
 // expect: [ 3 4 ]
+
+var C = Matrix(1,2)
+B.assign(C)
+// expect error 'LnAlgMtrxIncmptbl'

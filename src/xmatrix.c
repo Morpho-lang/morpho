@@ -655,7 +655,10 @@ value XMatrix_clone(vm *v, int nargs, value *args) {
  * index()
  * --------- */
 
-static value _getindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
+value XMatrix_index__int_int(vm *v, int nargs, value *args) {
+    objectxmatrix *m = MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+                j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
     value out=MORPHO_NIL;
     
     double *elptr=NULL;
@@ -663,17 +666,6 @@ static value _getindex(vm *v, objectxmatrix *m, MatrixIdx_t i, MatrixIdx_t j) {
 
     if (elptr) out=xmatrix_getinterface(m)->getelfn(v, elptr);
     return out;
-}
-
-value XMatrix_index__int(vm *v, int nargs, value *args) {
-    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    return _getindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, 0);
-}
-
-value XMatrix_index__int_int(vm *v, int nargs, value *args) {
-    MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
-                j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
-    return _getindex(v, MORPHO_GETXMATRIX(MORPHO_SELF(args)), i, j);
 }
 
 /* ---------
@@ -1085,13 +1077,12 @@ value XMatrix_dimensions(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
-
 MORPHO_BEGINCLASS(XMatrix)
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_FORMAT_METHOD, "(String)", XMatrix_format, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(XMatrix)", XMatrix_assign, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "XMatrix ()", XMatrix_clone, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_index__int, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", XMatrix_enumerate, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", XMatrix_index__int_int, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", XMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),

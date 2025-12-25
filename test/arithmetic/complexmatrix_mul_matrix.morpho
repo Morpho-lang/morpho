@@ -8,12 +8,12 @@ A[1,0]=3+3im
 A[1,1]=4+4im
 
 var B = ComplexMatrix(2,2)
-B[0,0]=1+0im
-B[0,1]=0+1im
-B[1,0]=1+0im
-B[1,1]=0+1im
+B[0,0]=1
+B[0,1]=1im
+B[1,0]=-1im
+B[1,1]=1
 
 print A * B
-// expect: [ 3 + 1im 2 + 3im ]
-// expect: [ 7 + 3im 4 + 7im ]
+// expect: [ 3 - 1im 1 + 3im ]
+// expect: [ 7 - 1im 1 + 7im ]
 

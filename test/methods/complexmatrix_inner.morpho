@@ -8,11 +8,10 @@ A[1,0]=3+3im
 A[1,1]=4+4im
 
 var B = ComplexMatrix(2,2)
-B[0,0]=1+0im
-B[0,1]=0+1im
-B[1,0]=1+0im
-B[1,1]=0+1im
+B[0,0]=1
+B[0,1]=1im
+B[1,0]=-1im
+B[1,1]=1
 
 print A.inner(B)
-// expect: 10 - 10im
-
+// expect: 4 - 6im

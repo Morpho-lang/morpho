@@ -790,6 +790,7 @@ value XMatrix_sub__xmatrix(vm *v, int nargs, value *args) {
 }
 
 value XMatrix_sub__x(vm *v, int nargs, value *args) {
+    if (xmatrix_isamatrix(MORPHO_GETARG(args, 0))) return MORPHO_NIL; // Redirect to subr
     return _xpa(v,nargs,args,1.0,-1.0);
 }
 

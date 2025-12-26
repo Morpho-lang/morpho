@@ -31,6 +31,13 @@ matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a) {
     return NULL;
 }
 
+/** Checks if a value is a known kind of matrix. */
+bool xmatrix_isamatrix(value val) {
+    if (!MORPHO_ISOBJECT(val)) return false;
+    int iindx=MORPHO_GETOBJECT(val)->type-OBJECT_XMATRIX;
+    return iindx>=0 && iindx<matrixinterfacedefnnext;
+}
+
 /* **********************************************************************
  * XMatrix objects
  * ********************************************************************** */
@@ -774,6 +781,7 @@ value XMatrix_add__nil(vm *v, int nargs, value *args) {
 }
 
 value XMatrix_add__x(vm *v, int nargs, value *args) {
+    if (xmatrix_isamatrix(MORPHO_GETARG(args, 0))) return MORPHO_NIL; // Redirect to addr 
     return _xpa(v,nargs,args,1.0,1.0);
 }
 

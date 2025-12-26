@@ -181,6 +181,8 @@ IMPLEMENTATIONFN(XMatrix_dimensions);
  * Interface
  * ------------------------------------------------------- */
 
+bool xmatrix_isamatrix(value val);
+
 objectxmatrix *xmatrix_newwithtype(objecttype type, MatrixIdx_t nrows, MatrixIdx_t ncols, MatrixIdx_t nvals, bool zero);
 objectxmatrix *xmatrix_clone(objectxmatrix *in);
 objectxmatrix *xmatrix_listconstructor(vm *v, value lst, objecttype type, MatrixIdx_t nvals);

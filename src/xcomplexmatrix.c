@@ -258,6 +258,22 @@ value complexmatrix_constructor__array(vm *v, int nargs, value *args) {
  * Arithmetic
  * ---------------------- */
 
+value ComplexMatrix_add__xmatrix(vm *v, int nargs, value *args) {
+    objectcomplexmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
+    value out=MORPHO_NIL;
+    
+    if (a->ncols==b->ncols && a->nrows==b->nrows) {
+        objectcomplexmatrix *new=complexmatrix_new(a->nrows, a->ncols, true);
+        if (new) {
+            complexmatrix_promote(b, new);
+            xmatrix_axpy(1.0, a, new);
+        }
+        out = morpho_wrapandbind(v, (object *) new);
+    } else morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
+    return out;
+}
+
 value ComplexMatrix_mul__complexmatrix(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
@@ -270,7 +286,7 @@ value ComplexMatrix_mul__complexmatrix(vm *v, int nargs, value *args) {
             complexmatrix_mmul(alpha, a, b, beta, new);
         }
         out = morpho_wrapandbind(v, (object *) new);
-    } else morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+    } else morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
     return out;
 }
 
@@ -328,8 +344,10 @@ MORPHO_METHOD_SIGNATURE(XMATRIX_SETCOLUMN_METHOD, "(Int, ComplexMatrix)", XMatri
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (Nil)", XMatrix_add__nil, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (_)", XMatrix_add__x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "ComplexMatrix (_)", XMatrix_add__x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "ComplexMatrix (Nil)", XMatrix_add__nil, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (Nil)", XMatrix_add__nil, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (_)", XMatrix_sub__x, BUILTIN_FLAGSEMPTY),

@@ -1,0 +1,7 @@
+// Type propagation through NOT
+
+var a = true 
+
+Bool b = !a
+
+print b.clss() // expect: @Bool

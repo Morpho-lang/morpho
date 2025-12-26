@@ -577,10 +577,32 @@ static inline bool vm_invoke(vm *v, value obj, value method, int nargs, value *a
                     for (unsigned int i=0; i<nargs; i++) sargs[i+1]=args[i];
                     *out = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, nargs, sargs);
                     return true;
-                }
+                } else return morpho_invoke(v, obj, ifunc, nargs, args, out);
             }
         }
     }
+    return false;
+}
+
+/** Recursively searches the parents list of classes to see if the type 'match' is present */
+bool _findtypeinparent(objectclass *type, value match) {
+    for (int i=0; i<type->parents.count; i++) {
+        if (MORPHO_ISEQUAL(type->parents.data[i], match) ||
+            _findtypeinparent(MORPHO_GETCLASS(type->parents.data[i]), match)) return true;
+    }
+    return false;
+}
+
+static inline bool vm_typecheck(vm *v, value val, value match) {
+    value type;
+    if (!value_type(val, &type)) return false;
+    
+    if (MORPHO_ISNIL(type) || // If type is unset, we always match
+        MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same
+    
+    // Also match if 'match' inherits from 'type'
+    if (MORPHO_ISCLASS(match)) return _findtypeinparent( MORPHO_GETCLASS(match), type);
+    
     return false;
 }
 
@@ -1159,9 +1181,9 @@ callfunction: // Jump here if an instruction becomes a call
                 }
             } else {
                 /* Check if the operand has a veneer class */
-                objectclass *klass;
+                objectclass *klass=NULL;
                 if (MORPHO_ISOBJECT(left)) klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
-                else klass = value_getveneerclass(left);
+                else if (!MORPHO_ISNIL(left)) klass = value_getveneerclass(left);
                 
                 if (klass) {
                     value ifunc;
@@ -1339,9 +1361,9 @@ callfunction: // Jump here if an instruction becomes a call
                 }
             } else {
                 /* Check for veneer class */
-                objectclass *klass;
+                objectclass *klass=NULL;
                 if (MORPHO_ISOBJECT(left)) klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(left));
-                else klass = value_getveneerclass(left);
+                else if (!MORPHO_ISNIL(left)) klass = value_getveneerclass(left);
                 
                 if (klass) {
                     value ifunc;
@@ -1476,6 +1498,23 @@ callfunction: // Jump here if an instruction becomes a call
             morpho_printf(v, "\n");
             DISPATCH();
 
+        CASE_CODE(TYPECHECK):
+            a=DECODE_A(bc); b=DECODE_Bx(bc);
+        
+            if (!vm_typecheck(v, reg[a], v->konst[b])) {
+                value type;
+                value_type(reg[a], &type);
+                char *typename = MORPHO_NILSTRING;
+                if (MORPHO_ISCLASS(type)) typename = MORPHO_GETCSTRING(MORPHO_GETCLASS(type)->name);
+                
+                
+                VERROR(VM_TYPECHK,
+                       typename,
+                       MORPHO_GETCSTRING(MORPHO_GETCLASS(v->konst[b])->name));
+            }
+            
+            DISPATCH();
+        
         CASE_CODE(BREAK):
             if (v->debug) {
                 if (vm_shouldbreakatpc(v, pc) ||
@@ -1724,13 +1763,14 @@ void morpho_bindobjects(vm *v, int nobj, value *obj) {
 /** @brief   Convenience function to wrap a single object into a value and bind to the VM
  *  @param   v VM to use
  *  @param   out Object to wrap
- *  @returns object wrapped in a value, or MORPHO_NIL if obj is NULL */
+ *  @returns object wrapped in a value, or MORPHO_NIL if obj is NULL
+ *  Also raises ERROR_ALLOCATIONFAILED if passed a null pointer */
 value morpho_wrapandbind(vm *v, object *obj) {
     value out = MORPHO_NIL;
     if (obj) {
         out=MORPHO_OBJECT(obj);
         morpho_bindobjects(v, 1, &out);
-    }
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     return out;
 }
 
@@ -2169,6 +2209,7 @@ void morpho_initialize(void) {
     morpho_defineerror(VM_DVZR, ERROR_HALT, VM_DVZR_MSG);
 	morpho_defineerror(VM_GETINDEXARGS, ERROR_HALT, VM_GETINDEXARGS_MSG);
     morpho_defineerror(VM_MLTPLDSPTCHFLD, ERROR_HALT, VM_MLTPLDSPTCHFLD_MSG);
+    morpho_defineerror(VM_TYPECHK, ERROR_HALT, VM_TYPECHK_MSG);
 
     morpho_defineerror(VM_DBGQUIT, ERROR_HALT, VM_DBGQUIT_MSG);
 

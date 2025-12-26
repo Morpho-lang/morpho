@@ -3,6 +3,7 @@ target_sources(morpho
         classes.h
         array.c        array.h
         bool.c         bool.h 
+        cfunction.c    cfunction.h 
         closure.c      closure.h
         clss.c         clss.h
         cmplx.c        cmplx.h
@@ -17,6 +18,7 @@ target_sources(morpho
         json.c         json.h
         list.c         list.h
         metafunction.c metafunction.h
+        nil.c          nil.h
         range.c        range.h
         strng.c        strng.h
         system.c       system.h
@@ -31,6 +33,8 @@ target_sources(morpho
     FILES
         classes.h
         array.h
+        bool.h
+        cfunction.h 
         closure.h
         clss.h
         cmplx.h
@@ -44,6 +48,7 @@ target_sources(morpho
         json.h
         list.h
         metafunction.h
+        nil.h
         range.h
         strng.h
         system.h

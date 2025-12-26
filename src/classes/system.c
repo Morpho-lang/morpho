@@ -181,8 +181,7 @@ MORPHO_ENDCLASS
  * ********************************************************************** */
 
 void system_initialize(void) {
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     builtin_addclass(SYSTEM_CLASSNAME, MORPHO_GETCLASSDEFINITION(System), objclass);
     

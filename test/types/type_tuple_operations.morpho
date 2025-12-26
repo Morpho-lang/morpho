@@ -1,0 +1,10 @@
+// Type checking with tuple operations
+
+Tuple t = (5, "hello")
+Int first = t[0]
+String second = t[1]
+
+print first   // expect: 5
+print second  // expect: hello
+
+

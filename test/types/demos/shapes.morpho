@@ -1,0 +1,88 @@
+// Demonstrate use of type system
+
+import constants
+
+class Shape { }
+
+class Circle is Shape {
+    init(Float radius) {
+        self.radius = radius
+    }
+}
+
+class Rectangle is Shape {
+    init(Float width, Float height) {
+        self.width = width
+        self.height = height
+    }
+}
+
+class Triangle is Shape {
+    init(Float base, Float height) {
+        self.base = base
+        self.height = height
+    }
+}
+
+class Polygon is Shape {
+    init(Int sides, Float sideLength) {
+        self.sides = sides
+        self.sideLength = sideLength
+    }
+}
+
+// Use multiple dispatch to compute area 
+fn area(Circle c) { return Pi*c.radius*c.radius}
+fn area(Rectangle r) { return r.width*r.height }
+fn area(Triangle t) { return t.base*t.height/2 }
+fn area(Polygon p) { 
+    var apothem = p.sideLength / (2 * tan(Pi / p.sides))
+    return 0.5 * p.sides * p.sideLength * apothem
+}
+
+// Compare shapes 
+fn compare_shapes(Circle c1, Circle c2) {
+    if (c1.radius > c2.radius) return "first circle is larger"
+    if (c1.radius < c2.radius) return "second circle is larger"
+    return "circles are equal";
+}
+
+fn compare_shapes(Rectangle r1, Rectangle r2) {
+    var area1 = area(r1)
+    var area2 = area(r2)
+
+    if (area1 > area2) return "first rectangle is larger"
+    if (area1 < area2) return "second rectangle is larger"
+    return "rectangles are equal"
+}
+
+fn compare_shapes(Circle c1, Rectangle r2) {
+    var area1 = area(c1)
+    var area2 = area(r2)
+
+    if (area1 > area2) return "circle is larger"
+    if (area1 < area2) return "rectangle is larger"
+    return "shapes have equal area"
+}
+
+fn compare_shapes(Shape a, Shape b) {
+    return "cannot compare different shape types";
+}
+
+Shape circle = Circle(5.0)
+Shape rectangle = Rectangle(10.0, 8.0)
+
+{
+    Shape triangle = Triangle(6.0, 4.0)
+    Shape polygon = Polygon(6, 3.0)
+
+    area(circle)
+    area(rectangle)
+    area(triangle)
+    area(polygon)
+}
+
+String comparison = compare_shapes(circle, rectangle)
+print "Shape comparison: ${comparison}"
+
+// expect: Shape comparison: rectangle is larger

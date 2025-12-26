@@ -1,0 +1,16 @@
+// Type propagation through deeply nested closures
+
+fn outer(Int x) {
+    fn middle(Int y) {
+        fn inner(Int z) {
+            Int result = x + y + z
+            return result
+        }
+        return inner
+    }
+    return middle
+}
+
+Int result = outer(1)(2)(3)
+print result  // expect: 6
+

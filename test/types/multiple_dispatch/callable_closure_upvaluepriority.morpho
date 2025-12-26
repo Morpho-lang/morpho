@@ -1,0 +1,21 @@
+// Dispatch on Callable
+
+fn f(Callable g, x) {
+    print g(x)
+}
+
+fn f(Float x, y) {
+    print x+y
+}
+
+fn m(f) { 
+    fn g(x) {
+        return f(x)
+    }
+
+    return g
+}
+
+var p = m(cos)
+
+f(p, 0)   // expect: 1

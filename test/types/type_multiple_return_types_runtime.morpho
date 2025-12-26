@@ -1,0 +1,13 @@
+// Function with multiple return types yields dynamic typecheck
+
+fn multi(x) {
+    if (x>0) return 1
+    return "foo"
+}
+
+Int a = multi(2)
+print a
+// expect: 1
+
+a = multi(-1)
+// expect error 'TypeChk'

@@ -1,0 +1,11 @@
+// Runtime typecheck
+
+fn f(x) {
+    return x
+}
+
+{
+    Int b = 1 + f(1.5)
+}
+
+// expect error 'TypeChk'

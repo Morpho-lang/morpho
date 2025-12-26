@@ -1,0 +1,14 @@
+// Retrieve type from upvalue with typecheck
+
+fn f(x) {
+    var y = x
+
+    fn g() {
+        Int z = y
+        return z
+    }
+
+    return g
+}
+
+print f(1.5)() // expect error 'TypeChk'

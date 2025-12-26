@@ -108,6 +108,9 @@
 #define COMPILE_TYPEVIOLATION             "TypeErr"
 #define COMPILE_TYPEVIOLATION_MSG         "Type violation: Attempting to assign type %s to %s variable %s."
 
+#define COMPILE_NOINITIALIZER             "MssngIntlzr"
+#define COMPILE_NOINITIALIZER_MSG         "Missing initializer for typed variable %s."
+
 #define COMPILE_UNKNWNTYPE                "UnknwnType"
 #define COMPILE_UNKNWNTYPE_MSG            "Unknown type '%s'."
 
@@ -238,11 +241,15 @@ typedef struct {
     varray_upvalue upvalues;
     varray_forwardreference forwardref;
     varray_functionref functionref; /* Functions visible within this state */
+    dictionary returntypes; /** Possible return types */
     registerindx varg;
     unsigned int nreg; /* Largest number of registers used */
     unsigned int scopedepth;
     unsigned int loopdepth; /* Count number of nesting depths of a loop */
+    unsigned int cfdepth; /* Count depth inside control flow; allows us to identify where returns are */
     bool inargs; /* Set while compiling function calls to ensure allocations are at the top of the stack */
+    bool hasreturn; /* Set if the compiling function has an unconditional return */
+    value typedec; /* Set to the current type of a type declaration */
     //unsigned int nposn; /* Number of positional args recorded in latest call */
     //unsigned int nopt; /* Number of optional args recorded in latest call */
 } functionstate;

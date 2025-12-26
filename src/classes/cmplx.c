@@ -268,7 +268,7 @@ value complex_builtinceil(vm * v, objectcomplex *c) {
 #undef RET_DOUBLE
 
 #define COMPLEX_BUILTIN_BOOL(fcn,logicalop)\
-value complex_builtin##fcn(objectcomplex *c) {\
+value complex_builtin##fcn(vm *v, objectcomplex *c) {\
     bool val = fcn(creal(c->Z)) logicalop fcn(cimag(c->Z));\
     return MORPHO_BOOL(val);\
 }
@@ -634,6 +634,8 @@ value Complex_angle(vm *v, int nargs, value *args) {
     complex_angle(a, &val);
     return MORPHO_FLOAT(val);
 }
+
+/** Absolute value of a complex number  */
 value Complex_abs(vm *v, int nargs, value *args) {
     objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
     double val;
@@ -670,22 +672,22 @@ value Complex_clone(vm *v, int nargs, value *args) {
 
 MORPHO_BEGINCLASS(ComplexNum)
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Complex_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ADD_METHOD, Complex_add, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SUB_METHOD, Complex_sub, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_MUL_METHOD, Complex_mul, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_DIV_METHOD, Complex_div, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ADDR_METHOD, Complex_add, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SUBR_METHOD, Complex_subr, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_MULR_METHOD, Complex_mul, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_DIVR_METHOD, Complex_divr, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_POW_METHOD, Complex_power, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_POWR_METHOD, Complex_powerr, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(COMPLEX_ANGLE_METHOD, Complex_angle, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(COMPLEX_CONJUGATE_METHOD, Complex_conjugate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(COMPLEX_REAL_METHOD, Complex_getreal, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(COMPLEX_IMAG_METHOD, Complex_getimag, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(COMPLEX_ABS_METHOD, Complex_abs, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Complex_clone, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Complex (...)", Complex_add, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Complex (...)", Complex_sub, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "Complex (...)", Complex_mul, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "Complex (...)", Complex_div, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Complex (...)", Complex_add, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "Complex (...)", Complex_subr, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "Complex (...)", Complex_mul, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIVR_METHOD, "Complex (...)", Complex_divr, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_POW_METHOD, "Complex (...)", Complex_power, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_POWR_METHOD, "Complex (...)", Complex_powerr, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(COMPLEX_ANGLE_METHOD, "Float (...)", Complex_angle, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(COMPLEX_CONJUGATE_METHOD, "Complex (...)", Complex_conjugate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(COMPLEX_REAL_METHOD, "Float (...)", Complex_getreal, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(COMPLEX_IMAG_METHOD, "Float (...)", Complex_getimag, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(COMPLEX_ABS_METHOD, "Float (...)", Complex_abs, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Complex ()", Complex_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -699,8 +701,7 @@ void complex_initialize(void) {
     // Complex constructor function
     morpho_addfunction(COMPLEX_CLASSNAME, COMPLEX_CLASSNAME " (...)", complex_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Define Complex class
     value complexclass=builtin_addclass(COMPLEX_CLASSNAME, MORPHO_GETCLASSDEFINITION(ComplexNum), objclass);

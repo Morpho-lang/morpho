@@ -1,0 +1,7 @@
+// Type propagation through a method call
+
+Array a = Array(2,2)
+
+Int b = a.count() 
+
+print b // expect: 4

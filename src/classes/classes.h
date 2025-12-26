@@ -13,6 +13,7 @@
 #include "function.h"
 #include "metafunction.h"
 #include "clss.h"
+#include "cfunction.h"
 #include "cmplx.h"
 #include "closure.h"
 #include "invocation.h"
@@ -28,6 +29,7 @@
 #include "bool.h"
 #include "flt.h"
 #include "int.h"
+#include "nil.h"
 
 //#include "file.h"
 //#include "system.h"

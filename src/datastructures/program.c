@@ -80,6 +80,16 @@ instructionindx program_getentry(program *p) {
     return out;
 }
 
+/** Retrieves the bytecode associated with the program */
+varray_instruction *program_getbytecode(program *p) {
+    return &p->code;
+}
+
+/** Retrieves the global function */
+objectfunction *program_getglobalfn(program *p) {
+    return p->global;
+}
+
 /** @brief Binds an object to a program
  *  @details Objects bound to the program are freed with the program; use for static data (e.g. held in constant tables) */
 void program_bindobject(program *p, object *obj) {

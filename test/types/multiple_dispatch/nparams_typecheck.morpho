@@ -1,0 +1,12 @@
+// Variable numbers of parameters with typecheck
+
+fn f(Int x) {
+    return 0
+}
+
+fn f(...x) {
+    return 1
+}
+
+print f(1)   // expect: 0
+print f(1,2) // expect: 1

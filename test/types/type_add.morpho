@@ -1,0 +1,7 @@
+// Type propagation through add
+
+{
+    var A = Matrix([1])
+    Matrix b = A+1
+    print b // expect: [ 2 ]
+}

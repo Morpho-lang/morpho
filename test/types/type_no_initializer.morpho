@@ -1,0 +1,7 @@
+// No initializer for typed variable
+
+{
+  Int a 
+}
+
+// expect error 'MssngIntlzr'

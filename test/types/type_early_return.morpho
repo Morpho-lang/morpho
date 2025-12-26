@@ -1,0 +1,16 @@
+// Type checking with multiple return paths
+
+fn check(Int x) {
+    if (x < 0) {
+        return 0  // Early return
+    }
+    Int result = x * 2
+    return result
+}
+
+Int a = check(5)
+Int b = check(-1)
+print a  // expect: 10
+print b  // expect: 0
+
+

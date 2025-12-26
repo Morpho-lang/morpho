@@ -266,7 +266,7 @@ void *platform_dlsym(MorphoDLHandle handle, const char *symbol) {
 
 DEFINE_VARRAY(MorphoThread, MorphoThread);
 
-/** Creates a thread */
+/** Creates a thread; returns true on success */
 bool MorphoThread_create(MorphoThread *thread, MorphoThreadFn threadfn, void *ref) {
 #ifdef _WIN32
     DWORD threadId; 

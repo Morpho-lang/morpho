@@ -1,0 +1,17 @@
+// Check types from continuation
+
+class A { }
+
+class B is A { } 
+
+class C is A { } 
+
+fn f(x) { return x }
+
+{
+    A a = f(B())
+    B b = a
+    C c = a
+}
+
+// expect error 'TypeChk'

@@ -197,6 +197,9 @@ void morpho_unreachable(const char *explanation);
 #define VM_MLTPLDSPTCHFLD                 "MltplDsptchFld"
 #define VM_MLTPLDSPTCHFLD_MSG             "Multiple dispatch could not find an implementation that matches these arguments."
 
+#define VM_TYPECHK                        "TypeChk"
+#define VM_TYPECHK_MSG                    "Type violation: Attempted to assign type %s to an %s variable."
+
 /* -------------------------------------------------------
  * Error interface
  * ------------------------------------------------------- */

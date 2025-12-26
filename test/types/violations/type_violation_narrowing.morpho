@@ -1,0 +1,12 @@
+// Type violation with incorrect type narrowing
+
+fn process(x) {
+    if (isint(x)) {
+        String s = x 
+        return s
+    }
+    return nil
+}
+
+print process(5)
+// expect error 'TypeChk' - x is Int, not String

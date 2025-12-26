@@ -598,12 +598,12 @@ value Array_clone(vm *v, int nargs, value *args) {
 
 MORPHO_BEGINCLASS(Array)
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Array_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_COUNT_METHOD, Array_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(ARRAY_DIMENSIONS_METHOD, Array_dimensions, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Array_count, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(ARRAY_DIMENSIONS_METHOD, "List ()", Array_dimensions, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Array_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Array_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Array_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Array_clone, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (_)", Array_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Array ()", Array_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -616,12 +616,11 @@ void array_initialize(void) {
     // Create array object type
     objectarraytype=object_addtype(&objectarraydefn);
     
-    // Locate the Object class to use as the parent class of Array
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
-    
     // Array constructor function
     morpho_addfunction(ARRAY_CLASSNAME, ARRAY_CLASSNAME " (...)", array_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    
+    // Locate the Object class to use as the parent class of Array
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Create Array veneer class
     value arrayclass=builtin_addclass(ARRAY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Array), objclass);

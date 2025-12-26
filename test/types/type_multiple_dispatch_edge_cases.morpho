@@ -1,0 +1,23 @@
+// Multiple dispatch with inheritance
+
+class Animal { }
+class Dog is Animal { }
+class Cat is Animal { }
+
+fn speak(Animal a) {
+    return "animal sound"
+}
+
+fn speak(Dog d) {
+    return "woof"
+}
+
+fn speak(Cat c) {
+    return "meow"
+}
+
+print speak(Animal())  // expect: animal sound
+print speak(Dog())     // expect: woof
+print speak(Cat())     // expect: meow
+
+

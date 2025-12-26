@@ -269,15 +269,15 @@ value Tuple_ismember(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Tuple)
-MORPHO_METHOD(MORPHO_COUNT_METHOD, Tuple_count, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Tuple_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Tuple_clone, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Tuple ()", Tuple_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Tuple_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_JOIN_METHOD, Tuple_join, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(LIST_ISMEMBER_METHOD, Tuple_ismember, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CONTAINS_METHOD, Tuple_ismember, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Tuple (_)", Tuple_join, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Bool (_)", Tuple_ismember, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Bool (_)", Tuple_ismember, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -291,8 +291,7 @@ void tuple_initialize(void) {
     objecttupletype=object_addtype(&objecttupledefn);
     
     // Locate the Object class to use as the parent class of Range
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Create tuple veneer class
     value tupleclass=builtin_addclass(TUPLE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Tuple), objclass);

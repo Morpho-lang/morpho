@@ -1,0 +1,17 @@
+// Return type of a function matches type qualifier
+
+fn sqr(Int x) {
+    return x*x
+}
+
+fn sqr(Float x) {
+    return Int(x*x)
+}
+
+Int a = sqr(2)
+
+Int b = sqr(2.5)
+
+print a.clss() // expect: @Int
+
+print b.clss() // expect: @Int

@@ -438,8 +438,8 @@ value Folder_contents(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Folder)
-MORPHO_METHOD(FOLDER_ISFOLDER, Folder_isfolder, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FOLDER_CONTENTS, Folder_contents, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(FOLDER_ISFOLDER, "Bool (_)", Folder_isfolder, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(FOLDER_CONTENTS, "List (_)", Folder_contents, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -451,8 +451,7 @@ void file_initialize(void) {
     
     objectfiletype=object_addtype(&objectfiledefn);
     
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     morpho_addfunction(FILE_CLASSNAME, FILE_CLASSNAME " (...)", file_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     

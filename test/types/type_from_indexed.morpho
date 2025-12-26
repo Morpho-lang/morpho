@@ -1,0 +1,7 @@
+// Retrieve from index with typecheck
+
+var a = [1,2,3]
+
+Int b = a[0]
+
+print b // expect: 1

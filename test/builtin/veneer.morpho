@@ -1,0 +1,6 @@
+// Veneer class for builtin functions 
+
+print apply.clss() // expect: @CFunction
+
+print apply.tostring() 
+// expect: <fn apply>

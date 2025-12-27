@@ -302,49 +302,39 @@ value ComplexMatrix_mul__complex(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
-static objectxmatrix *_mul(objectxmatrix *a, objectxmatrix *b) {
+/** Multiplication by a complexmatrix or a regular matrix */
+static bool _promote(vm *v, objectxmatrix *b, objectxmatrix **bp) { // Promotes b to a complexmatrix
+    *bp=complexmatrix_new(b->nrows, b->ncols, true);
+    if (!bp) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
+    return complexmatrix_promote(b, *bp)==LINALGERR_OK;
+}
+
+static value _cmmul(vm *v, objectxmatrix *a, objectxmatrix *b) {
+    if (a->ncols!=b->nrows) { morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES); return MORPHO_NIL; }
     objectcomplexmatrix *new=complexmatrix_new(a->nrows, b->ncols, false);
-    if (new) {
-        MorphoComplex alpha = MCBuild(1.0, 0.0), beta = MCBuild(0.0, 0.0);
-        complexmatrix_mmul(alpha, a, b, beta, new);
-    }
-    return new;
+    if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
+    complexmatrix_mmul(MCBuild(1.0, 0.0), a, b, MCBuild(0.0, 0.0), new);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+static value _mul(vm *v, value a, value b, bool promoteb, bool swap) {
+    objectxmatrix *A=MORPHO_GETXMATRIX(a), *B=MORPHO_GETXMATRIX(b), *bp=NULL;
+    if (promoteb) { if (_promote(v, B, &bp)) { B=bp; } else { return MORPHO_NIL; } }
+    value out = (swap ? _cmmul(v, B, A) : _cmmul(v, A, B)); // Multiply, swapping arguments if requested
+    if (bp) object_free((object *) bp);
+    return out;
 }
 
 value ComplexMatrix_mul__complexmatrix(vm *v, int nargs, value *args) {
-    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
-    if (a->ncols!=b->nrows) { morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES); return MORPHO_NIL; }
-    
-    return morpho_wrapandbind(v, (object *) _mul(a,b));
+    return _mul(v, MORPHO_SELF(args), MORPHO_GETARG(args, 0), false, false);
 }
 
 value ComplexMatrix_mul__xmatrix(vm *v, int nargs, value *args) {
-    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
-    if (a->ncols!=b->nrows) { morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES); return MORPHO_NIL; }
-    
-    objectcomplexmatrix *btemp=complexmatrix_new(b->nrows, b->ncols, true);
-    if (btemp) complexmatrix_promote(b, btemp);
-    else { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
-    
-    objectcomplexmatrix *new =_mul(a,btemp);
-    if (btemp) object_free((object *) btemp);
-    return morpho_wrapandbind(v, (object *) new);
+    return _mul(v, MORPHO_SELF(args), MORPHO_GETARG(args, 0), true, false);
 }
 
 value ComplexMatrix_mulr__xmatrix(vm *v, int nargs, value *args) {
-    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
-    if (a->ncols!=b->nrows) { morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES); return MORPHO_NIL; }
-    
-    objectcomplexmatrix *atemp=complexmatrix_new(a->nrows, a->ncols, true);
-    if (atemp) { complexmatrix_promote(a, atemp); }
-    else { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
-    
-    objectcomplexmatrix *new =_mul(atemp,b);
-    if (atemp) object_free((object *) atemp);
-    return morpho_wrapandbind(v, (object *) new);
+    return _mul(v, MORPHO_SELF(args), MORPHO_GETARG(args, 0), true, true);
 }
 
 /** Computes the trace */

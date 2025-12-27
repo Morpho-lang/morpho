@@ -750,7 +750,7 @@ static value _axpy(vm *v, int nargs, value *args, double alpha) {
     
     if (a->ncols==b->ncols && a->nrows==b->nrows) {
         new=xmatrix_clone(a);
-        if (new) xmatrix_axpy(alpha, b, new); // TODO: Error check
+        if (new) LINALG_ERRCHECKVM(xmatrix_axpy(alpha, b, new));
         out = morpho_wrapandbind(v, (object *) new);
     } else morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
     
@@ -760,12 +760,13 @@ static value _axpy(vm *v, int nargs, value *args, double alpha) {
 /** Add a scalar */
 static value _xpa(vm *v, int nargs, value *args, double sgna, double sgnb) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectxmatrix *new=NULL;
     value out=MORPHO_NIL;
     
     double beta;
     if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &beta)) {
-        objectxmatrix *new = xmatrix_clone(a);
-        if (new) xmatrix_addscalar(new, sgna, beta*sgnb);
+        new = xmatrix_clone(a);
+        if (new) LINALG_ERRCHECKVM(xmatrix_addscalar(new, sgna, beta*sgnb));
         out = morpho_wrapandbind(v, (object *) new);
     } else morpho_runtimeerror(v, LINALG_INVLDARGS);
     
@@ -817,7 +818,7 @@ value XMatrix_mul__xmatrix(vm *v, int nargs, value *args) {
     
     if (a->ncols==b->nrows) {
         objectxmatrix *new = xmatrix_new(a->nrows, b->ncols, false);
-        if (new) xmatrix_mmul(1.0, a, b, 0.0, new);
+        if (new) LINALG_ERRCHECKVM(xmatrix_mmul(1.0, a, b, 0.0, new));
         out = morpho_wrapandbind(v, (object *) new);
     } else morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
     return out;
@@ -840,13 +841,11 @@ value XMatrix_div__float(vm *v, int nargs, value *args) {
 value XMatrix_div__xmatrix(vm *v, int nargs, value *args) {
     objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_SELF(args)); // Note that the rhs is the receiver
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0)); // ... the lhs is the argument
-    value out=MORPHO_NIL;
     
     objectxmatrix *sol = xmatrix_clone(b);
-    out = morpho_wrapandbind(v, (object *) sol);
     if (sol) LINALG_ERRCHECKVM(xmatrix_solve(a, sol));
     
-    return out;
+    return morpho_wrapandbind(v, (object *) sol);
 }
 
 /** Accumulate in place */
@@ -855,7 +854,7 @@ value XMatrix_acc__x_xmatrix(vm *v, int nargs, value *args) {
     objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 1));
     
     double alpha=1.0;
-    if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &alpha)) morpho_runtimeerror(v, MATRIX_ARITHARGS);
+    if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &alpha)) { morpho_runtimeerror(v, MATRIX_ARITHARGS); return MORPHO_NIL; }
     
     LINALG_ERRCHECKVM(xmatrix_axpy(alpha, b, a));
     return MORPHO_NIL;
@@ -907,29 +906,22 @@ value XMatrix_trace(vm *v, int nargs, value *args) {
 /** Inverts a matrix */
 value XMatrix_transpose(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
-    
     objectxmatrix *new = xmatrix_clone(a);
     if (new) {
         new->ncols=a->nrows;
         new->nrows=a->ncols;
         LINALG_ERRCHECKVM(xmatrix_transpose(a, new));
     }
-    out = morpho_wrapandbind(v, (object *) new);
-    
-    return out;
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 /** Inverts a matrix */
 value XMatrix_inverse(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
-    
     objectxmatrix *new = xmatrix_clone(a);
-    out = morpho_wrapandbind(v, (object *) new);
     if (new) LINALG_ERRCHECKVM(xmatrix_inverse(new));
     
-    return out;
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 static bool _processeigenvalues(vm *v, MatrixIdx_t n, MorphoComplex *w, value *out) {
@@ -966,7 +958,7 @@ value XMatrix_eigenvalues(vm *v, int nargs, value *args) {
     linalgError_t err=xmatrix_eigen(a, w, NULL);
     if (err==LINALGERR_OK) {
         if (_processeigenvalues(v, n, w, &out)) {
-            morpho_bindobjects(v, 1, &out); // TODO: Correctly bind subsidiary values
+            morpho_bindobjects(v, 1, &out);
         } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     } else linalg_raiseerror(v, err);
     
@@ -998,12 +990,12 @@ value XMatrix_eigensystem(vm *v, int nargs, value *args) {
     otuple = object_newtuple(2, outtuple);
     _CHK(otuple);
     
-    return morpho_wrapandbind(v, (object *) otuple); // TODO: Correctly bind subsidiary values
+    return morpho_wrapandbind(v, (object *) otuple);
     
 _eigensystem_cleanup:
     if (evec) object_free((object *) evec);
     if (otuple) object_free((object *) otuple);
-    morpho_freeobject(ev); // TODO: Free contents? 
+    morpho_freeobject(ev); // TODO: Free contents?
     
     return MORPHO_NIL;
 }

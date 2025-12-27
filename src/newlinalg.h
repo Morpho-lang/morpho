@@ -73,6 +73,9 @@ void linalg_raiseerror(vm *v, linalgError_t err);
     - if an error occurred, raises the corresponding error in a vm called v */
 #define LINALG_ERRCHECKVM(f) { linalgError_t err = f; if (err!=LINALGERR_OK) linalg_raiseerror(v, err); }
 
+/** As for LINALG_ERRCHECKVM but additionally jumps to a given label */
+#define LINALG_ERRCHECKVMGOTO(f, label) { linalgError_t err = f; if (err!=LINALGERR_OK) { linalg_raiseerror(v, err); goto label; }}
+
 /* -------------------------------------------------------
  * Include the rest of the library
  * ------------------------------------------------------- */

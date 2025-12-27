@@ -166,6 +166,11 @@ linalgError_t complexmatrix_mmul(MorphoComplex alpha, objectxmatrix *a, objectxm
     return LINALGERR_OK;
 }
 
+/** Scales a matrix x <- scale * x >*/
+void complexmatrix_scale(objectxmatrix *a, MorphoComplex scale) {
+    cblas_zscal(a->nrows * a->ncols, (__LAPACK_double_complex *) &scale, (__LAPACK_double_complex *) a->elements, 1);
+}
+
 /** Finds the Frobenius inner product of two complex matrices (a, b) = \sum_{i,j} conj(a)_ij * b_ij */
 linalgError_t complexmatrix_inner(objectcomplexmatrix *a, objectcomplexmatrix *b, MorphoComplex *out) {
     if (!(a->ncols==b->ncols && a->nrows==b->nrows)) return LINALGERR_INCOMPATIBLE_DIM;
@@ -289,6 +294,14 @@ value ComplexMatrix_subr__xmatrix(vm *v, int nargs, value *args) {
     return _axpy(v, nargs, args, -1.0);
 }
 
+value ComplexMatrix_mul__complex(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    
+    objectxmatrix *new = xmatrix_clone(a);
+    if (new) complexmatrix_scale(new, MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0))->Z);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
 value ComplexMatrix_mul__complexmatrix(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
@@ -370,7 +383,9 @@ MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (_)", XMatrix_sub__x, 
 MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "ComplexMatrix (_)", XMatrix_subr__x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_subr__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (_)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (Complex)", ComplexMatrix_mul__complex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (ComplexMatrix)", ComplexMatrix_mul__complexmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "ComplexMatrix (Complex)", ComplexMatrix_mul__complex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "ComplexMatrix (_)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (_)", XMatrix_div__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_div__xmatrix, BUILTIN_FLAGSEMPTY),

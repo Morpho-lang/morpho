@@ -305,11 +305,11 @@ value ComplexMatrix_mul__complex(vm *v, int nargs, value *args) {
 /** Multiplication by a complexmatrix or a regular matrix */
 static bool _promote(vm *v, objectxmatrix *b, objectxmatrix **bp) { // Promotes b to a complexmatrix
     *bp=complexmatrix_new(b->nrows, b->ncols, true);
-    if (!bp) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
+    if (!*bp) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
     return complexmatrix_promote(b, *bp)==LINALGERR_OK;
 }
 
-static value _cmmul(vm *v, objectxmatrix *a, objectxmatrix *b) {
+static value _cmmul(vm *v, objectxmatrix *a, objectxmatrix *b) { // Performs a*b returning a wrapped value
     if (a->ncols!=b->nrows) { morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES); return MORPHO_NIL; }
     objectcomplexmatrix *new=complexmatrix_new(a->nrows, b->ncols, false);
     if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
@@ -317,9 +317,9 @@ static value _cmmul(vm *v, objectxmatrix *a, objectxmatrix *b) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
-static value _mul(vm *v, value a, value b, bool promoteb, bool swap) {
+static value _mul(vm *v, value a, value b, bool promoteb, bool swap) { // Driver routine for a*b
     objectxmatrix *A=MORPHO_GETXMATRIX(a), *B=MORPHO_GETXMATRIX(b), *bp=NULL;
-    if (promoteb) { if (_promote(v, B, &bp)) { B=bp; } else { return MORPHO_NIL; } }
+    if (promoteb) { if (_promote(v, B, &bp)) { B=bp; } else { return MORPHO_NIL; } } // Promote b if requested
     value out = (swap ? _cmmul(v, B, A) : _cmmul(v, A, B)); // Multiply, swapping arguments if requested
     if (bp) object_free((object *) bp);
     return out;

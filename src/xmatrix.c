@@ -999,7 +999,12 @@ value XMatrix_eigensystem(vm *v, int nargs, value *args) {
 _eigensystem_cleanup:
     if (evec) object_free((object *) evec);
     if (otuple) object_free((object *) otuple);
-    morpho_freeobject(ev); // TODO: Free contents?
+    if (MORPHO_ISOBJECT(ev)) {
+        value evx;
+        objecttuple *t = MORPHO_GETTUPLE(ev);
+        for (int i=0; i<tuple_length(t); i++) if (tuple_getelement(t, i, &evx)) morpho_freeobject(evx);
+    }
+    morpho_freeobject(ev); 
     
     return MORPHO_NIL;
 }

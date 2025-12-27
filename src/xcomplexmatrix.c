@@ -59,7 +59,7 @@ static linalgError_t _setelfn(vm *v, value in, double *el) {
 /** Evaluate norms */
 static double _normfn(objectxmatrix *a, xmatrix_norm_t nrm) {
     char cnrm = xmatrix_normtolapack(nrm);
-    int nrows=a->nrows, ncols=a->ncols, info;
+    int nrows=a->nrows, ncols=a->ncols;
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
     return LAPACKE_zlange(LAPACK_COL_MAJOR, cnrm, a->nrows, a->ncols, a->elements, a->nrows);
@@ -385,6 +385,26 @@ value ComplexMatrix_imag(vm *v, int nargs, value *args) {
     return _realimag(v, nargs, args, true);
 }
 
+static value _conj(vm *v, int nargs, value *args, bool trans) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectxmatrix *new=xmatrix_clone(a);
+    if (new) {
+        if (trans) xmatrix_transpose(a, new);
+        cblas_dscal(a->nrows*a->ncols, -1.0, new->elements+1, new->nvals);
+    }
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Extract imaginary part */
+value ComplexMatrix_conj(vm *v, int nargs, value *args) {
+    return _conj(v, nargs, args, false);
+}
+
+/** Return conjugate transpose */
+value ComplexMatrix_conjTranspose(vm *v, int nargs, value *args) {
+    return _conj(v, nargs, args, true);
+}
+
 /* ---------
  * Products
  * --------- */
@@ -446,6 +466,8 @@ MORPHO_METHOD_SIGNATURE(XMATRIX_TRACE_METHOD, "Complex ()", ComplexMatrix_trace,
 MORPHO_METHOD_SIGNATURE(XMATRIX_TRANSPOSE_METHOD, "ComplexMatrix ()", XMatrix_transpose, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(COMPLEX_REAL_METHOD, "XMatrix ()", ComplexMatrix_real, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(COMPLEX_IMAG_METHOD, "XMatrix ()", ComplexMatrix_imag, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(COMPLEX_CONJUGATE_METHOD, "ComplexMatrix ()", ComplexMatrix_conj, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(COMPLEXMATRIX_CONJTRANSPOSE_METHOD, "ComplexMatrix ()", ComplexMatrix_conjTranspose, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Complex (XMatrix)", ComplexMatrix_inner, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENVALUES_METHOD, "Tuple ()", XMatrix_eigenvalues, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENSYSTEM_METHOD, "Tuple ()", XMatrix_eigensystem, BUILTIN_FLAGSEMPTY),

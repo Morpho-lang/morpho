@@ -1,0 +1,22 @@
+// Conjugate of a ComplexMatrix
+import newlinalg 
+
+var A = ComplexMatrix(2,2)
+A[0,0]=1+4im
+A[0,1]=2+3im
+A[1,0]=3+2im
+A[1,1]=4+1im 
+
+var B=A.conjTranspose() 
+print B 
+// expect: [ 1 - 4im 3 - 2im ]
+// expect: [ 2 - 3im 4 - 1im ]
+
+for (ev in A.eigenvalues()) print isnumber(ev)
+// expect: false
+// expect: false
+
+var C=A+B // create a hermitian matrix 
+for (ev in C.eigenvalues()) print isnumber(ev)
+// expect: true
+// expect: true

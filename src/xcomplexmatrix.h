@@ -13,6 +13,8 @@
 
 #define COMPLEXMATRIX_CLASSNAME                   "ComplexMatrix"
 
+#define COMPLEXMATRIX_CONJTRANSPOSE_METHOD        "conjTranspose"
+
 void complexmatrix_initialize(void);
 
 #endif

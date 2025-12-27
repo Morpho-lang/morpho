@@ -1,4 +1,4 @@
-// Inner product of ComplexMatrices (Frobenius inner product with conjugation)
+// Real part of a ComplexMatrix
 import newlinalg 
 
 var A = ComplexMatrix(2,2)

@@ -1,0 +1,12 @@
+// Conjugate of a ComplexMatrix
+import newlinalg 
+
+var A = ComplexMatrix(2,2)
+A[0,0]=1+4im
+A[0,1]=2+3im
+A[1,0]=3+2im
+A[1,1]=4+1im 
+
+print A.conj() 
+// expect: [ 1 - 4im 2 - 3im ]
+// expect: [ 3 - 2im 4 - 1im ]

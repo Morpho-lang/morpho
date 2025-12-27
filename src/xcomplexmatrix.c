@@ -137,7 +137,7 @@ linalgError_t complexmatrix_setelement(objectcomplexmatrix *matrix, MatrixIdx_t 
 linalgError_t complexmatrix_getelement(objectcomplexmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, MorphoComplex *value) {
     if (!(col<matrix->ncols && row<matrix->nrows)) return LINALGERR_INDX_OUT_OF_BNDS;
     
-    MatrixCount_t ix = 2*(col*matrix->nrows+row);
+    MatrixCount_t ix = matrix->nvals*(col*matrix->nrows+row);
     if (value) *value=MCBuild(matrix->elements[ix],matrix->elements[ix+1]);
     return LINALGERR_OK;
 }

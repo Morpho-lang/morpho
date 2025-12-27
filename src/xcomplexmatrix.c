@@ -347,6 +347,19 @@ value ComplexMatrix_mulr__xmatrix(vm *v, int nargs, value *args) {
     return _mul(v, MORPHO_SELF(args), MORPHO_GETARG(args, 0), true, true);
 }
 
+value ComplexMatrix_div__xmatrix(vm *v, int nargs, value *args) {
+    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_SELF(args)), *A=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0)), *ap=NULL;
+    objectxmatrix *new=xmatrix_clone(b);
+    if (new && _promote(v, A, &ap)) xmatrix_solve(ap, new);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value ComplexMatrix_divr__xmatrix(vm *v, int nargs, value *args) {
+    objectxmatrix *A=MORPHO_GETXMATRIX(MORPHO_SELF(args)), *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0)), *bp=NULL;
+    if (_promote(v, b, &bp)) xmatrix_solve(A, bp); // Promote the matrix that will contain the solution anyway
+    return morpho_wrapandbind(v, (object *) bp);
+}
+
 /** Computes the trace */
 value ComplexMatrix_trace(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
@@ -456,7 +469,9 @@ MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "ComplexMatrix (XMatrix)", ComplexMa
 MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "ComplexMatrix (Complex)", ComplexMatrix_mul__complex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "ComplexMatrix (_)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (_)", XMatrix_div__float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_div__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_div__xmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIVR_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_divr__xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, ComplexMatrix)", XMatrix_acc__x_xmatrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INVERSE_METHOD, "ComplexMatrix ()", ComplexMatrix_inverse, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float (_)", XMatrix_norm__x, MORPHO_FN_PUREFN),

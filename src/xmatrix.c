@@ -830,10 +830,9 @@ value XMatrix_mul__xmatrix(vm *v, int nargs, value *args) {
 
 value XMatrix_div__float(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
     
     double scale;
-    morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale);
+    if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale)) return MORPHO_NIL;
     scale = 1.0/scale;
     if (isnan(scale)) morpho_runtimeerror(v, VM_DVZR);
     

@@ -197,6 +197,8 @@ linalgError_t xmatrix_mmul(double alpha, objectxmatrix *x, objectxmatrix *y, dou
 linalgError_t xmatrix_addscalar(objectxmatrix *x, double alpha, double beta);
 linalgError_t xmatrix_transpose(objectxmatrix *x, objectxmatrix *y);
 
+linalgError_t xmatrix_solve(objectxmatrix *a, objectxmatrix *b);
+
 linalgError_t xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value);
 linalgError_t xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value);
 linalgError_t xmatrix_getelementptr(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value);

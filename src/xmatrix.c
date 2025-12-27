@@ -196,6 +196,8 @@ static bool _getelement(value v, int i, value *out) {
         return list_getelement(MORPHO_GETLIST(v), i, out);
     } else if (MORPHO_ISTUPLE(v)) {
         return tuple_getelement(MORPHO_GETTUPLE(v), i, out);
+    } else if (MORPHO_ISNUMBER(v) || MORPHO_ISCOMPLEX(v)) {
+        if (i==0) { *out = v; return true; }
     }
     return false;
 }
@@ -205,6 +207,8 @@ static bool _length(value v, int *len) {
         *len = list_length(MORPHO_GETLIST(v)); return true;
     } else if (MORPHO_ISTUPLE(v)) {
         *len = tuple_length(MORPHO_GETTUPLE(v)); return true;
+    } else if (MORPHO_ISNUMBER(v) || MORPHO_ISCOMPLEX(v)) {
+        *len = 1; return true; 
     }
     return false;
 }

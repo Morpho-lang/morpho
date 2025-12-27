@@ -2346,8 +2346,7 @@ bool compiler_findmethodreturntype(value klass, char *label, value *type) {
     value method = MORPHO_NIL;
     if (dictionary_get(&MORPHO_GETCLASS(klass)->methods, MORPHO_OBJECT(&selector), &method)) {
         signature *s = metafunction_getsignature(method);
-        *type = signature_getreturntype(s);
-        return true;
+        if (s) { *type = signature_getreturntype(s); return true; }
     }
 
     return false;

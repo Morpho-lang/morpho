@@ -13,6 +13,7 @@
 #include "xmatrix.h"
 #include "xcomplexmatrix.h"
 #include "format.h"
+#include "cmplx.h"
 
 objecttype objectcomplexmatrixtype;
 #define OBJECT_COMPLEXMATRIX objectcomplexmatrixtype
@@ -143,11 +144,20 @@ linalgError_t complexmatrix_getelement(objectcomplexmatrix *matrix, MatrixIdx_t 
 }
 
 /** Copies a real matrix x into a complex matrix y */
-linalgError_t complexmatrix_promote(objectxmatrix *x, objectcomplexmatrix *y) {
+static linalgError_t _stridedcopy(objectxmatrix *x, objectxmatrix *y, int offset) {
     if (!(x->ncols==y->ncols && x->nrows==y->nrows)) return LINALGERR_INCOMPATIBLE_DIM;
     
-    cblas_dcopy((__LAPACK_int) x->nels, x->elements, 1, y->elements, 2);
+    cblas_dcopy((__LAPACK_int) x->ncols*x->nrows, x->elements+offset, x->nvals, y->elements, y->nvals);
     return LINALGERR_OK;
+}
+
+linalgError_t complexmatrix_promote(objectxmatrix *x, objectcomplexmatrix *y) {
+    return _stridedcopy(x, y, 0);
+}
+
+/** Copies the real part of a complex matrix y into  */
+linalgError_t complexmatrix_demote(objectcomplexmatrix *x, objectxmatrix *y, bool imag) {
+    return _stridedcopy(x, y, (imag?1:0));
 }
 
 /* ----------------------
@@ -309,7 +319,7 @@ static bool _promote(vm *v, objectxmatrix *b, objectxmatrix **bp) { // Promotes 
     return complexmatrix_promote(b, *bp)==LINALGERR_OK;
 }
 
-static value _cmmul(vm *v, objectxmatrix *a, objectxmatrix *b) { // Performs a*b returning a wrapped value
+static value _axb(vm *v, objectxmatrix *a, objectxmatrix *b) { // Performs a*b returning a wrapped value
     if (a->ncols!=b->nrows) { morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES); return MORPHO_NIL; }
     objectcomplexmatrix *new=complexmatrix_new(a->nrows, b->ncols, false);
     if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
@@ -320,7 +330,7 @@ static value _cmmul(vm *v, objectxmatrix *a, objectxmatrix *b) { // Performs a*b
 static value _mul(vm *v, value a, value b, bool promoteb, bool swap) { // Driver routine for a*b
     objectxmatrix *A=MORPHO_GETXMATRIX(a), *B=MORPHO_GETXMATRIX(b), *bp=NULL;
     if (promoteb) { if (_promote(v, B, &bp)) { B=bp; } else { return MORPHO_NIL; } } // Promote b if requested
-    value out = (swap ? _cmmul(v, B, A) : _cmmul(v, A, B)); // Multiply, swapping arguments if requested
+    value out = (swap ? _axb(v, B, A) : _axb(v, A, B)); // Multiply, swapping arguments if requested
     if (bp) object_free((object *) bp);
     return out;
 }
@@ -356,6 +366,23 @@ value ComplexMatrix_inverse(vm *v, int nargs, value *args) {
     if (new) LINALG_ERRCHECKVM(complexmatrix_inverse(new));
     
     return out;
+}
+
+static value _realimag(vm *v, int nargs, value *args, bool imag) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectxmatrix *new=xmatrix_new(a->nrows, a->ncols, false);
+    if (new) complexmatrix_demote(a, new, imag);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Extract real part */
+value ComplexMatrix_real(vm *v, int nargs, value *args) {
+    return _realimag(v, nargs, args, false);
+}
+
+/** Extract imaginary part */
+value ComplexMatrix_imag(vm *v, int nargs, value *args) {
+    return _realimag(v, nargs, args, true);
 }
 
 /* ---------
@@ -417,6 +444,8 @@ MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float ()", XMatrix_norm, MORPHO_FN
 MORPHO_METHOD_SIGNATURE(MORPHO_SUM_METHOD, "Complex ()", XMatrix_sum, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_TRACE_METHOD, "Complex ()", ComplexMatrix_trace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_TRANSPOSE_METHOD, "ComplexMatrix ()", XMatrix_transpose, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(COMPLEX_REAL_METHOD, "XMatrix ()", ComplexMatrix_real, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(COMPLEX_IMAG_METHOD, "XMatrix ()", ComplexMatrix_imag, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Complex (XMatrix)", ComplexMatrix_inner, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENVALUES_METHOD, "Tuple ()", XMatrix_eigenvalues, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENSYSTEM_METHOD, "Tuple ()", XMatrix_eigensystem, BUILTIN_FLAGSEMPTY),

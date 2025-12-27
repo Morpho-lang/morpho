@@ -4,6 +4,6 @@ import newlinalg
 var A = ComplexMatrix(((1+1im, 2+2im),(3+3im,4+4im)))
 var B = XMatrix(((4,3),(2,1)))
 
-print A * B
-// expect: [ 8 + 8im 5 + 5im ]
-// expect: [ 20 + 20im 13 + 13im ]
+print B * A
+// expect: [ 13 + 13im 20 + 20im ]
+// expect: [ 5 + 5im 8 + 8im ]

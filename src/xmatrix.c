@@ -804,7 +804,7 @@ value XMatrix_mul__float(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     
     double scale;
-    morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale);
+    if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale)) return MORPHO_NIL;
     
     objectxmatrix *new = xmatrix_clone(a);
     if (new) xmatrix_scale(new, scale);

@@ -458,7 +458,7 @@ void file_initialize(void) {
     value fileclass=builtin_addclass(FILE_CLASSNAME, MORPHO_GETCLASSDEFINITION(File), objclass);
     object_setveneerclass(OBJECT_FILE, fileclass);
     
-    builtin_addclass(FOLDER_CLASSNAME, MORPHO_GETCLASSDEFINITION(Folder), MORPHO_NIL);
+    builtin_addclass(FOLDER_CLASSNAME, MORPHO_GETCLASSDEFINITION(Folder), objclass);
     
     morpho_defineerror(FILE_OPENFAILED, ERROR_HALT, FILE_OPENFAILED_MSG);
     morpho_defineerror(FILE_NEEDSFILENAME, ERROR_HALT, FILE_NEEDSFILENAME_MSG);

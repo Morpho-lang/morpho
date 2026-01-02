@@ -602,7 +602,7 @@ class Show {
     self.fonts = []
     self.colors = Dictionary() 
 
-    var tempfolder = (isWindows ? "C:/Users/timot/AppData/local/Temp" : "/tmp")
+    var tempfolder = (isWindows ? "${System.homefolder()}\\AppData\\local\\Temp" : "/tmp")
     var fname = self._randomalphanumstring(10)
     var out = File("${tempfolder}/morpho${fname}.draw", "w")
 

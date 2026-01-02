@@ -1,4 +1,9 @@
-/* Graphics */
+/* Graphics 
+ *
+ * History: 
+ * 1/7/25 Redirect error output to /dev/null to suppress errors on macOS
+ * 1/2/26 Windows compatibility
+ */
 
 import constants
 import meshtools
@@ -589,22 +594,28 @@ class Graphics {
  **************************************** */
 
 class Show {
-
   init(g) {
+    var isWindows = System.platform()=="windows"
+
     self.uidinit()
     self.spheres = Dictionary() 
     self.fonts = []
     self.colors = Dictionary() 
 
-    var tempfolder = "/tmp"
+    var tempfolder = (isWindows ? "C:/Users/timot/AppData/local/Temp" : "/tmp")
     var fname = self._randomalphanumstring(10)
     var out = File("${tempfolder}/morpho${fname}.draw", "w")
 
     self.write(g, out)
 
     out.close()
-    // 1/7/25 Redirect error output to /dev/null to suppress annoying errors on macOS
-    system("morphoview -t ${tempfolder}/morpho${fname}.draw > /dev/null 2>&1 &")
+
+    if (isWindows) {
+      system("powershell -Command \"Start-Process 'morphoview' -ArgumentList '-t', '${tempfolder}/morpho${fname}.draw' -WindowStyle Hidden\"")
+    } else {
+      // 1/7/25 Redirect error output to /dev/null
+      system("morphoview -t ${tempfolder}/morpho${fname}.draw > /dev/null 2>&1 &")
+    }
   }
 
   /** Generate a random name */
@@ -719,6 +730,8 @@ class Show {
     var platform = System.platform()
     if (platform=="macos") {
       return ["/System/Library/Fonts"]
+    } else if (platform=="windows") {
+      return ["C:/Windows/Fonts"]
     } else return ["/usr/share/fonts","/usr/local/share/fonts"]
   }
 
@@ -755,6 +768,8 @@ class Show {
     var platform = System.platform()
     if (platform=="macos") {
       return "Helvetica"
+    } else if (platform=="windows") {
+      return "arial" // Note case sensitive
     } else return "FreeSans"
   }
 

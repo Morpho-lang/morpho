@@ -124,6 +124,7 @@ matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a);
 #define XMATRIX_INNER_METHOD                "inner"
 #define XMATRIX_INVERSE_METHOD              "inverse"
 #define XMATRIX_NORM_METHOD                 "norm"
+#define XMATRIX_OUTER_METHOD                "outer"
 #define XMATRIX_RESHAPE_METHOD              "reshape"
 #define XMATRIX_ROLL_METHOD                 "roll"
 #define XMATRIX_SETCOLUMN_METHOD            "setColumn"

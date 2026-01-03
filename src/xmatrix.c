@@ -422,6 +422,15 @@ linalgError_t xmatrix_inner(objectxmatrix *x, objectxmatrix *y, double *out) {
     return LINALGERR_OK;
 }
 
+/** Rank 1 update: Performs  c <- alpha*a \outer b + c; a and b are treated as column vectors */
+linalgError_t xmatrix_r1update(double alpha, objectxmatrix *a, objectxmatrix *b, objectxmatrix *c) {
+    MatrixIdx_t m=a->nrows*a->ncols, n=b->nrows*b->ncols;
+    if (!(m==c->nrows && n==c->ncols)) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    cblas_dger(CblasColMajor, m, n, alpha, a->elements, 1, b->elements, 1, c->elements, c->nrows);
+    return LINALGERR_OK;
+}
+
 /** Solve the linear system a.x = b using stack allocated memory for temporary */
 linalgError_t xmatrix_solvesmall(objectxmatrix *a, objectxmatrix *b) {
     int pivot[a->nrows];
@@ -1024,6 +1033,17 @@ value XMatrix_inner(vm *v, int nargs, value *args) {
     return MORPHO_FLOAT(prod);
 }
 
+/** Outer product */
+value XMatrix_outer(vm *v, int nargs, value *args) {
+    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
+    
+    objectxmatrix *new=xmatrix_new(a->nrows*a->ncols, b->nrows*b->ncols, true);
+    if (new) LINALG_ERRCHECKVM(xmatrix_r1update(1.0, a, b, new));
+    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
 /* ---------
  * Metadata
  * --------- */
@@ -1129,6 +1149,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_SUM_METHOD, "Float ()", XMatrix_sum, MORPHO_FN_PU
 MORPHO_METHOD_SIGNATURE(XMATRIX_TRACE_METHOD, "Float ()", XMatrix_trace, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(XMATRIX_TRANSPOSE_METHOD, "XMatrix ()", XMatrix_transpose, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Float (XMatrix)", XMatrix_inner, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(XMATRIX_OUTER_METHOD, "XMatrix ()", XMatrix_outer, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENVALUES_METHOD, "Tuple ()", XMatrix_eigenvalues, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENSYSTEM_METHOD, "Tuple ()", XMatrix_eigensystem, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),

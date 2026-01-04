@@ -56,8 +56,9 @@ typedef struct {
 
 #define FOLDER_CLASSNAME  "Folder"
 
-#define FOLDER_ISFOLDER   "isfolder"
-#define FOLDER_CONTENTS   "contents"
+#define FOLDER_ISFOLDER         "isfolder"
+#define FOLDER_CONTENTS         "contents"
+#define FOLDER_NORMALIZEPATH    "normalizePath"
 
 /* -------------------------------------------------------
  * File error messages

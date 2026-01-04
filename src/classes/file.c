@@ -398,6 +398,18 @@ value Folder_isfolder(vm *v, int nargs, value *args) {
     return ret;
 }
 
+/** Normalizes a given path, replacing folder separators with the correct ones for the platform */
+value Folder_normalizepath(vm *v, int nargs, value *args) {
+    size_t n = platform_maxpathsize();
+    char buffer[n];
+    if (!platform_normalizepath(MORPHO_GETCSTRING(MORPHO_GETARG(args,0)), n, buffer)) return MORPHO_NIL; 
+
+    value out=object_stringfromcstring(buffer, strlen(buffer));
+    if (MORPHO_ISSTRING(out)) morpho_bindobjects(v, 1, &out);
+    else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    return out;
+}
+
 /** Return the contents of a folder  */
 value Folder_contents(vm *v, int nargs, value *args) {
     value ret = MORPHO_NIL;
@@ -439,6 +451,7 @@ value Folder_contents(vm *v, int nargs, value *args) {
 
 MORPHO_BEGINCLASS(Folder)
 MORPHO_METHOD_SIGNATURE(FOLDER_ISFOLDER, "Bool (_)", Folder_isfolder, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(FOLDER_NORMALIZEPATH, "String (String)", Folder_normalizepath, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(FOLDER_CONTENTS, "List (_)", Folder_contents, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 

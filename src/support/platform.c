@@ -111,7 +111,16 @@ bool MCEq(MorphoComplex a, MorphoComplex b) {
  * File system functions
  * ********************************************************************** */
 
-/* Tells if an object at path corresponds to a directory */
+/** Returns the maximum size of a file path */
+size_t platform_maxpathsize(void) {
+#ifdef _WIN32 
+    return (size_t) MAX_PATH*4;
+#else
+    return pathconf("/", _PC_PATH_MAX);
+#endif 
+}
+
+/** Tests if an object at path corresponds to a directory */
 bool platform_isdirectory(const char *path) {
 #ifdef _WIN32
     DWORD attributes = GetFileAttributes(path);
@@ -125,13 +134,70 @@ bool platform_isdirectory(const char *path) {
 #endif
 }
 
-/** Returns the maximum size of a file path */
-size_t platform_maxpathsize(void) {
-#ifdef _WIN32 
-    return (size_t) MAX_PATH;
-#else
-    return pathconf("/", _PC_PATH_MAX);
+/** Normalizes a filepath for the current platform */
+bool platform_normalizepath(const char *path, size_t n, char *out) {
+    for (size_t i = 0; i < n; i++) {
+#ifdef _WIN32               
+        if (path[i] == '/') out[i] = '\\'; 
+#else 
+        if (path[i] == '\\') out[i] = '/'; 
+#endif
+        else out[i]=path[i];
+        
+        if (path[i]=='\0') return true; 
+    }
+    return false;
+}
+
+/** Helper function to make a single directory */
+static bool _makedir(const char *path) {
+#ifdef _WIN32
+    return CreateDirectoryA(path, NULL) ||
+           GetLastError() == ERROR_ALREADY_EXISTS;
+#else 
+    return mkdir(path, S_IRWXU | S_IRWXG | S_IRWXO) == 0 ||
+           errno == EEXIST;
 #endif 
+}
+
+/** Creates a directory, optionally recursively creating folders */
+bool platform_makedirectory(const char *path, bool recurse) {
+    size_t n=platform_maxpathsize();
+    char buffer[n];
+    if (!platform_normalizepath(path, n, buffer)) return false; 
+
+    if (!recurse) return _makedir(buffer); 
+
+    size_t i=0, len=strlen(buffer); 
+    if (len==0) return false; 
+
+    // Strip trailing separators
+    while (len > 1 && (buffer[len-1] == '\\' || buffer[len-1] == '/')) buffer[--len] = '\0';
+
+#ifdef _WIN32
+    if (len >= 3 && buffer[1] == ':' && buffer[2] == '\\') i = 3; // Skip drive letter
+    else if (len >= 5 && buffer[0] == '\\' && buffer[1] == '\\') { // Skip UNC prefix: \\server\share\...
+        int nSlashes = 0;
+        for (i = 2; i < len; i++) {
+            if (buffer[i] == '\\' && ++nSlashes == 2) {
+                i++; 
+                break;
+            }
+        }
+    }
+#endif
+
+    // Walk the path and create intermediate directories
+    for (; i < len; i++) {
+        if (buffer[i] == '\\' || buffer[i] == '/') {
+            char swp = buffer[i];
+            buffer[i] = '\0';
+            if (!_makedir(buffer)) return false;
+            buffer[i] = swp; 
+        }
+    }
+
+    return _makedir(buffer); 
 }
 
 /** Sets the current working directory to path */

@@ -105,7 +105,7 @@ char xmatrix_normtolapack(xmatrix_norm_t norm) {
 /** Evaluate norms */
 static double _normfn(objectxmatrix *a, xmatrix_norm_t nrm) {
     char cnrm = xmatrix_normtolapack(nrm);
-    int nrows=a->nrows, ncols=a->ncols, info;
+    int nrows=a->nrows, ncols=a->ncols;
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
     return LAPACKE_dlange(LAPACK_COL_MAJOR, cnrm, a->nrows, a->ncols, a->elements, a->nrows);
@@ -679,7 +679,6 @@ value XMatrix_assign(vm *v, int nargs, value *args) {
 
 /** Clones a matrix */
 value XMatrix_clone(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     objectxmatrix *new=xmatrix_clone(a);
     return morpho_wrapandbind(v, (object *) new);
@@ -814,7 +813,6 @@ value XMatrix_subr__x(vm *v, int nargs, value *args) {
 
 value XMatrix_mul__float(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
     
     double scale;
     if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale)) return MORPHO_NIL;
@@ -1149,7 +1147,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_SUM_METHOD, "Float ()", XMatrix_sum, MORPHO_FN_PU
 MORPHO_METHOD_SIGNATURE(XMATRIX_TRACE_METHOD, "Float ()", XMatrix_trace, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(XMATRIX_TRANSPOSE_METHOD, "XMatrix ()", XMatrix_transpose, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Float (XMatrix)", XMatrix_inner, MORPHO_FN_PUREFN),
-MORPHO_METHOD_SIGNATURE(XMATRIX_OUTER_METHOD, "XMatrix ()", XMatrix_outer, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_OUTER_METHOD, "XMatrix (XMatrix)", XMatrix_outer, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENVALUES_METHOD, "Tuple ()", XMatrix_eigenvalues, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENSYSTEM_METHOD, "Tuple ()", XMatrix_eigensystem, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),

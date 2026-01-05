@@ -191,6 +191,17 @@ linalgError_t complexmatrix_inner(objectcomplexmatrix *a, objectcomplexmatrix *b
     return LINALGERR_OK;
 }
 
+/** Rank 1 update: Performs  c <- alpha*a \outer b + c; a and b are treated as column vectors */
+linalgError_t complexmatrix_r1update(MorphoComplex alpha, objectcomplexmatrix *a, objectcomplexmatrix *b, objectcomplexmatrix *c) {
+    MatrixIdx_t m=a->nrows*a->ncols, n=b->nrows*b->ncols;
+    if (!(m==c->nrows && n==c->ncols)) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    cblas_zgeru(CblasColMajor, m, n, (__LAPACK_double_complex *) &alpha, (__LAPACK_double_complex *) a->elements, 1,
+                (__LAPACK_double_complex *) b->elements, 1,
+                (__LAPACK_double_complex *) c->elements, c->nrows);
+    return LINALGERR_OK;
+}
+
 /** Calculate the trace of a matrix */
 linalgError_t complexmatrix_trace(objectcomplexmatrix *a, MorphoComplex *out) {
     if (a->nrows!=a->ncols) return LINALGERR_NOT_SQUARE;
@@ -424,8 +435,8 @@ value ComplexMatrix_conjTranspose(vm *v, int nargs, value *args) {
 
 /** Frobenius inner product */
 value ComplexMatrix_inner(vm *v, int nargs, value *args) {
-    objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
+    objectcomplexmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectcomplexmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
     MorphoComplex prod=MCBuild(0.0, 0.0);
     value out = MORPHO_NIL;
     
@@ -435,6 +446,17 @@ value ComplexMatrix_inner(vm *v, int nargs, value *args) {
     } else morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
     
     return out;
+}
+
+/** Outer product */
+value ComplexMatrix_outer(vm *v, int nargs, value *args) {
+    objectcomplexmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    objectcomplexmatrix *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
+    
+    objectcomplexmatrix *new=complexmatrix_new(a->nrows*a->ncols, b->nrows*b->ncols, true);
+    if (new) LINALG_ERRCHECKVM(complexmatrix_r1update(MCBuild(1.0,0.0), a, b, new));
+    
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 MORPHO_BEGINCLASS(ComplexMatrix)
@@ -484,6 +506,7 @@ MORPHO_METHOD_SIGNATURE(COMPLEX_IMAG_METHOD, "XMatrix ()", ComplexMatrix_imag, B
 MORPHO_METHOD_SIGNATURE(COMPLEX_CONJUGATE_METHOD, "ComplexMatrix ()", ComplexMatrix_conj, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(COMPLEXMATRIX_CONJTRANSPOSE_METHOD, "ComplexMatrix ()", ComplexMatrix_conjTranspose, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Complex (XMatrix)", ComplexMatrix_inner, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_OUTER_METHOD, "ComplexMatrix (ComplexMatrix)", ComplexMatrix_outer, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENVALUES_METHOD, "Tuple ()", XMatrix_eigenvalues, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENSYSTEM_METHOD, "Tuple ()", XMatrix_eigensystem, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),

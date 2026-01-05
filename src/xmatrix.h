@@ -18,8 +18,8 @@ extern objecttype objectxmatrixtype;
 
 extern objecttypedefn objectxmatrixdefn;
 
-typedef int MatrixIdx_t;
-typedef size_t MatrixCount_t;
+typedef int MatrixIdx_t; // Type used for matrix indices
+typedef size_t MatrixCount_t; // Type used to count total number of elements
 
 /** Matrices are a purely numerical collection type oriented toward linear algebra.
     Elements are stored in column-major format, i.e.
@@ -146,6 +146,7 @@ IMPLEMENTATIONFN(XMatrix_clone);
 
 IMPLEMENTATIONFN(XMatrix_index__int);
 IMPLEMENTATIONFN(XMatrix_index__int_int);
+IMPLEMENTATIONFN(XMatrix_index__x_x);
 IMPLEMENTATIONFN(XMatrix_setindex__int_x);
 IMPLEMENTATIONFN(XMatrix_setindex__int_int_x);
 

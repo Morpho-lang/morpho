@@ -22,4 +22,4 @@ print A[0..3:2, 0..3:2]
 // expect: [ 9 + 9im 11 + 11im ]
 
 print A[0..1:2, "Foo"]
-// expect error 'LnAlgMtrxInvldArg'
+// expect error 'LnAlgMtrxNnNmrclArg'

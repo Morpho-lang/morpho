@@ -734,7 +734,7 @@ static linalgError_t _slice_copy(value iv, value jv, MatrixIdx_t icnt, MatrixIdx
             LINALG_ERRCHECKRETURN(xmatrix_getelementptr(a, ix, jx, &ael));
             LINALG_ERRCHECKRETURN(xmatrix_getelementptr(b, i, j, &bel));
             if (swap) memcpy(ael, bel, sizeof(double)*a->nvals);
-            else memcpy(bel, ael, sizeof(double)*a->nvals);
+            else memcpy(bel, ael, sizeof(double)*b->nvals);
         }
     }
     return LINALGERR_OK;

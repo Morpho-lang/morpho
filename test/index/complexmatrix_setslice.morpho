@@ -1,0 +1,50 @@
+// Copy elements of a ComplexMatrix using slices 
+import newlinalg 
+
+var A = ComplexMatrix(((1+1im,2+2im),(3+3im,4+4im)))
+
+var B = ComplexMatrix(4,4)
+
+B[0..1, 0..1] = A
+print B
+// expect: [ 1 + 1im 2 + 2im 0 + 0im 0 + 0im ]
+// expect: [ 3 + 3im 4 + 4im 0 + 0im 0 + 0im ]
+// expect: [ 0 + 0im 0 + 0im 0 + 0im 0 + 0im ]
+// expect: [ 0 + 0im 0 + 0im 0 + 0im 0 + 0im ]
+
+var C = ComplexMatrix(4,4)
+C[0..2:2, 0..2:2] = A
+print C
+// expect: [ 1 + 1im 0 + 0im 2 + 2im 0 + 0im ]
+// expect: [ 0 + 0im 0 + 0im 0 + 0im 0 + 0im ]
+// expect: [ 3 + 3im 0 + 0im 4 + 4im 0 + 0im ]
+// expect: [ 0 + 0im 0 + 0im 0 + 0im 0 + 0im ]
+
+var D = ComplexMatrix(4,4)
+D[1..2, 1..2] = A
+print D
+// expect: [ 0 + 0im 0 + 0im 0 + 0im 0 + 0im ]
+// expect: [ 0 + 0im 1 + 1im 2 + 2im 0 + 0im ]
+// expect: [ 0 + 0im 3 + 3im 4 + 4im 0 + 0im ]
+// expect: [ 0 + 0im 0 + 0im 0 + 0im 0 + 0im ]
+
+var E = ComplexMatrix(4,4)
+E[1..3:2, 1..3:2] = A
+print E
+// expect: [ 0 + 0im 0 + 0im 0 + 0im 0 + 0im ]
+// expect: [ 0 + 0im 1 + 1im 0 + 0im 2 + 2im ]
+// expect: [ 0 + 0im 0 + 0im 0 + 0im 0 + 0im ]
+// expect: [ 0 + 0im 3 + 3im 0 + 0im 4 + 4im ]
+
+var F = ComplexMatrix(4,4)
+F[0..1, 0] = A[0..1, 1]
+print F
+// expect: [ 2 + 2im 0 + 0im 0 + 0im 0 + 0im ]
+// expect: [ 4 + 4im 0 + 0im 0 + 0im 0 + 0im ]
+// expect: [ 0 + 0im 0 + 0im 0 + 0im 0 + 0im ]
+// expect: [ 0 + 0im 0 + 0im 0 + 0im 0 + 0im ]
+
+B[0..5, 0..5] = A
+print B
+// expect error 'LnAlgMtrxIndxBnds'
+

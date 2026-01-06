@@ -149,6 +149,7 @@ IMPLEMENTATIONFN(XMatrix_index__int_int);
 IMPLEMENTATIONFN(XMatrix_index__x_x);
 IMPLEMENTATIONFN(XMatrix_setindex__int_x);
 IMPLEMENTATIONFN(XMatrix_setindex__int_int_x);
+IMPLEMENTATIONFN(XMatrix_setindex__x_x_xmatrix);
 
 IMPLEMENTATIONFN(XMatrix_getcolumn__int);
 IMPLEMENTATIONFN(XMatrix_setcolumn__int_xmatrix);

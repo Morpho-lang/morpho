@@ -716,15 +716,20 @@ static linalgError_t _slice_iterate(value in, unsigned int i, MatrixIdx_t *ix) {
     return LINALGERR_OP_FAILED;
 }
 
+static bool _slice_validate(vm *v, value iv, value jv, MatrixIdx_t *icnt, MatrixIdx_t *jcnt) {
+    LINALG_ERRCHECKVMRETURN(_slice_count(iv, icnt), false);
+    LINALG_ERRCHECKVMRETURN(_slice_count(jv, jcnt), false);
+    if (*icnt<1 || *jcnt<1) { morpho_runtimeerror(v, LINALG_INVLDARGS); return false; }
+    return true;
+}
+
 value XMatrix_index__x_x(vm *v, int nargs, value *args) {
     objectxmatrix *m = MORPHO_GETXMATRIX(MORPHO_SELF(args)), *new=NULL;
     
     value iv=MORPHO_GETARG(args, 0), jv=MORPHO_GETARG(args, 1);
     
-    MatrixIdx_t icnt=0, jcnt=0; // Size of the new matrix
-    LINALG_ERRCHECKVMRETURN(_slice_count(iv, &icnt), MORPHO_NIL);
-    LINALG_ERRCHECKVMRETURN(_slice_count(jv, &jcnt), MORPHO_NIL);
-    if (icnt<1 || jcnt<1) { morpho_runtimeerror(v, LINALG_INVLDARGS); return MORPHO_NIL; }
+    MatrixIdx_t icnt=0, jcnt=0; // Counts become size of new matrix
+    if (!_slice_validate(v, iv, jv, &icnt, &jcnt)) return MORPHO_NIL;
     
     new=xmatrix_newwithtype(MORPHO_GETOBJECTTYPE(MORPHO_SELF(args)), icnt, jcnt, m->nvals, false);
     if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
@@ -778,9 +783,7 @@ value XMatrix_setindex__x_x_xmatrix(vm *v, int nargs, value *args) {
     value iv=MORPHO_GETARG(args, 0), jv=MORPHO_GETARG(args, 1);
     
     MatrixIdx_t icnt=0, jcnt=0;
-    LINALG_ERRCHECKVMRETURN(_slice_count(iv, &icnt), MORPHO_NIL);
-    LINALG_ERRCHECKVMRETURN(_slice_count(jv, &jcnt), MORPHO_NIL);
-    if (icnt<1 || jcnt<1) { morpho_runtimeerror(v, LINALG_INVLDARGS); return MORPHO_NIL; }
+    if (!_slice_validate(v, iv, jv, &icnt, &jcnt)) return MORPHO_NIL;
     
     double *src, *dest;
     for (MatrixIdx_t j=0; j<jcnt; j++) {

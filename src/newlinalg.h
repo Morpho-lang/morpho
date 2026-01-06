@@ -76,6 +76,9 @@ void linalg_raiseerror(vm *v, linalgError_t err);
 /** As for LINALG_ERRCHECKVM but additionally jumps to a given label */
 #define LINALG_ERRCHECKVMGOTO(f, label) { linalgError_t err = f; if (err!=LINALGERR_OK) { linalg_raiseerror(v, err); goto label; }}
 
+/** As for LINALG_ERRCHECKVM but additionally returnsl */
+#define LINALG_ERRCHECKVMRETURN(f, ret) { linalgError_t err = f; if (err!=LINALGERR_OK) { linalg_raiseerror(v, err); return ret; }}
+
 /* -------------------------------------------------------
  * Include the rest of the library
  * ------------------------------------------------------- */

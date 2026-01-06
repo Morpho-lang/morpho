@@ -723,10 +723,27 @@ static linalgError_t _slice_validate(value iv, value jv, MatrixIdx_t *icnt, Matr
     return LINALGERR_OK;
 }
 
+static linalgError_t _slice_copy(value iv, value jv, MatrixIdx_t icnt, MatrixIdx_t jcnt, objectxmatrix *a, objectxmatrix *b, bool swap) {
+    double *ael, *bel;
+    for (MatrixIdx_t j=0; j<jcnt; j++) {
+        MatrixIdx_t jx;
+        LINALG_ERRCHECKRETURN(_slice_iterate(jv, j, &jx));
+        for (MatrixIdx_t i=0; i<icnt; i++) {
+            MatrixIdx_t ix;
+            LINALG_ERRCHECKRETURN(_slice_iterate(iv, i, &ix));
+            LINALG_ERRCHECKRETURN(xmatrix_getelementptr(a, ix, jx, &ael));
+            LINALG_ERRCHECKRETURN(xmatrix_getelementptr(b, i, j, &bel));
+            if (swap) memcpy(ael, bel, sizeof(double)*a->nvals);
+            else memcpy(bel, ael, sizeof(double)*a->nvals);
+        }
+    }
+    return LINALGERR_OK;
+}
+
 value XMatrix_index__x_x(vm *v, int nargs, value *args) {
     objectxmatrix *m = MORPHO_GETXMATRIX(MORPHO_SELF(args)), *new=NULL;
-    
     value iv=MORPHO_GETARG(args, 0), jv=MORPHO_GETARG(args, 1);
+    value out=MORPHO_NIL;
     
     MatrixIdx_t icnt=0, jcnt=0; // Counts become size of new matrix
     LINALG_ERRCHECKVMRETURN(_slice_validate(iv, jv, &icnt, &jcnt), MORPHO_NIL);
@@ -734,24 +751,11 @@ value XMatrix_index__x_x(vm *v, int nargs, value *args) {
     new=xmatrix_newwithtype(MORPHO_GETOBJECTTYPE(MORPHO_SELF(args)), icnt, jcnt, m->nvals, false);
     if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
     
-    double *src, *dest;
-    for (MatrixIdx_t j=0; j<jcnt; j++) {
-        MatrixIdx_t jx;
-        LINALG_ERRCHECKVMGOTO(_slice_iterate(jv, j, &jx), XMatrix_index__x_x_cleanup);
-        for (MatrixIdx_t i=0; i<icnt; i++) {
-            MatrixIdx_t ix;
-            LINALG_ERRCHECKVMGOTO(_slice_iterate(iv, i, &ix), XMatrix_index__x_x_cleanup);
-            LINALG_ERRCHECKVMGOTO(xmatrix_getelementptr(m, ix, jx, &src), XMatrix_index__x_x_cleanup);
-            LINALG_ERRCHECKVMGOTO(xmatrix_getelementptr(new, i, j, &dest), XMatrix_index__x_x_cleanup);
-            memcpy(dest, src, sizeof(double)*m->nvals);
-        }
-    }
+    linalgError_t err=_slice_copy(iv, jv, icnt, jcnt, m, new, false);
+    if (err!=LINALGERR_OK) { linalg_raiseerror(v, err); object_free((object *) new); }
+    else out = morpho_wrapandbind(v, (object *) new);
     
-    return morpho_wrapandbind(v, (object *) new);
-    
-XMatrix_index__x_x_cleanup:
-    if (new) object_free((object *) new);
-    return MORPHO_NIL;
+    return out;
 }
 
 /* ---------
@@ -785,19 +789,8 @@ value XMatrix_setindex__x_x_xmatrix(vm *v, int nargs, value *args) {
     MatrixIdx_t icnt=0, jcnt=0;
     LINALG_ERRCHECKVMRETURN(_slice_validate(iv, jv, &icnt, &jcnt), MORPHO_NIL);
     
-    double *src, *dest;
-    for (MatrixIdx_t j=0; j<jcnt; j++) {
-        MatrixIdx_t jx;
-        LINALG_ERRCHECKVMRETURN(_slice_iterate(jv, j, &jx), MORPHO_NIL);
-        for (MatrixIdx_t i=0; i<icnt; i++) {
-            MatrixIdx_t ix;
-            LINALG_ERRCHECKVMRETURN(_slice_iterate(iv, i, &ix), MORPHO_NIL);
-            LINALG_ERRCHECKVMRETURN(xmatrix_getelementptr(m, ix, jx, &dest), MORPHO_NIL);
-            LINALG_ERRCHECKVMRETURN(xmatrix_getelementptr(msrc, i, j, &src), MORPHO_NIL);
-            memcpy(dest, src, sizeof(double)*m->nvals);
-        }
-    }
-
+    LINALG_ERRCHECKVM(_slice_copy(iv, jv, icnt, jcnt, m, msrc, true));
+    
     return MORPHO_NIL;
 }
 

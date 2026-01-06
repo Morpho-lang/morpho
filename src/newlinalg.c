@@ -24,6 +24,7 @@ void linalg_raiseerror(vm *v, linalgError_t err) {
         case LINALGERR_OP_FAILED: morpho_runtimeerror(v, LINALG_OPFAILED); break;
         case LINALGERR_NOT_SUPPORTED: morpho_runtimeerror(v, LINALG_NOTSUPPORTED); break;
         case LINALGERR_NON_NUMERICAL: morpho_runtimeerror(v, LINALG_NNNMRCL_ARG); break;
+        case LINALGERR_INVLD_ARG: morpho_runtimeerror(v, LINALG_INVLDARGS); break;
         case LINALGERR_ALLOC: morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); break;
     }
 }

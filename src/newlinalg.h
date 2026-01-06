@@ -25,6 +25,7 @@ typedef enum {
     LINALGERR_OP_FAILED,         // Matrix operation failed
     LINALGERR_NOT_SUPPORTED,     // Operation not supported for this matrix type
     LINALGERR_NON_NUMERICAL,     // Non numerical args supplied
+    LINALGERR_INVLD_ARG,         // Invalid argument supplied
     LINALGERR_ALLOC              // Memory allocation failed
 } linalgError_t;
 
@@ -68,7 +69,7 @@ typedef enum {
 
 void linalg_raiseerror(vm *v, linalgError_t err);
 
-/** Macro to simplify error checking:
+/** Macros to simplify error checking:
     - evaluates expression f that returns linalgError_t;
     - if an error occurred, raises the corresponding error in a vm called v */
 #define LINALG_ERRCHECKVM(f) { linalgError_t err = f; if (err!=LINALGERR_OK) linalg_raiseerror(v, err); }
@@ -78,6 +79,9 @@ void linalg_raiseerror(vm *v, linalgError_t err);
 
 /** As for LINALG_ERRCHECKVM but additionally returnsl */
 #define LINALG_ERRCHECKVMRETURN(f, ret) { linalgError_t err = f; if (err!=LINALGERR_OK) { linalg_raiseerror(v, err); return ret; }}
+
+/** Similar to the above, except returns the error rather than raising it */
+#define LINALG_ERRCHECKRETURN(f) { linalgError_t err = f; if (err!=LINALGERR_OK) return err; }
 
 /* -------------------------------------------------------
  * Include the rest of the library

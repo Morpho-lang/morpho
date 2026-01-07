@@ -15,6 +15,7 @@ print svd[1]
 // expect: (2, 1)
 
 print (svd[2] - XMatrix(((0,1),(1,0)))).norm() < 1e-10  
+// expect: true
 
 // Test reconstruction: U * S * V^T should approximately equal A
 var U = svd[0]

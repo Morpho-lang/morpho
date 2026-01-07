@@ -1349,7 +1349,10 @@ void xmatrix_initialize(void) {
     objectxmatrixtype=object_addtype(&objectxmatrixdefn);
     xmatrix_addinterface(&xmatrixdefn);
     
-    value xmatrixclass=builtin_addclass(XMATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(XMatrix), MORPHO_NIL);
+    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    
+    value xmatrixclass=builtin_addclass(XMATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(XMatrix), objclass);
     object_setveneerclass(OBJECT_XMATRIX, xmatrixclass);
     
     morpho_addfunction(XMATRIX_CLASSNAME, "XMatrix (Int, Int)", xmatrix_constructor__int_int, MORPHO_FN_CONSTRUCTOR, NULL);

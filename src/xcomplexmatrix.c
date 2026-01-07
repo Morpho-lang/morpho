@@ -570,7 +570,10 @@ void complexmatrix_initialize(void) {
     objectcomplexmatrixtype=object_addtype(&objectxmatrixdefn);
     xmatrix_addinterface(&complexmatrixdefn);
     
-    value complexmatrixclass=builtin_addclass(COMPLEXMATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(ComplexMatrix), MORPHO_NIL);
+    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
+    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    
+    value complexmatrixclass=builtin_addclass(COMPLEXMATRIX_CLASSNAME, MORPHO_GETCLASSDEFINITION(ComplexMatrix), objclass);
     object_setveneerclass(OBJECT_COMPLEXMATRIX, complexmatrixclass);
     
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Int, Int)", complexmatrix_constructor__int_int, MORPHO_FN_CONSTRUCTOR, NULL);

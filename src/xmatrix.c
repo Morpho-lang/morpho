@@ -1004,6 +1004,10 @@ value XMatrix_inverse(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
+/* ----------------
+ * Eigensystem
+ * ---------------- */
+
 static bool _processeigenvalues(vm *v, MatrixIdx_t n, MorphoComplex *w, value *out) {
     value ev[n];
     for (int i=0; i<n; i++) ev[i]=MORPHO_NIL;
@@ -1085,6 +1089,123 @@ _eigensystem_cleanup:
     return MORPHO_NIL;
 }
 #undef _CHK
+
+/* ----------------
+ * SVD
+ * ---------------- */
+
+/** Low level SVD */
+static linalgError_t _svd(objectxmatrix *a, double *s, objectxmatrix *u, objectxmatrix *vt) {
+    int info, m=a->nrows, n=a->ncols;
+    int minmn = (m < n) ? m : n;
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    info = LAPACKE_dgesvd(LAPACK_COL_MAJOR, 
+                          (u ? 'A' : 'N'),      // jobu: 'A' = all U columns, 'N' = no U
+                          (vt ? 'A' : 'N'),     // jobvt: 'A' = all VT rows, 'N' = no VT
+                          m, n,
+                          a->elements, m,       // input matrix A (overwritten)
+                          s,                    // singular values (min(m,n))
+                          (u ? u->elements : NULL), m,  // U matrix (m×m)
+                          (vt ? vt->elements : NULL), n  // VT matrix (n×n)
+                         );
+#else
+    int lwork = -1;
+    double work_query;
+    // Query optimal work size
+    dgesvd_((u ? "A" : "N"), (vt ? "A" : "N"), &m, &n, a->elements, &m, s,
+            (u ? u->elements : NULL), &m, (vt ? vt->elements : NULL), &n,
+            &work_query, &lwork, &info);
+    if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+    
+    lwork = (int)work_query;
+    double work[lwork];
+    dgesvd_((u ? "A" : "N"), (vt ? "A" : "N"), &m, &n, a->elements, &m, s,
+            (u ? u->elements : NULL), &m, (vt ? vt->elements : NULL), &n,
+            work, &lwork, &info);
+#endif
+    
+    return (info == 0 ? LINALGERR_OK : (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS));
+}
+
+/** Interface to SVD */
+linalgError_t xmatrix_svd(objectxmatrix *a, double *s, objectxmatrix *u, objectxmatrix *vt) {
+    if (u && ((a->nrows != u->nrows) || (a->nrows != u->ncols))) return LINALGERR_INCOMPATIBLE_DIM;
+    if (vt && ((a->ncols != vt->nrows) || (a->ncols != vt->ncols))) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    objectxmatrix *temp = xmatrix_clone(a);
+    if (!temp) return LINALGERR_ALLOC;
+    
+    linalgError_t err = _svd(temp, s, u, vt);
+    object_free((object *) temp);
+    return err;
+}
+
+/** Processes singular values into a tuple */
+static bool _processsingularvalues(vm *v, MatrixIdx_t n, double *s, value *out) {
+    value sv[n];
+    for (int i = 0; i < n; i++) sv[i] = MORPHO_NIL;
+    for (int i = 0; i < n; i++) {
+        sv[i] = MORPHO_FLOAT(s[i]);
+    }
+    
+    objecttuple *new = object_newtuple(n, sv);
+    if (!new) {
+        for (int i = 0; i < n; i++) morpho_freeobject(sv[i]);
+        return false;
+    }
+    
+    *out = MORPHO_OBJECT(new);
+    return true;
+}
+
+#define _CHK_SVD(x) if (!x) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto _svd_cleanup; }
+
+/** Singular Value Decomposition */
+value XMatrix_svd(vm *v, int nargs, value *args) {
+    objectxmatrix *a = MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    
+    value s = MORPHO_NIL;           // Will hold singular values
+    objectxmatrix *u = NULL;        // Left singular vectors
+    objectxmatrix *vt = NULL;       // Right singular vectors (transposed)
+    objecttuple *otuple = NULL;     // Tuple to return everything
+    
+    MatrixIdx_t m = a->nrows, n = a->ncols;
+    MatrixIdx_t minmn = (m < n) ? m : n;
+    double singular_values[minmn];
+    
+    // Allocate U (m×m) and VT (n×n) matrices
+    u = xmatrix_new(m, m, false);
+    _CHK_SVD(u);
+    
+    vt = xmatrix_new(n, n, false);
+    _CHK_SVD(vt);
+    
+    linalgError_t err = xmatrix_svd(a, singular_values, u, vt);
+    if (err != LINALGERR_OK) { linalg_raiseerror(v, err); goto _svd_cleanup; }
+    
+    _CHK_SVD(_processsingularvalues(v, minmn, singular_values, &s));
+    
+    value outtuple[3] = { MORPHO_OBJECT(u), s, MORPHO_OBJECT(vt) };
+    otuple = object_newtuple(3, outtuple);
+    _CHK_SVD(otuple);
+    
+    return morpho_wrapandbind(v, (object *) otuple);
+    
+_svd_cleanup:
+    if (u) object_free((object *) u);
+    if (vt) object_free((object *) vt);
+    if (otuple) object_free((object *) otuple);
+    if (MORPHO_ISOBJECT(s)) {
+        value svx;
+        objecttuple *t = MORPHO_GETTUPLE(s);
+        for (int i = 0; i < tuple_length(t); i++) if (tuple_getelement(t, i, &svx)) morpho_freeobject(svx);
+    }
+    morpho_freeobject(s);
+    
+    return MORPHO_NIL;
+}
+#undef _CHK_SVD
 
 /* ---------
  * Products
@@ -1222,6 +1343,7 @@ MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Float (XMatrix)", XMatrix_inner, 
 MORPHO_METHOD_SIGNATURE(XMATRIX_OUTER_METHOD, "XMatrix (XMatrix)", XMatrix_outer, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENVALUES_METHOD, "Tuple ()", XMatrix_eigenvalues, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENSYSTEM_METHOD, "Tuple ()", XMatrix_eigensystem, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_SVD_METHOD, "Tuple ()", XMatrix_svd, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_ROLL_METHOD, "XMatrix (Int)", XMatrix_roll__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_ROLL_METHOD, "XMatrix (Int,Int)", XMatrix_roll__int_int, BUILTIN_FLAGSEMPTY),

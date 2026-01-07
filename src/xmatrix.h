@@ -121,6 +121,7 @@ matrixinterfacedefn *xmatrix_getinterface(objectxmatrix *a);
 #define XMATRIX_DIMENSIONS_METHOD           "dimensions"
 #define XMATRIX_EIGENVALUES_METHOD          "eigenvalues"
 #define XMATRIX_EIGENSYSTEM_METHOD          "eigensystem"
+#define XMATRIX_SVD_METHOD                  "svd"
 #define XMATRIX_INNER_METHOD                "inner"
 #define XMATRIX_INVERSE_METHOD              "inverse"
 #define XMATRIX_NORM_METHOD                 "norm"
@@ -171,6 +172,7 @@ IMPLEMENTATIONFN(XMatrix_sum);
 IMPLEMENTATIONFN(XMatrix_transpose);
 IMPLEMENTATIONFN(XMatrix_eigenvalues);
 IMPLEMENTATIONFN(XMatrix_eigensystem);
+IMPLEMENTATIONFN(XMatrix_svd);
 IMPLEMENTATIONFN(XMatrix_reshape);
 IMPLEMENTATIONFN(XMatrix_roll__int);
 IMPLEMENTATIONFN(XMatrix_roll__int_int);
@@ -201,6 +203,8 @@ linalgError_t xmatrix_addscalar(objectxmatrix *x, double alpha, double beta);
 linalgError_t xmatrix_transpose(objectxmatrix *x, objectxmatrix *y);
 
 linalgError_t xmatrix_solve(objectxmatrix *a, objectxmatrix *b);
+
+linalgError_t xmatrix_svd(objectxmatrix *a, double *s, objectxmatrix *u, objectxmatrix *vt);
 
 linalgError_t xmatrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value);
 linalgError_t xmatrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value);

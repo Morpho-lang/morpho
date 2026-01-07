@@ -92,11 +92,19 @@ typedef double (*xmatrix_normfn_t) (objectxmatrix *a, xmatrix_norm_t nrm);
 typedef linalgError_t (*xmatrix_solvefn_t) (objectxmatrix *a, objectxmatrix *b, int *pivot);
 
 /** Function that finds the eigenvalues of a matrix
- * @param[in|out] a - lhs; overwritten
+ * @param[in|out] a - matrix to diagonalize; overwritten
  * @param[out] w -  eigenvalues; dimension N
  * @param[out] vec - right eigenvectors. Can be NULL if only eigenvalues requested
  * @returns a matrix error code */
 typedef linalgError_t (*xmatrix_eigenfn_t) (objectxmatrix *a, MorphoComplex *w, objectxmatrix *vec);
+
+/** Function that finds the svd of a matrix
+ * @param[in|out] a - overwritten
+ * @param[out] s -  singular values
+ * @param[out] u - left singular vectors
+ * @param[out] v - right singular vectors (transposed so columns contain singular vectors)
+ * @returns a matrix error code */
+typedef linalgError_t (*xmatrix_svdfn_t) (objectxmatrix *a, double *s, objectxmatrix *u, objectxmatrix *vt);
 
 typedef struct {
     xmatrix_printelfn_t printelfn;
@@ -106,6 +114,7 @@ typedef struct {
     xmatrix_normfn_t    normfn;
     xmatrix_solvefn_t   solvefn;
     xmatrix_eigenfn_t   eigenfn;
+    xmatrix_svdfn_t     svdfn;
 } matrixinterfacedefn;
 
 void xmatrix_addinterface(matrixinterfacedefn *defn);

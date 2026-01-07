@@ -97,6 +97,47 @@ static linalgError_t _eigen(objectxmatrix *a, MorphoComplex *w, objectxmatrix *v
     return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS));
 }
 
+/** Low level SVD */
+static linalgError_t _svd(objectxmatrix *a, double *s, objectxmatrix *u, objectxmatrix *vt) {
+    int info, m=a->nrows, n=a->ncols;
+    int minmn = (m < n) ? m : n;
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    info = LAPACKE_zgesvd(LAPACK_COL_MAJOR,
+                          (u ? 'A' : 'N'),      // jobu: 'A' = all U columns, 'N' = no U
+                          (vt ? 'A' : 'N'),     // jobvt: 'A' = all VT rows, 'N' = no VT
+                          m, n,
+                          (__LAPACK_double_complex *) a->elements, m,  // input matrix A (overwritten)
+                          s,                    // singular values (min(m,n))
+                          (__LAPACK_double_complex *) (u ? u->elements : NULL), m,  // U matrix (m×m)
+                          (__LAPACK_double_complex *) (vt ? vt->elements : NULL), n  // VT matrix (n×n)
+                         );
+#else
+    int lwork = -1;
+    __LAPACK_double_complex work_query;
+    double rwork[5 * minmn];  // rwork needs at least 5*min(m,n) for zgesvd
+    
+    // Query optimal work size
+    zgesvd_((u ? "A" : "N"), (vt ? "A" : "N"), &m, &n, 
+            (__LAPACK_double_complex *) a->elements, &m, s,
+            (__LAPACK_double_complex *) (u ? u->elements : NULL), &m,
+            (__LAPACK_double_complex *) (vt ? vt->elements : NULL), &n,
+            &work_query, &lwork, rwork, &info);
+    
+    if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+    
+    lwork = (int)creal(work_query);
+    __LAPACK_double_complex work[lwork];
+    zgesvd_((u ? "A" : "N"), (vt ? "A" : "N"), &m, &n,
+            (__LAPACK_double_complex *) a->elements, &m, s,
+            (__LAPACK_double_complex *) (u ? u->elements : NULL), &m,
+            (__LAPACK_double_complex *) (vt ? vt->elements : NULL), &n,
+            work, &lwork, rwork, &info);
+#endif
+    
+    return (info == 0 ? LINALGERR_OK : (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS));
+}
+
 /* ----------------------
  * Interface definition
  * ---------------------- */
@@ -108,7 +149,8 @@ matrixinterfacedefn complexmatrixdefn = {
     .setelfn = _setelfn,
     .normfn = _normfn,
     .solvefn = _solve,
-    .eigenfn = _eigen
+    .eigenfn = _eigen,
+    .svdfn = _svd
 };
 
 /* ----------------------
@@ -511,6 +553,7 @@ MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Complex (XMatrix)", ComplexMatrix
 MORPHO_METHOD_SIGNATURE(XMATRIX_OUTER_METHOD, "ComplexMatrix (ComplexMatrix)", ComplexMatrix_outer, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENVALUES_METHOD, "Tuple ()", XMatrix_eigenvalues, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENSYSTEM_METHOD, "Tuple ()", XMatrix_eigensystem, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_SVD_METHOD, "Tuple ()", XMatrix_svd, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_ROLL_METHOD, "ComplexMatrix (Int)", XMatrix_roll__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_ROLL_METHOD, "ComplexMatrix (Int,Int)", XMatrix_roll__int_int, BUILTIN_FLAGSEMPTY),

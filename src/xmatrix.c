@@ -143,6 +143,40 @@ static linalgError_t _eigen(objectxmatrix *a, MorphoComplex *w, objectxmatrix *v
     return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS));
 }
 
+/** Low level SVD */
+static linalgError_t _svd(objectxmatrix *a, double *s, objectxmatrix *u, objectxmatrix *vt) {
+    int info, m=a->nrows, n=a->ncols;
+    int minmn = (m < n) ? m : n;
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    info = LAPACKE_dgesvd(LAPACK_COL_MAJOR,
+                          (u ? 'A' : 'N'),      // jobu: 'A' = all U columns, 'N' = no U
+                          (vt ? 'A' : 'N'),     // jobvt: 'A' = all VT rows, 'N' = no VT
+                          m, n,
+                          a->elements, m,       // input matrix A (overwritten)
+                          s,                    // singular values (min(m,n))
+                          (u ? u->elements : NULL), m,  // U matrix (m×m)
+                          (vt ? vt->elements : NULL), n  // VT matrix (n×n)
+                         );
+#else
+    int lwork = -1;
+    double work_query;
+    // Query optimal work size
+    dgesvd_((u ? "A" : "N"), (vt ? "A" : "N"), &m, &n, a->elements, &m, s,
+            (u ? u->elements : NULL), &m, (vt ? vt->elements : NULL), &n,
+            &work_query, &lwork, &info);
+    if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+    
+    lwork = (int)work_query;
+    double work[lwork];
+    dgesvd_((u ? "A" : "N"), (vt ? "A" : "N"), &m, &n, a->elements, &m, s,
+            (u ? u->elements : NULL), &m, (vt ? vt->elements : NULL), &n,
+            work, &lwork, &info);
+#endif
+    
+    return (info == 0 ? LINALGERR_OK : (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS));
+}
+
 /* ----------------------
  * Interface definition
  * ---------------------- */
@@ -154,7 +188,8 @@ matrixinterfacedefn xmatrixdefn = {
     .setelfn = _setelfn,
     .normfn = _normfn,
     .solvefn = _solve,
-    .eigenfn = _eigen
+    .eigenfn = _eigen,
+    .svdfn = _svd
 };
 
 /* ----------------------
@@ -1094,40 +1129,6 @@ _eigensystem_cleanup:
  * SVD
  * ---------------- */
 
-/** Low level SVD */
-static linalgError_t _svd(objectxmatrix *a, double *s, objectxmatrix *u, objectxmatrix *vt) {
-    int info, m=a->nrows, n=a->ncols;
-    int minmn = (m < n) ? m : n;
-    
-#ifdef MORPHO_LINALG_USE_LAPACKE
-    info = LAPACKE_dgesvd(LAPACK_COL_MAJOR, 
-                          (u ? 'A' : 'N'),      // jobu: 'A' = all U columns, 'N' = no U
-                          (vt ? 'A' : 'N'),     // jobvt: 'A' = all VT rows, 'N' = no VT
-                          m, n,
-                          a->elements, m,       // input matrix A (overwritten)
-                          s,                    // singular values (min(m,n))
-                          (u ? u->elements : NULL), m,  // U matrix (m×m)
-                          (vt ? vt->elements : NULL), n  // VT matrix (n×n)
-                         );
-#else
-    int lwork = -1;
-    double work_query;
-    // Query optimal work size
-    dgesvd_((u ? "A" : "N"), (vt ? "A" : "N"), &m, &n, a->elements, &m, s,
-            (u ? u->elements : NULL), &m, (vt ? vt->elements : NULL), &n,
-            &work_query, &lwork, &info);
-    if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
-    
-    lwork = (int)work_query;
-    double work[lwork];
-    dgesvd_((u ? "A" : "N"), (vt ? "A" : "N"), &m, &n, a->elements, &m, s,
-            (u ? u->elements : NULL), &m, (vt ? vt->elements : NULL), &n,
-            work, &lwork, &info);
-#endif
-    
-    return (info == 0 ? LINALGERR_OK : (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS));
-}
-
 /** Interface to SVD */
 linalgError_t xmatrix_svd(objectxmatrix *a, double *s, objectxmatrix *u, objectxmatrix *vt) {
     if (u && ((a->nrows != u->nrows) || (a->nrows != u->ncols))) return LINALGERR_INCOMPATIBLE_DIM;
@@ -1136,7 +1137,7 @@ linalgError_t xmatrix_svd(objectxmatrix *a, double *s, objectxmatrix *u, objectx
     objectxmatrix *temp = xmatrix_clone(a);
     if (!temp) return LINALGERR_ALLOC;
     
-    linalgError_t err = _svd(temp, s, u, vt);
+    linalgError_t err = xmatrix_getinterface(a)->svdfn (temp, s, u, vt);
     object_free((object *) temp);
     return err;
 }
@@ -1144,23 +1145,16 @@ linalgError_t xmatrix_svd(objectxmatrix *a, double *s, objectxmatrix *u, objectx
 /** Processes singular values into a tuple */
 static bool _processsingularvalues(vm *v, MatrixIdx_t n, double *s, value *out) {
     value sv[n];
-    for (int i = 0; i < n; i++) sv[i] = MORPHO_NIL;
-    for (int i = 0; i < n; i++) {
-        sv[i] = MORPHO_FLOAT(s[i]);
-    }
+    for (int i = 0; i < n; i++) sv[i] = MORPHO_FLOAT(s[i]);
     
     objecttuple *new = object_newtuple(n, sv);
-    if (!new) {
-        for (int i = 0; i < n; i++) morpho_freeobject(sv[i]);
-        return false;
-    }
+    if (!new) return false;
     
     *out = MORPHO_OBJECT(new);
     return true;
 }
 
 #define _CHK_SVD(x) if (!x) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto _svd_cleanup; }
-
 /** Singular Value Decomposition */
 value XMatrix_svd(vm *v, int nargs, value *args) {
     objectxmatrix *a = MORPHO_GETXMATRIX(MORPHO_SELF(args));
@@ -1175,10 +1169,10 @@ value XMatrix_svd(vm *v, int nargs, value *args) {
     double singular_values[minmn];
     
     // Allocate U (m×m) and VT (n×n) matrices
-    u = xmatrix_new(m, m, false);
+    u = xmatrix_newwithtype(MORPHO_GETOBJECTTYPE(MORPHO_SELF(args)), m, m, a->nvals, false);
     _CHK_SVD(u);
     
-    vt = xmatrix_new(n, n, false);
+    vt = xmatrix_newwithtype(MORPHO_GETOBJECTTYPE(MORPHO_SELF(args)), n, n, a->nvals, false);
     _CHK_SVD(vt);
     
     linalgError_t err = xmatrix_svd(a, singular_values, u, vt);
@@ -1196,11 +1190,6 @@ _svd_cleanup:
     if (u) object_free((object *) u);
     if (vt) object_free((object *) vt);
     if (otuple) object_free((object *) otuple);
-    if (MORPHO_ISOBJECT(s)) {
-        value svx;
-        objecttuple *t = MORPHO_GETTUPLE(s);
-        for (int i = 0; i < tuple_length(t); i++) if (tuple_getelement(t, i, &svx)) morpho_freeobject(svx);
-    }
     morpho_freeobject(s);
     
     return MORPHO_NIL;

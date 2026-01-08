@@ -131,14 +131,15 @@ static linalgError_t _solve(objectxmatrix *a, objectxmatrix *b, int *pivot) {
 /** Low level eigensolver */
 static linalgError_t _eigen(objectxmatrix *a, MorphoComplex *w, objectxmatrix *vec) {
     int info, n=a->nrows;
+    double wr[n], wi[n];
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
     info=LAPACKE_dgeev(LAPACK_COL_MAJOR, 'N', (vec ? 'V' : 'N'), n, a->elements, n, wr, wi, NULL, n, (vec ? vec->elements : NULL), n);
 #else
-    int lwork=4*n; double work[4*n], wr[n], wi[n];
+    int lwork=4*n; double work[4*n];
     dgeev_("N", (vec ? "V" : "N"), &n, a->elements, &n, wr, wi, NULL, &n, (vec ? vec->elements : NULL), &n, work, &lwork, &info);
-    for (int i=0; i<n; i++) w[i]=MCBuild(wr[i], wi[i]);
 #endif
+    for (int i=0; i<n; i++) w[i]=MCBuild(wr[i], wi[i]);
     
     return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS));
 }
@@ -269,7 +270,7 @@ objectxmatrix *xmatrix_listconstructor(vm *v, value lst, objecttype type, Matrix
         _getelement(lst, i, &iel);
         for (int j=0; j<ncols; j++) {
             if (_getelement(iel, j, &jel)) {
-                xmatrix_getinterface(new)->setelfn(v, jel, new->elements+(j*ncols + i)*new->nvals);
+                xmatrix_getinterface(new)->setelfn(v, jel, new->elements+(j*nrows + i)*new->nvals);
             }
         }
     }
@@ -290,7 +291,7 @@ objectxmatrix *xmatrix_arrayconstructor(vm *v, objectarray *a, objecttype type, 
             unsigned int indx[2]={ i, j };
             value el;
             if (array_getelement(a, 2, indx, &el)==ARRAY_OK) {
-                xmatrix_getinterface(new)->setelfn(v, el, new->elements+(j*ncols + i)*new->nvals);
+                xmatrix_getinterface(new)->setelfn(v, el, new->elements+(j*nrows + i)*new->nvals);
             }
         }
     }
@@ -439,8 +440,10 @@ void xmatrix_sum(objectxmatrix *a, double *sum) {
 /** Calculate the trace of a matrix */
 linalgError_t xmatrix_trace(objectxmatrix *a, double *out) {
     if (a->nrows!=a->ncols) return LINALGERR_NOT_SQUARE;
-    *out=1.0;
-    *out=cblas_ddot(a->nrows, a->elements, a->ncols+1, out, 0);
+    *out = 0.0;
+    for (int i = 0; i < a->nrows; i++) {
+        *out += a->elements[a->nvals * (i * a->nrows + i)];
+    }
     
     return LINALGERR_OK;
 }

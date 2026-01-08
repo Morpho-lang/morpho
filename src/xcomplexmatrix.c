@@ -51,7 +51,7 @@ static linalgError_t _setelfn(vm *v, value in, double *el) {
     if (MORPHO_ISCOMPLEX(in)) {
         *((MorphoComplex *) el) = MORPHO_GETCOMPLEX(in)->Z;
     } else if (morpho_valuetofloat(in, el)) {
-        el[1] = 0.0; // Set real part to zero
+        el[1] = 0.0; // Set imaginary part to zero
     } else return LINALGERR_NON_NUMERICAL;
     return LINALGERR_OK;
 }

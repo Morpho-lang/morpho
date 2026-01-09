@@ -178,6 +178,63 @@ static linalgError_t _svd(objectxmatrix *a, double *s, objectxmatrix *u, objectx
     return (info == 0 ? LINALGERR_OK : (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS));
 }
 
+/** Low level QR decomposition without pivoting */
+static linalgError_t _qr(objectxmatrix *a, objectxmatrix *q, objectxmatrix *r) {
+    int info, m=a->nrows, n=a->ncols;
+    int minmn = (m < n) ? m : n;
+    double tau[minmn];
+    
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    info = LAPACKE_dgeqrf(LAPACK_COL_MAJOR, m, n, a->elements, m, tau);
+    if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+#else
+    int lwork = -1;
+    double work_query;
+    
+    // Query optimal work size for DGEQRF, which is reused for DORGQR
+    dgeqrf_(&m, &n, a->elements, &m, tau, &work_query, &lwork, &info);
+    if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+    
+    int lwork_geqrf = (int) work_query;
+    double work[lwork_geqrf];
+    lwork = lwork_geqrf;
+    
+    // Compute QR factorization without pivoting
+    dgeqrf_(&m, &n, a->elements, &m, tau, work, &lwork, &info);
+    if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+#endif
+    
+    // Extract R (upper triangle of a) into r
+    // Copy entire matrix first, then zero out below the diagonal
+    xmatrix_copy(a, r);
+    // Only process columns where there are rows below the diagonal (j < m - 1)
+    for (int j = 0; j < n && j < m - 1; j++) {
+        memset(&r->elements[j * m + (j + 1)], 0, (m - j - 1) * sizeof(double));
+    }
+    
+    // Generate Q from reflectors
+    if (q) {
+        // Copy reflectors from a to q (only first n columns, since a is m×n and q is m×m)
+        // DGEQRF stores reflectors in lower triangle and R in upper triangle of first n columns
+        for (int j = 0; j < n; j++) cblas_dcopy(m, &a->elements[j * m], 1, &q->elements[j * m], 1);
+        
+#ifdef MORPHO_LINALG_USE_LAPACKE
+        info = LAPACKE_dorgqr(LAPACK_COL_MAJOR, m, minmn, minmn, q->elements, m, tau);
+        if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+#else
+        lwork = lwork_geqrf;
+        dorgqr_(&m, &minmn, &minmn, q->elements, &m, tau, work, &lwork, &info);
+        if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+#endif
+        
+        // If Q should be m×m, zero out remaining columns if m > minmn
+        // DORGQR only generates the first minmn columns, so we zero the rest
+        if (m > minmn) memset(&q->elements[minmn * m], 0, (m - minmn) * m * sizeof(double));
+    }
+    
+    return LINALGERR_OK;
+}
+
 /* ----------------------
  * Interface definition
  * ---------------------- */
@@ -190,7 +247,8 @@ matrixinterfacedefn xmatrixdefn = {
     .normfn = _normfn,
     .solvefn = _solve,
     .eigenfn = _eigen,
-    .svdfn = _svd
+    .svdfn = _svd,
+    .qrfn = _qr
 };
 
 /* ----------------------
@@ -1145,6 +1203,23 @@ linalgError_t xmatrix_svd(objectxmatrix *a, double *s, objectxmatrix *u, objectx
     return err;
 }
 
+/* ----------------
+ * QR decomposition
+ * ---------------- */
+
+/** Interface to QR decomposition */
+linalgError_t xmatrix_qr(objectxmatrix *a, objectxmatrix *q, objectxmatrix *r) {
+    if (q && ((a->nrows != q->nrows) || (a->nrows != q->ncols))) return LINALGERR_INCOMPATIBLE_DIM;
+    if (r && ((a->nrows != r->nrows) || (a->ncols != r->ncols))) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    objectxmatrix *temp = xmatrix_clone(a);
+    if (!temp) return LINALGERR_ALLOC;
+    
+    linalgError_t err = xmatrix_getinterface(a)->qrfn (temp, q, r);
+    object_free((object *) temp);
+    return err;
+}
+
 /** Processes singular values into a tuple */
 static bool _processsingularvalues(vm *v, MatrixIdx_t n, double *s, value *out) {
     value sv[n];
@@ -1198,6 +1273,46 @@ _svd_cleanup:
     return MORPHO_NIL;
 }
 #undef _CHK_SVD
+
+/* ----------------
+ * QR decomposition
+ * ---------------- */
+
+#define _CHK_QR(x) if (!x) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto _qr_cleanup; }
+/** QR Decomposition */
+value XMatrix_qr(vm *v, int nargs, value *args) {
+    objectxmatrix *a = MORPHO_GETXMATRIX(MORPHO_SELF(args));
+    
+    objectxmatrix *q = NULL;        // Orthogonal matrix Q
+    objectxmatrix *r = NULL;        // Upper triangular matrix R
+    objecttuple *otuple = NULL;     // Tuple to return everything
+    
+    MatrixIdx_t m = a->nrows, n = a->ncols;
+    
+    // Allocate Q (m×m) and R (m×n) matrices
+    q = xmatrix_newwithtype(MORPHO_GETOBJECTTYPE(MORPHO_SELF(args)), m, m, a->nvals, false);
+    _CHK_QR(q);
+    
+    r = xmatrix_newwithtype(MORPHO_GETOBJECTTYPE(MORPHO_SELF(args)), m, n, a->nvals, false);
+    _CHK_QR(r);
+    
+    linalgError_t err = xmatrix_qr(a, q, r);
+    if (err != LINALGERR_OK) { linalg_raiseerror(v, err); goto _qr_cleanup; }
+    
+    value outtuple[2] = { MORPHO_OBJECT(q), MORPHO_OBJECT(r) };
+    otuple = object_newtuple(2, outtuple);
+    _CHK_QR(otuple);
+    
+    return morpho_wrapandbind(v, (object *) otuple);
+    
+_qr_cleanup:
+    if (q) object_free((object *) q);
+    if (r) object_free((object *) r);
+    if (otuple) object_free((object *) otuple);
+    
+    return MORPHO_NIL;
+}
+#undef _CHK_QR
 
 /* ---------
  * Products
@@ -1336,6 +1451,7 @@ MORPHO_METHOD_SIGNATURE(XMATRIX_OUTER_METHOD, "XMatrix (XMatrix)", XMatrix_outer
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENVALUES_METHOD, "Tuple ()", XMatrix_eigenvalues, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENSYSTEM_METHOD, "Tuple ()", XMatrix_eigensystem, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_SVD_METHOD, "Tuple ()", XMatrix_svd, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_QR_METHOD, "Tuple ()", XMatrix_qr, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_ROLL_METHOD, "XMatrix (Int)", XMatrix_roll__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_ROLL_METHOD, "XMatrix (Int,Int)", XMatrix_roll__int_int, BUILTIN_FLAGSEMPTY),

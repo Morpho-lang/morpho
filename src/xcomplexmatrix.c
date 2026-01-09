@@ -138,6 +138,67 @@ static linalgError_t _svd(objectxmatrix *a, double *s, objectxmatrix *u, objectx
     return (info == 0 ? LINALGERR_OK : (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS));
 }
 
+/** Low level QR decomposition */
+static linalgError_t _qr(objectxmatrix *a, objectxmatrix *q, objectxmatrix *r) {
+    int info, m=a->nrows, n=a->ncols;
+    int minmn = (m < n) ? m : n;
+    __LAPACK_double_complex tau[minmn];
+    
+    // Compute QR factorization without pivoting: A = Q*R
+#ifdef MORPHO_LINALG_USE_LAPACKE
+    info = LAPACKE_zgeqrf(LAPACK_COL_MAJOR, m, n, (__LAPACK_double_complex *) a->elements, m, tau);
+    if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+#else
+    int lwork = -1;
+    __LAPACK_double_complex work_query;
+    
+    // Query optimal work size for ZGEQRF, which is reused for ZUNGQR
+    zgeqrf_(&m, &n, (__LAPACK_double_complex *) a->elements, &m, tau, &work_query, &lwork, &info);
+    if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+    
+    int lwork_geqrf = (int) creal(work_query);
+    __LAPACK_double_complex work[lwork_geqrf];
+    lwork = lwork_geqrf;
+    
+    // Compute QR factorization without pivoting
+    zgeqrf_(&m, &n, (__LAPACK_double_complex *) a->elements, &m, tau, work, &lwork, &info);
+    if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+#endif
+    
+    // Extract R (upper triangle of a) into r
+    // Copy entire matrix first then zero out below the diagonal
+    xmatrix_copy(a, r);
+    __LAPACK_double_complex *relems = (__LAPACK_double_complex *) r->elements;
+    for (int j = 0; j < n && j < m - 1; j++) {
+        memset(&relems[j * m + (j + 1)], 0, (m - j - 1) * sizeof(__LAPACK_double_complex));
+    }
+    
+    // Generate Q from reflectors
+    if (q) {
+        // Copy reflectors from a to q (only first n columns, since a is m×n and q is m×m)
+        // ZGEQRF stores reflectors in lower triangle and R in upper triangle of first n columns
+        __LAPACK_double_complex *aelems = (__LAPACK_double_complex *) a->elements;
+        __LAPACK_double_complex *qelems = (__LAPACK_double_complex *) q->elements;
+        for (int j = 0; j < n; j++) {
+            cblas_zcopy(m, &aelems[j * m], 1, &qelems[j * m], 1);
+        }
+        
+#ifdef MORPHO_LINALG_USE_LAPACKE
+        info = LAPACKE_zungqr(LAPACK_COL_MAJOR, m, minmn, minmn, (__LAPACK_double_complex *) q->elements, m, tau);
+        if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+#else
+        lwork = lwork_geqrf;
+        zungqr_(&m, &minmn, &minmn, (__LAPACK_double_complex *) q->elements, &m, tau, work, &lwork, &info);
+        if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+#endif
+        
+        // If Q should be m×m, zero out remaining columns if m > minmn
+        if (m > minmn) memset(&q->elements[minmn * m * q->nvals], 0, (m - minmn) * m * sizeof(__LAPACK_double_complex));
+    }
+    
+    return LINALGERR_OK;
+}
+
 /* ----------------------
  * Interface definition
  * ---------------------- */
@@ -150,7 +211,8 @@ matrixinterfacedefn complexmatrixdefn = {
     .normfn = _normfn,
     .solvefn = _solve,
     .eigenfn = _eigen,
-    .svdfn = _svd
+    .svdfn = _svd,
+    .qrfn = _qr
 };
 
 /* ----------------------
@@ -554,6 +616,7 @@ MORPHO_METHOD_SIGNATURE(XMATRIX_OUTER_METHOD, "ComplexMatrix (ComplexMatrix)", C
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENVALUES_METHOD, "Tuple ()", XMatrix_eigenvalues, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENSYSTEM_METHOD, "Tuple ()", XMatrix_eigensystem, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_SVD_METHOD, "Tuple ()", XMatrix_svd, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(XMATRIX_QR_METHOD, "Tuple ()", XMatrix_qr, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_ROLL_METHOD, "ComplexMatrix (Int)", XMatrix_roll__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(XMATRIX_ROLL_METHOD, "ComplexMatrix (Int,Int)", XMatrix_roll__int_int, BUILTIN_FLAGSEMPTY),

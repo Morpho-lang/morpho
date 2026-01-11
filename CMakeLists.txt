@@ -64,7 +64,7 @@ message(STATUS "Searching for BLAS and LAPACK")
 # Currently we prefer LAPACKE 
 # TODO: Fix morpho source to select between lapack and lapacke
 find_library(LAPACK_LIBRARY
-    NAMES lapacke liblapacke lapack liblapack libopenblas
+    NAMES lapacke liblapacke lapack liblapack openblas libopenblas 
     HINTS 
         "C:\\Program Files\\Morpho\\lib\\"
 )

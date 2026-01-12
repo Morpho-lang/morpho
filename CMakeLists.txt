@@ -85,7 +85,7 @@ endif()
 # Find cblas.h header file 
 find_path(CBLAS_INCLUDE cblas.h 
           HINTS 
-            "C:\\Program Files\\Morpho\\include\\lapack")
+            "C:\\Program Files\\Morpho\\include\\openblas")
 
 # Add cblas headers to include folders
 target_include_directories(morpho PUBLIC ${CBLAS_INCLUDE})

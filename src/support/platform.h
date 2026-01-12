@@ -75,10 +75,12 @@ bool MCEq(MorphoComplex a, MorphoComplex b);
  * ------------------------------------------------------- */
 
 size_t platform_maxpathsize(void);
+bool platform_isdirectory(const char *path);
+bool platform_normalizepath(const char *path, size_t n, char *out);
+bool platform_makedirectory(const char *path, bool recurse);
 bool platform_setcurrentdirectory(const char *path);
 bool platform_getcurrentdirectory(char *buffer, size_t size);
 bool platform_gethomedirectory(char *buffer, size_t size);
-bool platform_isdirectory(const char *path);
 
 typedef struct {
 #ifdef _WIN32

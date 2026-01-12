@@ -398,11 +398,23 @@ value Folder_isfolder(vm *v, int nargs, value *args) {
     return ret;
 }
 
+/** Normalizes a given path, replacing folder separators with the correct ones for the platform */
+value Folder_normalizepath(vm *v, int nargs, value *args) {
+    size_t n = platform_maxpathsize();
+    char buffer[n];
+    if (!platform_normalizepath(MORPHO_GETCSTRING(MORPHO_GETARG(args,0)), n, buffer)) return MORPHO_NIL; 
+
+    value out=object_stringfromcstring(buffer, strlen(buffer));
+    if (MORPHO_ISSTRING(out)) morpho_bindobjects(v, 1, &out);
+    else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    return out;
+}
+
 /** Return the contents of a folder  */
 value Folder_contents(vm *v, int nargs, value *args) {
     value ret = MORPHO_NIL;
     if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
-        varray_char name;
+       varray_char name;
         varray_charinit(&name);
         file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
 
@@ -437,9 +449,28 @@ value Folder_contents(vm *v, int nargs, value *args) {
     return ret;
 }
 
+/** Create a new folder; regular and recursive versions */
+static value _create(vm *v, int nargs, value *args, bool recurse) {
+    const char *path = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
+    if (!platform_makedirectory(path, recurse)) morpho_runtimeerror(v, FOLDER_CREATEFAILED, path);
+    return MORPHO_NIL;
+}
+
+value Folder_create(vm *v, int nargs, value *args) {
+    return _create(v, nargs, args, false);
+}
+
+value Folder_createrecursive(vm *v, int nargs, value *args) {
+    return _create(v, nargs, args, true);
+}
+
 MORPHO_BEGINCLASS(Folder)
 MORPHO_METHOD_SIGNATURE(FOLDER_ISFOLDER, "Bool (_)", Folder_isfolder, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(FOLDER_CONTENTS, "List (_)", Folder_contents, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(FOLDER_ISFOLDER_DEPRECATED, "Bool (_)", Folder_isfolder, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(FOLDER_NORMALIZEPATH, "String (String)", Folder_normalizepath, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(FOLDER_CONTENTS, "List (_)", Folder_contents, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(FOLDER_CREATE, "(String)", Folder_create, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(FOLDER_CREATERECURSIVE, "(String)", Folder_createrecursive, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -458,7 +489,7 @@ void file_initialize(void) {
     value fileclass=builtin_addclass(FILE_CLASSNAME, MORPHO_GETCLASSDEFINITION(File), objclass);
     object_setveneerclass(OBJECT_FILE, fileclass);
     
-    builtin_addclass(FOLDER_CLASSNAME, MORPHO_GETCLASSDEFINITION(Folder), MORPHO_NIL);
+    builtin_addclass(FOLDER_CLASSNAME, MORPHO_GETCLASSDEFINITION(Folder), objclass);
     
     morpho_defineerror(FILE_OPENFAILED, ERROR_HALT, FILE_OPENFAILED_MSG);
     morpho_defineerror(FILE_NEEDSFILENAME, ERROR_HALT, FILE_NEEDSFILENAME_MSG);
@@ -469,6 +500,7 @@ void file_initialize(void) {
     
     morpho_defineerror(FOLDER_EXPCTPATH, ERROR_HALT, FOLDER_EXPCTPATH_MSG);
     morpho_defineerror(FOLDER_NTFLDR, ERROR_HALT, FOLDER_NTFLDR_MSG);
+    morpho_defineerror(FOLDER_CREATEFAILED, ERROR_HALT, FOLDER_CREATEFAILED_MSG);
     
     morpho_addfinalizefn(file_finalize);
 }

@@ -865,7 +865,6 @@ bool compiler_regcheckandsetcurrenttype(compiler *c, syntaxtreenode *node, regis
 /** Performs a type check on register reg against a given type. Codeinfo is updated if a typecheck instruction needs to be generated */
 bool compiler_regtypecheck(compiler *c, syntaxtreenode *node, registerindx reg, value type, value symbol, codeinfo *info) {
     bool success=false;
-    functionstate *f = compiler_currentfunctionstate(c);
     
     value rtype=MORPHO_NIL; // Get the current type held in register reg
     compiler_regcurrenttype(c, reg, &rtype);

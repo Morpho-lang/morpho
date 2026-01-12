@@ -85,12 +85,38 @@ Returns true if at the end of the file; false otherwise
 # Folder
 [tagfolder]: # (Folder)
 
-The `Folder` class enables you to find whether a filepath refers to a folder, and find the contents of that folder.
+The `Folder` class allows you to work with folders. You can find whether a filepath refers to a folder, obtain the contents of that folder and create folders. 
 
-Find whether a path refers to a folder:
+[show]: # (subtopics)
+
+## isfolder
+[tagisfolder]: # (isfolder)
+Find out whether a path specification refers to a folder:
 
     print Folder.isfolder("path/folder")
     
+## contents
+[tagcontents]: # (contents)
+
 Get a list of a folder's contents: 
 
     print Folder.contents("path/folder")
+
+## normalizePath
+[tagnormalizepath]: # (normalizepath)
+This method of `Folder` normalizes a file path, replacing folder separators with the correct ones for the current platform, i.e. \ on windows or / on macOS and linux. 
+
+Get a normalizad path:
+
+    print Folder.normalizePath("/foo/foo")
+
+## create
+[tagcreate]: # (create)
+[tagcreaterecursive]: # (createrecursive)
+The `create` and `createRecursive` methods allow creation of folders. To create a new Folder: 
+
+    Folder.create("foo")
+
+Recursively create a nested set of folders: 
+
+    Folder.createRecursive("foo/foo")

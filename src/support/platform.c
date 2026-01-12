@@ -31,6 +31,7 @@
 #include <pwd.h>
 #include <time.h>
 #include <dlfcn.h>
+#include <errno.h>
 #endif
 
 /* **********************************************************************

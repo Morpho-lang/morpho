@@ -13,10 +13,10 @@
  * Matrix object type
  * ------------------------------------------------------- */
 
-extern objecttype objectxmatrixtype;
-#define OBJECT_XMATRIX objectxmatrixtype
+extern objecttype objectmatrixtype;
+#define OBJECT_MATRIX objectmatrixtype
 
-extern objecttypedefn objectxmatrixdefn;
+extern objecttypedefn objectmatrixdefn;
 
 typedef int MatrixIdx_t; // Type used for matrix indices
 typedef size_t MatrixCount_t; // Type used to count total number of elements
@@ -35,17 +35,17 @@ typedef struct {
     MatrixCount_t nels;   // Total number of entries (nrows*ncols*nvals)
     double *elements;
     double matrixdata[];
-} objectxmatrix;
+} objectmatrix;
 
 /** Tests whether an object is a matrix */
-#define MORPHO_ISXMATRIX(val) object_istype(val, OBJECT_XMATRIX)
+#define MORPHO_ISMATRIX(val) object_istype(val, OBJECT_MATRIX)
 
 /** Gets the object as an matrix */
-#define MORPHO_GETXMATRIX(val)   ((objectxmatrix *) MORPHO_GETOBJECT(val))
+#define MORPHO_GETMATRIX(val)   ((objectmatrix *) MORPHO_GETOBJECT(val))
 
 /** @brief Use to create static matrices on the C stack
     @details Intended for small matrices; Caller needs to supply a double array of size nr*nc. */
-#define MORPHO_STATICXMATRIX(darray, nr, nc)      { .obj.type=OBJECT_XMATRIX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .elements=darray, .nrows=nr, .ncols=nc, .nels=nr*nc }
+#define MORPHO_STATICMATRIX(darray, nr, nc)      { .obj.type=OBJECT_MATRIX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .elements=darray, .nrows=nr, .ncols=nc, .nels=nr*nc }
 
 /** Macro to decide if a matrix is 'small' or 'large' and hence static or dynamic allocation should be used. */
 #define MATRIX_ISSMALL(m) (m->nrows*m->ncols<MORPHO_MAXIMUMSTACKALLOC)
@@ -82,21 +82,21 @@ typedef enum {
 char matrix_normtolapack(matrix_norm_t norm);
 
 /** Compute various matrix norms */
-typedef double (*matrix_normfn_t) (objectxmatrix *a, matrix_norm_t nrm);
+typedef double (*matrix_normfn_t) (objectmatrix *a, matrix_norm_t nrm);
 
 /** Function that solves the linear system a.x = b
  * @param[in|out] a - lhs; overwritten by LU decomposition
  * @param[in|out] b - rhs; overwritten by solution
  * @param[out] pivot - you must provide an array with the same number of rows as a.
  * @returns a matrix error code */
-typedef linalgError_t (*matrix_solvefn_t) (objectxmatrix *a, objectxmatrix *b, int *pivot);
+typedef linalgError_t (*matrix_solvefn_t) (objectmatrix *a, objectmatrix *b, int *pivot);
 
 /** Function that finds the eigenvalues of a matrix
  * @param[in|out] a - matrix to diagonalize; overwritten
  * @param[out] w -  eigenvalues; dimension N
  * @param[out] vec - right eigenvectors. Can be NULL if only eigenvalues requested
  * @returns a matrix error code */
-typedef linalgError_t (*matrix_eigenfn_t) (objectxmatrix *a, MorphoComplex *w, objectxmatrix *vec);
+typedef linalgError_t (*matrix_eigenfn_t) (objectmatrix *a, MorphoComplex *w, objectmatrix *vec);
 
 /** Function that finds the svd of a matrix
  * @param[in|out] a - overwritten
@@ -104,14 +104,14 @@ typedef linalgError_t (*matrix_eigenfn_t) (objectxmatrix *a, MorphoComplex *w, o
  * @param[out] u - left singular vectors
  * @param[out] v - right singular vectors (transposed so columns contain singular vectors)
  * @returns a matrix error code */
-typedef linalgError_t (*matrix_svdfn_t) (objectxmatrix *a, double *s, objectxmatrix *u, objectxmatrix *vt);
+typedef linalgError_t (*matrix_svdfn_t) (objectmatrix *a, double *s, objectmatrix *u, objectmatrix *vt);
 
 /** Function that finds the QR decomposition of a matrix
  * @param[in|out] a - overwritten with R in upper triangle and reflectors below
  * @param[out] q - orthogonal matrix Q
  * @param[out] r - upper triangular matrix R
  * @returns a matrix error code */
-typedef linalgError_t (*matrix_qrfn_t) (objectxmatrix *a, objectxmatrix *q, objectxmatrix *r);
+typedef linalgError_t (*matrix_qrfn_t) (objectmatrix *a, objectmatrix *q, objectmatrix *r);
 
 typedef struct {
     matrix_printelfn_t printelfn;
@@ -126,13 +126,13 @@ typedef struct {
 } matrixinterfacedefn;
 
 void matrix_addinterface(matrixinterfacedefn *defn);
-matrixinterfacedefn *matrix_getinterface(objectxmatrix *a);
+matrixinterfacedefn *matrix_getinterface(objectmatrix *a);
 
 /* -------------------------------------------------------
  * Matrix veneer class
  * ------------------------------------------------------- */
 
-#define MATRIX_CLASSNAME                   "XMatrix"
+#define MATRIX_CLASSNAME                   "Matrix"
 
 #define MATRIX_GETCOLUMN_METHOD            "column"
 #define MATRIX_DIMENSIONS_METHOD           "dimensions"
@@ -150,7 +150,7 @@ matrixinterfacedefn *matrix_getinterface(objectxmatrix *a);
 #define MATRIX_TRACE_METHOD                "trace"
 #define MATRIX_TRANSPOSE_METHOD            "transpose"
 
-#define MATRIX_IDENTITYCONSTRUCTOR         "IdentityXMatrix"
+#define MATRIX_IDENTITYCONSTRUCTOR         "IdentityMatrix"
 
 void matrix_initialize(void);
 
@@ -207,30 +207,30 @@ IMPLEMENTATIONFN(Matrix_dimensions);
 
 bool matrix_isamatrix(value val);
 
-objectxmatrix *matrix_newwithtype(objecttype type, MatrixIdx_t nrows, MatrixIdx_t ncols, MatrixIdx_t nvals, bool zero);
-objectxmatrix *matrix_new(MatrixIdx_t nrows, MatrixIdx_t ncols, bool zero);
-objectxmatrix *matrix_clone(objectxmatrix *in);
-objectxmatrix *matrix_listconstructor(vm *v, value lst, objecttype type, MatrixIdx_t nvals);
-objectxmatrix *matrix_arrayconstructor(vm *v, objectarray *a, objecttype type, MatrixIdx_t nvals);
+objectmatrix *matrix_newwithtype(objecttype type, MatrixIdx_t nrows, MatrixIdx_t ncols, MatrixIdx_t nvals, bool zero);
+objectmatrix *matrix_new(MatrixIdx_t nrows, MatrixIdx_t ncols, bool zero);
+objectmatrix *matrix_clone(objectmatrix *in);
+objectmatrix *matrix_listconstructor(vm *v, value lst, objecttype type, MatrixIdx_t nvals);
+objectmatrix *matrix_arrayconstructor(vm *v, objectarray *a, objecttype type, MatrixIdx_t nvals);
 
-linalgError_t matrix_axpy(double alpha, objectxmatrix *x, objectxmatrix *y);
-linalgError_t matrix_copy(objectxmatrix *x, objectxmatrix *y);
-void matrix_scale(objectxmatrix *x, double scale);
-linalgError_t matrix_identity(objectxmatrix *x);
-linalgError_t matrix_mmul(double alpha, objectxmatrix *x, objectxmatrix *y, double beta, objectxmatrix *z);
-linalgError_t matrix_addscalar(objectxmatrix *x, double alpha, double beta);
-linalgError_t matrix_transpose(objectxmatrix *x, objectxmatrix *y);
+linalgError_t matrix_axpy(double alpha, objectmatrix *x, objectmatrix *y);
+linalgError_t matrix_copy(objectmatrix *x, objectmatrix *y);
+void matrix_scale(objectmatrix *x, double scale);
+linalgError_t matrix_identity(objectmatrix *x);
+linalgError_t matrix_mmul(double alpha, objectmatrix *x, objectmatrix *y, double beta, objectmatrix *z);
+linalgError_t matrix_addscalar(objectmatrix *x, double alpha, double beta);
+linalgError_t matrix_transpose(objectmatrix *x, objectmatrix *y);
 
-linalgError_t matrix_solve(objectxmatrix *a, objectxmatrix *b);
+linalgError_t matrix_solve(objectmatrix *a, objectmatrix *b);
 
-linalgError_t matrix_svd(objectxmatrix *a, double *s, objectxmatrix *u, objectxmatrix *vt);
+linalgError_t matrix_svd(objectmatrix *a, double *s, objectmatrix *u, objectmatrix *vt);
 
-linalgError_t matrix_qr(objectxmatrix *a, objectxmatrix *q, objectxmatrix *r);
+linalgError_t matrix_qr(objectmatrix *a, objectmatrix *q, objectmatrix *r);
 
-linalgError_t matrix_setelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value);
-linalgError_t matrix_getelement(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value);
-linalgError_t matrix_getelementptr(objectxmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value);
+linalgError_t matrix_setelement(objectmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value);
+linalgError_t matrix_getelement(objectmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value);
+linalgError_t matrix_getelementptr(objectmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value);
 
-void matrix_print(vm *v, objectxmatrix *m);
+void matrix_print(vm *v, objectmatrix *m);
 
 #endif

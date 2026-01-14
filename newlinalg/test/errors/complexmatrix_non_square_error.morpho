@@ -1,0 +1,10 @@
+// Non-square matrix err. (for operations requiring square matrices)
+import newlinalg 
+
+var A = ComplexMatrix(2,3)
+A[0,0]=1+1im
+
+// Try trace on non-square matrix
+print A.trace()
+// expect error 'LnAlgMtrxNtSq'
+

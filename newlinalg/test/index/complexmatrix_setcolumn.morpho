@@ -1,0 +1,22 @@
+// Set columns of a Matrix
+
+import newlinalg 
+
+var A = ComplexMatrix(2,2)
+
+var b = ComplexMatrix(2,1)
+b[0] = 1+1im
+b[1] = 3+3im
+
+var c = ComplexMatrix(2,1)
+c[0] = 2+2im
+c[1] = 4+4im
+
+A.setColumn(0,b)
+A.setColumn(1,c)
+
+print A
+// expect: [ 1 + 1im 2 + 2im ]
+// expect: [ 3 + 3im 4 + 4im ]
+
+print A.setColumn(2,b) // expect error 'LnAlgMtrxIndxBnds'

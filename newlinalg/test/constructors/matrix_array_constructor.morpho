@@ -1,0 +1,16 @@
+// Create a Matrix from an Array
+
+import newlinalg 
+
+var a[2,2]
+a[0,0]=1
+a[1,0]=3
+a[0,1]=2
+a[1,1]=4
+
+var A = XMatrix(a)
+
+print A 
+// expect: [ 1 2 ]
+// expect: [ 3 4 ]
+

@@ -1,0 +1,19 @@
+// Get columns of a Matrix
+
+import newlinalg 
+
+var A = XMatrix(2,2)
+A[0,0] = 1
+A[0,1] = 2
+A[1,0] = 3
+A[1,1] = 4
+
+print A.column(0)
+// expect: [ 1 ]
+// expect: [ 3 ]
+
+print A.column(1)
+// expect: [ 2 ]
+// expect: [ 4 ]
+
+print A.column(2) // expect error 'LnAlgMtrxIndxBnds'

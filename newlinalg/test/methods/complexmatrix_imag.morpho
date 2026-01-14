@@ -1,0 +1,12 @@
+// Inner product of ComplexMatrices (Frobenius inner product with conjugation)
+import newlinalg 
+
+var A = ComplexMatrix(2,2)
+A[0,0]=1+4im
+A[0,1]=2+3im
+A[1,0]=3+2im
+A[1,1]=4+1im 
+
+print A.imag() 
+// expect: [ 4 3 ]
+// expect: [ 2 1 ]

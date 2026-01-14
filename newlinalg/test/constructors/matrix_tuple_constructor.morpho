@@ -1,0 +1,16 @@
+// Create a Matrix from a Tuple of Tuples
+
+import newlinalg 
+
+var A = XMatrix(((1,2),(3,4)))
+
+print A 
+// expect: [ 1 2 ]
+// expect: [ 3 4 ]
+
+// Mix Tuples and Lists
+var B = XMatrix(([1,2],[3,4]))
+
+print B
+// expect: [ 1 2 ]
+// expect: [ 3 4 ]

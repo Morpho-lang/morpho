@@ -1,0 +1,19 @@
+// Get columns of a ComplexMatrix
+
+import newlinalg 
+
+var A = ComplexMatrix(2,2)
+A[0,0] = 1+1im
+A[0,1] = 2+2im
+A[1,0] = 3+3im
+A[1,1] = 4+4im
+
+print A.column(0)
+// expect: [ 1 + 1im ]
+// expect: [ 3 + 3im ]
+
+print A.column(1)
+// expect: [ 2 + 2im ]
+// expect: [ 4 + 4im ]
+
+print A.column(2) // expect error 'LnAlgMtrxIndxBnds'

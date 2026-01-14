@@ -1,0 +1,14 @@
+// Divide ComplexMatrix by XMatrix (solve linear system)
+import newlinalg 
+
+var A = XMatrix(((1,2),(-2,1)))
+
+var b = ComplexMatrix((1+im, 2))
+
+print b / A
+// expect: [ -0.6 + 0.2im ]
+// expect: [ 0.8 + 0.4im ]
+
+print b 
+// expect: [ 1 + 1im ]
+// expect: [ 2 + 0im ]

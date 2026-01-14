@@ -1,0 +1,49 @@
+// Copy elements of a Matrix using slices 
+import newlinalg 
+
+var A = XMatrix(((1,2),(3,4)))
+
+var B = XMatrix(4,4)
+
+B[0..1, 0..1] = A
+print B
+// expect: [ 1 2 0 0 ]
+// expect: [ 3 4 0 0 ]
+// expect: [ 0 0 0 0 ]
+// expect: [ 0 0 0 0 ]
+
+var C = XMatrix(4,4)
+C[0..2:2, 0..2:2] = A
+print C
+// expect: [ 1 0 2 0 ]
+// expect: [ 0 0 0 0 ]
+// expect: [ 3 0 4 0 ]
+// expect: [ 0 0 0 0 ]
+
+var D = XMatrix(4,4)
+D[1..2, 1..2] = A
+print D
+// expect: [ 0 0 0 0 ]
+// expect: [ 0 1 2 0 ]
+// expect: [ 0 3 4 0 ]
+// expect: [ 0 0 0 0 ]
+
+var E = XMatrix(4,4)
+E[1..3:2, 1..3:2] = A
+print E
+// expect: [ 0 0 0 0 ]
+// expect: [ 0 1 0 2 ]
+// expect: [ 0 0 0 0 ]
+// expect: [ 0 3 0 4 ]
+
+var F = XMatrix(4,4)
+F[0..1, 0] = A[0..1, 1]
+print F
+// expect: [ 2 0 0 0 ]
+// expect: [ 4 0 0 0 ]
+// expect: [ 0 0 0 0 ]
+// expect: [ 0 0 0 0 ]
+
+B[0..5, 0..5] = A
+print B
+// expect error 'LnAlgMtrxIndxBnds'

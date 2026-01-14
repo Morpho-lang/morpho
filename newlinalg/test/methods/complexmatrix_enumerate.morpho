@@ -1,0 +1,15 @@
+// Enumerate elements of a matrix 
+
+import newlinalg 
+
+var A = ComplexMatrix(2,2)
+A[0,0] = 1+im
+A[0,1] = 0+0im
+A[1,0] = 0+0im
+A[1,1] = 1-im
+
+for (x in A) print x 
+// expect: 1 + 1im
+// expect: 0 + 0im
+// expect: 0 + 0im
+// expect: 1 - 1im

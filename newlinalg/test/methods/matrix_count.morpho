@@ -1,0 +1,14 @@
+// Count elements in XMatrix
+import newlinalg 
+
+var A = XMatrix(2,3)
+A[0,0]=1
+A[0,1]=2
+A[0,2]=3
+A[1,0]=4
+A[1,1]=5
+A[1,2]=6
+
+print A.count()
+// expect: 6
+

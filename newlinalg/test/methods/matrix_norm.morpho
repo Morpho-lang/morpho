@@ -1,0 +1,21 @@
+// Norm of an XMatrix
+import newlinalg 
+import constants
+
+var A = XMatrix(2,2)
+A[0,0]=1
+A[0,1]=-2
+A[1,0]=3
+A[1,1]=-4
+
+print A.norm(1)
+// expect: 6
+
+print A.norm(Inf)
+// expect: 7
+
+print abs(A.norm() - sqrt(30)) < 1e-15
+// expect: true
+
+print A.norm(5)
+// expect error 'LnAlgMtrxNrmArgs'

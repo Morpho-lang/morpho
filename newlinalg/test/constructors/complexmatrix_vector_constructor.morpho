@@ -1,0 +1,9 @@
+// Create a ComplexMatrix column vector
+
+import newlinalg 
+
+var A = ComplexMatrix(2)
+
+print A 
+// expect: [ 0 + 0im ]
+// expect: [ 0 + 0im ]

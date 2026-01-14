@@ -1,0 +1,135 @@
+// QR Decomposition
+import newlinalg 
+
+// Test with a square matrix (this one is singular, so R will have a zero on the diagonal)
+var A = XMatrix(((1.0,2.0,3.0),(4.0,5.0,6.0),(7.0,8.0,9.0)))
+
+var qr = A.qr()
+
+print qr
+// expect: (<XMatrix>, <XMatrix>)
+
+var Q = qr[0]
+var R = qr[1]
+
+print Q.dimensions()
+// expect: (3, 3)
+
+print R.dimensions()
+// expect: (3, 3)
+
+// Verify Q is orthogonal: Q^T * Q should be approximately I
+var QTQ = Q.transpose() * Q
+var I = IdentityXMatrix(3)
+
+print (QTQ - I).norm() < 1e-10
+// expect: true
+
+// Verify R is upper triangular (check lower triangle is zero)
+var R_lower_norm = 0.0
+for (var i = 0; i < 3; i = i + 1) {
+    for (var j = 0; j < i; j = j + 1) {
+        R_lower_norm = R_lower_norm + R[i,j]*R[i,j]
+    }
+}
+print R_lower_norm < 1e-10
+// expect: true
+
+// Check R's diagonal - since A is singular, one diagonal element should be (close to) zero
+// This indicates the matrix has rank 2 (not full rank)
+print abs(R[2,2]) < 1e-8
+// expect: true
+
+// Verify Q * R reconstruction
+var QR = Q * R
+print (QR - A).norm() < 1e-10
+// expect: true
+
+// Test with a non-square matrix (tall matrix)
+var B = XMatrix(4,2)
+B[0,0] = 1.0
+B[0,1] = 2.0
+B[1,0] = 3.0
+B[1,1] = 4.0
+B[2,0] = 5.0
+B[2,1] = 6.0
+B[3,0] = 7.0
+B[3,1] = 8.0
+
+var qr2 = B.qr()
+var Q2 = qr2[0]
+var R2 = qr2[1]
+
+print Q2.dimensions()
+// expect: (4, 4)
+
+print R2.dimensions()
+// expect: (4, 2)
+
+// Verify Q2 first 2 columns are orthonormal
+// For tall matrices, only the first min(m,n) columns from DORGQR are orthonormal
+// The remaining columns are zero
+var Q2_col0 = Q2.column(0)
+var Q2_col1 = Q2.column(1)
+// Check norms
+print Q2_col0.norm() < 1.0 + 1e-10 and Q2_col0.norm() > 1.0 - 1e-10
+// expect: true
+print Q2_col1.norm() < 1.0 + 1e-10 and Q2_col1.norm() > 1.0 - 1e-10
+// expect: true
+// Check orthogonality: dot product should be close to zero
+var dot01 = Q2_col0.inner(Q2_col1)
+print dot01 < 1e-10 and dot01 > -1e-10
+// expect: true
+
+// Verify R2 is upper triangular
+var R2_lower_norm = 0.0
+for (var i = 0; i < 4; i = i + 1) {
+    for (var j = 0; j < 2; j = j + 1) {
+        if (i > j) {
+            R2_lower_norm = R2_lower_norm + R2[i,j]*R2[i,j]
+        }
+    }
+}
+print R2_lower_norm < 1e-10
+// expect: true
+
+// Test with a wide matrix
+var C = XMatrix(2,4)
+C[0,0] = 1.0
+C[0,1] = 2.0
+C[0,2] = 3.0
+C[0,3] = 4.0
+C[1,0] = 5.0
+C[1,1] = 6.0
+C[1,2] = 7.0
+C[1,3] = 8.0
+
+var qr3 = C.qr()
+var Q3 = qr3[0]
+var R3 = qr3[1]
+
+print Q3.dimensions()
+// expect: (2, 2)
+
+print R3.dimensions()
+// expect: (2, 4)
+
+// Verify Q3 is orthogonal
+var Q3TQ3 = Q3.transpose() * Q3
+var I2 = IdentityXMatrix(2)
+print (Q3TQ3 - I2).norm() < 1e-10
+// expect: true
+
+// Test with identity matrix
+var I3 = IdentityXMatrix(3)
+var qr4 = I3.qr()
+var Q4 = qr4[0]
+var R4 = qr4[1]
+
+// Q should be close to identity
+print (Q4 - I3).norm() < 1e-10
+// expect: true
+
+// R should be close to identity
+print (R4 - I3).norm() < 1e-10
+// expect: true

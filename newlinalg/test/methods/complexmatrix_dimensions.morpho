@@ -1,0 +1,9 @@
+// Get dimensions of ComplexMatrix
+import newlinalg 
+
+var A = ComplexMatrix(2,3)
+A[0,0]=1+1im
+
+print A.dimensions()
+// expect: (2, 3)
+

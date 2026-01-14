@@ -1,0 +1,9 @@
+// Subtract a matrix from a complexmatrix 
+import newlinalg 
+
+var A = ComplexMatrix(((1+1im, 2+2im), (3+3im, 4+4im)))
+var B = XMatrix(((4, 3), (2, 1)))
+
+print B - A
+// expect: [ 3 - 1im 1 - 2im ]
+// expect: [ -1 - 3im -3 - 4im ]

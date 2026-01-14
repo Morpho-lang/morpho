@@ -72,10 +72,10 @@ typedef value (*matrix_getelfn_t) (vm *, double *);
 typedef linalgError_t (*matrix_setelfn_t) (vm *, value, double *);
 
 typedef enum {
-    XMATRIX_NORM_MAX,
-    XMATRIX_NORM_L1,
-    XMATRIX_NORM_INF,
-    XMATRIX_NORM_FROBENIUS,
+    MATRIX_NORM_MAX,
+    MATRIX_NORM_L1,
+    MATRIX_NORM_INF,
+    MATRIX_NORM_FROBENIUS,
 } matrix_norm_t;
 
 /** Convert matrix_norm_t to a character for use with lapack routines */
@@ -132,72 +132,72 @@ matrixinterfacedefn *matrix_getinterface(objectxmatrix *a);
  * Matrix veneer class
  * ------------------------------------------------------- */
 
-#define XMATRIX_CLASSNAME                   "XMatrix"
+#define MATRIX_CLASSNAME                   "XMatrix"
 
-#define XMATRIX_GETCOLUMN_METHOD            "column"
-#define XMATRIX_DIMENSIONS_METHOD           "dimensions"
-#define XMATRIX_EIGENVALUES_METHOD          "eigenvalues"
-#define XMATRIX_EIGENSYSTEM_METHOD          "eigensystem"
-#define XMATRIX_SVD_METHOD                  "svd"
-#define XMATRIX_QR_METHOD                   "qr"
-#define XMATRIX_INNER_METHOD                "inner"
-#define XMATRIX_INVERSE_METHOD              "inverse"
-#define XMATRIX_NORM_METHOD                 "norm"
-#define XMATRIX_OUTER_METHOD                "outer"
-#define XMATRIX_RESHAPE_METHOD              "reshape"
-#define XMATRIX_ROLL_METHOD                 "roll"
-#define XMATRIX_SETCOLUMN_METHOD            "setColumn"
-#define XMATRIX_TRACE_METHOD                "trace"
-#define XMATRIX_TRANSPOSE_METHOD            "transpose"
+#define MATRIX_GETCOLUMN_METHOD            "column"
+#define MATRIX_DIMENSIONS_METHOD           "dimensions"
+#define MATRIX_EIGENVALUES_METHOD          "eigenvalues"
+#define MATRIX_EIGENSYSTEM_METHOD          "eigensystem"
+#define MATRIX_SVD_METHOD                  "svd"
+#define MATRIX_QR_METHOD                   "qr"
+#define MATRIX_INNER_METHOD                "inner"
+#define MATRIX_INVERSE_METHOD              "inverse"
+#define MATRIX_NORM_METHOD                 "norm"
+#define MATRIX_OUTER_METHOD                "outer"
+#define MATRIX_RESHAPE_METHOD              "reshape"
+#define MATRIX_ROLL_METHOD                 "roll"
+#define MATRIX_SETCOLUMN_METHOD            "setColumn"
+#define MATRIX_TRACE_METHOD                "trace"
+#define MATRIX_TRANSPOSE_METHOD            "transpose"
 
-#define XMATRIX_IDENTITYCONSTRUCTOR         "IdentityXMatrix"
+#define MATRIX_IDENTITYCONSTRUCTOR         "IdentityXMatrix"
 
 void matrix_initialize(void);
 
 #define IMPLEMENTATIONFN(fn) value fn (vm *v, int nargs, value *args)
 
-IMPLEMENTATIONFN(matrix_constructor__xmatrix);
+IMPLEMENTATIONFN(matrix_constructor__matrix);
 
-IMPLEMENTATIONFN(XMatrix_print);
-IMPLEMENTATIONFN(XMatrix_format);
-IMPLEMENTATIONFN(XMatrix_assign);
-IMPLEMENTATIONFN(XMatrix_clone);
+IMPLEMENTATIONFN(Matrix_print);
+IMPLEMENTATIONFN(Matrix_format);
+IMPLEMENTATIONFN(Matrix_assign);
+IMPLEMENTATIONFN(Matrix_clone);
 
-IMPLEMENTATIONFN(XMatrix_index__int);
-IMPLEMENTATIONFN(XMatrix_index__int_int);
-IMPLEMENTATIONFN(XMatrix_index__x_x);
-IMPLEMENTATIONFN(XMatrix_setindex__int_x);
-IMPLEMENTATIONFN(XMatrix_setindex__int_int_x);
-IMPLEMENTATIONFN(XMatrix_setindex__x_x_xmatrix);
+IMPLEMENTATIONFN(Matrix_index_int);
+IMPLEMENTATIONFN(Matrix_index_int_int);
+IMPLEMENTATIONFN(Matrix_index_x_x);
+IMPLEMENTATIONFN(Matrix_setindex_int_x);
+IMPLEMENTATIONFN(Matrix_setindex_int_int_x);
+IMPLEMENTATIONFN(Matrix_setindex_x_x__matrix);
 
-IMPLEMENTATIONFN(XMatrix_getcolumn__int);
-IMPLEMENTATIONFN(XMatrix_setcolumn__int_xmatrix);
+IMPLEMENTATIONFN(Matrix_getcolumn_int);
+IMPLEMENTATIONFN(Matrix_setcolumn_int__matrix);
 
-IMPLEMENTATIONFN(XMatrix_add__xmatrix);
-IMPLEMENTATIONFN(XMatrix_add__nil);
-IMPLEMENTATIONFN(XMatrix_add__x);
-IMPLEMENTATIONFN(XMatrix_sub__xmatrix);
-IMPLEMENTATIONFN(XMatrix_sub__x);
-IMPLEMENTATIONFN(XMatrix_subr__x);
-IMPLEMENTATIONFN(XMatrix_mul__float);
-IMPLEMENTATIONFN(XMatrix_div__float);
-IMPLEMENTATIONFN(XMatrix_div__xmatrix);
-IMPLEMENTATIONFN(XMatrix_acc__x_xmatrix);
+IMPLEMENTATIONFN(Matrix_add__matrix);
+IMPLEMENTATIONFN(Matrix_add_nil);
+IMPLEMENTATIONFN(Matrix_add_x);
+IMPLEMENTATIONFN(Matrix_sub__matrix);
+IMPLEMENTATIONFN(Matrix_sub_x);
+IMPLEMENTATIONFN(Matrix_subr_x);
+IMPLEMENTATIONFN(Matrix_mul_float);
+IMPLEMENTATIONFN(Matrix_div_float);
+IMPLEMENTATIONFN(Matrix_div__matrix);
+IMPLEMENTATIONFN(Matrix_acc_x_x__matrix);
 
-IMPLEMENTATIONFN(XMatrix_norm__x);
-IMPLEMENTATIONFN(XMatrix_norm);
-IMPLEMENTATIONFN(XMatrix_sum);
-IMPLEMENTATIONFN(XMatrix_transpose);
-IMPLEMENTATIONFN(XMatrix_eigenvalues);
-IMPLEMENTATIONFN(XMatrix_eigensystem);
-IMPLEMENTATIONFN(XMatrix_svd);
-IMPLEMENTATIONFN(XMatrix_qr);
-IMPLEMENTATIONFN(XMatrix_reshape);
-IMPLEMENTATIONFN(XMatrix_roll__int);
-IMPLEMENTATIONFN(XMatrix_roll__int_int);
-IMPLEMENTATIONFN(XMatrix_enumerate);
-IMPLEMENTATIONFN(XMatrix_count);
-IMPLEMENTATIONFN(XMatrix_dimensions);
+IMPLEMENTATIONFN(Matrix_norm_x);
+IMPLEMENTATIONFN(Matrix_norm);
+IMPLEMENTATIONFN(Matrix_sum);
+IMPLEMENTATIONFN(Matrix_transpose);
+IMPLEMENTATIONFN(Matrix_eigenvalues);
+IMPLEMENTATIONFN(Matrix_eigensystem);
+IMPLEMENTATIONFN(Matrix_svd);
+IMPLEMENTATIONFN(Matrix_qr);
+IMPLEMENTATIONFN(Matrix_reshape);
+IMPLEMENTATIONFN(Matrix_roll_int);
+IMPLEMENTATIONFN(Matrix_roll_int_int);
+IMPLEMENTATIONFN(Matrix_enumerate);
+IMPLEMENTATIONFN(Matrix_count);
+IMPLEMENTATIONFN(Matrix_dimensions);
 
 #undef DECLARE_IMPLEMENTATIONFN
 

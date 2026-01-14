@@ -357,7 +357,7 @@ value complexmatrix_constructor__int(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
-value complematrix_constructor__xmatrix(vm *v, int nargs, value *args) {
+value complematrix_constructor__matrix(vm *v, int nargs, value *args) {
     objectxmatrix *a = MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
     
     objectcomplexmatrix *new=complexmatrix_new(a->nrows, a->ncols, true);
@@ -405,17 +405,17 @@ static value _axpy(vm *v, int nargs, value *args, double alpha) {
     return out;
 }
 
-value ComplexMatrix_add__xmatrix(vm *v, int nargs, value *args) {
+value ComplexMatrix_add__matrix(vm *v, int nargs, value *args) {
     return _axpy(v, nargs, args, 1.0);
 }
 
-value ComplexMatrix_sub__xmatrix(vm *v, int nargs, value *args) {
+value ComplexMatrix_sub__matrix(vm *v, int nargs, value *args) {
     value out = _axpy(v, nargs, args, -1.0);
     if (matrix_isamatrix(out)) matrix_scale(MORPHO_GETXMATRIX(out), -1.0); // -(-A + B)
     return out;
 }
 
-value ComplexMatrix_subr__xmatrix(vm *v, int nargs, value *args) {
+value ComplexMatrix_subr__matrix(vm *v, int nargs, value *args) {
     return _axpy(v, nargs, args, -1.0);
 }
 
@@ -454,22 +454,22 @@ value ComplexMatrix_mul__complexmatrix(vm *v, int nargs, value *args) {
     return _mul(v, MORPHO_SELF(args), MORPHO_GETARG(args, 0), false, false);
 }
 
-value ComplexMatrix_mul__xmatrix(vm *v, int nargs, value *args) {
+value ComplexMatrix_mul__matrix(vm *v, int nargs, value *args) {
     return _mul(v, MORPHO_SELF(args), MORPHO_GETARG(args, 0), true, false);
 }
 
-value ComplexMatrix_mulr__xmatrix(vm *v, int nargs, value *args) {
+value ComplexMatrix_mulr__matrix(vm *v, int nargs, value *args) {
     return _mul(v, MORPHO_SELF(args), MORPHO_GETARG(args, 0), true, true);
 }
 
-value ComplexMatrix_div__xmatrix(vm *v, int nargs, value *args) {
+value ComplexMatrix_div__matrix(vm *v, int nargs, value *args) {
     objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_SELF(args)), *A=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0)), *ap=NULL;
     objectxmatrix *new=matrix_clone(b);
     if (new && _promote(v, A, &ap)) matrix_solve(ap, new);
     return morpho_wrapandbind(v, (object *) new);
 }
 
-value ComplexMatrix_divr__xmatrix(vm *v, int nargs, value *args) {
+value ComplexMatrix_divr__matrix(vm *v, int nargs, value *args) {
     objectxmatrix *A=MORPHO_GETXMATRIX(MORPHO_SELF(args)), *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0)), *bp=NULL;
     if (_promote(v, b, &bp)) matrix_solve(A, bp); // Promote the matrix that will contain the solution anyway
     return morpho_wrapandbind(v, (object *) bp);
@@ -564,65 +564,65 @@ value ComplexMatrix_outer(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(ComplexMatrix)
-MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", XMatrix_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_FORMAT_METHOD, "(String)", XMatrix_format, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(ComplexMatrix)", XMatrix_assign, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "ComplexMatrix ()", XMatrix_clone, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int)", XMatrix_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int, Int)", XMatrix_index__int_int, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "ComplexMatrix (_,_)", XMatrix_index__x_x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", XMatrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", XMatrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(_,_,ComplexMatrix)", XMatrix_setindex__x_x_xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_GETCOLUMN_METHOD, "ComplexMatrix (Int)", XMatrix_getcolumn__int, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_SETCOLUMN_METHOD, "(Int, ComplexMatrix)", XMatrix_setcolumn__int_xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (_)", XMatrix_add__x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (Nil)", XMatrix_add__nil, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_add__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "ComplexMatrix (_)", XMatrix_add__x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "ComplexMatrix (Nil)", XMatrix_add__nil, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_sub__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (Nil)", XMatrix_add__nil, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (_)", XMatrix_sub__x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "ComplexMatrix (_)", XMatrix_subr__x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_subr__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (_)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", Matrix_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_FORMAT_METHOD, "(String)", Matrix_format, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(ComplexMatrix)", Matrix_assign, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "ComplexMatrix ()", Matrix_clone, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int)", Matrix_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Complex (Int, Int)", Matrix_index_int_int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "ComplexMatrix (_,_)", Matrix_index_x_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", Matrix_setindex_int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", Matrix_setindex_int_int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(_,_,ComplexMatrix)", Matrix_setindex_x_x__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_GETCOLUMN_METHOD, "ComplexMatrix (Int)", Matrix_getcolumn_int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_SETCOLUMN_METHOD, "(Int, ComplexMatrix)", Matrix_setcolumn_int__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (ComplexMatrix)", Matrix_add__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_add__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (_)", Matrix_add_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "ComplexMatrix (Nil)", Matrix_add_nil, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_add__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "ComplexMatrix (_)", Matrix_add_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "ComplexMatrix (Nil)", Matrix_add_nil, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (ComplexMatrix)", Matrix_sub__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_sub__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (Nil)", Matrix_add_nil, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "ComplexMatrix (_)", Matrix_sub_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "ComplexMatrix (_)", Matrix_subr_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_subr__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (_)", Matrix_mul_float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (Complex)", ComplexMatrix_mul__complex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (ComplexMatrix)", ComplexMatrix_mul__complexmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_mul__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_mulr__xmatrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_mul__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_mulr__matrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "ComplexMatrix (Complex)", ComplexMatrix_mul__complex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "ComplexMatrix (_)", XMatrix_mul__float, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (_)", XMatrix_div__float, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_div__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (ComplexMatrix)", XMatrix_div__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_DIVR_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_divr__xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, ComplexMatrix)", XMatrix_acc__x_xmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_INVERSE_METHOD, "ComplexMatrix ()", ComplexMatrix_inverse, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float (_)", XMatrix_norm__x, MORPHO_FN_PUREFN),
-MORPHO_METHOD_SIGNATURE(XMATRIX_NORM_METHOD, "Float ()", XMatrix_norm, MORPHO_FN_PUREFN),
-MORPHO_METHOD_SIGNATURE(MORPHO_SUM_METHOD, "Complex ()", XMatrix_sum, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_TRACE_METHOD, "Complex ()", ComplexMatrix_trace, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_TRANSPOSE_METHOD, "ComplexMatrix ()", XMatrix_transpose, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "ComplexMatrix (_)", Matrix_mul_float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (_)", Matrix_div_float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_div__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "ComplexMatrix (ComplexMatrix)", Matrix_div__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIVR_METHOD, "ComplexMatrix (XMatrix)", ComplexMatrix_divr__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, ComplexMatrix)", Matrix_acc_x_x__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_INVERSE_METHOD, "ComplexMatrix ()", ComplexMatrix_inverse, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_NORM_METHOD, "Float (_)", Matrix_norm_x, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MATRIX_NORM_METHOD, "Float ()", Matrix_norm, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUM_METHOD, "Complex ()", Matrix_sum, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_TRACE_METHOD, "Complex ()", ComplexMatrix_trace, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_TRANSPOSE_METHOD, "ComplexMatrix ()", Matrix_transpose, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(COMPLEX_REAL_METHOD, "XMatrix ()", ComplexMatrix_real, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(COMPLEX_IMAG_METHOD, "XMatrix ()", ComplexMatrix_imag, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(COMPLEX_CONJUGATE_METHOD, "ComplexMatrix ()", ComplexMatrix_conj, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(COMPLEXMATRIX_CONJTRANSPOSE_METHOD, "ComplexMatrix ()", ComplexMatrix_conjTranspose, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_INNER_METHOD, "Complex (XMatrix)", ComplexMatrix_inner, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_OUTER_METHOD, "ComplexMatrix (ComplexMatrix)", ComplexMatrix_outer, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENVALUES_METHOD, "Tuple ()", XMatrix_eigenvalues, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_EIGENSYSTEM_METHOD, "Tuple ()", XMatrix_eigensystem, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_SVD_METHOD, "Tuple ()", XMatrix_svd, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_QR_METHOD, "Tuple ()", XMatrix_qr, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_RESHAPE_METHOD, "(Int,Int)", XMatrix_reshape, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_ROLL_METHOD, "ComplexMatrix (Int)", XMatrix_roll__int, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(XMATRIX_ROLL_METHOD, "ComplexMatrix (Int,Int)", XMatrix_roll__int_int, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", XMatrix_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", XMatrix_count, MORPHO_FN_PUREFN),
-MORPHO_METHOD_SIGNATURE(XMATRIX_DIMENSIONS_METHOD, "Tuple ()", XMatrix_dimensions, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MATRIX_INNER_METHOD, "Complex (XMatrix)", ComplexMatrix_inner, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_OUTER_METHOD, "ComplexMatrix (ComplexMatrix)", ComplexMatrix_outer, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_EIGENVALUES_METHOD, "Tuple ()", Matrix_eigenvalues, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_EIGENSYSTEM_METHOD, "Tuple ()", Matrix_eigensystem, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_SVD_METHOD, "Tuple ()", Matrix_svd, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_QR_METHOD, "Tuple ()", Matrix_qr, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_RESHAPE_METHOD, "(Int,Int)", Matrix_reshape, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_ROLL_METHOD, "ComplexMatrix (Int)", Matrix_roll_int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_ROLL_METHOD, "ComplexMatrix (Int,Int)", Matrix_roll_int_int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", Matrix_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Matrix_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MATRIX_DIMENSIONS_METHOD, "Tuple ()", Matrix_dimensions, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -641,8 +641,8 @@ void complexmatrix_initialize(void) {
     
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Int, Int)", complexmatrix_constructor__int_int, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Int)", complexmatrix_constructor__int, MORPHO_FN_CONSTRUCTOR, NULL);
-    morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (ComplexMatrix)", matrix_constructor__xmatrix, MORPHO_FN_CONSTRUCTOR, NULL);
-    morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (XMatrix)", complematrix_constructor__xmatrix, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (ComplexMatrix)", matrix_constructor__matrix, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (XMatrix)", complematrix_constructor__matrix, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (List)", complexmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Tuple)", complexmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Array)", complexmatrix_constructor__array, MORPHO_FN_CONSTRUCTOR, NULL);

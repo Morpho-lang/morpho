@@ -1,6 +1,6 @@
 target_sources(newlinalg
     PRIVATE
         newlinalg.c   newlinalg.h  
-        xmatrix.c     xmatrix.h
-        xcomplexmatrix.c     xcomplexmatrix.h
+        matrix.c     matrix.h
+        complexmatrix.c     complexmatrix.h
 )

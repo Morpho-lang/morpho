@@ -1,4 +1,4 @@
-/** @file xcomplexmatrix.c
+/** @file complexmatrix.c
  *  @author T J Atherton
  *
  *  @brief New linear algebra library
@@ -10,8 +10,8 @@
 #include <platform.h>
 
 #include "newlinalg.h"
-#include "xmatrix.h"
-#include "xcomplexmatrix.h"
+#include "matrix.h"
+#include "complexmatrix.h"
 #include "format.h"
 #include "cmplx.h"
 

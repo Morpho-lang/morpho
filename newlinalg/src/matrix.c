@@ -1,4 +1,4 @@
-/** @file xmatrix.c
+/** @file matrix.c
  *  @author T J Atherton
  *
  *  @brief New matrices

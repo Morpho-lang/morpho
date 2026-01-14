@@ -1,11 +1,11 @@
-/** @file xcomplexmatrix.h
+/** @file complexmatrix.h
  *  @author T J Atherton
  *
  *  @brief New linear algebra library
 */
 
-#ifndef xcomplexmatrix_h
-#define xcomplexmatrix_h
+#ifndef complexmatrix_h
+#define complexmatrix_h
 
 /* -------------------------------------------------------
  * ComplexMatrix veneer class

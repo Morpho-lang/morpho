@@ -1,11 +1,11 @@
-/** @file xmatrix.h
+/** @file matrix.h
  *  @author T J Atherton
  *
  *  @brief New linear algebra library
 */
 
-#ifndef xmatrix_h
-#define xmatrix_h
+#ifndef matrix_h
+#define matrix_h
 
 #define LINALG_MAXMATRIXDEFNS 4
 

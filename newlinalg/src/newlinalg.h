@@ -87,7 +87,7 @@ void linalg_raiseerror(vm *v, linalgError_t err);
  * Include the rest of the library
  * ------------------------------------------------------- */
 
-#include "xmatrix.h"
-#include "xcomplexmatrix.h"
+#include "matrix.h"
+#include "complexmatrix.h"
 
 #endif

@@ -1,8 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/Users/timatherton/Documents/Programs/packages/morpho-newlinalg/build/cmake_install.cmake",
-		"/Users/timatherton/Documents/Programs/packages/morpho-newlinalg/build/src/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

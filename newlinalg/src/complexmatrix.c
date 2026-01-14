@@ -57,8 +57,8 @@ static linalgError_t _setelfn(vm *v, value in, double *el) {
 }
 
 /** Evaluate norms */
-static double _normfn(objectxmatrix *a, xmatrix_norm_t nrm) {
-    char cnrm = xmatrix_normtolapack(nrm);
+static double _normfn(objectxmatrix *a, matrix_norm_t nrm) {
+    char cnrm = matrix_normtolapack(nrm);
     int nrows=a->nrows, ncols=a->ncols;
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
@@ -167,7 +167,7 @@ static linalgError_t _qr(objectxmatrix *a, objectxmatrix *q, objectxmatrix *r) {
     
     // Extract R (upper triangle of a) into r
     // Copy entire matrix first then zero out below the diagonal
-    xmatrix_copy(a, r);
+    matrix_copy(a, r);
     __LAPACK_double_complex *relems = (__LAPACK_double_complex *) r->elements;
     for (int j = 0; j < n && j < m - 1; j++) {
         memset(&relems[j * m + (j + 1)], 0, (m - j - 1) * sizeof(__LAPACK_double_complex));
@@ -221,7 +221,7 @@ matrixinterfacedefn complexmatrixdefn = {
 
 /** Create a new complex matrix */
 objectcomplexmatrix *complexmatrix_new(MatrixIdx_t nrows, MatrixIdx_t ncols, bool zero) {
-    return (objectcomplexmatrix *) xmatrix_newwithtype(OBJECT_COMPLEXMATRIX, nrows, ncols, 2, zero);
+    return (objectcomplexmatrix *) matrix_newwithtype(OBJECT_COMPLEXMATRIX, nrows, ncols, 2, zero);
 }
 
 /* ----------------------
@@ -281,7 +281,7 @@ linalgError_t complexmatrix_mmul(MorphoComplex alpha, objectxmatrix *a, objectxm
 }
 
 /** Scales a matrix x <- scale * x >*/
-void complexmatrix_scale(objectxmatrix *a, MorphoComplex scale) {
+void complematrix_scale(objectxmatrix *a, MorphoComplex scale) {
     cblas_zscal(a->nrows * a->ncols, (__LAPACK_double_complex *) &scale, (__LAPACK_double_complex *) a->elements, 1);
 }
 
@@ -357,7 +357,7 @@ value complexmatrix_constructor__int(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
-value complexmatrix_constructor__xmatrix(vm *v, int nargs, value *args) {
+value complematrix_constructor__xmatrix(vm *v, int nargs, value *args) {
     objectxmatrix *a = MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0));
     
     objectcomplexmatrix *new=complexmatrix_new(a->nrows, a->ncols, true);
@@ -367,7 +367,7 @@ value complexmatrix_constructor__xmatrix(vm *v, int nargs, value *args) {
 
 /** Constructs a complexmatrix from a list of lists or tuples */
 value complexmatrix_constructor__list(vm *v, int nargs, value *args) {
-    objectxmatrix *new = xmatrix_listconstructor(v, MORPHO_GETARG(args, 0), OBJECT_COMPLEXMATRIX, 2);
+    objectxmatrix *new = matrix_listconstructor(v, MORPHO_GETARG(args, 0), OBJECT_COMPLEXMATRIX, 2);
     return morpho_wrapandbind(v, (object *) new);
 }
 
@@ -376,7 +376,7 @@ value complexmatrix_constructor__array(vm *v, int nargs, value *args) {
     objectarray *a = MORPHO_GETARRAY(MORPHO_GETARG(args, 0));
     if (a->ndim!=2) { morpho_runtimeerror(v, LINALG_INVLDARGS); return MORPHO_NIL; }
     
-    objectxmatrix *new = xmatrix_arrayconstructor(v, a, OBJECT_COMPLEXMATRIX, 2);
+    objectxmatrix *new = matrix_arrayconstructor(v, a, OBJECT_COMPLEXMATRIX, 2);
     return morpho_wrapandbind(v, (object *) new);
 }
 
@@ -398,7 +398,7 @@ static value _axpy(vm *v, int nargs, value *args, double alpha) {
         objectcomplexmatrix *new=complexmatrix_new(a->nrows, a->ncols, true);
         if (new) {
             complexmatrix_promote(b, new);
-            xmatrix_axpy(alpha, a, new);
+            matrix_axpy(alpha, a, new);
         }
         out = morpho_wrapandbind(v, (object *) new);
     } else morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
@@ -411,7 +411,7 @@ value ComplexMatrix_add__xmatrix(vm *v, int nargs, value *args) {
 
 value ComplexMatrix_sub__xmatrix(vm *v, int nargs, value *args) {
     value out = _axpy(v, nargs, args, -1.0);
-    if (xmatrix_isamatrix(out)) xmatrix_scale(MORPHO_GETXMATRIX(out), -1.0); // -(-A + B)
+    if (matrix_isamatrix(out)) matrix_scale(MORPHO_GETXMATRIX(out), -1.0); // -(-A + B)
     return out;
 }
 
@@ -422,8 +422,8 @@ value ComplexMatrix_subr__xmatrix(vm *v, int nargs, value *args) {
 value ComplexMatrix_mul__complex(vm *v, int nargs, value *args) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     
-    objectxmatrix *new = xmatrix_clone(a);
-    if (new) complexmatrix_scale(new, MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0))->Z);
+    objectxmatrix *new = matrix_clone(a);
+    if (new) complematrix_scale(new, MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0))->Z);
     return morpho_wrapandbind(v, (object *) new);
 }
 
@@ -464,14 +464,14 @@ value ComplexMatrix_mulr__xmatrix(vm *v, int nargs, value *args) {
 
 value ComplexMatrix_div__xmatrix(vm *v, int nargs, value *args) {
     objectxmatrix *b=MORPHO_GETXMATRIX(MORPHO_SELF(args)), *A=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0)), *ap=NULL;
-    objectxmatrix *new=xmatrix_clone(b);
-    if (new && _promote(v, A, &ap)) xmatrix_solve(ap, new);
+    objectxmatrix *new=matrix_clone(b);
+    if (new && _promote(v, A, &ap)) matrix_solve(ap, new);
     return morpho_wrapandbind(v, (object *) new);
 }
 
 value ComplexMatrix_divr__xmatrix(vm *v, int nargs, value *args) {
     objectxmatrix *A=MORPHO_GETXMATRIX(MORPHO_SELF(args)), *b=MORPHO_GETXMATRIX(MORPHO_GETARG(args, 0)), *bp=NULL;
-    if (_promote(v, b, &bp)) xmatrix_solve(A, bp); // Promote the matrix that will contain the solution anyway
+    if (_promote(v, b, &bp)) matrix_solve(A, bp); // Promote the matrix that will contain the solution anyway
     return morpho_wrapandbind(v, (object *) bp);
 }
 
@@ -489,7 +489,7 @@ value ComplexMatrix_inverse(vm *v, int nargs, value *args) {
     objectcomplexmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
     value out=MORPHO_NIL;
     
-    objectcomplexmatrix *new = xmatrix_clone(a);
+    objectcomplexmatrix *new = matrix_clone(a);
     out = morpho_wrapandbind(v, (object *) new);
     if (new) LINALG_ERRCHECKVM(complexmatrix_inverse(new));
     
@@ -498,7 +498,7 @@ value ComplexMatrix_inverse(vm *v, int nargs, value *args) {
 
 static value _realimag(vm *v, int nargs, value *args, bool imag) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    objectxmatrix *new=xmatrix_new(a->nrows, a->ncols, false);
+    objectxmatrix *new=matrix_new(a->nrows, a->ncols, false);
     if (new) complexmatrix_demote(a, new, imag);
     return morpho_wrapandbind(v, (object *) new);
 }
@@ -515,9 +515,9 @@ value ComplexMatrix_imag(vm *v, int nargs, value *args) {
 
 static value _conj(vm *v, int nargs, value *args, bool trans) {
     objectxmatrix *a=MORPHO_GETXMATRIX(MORPHO_SELF(args));
-    objectxmatrix *new=xmatrix_clone(a);
+    objectxmatrix *new=matrix_clone(a);
     if (new) {
-        if (trans) xmatrix_transpose(a, new);
+        if (trans) matrix_transpose(a, new);
         cblas_dscal(a->nrows*a->ncols, -1.0, new->elements+1, new->nvals);
     }
     return morpho_wrapandbind(v, (object *) new);
@@ -631,7 +631,7 @@ MORPHO_ENDCLASS
 
 void complexmatrix_initialize(void) {
     objectcomplexmatrixtype=object_addtype(&objectxmatrixdefn);
-    xmatrix_addinterface(&complexmatrixdefn);
+    matrix_addinterface(&complexmatrixdefn);
     
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
@@ -641,8 +641,8 @@ void complexmatrix_initialize(void) {
     
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Int, Int)", complexmatrix_constructor__int_int, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Int)", complexmatrix_constructor__int, MORPHO_FN_CONSTRUCTOR, NULL);
-    morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (ComplexMatrix)", xmatrix_constructor__xmatrix, MORPHO_FN_CONSTRUCTOR, NULL);
-    morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (XMatrix)", complexmatrix_constructor__xmatrix, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (ComplexMatrix)", matrix_constructor__xmatrix, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (XMatrix)", complematrix_constructor__xmatrix, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (List)", complexmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Tuple)", complexmatrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(COMPLEXMATRIX_CLASSNAME, "ComplexMatrix (Array)", complexmatrix_constructor__array, MORPHO_FN_CONSTRUCTOR, NULL);

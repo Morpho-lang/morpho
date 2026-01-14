@@ -34,7 +34,7 @@ void linalg_raiseerror(vm *v, linalgError_t err) {
  * ------------------------------------------------------- */
 
 void newlinalg_initialize(void) { 
-    xmatrix_initialize();
+    matrix_initialize();
     
     morpho_defineerror(LINALG_INCOMPATIBLEMATRICES, ERROR_HALT, LINALG_INCOMPATIBLEMATRICES_MSG);
     morpho_defineerror(LINALG_INDICESOUTSIDEBOUNDS, ERROR_HALT, LINALG_INDICESOUTSIDEBOUNDS_MSG);

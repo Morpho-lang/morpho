@@ -4,8 +4,15 @@
  *  @brief New matrices
 */
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_LINALG
 
-#include "linalg.h"
+#include <string.h>
+#include "morpho.h"
+#include "classes.h"
+
+#include "matrix.h"
+#include "sparse.h"
 #include "format.h"
 
 /* **********************************************************************
@@ -1484,3 +1491,5 @@ void matrix_initialize(void) {
     
     complematrix_initialize();
 }
+
+#endif /* MORPHO_INCLUDE_LINALG */

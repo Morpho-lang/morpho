@@ -441,10 +441,16 @@ void matrix_scale(objectmatrix *x, double scale) {
     cblas_dscal((__LAPACK_int) x->nels, scale, x->elements, 1);
 }
 
+/** Loads the zero matrix a <- 0 */
+linalgError_t matrix_zero(objectmatrix *x) {
+    memset(x->elements, 0, sizeof(double)*x->nrows*x->ncols*x->nvals);
+    return LINALGERR_OK;
+}
+
 /** Loads the identity matrix a <- I(n) */
 linalgError_t matrix_identity(objectmatrix *x) {
     if (x->ncols!=x->nrows) return LINALGERR_NOT_SQUARE;
-    memset(x->elements, 0, sizeof(double)*x->nrows*x->ncols);
+    matrix_zero(x);
     for (int i=0; i<x->nrows; i++) x->elements[x->nvals*(i+x->nrows*i)]=1.0;
     return LINALGERR_OK;
 }

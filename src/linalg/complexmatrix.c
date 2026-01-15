@@ -7,8 +7,6 @@
 #include <platform.h>
 
 #include "linalg.h"
-#include "matrix.h"
-#include "complexmatrix.h"
 #include "format.h"
 #include "cmplx.h"
 

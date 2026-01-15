@@ -32,6 +32,8 @@
 #include "cmplx.h"
 #include "list.h"
 
+#include "linalg.h"
+
 #define LINALG_MAXMATRIXDEFNS 4
 
 /* -------------------------------------------------------
@@ -240,6 +242,7 @@ objectmatrix *matrix_arrayconstructor(vm *v, objectarray *a, objecttype type, Ma
 linalgError_t matrix_axpy(double alpha, objectmatrix *x, objectmatrix *y);
 linalgError_t matrix_copy(objectmatrix *x, objectmatrix *y);
 void matrix_scale(objectmatrix *x, double scale);
+linalgError_t matrix_zero(objectmatrix *x);
 linalgError_t matrix_identity(objectmatrix *x);
 linalgError_t matrix_mmul(double alpha, objectmatrix *x, objectmatrix *y, double beta, objectmatrix *z);
 linalgError_t matrix_addscalar(objectmatrix *x, double alpha, double beta);

@@ -392,6 +392,12 @@ linalgError_t matrix_getelementptr(objectmatrix *matrix, MatrixIdx_t row, Matrix
     return LINALGERR_OK;
 }
 
+/** @brief Gets a pointer to a matrix column
+ *  @returns true if the column is in the range of the matrix, false otherwise */
+linalgError_t matrix_getcolumnptr(objectmatrix *matrix, MatrixIdx_t col, double **value) {
+    return matrix_getelementptr(matrix, 0, col, value);
+}
+
 /** Copies the column col of matrix a into the column vector b */
 linalgError_t matrix_getcolumn(objectmatrix *a, MatrixIdx_t col, objectmatrix *b) {
     if (col<0 || col>=a->ncols) return LINALGERR_INDX_OUT_OF_BNDS;

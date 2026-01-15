@@ -196,9 +196,7 @@ void selection_selectwithmatrix(vm *v, objectselection *sel, value fn, objectmat
     value ret=MORPHO_NIL; // Return value
     
     for (elementid i=0; i<nv; i++) {
-        bool success=matrix_getcolumn(matrix, i, &x);
-        
-        if (success) {
+        if (matrix_getcolumnptr(matrix, i, &x)==LINALGERR_OK) {
             for (unsigned int i=0; i<nargs; i++) args[i]=MORPHO_FLOAT(x[i]);
         }
         

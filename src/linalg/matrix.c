@@ -468,6 +468,10 @@ linalgError_t matrix_mmul(double alpha, objectmatrix *x, objectmatrix *y, double
     return LINALGERR_OK;
 }
 
+linalgError_t matrix_mul(objectmatrix *x, objectmatrix *y, objectmatrix *z) {
+    return matrix_mmul(1.0, x, y, 0.0, z);
+}
+
 /** Performs x <- alpha*x + beta */
 linalgError_t matrix_addscalar(objectmatrix *x, double alpha, double beta) {
     for (MatrixCount_t i=0; i<x->ncols*x->nrows; i++) {

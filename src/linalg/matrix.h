@@ -247,12 +247,20 @@ void matrix_scale(objectmatrix *x, double scale);
 linalgError_t matrix_zero(objectmatrix *x);
 linalgError_t matrix_identity(objectmatrix *x);
 linalgError_t matrix_mmul(double alpha, objectmatrix *x, objectmatrix *y, double beta, objectmatrix *z);
+linalgError_t matrix_mul(objectmatrix *x, objectmatrix *y, objectmatrix *z);
 linalgError_t matrix_addscalar(objectmatrix *x, double alpha, double beta);
 linalgError_t matrix_transpose(objectmatrix *x, objectmatrix *y);
 
+double matrix_norm(objectmatrix *a, matrix_norm_t norm);
+void matrix_sum(objectmatrix *a, double *sum);
+linalgError_t matrix_trace(objectmatrix *a, double *out);
+
 linalgError_t matrix_inner(objectmatrix *x, objectmatrix *y, double *out);
 
+linalgError_t matrix_solvesmall(objectmatrix *a, objectmatrix *b);
+linalgError_t matrix_solvelarge(objectmatrix *a, objectmatrix *b);
 linalgError_t matrix_solve(objectmatrix *a, objectmatrix *b);
+linalgError_t matrix_inverse(objectmatrix *a);
 
 linalgError_t matrix_svd(objectmatrix *a, double *s, objectmatrix *u, objectmatrix *vt);
 

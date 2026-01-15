@@ -1103,7 +1103,7 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
     functional_parallelmap(ntask, task);
     
     /* Then add up all the matrices */
-    for (int i=1; i<ntask; i++) matrix_add(new[0], new[i], new[0]);
+    for (int i=1; i<ntask; i++) matrix_axpy(1.0, new[i], new[0]);
     
     // Use symmetry actions
     if (info->sym==SYMMETRY_ADD) functional_symmetrysumforces(info->mesh, new[0]);
@@ -1211,7 +1211,7 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
     functional_parallelmap(ntask, task);
     
     /* Then add up all the matrices */
-    for (int i=1; i<ntask; i++) matrix_add(new[0], new[i], new[0]);
+    for (int i=1; i<ntask; i++) matrix_axpy(1.0, new[i], new[0]);
     
     success=true;
     
@@ -1266,7 +1266,7 @@ bool functional_mapfieldgradient(vm *v, functional_mapinfo *info, value *out) {
     functional_parallelmap(ntask, task);
     
     /* Then add up all the fields using their underlying data stores */
-    for (int i=1; i<ntask; i++) matrix_add(&new[0]->data, &new[1]->data, &new[0]->data);
+    for (int i=1; i<ntask; i++) matrix_axpy(1.0, &new[1]->data, &new[0]->data);
     
     // TODO: Use symmetry actions
     //if (info->sym==SYMMETRY_ADD) functional_symmetrysumforces(info->mesh, new[0]);
@@ -1394,7 +1394,7 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
     functional_parallelmap(ntask, task);
     
     /* Then add up all the fields */
-    for (int i=1; i<ntask; i++) matrix_add(&new[0]->data, &new[i]->data, &new[0]->data);
+    for (int i=1; i<ntask; i++) matrix_axpy(1.0, &new[i]->data, &new[0]->data);
     
     success=true;
     
@@ -2180,16 +2180,17 @@ bool linearelasticity_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
     linearelasticity_calculategram(info->refmesh->vert, mesh->dim, nv, vid, &gramref);
     linearelasticity_calculategram(mesh->vert, mesh->dim, nv, vid, &gramdef);
 
-    if (matrix_inverse(&gramref, &q)!=LINALGERR_OK) return false;
+    if (matrix_copy(&gramref, &q)!=LINALGERR_OK) return false;
+    if (matrix_inverse(&q)!=LINALGERR_OK) return false;
     if (matrix_mul(&gramdef, &q, &r)!=LINALGERR_OK) return false;
 
     matrix_identity(&cg);
     matrix_scale(&cg, -0.5);
-    matrix_accumulate(&cg, 0.5, &r);
+    matrix_axpy(0.5, &r, &cg);         //  y <- alpha*x + y
 
     double trcg=0.0, trcgcg=0.0;
     matrix_trace(&cg, &trcg);
-
+    
     matrix_mul(&cg, &cg, &r);
     matrix_trace(&r, &trcgcg);
 
@@ -2559,7 +2560,7 @@ bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
         MORPHO_ISMATRIX(weight) ) {
         ref->weight=MORPHO_GETMATRIX(weight);
         if (ref->weight) {
-            ref->mean=matrix_sum(ref->weight);
+            matrix_sum(ref->weight, &ref->mean);
             ref->mean/=ref->weight->ncols;
         }
     }
@@ -3328,18 +3329,16 @@ bool gradsq_evaluategradient3d(objectmesh *mesh, objectfield *field, int nv, int
     objectmatrix Mt = MORPHO_STATICMATRIX(xtarray, mesh->dim, mesh->dim);
     matrix_transpose(&M, &Mt);
 
-    double farray[nentries*mesh->dim]; // Field elements
-    objectmatrix frhs = MORPHO_STATICMATRIX(farray, mesh->dim, nentries);
     objectmatrix grad = MORPHO_STATICMATRIX(out, mesh->dim, nentries);
 
     // Loop over elements of the field
     for (unsigned int i=0; i<nentries; i++) {
         // Copy across the field values to form the rhs
-        for (unsigned int j=0; j<mesh->dim; j++) farray[i*mesh->dim+j] = f[j+1][i]-f[0][i];
+        for (unsigned int j=0; j<mesh->dim; j++) out[i*mesh->dim+j] = f[j+1][i]-f[0][i];
     }
 
     // Solve to obtain the gradient of each element
-    matrix_divs(&Mt, &frhs, &grad);
+    matrix_solvesmall(&Mt, &grad);
 
     return true;
 }
@@ -4086,7 +4085,8 @@ bool integral_prepareinvjacobian(unsigned int dim, grade g, double **x, objectma
     
     if (g==dim) {
         objectmatrix smat = MORPHO_STATICMATRIX(s, dim, dim);
-        success=(matrix_inverse(&smat, invj)==LINALGERR_OK);
+        success=(matrix_copy(&smat, invj)==LINALGERR_OK &&
+                 matrix_inverse(invj)==LINALGERR_OK);
     } else if (g==1) {
         double s01norm = functional_vecdot(dim, s, s);
         if (s01norm>0) {
@@ -4314,12 +4314,13 @@ void integral_evaluatecg(vm *v, value *out) {
     linearelasticity_calculategram(elref->iref->mref->vert, elref->mesh->dim, elref->nv, elref->vid, &gramref);
     linearelasticity_calculategram(elref->mesh->vert, elref->mesh->dim, elref->nv, elref->vid, &gramdef);
     
-    if (matrix_inverse(&gramref, &q)!=LINALGERR_OK) return;
+    if (matrix_copy(&gramref, &q)!=LINALGERR_OK) return;
+    if (matrix_inverse(&q)!=LINALGERR_OK) return;
     if (matrix_mul(&gramdef, &q, &r)!=LINALGERR_OK) return;
 
     matrix_identity(cg);
     matrix_scale(cg, -0.5);
-    matrix_accumulate(cg, 0.5, &r);
+    matrix_axpy(0.5, &r, cg);
     
     vm_settlvar(v, cauchygreenhandle, MORPHO_OBJECT(cg));
     *out = MORPHO_OBJECT(cg);

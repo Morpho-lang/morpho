@@ -154,8 +154,8 @@ bool functional_symmetrysumforces(objectmesh *mesh, objectmatrix *frc) {
         double *fi, *fj, fsum[mesh->dim];
 
         while (sparsedok_loop(&s->dok, &ctr, &i, &j)) {
-            if (matrix_getcolumn(frc, i, &fi) &&
-                matrix_getcolumn(frc, j, &fj)) {
+            if (matrix_getcolumnptr(frc, i, &fi) &&
+                matrix_getcolumnptr(frc, j, &fj)) {
 
                 for (unsigned int k=0; k<mesh->dim; k++) fsum[k]=fi[k]+fj[k];
                 matrix_setcolumn(frc, i, fsum);
@@ -279,7 +279,7 @@ bool functional_mapintegrandX(vm *v, functional_mapinfo *info, value *out) {
 
     /* Create the output matrix */
     if (n>0) {
-        new=object_newmatrix(1, n, true);
+        new=matrix_new(1, n, true);
         if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
     }
 
@@ -357,7 +357,7 @@ bool functional_mapgradientX(vm *v, functional_mapinfo *info, value *out) {
 
     /* Create the output matrix */
     if (n>0) {
-        frc=object_newmatrix(mesh->vert->nrows, mesh->vert->ncols, true);
+        frc=matrix_new(mesh->vert->nrows, mesh->vert->ncols, true);
         if (!frc)  { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
     }
 
@@ -566,7 +566,7 @@ bool functional_mapnumericalgradientX(vm *v, functional_mapinfo *info, value *ou
 
     /* Create the output matrix */
     if (n>0) {
-        frc=object_newmatrix(mesh->vert->nrows, mesh->vert->ncols, true);
+        frc=matrix_new(mesh->vert->nrows, mesh->vert->ncols, true);
         if (!frc)  { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
     }
 
@@ -1047,7 +1047,7 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
     
     /* Create output matrix */
     if (task[0].nel>0) {
-        new=object_newmatrix(1, task[0].nel, true);
+        new=matrix_new(1, task[0].nel, true);
         if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
     }
     
@@ -1093,7 +1093,7 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
     /* Create output matrix */
     for (int i=0; i<ntask; i++) {
         // Create one per thread
-        new[i]=object_newmatrix(info->mesh->vert->nrows, info->mesh->vert->ncols, true);
+        new[i]=matrix_new(info->mesh->vert->nrows, info->mesh->vert->ncols, true);
         if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapgradient_cleanup; }
         
         task[i].mapfn=(functional_mapfn *) info->grad;
@@ -1195,12 +1195,12 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
     
     for (int i=0; i<ntask; i++) {
         // Create one output matrix per thread
-        new[i]=object_newmatrix(info->mesh->vert->nrows, info->mesh->vert->ncols, true);
+        new[i]=matrix_new(info->mesh->vert->nrows, info->mesh->vert->ncols, true);
         if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapgradient_cleanup; }
         
         // Clone the vertex matrix for each thread
         meshclones[i]=*info->mesh;
-        meshclones[i].vert=object_clonematrix(info->mesh->vert);
+        meshclones[i].vert=matrix_clone(info->mesh->vert);
         task[i].mesh=&meshclones[i];
         
         task[i].ref=(void *) info; // Use this to pass the info structure
@@ -1561,7 +1561,7 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
         
         // Clone the vertex matrix for each thread
         meshclones[i]=*info->mesh;
-        meshclones[i].vert=object_clonematrix(info->mesh->vert);
+        meshclones[i].vert=matrix_clone(info->mesh->vert);
         if (!meshclones[i].vert) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_maphessian_cleanup; }
         task[i].mesh=&meshclones[i];
         
@@ -1713,7 +1713,7 @@ bool functional_elementgradient(vm *v, objectmesh *mesh, grade g, elementid id, 
 bool length_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     if (nv!=2) return false;
     double *x[nv], s0[mesh->dim];
-    for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
 
     functional_vecsub(mesh->dim, x[1], x[0], s0);
 
@@ -1724,7 +1724,7 @@ bool length_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
 /** Calculate scaled gradient */
 bool length_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc, double scale) {
     double *x[nv], s0[mesh->dim], norm;
-    for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
 
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     norm=functional_vecnorm(mesh->dim, s0);
@@ -1764,7 +1764,7 @@ MORPHO_ENDCLASS
 /** Calculate area enclosed */
 bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     double *x[nv], cx[mesh->dim], normcx;
-    for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
 
     if (mesh->dim==2) {
         functional_veccross2d(x[0], x[1], cx);
@@ -1783,7 +1783,7 @@ bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
 bool areaenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
     double *x[nv], cx[3], s[3];
     double norm;
-    for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
 
     if (mesh->dim==3) {
         functional_veccross(x[0], x[1], cx);
@@ -1829,7 +1829,7 @@ bool area_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, voi
     if (nv!=3) return false;
     double *x[nv], s0[3], s1[3], cx[3];
     for (int j=0; j<3; j++) { s0[j]=0; s1[j]=0; cx[j]=0; }
-    for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
 
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     functional_vecsub(mesh->dim, x[2], x[1], s1);
@@ -1845,7 +1845,7 @@ bool area_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid
     double *x[nv], s0[3], s1[3], s01[3], s010[3], s011[3];
     double norm;
     for (int j=0; j<3; j++) { s0[j]=0; s1[j]=0; s01[j]=0; s010[j]=0; s011[j]=0; }
-    for (int j=0; j<nv; j++) if (!matrix_getcolumn(mesh->vert, vid[j], &x[j])) return false;
+    for (int j=0; j<nv; j++) if (!matrix_getcolumnptr(mesh->vert, vid[j], &x[j])) return false;
 
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     functional_vecsub(mesh->dim, x[2], x[1], s1);
@@ -1895,7 +1895,7 @@ MORPHO_ENDCLASS
 /** Calculate enclosed volume */
 bool volumeenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     double *x[nv], cx[mesh->dim];
-    for (int j=0; j<nv; j++) if (!matrix_getcolumn(mesh->vert, vid[j], &x[j])) return false;
+    for (int j=0; j<nv; j++) if (!matrix_getcolumnptr(mesh->vert, vid[j], &x[j])) return false;
 
     functional_veccross(x[0], x[1], cx);
 
@@ -1906,7 +1906,7 @@ bool volumeenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
 /** Calculate gradient */
 bool volumeenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
     double *x[nv], cx[mesh->dim], dot;
-    for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
 
     functional_veccross(x[0], x[1], cx);
     dot=functional_vecdot(mesh->dim, cx, x[2]);
@@ -1949,7 +1949,7 @@ MORPHO_ENDCLASS
 /** Calculate enclosed volume */
 bool volume_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     double *x[nv], s10[mesh->dim], s20[mesh->dim], s30[mesh->dim], cx[mesh->dim];
-    for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
 
     functional_vecsub(mesh->dim, x[1], x[0], s10);
     functional_vecsub(mesh->dim, x[2], x[0], s20);
@@ -1965,7 +1965,7 @@ bool volume_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
 bool volume_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc, double scale) {
     double *x[nv], s10[mesh->dim], s20[mesh->dim], s30[mesh->dim];
     double s31[mesh->dim], s21[mesh->dim], cx[mesh->dim], uu;
-    for (int j=0; j<nv; j++) matrix_getcolumn(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
 
     functional_vecsub(mesh->dim, x[1], x[0], s10);
     functional_vecsub(mesh->dim, x[2], x[0], s20);
@@ -2034,7 +2034,7 @@ bool scalarpotential_integrand(vm *v, objectmesh *mesh, elementid id, int nv, in
     value args[mesh->dim];
     value ret;
 
-    matrix_getcolumn(mesh->vert, id, &x);
+    matrix_getcolumnptr(mesh->vert, id, &x);
     for (int i=0; i<mesh->dim; i++) args[i]=MORPHO_FLOAT(x[i]);
 
     if (morpho_call(v, fn, mesh->dim, args, &ret)) {
@@ -2051,7 +2051,7 @@ bool scalarpotential_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int
     value args[mesh->dim];
     value ret;
 
-    matrix_getcolumn(mesh->vert, id, &x);
+    matrix_getcolumnptr(mesh->vert, id, &x);
     for (int i=0; i<mesh->dim; i++) args[i]=MORPHO_FLOAT(x[i]);
 
     if (morpho_call(v, fn, mesh->dim, args, &ret)) {
@@ -2157,7 +2157,7 @@ void linearelasticity_calculategram(objectmatrix *vert, int dim, int nv, int *vi
     double *x[nv], // Positions of vertices
             s[gdim][nv]; // Side vectors
 
-    for (int j=0; j<nv; j++) matrix_getcolumn(vert, vid[j], &x[j]); // Get vertices
+    for (int j=0; j<nv; j++) matrix_getcolumnptr(vert, vid[j], &x[j]); // Get vertices
     for (int j=1; j<nv; j++) functional_vecsub(dim, x[j], x[0], s[j-1]); // u_i = X_i - X_0
     // <u_i, u_j>
     for (int i=0; i<nv-1; i++) for (int j=0; j<nv-1; j++) gram->elements[i+j*gdim]=functional_vecdot(dim, s[i], s[j]);
@@ -2180,8 +2180,8 @@ bool linearelasticity_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
     linearelasticity_calculategram(info->refmesh->vert, mesh->dim, nv, vid, &gramref);
     linearelasticity_calculategram(mesh->vert, mesh->dim, nv, vid, &gramdef);
 
-    if (matrix_inverse(&gramref, &q)!=MATRIX_OK) return false;
-    if (matrix_mul(&gramdef, &q, &r)!=MATRIX_OK) return false;
+    if (matrix_inverse(&gramref, &q)!=LINALGERR_OK) return false;
+    if (matrix_mul(&gramdef, &q, &r)!=LINALGERR_OK) return false;
 
     matrix_identity(&cg);
     matrix_scale(&cg, -0.5);
@@ -2917,7 +2917,7 @@ bool linetorsionsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int 
     /* We now have an ordered list of vertices.
        Get the vertex positions */
     double *x[6];
-    for (int i=0; i<6; i++) matrix_getcolumn(mesh->vert, vlist[i], &x[i]);
+    for (int i=0; i<6; i++) matrix_getcolumnptr(mesh->vert, vlist[i], &x[i]);
 
     double A[3], B[3], C[3], crossAB[3], crossBC[3];
     functional_vecsub(3, x[1], x[0], A);
@@ -3081,7 +3081,7 @@ bool meancurvaturesq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, in
 
         double *x[3], s0[3], s1[3], s01[3], s101[3];
         double norm;
-        for (int j=0; j<3; j++) matrix_getcolumn(mesh->vert, vids[j], &x[j]);
+        for (int j=0; j<3; j++) matrix_getcolumnptr(mesh->vert, vids[j], &x[j]);
 
         /* s0 = x1-x0; s1 = x2-x1 */
         functional_vecsub(mesh->dim, x[1], x[0], s0);
@@ -3155,7 +3155,7 @@ bool gausscurvature_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
         if (!curvature_ordervertices(&synid, nvert, vids)) goto gausscurv_cleanup;
 
         double *x[3], s0[3], s1[3], s01[3];
-        for (int j=0; j<3; j++) matrix_getcolumn(mesh->vert, vids[j], &x[j]);
+        for (int j=0; j<3; j++) matrix_getcolumnptr(mesh->vert, vids[j], &x[j]);
 
         /* s0 = x1-x0; s1 = x2-x0 */
         functional_vecsub(mesh->dim, x[1], x[0], s0);
@@ -4003,7 +4003,7 @@ void integral_evaluatetangent(vm *v, value *out) {
     
     int dim = elref->mesh->dim;
     
-    objectmatrix *mtangent = object_newmatrix(dim, 1, false);
+    objectmatrix *mtangent = matrix_new(dim, 1, false);
     if (!mtangent) {
         morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
         return;
@@ -4040,7 +4040,7 @@ void integral_evaluatenormal(vm *v, value *out) {
     
     int dim = elref->mesh->dim;
     double s0[dim], s1[dim];
-    objectmatrix *mnormal = object_newmatrix(dim, 1, false);
+    objectmatrix *mnormal = matrix_new(dim, 1, false);
     if (!mnormal) {
         morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
         return;
@@ -4086,7 +4086,7 @@ bool integral_prepareinvjacobian(unsigned int dim, grade g, double **x, objectma
     
     if (g==dim) {
         objectmatrix smat = MORPHO_STATICMATRIX(s, dim, dim);
-        success=(matrix_inverse(&smat, invj)==MATRIX_OK);
+        success=(matrix_inverse(&smat, invj)==LINALGERR_OK);
     } else if (g==1) {
         double s01norm = functional_vecdot(dim, s, s);
         if (s01norm>0) {
@@ -4117,7 +4117,7 @@ bool integral_prepareinvjacobian(unsigned int dim, grade g, double **x, objectma
 /** Allocate suitable storage for the gradient */
 bool integral_gradalloc(int dim, value prototype, value *out) {
     if (MORPHO_ISNIL(prototype)) { // Scalar
-        objectmatrix *mgrad=object_newmatrix(dim, 1, false);
+        objectmatrix *mgrad=matrix_new(dim, 1, false);
         if (mgrad) *out = MORPHO_OBJECT(mgrad);
         return mgrad;
     } else if (MORPHO_ISMATRIX(prototype)) {
@@ -4135,7 +4135,7 @@ bool integral_gradsuminit(int i, value prototype, value dest, value *sum) {
         
         if (i>=list_length(lst)) {
             objectmatrix *prmat = MORPHO_GETMATRIX(prototype);
-            objectmatrix *new = object_newmatrix(prmat->nrows, prmat->ncols, true);
+            objectmatrix *new = matrix_new(prmat->nrows, prmat->ncols, true);
             if (!new) return false;
             *sum = MORPHO_OBJECT(new);
             list_append(lst, *sum);
@@ -4169,7 +4169,7 @@ bool integral_oldgradcopy(int dim, int ndof, double *grad, value prototype, valu
             value el;
             
             if (i>=list_length(lst)) {
-                mgrad=object_newmatrix(proto->nrows, proto->ncols, false); // Should copy prototype dimensions!
+                mgrad=matrix_new(proto->nrows, proto->ncols, false); // Should copy prototype dimensions!
                 if (mgrad) {
                     for (int k=0; k<ndof; k++) mgrad->elements[k]=grad[k*dim+i];
                     list_append(lst, MORPHO_OBJECT(mgrad));
@@ -4219,7 +4219,7 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
     // Evaluate gradient
     if (MORPHO_ISFESPACE(fld->fnspc)) {
         if (!elref->invj) {
-            elref->invj=object_newmatrix(elref->g, elref->mesh->dim, false);
+            elref->invj=matrix_new(elref->g, elref->mesh->dim, false);
             
             if (elref->invj) {
                 integral_prepareinvjacobian(elref->mesh->dim, elref->g, elref->vertexposn, elref->invj);
@@ -4241,7 +4241,7 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
         double fmatdata[nnodes * dim];
         objectmatrix fmat = MORPHO_STATICMATRIX(fmatdata, nnodes, dim);
         
-        if (matrix_mul(&gmat, elref->invj, &fmat)!=MATRIX_OK) {
+        if (matrix_mul(&gmat, elref->invj, &fmat)!=LINALGERR_OK) {
             morpho_runtimeerror(v, INTEGRAL_GRDEVL);
             return false;
         }
@@ -4302,7 +4302,7 @@ void integral_evaluatecg(vm *v, value *out) {
     
     int gdim=elref->nv-1; // Dimension of Gram matrix
     
-    objectmatrix *cg=object_newmatrix(gdim, gdim, true);
+    objectmatrix *cg=matrix_new(gdim, gdim, true);
     if (!cg) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return; }
     
     double gramrefel[gdim*gdim], gramdefel[gdim*gdim], qel[gdim*gdim], rel[gdim*gdim];
@@ -4314,8 +4314,8 @@ void integral_evaluatecg(vm *v, value *out) {
     linearelasticity_calculategram(elref->iref->mref->vert, elref->mesh->dim, elref->nv, elref->vid, &gramref);
     linearelasticity_calculategram(elref->mesh->vert, elref->mesh->dim, elref->nv, elref->vid, &gramdef);
     
-    if (matrix_inverse(&gramref, &q)!=MATRIX_OK) return;
-    if (matrix_mul(&gramdef, &q, &r)!=MATRIX_OK) return;
+    if (matrix_inverse(&gramref, &q)!=LINALGERR_OK) return;
+    if (matrix_mul(&gramdef, &q, &r)!=LINALGERR_OK) return;
 
     matrix_identity(cg);
     matrix_scale(cg, -0.5);

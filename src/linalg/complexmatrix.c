@@ -4,12 +4,9 @@
  *  @brief New linear algebra library
 */
 
-#define ACCELERATE_NEW_LAPACK
-#define MORPHO_INCLUDE_LINALG
-
 #include <platform.h>
 
-#include "newlinalg.h"
+#include "linalg.h"
 #include "matrix.h"
 #include "complexmatrix.h"
 #include "format.h"

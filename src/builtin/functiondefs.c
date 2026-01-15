@@ -14,7 +14,7 @@
 #include "common.h"
 #include "cmplx.h"
 
-#include "matrix.h"
+#include "linalg.h"
 #include "sparse.h"
 
 #include "mesh.h"

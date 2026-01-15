@@ -90,4 +90,11 @@ void linalg_raiseerror(vm *v, linalgError_t err);
 #include "matrix.h"
 #include "complexmatrix.h"
 
+
+/* -------------------------------------------------------
+ * Initialization and finalization
+ * ------------------------------------------------------- */
+
+void linalg_initialize(void);
+
 #endif

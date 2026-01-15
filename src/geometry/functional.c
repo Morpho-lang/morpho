@@ -17,7 +17,7 @@
 
 #include "threadpool.h"
 
-#include "matrix.h"
+#include "linalg.h"
 #include "sparse.h"
 #include "geometry.h"
 

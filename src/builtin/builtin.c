@@ -462,7 +462,7 @@ void builtin_initialize(void) {
     
     // Initialize linear algebra
 #ifdef MORPHO_INCLUDE_LINALG
-    matrix_initialize();
+    linalg_initialize();
 #endif
     
 #ifdef MORPHO_INCLUDE_SPARSE

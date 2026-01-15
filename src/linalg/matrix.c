@@ -7,7 +7,7 @@
 #define ACCELERATE_NEW_LAPACK
 #define MORPHO_INCLUDE_LINALG
 
-#include "newlinalg.h"
+#include "linalg.h"
 #include "format.h"
 
 /* **********************************************************************

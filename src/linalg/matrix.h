@@ -50,7 +50,6 @@ typedef struct {
 /** Macro to decide if a matrix is 'small' or 'large' and hence static or dynamic allocation should be used. */
 #define MATRIX_ISSMALL(m) (m->nrows*m->ncols<MORPHO_MAXIMUMSTACKALLOC)
 
-
 /* -------------------------------------------------------
  * Matrix interface definitions
  * ------------------------------------------------------- */

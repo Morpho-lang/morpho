@@ -4,9 +4,6 @@
  *  @brief Improved linear algebra library
 */
 
-#define ACCELERATE_NEW_LAPACK
-#define MORPHO_INCLUDE_LINALG
-
 #include "linalg.h"
 
 /* -------------------------------------------------------
@@ -33,7 +30,7 @@ void linalg_raiseerror(vm *v, linalgError_t err) {
  * Initialization and finalization
  * ------------------------------------------------------- */
 
-void newlinalg_initialize(void) { 
+void linalg_initialize(void) {
     matrix_initialize();
     
     morpho_defineerror(LINALG_INCOMPATIBLEMATRICES, ERROR_HALT, LINALG_INCOMPATIBLEMATRICES_MSG);
@@ -48,5 +45,3 @@ void newlinalg_initialize(void) {
     morpho_defineerror(LINALG_NORMARGS,             ERROR_HALT, LINALG_NORMARGS_MSG);
 }
 
-void newlinalg_finalize(void) { 
-}

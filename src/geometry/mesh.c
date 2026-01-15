@@ -13,7 +13,7 @@
 #include "file.h"
 #include "parse.h"
 #include "sparse.h"
-#include "matrix.h"
+#include "linalg.h"
 #include "selection.h"
 
 // Temporary include

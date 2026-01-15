@@ -14,7 +14,7 @@
 #include "morpho.h"
 #include "classes.h"
 
-#include "matrix.h"
+#include "linalg.h"
 #include "sparse.h"
 #include "geometry.h"
 

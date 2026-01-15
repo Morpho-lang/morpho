@@ -14,7 +14,7 @@
 #include "classes.h"
 
 #include "sparse.h"
-#include "matrix.h"
+#include "linalg.h"
 
 /* ***************************************
  * Compatibility with Sparse libraries

@@ -11,7 +11,7 @@
 #include "object.h"
 #include "builtin.h"
 #include "classes.h"
-#include "matrix.h"
+#include "linalg.h"
 #include "sparse.h"
 #include "mesh.h"
 #include "selection.h"
@@ -186,7 +186,7 @@ void selection_selectwithmatrix(vm *v, objectselection *sel, value fn, objectmat
     int nv = vert->ncols;
 
     if (matrix->ncols!=nv) {
-        morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+        morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
         return;
     }
     

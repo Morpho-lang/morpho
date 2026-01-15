@@ -158,8 +158,8 @@ bool functional_symmetrysumforces(objectmesh *mesh, objectmatrix *frc) {
                 matrix_getcolumnptr(frc, j, &fj)) {
 
                 for (unsigned int k=0; k<mesh->dim; k++) fsum[k]=fi[k]+fj[k];
-                matrix_setcolumn(frc, i, fsum);
-                matrix_setcolumn(frc, j, fsum);
+                matrix_setcolumnptr(frc, i, fsum);
+                matrix_setcolumnptr(frc, j, fsum);
             }
         }
     }
@@ -1730,8 +1730,8 @@ bool length_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *v
     norm=functional_vecnorm(mesh->dim, s0);
     if (norm<MORPHO_EPS) return false;
 
-    matrix_addtocolumn(frc, vid[0], -1.0/norm*scale, s0);
-    matrix_addtocolumn(frc, vid[1], 1./norm*scale, s0);
+    matrix_addtocolumnptr(frc, vid[0], -1.0/norm*scale, s0);
+    matrix_addtocolumnptr(frc, vid[1], 1./norm*scale, s0);
 
     return true;
 }
@@ -1791,10 +1791,10 @@ bool areaenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *v
         if (norm<MORPHO_EPS) return false;
 
         functional_veccross(x[1], cx, s);
-        matrix_addtocolumn(frc, vid[0], 0.5/norm, s);
+        matrix_addtocolumnptr(frc, vid[0], 0.5/norm, s);
 
         functional_veccross(cx, x[0], s);
-        matrix_addtocolumn(frc, vid[1], 0.5/norm, s);
+        matrix_addtocolumnptr(frc, vid[1], 0.5/norm, s);
     } else if (mesh->dim==2) {
         functional_veccross2d(x[0], x[1], cx);
 
@@ -1857,12 +1857,12 @@ bool area_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid
     functional_veccross(s01, s0, s010);
     functional_veccross(s01, s1, s011);
 
-    matrix_addtocolumn(frc, vid[0], 0.5/norm*scale, s011);
-    matrix_addtocolumn(frc, vid[2], 0.5/norm*scale, s010);
+    matrix_addtocolumnptr(frc, vid[0], 0.5/norm*scale, s011);
+    matrix_addtocolumnptr(frc, vid[2], 0.5/norm*scale, s010);
 
     functional_vecadd(mesh->dim, s010, s011, s0);
 
-    matrix_addtocolumn(frc, vid[1], -0.5/norm*scale, s0);
+    matrix_addtocolumnptr(frc, vid[1], -0.5/norm*scale, s0);
 
     return true;
 }
@@ -1917,13 +1917,13 @@ bool volumeenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int 
     
     dot/=fabs(dot);
 
-    matrix_addtocolumn(frc, vid[2], dot/6.0, cx);
+    matrix_addtocolumnptr(frc, vid[2], dot/6.0, cx);
 
     functional_veccross(x[1], x[2], cx);
-    matrix_addtocolumn(frc, vid[0], dot/6.0, cx);
+    matrix_addtocolumnptr(frc, vid[0], dot/6.0, cx);
 
     functional_veccross(x[2], x[0], cx);
-    matrix_addtocolumn(frc, vid[1], dot/6.0, cx);
+    matrix_addtocolumnptr(frc, vid[1], dot/6.0, cx);
 
     return true;
 }
@@ -1977,16 +1977,16 @@ bool volume_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *v
     uu=functional_vecdot(mesh->dim, s10, cx);
     uu=(uu>0 ? 1.0 : -1.0);
 
-    matrix_addtocolumn(frc, vid[1], uu/6.0*scale, cx);
+    matrix_addtocolumnptr(frc, vid[1], uu/6.0*scale, cx);
 
     functional_veccross(s31, s21, cx);
-    matrix_addtocolumn(frc, vid[0], uu/6.0*scale, cx);
+    matrix_addtocolumnptr(frc, vid[0], uu/6.0*scale, cx);
 
     functional_veccross(s30, s10, cx);
-    matrix_addtocolumn(frc, vid[2], uu/6.0*scale, cx);
+    matrix_addtocolumnptr(frc, vid[2], uu/6.0*scale, cx);
 
     functional_veccross(s10, s20, cx);
-    matrix_addtocolumn(frc, vid[3], uu/6.0*scale, cx);
+    matrix_addtocolumnptr(frc, vid[3], uu/6.0*scale, cx);
 
     return true;
 }
@@ -2059,7 +2059,7 @@ bool scalarpotential_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int
             objectmatrix *vf=MORPHO_GETMATRIX(ret);
 
             if (vf->nrows*vf->ncols==frc->nrows) {
-                return matrix_addtocolumn(frc, id, 1.0, vf->elements);
+                return matrix_addtocolumnptr(frc, id, 1.0, vf->elements);
             }
         }
     }

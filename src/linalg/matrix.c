@@ -416,6 +416,27 @@ linalgError_t matrix_setcolumn(objectmatrix *a, MatrixIdx_t col, objectmatrix *b
     return LINALGERR_OK;
 }
 
+/** Copies the column vector b as a raw list of doubles into column col of matrix a */
+linalgError_t matrix_setcolumnptr(objectmatrix *a, MatrixIdx_t col, double *b) {
+    if (col<0 || col>=a->ncols) return LINALGERR_INDX_OUT_OF_BNDS;
+    
+    cblas_dcopy((__LAPACK_int) a->nrows*a->nvals, b, 1, a->elements+a->nvals*col*a->nrows, 1);
+    return LINALGERR_OK;
+}
+
+/** @brief Add a vector to a column in a matrix
+ *  @param[in] m - the matrix
+ *  @param[in] col - column number
+ *  @param[in] alpha - scale
+ *  @param[out] v - column entries (matrix->nrows in number) [should have m->nrows entries]
+ *  @returns true on success */
+linalgError_t matrix_addtocolumnptr(objectmatrix *a, MatrixIdx_t col, double alpha, double *b) {
+    if (col<0 || col>=a->ncols) return LINALGERR_INDX_OUT_OF_BNDS;
+    
+    cblas_daxpy(a->nrows*a->nvals, alpha, b, 1, a->elements+a->nvals*col*a->nrows, 1);
+    return LINALGERR_OK;
+}
+
 /** Counts the number of dofs in a matrix */
 MatrixCount_t matrix_countdof(objectmatrix *a) {
     return a->ncols*a->nrows*a->nvals;
@@ -1509,6 +1530,8 @@ void matrix_initialize(void) {
     morpho_addfunction(MATRIX_CLASSNAME, "(...)", matrix_constructor__err, MORPHO_FN_CONSTRUCTOR, NULL);
     
     morpho_addfunction(MATRIX_IDENTITYCONSTRUCTOR, "Matrix (Int)", matrix_identityconstructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    
+    morpho_defineerror(MATRIX_CONSTRUCTOR,             ERROR_HALT, MATRIX_CONSTRUCTOR_MSG);
     
     complexmatrix_initialize();
 }

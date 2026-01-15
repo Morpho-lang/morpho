@@ -416,6 +416,11 @@ linalgError_t matrix_setcolumn(objectmatrix *a, MatrixIdx_t col, objectmatrix *b
     return LINALGERR_OK;
 }
 
+/** Counts the number of dofs in a matrix */
+MatrixCount_t matrix_countdof(objectmatrix *a) {
+    return a->ncols*a->nrows*a->nvals;
+}
+
 /* ----------------------
  * Arithmetic operations
  * ---------------------- */

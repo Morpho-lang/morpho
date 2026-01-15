@@ -239,6 +239,8 @@ objectmatrix *matrix_clone(objectmatrix *in);
 objectmatrix *matrix_listconstructor(vm *v, value lst, objecttype type, MatrixIdx_t nvals);
 objectmatrix *matrix_arrayconstructor(vm *v, objectarray *a, objecttype type, MatrixIdx_t nvals);
 
+MatrixCount_t matrix_countdof(objectmatrix *a);
+
 linalgError_t matrix_axpy(double alpha, objectmatrix *x, objectmatrix *y);
 linalgError_t matrix_copy(objectmatrix *x, objectmatrix *y);
 void matrix_scale(objectmatrix *x, double scale);
@@ -247,6 +249,8 @@ linalgError_t matrix_identity(objectmatrix *x);
 linalgError_t matrix_mmul(double alpha, objectmatrix *x, objectmatrix *y, double beta, objectmatrix *z);
 linalgError_t matrix_addscalar(objectmatrix *x, double alpha, double beta);
 linalgError_t matrix_transpose(objectmatrix *x, objectmatrix *y);
+
+linalgError_t matrix_inner(objectmatrix *x, objectmatrix *y, double *out);
 
 linalgError_t matrix_solve(objectmatrix *a, objectmatrix *b);
 

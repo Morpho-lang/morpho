@@ -1501,7 +1501,7 @@ void matrix_initialize(void) {
     
     morpho_addfunction(MATRIX_IDENTITYCONSTRUCTOR, "Matrix (Int)", matrix_identityconstructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
-    complematrix_initialize();
+    complexmatrix_initialize();
 }
 
 #endif /* MORPHO_INCLUDE_LINALG */

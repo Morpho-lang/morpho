@@ -485,17 +485,19 @@ unsigned int field_dofforgrade(objectfield *f, grade g) {
 
 /** Adds two fields together */
 bool field_add(objectfield *left, objectfield *right, objectfield *out) {
-    return (matrix_add(&left->data, &right->data, &out->data)==LINALGERR_OK);
+    return (matrix_copy(&left->data, &out->data)==LINALGERR_OK &&
+            matrix_axpy(1.0, &right->data, &out->data)==LINALGERR_OK);
 }
 
 /** Subtracts one field from another */
 bool field_sub(objectfield *left, objectfield *right, objectfield *out) {
-    return (matrix_sub(&left->data, &right->data, &out->data)==LINALGERR_OK);
+    return (matrix_copy(&left->data, &out->data)==LINALGERR_OK &&
+            matrix_axpy(-1.0, &right->data, &out->data)==LINALGERR_OK);
 }
 
 /** Accumulate, i.e. a <- a + lambda*b */
 bool field_accumulate(objectfield *left, double lambda, objectfield *right) {
-    return (matrix_accumulate(&left->data, lambda, &right->data)==LINALGERR_OK);
+    return (matrix_axpy(lambda, &right->data, &left->data)==LINALGERR_OK);
 }
 
 bool field_inner(objectfield *left, objectfield *right, double *out) {

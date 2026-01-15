@@ -1,11 +1,36 @@
 /** @file matrix.h
  *  @author T J Atherton
  *
- *  @brief New linear algebra library
-*/
+ *  @brief Veneer class over the objectmatrix type that interfaces with blas and lapack
+ */
 
 #ifndef matrix_h
 #define matrix_h
+
+#include "build.h"
+#ifdef MORPHO_INCLUDE_LINALG
+
+#include <stdio.h>
+#include "classes.h"
+/** Use Apple's Accelerate library for LAPACK and BLAS */
+#ifdef __APPLE__
+#ifdef MORPHO_LINALG_USE_ACCELERATE
+#define ACCELERATE_NEW_LAPACK
+#include <Accelerate/Accelerate.h>
+#define MATRIX_LAPACK_PRESENT
+#endif
+#endif
+
+/** Otherwise, use LAPACKE */
+#ifndef MATRIX_LAPACK_PRESENT
+#include <cblas.h>
+#include <lapacke.h>
+#define MORPHO_LINALG_USE_LAPACKE
+#define MATRIX_LAPACK_PRESENT
+#endif
+
+#include "cmplx.h"
+#include "list.h"
 
 #define LINALG_MAXMATRIXDEFNS 4
 
@@ -232,4 +257,6 @@ linalgError_t matrix_getelementptr(objectmatrix *matrix, MatrixIdx_t row, Matrix
 
 void matrix_print(vm *v, objectmatrix *m);
 
-#endif
+#endif /* MORPHO_INCLUDE_LINALG */
+
+#endif /* matrix_h */

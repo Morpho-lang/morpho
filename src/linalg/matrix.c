@@ -4,8 +4,6 @@
  *  @brief New matrices
 */
 
-#define ACCELERATE_NEW_LAPACK
-#define MORPHO_INCLUDE_LINALG
 
 #include "linalg.h"
 #include "format.h"

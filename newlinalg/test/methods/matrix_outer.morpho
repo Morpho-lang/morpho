@@ -1,8 +1,8 @@
 // Outer product of two vectors 
 import newlinalg 
 
-var A = XMatrix((1,2,3))
-var B = XMatrix((4,5))
+var A = Matrix((1,2,3))
+var B = Matrix((4,5))
 
 print A.outer(B)
 // expect: [ 4 5 ]

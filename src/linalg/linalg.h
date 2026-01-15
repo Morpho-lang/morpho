@@ -1,12 +1,12 @@
 
-/** @file newlinalg.h
+/** @file linalg.h
  *  @author T J Atherton
  *
- *  @brief New linear algebra library
+ *  @brief Improved linear algebra library
 */
 
-#ifndef newlinalg_h
-#define newlinalg_h
+#ifndef linalg_h
+#define linalg_h
 
 #include <morpho.h>
 #include <classes.h>

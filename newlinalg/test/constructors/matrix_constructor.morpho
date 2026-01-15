@@ -2,7 +2,7 @@
 
 import newlinalg 
 
-var A = XMatrix(2,2)
+var A = Matrix(2,2)
 
 print A 
 // expect: [ 0 0 ]

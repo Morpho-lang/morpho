@@ -1,13 +1,13 @@
-/** @file newlinalg.c
+/** @file linalg.c
  *  @author T J Atherton
  *
- *  @brief New linear algebra library
+ *  @brief Improved linear algebra library
 */
 
 #define ACCELERATE_NEW_LAPACK
 #define MORPHO_INCLUDE_LINALG
 
-#include "newlinalg.h"
+#include "linalg.h"
 
 /* -------------------------------------------------------
  * Errors

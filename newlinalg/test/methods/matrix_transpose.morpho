@@ -1,7 +1,7 @@
 // Inverse
 import newlinalg 
 
-var A = XMatrix(3,2)
+var A = Matrix(3,2)
 A[0,0]=1
 A[0,1]=2
 A[1,0]=3

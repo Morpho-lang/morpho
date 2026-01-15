@@ -1,7 +1,7 @@
 // In-place accumulate
 import newlinalg 
 
-var A = XMatrix(2,2)
+var A = Matrix(2,2)
 A[0,0]=1
 A[0,1]=1
 A[1,0]=1

@@ -1,7 +1,7 @@
 // Roll contents of a matrix
 import newlinalg 
 
-var A = XMatrix(3,3)
+var A = Matrix(3,3)
 var k=0
 for (i in 0...3) for (j in 0...3) { A[i,j] = k; k+=1 }
 

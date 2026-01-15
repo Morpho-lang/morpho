@@ -8,7 +8,7 @@ a[1,0]=3
 a[0,1]=2
 a[1,1]=4
 
-var A = XMatrix(a)
+var A = Matrix(a)
 
 print A 
 // expect: [ 1 2 ]

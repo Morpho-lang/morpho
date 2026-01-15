@@ -1,7 +1,7 @@
 // Add a scalar from the right
 import newlinalg 
 
-var A = XMatrix(2,2)
+var A = Matrix(2,2)
 
 print 2 + A
 // expect: [ 2 2 ]

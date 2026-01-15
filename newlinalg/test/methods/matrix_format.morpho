@@ -2,7 +2,7 @@
 import newlinalg 
 import constants
 
-var A = XMatrix(2,2)
+var A = Matrix(2,2)
 A[0,0]=1
 A[0,1]=Pi/2
 A[1,0]=Pi/2

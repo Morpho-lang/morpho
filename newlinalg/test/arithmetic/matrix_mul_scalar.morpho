@@ -1,7 +1,7 @@
-// Multiply XMatrix by scalar
+// Multiply Matrix by scalar
 import newlinalg 
 
-var A = XMatrix(2,2)
+var A = Matrix(2,2)
 A[0,0]=1
 A[1,1]=2
 

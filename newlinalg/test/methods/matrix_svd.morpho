@@ -1,20 +1,20 @@
 // Singular Value Decomposition
 import newlinalg 
 
-var A = XMatrix(((1,0),(0,2)))
+var A = Matrix(((1,0),(0,2)))
 
 var svd = A.svd()
 
 print svd
-// expect: (<XMatrix>, (2, 1), <XMatrix>)
+// expect: (<Matrix>, (2, 1), <Matrix>)
 
-print (svd[0] - XMatrix(((0,1),(1,0)))).norm() < 1e-10  
+print (svd[0] - Matrix(((0,1),(1,0)))).norm() < 1e-10  
 // expect: true
 
 print svd[1]
 // expect: (2, 1)
 
-print (svd[2] - XMatrix(((0,1),(1,0)))).norm() < 1e-10  
+print (svd[2] - Matrix(((0,1),(1,0)))).norm() < 1e-10  
 // expect: true
 
 // Test reconstruction: U * S * V^T should approximately equal A
@@ -23,7 +23,7 @@ var S = svd[1]
 var V = svd[2]
 
 // Create diagonal matrix from singular values
-var Sdiag = XMatrix(2,2)
+var Sdiag = Matrix(2,2)
 Sdiag[0,0] = S[0]
 Sdiag[1,1] = S[1]
 
@@ -34,7 +34,7 @@ print (reconstructed - A).norm() < 1e-10
 // expect: true
 
 // Test with a non-square matrix
-var B = XMatrix(3,2)
+var B = Matrix(3,2)
 B[0,0]=1
 B[0,1]=0
 B[1,0]=0

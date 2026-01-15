@@ -1,7 +1,7 @@
-// Count elements in XMatrix
+// Count elements in Matrix
 import newlinalg 
 
-var A = XMatrix(2,3)
+var A = Matrix(2,3)
 A[0,0]=1
 A[0,1]=2
 A[0,2]=3

@@ -2,12 +2,12 @@
 import newlinalg 
 
 // Test with a square matrix (this one is singular, so R will have a zero on the diagonal)
-var A = XMatrix(((1.0,2.0,3.0),(4.0,5.0,6.0),(7.0,8.0,9.0)))
+var A = Matrix(((1.0,2.0,3.0),(4.0,5.0,6.0),(7.0,8.0,9.0)))
 
 var qr = A.qr()
 
 print qr
-// expect: (<XMatrix>, <XMatrix>)
+// expect: (<Matrix>, <Matrix>)
 
 var Q = qr[0]
 var R = qr[1]
@@ -20,7 +20,7 @@ print R.dimensions()
 
 // Verify Q is orthogonal: Q^T * Q should be approximately I
 var QTQ = Q.transpose() * Q
-var I = IdentityXMatrix(3)
+var I = IdentityMatrix(3)
 
 print (QTQ - I).norm() < 1e-10
 // expect: true
@@ -46,7 +46,7 @@ print (QR - A).norm() < 1e-10
 // expect: true
 
 // Test with a non-square matrix (tall matrix)
-var B = XMatrix(4,2)
+var B = Matrix(4,2)
 B[0,0] = 1.0
 B[0,1] = 2.0
 B[1,0] = 3.0
@@ -94,7 +94,7 @@ print R2_lower_norm < 1e-10
 // expect: true
 
 // Test with a wide matrix
-var C = XMatrix(2,4)
+var C = Matrix(2,4)
 C[0,0] = 1.0
 C[0,1] = 2.0
 C[0,2] = 3.0
@@ -116,12 +116,12 @@ print R3.dimensions()
 
 // Verify Q3 is orthogonal
 var Q3TQ3 = Q3.transpose() * Q3
-var I2 = IdentityXMatrix(2)
+var I2 = IdentityMatrix(2)
 print (Q3TQ3 - I2).norm() < 1e-10
 // expect: true
 
 // Test with identity matrix
-var I3 = IdentityXMatrix(3)
+var I3 = IdentityMatrix(3)
 var qr4 = I3.qr()
 var Q4 = qr4[0]
 var R4 = qr4[1]

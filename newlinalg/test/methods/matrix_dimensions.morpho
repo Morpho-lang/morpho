@@ -1,10 +1,10 @@
-// Get dimensions of XMatrix
+// Get dimensions of Matrix
 import newlinalg 
 
-var A = XMatrix(2,3)
+var A = Matrix(2,3)
 print A.dimensions()
 // expect: (2, 3)
 
-var a = XMatrix([[0.8, -0.4], [0.4, 0.8]])
+var a = Matrix([[0.8, -0.4], [0.4, 0.8]])
 print a.dimensions()
 // expect: (2, 2)

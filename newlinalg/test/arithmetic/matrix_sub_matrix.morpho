@@ -2,8 +2,8 @@
 
 import newlinalg
 
-var a = XMatrix([[1, 2], [3, 4]])
-var b = XMatrix([[0, 1], [1, 0]])
+var a = Matrix([[1, 2], [3, 4]])
+var b = Matrix([[0, 1], [1, 0]])
 
 
 print "A-B:"

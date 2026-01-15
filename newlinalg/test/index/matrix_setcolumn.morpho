@@ -2,13 +2,13 @@
 
 import newlinalg 
 
-var A = XMatrix(2,2)
+var A = Matrix(2,2)
 
-var b = XMatrix(2,1)
+var b = Matrix(2,1)
 b[0] = 1
 b[1] = 3
 
-var c = XMatrix(2,1)
+var c = Matrix(2,1)
 c[0] = 2
 c[1] = 4
 

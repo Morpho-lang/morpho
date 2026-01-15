@@ -1,13 +1,13 @@
-// Divide XMatrix by XMatrix (solve linear system)
+// Divide Matrix by Matrix (solve linear system)
 import newlinalg 
 
-var A = XMatrix(2,2)
+var A = Matrix(2,2)
 A[0,0]=1
 A[0,1]=2
 A[1,0]=3
 A[1,1]=4
 
-var b = XMatrix(2,1)
+var b = Matrix(2,1)
 b[0]=1
 b[1]=2
 

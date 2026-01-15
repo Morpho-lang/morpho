@@ -1,4 +1,4 @@
-// XMatrix constructor from Array with invalid dimensions
+// Matrix constructor from Array with invalid dimensions
 import newlinalg 
 
 // Try to construct from a 1D array (should fail - requires 2D)
@@ -8,5 +8,5 @@ a[1] = 2
 a[2] = 3
 a[3] = 4
 
-print XMatrix(a)
+print Matrix(a)
 // expect error 'LnAlgMtrxInvldArg'

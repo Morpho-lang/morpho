@@ -1,7 +1,7 @@
-// Divide ComplexMatrix by XMatrix (solve linear system)
+// Divide ComplexMatrix by Matrix (solve linear system)
 import newlinalg 
 
-var A = XMatrix(((1,2),(-2,1)))
+var A = Matrix(((1,2),(-2,1)))
 
 var b = ComplexMatrix((1+im, 2))
 

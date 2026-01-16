@@ -147,7 +147,7 @@ bool mesh_getvertexcoordinatesaslist(objectmesh *mesh, elementid id, double **ou
 
 /** Gets vertex coordinates */
 bool mesh_setvertexcoordinates(objectmesh *mesh, elementid id, double *x) {;
-    return matrix_setcolumn(mesh->vert, id, x);
+    return matrix_setcolumnptr(mesh->vert, id, x);
 }
 
 /** Gets vertex coordinates as a value list */

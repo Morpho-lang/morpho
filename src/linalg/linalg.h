@@ -8,9 +8,6 @@
 #ifndef linalg_h
 #define linalg_h
 
-#include <morpho.h>
-#include <classes.h>
-
 /* -------------------------------------------------------
  * objectmatrixerror type
  * ------------------------------------------------------- */
@@ -89,7 +86,6 @@ void linalg_raiseerror(vm *v, linalgError_t err);
 
 #include "matrix.h"
 #include "complexmatrix.h"
-
 
 /* -------------------------------------------------------
  * Initialization and finalization

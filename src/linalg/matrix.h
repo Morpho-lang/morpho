@@ -281,6 +281,8 @@ linalgError_t matrix_setcolumn(objectmatrix *a, MatrixIdx_t col, objectmatrix *b
 linalgError_t matrix_setcolumnptr(objectmatrix *a, MatrixIdx_t col, double *b);
 linalgError_t matrix_addtocolumnptr(objectmatrix *a, MatrixIdx_t col, double alpha, double *b);
 
+MatrixCount_t matrix_countdof(objectmatrix *a);
+
 void matrix_print(vm *v, objectmatrix *m);
 
 #endif /* MORPHO_INCLUDE_LINALG */

@@ -153,6 +153,8 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, value fnspc, uns
         object_init(&new->data.obj, OBJECT_MATRIX);
         new->data.ncols=1;
         new->data.nrows=size;
+        new->data.nvals=1;
+        new->data.nels=new->data.ncols*new->data.nrows*new->data.nvals;
         new->data.elements=new->data.matrixdata;
 
         if (MORPHO_ISMATRIX(prototype)) {

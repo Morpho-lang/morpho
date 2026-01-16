@@ -197,7 +197,7 @@ IMPLEMENTATIONFN(Matrix_setindex__int_int_x);
 IMPLEMENTATIONFN(Matrix_setindex__x_x_matrix);
 
 IMPLEMENTATIONFN(Matrix_getcolumn__int);
-IMPLEMENTATIONFN(Matrix_setcolumn__int__matrix);
+IMPLEMENTATIONFN(Matrix_setcolumn__int_matrix);
 
 IMPLEMENTATIONFN(Matrix_add__matrix);
 IMPLEMENTATIONFN(Matrix_add__nil);

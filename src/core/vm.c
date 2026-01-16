@@ -2183,7 +2183,6 @@ void morpho_initialize(void) {
 #endif
     
     morpho_defineerror(ERROR_ALLOCATIONFAILED, ERROR_EXIT, ERROR_ALLOCATIONFAILED_MSG);
-    morpho_defineerror(ERROR_INTERNALERROR, ERROR_EXIT, ERROR_INTERNALERROR_MSG);
     morpho_defineerror(ERROR_ERROR, ERROR_HALT, ERROR_ERROR_MSG);
     
     morpho_defineerror(VM_STCKOVFLW, ERROR_HALT, VM_STCKOVFLW_MSG);

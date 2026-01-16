@@ -46,9 +46,6 @@ typedef struct sobjectclass {
  * Class error messages
  * ------------------------------------------------------- */
 
-#define CLASS_INVK                        "ClssInvk"
-#define CLASS_INVK_MSG                    "Cannot invoke method '%s' on a class."
-
 /* -------------------------------------------------------
  * Class interface
  * ------------------------------------------------------- */

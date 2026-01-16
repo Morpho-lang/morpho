@@ -457,7 +457,7 @@ value array_constructor(vm *v, int nargs, value *args) {
         new = array_constructfromlist(ndim, dim, MORPHO_GETLIST(initializer));
         if (!new) morpho_runtimeerror(v, ARRAY_CMPT);
     } else {
-        morpho_runtimeerror(v, ARRAY_ARGS);
+        morpho_runtimeerror(v, ARRAY_INIT);
     }
 
     // Bind the new array to the VM

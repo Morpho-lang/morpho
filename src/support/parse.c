@@ -479,7 +479,7 @@ bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, voi
     return true;
 }
 
-/** Parses a variable name, or raises and error if a symbol isn't found */
+/** Parses a variable name, or raises an error if a symbol isn't found */
 bool parse_variable(parser *p, errorid id, void *out) {
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_SYMBOL, id));
     return parse_symbol(p, out);

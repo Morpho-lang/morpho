@@ -182,9 +182,6 @@ void morpho_unreachable(const char *explanation);
 #define VM_NONNUMINDX                     "NonNmIndx"
 #define VM_NONNUMINDX_MSG                 "Non-numerical array index."
 
-#define VM_ARRAYWRONGDIM                  "ArrayDim"
-#define VM_ARRAYWRONGDIM_MSG              "Incorrect number of dimensions for array."
-
 #define VM_DBGQUIT                        "DbgQuit"
 #define VM_DBGQUIT_MSG                    "Program terminated by user in debugger."
 

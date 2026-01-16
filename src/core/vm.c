@@ -2205,7 +2205,6 @@ void morpho_initialize(void) {
     morpho_defineerror(VM_NOTINDEXABLE, ERROR_HALT, VM_NOTINDEXABLE_MSG);
     morpho_defineerror(VM_OUTOFBOUNDS, ERROR_HALT, VM_OUTOFBOUNDS_MSG);
     morpho_defineerror(VM_NONNUMINDX, ERROR_HALT, VM_NONNUMINDX_MSG);
-    morpho_defineerror(VM_ARRAYWRONGDIM, ERROR_HALT, VM_ARRAYWRONGDIM_MSG);
     morpho_defineerror(VM_DVZR, ERROR_HALT, VM_DVZR_MSG);
 	morpho_defineerror(VM_GETINDEXARGS, ERROR_HALT, VM_GETINDEXARGS_MSG);
     morpho_defineerror(VM_MLTPLDSPTCHFLD, ERROR_HALT, VM_MLTPLDSPTCHFLD_MSG);

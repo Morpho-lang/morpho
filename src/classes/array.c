@@ -180,7 +180,7 @@ void array_print(vm *v, objectarray *a) {
 errorid array_error(objectarrayerror err) {
     switch (err) {
         case ARRAY_OUTOFBOUNDS: return VM_OUTOFBOUNDS;
-        case ARRAY_WRONGDIM: return VM_ARRAYWRONGDIM;
+        case ARRAY_WRONGDIM: return ARRAY_DIMENSION;
         case ARRAY_NONINTINDX: return VM_NONNUMINDX;
         case ARRAY_ALLOC_FAILED: return ERROR_ALLOCATIONFAILED;
         case ARRAY_OK: UNREACHABLE("array_error called incorrectly.");

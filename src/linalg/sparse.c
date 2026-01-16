@@ -1319,7 +1319,7 @@ value Sparse_getindex(vm *v, int nargs, value *args) {
 
     if (array_valuelisttoindices(nargs, args+1, indx)) {
         sparse_getelement(s, indx[0], indx[1], &out);
-    } else morpho_runtimeerror(v, MATRIX_INVLDINDICES);
+    } else morpho_runtimeerror(v, LINALG_INVLDARGS);
 
     return out;
 }
@@ -1338,7 +1338,7 @@ value Sparse_setindex(vm *v, int nargs, value *args) {
         if (osize!=nsize) {
             morpho_resizeobject(v, (object *) s, osize, nsize);
         }
-    } else morpho_runtimeerror(v, MATRIX_INVLDINDICES);
+    } else morpho_runtimeerror(v, LINALG_INVLDARGS);
 
     return MORPHO_NIL;
 }
@@ -1659,7 +1659,7 @@ value Sparse_getcolumn(vm *v, int nargs, value *args) {
                 
             } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
         } else morpho_runtimeerror(v, LINALG_INDICESOUTSIDEBOUNDS);
-    } else morpho_runtimeerror(v, MATRIX_SETCOLARGS);
+    } else morpho_runtimeerror(v, LINALG_INVLDARGS);
     
     return out;
 }
@@ -1684,7 +1684,7 @@ value Sparse_rowindices(vm *v, int nargs, value *args) {
                         morpho_bindobjects(v, 1, &out);
                     } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
                 }
-            } else morpho_runtimeerror(v, MATRIX_INDICESOUTSIDEBOUNDS);
+            } else morpho_runtimeerror(v, LINALG_INDICESOUTSIDEBOUNDS);
         }
     }
 
@@ -1712,7 +1712,7 @@ value Sparse_setrowindices(vm *v, int nargs, value *args) {
                     if (list_getelement(list, i, &entry) &&
                         MORPHO_ISINTEGER(entry)) {
                         entries[i]=MORPHO_GETINTEGERVALUE(entry);
-                    } else { morpho_runtimeerror(v, MATRIX_INVLDINDICES); return MORPHO_NIL; }
+                    } else { morpho_runtimeerror(v, LINALG_INVLDARGS); return MORPHO_NIL; }
                 }
                 
                 if (!sparseccs_setrowindices(&s->ccs, col, nentries, entries)) {

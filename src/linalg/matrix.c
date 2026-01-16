@@ -831,7 +831,7 @@ value Matrix_clone(vm *v, int nargs, value *args) {
  * index()
  * --------- */
 
-value Matrix_index_int_int(vm *v, int nargs, value *args) {
+value Matrix_index__int_int(vm *v, int nargs, value *args) {
     objectmatrix *m = MORPHO_GETMATRIX(MORPHO_SELF(args));
     MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
                 j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
@@ -883,7 +883,7 @@ static linalgError_t _slice_copy(value iv, value jv, MatrixIdx_t icnt, MatrixIdx
     return LINALGERR_OK;
 }
 
-value Matrix_index_x_x(vm *v, int nargs, value *args) {
+value Matrix_index__x_x(vm *v, int nargs, value *args) {
     objectmatrix *m = MORPHO_GETMATRIX(MORPHO_SELF(args)), *new=NULL;
     value iv=MORPHO_GETARG(args, 0), jv=MORPHO_GETARG(args, 1);
     value out=MORPHO_NIL;
@@ -911,20 +911,20 @@ static void _setindex(vm *v, objectmatrix *m, MatrixIdx_t i, MatrixIdx_t j, valu
     if (elptr) LINALG_ERRCHECKVM(matrix_getinterface(m)->setelfn(v, in, elptr));
 }
 
-value Matrix_setindex_int_x(vm *v, int nargs, value *args) {
+value Matrix_setindex__int_x(vm *v, int nargs, value *args) {
     MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     _setindex(v, MORPHO_GETMATRIX(MORPHO_SELF(args)), i, 0, MORPHO_GETARG(args, 1));
     return MORPHO_NIL;
 }
 
-value Matrix_setindex_int_int_x(vm *v, int nargs, value *args) {
+value Matrix_setindex__int_int_x(vm *v, int nargs, value *args) {
     MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     MatrixIdx_t j = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
     _setindex(v, MORPHO_GETMATRIX(MORPHO_SELF(args)), i, j, MORPHO_GETARG(args, 2));
     return MORPHO_NIL;
 }
 
-value Matrix_setindex_x_x__matrix(vm *v, int nargs, value *args) {
+value Matrix_setindex__x_x_matrix(vm *v, int nargs, value *args) {
     objectmatrix *m = MORPHO_GETMATRIX(MORPHO_SELF(args));
     objectmatrix *msrc = MORPHO_GETMATRIX(MORPHO_GETARG(args, 2));
     value iv=MORPHO_GETARG(args, 0), jv=MORPHO_GETARG(args, 1);
@@ -941,7 +941,7 @@ value Matrix_setindex_x_x__matrix(vm *v, int nargs, value *args) {
  * column
  * --------- */
 
-value Matrix_getcolumn_int(vm *v, int nargs, value *args) {
+value Matrix_getcolumn__int(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
     MatrixIdx_t i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     value out=MORPHO_NIL;
@@ -955,7 +955,7 @@ value Matrix_getcolumn_int(vm *v, int nargs, value *args) {
     return out;
 }
 
-value Matrix_setcolumn_int__matrix(vm *v, int nargs, value *args) {
+value Matrix_setcolumn__int_matrix(vm *v, int nargs, value *args) {
     LINALG_ERRCHECKVM(matrix_setcolumn(MORPHO_GETMATRIX(MORPHO_SELF(args)),
                                         MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
                                         MORPHO_GETMATRIX(MORPHO_GETARG(args, 1))));
@@ -1002,12 +1002,12 @@ value Matrix_add__matrix(vm *v, int nargs, value *args) {
     return _axpy(v,nargs,args,1.0);
 }
 
-value Matrix_add_nil(vm *v, int nargs, value *args) {
+value Matrix_add__nil(vm *v, int nargs, value *args) {
     return MORPHO_SELF(args);
 }
 
-value Matrix_add_x(vm *v, int nargs, value *args) {
-    if (matrix_isamatrix(MORPHO_GETARG(args, 0))) return MORPHO_NIL; // Redirect to addr 
+value Matrix_add__x(vm *v, int nargs, value *args) {
+    if (matrix_isamatrix(MORPHO_GETARG(args, 0))) return MORPHO_NIL; // Redirect to addr
     return _xpa(v,nargs,args,1.0,1.0);
 }
 
@@ -1015,16 +1015,16 @@ value Matrix_sub__matrix(vm *v, int nargs, value *args) {
     return _axpy(v,nargs,args,-1.0);
 }
 
-value Matrix_sub_x(vm *v, int nargs, value *args) {
+value Matrix_sub__x(vm *v, int nargs, value *args) {
     if (matrix_isamatrix(MORPHO_GETARG(args, 0))) return MORPHO_NIL; // Redirect to subr
     return _xpa(v,nargs,args,1.0,-1.0);
 }
 
-value Matrix_subr_x(vm *v, int nargs, value *args) {
+value Matrix_subr__x(vm *v, int nargs, value *args) {
     return _xpa(v,nargs,args,-1.0,1.0);
 }
 
-value Matrix_mul_float(vm *v, int nargs, value *args) {
+value Matrix_mul__float(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
     
     double scale;
@@ -1048,7 +1048,7 @@ value Matrix_mul__matrix(vm *v, int nargs, value *args) {
     return out;
 }
 
-value Matrix_div_float(vm *v, int nargs, value *args) {
+value Matrix_div__float(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
     
     double scale;
@@ -1072,7 +1072,7 @@ value Matrix_div__matrix(vm *v, int nargs, value *args) {
 }
 
 /** Accumulate in place */
-value Matrix_acc_x_x__matrix(vm *v, int nargs, value *args) {
+value Matrix_acc__x_x_matrix(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
     objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 1));
     
@@ -1088,7 +1088,7 @@ value Matrix_acc_x_x__matrix(vm *v, int nargs, value *args) {
  * ---------------- */
 
 /** Matrix norm */
-value Matrix_norm_x(vm *v, int nargs, value *args) {
+value Matrix_norm__x(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
     double n;
     
@@ -1412,7 +1412,7 @@ static value _roll(vm *v, objectmatrix *a, int roll, int axis) {
 }
 
 /** Roll a matrix */
-value Matrix_roll_int_int(vm *v, int nargs, value *args) {
+value Matrix_roll__int_int(vm *v, int nargs, value *args) {
     objectmatrix *a = MORPHO_GETMATRIX(MORPHO_SELF(args));
     int roll = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
         axis = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
@@ -1420,7 +1420,7 @@ value Matrix_roll_int_int(vm *v, int nargs, value *args) {
 }
 
 /** Roll a matrix by row */
-value Matrix_roll_int(vm *v, int nargs, value *args) {
+value Matrix_roll__int(vm *v, int nargs, value *args) {
     objectmatrix *a = MORPHO_GETMATRIX(MORPHO_SELF(args));
     int roll = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     return _roll(v, a, roll, 0);
@@ -1465,30 +1465,30 @@ MORPHO_METHOD_SIGNATURE(MORPHO_FORMAT_METHOD, "(String)", Matrix_format, BUILTIN
 MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(Matrix)", Matrix_assign, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Matrix ()", Matrix_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", Matrix_enumerate, MORPHO_FN_PUREFN),
-MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", Matrix_index_int_int, MORPHO_FN_PUREFN),
-MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Matrix (_,_)", Matrix_index_x_x, MORPHO_FN_PUREFN),
-MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", Matrix_setindex_int_x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", Matrix_setindex_int_int_x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(_,_,Matrix)", Matrix_setindex_x_x__matrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MATRIX_GETCOLUMN_METHOD, "Matrix (Int)", Matrix_getcolumn_int, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MATRIX_SETCOLUMN_METHOD, "(Int, Matrix)", Matrix_setcolumn_int__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", Matrix_index__int_int, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Matrix (_,_)", Matrix_index__x_x, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", Matrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", Matrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(_,_,Matrix)", Matrix_setindex__x_x_matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_GETCOLUMN_METHOD, "Matrix (Int)", Matrix_getcolumn__int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_SETCOLUMN_METHOD, "(Int, Matrix)", Matrix_setcolumn__int_matrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Matrix (Matrix)", Matrix_add__matrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Matrix (Nil)", Matrix_add_nil, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Matrix (_)", Matrix_add_x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Matrix (_)", Matrix_add_x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Matrix (Nil)", Matrix_add_nil, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Matrix (Nil)", Matrix_add__nil, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Matrix (_)", Matrix_add__x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Matrix (_)", Matrix_add__x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Matrix (Nil)", Matrix_add__nil, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Matrix (Matrix)", Matrix_sub__matrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Matrix (Nil)", Matrix_add_nil, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Matrix (_)", Matrix_sub_x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "Matrix (_)", Matrix_subr_x, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "Matrix (_)", Matrix_mul_float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Matrix (Nil)", Matrix_add__nil, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Matrix (_)", Matrix_sub__x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "Matrix (_)", Matrix_subr__x, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "Matrix (_)", Matrix_mul__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "Matrix (Matrix)", Matrix_mul__matrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "Matrix (_)", Matrix_mul_float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "Matrix (_)", Matrix_mul__float, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "Matrix (Matrix)", Matrix_div__matrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "Matrix (_)", Matrix_div_float, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, Matrix)", Matrix_acc_x_x__matrix, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "Matrix (_)", Matrix_div__float, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(_, Matrix)", Matrix_acc__x_x_matrix, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MATRIX_INVERSE_METHOD, "Matrix ()", Matrix_inverse, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MATRIX_NORM_METHOD, "Float (_)", Matrix_norm_x, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MATRIX_NORM_METHOD, "Float (_)", Matrix_norm__x, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MATRIX_NORM_METHOD, "Float ()", Matrix_norm, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUM_METHOD, "Float ()", Matrix_sum, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MATRIX_TRACE_METHOD, "Float ()", Matrix_trace, MORPHO_FN_PUREFN),
@@ -1500,8 +1500,8 @@ MORPHO_METHOD_SIGNATURE(MATRIX_EIGENSYSTEM_METHOD, "Tuple ()", Matrix_eigensyste
 MORPHO_METHOD_SIGNATURE(MATRIX_SVD_METHOD, "Tuple ()", Matrix_svd, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MATRIX_QR_METHOD, "Tuple ()", Matrix_qr, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MATRIX_RESHAPE_METHOD, "(Int,Int)", Matrix_reshape, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MATRIX_ROLL_METHOD, "Matrix (Int)", Matrix_roll_int, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MATRIX_ROLL_METHOD, "Matrix (Int,Int)", Matrix_roll_int_int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_ROLL_METHOD, "Matrix (Int)", Matrix_roll__int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MATRIX_ROLL_METHOD, "Matrix (Int,Int)", Matrix_roll__int_int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", Matrix_enumerate, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Matrix_count, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MATRIX_DIMENSIONS_METHOD, "Tuple ()", Matrix_dimensions, BUILTIN_FLAGSEMPTY)

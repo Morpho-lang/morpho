@@ -192,10 +192,10 @@ errorid array_error(objectarrayerror err) {
 /** Converts an array error into an matrix error code for use in slices*/
 errorid array_to_matrix_error(objectarrayerror err) {
 #ifdef MORPHO_INCLUDE_LINALG
-    switch (err) { 
+    switch (err) {
         case ARRAY_OUTOFBOUNDS: return LINALG_INDICESOUTSIDEBOUNDS;
-        case ARRAY_WRONGDIM: return MATRIX_INVLDNUMINDICES;
-        case ARRAY_NONINTINDX: return MATRIX_INVLDINDICES;
+        case ARRAY_WRONGDIM: return ARRAY_DIMENSION;
+        case ARRAY_NONINTINDX: return ARRAY_INVLDINDICES;
         case ARRAY_ALLOC_FAILED: return ERROR_ALLOCATIONFAILED;
         case ARRAY_OK: UNREACHABLE("array_to_matrix_error called incorrectly.");
     }
@@ -630,4 +630,6 @@ void array_initialize(void) {
     morpho_defineerror(ARRAY_ARGS, ERROR_HALT, ARRAY_ARGS_MSG);
     morpho_defineerror(ARRAY_INIT, ERROR_HALT, ARRAY_INIT_MSG);
     morpho_defineerror(ARRAY_CMPT, ERROR_HALT, ARRAY_CMPT_MSG);
+    morpho_defineerror(ARRAY_DIMENSION, ERROR_HALT, ARRAY_DIMENSION_MSG);
+    morpho_defineerror(ARRAY_INVLDINDICES, ERROR_HALT, ARRAY_INVLDINDICES_MSG);
 }

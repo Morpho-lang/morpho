@@ -1077,7 +1077,7 @@ value Matrix_acc_x_x__matrix(vm *v, int nargs, value *args) {
     objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 1));
     
     double alpha=1.0;
-    if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &alpha)) { morpho_runtimeerror(v, MATRIX_ARITHARGS); return MORPHO_NIL; }
+    if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &alpha)) { morpho_runtimeerror(v, LINALG_ARITHARGS); return MORPHO_NIL; }
     
     LINALG_ERRCHECKVM(matrix_axpy(alpha, b, a));
     return MORPHO_NIL;

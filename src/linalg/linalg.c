@@ -43,5 +43,6 @@ void linalg_initialize(void) {
     morpho_defineerror(LINALG_INVLDARGS,            ERROR_HALT, LINALG_INVLDARGS_MSG);
     morpho_defineerror(LINALG_NNNMRCL_ARG,          ERROR_HALT, LINALG_NNNMRCL_ARG_MSG);
     morpho_defineerror(LINALG_NORMARGS,             ERROR_HALT, LINALG_NORMARGS_MSG);
+    morpho_defineerror(LINALG_ARITHARGS,            ERROR_HALT, LINALG_ARITHARGS_MSG);
 }
 

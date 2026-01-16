@@ -146,9 +146,6 @@ struct sparser {
 #define PARSE_FORLFTPARENMISSING          "ForMssngLftPrn"
 #define PARSE_FORLFTPARENMISSING_MSG      "Expected '(' after for."
 
-#define PARSE_FORSEMICOLONMISSING         "ForMssngSemi"
-#define PARSE_FORSEMICOLONMISSING_MSG     "Expected ';'."
-
 #define PARSE_FORRGHTPARENMISSING         "ForMssngRgtPrn"
 #define PARSE_FORRGHTPARENMISSING_MSG     "Expected ')' after for clauses."
 

@@ -805,6 +805,7 @@ value matrix_identityconstructor(vm *v, int nargs, value *args) {
 
 /** Prints a matrix */
 value Matrix_print(vm *v, int nargs, value *args) {
+    if (!MORPHO_ISMATRIX(MORPHO_SELF(args))) return Object_print(v, nargs, args);
     objectmatrix *m=MORPHO_GETMATRIX(MORPHO_SELF(args));
     matrix_print(v, m);
     return MORPHO_NIL;

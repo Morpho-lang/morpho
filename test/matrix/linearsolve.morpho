@@ -21,4 +21,4 @@ print a
 
 var b = Matrix([[3, 4], [6, 8]])
 print v/b
-// expect error 'MtrxSnglr'
+// expect error 'LnAlgMtrxSnglr'

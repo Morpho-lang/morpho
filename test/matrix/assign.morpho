@@ -14,4 +14,4 @@ print b
 
 var c = Matrix(1,2)
 b.assign(c)
-// expect error 'MtrxIncmptbl'
+// expect error 'LnAlgMtrxIncmptbl'

@@ -462,6 +462,21 @@ linalgError_t matrix_copy(objectmatrix *x, objectmatrix *y) {
     return LINALGERR_OK;
 }
 
+/** Copies one matrix into another at an arbitrary point */
+linalgError_t matrix_copyat(objectmatrix *a, objectmatrix *out, int row0, int col0) {
+    if (!(col0+a->ncols<=out->ncols && row0+a->nrows<=out->nrows)) return LINALGERR_INCOMPATIBLE_DIM;
+    
+    for (int j=0; j<a->ncols; j++) {
+        for (int i=0; i<a->nrows; i++) {
+            double *src, *dest;
+            LINALG_ERRCHECKRETURN(matrix_getelementptr(a, i, j, &src));
+            LINALG_ERRCHECKRETURN(matrix_getelementptr(out, row0+i, col0+j, &dest));
+            memcpy(dest, src, sizeof(double)*a->nvals);
+        }
+    }
+    return LINALGERR_OK;
+}
+
 /** Scales a matrix x <- scale * x >*/
 void matrix_scale(objectmatrix *x, double scale) {
     cblas_dscal((__LAPACK_int) x->nels, scale, x->elements, 1);

@@ -250,6 +250,7 @@ MatrixCount_t matrix_countdof(objectmatrix *a);
 
 linalgError_t matrix_axpy(double alpha, objectmatrix *x, objectmatrix *y);
 linalgError_t matrix_copy(objectmatrix *x, objectmatrix *y);
+linalgError_t matrix_copyat(objectmatrix *a, objectmatrix *out, int row0, int col0);
 void matrix_scale(objectmatrix *x, double scale);
 linalgError_t matrix_zero(objectmatrix *x);
 linalgError_t matrix_identity(objectmatrix *x);

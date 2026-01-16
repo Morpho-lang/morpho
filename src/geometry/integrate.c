@@ -2226,7 +2226,7 @@ void integrator_initializequantities(integrator *integrate, int nq, quantity *qu
             integrate->qval[i]=q;
         } else if (MORPHO_ISMATRIX(q)) {
             objectmatrix *m = MORPHO_GETMATRIX(q);
-            quantity[i].ndof=matrix_countdof(m);
+            quantity[i].ndof=(int) matrix_countdof(m);
             
             objectmatrix *new = matrix_clone(m); // Use a copy of the matrix
             integrate->qval[i]=MORPHO_OBJECT(new);

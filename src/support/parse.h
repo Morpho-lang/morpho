@@ -113,14 +113,8 @@ struct sparser {
 #define PARSE_EXPECTEXPRESSION            "ExpExpr"
 #define PARSE_EXPECTEXPRESSION_MSG        "Expected expression."
 
-#define PARSE_MISSINGSEMICOLON            "MssngSemiVal"
-#define PARSE_MISSINGSEMICOLON_MSG        "Expect ; after value."
-
 #define PARSE_MISSINGSEMICOLONEXP         "MssngExpTerm"
 #define PARSE_MISSINGSEMICOLONEXP_MSG     "Expect expression terminator (; or newline) after expression."
-
-#define PARSE_MISSINGSEMICOLONVAR         "MssngSemiVar"
-#define PARSE_MISSINGSEMICOLONVAR_MSG     "Expect ; after variable declaration."
 
 #define PARSE_VAREXPECTED                 "VarExpct"
 #define PARSE_VAREXPECTED_MSG             "Variable name expected after var."

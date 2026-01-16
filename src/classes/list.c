@@ -623,21 +623,6 @@ value List_roll(vm *v, int nargs, value *args) {
 }
 
 /** Sorts a list */
-value XList_sort(vm *v, int nargs, value *args) {
-    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-
-    if (nargs==0) {
-        list_sort(slf);
-    } else if (nargs==1 && MORPHO_ISCALLABLE(MORPHO_GETARG(args, 0))) {
-        if (!list_sortwithfn(v, MORPHO_GETARG(args, 0), slf)) {
-            morpho_runtimeerror(v, LIST_SRTFN);
-        }
-    }
-
-    return MORPHO_NIL;
-}
-
-/** Sorts a list */
 value List_sort(vm *v, int nargs, value *args) {
     list_sort(MORPHO_GETLIST(MORPHO_SELF(args)));
     return MORPHO_NIL;

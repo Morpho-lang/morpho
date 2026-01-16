@@ -79,6 +79,9 @@ unsigned int list_length(objectlist *list);
 bool list_getelement(objectlist *list, int i, value *out);
 void list_sortcontents(value *values, size_t count);
 void list_sort(objectlist *list);
+bool list_sortcontentswithfn(vm *v, value cmpfn, value *values, size_t count);
+bool list_sortwithfn(vm *v, value cmpfn, objectlist *list);
+
 objectlist *list_clone(objectlist *list);
 
 void list_initialize(void);

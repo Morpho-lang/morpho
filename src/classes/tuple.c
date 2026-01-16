@@ -257,6 +257,33 @@ value Tuple_join(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Sorts the contents of a tuple, returning a new tuple */
+value Tuple_sort(vm *v, int nargs, value *args) {
+    objecttuple *src = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    
+    objecttuple *new = object_newtuple(src->length, src->tuple);
+    if (new) list_sortcontents(new->tuple, new->length);
+    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Sorts the contents of a tuple using a comparison function, returning a new tuple */
+value Tuple_sort_fn(vm *v, int nargs, value *args) {
+    objecttuple *src = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    
+    objecttuple *new=object_newtuple(src->length, src->tuple);
+    if (new) {
+        bool success=list_sortcontentswithfn(v, MORPHO_GETARG(args, 0), new->tuple, new->length);
+        if (!success) {
+            morpho_runtimeerror(v, LIST_SRTFN);
+            object_free((object *) new);
+            return MORPHO_NIL;
+        }
+    }
+    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
 /** Tests if a tuple has a value as a member */
 value Tuple_ismember(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
@@ -276,6 +303,8 @@ MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Tuple_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Tuple (_)", Tuple_join, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Tuple ()", Tuple_sort, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Tuple (_)", Tuple_sort_fn, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Bool (_)", Tuple_ismember, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Bool (_)", Tuple_ismember, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS

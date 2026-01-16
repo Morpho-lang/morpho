@@ -185,9 +185,6 @@ void morpho_unreachable(const char *explanation);
 #define VM_DVZR                           "DvZr"
 #define VM_DVZR_MSG                       "Division by zero."
 
-#define VM_GETINDEXARGS                   "NonintIndex"
-#define VM_GETINDEXARGS_MSG               "Noninteger array index."
-
 #define VM_MLTPLDSPTCHFLD                 "MltplDsptchFld"
 #define VM_MLTPLDSPTCHFLD_MSG             "Multiple dispatch could not find an implementation that matches these arguments."
 

@@ -1265,7 +1265,7 @@ bool parse_blockstatement(parser *p, void *out) {
         parse_error(p, false, PARSE_INCOMPLETEEXPRESSION);
         return false;
     } else {
-        PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTCURLYBRACKET, PARSE_MISSINGSEMICOLONEXP));
+        PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTCURLYBRACKET, PARSE_BLOCKTERMINATOREXP));
     }
     
     return parse_addnode(p, NODE_SCOPE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, body, out);

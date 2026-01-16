@@ -3380,7 +3380,7 @@ bool _extracttype(compiler *c, syntaxtreenode *node, value *out) {
         }
         
         if (!compiler_findclasswithnamespace(c, typenode, nsnode->content, labelnode->content, &type)) {
-            compiler_error(c, typenode, COMPILE_SYMBOLNOTDEFINEDNMSPC, MORPHO_GETCSTRING(nsnode->content), MORPHO_GETCSTRING(labelnode->content));
+            compiler_error(c, typenode, COMPILE_UNKNWNTYPENMSPC, MORPHO_GETCSTRING(labelnode->content), MORPHO_GETCSTRING(nsnode->content));
             return false;
         }
             

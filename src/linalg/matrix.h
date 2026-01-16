@@ -172,6 +172,7 @@ matrixinterfacedefn *matrix_getinterface(objectmatrix *a);
 #define MATRIX_OUTER_METHOD                "outer"
 #define MATRIX_RESHAPE_METHOD              "reshape"
 #define MATRIX_ROLL_METHOD                 "roll"
+#define MATRIX_SETCOLUMN_METHOD_DEPRECATED "setcolumn"
 #define MATRIX_SETCOLUMN_METHOD            "setColumn"
 #define MATRIX_TRACE_METHOD                "trace"
 #define MATRIX_TRANSPOSE_METHOD            "transpose"

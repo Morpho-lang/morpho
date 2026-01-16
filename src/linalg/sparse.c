@@ -270,7 +270,7 @@ bool sparsedok_copymatrixat(objectmatrix *src, sparsedok *dest, int row0, int co
     double val;
     for (int j=0; j<src->ncols; j++) {
         for (int i=0; i<src->nrows; i++) {
-            if (!(matrix_getelement(src, i, j, &val) &&
+            if (!(matrix_getelement(src, i, j, &val)==LINALGERR_OK &&
                   sparsedok_insert(dest, i+row0, j+col0, MORPHO_FLOAT(val)))) return false;
         }
     }
@@ -1813,14 +1813,14 @@ void sparse_initialize(void) {
     objectdokkeytype=object_addtype(&objectdokkeydefn);
     objectsparsetype=object_addtype(&objectsparsedefn);
 
-    builtin_addfunction(SPARSE_CLASSNAME, sparse_constructor, MORPHO_FN_CONSTRUCTOR);
-
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
     value sparseclass=builtin_addclass(SPARSE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Sparse), objclass);
     object_setveneerclass(OBJECT_SPARSE, sparseclass);
 
+    builtin_addfunction(SPARSE_CLASSNAME, sparse_constructor, MORPHO_FN_CONSTRUCTOR);
+    
     morpho_defineerror(SPARSE_CONSTRUCTOR, ERROR_HALT, SPARSE_CONSTRUCTOR_MSG);
     morpho_defineerror(SPARSE_SETFAILED, ERROR_HALT, SPARSE_SETFAILED_MSG);
     morpho_defineerror(SPARSE_INVLDARRAYINIT, ERROR_HALT, SPARSE_INVLDARRAYINIT_MSG);

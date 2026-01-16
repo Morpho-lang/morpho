@@ -780,6 +780,14 @@ value matrix_constructor__array(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
+/** Constructs a matrix from a sparse matrix */
+value matrix_constructor__sparse(vm *v, int nargs, value *args) {
+    objectmatrix *new = NULL;
+    objectsparseerror err=sparse_tomatrix(MORPHO_GETSPARSE(MORPHO_GETARG(args, 0)), &new);
+    if (err!=SPARSE_OK) morpho_runtimeerror(v, LINALG_INVLDARGS);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
 value matrix_constructor__err(vm *v, int nargs, value *args) {
     morpho_runtimeerror(v, MATRIX_CONSTRUCTOR);
     return MORPHO_NIL;
@@ -1544,6 +1552,7 @@ void matrix_initialize(void) {
     morpho_addfunction(MATRIX_CLASSNAME, "Matrix (List)", matrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(MATRIX_CLASSNAME, "Matrix (Tuple)", matrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(MATRIX_CLASSNAME, "Matrix (Array)", matrix_constructor__array, MORPHO_FN_CONSTRUCTOR, NULL);
+    //morpho_addfunction(MATRIX_CLASSNAME, "Matrix (Sparse)", matrix_constructor__sparse, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(MATRIX_CLASSNAME, "(...)", matrix_constructor__err, MORPHO_FN_CONSTRUCTOR, NULL);
     
     morpho_addfunction(MATRIX_IDENTITYCONSTRUCTOR, "Matrix (Int)", matrix_identityconstructor, MORPHO_FN_CONSTRUCTOR, NULL);

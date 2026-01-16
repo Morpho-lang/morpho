@@ -8,6 +8,8 @@
 #ifndef linalg_h
 #define linalg_h
 
+#include "morpho.h"
+
 /* -------------------------------------------------------
  * objectmatrixerror type
  * ------------------------------------------------------- */
@@ -93,4 +95,4 @@ void linalg_raiseerror(vm *v, linalgError_t err);
 
 void linalg_initialize(void);
 
-#endif
+#endif /* linalg_h */

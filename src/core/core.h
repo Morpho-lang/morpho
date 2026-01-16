@@ -10,7 +10,13 @@
 #include <stdio.h>
 #include <stddef.h>
 
+/** Forward declarations of key types */
+struct sprogram;
+struct scompiler;
+
 typedef struct svm vm;
+typedef struct sprogram program;
+typedef struct scompiler compiler;
 
 #include "error.h"
 #include "random.h"

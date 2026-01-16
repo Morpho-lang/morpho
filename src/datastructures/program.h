@@ -44,7 +44,7 @@ DECLARE_VARRAY(globalinfo, globalinfo)
  * ------------------------------------------------------- */
 
 /** @brief Morpho code program and associated data */
-typedef struct {
+typedef struct sprogram {
     varray_instruction code; /** Compiled instructions */
     varray_debugannotation annotations; /** Information about how the code connects to the source */
     objectfunction *global;  /** Pseudofunction containing global data */

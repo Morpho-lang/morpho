@@ -77,6 +77,7 @@ bool list_resize(objectlist *list, int size);
 void list_append(objectlist *list, value v);
 unsigned int list_length(objectlist *list);
 bool list_getelement(objectlist *list, int i, value *out);
+void list_sortcontents(value *values, size_t count);
 void list_sort(objectlist *list);
 objectlist *list_clone(objectlist *list);
 

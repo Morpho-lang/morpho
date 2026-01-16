@@ -25,6 +25,14 @@ You can also use the `warning` method to alert the user of a potential issue tha
 
     myerr.warning() 
 
+To see the full list of morpho errors, look at the `errorlist` help entry.
+
+# Error list
+[tagerrorrlist]: # (error list)
+[tagerrorlist]: # (errorlist)
+
+A list of morpho errors:
+
 [showsubtopics]: # (subtopics)
 
 ## Alloc
@@ -225,8 +233,8 @@ This error occurs when multiple dispatch cannot find a method implementation tha
 
     class A { }
     class B { }
-    fn method(a: A) { }
-    fn method(b: B) { }
+    fn method(A a) { }
+    fn method(B b) { }
     method(1) // Causes 'MltplDsptchFld' - no matching method for integer
 
 ## TypeChk
@@ -234,7 +242,7 @@ This error occurs when multiple dispatch cannot find a method implementation tha
 
 This error occurs when there is a type violation, such as attempting to assign a value of one type to a variable declared with a different type:
 
-    var x: String = 5 // Causes 'TypeChk'
+    String x = 5 // Causes 'TypeChk'
 
 ## NoOptArg
 [tagnooptarg]: # (nooptarg)
@@ -242,15 +250,15 @@ This error occurs when there is a type violation, such as attempting to assign a
 This error occurs when you try to pass optional arguments to a function that doesn't accept them:
 
     fn f(x) { return x }
-    f(1, y: 2) // Causes 'NoOptArg'
+    f(1, y=2) // Causes 'NoOptArg'
 
 ## UnkwnOptArg
 [tagunkwnoptarg]: # (unkwnoptarg)
 
 This error occurs when you pass an unknown optional argument to a function:
 
-    fn f(x, y: 1) { return x + y }
-    f(1, z: 2) // Causes 'UnkwnOptArg'
+    fn f(x, y=1) { return x + y }
+    f(1, z=2) // Causes 'UnkwnOptArg'
 
 ## InvldArgsBltn
 [taginvldargsbltn]: # (invldargsbltn)

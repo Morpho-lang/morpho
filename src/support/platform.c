@@ -52,6 +52,43 @@ const char *platform_name(void) {
 }
 
 /* **********************************************************************
+ * Re-entrant qsort
+ * ********************************************************************** */
+
+typedef struct _sadapt {
+    void *context;
+    platform_qsort_r_comparefn cmp;
+} _adaptinfo;
+
+/** Adapter function to patch macOS, BSD and windows variants of qsort_r */
+static int _comparefn_adapter(void *in, const void *a, const void *b) {
+    _adaptinfo *info = (_adaptinfo *) in;
+    return info->cmp(a,b,info->context);
+}
+
+/** Fallback function for use with regular qsort @warning not thread-safe */
+static _adaptinfo _globalinfo;
+static int _comparefn_fallback(const void *a, const void *b) {
+    return _globalinfo.cmp(a,b,_globalinfo.context);
+}
+
+/** Platform independent re-entrant qsort function */
+void platform_qsort_r(void *base, size_t nel, size_t width, void *context, platform_qsort_r_comparefn cmp) {
+#if defined(__GLIBC__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+    qsort_r(base, nel, width, cmp, context);
+#elif defined(__APPLE__)
+    _adaptinfo info = { .context = context, .cmp = cmp };
+    qsort_r(base, nel, width, &info, _comparefn_adapter);
+#elif defined(_WIN32)
+    _adaptinfo info = { .context = context, .cmp = cmp };
+    qsort_s(base, nel, width, _comparefn_adapter, &info);
+#else
+    _globalinfo.cmp = cmp; _globalinfo.context = context;
+    qsort(base, nel, width, _comparefn_fallback);
+#endif
+}
+
+/* **********************************************************************
  * Random numbers
  * ********************************************************************** */
 

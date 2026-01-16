@@ -1123,10 +1123,10 @@ value Mesh_vertexposition(vm *v, int nargs, value *args) {
         unsigned int id=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         double *vals;
 
-        if (matrix_getcolumnptr(m->vert, id, &vals)) {
+        if (matrix_getcolumnptr(m->vert, id, &vals)==LINALGERR_OK) {
             objectmatrix *new=matrix_new(m->dim, 1, true);
             if (new) {
-                matrix_setcolumn(new, 0, vals);
+                matrix_setcolumnptr(new, 0, vals);
                 out=MORPHO_OBJECT(new);
                 morpho_bindobjects(v, 1, &out);
             }
@@ -1145,7 +1145,7 @@ value Mesh_setvertexposition(vm *v, int nargs, value *args) {
         unsigned int id=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         objectmatrix *mat = MORPHO_GETMATRIX(MORPHO_GETARG(args, 1));
 
-        if (!matrix_setcolumn(m->vert, id, mat->elements)) morpho_runtimeerror(v, MESH_INVLDID);
+        if (matrix_setcolumnptr(m->vert, id, mat->elements)!=LINALGERR_OK) morpho_runtimeerror(v, MESH_INVLDID);
     } else morpho_runtimeerror(v, MESH_STVRTPSNARGS);
 
     return MORPHO_NIL;

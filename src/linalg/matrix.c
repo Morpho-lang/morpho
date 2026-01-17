@@ -870,13 +870,21 @@ value Matrix_index__int_int(vm *v, int nargs, value *args) {
 
 static linalgError_t _slice_count(value in, MatrixIdx_t *count) {
     if (morpho_isnumber(in)) { *count=1; return LINALGERR_OK; }
-    else if (MORPHO_ISRANGE(in)) { *count = range_count(MORPHO_GETRANGE(in)); return LINALGERR_OK; }
+    else if (MORPHO_ISRANGE(in)) { *count = (MatrixIdx_t) range_count(MORPHO_GETRANGE(in)); return LINALGERR_OK; }
+    else if (MORPHO_ISLIST(in)) { *count = (MatrixIdx_t) list_length(MORPHO_GETLIST(in)); return LINALGERR_OK; }
+    else if (MORPHO_ISTUPLE(in)) { *count = (MatrixIdx_t) tuple_length(MORPHO_GETTUPLE(in)); return LINALGERR_OK; }
     return LINALGERR_NON_NUMERICAL;
 }
 
 static linalgError_t _slice_iterate(value in, unsigned int i, MatrixIdx_t *ix) {
     value val=in;
-    if (MORPHO_ISRANGE(in)) val=range_iterate(MORPHO_GETRANGE(in), i);
+    if (MORPHO_ISRANGE(in)) {
+        val=range_iterate(MORPHO_GETRANGE(in), i);
+    } else if (MORPHO_ISLIST(in)) {
+        if (!list_getelement(MORPHO_GETLIST(in), i, &val)) return LINALGERR_INVLD_ARG;
+    } else if (MORPHO_ISTUPLE(in)) {
+        if (!tuple_getelement(MORPHO_GETTUPLE(in), i, &val)) return LINALGERR_INVLD_ARG;
+    }
         
     if (MORPHO_ISINTEGER(val)) { *ix=MORPHO_GETINTEGERVALUE(val); return LINALGERR_OK; }
     else if (MORPHO_ISFLOAT(val)) { *ix=(MatrixIdx_t) MORPHO_GETFLOATVALUE(val); return LINALGERR_OK; }

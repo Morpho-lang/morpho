@@ -19,4 +19,4 @@ var defectsGrad = Field(m, fn(x,y,z) phdgrad(x, y, z, 0.25, 0, 0)+mhdgrad(x, y, 
 var directorIntegral = LineIntegral(fn (x,n) 1/(2*Pi) * n.inner(tangent()), defectsGrad)
 
 var fe = directorIntegral.integrand(m)
-//expect error 'MtrxIncmptbl'
+//expect error 'LnAlgMtrxIncmptbl'

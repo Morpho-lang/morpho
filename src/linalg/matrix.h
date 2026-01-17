@@ -72,7 +72,7 @@ typedef struct {
 
 /** @brief Use to create static matrices on the C stack
     @details Intended for small matrices; Caller needs to supply a double array of size nr*nc. */
-#define MORPHO_STATICMATRIX(darray, nr, nc)      { .obj.type=OBJECT_MATRIX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .elements=darray, .nrows=nr, .ncols=nc, .nels=nr*nc }
+#define MORPHO_STATICMATRIX(darray, nr, nc)      { .obj.type=OBJECT_MATRIX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .elements=darray, .nrows=nr, .ncols=nc, .nvals=1, .nels=nr*nc }
 
 /** Macro to decide if a matrix is 'small' or 'large' and hence static or dynamic allocation should be used. */
 #define MATRIX_ISSMALL(m) (m->nrows*m->ncols<MORPHO_MAXIMUMSTACKALLOC)

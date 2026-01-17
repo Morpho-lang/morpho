@@ -312,6 +312,8 @@ bool field_addpool(objectfield *f) {
                 m[i].elements=f->data.elements+i*f->psize;
                 m[i].ncols=prototype->ncols;
                 m[i].nrows=prototype->nrows;
+                m[i].nvals=prototype->nvals;
+                m[i].nels=m[i].ncols*m[i].nrows*m[i].nvals;
             }
         }
         return true;

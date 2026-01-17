@@ -1266,7 +1266,7 @@ bool functional_mapfieldgradient(vm *v, functional_mapinfo *info, value *out) {
     functional_parallelmap(ntask, task);
     
     /* Then add up all the fields using their underlying data stores */
-    for (int i=1; i<ntask; i++) matrix_axpy(1.0, &new[1]->data, &new[0]->data);
+    for (int i=1; i<ntask; i++) matrix_axpy(1.0, &new[i]->data, &new[0]->data);
     
     // TODO: Use symmetry actions
     //if (info->sym==SYMMETRY_ADD) functional_symmetrysumforces(info->mesh, new[0]);

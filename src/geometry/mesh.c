@@ -1001,7 +1001,7 @@ bool mesh_save(objectmesh *m, char *file) {
 
         for (unsigned int j=0; j<m->vert->nrows; j++) {
             double x;
-            if (matrix_getelement(m->vert, j, i, &x)) {
+            if (matrix_getelement(m->vert, j, i, &x) == LINALGERR_OK) {
                 fprintf(f, "%g ", x);
             }
         }

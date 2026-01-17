@@ -288,7 +288,7 @@ bool sparsedok_copytomatrix(sparsedok *src, objectmatrix *dest, int row0, int co
         if (sparsedok_get(src, i, j, &entry)) {
             double val=0.0;
             if (!morpho_valuetofloat(entry, &val)) return false;
-            if (!matrix_setelement(dest, i+row0, j+col0, val)) return false;
+            if (matrix_setelement(dest, i+row0, j+col0, val)!=LINALGERR_OK) return false;
         }
     }
 

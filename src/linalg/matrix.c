@@ -1553,7 +1553,7 @@ void matrix_initialize(void) {
     morpho_addfunction(MATRIX_CLASSNAME, "Matrix (List)", matrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(MATRIX_CLASSNAME, "Matrix (Tuple)", matrix_constructor__list, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(MATRIX_CLASSNAME, "Matrix (Array)", matrix_constructor__array, MORPHO_FN_CONSTRUCTOR, NULL);
-    //morpho_addfunction(MATRIX_CLASSNAME, "Matrix (Sparse)", matrix_constructor__sparse, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(MATRIX_CLASSNAME, "Matrix (Sparse)", matrix_constructor__sparse, MORPHO_FN_CONSTRUCTOR, NULL);
     morpho_addfunction(MATRIX_CLASSNAME, "(...)", matrix_constructor__err, MORPHO_FN_CONSTRUCTOR, NULL);
     
     morpho_addfunction(MATRIX_IDENTITYCONSTRUCTOR, "Matrix (Int)", matrix_identityconstructor, MORPHO_FN_CONSTRUCTOR, NULL);

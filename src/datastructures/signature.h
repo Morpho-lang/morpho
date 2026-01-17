@@ -31,7 +31,7 @@ value signature_getreturntype(signature *s);
 int signature_countparams(signature *s);
 
 void signature_set(signature *s, int nparam, value *types);
-bool signature_parse(char *sig, signature *out);
+bool signature_parse(const char *sig, signature *out);
 
 void signature_print(signature *s);
 

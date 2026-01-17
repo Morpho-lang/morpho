@@ -1770,7 +1770,7 @@ value morpho_wrapandbind(vm *v, object *obj) {
     if (obj) {
         out=MORPHO_OBJECT(obj);
         morpho_bindobjects(v, 1, &out);
-    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    } else if (!morpho_checkerror(&v->err)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     return out;
 }
 

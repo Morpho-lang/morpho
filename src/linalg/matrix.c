@@ -1179,7 +1179,8 @@ static bool _processeigenvalues(vm *v, MatrixIdx_t n, MorphoComplex *w, value *o
     value ev[n];
     for (int i=0; i<n; i++) ev[i]=MORPHO_NIL;
     for (int i=0; i<n; i++) {
-        if (fabs(cimag(w[i])) < MORPHO_EPS*cabs(w[i])) {
+        double abs = cabs(w[i]);
+        if (abs > DBL_MIN ? fabs(cimag(w[i]))/abs <= MORPHO_EPS : fabs(cimag(w[i])) < DBL_MIN) {
             ev[i]=MORPHO_FLOAT(creal(w[i]));
         } else {
             objectcomplex *new = object_newcomplex(creal(w[i]), cimag(w[i]));

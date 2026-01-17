@@ -3,8 +3,7 @@
 var a = Matrix([[1,-1,0], [-1,1,0], [0,0,1]])
 
 var ev = a.eigenvalues()
-ev.sort() 
-print ev 
+print ev.sort() 
 // expect: (0, 1, 2)
 
 var b = Matrix([[1,2,0], [-2,1,0], [0,0,1]])

@@ -234,7 +234,10 @@ IMPLEMENTATIONFN(Matrix_dimensions);
  * ------------------------------------------------------- */
 
 #define MATRIX_CONSTRUCTOR                "MtrxCns"
-#define MATRIX_CONSTRUCTOR_MSG            "Matrix() constructor should be called either with dimensions or an array, list, tuple or matrix initializer."
+#define MATRIX_CONSTRUCTOR_MSG            "Matrix() constructor should be called either with integer dimensions or an array, list, tuple or matrix initializer."
+
+#define MATRIX_IDENTCONSTRUCTOR           "MtrxIdnttyCns"
+#define MATRIX_IDENTCONSTRUCTOR_MSG       "IdentityMatrix expects the dimension as its argument."
 
 /* -------------------------------------------------------
  * Interface

@@ -12,4 +12,4 @@ print a
 // expect: [ 0 0 1 ]
 
 a = IdentityMatrix()
-// expect error 'MtrxIdnttyCns'
+// expect error 'LnAlgMtrxInvldArg'

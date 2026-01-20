@@ -333,12 +333,15 @@ objectmatrix *matrix_listconstructor(vm *v, value lst, objecttype type, MatrixId
         _getelement(lst, i, &iel);
         for (int j=0; j<ncols; j++) {
             if (_getelement(iel, j, &jel)) {
-                matrix_getinterface(new)->setelfn(v, jel, new->elements+(j*nrows + i)*new->nvals);
+                if (matrix_getinterface(new)->setelfn(v, jel, new->elements+(j*nrows + i)*new->nvals)!=LINALGERR_OK) goto matrix_listconstructor_cleanup;
             }
         }
     }
     
     return new;
+matrix_listconstructor_cleanup:
+    object_free((object *) new);
+    return NULL;
 }
 
 /** Construct a matrix from an array */
@@ -783,6 +786,15 @@ value matrix_constructor__matrix(vm *v, int nargs, value *args) {
 /** Constructs a matrix from a list of lists or tuples */
 value matrix_constructor__list(vm *v, int nargs, value *args) {
     objectmatrix *new = matrix_listconstructor(v, MORPHO_GETARG(args, 0), OBJECT_MATRIX, 1);
+#ifdef MORPHO_INCLUDE_SPARSE
+    if (!new) {
+        /** Could this be a concatenation operation? */
+        objectsparseerror err = sparse_catmatrix(MORPHO_GETLIST(MORPHO_GETARG(args, 0)), &new);
+        if (err==SPARSE_INVLDINIT) {
+            morpho_runtimeerror(v, LINALG_INVLDARGS);
+        } else if (err!=SPARSE_OK) sparse_raiseerror(v, err);
+    }
+#endif
     return morpho_wrapandbind(v, (object *) new);
 }
 

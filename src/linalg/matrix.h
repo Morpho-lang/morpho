@@ -275,6 +275,7 @@ linalgError_t matrix_svd(objectmatrix *a, double *s, objectmatrix *u, objectmatr
 
 linalgError_t matrix_qr(objectmatrix *a, objectmatrix *q, objectmatrix *r);
 
+linalgError_t matrix_validateindex(MatrixIdx_t *idx, MatrixIdx_t size);
 linalgError_t matrix_setelement(objectmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value);
 linalgError_t matrix_getelement(objectmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value);
 linalgError_t matrix_getelementptr(objectmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value);

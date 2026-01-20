@@ -365,30 +365,45 @@ objectmatrix *matrix_arrayconstructor(vm *v, objectarray *a, objecttype type, Ma
  * Accessing elements
  * ---------------------- */
 
+ /** @brief Validates index bounds, converting negative indices to positive
+ *  @param idx Pointer to the index, updated if valid and negative 
+ *  @param size The size of the dimension
+ *  @returns LINALGERR_OK if conversion successful, LINALGERR_INDX_OUT_OF_BNDS if out of bounds */
+linalgError_t matrix_validateindex(MatrixIdx_t *idx, MatrixIdx_t size) {
+    if (*idx < 0) {
+        if (*idx < -size) return LINALGERR_INDX_OUT_OF_BNDS;
+        *idx = size + *idx;
+    } else if (*idx >= size) return LINALGERR_INDX_OUT_OF_BNDS;
+    return LINALGERR_OK;
+}
+
 /** @brief Sets a matrix element.
-    @returns true if the element is in the range of the matrix, false otherwise */
+    @returns LINALGERR_OK if successful, LINALGERR_INDX_OUT_OF_BNDS if index out of bounds */
 linalgError_t matrix_setelement(objectmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double value) {
-    if (!(col<matrix->ncols && row<matrix->nrows)) return LINALGERR_INDX_OUT_OF_BNDS;
-        
-    matrix->elements[matrix->nvals*(col*matrix->nrows+row)]=value;
+    MatrixIdx_t row_idx = row, col_idx = col;
+    LINALG_ERRCHECKRETURN(matrix_validateindex(&row_idx, matrix->nrows));
+    LINALG_ERRCHECKRETURN(matrix_validateindex(&col_idx, matrix->ncols));
+    matrix->elements[matrix->nvals*(col_idx*matrix->nrows+row_idx)]=value;
     return LINALGERR_OK;
 }
 
 /** @brief Gets a matrix element
- *  @returns true if the element is in the range of the matrix, false otherwise */
+ *  @returns LINALGERR_OK if successful, LINALGERR_INDX_OUT_OF_BNDS if index out of bounds */
 linalgError_t matrix_getelement(objectmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value) {
-    if (!(col<matrix->ncols && row<matrix->nrows)) return LINALGERR_INDX_OUT_OF_BNDS;
-    
-    if (value) *value=matrix->elements[matrix->nvals*(col*matrix->nrows+row)];
+    MatrixIdx_t row_idx = row, col_idx = col;
+    LINALG_ERRCHECKRETURN(matrix_validateindex(&row_idx, matrix->nrows));
+    LINALG_ERRCHECKRETURN(matrix_validateindex(&col_idx, matrix->ncols));
+    if (value) *value=matrix->elements[matrix->nvals*(col_idx*matrix->nrows+row_idx)];
     return LINALGERR_OK;
 }
 
 /** @brief Gets a pointer to a matrix element
- *  @returns true if the element is in the range of the matrix, false otherwise */
+ *  @returns LINALGERR_OK if successful, LINALGERR_INDX_OUT_OF_BNDS if index out of bounds */
 linalgError_t matrix_getelementptr(objectmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value) {
-    if (!(col<matrix->ncols && row<matrix->nrows)) return LINALGERR_INDX_OUT_OF_BNDS;
-    
-    if (value) *value=matrix->elements+matrix->nvals*(col*matrix->nrows+row);
+    MatrixIdx_t row_idx = row, col_idx = col;
+    LINALG_ERRCHECKRETURN(matrix_validateindex(&row_idx, matrix->nrows));
+    LINALG_ERRCHECKRETURN(matrix_validateindex(&col_idx, matrix->ncols));
+    if (value) *value=matrix->elements+matrix->nvals*(col_idx*matrix->nrows+row_idx);
     return LINALGERR_OK;
 }
 
@@ -400,27 +415,27 @@ linalgError_t matrix_getcolumnptr(objectmatrix *matrix, MatrixIdx_t col, double 
 
 /** Copies the column col of matrix a into the column vector b */
 linalgError_t matrix_getcolumn(objectmatrix *a, MatrixIdx_t col, objectmatrix *b) {
-    if (col<0 || col>=a->ncols) return LINALGERR_INDX_OUT_OF_BNDS;
+    MatrixIdx_t col_idx = col;
+    LINALG_ERRCHECKRETURN(matrix_validateindex(&col_idx, a->ncols));
     if (b->nels!=a->nrows*a->nvals) return LINALGERR_INCOMPATIBLE_DIM;
-    
-    cblas_dcopy((__LAPACK_int) b->nels, a->elements+a->nvals*col*a->nrows, 1, b->elements, 1);
+    cblas_dcopy((__LAPACK_int) b->nels, a->elements+a->nvals*col_idx*a->nrows, 1, b->elements, 1);
     return LINALGERR_OK;
 }
 
 /** Copies the column vector b into column col of matrix a */
 linalgError_t matrix_setcolumn(objectmatrix *a, MatrixIdx_t col, objectmatrix *b) {
-    if (col<0 || col>=a->ncols) return LINALGERR_INDX_OUT_OF_BNDS;
+    MatrixIdx_t col_idx = col;
+    LINALG_ERRCHECKRETURN(matrix_validateindex(&col_idx, a->ncols));
     if (b->nels!=a->nrows*a->nvals) return LINALGERR_INCOMPATIBLE_DIM;
-    
-    cblas_dcopy((__LAPACK_int) b->nels, b->elements, 1, a->elements+a->nvals*col*a->nrows, 1);
+    cblas_dcopy((__LAPACK_int) b->nels, b->elements, 1, a->elements+a->nvals*col_idx*a->nrows, 1);
     return LINALGERR_OK;
 }
 
 /** Copies the column vector b as a raw list of doubles into column col of matrix a */
 linalgError_t matrix_setcolumnptr(objectmatrix *a, MatrixIdx_t col, double *b) {
-    if (col<0 || col>=a->ncols) return LINALGERR_INDX_OUT_OF_BNDS;
-    
-    cblas_dcopy((__LAPACK_int) a->nrows*a->nvals, b, 1, a->elements+a->nvals*col*a->nrows, 1);
+    MatrixIdx_t col_idx = col;
+    LINALG_ERRCHECKRETURN(matrix_validateindex(&col_idx, a->ncols));
+    cblas_dcopy((__LAPACK_int) a->nrows*a->nvals, b, 1, a->elements+a->nvals*col_idx*a->nrows, 1);
     return LINALGERR_OK;
 }
 
@@ -888,7 +903,7 @@ static linalgError_t _slice_iterate(value in, unsigned int i, MatrixIdx_t *ix) {
         
     if (MORPHO_ISINTEGER(val)) { *ix=MORPHO_GETINTEGERVALUE(val); return LINALGERR_OK; }
     else if (MORPHO_ISFLOAT(val)) { *ix=(MatrixIdx_t) MORPHO_GETFLOATVALUE(val); return LINALGERR_OK; }
-    return LINALGERR_OP_FAILED;
+    return LINALGERR_INVLD_ARG;
 }
 
 static linalgError_t _slice_validate(value iv, value jv, MatrixIdx_t *icnt, MatrixIdx_t *jcnt) {

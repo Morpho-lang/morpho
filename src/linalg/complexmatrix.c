@@ -225,9 +225,10 @@ objectcomplexmatrix *complexmatrix_new(MatrixIdx_t nrows, MatrixIdx_t ncols, boo
 
 /** Sets a matrix element. */
 linalgError_t complexmatrix_setelement(objectcomplexmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, MorphoComplex value) {
-    if (!(col<matrix->ncols && row<matrix->nrows)) return LINALGERR_INDX_OUT_OF_BNDS;
-        
-    MatrixCount_t ix = matrix->nvals*(col*matrix->nrows+row);
+    MatrixIdx_t row_idx = row, col_idx = col;
+    LINALG_ERRCHECKRETURN(matrix_validateindex(&row_idx, matrix->nrows));
+    LINALG_ERRCHECKRETURN(matrix_validateindex(&col_idx, matrix->ncols));
+    MatrixCount_t ix = matrix->nvals*(col_idx*matrix->nrows+row_idx);
     matrix->elements[ix]=creal(value);
     matrix->elements[ix+1]=cimag(value);
     return LINALGERR_OK;
@@ -235,9 +236,10 @@ linalgError_t complexmatrix_setelement(objectcomplexmatrix *matrix, MatrixIdx_t 
 
 /** Gets a matrix element */
 linalgError_t complexmatrix_getelement(objectcomplexmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, MorphoComplex *value) {
-    if (!(col<matrix->ncols && row<matrix->nrows)) return LINALGERR_INDX_OUT_OF_BNDS;
-    
-    MatrixCount_t ix = matrix->nvals*(col*matrix->nrows+row);
+    MatrixIdx_t row_idx = row, col_idx = col;
+    LINALG_ERRCHECKRETURN(matrix_validateindex(&row_idx, matrix->nrows));
+    LINALG_ERRCHECKRETURN(matrix_validateindex(&col_idx, matrix->ncols));
+    MatrixCount_t ix = matrix->nvals*(col_idx*matrix->nrows+row_idx);
     if (value) *value=MCBuild(matrix->elements[ix],matrix->elements[ix+1]);
     return LINALGERR_OK;
 }

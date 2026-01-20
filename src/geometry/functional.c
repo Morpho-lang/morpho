@@ -154,12 +154,12 @@ bool functional_symmetrysumforces(objectmesh *mesh, objectmatrix *frc) {
         double *fi, *fj, fsum[mesh->dim];
 
         while (sparsedok_loop(&s->dok, &ctr, &i, &j)) {
-            if (matrix_getcolumnptr(frc, i, &fi) &&
-                matrix_getcolumnptr(frc, j, &fj)) {
+            if (matrix_getcolumnptr(frc, i, &fi)==LINALGERR_OK &&
+                matrix_getcolumnptr(frc, j, &fj)==LINALGERR_OK) {
 
                 for (unsigned int k=0; k<mesh->dim; k++) fsum[k]=fi[k]+fj[k];
-                matrix_setcolumnptr(frc, i, fsum);
-                matrix_setcolumnptr(frc, j, fsum);
+                if (matrix_setcolumnptr(frc, i, fsum)!=LINALGERR_OK) return false;
+                if (matrix_setcolumnptr(frc, j, fsum)!=LINALGERR_OK) return false; 
             }
         }
     }

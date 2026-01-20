@@ -918,9 +918,11 @@ static linalgError_t _slice_copy(value iv, value jv, MatrixIdx_t icnt, MatrixIdx
     for (MatrixIdx_t j=0; j<jcnt; j++) {
         MatrixIdx_t jx;
         LINALG_ERRCHECKRETURN(_slice_iterate(jv, j, &jx));
+        LINALG_ERRCHECKRETURN(matrix_validateindex(&jx, a->ncols));
         for (MatrixIdx_t i=0; i<icnt; i++) {
             MatrixIdx_t ix;
             LINALG_ERRCHECKRETURN(_slice_iterate(iv, i, &ix));
+            LINALG_ERRCHECKRETURN(matrix_validateindex(&ix, a->nrows));
             LINALG_ERRCHECKRETURN(matrix_getelementptr(a, ix, jx, &ael));
             LINALG_ERRCHECKRETURN(matrix_getelementptr(b, i, j, &bel));
             if (swap) memcpy(ael, bel, sizeof(double)*a->nvals);
@@ -946,6 +948,11 @@ value Matrix_index__x_x(vm *v, int nargs, value *args) {
     else out = morpho_wrapandbind(v, (object *) new);
     
     return out;
+}
+
+value Matrix_index__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, LINALG_INVLDINDICES);
+    return MORPHO_NIL;
 }
 
 /* ---------
@@ -1515,6 +1522,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Matrix ()", Matrix_clone, BUILTIN_
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", Matrix_enumerate, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", Matrix_index__int_int, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Matrix (_,_)", Matrix_index__x_x, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Matrix (...)", Matrix_index__err, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", Matrix_setindex__int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,Int,_)", Matrix_setindex__int_int_x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(_,_,Matrix)", Matrix_setindex__x_x_matrix, BUILTIN_FLAGSEMPTY),

@@ -79,7 +79,7 @@ try{
 print A[[1,2,1],[0.2,0.1]]
 // expect: [ 4 4 ]
 // expect: [ 8 8 ]
-// expect: [ 4 4 ] 
+// expect: [ 4 4 ]
 
 // index in list is not slicable
 try{
@@ -111,28 +111,28 @@ print A[[0,2,1],0.0]
 try{
 	print A[[1,2],[2,3],[0,1]] 
 } catch{
-	"MtrxInvldNumIndx": print "MtrxInvldNumIndx"
-// expect: MtrxInvldNumIndx
+	"LnAlgInvldIndx": print "LnAlgInvldIndx"
+// expect: LnAlgInvldIndx
 }
 
 // garbage in 
 try{
 	print A[A] 
 } catch{
-	"MtrxInvldIndx": print "MtrxInvldIndx"
-// expect: MtrxInvldIndx
+	"LnAlgInvldIndx": print "LnAlgInvldIndx"
+// expect: LnAlgInvldIndx
 
 }
 try{
 	print A[nil] 
 } catch{
-	"MtrxInvldIndx": print "MtrxInvldIndx"
-// expect: MtrxInvldIndx
+	"LnAlgInvldIndx": print "LnAlgInvldIndx"
+// expect: LnAlgInvldIndx
 }
 
 try{
 	A[1,2,3,4,5]
 } catch{
-	"MtrxInvldNumIndx": print "MtrxInvldNumIndx"
-// expect: MtrxInvldNumIndx
+	"LnAlgInvldIndx": print "LnAlgInvldIndx"
+// expect: LnAlgInvldIndx
 }

@@ -65,6 +65,9 @@ typedef enum {
 #define LINALG_ARITHARGS                  "LnAlgInvldArg"
 #define LINALG_ARITHARGS_MSG              "Matrix arithmetic methods expect a matrix or number as their argument."
 
+#define LINALG_INVLDINDICES               "LnAlgInvldIndx"
+#define LINALG_INVLDINDICES_MSG           "Matrices require two arguments for indexing."
+
 /* -------------------------------------------------------
  * Interface
  * ------------------------------------------------------- */

@@ -317,13 +317,12 @@ objectmatrix *matrix_listconstructor(vm *v, value lst, objecttype type, MatrixId
     value iel, jel;
     
     int nrows=0, ncols=0, rlen;
-    _length(lst, &nrows);
+    if (!_length(lst, &nrows)) return NULL;
     for (int i=0; i<nrows; i++) {
         if (_getelement(lst, i, &iel) &&
-            _length(iel, &rlen) &&
-            rlen>ncols) {
-            ncols=rlen;
-        }
+            _length(iel, &rlen)) {
+            if (rlen>ncols) ncols=rlen;
+        } else return NULL;
     }
     
     objectmatrix *new=matrix_newwithtype(type, nrows, ncols, nvals, true);

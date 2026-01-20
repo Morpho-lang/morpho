@@ -1845,7 +1845,7 @@ bool area_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid
     double *x[nv], s0[3], s1[3], s01[3], s010[3], s011[3];
     double norm;
     for (int j=0; j<3; j++) { s0[j]=0; s1[j]=0; s01[j]=0; s010[j]=0; s011[j]=0; }
-    for (int j=0; j<nv; j++) if (!matrix_getcolumnptr(mesh->vert, vid[j], &x[j])) return false;
+    for (int j=0; j<nv; j++) if (matrix_getcolumnptr(mesh->vert, vid[j], &x[j])!=LINALGERR_OK) return false;
 
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     functional_vecsub(mesh->dim, x[2], x[1], s1);
@@ -1895,7 +1895,7 @@ MORPHO_ENDCLASS
 /** Calculate enclosed volume */
 bool volumeenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     double *x[nv], cx[mesh->dim];
-    for (int j=0; j<nv; j++) if (!matrix_getcolumnptr(mesh->vert, vid[j], &x[j])) return false;
+    for (int j=0; j<nv; j++) if (matrix_getcolumnptr(mesh->vert, vid[j], &x[j])!=LINALGERR_OK) return false;
 
     functional_veccross(x[0], x[1], cx);
 
@@ -1906,7 +1906,7 @@ bool volumeenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
 /** Calculate gradient */
 bool volumeenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
     double *x[nv], cx[mesh->dim], dot;
-    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) if (matrix_getcolumnptr(mesh->vert, vid[j], &x[j])!=LINALGERR_OK) return false;
 
     functional_veccross(x[0], x[1], cx);
     dot=functional_vecdot(mesh->dim, cx, x[2]);

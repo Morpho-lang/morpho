@@ -32,7 +32,7 @@ var m = mb.build()
 // Expand m by a linear factor
 var f = 1.2
 var vert = m.vertexmatrix()
-for (i in 0...m.count()) m.setvertexposition(i, f*vert.column(i))
+for (i in 0...m.count()) m.setvertexposition(i, vert.column(i)*f)
 
 var phi = phi0/(f^2) // New phi will be inversely proportional to the area
 var vol = vol0 * f^2

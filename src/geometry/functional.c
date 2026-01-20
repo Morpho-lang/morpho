@@ -2184,7 +2184,7 @@ bool linearelasticity_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
     if (matrix_inverse(&q)!=LINALGERR_OK) return false;
     if (matrix_mul(&gramdef, &q, &r)!=LINALGERR_OK) return false;
 
-    matrix_identity(&cg);
+    if (matrix_identity(&cg)!=LINALGERR_OK) return false;
     matrix_scale(&cg, -0.5);
     matrix_axpy(0.5, &r, &cg);         //  y <- alpha*x + y
 
@@ -2560,7 +2560,9 @@ bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
         MORPHO_ISMATRIX(weight) ) {
         ref->weight=MORPHO_GETMATRIX(weight);
         if (ref->weight) {
-            matrix_sum(ref->weight, &ref->mean);
+            double sum[ref->weight->nvals];
+            matrix_sum(ref->weight, sum);
+            ref->mean = sum[0];
             ref->mean/=ref->weight->ncols;
         }
     }
@@ -4318,7 +4320,7 @@ void integral_evaluatecg(vm *v, value *out) {
     if (matrix_inverse(&q)!=LINALGERR_OK) return;
     if (matrix_mul(&gramdef, &q, &r)!=LINALGERR_OK) return;
 
-    matrix_identity(cg);
+    if (matrix_identity(cg)!=LINALGERR_OK) return;
     matrix_scale(cg, -0.5);
     matrix_axpy(0.5, &r, cg);
     

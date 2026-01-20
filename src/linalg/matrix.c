@@ -794,6 +794,8 @@ value matrix_constructor__list(vm *v, int nargs, value *args) {
             morpho_runtimeerror(v, LINALG_INVLDARGS);
         } else if (err!=SPARSE_OK) sparse_raiseerror(v, err);
     }
+#else
+    if (!new) morpho_runtimeerror(v, LINALG_INVLDARGS);
 #endif
     return morpho_wrapandbind(v, (object *) new);
 }

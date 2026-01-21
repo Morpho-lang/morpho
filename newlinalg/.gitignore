@@ -1,5 +1,0 @@
-*.so
-*.DS_Store
-build/*
-build-xcode/*
-test/FailedTests.txt

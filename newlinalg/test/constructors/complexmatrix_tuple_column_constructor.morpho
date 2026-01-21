@@ -1,9 +1,0 @@
-// Create a column vector from a list of tuples
-
-import newlinalg
-
-var C = ComplexMatrix(((1+1im),(3+3im)))
-
-print C 
-// expect: [ 1 + 1im ]
-// expect: [ 3 + 3im ]

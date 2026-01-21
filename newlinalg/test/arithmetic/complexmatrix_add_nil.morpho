@@ -1,8 +1,0 @@
-// Add a scalar
-import newlinalg 
-
-var A = ComplexMatrix(2,2)
-
-print A + nil
-// expect: [ 0 + 0im 0 + 0im ]
-// expect: [ 0 + 0im 0 + 0im ]

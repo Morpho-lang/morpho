@@ -1,9 +1,0 @@
-// Add a matrix to a complex matrix 
-import newlinalg 
-
-var A = ComplexMatrix(((1+1im, 2+2im), (3+3im, 4+4im)))
-var B = Matrix(((1, 2), (3, 4)))
-
-print B + A
-// expect: [ 2 + 1im 4 + 2im ]
-// expect: [ 6 + 3im 8 + 4im ]

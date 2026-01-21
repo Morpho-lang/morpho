@@ -1,9 +1,0 @@
-// Create a Matrix
-
-import newlinalg 
-
-var A = Matrix(2)
-
-print A 
-// expect: [ 0 ]
-// expect: [ 0 ]

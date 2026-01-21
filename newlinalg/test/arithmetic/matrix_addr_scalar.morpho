@@ -1,8 +1,0 @@
-// Add a scalar from the right
-import newlinalg 
-
-var A = Matrix(2,2)
-
-print 2 + A
-// expect: [ 2 2 ]
-// expect: [ 2 2 ]

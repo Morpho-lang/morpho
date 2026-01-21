@@ -1,9 +1,0 @@
-// Create a Matrix from a List of Lists
-
-import newlinalg 
-
-var A = Matrix([[1,2],[3,4]])
-
-print A 
-// expect: [ 1 2 ]
-// expect: [ 3 4 ]

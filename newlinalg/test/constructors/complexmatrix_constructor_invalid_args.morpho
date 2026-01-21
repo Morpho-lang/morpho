@@ -1,6 +1,0 @@
-// ComplexMatrix constructor with invalid arguments
-import newlinalg 
-
-// Try to construct with invalid argument types
-print ComplexMatrix("invalid")
-// expect error 'MltplDsptchFld'

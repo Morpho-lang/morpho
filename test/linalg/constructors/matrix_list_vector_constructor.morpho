@@ -1,0 +1,7 @@
+// Create a column vector from a list of tuples
+
+var C = Matrix(((1),(2)))
+
+print C 
+// expect: [ 1 ]
+// expect: [ 2 ]

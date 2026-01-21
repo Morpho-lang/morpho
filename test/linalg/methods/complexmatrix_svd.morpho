@@ -1,0 +1,21 @@
+// Singular Value Decomposition
+
+var A = ComplexMatrix(((1+1im,0+0im),(0+0im,2+2im)))
+
+var svd = A.svd()
+
+// Test reconstruction: U * S * V^T should approximately equal A
+var U = svd[0]
+var S = svd[1]
+var V = svd[2]
+
+// Create diagonal matrix from singular values
+var Sdiag = ComplexMatrix(2,2)
+Sdiag[0,0] = S[0]
+Sdiag[1,1] = S[1]
+
+var VT = V.transpose()
+var reconstructed = U * Sdiag * VT
+
+print (reconstructed - A).norm() < 1e-10
+// expect: true

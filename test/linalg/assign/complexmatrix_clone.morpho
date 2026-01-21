@@ -1,0 +1,18 @@
+// Clone a ComplexMatrix
+
+var A = ComplexMatrix(2,2)
+A[0,0]=1+1im
+A[0,1]=2+2im
+A[1,0]=3+3im
+A[1,1]=4+4im
+
+var B = A.clone()
+
+// Modify original
+A[0,0]=9+9im
+
+// Clone should be unchanged
+print B
+// expect: [ 1 + 1im 2 + 2im ]
+// expect: [ 3 + 3im 4 + 4im ]
+

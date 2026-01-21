@@ -1,0 +1,53 @@
+// Singular Value Decomposition
+
+var A = Matrix(((1,0),(0,2)))
+
+var svd = A.svd()
+
+print svd
+// expect: (<Matrix>, (2, 1), <Matrix>)
+
+print (svd[0] - Matrix(((0,1),(1,0)))).norm() < 1e-10  
+// expect: true
+
+print svd[1]
+// expect: (2, 1)
+
+print (svd[2] - Matrix(((0,1),(1,0)))).norm() < 1e-10  
+// expect: true
+
+// Test reconstruction: U * S * V^T should approximately equal A
+var U = svd[0]
+var S = svd[1]
+var V = svd[2]
+
+// Create diagonal matrix from singular values
+var Sdiag = Matrix(2,2)
+Sdiag[0,0] = S[0]
+Sdiag[1,1] = S[1]
+
+var VT = V.transpose()
+var reconstructed = U * Sdiag * VT
+
+print (reconstructed - A).norm() < 1e-10
+// expect: true
+
+// Test with a non-square matrix
+var B = Matrix(3,2)
+B[0,0]=1
+B[0,1]=0
+B[1,0]=0
+B[1,1]=2
+B[2,0]=0
+B[2,1]=0
+
+var svd2 = B.svd()
+
+print svd2[0].dimensions()
+// expect: (3, 3)
+
+print svd2[1]
+// expect: (2, 1)
+
+print svd2[2].dimensions()
+// expect: (2, 2)

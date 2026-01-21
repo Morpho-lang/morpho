@@ -1,0 +1,19 @@
+// Eigenvalues and eigenvectors
+
+var A = Matrix(2,2)
+A[0,0]=0
+A[0,1]=1
+A[1,0]=1
+A[1,1]=0
+
+var es=A.eigensystem()
+
+print es 
+// expect: ((1, -1), <Matrix>)
+
+print es[0]
+// expect: (1, -1)
+
+print es[1].format("%.2g")
+// expect: [ 0.71 -0.71 ]
+// expect: [ 0.71 0.71 ]

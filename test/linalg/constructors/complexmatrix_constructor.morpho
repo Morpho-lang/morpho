@@ -1,0 +1,8 @@
+// Create a ComplexMatrix
+
+var A = ComplexMatrix(2,2)
+
+print A 
+// expect: [ 0 + 0im 0 + 0im ]
+// expect: [ 0 + 0im 0 + 0im ]
+

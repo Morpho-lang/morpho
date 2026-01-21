@@ -1,0 +1,9 @@
+// Get dimensions of Matrix
+
+var A = Matrix(2,3)
+print A.dimensions()
+// expect: (2, 3)
+
+var a = Matrix([[0.8, -0.4], [0.4, 0.8]])
+print a.dimensions()
+// expect: (2, 2)

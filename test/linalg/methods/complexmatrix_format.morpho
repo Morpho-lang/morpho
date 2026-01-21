@@ -1,0 +1,12 @@
+// Format
+import constants
+
+var A = ComplexMatrix(2,2)
+A[0,0]=1+1im
+A[0,1]=exp(im*Pi/4)
+A[1,0]=exp(-im*Pi/4)
+A[1,1]=-1.5*(1+1im)
+
+print A.format("%5.2f")
+// expect: [  1.00 + 1.00im  0.71 + 0.71im ]
+// expect: [  0.71 - 0.71im -1.50 - 1.50im ]

@@ -155,6 +155,7 @@ static linalgError_t _svd(objectmatrix *a, double *s, objectmatrix *u, objectmat
     int minmn = (m < n) ? m : n;
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
+    double* superb = malloc(minmn * sizeof(double));
     info = LAPACKE_dgesvd(LAPACK_COL_MAJOR,
                           (u ? 'A' : 'N'),      // jobu: 'A' = all U columns, 'N' = no U
                           (vt ? 'A' : 'N'),     // jobvt: 'A' = all VT rows, 'N' = no VT
@@ -162,7 +163,8 @@ static linalgError_t _svd(objectmatrix *a, double *s, objectmatrix *u, objectmat
                           a->elements, m,       // input matrix A (overwritten)
                           s,                    // singular values (min(m,n))
                           (u ? u->elements : NULL), m,  // U matrix (m×m)
-                          (vt ? vt->elements : NULL), n  // VT matrix (n×n)
+                          (vt ? vt->elements : NULL), n,  // VT matrix (n×n)
+                          superb
                          );
 #else
     int lwork = -1;
@@ -286,7 +288,7 @@ objectmatrix *matrix_new(MatrixIdx_t nrows, MatrixIdx_t ncols, bool zero) {
 objectmatrix *matrix_clone(objectmatrix *in) {
     objectmatrix *new = matrix_newwithtype(in->obj.type, in->nrows, in->ncols, in->nvals, false);
     
-    if (new) cblas_dcopy((__LAPACK_int) in->nels, in->elements, 1, new->elements, 1);
+    if (new) cblas_dcopy((linalg_int_t) in->nels, in->elements, 1, new->elements, 1);
     return new;
 }
 
@@ -420,7 +422,7 @@ linalgError_t matrix_getcolumn(objectmatrix *a, MatrixIdx_t col, objectmatrix *b
     MatrixIdx_t col_idx = col;
     LINALG_ERRCHECKRETURN(matrix_validateindex(&col_idx, a->ncols));
     if (b->nels!=a->nrows*a->nvals) return LINALGERR_INCOMPATIBLE_DIM;
-    cblas_dcopy((__LAPACK_int) b->nels, a->elements+a->nvals*col_idx*a->nrows, 1, b->elements, 1);
+    cblas_dcopy((linalg_int_t) b->nels, a->elements+a->nvals*col_idx*a->nrows, 1, b->elements, 1);
     return LINALGERR_OK;
 }
 
@@ -429,7 +431,7 @@ linalgError_t matrix_setcolumn(objectmatrix *a, MatrixIdx_t col, objectmatrix *b
     MatrixIdx_t col_idx = col;
     LINALG_ERRCHECKRETURN(matrix_validateindex(&col_idx, a->ncols));
     if (b->nels!=a->nrows*a->nvals) return LINALGERR_INCOMPATIBLE_DIM;
-    cblas_dcopy((__LAPACK_int) b->nels, b->elements, 1, a->elements+a->nvals*col_idx*a->nrows, 1);
+    cblas_dcopy((linalg_int_t) b->nels, b->elements, 1, a->elements+a->nvals*col_idx*a->nrows, 1);
     return LINALGERR_OK;
 }
 
@@ -437,7 +439,7 @@ linalgError_t matrix_setcolumn(objectmatrix *a, MatrixIdx_t col, objectmatrix *b
 linalgError_t matrix_setcolumnptr(objectmatrix *a, MatrixIdx_t col, double *b) {
     MatrixIdx_t col_idx = col;
     LINALG_ERRCHECKRETURN(matrix_validateindex(&col_idx, a->ncols));
-    cblas_dcopy((__LAPACK_int) a->nrows*a->nvals, b, 1, a->elements+a->nvals*col_idx*a->nrows, 1);
+    cblas_dcopy((linalg_int_t) a->nrows*a->nvals, b, 1, a->elements+a->nvals*col_idx*a->nrows, 1);
     return LINALGERR_OK;
 }
 
@@ -467,7 +469,7 @@ MatrixCount_t matrix_countdof(objectmatrix *a) {
 linalgError_t matrix_axpy(double alpha, objectmatrix *x, objectmatrix *y) {
     if (!(x->ncols==y->ncols && x->nrows==y->nrows)) return LINALGERR_INCOMPATIBLE_DIM;
     
-    cblas_daxpy((__LAPACK_int) x->nels, alpha, x->elements, 1, y->elements, 1);
+    cblas_daxpy((linalg_int_t) x->nels, alpha, x->elements, 1, y->elements, 1);
     return LINALGERR_OK;
 }
 
@@ -475,7 +477,7 @@ linalgError_t matrix_axpy(double alpha, objectmatrix *x, objectmatrix *y) {
 linalgError_t matrix_copy(objectmatrix *x, objectmatrix *y) {
     if (!(x->ncols==y->ncols && x->nrows==y->nrows)) return LINALGERR_INCOMPATIBLE_DIM;
     
-    cblas_dcopy((__LAPACK_int) x->nels, x->elements, 1, y->elements, 1);
+    cblas_dcopy((linalg_int_t) x->nels, x->elements, 1, y->elements, 1);
     return LINALGERR_OK;
 }
 
@@ -496,7 +498,7 @@ linalgError_t matrix_copyat(objectmatrix *a, objectmatrix *out, int row0, int co
 
 /** Scales a matrix x <- scale * x >*/
 void matrix_scale(objectmatrix *x, double scale) {
-    cblas_dscal((__LAPACK_int) x->nels, scale, x->elements, 1);
+    cblas_dscal((linalg_int_t) x->nels, scale, x->elements, 1);
 }
 
 /** Loads the zero matrix a <- 0 */
@@ -593,7 +595,7 @@ linalgError_t matrix_trace(objectmatrix *a, double *out) {
 linalgError_t matrix_inner(objectmatrix *x, objectmatrix *y, double *out) {
     if (!(x->ncols==y->ncols && x->nrows==y->nrows)) return LINALGERR_INCOMPATIBLE_DIM;
     
-    *out=cblas_ddot((__LAPACK_int) x->nels, x->elements, 1, y->elements, 1);
+    *out=cblas_ddot((linalg_int_t) x->nels, x->elements, 1, y->elements, 1);
     return LINALGERR_OK;
 }
 

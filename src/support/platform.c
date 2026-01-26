@@ -10,6 +10,24 @@
  *  - APIs for using threads 
  *  - Functions that involve time */
 
+#define _GNU_SOURCE
+
+#ifdef _WIN32
+    #include <windows.h>
+    #include <wincrypt.h>
+#else 
+    #define _POSIX_C_SOURCE 199309L
+    #include <unistd.h>
+    #include <dirent.h>
+    #include <sys/stat.h>
+    #include <sys/types.h>
+    #include <sys/time.h>
+    #include <pwd.h>
+    #include <time.h>
+    #include <dlfcn.h>
+    #include <errno.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -17,22 +35,6 @@
 #include "build.h"
 #include "platform.h"
 #include "error.h"
-
-#ifdef _WIN32
-#include <windows.h>
-#include <wincrypt.h>
-#else 
-#define _POSIX_C_SOURCE 199309L
-#include <unistd.h>
-#include <dirent.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <pwd.h>
-#include <time.h>
-#include <dlfcn.h>
-#include <errno.h>
-#endif
 
 /* **********************************************************************
  * Platform name

@@ -57,10 +57,10 @@ static double _normfn(objectmatrix *a, matrix_norm_t nrm) {
     int nrows=a->nrows, ncols=a->ncols;
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
-    return LAPACKE_zlange(LAPACK_COL_MAJOR, cnrm, a->nrows, a->ncols, a->elements, a->nrows);
+    return LAPACKE_zlange(LAPACK_COL_MAJOR, cnrm, a->nrows, a->ncols, (linalg_complexdouble_t *) a->elements, a->nrows);
 #else
     double work[a->nrows];
-    return zlange_(&cnrm, &nrows, &ncols, (__LAPACK_double_complex *) a->elements, &nrows, work);
+    return zlange_(&cnrm, &nrows, &ncols, (linalg_complexdouble_t *) a->elements, &nrows, work);
 #endif
 }
 
@@ -69,10 +69,10 @@ static linalgError_t _solve(objectmatrix *a, objectmatrix *b, int *pivot) {
     int n=a->nrows, nrhs = b->ncols, info;
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
-    info=LAPACKE_zgesv(LAPACK_COL_MAJOR, n, nrhs, a->elements, n, pivot, b->elements, n);
+    info=LAPACKE_zgesv(LAPACK_COL_MAJOR, n, nrhs, (linalg_complexdouble_t *) a->elements, n, pivot, (linalg_complexdouble_t *) b->elements, n);
 #else
-    zgesv_(&n, &nrhs, (__LAPACK_double_complex *) a->elements,
-           &n, pivot, (__LAPACK_double_complex *) b->elements, &n, &info);
+    zgesv_(&n, &nrhs, (linalg_complexdouble_t *) a->elements,
+           &n, pivot, (linalg_complexdouble_t *) b->elements, &n, &info);
 #endif
     
     return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_MATRIX_SINGULAR : LINALGERR_LAPACK_INVLD_ARGS));
@@ -83,10 +83,10 @@ static linalgError_t _eigen(objectmatrix *a, MorphoComplex *w, objectmatrix *vec
     int info, n=a->nrows;
 
 #ifdef MORPHO_LINALG_USE_LAPACKE
-    info=LAPACKE_zgeev(LAPACK_COL_MAJOR, 'N', (vec ? 'V' : 'N'), n, a->elements, n, (__LAPACK_double_complex *) w, NULL, n, (vec ? vec->elements : NULL), n);
+    info=LAPACKE_zgeev(LAPACK_COL_MAJOR, 'N', (vec ? 'V' : 'N'), n, (linalg_complexdouble_t *) a->elements, n, (linalg_complexdouble_t *) w, NULL, n, (linalg_complexdouble_t *) (vec ? vec->elements : NULL), n);
 #else
     int lwork=4*n; MorphoComplex work[4*n]; double rwork[2*n];
-    zgeev_("N", (vec ? "V" : "N"), &n, (__LAPACK_double_complex *) a->elements, &n, (__LAPACK_double_complex *) w, NULL, &n, (__LAPACK_double_complex *) (vec ? vec->elements : NULL), &n, work, &lwork, rwork, &info);
+    zgeev_("N", (vec ? "V" : "N"), &n, (linalg_complexdouble_t *) a->elements, &n, (linalg_complexdouble_t *) w, NULL, &n, (linalg_complexdouble_t *) (vec ? vec->elements : NULL), &n, work, &lwork, rwork, &info);
 #endif
     
     return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS));
@@ -98,35 +98,37 @@ static linalgError_t _svd(objectmatrix *a, double *s, objectmatrix *u, objectmat
     int minmn = (m < n) ? m : n;
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
+    double* superb = malloc(minmn * sizeof(double));
     info = LAPACKE_zgesvd(LAPACK_COL_MAJOR,
                           (u ? 'A' : 'N'),      // jobu: 'A' = all U columns, 'N' = no U
                           (vt ? 'A' : 'N'),     // jobvt: 'A' = all VT rows, 'N' = no VT
                           m, n,
-                          (__LAPACK_double_complex *) a->elements, m,  // input matrix A (overwritten)
+                          (linalg_complexdouble_t *) a->elements, m,  // input matrix A (overwritten)
                           s,                    // singular values (min(m,n))
-                          (__LAPACK_double_complex *) (u ? u->elements : NULL), m,  // U matrix (m×m)
-                          (__LAPACK_double_complex *) (vt ? vt->elements : NULL), n  // VT matrix (n×n)
+                          (linalg_complexdouble_t *) (u ? u->elements : NULL), m,  // U matrix (m×m)
+                          (linalg_complexdouble_t *) (vt ? vt->elements : NULL), n,  // VT matrix (n×n)
+                          superb
                          );
 #else
     int lwork = -1;
-    __LAPACK_double_complex work_query;
+    linalg_complexdouble_t work_query;
     double rwork[5 * minmn];  // rwork needs at least 5*min(m,n) for zgesvd
     
     // Query optimal work size
     zgesvd_((u ? "A" : "N"), (vt ? "A" : "N"), &m, &n, 
-            (__LAPACK_double_complex *) a->elements, &m, s,
-            (__LAPACK_double_complex *) (u ? u->elements : NULL), &m,
-            (__LAPACK_double_complex *) (vt ? vt->elements : NULL), &n,
+            (linalg_complexdouble_t *) a->elements, &m, s,
+            (linalg_complexdouble_t *) (u ? u->elements : NULL), &m,
+            (linalg_complexdouble_t *) (vt ? vt->elements : NULL), &n,
             &work_query, &lwork, rwork, &info);
     
     if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
     
     lwork = (int)creal(work_query);
-    __LAPACK_double_complex work[lwork];
+    linalg_complexdouble_t work[lwork];
     zgesvd_((u ? "A" : "N"), (vt ? "A" : "N"), &m, &n,
-            (__LAPACK_double_complex *) a->elements, &m, s,
-            (__LAPACK_double_complex *) (u ? u->elements : NULL), &m,
-            (__LAPACK_double_complex *) (vt ? vt->elements : NULL), &n,
+            (linalg_complexdouble_t *) a->elements, &m, s,
+            (linalg_complexdouble_t *) (u ? u->elements : NULL), &m,
+            (linalg_complexdouble_t *) (vt ? vt->elements : NULL), &n,
             work, &lwork, rwork, &info);
 #endif
     
@@ -137,58 +139,59 @@ static linalgError_t _svd(objectmatrix *a, double *s, objectmatrix *u, objectmat
 static linalgError_t _qr(objectmatrix *a, objectmatrix *q, objectmatrix *r) {
     int info, m=a->nrows, n=a->ncols;
     int minmn = (m < n) ? m : n;
-    __LAPACK_double_complex tau[minmn];
     
     // Compute QR factorization without pivoting: A = Q*R
 #ifdef MORPHO_LINALG_USE_LAPACKE
-    info = LAPACKE_zgeqrf(LAPACK_COL_MAJOR, m, n, (__LAPACK_double_complex *) a->elements, m, tau);
+    linalg_complexdouble_t tau[minmn];
+    info = LAPACKE_zgeqrf(LAPACK_COL_MAJOR, m, n, (linalg_complexdouble_t *) a->elements, m, tau);
     if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 #else
+    linalg_complexdouble_t tau[minmn];
     int lwork = -1;
-    __LAPACK_double_complex work_query;
+    linalg_complexdouble_t work_query;
     
     // Query optimal work size for ZGEQRF, which is reused for ZUNGQR
-    zgeqrf_(&m, &n, (__LAPACK_double_complex *) a->elements, &m, tau, &work_query, &lwork, &info);
+    zgeqrf_(&m, &n, (linalg_complexdouble_t *) a->elements, &m, tau, &work_query, &lwork, &info);
     if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
     
     int lwork_geqrf = (int) creal(work_query);
-    __LAPACK_double_complex work[lwork_geqrf];
+    linalg_complexdouble_t work[lwork_geqrf];
     lwork = lwork_geqrf;
     
     // Compute QR factorization without pivoting
-    zgeqrf_(&m, &n, (__LAPACK_double_complex *) a->elements, &m, tau, work, &lwork, &info);
+    zgeqrf_(&m, &n, (linalg_complexdouble_t *) a->elements, &m, tau, work, &lwork, &info);
     if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 #endif
     
     // Extract R (upper triangle of a) into r
     // Copy entire matrix first then zero out below the diagonal
     matrix_copy(a, r);
-    __LAPACK_double_complex *relems = (__LAPACK_double_complex *) r->elements;
+    linalg_complexdouble_t *relems = (linalg_complexdouble_t *) r->elements;
     for (int j = 0; j < n && j < m - 1; j++) {
-        memset(&relems[j * m + (j + 1)], 0, (m - j - 1) * sizeof(__LAPACK_double_complex));
+        memset(&relems[j * m + (j + 1)], 0, (m - j - 1) * sizeof(linalg_complexdouble_t));
     }
     
     // Generate Q from reflectors
     if (q) {
         // Copy reflectors from a to q (only first n columns, since a is m×n and q is m×m)
         // ZGEQRF stores reflectors in lower triangle and R in upper triangle of first n columns
-        __LAPACK_double_complex *aelems = (__LAPACK_double_complex *) a->elements;
-        __LAPACK_double_complex *qelems = (__LAPACK_double_complex *) q->elements;
+        linalg_complexdouble_t *aelems = (linalg_complexdouble_t *) a->elements;
+        linalg_complexdouble_t *qelems = (linalg_complexdouble_t *) q->elements;
         for (int j = 0; j < n; j++) {
             cblas_zcopy(m, &aelems[j * m], 1, &qelems[j * m], 1);
         }
         
 #ifdef MORPHO_LINALG_USE_LAPACKE
-        info = LAPACKE_zungqr(LAPACK_COL_MAJOR, m, minmn, minmn, (__LAPACK_double_complex *) q->elements, m, tau);
+        info = LAPACKE_zungqr(LAPACK_COL_MAJOR, m, minmn, minmn, (linalg_complexdouble_t *) q->elements, m, tau);
         if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 #else
         lwork = lwork_geqrf;
-        zungqr_(&m, &minmn, &minmn, (__LAPACK_double_complex *) q->elements, &m, tau, work, &lwork, &info);
+        zungqr_(&m, &minmn, &minmn, (linalg_complexdouble_t *) q->elements, &m, tau, work, &lwork, &info);
         if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 #endif
         
         // If Q should be m×m, zero out remaining columns if m > minmn
-        if (m > minmn) memset(&q->elements[minmn * m * q->nvals], 0, (m - minmn) * m * sizeof(__LAPACK_double_complex));
+        if (m > minmn) memset(&q->elements[minmn * m * q->nvals], 0, (m - minmn) * m * sizeof(linalg_complexdouble_t));
     }
     
     return LINALGERR_OK;
@@ -248,7 +251,7 @@ linalgError_t complexmatrix_getelement(objectcomplexmatrix *matrix, MatrixIdx_t 
 static linalgError_t _stridedcopy(objectmatrix *x, objectmatrix *y, int offset) {
     if (!(x->ncols==y->ncols && x->nrows==y->nrows)) return LINALGERR_INCOMPATIBLE_DIM;
     
-    cblas_dcopy((__LAPACK_int) x->ncols*x->nrows, x->elements+offset, x->nvals, y->elements, y->nvals);
+    cblas_dcopy((linalg_int_t) x->ncols*x->nrows, x->elements+offset, x->nvals, y->elements, y->nvals);
     return LINALGERR_OK;
 }
 
@@ -271,24 +274,24 @@ linalgError_t complexmatrix_mmul(MorphoComplex alpha, objectmatrix *a, objectmat
     
     cblas_zgemm(CblasColMajor, CblasNoTrans, CblasNoTrans,
                 a->nrows, b->ncols, a->ncols,
-                &alpha, (__LAPACK_double_complex *) a->elements,
-                a->nrows, (__LAPACK_double_complex *) b->elements, b->nrows,
-                &beta, (__LAPACK_double_complex *) c->elements, c->nrows);
+                &alpha, (linalg_complexdouble_t *) a->elements,
+                a->nrows, (linalg_complexdouble_t *) b->elements, b->nrows,
+                &beta, (linalg_complexdouble_t *) c->elements, c->nrows);
     return LINALGERR_OK;
 }
 
 /** Scales a matrix x <- scale * x >*/
 void complematrix_scale(objectmatrix *a, MorphoComplex scale) {
-    cblas_zscal(a->nrows * a->ncols, (__LAPACK_double_complex *) &scale, (__LAPACK_double_complex *) a->elements, 1);
+    cblas_zscal(a->nrows * a->ncols, (linalg_complexdouble_t *) &scale, (linalg_complexdouble_t *) a->elements, 1);
 }
 
 /** Finds the Frobenius inner product of two complex matrices (a, b) = \sum_{i,j} conj(a)_ij * b_ij */
 linalgError_t complexmatrix_inner(objectcomplexmatrix *a, objectcomplexmatrix *b, MorphoComplex *out) {
     if (!(a->ncols==b->ncols && a->nrows==b->nrows)) return LINALGERR_INCOMPATIBLE_DIM;
     
-    cblas_zdotc_sub(a->nrows * a->ncols, (__LAPACK_double_complex *) a->elements, 1,
-                     (__LAPACK_double_complex *) b->elements, 1,
-                     (__LAPACK_double_complex *) out);
+    cblas_zdotc_sub(a->nrows * a->ncols, (linalg_complexdouble_t *) a->elements, 1,
+                     (linalg_complexdouble_t *) b->elements, 1,
+                     (linalg_complexdouble_t *) out);
     return LINALGERR_OK;
 }
 
@@ -297,9 +300,9 @@ linalgError_t complexmatrix_r1update(MorphoComplex alpha, objectcomplexmatrix *a
     MatrixIdx_t m=a->nrows*a->ncols, n=b->nrows*b->ncols;
     if (!(m==c->nrows && n==c->ncols)) return LINALGERR_INCOMPATIBLE_DIM;
     
-    cblas_zgeru(CblasColMajor, m, n, (__LAPACK_double_complex *) &alpha, (__LAPACK_double_complex *) a->elements, 1,
-                (__LAPACK_double_complex *) b->elements, 1,
-                (__LAPACK_double_complex *) c->elements, c->nrows);
+    cblas_zgeru(CblasColMajor, m, n, (linalg_complexdouble_t *) &alpha, (linalg_complexdouble_t *) a->elements, 1,
+                (linalg_complexdouble_t *) b->elements, 1,
+                (linalg_complexdouble_t *) c->elements, c->nrows);
     return LINALGERR_OK;
 }
 
@@ -307,7 +310,7 @@ linalgError_t complexmatrix_r1update(MorphoComplex alpha, objectcomplexmatrix *a
 linalgError_t complexmatrix_trace(objectcomplexmatrix *a, MorphoComplex *out) {
     if (a->nrows!=a->ncols) return LINALGERR_NOT_SQUARE;
     MorphoComplex one = MCBuild(1.0, 0.0);
-    cblas_zdotu_sub(a->nrows, (__LAPACK_double_complex *) a->elements, a->ncols+1, (__LAPACK_double_complex *) &one, 0, (__LAPACK_double_complex *) out);
+    cblas_zdotu_sub(a->nrows, (linalg_complexdouble_t *) a->elements, a->ncols+1, (linalg_complexdouble_t *) &one, 0, (linalg_complexdouble_t *) out);
     return LINALGERR_OK;
 }
 
@@ -319,17 +322,17 @@ linalgError_t complexmatrix_inverse(objectcomplexmatrix *a) {
     int pivot[nrows];
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
-    info=LAPACKE_zgetrf(LAPACK_COL_MAJOR, nrows, ncols, a->elements, nrows, pivot);
+    info=LAPACKE_zgetrf(LAPACK_COL_MAJOR, nrows, ncols, (linalg_complexdouble_t *) a->elements, nrows, pivot);
 #else
-    zgetrf_(&nrows, &ncols, (__LAPACK_double_complex *) a->elements, &nrows, pivot, &info);
+    zgetrf_(&nrows, &ncols, (linalg_complexdouble_t *) a->elements, &nrows, pivot, &info);
 #endif
     if (info!=0) return (info>0 ? LINALGERR_MATRIX_SINGULAR : LINALGERR_LAPACK_INVLD_ARGS);
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
-    info=LAPACKE_zgetri(LAPACK_COL_MAJOR, nrows, a->elements, nrows, pivot);
+    info=LAPACKE_zgetri(LAPACK_COL_MAJOR, nrows, (linalg_complexdouble_t *) a->elements, nrows, pivot);
 #else
-    int lwork=nrows*ncols; __LAPACK_double_complex work[nrows*ncols];
-    zgetri_(&nrows, (__LAPACK_double_complex *) a->elements, &nrows, pivot, work, &lwork, &info);
+    int lwork=nrows*ncols; linalg_complexdouble_t work[nrows*ncols];
+    zgetri_(&nrows, (linalg_complexdouble_t *) a->elements, &nrows, pivot, work, &lwork, &info);
 #endif
     
     return (info==0 ? LINALGERR_OK : (info>0 ? LINALGERR_MATRIX_SINGULAR : LINALGERR_LAPACK_INVLD_ARGS));

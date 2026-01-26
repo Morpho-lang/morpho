@@ -29,6 +29,14 @@
 #define MATRIX_LAPACK_PRESENT
 #endif
 
+#ifdef MORPHO_LINALG_USE_LAPACKE
+typedef lapack_complex_double linalg_complexdouble_t;
+typedef lapack_int            linalg_int_t; 
+#else 
+typedef __LAPACK_double_complex linalg_complexdouble_t;
+typedef __LAPACK_int            linalg_int_t; 
+#endif
+
 #include "cmplx.h"
 #include "list.h"
 

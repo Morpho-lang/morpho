@@ -453,12 +453,12 @@ void builtin_initialize(void) {
     builtin_setclasstable(&builtin_classtable);
     
     // Initialize core object types
-    objectstringtype=object_addtype(&objectstringdefn);
     objectclasstype=object_addtype(&objectclassdefn);
+    objectstringtype=object_addtype(&objectstringdefn);
     objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
     
     varray__sigparseinit(&sigparseworklist);
-    
+
     /* Initialize builtin classes and functions */
     instance_initialize(); // Must initialize first so that Object exists
     

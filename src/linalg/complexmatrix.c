@@ -177,7 +177,7 @@ static linalgError_t _qr(objectmatrix *a, objectmatrix *q, objectmatrix *r) {
         // ZGEQRF stores reflectors in lower triangle and R in upper triangle of first n columns
         linalg_complexdouble_t *aelems = (linalg_complexdouble_t *) a->elements;
         linalg_complexdouble_t *qelems = (linalg_complexdouble_t *) q->elements;
-        for (int j = 0; j < n; j++) {
+        for (int j = 0; j < minmn; j++) {
             cblas_zcopy(m, &aelems[j * m], 1, &qelems[j * m], 1);
         }
         

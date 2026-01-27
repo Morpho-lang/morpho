@@ -223,7 +223,7 @@ static linalgError_t _qr(objectmatrix *a, objectmatrix *q, objectmatrix *r) {
     if (q) {
         // Copy reflectors from a to q (only first n columns, since a is m×n and q is m×m)
         // DGEQRF stores reflectors in lower triangle and R in upper triangle of first n columns
-        for (int j = 0; j < n; j++) cblas_dcopy(m, &a->elements[j * m], 1, &q->elements[j * m], 1);
+        for (int j = 0; j < minmn; j++) cblas_dcopy(m, &a->elements[j * m], 1, &q->elements[j * m], 1);
         
 #ifdef MORPHO_LINALG_USE_LAPACKE
         info = LAPACKE_dorgqr(LAPACK_COL_MAJOR, m, minmn, minmn, q->elements, m, tau);

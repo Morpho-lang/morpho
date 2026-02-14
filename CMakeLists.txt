@@ -23,7 +23,7 @@ option(MORPHO_GCSTRESSTEST "Stress tests the garbage collector" OFF)
 option(MORPHO_BUILD_LINALG "Builds with linear algebra" ON)
 option(MORPHO_BUILD_SPARSE "Builds with sparse matrix support" ON)
 option(MORPHO_BUILD_GEOMETRY "Builds with geometry library" ON)
-option(MORPHO_BUILD_PROFILER "Builds with profiler" OFF)
+option(MORPHO_BUILD_PROFILER "Builds with profiler" ON)
 
 #-------------------------------------------------------------------------------
 # Process options

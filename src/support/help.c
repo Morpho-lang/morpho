@@ -142,10 +142,19 @@ bool md_parsebold(parser *p, void *out) {
     return true;
 }
 
+/** Parses italic: called after consuming opening * or _; consumes TEXT then closing delimiter (same as bold). */
+bool md_parseitalic(parser *p, void *out) {
+    tokentype delim = p->previous.type; /* MD_ASTERISK or MD_UNDERSCORE */
+    while (parse_checktokenadvance(p, MD_TEXT));
+    return parse_checktokenadvance(p, delim);
+}
+
 parserule md_rules[] = {
-    PARSERULE_PREFIX(MD_ASTERISK2,       md_parsebold        ),
-    PARSERULE_PREFIX(MD_UNDERSCORE2,     md_parsebold        ),
-    PARSERULE_PREFIX(MD_BACKTICK,        md_parseinlinecode  ),
+    PARSERULE_PREFIX(MD_ASTERISK,        md_parseitalic       ),
+    PARSERULE_PREFIX(MD_UNDERSCORE,      md_parseitalic       ),
+    PARSERULE_PREFIX(MD_ASTERISK2,       md_parsebold         ),
+    PARSERULE_PREFIX(MD_UNDERSCORE2,     md_parsebold         ),
+    PARSERULE_PREFIX(MD_BACKTICK,        md_parseinlinecode   ),
     PARSERULE_UNUSED(TOKEN_NONE)
 };
 
@@ -153,15 +162,18 @@ parserule md_rules[] = {
  * Markdown parse rules
  * ------------------------------------------------------- */
 
-/** Check if a token type is a 'textual' token */
-tokentype _inlinetokens[] = { MD_TEXT, MD_COLON, MD_BACKTICK, MD_LEFTPAREN, MD_RIGHTPAREN };
+/** Check if a token type is a 'textual' token (incl. * _ for italic, ** __ for bold, ` for code) */
+tokentype _inlinetokens[] = {
+    MD_TEXT, MD_COLON, MD_BACKTICK, MD_LEFTPAREN, MD_RIGHTPAREN,
+    MD_ASTERISK, MD_UNDERSCORE, MD_ASTERISK2, MD_UNDERSCORE2
+};
 int _ninlinetokens = sizeof(_inlinetokens)/sizeof(tokentype);
 
 bool md_checktexttoken(parser *p) {
     return parse_checktokenmulti(p, _ninlinetokens, _inlinetokens);
 }
 
-/** Parses text writen in markdown; stops at a non-textual token  */
+/** Parses text written in markdown; stops at a non-textual token. Line ends with NEWLINE or EOF. */
 bool md_parsetext(parser *p, void *out) {
     while (md_checktexttoken(p)) {
         parse_advance(p);
@@ -170,29 +182,29 @@ bool md_parsetext(parser *p, void *out) {
             if (!rule->prefix(p, out)) return false;
         }
     }
-    
-    parse_checktokenadvance(p, MD_NEWLINE);
-    
-    return true;
+    /* Line terminator: newline or end of file */
+    if (parse_checktoken(p, MD_NEWLINE)) return parse_advance(p);
+    if (parse_checktoken(p, MD_EOF)) return true;
+    return false;
 }
 
-/** Parses a markdown header  */
+/** Parses a markdown header (title then newline or EOF). */
 bool md_parseheader(parser *p, void *out) {
     PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
-    parse_checktokenadvance(p, MD_NEWLINE);
-    return true;
+    if (parse_checktoken(p, MD_NEWLINE)) return parse_advance(p);
+    if (parse_checktoken(p, MD_EOF)) return true;
+    return false;
 }
 
-/** Parses markdown code. */
+/** Parses markdown code block (indented lines until newline or EOF). */
 bool md_parsecode(parser *p, void *out) {
     while (!parse_checktoken(p, MD_NEWLINE) &&
            !parse_checktoken(p, MD_EOF)) {
         parse_advance(p);
     }
-    
-    parse_checktokenadvance(p, MD_NEWLINE);
-    
-    return true;
+    if (parse_checktoken(p, MD_NEWLINE)) return parse_advance(p);
+    if (parse_checktoken(p, MD_EOF)) return true;
+    return false;
 }
 
 /** Parses a markdown list. */
@@ -200,25 +212,21 @@ bool md_parselist(parser *p, void *out) {
     return md_parsetext(p, out);
 }
 
-bool md_parseurl(parser *p, void *out) { // TODO: This is a placeholder
-    PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
-    PARSE_CHECK(parse_checktokenadvance(p, MD_HASH));
-    PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
-    return true;
+/** Parses the rest of a link definition after ]:  (e.g. " # (target)" or " # (subtopics)"). Consumes until newline or EOF. */
+bool md_parseurl(parser *p, void *out) {
+    while (!parse_checktoken(p, MD_NEWLINE) && !parse_checktoken(p, MD_EOF)) {
+        parse_advance(p);
+    }
+    if (parse_checktoken(p, MD_NEWLINE)) return parse_advance(p);
+    return true; /* EOF is valid end of link line */
 }
 
-/** Parses a markdown link  */
+/** Parses a markdown link definition [label]: # (optional) ... */
 bool md_parselink(parser *p, void *out) {
     PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
     PARSE_CHECK(parse_checktokenadvance(p, MD_RIGHTSQUAREBRACE));
     PARSE_CHECK(parse_checktokenadvance(p, MD_COLON));
     PARSE_CHECK(md_parseurl(p, out));
-    if (parse_checktokenadvance(p, MD_LEFTPAREN)) {
-        PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
-        PARSE_CHECK(parse_checktokenadvance(p, MD_RIGHTPAREN));
-    }
-    parse_checktokenadvance(p, MD_NEWLINE);
-    
     return true;
 }
 
@@ -239,12 +247,13 @@ bool md_parseblock(parser *p, void *out) {
         return md_parselist(p, out);
     } else if (parse_checktokenadvance(p, MD_LEFTSQUAREBRACE)) {
         return md_parselink(p, out);
-    } else if (parse_checktokenadvance(p, MD_NEWLINE)) { // A blank line
+    } else if (parse_checktokenadvance(p, MD_NEWLINE)) { /* blank line */
         return true;
+    } else if (parse_checktoken(p, MD_EOF)) {
+        return true; /* let outer loop exit */
     } else {
         UNREACHABLE("Unrecognized token.");
     }
-    
     return false;
 }
 
@@ -261,7 +270,7 @@ bool md_parse(parser *p, void *out) {
  * Initialize a Markdown parser
  * ------------------------------------------------------- */
 
-/** Initializes a parser to parse JSON */
+/** Initializes a parser to parse Markdown (help format). */
 void help_initializemdparser(parser *p, lexer *l, error *err, void *out) {
     parse_init(p, l, err, out);
     parse_setbaseparsefn(p, md_parse);
@@ -283,9 +292,12 @@ bool help_parse(char *src) {
     parser p;
     help_initializemdparser(&p, &l, &err, NULL);
     
-    parse(&p);
+    bool success = parse(&p);
     
-    return true;
+    parse_clear(&p);
+    lex_clear(&l);
+    
+    return success;
 }
 
 /* **********************************************************************

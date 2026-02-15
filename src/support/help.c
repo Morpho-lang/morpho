@@ -33,7 +33,11 @@
 
 /* **********************************************************************
  * Markdown lexer
- * ********************************************************************** */
+ * **********************************************************************
+ * Token table is sorted for longest-match (e.g. ### before ## before #).
+ * The preprocessor captures any run of characters that does not match a
+ * defined token as a single MD_TEXT token. Whitespace is not skipped,
+ * so newlines and indentation are visible to the parser. */
 
 enum {
     MD_TEXT,
@@ -85,7 +89,9 @@ tokendefn mdtokens[] = {
     { "___",        MD_UNDERSCORE3              , NULL },
     { "    ",       MD_FOURSPACES               , NULL },
     { "\t",         MD_TAB                      , NULL },
+    { "\r\n",       MD_NEWLINE                  , md_lexnewline },
     { "\n",         MD_NEWLINE                  , md_lexnewline },
+    { "\r",         MD_NEWLINE                  , md_lexnewline },
     { "",           TOKEN_NONE                  , NULL }
 };
 
@@ -110,7 +116,7 @@ bool md_lexpreprocess(lexer *l, token *tok, error *err) {
  * Initialize a Markdown lexer
  * ------------------------------------------------------- */
 
-void help_initializemdlexer(lexer *l, char *src) {
+void help_initializemdlexer(lexer *l, const char *src) {
     lex_init(l, src, 0);
     lex_settokendefns(l, mdtokens);
     lex_setprefn(l, md_lexpreprocess);

@@ -117,9 +117,27 @@ tokendefn mdtokens[] = {
     { "",           TOKEN_NONE                  , NULL }
 };
 
+/** Check if a character is ASCII punctuation (CommonMark spec 2.4: escapable with backslash). */
+static bool md_isasciipunct(char c) {
+    return (unsigned char)c <= 0x7F && ispunct((unsigned char)c);
+}
+
 /** Lexer token preprocessor function */
 bool md_lexpreprocess(lexer *l, token *tok, error *err) {
     while (!lex_identifytoken(l, false, NULL) && !lex_isatend(l)) {
+        char c = lex_peek(l);
+        if (c == '\\') {
+            char next = lex_peekahead(l, 1);
+            if (md_isasciipunct(next)) {
+                lex_advance(l); // Skip \ and include punctuation as literal
+                lex_advance(l);
+                continue;
+            } else if (next == '\n' || next == '\r' || next == '\0') {
+                lex_advance(l); // Skip \; newline will be tokenized as MD_NEWLINE in next iteration
+                continue;
+            }
+            // Backslash before non-punctuation: include \ as literal
+        }
         lex_advance(l);
     }
     if (l->current > l->start) {
@@ -165,7 +183,7 @@ bool md_parsebold(parser *p, void *out) {
 
 /** Parses italic: called after consuming opening * or _; consumes TEXT then closing delimiter. */
 bool md_parseitalic(parser *p, void *out) {
-    tokentype delim = p->previous.type; /* MD_ASTERISK or MD_UNDERSCORE */
+    tokentype delim = p->previous.type; // MD_ASTERISK or MD_UNDERSCORE
     while (parse_checktokenadvance(p, MD_TEXT));
     if (!parse_checktokenadvance(p, delim)) {
         parse_error(p, false, MD_UNCLOSEDITALIC);
@@ -192,7 +210,7 @@ typedef struct {
     md_file *file;
     varray_md_topic *topics;
     int file_index;
-    int current_header_level;  /* 1–3, set before md_parseheader */
+    int current_header_level; // 1–3, set before md_parseheader
 } md_parseout;
 
 static void md_push_header(parser *p, md_parseout *out, size_t block_start, size_t title_start, size_t title_len);
@@ -285,7 +303,7 @@ bool md_parsetext(parser *p, void *out) {
 bool md_parseheader(parser *p, void *out) {
     md_parseout *ctx = (md_parseout *) out;
     const char *base = ctx->file->source;
-    size_t block_start = (size_t)(p->previous.start - base);  /* # token already consumed */
+    size_t block_start = (size_t)(p->previous.start - base); // # token already consumed
 
     if (!parse_checktokenadvance(p, MD_TEXT)) {
         parse_error(p, false, MD_EXPECTHEADERTEXT);
@@ -308,7 +326,7 @@ bool md_parseheader(parser *p, void *out) {
 /** Parses markdown code block (indented lines until newline or EOF). */
 bool md_parsecode(parser *p, void *out) {
     md_parseout *ctx = (md_parseout *) out;
-    size_t block_start = (size_t)(p->previous.start - ctx->file->source);  /* 4 spaces / tab already consumed */
+    size_t block_start = (size_t)(p->previous.start - ctx->file->source); // 4 spaces / tab already consumed
 
     while (!parse_checktoken(p, MD_NEWLINE) && !parse_checktoken(p, MD_EOF)) parse_advance(p);
     if (!md_parselineend(p)) {
@@ -323,7 +341,7 @@ bool md_parsecode(parser *p, void *out) {
 bool md_parselist(parser *p, void *out) {
     md_parseout *ctx = (md_parseout *) out;
     const char *base = ctx->file->source;
-    size_t block_start = (size_t)(p->previous.start - base);  /* *, +, or - already consumed */
+    size_t block_start = (size_t)(p->previous.start - base); // *, +, or - already consumed
 
     for (;;) {
         while (md_consumetextcontent(p, true, out));
@@ -341,13 +359,13 @@ bool md_parseurl(parser *p, void *out) {
         parse_advance(p);
     }
     if (parse_checktoken(p, MD_NEWLINE)) return parse_advance(p);
-    return true; /* EOF is valid end of link line */
+    return true; // EOF is valid end of link line
 }
 
 /** Parses inline link [text](url)... after [ and label and ] are consumed. Consumes ( url ) and rest of line, pushes paragraph. */
 static bool md_parseinlinelink(parser *p, void *out, size_t block_start) {
     md_parseout *ctx = (md_parseout *) out;
-    parse_advance(p);  /* consume ( */
+    parse_advance(p); // consume (
     while (!parse_checktoken(p, MD_RIGHTPAREN) && !parse_checktoken(p, MD_NEWLINE) && !parse_checktoken(p, MD_EOF))
         parse_advance(p);
     if (!parse_checktokenadvance(p, MD_RIGHTPAREN)) {
@@ -355,7 +373,7 @@ static bool md_parseinlinelink(parser *p, void *out, size_t block_start) {
         return false;
     }
     while (!parse_checktoken(p, MD_NEWLINE) && !parse_checktoken(p, MD_EOF))
-        parse_advance(p);
+        parse_advance(p); // consume rest of line (e.g. trailing ".")
     if (!md_parselineend(p)) {
         parse_error(p, true, MD_EXPECTLINEEND);
         return false;
@@ -401,7 +419,7 @@ bool md_parselink(parser *p, void *out) {
 /** Parse a markdown 'block' */
 bool md_parseblock(parser *p, void *out) {
     md_parseout *ctx = (md_parseout *) out;
-    /* Dispatch by first token. Check block-start alternatives first. */
+    // Dispatch by first token. Check block-start alternatives first.
     if (parse_checktokenadvance(p, MD_HASH)) {
         ctx->current_header_level = 1;
         return md_parseheader(p, out);
@@ -417,7 +435,7 @@ bool md_parseblock(parser *p, void *out) {
     } else if (parse_checktoken(p, MD_ASTERISK) ||
                parse_checktoken(p, MD_PLUS) ||
                parse_checktoken(p, MD_DASH)) {
-        /* CommonMark: list marker must be followed by space or tab; else treat as paragraph. */
+        // CommonMark: list marker must be followed by space or tab; else treat as paragraph.
         char c = lex_peek(p->lex);
         if (c == ' ' || c == '\t') {
             parse_advance(p);
@@ -426,10 +444,10 @@ bool md_parseblock(parser *p, void *out) {
         return md_parsetext(p, out);
     } else if (parse_checktokenadvance(p, MD_LEFTSQUAREBRACE)) {
         return md_parselink(p, out);
-    } else if (parse_checktokenadvance(p, MD_NEWLINE)) { /* blank line */
+    } else if (parse_checktokenadvance(p, MD_NEWLINE)) { // blank line
         return true;
     } else if (parse_checktoken(p, MD_EOF)) {
-        return true; /* let outer loop exit */
+        return true; // let outer loop exit
     } else if (md_checktexttoken(p)) {
         return md_parsetext(p, out);
     } else {
@@ -909,8 +927,7 @@ bool help_load(char *filename) {
         return false;
     }
     fclose(f);
-    /* Keep contents.data; mdfile will own it (freed in md_file_clear). Do not clear contents. */
-    size_t len = (contents.count > 0) ? contents.count - 1 : 0;
+    size_t len = (contents.count > 0) ? contents.count - 1 : 0; // Keep contents.data; mdfile will own it (freed in md_file_clear). Do not clear contents.
     md_file mdfile;
     md_file_init(&mdfile);
     mdfile.source = contents.data;
@@ -922,7 +939,7 @@ bool help_load(char *filename) {
     } else {
         fprintf(stderr, "Help file failed to parse: %s\n", filename);
         md_file_clear(&mdfile);
-        /* Remove topics added during the failed parse; they have file_index = s_files.count */
+        // Remove topics added during the failed parse; they have file_index = s_files.count
         while (s_topics.count > n_topics_before) {
             md_topic *t = &s_topics.data[s_topics.count - 1];
             if (t->name) MORPHO_FREE(t->name);
@@ -1105,7 +1122,7 @@ bool morpho_helpasmd(char *query, varray_char *result) {
 
 /** @brief Initialize help system */
 void help_initialize(void) {
-    /* Markdown parser errors */
+    // Markdown parser errors
     morpho_defineerror(MD_UNCLOSEDITALIC, ERROR_PARSE, MD_UNCLOSEDITALIC_MSG);
     morpho_defineerror(MD_UNCLOSEDINLINECODE, ERROR_PARSE, MD_UNCLOSEDINLINECODE_MSG);
     morpho_defineerror(MD_EXPECTLINEEND, ERROR_PARSE, MD_EXPECTLINEEND_MSG);

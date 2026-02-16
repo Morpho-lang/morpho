@@ -96,18 +96,24 @@ typedef struct {
     unsigned int nblocks;
 } help_topic;
 
-/** Resolve a query to a help topic. Fills *out and returns true if found; otherwise returns false and *out is unchanged. */
-bool morpho_helptopic(const char *query, help_topic *out);
-
 /** Render a help topic as plain text into result (no markdown formatting). Returns true on success. */
 bool help_topictotext(const help_topic *t, varray_char *result);
+
+/** Append a help topic's raw markdown from source into result. Returns true on success. */
+bool help_topicrawmd(const help_topic *t, varray_char *result);
 
 /* -------------------------------------------------------
  * Help API
  * ------------------------------------------------------- */
 
-/** Look up help for query and write plain-text result. Returns true if topic found. (Convenience wrapper for morpho_helptopic + help_topictotext.) */
-bool morpho_help(char *query, varray_char *result);
+/** Resolve a query to a help topic. Fills *out and returns true if found; otherwise returns false and *out is unchanged. */
+ bool morpho_helpastopic(const char *query, help_topic *out);
+
+/** Look up help for query and write plain-text result. Returns true if topic found. (Convenience wrapper for morpho_helpastopic + help_topictotext.) */
+bool morpho_helpastext(char *query, varray_char *result);
+
+/** Look up help for query and write raw markdown into result. Returns true if topic found. (Convenience wrapper for morpho_helpastopic + help_topicrawmd.) */
+bool morpho_helpasmd(char *query, varray_char *result);
 
 void help_initialize(void);
 void help_finalize(void);

@@ -450,7 +450,14 @@ static void md_push_header(parser *p, md_parseout *out, size_t block_start, size
     md_block_set_header(&b, out->current_header_level, title_start, title_len);
     varray_md_blockwrite(&out->file->blocks, b);
 
-    /* Topic: lowercase name from title span */
+    /* Topic: lowercase name from title span (trim leading/trailing whitespace) */
+    while (title_len && (unsigned char) base[title_start] <= ' ') {
+        title_start++;
+        title_len--;
+    }
+    while (title_len && (unsigned char) base[title_start + title_len - 1] <= ' ') {
+        title_len--;
+    }
     char *name = (char *) MORPHO_MALLOC(title_len + 1);
     if (name) {
         for (size_t i = 0; i < title_len; i++)
@@ -557,6 +564,23 @@ bool help_topictotext(const help_topic *t, varray_char *result) {
     return true;
 }
 
+bool help_topicrawmd(const help_topic *t, varray_char *result) {
+    if (!t || !t->file || !t->file->source || !result) return false;
+    const char *src = t->file->source;
+    size_t src_len = t->file->sourcelen;
+
+    for (unsigned int i = 0; i < t->nblocks; i++) {
+        const md_block *b = &t->content_blocks[i];
+        if (b->span.start >= src_len) continue;
+        size_t len = b->span.length;
+        if (b->span.start + len > src_len) len = src_len - b->span.start;
+        if (len == 0) continue;
+        varray_charadd(result, src + b->span.start, (int) len);
+        if (src[b->span.start + len - 1] != '\n') varray_charadd(result, "\n", 1);
+    }
+    return true;
+}
+
 bool help_parse(md_file *file, varray_md_topic *topics, int file_index) {
     error err;
     error_init(&err);
@@ -635,7 +659,7 @@ void help_findfiles(void) {
  * ********************************************************************** */
 
 /** Interface to the morpho help system */
-bool morpho_helptopic(const char *query, help_topic *out) {
+bool morpho_helpastopic(const char *query, help_topic *out) {
     /* Topic names are stored lowercase; search key must match. */
     char qbuf[MORPHO_MAX_HELPQUERY_LENGTH];
     size_t qlen = 0;
@@ -659,10 +683,16 @@ bool morpho_helptopic(const char *query, help_topic *out) {
     return true;
 }
 
-bool morpho_help(char *query, varray_char *result) {
+bool morpho_helpastext(char *query, varray_char *result) {
     help_topic t;
-    if (!morpho_helptopic(query, &t)) return false;
+    if (!morpho_helpastopic(query, &t)) return false;
     return help_topictotext(&t, result);
+}
+
+bool morpho_helpasmd(char *query, varray_char *result) {
+    help_topic t;
+    if (!morpho_helpastopic(query, &t)) return false;
+    return help_topicrawmd(&t, result);
 }
 
 /* **********************************************************************

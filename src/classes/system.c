@@ -139,7 +139,7 @@ value System_help(vm *v, int nargs, value *args) {
         varray_char result;
         varray_charinit(&result);
         
-        if (morpho_help(query, &result)) {
+        if (morpho_helpastext(query, &result)) {
             out=object_stringfromvarraychar(&result);
             if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
         }

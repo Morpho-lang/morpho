@@ -501,11 +501,61 @@ static void md_push_link(parser *p, md_parseout *out, size_t block_start, size_t
 }
 
 /* **********************************************************************
- * Parse help files
+ * Help topic lookup and content range
  * ********************************************************************** */
 
 static varray_md_file s_files;
 static varray_md_topic s_topics;
+
+/** Number of blocks that form this topic's content (header + following until next same-level or higher header). */
+static unsigned int help_topiccontentnblocks(const md_topic *topic, const md_file *file) {
+    unsigned int i = topic->block_index;
+    unsigned int n = file->blocks.count;
+    int level = topic->level;
+    while (i < n) {
+        const md_block *b = &file->blocks.data[i];
+        if (b->type == MD_BLOCK_HEADER && b->as.header.level <= level && i > topic->block_index)
+            break;
+        i++;
+    }
+    return i - topic->block_index;
+}
+
+bool help_topictotext(const help_topic *t, varray_char *result) {
+    if (!t || !t->file || !t->file->source || !result) return false;
+    const char *src = t->file->source;
+    size_t src_len = t->file->sourcelen;
+
+    for (unsigned int i = 0; i < t->nblocks; i++) {
+        const md_block *b = &t->content_blocks[i];
+        if (b->span.start >= src_len) continue;
+        size_t len = b->span.length;
+        if (b->span.start + len > src_len) len = src_len - b->span.start;
+
+        switch (b->type) {
+            case MD_BLOCK_HEADER: {
+                /* Skip leading # and space for plain text */
+                const char *p = src + b->as.header.title.start;
+                size_t tlen = b->as.header.title.length;
+                if (b->as.header.title.start + tlen > src_len) tlen = src_len - b->as.header.title.start;
+                while (tlen && (*p == '#' || (unsigned char)*p <= ' ')) { p++; tlen--; }
+                if (tlen > 0) varray_charadd(result, p, (int) tlen);
+                varray_charadd(result, "\n\n", 2);
+                break;
+            }
+            case MD_BLOCK_PARAGRAPH:
+            case MD_BLOCK_LIST:
+            case MD_BLOCK_CODE:
+                varray_charadd(result, src + b->span.start, (int) len);
+                if (len > 0 && src[b->span.start + len - 1] != '\n') varray_charadd(result, "\n", 1);
+                break;
+            case MD_BLOCK_LINK_DEF:
+            case MD_BLOCK_BLANK:
+                break;
+        }
+    }
+    return true;
+}
 
 bool help_parse(md_file *file, varray_md_topic *topics, int file_index) {
     error err;
@@ -585,8 +635,34 @@ void help_findfiles(void) {
  * ********************************************************************** */
 
 /** Interface to the morpho help system */
+bool morpho_helptopic(const char *query, help_topic *out) {
+    /* Topic names are stored lowercase; search key must match. */
+    char qbuf[MORPHO_MAX_HELPQUERY_LENGTH];
+    size_t qlen = 0;
+    while (query[qlen] && qlen < MORPHO_MAX_HELPQUERY_LENGTH - 1) {
+        qbuf[qlen] = (char) tolower((unsigned char) query[qlen]);
+        qlen++;
+    }
+    qbuf[qlen] = '\0';
+
+    int idx = help_findtopic(&s_topics, qbuf);
+    if (idx < 0) return false;
+    const md_topic *topic = &s_topics.data[idx];
+    if (topic->file_index < 0 || (unsigned int) topic->file_index >= s_files.count) return false;
+    const md_file *file = &s_files.data[topic->file_index];
+    if (topic->block_index >= file->blocks.count) return false;
+
+    out->topic = topic;
+    out->file = file;
+    out->content_blocks = &file->blocks.data[topic->block_index];
+    out->nblocks = help_topiccontentnblocks(topic, file);
+    return true;
+}
+
 bool morpho_help(char *query, varray_char *result) {
-    return false;
+    help_topic t;
+    if (!morpho_helptopic(query, &t)) return false;
+    return help_topictotext(&t, result);
 }
 
 /* **********************************************************************

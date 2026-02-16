@@ -41,7 +41,7 @@
     } varray_##name; \
     \
     void varray_##name##init(varray_##name *v); \
-    bool varray_##name##add(varray_##name *v, type *data, int count); \
+    bool varray_##name##add(varray_##name *v, const type *data, int count); \
     bool varray_##name##resize(varray_##name *v, int count); \
     int varray_##name##write(varray_##name *v, type data); \
     void varray_##name##clear(varray_##name *v);
@@ -53,7 +53,7 @@ void varray_##name##init(varray_##name *v) { \
     v->data=NULL; \
 } \
 \
-bool varray_##name##add(varray_##name *v, type *data, int count) { \
+bool varray_##name##add(varray_##name *v, const type *data, int count) { \
     if (v->capacity<v->count + count) { \
         unsigned int capacity = varray_powerof2ceiling(v->count + count); \
         v->data = (type *) morpho_allocate(v->data, v->capacity * sizeof(type), \

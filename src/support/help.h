@@ -10,6 +10,9 @@
 #include <stddef.h>
 #include "varray.h"
 
+/** Maximum length of a help query string (used for lookup buffer). */
+#define MORPHO_MAX_HELPQUERY_LENGTH 512
+
 /* -------------------------------------------------------
  * Markdown AST: source-backed spans, hierarchical blocks
  * ------------------------------------------------------- */
@@ -82,9 +85,28 @@ void help_sorttopics(varray_md_topic *topics);
 int help_findtopic(varray_md_topic *topics, const char *name);
 
 /* -------------------------------------------------------
+ * Help topic view (for flexible rendering)
+ * ------------------------------------------------------- */
+
+/** A resolved help topic: pointer to the topic entry, its file, and the slice of blocks that form its content (header + following blocks until the next same-level or higher header). Callers can use this to render raw MD, plain text, or terminal-styled output. */
+typedef struct {
+    const md_topic *topic;
+    const md_file *file;
+    const md_block *content_blocks;  /* first block of content (header) */
+    unsigned int nblocks;
+} help_topic;
+
+/** Resolve a query to a help topic. Fills *out and returns true if found; otherwise returns false and *out is unchanged. */
+bool morpho_helptopic(const char *query, help_topic *out);
+
+/** Render a help topic as plain text into result (no markdown formatting). Returns true on success. */
+bool help_topictotext(const help_topic *t, varray_char *result);
+
+/* -------------------------------------------------------
  * Help API
  * ------------------------------------------------------- */
 
+/** Look up help for query and write plain-text result. Returns true if topic found. (Convenience wrapper for morpho_helptopic + help_topictotext.) */
 bool morpho_help(char *query, varray_char *result);
 
 void help_initialize(void);

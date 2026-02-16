@@ -422,8 +422,8 @@ bool md_parseblock(parser *p, void *out) {
     } else if (parse_checktoken(p, MD_ASTERISK) ||
                parse_checktoken(p, MD_PLUS) ||
                parse_checktoken(p, MD_DASH)) {
-        /* CommonMark: list marker must be followed by space or tab; else treat as paragraph (e.g. *Goodbye* italic). */
-        char c = lex_peekahead(p->lex, p->current.length);
+        /* CommonMark: list marker must be followed by space or tab; else treat as paragraph. */
+        char c = lex_peek(p->lex);
         if (c == ' ' || c == '\t') {
             parse_advance(p);
             return md_parselist(p, out);

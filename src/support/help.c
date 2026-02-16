@@ -231,8 +231,20 @@ tokentype _inlinetokens[] = {
 };
 int _ninlinetokens = sizeof(_inlinetokens)/sizeof(tokentype);
 
+/** Token types that can appear literally in paragraph/list text (consumed without inline rules). */
+tokentype _literalintext[] = {
+    MD_HASH, MD_HASH2, MD_HASH3, MD_LEFTSQUAREBRACE, MD_RIGHTSQUAREBRACE,
+    MD_FOURSPACES, MD_TAB, MD_PLUS, MD_DASH
+};
+int _nliteralintext = sizeof(_literalintext)/sizeof(tokentype);
+
 bool md_checktexttoken(parser *p) {
     return parse_checktokenmulti(p, _ninlinetokens, _inlinetokens);
+}
+
+/** True if current token can be consumed as literal in paragraph/list (no prefix rule). */
+static bool md_checkliteralintext(parser *p) {
+    return parse_checktokenmulti(p, _nliteralintext, _literalintext);
 }
 
 /** Parses text written in markdown; stops at a non-textual token. Line ends with NEWLINE or EOF. */
@@ -241,19 +253,25 @@ bool md_parsetext(parser *p, void *out) {
     const char *base = ctx->file->source;
     size_t block_start = (size_t)(p->current.start - base);
 
-    // Consume text tokens, applying inline rules (bold, italic, code) via prefix handlers.
-    // A leading * or _ is treated as text (list-marker style); we could parse as list item later.
-    while (md_checktexttoken(p)) {
-        parse_advance(p);
-        size_t tok_start = (size_t)(p->previous.start - base);
-        parserule *rule = parse_getrule(p, p->previous.type);
-        if (rule && rule->prefix) {
-            bool leading_asterisk_or_underscore = (tok_start == block_start &&
-                (p->previous.type == MD_ASTERISK || p->previous.type == MD_UNDERSCORE));
-            if (!leading_asterisk_or_underscore && !rule->prefix(p, out)) return false;
+    for (;;) {
+        // Consume text tokens, applying inline rules (bold, italic, code) via prefix handlers.
+        // A leading * or _ is treated as text (list-marker style); we could parse as list item later.
+        while (md_checktexttoken(p)) {
+            parse_advance(p);
+            size_t tok_start = (size_t)(p->previous.start - base);
+            parserule *rule = parse_getrule(p, p->previous.type);
+            if (rule && rule->prefix) {
+                bool leading_asterisk_or_underscore = (tok_start == block_start &&
+                    (p->previous.type == MD_ASTERISK || p->previous.type == MD_UNDERSCORE));
+                if (!leading_asterisk_or_underscore && !rule->prefix(p, out)) return false;
+            }
         }
-    }
-    if (!md_parselineend(p)) {
+        if (md_parselineend(p)) break;
+        // Allow block-style tokens to appear literally in prose (e.g. "+" in "minimization + retriangulation").
+        if (md_checkliteralintext(p)) {
+            parse_advance(p);
+            continue;
+        }
         parse_error(p, true, MD_EXPECTLINEEND);
         return false;
     }
@@ -305,15 +323,21 @@ bool md_parselist(parser *p, void *out) {
     const char *base = ctx->file->source;
     size_t block_start = (size_t)(p->previous.start - base);  /* *, +, or - already consumed */
 
-    // Reuse text parsing (inline rules) but record as list block
-    while (md_checktexttoken(p)) {
-        parse_advance(p);
-        parserule *rule = parse_getrule(p, p->previous.type);
-        if (rule && rule->prefix) {
-            if (!rule->prefix(p, out)) return false;
+    for (;;) {
+        // Reuse text parsing (inline rules) but record as list block
+        while (md_checktexttoken(p)) {
+            parse_advance(p);
+            parserule *rule = parse_getrule(p, p->previous.type);
+            if (rule && rule->prefix) {
+                if (!rule->prefix(p, out)) return false;
+            }
         }
-    }
-    if (!md_parselineend(p)) {
+        if (md_parselineend(p)) break;
+        // Allow block-style tokens literally in list item (e.g. "+" in "minimization + retriangulation").
+        if (md_checkliteralintext(p)) {
+            parse_advance(p);
+            continue;
+        }
         parse_error(p, true, MD_EXPECTLINEEND);
         return false;
     }

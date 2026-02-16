@@ -864,9 +864,9 @@ bool help_parse(md_file *file, varray_md_topic *topics, int file_index) {
         fprintf(stderr, "Help parse error [%s]: %s", err.id ? err.id : "?", err.msg);
         if (err.line != ERROR_POSNUNIDENTIFIABLE || err.posn != ERROR_POSNUNIDENTIFIABLE) {
             fprintf(stderr, " (");
-            if (err.line != ERROR_POSNUNIDENTIFIABLE) fprintf(stderr, "line %d", err.line);
+            if (err.line != ERROR_POSNUNIDENTIFIABLE) fprintf(stderr, "line %d", err.line + 1);
             if (err.posn != ERROR_POSNUNIDENTIFIABLE)
-                fprintf(stderr, "%sposition %d", err.line != ERROR_POSNUNIDENTIFIABLE ? ", " : "", err.posn);
+                fprintf(stderr, "%sposition %d", err.line != ERROR_POSNUNIDENTIFIABLE ? ", " : "", err.posn + 1);
             fprintf(stderr, ")");
         }
         fprintf(stderr, "\n");

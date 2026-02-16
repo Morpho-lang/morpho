@@ -100,18 +100,13 @@ tokendefn mdtokens[] = {
 
 /** Lexer token preprocessor function */
 bool md_lexpreprocess(lexer *l, token *tok, error *err) {
-    // Keep going until we match a token or reach the end
-    while (!lex_identifytoken(l, false, NULL) &&
-           !lex_isatend(l)) {
+    while (!lex_identifytoken(l, false, NULL) && !lex_isatend(l)) {
         lex_advance(l);
     }
-    
-    // If we captured anything, record it as text
-    if (l->current>l->start) {
+    if (l->current > l->start) {
         lex_recordtoken(l, MD_TEXT, tok);
         return true;
     }
-    
     return false;
 }
 
@@ -286,23 +281,44 @@ bool md_parseurl(parser *p, void *out) {
     return true; /* EOF is valid end of link line */
 }
 
-/** Parses a markdown link definition [label]: # (optional) ... */
+/** Parses a markdown link definition [label]: # (optional) ...
+ *  The lexer often gives one MD_TEXT for "label]: target" (no separate ] : tokens).
+ *  Accept either: TEXT then ] then : then rest, or one TEXT containing "]: " and split it. */
 bool md_parselink(parser *p, void *out) {
     md_parseout *ctx = (md_parseout *) out;
     const char *base = ctx->file->source;
     size_t block_start = (size_t)(p->previous.start - base);  /* [ already consumed */
 
-    // [ label ] : then rest of line (target)
     PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
     size_t label_start = (size_t)(p->previous.start - base);
     size_t label_len = p->previous.length;
-    PARSE_CHECK(parse_checktokenadvance(p, MD_RIGHTSQUAREBRACE));
-    PARSE_CHECK(parse_checktokenadvance(p, MD_COLON));
-    size_t target_start = (size_t)(p->current.start - base);
-    PARSE_CHECK(md_parseurl(p, out));
-    size_t target_end = md_end_previous(p, base);
-    size_t target_len = (target_end > target_start) ? (target_end - target_start) : 0;
+    size_t target_start;
+    size_t target_len;
 
+    const char *txt = p->previous.start;
+    size_t txt_len = p->previous.length;
+    const char *sep = "]: ";
+    size_t sep_len = 3;
+    const char *found = NULL;
+    if (txt_len >= sep_len) {
+        for (size_t i = 0; i + sep_len <= txt_len; i++) {
+            if (memcmp(txt + i, sep, sep_len) == 0) { found = txt + i; break; }
+        }
+    }
+    if (found != NULL) {
+        label_len = (size_t)(found - txt);
+        target_start = label_start + label_len + sep_len;
+        target_len = (txt_len > label_len + sep_len) ? (txt_len - label_len - sep_len) : 0;
+        if (target_len > 0 && base[target_start + target_len - 1] == '\n') target_len--;
+        /* Rest of line (and newline) was in the TEXT token; next token is next line */
+    } else {
+        PARSE_CHECK(parse_checktokenadvance(p, MD_RIGHTSQUAREBRACE));
+        PARSE_CHECK(parse_checktokenadvance(p, MD_COLON));
+        target_start = (size_t)(p->current.start - base);
+        PARSE_CHECK(md_parseurl(p, out));
+        size_t target_end = md_end_previous(p, base);
+        target_len = (target_end > target_start) ? (target_end - target_start) : 0;
+    }
     md_push_link(p, ctx, block_start, label_start, label_len, target_start, target_len);
     return true;
 }
@@ -685,15 +701,14 @@ static const char *help_findclosestsubtopic(int parent_idx, const char *name) {
     return best;
 }
 
-/** Number of blocks that form this topic's content (header + following until next same-level or higher header). */
+/** Number of blocks that form this topic's content (header + following until next header of any level). */
 static unsigned int help_topiccontentnblocks(const md_topic *topic, const md_file *file) {
     unsigned int i = topic->block_index;
     unsigned int n = file->blocks.count;
-    int level = topic->level;
-    // Advance until we hit a header at same or higher level (or end of file)
+    // Advance until we hit any next header (so a # topic doesn't swallow all ## sections)
     while (i < n) {
         const md_block *b = &file->blocks.data[i];
-        if (b->type == MD_BLOCK_HEADER && b->as.header.level <= level && i > topic->block_index)
+        if (b->type == MD_BLOCK_HEADER && i > topic->block_index)
             break;
         i++;
     }
@@ -802,14 +817,26 @@ bool help_load(char *filename) {
         return false;
     }
     fclose(f);
-    // Steal buffer into md_file; parse appends topics to s_topics
+    // Parse appends topics to s_topics with file_index = s_files.count. If parse fails we must
+    // remove those topics so they don't point at the next file we append.
     md_file mdfile;
     md_file_init(&mdfile);
     mdfile.source = contents.data;
     mdfile.sourcelen = (contents.count > 0) ? contents.count - 1 : 0;
+    unsigned int n_topics_before = s_topics.count;
     bool ok = help_parse(&mdfile, &s_topics, (int) s_files.count);
-    if (ok) varray_md_filewrite(&s_files, mdfile);
-    else md_file_clear(&mdfile);
+    if (ok) {
+        varray_md_filewrite(&s_files, mdfile);
+    } else {
+        md_file_clear(&mdfile);
+        /* Remove topics added during the failed parse; they have file_index = s_files.count */
+        while (s_topics.count > n_topics_before) {
+            md_topic *t = &s_topics.data[s_topics.count - 1];
+            if (t->name) MORPHO_FREE(t->name);
+            t->name = NULL;
+            s_topics.count--;
+        }
+    }
     return ok;
 }
 

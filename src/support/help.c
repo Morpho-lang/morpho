@@ -254,17 +254,11 @@ bool md_parsetext(parser *p, void *out) {
     size_t block_start = (size_t)(p->current.start - base);
 
     for (;;) {
-        // Consume text tokens, applying inline rules (bold, italic, code) via prefix handlers.
-        // A leading * or _ is treated as text (list-marker style); we could parse as list item later.
+        /* Consume text tokens, applying inline rules (bold, italic, code) via prefix handlers. */
         while (md_checktexttoken(p)) {
             parse_advance(p);
-            size_t tok_start = (size_t)(p->previous.start - base);
             parserule *rule = parse_getrule(p, p->previous.type);
-            if (rule && rule->prefix) {
-                bool leading_asterisk_or_underscore = (tok_start == block_start &&
-                    (p->previous.type == MD_ASTERISK || p->previous.type == MD_UNDERSCORE));
-                if (!leading_asterisk_or_underscore && !rule->prefix(p, out)) return false;
-            }
+            if (rule && rule->prefix && !rule->prefix(p, out)) return false;
         }
         if (md_parselineend(p)) break;
         // Allow block-style tokens to appear literally in prose (e.g. "+" in "minimization + retriangulation").

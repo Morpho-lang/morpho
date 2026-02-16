@@ -59,6 +59,7 @@ DECLARE_VARRAY(md_block, md_block);
 typedef struct {
     char *source;
     size_t sourcelen;
+    char *filename;  /* Owned filename/path for error reporting */
     varray_md_block blocks;
 } md_file;
 

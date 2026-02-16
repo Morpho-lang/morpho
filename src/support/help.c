@@ -14,6 +14,7 @@
 #include "classes.h"
 #include "help.h"
 #include "resources.h"
+#include "common.h"
 
 #include "error.h"
 #include "lex.h"
@@ -226,6 +227,9 @@ typedef struct {
     int file_index;
     int current_header_level; // 1–3, set before md_parseheader
 } md_parseout;
+
+/* Forward declarations */
+static void md_push_simpleblock(parser *p, md_parseout *out, size_t block_start, md_blocktype type);
 
 static void md_push_header(parser *p, md_parseout *out, size_t block_start, size_t title_start, size_t title_len);
 static void md_push_paragraph(parser *p, md_parseout *out, size_t block_start);
@@ -525,6 +529,7 @@ void md_block_clear(md_block *b) {
 void md_file_init(md_file *f) {
     f->source = NULL;
     f->sourcelen = 0;
+    f->filename = NULL;
     varray_md_blockinit(&f->blocks);
 }
 
@@ -532,6 +537,8 @@ void md_file_clear(md_file *f) {
     if (f->source) MORPHO_FREE(f->source);
     f->source = NULL;
     f->sourcelen = 0;
+    if (f->filename) MORPHO_FREE(f->filename);
+    f->filename = NULL;
     for (unsigned int i = 0; i < f->blocks.count; i++) md_block_clear(&f->blocks.data[i]);
     varray_md_blockclear(&f->blocks);
 }
@@ -953,6 +960,7 @@ bool help_parse(md_file *file, varray_md_topic *topics, int file_index) {
             if (has_posn) fprintf(stderr, "%sposition %d", has_line ? ", " : "", err.posn + 1);
             fprintf(stderr, ")");
         }
+        if (file->filename) fprintf(stderr, " in %s", file->filename);
         fprintf(stderr, "\n");
     }
     return ok;
@@ -979,12 +987,12 @@ bool help_load(char *filename) {
     md_file_init(&mdfile);
     mdfile.source = contents.data;
     mdfile.sourcelen = len;
+    mdfile.filename = morpho_strdup(filename);
     unsigned int n_topics_before = s_topics.count;
     bool ok = help_parse(&mdfile, &s_topics, (int) s_files.count);
     if (ok) {
         varray_md_filewrite(&s_files, mdfile);
     } else {
-        fprintf(stderr, "Help file failed to parse: %s\n", filename);
         md_file_clear(&mdfile);
         // Remove topics added during the failed parse; they have file_index = s_files.count
         while (s_topics.count > n_topics_before) {

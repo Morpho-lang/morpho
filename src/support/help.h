@@ -12,8 +12,10 @@
 
 /** Maximum length of a help query string (used for lookup buffer). */
 #define MORPHO_MAX_HELPQUERY_LENGTH 512
+
 /** Maximum length of a single string for edit-distance (suggestion). */
 #define MORPHO_HELP_EDITMAXLEN 128
+
 /** Buffer size for "not found" hint message. */
 #define MORPHO_HELP_HINTBUFSIZE 256
 
@@ -105,6 +107,34 @@ bool help_topictotext(const help_topic *t, varray_char *result);
 
 /** Append a help topic's raw markdown from source into result. Returns true on success. */
 bool help_topicrawmd(const help_topic *t, varray_char *result);
+
+/* -------------------------------------------------------
+ * Markdown parser error codes
+ * ------------------------------------------------------- */
+
+#define MD_UNCLOSEDITALIC         "MDUnclItal"
+#define MD_UNCLOSEDITALIC_MSG     "Unclosed italic (missing closing * or _)."
+
+#define MD_UNCLOSEDINLINECODE     "MDUnclCode"
+#define MD_UNCLOSEDINLINECODE_MSG "Unclosed inline code (missing closing `)."
+
+#define MD_EXPECTLINEEND          "MDExpLnEnd"
+#define MD_EXPECTLINEEND_MSG      "Expected end of line."
+
+#define MD_EXPECTHEADERTEXT       "MDExpHdrTxt"
+#define MD_EXPECTHEADERTEXT_MSG   "Expected header text after #."
+
+#define MD_LINKEXPECTTEXT         "MDLnkExpTxt"
+#define MD_LINKEXPECTTEXT_MSG     "Link definition expects label text after [."
+
+#define MD_LINKEXPECTBRACKET      "MDLnkExpBr"
+#define MD_LINKEXPECTBRACKET_MSG  "Link definition expects ] after label."
+
+#define MD_LINKEXPECTCOLON        "MDLnkExpCol"
+#define MD_LINKEXPECTCOLON_MSG    "Link definition expects : after ]."
+
+#define MD_UNEXPECTEDTOKEN        "MDUnexpTok"
+#define MD_UNEXPECTEDTOKEN_MSG    "Unexpected markdown token."
 
 /* -------------------------------------------------------
  * Help API

@@ -68,24 +68,6 @@ enum {
     MD_EOF
 };
 
-/* Markdown parser error codes (registered in help_initialize) */
-#define MD_UNCLOSEDITALIC       "MDUnclItal"
-#define MD_UNCLOSEDITALIC_MSG   "Unclosed italic (missing closing * or _)."
-#define MD_UNCLOSEDINLINECODE   "MDUnclCode"
-#define MD_UNCLOSEDINLINECODE_MSG "Unclosed inline code (missing closing `)."
-#define MD_EXPECTLINEEND        "MDExpLnEnd"
-#define MD_EXPECTLINEEND_MSG    "Expected end of line."
-#define MD_EXPECTHEADERTEXT     "MDExpHdrTxt"
-#define MD_EXPECTHEADERTEXT_MSG "Expected header text after #."
-#define MD_LINKEXPECTTEXT       "MDLnkExpTxt"
-#define MD_LINKEXPECTTEXT_MSG   "Link definition expects label text after [."
-#define MD_LINKEXPECTBRACKET    "MDLnkExpBr"
-#define MD_LINKEXPECTBRACKET_MSG "Link definition expects ] after label."
-#define MD_LINKEXPECTCOLON      "MDLnkExpCol"
-#define MD_LINKEXPECTCOLON_MSG  "Link definition expects : after ]."
-#define MD_UNEXPECTEDTOKEN      "MDUnexpTok"
-#define MD_UNEXPECTEDTOKEN_MSG  "Unexpected markdown token."
-
 bool md_lexnewline(lexer *l, token *tok, error *err) {
     lex_newline(l);
     return true;
@@ -256,6 +238,7 @@ tokentype _literalintext[] = {
 };
 int _nliteralintext = sizeof(_literalintext)/sizeof(tokentype);
 
+/** True if current token can be consumed as text (MD_TEXT or inline formatting tokens). */
 bool md_checktexttoken(parser *p) {
     return parse_checktokenmulti(p, _ninlinetokens, _inlinetokens);
 }
@@ -388,25 +371,25 @@ bool md_parselink(parser *p, void *out) {
     const char *base = ctx->file->source;
     size_t block_start = (size_t)(p->previous.start - base);
 
-    if (!parse_checktokenadvance(p, MD_TEXT)) {
+    if (!parse_checktokenadvance(p, MD_TEXT)) { // Parse label text
         parse_error(p, false, MD_LINKEXPECTTEXT);
         return false;
     }
     size_t label_start = (size_t)(p->previous.start - base);
     size_t label_len = p->previous.length;
 
-    if (!parse_checktokenadvance(p, MD_RIGHTSQUAREBRACE)) {
+    if (!parse_checktokenadvance(p, MD_RIGHTSQUAREBRACE)) { // Parse closing ]
         parse_error(p, false, MD_LINKEXPECTBRACKET);
         return false;
     }
-    if (parse_checktoken(p, MD_LEFTPAREN)) return md_parseinlinelink(p, out, block_start);
+    if (parse_checktoken(p, MD_LEFTPAREN)) return md_parseinlinelink(p, out, block_start); // Inline link [text](url)
 
-    if (!parse_checktokenadvance(p, MD_COLON)) {
+    if (!parse_checktokenadvance(p, MD_COLON)) { // Parse : for link definition
         parse_error(p, false, MD_LINKEXPECTCOLON);
         return false;
     }
     size_t target_start = (size_t)(p->current.start - base);
-    if (!md_parseurl(p, out)) {
+    if (!md_parseurl(p, out)) { // Parse target URL until newline/EOF
         parse_error(p, true, MD_EXPECTLINEEND);
         return false;
     }
@@ -965,53 +948,8 @@ void help_findfiles(void) {
 }
 
 /* **********************************************************************
- * Help API
+ * Hints for failed queries
  * ********************************************************************** */
-
-static bool s_help_files_loaded = false;
-
-/** Interface to the morpho help system. Query may be "Topic" or "Topic subtopic" / "Topic.subtopic". */
-bool morpho_helpastopic(const char *query, help_topic *out) {
-    if (!s_help_files_loaded) { // Load help files on first use
-        help_findfiles();
-        s_help_files_loaded = true;
-    }
-    char qbuf[MORPHO_MAX_HELPQUERY_LENGTH];
-    const char *segs[MORPHO_HELP_QUERY_MAXSEGMENTS];
-    int nsegs = help_parsequery(query, qbuf, segs);
-    if (nsegs <= 0) return false;
-
-    // Single segment: resolve by name; fail if 0 or multiple matches (caller shows hint)
-    int idx;
-    if (nsegs == 1) {
-        int multi[MORPHO_HELP_MAX_MULTIMATCH];
-        int n = help_findallbyname(segs[0], multi, MORPHO_HELP_MAX_MULTIMATCH);
-        if (n == 1) {
-            idx = multi[0];
-        } else if (n == 0) {
-            idx = help_findtopic(&s_topics, segs[0]);  /* fallback: bsearch by name */
-            if (idx < 0) return false;
-        } else {
-            return false;  /* multiple matches: caller will show hint */
-        }
-    } else {
-        idx = help_findtopic(&s_topics, segs[0]);
-        if (idx < 0) return false;
-    }
-
-    // Resolve remaining segments as subtopics
-    for (int i = 1; i < nsegs; i++) {
-        idx = help_findsubtopic(idx, segs[i]);
-        if (idx < 0) return false;
-    }
-
-    const md_topic *topic = &s_topics.data[idx];
-    if (topic->file_index < 0 || (unsigned int) topic->file_index >= s_files.count) return false;
-    const md_file *file = &s_files.data[topic->file_index];
-    if (topic->block_index >= file->blocks.count) return false;
-    help_topicfill(out, topic, file);
-    return true;
-}
 
 /** Append "Topic 'query' not found [. Did you mean 'suggest'?]." to result. suggest is full path or NULL. */
 static void help_hintappend(varray_char *result, const char *query, const char *suggest) {
@@ -1100,6 +1038,55 @@ static void help_queryhint(const char *query, varray_char *result) {
         }
     }
     varray_charadd(result, MORPHO_HELP_NOTFOUND, (int) (sizeof(MORPHO_HELP_NOTFOUND) - 1));
+}
+
+/* **********************************************************************
+ * Help API
+ * ********************************************************************** */
+
+static bool s_help_files_loaded = false;
+
+/** Interface to the morpho help system. Query may be "Topic" or "Topic subtopic" / "Topic.subtopic". */
+bool morpho_helpastopic(const char *query, help_topic *out) {
+    if (!s_help_files_loaded) { // Load help files on first use
+        help_findfiles();
+        s_help_files_loaded = true;
+    }
+    char qbuf[MORPHO_MAX_HELPQUERY_LENGTH];
+    const char *segs[MORPHO_HELP_QUERY_MAXSEGMENTS];
+    int nsegs = help_parsequery(query, qbuf, segs);
+    if (nsegs <= 0) return false;
+
+    // Single segment: resolve by name; fail if 0 or multiple matches (caller shows hint)
+    int idx;
+    if (nsegs == 1) {
+        int multi[MORPHO_HELP_MAX_MULTIMATCH];
+        int n = help_findallbyname(segs[0], multi, MORPHO_HELP_MAX_MULTIMATCH);
+        if (n == 1) {
+            idx = multi[0];
+        } else if (n == 0) {
+            idx = help_findtopic(&s_topics, segs[0]);  /* fallback: bsearch by name */
+            if (idx < 0) return false;
+        } else {
+            return false;  /* multiple matches: caller will show hint */
+        }
+    } else {
+        idx = help_findtopic(&s_topics, segs[0]);
+        if (idx < 0) return false;
+    }
+
+    // Resolve remaining segments as subtopics
+    for (int i = 1; i < nsegs; i++) {
+        idx = help_findsubtopic(idx, segs[i]);
+        if (idx < 0) return false;
+    }
+
+    const md_topic *topic = &s_topics.data[idx];
+    if (topic->file_index < 0 || (unsigned int) topic->file_index >= s_files.count) return false;
+    const md_file *file = &s_files.data[topic->file_index];
+    if (topic->block_index >= file->blocks.count) return false;
+    help_topicfill(out, topic, file);
+    return true;
 }
 
 bool morpho_helpastext(char *query, varray_char *result) {

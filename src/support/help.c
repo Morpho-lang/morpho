@@ -913,20 +913,11 @@ bool help_load(char *filename) {
         return false;
     }
     fclose(f);
-    // Own a copy of the source so each file in s_files has independent storage.
+    /* Keep contents.data; mdfile will own it (freed in md_file_clear). Do not clear contents. */
     size_t len = (contents.count > 0) ? contents.count - 1 : 0;
-    char *copy = (char *) MORPHO_MALLOC(len + 1);
-    if (!copy) {
-        varray_charclear(&contents);
-        return false;
-    }
-    memcpy(copy, contents.data, len + 1);
-    varray_charclear(&contents);
-    // Parse appends topics to s_topics with file_index = s_files.count. If parse fails we must
-    // remove those topics so they don't point at the next file we append.
     md_file mdfile;
     md_file_init(&mdfile);
-    mdfile.source = copy;
+    mdfile.source = contents.data;
     mdfile.sourcelen = len;
     unsigned int n_topics_before = s_topics.count;
     bool ok = help_parse(&mdfile, &s_topics, (int) s_files.count);

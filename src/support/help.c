@@ -214,6 +214,13 @@ static size_t md_end_previous(parser *p, const char *base) {
     return (size_t)(p->previous.start - base) + p->previous.length;
 }
 
+/** Clamp span length to fit within source length. Returns clamped length. */
+static size_t md_clamp_span(size_t start, size_t len, size_t src_len) {
+    if (start >= src_len) return 0;
+    if (start + len > src_len) return src_len - start;
+    return len;
+}
+
 /* -------------------------------------------------------
  * Markdown parse rules
  * ------------------------------------------------------- */
@@ -655,9 +662,16 @@ static int help_findparent(int idx) {
 
 /** Write full display path for topic (e.g. "System.clock") into buf. */
 static void help_topic_displaypath(int idx, char *buf, size_t bufsize) {
-    if (!bufsize || idx < 0 || (unsigned int) idx >= s_topics.count) { if (bufsize) buf[0] = '\0'; return; }
+    if (!bufsize) return;
+    if (idx < 0 || (unsigned int) idx >= s_topics.count) {
+        buf[0] = '\0';
+        return;
+    }
     const md_topic *t = &s_topics.data[idx];
-    if (!t->name) { buf[0] = '\0'; return; }
+    if (!t->name) {
+        buf[0] = '\0';
+        return;
+    }
     int p = (t->level > 1) ? help_findparent(idx) : -1;
     if (p >= 0) {
         // Recurse for parent path, then append ".name"
@@ -717,22 +731,28 @@ static int help_findsubtopic(int parent_idx, const char *name) {
     for (unsigned int i = parent->block_index + 1; i < file->blocks.count; i++) {
         const md_block *b = &file->blocks.data[i];
         if (b->type != MD_BLOCK_HEADER) continue;
-        if (b->as.header.level <= parent->level) return -1;  // left section
+        if (b->as.header.level <= parent->level) return -1; // left section
         size_t start = b->as.header.title.start;
-        size_t len = b->as.header.title.length;
-        if (start + len > base_len) len = base_len - start;
+        size_t len = md_clamp_span(start, b->as.header.title.length, base_len);
         if (help_headertitleeq(base, start, len, name))
             return help_findtopicbyblock(parent->file_index, i);
     }
     return -1;
 }
 
-/** Levenshtein distance between two strings (for "did you mean"). */
-static unsigned int help_editdistance(const char *a, const char *b) {
+/** Levenshtein distance between two strings (for "did you mean").
+ * If max_dist is provided (> 0), returns early if distance exceeds it (returns max_dist + 1).
+ * This allows early exit when we only care about distances within a threshold. */
+static unsigned int help_editdistance(const char *a, const char *b, unsigned int max_dist) {
     size_t na = strlen(a), nb = strlen(b);
     if (na == 0) return (unsigned int) nb;
     if (nb == 0) return (unsigned int) na;
     if (na > MORPHO_HELP_EDITMAXLEN || nb > MORPHO_HELP_EDITMAXLEN) return MORPHO_HELP_EDIT_NOMATCH;
+    
+    // Early exit: if length difference exceeds max_dist, distance must be at least that
+    size_t len_diff = (na > nb) ? na - nb : nb - na;
+    if (max_dist > 0 && len_diff > max_dist) return max_dist + 1;
+    
     // Two-row DP: prev row and current row, swap each iteration
     unsigned int row0[MORPHO_HELP_EDITMAXLEN + 1], row1[MORPHO_HELP_EDITMAXLEN + 1];
     unsigned int *prev = row0, *curr = row1;
@@ -742,8 +762,11 @@ static unsigned int help_editdistance(const char *a, const char *b) {
         for (size_t j = 1; j <= nb; j++) {
             unsigned int cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
             unsigned int del = prev[j] + 1, ins = curr[j - 1] + 1, sub = prev[j - 1] + cost;
-            curr[j] = (del < ins) ? (del < sub ? del : sub) : (ins < sub ? ins : sub);
+            unsigned int min = (del < ins) ? del : ins;
+            curr[j] = (min < sub) ? min : sub;
         }
+        // Early exit: if the final column (curr[nb]) exceeds max_dist, we can stop
+        if (max_dist > 0 && curr[nb] > max_dist) return max_dist + 1;
         { unsigned int *t = prev; prev = curr; curr = t; }
     }
     return prev[nb];
@@ -757,7 +780,7 @@ static const char *help_findclosesttopic(const char *name) {
     unsigned int best_d = MORPHO_HELP_SUGGEST_MAXDIST + 1;
     for (unsigned int i = 0; i < s_topics.count; i++) {
         if (s_topics.data[i].level != 1 || !s_topics.data[i].name) continue;
-        unsigned int d = help_editdistance(name, s_topics.data[i].name);
+        unsigned int d = help_editdistance(name, s_topics.data[i].name, best_d - 1);
         if (d < best_d) { best_d = d; best = s_topics.data[i].name; }
     }
     return best;
@@ -777,7 +800,7 @@ static const char *help_findclosestsubtopic(int parent_idx, const char *name) {
         if (b->as.header.level <= parent->level) break;
         int ti = help_findtopicbyblock(parent->file_index, i);
         if (ti < 0 || !s_topics.data[ti].name) continue;
-        unsigned int d = help_editdistance(name, s_topics.data[ti].name);
+        unsigned int d = help_editdistance(name, s_topics.data[ti].name, best_d - 1);
         if (d < best_d) { best_d = d; best = s_topics.data[ti].name; }
     }
     return best;
@@ -819,17 +842,15 @@ bool help_topictotext(const help_topic *t, varray_char *result) {
     if (!help_topicsrc(t, result, &src, &src_len)) return false;
     for (unsigned int i = 0; i < t->nblocks; i++) {
         const md_block *b = &t->content_blocks[i];
-        if (b->span.start >= src_len) continue;
-        size_t len = b->span.length;
-        if (b->span.start + len > src_len) len = src_len - b->span.start;
+        size_t len = md_clamp_span(b->span.start, b->span.length, src_len);
+        if (len == 0) continue;
 
         // Per-block: header (title only, no #), paragraph/list/code (span), link/blank skip
         switch (b->type) {
             case MD_BLOCK_HEADER: {
+                size_t tlen = md_clamp_span(b->as.header.title.start, b->as.header.title.length, src_len);
                 const char *p = src + b->as.header.title.start;
-                size_t tlen = b->as.header.title.length;
-                if (b->as.header.title.start + tlen > src_len) tlen = src_len - b->as.header.title.start;
-                while (tlen && (*p == '#' || (unsigned char)*p <= ' ')) { p++; tlen--; }  // strip leading # and space
+                while (tlen && (*p == '#' || (unsigned char)*p <= ' ')) { p++; tlen--; } // strip leading # and space
                 if (tlen > 0) varray_charadd(result, p, (int) tlen);
                 varray_charadd(result, "\n\n", 2);
                 break;
@@ -842,7 +863,7 @@ bool help_topictotext(const help_topic *t, varray_char *result) {
                 break;
             case MD_BLOCK_LINK_DEF:
             case MD_BLOCK_BLANK:
-                break;  // omit from plain text
+                break; // omit from plain text
         }
     }
     return true;
@@ -854,9 +875,7 @@ bool help_topicrawmd(const help_topic *t, varray_char *result) {
     if (!help_topicsrc(t, result, &src, &src_len)) return false;
     for (unsigned int i = 0; i < t->nblocks; i++) {
         const md_block *b = &t->content_blocks[i];
-        if (b->span.start >= src_len) continue;
-        size_t len = b->span.length;
-        if (b->span.start + len > src_len) len = src_len - b->span.start;
+        size_t len = md_clamp_span(b->span.start, b->span.length, src_len);
         if (len == 0) continue;
         varray_charadd(result, src + b->span.start, (int) len);
         if (src[b->span.start + len - 1] != '\n') varray_charadd(result, "\n", 1);
@@ -882,11 +901,12 @@ bool help_parse(md_file *file, varray_md_topic *topics, int file_index) {
     lex_clear(&l);
     if (!ok && morpho_checkerror(&err)) {
         fprintf(stderr, "Help parse error [%s]: %s", err.id ? err.id : "?", err.msg);
-        if (err.line != ERROR_POSNUNIDENTIFIABLE || err.posn != ERROR_POSNUNIDENTIFIABLE) {
+        bool has_line = (err.line != ERROR_POSNUNIDENTIFIABLE);
+        bool has_posn = (err.posn != ERROR_POSNUNIDENTIFIABLE);
+        if (has_line || has_posn) {
             fprintf(stderr, " (");
-            if (err.line != ERROR_POSNUNIDENTIFIABLE) fprintf(stderr, "line %d", err.line + 1);
-            if (err.posn != ERROR_POSNUNIDENTIFIABLE)
-                fprintf(stderr, "%sposition %d", err.line != ERROR_POSNUNIDENTIFIABLE ? ", " : "", err.posn + 1);
+            if (has_line) fprintf(stderr, "line %d", err.line + 1);
+            if (has_posn) fprintf(stderr, "%sposition %d", has_line ? ", " : "", err.posn + 1);
             fprintf(stderr, ")");
         }
         fprintf(stderr, "\n");
@@ -968,12 +988,9 @@ static void help_hintappend_multi(varray_char *result, const char *query, int in
     // First: "'A'"; middle: ", 'B'"; last: " or 'C'?"
     for (int i = 0; i < count && n < (int) sizeof(buf) - 4; i++) {
         help_topic_displaypath(indices[i], path, sizeof(path));
-        if (i == 0)
-            n += snprintf(buf + n, sizeof(buf) - (size_t) n, "'%s'", path);
-        else if (i == count - 1)
-            n += snprintf(buf + n, sizeof(buf) - (size_t) n, " or '%s'?", path);
-        else
-            n += snprintf(buf + n, sizeof(buf) - (size_t) n, ", '%s'", path);
+        if (i == 0) n += snprintf(buf + n, sizeof(buf) - (size_t) n, "'%s'", path);
+        else if (i == count - 1) n += snprintf(buf + n, sizeof(buf) - (size_t) n, " or '%s'?", path);
+        else n += snprintf(buf + n, sizeof(buf) - (size_t) n, ", '%s'", path);
     }
     if (n > 0 && (size_t) n < sizeof(buf)) varray_charadd(result, buf, n);
 }
@@ -1019,23 +1036,27 @@ static void help_queryhint(const char *query, varray_char *result) {
         int next = help_findsubtopic(idx, segs[i]);
         if (next < 0) {
             const char *closest = help_findclosestsubtopic(idx, segs[i]);
-            char suggest[MORPHO_MAX_HELPQUERY_LENGTH];
-            if (closest && path_len + 1 + (int) strlen(closest) < (int) sizeof(suggest))
-                snprintf(suggest, sizeof(suggest), "%s.%s", path, closest);
-            else
-                suggest[0] = '\0';
+            char suggest[MORPHO_MAX_HELPQUERY_LENGTH] = {0};
+            if (closest) {
+                int needed = path_len + 1 + (int) strlen(closest);
+                if (needed < (int) sizeof(suggest))
+                    snprintf(suggest, sizeof(suggest), "%s.%s", path, closest);
+            }
             help_hintappend(result, query, suggest[0] ? suggest : NULL);
             return;
         }
         idx = next;
         // Append "." + segs[i] to path for next level
-        if (path_len > 0 && path_len < (int) sizeof(path) - 1) {
-            path[path_len++] = '.';
-            int seglen = (int) strlen(segs[i]);
-            if (path_len + seglen >= (int) sizeof(path)) seglen = (int) sizeof(path) - 1 - path_len;
-            if (seglen > 0) { memcpy(path + path_len, segs[i], (size_t) seglen); path_len += seglen; }
-            path[path_len] = '\0';
+        if (path_len >= (int) sizeof(path) - 1) continue; // No room
+        path[path_len++] = '.';
+        int seglen = (int) strlen(segs[i]);
+        int avail = (int) sizeof(path) - path_len;
+        if (seglen >= avail) seglen = avail - 1;
+        if (seglen > 0) {
+            memcpy(path + path_len, segs[i], (size_t) seglen);
+            path_len += seglen;
         }
+        path[path_len] = '\0';
     }
     varray_charadd(result, MORPHO_HELP_NOTFOUND, (int) (sizeof(MORPHO_HELP_NOTFOUND) - 1));
 }
@@ -1065,10 +1086,10 @@ bool morpho_helpastopic(const char *query, help_topic *out) {
         if (n == 1) {
             idx = multi[0];
         } else if (n == 0) {
-            idx = help_findtopic(&s_topics, segs[0]);  /* fallback: bsearch by name */
+            idx = help_findtopic(&s_topics, segs[0]); // fallback: bsearch by name
             if (idx < 0) return false;
         } else {
-            return false;  /* multiple matches: caller will show hint */
+            return false; // multiple matches: caller will show hint
         }
     } else {
         idx = help_findtopic(&s_topics, segs[0]);

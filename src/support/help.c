@@ -412,10 +412,8 @@ bool md_parselink(parser *p, void *out) {
 /** Parse a markdown 'block' */
 bool md_parseblock(parser *p, void *out) {
     md_parseout *ctx = (md_parseout *) out;
-    // Dispatch by first token: text, #/##/###, indent, list, [link], newline, EOF
-    if (md_checktexttoken(p)) {
-        return md_parsetext(p, out);
-    } else if (parse_checktokenadvance(p, MD_HASH)) {
+    /* Dispatch by first token. Check block-start alternatives first. */
+    if (parse_checktokenadvance(p, MD_HASH)) {
         ctx->current_header_level = 1;
         return md_parseheader(p, out);
     } else if (parse_checktokenadvance(p, MD_HASH2)) {
@@ -427,16 +425,24 @@ bool md_parseblock(parser *p, void *out) {
     } else if (parse_checktokenadvance(p, MD_FOURSPACES) ||
                parse_checktokenadvance(p, MD_TAB)) {
         return md_parsecode(p, out);
-    } else if (parse_checktokenadvance(p, MD_ASTERISK) ||
-               parse_checktokenadvance(p, MD_PLUS) ||
-               parse_checktokenadvance(p, MD_DASH)) {
-        return md_parselist(p, out);
+    } else if (parse_checktoken(p, MD_ASTERISK) ||
+               parse_checktoken(p, MD_PLUS) ||
+               parse_checktoken(p, MD_DASH)) {
+        /* CommonMark: list marker must be followed by space or tab; else treat as paragraph (e.g. *Goodbye* italic). */
+        char c = lex_peekahead(p->lex, p->current.length);
+        if (c == ' ' || c == '\t') {
+            parse_advance(p);
+            return md_parselist(p, out);
+        }
+        return md_parsetext(p, out);
     } else if (parse_checktokenadvance(p, MD_LEFTSQUAREBRACE)) {
         return md_parselink(p, out);
     } else if (parse_checktokenadvance(p, MD_NEWLINE)) { /* blank line */
         return true;
     } else if (parse_checktoken(p, MD_EOF)) {
         return true; /* let outer loop exit */
+    } else if (md_checktexttoken(p)) {
+        return md_parsetext(p, out);
     } else {
         parse_error(p, false, MD_UNEXPECTEDTOKEN);
         return false;

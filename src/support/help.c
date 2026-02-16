@@ -247,6 +247,24 @@ static bool md_checkliteralintext(parser *p) {
     return parse_checktokenmulti(p, _nliteralintext, _literalintext);
 }
 
+/** Consume text content tokens (MD_TEXT and literal tokens like - : etc.). 
+ * If apply_inline_rules is true, applies inline formatting rules (bold/italic/code) to MD_TEXT tokens.
+ * Returns true if we should continue consuming (more text/literal available), false if we hit non-text/non-literal. */
+static bool md_consumetextcontent(parser *p, bool apply_inline_rules, void *out) {
+    if (md_checktexttoken(p)) {
+        parse_advance(p);
+        if (apply_inline_rules) {
+            parserule *rule = parse_getrule(p, p->previous.type);
+            if (rule && rule->prefix && !rule->prefix(p, out)) return false;
+        }
+        return true;
+    } else if (md_checkliteralintext(p)) {
+        parse_advance(p);
+        return true;
+    }
+    return false;
+}
+
 /** Parses text written in markdown; stops at a non-textual token. Line ends with NEWLINE or EOF. */
 bool md_parsetext(parser *p, void *out) {
     md_parseout *ctx = (md_parseout *) out;
@@ -254,18 +272,8 @@ bool md_parsetext(parser *p, void *out) {
     size_t block_start = (size_t)(p->current.start - base);
 
     for (;;) {
-        /* Consume text tokens, applying inline rules (bold, italic, code) via prefix handlers. */
-        while (md_checktexttoken(p)) {
-            parse_advance(p);
-            parserule *rule = parse_getrule(p, p->previous.type);
-            if (rule && rule->prefix && !rule->prefix(p, out)) return false;
-        }
+        while (md_consumetextcontent(p, true, out));
         if (md_parselineend(p)) break;
-        // Allow block-style tokens to appear literally in prose (e.g. "+" in "minimization + retriangulation").
-        if (md_checkliteralintext(p)) {
-            parse_advance(p);
-            continue;
-        }
         parse_error(p, true, MD_EXPECTLINEEND);
         return false;
     }
@@ -273,7 +281,7 @@ bool md_parsetext(parser *p, void *out) {
     return true;
 }
 
-/** Parses a markdown header (title then newline or EOF). Accepts one or more MD_TEXT tokens for the title. */
+/** Parses a markdown header (title then newline or EOF). Accepts MD_TEXT and literal tokens (e.g. - for hyphen) for the title. */
 bool md_parseheader(parser *p, void *out) {
     md_parseout *ctx = (md_parseout *) out;
     const char *base = ctx->file->source;
@@ -285,7 +293,7 @@ bool md_parseheader(parser *p, void *out) {
     }
     size_t title_start = (size_t)(p->previous.start - base);
     size_t title_len = p->previous.length;
-    while (parse_checktokenadvance(p, MD_TEXT)) {
+    while (md_consumetextcontent(p, false, out)) {
         title_len = (size_t)((p->previous.start - base) + p->previous.length - title_start);
     }
 
@@ -318,20 +326,8 @@ bool md_parselist(parser *p, void *out) {
     size_t block_start = (size_t)(p->previous.start - base);  /* *, +, or - already consumed */
 
     for (;;) {
-        // Reuse text parsing (inline rules) but record as list block
-        while (md_checktexttoken(p)) {
-            parse_advance(p);
-            parserule *rule = parse_getrule(p, p->previous.type);
-            if (rule && rule->prefix) {
-                if (!rule->prefix(p, out)) return false;
-            }
-        }
+        while (md_consumetextcontent(p, true, out));
         if (md_parselineend(p)) break;
-        // Allow block-style tokens literally in list item (e.g. "+" in "minimization + retriangulation").
-        if (md_checkliteralintext(p)) {
-            parse_advance(p);
-            continue;
-        }
         parse_error(p, true, MD_EXPECTLINEEND);
         return false;
     }

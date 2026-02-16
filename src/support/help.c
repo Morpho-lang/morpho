@@ -219,6 +219,7 @@ bool md_parsetext(parser *p, void *out) {
     const char *base = ctx->file->source;
     size_t block_start = (size_t)(p->current.start - base);
 
+    // Consume text tokens, applying inline rules (bold, italic, code) via prefix handlers
     while (md_checktexttoken(p)) {
         parse_advance(p);
         parserule *rule = parse_getrule(p, p->previous.type);
@@ -263,7 +264,7 @@ bool md_parselist(parser *p, void *out) {
     const char *base = ctx->file->source;
     size_t block_start = (size_t)(p->previous.start - base);  /* *, +, or - already consumed */
 
-    /* Reuse text parsing but record as list block */
+    // Reuse text parsing (inline rules) but record as list block
     while (md_checktexttoken(p)) {
         parse_advance(p);
         parserule *rule = parse_getrule(p, p->previous.type);
@@ -291,13 +292,12 @@ bool md_parselink(parser *p, void *out) {
     const char *base = ctx->file->source;
     size_t block_start = (size_t)(p->previous.start - base);  /* [ already consumed */
 
+    // [ label ] : then rest of line (target)
     PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
     size_t label_start = (size_t)(p->previous.start - base);
     size_t label_len = p->previous.length;
-
     PARSE_CHECK(parse_checktokenadvance(p, MD_RIGHTSQUAREBRACE));
     PARSE_CHECK(parse_checktokenadvance(p, MD_COLON));
-
     size_t target_start = (size_t)(p->current.start - base);
     PARSE_CHECK(md_parseurl(p, out));
     size_t target_end = md_end_previous(p, base);
@@ -307,9 +307,10 @@ bool md_parselink(parser *p, void *out) {
     return true;
 }
 
-/** Parse a markdown 'block'  */
+/** Parse a markdown 'block' */
 bool md_parseblock(parser *p, void *out) {
     md_parseout *ctx = (md_parseout *) out;
+    // Dispatch by first token: text, #/##/###, indent, list, [link], newline, EOF
     if (md_checktexttoken(p)) {
         return md_parsetext(p, out);
     } else if (parse_checktokenadvance(p, MD_HASH)) {
@@ -459,7 +460,7 @@ static void md_push_header(parser *p, md_parseout *out, size_t block_start, size
     md_block_set_header(&b, out->current_header_level, title_start, title_len);
     varray_md_blockwrite(&out->file->blocks, b);
 
-    /* Topic: lowercase name from trimmed title span */
+    // Topic: trimmed title span, lowercased, for index lookup
     size_t ns = title_start, nl = title_len;
     md_trimspan(base, &ns, &nl);
     char *name = (char *) MORPHO_MALLOC(nl + 1);
@@ -513,6 +514,7 @@ static varray_md_topic s_topics;
 
 /** Parse query into lowercased segments in qbuf; segs[] points into qbuf. Returns nsegs (0 if none). */
 static int help_parsequery(const char *query, char *qbuf, const char *segs[]) {
+    // Copy query, lowercase, replace '.' and ' ' with nul
     size_t qlen = 0;
     while (query[qlen] && qlen < MORPHO_MAX_HELPQUERY_LENGTH - 1) {
         char c = query[qlen];
@@ -520,6 +522,7 @@ static int help_parsequery(const char *query, char *qbuf, const char *segs[]) {
         qlen++;
     }
     qbuf[qlen] = '\0';
+    // Collect segment start pointers (skip nuls, take runs)
     int nsegs = 0;
     const char *p = qbuf;
     while (nsegs < MORPHO_HELP_QUERY_MAXSEGMENTS && p < qbuf + qlen) {
@@ -537,6 +540,7 @@ static int help_findparent(int idx) {
     const md_topic *t = &s_topics.data[idx];
     int level = t->level;
     if (level <= 1) return -1;
+    // Same file, strictly earlier block, lower level; keep one with largest block_index
     int parent = -1;
     unsigned int best_block = 0;
     for (unsigned int i = 0; i < s_topics.count; i++) {
@@ -558,10 +562,12 @@ static void help_topic_displaypath(int idx, char *buf, size_t bufsize) {
     if (!t->name) { buf[0] = '\0'; return; }
     int p = (t->level > 1) ? help_findparent(idx) : -1;
     if (p >= 0) {
+        // Recurse for parent path, then append ".name"
         help_topic_displaypath(p, buf, bufsize);
         size_t len = strlen(buf);
         if (len + 1 < bufsize) snprintf(buf + len, bufsize - len, ".%s", t->name);
     } else {
+        // Top-level or no parent: just the topic name
         size_t n = strlen(t->name);
         if (n >= bufsize) n = bufsize - 1;
         memcpy(buf, t->name, n);
@@ -609,10 +615,11 @@ static int help_findsubtopic(int parent_idx, const char *name) {
     const char *base = file->source;
     size_t base_len = file->sourcelen;
 
+    // Scan blocks after parent; stop when we hit same-or-higher level (left section)
     for (unsigned int i = parent->block_index + 1; i < file->blocks.count; i++) {
         const md_block *b = &file->blocks.data[i];
         if (b->type != MD_BLOCK_HEADER) continue;
-        if (b->as.header.level <= parent->level) return -1; /* left section */
+        if (b->as.header.level <= parent->level) return -1;  // left section
         size_t start = b->as.header.title.start;
         size_t len = b->as.header.title.length;
         if (start + len > base_len) len = base_len - start;
@@ -628,6 +635,7 @@ static unsigned int help_editdistance(const char *a, const char *b) {
     if (na == 0) return (unsigned int) nb;
     if (nb == 0) return (unsigned int) na;
     if (na > MORPHO_HELP_EDITMAXLEN || nb > MORPHO_HELP_EDITMAXLEN) return MORPHO_HELP_EDIT_NOMATCH;
+    // Two-row DP: prev row and current row, swap each iteration
     unsigned int row0[MORPHO_HELP_EDITMAXLEN + 1], row1[MORPHO_HELP_EDITMAXLEN + 1];
     unsigned int *prev = row0, *curr = row1;
     for (size_t j = 0; j <= nb; j++) prev[j] = (unsigned int) j;
@@ -682,6 +690,7 @@ static unsigned int help_topiccontentnblocks(const md_topic *topic, const md_fil
     unsigned int i = topic->block_index;
     unsigned int n = file->blocks.count;
     int level = topic->level;
+    // Advance until we hit a header at same or higher level (or end of file)
     while (i < n) {
         const md_block *b = &file->blocks.data[i];
         if (b->type == MD_BLOCK_HEADER && b->as.header.level <= level && i > topic->block_index)
@@ -717,13 +726,13 @@ bool help_topictotext(const help_topic *t, varray_char *result) {
         size_t len = b->span.length;
         if (b->span.start + len > src_len) len = src_len - b->span.start;
 
+        // Per-block: header (title only, no #), paragraph/list/code (span), link/blank skip
         switch (b->type) {
             case MD_BLOCK_HEADER: {
-                /* Skip leading # and space for plain text */
                 const char *p = src + b->as.header.title.start;
                 size_t tlen = b->as.header.title.length;
                 if (b->as.header.title.start + tlen > src_len) tlen = src_len - b->as.header.title.start;
-                while (tlen && (*p == '#' || (unsigned char)*p <= ' ')) { p++; tlen--; }
+                while (tlen && (*p == '#' || (unsigned char)*p <= ' ')) { p++; tlen--; }  // strip leading # and space
                 if (tlen > 0) varray_charadd(result, p, (int) tlen);
                 varray_charadd(result, "\n\n", 2);
                 break;
@@ -736,7 +745,7 @@ bool help_topictotext(const help_topic *t, varray_char *result) {
                 break;
             case MD_BLOCK_LINK_DEF:
             case MD_BLOCK_BLANK:
-                break;
+                break;  // omit from plain text
         }
     }
     return true;
@@ -761,17 +770,14 @@ bool help_topicrawmd(const help_topic *t, varray_char *result) {
 bool help_parse(md_file *file, varray_md_topic *topics, int file_index) {
     error err;
     error_init(&err);
-
     md_parseout parseout = {
         .file = file,
         .topics = topics,
         .file_index = file_index,
         .current_header_level = 1
     };
-
     lexer l;
     help_initializemdlexer(&l, file->source);
-
     parser p;
     help_initializemdparser(&p, &l, &err, &parseout);
     bool ok = parse(&p);
@@ -796,6 +802,7 @@ bool help_load(char *filename) {
         return false;
     }
     fclose(f);
+    // Steal buffer into md_file; parse appends topics to s_topics
     md_file mdfile;
     md_file_init(&mdfile);
     mdfile.source = contents.data;
@@ -810,7 +817,6 @@ bool help_load(char *filename) {
 void help_findfiles(void) {
     varray_value files;
     varray_valueinit(&files);
-
     if (morpho_listresources(MORPHO_RESOURCE_HELP, &files)) {
         for (unsigned int i = 0; i < files.count; i++) {
             if (MORPHO_ISSTRING(files.data[i])) help_load(MORPHO_GETCSTRING(files.data[i]));
@@ -818,7 +824,6 @@ void help_findfiles(void) {
         for (unsigned int i = 0; i < files.count; i++) morpho_freeobject(files.data[i]);
     }
     varray_valueclear(&files);
-
     help_sorttopics(&s_topics);
 }
 
@@ -833,19 +838,20 @@ bool morpho_helpastopic(const char *query, help_topic *out) {
     int nsegs = help_parsequery(query, qbuf, segs);
     if (nsegs <= 0) return false;
 
+    // Single segment: resolve by name; fail if 0 or multiple matches (caller shows hint)
     int idx;
     if (nsegs == 1) {
         int multi[MORPHO_HELP_MAX_MULTIMATCH];
         int n = help_findallbyname(segs[0], multi, MORPHO_HELP_MAX_MULTIMATCH);
         if (n == 0) return false;
-        if (n >= 2) return false; /* multiple matches: caller will show hint */
+        if (n >= 2) return false;  // multiple matches: caller will show hint
         idx = multi[0];
     } else {
         idx = help_findtopic(&s_topics, segs[0]);
         if (idx < 0) return false;
     }
 
-    /* Resolve remaining segments as subtopics. */
+    // Resolve remaining segments as subtopics
     for (int i = 1; i < nsegs; i++) {
         idx = help_findsubtopic(idx, segs[i]);
         if (idx < 0) return false;
@@ -855,7 +861,6 @@ bool morpho_helpastopic(const char *query, help_topic *out) {
     if (topic->file_index < 0 || (unsigned int) topic->file_index >= s_files.count) return false;
     const md_file *file = &s_files.data[topic->file_index];
     if (topic->block_index >= file->blocks.count) return false;
-
     help_topicfill(out, topic, file);
     return true;
 }
@@ -874,6 +879,7 @@ static void help_hintappend_multi(varray_char *result, const char *query, int in
     char buf[MORPHO_HELP_HINTBUFSIZE];
     char path[MORPHO_MAX_HELPQUERY_LENGTH];
     int n = snprintf(buf, sizeof(buf), "Topic '%s' had multiple matches: did you mean ", query);
+    // First: "'A'"; middle: ", 'B'"; last: " or 'C'?"
     for (int i = 0; i < count && n < (int) sizeof(buf) - 4; i++) {
         help_topic_displaypath(indices[i], path, sizeof(path));
         if (i == 0)
@@ -896,6 +902,7 @@ static void help_queryhint(const char *query, varray_char *result) {
         varray_charadd(result, MORPHO_HELP_NOTFOUND, (int) (sizeof(MORPHO_HELP_NOTFOUND) - 1));
         return;
     }
+    // Single segment: multi-match hint, or "not found" + closest, or NOTFOUND
     if (nsegs == 1) {
         int multi[MORPHO_HELP_MAX_MULTIMATCH];
         int n = help_findallbyname(segs[0], multi, MORPHO_HELP_MAX_MULTIMATCH);
@@ -910,6 +917,7 @@ static void help_queryhint(const char *query, varray_char *result) {
         varray_charadd(result, MORPHO_HELP_NOTFOUND, (int) (sizeof(MORPHO_HELP_NOTFOUND) - 1));
         return;
     }
+    // Multi-segment: resolve first, then walk subtopics; on first failure suggest path.closest
     int idx = help_findtopic(&s_topics, segs[0]);
     if (idx < 0) {
         help_hintappend(result, query, help_findclosesttopic(segs[0]));
@@ -934,6 +942,7 @@ static void help_queryhint(const char *query, varray_char *result) {
             return;
         }
         idx = next;
+        // Append "." + segs[i] to path for next level
         if (path_len > 0 && path_len < (int) sizeof(path) - 1) {
             path[path_len++] = '.';
             int seglen = (int) strlen(segs[i]);

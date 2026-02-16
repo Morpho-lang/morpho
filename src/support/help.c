@@ -15,6 +15,7 @@
 #include "help.h"
 #include "resources.h"
 
+#include "error.h"
 #include "lex.h"
 #include "parse.h"
 #include "file.h"
@@ -66,6 +67,22 @@ enum {
     MD_NEWLINE,
     MD_EOF
 };
+
+/* Markdown parser error codes (registered in help_initialize) */
+#define MD_UNCLOSEDITALIC       "MDUnclItal"
+#define MD_UNCLOSEDITALIC_MSG   "Unclosed italic (missing closing * or _)."
+#define MD_EXPECTLINEEND        "MDExpLnEnd"
+#define MD_EXPECTLINEEND_MSG    "Expected end of line."
+#define MD_EXPECTHEADERTEXT     "MDExpHdrTxt"
+#define MD_EXPECTHEADERTEXT_MSG "Expected header text after #."
+#define MD_LINKEXPECTTEXT       "MDLnkExpTxt"
+#define MD_LINKEXPECTTEXT_MSG   "Link definition expects label text after [."
+#define MD_LINKEXPECTBRACKET    "MDLnkExpBr"
+#define MD_LINKEXPECTBRACKET_MSG "Link definition expects ] after label."
+#define MD_LINKEXPECTCOLON      "MDLnkExpCol"
+#define MD_LINKEXPECTCOLON_MSG  "Link definition expects : after ]."
+#define MD_UNEXPECTEDTOKEN      "MDUnexpTok"
+#define MD_UNEXPECTEDTOKEN_MSG  "Unexpected markdown token."
 
 bool md_lexnewline(lexer *l, token *tok, error *err) {
     lex_newline(l);
@@ -143,7 +160,11 @@ bool md_parsebold(parser *p, void *out) {
 bool md_parseitalic(parser *p, void *out) {
     tokentype delim = p->previous.type; /* MD_ASTERISK or MD_UNDERSCORE */
     while (parse_checktokenadvance(p, MD_TEXT));
-    return parse_checktokenadvance(p, delim);
+    if (!parse_checktokenadvance(p, delim)) {
+        parse_error(p, false, MD_UNCLOSEDITALIC);
+        return false;
+    }
+    return true;
 }
 
 parserule md_rules[] = {
@@ -225,7 +246,10 @@ bool md_parsetext(parser *p, void *out) {
             if (!leading_asterisk_or_underscore && !rule->prefix(p, out)) return false;
         }
     }
-    PARSE_CHECK(md_parselineend(p));
+    if (!md_parselineend(p)) {
+        parse_error(p, true, MD_EXPECTLINEEND);
+        return false;
+    }
     md_push_paragraph(p, ctx, block_start);
     return true;
 }
@@ -236,14 +260,20 @@ bool md_parseheader(parser *p, void *out) {
     const char *base = ctx->file->source;
     size_t block_start = (size_t)(p->previous.start - base);  /* # token already consumed */
 
-    PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
+    if (!parse_checktokenadvance(p, MD_TEXT)) {
+        parse_error(p, false, MD_EXPECTHEADERTEXT);
+        return false;
+    }
     size_t title_start = (size_t)(p->previous.start - base);
     size_t title_len = p->previous.length;
     while (parse_checktokenadvance(p, MD_TEXT)) {
         title_len = (size_t)((p->previous.start - base) + p->previous.length - title_start);
     }
 
-    PARSE_CHECK(md_parselineend(p));
+    if (!md_parselineend(p)) {
+        parse_error(p, true, MD_EXPECTLINEEND);
+        return false;
+    }
     md_push_header(p, ctx, block_start, title_start, title_len);
     return true;
 }
@@ -254,7 +284,10 @@ bool md_parsecode(parser *p, void *out) {
     size_t block_start = (size_t)(p->previous.start - ctx->file->source);  /* 4 spaces / tab already consumed */
 
     while (!parse_checktoken(p, MD_NEWLINE) && !parse_checktoken(p, MD_EOF)) parse_advance(p);
-    PARSE_CHECK(md_parselineend(p));
+    if (!md_parselineend(p)) {
+        parse_error(p, true, MD_EXPECTLINEEND);
+        return false;
+    }
     md_push_code(p, ctx, block_start);
     return true;
 }
@@ -273,7 +306,10 @@ bool md_parselist(parser *p, void *out) {
             if (!rule->prefix(p, out)) return false;
         }
     }
-    PARSE_CHECK(md_parselineend(p));
+    if (!md_parselineend(p)) {
+        parse_error(p, true, MD_EXPECTLINEEND);
+        return false;
+    }
     md_push_list(p, ctx, block_start);
     return true;
 }
@@ -295,7 +331,10 @@ bool md_parselink(parser *p, void *out) {
     const char *base = ctx->file->source;
     size_t block_start = (size_t)(p->previous.start - base);  /* [ already consumed */
 
-    PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
+    if (!parse_checktokenadvance(p, MD_TEXT)) {
+        parse_error(p, false, MD_LINKEXPECTTEXT);
+        return false;
+    }
     size_t label_start = (size_t)(p->previous.start - base);
     size_t label_len = p->previous.length;
     size_t target_start;
@@ -319,10 +358,19 @@ bool md_parselink(parser *p, void *out) {
             target_len--;
         /* Rest of line (and newline) was in the TEXT token; next token is next line */
     } else {
-        PARSE_CHECK(parse_checktokenadvance(p, MD_RIGHTSQUAREBRACE));
-        PARSE_CHECK(parse_checktokenadvance(p, MD_COLON));
+        if (!parse_checktokenadvance(p, MD_RIGHTSQUAREBRACE)) {
+            parse_error(p, false, MD_LINKEXPECTBRACKET);
+            return false;
+        }
+        if (!parse_checktokenadvance(p, MD_COLON)) {
+            parse_error(p, false, MD_LINKEXPECTCOLON);
+            return false;
+        }
         target_start = (size_t)(p->current.start - base);
-        PARSE_CHECK(md_parseurl(p, out));
+        if (!md_parseurl(p, out)) {
+            parse_error(p, true, MD_EXPECTLINEEND);
+            return false;
+        }
         size_t target_end = md_end_previous(p, base);
         target_len = (target_end > target_start) ? (target_end - target_start) : 0;
     }
@@ -359,9 +407,9 @@ bool md_parseblock(parser *p, void *out) {
     } else if (parse_checktoken(p, MD_EOF)) {
         return true; /* let outer loop exit */
     } else {
-        UNREACHABLE("Unrecognized token.");
+        parse_error(p, false, MD_UNEXPECTEDTOKEN);
+        return false;
     }
-    return false;
 }
 
 /** Base markdown parse type */
@@ -805,6 +853,17 @@ bool help_parse(md_file *file, varray_md_topic *topics, int file_index) {
     bool ok = parse(&p);
     parse_clear(&p);
     lex_clear(&l);
+    if (!ok && morpho_checkerror(&err)) {
+        fprintf(stderr, "Help parse error [%s]: %s", err.id ? err.id : "?", err.msg);
+        if (err.line != ERROR_POSNUNIDENTIFIABLE || err.posn != ERROR_POSNUNIDENTIFIABLE) {
+            fprintf(stderr, " (");
+            if (err.line != ERROR_POSNUNIDENTIFIABLE) fprintf(stderr, "line %d", err.line);
+            if (err.posn != ERROR_POSNUNIDENTIFIABLE)
+                fprintf(stderr, "%sposition %d", err.line != ERROR_POSNUNIDENTIFIABLE ? ", " : "", err.posn);
+            fprintf(stderr, ")");
+        }
+        fprintf(stderr, "\n");
+    }
     return ok;
 }
 
@@ -1023,6 +1082,15 @@ bool morpho_helpasmd(char *query, varray_char *result) {
 
 /** @brief Initialize help system */
 void help_initialize(void) {
+    /* Markdown parser errors */
+    morpho_defineerror(MD_UNCLOSEDITALIC, ERROR_PARSE, MD_UNCLOSEDITALIC_MSG);
+    morpho_defineerror(MD_EXPECTLINEEND, ERROR_PARSE, MD_EXPECTLINEEND_MSG);
+    morpho_defineerror(MD_EXPECTHEADERTEXT, ERROR_PARSE, MD_EXPECTHEADERTEXT_MSG);
+    morpho_defineerror(MD_LINKEXPECTTEXT, ERROR_PARSE, MD_LINKEXPECTTEXT_MSG);
+    morpho_defineerror(MD_LINKEXPECTBRACKET, ERROR_PARSE, MD_LINKEXPECTBRACKET_MSG);
+    morpho_defineerror(MD_LINKEXPECTCOLON, ERROR_PARSE, MD_LINKEXPECTCOLON_MSG);
+    morpho_defineerror(MD_UNEXPECTEDTOKEN, ERROR_PARSE, MD_UNEXPECTEDTOKEN_MSG);
+
     varray_md_fileinit(&s_files);
     varray_md_topicinit(&s_topics);
     help_findfiles();

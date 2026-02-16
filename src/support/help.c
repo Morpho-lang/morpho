@@ -7,6 +7,8 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 #include <varray.h>
 
 #include "classes.h"
@@ -16,6 +18,7 @@
 #include "lex.h"
 #include "parse.h"
 #include "file.h"
+#include "memory.h"
 
 /** The interactive help system uses a collection of Markdown files, located in
  *  MORPHO_HELPFOLDER, that define available topics. Help files are all
@@ -159,6 +162,37 @@ parserule md_rules[] = {
 };
 
 /* -------------------------------------------------------
+ * Parse output: build AST (blocks + topic list)
+ * ------------------------------------------------------- */
+
+/** Output context for the parser: current file, topic list, and base for span offsets. */
+typedef struct {
+    md_file *file;
+    varray_md_topic *topics;
+    int file_index;
+    int current_header_level;  /* 1–3, set before md_parseheader */
+} md_parseout;
+
+static void md_push_header(parser *p, md_parseout *out, size_t block_start, size_t title_start, size_t title_len);
+static void md_push_paragraph(parser *p, md_parseout *out, size_t block_start);
+static void md_push_code(parser *p, md_parseout *out, size_t block_start);
+static void md_push_list(parser *p, md_parseout *out, size_t block_start);
+static void md_push_link(parser *p, md_parseout *out, size_t block_start, size_t label_start, size_t label_len, size_t target_start, size_t target_len);
+
+/** Span from the token we just consumed (p->previous). */
+static md_span md_span_previous(parser *p, const char *base) {
+    md_span s;
+    s.start = (size_t)(p->previous.start - base);
+    s.length = p->previous.length;
+    return s;
+}
+
+/** End position of the token we just consumed. */
+static size_t md_end_previous(parser *p, const char *base) {
+    return (size_t)(p->previous.start - base) + p->previous.length;
+}
+
+/* -------------------------------------------------------
  * Markdown parse rules
  * ------------------------------------------------------- */
 
@@ -175,6 +209,10 @@ bool md_checktexttoken(parser *p) {
 
 /** Parses text written in markdown; stops at a non-textual token. Line ends with NEWLINE or EOF. */
 bool md_parsetext(parser *p, void *out) {
+    md_parseout *ctx = (md_parseout *) out;
+    const char *base = ctx->file->source;
+    size_t block_start = (size_t)(p->current.start - base);
+
     while (md_checktexttoken(p)) {
         parse_advance(p);
         parserule *rule = parse_getrule(p, p->previous.type);
@@ -183,33 +221,64 @@ bool md_parsetext(parser *p, void *out) {
         }
     }
     /* Line terminator: newline or end of file */
-    if (parse_checktoken(p, MD_NEWLINE)) return parse_advance(p);
-    if (parse_checktoken(p, MD_EOF)) return true;
-    return false;
+    if (parse_checktoken(p, MD_NEWLINE)) { if (!parse_advance(p)) return false; }
+    else if (!parse_checktoken(p, MD_EOF)) return false;
+
+    md_push_paragraph(p, ctx, block_start);
+    return true;
 }
 
 /** Parses a markdown header (title then newline or EOF). */
 bool md_parseheader(parser *p, void *out) {
+    md_parseout *ctx = (md_parseout *) out;
+    const char *base = ctx->file->source;
+    size_t block_start = (size_t)(p->previous.start - base);  /* # token already consumed */
+
     PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
-    if (parse_checktoken(p, MD_NEWLINE)) return parse_advance(p);
-    if (parse_checktoken(p, MD_EOF)) return true;
-    return false;
+    size_t title_start = (size_t)(p->previous.start - base);
+    size_t title_len = p->previous.length;
+
+    if (parse_checktoken(p, MD_NEWLINE)) { PARSE_CHECK(parse_advance(p)); }
+    else if (!parse_checktoken(p, MD_EOF)) return false;
+
+    md_push_header(p, ctx, block_start, title_start, title_len);
+    return true;
 }
 
 /** Parses markdown code block (indented lines until newline or EOF). */
 bool md_parsecode(parser *p, void *out) {
-    while (!parse_checktoken(p, MD_NEWLINE) &&
-           !parse_checktoken(p, MD_EOF)) {
+    md_parseout *ctx = (md_parseout *) out;
+    size_t block_start = (size_t)(p->previous.start - ctx->file->source);  /* 4 spaces / tab already consumed */
+
+    while (!parse_checktoken(p, MD_NEWLINE) && !parse_checktoken(p, MD_EOF)) {
         parse_advance(p);
     }
-    if (parse_checktoken(p, MD_NEWLINE)) return parse_advance(p);
-    if (parse_checktoken(p, MD_EOF)) return true;
-    return false;
+    if (parse_checktoken(p, MD_NEWLINE)) { if (!parse_advance(p)) return false; }
+    else if (!parse_checktoken(p, MD_EOF)) return false;
+
+    md_push_code(p, ctx, block_start);
+    return true;
 }
 
-/** Parses a markdown list. */
+/** Parses a markdown list (list item line; records as list block). */
 bool md_parselist(parser *p, void *out) {
-    return md_parsetext(p, out);
+    md_parseout *ctx = (md_parseout *) out;
+    const char *base = ctx->file->source;
+    size_t block_start = (size_t)(p->previous.start - base);  /* *, +, or - already consumed */
+
+    /* Reuse text parsing but record as list block */
+    while (md_checktexttoken(p)) {
+        parse_advance(p);
+        parserule *rule = parse_getrule(p, p->previous.type);
+        if (rule && rule->prefix) {
+            if (!rule->prefix(p, out)) return false;
+        }
+    }
+    if (parse_checktoken(p, MD_NEWLINE)) { if (!parse_advance(p)) return false; }
+    else if (!parse_checktoken(p, MD_EOF)) return false;
+
+    md_push_list(p, ctx, block_start);
+    return true;
 }
 
 /** Parses the rest of a link definition after ]:  (e.g. " # (target)" or " # (subtopics)"). Consumes until newline or EOF. */
@@ -223,20 +292,39 @@ bool md_parseurl(parser *p, void *out) {
 
 /** Parses a markdown link definition [label]: # (optional) ... */
 bool md_parselink(parser *p, void *out) {
+    md_parseout *ctx = (md_parseout *) out;
+    const char *base = ctx->file->source;
+    size_t block_start = (size_t)(p->previous.start - base);  /* [ already consumed */
+
     PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
+    size_t label_start = (size_t)(p->previous.start - base);
+    size_t label_len = p->previous.length;
+
     PARSE_CHECK(parse_checktokenadvance(p, MD_RIGHTSQUAREBRACE));
     PARSE_CHECK(parse_checktokenadvance(p, MD_COLON));
+
+    size_t target_start = (size_t)(p->current.start - base);
     PARSE_CHECK(md_parseurl(p, out));
+    size_t target_end = md_end_previous(p, base);
+    size_t target_len = (target_end > target_start) ? (target_end - target_start) : 0;
+
+    md_push_link(p, ctx, block_start, label_start, label_len, target_start, target_len);
     return true;
 }
 
 /** Parse a markdown 'block'  */
 bool md_parseblock(parser *p, void *out) {
+    md_parseout *ctx = (md_parseout *) out;
     if (md_checktexttoken(p)) {
         return md_parsetext(p, out);
-    } else if (parse_checktokenadvance(p, MD_HASH) ||
-               parse_checktokenadvance(p, MD_HASH2) ||
-               parse_checktokenadvance(p, MD_HASH3)) {
+    } else if (parse_checktokenadvance(p, MD_HASH)) {
+        ctx->current_header_level = 1;
+        return md_parseheader(p, out);
+    } else if (parse_checktokenadvance(p, MD_HASH2)) {
+        ctx->current_header_level = 2;
+        return md_parseheader(p, out);
+    } else if (parse_checktokenadvance(p, MD_HASH3)) {
+        ctx->current_header_level = 3;
         return md_parseheader(p, out);
     } else if (parse_checktokenadvance(p, MD_FOURSPACES) ||
                parse_checktokenadvance(p, MD_TAB)) {
@@ -279,24 +367,168 @@ void help_initializemdparser(parser *p, lexer *l, error *err, void *out) {
 }
 
 /* **********************************************************************
+ * Markdown AST: definitions and topic list helpers
+ * ********************************************************************** */
+
+DEFINE_VARRAY(md_block, md_block);
+DEFINE_VARRAY(md_file, md_file);
+DEFINE_VARRAY(md_topic, md_topic);
+
+void md_block_clear(md_block *b) {
+    varray_intclear(&b->children);
+}
+
+void md_file_init(md_file *f) {
+    f->source = NULL;
+    f->sourcelen = 0;
+    varray_md_blockinit(&f->blocks);
+}
+
+void md_file_clear(md_file *f) {
+    if (f->source) MORPHO_FREE(f->source);
+    f->source = NULL;
+    f->sourcelen = 0;
+    for (unsigned int i = 0; i < f->blocks.count; i++) md_block_clear(&f->blocks.data[i]);
+    varray_md_blockclear(&f->blocks);
+}
+
+int md_topic_compare(const void *a, const void *b) {
+    const md_topic *ta = (const md_topic *) a;
+    const md_topic *tb = (const md_topic *) b;
+    return strcmp(ta->name, tb->name);
+}
+
+void help_sorttopics(varray_md_topic *topics) {
+    if (topics->data && topics->count > 0)
+        qsort(topics->data, topics->count, sizeof(md_topic), md_topic_compare);
+}
+
+int help_findtopic(varray_md_topic *topics, const char *name) {
+    if (!topics->data || topics->count == 0) return -1;
+    md_topic key = { .name = (char *) name, .file_index = 0, .block_index = 0, .level = 0, .parent_topic = -1 };
+    md_topic *found = (md_topic *) bsearch(&key, topics->data, topics->count, sizeof(md_topic), md_topic_compare);
+    return found ? (int) (found - topics->data) : -1;
+}
+
+/** End offset of the block from the last consumed token. */
+static size_t md_block_end(parser *p, const char *base) {
+    return md_end_previous(p, base);
+}
+
+/** Set a span to (start, length). */
+static void md_span_set(md_span *s, size_t start, size_t length) {
+    s->start = start;
+    s->length = length;
+}
+
+/** Initialize common block fields (type, span, parent, children). */
+static void md_block_init(md_block *b, md_blocktype type, size_t block_start, size_t block_end) {
+    b->type = type;
+    md_span_set(&b->span, block_start, block_end - block_start);
+    b->parent = -1;
+    varray_intinit(&b->children);
+}
+
+/** Set header block fields (level and title span). */
+static void md_block_set_header(md_block *b, int level, size_t title_start, size_t title_len) {
+    b->as.header.level = level;
+    md_span_set(&b->as.header.title, title_start, title_len);
+}
+
+/** Set link-def block fields (label and target spans). */
+static void md_block_set_link_def(md_block *b, size_t label_start, size_t label_len, size_t target_start, size_t target_len) {
+    md_span_set(&b->as.link_def.label, label_start, label_len);
+    md_span_set(&b->as.link_def.target, target_start, target_len);
+}
+
+static void md_push_header(parser *p, md_parseout *out, size_t block_start, size_t title_start, size_t title_len) {
+    const char *base = out->file->source;
+    size_t block_end = md_block_end(p, base);
+
+    md_block b;
+    md_block_init(&b, MD_BLOCK_HEADER, block_start, block_end);
+    md_block_set_header(&b, out->current_header_level, title_start, title_len);
+    varray_md_blockwrite(&out->file->blocks, b);
+
+    /* Topic: lowercase name from title span */
+    char *name = (char *) MORPHO_MALLOC(title_len + 1);
+    if (name) {
+        for (size_t i = 0; i < title_len; i++)
+            name[i] = (char) tolower((unsigned char) base[title_start + i]);
+        name[title_len] = '\0';
+        md_topic topic = {
+            .name = name,
+            .file_index = out->file_index,
+            .block_index = out->file->blocks.count - 1,
+            .level = out->current_header_level,
+            .parent_topic = -1
+        };
+        varray_md_topicwrite(out->topics, topic);
+    }
+}
+
+static void md_push_paragraph(parser *p, md_parseout *out, size_t block_start) {
+    const char *base = out->file->source;
+    size_t block_end = md_block_end(p, base);
+    md_block b;
+    md_block_init(&b, MD_BLOCK_PARAGRAPH, block_start, block_end);
+    varray_md_blockwrite(&out->file->blocks, b);
+}
+
+static void md_push_code(parser *p, md_parseout *out, size_t block_start) {
+    const char *base = out->file->source;
+    size_t block_end = md_block_end(p, base);
+    md_block b;
+    md_block_init(&b, MD_BLOCK_CODE, block_start, block_end);
+    varray_md_blockwrite(&out->file->blocks, b);
+}
+
+static void md_push_list(parser *p, md_parseout *out, size_t block_start) {
+    const char *base = out->file->source;
+    size_t block_end = md_block_end(p, base);
+    md_block b;
+    md_block_init(&b, MD_BLOCK_LIST, block_start, block_end);
+    varray_md_blockwrite(&out->file->blocks, b);
+}
+
+static void md_push_link(parser *p, md_parseout *out, size_t block_start, size_t label_start, size_t label_len, size_t target_start, size_t target_len) {
+    const char *base = out->file->source;
+    size_t block_end = md_block_end(p, base);
+    md_block b;
+    md_block_init(&b, MD_BLOCK_LINK_DEF, block_start, block_end);
+    md_block_set_link_def(&b, label_start, label_len, target_start, target_len);
+    varray_md_blockwrite(&out->file->blocks, b);
+}
+
+/* **********************************************************************
  * Parse help files
  * ********************************************************************** */
 
-bool help_parse(char *src) {
+static varray_md_file s_files;
+static varray_md_topic s_topics;
+
+bool help_parse(md_file *file, varray_md_topic *topics, int file_index) {
     error err;
     error_init(&err);
-    
+
+    md_parseout parseout = {
+        .file = file,
+        .topics = topics,
+        .file_index = file_index,
+        .current_header_level = 1
+    };
+
     lexer l;
-    help_initializemdlexer(&l, src);
-    
+    help_initializemdlexer(&l, file->source);
+
     parser p;
-    help_initializemdparser(&p, &l, &err, NULL);
-    
+    help_initializemdparser(&p, &l, &err, &parseout);
+
     bool success = parse(&p);
-    
+
     parse_clear(&p);
     lex_clear(&l);
-    
+
     return success;
 }
 
@@ -304,42 +536,48 @@ bool help_parse(char *src) {
  * Morpho help files
  * ********************************************************************** */
 
-/** Loads a help file
- *  @param file     file to load
- *  @returns true if any help entries were successfully loaded */
+/** Loads a help file into the AST (appends to s_files and s_topics). */
 bool help_load(char *filename) {
-    bool success=false;
-    
+    bool success = false;
     FILE *f = fopen(filename, "r");
-    if (f) {
-        varray_char contents;
-        varray_charinit(&contents);
-        
-        if (file_readintovarray(f, &contents)) {
-            success=help_parse(contents.data);
-        }
-        
-        varray_charclear(&contents);
-        
+    if (!f) return false;
+
+    varray_char contents;
+    varray_charinit(&contents);
+    if (!file_readintovarray(f, &contents)) {
         fclose(f);
+        varray_charclear(&contents);
+        return false;
     }
-    
+    fclose(f);
+
+    md_file mdfile;
+    md_file_init(&mdfile);
+    mdfile.source = contents.data;
+    mdfile.sourcelen = (contents.count > 0) ? contents.count - 1 : 0;
+
+    int file_index = (int) s_files.count;
+    success = help_parse(&mdfile, &s_topics, file_index);
+    if (success) varray_md_filewrite(&s_files, mdfile);
+    else md_file_clear(&mdfile);
+
     return success;
 }
 
-/** Searches for help files
- *  @returns true if any help files were successfully processed. */
+/** Finds and loads all help files; populates s_files and s_topics, then sorts topics. */
 void help_findfiles(void) {
     varray_value files;
     varray_valueinit(&files);
-    
+
     if (morpho_listresources(MORPHO_RESOURCE_HELP, &files)) {
-        for (int i=0; i<files.count; i++) {
+        for (unsigned int i = 0; i < files.count; i++) {
             if (MORPHO_ISSTRING(files.data[i])) help_load(MORPHO_GETCSTRING(files.data[i]));
         }
+        for (unsigned int i = 0; i < files.count; i++) morpho_freeobject(files.data[i]);
     }
-    
     varray_valueclear(&files);
+
+    help_sorttopics(&s_topics);
 }
 
 /* **********************************************************************
@@ -355,13 +593,21 @@ bool morpho_help(char *query, varray_char *result) {
  * Initialization/finalization
  * ********************************************************************** */
 
-/** @brief Initialization/finalization */
+/** @brief Initialize help system */
 void help_initialize(void) {
+    varray_md_fileinit(&s_files);
+    varray_md_topicinit(&s_topics);
     help_findfiles();
-    
     morpho_addfinalizefn(help_finalize);
 }
 
-/** @brief Initialization/finalization */
+/** @brief Finalization: free all files and topics. */
 void help_finalize(void) {
+    for (unsigned int i = 0; i < s_files.count; i++)
+        md_file_clear(&s_files.data[i]);
+    varray_md_fileclear(&s_files);
+    for (unsigned int i = 0; i < s_topics.count; i++) {
+        if (s_topics.data[i].name) MORPHO_FREE(s_topics.data[i].name);
+    }
+    varray_md_topicclear(&s_topics);
 }

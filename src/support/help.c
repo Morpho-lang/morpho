@@ -128,7 +128,7 @@ void help_initializemdlexer(lexer *l, const char *src) {
 
 bool md_parseinlinecode(parser *p, void *out) {
     while (parse_checktokenadvance(p, MD_TEXT));
-    parse_checktokenadvance(p, MD_BACKTICK);
+    parse_checktokenadvance(p, MD_BACKTICK);  /* optional closing; unclosed is ok */
     return true;
 }
 
@@ -136,11 +136,10 @@ bool md_parsebold(parser *p, void *out) {
     while (parse_checktokenadvance(p, MD_TEXT));
     if (parse_checktoken(p, MD_ASTERISK2) ||
         parse_checktoken(p, MD_UNDERSCORE2)) parse_advance(p);
-    
     return true;
 }
 
-/** Parses italic: called after consuming opening * or _; consumes TEXT then closing delimiter (same as bold). */
+/** Parses italic: called after consuming opening * or _; consumes TEXT then closing delimiter. */
 bool md_parseitalic(parser *p, void *out) {
     tokentype delim = p->previous.type; /* MD_ASTERISK or MD_UNDERSCORE */
     while (parse_checktokenadvance(p, MD_TEXT));
@@ -214,12 +213,16 @@ bool md_parsetext(parser *p, void *out) {
     const char *base = ctx->file->source;
     size_t block_start = (size_t)(p->current.start - base);
 
-    // Consume text tokens, applying inline rules (bold, italic, code) via prefix handlers
+    // Consume text tokens, applying inline rules (bold, italic, code) via prefix handlers.
+    // A leading * or _ is treated as text (list-marker style); we could parse as list item later.
     while (md_checktexttoken(p)) {
         parse_advance(p);
+        size_t tok_start = (size_t)(p->previous.start - base);
         parserule *rule = parse_getrule(p, p->previous.type);
         if (rule && rule->prefix) {
-            if (!rule->prefix(p, out)) return false;
+            bool leading_asterisk_or_underscore = (tok_start == block_start &&
+                (p->previous.type == MD_ASTERISK || p->previous.type == MD_UNDERSCORE));
+            if (!leading_asterisk_or_underscore && !rule->prefix(p, out)) return false;
         }
     }
     PARSE_CHECK(md_parselineend(p));
@@ -227,7 +230,7 @@ bool md_parsetext(parser *p, void *out) {
     return true;
 }
 
-/** Parses a markdown header (title then newline or EOF). */
+/** Parses a markdown header (title then newline or EOF). Accepts one or more MD_TEXT tokens for the title. */
 bool md_parseheader(parser *p, void *out) {
     md_parseout *ctx = (md_parseout *) out;
     const char *base = ctx->file->source;
@@ -236,6 +239,9 @@ bool md_parseheader(parser *p, void *out) {
     PARSE_CHECK(parse_checktokenadvance(p, MD_TEXT));
     size_t title_start = (size_t)(p->previous.start - base);
     size_t title_len = p->previous.length;
+    while (parse_checktokenadvance(p, MD_TEXT)) {
+        title_len = (size_t)((p->previous.start - base) + p->previous.length - title_start);
+    }
 
     PARSE_CHECK(md_parselineend(p));
     md_push_header(p, ctx, block_start, title_start, title_len);
@@ -309,7 +315,8 @@ bool md_parselink(parser *p, void *out) {
         label_len = (size_t)(found - txt);
         target_start = label_start + label_len + sep_len;
         target_len = (txt_len > label_len + sep_len) ? (txt_len - label_len - sep_len) : 0;
-        if (target_len > 0 && base[target_start + target_len - 1] == '\n') target_len--;
+        while (target_len > 0 && (base[target_start + target_len - 1] == '\n' || base[target_start + target_len - 1] == '\r'))
+            target_len--;
         /* Rest of line (and newline) was in the TEXT token; next token is next line */
     } else {
         PARSE_CHECK(parse_checktokenadvance(p, MD_RIGHTSQUAREBRACE));
@@ -817,17 +824,27 @@ bool help_load(char *filename) {
         return false;
     }
     fclose(f);
+    // Own a copy of the source so each file in s_files has independent storage.
+    size_t len = (contents.count > 0) ? contents.count - 1 : 0;
+    char *copy = (char *) MORPHO_MALLOC(len + 1);
+    if (!copy) {
+        varray_charclear(&contents);
+        return false;
+    }
+    memcpy(copy, contents.data, len + 1);
+    varray_charclear(&contents);
     // Parse appends topics to s_topics with file_index = s_files.count. If parse fails we must
     // remove those topics so they don't point at the next file we append.
     md_file mdfile;
     md_file_init(&mdfile);
-    mdfile.source = contents.data;
-    mdfile.sourcelen = (contents.count > 0) ? contents.count - 1 : 0;
+    mdfile.source = copy;
+    mdfile.sourcelen = len;
     unsigned int n_topics_before = s_topics.count;
     bool ok = help_parse(&mdfile, &s_topics, (int) s_files.count);
     if (ok) {
         varray_md_filewrite(&s_files, mdfile);
     } else {
+        fprintf(stderr, "Help file failed to parse: %s\n", filename);
         md_file_clear(&mdfile);
         /* Remove topics added during the failed parse; they have file_index = s_files.count */
         while (s_topics.count > n_topics_before) {
@@ -870,9 +887,14 @@ bool morpho_helpastopic(const char *query, help_topic *out) {
     if (nsegs == 1) {
         int multi[MORPHO_HELP_MAX_MULTIMATCH];
         int n = help_findallbyname(segs[0], multi, MORPHO_HELP_MAX_MULTIMATCH);
-        if (n == 0) return false;
-        if (n >= 2) return false;  // multiple matches: caller will show hint
-        idx = multi[0];
+        if (n == 1) {
+            idx = multi[0];
+        } else if (n == 0) {
+            idx = help_findtopic(&s_topics, segs[0]);  /* fallback: bsearch by name */
+            if (idx < 0) return false;
+        } else {
+            return false;  /* multiple matches: caller will show hint */
+        }
     } else {
         idx = help_findtopic(&s_topics, segs[0]);
         if (idx < 0) return false;

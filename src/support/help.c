@@ -368,25 +368,7 @@ static bool md_parseinlinelink(parser *p, void *out, size_t block_start) {
     return true;
 }
 
-/** Link definition: label and target in one TEXT token (e.g. "tag]: # (target)"). Returns true if found and sets *target_* out params. */
-static bool md_link_def_in_one_token(const char *base, const char *txt, size_t txt_len, size_t label_start,
-    size_t *label_len, size_t *target_start, size_t *target_len) {
-    const char *sep = "]: ";
-    const size_t sep_len = 3;
-    if (txt_len < sep_len) return false;
-    for (size_t i = 0; i + sep_len <= txt_len; i++) {
-        if (memcmp(txt + i, sep, sep_len) != 0) continue;
-        *label_len = i;
-        *target_start = label_start + i + sep_len;
-        *target_len = (txt_len > i + sep_len) ? (txt_len - i - sep_len) : 0;
-        while (*target_len > 0 && (base[*target_start + *target_len - 1] == '\n' || base[*target_start + *target_len - 1] == '\r'))
-            (*target_len)--;
-        return true;
-    }
-    return false;
-}
-
-/** Parses [label]: target (link def) or [text](url) (inline link). Caller has already consumed [. */
+/** Parses [label]: target (link def) or [text](url) an inline link. Caller has already consumed [. */
 bool md_parselink(parser *p, void *out) {
     md_parseout *ctx = (md_parseout *) out;
     const char *base = ctx->file->source;
@@ -398,32 +380,24 @@ bool md_parselink(parser *p, void *out) {
     }
     size_t label_start = (size_t)(p->previous.start - base);
     size_t label_len = p->previous.length;
-    size_t target_start, target_len;
-
-    /* Link def in one token: "label]: target" */
-    if (md_link_def_in_one_token(base, p->previous.start, p->previous.length, label_start, &label_len, &target_start, &target_len)) {
-        md_push_link(p, ctx, block_start, label_start, label_len, target_start, target_len);
-        return true;
-    }
 
     if (!parse_checktokenadvance(p, MD_RIGHTSQUAREBRACE)) {
         parse_error(p, false, MD_LINKEXPECTBRACKET);
         return false;
     }
-    if (parse_checktoken(p, MD_LEFTPAREN))
-        return md_parseinlinelink(p, out, block_start);
+    if (parse_checktoken(p, MD_LEFTPAREN)) return md_parseinlinelink(p, out, block_start);
 
     if (!parse_checktokenadvance(p, MD_COLON)) {
         parse_error(p, false, MD_LINKEXPECTCOLON);
         return false;
     }
-    target_start = (size_t)(p->current.start - base);
+    size_t target_start = (size_t)(p->current.start - base);
     if (!md_parseurl(p, out)) {
         parse_error(p, true, MD_EXPECTLINEEND);
         return false;
     }
     size_t target_end = md_end_previous(p, base);
-    target_len = target_end > target_start ? (size_t)(target_end - target_start) : 0;
+    size_t target_len = target_end > target_start ? (size_t)(target_end - target_start) : 0;
     md_push_link(p, ctx, block_start, label_start, label_len, target_start, target_len);
     return true;
 }

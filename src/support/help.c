@@ -964,8 +964,14 @@ void help_findfiles(void) {
  * Help API
  * ********************************************************************** */
 
+static bool s_help_files_loaded = false;
+
 /** Interface to the morpho help system. Query may be "Topic" or "Topic subtopic" / "Topic.subtopic". */
 bool morpho_helpastopic(const char *query, help_topic *out) {
+    if (!s_help_files_loaded) { // Load help files on first use
+        help_findfiles();
+        s_help_files_loaded = true;
+    }
     char qbuf[MORPHO_MAX_HELPQUERY_LENGTH];
     const char *segs[MORPHO_HELP_QUERY_MAXSEGMENTS];
     int nsegs = help_parsequery(query, qbuf, segs);
@@ -1124,7 +1130,6 @@ void help_initialize(void) {
 
     varray_md_fileinit(&s_files);
     varray_md_topicinit(&s_topics);
-    help_findfiles();
     morpho_addfinalizefn(help_finalize);
 }
 

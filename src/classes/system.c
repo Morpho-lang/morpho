@@ -139,11 +139,9 @@ value System_help(vm *v, int nargs, value *args) {
         varray_char result;
         varray_charinit(&result);
         
-        if (morpho_helpastext(query, &result)) {
-            out=object_stringfromvarraychar(&result);
-            if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
-        }
-        
+        morpho_helpastext(query, &result); /* fills result with help text or a "not found" hint */
+        out = object_stringfromvarraychar(&result);
+        if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
         varray_charclear(&result);
     }
     

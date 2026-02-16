@@ -12,6 +12,10 @@
 
 /** Maximum length of a help query string (used for lookup buffer). */
 #define MORPHO_MAX_HELPQUERY_LENGTH 512
+/** Maximum length of a single string for edit-distance (suggestion). */
+#define MORPHO_HELP_EDITMAXLEN 128
+/** Buffer size for "not found" hint message. */
+#define MORPHO_HELP_HINTBUFSIZE 256
 
 /* -------------------------------------------------------
  * Markdown AST: source-backed spans, hierarchical blocks

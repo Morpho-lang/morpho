@@ -802,12 +802,11 @@ bool morpho_helpastopic(const char *query, help_topic *out) {
     return true;
 }
 
-/** Append "Topic 'query' not found [. Did you mean 'suggest'?]." to result. suggest2 optional (then suggest is "suggest1.suggest2"). */
-static void help_hintappend(varray_char *result, const char *query, const char *suggest1, const char *suggest2) {
+/** Append "Topic 'query' not found [. Did you mean 'suggest'?]." to result. suggest is full path or NULL. */
+static void help_hintappend(varray_char *result, const char *query, const char *suggest) {
     char buf[MORPHO_HELP_HINTBUFSIZE];
-    int n = suggest1
-        ? (suggest2 ? snprintf(buf, sizeof(buf), "Topic '%s' not found. Did you mean '%s.%s'?", query, suggest1, suggest2)
-                    : snprintf(buf, sizeof(buf), "Topic '%s' not found. Did you mean '%s'?", query, suggest1))
+    int n = suggest
+        ? snprintf(buf, sizeof(buf), "Topic '%s' not found. Did you mean '%s'?", query, suggest)
         : snprintf(buf, sizeof(buf), "Topic '%s' not found.", query);
     if (n > 0 && (size_t) n < sizeof(buf)) varray_charadd(result, buf, n);
 }
@@ -824,18 +823,35 @@ static void help_queryhint(const char *query, varray_char *result) {
     }
     int idx = help_findtopic(&s_topics, segs[0]);
     if (idx < 0) {
-        help_hintappend(result, query, help_findclosesttopic(segs[0]), NULL);
+        help_hintappend(result, query, help_findclosesttopic(segs[0]));
         return;
     }
+    char path[MORPHO_MAX_HELPQUERY_LENGTH];
+    int path_len = (int) strlen(segs[0]);
+    if (path_len >= (int) sizeof(path)) path_len = (int) sizeof(path) - 1;
+    memcpy(path, segs[0], (size_t) path_len);
+    path[path_len] = '\0';
+
     for (int i = 1; i < nsegs; i++) {
         int next = help_findsubtopic(idx, segs[i]);
         if (next < 0) {
-            const md_topic *parent = &s_topics.data[idx];
             const char *closest = help_findclosestsubtopic(idx, segs[i]);
-            help_hintappend(result, query, closest ? parent->name : NULL, closest);
+            char suggest[MORPHO_MAX_HELPQUERY_LENGTH];
+            if (closest && path_len + 1 + (int) strlen(closest) < (int) sizeof(suggest))
+                snprintf(suggest, sizeof(suggest), "%s.%s", path, closest);
+            else
+                suggest[0] = '\0';
+            help_hintappend(result, query, suggest[0] ? suggest : NULL);
             return;
         }
         idx = next;
+        if (path_len > 0 && path_len < (int) sizeof(path) - 1) {
+            path[path_len++] = '.';
+            int seglen = (int) strlen(segs[i]);
+            if (path_len + seglen >= (int) sizeof(path)) seglen = (int) sizeof(path) - 1 - path_len;
+            if (seglen > 0) { memcpy(path + path_len, segs[i], (size_t) seglen); path_len += seglen; }
+            path[path_len] = '\0';
+        }
     }
     varray_charadd(result, MORPHO_HELP_NOTFOUND, (int) (sizeof(MORPHO_HELP_NOTFOUND) - 1));
 }

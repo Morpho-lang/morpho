@@ -514,6 +514,52 @@ static void md_push_link(parser *p, md_parseout *out, size_t block_start, size_t
 static varray_md_file s_files;
 static varray_md_topic s_topics;
 
+/** Maximum number of query segments (e.g. "System respondsto" -> 2). */
+#define MORPHO_HELP_QUERY_MAXSEGMENTS 8
+
+/** Find topic index by file and block index. Returns -1 if not found. */
+static int help_findtopicbyblock(int file_index, unsigned int block_index) {
+    for (unsigned int i = 0; i < s_topics.count; i++) {
+        if (s_topics.data[i].file_index == file_index && s_topics.data[i].block_index == block_index)
+            return (int) i;
+    }
+    return -1;
+}
+
+/** True if header title span (trimmed, lowercased) equals name. */
+static bool help_headertitleeq(const char *base, size_t start, size_t len, const char *name) {
+    while (len && (unsigned char) base[start] <= ' ') { start++; len--; }
+    while (len && (unsigned char) base[start + len - 1] <= ' ') len--;
+    while (len && *name && (char) tolower((unsigned char) base[start]) == *name) {
+        start++;
+        len--;
+        name++;
+    }
+    return len == 0 && *name == '\0';
+}
+
+/** Find first subtopic of parent with given name (same file, block after parent, level > parent). Returns topic index or -1. */
+static int help_findsubtopic(int parent_idx, const char *name) {
+    if (parent_idx < 0 || (unsigned int) parent_idx >= s_topics.count) return -1;
+    const md_topic *parent = &s_topics.data[parent_idx];
+    if (parent->file_index < 0 || (unsigned int) parent->file_index >= s_files.count) return -1;
+    const md_file *file = &s_files.data[parent->file_index];
+    const char *base = file->source;
+    size_t base_len = file->sourcelen;
+
+    for (unsigned int i = parent->block_index + 1; i < file->blocks.count; i++) {
+        const md_block *b = &file->blocks.data[i];
+        if (b->type != MD_BLOCK_HEADER) continue;
+        if (b->as.header.level <= parent->level) return -1; /* left section */
+        size_t start = b->as.header.title.start;
+        size_t len = b->as.header.title.length;
+        if (start + len > base_len) len = base_len - start;
+        if (help_headertitleeq(base, start, len, name))
+            return help_findtopicbyblock(parent->file_index, i);
+    }
+    return -1;
+}
+
 /** Number of blocks that form this topic's content (header + following until next same-level or higher header). */
 static unsigned int help_topiccontentnblocks(const md_topic *topic, const md_file *file) {
     unsigned int i = topic->block_index;
@@ -658,19 +704,40 @@ void help_findfiles(void) {
  * Morpho help files
  * ********************************************************************** */
 
-/** Interface to the morpho help system */
+/** Interface to the morpho help system. Query may be "Topic" or "Topic subtopic" / "Topic.subtopic". */
 bool morpho_helpastopic(const char *query, help_topic *out) {
-    /* Topic names are stored lowercase; search key must match. */
+    /* Copy query, lowercase, and replace '.' and ' ' with nul to form segments. */
     char qbuf[MORPHO_MAX_HELPQUERY_LENGTH];
     size_t qlen = 0;
     while (query[qlen] && qlen < MORPHO_MAX_HELPQUERY_LENGTH - 1) {
-        qbuf[qlen] = (char) tolower((unsigned char) query[qlen]);
+        char c = query[qlen];
+        qbuf[qlen] = (c == '.' || c == ' ') ? '\0' : (char) tolower((unsigned char) c);
         qlen++;
     }
     qbuf[qlen] = '\0';
 
-    int idx = help_findtopic(&s_topics, qbuf);
+    /* Collect segment pointers (non-empty runs). */
+    const char *segs[MORPHO_HELP_QUERY_MAXSEGMENTS];
+    int nsegs = 0;
+    const char *p = qbuf;
+    while (nsegs < MORPHO_HELP_QUERY_MAXSEGMENTS && p < qbuf + qlen) {
+        while (p < qbuf + qlen && *p == '\0') p++;
+        if (p >= qbuf + qlen) break;
+        segs[nsegs++] = p;
+        while (p < qbuf + qlen && *p != '\0') p++;
+    }
+    if (nsegs == 0) return false;
+
+    /* Resolve first segment to a topic. */
+    int idx = help_findtopic(&s_topics, segs[0]);
     if (idx < 0) return false;
+
+    /* Resolve remaining segments as subtopics. */
+    for (int i = 1; i < nsegs; i++) {
+        idx = help_findsubtopic(idx, segs[i]);
+        if (idx < 0) return false;
+    }
+
     const md_topic *topic = &s_topics.data[idx];
     if (topic->file_index < 0 || (unsigned int) topic->file_index >= s_files.count) return false;
     const md_file *file = &s_files.data[topic->file_index];

@@ -36,6 +36,7 @@ typedef enum {
     MD_BLOCK_CODE,
     MD_BLOCK_LIST,
     MD_BLOCK_LINK_DEF,
+    MD_BLOCK_THEMATIC_BREAK,
     MD_BLOCK_BLANK
 } md_blocktype;
 

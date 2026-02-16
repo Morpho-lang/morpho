@@ -62,6 +62,7 @@ enum {
     MD_UNDERSCORE2,
     MD_ASTERISK3,
     MD_UNDERSCORE3,
+    MD_THEMATIC_BREAK,
     MD_FOURSPACES,
     MD_TAB,
     MD_NEWLINE,
@@ -72,6 +73,7 @@ bool md_lexnewline(lexer *l, token *tok, error *err) {
     lex_newline(l);
     return true;
 }
+
 
 tokendefn mdtokens[] = {
     { "#",          MD_HASH                     , NULL },
@@ -104,8 +106,38 @@ static bool md_isasciipunct(char c) {
     return (unsigned char)c <= 0x7F && ispunct((unsigned char)c);
 }
 
+/** Check if current position is a thematic break and record it as MD_THEMATIC_BREAK token.
+ * Returns true if a thematic break token was recorded, false otherwise. */
+static bool md_lexthematicbreak(lexer *l, token *tok) {
+    char c = lex_peek(l);
+    if (c != '-' && c != '*' && c != '_') return false;
+    
+    int count = 0; // Count consecutive matching characters using peekahead (must be 3+)
+    while (lex_peekahead(l, count) == c && count < 100) count++; // reasonable limit
+    if (count < 3) return false;
+    
+    int spaces = 0; // Check for optional spaces after break characters
+    while (lex_peekahead(l, count + spaces) == ' ') spaces++;
+    
+    char next = lex_peekahead(l, count + spaces); // Must be followed by newline or EOF
+    if (next != '\n' && next != '\r' && next != '\0') return false;
+    
+    size_t total_len = (size_t)count + (size_t)spaces; // Calculate total length to advance
+    if (next == '\r' && lex_peekahead(l, count + spaces + 1) == '\n') {
+        total_len += 2; // \r\n
+    } else if (next == '\n' || next == '\r') {
+        total_len += 1; // \n or \r
+    }
+    
+    lex_advanceby(l, total_len); // Advance by total length and record token
+    lex_recordtoken(l, MD_THEMATIC_BREAK, tok);
+    return true;
+}
+
 /** Lexer token preprocessor function */
 bool md_lexpreprocess(lexer *l, token *tok, error *err) {
+    if (md_lexthematicbreak(l, tok)) return true; // Check for thematic break before processing other tokens
+    
     while (!lex_identifytoken(l, false, NULL) && !lex_isatend(l)) {
         char c = lex_peek(l);
         if (c == '\\') {
@@ -327,6 +359,15 @@ bool md_parsecode(parser *p, void *out) {
     return true;
 }
 
+/** Parses a thematic break (---, ***, or ___). Token already consumed by lexer (includes newline). */
+static bool md_parsethematicbreak(parser *p, void *out) {
+    md_parseout *ctx = (md_parseout *) out;
+    const char *base = ctx->file->source;
+    size_t block_start = (size_t)(p->previous.start - base);
+    md_push_simpleblock(p, ctx, block_start, MD_BLOCK_THEMATIC_BREAK);
+    return true;
+}
+
 /** Parses a markdown list (list item line; records as list block). */
 bool md_parselist(parser *p, void *out) {
     md_parseout *ctx = (md_parseout *) out;
@@ -422,6 +463,8 @@ bool md_parseblock(parser *p, void *out) {
     } else if (parse_checktokenadvance(p, MD_FOURSPACES) ||
                parse_checktokenadvance(p, MD_TAB)) {
         return md_parsecode(p, out);
+    } else if (parse_checktokenadvance(p, MD_THEMATIC_BREAK)) {
+        return md_parsethematicbreak(p, out);
     } else if (parse_checktoken(p, MD_ASTERISK) ||
                parse_checktoken(p, MD_PLUS) ||
                parse_checktoken(p, MD_DASH)) {
@@ -863,7 +906,8 @@ bool help_topictotext(const help_topic *t, varray_char *result) {
                 break;
             case MD_BLOCK_LINK_DEF:
             case MD_BLOCK_BLANK:
-                break; // omit from plain text
+            case MD_BLOCK_THEMATIC_BREAK:
+                break; // omit from plain text (thematic breaks render as blank lines)
         }
     }
     return true;

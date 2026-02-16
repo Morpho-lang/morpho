@@ -71,6 +71,8 @@ enum {
 /* Markdown parser error codes (registered in help_initialize) */
 #define MD_UNCLOSEDITALIC       "MDUnclItal"
 #define MD_UNCLOSEDITALIC_MSG   "Unclosed italic (missing closing * or _)."
+#define MD_UNCLOSEDINLINECODE   "MDUnclCode"
+#define MD_UNCLOSEDINLINECODE_MSG "Unclosed inline code (missing closing `)."
 #define MD_EXPECTLINEEND        "MDExpLnEnd"
 #define MD_EXPECTLINEEND_MSG    "Expected end of line."
 #define MD_EXPECTHEADERTEXT     "MDExpHdrTxt"
@@ -143,9 +145,14 @@ void help_initializemdlexer(lexer *l, const char *src) {
  * Markdown parse table (for inline syntax)
  * ------------------------------------------------------- */
 
+/** Parses inline code span. Content is ignored until closing backtick. */
 bool md_parseinlinecode(parser *p, void *out) {
-    while (parse_checktokenadvance(p, MD_TEXT));
-    parse_checktokenadvance(p, MD_BACKTICK);  /* optional closing; unclosed is ok */
+    while (!parse_checktoken(p, MD_BACKTICK) && !parse_checktoken(p, MD_EOF))
+        parse_advance(p);
+    if (!parse_checktokenadvance(p, MD_BACKTICK)) {
+        parse_error(p, false, MD_UNCLOSEDINLINECODE);
+        return false;
+    }
     return true;
 }
 
@@ -1084,6 +1091,7 @@ bool morpho_helpasmd(char *query, varray_char *result) {
 void help_initialize(void) {
     /* Markdown parser errors */
     morpho_defineerror(MD_UNCLOSEDITALIC, ERROR_PARSE, MD_UNCLOSEDITALIC_MSG);
+    morpho_defineerror(MD_UNCLOSEDINLINECODE, ERROR_PARSE, MD_UNCLOSEDINLINECODE_MSG);
     morpho_defineerror(MD_EXPECTLINEEND, ERROR_PARSE, MD_EXPECTLINEEND_MSG);
     morpho_defineerror(MD_EXPECTHEADERTEXT, ERROR_PARSE, MD_EXPECTHEADERTEXT_MSG);
     morpho_defineerror(MD_LINKEXPECTTEXT, ERROR_PARSE, MD_LINKEXPECTTEXT_MSG);

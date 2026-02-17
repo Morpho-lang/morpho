@@ -24,15 +24,18 @@
 
 #ifdef MORPHO_INCLUDE_HELP
 
-/** Static data structures */
+/* **********************************************************************
+ * Data structures and static data
+ * ********************************************************************** */
+
 DEFINE_VARRAY(md_block, md_block);
 DEFINE_VARRAY(md_file, md_file);
 DEFINE_VARRAY(md_topic, md_topic);
 DEFINE_VARRAY(md_alias, md_alias);
 
-static varray_md_file s_files;    // List of help files
-static varray_md_topic s_topics;  // List of topics
-static varray_md_alias s_aliases; // List of aliases
+static varray_md_file s_files;
+static varray_md_topic s_topics;
+static varray_md_alias s_aliases;
 
 /** The interactive help system uses a collection of Markdown files, located in
  *  MORPHO_HELPFOLDER, that define available topics. Help files are all
@@ -175,7 +178,7 @@ bool md_lexpreprocess(lexer *l, token *tok, error *err) {
 }
 
 /* -------------------------------------------------------
- * Initialize a Markdown lexer
+ * Lexer initialization
  * ------------------------------------------------------- */
 
 void help_initializemdlexer(lexer *l, const char *src) {
@@ -536,7 +539,7 @@ void help_initializemdparser(parser *p, lexer *l, error *err, void *out) {
 }
 
 /* **********************************************************************
- * Markdown AST: definitions and topic list helpers
+ * Markdown AST: block and file life cycle
  * ********************************************************************** */
 
 void md_block_clear(md_block *b) {
@@ -559,6 +562,10 @@ void md_file_clear(md_file *f) {
     for (unsigned int i = 0; i < f->blocks.count; i++) md_block_clear(&f->blocks.data[i]);
     varray_md_blockclear(&f->blocks);
 }
+
+/* -------------------------------------------------------
+ * Topic and alias comparison and sorting
+ * ------------------------------------------------------- */
 
 int md_topic_compare(const void *a, const void *b) {
     const md_topic *ta = (const md_topic *) a;
@@ -595,6 +602,10 @@ int help_findtopic(varray_md_topic *topics, const char *name) {
     
     return help_findalias(name); // Not found in topics, check aliases
 }
+
+/* -------------------------------------------------------
+ * Block construction (spans, init, push)
+ * ------------------------------------------------------- */
 
 /** End offset of the block from the last consumed token. */
 static size_t md_block_end(parser *p, const char *base) {
@@ -760,10 +771,15 @@ static bool help_createalias(const char *base, size_t label_start, size_t label_
 
 /** Maximum number of query segments (e.g. "System respondsto" -> 2). */
 #define MORPHO_HELP_QUERY_MAXSEGMENTS 8
+#define MORPHO_HELP_MAX_MULTIMATCH 8
 /** Max edit distance to suggest a topic (only suggest if close enough). */
 #define MORPHO_HELP_SUGGEST_MAXDIST 3
 /** Edit distance return when string too long (no match). */
 #define MORPHO_HELP_EDIT_NOMATCH 255
+
+/* -------------------------------------------------------
+ * Query parsing
+ * ------------------------------------------------------- */
 
 /** Parse query into lowercased segments in qbuf; segs[] points into qbuf. Returns nsegs (0 if none). */
 static int help_parsequery(const char *query, char *qbuf, const char *segs[]) {
@@ -786,6 +802,10 @@ static int help_parsequery(const char *query, char *qbuf, const char *segs[]) {
     }
     return nsegs;
 }
+
+/* -------------------------------------------------------
+ * Topic hierarchy (parent, display path, subtopic)
+ * ------------------------------------------------------- */
 
 /** Find parent topic index (same file, level < current, block_index < current, largest block_index). */
 static int help_findparent(int idx) {
@@ -832,8 +852,11 @@ static void help_topic_displaypath(int idx, char *buf, size_t bufsize) {
     }
 }
 
+/* -------------------------------------------------------
+ * Topic lookup by name or block
+ * ------------------------------------------------------- */
+
 /** Find all topic indices with given name. Fills indices[] up to max, returns count. */
-#define MORPHO_HELP_MAX_MULTIMATCH 8
 static int help_findallbyname(const char *name, int indices[], int max) {
     int n = 0;
     for (unsigned int i = 0; i < s_topics.count && n < max; i++) {
@@ -884,6 +907,10 @@ static int help_findsubtopic(int parent_idx, const char *name) {
     }
     return -1;
 }
+
+/* -------------------------------------------------------
+ * Edit distance and suggestions
+ * ------------------------------------------------------- */
 
 /** Levenshtein distance between two strings (for "did you mean").
  * If max_dist is provided (> 0), returns early if distance exceeds it (returns max_dist + 1).
@@ -948,6 +975,10 @@ static const char *help_findclosestsubtopic(int parent_idx, const char *name) {
     }
     return best;
 }
+
+/* -------------------------------------------------------
+ * Topic content and rendering
+ * ------------------------------------------------------- */
 
 /** Number of blocks that form this topic's content (header + following until next header of any level). */
 static unsigned int help_topiccontentnblocks(const md_topic *topic, const md_file *file) {
@@ -1032,6 +1063,11 @@ bool help_topicrawmd(const help_topic *t, varray_char *result) {
     return true;
 }
 
+/* **********************************************************************
+ * Morpho help files (load and parse)
+ * ********************************************************************** */
+
+/** Parse a markdown file and append blocks/topics to the given arrays. */
 bool help_parse(md_file *file, varray_md_topic *topics, int file_index) {
     error err;
     error_init(&err);
@@ -1064,10 +1100,6 @@ bool help_parse(md_file *file, varray_md_topic *topics, int file_index) {
     }
     return ok;
 }
-
-/* **********************************************************************
- * Morpho help files
- * ********************************************************************** */
 
 /** Loads a help file into the AST (appends to s_files and s_topics). */
 bool help_load(char *filename) {

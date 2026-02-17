@@ -232,6 +232,7 @@ typedef struct {
 
 /* Forward declarations */
 static void md_push_simpleblock(parser *p, md_parseout *out, size_t block_start, md_blocktype type);
+static void md_push_blank(parser *p, md_parseout *out);
 
 static void md_push_header(parser *p, md_parseout *out, size_t block_start, size_t title_start, size_t title_len);
 static void md_push_paragraph(parser *p, md_parseout *out, size_t block_start);
@@ -484,6 +485,7 @@ bool md_parseblock(parser *p, void *out) {
     } else if (parse_checktokenadvance(p, MD_LEFTSQUAREBRACE)) {
         return md_parselink(p, out);
     } else if (parse_checktokenadvance(p, MD_NEWLINE)) { // blank line
+        md_push_blank(p, ctx);
         return true;
     } else if (parse_checktoken(p, MD_EOF)) {
         return true; // let outer loop exit
@@ -644,6 +646,13 @@ static void md_push_code(parser *p, md_parseout *out, size_t block_start) {
 }
 static void md_push_list(parser *p, md_parseout *out, size_t block_start) {
     md_push_simpleblock(p, out, block_start, MD_BLOCK_LIST);
+}
+
+/** Push a blank line as MD_BLOCK_BLANK. Call after consuming the newline token. */
+static void md_push_blank(parser *p, md_parseout *out) {
+    const char *base = out->file->source;
+    size_t block_start = (size_t)(p->previous.start - base);
+    md_push_simpleblock(p, out, block_start, MD_BLOCK_BLANK);
 }
 
 static void md_push_link(parser *p, md_parseout *out, size_t block_start, size_t label_start, size_t label_len, size_t target_start, size_t target_len) {
@@ -898,8 +907,10 @@ bool help_topictotext(const help_topic *t, varray_char *result) {
                 size_t tlen = md_clamp_span(b->as.header.title.start, b->as.header.title.length, src_len);
                 const char *p = src + b->as.header.title.start;
                 while (tlen && (*p == '#' || (unsigned char)*p <= ' ')) { p++; tlen--; } // strip leading # and space
-                if (tlen > 0) varray_charadd(result, (char *) p, (int) tlen);
-                varray_charadd(result, "\n\n", 2);
+                if (tlen > 0) {
+                    varray_charadd(result, (char *) p, (int) tlen);
+                    varray_charadd(result, "\n", 1);
+                }
                 break;
             }
             case MD_BLOCK_PARAGRAPH:
@@ -909,9 +920,11 @@ bool help_topictotext(const help_topic *t, varray_char *result) {
                 if (len > 0 && src[b->span.start + len - 1] != '\n') varray_charadd(result, "\n", 1);
                 break;
             case MD_BLOCK_LINK_DEF:
-            case MD_BLOCK_BLANK:
             case MD_BLOCK_THEMATIC_BREAK:
                 break; // omit from plain text (thematic breaks render as blank lines)
+            case MD_BLOCK_BLANK:
+                varray_charadd(result, "\n", 1);
+                break;
         }
     }
     return true;

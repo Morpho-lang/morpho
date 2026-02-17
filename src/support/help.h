@@ -7,6 +7,8 @@
 #ifndef help_h
 #define help_h
 
+#ifdef MORPHO_INCLUDE_HELP
+
 #include <stddef.h>
 #include "varray.h"
 
@@ -155,5 +157,7 @@ bool morpho_helpasmd(char *query, varray_char *result);
 
 void help_initialize(void);
 void help_finalize(void);
+
+#endif
 
 #endif /* help_h */

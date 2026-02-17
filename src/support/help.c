@@ -22,6 +22,8 @@
 #include "file.h"
 #include "memory.h"
 
+#ifdef MORPHO_INCLUDE_HELP
+
 /** The interactive help system uses a collection of Markdown files, located in
  *  MORPHO_HELPFOLDER, that define available topics. Help files are all
  *  valid Markdown, although only a subset is used, and the help system interprets
@@ -1193,3 +1195,5 @@ void help_finalize(void) {
     }
     varray_md_topicclear(&s_topics);
 }
+
+#endif

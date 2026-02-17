@@ -24,6 +24,16 @@
 
 #ifdef MORPHO_INCLUDE_HELP
 
+/** Static data structures */
+DEFINE_VARRAY(md_block, md_block);
+DEFINE_VARRAY(md_file, md_file);
+DEFINE_VARRAY(md_topic, md_topic);
+DEFINE_VARRAY(md_alias, md_alias);
+
+static varray_md_file s_files;    // List of help files
+static varray_md_topic s_topics;  // List of topics
+static varray_md_alias s_aliases; // List of aliases
+
 /** The interactive help system uses a collection of Markdown files, located in
  *  MORPHO_HELPFOLDER, that define available topics. Help files are all
  *  valid Markdown, although only a subset is used, and the help system interprets
@@ -228,6 +238,7 @@ typedef struct {
     varray_md_topic *topics;
     int file_index;
     int current_header_level; // 1–3, set before md_parseheader
+    int current_topic_index;  // Index of most recently created topic, or -1
 } md_parseout;
 
 /* Forward declarations */
@@ -420,6 +431,8 @@ static bool md_parseinlinelink(parser *p, void *out, size_t block_start) {
     return true;
 }
 
+static bool help_createalias(const char *base, size_t label_start, size_t label_len, size_t target_start, size_t target_len, int topic_index);
+
 /** Parses [label]: target (link def) or [text](url) an inline link. Caller has already consumed [. */
 bool md_parselink(parser *p, void *out) {
     md_parseout *ctx = (md_parseout *) out;
@@ -450,6 +463,10 @@ bool md_parselink(parser *p, void *out) {
     }
     size_t target_end = md_end_previous(p, base);
     size_t target_len = target_end > target_start ? (size_t)(target_end - target_start) : 0;
+    
+    // Check if this is a tag link definition and create alias if so
+    help_createalias(base, label_start, label_len, target_start, target_len, ctx->current_topic_index);
+    
     md_push_link(p, ctx, block_start, label_start, label_len, target_start, target_len);
     return true;
 }
@@ -522,10 +539,6 @@ void help_initializemdparser(parser *p, lexer *l, error *err, void *out) {
  * Markdown AST: definitions and topic list helpers
  * ********************************************************************** */
 
-DEFINE_VARRAY(md_block, md_block);
-DEFINE_VARRAY(md_file, md_file);
-DEFINE_VARRAY(md_topic, md_topic);
-
 void md_block_clear(md_block *b) {
     varray_intclear(&b->children);
 }
@@ -569,6 +582,8 @@ void help_sortaliases(varray_md_alias *aliases) {
         qsort(aliases->data, aliases->count, sizeof(md_alias), md_alias_compare);
 }
 
+static int help_findalias(const char *name);
+
 int help_findtopic(varray_md_topic *topics, const char *name) {
     if (!topics->data || topics->count == 0) {
         // If no topics, check aliases
@@ -578,8 +593,7 @@ int help_findtopic(varray_md_topic *topics, const char *name) {
     md_topic *found = (md_topic *) bsearch(&key, topics->data, topics->count, sizeof(md_topic), md_topic_compare);
     if (found) return (int) (found - topics->data);
     
-    // Not found in topics, check aliases
-    return help_findalias(name);
+    return help_findalias(name); // Not found in topics, check aliases
 }
 
 /** End offset of the block from the last consumed token. */
@@ -652,6 +666,9 @@ static void md_push_header(parser *p, md_parseout *out, size_t block_start, size
             .parent_topic = -1
         };
         varray_md_topicwrite(out->topics, topic);
+        out->current_topic_index = (int) out->topics->count - 1;
+    } else {
+        out->current_topic_index = -1;
     }
 }
 
@@ -685,83 +702,61 @@ static void md_push_link(parser *p, md_parseout *out, size_t block_start, size_t
  * Help topic aliases
  * ********************************************************************** */
 
-/** Alias entry: maps an alias name to a topic index. */
-typedef struct {
-    char *name;              /* lowercase, owned */
-    int topic_index;
-} md_alias;
+/** Find topic index by alias name. Returns -1 if not found. */
+static int help_findalias(const char *name) {
+    if (!s_aliases.data || s_aliases.count == 0) return -1;
+    md_alias key = { .name = (char *) name, .topic_index = 0 };
+    md_alias *found = (md_alias *) bsearch(&key, s_aliases.data, s_aliases.count, sizeof(md_alias), md_alias_compare);
+    return found ? found->topic_index : -1;
+}
 
-DECLARE_VARRAY(md_alias, md_alias);
-
-static varray_md_alias s_aliases;
-
-/** Process link definitions in a file to create aliases from [tag...]: # (alias) entries. */
-static void help_processlinkdefs(int file_index) {
-    if (file_index < 0 || (unsigned int) file_index >= s_files.count) return;
-    const md_file *file = &s_files.data[file_index];
-    const char *base = file->source;
+/** Create an alias from a tag link definition. Returns true if alias was created. */
+static bool help_createalias(const char *base, size_t label_start, size_t label_len, size_t target_start, size_t target_len, int topic_index) {
+    if (topic_index < 0) return false;
     
-    for (unsigned int i = 0; i < file->blocks.count; i++) {
-        const md_block *b = &file->blocks.data[i];
-        if (b->type != MD_BLOCK_LINK_DEF) continue;
-        
-        // Check if label starts with "tag"
-        size_t label_len = md_clamp_span(b->as.link_def.label.start, b->as.link_def.label.length, file->sourcelen);
-        if (label_len < 3) continue;
-        const char *label = base + b->as.link_def.label.start;
-        if (tolower((unsigned char) label[0]) != 't' || tolower((unsigned char) label[1]) != 'a' || tolower((unsigned char) label[2]) != 'g') continue;
-        
-        // Extract alias name from target (find text in parentheses)
-        size_t target_start = b->as.link_def.target.start;
-        size_t target_len = md_clamp_span(target_start, b->as.link_def.target.length, file->sourcelen);
-        const char *target = base + target_start, *open = NULL, *close = NULL;
-        for (const char *p = target; p < target + target_len && !close; p++) {
-            if (!open && *p == '(') open = p + 1;
-            else if (open && *p == ')') { close = p; break; }
-        }
-        if (!open || !close || close == open) continue;
-        
-        // Allocate and lowercase alias name
-        size_t len = (size_t)(close - open);
-        char *alias_name = (char *) MORPHO_MALLOC(len + 1);
-        if (!alias_name) continue;
-        for (size_t j = 0; j < len; j++) alias_name[j] = (char) tolower((unsigned char) open[j]);
-        alias_name[len] = '\0';
-        
-        // Check for duplicates (topics and existing aliases)
-        bool duplicate = false;
-        if (s_topics.data && s_topics.count > 0) {
-            md_topic key = { .name = alias_name, .file_index = 0, .block_index = 0, .level = 0, .parent_topic = -1 };
-            if (bsearch(&key, s_topics.data, s_topics.count, sizeof(md_topic), md_topic_compare)) duplicate = true;
-        }
-        if (!duplicate) {
-            for (unsigned int j = 0; j < s_aliases.count; j++) {
-                if (s_aliases.data[j].name && strcmp(s_aliases.data[j].name, alias_name) == 0) { duplicate = true; break; }
-            }
-        }
-        if (duplicate) { MORPHO_FREE(alias_name); continue; }
-        
-        // Find topic (most recent header before this block)
-        int topic_idx = -1;
-        for (int j = (int) i - 1; j >= 0; j--) {
-            if (file->blocks.data[j].type == MD_BLOCK_HEADER) {
-                topic_idx = help_findtopicbyblock(file_index, (unsigned int) j);
-                break;
-            }
-        }
-        if (topic_idx < 0) { MORPHO_FREE(alias_name); continue; }
-        
-        // Create alias
-        varray_md_aliaswrite(&s_aliases, (md_alias) { .name = alias_name, .topic_index = topic_idx });
+    // Check if label starts with "tag"
+    if (label_len < 3) return false;
+    const char *label = base + label_start;
+    if (tolower((unsigned char) label[0]) != 't' || tolower((unsigned char) label[1]) != 'a' || tolower((unsigned char) label[2]) != 'g') return false;
+    
+    // Extract alias name from target (find text in parentheses)
+    const char *target = base + target_start, *open = NULL, *close = NULL;
+    for (const char *p = target; p < target + target_len && !close; p++) {
+        if (!open && *p == '(') open = p + 1;
+        else if (open && *p == ')') { close = p; break; }
     }
+    if (!open || !close || close == open) return false;
+    
+    // Allocate and lowercase alias name
+    size_t len = (size_t)(close - open);
+    char *alias_name = (char *) MORPHO_MALLOC(len + 1);
+    if (!alias_name) return false;
+    for (size_t j = 0; j < len; j++) alias_name[j] = (char) tolower((unsigned char) open[j]);
+    alias_name[len] = '\0';
+    
+    // Check for duplicates (topics and existing aliases)
+    if (s_topics.data && s_topics.count > 0) {
+        md_topic key = { .name = alias_name, .file_index = 0, .block_index = 0, .level = 0, .parent_topic = -1 };
+        if (bsearch(&key, s_topics.data, s_topics.count, sizeof(md_topic), md_topic_compare)) {
+            MORPHO_FREE(alias_name);
+            return false;
+        }
+    }
+    for (unsigned int j = 0; j < s_aliases.count; j++) {
+        if (s_aliases.data[j].name && strcmp(s_aliases.data[j].name, alias_name) == 0) {
+            MORPHO_FREE(alias_name);
+            return false;
+        }
+    }
+    
+    // Create alias
+    varray_md_aliaswrite(&s_aliases, (md_alias) { .name = alias_name, .topic_index = topic_index });
+    return true;
 }
 
 /* **********************************************************************
  * Help topic lookup and content range
  * ********************************************************************** */
-
-static varray_md_file s_files;
-static varray_md_topic s_topics;
 
 /** Maximum number of query segments (e.g. "System respondsto" -> 2). */
 #define MORPHO_HELP_QUERY_MAXSEGMENTS 8
@@ -855,14 +850,6 @@ static int help_findtopicbyblock(int file_index, unsigned int block_index) {
             return (int) i;
     }
     return -1;
-}
-
-/** Find topic index by alias name. Returns -1 if not found. */
-static int help_findalias(const char *name) {
-    if (!s_aliases.data || s_aliases.count == 0) return -1;
-    md_alias key = { .name = (char *) name, .topic_index = 0 };
-    md_alias *found = (md_alias *) bsearch(&key, s_aliases.data, s_aliases.count, sizeof(md_alias), md_alias_compare);
-    return found ? found->topic_index : -1;
 }
 
 /** True if header title span (trimmed, lowercased) equals name. */
@@ -1052,7 +1039,8 @@ bool help_parse(md_file *file, varray_md_topic *topics, int file_index) {
         .file = file,
         .topics = topics,
         .file_index = file_index,
-        .current_header_level = 1
+        .current_header_level = 1,
+        .current_topic_index = -1
     };
     lexer l;
     help_initializemdlexer(&l, file->source);
@@ -1103,7 +1091,6 @@ bool help_load(char *filename) {
     bool ok = help_parse(&mdfile, &s_topics, (int) s_files.count);
     if (ok) {
         varray_md_filewrite(&s_files, mdfile);
-        help_processlinkdefs((int) s_files.count - 1);
     } else {
         md_file_clear(&mdfile);
         // Remove topics added during the failed parse; they have file_index = s_files.count

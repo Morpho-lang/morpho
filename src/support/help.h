@@ -78,6 +78,14 @@ typedef struct {
 
 DECLARE_VARRAY(md_topic, md_topic);
 
+/** Alias entry: maps an alias name to a topic index. */
+typedef struct {
+    char *name;              /* lowercase, owned */
+    int topic_index;
+} md_alias;
+
+DECLARE_VARRAY(md_alias, md_alias);
+
 /** Initialize / clear a block (clears children). */
 void md_block_clear(md_block *b);
 

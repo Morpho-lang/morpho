@@ -1045,7 +1045,7 @@ static void help_hintappend_multi(varray_char *result, const char *query, int in
 }
 
 /** Build a hint for a failed query and append to result (caller may clear result first). */
-static void help_queryhint(const char *query, varray_char *result) {
+void help_queryhint(const char *query, varray_char *result) {
     if (!result) return;
     char qbuf[MORPHO_MAX_HELPQUERY_LENGTH];
     const char *segs[MORPHO_HELP_QUERY_MAXSEGMENTS];

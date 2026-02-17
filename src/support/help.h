@@ -155,6 +155,9 @@ bool morpho_helpastext(char *query, varray_char *result);
 /** Look up help for query and write raw markdown into result. Returns true if topic found. (Convenience wrapper for morpho_helpastopic + help_topicrawmd.) */
 bool morpho_helpasmd(char *query, varray_char *result);
 
+/** Build a hint for a failed query */
+void help_queryhint(const char *query, varray_char *result);
+
 void help_initialize(void);
 void help_finalize(void);
 

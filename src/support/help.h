@@ -138,12 +138,14 @@ bool help_topicrawmd(const help_topic *t, varray_char *result);
 #define MD_UNEXPECTEDTOKEN        "MDUnexpTok"
 #define MD_UNEXPECTEDTOKEN_MSG    "Unexpected markdown token."
 
+#define MORPHO_HELP_NOTFOUND      "Topic not found."
+
 /* -------------------------------------------------------
  * Help API
  * ------------------------------------------------------- */
 
 /** Resolve a query to a help topic. Fills *out and returns true if found; otherwise returns false and *out is unchanged. */
- bool morpho_helpastopic(const char *query, help_topic *out);
+bool morpho_helpastopic(const char *query, help_topic *out);
 
 /** Look up help for query and write plain-text result. Returns true if topic found. (Convenience wrapper for morpho_helpastopic + help_topictotext.) */
 bool morpho_helpastext(char *query, varray_char *result);

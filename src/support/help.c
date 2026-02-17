@@ -730,10 +730,7 @@ static void help_topic_displaypath(int idx, char *buf, size_t bufsize) {
         if (len + 1 < bufsize) snprintf(buf + len, bufsize - len, ".%s", t->name);
     } else {
         // Top-level or no parent: just the topic name
-        size_t n = strlen(t->name);
-        if (n >= bufsize) n = bufsize - 1;
-        memcpy(buf, t->name, n);
-        buf[n] = '\0';
+        snprintf(buf, bufsize, "%s", t->name);
     }
 }
 
@@ -822,8 +819,6 @@ static unsigned int help_editdistance(const char *a, const char *b, unsigned int
     return prev[nb];
 }
 
-static const char MORPHO_HELP_NOTFOUND[] = "Topic not found.";
-
 /** Find top-level topic name closest to name; NULL if none within distance. */
 static const char *help_findclosesttopic(const char *name) {
     const char *best = NULL;
@@ -901,14 +896,14 @@ bool help_topictotext(const help_topic *t, varray_char *result) {
                 size_t tlen = md_clamp_span(b->as.header.title.start, b->as.header.title.length, src_len);
                 const char *p = src + b->as.header.title.start;
                 while (tlen && (*p == '#' || (unsigned char)*p <= ' ')) { p++; tlen--; } // strip leading # and space
-                if (tlen > 0) varray_charadd(result, p, (int) tlen);
+                if (tlen > 0) varray_charadd(result, (char *) p, (int) tlen);
                 varray_charadd(result, "\n\n", 2);
                 break;
             }
             case MD_BLOCK_PARAGRAPH:
             case MD_BLOCK_LIST:
             case MD_BLOCK_CODE:
-                varray_charadd(result, src + b->span.start, (int) len);
+                varray_charadd(result, (char *) src + b->span.start, (int) len);
                 if (len > 0 && src[b->span.start + len - 1] != '\n') varray_charadd(result, "\n", 1);
                 break;
             case MD_BLOCK_LINK_DEF:
@@ -928,7 +923,7 @@ bool help_topicrawmd(const help_topic *t, varray_char *result) {
         const md_block *b = &t->content_blocks[i];
         size_t len = md_clamp_span(b->span.start, b->span.length, src_len);
         if (len == 0) continue;
-        varray_charadd(result, src + b->span.start, (int) len);
+        varray_charadd(result, (char *) src + b->span.start, (int) len);
         if (src[b->span.start + len - 1] != '\n') varray_charadd(result, "\n", 1);
     }
     return true;
@@ -1079,10 +1074,8 @@ static void help_queryhint(const char *query, varray_char *result) {
         return;
     }
     char path[MORPHO_MAX_HELPQUERY_LENGTH];
-    int path_len = (int) strlen(segs[0]);
-    if (path_len >= (int) sizeof(path)) path_len = (int) sizeof(path) - 1;
-    memcpy(path, segs[0], (size_t) path_len);
-    path[path_len] = '\0';
+    int path_len = snprintf(path, sizeof(path), "%s", segs[0]);
+    if (path_len < 0 || path_len >= (int) sizeof(path)) path_len = (int) sizeof(path) - 1;
 
     for (int i = 1; i < nsegs; i++) {
         int next = help_findsubtopic(idx, segs[i]);
@@ -1100,15 +1093,8 @@ static void help_queryhint(const char *query, varray_char *result) {
         idx = next;
         // Append "." + segs[i] to path for next level
         if (path_len >= (int) sizeof(path) - 1) continue; // No room
-        path[path_len++] = '.';
-        int seglen = (int) strlen(segs[i]);
-        int avail = (int) sizeof(path) - path_len;
-        if (seglen >= avail) seglen = avail - 1;
-        if (seglen > 0) {
-            memcpy(path + path_len, segs[i], (size_t) seglen);
-            path_len += seglen;
-        }
-        path[path_len] = '\0';
+        int n = snprintf(path + path_len, (size_t)(sizeof(path) - path_len), ".%s", segs[i]);
+        if (n > 0) path_len += (n < (int) sizeof(path) - path_len) ? n : (int) sizeof(path) - 1 - path_len;
     }
     varray_charadd(result, MORPHO_HELP_NOTFOUND, (int) (sizeof(MORPHO_HELP_NOTFOUND) - 1));
 }

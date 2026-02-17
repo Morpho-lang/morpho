@@ -553,16 +553,33 @@ int md_topic_compare(const void *a, const void *b) {
     return strcmp(ta->name, tb->name);
 }
 
+int md_alias_compare(const void *a, const void *b) {
+    const md_alias *aa = (const md_alias *) a;
+    const md_alias *ab = (const md_alias *) b;
+    return strcmp(aa->name, ab->name);
+}
+
 void help_sorttopics(varray_md_topic *topics) {
     if (topics->data && topics->count > 0)
         qsort(topics->data, topics->count, sizeof(md_topic), md_topic_compare);
 }
 
+void help_sortaliases(varray_md_alias *aliases) {
+    if (aliases->data && aliases->count > 0)
+        qsort(aliases->data, aliases->count, sizeof(md_alias), md_alias_compare);
+}
+
 int help_findtopic(varray_md_topic *topics, const char *name) {
-    if (!topics->data || topics->count == 0) return -1;
+    if (!topics->data || topics->count == 0) {
+        // If no topics, check aliases
+        return help_findalias(name);
+    }
     md_topic key = { .name = (char *) name, .file_index = 0, .block_index = 0, .level = 0, .parent_topic = -1 };
     md_topic *found = (md_topic *) bsearch(&key, topics->data, topics->count, sizeof(md_topic), md_topic_compare);
-    return found ? (int) (found - topics->data) : -1;
+    if (found) return (int) (found - topics->data);
+    
+    // Not found in topics, check aliases
+    return help_findalias(name);
 }
 
 /** End offset of the block from the last consumed token. */
@@ -665,6 +682,81 @@ static void md_push_link(parser *p, md_parseout *out, size_t block_start, size_t
 }
 
 /* **********************************************************************
+ * Help topic aliases
+ * ********************************************************************** */
+
+/** Alias entry: maps an alias name to a topic index. */
+typedef struct {
+    char *name;              /* lowercase, owned */
+    int topic_index;
+} md_alias;
+
+DECLARE_VARRAY(md_alias, md_alias);
+
+static varray_md_alias s_aliases;
+
+/** Process link definitions in a file to create aliases from [tag...]: # (alias) entries. */
+static void help_processlinkdefs(int file_index) {
+    if (file_index < 0 || (unsigned int) file_index >= s_files.count) return;
+    const md_file *file = &s_files.data[file_index];
+    const char *base = file->source;
+    
+    for (unsigned int i = 0; i < file->blocks.count; i++) {
+        const md_block *b = &file->blocks.data[i];
+        if (b->type != MD_BLOCK_LINK_DEF) continue;
+        
+        // Check if label starts with "tag"
+        size_t label_len = md_clamp_span(b->as.link_def.label.start, b->as.link_def.label.length, file->sourcelen);
+        if (label_len < 3) continue;
+        const char *label = base + b->as.link_def.label.start;
+        if (tolower((unsigned char) label[0]) != 't' || tolower((unsigned char) label[1]) != 'a' || tolower((unsigned char) label[2]) != 'g') continue;
+        
+        // Extract alias name from target (find text in parentheses)
+        size_t target_start = b->as.link_def.target.start;
+        size_t target_len = md_clamp_span(target_start, b->as.link_def.target.length, file->sourcelen);
+        const char *target = base + target_start, *open = NULL, *close = NULL;
+        for (const char *p = target; p < target + target_len && !close; p++) {
+            if (!open && *p == '(') open = p + 1;
+            else if (open && *p == ')') { close = p; break; }
+        }
+        if (!open || !close || close == open) continue;
+        
+        // Allocate and lowercase alias name
+        size_t len = (size_t)(close - open);
+        char *alias_name = (char *) MORPHO_MALLOC(len + 1);
+        if (!alias_name) continue;
+        for (size_t j = 0; j < len; j++) alias_name[j] = (char) tolower((unsigned char) open[j]);
+        alias_name[len] = '\0';
+        
+        // Check for duplicates (topics and existing aliases)
+        bool duplicate = false;
+        if (s_topics.data && s_topics.count > 0) {
+            md_topic key = { .name = alias_name, .file_index = 0, .block_index = 0, .level = 0, .parent_topic = -1 };
+            if (bsearch(&key, s_topics.data, s_topics.count, sizeof(md_topic), md_topic_compare)) duplicate = true;
+        }
+        if (!duplicate) {
+            for (unsigned int j = 0; j < s_aliases.count; j++) {
+                if (s_aliases.data[j].name && strcmp(s_aliases.data[j].name, alias_name) == 0) { duplicate = true; break; }
+            }
+        }
+        if (duplicate) { MORPHO_FREE(alias_name); continue; }
+        
+        // Find topic (most recent header before this block)
+        int topic_idx = -1;
+        for (int j = (int) i - 1; j >= 0; j--) {
+            if (file->blocks.data[j].type == MD_BLOCK_HEADER) {
+                topic_idx = help_findtopicbyblock(file_index, (unsigned int) j);
+                break;
+            }
+        }
+        if (topic_idx < 0) { MORPHO_FREE(alias_name); continue; }
+        
+        // Create alias
+        varray_md_aliaswrite(&s_aliases, (md_alias) { .name = alias_name, .topic_index = topic_idx });
+    }
+}
+
+/* **********************************************************************
  * Help topic lookup and content range
  * ********************************************************************** */
 
@@ -763,6 +855,14 @@ static int help_findtopicbyblock(int file_index, unsigned int block_index) {
             return (int) i;
     }
     return -1;
+}
+
+/** Find topic index by alias name. Returns -1 if not found. */
+static int help_findalias(const char *name) {
+    if (!s_aliases.data || s_aliases.count == 0) return -1;
+    md_alias key = { .name = (char *) name, .topic_index = 0 };
+    md_alias *found = (md_alias *) bsearch(&key, s_aliases.data, s_aliases.count, sizeof(md_alias), md_alias_compare);
+    return found ? found->topic_index : -1;
 }
 
 /** True if header title span (trimmed, lowercased) equals name. */
@@ -1003,6 +1103,7 @@ bool help_load(char *filename) {
     bool ok = help_parse(&mdfile, &s_topics, (int) s_files.count);
     if (ok) {
         varray_md_filewrite(&s_files, mdfile);
+        help_processlinkdefs((int) s_files.count - 1);
     } else {
         md_file_clear(&mdfile);
         // Remove topics added during the failed parse; they have file_index = s_files.count
@@ -1028,6 +1129,7 @@ void help_findfiles(void) {
     }
     varray_valueclear(&files);
     help_sorttopics(&s_topics);
+    help_sortaliases(&s_aliases);
 }
 
 /* **********************************************************************
@@ -1203,6 +1305,7 @@ void help_initialize(void) {
 
     varray_md_fileinit(&s_files);
     varray_md_topicinit(&s_topics);
+    varray_md_aliasinit(&s_aliases);
     morpho_addfinalizefn(help_finalize);
 }
 
@@ -1215,6 +1318,10 @@ void help_finalize(void) {
         if (s_topics.data[i].name) MORPHO_FREE(s_topics.data[i].name);
     }
     varray_md_topicclear(&s_topics);
+    for (unsigned int i = 0; i < s_aliases.count; i++) {
+        if (s_aliases.data[i].name) MORPHO_FREE(s_aliases.data[i].name);
+    }
+    varray_md_aliasclear(&s_aliases);
 }
 
 #endif

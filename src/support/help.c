@@ -909,7 +909,7 @@ bool help_topictotext(const help_topic *t, varray_char *result) {
                 while (tlen && (*p == '#' || (unsigned char)*p <= ' ')) { p++; tlen--; } // strip leading # and space
                 if (tlen > 0) {
                     varray_charadd(result, (char *) p, (int) tlen);
-                    varray_charadd(result, "\n", 1);
+                    varray_charwrite(result, '\n');
                 }
                 break;
             }
@@ -923,10 +923,11 @@ bool help_topictotext(const help_topic *t, varray_char *result) {
             case MD_BLOCK_THEMATIC_BREAK:
                 break; // omit from plain text (thematic breaks render as blank lines)
             case MD_BLOCK_BLANK:
-                varray_charadd(result, "\n", 1);
+                varray_charwrite(result, '\n');
                 break;
         }
     }
+    varray_charwrite(result, '\0');
     return true;
 }
 
@@ -1064,7 +1065,8 @@ void help_queryhint(const char *query, varray_char *result) {
     const char *segs[MORPHO_HELP_QUERY_MAXSEGMENTS];
     int nsegs = help_parsequery(query, qbuf, segs);
     if (nsegs == 0) {
-        varray_charadd(result, MORPHO_HELP_NOTFOUND, (int) (sizeof(MORPHO_HELP_NOTFOUND) - 1));
+        varray_charadd(result, MORPHO_HELP_NOTFOUND, strlen(MORPHO_HELP_NOTFOUND));
+        varray_charwrite(result, '\0');
         return;
     }
     // Single segment: multi-match hint, or "not found" + closest, or NOTFOUND
@@ -1073,19 +1075,23 @@ void help_queryhint(const char *query, varray_char *result) {
         int n = help_findallbyname(segs[0], multi, MORPHO_HELP_MAX_MULTIMATCH);
         if (n >= 2) {
             help_hintappend_multi(result, query, multi, n);
+            varray_charwrite(result, '\0');
             return;
         }
         if (n == 0) {
             help_hintappend(result, query, help_findclosesttopic(segs[0]));
+            varray_charwrite(result, '\0');
             return;
         }
-        varray_charadd(result, MORPHO_HELP_NOTFOUND, (int) (sizeof(MORPHO_HELP_NOTFOUND) - 1));
+        varray_charadd(result, MORPHO_HELP_NOTFOUND, strlen(MORPHO_HELP_NOTFOUND));
+        varray_charwrite(result, '\0');
         return;
     }
     // Multi-segment: resolve first, then walk subtopics; on first failure suggest path.closest
     int idx = help_findtopic(&s_topics, segs[0]);
     if (idx < 0) {
         help_hintappend(result, query, help_findclosesttopic(segs[0]));
+        varray_charwrite(result, '\0');
         return;
     }
     char path[MORPHO_MAX_HELPQUERY_LENGTH];
@@ -1103,6 +1109,7 @@ void help_queryhint(const char *query, varray_char *result) {
                     snprintf(suggest, sizeof(suggest), "%s.%s", path, closest);
             }
             help_hintappend(result, query, suggest[0] ? suggest : NULL);
+            varray_charwrite(result, '\0');
             return;
         }
         idx = next;
@@ -1111,7 +1118,8 @@ void help_queryhint(const char *query, varray_char *result) {
         int n = snprintf(path + path_len, (size_t)(sizeof(path) - path_len), ".%s", segs[i]);
         if (n > 0) path_len += (n < (int) sizeof(path) - path_len) ? n : (int) sizeof(path) - 1 - path_len;
     }
-    varray_charadd(result, MORPHO_HELP_NOTFOUND, (int) (sizeof(MORPHO_HELP_NOTFOUND) - 1));
+    varray_charadd(result, MORPHO_HELP_NOTFOUND, strlen(MORPHO_HELP_NOTFOUND));
+    varray_charwrite(result, '\0');
 }
 
 /* **********************************************************************

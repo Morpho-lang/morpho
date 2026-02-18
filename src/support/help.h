@@ -63,6 +63,7 @@ typedef struct {
     char *source;
     size_t sourcelen;
     char *filename;  /* Owned filename/path for error reporting */
+    bool promote_subtopics;  /* [toplevel]: # directive: include ## from this file in top-level topic list */
     varray_md_block blocks;
 } md_file;
 

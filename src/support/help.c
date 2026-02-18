@@ -437,6 +437,14 @@ static bool md_parseinlinelink(parser *p, void *out, size_t block_start) {
 
 static bool help_createalias(const char *base, size_t label_start, size_t label_len, size_t target_start, size_t target_len, int topic_index);
 
+/** Case-insensitive comparison of substring (s, n) with literal (lit, lit_len). */
+static bool help_casencmp(const char *s, size_t n, const char *lit, size_t lit_len) {
+    if (n != lit_len) return false;
+    for (size_t i = 0; i < n; i++)
+        if (tolower((unsigned char) s[i]) != (unsigned char) lit[i]) return false;
+    return true;
+}
+
 /** Parses [label]: target (link def) or [text](url) an inline link. Caller has already consumed [. */
 bool md_parselink(parser *p, void *out) {
     md_parseout *ctx = (md_parseout *) out;
@@ -468,9 +476,8 @@ bool md_parselink(parser *p, void *out) {
     size_t target_end = md_end_previous(p, base);
     size_t target_len = target_end > target_start ? (size_t)(target_end - target_start) : 0;
     
-    // Check if this is a tag link definition and create alias if so
+    if (help_casencmp(base + label_start, label_len, "toplevel", 8)) ctx->file->promote_subtopics = true;
     help_createalias(base, label_start, label_len, target_start, target_len, ctx->current_topic_index);
-    
     md_push_link(p, ctx, block_start, label_start, label_len, target_start, target_len);
     return true;
 }
@@ -551,6 +558,7 @@ void md_file_init(md_file *f) {
     f->source = NULL;
     f->sourcelen = 0;
     f->filename = NULL;
+    f->promote_subtopics = false;
     varray_md_blockinit(&f->blocks);
 }
 
@@ -807,9 +815,7 @@ static void md_push_link(parser *p, md_parseout *out, size_t block_start, size_t
 /** Create an alias from a tag link definition. Inserts alias -> topic index into s_names. */
 static bool help_createalias(const char *base, size_t label_start, size_t label_len, size_t target_start, size_t target_len, int topic_index) {
     if (topic_index < 0 || (unsigned int) topic_index >= s_topics.count) return false;
-    if (label_len < 3) return false;
-    const char *label = base + label_start;
-    if (tolower((unsigned char) label[0]) != 't' || tolower((unsigned char) label[1]) != 'a' || tolower((unsigned char) label[2]) != 'g') return false;
+    if (label_len < 3 || !help_casencmp(base + label_start, 3, "tag", 3)) return false;
     const char *target = base + target_start, *open = NULL, *close = NULL;
     for (const char *p = target; p < target + target_len && !close; p++) {
         if (!open && *p == '(') open = p + 1;
@@ -1305,13 +1311,18 @@ bool morpho_helpasmd(const char *query, varray_char *result) {
     return false;
 }
 
-/** Fill out with top-level topic names (level == 1); each name added once (by identity). */
+/** Fill out with top-level topic names (level == 1, or level == 2 when file has [toplevel] tag); each name added once (by identity). */
 void morpho_helptopics(varray_value *out) {
     if (!out) return;
     help_ensureloaded();
     for (unsigned int i = 0; i < s_topics.count; i++) {
-        if (s_topics.data[i].level != 1 || !MORPHO_ISSTRING(s_topics.data[i].name)) continue;
-        value name = s_topics.data[i].name;
+        const md_topic *t = &s_topics.data[i];
+        if (!MORPHO_ISSTRING(t->name)) continue;
+        bool include = (t->level == 1);
+        if (!include && t->file_index >= 0 && (unsigned int) t->file_index < s_files.count)
+            include = s_files.data[t->file_index].promote_subtopics;
+        if (!include) continue;
+        value name = t->name;
         unsigned int idx;
         if (varray_valuefindsame(out, name, &idx)) continue;
         varray_valuewrite(out, name);

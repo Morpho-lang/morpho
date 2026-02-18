@@ -622,7 +622,10 @@ static value help_nameindex_add(const char *buf, size_t len, int topic_index) {
     }
     value name_val = object_stringfromcstring(buf, len);
     if (!MORPHO_ISSTRING(name_val)) return MORPHO_NIL;
-    dictionary_insert(&s_names, name_val, MORPHO_INTEGER(topic_index));
+    if (!dictionary_insert(&s_names, name_val, MORPHO_INTEGER(topic_index))) {
+        morpho_freeobject(name_val);
+        return MORPHO_NIL;
+    }
     return name_val;
 }
 

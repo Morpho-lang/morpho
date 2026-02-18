@@ -36,7 +36,7 @@ DEFINE_VARRAY(md_topic, md_topic);
 
 static varray_md_file s_files;
 static varray_md_topic s_topics;
-static dictionary s_names; // Map names or aliases to topic index or list of indices
+static dictionary s_names;  /* name (interned on build) -> topic index or list of indices */
 
 /** The interactive help system uses a collection of Markdown files, located in
  *  MORPHO_HELPFOLDER, that define available topics. Help files are all
@@ -568,23 +568,35 @@ void md_file_clear(md_file *f) {
  * Name index (single dict: name/alias -> index or List of indices)
  * ------------------------------------------------------- */
 
-/** Build s_names from topic names (value = index or List). Call once after all files loaded and parent_topic set. Aliases may already be in dict from parse. */
+/** Build s_names from topic names; intern names into s_names (one string per distinct name). Call once after all files loaded and parent_topic set. Aliases may already be in dict from parse. */
 static void help_buildnameindex(void) {
     for (unsigned int i = 0; i < s_topics.count; i++) {
         if (!MORPHO_ISSTRING(s_topics.data[i].name)) continue;
         value key = s_topics.data[i].name;
-        value v;
-        if (!dictionary_get(&s_names, key, &v)) {
+        value interned = dictionary_intern(&s_names, key);
+        if (MORPHO_ISNIL(interned)) {
             dictionary_insert(&s_names, key, MORPHO_INTEGER((int) i));
+            s_topics.data[i].name = key;
             continue;
         }
-        if (MORPHO_ISINTEGER(v) && MORPHO_GETINTEGERVALUE(v) == (int) i) continue; // already points to this topic
+        if (!MORPHO_ISSAME(interned, key)) morpho_freeobject(key);
+        s_topics.data[i].name = interned;
+        value v;
+        if (!dictionary_get(&s_names, interned, &v)) continue;
+        if (MORPHO_ISNIL(v)) {
+            dictionary_insert(&s_names, interned, MORPHO_INTEGER((int) i));
+            continue;
+        }
+        if (MORPHO_ISINTEGER(v) && MORPHO_GETINTEGERVALUE(v) == (int) i) continue; /* already this topic */
         objectlist *list;
         if (MORPHO_ISINTEGER(v)) {
             list = object_newlist(0, NULL);
             if (!list) continue;
             list_append(list, v);
-            dictionary_insert(&s_names, key, MORPHO_OBJECT(list));
+            if (!dictionary_insert(&s_names, interned, MORPHO_OBJECT(list))) {
+                morpho_freeobject(MORPHO_OBJECT(list));
+                continue;
+            }
         } else list = MORPHO_GETLIST(v);
         list_append(list, MORPHO_INTEGER((int) i));
     }
@@ -603,21 +615,22 @@ static int help_indexvalue_first(value v) {
     return -1;
 }
 
-/** Fill indices[] from dict value (integer or list). Returns count. */
+/** Fill indices[] from dict value (integer or list). Returns number of indices written (at most max). */
 static int help_indexvalue_collect(value v, int indices[], int max) {
     if (MORPHO_ISINTEGER(v)) {
         if (max > 0) indices[0] = MORPHO_GETINTEGERVALUE(v);
         return 1;
     } else if (MORPHO_ISLIST(v)) {
         objectlist *list = MORPHO_GETLIST(v);
-        unsigned int n = list_length(list);
-        if ((int) n > max) n = (unsigned int) max;
-        for (unsigned int i = 0; i < n; i++) {
+        unsigned int list_len = list_length(list);
+        int written = 0;
+        for (unsigned int i = 0; i < list_len && written < max; i++) {
             value el;
-            if (list_getelement(list, (int) i, &el) && MORPHO_ISINTEGER(el))
-                indices[i] = MORPHO_GETINTEGERVALUE(el);
+            if (list_getelement(list, (int) i, &el) && MORPHO_ISINTEGER(el)) {
+                indices[written++] = MORPHO_GETINTEGERVALUE(el);
+            }
         }
-        return (int) list_length(list);
+        return written;
     }
     return 0;
 }
@@ -1091,9 +1104,12 @@ bool help_load(char *filename) {
         varray_md_filewrite(&s_files, mdfile);
     } else {
         md_file_clear(&mdfile);
-        // Remove topics added during the failed parse; they have file_index = s_files.count
-        while (s_topics.count > n_topics_before)
+        // Remove topics added during the failed parse; free their names (never interned).
+        while (s_topics.count > n_topics_before) {
+            unsigned int i = s_topics.count - 1;
+            if (MORPHO_ISOBJECT(s_topics.data[i].name)) morpho_freeobject(s_topics.data[i].name);
             s_topics.count--;
+        }
     }
     return ok;
 }
@@ -1290,14 +1306,14 @@ void help_initialize(void) {
     morpho_addfinalizefn(help_finalize);
 }
 
-/** @brief Finalization: free all files and topics. Name keys not owned; free List values then clear dict. */
+/** @brief Finalization: free all files, topics, and name index. */
 void help_finalize(void) {
     for (unsigned int i = 0; i < s_files.count; i++)
         md_file_clear(&s_files.data[i]);
     varray_md_fileclear(&s_files);
-    varray_md_topicclear(&s_topics);
-    dictionary_freecontents(&s_names, false, true); /* free List values; keys (names) are VM-owned */
+    dictionary_freecontents(&s_names, true, true);
     dictionary_clear(&s_names);
+    varray_md_topicclear(&s_topics);
 }
 
 #endif

@@ -1245,12 +1245,16 @@ void help_queryhint(const char *query, varray_char *result) {
 
 static bool s_help_files_loaded = false;
 
-/** Interface to the morpho help system. Query may be "Topic" or "Topic subtopic" / "Topic.subtopic". */
-bool morpho_helpastopic(const char *query, help_topic *out) {
-    if (!s_help_files_loaded) { // Load help files on first use
+static void help_ensureloaded(void) {
+    if (!s_help_files_loaded) {
         help_findfiles();
         s_help_files_loaded = true;
     }
+}
+
+/** Interface to the morpho help system. Query may be "Topic" or "Topic subtopic" / "Topic.subtopic". */
+bool morpho_helpastopic(const char *query, help_topic *out) {
+    help_ensureloaded();
     char qbuf[MORPHO_MAX_HELPQUERY_LENGTH];
     const char *segs[MORPHO_HELP_QUERY_MAXSEGMENTS];
     int nsegs = help_parsequery(query, qbuf, segs);
@@ -1299,6 +1303,19 @@ bool morpho_helpasmd(const char *query, varray_char *result) {
     if (morpho_helpastopic(query, &t)) return help_topicrawmd(&t, result);
     help_queryhint(query, result);
     return false;
+}
+
+/** Fill out with top-level topic names (level == 1); each name added once (by identity). */
+void morpho_helptopics(varray_value *out) {
+    if (!out) return;
+    help_ensureloaded();
+    for (unsigned int i = 0; i < s_topics.count; i++) {
+        if (s_topics.data[i].level != 1 || !MORPHO_ISSTRING(s_topics.data[i].name)) continue;
+        value name = s_topics.data[i].name;
+        unsigned int idx;
+        if (varray_valuefindsame(out, name, &idx)) continue;
+        varray_valuewrite(out, name);
+    }
 }
 
 /* **********************************************************************

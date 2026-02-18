@@ -78,10 +78,10 @@ typedef struct {
 
 DECLARE_VARRAY(md_topic, md_topic);
 
-/** Alias entry: maps an alias name to a topic index. */
+/** Alias entry: maps an alias name to a topic by the topic's name. topic_name is a pointer to the topic's name (not owned); lookup resolves it by bsearch so it remains valid after topics are sorted. */
 typedef struct {
-    char *name;              /* lowercase, owned */
-    int topic_index;
+    char *name;              /* alias name, lowercase, owned */
+    const char *topic_name; /* topic name to resolve (points into topic, not owned) */
 } md_alias;
 
 DECLARE_VARRAY(md_alias, md_alias);

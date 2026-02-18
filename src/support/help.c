@@ -592,10 +592,6 @@ void help_sortaliases(varray_md_alias *aliases) {
 static int help_findalias(const char *name);
 
 int help_findtopic(varray_md_topic *topics, const char *name) {
-    if (!topics->data || topics->count == 0) {
-        // If no topics, check aliases
-        return help_findalias(name);
-    }
     md_topic key = { .name = (char *) name, .file_index = 0, .block_index = 0, .level = 0, .parent_topic = -1 };
     md_topic *found = (md_topic *) bsearch(&key, topics->data, topics->count, sizeof(md_topic), md_topic_compare);
     if (found) return (int) (found - topics->data);
@@ -713,17 +709,18 @@ static void md_push_link(parser *p, md_parseout *out, size_t block_start, size_t
  * Help topic aliases
  * ********************************************************************** */
 
-/** Find topic index by alias name. Returns -1 if not found. */
+/** Find topic index by alias name. Returns -1 if not found. Resolves topic by name so index is correct after sorting. */
 static int help_findalias(const char *name) {
     if (!s_aliases.data || s_aliases.count == 0) return -1;
-    md_alias key = { .name = (char *) name, .topic_index = 0 };
+    md_alias key = { .name = (char *) name, .topic_name = NULL };
     md_alias *found = (md_alias *) bsearch(&key, s_aliases.data, s_aliases.count, sizeof(md_alias), md_alias_compare);
-    return found ? found->topic_index : -1;
+    if (!found || !found->topic_name) return -1;
+    return help_findtopic(&s_topics, found->topic_name);
 }
 
-/** Create an alias from a tag link definition. Returns true if alias was created. */
+/** Create an alias from a tag link definition. Returns true if alias was created. Stores a pointer to the topic's name so resolution stays valid after topics are sorted. */
 static bool help_createalias(const char *base, size_t label_start, size_t label_len, size_t target_start, size_t target_len, int topic_index) {
-    if (topic_index < 0) return false;
+    if (topic_index < 0 || (unsigned int) topic_index >= s_topics.count) return false;
     
     // Check if label starts with "tag"
     if (label_len < 3) return false;
@@ -745,14 +742,7 @@ static bool help_createalias(const char *base, size_t label_start, size_t label_
     for (size_t j = 0; j < len; j++) alias_name[j] = (char) tolower((unsigned char) open[j]);
     alias_name[len] = '\0';
     
-    // Check for duplicates (topics and existing aliases)
-    if (s_topics.data && s_topics.count > 0) {
-        md_topic key = { .name = alias_name, .file_index = 0, .block_index = 0, .level = 0, .parent_topic = -1 };
-        if (bsearch(&key, s_topics.data, s_topics.count, sizeof(md_topic), md_topic_compare)) {
-            MORPHO_FREE(alias_name);
-            return false;
-        }
-    }
+    // Check for duplicate alias name
     for (unsigned int j = 0; j < s_aliases.count; j++) {
         if (s_aliases.data[j].name && strcmp(s_aliases.data[j].name, alias_name) == 0) {
             MORPHO_FREE(alias_name);
@@ -760,8 +750,9 @@ static bool help_createalias(const char *base, size_t label_start, size_t label_
         }
     }
     
-    // Create alias
-    varray_md_aliaswrite(&s_aliases, (md_alias) { .name = alias_name, .topic_index = topic_index });
+    // Store pointer to topic's name
+    const char *topic_name = s_topics.data[topic_index].name;
+    varray_md_aliaswrite(&s_aliases, (md_alias) { .name = alias_name, .topic_name = topic_name });
     return true;
 }
 

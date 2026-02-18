@@ -568,38 +568,62 @@ void md_file_clear(md_file *f) {
  * Name index (single dict: name/alias -> index or List of indices)
  * ------------------------------------------------------- */
 
-/** Build s_names from topic names; intern names into s_names (one string per distinct name). Call once after all files loaded and parent_topic set. Aliases may already be in dict from parse. */
-static void help_buildnameindex(void) {
-    for (unsigned int i = 0; i < s_topics.count; i++) {
-        if (!MORPHO_ISSTRING(s_topics.data[i].name)) continue;
-        value key = s_topics.data[i].name;
-        value interned = dictionary_intern(&s_names, key);
-        if (MORPHO_ISNIL(interned)) {
-            dictionary_insert(&s_names, key, MORPHO_INTEGER((int) i));
-            s_topics.data[i].name = key;
-            continue;
-        }
-        if (!MORPHO_ISSAME(interned, key)) morpho_freeobject(key);
-        s_topics.data[i].name = interned;
-        value v;
-        if (!dictionary_get(&s_names, interned, &v)) continue;
-        if (MORPHO_ISNIL(v)) {
-            dictionary_insert(&s_names, interned, MORPHO_INTEGER((int) i));
-            continue;
-        }
-        if (MORPHO_ISINTEGER(v) && MORPHO_GETINTEGERVALUE(v) == (int) i) continue; /* already this topic */
-        objectlist *list;
-        if (MORPHO_ISINTEGER(v)) {
-            list = object_newlist(0, NULL);
-            if (!list) continue;
-            list_append(list, v);
-            if (!dictionary_insert(&s_names, interned, MORPHO_OBJECT(list))) {
-                morpho_freeobject(MORPHO_OBJECT(list));
-                continue;
-            }
-        } else list = MORPHO_GETLIST(v);
-        list_append(list, MORPHO_INTEGER((int) i));
+static bool help_name_referenced_by(value name, unsigned int keep_count) {
+    for (unsigned int j = 0; j < keep_count; j++)
+        if (MORPHO_ISSAME(s_topics.data[j].name, name)) return true;
+    return false;
+}
+
+/** Remove topic_index from s_names (rollback). Frees the name key only if the entry is removed and no topic in [0, keep_count) has that name. */
+static void help_nameindex_remove(int topic_index, unsigned int keep_count) {
+    if (topic_index < 0 || (unsigned int) topic_index >= s_topics.count) return;
+    value name = s_topics.data[topic_index].name;
+    if (!MORPHO_ISOBJECT(name)) return;
+    value v;
+    if (!dictionary_get(&s_names, name, &v)) return;
+    bool remove_entry = false;
+    if (MORPHO_ISINTEGER(v)) {
+        if (MORPHO_GETINTEGERVALUE(v) != topic_index) return;
+        remove_entry = true;
+    } else if (MORPHO_ISLIST(v)) {
+        list_remove(MORPHO_GETLIST(v), MORPHO_INTEGER(topic_index));
+        remove_entry = (list_length(MORPHO_GETLIST(v)) == 0);
     }
+    if (remove_entry) {
+        if (MORPHO_ISLIST(v)) morpho_freeobject(v);
+        dictionary_remove(&s_names, name);
+        if (!help_name_referenced_by(name, keep_count)) morpho_freeobject(name);
+    }
+}
+
+/** Add topic_index under name (buf, len). Look up with static key; if present use existing key and update value, else allocate and insert. Returns canonical name value. */
+static value help_nameindex_add(const char *buf, size_t len, int topic_index) {
+    objectstring key_obj = MORPHO_STATICSTRINGWITHLENGTH(buf, len);
+    value key = MORPHO_OBJECT(&key_obj);
+    value v;
+    value existing = dictionary_getkey(&s_names, key, &v);
+    if (!MORPHO_ISNIL(existing)) {
+        if (MORPHO_ISNIL(v)) {
+            dictionary_insert(&s_names, existing, MORPHO_INTEGER(topic_index));
+        } else if (MORPHO_ISINTEGER(v)) {
+            if (MORPHO_GETINTEGERVALUE(v) == topic_index) return existing;
+            objectlist *list = object_newlist(0, NULL);
+            if (list) {
+                list_append(list, v);
+                list_append(list, MORPHO_INTEGER(topic_index));
+                if (dictionary_insert(&s_names, existing, MORPHO_OBJECT(list)))
+                    return existing;
+                morpho_freeobject(MORPHO_OBJECT(list));
+            }
+        } else {
+            list_append(MORPHO_GETLIST(v), MORPHO_INTEGER(topic_index));
+        }
+        return existing;
+    }
+    value name_val = object_stringfromcstring(buf, len);
+    if (!MORPHO_ISSTRING(name_val)) return MORPHO_NIL;
+    dictionary_insert(&s_names, name_val, MORPHO_INTEGER(topic_index));
+    return name_val;
 }
 
 /** Get first topic index from dict value (integer or first element of list). Returns -1 if not found or invalid. */
@@ -735,20 +759,21 @@ static void md_push_header(parser *p, md_parseout *out, size_t block_start, size
     }
     char buf[nl + 1];
     help_lowercase_into(base + ns, nl, buf);
-    value name_val = object_stringfromcstring(buf, nl);
-    if (!MORPHO_ISSTRING(name_val)) {
+    int topic_index = (int) out->topics->count;
+    value name = help_nameindex_add(buf, nl, topic_index);
+    if (MORPHO_ISNIL(name)) {
         out->current_topic_index = -1;
         return;
     }
     md_topic topic = {
-        .name = name_val,
+        .name = name,
         .file_index = out->file_index,
         .block_index = out->file->blocks.count - 1,
         .level = out->current_header_level,
         .parent_topic = -1
     };
     varray_md_topicwrite(out->topics, topic);
-    out->current_topic_index = (int) out->topics->count - 1;
+    out->current_topic_index = topic_index;
 }
 
 static void md_push_paragraph(parser *p, md_parseout *out, size_t block_start) {
@@ -797,10 +822,7 @@ static bool help_createalias(const char *base, size_t label_start, size_t label_
     if (len > MORPHO_MAX_HELPQUERY_LENGTH) return false;
     char alias_buf[len + 1];
     help_lowercase_into(open, len, alias_buf);
-    value alias_val = object_stringfromcstring(alias_buf, len);
-    if (!MORPHO_ISSTRING(alias_val)) return false;
-    dictionary_insert(&s_names, alias_val, MORPHO_INTEGER(topic_index));
-    return true;
+    return !MORPHO_ISNIL(help_nameindex_add(alias_buf, len, topic_index));
 }
 
 /* **********************************************************************
@@ -1104,17 +1126,15 @@ bool help_load(char *filename) {
         varray_md_filewrite(&s_files, mdfile);
     } else {
         md_file_clear(&mdfile);
-        // Remove topics added during the failed parse; free their names (never interned).
         while (s_topics.count > n_topics_before) {
-            unsigned int i = s_topics.count - 1;
-            if (MORPHO_ISOBJECT(s_topics.data[i].name)) morpho_freeobject(s_topics.data[i].name);
+            help_nameindex_remove((int) s_topics.count - 1, n_topics_before);
             s_topics.count--;
         }
     }
     return ok;
 }
 
-/** Finds and loads all help files; sets parent_topic for each topic, then builds name index. */
+/** Finds and loads all help files; sets parent_topic for each topic. Name index is built incrementally during parse. */
 void help_findfiles(void) {
     varray_value files;
     varray_valueinit(&files);
@@ -1127,7 +1147,6 @@ void help_findfiles(void) {
     varray_valueclear(&files);
     for (unsigned int i = 0; i < s_topics.count; i++)
         s_topics.data[i].parent_topic = help_findparent(i);
-    help_buildnameindex();
 }
 
 /* **********************************************************************

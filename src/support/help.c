@@ -599,34 +599,29 @@ static void help_nameindex_remove(int topic_index, unsigned int keep_count) {
 /** Add topic_index under name (buf, len). Look up with static key; if present use existing key and update value, else allocate and insert. Returns canonical name value. */
 static value help_nameindex_add(const char *buf, size_t len, int topic_index) {
     objectstring key_obj = MORPHO_STATICSTRINGWITHLENGTH(buf, len);
-    value key = MORPHO_OBJECT(&key_obj);
-    value v;
-    value existing = dictionary_getkey(&s_names, key, &v);
-    if (!MORPHO_ISNIL(existing)) {
-        if (MORPHO_ISNIL(v)) {
-            dictionary_insert(&s_names, existing, MORPHO_INTEGER(topic_index));
-        } else if (MORPHO_ISINTEGER(v)) {
-            if (MORPHO_GETINTEGERVALUE(v) == topic_index) return existing;
-            objectlist *list = object_newlist(0, NULL);
-            if (list) {
-                list_append(list, v);
-                list_append(list, MORPHO_INTEGER(topic_index));
-                if (dictionary_insert(&s_names, existing, MORPHO_OBJECT(list)))
-                    return existing;
-                morpho_freeobject(MORPHO_OBJECT(list));
-            }
-        } else {
-            list_append(MORPHO_GETLIST(v), MORPHO_INTEGER(topic_index));
+    value name = MORPHO_OBJECT(&key_obj), v;
+    value key = dictionary_getkey(&s_names, name, &v);
+    if (MORPHO_ISNIL(key)) {
+        key = object_stringfromcstring(buf, len);
+        if (!MORPHO_ISSTRING(key)) return MORPHO_NIL;
+        if (!dictionary_insert(&s_names, key, MORPHO_INTEGER(topic_index))) {
+            morpho_freeobject(key);
+            return MORPHO_NIL;
         }
-        return existing;
-    }
-    value name_val = object_stringfromcstring(buf, len);
-    if (!MORPHO_ISSTRING(name_val)) return MORPHO_NIL;
-    if (!dictionary_insert(&s_names, name_val, MORPHO_INTEGER(topic_index))) {
-        morpho_freeobject(name_val);
-        return MORPHO_NIL;
-    }
-    return name_val;
+    } else {
+        if (MORPHO_ISNIL(v)) {
+            dictionary_insert(&s_names, key, MORPHO_INTEGER(topic_index));
+        } else if (MORPHO_ISINTEGER(v)) {
+            if (MORPHO_GETINTEGERVALUE(v) == topic_index) return key;
+            value new[2] = { v, MORPHO_INTEGER(topic_index) };
+            objectlist *list = object_newlist(2, new);
+            if (list) {
+                if (!dictionary_insert(&s_names, key, MORPHO_OBJECT(list)))
+                    morpho_freeobject(MORPHO_OBJECT(list));
+            }
+        } else if (MORPHO_ISLIST(v)) list_append(MORPHO_GETLIST(v), MORPHO_INTEGER(topic_index));
+    } 
+    return key;
 }
 
 /** Get first topic index from dict value (integer or first element of list). Returns -1 if not found or invalid. */

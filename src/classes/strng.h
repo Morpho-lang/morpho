@@ -37,11 +37,11 @@ typedef struct {
 /** Extracts the string length from a value */
 #define MORPHO_GETSTRINGLENGTH(val)       (((objectstring *) MORPHO_GETOBJECT(val))->length)
 
-/** Use to create static strings on the C stack */
-#define MORPHO_STATICSTRING(cstring)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=strlen(cstring) }
+/** Use to create static strings on the C stack (cstring may be const char *). */
+#define MORPHO_STATICSTRING(cstring)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=(char *)(cstring), .length=strlen(cstring) }
 
-/** Use to create static strings on the C stack */
-#define MORPHO_STATICSTRINGWITHLENGTH(cstring, len)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=cstring, .length=len }
+/** Use to create static strings on the C stack (cstring may be const char *). */
+#define MORPHO_STATICSTRINGWITHLENGTH(cstring, len)      { .obj.type=OBJECT_STRING, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .string=(char *)(cstring), .length=len }
 
 
 #define OBJECT_STRINGLABEL "string" // These are only used by the parser... Should be moved?

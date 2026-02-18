@@ -15,6 +15,8 @@
 #include "help.h"
 #include "resources.h"
 #include "common.h"
+#include "dictionary.h"
+#include "list.h"
 
 #include "error.h"
 #include "lex.h"
@@ -31,11 +33,10 @@
 DEFINE_VARRAY(md_block, md_block);
 DEFINE_VARRAY(md_file, md_file);
 DEFINE_VARRAY(md_topic, md_topic);
-DEFINE_VARRAY(md_alias, md_alias);
 
 static varray_md_file s_files;
 static varray_md_topic s_topics;
-static varray_md_alias s_aliases;
+static dictionary s_names; // Map names or aliases to topic index or list of indices
 
 /** The interactive help system uses a collection of Markdown files, located in
  *  MORPHO_HELPFOLDER, that define available topics. Help files are all
@@ -564,39 +565,88 @@ void md_file_clear(md_file *f) {
 }
 
 /* -------------------------------------------------------
- * Topic and alias comparison and sorting
+ * Name index (single dict: name/alias -> index or List of indices)
  * ------------------------------------------------------- */
 
-int md_topic_compare(const void *a, const void *b) {
-    const md_topic *ta = (const md_topic *) a;
-    const md_topic *tb = (const md_topic *) b;
-    return strcmp(ta->name, tb->name);
+/** Build s_names from topic names (value = index or List). Call once after all files loaded and parent_topic set. Aliases may already be in dict from parse. */
+static void help_buildnameindex(void) {
+    for (unsigned int i = 0; i < s_topics.count; i++) {
+        if (!MORPHO_ISSTRING(s_topics.data[i].name)) continue;
+        value key = s_topics.data[i].name;
+        value v;
+        if (!dictionary_get(&s_names, key, &v)) {
+            dictionary_insert(&s_names, key, MORPHO_INTEGER((int) i));
+            continue;
+        }
+        if (MORPHO_ISINTEGER(v) && MORPHO_GETINTEGERVALUE(v) == (int) i) continue; // already points to this topic
+        objectlist *list;
+        if (MORPHO_ISINTEGER(v)) {
+            list = object_newlist(0, NULL);
+            if (!list) continue;
+            list_append(list, v);
+            dictionary_insert(&s_names, key, MORPHO_OBJECT(list));
+        } else list = MORPHO_GETLIST(v);
+        list_append(list, MORPHO_INTEGER((int) i));
+    }
 }
 
-int md_alias_compare(const void *a, const void *b) {
-    const md_alias *aa = (const md_alias *) a;
-    const md_alias *ab = (const md_alias *) b;
-    return strcmp(aa->name, ab->name);
+/** Get first topic index from dict value (integer or first element of list). Returns -1 if not found or invalid. */
+static int help_indexvalue_first(value v) {
+    if (MORPHO_ISINTEGER(v)) return MORPHO_GETINTEGERVALUE(v);
+    if (MORPHO_ISLIST(v)) {
+        objectlist *list = MORPHO_GETLIST(v);
+        if (list_length(list) == 0) return -1;
+        value first;
+        if (list_getelement(list, 0, &first) && MORPHO_ISINTEGER(first))
+            return MORPHO_GETINTEGERVALUE(first);
+    }
+    return -1;
 }
 
-void help_sorttopics(varray_md_topic *topics) {
-    if (topics->data && topics->count > 0)
-        qsort(topics->data, topics->count, sizeof(md_topic), md_topic_compare);
+/** Fill indices[] from dict value (integer or list). Returns count. */
+static int help_indexvalue_collect(value v, int indices[], int max) {
+    if (MORPHO_ISINTEGER(v)) {
+        if (max > 0) indices[0] = MORPHO_GETINTEGERVALUE(v);
+        return 1;
+    } else if (MORPHO_ISLIST(v)) {
+        objectlist *list = MORPHO_GETLIST(v);
+        unsigned int n = list_length(list);
+        if ((int) n > max) n = (unsigned int) max;
+        for (unsigned int i = 0; i < n; i++) {
+            value el;
+            if (list_getelement(list, (int) i, &el) && MORPHO_ISINTEGER(el))
+                indices[i] = MORPHO_GETINTEGERVALUE(el);
+        }
+        return (int) list_length(list);
+    }
+    return 0;
 }
 
-void help_sortaliases(varray_md_alias *aliases) {
-    if (aliases->data && aliases->count > 0)
-        qsort(aliases->data, aliases->count, sizeof(md_alias), md_alias_compare);
+int help_findtopic(const char *name) {
+    objectstring key_str = MORPHO_STATICSTRING(name);
+    value key = MORPHO_OBJECT(&key_str);
+    value v;
+    if (!dictionary_get(&s_names, key, &v)) return -1;
+    return help_indexvalue_first(v);
 }
 
-static int help_findalias(const char *name);
+int help_findallbyname(const char *name, int indices[], int max) {
+    objectstring key_str = MORPHO_STATICSTRING(name);
+    value key = MORPHO_OBJECT(&key_str);
+    value v;
+    if (!dictionary_get(&s_names, key, &v)) return 0;
+    return help_indexvalue_collect(v, indices, max);
+}
 
-int help_findtopic(varray_md_topic *topics, const char *name) {
-    md_topic key = { .name = (char *) name, .file_index = 0, .block_index = 0, .level = 0, .parent_topic = -1 };
-    md_topic *found = (md_topic *) bsearch(&key, topics->data, topics->count, sizeof(md_topic), md_topic_compare);
-    if (found) return (int) (found - topics->data);
-    
-    return help_findalias(name); // Not found in topics, check aliases
+/** Find child of parent topic with given name. Returns topic index or -1. */
+static int help_findchild(int parent_idx, const char *name) {
+    objectstring key_str = MORPHO_STATICSTRING(name);
+    value key = MORPHO_OBJECT(&key_str);
+    for (unsigned int j = 0; j < s_topics.count; j++) {
+        if (s_topics.data[j].parent_topic != parent_idx) continue;
+        if (MORPHO_ISEQUAL(s_topics.data[j].name, key)) return (int) j;
+    }
+    return -1;
 }
 
 /* -------------------------------------------------------
@@ -618,6 +668,12 @@ static void md_span_set(md_span *s, size_t start, size_t length) {
 static void md_trimspan(const char *base, size_t *start, size_t *len) {
     while (*len && (unsigned char) base[*start] <= ' ') { (*start)++; (*len)--; }
     while (*len && (unsigned char) base[*start + *len - 1] <= ' ') (*len)--;
+}
+
+/** Lowercase len bytes from src into buf and null-terminate. Caller must provide buf of size at least len + 1. */
+static void help_lowercase_into(const char *src, size_t len, char *buf) {
+    for (size_t i = 0; i < len; i++) buf[i] = (char) tolower((unsigned char) src[i]);
+    buf[len] = '\0';
 }
 
 /** Initialize common block fields (type, span, parent, children). */
@@ -657,26 +713,29 @@ static void md_push_header(parser *p, md_parseout *out, size_t block_start, size
     md_block_set_header(&b, out->current_header_level, title_start, title_len);
     varray_md_blockwrite(&out->file->blocks, b);
 
-    // Topic: trimmed title span, lowercased, for index lookup
+    // Topic: trimmed title span, lowercased Morpho string (stack buffer)
     size_t ns = title_start, nl = title_len;
     md_trimspan(base, &ns, &nl);
-    char *name = (char *) MORPHO_MALLOC(nl + 1);
-    if (name) {
-        for (size_t i = 0; i < nl; i++)
-            name[i] = (char) tolower((unsigned char) base[ns + i]);
-        name[nl] = '\0';
-        md_topic topic = {
-            .name = name,
-            .file_index = out->file_index,
-            .block_index = out->file->blocks.count - 1,
-            .level = out->current_header_level,
-            .parent_topic = -1
-        };
-        varray_md_topicwrite(out->topics, topic);
-        out->current_topic_index = (int) out->topics->count - 1;
-    } else {
+    if (nl > MORPHO_MAX_HELPQUERY_LENGTH) {
         out->current_topic_index = -1;
+        return;
     }
+    char buf[nl + 1];
+    help_lowercase_into(base + ns, nl, buf);
+    value name_val = object_stringfromcstring(buf, nl);
+    if (!MORPHO_ISSTRING(name_val)) {
+        out->current_topic_index = -1;
+        return;
+    }
+    md_topic topic = {
+        .name = name_val,
+        .file_index = out->file_index,
+        .block_index = out->file->blocks.count - 1,
+        .level = out->current_header_level,
+        .parent_topic = -1
+    };
+    varray_md_topicwrite(out->topics, topic);
+    out->current_topic_index = (int) out->topics->count - 1;
 }
 
 static void md_push_paragraph(parser *p, md_parseout *out, size_t block_start) {
@@ -709,50 +768,25 @@ static void md_push_link(parser *p, md_parseout *out, size_t block_start, size_t
  * Help topic aliases
  * ********************************************************************** */
 
-/** Find topic index by alias name. Returns -1 if not found. Resolves topic by name so index is correct after sorting. */
-static int help_findalias(const char *name) {
-    if (!s_aliases.data || s_aliases.count == 0) return -1;
-    md_alias key = { .name = (char *) name, .topic_name = NULL };
-    md_alias *found = (md_alias *) bsearch(&key, s_aliases.data, s_aliases.count, sizeof(md_alias), md_alias_compare);
-    if (!found || !found->topic_name) return -1;
-    return help_findtopic(&s_topics, found->topic_name);
-}
-
-/** Create an alias from a tag link definition. Returns true if alias was created. Stores a pointer to the topic's name so resolution stays valid after topics are sorted. */
+/** Create an alias from a tag link definition. Inserts alias -> topic index into s_names. */
 static bool help_createalias(const char *base, size_t label_start, size_t label_len, size_t target_start, size_t target_len, int topic_index) {
     if (topic_index < 0 || (unsigned int) topic_index >= s_topics.count) return false;
-    
-    // Check if label starts with "tag"
     if (label_len < 3) return false;
     const char *label = base + label_start;
     if (tolower((unsigned char) label[0]) != 't' || tolower((unsigned char) label[1]) != 'a' || tolower((unsigned char) label[2]) != 'g') return false;
-    
-    // Extract alias name from target (find text in parentheses)
     const char *target = base + target_start, *open = NULL, *close = NULL;
     for (const char *p = target; p < target + target_len && !close; p++) {
         if (!open && *p == '(') open = p + 1;
         else if (open && *p == ')') { close = p; break; }
     }
     if (!open || !close || close == open) return false;
-    
-    // Allocate and lowercase alias name
     size_t len = (size_t)(close - open);
-    char *alias_name = (char *) MORPHO_MALLOC(len + 1);
-    if (!alias_name) return false;
-    for (size_t j = 0; j < len; j++) alias_name[j] = (char) tolower((unsigned char) open[j]);
-    alias_name[len] = '\0';
-    
-    // Check for duplicate alias name
-    for (unsigned int j = 0; j < s_aliases.count; j++) {
-        if (s_aliases.data[j].name && strcmp(s_aliases.data[j].name, alias_name) == 0) {
-            MORPHO_FREE(alias_name);
-            return false;
-        }
-    }
-    
-    // Store pointer to topic's name
-    const char *topic_name = s_topics.data[topic_index].name;
-    varray_md_aliaswrite(&s_aliases, (md_alias) { .name = alias_name, .topic_name = topic_name });
+    if (len > MORPHO_MAX_HELPQUERY_LENGTH) return false;
+    char alias_buf[len + 1];
+    help_lowercase_into(open, len, alias_buf);
+    value alias_val = object_stringfromcstring(alias_buf, len);
+    if (!MORPHO_ISSTRING(alias_val)) return false;
+    dictionary_insert(&s_names, alias_val, MORPHO_INTEGER(topic_index));
     return true;
 }
 
@@ -827,76 +861,19 @@ static void help_topic_displaypath(int idx, char *buf, size_t bufsize) {
         return;
     }
     const md_topic *t = &s_topics.data[idx];
-    if (!t->name) {
+    const char *name = MORPHO_ISSTRING(t->name) ? MORPHO_GETCSTRING(t->name) : NULL;
+    if (!name) {
         buf[0] = '\0';
         return;
     }
     int p = (t->level > 1) ? help_findparent(idx) : -1;
     if (p >= 0) {
-        // Recurse for parent path, then append ".name"
         help_topic_displaypath(p, buf, bufsize);
         size_t len = strlen(buf);
-        if (len + 1 < bufsize) snprintf(buf + len, bufsize - len, ".%s", t->name);
+        if (len + 1 < bufsize) snprintf(buf + len, bufsize - len, ".%s", name);
     } else {
-        // Top-level or no parent: just the topic name
-        snprintf(buf, bufsize, "%s", t->name);
+        snprintf(buf, bufsize, "%s", name);
     }
-}
-
-/* -------------------------------------------------------
- * Topic lookup by name or block
- * ------------------------------------------------------- */
-
-/** Find all topic indices with given name. Fills indices[] up to max, returns count. */
-static int help_findallbyname(const char *name, int indices[], int max) {
-    int n = 0;
-    for (unsigned int i = 0; i < s_topics.count && n < max; i++) {
-        if (s_topics.data[i].name && strcmp(s_topics.data[i].name, name) == 0)
-            indices[n++] = (int) i;
-    }
-    return n;
-}
-
-/** Find topic index by file and block index. Returns -1 if not found. */
-static int help_findtopicbyblock(int file_index, unsigned int block_index) {
-    for (unsigned int i = 0; i < s_topics.count; i++) {
-        if (s_topics.data[i].file_index == file_index && s_topics.data[i].block_index == block_index)
-            return (int) i;
-    }
-    return -1;
-}
-
-/** True if header title span (trimmed, lowercased) equals name. */
-static bool help_headertitleeq(const char *base, size_t start, size_t len, const char *name) {
-    md_trimspan(base, &start, &len);
-    while (len && *name && (char) tolower((unsigned char) base[start]) == *name) {
-        start++;
-        len--;
-        name++;
-    }
-    return len == 0 && *name == '\0';
-}
-
-/** Find first subtopic of parent with given name (same file, block after parent, level > parent). Returns topic index or -1. */
-static int help_findsubtopic(int parent_idx, const char *name) {
-    if (parent_idx < 0 || (unsigned int) parent_idx >= s_topics.count) return -1;
-    const md_topic *parent = &s_topics.data[parent_idx];
-    if (parent->file_index < 0 || (unsigned int) parent->file_index >= s_files.count) return -1;
-    const md_file *file = &s_files.data[parent->file_index];
-    const char *base = file->source;
-    size_t base_len = file->sourcelen;
-
-    // Scan blocks after parent; stop when we hit same-or-higher level (left section)
-    for (unsigned int i = parent->block_index + 1; i < file->blocks.count; i++) {
-        const md_block *b = &file->blocks.data[i];
-        if (b->type != MD_BLOCK_HEADER) continue;
-        if (b->as.header.level <= parent->level) return -1; // left section
-        size_t start = b->as.header.title.start;
-        size_t len = md_clamp_span(start, b->as.header.title.length, base_len);
-        if (help_headertitleeq(base, start, len, name))
-            return help_findtopicbyblock(parent->file_index, i);
-    }
-    return -1;
 }
 
 /* -------------------------------------------------------
@@ -940,9 +917,10 @@ static const char *help_findclosesttopic(const char *name) {
     const char *best = NULL;
     unsigned int best_d = MORPHO_HELP_SUGGEST_MAXDIST + 1;
     for (unsigned int i = 0; i < s_topics.count; i++) {
-        if (s_topics.data[i].level != 1 || !s_topics.data[i].name) continue;
-        unsigned int d = help_editdistance(name, s_topics.data[i].name, best_d - 1);
-        if (d < best_d) { best_d = d; best = s_topics.data[i].name; }
+        if (s_topics.data[i].level != 1 || !MORPHO_ISSTRING(s_topics.data[i].name)) continue;
+        const char *tn = MORPHO_GETCSTRING(s_topics.data[i].name);
+        unsigned int d = help_editdistance(name, tn, best_d - 1);
+        if (d < best_d) { best_d = d; best = tn; }
     }
     return best;
 }
@@ -950,19 +928,14 @@ static const char *help_findclosesttopic(const char *name) {
 /** Find subtopic name under parent closest to name; NULL if none within distance. */
 static const char *help_findclosestsubtopic(int parent_idx, const char *name) {
     if (parent_idx < 0 || (unsigned int) parent_idx >= s_topics.count) return NULL;
-    const md_topic *parent = &s_topics.data[parent_idx];
-    if (parent->file_index < 0 || (unsigned int) parent->file_index >= s_files.count) return NULL;
-    const md_file *file = &s_files.data[parent->file_index];
     const char *best = NULL;
     unsigned int best_d = MORPHO_HELP_SUGGEST_MAXDIST + 1;
-    for (unsigned int i = parent->block_index + 1; i < file->blocks.count; i++) {
-        const md_block *b = &file->blocks.data[i];
-        if (b->type != MD_BLOCK_HEADER) continue;
-        if (b->as.header.level <= parent->level) break;
-        int ti = help_findtopicbyblock(parent->file_index, i);
-        if (ti < 0 || !s_topics.data[ti].name) continue;
-        unsigned int d = help_editdistance(name, s_topics.data[ti].name, best_d - 1);
-        if (d < best_d) { best_d = d; best = s_topics.data[ti].name; }
+    for (unsigned int j = 0; j < s_topics.count; j++) {
+        if (s_topics.data[j].parent_topic != parent_idx) continue;
+        if (!MORPHO_ISSTRING(s_topics.data[j].name)) continue;
+        const char *tn = MORPHO_GETCSTRING(s_topics.data[j].name);
+        unsigned int d = help_editdistance(name, tn, best_d - 1);
+        if (d < best_d) { best_d = d; best = tn; }
     }
     return best;
 }
@@ -994,17 +967,18 @@ static void help_topicfill(help_topic *out, const md_topic *topic, const md_file
 }
 
 /** Validate topic and get source pointer/length; return false if invalid. */
-static bool help_topicsrc(const help_topic *t, varray_char *result, const char **src, size_t *src_len) {
-    if (!t || !t->file || !t->file->source || !result) return false;
+static bool help_topicsrc(const help_topic *t, const char **src, size_t *src_len) {
+    if (!t || !t->file || !t->file->source) return false;
     *src = t->file->source;
     *src_len = t->file->sourcelen;
     return true;
 }
 
 bool help_topictotext(const help_topic *t, varray_char *result) {
+    if (!result) return false;
     const char *src;
     size_t src_len;
-    if (!help_topicsrc(t, result, &src, &src_len)) return false;
+    if (!help_topicsrc(t, &src, &src_len)) return false;
     for (unsigned int i = 0; i < t->nblocks; i++) {
         const md_block *b = &t->content_blocks[i];
         size_t len = md_clamp_span(b->span.start, b->span.length, src_len);
@@ -1041,9 +1015,10 @@ bool help_topictotext(const help_topic *t, varray_char *result) {
 }
 
 bool help_topicrawmd(const help_topic *t, varray_char *result) {
+    if (!result) return false;
     const char *src;
     size_t src_len;
-    if (!help_topicsrc(t, result, &src, &src_len)) return false;
+    if (!help_topicsrc(t, &src, &src_len)) return false;
     for (unsigned int i = 0; i < t->nblocks; i++) {
         const md_block *b = &t->content_blocks[i];
         size_t len = md_clamp_span(b->span.start, b->span.length, src_len);
@@ -1058,13 +1033,13 @@ bool help_topicrawmd(const help_topic *t, varray_char *result) {
  * Morpho help files (load and parse)
  * ********************************************************************** */
 
-/** Parse a markdown file and append blocks/topics to the given arrays. */
-bool help_parse(md_file *file, varray_md_topic *topics, int file_index) {
+/** Parse a markdown file and append blocks/topics to s_topics. */
+bool help_parse(md_file *file, int file_index) {
     error err;
     error_init(&err);
     md_parseout parseout = {
         .file = file,
-        .topics = topics,
+        .topics = &s_topics,
         .file_index = file_index,
         .current_header_level = 1,
         .current_topic_index = -1
@@ -1111,23 +1086,19 @@ bool help_load(char *filename) {
     mdfile.sourcelen = len;
     mdfile.filename = morpho_strdup(filename);
     unsigned int n_topics_before = s_topics.count;
-    bool ok = help_parse(&mdfile, &s_topics, (int) s_files.count);
+    bool ok = help_parse(&mdfile, (int) s_files.count);
     if (ok) {
         varray_md_filewrite(&s_files, mdfile);
     } else {
         md_file_clear(&mdfile);
         // Remove topics added during the failed parse; they have file_index = s_files.count
-        while (s_topics.count > n_topics_before) {
-            md_topic *t = &s_topics.data[s_topics.count - 1];
-            if (t->name) MORPHO_FREE(t->name);
-            t->name = NULL;
+        while (s_topics.count > n_topics_before)
             s_topics.count--;
-        }
     }
     return ok;
 }
 
-/** Finds and loads all help files; populates s_files and s_topics, then sorts topics. */
+/** Finds and loads all help files; sets parent_topic for each topic, then builds name index. */
 void help_findfiles(void) {
     varray_value files;
     varray_valueinit(&files);
@@ -1138,8 +1109,9 @@ void help_findfiles(void) {
         for (unsigned int i = 0; i < files.count; i++) morpho_freeobject(files.data[i]);
     }
     varray_valueclear(&files);
-    help_sorttopics(&s_topics);
-    help_sortaliases(&s_aliases);
+    for (unsigned int i = 0; i < s_topics.count; i++)
+        s_topics.data[i].parent_topic = help_findparent(i);
+    help_buildnameindex();
 }
 
 /* **********************************************************************
@@ -1200,7 +1172,7 @@ void help_queryhint(const char *query, varray_char *result) {
         return;
     }
     // Multi-segment: resolve first, then walk subtopics; on first failure suggest path.closest
-    int idx = help_findtopic(&s_topics, segs[0]);
+    int idx = help_findtopic(segs[0]);
     if (idx < 0) {
         help_hintappend(result, query, help_findclosesttopic(segs[0]));
         varray_charwrite(result, '\0');
@@ -1211,7 +1183,7 @@ void help_queryhint(const char *query, varray_char *result) {
     if (path_len < 0 || path_len >= (int) sizeof(path)) path_len = (int) sizeof(path) - 1;
 
     for (int i = 1; i < nsegs; i++) {
-        int next = help_findsubtopic(idx, segs[i]);
+        int next = help_findchild(idx, segs[i]);
         if (next < 0) {
             const char *closest = help_findclosestsubtopic(idx, segs[i]);
             char suggest[MORPHO_MAX_HELPQUERY_LENGTH] = {0};
@@ -1251,7 +1223,7 @@ bool morpho_helpastopic(const char *query, help_topic *out) {
     int nsegs = help_parsequery(query, qbuf, segs);
     if (nsegs <= 0) return false;
 
-    // Single segment: resolve by name; fail if 0 or multiple matches (caller shows hint)
+    // Single segment: dict gives 0, 1, or many; if many caller shows "did you mean?"
     int idx;
     if (nsegs == 1) {
         int multi[MORPHO_HELP_MAX_MULTIMATCH];
@@ -1259,19 +1231,18 @@ bool morpho_helpastopic(const char *query, help_topic *out) {
         if (n == 1) {
             idx = multi[0];
         } else if (n == 0) {
-            idx = help_findtopic(&s_topics, segs[0]); // fallback: bsearch by name
-            if (idx < 0) return false;
+            return false;
         } else {
-            return false; // multiple matches: caller will show hint
+            return false; // multiple matches: caller shows hint
         }
     } else {
-        idx = help_findtopic(&s_topics, segs[0]);
+        idx = help_findtopic(segs[0]); // first match
         if (idx < 0) return false;
     }
 
-    // Resolve remaining segments as subtopics
+    // Resolve remaining segments by walking children
     for (int i = 1; i < nsegs; i++) {
-        idx = help_findsubtopic(idx, segs[i]);
+        idx = help_findchild(idx, segs[i]);
         if (idx < 0) return false;
     }
 
@@ -1283,14 +1254,14 @@ bool morpho_helpastopic(const char *query, help_topic *out) {
     return true;
 }
 
-bool morpho_helpastext(char *query, varray_char *result) {
+bool morpho_helpastext(const char *query, varray_char *result) {
     help_topic t;
     if (morpho_helpastopic(query, &t)) return help_topictotext(&t, result);
     help_queryhint(query, result);
     return false;
 }
 
-bool morpho_helpasmd(char *query, varray_char *result) {
+bool morpho_helpasmd(const char *query, varray_char *result) {
     help_topic t;
     if (morpho_helpastopic(query, &t)) return help_topicrawmd(&t, result);
     help_queryhint(query, result);
@@ -1315,23 +1286,18 @@ void help_initialize(void) {
 
     varray_md_fileinit(&s_files);
     varray_md_topicinit(&s_topics);
-    varray_md_aliasinit(&s_aliases);
+    dictionary_init(&s_names);
     morpho_addfinalizefn(help_finalize);
 }
 
-/** @brief Finalization: free all files and topics. */
+/** @brief Finalization: free all files and topics. Name keys not owned; free List values then clear dict. */
 void help_finalize(void) {
     for (unsigned int i = 0; i < s_files.count; i++)
         md_file_clear(&s_files.data[i]);
     varray_md_fileclear(&s_files);
-    for (unsigned int i = 0; i < s_topics.count; i++) {
-        if (s_topics.data[i].name) MORPHO_FREE(s_topics.data[i].name);
-    }
     varray_md_topicclear(&s_topics);
-    for (unsigned int i = 0; i < s_aliases.count; i++) {
-        if (s_aliases.data[i].name) MORPHO_FREE(s_aliases.data[i].name);
-    }
-    varray_md_aliasclear(&s_aliases);
+    dictionary_freecontents(&s_names, false, true); /* free List values; keys (names) are VM-owned */
+    dictionary_clear(&s_names);
 }
 
 #endif

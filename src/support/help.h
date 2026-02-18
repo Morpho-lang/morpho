@@ -11,6 +11,7 @@
 
 #include <stddef.h>
 #include "varray.h"
+#include "value.h"
 
 /** Maximum length of a help query string (used for lookup buffer). */
 #define MORPHO_MAX_HELPQUERY_LENGTH 512
@@ -67,9 +68,9 @@ typedef struct {
 
 DECLARE_VARRAY(md_file, md_file);
 
-/** Topic entry: header in the master list, sorted by name for O(log n) lookup. */
+/** Topic entry: header in the master list (load order). Hierarchy by parent_topic; lookup by name/alias via single dictionary (value = index or List of indices). */
 typedef struct {
-    char *name;             /* lowercase, owned */
+    value name;             /* Morpho string (lowercase); not owned */
     int file_index;
     unsigned int block_index;
     int level;              /* header level 1–3 */
@@ -78,14 +79,6 @@ typedef struct {
 
 DECLARE_VARRAY(md_topic, md_topic);
 
-/** Alias entry: maps an alias name to a topic by the topic's name. topic_name is a pointer to the topic's name (not owned); lookup resolves it by bsearch so it remains valid after topics are sorted. */
-typedef struct {
-    char *name;              /* alias name, lowercase, owned */
-    const char *topic_name; /* topic name to resolve (points into topic, not owned) */
-} md_alias;
-
-DECLARE_VARRAY(md_alias, md_alias);
-
 /** Initialize / clear a block (clears children). */
 void md_block_clear(md_block *b);
 
@@ -93,14 +86,11 @@ void md_block_clear(md_block *b);
 void md_file_init(md_file *f);
 void md_file_clear(md_file *f);
 
-/** Topic list: compare by name for bsearch. */
-int md_topic_compare(const void *a, const void *b);
+/** Find one topic index by name or alias (first match if multiple). Returns -1 if not found. */
+int help_findtopic(const char *name);
 
-/** Sort topic list by name (call after loading so lookup is O(log n)). */
-void help_sorttopics(varray_md_topic *topics);
-
-/** Find topic index by name (binary search). Returns -1 if not found. */
-int help_findtopic(varray_md_topic *topics, const char *name);
+/** Find all topic indices with given name. Fills indices[] up to max, returns count. */
+int help_findallbyname(const char *name, int indices[], int max);
 
 /* -------------------------------------------------------
  * Help topic view (for flexible rendering)
@@ -158,10 +148,10 @@ bool help_topicrawmd(const help_topic *t, varray_char *result);
 bool morpho_helpastopic(const char *query, help_topic *out);
 
 /** Look up help for query and write plain-text result. Returns true if topic found. (Convenience wrapper for morpho_helpastopic + help_topictotext.) */
-bool morpho_helpastext(char *query, varray_char *result);
+bool morpho_helpastext(const char *query, varray_char *result);
 
 /** Look up help for query and write raw markdown into result. Returns true if topic found. (Convenience wrapper for morpho_helpastopic + help_topicrawmd.) */
-bool morpho_helpasmd(char *query, varray_char *result);
+bool morpho_helpasmd(const char *query, varray_char *result);
 
 /** Build a hint for a failed query */
 void help_queryhint(const char *query, varray_char *result);

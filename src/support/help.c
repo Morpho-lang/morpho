@@ -406,13 +406,39 @@ bool md_parselist(parser *p, void *out) {
     return true;
 }
 
-/** Parses the rest of a link definition after ]:  (e.g. " # (target)" or " # (subtopics)"). Consumes until newline or EOF. */
-bool md_parseurl(parser *p, void *out) {
-    while (!parse_checktoken(p, MD_NEWLINE) && !parse_checktoken(p, MD_EOF)) {
+/** Parses the rest of a link definition after ]:  (e.g. " # (target)" or " # (subtopics)"). Consumes until newline or EOF.
+ *  Extracts target URL and any parenthesized content. Returns target_start, target_len, paren_start, paren_len via pointers.
+ *  paren_start/len are set to 0 if no parentheses found. */
+static void md_parseurl(parser *p, void *out, size_t *target_start, size_t *target_len, size_t *paren_start, size_t *paren_len) {
+    md_parseout *ctx = (md_parseout *) out;
+    const char *base = ctx->file->source;
+    *target_start = (size_t)(p->current.start - base);
+    *paren_start = 0;
+    *paren_len = 0;
+    
+    // Parse tokens until we hit MD_LEFTPAREN (for parenthesized content) or MD_NEWLINE/EOF
+    size_t target_end = *target_start;
+    while (!parse_checktoken(p, MD_LEFTPAREN) && !parse_checktoken(p, MD_NEWLINE) && !parse_checktoken(p, MD_EOF)) {
         parse_advance(p);
+        target_end = md_end_previous(p, base);
     }
-    if (parse_checktoken(p, MD_NEWLINE)) return parse_advance(p);
-    return true; // EOF is valid end of link line
+    // target_end is now the end of the last token before MD_LEFTPAREN (or MD_NEWLINE/EOF)
+    *target_len = target_end > *target_start ? (size_t)(target_end - *target_start) : 0;
+    
+    // If we found a left parenthesis, extract parenthesized content
+    if (parse_checktokenadvance(p, MD_LEFTPAREN)) {
+        *paren_start = (size_t)(p->current.start - base);
+        // Parse content until right parenthesis
+        while (!parse_checktoken(p, MD_RIGHTPAREN) && !parse_checktoken(p, MD_NEWLINE) && !parse_checktoken(p, MD_EOF)) parse_advance(p);
+        if (parse_checktokenadvance(p, MD_RIGHTPAREN)) { // paren_len is content between ( and ), excluding the closing )
+            *paren_len = (size_t)(p->previous.start - base - *paren_start);
+        } else { // Unmatched parenthesis, ignore
+            *paren_start = 0; *paren_len = 0;
+        }
+    }
+    
+    // Consume newline if present
+    parse_checktokenadvance(p, MD_NEWLINE);
 }
 
 /** Parses inline link [text](url)... after [ and label and ] are consumed. Consumes ( url ) and rest of line, pushes paragraph. */
@@ -468,15 +494,20 @@ bool md_parselink(parser *p, void *out) {
         parse_error(p, false, MD_LINKEXPECTCOLON);
         return false;
     }
-    size_t target_start = (size_t)(p->current.start - base);
-    if (!md_parseurl(p, out)) { // Parse target URL until newline/EOF
-        parse_error(p, true, MD_EXPECTLINEEND);
-        return false;
-    }
-    size_t target_end = md_end_previous(p, base);
-    size_t target_len = target_end > target_start ? (size_t)(target_end - target_start) : 0;
+    size_t target_start, target_len, paren_start, paren_len;
+    md_parseurl(p, out, &target_start, &target_len, &paren_start, &paren_len);
     
-    if (help_casencmp(base + label_start, label_len, "toplevel", 8)) ctx->file->promote_subtopics = true;
+    // Check for special directives: [show]: # (subtopics) or [toplevel]: #
+    // Accept both [show] and [showsubtopics] (case-insensitive prefix match)
+    if (label_len >= 4 && help_casencmp(base + label_start, 4, "show", 4) && paren_len > 0 && help_casencmp(base + paren_start, paren_len, "subtopics", 9)) {
+        md_push_simpleblock(p, ctx, block_start, MD_SHOW_SUBTOPICS);
+        return true;
+    } else if (help_casencmp(base + label_start, label_len, "toplevel", 8)) {
+        ctx->file->promote_subtopics = true;
+        return true;
+    }
+    
+    // Normal reference link: create alias/link block
     help_createalias(base, label_start, label_len, target_start, target_len, ctx->current_topic_index);
     md_push_link(p, ctx, block_start, label_start, label_len, target_start, target_len);
     return true;
@@ -1043,6 +1074,7 @@ bool help_topictotext(const help_topic *t, varray_char *result) {
                 break;
             case MD_BLOCK_LINK_DEF:
             case MD_BLOCK_THEMATIC_BREAK:
+            case MD_SHOW_SUBTOPICS:
                 break; // omit from plain text (thematic breaks render as blank lines)
             case MD_BLOCK_BLANK:
                 varray_charwrite(result, '\n');
@@ -1326,6 +1358,18 @@ void morpho_helptopics(varray_value *out) {
         unsigned int idx;
         if (varray_valuefindsame(out, name, &idx)) continue;
         varray_valuewrite(out, name);
+    }
+}
+
+/** Fills a varray_value with subtopic names for the given topic. */
+void morpho_helpsubtopics(const help_topic *topic, varray_value *out) {
+    if (!topic || !topic->topic || !out) return;
+    int topic_index = (int)(topic->topic - s_topics.data);
+    if (topic_index < 0 || (unsigned int) topic_index >= s_topics.count) return;
+    for (unsigned int i = 0; i < s_topics.count; i++) {
+        const md_topic *t = &s_topics.data[i];
+        if (t->parent_topic != topic_index || !MORPHO_ISSTRING(t->name)) continue;
+        varray_valuewrite(out, t->name);
     }
 }
 

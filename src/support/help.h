@@ -40,7 +40,8 @@ typedef enum {
     MD_BLOCK_LIST,
     MD_BLOCK_LINK_DEF,
     MD_BLOCK_THEMATIC_BREAK,
-    MD_BLOCK_BLANK
+    MD_BLOCK_BLANK,
+    MD_SHOW_SUBTOPICS
 } md_blocktype;
 
 /** A single block: maps to a span in source; type-specific data; optional hierarchy. */
@@ -156,6 +157,9 @@ bool morpho_helpasmd(const char *query, varray_char *result);
 
 /** Fill a varray_value with top-level topic names (Morpho string values). Loads help on first use. Caller must initialize/clear the varray. */
 void morpho_helptopics(varray_value *out);
+
+/** Fill a varray_value with subtopic names (Morpho string values) for the given topic. Each name is added once (by identity). Loads help on first use. Caller must initialize/clear the varray. */
+void morpho_helpsubtopics(const help_topic *topic, varray_value *out);
 
 /** Build a hint for a failed query */
 void help_queryhint(const char *query, varray_char *result);

@@ -970,7 +970,7 @@ static unsigned int help_editdistance(const char *a, const char *b, unsigned int
     for (size_t i = 1; i <= na; i++) {
         curr[0] = (unsigned int) i;
         for (size_t j = 1; j <= nb; j++) {
-            unsigned int cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
+            unsigned int cost = (tolower((unsigned char) a[i - 1]) == tolower((unsigned char) b[j - 1])) ? 0 : 1;
             unsigned int del = prev[j] + 1, ins = curr[j - 1] + 1, sub = prev[j - 1] + cost;
             unsigned int min = (del < ins) ? del : ins;
             curr[j] = (min < sub) ? min : sub;
@@ -982,12 +982,12 @@ static unsigned int help_editdistance(const char *a, const char *b, unsigned int
     return prev[nb];
 }
 
-/** Find top-level topic name closest to name; NULL if none within distance. */
+/** Find topic name closest to name (searches all topics); NULL if none within distance. */
 static const char *help_findclosesttopic(const char *name) {
     const char *best = NULL;
     unsigned int best_d = MORPHO_HELP_SUGGEST_MAXDIST + 1;
     for (unsigned int i = 0; i < s_topics.count; i++) {
-        if (s_topics.data[i].level != 1 || !MORPHO_ISSTRING(s_topics.data[i].name)) continue;
+        if (!MORPHO_ISSTRING(s_topics.data[i].name)) continue;
         const char *tn = MORPHO_GETCSTRING(s_topics.data[i].name);
         unsigned int d = help_editdistance(name, tn, best_d - 1);
         if (d < best_d) { best_d = d; best = tn; }

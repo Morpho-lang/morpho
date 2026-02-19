@@ -39,4 +39,4 @@ jobs:
     - name: test 
       run: |
         cd test
-        morpho6 for_in/forin.morpho
+        python3 test.py

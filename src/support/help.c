@@ -1389,6 +1389,7 @@ void help_initialize(void) {
     morpho_defineerror(MD_LINKEXPECTCOLON, ERROR_PARSE, MD_LINKEXPECTCOLON_MSG);
     morpho_defineerror(MD_UNEXPECTEDTOKEN, ERROR_PARSE, MD_UNEXPECTEDTOKEN_MSG);
 
+    
     varray_md_fileinit(&s_files);
     varray_md_topicinit(&s_topics);
     dictionary_init(&s_names);

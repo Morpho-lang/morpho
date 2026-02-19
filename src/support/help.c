@@ -1389,20 +1389,20 @@ void help_initialize(void) {
     morpho_defineerror(MD_LINKEXPECTCOLON, ERROR_PARSE, MD_LINKEXPECTCOLON_MSG);
     morpho_defineerror(MD_UNEXPECTEDTOKEN, ERROR_PARSE, MD_UNEXPECTEDTOKEN_MSG);
 
-    /*varray_md_fileinit(&s_files);
+    varray_md_fileinit(&s_files);
     varray_md_topicinit(&s_topics);
     dictionary_init(&s_names);
-    morpho_addfinalizefn(help_finalize);*/
+    morpho_addfinalizefn(help_finalize);
 }
 
 /** @brief Finalization: free all files, topics, and name index. */
 void help_finalize(void) {
-    /*for (unsigned int i = 0; i < s_files.count; i++)
+    for (unsigned int i = 0; i < s_files.count; i++)
         md_file_clear(&s_files.data[i]);
     varray_md_fileclear(&s_files);
     dictionary_freecontents(&s_names, true, true);
     dictionary_clear(&s_names);
-    varray_md_topicclear(&s_topics);*/
+    varray_md_topicclear(&s_topics);
 }
 
 #endif

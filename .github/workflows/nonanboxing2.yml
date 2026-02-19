@@ -34,7 +34,7 @@ jobs:
         cd morpho-cli 
         mkdir build
         cd build
-        cmake ..
+        cmake -DMORPHO_DISABLENANBOXING=ON ..
         sudo make install
     - name: test 
       run: |

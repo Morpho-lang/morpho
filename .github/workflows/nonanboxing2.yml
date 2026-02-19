@@ -2,9 +2,9 @@ name: NoNANBoxing-2
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "dev", "help" ]
   pull_request:
-    branches: [ "dev" ]
+    branches: [ "dev", "help" ]
 
 jobs:
   build:

@@ -982,17 +982,17 @@ static unsigned int help_editdistance(const char *a, const char *b, unsigned int
     return prev[nb];
 }
 
-/** Find subtopic name under parent closest to name; NULL if none within distance. */
+/** Find topic name closest to name. If parent_idx >= 0, only consider subtopics of that parent; otherwise search all topics. Returns NULL if no topics to compare. */
 static const char *help_findclosesttopic(const char *name, int parent_idx) {
     const char *best = NULL;
-    unsigned int best_d = -1;
+    int best_d = -1; /* no candidate yet */
     size_t len = strlen(name);
     for (unsigned int j = 0; j < s_topics.count; j++) {
-        if (parent_idx >=0 && s_topics.data[j].parent_topic != parent_idx) continue;
+        if (parent_idx >= 0 && s_topics.data[j].parent_topic != parent_idx) continue;
         if (!MORPHO_ISSTRING(s_topics.data[j].name)) continue;
         const char *tn = MORPHO_GETCSTRING(s_topics.data[j].name);
-        unsigned int d = help_editdistance(name, tn, (unsigned int) len);
-        if (d < best_d || best_d<0) { best_d = d; best = tn; }
+        int d = help_editdistance(name, tn, (unsigned int) len);
+        if (d < best_d || best_d < 0) { best_d = d; best = tn; }
     }
     return best;
 }

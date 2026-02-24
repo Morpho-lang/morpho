@@ -461,7 +461,7 @@ static bool md_parseinlinelink(parser *p, void *out, size_t block_start) {
     return true;
 }
 
-static bool help_createalias(const char *base, size_t label_start, size_t label_len, size_t target_start, size_t target_len, int topic_index);
+static bool help_createalias(const char *base, size_t label_start, size_t label_len, size_t paren_start, size_t paren_len, int topic_index);
 
 /** Case-insensitive comparison of substring (s, n) with literal (lit, lit_len). */
 static bool help_casencmp(const char *s, size_t n, const char *lit, size_t lit_len) {
@@ -508,7 +508,7 @@ bool md_parselink(parser *p, void *out) {
     }
     
     // Normal reference link: create alias/link block
-    help_createalias(base, label_start, label_len, target_start, target_len, ctx->current_topic_index);
+    help_createalias(base, label_start, label_len, paren_start, paren_len, ctx->current_topic_index);
     md_push_link(p, ctx, block_start, label_start, label_len, target_start, target_len);
     return true;
 }
@@ -843,21 +843,15 @@ static void md_push_link(parser *p, md_parseout *out, size_t block_start, size_t
  * Help topic aliases
  * ********************************************************************** */
 
-/** Create an alias from a tag link definition. Inserts alias -> topic index into s_names. */
-static bool help_createalias(const char *base, size_t label_start, size_t label_len, size_t target_start, size_t target_len, int topic_index) {
+/** Create an alias from a tag link definition. Inserts alias -> topic index into s_names.
+ *  Alias text is the parenthesized part from the URL (e.g. [tagvar]: # (var) -> "var"). Requires paren_len > 0. */
+static bool help_createalias(const char *base, size_t label_start, size_t label_len, size_t paren_start, size_t paren_len, int topic_index) {
     if (topic_index < 0 || (unsigned int) topic_index >= s_topics.count) return false;
     if (label_len < 3 || !help_casencmp(base + label_start, 3, "tag", 3)) return false;
-    const char *target = base + target_start, *open = NULL, *close = NULL;
-    for (const char *p = target; p < target + target_len && !close; p++) {
-        if (!open && *p == '(') open = p + 1;
-        else if (open && *p == ')') { close = p; break; }
-    }
-    if (!open || !close || close == open) return false;
-    size_t len = (size_t)(close - open);
-    if (len > MORPHO_MAX_HELPQUERY_LENGTH) return false;
-    char alias_buf[len + 1];
-    help_lowercase_into(open, len, alias_buf);
-    return !MORPHO_ISNIL(help_nameindex_add(alias_buf, len, topic_index));
+    if (paren_len == 0 || paren_len > MORPHO_MAX_HELPQUERY_LENGTH) return false;
+    char alias_buf[paren_len + 1];
+    help_lowercase_into(base + paren_start, paren_len, alias_buf);
+    return !MORPHO_ISNIL(help_nameindex_add(alias_buf, paren_len, topic_index));
 }
 
 /* **********************************************************************

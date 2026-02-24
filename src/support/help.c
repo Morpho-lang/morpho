@@ -982,30 +982,17 @@ static unsigned int help_editdistance(const char *a, const char *b, unsigned int
     return prev[nb];
 }
 
-/** Find topic name closest to name (searches all topics); NULL if none within distance. */
-static const char *help_findclosesttopic(const char *name) {
-    const char *best = NULL;
-    unsigned int best_d = MORPHO_HELP_SUGGEST_MAXDIST + 1;
-    for (unsigned int i = 0; i < s_topics.count; i++) {
-        if (!MORPHO_ISSTRING(s_topics.data[i].name)) continue;
-        const char *tn = MORPHO_GETCSTRING(s_topics.data[i].name);
-        unsigned int d = help_editdistance(name, tn, best_d - 1);
-        if (d < best_d) { best_d = d; best = tn; }
-    }
-    return best;
-}
-
 /** Find subtopic name under parent closest to name; NULL if none within distance. */
-static const char *help_findclosestsubtopic(int parent_idx, const char *name) {
-    if (parent_idx < 0 || (unsigned int) parent_idx >= s_topics.count) return NULL;
+static const char *help_findclosesttopic(const char *name, int parent_idx) {
     const char *best = NULL;
-    unsigned int best_d = MORPHO_HELP_SUGGEST_MAXDIST + 1;
+    unsigned int best_d = -1;
+    size_t len = strlen(name);
     for (unsigned int j = 0; j < s_topics.count; j++) {
-        if (s_topics.data[j].parent_topic != parent_idx) continue;
+        if (parent_idx >=0 && s_topics.data[j].parent_topic != parent_idx) continue;
         if (!MORPHO_ISSTRING(s_topics.data[j].name)) continue;
         const char *tn = MORPHO_GETCSTRING(s_topics.data[j].name);
-        unsigned int d = help_editdistance(name, tn, best_d - 1);
-        if (d < best_d) { best_d = d; best = tn; }
+        unsigned int d = help_editdistance(name, tn, (unsigned int) len);
+        if (d < best_d || best_d<0) { best_d = d; best = tn; }
     }
     return best;
 }
@@ -1234,7 +1221,7 @@ void help_queryhint(const char *query, varray_char *result) {
             return;
         }
         if (n == 0) {
-            help_hintappend(result, query, help_findclosesttopic(segs[0]));
+            help_hintappend(result, query, help_findclosesttopic(segs[0], -1));
             varray_charwrite(result, '\0');
             return;
         }
@@ -1245,7 +1232,7 @@ void help_queryhint(const char *query, varray_char *result) {
     // Multi-segment: resolve first, then walk subtopics; on first failure suggest path.closest
     int idx = help_findtopic(segs[0]);
     if (idx < 0) {
-        help_hintappend(result, query, help_findclosesttopic(segs[0]));
+        help_hintappend(result, query, help_findclosesttopic(segs[0], -1));
         varray_charwrite(result, '\0');
         return;
     }
@@ -1256,7 +1243,7 @@ void help_queryhint(const char *query, varray_char *result) {
     for (int i = 1; i < nsegs; i++) {
         int next = help_findchild(idx, segs[i]);
         if (next < 0) {
-            const char *closest = help_findclosestsubtopic(idx, segs[i]);
+            const char *closest = help_findclosesttopic(segs[i], idx);
             char suggest[MORPHO_MAX_HELPQUERY_LENGTH] = {0};
             if (closest) {
                 int needed = path_len + 1 + (int) strlen(closest);
@@ -1388,7 +1375,6 @@ void help_initialize(void) {
     morpho_defineerror(MD_LINKEXPECTBRACKET, ERROR_PARSE, MD_LINKEXPECTBRACKET_MSG);
     morpho_defineerror(MD_LINKEXPECTCOLON, ERROR_PARSE, MD_LINKEXPECTCOLON_MSG);
     morpho_defineerror(MD_UNEXPECTEDTOKEN, ERROR_PARSE, MD_UNEXPECTEDTOKEN_MSG);
-
     
     varray_md_fileinit(&s_files);
     varray_md_topicinit(&s_topics);

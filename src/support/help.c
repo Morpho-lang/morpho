@@ -712,14 +712,12 @@ int help_findallbyname(const char *name, int indices[], int max) {
     return help_indexvalue_collect(v, indices, max);
 }
 
-/** Find child of parent topic with given name. Returns topic index or -1. */
+/** Find child of parent topic with given name. Returns topic index or -1. Uses s_names then filters by parent. */
 static int help_findchild(int parent_idx, const char *name) {
-    objectstring key_str = MORPHO_STATICSTRING(name);
-    value key = MORPHO_OBJECT(&key_str);
-    for (unsigned int j = 0; j < s_topics.count; j++) {
-        if (s_topics.data[j].parent_topic != parent_idx) continue;
-        if (MORPHO_ISEQUAL(s_topics.data[j].name, key)) return (int) j;
-    }
+    int cand[MORPHO_HELP_MAX_MULTIMATCH];
+    int n = help_findallbyname(name, cand, MORPHO_HELP_MAX_MULTIMATCH);
+    for (int i = 0; i < n; i++)
+        if (s_topics.data[cand[i]].parent_topic == parent_idx) return cand[i];
     return -1;
 }
 
@@ -858,11 +856,6 @@ static bool help_createalias(const char *base, size_t label_start, size_t label_
  * Help topic lookup and content range
  * ********************************************************************** */
 
-/** Maximum number of query segments (e.g. "System respondsto" -> 2). */
-#define MORPHO_HELP_QUERY_MAXSEGMENTS 8
-#define MORPHO_HELP_MAX_MULTIMATCH 8
-/** Max edit distance to suggest a topic (only suggest if close enough). */
-#define MORPHO_HELP_SUGGEST_MAXDIST 3
 /** Edit distance return when string too long (no match). */
 #define MORPHO_HELP_EDIT_NOMATCH 255
 
@@ -1279,24 +1272,12 @@ bool morpho_helpastopic(const char *query, help_topic *out) {
     int nsegs = help_parsequery(query, qbuf, segs);
     if (nsegs <= 0) return false;
 
-    // Single segment: dict gives 0, 1, or many; if many caller shows "did you mean?"
-    int idx;
-    if (nsegs == 1) {
-        int multi[MORPHO_HELP_MAX_MULTIMATCH];
-        int n = help_findallbyname(segs[0], multi, MORPHO_HELP_MAX_MULTIMATCH);
-        if (n == 1) {
-            idx = multi[0];
-        } else if (n == 0) {
-            return false;
-        } else {
-            return false; // multiple matches: caller shows hint
-        }
-    } else {
-        idx = help_findtopic(segs[0]); // first match
-        if (idx < 0) return false;
-    }
+    int multi[MORPHO_HELP_MAX_MULTIMATCH];
+    int n = help_findallbyname(segs[0], multi, MORPHO_HELP_MAX_MULTIMATCH);
+    if (n == 0) return false;
+    if (nsegs == 1 && n != 1) return false; /* single segment needs unique match; multiple -> caller shows hint */
+    int idx = multi[0];
 
-    // Resolve remaining segments by walking children
     for (int i = 1; i < nsegs; i++) {
         idx = help_findchild(idx, segs[i]);
         if (idx < 0) return false;
@@ -1324,7 +1305,6 @@ bool morpho_helpasmd(const char *query, varray_char *result) {
     return false;
 }
 
-/** Fill out with top-level topic names (level == 1, or level == 2 when file has [toplevel] tag); each name added once (by identity). */
 /** True if topic at index i is top-level (level 1 or promoted level 2). */
 static bool help_topic_is_toplevel(unsigned int i) {
     if (i >= s_topics.count) return false;

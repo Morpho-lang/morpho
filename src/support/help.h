@@ -19,6 +19,11 @@
 /** Maximum length of a single string for edit-distance (suggestion). */
 #define MORPHO_HELP_EDITMAXLEN 128
 
+/** Maximum number of query segments (e.g. "System.clock" -> 2). */
+#define MORPHO_HELP_QUERY_MAXSEGMENTS 8
+/** Maximum number of topic indices returned for a single name (multi-match). */
+#define MORPHO_HELP_MAX_MULTIMATCH 8
+
 /** Buffer size for "not found" hint message. */
 #define MORPHO_HELP_HINTBUFSIZE 256
 

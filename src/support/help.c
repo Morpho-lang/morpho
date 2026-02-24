@@ -1325,20 +1325,27 @@ bool morpho_helpasmd(const char *query, varray_char *result) {
 }
 
 /** Fill out with top-level topic names (level == 1, or level == 2 when file has [toplevel] tag); each name added once (by identity). */
+/** True if topic at index i is top-level (level 1 or promoted level 2). */
+static bool help_topic_is_toplevel(unsigned int i) {
+    if (i >= s_topics.count) return false;
+    const md_topic *t = &s_topics.data[i];
+    bool include = (t->level == 1);
+    if (!include && t->file_index >= 0 && (unsigned int) t->file_index < s_files.count)
+        include = s_files.data[t->file_index].promote_subtopics;
+    return include;
+}
+
+/** Fill a varray_value with top-level topic names. */
 void morpho_helptopics(varray_value *out) {
     if (!out) return;
     help_ensureloaded();
-    for (unsigned int i = 0; i < s_topics.count; i++) {
-        const md_topic *t = &s_topics.data[i];
-        if (!MORPHO_ISSTRING(t->name)) continue;
-        bool include = (t->level == 1);
-        if (!include && t->file_index >= 0 && (unsigned int) t->file_index < s_files.count)
-            include = s_files.data[t->file_index].promote_subtopics;
-        if (!include) continue;
-        value name = t->name;
-        unsigned int idx;
-        if (varray_valuefindsame(out, name, &idx)) continue;
-        varray_valuewrite(out, name);
+    if (!s_names.contents) return;
+    for (unsigned int i = 0; i < s_names.capacity; i++) {
+        const dictionaryentry *e = &s_names.contents[i];
+        if (MORPHO_ISNIL(e->key) || !MORPHO_ISSTRING(e->key)) continue;
+        int ti = help_indexvalue_first(e->val);
+        if (ti < 0 || !help_topic_is_toplevel((unsigned int) ti)) continue;
+        varray_valuewrite(out, e->key);
     }
 }
 

@@ -15,6 +15,7 @@
 #include "profile.h"
 #include "resources.h"
 #include "extensions.h"
+#include "help.h"
 
 value initselector = MORPHO_NIL;
 value indexselector = MORPHO_NIL;
@@ -2177,6 +2178,7 @@ void morpho_initialize(void) {
     compile_initialize();
     debugger_initialize();
     extensions_initialize();
+    help_initialize();
     
 #ifdef MORPHO_DEBUG_GCSIZETRACKING
     dictionary_init(&sizecheck);

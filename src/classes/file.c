@@ -165,6 +165,7 @@ bool file_readintovarray(FILE *f, varray_char *string) {
     if (varray_charresize(string, (int) size+1)) {
         size_t nread=fread(string->data, sizeof(char), size, f);
         string->data[nread]='\0';
+        string->count=(unsigned int) nread+1;
     }
     
     return true;

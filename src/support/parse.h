@@ -70,6 +70,9 @@ typedef struct {
 /** Varrays of parse rules */
 DECLARE_VARRAY(parserule, parserule)
 
+/** Macro to check return of a bool function */
+#define PARSE_CHECK(f) if (!(f)) return false;
+
 /* -------------------------------------------------------
  * Define a Parser
  * ------------------------------------------------------- */

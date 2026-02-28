@@ -18,9 +18,6 @@
 /** Varrays of parse rules */
 DEFINE_VARRAY(parserule, parserule)
 
-/** Macro to check return of a bool function */
-#define PARSE_CHECK(f) if (!(f)) return false;
-
 /* **********************************************************************
  * Parser utility functions
  * ********************************************************************** */

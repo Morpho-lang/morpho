@@ -22,6 +22,7 @@
 #define SYSTEM_READLINE_METHOD        "readline"
 #define SYSTEM_SLEEP_METHOD           "sleep"
 #define SYSTEM_ARGUMENTS_METHOD       "arguments"
+#define SYSTEM_HELP_METHOD            "help"
 #define SYSTEM_EXIT_METHOD            "exit"
 
 #define SYSTEM_HOMEFOLDER_METHOD      "homefolder"

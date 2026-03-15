@@ -281,7 +281,7 @@ linalgError_t complexmatrix_mmul(MorphoComplex alpha, objectmatrix *a, objectmat
 }
 
 /** Scales a matrix x <- scale * x >*/
-void complematrix_scale(objectmatrix *a, MorphoComplex scale) {
+void complexmatrix_scale(objectmatrix *a, MorphoComplex scale) {
     cblas_zscal(a->nrows * a->ncols, (linalg_complexdouble_t *) &scale, (linalg_complexdouble_t *) a->elements, 1);
 }
 
@@ -423,7 +423,7 @@ value ComplexMatrix_mul__complex(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
     
     objectmatrix *new = matrix_clone(a);
-    if (new) complematrix_scale(new, MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0))->Z);
+    if (new) complexmatrix_scale(new, MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0))->Z);
     return morpho_wrapandbind(v, (object *) new);
 }
 

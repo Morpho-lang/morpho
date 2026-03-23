@@ -48,7 +48,7 @@ void vm_graylistadd(graylist *g, object *obj) {
 }
 
 /* **********************************************************************
- * Garbage collector
+ * Marking phase
  * ********************************************************************** */
 
 /** Recalculates the size of bound objects to the VM */
@@ -76,9 +76,7 @@ void vm_gcmarkobject(vm *v, object *obj) {
 
 /** Marks a value as reachable */
 void vm_gcmarkvalue(vm *v, value val) {
-    if (MORPHO_ISOBJECT(val)) {
-        vm_gcmarkobject(v, MORPHO_GETOBJECT(val));
-    }
+    if (MORPHO_ISOBJECT(val)) vm_gcmarkobject(v, MORPHO_GETOBJECT(val));
 }
 
 /** Marks all entries in a dictionary */
@@ -123,14 +121,6 @@ void vm_gcmarkroots(vm *v) {
 #endif
     value *stacktop = v->stack.data+v->fp->roffset+v->fp->function->nregs-1;
     
-    /* Find the largest stack position currently in play */
-    /*for (callframe *f=v->frame; f<v->fp; f++) {
-        value *ftop = v->stack.data+f->roffset+f->function->nregs-1;
-        if (ftop>stacktop) stacktop=ftop;
-    }*/
-
-    //debug_showstack(v);
-
     for (value *s=stacktop; s>=v->stack.data; s--) {
         if (MORPHO_ISOBJECT(*s)) vm_gcmarkvalue(v, *s);
     }

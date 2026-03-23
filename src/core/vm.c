@@ -39,7 +39,7 @@ dictionary sizecheck;
 #endif
 
 /* **********************************************************************
-* VM objects
+* VM initialization and finalization
 * ********************************************************************** */
 
 vm *globalvm=NULL;
@@ -156,10 +156,46 @@ void vm_freeobjects(vm *v) {
 }
 
 /* **********************************************************************
-* Binding and unbinding objects to the VM
+* Garbage collection
 * ********************************************************************** */
 
-/** Unbinds an object from a VM. */
+/** @brief Checks whether the gc should run. */
+static void vm_checkgc(vm *v) {
+#ifdef MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
+    vm_collectgarbage(v);
+#else
+    if (v->bound>v->nextgc) vm_collectgarbage(v);
+#endif
+}
+
+/** @brief Binds an object to a Virtual Machine without triggering garbage collection.
+ *  @param v      the virtual machine
+ *  @param obj    object to bind
+ *  @warning: For internal use only; e.g. when the internal state of the VM is not consistent and calling the GC could cause a sigsev. */
+static void vm_bindobjectwithoutcollect(vm *v, value obj) {
+    object *ob = MORPHO_GETOBJECT(obj);
+    if (!MORPHO_ISOBJECT(obj) || ob->status<OBJECT_ISUNMARKED) return;
+    ob->status=OBJECT_ISUNMARKED;
+    ob->next=v->objects;
+    v->objects=ob;
+    size_t size=object_size(ob);
+    v->bound+=size;
+    
+#ifdef MORPHO_DEBUG_GCSIZETRACKING
+    dictionary_insert(&sizecheck, obj, MORPHO_INTEGER(size));
+#endif
+}
+
+/** @brief Binds an object to a Virtual Machine.
+ *  @details Any object created during execution should be bound to a VM; this object is then managed by the garbage collector.
+ *  @param v      the virtual machine
+ *  @param obj    object to bind */
+static void vm_bindobject(vm *v, value obj) {
+    vm_bindobjectwithoutcollect(v, obj);
+    vm_checkgc(v);
+}
+
+/** @brief Unbinds an object from a VM. */
 void vm_unbindobject(vm *v, value obj) {
     object *ob=MORPHO_GETOBJECT(obj);
     
@@ -170,56 +206,86 @@ void vm_unbindobject(vm *v, value obj) {
             if (e->next==ob) { e->next=ob->next; break; }
         }
     }
-    // Correct estimate of bound size.
-    if (MORPHO_ISGARBAGECOLLECTED(obj)) {
+    
+    if (MORPHO_ISGARBAGECOLLECTED(obj)) { // Correct estimate of bound size.
         v->bound-=object_size(ob);
         ob->status=OBJECT_ISUNMANAGED;
     }
 }
 
-/** @brief Binds an object to a Virtual Machine.
- *  @details Any object created during execution should be bound to a VM; this object is then managed by the garbage collector.
+/** @brief Temporarily retain objects across multiple reentrant calls to the VM.
  *  @param v      the virtual machine
- *  @param obj    object to bind */
-static void vm_bindobject(vm *v, value obj) {
-    object *ob = MORPHO_GETOBJECT(obj);
-    ob->status=OBJECT_ISUNMARKED;
-    ob->next=v->objects;
-    v->objects=ob;
-    size_t size=object_size(ob);
-#ifdef MORPHO_DEBUG_GCSIZETRACKING
-    dictionary_insert(&sizecheck, obj, MORPHO_INTEGER(size));
-#endif
-
-    v->bound+=size;
-
-#ifdef MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
-    vm_collectgarbage(v);
-#else
-    if (v->bound>v->nextgc) vm_collectgarbage(v);
-#endif
+ *  @param nobj  number of objects to retain
+ *  @param obj    objects to retain
+ *  @returns an integer handle to pass to releaseobjects */
+int morpho_retainobjects(vm *v, int nobj, value *obj) {
+    int gcount=v->retain.count;
+    varray_valueadd(&v->retain, obj, nobj);
+    return gcount;
 }
 
-/** @brief Binds an object to a Virtual Machine without garbage collection.
+/** @brief Release objects temporarily retained by the VM.
+ *  @param v      the virtual machine
+ *  @param handle a handle returned by morpho_retainobjects. */
+void morpho_releaseobjects(vm *v, int handle) {
+    if (handle>=0) v->retain.count=handle;
+}
+
+/** @brief Inform the VM that the size of an object has changed
+ *  @param v      the virtual machine
+ *  @param obj  the object to resize
+ *  @param oldsize old size
+ *  @param newsize new size */
+void morpho_resizeobject(vm *v, object *obj, size_t oldsize, size_t newsize) {
+#ifdef MORPHO_DEBUG_GCSIZETRACKING
+    dictionary_insert(&sizecheck, MORPHO_OBJECT(obj), MORPHO_INTEGER(newsize));
+#endif
+    if (!MORPHO_ISGARBAGECOLLECTED(MORPHO_OBJECT(obj))) return;
+    v->bound-=oldsize;
+    v->bound+=newsize;
+}
+
+/** @brief Binds a set of objects to a Virtual Machine; public interface.
  *  @details Any object created during execution should be bound to a VM; this object is then managed by the garbage collector.
  *  @param v      the virtual machine
- *  @param obj    object to bind
- *  @warning: This should only be used in circumstances where the internal state of the VM is not consistent (i.e. calling the GC could cause a sigsev) */
-static void vm_bindobjectwithoutcollect(vm *v, value obj) {
-    object *ob = MORPHO_GETOBJECT(obj);
-    ob->status=OBJECT_ISUNMARKED;
-    ob->next=v->objects;
-    v->objects=ob;
-    size_t size=object_size(ob);
-#ifdef MORPHO_DEBUG_GCSIZETRACKING
-    dictionary_insert(&sizecheck, obj, MORPHO_INTEGER(size));
-#endif
+ *  @param obj    objects to bind */
+void morpho_bindobjects(vm *v, int nobj, value *obj) {
+    for (unsigned int i=0; i<nobj; i++) vm_bindobjectwithoutcollect(v, obj[i]);
 
-    v->bound+=size;
+    /* Check if size triggers garbage collection */
+#ifndef MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
+    if (v->bound>v->nextgc)
+#endif
+    {
+        int handle=morpho_retainobjects(v, nobj, obj);
+        vm_collectgarbage(v);
+        morpho_releaseobjects(v, handle);
+    }
+}
+
+/** @brief   Convenience function to wrap a single object into a value and bind to the VM
+ *  @param   v VM to use
+ *  @param   out Object to wrap
+ *  @returns object wrapped in a value, or MORPHO_NIL if obj is NULL
+ *  Also raises ERROR_ALLOCATIONFAILED if passed a null pointer */
+value morpho_wrapandbind(vm *v, object *obj) {
+    value out = MORPHO_NIL;
+    if (obj) {
+        out=MORPHO_OBJECT(obj);
+        morpho_bindobjects(v, 1, &out);
+    } else if (!morpho_checkerror(&v->err)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    return out;
+}
+
+/** @brief Checks if an object is managed by the garbage collector
+ *  @param obj  the object to check
+ *  @returns true if it is managed, false otherwise */
+bool morpho_ismanagedobject(object *obj) {
+    return MORPHO_ISGARBAGECOLLECTED(MORPHO_OBJECT(obj));
 }
 
 /* **********************************************************************
-* Virtual machine
+* Errors 
 * ********************************************************************** */
 
 /** @brief Raises a runtime error
@@ -265,8 +331,66 @@ void vm_throwOpError(vm *v, ptrdiff_t iindx, errorid id, char* op, value left, v
     vm_runtimeerror(v,iindx,id,op,left_buffer.data,right_buffer.data);
     varray_charclear(&left_buffer);
     varray_charclear(&right_buffer);
-    }
+}
 
+
+/** Returns a VM's error block */
+error *morpho_geterror(vm *v) {
+    return &v->err;
+}
+
+/** @brief Raises an error described by an error structure
+ * @param v        the virtual machine
+ * @param err    error to raise */
+void morpho_error(vm *v, error *err) {
+    if (err->cat!=ERROR_WARNING) { // Errors of category ERROR_WARNING are always raised as warnings
+        v->err = *err;
+    } else morpho_warning(v, err);
+}
+
+/** @brief Raises an warning described by an error structure  */
+void morpho_warning(vm *v, error *err) {
+    if (v->warningfn) {
+        (v->warningfn) (v, v->warningref, err);
+    } else {
+        fprintf(stderr, "Warning [%s]: %s\n", err->id, err->msg);
+    }
+}
+
+/** @brief Raise a runtime error given an id
+ * @param v        the virtual machine
+ * @param id       error id
+ * @param ...      additional data for sprintf. */
+void morpho_runtimeerror(vm *v, errorid id, ...) {
+    va_list args;
+    error err;
+    error_init(&err);
+
+    va_start(args, id);
+    morpho_writeerrorwithidvalist(&err, id, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
+    va_end(args);
+    
+    morpho_error(v, &err);
+    error_clear(&err);
+}
+
+/** @brief Raise a runtime warning given an id  */
+void morpho_runtimewarning(vm *v, errorid id, ...) {
+    va_list args;
+    error err;
+    error_init(&err);
+
+    va_start(args, id);
+    morpho_writeerrorwithidvalist(&err, id, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
+    va_end(args);
+    
+    morpho_warning(v, &err);
+    error_clear(&err);
+}
+
+/* **********************************************************************
+* Upvalues
+* ********************************************************************** */
 
 /** @brief Captures an upvalue
  *  @param v        the virtual machine
@@ -315,6 +439,10 @@ static inline void vm_closeupvalues(vm *v, value *reg) {
         up->next=NULL;
     }
 }
+
+/* **********************************************************************
+* VM helper functions
+* ********************************************************************** */
 
 /** Check if we should break at a given pc */
 bool vm_shouldbreakatpc(vm *v, instruction *pc) {
@@ -380,6 +508,11 @@ static inline void vm_expandstack(vm *v, value **reg, unsigned int n) {
         *reg = v->stack.data+roffset;
     }
     v->stack.count+=n;
+}
+
+/** Recovers the number of optional arguments */
+int vm_getoptionalargs(vm *v) {
+    return v->fp->nopt;
 }
 
 /** Process optional args */
@@ -593,6 +726,11 @@ bool _findtypeinparent(objectclass *type, value match) {
     return false;
 }
 
+/** Performs a type check operation
+ * @param[in] v - the VM in use
+ * @param[in] val - value to check
+ * @param[in] match - type to match
+ * @returns true on success, false otherwise */
 static inline bool vm_typecheck(vm *v, value val, value match) {
     value type;
     if (!value_type(val, &type)) return false;
@@ -604,11 +742,6 @@ static inline bool vm_typecheck(vm *v, value val, value match) {
     if (MORPHO_ISCLASS(match)) return _findtypeinparent( MORPHO_GETCLASS(match), type);
     
     return false;
-}
-
-/** Recovers the number of optional arguments */
-int vm_getoptionalargs(vm *v) {
-    return v->fp->nopt;
 }
 
 /** @brief   Executes a sequence of code
@@ -1631,7 +1764,7 @@ vm_error:
 }
 
 /* **********************************************************************
-* VM public interfaces
+* VM creation and configuration
 * ********************************************************************** */
 
 /** Creates a new virtual machine */
@@ -1671,149 +1804,6 @@ void morpho_setwarningfn(vm *v, morphowarningfn warningfn, void *ref) {
 void morpho_setdebuggerfn(vm *v, morphodebuggerfn debuggerfn, void *ref) {
     v->debuggerfn=debuggerfn;
     v->debuggerref=ref;
-}
-
-/** Returns a VM's error block */
-error *morpho_geterror(vm *v) {
-    return &v->err;
-}
-
-/** @brief Raises an error described by an error structure
- * @param v        the virtual machine
- * @param err    error to raise */
-void morpho_error(vm *v, error *err) {
-    if (err->cat!=ERROR_WARNING) { // Errors of category ERROR_WARNING are always raised as warnings
-        v->err = *err;
-    } else morpho_warning(v, err);
-}
-
-/** @brief Raises an warning described by an error structure  */
-void morpho_warning(vm *v, error *err) {
-    if (v->warningfn) {
-        (v->warningfn) (v, v->warningref, err);
-    } else {
-        fprintf(stderr, "Warning [%s]: %s\n", err->id, err->msg);
-    }
-}
-
-/** @brief Raise a runtime error given an id
- * @param v        the virtual machine
- * @param id       error id
- * @param ...      additional data for sprintf. */
-void morpho_runtimeerror(vm *v, errorid id, ...) {
-    va_list args;
-    error err;
-    error_init(&err);
-
-    va_start(args, id);
-    morpho_writeerrorwithidvalist(&err, id, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
-    va_end(args);
-    
-    morpho_error(v, &err);
-    error_clear(&err);
-}
-
-/** @brief Raise a runtime warning given an id  */
-void morpho_runtimewarning(vm *v, errorid id, ...) {
-    va_list args;
-    error err;
-    error_init(&err);
-
-    va_start(args, id);
-    morpho_writeerrorwithidvalist(&err, id, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
-    va_end(args);
-    
-    morpho_warning(v, &err);
-    error_clear(&err);
-}
-
-/** @brief Binds a set of objects to a Virtual Machine; public interface.
- *  @details Any object created during execution should be bound to a VM; this object is then managed by the garbage collector.
- *  @param v      the virtual machine
- *  @param obj    objects to bind */
-void morpho_bindobjects(vm *v, int nobj, value *obj) {
-    /* Now bind the new objects in. */
-    for (unsigned int i=0; i<nobj; i++) {
-        object *ob = MORPHO_GETOBJECT(obj[i]);
-        if (MORPHO_ISOBJECT(obj[i]) && ob->status<OBJECT_ISUNMARKED) {
-            ob->status=OBJECT_ISUNMARKED;
-            ob->next=v->objects;
-            v->objects=ob;
-            size_t size=object_size(ob);
-            v->bound+=size;
-#ifdef MORPHO_DEBUG_GCSIZETRACKING
-            dictionary_insert(&sizecheck, obj[i], MORPHO_INTEGER(size));
-#endif
-        }
-    }
-
-    /* Check if size triggers garbage collection */
-#ifndef MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
-    if (v->bound>v->nextgc)
-#endif
-    {
-        int handle=morpho_retainobjects(v, nobj, obj);
-        
-        vm_collectgarbage(v);
-        
-        morpho_releaseobjects(v, handle);
-    }
-}
-
-/** @brief   Convenience function to wrap a single object into a value and bind to the VM
- *  @param   v VM to use
- *  @param   out Object to wrap
- *  @returns object wrapped in a value, or MORPHO_NIL if obj is NULL
- *  Also raises ERROR_ALLOCATIONFAILED if passed a null pointer */
-value morpho_wrapandbind(vm *v, object *obj) {
-    value out = MORPHO_NIL;
-    if (obj) {
-        out=MORPHO_OBJECT(obj);
-        morpho_bindobjects(v, 1, &out);
-    } else if (!morpho_checkerror(&v->err)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    return out;
-}
-
-/** @brief Temporarily retain objects across multiple reentrant calls to the VM.
- *  @param v      the virtual machine
- *  @param nobj  number of objects to retain
- *  @param obj    objects to retain
- *  @returns an integer handle to pass to releaseobjects */
-int morpho_retainobjects(vm *v, int nobj, value *obj) {
-    int gcount=v->retain.count;
-    varray_valueadd(&v->retain, obj, nobj);
-    return gcount;
-}
-
-/** @brief Release objects temporarily retained by the VM.
- *  @param v      the virtual machine
- *  @param handle a handle returned by morpho_retainobjects. */
-void morpho_releaseobjects(vm *v, int handle) {
-    if (handle>=0) v->retain.count=handle;
-}
-
-/** @brief Inform the VM that the size of an object has changed
- *  @param v      the virtual machine
- *  @param obj  the object to resize
- *  @param oldsize old size
- *  @param newsize new size
- */
-void morpho_resizeobject(vm *v, object *obj, size_t oldsize, size_t newsize) {
-#ifdef MORPHO_DEBUG_GCSIZETRACKING
-    dictionary_insert(&sizecheck, MORPHO_OBJECT(obj), MORPHO_INTEGER(newsize));
-#endif
-    if (!MORPHO_ISGARBAGECOLLECTED(MORPHO_OBJECT(obj))) return;
-    v->bound-=oldsize;
-    v->bound+=newsize;
-}
-
-
-/** @brief Checks if an object is managed by the garbage collector
- *  @param obj  the object to check
- *  @returns true if it is managed, false otherwise 
- */
-bool morpho_ismanagedobject(object *obj) {
-    return (obj->status==OBJECT_ISUNMARKED || obj->status==OBJECT_ISMARKED);
 }
 
 /** Runs a program

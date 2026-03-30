@@ -68,8 +68,8 @@ static void vm_init(vm *v) {
     v->errfp=NULL;
 #ifdef MORPHO_PROFILER
     v->profiler=NULL;
-    v->status=VM_RUNNING;
 #endif
+    v->status=VM_RUNNING;
     v->parent=NULL;
     varray_vminit(&v->subkernels);
     
@@ -160,11 +160,16 @@ void vm_freeobjects(vm *v) {
 * ********************************************************************** */
 
 /** @brief Checks whether the gc should run. */
+static bool vm_shouldgc(vm *v) {
+    return v->bound>v->nextgc;
+}
+
+/** @brief Runs the gc if necessary. */
 static void vm_checkgc(vm *v) {
 #ifdef MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
     vm_collectgarbage(v);
 #else
-    if (v->bound>v->nextgc) vm_collectgarbage(v);
+    if (vm_shouldgc(v)) vm_collectgarbage(v);
 #endif
 }
 
@@ -172,9 +177,15 @@ static void vm_checkgc(vm *v) {
  *  @param v      the virtual machine
  *  @param obj    object to bind
  *  @warning: For internal use only; e.g. when the internal state of the VM is not consistent and calling the GC could cause a sigsev. */
-static void vm_bindobjectwithoutcollect(vm *v, value obj) {
+void vm_bindobjectwithoutcollect(vm *v, value obj) {
+    if (!MORPHO_ISOBJECT(obj)) return;
     object *ob = MORPHO_GETOBJECT(obj);
-    if (!MORPHO_ISOBJECT(obj) || ob->status<OBJECT_ISUNMARKED) return;
+    
+#ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
+    morpho_printf(v, "Binding object %p.\n", ob);
+#endif
+    
+    if (ob->status!=OBJECT_ISUNMANAGED) return;
     ob->status=OBJECT_ISUNMARKED;
     ob->next=v->objects;
     v->objects=ob;
@@ -184,6 +195,27 @@ static void vm_bindobjectwithoutcollect(vm *v, value obj) {
 #ifdef MORPHO_DEBUG_GCSIZETRACKING
     dictionary_insert(&sizecheck, obj, MORPHO_INTEGER(size));
 #endif
+}
+
+/** @brief Binds an object to a Virtual Machine without triggering garbage collection.
+ *  @param v      the virtual machine
+ *  @param obj    object to bind; searches contents through markfn and binds anything that is enclosed */
+void vm_bindrecursive(vm *v, value obj) {
+    vmstatus old = v->status; // Preserve status
+    object *oldobjects = v->objects; // Remember first old bound object
+    v->status = VM_BIND;
+    vm_bindobjectwithoutcollect(v, obj);
+    
+    object *ob = MORPHO_GETOBJECT(obj);
+    objecttypedefn *defn=object_getdefn(ob);
+    if (defn->markfn) defn->markfn(ob, v); // Call the mark function, which will bind subsequent objects
+    
+    v->status=old; // Restore status
+    
+    // Ensure objects added are preserved in garbage collection
+    for (object *obj = v->objects; obj!=NULL && obj!=oldobjects; obj=obj->next) obj->status=OBJECT_ISMARKED;
+    
+    vm_checkgc(v);
 }
 
 /** @brief Binds an object to a Virtual Machine.
@@ -273,6 +305,20 @@ value morpho_wrapandbind(vm *v, object *obj) {
     if (obj) {
         out=MORPHO_OBJECT(obj);
         morpho_bindobjects(v, 1, &out);
+    } else if (!morpho_checkerror(&v->err)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    return out;
+}
+
+/** @brief   Convenience function to wrap a single object into a value and bind to the VM
+ *  @param   v VM to use
+ *  @param   out Object to wrap
+ *  @returns object wrapped in a value, or MORPHO_NIL if obj is NULL
+ *  Also raises ERROR_ALLOCATIONFAILED if passed a null pointer */
+value morpho_wrapandbindrecursive(vm *v, object *obj) {
+    value out = MORPHO_NIL;
+    if (obj) {
+        out=MORPHO_OBJECT(obj);
+        vm_bindrecursive(v, out);
     } else if (!morpho_checkerror(&v->err)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     return out;
 }

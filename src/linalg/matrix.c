@@ -674,7 +674,10 @@ linalgError_t matrix_eigen(objectmatrix *a, MorphoComplex *w, objectmatrix *vec)
     objectmatrix *temp = matrix_clone(a);
     if (!temp) return LINALGERR_ALLOC;
         
-    return efn(temp, w, vec);
+    linalgError_t result = efn(temp, w, vec);
+    object_free((object *) temp);
+    
+    return result;
 }
 
 /* ----------------------
@@ -1289,7 +1292,7 @@ value Matrix_eigensystem(vm *v, int nargs, value *args) {
     otuple = object_newtuple(2, outtuple);
     _CHK(otuple);
     
-    return morpho_wrapandbind(v, (object *) otuple);
+    return morpho_wrapandbindrecursive(v, (object *) otuple);
     
 _eigensystem_cleanup:
     if (evec) object_free((object *) evec);
@@ -1381,7 +1384,7 @@ value Matrix_svd(vm *v, int nargs, value *args) {
     otuple = object_newtuple(3, outtuple);
     _CHK_SVD(otuple);
     
-    return morpho_wrapandbind(v, (object *) otuple);
+    return morpho_wrapandbindrecursive(v, (object *) otuple);
     
 _svd_cleanup:
     if (u) object_free((object *) u);
@@ -1422,7 +1425,7 @@ value Matrix_qr(vm *v, int nargs, value *args) {
     otuple = object_newtuple(2, outtuple);
     _CHK_QR(otuple);
     
-    return morpho_wrapandbind(v, (object *) otuple);
+    return morpho_wrapandbindrecursive(v, (object *) otuple);
     
 _qr_cleanup:
     if (q) object_free((object *) q);

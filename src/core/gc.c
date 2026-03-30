@@ -60,9 +60,16 @@ size_t vm_gcrecalculatesize(vm *v) {
     return size;
 }
 
+void vm_bindobjectwithoutcollect(vm *v, value obj);
+
 /** Marks an object as reachable */
 void vm_gcmarkobject(vm *v, object *obj) {
-    if (!obj || obj->status!=OBJECT_ISUNMARKED) return;
+    if (!obj) return;
+    if (v->status==VM_BIND) { // Bind object rather than mark
+        vm_bindobjectwithoutcollect(v, MORPHO_OBJECT(obj));
+        return;
+    }
+    if (obj->status!=OBJECT_ISUNMARKED) return;
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
     morpho_printf(v, "Marking %p ", obj);
@@ -239,10 +246,8 @@ void vm_collectgarbage(vm *v) {
     if (!vc) return;
     
     if (vc->parent) return; // Don't garbage collect in subkernels
-    
-#ifdef MORPHO_PROFILER
+    vmstatus oldstatus = v->status; // Preserve status
     vc->status=VM_INGC;
-#endif
 
     if (vc && vc->bound>0) {
         size_t init=vc->bound;
@@ -271,7 +276,5 @@ void vm_collectgarbage(vm *v) {
 #endif
     }
     
-#ifdef MORPHO_PROFILER
-    vc->status=VM_RUNNING;
-#endif
+    vc->status=oldstatus;
 }

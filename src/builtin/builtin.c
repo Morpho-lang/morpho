@@ -507,6 +507,13 @@ void builtin_initialize(void) {
     if (!builtin_parsesignatures()) {
         UNREACHABLE("Syntax error in signature.");
     }
+
+    error err;
+    error_init(&err);
+    if (!metafunction_finalizelist(builtin_objects, &err)) {
+        UNREACHABLE("Unable to finalize builtin metafunctions.");
+    }
+    error_clear(&err);
   
     morpho_addfinalizefn(builtin_finalize);
 }

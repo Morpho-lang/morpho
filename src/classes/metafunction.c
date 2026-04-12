@@ -43,6 +43,7 @@ void objectmetafunction_freefn(object *obj) {
 void objectmetafunction_markfn(object *obj, void *v) {
     objectmetafunction *f = (objectmetafunction *) obj;
     morpho_markvalue(v, f->name); // Mark the name
+    morpho_markvarrayvalue(v, &f->fns); // Preserve implementations while building/frozen
     
     for (int i=0; i<f->resolver.count; i++) { // Mark any functions in the resolver
         mfinstruction *instr = &f->resolver.data[i];
@@ -81,6 +82,7 @@ objectmetafunction *object_newmetafunction(value name) {
         new->name=MORPHO_NIL;
         if (MORPHO_ISSTRING(name)) new->name=object_clonestring(name);
         new->klass=NULL; 
+        new->state=METAFUNCTION_BUILDING;
         varray_valueinit(&new->fns);
         varray_mfinstructioninit(&new->resolver);
     }
@@ -114,6 +116,10 @@ bool metafunction_wrap(value name, value fn, value *out) {
 
 /** Adds a function to a metafunction */
 bool metafunction_add(objectmetafunction *f, value fn) {
+    if (f->state==METAFUNCTION_FROZEN) {
+        metafunction_clearinstructions(f);
+        f->state=METAFUNCTION_BUILDING;
+    }
     return varray_valuewrite(&f->fns, fn);
 }
 
@@ -797,7 +803,7 @@ void metafunction_clearinstructions(objectmetafunction *fn) {
     varray_mfinstructionclear(&fn->resolver);
 }
 
-/** Compiles the metafunction resolver */
+/** Compiles the resolver for a metafunction that is still being assembled */
 bool metafunction_compile(objectmetafunction *fn, error *err) {
     mfset set;
     set.count = fn->fns.count;
@@ -824,6 +830,28 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
     return success;
 }
 
+/** Finalizes a metafunction, compiling its resolver once the implementation set is complete */
+bool metafunction_finalize(objectmetafunction *fn, error *err) {
+    if (fn->state==METAFUNCTION_FROZEN) return true;
+
+    if (!metafunction_compile(fn, err)) return false;
+    fn->state=METAFUNCTION_FROZEN;
+
+    return true;
+}
+
+/** Finalizes any metafunctions stored in a linked object list */
+bool metafunction_finalizelist(object *list, error *err) {
+    for (object *obj=list; obj!=NULL; obj=obj->next) {
+        if (obj->type==OBJECT_METAFUNCTION &&
+            !metafunction_finalize((objectmetafunction *) obj, err)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 /** Attempt to find the desired class uid in the linearization of a given class */
 bool _finduidinlinearization(objectclass *klass, int uid) {
     for (int k=0; k<klass->linearization.count; k++) {
@@ -832,7 +860,7 @@ bool _finduidinlinearization(objectclass *klass, int uid) {
     return false;
 }
 
-/** Execute the metafunction's resolver 
+/** Execute the resolver for a finalized metafunction. 
  @param[in] fn - the metafunction to resolve
  @param[in] nargs - number of positional arguments
  @param[in] args - positional arguments @warning: the first user-visible argument should be in the zero position
@@ -840,8 +868,10 @@ bool _finduidinlinearization(objectclass *klass, int uid) {
  @param[out] out - resolved function
  @returns true if the metafunction was successfully resolved */
 bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error *err, value *out) {
-    if (!fn->resolver.data &&
-        !metafunction_compile(fn, err)) return false;
+    if (fn->state!=METAFUNCTION_FROZEN) {
+        if (err) morpho_writeerrorwithid(err, METAFUNCTION_UNFROZEN, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE);
+        return false;
+    }
     mfinstruction *pc = fn->resolver.data;
     if (!pc) return false;
     
@@ -940,7 +970,7 @@ value metafunction_constructor(vm *v, int nargs, value *args) {
         
         error err;
         error_init(&err);
-        if (!metafunction_compile(new, &err)) morpho_runtimeerror(v, err.id);
+        if (!metafunction_finalize(new, &err)) morpho_runtimeerror(v, err.id);
         error_clear(&err);
         
         out=morpho_wrapandbind(v, (object *) new);
@@ -1003,4 +1033,5 @@ void metafunction_initialize(void) {
     
     // Metafunction error messages
     morpho_defineerror(METAFUNCTION_CMPLAMBGS, ERROR_PARSE, METAFUNCTION_CMPLAMBGS_MSG);
+    morpho_defineerror(METAFUNCTION_UNFROZEN, ERROR_HALT, METAFUNCTION_UNFROZEN_MSG);
 }

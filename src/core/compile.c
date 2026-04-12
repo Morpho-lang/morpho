@@ -1727,7 +1727,7 @@ bool compiler_resolvefunctionref(compiler *c, syntaxtreenode *node, value symbol
         }
         
         if (MORPHO_ISMETAFUNCTION(outfn)) {
-            metafunction_compile(MORPHO_GETMETAFUNCTION(outfn), &c->err);
+            metafunction_finalize(MORPHO_GETMETAFUNCTION(outfn), &c->err);
         }
         
         out->returntype=CONSTANT;
@@ -4917,6 +4917,8 @@ bool morpho_compile(char *in, compiler *c, bool opt, error *err) {
 
     if (success) {
         if (opt && optimizer) (*optimizer) (c->out);
+
+        if (!metafunction_finalizelist(out->boundlist, err)) return false;
         
         c->line=c->lex.line+1; // Update the line counter if compilation was a success; assumes a new line every time morpho_compile is called.
     }

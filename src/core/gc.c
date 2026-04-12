@@ -246,13 +246,13 @@ void vm_collectgarbage(vm *v) {
     if (!vc) return;
     
     if (vc->parent) return; // Don't garbage collect in subkernels
-    vmstatus oldstatus = v->status; // Preserve status
+    vmstatus oldstatus = vc->status; // Preserve status
     vc->status=VM_INGC;
 
     if (vc && vc->bound>0) {
         size_t init=vc->bound;
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-        morpho_printf(v, "--- begin garbage collection ---\n");
+        morpho_printf(vc, "--- begin garbage collection ---\n");
 #endif
         vm_gcmarkroots(vc);
         vm_gctrace(vc);
@@ -260,19 +260,19 @@ void vm_collectgarbage(vm *v) {
 
         if (vc->bound>init) {
 #ifdef MORPHO_DEBUG_GCSIZETRACKING
-            morpho_printf(v, "GC collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->bound*MORPHO_GCGROWTHFACTOR);
+            morpho_printf(vc, "GC collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->bound*MORPHO_GCGROWTHFACTOR);
             UNREACHABLE("VM bound object size < 0");
 #else
             // This catch has been put in to prevent the garbarge collector from completely seizing up.
-            vc->bound=vm_gcrecalculatesize(v);
+            vc->bound=vm_gcrecalculatesize(vc);
 #endif
         }
 
         vc->nextgc=vc->bound*MORPHO_GCGROWTHFACTOR;
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-        morpho_printf(v, "--- end garbage collection ---\n");
-        if (vc) morpho_printf(v, "    collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->nextgc);
+        morpho_printf(vc, "--- end garbage collection ---\n");
+        if (vc) morpho_printf(vc, "    collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->nextgc);
 #endif
     }
     

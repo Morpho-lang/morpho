@@ -465,14 +465,32 @@ value ComplexMatrix_mulr__matrix(vm *v, int nargs, value *args) {
 value ComplexMatrix_div__matrix(vm *v, int nargs, value *args) {
     objectmatrix *b=MORPHO_GETMATRIX(MORPHO_SELF(args)), *A=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0)), *ap=NULL;
     objectmatrix *new=matrix_clone(b);
-    if (new && _promote(v, A, &ap)) matrix_solve(ap, new);
+    
+    if (!new) return morpho_wrapandbind(v, NULL);
+    if (!_promote(v, A, &ap)) goto ComplexMatrix_div__matrix_cleanup;
+    
+    LINALG_ERRCHECKVMGOTO(matrix_solve(ap, new), ComplexMatrix_div__matrix_cleanup);
+    
+    object_free((object *) ap);
     return morpho_wrapandbind(v, (object *) new);
+    
+ComplexMatrix_div__matrix_cleanup:
+    if (new) object_free((object *) new);
+    if (ap) object_free((object *) ap);
+    return MORPHO_NIL;
 }
 
 value ComplexMatrix_divr__matrix(vm *v, int nargs, value *args) {
     objectmatrix *A=MORPHO_GETMATRIX(MORPHO_SELF(args)), *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0)), *bp=NULL;
-    if (_promote(v, b, &bp)) matrix_solve(A, bp); // Promote the matrix that will contain the solution anyway
+    
+    if (!_promote(v, b, &bp)) goto ComplexMatrix_divr__matrix_cleanup;
+    LINALG_ERRCHECKVMGOTO(matrix_solve(A, bp), ComplexMatrix_divr__matrix_cleanup);
+    
     return morpho_wrapandbind(v, (object *) bp);
+    
+ComplexMatrix_divr__matrix_cleanup:
+    if (bp) object_free((object *) bp);
+    return MORPHO_NIL;
 }
 
 /** Computes the trace */

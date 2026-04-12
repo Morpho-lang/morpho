@@ -1,0 +1,7 @@
+// Division of a Matrix by a singular ComplexMatrix should fail
+
+var A = ComplexMatrix(((1,2),(2,4)))
+var b = Matrix((1, 2))
+
+print b / A
+// expect error 'LnAlgMtrxSnglr'

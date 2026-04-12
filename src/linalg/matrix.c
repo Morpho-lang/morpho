@@ -635,6 +635,8 @@ linalgError_t matrix_solvelarge(objectmatrix *a, objectmatrix *b) {
  * @param[in|out]  b  rhs — overwritten by the solution
  * @returns linalgError_t indicating the status; MATRIX_OK indicates success. */
 linalgError_t matrix_solve(objectmatrix *a, objectmatrix *b) {
+    if (a->nrows!=a->ncols) return LINALGERR_NOT_SQUARE;
+    if (a->nrows!=b->nrows) return LINALGERR_INCOMPATIBLE_DIM;
     if (MATRIX_ISSMALL(a)) return matrix_solvesmall(a, b);
     else return matrix_solvelarge(a, b);
 }

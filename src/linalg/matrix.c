@@ -358,11 +358,15 @@ objectmatrix *matrix_arrayconstructor(vm *v, objectarray *a, objecttype type, Ma
             unsigned int indx[2]={ i, j };
             value el;
             if (array_getelement(a, 2, indx, &el)==ARRAY_OK) {
-                matrix_getinterface(new)->setelfn(v, el, new->elements+(j*nrows + i)*new->nvals);
+                LINALG_ERRCHECKVMGOTO(matrix_getinterface(new)->setelfn(v, el, new->elements+(j*nrows + i)*new->nvals),
+                                      matrix_arrayconstructor_cleanup);
             }
         }
     }
     return new;
+matrix_arrayconstructor_cleanup:
+    object_free((object *) new);
+    return NULL;
 }
 
 /* ----------------------
@@ -812,6 +816,7 @@ value matrix_constructor__array(vm *v, int nargs, value *args) {
     if (a->ndim!=2) { morpho_runtimeerror(v, LINALG_INVLDARGS); return MORPHO_NIL; }
     
     objectmatrix *new = matrix_arrayconstructor(v, a, OBJECT_MATRIX, 1);
+    LINALG_ERRCHECKVMRETURN((new ? LINALGERR_OK : LINALGERR_INVLD_ARG), MORPHO_NIL);
     return morpho_wrapandbind(v, (object *) new);
 }
 

@@ -1,0 +1,10 @@
+// ComplexMatrix constructor from Array with invalid element types
+
+var a[2,2]
+a[0,0] = 1+im
+a[0,1] = "invalid"
+a[1,0] = 3+3im
+a[1,1] = 4+4im
+
+print ComplexMatrix(a)
+// expect error 'LnAlgMtrxInvldArg'

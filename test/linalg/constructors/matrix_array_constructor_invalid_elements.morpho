@@ -1,0 +1,10 @@
+// Matrix constructor from Array with invalid element types
+
+var a[2,2]
+a[0,0] = 1
+a[0,1] = "invalid"
+a[1,0] = 3
+a[1,1] = 4
+
+print Matrix(a)
+// expect error 'LnAlgMtrxInvldArg'

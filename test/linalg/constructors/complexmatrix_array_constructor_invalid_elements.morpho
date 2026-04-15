@@ -7,4 +7,4 @@ a[1,0] = 3+3im
 a[1,1] = 4+4im
 
 print ComplexMatrix(a)
-// expect error 'LnAlgMtrxInvldArg'
+// expect error 'LnAlgMtrxNnNmrclArg'

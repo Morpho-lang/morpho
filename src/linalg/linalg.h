@@ -92,8 +92,10 @@ void linalg_raiseerror(vm *v, linalgError_t err);
  * Include the rest of the library
  * ------------------------------------------------------- */
 
+#ifdef MORPHO_INCLUDE_LINALG
 #include "matrix.h"
 #include "complexmatrix.h"
+#endif
 
 /* -------------------------------------------------------
  * Initialization and finalization

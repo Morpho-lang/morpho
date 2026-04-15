@@ -1,0 +1,10 @@
+// Incompatible dimensions for ComplexMatrix inner product
+
+var A = ComplexMatrix(2,2)
+A[0,0]=1+1im
+
+var B = Matrix(3,3)
+B[0,0]=1
+
+print A.inner(B)
+// expect error 'LnAlgMtrxIncmptbl'

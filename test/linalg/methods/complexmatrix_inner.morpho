@@ -14,3 +14,12 @@ B[1,1]=1
 
 print A.inner(B)
 // expect: 4 - 6im
+
+var C = Matrix(2,2)
+C[0,0]=1
+C[0,1]=2
+C[1,0]=3
+C[1,1]=4
+
+print A.inner(C)
+// expect: 30 - 30im

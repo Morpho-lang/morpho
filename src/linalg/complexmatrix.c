@@ -11,9 +11,6 @@
 #include "cmplx.h"
 
 objecttype objectcomplexmatrixtype;
-#define OBJECT_COMPLEXMATRIX objectcomplexmatrixtype
-
-typedef objectmatrix objectcomplexmatrix;
 
 /* **********************************************************************
  * ComplexMatrix utility functions
@@ -557,16 +554,24 @@ value ComplexMatrix_conjTranspose(vm *v, int nargs, value *args) {
 
 /** Frobenius inner product */
 value ComplexMatrix_inner(vm *v, int nargs, value *args) {
-    objectcomplexmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
-    objectcomplexmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
+    objectcomplexmatrix *a=MORPHO_GETCOMPLEXMATRIX(MORPHO_SELF(args)), *b = NULL;
     MorphoComplex prod=MCBuild(0.0, 0.0);
-    value out = MORPHO_NIL;
+    value arg = MORPHO_GETARG(args, 0), out = MORPHO_NIL;
+    objectmatrix *bp = NULL;
+    
+    if (MORPHO_ISCOMPLEXMATRIX(arg)) {
+        b=MORPHO_GETCOMPLEXMATRIX(arg);
+    } else if (_promote(v, MORPHO_GETMATRIX(arg), &bp)) {
+        b=bp;
+    } else goto ComplexMatrix_inner_cleanup;
     
     if (complexmatrix_inner(a, b, &prod)==LINALGERR_OK) {
         objectcomplex *new = object_newcomplex(creal(prod), cimag(prod));
         out = morpho_wrapandbind(v, (object *) new);
     } else morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
     
+ComplexMatrix_inner_cleanup:
+    if (bp) object_free((object *) bp);
     return out;
 }
 

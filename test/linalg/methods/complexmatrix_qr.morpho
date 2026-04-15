@@ -66,22 +66,13 @@ print Q2.dimensions()
 print R2.dimensions()
 // expect: (4, 2)
 
-// Verify Q2 first 2 columns are orthonormal (unitary)
-// For tall matrices, only the first min(m,n) columns from ZUNGQR are orthonormal
-// The remaining columns are zero
-var Q2_col0 = Q2.column(0)
-var Q2_col1 = Q2.column(1)
-// Check norms
-var norm0 = Q2_col0.norm()
-var norm1 = Q2_col1.norm()
-
-print abs(norm0-1) < 1e-7 // expect: true
-print abs(norm1-1) < 1e-7 // expect: true
-
-// Check orthogonality: inner product should be close to zero
-var inner01 = Q2_col0.inner(Q2_col1)
-var inner01_mag = inner01.abs()
-print inner01_mag < 1e-10
+// Verify Q2 is unitary
+var Q2HQ2 = Q2.conjTranspose() * Q2
+var I4 = ComplexMatrix(4,4)
+for (var i = 0; i < 4; i = i + 1) {
+    I4[i,i] = 1.0 + 0.0im
+}
+print (Q2HQ2 - I4).norm() < 1e-10
 // expect: true
 
 // Verify R2 is upper triangular
@@ -95,6 +86,11 @@ for (var i = 0; i < 4; i = i + 1) {
     }
 }
 print R2_lower_norm < 1e-10
+// expect: true
+
+// Verify Q2 * R2 reconstruction
+var Q2R2 = Q2 * R2
+print (Q2R2 - B).norm() < 1e-10
 // expect: true
 
 // Test with a wide matrix

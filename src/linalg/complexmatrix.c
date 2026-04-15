@@ -147,13 +147,14 @@ static linalgError_t _qr(objectmatrix *a, objectmatrix *q, objectmatrix *r) {
 #else
     linalg_complexdouble_t tau[minmn];
     int lwork = -1;
+    int lwork_geqrf;
     linalg_complexdouble_t work_query;
     
-    // Query optimal work size for ZGEQRF, which is reused for ZUNGQR
+    // Query optimal work size for ZGEQRF
     zgeqrf_(&m, &n, (linalg_complexdouble_t *) a->elements, &m, tau, &work_query, &lwork, &info);
     if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
     
-    int lwork_geqrf = (int) creal(work_query);
+    lwork_geqrf = (int) creal(work_query);
     linalg_complexdouble_t work[lwork_geqrf];
     lwork = lwork_geqrf;
     
@@ -181,16 +182,19 @@ static linalgError_t _qr(objectmatrix *a, objectmatrix *q, objectmatrix *r) {
         }
         
 #ifdef MORPHO_LINALG_USE_LAPACKE
-        info = LAPACKE_zungqr(LAPACK_COL_MAJOR, m, minmn, minmn, (linalg_complexdouble_t *) q->elements, m, tau);
+        info = LAPACKE_zungqr(LAPACK_COL_MAJOR, m, m, minmn, (linalg_complexdouble_t *) q->elements, m, tau);
         if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 #else
-        lwork = lwork_geqrf;
-        zungqr_(&m, &minmn, &minmn, (linalg_complexdouble_t *) q->elements, &m, tau, work, &lwork, &info);
+        int lwork_ungqr = -1;
+        linalg_complexdouble_t ungqr_work_query;
+        zungqr_(&m, &m, &minmn, (linalg_complexdouble_t *) q->elements, &m, tau, &ungqr_work_query, &lwork_ungqr, &info);
+        if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+
+        lwork_ungqr = (int) creal(ungqr_work_query);
+        linalg_complexdouble_t ungqr_work[lwork_ungqr];
+        zungqr_(&m, &m, &minmn, (linalg_complexdouble_t *) q->elements, &m, tau, ungqr_work, &lwork_ungqr, &info);
         if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 #endif
-        
-        // If Q should be m×m, zero out remaining columns if m > minmn
-        if (m > minmn) memset(&q->elements[minmn * m * q->nvals], 0, (m - minmn) * m * sizeof(linalg_complexdouble_t));
     }
     
     return LINALGERR_OK;

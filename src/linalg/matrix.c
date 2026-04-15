@@ -198,13 +198,14 @@ static linalgError_t _qr(objectmatrix *a, objectmatrix *q, objectmatrix *r) {
     if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 #else
     int lwork = -1;
+    int lwork_geqrf;
     double work_query;
     
-    // Query optimal work size for DGEQRF, which is reused for DORGQR
+    // Query optimal work size for DGEQRF
     dgeqrf_(&m, &n, a->elements, &m, tau, &work_query, &lwork, &info);
     if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
     
-    int lwork_geqrf = (int) work_query;
+    lwork_geqrf = (int) work_query;
     double work[lwork_geqrf];
     lwork = lwork_geqrf;
     
@@ -228,17 +229,19 @@ static linalgError_t _qr(objectmatrix *a, objectmatrix *q, objectmatrix *r) {
         for (int j = 0; j < minmn; j++) cblas_dcopy(m, &a->elements[j * m], 1, &q->elements[j * m], 1);
         
 #ifdef MORPHO_LINALG_USE_LAPACKE
-        info = LAPACKE_dorgqr(LAPACK_COL_MAJOR, m, minmn, minmn, q->elements, m, tau);
+        info = LAPACKE_dorgqr(LAPACK_COL_MAJOR, m, m, minmn, q->elements, m, tau);
         if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 #else
-        lwork = lwork_geqrf;
-        dorgqr_(&m, &minmn, &minmn, q->elements, &m, tau, work, &lwork, &info);
+        double orgqr_work_query;
+        int lwork_orgqr = -1;
+        dorgqr_(&m, &m, &minmn, q->elements, &m, tau, &orgqr_work_query, &lwork_orgqr, &info);
+        if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
+
+        lwork_orgqr = (int) orgqr_work_query;
+        double orgqr_work[lwork_orgqr];
+        dorgqr_(&m, &m, &minmn, q->elements, &m, tau, orgqr_work, &lwork_orgqr, &info);
         if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 #endif
-        
-        // If Q should be m×m, zero out remaining columns if m > minmn
-        // DORGQR only generates the first minmn columns, so we zero the rest
-        if (m > minmn) memset(&q->elements[minmn * m], 0, (m - minmn) * m * sizeof(double));
     }
     
     return LINALGERR_OK;

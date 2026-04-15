@@ -222,24 +222,23 @@ static linalgError_t _qr(objectmatrix *a, objectmatrix *q, objectmatrix *r) {
         memset(&r->elements[j * m + (j + 1)], 0, (m - j - 1) * sizeof(double));
     }
     
-    // Generate Q from reflectors
+    // Generate Q by applying the Householder product to the identity matrix
     if (q) {
-        // Copy reflectors from a to q (only first n columns, since a is m×n and q is m×m)
-        // DGEQRF stores reflectors in lower triangle and R in upper triangle of first n columns
-        for (int j = 0; j < minmn; j++) cblas_dcopy(m, &a->elements[j * m], 1, &q->elements[j * m], 1);
+        memset(q->elements, 0, q->nels*sizeof(double));
+        for (int i=0; i<m; i++) q->elements[i*m+i]=1.0;
         
 #ifdef MORPHO_LINALG_USE_LAPACKE
-        info = LAPACKE_dorgqr(LAPACK_COL_MAJOR, m, m, minmn, q->elements, m, tau);
+        info = LAPACKE_dormqr(LAPACK_COL_MAJOR, 'L', 'N', m, m, minmn, a->elements, m, tau, q->elements, m);
         if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 #else
-        double orgqr_work_query;
-        int lwork_orgqr = -1;
-        dorgqr_(&m, &m, &minmn, q->elements, &m, tau, &orgqr_work_query, &lwork_orgqr, &info);
+        double ormqr_work_query;
+        int lwork_ormqr = -1;
+        dormqr_("L", "N", &m, &m, &minmn, a->elements, &m, tau, q->elements, &m, &ormqr_work_query, &lwork_ormqr, &info);
         if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 
-        lwork_orgqr = (int) orgqr_work_query;
-        double orgqr_work[lwork_orgqr];
-        dorgqr_(&m, &m, &minmn, q->elements, &m, tau, orgqr_work, &lwork_orgqr, &info);
+        lwork_ormqr = (int) ormqr_work_query;
+        double ormqr_work[lwork_ormqr];
+        dormqr_("L", "N", &m, &m, &minmn, a->elements, &m, tau, q->elements, &m, ormqr_work, &lwork_ormqr, &info);
         if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 #endif
     }

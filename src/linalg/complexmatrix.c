@@ -171,28 +171,24 @@ static linalgError_t _qr(objectmatrix *a, objectmatrix *q, objectmatrix *r) {
         memset(&relems[j * m + (j + 1)], 0, (m - j - 1) * sizeof(linalg_complexdouble_t));
     }
     
-    // Generate Q from reflectors
+    // Generate Q by applying the Householder product to the identity matrix
     if (q) {
-        // Copy reflectors from a to q (only first n columns, since a is m×n and q is m×m)
-        // ZGEQRF stores reflectors in lower triangle and R in upper triangle of first n columns
-        linalg_complexdouble_t *aelems = (linalg_complexdouble_t *) a->elements;
         linalg_complexdouble_t *qelems = (linalg_complexdouble_t *) q->elements;
-        for (int j = 0; j < minmn; j++) {
-            cblas_zcopy(m, &aelems[j * m], 1, &qelems[j * m], 1);
-        }
+        memset(q->elements, 0, q->nels*sizeof(double));
+        for (int i = 0; i < m; i++) qelems[i*m+i] = 1.0 + 0.0*I;
         
 #ifdef MORPHO_LINALG_USE_LAPACKE
-        info = LAPACKE_zungqr(LAPACK_COL_MAJOR, m, m, minmn, (linalg_complexdouble_t *) q->elements, m, tau);
+        info = LAPACKE_zunmqr(LAPACK_COL_MAJOR, 'L', 'N', m, m, minmn, (linalg_complexdouble_t *) a->elements, m, tau, (linalg_complexdouble_t *) q->elements, m);
         if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 #else
-        int lwork_ungqr = -1;
-        linalg_complexdouble_t ungqr_work_query;
-        zungqr_(&m, &m, &minmn, (linalg_complexdouble_t *) q->elements, &m, tau, &ungqr_work_query, &lwork_ungqr, &info);
+        int lwork_unmqr = -1;
+        linalg_complexdouble_t unmqr_work_query;
+        zunmqr_("L", "N", &m, &m, &minmn, (linalg_complexdouble_t *) a->elements, &m, tau, (linalg_complexdouble_t *) q->elements, &m, &unmqr_work_query, &lwork_unmqr, &info);
         if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 
-        lwork_ungqr = (int) creal(ungqr_work_query);
-        linalg_complexdouble_t ungqr_work[lwork_ungqr];
-        zungqr_(&m, &m, &minmn, (linalg_complexdouble_t *) q->elements, &m, tau, ungqr_work, &lwork_ungqr, &info);
+        lwork_unmqr = (int) creal(unmqr_work_query);
+        linalg_complexdouble_t unmqr_work[lwork_unmqr];
+        zunmqr_("L", "N", &m, &m, &minmn, (linalg_complexdouble_t *) a->elements, &m, tau, (linalg_complexdouble_t *) q->elements, &m, unmqr_work, &lwork_unmqr, &info);
         if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
 #endif
     }

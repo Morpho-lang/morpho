@@ -88,6 +88,9 @@ void linalg_raiseerror(vm *v, linalgError_t err);
 /** Similar to the above, except returns the error rather than raising it */
 #define LINALG_ERRCHECKRETURN(f) { linalgError_t err = f; if (err!=LINALGERR_OK) return err; }
 
+/** Validate constructor dimensions before allocation */
+#define LINALG_VALIDATECONSTRUCTORDIMS(nrows, ncols) (((nrows)<0 || (ncols)<0) ? LINALGERR_INVLD_ARG : LINALGERR_OK)
+
 /* -------------------------------------------------------
  * Include the rest of the library
  * ------------------------------------------------------- */

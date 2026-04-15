@@ -96,6 +96,7 @@ static linalgError_t _svd(objectmatrix *a, double *s, objectmatrix *u, objectmat
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
     double* superb = malloc(minmn * sizeof(double));
+    if (!superb) return LINALGERR_ALLOC;
     info = LAPACKE_zgesvd(LAPACK_COL_MAJOR,
                           (u ? 'A' : 'N'),      // jobu: 'A' = all U columns, 'N' = no U
                           (vt ? 'A' : 'N'),     // jobvt: 'A' = all VT rows, 'N' = no VT
@@ -106,6 +107,7 @@ static linalgError_t _svd(objectmatrix *a, double *s, objectmatrix *u, objectmat
                           (linalg_complexdouble_t *) (vt ? vt->elements : NULL), n,  // VT matrix (n×n)
                           superb
                          );
+    free(superb);
 #else
     int lwork = -1;
     linalg_complexdouble_t work_query;
@@ -342,14 +344,16 @@ linalgError_t complexmatrix_inverse(objectcomplexmatrix *a) {
 value complexmatrix_constructor__int_int(vm *v, int nargs, value *args) {
     MatrixIdx_t nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     MatrixIdx_t ncols = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
-    
+
+    LINALG_ERRCHECKVMRETURN(LINALG_VALIDATECONSTRUCTORDIMS(nrows, ncols), MORPHO_NIL);
     objectcomplexmatrix *new=complexmatrix_new(nrows, ncols, true);
     return morpho_wrapandbind(v, (object *) new);
 }
 
 value complexmatrix_constructor__int(vm *v, int nargs, value *args) {
     MatrixIdx_t nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    
+
+    LINALG_ERRCHECKVMRETURN(LINALG_VALIDATECONSTRUCTORDIMS(nrows, 1), MORPHO_NIL);
     objectcomplexmatrix *new=complexmatrix_new(nrows, 1, true);
     return morpho_wrapandbind(v, (object *) new);
 }

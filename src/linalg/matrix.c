@@ -156,6 +156,7 @@ static linalgError_t _svd(objectmatrix *a, double *s, objectmatrix *u, objectmat
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
     double* superb = malloc(minmn * sizeof(double));
+    if (!superb) return LINALGERR_ALLOC;
     info = LAPACKE_dgesvd(LAPACK_COL_MAJOR,
                           (u ? 'A' : 'N'),      // jobu: 'A' = all U columns, 'N' = no U
                           (vt ? 'A' : 'N'),     // jobvt: 'A' = all VT rows, 'N' = no VT
@@ -166,6 +167,7 @@ static linalgError_t _svd(objectmatrix *a, double *s, objectmatrix *u, objectmat
                           (vt ? vt->elements : NULL), n,  // VT matrix (n×n)
                           superb
                          );
+    free(superb);
 #else
     int lwork = -1;
     double work_query;
@@ -264,6 +266,7 @@ matrixinterfacedefn matrixdefn = {
 
 /** Create a generic matrix with given type and layout */
 objectmatrix *matrix_newwithtype(objecttype type, MatrixIdx_t nrows, MatrixIdx_t ncols, MatrixIdx_t nvals, bool zero) {
+    if (nrows<0 || ncols<0 || nvals<=0) return NULL;
     MatrixCount_t nels = nrows*ncols*nvals;
     objectmatrix *new = (objectmatrix *) object_new(sizeof(objectmatrix) + nels*sizeof(double), type);
     
@@ -775,14 +778,16 @@ linalgError_t matrix_roll(objectmatrix *a, int nplaces, int axis, objectmatrix *
 value matrix_constructor__int_int(vm *v, int nargs, value *args) {
     MatrixIdx_t nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
                 ncols = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
-    
+
+    LINALG_ERRCHECKVMRETURN(LINALG_VALIDATECONSTRUCTORDIMS(nrows, ncols), MORPHO_NIL);
     objectmatrix *new=matrix_new(nrows, ncols, true);
     return morpho_wrapandbind(v, (object *) new);
 }
 
 value matrix_constructor__int(vm *v, int nargs, value *args) {
     MatrixIdx_t nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    
+
+    LINALG_ERRCHECKVMRETURN(LINALG_VALIDATECONSTRUCTORDIMS(nrows, 1), MORPHO_NIL);
     objectmatrix *new=matrix_new(nrows, 1, true);
     return morpho_wrapandbind(v, (object *) new);
 }

@@ -139,6 +139,16 @@ static linalgError_t _qr(objectmatrix *a, objectmatrix *q, objectmatrix *r) {
     int info, m=a->nrows, n=a->ncols;
     int minmn = (m < n) ? m : n;
     
+    if (q) {
+        linalg_complexdouble_t *qelems = (linalg_complexdouble_t *) q->elements;
+        memset(q->elements, 0, q->nels*sizeof(double));
+        for (int i = 0; i < m; i++) qelems[i*m+i] = 1.0 + 0.0*I;
+    }
+    if (minmn==0) {
+        if (r) matrix_copy(a, r);
+        return LINALGERR_OK;
+    }
+    
     // Compute QR factorization without pivoting: A = Q*R
 #ifdef MORPHO_LINALG_USE_LAPACKE
     linalg_complexdouble_t tau[minmn];
@@ -173,10 +183,6 @@ static linalgError_t _qr(objectmatrix *a, objectmatrix *q, objectmatrix *r) {
     
     // Generate Q by applying the Householder product to the identity matrix
     if (q) {
-        linalg_complexdouble_t *qelems = (linalg_complexdouble_t *) q->elements;
-        memset(q->elements, 0, q->nels*sizeof(double));
-        for (int i = 0; i < m; i++) qelems[i*m+i] = 1.0 + 0.0*I;
-        
 #ifdef MORPHO_LINALG_USE_LAPACKE
         info = LAPACKE_zunmqr(LAPACK_COL_MAJOR, 'L', 'N', m, m, minmn, (linalg_complexdouble_t *) a->elements, m, tau, (linalg_complexdouble_t *) q->elements, m);
         if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
@@ -378,6 +384,7 @@ value complexmatrix_constructor__array(vm *v, int nargs, value *args) {
     if (a->ndim!=2) { morpho_runtimeerror(v, LINALG_INVLDARGS); return MORPHO_NIL; }
     
     objectmatrix *new = matrix_arrayconstructor(v, a, OBJECT_COMPLEXMATRIX, 2);
+    if (!new) return MORPHO_NIL;
     return morpho_wrapandbind(v, (object *) new);
 }
 

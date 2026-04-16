@@ -43,6 +43,12 @@ bool matrix_isamatrix(value val) {
     return iindx>=0 && iindx<matrixinterfacedefnnext;
 }
 
+static bool _mul_overflow_size(size_t a, size_t b, size_t *out) {
+    if (a!=0 && b>SIZE_MAX/a) return true;
+    *out = a*b;
+    return false;
+}
+
 /* **********************************************************************
  * Matrix objects
  * ********************************************************************** */
@@ -191,6 +197,16 @@ static linalgError_t _svd(objectmatrix *a, double *s, objectmatrix *u, objectmat
 static linalgError_t _qr(objectmatrix *a, objectmatrix *q, objectmatrix *r) {
     int info, m=a->nrows, n=a->ncols;
     int minmn = (m < n) ? m : n;
+    
+    if (q) {
+        memset(q->elements, 0, q->nels*sizeof(double));
+        for (int i=0; i<m; i++) q->elements[i*m+i]=1.0;
+    }
+    if (minmn==0) {
+        if (r) matrix_copy(a, r);
+        return LINALGERR_OK;
+    }
+
     double tau[minmn];
     
 #ifdef MORPHO_LINALG_USE_LAPACKE
@@ -224,9 +240,6 @@ static linalgError_t _qr(objectmatrix *a, objectmatrix *q, objectmatrix *r) {
     
     // Generate Q by applying the Householder product to the identity matrix
     if (q) {
-        memset(q->elements, 0, q->nels*sizeof(double));
-        for (int i=0; i<m; i++) q->elements[i*m+i]=1.0;
-        
 #ifdef MORPHO_LINALG_USE_LAPACKE
         info = LAPACKE_dormqr(LAPACK_COL_MAJOR, 'L', 'N', m, m, minmn, a->elements, m, tau, q->elements, m);
         if (info != 0) return (info > 0 ? LINALGERR_OP_FAILED : LINALGERR_LAPACK_INVLD_ARGS);
@@ -269,7 +282,12 @@ matrixinterfacedefn matrixdefn = {
 /** Create a generic matrix with given type and layout */
 objectmatrix *matrix_newwithtype(objecttype type, MatrixIdx_t nrows, MatrixIdx_t ncols, MatrixIdx_t nvals, bool zero) {
     if (nrows<0 || ncols<0 || nvals<=0) return NULL;
-    MatrixCount_t nels = nrows*ncols*nvals;
+    size_t nentries, scalarCount;
+    if (_mul_overflow_size((size_t) nrows, (size_t) ncols, &nentries)) return NULL;
+    if (_mul_overflow_size(nentries, (size_t) nvals, &scalarCount)) return NULL;
+    if (scalarCount > (size_t) ((MatrixCount_t) -1) ||
+        scalarCount > (SIZE_MAX-sizeof(objectmatrix))/sizeof(double)) return NULL;
+    MatrixCount_t nels = (MatrixCount_t) scalarCount;
     objectmatrix *new = (objectmatrix *) object_new(sizeof(objectmatrix) + nels*sizeof(double), type);
     
     if (new) {
@@ -823,7 +841,7 @@ value matrix_constructor__array(vm *v, int nargs, value *args) {
     if (a->ndim!=2) { morpho_runtimeerror(v, LINALG_INVLDARGS); return MORPHO_NIL; }
     
     objectmatrix *new = matrix_arrayconstructor(v, a, OBJECT_MATRIX, 1);
-    LINALG_ERRCHECKVMRETURN((new ? LINALGERR_OK : LINALGERR_INVLD_ARG), MORPHO_NIL);
+    if (!new) return MORPHO_NIL;
     return morpho_wrapandbind(v, (object *) new);
 }
 

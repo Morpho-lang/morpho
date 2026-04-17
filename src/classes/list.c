@@ -182,10 +182,10 @@ int list_orderfunction(const void *a, const void *b) {
     return -morpho_comparevalue(((listorderstruct *) a)->val, ((listorderstruct *) b)->val);
 }
 
-/* Returns a list of indices giving the ordering of a list */
-objectlist *list_order(objectlist *list) {
+/* Returns a tuple of indices giving the ordering of a list */
+objecttuple *list_order(objectlist *list) {
     listorderstruct *order = MORPHO_MALLOC(list->val.count*sizeof(listorderstruct));
-    objectlist *new = NULL;
+    objecttuple *new = NULL;
 
     if (order) {
         for (unsigned int i=0; i<list->val.count; i++) {
@@ -194,12 +194,11 @@ objectlist *list_order(objectlist *list) {
         }
         qsort(order, list->val.count, sizeof(listorderstruct), list_orderfunction);
 
-        new=object_newlist(list->val.count, NULL);
+        new=object_newtuple(list->val.count, NULL);
         if (new) {
             for (unsigned int i=0; i<list->val.count; i++) {
-                new->val.data[i]=MORPHO_INTEGER(order[i].indx);
+                new->tuple[i]=MORPHO_INTEGER(order[i].indx);
             }
-            new->val.count=list->val.count;
         }
 
         MORPHO_FREE(order);
@@ -636,12 +635,12 @@ value List_sort_fn(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-/** Returns a list of indices that would sort the list self */
+/** Returns a tuple of indices that would sort the list self */
 value List_order(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     value out=MORPHO_NIL;
 
-    objectlist *new=list_order(slf);
+    objecttuple *new=list_order(slf);
     if (new) {
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);

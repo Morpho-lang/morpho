@@ -160,13 +160,8 @@ errorid array_to_tuple_error(objectarrayerror err) {
 
 /** Constructor function for tuples */
 value tuple_constructor(vm *v, int nargs, value *args) {
-    value out = MORPHO_NIL;
     objecttuple *new=object_newtuple(nargs, & MORPHO_GETARG(args, 0));
-    if (new) {
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    return out;
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 /** Find a tuple's length */
@@ -178,16 +173,10 @@ value Tuple_count(vm *v, int nargs, value *args) {
 
 /** Clones a tuple */
 value Tuple_clone(vm *v, int nargs, value *args) {
-    value out = MORPHO_NIL;
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
     objecttuple *new = object_newtuple(slf->length, slf->tuple);
     
-    if (new) {
-        out = MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    
-    return out;
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 /** Get an element */
@@ -247,14 +236,47 @@ value Tuple_join(vm *v, int nargs, value *args) {
         objecttuple *operand = MORPHO_GETTUPLE(MORPHO_GETARG(args, 0));
         objecttuple *new = tuple_concatenate(slf, operand);
 
-        if (new) {
-            out = MORPHO_OBJECT(new);
-            morpho_bindobjects(v, 1, &out);
-        }
+        out = morpho_wrapandbind(v, (object *) new);
 
     } else morpho_runtimeerror(v, LIST_ADDARGS);
 
     return out;
+}
+
+/** Sort function for tuple_order */
+typedef struct {
+    unsigned int indx;
+    value val;
+} tupleorderstruct;
+
+/** Sort function for tuple_order */
+int tuple_orderfunction(const void *a, const void *b) {
+    return -morpho_comparevalue(((tupleorderstruct *) a)->val, ((tupleorderstruct *) b)->val);
+}
+
+/** Returns a tuple of indices giving the ordering of a tuple */
+objecttuple *tuple_order(objecttuple *tuple) {
+    tupleorderstruct *order = MORPHO_MALLOC(tuple->length*sizeof(tupleorderstruct));
+    objecttuple *new = NULL;
+
+    if (order) {
+        for (unsigned int i=0; i<tuple->length; i++) {
+            order[i].indx=i;
+            order[i].val=tuple->tuple[i];
+        }
+        qsort(order, tuple->length, sizeof(tupleorderstruct), tuple_orderfunction);
+
+        new=object_newtuple(tuple->length, NULL);
+        if (new) {
+            for (unsigned int i=0; i<tuple->length; i++) {
+                new->tuple[i]=MORPHO_INTEGER(order[i].indx);
+            }
+        }
+
+        MORPHO_FREE(order);
+    }
+
+    return new;
 }
 
 /** Sorts the contents of a tuple, returning a new tuple */
@@ -284,6 +306,13 @@ value Tuple_sort_fn(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
+/** Returns a tuple of indices that would sort the tuple self */
+value Tuple_order(vm *v, int nargs, value *args) {
+    objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    objecttuple *new=tuple_order(slf);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
 /** Tests if a tuple has a value as a member */
 value Tuple_ismember(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
@@ -305,6 +334,7 @@ MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Tuple (_)", Tuple_join, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Tuple ()", Tuple_sort, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Tuple (_)", Tuple_sort_fn, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(LIST_ORDER_METHOD, Tuple_order, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Bool (_)", Tuple_ismember, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Bool (_)", Tuple_ismember, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS

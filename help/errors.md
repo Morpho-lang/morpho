@@ -976,10 +976,12 @@ This error occurs when the norm method is called with invalid arguments. It expe
 ## MtrxStClArgs
 [tagmtrxstclargs]: # (mtrxstclargs)
 
-This error occurs when setcolumn is called with invalid arguments. It expects an integer column index and a column matrix:
+This error occurs when `setColumn` is called with invalid arguments. It expects an integer column index and a column matrix:
 
     var m = Matrix([[1,2],[3,4]])
-    m.setcolumn("invalid", Matrix([1,2])) // Causes 'MtrxStClArgs'
+    m.setColumn("invalid", Matrix([1,2])) // Causes 'MtrxStClArgs'
+
+The older method name `setcolumn` is retained for compatibility but is deprecated.
 
 ## LnAlgMtrxIncmptbl
 [taglnalgmtrxincmptbl]: # (lnalgmtrxincmptbl)

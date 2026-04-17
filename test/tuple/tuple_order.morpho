@@ -1,0 +1,6 @@
+// Tuple order
+
+var t = ( 3, 2, 1 )
+print t.order()
+// expect: (2, 1, 0)
+

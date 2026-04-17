@@ -6,6 +6,7 @@
 
 #include "morpho.h"
 #include "classes.h"
+#include "common.h"
 
 /* **********************************************************************
  * Tuple objects
@@ -114,6 +115,47 @@ objecttuple *tuple_concatenate(objecttuple *a, objecttuple *b) {
     return new;
 }
 
+/** Reverses a tuple, returning a new tuple */
+objecttuple *tuple_reverse(objecttuple *tuple) {
+    objecttuple *new = object_newtuple(tuple->length, tuple->tuple);
+
+    if (new) {
+        unsigned int hlen = new->length / 2;
+        for (unsigned int i=0; i<hlen; i++) {
+            unsigned int j=new->length-i-1;
+            value swp = new->tuple[i];
+            new->tuple[i]=new->tuple[j];
+            new->tuple[j]=swp;
+        }
+    }
+
+    return new;
+}
+
+/** Rolls a tuple by a number of elements, returning a new tuple */
+objecttuple *tuple_roll(objecttuple *tuple, int nplaces) {
+    objecttuple *new=object_newtuple(tuple->length, NULL);
+
+    if (new) {
+        unsigned int N = tuple->length;
+        if (N==0) return new;
+
+        int n = abs(nplaces);
+        if (n>N) n = n % N;
+        unsigned int Np = N - n;
+
+        if (nplaces<0) {
+            memcpy(new->tuple, tuple->tuple+n, sizeof(value)*Np);
+            memcpy(new->tuple+Np, tuple->tuple, sizeof(value)*n);
+        } else {
+            memcpy(new->tuple+n, tuple->tuple, sizeof(value)*Np);
+            if (n>0) memcpy(new->tuple, tuple->tuple+Np, sizeof(value)*n);
+        }
+    }
+
+    return new;
+}
+
 /* -------------------------------------------------------
  * Slicing
  * ------------------------------------------------------- */
@@ -177,6 +219,28 @@ value Tuple_clone(vm *v, int nargs, value *args) {
     objecttuple *new = object_newtuple(slf->length, slf->tuple);
     
     return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Convert a tuple to a string */
+value Tuple_tostring(vm *v, int nargs, value *args) {
+    objecttuple *tuple=MORPHO_GETTUPLE(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+
+    varray_char buffer;
+    varray_charinit(&buffer);
+
+    varray_charadd(&buffer, "(", 1);
+    for (unsigned int i=0; i<tuple->length; i++) {
+        morpho_printtobuffer(v, tuple->tuple[i], &buffer);
+        if (i<tuple->length-1) varray_charadd(&buffer, ", ", 2);
+    }
+    varray_charadd(&buffer, ")", 1);
+
+    out = object_stringfromvarraychar(&buffer);
+    if (MORPHO_ISSTRING(out)) morpho_bindobjects(v, 1, &out);
+    varray_charclear(&buffer);
+
+    return out;
 }
 
 /** Get an element */
@@ -313,6 +377,29 @@ value Tuple_order(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
+/** Returns a reversed copy of the tuple */
+value Tuple_reverse(vm *v, int nargs, value *args) {
+    objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    objecttuple *new=tuple_reverse(slf);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Rolls a tuple */
+value Tuple_roll(vm *v, int nargs, value *args) {
+    objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+
+    if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+        int roll;
+        morpho_valuetoint(MORPHO_GETARG(args, 0), &roll);
+
+        objecttuple *new = tuple_roll(slf, roll);
+        return morpho_wrapandbind(v, (object *) new);
+    }
+
+    morpho_runtimeerror(v, LIST_ADDARGS);
+    return MORPHO_NIL;
+}
+
 /** Tests if a tuple has a value as a member */
 value Tuple_ismember(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
@@ -327,14 +414,17 @@ value Tuple_ismember(vm *v, int nargs, value *args) {
 MORPHO_BEGINCLASS(Tuple)
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Tuple_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "String ()", Tuple_tostring, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Tuple ()", Tuple_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Tuple_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Tuple (_)", Tuple_join, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Tuple (_)", Tuple_roll, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Tuple ()", Tuple_sort, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Tuple (_)", Tuple_sort_fn, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(LIST_ORDER_METHOD, Tuple_order, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(LIST_ORDER_METHOD, "Tuple ()", Tuple_order, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(LIST_REVERSE_METHOD, "Tuple ()", Tuple_reverse, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Bool (_)", Tuple_ismember, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Bool (_)", Tuple_ismember, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS

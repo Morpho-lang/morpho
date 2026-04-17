@@ -200,6 +200,7 @@ IMPLEMENTATIONFN(Matrix_clone);
 
 IMPLEMENTATIONFN(Matrix_index__int);
 IMPLEMENTATIONFN(Matrix_index__int_int);
+IMPLEMENTATIONFN(Matrix_index__x);
 IMPLEMENTATIONFN(Matrix_index__x_x);
 IMPLEMENTATIONFN(Matrix_index__err);
 IMPLEMENTATIONFN(Matrix_setindex__int_x);

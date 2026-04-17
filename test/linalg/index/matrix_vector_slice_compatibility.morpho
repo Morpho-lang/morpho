@@ -1,0 +1,10 @@
+// Vector-style one-argument slicing should work on Matrix vectors
+
+var a = Matrix([1,2,3])
+print a[0..1]
+// expect: [ 1 ]
+// expect: [ 2 ]
+
+var b = Matrix(((1,2,3)))
+print b[0..1]
+// expect: [ 1 2 ]

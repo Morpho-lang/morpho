@@ -1,0 +1,10 @@
+// Vector-style one-argument slicing should work on ComplexMatrix vectors
+
+var a = ComplexMatrix((1+1im,2+2im,3+3im))
+print a[0..1]
+// expect: [ 1 + 1im ]
+// expect: [ 2 + 2im ]
+
+var b = ComplexMatrix(((1+1im,2+2im,3+3im)))
+print b[0..1]
+// expect: [ 1 + 1im 2 + 2im ]

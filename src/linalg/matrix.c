@@ -31,7 +31,7 @@ void matrix_addinterface(matrixinterfacedefn *defn) {
 }
 
 matrixinterfacedefn *matrix_getinterface(objectmatrix *a) {
-    int iindx = a->obj.type-OBJECT_MATRIX;
+    int iindx = OBJECT_GETTYPE(a)-OBJECT_MATRIX;
     if (iindx<LINALG_MAXMATRIXDEFNS) return &_matrixdefn[iindx];
     return NULL;
 }
@@ -309,7 +309,7 @@ objectmatrix *matrix_new(MatrixIdx_t nrows, MatrixIdx_t ncols, bool zero) {
 
 /** Clone a matrix */
 objectmatrix *matrix_clone(objectmatrix *in) {
-    objectmatrix *new = matrix_newwithtype(in->obj.type, in->nrows, in->ncols, in->nvals, false);
+    objectmatrix *new = matrix_newwithtype(OBJECT_GETTYPE(in), in->nrows, in->ncols, in->nvals, false);
     
     if (new) cblas_dcopy((linalg_int_t) in->nels, in->elements, 1, new->elements, 1);
     return new;
@@ -984,15 +984,14 @@ static linalgError_t _slice_copy(value iv, value jv, MatrixIdx_t icnt, MatrixIdx
     return LINALGERR_OK;
 }
 
-value Matrix_index__x_x(vm *v, int nargs, value *args) {
-    objectmatrix *m = MORPHO_GETMATRIX(MORPHO_SELF(args)), *new=NULL;
-    value iv=MORPHO_GETARG(args, 0), jv=MORPHO_GETARG(args, 1);
+static value _index_slice(vm *v, objectmatrix *m, value iv, value jv) {
+    objectmatrix *new=NULL;
     value out=MORPHO_NIL;
     
-    MatrixIdx_t icnt=0, jcnt=0; // Counts become size of new matrix
+    MatrixIdx_t icnt=0, jcnt=0;
     LINALG_ERRCHECKVMRETURN(_slice_validate(iv, jv, &icnt, &jcnt), MORPHO_NIL);
     
-    new=matrix_newwithtype(MORPHO_GETOBJECTTYPE(MORPHO_SELF(args)), icnt, jcnt, m->nvals, false);
+    new=matrix_newwithtype(OBJECT_GETTYPE(m), icnt, jcnt, m->nvals, false);
     if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
     
     linalgError_t err=_slice_copy(iv, jv, icnt, jcnt, m, new, false);
@@ -1000,6 +999,26 @@ value Matrix_index__x_x(vm *v, int nargs, value *args) {
     else out = morpho_wrapandbind(v, (object *) new);
     
     return out;
+}
+
+value Matrix_index__x_x(vm *v, int nargs, value *args) {
+    objectmatrix *m = MORPHO_GETMATRIX(MORPHO_SELF(args));
+    value iv=MORPHO_GETARG(args, 0), jv=MORPHO_GETARG(args, 1);
+    return _index_slice(v, m, iv, jv);
+}
+
+value Matrix_index__x(vm *v, int nargs, value *args) {
+    objectmatrix *m = MORPHO_GETMATRIX(MORPHO_SELF(args));
+    value indx = MORPHO_GETARG(args, 0);
+    
+    if (m->ncols==1) {
+        return _index_slice(v, m, indx, MORPHO_INTEGER(0));
+    } else if (m->nrows==1) {
+        return _index_slice(v, m, MORPHO_INTEGER(0), indx);
+    }
+    
+    morpho_runtimeerror(v, LINALG_INVLDINDICES);
+    return MORPHO_NIL;
 }
 
 value Matrix_index__err(vm *v, int nargs, value *args) {
@@ -1053,7 +1072,7 @@ value Matrix_getcolumn__int(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     
     if (i>=0 && i<a->ncols) {
-        objectmatrix *new=matrix_newwithtype(a->obj.type, a->nrows, 1, a->nvals, false);
+        objectmatrix *new=matrix_newwithtype(OBJECT_GETTYPE(a), a->nrows, 1, a->nvals, false);
         if (new) matrix_getcolumn(a, i, new);
         out=morpho_wrapandbind(v, (object *)new);
     } else linalg_raiseerror(v, LINALGERR_INDX_OUT_OF_BNDS);
@@ -1572,6 +1591,9 @@ MORPHO_METHOD_SIGNATURE(MORPHO_FORMAT_METHOD, "(String)", Matrix_format, BUILTIN
 MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(Matrix)", Matrix_assign, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Matrix ()", Matrix_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int)", Matrix_enumerate, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Matrix (Range)", Matrix_index__x, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Matrix (List)", Matrix_index__x, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Matrix (Tuple)", Matrix_index__x, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Float (Int, Int)", Matrix_index__int_int, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Matrix (_,_)", Matrix_index__x_x, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Matrix (...)", Matrix_index__err, MORPHO_FN_PUREFN),

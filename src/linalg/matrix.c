@@ -116,12 +116,11 @@ char matrix_normtolapack(matrix_norm_t norm) {
 /** Evaluate norms */
 static double _normfn(objectmatrix *a, matrix_norm_t nrm) {
     char cnrm = matrix_normtolapack(nrm);
-    int nrows=a->nrows, ncols=a->ncols;
-    
 #ifdef MORPHO_LINALG_USE_LAPACKE
     return LAPACKE_dlange(LAPACK_COL_MAJOR, cnrm, a->nrows, a->ncols, a->elements, a->nrows);
 #else
-    double work[a->nrows];
+    int nrows=a->nrows, ncols=a->ncols;
+    double work[nrows];
     return dlange_(&cnrm, &nrows, &ncols, a->elements, &nrows, work);
 #endif
 }
@@ -715,13 +714,13 @@ linalgError_t matrix_eigen(objectmatrix *a, MorphoComplex *w, objectmatrix *vec)
 
 /** Prints a matrix */
 void matrix_print(vm *v, objectmatrix *m) {
-    matrixinterfacedefn *interface=matrix_getinterface(m);
+    matrixinterfacedefn *intrfc=matrix_getinterface(m);
     double *elptr;
     for (MatrixIdx_t i=0; i<m->nrows; i++) { // Rows run from 0...m
         morpho_printf(v, "[ ");
         for (MatrixIdx_t j=0; j<m->ncols; j++) { // Columns run from 0...k
             matrix_getelementptr(m, i, j, &elptr);
-            (*interface->printelfn) (v, elptr);
+            (*intrfc->printelfn) (v, elptr);
             morpho_printf(v, " ");
         }
         morpho_printf(v, "]%s", (i<m->nrows-1 ? "\n" : ""));
@@ -730,14 +729,14 @@ void matrix_print(vm *v, objectmatrix *m) {
 
 /** Prints a matrix to a buffer */
 bool matrix_printtobuffer(objectmatrix *m, char *format, varray_char *out) {
-    matrixinterfacedefn *interface=matrix_getinterface(m);
+    matrixinterfacedefn *intrfc=matrix_getinterface(m);
     double *elptr;
     for (MatrixIdx_t i=0; i<m->nrows; i++) { // Rows run from 0...m
         varray_charadd(out, "[ ", 2);
         
         for (MatrixIdx_t j=0; j<m->ncols; j++) { // Columns run from 0...k
             matrix_getelementptr(m, i, j, &elptr);
-            if (!(*interface->printeltobufffn) (out, format, elptr)) return false;
+            if (!(*intrfc->printeltobufffn) (out, format, elptr)) return false;
             varray_charadd(out, " ", 1);
         }
         varray_charadd(out, "]", 1);

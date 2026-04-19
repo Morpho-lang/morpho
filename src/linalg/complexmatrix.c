@@ -80,7 +80,15 @@ static linalgError_t _eigen(objectmatrix *a, MorphoComplex *w, objectmatrix *vec
     int info, n=a->nrows;
 
 #ifdef MORPHO_LINALG_USE_LAPACKE
-    info=LAPACKE_zgeev(LAPACK_COL_MAJOR, 'N', (vec ? 'V' : 'N'), n, (linalg_complexdouble_t *) a->elements, n, (linalg_complexdouble_t *) w, NULL, n, (linalg_complexdouble_t *) (vec ? vec->elements : NULL), n);
+    lapack_complex_double dummy; // Win32 lapacke seems to require we never pass null pointers
+    info = LAPACKE_zgeev(
+        LAPACK_COL_MAJOR,
+        'N', (vec ? 'V' : 'N'),
+        n,
+        (lapack_complex_double *) a->elements, n,
+        (lapack_complex_double *) w,
+        &dummy, 1,  
+        (vec ? (lapack_complex_double *) vec->elements : &dummy), 1);
 #else
     int lwork=4*n; MorphoComplex work[4*n]; double rwork[2*n];
     zgeev_("N", (vec ? "V" : "N"), &n, (linalg_complexdouble_t *) a->elements, &n, (linalg_complexdouble_t *) w, NULL, &n, (linalg_complexdouble_t *) (vec ? vec->elements : NULL), &n, work, &lwork, rwork, &info);
@@ -142,7 +150,7 @@ static linalgError_t _qr(objectmatrix *a, objectmatrix *q, objectmatrix *r) {
     if (q) {
         linalg_complexdouble_t *qelems = (linalg_complexdouble_t *) q->elements;
         memset(q->elements, 0, q->nels*sizeof(double));
-        for (int i = 0; i < m; i++) qelems[i*m+i] = 1.0 + 0.0*I;
+        for (int i = 0; i < m; i++) qelems[i*m+i] = 1.0;
     }
     if (minmn==0) {
         if (r) matrix_copy(a, r);

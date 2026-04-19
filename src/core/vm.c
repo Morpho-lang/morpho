@@ -197,7 +197,7 @@ void vm_bindobjectwithoutcollect(vm *v, value obj) {
 #endif
 }
 
-/** @brief Binds an object to a Virtual Machine without triggering garbage collection.
+/** @brief Binds an object to a Virtual Machine recursively.
  *  @param v      the virtual machine
  *  @param obj    object to bind; searches contents through markfn and binds anything that is enclosed */
 void vm_bindrecursive(vm *v, value obj) {
@@ -293,6 +293,11 @@ void morpho_bindobjects(vm *v, int nobj, value *obj) {
         vm_collectgarbage(v);
         morpho_releaseobjects(v, handle);
     }
+}
+
+/** @brief Binds an object and any children to the virtual machine.  */
+void morpho_bindrecursive(vm *v, value obj) {
+    vm_bindrecursive(v, obj);
 }
 
 /** @brief   Convenience function to wrap a single object into a value and bind to the VM

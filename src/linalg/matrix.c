@@ -1310,7 +1310,7 @@ value Matrix_eigenvalues(vm *v, int nargs, value *args) {
     linalgError_t err=matrix_eigen(a, w, NULL);
     if (err==LINALGERR_OK) {
         if (_processeigenvalues(v, n, w, &out)) {
-            morpho_bindobjects(v, 1, &out);
+            morpho_bindrecursive(v, out);
         } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     } else linalg_raiseerror(v, err);
     

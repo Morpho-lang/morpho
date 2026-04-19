@@ -88,7 +88,7 @@ static linalgError_t _eigen(objectmatrix *a, MorphoComplex *w, objectmatrix *vec
         (lapack_complex_double *) a->elements, n,
         (lapack_complex_double *) w,
         &dummy, 1,  
-        (vec ? (lapack_complex_double *) vec->elements : &dummy), 1);
+        (vec ? (lapack_complex_double *) vec->elements : &dummy), (vec ? (lapack_int) n : 1));
 #else
     int lwork=4*n; MorphoComplex work[4*n]; double rwork[2*n];
     zgeev_("N", (vec ? "V" : "N"), &n, (linalg_complexdouble_t *) a->elements, &n, (linalg_complexdouble_t *) w, NULL, &n, (linalg_complexdouble_t *) (vec ? vec->elements : NULL), &n, work, &lwork, rwork, &info);

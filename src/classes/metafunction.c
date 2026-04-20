@@ -867,7 +867,7 @@ bool _finduidinlinearization(objectclass *klass, int uid) {
  @param[out] err - error block to be filled out
  @param[out] out - resolved function
  @returns true if the metafunction was successfully resolved */
-bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error *err, value *out) {
+bool metafunction_xresolve(objectmetafunction *fn, int nargs, value *args, error *err, value *out) {
     if (fn->state!=METAFUNCTION_FROZEN) {
         if (err) morpho_writeerrorwithid(err, METAFUNCTION_UNFROZEN, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE);
         return false;
@@ -946,6 +946,107 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error 
         }
         pc++;
     } while(true);
+}
+
+/* **********************************************************************
+ * Metafunction base-case resolver
+ * ********************************************************************** */
+
+/** Define a possible resolution */
+typedef struct {
+    value fn;
+    signature *sig;
+} mfresolution;
+
+/** Checks if a resolution matches a given number of arguments */
+bool mfresolution_checkarity(mfresolution *res, int nargs) {
+    if (!res->sig) return false;
+    int nparams = signature_countparams(res->sig);
+    return (nparams == nargs) || (nargs >= nparams - 1 && signature_isvarg(res->sig));
+}
+
+/** Checks if a resolution matches a given set of arguments based on types */
+bool mfresolution_checktypes(mfresolution *res, int nargs, value *args) {
+    if (!res->sig) return false;
+    
+    return false;
+}
+
+/** A set of possible resolutions */
+typedef struct {
+    int count;
+    mfresolution *data;
+} mfresolutionset;
+
+/** @brief Collapses a set, removing any resolutions that lack a signature */
+void mfresolutionset_collapse(mfresolutionset *set) {
+    int n=0;
+    
+    for (int i=0; i<set->count; i++) {
+        if (set->data[i].sig) {
+            set->data[n] = set->data[i];
+            n++;
+        }
+    }
+    
+    set->count=n;
+}
+
+/** @brief Initialize the set of resolutions from the metafunction. */
+void mfresolutionset_init(mfresolutionset *set, mfresolution *res, objectmetafunction *fn) {
+    set->count = fn->fns.count;
+    set->data=res;
+    for (int i=0; i<set->count; i++) {
+        res[i].fn = fn->fns.data[i];
+        res[i].sig = metafunction_getsignature(res[i].fn);
+    }
+    mfresolutionset_collapse(set);
+}
+
+/** @brief Filter the resolution set by arity */
+void mfresolutionset_filterbyarity(mfresolutionset *set, int nargs) {
+    for (int i=0; i<set->count; i++) {
+        if (!mfresolution_checkarity(&set->data[i], nargs)) set->data[i].sig = NULL;
+    }
+    mfresolutionset_collapse(set);
+}
+
+/** @brief Filter the resolution set by types of the arguments */
+void mfresolutionset_filterbytypes(mfresolutionset *set, int nargs, value *args) {
+    for (int i=0; i<set->count; i++) {
+        if (!mfresolution_checktypes(&set->data[i], nargs, args)) set->data[i].sig = NULL;
+    }
+    mfresolutionset_collapse(set);
+}
+
+/** @brief Find a resolution, if any exists, for given arguments by direct comparison.
+ @details Slow direct comparison acts as a source of truth for metafunction compiler.
+ @param[in] fn - the metafunction to resolve
+ @param[in] nargs - number of positional arguments
+ @param[in] args - positional arguments @warning: the first user-visible argument should be in the zero position
+ @param[out] err - error block to be filled out
+ @param[out] out - resolved function
+ @returns true if the metafunction was successfully resolved */
+bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error *err, value *out) {
+    if (fn->state!=METAFUNCTION_FROZEN) {
+        if (err) error_writewithid(err, METAFUNCTION_UNFROZEN); return false;
+    }
+
+    int nres = fn->fns.count;
+    
+    mfresolutionset set; // Initial set of resolutions
+    mfresolution res[nres];
+    
+    mfresolutionset_init(&set, res, fn);
+    
+    mfresolutionset_filterbyarity(&set, nargs);
+    mfresolutionset_filterbytypes(&set, nargs, args);
+    
+    switch (set.count) {
+        case 0: if (err) error_writewithid(err, VM_MLTPLDSPTCHFLD); return false;
+        case 1: if (out) *out = set.data[0].fn; return true;
+        default: if (err) error_writewithid(err, METAFUNCTION_CMPLAMBGS); return false;
+    }
 }
 
 /* **********************************************************************

@@ -197,24 +197,36 @@ void vm_bindobjectwithoutcollect(vm *v, value obj) {
 #endif
 }
 
-/** @brief Binds an object to a Virtual Machine without triggering garbage collection.
+/** @brief Binds an object to a Virtual Machine recursively.
  *  @param v      the virtual machine
  *  @param obj    object to bind; searches contents through markfn and binds anything that is enclosed */
 void vm_bindrecursive(vm *v, value obj) {
-    vmstatus old = v->status; // Preserve status
-    object *oldobjects = v->objects; // Remember first old bound object
-    v->status = VM_BIND;
-    vm_bindobjectwithoutcollect(v, obj);
-    
+    if (!MORPHO_ISOBJECT(obj)) return;
     object *ob = MORPHO_GETOBJECT(obj);
-    objecttypedefn *defn=object_getdefn(ob);
-    if (defn->markfn) defn->markfn(ob, v); // Call the mark function, which will bind subsequent objects
+    if (ob->status != OBJECT_ISUNMANAGED) return; // Don't recurse into an already managed object.
+    vmstatus old = v->status; // Preserve status
+    v->status = VM_BIND; // Enter bind mode
     
+    object *oldobjects = v->objects; // Remember the previous head of the managed list.
+    object *boundary = oldobjects; // Stop at the previous head of the managed list.
+    
+    vm_bindobjectwithoutcollect(v, obj); // Bind first object
+
+    do {
+        object *head = v->objects;
+
+        // Loop over newly added objects, calling their markfn which causes children to be bound.
+        for (object *current = head; current != boundary; current = current->next) {
+            current->status = OBJECT_ISMARKED; // Ensure newly added objects are retained at least across this gc run.
+            objecttypedefn *defn = object_getdefn(current);
+            if (defn->markfn) defn->markfn(current, v);
+        }
+
+        boundary = head;
+    } while (v->objects != boundary); // Did we add any new objects?
+
     v->status=old; // Restore status
-    
-    // Ensure objects added are preserved in garbage collection
-    for (object *obj = v->objects; obj!=NULL && obj!=oldobjects; obj=obj->next) obj->status=OBJECT_ISMARKED;
-    
+
     vm_checkgc(v);
 }
 
@@ -293,6 +305,11 @@ void morpho_bindobjects(vm *v, int nobj, value *obj) {
         vm_collectgarbage(v);
         morpho_releaseobjects(v, handle);
     }
+}
+
+/** @brief Binds an object and any children to the virtual machine.  */
+void morpho_bindrecursive(vm *v, value obj) {
+    vm_bindrecursive(v, obj);
 }
 
 /** @brief   Convenience function to wrap a single object into a value and bind to the VM

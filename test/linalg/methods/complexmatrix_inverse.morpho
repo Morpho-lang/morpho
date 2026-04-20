@@ -6,6 +6,7 @@ A[0,1]=1+im
 A[1,0]=1-im
 A[1,1]=0+0im
 
-print A.inverse()
-// expect: [ 0 + 0im 0.5 + 0.5im ]
-// expect: [ 0.5 - 0.5im 0 + 0im ]
+var Ainv = ComplexMatrix([[0, 0.5+0.5im],[0.5-0.5im, 0]])
+
+print (A.inverse() - Ainv).norm() < 1e-10 // expect: true
+

@@ -5,6 +5,7 @@
  */
 
 #include <limits.h>
+#include <stdlib.h>
 
 #include "morpho.h"
 #include "classes.h"
@@ -971,6 +972,78 @@ bool mfresolution_checktypes(mfresolution *res, int nargs, value *args) {
     return true;
 }
 
+/** Rank a parameter type by its distance from an actual argument type. */
+static bool mfresolution_rankparamtype(value actual, value type, int *out) {
+    if (MORPHO_ISEQUAL(actual, type)) { *out=0; return true; }
+    if (MORPHO_ISNIL(type)) { *out=INT_MAX; return true; } // Ensures a wildcare loses to an actual type
+
+    if (MORPHO_ISCLASS(actual) && MORPHO_ISCLASS(type)) {
+        if (class_comparedistance(MORPHO_GETCLASS(actual), MORPHO_GETCLASS(type), out)) {
+            *out = abs(*out); return true;
+        }
+    }
+
+    return false;
+}
+
+/** Compare the specificity of two parameter types relative to an actual argument type.
+ *  @returns true if the types are comparable, setting out to the signed comparison. */
+static bool mfresolution_compareparamtypes(value actual, value a, value b, int *out) {
+    int arank, brank;
+    if (mfresolution_rankparamtype(actual, a, &arank) &&
+        mfresolution_rankparamtype(actual, b, &brank)) {
+        *out = arank-brank;
+        return true;
+    }
+    return false;
+}
+
+/** Compare resolutions by whether they are variadic. Non-variadic resolutions are more specific. */
+static int mfresolution_comparevarg(mfresolution *a, mfresolution *b) {
+    bool avarg = signature_isvarg(a->sig);
+    bool bvarg = signature_isvarg(b->sig);
+    if (avarg==bvarg) return 0;
+    return (avarg ? 1 : -1);
+}
+
+/** Determine how many parameters should be checked when comparing resolutions. */
+static int _min(int a, int b, int c) {
+    return (a < b) ? ((a < c) ? a : c) : ((b < c) ? b : c);
+}
+
+/** Returns the sign of an integer. */
+static int _sign(int x) {
+    return (x>0) - (x<0);
+}
+
+/** Compare the specificity of two resolutions.
+ *  Returns <0 if a is more specific, >0 if b is more specific, 0 if they are equal
+ *  or incomparable. */
+static int mfresolution_comparespecificity(mfresolution *a, mfresolution *b, int nargs, value *args) {
+    if (!a->sig || !b->sig) return 0;
+
+    int ncheck=_min(signature_countparams(a->sig), signature_countparams(b->sig), nargs);
+    int cmp[ncheck];
+    for (int i=0; i<ncheck; i++) { // Compare each arg
+        cmp[i]=0;
+        value actual;
+        if (value_type(args[i], &actual)) {
+            mfresolution_compareparamtypes(actual, a->sig->types.data[i], b->sig->types.data[i], &cmp[i]);
+        }
+    }
+
+    int firstsign = 0;
+    for (int i=0; i<ncheck; i++) { // Check all entries have the same sign
+        if (cmp[i]!=0) {
+            if (firstsign==0) firstsign = _sign(cmp[i]);
+            else if (firstsign!=_sign(cmp[i])) return 0;
+        }
+    }
+
+    if (firstsign!=0) return firstsign; // If they did have the same sign, we have a winner
+    return mfresolution_comparevarg(a, b); // Tiebreak on varg
+}
+
 /** A set of possible resolutions */
 typedef struct {
     int count;
@@ -1018,6 +1091,20 @@ void mfresolutionset_filterbytypes(mfresolutionset *set, int nargs, value *args)
     mfresolutionset_collapse(set);
 }
 
+/** @brief Filter the resolution set to maximal resolutions by specificity. */
+void mfresolutionset_filterbyspecificity(mfresolutionset *set, int nargs, value *args) {
+    for (int i=0; i<set->count; i++) { // Compare all possible pairs and remove resolutions dominated by at least one other candidate
+        if (!set->data[i].sig) continue;
+        for (int j=i+1; j<set->count; j++) {
+            if (!set->data[j].sig) continue;
+            int cmp = mfresolution_comparespecificity(&set->data[i], &set->data[j], nargs, args);
+            if (cmp < 0) set->data[j].sig = NULL;
+            else if (cmp > 0) { set->data[i].sig = NULL; break; }
+        }
+    }
+    mfresolutionset_collapse(set);
+}
+
 /** @brief Find a resolution, if any exists, for given arguments by direct comparison.
  @details Slow direct comparison acts as a source of truth for metafunction compiler.
  @param[in] fn - the metafunction to resolve
@@ -1040,6 +1127,7 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error 
     
     mfresolutionset_filterbyarity(&set, nargs);
     mfresolutionset_filterbytypes(&set, nargs, args);
+    mfresolutionset_filterbyspecificity(&set, nargs, args);
     
     switch (set.count) {
         case 0: if (err) error_writewithid(err, VM_MLTPLDSPTCHFLD); return false;

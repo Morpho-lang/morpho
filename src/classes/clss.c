@@ -167,6 +167,33 @@ bool class_linearize(objectclass *klass) {
     return _linearize(klass, &klass->linearization);
 }
 
+/** Finds the position of a class within another class's linearization. */
+static bool _findinlinearization(objectclass *klass, objectclass *target, int *out) {
+    for (int i=0; i<klass->linearization.count; i++) {
+        if (MORPHO_GETCLASS(klass->linearization.data[i])==target) { *out=i; return true; }
+    }
+
+    return false;
+}
+
+/** @brief Compare the distance between two classes.
+ *  @param[in] a -
+ *  @param[in] b - Classes to compare.
+ *  @param[out] out - signed distance between the two classes; Negative means a is more specific; positive means b is
+ *  more specific.
+ *  @returns true if one class appears in the other's linearization. */
+bool class_comparedistance(objectclass *a, objectclass *b, int *out) {
+    if (!a || !b || !out) return false;
+    if (a==b) {
+        *out=0; return true;
+    } else if (_findinlinearization(a, b, out)) {
+        *out *= -1; return true;
+    } else if (_findinlinearization(b, a, out)) {
+        return true;
+    }
+    return false;
+}
+
 /* **********************************************************************
  * Class veneer class
  * ********************************************************************** */

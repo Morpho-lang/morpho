@@ -125,13 +125,7 @@ bool metafunction_add(objectmetafunction *f, value fn) {
 
 /** Checks if val matches a given type */
 bool metafunction_matchtype(value type, value val) {
-    value match;
-    if (!value_type(val, &match)) return false;
-    
-    if (MORPHO_ISNIL(type) || // If type is unset, we always match
-        MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same
-    
-    return false;
+    return value_istype(val, type);
 }
 
 /** Sets the parent class of a metafunction */
@@ -968,8 +962,13 @@ bool mfresolution_checkarity(mfresolution *res, int nargs) {
 /** Checks if a resolution matches a given set of arguments based on types */
 bool mfresolution_checktypes(mfresolution *res, int nargs, value *args) {
     if (!res->sig) return false;
+    int nparams = signature_countparams(res->sig);
     
-    return false;
+    for (int i=0; i<nargs && i<nparams; i++) { // Note this works as vargs are currently untyped
+        if (!value_istype(args[i], res->sig->types.data[i])) return false;
+    }
+    
+    return true;
 }
 
 /** A set of possible resolutions */

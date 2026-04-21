@@ -210,6 +210,33 @@ bool value_type(value v, value *type) {
     return clss;
 }
 
+/** Recursively searches the parents list of classes to see if the required type is present */
+static bool value_findtypeinparent(objectclass *type, value match) {
+    for (int i=0; i<type->parents.count; i++) {
+        if (MORPHO_ISEQUAL(type->parents.data[i], match) ||
+            value_findtypeinparent(MORPHO_GETCLASS(type->parents.data[i]), match)) return true;
+    }
+    return false;
+}
+
+/** Checks if an actual type matches a required type */
+bool value_typematch(value type, value match) {
+    if (MORPHO_ISNIL(type) || // If type is unset, we always match
+        MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same
+    
+    // Also match if 'match' inherits from 'type'
+    if (MORPHO_ISCLASS(match)) return value_findtypeinparent(MORPHO_GETCLASS(match), type);
+    
+    return false;
+}
+
+/** Checks if a value matches a required type */
+bool value_istype(value v, value type) {
+    value match;
+    if (!value_type(v, &match)) return false;
+    return value_typematch(type, match);
+}
+
 /* **********************************************************************
 * Varray_values and utility functions
 * ********************************************************************** */

@@ -419,24 +419,9 @@ bool compiler_typefromvalue(compiler *c, value v, value *out) {
     return value_type(v, out);
 }
 
-/** Recursively searches the parents list of classes to see if the type 'match' is present */
-bool compiler_findtypeinparent(compiler *c, objectclass *type, value match) {
-    for (int i=0; i<type->parents.count; i++) {
-        if (MORPHO_ISEQUAL(type->parents.data[i], match) ||
-            compiler_findtypeinparent(c, MORPHO_GETCLASS(type->parents.data[i]), match)) return true;
-    }
-    return false;
-}
-
 /** Checks if type "match" matches a given type "type"  */
 bool compiler_checktype(compiler *c, value type, value match) {
-    if (MORPHO_ISNIL(type) || // If type is unset, we always match
-        MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same
-    
-    // Also match if 'match' inherits from 'type'
-    if (MORPHO_ISCLASS(match)) return compiler_findtypeinparent(c, MORPHO_GETCLASS(match), type);
-    
-    return false;
+    return value_typematch(type, match);
 }
 
 /** Select the more specific type of two types; returns false if the types are contradictory*/

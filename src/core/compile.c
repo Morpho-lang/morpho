@@ -3497,8 +3497,9 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     /* -- Compile the parameters -- */
     compiler_functionparameters(c, node->left);
     
-    value signature[func->nargs+1];
+    value signature[function_countpositionalargs(func)];
     for (int i=0; i<func->nargs; i++) compiler_regtype(c, i+1, &signature[i]);
+    if (function_hasvargs(func)) signature[func->nargs]=MORPHO_NIL;
     function_setsignature(func, signature);
     signature_setvarg(&func->sig, function_hasvargs(func));
 

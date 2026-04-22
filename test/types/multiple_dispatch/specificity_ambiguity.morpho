@@ -1,0 +1,17 @@
+// Specificity ambiguity across multiple parameters
+
+class A {}
+
+class B is A {}
+
+fn f(A x, B y) {
+    return "AB"
+}
+
+fn f(B x, A y) {
+    return "BA"
+}
+
+print f(B(), B())
+// expect error 'MltplDisptchAmbg'
+

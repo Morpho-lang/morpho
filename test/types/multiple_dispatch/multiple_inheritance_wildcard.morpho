@@ -1,0 +1,28 @@
+// Multiple inheritance specificity beats wildcard fallback
+
+class A {}
+
+class D {}
+
+class E is A with D {}
+
+class F {}
+
+fn f(x) {
+    return "_"
+}
+
+fn f(A x) {
+    return "A"
+}
+
+fn f(D x) {
+    return "D"
+}
+
+print f(E())
+// expect: A
+
+print f(F())
+// expect: _
+

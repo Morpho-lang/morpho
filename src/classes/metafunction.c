@@ -16,18 +16,9 @@
  * ********************************************************************** */
 
 enum {
-    MF_RESOLVE,
-    MF_FAIL,
-    MF_CHECKNARGSNEQ,
-    MF_CHECKNARGSLT,
-    MF_CHECKVALUE,
-    MF_CHECKOBJECT,
-    MF_CHECKINSTANCE,
-    MF_BRANCH,
-    MF_BRANCHNARGS,
-    MF_BRANCHVALUETYPE,
-    MF_BRANCHOBJECTTYPE,
-    MF_BRANCHINSTANCE
+    MFOP_SLOW,
+    MFOP_RESOLVE,
+    MFOP_FAIL
 };
 
 /* **********************************************************************
@@ -48,7 +39,7 @@ void objectmetafunction_markfn(object *obj, void *v) {
     
     for (int i=0; i<f->resolver.count; i++) { // Mark any functions in the resolver
         mfinstruction *instr = &f->resolver.data[i];
-        if (instr->opcode==MF_RESOLVE) morpho_markvalue(v,instr->data.resolvefn);
+        if (instr->opcode==MFOP_RESOLVE) morpho_markvalue(v,instr->data.resolvefn);
     }
 }
 
@@ -153,17 +144,6 @@ bool metafunction_matchset(objectmetafunction *fn, int n, value *fns) {
     return true;
 }
 
-signature *metafunction_getsignature(value fn) {
-    if (MORPHO_ISFUNCTION(fn)) {
-        return &MORPHO_GETFUNCTION(fn)->sig;
-    } else if (MORPHO_ISBUILTINFUNCTION(fn)) {
-        return &MORPHO_GETBUILTINFUNCTION(fn)->sig;
-    } else if (MORPHO_ISCLOSURE(fn)) {
-        return &MORPHO_GETCLOSURE(fn)->func->sig;
-    }
-    return NULL;
-}
-
 /** Infer the return type from the contents of a metafunction, if known */
 void metafunction_inferreturntype(objectmetafunction *fn, value *type) {
     value rtype = MORPHO_NIL;
@@ -180,7 +160,43 @@ void metafunction_inferreturntype(objectmetafunction *fn, value *type) {
     *type=rtype;
 }
 
-value _getname(value fn) {
+/** Clears the compiled code from a given metafunction. */
+void metafunction_clearinstructions(objectmetafunction *fn) {
+    varray_mfinstructionclear(&fn->resolver);
+}
+
+/** Finalizes a metafunction. */
+bool metafunction_finalize(objectmetafunction *fn, error *err) {
+    if (fn->state==METAFUNCTION_FROZEN) return true;
+    if (!metafunction_compile(fn, err)) return false;
+    fn->state=METAFUNCTION_FROZEN;
+    return true;
+}
+
+/** Finalizes any metafunctions stored in a linked object list. */
+bool metafunction_finalizelist(object *list, error *err) {
+    for (object *obj=list; obj!=NULL; obj=obj->next) {
+        if (obj->type==OBJECT_METAFUNCTION &&
+            !metafunction_finalize((objectmetafunction *) obj, err)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+signature *metafunction_getsignature(value fn) {
+    if (MORPHO_ISFUNCTION(fn)) {
+        return &MORPHO_GETFUNCTION(fn)->sig;
+    } else if (MORPHO_ISBUILTINFUNCTION(fn)) {
+        return &MORPHO_GETBUILTINFUNCTION(fn)->sig;
+    } else if (MORPHO_ISCLOSURE(fn)) {
+        return &MORPHO_GETCLOSURE(fn)->func->sig;
+    }
+    return NULL;
+}
+
+value metafunction_getname(value fn) {
     if (MORPHO_ISFUNCTION(fn)) {
         return MORPHO_GETFUNCTION(fn)->name;
     } else if (MORPHO_ISBUILTINFUNCTION(fn)) {
@@ -944,38 +960,6 @@ value _getname(value fn) {
 // }
 //
 
-DEFINE_VARRAY(mfinstruction, mfinstruction);
-
-/** Clears the compiled code from a given metafunction. */
-void metafunction_clearinstructions(objectmetafunction *fn) {
-    varray_mfinstructionclear(&fn->resolver);
-}
-
-/** Compiles the resolver for a metafunction that is still being assembled. */
-bool metafunction_compile(objectmetafunction *fn, error *err) {
-    return (fn->fns.count>0);
-}
-
-/** Finalizes a metafunction. */
-bool metafunction_finalize(objectmetafunction *fn, error *err) {
-    if (fn->state==METAFUNCTION_FROZEN) return true;
-    if (!metafunction_compile(fn, err)) return false;
-    fn->state=METAFUNCTION_FROZEN;
-    return true;
-}
-
-/** Finalizes any metafunctions stored in a linked object list. */
-bool metafunction_finalizelist(object *list, error *err) {
-    for (object *obj=list; obj!=NULL; obj=obj->next) {
-        if (obj->type==OBJECT_METAFUNCTION &&
-            !metafunction_finalize((objectmetafunction *) obj, err)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 /* **********************************************************************
  * Metafunction base-case resolver
  * ********************************************************************** */
@@ -1146,7 +1130,7 @@ void mfresolutionset_filterbyspecificity(mfresolutionset *set, int nargs, value 
  @param[out] err - error block to be filled out
  @param[out] out - resolved function
  @returns true if the metafunction was successfully resolved */
-bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error *err, value *out) {
+static bool metafunction_resolveslow(objectmetafunction *fn, int nargs, value *args, error *err, value *out) {
     if (fn->state!=METAFUNCTION_FROZEN) {
         if (err) error_writewithid(err, METAFUNCTION_UNFROZEN); return false;
     }
@@ -1170,6 +1154,56 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error 
 }
 
 /* **********************************************************************
+ * Fast metafunction resolver
+ * ********************************************************************** */
+
+DEFINE_VARRAY(mfinstruction, mfinstruction);
+
+#define MFINSTRUCTION_SLOW { .opcode=MFOP_SLOW }
+#define MFINSTRUCTION_RESOLVE(fn) { .opcode=MFOP_RESOLVE, .data.resolvefn=fn }
+#define MFINSTRUCTION_FAIL { .opcode=MFOP_FAIL }
+
+/* --------------------------
+ * Fast resolver Compiler
+ * -------------------------- */
+
+/** Compiles the resolver for a metafunction that is still being assembled. */
+bool metafunction_compile(objectmetafunction *fn, error *err) {
+    if (fn->fns.count<=0) return false;
+    metafunction_clearinstructions(fn);
+    mfinstruction instr = MFINSTRUCTION_SLOW;
+    return varray_mfinstructionwrite(&fn->resolver, instr)>=0;
+}
+
+/* --------------------------
+ * Fast resolver VM
+ * -------------------------- */
+
+/** Execute the new resolver VM. */
+static bool metafunction_runresolver(objectmetafunction *fn, int nargs, value *args, error *err, value *out) {
+    mfinstruction *pc = fn->resolver.data;
+    if (!pc) return metafunction_resolveslow(fn, nargs, args, err, out);
+    
+    while (true) {
+        switch (pc->opcode) {
+            case MFOP_SLOW: return metafunction_resolveslow(fn, nargs, args, err, out);
+            case MFOP_RESOLVE: if (out) *out=pc->data.resolvefn; return true;
+            case MFOP_FAIL: if (err) error_writewithid(err, VM_MLTPLDSPTCHFLD); return false;
+        }
+        pc++;
+    }
+}
+
+/** Resolve a metafunction using the compiled resolver VM. */
+bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error *err, value *out) {
+    if (fn->state!=METAFUNCTION_FROZEN) {
+        if (err) error_writewithid(err, METAFUNCTION_UNFROZEN); return false;
+    }
+    
+    return metafunction_runresolver(fn, nargs, args, err, out);
+}
+
+/* **********************************************************************
  * Metafunction veneer class
  * ********************************************************************** */
 
@@ -1179,7 +1213,7 @@ value metafunction_constructor(vm *v, int nargs, value *args) {
     
     if (nargs==0) return MORPHO_NIL;
     
-    value name = _getname(MORPHO_GETARG(args, 0));
+    value name = metafunction_getname(MORPHO_GETARG(args, 0));
     if (!MORPHO_ISSTRING(name)) return MORPHO_NIL;
     
     objectmetafunction *new = object_newmetafunction(name);

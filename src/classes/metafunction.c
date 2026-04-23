@@ -1159,6 +1159,7 @@ enum {
 
 /** Candidate metadata used by the metafunction compiler. */
 typedef struct {
+    int fnindex;
     signature *sig;
     int nparams;
     int minarity;
@@ -1201,6 +1202,7 @@ static bool mfcompiler_analyzecandidate(mfcompiler *compiler, int i) {
     if (!sig) return false;
     
     mfcompileresolution *resolution = &compiler->resolutions[i];
+    resolution->fnindex = i;
     resolution->sig = sig;
     resolution->nparams = signature_countparams(sig);
     resolution->varg = signature_isvarg(sig);
@@ -1227,7 +1229,7 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
     
     mfcompiler compiler;
     mfcompiler_init(&compiler, fn);
-    mfcompiler_analyze(&compiler); 
+    mfcompiler_analyze(&compiler);
     
     metafunction_clearinstructions(fn);
     mfinstruction instr = MFOP_SLOW;

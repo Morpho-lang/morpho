@@ -1157,14 +1157,85 @@ enum {
  * Fast resolver Compiler
  * -------------------------- */
 
+/** Candidate metadata used by the metafunction compiler. */
+typedef struct {
+    signature *sig;
+    int nparams;
+    int minarity;
+    int maxarity;
+    bool varg;
+    bool typed;
+} mfcompileresolution;
+
+/** Compiler state for building a metafunction resolver. */
+typedef struct {
+    objectmetafunction *fn;
+    mfcompileresolution *resolutions;
+    int nresolutions;
+    bool hasvarg;
+    bool hastyped;
+} mfcompiler;
+
+/** Initialize compiler state. */
+static void mfcompiler_init(mfcompiler *compiler, objectmetafunction *fn) {
+    compiler->fn = fn;
+    compiler->nresolutions = fn->fns.count;
+    compiler->hasvarg = false;
+    compiler->hastyped = false;
+    compiler->resolutions = malloc(sizeof(mfcompileresolution)*compiler->nresolutions);
+}
+
+/** Clear compiler state. */
+static void mfcompiler_clear(mfcompiler *compiler) {
+    if (compiler->resolutions) free(compiler->resolutions);
+    compiler->resolutions = NULL;
+    compiler->nresolutions = 0;
+}
+
+/** Analyze one candidate resolution. */
+static bool mfcompiler_analyzecandidate(mfcompiler *compiler, int i) {
+    if (!compiler->resolutions) return false;
+    
+    value fn = compiler->fn->fns.data[i];
+    signature *sig = metafunction_getsignature(fn);
+    if (!sig) return false;
+    
+    mfcompileresolution *resolution = &compiler->resolutions[i];
+    resolution->sig = sig;
+    resolution->nparams = signature_countparams(sig);
+    resolution->varg = signature_isvarg(sig);
+    resolution->typed = signature_istyped(sig);
+    resolution->minarity = (resolution->varg ? resolution->nparams-1 : resolution->nparams);
+    resolution->maxarity = (resolution->varg ? -1 : resolution->nparams);
+    
+    compiler->hasvarg = compiler->hasvarg || resolution->varg;
+    compiler->hastyped = compiler->hastyped || resolution->typed;
+    return true;
+}
+
+/** Analyze the candidate set for a metafunction. */
+static bool mfcompiler_analyze(mfcompiler *compiler) {
+    for (int i=0; i<compiler->nresolutions; i++) {
+        if (!mfcompiler_analyzecandidate(compiler, i)) return false;
+    }
+    return true;
+}
+
 /** Compiles the resolver for a metafunction that is still being assembled. */
 bool metafunction_compile(objectmetafunction *fn, error *err) {
     if (fn->fns.count<=0) return false;
+    
+    mfcompiler compiler;
+    mfcompiler_init(&compiler, fn);
+    mfcompiler_analyze(&compiler); 
+    
     metafunction_clearinstructions(fn);
     mfinstruction instr = MFOP_SLOW;
-    return varray_mfinstructionwrite(&fn->resolver, instr)>=0;
+    bool success = varray_mfinstructionwrite(&fn->resolver, instr)>=0;
+    
+    mfcompiler_clear(&compiler);
+    return success;
 }
-
 
 /* --------------------------
  * Disassembler

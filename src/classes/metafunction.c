@@ -12,16 +12,6 @@
 #include "common.h"
 
 /* **********************************************************************
- * Metafunction opcodes
- * ********************************************************************** */
-
-enum {
-    MFOP_SLOW,
-    MFOP_RESOLVE,
-    MFOP_FAIL
-};
-
-/* **********************************************************************
  * objectmetafunction definitions
  * ********************************************************************** */
 
@@ -36,11 +26,6 @@ void objectmetafunction_markfn(object *obj, void *v) {
     objectmetafunction *f = (objectmetafunction *) obj;
     morpho_markvalue(v, f->name); // Mark the name
     morpho_markvarrayvalue(v, &f->fns); // Preserve implementations while building/frozen
-    
-    for (int i=0; i<f->resolver.count; i++) { // Mark any functions in the resolver
-        mfinstruction *instr = &f->resolver.data[i];
-        if (instr->opcode==MFOP_RESOLVE) morpho_markvalue(v,instr->data.resolvefn);
-    }
 }
 
 size_t objectmetafunction_sizefn(object *obj) {
@@ -169,6 +154,7 @@ void metafunction_clearinstructions(objectmetafunction *fn) {
 bool metafunction_finalize(objectmetafunction *fn, error *err) {
     if (fn->state==METAFUNCTION_FROZEN) return true;
     if (!metafunction_compile(fn, err)) return false;
+    metafunction_disassemble(fn);
     fn->state=METAFUNCTION_FROZEN;
     return true;
 }
@@ -1159,9 +1145,13 @@ static bool metafunction_resolveslow(objectmetafunction *fn, int nargs, value *a
 
 DEFINE_VARRAY(mfinstruction, mfinstruction);
 
-#define MFINSTRUCTION_SLOW { .opcode=MFOP_SLOW }
-#define MFINSTRUCTION_RESOLVE(fn) { .opcode=MFOP_RESOLVE, .data.resolvefn=fn }
-#define MFINSTRUCTION_FAIL { .opcode=MFOP_FAIL }
+/** Bytecodes */
+enum {
+    MFOP_SLOW,
+    MFOP_RESOLVE,
+    MFOP_FAIL,
+    MFOP_SPARSE
+};
 
 /* --------------------------
  * Fast resolver Compiler
@@ -1171,9 +1161,68 @@ DEFINE_VARRAY(mfinstruction, mfinstruction);
 bool metafunction_compile(objectmetafunction *fn, error *err) {
     if (fn->fns.count<=0) return false;
     metafunction_clearinstructions(fn);
-    mfinstruction instr = MFINSTRUCTION_SLOW;
+    mfinstruction instr = MFOP_SLOW;
     return varray_mfinstructionwrite(&fn->resolver, instr)>=0;
 }
+
+
+/* --------------------------
+ * Disassembler
+ * -------------------------- */
+
+/** Disassemble a RESOLVE instruction. */
+static mfindx metafunction_disassembleresolve(objectmetafunction *fn, mfindx pc) {
+    if (pc+1>=fn->resolver.count) { printf("resolve <missing operand>"); return pc+1; }
+    
+    int index=fn->resolver.data[pc+1];
+    printf("resolve %i ", index);
+    if (index<0 || index>=fn->fns.count) printf("<invalid index>");
+    else {
+        signature *sig = metafunction_getsignature(fn->fns.data[index]);
+        if (sig) signature_print(sig);
+    }
+    return pc+2;
+}
+
+/** Disassemble a SPARSE instruction. */
+static mfindx metafunction_disassemblesparse(objectmetafunction *fn, mfindx pc) {
+    if (pc+2>=fn->resolver.count) { printf("sparse <missing operands>"); return fn->resolver.count; }
+    
+    int ncases=fn->resolver.data[pc+1];
+    mfindx defaultpc=fn->resolver.data[pc+2];
+    printf("sparse default -> %i", defaultpc);
+    
+    mfindx next=pc+3;
+    for (int k=0; k<ncases; k++) {
+        if (next+1>=fn->resolver.count) { printf(" <missing case>"); return fn->resolver.count; }
+        printf(" %i -> %i", fn->resolver.data[next], fn->resolver.data[next+1]);
+        next+=2;
+    }
+    return next;
+}
+
+/** Print a disassembly of the metafunction resolver bytecode. */
+void metafunction_disassemble(objectmetafunction *fn) {
+    printf("Resolver for ");
+    morpho_printvalue(NULL, MORPHO_OBJECT(fn));
+    printf(":\n");
+    
+    for (mfindx pc=0; pc<fn->resolver.count; ) {
+        printf("%5i : ", pc);
+        switch (fn->resolver.data[pc]) {
+            case MFOP_SLOW: printf("slow"); pc++; break;
+            case MFOP_FAIL: printf("fail"); pc++; break;
+            case MFOP_RESOLVE: pc=metafunction_disassembleresolve(fn, pc); break;
+            case MFOP_SPARSE: pc=metafunction_disassemblesparse(fn, pc); break;
+            default:
+                printf("unknown %i", fn->resolver.data[pc]);
+                pc++;
+                break;
+        }
+        printf("\n");
+    }
+}
+
 
 /* --------------------------
  * Fast resolver VM
@@ -1181,14 +1230,32 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
 
 /** Execute the new resolver VM. */
 static bool metafunction_runresolver(objectmetafunction *fn, int nargs, value *args, error *err, value *out) {
-    mfinstruction *pc = fn->resolver.data;
-    if (!pc) return metafunction_resolveslow(fn, nargs, args, err, out);
+    mfinstruction *instructions = fn->resolver.data;
+    if (!instructions) return metafunction_resolveslow(fn, nargs, args, err, out);
+    
+    mfindx pc = 0;
+    int reg = nargs; // Single register initialized with nargs
     
     while (true) {
-        switch (pc->opcode) {
+        switch (instructions[pc]) {
             case MFOP_SLOW: return metafunction_resolveslow(fn, nargs, args, err, out);
-            case MFOP_RESOLVE: if (out) *out=pc->data.resolvefn; return true;
+            case MFOP_RESOLVE: {
+                pc++; *out=fn->fns.data[instructions[pc]];
+                return true;
+            }
             case MFOP_FAIL: if (err) error_writewithid(err, VM_MLTPLDSPTCHFLD); return false;
+            case MFOP_SPARSE: {
+                int ncases=instructions[pc+1];
+                mfindx cases=pc+3;
+                pc=instructions[pc+2]; // Default branch
+                for (int i=0; i<2*ncases; i+=2) {
+                    if (instructions[cases+i]==reg) { // match
+                        pc=instructions[cases+i+1];
+                        break;
+                    }
+                }
+                continue;
+            }
         }
         pc++;
     }

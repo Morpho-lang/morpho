@@ -1176,6 +1176,7 @@ typedef struct {
 /** Compiler state for building a metafunction resolver. */
 typedef struct {
     objectmetafunction *fn;
+    error *err;
     mfcompileresolution *resolutions;
     int nresolutions;
     bool hasvarg;
@@ -1183,8 +1184,9 @@ typedef struct {
 } mfcompiler;
 
 /** Initialize compiler state. */
-static void mfcompiler_init(mfcompiler *compiler, objectmetafunction *fn) {
+static void mfcompiler_init(mfcompiler *compiler, objectmetafunction *fn, error *err) {
     compiler->fn = fn;
+    compiler->err = err;
     compiler->nresolutions = fn->fns.count;
     compiler->hasvarg = false;
     compiler->hastyped = false;
@@ -1196,6 +1198,11 @@ static void mfcompiler_clear(mfcompiler *compiler) {
     if (compiler->resolutions) free(compiler->resolutions);
     compiler->resolutions = NULL;
     compiler->nresolutions = 0;
+}
+
+/** Write a compiler error. */
+static void mfcompiler_error(mfcompiler *compiler, errorid id) {
+    if (compiler->err) error_writewithid(compiler->err, id);
 }
 
 /** Analyze one candidate resolution. */
@@ -1224,6 +1231,20 @@ static bool mfcompiler_analyzecandidate(mfcompiler *compiler, int i) {
 static bool mfcompiler_analyze(mfcompiler *compiler) {
     for (int i=0; i<compiler->nresolutions; i++) {
         ERR_CHECK_RETURN(mfcompiler_analyzecandidate(compiler, i));
+    }
+    return true;
+}
+
+/** Check for duplicate implementations that are unavoidably ambiguous. */
+static bool mfcompiler_checkduplicates(mfcompiler *compiler) {
+    for (int i=0; i<compiler->nresolutions; i++) {
+        for (int j=i+1; j<compiler->nresolutions; j++) {
+            if (compiler->resolutions[i].varg==compiler->resolutions[j].varg &&
+                signature_isequal(compiler->resolutions[i].sig, compiler->resolutions[j].sig)) {
+                mfcompiler_error(compiler, METAFUNCTION_CMPLAMBGS);
+                return false;
+            }
+        }
     }
     return true;
 }
@@ -1317,10 +1338,11 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
     if (fn->fns.count<=0) return false;
 
     mfcompiler compiler;
-    mfcompiler_init(&compiler, fn);
+    mfcompiler_init(&compiler, fn, err);
     metafunction_clearinstructions(fn);
 
     ERR_CHECK(mfcompiler_analyze(&compiler), metafunction_compile_cleanup);
+    ERR_CHECK(mfcompiler_checkduplicates(&compiler), metafunction_compile_cleanup);
     ERR_CHECK(mfcompiler_emitarityresolver(&compiler, &fn->entry), metafunction_compile_cleanup);
     mfcompiler_clear(&compiler);
     return true;

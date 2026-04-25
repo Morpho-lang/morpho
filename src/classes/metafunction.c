@@ -11,6 +11,8 @@
 #include "classes.h"
 #include "common.h"
 
+#define ERR_CHECK(expr, label) do { if (!(expr)) goto label; } while (0)
+
 /* **********************************************************************
  * objectmetafunction definitions
  * ********************************************************************** */
@@ -1223,20 +1225,95 @@ static bool mfcompiler_analyze(mfcompiler *compiler) {
     return true;
 }
 
+/** Compare resolutions by arity for sorting. */
+static int mfcompiler_compareresolutionarity(const void *a, const void *b) {
+    int xi=((mfcompileresolution *) a)->nparams, yi=((mfcompileresolution *) b)->nparams;
+    return (xi > yi) - (xi < yi); // Ascending order
+}
+
+/** Emit one instruction into the resolver. */
+static int mfcompiler_emit(mfcompiler *compiler, mfinstruction instruction) {
+    return varray_mfinstructionwrite(&compiler->fn->resolver, instruction);
+}
+
+/** Emit a conservative exact-arity resolver directly into bytecode. */
+static bool mfcompiler_emitarityresolver(mfcompiler *compiler) {
+    if (compiler->hasvarg) return (mfcompiler_emit(compiler, MFOP_SLOW)>=0);
+
+    mfcompileresolution resolutions[compiler->nresolutions];
+    memcpy(resolutions, compiler->resolutions, sizeof(mfcompileresolution)*compiler->nresolutions);
+    qsort(resolutions, compiler->nresolutions, sizeof(mfcompileresolution), mfcompiler_compareresolutionarity);
+
+    int nmatches = 0;
+    for (int i=0; i<compiler->nresolutions; ) {
+        int count = 1;
+        while (i+count<compiler->nresolutions &&
+               resolutions[i+count].nparams==resolutions[i].nparams) count++;
+        nmatches++;
+        i += count;
+    }
+
+    if (mfcompiler_emit(compiler, MFOP_SPARSE)<0) return false;
+    if (mfcompiler_emit(compiler, nmatches)<0) return false;
+
+    int defaultpc = mfcompiler_emit(compiler, 0);
+    if (defaultpc<0) return false;
+
+    int targetpc[nmatches];
+    int match = 0;
+    for (int i=0; i<compiler->nresolutions; ) {
+        int arity = resolutions[i].nparams;
+        int count = 1;
+        while (i+count<compiler->nresolutions &&
+               resolutions[i+count].nparams==arity) count++;
+        if (mfcompiler_emit(compiler, arity)<0) return false;
+        targetpc[match] = mfcompiler_emit(compiler, 0);
+        if (targetpc[match]<0) return false;
+        match++;
+        i += count;
+    }
+
+    compiler->fn->resolver.data[defaultpc] = compiler->fn->resolver.count;
+    if (mfcompiler_emit(compiler, MFOP_FAIL)<0) return false;
+
+    match = 0;
+    for (int i=0; i<compiler->nresolutions; ) {
+        int count = 1;
+        while (i+count<compiler->nresolutions &&
+               resolutions[i+count].nparams==resolutions[i].nparams) count++;
+
+        compiler->fn->resolver.data[targetpc[match]] = compiler->fn->resolver.count;
+        if (count==1 && !resolutions[i].typed) {
+            if (mfcompiler_emit(compiler, MFOP_RESOLVE)<0) return false;
+            if (mfcompiler_emit(compiler, resolutions[i].fnindex)<0) return false;
+        } else {
+            if (mfcompiler_emit(compiler, MFOP_SLOW)<0) return false;
+        }
+
+        match++;
+        i += count;
+    }
+
+    return true;
+}
+
 /** Compiles the resolver for a metafunction that is still being assembled. */
 bool metafunction_compile(objectmetafunction *fn, error *err) {
     if (fn->fns.count<=0) return false;
-    
+
     mfcompiler compiler;
     mfcompiler_init(&compiler, fn);
-    mfcompiler_analyze(&compiler);
-    
     metafunction_clearinstructions(fn);
-    mfinstruction instr = MFOP_SLOW;
-    bool success = varray_mfinstructionwrite(&fn->resolver, instr)>=0;
-    
+
+    ERR_CHECK(mfcompiler_analyze(&compiler), metafunction_compile_cleanup);
+    ERR_CHECK(mfcompiler_emitarityresolver(&compiler), metafunction_compile_cleanup);
     mfcompiler_clear(&compiler);
-    return success;
+    return true;
+
+metafunction_compile_cleanup:
+    mfcompiler_clear(&compiler);
+    metafunction_clearinstructions(fn);
+    return false;
 }
 
 /* --------------------------

@@ -38,6 +38,7 @@ typedef struct sobjectmetafunction {
     metafunctionstate state;
     varray_value fns;
     varray_mfinstruction resolver;
+    mfindx entry; // Entry point for the resolver
 } objectmetafunction;
 
 /** Gets an objectmetafunction from a value */

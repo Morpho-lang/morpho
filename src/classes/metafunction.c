@@ -159,7 +159,7 @@ void metafunction_clearinstructions(objectmetafunction *fn) {
 bool metafunction_finalize(objectmetafunction *fn, error *err) {
     if (fn->state==METAFUNCTION_FROZEN) return true;
     if (!metafunction_compile(fn, err)) return false;
-    //metafunction_disassemble(fn);
+    metafunction_disassemble(fn);
     fn->state=METAFUNCTION_FROZEN;
     return true;
 }
@@ -1155,6 +1155,7 @@ enum {
     MFOP_SLOW,
     MFOP_RESOLVE,
     MFOP_FAIL,
+    MFOP_GETUID,
     MFOP_SPARSE
 };
 
@@ -1269,6 +1270,12 @@ static bool mfcompiler_emitslow(mfcompiler *compiler, mfindx *entry) {
 /** Emit a resolver block that fails dispatch. */
 static bool mfcompiler_emitfail(mfcompiler *compiler, mfindx *entry) {
     return mfcompiler_emit(compiler, MFOP_FAIL, entry);
+}
+
+/** Emit a resolver block that loads the uid of a given argument. */
+static bool mfcompiler_emitgetuid(mfcompiler *compiler, int arg, mfindx *entry) {
+    mfinstruction instructions[2] = { MFOP_GETUID, arg };
+    return mfcompiler_emitmulti(compiler, 2, instructions, entry);
 }
 
 /** Emit a resolver block that resolves to a specific implementation. */
@@ -1388,6 +1395,13 @@ static mfindx metafunction_disassemblesparse(objectmetafunction *fn, mfindx pc) 
     return next;
 }
 
+/** Disassemble a GETUID instruction. */
+static mfindx metafunction_disassemblegetuid(objectmetafunction *fn, mfindx pc) {
+    if (pc+1>=fn->resolver.count) { printf("getuid <missing operand>"); return pc+1; }
+    printf("getuid %i", fn->resolver.data[pc+1]);
+    return pc+2;
+}
+
 /** Print a disassembly of the metafunction resolver bytecode. */
 void metafunction_disassemble(objectmetafunction *fn) {
     printf("Resolver for ");
@@ -1400,6 +1414,7 @@ void metafunction_disassemble(objectmetafunction *fn) {
             case MFOP_SLOW: printf("slow"); pc++; break;
             case MFOP_FAIL: printf("fail"); pc++; break;
             case MFOP_RESOLVE: pc=metafunction_disassembleresolve(fn, pc); break;
+            case MFOP_GETUID: pc=metafunction_disassemblegetuid(fn, pc); break;
             case MFOP_SPARSE: pc=metafunction_disassemblesparse(fn, pc); break;
             default:
                 printf("unknown %i", fn->resolver.data[pc]);
@@ -1425,12 +1440,23 @@ static bool metafunction_runresolver(objectmetafunction *fn, int nargs, value *a
     
     while (true) {
         switch (instructions[pc]) {
-            case MFOP_SLOW: return metafunction_resolveslow(fn, nargs, args, err, out);
+            case MFOP_SLOW:
+                return metafunction_resolveslow(fn, nargs, args, err, out);
             case MFOP_RESOLVE: {
                 pc++; *out=fn->fns.data[instructions[pc]];
                 return true;
             }
-            case MFOP_FAIL: if (err) error_writewithid(err, VM_MLTPLDSPTCHFLD); return false;
+            case MFOP_FAIL:
+                error_writewithid(err, VM_MLTPLDSPTCHFLD); return false;
+            case MFOP_GETUID: {
+                int arg = instructions[++pc];
+                value type;
+                if (value_type(args[arg], &type) && MORPHO_ISCLASS(type)) {
+                    reg = MORPHO_GETCLASS(type)->uid;
+                    break;
+                }
+                error_writewithid(err, VM_MLTPLDSPTCHFLD); return false;
+            }
             case MFOP_SPARSE: {
                 int ncases=instructions[pc+1];
                 mfindx cases=pc+3;
@@ -1451,7 +1477,7 @@ static bool metafunction_runresolver(objectmetafunction *fn, int nargs, value *a
 /** Resolve a metafunction using the compiled resolver VM. */
 bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error *err, value *out) {
     if (fn->state!=METAFUNCTION_FROZEN) {
-        if (err) error_writewithid(err, METAFUNCTION_UNFROZEN); return false;
+        error_writewithid(err, METAFUNCTION_UNFROZEN); return false;
     }
     
     return metafunction_runresolver(fn, nargs, args, err, out);

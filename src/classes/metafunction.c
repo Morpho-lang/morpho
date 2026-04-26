@@ -1309,6 +1309,15 @@ static int mfcompiler_compareresolutionarity(const void *a, const void *b) {
     return (xi > yi) - (xi < yi); // Ascending order
 }
 
+/** Emit a resolver block for one exact-arity candidate set. */
+static bool mfcompiler_emitaritycase(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfindx *entry) {
+    if (nresolutions==1 && !resolutions[0].typed) {
+        return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
+    }
+
+    return mfcompiler_emitslow(compiler, entry);
+}
+
 /** Emit a conservative exact-arity resolver directly into bytecode. */
 static bool mfcompiler_emitarityresolver(mfcompiler *compiler, mfindx *entry) {
     if (compiler->hasvarg) return mfcompiler_emitslow(compiler, entry);
@@ -1329,9 +1338,7 @@ static bool mfcompiler_emitarityresolver(mfcompiler *compiler, mfindx *entry) {
                resolutions[i+count].nparams==arity) count++; // Count no. of resolutions with this arity
 
         table[ncases].value = arity; // Generate code for this arity
-        if (count==1 && !resolutions[i].typed) {
-            ERR_CHECK_RETURN(mfcompiler_emitresolve(compiler, resolutions[i].fnindex, &table[ncases].target));
-        } else ERR_CHECK_RETURN(mfcompiler_emitslow(compiler, &table[ncases].target));
+        ERR_CHECK_RETURN(mfcompiler_emitaritycase(compiler, count, &resolutions[i], &table[ncases].target));
 
         ncases++;
         i += count;

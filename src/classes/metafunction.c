@@ -1320,7 +1320,7 @@ static int mfcompiler_counttypesforparam(int nresolutions, mfcompileresolution *
             MORPHO_ISCLASS(type)) dictionary_insert(&dict, type, MORPHO_NIL);
         else wildcard=true;
     }
-    int count = dict.count + (wildcard ? 1 : 0);
+    int count = dict.count + ((dict.count>0 && wildcard) ? 1 : 0);
     dictionary_clear(&dict);
     return count;
 }
@@ -1349,7 +1349,7 @@ static void mfcompiler_cleartypeplan(mfcompilertypeplan *plan) {
 
 /** Choose a typed argument to branch on, if one exists. */
 static bool mfcompiler_choosetypeparam(int nresolutions, mfcompileresolution *resolutions, int *param) {
-    int bestparam = -1, bestcount = 1;
+    int bestparam = -1, bestcount = 0;
 
     for (int i=0; i<resolutions[0].nparams; i++) {
         int count = mfcompiler_counttypesforparam(nresolutions, resolutions, i);
@@ -1360,14 +1360,77 @@ static bool mfcompiler_choosetypeparam(int nresolutions, mfcompileresolution *re
     return (bestparam>=0);
 }
 
-/** Build a typed dispatch plan for one argument. */
-static bool mfcompiler_buildtypeplan(int nresolutions, mfcompileresolution *resolutions, int param, mfcompilertypeplan *plan) {
-    value types[nresolutions];
+/** Insert a class and all of its descendants into a dictionary. */
+static bool mfcompiler_insertchildren(dictionary *dict, value type) {
+    if (!MORPHO_ISCLASS(type) || dictionary_get(dict, type, NULL)) return true;
+    
+    ERR_CHECK_RETURN(dictionary_insert(dict, type, MORPHO_NIL));
+    objectclass *klass = MORPHO_GETCLASS(type);
+    for (int i=0; i<klass->children.count; i++) {
+        ERR_CHECK_RETURN(mfcompiler_insertchildren(dict, klass->children.data[i]));
+    }
 
-    varray_mfcompilertypecaseinit(&plan->cases);
-    plan->defaultfnindex = -1;
+    return true;
+}
+
+/** Choose the best resolution for a given runtime class at one parameter. */
+static bool mfcompiler_resolvetypecase(int nresolutions, mfcompileresolution *resolutions, int param, value actual, int *fnindex) {
+    int best = -1, bestrank = INT_MAX, bestcount = 0, rank;
 
     for (int i=0; i<nresolutions; i++) {
+        value type = MORPHO_NIL;
+        ERR_CHECK_RETURN(signature_getparamtype(resolutions[i].sig, param, &type));
+        if (!mfresolution_rankparamtype(actual, type, &rank)) continue;
+
+        if (rank<bestrank) {
+            best = i;
+            bestrank = rank;
+            bestcount = 1;
+        } else if (rank==bestrank) bestcount++;
+    }
+
+    if (best<0) return false;
+    if (bestcount!=1) return false;
+    *fnindex = resolutions[best].fnindex;
+    return true;
+}
+
+/** Decide whether a typed branch still needs slow resolution. */
+static bool mfcompiler_typeneedsslowcase(int nresolutions, mfcompileresolution *resolutions, int param, value actual) {
+    int best = -1, bestrank = INT_MAX, bestcount = 0, rank;
+    for (int i=0; i<nresolutions; i++) {
+        value type = MORPHO_NIL;
+        if (!signature_getparamtype(resolutions[i].sig, param, &type)) return true;
+        if (!mfresolution_rankparamtype(actual, type, &rank)) continue;
+
+        if (rank<bestrank) {
+            best = i;
+            bestrank = rank;
+            bestcount = 1;
+        } else if (rank==bestrank) bestcount++;
+    }
+
+    if (best<0 || bestcount!=1) return true;
+
+    for (int i=0; i<resolutions[best].nparams; i++) {
+        value type = MORPHO_NIL;
+        if (i==param) continue;
+        if (!signature_getparamtype(resolutions[best].sig, i, &type)) return true;
+        if (!MORPHO_ISNIL(type)) return true;
+    }
+
+    return false;
+}
+
+/** Build a typed dispatch plan for one argument. */
+static bool mfcompiler_buildtypeplan(int nresolutions, mfcompileresolution *resolutions, int param, mfcompilertypeplan *plan) {
+    varray_mfcompilertypecaseinit(&plan->cases);
+    plan->defaultfnindex = -1;
+    
+    dictionary children;
+    dictionary_init(&children); // Maintain dictionary of resolution classes and their children
+
+    for (int i=0; i<nresolutions; i++) { // Build list of all relevant types from each resolution
         value type = MORPHO_NIL;
         ERR_CHECK(signature_getparamtype(resolutions[i].sig, param, &type), mfcompiler_buildtypeplan_cleanup);
 
@@ -1375,22 +1438,29 @@ static bool mfcompiler_buildtypeplan(int nresolutions, mfcompileresolution *reso
             ERR_CHECK(plan->defaultfnindex<0, mfcompiler_buildtypeplan_cleanup);
             plan->defaultfnindex = resolutions[i].fnindex;
             continue;
-        } else if (!MORPHO_ISCLASS(type)) goto mfcompiler_buildtypeplan_cleanup;
+        } else ERR_CHECK(MORPHO_ISCLASS(type), mfcompiler_buildtypeplan_cleanup);
+        ERR_CHECK(mfcompiler_insertchildren(&children, type), mfcompiler_buildtypeplan_cleanup);
+    }
 
-        for (int j=0; j<plan->cases.count; j++) {
-            int uid = MORPHO_GETCLASS(type)->uid; 
-            ERR_CHECK(MORPHO_GETCLASS(type)->uid != plan->cases.data[j].uid, mfcompiler_buildtypeplan_cleanup);
-            ERR_CHECK(!value_typematch(type, types[j]) && !value_typematch(types[j], type), mfcompiler_buildtypeplan_cleanup);
-        }
+    for (unsigned int i=0; i<children.capacity; i++) { // Now build a resolution for each type
+        value type = children.contents[i].key;
+        if (MORPHO_ISNIL(type)) continue;
+        
+        int fnindex;
+        ERR_CHECK(mfcompiler_resolvetypecase(nresolutions, resolutions, param, type, &fnindex), mfcompiler_buildtypeplan_cleanup);
+        if (mfcompiler_typeneedsslowcase(nresolutions, resolutions, param, type)) fnindex = -1;
 
-        types[plan->cases.count] = type;
-        mfcompilertypecase newcase = { .uid = MORPHO_GETCLASS(type)->uid, .fnindex = resolutions[i].fnindex };
+        if (fnindex==plan->defaultfnindex) continue;
+
+        mfcompilertypecase newcase = { .uid = MORPHO_GETCLASS(type)->uid, .fnindex = fnindex };
         ERR_CHECK(varray_mfcompilertypecaseadd(&plan->cases, &newcase, 1), mfcompiler_buildtypeplan_cleanup);
     }
 
+    dictionary_clear(&children);
     return (plan->cases.count>0);
 
 mfcompiler_buildtypeplan_cleanup:
+    dictionary_clear(&children);
     mfcompiler_cleartypeplan(plan);
     return false;
 }
@@ -1405,7 +1475,8 @@ static bool mfcompiler_emittypeplan(mfcompiler *compiler, mfcompilertypeplan *pl
     mfcompilersparseentry table[plan->cases.count]; // Generate resolutions compile table
     for (int i=0; i<plan->cases.count; i++) {
         table[i].value = plan->cases.data[i].uid;
-        ERR_CHECK_RETURN(mfcompiler_emitresolve(compiler, plan->cases.data[i].fnindex, &table[i].target));
+        if (plan->cases.data[i].fnindex>=0) ERR_CHECK_RETURN(mfcompiler_emitresolve(compiler, plan->cases.data[i].fnindex, &table[i].target));
+        else ERR_CHECK_RETURN(mfcompiler_emitslow(compiler, &table[i].target));
     }
 
     // Output bytecode for the branch

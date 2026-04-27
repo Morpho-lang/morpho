@@ -159,7 +159,7 @@ void metafunction_clearinstructions(objectmetafunction *fn) {
 bool metafunction_finalize(objectmetafunction *fn, error *err) {
     if (fn->state==METAFUNCTION_FROZEN) return true;
     if (!metafunction_compile(fn, err)) return false;
-    metafunction_disassemble(fn);
+    //metafunction_disassemble(fn);
     fn->state=METAFUNCTION_FROZEN;
     return true;
 }
@@ -1303,6 +1303,135 @@ static bool mfcompiler_emitsparse(mfcompiler *compiler, int ncases, mfcompilersp
     return true;
 }
 
+/** Check if any resolutions in a candidate set use typed parameters. */
+static bool mfcompiler_hastypedresolutions(int nresolutions, mfcompileresolution *resolutions) {
+    for (int i=0; i<nresolutions; i++) if (resolutions[i].typed) return true;
+    return false;
+}
+
+/** Count number of possible types per parameter. */
+static int mfcompiler_counttypesforparam(int nresolutions, mfcompileresolution *resolutions, int param) {
+    bool wildcard=false;
+    dictionary dict;
+    dictionary_init(&dict);
+    for (int j=0; j<nresolutions; j++) {
+        value type=MORPHO_NIL;
+        if (signature_getparamtype(resolutions[j].sig, param, &type) &&
+            MORPHO_ISCLASS(type)) dictionary_insert(&dict, type, MORPHO_NIL);
+        else wildcard=true;
+    }
+    int count = dict.count + (wildcard ? 1 : 0);
+    dictionary_clear(&dict);
+    return count;
+}
+
+/** One typed branch in a compiled dispatch plan. */
+typedef struct {
+    int uid;
+    int fnindex;
+} mfcompilertypecase;
+
+DECLARE_VARRAY(mfcompilertypecase, mfcompilertypecase)
+DEFINE_VARRAY(mfcompilertypecase, mfcompilertypecase)
+
+/** A compiled plan for typed dispatch on one argument. */
+typedef struct {
+    int arg;
+    int defaultfnindex;
+    varray_mfcompilertypecase cases;
+} mfcompilertypeplan;
+
+/** Clear a typed dispatch plan. */
+static void mfcompiler_cleartypeplan(mfcompilertypeplan *plan) {
+    varray_mfcompilertypecaseclear(&plan->cases);
+    plan->defaultfnindex = -1;
+}
+
+/** Choose a typed argument to branch on, if one exists. */
+static bool mfcompiler_choosetypeparam(int nresolutions, mfcompileresolution *resolutions, int *param) {
+    int bestparam = -1, bestcount = 1;
+
+    for (int i=0; i<resolutions[0].nparams; i++) {
+        int count = mfcompiler_counttypesforparam(nresolutions, resolutions, i);
+        if (count>bestcount) { bestcount = count; bestparam = i; }
+    }
+
+    *param = bestparam;
+    return (bestparam>=0);
+}
+
+/** Build a typed dispatch plan for one argument. */
+static bool mfcompiler_buildtypeplan(int nresolutions, mfcompileresolution *resolutions, int param, mfcompilertypeplan *plan) {
+    value types[nresolutions];
+
+    varray_mfcompilertypecaseinit(&plan->cases);
+    plan->defaultfnindex = -1;
+
+    for (int i=0; i<nresolutions; i++) {
+        value type = MORPHO_NIL;
+        ERR_CHECK(signature_getparamtype(resolutions[i].sig, param, &type), mfcompiler_buildtypeplan_cleanup);
+
+        if (MORPHO_ISNIL(type)) {
+            ERR_CHECK(plan->defaultfnindex<0, mfcompiler_buildtypeplan_cleanup);
+            plan->defaultfnindex = resolutions[i].fnindex;
+            continue;
+        } else if (!MORPHO_ISCLASS(type)) goto mfcompiler_buildtypeplan_cleanup;
+
+        for (int j=0; j<plan->cases.count; j++) {
+            int uid = MORPHO_GETCLASS(type)->uid; 
+            ERR_CHECK(MORPHO_GETCLASS(type)->uid != plan->cases.data[j].uid, mfcompiler_buildtypeplan_cleanup);
+            ERR_CHECK(!value_typematch(type, types[j]) && !value_typematch(types[j], type), mfcompiler_buildtypeplan_cleanup);
+        }
+
+        types[plan->cases.count] = type;
+        mfcompilertypecase newcase = { .uid = MORPHO_GETCLASS(type)->uid, .fnindex = resolutions[i].fnindex };
+        ERR_CHECK(varray_mfcompilertypecaseadd(&plan->cases, &newcase, 1), mfcompiler_buildtypeplan_cleanup);
+    }
+
+    return (plan->cases.count>0);
+
+mfcompiler_buildtypeplan_cleanup:
+    mfcompiler_cleartypeplan(plan);
+    return false;
+}
+
+/** Emit bytecode for a typed dispatch plan. */
+static bool mfcompiler_emittypeplan(mfcompiler *compiler, mfcompilertypeplan *plan, mfindx *entry) {
+    mfindx deflt;
+    // If a default resolution exists, generate a resolution
+    if (plan->defaultfnindex>=0) ERR_CHECK_RETURN(mfcompiler_emitresolve(compiler, plan->defaultfnindex, &deflt));
+    else ERR_CHECK_RETURN(mfcompiler_emitslow(compiler, &deflt));
+
+    mfcompilersparseentry table[plan->cases.count]; // Generate resolutions compile table
+    for (int i=0; i<plan->cases.count; i++) {
+        table[i].value = plan->cases.data[i].uid;
+        ERR_CHECK_RETURN(mfcompiler_emitresolve(compiler, plan->cases.data[i].fnindex, &table[i].target));
+    }
+
+    // Output bytecode for the branch
+    ERR_CHECK_RETURN(mfcompiler_emitgetuid(compiler, plan->arg, entry));
+    return mfcompiler_emitsparse(compiler, plan->cases.count, table, deflt, NULL);
+}
+
+/** Try to emit typed dispatch for one exact-arity candidate set. */
+static bool mfcompiler_emittypedcase(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfindx *entry) {
+    int param;
+    mfcompilertypeplan plan = { .arg=-1, .defaultfnindex=-1 };
+    varray_mfcompilertypecaseinit(&plan.cases);
+
+    ERR_CHECK(mfcompiler_choosetypeparam(nresolutions, resolutions, &param), mfcompiler_emittypedcase_cleanup);
+    ERR_CHECK(mfcompiler_buildtypeplan(nresolutions, resolutions, param, &plan), mfcompiler_emittypedcase_cleanup);
+
+    plan.arg = param;
+    ERR_CHECK(mfcompiler_emittypeplan(compiler, &plan, entry), mfcompiler_emittypedcase_cleanup);
+    mfcompiler_cleartypeplan(&plan);
+    return true;
+
+mfcompiler_emittypedcase_cleanup:
+    mfcompiler_cleartypeplan(&plan);
+    return false;
+}
+
 /** Compare resolutions by arity for sorting. */
 static int mfcompiler_compareresolutionarity(const void *a, const void *b) {
     int xi=((mfcompileresolution *) a)->nparams, yi=((mfcompileresolution *) b)->nparams;
@@ -1313,6 +1442,11 @@ static int mfcompiler_compareresolutionarity(const void *a, const void *b) {
 static bool mfcompiler_emitaritycase(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfindx *entry) {
     if (nresolutions==1 && !resolutions[0].typed) {
         return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
+    }
+
+    if (mfcompiler_hastypedresolutions(nresolutions, resolutions) &&
+        mfcompiler_emittypedcase(compiler, nresolutions, resolutions, entry)) {
+        return true;
     }
 
     return mfcompiler_emitslow(compiler, entry);

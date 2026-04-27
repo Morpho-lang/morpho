@@ -1509,10 +1509,30 @@ static int mfcompiler_compareresolutionarity(const void *a, const void *b) {
     return (xi > yi) - (xi < yi); // Ascending order
 }
 
+/** Emit an untyped exact-arity case if a unique arity-specific winner exists. */
+static bool mfcompiler_emituntypedcase(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfindx *entry) {
+    int winner = -1;
+
+    for (int i=0; i<nresolutions; i++) {
+        if (resolutions[i].varg) continue;
+        if (winner>=0) return false;
+        winner = i;
+    }
+
+    if (winner>=0) return mfcompiler_emitresolve(compiler, resolutions[winner].fnindex, entry);
+    if (nresolutions==1) return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
+    return false;
+}
+
 /** Emit a resolver block for one exact-arity candidate set. */
 static bool mfcompiler_emitaritycase(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfindx *entry) {
     if (nresolutions==1 && !resolutions[0].typed) {
         return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
+    }
+
+    if (!mfcompiler_hastypedresolutions(nresolutions, resolutions) &&
+        mfcompiler_emituntypedcase(compiler, nresolutions, resolutions, entry)) {
+        return true;
     }
 
     if (mfcompiler_hastypedresolutions(nresolutions, resolutions) &&
@@ -1525,31 +1545,43 @@ static bool mfcompiler_emitaritycase(mfcompiler *compiler, int nresolutions, mfc
 
 /** Emit a conservative exact-arity resolver directly into bytecode. */
 static bool mfcompiler_emitarityresolver(mfcompiler *compiler, mfindx *entry) {
-    if (compiler->hasvarg) return mfcompiler_emitslow(compiler, entry);
-
     // Sort resolutions by arity
     mfcompileresolution resolutions[compiler->nresolutions];
     memcpy(resolutions, compiler->resolutions, sizeof(mfcompileresolution)*compiler->nresolutions);
     qsort(resolutions, compiler->nresolutions, sizeof(mfcompileresolution), mfcompiler_compareresolutionarity);
 
-    mfindx fail; // Emit failure resolution
-    ERR_CHECK_RETURN(mfcompiler_emitfail(compiler, &fail));
+    mfindx deflt; // Emit default resolution
+    if (compiler->hasvarg) ERR_CHECK_RETURN(mfcompiler_emitslow(compiler, &deflt));
+    else ERR_CHECK_RETURN(mfcompiler_emitfail(compiler, &deflt));
 
     mfcompilersparseentry table[compiler->nresolutions];
     int ncases = 0;
     for (int i=0; i<compiler->nresolutions; ) { // Loop over resolutions
-        int arity = resolutions[i].nparams, count = 1;
-        while (i+count<compiler->nresolutions &&
-               resolutions[i+count].nparams==arity) count++; // Count no. of resolutions with this arity
+        if (resolutions[i].varg) {
+            i++;
+            continue;
+        }
+
+        int arity = resolutions[i].nparams;
+        while (i<compiler->nresolutions &&
+               !resolutions[i].varg &&
+               resolutions[i].nparams==arity) i++;
+
+        mfcompileresolution bucket[compiler->nresolutions];
+        int count = 0;
+        for (int j=0; j<compiler->nresolutions; j++) {
+            if (resolutions[j].minarity<=arity &&
+                (resolutions[j].maxarity<0 || arity<=resolutions[j].maxarity)) {
+                bucket[count++] = resolutions[j];
+            }
+        }
 
         table[ncases].value = arity; // Generate code for this arity
-        ERR_CHECK_RETURN(mfcompiler_emitaritycase(compiler, count, &resolutions[i], &table[ncases].target));
-
+        ERR_CHECK_RETURN(mfcompiler_emitaritycase(compiler, count, bucket, &table[ncases].target));
         ncases++;
-        i += count;
     }
 
-    return mfcompiler_emitsparse(compiler, ncases, table, fail, entry); // Emit the sparse table
+    return mfcompiler_emitsparse(compiler, ncases, table, deflt, entry); // Emit the sparse table
 }
 
 /** Compiles the resolver for a metafunction that is still being assembled. */

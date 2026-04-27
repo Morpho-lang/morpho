@@ -713,17 +713,21 @@ mfcompiler_buildtypeplan_cleanup:
 }
 
 /** Emit bytecode for a typed dispatch plan. */
+static bool mfcompiler_emitbranchtarget(mfcompiler *compiler, int fnindex, mfindx *entry) {
+    if (fnindex>=0) return mfcompiler_emitresolve(compiler, fnindex, entry);
+    return mfcompiler_emitslow(compiler, entry);
+}
+
+/** Emit bytecode for a typed dispatch plan. */
 static bool mfcompiler_emittypeplan(mfcompiler *compiler, mfcompilertypeplan *plan, mfindx *entry) {
     mfindx deflt;
     // If a default resolution exists, generate a resolution
-    if (plan->defaultfnindex>=0) ERR_CHECK_RETURN(mfcompiler_emitresolve(compiler, plan->defaultfnindex, &deflt));
-    else ERR_CHECK_RETURN(mfcompiler_emitslow(compiler, &deflt));
+    ERR_CHECK_RETURN(mfcompiler_emitbranchtarget(compiler, plan->defaultfnindex, &deflt));
 
     mfcompilersparseentry table[plan->cases.count]; // Generate resolutions compile table
     for (int i=0; i<plan->cases.count; i++) {
         table[i].value = plan->cases.data[i].uid;
-        if (plan->cases.data[i].fnindex>=0) ERR_CHECK_RETURN(mfcompiler_emitresolve(compiler, plan->cases.data[i].fnindex, &table[i].target));
-        else ERR_CHECK_RETURN(mfcompiler_emitslow(compiler, &table[i].target));
+        ERR_CHECK_RETURN(mfcompiler_emitbranchtarget(compiler, plan->cases.data[i].fnindex, &table[i].target));
     }
 
     // Output bytecode for the branch
@@ -756,8 +760,8 @@ static int mfcompiler_compareresolutionarity(const void *a, const void *b) {
     return (xi > yi) - (xi < yi); // Ascending order
 }
 
-/** Emit an untyped exact-arity case if a unique arity-specific winner exists. */
-static bool mfcompiler_emituntypedcase(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfindx *entry) {
+/** Emit an untyped exact-arity case if a unique fixed-arity winner exists. */
+static bool mfcompiler_emitfixedaritywinner(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfindx *entry) {
     int winner = -1;
 
     for (int i=0; i<nresolutions; i++) {
@@ -773,18 +777,16 @@ static bool mfcompiler_emituntypedcase(mfcompiler *compiler, int nresolutions, m
 
 /** Emit a resolver block for one exact-arity candidate set. */
 static bool mfcompiler_emitaritycase(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfindx *entry) {
+    bool hastyped = mfcompiler_hastypedresolutions(nresolutions, resolutions);
+
     if (nresolutions==1 && !resolutions[0].typed) {
         return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
     }
 
-    if (!mfcompiler_hastypedresolutions(nresolutions, resolutions) &&
-        mfcompiler_emituntypedcase(compiler, nresolutions, resolutions, entry)) {
-        return true;
-    }
-
-    if (mfcompiler_hastypedresolutions(nresolutions, resolutions) &&
-        mfcompiler_emittypedcase(compiler, nresolutions, resolutions, entry)) {
-        return true;
+    if (hastyped) {
+        if (mfcompiler_emittypedcase(compiler, nresolutions, resolutions, entry)) return true;
+    } else {
+        if (mfcompiler_emitfixedaritywinner(compiler, nresolutions, resolutions, entry)) return true;
     }
 
     return mfcompiler_emitslow(compiler, entry);

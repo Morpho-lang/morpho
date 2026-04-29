@@ -581,20 +581,17 @@ value List_clone(vm *v, int nargs, value *args) {
 }
 
 /** Joins two lists together  */
-value List_join(vm *v, int nargs, value *args) {
+value List_join__list(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     value out = MORPHO_NIL;
 
-    if (nargs==1 && MORPHO_ISLIST(MORPHO_GETARG(args, 0))) {
-        objectlist *operand = MORPHO_GETLIST(MORPHO_GETARG(args, 0));
-        objectlist *new = list_concatenate(slf, operand);
+    objectlist *operand = MORPHO_GETLIST(MORPHO_GETARG(args, 0));
+    objectlist *new = list_concatenate(slf, operand);
 
-        if (new) {
-            out = MORPHO_OBJECT(new);
-            morpho_bindobjects(v, 1, &out);
-        }
-
-    } else morpho_runtimeerror(v, LIST_ADDARGS);
+    if (new) {
+        out = MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    }
 
     return out;
 }
@@ -684,10 +681,10 @@ MORPHO_METHOD(LIST_TUPLES_METHOD, List_tuples, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_SETS_METHOD, List_sets, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "List ()", List_clone, BUILTIN_FLAGSEMPTY),
 //MORPHO_METHOD(MORPHO_ADD_METHOD, List_add, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "List (_)", List_join, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "List (List)", List_join__list, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ROLL_METHOD, List_roll, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "()", List_sort, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "(_)", List_sort_fn, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "(Callable)", List_sort_fn, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_ORDER_METHOD, List_order, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_REVERSE_METHOD, List_reverse, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Bool (_)", List_ismember, BUILTIN_FLAGSEMPTY),

@@ -383,17 +383,15 @@ MORPHO_ENDCLASS
  * ********************************************************************** */
 
 /** Detect whether a resource is a folder  */
-value Folder_isfolder(vm *v, int nargs, value *args) {
+value Folder_isfolder__string(vm *v, int nargs, value *args) {
     value ret = MORPHO_FALSE;
-    if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
-        varray_char name;
-        varray_charinit(&name);
-        file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
-        
-        if (platform_isdirectory(name.data)) ret=MORPHO_TRUE;
-        
-        varray_charclear(&name);
-    } else morpho_runtimeerror(v, FOLDER_EXPCTPATH);
+    varray_char name;
+    varray_charinit(&name);
+    file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
+    
+    if (platform_isdirectory(name.data)) ret=MORPHO_TRUE;
+    
+    varray_charclear(&name);
     
     return ret;
 }
@@ -413,38 +411,36 @@ value Folder_normalizepath(vm *v, int nargs, value *args) {
 /** Return the contents of a folder  */
 value Folder_contents(vm *v, int nargs, value *args) {
     value ret = MORPHO_NIL;
-    if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
-       varray_char name;
-        varray_charinit(&name);
-        file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
+    varray_char name;
+    varray_charinit(&name);
+    file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
 
-        size_t size = platform_maxpathsize();
-        char buffer[size];
-        
-        MorphoDirContents contents;
-        if (platform_directorycontentsinit(&contents, name.data)) {
-            varray_value list;
-            varray_valueinit(&list);
-            
-            while (platform_directorycontents(&contents, buffer, size)) {
-                value entry = object_stringfromcstring(buffer, strlen(buffer));
-                if (MORPHO_ISSTRING(entry)) varray_valuewrite(&list, entry);
-            };
-            
-            platform_directorycontentsclear(&contents);
-            
-            objectlist *clist = object_newlist(list.count, list.data);
-            if (clist) {
-                ret = MORPHO_OBJECT(clist);
-                varray_valuewrite(&list, ret);
-                morpho_bindobjects(v, list.count, list.data);
-            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-            
-            varray_valueclear(&list);
-        } else morpho_runtimeerror(v, FOLDER_NTFLDR);
-        
-        varray_charclear(&name);
-    } else morpho_runtimeerror(v, FOLDER_EXPCTPATH);
+    size_t size = platform_maxpathsize();
+    char buffer[size];
+
+    MorphoDirContents contents;
+    if (platform_directorycontentsinit(&contents, name.data)) {
+     varray_value list;
+     varray_valueinit(&list);
+     
+     while (platform_directorycontents(&contents, buffer, size)) {
+         value entry = object_stringfromcstring(buffer, strlen(buffer));
+         if (MORPHO_ISSTRING(entry)) varray_valuewrite(&list, entry);
+     };
+     
+     platform_directorycontentsclear(&contents);
+     
+     objectlist *clist = object_newlist(list.count, list.data);
+     if (clist) {
+         ret = MORPHO_OBJECT(clist);
+         varray_valuewrite(&list, ret);
+         morpho_bindobjects(v, list.count, list.data);
+     } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+     
+     varray_valueclear(&list);
+    } else morpho_runtimeerror(v, FOLDER_NTFLDR);
+
+    varray_charclear(&name);
     
     return ret;
 }
@@ -465,10 +461,10 @@ value Folder_createrecursive(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Folder)
-MORPHO_METHOD_SIGNATURE(FOLDER_ISFOLDER, "Bool (_)", Folder_isfolder, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(FOLDER_ISFOLDER_DEPRECATED, "Bool (_)", Folder_isfolder, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(FOLDER_ISFOLDER, "Bool (String)", Folder_isfolder__string, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(FOLDER_ISFOLDER_DEPRECATED, "Bool (String)", Folder_isfolder__string, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(FOLDER_NORMALIZEPATH, "String (String)", Folder_normalizepath, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(FOLDER_CONTENTS, "List (_)", Folder_contents, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(FOLDER_CONTENTS, "List (String)", Folder_contents, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(FOLDER_CREATE, "(String)", Folder_create, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(FOLDER_CREATERECURSIVE, "(String)", Folder_createrecursive, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS

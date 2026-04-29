@@ -565,19 +565,17 @@ value Array_dimensions(vm *v, int nargs, value *args) {
 }
 
 /** Enumerate members of an array */
-value Array_enumerate(vm *v, int nargs, value *args) {
+value Array_enumerate__int(vm *v, int nargs, value *args) {
     objectarray *slf = MORPHO_GETARRAY(MORPHO_SELF(args));
     value out=MORPHO_NIL;
 
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
-        if (n<0) {
-            out=MORPHO_INTEGER(slf->nelements);
-        } else if (n<slf->nelements) {
-            out=slf->values[n];
-        } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
-    } else MORPHO_RAISE(v, ENUMERATE_ARGS);
+    if (n<0) {
+        out=MORPHO_INTEGER(slf->nelements);
+    } else if (n<slf->nelements) {
+        out=slf->values[n];
+    } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
 
     return out;
 }
@@ -602,7 +600,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Array_count, BUILTIN_FLAG
 MORPHO_METHOD_SIGNATURE(ARRAY_DIMENSIONS_METHOD, "List ()", Array_dimensions, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Array_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Array_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (_)", Array_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", Array_enumerate__int, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Array ()", Array_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 

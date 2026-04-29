@@ -402,19 +402,21 @@ value Complex_print(vm *v, int nargs, value *args) {
 }
 
 /** Complex add */
-value Complex_add(vm *v, int nargs, value *args) {
+value Complex_add__complex(vm *v, int nargs, value *args) {
+    objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
+    objectcomplex *b=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
+    
+    objectcomplex *new = object_newcomplex(0, 0);
+    if (new) complex_add(a, b, new);
+    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value Complex_add__x(vm *v, int nargs, value *args) {
     objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
     value out=MORPHO_NIL;
  
-    if (nargs==1 && MORPHO_ISCOMPLEX(MORPHO_GETARG(args, 0))) {
-        objectcomplex *b=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
-        
-        objectcomplex *new = object_newcomplex(0, 0);
-        if (new) {
-            out=MORPHO_OBJECT(new);
-            complex_add(a, b, new);
-        }
-    } else if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+    if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
         double val;
         if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
             objectcomplex *new = object_newcomplex(0,0);
@@ -672,11 +674,13 @@ value Complex_clone(vm *v, int nargs, value *args) {
 
 MORPHO_BEGINCLASS(ComplexNum)
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Complex_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Complex (...)", Complex_add, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Complex (Complex)", Complex_add__complex, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Complex (_)", Complex_add__x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Complex (...)", Complex_sub, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "Complex (...)", Complex_mul, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "Complex (...)", Complex_div, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Complex (...)", Complex_add, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Complex (Complex)", Complex_add__complex, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Complex (_)", Complex_add__x, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "Complex (...)", Complex_subr, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "Complex (...)", Complex_mul, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIVR_METHOD, "Complex (...)", Complex_divr, BUILTIN_FLAGSEMPTY),

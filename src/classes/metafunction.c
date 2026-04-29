@@ -427,8 +427,6 @@ typedef struct {
     error *err;
     mfcompileresolution *resolutions;
     int nresolutions;
-    bool hasvarg;
-    bool hastyped;
 } mfcompiler;
 
 /** Initialize compiler state. */
@@ -436,8 +434,6 @@ static void mfcompiler_init(mfcompiler *compiler, objectmetafunction *fn, error 
     compiler->fn = fn;
     compiler->err = err;
     compiler->nresolutions = fn->fns.count;
-    compiler->hasvarg = false;
-    compiler->hastyped = false;
     compiler->resolutions = malloc(sizeof(mfcompileresolution)*compiler->nresolutions);
 }
 
@@ -469,9 +465,6 @@ static bool mfcompiler_analyzecandidate(mfcompiler *compiler, int i) {
     resolution->typed = signature_istyped(sig);
     resolution->minarity = (resolution->varg ? resolution->nparams-1 : resolution->nparams);
     resolution->maxarity = (resolution->varg ? -1 : resolution->nparams);
-    
-    compiler->hasvarg = compiler->hasvarg || resolution->varg;
-    compiler->hastyped = compiler->hastyped || resolution->typed;
     return true;
 }
 
@@ -556,55 +549,74 @@ static bool mfcompiler_hastypedresolutions(int nresolutions, mfcompileresolution
     return false;
 }
 
-/** Count number of possible types per parameter. */
-static int mfcompiler_counttypesforparam(int nresolutions, mfcompileresolution *resolutions, int param) {
-    bool wildcard=false;
+/** Find the maximum declared parameter count in a candidate set. */
+static int mfcompiler_maxparams(int nresolutions, mfcompileresolution *resolutions) {
+    int max = 0;
+    for (int i=0; i<nresolutions; i++) {
+        if (resolutions[i].nparams>max) max = resolutions[i].nparams;
+    }
+    return max;
+}
+
+/** Check if a resolution matches a known exact arity. */
+static bool mfcompiler_matcharity(mfcompileresolution *resolution, int arity) {
+    return (resolution->minarity<=arity &&
+            (resolution->maxarity<0 || arity<=resolution->maxarity));
+}
+
+/** Check if a resolution matches the known runtime classes on this path. */
+static bool mfcompiler_matchknown(mfcompileresolution *resolution, int nparams, value *known) {
+    for (int i=0; i<nparams && i<resolution->nparams; i++) {
+        value type = MORPHO_NIL;
+        if (MORPHO_ISNIL(known[i])) continue;
+        if (!signature_getparamtype(resolution->sig, i, &type)) return false;
+        if (!mfresolution_rankparamtype(known[i], type, &(int) { 0 })) return false;
+    }
+    return true;
+}
+
+/** Count the number of distinct arities in a candidate set. */
+static int mfcompiler_countarities(int nresolutions, mfcompileresolution *resolutions) {
+    dictionary seen;
+    dictionary_init(&seen);
+
+    for (int i=0; i<nresolutions; i++) {
+        if (!resolutions[i].varg) dictionary_insert(&seen, MORPHO_INTEGER(resolutions[i].nparams), MORPHO_NIL);
+    }
+
+    int narities = seen.count;
+    dictionary_clear(&seen);
+    return narities;
+}
+
+/** Check if any resolutions in a candidate set are variadic. */
+static bool mfcompiler_hasvargresolutions(int nresolutions, mfcompileresolution *resolutions) {
+    for (int i=0; i<nresolutions; i++) if (resolutions[i].varg) return true;
+    return false;
+}
+
+/** Check if a parameter's runtime class is already known. */
+static inline bool mfcompiler_paramisknown(value *known, int param) {
+    return (known && !MORPHO_ISNIL(known[param]));
+}
+
+/** Count possible runtime types for a parameter. */
+static int mfcompiler_paramtypecount(int nresolutions, mfcompileresolution *resolutions, int param, value *known) {
+    if (mfcompiler_paramisknown(known, param)) return 0;
+
+    bool wildcard = false;
     dictionary dict;
     dictionary_init(&dict);
     for (int j=0; j<nresolutions; j++) {
-        value type=MORPHO_NIL;
+        value type = MORPHO_NIL;
         if (signature_getparamtype(resolutions[j].sig, param, &type) &&
             MORPHO_ISCLASS(type)) dictionary_insert(&dict, type, MORPHO_NIL);
-        else wildcard=true;
+        else wildcard = true;
     }
+
     int count = dict.count + ((dict.count>0 && wildcard) ? 1 : 0);
     dictionary_clear(&dict);
     return count;
-}
-
-/** One typed branch in a compiled dispatch plan. */
-typedef struct {
-    int uid;
-    int fnindex;
-} mfcompilertypecase;
-
-DECLARE_VARRAY(mfcompilertypecase, mfcompilertypecase)
-DEFINE_VARRAY(mfcompilertypecase, mfcompilertypecase)
-
-/** A compiled plan for typed dispatch on one argument. */
-typedef struct {
-    int arg;
-    int defaultfnindex;
-    varray_mfcompilertypecase cases;
-} mfcompilertypeplan;
-
-/** Clear a typed dispatch plan. */
-static void mfcompiler_cleartypeplan(mfcompilertypeplan *plan) {
-    varray_mfcompilertypecaseclear(&plan->cases);
-    plan->defaultfnindex = -1;
-}
-
-/** Choose a typed argument to branch on, if one exists. */
-static bool mfcompiler_choosetypeparam(int nresolutions, mfcompileresolution *resolutions, int *param) {
-    int bestparam = -1, bestcount = 0;
-
-    for (int i=0; i<resolutions[0].nparams; i++) {
-        int count = mfcompiler_counttypesforparam(nresolutions, resolutions, i);
-        if (count>bestcount) { bestcount = count; bestparam = i; }
-    }
-
-    *param = bestparam;
-    return (bestparam>=0);
 }
 
 /** Insert a class and all of its descendants into a dictionary. */
@@ -620,138 +632,188 @@ static bool mfcompiler_insertchildren(dictionary *dict, value type) {
     return true;
 }
 
-/** Choose the best resolution for a given runtime class at one parameter. */
-static bool mfcompiler_resolvetypecase(int nresolutions, mfcompileresolution *resolutions, int param, value actual, int *fnindex) {
-    int best = -1, bestrank = INT_MAX, bestcount = 0, rank;
-
+/** Collect all runtime classes reachable from a parameter's declared types. */
+static bool mfcompiler_paramchildren(int nresolutions, mfcompileresolution *resolutions,
+                                     int param, dictionary *children) {
     for (int i=0; i<nresolutions; i++) {
         value type = MORPHO_NIL;
-        ERR_CHECK_RETURN(signature_getparamtype(resolutions[i].sig, param, &type));
-        if (!mfresolution_rankparamtype(actual, type, &rank)) continue;
-
-        if (rank<bestrank) {
-            best = i;
-            bestrank = rank;
-            bestcount = 1;
-        } else if (rank==bestrank) bestcount++;
+        if (!signature_getparamtype(resolutions[i].sig, param, &type)) return false;
+        if (MORPHO_ISCLASS(type) && !mfcompiler_insertchildren(children, type)) return false;
     }
 
-    if (best<0) return false;
-    if (bestcount!=1) return false;
-    *fnindex = resolutions[best].fnindex;
     return true;
 }
 
-/** Decide whether a typed branch still needs slow resolution. */
-static bool mfcompiler_typeneedsslowcase(int nresolutions, mfcompileresolution *resolutions, int param, value actual) {
-    int best = -1, bestrank = INT_MAX, bestcount = 0, rank;
-    for (int i=0; i<nresolutions; i++) {
-        value type = MORPHO_NIL;
-        if (!signature_getparamtype(resolutions[i].sig, param, &type)) return true;
-        if (!mfresolution_rankparamtype(actual, type, &rank)) continue;
+/** Filter resolutions by known arity and runtime classes. */
+static int mfcompiler_collectsubset(int nresolutions, mfcompileresolution *resolutions, int knownarity,
+                                    int nparams, value *known, mfcompileresolution *out) {
+    int count = 0;
 
-        if (rank<bestrank) {
-            best = i;
-            bestrank = rank;
-            bestcount = 1;
-        } else if (rank==bestrank) bestcount++;
+    for (int i=0; i<nresolutions; i++) {
+        if (knownarity>=0 && !mfcompiler_matcharity(&resolutions[i], knownarity)) continue;
+        if (!mfcompiler_matchknown(&resolutions[i], nparams, known)) continue;
+        out[count++] = resolutions[i];
     }
 
-    if (best<0 || bestcount!=1) return true;
+    return count;
+}
 
-    for (int i=0; i<resolutions[best].nparams; i++) {
+/** Check if a resolution is fully determined on this path. */
+static bool mfcompiler_resolutionisterminal(mfcompileresolution *resolution, int nparams, value *known) {
+    for (int i=0; i<nparams && i<resolution->nparams; i++) {
         value type = MORPHO_NIL;
-        if (i==param) continue;
-        if (!signature_getparamtype(resolutions[best].sig, i, &type)) return true;
-        if (!MORPHO_ISNIL(type)) return true;
+        if (!signature_getparamtype(resolution->sig, i, &type)) return false;
+        if (!MORPHO_ISNIL(type) && MORPHO_ISNIL(known[i])) return false;
+    }
+
+    return true;
+}
+
+/** Check for any remaining unchecked typed parameter. */
+static bool mfcompiler_haspendingtypes(int nresolutions, mfcompileresolution *resolutions,
+                                       int nparams, value *known) {
+    for (int i=0; i<nparams; i++) {
+        if (mfcompiler_paramisknown(known, i)) continue;
+        if (mfcompiler_paramtypecount(nresolutions, resolutions, i, known)>0) return true;
     }
 
     return false;
 }
 
-/** Build a typed dispatch plan for one argument. */
-static bool mfcompiler_buildtypeplan(int nresolutions, mfcompileresolution *resolutions, int param, mfcompilertypeplan *plan) {
-    varray_mfcompilertypecaseinit(&plan->cases);
-    plan->defaultfnindex = -1;
-    
+/** Compare two resolutions using the runtime classes already known on this path. */
+static int mfcompiler_compareknownspecificity(mfcompileresolution *a, mfcompileresolution *b, int nparams, value *known) {
+    int ncheck = _min(a->nparams, b->nparams, nparams);
+    int firstsign = 0;
+
+    for (int i=0; i<ncheck; i++) {
+        int cmp = 0;
+        value atype = MORPHO_NIL, btype = MORPHO_NIL;
+        if (MORPHO_ISNIL(known[i])) continue;
+        if (!signature_getparamtype(a->sig, i, &atype) ||
+            !signature_getparamtype(b->sig, i, &btype)) return 0;
+        if (!mfresolution_compareparamtypes(known[i], atype, btype, &cmp)) return 0;
+        if (cmp!=0) {
+            if (firstsign==0) firstsign = _sign(cmp);
+            else if (firstsign!=_sign(cmp)) return 0;
+        }
+    }
+
+    if (firstsign!=0) return firstsign;
+    if (a->varg==b->varg) return 0;
+    return (a->varg ? 1 : -1);
+}
+
+/** Resolve a subset directly if known path facts determine all typed parameters. */
+static bool mfcompiler_resolveknownsubset(int nresolutions, mfcompileresolution *resolutions,
+                                          int nparams, value *known, int *fnindex) {
+    for (int i=0; i<nresolutions; i++) {
+        if (!mfcompiler_resolutionisterminal(&resolutions[i], nparams, known)) return false;
+    }
+
+    bool alive[nresolutions];
+    for (int i=0; i<nresolutions; i++) alive[i] = true;
+
+    for (int i=0; i<nresolutions; i++) {
+        if (alive[i]) for (int j=i+1; j<nresolutions; j++) {
+            if (alive[j]) {
+                int cmp = mfcompiler_compareknownspecificity(&resolutions[i], &resolutions[j], nparams, known);
+                if (cmp<0) alive[j] = false;
+                else if (cmp>0) {
+                    alive[i] = false;
+                    break;
+                }
+            }
+        }
+    }
+
+    int winner = -1;
+    for (int i=0; i<nresolutions; i++) {
+        if (alive[i]) {
+            if (winner>=0) return false;
+            winner = i;
+        }
+    }
+
+    if (winner<0) return false;
+    *fnindex = resolutions[winner].fnindex;
+    return true;
+}
+
+/** Check if a surviving subset is worth recursing into. */
+static bool mfcompiler_subsetisuseful(int nresolutions, mfcompileresolution *resolutions,
+                                      int nparams, value *known) {
+    int winner;
+
+    if (nresolutions<=0) return false;
+    if (nresolutions==1 && mfcompiler_resolutionisterminal(&resolutions[0], nparams, known)) return true;
+    if (mfcompiler_resolveknownsubset(nresolutions, resolutions, nparams, known, &winner)) return true;
+    return mfcompiler_haspendingtypes(nresolutions, resolutions, nparams, known);
+}
+
+/** Count useful runtime-class branches for a parameter. */
+static int mfcompiler_parambranchcount(int nresolutions, mfcompileresolution *resolutions,
+                                       int knownarity, int nparams, value *known, int param) {
+    if (mfcompiler_paramisknown(known, param)) return 0;
+
+    int useful = 0;
     dictionary children;
-    dictionary_init(&children); // Maintain dictionary of resolution classes and their children
-
-    for (int i=0; i<nresolutions; i++) { // Build list of all relevant types from each resolution
-        value type = MORPHO_NIL;
-        ERR_CHECK(signature_getparamtype(resolutions[i].sig, param, &type), mfcompiler_buildtypeplan_cleanup);
-
-        if (MORPHO_ISNIL(type)) {
-            ERR_CHECK(plan->defaultfnindex<0, mfcompiler_buildtypeplan_cleanup);
-            plan->defaultfnindex = resolutions[i].fnindex;
-            continue;
-        } else ERR_CHECK(MORPHO_ISCLASS(type), mfcompiler_buildtypeplan_cleanup);
-        ERR_CHECK(mfcompiler_insertchildren(&children, type), mfcompiler_buildtypeplan_cleanup);
+    dictionary_init(&children);
+    if (!mfcompiler_paramchildren(nresolutions, resolutions, param, &children)) {
+        dictionary_clear(&children);
+        return 0;
     }
 
-    for (unsigned int i=0; i<children.capacity; i++) { // Now build a resolution for each type
-        value type = children.contents[i].key;
-        if (MORPHO_ISNIL(type)) continue;
-        
-        int fnindex;
-        ERR_CHECK(mfcompiler_resolvetypecase(nresolutions, resolutions, param, type, &fnindex), mfcompiler_buildtypeplan_cleanup);
-        if (mfcompiler_typeneedsslowcase(nresolutions, resolutions, param, type)) fnindex = -1;
+    value childknown[nparams];
+    mfcompileresolution subset[nresolutions];
+    for (unsigned int i=0; i<children.capacity; i++) {
+        value actual = children.contents[i].key;
+        if (MORPHO_ISNIL(actual)) continue;
 
-        if (fnindex==plan->defaultfnindex) continue;
-
-        mfcompilertypecase newcase = { .uid = MORPHO_GETCLASS(type)->uid, .fnindex = fnindex };
-        ERR_CHECK(varray_mfcompilertypecaseadd(&plan->cases, &newcase, 1), mfcompiler_buildtypeplan_cleanup);
+        memcpy(childknown, known, sizeof(value)*nparams);
+        childknown[param] = actual;
+        int count = mfcompiler_collectsubset(nresolutions, resolutions, knownarity, nparams, childknown, subset);
+        if (count>0 && (count<nresolutions || mfcompiler_subsetisuseful(count, subset, nparams, childknown))) {
+            useful++;
+        }
     }
 
     dictionary_clear(&children);
-    return (plan->cases.count>0);
-
-mfcompiler_buildtypeplan_cleanup:
-    dictionary_clear(&children);
-    mfcompiler_cleartypeplan(plan);
-    return false;
+    return useful;
 }
 
-/** Emit bytecode for a typed dispatch plan. */
-static bool mfcompiler_emitbranchtarget(mfcompiler *compiler, int fnindex, mfindx *entry) {
-    if (fnindex>=0) return mfcompiler_emitresolve(compiler, fnindex, entry);
-    return mfcompiler_emitslow(compiler, entry);
-}
+/** Choose a typed parameter to branch on. */
+static bool mfcompiler_choosetypeparam(int nresolutions, mfcompileresolution *resolutions,
+                                       int knownarity, int nparams, value *known, int *param) {
+    int bestparam = -1;
+    int bestuseful = 0;
+    int bestcount = 0;
 
-/** Emit bytecode for a typed dispatch plan. */
-static bool mfcompiler_emittypeplan(mfcompiler *compiler, mfcompilertypeplan *plan, mfindx *entry) {
-    mfindx deflt;
-    // If a default resolution exists, generate a resolution
-    ERR_CHECK_RETURN(mfcompiler_emitbranchtarget(compiler, plan->defaultfnindex, &deflt));
-
-    mfcompilersparseentry table[plan->cases.count]; // Generate resolutions compile table
-    for (int i=0; i<plan->cases.count; i++) {
-        table[i].value = plan->cases.data[i].uid;
-        ERR_CHECK_RETURN(mfcompiler_emitbranchtarget(compiler, plan->cases.data[i].fnindex, &table[i].target));
+    for (int i=0; i<resolutions[0].nparams; i++) {
+        int count = mfcompiler_paramtypecount(nresolutions, resolutions, i, known);
+        int useful = mfcompiler_parambranchcount(nresolutions, resolutions, knownarity, nparams, known, i);
+        if (useful>bestuseful || (useful==bestuseful && count>bestcount)) {
+            bestuseful = useful;
+            bestcount = count;
+            bestparam = i;
+        }
     }
 
-    // Output bytecode for the branch
-    ERR_CHECK_RETURN(mfcompiler_emitgetuid(compiler, plan->arg, entry));
-    return mfcompiler_emitsparse(compiler, plan->cases.count, table, deflt, NULL);
+    *param = bestparam;
+    return (bestparam>=0 && bestuseful>0);
 }
 
-/** Try to emit typed dispatch for one exact-arity candidate set. */
-static bool mfcompiler_emittypedcase(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfindx *entry) {
-    int param;
-    mfcompilertypeplan plan = { .arg=-1, .defaultfnindex=-1 };
-    varray_mfcompilertypecaseinit(&plan.cases);
+static bool mfcompiler_emitresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions,
+                                    int knownarity, int nparams, value *known, mfindx *entry);
 
-    ERR_CHECK(mfcompiler_choosetypeparam(nresolutions, resolutions, &param), mfcompiler_emittypedcase_cleanup);
-    ERR_CHECK(mfcompiler_buildtypeplan(nresolutions, resolutions, param, &plan), mfcompiler_emittypedcase_cleanup);
+/** Compile the resolver entry point. */
+static bool mfcompiler_compileentry(mfcompiler *compiler, mfindx *entry) {
+    int nparams = mfcompiler_maxparams(compiler->nresolutions, compiler->resolutions);
+    if (nparams<1) nparams = 1;
 
-    plan.arg = param;
-    ERR_CHECK(mfcompiler_emittypeplan(compiler, &plan, entry), mfcompiler_emittypedcase_cleanup);
-    mfcompiler_cleartypeplan(&plan);
-    return true;
+    value known[nparams];
+    for (int i=0; i<nparams; i++) known[i] = MORPHO_NIL;
 
-mfcompiler_emittypedcase_cleanup:
-    mfcompiler_cleartypeplan(&plan);
-    return false;
+    return mfcompiler_emitresolver(compiler, compiler->nresolutions, compiler->resolutions, -1, nparams, known, entry);
 }
 
 /** Compare resolutions by arity for sorting. */
@@ -775,65 +837,163 @@ static bool mfcompiler_emitfixedaritywinner(mfcompiler *compiler, int nresolutio
     return false;
 }
 
-/** Emit a resolver block for one exact-arity candidate set. */
-static bool mfcompiler_emitaritycase(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfindx *entry) {
-    bool hastyped = mfcompiler_hastypedresolutions(nresolutions, resolutions);
+/** Collect wildcard resolutions for a typed split. */
+static bool mfcompiler_defaultsubset(int nresolutions, mfcompileresolution *resolutions,
+                                     int param, mfcompileresolution *subset, int *count) {
+    int ndefault = 0;
 
-    if (nresolutions==1 && !resolutions[0].typed) {
-        return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
+    for (int i=0; i<nresolutions; i++) {
+        value type = MORPHO_NIL;
+        ERR_CHECK_RETURN(signature_getparamtype(resolutions[i].sig, param, &type));
+        if (MORPHO_ISNIL(type)) subset[ndefault++] = resolutions[i];
     }
 
-    if (hastyped) {
-        if (mfcompiler_emittypedcase(compiler, nresolutions, resolutions, entry)) return true;
-    } else {
-        if (mfcompiler_emitfixedaritywinner(compiler, nresolutions, resolutions, entry)) return true;
-    }
-
-    return mfcompiler_emitslow(compiler, entry);
+    *count = ndefault;
+    return true;
 }
 
-/** Emit a conservative exact-arity resolver directly into bytecode. */
-static bool mfcompiler_emitarityresolver(mfcompiler *compiler, mfindx *entry) {
-    // Sort resolutions by arity
-    mfcompileresolution resolutions[compiler->nresolutions];
-    memcpy(resolutions, compiler->resolutions, sizeof(mfcompileresolution)*compiler->nresolutions);
-    qsort(resolutions, compiler->nresolutions, sizeof(mfcompileresolution), mfcompiler_compareresolutionarity);
+/** Emit typed child branches for one split parameter. */
+static bool mfcompiler_emitchildcases(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions,
+                                      int knownarity, int nparams, value *known, int param,
+                                      dictionary *children, mfcompilersparseentry *table, int *ncases) {
+    value childknown[nparams];
+    mfcompileresolution subset[nresolutions];
+    int count = 0;
 
-    mfindx deflt; // Emit default resolution
-    if (compiler->hasvarg) ERR_CHECK_RETURN(mfcompiler_emitslow(compiler, &deflt));
+    for (unsigned int i=0; i<children->capacity; i++) {
+        value actual = children->contents[i].key;
+        if (MORPHO_ISNIL(actual)) continue;
+
+        memcpy(childknown, known, sizeof(value)*nparams);
+        childknown[param] = actual;
+
+        int nsubset = mfcompiler_collectsubset(nresolutions, resolutions, knownarity, nparams, childknown, subset);
+        if (nsubset<=0) continue;
+
+        table[count].value = MORPHO_GETCLASS(actual)->uid;
+        ERR_CHECK_RETURN(mfcompiler_emitresolver(compiler, nsubset, subset, knownarity, nparams, childknown, &table[count].target));
+        count++;
+    }
+
+    *ncases = count;
+    return true;
+}
+
+/** Emit a typed resolver for one exact-arity candidate set. */
+static bool mfcompiler_emittypedresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions,
+                                         int knownarity, int nparams, value *known, mfindx *entry) {
+    int param, defaultcount, ncases;
+    dictionary children;
+    mfcompileresolution defaultsubset[nresolutions];
+    mfindx deflt;
+
+    dictionary_init(&children);
+
+    ERR_CHECK(mfcompiler_choosetypeparam(nresolutions, resolutions, knownarity, nparams, known, &param), mfcompiler_emittypedresolver_cleanup);
+    ERR_CHECK(mfcompiler_paramchildren(nresolutions, resolutions, param, &children), mfcompiler_emittypedresolver_cleanup);
+
+    {
+        /* Branch count is bounded by reachable runtime classes, not declared resolutions. */
+        mfcompilersparseentry table[children.count];
+
+        ERR_CHECK(mfcompiler_defaultsubset(nresolutions, resolutions, param, defaultsubset, &defaultcount), mfcompiler_emittypedresolver_cleanup);
+        if (defaultcount>0) {
+            ERR_CHECK(mfcompiler_emitresolver(compiler, defaultcount, defaultsubset, knownarity, nparams, known, &deflt), mfcompiler_emittypedresolver_cleanup);
+        } else ERR_CHECK(mfcompiler_emitslow(compiler, &deflt), mfcompiler_emittypedresolver_cleanup);
+
+        ERR_CHECK(mfcompiler_emitchildcases(compiler, nresolutions, resolutions, knownarity, nparams,
+                                            known, param, &children, table, &ncases), mfcompiler_emittypedresolver_cleanup);
+        if (ncases<=0) goto mfcompiler_emittypedresolver_cleanup;
+        ERR_CHECK(mfcompiler_emitgetuid(compiler, param, entry), mfcompiler_emittypedresolver_cleanup);
+        ERR_CHECK(mfcompiler_emitsparse(compiler, ncases, table, deflt, NULL), mfcompiler_emittypedresolver_cleanup);
+    }
+
+    dictionary_clear(&children);
+    return true;
+
+mfcompiler_emittypedresolver_cleanup:
+    dictionary_clear(&children);
+    return false;
+}
+
+/** Emit an arity-first resolver for a candidate set. */
+static bool mfcompiler_emitarityresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions,
+                                         int nparams, value *known, mfindx *entry) {
+    mfcompileresolution sorted[nresolutions];
+    memcpy(sorted, resolutions, sizeof(mfcompileresolution)*nresolutions);
+    qsort(sorted, nresolutions, sizeof(mfcompileresolution), mfcompiler_compareresolutionarity);
+
+    mfindx deflt;
+    bool hasvarg = false;
+    for (int i=0; i<nresolutions; i++) if (sorted[i].varg) { hasvarg = true; break; }
+    if (hasvarg) ERR_CHECK_RETURN(mfcompiler_emitslow(compiler, &deflt));
     else ERR_CHECK_RETURN(mfcompiler_emitfail(compiler, &deflt));
 
-    mfcompilersparseentry table[compiler->nresolutions];
+    mfcompilersparseentry table[nresolutions];
     int ncases = 0;
-    for (int i=0; i<compiler->nresolutions; ) { // Loop over resolutions
-        if (resolutions[i].varg) {
-            i++;
-            continue;
-        }
+    for (int i=0; i<nresolutions; ) {
+        if (sorted[i].varg) { i++; continue; }
 
-        int arity = resolutions[i].nparams;
-        while (i<compiler->nresolutions &&
-               !resolutions[i].varg &&
-               resolutions[i].nparams==arity) i++;
+        int arity = sorted[i].nparams;
+        while (i<nresolutions && !sorted[i].varg && sorted[i].nparams==arity) i++;
 
-        mfcompileresolution bucket[compiler->nresolutions];
+        mfcompileresolution bucket[nresolutions];
         int count = 0;
-        for (int j=0; j<compiler->nresolutions; j++) {
-            if (resolutions[j].minarity<=arity &&
-                (resolutions[j].maxarity<0 || arity<=resolutions[j].maxarity)) {
-                bucket[count++] = resolutions[j];
+        for (int j=0; j<nresolutions; j++) {
+            if (mfcompiler_matcharity(&sorted[j], arity) &&
+                mfcompiler_matchknown(&sorted[j], nparams, known)) {
+                bucket[count++] = sorted[j];
             }
         }
 
-        table[ncases].value = arity; // Generate code for this arity
-        ERR_CHECK_RETURN(mfcompiler_emitaritycase(compiler, count, bucket, &table[ncases].target));
+        table[ncases].value = arity;
+        ERR_CHECK_RETURN(mfcompiler_emitresolver(compiler, count, bucket, arity, nparams, known, &table[ncases].target));
         ncases++;
     }
 
-    return mfcompiler_emitsparse(compiler, ncases, table, deflt, entry); // Emit the sparse table
+    return mfcompiler_emitsparse(compiler, ncases, table, deflt, entry);
 }
 
-/** Compiles the resolver for a metafunction that is still being assembled. */
+/** Emit a resolver block for a filtered candidate set. */
+static bool mfcompiler_emitresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions,
+                                    int knownarity, int nparams, value *known, mfindx *entry) {
+    /* No candidates remain on this path. */
+    if (nresolutions<=0) return mfcompiler_emitfail(compiler, entry);
+
+    /* A single fully-determined resolution can be emitted directly. */
+    if (nresolutions==1 && mfcompiler_resolutionisterminal(&resolutions[0], nparams, known)) {
+        return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
+    }
+
+    bool hastyped = mfcompiler_hastypedresolutions(nresolutions, resolutions);
+    /* For exact arity without typed params, emit the lone fixed-arity winner. */
+    if (!hastyped && knownarity>=0) {
+        if (mfcompiler_emitfixedaritywinner(compiler, nresolutions, resolutions, entry)) return true;
+    }
+
+    /* Known path facts may already determine the winner. */
+    if (knownarity>=0) {
+        int fnindex;
+        if (mfcompiler_resolveknownsubset(nresolutions, resolutions, nparams, known, &fnindex)) {
+            return mfcompiler_emitresolve(compiler, fnindex, entry);
+        }
+    }
+
+    /* Split by arity before considering typed dispatch. */
+    if (knownarity<0 && (mfcompiler_countarities(nresolutions, resolutions)>1 || mfcompiler_hasvargresolutions(nresolutions, resolutions))) {
+        return mfcompiler_emitarityresolver(compiler, nresolutions, resolutions, nparams, known, entry);
+    }
+
+    /* Otherwise try a typed split on the current exact-arity subset. */
+    if (hastyped) {
+        if (mfcompiler_emittypedresolver(compiler, nresolutions, resolutions, knownarity, nparams, known, entry)) return true;
+    }
+
+    /* Fall back to the runtime resolver when no fast split is worthwhile. */
+    return mfcompiler_emitslow(compiler, entry);
+}
+
+/** Compile a resolver for a metafunction being assembled. */
 bool metafunction_compile(objectmetafunction *fn, error *err) {
     if (fn->fns.count<=0) return false;
 
@@ -843,7 +1003,7 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
 
     ERR_CHECK(mfcompiler_analyze(&compiler), metafunction_compile_cleanup);
     ERR_CHECK(mfcompiler_checkduplicates(&compiler), metafunction_compile_cleanup);
-    ERR_CHECK(mfcompiler_emitarityresolver(&compiler, &fn->entry), metafunction_compile_cleanup);
+    ERR_CHECK(mfcompiler_compileentry(&compiler, &fn->entry), metafunction_compile_cleanup);
     mfcompiler_clear(&compiler);
     return true;
 
@@ -917,7 +1077,6 @@ void metafunction_disassemble(objectmetafunction *fn) {
         printf("\n");
     }
 }
-
 
 /* --------------------------
  * Fast resolver VM

@@ -89,6 +89,7 @@ void metafunction_clearinstructions(objectmetafunction *fn);
 void metafunction_disassemble(objectmetafunction *fn);
 
 bool metafunction_resolve(objectmetafunction *f, int nargs, value *args, error *err, value *fn);
+bool metafunction_reduce(objectmetafunction *f, int nargs, value *args, error *err, value *out);
 
 void metafunction_initialize(void);
 

@@ -346,6 +346,36 @@ void mfresolutionset_filterbytypes(mfresolutionset *set, int nargs, value *args)
     mfresolutionset_collapse(set);
 }
 
+/** @brief Filter the resolution set by known argument types. */
+void mfresolutionset_filterbyknowntypes(mfresolutionset *set, int nargs, value *args) {
+    for (int i=0; i<set->count; i++) {
+        if (!set->data[i].sig) continue;
+        for (int j=0; j<nargs; j++) {
+            value actual = args[j], type = MORPHO_NIL;
+            if (MORPHO_ISNIL(actual)) continue;
+            if (!signature_getparamtype(set->data[i].sig, j, &type) ||
+                !mfresolution_rankparamtype(actual, type, &(int) { 0 })) {
+                set->data[i].sig = NULL;
+                break;
+            }
+        }
+    }
+    mfresolutionset_collapse(set);
+}
+
+/** @brief Check whether known argument types fully determine a signature. */
+static bool mfresolution_isterminal(signature *sig, int nargs, value *args) {
+    int nparams = signature_countparams(sig);
+
+    for (int i=0; i<nargs && i<nparams; i++) {
+        value type = MORPHO_NIL;
+        if (!signature_getparamtype(sig, i, &type)) return false;
+        if (!MORPHO_ISNIL(type) && MORPHO_ISNIL(args[i])) return false;
+    }
+
+    return true;
+}
+
 /** @brief Filter the resolution set to maximal resolutions by specificity. */
 void mfresolutionset_filterbyspecificity(mfresolutionset *set, int nargs, value *args) {
     for (int i=0; i<set->count; i++) { // Compare all possible pairs and remove resolutions dominated by at least one other candidate
@@ -1133,6 +1163,46 @@ bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error 
     }
     
     return metafunction_runresolver(fn, nargs, args, err, out);
+}
+
+/* **********************************************************************
+ * Specialize a metafunction given type information
+ * ********************************************************************** */
+
+/** Reduce a metafunction using known argument types. */
+bool metafunction_reduce(objectmetafunction *fn, int nargs, value *args, error *err, value *out) {
+    int nres = fn->fns.count;
+    mfresolutionset set;
+    mfresolution res[nres];
+    objectmetafunction *reduced = NULL;
+
+    mfresolutionset_init(&set, res, fn);
+    mfresolutionset_filterbyarity(&set, nargs);
+    mfresolutionset_filterbyknowntypes(&set, nargs, args);
+
+    if (set.count<=0) { // No resolutions left
+        error_writewithid(err, VM_MLTPLDSPTCHFLD); return false;
+    } else if (set.count==1 &&
+               mfresolution_isterminal(set.data[0].sig, nargs, args)) { // Resolution is completely specified
+        *out = set.data[0].fn; return true;
+    } else if (set.count==fn->fns.count) { // Resolution set is unchanged
+        *out = MORPHO_OBJECT(fn); return true;
+    }
+
+    ERR_CHECK(reduced = object_newmetafunction(fn->name), metafunction_reduce_cleanup);
+
+    metafunction_setclass(reduced, metafunction_class(fn));
+    for (int i=0; i<set.count; i++) {
+        ERR_CHECK(metafunction_add(reduced, set.data[i].fn), metafunction_reduce_cleanup);
+    }
+    ERR_CHECK(metafunction_finalize(reduced, err), metafunction_reduce_cleanup);
+
+    *out = MORPHO_OBJECT(reduced);
+    return true;
+
+metafunction_reduce_cleanup:
+    if (reduced) object_free((object *) reduced);
+    return false;
 }
 
 /* **********************************************************************

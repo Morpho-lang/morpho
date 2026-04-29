@@ -34,6 +34,7 @@ typedef struct sobjectfunction {
     value name;
     indx entry;
     int creg; // Closure register
+    bool isrecursive;
     struct sobjectfunction *parent;
     int nregs;
     objectclass *klass; // Parent class for methods

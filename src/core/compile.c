@@ -3692,6 +3692,52 @@ static bool compiler_isinvocation(compiler *c, syntaxtreenode *call) {
     return isinvocation;
 }
 
+static bool compiler_functionisrecursive(value fn) {
+    if (MORPHO_ISFUNCTION(fn)) return MORPHO_GETFUNCTION(fn)->isrecursive;
+    if (MORPHO_ISCLOSURE(fn)) return MORPHO_GETCLOSUREFUNCTION(fn)->isrecursive;
+    return false;
+}
+
+static bool compiler_metafunctionhasrecursiveimplementation(objectmetafunction *metafunction) {
+    for (int i=0; i<metafunction->fns.count; i++) {
+        if (compiler_functionisrecursive(metafunction->fns.data[i])) return true;
+    }
+
+    return false;
+}
+
+/** Attempt to specialize a constant metafunction call using current argument types. */
+static bool compiler_specializemetafunctioncall(compiler *c, syntaxtreenode *node, codeinfo *func,
+                                                instructionindx selectorload, int nargs, value selector, value *rtype) {
+    if (!MORPHO_ISMETAFUNCTION(selector)) return false;
+
+    objectmetafunction *metafunction = MORPHO_GETMETAFUNCTION(selector);
+    if (metafunction->state!=METAFUNCTION_FROZEN ||
+        compiler_metafunctionhasrecursiveimplementation(metafunction)) return false;
+
+    value argtypes[nargs];
+    for (int i=0; i<nargs; i++) {
+        value type = MORPHO_NIL;
+        argtypes[i] = (compiler_regcurrenttype(c, func->dest+i+1, &type) && MORPHO_ISCLASS(type)) ? type : MORPHO_NIL;
+    }
+
+    value reduced = MORPHO_NIL;
+    error err;
+    error_init(&err);
+    bool success = metafunction_reduce(metafunction, nargs, argtypes, &err, &reduced);
+    error_clear(&err);
+    if (!success) return false;
+
+    registerindx ctarget = compiler_addconstant(c, node, reduced, true, false);
+    if (ctarget==REGISTER_UNALLOCATED) return false;
+
+    compiler_setinstruction(c, selectorload, ENCODE_LONG(OP_LCT, func->dest, ctarget));
+    compiler_getreturntype(c, reduced, rtype);
+    if (MORPHO_ISOBJECT(reduced)) program_bindobject(c->out, MORPHO_GETOBJECT(reduced));
+
+    return true;
+}
+
 /** Compiles a function call */
 static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
@@ -3712,6 +3758,9 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     value rtype=MORPHO_NIL;
     if (selnode->type==NODE_SYMBOL) { // A regular call from a symbol
         compiler_findtype(c, selnode->content, &rtype);
+
+        objectfunction *current = compiler_getcurrentfunction(c);
+        if (current && MORPHO_ISEQUAL(current->name, selnode->content)) current->isrecursive=true;
     } else if (selnode->type==NODE_DOT) { // An constructor in a namespace?
         syntaxtreenode *nsnode = compiler_getnode(c, selnode->left);
         syntaxtreenode *snode = compiler_getnode(c, selnode->right);
@@ -3735,9 +3784,12 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     codeinfo func = compiler_nodetobytecode(c, node->left, rCallReq);
     
     // Attempt to infer return type
-    if (func.returntype==CONSTANT && MORPHO_ISNIL(rtype)) {
-        value target=MORPHO_NIL;
+    bool constantselector = (func.returntype==CONSTANT);
+    value target=MORPHO_NIL;
+    if (constantselector) {
         target=compiler_getconstant(c, func.dest);
+    }
+    if (constantselector && MORPHO_ISNIL(rtype)) {
         compiler_getreturntype(c, target, &rtype);
     }
     
@@ -3745,13 +3797,17 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     if (selnode->type==NODE_SYMBOL && compiler_catch(c, COMPILE_SYMBOLNOTDEFINED)) {
         syntaxtreenode *symbol=compiler_getnode(c, node->left);
         func=compiler_addforwardreference(c, symbol, symbol->content);
+        constantselector=false;
+        target=MORPHO_NIL;
     }
     ninstructions+=func.ninstructions;
 
     /* Move selector into a temporary register unless we already have one
        that's at the top of the stack */
+    instructionindx selectorload = -1;
     if (!compiler_iscodeinfotop(c, func)) {
         registerindx otop = compiler_regalloctop(c);
+        if (constantselector) selectorload = compiler_currentinstructionindex(c);
         func=compiler_movetoregister(c, node, func, otop);
         ninstructions+=func.ninstructions;
     }
@@ -3775,6 +3831,10 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     /* Generate the call instruction */
     int nposn=0, nopt=0;
     compiler_regcountargs(c, func.dest+1, lastarg, &nposn, &nopt);
+    if (constantselector && nopt==0 &&
+        selectorload>=0) {
+        compiler_specializemetafunctioncall(c, node, &func, selectorload, nposn, target, &rtype);
+    }
     compiler_addinstruction(c, ENCODE(OP_CALL, func.dest, nposn, nopt), node);
     ninstructions++;
 

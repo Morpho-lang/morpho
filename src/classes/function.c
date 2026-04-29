@@ -56,6 +56,7 @@ void object_functioninit(objectfunction *func) {
     func->nopt=0;
     func->parent=NULL;
     func->creg=-1;
+    func->isrecursive=false;
     func->nregs=0;
     varray_valueinit(&func->konst);
     varray_varray_upvalueinit(&func->prototype);

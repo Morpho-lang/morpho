@@ -289,42 +289,30 @@ value builtin_sqrt(vm *v, int nargs, value *args) {
 }
 
 /** The arctan function is special; it can either take one or two arguments */
-value builtin_arctan(vm *v, int nargs, value *args) {
-    bool useComplex = false;
-    for (unsigned int i=0; i<nargs; i++) {
-        if (MORPHO_ISNUMBER(MORPHO_GETARG(args,i))) {
-            continue;
-        } else if (MORPHO_ISCOMPLEX(MORPHO_GETARG(args, i))) {
-            useComplex = true;
-        } else {
-            morpho_runtimeerror(v, MATH_ARGS, "arctan");
-            return MORPHO_NIL;
-        }
-    }
-    if (useComplex) {
-        if (nargs == 1) {
-            return complex_builtinatan(v,MORPHO_GETARG(args, 0));
-        } else if (nargs==2) {
-            // Note Morpho uses the opposite order to C!
-            return complex_builtinatan2(v,MORPHO_GETARG(args, 1),MORPHO_GETARG(args, 0));
-        }
-        morpho_runtimeerror(v, MATH_NUMARGS, "arctan");
-        return MORPHO_NIL;
-    } else {
-        double x[2];
-        for (unsigned int i=0; i<nargs; i++) {
-            morpho_valuetofloat(MORPHO_GETARG(args, i), x+i);
-        }
-        
-        if (nargs==1) {
-            return MORPHO_FLOAT(atan(x[0]));
-        } else if (nargs==2) {
-            return MORPHO_FLOAT(atan2(x[1], x[0])); // Note Morpho uses the opposite order to C!
-        }
-            
-        morpho_runtimeerror(v, MATH_NUMARGS, "arctan");
-        return MORPHO_NIL;
-    } 
+static value builtin_arctan__number(vm *v, int nargs, value *args) {
+    double x;
+    morpho_valuetofloat(MORPHO_GETARG(args, 0), &x);
+    return MORPHO_FLOAT(atan(x));
+}
+
+static value builtin_arctan__number_number(vm *v, int nargs, value *args) {
+    double x, y;
+    morpho_valuetofloat(MORPHO_GETARG(args, 0), &x);
+    morpho_valuetofloat(MORPHO_GETARG(args, 1), &y);
+    return MORPHO_FLOAT(atan2(y, x)); // Note Morpho uses the opposite order to C!
+}
+
+static value builtin_arctan__complex(vm *v, int nargs, value *args) {
+    return complex_builtinatan(v, MORPHO_GETARG(args, 0));
+}
+
+static value builtin_arctan__complex2(vm *v, int nargs, value *args) {
+    return complex_builtinatan2(v, MORPHO_GETARG(args, 1), MORPHO_GETARG(args, 0));
+}
+
+static value builtin_arctan__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, MATH_NUMARGS, "arctan");
+    return MORPHO_NIL;
 }
 
 /** Remainder */
@@ -677,7 +665,17 @@ void functiondefs_initialize(void) {
     BUILTIN_MATH_BOOL(isnan)
     
     // Math functions with special cases
-    builtin_addfunction(FUNCTION_ARCTAN, builtin_arctan, BUILTIN_FLAGSEMPTY);
+    morpho_addfunction(FUNCTION_ARCTAN, "Float (Int)", builtin_arctan__number, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Float (Float)", builtin_arctan__number, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Float (Int,Int)", builtin_arctan__number_number, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Float (Int,Float)", builtin_arctan__number_number, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Float (Float,Int)", builtin_arctan__number_number, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Float (Float,Float)", builtin_arctan__number_number, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Complex (Complex)", builtin_arctan__complex, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Complex (Complex,Complex)", builtin_arctan__complex2, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Complex (Complex,_)", builtin_arctan__complex2, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Complex (_,Complex)", builtin_arctan__complex2, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Float (...)", builtin_arctan__err, BUILTIN_FLAGSEMPTY, NULL);
     BUILTIN_MATH_OLD2(sqrt);
     morpho_addfunction(FUNCTION_MOD, "Int (Int,Int)", builtin_mod__int_int, BUILTIN_FLAGSEMPTY, NULL);
     morpho_addfunction(FUNCTION_MOD, "Float (Float,Float)", builtin_mod__float_float, BUILTIN_FLAGSEMPTY, NULL);

@@ -970,7 +970,8 @@ static bool mfcompiler_emitarityresolver(mfcompiler *compiler, int nresolutions,
         mfcompileresolution bucket[nresolutions];
         int count = 0;
         for (int j=0; j<nresolutions; j++) {
-            if (mfcompiler_matcharity(&sorted[j], arity) &&
+            if (!sorted[j].varg &&
+                sorted[j].nparams==arity &&
                 mfcompiler_matchknown(&sorted[j], nparams, known)) {
                 bucket[count++] = sorted[j];
             }

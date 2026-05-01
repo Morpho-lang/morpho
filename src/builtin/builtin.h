@@ -139,8 +139,6 @@ value builtin_internsymbolascstring(char *symbol);
 bool builtin_checksymbol(value symbol);
 
 bool builtin_options(vm *v, int nargs, value *args, int *nfixed, int noptions, ...);
-bool builtin_iscallable(value val);
-
 bool builtin_enumerateloop(vm *v, value obj, builtin_loopfunction fn, void *ref);
 
 /* -------------------------------------------------------

@@ -459,6 +459,14 @@ typedef struct {
     int nresolutions;
 } mfcompiler;
 
+/** Path-local facts accumulated while compiling one resolver branch. */
+typedef struct {
+    int knownarity;
+    bool aritychecked;
+    int nparams;
+    value *known;
+} mfcompilerpath;
+
 /** Initialize compiler state. */
 static void mfcompiler_init(mfcompiler *compiler, objectmetafunction *fn, error *err) {
     compiler->fn = fn;
@@ -832,8 +840,7 @@ static bool mfcompiler_choosetypeparam(int nresolutions, mfcompileresolution *re
     return (bestparam>=0 && bestuseful>0);
 }
 
-static bool mfcompiler_emitresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions,
-                                    int knownarity, int nparams, value *known, mfindx *entry);
+static bool mfcompiler_emitresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfcompilerpath *path, mfindx *entry);
 
 /** Compile the resolver entry point. */
 static bool mfcompiler_compileentry(mfcompiler *compiler, mfindx *entry) {
@@ -843,7 +850,8 @@ static bool mfcompiler_compileentry(mfcompiler *compiler, mfindx *entry) {
     value known[nparams];
     for (int i=0; i<nparams; i++) known[i] = MORPHO_NIL;
 
-    return mfcompiler_emitresolver(compiler, compiler->nresolutions, compiler->resolutions, -1, nparams, known, entry);
+    mfcompilerpath path = { .knownarity = -1, .aritychecked = false, .nparams = nparams, .known = known };
+    return mfcompiler_emitresolver(compiler, compiler->nresolutions, compiler->resolutions, &path, entry);
 }
 
 /** Compare resolutions by arity for sorting. */
@@ -852,8 +860,8 @@ static int mfcompiler_compareresolutionarity(const void *a, const void *b) {
     return (xi > yi) - (xi < yi); // Ascending order
 }
 
-/** Emit an untyped exact-arity case if a unique fixed-arity winner exists. */
-static bool mfcompiler_emitfixedaritywinner(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfindx *entry) {
+/** Emit an exact-arity case if a unique winner is already fully determined. */
+static bool mfcompiler_emitfixedaritywinner(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, int nparams, value *known, mfindx *entry) {
     int winner = -1;
 
     for (int i=0; i<nresolutions; i++) {
@@ -862,14 +870,16 @@ static bool mfcompiler_emitfixedaritywinner(mfcompiler *compiler, int nresolutio
         winner = i;
     }
 
-    if (winner>=0) return mfcompiler_emitresolve(compiler, resolutions[winner].fnindex, entry);
-    if (nresolutions==1) return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
+    if (winner>=0 && mfcompiler_resolutionisterminal(&resolutions[winner], nparams, known)) {
+        return mfcompiler_emitresolve(compiler, resolutions[winner].fnindex, entry);
+    } else if (nresolutions==1 && mfcompiler_resolutionisterminal(&resolutions[0], nparams, known)) {
+        return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
+    }
     return false;
 }
 
 /** Collect wildcard resolutions for a typed split. */
-static bool mfcompiler_defaultsubset(int nresolutions, mfcompileresolution *resolutions,
-                                     int param, mfcompileresolution *subset, int *count) {
+static bool mfcompiler_defaultsubset(int nresolutions, mfcompileresolution *resolutions, int param, mfcompileresolution *subset, int *count) {
     int ndefault = 0;
 
     for (int i=0; i<nresolutions; i++) {
@@ -883,10 +893,8 @@ static bool mfcompiler_defaultsubset(int nresolutions, mfcompileresolution *reso
 }
 
 /** Emit typed child branches for one split parameter. */
-static bool mfcompiler_emitchildcases(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions,
-                                      int knownarity, int nparams, value *known, int param,
-                                      dictionary *children, mfcompilersparseentry *table, int *ncases) {
-    value childknown[nparams];
+static bool mfcompiler_emitchildcases(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfcompilerpath *path, int param, dictionary *children, mfcompilersparseentry *table, int *ncases) {
+    value childknown[path->nparams];
     mfcompileresolution subset[nresolutions];
     int count = 0;
 
@@ -894,14 +902,16 @@ static bool mfcompiler_emitchildcases(mfcompiler *compiler, int nresolutions, mf
         value actual = children->contents[i].key;
         if (MORPHO_ISNIL(actual)) continue;
 
-        memcpy(childknown, known, sizeof(value)*nparams);
+        memcpy(childknown, path->known, sizeof(value)*path->nparams);
         childknown[param] = actual;
+        mfcompilerpath childpath = *path;
+        childpath.known = childknown;
 
-        int nsubset = mfcompiler_collectsubset(nresolutions, resolutions, knownarity, nparams, childknown, subset);
+        int nsubset = mfcompiler_collectsubset(nresolutions, resolutions, path->knownarity, path->nparams, childknown, subset);
         if (nsubset<=0) continue;
 
         table[count].value = MORPHO_GETCLASS(actual)->uid;
-        ERR_CHECK_RETURN(mfcompiler_emitresolver(compiler, nsubset, subset, knownarity, nparams, childknown, &table[count].target));
+        ERR_CHECK_RETURN(mfcompiler_emitresolver(compiler, nsubset, subset, &childpath, &table[count].target));
         count++;
     }
 
@@ -910,8 +920,7 @@ static bool mfcompiler_emitchildcases(mfcompiler *compiler, int nresolutions, mf
 }
 
 /** Emit a typed resolver for one exact-arity candidate set. */
-static bool mfcompiler_emittypedresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions,
-                                         int knownarity, int nparams, value *known, mfindx *entry) {
+static bool mfcompiler_emittypedresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfcompilerpath *path, mfindx *entry) {
     int param, defaultcount, ncases;
     dictionary children;
     mfcompileresolution defaultsubset[nresolutions];
@@ -919,7 +928,7 @@ static bool mfcompiler_emittypedresolver(mfcompiler *compiler, int nresolutions,
 
     dictionary_init(&children);
 
-    ERR_CHECK(mfcompiler_choosetypeparam(nresolutions, resolutions, knownarity, nparams, known, &param), mfcompiler_emittypedresolver_cleanup);
+    ERR_CHECK(mfcompiler_choosetypeparam(nresolutions, resolutions, path->knownarity, path->nparams, path->known, &param), mfcompiler_emittypedresolver_cleanup);
     ERR_CHECK(mfcompiler_paramchildren(nresolutions, resolutions, param, &children), mfcompiler_emittypedresolver_cleanup);
 
     {
@@ -928,11 +937,11 @@ static bool mfcompiler_emittypedresolver(mfcompiler *compiler, int nresolutions,
 
         ERR_CHECK(mfcompiler_defaultsubset(nresolutions, resolutions, param, defaultsubset, &defaultcount), mfcompiler_emittypedresolver_cleanup);
         if (defaultcount>0) {
-            ERR_CHECK(mfcompiler_emitresolver(compiler, defaultcount, defaultsubset, knownarity, nparams, known, &deflt), mfcompiler_emittypedresolver_cleanup);
+            ERR_CHECK(mfcompiler_emitresolver(compiler, defaultcount, defaultsubset, path, &deflt), mfcompiler_emittypedresolver_cleanup);
         } else ERR_CHECK(mfcompiler_emitslow(compiler, &deflt), mfcompiler_emittypedresolver_cleanup);
 
-        ERR_CHECK(mfcompiler_emitchildcases(compiler, nresolutions, resolutions, knownarity, nparams,
-                                            known, param, &children, table, &ncases), mfcompiler_emittypedresolver_cleanup);
+        ERR_CHECK(mfcompiler_emitchildcases(compiler, nresolutions, resolutions, path,
+                                            param, &children, table, &ncases), mfcompiler_emittypedresolver_cleanup);
         if (ncases<=0) goto mfcompiler_emittypedresolver_cleanup;
         ERR_CHECK(mfcompiler_emitgetuid(compiler, param, entry), mfcompiler_emittypedresolver_cleanup);
         ERR_CHECK(mfcompiler_emitsparse(compiler, ncases, table, deflt, NULL), mfcompiler_emittypedresolver_cleanup);
@@ -947,17 +956,27 @@ mfcompiler_emittypedresolver_cleanup:
 }
 
 /** Emit an arity-first resolver for a candidate set. */
-static bool mfcompiler_emitarityresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions,
-                                         int nparams, value *known, mfindx *entry) {
+static bool mfcompiler_emitarityresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfcompilerpath *path, mfindx *entry) {
     mfcompileresolution sorted[nresolutions];
+    mfcompileresolution vargsubset[nresolutions];
     memcpy(sorted, resolutions, sizeof(mfcompileresolution)*nresolutions);
     qsort(sorted, nresolutions, sizeof(mfcompileresolution), mfcompiler_compareresolutionarity);
 
     mfindx deflt;
-    bool hasvarg = false;
-    for (int i=0; i<nresolutions; i++) if (sorted[i].varg) { hasvarg = true; break; }
-    if (hasvarg) ERR_CHECK_RETURN(mfcompiler_emitslow(compiler, &deflt));
-    else ERR_CHECK_RETURN(mfcompiler_emitfail(compiler, &deflt));
+    int nvarg = 0;
+    for (int i=0; i<nresolutions; i++) {
+        if (sorted[i].varg &&
+            mfcompiler_matchknown(&sorted[i], path->nparams, path->known)) {
+            vargsubset[nvarg++] = sorted[i];
+        }
+    }
+    if (nvarg<=0) {
+        ERR_CHECK_RETURN(mfcompiler_emitfail(compiler, &deflt));
+    } else {
+        mfcompilerpath defltpath = *path;
+        defltpath.aritychecked = true;
+        ERR_CHECK_RETURN(mfcompiler_emitresolver(compiler, nvarg, vargsubset, &defltpath, &deflt));
+    }
 
     mfcompilersparseentry table[nresolutions];
     int ncases = 0;
@@ -972,13 +991,16 @@ static bool mfcompiler_emitarityresolver(mfcompiler *compiler, int nresolutions,
         for (int j=0; j<nresolutions; j++) {
             if (!sorted[j].varg &&
                 sorted[j].nparams==arity &&
-                mfcompiler_matchknown(&sorted[j], nparams, known)) {
+                mfcompiler_matchknown(&sorted[j], path->nparams, path->known)) {
                 bucket[count++] = sorted[j];
             }
         }
 
         table[ncases].value = arity;
-        ERR_CHECK_RETURN(mfcompiler_emitresolver(compiler, count, bucket, arity, nparams, known, &table[ncases].target));
+        mfcompilerpath bucketpath = *path;
+        bucketpath.knownarity = arity;
+        bucketpath.aritychecked = true;
+        ERR_CHECK_RETURN(mfcompiler_emitresolver(compiler, count, bucket, &bucketpath, &table[ncases].target));
         ncases++;
     }
 
@@ -986,38 +1008,38 @@ static bool mfcompiler_emitarityresolver(mfcompiler *compiler, int nresolutions,
 }
 
 /** Emit a resolver block for a filtered candidate set. */
-static bool mfcompiler_emitresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions,
-                                    int knownarity, int nparams, value *known, mfindx *entry) {
+static bool mfcompiler_emitresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfcompilerpath *path, mfindx *entry) {
     /* No candidates remain on this path. */
     if (nresolutions<=0) return mfcompiler_emitfail(compiler, entry);
 
     /* A single fully-determined resolution can be emitted directly. */
-    if (nresolutions==1 && mfcompiler_resolutionisterminal(&resolutions[0], nparams, known)) {
+    if (nresolutions==1 && mfcompiler_resolutionisterminal(&resolutions[0], path->nparams, path->known)) {
         return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
     }
 
     bool hastyped = mfcompiler_hastypedresolutions(nresolutions, resolutions);
     /* For exact arity without typed params, emit the lone fixed-arity winner. */
-    if (!hastyped && knownarity>=0) {
-        if (mfcompiler_emitfixedaritywinner(compiler, nresolutions, resolutions, entry)) return true;
+    if (!hastyped && path->knownarity>=0) {
+        if (mfcompiler_emitfixedaritywinner(compiler, nresolutions, resolutions, path->nparams, path->known, entry)) return true;
     }
 
     /* Known path facts may already determine the winner. */
-    if (knownarity>=0) {
+    if (path->aritychecked) {
         int fnindex;
-        if (mfcompiler_resolveknownsubset(nresolutions, resolutions, nparams, known, &fnindex)) {
+        if (mfcompiler_resolveknownsubset(nresolutions, resolutions, path->nparams, path->known, &fnindex)) {
             return mfcompiler_emitresolve(compiler, fnindex, entry);
         }
     }
 
     /* Split by arity before considering typed dispatch. */
-    if (knownarity<0 && (mfcompiler_countarities(nresolutions, resolutions)>1 || mfcompiler_hasvargresolutions(nresolutions, resolutions))) {
-        return mfcompiler_emitarityresolver(compiler, nresolutions, resolutions, nparams, known, entry);
+    if (!path->aritychecked &&
+        (mfcompiler_countarities(nresolutions, resolutions)>1 || mfcompiler_hasvargresolutions(nresolutions, resolutions))) {
+        return mfcompiler_emitarityresolver(compiler, nresolutions, resolutions, path, entry);
     }
 
-    /* Otherwise try a typed split on the current exact-arity subset. */
+    /* Otherwise try a typed split on the current arity-filtered subset. */
     if (hastyped) {
-        if (mfcompiler_emittypedresolver(compiler, nresolutions, resolutions, knownarity, nparams, known, entry)) return true;
+        if (mfcompiler_emittypedresolver(compiler, nresolutions, resolutions, path, entry)) return true;
     }
 
     /* Fall back to the runtime resolver when no fast split is worthwhile. */

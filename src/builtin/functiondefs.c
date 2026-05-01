@@ -55,33 +55,30 @@ value builtin_clock(vm *v, int nargs, value *args) {
  * Apply
  * *************************************/
 
+static value builtin_apply__tuple(vm *v, int nargs, value *args) {
+    value ret = MORPHO_NIL;
+    objecttuple *t = MORPHO_GETTUPLE(MORPHO_GETARG(args, 1));
+    morpho_call(v, MORPHO_GETARG(args, 0), tuple_length(t), t->tuple, &ret);
+    return ret;
+}
+
+static value builtin_apply__list(vm *v, int nargs, value *args) {
+    value ret = MORPHO_NIL;
+    objectlist *lst = MORPHO_GETLIST(MORPHO_GETARG(args, 1));
+    morpho_call(v, MORPHO_GETARG(args, 0), list_length(lst), lst->val.data, &ret);
+    return ret;
+}
+
 /** Apply a function to a list of arguments */
 value builtin_apply(vm *v, int nargs, value *args) {
     value ret = MORPHO_NIL;
-    
-    if (nargs<2) morpho_runtimeerror(v, APPLY_ARGS);
-    
-    value fn =  MORPHO_GETARG(args, 0);
-    value x =  MORPHO_GETARG(args, 1);
-    
-    if (!morpho_iscallable(fn)) {
-        morpho_runtimeerror(v, APPLY_NOTCALLABLE);
-        return MORPHO_NIL;
-    }
-    
-    if (nargs==2 && MORPHO_ISTUPLE(x)) {
-        objecttuple *t = MORPHO_GETTUPLE(x);
-        
-        morpho_call(v, fn, t->length, t->tuple, &ret);
-    } else if (nargs==2 && MORPHO_ISLIST(x)) {
-        objectlist *lst = MORPHO_GETLIST(x);
-        
-        morpho_call(v, fn, lst->val.count, lst->val.data, &ret);
-    } else {
-        morpho_call(v, fn, nargs-1, &MORPHO_GETARG(args, 1), &ret);
-    }
-    
+    morpho_call(v, MORPHO_GETARG(args, 0), nargs-1, &MORPHO_GETARG(args, 1), &ret);
     return ret;
+}
+
+static value builtin_apply__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, APPLY_ARGS);
+    return MORPHO_NIL;
 }
 
 /* ************************************
@@ -499,6 +496,11 @@ static value builtin_bounds(vm *v, int nargs, value *args) {
     return out;
 }
 
+static value builtin_bounds__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, MAX_ARGS, FUNCTION_BOUNDS);
+    return MORPHO_NIL;
+}
+
 /** Find the minimum value in an enumerable object */
 static value builtin_min(vm *v, int nargs, value *args) {
     value m[nargs+1];
@@ -512,6 +514,11 @@ static value builtin_min(vm *v, int nargs, value *args) {
     return out;
 }
 
+static value builtin_min__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, MAX_ARGS, FUNCTION_MIN);
+    return MORPHO_NIL;
+}
+
 /** Find the maximum value in an enumerable object */
 static value builtin_max(vm *v, int nargs, value *args) {
     value m[nargs+1];
@@ -523,6 +530,11 @@ static value builtin_max(vm *v, int nargs, value *args) {
     }
     
     return out;
+}
+
+static value builtin_max__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, MAX_ARGS, FUNCTION_MAX);
+    return MORPHO_NIL;
 }
 
 /* ************************************
@@ -575,7 +587,7 @@ BUILTIN_TYPECHECK(isfield, MORPHO_ISFIELD)
 
 /** Check if something is callable */
 value builtin_iscallablefunction(vm *v, int nargs, value *args) {
-    if (builtin_iscallable(MORPHO_GETARG(args, 0))) return MORPHO_TRUE;
+    if (MORPHO_ISCALLABLE(MORPHO_GETARG(args, 0))) return MORPHO_TRUE;
     return MORPHO_FALSE;
 }
 
@@ -617,7 +629,11 @@ void functiondefs_initialize(void) {
     morpho_addfunction(FUNCTION_CLOCK, "Float ()", builtin_clock, BUILTIN_FLAGSEMPTY, NULL);
 
     // Apply
-    builtin_addfunction(FUNCTION_APPLY, builtin_apply, BUILTIN_FLAGSEMPTY);
+    morpho_addfunction(FUNCTION_APPLY, "(Callable,Tuple)", builtin_apply__tuple, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_APPLY, "(Callable,List)", builtin_apply__list, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_APPLY, "(Callable,_,...)", builtin_apply, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_APPLY, "()", builtin_apply__err, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_APPLY, "(_)", builtin_apply__err, BUILTIN_FLAGSEMPTY, NULL);
     
     // Random numbers
     morpho_addfunction(FUNCTION_RANDOM, "Float ()", builtin_random, BUILTIN_FLAGSEMPTY, NULL);
@@ -701,9 +717,15 @@ void functiondefs_initialize(void) {
     morpho_addfunction(FUNCTION_CONJ, "Float (Float)", builtin_conj__number, BUILTIN_FLAGSEMPTY, NULL);
     
     // Min/max
-    builtin_addfunction(FUNCTION_BOUNDS, builtin_bounds, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_MIN, builtin_min, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_MAX, builtin_max, BUILTIN_FLAGSEMPTY);
+    morpho_addfunction(FUNCTION_BOUNDS, "List (_)", builtin_bounds, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_BOUNDS, "List (_,...)", builtin_bounds, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_BOUNDS, "List ()", builtin_bounds__err, BUILTIN_FLAGSEMPTY, NULL);
+    //morpho_addfunction(FUNCTION_MIN, "(_)", builtin_min, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_MIN, "(_,...)", builtin_min, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_MIN, "()", builtin_min__err, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_MAX, "(_)", builtin_max, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_MAX, "(_,...)", builtin_max, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_MAX, "()", builtin_max__err, BUILTIN_FLAGSEMPTY, NULL);
     
     // Type checking
     BUILTIN_TYPECHECK(isnil)

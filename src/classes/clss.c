@@ -216,10 +216,10 @@ objecttype objectclasstype;
 void class_initialize(void) {
     // objectclass is a core type so is intialized earlier
     
-    // Locate the Object class to use as the parent class of Class
-    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
+    // Locate the Callable class to use as the parent class of Class
+    value callableclass = builtin_findclassfromcstring(CALLABLE_CLASSNAME);
     
-    value classclass=builtin_addclass(CLASS_CLASSNAME, MORPHO_GETCLASSDEFINITION(Class), objclass);
+    value classclass=builtin_addclass(CLASS_CLASSNAME, MORPHO_GETCLASSDEFINITION(Class), callableclass);
     object_setveneerclass(OBJECT_CLASS, classclass);
     
     // No constructor function; classes are created internally

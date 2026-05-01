@@ -126,15 +126,6 @@ bool builtin_options(vm *v, int nargs, value *args, int *nfixed, int noptions, .
     return true;
 }
 
-/** Tests whether an object is callable */
-bool builtin_iscallable(value val) {
-    return (MORPHO_ISOBJECT(val) && (MORPHO_ISFUNCTION(val) ||
-                                     MORPHO_ISCLOSURE(val) ||
-                                     MORPHO_ISINVOCATION(val) ||
-                                     MORPHO_ISBUILTINFUNCTION(val) ||
-                                     MORPHO_ISMETAFUNCTION(val)));
-}
-
 /* **********************************************************************
  * object_builtinfunction definition
  * ********************************************************************** */

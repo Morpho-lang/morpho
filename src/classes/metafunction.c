@@ -1406,7 +1406,7 @@ void metafunction_initialize(void) {
     // Create function object type
     objectmetafunctiontype=object_addtype(&objectmetafunctiondefn);
     
-    // Locate the Object class to use as the parent class of Metafunction
+    // Locate the Callable class to use as the parent class of Metafunction
     value objclass = builtin_findclassfromcstring(CALLABLE_CLASSNAME);
     
     // Metafunction constructor function

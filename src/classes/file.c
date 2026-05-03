@@ -185,34 +185,12 @@ value file_readlineusingvarray(FILE *f, varray_char *string) {
  * File class
  * ********************************************************************** */
 
-/** File constructor
- * In: 1. a file name
- *   2. (optional) a string giving the requested status, e.g. "wr+"
- */
-value file_constructor(vm *v, int nargs, value *args) {
+/** Open a file using an already-validated name and mode string. */
+static value file_open(vm *v, value filenamearg, char *cmode) {
     objectfile *new=NULL;
     value out=MORPHO_NIL;
     value filename=MORPHO_NIL;
-    char *fname=NULL;
-    char *cmode = "r";
-    
-    if (nargs>0) {
-        if (MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
-            fname=MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
-        } else MORPHO_RAISE(v, FILE_FILENAMEARG);
-        
-        if (nargs>1) {
-            if (MORPHO_ISSTRING(MORPHO_GETARG(args, 1))) {
-                char *mode=MORPHO_GETCSTRING(MORPHO_GETARG(args, 1));
-                switch (mode[0]) {
-                    case 'r': cmode="r"; break;
-                    case 'w': cmode="w"; break;
-                    case 'a': cmode="a"; break;
-                    default: MORPHO_RAISE(v, FILE_MODE);
-                }
-            } else MORPHO_RAISE(v, FILE_MODE);
-        }
-    } else MORPHO_RAISE(v, FILE_NEEDSFILENAME);
+    char *fname=MORPHO_GETCSTRING(filenamearg);
     
     if (fname) {
         FILE *f = file_openrelative(fname, cmode);
@@ -229,6 +207,45 @@ value file_constructor(vm *v, int nargs, value *args) {
     }
     
     return out;
+}
+
+/** File constructor: File(String) */
+value file_constructor__string(vm *v, int nargs, value *args) {
+    return file_open(v, MORPHO_GETARG(args, 0), "r");
+}
+
+/** File constructor: File(String,String) */
+value file_constructor__string_string(vm *v, int nargs, value *args) {
+    char *cmode = "r";
+    char *mode=MORPHO_GETCSTRING(MORPHO_GETARG(args, 1));
+
+    switch (mode[0]) {
+        case 'r': cmode="r"; break;
+        case 'w': cmode="w"; break;
+        case 'a': cmode="a"; break;
+        default: MORPHO_RAISE(v, FILE_MODE);
+    }
+
+    return file_open(v, MORPHO_GETARG(args, 0), cmode);
+}
+
+/** File constructor missing filename error */
+value file_constructor__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, FILE_NEEDSFILENAME);
+    return MORPHO_NIL;
+}
+
+/** File constructor bad filename argument */
+value file_constructor__filenamearg(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, FILE_FILENAMEARG);
+    return MORPHO_NIL;
+}
+
+/** File constructor bad two-argument call */
+value file_constructor__args(vm *v, int nargs, value *args) {
+    if (!MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) morpho_runtimeerror(v, FILE_FILENAMEARG);
+    else morpho_runtimeerror(v, FILE_MODE);
+    return MORPHO_NIL;
 }
 
 /** Close a file  */
@@ -480,7 +497,12 @@ void file_initialize(void) {
     
     value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
-    morpho_addfunction(FILE_CLASSNAME, FILE_CLASSNAME " (...)", file_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(FILE_CLASSNAME, "File (String)", file_constructor__string, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(FILE_CLASSNAME, "File (_)", file_constructor__filenamearg, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(FILE_CLASSNAME, "File (String,String)", file_constructor__string_string, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(FILE_CLASSNAME, "File (_,_)", file_constructor__args, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(FILE_CLASSNAME, "File ()", file_constructor__err, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(FILE_CLASSNAME, "File (_,_,...)", file_constructor__err, MORPHO_FN_CONSTRUCTOR, NULL);
     
     value fileclass=builtin_addclass(FILE_CLASSNAME, MORPHO_GETCLASSDEFINITION(File), objclass);
     object_setveneerclass(OBJECT_FILE, fileclass);

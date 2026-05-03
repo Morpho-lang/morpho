@@ -507,8 +507,7 @@ static value builtin_min(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
     
     if (builtin_minmaxargs(v, nargs, args, m, NULL, FUNCTION_MIN)) {
-        if (nargs>0) value_minmax(nargs, m, &out, NULL);
-        else morpho_runtimeerror(v, MAX_ARGS, FUNCTION_MIN);
+        value_minmax(nargs, m, &out, NULL);
     }
     
     return out;
@@ -525,8 +524,7 @@ static value builtin_max(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
     
     if (builtin_minmaxargs(v, nargs, args, NULL, m, FUNCTION_MAX)) {
-        if (nargs>0) value_minmax(nargs, m, NULL, &out);
-        else morpho_runtimeerror(v, MAX_ARGS, FUNCTION_MAX);
+        value_minmax(nargs, m, NULL, &out);
     }
     
     return out;
@@ -619,7 +617,8 @@ value builtin_iscallablefunction_err(vm *v, int nargs, value *args) {
 
 #define BUILTIN_TYPECHECK(function) \
     morpho_addfunction(#function, "Bool (_)", builtin_##function, MORPHO_FN_PUREFN, NULL); \
-    morpho_addfunction(#function, "Bool (_,...)", builtin_numargserr_##function, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(#function, "Bool ()", builtin_numargserr_##function, MORPHO_FN_PUREFN, NULL); \
+    morpho_addfunction(#function, "Bool (_,_,...)", builtin_numargserr_##function, MORPHO_FN_PUREFN, NULL);
 
 void functiondefs_initialize(void) {
     // System
@@ -653,7 +652,8 @@ void functiondefs_initialize(void) {
     morpho_addfunction(FUNCTION_FLOAT, "Float (...)", builtin_float__err, BUILTIN_FLAGSEMPTY, NULL);
     
     morpho_addfunction(FUNCTION_BOOL, "Bool (_)", builtin_bool, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_BOOL, "Bool (_,...)", builtin_bool_err, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_BOOL, "Bool ()", builtin_bool_err, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_BOOL, "Bool (_,_,...)", builtin_bool_err, BUILTIN_FLAGSEMPTY, NULL);
     
     // Math functions
     BUILTIN_VARMATH(FUNCTION_ABS, fabs)
@@ -720,10 +720,8 @@ void functiondefs_initialize(void) {
     morpho_addfunction(FUNCTION_BOUNDS, "List (_)", builtin_bounds, BUILTIN_FLAGSEMPTY, NULL);
     morpho_addfunction(FUNCTION_BOUNDS, "List (_,...)", builtin_bounds, BUILTIN_FLAGSEMPTY, NULL);
     morpho_addfunction(FUNCTION_BOUNDS, "List ()", builtin_bounds__err, BUILTIN_FLAGSEMPTY, NULL);
-    //morpho_addfunction(FUNCTION_MIN, "(_)", builtin_min, BUILTIN_FLAGSEMPTY, NULL);
     morpho_addfunction(FUNCTION_MIN, "(_,...)", builtin_min, BUILTIN_FLAGSEMPTY, NULL);
     morpho_addfunction(FUNCTION_MIN, "()", builtin_min__err, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_MAX, "(_)", builtin_max, BUILTIN_FLAGSEMPTY, NULL);
     morpho_addfunction(FUNCTION_MAX, "(_,...)", builtin_max, BUILTIN_FLAGSEMPTY, NULL);
     morpho_addfunction(FUNCTION_MAX, "()", builtin_max__err, BUILTIN_FLAGSEMPTY, NULL);
     
@@ -757,7 +755,8 @@ void functiondefs_initialize(void) {
 #endif
     
     morpho_addfunction(FUNCTION_ISCALLABLE, "Bool (_)", builtin_iscallablefunction, MORPHO_FN_PUREFN, NULL);
-    morpho_addfunction(FUNCTION_ISCALLABLE, "Bool (_,...)", builtin_iscallablefunction_err, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_ISCALLABLE, "Bool ()", builtin_iscallablefunction_err, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_ISCALLABLE, "Bool (_,_,...)", builtin_iscallablefunction_err, BUILTIN_FLAGSEMPTY, NULL);
     
     /* Define errors */
     morpho_defineerror(MATH_ARGS, ERROR_HALT, MATH_ARGS_MSG);

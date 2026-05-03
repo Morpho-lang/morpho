@@ -568,6 +568,14 @@ typedef struct {
     mfindx target;
 } mfcompilersparseentry;
 
+/** One emitted child subtree that can be reused by later sparse cases. */
+typedef struct {
+    int nsubset;
+    value *known;
+    mfcompileresolution *subset;
+    mfindx target;
+} mfcompileremittedcase;
+
 /** Emit a sparse branch over a table of value/target matches. */
 static bool mfcompiler_emitsparse(mfcompiler *compiler, int ncases, mfcompilersparseentry *table, mfindx deflt, mfindx *entry) {
     mfinstruction header[3] = { MFOP_SPARSE, ncases, deflt };
@@ -718,6 +726,93 @@ static bool mfcompiler_haspendingtypes(int nresolutions, mfcompileresolution *re
     return false;
 }
 
+/** Count distinct declared non-wildcard types for one parameter in a subset. */
+static int mfcompiler_countparamtypes(int nresolutions, mfcompileresolution *resolutions, int param) {
+    value seen[nresolutions];
+    int count = 0;
+
+    for (int i=0; i<nresolutions; i++) {
+        value type = MORPHO_NIL;
+        if (!signature_getparamtype(resolutions[i].sig, param, &type)) return 0;
+        if (MORPHO_ISNIL(type)) continue;
+
+        int j = 0;
+        while (j<count && !MORPHO_ISEQUAL(seen[j], type)) j++;
+        if (j==count) seen[count++] = type;
+    }
+
+    return count;
+}
+
+/** Remove known runtime classes that no longer affect dispatch within a subset. */
+static void mfcompiler_pruneknown(int nresolutions, mfcompileresolution *resolutions, int nparams, value *known) {
+    for (int i=0; i<nparams; i++) {
+        if (!mfcompiler_paramisknown(known, i)) continue;
+        if (mfcompiler_countparamtypes(nresolutions, resolutions, i)<=1) known[i] = MORPHO_NIL;
+    }
+}
+
+/** Compare two candidate subsets for structural equality. */
+static bool mfcompiler_samesubset(int nresolutions, mfcompileresolution *a, mfcompileresolution *b) {
+    for (int i=0; i<nresolutions; i++) {
+        if (a[i].fnindex!=b[i].fnindex ||
+            a[i].sig!=b[i].sig ||
+            a[i].typed!=b[i].typed ||
+            a[i].varg!=b[i].varg ||
+            a[i].nparams!=b[i].nparams ||
+            a[i].minarity!=b[i].minarity ||
+            a[i].maxarity!=b[i].maxarity) return false;
+    }
+
+    return true;
+}
+
+/** Compare two known-type path states. */
+static bool mfcompiler_sameknown(int nparams, value *a, value *b) {
+    for (int i=0; i<nparams; i++) {
+        if (!MORPHO_ISEQUAL(a[i], b[i])) return false;
+    }
+
+    return true;
+}
+
+/**
+ * Build the surviving subset for one typed child branch.
+ *
+ * `childknown` carries the actual runtime class learned on this branch and
+ * must be preserved for recursive compilation. `canonknown`, when requested,
+ * prunes any facts that no longer distinguish the surviving subset so
+ * structurally identical residual subproblems can reuse one emitted subtree.
+ */
+static int mfcompiler_collectchildsubset(int nresolutions, mfcompileresolution *resolutions,
+                                         int knownarity, int nparams, value *sourceknown, value *childknown,
+                                         int param, value actual, mfcompileresolution *subset, value *canonknown) {
+    memcpy(childknown, sourceknown, sizeof(value)*nparams);
+    childknown[param] = actual;
+
+    int nsubset = mfcompiler_collectsubset(nresolutions, resolutions, knownarity, nparams, childknown, subset);
+    if (nsubset<=0) return nsubset;
+
+    if (canonknown) {
+        memcpy(canonknown, childknown, sizeof(value)*nparams);
+        mfcompiler_pruneknown(nsubset, subset, nparams, canonknown);
+    }
+
+    return nsubset;
+}
+
+/** Find a previously emitted child subtree that matches this residual state. */
+static int mfcompiler_findemittedcase(int nemitted, mfcompileremittedcase *emitted, int nsubset, mfcompileresolution *subset,
+                                      int nparams, value *known) {
+    for (int i=0; i<nemitted; i++) {
+        if (emitted[i].nsubset==nsubset &&
+            mfcompiler_samesubset(nsubset, subset, emitted[i].subset) &&
+            mfcompiler_sameknown(nparams, known, emitted[i].known)) return i;
+    }
+
+    return -1;
+}
+
 /** Compare two resolutions using the runtime classes already known on this path. */
 static int mfcompiler_compareknownspecificity(mfcompileresolution *a, mfcompileresolution *b, int nparams, value *known) {
     int ncheck = _min(a->nparams, b->nparams, nparams);
@@ -791,30 +886,25 @@ static bool mfcompiler_subsetisuseful(int nresolutions, mfcompileresolution *res
 /** Count useful runtime-class branches for a parameter. */
 static int mfcompiler_parambranchcount(int nresolutions, mfcompileresolution *resolutions,
                                        int knownarity, int nparams, value *known, int param) {
-    if (mfcompiler_paramisknown(known, param)) return 0;
-
     int useful = 0;
-    dictionary children;
-    dictionary_init(&children);
-    if (!mfcompiler_paramchildren(nresolutions, resolutions, param, &children)) {
-        dictionary_clear(&children);
-        return 0;
-    }
+    if (mfcompiler_paramisknown(known, param)) return 0;
 
     value childknown[nparams];
     mfcompileresolution subset[nresolutions];
+    dictionary children;
+    dictionary_init(&children);
+    ERR_CHECK(mfcompiler_paramchildren(nresolutions, resolutions, param, &children), mfcompiler_parambranchcount_cleanup);
+
     for (unsigned int i=0; i<children.capacity; i++) {
         value actual = children.contents[i].key;
         if (MORPHO_ISNIL(actual)) continue;
 
-        memcpy(childknown, known, sizeof(value)*nparams);
-        childknown[param] = actual;
-        int count = mfcompiler_collectsubset(nresolutions, resolutions, knownarity, nparams, childknown, subset);
-        if (count>0 && (count<nresolutions || mfcompiler_subsetisuseful(count, subset, nparams, childknown))) {
-            useful++;
-        }
+        int count = mfcompiler_collectchildsubset(nresolutions, resolutions, knownarity, nparams,
+                                                  known, childknown, param, actual, subset, NULL);
+        if (count>0 && (count<nresolutions || mfcompiler_subsetisuseful(count, subset, nparams, childknown))) useful++;
     }
 
+mfcompiler_parambranchcount_cleanup:
     dictionary_clear(&children);
     return useful;
 }
@@ -822,9 +912,7 @@ static int mfcompiler_parambranchcount(int nresolutions, mfcompileresolution *re
 /** Choose a typed parameter to branch on. */
 static bool mfcompiler_choosetypeparam(int nresolutions, mfcompileresolution *resolutions,
                                        int knownarity, int nparams, value *known, int *param) {
-    int bestparam = -1;
-    int bestuseful = 0;
-    int bestcount = 0;
+    int bestparam = -1, bestuseful = 0, bestcount = 0;
 
     for (int i=0; i<resolutions[0].nparams; i++) {
         int count = mfcompiler_paramtypecount(nresolutions, resolutions, i, known);
@@ -870,12 +958,12 @@ static bool mfcompiler_emitfixedaritywinner(mfcompiler *compiler, int nresolutio
         winner = i;
     }
 
-    if (winner>=0 && mfcompiler_resolutionisterminal(&resolutions[winner], nparams, known)) {
-        return mfcompiler_emitresolve(compiler, resolutions[winner].fnindex, entry);
-    } else if (nresolutions==1 && mfcompiler_resolutionisterminal(&resolutions[0], nparams, known)) {
-        return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
+    if (winner<0) {
+        if (nresolutions!=1) return false;
+        winner = 0;
     }
-    return false;
+    if (!mfcompiler_resolutionisterminal(&resolutions[winner], nparams, known)) return false;
+    return mfcompiler_emitresolve(compiler, resolutions[winner].fnindex, entry);
 }
 
 /** Collect wildcard resolutions for a typed split. */
@@ -894,24 +982,41 @@ static bool mfcompiler_defaultsubset(int nresolutions, mfcompileresolution *reso
 
 /** Emit typed child branches for one split parameter. */
 static bool mfcompiler_emitchildcases(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfcompilerpath *path, int param, dictionary *children, mfcompilersparseentry *table, int *ncases) {
-    value childknown[path->nparams];
+    value childknown[children->count][path->nparams];
+    value canonknown[children->count][path->nparams];
     mfcompileresolution subset[nresolutions];
-    int count = 0;
+    mfcompileremittedcase emitted[children->count];
+    mfcompileresolution emittedsubset[children->count][nresolutions];
+    int count = 0, nemitted = 0;
 
     for (unsigned int i=0; i<children->capacity; i++) {
         value actual = children->contents[i].key;
         if (MORPHO_ISNIL(actual)) continue;
 
-        memcpy(childknown, path->known, sizeof(value)*path->nparams);
-        childknown[param] = actual;
+        value *known = childknown[count];
+        value *canon = canonknown[count];
         mfcompilerpath childpath = *path;
-        childpath.known = childknown;
+        childpath.known = known;
 
-        int nsubset = mfcompiler_collectsubset(nresolutions, resolutions, path->knownarity, path->nparams, childknown, subset);
+        int nsubset = mfcompiler_collectchildsubset(nresolutions, resolutions, path->knownarity, path->nparams,
+                                                    path->known, known, param, actual, subset, canon);
         if (nsubset<=0) continue;
 
         table[count].value = MORPHO_GETCLASS(actual)->uid;
-        ERR_CHECK_RETURN(mfcompiler_emitresolver(compiler, nsubset, subset, &childpath, &table[count].target));
+
+        int match = mfcompiler_findemittedcase(nemitted, emitted, nsubset, subset, path->nparams, canon);
+        if (match>=0) {
+            table[count].target = emitted[match].target;
+        } else {
+            ERR_CHECK_RETURN(mfcompiler_emitresolver(compiler, nsubset, subset, &childpath, &table[count].target));
+            memcpy(emittedsubset[nemitted], subset, sizeof(mfcompileresolution)*nsubset);
+            emitted[nemitted].nsubset = nsubset;
+            emitted[nemitted].known = canon;
+            emitted[nemitted].subset = emittedsubset[nemitted];
+            emitted[nemitted].target = table[count].target;
+            nemitted++;
+        }
+
         count++;
     }
 

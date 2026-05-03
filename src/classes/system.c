@@ -79,13 +79,16 @@ value System_print(vm *v, int nargs, value *args) {
 
 /** Sleep for a specified number of seconds */
 value System_sleep(vm *v, int nargs, value *args) {
-    if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
-        double t;
-        if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &t)) {
-            platform_sleep((int) (1000*t));
-        }
-    } else morpho_runtimeerror(v, SLEEP_ARGS);
+    double t;
+    if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &t)) {
+        platform_sleep((int) (1000*t));
+    }
     
+    return MORPHO_NIL;
+}
+
+value System_sleep__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, SLEEP_ARGS);
     return MORPHO_NIL;
 }
 
@@ -118,13 +121,15 @@ value System_exit(vm *v, int nargs, value *args) {
 
 /** Set working folder */
 value System_setworkingfolder(vm *v, int nargs, value *args) {
-    if (nargs==1 &&
-        MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
-        char *path = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
-        
-        if (!platform_setcurrentdirectory(path)) morpho_runtimeerror(v, SYS_STWRKDR);
-    } else morpho_runtimeerror(v, STWRKDR_ARGS);
+    char *path = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
     
+    if (!platform_setcurrentdirectory(path)) morpho_runtimeerror(v, SYS_STWRKDR);
+    
+    return MORPHO_NIL;
+}
+
+value System_setworkingfolder__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, STWRKDR_ARGS);
     return MORPHO_NIL;
 }
 
@@ -163,17 +168,20 @@ value System_homefolder(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(System)
-MORPHO_METHOD(SYSTEM_PLATFORM_METHOD, System_platform, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SYSTEM_VERSION_METHOD, System_version, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SYSTEM_CLOCK_METHOD, System_clock, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(SYSTEM_PLATFORM_METHOD, "String ()", System_platform, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(SYSTEM_VERSION_METHOD, "String ()", System_version, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(SYSTEM_CLOCK_METHOD, "Float ()", System_clock, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, System_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SYSTEM_SLEEP_METHOD, System_sleep, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SYSTEM_READLINE_METHOD, System_readline, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SYSTEM_ARGUMENTS_METHOD, System_arguments, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SYSTEM_EXIT_METHOD, System_exit, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SYSTEM_SETWORKINGFOLDER_METHOD, System_setworkingfolder, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SYSTEM_WORKINGFOLDER_METHOD, System_workingfolder, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SYSTEM_HOMEFOLDER_METHOD, System_homefolder, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(SYSTEM_SLEEP_METHOD, "Nil (Int)", System_sleep, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(SYSTEM_SLEEP_METHOD, "Nil (Float)", System_sleep, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(SYSTEM_SLEEP_METHOD, "Nil (...)", System_sleep__err, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(SYSTEM_READLINE_METHOD, "String ()", System_readline, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(SYSTEM_ARGUMENTS_METHOD, "List ()", System_arguments, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(SYSTEM_EXIT_METHOD, "Nil ()", System_exit, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(SYSTEM_SETWORKINGFOLDER_METHOD, "Nil (String)", System_setworkingfolder, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(SYSTEM_SETWORKINGFOLDER_METHOD, "Nil (...)", System_setworkingfolder__err, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(SYSTEM_WORKINGFOLDER_METHOD, "String ()", System_workingfolder, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(SYSTEM_HOMEFOLDER_METHOD, "String ()", System_homefolder, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

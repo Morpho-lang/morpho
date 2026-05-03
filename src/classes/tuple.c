@@ -275,20 +275,24 @@ value Tuple_setindex(vm *v, int nargs, value *args) {
 value Tuple_enumerate(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
     value out=MORPHO_NIL;
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
-        if (n<0) {
-            out=MORPHO_INTEGER(slf->length);
+    if (n<0) {
+        out=MORPHO_INTEGER(slf->length);
+    } else {
+        if (n<slf->length) {
+            out=slf->tuple[n];
         } else {
-            if (n<slf->length) {
-                out=slf->tuple[n];
-            } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+            morpho_runtimeerror(v, VM_OUTOFBOUNDS);
         }
-    } else MORPHO_RAISE(v, ENUMERATE_ARGS);
+    }
 
     return out;
+}
+
+value Tuple_enumerate__err(vm *v, int nargs, value *args) {
+    MORPHO_RAISE(v, ENUMERATE_ARGS);
+    return MORPHO_NIL;
 }
 
 /** Joins two tuples together  */
@@ -415,7 +419,8 @@ MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "String ()", Tuple_tostring, BUI
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Tuple ()", Tuple_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Tuple_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", Tuple_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "Nil (...)", Tuple_enumerate__err, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Tuple (Tuple)", Tuple_join, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Nil (...)", Tuple_join__err, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Tuple (Int)", Tuple_roll, BUILTIN_FLAGSEMPTY),

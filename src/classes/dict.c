@@ -125,9 +125,7 @@ value Dictionary_contains(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
     value out=MORPHO_FALSE;
 
-    if (nargs==1) {
-        if (dictionary_get(&slf->dict, MORPHO_GETARG(args, 0), &out)) out=MORPHO_TRUE;
-    }
+    if (dictionary_get(&slf->dict, MORPHO_GETARG(args, 0), &out)) out=MORPHO_TRUE;
 
     return out;
 }
@@ -186,13 +184,10 @@ value Dictionary_count(vm *v, int nargs, value *args) {
 value Dictionary_enumerate(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
     value out=MORPHO_NIL;
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
-        if (n<0) out=MORPHO_INTEGER(slf->dict.count);
-        else out=dictionary_iterate(slf, n);
-    } else MORPHO_RAISE(v, ENUMERATE_ARGS);
+    if (n<0) out=MORPHO_INTEGER(slf->dict.count);
+    else out=dictionary_iterate(slf, n);
 
     return out;
 }
@@ -260,7 +255,7 @@ MORPHO_METHOD(DICTIONARY_REMOVE_METHOD, Dictionary_remove, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(DICTIONARY_CLEAR_METHOD, Dictionary_clear, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Dictionary_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Dictionary_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Dictionary_enumerate, BUILTIN_FLAGSEMPTY),
+    MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", Dictionary_enumerate, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(DICTIONARY_KEYS_METHOD, "List ()", Dictionary_keys, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Dictionary ()", Dictionary_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_UNION_METHOD, "Dictionary (_)", Dictionary_union, BUILTIN_FLAGSEMPTY),

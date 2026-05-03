@@ -17,6 +17,8 @@
 #include "sparse.h"
 #include "geometry.h"
 
+extern objecttypedefn objectmetafunctiondefn;
+
 /* **********************************************************************
  * Global data
  * ********************************************************************** */
@@ -447,6 +449,7 @@ void builtin_initialize(void) {
     objectclasstype=object_addtype(&objectclassdefn);
     objectstringtype=object_addtype(&objectstringdefn);
     objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
+    objectmetafunctiontype=object_addtype(&objectmetafunctiondefn);
     
     varray__sigparseinit(&sigparseworklist);
 
@@ -505,7 +508,7 @@ void builtin_initialize(void) {
         UNREACHABLE("Unable to finalize builtin metafunctions.");
     }
     error_clear(&err);
-  
+    
     morpho_addfinalizefn(builtin_finalize);
 }
 

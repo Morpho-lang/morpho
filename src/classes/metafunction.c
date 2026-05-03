@@ -1403,9 +1403,6 @@ MORPHO_ENDCLASS
 objecttype objectmetafunctiontype;
 
 void metafunction_initialize(void) {
-    // Create function object type
-    objectmetafunctiontype=object_addtype(&objectmetafunctiondefn);
-    
     // Locate the Callable class to use as the parent class of Metafunction
     value objclass = builtin_findclassfromcstring(CALLABLE_CLASSNAME);
     

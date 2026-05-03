@@ -294,17 +294,15 @@ value Tuple_enumerate(vm *v, int nargs, value *args) {
 /** Joins two tuples together  */
 value Tuple_join(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
-    value out = MORPHO_NIL;
+    objecttuple *operand = MORPHO_GETTUPLE(MORPHO_GETARG(args, 0));
+    objecttuple *new = tuple_concatenate(slf, operand);
 
-    if (nargs==1 && MORPHO_ISTUPLE(MORPHO_GETARG(args, 0))) {
-        objecttuple *operand = MORPHO_GETTUPLE(MORPHO_GETARG(args, 0));
-        objecttuple *new = tuple_concatenate(slf, operand);
+    return morpho_wrapandbind(v, (object *) new);
+}
 
-        out = morpho_wrapandbind(v, (object *) new);
-
-    } else morpho_runtimeerror(v, LIST_ADDARGS);
-
-    return out;
+value Tuple_join__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, LIST_ADDARGS);
+    return MORPHO_NIL;
 }
 
 /** Sort function for tuple_order */
@@ -387,15 +385,14 @@ value Tuple_reverse(vm *v, int nargs, value *args) {
 /** Rolls a tuple */
 value Tuple_roll(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    int roll;
+    morpho_valuetoint(MORPHO_GETARG(args, 0), &roll);
 
-    if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
-        int roll;
-        morpho_valuetoint(MORPHO_GETARG(args, 0), &roll);
+    objecttuple *new = tuple_roll(slf, roll);
+    return morpho_wrapandbind(v, (object *) new);
+}
 
-        objecttuple *new = tuple_roll(slf, roll);
-        return morpho_wrapandbind(v, (object *) new);
-    }
-
+value Tuple_roll__err(vm *v, int nargs, value *args) {
     morpho_runtimeerror(v, LIST_ADDARGS);
     return MORPHO_NIL;
 }
@@ -403,11 +400,11 @@ value Tuple_roll(vm *v, int nargs, value *args) {
 /** Tests if a tuple has a value as a member */
 value Tuple_ismember(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    return MORPHO_BOOL(tuple_ismember(slf, MORPHO_GETARG(args, 0)));
+}
 
-    if (nargs==1) {
-        return MORPHO_BOOL(tuple_ismember(slf, MORPHO_GETARG(args, 0)));
-    } else morpho_runtimeerror(v, ISMEMBER_ARG, 1, nargs);
-
+value Tuple_ismember__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, ISMEMBER_ARG, 1, nargs);
     return MORPHO_NIL;
 }
 
@@ -419,14 +416,19 @@ MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Tuple ()", Tuple_clone, BUILTIN_FL
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_getindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Tuple_setindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Tuple (_)", Tuple_join, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Tuple (_)", Tuple_roll, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Tuple (Tuple)", Tuple_join, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Nil (...)", Tuple_join__err, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Tuple (Int)", Tuple_roll, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Tuple (Float)", Tuple_roll, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Nil (...)", Tuple_roll__err, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Tuple ()", Tuple_sort, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Tuple (Callable)", Tuple_sort_fn, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(LIST_ORDER_METHOD, "Tuple ()", Tuple_order, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(LIST_REVERSE_METHOD, "Tuple ()", Tuple_reverse, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Bool (_)", Tuple_ismember, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Bool (_)", Tuple_ismember, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Nil (...)", Tuple_ismember__err, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Bool (_)", Tuple_ismember, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Nil (...)", Tuple_ismember__err, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

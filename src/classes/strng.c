@@ -223,22 +223,24 @@ value String_clone(vm *v, int nargs, value *args) {
 value String_enumerate(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
     value out=MORPHO_NIL;
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
-        if (n<0) {
-            out=MORPHO_INTEGER(string_countchars(slf));
-        } else {
-            char *c=string_index(slf, n);
-            if (c) {
-                out=object_stringfromcstring(c, morpho_utf8numberofbytes(c));
-                morpho_bindobjects(v, 1, &out);
-            } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
-        }
-    } else MORPHO_RAISE(v, ENUMERATE_ARGS);
+    if (n<0) {
+        out=MORPHO_INTEGER(string_countchars(slf));
+    } else {
+        char *c=string_index(slf, n);
+        if (c) {
+            out=object_stringfromcstring(c, morpho_utf8numberofbytes(c));
+            morpho_bindobjects(v, 1, &out);
+        } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+    }
 
     return out;
+}
+
+value String_enumerate__err(vm *v, int nargs, value *args) {
+    MORPHO_RAISE(v, ENUMERATE_ARGS);
+    return MORPHO_NIL;
 }
 
 /** Tests if a string encodes a number */
@@ -291,7 +293,9 @@ MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", String_count, BUILTIN_FLA
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "String ()", String_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "String ()", String_clone, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "(Int)", String_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Nil (...)", String_enumerate__err, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", String_enumerate, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "Nil (...)", String_enumerate__err, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(STRING_ISNUMBER_METHOD, "Bool ()", String_isnumber, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(STRING_SPLIT_METHOD, "List (String)", String_split, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS

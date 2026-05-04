@@ -2363,7 +2363,8 @@ bool compiler_arithmetictype(compiler *c, opcode op, registerindx left, register
     if (compiler_regcurrenttype(c, left, &ltype) &&
         compiler_regcurrenttype(c, right, &rtype)) {
         
-        if (MORPHO_ISEQUAL(ltype,_inttype) && MORPHO_ISEQUAL(rtype,_inttype) && op!=OP_POW) {
+        if (MORPHO_ISEQUAL(ltype,_inttype) && MORPHO_ISEQUAL(rtype,_inttype) &&
+            op!=OP_POW && op!=OP_DIV) {
             *type=_inttype;
             success=true;
         } else if (_isreal(ltype) && _isreal(rtype)) {

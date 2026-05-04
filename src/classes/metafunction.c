@@ -1303,10 +1303,11 @@ bool metafunction_reduce(objectmetafunction *fn, int nargs, value *args, error *
     mfresolutionset set;
     mfresolution res[nres];
     objectmetafunction *reduced = NULL;
-
+    
     mfresolutionset_init(&set, res, fn);
     mfresolutionset_filterbyarity(&set, nargs);
     mfresolutionset_filterbyknowntypes(&set, nargs, args);
+    mfresolutionset_filterbyspecificity(&set, nargs, args);
 
     if (set.count<=0) { // No resolutions left
         error_writewithid(err, VM_MLTPLDSPTCHFLD); return false;

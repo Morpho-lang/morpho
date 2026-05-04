@@ -281,8 +281,8 @@ static int mfresolution_comparespecificity(mfresolution *a, mfresolution *b, int
     int cmp[ncheck];
     for (int i=0; i<ncheck; i++) { // Compare each arg
         cmp[i]=0;
-        value actual;
-        if (value_type(args[i], &actual)) {
+        value actual = args[i];
+        if (MORPHO_ISCLASS(actual) || value_type(args[i], &actual)) {
             mfresolution_compareparamtypes(actual, a->sig->types.data[i], b->sig->types.data[i], &cmp[i]);
         }
     }
@@ -1114,6 +1114,8 @@ static bool mfcompiler_emitarityresolver(mfcompiler *compiler, int nresolutions,
 
 /** Emit a resolver block for a filtered candidate set. */
 static bool mfcompiler_emitresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfcompilerpath *path, mfindx *entry) {
+    mfcompilerpath exactpath;
+
     /* No candidates remain on this path. */
     if (nresolutions<=0) return mfcompiler_emitfail(compiler, entry);
 
@@ -1123,6 +1125,15 @@ static bool mfcompiler_emitresolver(mfcompiler *compiler, int nresolutions, mfco
     }
 
     bool hastyped = mfcompiler_hastypedresolutions(nresolutions, resolutions);
+    if (!path->aritychecked &&
+        !mfcompiler_hasvargresolutions(nresolutions, resolutions) &&
+        mfcompiler_countarities(nresolutions, resolutions)==1) {
+        exactpath = *path;
+        exactpath.knownarity = resolutions[0].nparams;
+        exactpath.aritychecked = true;
+        path = &exactpath;
+    }
+
     /* For exact arity without typed params, emit the lone fixed-arity winner. */
     if (!hastyped && path->knownarity>=0) {
         if (mfcompiler_emitfixedaritywinner(compiler, nresolutions, resolutions, path->nparams, path->known, entry)) return true;

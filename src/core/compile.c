@@ -300,6 +300,11 @@ void compiler_getmethodreturntype(compiler *c, value klass, value target, value 
     }
 }
 
+/** Returns true if a class is exact for compile-time dispatch specialization. */
+static bool compiler_typeisexact(value type) {
+    return (MORPHO_ISCLASS(type) && MORPHO_GETCLASS(type)->children.count==0);
+}
+
 /* ------------------------------------------
  * Types
  * ------------------------------------------- */
@@ -3719,7 +3724,7 @@ static bool compiler_specializemetafunctioncall(compiler *c, syntaxtreenode *nod
     value argtypes[nargs];
     for (int i=0; i<nargs; i++) {
         value type = MORPHO_NIL;
-        argtypes[i] = (compiler_regcurrenttype(c, func->dest+i+1, &type) && MORPHO_ISCLASS(type)) ? type : MORPHO_NIL;
+        argtypes[i] = (compiler_regcurrenttype(c, func->dest+i+1, &type) && compiler_typeisexact(type)) ? type : MORPHO_NIL;
     }
 
     value reduced = MORPHO_NIL;

@@ -435,44 +435,56 @@ value List_pop(vm *v, int nargs, value *args) {
     return out;
 }
 
-/** Get an element */
-value List_getindex(vm *v, int nargs, value *args) {
+/** Get an element by integer index */
+value List_getindex__int(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     value out=MORPHO_NIL;
+    int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
-    if (nargs==1) {
-        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-            int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
-            if (!list_getelement(slf, i, &out)) {
-                morpho_runtimeerror(v, VM_OUTOFBOUNDS);
-            }
-        } else {
-            objectarrayerror err = getslice(&MORPHO_SELF(args),&list_slicedim,&list_sliceconstructor,&list_slicecopy,nargs,&MORPHO_GETARG(args, 0),&out);
-            if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_list_error(err) );
-            if (MORPHO_ISOBJECT(out)){
-                morpho_bindobjects(v,1,&out);
-            } else MORPHO_RAISE(v, VM_NONNUMINDX);
-
-        }
-    } else MORPHO_RAISE(v, LIST_NUMARGS)
+    if (!list_getelement(slf, i, &out)) {
+        morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+    }
 
     return out;
 }
 
-/** Sets an element */
-value List_setindex(vm *v, int nargs, value *args) {
-    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+/** Get a slice-like selection */
+value List_getindex__slice(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+    objectarrayerror err = getslice(&MORPHO_SELF(args), &list_slicedim, &list_sliceconstructor, &list_slicecopy, nargs, &MORPHO_GETARG(args, 0), &out);
+    if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_list_error(err) );
+    if (MORPHO_ISOBJECT(out)) {
+        morpho_bindobjects(v,1,&out);
+    } else MORPHO_RAISE(v, VM_NONNUMINDX);
 
-    if (nargs==2) {
-        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-            int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-            if (i<slf->val.count) slf->val.data[i]=MORPHO_GETARG(args, 1);
-            else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
-        } else morpho_runtimeerror(v, SETINDEX_ARGS);
-    } else morpho_runtimeerror(v, SETINDEX_ARGS);
+    return out;
+}
+
+value List_getindex__err(vm *v, int nargs, value *args) {
+    MORPHO_RAISE(v, LIST_NUMARGS);
+    return MORPHO_NIL;
+}
+
+value List_getindex(vm *v, int nargs, value *args) {
+    if (nargs!=1) return List_getindex__err(v, nargs, args);
+    if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) return List_getindex__int(v, nargs, args);
+    return List_getindex__slice(v, nargs, args);
+}
+
+/** Sets an element by integer index */
+value List_setindex__int(vm *v, int nargs, value *args) {
+    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+
+    if (i<slf->val.count) slf->val.data[i]=MORPHO_GETARG(args, 1);
+    else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
 
     return MORPHO_SELF(args);
+}
+
+value List_setindex__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, SETINDEX_ARGS);
+    return MORPHO_NIL;
 }
 
 /** Print a list */
@@ -702,8 +714,11 @@ MORPHO_METHOD(MORPHO_APPEND_METHOD, List_append, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_REMOVE_METHOD, List_remove, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_INSERT_METHOD, List_insert, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(LIST_POP_METHOD, List_pop, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, List_getindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SETINDEX_METHOD, List_setindex, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, " (Int)", List_getindex__int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "List (_)", List_getindex__slice, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Nil (...)", List_getindex__err, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", List_setindex__int, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "Nil (...)", List_setindex__err, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, List_print, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "String ()", List_tostring, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", List_enumerate, BUILTIN_FLAGSEMPTY),

@@ -271,11 +271,16 @@ static int _sign(int x) {
     return (x>0) - (x<0);
 }
 
+/** Check whether known argument types fully determine a signature. */
+static bool mfresolution_isterminal(signature *sig, int nargs, value *args);
+
 /** Compare the specificity of two resolutions.
  *  Returns <0 if a is more specific, >0 if b is more specific, 0 if they are equal
  *  or incomparable. */
 static int mfresolution_comparespecificity(mfresolution *a, mfresolution *b, int nargs, value *args) {
     if (!a->sig || !b->sig) return 0;
+    if (!mfresolution_isterminal(a->sig, nargs, args) ||
+        !mfresolution_isterminal(b->sig, nargs, args)) return 0;
 
     int ncheck=_min(signature_countparams(a->sig), signature_countparams(b->sig), nargs);
     int cmp[ncheck];

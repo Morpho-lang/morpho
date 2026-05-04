@@ -101,7 +101,7 @@ bool metafunction_add(objectmetafunction *f, value fn) {
         metafunction_clearinstructions(f);
         f->state=METAFUNCTION_BUILDING;
     }
-    return varray_valuewrite(&f->fns, fn);
+    return varray_valueadd(&f->fns, &fn, 1);
 }
 
 /** Checks if val matches a given type */

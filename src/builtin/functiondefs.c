@@ -601,17 +601,15 @@ value builtin_iscallablefunction_err(vm *v, int nargs, value *args) {
 #define BUILTIN_MATH_OLD2(function) \
     builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
 
-#define BUILTIN_VARMATH(label, function) \
-    morpho_addfunction(label, "Float (Int)", builtin_int_##function, MORPHO_FN_PUREFN, NULL); \
-    morpho_addfunction(label, "Float (Float)", builtin_float_##function, MORPHO_FN_PUREFN, NULL); \
-    morpho_addfunction(label, "Complex (Complex)", builtin_cmplx_##function, MORPHO_FN_PUREFN, NULL); \
+#define BUILTIN_VARMATH_RET(label, function, realret, cmplxret) \
+    morpho_addfunction(label, realret " (Int)", builtin_int_##function, MORPHO_FN_PUREFN, NULL); \
+    morpho_addfunction(label, realret " (Float)", builtin_float_##function, MORPHO_FN_PUREFN, NULL); \
+    morpho_addfunction(label, cmplxret " (Complex)", builtin_cmplx_##function, MORPHO_FN_PUREFN, NULL); \
     morpho_addfunction(label, "(...)", builtin_numargserr_##function, MORPHO_FN_PUREFN, NULL);
 
-#define BUILTIN_MATH_BOOL(function) \
-    morpho_addfunction(#function, "Bool (Int)", builtin_int_##function, MORPHO_FN_PUREFN, NULL); \
-    morpho_addfunction(#function, "Bool (Float)", builtin_float_##function, MORPHO_FN_PUREFN, NULL); \
-    morpho_addfunction(#function, "Bool (Complex)", builtin_cmplx_##function, MORPHO_FN_PUREFN, NULL); \
-    morpho_addfunction(#function, "(...)", builtin_numargserr_##function, MORPHO_FN_PUREFN, NULL);
+#define BUILTIN_VARMATH(label, function) BUILTIN_VARMATH_RET(label, function, "Float", "Complex")
+
+#define BUILTIN_MATH_BOOL(function) BUILTIN_VARMATH_RET(#function, function, "Bool", "Bool")
 
 #define BUILTIN_MATH(function) BUILTIN_VARMATH(#function, function)
 
@@ -656,9 +654,9 @@ void functiondefs_initialize(void) {
     morpho_addfunction(FUNCTION_BOOL, "Bool (_,_,...)", builtin_bool_err, BUILTIN_FLAGSEMPTY, NULL);
     
     // Math functions
-    BUILTIN_VARMATH(FUNCTION_ABS, fabs)
+    BUILTIN_VARMATH_RET(FUNCTION_ABS, fabs, "Float", "Float")
     
-    BUILTIN_MATH(exp)
+    BUILTIN_VARMATH_RET(FUNCTION_EXP, exp, "Float", "Complex")
     BUILTIN_MATH(log)
     BUILTIN_MATH(log10)
 

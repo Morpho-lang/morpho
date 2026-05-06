@@ -31,7 +31,7 @@ typedef unsigned int builtinfunctionflags;
 #define MORPHO_FN_FLAGSEMPTY  (0)
 #define MORPHO_FN_PUREFN      (1<<1)  // Pure function: no side effects
 #define MORPHO_FN_CONSTRUCTOR (1<<2)  // Constructor function
-#define MORPHO_FN_REENTRANT   (1<<3)  // Function that re-enters the vm, e.g. but using morph_call
+#define MORPHO_FN_REENTRANT   (1<<3)  // Function that re-enters the vm, e.g. by using morpho_call
 #define MORPHO_FN_OPTARGS     (1<<4)  // Function that has optional arguments
 
 /** Type of C function that implements a built in Morpho function */

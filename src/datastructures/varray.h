@@ -44,7 +44,8 @@
     bool varray_##name##add(varray_##name *v, type *data, int count); \
     bool varray_##name##resize(varray_##name *v, int count); \
     int varray_##name##write(varray_##name *v, type data); \
-    void varray_##name##clear(varray_##name *v);
+    void varray_##name##clear(varray_##name *v); \
+    bool varray_##name##pop(varray_##name *v, type *dest)
 
 #define DEFINE_VARRAY(name, type) \
 void varray_##name##init(varray_##name *v) { \

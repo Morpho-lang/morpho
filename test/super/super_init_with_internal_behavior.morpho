@@ -1,0 +1,31 @@
+import bytecodeoptimizer
+
+var errChebyshevOrderInconsistent = Error("ChebyshevOrder", "Orders are inconsistent")
+
+class BaseMap {
+  init(R, G, B) {
+    self.R = R
+    self.G = G
+    self.B = B
+    self.order = R.count()
+
+    if (G.count()!=self.order || B.count()!=self.order) errChebyshevOrderInconsistent.throw()
+  }
+
+  report() {
+    return [self.order, self.R[0], self.G[0], self.B[0]]
+  }
+}
+
+class DerivedMap is BaseMap {
+  init() {
+    super.init(
+      [1, 2, 3],
+      [4, 5, 6],
+      [7, 8, 9]
+    )
+  }
+}
+
+var m = DerivedMap()
+print m.report() // expect: [ 3, 1, 4, 7 ]

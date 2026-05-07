@@ -26,13 +26,19 @@ bool builtin_parsesignatures(void);
 /** Flags that describe properties of the built in function */
 typedef unsigned int builtinfunctionflags;
 
-#define BUILTIN_FLAGSEMPTY    0
+#define MORPHO_FN_NONE        (0)     // Function has been reviewed and has no special semantic annotations
+#define MORPHO_FN_FLAGSEMPTY  (1<<0)  // Unknown or legacy-unreviewed flags: optimizer should assume any annotation may apply
 
-#define MORPHO_FN_FLAGSEMPTY  (0)
-#define MORPHO_FN_PUREFN      (1<<1)  // Pure function: no side effects
+#define BUILTIN_FLAGSEMPTY    MORPHO_FN_FLAGSEMPTY
+
+#define MORPHO_FN_PUREFN      (1<<1)  // Pure on normal return: deterministic for constant inputs, no mutation, I/O or re-entry
 #define MORPHO_FN_CONSTRUCTOR (1<<2)  // Constructor function
 #define MORPHO_FN_REENTRANT   (1<<3)  // Function that re-enters the vm, e.g. by using morpho_call
-#define MORPHO_FN_OPTARGS     (1<<4)  // Function that has optional arguments
+#define MORPHO_FN_OPTARGS     (1<<4)  // Function reads VM optional/named arguments
+#define MORPHO_FN_THROWS      (1<<5)  // Function may raise a runtime error
+#define MORPHO_FN_ALLOCATES   (1<<6)  // Function may allocate and return/bind new objects
+#define MORPHO_FN_MUTATES     (1<<7)  // Function may mutate receiver, arguments, or runtime-visible state
+#define MORPHO_FN_IO          (1<<8)  // Function performs externally observable I/O or system interaction
 
 /** Type of C function that implements a built in Morpho function */
 typedef value (*builtinfunction) (vm *v, int nargs, value *args);

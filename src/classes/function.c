@@ -203,8 +203,8 @@ value Function_tostring(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Function)
-MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Function_tostring, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Function_tostring, MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, MORPHO_FN_IO)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

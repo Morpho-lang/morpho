@@ -12,7 +12,7 @@
  * ********************************************************************** */
 
 MORPHO_BEGINCLASS(Nil)
-MORPHO_METHOD(MORPHO_CLASS_METHOD, Object_class, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_CLASS_METHOD, Object_class, MORPHO_FN_PUREFN)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

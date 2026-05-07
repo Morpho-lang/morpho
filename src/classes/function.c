@@ -240,7 +240,8 @@ objecttypedefn objectcallabledefn = {
  * ********************************************************************** */
 
 MORPHO_BEGINCLASS(Callable)
-MORPHO_METHOD(MORPHO_CLASS_METHOD, Object_class, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_CLASS_METHOD, Object_class, MORPHO_FN_PUREFN),
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Function_tostring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

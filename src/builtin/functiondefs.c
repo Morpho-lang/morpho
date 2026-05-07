@@ -599,7 +599,7 @@ value builtin_iscallablefunction_err(vm *v, int nargs, value *args) {
  * ********************************************************************** */
 
 #define BUILTIN_MATH_OLD2(function) \
-    builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(#function, builtin_##function, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS);
 
 #define BUILTIN_VARMATH_RET(label, function, realret, realflags, cmplxret, cmplxflags) \
     morpho_addfunction(label, realret " (Int)", builtin_int_##function, realflags, NULL); \
@@ -625,7 +625,7 @@ void functiondefs_initialize(void) {
     builtin_addfunction(FUNCTION_SYSTEM, builtin_system, MORPHO_FN_IO);
     
     // Clock
-    morpho_addfunction(FUNCTION_CLOCK, "Float ()", builtin_clock, MORPHO_FN_IO, NULL);
+    morpho_addfunction(FUNCTION_CLOCK, "Float ()", builtin_clock, MORPHO_FN_IO|MORPHO_FN_NONDETERMINISTIC, NULL);
 
     // Apply
     morpho_addfunction(FUNCTION_APPLY, "(Callable,Tuple)", builtin_apply__tuple, MORPHO_FN_REENTRANT|MORPHO_FN_THROWS, NULL);
@@ -635,10 +635,10 @@ void functiondefs_initialize(void) {
     morpho_addfunction(FUNCTION_APPLY, "(_)", builtin_apply__err, MORPHO_FN_THROWS, NULL);
     
     // Random numbers
-    morpho_addfunction(FUNCTION_RANDOM, "Float ()", builtin_random, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_RANDOMINT, "Int ()", builtin_randomint_norange, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_RANDOMINT, "Int (_)", builtin_randomint, MORPHO_FN_THROWS, NULL);
-    morpho_addfunction(FUNCTION_RANDOMNORMAL, "Float ()", builtin_randomnormal, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_RANDOM, "Float ()", builtin_random, MORPHO_FN_NONDETERMINISTIC, NULL);
+    morpho_addfunction(FUNCTION_RANDOMINT, "Int ()", builtin_randomint_norange, MORPHO_FN_NONDETERMINISTIC, NULL);
+    morpho_addfunction(FUNCTION_RANDOMINT, "Int (_)", builtin_randomint, MORPHO_FN_NONDETERMINISTIC|MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_RANDOMNORMAL, "Float ()", builtin_randomnormal, MORPHO_FN_NONDETERMINISTIC, NULL);
     
     // Value constructors
     morpho_addfunction(FUNCTION_INT, "Int (Int)", builtin_int__int, MORPHO_FN_PUREFN, NULL);

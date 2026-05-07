@@ -653,7 +653,7 @@ value FiniteElementSpace_layout(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(FiniteElementSpace)
-MORPHO_METHOD(FINITEELEMENTSPACE_LAYOUT_METHOD, FiniteElementSpace_layout, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FINITEELEMENTSPACE_LAYOUT_METHOD, FiniteElementSpace_layout, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -663,7 +663,7 @@ MORPHO_ENDCLASS
 void fespace_initialize(void) {
     objectfespacetype=object_addtype(&objectfespacedefn);
     
-    builtin_addfunction(FINITEELEMENTSPACE_CLASSNAME, fespace_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FINITEELEMENTSPACE_CLASSNAME, fespace_constructor, MORPHO_FN_CONSTRUCTOR|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS);
     
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));

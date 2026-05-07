@@ -131,8 +131,8 @@ value Invocation_clone(vm *v, int nargs, value *args) {
 
 MORPHO_BEGINCLASS(Invocation)
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, MORPHO_FN_IO),
-MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "String ()", Invocation_tostring, MORPHO_FN_ALLOCATES),
-MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Invocation ()", Invocation_clone, MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
+MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "String ()", Invocation_tostring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Invocation ()", Invocation_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

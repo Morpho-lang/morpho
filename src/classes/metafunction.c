@@ -1409,8 +1409,8 @@ value Metafunction_tostring(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Metafunction)
-MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Metafunction_tostring, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_COUNT_METHOD, Metafunction_count, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Metafunction_tostring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(MORPHO_COUNT_METHOD, Metafunction_count, MORPHO_FN_PUREFN)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

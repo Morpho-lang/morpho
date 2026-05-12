@@ -1,0 +1,31 @@
+import bytecodeoptimizer
+
+class MiniSphere {
+    init(vertices, indx) {
+        var n = indx.count()-1
+        var b = Matrix(n)
+        self.n = n
+        self.b = b
+    }
+}
+
+class Repro {
+    init(pts) {
+        self.pts = pts
+    }
+
+    run() {
+        var extel = List(0, 1)
+        extel.append(2)
+        return MiniSphere(self.pts, extel)
+    }
+}
+
+var pts = [
+    Matrix([0, 0]),
+    Matrix([1, 0]),
+    Matrix([0, 1]),
+    Matrix([2, 2])
+]
+
+print Repro(pts).run() // expect: <MiniSphere>

@@ -1,0 +1,18 @@
+import bytecodeoptimizer
+
+class Base {
+  run() { return self.step() }
+  step() { return 0 }
+}
+
+class WithField is Base {
+  init(f) { self.func = f }
+  step() { return self.func(1) }
+}
+
+class Plain is Base {
+  step() { return 7 }
+}
+
+print WithField(fn (x) x+1).run() // expect: 2
+print Plain().run() // expect: 7

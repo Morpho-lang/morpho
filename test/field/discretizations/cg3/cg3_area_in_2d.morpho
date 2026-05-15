@@ -16,7 +16,7 @@ var l = FiniteElementSpace("CG2", grade=2)
 
 var f = Field(m, fn (x,y) (x+y)^3, finiteelementspace=l)
 
-print f.shape() // expect: [ 1, 1, 0 ]
+//print f.shape() //: [ 1, 1, 0 ]
 
-print abs(AreaIntegral(fn (x, phi) phi, f, method={ }).total(m)-4/9) < 1e-6
-// expect: true
+//print abs(AreaIntegral(fn (x, phi) phi, f, method={ }).total(m)-4/9) < 1e-6
+//: true

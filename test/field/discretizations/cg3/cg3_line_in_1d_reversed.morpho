@@ -1,14 +1,15 @@
-// CG3 FunctionSpace in one dimension
+// CG3 FunctionSpace in one dimension with a reversed edge orientation
+// Smoke test only: true edge reorientation is exercised in higher-dimensional parents.
 
-import meshtools 
+import meshtools
 
-var mb = MeshBuilder() 
+var mb = MeshBuilder()
 mb.addvertex([0,0,0])
 mb.addvertex([0.5,0,0])
 mb.addvertex([1,0,0])
 mb.addedge([0,1])
-mb.addedge([1,2])
-var m = mb.build() 
+mb.addedge([2,1])
+var m = mb.build()
 
 var l = FiniteElementSpace("CG3", grade=1)
 
@@ -28,4 +29,3 @@ print f.shape()
 
 print (LineIntegral(fn (x, u) u, f, method={ }).total(m) - 1/4) < 1e-10
 // expect: true
-

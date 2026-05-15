@@ -626,13 +626,32 @@ fespace *fespace_findlinear(grade g) {
 
 #define FETCH(instr) (*(instr++))
 
+typedef struct {
+    elementid id;
+    bool reversed;
+} fespacesubelement;
+
+/** Remaps an edge-local quantity index if the matched line orientation is reversed. */
+static int fespace_orientedquantity(fespace *disc, grade g, fespacesubelement *subel, int sid, int indx) {
+    if (g!=MESH_GRADE_LINE || !subel[sid].reversed) return indx;
+
+    fespace *lower;
+    if (!fespace_lower(disc, g, &lower)) return indx;
+
+    int nedgeq = lower->shape[MESH_GRADE_LINE];
+    if (indx<0 || indx>=nedgeq) return indx;
+
+    return nedgeq-indx-1;
+}
+
 /** Steps through an element definition, generating subelements and identifying quantities */
 bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids, fieldindx *findx) {
-    elementid subel[disc->nsubel+1]; // Element IDs of sub elements
+    fespacesubelement subel[disc->nsubel+1]; // Element IDs and orientation of subelements
     int sid, svids[nv], nmatch, k=0;
     
     objectsparse *vmatrix[disc->grade+1]; // Vertex->elementid connectivity matrices
     for (grade g=0; g<=disc->grade; g++) vmatrix[g]=mesh_addconnectivityelement(field->mesh, g, 0);
+    objectsparse *lineconn = mesh_getconnectivityelement(field->mesh, 0, MESH_GRADE_LINE);
     
     for (eldefninstruction *instr=disc->eldefn; instr!=NULL && *instr!=ENDDEFN; ) {
         eldefninstruction op=FETCH(instr);
@@ -643,15 +662,28 @@ bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids
                 sid = FETCH(instr);
                 for (int i=0; i<=op; i++) svids[i] = vids[FETCH(instr)];
                 
-                if (!mesh_matchelements(vmatrix[1], op, op+1, svids, 1, &nmatch, &subel[sid])) return false;
+                if (!mesh_matchelements(vmatrix[1], op, op+1, svids, 1, &nmatch, &subel[sid].id)) return false;
+
+                subel[sid].reversed=false;
+                if (op==LINE_OPCODE) {
+                    int nlinev, *linevids;
+                    if (!lineconn || !mesh_getconnectivity(lineconn, subel[sid].id, &nlinev, &linevids)) return false;
+                    if (nlinev!=2) return false;
+
+                    if (linevids[0]==svids[1] && linevids[1]==svids[0]) {
+                        subel[sid].reversed=true;
+                    } else if (!(linevids[0]==svids[0] && linevids[1]==svids[1])) {
+                        return false;
+                    }
+                }
             }
                 break;
             case QUANTITY_OPCODE:
             {
                 findx[k].g=FETCH(instr);
                 int sid=FETCH(instr);
-                findx[k].id=(findx[k].g==0 ? vids[sid]: subel[sid]);
-                findx[k].indx=FETCH(instr);
+                findx[k].id=(findx[k].g==0 ? vids[sid]: subel[sid].id);
+                findx[k].indx=fespace_orientedquantity(disc, findx[k].g, subel, sid, FETCH(instr));
                 k++;
             }
                 break;

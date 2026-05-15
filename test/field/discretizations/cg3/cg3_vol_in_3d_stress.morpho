@@ -1,0 +1,26 @@
+// CG3 stress test in three dimensions:
+// one function should be represented exactly, one should not.
+
+import meshtools
+
+var cube = [ [0,0,0], [1,0,0], [0,1,0], [1,1,0],
+             [0,0,1], [1,0,1], [0,1,1], [1,1,1] ]
+
+var pts = []
+for (x in cube) pts.append(Matrix(x))
+
+var m = DelaunayMesh(pts)
+m.addgrade(1)
+
+var fe = FiniteElementSpace("CG3", grade=3)
+
+// Exact: cubic polynomial
+var exact = Field(m, fn (x,y,z) x^3 + y^2*z, finiteelementspace=fe)
+print abs(VolumeIntegral(fn (x, q) q, exact, method={}).total(m) - (1/4 + 1/6)) < 1e-8
+// expect: true
+
+// Inexact: quartic polynomial
+var inexact = Field(m, fn (x,y,z) x^4 + y^4 + z^4, finiteelementspace=fe)
+print abs(VolumeIntegral(fn (x, q) q, inexact, method={}).total(m) - 3/5) > 1e-8
+// expect: true
+

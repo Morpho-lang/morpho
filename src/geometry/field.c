@@ -114,6 +114,11 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, value fnspc, uns
     unsigned int dof[ngrades]; // Extract shape from fespace or the provided function space
     if (MORPHO_ISFESPACE(fnspc)) {
         fespace *disc = MORPHO_GETFESPACE(fnspc)->fespace;
+        for (grade g=1; g<=disc->grade; g++) {
+            if (disc->shape[g]>0 && !mesh_getconnectivityelement(mesh, 0, g)) {
+                mesh_addgrade(mesh, g);
+            }
+        }
         for (int i=0; i<=disc->grade; i++) dof[i]=disc->shape[i];
         for (int i=disc->grade+1; i<ngrades; i++) dof[i]=0;
     } else if (shape) {

@@ -588,6 +588,153 @@ fespace cg2_3d = {
 };
 
 /* -------------------------------------------------------
+ * CG3 element in 3D
+ * ------------------------------------------------------- */
+
+/*   z = 0 layer:           z = 1/3 layer:         z = 2/3 layer:         z = 1 layer:
+ *
+ *  2                         14
+ *  | \                       .  .
+ *  9   7                     .   .                    15
+ *  |    \                    19   18                  . .
+ *  8  16  6                  .     .                  .  .
+ *  |       \                 .      .                 .   .
+ *  0--4--5--1                10..17..12              11...13              3
+ */
+
+void cg3_3dinterpolate(double *lambda, double *wts) {
+    int k=0;
+    int edges[6][2] = { {0,1}, {1,2}, {2,0}, {0,3}, {1,3}, {2,3} };
+    int faces[4][3] = { {0,1,2}, {0,3,1}, {1,3,2}, {2,3,0} };
+
+    for (int i=0; i<4; i++) {
+        wts[k++]=0.5*lambda[i]*(3*lambda[i]-1)*(3*lambda[i]-2);
+    }
+
+    for (int i=0; i<6; i++) {
+        int a=edges[i][0], b=edges[i][1];
+        wts[k++]=4.5*lambda[a]*lambda[b]*(3*lambda[a]-1);
+        wts[k++]=4.5*lambda[a]*lambda[b]*(3*lambda[b]-1);
+    }
+
+    for (int i=0; i<4; i++) {
+        int a=faces[i][0], b=faces[i][1], c=faces[i][2];
+        wts[k++]=27.0*lambda[a]*lambda[b]*lambda[c];
+    }
+}
+
+void cg3_3dgrad(double *lambda, double *grad) {
+    int edges[6][2] = { {0,1}, {1,2}, {2,0}, {0,3}, {1,3}, {2,3} };
+    int faces[4][3] = { {0,1,2}, {0,3,1}, {1,3,2}, {2,3,0} };
+
+    memset(grad, 0, sizeof(double)*20*4);
+
+    for (int j=0; j<4; j++) {
+        grad[j*20+j]=13.5*lambda[j]*lambda[j]-9.0*lambda[j]+1.0;
+    }
+
+    int k=4;
+    for (int i=0; i<6; i++) {
+        int a=edges[i][0], b=edges[i][1];
+
+        grad[a*20+k]=4.5*lambda[b]*(6*lambda[a]-1);
+        grad[b*20+k]=4.5*lambda[a]*(3*lambda[a]-1);
+        k++;
+
+        grad[a*20+k]=4.5*lambda[b]*(3*lambda[b]-1);
+        grad[b*20+k]=4.5*lambda[a]*(6*lambda[b]-1);
+        k++;
+    }
+
+    for (int i=0; i<4; i++) {
+        int a=faces[i][0], b=faces[i][1], c=faces[i][2];
+        grad[a*20+k]=27.0*lambda[b]*lambda[c];
+        grad[b*20+k]=27.0*lambda[a]*lambda[c];
+        grad[c*20+k]=27.0*lambda[a]*lambda[b];
+        k++;
+    }
+}
+
+unsigned int cg3_3dshape[] = { 1, 2, 1, 0 };
+
+double cg3_3dnodes[] = {
+    0.0, 0.0, 0.0,
+    1.0, 0.0, 0.0,
+    0.0, 1.0, 0.0,
+    0.0, 0.0, 1.0,
+    1.0/3.0, 0.0, 0.0,
+    2.0/3.0, 0.0, 0.0,
+    2.0/3.0, 1.0/3.0, 0.0,
+    1.0/3.0, 2.0/3.0, 0.0,
+    0.0, 2.0/3.0, 0.0,
+    0.0, 1.0/3.0, 0.0,
+    0.0, 0.0, 1.0/3.0,
+    0.0, 0.0, 2.0/3.0,
+    2.0/3.0, 0.0, 1.0/3.0,
+    1.0/3.0, 0.0, 2.0/3.0,
+    0.0, 2.0/3.0, 1.0/3.0,
+    0.0, 1.0/3.0, 2.0/3.0,
+    1.0/3.0, 1.0/3.0, 0.0,
+    1.0/3.0, 0.0, 1.0/3.0,
+    1.0/3.0, 1.0/3.0, 1.0/3.0,
+    0.0, 1.0/3.0, 1.0/3.0
+};
+
+eldefninstruction cg3_3deldefn[] = {
+    LINE(0,0,1),     // Identify line subelement with vertex indices (0,1)
+    LINE(1,1,2),     // Identify line subelement with vertex indices (1,2)
+    LINE(2,2,0),     // Identify line subelement with vertex indices (2,0)
+    LINE(3,0,3),     // Identify line subelement with vertex indices (0,3)
+    LINE(4,1,3),     // Identify line subelement with vertex indices (1,3)
+    LINE(5,2,3),     // Identify line subelement with vertex indices (2,3)
+    AREA(6,0,1,2),   // Identify area subelement with vertex indices (0,1,2)
+    AREA(7,0,3,1),   // Identify area subelement with vertex indices (0,3,1)
+    AREA(8,1,3,2),   // Identify area subelement with vertex indices (1,3,2)
+    AREA(9,2,3,0),   // Identify area subelement with vertex indices (2,3,0)
+    QUANTITY(0,0,0), // Fetch quantity on vertex 0
+    QUANTITY(0,1,0), // Fetch quantity on vertex 1
+    QUANTITY(0,2,0), // Fetch quantity on vertex 2
+    QUANTITY(0,3,0), // Fetch quantity on vertex 3
+    QUANTITY(1,0,0), // Fetch quantity 0 from line 0
+    QUANTITY(1,0,1), // Fetch quantity 1 from line 0
+    QUANTITY(1,1,0), // Fetch quantity 0 from line 1
+    QUANTITY(1,1,1), // Fetch quantity 1 from line 1
+    QUANTITY(1,2,0), // Fetch quantity 0 from line 2
+    QUANTITY(1,2,1), // Fetch quantity 1 from line 2
+    QUANTITY(1,3,0), // Fetch quantity 0 from line 3
+    QUANTITY(1,3,1), // Fetch quantity 1 from line 3
+    QUANTITY(1,4,0), // Fetch quantity 0 from line 4
+    QUANTITY(1,4,1), // Fetch quantity 1 from line 4
+    QUANTITY(1,5,0), // Fetch quantity 0 from line 5
+    QUANTITY(1,5,1), // Fetch quantity 1 from line 5
+    QUANTITY(2,6,0), // Fetch quantity 0 from area 0
+    QUANTITY(2,7,0), // Fetch quantity 0 from area 1
+    QUANTITY(2,8,0), // Fetch quantity 0 from area 2
+    QUANTITY(2,9,0), // Fetch quantity 0 from area 3
+    ENDDEFN
+};
+
+fespace *cg3_3d_lower[] = {
+    &cg3_2d,
+    &cg3_1d,
+    NULL
+};
+
+fespace cg3_3d = {
+    .name = "CG3",
+    .grade = 3,
+    .shape = cg3_3dshape,
+    .degree = 3,
+    .nnodes = 20,
+    .nsubel = 10,
+    .nodes = cg3_3dnodes,
+    .ifn = cg3_3dinterpolate,
+    .gfn = cg3_3dgrad,
+    .eldefn = cg3_3deldefn,
+    .lower = cg3_3d_lower
+};
+
+/* -------------------------------------------------------
  * List of finite elements
  * ------------------------------------------------------- */
 
@@ -600,6 +747,7 @@ fespace *fespaces[] = {
     &cg3_2d,
     &cg1_3d,
     &cg2_3d,
+    &cg3_3d,
     NULL
 };
 
@@ -650,7 +798,13 @@ bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids
     int sid, svids[nv], nmatch, k=0;
     
     objectsparse *vmatrix[disc->grade+1]; // Vertex->elementid connectivity matrices
-    for (grade g=0; g<=disc->grade; g++) vmatrix[g]=mesh_addconnectivityelement(field->mesh, g, 0);
+    for (grade g=0; g<=disc->grade; g++) {
+        vmatrix[g]=mesh_addconnectivityelement(field->mesh, g, 0);
+        if (!vmatrix[g] && g>0 && disc->shape[g]>0) {
+            mesh_addgrade(field->mesh, g);
+            vmatrix[g]=mesh_addconnectivityelement(field->mesh, g, 0);
+        }
+    }
     objectsparse *lineconn = mesh_getconnectivityelement(field->mesh, 0, MESH_GRADE_LINE);
     
     for (eldefninstruction *instr=disc->eldefn; instr!=NULL && *instr!=ENDDEFN; ) {

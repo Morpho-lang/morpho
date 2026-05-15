@@ -358,7 +358,7 @@ void cg3_2dgrad(double *lambda, double *grad) {
     // Gij = d Xi[i] / d lambda[j] in col. major order
     double g[] =
     { 1.0 + 4.5*lambda[0]*(3*lambda[0]-2), 0, 0,
-        4.5*lambda[1]*(6*lambda[0]-1), 4.5*lambda[1]*(3*lambda[0]-1),
+        4.5*lambda[1]*(6*lambda[0]-1), 4.5*lambda[1]*(3*lambda[1]-1),
         0, 0,
         4.5*lambda[2]*(3*lambda[2]-1), 4.5*lambda[2]*(6*lambda[0]-1),
         27*lambda[1]*lambda[2],

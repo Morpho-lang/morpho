@@ -395,7 +395,7 @@ eldefninstruction cg3_2deldefn[] = {
     LINE(0,0,1),     // Identify line subelement with vertex indices (0,1)
     LINE(1,1,2),     // Identify line subelement with vertex indices (1,2)
     LINE(2,2,0),     // Identify line subelement with vertex indices (2,0)
-    AREA(0,0,1,2),   // Identify area subelement with vertex indices (0,1,2)
+    AREA(3,0,1,2),   // Identify area subelement with vertex indices (0,1,2)
     QUANTITY(0,0,0), // Fetch quantity on vertex 0
     QUANTITY(0,1,0), // Fetch quantity on vertex 1
     QUANTITY(0,2,0), // Fetch quantity on vertex 2
@@ -405,7 +405,7 @@ eldefninstruction cg3_2deldefn[] = {
     QUANTITY(1,1,1), // Fetch quantity 1 from line 1
     QUANTITY(1,2,0), // Fetch quantity 0 from line 2
     QUANTITY(1,2,1), // Fetch quantity 1 from line 2
-    QUANTITY(2,0,0), // Fetch quantity 0 from area 0
+    QUANTITY(2,3,0), // Fetch quantity 0 from area 0
     ENDDEFN
 };
 
@@ -662,7 +662,7 @@ bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids
                 sid = FETCH(instr);
                 for (int i=0; i<=op; i++) svids[i] = vids[FETCH(instr)];
                 
-                if (!mesh_matchelements(vmatrix[1], op, op+1, svids, 1, &nmatch, &subel[sid].id)) return false;
+                if (!mesh_matchelements(vmatrix[op], op, op+1, svids, 1, &nmatch, &subel[sid].id)) return false;
 
                 subel[sid].reversed=false;
                 if (op==LINE_OPCODE) {

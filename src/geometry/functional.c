@@ -3947,6 +3947,7 @@ typedef struct {
     objectmatrix *invj;   // Inverse jacobian for the element
     
     value *qgrad;        // Gradients
+    value *qhess;        // Hessians
     value *qinterpolated; // List of interpolated quantities (this allows us to identify operators on fields
 } objectintegralelementref;
 
@@ -4128,6 +4129,20 @@ bool integral_gradalloc(int dim, value prototype, value *out) {
     return false;
 }
 
+/** Allocate suitable storage for the hessian */
+bool integral_hessalloc(int dim, value prototype, value *out) {
+    if (MORPHO_ISNIL(prototype)) { // Scalar
+        objectmatrix *mhess=object_newmatrix(dim, dim, false);
+        if (mhess) *out = MORPHO_OBJECT(mhess);
+        return mhess;
+    } else if (MORPHO_ISMATRIX(prototype)) {
+        objectlist *mlst = object_newlist(0, NULL);
+        if (mlst) *out = MORPHO_OBJECT(mlst);
+        return mlst;
+    } else UNREACHABLE("Field type not supported in hess");
+    return false;
+}
+
 /** Prepares the gradient sum to hold the component of the gradient */
 bool integral_gradsuminit(int i, value prototype, value dest, value *sum) {
     if (MORPHO_ISLIST(dest)) {
@@ -4151,6 +4166,32 @@ bool integral_gradsuminit(int i, value prototype, value dest, value *sum) {
 bool integral_gradsumcopy(int i, value sum, value dest) {
     if (MORPHO_ISMATRIX(dest)) {
         return morpho_valuetofloat(sum, &MORPHO_GETMATRIX(dest)->elements[i]);
+    } else return true;
+}
+
+/** Prepares the hessian sum to hold a component of the hessian */
+bool integral_hesssuminit(int c, value prototype, value dest, value *sum) {
+    if (MORPHO_ISLIST(dest)) {
+        objectlist *lst = MORPHO_GETLIST(dest);
+        
+        if (c>=list_length(lst)) {
+            objectmatrix *prmat = MORPHO_GETMATRIX(prototype);
+            objectmatrix *new = object_newmatrix(prmat->nrows, prmat->ncols, true);
+            if (!new) return false;
+            *sum = MORPHO_OBJECT(new);
+            list_append(lst, *sum);
+        } else {
+            matrix_zero(MORPHO_GETMATRIX(lst->val.data[c]));
+            *sum = lst->val.data[c];
+        }
+    }
+    return true;
+}
+
+/** Copies the component of the hessian into the relevant destination if needed */
+bool integral_hesssumcopy(int i, int j, value sum, value dest) {
+    if (MORPHO_ISMATRIX(dest)) {
+        return morpho_valuetofloat(sum, &MORPHO_GETMATRIX(dest)->elements[j*MORPHO_GETMATRIX(dest)->nrows+i]);
     } else return true;
 }
 
@@ -4281,6 +4322,102 @@ static value integral_gradfn(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     if (nargs==1) {
         integral_evaluategradient(v, MORPHO_GETARG(args, 0), &out);
+    } else morpho_runtimeerror(v, INTEGRAL_FLD);
+    
+    return out;
+}
+
+/** Evaluates the hessian of a field */
+bool integral_evaluatehessian(vm *v, value q, value *out) {
+    objectintegralelementref *elref = integral_getelementref(v);
+    if (!elref) { morpho_runtimeerror(v, INTEGRAL_SPCLFN, HESS_FUNCTION); return false; }
+    
+    int ifld, xfld=-1;
+    for (ifld=0; ifld<elref->iref->nfields; ifld++) {
+        if (MORPHO_ISFIELD(q) && MORPHO_ISSAME(elref->iref->originalfields[ifld], q)) break;
+        else if (MORPHO_ISSAME(elref->qinterpolated[ifld], q)) {
+            if (xfld>=0) { morpho_runtimeerror(v, INTEGRAL_AMBGSFLD); return false; }
+            xfld=ifld;
+        }
+    }
+    if (xfld>=0) ifld = xfld;
+    
+    if (ifld>=elref->iref->nfields) {
+        morpho_runtimeerror(v, INTEGRAL_FLD); return false;
+    }
+    
+    objectfield *fld = MORPHO_GETFIELD(elref->iref->fields[ifld]);
+    int dim = elref->mesh->dim;
+    
+    if (!MORPHO_ISOBJECT(elref->qhess[ifld])) {
+        if (!integral_hessalloc(dim, fld->prototype, &elref->qhess[ifld])) {
+            morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false;
+        }
+    }
+    
+    if (MORPHO_ISFESPACE(fld->fnspc)) {
+        if (!elref->invj) {
+            elref->invj=object_newmatrix(elref->g, elref->mesh->dim, false);
+            if (elref->invj) {
+                integral_prepareinvjacobian(elref->mesh->dim, elref->g, elref->vertexposn, elref->invj);
+            } else {
+                morpho_runtimeerror(v, INTEGRAL_GRDEVL);
+                return false;
+            }
+        }
+        
+        fespace *disc = MORPHO_GETFESPACE(fld->fnspc)->fespace;
+        int nnodes = disc->nnodes;
+        double hdata[nnodes * elref->g * elref->g];
+        objectmatrix hmat = MORPHO_STATICMATRIX(hdata, nnodes, elref->g*elref->g);
+        
+        fespace_hessian(disc, elref->lambda, &hmat);
+        
+        double fdata[nnodes * dim * dim];
+        for (int j=0; j<dim; j++) {
+            for (int i=0; i<dim; i++) {
+                double *outcol = fdata + (j*dim+i)*nnodes;
+                for (int n=0; n<nnodes; n++) {
+                    double sum=0.0;
+                    for (int qref=0; qref<elref->g; qref++) {
+                        for (int pref=0; pref<elref->g; pref++) {
+                            sum += hdata[(qref*elref->g+pref)*nnodes+n] *
+                                   elref->invj->elements[i*elref->g+pref] *
+                                   elref->invj->elements[j*elref->g+qref];
+                        }
+                    }
+                    outcol[n]=sum;
+                }
+            }
+        }
+        
+        for (int j=0; j<dim; j++) {
+            for (int i=0; i<dim; i++) {
+                int c = j*dim+i;
+                value sum;
+                
+                if (integral_hesssuminit(c, fld->prototype, elref->qhess[ifld], &sum) &&
+                    integrator_sumquantityweighted(nnodes, fdata+c*nnodes, elref->quantities[ifld].vals, &sum)) {
+                    integral_hesssumcopy(i, j, sum, elref->qhess[ifld]);
+                } else {
+                    morpho_runtimeerror(v, INTEGRAL_GRDEVL);
+                    return false;
+                }
+            }
+        }
+        
+        *out=elref->qhess[ifld];
+        return true;
+    }
+    
+    morpho_runtimeerror(v, INTEGRAL_GRDEVL);
+    return false;
+}
+
+static value integral_hessfn(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+    if (nargs==1) {
+        integral_evaluatehessian(v, MORPHO_GETARG(args, 0), &out);
     } else morpho_runtimeerror(v, INTEGRAL_FLD);
     
     return out;
@@ -4524,13 +4661,14 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     integralref iref = *(integralref *) ref;
     double *x[nv];
     bool success;
-    value qgrad[iref.nfields+1];
-    for (int i=0; i<iref.nfields; i++) qgrad[i] = MORPHO_NIL;
+    value qgrad[iref.nfields+1], qhess[iref.nfields+1];
+    for (int i=0; i<iref.nfields; i++) { qgrad[i] = MORPHO_NIL; qhess[i] = MORPHO_NIL; }
     
     objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_LINE, id, nv, vid);
     elref.iref = &iref;
     elref.vertexposn = x;
     elref.qgrad=qgrad;
+    elref.qhess=qhess;
     elref.invj=NULL;
     
     if (!functional_elementsize(v, mesh, MESH_GRADE_LINE, id, nv, vid, &elref.elementsize)) return false;
@@ -4577,6 +4715,11 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
             for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
         }
         morpho_freeobject(qgrad[i]);
+        if (MORPHO_ISLIST(qhess[i])) {
+            objectlist *l = MORPHO_GETLIST(qhess[i]);
+            for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
+        }
+        morpho_freeobject(qhess[i]);
     }
     
     return success;
@@ -4693,13 +4836,14 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     double *x[nv];
     bool success;
     
-    value qgrad[iref.nfields+1];
-    for (int i=0; i<iref.nfields; i++) qgrad[i] = MORPHO_NIL;
+    value qgrad[iref.nfields+1], qhess[iref.nfields+1];
+    for (int i=0; i<iref.nfields; i++) { qgrad[i] = MORPHO_NIL; qhess[i] = MORPHO_NIL; }
     
     objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_AREA, id, nv, vid);
     elref.iref = &iref;
     elref.vertexposn=x;
     elref.qgrad=qgrad;
+    elref.qhess=qhess;
     elref.invj=NULL;  
   
     if (iref.weightbyref) {
@@ -4750,6 +4894,11 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
             for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
         }
         morpho_freeobject(qgrad[i]);
+        if (MORPHO_ISLIST(qhess[i])) {
+            objectlist *l = MORPHO_GETLIST(qhess[i]);
+            for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
+        }
+        morpho_freeobject(qhess[i]);
     }
     
     return success;
@@ -4800,13 +4949,14 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
     double *x[nv];
     bool success;
     
-    value qgrad[iref.nfields+1];
-    for (int i=0; i<iref.nfields; i++) qgrad[i] = MORPHO_NIL;
+    value qgrad[iref.nfields+1], qhess[iref.nfields+1];
+    for (int i=0; i<iref.nfields; i++) { qgrad[i] = MORPHO_NIL; qhess[i] = MORPHO_NIL; }
     
     objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_VOLUME, id, nv, vid);
     elref.iref = &iref;
     elref.vertexposn = x;
     elref.qgrad=qgrad;
+    elref.qhess=qhess;
     elref.invj=NULL;
 
     if (!functional_elementsize(v, mesh, MESH_GRADE_VOLUME, id, nv, vid, &elref.elementsize)) return false;
@@ -4852,6 +5002,11 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
             for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
         }
         morpho_freeobject(qgrad[i]);
+        if (MORPHO_ISLIST(qhess[i])) {
+            objectlist *l = MORPHO_GETLIST(qhess[i]);
+            for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
+        }
+        morpho_freeobject(qhess[i]);
     }
     
     return success;
@@ -4951,6 +5106,7 @@ void functional_initialize(void) {
     builtin_addfunction(TANGENT_FUNCTION, integral_tangent, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(NORMAL_FUNCTION, integral_normal, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(GRAD_FUNCTION, integral_gradfn, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(HESS_FUNCTION, integral_hessfn, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(CGTENSOR_FUNCTION, integral_cgfn, BUILTIN_FLAGSEMPTY);
 
     morpho_defineerror(VOLUMEENCLOSED_ZERO, ERROR_HALT, VOLUMEENCLOSED_ZERO_MSG);

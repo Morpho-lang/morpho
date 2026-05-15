@@ -4270,13 +4270,18 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
             }
         }
         
-        int nnodes = MORPHO_GETFESPACE(fld->fnspc)->fespace->nnodes;
+        fespace *disc = MORPHO_GETFESPACE(fld->fnspc)->fespace;
+        if (!FESPACE_HASGRADIENT(disc)) {
+            morpho_runtimeerror(v, INTEGRAL_GRDEVL);
+            return false;
+        }
+        
+        int nnodes = disc->nnodes;
         double gdata[nnodes * elref->g];
         objectmatrix gmat = MORPHO_STATICMATRIX(gdata, nnodes, elref->g);
         
         // Compute gradient in reference frame
-        fespace_gradient(MORPHO_GETFESPACE(fld->fnspc)->fespace,
-                                elref->lambda, &gmat);
+        fespace_gradient(disc, elref->lambda, &gmat);
         
         // Compute matrix
         double fmatdata[nnodes * dim];
@@ -4361,13 +4366,13 @@ bool integral_evaluatehessian(vm *v, value q, value *out) {
             if (elref->invj) {
                 integral_prepareinvjacobian(elref->mesh->dim, elref->g, elref->vertexposn, elref->invj);
             } else {
-                morpho_runtimeerror(v, INTEGRAL_GRDEVL);
+                morpho_runtimeerror(v, INTEGRAL_HSSEVL);
                 return false;
             }
         }
         
         fespace *disc = MORPHO_GETFESPACE(fld->fnspc)->fespace;
-        if (!disc->hfn) {
+        if (!FESPACE_HASHESSIAN(disc)) {
             morpho_runtimeerror(v, INTEGRAL_HSSEVL);
             return false;
         }

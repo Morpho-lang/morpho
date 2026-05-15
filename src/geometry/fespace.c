@@ -289,13 +289,12 @@ void cg2_2dgrad(double *lambda, double *grad) {
 
 void cg2_2dhess(double *lambda, double *hess) {
     // Hijq = d^2 Xi[i] / d x[j] d x[q] in column-major order
-    double h[] = {
-         4,  4,  0, -8,  0,  0,
-         4,  0,  0, -4,  4, -4,
-         4,  0,  0, -4,  4, -4,
-         4,  0,  4,  0,  0, -8
-    };
-    memcpy(hess, h, sizeof(h));
+    #define H(row,col,node) hess[FESPACE_HESS_INDEX(6, 2, row, col, node)]
+    H(0,0,0)=4;  H(0,0,1)=4;  H(0,0,2)=0;  H(0,0,3)=-8; H(0,0,4)=0;  H(0,0,5)=0;
+    H(1,0,0)=4;  H(1,0,1)=0;  H(1,0,2)=0;  H(1,0,3)=-4; H(1,0,4)=4;  H(1,0,5)=-4;
+    H(0,1,0)=4;  H(0,1,1)=0;  H(0,1,2)=0;  H(0,1,3)=-4; H(0,1,4)=4;  H(0,1,5)=-4;
+    H(1,1,0)=4;  H(1,1,1)=0;  H(1,1,2)=4;  H(1,1,3)=0;  H(1,1,4)=0;  H(1,1,5)=-8;
+    #undef H
 }
 
 unsigned int cg2_2dshape[] = { 1, 1, 0 };
@@ -395,50 +394,50 @@ void cg3_2dhess(double *lambda, double *hess) {
     double y = lambda[2];
 
     // Hijq = d^2 Xi[i] / d x[j] d x[q] in column-major order
-    #define H(c,n) hess[(c)*10+(n)]
-    H(0,0) = 18 - 27*x - 27*y;
-    H(0,1) = 27*x - 9;
-    H(0,2) = 0;
-    H(0,3) = -45 + 81*x + 54*y;
-    H(0,4) = 36 - 81*x - 27*y;
-    H(0,5) = 27*y;
-    H(0,6) = 0;
-    H(0,7) = 0;
-    H(0,8) = 27*y;
-    H(0,9) = -54*y;
+    #define H(row,col,node) hess[FESPACE_HESS_INDEX(10, 2, row, col, node)]
+    H(0,0,0) = 18 - 27*x - 27*y;
+    H(0,0,1) = 27*x - 9;
+    H(0,0,2) = 0;
+    H(0,0,3) = -45 + 81*x + 54*y;
+    H(0,0,4) = 36 - 81*x - 27*y;
+    H(0,0,5) = 27*y;
+    H(0,0,6) = 0;
+    H(0,0,7) = 0;
+    H(0,0,8) = 27*y;
+    H(0,0,9) = -54*y;
 
-    H(1,0) = 18 - 27*x - 27*y;
-    H(1,1) = 0;
-    H(1,2) = 0;
-    H(1,3) = -45.0/2 + 54*x + 27*y;
-    H(1,4) = 9.0/2 - 27*x;
-    H(1,5) = -9.0/2 + 27*x;
-    H(1,6) = -9.0/2 + 27*y;
-    H(1,7) = 9.0/2 - 27*y;
-    H(1,8) = -45.0/2 + 27*x + 54*y;
-    H(1,9) = 27 - 54*x - 54*y;
+    H(1,0,0) = 18 - 27*x - 27*y;
+    H(1,0,1) = 0;
+    H(1,0,2) = 0;
+    H(1,0,3) = -45.0/2 + 54*x + 27*y;
+    H(1,0,4) = 9.0/2 - 27*x;
+    H(1,0,5) = -9.0/2 + 27*x;
+    H(1,0,6) = -9.0/2 + 27*y;
+    H(1,0,7) = 9.0/2 - 27*y;
+    H(1,0,8) = -45.0/2 + 27*x + 54*y;
+    H(1,0,9) = 27 - 54*x - 54*y;
 
-    H(2,0) = 18 - 27*x - 27*y;
-    H(2,1) = 0;
-    H(2,2) = 0;
-    H(2,3) = -45.0/2 + 54*x + 27*y;
-    H(2,4) = 9.0/2 - 27*x;
-    H(2,5) = -9.0/2 + 27*x;
-    H(2,6) = -9.0/2 + 27*y;
-    H(2,7) = 9.0/2 - 27*y;
-    H(2,8) = -45.0/2 + 27*x + 54*y;
-    H(2,9) = 27 - 54*x - 54*y;
+    H(0,1,0) = 18 - 27*x - 27*y;
+    H(0,1,1) = 0;
+    H(0,1,2) = 0;
+    H(0,1,3) = -45.0/2 + 54*x + 27*y;
+    H(0,1,4) = 9.0/2 - 27*x;
+    H(0,1,5) = -9.0/2 + 27*x;
+    H(0,1,6) = -9.0/2 + 27*y;
+    H(0,1,7) = 9.0/2 - 27*y;
+    H(0,1,8) = -45.0/2 + 27*x + 54*y;
+    H(0,1,9) = 27 - 54*x - 54*y;
 
-    H(3,0) = 18 - 27*x - 27*y;
-    H(3,1) = 0;
-    H(3,2) = 27*y - 9;
-    H(3,3) = 27*x;
-    H(3,4) = 0;
-    H(3,5) = 0;
-    H(3,6) = 27*x;
-    H(3,7) = 36 - 27*x - 81*y;
-    H(3,8) = -45 + 54*x + 81*y;
-    H(3,9) = -54*x;
+    H(1,1,0) = 18 - 27*x - 27*y;
+    H(1,1,1) = 0;
+    H(1,1,2) = 27*y - 9;
+    H(1,1,3) = 27*x;
+    H(1,1,4) = 0;
+    H(1,1,5) = 0;
+    H(1,1,6) = 27*x;
+    H(1,1,7) = 36 - 27*x - 81*y;
+    H(1,1,8) = -45 + 54*x + 81*y;
+    H(1,1,9) = -54*x;
     #undef H
 }
 
@@ -957,7 +956,10 @@ fespace_layout_cleanup:
 /** @brief Calculates the gradient of the basis functions with respect to the reference coordinates.
  *  @param[in] disc - fespace to query
  *  @param[in] lambda - position in barycentric coordinates
- *  @param[out] grad - gradient of basis functions with respect to reference coordinates (disc->nnodes x disc->grade)
+ *  @param[out] grad - gradient of basis functions with respect to reference coordinates.
+ *                     Layout is column-major by component:
+ *                     grad->elements[FESPACE_GRAD_INDEX(disc->nnodes, component, node)].
+ *  @pre FESPACE_HASGRADIENT(disc)
  */
 void fespace_gradient(fespace *disc, double *lambda, objectmatrix *grad) {
     int nbary = disc->grade+1;
@@ -975,7 +977,9 @@ void fespace_gradient(fespace *disc, double *lambda, objectmatrix *grad) {
  *  @param[in] disc - fespace to query
  *  @param[in] lambda - position in barycentric coordinates
  *  @param[out] hess - Hessian of basis functions with respect to reference coordinates
- *                     (disc->nnodes x (disc->grade*disc->grade)) in column-major tensor order
+ *                     in column-major tensor order:
+ *                     hess->elements[FESPACE_HESS_INDEX(disc->nnodes, disc->grade, row, col, node)].
+ *  @pre FESPACE_HASHESSIAN(disc)
  */
 void fespace_hessian(fespace *disc, double *lambda, objectmatrix *hess) {
     if (disc->hfn) (disc->hfn) (lambda, hess->elements);

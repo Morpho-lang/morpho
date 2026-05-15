@@ -107,10 +107,10 @@
 #define INTEGRAL_FLD_MSG               "Can't identify field."
 
 #define INTEGRAL_GRDEVL                "IntgrlGrdEvl"
-#define INTEGRAL_GRDEVL_MSG            "Gradient evaluation failed."
+#define INTEGRAL_GRDEVL_MSG            "Gradient evaluation failed or is unsupported by the finite element space."
 
 #define INTEGRAL_HSSEVL                "IntgrlHssEvl"
-#define INTEGRAL_HSSEVL_MSG            "Hessian evaluation failed."
+#define INTEGRAL_HSSEVL_MSG            "Hessian evaluation failed or is unsupported by the finite element space."
 
 #define INTEGRAL_AMBGSFLD              "IntgrlAmbgsFld"
 #define INTEGRAL_AMBGSFLD_MSG          "Field reference is ambigious: call with a Field object."

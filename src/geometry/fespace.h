@@ -16,8 +16,21 @@
 /** @brief Interpolation functions are called to assign weights to the nodes given barycentric coordinates */
 typedef void (*interpolationfn) (double *, double *);
 
-/** @brief Hessian functions are called to assign second derivatives with respect to reference coordinates */
+/** @brief Gradient callbacks return d Xi[i] / d lambda[j] in column-major order:
+ *         out[FESPACE_GRAD_INDEX(nnodes, j, i)] */
+typedef void (*gradientfn) (double *, double *);
+
+/** @brief Hessian callbacks return d^2 Xi[i] / d x[row] d x[col] in column-major tensor order:
+ *         out[FESPACE_HESS_INDEX(nnodes, dim, row, col, i)] */
 typedef void (*hessianfn) (double *, double *);
+
+/** @brief Indexing helpers for derivative callback output layouts */
+#define FESPACE_GRAD_INDEX(nnodes, component, node) ((component)*(nnodes)+(node))
+#define FESPACE_HESS_INDEX(nnodes, dim, row, col, node) ((((col)*(dim))+(row))*(nnodes)+(node))
+
+/** @brief Capability helpers for derivative evaluation */
+#define FESPACE_HASGRADIENT(disc) ((disc)->gfn!=NULL)
+#define FESPACE_HASHESSIAN(disc) ((disc)->hfn!=NULL)
 
 /** @brief Element definitions comprise a sequence of instructions to map field degrees of freedom to local nodes */
 typedef int eldefninstruction;
@@ -32,7 +45,7 @@ typedef struct sfespace {
     int nsubel; /** Number of subelements used by */
     double *nodes; /** Node positions */
     interpolationfn ifn; /** Interpolation function; receives barycentric coordinates as input and returns weights per node */
-    interpolationfn gfn; /** Gradient interpolation function */
+    gradientfn gfn; /** Gradient interpolation function in barycentric coordinates */
     hessianfn hfn; /** Hessian interpolation function in reference coordinates */
     eldefninstruction *eldefn; /** Element definition */
     struct sfespace **lower; /** Discretization to be used for interpolation on lower grades */

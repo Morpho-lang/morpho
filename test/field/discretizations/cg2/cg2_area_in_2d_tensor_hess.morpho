@@ -1,0 +1,36 @@
+// Compute the hessian of a tensor
+
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([2,0])
+mb.addvertex([0,2])
+mb.addvertex([2,2])
+mb.addface([0,1,2])
+mb.addface([1,3,2])
+var m = mb.build()
+m.addgrade(1)
+
+fn f0(x,y) {
+    return Matrix([[x^2 + x*y, y^2], [x*y, x^2 + 3*y^2]])
+}
+
+var f = Field(m, f0, finiteelementspace=FiniteElementSpace("CG2", grade=2))
+
+var out = true
+
+fn integrand(x, q) {
+    var h = hess(q)
+    if ((h[0] - Matrix([[2,0],[0,2]])).norm() > 1e-8) out = false
+    if ((h[1] - Matrix([[1,0],[1,0]])).norm() > 1e-8) out = false
+    if ((h[2] - Matrix([[1,0],[1,0]])).norm() > 1e-8) out = false
+    if ((h[3] - Matrix([[0,2],[0,6]])).norm() > 1e-8) out = false
+    return 0
+}
+
+print AreaIntegral(integrand, f, method={ }).total(m)
+// expect: 0
+
+print out
+// expect: true

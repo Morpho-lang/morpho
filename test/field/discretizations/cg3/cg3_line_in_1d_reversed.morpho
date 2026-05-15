@@ -15,6 +15,8 @@ var l = FiniteElementSpace("CG3", grade=1)
 
 var f = Field(m, fn (x,y,z) x^3, finiteelementspace=l)
 
+print f 
+
 print l.layout(f)
 // expect: [ 1 0 ]
 // expect: [ 1 1 ]

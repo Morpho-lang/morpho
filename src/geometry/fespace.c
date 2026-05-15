@@ -287,6 +287,17 @@ void cg2_2dgrad(double *lambda, double *grad) {
     memcpy(grad, g, sizeof(g));
 }
 
+void cg2_2dhess(double *lambda, double *hess) {
+    // Hijq = d^2 Xi[i] / d x[j] d x[q] in column-major order
+    double h[] = {
+         4,  4,  0, -8,  0,  0,
+         4,  0,  0, -4,  4, -4,
+         4,  0,  0, -4,  4, -4,
+         4,  0,  4,  0,  0, -8
+    };
+    memcpy(hess, h, sizeof(h));
+}
+
 unsigned int cg2_2dshape[] = { 1, 1, 0 };
 
 double cg2_2dnodes[] = { 0.0, 0.0,
@@ -324,6 +335,7 @@ fespace cg2_2d = {
     .nodes = cg2_2dnodes,
     .ifn = cg2_2dinterpolate,
     .gfn = cg2_2dgrad,
+    .hfn = cg2_2dhess,
     .eldefn = cg2_2deldefn,
     .lower = cg2_2d_lower
 };
@@ -378,6 +390,56 @@ void cg3_2dgrad(double *lambda, double *grad) {
     memcpy(grad, g, sizeof(g));
 }
 
+void cg3_2dhess(double *lambda, double *hess) {
+    double x = lambda[1];
+    double y = lambda[2];
+
+    // Hijq = d^2 Xi[i] / d x[j] d x[q] in column-major order
+    hess[0*10+0] = 27*x + 27*y - 18;
+    hess[1*10+0] = 27*x - 9;
+    hess[2*10+0] = 27*y - 9;
+    hess[3*10+0] = -81*x - 27*y + 36;
+    hess[4*10+0] = 54*x - 9;
+    hess[5*10+0] = 0;
+    hess[6*10+0] = 0;
+    hess[7*10+0] = 27*y;
+    hess[8*10+0] = -54*y + 27*x - 9;
+    hess[9*10+0] = -54*x - 54*y + 27;
+
+    hess[0*10+1] = 27*x + 27*y - 18;
+    hess[1*10+1] = 0;
+    hess[2*10+1] = 0;
+    hess[3*10+1] = -27*(6*x + 3*y - 4.0/3.0);
+    hess[4*10+1] = 27*(2*x + y) - 9;
+    hess[5*10+1] = 27*y;
+    hess[6*10+1] = 27*y;
+    hess[7*10+1] = 27*x;
+    hess[8*10+1] = -27*(2*y - x + 1.0/3.0);
+    hess[9*10+1] = 27*(1 - 2*x - 2*y);
+
+    hess[0*10+2] = 27*x + 27*y - 18;
+    hess[1*10+2] = 0;
+    hess[2*10+2] = 0;
+    hess[3*10+2] = -27*(6*x + 3*y - 4.0/3.0);
+    hess[4*10+2] = 27*(2*x + y) - 9;
+    hess[5*10+2] = 27*y;
+    hess[6*10+2] = 27*y;
+    hess[7*10+2] = 27*x;
+    hess[8*10+2] = -27*(2*y - x + 1.0/3.0);
+    hess[9*10+2] = 27*(1 - 2*x - 2*y);
+
+    hess[0*10+3] = 27*x + 27*y - 18;
+    hess[1*10+3] = 0;
+    hess[2*10+3] = 27*y - 9;
+    hess[3*10+3] = -54*x;
+    hess[4*10+3] = 0;
+    hess[5*10+3] = 0;
+    hess[6*10+3] = 54*y - 9;
+    hess[7*10+3] = 27*x;
+    hess[8*10+3] = 27*x - 54*y + 36;
+    hess[9*10+3] = -54*x;
+}
+
 unsigned int cg3_2dshape[] = { 1, 2, 1 };
 
 double cg3_2dnodes[] = { 0.0, 0.0,
@@ -424,6 +486,7 @@ fespace cg3_2d = {
     .nodes = cg3_2dnodes,
     .ifn = cg3_2dinterpolate,
     .gfn = cg3_2dgrad,
+    .hfn = cg3_2dhess,
     .eldefn = cg3_2deldefn,
     .lower = cg3_2d_lower
 };
@@ -904,6 +967,16 @@ void fespace_gradient(fespace *disc, double *lambda, objectmatrix *grad) {
     for (int i=0; i<disc->grade; i++) {
         functional_vecsub(disc->nnodes, gdata+(i+1)*disc->nnodes, gdata, grad->elements+i*disc->nnodes);
     }
+}
+
+/** @brief Calculates the Hessian of the basis functions with respect to the reference coordinates.
+ *  @param[in] disc - fespace to query
+ *  @param[in] lambda - position in barycentric coordinates
+ *  @param[out] hess - Hessian of basis functions with respect to reference coordinates
+ *                     (disc->nnodes x (disc->grade*disc->grade)) in column-major tensor order
+ */
+void fespace_hessian(fespace *disc, double *lambda, objectmatrix *hess) {
+    if (disc->hfn) (disc->hfn) (lambda, hess->elements);
 }
 
 /* **********************************************************************

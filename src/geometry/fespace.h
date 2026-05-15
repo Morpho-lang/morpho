@@ -16,6 +16,9 @@
 /** @brief Interpolation functions are called to assign weights to the nodes given barycentric coordinates */
 typedef void (*interpolationfn) (double *, double *);
 
+/** @brief Hessian functions are called to assign second derivatives with respect to reference coordinates */
+typedef void (*hessianfn) (double *, double *);
+
 /** @brief Element definitions comprise a sequence of instructions to map field degrees of freedom to local nodes */
 typedef int eldefninstruction;
 
@@ -30,6 +33,7 @@ typedef struct sfespace {
     double *nodes; /** Node positions */
     interpolationfn ifn; /** Interpolation function; receives barycentric coordinates as input and returns weights per node */
     interpolationfn gfn; /** Gradient interpolation function */
+    hessianfn hfn; /** Hessian interpolation function in reference coordinates */
     eldefninstruction *eldefn; /** Element definition */
     struct sfespace **lower; /** Discretization to be used for interpolation on lower grades */
 } fespace;
@@ -83,6 +87,7 @@ bool fespace_lower(fespace *disc, grade target, fespace **out);
 
 bool fespace_layout(objectfield *field, fespace *disc, objectsparse **out);
 void fespace_gradient(fespace *disc, double *lambda, objectmatrix *grad);
+void fespace_hessian(fespace *disc, double *lambda, objectmatrix *hess);
 
 void fespace_initialize(void);
 

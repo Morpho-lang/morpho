@@ -4367,6 +4367,10 @@ bool integral_evaluatehessian(vm *v, value q, value *out) {
         }
         
         fespace *disc = MORPHO_GETFESPACE(fld->fnspc)->fespace;
+        if (!disc->hfn) {
+            morpho_runtimeerror(v, INTEGRAL_HSSEVL);
+            return false;
+        }
         int nnodes = disc->nnodes;
         double hdata[nnodes * elref->g * elref->g];
         objectmatrix hmat = MORPHO_STATICMATRIX(hdata, nnodes, elref->g*elref->g);
@@ -4400,7 +4404,7 @@ bool integral_evaluatehessian(vm *v, value q, value *out) {
                     integrator_sumquantityweighted(nnodes, fdata+c*nnodes, elref->quantities[ifld].vals, &sum)) {
                     integral_hesssumcopy(i, j, sum, elref->qhess[ifld]);
                 } else {
-                    morpho_runtimeerror(v, INTEGRAL_GRDEVL);
+                    morpho_runtimeerror(v, INTEGRAL_HSSEVL);
                     return false;
                 }
             }
@@ -4410,7 +4414,7 @@ bool integral_evaluatehessian(vm *v, value q, value *out) {
         return true;
     }
     
-    morpho_runtimeerror(v, INTEGRAL_GRDEVL);
+    morpho_runtimeerror(v, INTEGRAL_HSSEVL);
     return false;
 }
 
@@ -5138,6 +5142,7 @@ void functional_initialize(void) {
     morpho_defineerror(INTEGRAL_AMBGSFLD, ERROR_HALT, INTEGRAL_AMBGSFLD_MSG);
     morpho_defineerror(INTEGRAL_SPCLFN, ERROR_HALT, INTEGRAL_SPCLFN_MSG);
     morpho_defineerror(INTEGRAL_GRDEVL, ERROR_HALT, INTEGRAL_GRDEVL_MSG);
+    morpho_defineerror(INTEGRAL_HSSEVL, ERROR_HALT, INTEGRAL_HSSEVL_MSG);
     
     functional_poolinitialized = false;
     

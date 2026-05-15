@@ -1,0 +1,23 @@
+// Hessian of CG1 field should fail because CG1 has no Hessian callback
+// expect error 'IntgrlHssEvl'
+
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([2,0])
+mb.addvertex([0,2])
+mb.addvertex([2,2])
+mb.addface([0,1,2])
+mb.addface([1,3,2])
+var m = mb.build()
+m.addgrade(1)
+
+var l = FiniteElementSpace("CG1", grade=2)
+
+fn integrand(x, q) {
+    return hess(q).norm()
+}
+
+var f = Field(m, fn (x,y) 3 - 4*x + 2*y, finiteelementspace=l)
+print AreaIntegral(integrand, f, method={ }).total(m)

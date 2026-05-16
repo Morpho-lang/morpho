@@ -16,5 +16,5 @@ m.addgrade(2)
 var fe = FiniteElementSpace("CG1", grade=3)
 var f = Field(m, fn (x,y,z) z^2, finiteelementspace=fe)
 
-print abs(Jump(fn (x, q) jumpdn(q)^2, f, method={ "strategy": "centroid" }).total(m) - 2) < 1e-8
+print abs(Jump(fn (x, q) jumpdn(q)^2, f, method={ "strategy": "quadrature" }).total(m) - 2) < 1e-8
 // expect: true

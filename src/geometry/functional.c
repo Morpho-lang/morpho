@@ -5334,6 +5334,44 @@ static bool jump_interpolatequantity(quantity *q, grade g, double *lambda, value
     return integrator_sumquantityweighted(nnodes, wts, q->vals, out);
 }
 
+static bool jump_preparepointdata(objectjumpinterfaceref *iref, double *posn, value *qinterp) {
+    jumpref *ref=iref->jref;
+    double *xplus[iref->plusnv], *xminus[iref->minusnv];
+
+    if (!jump_getinterfacevertexpositions(iref->mesh, iref->plusnv, iref->plusvid, xplus) ||
+        !jump_getinterfacevertexpositions(iref->mesh, iref->minusnv, iref->minusvid, xminus) ||
+        !jump_parentlambda(iref->mesh->dim, ref->parentgrade, xplus, posn, iref->pluslambda) ||
+        !jump_parentlambda(iref->mesh->dim, ref->parentgrade, xminus, posn, iref->minuslambda)) return false;
+
+    iref->posn=posn;
+    iref->qinterpolated=qinterp;
+
+    for (int i=0; i<ref->integral.nfields; i++) {
+        if (!jump_interpolatequantity(&iref->qplus.quantities[i], ref->parentgrade, iref->pluslambda, &qinterp[i])) return false;
+    }
+
+    return true;
+}
+
+static bool jump_callintegrand(objectjumpinterfaceref *iref, double *posn, double *out) {
+    jumpref *ref=iref->jref;
+    value qinterp[ref->integral.nfields+1], args[ref->integral.nfields+1], outval=MORPHO_NIL;
+    objectmatrix mposn = MORPHO_STATICMATRIX(posn, iref->mesh->dim, 1);
+
+    if (!jump_preparepointdata(iref, posn, qinterp)) return false;
+
+    args[0]=MORPHO_OBJECT(&mposn);
+    for (int i=0; i<ref->integral.nfields; i++) args[i+1]=qinterp[i];
+
+    if (!morpho_call(ref->integral.v, ref->integral.integrand, ref->integral.nfields+1, args, &outval)) return false;
+    return morpho_valuetofloat(outval, out);
+}
+
+static bool jump_integrandfn(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *ref, double *fout) {
+    objectjumpinterfaceref *iref = (objectjumpinterfaceref *) ref;
+    return jump_callintegrand(iref, x, fout);
+}
+
 static bool jump_evaluatesidegradient(objectjumpinterfaceref *iref, int ifld, bool plus, double *grad) {
     objectfield *fld = MORPHO_GETFIELD(iref->jref->integral.fields[ifld]);
     jumpside *side = (plus ? &iref->qplus : &iref->qminus);
@@ -5488,6 +5526,8 @@ static bool jump_scan_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
     int nparents=0, *parents=NULL;
     double *x[nv];
 
+    ref->integral.v=v;
+
     if (!jump_getadjacentparents(ref, id, &nparents, &parents)) return false;
 
     /* Boundary interfaces or malformed topology are ignored for now. */
@@ -5495,51 +5535,34 @@ static bool jump_scan_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
 
     if (!jump_getinterfacevertexpositions(mesh, nv, vid, x)) return false;
 
-    if (ref->strategy!=JUMP_STRATEGY_CENTROID_MODE) {
-        morpho_runtimeerror(v, JUMP_UNIMPL);
-        return false;
-    }
-
     objectjumpinterfaceref iref;
     if (!jump_prepareinterfaceref(v, mesh, ref, id, nv, vid, x, parents, &iref)) return false;
 
-    double posn[mesh->dim];
     double pluslambda[iref.plusnv], minuslambda[iref.minusnv];
-    value qinterp[ref->integral.nfields+1], outval=MORPHO_NIL;
-    objectmatrix mposn = MORPHO_STATICMATRIX(posn, mesh->dim, 1);
-    value args[ref->integral.nfields+1];
-    double *xplus[iref.plusnv], *xminus[iref.minusnv];
-
-    jump_centroid(mesh->dim, nv, x, posn);
-    if (!jump_getinterfacevertexpositions(mesh, iref.plusnv, iref.plusvid, xplus) ||
-        !jump_getinterfacevertexpositions(mesh, iref.minusnv, iref.minusvid, xminus) ||
-        !jump_parentlambda(mesh->dim, ref->parentgrade, xplus, posn, pluslambda) ||
-        !jump_parentlambda(mesh->dim, ref->parentgrade, xminus, posn, minuslambda)) {
-        jump_clearinterfaceref(&iref);
-        return false;
-    }
-
     iref.pluslambda=pluslambda;
     iref.minuslambda=minuslambda;
-    iref.posn=posn;
-    iref.qinterpolated=qinterp;
 
-    args[0]=MORPHO_OBJECT(&mposn);
-    for (int i=0; i<ref->integral.nfields; i++) {
-        if (!jump_interpolatequantity(&iref.qplus.quantities[i], ref->parentgrade, pluslambda, &qinterp[i])) {
+    if (ref->strategy==JUMP_STRATEGY_CENTROID_MODE || ref->interfacegrade==0) {
+        double posn[mesh->dim];
+        jump_centroid(mesh->dim, nv, x, posn);
+        if (!jump_callintegrand(&iref, posn, out)) {
             jump_clearinterfaceref(&iref);
             return false;
         }
-        args[i+1]=qinterp[i];
-    }
-
-    if (!morpho_call(v, ref->integral.integrand, ref->integral.nfields+1, args, &outval) ||
-        !morpho_valuetofloat(outval, out)) {
+        *out *= iref.interfacesize;
+    } else if (ref->strategy==JUMP_STRATEGY_QUADRATURE_MODE) {
+        double err=0.0;
+        if (!integrate(jump_integrandfn, MORPHO_GETDICTIONARY(ref->integral.method), morpho_geterror(v), mesh->dim, ref->interfacegrade, x, 0, NULL, &iref, out, &err)) {
+            jump_clearinterfaceref(&iref);
+            return false;
+        }
+        *out *= iref.interfacesize;
+    } else {
+        morpho_runtimeerror(v, JUMP_UNIMPL);
         jump_clearinterfaceref(&iref);
         return false;
     }
 
-    *out *= iref.interfacesize;
     jump_clearinterfaceref(&iref);
     return true;
 }

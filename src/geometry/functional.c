@@ -3920,6 +3920,12 @@ typedef struct {
 
 typedef struct jumpref_s jumpref;
 
+typedef struct {
+    int nv;
+    int *vid;
+    quantity *quantities;
+} jumpside;
+
 /* ----------------------------------------------
  * Integrand functions
  * ---------------------------------------------- */
@@ -4018,6 +4024,9 @@ typedef struct {
     int plusnv, minusnv;   // Number of vertices in parent elements
     int *plusvid, *minusvid; // Vertex ids in parent elements
 
+    jumpside qplus;
+    jumpside qminus;
+
     objectmatrix *normal;  // Canonical interface normal
 
     value *qplusgrad;      // Per-side cached gradients, later
@@ -4048,7 +4057,7 @@ objecttype objectjumpinterfacereftype;
 
 #define MORPHO_ISJUMPINTERFACEREF(val) object_istype(val, OBJECT_JUMPINTERFACEREF)
 #define MORPHO_GETJUMPINTERFACEREF(val) ((objectjumpinterfaceref *) MORPHO_GETOBJECT(val))
-#define MORPHO_STATICJUMPINTERFACEREF(mesh, grade, id, nv, vid) { .obj.type=OBJECT_JUMPINTERFACEREF, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .mesh=mesh, .g=grade, .id=id, .nv=nv, .vid=vid, .normal=NULL, .qplusgrad=NULL, .qminusgrad=NULL, .qplushess=NULL, .qminushess=NULL }
+#define MORPHO_STATICJUMPINTERFACEREF(mesh, grade, id, nv, vid) { .obj.type=OBJECT_JUMPINTERFACEREF, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .mesh=mesh, .g=grade, .id=id, .nv=nv, .vid=vid, .qplus={0}, .qminus={0}, .normal=NULL, .qplusgrad=NULL, .qminusgrad=NULL, .qplushess=NULL, .qminushess=NULL }
 
 int jumpinterfacehandle;
 
@@ -5179,6 +5188,42 @@ static bool jump_getadjacentparents(jumpref *ref, elementid interfaceid, int *np
     return mesh_getconnectivity(ref->interfaceparents, interfaceid, nparents, parents);
 }
 
+static bool jump_preparejumpside(jumpref *ref, int nv, int *vid, jumpside *trace) {
+    trace->nv=nv;
+    trace->vid=vid;
+    trace->quantities=MORPHO_MALLOC(sizeof(quantity)*ref->integral.nfields);
+    if (!trace->quantities) return false;
+
+    for (int i=0; i<ref->integral.nfields; i++) {
+        trace->quantities[i].nnodes=0;
+        trace->quantities[i].vals=NULL;
+        trace->quantities[i].ifn=NULL;
+        trace->quantities[i].ndof=0;
+    }
+
+    if (!integral_preparequantities(&ref->integral, nv, vid, trace->quantities)) {
+        integral_clearquantities(ref->integral.nfields, trace->quantities);
+        MORPHO_FREE(trace->quantities);
+        trace->quantities=NULL;
+        return false;
+    }
+
+    return true;
+}
+
+static void jump_clearjumpside(jumpref *ref, jumpside *trace) {
+    if (trace->quantities) {
+        integral_clearquantities(ref->integral.nfields, trace->quantities);
+        MORPHO_FREE(trace->quantities);
+        trace->quantities=NULL;
+    }
+}
+
+static void jump_clearinterfaceref(objectjumpinterfaceref *iref) {
+    jump_clearjumpside(iref->jref, &iref->qplus);
+    jump_clearjumpside(iref->jref, &iref->qminus);
+}
+
 static void jump_orderparents(int *parents, elementid *plusid, elementid *minusid) {
     if (parents[0]<parents[1]) {
         *plusid=parents[0]; *minusid=parents[1];
@@ -5204,6 +5249,12 @@ static bool jump_prepareinterfaceref(vm *v, objectmesh *mesh, jumpref *ref, elem
     iref->minusnv=minusnv;
     iref->minusvid=minusvid;
 
+    if (!jump_preparejumpside(ref, iref->plusnv, iref->plusvid, &iref->qplus)) return false;
+    if (!jump_preparejumpside(ref, iref->minusnv, iref->minusvid, &iref->qminus)) {
+        jump_clearjumpside(ref, &iref->qplus);
+        return false;
+    }
+
     vm_settlvar(v, jumpinterfacehandle, MORPHO_OBJECT(iref));
     return true;
 }
@@ -5227,6 +5278,7 @@ static bool jump_scan_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
 
     /* Placeholder until the two-sided trace machinery is implemented. */
     *out=0.0;
+    jump_clearinterfaceref(&iref);
     return true;
 }
 

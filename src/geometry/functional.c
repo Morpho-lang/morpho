@@ -5222,6 +5222,10 @@ static void jump_clearjumpside(jumpref *ref, jumpside *trace) {
 static void jump_clearinterfaceref(objectjumpinterfaceref *iref) {
     jump_clearjumpside(iref->jref, &iref->qplus);
     jump_clearjumpside(iref->jref, &iref->qminus);
+    if (iref->normal) {
+        object_free((object *) iref->normal);
+        iref->normal=NULL;
+    }
 }
 
 static void jump_orderparents(int *parents, elementid *plusid, elementid *minusid) {
@@ -5232,7 +5236,103 @@ static void jump_orderparents(int *parents, elementid *plusid, elementid *minusi
     }
 }
 
-static bool jump_prepareinterfaceref(vm *v, objectmesh *mesh, jumpref *ref, elementid id, int nv, int *vid, int *parents, objectjumpinterfaceref *iref) {
+static bool jump_getinterfacevertexpositions(objectmesh *mesh, int nv, int *vid, double **x) {
+    for (int i=0; i<nv; i++) {
+        if (!mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i])) return false;
+    }
+    return true;
+}
+
+static bool jump_getelementcentroid(objectmesh *mesh, int nv, int *vid, double *centroid) {
+    int dim=mesh->dim;
+    for (int i=0; i<dim; i++) centroid[i]=0.0;
+
+    for (int i=0; i<nv; i++) {
+        double *x=NULL;
+        if (!mesh_getvertexcoordinatesaslist(mesh, vid[i], &x)) return false;
+        for (int j=0; j<dim; j++) centroid[j]+=x[j];
+    }
+
+    functional_vecscale(dim, 1.0/nv, centroid, centroid);
+    return true;
+}
+
+static bool jump_preparenormal(vm *v, objectjumpinterfaceref *iref) {
+    int dim=iref->mesh->dim;
+    double pluscentroid[dim], minuscentroid[dim], d[dim];
+
+    if (!jump_getelementcentroid(iref->mesh, iref->plusnv, iref->plusvid, pluscentroid)) return false;
+    if (!jump_getelementcentroid(iref->mesh, iref->minusnv, iref->minusvid, minuscentroid)) return false;
+
+    functional_vecsub(dim, minuscentroid, pluscentroid, d);
+
+    objectmatrix *mnormal = object_newmatrix(dim, 1, false);
+    if (!mnormal) return false;
+
+    for (int i=0; i<dim; i++) mnormal->elements[i]=0.0;
+
+    if (iref->g==0) {
+        for (int i=0; i<dim; i++) mnormal->elements[i]=d[i];
+    } else if (iref->g==1) {
+        double t[dim], n[dim];
+
+        functional_vecsub(dim, iref->vertexposn[1], iref->vertexposn[0], t);
+        double tnorm=functional_vecnorm(dim, t);
+        if (tnorm<MORPHO_EPS) { object_free((object *) mnormal); return false; }
+        functional_vecscale(dim, 1.0/tnorm, t, t);
+
+        double dott=functional_vecdot(dim, d, t);
+        functional_vecaddscale(dim, d, -dott, t, n);
+
+        double nnorm=functional_vecnorm(dim, n);
+        if (nnorm<MORPHO_EPS) {
+            if (dim==2) {
+                n[0]=-t[1];
+                n[1]= t[0];
+            } else {
+                for (int i=0; i<dim; i++) n[i]=d[i];
+            }
+            nnorm=functional_vecnorm(dim, n);
+        }
+
+        if (nnorm<MORPHO_EPS) { object_free((object *) mnormal); return false; }
+        functional_vecscale(dim, 1.0/nnorm, n, mnormal->elements);
+    } else if (iref->g==2) {
+        if (dim!=3) { object_free((object *) mnormal); return false; }
+
+        double s0[3], s1[3];
+        functional_vecsub(3, iref->vertexposn[1], iref->vertexposn[0], s0);
+        functional_vecsub(3, iref->vertexposn[2], iref->vertexposn[1], s1);
+        functional_veccross(s0, s1, mnormal->elements);
+    } else {
+        object_free((object *) mnormal);
+        return false;
+    }
+
+    double nnorm=functional_vecnorm(dim, mnormal->elements);
+    if (nnorm<MORPHO_EPS) { object_free((object *) mnormal); return false; }
+
+    if (functional_vecdot(dim, mnormal->elements, d)<0.0) {
+        functional_vecscale(dim, -1.0, mnormal->elements, mnormal->elements);
+    }
+
+    nnorm=functional_vecnorm(dim, mnormal->elements);
+    if (nnorm<MORPHO_EPS) { object_free((object *) mnormal); return false; }
+    functional_vecscale(dim, 1.0/nnorm, mnormal->elements, mnormal->elements);
+
+    iref->normal=mnormal;
+    return true;
+}
+
+static bool jump_preparegeometry(vm *v, objectjumpinterfaceref *iref, double **vertexposn) {
+    iref->vertexposn=vertexposn;
+    if (iref->g==0) iref->interfacesize=1.0;
+    else if (!functional_elementsize(v, iref->mesh, iref->g, iref->id, iref->nv, iref->vid, &iref->interfacesize)) return false;
+
+    return jump_preparenormal(v, iref);
+}
+
+static bool jump_prepareinterfaceref(vm *v, objectmesh *mesh, jumpref *ref, elementid id, int nv, int *vid, double **vertexposn, int *parents, objectjumpinterfaceref *iref) {
     int plusnv=0, minusnv=0;
     int *plusvid=NULL, *minusvid=NULL;
 
@@ -5255,6 +5355,11 @@ static bool jump_prepareinterfaceref(vm *v, objectmesh *mesh, jumpref *ref, elem
         return false;
     }
 
+    if (!jump_preparegeometry(v, iref, vertexposn)) {
+        jump_clearinterfaceref(iref);
+        return false;
+    }
+
     vm_settlvar(v, jumpinterfacehandle, MORPHO_OBJECT(iref));
     return true;
 }
@@ -5265,16 +5370,23 @@ static bool jump_prepareinterfaceref(vm *v, objectmesh *mesh, jumpref *ref, elem
 static bool jump_scan_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *r, double *out) {
     jumpref *ref = (jumpref *) r;
     int nparents=0, *parents=NULL;
+    double *x[nv];
 
     if (!jump_getadjacentparents(ref, id, &nparents, &parents)) return false;
 
     /* Boundary interfaces or malformed topology are ignored for now. */
     if (nparents!=2) { *out=0.0; return true; }
 
-    objectjumpinterfaceref iref;
-    if (!jump_prepareinterfaceref(v, mesh, ref, id, nv, vid, parents, &iref)) return false;
+    if (!jump_getinterfacevertexpositions(mesh, nv, vid, x)) return false;
 
-    fprintf(stderr, "Jump interface %d -> parent elements %d, %d\n", id, iref.plusid, iref.minusid);
+    objectjumpinterfaceref iref;
+    if (!jump_prepareinterfaceref(v, mesh, ref, id, nv, vid, x, parents, &iref)) return false;
+
+    fprintf(stderr, "Jump interface %d -> parent elements %d, %d normal [", id, iref.plusid, iref.minusid);
+    for (int i=0; i<mesh->dim; i++) {
+        fprintf(stderr, "%s%.15g", (i>0 ? ", " : ""), iref.normal->elements[i]);
+    }
+    fprintf(stderr, "]\n");
 
     /* Placeholder until the two-sided trace machinery is implemented. */
     *out=0.0;

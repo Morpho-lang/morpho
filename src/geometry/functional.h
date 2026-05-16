@@ -61,6 +61,7 @@
 #define GRAD_FUNCTION                  "grad"
 #define HESS_FUNCTION                  "hess"
 #define CGTENSOR_FUNCTION              "cgtensor"
+#define JUMPDN_FUNCTION                "jumpdn"
 
 /* Functional names */
 #define LENGTH_CLASSNAME               "Length"
@@ -81,6 +82,7 @@
 #define LINEINTEGRAL_CLASSNAME         "LineIntegral"
 #define AREAINTEGRAL_CLASSNAME         "AreaIntegral"
 #define VOLUMEINTEGRAL_CLASSNAME       "VolumeIntegral"
+#define JUMP_CLASSNAME                 "Jump"
 #define NEMATIC_CLASSNAME              "Nematic"
 #define NEMATICELECTRIC_CLASSNAME      "NematicElectric"
 
@@ -117,6 +119,9 @@
 
 #define INTEGRAL_SPCLFN                "IntgrlSpclFn"
 #define INTEGRAL_SPCLFN_MSG            "Special function '%s' must not be called outside of an Integral."
+
+#define JUMP_UNIMPL                    "JumpUnimpl"
+#define JUMP_UNIMPL_MSG                "Jump is not implemented yet."
 
 #define INTEGRAL_NFLDS                 "IntgrlNFlds"
 #define INTEGRAL_NFLDS_MSG             "Incorrect number of Fields provided for integrand function."

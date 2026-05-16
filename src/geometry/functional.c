@@ -9,6 +9,7 @@
 
 #include <float.h>
 #include <math.h>
+#include <stdio.h>
 
 #include "functional.h"
 #include "morpho.h"
@@ -3917,6 +3918,8 @@ typedef struct {
     bool weightbyref; // Use reference mesh for the element
 } integralref;
 
+typedef struct jumpref_s jumpref;
+
 /* ----------------------------------------------
  * Integrand functions
  * ---------------------------------------------- */
@@ -3988,6 +3991,72 @@ objectintegralelementref *integral_getelementref(vm *v) {
     vm_gettlvar(v, elementhandle, &elref);
     if (MORPHO_ISINTEGRALELEMENTREF(elref)) return MORPHO_GETINTEGRALELEMENTREF(elref);
     
+    return NULL;
+}
+
+/* ----------------------------------------------
+ * Jump interface references
+ * ---------------------------------------------- */
+
+/** Thread-local interface context for Jump functionals. */
+typedef struct {
+    object obj;
+    objectmesh *mesh;      // The current mesh object
+
+    jumpref *jref;         // Shared Jump reference
+
+    grade g;               // Interface grade
+    elementid id;          // Interface id
+    int nv;                // Number of interface vertices
+    int *vid;              // Interface vertex ids
+    double **vertexposn;   // Interface vertex positions
+    double interfacesize;  // Size/measure of the interface
+
+    elementid plusid;      // Canonical + parent element id
+    elementid minusid;     // Canonical - parent element id
+
+    int plusnv, minusnv;   // Number of vertices in parent elements
+    int *plusvid, *minusvid; // Vertex ids in parent elements
+
+    objectmatrix *normal;  // Canonical interface normal
+
+    value *qplusgrad;      // Per-side cached gradients, later
+    value *qminusgrad;
+    value *qplushess;      // Per-side cached Hessians, later
+    value *qminushess;
+} objectjumpinterfaceref;
+
+size_t objectjumpinterfaceref_sizefn(object *obj) {
+    return sizeof(objectjumpinterfaceref);
+}
+
+void objectjumpinterfaceref_printfn(object *obj, void *v) {
+    morpho_printf(v, "<JumpInterfaceRef>");
+}
+
+objecttypedefn objectjumpinterfacerefdefn = {
+    .printfn=objectjumpinterfaceref_printfn,
+    .markfn=NULL,
+    .freefn=NULL,
+    .sizefn=objectjumpinterfaceref_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
+};
+
+objecttype objectjumpinterfacereftype;
+#define OBJECT_JUMPINTERFACEREF objectjumpinterfacereftype
+
+#define MORPHO_ISJUMPINTERFACEREF(val) object_istype(val, OBJECT_JUMPINTERFACEREF)
+#define MORPHO_GETJUMPINTERFACEREF(val) ((objectjumpinterfaceref *) MORPHO_GETOBJECT(val))
+#define MORPHO_STATICJUMPINTERFACEREF(mesh, grade, id, nv, vid) { .obj.type=OBJECT_JUMPINTERFACEREF, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .mesh=mesh, .g=grade, .id=id, .nv=nv, .vid=vid, .normal=NULL, .qplusgrad=NULL, .qminusgrad=NULL, .qplushess=NULL, .qminushess=NULL }
+
+int jumpinterfacehandle;
+
+static objectjumpinterfaceref *jump_getinterfaceref(vm *v) {
+    value iref=MORPHO_NIL;
+    vm_gettlvar(v, jumpinterfacehandle, &iref);
+    if (MORPHO_ISJUMPINTERFACEREF(iref)) return MORPHO_GETJUMPINTERFACEREF(iref);
+
     return NULL;
 }
 
@@ -5056,6 +5125,156 @@ MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, VolumeIntegral_gradient, BUILTIN_FLAGS
 MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, VolumeIntegral_fieldgradient, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
+/* ----------------------------------------------
+ * Jump
+ * ---------------------------------------------- */
+
+struct jumpref_s {
+    integralref integral;
+    grade parentgrade;
+    grade interfacegrade;
+    objectsparse *interfaceparents;
+    objectsparse *parentvertices;
+};
+
+static value Jump_notimplemented(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, JUMP_UNIMPL);
+    return MORPHO_NIL;
+}
+
+/** Initialize a Jump object.
+    For now this matches the existing integral optional-argument surface:
+    'method', 'mref' and 'weightbyreference'. */
+static value Jump_init(vm *v, int nargs, value *args) {
+    return LineIntegral_init(v, nargs, args);
+}
+
+/** Prepare a jump reference.
+    For now this only identifies the codimension-1 interface grade and the
+    interface-to-parent incidence matrix needed to find adjacent elements. */
+static bool jump_prepareref(objectinstance *self, objectmesh *mesh, objectselection *sel, jumpref *ref) {
+    if (!integral_prepareref(self, mesh, 0, sel, &ref->integral)) return false;
+
+    ref->parentgrade=mesh_maxgrade(mesh);
+    if (ref->parentgrade<1) return false;
+
+    ref->interfacegrade=ref->parentgrade-1;
+    ref->interfaceparents=mesh_addconnectivityelement(mesh, ref->parentgrade, ref->interfacegrade);
+    ref->parentvertices=mesh_getconnectivityelement(mesh, 0, ref->parentgrade);
+
+    return (ref->interfaceparents!=NULL && ref->parentvertices!=NULL);
+}
+
+/** Get the adjacent parent elements for an interface. */
+static bool jump_getadjacentparents(jumpref *ref, elementid interfaceid, int *nparents, int **parents) {
+    if (!ref->interfaceparents) return false;
+    return mesh_getconnectivity(ref->interfaceparents, interfaceid, nparents, parents);
+}
+
+static void jump_orderparents(int *parents, elementid *plusid, elementid *minusid) {
+    if (parents[0]<parents[1]) {
+        *plusid=parents[0]; *minusid=parents[1];
+    } else {
+        *plusid=parents[1]; *minusid=parents[0];
+    }
+}
+
+static bool jump_prepareinterfaceref(vm *v, objectmesh *mesh, jumpref *ref, elementid id, int nv, int *vid, int *parents, objectjumpinterfaceref *iref) {
+    int plusnv=0, minusnv=0;
+    int *plusvid=NULL, *minusvid=NULL;
+
+    *iref = (objectjumpinterfaceref) MORPHO_STATICJUMPINTERFACEREF(mesh, ref->interfacegrade, id, nv, vid);
+    iref->jref=ref;
+
+    jump_orderparents(parents, &iref->plusid, &iref->minusid);
+
+    if (!mesh_getconnectivity(ref->parentvertices, iref->plusid, &plusnv, &plusvid)) return false;
+    if (!mesh_getconnectivity(ref->parentvertices, iref->minusid, &minusnv, &minusvid)) return false;
+
+    iref->plusnv=plusnv;
+    iref->plusvid=plusvid;
+    iref->minusnv=minusnv;
+    iref->minusvid=minusvid;
+
+    vm_settlvar(v, jumpinterfacehandle, MORPHO_OBJECT(iref));
+    return true;
+}
+
+/** Basic Jump scan over codimension-1 entities.
+    This currently only identifies interior interfaces by checking that they
+    have exactly two adjacent parent elements. */
+static bool jump_scan_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *r, double *out) {
+    jumpref *ref = (jumpref *) r;
+    int nparents=0, *parents=NULL;
+
+    if (!jump_getadjacentparents(ref, id, &nparents, &parents)) return false;
+
+    /* Boundary interfaces or malformed topology are ignored for now. */
+    if (nparents!=2) { *out=0.0; return true; }
+
+    objectjumpinterfaceref iref;
+    if (!jump_prepareinterfaceref(v, mesh, ref, id, nv, vid, parents, &iref)) return false;
+
+    fprintf(stderr, "Jump interface %d -> parent elements %d, %d\n", id, iref.plusid, iref.minusid);
+
+    /* Placeholder until the two-sided trace machinery is implemented. */
+    *out=0.0;
+    return true;
+}
+
+static value Jump_integrand(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    jumpref ref;
+    value out=MORPHO_NIL;
+
+    if (functional_validateargs(v, nargs, args, &info)) {
+        if (jump_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, info.sel, &ref)) {
+            info.g=ref.interfacegrade;
+            info.integrand=jump_scan_integrand;
+            info.ref=&ref;
+            functional_mapintegrand(v, &info, &out);
+        } else morpho_runtimeerror(v, JUMP_UNIMPL);
+    }
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+    return out;
+}
+
+static value Jump_total(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    jumpref ref;
+    value out=MORPHO_NIL;
+
+    if (functional_validateargs(v, nargs, args, &info)) {
+        if (jump_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, info.sel, &ref)) {
+            info.g=ref.interfacegrade;
+            info.integrand=jump_scan_integrand;
+            info.ref=&ref;
+            functional_sumintegrand(v, &info, &out);
+        } else morpho_runtimeerror(v, JUMP_UNIMPL);
+    }
+
+    return out;
+}
+
+static value integral_jumpdnfn(vm *v, int nargs, value *args) {
+    objectintegralelementref *elref = integral_getelementref(v);
+    if (!elref) {
+        morpho_runtimeerror(v, INTEGRAL_SPCLFN, JUMPDN_FUNCTION);
+    } else {
+        morpho_runtimeerror(v, JUMP_UNIMPL);
+    }
+    return MORPHO_NIL;
+}
+
+MORPHO_BEGINCLASS(Jump)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Jump_init, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Jump_integrand, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Jump_total, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Jump_notimplemented, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Jump_notimplemented, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Jump_notimplemented, BUILTIN_FLAGSEMPTY)
+MORPHO_ENDCLASS
+
 /* **********************************************************************
  * Initialization
  * ********************************************************************** */
@@ -5109,6 +5328,7 @@ void functional_initialize(void) {
     builtin_addclass(LINEINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineIntegral), objclass);
     builtin_addclass(AREAINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(AreaIntegral), objclass);
     builtin_addclass(VOLUMEINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(VolumeIntegral), objclass);
+    builtin_addclass(JUMP_CLASSNAME, MORPHO_GETCLASSDEFINITION(Jump), objclass);
     builtin_addclass(NEMATIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(Nematic), objclass);
     builtin_addclass(NEMATICELECTRIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(NematicElectric), objclass);
 
@@ -5117,6 +5337,7 @@ void functional_initialize(void) {
     builtin_addfunction(GRAD_FUNCTION, integral_gradfn, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(HESS_FUNCTION, integral_hessfn, BUILTIN_FLAGSEMPTY);
     builtin_addfunction(CGTENSOR_FUNCTION, integral_cgfn, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(JUMPDN_FUNCTION, integral_jumpdnfn, BUILTIN_FLAGSEMPTY);
 
     morpho_defineerror(VOLUMEENCLOSED_ZERO, ERROR_HALT, VOLUMEENCLOSED_ZERO_MSG);
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
@@ -5148,11 +5369,14 @@ void functional_initialize(void) {
     morpho_defineerror(INTEGRAL_SPCLFN, ERROR_HALT, INTEGRAL_SPCLFN_MSG);
     morpho_defineerror(INTEGRAL_GRDEVL, ERROR_HALT, INTEGRAL_GRDEVL_MSG);
     morpho_defineerror(INTEGRAL_HSSEVL, ERROR_HALT, INTEGRAL_HSSEVL_MSG);
+    morpho_defineerror(JUMP_UNIMPL, ERROR_HALT, JUMP_UNIMPL_MSG);
     
     functional_poolinitialized = false;
     
     objectintegralelementreftype=object_addtype(&objectintegralelementrefdefn);
+    objectjumpinterfacereftype=object_addtype(&objectjumpinterfacerefdefn);
     elementhandle=vm_addtlvar();
+    jumpinterfacehandle=vm_addtlvar();
     tangenthandle=vm_addtlvar();
     normlhandle=vm_addtlvar();
     cauchygreenhandle=vm_addtlvar();

@@ -5137,6 +5137,17 @@ struct jumpref_s {
     objectsparse *parentvertices;
 };
 
+static bool jump_preparetopology(objectmesh *mesh, jumpref *ref) {
+    ref->parentgrade=mesh_maxgrade(mesh);
+    if (ref->parentgrade<1) return false;
+
+    ref->interfacegrade=ref->parentgrade-1;
+    ref->interfaceparents=mesh_addconnectivityelement(mesh, ref->parentgrade, ref->interfacegrade);
+    ref->parentvertices=mesh_getconnectivityelement(mesh, 0, ref->parentgrade);
+
+    return (ref->interfaceparents!=NULL && ref->parentvertices!=NULL);
+}
+
 static value Jump_notimplemented(vm *v, int nargs, value *args) {
     morpho_runtimeerror(v, JUMP_UNIMPL);
     return MORPHO_NIL;
@@ -5150,19 +5161,16 @@ static value Jump_init(vm *v, int nargs, value *args) {
 }
 
 /** Prepare a jump reference.
-    For now this only identifies the codimension-1 interface grade and the
-    interface-to-parent incidence matrix needed to find adjacent elements. */
-static bool jump_prepareref(objectinstance *self, objectmesh *mesh, objectselection *sel, jumpref *ref) {
-    if (!integral_prepareref(self, mesh, 0, sel, &ref->integral)) return false;
+    Shared functional metadata is handled by integral_prepareref; Jump only adds
+    codimension-1 topology needed for interior-interface traversal. */
+static bool jump_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, jumpref *ref) {
+    ref->parentgrade=0;
+    ref->interfacegrade=0;
+    ref->interfaceparents=NULL;
+    ref->parentvertices=NULL;
 
-    ref->parentgrade=mesh_maxgrade(mesh);
-    if (ref->parentgrade<1) return false;
-
-    ref->interfacegrade=ref->parentgrade-1;
-    ref->interfaceparents=mesh_addconnectivityelement(mesh, ref->parentgrade, ref->interfacegrade);
-    ref->parentvertices=mesh_getconnectivityelement(mesh, 0, ref->parentgrade);
-
-    return (ref->interfaceparents!=NULL && ref->parentvertices!=NULL);
+    if (!integral_prepareref(self, mesh, g, sel, &ref->integral)) return false;
+    return jump_preparetopology(mesh, ref);
 }
 
 /** Get the adjacent parent elements for an interface. */
@@ -5228,7 +5236,7 @@ static value Jump_integrand(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
 
     if (functional_validateargs(v, nargs, args, &info)) {
-        if (jump_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, info.sel, &ref)) {
+        if (jump_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
             info.g=ref.interfacegrade;
             info.integrand=jump_scan_integrand;
             info.ref=&ref;
@@ -5245,7 +5253,7 @@ static value Jump_total(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
 
     if (functional_validateargs(v, nargs, args, &info)) {
-        if (jump_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, info.sel, &ref)) {
+        if (jump_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
             info.g=ref.interfacegrade;
             info.integrand=jump_scan_integrand;
             info.ref=&ref;

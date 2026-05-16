@@ -47,6 +47,10 @@
 
 #define INTEGRAL_METHOD_PROPERTY              "method"
 
+#define JUMP_STRATEGY_LABEL                   "strategy"
+#define JUMP_STRATEGY_QUADRATURE              "quadrature"
+#define JUMP_STRATEGY_CENTROID                "centroid"
+
 /* Functional methods */
 #define FUNCTIONAL_INTEGRAND_METHOD    "integrand"
 #define FUNCTIONAL_TOTAL_METHOD        "total"

@@ -4239,6 +4239,7 @@ objectintegralelementref *integral_getelementref(vm *v) {
 typedef struct {
     object obj;
     objectmesh *mesh;      // The current mesh object
+    vm *v;                 // Worker VM for callbacks on this interface
 
     jumpref *jref;         // Shared Jump reference
 
@@ -4293,7 +4294,7 @@ objecttype objectjumpinterfacereftype;
 
 #define MORPHO_ISJUMPINTERFACEREF(val) object_istype(val, OBJECT_JUMPINTERFACEREF)
 #define MORPHO_GETJUMPINTERFACEREF(val) ((objectjumpinterfaceref *) MORPHO_GETOBJECT(val))
-#define MORPHO_STATICJUMPINTERFACEREF(mesh, grade, id, nv, vid) { .obj.type=OBJECT_JUMPINTERFACEREF, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .mesh=mesh, .g=grade, .id=id, .nv=nv, .vid=vid, .qplus={0}, .qminus={0}, .normal=NULL, .pluslambda=NULL, .minuslambda=NULL, .posn=NULL, .qinterpolated=NULL, .qplusgrad=NULL, .qminusgrad=NULL, .qplushess=NULL, .qminushess=NULL }
+#define MORPHO_STATICJUMPINTERFACEREF(mesh, grade, id, nv, vid) { .obj.type=OBJECT_JUMPINTERFACEREF, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .mesh=mesh, .v=NULL, .g=grade, .id=id, .nv=nv, .vid=vid, .qplus={0}, .qminus={0}, .normal=NULL, .pluslambda=NULL, .minuslambda=NULL, .posn=NULL, .qinterpolated=NULL, .qplusgrad=NULL, .qminusgrad=NULL, .qplushess=NULL, .qminushess=NULL }
 
 int jumpinterfacehandle;
 
@@ -5564,6 +5565,14 @@ static void jump_clearjumpside(jumpref *ref, jumpside *trace) {
 static void jump_clearinterfaceref(objectjumpinterfaceref *iref) {
     jump_clearjumpside(iref->jref, &iref->qplus);
     jump_clearjumpside(iref->jref, &iref->qminus);
+    if (iref->pluslambda) {
+        MORPHO_FREE(iref->pluslambda);
+        iref->pluslambda=NULL;
+    }
+    if (iref->minuslambda) {
+        MORPHO_FREE(iref->minuslambda);
+        iref->minuslambda=NULL;
+    }
     if (iref->normal) {
         object_free((object *) iref->normal);
         iref->normal=NULL;
@@ -5667,7 +5676,7 @@ static bool jump_callintegrand(objectjumpinterfaceref *iref, double *posn, doubl
     args[0]=MORPHO_OBJECT(&mposn);
     for (int i=0; i<ref->integral.nfields; i++) args[i+1]=qinterp[i];
 
-    if (!morpho_call(ref->integral.v, ref->integral.integrand, ref->integral.nfields+1, args, &outval)) return false;
+    if (!morpho_call(iref->v, ref->integral.integrand, ref->integral.nfields+1, args, &outval)) return false;
     return morpho_valuetofloat(outval, out);
 }
 
@@ -5795,6 +5804,7 @@ static bool jump_prepareinterfaceref(vm *v, objectmesh *mesh, jumpref *ref, elem
     int *plusvid=NULL, *minusvid=NULL;
 
     *iref = (objectjumpinterfaceref) MORPHO_STATICJUMPINTERFACEREF(mesh, ref->interfacegrade, id, nv, vid);
+    iref->v=v;
     iref->jref=ref;
 
     jump_orderparents(parents, &iref->plusid, &iref->minusid);
@@ -5806,10 +5816,19 @@ static bool jump_prepareinterfaceref(vm *v, objectmesh *mesh, jumpref *ref, elem
     iref->plusvid=plusvid;
     iref->minusnv=minusnv;
     iref->minusvid=minusvid;
+    iref->pluslambda=MORPHO_MALLOC(sizeof(double)*iref->plusnv);
+    iref->minuslambda=MORPHO_MALLOC(sizeof(double)*iref->minusnv);
+    if (!iref->pluslambda || !iref->minuslambda) {
+        jump_clearinterfaceref(iref);
+        return false;
+    }
 
-    if (!jump_preparejumpside(ref, iref->plusnv, iref->plusvid, &iref->qplus)) return false;
+    if (!jump_preparejumpside(ref, iref->plusnv, iref->plusvid, &iref->qplus)) {
+        jump_clearinterfaceref(iref);
+        return false;
+    }
     if (!jump_preparejumpside(ref, iref->minusnv, iref->minusvid, &iref->qminus)) {
-        jump_clearjumpside(ref, &iref->qplus);
+        jump_clearinterfaceref(iref);
         return false;
     }
 
@@ -5818,7 +5837,6 @@ static bool jump_prepareinterfaceref(vm *v, objectmesh *mesh, jumpref *ref, elem
         return false;
     }
 
-    vm_settlvar(v, jumpinterfacehandle, MORPHO_OBJECT(iref));
     return true;
 }
 
@@ -5830,8 +5848,6 @@ static bool jump_scan_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
     int nparents=0, *parents=NULL;
     double *x[nv];
 
-    ref->integral.v=v;
-
     if (!jump_getadjacentparents(ref, id, &nparents, &parents)) return false;
 
     /* Boundary interfaces or malformed topology are ignored for now. */
@@ -5841,15 +5857,13 @@ static bool jump_scan_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
 
     objectjumpinterfaceref iref;
     if (!jump_prepareinterfaceref(v, mesh, ref, id, nv, vid, x, parents, &iref)) return false;
-
-    double pluslambda[iref.plusnv], minuslambda[iref.minusnv];
-    iref.pluslambda=pluslambda;
-    iref.minuslambda=minuslambda;
+    vm_settlvar(v, jumpinterfacehandle, MORPHO_OBJECT(&iref));
 
     if (ref->strategy==JUMP_STRATEGY_CENTROID_MODE || ref->interfacegrade==0) {
         double posn[mesh->dim];
         jump_centroid(mesh->dim, nv, x, posn);
         if (!jump_callintegrand(&iref, posn, out)) {
+            vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
             jump_clearinterfaceref(&iref);
             return false;
         }
@@ -5857,16 +5871,19 @@ static bool jump_scan_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
     } else if (ref->strategy==JUMP_STRATEGY_QUADRATURE_MODE) {
         double err=0.0;
         if (!integrate(jump_integrandfn, MORPHO_GETDICTIONARY(ref->integral.method), morpho_geterror(v), mesh->dim, ref->interfacegrade, x, 0, NULL, &iref, out, &err)) {
+            vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
             jump_clearinterfaceref(&iref);
             return false;
         }
         *out *= iref.interfacesize;
     } else {
         morpho_runtimeerror(v, JUMP_UNIMPL);
+        vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
         jump_clearinterfaceref(&iref);
         return false;
     }
 
+    vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
     jump_clearinterfaceref(&iref);
     return true;
 }

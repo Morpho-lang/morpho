@@ -5193,11 +5193,6 @@ static bool jump_preparestrategy(jumpref *ref) {
     return false;
 }
 
-static value Jump_notimplemented(vm *v, int nargs, value *args) {
-    morpho_runtimeerror(v, JUMP_UNIMPL);
-    return MORPHO_NIL;
-}
-
 /** Initialize a Jump object.
     For now this matches the existing integral optional-argument surface:
     'method', 'mref' and 'weightbyreference'. */
@@ -5220,10 +5215,71 @@ static bool jump_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
     return jump_preparestrategy(ref);
 }
 
+/** Clone a jump reference with a substituted field. */
+static void *jump_cloneref(void *ref, objectfield *field, objectfield *sub) {
+    jumpref *nref = (jumpref *) ref;
+    jumpref *clone = MORPHO_MALLOC(sizeof(jumpref));
+
+    if (clone) {
+        *clone = *nref;
+        clone->integral.originalfields=nref->integral.originalfields;
+        clone->integral.fields=MORPHO_MALLOC(sizeof(value)*clone->integral.nfields);
+        if (!clone->integral.fields) { MORPHO_FREE(clone); return NULL; }
+
+        for (int i=0; i<clone->integral.nfields; i++) {
+            clone->integral.fields[i]=nref->integral.fields[i];
+            if (MORPHO_ISFIELD(nref->integral.fields[i]) &&
+                MORPHO_GETFIELD(nref->integral.fields[i])==field) {
+                clone->integral.fields[i]=MORPHO_OBJECT(sub);
+            }
+        }
+    }
+
+    return clone;
+}
+
+/** Free a cloned jump reference. */
+static void jump_freeref(void *ref) {
+    jumpref *nref = (jumpref *) ref;
+    MORPHO_FREE(nref->integral.fields);
+    MORPHO_FREE(ref);
+}
+
 /** Get the adjacent parent elements for an interface. */
 static bool jump_getadjacentparents(jumpref *ref, elementid interfaceid, int *nparents, int **parents) {
     if (!ref->interfaceparents) return false;
     return mesh_getconnectivity(ref->interfaceparents, interfaceid, nparents, parents);
+}
+
+/** Return mesh vertices outside the interface that still influence the jump term
+    through the two adjacent parent elements. */
+static bool jump_dependencies(functional_mapinfo *info, elementid id, varray_elementid *out) {
+    jumpref *ref = (jumpref *) info->ref;
+    int nparents=0, *parents=NULL;
+
+    if (!jump_getadjacentparents(ref, id, &nparents, &parents)) return false;
+    if (nparents!=2) return true;
+
+    int interface_nv=0, *interface_vid=NULL;
+    objectsparse *ifaceverts=NULL;
+    int n=0;
+
+    if (!functional_countelements(NULL, info->mesh, ref->interfacegrade, &n, &ifaceverts)) return false;
+    (void) n;
+    if (!ifaceverts) return false;
+    if (!sparseccs_getrowindices(&ifaceverts->ccs, id, &interface_nv, &interface_vid)) return false;
+
+    for (int p=0; p<nparents; p++) {
+        int parent_nv=0, *parent_vid=NULL;
+        if (!mesh_getconnectivity(ref->parentvertices, parents[p], &parent_nv, &parent_vid)) return false;
+        for (int j=0; j<parent_nv; j++) {
+            if (!functional_containsvertex(interface_nv, interface_vid, parent_vid[j])) {
+                varray_elementidwriteunique(out, parent_vid[j]);
+            }
+        }
+    }
+
+    return true;
 }
 
 static bool jump_preparejumpside(jumpref *ref, int nv, int *vid, jumpside *trace) {
@@ -5601,6 +5657,43 @@ static value Jump_total(vm *v, int nargs, value *args) {
     return out;
 }
 
+static value Jump_gradient(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    jumpref ref;
+    value out=MORPHO_NIL;
+
+    if (functional_validateargs(v, nargs, args, &info)) {
+        if (jump_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
+            info.g=ref.interfacegrade;
+            info.integrand=jump_scan_integrand;
+            info.dependencies=jump_dependencies;
+            info.ref=&ref;
+            functional_mapnumericalgradient(v, &info, &out);
+        } else morpho_runtimeerror(v, JUMP_UNIMPL);
+    }
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+    return out;
+}
+
+static value Jump_fieldgradient(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    jumpref ref;
+    value out=MORPHO_NIL;
+
+    if (functional_validateargs(v, nargs, args, &info)) {
+        if (jump_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
+            info.g=ref.interfacegrade;
+            info.integrand=jump_scan_integrand;
+            info.cloneref=jump_cloneref;
+            info.freeref=jump_freeref;
+            info.ref=&ref;
+            functional_mapnumericalfieldgradient(v, &info, &out);
+        } else morpho_runtimeerror(v, JUMP_UNIMPL);
+    }
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+    return out;
+}
+
 static value integral_jumpdnfn(vm *v, int nargs, value *args) {
     objectjumpinterfaceref *iref = jump_getinterfaceref(v);
     if (!iref) {
@@ -5641,9 +5734,8 @@ MORPHO_BEGINCLASS(Jump)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Jump_init, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Jump_integrand, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Jump_total, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Jump_notimplemented, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Jump_notimplemented, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Jump_notimplemented, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Jump_gradient, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Jump_fieldgradient, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

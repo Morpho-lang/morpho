@@ -23,7 +23,3 @@ print (j.gradient(m) - numericalgradient(j, m)).norm() < tol
 
 print (j.fieldgradient(m, f) - numericalfieldgradient(j, m, f)).linearize().norm() < tol
 // expect: true
-
-print (j.gradient(m) - numericalgradient(j, m)).norm() 
-
-print (j.fieldgradient(m, f) - numericalfieldgradient(j, m, f)).linearize().norm()

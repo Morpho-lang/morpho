@@ -30,6 +30,10 @@ value functional_gradeproperty;
 value functional_fieldproperty;
 //static value functional_functionproperty;
 
+typedef struct jumpref_s jumpref;
+static bool jump_getadjacentparents(jumpref *ref, elementid interfaceid, int *nparents, int **parents);
+static void jump_orderparents(int *parents, elementid *plusid, elementid *minusid);
+
 /* **********************************************************************
  * Utility functions
  * ********************************************************************** */
@@ -1315,12 +1319,51 @@ bool functional_numericalfieldgrad(vm *v, objectmesh *mesh, elementid eid, objec
     return true;
 }
 
+/** Computes the field gradient of element eid with respect to a single field dof. */
+bool functional_numericalfieldgradentry(vm *v, objectmesh *mesh, elementid eid, objectfield *field, grade g, elementid i, int indx, int nv, int *vid, functional_integrand *integrand, void *ref, objectfield *grad) {
+    double fr, fl, eps=1e-6;
+    unsigned int nentries;
+    double *entry, *gentry;
+
+    if (!field_getelementaslist(field, g, i, indx, &nentries, &entry)) return false;
+    if (!field_getelementaslist(grad, g, i, indx, &nentries, &gentry)) return false;
+
+    for (unsigned int j=0; j<nentries; j++) {
+        double f0=entry[j];
+        eps=functional_fdstepsize(f0, 1);
+
+        entry[j]=f0+eps;
+        if (!(*integrand)(v, mesh, eid, nv, vid, ref, &fr)) return false;
+
+        entry[j]=f0-eps;
+        if (!(*integrand)(v, mesh, eid, nv, vid, ref, &fl)) return false;
+
+        entry[j]=f0;
+        gentry[j]+=(fr-fl)/(2*eps);
+    }
+
+    return true;
+}
+
 typedef struct {
+    functional_mapinfo *info;
     objectfield *field;
     functional_integrand *integrand;
     fespace *disc;
+    objectsparse *conn;
     void *ref;
 } functional_numericalfieldgradientref;
+
+/** Reevaluate a dependent element for one perturbed field dof. */
+static bool functional_numericalremotefieldgrad(vm *v, functional_numericalfieldgradientref *tref, elementid remoteid, grade g, elementid i, int indx, objectfield *grad) {
+    int nv=(tref->info->g==0 ? 1 : 0), *vid=(tref->info->g==0 ? &remoteid : NULL);
+
+    if (tref->conn) {
+        if (!sparseccs_getrowindices(&tref->conn->ccs, remoteid, &nv, &vid)) return false;
+    }
+
+    return functional_numericalfieldgradentry(v, tref->info->mesh, remoteid, tref->field, g, i, indx, nv, vid, tref->integrand, tref->ref, grad);
+}
 
 /** Computes the gradient of element id with respect to its constituent vertices and any dependencies */
 bool functional_numericalfieldgradientmapfn(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out) {
@@ -1332,13 +1375,41 @@ bool functional_numericalfieldgradientmapfn(vm *v, objectmesh *mesh, elementid i
         
         if (fespace_doftofieldindx(tref->field, tref->disc, nv, vid, findx)) {
             for (int k=0; k<nnodes; k++) {
-                if (!functional_numericalfieldgrad(v, mesh, id, tref->field, findx[k].g, findx[k].id, nv, vid, tref->integrand, tref->ref, out)) return false;
+                if (!functional_numericalfieldgradentry(v, mesh, id, tref->field, findx[k].g, findx[k].id, findx[k].indx, nv, vid, tref->integrand, tref->ref, out)) return false;
+
+                if (tref->info->dependencies) {
+                    varray_elementid dependencies;
+                    varray_elementidinit(&dependencies);
+                    if ((tref->info->dependencies)(tref->info, id, &dependencies)) {
+                        for (int j=0; j<dependencies.count; j++) {
+                            if (!functional_numericalremotefieldgrad(v, tref, dependencies.data[j], findx[k].g, findx[k].id, findx[k].indx, out)) {
+                                varray_elementidclear(&dependencies);
+                                return false;
+                            }
+                        }
+                    }
+                    varray_elementidclear(&dependencies);
+                }
             }
         }
         
     } else {
         for (elementid k=0; k<nv; k++) {
             if (!functional_numericalfieldgrad(v, mesh, id, tref->field, MESH_GRADE_VERTEX, vid[k], nv, vid, tref->integrand, tref->ref, out)) return false;
+
+            if (tref->info->dependencies) {
+                varray_elementid dependencies;
+                varray_elementidinit(&dependencies);
+                if ((tref->info->dependencies)(tref->info, id, &dependencies)) {
+                    for (int j=0; j<dependencies.count; j++) {
+                        if (!functional_numericalremotefieldgrad(v, tref, dependencies.data[j], MESH_GRADE_VERTEX, vid[k], 0, out)) {
+                            varray_elementidclear(&dependencies);
+                            return false;
+                        }
+                    }
+                }
+                varray_elementidclear(&dependencies);
+            }
         }
     }
     
@@ -1377,8 +1448,10 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
         if (info->cloneref) {
             tref[i].ref=(info->cloneref) (info->ref, info->field, fieldclones[i]);
         } else UNREACHABLE("Functional calls numericalfieldgradient but doesn't provide cloneref");
+        tref[i].info=info;
         tref[i].integrand=info->integrand;
         tref[i].field=fieldclones[i];
+        tref[i].conn=mesh_getconnectivityelement(info->mesh, 0, info->g);
         tref[i].disc=NULL;
         if (MORPHO_ISFESPACE(tref[i].field->fnspc)) {
             tref[i].disc=MORPHO_GETFESPACE(tref[i].field->fnspc)->fespace;
@@ -1418,6 +1491,159 @@ functional_mapfieldgradient_cleanup:
     functional_cleanuptasks(v, ntask, task);
     varray_elementidclear(&imageids);
     
+    return success;
+}
+
+typedef struct {
+    functional_mapinfo *info;
+    objectfield *field;
+    fespace *disc;
+    objectsparse *conn;
+    objectsparse *parentvertices;
+    jumpref *ref;
+} jump_numericalfieldgradientref;
+
+static bool jump_getelementvertices(objectsparse *conn, grade g, elementid id, int *nv, int **vid) {
+    if (conn) return sparseccs_getrowindices(&conn->ccs, id, nv, vid);
+    if (g==0) {
+        *nv=1;
+        *vid=&id;
+        return true;
+    }
+    return false;
+}
+
+static bool jump_collectparentfieldentries(jump_numericalfieldgradientref *tref, elementid interfaceid, fieldindx *findxout, int *nentries) {
+    jumpref *ref=tref->ref;
+    int nparents=0, *parents=NULL;
+    int plusnv=0, minusnv=0, *plusvid=NULL, *minusvid=NULL;
+
+    *nentries=0;
+    if (!jump_getadjacentparents(ref, interfaceid, &nparents, &parents)) return false;
+    if (nparents!=2) return true;
+
+    elementid plusid, minusid;
+    jump_orderparents(parents, &plusid, &minusid);
+
+    if (!mesh_getconnectivity(tref->parentvertices, plusid, &plusnv, &plusvid)) return false;
+    if (!mesh_getconnectivity(tref->parentvertices, minusid, &minusnv, &minusvid)) return false;
+
+    fieldindx findx[tref->disc->nnodes];
+    if (!fespace_doftofieldindx(tref->field, tref->disc, plusnv, plusvid, findx)) return false;
+    for (int i=0; i<tref->disc->nnodes; i++) {
+        bool found=false;
+        for (int j=0; j<*nentries; j++) {
+            if (findxout[j].g==findx[i].g && findxout[j].id==findx[i].id && findxout[j].indx==findx[i].indx) { found=true; break; }
+        }
+        if (!found) {
+            findxout[*nentries]=findx[i];
+            (*nentries)++;
+        }
+    }
+
+    if (!fespace_doftofieldindx(tref->field, tref->disc, minusnv, minusvid, findx)) return false;
+    for (int i=0; i<tref->disc->nnodes; i++) {
+        bool found=false;
+        for (int j=0; j<*nentries; j++) {
+            if (findxout[j].g==findx[i].g && findxout[j].id==findx[i].id && findxout[j].indx==findx[i].indx) { found=true; break; }
+        }
+        if (!found) {
+            findxout[*nentries]=findx[i];
+            (*nentries)++;
+        }
+    }
+
+    return true;
+}
+
+static bool jump_numericalfieldgradientmapfn(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out) {
+    jump_numericalfieldgradientref *tref=(jump_numericalfieldgradientref *) ref;
+    fieldindx findx[2*tref->disc->nnodes];
+    int nentries=0;
+
+    if (!jump_collectparentfieldentries(tref, id, findx, &nentries)) return false;
+
+    for (int k=0; k<nentries; k++) {
+        if (!functional_numericalfieldgradentry(v, mesh, id, tref->field, findx[k].g, findx[k].id, findx[k].indx, nv, vid, tref->info->integrand, tref->ref, out)) return false;
+
+        if (tref->info->dependencies) {
+            varray_elementid dependencies;
+            varray_elementidinit(&dependencies);
+            if ((tref->info->dependencies)(tref->info, id, &dependencies)) {
+                for (int j=0; j<dependencies.count; j++) {
+                    int rnv=0, *rvid=NULL;
+                    if (!jump_getelementvertices(tref->conn, tref->info->g, dependencies.data[j], &rnv, &rvid)) {
+                        varray_elementidclear(&dependencies);
+                        return false;
+                    }
+                    if (!functional_numericalfieldgradentry(v, mesh, dependencies.data[j], tref->field, findx[k].g, findx[k].id, findx[k].indx, rnv, rvid, tref->info->integrand, tref->ref, out)) {
+                        varray_elementidclear(&dependencies);
+                        return false;
+                    }
+                }
+            }
+            varray_elementidclear(&dependencies);
+        }
+    }
+
+    return true;
+}
+
+static bool functional_mapjumpnumericalfieldgradient(vm *v, functional_mapinfo *info, objectsparse *parentvertices, void *baseref, value *out) {
+    int success=false;
+    int ntask=morpho_threadnumber();
+    if (ntask<1) ntask=1;
+    functional_task task[ntask];
+
+    varray_elementid imageids;
+    varray_elementidinit(&imageids);
+
+    objectfield *new[ntask];
+    objectfield *fieldclones[ntask];
+    jump_numericalfieldgradientref tref[ntask];
+    for (int i=0; i<ntask; i++) {
+        new[i]=NULL; fieldclones[i]=NULL;
+    }
+
+    if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
+
+    for (int i=0; i<ntask; i++) {
+        new[i]=object_newfield(info->mesh, info->field->prototype, info->field->fnspc, info->field->dof);
+        if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapjumpfieldgradient_cleanup; }
+        field_zero(new[i]);
+
+        fieldclones[i]=field_clone(info->field);
+        tref[i].field=fieldclones[i];
+        tref[i].info=info;
+        tref[i].conn=mesh_getconnectivityelement(info->mesh, 0, info->g);
+        tref[i].parentvertices=parentvertices;
+        tref[i].ref=(jumpref *) ((info->cloneref) ? (info->cloneref)(baseref, info->field, fieldclones[i]) : baseref);
+        if (!tref[i].ref) goto functional_mapjumpfieldgradient_cleanup;
+        tref[i].disc=NULL;
+        if (MORPHO_ISFESPACE(tref[i].field->fnspc)) tref[i].disc=MORPHO_GETFESPACE(tref[i].field->fnspc)->fespace;
+        if (!tref[i].disc) goto functional_mapjumpfieldgradient_cleanup;
+
+        task[i].ref=(void *) &tref[i];
+        task[i].mapfn=jump_numericalfieldgradientmapfn;
+        task[i].result=(void *) new[i];
+    }
+
+    functional_parallelmap(ntask, task);
+
+    for (int i=1; i<ntask; i++) matrix_add(&new[0]->data, &new[i]->data, &new[0]->data);
+
+    success=true;
+    *out=MORPHO_OBJECT(new[0]);
+
+functional_mapjumpfieldgradient_cleanup:
+    for (int i=0; i<ntask; i++) {
+        if (info->freeref && tref[i].ref) (info->freeref)(tref[i].ref);
+        else if (info->cloneref && tref[i].ref) MORPHO_FREE(tref[i].ref);
+        object_free((object *) fieldclones[i]);
+        if (i>0 && new[i]) object_free((object *) new[i]);
+    }
+    functional_cleanuptasks(v, ntask, task);
+    varray_elementidclear(&imageids);
     return success;
 }
 
@@ -5153,6 +5379,7 @@ struct jumpref_s {
     grade parentgrade;
     grade interfacegrade;
     objectsparse *interfaceparents;
+    objectsparse *parentinterfaces;
     objectsparse *parentvertices;
     jumpstrategy strategy;
 };
@@ -5163,9 +5390,10 @@ static bool jump_preparetopology(objectmesh *mesh, jumpref *ref) {
 
     ref->interfacegrade=ref->parentgrade-1;
     ref->interfaceparents=mesh_addconnectivityelement(mesh, ref->parentgrade, ref->interfacegrade);
+    ref->parentinterfaces=mesh_addconnectivityelement(mesh, ref->interfacegrade, ref->parentgrade);
     ref->parentvertices=mesh_getconnectivityelement(mesh, 0, ref->parentgrade);
 
-    return (ref->interfaceparents!=NULL && ref->parentvertices!=NULL);
+    return (ref->interfaceparents!=NULL && ref->parentinterfaces!=NULL && ref->parentvertices!=NULL);
 }
 
 static bool jump_preparestrategy(jumpref *ref) {
@@ -5207,6 +5435,7 @@ static bool jump_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
     ref->parentgrade=0;
     ref->interfacegrade=0;
     ref->interfaceparents=NULL;
+    ref->parentinterfaces=NULL;
     ref->parentvertices=NULL;
     ref->strategy=JUMP_STRATEGY_CENTROID_MODE;
 
@@ -5276,6 +5505,25 @@ static bool jump_dependencies(functional_mapinfo *info, elementid id, varray_ele
             if (!functional_containsvertex(interface_nv, interface_vid, parent_vid[j])) {
                 varray_elementidwriteunique(out, parent_vid[j]);
             }
+        }
+    }
+
+    return true;
+}
+
+/** Return interface elements that share one of the adjacent parent elements. */
+static bool jump_fielddependencies(functional_mapinfo *info, elementid id, varray_elementid *out) {
+    jumpref *ref = (jumpref *) info->ref;
+    int nparents=0, *parents=NULL;
+
+    if (!jump_getadjacentparents(ref, id, &nparents, &parents)) return false;
+    if (nparents!=2) return true;
+
+    for (int p=0; p<nparents; p++) {
+        int nifaces=0, *ifaces=NULL;
+        if (!mesh_getconnectivity(ref->parentinterfaces, parents[p], &nifaces, &ifaces)) return false;
+        for (int j=0; j<nifaces; j++) {
+            if (ifaces[j]!=id) varray_elementidwriteunique(out, ifaces[j]);
         }
     }
 
@@ -5684,10 +5932,11 @@ static value Jump_fieldgradient(vm *v, int nargs, value *args) {
         if (jump_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
             info.g=ref.interfacegrade;
             info.integrand=jump_scan_integrand;
+            info.dependencies=jump_fielddependencies;
             info.cloneref=jump_cloneref;
             info.freeref=jump_freeref;
             info.ref=&ref;
-            functional_mapnumericalfieldgradient(v, &info, &out);
+            functional_mapjumpnumericalfieldgradient(v, &info, ref.parentvertices, &ref, &out);
         } else morpho_runtimeerror(v, JUMP_UNIMPL);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);

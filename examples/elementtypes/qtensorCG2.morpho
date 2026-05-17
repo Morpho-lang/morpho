@@ -64,7 +64,6 @@ class QTensor {
     self.problem.addenergy(anchor, selection=self.bnd, prefactor = self.EA)
 
     // The elastic energy is the grad-squared of the q-tensor
-
     fn elasticity(x, q) {
       var g = grad(q)
       return g[0].inner(g[0]) + g[1].inner(g[1]) 

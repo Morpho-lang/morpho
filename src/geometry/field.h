@@ -76,6 +76,7 @@ extern value field_gradeoption;
 #define FIELD_PROTOTYPE_METHOD   "prototype"
 #define FIELD_MESH_METHOD    "mesh"
 #define FIELD_EVALELEMENT_METHOD "evalElement"
+#define FIELD_ELEMENTDOFS_METHOD "elementDofs"
 #define FIELD_LINEARIZE_METHOD    "linearize"
 #define FIELD__LINEARIZE_METHOD    "__linearize"
 

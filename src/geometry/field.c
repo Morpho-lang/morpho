@@ -1052,6 +1052,55 @@ value Field_evalelement_method(vm *v, int nargs, value *args) {
     return out;
 }
 
+value Field_elementdofs_method(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    objectfield *field=MORPHO_GETFIELD(MORPHO_SELF(args));
+    objectlist *list = NULL;
+    if (!MORPHO_ISFESPACE(field->fnspc)) return out;
+
+    fespace *disc = MORPHO_GETFESPACE(field->fnspc)->fespace;
+    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+        elementid el = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        fieldindx findx[disc->nnodes];
+        if (!field_getelementdofs(field, disc, el, findx)) return out;
+
+        list = object_newlist(0, NULL);
+        if (!list) goto field_elementdofs_cleanup;
+
+        for (int i=0; i<disc->nnodes; i++) {
+            value entries[3] = {
+                MORPHO_INTEGER(findx[i].g),
+                MORPHO_INTEGER(findx[i].id),
+                MORPHO_INTEGER(findx[i].indx)
+            };
+            objecttuple *tuple = object_newtuple(3, entries);
+            if (!tuple) goto field_elementdofs_cleanup;
+            list_append(list, MORPHO_OBJECT(tuple));
+        }
+
+        /* Temporarily append a self reference so everything can be bound in one go. */
+        list_append(list, MORPHO_OBJECT(list));
+        morpho_bindobjects(v, list->val.count, list->val.data);
+        list->val.count--;
+        out = MORPHO_OBJECT(list);
+    }
+
+    return out;
+
+field_elementdofs_cleanup:
+    morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+
+    if (list) {
+        for (unsigned int i=0; i<list->val.count; i++) {
+            value el=list->val.data[i];
+            if (MORPHO_ISOBJECT(el)) object_free(MORPHO_GETOBJECT(el));
+        }
+        object_free((object *) list);
+    }
+
+    return MORPHO_NIL;
+}
+
 /** Get the matrix that stores the Field */
 value Field_linearize(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
@@ -1097,6 +1146,7 @@ MORPHO_METHOD(FIELD_FESPACE_METHOD, Field_fnspace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_PROTOTYPE_METHOD, Field_prototype, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_MESH_METHOD, Field_mesh, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_EVALELEMENT_METHOD, Field_evalelement_method, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FIELD_ELEMENTDOFS_METHOD, Field_elementdofs_method, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_LINEARIZE_METHOD, Field_linearize, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD__LINEARIZE_METHOD, Field_unsafelinearize, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS

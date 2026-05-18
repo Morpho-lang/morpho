@@ -1073,6 +1073,16 @@ value fespace_constructor(vm *v, int nargs, value *args) {
     return out;
 }
 
+value FiniteElementSpace_count(vm *v, int nargs, value *args) {
+    objectfespace *slf = MORPHO_GETFESPACE(MORPHO_SELF(args));
+    return MORPHO_INTEGER(slf->fespace->nnodes);
+}
+
+value FiniteElementSpace_grade(vm *v, int nargs, value *args) {
+    objectfespace *slf = MORPHO_GETFESPACE(MORPHO_SELF(args));
+    return MORPHO_INTEGER(slf->fespace->grade);
+}
+
 value FiniteElementSpace_layout(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     objectfespace *slf = MORPHO_GETFESPACE(MORPHO_SELF(args));
@@ -1127,6 +1137,8 @@ value FiniteElementSpace_nodecoords(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(FiniteElementSpace)
+MORPHO_METHOD(MORPHO_COUNT_METHOD, FiniteElementSpace_count, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FINITEELEMENTSPACE_GRADE_METHOD, FiniteElementSpace_grade, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FINITEELEMENTSPACE_LAYOUT_METHOD, FiniteElementSpace_layout, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FINITEELEMENTSPACE_NODECOORDS_METHOD, FiniteElementSpace_nodecoords, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS

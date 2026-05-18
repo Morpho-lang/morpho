@@ -28,31 +28,8 @@ class CG3MeshRefiner is MeshRefiner {
     return "${b}:${a}"
   }
 
-  _barycentric(a, b, c, p) {
-    var v0 = b-a
-    var v1 = c-a
-    var v2 = p-a
-
-    var d00 = v0.inner(v0)
-    var d01 = v0.inner(v1)
-    var d11 = v1.inner(v1)
-    var d20 = v2.inner(v0)
-    var d21 = v2.inner(v1)
-    var denom = d00*d11 - d01*d01
-
-    var l1 = (d11*d20 - d01*d21)/denom
-    var l2 = (d00*d21 - d01*d20)/denom
-    var l0 = 1-l1-l2
-
-    return [l0, l1, l2]
-  }
-
-  _eval(field, faceid, x, oldverts, oldfaces) {
-    var vids = oldfaces.rowindices(faceid)
-    var a = oldverts.column(vids[0])
-    var b = oldverts.column(vids[1])
-    var c = oldverts.column(vids[2])
-    var lambda = self._barycentric(a, b, c, x)
+  _eval(field, oldmesh, faceid, x) {
+    var lambda = oldmesh.barycentric(field.finiteElementSpace().grade(), faceid, x)
     return field.evalElement(faceid, lambda)
   }
 
@@ -80,8 +57,6 @@ class CG3MeshRefiner is MeshRefiner {
     var nodes = fespace.nodeCoords()
 
     var oldmesh = self.mesh()
-    var oldverts = oldmesh.vertexmatrix()
-    var oldfaces = oldmesh.connectivitymatrix(0, 2)
 
     var newverts = self.new.vertexmatrix()
     var newfaces = self.new.connectivitymatrix(0, 2)
@@ -95,8 +70,8 @@ class CG3MeshRefiner is MeshRefiner {
     var vertexdone = Dictionary()
     var edgedone = Dictionary()
 
-    for (newfid in self.refinemap[2]) {
-      var oldfid = self.refinemap[2][newfid]
+    for (newfid in self.refinemap[fespace.grade()]) {
+      var oldfid = self.refinemap[fespace.grade()][newfid]
       var fvids = newfaces.rowindices(newfid)
 
       for (i in 0...fespace.count()) {
@@ -106,7 +81,7 @@ class CG3MeshRefiner is MeshRefiner {
         var sid = findx[1]
         var indx = findx[2]
         var x = self._point(lambda, fvids, newverts)
-        var val = self._eval(field, oldfid, x, oldverts, oldfaces)
+        var val = self._eval(field, oldmesh, oldfid, x)
 
         if (g==0) {
           var vid = fvids[sid]

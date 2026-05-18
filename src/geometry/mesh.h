@@ -62,6 +62,7 @@ objectmesh *object_newmesh(unsigned int dim, unsigned int nv, double *v);
 #define MESH_REMOVEGRADE_METHOD            "removegrade"
 #define MESH_MAXGRADE_METHOD               "maxgrade"
 #define MESH_ADDSYMMETRY_METHOD            "addsymmetry"
+#define MESH_BARYCENTRIC_METHOD            "barycentric"
 
 #define MESH_TRANSFORM_METHOD              "transform"
 
@@ -120,6 +121,15 @@ DECLARE_VARRAY(elementid, elementid);
 #define MESH_ADDSYMARGS                      "MshAddSymArgs"
 #define MESH_ADDSYMARGS_MSG                  "Method 'addsymmetry' expects an object that provides a method 'transform' and an optional selection."
 
+#define MESH_BARYARGS                        "MshBaryArgs"
+#define MESH_BARYARGS_MSG                    "Method 'barycentric' expects a grade, an element id and a position matrix."
+
+#define MESH_BARYDIM                         "MshBaryDim"
+#define MESH_BARYDIM_MSG                     "Position matrix dimensions inconsistent with mesh."
+
+#define MESH_BARYFAILED                      "MshBaryFailed"
+#define MESH_BARYFAILED_MSG                  "Unable to compute barycentric coordinates for the given element."
+
 #define MESH_ADDSYMMSNGTRNSFRM               "MshAddSymMsngTrnsfrm"
 #define MESH_ADDSYMMSNGTRNSFRM_MSG           "Method 'addsymmetry' expects an object that provides a method 'transform'."
 
@@ -156,6 +166,7 @@ void mesh_resetconnectivity(objectmesh *m);
 bool mesh_getvertexcoordinates(objectmesh *mesh, elementid id, double *val);
 bool mesh_getvertexcoordinatesaslist(objectmesh *mesh, elementid id, double **out);
 bool mesh_getvertexcoordinatesasvalues(objectmesh *mesh, elementid id, value *val);
+bool mesh_getbarycentriccoordinates(objectmesh *mesh, grade g, elementid id, double *x, double *lambda);
 
 bool mesh_getsynonyms(objectmesh *mesh, grade g, elementid id, varray_elementid *synonymids);
 int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, varray_elementid *neighbors);

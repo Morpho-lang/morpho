@@ -163,6 +163,52 @@ bool mesh_getvertexcoordinatesasvalues(objectmesh *mesh, elementid id, value *va
     return success;
 }
 
+bool mesh_getbarycentriccoordinates(objectmesh *mesh, grade g, elementid id, double *x, double *lambda) {
+    if (g<1 || g>mesh_maxgrade(mesh)) return false;
+
+    objectsparse *conn=mesh_getconnectivityelement(mesh, 0, g);
+    if (!conn) return false;
+
+    int nentries, *entries;
+    if (!mesh_getconnectivity(conn, id, &nentries, &entries) || nentries!=g+1) return false;
+
+    double *verts[4];
+    for (int i=0; i<nentries; i++) {
+        if (!mesh_getvertexcoordinatesaslist(mesh, entries[i], &verts[i])) return false;
+    }
+
+    double gramdata[g*g], rhsdata[g], alphadata[g];
+    double dx[mesh->dim], edges[g][mesh->dim];
+    objectmatrix gram = MORPHO_STATICMATRIX(gramdata, g, g);
+    objectmatrix rhs = MORPHO_STATICMATRIX(rhsdata, g, 1);
+    objectmatrix alpha = MORPHO_STATICMATRIX(alphadata, g, 1);
+    matrix_zero(&gram);
+    matrix_zero(&rhs);
+
+    functional_vecsub(mesh->dim, x, verts[0], dx);
+    for (int i=0; i<g; i++) {
+        functional_vecsub(mesh->dim, verts[i+1], verts[0], edges[i]);
+    }
+
+    for (int i=0; i<g; i++) {
+        rhs.elements[i]=functional_vecdot(mesh->dim, edges[i], dx);
+        for (int j=0; j<g; j++) {
+            gram.elements[i+j*g]=functional_vecdot(mesh->dim, edges[i], edges[j]);
+        }
+    }
+    bool success=(matrix_divs(&gram, &rhs, &alpha)==MATRIX_OK);
+    if (success) {
+        double sum=0.0;
+        for (int i=0; i<g; i++) {
+            lambda[i+1]=alpha.elements[i];
+            sum+=alpha.elements[i];
+        }
+        lambda[0]=1.0-sum;
+    }
+
+    return success;
+}
+
 /** Finds the nearest vertex to a point
  * @param[in] mesh - mesh to search
  * @param[in] x - position [should be of mesh->dim
@@ -1276,6 +1322,43 @@ value Mesh_count(vm *v, int nargs, value *args) {
     return out;
 }
 
+value Mesh_barycentric(vm *v, int nargs, value *args) {
+    objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+
+    if (nargs==3 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
+        MORPHO_ISINTEGER(MORPHO_GETARG(args, 1)) &&
+        MORPHO_ISMATRIX(MORPHO_GETARG(args, 2))) {
+        grade g=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        elementid id=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+        objectmatrix *x=MORPHO_GETMATRIX(MORPHO_GETARG(args, 2));
+
+        if (x->nrows!=m->dim || x->ncols!=1) {
+            morpho_runtimeerror(v, MESH_BARYDIM);
+            return MORPHO_NIL;
+        }
+        if (g<1 || g>mesh_maxgrade(m)) {
+            morpho_runtimeerror(v, MESH_BARYFAILED);
+            return MORPHO_NIL;
+        }
+
+        objectmatrix *lambda=object_newmatrix(g+1, 1, true);
+        if (!lambda) {
+            morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+            return MORPHO_NIL;
+        }
+        if (!mesh_getbarycentriccoordinates(m, g, id, x->elements, lambda->elements)) {
+            object_free((object *) lambda);
+            morpho_runtimeerror(v, MESH_BARYFAILED);
+            return MORPHO_NIL;
+        }
+
+        out=morpho_wrapandbind(v, (object *) lambda);
+    } else morpho_runtimeerror(v, MESH_BARYARGS);
+
+    return out;
+}
+
 /** Clones a mesh */
 value Mesh_clone(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
@@ -1302,6 +1385,7 @@ MORPHO_METHOD(MESH_REMOVEGRADE_METHOD, Mesh_removegrade, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_ADDSYMMETRY_METHOD, Mesh_addsymmetry, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MESH_MAXGRADE_METHOD, Mesh_maxgrade, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Mesh_count, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MESH_BARYCENTRIC_METHOD, Mesh_barycentric, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Mesh_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
@@ -1337,6 +1421,9 @@ void mesh_initialize(void) {
     morpho_defineerror(MESH_INVLDID, ERROR_HALT, MESH_INVLDID_MSG);
     morpho_defineerror(MESH_CNNMTXARGS, ERROR_HALT, MESH_CNNMTXARGS_MSG);
     morpho_defineerror(MESH_ADDGRDARGS, ERROR_HALT, MESH_ADDGRDARGS_MSG);
+    morpho_defineerror(MESH_BARYARGS, ERROR_HALT, MESH_BARYARGS_MSG);
+    morpho_defineerror(MESH_BARYDIM, ERROR_HALT, MESH_BARYDIM_MSG);
+    morpho_defineerror(MESH_BARYFAILED, ERROR_HALT, MESH_BARYFAILED_MSG);
     morpho_defineerror(MESH_ADDGRDOOB, ERROR_HALT, MESH_ADDGRDOOB_MSG);
     morpho_defineerror(MESH_ADDSYMARGS, ERROR_HALT, MESH_ADDSYMARGS_MSG);
     morpho_defineerror(MESH_ADDSYMMSNGTRNSFRM, ERROR_HALT, MESH_ADDSYMMSNGTRNSFRM_MSG);

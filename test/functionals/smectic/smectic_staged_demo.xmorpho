@@ -41,65 +41,13 @@ class CG3MeshRefiner is MeshRefiner {
     return [l0, l1, l2]
   }
 
-  _cg3weights(lambda) {
-    var l0 = lambda[0]
-    var l1 = lambda[1]
-    var l2 = lambda[2]
-
-    return [
-      l0*(1 + 4.5*(l0-1)*l0),
-      l1*(1 + 4.5*(l1-1)*l1),
-      l2*(1 + 4.5*(l2-1)*l2),
-      4.5*l0*l1*(3*l0-1),
-      4.5*l0*l1*(3*l1-1),
-      4.5*l1*l2*(3*l1-1),
-      4.5*l1*l2*(3*l2-1),
-      4.5*l0*l2*(3*l2-1),
-      4.5*l0*l2*(3*l0-1),
-      27*l0*l1*l2
-    ]
-  }
-
-  _cg3dofs(field, faceid, faceconn, edgeconn, edgeids, cache) {
-    if (cache.contains(faceid)) return cache[faceid]
-
-    var vids = faceconn.rowindices(faceid)
-    var dofs = []
-
-    for (vid in vids) dofs.append(field[0, vid])
-
-    var ledges = [[vids[0], vids[1]], [vids[1], vids[2]], [vids[2], vids[0]]]
-    for (pair in ledges) {
-      var eid = edgeids[self._edgekey(pair[0], pair[1])]
-      var everts = edgeconn.rowindices(eid)
-      var reversed = everts[0]==pair[1] && everts[1]==pair[0]
-
-      if (reversed) {
-        dofs.append(field[1, eid, 1])
-        dofs.append(field[1, eid, 0])
-      } else {
-        dofs.append(field[1, eid, 0])
-        dofs.append(field[1, eid, 1])
-      }
-    }
-
-    dofs.append(field[2, faceid, 0])
-    cache[faceid] = dofs
-    return dofs
-  }
-
-  _evalcg3(field, faceid, x, oldverts, oldfaces, oldedges, oldedgeids, cache) {
+  _eval(field, faceid, x, oldverts, oldfaces) {
     var vids = oldfaces.rowindices(faceid)
     var a = oldverts.column(vids[0])
     var b = oldverts.column(vids[1])
     var c = oldverts.column(vids[2])
     var lambda = self._barycentric(a, b, c, x)
-    var wts = self._cg3weights(lambda)
-    var dofs = self._cg3dofs(field, faceid, oldfaces, oldedges, oldedgeids, cache)
-    var sum = dofs[0]*0
-
-    for (i in 0...wts.count()) sum += dofs[i]*wts[i]
-    return sum
+    return field.evalElement(faceid, lambda)
   }
 
   adaptcg3field(field) {
@@ -107,17 +55,11 @@ class CG3MeshRefiner is MeshRefiner {
 
     var prototype = field.enumerate(0)
     if (isobject(prototype)) prototype = prototype.clone()
-    var result = Field(self.new, prototype, grade=field.shape(), finiteelementspace=field.finiteelementspace())
+    var result = Field(self.new, prototype, grade=field.shape(), finiteelementspace=field.finiteElementSpace())
 
     var oldmesh = self.mesh()
     var oldverts = oldmesh.vertexmatrix()
     var oldfaces = oldmesh.connectivitymatrix(0, 2)
-    var oldedges = oldmesh.connectivitymatrix(0, 1)
-    var oldedgeids = Dictionary()
-    for (eid in 0...oldmesh.count(1)) {
-      var ev = oldedges.rowindices(eid)
-      oldedgeids[self._edgekey(ev[0], ev[1])] = eid
-    }
 
     var newverts = self.new.vertexmatrix()
     var newfaces = self.new.connectivitymatrix(0, 2)
@@ -130,7 +72,6 @@ class CG3MeshRefiner is MeshRefiner {
 
     var vertexdone = Dictionary()
     var edgedone = Dictionary()
-    var facecache = Dictionary()
 
     for (newfid in self.refinemap[2]) {
       var oldfid = self.refinemap[2][newfid]
@@ -138,8 +79,8 @@ class CG3MeshRefiner is MeshRefiner {
 
       for (vid in fvids) {
         if (vertexdone.contains(vid)) continue
-        result[0, vid] = self._evalcg3(field, oldfid, newverts.column(vid),
-                                       oldverts, oldfaces, oldedges, oldedgeids, facecache)
+        result[0, vid] = self._eval(field, oldfid, newverts.column(vid),
+                                    oldverts, oldfaces)
         vertexdone[vid] = true
       }
 
@@ -152,16 +93,16 @@ class CG3MeshRefiner is MeshRefiner {
         var xa = newverts.column(everts[0])
         var xb = newverts.column(everts[1])
 
-        result[1, eid, 0] = self._evalcg3(field, oldfid, (2*xa+xb)/3,
-                                          oldverts, oldfaces, oldedges, oldedgeids, facecache)
-        result[1, eid, 1] = self._evalcg3(field, oldfid, (xa+2*xb)/3,
-                                          oldverts, oldfaces, oldedges, oldedgeids, facecache)
+        result[1, eid, 0] = self._eval(field, oldfid, (2*xa+xb)/3,
+                                       oldverts, oldfaces)
+        result[1, eid, 1] = self._eval(field, oldfid, (xa+2*xb)/3,
+                                       oldverts, oldfaces)
         edgedone[eid] = true
       }
 
       var centroid = (newverts.column(fvids[0]) + newverts.column(fvids[1]) + newverts.column(fvids[2]))/3
-      result[2, newfid, 0] = self._evalcg3(field, oldfid, centroid,
-                                           oldverts, oldfaces, oldedges, oldedgeids, facecache)
+      result[2, newfid, 0] = self._eval(field, oldfid, centroid,
+                                        oldverts, oldfaces)
     }
 
     return result

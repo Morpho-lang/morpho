@@ -1,0 +1,27 @@
+// Field evalElement method
+
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+m.addgrade(1)
+
+var cg3 = FiniteElementSpace("CG3", grade=2)
+var f = Field(m, fn (x,y) (x+y)^3, finiteelementspace=cg3)
+
+print abs(f.evalElement(0, [1/3,1/3,1/3]) - 8/27) < 1e-10
+// expect: true
+
+print abs(f.evalElement(0, cg3.nodeCoords(9)) - 8/27) < 1e-10
+// expect: true
+
+var cg2 = FiniteElementSpace("CG2", grade=2)
+var g = Field(m, fn (x,y) Matrix([[x,y],[-y,x]]), finiteelementspace=cg2)
+var val = g.evalElement(0, [1/2,1/4,1/4])
+
+print (val - Matrix([[1/4,1/4],[-1/4,1/4]])).norm() < 1e-10
+// expect: true

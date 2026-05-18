@@ -960,6 +960,24 @@ bool fespace_lower(fespace *disc, grade target, fespace **out) {
     return false;
 }
 
+/** Returns the barycentric coordinates of a node in the reference element */
+bool fespace_getnodecoords(fespace *disc, int node, double *lambda) {
+    if (!disc || !lambda) return false;
+    if (node<0 || node>=disc->nnodes) return false;
+
+    double l0 = 1.0;
+
+    for (int i=0; i<disc->grade; i++) {
+        double li = disc->nodes[node*disc->grade+i];
+        lambda[i+1] = li;
+        l0 -= li;
+    }
+
+    lambda[0] = l0;
+
+    return true;
+}
+
 /** Constructs a layout matrix that maps element ids (columns) to degree of freedom indices in a field */
 bool fespace_layout(objectfield *field, fespace *disc, objectsparse **out) {
     objectsparse *conn = mesh_getconnectivityelement(field->mesh, 0, disc->grade);
@@ -1070,8 +1088,47 @@ value FiniteElementSpace_layout(vm *v, int nargs, value *args) {
     return out;
 }
 
+value FiniteElementSpace_nodecoords(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+    objectfespace *slf = MORPHO_GETFESPACE(MORPHO_SELF(args));
+    fespace *disc = slf->fespace;
+    int nrows = disc->grade+1;
+
+    if (nargs==0) {
+        objectmatrix *new = object_newmatrix(nrows, disc->nnodes, true);
+        if (!new) return MORPHO_NIL;
+
+        for (int i=0; i<disc->nnodes; i++) {
+            double lambda[nrows];
+            if (!fespace_getnodecoords(disc, i, lambda)) {
+                object_free((object *) new);
+                return MORPHO_NIL;
+            }
+            matrix_setcolumn(new, i, lambda);
+        }
+
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    } else if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+        int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        double lambda[nrows];
+
+        if (fespace_getnodecoords(disc, i, lambda)) {
+            objectmatrix *new = object_newmatrix(nrows, 1, true);
+            if (new) {
+                matrix_setcolumn(new, 0, lambda);
+                out=MORPHO_OBJECT(new);
+                morpho_bindobjects(v, 1, &out);
+            }
+        }
+    }
+
+    return out;
+}
+
 MORPHO_BEGINCLASS(FiniteElementSpace)
-MORPHO_METHOD(FINITEELEMENTSPACE_LAYOUT_METHOD, FiniteElementSpace_layout, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FINITEELEMENTSPACE_LAYOUT_METHOD, FiniteElementSpace_layout, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FINITEELEMENTSPACE_NODECOORDS_METHOD, FiniteElementSpace_nodecoords, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

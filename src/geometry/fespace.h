@@ -76,6 +76,7 @@ typedef struct {
 #define FINITEELEMENTSPACE_CLASSNAME "FiniteElementSpace"
 
 #define FINITEELEMENTSPACE_LAYOUT_METHOD "layout"
+#define FINITEELEMENTSPACE_NODECOORDS_METHOD "nodeCoords"
 
 /* -------------------------------------------------------
  * Discretization error messages
@@ -98,6 +99,7 @@ bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids
 
 bool fespace_lower(fespace *disc, grade target, fespace **out);
 
+bool fespace_getnodecoords(fespace *disc, int node, double *lambda);
 bool fespace_layout(objectfield *field, fespace *disc, objectsparse **out);
 void fespace_gradient(fespace *disc, double *lambda, objectmatrix *grad);
 void fespace_hessian(fespace *disc, double *lambda, objectmatrix *hess);

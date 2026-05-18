@@ -428,6 +428,63 @@ bool field_getelementaslist(objectfield *field, grade grade, elementid el, int i
     return success;
 }
 
+static bool field_getelementdofs(objectfield *field, fespace *disc, elementid el, fieldindx *findx) {
+    if (!field || !disc || !findx) return false;
+
+    objectsparse *conn = mesh_getconnectivityelement(field->mesh, 0, disc->grade);
+    if (!conn) return false;
+
+    int nv, *vids;
+    if (!mesh_getconnectivity(conn, el, &nv, &vids)) return false;
+    if (nv!=disc->grade+1) return false;
+
+    return fespace_doftofieldindx(field, disc, nv, vids, findx);
+}
+
+bool field_evalelement(objectfield *field, elementid el, double *lambda, value *out) {
+    if (!field || !lambda || !out) return false;
+    if (!MORPHO_ISFESPACE(field->fnspc)) return false;
+
+    fespace *disc = MORPHO_GETFESPACE(field->fnspc)->fespace;
+    fieldindx findx[disc->nnodes];
+    if (!field_getelementdofs(field, disc, el, findx)) return false;
+
+    double wts[disc->nnodes];
+    disc->ifn(lambda, wts);
+
+    if (MORPHO_ISNIL(field->prototype)) {
+        double accum = 0.0;
+        for (int i=0; i<disc->nnodes; i++) {
+            value q;
+            double val;
+            if (!field_getelement(field, findx[i].g, findx[i].id, findx[i].indx, &q)) return false;
+            if (!morpho_valuetofloat(q, &val)) return false;
+            accum += wts[i]*val;
+        }
+        *out = MORPHO_FLOAT(accum);
+        return true;
+    } else if (MORPHO_ISMATRIX(field->prototype)) {
+        objectmatrix *proto = MORPHO_GETMATRIX(field->prototype);
+        objectmatrix *accum = object_newmatrix(proto->nrows, proto->ncols, true);
+        if (!accum) return false;
+
+        for (int i=0; i<disc->nnodes; i++) {
+            unsigned int nentries;
+            double *entries;
+            if (!field_getelementaslist(field, findx[i].g, findx[i].id, findx[i].indx, &nentries, &entries)) {
+                object_free((object *) accum);
+                return false;
+            }
+            for (unsigned int j=0; j<nentries; j++) accum->elements[j] += wts[i]*entries[j];
+        }
+
+        *out = MORPHO_OBJECT(accum);
+        return true;
+    }
+
+    return false;
+}
+
 /** Sets the value of an entry in a field object
  * @param[in] field - field to use
  * @param[in] grade - grade to access
@@ -953,6 +1010,48 @@ value Field_mesh(vm *v, int nargs, value *args) {
     return MORPHO_OBJECT(f->mesh);
 }
 
+static bool field_readlambda(value arg, int nlambda, double *lambda) {
+    if (MORPHO_ISLIST(arg)) {
+        objectlist *list = MORPHO_GETLIST(arg);
+        if (list_length(list)!=(unsigned int) nlambda) return false;
+        for (int i=0; i<nlambda; i++) {
+            value el;
+            if (!list_getelement(list, i, &el)) return false;
+            if (!morpho_valuetofloat(el, &lambda[i])) return false;
+        }
+        return true;
+    } else if (MORPHO_ISMATRIX(arg)) {
+        objectmatrix *mat = MORPHO_GETMATRIX(arg);
+        if (mat->nrows!=(unsigned int) nlambda || mat->ncols!=1) return false;
+        for (int i=0; i<nlambda; i++) lambda[i]=mat->elements[i];
+        return true;
+    }
+
+    return false;
+}
+
+value Field_evalelement_method(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    objectfield *field=MORPHO_GETFIELD(MORPHO_SELF(args));
+    if (!MORPHO_ISFESPACE(field->fnspc)) return out;
+
+    fespace *disc = MORPHO_GETFESPACE(field->fnspc)->fespace;
+    int nlambda = disc->grade+1;
+
+    if (nargs==2 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+        elementid el = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        double lambda[nlambda];
+
+        if (field_readlambda(MORPHO_GETARG(args, 1), nlambda, lambda) &&
+            field_evalelement(field, el, lambda, &out) &&
+            MORPHO_ISOBJECT(out)) {
+            morpho_bindobjects(v, 1, &out);
+        }
+    }
+
+    return out;
+}
+
 /** Get the matrix that stores the Field */
 value Field_linearize(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
@@ -997,6 +1096,7 @@ MORPHO_METHOD(FIELD_SHAPE_METHOD, Field_shape, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_FESPACE_METHOD, Field_fnspace, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_PROTOTYPE_METHOD, Field_prototype, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_MESH_METHOD, Field_mesh, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FIELD_EVALELEMENT_METHOD, Field_evalelement_method, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD_LINEARIZE_METHOD, Field_linearize, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FIELD__LINEARIZE_METHOD, Field_unsafelinearize, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS

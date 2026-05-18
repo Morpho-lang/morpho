@@ -1,0 +1,518 @@
+// Staged smectic demo with a quadrature jump penalty schedule.
+//
+// This keeps the original problem structure, but:
+// - uses quadrature for Jump on the CG3 smectic field;
+// - seeds rho with a mild smooth modulation;
+// - solves rho through a penalty schedule with a fresh LBFGS controller
+//   at each stage.
+
+import meshgen
+import plot
+import optimize4
+import "qtensortools.xmorpho"
+
+class CG3MeshRefiner is MeshRefiner {
+  _iscg3surfacefield(field) {
+    var shape = field.shape()
+    return shape.count()==3 && shape[0]==1 && shape[1]==2 && shape[2]==1
+  }
+
+  _edgekey(a, b) {
+    if (a<b) return "${a}:${b}"
+    return "${b}:${a}"
+  }
+
+  _barycentric(a, b, c, p) {
+    var v0 = b-a
+    var v1 = c-a
+    var v2 = p-a
+
+    var d00 = v0.inner(v0)
+    var d01 = v0.inner(v1)
+    var d11 = v1.inner(v1)
+    var d20 = v2.inner(v0)
+    var d21 = v2.inner(v1)
+    var denom = d00*d11 - d01*d01
+
+    var l1 = (d11*d20 - d01*d21)/denom
+    var l2 = (d00*d21 - d01*d20)/denom
+    var l0 = 1-l1-l2
+
+    return [l0, l1, l2]
+  }
+
+  _cg3weights(lambda) {
+    var l0 = lambda[0]
+    var l1 = lambda[1]
+    var l2 = lambda[2]
+
+    return [
+      l0*(1 + 4.5*(l0-1)*l0),
+      l1*(1 + 4.5*(l1-1)*l1),
+      l2*(1 + 4.5*(l2-1)*l2),
+      4.5*l0*l1*(3*l0-1),
+      4.5*l0*l1*(3*l1-1),
+      4.5*l1*l2*(3*l1-1),
+      4.5*l1*l2*(3*l2-1),
+      4.5*l0*l2*(3*l2-1),
+      4.5*l0*l2*(3*l0-1),
+      27*l0*l1*l2
+    ]
+  }
+
+  _cg3dofs(field, faceid, faceconn, edgeconn, edgeids, cache) {
+    if (cache.contains(faceid)) return cache[faceid]
+
+    var vids = faceconn.rowindices(faceid)
+    var dofs = []
+
+    for (vid in vids) dofs.append(field[0, vid])
+
+    var ledges = [[vids[0], vids[1]], [vids[1], vids[2]], [vids[2], vids[0]]]
+    for (pair in ledges) {
+      var eid = edgeids[self._edgekey(pair[0], pair[1])]
+      var everts = edgeconn.rowindices(eid)
+      var reversed = everts[0]==pair[1] && everts[1]==pair[0]
+
+      if (reversed) {
+        dofs.append(field[1, eid, 1])
+        dofs.append(field[1, eid, 0])
+      } else {
+        dofs.append(field[1, eid, 0])
+        dofs.append(field[1, eid, 1])
+      }
+    }
+
+    dofs.append(field[2, faceid, 0])
+    cache[faceid] = dofs
+    return dofs
+  }
+
+  _evalcg3(field, faceid, x, oldverts, oldfaces, oldedges, oldedgeids, cache) {
+    var vids = oldfaces.rowindices(faceid)
+    var a = oldverts.column(vids[0])
+    var b = oldverts.column(vids[1])
+    var c = oldverts.column(vids[2])
+    var lambda = self._barycentric(a, b, c, x)
+    var wts = self._cg3weights(lambda)
+    var dofs = self._cg3dofs(field, faceid, oldfaces, oldedges, oldedgeids, cache)
+    var sum = dofs[0]*0
+
+    for (i in 0...wts.count()) sum += dofs[i]*wts[i]
+    return sum
+  }
+
+  adaptcg3field(field) {
+    if (!self.refinemap) return nil
+
+    var prototype = field.enumerate(0)
+    if (isobject(prototype)) prototype = prototype.clone()
+    var result = Field(self.new, prototype, grade=field.shape(), finiteelementspace=field.finiteelementspace())
+
+    var oldmesh = self.mesh()
+    var oldverts = oldmesh.vertexmatrix()
+    var oldfaces = oldmesh.connectivitymatrix(0, 2)
+    var oldedges = oldmesh.connectivitymatrix(0, 1)
+    var oldedgeids = Dictionary()
+    for (eid in 0...oldmesh.count(1)) {
+      var ev = oldedges.rowindices(eid)
+      oldedgeids[self._edgekey(ev[0], ev[1])] = eid
+    }
+
+    var newverts = self.new.vertexmatrix()
+    var newfaces = self.new.connectivitymatrix(0, 2)
+    var newedges = self.new.connectivitymatrix(0, 1)
+    var newedgeids = Dictionary()
+    for (eid in 0...self.new.count(1)) {
+      var ev = newedges.rowindices(eid)
+      newedgeids[self._edgekey(ev[0], ev[1])] = eid
+    }
+
+    var vertexdone = Dictionary()
+    var edgedone = Dictionary()
+    var facecache = Dictionary()
+
+    for (newfid in self.refinemap[2]) {
+      var oldfid = self.refinemap[2][newfid]
+      var fvids = newfaces.rowindices(newfid)
+
+      for (vid in fvids) {
+        if (vertexdone.contains(vid)) continue
+        result[0, vid] = self._evalcg3(field, oldfid, newverts.column(vid),
+                                       oldverts, oldfaces, oldedges, oldedgeids, facecache)
+        vertexdone[vid] = true
+      }
+
+      var edges = [[fvids[0], fvids[1]], [fvids[1], fvids[2]], [fvids[2], fvids[0]]]
+      for (pair in edges) {
+        var eid = newedgeids[self._edgekey(pair[0], pair[1])]
+        if (edgedone.contains(eid)) continue
+
+        var everts = newedges.rowindices(eid)
+        var xa = newverts.column(everts[0])
+        var xb = newverts.column(everts[1])
+
+        result[1, eid, 0] = self._evalcg3(field, oldfid, (2*xa+xb)/3,
+                                          oldverts, oldfaces, oldedges, oldedgeids, facecache)
+        result[1, eid, 1] = self._evalcg3(field, oldfid, (xa+2*xb)/3,
+                                          oldverts, oldfaces, oldedges, oldedgeids, facecache)
+        edgedone[eid] = true
+      }
+
+      var centroid = (newverts.column(fvids[0]) + newverts.column(fvids[1]) + newverts.column(fvids[2]))/3
+      result[2, newfid, 0] = self._evalcg3(field, oldfid, centroid,
+                                           oldverts, oldfaces, oldedges, oldedgeids, facecache)
+    }
+
+    return result
+  }
+
+  adaptfield(field) {
+    if (self._iscg3surfacefield(field)) return self.adaptcg3field(field)
+    return super.adaptfield(field)
+  }
+}
+
+// Physical parameters
+var deltaT = 0
+var l = 1
+
+var A = -0.25
+var B = 0
+var C = 1
+
+var qsq = (Pi)^2
+
+var L0 = 0.01
+var EA = 0
+var Bcouple = 1
+
+var I3div3 = IdentityMatrix(3)/3
+
+class Smectic {
+  reportFieldShape(label, f) {
+    print "${label}: shape = ${f.shape()}"
+    for (g, n in f.shape()) {
+      if (n>0) print "${label}: grade ${g} count = ${n}"
+    }
+  }
+
+  reportQTerms(label) {
+    fn landau(x, q) {
+      var trQQ = 2*(q.inner(q)+q[0]*q[3])
+      var trQQQ = -3*(q[3]*(q[0]^2 - q[1]^2 + q[2]^2) -
+                      2*q[1]*q[2]*q[4] +
+                      q[0]*(-q[1]^2 + q[3]^2 + q[4]^2))
+
+      return -(l/2)*trQQ - (l/3)*trQQQ + (l/2)*(trQQ^2)
+    }
+
+    fn anchoring(x, q) {
+      var t = tangent()
+      var wxx = t[0]*t[0]-0.5
+      var wxy = t[0]*t[1]
+      return (q[0]-wxx)^2+(q[1]-wxy)^2
+    }
+
+    fn coupling(x, rho, q) {
+      var h = hess(rho)
+      var Q = qtensor(q)
+      var u = (h + qsq*(Q+I3div3)*rho).norm()
+      return u*u
+    }
+
+    var bulk = AreaIntegral(landau, self.Q, method={}).total(self.mesh)
+    var anchor = 0
+    var couple = 0
+
+    if (EA!=0) anchor = EA*LineIntegral(anchoring, self.Q, method={}).total(self.mesh, selection=self.bnd)
+    if (Bcouple!=0) couple = Bcouple*AreaIntegral(coupling, self.rho, self.Q, method={}).total(self.mesh)
+
+    print "${label}: Q bulk = ${bulk}"
+    print "${label}: Q anchor = ${anchor}"
+    print "${label}: Q couple = ${couple}"
+    print "${label}: Q total = ${bulk + anchor + couple}"
+  }
+
+  reportRhoTerms(label) {
+    fn landauSmectic(x, rho) {
+      return A*rho^2/2 + B*rho^3/3 + C*rho^4/4
+    }
+
+    fn coupling(x, rho, q) {
+      var h = hess(rho)
+      var Q = qtensor(q)
+      var u = (h + qsq*(Q+I3div3)*rho).norm()
+      return u*u
+    }
+
+    var landau = AreaIntegral(landauSmectic, self.rho, method={}).total(self.mesh)
+    var couple = 0
+    var jump = 0
+
+    if (Bcouple!=0) couple = Bcouple*AreaIntegral(coupling, self.rho, self.Q, method={}).total(self.mesh)
+    if (self.rhoJumpPenalty!=0) {
+      jump = self.rhoJumpPenalty*Jump(fn (x, q) jumpdn(q)^2, self.rho,
+                                      method={ "strategy": "quadrature" }).total(self.mesh)
+    }
+
+    print "${label}: rho landau = ${landau}"
+    print "${label}: rho couple = ${couple}"
+    print "${label}: rho jump = ${jump}"
+    print "${label}: rho total = ${landau + couple + jump}"
+  }
+
+  initialMesh() {
+    var dom = fn (x) -(x[0]^2+x[1]^2-1)
+    var mg = MeshGen(dom, [-1..1:0.2, -1..1:0.2])
+    var m = mg.build()
+    self.mesh = ChangeMeshDimension(m, 3)
+  }
+
+  initialField() {
+    self.Q = Field(self.mesh, uniformQ)
+
+    var cg3 = FiniteElementSpace("CG3", grade=2)
+    // Seed rho with a weak stripe at the preferred wavelength.
+    self.rho = Field(self.mesh,
+                     fn (x, y, z) 0.3 + 0.05*cos(sqrt(qsq)*x),
+                     finiteelementspace=cg3)
+  }
+
+  initialSelection() {
+    self.bnd = Selection(self.mesh, boundary=true)
+  }
+
+  initialParameters() {
+    self.rhoJumpPenalty = 0
+  }
+
+  jumpPenaltyBase() {
+    // Use a simple p^2 / h scaling for CG3 as a baseline.
+    var h = Length().total(self.mesh) / self.mesh.count(0)
+    return 9 / h
+  }
+
+  buildQProblem() {
+    self.problem = OptimizationProblem(self.mesh)
+
+    fn landau(x, q) {
+      var trQQ = 2*(q.inner(q)+q[0]*q[3])
+      var trQQQ = -3*(q[3]*(q[0]^2 - q[1]^2 + q[2]^2) -
+                      2*q[1]*q[2]*q[4] +
+                      q[0]*(-q[1]^2 + q[3]^2 + q[4]^2))
+
+      return -(l/2)*trQQ - (l/3)*trQQQ + (l/2)*(trQQ^2)
+    }
+    var bulk = AreaIntegral(landau, self.Q, method={})
+    self.problem.addenergy(bulk)
+
+    fn anchoring(x, q) {
+      var t = tangent()
+      var wxx = t[0]*t[0]-0.5
+      var wxy = t[0]*t[1]
+      return (q[0]-wxx)^2+(q[1]-wxy)^2
+    }
+    var anchor = LineIntegral(anchoring, self.Q, method={})
+    if (EA!=0) self.problem.addenergy(anchor, selection=self.bnd, prefactor=EA)
+
+    fn coupling(x, rho, q) {
+      var h = hess(rho)
+      var Q = qtensor(q)
+      var u = (h + qsq*(Q+I3div3)*rho).norm()
+      return u*u
+    }
+    var lcoupling = AreaIntegral(coupling, self.rho, self.Q, method={})
+    if (Bcouple!=0) self.problem.addenergy(lcoupling, prefactor=Bcouple)
+
+    return self.problem
+  }
+
+  buildRhoProblem() {
+    self.problem = OptimizationProblem(self.mesh)
+
+    fn landauSmectic(x, rho) {
+      return A*rho^2/2 + B*rho^3/3 + C*rho^4/4
+    }
+    var lsmectic = AreaIntegral(landauSmectic, self.rho, method={})
+    self.problem.addenergy(lsmectic)
+
+    fn coupling(x, rho, q) {
+      var h = hess(rho)
+      var Q = qtensor(q)
+      var u = (h + qsq*(Q+I3div3)*rho).norm()
+      return u*u
+    }
+    var lcoupling = AreaIntegral(coupling, self.rho, self.Q, method={})
+    if (Bcouple!=0) self.problem.addenergy(lcoupling, prefactor=Bcouple)
+
+    var jump = Jump(fn (x, q) jumpdn(q)^2, self.rho,
+                    method={ "strategy": "quadrature" })
+    if (self.rhoJumpPenalty!=0) self.problem.addenergy(jump, prefactor=self.rhoJumpPenalty)
+
+    self.jumpFunctional = jump
+    return self.problem
+  }
+
+  buildQAdapter() {
+    self.adapter = ProblemAdapter(self.problem, self.Q)
+    return self.adapter
+  }
+
+  buildRhoAdapter() {
+    self.adapter = ProblemAdapter(self.problem, self.rho)
+    return self.adapter
+  }
+
+  build() {
+    self.initialMesh()
+    self.initialField()
+    self.initialSelection()
+    self.initialParameters()
+    self.buildQProblem()
+    return self.buildQAdapter()
+  }
+
+  correctMesh() {
+    for (id in self.bnd.idlistforgrade(0)) {
+      var x = self.mesh.vertexposition(id)
+      self.mesh.setvertexposition(id, x/x.norm())
+    }
+  }
+
+  _maxgrade(f) {
+    var shape = f.shape()
+    var maxgrade = 0
+    for (s, k in shape) if (s>0) maxgrade = k
+    return maxgrade
+  }
+
+  correctField() {
+    self.reportFieldShape("Before correctField(rho)", self.rho)
+    if (self._maxgrade(self.rho)<1) return
+    var shape = self.rho.shape()
+    var nedgedof = shape[1]
+    if (nedgedof<=0) return
+    var conn = self.mesh.connectivitymatrix(0, 1)
+    for (id in 0...self.mesh.count(1)) {
+      var v = conn.rowindices(id)
+      var av = (self.rho[0,v[0]] + self.rho[0,v[1]])/2
+      for (j in 0...nedgedof) self.rho[1,id,j] = av
+    }
+    self.reportFieldShape("After correctField(rho)", self.rho)
+  }
+
+  refine() {
+    var srefine
+    var mr = CG3MeshRefiner([self.mesh, self.Q, self.rho, self.bnd])
+    var refmap = mr.refine(selection=srefine)
+
+    self.mesh = refmap[self.mesh]
+    self.Q = refmap[self.Q]
+    self.rho = refmap[self.rho]
+    self.bnd = refmap[self.bnd]
+
+    print "After refmap:"
+    print "mesh vertices = ${self.mesh.count(0)}"
+    print "mesh edges = ${self.mesh.count(1)}"
+    print "mesh areas = ${self.mesh.count(2)}"
+    self.reportFieldShape("Refined Q", self.Q)
+    self.reportFieldShape("Refined rho", self.rho)
+
+    self.correctMesh()
+    if (!(self.rho.shape().count()==3 && self.rho.shape()[0]==1 && self.rho.shape()[1]==2 && self.rho.shape()[2]==1)) {
+      self.correctField()
+    } else {
+      print "Skipping correctField(rho): CG3 prolongation handled by refiner."
+    }
+    equiangulate(self.mesh)
+    print "After equiangulate:"
+    print "mesh vertices = ${self.mesh.count(0)}"
+    print "mesh edges = ${self.mesh.count(1)}"
+    print "mesh areas = ${self.mesh.count(2)}"
+    self.reportFieldShape("Post-equiangulate Q", self.Q)
+    self.reportFieldShape("Post-equiangulate rho", self.rho)
+  }
+
+  solveQ() {
+    self.rhoJumpPenalty = 0
+    self.buildQProblem()
+    self.reportQTerms("Before solveQ")
+    var adapt = self.buildQAdapter()
+    var control = LBFGSController(adapt)
+    control.optimize(500)
+    self.reportQTerms("After solveQ")
+  }
+
+  solveRhoStage(jumpPenalty) {
+    self.rhoJumpPenalty = jumpPenalty
+    self.buildRhoProblem()
+    self.reportRhoTerms("Before solveRho eta=${jumpPenalty}")
+    var adapt = self.buildRhoAdapter()
+    var control = LBFGSController(adapt)
+    control.optimize(200)
+    self.reportRhoTerms("After solveRho eta=${jumpPenalty}")
+
+    if (jumpPenalty!=0) {
+      print "rho stage eta=${jumpPenalty}: jump = ${self.jumpFunctional.total(self.mesh)}"
+    }
+  }
+
+  solveRhoSchedule() {
+    var base = self.jumpPenaltyBase()
+    var multipliers = [1, 3, 10]
+    for (mu in multipliers) {
+      self.solveRhoStage(mu*base)
+    }
+  }
+
+  solveCycle() {
+    self.solveQ()
+    self.solveRhoSchedule()
+  }
+
+  solveCycles(ncycles) {
+    for (k in 0...ncycles) {
+      print "Alternating cycle ${k+1}"
+      self.solveCycle()
+    }
+  }
+
+  solve() {
+    self.solveCycles(1)
+
+    print "Refining mesh"
+    self.refine()
+
+    print "Continuing on refined mesh"
+    self.solveCycles(1)
+  }
+
+  _estimateLength() {
+    return Length().total(self.mesh) / self.mesh.count(0)
+  }
+
+  visualizeNematic() {
+    var qfields = qvis(self.Q)
+    var qplot = plotfield(qfields[0], style="interpolate",
+                          scalebar=ScaleBar(posn=[1.2,0,0]))
+    return visdirector(qfields[3], self._estimateLength()/2) //+ qplot
+  }
+
+  _lowerToCG1(u) {
+    var phi = Field(self.mesh, 0)
+    for (i in 0...self.mesh.count()) phi[i] = self.rho[0,i]
+    return phi
+  }
+
+  visualizeSmectic() {
+    return plotfield(self._lowerToCG1(self.rho), style="interpolate",
+                     scalebar=ScaleBar(posn=[1.2,0,0]))
+  }
+}
+
+var sim = Smectic()
+sim.build()
+sim.solve()
+
+Show(sim.visualizeNematic() + sim.visualizeSmectic())

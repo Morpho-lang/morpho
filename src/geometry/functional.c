@@ -4909,9 +4909,10 @@ void integral_clearelref(objectintegralelementref *elref) {
 
 /** Prepares quantity list */
 bool integral_preparequantities(integralref *iref, int nv, int *vid, quantity *quantities) {
-    bool success=false;
+    bool success=true;
     for (int k=0; k<iref->nfields; k++) {
         objectfield *f=MORPHO_GETFIELD(iref->fields[k]);
+        quantities[k].vals=NULL;
         
         if (MORPHO_ISFESPACE(f->fnspc)) {
             fespace *disc=MORPHO_GETFESPACE(f->fnspc)->fespace;
@@ -4923,21 +4924,23 @@ bool integral_preparequantities(integralref *iref, int nv, int *vid, quantity *q
             quantities[k].ifn=disc->ifn;
             
             fieldindx findx[disc->nnodes];
-            fespace_doftofieldindx(f, disc, nv, vid, findx);
+            if (!fespace_doftofieldindx(f, disc, nv, vid, findx)) return false;
             
             quantities[k].vals=MORPHO_MALLOC(sizeof(value)*disc->nnodes);
+            if (!quantities[k].vals) return false;
             for (int i=0; i<disc->nnodes; i++) {
                 int dof;
-                field_getindex(f, findx[i].g, findx[i].id, findx[i].indx, &dof);
-                field_getelementwithindex(f, dof, &quantities[k].vals[i]);
+                if (!field_getindex(f, findx[i].g, findx[i].id, findx[i].indx, &dof)) return false;
+                if (!field_getelementwithindex(f, dof, &quantities[k].vals[i])) return false;
             }
             success=true;
         } else {
             quantities[k].nnodes=nv;
             quantities[k].ifn=NULL;
             quantities[k].vals=MORPHO_MALLOC(sizeof(value)*nv);
+            if (!quantities[k].vals) return false;
             for (unsigned int i=0; i<nv; i++) {
-                field_getelement(f, MESH_GRADE_VERTEX, vid[i], 0, &quantities[k].vals[i]);
+                if (!field_getelement(f, MESH_GRADE_VERTEX, vid[i], 0, &quantities[k].vals[i])) return false;
             }
             success=true; 
         }
@@ -5009,7 +5012,10 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     if (MORPHO_ISDICTIONARY(iref.method)) {
         double err;
         quantity quantities[iref.nfields+1];
-        integral_preparequantities(&iref, nv, vid, quantities);
+        if (!integral_preparequantities(&iref, nv, vid, quantities)) {
+            integral_clearelref(&elref);
+            return false;
+        }
         elref.quantities=quantities;
         
         success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), morpho_geterror(v), mesh->dim, MESH_GRADE_LINE, x, iref.nfields, quantities, &iref, out, &err);
@@ -5049,13 +5055,13 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     return success;
 }
 
-FUNCTIONAL_METHOD(LineIntegral, integrand, MESH_GRADE_LINE, integralref, integral_prepareref, functional_mapintegrand, lineintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(LineIntegral, integrand, MESH_GRADE_LINE, integralref, integral_prepareref, functional_mapintegrand, lineintegral_integrand, NULL, LINEINTEGRAL_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(LineIntegral, total, MESH_GRADE_LINE, integralref, integral_prepareref, functional_sumintegrand, lineintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(LineIntegral, total, MESH_GRADE_LINE, integralref, integral_prepareref, functional_sumintegrand, lineintegral_integrand, NULL, LINEINTEGRAL_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(LineIntegral, gradient, MESH_GRADE_LINE, integralref, integral_prepareref, functional_mapnumericalgradient, lineintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(LineIntegral, gradient, MESH_GRADE_LINE, integralref, integral_prepareref, functional_mapnumericalgradient, lineintegral_integrand, NULL, LINEINTEGRAL_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(LineIntegral, hessian, MESH_GRADE_LINE, integralref, integral_prepareref, functional_mapnumericalhessian, lineintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_METHOD(LineIntegral, hessian, MESH_GRADE_LINE, integralref, integral_prepareref, functional_mapnumericalhessian, lineintegral_integrand, NULL, LINEINTEGRAL_ARGS, SYMMETRY_NONE)
 
 /** Initialize a LineIntegral object */
 value LineIntegral_init(vm *v, int nargs, value *args) {
@@ -5135,7 +5141,7 @@ value LineIntegral_fieldgradient(vm *v, int nargs, value *args) {
             info.freeref=integral_freeref;
             info.ref=&ref;
             functional_mapnumericalfieldgradient(v, &info, &out);
-        } else morpho_runtimeerror(v, GRADSQ_ARGS);
+        } else morpho_runtimeerror(v, LINEINTEGRAL_ARGS);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     return out;
@@ -5188,7 +5194,10 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     if (MORPHO_ISDICTIONARY(iref.method)) {
         double err;
         quantity quantities[iref.nfields+1];
-        integral_preparequantities(&iref, nv, vid, quantities);
+        if (!integral_preparequantities(&iref, nv, vid, quantities)) {
+            integral_clearelref(&elref);
+            return false;
+        }
         elref.quantities=quantities;
         
         success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), morpho_geterror(v), mesh->dim, MESH_GRADE_AREA, x, iref.nfields, quantities, &iref, out, &err);
@@ -5228,11 +5237,11 @@ bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     return success;
 }
 
-FUNCTIONAL_METHOD(AreaIntegral, integrand, MESH_GRADE_AREA, integralref, integral_prepareref, functional_mapintegrand, areaintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(AreaIntegral, integrand, MESH_GRADE_AREA, integralref, integral_prepareref, functional_mapintegrand, areaintegral_integrand, NULL, AREAINTEGRAL_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(AreaIntegral, total, MESH_GRADE_AREA, integralref, integral_prepareref, functional_sumintegrand, areaintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(AreaIntegral, total, MESH_GRADE_AREA, integralref, integral_prepareref, functional_sumintegrand, areaintegral_integrand, NULL, AREAINTEGRAL_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(AreaIntegral, gradient, MESH_GRADE_AREA, integralref, integral_prepareref, functional_mapnumericalgradient, areaintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(AreaIntegral, gradient, MESH_GRADE_AREA, integralref, integral_prepareref, functional_mapnumericalgradient, areaintegral_integrand, NULL, AREAINTEGRAL_ARGS, SYMMETRY_NONE);
 
 /** Field gradients for Area Integrals */
 value AreaIntegral_fieldgradient(vm *v, int nargs, value *args) {
@@ -5249,7 +5258,7 @@ value AreaIntegral_fieldgradient(vm *v, int nargs, value *args) {
             info.freeref=integral_freeref;
             info.ref=&ref;
             functional_mapnumericalfieldgradient(v, &info, &out);
-        } else morpho_runtimeerror(v, GRADSQ_ARGS);
+        } else morpho_runtimeerror(v, AREAINTEGRAL_ARGS);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     return out;
@@ -5297,7 +5306,10 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
     if (MORPHO_ISDICTIONARY(iref.method)) {
         double err;
         quantity quantities[iref.nfields+1];
-        integral_preparequantities(&iref, nv, vid, quantities);
+        if (!integral_preparequantities(&iref, nv, vid, quantities)) {
+            integral_clearelref(&elref);
+            return false;
+        }
         elref.quantities=quantities;
         
         success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), morpho_geterror(v), mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, quantities, &iref, out, &err);
@@ -5336,11 +5348,11 @@ bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
     return success;
 }
 
-FUNCTIONAL_METHOD(VolumeIntegral, integrand, MESH_GRADE_VOLUME, integralref, integral_prepareref, functional_mapintegrand, volumeintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(VolumeIntegral, integrand, MESH_GRADE_VOLUME, integralref, integral_prepareref, functional_mapintegrand, volumeintegral_integrand, NULL, VOLUMEINTEGRAL_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(VolumeIntegral, total, MESH_GRADE_VOLUME, integralref, integral_prepareref, functional_sumintegrand, volumeintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(VolumeIntegral, total, MESH_GRADE_VOLUME, integralref, integral_prepareref, functional_sumintegrand, volumeintegral_integrand, NULL, VOLUMEINTEGRAL_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD(VolumeIntegral, gradient, MESH_GRADE_VOLUME, integralref, integral_prepareref, functional_mapnumericalgradient, volumeintegral_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD(VolumeIntegral, gradient, MESH_GRADE_VOLUME, integralref, integral_prepareref, functional_mapnumericalgradient, volumeintegral_integrand, NULL, VOLUMEINTEGRAL_ARGS, SYMMETRY_NONE);
 
 /** Field gradients for Volume Integrals */
 value VolumeIntegral_fieldgradient(vm *v, int nargs, value *args) {
@@ -5357,7 +5369,7 @@ value VolumeIntegral_fieldgradient(vm *v, int nargs, value *args) {
             info.freeref=integral_freeref;
             info.ref=&ref;
             functional_mapnumericalfieldgradient(v, &info, &out);
-        } else morpho_runtimeerror(v, GRADSQ_ARGS);
+        } else morpho_runtimeerror(v, VOLUMEINTEGRAL_ARGS);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     return out;
@@ -5512,7 +5524,11 @@ static bool jump_dependencies(functional_mapinfo *info, elementid id, varray_ele
     return true;
 }
 
-/** Return interface elements that share one of the adjacent parent elements. */
+/** Return interface elements that share one of the adjacent parent elements.
+    This is appropriate for coordinate gradients, but not for FE field gradients:
+    in the FE case the local parent-element DOF collection already captures the
+    two-sided support of the interface term, and the outer interface traversal
+    accounts for neighboring interfaces exactly once. */
 static bool jump_fielddependencies(functional_mapinfo *info, elementid id, varray_elementid *out) {
     jumpref *ref = (jumpref *) info->ref;
     int nparents=0, *parents=NULL;
@@ -5949,7 +5965,7 @@ static value Jump_fieldgradient(vm *v, int nargs, value *args) {
         if (jump_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
             info.g=ref.interfacegrade;
             info.integrand=jump_scan_integrand;
-            info.dependencies=jump_fielddependencies;
+            info.dependencies=NULL;
             info.cloneref=jump_cloneref;
             info.freeref=jump_freeref;
             info.ref=&ref;
@@ -6089,8 +6105,11 @@ void functional_initialize(void) {
     morpho_defineerror(NEMATICELECTRIC_ARGS, ERROR_HALT, NEMATICELECTRIC_ARGS_MSG);
 
     morpho_defineerror(FUNCTIONAL_ARGS, ERROR_HALT, FUNCTIONAL_ARGS_MSG);
-
+    
     morpho_defineerror(INTEGRAL_ARGS, ERROR_HALT, INTEGRAL_ARGS_MSG);
+    morpho_defineerror(LINEINTEGRAL_ARGS, ERROR_HALT, LINEINTEGRAL_ARGS_MSG);
+    morpho_defineerror(AREAINTEGRAL_ARGS, ERROR_HALT, AREAINTEGRAL_ARGS_MSG);
+    morpho_defineerror(VOLUMEINTEGRAL_ARGS, ERROR_HALT, VOLUMEINTEGRAL_ARGS_MSG);
     morpho_defineerror(INTEGRAL_NFLDS, ERROR_HALT, INTEGRAL_NFLDS_MSG);
     morpho_defineerror(INTEGRAL_MTHDDCT, ERROR_HALT, INTEGRAL_MTHDDCT_MSG);
     morpho_defineerror(INTEGRAL_FLD, ERROR_HALT, INTEGRAL_FLD_MSG);

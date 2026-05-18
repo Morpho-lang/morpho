@@ -385,9 +385,19 @@ bool field_getelementwithindex(objectfield *field, int indx, value *out) {
  * @param[in] indx - index within the element
  * @param[out] out - the retrieved index
  * @return true on success */
+static bool field_validateaccess(objectfield *field, grade grade, elementid el, int indx) {
+    if (!field) return false;
+    if (grade<0 || grade>=field->ngrades) return false;
+    if (el<0) return false;
+    if (indx<0 || indx>=field->dof[grade]) return false;
+    return true;
+}
+
 bool field_getindex(objectfield *field, grade grade, elementid el, int indx, int *out) {
+    if (!out || !field_validateaccess(field, grade, el, indx)) return false;
+
     int ix=field->offset[grade]+field->dof[grade]*el+indx;
-    if (!(ix<field->offset[grade+1] && indx<field->dof[grade])) return false;
+    if (!(ix<field->offset[grade+1])) return false;
 
     *out=ix;
     return true;

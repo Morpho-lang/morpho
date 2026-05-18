@@ -1,0 +1,45 @@
+import meshgen
+import plot
+import "../numericalderivatives.morpho"
+import "qtensortools.xmorpho"
+
+var qsq = (Pi)^2
+var I3div3 = IdentityMatrix(3)/3
+var tol = 5e-5
+
+var dom = fn (x) -(x[0]^2 + x[1]^2 - 1)
+var mg = MeshGen(dom, [-1..1:0.3, -1..1:0.3], quiet=true)
+var m = ChangeMeshDimension(mg.build(), 3)
+
+var feQ = FiniteElementSpace("CG1", grade=2)
+var feRho = FiniteElementSpace("CG3", grade=2)
+
+var Q = Field(m, uniformQ, finiteelementspace=feQ)
+var rho = Field(m, fn (x, y, z) 0.3 + 0.05*cos(sqrt(qsq)*x), finiteelementspace=feRho)
+
+fn coupling(x, rho, q) {
+    var h = hess(rho)
+    var Qt = qtensor(q)
+    var u = (h + qsq*(Qt + I3div3)*rho).norm()
+    return u*u
+}
+
+var area = AreaIntegral(coupling, rho, Q, method={})
+var jump = Jump(fn (x, q) jumpdn(q)^2, rho, method={ "strategy": "quadrature" })
+
+print "area total = ${area.total(m)}"
+print "jump total = ${jump.total(m)}"
+
+var areafg = area.fieldgradient(m, rho)
+var areanum = numericalfieldgradient(area, m, rho)
+var areaerr = (areafg - areanum).linearize().norm()
+print "area fg err = ${areaerr}"
+print "area fg ok = ${areaerr < tol}"
+// expect: true
+
+var jumpfg = jump.fieldgradient(m, rho)
+var jumpnum = numericalfieldgradient(jump, m, rho)
+var jumperr = (jumpfg - jumpnum).linearize().norm()
+print "jump fg err = ${jumperr}"
+print "jump fg ok = ${jumperr < tol}"
+// expect: true

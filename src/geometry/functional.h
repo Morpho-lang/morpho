@@ -130,6 +130,15 @@
 #define INTEGRAL_NFLDS                 "IntgrlNFlds"
 #define INTEGRAL_NFLDS_MSG             "Incorrect number of Fields provided for integrand function."
 
+#define LINEINTEGRAL_ARGS              "LnIntArgs"
+#define LINEINTEGRAL_ARGS_MSG          "LineIntegral requires a callable argument, followed by zero or more Fields."
+
+#define AREAINTEGRAL_ARGS              "ArIntArgs"
+#define AREAINTEGRAL_ARGS_MSG          "AreaIntegral requires a callable argument, followed by zero or more Fields."
+
+#define VOLUMEINTEGRAL_ARGS            "VolIntArgs"
+#define VOLUMEINTEGRAL_ARGS_MSG        "VolumeIntegral requires a callable argument, followed by zero or more Fields."
+
 #define VOLUMEENCLOSED_ZERO            "VolEnclZero"
 #define VOLUMEENCLOSED_ZERO_MSG        "VolumeEnclosed detected an element of zero size. Check that a mesh point is not coincident with the origin."
 
@@ -353,7 +362,7 @@ value name##_hessian(vm *v, int nargs, value *args) { \
             info.sym = symbhvr; \
             info.g = grade; \
             info.ref = &ref; \
-            integrandfn(v, &info, &out); \
+            if (!integrandfn(v, &info, &out) && !morpho_checkerror(morpho_geterror(v))) morpho_runtimeerror(v, err); \
         } else morpho_runtimeerror(v, err); \
     } \
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \

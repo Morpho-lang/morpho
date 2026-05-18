@@ -133,7 +133,7 @@ var I3div3 = IdentityMatrix(3)/3
 class Smectic {
   reportFieldShape(label, f) {
     print "${label}: shape = ${f.shape()}"
-    for (g, n in f.shape()) {
+    for (n, g in f.shape()) {
       if (n>0) print "${label}: grade ${g} count = ${n}"
     }
   }

@@ -893,6 +893,41 @@ static int fespace_orientedquantity(fespace *disc, grade g, fespacesubelement *s
     return nedgeq-indx-1;
 }
 
+/** Returns the FE-local field index tuple (grade, subelement id, local dof index) for a node. */
+bool fespace_nodefieldindex(fespace *disc, int node, grade *g, int *sid, int *indx) {
+    if (node<0 || node>=disc->nnodes) return false;
+
+    int k=0;
+    for (eldefninstruction *instr=disc->eldefn; instr!=NULL && *instr!=ENDDEFN; ) {
+        eldefninstruction op=FETCH(instr);
+        switch(op) {
+            case LINE_OPCODE:
+            case AREA_OPCODE:
+                FETCH(instr); // local subelement id
+                for (int i=0; i<=op; i++) FETCH(instr); // local vertex ids
+                break;
+            case QUANTITY_OPCODE:
+            {
+                grade qg = FETCH(instr);
+                int qsid = FETCH(instr);
+                int qindx = FETCH(instr);
+                if (k==node) {
+                    if (g) *g=qg;
+                    if (sid) *sid=qsid;
+                    if (indx) *indx=qindx;
+                    return true;
+                }
+                k++;
+            }
+                break;
+            default:
+                UNREACHABLE("Error in finite element definition");
+        }
+    }
+
+    return false;
+}
+
 /** Steps through an element definition, generating subelements and identifying quantities */
 bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids, fieldindx *findx) {
     fespacesubelement subel[disc->nsubel+1]; // Element IDs and orientation of subelements
@@ -1062,10 +1097,7 @@ value fespace_constructor(vm *v, int nargs, value *args) {
         
         if (d) {
             objectfespace *obj=objectfespace_new(d);
-            if (obj) {
-                out = MORPHO_OBJECT(obj);
-                morpho_bindobjects(v, 1, &out);
-            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+            out = morpho_wrapandbind(v, (object *) obj);
         } else morpho_runtimeerror(v, FNSPC_NOTFOUND, label, MORPHO_GETINTEGERVALUE(grd));
         
     } else morpho_runtimeerror(v, FNSPC_ARGS);
@@ -1090,11 +1122,27 @@ value FiniteElementSpace_layout(vm *v, int nargs, value *args) {
         objectfield *field = MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
         objectsparse *new;
         
-        if (fespace_layout(field, slf->fespace, &new)) {
-            out=MORPHO_OBJECT(new);
-            morpho_bindobjects(v, 1, &out);
+        if (fespace_layout(field, slf->fespace, &new)) out=morpho_wrapandbind(v, (object *) new);
+    }
+    return out;
+}
+
+value FiniteElementSpace_nodeelementindex(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+    objectfespace *slf = MORPHO_GETFESPACE(MORPHO_SELF(args));
+
+    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+        int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        grade g;
+        int sid, indx;
+
+        if (fespace_nodefieldindex(slf->fespace, i, &g, &sid, &indx)) {
+            value entries[3] = { MORPHO_INTEGER(g), MORPHO_INTEGER(sid), MORPHO_INTEGER(indx) };
+            objecttuple *new = object_newtuple(3, entries);
+            out=morpho_wrapandbind(v, (object *) new);
         }
     }
+
     return out;
 }
 
@@ -1117,19 +1165,15 @@ value FiniteElementSpace_nodecoords(vm *v, int nargs, value *args) {
             matrix_setcolumn(new, i, lambda);
         }
 
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
+        out=morpho_wrapandbind(v, (object *) new);
     } else if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         double lambda[nrows];
 
         if (fespace_getnodecoords(disc, i, lambda)) {
             objectmatrix *new = object_newmatrix(nrows, 1, true);
-            if (new) {
-                matrix_setcolumn(new, 0, lambda);
-                out=MORPHO_OBJECT(new);
-                morpho_bindobjects(v, 1, &out);
-            }
+            if (new) matrix_setcolumn(new, 0, lambda);
+            out=morpho_wrapandbind(v, (object *) new);
         }
     }
 
@@ -1140,6 +1184,7 @@ MORPHO_BEGINCLASS(FiniteElementSpace)
 MORPHO_METHOD(MORPHO_COUNT_METHOD, FiniteElementSpace_count, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FINITEELEMENTSPACE_GRADE_METHOD, FiniteElementSpace_grade, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FINITEELEMENTSPACE_LAYOUT_METHOD, FiniteElementSpace_layout, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(FINITEELEMENTSPACE_NODEELEMENTINDEX_METHOD, FiniteElementSpace_nodeelementindex, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(FINITEELEMENTSPACE_NODECOORDS_METHOD, FiniteElementSpace_nodecoords, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 

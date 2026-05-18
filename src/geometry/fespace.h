@@ -77,6 +77,7 @@ typedef struct {
 
 #define FINITEELEMENTSPACE_GRADE_METHOD "grade"
 #define FINITEELEMENTSPACE_LAYOUT_METHOD "layout"
+#define FINITEELEMENTSPACE_NODEELEMENTINDEX_METHOD "nodeElementIndex"
 #define FINITEELEMENTSPACE_NODECOORDS_METHOD "nodeCoords"
 
 /* -------------------------------------------------------
@@ -97,6 +98,7 @@ fespace *fespace_find(char *name, grade g);
 fespace *fespace_findlinear(grade g);
 
 bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids, fieldindx *findx);
+bool fespace_nodefieldindex(fespace *disc, int node, grade *g, int *sid, int *indx);
 
 bool fespace_lower(fespace *disc, grade target, fespace **out);
 

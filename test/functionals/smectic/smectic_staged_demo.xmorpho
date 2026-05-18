@@ -12,8 +12,6 @@ import optimize4
 import "qtensortools.xmorpho"
 
 class CG3MeshRefiner is MeshRefiner {
-  _tol() { return 1e-10 }
-
   _iscg3surfacefield(field) {
     var fespace = field.finiteElementSpace()
     if (!fespace) return false
@@ -64,38 +62,11 @@ class CG3MeshRefiner is MeshRefiner {
     return x
   }
 
-  _edgeparameter(xa, xb, x) {
-    var dx = xb-xa
-    return (x-xa).inner(dx)/dx.inner(dx)
-  }
-
-  _edgepositions(nodes) {
-    var pos = []
-    var tol = self._tol()
-
-    for (i in 0...nodes.dimensions()[1]) {
-      var lambda = nodes.column(i)
-      var zero = -1
-      var nzero = 0
-
-      for (j in 0...lambda.count()) {
-        if (abs(lambda[j])<tol) {
-          zero = j
-          nzero += 1
-        }
-      }
-
-      if (nzero!=1) continue
-      if (abs(lambda[mod(zero+1, 3)]-1)<tol || abs(lambda[mod(zero+2, 3)]-1)<tol) continue
-
-      var t = lambda[mod(zero+2, 3)]
-      var found = false
-      for (s in pos) if (abs(s-t)<tol) found = true
-      if (!found) pos.append(t)
-    }
-
-    pos.sort()
-    return pos
+  _triangleedge(fvids, edgeids, sid) {
+    if (sid==0) return edgeids[self._edgekey(fvids[0], fvids[1])]
+    if (sid==1) return edgeids[self._edgekey(fvids[1], fvids[2])]
+    if (sid==2) return edgeids[self._edgekey(fvids[2], fvids[0])]
+    return nil
   }
 
   adaptcg3field(field) {
@@ -107,8 +78,6 @@ class CG3MeshRefiner is MeshRefiner {
     var result = Field(self.new, prototype, grade=field.shape(), finiteelementspace=fespace)
 
     var nodes = fespace.nodeCoords()
-    var edgepositions = self._edgepositions(nodes)
-    var tol = self._tol()
 
     var oldmesh = self.mesh()
     var oldverts = oldmesh.vertexmatrix()
@@ -132,54 +101,29 @@ class CG3MeshRefiner is MeshRefiner {
 
       for (i in 0...fespace.count()) {
         var lambda = nodes.column(i)
+        var findx = fespace.nodeElementIndex(i)
+        var g = findx[0]
+        var sid = findx[1]
+        var indx = findx[2]
         var x = self._point(lambda, fvids, newverts)
         var val = self._eval(field, oldfid, x, oldverts, oldfaces)
 
-        var vertex = -1
-        for (j in 0...lambda.count()) {
-          if (abs(lambda[j]-1)<tol) {
-            vertex = j
-            break
-          }
-        }
-
-        if (vertex>=0) {
-          var vid = fvids[vertex]
+        if (g==0) {
+          var vid = fvids[sid]
           if (!vertexdone.contains(vid)) {
             result[0, vid] = val
             vertexdone[vid] = true
           }
-          continue
-        }
-
-        var zero = []
-        for (j in 0...lambda.count()) if (abs(lambda[j])<tol) zero.append(j)
-
-        if (zero.count()==1) {
-          var z = zero[0]
-          var a = mod(z+1, 3)
-          var b = mod(z+2, 3)
-          var eid = newedgeids[self._edgekey(fvids[a], fvids[b])]
-
-          if (!edgedone.contains(eid)) edgedone[eid] = Dictionary()
-
-          var everts = newedges.rowindices(eid)
-          var t = self._edgeparameter(newverts.column(everts[0]), newverts.column(everts[1]), x)
-          for (k in 0...edgepositions.count()) {
-            if (abs(t-edgepositions[k])<tol) {
-              edgedone[eid][k] = val
-              break
-            }
+        } else if (g==1) {
+          var eid = self._triangleedge(fvids, newedgeids, sid)
+          var edgekey = "${eid}:${indx}"
+          if (!edgedone.contains(edgekey)) {
+            result[1, eid, indx] = val
+            edgedone[edgekey] = true
           }
         } else {
-          result[2, newfid, 0] = val
+          result[2, newfid, indx] = val
         }
-      }
-    }
-
-    for (eid in edgedone.keys()) {
-      for (k in edgedone[eid].keys()) {
-        result[1, eid, k] = edgedone[eid][k]
       }
     }
 

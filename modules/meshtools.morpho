@@ -917,70 +917,57 @@ class MeshRefiner is MeshAdaptiveRefiner {
   }
 
   refine3(id, el, vert, nel, dict) { // refine volumes 
-    var nv = el.count() // Number of vertices in the element
-    var pts = [] // Points defining the element
-    var localmap = Dictionary() // Maps local ids in pts to correct ids 
-
-    for (i in 0...nv) { // Find vertex positions and ids
-      pts.append(vert.column(el[i])) 
-      localmap[i]=el[i]
-    }
-
     fn _pairkey(i, j) {
       if (i<j) return "${i},${j}"
       return "${j},${i}"
     }
 
-    var mids = Dictionary() // Maps a parent edge to the corresponding midpoint local id
-    for (i in 0...nv) {      // Loop over all unique pairs 
-      for (j in i+1...nv) {  // and find midpoints 
+    fn _mid(i, j, mids) {
+      return mids[_pairkey(i, j)]
+    }
+
+    var mids = Dictionary() // Maps a parent edge to the corresponding midpoint global id
+    for (i in 0...el.count()) {
+      for (j in i+1...el.count()) {
         var midpoint = (vert.column(el[i])+vert.column(el[j]))/2
-        var node = self.tree.ismember(midpoint) // Find whether this midpoint actually exists
+        var node = self.tree.ismember(midpoint)
         if (node) {
-          localmap[pts.count()]=node.id
-          mids[_pairkey(i, j)] = pts.count()
-          pts.append(midpoint)
-        } 
+          mids[_pairkey(i, j)] = node.id
+        }
       }
     }
 
-    var m01 = mids[_pairkey(0,1)]
-    var m02 = mids[_pairkey(0,2)]
-    var m03 = mids[_pairkey(0,3)]
-    var m12 = mids[_pairkey(1,2)]
-    var m13 = mids[_pairkey(1,3)]
-    var m23 = mids[_pairkey(2,3)]
+    var m01 = _mid(0, 1, mids)
+    var m02 = _mid(0, 2, mids)
+    var m03 = _mid(0, 3, mids)
+    var m12 = _mid(1, 2, mids)
+    var m13 = _mid(1, 3, mids)
+    var m23 = _mid(2, 3, mids)
 
     if (!(m01 && m02 && m03 && m12 && m13 && m23)) return false
 
     // A fixed red refinement of the tetrahedron into four corner tets plus
     // four tets that split the central octahedron along the m01-m23 diagonal.
     var subtets = [
-      [0,   m01, m02, m03],
-      [1,   m01, m12, m13],
-      [2,   m02, m12, m23],
-      [3,   m03, m13, m23],
+      [el[0], m01,   m02,   m03],
+      [el[1], m01,   m12,   m13],
+      [el[2], m02,   m12,   m23],
+      [el[3], m03,   m13,   m23],
       [m01, m02, m03, m23],
       [m01, m02, m12, m23],
       [m01, m03, m13, m23],
       [m01, m12, m13, m23]
     ]
 
-    fn _mapel(el) { // Map local ids for this element onto the correct ids 
-      var ntri = [] 
-      for (id in el) ntri.append(localmap[id]) 
-      return ntri 
-    } 
-
     for (t in subtets) { // Loop over the template tetrahedra
-      self.addelement(id, volumeGrade, _mapel(t), dict)
+      self.addelement(id, volumeGrade, t, dict)
 
       if (nel[1]>0) {
-        for (e in t.sets(2)) self.addelement(id, lineGrade, _mapel(e), nil)
+        for (e in t.sets(2)) self.addelement(id, lineGrade, e, nil)
       }
 
       if (nel[2]>0) {
-        for (e in t.sets(3)) self.addelement(id, areaGrade, _mapel(e), nil)
+        for (e in t.sets(3)) self.addelement(id, areaGrade, e, nil)
       }
     }
     return true 

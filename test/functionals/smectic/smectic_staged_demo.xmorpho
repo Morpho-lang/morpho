@@ -11,106 +11,6 @@ import plot
 import optimize4
 import "qtensortools.xmorpho"
 
-class CG3MeshRefiner is MeshRefiner {
-  _iscg3surfacefield(field) {
-    var fespace = field.finiteElementSpace()
-    if (!fespace) return false
-
-    var shape = field.shape()
-    return fespace.grade()==2 &&
-           fespace.count()==10 &&
-           shape.count()==3 &&
-           shape[0]==1 && shape[1]==2 && shape[2]==1
-  }
-
-  _edgekey(a, b) {
-    if (a<b) return "${a}:${b}"
-    return "${b}:${a}"
-  }
-
-  _eval(field, oldmesh, faceid, x) {
-    var lambda = oldmesh.barycentric(field.finiteElementSpace().grade(), faceid, x)
-    return field.evalElement(faceid, lambda)
-  }
-
-  _point(lambda, vids, verts) {
-    var x = lambda[0]*verts.column(vids[0])
-    for (j in 1...lambda.count()) x += lambda[j]*verts.column(vids[j])
-    return x
-  }
-
-  _triangleedge(fvids, edgeids, sid) {
-    if (sid==0) return edgeids[self._edgekey(fvids[0], fvids[1])]
-    if (sid==1) return edgeids[self._edgekey(fvids[1], fvids[2])]
-    if (sid==2) return edgeids[self._edgekey(fvids[2], fvids[0])]
-    return nil
-  }
-
-  adaptcg3field(field) {
-    if (!self.refinemap) return nil
-
-    var fespace = field.finiteElementSpace()
-    var prototype = field.enumerate(0)
-    if (isobject(prototype)) prototype = prototype.clone()
-    var result = Field(self.new, prototype, grade=field.shape(), finiteelementspace=fespace)
-
-    var nodes = fespace.nodeCoords()
-
-    var oldmesh = self.mesh()
-
-    var newverts = self.new.vertexmatrix()
-    var newfaces = self.new.connectivitymatrix(0, 2)
-    var newedges = self.new.connectivitymatrix(0, 1)
-    var newedgeids = Dictionary()
-    for (eid in 0...self.new.count(1)) {
-      var ev = newedges.rowindices(eid)
-      newedgeids[self._edgekey(ev[0], ev[1])] = eid
-    }
-
-    var vertexdone = Dictionary()
-    var edgedone = Dictionary()
-
-    for (newfid in self.refinemap[fespace.grade()]) {
-      var oldfid = self.refinemap[fespace.grade()][newfid]
-      var fvids = newfaces.rowindices(newfid)
-
-      for (i in 0...fespace.count()) {
-        var lambda = nodes.column(i)
-        var findx = fespace.nodeElementIndex(i)
-        var g = findx[0]
-        var sid = findx[1]
-        var indx = findx[2]
-        var x = self._point(lambda, fvids, newverts)
-        var val = self._eval(field, oldmesh, oldfid, x)
-
-        if (g==0) {
-          var vid = fvids[sid]
-          if (!vertexdone.contains(vid)) {
-            result[0, vid] = val
-            vertexdone[vid] = true
-          }
-        } else if (g==1) {
-          var eid = self._triangleedge(fvids, newedgeids, sid)
-          var edgekey = "${eid}:${indx}"
-          if (!edgedone.contains(edgekey)) {
-            result[1, eid, indx] = val
-            edgedone[edgekey] = true
-          }
-        } else {
-          result[2, newfid, indx] = val
-        }
-      }
-    }
-
-    return result
-  }
-
-  adaptfield(field) {
-    if (self._iscg3surfacefield(field)) return self.adaptcg3field(field)
-    return super.adaptfield(field)
-  }
-}
-
 // Physical parameters
 var deltaT = 0
 var l = 1
@@ -342,7 +242,7 @@ class Smectic {
 
   refine() {
     var srefine
-    var mr = CG3MeshRefiner([self.mesh, self.Q, self.rho, self.bnd])
+    var mr = MeshRefiner([self.mesh, self.Q, self.rho, self.bnd])
     var refmap = mr.refine(selection=srefine)
 
     self.mesh = refmap[self.mesh]

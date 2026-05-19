@@ -882,7 +882,8 @@ typedef struct {
 
 /** Remaps an edge-local quantity index if the matched line orientation is reversed. */
 static int fespace_orientedquantity(fespace *disc, grade g, fespacesubelement *subel, int sid, int indx) {
-    if (g!=MESH_GRADE_LINE || !subel[sid].reversed) return indx;
+    int stride = disc->nsubel+1;
+    if (g!=MESH_GRADE_LINE || !subel[g*stride+sid].reversed) return indx;
 
     fespace *lower;
     if (!fespace_lower(disc, g, &lower)) return indx;
@@ -930,7 +931,8 @@ bool fespace_nodefieldindex(fespace *disc, int node, grade *g, int *sid, int *in
 
 /** Steps through an element definition, generating subelements and identifying quantities */
 bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids, fieldindx *findx) {
-    fespacesubelement subel[disc->nsubel+1]; // Element IDs and orientation of subelements
+    int stride = disc->nsubel+1;
+    fespacesubelement subel[(disc->grade+1)*stride]; // Element IDs and orientation of subelements
     int sid, svids[nv], nmatch, k=0;
     
     objectsparse *vmatrix[disc->grade+1]; // Vertex->elementid connectivity matrices
@@ -952,16 +954,19 @@ bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids
                 sid = FETCH(instr);
                 for (int i=0; i<=op; i++) svids[i] = vids[FETCH(instr)];
                 
-                if (!mesh_matchelements(vmatrix[op], op, op+1, svids, 1, &nmatch, &subel[sid].id)) return false;
+                fespacesubelement *matched = &subel[op*stride+sid];
+                matched->id = -1;
+                if (!mesh_matchelements(vmatrix[op], op, op+1, svids, 1, &nmatch, &matched->id)) return false;
+                if (nmatch!=1 || matched->id<0) return false;
 
-                subel[sid].reversed=false;
+                matched->reversed=false;
                 if (op==LINE_OPCODE) {
                     int nlinev, *linevids;
-                    if (!lineconn || !mesh_getconnectivity(lineconn, subel[sid].id, &nlinev, &linevids)) return false;
+                    if (!lineconn || !mesh_getconnectivity(lineconn, matched->id, &nlinev, &linevids)) return false;
                     if (nlinev!=2) return false;
 
                     if (linevids[0]==svids[1] && linevids[1]==svids[0]) {
-                        subel[sid].reversed=true;
+                        matched->reversed=true;
                     } else if (!(linevids[0]==svids[0] && linevids[1]==svids[1])) {
                         return false;
                     }
@@ -972,7 +977,7 @@ bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids
             {
                 findx[k].g=FETCH(instr);
                 int sid=FETCH(instr);
-                findx[k].id=(findx[k].g==0 ? vids[sid]: subel[sid].id);
+                findx[k].id=(findx[k].g==0 ? vids[sid]: subel[findx[k].g*stride+sid].id);
                 findx[k].indx=fespace_orientedquantity(disc, findx[k].g, subel, sid, FETCH(instr));
                 k++;
             }
@@ -1016,6 +1021,7 @@ bool fespace_getnodecoords(fespace *disc, int node, double *lambda) {
 /** Constructs a layout matrix that maps element ids (columns) to degree of freedom indices in a field */
 bool fespace_layout(objectfield *field, fespace *disc, objectsparse **out) {
     objectsparse *conn = mesh_getconnectivityelement(field->mesh, 0, disc->grade);
+    if (!conn) conn = mesh_addconnectivityelement(field->mesh, 0, disc->grade);
     elementid nel=mesh_nelements(conn);
     
     objectsparse *new = object_newsparse(NULL, NULL);

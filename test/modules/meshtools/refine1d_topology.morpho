@@ -1,0 +1,20 @@
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0])
+mb.addvertex([1])
+mb.addedge([0,1])
+var m = mb.build()
+m.addgrade(1)
+
+var mr = MeshRefiner(m)
+var refmap = mr.refine()
+var newm = refmap[m]
+
+print newm.count(0)==3
+// expect: true
+print newm.count(1)==2
+// expect: true
+print [newm.count(0), newm.count(1)]
+// expect: [ 3, 2 ]
+

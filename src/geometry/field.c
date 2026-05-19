@@ -209,6 +209,7 @@ bool field_applyfunctiontoelements(vm *v, objectmesh *mesh, value fn, value fnsp
     fespace *disc = MORPHO_GETFESPACE(fnspc)->fespace;
 
     objectsparse *conn = mesh_getconnectivityelement(mesh, 0, disc->grade);
+    if (!conn) conn = mesh_addconnectivityelement(mesh, 0, disc->grade);
     if (!conn) return false;
     elementid nel = mesh_nelements(conn);
 
@@ -432,6 +433,7 @@ static bool field_getelementdofs(objectfield *field, fespace *disc, elementid el
     if (!field || !disc || !findx) return false;
 
     objectsparse *conn = mesh_getconnectivityelement(field->mesh, 0, disc->grade);
+    if (!conn) conn = mesh_addconnectivityelement(field->mesh, 0, disc->grade);
     if (!conn) return false;
 
     int nv, *vids;
@@ -1066,6 +1068,7 @@ value Field_elementdofs_method(vm *v, int nargs, value *args) {
 
         list = object_newlist(0, NULL);
         if (!list) goto field_elementdofs_cleanup;
+        out = MORPHO_OBJECT(list);
 
         for (int i=0; i<disc->nnodes; i++) {
             value entries[3] = {
@@ -1082,7 +1085,6 @@ value Field_elementdofs_method(vm *v, int nargs, value *args) {
         list_append(list, MORPHO_OBJECT(list));
         morpho_bindobjects(v, list->val.count, list->val.data);
         list->val.count--;
-        out = MORPHO_OBJECT(list);
     }
 
     return out;

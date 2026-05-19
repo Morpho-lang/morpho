@@ -1,0 +1,70 @@
+
+import optimize4
+
+class FieldProjector {
+  init(Field field, maxIterations=1000) {
+    self.field = field
+    if (!field.finiteElementSpace()) Error("FldPrjNoFES","Field must have finite element space").throw()
+    
+    self.maxIterations = maxIterations
+    self.mesh = self.field.mesh()
+    self.grade = field.finiteElementSpace().grade()
+    if (self.grade<1 || self.grade>3) Error("FldPrjGrd","Unsupported field grade").throw()
+
+    self.prototype = self.field.prototype()
+    if (isnil(self.prototype)) self.prototype = 0 
+    else self.prototype *= 0
+  }
+
+  _integralClass() {
+    var func = ( nil, LineIntegral, AreaIntegral, VolumeIntegral )
+    return func[self.grade]
+  }
+
+  _distanceSquared() {
+    if (isnumber(self.prototype)) return fn (x, u, v) { return (u-v)^2 }
+    else if (self.prototype.respondsto("norm")) return fn (x, u, v) { return (u-v).norm()^2 }
+
+    Error("FldPrjFunc","Unsupported field contents").throw()
+  }
+
+  _sourceNormSquared() {
+    if (isnumber(self.prototype)) return fn (x, u) { return u^2 }
+    else if (self.prototype.respondsto("norm")) return fn (x, u) { return u.norm()^2 }
+
+    Error("FldPrjFunc","Unsupported field contents").throw()
+  }
+
+  _setupProblem(Field target) {
+    self.problem = OptimizationProblem(self.field.mesh())
+    self.problem.addenergy(self._integralClass()(self._distanceSquared(), self.field, target, method={}))
+  }
+
+  _setTolerances(control, rtol=1e-8, gtol=1e-10) {
+    var integral = self._integralClass()
+
+    var measure = integral(fn (x) 1, method={}).total(self.mesh)
+    var usq = integral(self._sourceNormSquared(), self.field, method={}).total(self.mesh)
+
+    var uscale = 1.0
+    if (measure>0 && usq>0) uscale = sqrt(usq/measure)
+    uscale = max(1.0, uscale)
+
+    control.etol = 0.5*measure*(rtol*uscale)^2
+    control.gradtol = gtol*uscale
+  }
+
+  _optimize(Field target) {
+    var adapt = ProblemAdapter(self.problem, target)
+    var opt = LBFGSController(adapt, quiet=true)
+    self._setTolerances(opt)
+    opt.optimize(self.maxIterations)
+  }
+
+  project(FiniteElementSpace fe) {
+    var target = Field(self.mesh, self.prototype, finiteelementspace=fe)
+    self._setupProblem(target)
+    self._optimize(target)
+    return target
+  }
+}

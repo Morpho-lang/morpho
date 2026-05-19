@@ -9,6 +9,7 @@
 import meshgen
 import plot
 import optimize4
+import "fieldprojector.xmorpho"
 import "qtensortools.xmorpho"
 
 // Physical parameters
@@ -338,9 +339,8 @@ class Smectic {
   }
 
   _lowerToCG1(u) {
-    var phi = Field(self.mesh, 0)
-    for (i in 0...self.mesh.count()) phi[i] = self.rho[0,i]
-    return phi
+    var cg1 = FiniteElementSpace("CG1", grade=2)
+    return FieldProjector(u).project(cg1)
   }
 
   visualizeSmectic() {

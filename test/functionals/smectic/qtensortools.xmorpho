@@ -1,5 +1,7 @@
 // Tools to work with the Q-tensor in 3D. The Q-tensor is a symmetric traceless 3x3 matrix that describes the local orientational order of liquid crystals.
 
+import graphics
+
 // The q tensor [ Qxx Qxy Qxz ]
 //              [ Qxy Qyy Qyz ]
 //              [ Qxz Qyz Qzz ]

@@ -1,4 +1,4 @@
-import bytecodeoptimizer
+// Complex initializer
 
 var errChebyshevOrderInconsistent = Error("ChebyshevOrder", "Orders are inconsistent")
 

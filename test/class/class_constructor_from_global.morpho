@@ -1,4 +1,4 @@
-import bytecodeoptimizer
+// Class constructor from a global variable
 
 class MiniSphere {
     init(vertices, indx) {

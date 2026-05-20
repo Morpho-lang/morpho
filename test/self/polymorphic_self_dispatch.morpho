@@ -1,4 +1,4 @@
-import bytecodeoptimizer
+// Dispatch with multiple resolutions
 
 class Base {
   run() { return self.step() }

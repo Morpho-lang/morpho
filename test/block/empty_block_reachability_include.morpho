@@ -1,5 +1,4 @@
-
-import bytecodeoptimizer
+// Reachability of empty block after include
 
 import meshtools
 

@@ -300,6 +300,11 @@ void compiler_getmethodreturntype(compiler *c, value klass, value target, value 
     }
 }
 
+/** Returns true if a class is exact for compile-time dispatch specialization. */
+static bool compiler_typeisexact(value type) {
+    return (MORPHO_ISCLASS(type) && MORPHO_GETCLASS(type)->children.count==0);
+}
+
 /* ------------------------------------------
  * Types
  * ------------------------------------------- */
@@ -368,7 +373,7 @@ static objectclass *compiler_getcurrentclass(compiler *c) {
 
 /** Adds an objectclass to the compilers dictionary of classes */
 void compiler_addclass(compiler *c, objectclass *klass) {
-    klass->uid = program_addclass(c->out, MORPHO_OBJECT(klass));
+    program_addclass(c->out, MORPHO_OBJECT(klass));
     
     dictionary_insert(&c->classes, klass->name, MORPHO_OBJECT(klass));
 }
@@ -419,24 +424,9 @@ bool compiler_typefromvalue(compiler *c, value v, value *out) {
     return value_type(v, out);
 }
 
-/** Recursively searches the parents list of classes to see if the type 'match' is present */
-bool compiler_findtypeinparent(compiler *c, objectclass *type, value match) {
-    for (int i=0; i<type->parents.count; i++) {
-        if (MORPHO_ISEQUAL(type->parents.data[i], match) ||
-            compiler_findtypeinparent(c, MORPHO_GETCLASS(type->parents.data[i]), match)) return true;
-    }
-    return false;
-}
-
 /** Checks if type "match" matches a given type "type"  */
 bool compiler_checktype(compiler *c, value type, value match) {
-    if (MORPHO_ISNIL(type) || // If type is unset, we always match
-        MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same
-    
-    // Also match if 'match' inherits from 'type'
-    if (MORPHO_ISCLASS(match)) return compiler_findtypeinparent(c, MORPHO_GETCLASS(match), type);
-    
-    return false;
+    return value_typematch(type, match);
 }
 
 /** Select the more specific type of two types; returns false if the types are contradictory*/
@@ -2378,7 +2368,8 @@ bool compiler_arithmetictype(compiler *c, opcode op, registerindx left, register
     if (compiler_regcurrenttype(c, left, &ltype) &&
         compiler_regcurrenttype(c, right, &rtype)) {
         
-        if (MORPHO_ISEQUAL(ltype,_inttype) && MORPHO_ISEQUAL(rtype,_inttype) && op!=OP_POW) {
+        if (MORPHO_ISEQUAL(ltype,_inttype) && MORPHO_ISEQUAL(rtype,_inttype) &&
+            op!=OP_POW && op!=OP_DIV) {
             *type=_inttype;
             success=true;
         } else if (_isreal(ltype) && _isreal(rtype)) {
@@ -3512,8 +3503,9 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     /* -- Compile the parameters -- */
     compiler_functionparameters(c, node->left);
     
-    value signature[func->nargs+1];
+    value signature[function_countpositionalargs(func)];
     for (int i=0; i<func->nargs; i++) compiler_regtype(c, i+1, &signature[i]);
+    if (function_hasvargs(func)) signature[func->nargs]=MORPHO_NIL;
     function_setsignature(func, signature);
     signature_setvarg(&func->sig, function_hasvargs(func));
 
@@ -3706,6 +3698,52 @@ static bool compiler_isinvocation(compiler *c, syntaxtreenode *call) {
     return isinvocation;
 }
 
+static bool compiler_functionisrecursive(value fn) {
+    if (MORPHO_ISFUNCTION(fn)) return MORPHO_GETFUNCTION(fn)->isrecursive;
+    if (MORPHO_ISCLOSURE(fn)) return MORPHO_GETCLOSUREFUNCTION(fn)->isrecursive;
+    return false;
+}
+
+static bool compiler_metafunctionhasrecursiveimplementation(objectmetafunction *metafunction) {
+    for (int i=0; i<metafunction->fns.count; i++) {
+        if (compiler_functionisrecursive(metafunction->fns.data[i])) return true;
+    }
+
+    return false;
+}
+
+/** Attempt to specialize a constant metafunction call using current argument types. */
+static bool compiler_specializemetafunctioncall(compiler *c, syntaxtreenode *node, codeinfo *func,
+                                                instructionindx selectorload, int nargs, value selector, value *rtype) {
+    if (!MORPHO_ISMETAFUNCTION(selector)) return false;
+
+    objectmetafunction *metafunction = MORPHO_GETMETAFUNCTION(selector);
+    if (metafunction->state!=METAFUNCTION_FROZEN ||
+        compiler_metafunctionhasrecursiveimplementation(metafunction)) return false;
+
+    value argtypes[nargs];
+    for (int i=0; i<nargs; i++) {
+        value type = MORPHO_NIL;
+        argtypes[i] = (compiler_regcurrenttype(c, func->dest+i+1, &type) && compiler_typeisexact(type)) ? type : MORPHO_NIL;
+    }
+
+    value reduced = MORPHO_NIL;
+    error err;
+    error_init(&err);
+    bool success = metafunction_reduce(metafunction, nargs, argtypes, &err, &reduced);
+    error_clear(&err);
+    if (!success) return false;
+
+    registerindx ctarget = compiler_addconstant(c, node, reduced, true, false);
+    if (ctarget==REGISTER_UNALLOCATED) return false;
+
+    compiler_setinstruction(c, selectorload, ENCODE_LONG(OP_LCT, func->dest, ctarget));
+    compiler_getreturntype(c, reduced, rtype);
+    if (MORPHO_ISOBJECT(reduced)) program_bindobject(c->out, MORPHO_GETOBJECT(reduced));
+
+    return true;
+}
+
 /** Compiles a function call */
 static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx reqout) {
     unsigned int ninstructions=0;
@@ -3726,6 +3764,9 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     value rtype=MORPHO_NIL;
     if (selnode->type==NODE_SYMBOL) { // A regular call from a symbol
         compiler_findtype(c, selnode->content, &rtype);
+
+        objectfunction *current = compiler_getcurrentfunction(c);
+        if (current && MORPHO_ISEQUAL(current->name, selnode->content)) current->isrecursive=true;
     } else if (selnode->type==NODE_DOT) { // An constructor in a namespace?
         syntaxtreenode *nsnode = compiler_getnode(c, selnode->left);
         syntaxtreenode *snode = compiler_getnode(c, selnode->right);
@@ -3749,9 +3790,12 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     codeinfo func = compiler_nodetobytecode(c, node->left, rCallReq);
     
     // Attempt to infer return type
-    if (func.returntype==CONSTANT && MORPHO_ISNIL(rtype)) {
-        value target=MORPHO_NIL;
+    bool constantselector = (func.returntype==CONSTANT);
+    value target=MORPHO_NIL;
+    if (constantselector) {
         target=compiler_getconstant(c, func.dest);
+    }
+    if (constantselector && MORPHO_ISNIL(rtype)) {
         compiler_getreturntype(c, target, &rtype);
     }
     
@@ -3759,13 +3803,17 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     if (selnode->type==NODE_SYMBOL && compiler_catch(c, COMPILE_SYMBOLNOTDEFINED)) {
         syntaxtreenode *symbol=compiler_getnode(c, node->left);
         func=compiler_addforwardreference(c, symbol, symbol->content);
+        constantselector=false;
+        target=MORPHO_NIL;
     }
     ninstructions+=func.ninstructions;
 
     /* Move selector into a temporary register unless we already have one
        that's at the top of the stack */
+    instructionindx selectorload = -1;
     if (!compiler_iscodeinfotop(c, func)) {
         registerindx otop = compiler_regalloctop(c);
+        if (constantselector) selectorload = compiler_currentinstructionindex(c);
         func=compiler_movetoregister(c, node, func, otop);
         ninstructions+=func.ninstructions;
     }
@@ -3789,6 +3837,10 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     /* Generate the call instruction */
     int nposn=0, nopt=0;
     compiler_regcountargs(c, func.dest+1, lastarg, &nposn, &nopt);
+    if (constantselector && nopt==0 &&
+        selectorload>=0) {
+        compiler_specializemetafunctioncall(c, node, &func, selectorload, nposn, target, &rtype);
+    }
     compiler_addinstruction(c, ENCODE(OP_CALL, func.dest, nposn, nopt), node);
     ninstructions++;
 

@@ -33,8 +33,8 @@ value CFunction_tostring(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(CFunction)
-MORPHO_METHOD(MORPHO_TOSTRING_METHOD, CFunction_tostring, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, MORPHO_FN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, CFunction_tostring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, MORPHO_FN_IO)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

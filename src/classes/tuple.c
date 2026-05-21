@@ -275,36 +275,38 @@ value Tuple_setindex(vm *v, int nargs, value *args) {
 value Tuple_enumerate(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
     value out=MORPHO_NIL;
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
-        if (n<0) {
-            out=MORPHO_INTEGER(slf->length);
+    if (n<0) {
+        out=MORPHO_INTEGER(slf->length);
+    } else {
+        if (n<slf->length) {
+            out=slf->tuple[n];
         } else {
-            if (n<slf->length) {
-                out=slf->tuple[n];
-            } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+            morpho_runtimeerror(v, VM_OUTOFBOUNDS);
         }
-    } else MORPHO_RAISE(v, ENUMERATE_ARGS);
+    }
 
     return out;
+}
+
+value Tuple_enumerate__err(vm *v, int nargs, value *args) {
+    MORPHO_RAISE(v, ENUMERATE_ARGS);
+    return MORPHO_NIL;
 }
 
 /** Joins two tuples together  */
 value Tuple_join(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
-    value out = MORPHO_NIL;
+    objecttuple *operand = MORPHO_GETTUPLE(MORPHO_GETARG(args, 0));
+    objecttuple *new = tuple_concatenate(slf, operand);
 
-    if (nargs==1 && MORPHO_ISTUPLE(MORPHO_GETARG(args, 0))) {
-        objecttuple *operand = MORPHO_GETTUPLE(MORPHO_GETARG(args, 0));
-        objecttuple *new = tuple_concatenate(slf, operand);
+    return morpho_wrapandbind(v, (object *) new);
+}
 
-        out = morpho_wrapandbind(v, (object *) new);
-
-    } else morpho_runtimeerror(v, LIST_ADDARGS);
-
-    return out;
+value Tuple_join__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, LIST_ADDARGS);
+    return MORPHO_NIL;
 }
 
 /** Sort function for tuple_order */
@@ -387,15 +389,14 @@ value Tuple_reverse(vm *v, int nargs, value *args) {
 /** Rolls a tuple */
 value Tuple_roll(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    int roll;
+    morpho_valuetoint(MORPHO_GETARG(args, 0), &roll);
 
-    if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
-        int roll;
-        morpho_valuetoint(MORPHO_GETARG(args, 0), &roll);
+    objecttuple *new = tuple_roll(slf, roll);
+    return morpho_wrapandbind(v, (object *) new);
+}
 
-        objecttuple *new = tuple_roll(slf, roll);
-        return morpho_wrapandbind(v, (object *) new);
-    }
-
+value Tuple_roll__err(vm *v, int nargs, value *args) {
     morpho_runtimeerror(v, LIST_ADDARGS);
     return MORPHO_NIL;
 }
@@ -403,30 +404,36 @@ value Tuple_roll(vm *v, int nargs, value *args) {
 /** Tests if a tuple has a value as a member */
 value Tuple_ismember(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    return MORPHO_BOOL(tuple_ismember(slf, MORPHO_GETARG(args, 0)));
+}
 
-    if (nargs==1) {
-        return MORPHO_BOOL(tuple_ismember(slf, MORPHO_GETARG(args, 0)));
-    } else morpho_runtimeerror(v, ISMEMBER_ARG, 1, nargs);
-
+value Tuple_ismember__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, ISMEMBER_ARG, 1, nargs);
     return MORPHO_NIL;
 }
 
 MORPHO_BEGINCLASS(Tuple)
-MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Tuple_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "String ()", Tuple_tostring, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Tuple ()", Tuple_clone, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_getindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Tuple_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Tuple (_)", Tuple_join, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Tuple (_)", Tuple_roll, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Tuple ()", Tuple_sort, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Tuple (_)", Tuple_sort_fn, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(LIST_ORDER_METHOD, "Tuple ()", Tuple_order, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(LIST_REVERSE_METHOD, "Tuple ()", Tuple_reverse, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Bool (_)", Tuple_ismember, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Bool (_)", Tuple_ismember, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Tuple_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "String ()", Tuple_tostring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Tuple ()", Tuple_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_getindex, MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Tuple_setindex, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", Tuple_enumerate, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "Nil (...)", Tuple_enumerate__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Tuple (Tuple)", Tuple_join, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Nil (...)", Tuple_join__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Tuple (Int)", Tuple_roll, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Tuple (Float)", Tuple_roll, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Nil (...)", Tuple_roll__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Tuple ()", Tuple_sort, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Tuple (Callable)", Tuple_sort_fn, MORPHO_FN_ALLOCATES|MORPHO_FN_REENTRANT|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(LIST_ORDER_METHOD, "Tuple ()", Tuple_order, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(LIST_REVERSE_METHOD, "Tuple ()", Tuple_reverse, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Bool (_)", Tuple_ismember, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Nil (...)", Tuple_ismember__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Bool (_)", Tuple_ismember, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Nil (...)", Tuple_ismember__err, MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

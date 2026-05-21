@@ -56,6 +56,7 @@ void object_functioninit(objectfunction *func) {
     func->nopt=0;
     func->parent=NULL;
     func->creg=-1;
+    func->isrecursive=false;
     func->nregs=0;
     varray_valueinit(&func->konst);
     varray_varray_upvalueinit(&func->prototype);
@@ -202,8 +203,8 @@ value Function_tostring(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Function)
-MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Function_tostring, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Function_tostring, MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, MORPHO_FN_IO)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -239,7 +240,8 @@ objecttypedefn objectcallabledefn = {
  * ********************************************************************** */
 
 MORPHO_BEGINCLASS(Callable)
-MORPHO_METHOD(MORPHO_CLASS_METHOD, Object_class, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_CLASS_METHOD, Object_class, MORPHO_FN_PUREFN),
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Function_tostring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

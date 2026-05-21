@@ -28,6 +28,7 @@
 
 #define FUNCTION_MOD           "mod"
 #define FUNCTION_ABS           "abs"
+#define FUNCTION_EXP           "exp"
 #define FUNCTION_SIGN          "sign"
 #define FUNCTION_ARCTAN        "arctan"
 

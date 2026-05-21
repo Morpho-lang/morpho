@@ -781,31 +781,13 @@ static inline bool vm_invoke(vm *v, value obj, value method, int nargs, value *a
     return false;
 }
 
-/** Recursively searches the parents list of classes to see if the type 'match' is present */
-bool _findtypeinparent(objectclass *type, value match) {
-    for (int i=0; i<type->parents.count; i++) {
-        if (MORPHO_ISEQUAL(type->parents.data[i], match) ||
-            _findtypeinparent(MORPHO_GETCLASS(type->parents.data[i]), match)) return true;
-    }
-    return false;
-}
-
 /** Performs a type check operation
  * @param[in] v - the VM in use
  * @param[in] val - value to check
  * @param[in] match - type to match
  * @returns true on success, false otherwise */
 static inline bool vm_typecheck(vm *v, value val, value match) {
-    value type;
-    if (!value_type(val, &type)) return false;
-    
-    if (MORPHO_ISNIL(type) || // If type is unset, we always match
-        MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same
-    
-    // Also match if 'match' inherits from 'type'
-    if (MORPHO_ISCLASS(match)) return _findtypeinparent( MORPHO_GETCLASS(match), type);
-    
-    return false;
+    return value_istype(val, match);
 }
 
 /** @brief   Executes a sequence of code

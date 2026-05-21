@@ -200,6 +200,7 @@ bool signature_parse(const char *sig, signature *out) {
 
 /** Print a signature for debugging purposes */
 void signature_print(signature *s) {
+    if (MORPHO_ISCLASS(s->ret)) { morpho_printvalue(NULL, MORPHO_GETCLASS(s->ret)->name); printf(" "); }
     printf("(");
     for (int i=0; i<s->types.count; i++) {
         value type=s->types.data[i];

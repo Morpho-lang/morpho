@@ -12,5 +12,16 @@ print mod(4, 2.5)
 print mod(3.4, 1.1)
 // expect: 0.1
 
-print mod(1,2,3)
-// expect Error 'InvldArgs'
+try {
+    print mod(1,2,3)
+} catch {
+    "InvldArgs" : print "ok"
+}
+// expect: ok
+
+try {
+    print mod(1.5,2,3)
+} catch {
+    "InvldArgs" : print "ok"
+}
+// expect: ok

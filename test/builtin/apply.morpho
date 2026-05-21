@@ -14,4 +14,4 @@ apply(f, 1,2,3)
 // expect: 6
 
 apply([1,2,3], f)
-// expect error 'ApplyNtCllble'
+// expect error 'MltplDsptchFld'

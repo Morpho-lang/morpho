@@ -1,0 +1,23 @@
+// Reachability of empty block after include
+
+import meshtools
+
+var refine_adaptively = false // Flag to turn mesh-refinement on/off
+var refine_iters = 1 // Number of iterations of refimenent
+var visualize_refinement = false // Flag to turn plotting the refinement regions and refined meshes on/off
+
+print "Refine adaptively: ${refine_adaptively}"
+
+if (refine_adaptively){
+  for (i in 1..refine_iters) {
+  
+    print "Refining"
+    System.exit()
+    
+    if (visualize_refinement){
+
+    }
+  }
+}
+
+// expect: Refine adaptively: false

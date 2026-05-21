@@ -1213,7 +1213,7 @@ MORPHO_ENDCLASS
 void fespace_initialize(void) {
     objectfespacetype=object_addtype(&objectfespacedefn);
     
-    builtin_addfunction(FINITEELEMENTSPACE_CLASSNAME, fespace_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FINITEELEMENTSPACE_CLASSNAME, fespace_constructor, MORPHO_FN_CONSTRUCTOR|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS);
     
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));

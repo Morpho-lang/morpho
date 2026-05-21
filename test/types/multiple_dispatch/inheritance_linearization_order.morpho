@@ -1,0 +1,24 @@
+// Multiple inheritance linearization order in dispatch
+
+class A {}
+
+class D {}
+
+class E is A with D {}
+
+class F is D with A {}
+
+fn f(A x) {
+    return "A"
+}
+
+fn f(D x) {
+    return "D"
+}
+
+print f(E())
+// expect: A
+
+print f(F())
+// expect: D
+

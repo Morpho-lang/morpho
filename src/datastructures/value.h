@@ -250,6 +250,12 @@ bool morpho_valuetofloat(value v, double *out);
 /** Get the type associated with a value */
 bool value_type(value v, value *type);
 
+/** Check whether an actual type matches a required type */
+bool value_typematch(value type, value match);
+
+/** Check whether a value matches a required type */
+bool value_istype(value v, value type);
+
 /* -------------------------------------------------------
  * Varrays of values
  * ------------------------------------------------------- */

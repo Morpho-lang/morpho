@@ -1,0 +1,26 @@
+// Diamond inheritance linearization in dispatch
+
+class A {}
+
+class B is A {}
+
+class C is A {}
+
+class D is B with C {}
+
+class E is C with B {}
+
+fn f(B x) {
+    return "B"
+}
+
+fn f(C x) {
+    return "C"
+}
+
+print f(D())
+// expect: B
+
+print f(E())
+// expect: C
+

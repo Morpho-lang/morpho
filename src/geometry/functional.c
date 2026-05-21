@@ -1630,8 +1630,8 @@ static bool functional_mapjumpnumericalfieldgradient(vm *v, functional_mapinfo *
 
     functional_parallelmap(ntask, task);
 
-    for (int i=1; i<ntask; i++) matrix_add(&new[0]->data, &new[i]->data, &new[0]->data);
-
+    for (int i=1; i<ntask; i++) matrix_axpy(1.0, &new[i]->data, &new[0]->data);;
+    
     success=true;
     *out=MORPHO_OBJECT(new[0]);
 
@@ -4303,8 +4303,10 @@ static objectjumpinterfaceref *jump_getinterfaceref(vm *v) {
     value iref=MORPHO_NIL;
     vm_gettlvar(v, jumpinterfacehandle, &iref);
     if (MORPHO_ISJUMPINTERFACEREF(iref)) return MORPHO_GETJUMPINTERFACEREF(iref);
-
+    
     return NULL;
+}
+
 /* ---------
  * Elementid
  * --------- */
@@ -4459,7 +4461,7 @@ bool integral_gradalloc(int dim, value prototype, value *out) {
 /** Allocate suitable storage for the hessian */
 bool integral_hessalloc(int dim, value prototype, value *out) {
     if (MORPHO_ISNIL(prototype)) { // Scalar
-        objectmatrix *mhess=object_newmatrix(dim, dim, false);
+        objectmatrix *mhess=matrix_new(dim, dim, false);
         if (mhess) *out = MORPHO_OBJECT(mhess);
         return mhess;
     } else if (MORPHO_ISMATRIX(prototype)) {
@@ -4503,7 +4505,7 @@ bool integral_hesssuminit(int c, value prototype, value dest, value *sum) {
         
         if (c>=list_length(lst)) {
             objectmatrix *prmat = MORPHO_GETMATRIX(prototype);
-            objectmatrix *new = object_newmatrix(prmat->nrows, prmat->ncols, true);
+            objectmatrix *new = matrix_new(prmat->nrows, prmat->ncols, true);
             if (!new) return false;
             *sum = MORPHO_OBJECT(new);
             list_append(lst, *sum);
@@ -4689,7 +4691,7 @@ bool integral_evaluatehessian(vm *v, value q, value *out) {
     
     if (MORPHO_ISFESPACE(fld->fnspc)) {
         if (!elref->invj) {
-            elref->invj=object_newmatrix(elref->g, elref->mesh->dim, false);
+            elref->invj=matrix_new(elref->g, elref->mesh->dim, false);
             if (elref->invj) {
                 integral_prepareinvjacobian(elref->mesh->dim, elref->g, elref->vertexposn, elref->invj);
             } else {
@@ -5745,7 +5747,7 @@ static bool jump_parentlambda(unsigned int dim, grade g, double **x, double *pos
     functional_vecsub(dim, posn, x[0], sdata);
 
     if (!integral_prepareinvjacobian(dim, g, x, &invj)) return false;
-    if (matrix_mul(&invj, &s, &l)!=MATRIX_OK) return false;
+    if (matrix_mul(&invj, &s, &l)!=LINALGERR_OK) return false;
 
     lambda[0]=1.0;
     for (int i=1; i<g+1; i++) lambda[0]-=lambda[i];
@@ -5833,7 +5835,7 @@ static bool jump_evaluatesidegradient(objectjumpinterfaceref *iref, int ifld, bo
     objectmatrix fmat = MORPHO_STATICMATRIX(fdata, nnodes, dim);
 
     fespace_gradient(disc, lambda, &gmat);
-    if (matrix_mul(&gmat, &invj, &fmat)!=MATRIX_OK) return false;
+    if (matrix_mul(&gmat, &invj, &fmat)!=LINALGERR_OK) return false;
 
     for (int i=0; i<dim; i++) {
         value sum=MORPHO_FLOAT(0.0);
@@ -5853,7 +5855,7 @@ static bool jump_preparenormal(vm *v, objectjumpinterfaceref *iref) {
 
     functional_vecsub(dim, minuscentroid, pluscentroid, d);
 
-    objectmatrix *mnormal = object_newmatrix(dim, 1, false);
+    objectmatrix *mnormal = matrix_new(dim, 1, false);
     if (!mnormal) return false;
 
     for (int i=0; i<dim; i++) mnormal->elements[i]=0.0;

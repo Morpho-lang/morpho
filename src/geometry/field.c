@@ -471,7 +471,7 @@ bool field_evalelement(objectfield *field, elementid el, double *lambda, value *
         return true;
     } else if (MORPHO_ISMATRIX(field->prototype)) {
         objectmatrix *proto = MORPHO_GETMATRIX(field->prototype);
-        objectmatrix *accum = object_newmatrix(proto->nrows, proto->ncols, true);
+        objectmatrix *accum = matrix_new(proto->nrows, proto->ncols, true);
         if (!accum) return false;
 
         for (int i=0; i<disc->nnodes; i++) {

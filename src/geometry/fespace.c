@@ -1171,7 +1171,7 @@ value FiniteElementSpace_nodecoords(vm *v, int nargs, value *args) {
     int nrows = disc->grade+1;
 
     if (nargs==0) {
-        objectmatrix *new = object_newmatrix(nrows, disc->nnodes, true);
+        objectmatrix *new = matrix_new(nrows, disc->nnodes, true);
         if (!new) return MORPHO_NIL;
 
         for (int i=0; i<disc->nnodes; i++) {
@@ -1180,7 +1180,7 @@ value FiniteElementSpace_nodecoords(vm *v, int nargs, value *args) {
                 object_free((object *) new);
                 return MORPHO_NIL;
             }
-            matrix_setcolumn(new, i, lambda);
+            matrix_setcolumnptr(new, i, lambda);
         }
 
         out=morpho_wrapandbind(v, (object *) new);
@@ -1189,8 +1189,8 @@ value FiniteElementSpace_nodecoords(vm *v, int nargs, value *args) {
         double lambda[nrows];
 
         if (fespace_getnodecoords(disc, i, lambda)) {
-            objectmatrix *new = object_newmatrix(nrows, 1, true);
-            if (new) matrix_setcolumn(new, 0, lambda);
+            objectmatrix *new = matrix_new(nrows, 1, true);
+            if (new) matrix_setcolumnptr(new, 0, lambda);
             out=morpho_wrapandbind(v, (object *) new);
         }
     }

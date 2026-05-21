@@ -181,7 +181,6 @@ bool mesh_getbarycentriccoordinates(objectmesh *mesh, grade g, elementid id, dou
     double dx[mesh->dim], edges[g][mesh->dim];
     objectmatrix gram = MORPHO_STATICMATRIX(gramdata, g, g);
     objectmatrix rhs = MORPHO_STATICMATRIX(rhsdata, g, 1);
-    objectmatrix alpha = MORPHO_STATICMATRIX(alphadata, g, 1);
     matrix_zero(&gram);
     matrix_zero(&rhs);
 
@@ -196,12 +195,12 @@ bool mesh_getbarycentriccoordinates(objectmesh *mesh, grade g, elementid id, dou
             gram.elements[i+j*g]=functional_vecdot(mesh->dim, edges[i], edges[j]);
         }
     }
-    bool success=(matrix_divs(&gram, &rhs, &alpha)==MATRIX_OK);
+    bool success=(matrix_solvesmall(&gram, &rhs)==LINALGERR_OK);
     if (success) {
         double sum=0.0;
         for (int i=0; i<g; i++) {
-            lambda[i+1]=alpha.elements[i];
-            sum+=alpha.elements[i];
+            lambda[i+1]=rhs.elements[i];
+            sum+=rhs.elements[i];
         }
         lambda[0]=1.0-sum;
     }
@@ -1342,7 +1341,7 @@ value Mesh_barycentric(vm *v, int nargs, value *args) {
             return MORPHO_NIL;
         }
 
-        objectmatrix *lambda=object_newmatrix(g+1, 1, true);
+        objectmatrix *lambda=matrix_new(g+1, 1, true);
         if (!lambda) {
             morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
             return MORPHO_NIL;

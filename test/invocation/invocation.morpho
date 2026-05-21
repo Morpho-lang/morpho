@@ -11,7 +11,7 @@ print b.clss()
 // expect: @Invocation
 
 print b.superclass()
-// expect: @Object
+// expect: @Callable
 
 print b.clone()("respondsto") 
 // expect: true

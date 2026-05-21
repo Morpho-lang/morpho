@@ -1,0 +1,9 @@
+// Outer product of two vectors 
+
+var A = Matrix((1,2,3))
+var B = Matrix((4,5))
+
+print A.outer(B)
+// expect: [ 4 5 ]
+// expect: [ 8 10 ]
+// expect: [ 12 15 ]

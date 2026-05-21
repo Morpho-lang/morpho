@@ -18,9 +18,6 @@
 /** Varrays of parse rules */
 DEFINE_VARRAY(parserule, parserule)
 
-/** Macro to check return of a bool function */
-#define PARSE_CHECK(f) if (!(f)) return false;
-
 /* **********************************************************************
  * Parser utility functions
  * ********************************************************************** */
@@ -479,7 +476,7 @@ bool parse_arglist(parser *p, tokentype rightdelimiter, unsigned int *nargs, voi
     return true;
 }
 
-/** Parses a variable name, or raises and error if a symbol isn't found */
+/** Parses a variable name, or raises an error if a symbol isn't found */
 bool parse_variable(parser *p, errorid id, void *out) {
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_SYMBOL, id));
     return parse_symbol(p, out);
@@ -1055,9 +1052,9 @@ bool parse_typedvardeclaration(parser *p, void *out) {
         
         PARSE_CHECK(parse_addnode(p, NODE_DOT, MORPHO_NIL, &start, namespace, type, &type));
         PARSE_CHECK(parse_addnode(p, NODE_TYPE, MORPHO_NIL, &start, type, var, &new));
-    } else { // Perhaps it was really an expression statement
+    } else { // Return failure
         parse_restorestate(&op, &ol, p);
-        PARSE_CHECK(parse_statement(p, &new));
+        return false;
     }
     
     *((syntaxtreeindx *) out) = new;
@@ -1265,7 +1262,7 @@ bool parse_blockstatement(parser *p, void *out) {
         parse_error(p, false, PARSE_INCOMPLETEEXPRESSION);
         return false;
     } else {
-        PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTCURLYBRACKET, PARSE_MISSINGSEMICOLONEXP));
+        PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTCURLYBRACKET, PARSE_BLOCKTERMINATOREXP));
     }
     
     return parse_addnode(p, NODE_SCOPE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, body, out);
@@ -1324,6 +1321,8 @@ bool parse_forstatement(parser *p, void *out) {
         
     } else if (parse_checktokenadvance(p, TOKEN_VAR)) {
         PARSE_CHECK(parse_vardeclaration(p, &init));
+    } else if (parse_checktoken(p, TOKEN_SYMBOL) &&
+               parse_typedvardeclaration(p, &init)) {
     } else {
         PARSE_CHECK(parse_expression(p, &init));
         while (parse_checktokenadvance(p, TOKEN_COMMA)) {
@@ -1535,6 +1534,7 @@ bool parse_declaration(parser *p, void *out) {
         success=parse_importdeclaration(p, out);
     } else if (parse_checktoken(p, TOKEN_SYMBOL)) { // Typed var declaration ?
         success=parse_typedvardeclaration(p, out);
+        if (!success) success=parse_statement(p, out); // Try statement instead
     } else {
         success=parse_statement(p, out);
     }
@@ -1859,9 +1859,7 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_INCOMPLETEEXPRESSION, ERROR_PARSE, PARSE_INCOMPLETEEXPRESSION_MSG);
     morpho_defineerror(PARSE_MISSINGPARENTHESIS, ERROR_PARSE, PARSE_MISSINGPARENTHESIS_MSG);
     morpho_defineerror(PARSE_EXPECTEXPRESSION, ERROR_PARSE, PARSE_EXPECTEXPRESSION_MSG);
-    morpho_defineerror(PARSE_MISSINGSEMICOLON, ERROR_PARSE, PARSE_MISSINGSEMICOLON_MSG);
     morpho_defineerror(PARSE_MISSINGSEMICOLONEXP, ERROR_PARSE, PARSE_MISSINGSEMICOLONEXP_MSG);
-    morpho_defineerror(PARSE_MISSINGSEMICOLONVAR, ERROR_PARSE, PARSE_MISSINGSEMICOLONVAR_MSG);
     morpho_defineerror(PARSE_VAREXPECTED, ERROR_PARSE, PARSE_VAREXPECTED_MSG);
     morpho_defineerror(PARSE_SYMBLEXPECTED, ERROR_PARSE, PARSE_SYMBLEXPECTED_MSG);
     morpho_defineerror(PARSE_BLOCKTERMINATOREXP, ERROR_PARSE, PARSE_BLOCKTERMINATOREXP_MSG);
@@ -1872,7 +1870,6 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_IFRGHTPARENMISSING, ERROR_PARSE, PARSE_IFRGHTPARENMISSING_MSG);
     morpho_defineerror(PARSE_WHILELFTPARENMISSING, ERROR_PARSE, PARSE_WHILELFTPARENMISSING_MSG);
     morpho_defineerror(PARSE_FORLFTPARENMISSING, ERROR_PARSE, PARSE_FORLFTPARENMISSING_MSG);
-    morpho_defineerror(PARSE_FORSEMICOLONMISSING, ERROR_PARSE, PARSE_FORSEMICOLONMISSING_MSG);
     morpho_defineerror(PARSE_FORRGHTPARENMISSING, ERROR_PARSE, PARSE_FORRGHTPARENMISSING_MSG);
     morpho_defineerror(PARSE_FNNAMEMISSING, ERROR_PARSE, PARSE_FNNAMEMISSING_MSG);
     morpho_defineerror(PARSE_FNLEFTPARENMISSING, ERROR_PARSE, PARSE_FNLEFTPARENMISSING_MSG);

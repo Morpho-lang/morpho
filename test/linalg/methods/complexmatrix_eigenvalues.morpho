@@ -1,0 +1,10 @@
+// Eigenvalues
+
+var A = ComplexMatrix(2,2)
+A[0,0]=0+0im
+A[0,1]=im
+A[1,0]=im 
+A[1,1]=0+0im
+
+print A.eigenvalues()
+// expect: (0 + 1im, 0 - 1im)

@@ -1,0 +1,9 @@
+// Return type of a function matches type qualifier
+
+fn f(Int x) {
+    return 2.5*x
+}
+
+Int a = f(2)
+
+// expect error 'TypeErr'

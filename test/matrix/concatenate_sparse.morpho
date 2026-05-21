@@ -24,4 +24,4 @@ print c
 // expect: [ 2 3 2 3 0 ]
 
 var c = Matrix([[a, b], [b, 0]])
-// expect error 'MtrxIncmptbl'
+// expect error 'LnAlgMtrxIncmptbl'

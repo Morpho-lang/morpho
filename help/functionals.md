@@ -282,7 +282,7 @@ See the `Functionals` entry for general information about functionals.
 
 The `AreaIntegral` functional computes the area integral of a function. You supply an integrand function that takes a position matrix as an argument.
 
-To compute integral(x*y) over an area element:
+To compute `integral(x*y)` over an area element:
 
     var la=AreaIntegral(fn (x) x[0]*x[1])
 

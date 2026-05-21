@@ -1,0 +1,5 @@
+// Type violation with dictionary access
+
+Dictionary dict = { "a": 1, "b": 2 }
+
+String val = dict["a"]  // expect error 'TypeChk' - dict["a"] is Int, not String

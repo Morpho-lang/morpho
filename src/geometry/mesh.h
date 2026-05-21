@@ -12,7 +12,7 @@
 #ifdef MORPHO_INCLUDE_GEOMETRY
 
 #include "varray.h"
-#include "matrix.h"
+#include "linalg.h"
 #include "sparse.h"
 
 /* -------------------------------------------------------

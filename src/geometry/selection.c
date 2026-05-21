@@ -11,7 +11,7 @@
 #include "object.h"
 #include "builtin.h"
 #include "classes.h"
-#include "matrix.h"
+#include "linalg.h"
 #include "sparse.h"
 #include "mesh.h"
 #include "selection.h"
@@ -186,7 +186,7 @@ void selection_selectwithmatrix(vm *v, objectselection *sel, value fn, objectmat
     int nv = vert->ncols;
 
     if (matrix->ncols!=nv) {
-        morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+        morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
         return;
     }
     
@@ -196,9 +196,7 @@ void selection_selectwithmatrix(vm *v, objectselection *sel, value fn, objectmat
     value ret=MORPHO_NIL; // Return value
     
     for (elementid i=0; i<nv; i++) {
-        bool success=matrix_getcolumn(matrix, i, &x);
-        
-        if (success) {
+        if (matrix_getcolumnptr(matrix, i, &x)==LINALGERR_OK) {
             for (unsigned int i=0; i<nargs; i++) args[i]=MORPHO_FLOAT(x[i]);
         }
         

@@ -1,0 +1,6 @@
+// Return type of a function matches type qualifier
+
+Float a = clock()
+
+print a.clss() // expect: @Float
+

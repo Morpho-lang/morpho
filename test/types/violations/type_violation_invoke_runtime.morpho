@@ -1,0 +1,11 @@
+// Assign result of a function to a type protected variable
+
+class A {
+  foo(x) { return x }
+}
+
+{
+  var a = A()
+  Int b = a.foo(1.2)
+}
+// expect error 'TypeChk'

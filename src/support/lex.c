@@ -157,11 +157,12 @@ bool lex_matchtoken(lexer *l, tokendefn **defn) {
     return def;
 }
 
-/** @brief Attempts to identify a token from the current point, advances if it finds one.
+/** @brief Attempts to identify a token from the current point
  *  @param[in] l The lexer in use
+ *  @param[in] advance Should we advance if we find the token?
  *  @param[out] defn Type of token, if found
  *  @returns true if the token matched, false if not */
-bool lex_identifytoken(lexer *l, tokendefn **defn) {
+bool lex_identifytoken(lexer *l, bool advance, tokendefn **defn) {
     char c = lex_peek(l);
     
     // Match first character
@@ -177,7 +178,7 @@ bool lex_identifytoken(lexer *l, tokendefn **defn) {
     for (; def->string[0]==c && def>=l->defns; def--) {
         size_t len=strlen(def->string);
         if (strncmp(def->string, l->current, len)==0) {
-            lex_advanceby(l, len);
+            if (advance) lex_advanceby(l, len);
             if (defn) *defn = def;
             return true;
         }
@@ -673,7 +674,7 @@ bool lex(lexer *l, token *tok, error *err) {
     }
     
     tokendefn *defn=NULL;
-    if (lex_identifytoken(l, &defn)) {
+    if (lex_identifytoken(l, true, &defn)) {
         lex_recordtoken(l, defn->type, tok);
     } else {
         morpho_writeerrorwithid(err, LEXER_UNRECOGNIZEDTOKEN, NULL, l->line, l->posn);

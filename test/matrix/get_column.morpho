@@ -17,4 +17,4 @@ print a.column(2)
 // expect: [ 12 ]
 
 print a.column(10)
-// expect Error 'MtrxBnds'
+// expect Error 'LnAlgMtrxIndxBnds'

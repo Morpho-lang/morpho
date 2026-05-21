@@ -7,4 +7,4 @@ print a.trace()
 
 var b = Matrix([[1, 2]])
 print b.trace()
-// expect error 'MtrxNtSq'
+// expect error 'LnAlgMtrxNtSq'

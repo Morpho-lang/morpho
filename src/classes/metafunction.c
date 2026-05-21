@@ -43,6 +43,7 @@ void objectmetafunction_freefn(object *obj) {
 void objectmetafunction_markfn(object *obj, void *v) {
     objectmetafunction *f = (objectmetafunction *) obj;
     morpho_markvalue(v, f->name); // Mark the name
+    morpho_markvarrayvalue(v, &f->fns); // Preserve implementations while building/frozen
     
     for (int i=0; i<f->resolver.count; i++) { // Mark any functions in the resolver
         mfinstruction *instr = &f->resolver.data[i];
@@ -81,6 +82,7 @@ objectmetafunction *object_newmetafunction(value name) {
         new->name=MORPHO_NIL;
         if (MORPHO_ISSTRING(name)) new->name=object_clonestring(name);
         new->klass=NULL; 
+        new->state=METAFUNCTION_BUILDING;
         varray_valueinit(&new->fns);
         varray_mfinstructioninit(&new->resolver);
     }
@@ -114,27 +116,17 @@ bool metafunction_wrap(value name, value fn, value *out) {
 
 /** Adds a function to a metafunction */
 bool metafunction_add(objectmetafunction *f, value fn) {
+    if (f->state==METAFUNCTION_FROZEN) {
+        metafunction_clearinstructions(f);
+        f->state=METAFUNCTION_BUILDING;
+    }
     return varray_valuewrite(&f->fns, fn);
-}
-
-/** Extracts a type from a value */
-bool metafunction_typefromvalue(value v, value *out) {
-    objectclass *clss = NULL;
-    
-    if (MORPHO_ISINSTANCE(v)) {
-        clss=MORPHO_GETINSTANCE(v)->klass;
-    } else if (MORPHO_ISOBJECT(v)) {
-        clss = object_getveneerclass(MORPHO_GETOBJECT(v)->type);
-    } else clss = value_getveneerclass(v);
-    
-    if (clss) *out = MORPHO_OBJECT(clss);
-    return clss;
 }
 
 /** Checks if val matches a given type */
 bool metafunction_matchtype(value type, value val) {
     value match;
-    if (!metafunction_typefromvalue(val, &match)) return false;
+    if (!value_type(val, &match)) return false;
     
     if (MORPHO_ISNIL(type) || // If type is unset, we always match
         MORPHO_ISEQUAL(type, match)) return true; // Or if the types are the same
@@ -175,6 +167,22 @@ signature *metafunction_getsignature(value fn) {
         return &MORPHO_GETCLOSURE(fn)->func->sig;
     }
     return NULL;
+}
+
+/** Infer the return type from the contents of a metafunction, if known */
+void metafunction_inferreturntype(objectmetafunction *fn, value *type) {
+    value rtype = MORPHO_NIL;
+    
+    for (int i=0; i<fn->fns.count; i++) {
+        signature *sig = metafunction_getsignature(fn->fns.data[i]);
+        if (i==0) {
+            rtype=sig->ret;
+        } else {
+            if (!MORPHO_ISEQUAL(sig->ret,rtype)) rtype=MORPHO_NIL; 
+        }
+    }
+    
+    *type=rtype;
 }
 
 value _getname(value fn) {
@@ -225,6 +233,7 @@ DEFINE_VARRAY(mfset, mfset)
 typedef struct {
     objectmetafunction *fn;
     varray_int checked; // Stack of checked parameters
+    bool varchecked; // Have we checked for a variadic function?
     error err;
 } mfcompiler;
 
@@ -233,6 +242,7 @@ void mfcompiler_init(mfcompiler *c, objectmetafunction *fn) {
     c->fn=fn;
     varray_intinit(&c->checked);
     error_init(&c->err);
+    c->varchecked=false;
 }
 
 /** Clear the metafunction compiler */
@@ -356,6 +366,14 @@ void mfcompile_countparams(mfcompiler *c, mfset *set, int *min, int *max) {
     }
     if (min) *min = imin;
     if (max) *max = imax;
+}
+
+/** Check if a set contains a variadic */
+bool mfcompile_containsvariadic(mfcompiler *c, mfset *set) {
+    for (int i=0; i<set->count; i++) {
+        if (signature_isvarg(set->rlist[i].sig)) return true;
+    }
+    return false;
 }
 
 /** Places the various outcomes for a parameter into a dictionary */
@@ -732,9 +750,11 @@ mfindx mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
         // Compile the branch table
         mfcompile_branchtable(c, set, bindx, &btable);
         
-        // Correct branch table for varg resolution
+        // Insert variadic resolution into branch table if necessary
         if (set->rlist[0].sig->varg) {
-            mfindx varg = bindx+1;
+            mfinstruction vargres = MFINSTRUCTION_RESOLVE(set->rlist[0].fn);
+            mfindx varg = mfcompile_insertinstruction(c, vargres)-1;
+            
             int nmin = set->rlist[0].sig->types.count-1; // varg can match this many args or more
             for (int i=nmin; i<btable.count; i++) {
                 if (btable.data[i]==fail-1) btable.data[i]=varg;
@@ -743,6 +763,7 @@ mfindx mfcompile_dispatchonnarg(mfcompiler *c, mfset *set, int min, int max) {
             mfcompile_setbranch(c, bindx, varg); // Correct branchargs branch destination to point to the varg resolution
         }
     }
+    
     return bindx;
 }
 
@@ -753,8 +774,13 @@ mfindx mfcompile_set(mfcompiler *c, mfset *set) {
     int min, max; // Count the range of possible parameters
     mfcompile_countparams(c, set, &min, &max);
     
+    bool isvariadic = mfcompile_containsvariadic(c, set);
+    
     // Dispatch on the number of parameters if it's in doubt
-    if (min!=max) return mfcompile_dispatchonnarg(c, set, min, max);
+    if (min!=max || (isvariadic && !c->varchecked)) {
+        c->varchecked=true;
+        return mfcompile_dispatchonnarg(c, set, min, max);
+    }
     
     // If just one parameter, dispatch on it
     if (min==1 && !mfcompiler_ischecked(c, 0)) {
@@ -777,7 +803,7 @@ void metafunction_clearinstructions(objectmetafunction *fn) {
     varray_mfinstructionclear(&fn->resolver);
 }
 
-/** Compiles the metafunction resolver */
+/** Compiles the resolver for a metafunction that is still being assembled */
 bool metafunction_compile(objectmetafunction *fn, error *err) {
     mfset set;
     set.count = fn->fns.count;
@@ -804,6 +830,28 @@ bool metafunction_compile(objectmetafunction *fn, error *err) {
     return success;
 }
 
+/** Finalizes a metafunction, compiling its resolver once the implementation set is complete */
+bool metafunction_finalize(objectmetafunction *fn, error *err) {
+    if (fn->state==METAFUNCTION_FROZEN) return true;
+
+    if (!metafunction_compile(fn, err)) return false;
+    fn->state=METAFUNCTION_FROZEN;
+
+    return true;
+}
+
+/** Finalizes any metafunctions stored in a linked object list */
+bool metafunction_finalizelist(object *list, error *err) {
+    for (object *obj=list; obj!=NULL; obj=obj->next) {
+        if (obj->type==OBJECT_METAFUNCTION &&
+            !metafunction_finalize((objectmetafunction *) obj, err)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 /** Attempt to find the desired class uid in the linearization of a given class */
 bool _finduidinlinearization(objectclass *klass, int uid) {
     for (int k=0; k<klass->linearization.count; k++) {
@@ -812,7 +860,7 @@ bool _finduidinlinearization(objectclass *klass, int uid) {
     return false;
 }
 
-/** Execute the metafunction's resolver 
+/** Execute the resolver for a finalized metafunction. 
  @param[in] fn - the metafunction to resolve
  @param[in] nargs - number of positional arguments
  @param[in] args - positional arguments @warning: the first user-visible argument should be in the zero position
@@ -820,8 +868,10 @@ bool _finduidinlinearization(objectclass *klass, int uid) {
  @param[out] out - resolved function
  @returns true if the metafunction was successfully resolved */
 bool metafunction_resolve(objectmetafunction *fn, int nargs, value *args, error *err, value *out) {
-    if (!fn->resolver.data &&
-        !metafunction_compile(fn, err)) return false;
+    if (fn->state!=METAFUNCTION_FROZEN) {
+        if (err) morpho_writeerrorwithid(err, METAFUNCTION_UNFROZEN, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE);
+        return false;
+    }
     mfinstruction *pc = fn->resolver.data;
     if (!pc) return false;
     
@@ -920,7 +970,7 @@ value metafunction_constructor(vm *v, int nargs, value *args) {
         
         error err;
         error_init(&err);
-        if (!metafunction_compile(new, &err)) morpho_runtimeerror(v, err.id);
+        if (!metafunction_finalize(new, &err)) morpho_runtimeerror(v, err.id);
         error_clear(&err);
         
         out=morpho_wrapandbind(v, (object *) new);
@@ -936,7 +986,28 @@ value Metafunction_count(vm *v, int nargs, value *args) {
     return MORPHO_INTEGER(fn->fns.count);
 }
 
+value Metafunction_tostring(vm *v, int nargs, value *args) {
+    objectmetafunction *func=MORPHO_GETMETAFUNCTION(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+
+    varray_char buffer;
+    varray_charinit(&buffer);
+
+    varray_charadd(&buffer, "<fn ", 4);
+    morpho_printtobuffer(v, func->name, &buffer);
+    varray_charwrite(&buffer, '>');
+
+    out = object_stringfromvarraychar(&buffer);
+    if (MORPHO_ISSTRING(out)) {
+        morpho_bindobjects(v, 1, &out);
+    }
+    varray_charclear(&buffer);
+
+    return out;
+}
+
 MORPHO_BEGINCLASS(Metafunction)
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Metafunction_tostring, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Metafunction_count, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
@@ -951,8 +1022,7 @@ void metafunction_initialize(void) {
     objectmetafunctiontype=object_addtype(&objectmetafunctiondefn);
     
     // Locate the Object class to use as the parent class of Metafunction
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(CALLABLE_CLASSNAME);
     
     // Metafunction constructor function
     morpho_addfunction(METAFUNCTION_CLASSNAME, METAFUNCTION_CLASSNAME " (...)", metafunction_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
@@ -963,4 +1033,5 @@ void metafunction_initialize(void) {
     
     // Metafunction error messages
     morpho_defineerror(METAFUNCTION_CMPLAMBGS, ERROR_PARSE, METAFUNCTION_CMPLAMBGS_MSG);
+    morpho_defineerror(METAFUNCTION_UNFROZEN, ERROR_HALT, METAFUNCTION_UNFROZEN_MSG);
 }

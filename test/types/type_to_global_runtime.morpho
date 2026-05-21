@@ -1,0 +1,9 @@
+// Store to upvalue
+
+fn f(x,y) {
+    return x + y
+}
+
+Int a = f(1,2)
+
+print a // expect: 3

@@ -1,0 +1,9 @@
+// Subtract a scalar
+
+var A = ComplexMatrix(2,2)
+A[0,0]=2+2im
+A[1,1]=2+2im
+
+print A - 2
+// expect: [ 0 + 2im -2 + 0im ]
+// expect: [ -2 + 0im 0 + 2im ]

@@ -1,0 +1,7 @@
+// Create a ComplexMatrix from a List of Lists
+
+var A = ComplexMatrix(((1+im,2-2im),(3+3im,4-4im)))
+
+print A 
+// expect: [ 1 + 1im 2 - 2im ]
+// expect: [ 3 + 3im 4 - 4im ]

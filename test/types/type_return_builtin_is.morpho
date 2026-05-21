@@ -1,0 +1,5 @@
+// Return type of a function matches type qualifier
+
+Bool a = isstring("Hello")
+
+print a // expect: true

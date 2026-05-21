@@ -33,5 +33,5 @@ print w
 // expect: [ 3 4 ]
 
 var w = Matrix([[1,[2,3]]])
-// expect Error 'MtrxInvldInit'
+// expect Error 'LnAlgMtrxInvldArg'
 print w

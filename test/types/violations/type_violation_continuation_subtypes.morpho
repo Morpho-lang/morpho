@@ -1,0 +1,15 @@
+// Check types from continuation
+
+class A { }
+
+class B is A { } 
+
+class C is A { } 
+
+{
+    A a = B()
+    B b = a
+    C c = a
+}
+
+// expect error 'TypeErr'

@@ -34,10 +34,16 @@ typedef struct {
 DECLARE_VARRAY(mfinstruction, mfinstruction);
 
 /** A metafunction object */
+typedef enum {
+    METAFUNCTION_BUILDING,
+    METAFUNCTION_FROZEN
+} metafunctionstate;
+
 typedef struct sobjectmetafunction {
     object obj;
     value name;
     objectclass *klass; // Parent class for metafunction methods
+    metafunctionstate state;
     varray_value fns;
     varray_mfinstruction resolver;
 } objectmetafunction;
@@ -61,6 +67,9 @@ typedef struct sobjectmetafunction {
 #define METAFUNCTION_CMPLAMBGS          "MltplDisptchAmbg"
 #define METAFUNCTION_CMPLAMBGS_MSG      "Ambiguous or duplicate implementations in multiple dispatch."
 
+#define METAFUNCTION_UNFROZEN           "MltplDisptchUnfrzn"
+#define METAFUNCTION_UNFROZEN_MSG       "Metafunction was used before it was finalized."
+
 /* -------------------------------------------------------
  * Metafunction interface
  * ------------------------------------------------------- */
@@ -70,7 +79,6 @@ objectmetafunction *metafunction_clone(objectmetafunction *f);
 
 bool metafunction_wrap(value name, value fn, value *out);
 bool metafunction_add(objectmetafunction *f, value fn);
-bool metafunction_typefromvalue(value v, value *out);
 
 void metafunction_setclass(objectmetafunction *f, objectclass *klass);
 objectclass *metafunction_class(objectmetafunction *f);
@@ -79,7 +87,11 @@ bool metafunction_matchfn(objectmetafunction *fn, value f);
 bool metafunction_matchset(objectmetafunction *fn, int n, value *fns);
 signature *metafunction_getsignature(value fn);
 
+void metafunction_inferreturntype(objectmetafunction *fn, value *type);
+
 bool metafunction_compile(objectmetafunction *fn, error *err);
+bool metafunction_finalize(objectmetafunction *fn, error *err);
+bool metafunction_finalizelist(object *list, error *err);
 void metafunction_clearinstructions(objectmetafunction *fn);
 
 bool metafunction_resolve(objectmetafunction *f, int nargs, value *args, error *err, value *fn);

@@ -1,0 +1,13 @@
+// Type checking with while loops
+
+Int i = 0
+Int sum = 0
+
+while (i < 5) {
+    sum = sum + i
+    i = i + 1
+}
+
+print sum  // expect: 10
+
+

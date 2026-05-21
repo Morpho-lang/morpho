@@ -31,6 +31,15 @@
 const char *platform_name(void);
 
 /* -------------------------------------------------------
+ * Re-entrant qsort
+ * ------------------------------------------------------- */
+
+typedef int (*platform_qsort_r_comparefn)(const void *, const void *, void *);
+
+/** Sort elements with additional context passed to the comparator function */
+void platform_qsort_r(void *base, size_t nel, size_t width, void *context, platform_qsort_r_comparefn cmp);
+
+/* -------------------------------------------------------
  * Random numbers
  * ------------------------------------------------------- */
 
@@ -75,10 +84,12 @@ bool MCEq(MorphoComplex a, MorphoComplex b);
  * ------------------------------------------------------- */
 
 size_t platform_maxpathsize(void);
+bool platform_isdirectory(const char *path);
+bool platform_normalizepath(const char *path, size_t n, char *out);
+bool platform_makedirectory(const char *path, bool recurse);
 bool platform_setcurrentdirectory(const char *path);
 bool platform_getcurrentdirectory(char *buffer, size_t size);
 bool platform_gethomedirectory(char *buffer, size_t size);
-bool platform_isdirectory(const char *path);
 
 typedef struct {
 #ifdef _WIN32

@@ -1,0 +1,8 @@
+// Add nil from the right
+
+var A = Matrix(2,2)
+A += 1 
+
+print nil + A
+// expect: [ 1 1 ]
+// expect: [ 1 1 ]

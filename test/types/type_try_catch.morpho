@@ -1,0 +1,13 @@
+// Type checking in try/catch blocks
+
+fn risky(Int x) {
+    try {
+        Int result = x * 2
+        return result
+    } catch {
+        "Err" : return 0
+    }
+}
+
+Int a = risky(5)
+print a  // expect: 10

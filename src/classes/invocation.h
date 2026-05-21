@@ -52,9 +52,6 @@ objectinvocation *object_newinvocation(value receiver, value method);
 #define INVOCATION_ARGS                   "InvocationArgs"
 #define INVOCATION_ARGS_MSG               "Invocation must be called with an object and a method name as arguments."
 
-#define INVOCATION_METHOD                 "InvocationMethod"
-#define INVOCATION_METHOD_MSG             "Method not found."
-
 /* -------------------------------------------------------
  * Invocation interface
  * ------------------------------------------------------- */

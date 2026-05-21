@@ -1,0 +1,12 @@
+// Function with multiple return types 
+
+fn f(Int x) {
+    if (x<0) {
+        return x + 1 
+    }
+    return x - 1
+}
+
+Float a = f(2)
+
+// expect error 'TypeErr'

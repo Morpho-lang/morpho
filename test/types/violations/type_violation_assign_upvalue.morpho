@@ -1,0 +1,14 @@
+// Store to upvalue with type violation
+
+fn f(x) {
+    Int y = Int(x) 
+
+    fn g() {
+        y+=1.5
+        return y
+    }
+
+    return g
+}
+
+// expect error 'TypeErr'

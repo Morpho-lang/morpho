@@ -1,0 +1,12 @@
+// Check types from continuation
+
+fn f(x) {
+    return x
+}
+
+{
+    Int b = f(1)
+    Float a = b 
+}
+
+// expect error 'TypeChk'

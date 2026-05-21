@@ -15,4 +15,4 @@ print ((mi[1,1] - a/det)<1e-8) // expect: true
 
 var m = Matrix([[1,0,0],[0,1,0],[0,0,0]])
 
-print m.inverse() // expect error 'MtrxSnglr'
+print m.inverse() // expect error 'LnAlgMtrxSnglr'

@@ -1,0 +1,7 @@
+// Check type inference
+
+Complex Z = 1 + 2im 
+
+{
+    Float a = Z^2 // expect error 'TypeErr'
+}

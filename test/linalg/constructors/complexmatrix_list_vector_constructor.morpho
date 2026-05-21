@@ -1,0 +1,16 @@
+// Create a ComplexMatrix from a List of Values
+
+var A = ComplexMatrix([1+im, 2-2im, 3+3im, 4-4im])
+
+print A 
+// expect: [ 1 + 1im ]
+// expect: [ 2 - 2im ]
+// expect: [ 3 + 3im ]
+// expect: [ 4 - 4im ]
+
+var B = ComplexMatrix(((1+im), (2), (3), (4-4im)))
+print B
+// expect: [ 1 + 1im ]
+// expect: [ 2 + 0im ]
+// expect: [ 3 + 0im ]
+// expect: [ 4 - 4im ]

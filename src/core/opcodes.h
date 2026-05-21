@@ -114,6 +114,9 @@ OPCODE(CAT)
 /** Print the cotents of a register */
 OPCODE(PRINT)
 
+/** Type check the contents of a register */
+OPCODE(TYPECHECK)
+
 /** Raise error */
 //OPCODE(RAISE)
 

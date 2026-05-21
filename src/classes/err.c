@@ -104,8 +104,7 @@ MORPHO_ENDCLASS
 
 void err_initialize(void) {
     // Locate the Object class to use as the parent class of Error
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Create Error class
     builtin_addclass(ERROR_CLASSNAME, MORPHO_GETCLASSDEFINITION(Error), objclass);

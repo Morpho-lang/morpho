@@ -10,6 +10,7 @@
 #include "classes.h"
 #include "system.h"
 #include "platform.h"
+#include "help.h"
 
 /* **********************************************************************
  * System utility functions
@@ -122,10 +123,29 @@ value System_setworkingfolder(vm *v, int nargs, value *args) {
         MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
         char *path = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
         
-        if (platform_setcurrentdirectory(path)) morpho_runtimeerror(v, SYS_STWRKDR);
+        if (!platform_setcurrentdirectory(path)) morpho_runtimeerror(v, SYS_STWRKDR);
     } else morpho_runtimeerror(v, STWRKDR_ARGS);
     
     return MORPHO_NIL;
+}
+
+/** Help query */
+value System_help(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    
+    if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
+        char *query = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
+        
+        varray_char result;
+        varray_charinit(&result);
+        
+        morpho_helpastext(query, &result); /* fills result with help text or a "not found" hint */
+        out = object_stringfromvarraychar(&result);
+        if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
+        varray_charclear(&result);
+    }
+    
+    return out;
 }
 
 /** Get working folder */
@@ -172,6 +192,7 @@ MORPHO_METHOD(SYSTEM_READLINE_METHOD, System_readline, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_ARGUMENTS_METHOD, System_arguments, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_EXIT_METHOD, System_exit, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_SETWORKINGFOLDER_METHOD, System_setworkingfolder, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(SYSTEM_HELP_METHOD, System_help, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_WORKINGFOLDER_METHOD, System_workingfolder, BUILTIN_FLAGSEMPTY),
 MORPHO_METHOD(SYSTEM_HOMEFOLDER_METHOD, System_homefolder, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
@@ -181,8 +202,7 @@ MORPHO_ENDCLASS
  * ********************************************************************** */
 
 void system_initialize(void) {
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     builtin_addclass(SYSTEM_CLASSNAME, MORPHO_GETCLASSDEFINITION(System), objclass);
     

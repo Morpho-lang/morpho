@@ -1,0 +1,8 @@
+// Type checking with explicit type casting
+
+Float f = 3.14
+Int i = Int(f)  // Explicit cast
+Float g = Float(i)  // Back to float
+
+print i  // expect: 3
+print g  // expect: 3

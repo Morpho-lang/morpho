@@ -69,6 +69,11 @@ bool signature_getparamtype(signature *s, int i, value *type) {
     return true; 
 }
 
+/** @brief Sets the return type of a function */
+void signature_setreturntype(signature *s, value type) {
+    s->ret=type;
+}
+
 /** @brief Returns the return type from the signature if defined */
 value signature_getreturntype(signature *s) {
     return s->ret;
@@ -101,7 +106,7 @@ tokendefn sigtokens[] = {
 };
 
 /** @brief Initializes a lexer for parsing signatures */
-void signature_initializelexer(lexer *l, char *signature) {
+void signature_initializelexer(lexer *l, const char *signature) {
     lex_init(l, signature, 0);
     lex_settokendefns(l, sigtokens);
     lex_seteof(l, SIGNATURE_EOF);
@@ -173,7 +178,7 @@ bool signature_parsesignature(parser *p, void *out) {
 }
 
 /** Parses a signature */
-bool signature_parse(char *sig, signature *out) {
+bool signature_parse(const char *sig, signature *out) {
     error err;
     error_init(&err);
     

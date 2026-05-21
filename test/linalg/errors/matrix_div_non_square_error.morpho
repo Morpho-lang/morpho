@@ -1,0 +1,7 @@
+// Division by a non-square matrix should fail
+
+var A = Matrix(2,3)
+var b = Matrix((1,2))
+
+print b / A
+// expect error 'LnAlgMtrxNtSq'

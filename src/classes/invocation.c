@@ -130,8 +130,8 @@ value Invocation_clone(vm *v, int nargs, value *args) {
 
 MORPHO_BEGINCLASS(Invocation)
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Invocation_tostring, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Invocation_clone, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "String ()", Invocation_tostring, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Invocation ()", Invocation_clone, BUILTIN_FLAGSEMPTY)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -144,9 +144,8 @@ void invocation_initialize(void) {
     // Create invocation object type
     objectinvocationtype=object_addtype(&objectinvocationdefn);
     
-    // Locate the Object class to use as the parent class of Invocation
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    // Locate the Callable class to use as the parent class of Closure
+    value objclass = builtin_findclassfromcstring(CALLABLE_CLASSNAME);
     
     // Invocation constructor function
     morpho_addfunction(INVOCATION_CLASSNAME, INVOCATION_CLASSNAME " (...)", invocation_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
@@ -157,5 +156,4 @@ void invocation_initialize(void) {
     
     // Invocation error messages
     morpho_defineerror(INVOCATION_ARGS, ERROR_HALT, INVOCATION_ARGS_MSG);
-    morpho_defineerror(INVOCATION_METHOD, ERROR_HALT, INVOCATION_METHOD_MSG);
 }

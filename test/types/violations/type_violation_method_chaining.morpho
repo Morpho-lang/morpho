@@ -1,0 +1,9 @@
+// Type violation in method chaining
+
+class Counter {
+    init() { self.value = 0 }
+    add(Int x) { self.value = self.value + x; return self }
+    get() { return self.value }
+}
+
+String result = Counter().add(5).get()  // expect error 'TypeChk' - get() returns Int, not String

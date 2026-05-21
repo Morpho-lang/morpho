@@ -4,6 +4,8 @@
  *  @brief Morpho built in functions and classes
 */
 
+#include <stdarg.h>
+
 #include "builtin.h"
 #include "common.h"
 #include "object.h"
@@ -161,6 +163,39 @@ objecttypedefn objectbuiltinfunctiondefn = {
 };
 
 /* **********************************************************************
+ * Signature parsing
+ * ********************************************************************** */
+
+/** This mechanism allows builtin classes to cross-reference one another in method signature declarations */
+
+typedef struct _sigparses {
+    const char *sig;
+    signature *dest;
+} _sigparse;
+
+DECLARE_VARRAY(_sigparse, _sigparse)
+DEFINE_VARRAY(_sigparse, _sigparse)
+
+varray__sigparse sigparseworklist;
+
+/** Add a signature to be parsed on the next call to builtin_parsesignatures  */
+void builtin_addparsesignature(const char *sig, signature *dest) {
+    _sigparse s = { .sig = sig, .dest = dest };
+    varray__sigparsewrite(&sigparseworklist, s);
+}
+
+/** Parses all signatures on the worklist */
+bool builtin_parsesignatures(void) {
+    _sigparse s;
+    while (varray__sigparsepop(&sigparseworklist, &s)) {
+        if (!signature_parse(s.sig, s.dest)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* **********************************************************************
  * Create and find builtin functions
  * ********************************************************************** */
 
@@ -184,7 +219,7 @@ void builtin_setclasstable(dictionary *dict) {
     _currentclasstable=dict;
 }
 
-/** Add a builtin function.
+/** Add a builtin function (old interface)
  * @param name  name of the function
  * @param func  the corresponding C function
  * @param flags flags to define the function
@@ -262,10 +297,7 @@ bool morpho_addfunction(char *name, char *signature, builtinfunction func, built
     if (!name) goto morpho_addfunction_cleanup;
     
     // Parse function signature if provided
-    if (signature &&
-        !signature_parse(signature, &new->sig)) {
-        UNREACHABLE("Syntax error in signature definition.");
-    }
+    if (signature) builtin_addparsesignature(signature, &new->sig);
     
     value newfn = MORPHO_OBJECT(new);
     
@@ -295,22 +327,39 @@ morpho_addfunction_cleanup:
 /** Defines a built in class
  * @param[in] name          the name of the class
  * @param[in] desc          class description; use MORPHO_GETCLASSDEFINITION(name) to obtain this
- * @param[in] superclass the class's superclass
- * @returns the class object */
-value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
+ * @param[in] nparents  number of parent classes
+ * @param[in] parents    the parent classes
+ * @param[out] out          the class object
+ * @returns true on success */
+bool morpho_addclass(char *name, builtinclassentry desc[], int nparents, value *parents, value *out) {
     value label = object_stringfromcstring(name, strlen(name));
     builtin_bindobject(MORPHO_GETOBJECT(label));
     objectclass *new = object_newclass(label);
     builtin_bindobject((object *) new);
-    objectclass *superklass = NULL;
+    bool success=true;
     
-    if (!new) return MORPHO_NIL;
+    if (!new) return false;
+    
+    if (dictionary_get(_currentclasstable, label, NULL)) {
+        UNREACHABLE("Redefinition of class in same extension [in builtin.c]");
+    }
+    
+    dictionary_insert(_currentclasstable, label, MORPHO_OBJECT(new));
     
     /** Copy methods from superclass */
-    if (MORPHO_ISCLASS(superclass)) {
-        superklass = MORPHO_GETCLASS(superclass);
-        dictionary_copy(&superklass->methods, &new->methods);
-        new->superclass=superklass;
+    for (int i=0; i<nparents; i++) {
+        if (MORPHO_ISCLASS(parents[i])) {
+            objectclass *parentclass = MORPHO_GETCLASS(parents[i]);
+            dictionary_copy(&parentclass->methods, &new->methods);
+            if (i==0) new->superclass=parentclass;
+            varray_valuewrite(&new->parents, parents[i]);
+            varray_valuewrite(&parentclass->children, MORPHO_OBJECT(new));
+        }
+    }
+    
+    /** Compute the class linearization */
+    if (!class_linearize(new)) {
+        UNREACHABLE("Class definition not linearizable.");
     }
     
     for (unsigned int i=0; desc[i].name!=NULL; i++) {
@@ -321,9 +370,7 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
             newmethod->klass=new;
             newmethod->name=object_stringfromcstring(desc[i].name, strlen(desc[i].name));
             newmethod->flags=desc[i].flags;
-            if (desc[i].signature) {
-                signature_parse(desc[i].signature, &newmethod->sig);
-            }
+            if (desc[i].signature) builtin_addparsesignature(desc[i].signature, &newmethod->sig);
             
             dictionary_intern(&builtin_symboltable, newmethod->name);
             value method = MORPHO_OBJECT(newmethod);
@@ -334,20 +381,33 @@ value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
         }
     }
     
-    if (dictionary_get(_currentclasstable, label, NULL)) {
-        UNREACHABLE("Redefinition of class in same extension [in builtin.c]");
-    }
-    
-    dictionary_insert(_currentclasstable, label, MORPHO_OBJECT(new));
-    
-    return MORPHO_OBJECT(new);
+    if (success)*out = MORPHO_OBJECT(new);
+    return success;
 }
 
-/** Finds a builtin class from its name */
+/** Defines a built in class (old interface)
+ * @param[in] name          the name of the class
+ * @param[in] desc          class description; use MORPHO_GETCLASSDEFINITION(name) to obtain this
+ * @param[in] superclass the class's superclass
+ * @returns the class object */
+value builtin_addclass(char *name, builtinclassentry desc[], value superclass) {
+    value out = MORPHO_NIL;
+    morpho_addclass(name, desc, 1, &superclass, &out);
+    return out;
+}
+
+/** Finds a builtin class from its label */
 value builtin_findclass(value name) {
     value out=MORPHO_NIL;
-    dictionary_get(&builtin_classtable, name, &out);
+    if (_currentclasstable) dictionary_get(_currentclasstable, name, &out);
+    if (MORPHO_ISNIL(out)) dictionary_get(&builtin_classtable, name, &out);
     return out;
+}
+
+/** Finds a builtin class from a cstring label */
+value builtin_findclassfromcstring(char *label) {
+    objectstring objname = MORPHO_STATICSTRING(label);
+    return builtin_findclass(MORPHO_OBJECT(&objname));
 }
 
 /** Copies the built in symbol table into a new dictionary */
@@ -393,15 +453,23 @@ void builtin_initialize(void) {
     builtin_setclasstable(&builtin_classtable);
     
     // Initialize core object types
-    objectstringtype=object_addtype(&objectstringdefn);
     objectclasstype=object_addtype(&objectclassdefn);
+    objectstringtype=object_addtype(&objectstringdefn);
     objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
     
+    varray__sigparseinit(&sigparseworklist);
+
     /* Initialize builtin classes and functions */
     instance_initialize(); // Must initialize first so that Object exists
     
+    float_initialize(); // Veneer classes
+    int_initialize();
+    bool_initialize();
+    nil_initialize();
+    
     string_initialize();  // Classes
     function_initialize();
+    cfunction_initialize();
     metafunction_initialize();
     class_initialize();
     upvalue_initialize();
@@ -415,10 +483,6 @@ void builtin_initialize(void) {
     err_initialize();
     tuple_initialize();
     
-    float_initialize();// Veneer classes
-    int_initialize();
-    bool_initialize();
-    
     file_initialize();
     system_initialize();
     json_initialize();
@@ -428,7 +492,7 @@ void builtin_initialize(void) {
     
     // Initialize linear algebra
 #ifdef MORPHO_INCLUDE_LINALG
-    matrix_initialize();
+    linalg_initialize();
 #endif
     
 #ifdef MORPHO_INCLUDE_SPARSE
@@ -439,6 +503,17 @@ void builtin_initialize(void) {
     // Initialize geometry
     geometry_initialize();
 #endif
+    
+    if (!builtin_parsesignatures()) {
+        UNREACHABLE("Syntax error in signature.");
+    }
+
+    error err;
+    error_init(&err);
+    if (!metafunction_finalizelist(builtin_objects, &err)) {
+        UNREACHABLE("Unable to finalize builtin metafunctions.");
+    }
+    error_clear(&err);
   
     morpho_addfinalizefn(builtin_finalize);
 }
@@ -449,6 +524,8 @@ void builtin_finalize(void) {
         object_free(builtin_objects);
         builtin_objects=next;
     }
+    
+    varray__sigparseclear(&sigparseworklist);
     
     dictionary_clear(&builtin_functiontable);
     dictionary_clear(&builtin_classtable);

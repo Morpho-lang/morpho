@@ -1,0 +1,13 @@
+// Check that random number generators work
+
+var a = random()
+print a.clss() // expect: @Float
+
+var a = randomint()
+print a.clss() // expect: @Int
+
+var a = randomint(10)
+print a.clss() // expect: @Int
+
+var a = randomnormal()
+print a.clss() // expect: @Float

@@ -1,0 +1,12 @@
+// Type propagation through closure
+
+fn outer(Int x) {
+    fn inner(Int y) {
+        Int result = x + y
+        return result
+    }
+    return inner
+}
+
+Int result = outer(1)(2)
+print result  // expect: 3

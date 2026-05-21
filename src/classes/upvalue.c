@@ -33,7 +33,6 @@ objecttypedefn objectupvaluedefn = {
     .cmpfn=NULL
 };
 
-
 /** Initializes a new upvalue object. */
 void object_upvalueinit(objectupvalue *c) {
     object_init(&c->obj, OBJECT_UPVALUE);

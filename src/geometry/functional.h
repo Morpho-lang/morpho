@@ -60,12 +60,15 @@
 #define FUNCTIONAL_INTEGRANDFORELEMENT_METHOD      "integrandForElement"
 
 /* Special functions that can be used in integrands */
+#define ELEMENTID_FUNCTION             "elementid"
 #define TANGENT_FUNCTION               "tangent"
 #define NORMAL_FUNCTION                "normal"
 #define GRAD_FUNCTION                  "grad"
 #define HESS_FUNCTION                  "hess"
 #define CGTENSOR_FUNCTION              "cgtensor"
 #define JUMPDN_FUNCTION                "jumpdn"
+#define JACOBIAN_FUNCTION              "jacobian"
+#define INVJACOBIAN_FUNCTION           "invjacobian"
 
 /* Functional names */
 #define LENGTH_CLASSNAME               "Length"

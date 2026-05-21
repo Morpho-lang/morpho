@@ -5,7 +5,7 @@ var l = FiniteElementSpace("CG3", grade=2)
 var nodes = l.nodeCoords()
 
 print nodes.dimensions()
-// expect: [ 3, 10 ]
+// expect: (3, 10)
 
 print (nodes.column(0) - Matrix([1,0,0])).norm() < 1e-12
 // expect: true

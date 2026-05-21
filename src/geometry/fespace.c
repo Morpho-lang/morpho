@@ -175,6 +175,17 @@ void cg3_1dgrad(double *lambda, double *grad) {
     memcpy(grad, g, sizeof(g));
 }
 
+void cg3_1dhess(double *lambda, double *hess) {
+    double x = lambda[1];
+
+    #define H(node) hess[FESPACE_HESS_INDEX(4, 1, 0, 0, node)]
+    H(0) = 18 - 27*x;
+    H(1) = 27*x - 9;
+    H(2) = -45 + 81*x;
+    H(3) = 36 - 81*x;
+    #undef H
+}
+
 unsigned int cg3_1dshape[] = { 1, 2 };
 
 double cg3_1dnodes[] = { 0.0, 1.0, 1.0/3.0, 2.0/3.0 };
@@ -198,6 +209,7 @@ fespace cg3_1d = {
     .nodes = cg3_1dnodes,
     .ifn = cg3_1dinterpolate,
     .gfn = cg3_1dgrad,
+    .hfn = cg3_1dhess,
     .eldefn = cg3_1ddefn,
     .lower = NULL
 };

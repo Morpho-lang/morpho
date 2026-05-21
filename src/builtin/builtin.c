@@ -287,7 +287,7 @@ bool morpho_addfunction(char *name, char *signature, builtinfunction func, built
     new->flags=flags;
     
     new->name=object_stringfromcstring(name, strlen(name));
-    if (!new->name) goto morpho_addfunction_cleanup;
+    if (!MORPHO_ISSTRING(new->name)) goto morpho_addfunction_cleanup;
     
     // Parse function signature if provided
     if (signature) builtin_addparsesignature(signature, &new->sig);
@@ -367,7 +367,7 @@ bool morpho_addclass(char *name, builtinclassentry desc[], int nparents, value *
             newmethod->function=desc[i].function;
             newmethod->klass=new;
             newmethod->name=object_stringfromcstring(desc[i].name, strlen(desc[i].name));
-            if (!newmethod->name) { success=false; break; }
+            if (!MORPHO_ISSTRING(newmethod->name)) { success=false; break; }
             newmethod->flags=desc[i].flags;
             if (desc[i].signature) builtin_addparsesignature(desc[i].signature, &newmethod->sig);
             

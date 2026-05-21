@@ -1,0 +1,21 @@
+// Reachability of empty block
+
+var refine_adaptively = false
+var refine_iters = 1
+var visualize_refinement = false
+
+print "Refine adaptively: ${refine_adaptively}"
+
+if (refine_adaptively){
+    print "Refine adaptively: ${refine_adaptively}"
+
+    for (i in 1..refine_iters) {
+        System.exit()
+    
+        if (visualize_refinement){
+            
+        }
+    }
+}
+
+// expect: Refine adaptively: false

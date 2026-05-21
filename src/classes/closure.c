@@ -103,8 +103,8 @@ value Closure_tostring(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Closure)
-MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Closure_tostring, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_TOSTRING_METHOD, Closure_tostring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, MORPHO_FN_IO)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

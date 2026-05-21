@@ -1,0 +1,26 @@
+// Variadic dispatch specificity
+
+fn f(Int x) {
+    return "Int"
+}
+
+fn f(Int x, ...rest) {
+    return "Int..."
+}
+
+fn f(...rest) {
+    return "..."
+}
+
+print f()
+// expect: ...
+
+print f(1)
+// expect: Int
+
+print f(1, "x")
+// expect: Int...
+
+print f("x")
+// expect: ...
+

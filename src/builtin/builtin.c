@@ -17,6 +17,8 @@
 #include "sparse.h"
 #include "geometry.h"
 
+extern objecttypedefn objectmetafunctiondefn;
+
 /* **********************************************************************
  * Global data
  * ********************************************************************** */
@@ -52,7 +54,7 @@ void builtin_init(objectbuiltinfunction *func) {
 
 /** Clear an objectbuiltinfunction */
 void builtin_clear(objectbuiltinfunction *func) {
-    morpho_freeobject(func->name);
+    if (MORPHO_ISOBJECT(func->name)) object_freeifunmanaged(MORPHO_GETOBJECT(func->name));
     signature_clear(&func->sig);
 }
 
@@ -124,15 +126,6 @@ bool builtin_options(vm *v, int nargs, value *args, int *nfixed, int noptions, .
     va_end(optlist);
     
     return true;
-}
-
-/** Tests whether an object is callable */
-bool builtin_iscallable(value val) {
-    return (MORPHO_ISOBJECT(val) && (MORPHO_ISFUNCTION(val) ||
-                                     MORPHO_ISCLOSURE(val) ||
-                                     MORPHO_ISINVOCATION(val) ||
-                                     MORPHO_ISBUILTINFUNCTION(val) ||
-                                     MORPHO_ISMETAFUNCTION(val)));
 }
 
 /* **********************************************************************
@@ -294,10 +287,16 @@ bool morpho_addfunction(char *name, char *signature, builtinfunction func, built
     new->flags=flags;
     
     new->name=object_stringfromcstring(name, strlen(name));
-    if (!name) goto morpho_addfunction_cleanup;
+    if (!MORPHO_ISSTRING(new->name)) goto morpho_addfunction_cleanup;
     
     // Parse function signature if provided
     if (signature) builtin_addparsesignature(signature, &new->sig);
+
+    value selector = dictionary_intern(&builtin_symboltable, new->name);
+    if (MORPHO_ISNIL(selector)) goto morpho_addfunction_cleanup;
+    if (!MORPHO_ISSAME(selector, new->name)) morpho_freeobject(new->name);
+    new->name=selector;
+    builtin_bindobject(MORPHO_GETOBJECT(selector));
     
     value newfn = MORPHO_OBJECT(new);
     
@@ -313,7 +312,6 @@ bool morpho_addfunction(char *name, char *signature, builtinfunction func, built
     
 morpho_addfunction_cleanup:
     if (new) {
-        builtin_clear(new);
         object_free((object *) new);
     }
     
@@ -369,10 +367,19 @@ bool morpho_addclass(char *name, builtinclassentry desc[], int nparents, value *
             newmethod->function=desc[i].function;
             newmethod->klass=new;
             newmethod->name=object_stringfromcstring(desc[i].name, strlen(desc[i].name));
+            if (!MORPHO_ISSTRING(newmethod->name)) { success=false; break; }
             newmethod->flags=desc[i].flags;
             if (desc[i].signature) builtin_addparsesignature(desc[i].signature, &newmethod->sig);
             
-            dictionary_intern(&builtin_symboltable, newmethod->name);
+            value selector = dictionary_intern(&builtin_symboltable, newmethod->name);
+            if (MORPHO_ISNIL(selector)) {
+                object_free((object *) newmethod);
+                success=false;
+                break;
+            }
+            if (!MORPHO_ISSAME(selector, newmethod->name)) morpho_freeobject(newmethod->name);
+            newmethod->name=selector;
+            builtin_bindobject(MORPHO_GETOBJECT(selector));
             value method = MORPHO_OBJECT(newmethod);
             
             builtin_bindobject((object *) newmethod);
@@ -456,6 +463,7 @@ void builtin_initialize(void) {
     objectclasstype=object_addtype(&objectclassdefn);
     objectstringtype=object_addtype(&objectstringdefn);
     objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
+    objectmetafunctiontype=object_addtype(&objectmetafunctiondefn);
     
     varray__sigparseinit(&sigparseworklist);
 
@@ -514,7 +522,7 @@ void builtin_initialize(void) {
         UNREACHABLE("Unable to finalize builtin metafunctions.");
     }
     error_clear(&err);
-  
+    
     morpho_addfinalizefn(builtin_finalize);
 }
 

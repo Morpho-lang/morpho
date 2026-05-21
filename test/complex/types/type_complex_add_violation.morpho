@@ -3,4 +3,4 @@
 Complex a = 1im 
 var b = 1
 
-Float c = a + b // expect error 'TypeErr'
+Float c = a + b // expect error 'TypeChk'

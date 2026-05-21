@@ -565,19 +565,17 @@ value Array_dimensions(vm *v, int nargs, value *args) {
 }
 
 /** Enumerate members of an array */
-value Array_enumerate(vm *v, int nargs, value *args) {
+value Array_enumerate__int(vm *v, int nargs, value *args) {
     objectarray *slf = MORPHO_GETARRAY(MORPHO_SELF(args));
     value out=MORPHO_NIL;
 
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
-        if (n<0) {
-            out=MORPHO_INTEGER(slf->nelements);
-        } else if (n<slf->nelements) {
-            out=slf->values[n];
-        } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
-    } else MORPHO_RAISE(v, ENUMERATE_ARGS);
+    if (n<0) {
+        out=MORPHO_INTEGER(slf->nelements);
+    } else if (n<slf->nelements) {
+        out=slf->values[n];
+    } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
 
     return out;
 }
@@ -597,13 +595,13 @@ value Array_clone(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Array)
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Array_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Array_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(ARRAY_DIMENSIONS_METHOD, "List ()", Array_dimensions, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Array_getindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Array_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (_)", Array_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Array ()", Array_clone, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Array_print, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Array_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(ARRAY_DIMENSIONS_METHOD, "List ()", Array_dimensions, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Array_getindex, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Array_setindex, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", Array_enumerate__int, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Array ()", Array_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

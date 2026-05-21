@@ -1,0 +1,34 @@
+// Wildcard dominance across multiple arguments
+
+class A {}
+
+class B {}
+
+fn f(x, y) {
+    return "__"
+}
+
+fn f(A x, y) {
+    return "A_"
+}
+
+fn f(x, A y) {
+    return "_A"
+}
+
+fn f(A x, A y) {
+    return "AA"
+}
+
+print f(A(), A())
+// expect: AA
+
+print f(A(), B())
+// expect: A_
+
+print f(B(), A())
+// expect: _A
+
+print f(B(), B())
+// expect: __
+

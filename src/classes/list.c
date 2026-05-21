@@ -435,44 +435,56 @@ value List_pop(vm *v, int nargs, value *args) {
     return out;
 }
 
-/** Get an element */
-value List_getindex(vm *v, int nargs, value *args) {
+/** Get an element by integer index */
+value List_getindex__int(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     value out=MORPHO_NIL;
+    int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
-    if (nargs==1) {
-        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-            int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
-            if (!list_getelement(slf, i, &out)) {
-                morpho_runtimeerror(v, VM_OUTOFBOUNDS);
-            }
-        } else {
-            objectarrayerror err = getslice(&MORPHO_SELF(args),&list_slicedim,&list_sliceconstructor,&list_slicecopy,nargs,&MORPHO_GETARG(args, 0),&out);
-            if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_list_error(err) );
-            if (MORPHO_ISOBJECT(out)){
-                morpho_bindobjects(v,1,&out);
-            } else MORPHO_RAISE(v, VM_NONNUMINDX);
-
-        }
-    } else MORPHO_RAISE(v, LIST_NUMARGS)
+    if (!list_getelement(slf, i, &out)) {
+        morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+    }
 
     return out;
 }
 
-/** Sets an element */
-value List_setindex(vm *v, int nargs, value *args) {
-    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+/** Get a slice-like selection */
+value List_getindex__slice(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+    objectarrayerror err = getslice(&MORPHO_SELF(args), &list_slicedim, &list_sliceconstructor, &list_slicecopy, nargs, &MORPHO_GETARG(args, 0), &out);
+    if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_list_error(err) );
+    if (MORPHO_ISOBJECT(out)) {
+        morpho_bindobjects(v,1,&out);
+    } else MORPHO_RAISE(v, VM_NONNUMINDX);
 
-    if (nargs==2) {
-        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-            int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-            if (i<slf->val.count) slf->val.data[i]=MORPHO_GETARG(args, 1);
-            else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
-        } else morpho_runtimeerror(v, SETINDEX_ARGS);
-    } else morpho_runtimeerror(v, SETINDEX_ARGS);
+    return out;
+}
+
+value List_getindex__err(vm *v, int nargs, value *args) {
+    MORPHO_RAISE(v, LIST_NUMARGS);
+    return MORPHO_NIL;
+}
+
+value List_getindex(vm *v, int nargs, value *args) {
+    if (nargs!=1) return List_getindex__err(v, nargs, args);
+    if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) return List_getindex__int(v, nargs, args);
+    return List_getindex__slice(v, nargs, args);
+}
+
+/** Sets an element by integer index */
+value List_setindex__int(vm *v, int nargs, value *args) {
+    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+
+    if (i<slf->val.count) slf->val.data[i]=MORPHO_GETARG(args, 1);
+    else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
 
     return MORPHO_SELF(args);
+}
+
+value List_setindex__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, SETINDEX_ARGS);
+    return MORPHO_NIL;
 }
 
 /** Print a list */
@@ -520,20 +532,22 @@ value List_tostring(vm *v, int nargs, value *args) {
 value List_enumerate(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     value out=MORPHO_NIL;
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
-        if (n<0) {
-            out=MORPHO_INTEGER(slf->val.count);
-        } else if (n<slf->val.count) {
-            return slf->val.data[n];
-        } else {
-            morpho_runtimeerror(v, VM_OUTOFBOUNDS);
-        }
-    } else MORPHO_RAISE(v, ENUMERATE_ARGS);
+    if (n<0) {
+        out=MORPHO_INTEGER(slf->val.count);
+    } else if (n<slf->val.count) {
+        return slf->val.data[n];
+    } else {
+        morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+    }
 
     return out;
+}
+
+value List_enumerate__err(vm *v, int nargs, value *args) {
+    MORPHO_RAISE(v, ENUMERATE_ARGS);
+    return MORPHO_NIL;
 }
 
 /** Get number of entries */
@@ -545,6 +559,20 @@ value List_count(vm *v, int nargs, value *args) {
 
 /** Generate a list of n-tuples from a list  */
 value List_tuples(vm *v, int nargs, value *args) {
+    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    return list_generatetuples(v, slf, 2, MORPHO_TUPLEMODE);
+}
+
+value List_tuples__int(vm *v, int nargs, value *args) {
+    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    unsigned int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+
+    if (n<2) n=2;
+
+    return list_generatetuples(v, slf, n, MORPHO_TUPLEMODE);
+}
+
+value List_tuples__fallback(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     unsigned int n=2;
 
@@ -558,6 +586,21 @@ value List_tuples(vm *v, int nargs, value *args) {
 
 /** Generate a list of n-tuples from a list  */
 value List_sets(vm *v, int nargs, value *args) {
+    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    return list_generatetuples(v, slf, 2, MORPHO_SETMODE);
+}
+
+value List_sets__int(vm *v, int nargs, value *args) {
+    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    unsigned int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+
+    if (n<2) n=2;
+    if (n>slf->val.capacity) n = slf->val.capacity;
+
+    return list_generatetuples(v, slf, n, MORPHO_SETMODE);
+}
+
+value List_sets__fallback(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     unsigned int n=2;
 
@@ -581,20 +624,17 @@ value List_clone(vm *v, int nargs, value *args) {
 }
 
 /** Joins two lists together  */
-value List_join(vm *v, int nargs, value *args) {
+value List_join__list(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     value out = MORPHO_NIL;
 
-    if (nargs==1 && MORPHO_ISLIST(MORPHO_GETARG(args, 0))) {
-        objectlist *operand = MORPHO_GETLIST(MORPHO_GETARG(args, 0));
-        objectlist *new = list_concatenate(slf, operand);
+    objectlist *operand = MORPHO_GETLIST(MORPHO_GETARG(args, 0));
+    objectlist *new = list_concatenate(slf, operand);
 
-        if (new) {
-            out = MORPHO_OBJECT(new);
-            morpho_bindobjects(v, 1, &out);
-        }
-
-    } else morpho_runtimeerror(v, LIST_ADDARGS);
+    if (new) {
+        out = MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    }
 
     return out;
 }
@@ -603,22 +643,22 @@ value List_join(vm *v, int nargs, value *args) {
 value List_roll(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     value out = MORPHO_NIL;
+    int roll;
+    morpho_valuetoint(MORPHO_GETARG(args, 0), &roll);
 
-    if (nargs==1 &&
-        MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
-        int roll;
-        morpho_valuetoint(MORPHO_GETARG(args, 0), &roll);
-        
-        objectlist *new = list_roll(slf, roll);
+    objectlist *new = list_roll(slf, roll);
 
-        if (new) {
-            out = MORPHO_OBJECT(new);
-            morpho_bindobjects(v, 1, &out);
-        }
-
-    } else morpho_runtimeerror(v, LIST_ADDARGS);
+    if (new) {
+        out = MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
+    }
 
     return out;
+}
+
+value List_roll__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, LIST_ADDARGS);
+    return MORPHO_NIL;
 }
 
 /** Sorts a list */
@@ -661,37 +701,49 @@ value List_reverse(vm *v, int nargs, value *args) {
 /** Tests if a list has a value as a member */
 value List_ismember(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    return MORPHO_BOOL(list_ismember(slf, MORPHO_GETARG(args, 0)));
+}
 
-    if (nargs==1) {
-        return MORPHO_BOOL(list_ismember(slf, MORPHO_GETARG(args, 0)));
-    } else morpho_runtimeerror(v, ISMEMBER_ARG, 1, nargs);
-
+value List_ismember__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, ISMEMBER_ARG, 1, nargs);
     return MORPHO_NIL;
 }
 
 MORPHO_BEGINCLASS(List)
-MORPHO_METHOD(MORPHO_APPEND_METHOD, List_append, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(LIST_REMOVE_METHOD, List_remove, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(LIST_INSERT_METHOD, List_insert, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(LIST_POP_METHOD, List_pop, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, List_getindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SETINDEX_METHOD, List_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, List_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "String ()", List_tostring, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, List_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", List_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(LIST_TUPLES_METHOD, List_tuples, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(LIST_SETS_METHOD, List_sets, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "List ()", List_clone, BUILTIN_FLAGSEMPTY),
+MORPHO_METHOD(MORPHO_APPEND_METHOD, List_append, MORPHO_FN_MUTATES),
+MORPHO_METHOD(LIST_REMOVE_METHOD, List_remove, MORPHO_FN_MUTATES),
+MORPHO_METHOD(LIST_INSERT_METHOD, List_insert, MORPHO_FN_MUTATES),
+MORPHO_METHOD(LIST_POP_METHOD, List_pop, MORPHO_FN_MUTATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, " (Int)", List_getindex__int, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "List (_)", List_getindex__slice, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Nil (...)", List_getindex__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int,_)", List_setindex__int, MORPHO_FN_MUTATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "Nil (...)", List_setindex__err, MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, List_print, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "String ()", List_tostring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", List_enumerate, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "Nil (...)", List_enumerate__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", List_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(LIST_TUPLES_METHOD, "List ()", List_tuples, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(LIST_TUPLES_METHOD, "List (Int)", List_tuples__int, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(LIST_TUPLES_METHOD, "List (...)", List_tuples__fallback, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(LIST_SETS_METHOD, "List ()", List_sets, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(LIST_SETS_METHOD, "List (Int)", List_sets__int, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(LIST_SETS_METHOD, "List (...)", List_sets__fallback, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "List ()", List_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
 //MORPHO_METHOD(MORPHO_ADD_METHOD, List_add, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "List (_)", List_join, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ROLL_METHOD, List_roll, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "()", List_sort, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "(_)", List_sort_fn, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(LIST_ORDER_METHOD, List_order, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(LIST_REVERSE_METHOD, List_reverse, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Bool (_)", List_ismember, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Bool (_)", List_ismember, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "List (List)", List_join__list, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "List (Int)", List_roll, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "List (Float)", List_roll, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Nil (...)", List_roll__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Nil ()", List_sort, MORPHO_FN_MUTATES),
+MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Nil (Callable)", List_sort_fn, MORPHO_FN_MUTATES|MORPHO_FN_REENTRANT|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(LIST_ORDER_METHOD, "Tuple ()", List_order, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(LIST_REVERSE_METHOD, "Nil ()", List_reverse, MORPHO_FN_MUTATES),
+MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Bool (_)", List_ismember, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Nil (...)", List_ismember__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Bool (_)", List_ismember, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Nil (...)", List_ismember__err, MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

@@ -223,22 +223,24 @@ value String_clone(vm *v, int nargs, value *args) {
 value String_enumerate(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
     value out=MORPHO_NIL;
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
-        if (n<0) {
-            out=MORPHO_INTEGER(string_countchars(slf));
-        } else {
-            char *c=string_index(slf, n);
-            if (c) {
-                out=object_stringfromcstring(c, morpho_utf8numberofbytes(c));
-                morpho_bindobjects(v, 1, &out);
-            } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
-        }
-    } else MORPHO_RAISE(v, ENUMERATE_ARGS);
+    if (n<0) {
+        out=MORPHO_INTEGER(string_countchars(slf));
+    } else {
+        char *c=string_index(slf, n);
+        if (c) {
+            out=object_stringfromcstring(c, morpho_utf8numberofbytes(c));
+            morpho_bindobjects(v, 1, &out);
+        } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+    }
 
     return out;
+}
+
+value String_enumerate__err(vm *v, int nargs, value *args) {
+    MORPHO_RAISE(v, ENUMERATE_ARGS);
+    return MORPHO_NIL;
 }
 
 /** Tests if a string encodes a number */
@@ -255,48 +257,47 @@ value String_isnumber(vm *v, int nargs, value *args) {
 value String_split(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
     value out=MORPHO_NIL;
+    objectstring *split = MORPHO_GETSTRING(MORPHO_GETARG(args, 0));
+    objectlist *new = object_newlist(0, NULL);
 
-    if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
-        objectstring *split = MORPHO_GETSTRING(MORPHO_GETARG(args, 0));
-        objectlist *new = object_newlist(0, NULL);
+    if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
 
-        if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
-
-        char *last = slf->string;
-        for (char *c = slf->string; *c!='\0'; c+=morpho_utf8numberofbytes(c)) { // Loop over string
-            for (char *s = split->string; *s!='\0';) { // Loop over split chars
-                int nbytes = morpho_utf8numberofbytes(s);
-                if (strncmp(c, s, nbytes)==0) {
-                    value newstring = object_stringfromcstring(last, c-last);
-                    if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-                    list_append(new, newstring);
-                    last=c+nbytes;
-                }
-                s+=nbytes;
+    char *last = slf->string;
+    for (char *c = slf->string; *c!='\0'; c+=morpho_utf8numberofbytes(c)) { // Loop over string
+        for (char *s = split->string; *s!='\0';) { // Loop over split chars
+            int nbytes = morpho_utf8numberofbytes(s);
+            if (strncmp(c, s, nbytes)==0) {
+                value newstring = object_stringfromcstring(last, c-last);
+                if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+                list_append(new, newstring);
+                last=c+nbytes;
             }
+            s+=nbytes;
         }
-
-        value newstring = object_stringfromcstring(last, slf->string+slf->length-last);
-        if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-        list_append(new, newstring);
-
-        out=MORPHO_OBJECT(new);
-        list_append(new, out);
-        morpho_bindobjects(v, new->val.count, new->val.data);
-        new->val.count-=1;
     }
+
+    value newstring = object_stringfromcstring(last, slf->string+slf->length-last);
+    if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    list_append(new, newstring);
+
+    out=MORPHO_OBJECT(new);
+    list_append(new, out);
+    morpho_bindobjects(v, new->val.count, new->val.data);
+    new->val.count-=1;
 
     return out;
 }
 
 MORPHO_BEGINCLASS(String)
-MORPHO_METHOD(MORPHO_COUNT_METHOD, String_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, String_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "String ()", String_clone, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, String_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, String_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(STRING_ISNUMBER_METHOD, "Int ()", String_isnumber, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(STRING_SPLIT_METHOD, "List (_)", String_split, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", String_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "String ()", String_print, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "String ()", String_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "(Int)", String_enumerate, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Nil (...)", String_enumerate__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", String_enumerate, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "Nil (...)", String_enumerate__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(STRING_ISNUMBER_METHOD, "Bool ()", String_isnumber, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(STRING_SPLIT_METHOD, "List (String)", String_split, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

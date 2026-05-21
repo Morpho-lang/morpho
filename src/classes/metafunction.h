@@ -19,26 +19,18 @@ extern objecttype objectmetafunctiontype;
 /** Index type for metafunction resolver */
 typedef int mfindx;
 
-/** Compiled metafunction instruction set */
-typedef struct {
-    int opcode;
-    int narg;
-    union {
-        int tindx;
-        value resolvefn;
-        varray_int btable;
-    } data;
-    mfindx branch; /* Branch the pc by this amount on fail */
-} mfinstruction;
+/** Compiled metafunction bytecode cell */
+typedef int mfinstruction;
 
 DECLARE_VARRAY(mfinstruction, mfinstruction);
 
-/** A metafunction object */
+/** Metafunction status */
 typedef enum {
     METAFUNCTION_BUILDING,
     METAFUNCTION_FROZEN
 } metafunctionstate;
 
+/** A metafunction object */
 typedef struct sobjectmetafunction {
     object obj;
     value name;
@@ -46,6 +38,7 @@ typedef struct sobjectmetafunction {
     metafunctionstate state;
     varray_value fns;
     varray_mfinstruction resolver;
+    mfindx entry; // Entry point for the resolver
 } objectmetafunction;
 
 /** Gets an objectmetafunction from a value */
@@ -93,8 +86,10 @@ bool metafunction_compile(objectmetafunction *fn, error *err);
 bool metafunction_finalize(objectmetafunction *fn, error *err);
 bool metafunction_finalizelist(object *list, error *err);
 void metafunction_clearinstructions(objectmetafunction *fn);
+void metafunction_disassemble(objectmetafunction *fn);
 
 bool metafunction_resolve(objectmetafunction *f, int nargs, value *args, error *err, value *fn);
+bool metafunction_reduce(objectmetafunction *f, int nargs, value *args, error *err, value *out);
 
 void metafunction_initialize(void);
 

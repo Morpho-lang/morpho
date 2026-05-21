@@ -55,33 +55,30 @@ value builtin_clock(vm *v, int nargs, value *args) {
  * Apply
  * *************************************/
 
+static value builtin_apply__tuple(vm *v, int nargs, value *args) {
+    value ret = MORPHO_NIL;
+    objecttuple *t = MORPHO_GETTUPLE(MORPHO_GETARG(args, 1));
+    morpho_call(v, MORPHO_GETARG(args, 0), tuple_length(t), t->tuple, &ret);
+    return ret;
+}
+
+static value builtin_apply__list(vm *v, int nargs, value *args) {
+    value ret = MORPHO_NIL;
+    objectlist *lst = MORPHO_GETLIST(MORPHO_GETARG(args, 1));
+    morpho_call(v, MORPHO_GETARG(args, 0), list_length(lst), lst->val.data, &ret);
+    return ret;
+}
+
 /** Apply a function to a list of arguments */
 value builtin_apply(vm *v, int nargs, value *args) {
     value ret = MORPHO_NIL;
-    
-    if (nargs<2) morpho_runtimeerror(v, APPLY_ARGS);
-    
-    value fn =  MORPHO_GETARG(args, 0);
-    value x =  MORPHO_GETARG(args, 1);
-    
-    if (!morpho_iscallable(fn)) {
-        morpho_runtimeerror(v, APPLY_NOTCALLABLE);
-        return MORPHO_NIL;
-    }
-    
-    if (nargs==2 && MORPHO_ISTUPLE(x)) {
-        objecttuple *t = MORPHO_GETTUPLE(x);
-        
-        morpho_call(v, fn, t->length, t->tuple, &ret);
-    } else if (nargs==2 && MORPHO_ISLIST(x)) {
-        objectlist *lst = MORPHO_GETLIST(x);
-        
-        morpho_call(v, fn, lst->val.count, lst->val.data, &ret);
-    } else {
-        morpho_call(v, fn, nargs-1, &MORPHO_GETARG(args, 1), &ret);
-    }
-    
+    morpho_call(v, MORPHO_GETARG(args, 0), nargs-1, &MORPHO_GETARG(args, 1), &ret);
     return ret;
+}
+
+static value builtin_apply__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, APPLY_ARGS);
+    return MORPHO_NIL;
 }
 
 /* ************************************
@@ -289,92 +286,83 @@ value builtin_sqrt(vm *v, int nargs, value *args) {
 }
 
 /** The arctan function is special; it can either take one or two arguments */
-value builtin_arctan(vm *v, int nargs, value *args) {
-    bool useComplex = false;
-    for (unsigned int i=0; i<nargs; i++) {
-        if (MORPHO_ISNUMBER(MORPHO_GETARG(args,i))) {
-            continue;
-        } else if (MORPHO_ISCOMPLEX(MORPHO_GETARG(args, i))) {
-            useComplex = true;
-        } else {
-            morpho_runtimeerror(v, MATH_ARGS, "arctan");
-            return MORPHO_NIL;
-        }
-    }
-    if (useComplex) {
-        if (nargs == 1) {
-            return complex_builtinatan(v,MORPHO_GETARG(args, 0));
-        } else if (nargs==2) {
-            // Note Morpho uses the opposite order to C!
-            return complex_builtinatan2(v,MORPHO_GETARG(args, 1),MORPHO_GETARG(args, 0));
-        }
-        morpho_runtimeerror(v, MATH_NUMARGS, "arctan");
-        return MORPHO_NIL;
-    } else {
-        double x[2];
-        for (unsigned int i=0; i<nargs; i++) {
-            morpho_valuetofloat(MORPHO_GETARG(args, i), x+i);
-        }
-        
-        if (nargs==1) {
-            return MORPHO_FLOAT(atan(x[0]));
-        } else if (nargs==2) {
-            return MORPHO_FLOAT(atan2(x[1], x[0])); // Note Morpho uses the opposite order to C!
-        }
-            
-        morpho_runtimeerror(v, MATH_NUMARGS, "arctan");
-        return MORPHO_NIL;
-    } 
+static value builtin_arctan__number(vm *v, int nargs, value *args) {
+    double x;
+    morpho_valuetofloat(MORPHO_GETARG(args, 0), &x);
+    return MORPHO_FLOAT(atan(x));
+}
+
+static value builtin_arctan__number_number(vm *v, int nargs, value *args) {
+    double x, y;
+    morpho_valuetofloat(MORPHO_GETARG(args, 0), &x);
+    morpho_valuetofloat(MORPHO_GETARG(args, 1), &y);
+    return MORPHO_FLOAT(atan2(y, x)); // Note Morpho uses the opposite order to C!
+}
+
+static value builtin_arctan__complex(vm *v, int nargs, value *args) {
+    return complex_builtinatan(v, MORPHO_GETARG(args, 0));
+}
+
+static value builtin_arctan__complex2(vm *v, int nargs, value *args) {
+    return complex_builtinatan2(v, MORPHO_GETARG(args, 1), MORPHO_GETARG(args, 0));
+}
+
+static value builtin_arctan__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, MATH_NUMARGS, "arctan");
+    return MORPHO_NIL;
 }
 
 /** Remainder */
-value builtin_mod(vm *v, int nargs, value *args) {
-    value out = MORPHO_NIL;
-    if (nargs==2) {
-        value a = MORPHO_GETARG(args, 0);
-        value b = MORPHO_GETARG(args, 1);
-        
-        if (MORPHO_ISINTEGER(a) && MORPHO_ISINTEGER(b)) {
-            out=MORPHO_INTEGER(MORPHO_GETINTEGERVALUE(a) % MORPHO_GETINTEGERVALUE(b));
-        } else {
-            if (MORPHO_ISINTEGER(a)) a=MORPHO_INTEGERTOFLOAT(a);
-            if (MORPHO_ISINTEGER(b)) b=MORPHO_INTEGERTOFLOAT(b);
-            
-            if (MORPHO_ISFLOAT(a) && MORPHO_ISFLOAT(b)) {
-                out=MORPHO_FLOAT(fmod(MORPHO_GETFLOATVALUE(a), MORPHO_GETFLOATVALUE(b)));
-            } else morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_INT);
-        }
-    } else morpho_runtimeerror(v, VM_INVALIDARGS, 2, nargs);
-    return out;
+value builtin_mod__int_int(vm *v, int nargs, value *args) {
+    value a = MORPHO_GETARG(args, 0);
+    value b = MORPHO_GETARG(args, 1);
+    return MORPHO_INTEGER(MORPHO_GETINTEGERVALUE(a) % MORPHO_GETINTEGERVALUE(b));
+}
+
+value builtin_mod__float_float(vm *v, int nargs, value *args) {
+    value a = MORPHO_GETARG(args, 0);
+    value b = MORPHO_GETARG(args, 1);
+    return MORPHO_FLOAT(fmod(MORPHO_GETFLOATVALUE(a), MORPHO_GETFLOATVALUE(b)));
+}
+
+value builtin_mod__int_float(vm *v, int nargs, value *args) {
+    return MORPHO_FLOAT(fmod((double) MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+                             MORPHO_GETFLOATVALUE(MORPHO_GETARG(args, 1))));
+}
+
+value builtin_mod__float_int(vm *v, int nargs, value *args) {
+    return MORPHO_FLOAT(fmod(MORPHO_GETFLOATVALUE(MORPHO_GETARG(args, 0)),
+                             (double) MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1))));
+}
+
+value builtin_mod__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, VM_INVALIDARGS, 2, nargs);
+    return MORPHO_NIL;
 }
 
 /** find the sign of a number */
-static value builtin_sign(vm *v, int nargs, value *args){
-    if (nargs==1) {
-        value arg = MORPHO_GETARG(args, 0);
-        if (MORPHO_ISFLOAT(arg)) {
-
-            if (MORPHO_GETFLOATVALUE(arg)>0) {
-                return MORPHO_FLOAT(1);
-            }
-            else if (MORPHO_GETFLOATVALUE(arg)<0){
-                return MORPHO_FLOAT(-1);
-            }
-            else return MORPHO_FLOAT(0);
-
-        } else if (MORPHO_ISINTEGER(arg)) {
-            if (MORPHO_GETINTEGERVALUE(arg)>0) {
-                return MORPHO_FLOAT(1);
-            }
-            else if (MORPHO_GETINTEGERVALUE(arg)<0){
-                return MORPHO_FLOAT(-1);
-            }
-            else return MORPHO_FLOAT(0);
-        } else {
-            morpho_runtimeerror(v, MATH_ARGS,FUNCTION_SIGN);
-        }
+static value builtin_sign__value(vm *v, int nargs, value *args){
+    double val;
+    if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
+        morpho_runtimeerror(v, MATH_ARGS, FUNCTION_SIGN);
+        return MORPHO_NIL;
     }
-    morpho_runtimeerror(v, MATH_NUMARGS,FUNCTION_SIGN);
+
+    if (val>0) return MORPHO_FLOAT(1);
+    if (val<0) return MORPHO_FLOAT(-1);
+    return MORPHO_FLOAT(0);
+}
+
+static value builtin_sign__float(vm *v, int nargs, value *args){
+    return builtin_sign__value(v, nargs, args);
+}
+
+static value builtin_sign__int(vm *v, int nargs, value *args){
+    return builtin_sign__value(v, nargs, args);
+}
+
+static value builtin_sign__err(vm *v, int nargs, value *args){
+    morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_SIGN);
     return MORPHO_NIL;
 }
 
@@ -382,78 +370,56 @@ static value builtin_sign(vm *v, int nargs, value *args){
  * Elementary complex functions
  * *************************************/
 
-value builtin_real(vm *v, int nargs, value *args) {
-    if (nargs==1) { 
-        value arg = MORPHO_GETARG(args, 0);
-        if (MORPHO_ISNUMBER(arg)) {
-            return arg;
-        } else if (MORPHO_ISCOMPLEX(arg)) {
-            objectcomplex *c=MORPHO_GETCOMPLEX(arg);
-            double val;
-            complex_getreal(c,&val);
-            return MORPHO_FLOAT(val);
-        }
-    }
-    morpho_runtimeerror(v, MATH_NUMARGS, "real");
-    return MORPHO_NIL;
+value builtin_real__number(vm *v, int nargs, value *args) {
+    return MORPHO_GETARG(args, 0);
 }
 
-value builtin_imag(vm *v, int nargs, value *args) {
-    if (nargs==1) { 
-        value arg = MORPHO_GETARG(args, 0);
-        if (MORPHO_ISNUMBER(arg)) {
-            return MORPHO_FLOAT(0);
-        } else if (MORPHO_ISCOMPLEX(arg)) {
-            objectcomplex *c=MORPHO_GETCOMPLEX(arg);
-            double val;
-            complex_getimag(c,&val);
-            return MORPHO_FLOAT(val);
-        }
-    }
-    morpho_runtimeerror(v, MATH_NUMARGS, "imag");
-    return MORPHO_NIL;
+value builtin_real__complex(vm *v, int nargs, value *args) {
+    objectcomplex *c=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
+    double val;
+    complex_getreal(c,&val);
+    return MORPHO_FLOAT(val);
 }
 
-value builtin_angle(vm *v, int nargs, value *args) {
-    if (nargs==1) { 
-        value arg = MORPHO_GETARG(args, 0);
-        if (MORPHO_ISNUMBER(arg)) {
-            double val;
-            morpho_valuetofloat(arg,&val);
-            if (val>=0) {
-                return MORPHO_FLOAT(0);
-            }
-            else return MORPHO_FLOAT(M_PI);
-        } else if (MORPHO_ISCOMPLEX(arg)) {
-            objectcomplex *c=MORPHO_GETCOMPLEX(arg);
-            double val;
-            complex_angle(c,&val);
-            return MORPHO_FLOAT(val);
-        }
-    }
-    morpho_runtimeerror(v, MATH_NUMARGS, "angle");
-    return MORPHO_NIL;
+value builtin_imag__number(vm *v, int nargs, value *args) {
+    return MORPHO_FLOAT(0);
 }
 
-value builtin_conj(vm *v, int nargs, value *args) {
-    if (nargs==1) { 
-        value arg = MORPHO_GETARG(args, 0);
-        if (MORPHO_ISNUMBER(arg)) {
-            return arg;
-        } else if (MORPHO_ISCOMPLEX(arg)) {
-            objectcomplex *a=MORPHO_GETCOMPLEX(arg);
-            value out=MORPHO_NIL;
-            objectcomplex *new = object_newcomplex(0,0);
-            if (new) {
-                complex_conj(a, new);
-                out=MORPHO_OBJECT(new);
-                morpho_bindobjects(v, 1, &out);
-            }    
-            return out;
-        }
+value builtin_imag__complex(vm *v, int nargs, value *args) {
+    objectcomplex *c=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
+    double val;
+    complex_getimag(c,&val);
+    return MORPHO_FLOAT(val);
+}
+
+value builtin_angle__number(vm *v, int nargs, value *args) {
+    double val;
+    morpho_valuetofloat(MORPHO_GETARG(args, 0), &val);
+    if (val>=0) return MORPHO_FLOAT(0);
+    return MORPHO_FLOAT(M_PI);
+}
+
+value builtin_angle__complex(vm *v, int nargs, value *args) {
+    objectcomplex *c=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
+    double val;
+    complex_angle(c,&val);
+    return MORPHO_FLOAT(val);
+}
+
+value builtin_conj__number(vm *v, int nargs, value *args) {
+    return MORPHO_GETARG(args, 0);
+}
+
+value builtin_conj__complex(vm *v, int nargs, value *args) {
+    objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
+    value out=MORPHO_NIL;
+    objectcomplex *new = object_newcomplex(0,0);
+    if (new) {
+        complex_conj(a, new);
+        out=MORPHO_OBJECT(new);
+        morpho_bindobjects(v, 1, &out);
     }
-    morpho_runtimeerror(v, MATH_NUMARGS, "conj");
-    return MORPHO_NIL;
+    return out;
 }
 
 /* ************************************
@@ -530,17 +496,26 @@ static value builtin_bounds(vm *v, int nargs, value *args) {
     return out;
 }
 
+static value builtin_bounds__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, MAX_ARGS, FUNCTION_BOUNDS);
+    return MORPHO_NIL;
+}
+
 /** Find the minimum value in an enumerable object */
 static value builtin_min(vm *v, int nargs, value *args) {
     value m[nargs+1];
     value out = MORPHO_NIL;
     
     if (builtin_minmaxargs(v, nargs, args, m, NULL, FUNCTION_MIN)) {
-        if (nargs>0) value_minmax(nargs, m, &out, NULL);
-        else morpho_runtimeerror(v, MAX_ARGS, FUNCTION_MIN);
+        value_minmax(nargs, m, &out, NULL);
     }
     
     return out;
+}
+
+static value builtin_min__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, MAX_ARGS, FUNCTION_MIN);
+    return MORPHO_NIL;
 }
 
 /** Find the maximum value in an enumerable object */
@@ -549,11 +524,15 @@ static value builtin_max(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
     
     if (builtin_minmaxargs(v, nargs, args, NULL, m, FUNCTION_MAX)) {
-        if (nargs>0) value_minmax(nargs, m, NULL, &out);
-        else morpho_runtimeerror(v, MAX_ARGS, FUNCTION_MAX);
+        value_minmax(nargs, m, NULL, &out);
     }
     
     return out;
+}
+
+static value builtin_max__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, MAX_ARGS, FUNCTION_MAX);
+    return MORPHO_NIL;
 }
 
 /* ************************************
@@ -606,7 +585,7 @@ BUILTIN_TYPECHECK(isfield, MORPHO_ISFIELD)
 
 /** Check if something is callable */
 value builtin_iscallablefunction(vm *v, int nargs, value *args) {
-    if (builtin_iscallable(MORPHO_GETARG(args, 0))) return MORPHO_TRUE;
+    if (MORPHO_ISCALLABLE(MORPHO_GETARG(args, 0))) return MORPHO_TRUE;
     return MORPHO_FALSE;
 }
 
@@ -620,58 +599,64 @@ value builtin_iscallablefunction_err(vm *v, int nargs, value *args) {
  * ********************************************************************** */
 
 #define BUILTIN_MATH_OLD2(function) \
-    builtin_addfunction(#function, builtin_##function, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(#function, builtin_##function, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS);
+
+#define BUILTIN_VARMATH_RET(label, function, realret, realflags, cmplxret, cmplxflags) \
+    morpho_addfunction(label, realret " (Int)", builtin_int_##function, realflags, NULL); \
+    morpho_addfunction(label, realret " (Float)", builtin_float_##function, realflags, NULL); \
+    morpho_addfunction(label, cmplxret " (Complex)", builtin_cmplx_##function, cmplxflags, NULL); \
+    morpho_addfunction(label, "(...)", builtin_numargserr_##function, MORPHO_FN_THROWS, NULL);
 
 #define BUILTIN_VARMATH(label, function) \
-    morpho_addfunction(label, "Float (Int)", builtin_int_##function, MORPHO_FN_PUREFN, NULL); \
-    morpho_addfunction(label, "Float (Float)", builtin_float_##function, MORPHO_FN_PUREFN, NULL); \
-    morpho_addfunction(label, "Complex (Complex)", builtin_cmplx_##function, MORPHO_FN_PUREFN, NULL); \
-    morpho_addfunction(label, "(...)", builtin_numargserr_##function, MORPHO_FN_PUREFN, NULL);
+    BUILTIN_VARMATH_RET(label, function, "Float", MORPHO_FN_PUREFN, "Complex", MORPHO_FN_ALLOCATES)
 
 #define BUILTIN_MATH_BOOL(function) \
-    morpho_addfunction(#function, "Bool (Int)", builtin_int_##function, MORPHO_FN_PUREFN, NULL); \
-    morpho_addfunction(#function, "Bool (Float)", builtin_float_##function, MORPHO_FN_PUREFN, NULL); \
-    morpho_addfunction(#function, "Bool (Complex)", builtin_cmplx_##function, MORPHO_FN_PUREFN, NULL); \
-    morpho_addfunction(#function, "(...)", builtin_numargserr_##function, MORPHO_FN_PUREFN, NULL);
+    BUILTIN_VARMATH_RET(#function, function, "Bool", MORPHO_FN_PUREFN, "Bool", MORPHO_FN_PUREFN)
 
 #define BUILTIN_MATH(function) BUILTIN_VARMATH(#function, function)
 
 #define BUILTIN_TYPECHECK(function) \
     morpho_addfunction(#function, "Bool (_)", builtin_##function, MORPHO_FN_PUREFN, NULL); \
-    morpho_addfunction(#function, "Bool (_,...)", builtin_numargserr_##function, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(#function, "Bool ()", builtin_numargserr_##function, MORPHO_FN_THROWS, NULL); \
+    morpho_addfunction(#function, "Bool (_,_,...)", builtin_numargserr_##function, MORPHO_FN_THROWS, NULL);
 
 void functiondefs_initialize(void) {
     // System
-    builtin_addfunction(FUNCTION_SYSTEM, builtin_system, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FUNCTION_SYSTEM, builtin_system, MORPHO_FN_IO);
     
     // Clock
-    morpho_addfunction(FUNCTION_CLOCK, "Float ()", builtin_clock, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_CLOCK, "Float ()", builtin_clock, MORPHO_FN_IO|MORPHO_FN_NONDETERMINISTIC, NULL);
 
     // Apply
-    builtin_addfunction(FUNCTION_APPLY, builtin_apply, BUILTIN_FLAGSEMPTY);
+    morpho_addfunction(FUNCTION_APPLY, "(Callable,Tuple)", builtin_apply__tuple, MORPHO_FN_REENTRANT|MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_APPLY, "(Callable,List)", builtin_apply__list, MORPHO_FN_REENTRANT|MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_APPLY, "(Callable,_,...)", builtin_apply, MORPHO_FN_REENTRANT|MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_APPLY, "()", builtin_apply__err, MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_APPLY, "(_)", builtin_apply__err, MORPHO_FN_THROWS, NULL);
     
     // Random numbers
-    morpho_addfunction(FUNCTION_RANDOM, "Float ()", builtin_random, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_RANDOMINT, "Int ()", builtin_randomint_norange, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_RANDOMINT, "Int (_)", builtin_randomint, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_RANDOMNORMAL, "Float ()", builtin_randomnormal, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_RANDOM, "Float ()", builtin_random, MORPHO_FN_NONDETERMINISTIC, NULL);
+    morpho_addfunction(FUNCTION_RANDOMINT, "Int ()", builtin_randomint_norange, MORPHO_FN_NONDETERMINISTIC, NULL);
+    morpho_addfunction(FUNCTION_RANDOMINT, "Int (_)", builtin_randomint, MORPHO_FN_NONDETERMINISTIC|MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_RANDOMNORMAL, "Float ()", builtin_randomnormal, MORPHO_FN_NONDETERMINISTIC, NULL);
     
     // Value constructors
-    morpho_addfunction(FUNCTION_INT, "Int (Int)", builtin_int__int, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_INT, "Int (Float)", builtin_int__float, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_INT, "Int (String)", builtin_int__string, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_INT, "Int (...)", builtin_int__err, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_INT, "Int (Int)", builtin_int__int, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_INT, "Int (Float)", builtin_int__float, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_INT, "Int (String)", builtin_int__string, MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_INT, "Int (...)", builtin_int__err, MORPHO_FN_THROWS, NULL);
     
-    morpho_addfunction(FUNCTION_FLOAT, "Float (Int)", builtin_float__int, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_FLOAT, "Float (Float)", builtin_float__float, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_FLOAT, "Float (String)", builtin_float__string, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_FLOAT, "Float (...)", builtin_float__err, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_FLOAT, "Float (Int)", builtin_float__int, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_FLOAT, "Float (Float)", builtin_float__float, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_FLOAT, "Float (String)", builtin_float__string, MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_FLOAT, "Float (...)", builtin_float__err, MORPHO_FN_THROWS, NULL);
     
-    morpho_addfunction(FUNCTION_BOOL, "Bool (_)", builtin_bool, BUILTIN_FLAGSEMPTY, NULL);
-    morpho_addfunction(FUNCTION_BOOL, "Bool (_,...)", builtin_bool_err, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_BOOL, "Bool (_)", builtin_bool, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_BOOL, "Bool ()", builtin_bool_err, MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_BOOL, "Bool (_,_,...)", builtin_bool_err, MORPHO_FN_THROWS, NULL);
     
     // Math functions
-    BUILTIN_VARMATH(FUNCTION_ABS, fabs)
+    BUILTIN_VARMATH_RET(FUNCTION_ABS, fabs, "Float", MORPHO_FN_PUREFN, "Float", MORPHO_FN_PUREFN)
     
     BUILTIN_MATH(exp)
     BUILTIN_MATH(log)
@@ -696,21 +681,49 @@ void functiondefs_initialize(void) {
     BUILTIN_MATH_BOOL(isnan)
     
     // Math functions with special cases
-    builtin_addfunction(FUNCTION_ARCTAN, builtin_arctan, BUILTIN_FLAGSEMPTY);
+    morpho_addfunction(FUNCTION_ARCTAN, "Float (Int)", builtin_arctan__number, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Float (Float)", builtin_arctan__number, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Float (Int,Int)", builtin_arctan__number_number, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Float (Int,Float)", builtin_arctan__number_number, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Float (Float,Int)", builtin_arctan__number_number, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Float (Float,Float)", builtin_arctan__number_number, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Complex (Complex)", builtin_arctan__complex, MORPHO_FN_ALLOCATES, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Complex (Complex,Complex)", builtin_arctan__complex2, MORPHO_FN_ALLOCATES, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Complex (Complex,_)", builtin_arctan__complex2, MORPHO_FN_ALLOCATES, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Complex (_,Complex)", builtin_arctan__complex2, MORPHO_FN_ALLOCATES, NULL);
+    morpho_addfunction(FUNCTION_ARCTAN, "Float (...)", builtin_arctan__err, MORPHO_FN_THROWS, NULL);
     BUILTIN_MATH_OLD2(sqrt);
-    builtin_addfunction(FUNCTION_MOD, builtin_mod, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_SIGN, builtin_sign, BUILTIN_FLAGSEMPTY);
+    morpho_addfunction(FUNCTION_MOD, "Int (Int,Int)", builtin_mod__int_int, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_MOD, "Float (Float,Float)", builtin_mod__float_float, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_MOD, "Float (Int,Float)", builtin_mod__int_float, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_MOD, "Float (Float,Int)", builtin_mod__float_int, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_MOD, "Float (...)", builtin_mod__err, MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_SIGN, "Float (Int)", builtin_sign__int, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_SIGN, "Float (Float)", builtin_sign__float, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_SIGN, "Float (...)", builtin_sign__err, MORPHO_FN_THROWS, NULL);
     
     // Complex
-    builtin_addfunction(FUNCTION_REAL, builtin_real, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_IMAG, builtin_imag, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_ANGLE, builtin_angle, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_CONJ, builtin_conj, BUILTIN_FLAGSEMPTY);
+    morpho_addfunction(FUNCTION_REAL, "Float (Complex)", builtin_real__complex, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_REAL, "Int (Int)", builtin_real__number, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_REAL, "Float (Float)", builtin_real__number, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_IMAG, "Float (Complex)", builtin_imag__complex, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_IMAG, "Float (Int)", builtin_imag__number, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_IMAG, "Float (Float)", builtin_imag__number, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_ANGLE, "Float (Complex)", builtin_angle__complex, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_ANGLE, "Float (Int)", builtin_angle__number, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_ANGLE, "Float (Float)", builtin_angle__number, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_CONJ, "Complex (Complex)", builtin_conj__complex, MORPHO_FN_ALLOCATES, NULL);
+    morpho_addfunction(FUNCTION_CONJ, "Int (Int)", builtin_conj__number, MORPHO_FN_PUREFN, NULL);
+    morpho_addfunction(FUNCTION_CONJ, "Float (Float)", builtin_conj__number, MORPHO_FN_PUREFN, NULL);
     
     // Min/max
-    builtin_addfunction(FUNCTION_BOUNDS, builtin_bounds, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_MIN, builtin_min, BUILTIN_FLAGSEMPTY);
-    builtin_addfunction(FUNCTION_MAX, builtin_max, BUILTIN_FLAGSEMPTY);
+    morpho_addfunction(FUNCTION_BOUNDS, "List (_)", builtin_bounds, MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_BOUNDS, "List (_,...)", builtin_bounds, MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_BOUNDS, "List ()", builtin_bounds__err, MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_MIN, "(_,...)", builtin_min, MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_MIN, "()", builtin_min__err, MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_MAX, "(_,...)", builtin_max, MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_MAX, "()", builtin_max__err, MORPHO_FN_THROWS, NULL);
     
     // Type checking
     BUILTIN_TYPECHECK(isnil)
@@ -742,7 +755,8 @@ void functiondefs_initialize(void) {
 #endif
     
     morpho_addfunction(FUNCTION_ISCALLABLE, "Bool (_)", builtin_iscallablefunction, MORPHO_FN_PUREFN, NULL);
-    morpho_addfunction(FUNCTION_ISCALLABLE, "Bool (_,...)", builtin_iscallablefunction_err, BUILTIN_FLAGSEMPTY, NULL);
+    morpho_addfunction(FUNCTION_ISCALLABLE, "Bool ()", builtin_iscallablefunction_err, MORPHO_FN_THROWS, NULL);
+    morpho_addfunction(FUNCTION_ISCALLABLE, "Bool (_,_,...)", builtin_iscallablefunction_err, MORPHO_FN_THROWS, NULL);
     
     /* Define errors */
     morpho_defineerror(MATH_ARGS, ERROR_HALT, MATH_ARGS_MSG);

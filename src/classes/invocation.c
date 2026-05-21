@@ -62,32 +62,33 @@ objectinvocation *object_newinvocation(value receiver, value method) {
 /** Creates a new invocation object */
 value invocation_constructor(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
+    value receiver = MORPHO_GETARG(args, 0);
+    value selector = MORPHO_GETARG(args, 1);
+    
+    if (!MORPHO_ISOBJECT(receiver) || !MORPHO_ISSTRING(selector)) {
+        morpho_runtimeerror(v, INVOCATION_ARGS);
+        return MORPHO_NIL;
+    }
+    
+    value method = MORPHO_NIL;
+    objectclass *klass=morpho_lookupclass(receiver);
+    
+    if (dictionary_get(&klass->methods, selector, &method)) {
+        objectinvocation *new = object_newinvocation(receiver, method);
 
-    if (nargs==2) {
-        value receiver = MORPHO_GETARG(args, 0);
-        value selector = MORPHO_GETARG(args, 1);
-        
-        if (!MORPHO_ISOBJECT(receiver) || !MORPHO_ISSTRING(selector)) {
-            morpho_runtimeerror(v, INVOCATION_ARGS);
-            return MORPHO_NIL;
-        }
-        
-        value method = MORPHO_NIL;
-        
-        objectclass *klass=morpho_lookupclass(receiver);
-        
-        if (dictionary_get(&klass->methods, selector, &method)) {
-            objectinvocation *new = object_newinvocation(receiver, method);
-
-            if (new) {
-                out = MORPHO_OBJECT(new);
-                morpho_bindobjects(v, 1, &out);
-            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-        }
-        
-    } else morpho_runtimeerror(v, INVOCATION_ARGS);
+        if (new) {
+            out = MORPHO_OBJECT(new);
+            morpho_bindobjects(v, 1, &out);
+        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    }
 
     return out;
+}
+
+/** Raises a constructor error */
+value invocation_constructor__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, INVOCATION_ARGS);
+    return MORPHO_NIL;
 }
 
 /** Converts to a string for string interpolation */
@@ -129,9 +130,9 @@ value Invocation_clone(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Invocation)
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "String ()", Invocation_tostring, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Invocation ()", Invocation_clone, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "String ()", Invocation_tostring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Invocation ()", Invocation_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -148,7 +149,8 @@ void invocation_initialize(void) {
     value objclass = builtin_findclassfromcstring(CALLABLE_CLASSNAME);
     
     // Invocation constructor function
-    morpho_addfunction(INVOCATION_CLASSNAME, INVOCATION_CLASSNAME " (...)", invocation_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(INVOCATION_CLASSNAME, "Invocation (_,_)", invocation_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(INVOCATION_CLASSNAME, "Invocation (...)", invocation_constructor__err, MORPHO_FN_CONSTRUCTOR, NULL);
     
     // Create invocation veneer class
     value invocationclass=builtin_addclass(INVOCATION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Invocation), objclass);

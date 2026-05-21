@@ -186,34 +186,12 @@ value file_readlineusingvarray(FILE *f, varray_char *string) {
  * File class
  * ********************************************************************** */
 
-/** File constructor
- * In: 1. a file name
- *   2. (optional) a string giving the requested status, e.g. "wr+"
- */
-value file_constructor(vm *v, int nargs, value *args) {
+/** Open a file using an already-validated name and mode string. */
+static value file_open(vm *v, value filenamearg, char *cmode) {
     objectfile *new=NULL;
     value out=MORPHO_NIL;
     value filename=MORPHO_NIL;
-    char *fname=NULL;
-    char *cmode = "r";
-    
-    if (nargs>0) {
-        if (MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
-            fname=MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
-        } else MORPHO_RAISE(v, FILE_FILENAMEARG);
-        
-        if (nargs>1) {
-            if (MORPHO_ISSTRING(MORPHO_GETARG(args, 1))) {
-                char *mode=MORPHO_GETCSTRING(MORPHO_GETARG(args, 1));
-                switch (mode[0]) {
-                    case 'r': cmode="r"; break;
-                    case 'w': cmode="w"; break;
-                    case 'a': cmode="a"; break;
-                    default: MORPHO_RAISE(v, FILE_MODE);
-                }
-            } else MORPHO_RAISE(v, FILE_MODE);
-        }
-    } else MORPHO_RAISE(v, FILE_NEEDSFILENAME);
+    char *fname=MORPHO_GETCSTRING(filenamearg);
     
     if (fname) {
         FILE *f = file_openrelative(fname, cmode);
@@ -230,6 +208,45 @@ value file_constructor(vm *v, int nargs, value *args) {
     }
     
     return out;
+}
+
+/** File constructor: File(String) */
+value file_constructor__string(vm *v, int nargs, value *args) {
+    return file_open(v, MORPHO_GETARG(args, 0), "r");
+}
+
+/** File constructor: File(String,String) */
+value file_constructor__string_string(vm *v, int nargs, value *args) {
+    char *cmode = "r";
+    char *mode=MORPHO_GETCSTRING(MORPHO_GETARG(args, 1));
+
+    switch (mode[0]) {
+        case 'r': cmode="r"; break;
+        case 'w': cmode="w"; break;
+        case 'a': cmode="a"; break;
+        default: MORPHO_RAISE(v, FILE_MODE);
+    }
+
+    return file_open(v, MORPHO_GETARG(args, 0), cmode);
+}
+
+/** File constructor missing filename error */
+value file_constructor__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, FILE_NEEDSFILENAME);
+    return MORPHO_NIL;
+}
+
+/** File constructor bad filename argument */
+value file_constructor__filenamearg(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, FILE_FILENAMEARG);
+    return MORPHO_NIL;
+}
+
+/** File constructor bad two-argument call */
+value file_constructor__args(vm *v, int nargs, value *args) {
+    if (!MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) morpho_runtimeerror(v, FILE_FILENAMEARG);
+    else morpho_runtimeerror(v, FILE_MODE);
+    return MORPHO_NIL;
 }
 
 /** Close a file  */
@@ -368,15 +385,15 @@ value File_eof(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(File)
-MORPHO_METHOD(FILE_CLOSE, File_close, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FILE_LINES, File_lines, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FILE_READALL, File_readall, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FILE_READLINE, File_readline, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FILE_READCHAR, File_readchar, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FILE_WRITE, File_write, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FILE_RELATIVEPATH, File_relativepath, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FILE_FILENAME, File_filename, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FILE_EOF, File_eof, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(FILE_CLOSE, File_close, MORPHO_FN_IO|MORPHO_FN_MUTATES),
+MORPHO_METHOD(FILE_LINES, File_lines, MORPHO_FN_IO|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(FILE_READALL, File_readall, MORPHO_FN_IO|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(FILE_READLINE, File_readline, MORPHO_FN_IO|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(FILE_READCHAR, File_readchar, MORPHO_FN_IO|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(FILE_WRITE, File_write, MORPHO_FN_IO|MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(FILE_RELATIVEPATH, File_relativepath, MORPHO_FN_IO|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(FILE_FILENAME, File_filename, MORPHO_FN_NONE),
+MORPHO_METHOD(FILE_EOF, File_eof, MORPHO_FN_IO)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -384,17 +401,15 @@ MORPHO_ENDCLASS
  * ********************************************************************** */
 
 /** Detect whether a resource is a folder  */
-value Folder_isfolder(vm *v, int nargs, value *args) {
+value Folder_isfolder__string(vm *v, int nargs, value *args) {
     value ret = MORPHO_FALSE;
-    if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
-        varray_char name;
-        varray_charinit(&name);
-        file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
-        
-        if (platform_isdirectory(name.data)) ret=MORPHO_TRUE;
-        
-        varray_charclear(&name);
-    } else morpho_runtimeerror(v, FOLDER_EXPCTPATH);
+    varray_char name;
+    varray_charinit(&name);
+    file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
+    
+    if (platform_isdirectory(name.data)) ret=MORPHO_TRUE;
+    
+    varray_charclear(&name);
     
     return ret;
 }
@@ -414,38 +429,36 @@ value Folder_normalizepath(vm *v, int nargs, value *args) {
 /** Return the contents of a folder  */
 value Folder_contents(vm *v, int nargs, value *args) {
     value ret = MORPHO_NIL;
-    if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
-       varray_char name;
-        varray_charinit(&name);
-        file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
+    varray_char name;
+    varray_charinit(&name);
+    file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
 
-        size_t size = platform_maxpathsize();
-        char buffer[size];
-        
-        MorphoDirContents contents;
-        if (platform_directorycontentsinit(&contents, name.data)) {
-            varray_value list;
-            varray_valueinit(&list);
-            
-            while (platform_directorycontents(&contents, buffer, size)) {
-                value entry = object_stringfromcstring(buffer, strlen(buffer));
-                if (MORPHO_ISSTRING(entry)) varray_valuewrite(&list, entry);
-            };
-            
-            platform_directorycontentsclear(&contents);
-            
-            objectlist *clist = object_newlist(list.count, list.data);
-            if (clist) {
-                ret = MORPHO_OBJECT(clist);
-                varray_valuewrite(&list, ret);
-                morpho_bindobjects(v, list.count, list.data);
-            } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-            
-            varray_valueclear(&list);
-        } else morpho_runtimeerror(v, FOLDER_NTFLDR);
-        
-        varray_charclear(&name);
-    } else morpho_runtimeerror(v, FOLDER_EXPCTPATH);
+    size_t size = platform_maxpathsize();
+    char buffer[size];
+
+    MorphoDirContents contents;
+    if (platform_directorycontentsinit(&contents, name.data)) {
+     varray_value list;
+     varray_valueinit(&list);
+     
+     while (platform_directorycontents(&contents, buffer, size)) {
+         value entry = object_stringfromcstring(buffer, strlen(buffer));
+         if (MORPHO_ISSTRING(entry)) varray_valuewrite(&list, entry);
+     };
+     
+     platform_directorycontentsclear(&contents);
+     
+     objectlist *clist = object_newlist(list.count, list.data);
+     if (clist) {
+         ret = MORPHO_OBJECT(clist);
+         varray_valuewrite(&list, ret);
+         morpho_bindobjects(v, list.count, list.data);
+     } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+     
+     varray_valueclear(&list);
+    } else morpho_runtimeerror(v, FOLDER_NTFLDR);
+
+    varray_charclear(&name);
     
     return ret;
 }
@@ -466,12 +479,12 @@ value Folder_createrecursive(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Folder)
-MORPHO_METHOD_SIGNATURE(FOLDER_ISFOLDER, "Bool (_)", Folder_isfolder, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(FOLDER_ISFOLDER_DEPRECATED, "Bool (_)", Folder_isfolder, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(FOLDER_NORMALIZEPATH, "String (String)", Folder_normalizepath, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(FOLDER_CONTENTS, "List (_)", Folder_contents, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(FOLDER_CREATE, "(String)", Folder_create, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD_SIGNATURE(FOLDER_CREATERECURSIVE, "(String)", Folder_createrecursive, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(FOLDER_ISFOLDER, "Bool (String)", Folder_isfolder__string, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(FOLDER_ISFOLDER_DEPRECATED, "Bool (String)", Folder_isfolder__string, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(FOLDER_NORMALIZEPATH, "String (String)", Folder_normalizepath, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(FOLDER_CONTENTS, "List (String)", Folder_contents, MORPHO_FN_IO|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(FOLDER_CREATE, "(String)", Folder_create, MORPHO_FN_IO|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(FOLDER_CREATERECURSIVE, "(String)", Folder_createrecursive, MORPHO_FN_IO|MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -485,7 +498,12 @@ void file_initialize(void) {
     
     value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
-    morpho_addfunction(FILE_CLASSNAME, FILE_CLASSNAME " (...)", file_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(FILE_CLASSNAME, "File (String)", file_constructor__string, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(FILE_CLASSNAME, "File (_)", file_constructor__filenamearg, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(FILE_CLASSNAME, "File (String,String)", file_constructor__string_string, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(FILE_CLASSNAME, "File (_,_)", file_constructor__args, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(FILE_CLASSNAME, "File ()", file_constructor__err, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(FILE_CLASSNAME, "File (_,_,...)", file_constructor__err, MORPHO_FN_CONSTRUCTOR, NULL);
     
     value fileclass=builtin_addclass(FILE_CLASSNAME, MORPHO_GETCLASSDEFINITION(File), objclass);
     object_setveneerclass(OBJECT_FILE, fileclass);

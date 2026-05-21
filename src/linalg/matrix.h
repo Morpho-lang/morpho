@@ -293,6 +293,7 @@ linalgError_t matrix_setelement(objectmatrix *matrix, MatrixIdx_t row, MatrixIdx
 linalgError_t matrix_getelement(objectmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double *value);
 linalgError_t matrix_getelementptr(objectmatrix *matrix, MatrixIdx_t row, MatrixIdx_t col, double **value);
 linalgError_t matrix_getcolumnptr(objectmatrix *matrix, MatrixIdx_t col, double **value);
+linalgError_t matrix_getcolumn(objectmatrix *a, MatrixIdx_t col, objectmatrix *b);
 linalgError_t matrix_setcolumn(objectmatrix *a, MatrixIdx_t col, objectmatrix *b);
 linalgError_t matrix_setcolumnptr(objectmatrix *a, MatrixIdx_t col, double *b);
 linalgError_t matrix_addtocolumnptr(objectmatrix *a, MatrixIdx_t col, double alpha, double *b);

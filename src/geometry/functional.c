@@ -4365,7 +4365,7 @@ int invjacobianhandle; // TL storage handle for inverse Jacobian
 
 void _fetchvertices(objectintegralelementref *elref, objectmesh *mesh, int nv, elementid *vid, double **x) {
     // Fetch reference vertices
-    for (int j=0; j<nv; j++) matrix_getcolumn(elref->iref->mref->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) matrix_getcolumnptr(elref->iref->mref->vert, vid[j], &x[j]);
 }
 
 void _edgevectors(grade g, int dim, double **x, double *out) {
@@ -4383,8 +4383,8 @@ void integral_evaluatejacobian(vm *v, value *jac, value *invjac) {
     int dim = elref->mesh->dim;     // Dimension of the mesh
     
     // Allocate matrices
-    objectmatrix *J=object_newmatrix(dim, dim, true);
-    objectmatrix *Jinv=object_newmatrix(dim, dim, true);
+    objectmatrix *J=matrix_new(dim, dim, true);
+    objectmatrix *Jinv=matrix_new(dim, dim, true);
     
     if (J) vm_settlvar(v, jacobianhandle, MORPHO_OBJECT(J));
     if (Jinv) vm_settlvar(v, invjacobianhandle, MORPHO_OBJECT(Jinv));
@@ -4402,22 +4402,21 @@ void integral_evaluatejacobian(vm *v, value *jac, value *invjac) {
     if (mref) _fetchvertices(elref, mref, nv, elref->vid, x);
     
     // Construct matrix of edge vectors for target and reference elements
-    double starget[dim*dim], sref[dim*dim], sinv[dim*dim];
+    double starget[dim*dim], sinv[dim*dim];
     objectmatrix St = MORPHO_STATICMATRIX(starget, dim, dim),
-                 Sr = MORPHO_STATICMATRIX(sref, dim, dim),
                  Sinv = MORPHO_STATICMATRIX(sinv, dim, dim);
     
     _edgevectors(g, dim, X, starget);
     if (mref) {
-        _edgevectors(g, dim, x, sref);
-        matrix_inverse(&Sr, &Sinv);
+        _edgevectors(g, dim, x, sinv);
+        matrix_inverse(&Sinv);
     } else {
         matrix_identity(&Sinv); // If no reference, the reference is the unit triangle
     }
     
     matrix_mul(&St, &Sinv, J); // J = S . s^-1
-
-    matrix_inverse(J, Jinv); // Compute J^-1
+    matrix_copy(J, Jinv);
+    matrix_inverse(Jinv); // Compute J^-1
     
     if (jac) *jac = MORPHO_OBJECT(J);
     if (invjac) *invjac = MORPHO_OBJECT(Jinv);

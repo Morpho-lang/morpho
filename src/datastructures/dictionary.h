@@ -58,6 +58,7 @@ void dictionary_freecontents(dictionary *dict, bool freekeys, bool freevals);
 bool dictionary_insert(dictionary *dict, value key, value val);
 bool dictionary_insertintern(dictionary *dict, value key, value val);
 value dictionary_intern(dictionary *dict, value key);
+value dictionary_getkey(dictionary *dict, value key, value *val);
 bool dictionary_get(dictionary *dict, value key, value *val);
 bool dictionary_getintern(dictionary *dict, value key, value *val);
 bool dictionary_remove(dictionary *dict, value key);

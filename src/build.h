@@ -123,14 +123,17 @@
  * Core library [options set in CMake]
  * ********************************************************************** */
 
-/** Build with Matrix class using BLAS/LAPACK */
+/** @brief Build with Matrix class using BLAS/LAPACK */
 //#define MORPHO_INCLUDE_LINALG
 
-/** Build with Sparse class */
+/** @brief Build with Sparse class */
 //#define MORPHO_INCLUDE_SPARSE
 
-/** Build with geometry classes */
+/** @brief Build with geometry classes */
 //#define MORPHO_INCLUDE_GEOMETRY
+
+/** @brief Build with new help system */
+#define MORPHO_INCLUDE_HELP
 
 /* **********************************************************************
  * Libraries
@@ -185,4 +188,6 @@
 //#define MORPHO_OPCODE_USAGE
 
 /** @brief Buiild with profile support */
-#define MORPHO_PROFILER
+#ifdef _DEBUG_PROFILER
+    #define MORPHO_PROFILER
+#endif

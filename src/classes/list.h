@@ -75,6 +75,7 @@ value List_getindex(vm *v, int nargs, value *args);
 
 bool list_resize(objectlist *list, int size);
 void list_append(objectlist *list, value v);
+bool list_remove(objectlist *list, value val);
 unsigned int list_length(objectlist *list);
 bool list_getelement(objectlist *list, int i, value *out);
 void list_sortcontents(value *values, size_t count);

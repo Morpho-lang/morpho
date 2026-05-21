@@ -23,6 +23,7 @@ option(MORPHO_GCSTRESSTEST "Stress tests the garbage collector" OFF)
 option(MORPHO_BUILD_LINALG "Builds with linear algebra" ON)
 option(MORPHO_BUILD_SPARSE "Builds with sparse matrix support" ON)
 option(MORPHO_BUILD_GEOMETRY "Builds with geometry library" ON)
+option(MORPHO_BUILD_PROFILER "Builds with profiler" ON)
 
 #-------------------------------------------------------------------------------
 # Process options
@@ -51,6 +52,11 @@ endif()
 # Include geometry as part of the build
 if(MORPHO_BUILD_GEOMETRY)
 target_compile_definitions(morpho PUBLIC MORPHO_INCLUDE_GEOMETRY)
+endif()
+
+# Build with profiler
+if(MORPHO_BUILD_PROFILER)
+target_compile_definitions(morpho PUBLIC _DEBUG_PROFILER)
 endif()
 
 #-------------------------------------------------------------------------------

@@ -385,6 +385,16 @@ static inline bool _dictionary_get(dictionary *dict, value key, bool intern, val
     return false;
 }
 
+/** @brief If a key equal to key is present, returns that stored key and (if val) its value; otherwise returns MORPHO_NIL. */
+value dictionary_getkey(dictionary *dict, value key, value *val) {
+    dictionaryentry *entry = NULL;
+    if (dictionary_find(dict, key, false, &entry)) {
+        if (val) *val = entry->val;
+        return entry->key;
+    }
+    return MORPHO_NIL;
+}
+
 /** @brief Retrieves a value from a dictionary given a key
  * @param[in]  dict the dictionary to get
  * @param[in]  key  key to locate

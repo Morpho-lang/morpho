@@ -3991,6 +3991,17 @@ objectintegralelementref *integral_getelementref(vm *v) {
     return NULL;
 }
 
+/* ---------
+ * Elementid
+ * --------- */
+
+static value integral_elementid(vm *v, int nargs, value *args) {
+    objectintegralelementref *elref = integral_getelementref(v);
+    if (!elref) { morpho_runtimeerror(v, INTEGRAL_SPCLFN, ELEMENTID_FUNCTION); return MORPHO_NIL; }
+    
+    return MORPHO_INTEGER(elref->id);
+}
+
 /* --------
  * Tangent
  * -------- */
@@ -4037,6 +4048,7 @@ int normlhandle; // TL storage handle for normal vectors
 /** Evaluates the normal vector */
 void integral_evaluatenormal(vm *v, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);
+    
     if (!elref) { morpho_runtimeerror(v, INTEGRAL_SPCLFN, NORMAL_FUNCTION); return; }
     
     int dim = elref->mesh->dim;
@@ -4337,13 +4349,104 @@ static value integral_cgfn(vm *v, int nargs, value *args) {
     return out;
 }
 
+/* -------------------
+ * Jacobian
+ * ------------------- */
+
+/*
+ * A reference triangle is mapped to a target triangle through a
+ * linear transformation (the pushforward); an inverse transformation (the pullback)
+ * exists if the triangle is not degenerate. This function computes the forward
+ * and inverse jacobians.
+ */
+
+int jacobianhandle; // TL storage handle for Jacobian
+int invjacobianhandle; // TL storage handle for inverse Jacobian
+
+void _fetchvertices(objectintegralelementref *elref, objectmesh *mesh, int nv, elementid *vid, double **x) {
+    // Fetch reference vertices
+    for (int j=0; j<nv; j++) matrix_getcolumnptr(elref->iref->mref->vert, vid[j], &x[j]);
+}
+
+void _edgevectors(grade g, int dim, double **x, double *out) {
+    for (int i=0; i<g; i++) functional_vecsub(dim, x[i+1], x[0], out + i*dim);
+}
+
+/** Evaluates the jacobian and inverse jacobian; returns either of these as requested */
+void integral_evaluatejacobian(vm *v, value *jac, value *invjac) {
+    objectintegralelementref *elref = integral_getelementref(v);
+    
+    if (!elref) {
+        morpho_runtimeerror(v, INTEGRAL_SPCLFN, JACOBIAN_FUNCTION); return;
+    }
+    
+    int dim = elref->mesh->dim;     // Dimension of the mesh
+    
+    // Allocate matrices
+    objectmatrix *J=matrix_new(dim, dim, true);
+    objectmatrix *Jinv=matrix_new(dim, dim, true);
+    
+    if (J) vm_settlvar(v, jacobianhandle, MORPHO_OBJECT(J));
+    if (Jinv) vm_settlvar(v, invjacobianhandle, MORPHO_OBJECT(Jinv));
+    
+    if (!J || !Jinv) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return; }
+    
+    // Now compute them
+    grade g = elref->g;             // Grade of the element
+    int nv = elref->nv;             //
+    
+    double **X = elref->vertexposn; // Vertex positions of the target element
+    double *x[nv];                  // Vertex positions of the reference element
+    
+    objectmesh *mref = elref->iref->mref; // Reference mesh
+    if (mref) _fetchvertices(elref, mref, nv, elref->vid, x);
+    
+    // Construct matrix of edge vectors for target and reference elements
+    double starget[dim*dim], sinv[dim*dim];
+    objectmatrix St = MORPHO_STATICMATRIX(starget, dim, dim),
+                 Sinv = MORPHO_STATICMATRIX(sinv, dim, dim);
+    
+    _edgevectors(g, dim, X, starget);
+    if (mref) {
+        _edgevectors(g, dim, x, sinv);
+        matrix_inverse(&Sinv);
+    } else {
+        matrix_identity(&Sinv); // If no reference, the reference is the unit triangle
+    }
+    
+    matrix_mul(&St, &Sinv, J); // J = S . s^-1
+    matrix_copy(J, Jinv);
+    matrix_inverse(Jinv); // Compute J^-1
+    
+    if (jac) *jac = MORPHO_OBJECT(J);
+    if (invjac) *invjac = MORPHO_OBJECT(Jinv);
+}
+
+static value integral_jacobian(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+
+    vm_gettlvar(v, jacobianhandle, &out);
+    if (MORPHO_ISNIL(out)) integral_evaluatejacobian(v, &out, NULL);
+    
+    return out;
+}
+
+static value integral_invjacobian(vm *v, int nargs, value *args) {
+    value out=MORPHO_NIL;
+
+    vm_gettlvar(v, invjacobianhandle, &out);
+    if (MORPHO_ISNIL(out)) integral_evaluatejacobian(v, NULL, &out);
+    
+    return out;
+}
+
 /* ----------------------
  * General initialization
  * ---------------------- */
 
 /** Clears threadlocal storage */
 void integral_cleartlvars(vm *v) {
-    int handles[] = { elementhandle, normlhandle, tangenthandle, cauchygreenhandle, -1 };
+    int handles[] = { elementhandle, normlhandle, tangenthandle, cauchygreenhandle, jacobianhandle, invjacobianhandle, -1 };
     
     for (int i=0; handles[i]>=0; i++) {
         vm_settlvar(v, handles[i], MORPHO_NIL);
@@ -4351,7 +4454,7 @@ void integral_cleartlvars(vm *v) {
 }
 
 void integral_freetlvars(vm *v) {
-    int handles[] = { normlhandle, tangenthandle, cauchygreenhandle, -1 };
+    int handles[] = { normlhandle, tangenthandle, cauchygreenhandle,jacobianhandle, invjacobianhandle, -1 };
     
     for (int i=0; handles[i]>=0; i++) {
         value val;
@@ -4951,10 +5054,13 @@ void functional_initialize(void) {
     builtin_addclass(NEMATIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(Nematic), objclass);
     builtin_addclass(NEMATICELECTRIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(NematicElectric), objclass);
 
+    builtin_addfunction(ELEMENTID_FUNCTION, integral_elementid, MORPHO_FN_THREADLOCAL | MORPHO_FN_THROWS);
     builtin_addfunction(TANGENT_FUNCTION, integral_tangent, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
     builtin_addfunction(NORMAL_FUNCTION, integral_normal, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
     builtin_addfunction(GRAD_FUNCTION, integral_gradfn, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
     builtin_addfunction(CGTENSOR_FUNCTION, integral_cgfn, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
+    builtin_addfunction(JACOBIAN_FUNCTION, integral_jacobian, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
+    builtin_addfunction(INVJACOBIAN_FUNCTION, integral_invjacobian, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
 
     morpho_defineerror(VOLUMEENCLOSED_ZERO, ERROR_HALT, VOLUMEENCLOSED_ZERO_MSG);
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
@@ -4993,6 +5099,8 @@ void functional_initialize(void) {
     tangenthandle=vm_addtlvar();
     normlhandle=vm_addtlvar();
     cauchygreenhandle=vm_addtlvar();
+    jacobianhandle=vm_addtlvar();
+    invjacobianhandle=vm_addtlvar();
     
     morpho_addfinalizefn(functional_finalize);
 }

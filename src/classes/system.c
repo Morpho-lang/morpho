@@ -10,6 +10,7 @@
 #include "classes.h"
 #include "system.h"
 #include "platform.h"
+#include "help.h"
 
 /* **********************************************************************
  * System utility functions
@@ -131,6 +132,25 @@ value System_setworkingfolder(vm *v, int nargs, value *args) {
 value System_setworkingfolder__err(vm *v, int nargs, value *args) {
     morpho_runtimeerror(v, STWRKDR_ARGS);
     return MORPHO_NIL;
+}
+
+/** Help query */
+value System_help(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    
+    if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
+        char *query = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
+        
+        varray_char result;
+        varray_charinit(&result);
+        
+        morpho_helpastext(query, &result); /* fills result with help text or a "not found" hint */
+        out = object_stringfromvarraychar(&result);
+        if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
+        varray_charclear(&result);
+    }
+    
+    return out;
 }
 
 /** Get working folder */

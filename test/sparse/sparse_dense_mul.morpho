@@ -13,4 +13,4 @@ print A*B.transpose()
 // expect: [ 8 16 ]
 
 print A*B 
-// expect error 'MtrxIncmptbl'
+// expect error 'LnAlgMtrxIncmptbl'

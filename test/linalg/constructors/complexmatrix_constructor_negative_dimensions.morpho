@@ -1,0 +1,4 @@
+// ComplexMatrix constructor with negative dimensions
+
+print ComplexMatrix(-1, 2)
+// expect error 'LnAlgMtrxInvldArg'

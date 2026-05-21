@@ -1,0 +1,4 @@
+// Matrix constructor with negative dimensions
+
+print Matrix(-1, 2)
+// expect error 'LnAlgMtrxInvldArg'

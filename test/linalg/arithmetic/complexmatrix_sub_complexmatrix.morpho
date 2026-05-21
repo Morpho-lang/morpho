@@ -1,0 +1,8 @@
+// Subtract a complexmatrix from a complexmatrix 
+
+var A = ComplexMatrix(((1+1im, 2+2im), (3+3im, 4+4im)))
+var B = ComplexMatrix(((4+4im, 3+3im), (2+2im, 1+1im)))
+
+print A - B
+// expect: [ -3 - 3im -1 - 1im ]
+// expect: [ 1 + 1im 3 + 3im ]

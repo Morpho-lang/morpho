@@ -12,7 +12,7 @@
 
 #include "object.h"
 #include "mesh.h"
-#include "matrix.h"
+#include "linalg.h"
 #include <stdio.h>
 
 /* -------------------------------------------------------

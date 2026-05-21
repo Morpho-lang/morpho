@@ -31,4 +31,4 @@ print a
 // expect: [ 3 6 ]
 
 a.reshape(3,3)
-// expect error 'MtrxIncmptbl'
+// expect error 'LnAlgMtrxIncmptbl'

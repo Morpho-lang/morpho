@@ -44,6 +44,9 @@ struct sobject {
     @warning: Do not use this to compare types, use an appropriate macro like MORPHO_ISXXX  */
 #define MORPHO_GETOBJECTTYPE(val)           (MORPHO_GETOBJECT(val)->type)
 
+/** Gets the type of an object pointer */
+#define OBJECT_GETTYPE(obj)                 (((object *) (obj))->type)
+
 /** Gets an object's key */
 #define MORPHO_GETOBJECTHASH(val)           (MORPHO_GETOBJECT(val)->hsh)
 

@@ -1,0 +1,7 @@
+// Division with incompatible right-hand side dimensions should fail
+
+var A = Matrix(((1,0),(0,1)))
+var b = Matrix((1,2,3))
+
+print b / A
+// expect error 'LnAlgMtrxIncmptbl'

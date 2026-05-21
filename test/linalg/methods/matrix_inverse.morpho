@@ -1,0 +1,11 @@
+// Inverse
+
+var A = Matrix(2,2)
+A[0,0]=1
+A[0,1]=2
+A[1,0]=3
+A[1,1]=4
+
+print A.inverse()
+// expect: [ -2 1 ]
+// expect: [ 1.5 -0.5 ]

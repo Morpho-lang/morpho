@@ -1727,7 +1727,7 @@ bool compiler_resolvefunctionref(compiler *c, syntaxtreenode *node, value symbol
         }
         
         if (MORPHO_ISMETAFUNCTION(outfn)) {
-            metafunction_compile(MORPHO_GETMETAFUNCTION(outfn), &c->err);
+            metafunction_finalize(MORPHO_GETMETAFUNCTION(outfn), &c->err);
         }
         
         out->returntype=CONSTANT;
@@ -3380,7 +3380,7 @@ bool _extracttype(compiler *c, syntaxtreenode *node, value *out) {
         }
         
         if (!compiler_findclasswithnamespace(c, typenode, nsnode->content, labelnode->content, &type)) {
-            compiler_error(c, typenode, COMPILE_SYMBOLNOTDEFINEDNMSPC, MORPHO_GETCSTRING(nsnode->content), MORPHO_GETCSTRING(labelnode->content));
+            compiler_error(c, typenode, COMPILE_UNKNWNTYPENMSPC, MORPHO_GETCSTRING(labelnode->content), MORPHO_GETCSTRING(nsnode->content));
             return false;
         }
             
@@ -4917,6 +4917,8 @@ bool morpho_compile(char *in, compiler *c, bool opt, error *err) {
 
     if (success) {
         if (opt && optimizer) (*optimizer) (c->out);
+
+        if (!metafunction_finalizelist(out->boundlist, err)) return false;
         
         c->line=c->lex.line+1; // Update the line counter if compilation was a success; assumes a new line every time morpho_compile is called.
     }
@@ -4990,7 +4992,6 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_CLASSINHERITSELF, ERROR_COMPILE, COMPILE_CLASSINHERITSELF_MSG);
     morpho_defineerror(COMPILE_TOOMANYARGS, ERROR_COMPILE, COMPILE_TOOMANYARGS_MSG);
     morpho_defineerror(COMPILE_TOOMANYPARAMS, ERROR_COMPILE, COMPILE_TOOMANYPARAMS_MSG);
-    morpho_defineerror(COMPILE_ISOLATEDSUPER, ERROR_COMPILE, COMPILE_ISOLATEDSUPER_MSG);
     morpho_defineerror(COMPILE_VARALREADYDECLARED, ERROR_COMPILE, COMPILE_VARALREADYDECLARED_MSG);
     morpho_defineerror(COMPILE_FILENOTFOUND, ERROR_COMPILE, COMPILE_FILENOTFOUND_MSG);
     morpho_defineerror(COMPILE_MODULENOTFOUND, ERROR_COMPILE, COMPILE_MODULENOTFOUND_MSG);

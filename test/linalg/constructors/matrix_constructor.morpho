@@ -1,0 +1,8 @@
+// Create a Matrix
+
+var A = Matrix(2,2)
+
+print A 
+// expect: [ 0 0 ]
+// expect: [ 0 0 ]
+

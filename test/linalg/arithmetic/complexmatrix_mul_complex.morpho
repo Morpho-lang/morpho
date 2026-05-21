@@ -1,0 +1,7 @@
+// Multiply ComplexMatrix by scalar
+
+var A = ComplexMatrix(((1,2),(3,4)))
+
+print A * (1+im)
+// expect: [ 1 + 1im 2 + 2im ]
+// expect: [ 3 + 3im 4 + 4im ]

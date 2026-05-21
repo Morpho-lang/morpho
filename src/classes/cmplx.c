@@ -423,7 +423,7 @@ value Complex_add(vm *v, int nargs, value *args) {
                 complex_add_real(a, val, new);
             }
         }
-    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
+    }
     
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
@@ -452,7 +452,7 @@ value Complex_sub(vm *v, int nargs, value *args) {
                 complex_add_real(a, -val, new);
             }
         }
-    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
+    }
     
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
@@ -475,7 +475,7 @@ value Complex_subr(vm *v, int nargs, value *args) {
                 complex_add_real(new, val, new);
             }
         }
-    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
+    }
     
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
@@ -504,7 +504,7 @@ value Complex_mul(vm *v, int nargs, value *args) {
                 complex_mul_real(a, val, new);
             }
         }
-    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
+    }
     
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
@@ -533,7 +533,7 @@ value Complex_div(vm *v, int nargs, value *args) {
                 complex_mul_real(a, 1.0/val, new);
             }
         }
-    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
+    }
     
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
@@ -559,7 +559,7 @@ value Complex_divr(vm *v, int nargs, value *args) {
                 morpho_bindobjects(v, 1, &out);
             }
         } else UNREACHABLE("Number did not return float value");
-    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
+    }
     
     return out;
 }

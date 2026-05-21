@@ -1,0 +1,7 @@
+// Add a scalar
+
+var A = ComplexMatrix(2,2)
+
+print nil + A
+// expect: [ 0 + 0im 0 + 0im ]
+// expect: [ 0 + 0im 0 + 0im ]

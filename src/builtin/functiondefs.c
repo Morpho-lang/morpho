@@ -14,7 +14,7 @@
 #include "common.h"
 #include "cmplx.h"
 
-#include "matrix.h"
+#include "linalg.h"
 #include "sparse.h"
 
 #include "mesh.h"
@@ -324,7 +324,7 @@ value builtin_arctan(vm *v, int nargs, value *args) {
             
         morpho_runtimeerror(v, MATH_NUMARGS, "arctan");
         return MORPHO_NIL;
-    }
+    } 
 }
 
 /** Remainder */
@@ -747,7 +747,6 @@ void functiondefs_initialize(void) {
     /* Define errors */
     morpho_defineerror(MATH_ARGS, ERROR_HALT, MATH_ARGS_MSG);
     morpho_defineerror(MATH_NUMARGS, ERROR_HALT, MATH_NUMARGS_MSG);
-    morpho_defineerror(MATH_ATANARGS, ERROR_HALT, MATH_ATANARGS_MSG);
     morpho_defineerror(TYPE_NUMARGS, ERROR_HALT, TYPE_NUMARGS_MSG);
     morpho_defineerror(MAX_ARGS, ERROR_HALT, MAX_ARGS_MSG);
     morpho_defineerror(APPLY_ARGS, ERROR_HALT, APPLY_ARGS_MSG);

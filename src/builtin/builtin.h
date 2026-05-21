@@ -16,6 +16,9 @@
 
 #include "signature.h"
 
+/** Call to pase method and function signatures */
+bool builtin_parsesignatures(void);
+
 /* -------------------------------------------------------
  * Built in function objects
  * ------------------------------------------------------- */

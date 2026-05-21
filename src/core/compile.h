@@ -60,9 +60,6 @@
 #define COMPILE_TOOMANYPARAMS             "TooMnyPrm"
 #define COMPILE_TOOMANYPARAMS_MSG         "Too many parameters."
 
-#define COMPILE_ISOLATEDSUPER             "IsoSpr"
-#define COMPILE_ISOLATEDSUPER_MSG         "Expect '.' after 'super'."
-
 #define COMPILE_VARALREADYDECLARED        "VblDcl"
 #define COMPILE_VARALREADYDECLARED_MSG    "Variable with this name already declared in this scope."
 

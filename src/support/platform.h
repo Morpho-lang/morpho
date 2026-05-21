@@ -31,6 +31,15 @@
 const char *platform_name(void);
 
 /* -------------------------------------------------------
+ * Re-entrant qsort
+ * ------------------------------------------------------- */
+
+typedef int (*platform_qsort_r_comparefn)(const void *, const void *, void *);
+
+/** Sort elements with additional context passed to the comparator function */
+void platform_qsort_r(void *base, size_t nel, size_t width, void *context, platform_qsort_r_comparefn cmp);
+
+/* -------------------------------------------------------
  * Random numbers
  * ------------------------------------------------------- */
 

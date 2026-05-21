@@ -1,0 +1,12 @@
+// IdentityMatrix constructor
+
+var I = IdentityMatrix(3)
+
+print I
+// expect: [ 1 0 0 ]
+// expect: [ 0 1 0 ]
+// expect: [ 0 0 1 ]
+
+var I2 = IdentityMatrix(1)
+print I2
+// expect: [ 1 ]

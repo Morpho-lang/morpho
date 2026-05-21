@@ -11,7 +11,7 @@
 #include "morpho.h"
 #include "classes.h"
 #include "common.h"
-#include "matrix.h"
+#include "linalg.h"
 #include "sparse.h"
 #include "geometry.h"
 
@@ -153,6 +153,8 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, value fnspc, uns
         object_init(&new->data.obj, OBJECT_MATRIX);
         new->data.ncols=1;
         new->data.nrows=size;
+        new->data.nvals=1;
+        new->data.nels=new->data.ncols*new->data.nrows*new->data.nvals;
         new->data.elements=new->data.matrixdata;
 
         if (MORPHO_ISMATRIX(prototype)) {
@@ -310,6 +312,8 @@ bool field_addpool(objectfield *f) {
                 m[i].elements=f->data.elements+i*f->psize;
                 m[i].ncols=prototype->ncols;
                 m[i].nrows=prototype->nrows;
+                m[i].nvals=prototype->nvals;
+                m[i].nels=m[i].ncols*m[i].nrows*m[i].nvals;
             }
         }
         return true;
@@ -485,21 +489,23 @@ unsigned int field_dofforgrade(objectfield *f, grade g) {
 
 /** Adds two fields together */
 bool field_add(objectfield *left, objectfield *right, objectfield *out) {
-    return (matrix_add(&left->data, &right->data, &out->data)==MATRIX_OK);
+    return (matrix_copy(&left->data, &out->data)==LINALGERR_OK &&
+            matrix_axpy(1.0, &right->data, &out->data)==LINALGERR_OK);
 }
 
 /** Subtracts one field from another */
 bool field_sub(objectfield *left, objectfield *right, objectfield *out) {
-    return (matrix_sub(&left->data, &right->data, &out->data)==MATRIX_OK);
+    return (matrix_copy(&left->data, &out->data)==LINALGERR_OK &&
+            matrix_axpy(-1.0, &right->data, &out->data)==LINALGERR_OK);
 }
 
 /** Accumulate, i.e. a <- a + lambda*b */
 bool field_accumulate(objectfield *left, double lambda, objectfield *right) {
-    return (matrix_accumulate(&left->data, lambda, &right->data)==MATRIX_OK);
+    return (matrix_axpy(lambda, &right->data, &left->data)==LINALGERR_OK);
 }
 
 bool field_inner(objectfield *left, objectfield *right, double *out) {
-    return (matrix_inner(&left->data, &right->data, out)==MATRIX_OK);
+    return (matrix_inner(&left->data, &right->data, out)==LINALGERR_OK);
 }
 
 /** Calls a function fn on every element of a field, optionally with other fields as arguments */
@@ -685,7 +691,7 @@ value Field_assign(vm *v, int nargs, value *args) {
     } else if (nargs==1 && MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
         objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
         
-        if (matrix_copy(b, &a->data)!=MATRIX_OK) morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
+        if (matrix_copy(b, &a->data)!=LINALGERR_OK) morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
     } else morpho_runtimeerror(v, FIELD_ARITHARGS);
     
     return MORPHO_NIL;
@@ -726,7 +732,7 @@ value Field_addr(vm *v, int nargs, value *args) {
         if (i==0) {
             out=MORPHO_SELF(args);
         } else UNREACHABLE("Right addition to non-zero value.");
-    } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
+    } else morpho_runtimeerror(v, LINALG_INVLDARGS);
     
     return out;
 }
@@ -808,7 +814,7 @@ value Field_mul(vm *v, int nargs, value *args) {
                 morpho_bindobjects(v, 1, &out);
             }
         }
-    } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
+    } else morpho_runtimeerror(v, LINALG_INVLDARGS);
     
     return out;
 }
@@ -943,7 +949,7 @@ value Field_linearize(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
     value out = MORPHO_NIL;
     
-    objectmatrix *m=object_clonematrix(&f->data);
+    objectmatrix *m=matrix_clone(&f->data);
     if (m) {
         out = MORPHO_OBJECT(m);
         morpho_bindobjects(v, 1, &out);

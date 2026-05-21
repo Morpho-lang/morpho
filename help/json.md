@@ -15,7 +15,7 @@ To parse a string that contains JSON, use the `parse` method:
 
 Elements in the JSON string are converted to equivalent morpho values.
 
-To convert basic data types to JSON, use the `tostring` method: 
+To convert basic data types to JSON, use the `JSON.tostring` class method: 
 
     var b = JSON.tostring([1,2,3])
 

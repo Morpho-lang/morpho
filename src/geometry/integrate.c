@@ -14,7 +14,7 @@
 #include "morpho.h"
 #include "classes.h"
 
-#include "matrix.h"
+#include "linalg.h"
 #include "sparse.h"
 #include "geometry.h"
 
@@ -24,7 +24,7 @@ bool integrate_recognizequantities(unsigned int nquantity, value *quantity, valu
             if (MORPHO_ISFLOAT(quantity[i])) {
                 out[i]=MORPHO_FLOAT(0);
             } else if (MORPHO_ISMATRIX(quantity[i])) {
-                out[i]=MORPHO_OBJECT(object_clonematrix(MORPHO_GETMATRIX(quantity[i])));
+                out[i]=MORPHO_OBJECT(matrix_clone(MORPHO_GETMATRIX(quantity[i])));
             } else return false;
         }
     }
@@ -84,7 +84,7 @@ void integrate_interpolatequantitiesline(unsigned int dim, double t, unsigned in
                          *out=(MORPHO_ISMATRIX(qout[i]) ? MORPHO_GETMATRIX(qout[i]): NULL);
             
             if (!out) {
-                out = object_clonematrix(m0);
+                out = matrix_clone(m0);
                 qout[i]=MORPHO_OBJECT(out);
             }
             
@@ -265,7 +265,7 @@ void integrate_interpolatequantitiestri(unsigned int dim, double *lambda, unsign
                          *out=(MORPHO_ISMATRIX(qout[i]) ? MORPHO_GETMATRIX(qout[i]): NULL);
             
             if (!out) {
-                out = object_clonematrix(m0);
+                out = matrix_clone(m0);
                 qout[i]=MORPHO_OBJECT(out);
             }
             
@@ -603,7 +603,7 @@ void integrate_interpolatequantitiesvol(unsigned int dim, double *lambda, unsign
                          *out=(MORPHO_ISMATRIX(qout[i]) ? MORPHO_GETMATRIX(qout[i]): NULL);
             
             if (!out) {
-                out = object_clonematrix(m0);
+                out = matrix_clone(m0);
                 qout[i]=MORPHO_OBJECT(out);
             }
             
@@ -2226,9 +2226,9 @@ void integrator_initializequantities(integrator *integrate, int nq, quantity *qu
             integrate->qval[i]=q;
         } else if (MORPHO_ISMATRIX(q)) {
             objectmatrix *m = MORPHO_GETMATRIX(q);
-            quantity[i].ndof=matrix_countdof(m);
+            quantity[i].ndof=(int) matrix_countdof(m);
             
-            objectmatrix *new = object_clonematrix(m); // Use a copy of the matrix
+            objectmatrix *new = matrix_clone(m); // Use a copy of the matrix
             integrate->qval[i]=MORPHO_OBJECT(new);
         } else return;
     }
@@ -2396,7 +2396,7 @@ bool integrator_sumquantityweighted(int n, double *wts, value *q, value *out) {
     } else if (MORPHO_ISMATRIX(q[0])) {
         objectmatrix *sum = MORPHO_GETMATRIX(*out);
         matrix_zero(sum);
-        for (int j=0; j<n; j++) matrix_accumulate(sum, wts[j], MORPHO_GETMATRIX(q[j]));
+        for (int j=0; j<n; j++) matrix_axpy(wts[j], MORPHO_GETMATRIX(q[j]), sum);
         success=true;
     }
     return success;

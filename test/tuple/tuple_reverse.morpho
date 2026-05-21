@@ -1,0 +1,12 @@
+// Tuple reverse
+
+var t = ( 1, 2, 3 )
+print t.reverse()
+// expect: (3, 2, 1)
+print t
+// expect: (1, 2, 3)
+
+var u = ( 1, 2, 3, 4 )
+print u.reverse()
+// expect: (4, 3, 2, 1)
+

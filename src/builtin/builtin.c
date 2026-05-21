@@ -163,6 +163,39 @@ objecttypedefn objectbuiltinfunctiondefn = {
 };
 
 /* **********************************************************************
+ * Signature parsing
+ * ********************************************************************** */
+
+/** This mechanism allows builtin classes to cross-reference one another in method signature declarations */
+
+typedef struct _sigparses {
+    const char *sig;
+    signature *dest;
+} _sigparse;
+
+DECLARE_VARRAY(_sigparse, _sigparse)
+DEFINE_VARRAY(_sigparse, _sigparse)
+
+varray__sigparse sigparseworklist;
+
+/** Add a signature to be parsed on the next call to builtin_parsesignatures  */
+void builtin_addparsesignature(const char *sig, signature *dest) {
+    _sigparse s = { .sig = sig, .dest = dest };
+    varray__sigparsewrite(&sigparseworklist, s);
+}
+
+/** Parses all signatures on the worklist */
+bool builtin_parsesignatures(void) {
+    _sigparse s;
+    while (varray__sigparsepop(&sigparseworklist, &s)) {
+        if (!signature_parse(s.sig, s.dest)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* **********************************************************************
  * Create and find builtin functions
  * ********************************************************************** */
 
@@ -264,10 +297,7 @@ bool morpho_addfunction(char *name, char *signature, builtinfunction func, built
     if (!name) goto morpho_addfunction_cleanup;
     
     // Parse function signature if provided
-    if (signature &&
-        !signature_parse(signature, &new->sig)) {
-        UNREACHABLE("Syntax error in signature definition.");
-    }
+    if (signature) builtin_addparsesignature(signature, &new->sig);
     
     value newfn = MORPHO_OBJECT(new);
     
@@ -340,9 +370,7 @@ bool morpho_addclass(char *name, builtinclassentry desc[], int nparents, value *
             newmethod->klass=new;
             newmethod->name=object_stringfromcstring(desc[i].name, strlen(desc[i].name));
             newmethod->flags=desc[i].flags;
-            if (desc[i].signature) {
-                success &= signature_parse(desc[i].signature, &newmethod->sig);
-            }
+            if (desc[i].signature) builtin_addparsesignature(desc[i].signature, &newmethod->sig);
             
             dictionary_intern(&builtin_symboltable, newmethod->name);
             value method = MORPHO_OBJECT(newmethod);
@@ -425,10 +453,12 @@ void builtin_initialize(void) {
     builtin_setclasstable(&builtin_classtable);
     
     // Initialize core object types
-    objectstringtype=object_addtype(&objectstringdefn);
     objectclasstype=object_addtype(&objectclassdefn);
+    objectstringtype=object_addtype(&objectstringdefn);
     objectbuiltinfunctiontype=object_addtype(&objectbuiltinfunctiondefn);
     
+    varray__sigparseinit(&sigparseworklist);
+
     /* Initialize builtin classes and functions */
     instance_initialize(); // Must initialize first so that Object exists
     
@@ -462,7 +492,7 @@ void builtin_initialize(void) {
     
     // Initialize linear algebra
 #ifdef MORPHO_INCLUDE_LINALG
-    matrix_initialize();
+    linalg_initialize();
 #endif
     
 #ifdef MORPHO_INCLUDE_SPARSE
@@ -473,6 +503,17 @@ void builtin_initialize(void) {
     // Initialize geometry
     geometry_initialize();
 #endif
+    
+    if (!builtin_parsesignatures()) {
+        UNREACHABLE("Syntax error in signature.");
+    }
+
+    error err;
+    error_init(&err);
+    if (!metafunction_finalizelist(builtin_objects, &err)) {
+        UNREACHABLE("Unable to finalize builtin metafunctions.");
+    }
+    error_clear(&err);
   
     morpho_addfinalizefn(builtin_finalize);
 }
@@ -483,6 +524,8 @@ void builtin_finalize(void) {
         object_free(builtin_objects);
         builtin_objects=next;
     }
+    
+    varray__sigparseclear(&sigparseworklist);
     
     dictionary_clear(&builtin_functiontable);
     dictionary_clear(&builtin_classtable);

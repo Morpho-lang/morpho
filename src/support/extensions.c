@@ -166,6 +166,7 @@ bool extension_load(char *name, dictionary **functiontable, dictionary **classta
     } else if (extension_initwithname(&e, name, MORPHO_GETCSTRING(path)) &&
                extension_dlopen(&e)) {
         success=extension_initialize(&e);
+        success &= builtin_parsesignatures();
         if (success) varray_extensionwrite(&extensionlist, e);
     }
     

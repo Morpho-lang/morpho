@@ -59,7 +59,7 @@ void object_arrayinit(objectarray *array, unsigned int ndim, unsigned int *dim) 
     /* Store the size of the object for convenient access */
     array->nelements=nel;
 
-    /* Arrays are initialized to nil. */
+    /* Arrays are initialized to (float) 0.0. */
 #ifdef MORPHO_NAN_BOXING
     memset(array->values, 0, sizeof(value)*nel);
 #else
@@ -180,7 +180,7 @@ void array_print(vm *v, objectarray *a) {
 errorid array_error(objectarrayerror err) {
     switch (err) {
         case ARRAY_OUTOFBOUNDS: return VM_OUTOFBOUNDS;
-        case ARRAY_WRONGDIM: return VM_ARRAYWRONGDIM;
+        case ARRAY_WRONGDIM: return ARRAY_DIMENSION;
         case ARRAY_NONINTINDX: return VM_NONNUMINDX;
         case ARRAY_ALLOC_FAILED: return ERROR_ALLOCATIONFAILED;
         case ARRAY_OK: UNREACHABLE("array_error called incorrectly.");
@@ -193,9 +193,9 @@ errorid array_error(objectarrayerror err) {
 errorid array_to_matrix_error(objectarrayerror err) {
 #ifdef MORPHO_INCLUDE_LINALG
     switch (err) {
-        case ARRAY_OUTOFBOUNDS: return MATRIX_INDICESOUTSIDEBOUNDS;
-        case ARRAY_WRONGDIM: return MATRIX_INVLDNUMINDICES;
-        case ARRAY_NONINTINDX: return MATRIX_INVLDINDICES;
+        case ARRAY_OUTOFBOUNDS: return LINALG_INDICESOUTSIDEBOUNDS;
+        case ARRAY_WRONGDIM: return ARRAY_DIMENSION;
+        case ARRAY_NONINTINDX: return ARRAY_INVLDINDICES;
         case ARRAY_ALLOC_FAILED: return ERROR_ALLOCATIONFAILED;
         case ARRAY_OK: UNREACHABLE("array_to_matrix_error called incorrectly.");
     }
@@ -457,7 +457,7 @@ value array_constructor(vm *v, int nargs, value *args) {
         new = array_constructfromlist(ndim, dim, MORPHO_GETLIST(initializer));
         if (!new) morpho_runtimeerror(v, ARRAY_CMPT);
     } else {
-        morpho_runtimeerror(v, ARRAY_ARGS);
+        morpho_runtimeerror(v, ARRAY_INIT);
     }
 
     // Bind the new array to the VM
@@ -630,4 +630,6 @@ void array_initialize(void) {
     morpho_defineerror(ARRAY_ARGS, ERROR_HALT, ARRAY_ARGS_MSG);
     morpho_defineerror(ARRAY_INIT, ERROR_HALT, ARRAY_INIT_MSG);
     morpho_defineerror(ARRAY_CMPT, ERROR_HALT, ARRAY_CMPT_MSG);
+    morpho_defineerror(ARRAY_DIMENSION, ERROR_HALT, ARRAY_DIMENSION_MSG);
+    morpho_defineerror(ARRAY_INVLDINDICES, ERROR_HALT, ARRAY_INVLDINDICES_MSG);
 }

@@ -130,35 +130,45 @@ int list_sortfunction(const void *a, const void *b) {
 }
 
 /** Sort the contents of a list */
-void list_sort(objectlist *list) {
-    qsort(list->val.data, list->val.count, sizeof(value), list_sortfunction);
-}
-
-static vm *list_sortwithfn_vm;
-static value list_sortwithfn_fn;
-static bool list_sortwithfn_err;
-
-/** Sort function for list_sort */
-int list_sortfunctionwfn(const void *a, const void *b) {
-    value args[2] = {*(value *) a, *(value *) b};
-    value ret;
-
-    if (morpho_call(list_sortwithfn_vm, list_sortwithfn_fn, 2, args, &ret)) {
-        if (MORPHO_ISINTEGER(ret)) return MORPHO_GETINTEGERVALUE(ret);
-        if (MORPHO_ISFLOAT(ret)) return morpho_comparevalue(MORPHO_FLOAT(0), ret);
-    }
-
-    list_sortwithfn_err=true;
-    return 0;
+void list_sortcontents(value *values, size_t count) {
+    qsort(values, count, sizeof(value), list_sortfunction);
 }
 
 /** Sort the contents of a list */
-bool list_sortwithfn(vm *v, value fn, objectlist *list) {
-    list_sortwithfn_vm=v;
-    list_sortwithfn_fn=fn;
-    list_sortwithfn_err=false;
-    qsort(list->val.data, list->val.count, sizeof(value), list_sortfunctionwfn);
-    return !list_sortwithfn_err;
+void list_sort(objectlist *list) {
+    list_sortcontents(list->val.data, list->val.count);
+}
+
+/** Sort the contents of a list using a re-entrant comparison function */
+typedef struct {
+    vm *v;
+    value cmpfn;
+    bool errq;
+} _sortfninfo;
+
+static int _sortfn(const void *a, const void *b, void *context) {
+    _sortfninfo *info = (_sortfninfo *) context;
+    value ret, args[2] = {*(value *) a, *(value *) b};
+    
+    if (morpho_call(info->v, info->cmpfn, 2, args, &ret)) {
+        if (MORPHO_ISINTEGER(ret)) return MORPHO_GETINTEGERVALUE(ret);
+        if (MORPHO_ISFLOAT(ret)) return morpho_comparevalue(MORPHO_FLOAT(0), ret);
+    }
+    
+    info->errq=true;
+    return 0;
+}
+
+/** Sort a list of values */
+bool list_sortcontentswithfn(vm *v, value cmpfn, value *values, size_t count) {
+    _sortfninfo info = { .v = v, .cmpfn = cmpfn, .errq=false };
+    platform_qsort_r(values, count, sizeof(value), &info, _sortfn);
+    return !info.errq;
+}
+
+/** Sort the contents of a list */
+bool list_sortwithfn(vm *v, value cmpfn, objectlist *list) {
+    return list_sortcontentswithfn(v, cmpfn, list->val.data, list->val.count);
 }
 
 /** Sort function for list_order */
@@ -172,10 +182,10 @@ int list_orderfunction(const void *a, const void *b) {
     return -morpho_comparevalue(((listorderstruct *) a)->val, ((listorderstruct *) b)->val);
 }
 
-/* Returns a list of indices giving the ordering of a list */
-objectlist *list_order(objectlist *list) {
+/* Returns a tuple of indices giving the ordering of a list */
+objecttuple *list_order(objectlist *list) {
     listorderstruct *order = MORPHO_MALLOC(list->val.count*sizeof(listorderstruct));
-    objectlist *new = NULL;
+    objecttuple *new = NULL;
 
     if (order) {
         for (unsigned int i=0; i<list->val.count; i++) {
@@ -184,12 +194,11 @@ objectlist *list_order(objectlist *list) {
         }
         qsort(order, list->val.count, sizeof(listorderstruct), list_orderfunction);
 
-        new=object_newlist(list->val.count, NULL);
+        new=object_newtuple(list->val.count, NULL);
         if (new) {
             for (unsigned int i=0; i<list->val.count; i++) {
-                new->val.data[i]=MORPHO_INTEGER(order[i].indx);
+                new->tuple[i]=MORPHO_INTEGER(order[i].indx);
             }
-            new->val.count=list->val.count;
         }
 
         MORPHO_FREE(order);
@@ -613,21 +622,6 @@ value List_roll(vm *v, int nargs, value *args) {
 }
 
 /** Sorts a list */
-value XList_sort(vm *v, int nargs, value *args) {
-    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-
-    if (nargs==0) {
-        list_sort(slf);
-    } else if (nargs==1 && MORPHO_ISCALLABLE(MORPHO_GETARG(args, 0))) {
-        if (!list_sortwithfn(v, MORPHO_GETARG(args, 0), slf)) {
-            morpho_runtimeerror(v, LIST_SRTFN);
-        }
-    }
-
-    return MORPHO_NIL;
-}
-
-/** Sorts a list */
 value List_sort(vm *v, int nargs, value *args) {
     list_sort(MORPHO_GETLIST(MORPHO_SELF(args)));
     return MORPHO_NIL;
@@ -641,12 +635,12 @@ value List_sort_fn(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-/** Returns a list of indices that would sort the list self */
+/** Returns a tuple of indices that would sort the list self */
 value List_order(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
     value out=MORPHO_NIL;
 
-    objectlist *new=list_order(slf);
+    objecttuple *new=list_order(slf);
     if (new) {
         out=MORPHO_OBJECT(new);
         morpho_bindobjects(v, 1, &out);

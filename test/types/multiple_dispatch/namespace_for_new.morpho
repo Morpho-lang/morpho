@@ -6,8 +6,7 @@ import "namespace.xmorpho" for f
 
 fn f(Matrix a) {
     print a.dimensions()
-
 }
 
 f(Matrix(2,2))
-// expect: [ 2, 2 ]
+// expect: (2, 2)

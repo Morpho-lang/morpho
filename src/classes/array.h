@@ -65,6 +65,12 @@ objectarray *object_arrayfromvalueindices(unsigned int ndim, value *dim);
 #define ARRAY_CMPT                        "ArrayCmpt"
 #define ARRAY_CMPT_MSG                    "Array initializer is not compatible with the requested dimensions."
 
+#define ARRAY_DIMENSION                   "ArrayDim"
+#define ARRAY_DIMENSION_MSG               "Incorrect number of dimensions for Array."
+
+#define ARRAY_INVLDINDICES                "ArrayIndx"
+#define ARRAY_INVLDINDICES_MSG            "Array requires integers as indices."
+
 /* -------------------------------------------------------
  * Array interface
  * ------------------------------------------------------- */

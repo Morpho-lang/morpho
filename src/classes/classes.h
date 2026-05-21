@@ -35,6 +35,6 @@
 //#include "system.h"
 #include "json.h"
 
-#include "matrix.h"
+#include "linalg.h"
 
 #endif /* classes_h */

@@ -1,0 +1,8 @@
+// Create a column vector 
+
+var A = Matrix(2)
+
+print A 
+// expect: [ 0 ]
+// expect: [ 0 ]
+

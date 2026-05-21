@@ -1,0 +1,13 @@
+// In-place accumulate
+
+var A = ComplexMatrix(2,2)
+A[0,0]=1+im
+A[0,1]=1-im
+A[1,0]=1-im
+A[1,1]=1+im
+
+A.acc(2,A)
+
+print A
+// expect: [ 3 + 3im 3 - 3im ]
+// expect: [ 3 - 3im 3 + 3im ]

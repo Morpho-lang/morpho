@@ -58,11 +58,7 @@ void object_init(object *obj, objecttype type) {
 /** Frees an object */
 void object_free(object *obj) {
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    if (obj) {
-        fprintf(stderr, "Free object %p of type %d ", (void *) obj, obj->type);
-        morpho_printvalue(NULL, MORPHO_OBJECT(obj));
-        fprintf(stderr, "\n");
-    }
+    if (obj) fprintf(stderr, "Free object %p of type %d.\n", (void *) obj, obj->type);
 #endif
     if (object_getdefn(obj)->freefn) object_getdefn(obj)->freefn(obj);
     MORPHO_FREE(obj);

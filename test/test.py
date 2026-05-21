@@ -8,7 +8,7 @@
 # Expectations are coded into comments in the input file as follows:
 
 # import necessary modules
-import os, glob, sys
+import os, glob, sys, subprocess
 import regex as rx
 from functools import reduce
 import operator
@@ -125,8 +125,9 @@ def test(file,testLog,CI):
     #Get the expected output
     expected=getexpect(file)
 
-    # Run the test
-    os.system(command + ' ' +file + ' > ' + tmp)
+    # Run the test and capture the exit status
+    with open(tmp, 'w', encoding="utf8") as outfile:
+        result = subprocess.run(command.split() + [file], stdout=outfile, stderr=subprocess.STDOUT)
 
     # If we produced output
     if os.path.exists(tmp):
@@ -134,13 +135,14 @@ def test(file,testLog,CI):
         out=getoutput(tmp)
 
         # Was it expected?
-        if(expected==out):
+        if(result.returncode==0 and expected==out):
             if not CI:
                 print(stylize("Passed",colored.fg("green")))
             ret = 1
         else:
             if not CI:
                 print(stylize("Failed",colored.fg("red")))
+                print("  Return code: ", result.returncode)
                 print("  Expected: ", expected)
                 print("    Output: ", out)
             else:
@@ -159,6 +161,7 @@ def test(file,testLog,CI):
                     print("  Expected: ", expected[testNum], file = testLog)
                     print("    Output: ", out[testNum], file = testLog)
             else:
+                print("  Return code: ", result.returncode, file = testLog)
                 print("  Expected: ", expected, file = testLog)
                 print("    Output: ", out, file = testLog)
 

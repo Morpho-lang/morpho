@@ -88,12 +88,20 @@ Evaluates a field inside a specific element using barycentric coordinates:
 
 You can supply the barycentric coordinates either as a `List` or as a column `Matrix`.
 
+The number of barycentric coordinates should match the number of vertices of the reference element, i.e. `grade+1`.
+
 ## ElementDofs
 [tagelementdofs]: # (elementdofs)
 
 Returns a list describing which field entries contribute to a given element. Each entry is a tuple of the form `(grade, element id, index)`:
 
     print f.elementDofs(element)
+
+A typical return value might look like
+
+    [ (0, 3, 0), (0, 7, 0), (0, 8, 0) ]
+
+for a linear field on a triangular element.
 
 ## Linearize
 [taglinearize]: # (linearize)

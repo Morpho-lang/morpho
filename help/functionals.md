@@ -65,6 +65,14 @@ Some functionals provide a `hessian` method:
 
     print fnl.hessian(mesh)
 
+For example, a typical workflow for a field-dependent functional is
+
+    var value = fnl.total(mesh)
+    var gradx = fnl.gradient(mesh)
+    var gradf = fnl.fieldgradient(mesh, field)
+
+where `value` is the functional value, `gradx` is the derivative with respect to vertex positions and `gradf` is the derivative with respect to field values.
+
 ## Length
 [taglength]: # (length)
 

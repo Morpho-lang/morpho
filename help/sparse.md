@@ -35,6 +35,12 @@ Returns the row indices of the nonzero entries in a specified column:
 
     print a.rowindices(0)
 
+For the matrix
+
+    var a = Sparse([[0,0,2], [1,1,-2], [2,0,5]])
+
+`a.rowindices(0)` would return `[0,2]`.
+
 ## Setrowindices
 [tagsetrowindices]: # (setrowindices)
 
@@ -42,9 +48,13 @@ Replaces the row indices of the nonzero entries in a specified column:
 
     a.setrowindices(0, [0,2,4])
 
+This acts on the sparse column representation, so the argument refers to a column index.
+
 ## Colindices
 [tagcolindices]: # (colindices)
 
 Returns the column indices that contain nonzero entries:
 
     print a.colindices()
+
+For the example above, `a.colindices()` would return `[0,1]`.

@@ -35,12 +35,16 @@ Returns a sparse matrix describing how the degrees of freedom of a given field a
     var layout = fs.layout(field)
     print layout
 
+This is useful when you need to understand how local node values are mapped into the underlying storage of a `Field`.
+
 ## NodeElementIndex
 [tagnodeelementindex]: # (nodeelementindex)
 
 Returns a tuple describing where a given node stores its degree of freedom in a field. The tuple has the form `(grade, element id, index)`:
 
     print fs.nodeElementIndex(0)
+
+This can be used together with `Field` indexing to locate the value associated with a given node.
 
 ## NodeCoords
 [tagnodecoords]: # (nodecoords)
@@ -52,3 +56,5 @@ Returns barycentric coordinates for the nodes of the finite element space. With 
 With an integer argument, it returns the barycentric coordinates for a single node:
 
     print fs.nodeCoords(0)
+
+For a grade `g` space, each node coordinate is represented by `g+1` barycentric coordinates.

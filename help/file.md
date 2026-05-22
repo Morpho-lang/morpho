@@ -144,3 +144,10 @@ The `create` and `createRecursive` methods allow creation of folders. To create 
 Recursively create a nested set of folders: 
 
     Folder.createRecursive("foo/foo")
+
+## createRecursive
+[tagcreateRecursive]: # (createrecursive)
+
+Creates a nested set of folders recursively:
+
+    Folder.createRecursive("foo/foo")

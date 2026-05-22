@@ -68,3 +68,10 @@ For example:
 
     var cols = a.colindices()
     print cols
+
+## Indices
+[tagindices]: # (indices)
+
+Returns the row and column indices used by the sparse matrix representation:
+
+    print a.indices()

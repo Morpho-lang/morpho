@@ -28,24 +28,70 @@ Loop over keys in a dictionary:
 
     for (k in dict) print k
 
-The `keys` method returns a Morpho List of the keys.
+[showsubtopics]: # (showsubtopics)
+
+## Keys
+[tagkeys]: # (keys)
+
+The `keys` method returns a Morpho `List` of the keys.
 
     var keys = dict.keys() // will return ["Massachusetts", "New York", "Vermont"]
 
-The `contains` method returns a Bool value for whether the Dictionary
-contains a given key.
+## Contains
+[tagcontains]: # (contains)
+
+The `contains` method returns a `Bool` value for whether the `Dictionary` contains a given key.
 
     print dict.contains("Vermont") // true
     print dict.contains("New Hampshire") // false
 
-The `remove` method removes a given key from the Dictionary.
+## Remove
+[tagremove]: # (remove)
+
+The `remove` method removes a given key from the `Dictionary`.
 
     dict.remove("Vermont")
     print dict // { New York : Albany, Massachusetts : Boston }
 
-The `clear` method removes all the (key, value) pairs fromt the
-dictionary, resulting in an empty dictionary. 
+## Clear
+[tagclear]: # (clear)
+
+The `clear` method removes all the `(key, value)` pairs from the dictionary, resulting in an empty dictionary.
 
     dict.clear()
-
     print dict // {  }
+
+## Union
+[tagunion]: # (union)
+
+The `union` method combines two dictionaries. If the same key is present in both, the value from the second dictionary is used:
+
+    var a = { "x" : 1, "y" : 2 }
+    var b = { "y" : 5, "z" : 3 }
+    print a.union(b) // { x : 1, y : 5, z : 3 }
+
+The `+` operator provides the same operation for dictionaries:
+
+    print a+b
+
+## Intersection
+[tagintersection]: # (intersection)
+
+The `intersection` method returns a dictionary containing only the keys present in both dictionaries:
+
+    var a = { "x" : 1, "y" : 2 }
+    var b = { "y" : 5, "z" : 3 }
+    print a.intersection(b)
+
+## Difference
+[tagdifference]: # (difference)
+
+The `difference` method returns a dictionary containing only the keys present in the first dictionary but not the second:
+
+    var a = { "x" : 1, "y" : 2 }
+    var b = { "y" : 5 }
+    print a.difference(b)
+
+The `-` operator provides the same operation for dictionaries:
+
+    print a-b

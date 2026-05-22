@@ -30,6 +30,32 @@ To add additional grades, use the addgrade method. For example, to add areas:
 
 [showsubtopics]: # subtopics
 
+## union
+[tagunion]: # (union)
+Combines two selections into a new `Selection` containing elements present in either selection:
+
+    var s = s1.union(s2)
+
+The `+` operator provides the same operation for selections:
+
+    var s = s1+s2
+
+## intersection
+[tagintersection]: # (intersection)
+Returns a new `Selection` containing only elements present in both selections:
+
+    var s = s1.intersection(s2)
+
+## difference
+[tagdifference]: # (difference)
+Returns a new `Selection` containing elements present in the first selection but not the second:
+
+    var s = s1.difference(s2)
+
+The `-` operator provides the same operation for selections:
+
+    var s = s1-s2
+
 ## addgrade
 [tagaddgrade]: # (addgrade)
 Adds elements of the specified grade to a Selection. For example, to add edges to an existing selection, use

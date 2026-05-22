@@ -71,6 +71,11 @@ Returns the connectivity matrix that maps elements of one grade to another. For 
 
 Here `0` refers to vertices and `1` to edges. Similarly, `m.connectivitymatrix(0, 2)` retrieves the vertex-to-facet connectivity.
 
+For example, to inspect the connectivity between vertices and facets:
+
+    var cf = m.connectivitymatrix(0, 2)
+    print cf
+
 ## Addgrade
 [tagaddgrade]: # (addgrade)
 
@@ -99,12 +104,18 @@ Adds a symmetry to a mesh. Experimental in version 0.5.
 
 Computes barycentric coordinates for a point inside a mesh element. You must supply the grade, the element id and the position matrix:
 
-    var lambda = m.barycentric(2, element, Matrix([x, y, z]))
+    var lambda = m.barycentric(2, el, Matrix([x, y, z]))
     print lambda
 
 For a grade `g` element, the returned matrix contains `g+1` barycentric coordinates.
 
 For example, for a triangular facet (`grade 2`), the returned matrix contains three barycentric coordinates whose sum is `1`.
+
+For example:
+
+    var x = Matrix([0.25, 0.25, 0.0])
+    var lambda = m.barycentric(2, el, x)
+    print lambda
 
 ## Maxgrade
 [tagmaxgrade]: # (maxgrade)

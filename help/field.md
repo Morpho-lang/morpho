@@ -84,24 +84,34 @@ Returns the prototype value used by the field:
 
 Evaluates a field inside a specific element using barycentric coordinates:
 
-    print f.evalElement(element, [0.2, 0.3, 0.5])
+    print f.evalElement(el, [0.2, 0.3, 0.5])
 
 You can supply the barycentric coordinates either as a `List` or as a column `Matrix`.
 
 The number of barycentric coordinates should match the number of vertices of the reference element, i.e. `grade+1`.
+
+For example:
+
+    var val = f.evalElement(el, [0.2, 0.3, 0.5])
+    print val
 
 ## ElementDofs
 [tagelementdofs]: # (elementdofs)
 
 Returns a list describing which field entries contribute to a given element. Each entry is a tuple of the form `(grade, element id, index)`:
 
-    print f.elementDofs(element)
+    print f.elementDofs(el)
 
 A typical return value might look like
 
     [ (0, 3, 0), (0, 7, 0), (0, 8, 0) ]
 
 for a linear field on a triangular element.
+
+For example:
+
+    var dofs = f.elementDofs(el)
+    print dofs
 
 ## Linearize
 [taglinearize]: # (linearize)

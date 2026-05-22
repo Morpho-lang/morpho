@@ -41,6 +41,11 @@ For the matrix
 
 `a.rowindices(0)` would return `[0,2]`.
 
+For example:
+
+    var rows = a.rowindices(0)
+    print rows
+
 ## Setrowindices
 [tagsetrowindices]: # (setrowindices)
 
@@ -58,3 +63,8 @@ Returns the column indices that contain nonzero entries:
     print a.colindices()
 
 For the example above, `a.colindices()` would return `[0,1]`.
+
+For example:
+
+    var cols = a.colindices()
+    print cols

@@ -56,7 +56,7 @@ The `gradient` method returns the derivative of a functional with respect to ver
 
 Functionals that depend on a field may provide a `fieldgradient` method that returns the derivative with respect to field values:
 
-    print fnl.fieldgradient(mesh, field)
+    print fnl.fieldgradient(mesh, f)
 
 ## Hessian
 [taghessian]: # (hessian)
@@ -69,9 +69,16 @@ For example, a typical workflow for a field-dependent functional is
 
     var value = fnl.total(mesh)
     var gradx = fnl.gradient(mesh)
-    var gradf = fnl.fieldgradient(mesh, field)
+    var gradf = fnl.fieldgradient(mesh, f)
 
 where `value` is the functional value, `gradx` is the derivative with respect to vertex positions and `gradf` is the derivative with respect to field values.
+
+For example, for a field-dependent functional:
+
+    var fnl = GradSq(phi)
+    print fnl.total(mesh)
+    print fnl.gradient(mesh)
+    print fnl.fieldgradient(mesh, phi)
 
 ## Length
 [taglength]: # (length)

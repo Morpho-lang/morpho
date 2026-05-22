@@ -64,4 +64,4 @@ Checks if an element id is selected, returning `true` or `false` accordingly.
 
 To check if edge number 5 is selected:
 
-    var f = s.isselected(1, 5))
+    var f = s.isselected(1, 5)

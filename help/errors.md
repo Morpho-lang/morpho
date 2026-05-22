@@ -25,6 +25,26 @@ You can also use the `warning` method to alert the user of a potential issue tha
 
     myerr.warning() 
 
+[showsubtopics]: # (subtopics)
+
+## Throw
+[tagthrow]: # (throw)
+
+Raises an `Error`, interrupting execution unless it is caught:
+
+    myerr.throw()
+
+You can optionally supply a custom message:
+
+    myerr.throw("A custom message")
+
+## Warning
+[tagwarning]: # (warning)
+
+Displays an `Error` as a warning without interrupting execution:
+
+    myerr.warning()
+
 To see the full list of morpho errors, look at the `errorlist` help entry.
 
 # Error list

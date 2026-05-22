@@ -61,6 +61,15 @@ Read in the contents of a file and print each line:
 
 Reads a single character from a file; returns the result as a string.
 
+## readall
+[tagreadall]: # (readall)
+
+Reads the remaining contents of a file and returns them as a single string:
+
+    var f = File("input.txt")
+    print f.readall()
+    f.close()
+
 ## write
 [tagwrite]: # (write)
 
@@ -68,7 +77,7 @@ Writes to a file.
 
 Write the contents of a list to a file:
 
-    var f = File("output.txt", "w")
+    var f = File("output.txt", "write")
     for (k, i in list) f.write("${i}: ${k}")
     f.close()
 
@@ -81,6 +90,20 @@ Closes an open file.
 [tageof]: # (eof)
 
 Returns true if at the end of the file; false otherwise
+
+## relativepath
+[tagrelativepath]: # (relativepath)
+
+Returns the file path relative to the current working directory:
+
+    print f.relativepath()
+
+## filename
+[tagfilename]: # (filename)
+
+Returns the filename that was used to open the file:
+
+    print f.filename()
 
 # Folder
 [tagfolder]: # (Folder)

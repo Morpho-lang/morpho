@@ -59,9 +59,9 @@ Returns a `List` of arguments passed to the current morpho on the command line.
 
 Run a morpho program with arguments: 
 
-    morpho5 program.morpho hello world
+    morpho6 program.morpho hello world
 
-Note that, in line with UNIX conventions, command line arguments before the program file name are passed to the `morpho5` runtime; those after are passed to the morpho program via `System.arguments`. 
+Note that, in line with UNIX conventions, command line arguments before the program file name are passed to the `morpho6` runtime; those after are passed to the morpho program via `System.arguments`. 
 
 ## Exit
 [tagexit]: # (exit)
@@ -69,3 +69,24 @@ Note that, in line with UNIX conventions, command line arguments before the prog
 Stop execution of a program:
 
     System.exit() 
+
+## Setworkingfolder
+[tagsetworkingfolder]: # (setworkingfolder)
+
+Sets the current working folder used by the runtime:
+
+    System.setworkingfolder("/tmp")
+
+## Workingfolder
+[tagworkingfolder]: # (workingfolder)
+
+Returns the current working folder:
+
+    print System.workingfolder()
+
+## Homefolder
+[taghomefolder]: # (homefolder)
+
+Returns the current user's home folder:
+
+    print System.homefolder()

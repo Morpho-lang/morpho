@@ -15,7 +15,7 @@ You can also obtain a finite element space from an existing field:
 
     var fs = f.finiteElementSpace()
 
-[showsubtopics]: # (showsubtopics)
+[showsubtopics]: # (subtopics)
 
 ## Count
 [tagcount]: # (count)

@@ -21,7 +21,7 @@ To convert basic data types to JSON, use the `JSON.tostring` class method:
 
 The exporter supports `nil`, boolean values `true` and `false`, numbers, `String`s as well as `List` and `Dictionary` objects that may contain any of the supported types. 
 
-[showsubtopics]: # (showsubtopics)
+[showsubtopics]: # (subtopics)
 
 ## Parse
 [tagparse]: # (parse)

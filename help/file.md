@@ -29,8 +29,7 @@ After you're done with the file, close it with
 
     f.close()
 
-[show]: # (subtopics)
-
+[showsubtopics]: # (subtopics)
 ## lines
 [taglines]: # (lines)
 
@@ -110,8 +109,7 @@ Returns the filename that was used to open the file:
 
 The `Folder` class allows you to work with folders. You can find whether a filepath refers to a folder, obtain the contents of that folder and create folders. 
 
-[show]: # (subtopics)
-
+[showsubtopics]: # (subtopics)
 ## isFolder
 [tagisfolder]: # (isfolder)
 [tagisFolder]: # (isfolder)

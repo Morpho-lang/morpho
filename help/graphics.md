@@ -28,7 +28,7 @@ To combine graphics objects, use the add operator:
     // ...
     Show(g1+g2)
 
-[show]: # (subtopics)
+[showsubtopics]: # (subtopics)
 
 ## Show
 [tagshow]: # (Show)

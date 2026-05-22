@@ -26,7 +26,7 @@ Once a sparse matrix is created, you can use all the regular arithmetic operator
     a+b
     a*b
 
-[showsubtopics]: # (showsubtopics)
+[showsubtopics]: # (subtopics)
 
 ## Rowindices
 [tagrowindices]: # (rowindices)

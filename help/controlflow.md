@@ -13,6 +13,8 @@ Control flow statements are used to determine whether and how many times a selec
 * `for` - Repeatedly execute a section of code with a counter
 * `while` - Repeatedly execute a section of code while a condition is true.
 
+[showsubtopics]: # (subtopics)
+
 ## If
 [tagif]: # (if)
 [tagelse]: # (else)

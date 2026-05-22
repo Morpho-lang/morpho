@@ -28,7 +28,7 @@ Loop over keys in a dictionary:
 
     for (k in dict) print k
 
-[showsubtopics]: # (showsubtopics)
+[showsubtopics]: # (subtopics)
 
 ## Keys
 [tagkeys]: # (keys)

@@ -112,11 +112,12 @@ The `Folder` class allows you to work with folders. You can find whether a filep
 
 [show]: # (subtopics)
 
-## isfolder
+## isFolder
 [tagisfolder]: # (isfolder)
+[tagisFolder]: # (isfolder)
 Find out whether a path specification refers to a folder:
 
-    print Folder.isfolder("path/folder")
+    print Folder.isFolder("path/folder")
     
 ## contents
 [tagcontents]: # (contents)

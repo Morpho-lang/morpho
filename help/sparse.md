@@ -25,3 +25,26 @@ Once a sparse matrix is created, you can use all the regular arithmetic operator
 
     a+b
     a*b
+
+[showsubtopics]: # (showsubtopics)
+
+## Rowindices
+[tagrowindices]: # (rowindices)
+
+Returns the row indices of the nonzero entries in a specified column:
+
+    print a.rowindices(0)
+
+## Setrowindices
+[tagsetrowindices]: # (setrowindices)
+
+Replaces the row indices of the nonzero entries in a specified column:
+
+    a.setrowindices(0, [0,2,4])
+
+## Colindices
+[tagcolindices]: # (colindices)
+
+Returns the column indices that contain nonzero entries:
+
+    print a.colindices()

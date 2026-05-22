@@ -21,6 +21,50 @@ Each of these may be called with a mesh, a field and a selection.
 
 [showsubtopics]: # (subtopics)
 
+## Total
+[tagtotal]: # (total)
+
+The `total` method returns the value of a functional:
+
+    print fnl.total(mesh)
+
+You can also supply optional fields and a selection as appropriate for the functional.
+
+## Integrand
+[tagintegrand]: # (integrand)
+
+The `integrand` method returns the contribution from each element:
+
+    print fnl.integrand(mesh)
+
+## IntegrandForElement
+[tagintegrandforelement]: # (integrandforelement)
+
+Some functionals also provide an `integrandForElement` method that evaluates the integrand for a single element:
+
+    print fnl.integrandForElement(mesh, element)
+
+## Gradient
+[taggradient]: # (gradient)
+
+The `gradient` method returns the derivative of a functional with respect to vertex motion:
+
+    print fnl.gradient(mesh)
+
+## Fieldgradient
+[tagfieldgradient]: # (fieldgradient)
+
+Functionals that depend on a field may provide a `fieldgradient` method that returns the derivative with respect to field values:
+
+    print fnl.fieldgradient(mesh, field)
+
+## Hessian
+[taghessian]: # (hessian)
+
+Some functionals provide a `hessian` method:
+
+    print fnl.hessian(mesh)
+
 ## Length
 [taglength]: # (length)
 

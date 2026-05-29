@@ -47,6 +47,10 @@
 
 #define INTEGRAL_METHOD_PROPERTY              "method"
 
+#define JUMP_STRATEGY_LABEL                   "strategy"
+#define JUMP_STRATEGY_QUADRATURE              "quadrature"
+#define JUMP_STRATEGY_CENTROID                "centroid"
+
 /* Functional methods */
 #define FUNCTIONAL_INTEGRAND_METHOD    "integrand"
 #define FUNCTIONAL_TOTAL_METHOD        "total"
@@ -60,7 +64,9 @@
 #define TANGENT_FUNCTION               "tangent"
 #define NORMAL_FUNCTION                "normal"
 #define GRAD_FUNCTION                  "grad"
+#define HESS_FUNCTION                  "hess"
 #define CGTENSOR_FUNCTION              "cgtensor"
+#define JUMPDN_FUNCTION                "jumpdn"
 #define JACOBIAN_FUNCTION              "jacobian"
 #define INVJACOBIAN_FUNCTION           "invjacobian"
 
@@ -83,6 +89,7 @@
 #define LINEINTEGRAL_CLASSNAME         "LineIntegral"
 #define AREAINTEGRAL_CLASSNAME         "AreaIntegral"
 #define VOLUMEINTEGRAL_CLASSNAME       "VolumeIntegral"
+#define JUMP_CLASSNAME                 "Jump"
 #define NEMATIC_CLASSNAME              "Nematic"
 #define NEMATICELECTRIC_CLASSNAME      "NematicElectric"
 
@@ -109,7 +116,10 @@
 #define INTEGRAL_FLD_MSG               "Can't identify field."
 
 #define INTEGRAL_GRDEVL                "IntgrlGrdEvl"
-#define INTEGRAL_GRDEVL_MSG            "Gradient evaluation failed."
+#define INTEGRAL_GRDEVL_MSG            "Gradient evaluation failed or is unsupported by the finite element space."
+
+#define INTEGRAL_HSSEVL                "IntgrlHssEvl"
+#define INTEGRAL_HSSEVL_MSG            "Hessian evaluation failed or is unsupported by the finite element space."
 
 #define INTEGRAL_AMBGSFLD              "IntgrlAmbgsFld"
 #define INTEGRAL_AMBGSFLD_MSG          "Field reference is ambigious: call with a Field object."
@@ -117,8 +127,20 @@
 #define INTEGRAL_SPCLFN                "IntgrlSpclFn"
 #define INTEGRAL_SPCLFN_MSG            "Special function '%s' must not be called outside of an Integral."
 
+#define JUMP_UNIMPL                    "JumpUnimpl"
+#define JUMP_UNIMPL_MSG                "Jump is not implemented yet."
+
 #define INTEGRAL_NFLDS                 "IntgrlNFlds"
 #define INTEGRAL_NFLDS_MSG             "Incorrect number of Fields provided for integrand function."
+
+#define LINEINTEGRAL_ARGS              "LnIntArgs"
+#define LINEINTEGRAL_ARGS_MSG          "LineIntegral requires a callable argument, followed by zero or more Fields."
+
+#define AREAINTEGRAL_ARGS              "ArIntArgs"
+#define AREAINTEGRAL_ARGS_MSG          "AreaIntegral requires a callable argument, followed by zero or more Fields."
+
+#define VOLUMEINTEGRAL_ARGS            "VolIntArgs"
+#define VOLUMEINTEGRAL_ARGS_MSG        "VolumeIntegral requires a callable argument, followed by zero or more Fields."
 
 #define VOLUMEENCLOSED_ZERO            "VolEnclZero"
 #define VOLUMEENCLOSED_ZERO_MSG        "VolumeEnclosed detected an element of zero size. Check that a mesh point is not coincident with the origin."
@@ -343,7 +365,7 @@ value name##_hessian(vm *v, int nargs, value *args) { \
             info.sym = symbhvr; \
             info.g = grade; \
             info.ref = &ref; \
-            integrandfn(v, &info, &out); \
+            if (!integrandfn(v, &info, &out) && !morpho_checkerror(morpho_geterror(v))) morpho_runtimeerror(v, err); \
         } else morpho_runtimeerror(v, err); \
     } \
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \

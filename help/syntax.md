@@ -12,6 +12,8 @@ Morpho programs are stored as plain text with the .morpho file extension. A prog
 
     morpho5 program.morpho
 
+[showsubtopics]: # (subtopics)
+
 ## Comments
 [tagcomment]: # (comment)
 [tagcomments]: # (comments)

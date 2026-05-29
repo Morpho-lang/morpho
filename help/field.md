@@ -62,6 +62,74 @@ The `shape` method returns a list indicating the number of items stored on each 
 
 would indicate one item stored on each vertex and two items stored on each facet.
 
+## FiniteElementSpace
+[tagfiniteelementspace]: # (finiteelementspace)
+
+Returns the `FiniteElementSpace` used to discretize the field:
+
+    var fs = f.finiteElementSpace()
+    print fs.grade()
+
+See also `FiniteElementSpace`.
+
+## Prototype
+[tagprototype]: # (prototype)
+
+Returns the prototype value used by the field:
+
+    print f.prototype()
+
+## EvalElement
+[tagevalelement]: # (evalelement)
+
+Evaluates a field inside a specific element using barycentric coordinates:
+
+    print f.evalElement(el, [0.2, 0.3, 0.5])
+
+You can supply the barycentric coordinates either as a `List` or as a column `Matrix`.
+
+The number of barycentric coordinates should match the number of vertices of the reference element, i.e. `grade+1`.
+
+For example:
+
+    var val = f.evalElement(el, [0.2, 0.3, 0.5])
+    print val
+
+## ElementDofs
+[tagelementdofs]: # (elementdofs)
+
+Returns a list describing which field entries contribute to a given element. Each entry is a tuple of the form `(grade, element id, index)`:
+
+    print f.elementDofs(el)
+
+A typical return value might look like
+
+    [ (0, 3, 0), (0, 7, 0), (0, 8, 0) ]
+
+for a linear field on a triangular element.
+
+For example:
+
+    var dofs = f.elementDofs(el)
+    print dofs
+
+## Linearize
+[taglinearize]: # (linearize)
+
+Returns a matrix containing the data stored by the field:
+
+    var mat = f.linearize()
+    print mat
+
+## __linearize
+[tag__linearize]: # (__linearize)
+
+Returns the underlying storage matrix directly.
+
+This method is intended for low-level use:
+
+    var mat = f.__linearize()
+
 ## Op
 [tagop]: # (op)
 

@@ -1,0 +1,72 @@
+
+import meshtools
+import "fieldprojector.xmorpho"
+
+fn point(lambda, vids, verts) {
+    var x = lambda[0]*verts.column(vids[0])
+    for (j in 1...lambda.count()) x += lambda[j]*verts.column(vids[j])
+    return x
+}
+
+fn maxexacterror(field, exact) {
+    var mesh = field.mesh()
+    var fespace = field.finiteElementSpace()
+    var verts = mesh.vertexmatrix()
+    var conn = mesh.connectivitymatrix(0, fespace.grade())
+    var nodes = fespace.nodeCoords()
+    var err = 0
+
+    for (id in 0...mesh.count(fespace.grade())) {
+        var vids = conn.rowindices(id)
+        for (i in 0...fespace.count()) {
+            var lambda = nodes.column(i)
+            var x = point(lambda, vids, verts)
+            var expected
+            if (x.count()==1) expected = apply(exact, x[0])
+            else if (x.count()==2) expected = apply(exact, x[0], x[1])
+            else expected = apply(exact, x[0], x[1], x[2])
+            var val = field.evalElement(id, lambda)
+
+            if (isnumber(val)) {
+                err = max(err, abs(val-expected))
+            } else {
+                err = max(err, (val-expected).norm())
+            }
+        }
+    }
+
+    return err
+}
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+m.addgrade(1)
+
+fn exact(x, y) {
+    return 1 + 2*x - 3*y
+}
+
+var cg1 = FiniteElementSpace("CG1", grade=2)
+var cg3 = FiniteElementSpace("CG3", grade=2)
+
+var coarse = Field(m, exact, finiteelementspace=cg1)
+var lifted = FieldProjector(coarse).project(cg3)
+var liftederr = maxexacterror(lifted, exact)
+
+print lifted.shape()[0]==1 && lifted.shape()[1]==2 && lifted.shape()[2]==1
+// expect: true
+print liftederr < 1e-5
+// expect: true
+
+var rich = Field(m, exact, finiteelementspace=cg3)
+var reduced = FieldProjector(rich).project(cg1)
+var reducederr = maxexacterror(reduced, exact)
+
+print reduced.shape()[0]==1 && reduced.shape()[1]==0 && reduced.shape()[2]==0
+// expect: truer
+print reducederr < 1e-5
+// expect: true

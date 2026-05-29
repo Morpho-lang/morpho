@@ -1,0 +1,27 @@
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+m.addgrade(1)
+
+var l = FiniteElementSpace("CG2", grade=2)
+var f = Field(m, fn (x,y) x^2 + x*y + 3*y^2, finiteelementspace=l)
+
+var out = true
+var expected = Matrix([[2,1],[1,6]])
+
+fn integrand(x, q) {
+    var h = hess(q)
+    if ((h-expected).norm() > 1e-8) out = false
+    return 0
+}
+
+print AreaIntegral(integrand, f, method={}).total(m)
+// expect: 0
+
+print out
+// expect: true

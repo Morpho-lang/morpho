@@ -1678,8 +1678,8 @@ value Sparse_rowindices(vm *v, int nargs, value *args) {
                 if (sparseccs_getrowindices(&s->ccs, col, &nentries, &entries)) {
                     objectlist *new = object_newlist(nentries, NULL);
                     if (new) {
-                        for (int i=0; i<nentries; i++) list_append(new, MORPHO_INTEGER(entries[i]));
-
+                        for (int i=0; i<nentries; i++) new->val.data[i]=MORPHO_INTEGER(entries[i]);
+                        new->val.count=nentries;
                         out=MORPHO_OBJECT(new);
                         morpho_bindobjects(v, 1, &out);
                     } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);

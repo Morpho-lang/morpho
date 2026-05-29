@@ -1,0 +1,18 @@
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([1,1,0])
+mb.addface([0,1,2])
+mb.addface([1,3,2])
+
+var m = mb.build()
+m.addgrade(1)
+
+var fe = FiniteElementSpace("CG2", grade=2)
+var f = Field(m, fn (x,y,z) x*y^2, finiteelementspace=fe)
+
+print abs(Jump(fn (x, q) jumpdn(q)^2, f, method={ "strategy": "quadrature" }).total(m) - 0.23570226039551584) < 1e-8
+// expect: true

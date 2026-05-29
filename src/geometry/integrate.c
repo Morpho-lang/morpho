@@ -2215,11 +2215,12 @@ int integrator_addelement(integrator *integrate, int *vids) {
 }
 
 /** Process the list of quantities given */
-void integrator_initializequantities(integrator *integrate, int nq, quantity *quantity) {
+bool integrator_initializequantities(integrator *integrate, int nq, quantity *quantity) {
     integrate->nquantity=nq;
     integrate->quantity=quantity;
     
     for (int i=0; i<nq; i++) {
+        if (!quantity[i].vals) return false;
         value q = quantity[i].vals[0]; // Take the first element from each quantity list as paradigmatic
         if (MORPHO_ISFLOAT(q)) {
             quantity[i].ndof=1;
@@ -2229,14 +2230,18 @@ void integrator_initializequantities(integrator *integrate, int nq, quantity *qu
             quantity[i].ndof=(int) matrix_countdof(m);
             
             objectmatrix *new = matrix_clone(m); // Use a copy of the matrix
+            if (!new) return false;
             integrate->qval[i]=MORPHO_OBJECT(new);
-        } else return;
+        } else return false;
     }
+    return true;
 }
 
 /** Frees up any objects used in the quantities list */
 void integrator_finalizequantities(integrator *integrate) {
-    for (int i=0; i<integrate->nquantity; i++) morpho_freeobject(integrate->qval[i]);
+    for (int i=0; i<integrate->nquantity; i++) {
+        if (MORPHO_ISOBJECT(integrate->qval[i])) morpho_freeobject(integrate->qval[i]);
+    }
 }
 
 /** Retrieves the vertex pointers given an elementid.
@@ -2768,7 +2773,7 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
     value qval[nquantity+1];
     integrate->qval=qval;
     
-    integrator_initializequantities(integrate, nquantity, quantity);
+    if (!integrator_initializequantities(integrate, nquantity, quantity)) return false;
     
     // Create first element, which corresponds to the reference element
     int vids[integrate->nbary];
@@ -2785,7 +2790,7 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
     quadratureworkitem work;
     work.weight = 1.0;
     work.elementid = elid;
-    integrator_quadrature(integrate, integrate->rule, &work); // Perform initial quadrature
+    if (!integrator_quadrature(integrate, integrate->rule, &work)) goto integrator_integrate_error; // Perform initial quadrature
     
     integrator_pushworkitem(integrate, &work);
     integrator_estimate(integrate); // Initial estimate
@@ -2802,7 +2807,9 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
         quadratureworkitem newitems[integrate->subdivide->nels];
         
         if (!integrator_subdivide(integrate, &work, &nels, newitems)) goto integrator_integrate_error;
-        for (int k=0; k<nels; k++) integrator_quadrature(integrate, integrate->rule, &newitems[k]);
+        for (int k=0; k<nels; k++) {
+            if (!integrator_quadrature(integrate, integrate->rule, &newitems[k])) goto integrator_integrate_error;
+        }
         
         // Error estimate
         integrator_sharpenerrorestimate(integrate, &work, nels, newitems);

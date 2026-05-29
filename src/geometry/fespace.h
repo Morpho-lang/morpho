@@ -16,6 +16,22 @@
 /** @brief Interpolation functions are called to assign weights to the nodes given barycentric coordinates */
 typedef void (*interpolationfn) (double *, double *);
 
+/** @brief Gradient callbacks return d Xi[i] / d lambda[j] in column-major order:
+ *         out[FESPACE_GRAD_INDEX(nnodes, j, i)] */
+typedef void (*gradientfn) (double *, double *);
+
+/** @brief Hessian callbacks return d^2 Xi[i] / d x[row] d x[col] in column-major tensor order:
+ *         out[FESPACE_HESS_INDEX(nnodes, dim, row, col, i)] */
+typedef void (*hessianfn) (double *, double *);
+
+/** @brief Indexing helpers for derivative callback output layouts */
+#define FESPACE_GRAD_INDEX(nnodes, component, node) ((component)*(nnodes)+(node))
+#define FESPACE_HESS_INDEX(nnodes, dim, row, col, node) ((((col)*(dim))+(row))*(nnodes)+(node))
+
+/** @brief Capability helpers for derivative evaluation */
+#define FESPACE_HASGRADIENT(disc) ((disc)->gfn!=NULL)
+#define FESPACE_HASHESSIAN(disc) ((disc)->hfn!=NULL)
+
 /** @brief Element definitions comprise a sequence of instructions to map field degrees of freedom to local nodes */
 typedef int eldefninstruction;
 
@@ -29,7 +45,8 @@ typedef struct sfespace {
     int nsubel; /** Number of subelements used by */
     double *nodes; /** Node positions */
     interpolationfn ifn; /** Interpolation function; receives barycentric coordinates as input and returns weights per node */
-    interpolationfn gfn; /** Gradient interpolation function */
+    gradientfn gfn; /** Gradient interpolation function in barycentric coordinates */
+    hessianfn hfn; /** Hessian interpolation function in reference coordinates */
     eldefninstruction *eldefn; /** Element definition */
     struct sfespace **lower; /** Discretization to be used for interpolation on lower grades */
 } fespace;
@@ -58,7 +75,10 @@ typedef struct {
 
 #define FINITEELEMENTSPACE_CLASSNAME "FiniteElementSpace"
 
+#define FINITEELEMENTSPACE_GRADE_METHOD "grade"
 #define FINITEELEMENTSPACE_LAYOUT_METHOD "layout"
+#define FINITEELEMENTSPACE_NODEELEMENTINDEX_METHOD "nodeElementIndex"
+#define FINITEELEMENTSPACE_NODECOORDS_METHOD "nodeCoords"
 
 /* -------------------------------------------------------
  * Discretization error messages
@@ -78,11 +98,14 @@ fespace *fespace_find(char *name, grade g);
 fespace *fespace_findlinear(grade g);
 
 bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids, fieldindx *findx);
+bool fespace_nodefieldindex(fespace *disc, int node, grade *g, int *sid, int *indx);
 
 bool fespace_lower(fespace *disc, grade target, fespace **out);
 
+bool fespace_getnodecoords(fespace *disc, int node, double *lambda);
 bool fespace_layout(objectfield *field, fespace *disc, objectsparse **out);
 void fespace_gradient(fespace *disc, double *lambda, objectmatrix *grad);
+void fespace_hessian(fespace *disc, double *lambda, objectmatrix *hess);
 
 void fespace_initialize(void);
 

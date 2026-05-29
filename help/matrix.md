@@ -74,6 +74,20 @@ Returns the dimensions of a matrix:
     var A = Matrix([1,2,3]) // Create a column matrix 
     print A.dimensions()    // Expect: (3, 1)
 
+## Column
+[tagcolumn]: # (column)
+
+Returns a specified column of a matrix as a column matrix:
+
+    var v = A.column(0)
+
+## Setcolumn
+[tagsetcolumn]: # (setcolumn)
+
+Replaces a specified column of a matrix:
+
+    A.setcolumn(0, Matrix([1,2,3]))
+
 ## Eigenvalues
 [tageigenvalues]: # (Eigenvalues)
 
@@ -245,3 +259,24 @@ In addition, `ComplexMatrix` provides methods for accessing and manipulating the
 `conjugate()` returns the elementwise complex conjugate of the matrix, while `conjTranspose()` returns the conjugate transpose (also called the Hermitian transpose).
 
 Mixed arithmetic between `Matrix` and `ComplexMatrix` is supported, with the result promoted to complex where needed.
+
+## Real
+[tagreal]: # (real)
+
+Returns a `Matrix` containing the real part of a `ComplexMatrix`:
+
+    print c.real()
+
+## Imag
+[tagimag]: # (imag)
+
+Returns a `Matrix` containing the imaginary part of a `ComplexMatrix`:
+
+    print c.imag()
+
+## ConjTranspose
+[tagconjtranspose]: # (conjtranspose)
+
+Returns the conjugate transpose of a `ComplexMatrix`:
+
+    print c.conjTranspose()

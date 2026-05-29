@@ -1,0 +1,82 @@
+import meshtools
+
+fn buildmesh() {
+  var mb = MeshBuilder()
+  mb.addvertex([0,0,0])
+  mb.addvertex([1,0,0])
+  mb.addvertex([0,1,0])
+  mb.addvertex([0,0,1])
+  mb.addvolume([0,1,2,3])
+  var m = mb.build()
+  m.addgrade(1)
+  m.addgrade(2)
+  m.addgrade(3)
+  return m
+}
+
+fn allcellsok(field, ndofs) {
+  var mesh = field.mesh()
+  for (cid in 0...mesh.count(3)) {
+    var dofs = field.elementDofs(cid)
+    if (!islist(dofs) || dofs.count()!=ndofs) {
+      print "bad cell ${cid}: ${dofs}"
+      return false
+    }
+  }
+
+  return true
+}
+
+var m = buildmesh()
+var cg2 = FiniteElementSpace("CG2", grade=3)
+var coarse2 = Field(m, 0, finiteelementspace=cg2)
+var dofs2 = coarse2.elementDofs(0)
+
+print islist(dofs2)
+// expect: true
+print dofs2.count()==10
+// expect: true
+
+var refmap2 = MeshRefiner(m).refine()
+var newm2 = refmap2[m]
+var refined2 = Field(newm2, 0, finiteelementspace=cg2)
+
+print newm2.count(0)==10
+// expect: true
+print newm2.count(1)==25
+// expect: true
+print newm2.count(2)==24
+// expect: true
+print newm2.count(3)==8
+// expect: true
+print [newm2.count(0), newm2.count(1), newm2.count(2), newm2.count(3)]
+// expect: [ 10, 25, 24, 8 ]
+print allcellsok(refined2, 10)
+// expect: true
+
+var m3 = buildmesh()
+var cg3 = FiniteElementSpace("CG3", grade=3)
+var coarse3 = Field(m3, 0, finiteelementspace=cg3)
+var dofs3 = coarse3.elementDofs(0)
+
+print islist(dofs3)
+// expect: true
+print dofs3.count()==20
+// expect: true
+
+var refmap3 = MeshRefiner(m3).refine()
+var newm3 = refmap3[m3]
+var refined3 = Field(newm3, 0, finiteelementspace=cg3)
+
+print newm3.count(0)==10
+// expect: true
+print newm3.count(1)==25
+// expect: true
+print newm3.count(2)==24
+// expect: true
+print newm3.count(3)==8
+// expect: true
+print [newm3.count(0), newm3.count(1), newm3.count(2), newm3.count(3)]
+// expect: [ 10, 25, 24, 8 ]
+print allcellsok(refined3, 20)
+// expect: true

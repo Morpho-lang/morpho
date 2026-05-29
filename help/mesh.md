@@ -16,7 +16,7 @@ Each type of element is referred to as belonging to a different `grade`. Point-l
 
 The `plot` package includes functions to visualize meshes.
 
-[showsubtopics]: # (showsubtopics)
+[showsubtopics]: # (subtopics)
 
 ## Save
 [tagsave]: # (Save)
@@ -24,6 +24,21 @@ The `plot` package includes functions to visualize meshes.
 Saves a mesh as a .mesh file.
 
     m.save("new.mesh")
+
+## Vertexmatrix
+[tagvertexmatrix]: # (vertexmatrix)
+
+Returns the matrix of vertex positions used by the mesh. Each column corresponds to a vertex:
+
+    var verts = m.vertexmatrix()
+    print verts
+
+## Setvertexmatrix
+[tagsetvertexmatrix]: # (setvertexmatrix)
+
+Replaces the matrix of vertex positions used by the mesh. The new matrix must have the same dimensions as the existing vertex matrix:
+
+    m.setvertexmatrix(newverts)
 
 ## Vertexposition
 [tagvertexposition]: # (vertexposition)
@@ -39,6 +54,28 @@ Sets the position of a vertex given an id and a position vector:
 
     print m.setvertexposition(1, Matrix([0,0,0]))
 
+## Resetconnectivity
+[tagresetconnectivity]: # (resetconnectivity)
+
+Clears any cached connectivity matrices associated with the mesh:
+
+    m.resetconnectivity()
+
+## Connectivitymatrix
+[tagconnectivitymatrix]: # (connectivitymatrix)
+
+Returns the connectivity matrix that maps elements of one grade to another. For example, to retrieve the vertex-to-edge connectivity:
+
+    var c = m.connectivitymatrix(0, 1)
+    print c
+
+Here `0` refers to vertices and `1` to edges. Similarly, `m.connectivitymatrix(0, 2)` retrieves the vertex-to-facet connectivity.
+
+For example, to inspect the connectivity between vertices and facets:
+
+    var cf = m.connectivitymatrix(0, 2)
+    print cf
+
 ## Addgrade
 [tagaddgrade]: # (addgrade)
 
@@ -46,10 +83,39 @@ Adds a new grade to a mesh. This is commonly used when, for example, a mesh file
 
     m.addgrade(1)
 
+You can also provide an explicit sparse connectivity matrix for the new grade:
+
+    m.addgrade(1, connectivity)
+
+## Removegrade
+[tagremovegrade]: # (removegrade)
+
+Removes a grade and its associated connectivity from a mesh:
+
+    m.removegrade(1)
+
 ## Addsymmetry
 [tagaddsymmetry]: # (addsymmetry)
 
 Adds a symmetry to a mesh. Experimental in version 0.5.
+
+## Barycentric
+[tagbarycentric]: # (barycentric)
+
+Computes barycentric coordinates for a point inside a mesh element. You must supply the grade, the element id and the position matrix:
+
+    var lambda = m.barycentric(2, el, Matrix([x, y, z]))
+    print lambda
+
+For a grade `g` element, the returned matrix contains `g+1` barycentric coordinates.
+
+For example, for a triangular facet (`grade 2`), the returned matrix contains three barycentric coordinates whose sum is `1`.
+
+For example:
+
+    var x = Matrix([0.25, 0.25, 0.0])
+    var lambda = m.barycentric(2, el, x)
+    print lambda
 
 ## Maxgrade
 [tagmaxgrade]: # (maxgrade)
@@ -64,3 +130,10 @@ Returns the highest grade element present:
 Counts the number of elements. If no argument is provided, returns the number of vertices. Otherwise, returns the number of elements present of a given grade:
 
     print m.count(2) // Returns the number of area-like elements. 
+
+## Clone
+[tagclone]: # (clone)
+
+Creates a copy of a mesh:
+
+    var copy = m.clone()

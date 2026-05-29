@@ -72,9 +72,11 @@ extern value field_gradeoption;
 
 #define FIELD_OP_METHOD      "op"
 #define FIELD_SHAPE_METHOD   "shape"
-#define FIELD_FESPACE_METHOD   "finiteelementspace"
+#define FIELD_FESPACE_METHOD   "finiteElementSpace"
 #define FIELD_PROTOTYPE_METHOD   "prototype"
 #define FIELD_MESH_METHOD    "mesh"
+#define FIELD_EVALELEMENT_METHOD "evalElement"
+#define FIELD_ELEMENTDOFS_METHOD "elementDofs"
 #define FIELD_LINEARIZE_METHOD    "linearize"
 #define FIELD__LINEARIZE_METHOD    "__linearize"
 
@@ -116,6 +118,7 @@ bool field_getelement(objectfield *field, grade grade, elementid el, int indx, v
 bool field_getelementwithindex(objectfield *field, int indx, value *out);
 bool field_getindex(objectfield *field, grade grade, elementid el, int indx, int *out);
 bool field_getelementaslist(objectfield *field, grade grade, elementid el, int indx, unsigned int *nentries, double **out);
+bool field_evalelement(objectfield *field, elementid el, double *lambda, value *out);
 
 bool field_setelement(objectfield *field, grade grade, elementid el, int indx, value val);
 bool field_setelementwithindex(objectfield *field, int ix, value val);

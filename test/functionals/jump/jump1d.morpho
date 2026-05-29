@@ -1,0 +1,9 @@
+import meshtools
+
+var m = LineMesh(fn (u) [u,0,0], 0..1:0.5)
+
+var fe = FiniteElementSpace("CG1", grade=1)
+var f = Field(m, fn (x,y,z) x^2, finiteelementspace=fe)
+
+print abs(Jump(fn (x, q) jumpdn(q)^2, f, method={ "strategy": "centroid" }).total(m) - 1) < 1e-8
+// expect: true

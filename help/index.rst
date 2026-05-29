@@ -34,6 +34,7 @@ Morpho
    :maxdepth: 1
 
    field
+   fespace
    functionals
    mesh
    selection

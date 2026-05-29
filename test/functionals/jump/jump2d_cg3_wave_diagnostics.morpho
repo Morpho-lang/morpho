@@ -1,0 +1,60 @@
+// Diagnostic cross-checks for the CG3 wave/jump penalty setup.
+//
+// This test is not an optimization run. It checks three things on the
+// same flat embedded 2D mesh used by the wave penalty tests:
+// 1. the exact wave satisfies the intended Helmholtz-like bulk operator;
+// 2. the transverse perturbation excites the jump penalty more than the
+//    exact wave alone;
+// 3. the combined field has larger bulk residual and jump penalty than
+//    the exact wave.
+
+import meshtools
+
+var m = AreaMesh(fn (x, y) [x, y, 0], 0..1:0.2, 0..1:0.2)
+
+var fe = FiniteElementSpace("CG3", grade=2)
+
+var qwave = Field(m, fn (x, y, z) sin(Pi*x), finiteelementspace=fe)
+var qpert = Field(m, fn (x, y, z) 0.02*sin(3*Pi*x)*cos(2*Pi*y), finiteelementspace=fe)
+var qmix = Field(m, fn (x, y, z) sin(Pi*x) + 0.02*sin(3*Pi*x)*cos(2*Pi*y), finiteelementspace=fe)
+
+var target = Matrix([[Pi^2, 0, 0],
+                     [0, 0, 0],
+                     [0, 0, 0]])
+
+fn bulkintegrand(x, q) {
+    return (hess(q)+q*target).norm()^2
+}
+
+var bulkWave = AreaIntegral(bulkintegrand, qwave, method={})
+var bulkPert = AreaIntegral(bulkintegrand, qpert, method={})
+var bulkMix = AreaIntegral(bulkintegrand, qmix, method={})
+
+var jumpWave = Jump(fn (x, q) jumpdn(q)^2, qwave, method={ "strategy": "quadrature" })
+var jumpPert = Jump(fn (x, q) jumpdn(q)^2, qpert, method={ "strategy": "quadrature" })
+var jumpMix = Jump(fn (x, q) jumpdn(q)^2, qmix, method={ "strategy": "quadrature" })
+
+var bulkWaveVal = bulkWave.total(m)
+var bulkPertVal = bulkPert.total(m)
+var bulkMixVal = bulkMix.total(m)
+
+var jumpWaveVal = jumpWave.total(m)
+var jumpPertVal = jumpPert.total(m)
+var jumpMixVal = jumpMix.total(m)
+
+/*print "bulk(wave) = ${bulkWaveVal}"
+print "bulk(pert) = ${bulkPertVal}"
+print "bulk(mix) = ${bulkMixVal}"
+
+print "jump(wave) = ${jumpWaveVal}"
+print "jump(pert) = ${jumpPertVal}"
+print "jump(mix) = ${jumpMixVal}"*/
+
+var ok = true
+if (!(bulkPertVal > 10*bulkWaveVal)) ok = false
+if (!(bulkMixVal > 10*bulkWaveVal)) ok = false
+if (!(jumpPertVal > 3*jumpWaveVal)) ok = false
+if (!(jumpMixVal > jumpPertVal)) ok = false
+
+print ok
+// expect: true

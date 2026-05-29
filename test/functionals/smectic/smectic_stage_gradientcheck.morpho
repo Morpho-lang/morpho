@@ -1,0 +1,134 @@
+import meshgen
+import "../numericalderivatives.morpho"
+import "qtensortools.xmorpho"
+
+var A = -0.25
+var B = 0
+var C = 1
+var qsq = (Pi)^2
+var Bcouple = 1
+var I3div3 = IdentityMatrix(3)/3
+var tol = 1e-5
+
+fn totalforstage(functionals, prefactors, m) {
+    var total = 0
+    for (i in 0...functionals.count()) total += prefactors[i]*functionals[i].total(m)
+    return total
+}
+
+fn numericalstagefieldgradient(functionals, prefactors, m, f, eps=1e-8) {
+    var x = f.__linearize()
+    var grad = f.clone()
+    var g = grad.__linearize()
+
+    for (i in 0...g.count()) g[i] = 0
+
+    for (i in 0...x.count()) {
+        var temp = x[i]
+        x[i] = temp + eps
+        var fr = totalforstage(functionals, prefactors, m)
+        x[i] = temp - eps
+        var fl = totalforstage(functionals, prefactors, m)
+        x[i] = temp
+        g[i] = (fr-fl)/(2*eps)
+    }
+
+    return grad
+}
+
+fn combinedfieldgradient(f, gradients, prefactors) {
+    var out = f.clone()
+    var ox = out.__linearize()
+
+    for (i in 0...ox.count()) ox[i] = 0
+
+    for (j in 0...gradients.count()) {
+        var gx = gradients[j].__linearize()
+        for (i in 0...ox.count()) ox[i] += prefactors[j]*gx[i]
+    }
+
+    return out
+}
+
+fn checkfunctional(name, func, m, f) {
+    var fg = func.fieldgradient(m, f)
+    var num = numericalfieldgradient(func, m, f)
+    var err = (fg - num).linearize().norm()
+    return err < tol
+}
+
+fn checkstage(name, functionals, prefactors, m, f) {
+    var gradients = []
+    for (i in 0...functionals.count()) gradients.append(functionals[i].fieldgradient(m, f))
+
+    var fg = combinedfieldgradient(f, gradients, prefactors)
+    var num = numericalstagefieldgradient(functionals, prefactors, m, f)
+    var err = (fg - num).linearize().norm()
+    return err < tol
+}
+
+fn jumpPenaltyBase(m) {
+    var h = Length().total(m) / m.count(0)
+    return 9 / h
+}
+
+fn coupling(x, rho, q) {
+    var h = hess(rho)
+    var Q = qtensor(q)
+    var u = (h + qsq*(Q+I3div3)*rho).norm()
+    return u*u
+}
+
+fn landauQ(x, q) {
+    var trQQ = 2*(q.inner(q)+q[0]*q[3])
+    var trQQQ = -3*(q[3]*(q[0]^2 - q[1]^2 + q[2]^2) -
+                    2*q[1]*q[2]*q[4] +
+                    q[0]*(-q[1]^2 + q[3]^2 + q[4]^2))
+
+    return -(1/2)*trQQ - (1/3)*trQQQ + (1/2)*(trQQ^2)
+}
+
+fn landauRho(x, rho) {
+    return A*rho^2/2 + B*rho^3/3 + C*rho^4/4
+}
+
+var dom = fn (x) -(x[0]^2 + x[1]^2 - 1)
+var mg = MeshGen(dom, [-1..1:0.3, -1..1:0.3], quiet=true)
+var m = ChangeMeshDimension(mg.build(), 3)
+
+var feQ = FiniteElementSpace("CG1", grade=2)
+var feRho = FiniteElementSpace("CG3", grade=2)
+
+var Q = Field(m, uniformQ, finiteelementspace=feQ)
+var rho = Field(m, fn (x, y, z) 0.3 + 0.05*cos(sqrt(qsq)*x), finiteelementspace=feRho)
+
+var qbulk = AreaIntegral(landauQ, Q, method={})
+var qcoupling = AreaIntegral(coupling, rho, Q, method={})
+
+print checkfunctional("q bulk", qbulk, m, Q)
+// expect: true
+print checkfunctional("q coupling", qcoupling, m, Q)
+// expect: true
+print checkstage("Q stage", [qbulk, qcoupling], [1, Bcouple], m, Q)
+// expect: true
+
+var rholandau = AreaIntegral(landauRho, rho, method={})
+var rhocoupling = AreaIntegral(coupling, rho, Q, method={})
+var jump = Jump(fn (x, q) jumpdn(q)^2, rho, method={ "strategy": "quadrature" })
+
+print checkfunctional("rho landau", rholandau, m, rho)
+// expect: true
+print checkfunctional("rho coupling", rhocoupling, m, rho)
+// expect: true
+print checkfunctional("rho jump", jump, m, rho)
+// expect: true
+
+var base = jumpPenaltyBase(m)
+print checkstage("rho stage", [rholandau, rhocoupling, jump], [1, Bcouple, 0*base], m, rho)
+// expect: true
+print checkstage("rho stage", [rholandau, rhocoupling, jump], [1, Bcouple, 1*base], m, rho)
+// expect: true
+print checkstage("rho stage", [rholandau, rhocoupling, jump], [1, Bcouple, 3*base], m, rho)
+// expect: true
+print checkstage("rho stage", [rholandau, rhocoupling, jump], [1, Bcouple, 10*base], m, rho)
+// expect: true

@@ -1,0 +1,32 @@
+// CG2 FunctionSpace hessian in three dimensions
+
+import meshtools
+
+var cube = [ [0,0,0], [1,0,0], [0,1,0], [1,1,0],
+             [0,0,1], [1,0,1], [0,1,1], [1,1,1] ]
+
+var pts = []
+for (x in cube) pts.append(Matrix(x))
+
+var m = DelaunayMesh(pts)
+m.addgrade(1)
+
+var fe = FiniteElementSpace("CG2", grade=3)
+var f = Field(m, fn (x,y,z) x^2 + x*y + 3*y^2 + 2*x*z + 4*y*z + 5*z^2, finiteelementspace=fe)
+
+var out = true
+var expected = Matrix([[2,1,2],
+                       [1,6,4],
+                       [2,4,10]])
+
+fn integrand(x, q) {
+    var h = hess(q)
+    if ((h-expected).norm() > 1e-8) out = false
+    return 0
+}
+
+print VolumeIntegral(integrand, f, method={}).total(m)
+// expect: 0
+
+print out
+// expect: true

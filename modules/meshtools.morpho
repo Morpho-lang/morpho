@@ -27,6 +27,19 @@ var lineGrade = 1
 var areaGrade = 2
 var volumeGrade = 3
 
+// A fixed red refinement of a tetrahedron into four corner tets plus four
+// tets that split the central octahedron along the (m01, m23) diagonal.
+var _tetRedRefinement = [
+  [0, 4, 5, 6],
+  [1, 4, 7, 8],
+  [2, 5, 7, 9],
+  [3, 6, 8, 9],
+  [4, 5, 6, 9],
+  [4, 5, 7, 9],
+  [4, 6, 8, 9],
+  [4, 7, 8, 9]
+]
+
 class MeshBuilder {
   init(dimension=nil) {
     self.vertices = []
@@ -648,13 +661,65 @@ class MeshAdaptiveRefiner {
   // Subclasses should replace this method with their own version
   adaptmesh(selection) { }
 
+  _evalfield(field, oldmesh, elid, x) {
+    var lambda = oldmesh.barycentric(field.finiteElementSpace().grade(), elid, x)
+    return field.evalElement(elid, lambda)
+  }
+
+  _point(lambda, vids, verts) {
+    var x = lambda[0]*verts.column(vids[0])
+    for (j in 1...lambda.count()) x += lambda[j]*verts.column(vids[j])
+    return x
+  }
+
+  _setdof(field, dof, val) {
+    if (dof[0]==0) field[0, dof[1]] = val
+    else field[dof[0], dof[1], dof[2]] = val
+  }
+
+  adaptfefield(field) {
+    if (!self.refinemap) return nil
+
+    var fespace = field.finiteElementSpace()
+    var prototype = field.enumerate(0)
+    if (isobject(prototype)) prototype = prototype.clone()
+    if (!prototype) return nil
+
+    var result = Field(self.new, prototype, grade=field.shape(), finiteelementspace=fespace)
+    var nodes = fespace.nodeCoords()
+    var oldmesh = self.mesh()
+    var newverts = self.new.vertexmatrix()
+    var newconn = self.new.connectivitymatrix(0, fespace.grade())
+    var refineel = self.refinemap[fespace.grade()]
+    var done = Dictionary()
+
+    for (newid in refineel) {
+      var oldid = refineel[newid]
+      var vids = newconn.rowindices(newid)
+      var dofs = result.elementDofs(newid)
+
+      for (i in 0...fespace.count()) {
+        var dof = dofs[i]
+        if (done.contains(dof)) continue
+
+        var x = self._point(nodes.column(i), vids, newverts)
+        var val = self._evalfield(field, oldmesh, oldid, x)
+        self._setdof(result, dof, val)
+        done[dof] = true
+      }
+    }
+
+    return result
+  }
+
   adaptfield(field) { // Maps a field onto a new mesh
-    var mesh = self.mesh()
     var prototype = field.enumerate(0)
     if (isobject(prototype)) prototype=prototype.clone()
     var shape = field.shape()
-    var fespace = field.finiteelementspace() 
+    var fespace = field.finiteElementSpace() 
     var result
+
+    if (fespace) return self.adaptfefield(field)
 
     if (self.refinemap && prototype) {
       result = Field(self.new, prototype, grade=shape, finiteelementspace=fespace)
@@ -865,51 +930,53 @@ class MeshRefiner is MeshAdaptiveRefiner {
   }
 
   refine3(id, el, vert, nel, dict) { // refine volumes 
-    var nv = el.count() // Number of vertices in the element
-    var pts = [] // Points defining the element
-    var localmap = Dictionary() // Maps local ids in pts to correct ids 
-
-    for (i in 0...nv) { // Find vertex positions and ids
-      pts.append(vert.column(el[i])) 
-      localmap[i]=el[i]
+    fn _pairkey(i, j) {
+      if (i<j) return (i, j)
+      return (j, i)
     }
 
-    for (i in 0...nv) {      // Loop over all unique pairs 
-      for (j in i+1...nv) {  // and find midpoints 
+    var mids = Dictionary() // Maps a parent edge to the corresponding midpoint global id
+    for (i in 0...el.count()) {
+      for (j in i+1...el.count()) {
         var midpoint = (vert.column(el[i])+vert.column(el[j]))/2
-        var node = self.tree.ismember(midpoint) // Find whether this midpoint actually exists
+        var node = self.tree.ismember(midpoint)
         if (node) {
-          localmap[pts.count()]=node.id
-          pts.append(midpoint)
-        } 
+          mids[_pairkey(i, j)] = node.id
+        }
       }
     }
 
-    var tri = Delaunay(pts).triangulate() // Now perform the Delaunday triangulation
+    var localmap = [
+      el[0],
+      el[1],
+      el[2],
+      el[3],
+      mids[_pairkey(0, 1)],
+      mids[_pairkey(0, 2)],
+      mids[_pairkey(0, 3)],
+      mids[_pairkey(1, 2)],
+      mids[_pairkey(1, 3)],
+      mids[_pairkey(2, 3)]
+    ]
 
-    fn _mapel(el) { // Map local ids for this element onto the correct ids 
-      var ntri = [] 
-      for (id in el) ntri.append(localmap[id]) 
-      return ntri 
-    } 
+    for (vid in localmap) if (!vid && vid!=0) return false
 
-    fn _checkel(el) { // Check if this element contains any old vertices 
-      for (id in el) if (id<nv) return false 
-      return true 
+    fn _maptet(t) {
+      var out = []
+      for (i in t) out.append(localmap[i])
+      return out
     }
 
-    for (t in tri) { // Loop over the generated tetrahedra from the triangulation
-      self.addelement(id, volumeGrade, _mapel(t), dict)
+    for (t in _tetRedRefinement) { // Loop over the template tetrahedra
+      var subtet = _maptet(t)
+      self.addelement(id, volumeGrade, subtet, dict)
 
-      for (g in 1..2) { // Create "missing" elements of lower grade 
-        if (nel[g]==0) continue // Skip empty grades 
-        var elements = t.sets(g+1) // Generate all possible elements 
-        // Generate new elements only from possibilites that use only new vertices
-        for (e in elements) { 
-          if (_checkel(e)) {
-            self.addelement(id, g, _mapel(e), nil)
-          }
-        }
+      if (nel[1]>0) {
+        for (e in subtet.sets(2)) self.addelement(id, lineGrade, e, nil)
+      }
+
+      if (nel[2]>0) {
+        for (e in subtet.sets(3)) self.addelement(id, areaGrade, e, nil)
       }
     }
     return true 

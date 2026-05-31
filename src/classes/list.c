@@ -99,16 +99,13 @@ bool list_insert(objectlist *list, int indx, int nval, value *vals) {
  * @param[in] val the entry to remove
  * @returns true on success */
 bool list_remove(objectlist *list, value val) {
-    /* Find the element */
-    for (unsigned int i=0; i<list->val.count; i++) {
-        if (MORPHO_ISEQUAL(list->val.data[i], val)) { /* Remove it if we're not at the end of the list */
-            if (i<list->val.count-1) memmove(list->val.data+i, list->val.data+i+1, sizeof(value)*(list->val.count-i-1));
-            list->val.count--;
-            return true;
-        }
-    }
+    unsigned int i;
 
-    return false;
+    if (!list_find(list, val, &i)) return false;
+
+    if (i<list->val.count-1) memmove(list->val.data+i, list->val.data+i+1, sizeof(value)*(list->val.count-i-1));
+    list->val.count--;
+    return true;
 }
 
 /** Gets an element from a list
@@ -217,10 +214,13 @@ void list_reverse(objectlist *list) {
     }
 }
 
-/** Tests if a value is a member of a list */
-bool list_ismember(objectlist *list, value v) {
+/** Finds a value in a list and optionally returns its index. */
+bool list_find(objectlist *list, value v, unsigned int *indx) {
     for (unsigned int i=0; i<list->val.count; i++) {
-        if (MORPHO_ISEQUAL(list->val.data[i], v)) return true;
+        if (MORPHO_ISEQUAL(list->val.data[i], v)) {
+            if (indx) *indx=i;
+            return true;
+        }
     }
     return false;
 }
@@ -701,7 +701,7 @@ value List_reverse(vm *v, int nargs, value *args) {
 /** Tests if a list has a value as a member */
 value List_ismember(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-    return MORPHO_BOOL(list_ismember(slf, MORPHO_GETARG(args, 0)));
+    return MORPHO_BOOL(list_find(slf, MORPHO_GETARG(args, 0), NULL));
 }
 
 value List_ismember__err(vm *v, int nargs, value *args) {

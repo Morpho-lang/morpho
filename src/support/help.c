@@ -658,7 +658,11 @@ static value help_nameindex_add(const char *buf, size_t len, int topic_index) {
                 if (!dictionary_insert(&s_names, key, MORPHO_OBJECT(list)))
                     morpho_freeobject(MORPHO_OBJECT(list));
             }
-        } else if (MORPHO_ISLIST(v)) list_append(MORPHO_GETLIST(v), MORPHO_INTEGER(topic_index));
+        } else if (MORPHO_ISLIST(v)) {
+            objectlist *list = MORPHO_GETLIST(v);
+            value topic = MORPHO_INTEGER(topic_index);
+            if (!list_find(list, topic, NULL)) list_append(list, topic);
+        }
     } 
     return key;
 }

@@ -245,6 +245,12 @@ typedef struct {
     int current_topic_index;  // Index of most recently created topic, or -1
 } md_parseout;
 
+typedef struct {
+    char qbuf[MORPHO_MAX_HELPQUERY_LENGTH];
+    const char *segs[MORPHO_HELP_QUERY_MAXSEGMENTS];
+    int nsegs;
+} help_queryparts;
+
 /* Forward declarations */
 static void md_push_simpleblock(parser *p, md_parseout *out, size_t block_start, md_blocktype type);
 static void md_push_blank(parser *p, md_parseout *out);
@@ -254,6 +260,12 @@ static void md_push_paragraph(parser *p, md_parseout *out, size_t block_start);
 static void md_push_code(parser *p, md_parseout *out, size_t block_start);
 static void md_push_list(parser *p, md_parseout *out, size_t block_start);
 static void md_push_link(parser *p, md_parseout *out, size_t block_start, size_t label_start, size_t label_len, size_t target_start, size_t target_len);
+static bool help_istopleveltopic(unsigned int i);
+static int help_topicdepth(int idx);
+static bool help_nameindex_get(const char *name, value *out);
+static int help_parsequery(const char *query, help_queryparts *parts);
+static int help_resolvetopic(const help_queryparts *query);
+static void help_appendothertopics(const char *name, int preferred, varray_char *result);
 
 /** Span from the token we just consumed (p->previous). */
 static md_span md_span_previous(parser *p, const char *base) {
@@ -607,7 +619,7 @@ void md_file_clear(md_file *f) {
  * Name index (single dict: name/alias -> index or List of indices)
  * ------------------------------------------------------- */
 
-static bool help_name_referenced_by(value name, unsigned int keep_count) {
+static bool help_namereferencedby(value name, unsigned int keep_count) {
     for (unsigned int j = 0; j < keep_count; j++)
         if (MORPHO_ISSAME(s_topics.data[j].name, name)) return true;
     return false;
@@ -631,8 +643,14 @@ static void help_nameindex_remove(int topic_index, unsigned int keep_count) {
     if (remove_entry) {
         if (MORPHO_ISLIST(v)) morpho_freeobject(v);
         dictionary_remove(&s_names, name);
-        if (!help_name_referenced_by(name, keep_count)) morpho_freeobject(name);
+        if (!help_namereferencedby(name, keep_count)) morpho_freeobject(name);
     }
+}
+
+static bool help_nameindex_get(const char *name, value *out) {
+    objectstring key_str = MORPHO_STATICSTRING(name);
+    value key = MORPHO_OBJECT(&key_str);
+    return dictionary_get(&s_names, key, out);
 }
 
 /** Add topic_index under name (buf, len). Look up with static key; if present use existing key and update value, else allocate and insert. Returns canonical name value. */
@@ -668,7 +686,7 @@ static value help_nameindex_add(const char *buf, size_t len, int topic_index) {
 }
 
 /** Get first topic index from dict value (integer or first element of list). Returns -1 if not found or invalid. */
-static int help_indexvalue_first(value v) {
+static int help_firstindex(value v) {
     if (MORPHO_ISINTEGER(v)) return MORPHO_GETINTEGERVALUE(v);
     if (MORPHO_ISLIST(v)) {
         objectlist *list = MORPHO_GETLIST(v);
@@ -681,7 +699,7 @@ static int help_indexvalue_first(value v) {
 }
 
 /** Fill indices[] from dict value (integer or list). Returns number of indices written (at most max). */
-static int help_indexvalue_collect(value v, int indices[], int max) {
+static int help_collectindices(value v, int indices[], int max) {
     if (MORPHO_ISINTEGER(v)) {
         if (max > 0) indices[0] = MORPHO_GETINTEGERVALUE(v);
         return 1;
@@ -701,19 +719,43 @@ static int help_indexvalue_collect(value v, int indices[], int max) {
 }
 
 int help_findtopic(const char *name) {
-    objectstring key_str = MORPHO_STATICSTRING(name);
-    value key = MORPHO_OBJECT(&key_str);
-    value v;
-    if (!dictionary_get(&s_names, key, &v)) return -1;
-    return help_indexvalue_first(v);
+    int cand[MORPHO_HELP_MAX_MULTIMATCH];
+    int n = help_findallbyname(name, cand, MORPHO_HELP_MAX_MULTIMATCH);
+    if (n <= 0) return -1;
+
+    int preferred = cand[0];
+    int bestdepth = help_topicdepth(preferred);
+    bool ambiguous = false;
+
+    for (int i = 1; i < n; i++) {
+        int depth = help_topicdepth(cand[i]);
+        if (depth < bestdepth) {
+            bestdepth = depth;
+            preferred = cand[i];
+            ambiguous = false;
+        } else if (depth == bestdepth) {
+            ambiguous = true;
+        }
+    }
+
+    return ambiguous ? cand[0] : preferred;
 }
 
 int help_findallbyname(const char *name, int indices[], int max) {
-    objectstring key_str = MORPHO_STATICSTRING(name);
-    value key = MORPHO_OBJECT(&key_str);
     value v;
-    if (!dictionary_get(&s_names, key, &v)) return 0;
-    return help_indexvalue_collect(v, indices, max);
+    if (!help_nameindex_get(name, &v)) return 0;
+    return help_collectindices(v, indices, max);
+}
+
+static int help_topicdepth(int idx) {
+    int depth = 0;
+
+    while (idx >= 0 && (unsigned int) idx < s_topics.count) {
+        idx = s_topics.data[idx].parent_topic;
+        if (idx >= 0) depth++;
+    }
+
+    return depth;
 }
 
 /** Find child of parent topic with given name. Returns topic index or -1. Uses s_names then filters by parent. */
@@ -868,7 +910,10 @@ static bool help_createalias(const char *base, size_t label_start, size_t label_
  * ------------------------------------------------------- */
 
 /** Parse query into lowercased segments in qbuf; segs[] points into qbuf. Returns nsegs (0 if none). */
-static int help_parsequery(const char *query, char *qbuf, const char *segs[]) {
+static int help_parsequery(const char *query, help_queryparts *parts) {
+    char *qbuf = parts->qbuf;
+    const char **segs = parts->segs;
+
     // Copy query, lowercase, replace '.' and ' ' with nul
     size_t qlen = 0;
     while (query[qlen] && qlen < MORPHO_MAX_HELPQUERY_LENGTH - 1) {
@@ -886,6 +931,7 @@ static int help_parsequery(const char *query, char *qbuf, const char *segs[]) {
         segs[nsegs++] = p;
         while (p < qbuf + qlen && *p != '\0') p++;
     }
+    parts->nsegs = nsegs;
     return nsegs;
 }
 
@@ -915,7 +961,7 @@ static int help_findparent(int idx) {
 }
 
 /** Write full display path for topic (e.g. "System.clock") into buf. */
-static void help_topic_displaypath(int idx, char *buf, size_t bufsize) {
+static void help_displaypath(int idx, char *buf, size_t bufsize) {
     if (!bufsize) return;
     if (idx < 0 || (unsigned int) idx >= s_topics.count) {
         buf[0] = '\0';
@@ -927,14 +973,28 @@ static void help_topic_displaypath(int idx, char *buf, size_t bufsize) {
         buf[0] = '\0';
         return;
     }
-    int p = (t->level > 1) ? help_findparent(idx) : -1;
+    int p = t->parent_topic;
     if (p >= 0) {
-        help_topic_displaypath(p, buf, bufsize);
+        help_displaypath(p, buf, bufsize);
         size_t len = strlen(buf);
         if (len + 1 < bufsize) snprintf(buf + len, bufsize - len, ".%s", name);
     } else {
         snprintf(buf, bufsize, "%s", name);
     }
+}
+
+static int help_resolvetopic(const help_queryparts *query) {
+    if (query->nsegs <= 0) return -1;
+
+    int idx = help_findtopic(query->segs[0]);
+    if (idx < 0) return -1;
+
+    for (int i = 1; i < query->nsegs; i++) {
+        idx = help_findchild(idx, query->segs[i]);
+        if (idx < 0) return -1;
+    }
+
+    return idx;
 }
 
 /* -------------------------------------------------------
@@ -1183,7 +1243,7 @@ static void help_hintappend_multi(varray_char *result, const char *query, int in
     int n = snprintf(buf, sizeof(buf), "Topic '%s' had multiple matches: did you mean ", query);
     // First: "'A'"; middle: ", 'B'"; last: " or 'C'?"
     for (int i = 0; i < count && n < (int) sizeof(buf) - 4; i++) {
-        help_topic_displaypath(indices[i], path, sizeof(path));
+        help_displaypath(indices[i], path, sizeof(path));
         if (i == 0) n += snprintf(buf + n, sizeof(buf) - (size_t) n, "'%s'", path);
         else if (i == count - 1) n += snprintf(buf + n, sizeof(buf) - (size_t) n, " or '%s'?", path);
         else n += snprintf(buf + n, sizeof(buf) - (size_t) n, ", '%s'", path);
@@ -1191,28 +1251,48 @@ static void help_hintappend_multi(varray_char *result, const char *query, int in
     if (n > 0 && (size_t) n < sizeof(buf)) varray_charadd(result, buf, n);
 }
 
+static void help_appendothertopics(const char *name, int preferred, varray_char *result) {
+    int cand[MORPHO_HELP_MAX_MULTIMATCH];
+    int n = help_findallbyname(name, cand, MORPHO_HELP_MAX_MULTIMATCH);
+    int nothers = 0;
+
+    for (int i = 0; i < n; i++) {
+        if (cand[i] != preferred) nothers++;
+    }
+    if (nothers <= 0) return;
+
+    char path[MORPHO_MAX_HELPQUERY_LENGTH];
+    varray_charadd(result, "\n\nOther topics:\n", 16);
+    for (int i = 0; i < n; i++) {
+        if (cand[i] == preferred) continue;
+        help_displaypath(cand[i], path, sizeof(path));
+        varray_charadd(result, "- ", 2);
+        varray_charadd(result, path, strlen(path));
+        varray_charwrite(result, '\n');
+    }
+}
+
 /** Build a hint for a failed query and append to result (caller may clear result first). */
 void help_queryhint(const char *query, varray_char *result) {
     if (!result) return;
-    char qbuf[MORPHO_MAX_HELPQUERY_LENGTH];
-    const char *segs[MORPHO_HELP_QUERY_MAXSEGMENTS];
-    int nsegs = help_parsequery(query, qbuf, segs);
-    if (nsegs == 0) {
+    help_queryparts parsed;
+
+    if (help_parsequery(query, &parsed) == 0) {
         varray_charadd(result, MORPHO_HELP_NOTFOUND, strlen(MORPHO_HELP_NOTFOUND));
         varray_charwrite(result, '\0');
         return;
     }
     // Single segment: multi-match hint, or "not found" + closest, or NOTFOUND
-    if (nsegs == 1) {
+    if (parsed.nsegs == 1) {
         int multi[MORPHO_HELP_MAX_MULTIMATCH];
-        int n = help_findallbyname(segs[0], multi, MORPHO_HELP_MAX_MULTIMATCH);
+        int n = help_findallbyname(parsed.segs[0], multi, MORPHO_HELP_MAX_MULTIMATCH);
         if (n >= 2) {
             help_hintappend_multi(result, query, multi, n);
             varray_charwrite(result, '\0');
             return;
         }
         if (n == 0) {
-            help_hintappend(result, query, help_findclosesttopic(segs[0], -1));
+            help_hintappend(result, query, help_findclosesttopic(parsed.segs[0], -1));
             varray_charwrite(result, '\0');
             return;
         }
@@ -1221,20 +1301,20 @@ void help_queryhint(const char *query, varray_char *result) {
         return;
     }
     // Multi-segment: resolve first, then walk subtopics; on first failure suggest path.closest
-    int idx = help_findtopic(segs[0]);
+    int idx = help_findtopic(parsed.segs[0]);
     if (idx < 0) {
-        help_hintappend(result, query, help_findclosesttopic(segs[0], -1));
+        help_hintappend(result, query, help_findclosesttopic(parsed.segs[0], -1));
         varray_charwrite(result, '\0');
         return;
     }
     char path[MORPHO_MAX_HELPQUERY_LENGTH];
-    int path_len = snprintf(path, sizeof(path), "%s", segs[0]);
+    int path_len = snprintf(path, sizeof(path), "%s", parsed.segs[0]);
     if (path_len < 0 || path_len >= (int) sizeof(path)) path_len = (int) sizeof(path) - 1;
 
-    for (int i = 1; i < nsegs; i++) {
-        int next = help_findchild(idx, segs[i]);
+    for (int i = 1; i < parsed.nsegs; i++) {
+        int next = help_findchild(idx, parsed.segs[i]);
         if (next < 0) {
-            const char *closest = help_findclosesttopic(segs[i], idx);
+            const char *closest = help_findclosesttopic(parsed.segs[i], idx);
             char suggest[MORPHO_MAX_HELPQUERY_LENGTH] = {0};
             if (closest) {
                 int needed = path_len + 1 + (int) strlen(closest);
@@ -1248,7 +1328,7 @@ void help_queryhint(const char *query, varray_char *result) {
         idx = next;
         // Append "." + segs[i] to path for next level
         if (path_len >= (int) sizeof(path) - 1) continue; // No room
-        int n = snprintf(path + path_len, (size_t)(sizeof(path) - path_len), ".%s", segs[i]);
+        int n = snprintf(path + path_len, (size_t)(sizeof(path) - path_len), ".%s", parsed.segs[i]);
         if (n > 0) path_len += (n < (int) sizeof(path) - path_len) ? n : (int) sizeof(path) - 1 - path_len;
     }
     varray_charadd(result, MORPHO_HELP_NOTFOUND, strlen(MORPHO_HELP_NOTFOUND));
@@ -1271,21 +1351,11 @@ static void help_ensureloaded(void) {
 /** Interface to the morpho help system. Query may be "Topic" or "Topic subtopic" / "Topic.subtopic". */
 bool morpho_helpastopic(const char *query, help_topic *out) {
     help_ensureloaded();
-    char qbuf[MORPHO_MAX_HELPQUERY_LENGTH];
-    const char *segs[MORPHO_HELP_QUERY_MAXSEGMENTS];
-    int nsegs = help_parsequery(query, qbuf, segs);
-    if (nsegs <= 0) return false;
+    help_queryparts parsed;
+    if (help_parsequery(query, &parsed) <= 0) return false;
 
-    int multi[MORPHO_HELP_MAX_MULTIMATCH];
-    int n = help_findallbyname(segs[0], multi, MORPHO_HELP_MAX_MULTIMATCH);
-    if (n == 0) return false;
-    if (nsegs == 1 && n != 1) return false; /* single segment needs unique match; multiple -> caller shows hint */
-    int idx = multi[0];
-
-    for (int i = 1; i < nsegs; i++) {
-        idx = help_findchild(idx, segs[i]);
-        if (idx < 0) return false;
-    }
+    int idx = help_resolvetopic(&parsed);
+    if (idx < 0) return false;
 
     const md_topic *topic = &s_topics.data[idx];
     if (topic->file_index < 0 || (unsigned int) topic->file_index >= s_files.count) return false;
@@ -1297,7 +1367,15 @@ bool morpho_helpastopic(const char *query, help_topic *out) {
 
 bool morpho_helpastext(const char *query, varray_char *result) {
     help_topic t;
-    if (morpho_helpastopic(query, &t)) return help_topictotext(&t, result);
+    if (morpho_helpastopic(query, &t)) {
+        bool success = help_topictotext(&t, result);
+        help_queryparts parsed;
+
+        if (success && help_parsequery(query, &parsed) == 1) {
+            help_appendothertopics(parsed.segs[0], help_findtopic(parsed.segs[0]), result);
+        }
+        return success;
+    }
     help_queryhint(query, result);
     return false;
 }
@@ -1310,7 +1388,7 @@ bool morpho_helpasmd(const char *query, varray_char *result) {
 }
 
 /** True if topic at index i is top-level (level 1 or promoted level 2). */
-static bool help_topic_is_toplevel(unsigned int i) {
+static bool help_istopleveltopic(unsigned int i) {
     if (i >= s_topics.count) return false;
     const md_topic *t = &s_topics.data[i];
     bool include = (t->level == 1);
@@ -1327,8 +1405,8 @@ void morpho_helptopics(varray_value *out) {
     for (unsigned int i = 0; i < s_names.capacity; i++) {
         const dictionaryentry *e = &s_names.contents[i];
         if (MORPHO_ISNIL(e->key) || !MORPHO_ISSTRING(e->key)) continue;
-        int ti = help_indexvalue_first(e->val);
-        if (ti < 0 || !help_topic_is_toplevel((unsigned int) ti)) continue;
+        int ti = help_firstindex(e->val);
+        if (ti < 0 || !help_istopleveltopic((unsigned int) ti)) continue;
         varray_valuewrite(out, e->key);
     }
 }

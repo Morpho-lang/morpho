@@ -93,7 +93,7 @@ void md_block_clear(md_block *b);
 void md_file_init(md_file *f);
 void md_file_clear(md_file *f);
 
-/** Find one topic index by name or alias (first match if multiple). Returns -1 if not found. */
+/** Find one topic index by name or alias, preferring the shallowest unique match. Returns -1 if not found. */
 int help_findtopic(const char *name);
 
 /** Find all topic indices with given name. Fills indices[] up to max, returns count. */

@@ -134,25 +134,6 @@ value System_setworkingfolder__err(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-/** Help query */
-value System_help(vm *v, int nargs, value *args) {
-    value out = MORPHO_NIL;
-    
-    if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
-        char *query = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
-        
-        varray_char result;
-        varray_charinit(&result);
-        
-        morpho_helpastext(query, &result); /* fills result with help text or a "not found" hint */
-        out = object_stringfromvarraychar(&result);
-        if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
-        varray_charclear(&result);
-    }
-    
-    return out;
-}
-
 /** Get working folder */
 value System_workingfolder(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
@@ -187,6 +168,23 @@ value System_homefolder(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Help query */
+value System_help__string(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    
+    char *query = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
+    
+    varray_char result;
+    varray_charinit(&result);
+    
+    morpho_helpastext(query, &result); /* fills result with help text or a "not found" hint */
+    out = object_stringfromvarraychar(&result);
+    if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
+    varray_charclear(&result);
+    
+    return out;
+}
+
 MORPHO_BEGINCLASS(System)
 MORPHO_METHOD_SIGNATURE(SYSTEM_PLATFORM_METHOD, "String ()", System_platform, MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(SYSTEM_VERSION_METHOD, "String ()", System_version, MORPHO_FN_ALLOCATES),
@@ -201,7 +199,8 @@ MORPHO_METHOD_SIGNATURE(SYSTEM_EXIT_METHOD, "Nil ()", System_exit, MORPHO_FN_IO|
 MORPHO_METHOD_SIGNATURE(SYSTEM_SETWORKINGFOLDER_METHOD, "Nil (String)", System_setworkingfolder, MORPHO_FN_IO|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(SYSTEM_SETWORKINGFOLDER_METHOD, "Nil (...)", System_setworkingfolder__err, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(SYSTEM_WORKINGFOLDER_METHOD, "String ()", System_workingfolder, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
-MORPHO_METHOD_SIGNATURE(SYSTEM_HOMEFOLDER_METHOD, "String ()", System_homefolder, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES)
+MORPHO_METHOD_SIGNATURE(SYSTEM_HOMEFOLDER_METHOD, "String ()", System_homefolder, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(SYSTEM_HELP_METHOD, "String (String)", System_help__string, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

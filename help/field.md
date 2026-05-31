@@ -122,7 +122,7 @@ Returns a matrix containing the data stored by the field:
     print mat
 
 ## __linearize
-[tag__linearize]: # (__linearize)
+[tagxlinearize]: # (__linearize)
 
 Returns the underlying storage matrix directly.
 

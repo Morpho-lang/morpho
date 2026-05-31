@@ -405,3 +405,22 @@ Manually set the coefficients and grade to operate on:
     lfh.grade = 2, lfh.phi0 = 0.5, lfh.phiref = 0.1
 
 See the `Functionals` entry for general information about functionals.
+
+## Jump
+[tagjump]: # (jump)
+
+The `Jump` functional computes an interface contribution over interior codimension-1 mesh elements. It evaluates your integrand on interfaces shared by exactly two parent elements and ignores boundary interfaces.
+
+Initialize a jump functional with an integrand and any fields it depends on:
+
+    var j = Jump(fn (x, phi) jumpdn(phi)^2, phi)
+
+The integrand receives the interface position `x` followed by the interpolated field values in the order supplied to `Jump`.
+
+Within a `Jump` integrand, the special function `jumpdn(field)` returns the jump in the normal derivative of a supplied field across the current interface.
+
+`Jump` also accepts the same optional integration settings as the integral functionals. In particular, the `method` dictionary may specify a `strategy` of `"centroid"` or `"quadrature"`:
+
+    var j = Jump(fn (x, phi) jumpdn(phi)^2, phi, method: {"strategy": "quadrature"})
+
+See the `Functionals` entry for general information about functionals.

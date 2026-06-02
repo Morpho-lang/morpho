@@ -8,6 +8,7 @@
 import constants
 import kdtree
 import delaunay
+import functionals
 
 // Error messages  
 var _errMshBldDimIncnstnt = Error("MshBldDimIncnstnt", "Vertex dimension inconsistent with mesh dimension.")
@@ -338,6 +339,11 @@ fn _cmpel(a,b) {
   if (a.count()!=b.count()) return false 
   for (x in a) if (!b.ismember(x)) return false 
   return true 
+}
+
+fn _issubset(a, b) {
+  for (x in a) if (!b.ismember(x)) return false
+  return true
 }
 
 // Determine if list a is already in a list of lists 
@@ -1221,4 +1227,167 @@ class MeshPruner is MeshAdaptiveRefiner {
   prune(selection) {
     return self.adapt(selection=selection)
   } 
+}
+
+/* **********************************
+ * MeshChecker
+ * ********************************** */
+
+ class MeshChecker {
+  init(mesh, quiet=false) {
+    self.mesh = mesh 
+    self.sizetol = 1e-4
+    self.quiet=quiet
+  }
+
+  _functionalForGrade(grade) {
+    if (grade==1) return Length
+    if (grade==2) return Area
+    if (grade==3) return Volume
+  }
+
+  countElements() {
+    for (grade in 0..self.mesh.maxgrade()) {
+      print "Grade ${grade}: ${self.mesh.count(grade)} elements"
+    }
+  }
+
+  checkElementDim() {
+    for (grade in 1..self.mesh.maxgrade()) {
+        var conn = self.mesh.connectivitymatrix(0,grade)
+        if (!conn) continue
+
+        var nel = conn.dimensions()[1]
+        for (id in 0...nel) {
+            if (conn.rowindices(id).count()!=grade+1) {
+                Error("MshElDim", "Grade ${grade}, element ${id} has ${conn.rowindices(id).count()} vertices").warning()
+            }
+        }
+    }
+  }
+
+  checkDuplicateVertices() {
+    if (self.mesh.count()==0) return 
+    var x0 = self.mesh.vertexposition(0)
+
+    var tree = KDTree([x0])
+
+    for (id in 1...self.mesh.count()) {
+      var x = self.mesh.vertexposition(id)
+      var nearest = (tree.nearest(x).location - x).norm()
+      if (nearest < self.sizetol) {
+        Error("MshDupVtx", "Duplicate vertex ${id} [${nearest}]").warning()
+      }
+
+      var node = tree.insert(x)
+      node.id = id 
+    }
+  }
+
+  checkDuplicateElements() {
+    for (grade in 1..self.mesh.maxgrade()) {
+        var conn = self.mesh.connectivitymatrix(0,grade)
+        if (!conn) continue
+
+        var dict = {} 
+        var nel = conn.dimensions()[1]
+
+        for (id in 0...nel) {
+            var ind = conn.rowindices(id)
+            ind.sort() 
+            var el = apply(Tuple, ind)
+
+            if (dict.contains(el)) {
+                Error("MshDup","Grade ${grade} id ${id} is a duplicate element of id ${dict[el]}").warning()
+            } else {
+                dict[el]=id
+            }
+        }
+    }
+  }
+
+  checkElementConnectivity() {
+    for (grade in 2..self.mesh.maxgrade()) {
+      var conn = self.mesh.connectivitymatrix(0, grade)
+      if (!conn) continue
+
+      for (subgrade in 1...grade) {
+        var subconn = self.mesh.connectivitymatrix(0, subgrade)
+        var relconn = self.mesh.connectivitymatrix(subgrade, grade)
+        var revconn = self.mesh.connectivitymatrix(grade, subgrade)
+        if (!subconn || !relconn || !revconn) continue
+
+        var nsub = self.mesh.count(subgrade)
+        var nel = self.mesh.count(grade)
+
+        for (id in 0...nel) {
+          var el = conn.rowindices(id)
+          var actual = relconn.rowindices(id).clone()
+          actual.sort()
+
+          var expected = []
+          for (subid in 0...nsub) {
+            var subel = subconn.rowindices(subid)
+            if (_issubset(subel, el)) expected.append(subid)
+          }
+          expected.sort()
+
+          if (!_cmpel(actual, expected)) {
+            Error("MshElCnn",
+                  "Grade ${grade} element ${id} has inconsistent grade ${subgrade} connectivity").warning()
+          }
+        }
+
+        for (subid in 0...nsub) {
+          var actual = revconn.rowindices(subid).clone()
+          actual.sort()
+
+          var expected = []
+          for (id in 0...nel) {
+            var el = conn.rowindices(id)
+            var subel = subconn.rowindices(subid)
+            if (_issubset(subel, el)) expected.append(id)
+          }
+          expected.sort()
+
+          if (!_cmpel(actual, expected)) {
+            Error("MshElCnn",
+                  "Grade ${subgrade} element ${subid} has inconsistent grade ${grade} connectivity").warning()
+          }
+        }
+      }
+    }
+  }
+
+  checkElementSize() {
+    var dict = {}
+
+    for (grade in 1..self.mesh.maxgrade()) {
+      if (self.mesh.count(grade)==0) continue 
+
+      var func = self._functionalForGrade(grade)
+      if (!func) continue
+
+      var sizes = func().integrand(self.mesh) 
+      var glist = []
+
+      for (size, id in sizes) {
+        if (size<=self.sizetol) {
+          Error("MshZroSz", "Grade ${grade} element ${id} has non-positive size [${size}]").warning() 
+          glist.append(id)
+        }
+      }
+      dict[grade] = glist 
+    }
+    return dict 
+  }
+
+  check() {
+    if (!self.quiet) print "Checking mesh..."
+    self.checkElementDim()
+    self.checkElementConnectivity()
+    self.checkElementSize()
+    self.checkDuplicateVertices() 
+    self.checkDuplicateElements() 
+  }
 }

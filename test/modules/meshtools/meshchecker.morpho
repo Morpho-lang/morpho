@@ -1,0 +1,38 @@
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([0,0,1])
+mb.addvolume([0,1,2,3])
+
+var m = mb.build()
+m.addgrade(1)
+m.addgrade(2)
+m.addgrade(3)
+
+var checker = MeshChecker(m, quiet=true)
+
+checker.countElements()
+// expect: Grade 0: 4 elements
+// expect: Grade 1: 6 elements
+// expect: Grade 2: 4 elements
+// expect: Grade 3: 1 elements
+
+var sizes = checker.checkElementSize()
+print sizes[1].count()==0
+// expect: true
+print sizes[2].count()==0
+// expect: true
+print sizes[3].count()==0
+// expect: true
+
+checker.checkElementDim()
+checker.checkDuplicateVertices()
+checker.checkDuplicateElements()
+checker.checkElementConnectivity()
+checker.check()
+
+print true
+// expect: true

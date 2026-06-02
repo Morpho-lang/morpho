@@ -341,9 +341,48 @@ fn _cmpel(a,b) {
   return true 
 }
 
-fn _issubset(a, b) {
-  for (x in a) if (!b.ismember(x)) return false
-  return true
+fn _canonel(el) {
+  var out = el.clone()
+  out.sort()
+  return apply(Tuple, out)
+}
+
+fn _elementsubids(subdict, el, nsubverts) {
+  var nverts = el.count()
+  var expected = []
+
+  var counter[nsubverts], cmax[nsubverts]
+  for (i in 0...nsubverts) {
+    counter[i] = i
+    cmax[i] = nverts-nsubverts+i
+  }
+
+  while (true) {
+    var subel = []
+    for (i in 0...nsubverts) subel.append(el[counter[i]])
+
+    var key = _canonel(subel)
+    if (!subdict.contains(key)) return nil
+    expected.append(subdict[key])
+
+    if (counter[0] >= cmax[0]) break
+
+    var k = nsubverts-1
+    counter[k] += 1
+    while (k>0 && counter[k]>cmax[k]) {
+      k -= 1
+      counter[k] += 1
+    }
+    for (i in k+1...nsubverts) counter[i] = counter[i-1]+1
+  }
+
+  return expected
+}
+
+fn _subelementdict(conn, count) {
+  var out = Dictionary()
+  for (id in 0...count) out[_canonel(conn.rowindices(id))] = id
+  return out
 }
 
 // Determine if list a is already in a list of lists 
@@ -1233,7 +1272,7 @@ class MeshPruner is MeshAdaptiveRefiner {
  * MeshChecker
  * ********************************** */
 
- class MeshChecker {
+class MeshChecker {
   init(mesh, quiet=false) {
     self.mesh = mesh 
     self.sizetol = 1e-4
@@ -1244,6 +1283,11 @@ class MeshPruner is MeshAdaptiveRefiner {
     if (grade==1) return Length
     if (grade==2) return Area
     if (grade==3) return Volume
+  }
+
+  _connectivitywarning(grade, id, subgrade) {
+    Error("MshElCnn",
+          "Grade ${grade} element ${id} has inconsistent grade ${subgrade} connectivity").warning()
   }
 
   countElements() {
@@ -1308,51 +1352,47 @@ class MeshPruner is MeshAdaptiveRefiner {
 
   checkElementConnectivity() {
     for (grade in 2..self.mesh.maxgrade()) {
-      var conn = self.mesh.connectivitymatrix(0, grade)
-      if (!conn) continue
-
       for (subgrade in 1...grade) {
+        var conn = self.mesh.connectivitymatrix(0, grade)
         var subconn = self.mesh.connectivitymatrix(0, subgrade)
         var relconn = self.mesh.connectivitymatrix(subgrade, grade)
         var revconn = self.mesh.connectivitymatrix(grade, subgrade)
-        if (!subconn || !relconn || !revconn) continue
+        if (!conn || !subconn || !relconn || !revconn) continue
 
         var nsub = self.mesh.count(subgrade)
-        var nel = self.mesh.count(grade)
+        var subdict = _subelementdict(subconn, nsub)
 
-        for (id in 0...nel) {
+        for (id in 0...self.mesh.count(grade)) {
           var el = conn.rowindices(id)
+          var expected = _elementsubids(subdict, el, subgrade+1)
+          if (!expected) {
+            self._connectivitywarning(grade, id, subgrade)
+            continue
+          }
+
           var actual = relconn.rowindices(id).clone()
           actual.sort()
-
-          var expected = []
-          for (subid in 0...nsub) {
-            var subel = subconn.rowindices(subid)
-            if (_issubset(subel, el)) expected.append(subid)
-          }
           expected.sort()
 
           if (!_cmpel(actual, expected)) {
-            Error("MshElCnn",
-                  "Grade ${grade} element ${id} has inconsistent grade ${subgrade} connectivity").warning()
+            self._connectivitywarning(grade, id, subgrade)
+            continue
+          }
+
+          for (subid in actual) {
+            if (!revconn.rowindices(subid).ismember(id)) {
+              self._connectivitywarning(grade, id, subgrade)
+              break
+            }
           }
         }
 
         for (subid in 0...nsub) {
-          var actual = revconn.rowindices(subid).clone()
-          actual.sort()
-
-          var expected = []
-          for (id in 0...nel) {
-            var el = conn.rowindices(id)
-            var subel = subconn.rowindices(subid)
-            if (_issubset(subel, el)) expected.append(id)
-          }
-          expected.sort()
-
-          if (!_cmpel(actual, expected)) {
-            Error("MshElCnn",
-                  "Grade ${subgrade} element ${subid} has inconsistent grade ${grade} connectivity").warning()
+          for (id in revconn.rowindices(subid)) {
+            if (!relconn.rowindices(id).ismember(subid)) {
+              self._connectivitywarning(subgrade, subid, grade)
+              break
+            }
           }
         }
       }

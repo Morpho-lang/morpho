@@ -71,6 +71,7 @@ objectmetafunction *object_newmetafunction(value name);
 objectmetafunction *metafunction_clone(objectmetafunction *f);
 
 bool metafunction_wrap(value name, value fn, value *out);
+bool metafunction_merge(value name, value existing, value incoming, objectclass *klass, value *out);
 bool metafunction_add(objectmetafunction *f, value fn);
 
 void metafunction_setclass(objectmetafunction *f, objectclass *klass);

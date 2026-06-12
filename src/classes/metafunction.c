@@ -95,6 +95,44 @@ bool metafunction_wrap(value name, value fn, value *out) {
     return true;
 }
 
+/** Merges an incoming callable into an existing entry.
+ * @param[in] name      name of the callable
+ * @param[in] existing  the existing dictionary entry
+ * @param[in] incoming  the callable to merge into the entry
+ * @param[in] klass     owner class; if non-NULL, an existing metafunction must either be unowned or already belong to this class
+ * @param[out] out      the merged entry
+ * @returns true on success */
+bool metafunction_merge(value name, value existing, value incoming, objectclass *klass, value *out) {
+    value entry=existing;
+
+    if (MORPHO_ISNIL(entry)) {
+        *out=incoming;
+        return true;
+    }
+
+    if (!MORPHO_ISMETAFUNCTION(entry)) {
+        if (!metafunction_wrap(name, entry, &entry)) return false;
+    }
+
+    objectmetafunction *dest = MORPHO_GETMETAFUNCTION(entry);
+    if (klass) {
+        if (dest->klass && dest->klass!=klass) return false;
+        dest->klass=klass;
+    }
+
+    if (MORPHO_ISMETAFUNCTION(incoming)) {
+        objectmetafunction *src = MORPHO_GETMETAFUNCTION(incoming);
+        for (int i=0; i<src->fns.count; i++) {
+            if (!metafunction_add(dest, src->fns.data[i])) return false;
+        }
+    } else {
+        if (!metafunction_add(dest, incoming)) return false;
+    }
+
+    *out=entry;
+    return true;
+}
+
 /** Adds a function to a metafunction */
 bool metafunction_add(objectmetafunction *f, value fn) {
     if (f->state==METAFUNCTION_FROZEN) {

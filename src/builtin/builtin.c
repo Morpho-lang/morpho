@@ -243,28 +243,30 @@ objectclass *builtin_getparentclass(value fn) {
  * @param[in] dict  the dictionary
  * @param[in] name  name of the function to add
  * @param[in] fn function to add
+ * @param[in] forcewrap force wrapping the incoming function on first insert
  * @param[out] out the function added (which may be a metafunction)
  * @returns true on success */
-bool builtin_addfunctiontodict(dictionary *dict, value name, value fn, value *out) {
+bool builtin_addfunctiontodict(dictionary *dict, value name, value fn, bool forcewrap, value *out) {
     bool success=false;
-    value entry=fn; // Dictionary entry for this name
+    value entry=MORPHO_NIL, prev=MORPHO_NIL, incoming=fn;
     value selector = dictionary_intern(&builtin_symboltable, name); // Use interned name
-    
-    if (dictionary_get(dict, selector, &entry)) { // There was an existing function
-        if (MORPHO_ISBUILTINFUNCTION(entry)) { // It was a builtinfunction, so we need to create a metafunction
-            if (builtin_getparentclass(fn) !=
-                MORPHO_GETBUILTINFUNCTION(entry)->klass) { // Override superclass methods for now
-                dictionary_insert(dict, selector, fn);
-            } else if (metafunction_wrap(name, entry, &entry)) { // Wrap the old definition in a metafunction
-                
-                builtin_bindobject(MORPHO_GETOBJECT(entry));
-                metafunction_add(MORPHO_GETMETAFUNCTION(entry), fn); // Add the new definition
-                success=dictionary_insert(dict, selector, entry);
-            }
-        } else if (MORPHO_ISMETAFUNCTION(entry)) { // It was already a metafunction so simply add the new function
-            success=metafunction_add(MORPHO_GETMETAFUNCTION(entry), fn);
+    objectclass *klass = builtin_getparentclass(fn);
+
+    if (dictionary_get(dict, selector, &prev) && klass != builtin_getparentclass(prev)) { // Override superclass methods for now
+        entry=fn;
+        success=dictionary_insert(dict, selector, entry);
+    } else {
+        if (MORPHO_ISNIL(prev) && forcewrap) {
+            if (!metafunction_wrap(name, fn, &incoming)) return false;
         }
-    } else success=dictionary_insert(dict, selector, fn);
+
+        success=metafunction_merge(name, prev, incoming, klass, &entry);
+        if (success && MORPHO_ISMETAFUNCTION(entry)) {
+            metafunction_setclass(MORPHO_GETMETAFUNCTION(entry), klass);
+            if (!MORPHO_ISSAME(prev, entry)) builtin_bindobject(MORPHO_GETOBJECT(entry));
+        }
+        if (success) success=dictionary_insert(dict, selector, entry);
+    }
     
     if (success && out) *out = entry;
     
@@ -300,7 +302,7 @@ bool morpho_addfunction(char *name, char *signature, builtinfunction func, built
     
     value newfn = MORPHO_OBJECT(new);
     
-    if (!builtin_addfunctiontodict(_currentfunctiontable, new->name, newfn, NULL)) {
+    if (!builtin_addfunctiontodict(_currentfunctiontable, new->name, newfn, signature!=NULL, NULL)) {
         UNREACHABLE("Redefinition of function in same extension [in builtin.c]");
     }
     
@@ -384,7 +386,7 @@ bool morpho_addclass(char *name, builtinclassentry desc[], int nparents, value *
             
             builtin_bindobject((object *) newmethod);
             
-            builtin_addfunctiontodict(&new->methods, newmethod->name, method, NULL);
+            builtin_addfunctiontodict(&new->methods, newmethod->name, method, desc[i].signature!=NULL, NULL);
         }
     }
     

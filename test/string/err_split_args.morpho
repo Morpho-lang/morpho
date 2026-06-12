@@ -1,0 +1,4 @@
+// Split requires a separator argument
+
+print "Hello world".split()
+// expect error 'MltplDsptchFld'

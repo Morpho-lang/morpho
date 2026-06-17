@@ -176,6 +176,7 @@ int string_countchars(objectstring *s) {
 
 /** Get a pointer to the i'th character of a string */
 char *string_index(objectstring *s, int i) {
+    if (i<0) return NULL;
     int n=0;
     for (char *c = s->string; *c!='\0'; ) {
         if (i==n) return (char *) c;
@@ -288,6 +289,33 @@ value String_split(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Gets a substring of the string */
+value String_substring(vm *v, int nargs, value *args) {
+    objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    int begin=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    int end=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+
+    if (end<0 || (begin>=slf->length && begin>0) || end-begin<0) {
+        out=MORPHO_OBJECT(object_stringwithsize(0));
+    } else {
+        begin=(begin<0) ? 0 : begin;
+        end=(end>slf->length) ? slf->length : end;
+        char *cstr = string_index(slf, begin);
+
+        // Get size in bytes of the chars to include
+        char *cstrend = cstr;
+        for (int i = 0; i<end-begin; ++i) {
+            cstrend+=morpho_utf8numberofbytes(cstrend);
+            if (*cstrend == '\0') break;
+        }
+        out=object_stringfromcstring(cstr, cstrend-cstr);
+    }
+    morpho_bindobjects(v, 1, &out);
+
+    return out;
+}
+
 MORPHO_BEGINCLASS(String)
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", String_count, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "String ()", String_print, MORPHO_FN_IO),
@@ -297,7 +325,8 @@ MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Nil (...)", String_enumerate__e
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", String_enumerate, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "Nil (...)", String_enumerate__err, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(STRING_ISNUMBER_METHOD, "Bool ()", String_isnumber, MORPHO_FN_PUREFN),
-MORPHO_METHOD_SIGNATURE(STRING_SPLIT_METHOD, "List (String)", String_split, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)
+MORPHO_METHOD_SIGNATURE(STRING_SPLIT_METHOD, "List (String)", String_split, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(STRING_SUBSTRING_METHOD, "String (Int, Int)", String_substring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

@@ -142,6 +142,12 @@
 #define VOLUMEINTEGRAL_ARGS            "VolIntArgs"
 #define VOLUMEINTEGRAL_ARGS_MSG        "VolumeIntegral requires a callable argument, followed by zero or more Fields."
 
+#define NRML_GRD                       "NormlGrade"
+#define NRML_GRD_MSG                   "Normal can only be used on elements of grade 2."
+
+#define TNGNT_GRD                      "TngntGrade"
+#define TNGNT_GRD_MSG                  "Tangent can only be used on elements of grade 1."
+
 #define VOLUMEENCLOSED_ZERO            "VolEnclZero"
 #define VOLUMEENCLOSED_ZERO_MSG        "VolumeEnclosed detected an element of zero size. Check that a mesh point is not coincident with the origin."
 

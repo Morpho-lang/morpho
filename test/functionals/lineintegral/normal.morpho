@@ -1,0 +1,12 @@
+import constants
+import meshtools
+
+var m = LineMesh(fn (t) [cos(t),sin(t),0], 0..Pi:Pi/10)
+
+var nn = Field(m, fn (x,y,z) Matrix([1,0,0]))
+
+// A line integral with a element call
+var lc = LineIntegral(fn (x, n) (n.inner(normal()))^2, nn)
+
+print lc.integrand(m)
+// expect error 'NormlGrade'

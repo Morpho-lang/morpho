@@ -4328,6 +4328,10 @@ int tangenthandle; // TL storage handle for tangent vectors
 void integral_evaluatetangent(vm *v, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);
     if (!elref) { morpho_runtimeerror(v, INTEGRAL_SPCLFN, TANGENT_FUNCTION); return; }
+    if (elref->g!=1) {
+        morpho_runtimeerror(v, TNGNT_GRD);
+        return;
+    }
     
     int dim = elref->mesh->dim;
     
@@ -4366,9 +4370,14 @@ void integral_evaluatenormal(vm *v, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);
     
     if (!elref) { morpho_runtimeerror(v, INTEGRAL_SPCLFN, NORMAL_FUNCTION); return; }
+    if (elref->g!=2) {
+        morpho_runtimeerror(v, NRML_GRD);
+        return;
+    }
     
     int dim = elref->mesh->dim;
     double s0[dim], s1[dim];
+    
     objectmatrix *mnormal = matrix_new(dim, 1, false);
     if (!mnormal) {
         morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
@@ -6227,6 +6236,9 @@ void functional_initialize(void) {
     morpho_defineerror(INTEGRAL_GRDEVL, ERROR_HALT, INTEGRAL_GRDEVL_MSG);
     morpho_defineerror(INTEGRAL_HSSEVL, ERROR_HALT, INTEGRAL_HSSEVL_MSG);
     morpho_defineerror(JUMP_UNIMPL, ERROR_HALT, JUMP_UNIMPL_MSG);
+    
+    morpho_defineerror(NRML_GRD, ERROR_HALT, NRML_GRD_MSG);
+    morpho_defineerror(TNGNT_GRD, ERROR_HALT, TNGNT_GRD_MSG);
     
     functional_poolinitialized = false;
     

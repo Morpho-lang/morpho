@@ -1,0 +1,5 @@
+print "Hello world".split(" ")
+// expect: [ Hello, world ]
+
+print "Hello world".split()
+// expect error 'MltplDsptchFld'

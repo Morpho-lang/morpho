@@ -1,0 +1,5 @@
+import "folder/folder.m"
+// expect: Folder import
+
+folderfn("Hello world")
+// expect: Hello world

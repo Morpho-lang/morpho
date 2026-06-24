@@ -4805,6 +4805,16 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
                 goto compiler_import_cleanup;
             }
 
+            /* Change working directory to new file for duration of import compilation */
+            varray_char wrkdir;
+            varray_charinit(&wrkdir);
+            file_getworkingdirectory(&wrkdir);
+            varray_char fpath;
+            varray_charinit(&fpath);
+            varray_charadd(&fpath, wrkdir.data, wrkdir.count-1);
+            varray_charadd(&fpath, fname, (int) strlen(fname));
+            file_setworkingdirectory(fpath.data);
+
             /* Remember the initial position of the code */
             start=c->out->code.count;
 
@@ -4841,6 +4851,11 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             debugannotation_setmodule(&c->out->annotations, compiler_getmodule(c));
             
             end=c->out->code.count;
+
+            /* Restore old working directory */
+            file_setworkingdirectory(wrkdir.data);
+            varray_charclear(&wrkdir);
+            varray_charclear(&fpath);
             
             compiler_clear(&cc);
             varray_charclear(&src);

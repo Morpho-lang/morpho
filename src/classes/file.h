@@ -99,7 +99,8 @@ typedef struct {
  * ------------------------------------------------------- */
 
 bool file_getsize(FILE *f, size_t *s);
-void file_setworkingdirectory(const char *script);
+void file_setworkingdirectory(const char *path);
+void file_getworkingdirectory(varray_char *path);
 FILE *file_openrelative(const char *fname, const char *mode);
 int file_readlineintovarray(FILE *f, varray_char *string);
 bool file_readintovarray(FILE *f, varray_char *string);

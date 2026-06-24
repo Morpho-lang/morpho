@@ -110,6 +110,19 @@ void file_setworkingdirectory(const char *path) {
     }
 }
 
+/** Gets the global current working directory (relative to the filing systems cwd.
+ * @param[out] path - path to working directory. */
+void file_getworkingdirectory(varray_char *path)
+{
+    if (workingdir.count>0) {
+        for (unsigned int i=0; i<workingdir.count && workingdir.data[i]!='\0'; i++) {
+            varray_charwrite(path, workingdir.data[i]);
+        }
+        varray_charwrite(path, '/');
+    }
+    varray_charwrite(path, '\0');
+}
+
 /** Gets the relative path for a given file */
 void file_relativepath(const char *fname, varray_char *name) {
     /* Check the fname passed isn't a global file reference (i.e. starts with / or ~) */

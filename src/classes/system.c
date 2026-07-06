@@ -88,10 +88,10 @@ value System_sleep(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-value System_sleep__err(vm *v, int nargs, value *args) {
-    morpho_runtimeerror(v, SLEEP_ARGS);
-    return MORPHO_NIL;
-}
+// value System_sleep__err(vm *v, int nargs, value *args) {
+//     morpho_runtimeerror(v, SLEEP_ARGS);
+//     return MORPHO_NIL;
+// }
 
 /** Readline */
 value System_readline(vm *v, int nargs, value *args) {
@@ -129,10 +129,10 @@ value System_setworkingfolder(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-value System_setworkingfolder__err(vm *v, int nargs, value *args) {
-    morpho_runtimeerror(v, STWRKDR_ARGS);
-    return MORPHO_NIL;
-}
+// value System_setworkingfolder__err(vm *v, int nargs, value *args) {
+//     morpho_runtimeerror(v, STWRKDR_ARGS);
+//     return MORPHO_NIL;
+// }
 
 /** Get working folder */
 value System_workingfolder(vm *v, int nargs, value *args) {
@@ -164,7 +164,30 @@ value System_homefolder(vm *v, int nargs, value *args) {
             morpho_bindobjects(v, 1, &out);
         } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    
+
+    return out;
+}
+
+/** Runs a console command and then returns the printed output of the function */
+value System_readoutput(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+
+    char *cmd = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
+
+    varray_char output;
+    varray_charinit(&output);
+
+    FILE *fp = popen(cmd, "r");
+    if (fp) {
+        int c;
+        while ((c = fgetc(fp)) != EOF) varray_charwrite(&output, c);
+        int exit_code = pclose(fp);
+
+        out = object_stringfromvarraychar(&output);
+        if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
+    } else morpho_runtimeerror(v, SYS_POPNFLD);
+    varray_charclear(&output);
+
     return out;
 }
 
@@ -192,14 +215,15 @@ MORPHO_METHOD_SIGNATURE(SYSTEM_CLOCK_METHOD, "Float ()", System_clock, MORPHO_FN
 MORPHO_METHOD(MORPHO_PRINT_METHOD, System_print, MORPHO_FN_IO),
 MORPHO_METHOD_SIGNATURE(SYSTEM_SLEEP_METHOD, "Nil (Int)", System_sleep, MORPHO_FN_IO),
 MORPHO_METHOD_SIGNATURE(SYSTEM_SLEEP_METHOD, "Nil (Float)", System_sleep, MORPHO_FN_IO),
-MORPHO_METHOD_SIGNATURE(SYSTEM_SLEEP_METHOD, "Nil (...)", System_sleep__err, MORPHO_FN_THROWS),
+// MORPHO_METHOD_SIGNATURE(SYSTEM_SLEEP_METHOD, "Nil (...)", System_sleep__err, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(SYSTEM_READLINE_METHOD, "String ()", System_readline, MORPHO_FN_IO|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(SYSTEM_ARGUMENTS_METHOD, "List ()", System_arguments, MORPHO_FN_IO),
 MORPHO_METHOD_SIGNATURE(SYSTEM_EXIT_METHOD, "Nil ()", System_exit, MORPHO_FN_IO|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(SYSTEM_SETWORKINGFOLDER_METHOD, "Nil (String)", System_setworkingfolder, MORPHO_FN_IO|MORPHO_FN_THROWS),
-MORPHO_METHOD_SIGNATURE(SYSTEM_SETWORKINGFOLDER_METHOD, "Nil (...)", System_setworkingfolder__err, MORPHO_FN_THROWS),
+// MORPHO_METHOD_SIGNATURE(SYSTEM_SETWORKINGFOLDER_METHOD, "Nil (...)", System_setworkingfolder__err, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(SYSTEM_WORKINGFOLDER_METHOD, "String ()", System_workingfolder, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(SYSTEM_HOMEFOLDER_METHOD, "String ()", System_homefolder, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(SYSTEM_READOUTPUT_METHOD, "String (String)",System_readoutput, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(SYSTEM_HELP_METHOD, "String (String)", System_help__string, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 
@@ -212,10 +236,11 @@ void system_initialize(void) {
     
     builtin_addclass(SYSTEM_CLASSNAME, MORPHO_GETCLASSDEFINITION(System), objclass);
     
-    morpho_defineerror(SLEEP_ARGS, ERROR_HALT, SLEEP_ARGS_MSG);
+    // morpho_defineerror(SLEEP_ARGS, ERROR_HALT, SLEEP_ARGS_MSG);
     morpho_defineerror(VM_EXIT, ERROR_EXIT, VM_EXIT_MSG);
     morpho_defineerror(SYS_STWRKDR, ERROR_EXIT, SYS_STWRKDR_MSG);
-    morpho_defineerror(STWRKDR_ARGS, ERROR_EXIT, STWRKDR_ARGS_MSG);
+    // morpho_defineerror(STWRKDR_ARGS, ERROR_EXIT, STWRKDR_ARGS_MSG);
+    morpho_defineerror(SYS_POPNFLD, ERROR_EXIT, SYS_POPNFLD_MSG);
     
     objectlist *alist = object_newlist(0, NULL);
     if (alist) arglist = MORPHO_OBJECT(alist);

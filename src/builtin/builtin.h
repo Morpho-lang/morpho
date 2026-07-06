@@ -148,6 +148,7 @@ value builtin_addfunction(char *name, builtinfunction func, builtinfunctionflags
 value builtin_findfunction(value name);
 
 bool morpho_addfunction(char *name, char *signature, builtinfunction func, builtinfunctionflags flags, value *out);
+bool builtin_finalizemetafunctions(void);
 
 value builtin_addclass(char *name, builtinclassentry desc[], value superclass);
 value builtin_findclass(value name);

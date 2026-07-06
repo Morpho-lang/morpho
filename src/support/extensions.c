@@ -143,7 +143,9 @@ bool extension_initialize(extension *e) {
     builtin_setfunctiontable(ofunc);
     builtin_setclasstable(oclss);
     
-    return success; 
+    builtin_finalizemetafunctions();
+    
+    return success;
 }
 
 /** Call the extension's finalizer */

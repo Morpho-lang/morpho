@@ -139,11 +139,13 @@ bool extension_initialize(extension *e) {
     builtin_setclasstable(MORPHO_GETDICTIONARYSTRUCT(e->classtable));
     
     bool success=extension_call(e, MORPHO_GETCSTRING(e->name), MORPHO_EXTENSIONINITIALIZE);
+    if (success) success=builtin_parsesignatures();
+    if (success) success=builtin_finalizemetafunctions();
     
     builtin_setfunctiontable(ofunc);
     builtin_setclasstable(oclss);
-    
-    return success; 
+
+    return success;
 }
 
 /** Call the extension's finalizer */
@@ -166,7 +168,6 @@ bool extension_load(char *name, dictionary **functiontable, dictionary **classta
     } else if (extension_initwithname(&e, name, MORPHO_GETCSTRING(path)) &&
                extension_dlopen(&e)) {
         success=extension_initialize(&e);
-        success &= builtin_parsesignatures();
         if (success) varray_extensionwrite(&extensionlist, e);
     }
     

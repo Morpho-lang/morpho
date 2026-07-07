@@ -320,6 +320,18 @@ morpho_addfunction_cleanup:
     return false;
 }
 
+/** Finalize any open metafunctions from the C objects list */
+bool builtin_finalizemetafunctions(void) {
+    error err;
+    error_init(&err);
+    if (!metafunction_finalizelist(builtin_objects, &err)) {
+        UNREACHABLE("Unable to finalize builtin metafunctions.");
+    }
+    error_clear(&err);
+    
+    return true;
+}
+
 /* **********************************************************************
  * Create and find builtin classes
  * ********************************************************************** */
@@ -518,12 +530,7 @@ void builtin_initialize(void) {
         UNREACHABLE("Syntax error in signature.");
     }
 
-    error err;
-    error_init(&err);
-    if (!metafunction_finalizelist(builtin_objects, &err)) {
-        UNREACHABLE("Unable to finalize builtin metafunctions.");
-    }
-    error_clear(&err);
+    builtin_finalizemetafunctions();
     
     morpho_addfinalizefn(builtin_finalize);
 }

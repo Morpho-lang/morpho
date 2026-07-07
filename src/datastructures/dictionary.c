@@ -160,7 +160,7 @@ void dictionary_init(dictionary *dict) {
 
 /** @brief Clears a dictionary structure, freeing attached memory
  *  @param dict the dictionary to clear
- *  @warning This doens't free keys or values in the dictionary. */
+ *  @warning This doesn't free keys or values in the dictionary. */
 void dictionary_clear(dictionary *dict) {
     if (dict->contents) MORPHO_FREE(dict->contents);
     dictionary_init(dict);

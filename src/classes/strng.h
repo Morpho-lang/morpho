@@ -70,6 +70,7 @@ value object_concatenatestring(value a, value b);
 
 #define STRING_SPLIT_METHOD               "split"
 #define STRING_ISNUMBER_METHOD            "isnumber"
+#define STRING_SUBSTRING_METHOD           "substring"
 
 /* -------------------------------------------------------
  * String error messages

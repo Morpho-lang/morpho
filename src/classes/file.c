@@ -118,7 +118,7 @@ void file_getworkingdirectory(varray_char *path)
         for (unsigned int i=0; i<workingdir.count && workingdir.data[i]!='\0'; i++) {
             varray_charwrite(path, workingdir.data[i]);
         }
-        varray_charwrite(path, '/');
+        varray_charwrite(path, MORPHO_DIRSEPARATOR);
     }
     varray_charwrite(path, '\0');
 }
@@ -132,7 +132,7 @@ void file_relativepath(const char *fname, varray_char *name) {
             for (unsigned int i=0; i<workingdir.count && workingdir.data[i]!='\0'; i++) {
                 varray_charwrite(name, workingdir.data[i]);
             }
-            varray_charwrite(name, '/');
+            varray_charwrite(name, MORPHO_DIRSEPARATOR);
         }
     }
     varray_charadd(name, (char *) fname, (int) strlen(fname));

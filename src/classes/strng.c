@@ -220,6 +220,20 @@ value String_clone(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Gets a specified character from a string */
+value String_getindex(vm *v, int nargs, value *args) {
+    objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+
+    char *c = string_index(slf, n);
+    if (c) {
+        out=object_stringfromcstring(c, morpho_utf8numberofbytes(c));
+        morpho_bindobjects(v, 1, &out);
+    } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+    return out;
+}
+
 /** Enumerate members of a string */
 value String_enumerate(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
@@ -320,7 +334,7 @@ MORPHO_BEGINCLASS(String)
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", String_count, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "String ()", String_print, MORPHO_FN_IO),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "String ()", String_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
-MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "(Int)", String_enumerate, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "String (Int)", String_getindex, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Nil (...)", String_enumerate__err, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", String_enumerate, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "Nil (...)", String_enumerate__err, MORPHO_FN_THROWS),

@@ -177,11 +177,11 @@ value System_readoutput(vm *v, int nargs, value *args) {
     varray_char output;
     varray_charinit(&output);
 
-    FILE *fp = popen(cmd, "r");
+    FILE *fp = platform_popen(cmd, "r");
     if (fp) {
         int c;
         while ((c = fgetc(fp)) != EOF) varray_charwrite(&output, c);
-        int exit_code = pclose(fp);
+        int exit_code = platform_pclose(fp);
 
         out = object_stringfromvarraychar(&output);
         if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);

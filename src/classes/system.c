@@ -195,14 +195,16 @@ value System_subprocess(vm *v, int nargs, value *args) {
         int c;
         while ((c = fgetc(fp)) != EOF) varray_charwrite(&output, c);
         // Strip the trailing newline
-        if (varray_charpop(&output, (char *) &c) && c != '\n') varray_charwrite(&output, c);
+        if (varray_charpop(&output, (char *) &c) && (char) c != '\n') varray_charwrite(&output, c);
         
         dictionary_insertintern(&new->dict, exit_key, MORPHO_INTEGER(platform_pclose(fp)));
         dictionary_insertintern(&new->dict, out_key, object_stringfromvarraychar(&output));
+
+        out = morpho_wrapandbindrecursive(v, (object *) new);
     } else morpho_runtimeerror(v, SYS_POPNFLD);
     varray_charclear(&output);
 
-    return morpho_wrapandbindrecursive(v, (object *) new);
+    return out;
 }
 
 /** Help query */

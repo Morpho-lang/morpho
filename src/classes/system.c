@@ -11,6 +11,7 @@
 #include "system.h"
 #include "platform.h"
 #include "help.h"
+#include "dict.h"
 
 /* **********************************************************************
  * System utility functions
@@ -168,11 +169,23 @@ value System_homefolder(vm *v, int nargs, value *args) {
     return out;
 }
 
-/** Runs a console command and then returns the printed output of the function */
-value System_readoutput(vm *v, int nargs, value *args) {
+/** Runs a console command and then returns output data of the process in a dictionary */
+value System_subprocess(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
 
-    char *cmd = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
+    // Create and initialize a dictionary to store the process data
+    objectdictionary *new = object_newdictionary();
+    if (!new) {
+        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        return out;
+    }
+    value args_key = dictionary_intern(&new->dict, object_stringfromcstring("args", 4));
+    value exit_key = dictionary_intern(&new->dict, object_stringfromcstring("exitstatus", 10));
+    value out_key  = dictionary_intern(&new->dict, object_stringfromcstring("stdout", 6));
+
+    value cmdv = MORPHO_GETARG(args, 0);
+    dictionary_insertintern(&new->dict, args_key, cmdv);
+    char *cmd = MORPHO_GETCSTRING(cmdv);
 
     varray_char output;
     varray_charinit(&output);
@@ -181,14 +194,15 @@ value System_readoutput(vm *v, int nargs, value *args) {
     if (fp) {
         int c;
         while ((c = fgetc(fp)) != EOF) varray_charwrite(&output, c);
-        int exit_code = platform_pclose(fp);
-
-        out = object_stringfromvarraychar(&output);
-        if (MORPHO_ISOBJECT(out)) morpho_bindobjects(v, 1, &out);
+        // Strip the trailing newline
+        if (varray_charpop(&output, (char *) &c) && c != '\n') varray_charwrite(&output, c);
+        
+        dictionary_insertintern(&new->dict, exit_key, MORPHO_INTEGER(platform_pclose(fp)));
+        dictionary_insertintern(&new->dict, out_key, object_stringfromvarraychar(&output));
     } else morpho_runtimeerror(v, SYS_POPNFLD);
     varray_charclear(&output);
 
-    return out;
+    return morpho_wrapandbindrecursive(v, (object *) new);
 }
 
 /** Help query */
@@ -223,7 +237,7 @@ MORPHO_METHOD_SIGNATURE(SYSTEM_SETWORKINGFOLDER_METHOD, "Nil (String)", System_s
 // MORPHO_METHOD_SIGNATURE(SYSTEM_SETWORKINGFOLDER_METHOD, "Nil (...)", System_setworkingfolder__err, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(SYSTEM_WORKINGFOLDER_METHOD, "String ()", System_workingfolder, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(SYSTEM_HOMEFOLDER_METHOD, "String ()", System_homefolder, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
-MORPHO_METHOD_SIGNATURE(SYSTEM_READOUTPUT_METHOD, "String (String)",System_readoutput, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(SYSTEM_SUBPROCESS_METHOD, "Dictionary (String)",System_subprocess, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(SYSTEM_HELP_METHOD, "String (String)", System_help__string, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 

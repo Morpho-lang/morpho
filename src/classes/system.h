@@ -29,7 +29,7 @@
 #define SYSTEM_WORKINGFOLDER_METHOD   "workingfolder"
 #define SYSTEM_SETWORKINGFOLDER_METHOD "setworkingfolder"
 
-#define SYSTEM_READOUTPUT_METHOD      "readoutput"
+#define SYSTEM_SUBPROCESS_METHOD      "subprocess"
 
 /* -------------------------------------------------------
  * System error messages

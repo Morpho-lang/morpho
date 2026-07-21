@@ -298,7 +298,7 @@ bool morpho_addfunction(char *name, char *signature, builtinfunction func, built
     if (MORPHO_ISNIL(selector)) goto morpho_addfunction_cleanup;
     if (!MORPHO_ISSAME(selector, new->name)) morpho_freeobject(new->name);
     new->name=selector;
-    builtin_bindobject(MORPHO_GETOBJECT(selector));
+    if (MORPHO_ISOBJECT(selector)) builtin_bindobject(MORPHO_GETOBJECT(selector));
     
     value newfn = MORPHO_OBJECT(new);
     
@@ -345,7 +345,7 @@ bool builtin_finalizemetafunctions(void) {
  * @returns true on success */
 bool morpho_addclass(char *name, builtinclassentry desc[], int nparents, value *parents, value *out) {
     value label = object_stringfromcstring(name, strlen(name));
-    builtin_bindobject(MORPHO_GETOBJECT(label));
+    if (MORPHO_ISOBJECT(label)) builtin_bindobject(MORPHO_GETOBJECT(label));
     objectclass *new = object_newclass(label);
     builtin_bindobject((object *) new);
     bool success=true;
@@ -393,7 +393,7 @@ bool morpho_addclass(char *name, builtinclassentry desc[], int nparents, value *
             }
             if (!MORPHO_ISSAME(selector, newmethod->name)) morpho_freeobject(newmethod->name);
             newmethod->name=selector;
-            builtin_bindobject(MORPHO_GETOBJECT(selector));
+            if (MORPHO_ISOBJECT(selector)) builtin_bindobject(MORPHO_GETOBJECT(selector));
             value method = MORPHO_OBJECT(newmethod);
             
             builtin_bindobject((object *) newmethod);
@@ -444,7 +444,7 @@ value builtin_internsymbol(value symbol) {
 /** Interns a symbol given as a C string. */
 value builtin_internsymbolascstring(char *symbol) {
     value selector = object_stringfromcstring(symbol, strlen(symbol));
-    builtin_bindobject(MORPHO_GETOBJECT(selector));
+    if (MORPHO_ISOBJECT(selector)) builtin_bindobject(MORPHO_GETOBJECT(selector));
     value internselector = builtin_internsymbol(selector);
     return internselector;
 }

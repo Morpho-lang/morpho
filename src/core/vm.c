@@ -762,9 +762,11 @@ static inline bool vm_invoke(vm *v, value obj, value method, int nargs, value *a
         if (dictionary_getintern(&klass->methods, method, &fn)) {
             return morpho_invoke(v, obj, fn, nargs, args, out);
         }
-    } else if (MORPHO_ISOBJECT(obj)) {
-        /* If it's an object, it may have a veneer class */
-        objectclass *klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
+    } else {
+        /* An object or value may have a veneer class */
+        objectclass *klass = NULL;
+        if (MORPHO_ISOBJECT(obj)) klass = object_getveneerclass(MORPHO_GETOBJECTTYPE(obj));
+        else if (!MORPHO_ISNIL(obj)) klass = value_getveneerclass(obj);
         if (klass) {
             value ifunc;
             if (dictionary_getintern(&klass->methods, method, &ifunc)) {

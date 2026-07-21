@@ -1,0 +1,22 @@
+var ss = ShortString("Hello")
+
+print ss.clss()
+// expect: @ShortString
+
+print ss
+// expect: Hello
+
+print ss.count()
+// expect: 5
+
+print ss[3]
+// expect: l
+
+for (c in ss) {
+    print c
+}
+// expect: H
+// expect: e
+// expect: l
+// expect: l
+// expect: o

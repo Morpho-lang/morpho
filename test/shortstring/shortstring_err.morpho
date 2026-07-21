@@ -1,0 +1,2 @@
+var ss = ShortString("Hello World")
+// expect error 'ShrStrTooLng'

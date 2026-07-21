@@ -91,6 +91,13 @@ hash dictionary_hashint(uint32_t hash) {
 }
 #endif
 
+/** Integer hash function using SplitMix64 - https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64*/
+hash dictionary_hashint64(uint64_t hash) {
+    hash = (hash ^ (hash >> 30)) * 0xbf58476d1ce4e5b9;  /* xor the variable with the variable right bit shifted 30 then multiply by a constant */
+    hash = (hash ^ (hash >> 27)) * 0x94d049bb133111eb;  /* xor the variable with the variable right bit shifted 27 then multiply by a constant */
+    return hash ^ (hash >> 31);
+}
+
 hash dictionary_hashpointer(void *hash) {
     uintptr_t ptr = (uintptr_t) hash;
 #if UINTPTR_MAX == UINT64_MAX
@@ -141,6 +148,10 @@ hash dictionary_hash(value key, bool intern) {
         if (intern) {
             return MORPHO_GETOBJECTHASH(key);
         } else return object_hash(MORPHO_GETOBJECT(key));
+#ifdef MORPHO_NAN_BOXING
+    } else if (MORPHO_ISSHORTSTRING(key)){
+        return dictionary_hashint64((uint64_t) key);
+#endif
     }
     return 0;
 }

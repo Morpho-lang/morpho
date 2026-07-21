@@ -22,6 +22,7 @@
 #include "array.h"
 #include "range.h"
 #include "strng.h"
+#include "shortstring.h"
 #include "dict.h"
 #include "tuple.h"
 #include "err.h"

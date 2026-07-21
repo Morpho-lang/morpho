@@ -77,7 +77,7 @@ bool builtin_enumerateloop(vm *v, value obj, builtin_loopfunction fn, void *ref)
             in=MORPHO_INTEGER(i);
             
             if (!morpho_invoke(v, obj, enumerate, 1, &in, &val)) return false;
-            
+
             if (!(*fn) (v, i, val, ref)) return false;
         }
     }
@@ -488,6 +488,9 @@ void builtin_initialize(void) {
     int_initialize();
     bool_initialize();
     nil_initialize();
+#ifdef MORPHO_NAN_BOXING
+    shortstring_initialize();
+#endif
     
     string_initialize();  // Classes
     function_initialize();

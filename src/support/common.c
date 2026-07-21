@@ -36,6 +36,11 @@ void morpho_printvalue(vm *v, value val) {
             case VALUE_OBJECT:
                 object_print(v, val);
                 return;
+#ifdef MORPHO_NAN_BOXING
+            case VALUE_SSTRING:
+                morpho_printf(v, "%.6s", MORPHO_GETSHORTSTRING(val));
+                return;
+#endif
             default:
                 return;
         }
@@ -52,6 +57,10 @@ bool morpho_printtobuffer(vm *v, value val, varray_char *buffer) {
     if (MORPHO_ISSTRING(val)) {
         objectstring *s = MORPHO_GETSTRING(val);
         success=varray_charadd(buffer, s->string, (int) s->length);
+#ifdef MORPHO_NAN_BOXING
+    } else if (MORPHO_ISSHORTSTRING(val)) {
+        success=varray_charadd(buffer, MORPHO_GETSHORTSTRING(val), shortstring_length(val));
+#endif
     } else if (MORPHO_ISCLASS(val)) {
         objectclass *klass = MORPHO_GETCLASS(val);
         varray_charwrite(buffer, '@');

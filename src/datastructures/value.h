@@ -148,7 +148,8 @@ enum {
     VALUE_NIL,
     VALUE_BOOL,
     VALUE_INTEGER,
-    VALUE_OBJECT
+    VALUE_OBJECT,
+    VALUE_SSTRING
 };
 
 typedef int valuetype;
@@ -185,6 +186,7 @@ typedef struct {
 #define MORPHO_FLOAT(x) ((value) { VALUE_DOUBLE, .as.real = (double) x })
 #define MORPHO_BOOL(x) ((value) { VALUE_BOOL, .as.boolean = (bool) x })
 #define MORPHO_OBJECT(x) ((value) { VALUE_OBJECT, .as.obj = (object *) x })
+#define MORPHO_SHORTSTRING(x) ((value) { VALUE_SSTRING, .as.integer = (int) 0 })
 
 #define MORPHO_TRUE MORPHO_BOOL(true)
 #define MORPHO_FALSE MORPHO_BOOL(false)

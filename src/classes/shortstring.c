@@ -5,12 +5,12 @@
  */
  
 #include "shortstring.h"
-#ifdef MORPHO_NAN_BOXING
 
 #include "morpho.h"
 #include "classes.h"
 #include "common.h"
 
+#ifdef MORPHO_NAN_BOXING
 /** @brief Creates a short string from an existing character array with given length
  *  @param in     the null terminated c-string to copy
  *  @returns the object (as a value) which will be MORPHO_NIL on failure */
@@ -79,6 +79,7 @@ char *shortstring_index(value *s, int i) {
     }
     return NULL;
 }
+#endif
 
 /* -------------------------------------------------------
  * ShortString class
@@ -86,6 +87,10 @@ char *shortstring_index(value *s, int i) {
 
 /** Constructor function for short strings */
 value shortstring_constructor(vm *v, int nargs, value *args) {
+#ifndef MORPHO_NAN_BOXING
+    morpho_runtimeerror(v, SSTRING_NONANBOX);
+    return MORPHO_NIL;
+#else
     varray_char buffer;
     varray_charinit(&buffer);
 
@@ -99,19 +104,34 @@ value shortstring_constructor(vm *v, int nargs, value *args) {
     varray_charclear(&buffer);
 
     return out;
+#endif
 }
 
 value ShortString_count(vm *v, int nargs, value *args) {
+#ifndef MORPHO_NAN_BOXING
+    morpho_runtimeerror(v, SSTRING_NONANBOX);
+    return MORPHO_NIL;
+#else
     return MORPHO_INTEGER(shortstring_countchars(MORPHO_SELF(args)));
+#endif
 }
 
 value ShortString_print(vm *v, int nargs, value *args) {
+#ifndef MORPHO_NAN_BOXING
+    morpho_runtimeerror(v, SSTRING_NONANBOX);
+    return MORPHO_NIL;
+#else
     morpho_printvalue(v, MORPHO_SELF(args));
 
     return MORPHO_SELF(args);
+#endif
 }
 
 value ShortString_getindex(vm *v, int nargs, value *args) {
+#ifndef MORPHO_NAN_BOXING
+    morpho_runtimeerror(v, SSTRING_NONANBOX);
+    return MORPHO_NIL;
+#else
     value out = MORPHO_NIL;
     value slf = MORPHO_SELF(args);
     int n = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
@@ -121,9 +141,14 @@ value ShortString_getindex(vm *v, int nargs, value *args) {
         out = value_shortstringfromcstring(c, morpho_utf8numberofbytes(c));
     } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
     return out;
+#endif
 }
 
 value ShortString_enumerate(vm *v, int nargs, value *args) {
+#ifndef MORPHO_NAN_BOXING
+    morpho_runtimeerror(v, SSTRING_NONANBOX);
+    return MORPHO_NIL;
+#else
     value out=MORPHO_NIL;
     value slf = MORPHO_SELF(args);
     int n = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
@@ -138,13 +163,14 @@ value ShortString_enumerate(vm *v, int nargs, value *args) {
     }
 
     return out;
+#endif
 }
 
 
 MORPHO_BEGINCLASS(ShortString)
-MORPHO_METHOD_SIGNATURE(MORPHO_CLASS_METHOD, "(Nil)", Object_class, MORPHO_FN_PUREFN),
-MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int (Nil)", ShortString_count, MORPHO_FN_PUREFN),
-MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "ShortString (Nil)", ShortString_print, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLASS_METHOD, "()", Object_class, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", ShortString_count, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "ShortString ()", ShortString_print, MORPHO_FN_IO|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "ShortString (Int)", ShortString_getindex, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", ShortString_enumerate, MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
@@ -164,5 +190,5 @@ void shortstring_initialize(void) {
 
     // Define errors
     morpho_defineerror(SSTRING_TOOLONG, ERROR_HALT, SSTRING_TOOLONG_MSG);
+    morpho_defineerror(SSTRING_NONANBOX, ERROR_HALT, SSTRING_NONANBOX_MSG);
 }
-#endif

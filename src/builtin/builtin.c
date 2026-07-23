@@ -488,9 +488,7 @@ void builtin_initialize(void) {
     int_initialize();
     bool_initialize();
     nil_initialize();
-#ifdef MORPHO_NAN_BOXING
     shortstring_initialize();
-#endif
     
     string_initialize();  // Classes
     function_initialize();

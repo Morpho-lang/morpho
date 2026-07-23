@@ -9,10 +9,6 @@
 #include <string.h>
 #include "value.h"
 
-#ifdef MORPHO_NAN_BOXING
-value value_shortstringfromnulcstring(const char *in);
-value value_shortstringfromcstring(const char *in, size_t length);
-
 /* -------------------------------------------------------
  * ShortString veneer class
  * ------------------------------------------------------- */
@@ -28,12 +24,16 @@ value value_shortstringfromcstring(const char *in, size_t length);
 #define SSTRING_TOOLONG                   "ShrStrTooLng"
 #define SSTRING_TOOLONG_MSG               "Input size exceeds short string capacity."
 
+#define SSTRING_NONANBOX                  "ShrStrNanBxDsbl"
+#define SSTRING_NONANBOX_MSG              "Short strings cannot be used with NaN boxing disabled."
+
 /* -------------------------------------------------------
  * ShortString interface
  * ------------------------------------------------------- */
-
+#ifdef MORPHO_NAN_BOXING
+value value_shortstringfromnulcstring(const char *in);
+value value_shortstringfromcstring(const char *in, size_t length);
 int shortstring_length(value v);
-
-void shortstring_initialize(void);
 #endif
+void shortstring_initialize(void);
 #endif

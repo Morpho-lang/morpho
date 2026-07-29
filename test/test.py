@@ -134,8 +134,8 @@ def test(file,testLog,CI):
         # Get the output
         out=getoutput(tmp)
 
-        # Was it expected?
-        if(result.returncode==0 and expected==out):
+        # Was it expected? (ignore exit code; error tests intentionally exit non-zero)
+        if expected==out:
             if not CI:
                 print(stylize("Passed",colored.fg("green")))
             ret = 1

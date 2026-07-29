@@ -1,0 +1,10 @@
+var out = System.subprocess("echo \"Hello world\"")
+
+print out["stdout"]
+// expect: Hello world
+
+print out["args"]
+// expect: echo "Hello world"
+
+print out["exitstatus"]
+// expect: 0

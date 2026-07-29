@@ -35,13 +35,8 @@
 
 /** Call the operating system */
 value builtin_system(vm *v, int nargs, value *args) {
-    if (nargs==1) {
-        value arg=MORPHO_GETARG(args, 0);
-        if (MORPHO_ISSTRING(arg)) {
-            return MORPHO_INTEGER(system(MORPHO_GETCSTRING(arg)));
-        }
-    }
-    return MORPHO_NIL;
+    char *cmd=MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
+    return MORPHO_INTEGER(system(cmd));
 }
 
 /** Clock */

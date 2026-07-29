@@ -369,6 +369,26 @@ void *platform_dlsym(MorphoDLHandle handle, const char *symbol) {
 }
 
 /* **********************************************************************
+ * System command execution
+ * ********************************************************************** */
+
+FILE *platform_popen(const char *cmd, const char *mode) {
+#ifdef _WIN32
+    return _popen(cmd, mode);
+#else
+    return popen(cmd, mode);
+#endif
+}
+
+int platform_pclose(FILE *pipe) {
+#ifdef _WIN32
+    return _pclose(pipe);
+#else
+    return pclose(pipe);
+#endif
+}
+
+/* **********************************************************************
  * Threads
  * ********************************************************************** */
 

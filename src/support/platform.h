@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <complex.h>
+#include <stdio.h>
 #include "varray.h"
 
 #ifdef _WIN32
@@ -118,6 +119,9 @@ typedef void* MorphoDLHandle;
 MorphoDLHandle platform_dlopen(const char *path);
 void platform_dlclose(MorphoDLHandle handle);
 void *platform_dlsym(MorphoDLHandle handle, const char *symbol);
+
+FILE *platform_popen(const char *cmd, const char *mode);
+int platform_pclose(FILE *pipe);
 
 bool morpho_isdirectory(const char *path);
 

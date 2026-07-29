@@ -29,18 +29,23 @@
 #define SYSTEM_WORKINGFOLDER_METHOD   "workingfolder"
 #define SYSTEM_SETWORKINGFOLDER_METHOD "setworkingfolder"
 
+#define SYSTEM_SUBPROCESS_METHOD      "subprocess"
+
 /* -------------------------------------------------------
  * System error messages
  * ------------------------------------------------------- */
 
-#define SLEEP_ARGS                    "SystmSlpArgs"
-#define SLEEP_ARGS_MSG                "Sleep method expects a time in seconds."
+// #define SLEEP_ARGS                    "SystmSlpArgs"
+// #define SLEEP_ARGS_MSG                "Sleep method expects a time in seconds."
 
-#define STWRKDR_ARGS                  "SystmStWrkDrArgs"
-#define STWRKDR_ARGS_MSG              "Setworkingdirectory method expects a path name."
+// #define STWRKDR_ARGS                  "SystmStWrkDrArgs"
+// #define STWRKDR_ARGS_MSG              "Setworkingdirectory method expects a path name."
 
 #define SYS_STWRKDR                   "SystmStWrkDr"
 #define SYS_STWRKDR_MSG               "Couldn't set working directory."
+
+#define SYS_POPNFLD                    "SystmPOpnFld"
+#define SYS_POPNFLD_MSG                "Failed to open pipe to terminal."
 
 void system_initialize(void);
 void system_finalize(void);

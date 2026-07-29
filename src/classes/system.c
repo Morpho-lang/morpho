@@ -11,6 +11,7 @@
 #include "system.h"
 #include "platform.h"
 #include "help.h"
+#include "dict.h"
 
 /* **********************************************************************
  * System utility functions
@@ -88,10 +89,10 @@ value System_sleep(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-value System_sleep__err(vm *v, int nargs, value *args) {
-    morpho_runtimeerror(v, SLEEP_ARGS);
-    return MORPHO_NIL;
-}
+// value System_sleep__err(vm *v, int nargs, value *args) {
+//     morpho_runtimeerror(v, SLEEP_ARGS);
+//     return MORPHO_NIL;
+// }
 
 /** Readline */
 value System_readline(vm *v, int nargs, value *args) {
@@ -129,10 +130,10 @@ value System_setworkingfolder(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-value System_setworkingfolder__err(vm *v, int nargs, value *args) {
-    morpho_runtimeerror(v, STWRKDR_ARGS);
-    return MORPHO_NIL;
-}
+// value System_setworkingfolder__err(vm *v, int nargs, value *args) {
+//     morpho_runtimeerror(v, STWRKDR_ARGS);
+//     return MORPHO_NIL;
+// }
 
 /** Get working folder */
 value System_workingfolder(vm *v, int nargs, value *args) {
@@ -164,7 +165,45 @@ value System_homefolder(vm *v, int nargs, value *args) {
             morpho_bindobjects(v, 1, &out);
         } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    
+
+    return out;
+}
+
+/** Runs a console command and then returns output data of the process in a dictionary */
+value System_subprocess(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+
+    // Create and initialize a dictionary to store the process data
+    objectdictionary *new = object_newdictionary();
+    if (!new) {
+        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        return out;
+    }
+    value args_key = dictionary_intern(&new->dict, object_stringfromcstring("args", 4));
+    value exit_key = dictionary_intern(&new->dict, object_stringfromcstring("exitstatus", 10));
+    value out_key  = dictionary_intern(&new->dict, object_stringfromcstring("stdout", 6));
+
+    value cmdv = MORPHO_GETARG(args, 0);
+    dictionary_insertintern(&new->dict, args_key, cmdv);
+    char *cmd = MORPHO_GETCSTRING(cmdv);
+
+    varray_char output;
+    varray_charinit(&output);
+
+    FILE *fp = platform_popen(cmd, "r");
+    if (fp) {
+        int c;
+        while ((c = fgetc(fp)) != EOF) varray_charwrite(&output, c);
+        // Strip the trailing newline
+        if (varray_charpop(&output, (char *) &c) && (char) c != '\n') varray_charwrite(&output, c);
+        
+        dictionary_insertintern(&new->dict, exit_key, MORPHO_INTEGER(platform_pclose(fp)));
+        dictionary_insertintern(&new->dict, out_key, object_stringfromvarraychar(&output));
+
+        out = morpho_wrapandbindrecursive(v, (object *) new);
+    } else morpho_runtimeerror(v, SYS_POPNFLD);
+    varray_charclear(&output);
+
     return out;
 }
 
@@ -192,14 +231,15 @@ MORPHO_METHOD_SIGNATURE(SYSTEM_CLOCK_METHOD, "Float ()", System_clock, MORPHO_FN
 MORPHO_METHOD(MORPHO_PRINT_METHOD, System_print, MORPHO_FN_IO),
 MORPHO_METHOD_SIGNATURE(SYSTEM_SLEEP_METHOD, "Nil (Int)", System_sleep, MORPHO_FN_IO),
 MORPHO_METHOD_SIGNATURE(SYSTEM_SLEEP_METHOD, "Nil (Float)", System_sleep, MORPHO_FN_IO),
-MORPHO_METHOD_SIGNATURE(SYSTEM_SLEEP_METHOD, "Nil (...)", System_sleep__err, MORPHO_FN_THROWS),
+// MORPHO_METHOD_SIGNATURE(SYSTEM_SLEEP_METHOD, "Nil (...)", System_sleep__err, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(SYSTEM_READLINE_METHOD, "String ()", System_readline, MORPHO_FN_IO|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(SYSTEM_ARGUMENTS_METHOD, "List ()", System_arguments, MORPHO_FN_IO),
 MORPHO_METHOD_SIGNATURE(SYSTEM_EXIT_METHOD, "Nil ()", System_exit, MORPHO_FN_IO|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(SYSTEM_SETWORKINGFOLDER_METHOD, "Nil (String)", System_setworkingfolder, MORPHO_FN_IO|MORPHO_FN_THROWS),
-MORPHO_METHOD_SIGNATURE(SYSTEM_SETWORKINGFOLDER_METHOD, "Nil (...)", System_setworkingfolder__err, MORPHO_FN_THROWS),
+// MORPHO_METHOD_SIGNATURE(SYSTEM_SETWORKINGFOLDER_METHOD, "Nil (...)", System_setworkingfolder__err, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(SYSTEM_WORKINGFOLDER_METHOD, "String ()", System_workingfolder, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(SYSTEM_HOMEFOLDER_METHOD, "String ()", System_homefolder, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(SYSTEM_SUBPROCESS_METHOD, "Dictionary (String)",System_subprocess, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(SYSTEM_HELP_METHOD, "String (String)", System_help__string, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 
@@ -212,10 +252,11 @@ void system_initialize(void) {
     
     builtin_addclass(SYSTEM_CLASSNAME, MORPHO_GETCLASSDEFINITION(System), objclass);
     
-    morpho_defineerror(SLEEP_ARGS, ERROR_HALT, SLEEP_ARGS_MSG);
+    // morpho_defineerror(SLEEP_ARGS, ERROR_HALT, SLEEP_ARGS_MSG);
     morpho_defineerror(VM_EXIT, ERROR_EXIT, VM_EXIT_MSG);
     morpho_defineerror(SYS_STWRKDR, ERROR_EXIT, SYS_STWRKDR_MSG);
-    morpho_defineerror(STWRKDR_ARGS, ERROR_EXIT, STWRKDR_ARGS_MSG);
+    // morpho_defineerror(STWRKDR_ARGS, ERROR_EXIT, STWRKDR_ARGS_MSG);
+    morpho_defineerror(SYS_POPNFLD, ERROR_EXIT, SYS_POPNFLD_MSG);
     
     objectlist *alist = object_newlist(0, NULL);
     if (alist) arglist = MORPHO_OBJECT(alist);

@@ -1,0 +1,14 @@
+// Check type inference
+
+Float R = 2.0
+Complex Z = 1 + 2im 
+
+{
+    Float a = R^2 
+
+    Complex b = Z^2 
+
+    Complex c = R^Z
+
+    Complex d = Z^Z 
+}

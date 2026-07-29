@@ -1,0 +1,15 @@
+// Type checking with array operations
+
+Array arr = Array(3)
+arr[0] = 1
+arr[1] = 2
+arr[2] = 3
+
+Int sum = 0
+for (i in 0...arr.count()) {
+    Int val = arr[i]  // Type should be preserved
+    sum = sum + val
+}
+print sum  // expect: 6
+
+

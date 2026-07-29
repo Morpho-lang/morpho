@@ -117,9 +117,9 @@ value complex_builtinsqrt(vm *v, objectcomplex *c);
 value complex_builtinfloor(vm *v, objectcomplex *c);
 value complex_builtinceil(vm *v, objectcomplex *c);
 
-value complex_builtinisfinite(objectcomplex *c);
-value complex_builtinisinf(objectcomplex *c);
-value complex_builtinisnan(objectcomplex *c);
+value complex_builtinisfinite(vm *v, objectcomplex *c);
+value complex_builtinisinf(vm *v, objectcomplex *c);
+value complex_builtinisnan(vm *v, objectcomplex *c);
 
 value complex_builtinatan(vm *v, value c);
 value complex_builtinatan2(vm *v, value c1, value c2);

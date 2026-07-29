@@ -12,6 +12,8 @@ Morpho programs are stored as plain text with the .morpho file extension. A prog
 
     morpho5 program.morpho
 
+[showsubtopics]: # (subtopics)
+
 ## Comments
 [tagcomment]: # (comment)
 [tagcomments]: # (comments)
@@ -38,7 +40,7 @@ enabling the programmer to quickly comment out a section of code.
 [tagsymbols]: # (symbols)
 [tagnames]: # (names)
 
-Symbols are used to refer to named entities, including variables, classes, functions etc. Symbols must begin with a letter or underscore _ as the first character and may include letters or numbers as the remainder. Symbols are case sensitive.
+Symbols are used to refer to named entities, including variables, classes, functions etc. Symbols must begin with a letter or underscore `_` as the first character and may include letters or numbers as the remainder. Symbols are case sensitive.
 
     asymbol
     _alsoasymbol

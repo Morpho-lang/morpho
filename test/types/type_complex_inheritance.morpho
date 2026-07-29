@@ -1,0 +1,37 @@
+// Type checking with diamond inheritance:
+//      A
+//     / \
+//    B   C
+//    |   |
+//    D   E
+//    |   |
+//    F   G
+//     \ /
+//      H
+
+class A { }
+class B is A { }
+class C is A { }
+class D is B { }
+class E is C { }
+class F is D { }
+class G is E { }
+class H is F with G {}
+
+fn process(A a) {
+    return a
+}
+
+A a1 = B()
+A a2 = C()
+A a3 = D()
+A a4 = F()
+A a5 = G()
+A a6 = H()
+
+print process(a1)  // expect: <B>
+print process(a2)  // expect: <C>
+print process(a3)  // expect: <D>
+print process(a4)  // expect: <F>
+print process(a5)  // expect: <G>
+print process(a6)  // expect: <H>

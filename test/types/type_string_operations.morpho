@@ -1,0 +1,10 @@
+// Type checking with string operations
+
+String s = "hello"
+String t = "world"
+
+String combined = s + " " + t
+Int len = combined.count()
+
+print combined  // expect: hello world
+print len      // expect: 11

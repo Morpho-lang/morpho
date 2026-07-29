@@ -13,7 +13,7 @@
 #include "file.h"
 #include "parse.h"
 #include "sparse.h"
-#include "matrix.h"
+#include "linalg.h"
 #include "selection.h"
 
 // Temporary include
@@ -79,7 +79,7 @@ objectmesh *object_newmesh(unsigned int dim, unsigned int nv, double *v) {
 
         new->dim=dim;
         new->conn=NULL;
-        new->vert=object_newmatrix(dim, nv, false);
+        new->vert=matrix_new(dim, nv, false);
         new->link=NULL;
         if (new->vert) {
             mesh_link(new, (object *) new->vert);
@@ -129,7 +129,7 @@ void mesh_delink(objectmesh *mesh, object *obj) {
 /** Gets vertex coordinates */
 bool mesh_getvertexcoordinates(objectmesh *mesh, elementid id, double *out) {
     double *coords;
-    if (matrix_getcolumn(mesh->vert, id, &coords)) {
+    if (matrix_getcolumnptr(mesh->vert, id, &coords)==LINALGERR_OK) {
         for (unsigned int i=0; i<mesh->dim; i++) out[i]=coords[i];
         return true;
     }
@@ -139,7 +139,7 @@ bool mesh_getvertexcoordinates(objectmesh *mesh, elementid id, double *out) {
 /** Gets vertex coordinates as a list */
 bool mesh_getvertexcoordinatesaslist(objectmesh *mesh, elementid id, double **out) {
     double *coords=NULL;
-    if (matrix_getcolumn(mesh->vert, id, &coords)) {
+    if (matrix_getcolumnptr(mesh->vert, id, &coords)==LINALGERR_OK) {
         *out=coords;
     }
     return coords;
@@ -147,17 +147,62 @@ bool mesh_getvertexcoordinatesaslist(objectmesh *mesh, elementid id, double **ou
 
 /** Gets vertex coordinates */
 bool mesh_setvertexcoordinates(objectmesh *mesh, elementid id, double *x) {;
-    return matrix_setcolumn(mesh->vert, id, x);
+    return matrix_setcolumnptr(mesh->vert, id, x);
 }
 
 /** Gets vertex coordinates as a value list */
 bool mesh_getvertexcoordinatesasvalues(objectmesh *mesh, elementid id, value *val) {
     double *x=NULL; // The vertex positions
 
-    bool success=matrix_getcolumn(mesh->vert, id, &x);
+    bool success=(matrix_getcolumnptr(mesh->vert, id, &x)==LINALGERR_OK);
 
     if (success) {
         for (unsigned int i=0; i<mesh->dim; i++) val[i]=MORPHO_FLOAT(x[i]);
+    }
+
+    return success;
+}
+
+bool mesh_getbarycentriccoordinates(objectmesh *mesh, grade g, elementid id, double *x, double *lambda) {
+    if (g<1 || g>mesh_maxgrade(mesh)) return false;
+
+    objectsparse *conn=mesh_getconnectivityelement(mesh, 0, g);
+    if (!conn) return false;
+
+    int nentries, *entries;
+    if (!mesh_getconnectivity(conn, id, &nentries, &entries) || nentries!=g+1) return false;
+
+    double *verts[4];
+    for (int i=0; i<nentries; i++) {
+        if (!mesh_getvertexcoordinatesaslist(mesh, entries[i], &verts[i])) return false;
+    }
+
+    double gramdata[g*g], rhsdata[g], alphadata[g];
+    double dx[mesh->dim], edges[g][mesh->dim];
+    objectmatrix gram = MORPHO_STATICMATRIX(gramdata, g, g);
+    objectmatrix rhs = MORPHO_STATICMATRIX(rhsdata, g, 1);
+    matrix_zero(&gram);
+    matrix_zero(&rhs);
+
+    functional_vecsub(mesh->dim, x, verts[0], dx);
+    for (int i=0; i<g; i++) {
+        functional_vecsub(mesh->dim, verts[i+1], verts[0], edges[i]);
+    }
+
+    for (int i=0; i<g; i++) {
+        rhs.elements[i]=functional_vecdot(mesh->dim, edges[i], dx);
+        for (int j=0; j<g; j++) {
+            gram.elements[i+j*g]=functional_vecdot(mesh->dim, edges[i], edges[j]);
+        }
+    }
+    bool success=(matrix_solvesmall(&gram, &rhs)==LINALGERR_OK);
+    if (success) {
+        double sum=0.0;
+        for (int i=0; i<g; i++) {
+            lambda[i+1]=rhs.elements[i];
+            sum+=rhs.elements[i];
+        }
+        lambda[0]=1.0-sum;
     }
 
     return success;
@@ -175,7 +220,7 @@ bool mesh_nearestvertex(objectmesh *mesh, double *x, elementid *id, double *sepa
     elementid bestid=0;
 
     for (elementid i=0; i<mesh_nvertices(mesh); i++) {
-        if (!matrix_getcolumn(mesh->vert, i, &vx)) return false;
+        if (matrix_getcolumnptr(mesh->vert, i, &vx)!=LINALGERR_OK) return false;
         sep=0;
         for (int k=0; k<mesh->dim; k++) sep+=(vx[k]-x[k])*(vx[k]-x[k]);
         if (i==0 || sep<best) { best=sep; bestid = i; }
@@ -1001,7 +1046,7 @@ bool mesh_save(objectmesh *m, char *file) {
 
         for (unsigned int j=0; j<m->vert->nrows; j++) {
             double x;
-            if (matrix_getelement(m->vert, j, i, &x)) {
+            if (matrix_getelement(m->vert, j, i, &x) == LINALGERR_OK) {
                 fprintf(f, "%g ", x);
             }
         }
@@ -1123,10 +1168,10 @@ value Mesh_vertexposition(vm *v, int nargs, value *args) {
         unsigned int id=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         double *vals;
 
-        if (matrix_getcolumn(m->vert, id, &vals)) {
-            objectmatrix *new=object_newmatrix(m->dim, 1, true);
+        if (matrix_getcolumnptr(m->vert, id, &vals)==LINALGERR_OK) {
+            objectmatrix *new=matrix_new(m->dim, 1, true);
             if (new) {
-                matrix_setcolumn(new, 0, vals);
+                matrix_setcolumnptr(new, 0, vals);
                 out=MORPHO_OBJECT(new);
                 morpho_bindobjects(v, 1, &out);
             }
@@ -1145,7 +1190,7 @@ value Mesh_setvertexposition(vm *v, int nargs, value *args) {
         unsigned int id=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
         objectmatrix *mat = MORPHO_GETMATRIX(MORPHO_GETARG(args, 1));
 
-        if (!matrix_setcolumn(m->vert, id, mat->elements)) morpho_runtimeerror(v, MESH_INVLDID);
+        if (matrix_setcolumnptr(m->vert, id, mat->elements)!=LINALGERR_OK) morpho_runtimeerror(v, MESH_INVLDID);
     } else morpho_runtimeerror(v, MESH_STVRTPSNARGS);
 
     return MORPHO_NIL;
@@ -1276,6 +1321,43 @@ value Mesh_count(vm *v, int nargs, value *args) {
     return out;
 }
 
+value Mesh_barycentric(vm *v, int nargs, value *args) {
+    objectmesh *m=MORPHO_GETMESH(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+
+    if (nargs==3 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
+        MORPHO_ISINTEGER(MORPHO_GETARG(args, 1)) &&
+        MORPHO_ISMATRIX(MORPHO_GETARG(args, 2))) {
+        grade g=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        elementid id=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+        objectmatrix *x=MORPHO_GETMATRIX(MORPHO_GETARG(args, 2));
+
+        if (x->nrows!=m->dim || x->ncols!=1) {
+            morpho_runtimeerror(v, MESH_BARYDIM);
+            return MORPHO_NIL;
+        }
+        if (g<1 || g>mesh_maxgrade(m)) {
+            morpho_runtimeerror(v, MESH_BARYFAILED);
+            return MORPHO_NIL;
+        }
+
+        objectmatrix *lambda=matrix_new(g+1, 1, true);
+        if (!lambda) {
+            morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+            return MORPHO_NIL;
+        }
+        if (!mesh_getbarycentriccoordinates(m, g, id, x->elements, lambda->elements)) {
+            object_free((object *) lambda);
+            morpho_runtimeerror(v, MESH_BARYFAILED);
+            return MORPHO_NIL;
+        }
+
+        out=morpho_wrapandbind(v, (object *) lambda);
+    } else morpho_runtimeerror(v, MESH_BARYARGS);
+
+    return out;
+}
+
 /** Clones a mesh */
 value Mesh_clone(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
@@ -1289,20 +1371,21 @@ value Mesh_clone(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Mesh)
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Mesh_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SAVE_METHOD, Mesh_save, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MESH_VERTEXMATRIX_METHOD, Mesh_vertexmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MESH_SETVERTEXMATRIX_METHOD, Mesh_setvertexmatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MESH_VERTEXPOSITION_METHOD, Mesh_vertexposition, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MESH_SETVERTEXPOSITION_METHOD, Mesh_setvertexposition, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MESH_RESETCONNECTIVITY_METHOD, Mesh_resetconnectivity, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MESH_CONNECTIVITYMATRIX_METHOD, Mesh_connectivitymatrix, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MESH_ADDGRADE_METHOD, Mesh_addgrade, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MESH_REMOVEGRADE_METHOD, Mesh_removegrade, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MESH_ADDSYMMETRY_METHOD, Mesh_addsymmetry, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MESH_MAXGRADE_METHOD, Mesh_maxgrade, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_COUNT_METHOD, Mesh_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Mesh_clone, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Mesh_print, MORPHO_FN_IO),
+MORPHO_METHOD(MORPHO_SAVE_METHOD, Mesh_save, MORPHO_FN_IO),
+MORPHO_METHOD(MESH_VERTEXMATRIX_METHOD, Mesh_vertexmatrix, MORPHO_FN_PUREFN),
+MORPHO_METHOD(MESH_SETVERTEXMATRIX_METHOD, Mesh_setvertexmatrix, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MESH_VERTEXPOSITION_METHOD, Mesh_vertexposition, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MESH_SETVERTEXPOSITION_METHOD, Mesh_setvertexposition, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MESH_RESETCONNECTIVITY_METHOD, Mesh_resetconnectivity, MORPHO_FN_MUTATES),
+MORPHO_METHOD(MESH_CONNECTIVITYMATRIX_METHOD, Mesh_connectivitymatrix, MORPHO_FN_MUTATES|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MESH_ADDGRADE_METHOD, Mesh_addgrade, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MESH_REMOVEGRADE_METHOD, Mesh_removegrade, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MESH_ADDSYMMETRY_METHOD, Mesh_addsymmetry, MORPHO_FN_MUTATES|MORPHO_FN_REENTRANT|MORPHO_FN_THROWS),
+MORPHO_METHOD(MESH_BARYCENTRIC_METHOD, Mesh_barycentric, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MESH_MAXGRADE_METHOD, Mesh_maxgrade, MORPHO_FN_PUREFN),
+MORPHO_METHOD(MORPHO_COUNT_METHOD, Mesh_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD(MORPHO_CLONE_METHOD, Mesh_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -1316,7 +1399,7 @@ void mesh_initialize(void) {
     
     for (unsigned int i=0; i<mesh_nsections; i++) mesh_slength[i]=strlen(mesh_sections[i]);
 
-    builtin_addfunction(MESH_CLASSNAME, mesh_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(MESH_CLASSNAME, mesh_constructor, MORPHO_FN_CONSTRUCTOR|MORPHO_FN_ALLOCATES|MORPHO_FN_IO|MORPHO_FN_THROWS);
 
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
@@ -1337,6 +1420,9 @@ void mesh_initialize(void) {
     morpho_defineerror(MESH_INVLDID, ERROR_HALT, MESH_INVLDID_MSG);
     morpho_defineerror(MESH_CNNMTXARGS, ERROR_HALT, MESH_CNNMTXARGS_MSG);
     morpho_defineerror(MESH_ADDGRDARGS, ERROR_HALT, MESH_ADDGRDARGS_MSG);
+    morpho_defineerror(MESH_BARYARGS, ERROR_HALT, MESH_BARYARGS_MSG);
+    morpho_defineerror(MESH_BARYDIM, ERROR_HALT, MESH_BARYDIM_MSG);
+    morpho_defineerror(MESH_BARYFAILED, ERROR_HALT, MESH_BARYFAILED_MSG);
     morpho_defineerror(MESH_ADDGRDOOB, ERROR_HALT, MESH_ADDGRDOOB_MSG);
     morpho_defineerror(MESH_ADDSYMARGS, ERROR_HALT, MESH_ADDSYMARGS_MSG);
     morpho_defineerror(MESH_ADDSYMMSNGTRNSFRM, ERROR_HALT, MESH_ADDSYMMSNGTRNSFRM_MSG);

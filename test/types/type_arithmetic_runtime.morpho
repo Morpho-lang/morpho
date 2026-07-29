@@ -1,0 +1,13 @@
+// Runtime typecheck
+
+fn f(x) {
+    return x
+}
+
+{
+    Int b = 1 + f(1)
+
+    print b
+}
+
+// expect: 2

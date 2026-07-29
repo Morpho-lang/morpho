@@ -1,0 +1,15 @@
+// Retrieve type from upvalue 
+
+fn f(x) {
+    Int y = Int(x) 
+
+    fn g() {
+        Int z = y + 1
+        return z
+    }
+
+    return g
+}
+
+print f(1)() // expect: 2
+print f(2)() // expect: 3

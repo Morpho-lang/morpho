@@ -6,6 +6,7 @@
 
 #include "morpho.h"
 #include "classes.h"
+#include "common.h"
 
 /* **********************************************************************
  * Tuple objects
@@ -114,6 +115,47 @@ objecttuple *tuple_concatenate(objecttuple *a, objecttuple *b) {
     return new;
 }
 
+/** Reverses a tuple, returning a new tuple */
+objecttuple *tuple_reverse(objecttuple *tuple) {
+    objecttuple *new = object_newtuple(tuple->length, tuple->tuple);
+
+    if (new) {
+        unsigned int hlen = new->length / 2;
+        for (unsigned int i=0; i<hlen; i++) {
+            unsigned int j=new->length-i-1;
+            value swp = new->tuple[i];
+            new->tuple[i]=new->tuple[j];
+            new->tuple[j]=swp;
+        }
+    }
+
+    return new;
+}
+
+/** Rolls a tuple by a number of elements, returning a new tuple */
+objecttuple *tuple_roll(objecttuple *tuple, int nplaces) {
+    objecttuple *new=object_newtuple(tuple->length, NULL);
+
+    if (new) {
+        unsigned int N = tuple->length;
+        if (N==0) return new;
+
+        int n = abs(nplaces);
+        if (n>N) n = n % N;
+        unsigned int Np = N - n;
+
+        if (nplaces<0) {
+            memcpy(new->tuple, tuple->tuple+n, sizeof(value)*Np);
+            memcpy(new->tuple+Np, tuple->tuple, sizeof(value)*n);
+        } else {
+            memcpy(new->tuple+n, tuple->tuple, sizeof(value)*Np);
+            if (n>0) memcpy(new->tuple, tuple->tuple+Np, sizeof(value)*n);
+        }
+    }
+
+    return new;
+}
+
 /* -------------------------------------------------------
  * Slicing
  * ------------------------------------------------------- */
@@ -160,13 +202,8 @@ errorid array_to_tuple_error(objectarrayerror err) {
 
 /** Constructor function for tuples */
 value tuple_constructor(vm *v, int nargs, value *args) {
-    value out = MORPHO_NIL;
     objecttuple *new=object_newtuple(nargs, & MORPHO_GETARG(args, 0));
-    if (new) {
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    return out;
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 /** Find a tuple's length */
@@ -178,15 +215,31 @@ value Tuple_count(vm *v, int nargs, value *args) {
 
 /** Clones a tuple */
 value Tuple_clone(vm *v, int nargs, value *args) {
-    value out = MORPHO_NIL;
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
     objecttuple *new = object_newtuple(slf->length, slf->tuple);
     
-    if (new) {
-        out = MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Convert a tuple to a string */
+value Tuple_tostring(vm *v, int nargs, value *args) {
+    objecttuple *tuple=MORPHO_GETTUPLE(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+
+    varray_char buffer;
+    varray_charinit(&buffer);
+
+    varray_charadd(&buffer, "(", 1);
+    for (unsigned int i=0; i<tuple->length; i++) {
+        morpho_printtobuffer(v, tuple->tuple[i], &buffer);
+        if (i<tuple->length-1) varray_charadd(&buffer, ", ", 2);
+    }
+    varray_charadd(&buffer, ")", 1);
+
+    out = object_stringfromvarraychar(&buffer);
+    if (MORPHO_ISSTRING(out)) morpho_bindobjects(v, 1, &out);
+    varray_charclear(&buffer);
+
     return out;
 }
 
@@ -222,62 +275,165 @@ value Tuple_setindex(vm *v, int nargs, value *args) {
 value Tuple_enumerate(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
     value out=MORPHO_NIL;
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
-        if (n<0) {
-            out=MORPHO_INTEGER(slf->length);
+    if (n<0) {
+        out=MORPHO_INTEGER(slf->length);
+    } else {
+        if (n<slf->length) {
+            out=slf->tuple[n];
         } else {
-            if (n<slf->length) {
-                out=slf->tuple[n];
-            } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+            morpho_runtimeerror(v, VM_OUTOFBOUNDS);
         }
-    } else MORPHO_RAISE(v, ENUMERATE_ARGS);
+    }
 
     return out;
+}
+
+value Tuple_enumerate__err(vm *v, int nargs, value *args) {
+    MORPHO_RAISE(v, ENUMERATE_ARGS);
+    return MORPHO_NIL;
 }
 
 /** Joins two tuples together  */
 value Tuple_join(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
-    value out = MORPHO_NIL;
+    objecttuple *operand = MORPHO_GETTUPLE(MORPHO_GETARG(args, 0));
+    objecttuple *new = tuple_concatenate(slf, operand);
 
-    if (nargs==1 && MORPHO_ISTUPLE(MORPHO_GETARG(args, 0))) {
-        objecttuple *operand = MORPHO_GETTUPLE(MORPHO_GETARG(args, 0));
-        objecttuple *new = tuple_concatenate(slf, operand);
+    return morpho_wrapandbind(v, (object *) new);
+}
 
+value Tuple_join__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, LIST_ADDARGS);
+    return MORPHO_NIL;
+}
+
+/** Sort function for tuple_order */
+typedef struct {
+    unsigned int indx;
+    value val;
+} tupleorderstruct;
+
+/** Sort function for tuple_order */
+int tuple_orderfunction(const void *a, const void *b) {
+    return -morpho_comparevalue(((tupleorderstruct *) a)->val, ((tupleorderstruct *) b)->val);
+}
+
+/** Returns a tuple of indices giving the ordering of a tuple */
+objecttuple *tuple_order(objecttuple *tuple) {
+    tupleorderstruct *order = MORPHO_MALLOC(tuple->length*sizeof(tupleorderstruct));
+    objecttuple *new = NULL;
+
+    if (order) {
+        for (unsigned int i=0; i<tuple->length; i++) {
+            order[i].indx=i;
+            order[i].val=tuple->tuple[i];
+        }
+        qsort(order, tuple->length, sizeof(tupleorderstruct), tuple_orderfunction);
+
+        new=object_newtuple(tuple->length, NULL);
         if (new) {
-            out = MORPHO_OBJECT(new);
-            morpho_bindobjects(v, 1, &out);
+            for (unsigned int i=0; i<tuple->length; i++) {
+                new->tuple[i]=MORPHO_INTEGER(order[i].indx);
+            }
         }
 
-    } else morpho_runtimeerror(v, LIST_ADDARGS);
+        MORPHO_FREE(order);
+    }
 
-    return out;
+    return new;
+}
+
+/** Sorts the contents of a tuple, returning a new tuple */
+value Tuple_sort(vm *v, int nargs, value *args) {
+    objecttuple *src = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    
+    objecttuple *new = object_newtuple(src->length, src->tuple);
+    if (new) list_sortcontents(new->tuple, new->length);
+    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Sorts the contents of a tuple using a comparison function, returning a new tuple */
+value Tuple_sort_fn(vm *v, int nargs, value *args) {
+    objecttuple *src = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    
+    objecttuple *new=object_newtuple(src->length, src->tuple);
+    if (new) {
+        bool success=list_sortcontentswithfn(v, MORPHO_GETARG(args, 0), new->tuple, new->length);
+        if (!success) {
+            morpho_runtimeerror(v, LIST_SRTFN);
+            object_free((object *) new);
+            return MORPHO_NIL;
+        }
+    }
+    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Returns a tuple of indices that would sort the tuple self */
+value Tuple_order(vm *v, int nargs, value *args) {
+    objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    objecttuple *new=tuple_order(slf);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Returns a reversed copy of the tuple */
+value Tuple_reverse(vm *v, int nargs, value *args) {
+    objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    objecttuple *new=tuple_reverse(slf);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Rolls a tuple */
+value Tuple_roll(vm *v, int nargs, value *args) {
+    objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    int roll;
+    morpho_valuetoint(MORPHO_GETARG(args, 0), &roll);
+
+    objecttuple *new = tuple_roll(slf, roll);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value Tuple_roll__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, LIST_ADDARGS);
+    return MORPHO_NIL;
 }
 
 /** Tests if a tuple has a value as a member */
 value Tuple_ismember(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    return MORPHO_BOOL(tuple_ismember(slf, MORPHO_GETARG(args, 0)));
+}
 
-    if (nargs==1) {
-        return MORPHO_BOOL(tuple_ismember(slf, MORPHO_GETARG(args, 0)));
-    } else morpho_runtimeerror(v, ISMEMBER_ARG, 1, nargs);
-
+value Tuple_ismember__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, ISMEMBER_ARG, 1, nargs);
     return MORPHO_NIL;
 }
 
 MORPHO_BEGINCLASS(Tuple)
-MORPHO_METHOD(MORPHO_COUNT_METHOD, Tuple_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Tuple_clone, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_getindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Tuple_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Tuple_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_JOIN_METHOD, Tuple_join, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(LIST_ISMEMBER_METHOD, Tuple_ismember, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CONTAINS_METHOD, Tuple_ismember, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Tuple_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "String ()", Tuple_tostring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Tuple ()", Tuple_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_getindex, MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Tuple_setindex, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", Tuple_enumerate, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "Nil (...)", Tuple_enumerate__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Tuple (Tuple)", Tuple_join, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Nil (...)", Tuple_join__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Tuple (Int)", Tuple_roll, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Tuple (Float)", Tuple_roll, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Nil (...)", Tuple_roll__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Tuple ()", Tuple_sort, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(LIST_SORT_METHOD, "Tuple (Callable)", Tuple_sort_fn, MORPHO_FN_ALLOCATES|MORPHO_FN_REENTRANT|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(LIST_ORDER_METHOD, "Tuple ()", Tuple_order, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(LIST_REVERSE_METHOD, "Tuple ()", Tuple_reverse, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Bool (_)", Tuple_ismember, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(LIST_ISMEMBER_METHOD, "Nil (...)", Tuple_ismember__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Bool (_)", Tuple_ismember, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Nil (...)", Tuple_ismember__err, MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -291,8 +447,7 @@ void tuple_initialize(void) {
     objecttupletype=object_addtype(&objecttupledefn);
     
     // Locate the Object class to use as the parent class of Range
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Create tuple veneer class
     value tupleclass=builtin_addclass(TUPLE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Tuple), objclass);

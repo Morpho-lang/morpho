@@ -1,0 +1,7 @@
+// Multiple simultaneous declarations
+
+List a = [], b = [], c = []
+
+print a // expect: [  ]
+print b // expect: [  ]
+print c // expect: [  ]

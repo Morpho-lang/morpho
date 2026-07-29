@@ -46,9 +46,6 @@ typedef struct sobjectclass {
  * Class error messages
  * ------------------------------------------------------- */
 
-#define CLASS_INVK                        "ClssInvk"
-#define CLASS_INVK_MSG                    "Cannot invoke method '%s' on a class."
-
 /* -------------------------------------------------------
  * Class interface
  * ------------------------------------------------------- */
@@ -57,6 +54,7 @@ objectclass *object_newclass(value name);
 objectclass *morpho_lookupclass(value obj);
 
 bool class_linearize(objectclass *klass);
+bool class_comparedistance(objectclass *a, objectclass *b, int *out);
 
 void class_initialize(void);
 

@@ -1,0 +1,10 @@
+// Type violation in function from a power operation
+
+fn f() {
+    String u = ""
+
+    u = 2^2
+}
+
+f() 
+// expect error 'TypeErr'

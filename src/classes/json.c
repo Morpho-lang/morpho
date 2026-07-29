@@ -566,39 +566,46 @@ bool json_tostring(vm *v, value in, value *out) {
 
 value JSON_parse(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
-    if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
-        char *src = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
-        varray_value objects;
-        varray_valueinit(&objects);
-        error err;
-        error_init(&err);
-        
-        if (json_parse(src, &err, &out, &objects)) {
-            morpho_bindobjects(v, objects.count, objects.data);
-        } else {
-            morpho_runtimeerror(v, err.id);
-        }
-        varray_valueclear(&objects);
-    } else morpho_runtimeerror(v, JSON_PRSARGS);
+    char *src = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
+    varray_value objects;
+    varray_valueinit(&objects);
+    error err;
+    error_init(&err);
+    
+    if (json_parse(src, &err, &out, &objects)) {
+        morpho_bindobjects(v, objects.count, objects.data);
+    } else {
+        morpho_runtimeerror(v, err.id);
+    }
+    varray_valueclear(&objects);
     
     return out;
+}
+
+value JSON_parse__err(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, JSON_PRSARGS);
+    return MORPHO_NIL;
 }
 
 value JSON_tostring(vm *v, int nargs, value *args) {
     value out = MORPHO_NIL;
     
-    if (nargs==1) {
-        if (json_tostring(v, MORPHO_GETARG(args, 0), &out)) {
-            morpho_bindobjects(v, 1, &out);
-        }
+    if (json_tostring(v, MORPHO_GETARG(args, 0), &out)) {
+        morpho_bindobjects(v, 1, &out);
     }
     
     return out;
 }
 
+value JSON_tostring__err(vm *v, int nargs, value *args) {
+    return MORPHO_NIL;
+}
+
 MORPHO_BEGINCLASS(JSON)
-MORPHO_METHOD(JSON_PARSEMETHOD, JSON_parse, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_TOSTRING_METHOD, JSON_tostring, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(JSON_PARSEMETHOD, "(String)", JSON_parse, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(JSON_PARSEMETHOD, "(...)", JSON_parse__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "(_)", JSON_tostring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "(...)", JSON_tostring__err, MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -607,8 +614,7 @@ MORPHO_ENDCLASS
 
 void json_initialize(void) {
     // Locate the Object class to use as the parent class of JSON
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // JSON class
     builtin_addclass(JSON_CLASSNAME, MORPHO_GETCLASSDEFINITION(JSON), objclass);

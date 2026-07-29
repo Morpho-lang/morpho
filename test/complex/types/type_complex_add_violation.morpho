@@ -1,0 +1,6 @@
+// Check type detection for add 
+
+Complex a = 1im 
+var b = 1
+
+Float c = a + b // expect error 'TypeChk'

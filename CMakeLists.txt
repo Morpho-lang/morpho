@@ -23,6 +23,7 @@ option(MORPHO_GCSTRESSTEST "Stress tests the garbage collector" OFF)
 option(MORPHO_BUILD_LINALG "Builds with linear algebra" ON)
 option(MORPHO_BUILD_SPARSE "Builds with sparse matrix support" ON)
 option(MORPHO_BUILD_GEOMETRY "Builds with geometry library" ON)
+option(MORPHO_BUILD_PROFILER "Builds with profiler" ON)
 
 #-------------------------------------------------------------------------------
 # Process options
@@ -53,6 +54,11 @@ if(MORPHO_BUILD_GEOMETRY)
 target_compile_definitions(morpho PUBLIC MORPHO_INCLUDE_GEOMETRY)
 endif()
 
+# Build with profiler
+if(MORPHO_BUILD_PROFILER)
+target_compile_definitions(morpho PUBLIC _DEBUG_PROFILER)
+endif()
+
 #-------------------------------------------------------------------------------
 # BLAS and LAPACK
 #-------------------------------------------------------------------------------
@@ -64,7 +70,7 @@ message(STATUS "Searching for BLAS and LAPACK")
 # Currently we prefer LAPACKE 
 # TODO: Fix morpho source to select between lapack and lapacke
 find_library(LAPACK_LIBRARY
-    NAMES lapacke liblapacke lapack liblapack libopenblas
+    NAMES lapacke liblapacke lapack liblapack openblas libopenblas 
     HINTS 
         "C:\\Program Files\\Morpho\\lib\\"
 )
@@ -85,7 +91,7 @@ endif()
 # Find cblas.h header file 
 find_path(CBLAS_INCLUDE cblas.h 
           HINTS 
-            "C:\\Program Files\\Morpho\\include\\lapack")
+            "C:\\Program Files\\Morpho\\include\\openblas")
 
 # Add cblas headers to include folders
 target_include_directories(morpho PUBLIC ${CBLAS_INCLUDE})

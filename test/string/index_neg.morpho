@@ -1,0 +1,5 @@
+var s = "Hello"
+
+print s[-1]
+// expect Error 'IndxBnds'
+

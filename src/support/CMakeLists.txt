@@ -3,6 +3,7 @@ target_sources(morpho
         common.c      common.h
         extensions.c  extensions.h
         format.c      format.h
+        help.c        help.h 
         lex.c         lex.h
         memory.c      memory.h
         parse.c       parse.h
@@ -20,6 +21,7 @@ target_sources(morpho
         common.h
         extensions.h
         format.h
+        help.h
         lex.h
         memory.h
         parse.h

@@ -1,0 +1,8 @@
+// Type checking with sparse matrix operations
+
+Sparse m = Sparse([[1, 1, 5], [2, 2, 10]])
+Int val = m[1, 1]
+
+print val  // expect: 5
+
+

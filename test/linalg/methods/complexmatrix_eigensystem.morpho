@@ -1,0 +1,24 @@
+// Eigenvalues and eigenvectors
+
+var A = ComplexMatrix(2,2)
+A[0,0]=0im
+A[0,1]=im
+A[1,0]=im
+A[1,1]=0im
+
+var es=A.eigensystem() 
+print es
+// expect: ((0 + 1im, 0 - 1im), <ComplexMatrix>)
+
+print es[0]
+// expect: (0 + 1im, 0 - 1im)
+
+// Compare to analytical eigenvectors 
+var v = ComplexMatrix(2,2)
+v[0,0]=sqrt(2)/2 
+v[1,0]=sqrt(2)/2 
+v[0,1]=sqrt(2)/2
+v[1,1]=-sqrt(2)/2
+
+print abs((es[1]-v).sum()) < 1e-15
+// expect: true

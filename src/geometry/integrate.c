@@ -14,7 +14,7 @@
 #include "morpho.h"
 #include "classes.h"
 
-#include "matrix.h"
+#include "linalg.h"
 #include "sparse.h"
 #include "geometry.h"
 
@@ -24,7 +24,7 @@ bool integrate_recognizequantities(unsigned int nquantity, value *quantity, valu
             if (MORPHO_ISFLOAT(quantity[i])) {
                 out[i]=MORPHO_FLOAT(0);
             } else if (MORPHO_ISMATRIX(quantity[i])) {
-                out[i]=MORPHO_OBJECT(object_clonematrix(MORPHO_GETMATRIX(quantity[i])));
+                out[i]=MORPHO_OBJECT(matrix_clone(MORPHO_GETMATRIX(quantity[i])));
             } else return false;
         }
     }
@@ -84,7 +84,7 @@ void integrate_interpolatequantitiesline(unsigned int dim, double t, unsigned in
                          *out=(MORPHO_ISMATRIX(qout[i]) ? MORPHO_GETMATRIX(qout[i]): NULL);
             
             if (!out) {
-                out = object_clonematrix(m0);
+                out = matrix_clone(m0);
                 qout[i]=MORPHO_OBJECT(out);
             }
             
@@ -265,7 +265,7 @@ void integrate_interpolatequantitiestri(unsigned int dim, double *lambda, unsign
                          *out=(MORPHO_ISMATRIX(qout[i]) ? MORPHO_GETMATRIX(qout[i]): NULL);
             
             if (!out) {
-                out = object_clonematrix(m0);
+                out = matrix_clone(m0);
                 qout[i]=MORPHO_OBJECT(out);
             }
             
@@ -603,7 +603,7 @@ void integrate_interpolatequantitiesvol(unsigned int dim, double *lambda, unsign
                          *out=(MORPHO_ISMATRIX(qout[i]) ? MORPHO_GETMATRIX(qout[i]): NULL);
             
             if (!out) {
-                out = object_clonematrix(m0);
+                out = matrix_clone(m0);
                 qout[i]=MORPHO_OBJECT(out);
             }
             
@@ -2215,28 +2215,33 @@ int integrator_addelement(integrator *integrate, int *vids) {
 }
 
 /** Process the list of quantities given */
-void integrator_initializequantities(integrator *integrate, int nq, quantity *quantity) {
+bool integrator_initializequantities(integrator *integrate, int nq, quantity *quantity) {
     integrate->nquantity=nq;
     integrate->quantity=quantity;
     
     for (int i=0; i<nq; i++) {
+        if (!quantity[i].vals) return false;
         value q = quantity[i].vals[0]; // Take the first element from each quantity list as paradigmatic
         if (MORPHO_ISFLOAT(q)) {
             quantity[i].ndof=1;
             integrate->qval[i]=q;
         } else if (MORPHO_ISMATRIX(q)) {
             objectmatrix *m = MORPHO_GETMATRIX(q);
-            quantity[i].ndof=matrix_countdof(m);
+            quantity[i].ndof=(int) matrix_countdof(m);
             
-            objectmatrix *new = object_clonematrix(m); // Use a copy of the matrix
+            objectmatrix *new = matrix_clone(m); // Use a copy of the matrix
+            if (!new) return false;
             integrate->qval[i]=MORPHO_OBJECT(new);
-        } else return;
+        } else return false;
     }
+    return true;
 }
 
 /** Frees up any objects used in the quantities list */
 void integrator_finalizequantities(integrator *integrate) {
-    for (int i=0; i<integrate->nquantity; i++) morpho_freeobject(integrate->qval[i]);
+    for (int i=0; i<integrate->nquantity; i++) {
+        if (MORPHO_ISOBJECT(integrate->qval[i])) morpho_freeobject(integrate->qval[i]);
+    }
 }
 
 /** Retrieves the vertex pointers given an elementid.
@@ -2396,7 +2401,7 @@ bool integrator_sumquantityweighted(int n, double *wts, value *q, value *out) {
     } else if (MORPHO_ISMATRIX(q[0])) {
         objectmatrix *sum = MORPHO_GETMATRIX(*out);
         matrix_zero(sum);
-        for (int j=0; j<n; j++) matrix_accumulate(sum, wts[j], MORPHO_GETMATRIX(q[j]));
+        for (int j=0; j<n; j++) matrix_axpy(wts[j], MORPHO_GETMATRIX(q[j]), sum);
         success=true;
     }
     return success;
@@ -2768,7 +2773,7 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
     value qval[nquantity+1];
     integrate->qval=qval;
     
-    integrator_initializequantities(integrate, nquantity, quantity);
+    if (!integrator_initializequantities(integrate, nquantity, quantity)) return false;
     
     // Create first element, which corresponds to the reference element
     int vids[integrate->nbary];
@@ -2785,7 +2790,7 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
     quadratureworkitem work;
     work.weight = 1.0;
     work.elementid = elid;
-    integrator_quadrature(integrate, integrate->rule, &work); // Perform initial quadrature
+    if (!integrator_quadrature(integrate, integrate->rule, &work)) goto integrator_integrate_error; // Perform initial quadrature
     
     integrator_pushworkitem(integrate, &work);
     integrator_estimate(integrate); // Initial estimate
@@ -2802,7 +2807,9 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
         quadratureworkitem newitems[integrate->subdivide->nels];
         
         if (!integrator_subdivide(integrate, &work, &nels, newitems)) goto integrator_integrate_error;
-        for (int k=0; k<nels; k++) integrator_quadrature(integrate, integrate->rule, &newitems[k]);
+        for (int k=0; k<nels; k++) {
+            if (!integrator_quadrature(integrate, integrate->rule, &newitems[k])) goto integrator_integrate_error;
+        }
         
         // Error estimate
         integrator_sharpenerrorestimate(integrate, &work, nels, newitems);

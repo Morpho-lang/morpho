@@ -1,0 +1,34 @@
+// CG3 FunctionSpace in one dimension on a triangle
+
+import meshtools 
+
+var mb = MeshBuilder() 
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addedge([0,1])
+mb.addedge([1,2])
+mb.addedge([2,0])
+var m = mb.build() 
+
+var l = FiniteElementSpace("CG3", grade=1)
+
+var f = Field(m, fn (x,y,z) x^3 + y^3, finiteelementspace=l)
+
+print l.layout(f)
+// expect: [ 1 0 1 ]
+// expect: [ 1 1 0 ]
+// expect: [ 0 1 1 ]
+// expect: [ 1 0 0 ]
+// expect: [ 1 0 0 ]
+// expect: [ 0 1 0 ]
+// expect: [ 0 1 0 ]
+// expect: [ 0 0 1 ]
+// expect: [ 0 0 1 ]
+
+print f.shape()
+// expect: [ 1, 2 ]
+
+var a = 1/2 + 1/sqrt(2)
+print abs(LineIntegral(fn (x, u) u, f, method={ }).total(m) - a) < 1e-10
+// expect: true

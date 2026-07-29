@@ -34,6 +34,20 @@ Returns the angle `phi` associated with the polar representation of a complex nu
 
     print z.angle() 
 
+## Real
+[tagreal]: # (real)
+
+Returns the real part of a complex number:
+
+    print z.real()
+
+## Imag
+[tagimag]: # (imag)
+
+Returns the imaginary part of a complex number:
+
+    print z.imag()
+
 ## Conj
 [tagconjugate]: # (conjugate)
 [tagconj]: # (conj)
@@ -41,3 +55,21 @@ Returns the angle `phi` associated with the polar representation of a complex nu
 Returns the complex conjugate of a number:
 
     print z.conj() 
+
+## Abs
+[tagabs]: # (abs)
+
+Returns the magnitude of a complex number:
+
+    print z.abs()
+
+## ComplexMatrix
+[tagcomplexmatrix]: # (complexmatrix)
+
+The `ComplexMatrix` class provides complex-valued matrices. See also `Matrix`.
+
+Useful methods include:
+
+    print c.real()
+    print c.imag()
+    print c.conjTranspose()

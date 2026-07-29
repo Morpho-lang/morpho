@@ -27,6 +27,8 @@ The new field returned by `slicefield` lives on the sliced mesh. You can slice a
 
 You can perform multiple slices with the same `MeshSlicer` simply by calling `slice` again with a different plane.
 
+[showsubtopics]: # (subtopics)
+
 ## SlcEmpty
 [tagslcempty]: # (slcempty)
 

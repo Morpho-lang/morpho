@@ -1,0 +1,13 @@
+// Count elements in ComplexMatrix
+
+var A = ComplexMatrix(2,3)
+A[0,0]=1+1im
+A[0,1]=2+2im
+A[0,2]=3+3im
+A[1,0]=4+4im
+A[1,1]=5+5im
+A[1,2]=6+6im
+
+print A.count()
+// expect: 6
+

@@ -21,6 +21,65 @@ Each of these may be called with a mesh, a field and a selection.
 
 [showsubtopics]: # (subtopics)
 
+## Total
+[tagtotal]: # (total)
+
+The `total` method returns the value of a functional:
+
+    print fnl.total(mesh)
+
+You can also supply optional fields and a selection as appropriate for the functional.
+
+## Integrand
+[tagintegrand]: # (integrand)
+
+The `integrand` method returns the contribution from each element:
+
+    print fnl.integrand(mesh)
+
+## IntegrandForElement
+[tagintegrandforelement]: # (integrandforelement)
+
+Some functionals also provide an `integrandForElement` method that evaluates the integrand for a single element:
+
+    print fnl.integrandForElement(mesh, element)
+
+## Gradient
+[taggradient]: # (gradient)
+
+The `gradient` method returns the derivative of a functional with respect to vertex motion:
+
+    print fnl.gradient(mesh)
+
+## Fieldgradient
+[tagfieldgradient]: # (fieldgradient)
+
+Functionals that depend on a field may provide a `fieldgradient` method that returns the derivative with respect to field values:
+
+    print fnl.fieldgradient(mesh, f)
+
+## Hessian
+[taghessian]: # (hessian)
+
+Some functionals provide a `hessian` method:
+
+    print fnl.hessian(mesh)
+
+For example, a typical workflow for a field-dependent functional is
+
+    var value = fnl.total(mesh)
+    var gradx = fnl.gradient(mesh)
+    var gradf = fnl.fieldgradient(mesh, f)
+
+where `value` is the functional value, `gradx` is the derivative with respect to vertex positions and `gradf` is the derivative with respect to field values.
+
+For example, for a field-dependent functional:
+
+    var fnl = GradSq(phi)
+    print fnl.total(mesh)
+    print fnl.gradient(mesh)
+    print fnl.fieldgradient(mesh, phi)
+
 ## Length
 [taglength]: # (length)
 
@@ -282,7 +341,7 @@ See the `Functionals` entry for general information about functionals.
 
 The `AreaIntegral` functional computes the area integral of a function. You supply an integrand function that takes a position matrix as an argument.
 
-To compute integral(x*y) over an area element:
+To compute `integral(x*y)` over an area element:
 
     var la=AreaIntegral(fn (x) x[0]*x[1])
 
@@ -344,5 +403,24 @@ Manually set the coefficients and grade to operate on:
 
     lfh.a = 1; lfh.b = 1; lfh.c = 1; lfh.d = 1;
     lfh.grade = 2, lfh.phi0 = 0.5, lfh.phiref = 0.1
+
+See the `Functionals` entry for general information about functionals.
+
+## Jump
+[tagjump]: # (jump)
+
+The `Jump` functional computes an interface contribution over interior codimension-1 mesh elements. It evaluates your integrand on interfaces shared by exactly two parent elements and ignores boundary interfaces.
+
+Initialize a jump functional with an integrand and any fields it depends on:
+
+    var j = Jump(fn (x, phi) jumpdn(phi)^2, phi)
+
+The integrand receives the interface position `x` followed by the interpolated field values in the order supplied to `Jump`.
+
+Within a `Jump` integrand, the special function `jumpdn(field)` returns the jump in the normal derivative of a supplied field across the current interface.
+
+`Jump` also accepts the same optional integration settings as the integral functionals. In particular, the `method` dictionary may specify a `strategy` of `"centroid"` or `"quadrature"`:
+
+    var j = Jump(fn (x, phi) jumpdn(phi)^2, phi, method: {"strategy": "quadrature"})
 
 See the `Functionals` entry for general information about functionals.

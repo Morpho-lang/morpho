@@ -1,0 +1,16 @@
+fn f(x) {
+    if (true) {
+        // entry block becomes empty after folding
+    } else {
+        return 99
+    }
+
+    var i = 0
+    while (i < 3) {
+        i = i + 1
+    }
+
+    return i
+}
+
+print f(0) // expect: 3

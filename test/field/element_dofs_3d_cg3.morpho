@@ -1,0 +1,33 @@
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([0,0,1])
+mb.addvolume([0,1,2,3])
+var m = mb.build()
+m.addgrade(1)
+m.addgrade(2)
+m.addgrade(3)
+
+var cg3 = FiniteElementSpace("CG3", grade=3)
+var f = Field(m, fn (x,y,z) x^3 - x*y + 2*y*z + z^2, finiteelementspace=cg3)
+var dofs = f.elementDofs(0)
+
+var counts = [0, 0, 0, 0]
+var seen = Dictionary()
+for (dof in dofs) {
+    counts[dof[0]] += 1
+    seen[dof] = true
+}
+
+print dofs.count()
+// expect: 20
+
+print counts
+// expect: [ 4, 12, 4, 0 ]
+
+print seen.count()
+// expect: 20
+

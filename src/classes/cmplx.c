@@ -268,7 +268,7 @@ value complex_builtinceil(vm * v, objectcomplex *c) {
 #undef RET_DOUBLE
 
 #define COMPLEX_BUILTIN_BOOL(fcn,logicalop)\
-value complex_builtin##fcn(objectcomplex *c) {\
+value complex_builtin##fcn(vm *v, objectcomplex *c) {\
     bool val = fcn(creal(c->Z)) logicalop fcn(cimag(c->Z));\
     return MORPHO_BOOL(val);\
 }
@@ -362,33 +362,17 @@ complex_constructor_error:
 /** Gets the real part of a complex number */
 value Complex_getreal(vm *v, int nargs, value *args) {
     objectcomplex *c=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
-
-    value out = MORPHO_NIL;
-	if (nargs>0){
-		morpho_runtimeerror(v, COMPLEX_INVLDNARG);
-		return out;
-	}
-    
     double real;
     complex_getreal(c, &real);
-    out = MORPHO_FLOAT(real);
-    return out;
+    return MORPHO_FLOAT(real);
 }
 
 /** Gets the imaginary part of a complex number */
 value Complex_getimag(vm *v, int nargs, value *args) {
     objectcomplex *c=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
-
-    value out = MORPHO_NIL;
-	if (nargs>0){
-		morpho_runtimeerror(v, COMPLEX_INVLDNARG);
-		return out;
-	}
-    
     double imag;
     complex_getimag(c, &imag);
-    out = MORPHO_FLOAT(imag);
-    return out;
+    return MORPHO_FLOAT(imag);
 }
 
 /** Prints a complex */
@@ -402,19 +386,21 @@ value Complex_print(vm *v, int nargs, value *args) {
 }
 
 /** Complex add */
-value Complex_add(vm *v, int nargs, value *args) {
+value Complex_add__complex(vm *v, int nargs, value *args) {
+    objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
+    objectcomplex *b=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
+    
+    objectcomplex *new = object_newcomplex(0, 0);
+    if (new) complex_add(a, b, new);
+    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value Complex_add__x(vm *v, int nargs, value *args) {
     objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
     value out=MORPHO_NIL;
  
-    if (nargs==1 && MORPHO_ISCOMPLEX(MORPHO_GETARG(args, 0))) {
-        objectcomplex *b=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
-        
-        objectcomplex *new = object_newcomplex(0, 0);
-        if (new) {
-            out=MORPHO_OBJECT(new);
-            complex_add(a, b, new);
-        }
-    } else if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+    if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
         double val;
         if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
             objectcomplex *new = object_newcomplex(0,0);
@@ -423,7 +409,7 @@ value Complex_add(vm *v, int nargs, value *args) {
                 complex_add_real(a, val, new);
             }
         }
-    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
+    }
     
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
@@ -431,19 +417,21 @@ value Complex_add(vm *v, int nargs, value *args) {
 }
 
 /** Complex subtract */
-value Complex_sub(vm *v, int nargs, value *args) {
+value Complex_sub__complex(vm *v, int nargs, value *args) {
+    objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
+    objectcomplex *b=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
+    
+    objectcomplex *new = object_newcomplex(0, 0);
+    if (new) complex_sub(a, b, new);
+    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value Complex_sub__x(vm *v, int nargs, value *args) {
     objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
     value out=MORPHO_NIL;
  
-    if (nargs==1 && MORPHO_ISCOMPLEX(MORPHO_GETARG(args, 0))) {
-        objectcomplex *b=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
-        
-        objectcomplex *new = object_newcomplex(0, 0);
-        if (new) {
-            out=MORPHO_OBJECT(new);
-            complex_sub(a, b, new);
-        }
-    } else if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+    if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
         double val;
         if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
             objectcomplex *new = object_newcomplex(0,0);
@@ -452,7 +440,7 @@ value Complex_sub(vm *v, int nargs, value *args) {
                 complex_add_real(a, -val, new);
             }
         }
-    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
+    }
     
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
@@ -460,11 +448,11 @@ value Complex_sub(vm *v, int nargs, value *args) {
 }
 
 /** Right subtract */
-value Complex_subr(vm *v, int nargs, value *args) {
+value Complex_subr__x(vm *v, int nargs, value *args) {
     objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
     value out=MORPHO_NIL;
  
-    if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+    if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
         double val;
         if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
             objectcomplex *new = object_clonecomplex(a);
@@ -475,7 +463,7 @@ value Complex_subr(vm *v, int nargs, value *args) {
                 complex_add_real(new, val, new);
             }
         }
-    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
+    }
     
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
@@ -483,19 +471,21 @@ value Complex_subr(vm *v, int nargs, value *args) {
 }
 
 /** Complex multiply */
-value Complex_mul(vm *v, int nargs, value *args) {
+value Complex_mul__complex(vm *v, int nargs, value *args) {
+    objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
+    objectcomplex *b=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
+    
+    objectcomplex *new = object_newcomplex(0, 0);
+    if (new) complex_mul(a, b, new);
+    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value Complex_mul__x(vm *v, int nargs, value *args) {
     objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
     value out=MORPHO_NIL;
  
-    if (nargs==1 && MORPHO_ISCOMPLEX(MORPHO_GETARG(args, 0))) {
-        objectcomplex *b=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
-        
-        objectcomplex *new = object_newcomplex(0, 0);
-        if (new) {
-            out=MORPHO_OBJECT(new);
-            complex_mul(a, b, new);
-        }
-    } else if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+    if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
         double val;
         if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
             objectcomplex *new = object_newcomplex(0,0);
@@ -504,7 +494,7 @@ value Complex_mul(vm *v, int nargs, value *args) {
                 complex_mul_real(a, val, new);
             }
         }
-    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
+    }
     
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
@@ -512,19 +502,21 @@ value Complex_mul(vm *v, int nargs, value *args) {
 }
 
 /** Complex divide */
-value Complex_div(vm *v, int nargs, value *args) {
+value Complex_div__complex(vm *v, int nargs, value *args) {
+    objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
+    objectcomplex *b=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
+    
+    objectcomplex *new = object_newcomplex(0, 0);
+    if (new) complex_div(a, b, new);
+    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value Complex_div__x(vm *v, int nargs, value *args) {
     objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
     value out=MORPHO_NIL;
  
-    if (nargs==1 && MORPHO_ISCOMPLEX(MORPHO_GETARG(args, 0))) {
-        objectcomplex *b=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
-        
-        objectcomplex *new = object_newcomplex(0, 0);
-        if (new) {
-            out=MORPHO_OBJECT(new);
-            complex_div(a, b, new);
-        }
-    } else if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+    if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
         double val;
         if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
             objectcomplex *new = object_newcomplex(0,0);
@@ -533,7 +525,7 @@ value Complex_div(vm *v, int nargs, value *args) {
                 complex_mul_real(a, 1.0/val, new);
             }
         }
-    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
+    }
     
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
@@ -541,12 +533,11 @@ value Complex_div(vm *v, int nargs, value *args) {
 }
 
 /** Complex right divide */
-value Complex_divr(vm *v, int nargs, value *args) {
-    // this gets called when we divide a nonobject (number) by a complex number
+value Complex_divr__x(vm *v, int nargs, value *args) {
     objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
     value out=MORPHO_NIL;
  
-    if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
+    if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
         double val;
         if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
 
@@ -559,27 +550,27 @@ value Complex_divr(vm *v, int nargs, value *args) {
                 morpho_bindobjects(v, 1, &out);
             }
         } else UNREACHABLE("Number did not return float value");
-    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
+    }
     
     return out;
 }
 
 /** Complex exponentiation */
-value Complex_power(vm *v, int nargs, value *args) {
+value Complex_power__complex(vm *v, int nargs, value *args) {
+    objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
+    objectcomplex *b=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
+    
+    objectcomplex *new = object_newcomplex(0, 0);
+    if (new) complex_cpower(a, b, new);
+    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value Complex_power__x(vm *v, int nargs, value *args) {
     objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
     value out=MORPHO_NIL;
 
-    if (nargs==1 && MORPHO_ISCOMPLEX(MORPHO_GETARG(args, 0))) {
-        // raise a complex number to a complex power
-        objectcomplex *b=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
-        
-        objectcomplex *new = object_newcomplex(0, 0);
-        if (new) {
-            out=MORPHO_OBJECT(new);
-            complex_cpower(a, b, new);
-        }
-    } else if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
-        // raise complex power to a number
+    if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
         double val;
         if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
             objectcomplex *new = object_newcomplex(0,0);
@@ -588,7 +579,7 @@ value Complex_power(vm *v, int nargs, value *args) {
                 complex_power(a, val, new);
             }
         }
-    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
+    }
     
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
@@ -596,21 +587,21 @@ value Complex_power(vm *v, int nargs, value *args) {
 }
 
 /** Complex right exponentiation */
-value Complex_powerr(vm *v, int nargs, value *args) {
+value Complex_powerr__complex(vm *v, int nargs, value *args) {
+    objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
+    objectcomplex *b=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
+    
+    objectcomplex *new = object_newcomplex(0, 0);
+    if (new) complex_cpower(a, b, new);
+    
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value Complex_powerr__x(vm *v, int nargs, value *args) {
     objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
     value out=MORPHO_NIL;
 
-    if (nargs==1 && MORPHO_ISCOMPLEX(MORPHO_GETARG(args, 0))) {
-        // raise a complex number to a complex power
-        objectcomplex *b=MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0));
-        
-        objectcomplex *new = object_newcomplex(0, 0);
-        if (new) {
-            out=MORPHO_OBJECT(new);
-            complex_cpower(a, b, new);
-        }
-    } else if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
-        // raise a number to a complex power
+    if (MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
         double val;
         if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &val)) {
             objectcomplex *new = object_newcomplex(val,0);
@@ -619,12 +610,11 @@ value Complex_powerr(vm *v, int nargs, value *args) {
                 complex_cpower(new, a, new);
             }
         }
-    } else morpho_runtimeerror(v, COMPLEX_ARITHARGS);
+    }
     
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     
     return out;
-
 }
 
 /** Angle of a complex number  */
@@ -634,6 +624,8 @@ value Complex_angle(vm *v, int nargs, value *args) {
     complex_angle(a, &val);
     return MORPHO_FLOAT(val);
 }
+
+/** Absolute value of a complex number  */
 value Complex_abs(vm *v, int nargs, value *args) {
     objectcomplex *a=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
     double val;
@@ -669,23 +661,31 @@ value Complex_clone(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(ComplexNum)
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Complex_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ADD_METHOD, Complex_add, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SUB_METHOD, Complex_sub, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_MUL_METHOD, Complex_mul, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_DIV_METHOD, Complex_div, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ADDR_METHOD, Complex_add, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SUBR_METHOD, Complex_subr, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_MULR_METHOD, Complex_mul, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_DIVR_METHOD, Complex_divr, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_POW_METHOD, Complex_power, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_POWR_METHOD, Complex_powerr, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(COMPLEX_ANGLE_METHOD, Complex_angle, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(COMPLEX_CONJUGATE_METHOD, Complex_conjugate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(COMPLEX_REAL_METHOD, Complex_getreal, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(COMPLEX_IMAG_METHOD, Complex_getimag, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(COMPLEX_ABS_METHOD, Complex_abs, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Complex_clone, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Complex_print, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Complex (Complex)", Complex_add__complex, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Complex (_)", Complex_add__x, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Complex (Complex)", Complex_sub__complex, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Complex (_)", Complex_sub__x, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "Complex (Complex)", Complex_mul__complex, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "Complex (_)", Complex_mul__x, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "Complex (Complex)", Complex_div__complex, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "Complex (_)", Complex_div__x, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Complex (Complex)", Complex_add__complex, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Complex (_)", Complex_add__x, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "Complex (_)", Complex_subr__x, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "Complex (Complex)", Complex_mul__complex, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "Complex (_)", Complex_mul__x, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIVR_METHOD, "Complex (_)", Complex_divr__x, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_POW_METHOD, "Complex (Complex)", Complex_power__complex, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_POW_METHOD, "Complex (_)", Complex_power__x, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_POWR_METHOD, "Complex (Complex)", Complex_powerr__complex, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_POWR_METHOD, "Complex (_)", Complex_powerr__x, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(COMPLEX_ANGLE_METHOD, "Float ()", Complex_angle, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(COMPLEX_CONJUGATE_METHOD, "Complex ()", Complex_conjugate, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(COMPLEX_REAL_METHOD, "Float ()", Complex_getreal, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(COMPLEX_IMAG_METHOD, "Float ()", Complex_getimag, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(COMPLEX_ABS_METHOD, "Float ()", Complex_abs, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Complex ()", Complex_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -697,10 +697,9 @@ void complex_initialize(void) {
     objectcomplextype=object_addtype(&objectcomplexdefn);
     
     // Complex constructor function
-    morpho_addfunction(COMPLEX_CLASSNAME, COMPLEX_CLASSNAME " (...)", complex_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(COMPLEX_CLASSNAME, COMPLEX_CLASSNAME " (_,_)", complex_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
     
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Define Complex class
     value complexclass=builtin_addclass(COMPLEX_CLASSNAME, MORPHO_GETCLASSDEFINITION(ComplexNum), objclass);

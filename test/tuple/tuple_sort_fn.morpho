@@ -1,0 +1,14 @@
+// Tuple sort with comparison function
+
+fn cmp(a, b) {
+  return -(a-b)
+}
+
+var a = ( 4, 3, 2, 7, 8, 1, 10, 9, 6, 5 )
+var b = a.sort(cmp)
+
+print b
+// expect: (10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
+
+print a==b 
+// expect: false

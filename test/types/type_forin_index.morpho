@@ -1,0 +1,10 @@
+// Index variable is correctly typed in for..in loop
+
+for (x, k in [1,2,3]) {
+    Int i = k 
+    print i 
+}
+
+// expect: 0
+// expect: 1
+// expect: 2

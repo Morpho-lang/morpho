@@ -1,0 +1,25 @@
+// CG3 FunctionSpace hessian in one dimension
+
+import meshtools
+
+var m = LineMesh(fn (u) [u,0,0], 0..1:0.5)
+
+var fe = FiniteElementSpace("CG3", grade=1)
+var f = Field(m, fn (x,y,z) x^3 + 2*x^2 + 3*x + 4, finiteelementspace=fe)
+
+var out = true
+
+fn integrand(x, q) {
+    var h = hess(q)
+    var ex = Matrix([[6*x[0] + 4, 0, 0],
+                     [0, 0, 0],
+                     [0, 0, 0]])
+    if ((h-ex).norm() > 1e-8) out = false
+    return 0
+}
+
+print LineIntegral(integrand, f, method={}).total(m)
+// expect: 0
+
+print out
+// expect: true

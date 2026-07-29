@@ -1,0 +1,62 @@
+import meshtools
+
+fn point(lambda, vids, verts) {
+  var x = lambda[0]*verts.column(vids[0])
+  for (j in 1...lambda.count()) x += lambda[j]*verts.column(vids[j])
+  return x
+}
+
+fn exact(x) {
+  return x[0]^3 - 0.5*x[0]*x[1] + 2*x[1]^2
+}
+
+fn preservesfield(field, oldfield, oldmesh) {
+  var mesh = field.mesh()
+  var fespace = field.finiteElementSpace()
+  var verts = mesh.vertexmatrix()
+  var faces = mesh.connectivitymatrix(0, 2)
+  var nodes = fespace.nodeCoords()
+
+  for (fid in 0...mesh.count(2)) {
+    var vids = faces.rowindices(fid)
+    for (i in 0...fespace.count()) {
+      var lambda = nodes.column(i)
+      var x = point(lambda, vids, verts)
+      var oldlambda = oldmesh.barycentric(fespace.grade(), 0, x)
+      var expected = oldfield.evalElement(0, oldlambda)
+      var val = field.evalElement(fid, lambda)
+      if (abs(val-expected)>1e-10) return false
+    }
+  }
+
+  return true
+}
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+m.addgrade(1)
+
+var fespace = FiniteElementSpace("CG3", grade=2)
+var f = Field(m, fn (x,y) exact([x,y]), finiteelementspace=fespace)
+var oldm = m
+var oldf = f
+var mr = MeshRefiner([m, f])
+var refmap = mr.refine()
+
+m = refmap[m]
+f = refmap[f]
+
+print m.count(0)==6
+// expect: true
+print m.count(1)==9
+// expect: true
+print m.count(2)==4
+// expect: true
+print f.shape()[0]==1 && f.shape()[1]==2 && f.shape()[2]==1
+// expect: true
+print preservesfield(f, oldf, oldm)
+// expect: true

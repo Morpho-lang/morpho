@@ -1,0 +1,14 @@
+var str = "Hi Hi Hello \U0001F98B"
+print str.count()
+// expect: 13
+
+print str.substring(0,-4)
+// expect: 
+print str.substring(0,4)
+// expect: Hi H
+print str.substring(0,13)
+// expect: Hi Hi Hello 🦋
+print str.substring(0,20)
+// expect: Hi Hi Hello 🦋
+print str.substring(-2,5)
+// expect: Hi Hi

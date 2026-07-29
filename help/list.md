@@ -80,12 +80,14 @@ This function should return a negative value if `a<b`, a positive value if `a>b`
 ## Order
 [tagorder]: # (order)
 
-Returns a list of indices that would, if used in order, would sort a list. For example
+Returns a tuple of indices that would, if used in order, sort a list, without modifying the original list. For example
 
     var list = [2,3,1]
-    print list.order() // expect: [2,0,1]
+    print list.order() // expect: (2,0,1)
 
-would produce `[2,0,1]`
+would produce `(2,0,1)`
+
+In contrast to `sort`, `order` does not modify the list.
 
 ## Remove
 [tagremove]: # (remove)
@@ -103,13 +105,13 @@ Tests if a value is a member of a list:
     var list = [1,2,3]
     print list.ismember(1) // expect: true
 
-## Add
-[tagadd]: # (add)
+## Join
+[tagjoin]: # (join)
 
 Join two lists together:
 
     var l1 = [1,2,3], l2 = [4, 5, 6]
-    print l1+l2 // expect: [1,2,3,4,5,6]
+    print l1.join(l2) // expect: [1,2,3,4,5,6]
 
 ## Tuples
 [tagtuples]: # (tuples)

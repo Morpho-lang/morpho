@@ -174,3 +174,22 @@ is equivalent to:
 The `clss` method is used to get the class to which an object belongs. 
 
     print a.clss() 
+
+## Superclass
+[tagsuperclass]: # (superclass)
+
+The `superclass` method returns the superclass of an object or class:
+
+    print a.superclass()
+
+## Serialize
+[tagserialize]: # (serialize)
+
+The `serialize` method is provided as part of the base `Object` interface for objects that support serialization.
+
+## Linearization
+[taglinearization]: # (linearization)
+
+The `linearization` method returns a list describing the class linearization used for method lookup:
+
+    print a.linearization()

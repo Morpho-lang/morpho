@@ -1,0 +1,35 @@
+// Check lowering a CG3 tetrahedral field to its boundary faces.
+
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0, 0, 0])
+mb.addvertex([2, 0, 0])
+mb.addvertex([0, 3, 0])
+mb.addvertex([0, 0, 5])
+mb.addvolume([0, 1, 2, 3])
+
+var m = mb.build()
+m.addgrade(1)
+m.addgrade(2)
+
+var bnd = Selection(m, boundary=true)
+
+var fe = FiniteElementSpace("CG3", grade=3)
+
+fn exact(x, y, z) {
+    return x^3 + 2*x^2*y + 3*x*y^2 + 5*y^3 +
+           7*x^2*z + 11*x*y*z + 13*y^2*z +
+           17*x*z^2 + 19*y*z^2 + 23*z^3 +
+           29*x + 31*y + 37*z
+}
+
+var f = Field(m, fn (x, y, z) exact(x, y, z), finiteelementspace=fe)
+
+var err = AreaIntegral(fn (x, q) {
+    var ex = exact(x[0], x[1], x[2])
+    return (q-ex)^2
+}, f, method={}).total(m, bnd)
+
+print abs(err) < 1e-10
+// expect: true

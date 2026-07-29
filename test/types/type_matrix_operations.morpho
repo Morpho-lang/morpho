@@ -1,0 +1,12 @@
+// Type checking with matrix operations
+
+Matrix m1 = Matrix(2, 2)
+m1[0,0] = 1
+m1[0,1] = 2
+m1[1,0] = 3
+m1[1,1] = 4
+
+Matrix m2 = m1 + m1
+Float val = m2[0,0]
+
+print val  // expect: 2

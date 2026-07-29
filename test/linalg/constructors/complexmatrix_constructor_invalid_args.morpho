@@ -1,0 +1,5 @@
+// ComplexMatrix constructor with invalid arguments
+
+// Try to construct with invalid argument types
+print ComplexMatrix("invalid")
+// expect error 'MltplDsptchFld'

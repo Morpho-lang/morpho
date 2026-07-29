@@ -58,11 +58,7 @@ void object_init(object *obj, objecttype type) {
 /** Frees an object */
 void object_free(object *obj) {
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-    if (obj) {
-        fprintf(stderr, "Free object %p of type %d ", (void *) obj, obj->type);
-        morpho_printvalue(NULL, MORPHO_OBJECT(obj));
-        fprintf(stderr, "\n");
-    }
+    if (obj) fprintf(stderr, "Free object %p of type %d.\n", (void *) obj, obj->type);
 #endif
     if (object_getdefn(obj)->freefn) object_getdefn(obj)->freefn(obj);
     MORPHO_FREE(obj);
@@ -131,11 +127,11 @@ void morpho_freeobject(value val) {
  * ********************************************************************** */
 
 /** @brief Sets the veneer class for a particular object type */
-void object_setveneerclass(objecttype type, value class) {
+void object_setveneerclass(objecttype type, value klass) {
     if (_objectdefns[type].veneer!=NULL) {
         UNREACHABLE("Veneer class redefined.\n");
     }
-    _objectdefns[type].veneer=(object *) MORPHO_GETCLASS(class);
+    _objectdefns[type].veneer=(object *) MORPHO_GETCLASS(klass);
 }
 
 /** @brief Gets the veneer for a particular object type */

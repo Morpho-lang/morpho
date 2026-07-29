@@ -1,0 +1,18 @@
+// Multiply two ComplexMatrices
+
+var A = ComplexMatrix(2,2)
+A[0,0]=1+1im
+A[0,1]=2+2im
+A[1,0]=3+3im
+A[1,1]=4+4im
+
+var B = ComplexMatrix(2,2)
+B[0,0]=1
+B[0,1]=1im
+B[1,0]=-1im
+B[1,1]=1
+
+print A * B
+// expect: [ 3 - 1im 1 + 3im ]
+// expect: [ 7 - 1im 1 + 7im ]
+

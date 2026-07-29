@@ -59,7 +59,7 @@ void object_arrayinit(objectarray *array, unsigned int ndim, unsigned int *dim) 
     /* Store the size of the object for convenient access */
     array->nelements=nel;
 
-    /* Arrays are initialized to nil. */
+    /* Arrays are initialized to (float) 0.0. */
 #ifdef MORPHO_NAN_BOXING
     memset(array->values, 0, sizeof(value)*nel);
 #else
@@ -180,7 +180,7 @@ void array_print(vm *v, objectarray *a) {
 errorid array_error(objectarrayerror err) {
     switch (err) {
         case ARRAY_OUTOFBOUNDS: return VM_OUTOFBOUNDS;
-        case ARRAY_WRONGDIM: return VM_ARRAYWRONGDIM;
+        case ARRAY_WRONGDIM: return ARRAY_DIMENSION;
         case ARRAY_NONINTINDX: return VM_NONNUMINDX;
         case ARRAY_ALLOC_FAILED: return ERROR_ALLOCATIONFAILED;
         case ARRAY_OK: UNREACHABLE("array_error called incorrectly.");
@@ -193,9 +193,9 @@ errorid array_error(objectarrayerror err) {
 errorid array_to_matrix_error(objectarrayerror err) {
 #ifdef MORPHO_INCLUDE_LINALG
     switch (err) {
-        case ARRAY_OUTOFBOUNDS: return MATRIX_INDICESOUTSIDEBOUNDS;
-        case ARRAY_WRONGDIM: return MATRIX_INVLDNUMINDICES;
-        case ARRAY_NONINTINDX: return MATRIX_INVLDINDICES;
+        case ARRAY_OUTOFBOUNDS: return LINALG_INDICESOUTSIDEBOUNDS;
+        case ARRAY_WRONGDIM: return ARRAY_DIMENSION;
+        case ARRAY_NONINTINDX: return ARRAY_INVLDINDICES;
         case ARRAY_ALLOC_FAILED: return ERROR_ALLOCATIONFAILED;
         case ARRAY_OK: UNREACHABLE("array_to_matrix_error called incorrectly.");
     }
@@ -457,7 +457,7 @@ value array_constructor(vm *v, int nargs, value *args) {
         new = array_constructfromlist(ndim, dim, MORPHO_GETLIST(initializer));
         if (!new) morpho_runtimeerror(v, ARRAY_CMPT);
     } else {
-        morpho_runtimeerror(v, ARRAY_ARGS);
+        morpho_runtimeerror(v, ARRAY_INIT);
     }
 
     // Bind the new array to the VM
@@ -565,19 +565,17 @@ value Array_dimensions(vm *v, int nargs, value *args) {
 }
 
 /** Enumerate members of an array */
-value Array_enumerate(vm *v, int nargs, value *args) {
+value Array_enumerate__int(vm *v, int nargs, value *args) {
     objectarray *slf = MORPHO_GETARRAY(MORPHO_SELF(args));
     value out=MORPHO_NIL;
 
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
-        if (n<0) {
-            out=MORPHO_INTEGER(slf->nelements);
-        } else if (n<slf->nelements) {
-            out=slf->values[n];
-        } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
-    } else MORPHO_RAISE(v, ENUMERATE_ARGS);
+    if (n<0) {
+        out=MORPHO_INTEGER(slf->nelements);
+    } else if (n<slf->nelements) {
+        out=slf->values[n];
+    } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
 
     return out;
 }
@@ -597,13 +595,13 @@ value Array_clone(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Array)
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Array_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_COUNT_METHOD, Array_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(ARRAY_DIMENSIONS_METHOD, Array_dimensions, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Array_getindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Array_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Array_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Array_clone, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Array_print, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Array_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(ARRAY_DIMENSIONS_METHOD, "List ()", Array_dimensions, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Array_getindex, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Array_setindex, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", Array_enumerate__int, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Array ()", Array_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -616,12 +614,11 @@ void array_initialize(void) {
     // Create array object type
     objectarraytype=object_addtype(&objectarraydefn);
     
-    // Locate the Object class to use as the parent class of Array
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
-    
     // Array constructor function
     morpho_addfunction(ARRAY_CLASSNAME, ARRAY_CLASSNAME " (...)", array_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    
+    // Locate the Object class to use as the parent class of Array
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Create Array veneer class
     value arrayclass=builtin_addclass(ARRAY_CLASSNAME, MORPHO_GETCLASSDEFINITION(Array), objclass);
@@ -631,4 +628,6 @@ void array_initialize(void) {
     morpho_defineerror(ARRAY_ARGS, ERROR_HALT, ARRAY_ARGS_MSG);
     morpho_defineerror(ARRAY_INIT, ERROR_HALT, ARRAY_INIT_MSG);
     morpho_defineerror(ARRAY_CMPT, ERROR_HALT, ARRAY_CMPT_MSG);
+    morpho_defineerror(ARRAY_DIMENSION, ERROR_HALT, ARRAY_DIMENSION_MSG);
+    morpho_defineerror(ARRAY_INVLDINDICES, ERROR_HALT, ARRAY_INVLDINDICES_MSG);
 }

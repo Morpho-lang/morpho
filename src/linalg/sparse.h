@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include "object.h"
 #include "morpho.h"
-#include "matrix.h"
+#include "linalg.h"
 
 /* -------------------------------------------------------
  * Sparse objects

@@ -1,0 +1,8 @@
+// Test setworkingfolder 
+
+var a = System.workingfolder()
+System.setworkingfolder(a)
+var b = System.workingfolder()
+
+print (a==b)
+// expect: true

@@ -1,0 +1,14 @@
+// Type checking with recursive functions
+
+fn factorial(Int n) {
+    if (n <= 1) {
+        return 1
+    }
+    Int result = n * factorial(n - 1)
+    return result
+}
+
+Int fact5 = factorial(5)
+print fact5  // expect: 120
+
+

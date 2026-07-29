@@ -1,0 +1,84 @@
+import meshtools
+
+fn point(lambda, vids, verts) {
+  var x = lambda[0]*verts.column(vids[0])
+  for (j in 1...lambda.count()) x += lambda[j]*verts.column(vids[j])
+  return x
+}
+
+fn exact(x) {
+  return x[0]^3 - 0.5*x[0]*x[1] + 2*x[1]^2 + x[2]^3 - x[0]*x[2] + x[1]*x[2]
+}
+
+fn contains(lambda, tol=1e-10) {
+  for (l in lambda) {
+    if (l<-tol || l>1+tol) return false
+  }
+  return true
+}
+
+fn coarsevalue(field, mesh, x) {
+  for (cid in 0...mesh.count(3)) {
+    var lambda = mesh.barycentric(3, cid, x)
+    if (contains(lambda)) return field.evalElement(cid, lambda)
+  }
+  return nil
+}
+
+fn preservesfield(field, oldfield, oldmesh) {
+  var mesh = field.mesh()
+  var fespace = field.finiteElementSpace()
+  var verts = mesh.vertexmatrix()
+  var cells = mesh.connectivitymatrix(0, 3)
+  var nodes = fespace.nodeCoords()
+
+  for (cid in 0...mesh.count(3)) {
+    var vids = cells.rowindices(cid)
+    for (i in 0...fespace.count()) {
+      var lambda = nodes.column(i)
+      var x = point(lambda, vids, verts)
+      var expected = coarsevalue(oldfield, oldmesh, x)
+      if (expected==nil) return false
+      var val = field.evalElement(cid, lambda)
+      if (abs(val-expected)>1e-10) return false
+    }
+  }
+
+  return true
+}
+
+var mb = MeshBuilder()
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([0,0,1])
+mb.addvertex([0,0,-1])
+mb.addvolume([0,1,2,3])
+mb.addvolume([0,1,2,4])
+var m = mb.build()
+m.addgrade(1)
+m.addgrade(2)
+m.addgrade(3)
+
+var fespace = FiniteElementSpace("CG3", grade=3)
+var f = Field(m, fn (x,y,z) exact([x,y,z]), finiteelementspace=fespace)
+var oldm = m
+var oldf = f
+var mr = MeshRefiner([m, f])
+var refmap = mr.refine()
+
+m = refmap[m]
+f = refmap[f]
+
+print m.count(0)==14
+// expect: true
+print m.count(1)==41
+// expect: true
+print m.count(2)==44
+// expect: true
+print m.count(3)==16
+// expect: true
+print f.shape()[0]==1 && f.shape()[1]==2 && f.shape()[2]==1 && f.shape()[3]==0
+// expect: true
+print preservesfield(f, oldf, oldm)
+// expect: true

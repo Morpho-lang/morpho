@@ -1,0 +1,4 @@
+// You can not add extra arguments to a function
+
+print "Hello world".split(" ", 2)
+// expect error 'MltplDsptchFld'

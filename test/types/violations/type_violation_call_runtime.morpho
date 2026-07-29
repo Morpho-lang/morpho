@@ -1,0 +1,8 @@
+// Assign result of a function to a type protected variable
+
+fn idem(x) { return x }
+
+{
+    Int a = idem(1.2)
+}
+// expect error 'TypeChk'

@@ -159,30 +159,28 @@ value range_invldconstructor(vm *v, int nargs, value *args) {
 /** Gets a specified element from a range */
 value Range_getindex(vm *v, int nargs, value *args) {
     objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
-
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
-        if (n<slf->nsteps) return range_iterate(slf, n);
-        else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    
+    if (n<0 || n>=slf->nsteps) {
+        morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+        return MORPHO_NIL;
     }
-
-    return MORPHO_SELF(args);
+    
+    return range_iterate(slf, n);
 }
 
 /** Enumerate members of a range */
 value Range_enumerate(vm *v, int nargs, value *args) {
     objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
-
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
-        if (n<0) return MORPHO_INTEGER(slf->nsteps);
-        else return range_iterate(slf, n);
-    } else MORPHO_RAISE(v, ENUMERATE_ARGS);
-
-    return out;
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    
+    if (n<0) return MORPHO_INTEGER(slf->nsteps);
+    if (n>=slf->nsteps) {
+        morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+        return MORPHO_NIL;
+    }
+    
+    return range_iterate(slf, n);
 }
 
 /** Count number of items in a range */
@@ -208,11 +206,11 @@ value Range_clone(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Range)
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Range_getindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Range_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_COUNT_METHOD, Range_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Range_clone, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, " (Int)", Range_getindex, MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", Range_enumerate, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Range_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Range ()", Range_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -226,8 +224,7 @@ void range_initialize(void) {
     objectrangetype=object_addtype(&objectrangedefn);
     
     // Locate the Object class to use as the parent class of Range
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Create range veneer class
     value rangeclass=builtin_addclass(RANGE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Range), objclass);

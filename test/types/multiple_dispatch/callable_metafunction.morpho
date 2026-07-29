@@ -1,0 +1,16 @@
+// Dispatch on Callable
+
+fn f(Callable g, x) {
+    print g(x)
+}
+
+fn f(Float x, y) {
+    print x+y
+}
+
+fn g(Int x) { return 2*x }
+
+fn g(Float x) { return x/2 }
+
+f(g, 1)     // expect: 2
+f(g, 2.5)   // expect: 1.25

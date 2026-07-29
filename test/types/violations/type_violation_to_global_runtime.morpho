@@ -1,0 +1,11 @@
+// Runtime typecheck
+
+fn foo(x, y) {
+    return x + y 
+}
+
+var a = foo(1.5,2)
+
+Int b = a
+
+// expect error 'TypeChk'

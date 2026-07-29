@@ -1,0 +1,8 @@
+// Multiply ComplexMatrix by scalar
+
+var A = ComplexMatrix(2,2)
+A[0,0]=1+1im
+A[1,1]=2+2im
+
+print ((1+im)*A - A*(1+im)).norm() < 1e-10
+// expect: true

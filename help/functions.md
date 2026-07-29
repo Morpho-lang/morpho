@@ -36,8 +36,7 @@ The correct implementation is then selected at runtime:
 
     f("Hello World!") // expect: A string! 
 
-[show]: # (subtopics) 
-
+[showsubtopics]: # (subtopics)
 ## Variadic
 [tagvariadic]: # (variadic)
 

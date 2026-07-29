@@ -125,9 +125,7 @@ value Dictionary_contains(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
     value out=MORPHO_FALSE;
 
-    if (nargs==1) {
-        if (dictionary_get(&slf->dict, MORPHO_GETARG(args, 0), &out)) out=MORPHO_TRUE;
-    }
+    if (dictionary_get(&slf->dict, MORPHO_GETARG(args, 0), &out)) out=MORPHO_TRUE;
 
     return out;
 }
@@ -186,13 +184,10 @@ value Dictionary_count(vm *v, int nargs, value *args) {
 value Dictionary_enumerate(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
     value out=MORPHO_NIL;
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
-        if (n<0) out=MORPHO_INTEGER(slf->dict.count);
-        else out=dictionary_iterate(slf, n);
-    } else MORPHO_RAISE(v, ENUMERATE_ARGS);
+    if (n<0) out=MORPHO_INTEGER(slf->dict.count);
+    else out=dictionary_iterate(slf, n);
 
     return out;
 }
@@ -233,17 +228,14 @@ value Dictionary_clone(vm *v, int nargs, value *args) {
 value Dictionary_##op(vm *v, int nargs, value *args) { \
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args)); \
     value out=MORPHO_NIL; \
+    objectdictionary *new = object_newdictionary(); \
+    objectdictionary *b = MORPHO_GETDICTIONARY(MORPHO_GETARG(args, 0)); \
     \
-    if (nargs>0 && MORPHO_ISDICTIONARY(MORPHO_GETARG(args, 0))) { \
-        objectdictionary *new = object_newdictionary(); \
-        \
-        if (new) { \
-            objectdictionary *b =MORPHO_GETDICTIONARY(MORPHO_GETARG(args, 0)); \
-            dictionary_##op(&slf->dict, &b->dict, &new->dict); \
-            out=MORPHO_OBJECT(new); \
-            morpho_bindobjects(v, 1, &out); \
-        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); \
-    } else morpho_runtimeerror(v, DICT_DCTSTARG); \
+    if (new) { \
+        dictionary_##op(&slf->dict, &b->dict, &new->dict); \
+        out=MORPHO_OBJECT(new); \
+        morpho_bindobjects(v, 1, &out); \
+    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); \
     \
     return out; \
 }
@@ -252,22 +244,37 @@ DICTIONARY_SETOP(union)
 DICTIONARY_SETOP(intersection)
 DICTIONARY_SETOP(difference)
 
+#define DICTIONARY_SETOP_ERR(op) \
+value Dictionary_##op##__err(vm *v, int nargs, value *args) { \
+    morpho_runtimeerror(v, DICT_DCTSTARG); \
+    return MORPHO_NIL; \
+}
+
+DICTIONARY_SETOP_ERR(union)
+DICTIONARY_SETOP_ERR(intersection)
+DICTIONARY_SETOP_ERR(difference)
+
 MORPHO_BEGINCLASS(Dictionary)
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Dictionary_getindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Dictionary_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CONTAINS_METHOD, Dictionary_contains, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(DICTIONARY_REMOVE_METHOD, Dictionary_remove, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(DICTIONARY_CLEAR_METHOD, Dictionary_clear, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Dictionary_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_COUNT_METHOD, Dictionary_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Dictionary_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(DICTIONARY_KEYS_METHOD, Dictionary_keys, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Dictionary_clone, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_UNION_METHOD, Dictionary_union, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_INTERSECTION_METHOD, Dictionary_intersection, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_DIFFERENCE_METHOD, Dictionary_difference, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ADD_METHOD, Dictionary_union, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SUB_METHOD, Dictionary_difference, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Dictionary_getindex, MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Dictionary_setindex, MORPHO_FN_MUTATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_CONTAINS_METHOD, "Bool (_)", Dictionary_contains, MORPHO_FN_PUREFN),
+MORPHO_METHOD(DICTIONARY_REMOVE_METHOD, Dictionary_remove, MORPHO_FN_MUTATES),
+MORPHO_METHOD(DICTIONARY_CLEAR_METHOD, Dictionary_clear, MORPHO_FN_MUTATES),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Dictionary_print, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Dictionary_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", Dictionary_enumerate, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(DICTIONARY_KEYS_METHOD, "List ()", Dictionary_keys, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Dictionary ()", Dictionary_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_UNION_METHOD, "Dictionary (Dictionary)", Dictionary_union, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_UNION_METHOD, "Nil (...)", Dictionary_union__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_INTERSECTION_METHOD, "Dictionary (Dictionary)", Dictionary_intersection, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_INTERSECTION_METHOD, "Nil (...)", Dictionary_intersection__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIFFERENCE_METHOD, "Dictionary (Dictionary)", Dictionary_difference, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIFFERENCE_METHOD, "Nil (...)", Dictionary_difference__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Dictionary (Dictionary)", Dictionary_union, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Nil (...)", Dictionary_union__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Dictionary (Dictionary)", Dictionary_difference, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Nil (...)", Dictionary_difference__err, MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 
@@ -282,8 +289,7 @@ void dict_initialize(void) {
     objectdictionarytype=object_addtype(&objectdictionarydefn);
     
     // Locate the Object class to use as the parent class of Dictionary
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Dictionary constructor function
     morpho_addfunction(DICTIONARY_CLASSNAME, DICTIONARY_CLASSNAME " (...)", dictionary_constructor, MORPHO_FN_CONSTRUCTOR, NULL);

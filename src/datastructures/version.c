@@ -34,7 +34,7 @@ int version_cmp(version *a, version *b) {
  * @param[in] max - (optional) maximum version number
  * @returns true if min <= v <= max */
 bool version_check(version *v, version *min, version *max) {
-    int l = (min ? version_cmp(min, v) : 0);
+    int l = (min ? version_cmp(v, min) : 0);
     int r = (max ? version_cmp(v, max) : 0);
         
     return (l>=0 && r<=0);

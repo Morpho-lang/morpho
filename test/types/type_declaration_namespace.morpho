@@ -1,0 +1,13 @@
+
+import "type_namespace.xmorpho" as ns
+
+class Cow is ns.Pet {
+    moo() { print "${self.name} moos" }
+}
+
+ns.Pet a = ns.Cat("Phineas"),
+       b = ns.Dog("Fido"),
+       c = Cow("Ermintrude")
+
+a.hiss() // expect: Phineas hisses
+c.moo() // expect: Ermintrude moos

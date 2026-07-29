@@ -205,7 +205,7 @@ bool morpho_profile(vm *v, program *p) {
 
     profiler_init(&profile, p);
     
-    if (MorphoThread_create(&profile.profiler, profiler_thread, v)) {
+    if (!MorphoThread_create(&profile.profiler, profiler_thread, v)) {
         UNREACHABLE("Unable to run profiler.");
     }
     

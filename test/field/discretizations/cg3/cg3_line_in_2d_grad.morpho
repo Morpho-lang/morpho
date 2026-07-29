@@ -1,0 +1,17 @@
+// Compute the gradient of a CG3 quantity on a line in 2D
+
+import meshtools
+
+var m = LineMesh(fn (t) [t,t], 0..1:0.5)
+
+var l = FiniteElementSpace("CG3", grade=1)
+
+var f = Field(m, fn (x,y) x^3+y^3, finiteelementspace=l)
+
+fn integrand(x, u) {
+    var g = grad(u)
+    return g.norm()^2
+}
+
+print abs(LineIntegral(integrand, f, method={ }).total(m) - 18*sqrt(2)/5) < 1e-8
+// expect: true

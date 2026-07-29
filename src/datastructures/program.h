@@ -44,7 +44,7 @@ DECLARE_VARRAY(globalinfo, globalinfo)
  * ------------------------------------------------------- */
 
 /** @brief Morpho code program and associated data */
-typedef struct {
+typedef struct sprogram {
     varray_instruction code; /** Compiled instructions */
     varray_debugannotation annotations; /** Information about how the code connects to the source */
     objectfunction *global;  /** Pseudofunction containing global data */
@@ -57,7 +57,8 @@ typedef struct {
 #define MORPHO_PROGRAMSTART 0
 void program_setentry(program *p, instructionindx entry);
 instructionindx program_getentry(program *p);
-varray_value *program_getconstanttable(program *p);
+varray_instruction *program_getbytecode(program *p);
+objectfunction *program_getglobalfn(program *p);
 void program_bindobject(program *p, object *obj);
 
 value program_internsymbol(program *p, value symbol);

@@ -35,6 +35,8 @@ Multiple variables can be defined at once by separating them with commas
 
 where each can have its own initializer (or not).
 
+[showsubtopics]: # (subtopics)
+
 ## Indexing
 [taglb]: # ([)
 [tagrb]: # (])

@@ -29,8 +29,7 @@ After you're done with the file, close it with
 
     f.close()
 
-[show]: # (subtopics)
-
+[showsubtopics]: # (subtopics)
 ## lines
 [taglines]: # (lines)
 
@@ -61,6 +60,15 @@ Read in the contents of a file and print each line:
 
 Reads a single character from a file; returns the result as a string.
 
+## readall
+[tagreadall]: # (readall)
+
+Reads the remaining contents of a file and returns them as a single string:
+
+    var f = File("input.txt")
+    print f.readall()
+    f.close()
+
 ## write
 [tagwrite]: # (write)
 
@@ -68,7 +76,7 @@ Writes to a file.
 
 Write the contents of a list to a file:
 
-    var f = File("output.txt", "w")
+    var f = File("output.txt", "write")
     for (k, i in list) f.write("${i}: ${k}")
     f.close()
 
@@ -82,15 +90,62 @@ Closes an open file.
 
 Returns true if at the end of the file; false otherwise
 
+## relativepath
+[tagrelativepath]: # (relativepath)
+
+Returns the file path relative to the current working directory:
+
+    print f.relativepath()
+
+## filename
+[tagfilename]: # (filename)
+
+Returns the filename that was used to open the file:
+
+    print f.filename()
+
 # Folder
 [tagfolder]: # (Folder)
 
-The `Folder` class enables you to find whether a filepath refers to a folder, and find the contents of that folder.
+The `Folder` class allows you to work with folders. You can find whether a filepath refers to a folder, obtain the contents of that folder and create folders. 
 
-Find whether a path refers to a folder:
+[showsubtopics]: # (subtopics)
+## isFolder
+[tagisfolder]: # (isfolder)
+[tagisFolder]: # (isfolder)
+Find out whether a path specification refers to a folder:
 
-    print Folder.isfolder("path/folder")
+    print Folder.isFolder("path/folder")
     
+## contents
+[tagcontents]: # (contents)
+
 Get a list of a folder's contents: 
 
     print Folder.contents("path/folder")
+
+## normalizePath
+[tagnormalizepath]: # (normalizepath)
+This method of `Folder` normalizes a file path, replacing folder separators with the correct ones for the current platform, i.e. \ on windows or / on macOS and linux. 
+
+Get a normalizad path:
+
+    print Folder.normalizePath("/foo/foo")
+
+## create
+[tagcreate]: # (create)
+[tagcreaterecursive]: # (createrecursive)
+The `create` and `createRecursive` methods allow creation of folders. To create a new Folder: 
+
+    Folder.create("foo")
+
+Recursively create a nested set of folders: 
+
+    Folder.createRecursive("foo/foo")
+
+## createRecursive
+[tagcreateRecursive]: # (createrecursive)
+
+Creates a nested set of folders recursively:
+
+    Folder.createRecursive("foo/foo")

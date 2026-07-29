@@ -112,9 +112,6 @@ void morpho_unreachable(const char *explanation);
 #define ERROR_ALLOCATIONFAILED            "Alloc"
 #define ERROR_ALLOCATIONFAILED_MSG        "Memory allocation failed."
 
-#define ERROR_INTERNALERROR               "Intrnl"
-#define ERROR_INTERNALERROR_MSG           "Internal error (contact developer)."
-
 #define ERROR_ERROR                       "Err"
 #define ERROR_ERROR_MSG                   "Error."
 
@@ -165,7 +162,7 @@ void morpho_unreachable(const char *explanation);
 #define VM_INVALIDARGS_MSG                "Expected %u arguments but got %u."
 
 #define VM_NOOPTARG                       "NoOptArg"
-#define VM_NOOPTARG_MSG                   "Function doens't expect optional arguments."
+#define VM_NOOPTARG_MSG                   "Function doesn't expect optional arguments."
 
 #define VM_UNKNWNOPTARG                   "UnkwnOptArg"
 #define VM_UNKNWNOPTARG_MSG               "Unknown optional argument '%s'."
@@ -182,20 +179,17 @@ void morpho_unreachable(const char *explanation);
 #define VM_NONNUMINDX                     "NonNmIndx"
 #define VM_NONNUMINDX_MSG                 "Non-numerical array index."
 
-#define VM_ARRAYWRONGDIM                  "ArrayDim"
-#define VM_ARRAYWRONGDIM_MSG              "Incorrect number of dimensions for array."
-
 #define VM_DBGQUIT                        "DbgQuit"
 #define VM_DBGQUIT_MSG                    "Program terminated by user in debugger."
 
 #define VM_DVZR                           "DvZr"
 #define VM_DVZR_MSG                       "Division by zero."
 
-#define VM_GETINDEXARGS                   "NonintIndex"
-#define VM_GETINDEXARGS_MSG               "Noninteger array index."
-
 #define VM_MLTPLDSPTCHFLD                 "MltplDsptchFld"
 #define VM_MLTPLDSPTCHFLD_MSG             "Multiple dispatch could not find an implementation that matches these arguments."
+
+#define VM_TYPECHK                        "TypeChk"
+#define VM_TYPECHK_MSG                    "Type violation: Attempted to assign type %s to an %s variable."
 
 /* -------------------------------------------------------
  * Error interface

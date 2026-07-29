@@ -10,7 +10,13 @@
 #include <stdio.h>
 #include <stddef.h>
 
+/** Forward declarations of key types */
+struct sprogram;
+struct scompiler;
+
 typedef struct svm vm;
+typedef struct sprogram program;
+typedef struct scompiler compiler;
 
 #include "error.h"
 #include "random.h"
@@ -185,6 +191,8 @@ typedef struct {
 /** Varrays of vms */
 DECLARE_VARRAY(vm, vm*)
 
+typedef enum { VM_RUNNING, VM_BIND, VM_INGC } vmstatus; 
+
 /** @brief A Morpho virtual machine and its current state */
 struct svm {
     program *current; /** The current program being executed */
@@ -214,8 +222,8 @@ struct svm {
 
 #ifdef MORPHO_PROFILER
     profiler *profiler;
-    enum { VM_RUNNING, VM_INGC } status; 
 #endif
+    vmstatus status;
     
     objectupvalue *openupvalues; /** Linked list of open upvalues */
     

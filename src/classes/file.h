@@ -56,8 +56,12 @@ typedef struct {
 
 #define FOLDER_CLASSNAME  "Folder"
 
-#define FOLDER_ISFOLDER   "isfolder"
-#define FOLDER_CONTENTS   "contents"
+#define FOLDER_ISFOLDER_DEPRECATED         "isfolder"
+#define FOLDER_ISFOLDER         "isFolder"
+#define FOLDER_CONTENTS         "contents"
+#define FOLDER_NORMALIZEPATH    "normalizePath"
+#define FOLDER_CREATE           "create"
+#define FOLDER_CREATERECURSIVE  "createRecursive"
 
 /* -------------------------------------------------------
  * File error messages
@@ -87,12 +91,16 @@ typedef struct {
 #define FOLDER_NTFLDR                     "NtFldr"
 #define FOLDER_NTFLDR_MSG                 "Not a folder."
 
+#define FOLDER_CREATEFAILED               "FldrCrtFld"
+#define FOLDER_CREATEFAILED_MSG           "Couldn't create folder '%s'."
+
 /* -------------------------------------------------------
  * File interface
  * ------------------------------------------------------- */
 
 bool file_getsize(FILE *f, size_t *s);
-void file_setworkingdirectory(const char *script);
+void file_setworkingdirectory(const char *path);
+void file_getworkingdirectory(varray_char *path);
 FILE *file_openrelative(const char *fname, const char *mode);
 int file_readlineintovarray(FILE *f, varray_char *string);
 bool file_readintovarray(FILE *f, varray_char *string);

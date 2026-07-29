@@ -176,6 +176,7 @@ int string_countchars(objectstring *s) {
 
 /** Get a pointer to the i'th character of a string */
 char *string_index(objectstring *s, int i) {
+    if (i<0) return NULL;
     int n=0;
     for (char *c = s->string; *c!='\0'; ) {
         if (i==n) return (char *) c;
@@ -219,26 +220,42 @@ value String_clone(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Gets a specified character from a string */
+value String_getindex(vm *v, int nargs, value *args) {
+    objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+
+    char *c = string_index(slf, n);
+    if (c) {
+        out=object_stringfromcstring(c, morpho_utf8numberofbytes(c));
+        morpho_bindobjects(v, 1, &out);
+    } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+    return out;
+}
+
 /** Enumerate members of a string */
 value String_enumerate(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
     value out=MORPHO_NIL;
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
-        if (n<0) {
-            out=MORPHO_INTEGER(string_countchars(slf));
-        } else {
-            char *c=string_index(slf, n);
-            if (c) {
-                out=object_stringfromcstring(c, morpho_utf8numberofbytes(c));
-                morpho_bindobjects(v, 1, &out);
-            } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
-        }
-    } else MORPHO_RAISE(v, ENUMERATE_ARGS);
+    if (n<0) {
+        out=MORPHO_INTEGER(string_countchars(slf));
+    } else {
+        char *c=string_index(slf, n);
+        if (c) {
+            out=object_stringfromcstring(c, morpho_utf8numberofbytes(c));
+            morpho_bindobjects(v, 1, &out);
+        } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+    }
 
     return out;
+}
+
+value String_enumerate__err(vm *v, int nargs, value *args) {
+    MORPHO_RAISE(v, ENUMERATE_ARGS);
+    return MORPHO_NIL;
 }
 
 /** Tests if a string encodes a number */
@@ -255,48 +272,75 @@ value String_isnumber(vm *v, int nargs, value *args) {
 value String_split(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
     value out=MORPHO_NIL;
+    objectstring *split = MORPHO_GETSTRING(MORPHO_GETARG(args, 0));
+    objectlist *new = object_newlist(0, NULL);
 
-    if (nargs==1 && MORPHO_ISSTRING(MORPHO_GETARG(args, 0))) {
-        objectstring *split = MORPHO_GETSTRING(MORPHO_GETARG(args, 0));
-        objectlist *new = object_newlist(0, NULL);
+    if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
 
-        if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
-
-        char *last = slf->string;
-        for (char *c = slf->string; *c!='\0'; c+=morpho_utf8numberofbytes(c)) { // Loop over string
-            for (char *s = split->string; *s!='\0';) { // Loop over split chars
-                int nbytes = morpho_utf8numberofbytes(s);
-                if (strncmp(c, s, nbytes)==0) {
-                    value newstring = object_stringfromcstring(last, c-last);
-                    if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-                    list_append(new, newstring);
-                    last=c+nbytes;
-                }
-                s+=nbytes;
+    char *last = slf->string;
+    for (char *c = slf->string; *c!='\0'; c+=morpho_utf8numberofbytes(c)) { // Loop over string
+        for (char *s = split->string; *s!='\0';) { // Loop over split chars
+            int nbytes = morpho_utf8numberofbytes(s);
+            if (strncmp(c, s, nbytes)==0) {
+                value newstring = object_stringfromcstring(last, c-last);
+                if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+                list_append(new, newstring);
+                last=c+nbytes;
             }
+            s+=nbytes;
         }
-
-        value newstring = object_stringfromcstring(last, slf->string+slf->length-last);
-        if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-        list_append(new, newstring);
-
-        out=MORPHO_OBJECT(new);
-        list_append(new, out);
-        morpho_bindobjects(v, new->val.count, new->val.data);
-        new->val.count-=1;
     }
+
+    value newstring = object_stringfromcstring(last, slf->string+slf->length-last);
+    if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    list_append(new, newstring);
+
+    out=MORPHO_OBJECT(new);
+    list_append(new, out);
+    morpho_bindobjects(v, new->val.count, new->val.data);
+    new->val.count-=1;
+
+    return out;
+}
+
+/** Gets a substring of the string */
+value String_substring(vm *v, int nargs, value *args) {
+    objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
+    value out=MORPHO_NIL;
+    int begin=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    int end=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+
+    if (end<0 || (begin>=slf->length && begin>0) || end-begin<0) {
+        out=MORPHO_OBJECT(object_stringwithsize(0));
+    } else {
+        begin=(begin<0) ? 0 : begin;
+        end=(end>slf->length) ? slf->length : end;
+        char *cstr = string_index(slf, begin);
+
+        // Get size in bytes of the chars to include
+        char *cstrend = cstr;
+        for (int i = 0; i<end-begin; ++i) {
+            cstrend+=morpho_utf8numberofbytes(cstrend);
+            if (*cstrend == '\0') break;
+        }
+        out=object_stringfromcstring(cstr, cstrend-cstr);
+    }
+    morpho_bindobjects(v, 1, &out);
 
     return out;
 }
 
 MORPHO_BEGINCLASS(String)
-MORPHO_METHOD(MORPHO_COUNT_METHOD, String_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, String_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, String_clone, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, String_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, String_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(STRING_ISNUMBER_METHOD, String_isnumber, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(STRING_SPLIT_METHOD, String_split, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", String_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "String ()", String_print, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "String ()", String_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "String (Int)", String_getindex, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Nil (...)", String_enumerate__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", String_enumerate, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "Nil (...)", String_enumerate__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(STRING_ISNUMBER_METHOD, "Bool ()", String_isnumber, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(STRING_SPLIT_METHOD, "List (String)", String_split, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(STRING_SUBSTRING_METHOD, "String (Int, Int)", String_substring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -309,9 +353,8 @@ void string_initialize(void) {
     // Create string object type
     //objectstringtype=object_addtype(&objectstringdefn);
     
-    // Locate the Object class to use as the parent class of Range
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    // Locate the Object class to use as the parent class of String
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Create String veneer class
     value stringclass=builtin_addclass(STRING_CLASSNAME, MORPHO_GETCLASSDEFINITION(String), objclass);

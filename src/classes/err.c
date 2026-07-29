@@ -92,10 +92,10 @@ value Error_print(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Error)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Error_init, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_THROW_METHOD, Error_throw, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_WARNING_METHOD, Error_warning, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Error_print, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Error_init, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_THROW_METHOD, Error_throw, MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_WARNING_METHOD, Error_warning, MORPHO_FN_IO),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Error_print, MORPHO_FN_IO)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -104,8 +104,7 @@ MORPHO_ENDCLASS
 
 void err_initialize(void) {
     // Locate the Object class to use as the parent class of Error
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     // Create Error class
     builtin_addclass(ERROR_CLASSNAME, MORPHO_GETCLASSDEFINITION(Error), objclass);

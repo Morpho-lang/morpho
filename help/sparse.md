@@ -25,3 +25,53 @@ Once a sparse matrix is created, you can use all the regular arithmetic operator
 
     a+b
     a*b
+
+[showsubtopics]: # (subtopics)
+
+## Rowindices
+[tagrowindices]: # (rowindices)
+
+Returns the row indices of the nonzero entries in a specified column:
+
+    print a.rowindices(0)
+
+For the matrix
+
+    var a = Sparse([[0,0,2], [1,1,-2], [2,0,5]])
+
+`a.rowindices(0)` would return `[0,2]`.
+
+For example:
+
+    var rows = a.rowindices(0)
+    print rows
+
+## Setrowindices
+[tagsetrowindices]: # (setrowindices)
+
+Replaces the row indices of the nonzero entries in a specified column:
+
+    a.setrowindices(0, [0,2,4])
+
+This acts on the sparse column representation, so the argument refers to a column index.
+
+## Colindices
+[tagcolindices]: # (colindices)
+
+Returns the column indices that contain nonzero entries:
+
+    print a.colindices()
+
+For the example above, `a.colindices()` would return `[0,1]`.
+
+For example:
+
+    var cols = a.colindices()
+    print cols
+
+## Indices
+[tagindices]: # (indices)
+
+Returns the row and column indices used by the sparse matrix representation:
+
+    print a.indices()

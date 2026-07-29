@@ -1,0 +1,3 @@
+
+print "Hello world".split(2)
+// expect error 'MltplDsptchFld'

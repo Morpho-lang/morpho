@@ -1,0 +1,6 @@
+// Type violation due to a constructor
+
+String u = "" 
+u = 1
+
+// expect error 'TypeErr'

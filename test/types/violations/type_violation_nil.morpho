@@ -1,0 +1,7 @@
+// Assign nil to a type protected variable
+
+Int a = 1
+
+a = nil 
+
+// expect error 'TypeErr'

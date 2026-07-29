@@ -11,7 +11,7 @@
 #include "object.h"
 #include "builtin.h"
 #include "classes.h"
-#include "matrix.h"
+#include "linalg.h"
 #include "sparse.h"
 #include "mesh.h"
 #include "selection.h"
@@ -186,7 +186,7 @@ void selection_selectwithmatrix(vm *v, objectselection *sel, value fn, objectmat
     int nv = vert->ncols;
 
     if (matrix->ncols!=nv) {
-        morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+        morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
         return;
     }
     
@@ -196,9 +196,7 @@ void selection_selectwithmatrix(vm *v, objectselection *sel, value fn, objectmat
     value ret=MORPHO_NIL; // Return value
     
     for (elementid i=0; i<nv; i++) {
-        bool success=matrix_getcolumn(matrix, i, &x);
-        
-        if (success) {
+        if (matrix_getcolumnptr(matrix, i, &x)==LINALGERR_OK) {
             for (unsigned int i=0; i<nargs; i++) args[i]=MORPHO_FLOAT(x[i]);
         }
         
@@ -544,20 +542,20 @@ SELECTION_SETOP(intersection)
 SELECTION_SETOP(difference)
 
 MORPHO_BEGINCLASS(Selection)
-MORPHO_METHOD(SELECTION_ISSELECTEDMETHOD, Selection_isselected, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Selection_isselected, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Selection_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SELECTION_IDLISTFORGRADEMETHOD, Selection_idlistforgrade, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_COUNT_METHOD, Selection_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Selection_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_UNION_METHOD, Selection_union, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_INTERSECTION_METHOD, Selection_intersection, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_DIFFERENCE_METHOD, Selection_difference, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ADD_METHOD, Selection_union, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SUB_METHOD, Selection_difference, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SELECTION_ADDGRADEMETHOD, Selection_addgrade, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SELECTION_REMOVEGRADEMETHOD, Selection_removegrade, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Selection_clone, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(SELECTION_ISSELECTEDMETHOD, Selection_isselected, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Selection_isselected, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Selection_setindex, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(SELECTION_IDLISTFORGRADEMETHOD, Selection_idlistforgrade, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_COUNT_METHOD, Selection_count, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Selection_print, MORPHO_FN_IO),
+MORPHO_METHOD(MORPHO_UNION_METHOD, Selection_union, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_INTERSECTION_METHOD, Selection_intersection, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_DIFFERENCE_METHOD, Selection_difference, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_ADD_METHOD, Selection_union, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_SUB_METHOD, Selection_difference, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(SELECTION_ADDGRADEMETHOD, Selection_addgrade, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(SELECTION_REMOVEGRADEMETHOD, Selection_removegrade, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_CLONE_METHOD, Selection_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -570,7 +568,7 @@ void selection_initialize(void) {
     selection_boundaryoption=builtin_internsymbolascstring(SELECTION_BOUNDARYOPTION);
     selection_partialsoption=builtin_internsymbolascstring(SELECTION_PARTIALSOPTION);
     
-    builtin_addfunction(SELECTION_CLASSNAME, selection_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(SELECTION_CLASSNAME, selection_constructor, MORPHO_FN_CONSTRUCTOR|MORPHO_FN_ALLOCATES|MORPHO_FN_REENTRANT|MORPHO_FN_THROWS);
     
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));

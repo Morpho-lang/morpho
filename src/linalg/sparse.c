@@ -14,7 +14,7 @@
 #include "classes.h"
 
 #include "sparse.h"
-#include "matrix.h"
+#include "linalg.h"
 
 /* ***************************************
  * Compatibility with Sparse libraries
@@ -270,7 +270,7 @@ bool sparsedok_copymatrixat(objectmatrix *src, sparsedok *dest, int row0, int co
     double val;
     for (int j=0; j<src->ncols; j++) {
         for (int i=0; i<src->nrows; i++) {
-            if (!(matrix_getelement(src, i, j, &val) &&
+            if (!(matrix_getelement(src, i, j, &val)==LINALGERR_OK &&
                   sparsedok_insert(dest, i+row0, j+col0, MORPHO_FLOAT(val)))) return false;
         }
     }
@@ -288,7 +288,7 @@ bool sparsedok_copytomatrix(sparsedok *src, objectmatrix *dest, int row0, int co
         if (sparsedok_get(src, i, j, &entry)) {
             double val=0.0;
             if (!morpho_valuetofloat(entry, &val)) return false;
-            if (!matrix_setelement(dest, i+row0, j+col0, val)) return false;
+            if (matrix_setelement(dest, i+row0, j+col0, val)!=LINALGERR_OK) return false;
         }
     }
 
@@ -583,7 +583,7 @@ bool sparseccs_copytomatrix(sparseccs *src, objectmatrix *dest, int row0, int co
         if (!sparseccs_getrowindices(src, i, &nentries, &entries)) return false;
 
         for (int j=0; j<nentries; j++) {
-            if (!matrix_setelement(dest, entries[j]+row0, i+col0, src->values[k])) return false;
+            if (matrix_setelement(dest, entries[j]+row0, i+col0, src->values[k]) != LINALGERR_OK) return false;
             k++;
         }
     }
@@ -687,6 +687,39 @@ bool sparse_checkupdatedimension(int check, int *dim) {
     return true;
 }
 
+/** Recurses into an objectlist to find the dimensions of the array and all child arrays */
+static bool _getlistdimensions(objectlist *list, unsigned int dim[], unsigned int maxdim, unsigned int *ndim) {
+    unsigned int m=0;
+    
+    if (maxdim==0) return false;
+    
+    /* Store the length */
+    if (list->val.count>dim[0]) dim[0]=list->val.count;
+    
+    for (unsigned int i=0; i<list->val.count; i++) {
+        if (MORPHO_ISLIST(list->val.data[i]) && maxdim>0) {
+            _getlistdimensions(MORPHO_GETLIST(list->val.data[i]), dim+1, maxdim-1, &m);
+        }
+    }
+    *ndim=m+1;
+    
+    return true;
+}
+
+/** Gets a matrix element from a (potentially nested) list. */
+static bool _getlistelement(objectlist *list, unsigned int ndim, unsigned int *indx, value *val) {
+    value out=MORPHO_NIL;
+    objectlist *l=list;
+    for (unsigned int i=0; i<ndim; i++) {
+        if (indx[i]<l->val.count) {
+            out=l->val.data[indx[i]];
+            if (i<ndim-1 && MORPHO_ISLIST(out)) l=MORPHO_GETLIST(out);
+        } else return false;
+    }
+    *val=out;
+    return true;
+}
+
 /** Checks the dimensions of a matrix of matrices to be concatenated */
 objectsparseerror sparse_catcheckdimensions(objectlist *in, int ndim, unsigned int *dim, int *ncols, int *nrows) {
     for (unsigned int i=0; i<dim[0]; i++) nrows[i]=-1;
@@ -696,7 +729,7 @@ objectsparseerror sparse_catcheckdimensions(objectlist *in, int ndim, unsigned i
         for (unsigned int j=0; j<dim[1]; j++) { // Loop over cols
             unsigned int indx[2] = {i,j};
             value val;
-            if (matrix_getlistelement(in, ndim, indx, &val)) {
+            if (_getlistelement(in, ndim, indx, &val)) {
                 if (MORPHO_ISSPARSE(val)) {
                     objectsparse *sparse = MORPHO_GETSPARSE(val);
                     int nr, nc;
@@ -764,7 +797,7 @@ bool matrix_catcopyentry(void *out, value val, int irow, int icol) {
         if (sparse_catcopysparsetomatrixat(sparse, irow, icol, dest)!=SPARSE_OK) return false;
     } else if (MORPHO_ISMATRIX(val)) {
         objectmatrix *matrix = MORPHO_GETMATRIX(val);
-        if (matrix_copyat(matrix, dest, irow, icol)!=MATRIX_OK) return false;
+        if (matrix_copyat(matrix, dest, irow, icol)!=LINALGERR_OK) return false;
     } else if (MORPHO_ISINTEGER(val)) {
 
     }
@@ -776,7 +809,7 @@ bool matrix_catcopyentry(void *out, value val, int irow, int icol) {
 objectsparseerror sparse_docat(objectlist *in, void *dest, sparse_catcopyfn copyfn, int *outrows, int *outcols) {
     unsigned int dim[2] = {0,0}, ndim;
 
-    if (!matrix_getlistdimensions(in, dim, 2, &ndim) ||
+    if (!_getlistdimensions(in, dim, 2, &ndim) ||
         ndim!=2) return SPARSE_INVLDINIT;
 
     /* Keep track of rows and columns of the matrix */
@@ -805,7 +838,7 @@ objectsparseerror sparse_docat(objectlist *in, void *dest, sparse_catcopyfn copy
         for (unsigned int j=0; j<dim[1]; j++) { // Loop over columns
             unsigned int indx[2] = {i,j};
             value val;
-            if (matrix_getlistelement(in, ndim, indx, &val)) {
+            if (_getlistelement(in, ndim, indx, &val)) {
                 (*copyfn) (dest, val, irow, icol);
             }
             if (ncols[j]>0) icol+=ncols[j];
@@ -828,7 +861,7 @@ objectsparseerror sparse_catmatrix(objectlist *in, objectmatrix **out) {
     objectsparseerror err=sparse_docat(in, NULL, matrix_catcopyentry, &nrows, &ncols);
     
     if (err!=SPARSE_OK) goto sparse_catmatrix_error;
-    new = object_newmatrix(nrows, ncols, true);
+    new = matrix_new(nrows, ncols, true);
     
     err=sparse_docat(in, new, matrix_catcopyentry, NULL, NULL);
     if (err==SPARSE_OK) *out = new;
@@ -844,11 +877,50 @@ sparse_catmatrix_error:
  * Construct sparse matrices
  * ******************************* */
 
+/** Recurses into an objectarray to find the dimensions of the array and all child arrays
+ * @param[in] array - to search
+ * @param[out] dim - array of dimensions to be filled out (must be zero'd before initial call)
+ * @param[in] maxdim - maximum number of dimensions
+ * @param[out] ndim - number of dimensions of the array */
+static bool _getarraydimensions(objectarray *array, unsigned int dim[], unsigned int maxdim, unsigned int *ndim) {
+    unsigned int n=0, m=0;
+    for (n=0; n<maxdim && n<array->ndim; n++) {
+        int k=MORPHO_GETINTEGERVALUE(array->data[n]);
+        if (k>dim[n]) dim[n]=k;
+    }
+    
+    if (maxdim<array->ndim) return false;
+    
+    for (unsigned int i=array->ndim; i<array->ndim+array->nelements; i++) {
+        if (MORPHO_ISARRAY(array->data[i])) {
+            if (!_getarraydimensions(MORPHO_GETARRAY(array->data[i]), dim+n, maxdim-n, &m)) return false;
+        }
+    }
+    *ndim=n+m;
+    
+    return true;
+}
+
+/** Looks up an array element recursively if necessary */
+static value _getarrayelement(objectarray *array, unsigned int ndim, unsigned int *indx) {
+    unsigned int na=array->ndim;
+    value out;
+    
+    if (array_getelement(array, na, indx, &out)==ARRAY_OK) {
+        if (ndim==na) return out;
+        if (MORPHO_ISARRAY(out)) {
+            return _getarrayelement(MORPHO_GETARRAY(out), ndim-na, indx+na);
+        }
+    }
+    
+    return MORPHO_NIL;
+}
+
 /** Create a sparse array from an array */
 objectsparse *object_sparsefromarray(objectarray *array) {
     unsigned int dim[2] = {0,0}, ndim;
 
-    if (!matrix_getarraydimensions(array, dim, 2, &ndim)) return NULL;
+    if (!_getarraydimensions(array, dim, 2, &ndim)) return NULL;
 
     objectsparse *new=object_newsparse(NULL, NULL);
 
@@ -856,7 +928,7 @@ objectsparse *object_sparsefromarray(objectarray *array) {
         value v[3]={MORPHO_NIL, MORPHO_NIL, MORPHO_NIL};
         for (unsigned int k=0; k<dim[1] && k<3; k++) {
             unsigned int indx[2] = {i, k};
-            v[k]=matrix_getarrayelement(array, 2, indx);
+            v[k]=_getarrayelement(array, 2, indx);
         }
         if (MORPHO_ISINTEGER(v[0]) && MORPHO_ISINTEGER(v[1])) {
             sparsedok_insert(&new->dok, MORPHO_GETINTEGERVALUE(v[0]), MORPHO_GETINTEGERVALUE(v[1]), v[2]);
@@ -875,7 +947,7 @@ objectsparseerror object_sparsefromlist(objectlist *list, objectsparse **out) {
     unsigned int dim[2] = {0,0}, ndim;
     objectsparseerror err=SPARSE_OK;
 
-    if (!matrix_getlistdimensions(list, dim, 2, &ndim)) return SPARSE_INVLDINIT;
+    if (!_getlistdimensions(list, dim, 2, &ndim)) return SPARSE_INVLDINIT;
 
     objectsparse *new=object_newsparse(NULL, NULL);
 
@@ -889,7 +961,7 @@ objectsparseerror object_sparsefromlist(objectlist *list, objectsparse **out) {
         value v[3]={MORPHO_NIL, MORPHO_NIL, MORPHO_NIL};
         for (unsigned int k=0; k<dim[1] && k<3; k++) {
             unsigned int indx[2] = {i, k};
-            matrix_getlistelement(list, 2, indx, &v[k]);
+            _getlistelement(list, 2, indx, &v[k]);
         }
         if (MORPHO_ISINTEGER(v[0]) && MORPHO_ISINTEGER(v[1])) {
             sparsedok_insert(&new->dok, MORPHO_GETINTEGERVALUE(v[0]), MORPHO_GETINTEGERVALUE(v[1]), v[2]);
@@ -920,11 +992,11 @@ objectsparseerror sparse_tomatrix(objectsparse *in, objectmatrix **out) {
     objectmatrix *new = NULL;
 
     if (sparse_checkformat(in, SPARSE_CCS, false, false)) {
-        new=object_newmatrix(in->ccs.nrows, in->ccs.ncols, true);
+        new=matrix_new(in->ccs.nrows, in->ccs.ncols, true);
         if (!new) return SPARSE_FAILED;
         if (sparseccs_copytomatrix(&in->ccs, new, 0, 0)) err=SPARSE_OK;
     } else if (sparse_checkformat(in, SPARSE_DOK, false, false)) {
-        new=object_newmatrix(in->dok.nrows, in->dok.ncols, true);
+        new=matrix_new(in->dok.nrows, in->dok.ncols, true);
         if (!new) return SPARSE_FAILED;
         if (sparsedok_copytomatrix(&in->dok, new, 0, 0)) err=SPARSE_OK;
     }
@@ -1192,7 +1264,7 @@ size_t sparse_size(objectsparse *a) {
 void sparse_raiseerror(vm *v, objectsparseerror err) {
     switch(err) {
         case SPARSE_OK: break;
-        case SPARSE_INCMPTBLDIM: morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES); break;
+        case SPARSE_INCMPTBLDIM: morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES); break;
         case SPARSE_CONVFAILED: morpho_runtimeerror(v, SPARSE_CONVFAILEDERR); break;
         case SPARSE_FAILED: morpho_runtimeerror(v, SPARSE_OPFAILEDERR); break;
         case SPARSE_INVLDINIT: morpho_runtimeerror(v, SPARSE_INVLDARRAYINIT); break;
@@ -1247,7 +1319,7 @@ value Sparse_getindex(vm *v, int nargs, value *args) {
 
     if (array_valuelisttoindices(nargs, args+1, indx)) {
         sparse_getelement(s, indx[0], indx[1], &out);
-    } else morpho_runtimeerror(v, MATRIX_INVLDINDICES);
+    } else morpho_runtimeerror(v, LINALG_INVLDARGS);
 
     return out;
 }
@@ -1266,7 +1338,7 @@ value Sparse_setindex(vm *v, int nargs, value *args) {
         if (osize!=nsize) {
             morpho_resizeobject(v, (object *) s, osize, nsize);
         }
-    } else morpho_runtimeerror(v, MATRIX_INVLDINDICES);
+    } else morpho_runtimeerror(v, LINALG_INVLDARGS);
 
     return MORPHO_NIL;
 }
@@ -1384,7 +1456,7 @@ value Sparse_mul(vm *v, int nargs, value *args) {
             if (sparse_checkformat(a, SPARSE_CCS, true, true)) {
                 objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
                 
-                objectmatrix *out=object_newmatrix(a->ccs.nrows, b->ncols, true);
+                objectmatrix *out=matrix_new(a->ccs.nrows, b->ncols, true);
                 new = (objectsparse *) out; // Munge type to ensure binding/deallocation
                 
                 if (out) {
@@ -1427,7 +1499,7 @@ value Sparse_mulr(vm *v, int nargs, value *args) {
             int ncols;
             sparse_getdimensions(b, NULL, &ncols);
 
-            objectmatrix *new=object_newmatrix(a->nrows, ncols, true);
+            objectmatrix *new=matrix_new(a->nrows, ncols, true);
 
             if (new) {
                 err=sparse_muldxs(a, b, new);
@@ -1460,7 +1532,7 @@ value Sparse_divr(vm *v, int nargs, value *args) {
     if (nargs==1 && MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
         objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
 
-        objectmatrix *new = object_newmatrix(b->nrows, b->ncols, false);
+        objectmatrix *new = matrix_new(b->nrows, b->ncols, false);
         if (new) {
             size_t asize=sparse_size(a);
             objectsparseerror err =sparse_div(a, b, new);
@@ -1586,8 +1658,8 @@ value Sparse_getcolumn(vm *v, int nargs, value *args) {
                 morpho_bindobjects(v, 1, &out);
                 
             } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-        } else morpho_runtimeerror(v, MATRIX_INDICESOUTSIDEBOUNDS);
-    } else morpho_runtimeerror(v, MATRIX_SETCOLARGS);
+        } else morpho_runtimeerror(v, LINALG_INDICESOUTSIDEBOUNDS);
+    } else morpho_runtimeerror(v, LINALG_INVLDARGS);
     
     return out;
 }
@@ -1606,13 +1678,13 @@ value Sparse_rowindices(vm *v, int nargs, value *args) {
                 if (sparseccs_getrowindices(&s->ccs, col, &nentries, &entries)) {
                     objectlist *new = object_newlist(nentries, NULL);
                     if (new) {
-                        for (int i=0; i<nentries; i++) list_append(new, MORPHO_INTEGER(entries[i]));
-
+                        for (int i=0; i<nentries; i++) new->val.data[i]=MORPHO_INTEGER(entries[i]);
+                        new->val.count=nentries;
                         out=MORPHO_OBJECT(new);
                         morpho_bindobjects(v, 1, &out);
                     } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
                 }
-            } else morpho_runtimeerror(v, MATRIX_INDICESOUTSIDEBOUNDS);
+            } else morpho_runtimeerror(v, LINALG_INDICESOUTSIDEBOUNDS);
         }
     }
 
@@ -1640,14 +1712,14 @@ value Sparse_setrowindices(vm *v, int nargs, value *args) {
                     if (list_getelement(list, i, &entry) &&
                         MORPHO_ISINTEGER(entry)) {
                         entries[i]=MORPHO_GETINTEGERVALUE(entry);
-                    } else { morpho_runtimeerror(v, MATRIX_INVLDINDICES); return MORPHO_NIL; }
+                    } else { morpho_runtimeerror(v, LINALG_INVLDARGS); return MORPHO_NIL; }
                 }
-
+                
                 if (!sparseccs_setrowindices(&s->ccs, col, nentries, entries)) {
-                    morpho_runtimeerror(v, MATRIX_INCOMPATIBLEMATRICES);
+                    morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);
                 }
-
-            } else morpho_runtimeerror(v, MATRIX_INDICESOUTSIDEBOUNDS);
+                
+            } else morpho_runtimeerror(v, LINALG_INDICESOUTSIDEBOUNDS);
         }
     }
 
@@ -1713,24 +1785,24 @@ value Sparse_indices(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Sparse)
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Sparse_getindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Sparse_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Sparse_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Sparse_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ADD_METHOD, Sparse_add, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SUB_METHOD, Sparse_sub, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_MUL_METHOD, Sparse_mul, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_MULR_METHOD, Sparse_mulr, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_DIVR_METHOD, Sparse_divr, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MATRIX_TRANSPOSE_METHOD, Sparse_transpose, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_COUNT_METHOD, Sparse_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MATRIX_DIMENSIONS_METHOD, Sparse_dimensions, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SPARSE_ROWINDICES_METHOD, Sparse_rowindices, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SPARSE_SETROWINDICES_METHOD, Sparse_setrowindices, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MATRIX_GETCOLUMN_METHOD, Sparse_getcolumn, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SPARSE_COLINDICES_METHOD, Sparse_colindices, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Sparse_clone, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(SPARSE_INDICES_METHOD, Sparse_indices, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Sparse_getindex, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Sparse_setindex, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Sparse_enumerate, MORPHO_FN_PUREFN),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Sparse_print, MORPHO_FN_IO),
+MORPHO_METHOD(MORPHO_ADD_METHOD, Sparse_add, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_SUB_METHOD, Sparse_sub, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_MUL_METHOD, Sparse_mul, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_MULR_METHOD, Sparse_mulr, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_DIVR_METHOD, Sparse_divr, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MATRIX_TRANSPOSE_METHOD, Sparse_transpose, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_COUNT_METHOD, Sparse_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD(MATRIX_DIMENSIONS_METHOD, Sparse_dimensions, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(SPARSE_ROWINDICES_METHOD, Sparse_rowindices, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(SPARSE_SETROWINDICES_METHOD, Sparse_setrowindices, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MATRIX_GETCOLUMN_METHOD, Sparse_getcolumn, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(SPARSE_COLINDICES_METHOD, Sparse_colindices, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(MORPHO_CLONE_METHOD, Sparse_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(SPARSE_INDICES_METHOD, Sparse_indices, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* ***************************************
@@ -1741,14 +1813,14 @@ void sparse_initialize(void) {
     objectdokkeytype=object_addtype(&objectdokkeydefn);
     objectsparsetype=object_addtype(&objectsparsedefn);
 
-    builtin_addfunction(SPARSE_CLASSNAME, sparse_constructor, MORPHO_FN_CONSTRUCTOR);
-
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
     
     value sparseclass=builtin_addclass(SPARSE_CLASSNAME, MORPHO_GETCLASSDEFINITION(Sparse), objclass);
     object_setveneerclass(OBJECT_SPARSE, sparseclass);
 
+    builtin_addfunction(SPARSE_CLASSNAME, sparse_constructor, MORPHO_FN_CONSTRUCTOR);
+    
     morpho_defineerror(SPARSE_CONSTRUCTOR, ERROR_HALT, SPARSE_CONSTRUCTOR_MSG);
     morpho_defineerror(SPARSE_SETFAILED, ERROR_HALT, SPARSE_SETFAILED_MSG);
     morpho_defineerror(SPARSE_INVLDARRAYINIT, ERROR_HALT, SPARSE_INVLDARRAYINIT_MSG);

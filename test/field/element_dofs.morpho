@@ -1,0 +1,41 @@
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+m.addgrade(1)
+
+var cg3 = FiniteElementSpace("CG3", grade=2)
+var f = Field(m, fn (x,y) (x+y)^3, finiteelementspace=cg3)
+var dofs = f.elementDofs(0)
+
+print dofs.count()
+// expect: 10
+
+print dofs[0]
+// expect: (0, 0, 0)
+print dofs[1]
+// expect: (0, 1, 0)
+print dofs[2]
+// expect: (0, 2, 0)
+
+print dofs[3]
+// expect: (1, 0, 0)
+print dofs[4]
+// expect: (1, 0, 1)
+
+print dofs[5]
+// expect: (1, 2, 0)
+print dofs[6]
+// expect: (1, 2, 1)
+
+print dofs[7]
+// expect: (1, 1, 1)
+print dofs[8]
+// expect: (1, 1, 0)
+
+print dofs[9]
+// expect: (2, 0, 0)

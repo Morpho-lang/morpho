@@ -48,7 +48,7 @@ void vm_graylistadd(graylist *g, object *obj) {
 }
 
 /* **********************************************************************
- * Garbage collector
+ * Marking phase
  * ********************************************************************** */
 
 /** Recalculates the size of bound objects to the VM */
@@ -60,9 +60,16 @@ size_t vm_gcrecalculatesize(vm *v) {
     return size;
 }
 
+void vm_bindobjectwithoutcollect(vm *v, value obj);
+
 /** Marks an object as reachable */
 void vm_gcmarkobject(vm *v, object *obj) {
-    if (!obj || obj->status!=OBJECT_ISUNMARKED) return;
+    if (!obj) return;
+    if (v->status==VM_BIND) { // Bind object rather than mark
+        vm_bindobjectwithoutcollect(v, MORPHO_OBJECT(obj));
+        return;
+    }
+    if (obj->status!=OBJECT_ISUNMARKED) return;
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
     morpho_printf(v, "Marking %p ", obj);
@@ -76,9 +83,7 @@ void vm_gcmarkobject(vm *v, object *obj) {
 
 /** Marks a value as reachable */
 void vm_gcmarkvalue(vm *v, value val) {
-    if (MORPHO_ISOBJECT(val)) {
-        vm_gcmarkobject(v, MORPHO_GETOBJECT(val));
-    }
+    if (MORPHO_ISOBJECT(val)) vm_gcmarkobject(v, MORPHO_GETOBJECT(val));
 }
 
 /** Marks all entries in a dictionary */
@@ -123,14 +128,6 @@ void vm_gcmarkroots(vm *v) {
 #endif
     value *stacktop = v->stack.data+v->fp->roffset+v->fp->function->nregs-1;
     
-    /* Find the largest stack position currently in play */
-    /*for (callframe *f=v->frame; f<v->fp; f++) {
-        value *ftop = v->stack.data+f->roffset+f->function->nregs-1;
-        if (ftop>stacktop) stacktop=ftop;
-    }*/
-
-    //debug_showstack(v);
-
     for (value *s=stacktop; s>=v->stack.data; s--) {
         if (MORPHO_ISOBJECT(*s)) vm_gcmarkvalue(v, *s);
     }
@@ -249,15 +246,13 @@ void vm_collectgarbage(vm *v) {
     if (!vc) return;
     
     if (vc->parent) return; // Don't garbage collect in subkernels
-    
-#ifdef MORPHO_PROFILER
+    vmstatus oldstatus = vc->status; // Preserve status
     vc->status=VM_INGC;
-#endif
 
     if (vc && vc->bound>0) {
         size_t init=vc->bound;
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-        morpho_printf(v, "--- begin garbage collection ---\n");
+        morpho_printf(vc, "--- begin garbage collection ---\n");
 #endif
         vm_gcmarkroots(vc);
         vm_gctrace(vc);
@@ -265,23 +260,21 @@ void vm_collectgarbage(vm *v) {
 
         if (vc->bound>init) {
 #ifdef MORPHO_DEBUG_GCSIZETRACKING
-            morpho_printf(v, "GC collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->bound*MORPHO_GCGROWTHFACTOR);
+            morpho_printf(vc, "GC collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->bound*MORPHO_GCGROWTHFACTOR);
             UNREACHABLE("VM bound object size < 0");
 #else
             // This catch has been put in to prevent the garbarge collector from completely seizing up.
-            vc->bound=vm_gcrecalculatesize(v);
+            vc->bound=vm_gcrecalculatesize(vc);
 #endif
         }
 
         vc->nextgc=vc->bound*MORPHO_GCGROWTHFACTOR;
 
 #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
-        morpho_printf(v, "--- end garbage collection ---\n");
-        if (vc) morpho_printf(v, "    collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->nextgc);
+        morpho_printf(vc, "--- end garbage collection ---\n");
+        if (vc) morpho_printf(vc, "    collected %ld bytes (from %zu to %zu) next at %zu.\n", init-vc->bound, init, vc->bound, vc->nextgc);
 #endif
     }
     
-#ifdef MORPHO_PROFILER
-    vc->status=VM_RUNNING;
-#endif
+    vc->status=oldstatus;
 }

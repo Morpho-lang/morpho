@@ -1,0 +1,33 @@
+// Test the jacobian() function 
+
+import meshtools 
+
+// Create the reference triangle
+var mb = MeshBuilder() 
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addedge([0,1])
+mb.addedge([1,2])
+mb.addedge([2,0])
+mb.addface([0,1,2])
+
+var mref = mb.build()
+
+// Make the target triangle by cloning the reference..
+var m = mref.clone() 
+m.setvertexmatrix(2*m.vertexmatrix()) // ... and scaling by 2
+
+fn integrand(x) {
+    var F = jacobian() 
+    //var Jinv = invjacobian()
+    var Ft = F.transpose() 
+
+    return (F*Ft).trace()
+}
+
+var a=AreaIntegral(integrand, reference=mref, weightByReference=true).total(m)
+
+print a
+// expect: 4
+// because Tr(F*Ft)=8; and the area of the reference tri. is 1/2

@@ -1,0 +1,5 @@
+import "relative_directory/target.m"
+// expect: Successfully imported target
+
+folderfn("Hello world")
+// expect: Hello world

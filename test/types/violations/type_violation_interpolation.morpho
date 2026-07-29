@@ -1,0 +1,7 @@
+// Type propagation from interpolation
+
+{
+    var a = 1 
+    Int b = "a=${a}"
+    // expect error 'TypeErr'
+}

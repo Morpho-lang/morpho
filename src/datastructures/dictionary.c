@@ -160,7 +160,7 @@ void dictionary_init(dictionary *dict) {
 
 /** @brief Clears a dictionary structure, freeing attached memory
  *  @param dict the dictionary to clear
- *  @warning This doens't free keys or values in the dictionary. */
+ *  @warning This doesn't free keys or values in the dictionary. */
 void dictionary_clear(dictionary *dict) {
     if (dict->contents) MORPHO_FREE(dict->contents);
     dictionary_init(dict);
@@ -383,6 +383,16 @@ static inline bool _dictionary_get(dictionary *dict, value key, bool intern, val
     }
     
     return false;
+}
+
+/** @brief If a key equal to key is present, returns that stored key and (if val) its value; otherwise returns MORPHO_NIL. */
+value dictionary_getkey(dictionary *dict, value key, value *val) {
+    dictionaryentry *entry = NULL;
+    if (dictionary_find(dict, key, false, &entry)) {
+        if (val) *val = entry->val;
+        return entry->key;
+    }
+    return MORPHO_NIL;
 }
 
 /** @brief Retrieves a value from a dictionary given a key

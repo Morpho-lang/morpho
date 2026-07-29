@@ -11,7 +11,7 @@
 #include "morpho.h"
 #include "classes.h"
 #include "common.h"
-#include "matrix.h"
+#include "linalg.h"
 #include "sparse.h"
 #include "geometry.h"
 
@@ -114,6 +114,11 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, value fnspc, uns
     unsigned int dof[ngrades]; // Extract shape from fespace or the provided function space
     if (MORPHO_ISFESPACE(fnspc)) {
         fespace *disc = MORPHO_GETFESPACE(fnspc)->fespace;
+        for (grade g=1; g<=disc->grade; g++) {
+            if (disc->shape[g]>0 && !mesh_getconnectivityelement(mesh, 0, g)) {
+                mesh_addgrade(mesh, g);
+            }
+        }
         for (int i=0; i<=disc->grade; i++) dof[i]=disc->shape[i];
         for (int i=disc->grade+1; i<ngrades; i++) dof[i]=0;
     } else if (shape) {
@@ -153,6 +158,8 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, value fnspc, uns
         object_init(&new->data.obj, OBJECT_MATRIX);
         new->data.ncols=1;
         new->data.nrows=size;
+        new->data.nvals=1;
+        new->data.nels=new->data.ncols*new->data.nrows*new->data.nvals;
         new->data.elements=new->data.matrixdata;
 
         if (MORPHO_ISMATRIX(prototype)) {
@@ -204,6 +211,7 @@ bool field_applyfunctiontoelements(vm *v, objectmesh *mesh, value fn, value fnsp
     fespace *disc = MORPHO_GETFESPACE(fnspc)->fespace;
 
     objectsparse *conn = mesh_getconnectivityelement(mesh, 0, disc->grade);
+    if (!conn) conn = mesh_addconnectivityelement(mesh, 0, disc->grade);
     if (!conn) return false;
     elementid nel = mesh_nelements(conn);
 
@@ -310,6 +318,8 @@ bool field_addpool(objectfield *f) {
                 m[i].elements=f->data.elements+i*f->psize;
                 m[i].ncols=prototype->ncols;
                 m[i].nrows=prototype->nrows;
+                m[i].nvals=prototype->nvals;
+                m[i].nels=m[i].ncols*m[i].nrows*m[i].nvals;
             }
         }
         return true;
@@ -380,9 +390,19 @@ bool field_getelementwithindex(objectfield *field, int indx, value *out) {
  * @param[in] indx - index within the element
  * @param[out] out - the retrieved index
  * @return true on success */
+static bool field_validateaccess(objectfield *field, grade grade, elementid el, int indx) {
+    if (!field) return false;
+    if (grade<0 || grade>=field->ngrades) return false;
+    if (el<0) return false;
+    if (indx<0 || indx>=field->dof[grade]) return false;
+    return true;
+}
+
 bool field_getindex(objectfield *field, grade grade, elementid el, int indx, int *out) {
+    if (!out || !field_validateaccess(field, grade, el, indx)) return false;
+
     int ix=field->offset[grade]+field->dof[grade]*el+indx;
-    if (!(ix<field->offset[grade+1] && indx<field->dof[grade])) return false;
+    if (!(ix<field->offset[grade+1])) return false;
 
     *out=ix;
     return true;
@@ -411,6 +431,64 @@ bool field_getelementaslist(objectfield *field, grade grade, elementid el, int i
         success=true;
     }
     return success;
+}
+
+static bool field_getelementdofs(objectfield *field, fespace *disc, elementid el, fieldindx *findx) {
+    if (!field || !disc || !findx) return false;
+
+    objectsparse *conn = mesh_getconnectivityelement(field->mesh, 0, disc->grade);
+    if (!conn) conn = mesh_addconnectivityelement(field->mesh, 0, disc->grade);
+    if (!conn) return false;
+
+    int nv, *vids;
+    if (!mesh_getconnectivity(conn, el, &nv, &vids)) return false;
+    if (nv!=disc->grade+1) return false;
+
+    return fespace_doftofieldindx(field, disc, nv, vids, findx);
+}
+
+bool field_evalelement(objectfield *field, elementid el, double *lambda, value *out) {
+    if (!field || !lambda || !out) return false;
+    if (!MORPHO_ISFESPACE(field->fnspc)) return false;
+
+    fespace *disc = MORPHO_GETFESPACE(field->fnspc)->fespace;
+    fieldindx findx[disc->nnodes];
+    if (!field_getelementdofs(field, disc, el, findx)) return false;
+
+    double wts[disc->nnodes];
+    disc->ifn(lambda, wts);
+
+    if (MORPHO_ISNIL(field->prototype)) {
+        double accum = 0.0;
+        for (int i=0; i<disc->nnodes; i++) {
+            value q;
+            double val;
+            if (!field_getelement(field, findx[i].g, findx[i].id, findx[i].indx, &q)) return false;
+            if (!morpho_valuetofloat(q, &val)) return false;
+            accum += wts[i]*val;
+        }
+        *out = MORPHO_FLOAT(accum);
+        return true;
+    } else if (MORPHO_ISMATRIX(field->prototype)) {
+        objectmatrix *proto = MORPHO_GETMATRIX(field->prototype);
+        objectmatrix *accum = matrix_new(proto->nrows, proto->ncols, true);
+        if (!accum) return false;
+
+        for (int i=0; i<disc->nnodes; i++) {
+            unsigned int nentries;
+            double *entries;
+            if (!field_getelementaslist(field, findx[i].g, findx[i].id, findx[i].indx, &nentries, &entries)) {
+                object_free((object *) accum);
+                return false;
+            }
+            for (unsigned int j=0; j<nentries; j++) accum->elements[j] += wts[i]*entries[j];
+        }
+
+        *out = MORPHO_OBJECT(accum);
+        return true;
+    }
+
+    return false;
 }
 
 /** Sets the value of an entry in a field object
@@ -485,21 +563,23 @@ unsigned int field_dofforgrade(objectfield *f, grade g) {
 
 /** Adds two fields together */
 bool field_add(objectfield *left, objectfield *right, objectfield *out) {
-    return (matrix_add(&left->data, &right->data, &out->data)==MATRIX_OK);
+    return (matrix_copy(&left->data, &out->data)==LINALGERR_OK &&
+            matrix_axpy(1.0, &right->data, &out->data)==LINALGERR_OK);
 }
 
 /** Subtracts one field from another */
 bool field_sub(objectfield *left, objectfield *right, objectfield *out) {
-    return (matrix_sub(&left->data, &right->data, &out->data)==MATRIX_OK);
+    return (matrix_copy(&left->data, &out->data)==LINALGERR_OK &&
+            matrix_axpy(-1.0, &right->data, &out->data)==LINALGERR_OK);
 }
 
 /** Accumulate, i.e. a <- a + lambda*b */
 bool field_accumulate(objectfield *left, double lambda, objectfield *right) {
-    return (matrix_accumulate(&left->data, lambda, &right->data)==MATRIX_OK);
+    return (matrix_axpy(lambda, &right->data, &left->data)==LINALGERR_OK);
 }
 
 bool field_inner(objectfield *left, objectfield *right, double *out) {
-    return (matrix_inner(&left->data, &right->data, out)==MATRIX_OK);
+    return (matrix_inner(&left->data, &right->data, out)==LINALGERR_OK);
 }
 
 /** Calls a function fn on every element of a field, optionally with other fields as arguments */
@@ -685,7 +765,7 @@ value Field_assign(vm *v, int nargs, value *args) {
     } else if (nargs==1 && MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
         objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
         
-        if (matrix_copy(b, &a->data)!=MATRIX_OK) morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
+        if (matrix_copy(b, &a->data)!=LINALGERR_OK) morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
     } else morpho_runtimeerror(v, FIELD_ARITHARGS);
     
     return MORPHO_NIL;
@@ -726,7 +806,7 @@ value Field_addr(vm *v, int nargs, value *args) {
         if (i==0) {
             out=MORPHO_SELF(args);
         } else UNREACHABLE("Right addition to non-zero value.");
-    } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
+    } else morpho_runtimeerror(v, LINALG_INVLDARGS);
     
     return out;
 }
@@ -808,7 +888,7 @@ value Field_mul(vm *v, int nargs, value *args) {
                 morpho_bindobjects(v, 1, &out);
             }
         }
-    } else morpho_runtimeerror(v, MATRIX_ARITHARGS);
+    } else morpho_runtimeerror(v, LINALG_INVLDARGS);
     
     return out;
 }
@@ -938,12 +1018,103 @@ value Field_mesh(vm *v, int nargs, value *args) {
     return MORPHO_OBJECT(f->mesh);
 }
 
+static bool field_readlambda(value arg, int nlambda, double *lambda) {
+    if (MORPHO_ISLIST(arg)) {
+        objectlist *list = MORPHO_GETLIST(arg);
+        if (list_length(list)!=(unsigned int) nlambda) return false;
+        for (int i=0; i<nlambda; i++) {
+            value el;
+            if (!list_getelement(list, i, &el)) return false;
+            if (!morpho_valuetofloat(el, &lambda[i])) return false;
+        }
+        return true;
+    } else if (MORPHO_ISMATRIX(arg)) {
+        objectmatrix *mat = MORPHO_GETMATRIX(arg);
+        if (mat->nrows!=(unsigned int) nlambda || mat->ncols!=1) return false;
+        for (int i=0; i<nlambda; i++) lambda[i]=mat->elements[i];
+        return true;
+    }
+
+    return false;
+}
+
+value Field_evalelement_method(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    objectfield *field=MORPHO_GETFIELD(MORPHO_SELF(args));
+    if (!MORPHO_ISFESPACE(field->fnspc)) return out;
+
+    fespace *disc = MORPHO_GETFESPACE(field->fnspc)->fespace;
+    int nlambda = disc->grade+1;
+
+    if (nargs==2 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+        elementid el = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        double lambda[nlambda];
+
+        if (field_readlambda(MORPHO_GETARG(args, 1), nlambda, lambda) &&
+            field_evalelement(field, el, lambda, &out) &&
+            MORPHO_ISOBJECT(out)) {
+            morpho_bindobjects(v, 1, &out);
+        }
+    }
+
+    return out;
+}
+
+value Field_elementdofs_method(vm *v, int nargs, value *args) {
+    value out = MORPHO_NIL;
+    objectfield *field=MORPHO_GETFIELD(MORPHO_SELF(args));
+    objectlist *list = NULL;
+    if (!MORPHO_ISFESPACE(field->fnspc)) return out;
+
+    fespace *disc = MORPHO_GETFESPACE(field->fnspc)->fespace;
+    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
+        elementid el = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+        fieldindx findx[disc->nnodes];
+        if (!field_getelementdofs(field, disc, el, findx)) return out;
+
+        list = object_newlist(0, NULL);
+        if (!list) goto field_elementdofs_cleanup;
+        out = MORPHO_OBJECT(list);
+
+        for (int i=0; i<disc->nnodes; i++) {
+            value entries[3] = {
+                MORPHO_INTEGER(findx[i].g),
+                MORPHO_INTEGER(findx[i].id),
+                MORPHO_INTEGER(findx[i].indx)
+            };
+            objecttuple *tuple = object_newtuple(3, entries);
+            if (!tuple) goto field_elementdofs_cleanup;
+            list_append(list, MORPHO_OBJECT(tuple));
+        }
+
+        /* Temporarily append a self reference so everything can be bound in one go. */
+        list_append(list, MORPHO_OBJECT(list));
+        morpho_bindobjects(v, list->val.count, list->val.data);
+        list->val.count--;
+    }
+
+    return out;
+
+field_elementdofs_cleanup:
+    morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+
+    if (list) {
+        for (unsigned int i=0; i<list->val.count; i++) {
+            value el=list->val.data[i];
+            if (MORPHO_ISOBJECT(el)) object_free(MORPHO_GETOBJECT(el));
+        }
+        object_free((object *) list);
+    }
+
+    return MORPHO_NIL;
+}
+
 /** Get the matrix that stores the Field */
 value Field_linearize(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
     value out = MORPHO_NIL;
     
-    objectmatrix *m=object_clonematrix(&f->data);
+    objectmatrix *m=matrix_clone(&f->data);
     if (m) {
         out = MORPHO_OBJECT(m);
         morpho_bindobjects(v, 1, &out);
@@ -961,29 +1132,31 @@ value Field_unsafelinearize(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Field)
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Field_getindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Field_setindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Field_enumerate, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_COUNT_METHOD, Field_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ASSIGN_METHOD, Field_assign, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ADD_METHOD, Field_add, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ADDR_METHOD, Field_addr, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SUB_METHOD, Field_sub, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_SUBR_METHOD, Field_subr, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_ACC_METHOD, Field_acc, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_MUL_METHOD, Field_mul, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_MULR_METHOD, Field_mul, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_DIV_METHOD, Field_div, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MATRIX_INNER_METHOD, Field_inner, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FIELD_OP_METHOD, Field_op, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Field_print, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Field_clone, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FIELD_SHAPE_METHOD, Field_shape, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FIELD_FESPACE_METHOD, Field_fnspace, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FIELD_PROTOTYPE_METHOD, Field_prototype, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FIELD_MESH_METHOD, Field_mesh, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FIELD_LINEARIZE_METHOD, Field_linearize, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FIELD__LINEARIZE_METHOD, Field_unsafelinearize, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Field_getindex, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Field_setindex, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Field_enumerate, MORPHO_FN_PUREFN),
+MORPHO_METHOD(MORPHO_COUNT_METHOD, Field_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD(MORPHO_ASSIGN_METHOD, Field_assign, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_ADD_METHOD, Field_add, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_ADDR_METHOD, Field_addr, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_SUB_METHOD, Field_sub, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_SUBR_METHOD, Field_subr, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_ACC_METHOD, Field_acc, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_MUL_METHOD, Field_mul, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_MULR_METHOD, Field_mul, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_DIV_METHOD, Field_div, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MATRIX_INNER_METHOD, Field_inner, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD(FIELD_OP_METHOD, Field_op, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_PRINT_METHOD, Field_print, MORPHO_FN_IO),
+MORPHO_METHOD(MORPHO_CLONE_METHOD, Field_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(FIELD_SHAPE_METHOD, Field_shape, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(FIELD_FESPACE_METHOD, Field_fnspace, MORPHO_FN_PUREFN),
+MORPHO_METHOD(FIELD_PROTOTYPE_METHOD, Field_prototype, MORPHO_FN_PUREFN),
+MORPHO_METHOD(FIELD_MESH_METHOD, Field_mesh, MORPHO_FN_PUREFN),
+MORPHO_METHOD(FIELD_EVALELEMENT_METHOD, Field_evalelement_method, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(FIELD_ELEMENTDOFS_METHOD, Field_elementdofs_method, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(FIELD_LINEARIZE_METHOD, Field_linearize, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD(FIELD__LINEARIZE_METHOD, Field_unsafelinearize, MORPHO_FN_PUREFN)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -996,7 +1169,7 @@ void field_initialize(void) {
     field_gradeoption=builtin_internsymbolascstring(FIELD_GRADEOPTION);
     field_functionspaceoption=builtin_internsymbolascstring(FIELD_FESPACEOPTION);
     
-    builtin_addfunction(FIELD_CLASSNAME, field_constructor, BUILTIN_FLAGSEMPTY);
+    builtin_addfunction(FIELD_CLASSNAME, field_constructor, MORPHO_FN_CONSTRUCTOR|MORPHO_FN_ALLOCATES|MORPHO_FN_REENTRANT|MORPHO_FN_THROWS);
     
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));

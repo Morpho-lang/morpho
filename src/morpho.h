@@ -82,9 +82,15 @@ extern value initselector;
 extern value indexselector;
 extern value setindexselector;
 extern value addselector;
+extern value addrselector;
 extern value subselector;
+extern value subrselector;
 extern value mulselector;
+extern value mulrselector;
 extern value divselector;
+extern value divrselector;
+extern value powselector;
+extern value powrselector;
 extern value printselector;
 extern value enumerateselector;
 extern value countselector;
@@ -116,7 +122,9 @@ void morpho_freevm(vm *v);
 
 /* Bind new objects to the virtual machine */
 void morpho_bindobjects(vm *v, int nobj, value *obj);
+void morpho_bindrecursive(vm *v, value obj);
 value morpho_wrapandbind(vm *v, object *obj);
+value morpho_wrapandbindrecursive(vm *v, object *obj);
 
 /* Interact with the garbage collector in an object definition */
 void morpho_markobject(void *v, object *obj);

@@ -4026,7 +4026,8 @@ void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *
     
     if (MORPHO_ISMETAFUNCTION(prev)) {
         objectmetafunction *f = MORPHO_GETMETAFUNCTION(prev);
-        if (f->klass!=klass) {
+        bool inherited = (f->klass!=klass);
+        if (inherited) {
             f=metafunction_clone(f);
             if (f) program_bindobject(c->out, (object *) f);
         }
@@ -4038,7 +4039,10 @@ void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *
             for (int i=0; i<f->fns.count; i++) { // Check if this overrides
                 signature *sig = metafunction_getsignature(f->fns.data[i]);
                 if (sig && signature_isequal(sig, &method->sig)) {
-                    // TODO: Should check for duplicate implementation here
+                    if (!inherited) {
+                        compiler_error(c, node, COMPILE_CLSSDPLCTIMPL, MORPHO_GETCSTRING(symbol), MORPHO_GETCSTRING(klass->name));
+                        return;
+                    }
                     f->fns.data[i] = MORPHO_OBJECT(method);
                     return;
                 }

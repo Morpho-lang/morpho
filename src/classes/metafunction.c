@@ -299,9 +299,21 @@ static int mfresolution_comparevarg(mfresolution *a, mfresolution *b) {
     return (avarg ? 1 : -1);
 }
 
-/** Determine how many parameters should be checked when comparing resolutions. */
-static int _min(int a, int b, int c) {
-    return (a < b) ? ((a < c) ? a : c) : ((b < c) ? b : c);
+/** Minimum fixed arity implied by a signature (varg: nparams-1). */
+static int mfresolution_minarity(signature *sig) {
+    int nparams = signature_countparams(sig);
+    return signature_isvarg(sig) ? nparams - 1 : nparams;
+}
+
+/** Parameter type applicable to argument index, mapping extras onto the varg slot. */
+static bool mfresolution_paramtypeforarg(signature *sig, int argindex, value *type) {
+    int nparams = signature_countparams(sig);
+    int param = argindex;
+    if (argindex >= nparams) {
+        if (!signature_isvarg(sig) || nparams < 1) return false;
+        param = nparams - 1;
+    }
+    return signature_getparamtype(sig, param, type);
 }
 
 /** Returns the sign of an integer. */
@@ -320,26 +332,25 @@ static int mfresolution_comparespecificity(mfresolution *a, mfresolution *b, int
     if (!mfresolution_isterminal(a->sig, nargs, args) ||
         !mfresolution_isterminal(b->sig, nargs, args)) return 0;
 
-    int ncheck=_min(signature_countparams(a->sig), signature_countparams(b->sig), nargs);
-    int cmp[ncheck];
-    for (int i=0; i<ncheck; i++) { // Compare each arg
-        cmp[i]=0;
-        value actual = args[i];
-        if (MORPHO_ISCLASS(actual) || value_type(args[i], &actual)) {
-            mfresolution_compareparamtypes(actual, a->sig->types.data[i], b->sig->types.data[i], &cmp[i]);
-        }
-    }
-
     int firstsign = 0;
-    for (int i=0; i<ncheck; i++) { // Check all entries have the same sign
-        if (cmp[i]!=0) {
-            if (firstsign==0) firstsign = _sign(cmp[i]);
-            else if (firstsign!=_sign(cmp[i])) return 0;
+    for (int i=0; i<nargs; i++) {
+        int cmp = 0;
+        value actual = args[i], atype = MORPHO_NIL, btype = MORPHO_NIL;
+        if (!(MORPHO_ISCLASS(actual) || value_type(args[i], &actual))) continue;
+        if (!mfresolution_paramtypeforarg(a->sig, i, &atype) ||
+            !mfresolution_paramtypeforarg(b->sig, i, &btype)) return 0;
+        if (!mfresolution_compareparamtypes(actual, atype, btype, &cmp)) return 0;
+        if (cmp!=0) {
+            if (firstsign==0) firstsign = _sign(cmp);
+            else if (firstsign!=_sign(cmp)) return 0;
         }
     }
 
     if (firstsign!=0) return firstsign; // If they did have the same sign, we have a winner
-    return mfresolution_comparevarg(a, b); // Tiebreak on varg
+    int vcmp = mfresolution_comparevarg(a, b);
+    if (vcmp!=0) return vcmp; // Non-variadic wins over variadic
+    /* Among variadics, more required leading params is more specific. */
+    return mfresolution_minarity(b->sig) - mfresolution_minarity(a->sig);
 }
 
 /** A set of possible resolutions */
@@ -393,10 +404,11 @@ void mfresolutionset_filterbytypes(mfresolutionset *set, int nargs, value *args)
 void mfresolutionset_filterbyknowntypes(mfresolutionset *set, int nargs, value *args) {
     for (int i=0; i<set->count; i++) {
         if (!set->data[i].sig) continue;
+        signature *sig = set->data[i].sig;
         for (int j=0; j<nargs; j++) {
             value actual = args[j], type = MORPHO_NIL;
             if (MORPHO_ISNIL(actual)) continue;
-            if (!signature_getparamtype(set->data[i].sig, j, &type) ||
+            if (!mfresolution_paramtypeforarg(sig, j, &type) ||
                 !mfresolution_rankparamtype(actual, type, &(int) { 0 })) {
                 set->data[i].sig = NULL;
                 break;
@@ -858,15 +870,14 @@ static int mfcompiler_findemittedcase(int nemitted, mfcompileremittedcase *emitt
 
 /** Compare two resolutions using the runtime classes already known on this path. */
 static int mfcompiler_compareknownspecificity(mfcompileresolution *a, mfcompileresolution *b, int nparams, value *known) {
-    int ncheck = _min(a->nparams, b->nparams, nparams);
     int firstsign = 0;
 
-    for (int i=0; i<ncheck; i++) {
+    for (int i=0; i<nparams; i++) {
         int cmp = 0;
         value atype = MORPHO_NIL, btype = MORPHO_NIL;
         if (MORPHO_ISNIL(known[i])) continue;
-        if (!signature_getparamtype(a->sig, i, &atype) ||
-            !signature_getparamtype(b->sig, i, &btype)) return 0;
+        if (!mfresolution_paramtypeforarg(a->sig, i, &atype) ||
+            !mfresolution_paramtypeforarg(b->sig, i, &btype)) return 0;
         if (!mfresolution_compareparamtypes(known[i], atype, btype, &cmp)) return 0;
         if (cmp!=0) {
             if (firstsign==0) firstsign = _sign(cmp);
@@ -875,8 +886,8 @@ static int mfcompiler_compareknownspecificity(mfcompileresolution *a, mfcompiler
     }
 
     if (firstsign!=0) return firstsign;
-    if (a->varg==b->varg) return 0;
-    return (a->varg ? 1 : -1);
+    if (a->varg!=b->varg) return (a->varg ? 1 : -1);
+    return b->minarity - a->minarity;
 }
 
 /** Resolve a subset directly if known path facts determine all typed parameters. */
@@ -1103,6 +1114,47 @@ mfcompiler_emittypedresolver_cleanup:
     return false;
 }
 
+/** Emit a resolver with arity already validated for this path. */
+static bool mfcompiler_emitcheckedresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions,
+                                           mfcompilerpath *path, int knownarity, mfindx *entry) {
+    mfcompilerpath checked = *path;
+    checked.knownarity = knownarity;
+    checked.aritychecked = true;
+    return mfcompiler_emitresolver(compiler, nresolutions, resolutions, &checked, entry);
+}
+
+/** Emit a resolver for candidates matching knownarity, or fail if none remain. */
+static bool mfcompiler_emitsubsetorfail(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions,
+                                        mfcompilerpath *path, int knownarity, mfindx *entry) {
+    mfcompileresolution subset[nresolutions];
+    int count = mfcompiler_collectsubset(nresolutions, resolutions, knownarity, path->nparams, path->known, subset);
+    if (count<=0) return mfcompiler_emitfail(compiler, entry);
+    return mfcompiler_emitcheckedresolver(compiler, count, subset, path, knownarity, entry);
+}
+
+/** Emit a resolver for variadic candidates, enforcing each candidate's minarity. */
+static bool mfcompiler_emitvargresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions,
+                                        mfcompilerpath *path, mfindx *entry) {
+    int maxminarity = 0;
+    for (int i=0; i<nresolutions; i++) {
+        if (resolutions[i].minarity>maxminarity) maxminarity = resolutions[i].minarity;
+    }
+    if (maxminarity<=0) {
+        return mfcompiler_emitcheckedresolver(compiler, nresolutions, resolutions, path, -1, entry);
+    }
+
+    /* Sparse cases cover nargs < maxminarity; default handles nargs >= maxminarity. */
+    mfcompilersparseentry table[maxminarity];
+    for (int arity=0; arity<maxminarity; arity++) {
+        table[arity].value = arity;
+        ERR_CHECK_RETURN(mfcompiler_emitsubsetorfail(compiler, nresolutions, resolutions, path, arity, &table[arity].target));
+    }
+
+    mfindx deflt;
+    ERR_CHECK_RETURN(mfcompiler_emitcheckedresolver(compiler, nresolutions, resolutions, path, -1, &deflt));
+    return mfcompiler_emitsparse(compiler, maxminarity, table, deflt, entry);
+}
+
 /** Emit an arity-first resolver for a candidate set. */
 static bool mfcompiler_emitarityresolver(mfcompiler *compiler, int nresolutions, mfcompileresolution *resolutions, mfcompilerpath *path, mfindx *entry) {
     mfcompileresolution sorted[nresolutions];
@@ -1121,9 +1173,7 @@ static bool mfcompiler_emitarityresolver(mfcompiler *compiler, int nresolutions,
     if (nvarg<=0) {
         ERR_CHECK_RETURN(mfcompiler_emitfail(compiler, &deflt));
     } else {
-        mfcompilerpath defltpath = *path;
-        defltpath.aritychecked = true;
-        ERR_CHECK_RETURN(mfcompiler_emitresolver(compiler, nvarg, vargsubset, &defltpath, &deflt));
+        ERR_CHECK_RETURN(mfcompiler_emitvargresolver(compiler, nvarg, vargsubset, path, &deflt));
     }
 
     mfcompilersparseentry table[nresolutions];
@@ -1134,6 +1184,7 @@ static bool mfcompiler_emitarityresolver(mfcompiler *compiler, int nresolutions,
         int arity = sorted[i].nparams;
         while (i<nresolutions && !sorted[i].varg && sorted[i].nparams==arity) i++;
 
+        /* Fixed-arity buckets exclude vargs; those are handled by the default branch. */
         mfcompileresolution bucket[nresolutions];
         int count = 0;
         for (int j=0; j<nresolutions; j++) {
@@ -1145,10 +1196,7 @@ static bool mfcompiler_emitarityresolver(mfcompiler *compiler, int nresolutions,
         }
 
         table[ncases].value = arity;
-        mfcompilerpath bucketpath = *path;
-        bucketpath.knownarity = arity;
-        bucketpath.aritychecked = true;
-        ERR_CHECK_RETURN(mfcompiler_emitresolver(compiler, count, bucket, &bucketpath, &table[ncases].target));
+        ERR_CHECK_RETURN(mfcompiler_emitcheckedresolver(compiler, count, bucket, path, arity, &table[ncases].target));
         ncases++;
     }
 
@@ -1162,8 +1210,11 @@ static bool mfcompiler_emitresolver(mfcompiler *compiler, int nresolutions, mfco
     /* No candidates remain on this path. */
     if (nresolutions<=0) return mfcompiler_emitfail(compiler, entry);
 
-    /* A single fully-determined resolution can be emitted directly. */
-    if (nresolutions==1 && mfcompiler_resolutionisterminal(&resolutions[0], path->nparams, path->known)) {
+    /* A single fully-determined resolution can be emitted directly. Variadic
+     * impls with required leading args still need a minarity check first. */
+    if (nresolutions==1 &&
+        mfcompiler_resolutionisterminal(&resolutions[0], path->nparams, path->known) &&
+        (path->aritychecked || !resolutions[0].varg || resolutions[0].minarity<=0)) {
         return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
     }
 
@@ -1323,7 +1374,8 @@ static bool metafunction_runresolver(objectmetafunction *fn, int nargs, value *a
             case MFOP_GETUID: {
                 int arg = instructions[++pc];
                 value type;
-                if (value_type(args[arg], &type) && MORPHO_ISCLASS(type)) {
+                if (arg>=0 && arg<nargs &&
+                    value_type(args[arg], &type) && MORPHO_ISCLASS(type)) {
                     reg = MORPHO_GETCLASS(type)->uid;
                     break;
                 }

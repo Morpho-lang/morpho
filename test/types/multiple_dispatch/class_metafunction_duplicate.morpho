@@ -1,0 +1,17 @@
+// Same-class redefinition of a signature already in a metafunction is an error
+
+class A {
+    foo(x) {
+        return "first"
+    }
+
+    foo(x, y) {
+        return "two"
+    }
+
+    foo(x) {
+        return "replaced"
+    }
+}
+
+// expect error 'ClssDplctImpl'

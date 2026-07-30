@@ -4019,6 +4019,13 @@ static codeinfo compiler_return(compiler *c, syntaxtreenode *node, registerindx 
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
 
+/** Defining class of a method implementation (function or builtin), or NULL. */
+static objectclass *compiler_implementationclass(value fn) {
+    if (MORPHO_ISFUNCTION(fn)) return MORPHO_GETFUNCTION(fn)->klass;
+    if (MORPHO_ISBUILTINFUNCTION(fn)) return MORPHO_GETBUILTINFUNCTION(fn)->klass;
+    return NULL;
+}
+
 /** Overrides or adds to an existing method implementation */
 void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *method, value prev) {
     value symbol = method->name;
@@ -4026,8 +4033,9 @@ void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *
     
     if (MORPHO_ISMETAFUNCTION(prev)) {
         objectmetafunction *f = MORPHO_GETMETAFUNCTION(prev);
-        bool inherited = (f->klass!=klass);
-        if (inherited) {
+        /* Clone when the metafunction still belongs to a parent/mixin. After the
+           child adds any overload, f->klass == klass, but parent impls remain. */
+        if (f->klass!=klass) {
             f=metafunction_clone(f);
             if (f) program_bindobject(c->out, (object *) f);
         }
@@ -4039,7 +4047,9 @@ void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *
             for (int i=0; i<f->fns.count; i++) { // Check if this overrides
                 signature *sig = metafunction_getsignature(f->fns.data[i]);
                 if (sig && signature_isequal(sig, &method->sig)) {
-                    if (!inherited) {
+                    /* Duplicate only if this class already defined that signature;
+                       inherited impls (other klass) are replaced. */
+                    if (compiler_implementationclass(f->fns.data[i]) == klass) {
                         compiler_error(c, node, COMPILE_CLSSDPLCTIMPL, MORPHO_GETCSTRING(symbol), MORPHO_GETCSTRING(klass->name));
                         return;
                     }

@@ -1214,7 +1214,7 @@ static bool mfcompiler_emitresolver(mfcompiler *compiler, int nresolutions, mfco
      * impls with required leading args still need a minarity check first. */
     if (nresolutions==1 &&
         mfcompiler_resolutionisterminal(&resolutions[0], path->nparams, path->known) &&
-        (path->aritychecked || !resolutions[0].varg || resolutions[0].minarity<=0)) {
+        path->aritychecked && (!resolutions[0].varg || resolutions[0].minarity<=0)) {
         return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
     }
 

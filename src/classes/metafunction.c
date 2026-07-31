@@ -1163,7 +1163,7 @@ static bool mfcompiler_emitresolver(mfcompiler *compiler, int nresolutions, mfco
     if (nresolutions<=0) return mfcompiler_emitfail(compiler, entry);
 
     /* A single fully-determined resolution can be emitted directly. */
-    if (nresolutions==1 && mfcompiler_resolutionisterminal(&resolutions[0], path->nparams, path->known)) {
+    if (nresolutions==1 && mfcompiler_resolutionisterminal(&resolutions[0], path->nparams, path->known) && path->aritychecked) {
         return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
     }
 

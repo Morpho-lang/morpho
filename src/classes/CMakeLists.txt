@@ -21,6 +21,7 @@ target_sources(morpho
         nil.c          nil.h
         range.c        range.h
         strng.c        strng.h
+        shortstring.c  shortstring.h
         system.c       system.h
         tuple.c        tuple.h
         upvalue.c      upvalue.h
@@ -51,6 +52,7 @@ target_sources(morpho
         nil.h
         range.h
         strng.h
+        shortstring.h
         system.h
         upvalue.h
 )

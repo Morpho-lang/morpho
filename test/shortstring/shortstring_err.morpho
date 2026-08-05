@@ -1,0 +1,12 @@
+var success = false
+
+try {
+    var ss = ShortString("Hello World")
+} catch {
+    "ShrStrTooLng":
+        success = true
+    "ShrStrNanBxDsbl":
+        success = true
+}
+print success
+// expect: true

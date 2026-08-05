@@ -82,6 +82,10 @@ int morpho_comparevalue(value a, value b) {
                 if (MORPHO_GETOBJECTTYPE(a)!=MORPHO_GETOBJECTTYPE(b)) {
                     return 1; /* Objects of different type are always different */
                 } else return object_cmp(MORPHO_GETOBJECT(a), MORPHO_GETOBJECT(b));
+#ifdef MORPHO_NAN_BOXING
+            case VALUE_SSTRING:
+                return -strncmp(MORPHO_GETSHORTSTRING(a), MORPHO_GETSHORTSTRING(b), SSTRING_LENGTH);
+#endif
             default:
                 UNREACHABLE("unhandled value type for comparison [Check morpho_comparevalue]");
         }

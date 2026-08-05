@@ -29,6 +29,7 @@ typedef struct sobject object;
         VALUE_DOUBLE   -
         VALUE_BOOL     - boolean type
         VALUE_OBJECT   - pointer to an object
+        VALUE_SSTRING  - 6 byte short string (only with NAN_BOXING)
     The implementation of a value is intentionally opaque and can be NAN boxed into a 64-bit double or left as a struct.
     This file therefore defines several kinds of macro to:
         * create values of a given type, e.g. MORPHO_INTEGER.
@@ -55,6 +56,7 @@ typedef uint64_t value;
 #define TAG_BOOL     ((uint64_t) 2ull << TAG_SHIFT)
 #define TAG_INT      ((uint64_t) 3ull << TAG_SHIFT)
 #define TAG_OBJ      ((uint64_t) 4ull << TAG_SHIFT)
+#define TAG_SSTR     ((uint64_t) 5ull << TAG_SHIFT)
 
 /** Manipulations */
 #define MORPHO_EXPALLONES(v) ((((uint64_t)(v)) & EXP_MASK) == EXP_MASK)
@@ -70,6 +72,7 @@ typedef uint64_t value;
 #define VALUE_DOUBLE    ((uint64_t) 0ull)
 #define VALUE_BOOL      (TAG_BOOL)
 #define VALUE_OBJECT    (TAG_OBJ)
+#define VALUE_SSTRING   (TAG_SSTR)
 
 /** Get the type from a value */
 #define MORPHO_GETTYPE(x) (MORPHO_ISBOXED(x) ? MORPHO_TAGBITS(x) : VALUE_DOUBLE)
@@ -101,6 +104,7 @@ static inline double valuetodouble(value v) {
 #define MORPHO_INTEGER(x) ((value) (QNAN | TAG_INT | (((uint64_t)(x)) & LOWER_WORD)))
 #define MORPHO_FLOAT(x)             doubletovalue(x)
 #define MORPHO_OBJECT(x)  ((value) (QNAN | TAG_OBJ | (((uint64_t)(uintptr_t)(x)) & PAYLOAD_MASK)))
+#define MORPHO_SHORTSTRING(x)  ((value) (QNAN | TAG_SSTR | ((*((uint64_t *)(x))) & PAYLOAD_MASK)))
 
 /** Test for the type of a value */
 #define MORPHO_ISNIL(v)      ((v) == MORPHO_NIL) 
@@ -109,6 +113,7 @@ static inline double valuetodouble(value v) {
 #define MORPHO_ISBOOL(v)     (MORPHO_ISBOXED(v) && (MORPHO_TAGBITS(v) == TAG_BOOL))
 #define MORPHO_ISOBJECT(v)   (MORPHO_ISBOXED(v) && (MORPHO_TAGBITS(v) == TAG_OBJ))
 #define MORPHO_ISFLOAT(v)    (!MORPHO_ISBOXED(v))
+#define MORPHO_ISSHORTSTRING(v)   (MORPHO_ISBOXED(v) && (MORPHO_TAGBITS(v) == TAG_SSTR))
 
 /** Get a value */
 #define MORPHO_GETPAYLOAD(v)        (((uint64_t)(v)) & PAYLOAD_MASK)
@@ -116,6 +121,7 @@ static inline double valuetodouble(value v) {
 #define MORPHO_GETFLOATVALUE(v)     valuetodouble(v)
 #define MORPHO_GETBOOLVALUE(v)      ((v) == MORPHO_TRUE)
 #define MORPHO_GETOBJECT(v)         ((object *)(uintptr_t)(((uint64_t)(v)) & PAYLOAD_MASK))
+#define MORPHO_GETSHORTSTRING(v)    ((char *)(&(v)))
 
 static inline bool morpho_ofsametype(value a, value b) {
     bool af = MORPHO_ISFLOAT(a);
@@ -142,7 +148,8 @@ enum {
     VALUE_NIL,
     VALUE_BOOL,
     VALUE_INTEGER,
-    VALUE_OBJECT
+    VALUE_OBJECT,
+    VALUE_SSTRING
 };
 
 typedef int valuetype;
@@ -179,6 +186,7 @@ typedef struct {
 #define MORPHO_FLOAT(x) ((value) { VALUE_DOUBLE, .as.real = (double) x })
 #define MORPHO_BOOL(x) ((value) { VALUE_BOOL, .as.boolean = (bool) x })
 #define MORPHO_OBJECT(x) ((value) { VALUE_OBJECT, .as.obj = (object *) x })
+#define MORPHO_SHORTSTRING(x) ((value) { VALUE_SSTRING, .as.integer = (int) 0 })
 
 #define MORPHO_TRUE MORPHO_BOOL(true)
 #define MORPHO_FALSE MORPHO_BOOL(false)

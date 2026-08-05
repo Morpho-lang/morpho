@@ -1,0 +1,12 @@
+try {
+    var ss = ShortString("<\U0001F98B>")
+
+    print ss.count()
+    // expect: 3
+
+    print ss
+    // expect: <🦋>
+} catch {
+    "ShrStrNanBxDsbl":
+        print "3\n<🦋>"
+}

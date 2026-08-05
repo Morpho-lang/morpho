@@ -439,6 +439,14 @@ value Selection_isselected(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Get the attached mesh */
+value Selection_mesh(vm *v, int nargs, value *args) {
+    objectselection *sel = MORPHO_GETSELECTION(MORPHO_SELF(args));
+    value out = MORPHO_NIL;
+    if (sel->mesh) out = MORPHO_OBJECT(sel->mesh);
+    return out;
+}
+
 /** Get the id list for a given grade */
 value Selection_idlistforgrade(vm *v, int nargs, value *args) {
     objectselection *sel = MORPHO_GETSELECTION(MORPHO_SELF(args));
@@ -546,6 +554,7 @@ MORPHO_METHOD(SELECTION_ISSELECTEDMETHOD, Selection_isselected, MORPHO_FN_PUREFN
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Selection_isselected, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Selection_setindex, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD(SELECTION_IDLISTFORGRADEMETHOD, Selection_idlistforgrade, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(SELECTION_MESHMETHOD, Selection_mesh, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Selection_count, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Selection_print, MORPHO_FN_IO),
 MORPHO_METHOD(MORPHO_UNION_METHOD, Selection_union, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),

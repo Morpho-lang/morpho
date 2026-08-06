@@ -4827,6 +4827,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             varray_charinit(&fpath);
             varray_charadd(&fpath, wrkdir.data, wrkdir.count-1);
             varray_charadd(&fpath, fname, (int) strlen(fname));
+            varray_charwrite(&fpath, '\0'); // Must null terminate
             file_setworkingdirectory(fpath.data);
 
             /* Remember the initial position of the code */

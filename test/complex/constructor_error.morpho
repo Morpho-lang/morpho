@@ -2,7 +2,7 @@
 try {
     var X = Complex(1)    
 } catch {
-    "CmplxCns" : print "ok"
+    "MltplDsptchFld" : print "ok"
 // expect: ok
 }    
 

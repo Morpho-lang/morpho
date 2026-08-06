@@ -1212,9 +1212,8 @@ static bool mfcompiler_emitresolver(mfcompiler *compiler, int nresolutions, mfco
 
     /* A single fully-determined resolution can be emitted directly. Variadic
      * impls with required leading args still need a minarity check first. */
-    if (nresolutions==1 &&
-        mfcompiler_resolutionisterminal(&resolutions[0], path->nparams, path->known) &&
-        path->aritychecked && (!resolutions[0].varg || resolutions[0].minarity<=0)) {
+    if (nresolutions==1 && path->aritychecked &&
+        mfcompiler_resolutionisterminal(&resolutions[0], path->nparams, path->known)) {
         return mfcompiler_emitresolve(compiler, resolutions[0].fnindex, entry);
     }
 

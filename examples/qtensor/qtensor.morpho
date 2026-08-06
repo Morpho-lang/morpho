@@ -42,7 +42,7 @@ bnd.addgrade(0) // add point elements
 Since a 2D Q-tensor for a uniaxial nematic is symmetric and traceless, there are only two independent components, Qxx and Qxy. We thus define the q_tensor to be a 2D vector, with its components being Qxx and Qxy. We initialize it to be zero and add a random noise of 1% strength as a perturbation to start the gradient descent. The Q-tensor usually takes values of order 1, so we can use 0.01*random(1) as the initial 1% noise.
 */
 
-var q_tensor = Field(m, fn(x,y,z) Matrix([0.01*random(1), 0.01*random(1)]))
+var q_tensor = Field(m, fn(x,y,z) Matrix([0.01*random(), 0.01*random()]))
 
 // Define various components of the energy.
 // Since these functions are meant to be arguments to AreaIntegral and LineIntegral, their first input argument has to be the position vector `x`. The field argument (the q-tensor in our case) comes after.

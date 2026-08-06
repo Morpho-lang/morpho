@@ -85,8 +85,23 @@ char *shortstring_index(value *s, int i) {
  * ShortString class
  * ------------------------------------------------------- */
 
-/** Constructor function for short strings */
+/** Simple constructor function for short strings */
 value shortstring_constructor(vm *v, int nargs, value *args) {
+#ifndef MORPHO_NAN_BOXING
+    morpho_runtimeerror(v, SSTRING_NONANBOX);
+    return MORPHO_NIL;
+#else
+    objectstring *str = MORPHO_GETSTRING(MORPHO_GETARG(args, 0));
+
+    value out=value_shortstringfromcstring(str->string, str->length);
+    if (!MORPHO_ISSHORTSTRING(out)) morpho_runtimeerror(v, SSTRING_TOOLONG);
+
+    return out;
+#endif
+}
+
+/** Constructor function for short strings */
+value shortstring_multconstructor(vm *v, int nargs, value *args) {
 #ifndef MORPHO_NAN_BOXING
     morpho_runtimeerror(v, SSTRING_NONANBOX);
     return MORPHO_NIL;
@@ -186,7 +201,8 @@ void shortstring_initialize(void) {
     value_setveneerclass(MORPHO_SHORTSTRING(""), sstringclass);
     
     // String constructor function
-    morpho_addfunction(SSTRING_CLASSNAME, SSTRING_CLASSNAME " (...)", shortstring_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(SSTRING_CLASSNAME, SSTRING_CLASSNAME " (String)", shortstring_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+    morpho_addfunction(SSTRING_CLASSNAME, SSTRING_CLASSNAME " (...)", shortstring_multconstructor, MORPHO_FN_CONSTRUCTOR, NULL);
 
     // Define errors
     morpho_defineerror(SSTRING_TOOLONG, ERROR_HALT, SSTRING_TOOLONG_MSG);

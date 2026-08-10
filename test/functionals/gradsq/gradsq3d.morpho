@@ -1,6 +1,5 @@
 // Test gradsq on a single tetrahedron
 import meshtools
-import shapeopt
 import plot
 
 var tol = 2e-4

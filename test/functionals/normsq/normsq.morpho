@@ -1,7 +1,6 @@
 // Test norm sq
 
 import meshtools
-import shapeopt
 
 var m = Mesh("triangle.mesh")
 

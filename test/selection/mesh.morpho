@@ -1,0 +1,11 @@
+// Selection.mesh()
+
+var m = Mesh("square.mesh")
+
+var s = Selection(m, fn (x,y,z) y>0.5)
+
+print s.mesh()
+// expect: <Mesh: 4 vertices>
+
+print s.mesh() == m
+// expect: true

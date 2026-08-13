@@ -1489,13 +1489,10 @@ static bool compiler_newcallablesnapshot(compiler *c, syntaxtreenode *node, valu
     return true;
 }
 
-/** Origin-aware import of a callable export E into the current compiler. */
-static void compiler_bindimportedcallable(compiler *c, value name, value index, value export) {
+/** Origin-aware import of a callable export E. Globals are already copied. */
+static void compiler_bindimportedcallable(compiler *c, value name, value export) {
     value snapshot = MORPHO_NIL, origin = MORPHO_NIL;
     bool has = compiler_getcallablebinding(c, name, &snapshot, &origin);
-    value key = program_internsymbol(c->out, name);
-
-    dictionary_insert(&c->globals, key, index);
 
     if (has && MORPHO_ISSAME(origin, export)) return;
 
@@ -4866,7 +4863,7 @@ void compiler_copysymbols(dictionary *src, dictionary *dest, dictionary *compare
 }
 
 #define MODULE_CACHE_GLOBALS   "globals"
-#define MODULE_CACHE_ASSYMBOLS "as_symbols"
+#define MODULE_CACHE_CALLABLES "callables"
 #define MODULE_CACHE_CLASSES   "classes"
 
 /** Interns a module-cache section key. */
@@ -4885,26 +4882,29 @@ static dictionary *compiler_modulecachesection(compiler *c, objectdictionary *ca
     return NULL;
 }
 
-/** Fills as_symbols from a completed module: callable snapshots, class objects, data indices. */
-static void compiler_fillassymbols(compiler *module, dictionary *dest) {
-    for (unsigned int i=0; i<module->globals.capacity; i++) {
-        value key = module->globals.contents[i].key;
-        if (MORPHO_ISNIL(key)) continue;
+/** Namespace entry for a cached name: snapshot, class, or global index.
+    Closure-bearing snapshots load from the global slot, matching compiler_symbol. */
+static value compiler_namespaceentry(dictionary *globals, dictionary *callables, dictionary *classes, value key) {
+    value snap = MORPHO_NIL, entry = MORPHO_NIL;
 
-        value entry;
-        if (dictionary_get(&module->callables, key, &entry)) {
-            /* Closure-bearing snapshots are the prototype, not the runtime
-               closure; store the global index so qualified lookup LGLs. */
-            if (compiler_snapshotneedsglobal(entry)) {
-                dictionary_insert(dest, key, module->globals.contents[i].val);
-            } else {
-                dictionary_insert(dest, key, entry);
-            }
-        } else if (dictionary_get(&module->classes, key, &entry)) {
-            dictionary_insert(dest, key, entry);
-        } else {
-            dictionary_insert(dest, key, module->globals.contents[i].val);
-        }
+    if (dictionary_get(callables, key, &snap) && compiler_isfunctionexport(snap)) {
+        if (!compiler_snapshotneedsglobal(snap)) return snap;
+        if (dictionary_get(globals, key, &entry)) return entry;
+        return MORPHO_NIL;
+    }
+    if (dictionary_get(classes, key, &entry)) return entry;
+    if (dictionary_get(globals, key, &entry)) return entry;
+    return MORPHO_NIL;
+}
+
+/** Builds namespace.symbols from the cached compiler tables. */
+static void compiler_fillnamespace(dictionary *globals, dictionary *callables, dictionary *classes, dictionary *dest, dictionary *fordict) {
+    for (unsigned int i=0; i<globals->capacity; i++) {
+        value key = globals->contents[i].key;
+        if (MORPHO_ISNIL(key) || !compiler_exportselected(key, fordict)) continue;
+
+        value entry = compiler_namespaceentry(globals, callables, classes, key);
+        if (!MORPHO_ISNIL(entry)) dictionary_insert(dest, key, entry);
     }
 }
 
@@ -4912,21 +4912,21 @@ static void compiler_fillassymbols(compiler *module, dictionary *dest) {
 static objectdictionary *compiler_newmodulecache(compiler *c, compiler *module) {
     objectdictionary *cache = object_newdictionary();
     objectdictionary *globals = object_newdictionary();
-    objectdictionary *as_symbols = object_newdictionary();
+    objectdictionary *callables = object_newdictionary();
     objectdictionary *classes = object_newdictionary();
-    if (!cache || !globals || !as_symbols || !classes) return NULL;
+    if (!cache || !globals || !callables || !classes) return NULL;
 
     dictionary_copy(&module->globals, &globals->dict);
+    dictionary_copy(&module->callables, &callables->dict);
     dictionary_copy(&module->classes, &classes->dict);
-    compiler_fillassymbols(module, &as_symbols->dict);
 
     dictionary_insert(&cache->dict, compiler_modulecachekey(c, MODULE_CACHE_GLOBALS), MORPHO_OBJECT(globals));
-    dictionary_insert(&cache->dict, compiler_modulecachekey(c, MODULE_CACHE_ASSYMBOLS), MORPHO_OBJECT(as_symbols));
+    dictionary_insert(&cache->dict, compiler_modulecachekey(c, MODULE_CACHE_CALLABLES), MORPHO_OBJECT(callables));
     dictionary_insert(&cache->dict, compiler_modulecachekey(c, MODULE_CACHE_CLASSES), MORPHO_OBJECT(classes));
 
     program_bindobject(c->out, (object *) cache);
     program_bindobject(c->out, (object *) globals);
-    program_bindobject(c->out, (object *) as_symbols);
+    program_bindobject(c->out, (object *) callables);
     program_bindobject(c->out, (object *) classes);
     return cache;
 }
@@ -4934,12 +4934,12 @@ static objectdictionary *compiler_newmodulecache(compiler *c, compiler *module) 
 /** Applies a completed-module cache to the importing compiler (fresh and cached paths). */
 static void compiler_applymoduleexports(compiler *c, objectdictionary *cache, dictionary *fordict, namespc *nmspace) {
     dictionary *globals = compiler_modulecachesection(c, cache, MODULE_CACHE_GLOBALS);
-    dictionary *as_symbols = compiler_modulecachesection(c, cache, MODULE_CACHE_ASSYMBOLS);
+    dictionary *callables = compiler_modulecachesection(c, cache, MODULE_CACHE_CALLABLES);
     dictionary *classes = compiler_modulecachesection(c, cache, MODULE_CACHE_CLASSES);
-    if (!globals || !as_symbols || !classes) return;
+    if (!globals || !callables || !classes) return;
 
     if (nmspace) {
-        compiler_copysymbols(as_symbols, &nmspace->symbols, fordict);
+        compiler_fillnamespace(globals, callables, classes, &nmspace->symbols, fordict);
         compiler_copysymbols(classes, &nmspace->classes, fordict);
         return;
     }
@@ -4947,15 +4947,13 @@ static void compiler_applymoduleexports(compiler *c, objectdictionary *cache, di
     compiler_copysymbols(globals, &c->globals, fordict);
     compiler_copysymbols(classes, &c->classes, fordict);
 
-    for (unsigned int i=0; i<as_symbols->capacity; i++) {
-        value key = as_symbols->contents[i].key;
+    for (unsigned int i=0; i<globals->capacity; i++) {
+        value key = globals->contents[i].key;
         if (MORPHO_ISNIL(key) || !compiler_exportselected(key, fordict)) continue;
 
-        value export = as_symbols->contents[i].val;
-        if (compiler_isfunctionexport(export)) {
-            value index = MORPHO_NIL;
-            dictionary_get(globals, key, &index);
-            compiler_bindimportedcallable(c, key, index, export);
+        value export = MORPHO_NIL;
+        if (dictionary_get(callables, key, &export) && compiler_isfunctionexport(export)) {
+            compiler_bindimportedcallable(c, key, export);
         } else {
             compiler_clearcallablebinding(c, key);
         }

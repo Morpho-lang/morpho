@@ -1,0 +1,7 @@
+// After rebind to B, A's overloads are gone
+
+import "mf_provider.m" for f
+import "mf_provider_b.m" for f
+
+f("Hi")
+// expect error 'MltplDsptchFld'

@@ -1,0 +1,6 @@
+// Unselected symbols stay absent with as+for
+
+import "mf_provider.m" as P for f
+
+P.helper("Hi")
+// expect error 'SymblUndfNmSpc'

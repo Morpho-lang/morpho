@@ -1,0 +1,15 @@
+// Capturing f as a value keeps the snapshot visible at that point
+
+import "mf_provider.m" for f
+
+var oldf = f
+
+fn f(List x) {
+    return "list"
+}
+
+print oldf("Hi")
+// expect: string
+
+print f([])
+// expect: list

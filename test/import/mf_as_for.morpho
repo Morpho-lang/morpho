@@ -1,0 +1,22 @@
+// Selective import, qualified import, as+for, and cached as
+
+import "mf_provider.m" for f
+
+print f("Hi")
+// expect: string
+
+print f(1)
+// expect: int
+
+import "mf_provider.m" as P
+
+print P.f("Hi")
+// expect: string
+
+print P.helper("Hi")
+// expect: string
+
+import "mf_provider.m" as Q for f
+
+print Q.f(1)
+// expect: int

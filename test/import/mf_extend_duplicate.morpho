@@ -1,0 +1,10 @@
+// Same signature after import is an ambiguity error
+
+import "mf_provider.m" for f
+
+fn f(String x) {
+    return "dup"
+}
+
+f("Hi")
+// expect error 'MltplDisptchAmbg'

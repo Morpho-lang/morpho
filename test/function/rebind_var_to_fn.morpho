@@ -1,0 +1,8 @@
+// Top-level fn after var establishes callable metadata
+
+var f = 3
+
+fn f(x) { return x }
+
+print f(4)
+// expect: 4

@@ -1,0 +1,6 @@
+// Qualified import hides underscore-prefixed free functions
+
+import "mf_provider.m" as P
+
+P._privateFn()
+// expect error 'SymblUndfNmSpc'

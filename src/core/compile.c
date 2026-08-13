@@ -1403,7 +1403,9 @@ codeinfo compiler_addvariable(compiler *c, syntaxtreenode *node, value symbol) {
  * ------------------------------------------- */
 
 /** True if a callable snapshot must be loaded from the global slot because
-    it includes a closure implementation. */
+    it includes a closure implementation. Top-level named exports are closures
+    when they capture a forward reference (e.g. mutual recursion); those
+    references LGL the runtime closure rather than LCT the prototype. */
 static bool compiler_snapshotneedsglobal(value snapshot) {
     if (MORPHO_ISFUNCTION(snapshot) && function_isclosure(MORPHO_GETFUNCTION(snapshot))) return true;
     if (MORPHO_ISMETAFUNCTION(snapshot)) {
@@ -1444,6 +1446,12 @@ static void compiler_setcallablebinding(compiler *c, value name, value snapshot,
 static void compiler_clearcallablebinding(compiler *c, value name) {
     dictionary_remove(&c->callables, name);
     dictionary_remove(&c->origins, name);
+}
+
+/** Clears callable metadata when a top-level source binding occupies a name
+    with a non-callable. No-op inside nested functions. */
+static void compiler_cleartoplevelcallable(compiler *c, value name) {
+    if (compiler_checkglobal(c)) compiler_clearcallablebinding(c, name);
 }
 
 /** Builds a new callable snapshot from an existing binding and an incoming implementation.
@@ -3400,6 +3408,7 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
     if (!MORPHO_ISNIL(var)) {
         /* Create the variable */
         codeinfo vloc = compiler_addvariable(c, varnode, var);
+        compiler_cleartoplevelcallable(c, var);
         codeinfo array = CODEINFO_EMPTY;
 
         if (vloc.returntype==REGISTER) {
@@ -3715,9 +3724,12 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         /* If it's not in a register, allocate a temporary register */
         if (fvar.returntype!=REGISTER) reg=compiler_regtemp(c, REGISTER_UNALLOCATED);
 
-        /* Load the callable snapshot (or the raw function for nested/anonymous) */
+        /* Load the callable snapshot, or the raw function when wrapping a
+           closure (OP_CLOSURE cannot be applied to a metafunction). */
         registerindx loadk = kindx;
-        if (isglobalfn) loadk = compiler_addconstant(c, node, snapshot, true, false);
+        if (isglobalfn && closure==REGISTER_UNALLOCATED) {
+            loadk = compiler_addconstant(c, node, snapshot, true, false);
+        }
         compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, loadk), node);
         ninstructions++;
 
@@ -4398,6 +4410,7 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
     
     /* Allocate a variable to refer to the class definition */
     codeinfo cvar=compiler_addvariable(c, node, node->content);
+    compiler_cleartoplevelcallable(c, node->content);
     registerindx reg=cvar.dest;
 
     /* If it's not in a register, allocate a temporary register */
@@ -4622,7 +4635,7 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
                 ninstructions+=ret.ninstructions;
                 break;
             case ASSIGN_GLBL:
-                compiler_clearcallablebinding(c, var);
+                compiler_cleartoplevelcallable(c, var);
                 ret=compiler_movetoglobal(c, node, right, reg);
                 ninstructions+=ret.ninstructions;
                 break;
@@ -4832,6 +4845,13 @@ void compiler_stripend(compiler *c) {
     }
 }
 
+/** True if a module symbol should be copied into an importer.
+    Underscore names are private unless explicitly selected with for. */
+static bool compiler_exportselected(value key, dictionary *compare) {
+    if (compare) return dictionary_get(compare, key, NULL);
+    return !(MORPHO_ISSTRING(key) && MORPHO_GETCSTRING(key)[0]=='_');
+}
+
 /** Copies the globals across from one compiler to another. The globals dictionary maps keys to global numbers
  * @param[in] src source dictionary
  * @param[in] dest destination dictionary
@@ -4839,14 +4859,7 @@ void compiler_stripend(compiler *c) {
 void compiler_copysymbols(dictionary *src, dictionary *dest, dictionary *compare) {
     for (unsigned int i=0; i<src->capacity; i++) {
         value key = src->contents[i].key;
-        if (!MORPHO_ISNIL(key)) {
-            if (compare && !dictionary_get(compare, key, NULL)) continue;
-            
-            /* Underscore names are private unless explicitly requested with for */
-            if (MORPHO_ISSTRING(key) &&
-                MORPHO_GETCSTRING(key)[0]=='_' &&
-                !compare) continue;
-
+        if (!MORPHO_ISNIL(key) && compiler_exportselected(key, compare)) {
             dictionary_insert(dest, key, src->contents[i].val);
         }
     }
@@ -4880,7 +4893,13 @@ static void compiler_fillassymbols(compiler *module, dictionary *dest) {
 
         value entry;
         if (dictionary_get(&module->callables, key, &entry)) {
-            dictionary_insert(dest, key, entry);
+            /* Closure-bearing snapshots are the prototype, not the runtime
+               closure; store the global index so qualified lookup LGLs. */
+            if (compiler_snapshotneedsglobal(entry)) {
+                dictionary_insert(dest, key, module->globals.contents[i].val);
+            } else {
+                dictionary_insert(dest, key, entry);
+            }
         } else if (dictionary_get(&module->classes, key, &entry)) {
             dictionary_insert(dest, key, entry);
         } else {
@@ -4897,8 +4916,8 @@ static objectdictionary *compiler_newmodulecache(compiler *c, compiler *module) 
     objectdictionary *classes = object_newdictionary();
     if (!cache || !globals || !as_symbols || !classes) return NULL;
 
-    compiler_copysymbols(&module->globals, &globals->dict, NULL);
-    compiler_copysymbols(&module->classes, &classes->dict, NULL);
+    dictionary_copy(&module->globals, &globals->dict);
+    dictionary_copy(&module->classes, &classes->dict);
     compiler_fillassymbols(module, &as_symbols->dict);
 
     dictionary_insert(&cache->dict, compiler_modulecachekey(c, MODULE_CACHE_GLOBALS), MORPHO_OBJECT(globals));
@@ -4930,12 +4949,7 @@ static void compiler_applymoduleexports(compiler *c, objectdictionary *cache, di
 
     for (unsigned int i=0; i<as_symbols->capacity; i++) {
         value key = as_symbols->contents[i].key;
-        if (MORPHO_ISNIL(key)) continue;
-        if (fordict) {
-            if (!dictionary_get(fordict, key, NULL)) continue;
-        } else if (MORPHO_ISSTRING(key) && MORPHO_GETCSTRING(key)[0]=='_') {
-            continue;
-        }
+        if (MORPHO_ISNIL(key) || !compiler_exportselected(key, fordict)) continue;
 
         value export = as_symbols->contents[i].val;
         if (compiler_isfunctionexport(export)) {

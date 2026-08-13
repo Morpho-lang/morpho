@@ -21,3 +21,6 @@ class Foo {
         return "method"
     }
 }
+
+class _PrivateClass {
+}

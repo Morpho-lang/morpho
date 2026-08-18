@@ -1026,6 +1026,7 @@ meshload_cleanup:
     varray_charclear(&line);
     dictionary_clear(&vdict);
     varray_doubleclear(&vert);
+    error_clear(&err);
 
     return out;
 }

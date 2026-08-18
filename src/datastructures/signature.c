@@ -194,6 +194,7 @@ bool signature_parse(const char *sig, signature *out) {
     
     parse_clear(&p);
     lex_clear(&l);
+    error_clear(&err);
     
     return success;
 }

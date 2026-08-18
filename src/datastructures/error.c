@@ -50,11 +50,13 @@ void error_clear(error *err) {
     err->id=NULL;
     err->file=NULL;
     err->line=ERROR_POSNUNIDENTIFIABLE; err->posn=ERROR_POSNUNIDENTIFIABLE;
+    if (err->hnt) { hint_free(err->hnt); err->hnt=NULL; }
 }
 
 /** Clears an error structure
  *  @param err      Error struct to fill out */
 void error_init(error *err) {
+    err->hnt=NULL;
     error_clear(err);
 }
 
@@ -120,6 +122,17 @@ void error_writewithid(error *err, errorid id, ... ) {
     va_list args;
     va_start(args, id);
     morpho_writeerrorwithidvalist(err, id, NULL, ERROR_POSNUNIDENTIFIABLE, ERROR_POSNUNIDENTIFIABLE, args);
+    va_end(args);
+}
+
+/** @brief Adds a hint blurb to the error structure
+ *  @param err  The error structure
+ *  @param msg  The hint message
+ *  @param ...  Additional parameters (the data for the printf commands in the message) */
+void error_addhintmsg(error *err, const char *msg, ...) {
+    va_list args;
+    va_start(args, msg);
+    err->hnt = hint_createfromformatstringvalist(msg, args);
     va_end(args);
 }
 

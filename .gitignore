@@ -59,7 +59,7 @@ dkms.conf
 .vscode/settings.json
 .vscode/
 
-test/FailedTests*.txt
+FailedTests*.txt
 *.png
 *.out
 manual/src/manual.lyx~

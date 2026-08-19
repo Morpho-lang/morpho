@@ -359,6 +359,12 @@ bool functional_map(int ntasks, functional_task *tasks) {
     return functional_parallelmap(ntasks, tasks);
 }
 
+/** Number of map tasks: one on the serial path, otherwise the worker count */
+static int functional_ntasks(void) {
+    int n=morpho_threadnumber();
+    return (n<1 ? 1 : n);
+}
+
 /** Calculate bin sizes */
 void functional_binbounds(int nel, int nbins, int *binbounds) {
     int binsizes[nbins+1];
@@ -387,6 +393,8 @@ void functional_binbounds(int nel, int nbins, int *binbounds) {
 int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, functional_task *task, varray_elementid *imageids) {
     int nel=0;
     objectsparse *conn=NULL; // The associated connectivity matrix if any
+    
+    if (ntask<1) return false;
     
     /* Work out the number of elements */
     if (!functional_countelements(v, info->mesh, info->g, &nel, &conn)) return false;
@@ -465,8 +473,7 @@ bool functional_sumintegrandprocessfn(void *arg) {
 
 /** Sum the integrand, mapping over integrand function */
 bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
-    int ntask=morpho_threadnumber();
-    if (ntask<1) ntask=1;
+    int ntask=functional_ntasks();
     
     functional_task task[ntask];
     
@@ -552,8 +559,7 @@ bool functional_mapintegrandprocessfn(void *arg) {
 
 /** Map integrand function, storing the results in a matrix */
 bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
-    int ntask=morpho_threadnumber();
-    if (ntask<1) ntask=1;
+    int ntask=functional_ntasks();
     functional_task task[ntask];
     
     varray_elementid imageids;
@@ -596,8 +602,7 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
 /** Compute the gradient */
 bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
-    int ntask=morpho_threadnumber();
-    if (ntask<1) ntask=1;
+    int ntask=functional_ntasks();
     functional_task task[ntask];
     
     varray_elementid imageids;
@@ -697,17 +702,18 @@ bool functional_numericalgradientmapfn(vm *v, objectmesh *mesh, elementid id, in
 /** Compute the gradient numerically */
 bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
-    int ntask=morpho_threadnumber();
-    if (ntask<1) ntask=1;
+    int ntask=functional_ntasks();
     functional_task task[ntask];
     
     varray_elementid imageids;
     varray_elementidinit(&imageids);
     
     objectmatrix *new[ntask]; // Create an output matrix for each thread
-    for (int i=0; i<ntask; i++) new[i]=NULL;
-    
-    objectmesh meshclones[ntask]; // Create shallow clones of the mesh with different vertex matrices
+    objectmesh meshclones[ntask]; // Shallow clones with private vertex matrices (parallel only)
+    for (int i=0; i<ntask; i++) {
+        new[i]=NULL;
+        meshclones[i].vert=NULL;
+    }
     
     if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
     
@@ -716,10 +722,14 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
         new[i]=matrix_new(info->mesh->vert->nrows, info->mesh->vert->ncols, true);
         if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapgradient_cleanup; }
         
-        // Clone the vertex matrix for each thread
-        meshclones[i]=*info->mesh;
-        meshclones[i].vert=matrix_clone(info->mesh->vert);
-        task[i].mesh=&meshclones[i];
+        // Serial maps perturb the original vertices in place; clone only for workers
+        if (ntask>1) {
+            objectmatrix *vert=matrix_clone(info->mesh->vert);
+            if (!vert) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapgradient_cleanup; }
+            meshclones[i]=*info->mesh;
+            meshclones[i].vert=vert;
+            task[i].mesh=&meshclones[i];
+        }
         
         task[i].ref=(void *) info; // Use this to pass the info structure
         task[i].mapfn=functional_numericalgradientmapfn;
@@ -741,7 +751,7 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
     
 functional_mapgradient_cleanup:
     // Free the temporary copies of the vertex matrices
-    for (int i=0; i<ntask; i++) object_free((object *) meshclones[i].vert);
+    for (int i=0; i<ntask; i++) if (meshclones[i].vert) object_free((object *) meshclones[i].vert);
     // Free spare output matrices
     for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
     
@@ -881,18 +891,18 @@ bool functional_numericalfieldgradientmapfn(vm *v, objectmesh *mesh, elementid i
 /** Compute the field gradient numerically */
 bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
-    int ntask=morpho_threadnumber();
-    if (ntask<1) ntask=1;
+    int ntask=functional_ntasks();
     functional_task task[ntask];
     
     varray_elementid imageids;
     varray_elementidinit(&imageids);
     
     objectfield *new[ntask]; // Create an output field for each thread
-    objectfield *fieldclones[ntask]; // Create clones of the field for each thread
+    objectfield *fieldclones[ntask]; // Clones of the field for each worker
     functional_numericalfieldgradientref tref[ntask];
     for (int i=0; i<ntask; i++) {
         new[i]=NULL; fieldclones[i]=NULL;
+        tref[i].ref=NULL;
     }
     
     if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
@@ -903,21 +913,28 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
         if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapfieldgradient_cleanup; }
         field_zero(new[i]);
         
-        // Clone the vertex matrix for each thread
-        fieldclones[i]=field_clone(info->field);
-        tref[i].ref=info->ref;
-        if (info->cloneref) {
-            tref[i].ref=(info->cloneref) (info->ref, info->field, fieldclones[i]);
-        } else UNREACHABLE("Functional calls numericalfieldgradient but doesn't provide cloneref");
         tref[i].info=info;
         tref[i].integrand=info->integrand;
-        tref[i].field=fieldclones[i];
         tref[i].conn=mesh_getconnectivityelement(info->mesh, 0, info->g);
         tref[i].disc=NULL;
+        
+        // Serial maps perturb the original field in place; clone only for workers
+        if (ntask>1) {
+            fieldclones[i]=field_clone(info->field);
+            tref[i].field=fieldclones[i];
+            tref[i].ref=info->ref;
+            if (info->cloneref) {
+                tref[i].ref=(info->cloneref) (info->ref, info->field, fieldclones[i]);
+            } else UNREACHABLE("Functional calls numericalfieldgradient but doesn't provide cloneref");
+        } else {
+            tref[i].field=info->field;
+            tref[i].ref=info->ref;
+        }
+        
         if (MORPHO_ISFESPACE(tref[i].field->fnspc)) {
             tref[i].disc=MORPHO_GETFESPACE(tref[i].field->fnspc)->fespace;
             if (info->g<tref[i].disc->grade) {
-                if (!fespace_lower(tref[i].disc, info->g, &tref[i].disc)) return false;
+                if (!fespace_lower(tref[i].disc, info->g, &tref[i].disc)) goto functional_mapfieldgradient_cleanup;
             }
         }
         
@@ -938,6 +955,8 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
     
 functional_mapfieldgradient_cleanup:
     for (int i=0; i<ntask; i++) {
+        if (!fieldclones[i]) continue;
+        
         // Free any cloned references
         if (info->freeref) (info->freeref) (tref[i].ref);
         else if (info->cloneref) MORPHO_FREE(tref[i].ref);
@@ -1052,8 +1071,7 @@ static bool jump_numericalfieldgradientmapfn(vm *v, objectmesh *mesh, elementid 
 
 static bool functional_mapjumpnumericalfieldgradient(vm *v, functional_mapinfo *info, objectsparse *parentvertices, void *baseref, value *out) {
     int success=false;
-    int ntask=morpho_threadnumber();
-    if (ntask<1) ntask=1;
+    int ntask=functional_ntasks();
     functional_task task[ntask];
 
     varray_elementid imageids;
@@ -1064,6 +1082,7 @@ static bool functional_mapjumpnumericalfieldgradient(vm *v, functional_mapinfo *
     jump_numericalfieldgradientref tref[ntask];
     for (int i=0; i<ntask; i++) {
         new[i]=NULL; fieldclones[i]=NULL;
+        tref[i].ref=NULL;
     }
 
     if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
@@ -1073,14 +1092,21 @@ static bool functional_mapjumpnumericalfieldgradient(vm *v, functional_mapinfo *
         if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapjumpfieldgradient_cleanup; }
         field_zero(new[i]);
 
-        fieldclones[i]=field_clone(info->field);
-        tref[i].field=fieldclones[i];
         tref[i].info=info;
         tref[i].conn=mesh_getconnectivityelement(info->mesh, 0, info->g);
         tref[i].parentvertices=parentvertices;
-        tref[i].ref=(jumpref *) ((info->cloneref) ? (info->cloneref)(baseref, info->field, fieldclones[i]) : baseref);
-        if (!tref[i].ref) goto functional_mapjumpfieldgradient_cleanup;
         tref[i].disc=NULL;
+
+        // Serial maps perturb the original field in place; clone only for workers
+        if (ntask>1) {
+            fieldclones[i]=field_clone(info->field);
+            tref[i].field=fieldclones[i];
+            tref[i].ref=(jumpref *) ((info->cloneref) ? (info->cloneref)(baseref, info->field, fieldclones[i]) : baseref);
+        } else {
+            tref[i].field=info->field;
+            tref[i].ref=(jumpref *) baseref;
+        }
+        if (!tref[i].ref) goto functional_mapjumpfieldgradient_cleanup;
         if (MORPHO_ISFESPACE(tref[i].field->fnspc)) tref[i].disc=MORPHO_GETFESPACE(tref[i].field->fnspc)->fespace;
         if (!tref[i].disc) goto functional_mapjumpfieldgradient_cleanup;
 
@@ -1098,9 +1124,11 @@ static bool functional_mapjumpnumericalfieldgradient(vm *v, functional_mapinfo *
 
 functional_mapjumpfieldgradient_cleanup:
     for (int i=0; i<ntask; i++) {
-        if (info->freeref && tref[i].ref) (info->freeref)(tref[i].ref);
-        else if (info->cloneref && tref[i].ref) MORPHO_FREE(tref[i].ref);
-        object_free((object *) fieldclones[i]);
+        if (fieldclones[i]) {
+            if (info->freeref && tref[i].ref) (info->freeref)(tref[i].ref);
+            else if (info->cloneref && tref[i].ref) MORPHO_FREE(tref[i].ref);
+            object_free((object *) fieldclones[i]);
+        }
         if (i>0 && new[i]) object_free((object *) new[i]);
     }
     functional_cleanuptasks(v, ntask, task);
@@ -1223,15 +1251,14 @@ static int _sparsecmp(const void *a, const void *b) {
 /** Compute the hessian numerically */
 bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
-    int ntask=morpho_threadnumber();
-    if (ntask==0) ntask = 1;
+    int ntask=functional_ntasks();
     functional_task task[ntask];
     
     varray_elementid imageids;
     varray_elementidinit(&imageids);
     
     objectsparse *new[ntask]; // Create an output matrix for each thread
-    objectmesh meshclones[ntask]; // Create shallow clones of the mesh with different vertex matrices
+    objectmesh meshclones[ntask]; // Shallow clones with private vertex matrices (parallel only)
     
     for (int i=0; i<ntask; i++) {
         new[i]=NULL;
@@ -1247,11 +1274,14 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
         new[i]=object_newsparse(&N, &N);
         if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_maphessian_cleanup; }
         
-        // Clone the vertex matrix for each thread
-        meshclones[i]=*info->mesh;
-        meshclones[i].vert=matrix_clone(info->mesh->vert);
-        if (!meshclones[i].vert) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_maphessian_cleanup; }
-        task[i].mesh=&meshclones[i];
+        // Serial maps perturb the original vertices in place; clone only for workers
+        if (ntask>1) {
+            objectmatrix *vert=matrix_clone(info->mesh->vert);
+            if (!vert) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_maphessian_cleanup; }
+            meshclones[i]=*info->mesh;
+            meshclones[i].vert=vert;
+            task[i].mesh=&meshclones[i];
+        }
         
         task[i].ref=(void *) info; // Use this to pass the info structure
         task[i].mapfn=functional_numericalhessianmapfn;
@@ -1294,7 +1324,7 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
     
 functional_maphessian_cleanup:
     // Free the temporary copies of the vertex matrices
-    for (int i=0; i<ntask; i++) object_free((object *) meshclones[i].vert);
+    for (int i=0; i<ntask; i++) if (meshclones[i].vert) object_free((object *) meshclones[i].vert);
     // Free spare output matrices
     for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
     

@@ -1,0 +1,8 @@
+// Explicit for of a private name works on the cached import path
+
+import "mf_provider.m" as Cache
+
+import "mf_provider.m" for _privateFn
+
+print _privateFn()
+// expect: secret

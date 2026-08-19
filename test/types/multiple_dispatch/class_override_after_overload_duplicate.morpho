@@ -1,0 +1,23 @@
+// Same-class redefinition after a successful inherited override still errors
+
+class A {
+    init(x) {
+        self.x = "A"
+    }
+}
+
+class B is A {
+    init(Int n, String s) {
+        self.x = "typed"
+    }
+
+    init(x) {
+        self.x = "first"
+    }
+
+    init(x) {
+        self.x = "second"
+    }
+}
+
+// expect error 'ClssDplctImpl'

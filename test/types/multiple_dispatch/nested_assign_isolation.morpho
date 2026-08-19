@@ -1,0 +1,24 @@
+// A nested assignment to a global must not erase later compile-time snapshots
+
+fn f(String x) { return "A" }
+
+fn g(x) { return "g" }
+
+fn mutate() {
+    f = g
+}
+
+fn helper(x) {
+    return f(x)
+}
+
+fn f(Int x) { return "B" }
+
+print helper("Hi")
+// expect: A
+
+print f("Hi")
+// expect: A
+
+print f(1)
+// expect: B

@@ -49,6 +49,7 @@ objectselection *object_newselection(objectmesh *mesh);
 #define SELECTION_IDLISTFORGRADEMETHOD "idlistforgrade"
 #define SELECTION_ADDGRADEMETHOD "addgrade"
 #define SELECTION_REMOVEGRADEMETHOD "removegrade"
+#define SELECTION_MESHMETHOD    "mesh"
 
 #define SELECTION_COMPLEMENTMETHOD "complement"
 

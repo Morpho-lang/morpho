@@ -1,0 +1,14 @@
+// Qualified P.f is isolated from later unqualified extension of f
+
+import "mf_provider.m" as P
+import "mf_provider.m" for f
+
+fn f(List x) {
+    return "list"
+}
+
+print P.f("Hi")
+// expect: string
+
+print f([])
+// expect: list

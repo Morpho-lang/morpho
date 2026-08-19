@@ -1,7 +1,6 @@
 // Test gradsq on a single triangle
 
 import meshtools
-import shapeopt
 
 var m = Mesh("triangle.mesh")
 

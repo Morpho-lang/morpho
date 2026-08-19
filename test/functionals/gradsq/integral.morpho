@@ -2,7 +2,6 @@
 // f = x^2 + y^2 -> |grad f|^2 = 4 (x^2+y^2) -> integral over unit disk is 2 pi
 
 import meshtools
-import shapeopt
 
 var m = Mesh("disk.mesh")
 

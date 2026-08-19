@@ -292,6 +292,10 @@ typedef struct scompiler {
     /* Globals */
     dictionary globals;
     
+    /* Top-level callable bindings: name -> snapshot, name -> import origin */
+    dictionary callables;
+    dictionary origins;
+    
     /* Classes */
     dictionary classes;
     

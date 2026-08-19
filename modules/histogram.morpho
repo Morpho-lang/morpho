@@ -3,6 +3,8 @@
  * Simple command line histograms.
  */
 
+Error("Deprecated", "The histogram module is deprecated and will be removed in a future release.").warning()
+
 // Find the minimum of an enumerable object
 fn hmin(x) {
   var mn=x[0]

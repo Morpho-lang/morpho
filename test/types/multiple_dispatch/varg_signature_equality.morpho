@@ -1,0 +1,98 @@
+// Variadic and fixed-arity signatures must not be treated as equal
+
+fn f(...xs) {
+    return "varg"
+}
+
+fn f(a) {
+    return "one"
+}
+
+print f()
+// expect: varg
+
+print f(1)
+// expect: one
+
+print f(1, 2)
+// expect: varg
+
+class A {
+    foo(...xs) {
+        return "varg"
+    }
+
+    foo(a) {
+        return "one"
+    }
+}
+
+var a = A()
+print a.foo()
+// expect: varg
+
+print a.foo(1)
+// expect: one
+
+print a.foo(1, 2)
+// expect: varg
+
+class B {
+    bar(a) {
+        return "one"
+    }
+}
+
+class C is B {
+    bar(...xs) {
+        return "varg"
+    }
+}
+
+var c = C()
+print c.bar(1)
+// expect: one
+
+print c.bar(1, 2)
+// expect: varg
+
+print c.bar()
+// expect: varg
+
+class D {
+    baz(...xs) {
+        return "varg"
+    }
+}
+
+class E is D {
+    baz(a) {
+        return "one"
+    }
+}
+
+var e = E()
+print e.baz(1)
+// expect: one
+
+print e.baz(1, 2)
+// expect: varg
+
+print e.baz()
+// expect: varg
+
+fn outer(...xs) {
+    return "outer-varg"
+}
+
+fn nest() {
+    fn outer(a) {
+        return "inner-one"
+    }
+    print outer(1)
+    // expect: inner-one
+    print outer(1, 2)
+    // expect: outer-varg
+}
+
+nest()

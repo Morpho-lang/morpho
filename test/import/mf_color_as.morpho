@@ -1,0 +1,6 @@
+// Ordinary data in a namespace is not snapshotted; color classes remain callable constants
+
+import color as col
+
+print col.Red
+// expect: <Color>

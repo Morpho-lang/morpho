@@ -1,0 +1,7 @@
+// Class methods named _x remain visible
+
+import "mf_provider.m"
+
+var a = Foo()
+print a._x()
+// expect: method

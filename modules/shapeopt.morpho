@@ -2,6 +2,8 @@
  * Shape optimization
  ************************************** */
 
+Error("Deprecated", "The shapeopt module is deprecated and will be removed in a future release.").warning()
+
 // Minimize a 1-d function by Brent's algorithm
 fn brent(bracket, func, tol, itermax) {
   var zeps = 1e-10, cgold = 0.3819660

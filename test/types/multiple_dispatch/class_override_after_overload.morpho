@@ -1,0 +1,27 @@
+// Child may add a new overload first, then override an inherited signature.
+// ClssDplctImpl must only fire for same-class duplicates, not parent impls
+// that remain in a child-owned metafunction.
+
+class A {
+    init(x) {
+        self.x = "A"
+    }
+}
+
+class B is A {
+    init(Int n, String s) {
+        self.x = "typed"
+    }
+
+    init(x) {
+        self.x = "override"
+    }
+}
+
+var b = B(1)
+print b.x
+// expect: override
+
+var c = B(1, "hi")
+print c.x
+// expect: typed

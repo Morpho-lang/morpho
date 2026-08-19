@@ -1,0 +1,6 @@
+// Explicit for can import an underscore-prefixed class
+
+import "mf_provider.m" for _PrivateClass
+
+print _PrivateClass()
+// expect: <_PrivateClass>

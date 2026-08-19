@@ -97,9 +97,6 @@
 #define FUNC_INTEGRAND_MESH            "FnctlIntMsh"
 #define FUNC_INTEGRAND_MESH_MSG        "Method 'integrand' requires a mesh as the argument."
 
-#define FUNC_INTEGRAND_MESH            "FnctlIntMsh"
-#define FUNC_INTEGRAND_MESH_MSG        "Method 'integrand' requires a mesh as the argument."
-
 #define FUNC_ELNTFND                   "FnctlELNtFnd"
 #define FUNC_ELNTFND_MSG               "Mesh does not provide elements of grade %u."
 
@@ -206,9 +203,6 @@ typedef bool (functional_integrand) (vm *v, objectmesh *mesh, elementid id, int 
 /** Gradient function */
 typedef bool (functional_gradient) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc);
 
-/** Field gradient function */
-typedef bool (functional_fieldgradient) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectfield *frc);
-
 struct s_functional_mapinfo; // Resolve circular typedef dependency
 
 /** Optional start function called before a functional evaluation begins */
@@ -231,7 +225,6 @@ typedef struct s_functional_mapinfo {
     elementid id; // Element id at which to evaluate the integrand
     functional_integrand *integrand; // Integrand function
     functional_gradient *grad; // Gradient
-    functional_fieldgradient *fieldgrad; // Field gradient
     functional_start *start; // Optional preflight hook
     functional_dependencies *dependencies; // Dependencies
     functional_cloneref *cloneref; // Clone a reference with a given field substituted

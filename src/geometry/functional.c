@@ -64,7 +64,6 @@ static void functional_clearmapinfo(functional_mapinfo *info) {
     info->id=0;
     info->integrand=NULL;
     info->grad=NULL;
-    info->fieldgrad=NULL;
     info->start=NULL;
     info->dependencies=NULL;
     info->cloneref=NULL;
@@ -577,79 +576,6 @@ functional_numericalgradient_cleanup:
     varray_elementidclear(&imageids);
     if (info->dependencies) varray_elementidclear(&dependencies);
     if (!ret) object_free((object *) frc);
-
-    return ret;
-}
-
-bool functional_mapnumericalfieldgradientX(vm *v, functional_mapinfo *info, value *out) {
-    objectmesh *mesh = info->mesh;
-    objectselection *sel = info->sel;
-    objectfield *field = info->field;
-    grade grd = info->g;
-    functional_integrand *integrand = info->integrand;
-    void *ref = info->ref;
-    //symmetrybhvr sym = info->sym;
-
-    double eps=1e-6;
-    bool ret=false;
-    objectsparse *conn=mesh_getconnectivityelement(mesh, 0, grd); // Connectivity for the element
-
-    /* Create the output field */
-    objectfield *grad=object_newfield(mesh, field->prototype, field->fnspc, field->dof);
-    if (!grad) return false;
-
-    field_zero(grad);
-
-    /* Loop over elements in the field */
-    for (grade g=0; g<field->ngrades; g++) {
-        if (field->dof[g]==0) continue;
-        int nentries=1, *entries, nv, *vid;
-        double fr,fl;
-        objectsparse *rconn=mesh_addconnectivityelement(mesh, grd, g); // Find dependencies for the grade
-
-        for (elementid id=0; id<mesh_nelementsforgrade(mesh, g); id++) {
-            entries = &id; // if there's no connectivity matrix, we'll just use the id itself
-
-            if ((!rconn) || mesh_getconnectivity(rconn, id, &nentries, &entries)) {
-                for (int i=0; i<nentries; i++) {
-                    if (conn) {
-                        if (sel) if (!selection_isselected(sel, grd, entries[i])) continue;
-                        // Check selections here
-                        sparseccs_getrowindices(&conn->ccs, entries[i], &nv, &vid);
-                    } else {
-                        if (sel) if (!selection_isselected(sel, grd, id)) continue;
-                        nv=1; vid=&id;
-                    }
-
-                    /* Loop over dofs in field entry */
-                    for (int j=0; j<field->psize*field->dof[g]; j++) {
-                        int k=field->offset[g]+id*field->psize*field->dof[g]+j;
-                        double fld=field->data.elements[k];
-                        
-                        eps=functional_fdstepsize(fld, 1);
-                        
-                        field->data.elements[k]+=eps;
-
-                        if (!(*integrand) (v, mesh, id, nv, vid, ref, &fr)) goto functional_mapnumericalfieldgradient_cleanup;
-
-                        field->data.elements[k]=fld-eps;
-
-                        if (!(*integrand) (v, mesh, id, nv, vid, ref, &fl)) goto functional_mapnumericalfieldgradient_cleanup;
-
-                        field->data.elements[k]=fld;
-
-                        grad->data.elements[k]+=(fr-fl)/(2*eps);
-                    }
-                }
-            }
-        }
-
-        *out = MORPHO_OBJECT(grad);
-        ret=true;
-    }
-
-functional_mapnumericalfieldgradient_cleanup:
-    if (!ret) object_free((object *) grad);
 
     return ret;
 }
@@ -1178,57 +1104,6 @@ functional_mapgradient_cleanup:
 }
 
 /* ----------------------------
- * Map field gradients
- * ---------------------------- */
-
-/** Compute the field gradient */
-bool functional_mapfieldgradient(vm *v, functional_mapinfo *info, value *out) {
-    int success=false;
-    int ntask=morpho_threadnumber();
-    if (!ntask) return functional_mapfieldgradientX(v, info, out);
-    functional_task task[ntask];
-    
-    varray_elementid imageids;
-    varray_elementidinit(&imageids);
-    
-    objectfield *new[ntask];
-    for (int i=0; i<ntask; i++) new[i]=NULL;
-    
-    if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
-    
-    /* Create output fields */
-    for (int i=0; i<ntask; i++) {
-        // Create one per thread
-        new[i]=object_newfield(info->mesh, info->field->prototype, info->field->fnspc, info->field->dof);
-        if (!new[i]) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapfieldgradient_cleanup; }
-        field_zero(new[i]);
-        
-        task[i].mapfn=(functional_mapfn *) info->fieldgrad;
-        task[i].result=(void *) new[i];
-    }
-    
-    functional_parallelmap(ntask, task);
-    
-    /* Then add up all the fields using their underlying data stores */
-    for (int i=1; i<ntask; i++) matrix_axpy(1.0, &new[i]->data, &new[0]->data);
-    
-    // TODO: Use symmetry actions
-    //if (info->sym==SYMMETRY_ADD) functional_symmetrysumforces(info->mesh, new[0]);
-    
-    success=true;
-    
-functional_mapfieldgradient_cleanup:
-    for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
-    
-    // ...and return the result
-    *out = MORPHO_OBJECT(new[0]);
-    
-    functional_cleanuptasks(v, ntask, task);
-    varray_elementidclear(&imageids);
-    return success;
-}
-
-/* ----------------------------
  * Map numerical field gradients
  * ---------------------------- */
 
@@ -1359,7 +1234,6 @@ bool functional_numericalfieldgradientmapfn(vm *v, objectmesh *mesh, elementid i
 bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
     int ntask=morpho_threadnumber();
-    //if (!ntask) return functional_mapnumericalfieldgradientX(v, info, out);
     if (ntask<1) ntask=1;
     functional_task task[ntask];
     
@@ -1945,35 +1819,10 @@ bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     return true;
 }
 
-/** Calculate gradient */
-bool areaenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
-    double *x[nv], cx[3], s[3];
-    double norm;
-    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
-
-    if (mesh->dim==3) {
-        functional_veccross(x[0], x[1], cx);
-        norm=functional_vecnorm(mesh->dim, cx);
-        if (norm<MORPHO_EPS) return false;
-
-        functional_veccross(x[1], cx, s);
-        if (matrix_addtocolumnptr(frc, vid[0], 0.5/norm, s)!=LINALGERR_OK) return false;
-
-        functional_veccross(cx, x[0], s);
-        if (matrix_addtocolumnptr(frc, vid[1], 0.5/norm, s)!=LINALGERR_OK) return false;
-    } else if (mesh->dim==2) {
-        functional_veccross2d(x[0], x[1], cx);
-
-    }
-
-    return true;
-}
-
 FUNCTIONAL_INIT(AreaEnclosed, MESH_GRADE_LINE)
 FUNCTIONAL_INTEGRAND(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 FUNCTIONAL_INTEGRANDFORELEMENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 FUNCTIONAL_NUMERICALGRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, SYMMETRY_ADD)
-//FUNCTIONAL_GRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_gradient, SYMMETRY_ADD)
 FUNCTIONAL_TOTAL(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 FUNCTIONAL_HESSIAN(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 
@@ -3472,40 +3321,6 @@ bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *
     return true;
 }
 
-/** Evaluates the gradient of a field quantity in 1D
- @param[in] mesh - object to use
- @param[in] field - field to compute gradient of
- @param[in] nv - number of vertices
- @param[in] vid - vertex ids
- @param[out] out - should be field->psize * mesh->dim units of storage */
-bool gradsq_evaluategradient1d(objectmesh *mesh, objectfield *field, int nv, int *vid, double *out) {
-    UNREACHABLE("GradSq in 1D not implemented.");
-    double *f[nv]; // Field value lists
-    double *x[nv]; // Vertex coordinates
-    unsigned int nentries=0;
-
-    // Get field values and vertex coordinates
-    for (unsigned int i=0; i<nv; i++) {
-        if (!mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i])) return false;
-        if (!field_getelementaslist(field, MESH_GRADE_VERTEX, vid[i], 0, &nentries, &f[i])) return false;
-    }
-
-    double s[mesh->dim];
-
-    /* Vector sides */
-    functional_vecsub(mesh->dim, x[1], x[0], s);
-
-    /* Compute the gradient */
-    for (unsigned int i=0; i<mesh->dim*nentries; i++) out[i]=0;
-    for (unsigned int j=0; j<nv; j++) {
-        for (unsigned int i=0; i<nentries; i++) {
-//            functional_vecaddscale(mesh->dim, &out[i*mesh->dim], f[j][i], t[j], &out[i*mesh->dim]);
-        }
-    }
-
-    return true;
-}
-
 /** Evaluates the gradient of a field quantity in 3D
  @param[in] mesh - object to use
  @param[in] field - field to compute gradient of
@@ -3647,7 +3462,6 @@ value GradSq_fieldgradient(vm *v, int nargs, value *args) {
             info.cloneref = gradsq_cloneref;
             info.ref = &ref;
             if (functional_startmap(v, &info)) functional_mapnumericalfieldgradient(v, &info, &out);
-            //functional_mapfieldgradient(v, &info, &out);
         } else morpho_runtimeerror(v, GRADSQ_ARGS);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);

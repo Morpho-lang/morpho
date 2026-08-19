@@ -192,276 +192,7 @@ bool functional_containsvertex(int nv, int *vid, elementid id) {
  * Map functions
  * ********************************************************************** */
 
-/** Sums an integrand
- * @param[in] v - virtual machine in use
- * @param[in] info - map info
- * @param[out] out - a matrix of integrand values
- * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_sumintegrandX(vm *v, functional_mapinfo *info, value *out) {
-    bool success=false;
-    objectmesh *mesh = info->mesh;
-    objectselection *sel = info->sel;
-    grade g = info->g;
-    functional_integrand *integrand = info->integrand;
-    void *ref = info->ref;
-    objectsparse *s=NULL;
-    int n=0;
-
-    if (!functional_countelements(v, mesh, g, &n, &s)) return false;
-
-    /* Find any image elements so we can skip over them */
-    varray_elementid imageids;
-    varray_elementidinit(&imageids);
-    functional_symmetryimagelist(mesh, g, true, &imageids);
-
-    if (n>0) {
-        int vertexid; // Use this if looping over grade 0
-        int *vid=(g==0 ? &vertexid : NULL),
-            nv=(g==0 ? 1 : 0); // The vertex indices
-        int sindx=0; // Index into imageids array
-        double sum=0.0, c=0.0, y, t, result;
-
-        if (sel) { // Loop over selection
-            if (sel->selected[g].count>0) for (unsigned int k=0; k<sel->selected[g].capacity; k++) {
-                if (!MORPHO_ISINTEGER(sel->selected[g].contents[k].key)) continue;
-                elementid i = MORPHO_GETINTEGERVALUE(sel->selected[g].contents[k].key);
-
-                // Skip this element if it's an image element:
-                if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
-
-                if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
-                else vertexid=i;
-
-                if (vid && nv>0) {
-                    if ((*integrand) (v, mesh, i, nv, vid, ref, &result)) {
-                        y=result-c; t=sum+y; c=(t-sum)-y; sum=t; // Kahan summation
-                    } else goto functional_sumintegrand_cleanup;
-                }
-            }
-        } else { // Loop over elements
-            for (elementid i=0; i<n; i++) {
-                // Skip this element if it's an image element
-                if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
-
-                if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
-                else vertexid=i;
-
-                if (vid && nv>0) {
-                    if ((*integrand) (v, mesh, i, nv, vid, ref, &result)) {
-                        y=result-c; t=sum+y; c=(t-sum)-y; sum=t; // Kahan summation
-                    } else goto functional_sumintegrand_cleanup;
-                }
-            }
-        }
-
-        *out=MORPHO_FLOAT(sum);
-    }
-
-    success=true;
-
-functional_sumintegrand_cleanup:
-    varray_elementidclear(&imageids);
-    return success;
-}
-
-/** Calculate an integrand
- * @param[in] v - virtual machine in use
- * @param[in] info - map info
- * @param[out] out - a matrix of integrand values
- * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_mapintegrandX(vm *v, functional_mapinfo *info, value *out) {
-    objectmesh *mesh = info->mesh;
-    objectselection *sel = info->sel;
-    grade g = info->g;
-    functional_integrand *integrand = info->integrand;
-    void *ref = info->ref;
-    objectsparse *s=NULL;
-    objectmatrix *new=NULL;
-    bool ret=false;
-    int n=0;
-
-    /* How many elements? */
-    if (!functional_countelements(v, mesh, g, &n, &s)) return false;
-
-    /* Find any image elements so we can skip over them */
-    varray_elementid imageids;
-    varray_elementidinit(&imageids);
-    functional_symmetryimagelist(mesh, g, true, &imageids);
-
-    /* Create the output matrix */
-    if (n>0) {
-        new=matrix_new(1, n, true);
-        if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
-    }
-
-    if (new) {
-        int vertexid; // Use this if looping over grade 0
-        int *vid=(g==0 ? &vertexid : NULL),
-            nv=(g==0 ? 1 : 0); // The vertex indices
-        int sindx=0; // Index into imageids array
-        double result;
-
-        if (sel) { // Loop over selection
-            if (sel->selected[g].count>0) for (unsigned int k=0; k<sel->selected[g].capacity; k++) {
-                if (!MORPHO_ISINTEGER(sel->selected[g].contents[k].key)) continue;
-                elementid i = MORPHO_GETINTEGERVALUE(sel->selected[g].contents[k].key);
-
-                // Skip this element if it's an image element
-                if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
-
-                if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
-                else vertexid=i;
-
-                if (vid && nv>0) {
-                    if ((*integrand) (v, mesh, i, nv, vid, ref, &result)) {
-                        matrix_setelement(new, 0, i, result);
-                    } else goto functional_mapintegrand_cleanup;
-                }
-            }
-        } else { // Loop over elements
-            for (elementid i=0; i<n; i++) {
-                // Skip this element if it's an image element
-                if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
-
-                if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
-                else vertexid=i;
-
-                if (vid && nv>0) {
-                    if ((*integrand) (v, mesh, i, nv, vid, ref, &result)) {
-                        matrix_setelement(new, 0, i, result);
-                    } else goto functional_mapintegrand_cleanup;
-                }
-            }
-        }
-        *out = MORPHO_OBJECT(new);
-        ret=true;
-    }
-
-    varray_elementidclear(&imageids);
-    return ret;
-
-functional_mapintegrand_cleanup:
-    object_free((object *) new);
-    varray_elementidclear(&imageids);
-    return false;
-}
-
-/** Calculate gradient
- * @param[in] v - virtual machine in use
- * @param[in] info - map info structure
- * @param[out] out - a matrix of integrand values
- * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_mapgradientX(vm *v, functional_mapinfo *info, value *out) {
-    objectmesh *mesh = info->mesh;
-    objectselection *sel = info->sel;
-    grade g = info->g;
-    functional_gradient *grad = info->grad;
-    void *ref = info->ref;
-    symmetrybhvr sym = info->sym;
-    objectsparse *s=NULL;
-    objectmatrix *frc=NULL;
-    bool ret=false;
-    int n=0;
-
-    /* How many elements? */
-    if (!functional_countelements(v, mesh, g, &n, &s)) return false;
-
-    /* Create the output matrix */
-    if (n>0) {
-        frc=matrix_new(mesh->vert->nrows, mesh->vert->ncols, true);
-        if (!frc)  { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
-    }
-
-    if (frc) {
-        int vertexid; // Use this if looping over grade 0
-        int *vid=(g==0 ? &vertexid : NULL),
-            nv=(g==0 ? 1 : 0); // The vertex indices
-
-
-        if (sel) { // Loop over selection
-            if (sel->selected[g].count>0) for (unsigned int k=0; k<sel->selected[g].capacity; k++) {
-                if (!MORPHO_ISINTEGER(sel->selected[g].contents[k].key)) continue;
-
-                elementid i = MORPHO_GETINTEGERVALUE(sel->selected[g].contents[k].key);
-                if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
-                else vertexid=i;
-
-                if (vid && nv>0) {
-                    if (!(*grad) (v, mesh, i, nv, vid, ref, frc)) goto functional_mapgradient_cleanup;
-                }
-            }
-        } else { // Loop over elements
-            for (elementid i=0; i<n; i++) {
-                if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
-                else vertexid=i;
-
-                if (vid && nv>0) {
-                    if (!(*grad) (v, mesh, i, nv, vid, ref, frc)) goto functional_mapgradient_cleanup;
-                }
-            }
-        }
-
-        if (sym==SYMMETRY_ADD) functional_symmetrysumforces(mesh, frc);
-
-        *out = MORPHO_OBJECT(frc);
-        ret=true;
-    }
-
-functional_mapgradient_cleanup:
-    if (!ret) object_free((object *) frc);
-
-    return ret;
-}
-
-/* Calculates a numerical gradient */
-bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectmatrix *frc) {
-    double f0,fp,fm,x0,eps=1e-6;
-
-    // Loop over vertices in element
-    for (unsigned int j=0; j<nv; j++) {
-        // Loop over coordinates
-        for (unsigned int k=0; k<mesh->dim; k++) {
-            matrix_getelement(frc, k, vid[j], &f0);
-
-            matrix_getelement(mesh->vert, k, vid[j], &x0);
-            
-            eps=functional_fdstepsize(x0, 1);
-            
-            matrix_setelement(mesh->vert, k, vid[j], x0+eps);
-            if (!(*integrand) (v, mesh, i, nv, vid, ref, &fp)) return false;
-            matrix_setelement(mesh->vert, k, vid[j], x0-eps);
-            if (!(*integrand) (v, mesh, i, nv, vid, ref, &fm)) return false;
-            matrix_setelement(mesh->vert, k, vid[j], x0);
-
-            matrix_setelement(frc, k, vid[j], f0+(fp-fm)/(2*eps));
-        }
-    }
-    return true;
-}
-
-static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc) {
-    objectmesh *mesh = info->mesh;
-    double f0,fp,fm,x0,eps=1e-6;
-
-    // Loop over coordinates
-    for (unsigned int k=0; k<mesh->dim; k++) {
-        matrix_getelement(frc, k, remoteid, &f0);
-
-        matrix_getelement(mesh->vert, k, remoteid, &x0);
-        eps=functional_fdstepsize(x0, 1);
-        
-        matrix_setelement(mesh->vert, k, remoteid, x0+eps);
-        if (!(*info->integrand) (v, mesh, i, nv, vid, info->ref, &fp)) return false;
-        matrix_setelement(mesh->vert, k, remoteid, x0-eps);
-        if (!(*info->integrand) (v, mesh, i, nv, vid, info->ref, &fm)) return false;
-        matrix_setelement(mesh->vert, k, remoteid, x0);
-
-        matrix_setelement(frc, k, remoteid, f0+(fp-fm)/(2*eps));
-    }
-
-    return true;
-}
-
+/** Kahan summation over a list */
 double functional_sumlist(double *list, unsigned int nel) {
     double sum=0.0, c=0.0, y,t;
 
@@ -475,113 +206,8 @@ double functional_sumlist(double *list, unsigned int nel) {
     return sum;
 }
 
-/* *************************
- * Map functions
- * ************************* */
-
-/** Map numerical gradient over the elements
- * @param[in] v - virtual machine in use
- * @param[in] info - map info
- * @param[out] out - a matrix of integrand values
- * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_mapnumericalgradientX(vm *v, functional_mapinfo *info, value *out) {
-    objectmesh *mesh = info->mesh;
-    objectselection *sel = info->sel;
-    grade g = info->g;
-    functional_integrand *integrand = info->integrand;
-    void *ref = info->ref;
-    symmetrybhvr sym = info->sym;
-    objectsparse *s=NULL;
-    objectmatrix *frc=NULL;
-    bool ret=false;
-    int n=0;
-
-    varray_elementid dependencies;
-    if (info->dependencies) varray_elementidinit(&dependencies);
-
-    /* Find any image elements so we can skip over them */
-    varray_elementid imageids;
-    varray_elementidinit(&imageids);
-    functional_symmetryimagelist(mesh, g, true, &imageids);
-
-    /* How many elements? */
-    if (!functional_countelements(v, mesh, g, &n, &s)) return false;
-
-    /* Create the output matrix */
-    if (n>0) {
-        frc=matrix_new(mesh->vert->nrows, mesh->vert->ncols, true);
-        if (!frc)  { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
-    }
-
-    if (frc) {
-        int vertexid; // Use this if looping over grade 0
-        int *vid=(g==0 ? &vertexid : NULL),
-            nv=(g==0 ? 1 : 0); // The vertex indices
-        int sindx=0; // Index into imageids array
-
-        if (sel) { // Loop over selection
-            if (sel->selected[g].count>0) for (unsigned int k=0; k<sel->selected[g].capacity; k++) {
-                if (!MORPHO_ISINTEGER(sel->selected[g].contents[k].key)) continue;
-
-                elementid i = MORPHO_GETINTEGERVALUE(sel->selected[g].contents[k].key);
-                if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
-                else vertexid=i;
-
-                // Skip this element if it's an image element
-                if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
-
-                if (vid && nv>0) {
-                    if (!functional_numericalgradient(v, mesh, i, nv, vid, integrand, ref, frc)) goto functional_numericalgradient_cleanup;
-
-                    if (info->dependencies && // Loop over dependencies if there are any
-                        (info->dependencies) (info, i, &dependencies)) {
-                        for (int j=0; j<dependencies.count; j++) {
-                            if (!functional_numericalremotegradient(v, info, s, dependencies.data[j], i, nv, vid, frc)) goto functional_numericalgradient_cleanup;
-                        }
-                        dependencies.count=0;
-                    }
-                }
-            }
-        } else { // Loop over elements
-            for (elementid i=0; i<n; i++) {
-                // Skip this element if it's an image element
-                if ((imageids.count>0) && (sindx<imageids.count) && imageids.data[sindx]==i) { sindx++; continue; }
-
-                if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
-                else vertexid=i;
-
-                if (vid && nv>0) {
-
-                    if (!functional_numericalgradient(v, mesh, i, nv, vid, integrand, ref, frc)) goto functional_numericalgradient_cleanup;
-
-                    if (info->dependencies && // Loop over dependencies if there are any
-                        (info->dependencies) (info, i, &dependencies)) {
-                        for (int j=0; j<dependencies.count; j++) {
-                            if (functional_containsvertex(nv, vid, dependencies.data[j])) continue;
-                            if (!functional_numericalremotegradient(v, info, s, dependencies.data[j], i, nv, vid, frc)) goto functional_numericalgradient_cleanup;
-                        }
-                        dependencies.count=0;
-                    }
-                }
-            }
-        }
-
-        if (sym==SYMMETRY_ADD) functional_symmetrysumforces(mesh, frc);
-
-        *out = MORPHO_OBJECT(frc);
-        ret=true;
-    }
-
-functional_numericalgradient_cleanup:
-    varray_elementidclear(&imageids);
-    if (info->dependencies) varray_elementidclear(&dependencies);
-    if (!ret) object_free((object *) frc);
-
-    return ret;
-}
-
 /* **********************************************************************
- * Multithreaded map functions
+ * Task-based map functions
  * ********************************************************************** */
 
 threadpool functional_pool;
@@ -616,6 +242,7 @@ typedef struct {
     
     void *result; /* Result of individual element as an opaque pointer */
     void *out; /* Overall output as an opaque pointer */
+    bool usesubkernel; /* True if v is a worker subkernel */
     _MORPHO_PADDING;
 } functional_task;
 
@@ -640,6 +267,7 @@ void functionaltask_init(functional_task *task, elementid start, elementid end, 
     task->selection=(info ? info->sel : NULL);
     
     task->v=NULL;
+    task->usesubkernel=false;
     task->ref=(info ? info->ref : NULL);
     task->out=NULL;
     task->result=NULL;
@@ -692,16 +320,24 @@ bool functional_mapfn_elements(void *arg) {
         // Perform post-processing if needed
         if (task->processfn) if (!(*task->processfn) (task)) return false;
         
-        // Clean out temporary objects
-        vm_cleansubkernel(task->v);
+        // Temporary objects on worker VMs must not accumulate across elements
+        if (task->usesubkernel) vm_cleansubkernel(task->v);
     }
     return true;
 }
 
-/** Dispatches tasks to threadpool */
+/** Execute tasks on the calling thread */
+bool functional_serialmap(int ntasks, functional_task *tasks) {
+    for (int i=0; i<ntasks; i++) {
+        if (!functional_mapfn_elements((void *) &tasks[i])) return false;
+    }
+    return true;
+}
+
+/** Dispatch tasks to the threadpool */
 bool functional_parallelmap(int ntasks, functional_task *tasks) {
     int nthreads = morpho_threadnumber();
-    if (!nthreads) nthreads=1;
+    if (nthreads<1) return functional_serialmap(ntasks, tasks);
     
     if (!functional_poolinitialized) {
         functional_poolinitialized=threadpool_init(&functional_pool, nthreads);
@@ -714,6 +350,13 @@ bool functional_parallelmap(int ntasks, functional_task *tasks) {
     threadpool_fence(&functional_pool);
     
     return true;
+}
+
+/** Map over prepared tasks, using a threadpool only when worker threads are available */
+bool functional_map(int ntasks, functional_task *tasks) {
+    if (ntasks<1) return true;
+    if (ntasks==1 || morpho_threadnumber()<1) return functional_serialmap(ntasks, tasks);
+    return functional_parallelmap(ntasks, tasks);
 }
 
 /** Calculate bin sizes */
@@ -770,13 +413,18 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
     if (info->field) field_addpool(info->field);
     
     vm *subkernels[ntask];
-    if (!vm_subkernels(v, ntask, subkernels)) return false; 
+    if (ntask==1) {
+        subkernels[0]=v; /* Serial maps reuse the calling VM */
+    } else if (!vm_subkernels(v, ntask, subkernels)) {
+        return false;
+    }
     
     /** Initialize task structures */
     for (int i=0; i<ntask; i++) {
         functionaltask_init(task+i, bins[i], bins[i+1], info); // Setup the task
         
         task[i].v=subkernels[i];
+        task[i].usesubkernel=(ntask>1);
         task[i].nel=nel;
         task[i].conn=conn;
         if (imageids->count>0) task[i].skip=imageids;
@@ -818,7 +466,7 @@ bool functional_sumintegrandprocessfn(void *arg) {
 /** Sum the integrand, mapping over integrand function */
 bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
     int ntask=morpho_threadnumber();
-    if (!ntask) return functional_sumintegrandX(v, info, out);
+    if (ntask<1) ntask=1;
     
     functional_task task[ntask];
     
@@ -838,7 +486,7 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
         sums[i].c=0.0; sums[i].sum=0.0;
     }
     
-    functional_parallelmap(ntask, task);
+    functional_map(ntask, task);
     
     // Sum up the results from each task...
     double sumlist[ntask];
@@ -905,7 +553,7 @@ bool functional_mapintegrandprocessfn(void *arg) {
 /** Map integrand function, storing the results in a matrix */
 bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
     int ntask=morpho_threadnumber();
-    if (!ntask) return functional_mapintegrandX(v, info, out);
+    if (ntask<1) ntask=1;
     functional_task task[ntask];
     
     varray_elementid imageids;
@@ -931,7 +579,7 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
         task[i].out=(void *) new;
     }
     
-    functional_parallelmap(ntask, task);
+    functional_map(ntask, task);
     
     // ...and return the result
     *out = MORPHO_OBJECT(new);
@@ -949,7 +597,7 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
 bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
     int ntask=morpho_threadnumber();
-    if (!ntask) return functional_mapgradientX(v, info, out);
+    if (ntask<1) ntask=1;
     functional_task task[ntask];
     
     varray_elementid imageids;
@@ -970,7 +618,7 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
         task[i].result=(void *) new[i];
     }
     
-    functional_parallelmap(ntask, task);
+    functional_map(ntask, task);
     
     /* Then add up all the matrices */
     for (int i=1; i<ntask; i++) matrix_axpy(1.0, new[i], new[0]);
@@ -1050,7 +698,7 @@ bool functional_numericalgradientmapfn(vm *v, objectmesh *mesh, elementid id, in
 bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
     int ntask=morpho_threadnumber();
-    if (!ntask) return functional_mapnumericalgradientX(v, info, out);
+    if (ntask<1) ntask=1;
     functional_task task[ntask];
     
     varray_elementid imageids;
@@ -1078,7 +726,7 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
         task[i].result=(void *) new[i];
     }
     
-    functional_parallelmap(ntask, task);
+    functional_map(ntask, task);
     
     /* Then add up all the matrices */
     for (int i=1; i<ntask; i++) matrix_axpy(1.0, new[i], new[0]);
@@ -1278,7 +926,7 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
         task[i].result=(void *) new[i];
     }
     
-    functional_parallelmap(ntask, task);
+    functional_map(ntask, task);
     
     /* Then add up all the fields */
     for (int i=1; i<ntask; i++) matrix_axpy(1.0, &new[i]->data, &new[0]->data);
@@ -1441,7 +1089,7 @@ static bool functional_mapjumpnumericalfieldgradient(vm *v, functional_mapinfo *
         task[i].result=(void *) new[i];
     }
 
-    functional_parallelmap(ntask, task);
+    functional_map(ntask, task);
 
     for (int i=1; i<ntask; i++) matrix_axpy(1.0, &new[i]->data, &new[0]->data);;
     
@@ -1610,7 +1258,7 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
         task[i].result=(void *) new[i];
     }
     
-    functional_parallelmap(ntask, task);
+    functional_map(ntask, task);
     
     qsort(new, ntask, sizeof(objectsparse *), _sparsecmp);
     

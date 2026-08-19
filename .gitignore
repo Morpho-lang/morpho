@@ -60,6 +60,7 @@ dkms.conf
 .vscode/
 
 test/FailedTests*.txt
+examples/FailedExamples*.txt
 *.png
 *.out
 manual/src/manual.lyx~

@@ -1,0 +1,15 @@
+var l = [1,2,3,4]
+
+try {
+    print l.order("text")
+} catch {
+    "MltplDsptchFld" : print "ok"
+// expect: ok
+}
+
+try {
+    print l.count("text")
+} catch {
+    "MltplDsptchFld" : print "ok"
+// expect: ok
+}

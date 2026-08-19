@@ -28,7 +28,6 @@
 
 value functional_gradeproperty;
 value functional_fieldproperty;
-//static value functional_functionproperty;
 
 typedef struct jumpref_s jumpref;
 static bool jump_getadjacentparents(jumpref *ref, elementid interfaceid, int *nparents, int **parents);
@@ -414,74 +413,6 @@ functional_mapgradient_cleanup:
 
     return ret;
 }
-
-/** Calculate field gradient
- * @param[in] v - virtual machine in use
- * @param[in] info - map info structure
- * @param[out] out - a field of integrand values
- * @returns true on success, false otherwise. Error reporting through VM. */
-bool functional_mapfieldgradientX(vm *v, functional_mapinfo *info, value *out) {
-    objectmesh *mesh = info->mesh;
-    objectfield *field = info->field;
-    objectselection *sel = info->sel;
-    objectfield *grad=NULL;
-    grade g = info->g;
-    functional_fieldgradient *fgrad = info->fieldgrad;
-    void *ref = info->ref;
-    objectsparse *s=NULL;
-    bool ret=false;
-    int n=0;
-
-    /* How many elements? */
-    if (!functional_countelements(v, mesh, g, &n, &s)) return false;
-
-    /* Create the output field */
-    if (n>0) {
-        grad=object_newfield(mesh, field->prototype, field->fnspc, field->dof);
-        if (!grad) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
-        field_zero(grad);
-    }
-
-    if (grad) {
-        int vertexid; // Use this if looping over grade 0
-        int *vid=(g==0 ? &vertexid : NULL),
-            nv=(g==0 ? 1 : 0); // The vertex indices
-
-
-        if (sel) { // Loop over selection
-            if (sel->selected[g].count>0) for (unsigned int k=0; k<sel->selected[g].capacity; k++) {
-                if (!MORPHO_ISINTEGER(sel->selected[g].contents[k].key)) continue;
-
-                elementid i = MORPHO_GETINTEGERVALUE(sel->selected[g].contents[k].key);
-                if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
-                else vertexid=i;
-
-                if (vid && nv>0) {
-                    if (!(*fgrad) (v, mesh, i, nv, vid, ref, grad)) goto functional_mapfieldgradient_cleanup;
-                }
-            }
-        } else { // Loop over elements
-            for (elementid i=0; i<n; i++) {
-                if (s) sparseccs_getrowindices(&s->ccs, i, &nv, &vid);
-                else vertexid=i;
-
-                if (vid && nv>0) {
-                    if (!(*fgrad) (v, mesh, i, nv, vid, ref, grad)) goto functional_mapfieldgradient_cleanup;
-                }
-            }
-        }
-
-        *out = MORPHO_OBJECT(grad);
-        ret=true;
-    }
-
-functional_mapfieldgradient_cleanup:
-    if (!ret) object_free((object *) grad);
-
-    return ret;
-}
-
-static bool functional_numericalremotegradient(vm *v, functional_mapinfo *info, objectsparse *conn, elementid remoteid, elementid i, int nv, int *vid, objectmatrix *frc);
 
 /* Calculates a numerical gradient */
 bool functional_numericalgradient(vm *v, objectmesh *mesh, elementid i, int nv, int *vid, functional_integrand *integrand, void *ref, objectmatrix *frc) {

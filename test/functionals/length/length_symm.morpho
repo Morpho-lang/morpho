@@ -1,0 +1,33 @@
+// Length on a unit line with translational symmetry between the endpoints
+import meshtools
+import symmetry
+import "../numericalderivatives.morpho"
+
+var m = LineMesh(fn (t) [t, 0, 0], 0..1:1)
+
+var s = Selection(m, fn (x, y, z) abs(x)<1e-10 || abs(x-1)<1e-10)
+var t = Translate(Matrix([1, 0, 0]))
+m.addsymmetry(t, s)
+
+var len = Length()
+
+print abs(len.total(m) - 1) < 1e-12
+// expect: true
+
+print (len.integrand(m) - Matrix([1])).norm() < 1e-12
+// expect: true
+
+var grad = len.gradient(m)
+
+// Identified endpoints contribute equal-and-opposite forces, which SYMMETRY_ADD cancels
+print grad.norm() < 1e-12
+// expect: true
+
+var ngrad = numericalgradient(len, m)
+var n = m.count()-1
+var sym = ngrad.column(0)+ngrad.column(n)
+ngrad.setcolumn(0, sym)
+ngrad.setcolumn(n, sym)
+
+print (grad-ngrad).norm() < 1e-8
+// expect: true

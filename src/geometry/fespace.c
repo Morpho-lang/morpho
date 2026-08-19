@@ -4,6 +4,9 @@
  *  @brief Finite element fespaces
  */
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_GEOMETRY
+
 #include "geometry.h"
 
 /* **********************************************************************
@@ -1224,3 +1227,5 @@ void fespace_initialize(void) {
     morpho_defineerror(FNSPC_ARGS, ERROR_HALT, FNSPC_ARGS_MSG);
     morpho_defineerror(FNSPC_NOTFOUND, ERROR_HALT, FNSPC_NOTFOUND_MSG);
 }
+
+#endif

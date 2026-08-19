@@ -1,0 +1,37 @@
+// Area on a unit square with translational symmetry between opposite edges
+import symmetry
+import "../numericalderivatives.morpho"
+
+var m = Mesh("square.mesh")
+
+var s = Selection(m, fn (x, y, z) abs(x)<1e-10 || abs(x-1)<1e-10)
+var t = Translate(Matrix([1, 0, 0]))
+m.addsymmetry(t, s)
+
+var area = Area()
+
+print abs(area.total(m) - 1) < 1e-12
+// expect: true
+
+print (area.integrand(m) - Matrix([[0.5, 0.5]])).norm() < 1e-12
+// expect: true
+
+var grad = area.gradient(m)
+
+// Identified left/right edges cancel in the periodic (x) direction
+print (abs(grad[0,0])+abs(grad[0,1])+abs(grad[0,2])+abs(grad[0,3])) < 1e-12
+// expect: true
+
+var ngrad = numericalgradient(area, m)
+
+// square.mesh vertices: (0,0), (1,0), (0,1), (1,1)
+// Translate([1,0,0]) identifies left with right: 0↔1 and 2↔3
+var bottom = ngrad.column(0)+ngrad.column(1)
+ngrad.setcolumn(0, bottom)
+ngrad.setcolumn(1, bottom)
+var top = ngrad.column(2)+ngrad.column(3)
+ngrad.setcolumn(2, top)
+ngrad.setcolumn(3, top)
+
+print (grad-ngrad).norm() < 1e-6
+// expect: true

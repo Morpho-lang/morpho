@@ -7,6 +7,9 @@
 #ifndef fespace_h
 #define fespace_h
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_GEOMETRY
+
 #include "geometry.h"
 
 /* -------------------------------------------------------
@@ -110,3 +113,5 @@ void fespace_hessian(fespace *disc, double *lambda, objectmatrix *hess);
 void fespace_initialize(void);
 
 #endif
+
+#endif /* fespace_h */

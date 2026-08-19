@@ -130,15 +130,6 @@
 #define INTEGRAL_NFLDS                 "IntgrlNFlds"
 #define INTEGRAL_NFLDS_MSG             "Incorrect number of Fields provided for integrand function."
 
-#define LINEINTEGRAL_ARGS              "LnIntArgs"
-#define LINEINTEGRAL_ARGS_MSG          "LineIntegral requires a callable argument, followed by zero or more Fields."
-
-#define AREAINTEGRAL_ARGS              "ArIntArgs"
-#define AREAINTEGRAL_ARGS_MSG          "AreaIntegral requires a callable argument, followed by zero or more Fields."
-
-#define VOLUMEINTEGRAL_ARGS            "VolIntArgs"
-#define VOLUMEINTEGRAL_ARGS_MSG        "VolumeIntegral requires a callable argument, followed by zero or more Fields."
-
 #define NRML_GRD                       "NormlGrade"
 #define NRML_GRD_MSG                   "Normal can only be used on elements of grade 2."
 

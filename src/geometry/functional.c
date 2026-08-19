@@ -3633,6 +3633,7 @@ typedef struct {
     value method; // Method dictionary
     objectmesh *mref; // Reference mesh
     vm *v;
+    grade g; // Grade to integrate over
     bool weightbyref; // Use reference mesh for the element
 } integralref;
 
@@ -4450,6 +4451,7 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
     ref->nfields=0;
     ref->method=MORPHO_NIL;
     ref->mref=NULL;
+    ref->g=g;
     ref->weightbyref=false;
 
     if (objectinstance_getpropertyinterned(self, scalarpotential_functionproperty, &func) &&
@@ -4517,6 +4519,22 @@ void integral_freeref(void *ref) {
 /** Clears any data in an element ref */
 void integral_clearelref(objectintegralelementref *elref) {
     if (elref->invj) object_free((object *) elref->invj);
+}
+
+/** Free cached field gradients and hessians for an element */
+static void integral_freegradhess(int nfields, value *qgrad, value *qhess) {
+    for (int i=0; i<nfields; i++) {
+        if (MORPHO_ISLIST(qgrad[i])) {
+            objectlist *l = MORPHO_GETLIST(qgrad[i]);
+            for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
+        }
+        morpho_freeobject(qgrad[i]);
+        if (MORPHO_ISLIST(qhess[i])) {
+            objectlist *l = MORPHO_GETLIST(qhess[i]);
+            for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
+        }
+        morpho_freeobject(qhess[i]);
+    }
 }
 
 /** Prepares quantity list */
@@ -4591,26 +4609,24 @@ bool integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int n
     return false;
 }
 
-/* ----------------------------------------------
- * LineIntegral
- * ---------------------------------------------- */
-
-/** Integrate a function over a line */
-bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+/** Integrate a callable over elements of the grade stored in the integral ref */
+bool integral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     integralref iref = *(integralref *) ref;
+    grade g = iref.g;
     double *x[nv];
     bool success;
     value qgrad[iref.nfields+1], qhess[iref.nfields+1];
     for (int i=0; i<iref.nfields; i++) { qgrad[i] = MORPHO_NIL; qhess[i] = MORPHO_NIL; }
     
-    objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_LINE, id, nv, vid);
+    objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, g, id, nv, vid);
     elref.iref = &iref;
     elref.vertexposn = x;
     elref.qgrad=qgrad;
     elref.qhess=qhess;
     elref.invj=NULL;
     
-    if (!functional_elementsize(v, mesh, MESH_GRADE_LINE, id, nv, vid, &elref.elementsize)) return false;
+    objectmesh *sizemesh = (iref.weightbyref ? iref.mref : mesh);
+    if (!functional_elementsize(v, sizemesh, g, id, nv, vid, &elref.elementsize)) return false;
 
     iref.v=v;
     for (unsigned int i=0; i<nv; i++) {
@@ -4630,53 +4646,112 @@ bool lineintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
         }
         elref.quantities=quantities;
         
-        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), morpho_geterror(v), mesh->dim, MESH_GRADE_LINE, x, iref.nfields, quantities, &iref, out, &err);
+        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), morpho_geterror(v), mesh->dim, g, x, iref.nfields, quantities, &iref, out, &err);
         
         integral_clearquantities(iref.nfields, quantities);
         integral_clearelref(&elref);
     } else { // Old integrator
-        value q0[iref.nfields+1], q1[iref.nfields+1];
-        value *q[2] = { q0, q1 };
+        value qstore[nv][iref.nfields+1];
+        value *q[nv];
+        for (unsigned int i=0; i<nv; i++) q[i]=qstore[i];
         for (unsigned int k=0; k<iref.nfields; k++) {
             for (unsigned int i=0; i<nv; i++) {
                 field_getelement(MORPHO_GETFIELD(iref.fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
             }
         }
         
-        success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_LINE, x, iref.nfields, q, &iref, out);
+        success=integrate_integrate(integral_integrandfn, mesh->dim, g, x, iref.nfields, q, &iref, out);
     }
     
-    if (success) *out *=elref.elementsize;
+    if (success) *out *= elref.elementsize;
 
     integral_freetlvars(v);
-    
-    // Free gradient information
-    for (int i=0; i<iref.nfields; i++) {
-        if (MORPHO_ISLIST(qgrad[i])) {
-            objectlist *l = MORPHO_GETLIST(qgrad[i]);
-            for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
-        }
-        morpho_freeobject(qgrad[i]);
-        if (MORPHO_ISLIST(qhess[i])) {
-            objectlist *l = MORPHO_GETLIST(qhess[i]);
-            for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
-        }
-        morpho_freeobject(qhess[i]);
-    }
+    integral_freegradhess(iref.nfields, qgrad, qhess);
     
     return success;
 }
 
-FUNCTIONAL_METHOD_START(LineIntegral, integrand, MESH_GRADE_LINE, integralref, integral_prepareref, integral_startfn, functional_mapintegrand, lineintegral_integrand, NULL, LINEINTEGRAL_ARGS, SYMMETRY_NONE);
+/** Read the integration grade stored on the instance */
+static bool integral_instancegrade(objectinstance *self, grade *g) {
+    value val=MORPHO_NIL;
+    if (!objectinstance_getpropertyinterned(self, functional_gradeproperty, &val)) return false;
+    if (!MORPHO_ISINTEGER(val)) return false;
+    *g = (grade) MORPHO_GETINTEGERVALUE(val);
+    return true;
+}
 
-FUNCTIONAL_METHOD_START(LineIntegral, total, MESH_GRADE_LINE, integralref, integral_prepareref, integral_startfn, functional_sumintegrand, lineintegral_integrand, NULL, LINEINTEGRAL_ARGS, SYMMETRY_NONE);
+/** Shared method path for Line/Area/Volume integrals */
+static value integral_domap(vm *v, int nargs, value *args, bool (*mapfn)(vm *, functional_mapinfo *, value *)) {
+    functional_mapinfo info;
+    integralref ref;
+    value out=MORPHO_NIL;
+    
+    if (functional_validateargs(v, nargs, args, &info)) {
+        objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+        grade g=0;
+        if (!integral_instancegrade(self, &g) ||
+            !integral_prepareref(self, info.mesh, g, info.sel, &ref)) {
+            morpho_runtimeerror(v, INTEGRAL_ARGS);
+        } else {
+            info.integrand = integral_integrand;
+            info.start = integral_startfn;
+            info.dependencies = NULL;
+            info.sym = SYMMETRY_NONE;
+            info.g = g;
+            info.ref = &ref;
+            if (functional_startmap(v, &info) && !mapfn(v, &info, &out) && !morpho_checkerror(morpho_geterror(v))) {
+                morpho_runtimeerror(v, INTEGRAL_ARGS);
+            }
+        }
+    }
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+    return out;
+}
 
-FUNCTIONAL_METHOD_START(LineIntegral, gradient, MESH_GRADE_LINE, integralref, integral_prepareref, integral_startfn, functional_mapnumericalgradient, lineintegral_integrand, NULL, LINEINTEGRAL_ARGS, SYMMETRY_NONE);
+static value Integral_integrand(vm *v, int nargs, value *args) {
+    return integral_domap(v, nargs, args, functional_mapintegrand);
+}
 
-FUNCTIONAL_METHOD_START(LineIntegral, hessian, MESH_GRADE_LINE, integralref, integral_prepareref, integral_startfn, functional_mapnumericalhessian, lineintegral_integrand, NULL, LINEINTEGRAL_ARGS, SYMMETRY_NONE)
+static value Integral_total(vm *v, int nargs, value *args) {
+    return integral_domap(v, nargs, args, functional_sumintegrand);
+}
 
-/** Initialize a LineIntegral object */
-value LineIntegral_init(vm *v, int nargs, value *args) {
+static value Integral_gradient(vm *v, int nargs, value *args) {
+    return integral_domap(v, nargs, args, functional_mapnumericalgradient);
+}
+
+static value Integral_hessian(vm *v, int nargs, value *args) {
+    return integral_domap(v, nargs, args, functional_mapnumericalhessian);
+}
+
+/** Field gradients for Line/Area/Volume integrals */
+static value Integral_fieldgradient(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    integralref ref;
+    value out=MORPHO_NIL;
+    
+    if (functional_validateargs(v, nargs, args, &info)) {
+        objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+        grade g=0;
+        if (!integral_instancegrade(self, &g) ||
+            !integral_prepareref(self, info.mesh, g, info.sel, &ref)) {
+            morpho_runtimeerror(v, INTEGRAL_ARGS);
+        } else {
+            info.g=g;
+            info.integrand=integral_integrand;
+            info.start=integral_startfn;
+            info.cloneref=integral_cloneref;
+            info.freeref=integral_freeref;
+            info.ref=&ref;
+            if (functional_startmap(v, &info)) functional_mapnumericalfieldgradient(v, &info, &out);
+        }
+    }
+    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+    return out;
+}
+
+/** Initialize a Line/Area/Volume/Jump integral object */
+static value integral_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
     int nparams = -1;
     int nfixed;
@@ -4738,264 +4813,51 @@ value LineIntegral_init(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-/** Field gradients for Line Integrals */
-value LineIntegral_fieldgradient(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    integralref ref;
-    value out=MORPHO_NIL;
-
-    if (functional_validateargs(v, nargs, args, &info)) {
-        // Should check whether the field is known about here...
-        if (integral_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_LINE, info.sel, &ref)) {
-            info.g=MESH_GRADE_LINE;
-            info.integrand=lineintegral_integrand;
-            info.start=integral_startfn;
-            info.cloneref=integral_cloneref;
-            info.freeref=integral_freeref;
-            info.ref=&ref;
-            if (functional_startmap(v, &info)) functional_mapnumericalfieldgradient(v, &info, &out);
-        } else morpho_runtimeerror(v, LINEINTEGRAL_ARGS);
-    }
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-    return out;
+static value integral_initwithgrade(vm *v, int nargs, value *args, grade g) {
+    objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), functional_gradeproperty, MORPHO_INTEGER(g));
+    return integral_init(v, nargs, args);
 }
+
+value LineIntegral_init(vm *v, int nargs, value *args) {
+    return integral_initwithgrade(v, nargs, args, MESH_GRADE_LINE);
+}
+
+value AreaIntegral_init(vm *v, int nargs, value *args) {
+    return integral_initwithgrade(v, nargs, args, MESH_GRADE_AREA);
+}
+
+value VolumeIntegral_init(vm *v, int nargs, value *args) {
+    return integral_initwithgrade(v, nargs, args, MESH_GRADE_VOLUME);
+}
+
+#define INTEGRAL_METHODFLAGS (MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+#define INTEGRAL_TOTALFLAGS  (MORPHO_FN_REENTRANT|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
 
 MORPHO_BEGINCLASS(LineIntegral)
 MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineIntegral_init, MORPHO_FN_MUTATES|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LineIntegral_integrand, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineIntegral_total, MORPHO_FN_REENTRANT|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineIntegral_gradient, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, LineIntegral_fieldgradient, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, LineIntegral_hessian, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Integral_integrand, INTEGRAL_METHODFLAGS),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Integral_total, INTEGRAL_TOTALFLAGS),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Integral_gradient, INTEGRAL_METHODFLAGS),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Integral_fieldgradient, INTEGRAL_METHODFLAGS),
+MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Integral_hessian, INTEGRAL_METHODFLAGS)
 MORPHO_ENDCLASS
-
-/* ----------------------------------------------
- * AreaIntegral
- * ---------------------------------------------- */
-
-/** Integrate a function over an area */
-bool areaintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
-    integralref iref = *(integralref *) ref;
-    double *x[nv];
-    bool success;
-    
-    value qgrad[iref.nfields+1], qhess[iref.nfields+1];
-    for (int i=0; i<iref.nfields; i++) { qgrad[i] = MORPHO_NIL; qhess[i] = MORPHO_NIL; }
-    
-    objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_AREA, id, nv, vid);
-    elref.iref = &iref;
-    elref.vertexposn=x;
-    elref.qgrad=qgrad;
-    elref.qhess=qhess;
-    elref.invj=NULL;  
-  
-    if (iref.weightbyref) {
-        if (!functional_elementsize(v, iref.mref, MESH_GRADE_AREA, id, nv, vid, &elref.elementsize)) return false;
-    } else {
-        if (!functional_elementsize(v, mesh, MESH_GRADE_AREA, id, nv, vid, &elref.elementsize)) return false;
-    }
-
-    iref.v=v;
-    for (unsigned int i=0; i<nv; i++) {
-        mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
-    }
-    
-    /* Set up quantities */
-    integral_cleartlvars(v);
-    vm_settlvar(v, elementhandle, MORPHO_OBJECT(&elref));
-    
-    if (MORPHO_ISDICTIONARY(iref.method)) {
-        double err;
-        quantity quantities[iref.nfields+1];
-        if (!integral_preparequantities(&iref, nv, vid, quantities)) {
-            integral_clearelref(&elref);
-            return false;
-        }
-        elref.quantities=quantities;
-        
-        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), morpho_geterror(v), mesh->dim, MESH_GRADE_AREA, x, iref.nfields, quantities, &iref, out, &err);
-        
-        integral_clearquantities(iref.nfields, quantities);
-        integral_clearelref(&elref);
-    } else {
-        value q0[iref.nfields+1], q1[iref.nfields+1], q2[iref.nfields+1];
-        value *q[3] = { q0, q1, q2 };
-        for (unsigned int k=0; k<iref.nfields; k++) {
-            for (unsigned int i=0; i<nv; i++) {
-                field_getelement(MORPHO_GETFIELD(iref.fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
-            }
-        }
-        
-        success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_AREA, x, iref.nfields, q, &iref, out);
-    }
-    
-    if (success) *out *= elref.elementsize;
-
-    integral_freetlvars(v);
-    
-    // Free gradient information
-    for (int i=0; i<iref.nfields; i++) {
-        if (MORPHO_ISLIST(qgrad[i])) {
-            objectlist *l = MORPHO_GETLIST(qgrad[i]);
-            for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
-        }
-        morpho_freeobject(qgrad[i]);
-        if (MORPHO_ISLIST(qhess[i])) {
-            objectlist *l = MORPHO_GETLIST(qhess[i]);
-            for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
-        }
-        morpho_freeobject(qhess[i]);
-    }
-    
-    return success;
-}
-
-FUNCTIONAL_METHOD_START(AreaIntegral, integrand, MESH_GRADE_AREA, integralref, integral_prepareref, integral_startfn, functional_mapintegrand, areaintegral_integrand, NULL, AREAINTEGRAL_ARGS, SYMMETRY_NONE);
-
-FUNCTIONAL_METHOD_START(AreaIntegral, total, MESH_GRADE_AREA, integralref, integral_prepareref, integral_startfn, functional_sumintegrand, areaintegral_integrand, NULL, AREAINTEGRAL_ARGS, SYMMETRY_NONE);
-
-FUNCTIONAL_METHOD_START(AreaIntegral, gradient, MESH_GRADE_AREA, integralref, integral_prepareref, integral_startfn, functional_mapnumericalgradient, areaintegral_integrand, NULL, AREAINTEGRAL_ARGS, SYMMETRY_NONE);
-
-/** Field gradients for Area Integrals */
-value AreaIntegral_fieldgradient(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    integralref ref;
-    value out=MORPHO_NIL;
-
-    if (functional_validateargs(v, nargs, args, &info)) {
-        // Should check whether the field is known about here...
-        if (integral_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_AREA, info.sel, &ref)) {
-            info.g=MESH_GRADE_AREA;
-            info.integrand=areaintegral_integrand;
-            info.start=integral_startfn;
-            info.cloneref=integral_cloneref;
-            info.freeref=integral_freeref;
-            info.ref=&ref;
-            if (functional_startmap(v, &info)) functional_mapnumericalfieldgradient(v, &info, &out);
-        } else morpho_runtimeerror(v, AREAINTEGRAL_ARGS);
-    }
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-    return out;
-}
 
 MORPHO_BEGINCLASS(AreaIntegral)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineIntegral_init, MORPHO_FN_MUTATES|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, AreaIntegral_integrand, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, AreaIntegral_total, MORPHO_FN_REENTRANT|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, AreaIntegral_gradient, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, AreaIntegral_fieldgradient, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, AreaIntegral_init, MORPHO_FN_MUTATES|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Integral_integrand, INTEGRAL_METHODFLAGS),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Integral_total, INTEGRAL_TOTALFLAGS),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Integral_gradient, INTEGRAL_METHODFLAGS),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Integral_fieldgradient, INTEGRAL_METHODFLAGS),
+MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Integral_hessian, INTEGRAL_METHODFLAGS)
 MORPHO_ENDCLASS
 
-/* ----------------------------------------------
- * VolumeIntegral
- * ---------------------------------------------- */
-
-/** Integrate a function over a volume */
-bool volumeintegral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
-    integralref iref = *(integralref *) ref;
-    double *x[nv];
-    bool success;
-    
-    value qgrad[iref.nfields+1], qhess[iref.nfields+1];
-    for (int i=0; i<iref.nfields; i++) { qgrad[i] = MORPHO_NIL; qhess[i] = MORPHO_NIL; }
-    
-    objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, MESH_GRADE_VOLUME, id, nv, vid);
-    elref.iref = &iref;
-    elref.vertexposn = x;
-    elref.qgrad=qgrad;
-    elref.qhess=qhess;
-    elref.invj=NULL;
-
-    if (!functional_elementsize(v, mesh, MESH_GRADE_VOLUME, id, nv, vid, &elref.elementsize)) return false;
-
-    iref.v=v;
-    for (unsigned int i=0; i<nv; i++) {
-        mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
-    }
-    
-    /* Set up quantities */
-    integral_cleartlvars(v);
-    vm_settlvar(v, elementhandle, MORPHO_OBJECT(&elref));
-    
-    if (MORPHO_ISDICTIONARY(iref.method)) {
-        double err;
-        quantity quantities[iref.nfields+1];
-        if (!integral_preparequantities(&iref, nv, vid, quantities)) {
-            integral_clearelref(&elref);
-            return false;
-        }
-        elref.quantities=quantities;
-        
-        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), morpho_geterror(v), mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, quantities, &iref, out, &err);
-        
-        integral_clearquantities(iref.nfields, quantities);
-        integral_clearelref(&elref);
-    } else {
-        value q0[iref.nfields+1], q1[iref.nfields+1], q2[iref.nfields+1], q3[iref.nfields+1];
-        value *q[4] = { q0, q1, q2, q3 };
-        for (unsigned int k=0; k<iref.nfields; k++) {
-            for (unsigned int i=0; i<nv; i++) {
-                field_getelement(MORPHO_GETFIELD(iref.fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
-            }
-        }
-        
-        success=integrate_integrate(integral_integrandfn, mesh->dim, MESH_GRADE_VOLUME, x, iref.nfields, q, &iref, out);
-    }
-    
-    if (success) *out *=elref.elementsize;
-
-    integral_freetlvars(v);
-    
-    for (int i=0; i<iref.nfields; i++) {
-        if (MORPHO_ISLIST(qgrad[i])) {
-            objectlist *l = MORPHO_GETLIST(qgrad[i]);
-            for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
-        }
-        morpho_freeobject(qgrad[i]);
-        if (MORPHO_ISLIST(qhess[i])) {
-            objectlist *l = MORPHO_GETLIST(qhess[i]);
-            for (int j=0; j<l->val.count; j++) morpho_freeobject(l->val.data[j]);
-        }
-        morpho_freeobject(qhess[i]);
-    }
-    
-    return success;
-}
-
-FUNCTIONAL_METHOD_START(VolumeIntegral, integrand, MESH_GRADE_VOLUME, integralref, integral_prepareref, integral_startfn, functional_mapintegrand, volumeintegral_integrand, NULL, VOLUMEINTEGRAL_ARGS, SYMMETRY_NONE);
-
-FUNCTIONAL_METHOD_START(VolumeIntegral, total, MESH_GRADE_VOLUME, integralref, integral_prepareref, integral_startfn, functional_sumintegrand, volumeintegral_integrand, NULL, VOLUMEINTEGRAL_ARGS, SYMMETRY_NONE);
-
-FUNCTIONAL_METHOD_START(VolumeIntegral, gradient, MESH_GRADE_VOLUME, integralref, integral_prepareref, integral_startfn, functional_mapnumericalgradient, volumeintegral_integrand, NULL, VOLUMEINTEGRAL_ARGS, SYMMETRY_NONE);
-
-/** Field gradients for Volume Integrals */
-value VolumeIntegral_fieldgradient(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    integralref ref;
-    value out=MORPHO_NIL;
-
-    if (functional_validateargs(v, nargs, args, &info)) {
-        // Should check whether the field is known about here...
-        if (integral_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, MESH_GRADE_VOLUME, info.sel, &ref)) {
-            info.g=MESH_GRADE_VOLUME;
-            info.integrand=volumeintegral_integrand;
-            info.start=integral_startfn;
-            info.cloneref=integral_cloneref;
-            info.freeref=integral_freeref;
-            info.ref=&ref;
-            if (functional_startmap(v, &info)) functional_mapnumericalfieldgradient(v, &info, &out);
-        } else morpho_runtimeerror(v, VOLUMEINTEGRAL_ARGS);
-    }
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-    return out;
-}
-
 MORPHO_BEGINCLASS(VolumeIntegral)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineIntegral_init, MORPHO_FN_MUTATES|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, VolumeIntegral_integrand, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, VolumeIntegral_total, MORPHO_FN_REENTRANT|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, VolumeIntegral_gradient, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, VolumeIntegral_fieldgradient, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, VolumeIntegral_init, MORPHO_FN_MUTATES|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Integral_integrand, INTEGRAL_METHODFLAGS),
+MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Integral_total, INTEGRAL_TOTALFLAGS),
+MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Integral_gradient, INTEGRAL_METHODFLAGS),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Integral_fieldgradient, INTEGRAL_METHODFLAGS),
+MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Integral_hessian, INTEGRAL_METHODFLAGS)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -5053,7 +4915,7 @@ static bool jump_preparestrategy(jumpref *ref) {
     For now this matches the existing integral optional-argument surface:
     'method', 'mref' and 'weightbyreference'. */
 static value Jump_init(vm *v, int nargs, value *args) {
-    return LineIntegral_init(v, nargs, args);
+    return integral_init(v, nargs, args);
 }
 
 /** Prepare a jump reference.
@@ -5735,9 +5597,6 @@ void functional_initialize(void) {
     morpho_defineerror(FUNCTIONAL_ARGS, ERROR_HALT, FUNCTIONAL_ARGS_MSG);
     
     morpho_defineerror(INTEGRAL_ARGS, ERROR_HALT, INTEGRAL_ARGS_MSG);
-    morpho_defineerror(LINEINTEGRAL_ARGS, ERROR_HALT, LINEINTEGRAL_ARGS_MSG);
-    morpho_defineerror(AREAINTEGRAL_ARGS, ERROR_HALT, AREAINTEGRAL_ARGS_MSG);
-    morpho_defineerror(VOLUMEINTEGRAL_ARGS, ERROR_HALT, VOLUMEINTEGRAL_ARGS_MSG);
     morpho_defineerror(INTEGRAL_NFLDS, ERROR_HALT, INTEGRAL_NFLDS_MSG);
     morpho_defineerror(INTEGRAL_MTHDDCT, ERROR_HALT, INTEGRAL_MTHDDCT_MSG);
     morpho_defineerror(INTEGRAL_FLD, ERROR_HALT, INTEGRAL_FLD_MSG);

@@ -1713,6 +1713,11 @@ This error occurs when a mesh doesn't provide elements of the required grade:
     var func = Length()
     func.integrand(mesh) // Causes 'FnctlELNtFnd' if mesh lacks required grade
 
+## FnctlFESpc
+[tagfnctlfespc]: # (fnctlfespc)
+
+A functional evaluates a Field on one grade of the mesh (vertices, lines, faces or volumes). This error means the Field's finite element space is not defined on that grade and cannot be evaluated on it. This could occur, for example, if you try to evaluate a functional on the boundary of an element where the finite element space is only defined on the interior; some finite element spaces specifically support this, but not all.
+
 ## FnctlArgs
 [tagfnctlargs]: # (fnctlargs)
 

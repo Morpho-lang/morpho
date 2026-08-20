@@ -100,6 +100,9 @@
 #define FUNC_ELNTFND                   "FnctlELNtFnd"
 #define FUNC_ELNTFND_MSG               "Mesh does not provide elements of grade %u."
 
+#define FUNC_FESPACE                   "FnctlFESpc"
+#define FUNC_FESPACE_MSG               "This Field%s%s cannot be evaluated on grade %u elements."
+
 #define SCALARPOTENTIAL_FNCLLBL        "SclrPtFnCllbl"
 #define SCALARPOTENTIAL_FNCLLBL_MSG    "ScalarPotential function is not callable."
 

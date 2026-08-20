@@ -18,7 +18,7 @@ objecttype objectfespacetype;
 /** Field object definitions */
 void objectfespace_printfn(object *obj, void *v) {
     objectfespace *disc=(objectfespace *) obj;
-    morpho_printf(v, "<FunctionSpace %s>", disc->fespace->name);
+    morpho_printf(v, "<FunctionSpace %s>", FESPACE_NAME(disc->fespace));
 }
 
 size_t objectfespace_sizefn(object *obj) {

@@ -72,6 +72,12 @@ typedef struct {
 /** Gets the object as a fespace */
 #define MORPHO_GETFESPACE(val)   ((objectfespace *) MORPHO_GETOBJECT(val))
 
+/** Name of a fespace definition, or NULL */
+#define FESPACE_NAME(disc) ((disc) ? (disc)->name : NULL)
+
+/** Name of a FiniteElementSpace value, or NULL if val is not a space */
+#define MORPHO_GETFESPACENAME(val) (MORPHO_ISFESPACE(val) ? FESPACE_NAME(MORPHO_GETFESPACE(val)->fespace) : NULL)
+
 /* -------------------------------------------------------
  * FunctionSpace veneer class
  * ------------------------------------------------------- */

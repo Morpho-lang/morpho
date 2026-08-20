@@ -33,6 +33,7 @@ typedef struct jumpref_s jumpref;
 static bool jump_getadjacentparents(jumpref *ref, elementid interfaceid, int *nparents, int **parents);
 static bool jump_startfn(vm *v, functional_mapinfo *info);
 static void jump_orderparents(int *parents, elementid *plusid, elementid *minusid);
+static void functional_fespaceerror(vm *v, objectfield *field, grade g);
 
 /* **********************************************************************
  * Utility functions
@@ -962,7 +963,10 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
         if (MORPHO_ISFESPACE(tref[i].field->fnspc)) {
             tref[i].disc=MORPHO_GETFESPACE(tref[i].field->fnspc)->fespace;
             if (info->g<tref[i].disc->grade) {
-                if (!fespace_lower(tref[i].disc, info->g, &tref[i].disc)) goto functional_mapfieldgradient_cleanup;
+                if (!fespace_lower(tref[i].disc, info->g, &tref[i].disc)) {
+                    functional_fespaceerror(v, tref[i].field, info->g);
+                    goto functional_mapfieldgradient_cleanup;
+                }
             }
         }
         
@@ -2928,43 +2932,66 @@ typedef struct {
     grade grade;
 } fieldref;
 
-static bool functional_preparefespacefield(objectfield *field, grade g) {
+static void functional_fespaceerror(vm *v, objectfield *field, grade g) {
+    char *name = (field ? MORPHO_GETFESPACENAME(field->fnspc) : NULL);
+
+    morpho_runtimeerror(v, FUNC_FESPACE,
+                        name ? " with finite element space " : "",
+                        name ? name : "",
+                        (unsigned int) g);
+}
+
+static bool functional_preparefespacefield(vm *v, objectfield *field, grade g) {
     if (!field || !MORPHO_ISFESPACE(field->fnspc)) return true;
 
     fespace *disc = MORPHO_GETFESPACE(field->fnspc)->fespace;
+    /* Revisit: CG1→vertices is not a missing trace. Honest FnctlFESpc tests
+       wait on CG0 (no boundary restriction) and refusing g > disc->grade
+       (no implicit raise, e.g. AreaIntegral of a line-grade space). */
     if (g<disc->grade) {
-        if (!fespace_lower(disc, g, &disc)) return false;
+        if (!fespace_lower(disc, g, &disc)) {
+            functional_fespaceerror(v, field, g);
+            return false;
+        }
     }
 
     objectsparse *conn = mesh_getconnectivityelement(field->mesh, 0, disc->grade);
     if (!conn) conn = mesh_addconnectivityelement(field->mesh, 0, disc->grade);
-    if (!conn) return false;
+    if (!conn) {
+        morpho_runtimeerror(v, FUNC_ELNTFND, (unsigned int) disc->grade);
+        return false;
+    }
 
     for (grade i=0; i<=disc->grade; i++) {
         objectsparse *vmatrix = mesh_addconnectivityelement(field->mesh, i, 0);
         if (!vmatrix && i>0 && disc->shape[i]>0) {
-            if (!mesh_addgrade(field->mesh, i)) return false;
+            if (!mesh_addgrade(field->mesh, i)) {
+                morpho_runtimeerror(v, FUNC_ELNTFND, (unsigned int) i);
+                return false;
+            }
             vmatrix = mesh_addconnectivityelement(field->mesh, i, 0);
         }
-        if (!vmatrix && i>0 && disc->shape[i]>0) return false;
+        if (!vmatrix && i>0 && disc->shape[i]>0) {
+            morpho_runtimeerror(v, FUNC_ELNTFND, (unsigned int) i);
+            return false;
+        }
     }
 
     return true;
 }
 
-static bool functional_preparefieldlist(value *fields, int nfields, grade g) {
+static bool functional_preparefieldlist(vm *v, value *fields, int nfields, grade g) {
     for (int i=0; i<nfields; i++) {
         if (MORPHO_ISFIELD(fields[i]) &&
-            !functional_preparefespacefield(MORPHO_GETFIELD(fields[i]), g)) return false;
+            !functional_preparefespacefield(v, MORPHO_GETFIELD(fields[i]), g)) return false;
     }
 
     return true;
 }
 
 static bool fieldref_startfn(vm *v, functional_mapinfo *info) {
-    (void) v;
     fieldref *ref = (fieldref *) info->ref;
-    return functional_preparefespacefield(ref->field, info->g);
+    return functional_preparefespacefield(v, ref->field, info->g);
 }
 
 /* ----------------------------------------------
@@ -3203,9 +3230,8 @@ typedef struct {
 } nematicref;
 
 static bool nematic_startfn(vm *v, functional_mapinfo *info) {
-    (void) v;
     nematicref *ref = (nematicref *) info->ref;
-    return functional_preparefespacefield(ref->field, info->g);
+    return functional_preparefespacefield(v, ref->field, info->g);
 }
 
 /** Prepares the nematic reference */
@@ -3450,12 +3476,11 @@ typedef struct {
 } nematicelectricref;
 
 static bool nematicelectric_startfn(vm *v, functional_mapinfo *info) {
-    (void) v;
     nematicelectricref *ref = (nematicelectricref *) info->ref;
 
-    if (!functional_preparefespacefield(ref->director, info->g)) return false;
+    if (!functional_preparefespacefield(v, ref->director, info->g)) return false;
     if (MORPHO_ISFIELD(ref->field) &&
-        !functional_preparefespacefield(MORPHO_GETFIELD(ref->field), info->g)) return false;
+        !functional_preparefespacefield(v, MORPHO_GETFIELD(ref->field), info->g)) return false;
 
     return true;
 }
@@ -3678,9 +3703,8 @@ typedef struct {
 } integralref;
 
 static bool integral_startfn(vm *v, functional_mapinfo *info) {
-    (void) v;
     integralref *ref = (integralref *) info->ref;
-    return functional_preparefieldlist(ref->fields, ref->nfields, info->g);
+    return functional_preparefieldlist(v, ref->fields, ref->nfields, info->g);
 }
 
 typedef struct jumpref_s jumpref;
@@ -4974,9 +4998,8 @@ static bool jump_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
 }
 
 static bool jump_startfn(vm *v, functional_mapinfo *info) {
-    (void) v;
     jumpref *ref = (jumpref *) info->ref;
-    return functional_preparefieldlist(ref->integral.fields, ref->integral.nfields, ref->parentgrade);
+    return functional_preparefieldlist(v, ref->integral.fields, ref->integral.nfields, ref->parentgrade);
 }
 
 /** Clone a jump reference with a substituted field. */
@@ -5621,6 +5644,7 @@ void functional_initialize(void) {
     morpho_defineerror(VOLUMEENCLOSED_ZERO, ERROR_HALT, VOLUMEENCLOSED_ZERO_MSG);
     morpho_defineerror(FUNC_INTEGRAND_MESH, ERROR_HALT, FUNC_INTEGRAND_MESH_MSG);
     morpho_defineerror(FUNC_ELNTFND, ERROR_HALT, FUNC_ELNTFND_MSG);
+    morpho_defineerror(FUNC_FESPACE, ERROR_HALT, FUNC_FESPACE_MSG);
 
     morpho_defineerror(SCALARPOTENTIAL_FNCLLBL, ERROR_HALT, SCALARPOTENTIAL_FNCLLBL_MSG);
 

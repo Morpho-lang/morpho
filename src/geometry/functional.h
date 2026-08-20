@@ -94,9 +94,6 @@
 #define NEMATICELECTRIC_CLASSNAME      "NematicElectric"
 
 /* Errors */
-#define FUNC_INTEGRAND_MESH            "FnctlIntMsh"
-#define FUNC_INTEGRAND_MESH_MSG        "Method 'integrand' requires a mesh as the argument."
-
 #define FUNC_ELNTFND                   "FnctlELNtFnd"
 #define FUNC_ELNTFND_MSG               "Mesh does not provide elements of grade %u."
 
@@ -142,21 +139,6 @@
 #define VOLUMEENCLOSED_ZERO            "VolEnclZero"
 #define VOLUMEENCLOSED_ZERO_MSG        "VolumeEnclosed detected an element of zero size. Check that a mesh point is not coincident with the origin."
 
-#define LINEARELASTICITY_REF           "LnElstctyRef"
-#define LINEARELASTICITY_REF_MSG       "LinearElasticity requires a mesh as the argument."
-
-#define LINEARELASTICITY_PRP           "LnElstctyPrp"
-#define LINEARELASTICITY_PRP_MSG       "LinearElasticity requires properties 'reference' to be a mesh, 'grade' to be an integer grade and 'poissonratio' to be a number."
-
-#define EQUIELEMENT_ARGS               "EquiElArgs"
-#define EQUIELEMENT_ARGS_MSG           "EquiElement allows 'grade' and 'weight' as optional arguments."
-
-#define HYDROGEL_ARGS                  "HydrglArgs"
-#define HYDROGEL_ARGS_MSG              "Hydrogel requires a reference mesh and allows 'grade', 'a', 'b', 'c', 'd', 'phi0' and 'phiref' as optional arguments."
-
-#define HYDROGEL_PRP                   "HydrglPrp"
-#define HYDROGEL_PRP_MSG               "Hydrogel requires the first argument to be a mesh, 'grade' to be an integer grade, 'a', 'b', 'c' 'd', 'phiref' to be numbers and 'phi0' to be a number or a Field."
-
 #define HYDROGEL_FLDGRD                "HydrglFldGrd"
 #define HYDROGEL_FLDGRD_MSG            "Hydrogel has been given phi0 as a Field that lacks scalar elements in grade %u."
 
@@ -166,17 +148,8 @@
 #define HYDROGEL_BNDS                  "HydrglBnds"
 #define HYDROGEL_BNDS_MSG              "Phi outside bounds at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n"
 
-#define GRADSQ_ARGS                    "GradSqArgs"
-#define GRADSQ_ARGS_MSG                "GradSq requires a field as the argument."
-
-#define NEMATIC_ARGS                   "NmtcArgs"
-#define NEMATIC_ARGS_MSG               "Nematic requires a field as the argument."
-
-#define NEMATICELECTRIC_ARGS           "NmtcElArgs"
-#define NEMATICELECTRIC_ARGS_MSG       "NematicElectric requires the director and electric field or potential as arguments (in that order)."
-
 #define FUNCTIONAL_ARGS                "FnctlArgs"
-#define FUNCTIONAL_ARGS_MSG            "Invalid args passed to method."
+#define FUNCTIONAL_ARGS_MSG            "Invalid arguments passed to this functional."
 
 /* -------------------------------------------------------
  * Functional types

@@ -2,4 +2,4 @@ var m = Mesh("tetrahedron.mesh")
 var h = Hydrogel(m)
 
 print h.gradient(m)
-// expect error 'HydrglPrp'
+// expect error 'FnctlArgs'

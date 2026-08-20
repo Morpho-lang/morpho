@@ -1,0 +1,7 @@
+var m = Mesh("triangle.mesh")
+var phi = Field(m)
+var g = GradSq(phi)
+g.field = nil
+
+print g.total(m)
+// expect error 'FnctlArgs'

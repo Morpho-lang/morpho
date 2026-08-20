@@ -1697,14 +1697,6 @@ This error occurs when a function space cannot be found:
 
     FunctionSpace.find("nonexistent", 1) // Causes 'FnSpcNtFnd'
 
-## FnctlIntMsh
-[tagfnctlintmsh]: # (fnctlintmsh)
-
-This error occurs when a functional's integrand method requires a mesh as an argument but doesn't receive one:
-
-    var func = Length()
-    func.integrand() // Causes 'FnctlIntMsh'
-
 ## FnctlELNtFnd
 [tagfnctleltfnd]: # (fnctleltfnd)
 
@@ -1721,7 +1713,12 @@ A functional evaluates a Field on one grade of the mesh (vertices, lines, faces 
 ## FnctlArgs
 [tagfnctlargs]: # (fnctlargs)
 
-This error occurs when invalid arguments are passed to a functional method.
+This error occurs when invalid arguments are passed to a functional. Methods such as `integrand`, `total` and `gradient` require a mesh:
+
+    var func = Length()
+    func.integrand() // Causes 'FnctlArgs'
+
+Constructors can raise the same error when a required Field, mesh, or option is missing.
 
 ## VolEnclZero
 [tagvolenclzero]: # (volenclzero)
@@ -1730,32 +1727,6 @@ This error occurs when VolumeEnclosed detects an element of zero size. Check tha
 
     var func = VolumeEnclosed()
     func.total(mesh) // Causes 'VolEnclZero' if element has zero size
-
-## LnElstctyRef
-[taglnelstctyref]: # (lnelstctyref)
-
-This error occurs when LinearElasticity requires a mesh as an argument but doesn't receive one:
-
-    var func = LinearElasticity()
-    func.total() // Causes 'LnElstctyRef'
-
-## LnElstctyPrp
-[taglnelstctyprp]: # (lnelstctyprp)
-
-This error occurs when LinearElasticity is missing required properties. It requires 'reference' to be a mesh, 'grade' to be an integer, and 'poissonratio' to be a number:
-
-    var func = LinearElasticity()
-    func.reference = "invalid" // Causes 'LnElstctyPrp'
-
-## HydrglArgs
-[taghydrglargs]: # (hydrglargs)
-
-This error occurs when Hydrogel receives invalid arguments. It requires a reference mesh and allows 'grade', 'a', 'b', 'c', 'd', 'phi0', and 'phiref' as optional arguments.
-
-## HydrglPrp
-[taghydrglprp]: # (hydrglprp)
-
-This error occurs when Hydrogel is missing required properties. It requires the first argument to be a mesh, 'grade' to be an integer, 'a', 'b', 'c', 'd', 'phiref' to be numbers, and 'phi0' to be a number or Field.
 
 ## HydrglFldGrd
 [taghydrglfldgrd]: # (hydrglfldgrd)
@@ -1771,32 +1742,6 @@ This error occurs when a Hydrogel reference element has a tiny volume. This is a
 [taghydrglbnds]: # (hydrglbnds)
 
 This error occurs when phi is outside bounds in a Hydrogel calculation. This is a warning.
-
-## EquiElArgs
-[tagequielargs]: # (equielargs)
-
-This error occurs when EquiElement receives invalid arguments. It allows 'grade' and 'weight' as optional arguments.
-
-## GradSqArgs
-[taggradsqargs]: # (gradsqargs)
-
-This error occurs when GradSq receives invalid arguments. It requires a field as the argument:
-
-    var func = GradSq()
-    func.total("invalid") // Causes 'GradSqArgs'
-
-## NmtcArgs
-[tagnmtcargs]: # (nmtcargs)
-
-This error occurs when Nematic receives invalid arguments. It requires a field as the argument:
-
-    var func = Nematic()
-    func.total("invalid") // Causes 'NmtcArgs'
-
-## NmtcElArgs
-[tagnmtcelargs]: # (nmtcelargs)
-
-This error occurs when NematicElectric receives invalid arguments. It requires the director and electric field or potential as arguments (in that order).
 
 ## SclrPtFnCllbl
 [tagsclrptfncllbl]: # (sclrptfncllbl)

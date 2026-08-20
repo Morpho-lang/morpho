@@ -1,0 +1,2 @@
+print Hydrogel()
+// expect error 'FnctlArgs'

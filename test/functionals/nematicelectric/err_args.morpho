@@ -1,0 +1,2 @@
+print NematicElectric()
+// expect error 'FnctlArgs'

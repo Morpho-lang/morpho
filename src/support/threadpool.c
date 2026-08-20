@@ -43,9 +43,11 @@ MorphoThreadFnReturnType threadpool_worker(void *ref) {
         pool->nprocessing++;
         MorphoMutex_unlock(&pool->lock_mutex);
 
-        if (t.func) { (t.func) (t.arg); }; /* Perform the assigned task */
+        bool ok=true;
+        if (t.func) ok=(t.func) (t.arg); /* Perform the assigned task */
 
         MorphoMutex_lock(&pool->lock_mutex);
+        if (!ok) pool->failed=true;
         pool->nprocessing--;
         if (!pool->stop && pool->nprocessing == 0 && pool->queue.count == 0)
             MorphoCond_signal(&pool->work_halted_cond);
@@ -76,6 +78,7 @@ bool threadpool_init(threadpool *pool, int nworkers) {
     pool->nthreads=nworkers;
     pool->stop=false;
     pool->nprocessing=0;
+    pool->failed=false;
 
     for (int i=0; i<pool->nthreads; i++) {
         MorphoThread thread;
@@ -111,15 +114,20 @@ bool threadpool_add_task(threadpool *pool, workfn func, void *arg) {
     MorphoMutex_lock(&pool->lock_mutex);
 
     task t = { .func = func, .arg=arg };
-    if (!varray_taskadd(&pool->queue, &t, 1)) success=false; /* Add the task to the queue */
+    if (!varray_taskadd(&pool->queue, &t, 1)) { /* Add the task to the queue */
+        success=false;
+        pool->failed=true;
+    }
 
     MorphoCond_broadcast(&pool->work_available_cond); /* Signal there is work to be done */
     MorphoMutex_unlock(&pool->lock_mutex);
     return success;
 }
 
-/** Blocks until all tasks in the thread pool are complete */
-void threadpool_fence(threadpool *pool) {
+/** Blocks until all tasks in the thread pool are complete.
+    Returns false if any workfn in the batch returned false, or a task could not be queued.
+    Clears the failure flag so the next batch starts clean. */
+bool threadpool_fence(threadpool *pool) {
     MorphoMutex_lock(&pool->lock_mutex);
 
     while (true) {
@@ -129,5 +137,9 @@ void threadpool_fence(threadpool *pool) {
         } else break;
     }
 
+    bool ok=!pool->failed;
+    pool->failed=false;
+
     MorphoMutex_unlock(&pool->lock_mutex);
+    return ok;
 }

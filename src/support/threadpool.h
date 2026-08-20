@@ -18,7 +18,8 @@
 /** A task is the basic unit of work that is allocated to the thread pool; it comprises a work function to perform the task, and a single argument. */
  
 /** A workfn will be called by the threadpool once a thread is available.
-    You must supply all relevant information for both input and output in a single structure passed as an opaque reference. */
+    You must supply all relevant information for both input and output in a single structure passed as an opaque reference.
+    Return false if the task failed; threadpool_fence reports whether any task in the batch failed. */
 typedef bool (* workfn) (void *arg);
 
 typedef struct {
@@ -39,6 +40,7 @@ typedef struct {
     int nprocessing; /* Number of threads actively processing work */
     int nthreads; /* Number of active threads. */
     bool stop; /* Indicates threads should terminate */
+    bool failed; /* True if a workfn returned false or a task could not be queued */
 
     varray_task queue; /* Queue of tasks lined up */
     varray_MorphoThread threads; /* Threads created by this pool */
@@ -47,7 +49,7 @@ typedef struct {
 bool threadpool_init(threadpool *pool, int nworkers);
 void threadpool_clear(threadpool *pool);
 bool threadpool_add_task(threadpool *pool, workfn func, void *arg);
-void threadpool_fence(threadpool *pool);
+bool threadpool_fence(threadpool *pool);
 void threadpool_wait(threadpool *pool);
 
 #endif /* threadpool_h */

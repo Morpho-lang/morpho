@@ -1,0 +1,18 @@
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0, 0, 0])
+mb.addvertex([0, 0, 0])
+mb.addvertex([0, 0, 0])
+mb.addface([0, 1, 2])
+var m = mb.build()
+
+var phi = Field(m)
+phi[1] = 1
+var a = GradSq(phi)
+
+print a.total(m)
+// expect: 0
+
+print a.integrand(m)
+// expect: [ 0 ]

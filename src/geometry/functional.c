@@ -370,11 +370,9 @@ bool functional_parallelmap(int ntasks, functional_task *tasks) {
     }
     
     for (int i=0; i<ntasks; i++) {
-       threadpool_add_task(&functional_pool, functional_mapfn_elements, (void *) &tasks[i]);
+        threadpool_add_task(&functional_pool, functional_mapfn_elements, (void *) &tasks[i]);
     }
-    threadpool_fence(&functional_pool);
-    
-    return true;
+    return threadpool_fence(&functional_pool);
 }
 
 /** Map over prepared tasks, using a threadpool only when worker threads are available */
@@ -419,10 +417,16 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
     int nel=0;
     objectsparse *conn=NULL; // The associated connectivity matrix if any
     
-    if (ntask<1) return false;
+    if (ntask<1) {
+        varray_elementidclear(imageids);
+        return false;
+    }
     
     /* Work out the number of elements */
-    if (!functional_countelements(v, info->mesh, info->g, &nel, &conn)) return false;
+    if (!functional_countelements(v, info->mesh, info->g, &nel, &conn)) {
+        varray_elementidclear(imageids);
+        return false;
+    }
     
     int cmax=nel;
     if (info->sel) {
@@ -448,7 +452,19 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
     vm *subkernels[ntask];
     if (ntask==1) {
         subkernels[0]=v; /* Serial maps reuse the calling VM */
-    } else if (!vm_subkernels(v, ntask, subkernels)) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
+    } else if (!vm_subkernels(v, ntask, subkernels)) {
+        varray_elementidclear(imageids);
+        MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
+    }
+
+    if (ntask>1 && !functional_poolinitialized) {
+        functional_poolinitialized=threadpool_init(&functional_pool, ntask);
+        if (!functional_poolinitialized) {
+            for (int i=0; i<ntask; i++) vm_releasesubkernel(subkernels[i]);
+            varray_elementidclear(imageids);
+            MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
+        }
+    }
     
     /** Initialize task structures */
     for (int i=0; i<ntask; i++) {
@@ -465,10 +481,11 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
 }
 
 /** Cleans up task structures after executing them. */
-void functional_cleanuptasks(vm *v, int ntask, functional_task *task) {
+void functional_cleanuptasks(vm *v, int ntask, functional_task *task, varray_elementid *imageids) {
     for (int i=0; i<ntask; i++) {
         if (task[i].v!=v) vm_releasesubkernel(task[i].v);
     }
+    varray_elementidclear(imageids);
 }
 
 /* ----------------------------
@@ -516,18 +533,16 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
         sums[i].c=0.0; sums[i].sum=0.0;
     }
     
-    functional_map(ntask, task);
+    bool success=functional_map(ntask, task);
+    if (success) { // Sum up the results from each task...
+        double sumlist[ntask];
+        for (int i=0; i<ntask; i++) sumlist[i]=sums[i].sum;
     
-    // Sum up the results from each task...
-    double sumlist[ntask];
-    for (int i=0; i<ntask; i++) sumlist[i]=sums[i].sum;
-    
-    // ...and return the result
-    *out = MORPHO_FLOAT(functional_sumlist(sumlist, ntask));
-    
-    functional_cleanuptasks(v, ntask, task);
-    varray_elementidclear(&imageids);
-    return true;
+        *out = MORPHO_FLOAT(functional_sumlist(sumlist, ntask));
+    }
+
+    functional_cleanuptasks(v, ntask, task, &imageids);
+    return success;
 }
 
 /* ----------------------------
@@ -581,8 +596,10 @@ bool functional_mapintegrandprocessfn(void *arg) {
 
 /** Map integrand function, storing the results in a matrix */
 bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
+    int success=false;
     int ntask=functional_ntasks();
     functional_task task[ntask];
+    functional_sumintermediate sums[ntask];
     
     varray_elementid imageids;
     varray_elementidinit(&imageids);
@@ -591,13 +608,10 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
     
     if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
     
-    /* Create output matrix */
     if (task[0].nel>0) {
         new=matrix_new(1, task[0].nel, true);
-        if (!new) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
+        if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapintegrand_cleanup; }
     }
-    
-    functional_sumintermediate sums[ntask];
     
     for (int i=0; i<ntask; i++) {
         task[i].mapfn=(functional_mapfn *) info->integrand;
@@ -607,14 +621,16 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
         task[i].out=(void *) new;
     }
     
-    functional_map(ntask, task);
+    if (!functional_map(ntask, task)) goto functional_mapintegrand_cleanup;
     
-    // ...and return the result
+    success=true;
     *out = MORPHO_OBJECT(new);
     
-    functional_cleanuptasks(v, ntask, task);
-    varray_elementidclear(&imageids);
-    return true;
+functional_mapintegrand_cleanup:
+    if (!success && new) object_free((object *) new);
+    
+    functional_cleanuptasks(v, ntask, task, &imageids);
+    return success;
 }
 
 /* ----------------------------
@@ -645,7 +661,7 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
         task[i].result=(void *) new[i];
     }
     
-    functional_map(ntask, task);
+    if (!functional_map(ntask, task)) goto functional_mapgradient_cleanup;
     
     /* Then add up all the matrices */
     for (int i=1; i<ntask; i++) matrix_axpy(1.0, new[i], new[0]);
@@ -655,14 +671,14 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
     
     success=true;
     
-functional_mapgradient_cleanup:
-    for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
-    
     // ...and return the result
     *out = MORPHO_OBJECT(new[0]);
     
-    functional_cleanuptasks(v, ntask, task);
-    varray_elementidclear(&imageids);
+functional_mapgradient_cleanup:
+    for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
+    if (!success && new[0]) object_free((object *) new[0]);
+    
+    functional_cleanuptasks(v, ntask, task, &imageids);
     return success;
 }
 
@@ -758,7 +774,7 @@ bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out
         task[i].result=(void *) new[i];
     }
     
-    functional_map(ntask, task);
+    if (!functional_map(ntask, task)) goto functional_mapgradient_cleanup;
     
     /* Then add up all the matrices */
     for (int i=1; i<ntask; i++) matrix_axpy(1.0, new[i], new[0]);
@@ -776,9 +792,9 @@ functional_mapgradient_cleanup:
     for (int i=0; i<ntask; i++) if (meshclones[i].vert) object_free((object *) meshclones[i].vert);
     // Free spare output matrices
     for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
+    if (!success && new[0]) object_free((object *) new[0]);
     
-    functional_cleanuptasks(v, ntask, task);
-    varray_elementidclear(&imageids);
+    functional_cleanuptasks(v, ntask, task, &imageids);
     
     return success;
 }
@@ -968,7 +984,7 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
         task[i].result=(void *) new[i];
     }
     
-    functional_map(ntask, task);
+    if (!functional_map(ntask, task)) goto functional_mapfieldgradient_cleanup;
     
     /* Then add up all the fields */
     for (int i=1; i<ntask; i++) matrix_axpy(1.0, &new[i]->data, &new[0]->data);
@@ -992,9 +1008,9 @@ functional_mapfieldgradient_cleanup:
     
     // Free spare output matrices
     for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
+    if (!success && new[0]) object_free((object *) new[0]);
     
-    functional_cleanuptasks(v, ntask, task);
-    varray_elementidclear(&imageids);
+    functional_cleanuptasks(v, ntask, task, &imageids);
     
     return success;
 }
@@ -1140,7 +1156,7 @@ static bool functional_mapjumpnumericalfieldgradient(vm *v, functional_mapinfo *
         task[i].result=(void *) new[i];
     }
 
-    functional_map(ntask, task);
+    if (!functional_map(ntask, task)) goto functional_mapjumpfieldgradient_cleanup;
 
     for (int i=1; i<ntask; i++) matrix_axpy(1.0, &new[i]->data, &new[0]->data);;
     
@@ -1156,8 +1172,8 @@ functional_mapjumpfieldgradient_cleanup:
         }
         if (i>0 && new[i]) object_free((object *) new[i]);
     }
-    functional_cleanuptasks(v, ntask, task);
-    varray_elementidclear(&imageids);
+    if (!success && new[0]) object_free((object *) new[0]);
+    functional_cleanuptasks(v, ntask, task, &imageids);
     return success;
 }
 
@@ -1313,7 +1329,7 @@ bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out)
         task[i].result=(void *) new[i];
     }
     
-    functional_map(ntask, task);
+    if (!functional_map(ntask, task)) goto functional_maphessian_cleanup;
     
     qsort(new, ntask, sizeof(objectsparse *), _sparsecmp);
     
@@ -1352,9 +1368,9 @@ functional_maphessian_cleanup:
     for (int i=0; i<ntask; i++) if (meshclones[i].vert) object_free((object *) meshclones[i].vert);
     // Free spare output matrices
     for (int i=1; i<ntask; i++) if (new[i]) object_free((object *) new[i]);
+    if (!success && new[0]) object_free((object *) new[0]);
     
-    functional_cleanuptasks(v, ntask, task);
-    varray_elementidclear(&imageids);
+    functional_cleanuptasks(v, ntask, task, &imageids);
     
     return success;
 }
@@ -1454,7 +1470,7 @@ bool functional_elementgradient(vm *v, objectmesh *mesh, grade g, elementid id, 
 
 /** Calculate area */
 bool length_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
-    if (nv!=2) return false;
+    if (nv!=2) { *out=0; return true; }
     double *x[nv], s0[mesh->dim];
     for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
 
@@ -1544,7 +1560,7 @@ MORPHO_ENDCLASS
 
 /** Calculate area */
 bool area_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
-    if (nv!=3) return false;
+    if (nv!=3) { *out=0; return true; }
     double *x[nv], s0[3], s1[3], cx[3];
     for (int j=0; j<3; j++) { s0[j]=0; s1[j]=0; cx[j]=0; }
     for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
@@ -2122,8 +2138,6 @@ bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
             info->b * (1-phi)*log(1-phi) +
             info->c * phi*(1-phi))*V +
             info->d * (log(pr/phi)/3.0 - pow((pr/phi), (2.0/3)) + 1.0)*V0;
-
-    if (phi<0 || 1-phi<0) return false;
 
     return true;
 }
@@ -3021,10 +3035,13 @@ bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *
     functional_vecsub(mesh->dim, x[2], x[1], s[1]);
     functional_vecsub(mesh->dim, x[0], x[2], s[2]);
 
-    /* Perpendicular vectors */
-    gradsq_computeperpendicular(mesh->dim, s[2], s[1], t[0]);
-    gradsq_computeperpendicular(mesh->dim, s[0], s[2], t[1]);
-    gradsq_computeperpendicular(mesh->dim, s[1], s[0], t[2]);
+    /* Perpendicular vectors. Collapsed sides contribute zero gradient. */
+    if (!gradsq_computeperpendicular(mesh->dim, s[2], s[1], t[0]) ||
+        !gradsq_computeperpendicular(mesh->dim, s[0], s[2], t[1]) ||
+        !gradsq_computeperpendicular(mesh->dim, s[1], s[0], t[2])) {
+        for (unsigned int i=0; i<mesh->dim*nentries; i++) out[i]=0;
+        return true;
+    }
 
     /* Compute the gradient */
     for (unsigned int i=0; i<mesh->dim*nentries; i++) out[i]=0;
@@ -3128,7 +3145,7 @@ bool gradsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
     } else if (eref->grade==3) {
         if (!gradsq_evaluategradient3d(mesh, eref->field, nv, vid, grad)) return false;
     } else {
-        return false;
+        MORPHO_FAILVARGS(v, FUNC_ELNTFND, (unsigned int) eref->grade);
     }
 
     double gradnrm=functional_vecnorm(eref->field->psize*mesh->dim, grad);
@@ -5035,6 +5052,9 @@ static bool jump_fielddependencies(functional_mapinfo *info, elementid id, varra
 static bool jump_preparejumpside(jumpref *ref, int nv, int *vid, jumpside *trace) {
     trace->nv=nv;
     trace->vid=vid;
+    trace->quantities=NULL;
+    if (ref->integral.nfields==0) return true;
+
     trace->quantities=MORPHO_MALLOC(sizeof(quantity)*ref->integral.nfields);
     if (!trace->quantities) return false;
 
@@ -5235,7 +5255,7 @@ static bool jump_preparenormal(vm *v, objectjumpinterfaceref *iref) {
     functional_vecsub(dim, minuscentroid, pluscentroid, d);
 
     objectmatrix *mnormal = matrix_new(dim, 1, false);
-    if (!mnormal) return false;
+    if (!mnormal) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
 
     for (int i=0; i<dim; i++) mnormal->elements[i]=0.0;
 
@@ -5297,6 +5317,8 @@ static bool jump_preparegeometry(vm *v, objectjumpinterfaceref *iref, double **v
     if (iref->g==0) iref->interfacesize=1.0;
     else if (!functional_elementsize(v, iref->mesh, iref->g, iref->id, iref->nv, iref->vid, &iref->interfacesize)) return false;
 
+    if (iref->g>0 && iref->interfacesize<MORPHO_EPS) return true;
+
     return jump_preparenormal(v, iref);
 }
 
@@ -5321,7 +5343,7 @@ static bool jump_prepareinterfaceref(vm *v, objectmesh *mesh, jumpref *ref, elem
     iref->minuslambda=MORPHO_MALLOC(sizeof(double)*iref->minusnv);
     if (!iref->pluslambda || !iref->minuslambda) {
         jump_clearinterfaceref(iref);
-        return false;
+        MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
     }
 
     if (!jump_preparejumpside(ref, iref->plusnv, iref->plusvid, &iref->qplus)) {
@@ -5358,6 +5380,13 @@ static bool jump_scan_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
 
     objectjumpinterfaceref iref;
     if (!jump_prepareinterfaceref(v, mesh, ref, id, nv, vid, x, parents, &iref)) return false;
+
+    if (iref.g>0 && iref.interfacesize<MORPHO_EPS) {
+        *out=0.0;
+        jump_clearinterfaceref(&iref);
+        return true;
+    }
+
     vm_settlvar(v, jumpinterfacehandle, MORPHO_OBJECT(&iref));
 
     if (ref->strategy==JUMP_STRATEGY_CENTROID_MODE || ref->interfacegrade==0) {

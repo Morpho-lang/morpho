@@ -1,0 +1,92 @@
+// Every functional exposes an integer `grade` property and sets it at init.
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([1,1,0])
+mb.addface([0,1,2])
+mb.addface([1,3,2])
+var m = mb.build()
+m.addgrade(1)
+
+fn check(f, g) {
+  print f.has("grade") && isint(f.grade) && f.grade==g
+}
+
+check(Length(), 1)
+// expect: true
+check(AreaEnclosed(), 1)
+// expect: true
+check(Area(), 2)
+// expect: true
+check(VolumeEnclosed(), 2)
+// expect: true
+check(Volume(), 3)
+// expect: true
+check(ScalarPotential(fn (x,y,z) 0), 0)
+// expect: true
+check(LinearElasticity(m), 2)
+// expect: true
+check(Hydrogel(m), 2)
+// expect: true
+check(LineCurvatureSq(), 0)
+// expect: true
+check(LineTorsionSq(), 1)
+// expect: true
+check(MeanCurvatureSq(), 0)
+// expect: true
+check(GaussCurvature(), 0)
+// expect: true
+check(LineIntegral(fn (x) 1), 1)
+// expect: true
+check(AreaIntegral(fn (x) 1), 2)
+// expect: true
+check(VolumeIntegral(fn (x) 1), 3)
+// expect: true
+
+var phi = Field(m, 0)
+check(GradSq(phi), 2)
+// expect: true
+check(GradSq(phi, 2), 2)
+// expect: true
+check(NormSq(phi), 0)
+// expect: true
+
+var nn = Field(m, Matrix([1,0,0]))
+check(Nematic(nn), 2)
+// expect: true
+check(NematicElectric(nn, phi), 2)
+// expect: true
+check(Jump(fn (x, q) 1, phi), 1)
+// expect: true
+
+// EquiElement stores the equalization grade (not the mapped vertex grade)
+print EquiElement().has("grade") && isint(EquiElement().grade)
+// expect: true
+print EquiElement(grade=1).grade==1
+// expect: true
+
+// Assignment remains the public way to override grade
+var le = LinearElasticity(m)
+le.grade = 1
+print le.grade==1
+// expect: true
+
+var gs = GradSq(phi)
+gs.grade = 2
+print gs.grade==2
+// expect: true
+
+var h = Hydrogel(m, grade=1)
+print h.grade==1
+// expect: true
+h.grade = 2
+print h.grade==2
+// expect: true
+
+// Property matches the grade the integrand is mapped over
+var ln = Length()
+print ln.integrand(m).dimensions()[1]==m.count(ln.grade)
+// expect: true

@@ -104,6 +104,14 @@ bool functional_startmap(vm *v, functional_mapinfo *info) {
     return (*info->start) (v, info);
 }
 
+bool functional_readgrade(objectinstance *self, grade *g) {
+    value val=MORPHO_NIL;
+    if (!objectinstance_getpropertyinterned(self, functional_gradeproperty, &val) ||
+        !MORPHO_ISINTEGER(val)) return false;
+    *g = MORPHO_GETINTEGERVALUE(val);
+    return true;
+}
+
 
 /* **********************************************************************
  * Common routines
@@ -2179,7 +2187,7 @@ value Hydrogel_init(vm *v, int nargs, value *args) {
     value grade=MORPHO_INTEGER(-1);
     value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL, d=MORPHO_NIL, phiref=MORPHO_NIL, phi0=MORPHO_NIL;
 
-    if (builtin_options(v, nargs, args, &nfixed, 6,
+    if (builtin_options(v, nargs, args, &nfixed, 7,
                         hydrogel_aproperty, &a,
                         hydrogel_bproperty, &b,
                         hydrogel_cproperty, &c,
@@ -2198,6 +2206,9 @@ value Hydrogel_init(vm *v, int nargs, value *args) {
 
         if (nfixed==1 && MORPHO_ISMESH(MORPHO_GETARG(args, 0))) {
             objectinstance_setproperty(self, linearelasticity_referenceproperty, MORPHO_GETARG(args, 0));
+            if (MORPHO_ISINTEGER(grade) && MORPHO_GETINTEGERVALUE(grade)<0) {
+                objectinstance_setproperty(self, functional_gradeproperty, MORPHO_INTEGER(mesh_maxgrade(MORPHO_GETMESH(MORPHO_GETARG(args, 0)))));
+            }
         } else morpho_runtimeerror(v, HYDROGEL_ARGS);
     } else morpho_runtimeerror(v, HYDROGEL_ARGS);
 
@@ -3105,6 +3116,7 @@ value GradSq_init(vm *v, int nargs, value *args) {
 
     if (nargs>0 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
         objectinstance_setproperty(self, functional_fieldproperty, MORPHO_GETARG(args, 0));
+        objectinstance_setproperty(self, functional_gradeproperty, MORPHO_INTEGER(mesh_maxgrade(MORPHO_GETFIELD(MORPHO_GETARG(args, 0))->mesh)));
     } else {
         morpho_runtimeerror(v, VM_INVALIDARGS);
         return MORPHO_FALSE;
@@ -3113,7 +3125,7 @@ value GradSq_init(vm *v, int nargs, value *args) {
     /* Second (optional) argument is the grade to act on */
     if (nargs>1) {
         if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 1))) {
-            objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), functional_gradeproperty, MORPHO_GETARG(args, 1));
+            objectinstance_setproperty(self, functional_gradeproperty, MORPHO_GETARG(args, 1));
         }
     }
 
@@ -3368,6 +3380,7 @@ value Nematic_init(vm *v, int nargs, value *args) {
 
     if (nfixed==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
         objectinstance_setproperty(self, functional_fieldproperty, MORPHO_GETARG(args, 0));
+        objectinstance_setproperty(self, functional_gradeproperty, MORPHO_INTEGER(mesh_maxgrade(MORPHO_GETFIELD(MORPHO_GETARG(args, 0))->mesh)));
     } else morpho_runtimeerror(v, NEMATIC_ARGS);
 
     return MORPHO_NIL;
@@ -3525,6 +3538,7 @@ value NematicElectric_init(vm *v, int nargs, value *args) {
             value lst = MORPHO_OBJECT(new);
             objectinstance_setproperty(self, functional_fieldproperty, lst);
             morpho_bindobjects(v, 1, &lst);
+            objectinstance_setproperty(self, functional_gradeproperty, MORPHO_INTEGER(mesh_maxgrade(MORPHO_GETFIELD(MORPHO_GETARG(args, 0))->mesh)));
         }
     } else morpho_runtimeerror(v, NEMATICELECTRIC_ARGS);
 
@@ -3588,6 +3602,12 @@ FUNCTIONAL_METHOD_START(NormSq, total, MESH_GRADE_VERTEX, fieldref, gradsq_prepa
 
 FUNCTIONAL_METHOD_START(NormSq, gradient, MESH_GRADE_VERTEX, fieldref, gradsq_prepareref, fieldref_startfn, functional_mapnumericalgradient, normsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
+value NormSq_init(vm *v, int nargs, value *args) {
+    GradSq_init(v, nargs, args);
+    objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), functional_gradeproperty, MORPHO_INTEGER(MESH_GRADE_VERTEX));
+    return MORPHO_NIL;
+}
+
 value NormSq_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     fieldref ref;
@@ -3609,7 +3629,7 @@ value NormSq_fieldgradient(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(NormSq)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, GradSq_init, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, NormSq_init, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, NormSq_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
 MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, NormSq_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
 MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, NormSq_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
@@ -4671,15 +4691,6 @@ bool integral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
     return success;
 }
 
-/** Read the integration grade stored on the instance */
-static bool integral_instancegrade(objectinstance *self, grade *g) {
-    value val=MORPHO_NIL;
-    if (!objectinstance_getpropertyinterned(self, functional_gradeproperty, &val)) return false;
-    if (!MORPHO_ISINTEGER(val)) return false;
-    *g = (grade) MORPHO_GETINTEGERVALUE(val);
-    return true;
-}
-
 /** Shared method path for Line/Area/Volume integrals */
 static value integral_domap(vm *v, int nargs, value *args, bool (*mapfn)(vm *, functional_mapinfo *, value *)) {
     functional_mapinfo info;
@@ -4689,7 +4700,7 @@ static value integral_domap(vm *v, int nargs, value *args, bool (*mapfn)(vm *, f
     if (functional_validateargs(v, nargs, args, &info)) {
         objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
         grade g=0;
-        if (!integral_instancegrade(self, &g) ||
+        if (!functional_readgrade(self, &g) ||
             !integral_prepareref(self, info.mesh, g, info.sel, &ref)) {
             morpho_runtimeerror(v, INTEGRAL_ARGS);
         } else {
@@ -4733,7 +4744,7 @@ static value Integral_fieldgradient(vm *v, int nargs, value *args) {
     if (functional_validateargs(v, nargs, args, &info)) {
         objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
         grade g=0;
-        if (!integral_instancegrade(self, &g) ||
+        if (!functional_readgrade(self, &g) ||
             !integral_prepareref(self, info.mesh, g, info.sel, &ref)) {
             morpho_runtimeerror(v, INTEGRAL_ARGS);
         } else {
@@ -4915,7 +4926,13 @@ static bool jump_preparestrategy(jumpref *ref) {
     For now this matches the existing integral optional-argument surface:
     'method', 'mref' and 'weightbyreference'. */
 static value Jump_init(vm *v, int nargs, value *args) {
-    return integral_init(v, nargs, args);
+    value ret = integral_init(v, nargs, args);
+    if (nargs>1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 1))) {
+        grade g = mesh_maxgrade(MORPHO_GETFIELD(MORPHO_GETARG(args, 1))->mesh);
+        if (g>0) g--;
+        objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), functional_gradeproperty, MORPHO_INTEGER(g));
+    }
+    return ret;
 }
 
 /** Prepare a jump reference.
@@ -4931,7 +4948,9 @@ static bool jump_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
 
     if (!integral_prepareref(self, mesh, g, sel, &ref->integral)) return false;
     if (!jump_preparetopology(mesh, ref)) return false;
-    return jump_preparestrategy(ref);
+    if (!jump_preparestrategy(ref)) return false;
+    objectinstance_setproperty(self, functional_gradeproperty, MORPHO_INTEGER(ref->interfacegrade));
+    return true;
 }
 
 static bool jump_startfn(vm *v, functional_mapinfo *info) {

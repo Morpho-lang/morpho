@@ -4699,9 +4699,7 @@ static value integral_domap(vm *v, int nargs, value *args, bool (*mapfn)(vm *, f
             info.sym = SYMMETRY_NONE;
             info.g = g;
             info.ref = &ref;
-            if (!functional_runmap(v, &info, mapfn, &out) && !morpho_checkerror(morpho_geterror(v))) {
-                morpho_runtimeerror(v, INTEGRAL_ARGS);
-            }
+            functional_runmap(v, &info, mapfn, &out);
         }
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);

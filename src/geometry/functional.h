@@ -395,7 +395,7 @@ value name##_hessian(vm *v, int nargs, value *args) { \
             info.sym = symbhvr; \
             info.g = grade; \
             info.ref = &ref; \
-            if (!functional_runmap(v, &info, integrandfn, &out) && !morpho_checkerror(morpho_geterror(v))) morpho_runtimeerror(v, err); \
+            functional_runmap(v, &info, integrandfn, &out); \
         } else morpho_runtimeerror(v, err); \
     } \
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \

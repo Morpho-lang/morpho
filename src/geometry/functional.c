@@ -557,8 +557,10 @@ bool functional_mapintegrandforelement(vm *v, functional_mapinfo *info, value *o
     
     /* How many elements? */
     if (!functional_countelements(v, mesh, g, &n, &s)) return false;
-    // Check if the requested element id is out of range
-    if (id>=n) return false;
+    if (id<0 || id>=n) {
+        morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+        return false;
+    }
     
     int vertexid; // Use this if looping over grade 0
     int *vid=(g==0 ? &vertexid : NULL),

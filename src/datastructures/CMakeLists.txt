@@ -3,6 +3,7 @@ target_sources(morpho
         dictionary.c        dictionary.h
         debugannotation.c   debugannotation.h
         error.c             error.h
+        hint.c              hint.h
         object.c            object.h
         program.c           program.h
         signature.c         signature.h
@@ -20,6 +21,7 @@ target_sources(morpho
         dictionary.h
         debugannotation.h
         error.h
+        hint.h
         object.h
         program.h
         signature.h

@@ -92,6 +92,7 @@ static void vm_clear(vm *v) {
     varray_valueclear(&v->retain);
     vm_graylistclear(&v->gray);
     varray_charclear(&v->buffer);
+    error_clear(&v->err);
     vm_freeobjects(v);
     
     for (int i=0; i<v->subkernels.count; i++) {

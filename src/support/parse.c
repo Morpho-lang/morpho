@@ -1850,6 +1850,7 @@ bool parse_value(const char *in, value *out) {
     }
     
     syntaxtree_clear(&tree);
+    error_clear(&err);
     return success;
 }
 

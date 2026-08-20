@@ -5170,6 +5170,7 @@ void compiler_init(const char *source, program *out, compiler *c) {
  *  @param[in]  c        compiler to clear */
 void compiler_clear(compiler *c) {
     lex_clear(&c->lex);
+    error_clear(&c->err);
     parse_clear(&c->parse);
     compiler_fstackclear(c);
     syntaxtree_clear(&c->tree);

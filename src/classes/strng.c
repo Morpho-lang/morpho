@@ -160,6 +160,7 @@ bool string_tonumber(objectstring *string, value *out) {
         }
     }
     lex_clear(&l);
+    error_clear(&err);
 
     return false;
 }

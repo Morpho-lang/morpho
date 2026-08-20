@@ -135,6 +135,9 @@
 /** @brief Build with new help system */
 #define MORPHO_INCLUDE_HELP
 
+/** @brief Build with new hint system */
+#define MORPHO_INCLUDE_HINT
+
 /* **********************************************************************
  * Libraries
  * ********************************************************************** */

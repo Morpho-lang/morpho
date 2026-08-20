@@ -10,6 +10,7 @@
 #include <stdarg.h>
 #include "build.h"
 #include "varray.h"
+#include "hint.h"
 
 /* -------------------------------------------------------
  * Error type definitions
@@ -67,6 +68,7 @@ typedef struct {
     errorid id;
     char *file; 
     int line, posn;
+    hint *hnt;
     char msg[MORPHO_ERRORSTRINGSIZE];
 } error;
 
@@ -201,6 +203,7 @@ void error_clear(error *err);
 void morpho_writeerrorwithidvalist(error *err, errorid id, char *file, int line, int posn, va_list args);
 void morpho_writeerrorwithid(error *err, errorid id, char *file, int line, int posn, ...);
 void error_writewithid(error *err, errorid id, ... );
+void error_addhintmsg(error *err, const char *msg, ...);
 void morpho_writeusererror(error *err, errorid id, char *message);
 void morpho_defineerror(errorid id, errorcategory cat, char *message);
 

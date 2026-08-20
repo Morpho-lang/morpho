@@ -6,4 +6,4 @@ m.addgrade(1)
 
 var a = AreaEnclosed()
 
-print a.integrandForElement(m, 1) // expect: 0.5
+print a.integrand(m, 1) // expect: 0.5

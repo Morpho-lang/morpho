@@ -197,9 +197,11 @@ bool functional_containsvertex(int nv, int *vid, elementid id);
 
 bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out);
+bool functional_mapintegrandforelement(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value *out);
+bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out);
 bool functional_startmap(vm *v, functional_mapinfo *info);
 bool functional_endmap(vm *v, functional_mapinfo *info);
 bool functional_runmap(vm *v, functional_mapinfo *info, functional_mapcallback *mapfn, value *out);
@@ -356,6 +358,95 @@ value name##_hessian(vm *v, int nargs, value *args) { \
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
     return out; \
 }
+
+/* -------------------------------------------------------
+ * Multiple-dispatch method macros
+ *
+ * Wrappers only unpack Morpho arguments. Shared C helpers in
+ * functional.c (_functional_integrand, _functional_total, ...)
+ * apply the default grade and run the map.
+ *
+ * Mesh / Mesh+Selection; integrand also gets
+ * (Mesh, Int) / (Mesh, Int, Int) -> Float.
+ * Unmatched calls fall through to MltplDsptchFld (no catch-alls).
+ * Keep the sniffing macros above until remaining classes are converted.
+ * ------------------------------------------------------- */
+
+#define FUNCTIONAL_MD_MAPFLAGS  (MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+#define FUNCTIONAL_MD_TOTALFLAGS (MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+#define FUNCTIONAL_MD_ELEMFLAGS (MORPHO_FN_THROWS)
+
+/* Unpack Morpho args into mapinfo, then call a typed C helper.
+ * Extra arguments after fn are forwarded (grade, kernel, ...). */
+#define FUNCTIONAL_MD_MESH(cls, method, fn, ...) \
+value cls##_##method##__mesh(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL); \
+    return fn(v, &info, __VA_ARGS__); \
+}
+
+#define FUNCTIONAL_MD_MESH_SEL(cls, method, fn, ...) \
+value cls##_##method##__mesh_sel(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), MORPHO_GETSELECTION(MORPHO_GETARG(args, 1)), NULL); \
+    return fn(v, &info, __VA_ARGS__); \
+}
+
+#define FUNCTIONAL_MD_MESH_INT(cls, method, fn, ...) \
+value cls##_##method##__mesh_int(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL); \
+    info.id = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1)); \
+    return fn(v, &info, __VA_ARGS__); \
+}
+
+#define FUNCTIONAL_MD_MESH_INT_INT(cls, method, fn, ...) \
+value cls##_##method##__mesh_int_int(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL); \
+    info.g = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1)); \
+    info.id = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 2)); \
+    return fn(v, &info, __VA_ARGS__); \
+}
+
+#define FUNCTIONAL_MD_OVERLOADS(cls, method, fn, ...) \
+    FUNCTIONAL_MD_MESH(cls, method, fn, __VA_ARGS__) \
+    FUNCTIONAL_MD_MESH_SEL(cls, method, fn, __VA_ARGS__)
+
+#define FUNCTIONAL_MD_INTEGRAND(cls, grade, integrandfn) \
+    FUNCTIONAL_MD_OVERLOADS(cls, integrand, _functional_integrand, grade, integrandfn) \
+    FUNCTIONAL_MD_MESH_INT(cls, integrand, _functional_integrand_elem, grade, integrandfn) \
+    FUNCTIONAL_MD_MESH_INT_INT(cls, integrand, _functional_integrand_elem, grade, integrandfn)
+
+#define FUNCTIONAL_MD_TOTAL(cls, grade, integrandfn) \
+    FUNCTIONAL_MD_OVERLOADS(cls, total, _functional_total, grade, integrandfn)
+
+#define FUNCTIONAL_MD_GRADIENT(cls, grade, gradientfn, symbhvr) \
+    FUNCTIONAL_MD_OVERLOADS(cls, gradient, _functional_gradient, grade, gradientfn, symbhvr)
+
+#define FUNCTIONAL_MD_NUMERICALGRADIENT(cls, grade, integrandfn, symbhvr) \
+    FUNCTIONAL_MD_OVERLOADS(cls, gradient, _functional_numericalgradient, grade, integrandfn, symbhvr)
+
+#define FUNCTIONAL_MD_HESSIAN(cls, grade, integrandfn) \
+    FUNCTIONAL_MD_OVERLOADS(cls, hessian, _functional_hessian, grade, integrandfn)
+
+#define FUNCTIONAL_MD_INTEGRAND_METHODS(cls) \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Matrix (Mesh)", cls##_integrand__mesh, FUNCTIONAL_MD_MAPFLAGS), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Matrix (Mesh, Selection)", cls##_integrand__mesh_sel, FUNCTIONAL_MD_MAPFLAGS), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Float (Mesh, Int)", cls##_integrand__mesh_int, FUNCTIONAL_MD_ELEMFLAGS), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Float (Mesh, Int, Int)", cls##_integrand__mesh_int_int, FUNCTIONAL_MD_ELEMFLAGS)
+
+#define FUNCTIONAL_MD_TOTAL_METHODS(cls) \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_TOTAL_METHOD, "Float (Mesh)", cls##_total__mesh, FUNCTIONAL_MD_TOTALFLAGS), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_TOTAL_METHOD, "Float (Mesh, Selection)", cls##_total__mesh_sel, FUNCTIONAL_MD_TOTALFLAGS)
+
+#define FUNCTIONAL_MD_GRADIENT_METHODS(cls) \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_GRADIENT_METHOD, "Matrix (Mesh)", cls##_gradient__mesh, FUNCTIONAL_MD_MAPFLAGS), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_GRADIENT_METHOD, "Matrix (Mesh, Selection)", cls##_gradient__mesh_sel, FUNCTIONAL_MD_MAPFLAGS)
+
+#define FUNCTIONAL_MD_HESSIAN_METHODS(cls) \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Mesh)", cls##_hessian__mesh, FUNCTIONAL_MD_MAPFLAGS), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Mesh, Selection)", cls##_hessian__mesh_sel, FUNCTIONAL_MD_MAPFLAGS)
 
 /* -------------------------------------------------------
  * Initialization

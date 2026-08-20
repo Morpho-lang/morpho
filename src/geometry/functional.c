@@ -61,7 +61,7 @@ static void functional_clearmapinfo(functional_mapinfo *info) {
     info->mesh=NULL;
     info->field=NULL;
     info->sel=NULL;
-    info->g=0;
+    info->g=-1; /* Vertex grade is 0; -1 means unset */
     info->id=0;
     info->integrand=NULL;
     info->grad=NULL;
@@ -72,6 +72,61 @@ static void functional_clearmapinfo(functional_mapinfo *info) {
     info->freeref=NULL;
     info->ref=NULL;
     info->sym=SYMMETRY_NONE;
+}
+
+/** Fill mapinfo from typed pointers. Unused slots are NULL.
+ * If field is set and mesh is NULL, the field's mesh is used. */
+static void _functional_mapinfo(functional_mapinfo *info,
+                               objectmesh *mesh,
+                               objectselection *sel,
+                               objectfield *field) {
+    functional_clearmapinfo(info);
+    info->mesh = mesh;
+    info->sel = sel;
+    info->field = field;
+    if (field && !mesh) info->mesh = field->mesh;
+}
+
+/** Map helpers used by FUNCTIONAL_MD_* wrappers.
+ * _functional_run applies the class default grade if info->g is unset. */
+static value _functional_run(vm *v, functional_mapinfo *info, grade g, functional_mapcallback *mapfn, bool bind) {
+    if (info->g < 0) info->g = g;
+    value out=MORPHO_NIL;
+    functional_runmap(v, info, mapfn, &out);
+    if (bind && !MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
+    return out;
+}
+
+static value _functional_integrand(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn) {
+    info->integrand = fn;
+    return _functional_run(v, info, g, functional_mapintegrand, true);
+}
+
+static value _functional_integrand_elem(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn) {
+    info->integrand = fn;
+    return _functional_run(v, info, g, functional_mapintegrandforelement, false);
+}
+
+static value _functional_total(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn) {
+    info->integrand = fn;
+    return _functional_run(v, info, g, functional_sumintegrand, false);
+}
+
+static value _functional_gradient(vm *v, functional_mapinfo *info, grade g, functional_gradient *fn, symmetrybhvr sym) {
+    info->grad = fn;
+    info->sym = sym;
+    return _functional_run(v, info, g, functional_mapgradient, true);
+}
+
+static value _functional_numericalgradient(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn, symmetrybhvr sym) {
+    info->integrand = fn;
+    info->sym = sym;
+    return _functional_run(v, info, g, functional_mapnumericalgradient, true);
+}
+
+static value _functional_hessian(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn) {
+    info->integrand = fn;
+    return _functional_run(v, info, g, functional_mapnumericalhessian, true);
 }
 
 /** Validates the arguments provided to a functional
@@ -1501,19 +1556,17 @@ bool length_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, vo
 }
 
 FUNCTIONAL_INIT(Length, MESH_GRADE_LINE)
-FUNCTIONAL_INTEGRAND(Length, MESH_GRADE_LINE, length_integrand)
-FUNCTIONAL_INTEGRANDFORELEMENT(Length, MESH_GRADE_LINE, length_integrand)
-FUNCTIONAL_GRADIENT(Length, MESH_GRADE_LINE, length_gradient, SYMMETRY_ADD)
-FUNCTIONAL_TOTAL(Length, MESH_GRADE_LINE, length_integrand)
-FUNCTIONAL_HESSIAN(Length, MESH_GRADE_LINE, length_integrand)
+FUNCTIONAL_MD_INTEGRAND(Length, MESH_GRADE_LINE, length_integrand)
+FUNCTIONAL_MD_TOTAL(Length, MESH_GRADE_LINE, length_integrand)
+FUNCTIONAL_MD_GRADIENT(Length, MESH_GRADE_LINE, length_gradient, SYMMETRY_ADD)
+FUNCTIONAL_MD_HESSIAN(Length, MESH_GRADE_LINE, length_integrand)
 
 MORPHO_BEGINCLASS(Length)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Length_init, MORPHO_FN_MUTATES),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Length_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_INTEGRANDFORELEMENT_METHOD, Length_integrandForElement, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Length_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Length_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Length_hessian, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "()", Length_init, MORPHO_FN_MUTATES),
+FUNCTIONAL_MD_INTEGRAND_METHODS(Length),
+FUNCTIONAL_MD_TOTAL_METHODS(Length),
+FUNCTIONAL_MD_GRADIENT_METHODS(Length),
+FUNCTIONAL_MD_HESSIAN_METHODS(Length)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -1539,19 +1592,17 @@ bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
 }
 
 FUNCTIONAL_INIT(AreaEnclosed, MESH_GRADE_LINE)
-FUNCTIONAL_INTEGRAND(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
-FUNCTIONAL_INTEGRANDFORELEMENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
-FUNCTIONAL_NUMERICALGRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, SYMMETRY_ADD)
-FUNCTIONAL_TOTAL(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
-FUNCTIONAL_HESSIAN(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
+FUNCTIONAL_MD_INTEGRAND(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
+FUNCTIONAL_MD_TOTAL(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
+FUNCTIONAL_MD_NUMERICALGRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, SYMMETRY_ADD)
+FUNCTIONAL_MD_HESSIAN(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 
 MORPHO_BEGINCLASS(AreaEnclosed)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, AreaEnclosed_init, MORPHO_FN_MUTATES),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, AreaEnclosed_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_INTEGRANDFORELEMENT_METHOD, AreaEnclosed_integrandForElement, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, AreaEnclosed_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, AreaEnclosed_hessian, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, AreaEnclosed_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "()", AreaEnclosed_init, MORPHO_FN_MUTATES),
+FUNCTIONAL_MD_INTEGRAND_METHODS(AreaEnclosed),
+FUNCTIONAL_MD_TOTAL_METHODS(AreaEnclosed),
+FUNCTIONAL_MD_GRADIENT_METHODS(AreaEnclosed),
+FUNCTIONAL_MD_HESSIAN_METHODS(AreaEnclosed)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -1607,19 +1658,17 @@ bool area_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void
 }
 
 FUNCTIONAL_INIT(Area, MESH_GRADE_AREA)
-FUNCTIONAL_INTEGRAND(Area, MESH_GRADE_AREA, area_integrand)
-FUNCTIONAL_INTEGRANDFORELEMENT(Area, MESH_GRADE_AREA, area_integrand)
-FUNCTIONAL_GRADIENT(Area, MESH_GRADE_AREA, area_gradient, SYMMETRY_ADD)
-FUNCTIONAL_TOTAL(Area, MESH_GRADE_AREA, area_integrand)
-FUNCTIONAL_HESSIAN(Area, MESH_GRADE_AREA, area_integrand)
+FUNCTIONAL_MD_INTEGRAND(Area, MESH_GRADE_AREA, area_integrand)
+FUNCTIONAL_MD_TOTAL(Area, MESH_GRADE_AREA, area_integrand)
+FUNCTIONAL_MD_GRADIENT(Area, MESH_GRADE_AREA, area_gradient, SYMMETRY_ADD)
+FUNCTIONAL_MD_HESSIAN(Area, MESH_GRADE_AREA, area_integrand)
 
 MORPHO_BEGINCLASS(Area)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Area_init, MORPHO_FN_MUTATES),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Area_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_INTEGRANDFORELEMENT_METHOD, Area_integrandForElement, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Area_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Area_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Area_hessian, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "()", Area_init, MORPHO_FN_MUTATES),
+FUNCTIONAL_MD_INTEGRAND_METHODS(Area),
+FUNCTIONAL_MD_TOTAL_METHODS(Area),
+FUNCTIONAL_MD_GRADIENT_METHODS(Area),
+FUNCTIONAL_MD_HESSIAN_METHODS(Area)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -1660,17 +1709,17 @@ bool volumeenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int 
 }
 
 FUNCTIONAL_INIT(VolumeEnclosed, MESH_GRADE_AREA)
-FUNCTIONAL_INTEGRAND(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
-FUNCTIONAL_GRADIENT(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_gradient, SYMMETRY_ADD)
-FUNCTIONAL_TOTAL(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
-FUNCTIONAL_HESSIAN(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
+FUNCTIONAL_MD_INTEGRAND(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
+FUNCTIONAL_MD_TOTAL(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
+FUNCTIONAL_MD_GRADIENT(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_gradient, SYMMETRY_ADD)
+FUNCTIONAL_MD_HESSIAN(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
 
 MORPHO_BEGINCLASS(VolumeEnclosed)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, VolumeEnclosed_init, MORPHO_FN_MUTATES),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, VolumeEnclosed_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, VolumeEnclosed_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, VolumeEnclosed_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, VolumeEnclosed_hessian, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "()", VolumeEnclosed_init, MORPHO_FN_MUTATES),
+FUNCTIONAL_MD_INTEGRAND_METHODS(VolumeEnclosed),
+FUNCTIONAL_MD_TOTAL_METHODS(VolumeEnclosed),
+FUNCTIONAL_MD_GRADIENT_METHODS(VolumeEnclosed),
+FUNCTIONAL_MD_HESSIAN_METHODS(VolumeEnclosed)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -1728,17 +1777,17 @@ bool volume_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, vo
 }
 
 FUNCTIONAL_INIT(Volume, MESH_GRADE_VOLUME)
-FUNCTIONAL_INTEGRAND(Volume, MESH_GRADE_VOLUME, volume_integrand)
-FUNCTIONAL_GRADIENT(Volume, MESH_GRADE_VOLUME, volume_gradient, SYMMETRY_ADD)
-FUNCTIONAL_TOTAL(Volume, MESH_GRADE_VOLUME, volume_integrand)
-FUNCTIONAL_HESSIAN(Volume, MESH_GRADE_VOLUME, volume_integrand)
+FUNCTIONAL_MD_INTEGRAND(Volume, MESH_GRADE_VOLUME, volume_integrand)
+FUNCTIONAL_MD_TOTAL(Volume, MESH_GRADE_VOLUME, volume_integrand)
+FUNCTIONAL_MD_GRADIENT(Volume, MESH_GRADE_VOLUME, volume_gradient, SYMMETRY_ADD)
+FUNCTIONAL_MD_HESSIAN(Volume, MESH_GRADE_VOLUME, volume_integrand)
 
 MORPHO_BEGINCLASS(Volume)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Volume_init, MORPHO_FN_MUTATES),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Volume_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Volume_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Volume_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Volume_hessian, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "()", Volume_init, MORPHO_FN_MUTATES),
+FUNCTIONAL_MD_INTEGRAND_METHODS(Volume),
+FUNCTIONAL_MD_TOTAL_METHODS(Volume),
+FUNCTIONAL_MD_GRADIENT_METHODS(Volume),
+FUNCTIONAL_MD_HESSIAN_METHODS(Volume)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------

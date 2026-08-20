@@ -65,6 +65,7 @@ static void functional_clearmapinfo(functional_mapinfo *info) {
     info->integrand=NULL;
     info->grad=NULL;
     info->start=NULL;
+    info->end=NULL;
     info->dependencies=NULL;
     info->cloneref=NULL;
     info->freeref=NULL;
@@ -99,11 +100,6 @@ bool functional_validateargs(vm *v, int nargs, value *args, functional_mapinfo *
     return false;
 }
 
-bool functional_startmap(vm *v, functional_mapinfo *info) {
-    if (!info->start) return true;
-    return (*info->start) (v, info);
-}
-
 bool functional_readgrade(objectinstance *self, grade *g) {
     value val=MORPHO_NIL;
     if (!objectinstance_getpropertyinterned(self, functional_gradeproperty, &val) ||
@@ -132,6 +128,30 @@ static bool functional_countelements(vm *v, objectmesh *mesh, grade g, int *n, o
         }
     }
     return true;
+}
+
+/** Call the optional start hook once per user-facing map. Also verifies the mesh
+    provides the requested grade. */
+bool functional_startmap(vm *v, functional_mapinfo *info) {
+    int n=0;
+    objectsparse *s=NULL;
+    if (info->mesh && !functional_countelements(v, info->mesh, info->g, &n, &s)) return false;
+    if (!info->start) return true;
+    return (*info->start) (v, info);
+}
+
+/** Call the optional end hook once per user-facing map. */
+bool functional_endmap(vm *v, functional_mapinfo *info) {
+    if (!info->end) return true;
+    return (*info->end) (v, info);
+}
+
+/** Run start, then a map callback, then end. End is called whenever start succeeded. */
+bool functional_runmap(vm *v, functional_mapinfo *info, functional_mapcallback *mapfn, value *out) {
+    if (!functional_startmap(v, info)) return false;
+    bool ok = (*mapfn) (v, info, out);
+    if (!functional_endmap(v, info)) ok = false;
+    return ok;
 }
 
 static int functional_symmetryimagelistfn(const void *a, const void *b) {
@@ -1807,7 +1827,7 @@ value ScalarPotential_gradient(vm *v, int nargs, value *args) {
             info.grad = scalarpotential_gradient;
             info.ref = &fn;
             if (MORPHO_ISCALLABLE(fn)) {
-                functional_mapgradient(v, &info, &out);
+                functional_runmap(v, &info, functional_mapgradient, &out);
             } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
         } else if (objectinstance_getpropertyinterned(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
             // Otherwise try to use the regular scalar function
@@ -1818,7 +1838,7 @@ value ScalarPotential_gradient(vm *v, int nargs, value *args) {
                 info.integrand = scalarpotential_integrand;
                 info.ref = &fn;
                 if (MORPHO_ISCALLABLE(fn)) {
-                    functional_mapnumericalgradient(v, &info, &out);
+                    functional_runmap(v, &info, functional_mapnumericalgradient, &out);
                 } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
             } else morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, SCALARPOTENTIAL_FUNCTION_PROPERTY);
 
@@ -1960,7 +1980,7 @@ value LinearElasticity_integrand(vm *v, int nargs, value *args) {
             info.g = ref.grade;
             info.integrand = linearelasticity_integrand;
             info.ref = &ref;
-            functional_mapintegrand(v, &info, &out);
+            functional_runmap(v, &info, functional_mapintegrand, &out);
         } else morpho_runtimeerror(v, LINEARELASTICITY_PRP);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
@@ -1978,7 +1998,7 @@ value LinearElasticity_total(vm *v, int nargs, value *args) {
             info.g = ref.grade;
             info.integrand = linearelasticity_integrand;
             info.ref = &ref;
-            functional_sumintegrand(v, &info, &out);
+            functional_runmap(v, &info, functional_sumintegrand, &out);
         } else morpho_runtimeerror(v, LINEARELASTICITY_PRP);
     }
     return out;
@@ -1996,7 +2016,7 @@ value LinearElasticity_gradient(vm *v, int nargs, value *args) {
             info.integrand = linearelasticity_integrand;
             info.ref = &ref;
             info.sym = SYMMETRY_ADD;
-            functional_mapnumericalgradient(v, &info, &out);
+            functional_runmap(v, &info, functional_mapnumericalgradient, &out);
         } else morpho_runtimeerror(v, LINEARELASTICITY_PRP);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
@@ -2171,7 +2191,7 @@ value Hydrogel_gradient(vm *v, int nargs, value *args) {
             info.grad = hydrogel_gradient;
             info.ref = &ref;
             info.sym = SYMMETRY_ADD;
-            functional_mapgradient(v, &info, &out);
+            functional_runmap(v, &info, functional_mapgradient, &out);
         }
     }
 
@@ -3132,11 +3152,11 @@ value GradSq_init(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD_START(GradSq, integrand, (ref.grade), fieldref, gradsq_prepareref, fieldref_startfn, functional_mapintegrand, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD_START(GradSq, integrand, (ref.grade), fieldref, gradsq_prepareref, fieldref_startfn, NULL, functional_mapintegrand, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD_START(GradSq, total, (ref.grade), fieldref, gradsq_prepareref, fieldref_startfn, functional_sumintegrand, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD_START(GradSq, total, (ref.grade), fieldref, gradsq_prepareref, fieldref_startfn, NULL, functional_sumintegrand, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD_START(GradSq, gradient, (ref.grade), fieldref, gradsq_prepareref, fieldref_startfn, functional_mapnumericalgradient, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_ADD);
+FUNCTIONAL_METHOD_START(GradSq, gradient, (ref.grade), fieldref, gradsq_prepareref, fieldref_startfn, NULL, functional_mapnumericalgradient, gradsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_ADD);
 
 value GradSq_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
@@ -3151,7 +3171,7 @@ value GradSq_fieldgradient(vm *v, int nargs, value *args) {
             info.start = fieldref_startfn;
             info.cloneref = gradsq_cloneref;
             info.ref = &ref;
-            if (functional_startmap(v, &info)) functional_mapnumericalfieldgradient(v, &info, &out);
+            functional_runmap(v, &info, functional_mapnumericalfieldgradient, &out);
         } else morpho_runtimeerror(v, GRADSQ_ARGS);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
@@ -3386,11 +3406,11 @@ value Nematic_init(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD_START(Nematic, integrand, (ref.grade), nematicref, nematic_prepareref, nematic_startfn, functional_mapintegrand, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD_START(Nematic, integrand, (ref.grade), nematicref, nematic_prepareref, nematic_startfn, NULL, functional_mapintegrand, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD_START(Nematic, total, (ref.grade), nematicref, nematic_prepareref, nematic_startfn, functional_sumintegrand, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD_START(Nematic, total, (ref.grade), nematicref, nematic_prepareref, nematic_startfn, NULL, functional_sumintegrand, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD_START(Nematic, gradient, (ref.grade), nematicref, nematic_prepareref, nematic_startfn, functional_mapnumericalgradient, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD_START(Nematic, gradient, (ref.grade), nematicref, nematic_prepareref, nematic_startfn, NULL, functional_mapnumericalgradient, nematic_integrand, NULL, NEMATIC_ARGS, SYMMETRY_NONE);
 
 value Nematic_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
@@ -3404,7 +3424,7 @@ value Nematic_fieldgradient(vm *v, int nargs, value *args) {
             info.start=nematic_startfn;
             info.ref=&ref;
             info.cloneref=nematic_cloneref;
-            if (functional_startmap(v, &info)) functional_mapnumericalfieldgradient(v, &info, &out);
+            functional_runmap(v, &info, functional_mapnumericalfieldgradient, &out);
         } else morpho_runtimeerror(v, GRADSQ_ARGS);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
@@ -3545,11 +3565,11 @@ value NematicElectric_init(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD_START(NematicElectric, integrand, (ref.grade), nematicelectricref, nematicelectric_prepareref, nematicelectric_startfn, functional_mapintegrand, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD_START(NematicElectric, integrand, (ref.grade), nematicelectricref, nematicelectric_prepareref, nematicelectric_startfn, NULL, functional_mapintegrand, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD_START(NematicElectric, total, (ref.grade), nematicelectricref, nematicelectric_prepareref, nematicelectric_startfn, functional_sumintegrand, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD_START(NematicElectric, total, (ref.grade), nematicelectricref, nematicelectric_prepareref, nematicelectric_startfn, NULL, functional_sumintegrand, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD_START(NematicElectric, gradient, (ref.grade), nematicelectricref, nematicelectric_prepareref, nematicelectric_startfn, functional_mapnumericalgradient, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD_START(NematicElectric, gradient, (ref.grade), nematicelectricref, nematicelectric_prepareref, nematicelectric_startfn, NULL, functional_mapnumericalgradient, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
 
 value NematicElectric_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
@@ -3563,7 +3583,7 @@ value NematicElectric_fieldgradient(vm *v, int nargs, value *args) {
             info.start=nematicelectric_startfn;
             info.cloneref=nematicelectric_cloneref;
             info.ref=&ref;
-            if (functional_startmap(v, &info)) functional_mapnumericalfieldgradient(v, &info, &out);
+            functional_runmap(v, &info, functional_mapnumericalfieldgradient, &out);
         } else morpho_runtimeerror(v, GRADSQ_ARGS);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
@@ -3596,11 +3616,11 @@ bool normsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
     return false;
 }
 
-FUNCTIONAL_METHOD_START(NormSq, integrand, MESH_GRADE_VERTEX, fieldref, gradsq_prepareref, fieldref_startfn, functional_mapintegrand, normsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD_START(NormSq, integrand, MESH_GRADE_VERTEX, fieldref, gradsq_prepareref, fieldref_startfn, NULL, functional_mapintegrand, normsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD_START(NormSq, total, MESH_GRADE_VERTEX, fieldref, gradsq_prepareref, fieldref_startfn, functional_sumintegrand, normsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD_START(NormSq, total, MESH_GRADE_VERTEX, fieldref, gradsq_prepareref, fieldref_startfn, NULL, functional_sumintegrand, normsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
-FUNCTIONAL_METHOD_START(NormSq, gradient, MESH_GRADE_VERTEX, fieldref, gradsq_prepareref, fieldref_startfn, functional_mapnumericalgradient, normsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_METHOD_START(NormSq, gradient, MESH_GRADE_VERTEX, fieldref, gradsq_prepareref, fieldref_startfn, NULL, functional_mapnumericalgradient, normsq_integrand, NULL, GRADSQ_ARGS, SYMMETRY_NONE);
 
 value NormSq_init(vm *v, int nargs, value *args) {
     GradSq_init(v, nargs, args);
@@ -3621,7 +3641,7 @@ value NormSq_fieldgradient(vm *v, int nargs, value *args) {
             info.integrand=normsq_integrand;
             info.start=fieldref_startfn;
             info.cloneref=gradsq_cloneref;
-            if (functional_startmap(v, &info)) functional_mapnumericalfieldgradient(v, &info, &out);
+            functional_runmap(v, &info, functional_mapnumericalfieldgradient, &out);
         } else morpho_runtimeerror(v, GRADSQ_ARGS);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
@@ -4710,7 +4730,7 @@ static value integral_domap(vm *v, int nargs, value *args, bool (*mapfn)(vm *, f
             info.sym = SYMMETRY_NONE;
             info.g = g;
             info.ref = &ref;
-            if (functional_startmap(v, &info) && !mapfn(v, &info, &out) && !morpho_checkerror(morpho_geterror(v))) {
+            if (!functional_runmap(v, &info, mapfn, &out) && !morpho_checkerror(morpho_geterror(v))) {
                 morpho_runtimeerror(v, INTEGRAL_ARGS);
             }
         }
@@ -4754,7 +4774,7 @@ static value Integral_fieldgradient(vm *v, int nargs, value *args) {
             info.cloneref=integral_cloneref;
             info.freeref=integral_freeref;
             info.ref=&ref;
-            if (functional_startmap(v, &info)) functional_mapnumericalfieldgradient(v, &info, &out);
+            functional_runmap(v, &info, functional_mapnumericalfieldgradient, &out);
         }
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
@@ -5406,6 +5426,11 @@ static bool jump_scan_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
     return true;
 }
 
+static bool jump_mapfieldgradient(vm *v, functional_mapinfo *info, value *out) {
+    jumpref *ref = (jumpref *) info->ref;
+    return functional_mapjumpnumericalfieldgradient(v, info, ref->parentvertices, ref, out);
+}
+
 static value Jump_integrand(vm *v, int nargs, value *args) {
     functional_mapinfo info;
     jumpref ref;
@@ -5417,7 +5442,7 @@ static value Jump_integrand(vm *v, int nargs, value *args) {
             info.integrand=jump_scan_integrand;
             info.start=jump_startfn;
             info.ref=&ref;
-            if (functional_startmap(v, &info)) functional_mapintegrand(v, &info, &out);
+            functional_runmap(v, &info, functional_mapintegrand, &out);
         } else morpho_runtimeerror(v, JUMP_UNIMPL);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
@@ -5435,7 +5460,7 @@ static value Jump_total(vm *v, int nargs, value *args) {
             info.integrand=jump_scan_integrand;
             info.start=jump_startfn;
             info.ref=&ref;
-            if (functional_startmap(v, &info)) functional_sumintegrand(v, &info, &out);
+            functional_runmap(v, &info, functional_sumintegrand, &out);
         } else morpho_runtimeerror(v, JUMP_UNIMPL);
     }
 
@@ -5454,7 +5479,7 @@ static value Jump_gradient(vm *v, int nargs, value *args) {
             info.start=jump_startfn;
             info.dependencies=jump_dependencies;
             info.ref=&ref;
-            if (functional_startmap(v, &info)) functional_mapnumericalgradient(v, &info, &out);
+            functional_runmap(v, &info, functional_mapnumericalgradient, &out);
         } else morpho_runtimeerror(v, JUMP_UNIMPL);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
@@ -5475,7 +5500,7 @@ static value Jump_fieldgradient(vm *v, int nargs, value *args) {
             info.cloneref=jump_cloneref;
             info.freeref=jump_freeref;
             info.ref=&ref;
-            if (functional_startmap(v, &info)) functional_mapjumpnumericalfieldgradient(v, &info, ref.parentvertices, &ref, &out);
+            functional_runmap(v, &info, jump_mapfieldgradient, &out);
         } else morpho_runtimeerror(v, JUMP_UNIMPL);
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);

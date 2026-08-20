@@ -1471,7 +1471,7 @@ bool length_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *v
 
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     norm=functional_vecnorm(mesh->dim, s0);
-    if (norm<MORPHO_EPS) return false;
+    if (norm<MORPHO_EPS) return true;
     
     if (matrix_addtocolumnptr(frc, vid[0], -1.0/norm*scale, s0)!=LINALGERR_OK) return false;
     if (matrix_addtocolumnptr(frc, vid[1], 1./norm*scale, s0)!=LINALGERR_OK) return false;
@@ -1570,7 +1570,7 @@ bool area_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid
 
     functional_veccross(s0, s1, s01);
     norm=functional_vecnorm(3, s01);
-    if (norm<MORPHO_EPS) return false;
+    if (norm<MORPHO_EPS) return true;
 
     functional_veccross(s01, s0, s010);
     functional_veccross(s01, s1, s011);
@@ -2095,7 +2095,10 @@ bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
         morpho_runtimewarning(v, HYDROGEL_ZEEROREFELEMENT, id, V, V0);
     }
 
-    if (fabs(V)<MORPHO_EPS) return false;
+    if (fabs(V)<MORPHO_EPS) {
+        *out = 0;
+        return true;
+    }
 
     // Determine phi0 either as a number or by looking up something in a field
     if (MORPHO_ISFIELD(info->phi0)) {
@@ -2139,7 +2142,7 @@ bool hydrogel_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
         morpho_runtimewarning(v, HYDROGEL_ZEEROREFELEMENT, id, V, V0);
     }
 
-    if (fabs(V)<MORPHO_EPS) return false;
+    if (fabs(V)<MORPHO_EPS) return true;
 
     // Determine phi0 either as a number or by looking up something in a field
     if (MORPHO_ISFIELD(info->phi0)) {
@@ -2341,7 +2344,7 @@ bool equielement_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *v
 
         mean /= ((double) nconn);
 
-        if (fabs(mean)<MORPHO_EPS) return false;
+        if (fabs(mean)<MORPHO_EPS) { *out = 0; return true; }
 
         /* Now evaluate the functional at this vertex */
         if (!ref->weight || fabs(ref->mean)<MORPHO_EPS) {
@@ -2500,7 +2503,7 @@ bool linecurvsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vi
 
         s0s0=sqrt(s0s0); s1s1=sqrt(s1s1);
 
-        if (s0s0<MORPHO_EPS || s1s1<MORPHO_EPS) return false;
+        if (s0s0<MORPHO_EPS || s1s1<MORPHO_EPS) goto linecurvsq_integrand_cleanup;
 
         double u=sgn*s0s1/s0s0/s1s1,
                len=0.5*(s0s0+s1s1);

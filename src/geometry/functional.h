@@ -116,7 +116,7 @@
 #define INTEGRAL_SPCLFN_MSG            "Special function '%s' can't be called outside of an Integral."
 
 #define JUMP_UNIMPL                    "JumpUnimpl"
-#define JUMP_UNIMPL_MSG                "Jump is not implemented yet."
+#define JUMP_UNIMPL_MSG                "This Jump evaluation is not implemented yet."
 
 #define VOLUMEENCLOSED_ZERO            "VolEnclZero"
 #define VOLUMEENCLOSED_ZERO_MSG        "VolumeEnclosed detected an element of zero size. Check that a mesh point is not coincident with the origin."

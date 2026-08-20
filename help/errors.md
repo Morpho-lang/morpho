@@ -1700,10 +1700,12 @@ This error occurs when a function space cannot be found:
 ## FnctlELNtFnd
 [tagfnctleltfnd]: # (fnctleltfnd)
 
-This error occurs when a mesh doesn't provide elements of the required grade:
+This error occurs when a mesh doesn't provide elements of the grade a functional maps over, or the functional cannot act on that grade:
 
-    var func = Length()
-    func.integrand(mesh) // Causes 'FnctlELNtFnd' if mesh lacks required grade
+    var func = Volume()
+    func.integrand(mesh) // Causes 'FnctlELNtFnd' on a surface mesh
+
+Jump raises the same error if parent connectivity for the interface grade is missing. GradSq raises it on line meshes, where the gradient is not implemented.
 
 ## FnctlFESpc
 [tagfnctlfespc]: # (fnctlfespc)
@@ -1718,7 +1720,7 @@ This error occurs when invalid arguments are passed to a functional. Methods suc
     var func = Length()
     func.integrand() // Causes 'FnctlArgs'
 
-Constructors can raise the same error when a required Field, mesh, or option is missing.
+Constructors raise the same error when a required Field, mesh, or option is missing.
 
 ## VolEnclZero
 [tagvolenclzero]: # (volenclzero)
@@ -1726,58 +1728,60 @@ Constructors can raise the same error when a required Field, mesh, or option is 
 This error occurs when VolumeEnclosed detects an element of zero size. Check that a mesh point is not coincident with the origin:
 
     var func = VolumeEnclosed()
-    func.total(mesh) // Causes 'VolEnclZero' if element has zero size
+    func.total(mesh) // Causes 'VolEnclZero' if an element is coincident with the origin
 
 ## HydrglFldGrd
 [taghydrglfldgrd]: # (hydrglfldgrd)
 
-This error occurs when Hydrogel is given phi0 as a Field that lacks scalar elements in the required grade.
+This error occurs when Hydrogel is given `phi0` as a Field that lacks scalar elements in the grade Hydrogel maps over.
 
 ## HydrglZrRfVl
 [taghydrglzrrfvl]: # (hydrglzrrfvl)
 
-This error occurs when a Hydrogel reference element has a tiny volume. This is a warning.
+This warning occurs when a Hydrogel reference element has a tiny volume.
 
 ## HydrglBnds
 [taghydrglbnds]: # (hydrglbnds)
 
-This error occurs when phi is outside bounds in a Hydrogel calculation. This is a warning.
+This warning occurs when `phi` is outside `(0, 1)` in a Hydrogel calculation. The value is clamped and evaluation continues.
 
 ## SclrPtFnCllbl
 [tagsclrptfncllbl]: # (sclrptfncllbl)
 
 This error occurs when a ScalarPotential function is not callable:
 
-    var func = ScalarPotential()
-    func.function = "invalid" // Causes 'SclrPtFnCllbl'
+    ScalarPotential(0.4) // Causes 'SclrPtFnCllbl'
 
 ## IntgrlArgs
 [tagintgrlargs]: # (intgrlargs)
 
-This error occurs when an Integral functional receives invalid arguments. It requires a callable argument followed by zero or more Fields, and `method` if present must be a Dictionary:
+This error occurs when an Integral or Jump is constructed with invalid arguments. It requires a callable, followed by zero or more Fields. `method`, if present, must be a Dictionary:
 
-    var func = LineIntegral()
-    func.total("invalid") // Causes 'IntgrlArgs'
+    LineIntegral(fn (x) x[0], method="Foo") // Causes 'IntgrlArgs'
 
 ## IntgrlFld
 [tagintgrlfld]: # (intgrlfld)
 
-This error occurs when an Integral cannot identify a field. Pass the Field object rather than an interpolated value if the reference is ambiguous:
+This error occurs when `grad` or `hess` cannot tell which Field you mean. Pass the Field object, not the interpolated value, if more than one Field is in scope:
 
-    var func = LineIntegral()
-    func.total(fn(x) { return x }, "invalid") // Causes 'IntgrlFld'
+    AreaIntegral(fn (x, fl, gl) grad(fl).inner(grad(g)), f, g) // Causes 'IntgrlFld'
 
 ## IntgrlDffEvl
 [tagintgrldffevl]: # (intgrldffevl)
 
-This error occurs when gradient or Hessian evaluation fails in an Integral, or the finite element space does not support it.
+This error occurs when `grad` or `hess` evaluation fails in an Integral, or the finite element space does not support that derivative.
 
 ## IntgrlSpclFn
 [tagintgrlspclfn]: # (intgrlspclfn)
 
 This error occurs when a special function such as `tangent`, `normal` or `grad` is used outside an Integral, or on the wrong grade of element:
 
-    tangent() // Causes 'IntgrlSpclFn' (must be called within integrand)
+    tangent() // Causes 'IntgrlSpclFn'
+
+## JumpUnimpl
+[tagjumpunimpl]: # (jumpunimpl)
+
+This error occurs when a Jump integrand uses an evaluation that is not implemented yet, such as a normal-derivative jump that the finite element space cannot provide.
 
 ## IntgrtrSbdvns
 [tagintgrtrsbdvns]: # (intgrtrsbdvns)

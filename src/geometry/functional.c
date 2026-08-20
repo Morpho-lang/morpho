@@ -381,7 +381,8 @@ bool functional_parallelmap(int ntasks, functional_task *tasks) {
     return true;
 }
 
-/** Map over prepared tasks, using a threadpool only when worker threads are available */
+/** Map over prepared tasks, using a threadpool only when worker threads are available.
+ *  Returns false if the tasks could not be completed. Does not post a VM error. */
 bool functional_map(int ntasks, functional_task *tasks) {
     if (ntasks<1) return true;
     if (ntasks==1 || morpho_threadnumber()<1) return functional_serialmap(ntasks, tasks);
@@ -453,6 +454,7 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
     if (ntask==1) {
         subkernels[0]=v; /* Serial maps reuse the calling VM */
     } else if (!vm_subkernels(v, ntask, subkernels)) {
+        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
         return false;
     }
     

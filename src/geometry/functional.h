@@ -106,35 +106,17 @@
 #define INTEGRAL_ARGS                  "IntgrlArgs"
 #define INTEGRAL_ARGS_MSG              "Integral functionals require a callable argument, followed by zero or more Fields."
 
-#define INTEGRAL_MTHDDCT               "IntgrlMthdDct"
-#define INTEGRAL_MTHDDCT_MSG           "The method argument requires a Dictionary containing configuration settings."
-
 #define INTEGRAL_FLD                   "IntgrlFld"
 #define INTEGRAL_FLD_MSG               "Can't identify field."
 
-#define INTEGRAL_GRDEVL                "IntgrlGrdEvl"
-#define INTEGRAL_GRDEVL_MSG            "Gradient evaluation failed or is unsupported by the finite element space."
-
-#define INTEGRAL_HSSEVL                "IntgrlHssEvl"
-#define INTEGRAL_HSSEVL_MSG            "Hessian evaluation failed or is unsupported by the finite element space."
-
-#define INTEGRAL_AMBGSFLD              "IntgrlAmbgsFld"
-#define INTEGRAL_AMBGSFLD_MSG          "Field reference is ambigious: call with a Field object."
+#define INTEGRAL_DFFEVL                "IntgrlDffEvl"
+#define INTEGRAL_DFFEVL_MSG            "Derivative evaluation failed or is unsupported by the finite element space."
 
 #define INTEGRAL_SPCLFN                "IntgrlSpclFn"
-#define INTEGRAL_SPCLFN_MSG            "Special function '%s' must not be called outside of an Integral."
+#define INTEGRAL_SPCLFN_MSG            "Special function '%s' can't be called outside of an Integral."
 
 #define JUMP_UNIMPL                    "JumpUnimpl"
 #define JUMP_UNIMPL_MSG                "Jump is not implemented yet."
-
-#define INTEGRAL_NFLDS                 "IntgrlNFlds"
-#define INTEGRAL_NFLDS_MSG             "Incorrect number of Fields provided for integrand function."
-
-#define NRML_GRD                       "NormlGrade"
-#define NRML_GRD_MSG                   "Normal can only be used on elements of grade 2."
-
-#define TNGNT_GRD                      "TngntGrade"
-#define TNGNT_GRD_MSG                  "Tangent can only be used on elements of grade 1."
 
 #define VOLUMEENCLOSED_ZERO            "VolEnclZero"
 #define VOLUMEENCLOSED_ZERO_MSG        "VolumeEnclosed detected an element of zero size. Check that a mesh point is not coincident with the origin."

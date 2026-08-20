@@ -1,5 +1,5 @@
 // Hessian of CG1 field should fail because CG1 has no Hessian callback
-// expect error 'IntgrlHssEvl'
+// expect error 'IntgrlDffEvl'
 
 import meshtools
 

@@ -1754,55 +1754,28 @@ This error occurs when a ScalarPotential function is not callable:
 ## IntgrlArgs
 [tagintgrlargs]: # (intgrlargs)
 
-This error occurs when an Integral functional receives invalid arguments. It requires a callable argument followed by zero or more Fields:
+This error occurs when an Integral functional receives invalid arguments. It requires a callable argument followed by zero or more Fields, and `method` if present must be a Dictionary:
 
     var func = LineIntegral()
     func.total("invalid") // Causes 'IntgrlArgs'
 
-## IntgrlMthdDct
-[tagintgrlmthddct]: # (intgrlmthddct)
-
-This error occurs when an Integral's method argument is not a Dictionary containing configuration settings:
-
-    var func = LineIntegral()
-    func.method = "invalid" // Causes 'IntgrlMthdDct'
-
 ## IntgrlFld
 [tagintgrlfld]: # (intgrlfld)
 
-This error occurs when an Integral cannot identify a field:
+This error occurs when an Integral cannot identify a field. Pass the Field object rather than an interpolated value if the reference is ambiguous:
 
     var func = LineIntegral()
     func.total(fn(x) { return x }, "invalid") // Causes 'IntgrlFld'
 
-## IntgrlGrdEvl
-[tagintgrlgrdevl]: # (intgrlgrdevl)
+## IntgrlDffEvl
+[tagintgrldffevl]: # (intgrldffevl)
 
-This error occurs when gradient evaluation fails in an Integral:
-
-    var func = LineIntegral()
-    func.gradient(mesh) // Causes 'IntgrlGrdEvl' if evaluation fails
-
-## IntgrlAmbgsFld
-[tagintgrlambgsfld]: # (intgrlambgsfld)
-
-This error occurs when a field reference is ambiguous in an Integral. Call with a Field object:
-
-    var func = LineIntegral()
-    func.total(fn(x) { return x }) // Causes 'IntgrlAmbgsFld' if ambiguous
-
-## IntgrlNFlds
-[tagintgrlnflds]: # (intgrlnflds)
-
-This error occurs when an incorrect number of Fields is provided for an integrand function:
-
-    var func = LineIntegral()
-    func.total(fn(x, y) { return x + y }, field1) // Causes 'IntgrlNFlds' if wrong number
+This error occurs when gradient or Hessian evaluation fails in an Integral, or the finite element space does not support it.
 
 ## IntgrlSpclFn
 [tagintgrlspclfn]: # (intgrlspclfn)
 
-This error occurs when a special function is called outside of an Integral:
+This error occurs when a special function such as `tangent`, `normal` or `grad` is used outside an Integral, or on the wrong grade of element:
 
     tangent() // Causes 'IntgrlSpclFn' (must be called within integrand)
 

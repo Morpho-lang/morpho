@@ -3866,9 +3866,8 @@ int tangenthandle; // TL storage handle for tangent vectors
 /** Evaluate the tangent vector */
 void integral_evaluatetangent(vm *v, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);
-    if (!elref) { morpho_runtimeerror(v, INTEGRAL_SPCLFN, TANGENT_FUNCTION); return; }
-    if (elref->g!=1) {
-        morpho_runtimeerror(v, TNGNT_GRD);
+    if (!elref || elref->g!=1) {
+        morpho_runtimeerror(v, INTEGRAL_SPCLFN, TANGENT_FUNCTION);
         return;
     }
     
@@ -3908,9 +3907,8 @@ int normlhandle; // TL storage handle for normal vectors
 void integral_evaluatenormal(vm *v, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);
     
-    if (!elref) { morpho_runtimeerror(v, INTEGRAL_SPCLFN, NORMAL_FUNCTION); return; }
-    if (elref->g!=2) {
-        morpho_runtimeerror(v, NRML_GRD);
+    if (!elref || elref->g!=2) {
+        morpho_runtimeerror(v, INTEGRAL_SPCLFN, NORMAL_FUNCTION);
         return;
     }
     
@@ -4109,7 +4107,7 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
     for (ifld=0; ifld<elref->iref->nfields; ifld++) {
         if (MORPHO_ISFIELD(q) && MORPHO_ISSAME(elref->iref->originalfields[ifld], q)) break;
         else if (MORPHO_ISSAME(elref->qinterpolated[ifld], q)) {
-            if (xfld>=0) MORPHO_FAIL(v, INTEGRAL_AMBGSFLD);
+            if (xfld>=0) MORPHO_FAIL(v, INTEGRAL_FLD);
             // @warning: This will fail if two fields happen to have the same value(!)
             xfld=ifld;
         }
@@ -4137,11 +4135,11 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
             
             if (elref->invj) {
                 integral_prepareinvjacobian(elref->mesh->dim, elref->g, elref->vertexposn, elref->invj);
-            } else MORPHO_FAIL(v, INTEGRAL_GRDEVL);
+            } else MORPHO_FAIL(v, INTEGRAL_DFFEVL);
         }
         
         fespace *disc = MORPHO_GETFESPACE(fld->fnspc)->fespace;
-        if (!FESPACE_HASGRADIENT(disc)) MORPHO_FAIL(v, INTEGRAL_GRDEVL);
+        if (!FESPACE_HASGRADIENT(disc)) MORPHO_FAIL(v, INTEGRAL_DFFEVL);
         
         int nnodes = disc->nnodes;
         double gdata[nnodes * elref->g];
@@ -4154,7 +4152,7 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
         double fmatdata[nnodes * dim];
         objectmatrix fmat = MORPHO_STATICMATRIX(fmatdata, nnodes, dim);
         
-        if (matrix_mul(&gmat, elref->invj, &fmat)!=LINALGERR_OK) MORPHO_FAIL(v, INTEGRAL_GRDEVL);
+        if (matrix_mul(&gmat, elref->invj, &fmat)!=LINALGERR_OK) MORPHO_FAIL(v, INTEGRAL_DFFEVL);
         
         for (int i=0; i<dim; i++) {
             value sum;
@@ -4162,7 +4160,7 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
             if (integral_gradsuminit(i, fld->prototype, elref->qgrad[ifld], &sum) &&
                 integrator_sumquantityweighted(nnodes, fmat.elements+i*nnodes, elref->quantities[ifld].vals, &sum)) {
                 integral_gradsumcopy(i, sum, elref->qgrad[ifld]);
-            } else MORPHO_FAIL(v, INTEGRAL_GRDEVL);
+            } else MORPHO_FAIL(v, INTEGRAL_DFFEVL);
         }
         
         success=true;
@@ -4202,7 +4200,7 @@ bool integral_evaluatehessian(vm *v, value q, value *out) {
     for (ifld=0; ifld<elref->iref->nfields; ifld++) {
         if (MORPHO_ISFIELD(q) && MORPHO_ISSAME(elref->iref->originalfields[ifld], q)) break;
         else if (MORPHO_ISSAME(elref->qinterpolated[ifld], q)) {
-            if (xfld>=0) MORPHO_FAIL(v, INTEGRAL_AMBGSFLD);
+            if (xfld>=0) MORPHO_FAIL(v, INTEGRAL_FLD);
             xfld=ifld;
         }
     }
@@ -4222,11 +4220,11 @@ bool integral_evaluatehessian(vm *v, value q, value *out) {
             elref->invj=matrix_new(elref->g, elref->mesh->dim, false);
             if (elref->invj) {
                 integral_prepareinvjacobian(elref->mesh->dim, elref->g, elref->vertexposn, elref->invj);
-            } else MORPHO_FAIL(v, INTEGRAL_HSSEVL);
+            } else MORPHO_FAIL(v, INTEGRAL_DFFEVL);
         }
         
         fespace *disc = MORPHO_GETFESPACE(fld->fnspc)->fespace;
-        if (!FESPACE_HASHESSIAN(disc)) MORPHO_FAIL(v, INTEGRAL_HSSEVL);
+        if (!FESPACE_HASHESSIAN(disc)) MORPHO_FAIL(v, INTEGRAL_DFFEVL);
         int nnodes = disc->nnodes;
         double hdata[nnodes * elref->g * elref->g];
         objectmatrix hmat = MORPHO_STATICMATRIX(hdata, nnodes, elref->g*elref->g);
@@ -4259,7 +4257,7 @@ bool integral_evaluatehessian(vm *v, value q, value *out) {
                 if (integral_hesssuminit(c, fld->prototype, elref->qhess[ifld], &sum) &&
                     integrator_sumquantityweighted(nnodes, fdata+c*nnodes, elref->quantities[ifld].vals, &sum)) {
                     integral_hesssumcopy(i, j, sum, elref->qhess[ifld]);
-                } else MORPHO_FAIL(v, INTEGRAL_HSSEVL);
+                } else MORPHO_FAIL(v, INTEGRAL_DFFEVL);
             }
         }
         
@@ -4267,7 +4265,7 @@ bool integral_evaluatehessian(vm *v, value q, value *out) {
         return true;
     }
     
-    MORPHO_FAIL(v, INTEGRAL_HSSEVL);
+    MORPHO_FAIL(v, INTEGRAL_DFFEVL);
 }
 
 static value integral_hessfn(vm *v, int nargs, value *args) {
@@ -4766,7 +4764,7 @@ static value integral_init(vm *v, int nargs, value *args) {
         if (MORPHO_ISDICTIONARY(method)) {
             objectinstance_setproperty(self, functional_methodproperty, method);
         } else if (!MORPHO_ISNIL(method)) {
-            morpho_runtimeerror(v, INTEGRAL_MTHDDCT);
+            morpho_runtimeerror(v, INTEGRAL_ARGS);
         }
 
         if (MORPHO_ISMESH(mref)) objectinstance_setproperty(self, linearelasticity_referenceproperty, mref);
@@ -4781,7 +4779,7 @@ static value integral_init(vm *v, int nargs, value *args) {
         } else MORPHO_RAISE(v, INTEGRAL_ARGS);
     }
 
-    if (nparams!=nfixed) MORPHO_RAISE(v, INTEGRAL_NFLDS);
+    if (nparams!=nfixed) MORPHO_RAISE(v, INTEGRAL_ARGS);
 
     if (nfixed>1) {
         /* Remaining arguments should be fields */
@@ -5479,7 +5477,7 @@ static value integral_jumpdnfn(vm *v, int nargs, value *args) {
     for (ifld=0; ifld<iref->jref->integral.nfields; ifld++) {
         if (MORPHO_ISFIELD(q) && MORPHO_ISSAME(iref->jref->integral.originalfields[ifld], q)) break;
         else if (iref->qinterpolated && MORPHO_ISSAME(iref->qinterpolated[ifld], q)) {
-            if (xfld>=0) MORPHO_RAISE(v, INTEGRAL_AMBGSFLD);
+            if (xfld>=0) MORPHO_RAISE(v, INTEGRAL_FLD);
             xfld=ifld;
         }
     }
@@ -5584,17 +5582,10 @@ void functional_initialize(void) {
     morpho_defineerror(FUNCTIONAL_ARGS, ERROR_HALT, FUNCTIONAL_ARGS_MSG);
     
     morpho_defineerror(INTEGRAL_ARGS, ERROR_HALT, INTEGRAL_ARGS_MSG);
-    morpho_defineerror(INTEGRAL_NFLDS, ERROR_HALT, INTEGRAL_NFLDS_MSG);
-    morpho_defineerror(INTEGRAL_MTHDDCT, ERROR_HALT, INTEGRAL_MTHDDCT_MSG);
     morpho_defineerror(INTEGRAL_FLD, ERROR_HALT, INTEGRAL_FLD_MSG);
-    morpho_defineerror(INTEGRAL_AMBGSFLD, ERROR_HALT, INTEGRAL_AMBGSFLD_MSG);
     morpho_defineerror(INTEGRAL_SPCLFN, ERROR_HALT, INTEGRAL_SPCLFN_MSG);
-    morpho_defineerror(INTEGRAL_GRDEVL, ERROR_HALT, INTEGRAL_GRDEVL_MSG);
-    morpho_defineerror(INTEGRAL_HSSEVL, ERROR_HALT, INTEGRAL_HSSEVL_MSG);
+    morpho_defineerror(INTEGRAL_DFFEVL, ERROR_HALT, INTEGRAL_DFFEVL_MSG);
     morpho_defineerror(JUMP_UNIMPL, ERROR_HALT, JUMP_UNIMPL_MSG);
-    
-    morpho_defineerror(NRML_GRD, ERROR_HALT, NRML_GRD_MSG);
-    morpho_defineerror(TNGNT_GRD, ERROR_HALT, TNGNT_GRD_MSG);
     
     functional_poolinitialized = false;
     

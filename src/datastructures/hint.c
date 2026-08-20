@@ -49,7 +49,8 @@ hint *hint_createfromformatstring(const char *format, ...) {
     return out;
 }
 
-void hint_free(hint *hnt) {
-    MORPHO_FREE(hnt);
+void hint_free(hint **hnt) {
+    MORPHO_FREE(*hnt);
+    *hnt = NULL;
 }
 

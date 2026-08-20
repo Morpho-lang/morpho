@@ -1325,18 +1325,16 @@ void metafunction_writeerrorhint(error *err, objectmetafunction *fn, int nargs, 
         sig = metafunction_getsignature(fn->fns.data[i]);
         varray_charadd(&siglist, "   ", 3);
         varray_charadd(&siglist, name->string, (int) name->length);
-        varray_charadd(&siglist, "(", 1);
-        metafunction_formatarglist(sig->types.count, sig->types.data, &siglist);
-        if (sig->varg) varray_charadd(&siglist, ", ...", 5);
-        varray_charadd(&siglist, ")\n", 2);
+        signature_printbuffer(sig, &siglist, false);
+        varray_charwrite(&siglist, '\n');
     }
-    // Replace final endline with null
+    // Replace final newline with null char
     siglist.data[siglist.count-1]='\0';
 
     varray_char inputsig;
     varray_charinit(&inputsig);
     metafunction_formatarglist(nargs, args, &inputsig);
-    varray_charadd(&inputsig, "\0", 1);
+    varray_charwrite(&inputsig, '\0');
 
     error_addhintmsg(err, "The function \'%s\' is not defined for the signature \'(%s)\'. The defined signatures are:\n%s", 
                     name->string, inputsig.data, siglist.data);

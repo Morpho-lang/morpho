@@ -50,7 +50,7 @@ void error_clear(error *err) {
     err->id=NULL;
     err->file=NULL;
     err->line=ERROR_POSNUNIDENTIFIABLE; err->posn=ERROR_POSNUNIDENTIFIABLE;
-    if (err->hnt) { hint_free(err->hnt); err->hnt=NULL; }
+    if (err->hnt) hint_free(&err->hnt);
 }
 
 /** Clears an error structure
@@ -130,6 +130,7 @@ void error_writewithid(error *err, errorid id, ... ) {
  *  @param msg  The hint message
  *  @param ...  Additional parameters (the data for the printf commands in the message) */
 void error_addhintmsg(error *err, const char *msg, ...) {
+    if (err->hnt) hint_free(&err->hnt);
     va_list args;
     va_start(args, msg);
     err->hnt = hint_createfromformatstringvalist(msg, args);

@@ -22,6 +22,6 @@ typedef struct {
 hint *hint_createfromcstring(const char *str, size_t len);
 hint *hint_createfromformatstring(const char *format, ...);
 hint *hint_createfromformatstringvalist(const char *format, va_list args);
-void hint_free(hint *hnt);
+void hint_free(hint **hnt);
 
 #endif

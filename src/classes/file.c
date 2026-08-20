@@ -478,8 +478,13 @@ value Folder_contents(vm *v, int nargs, value *args) {
 
 /** Create a new folder; regular and recursive versions */
 static value _create(vm *v, int nargs, value *args, bool recurse) {
-    const char *path = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
-    if (!platform_makedirectory(path, recurse)) morpho_runtimeerror(v, FOLDER_CREATEFAILED, path);
+    varray_char name;
+    varray_charinit(&name);
+    
+    file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
+    if (!platform_makedirectory(name.data, recurse)) morpho_runtimeerror(v, FOLDER_CREATEFAILED, name.data);
+
+    varray_charclear(&name);
     return MORPHO_NIL;
 }
 

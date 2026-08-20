@@ -381,8 +381,7 @@ bool functional_parallelmap(int ntasks, functional_task *tasks) {
     return true;
 }
 
-/** Map over prepared tasks, using a threadpool only when worker threads are available.
- *  Returns false if the tasks could not be completed. Does not post a VM error. */
+/** Map over prepared tasks, using a threadpool only when worker threads are available */
 bool functional_map(int ntasks, functional_task *tasks) {
     if (ntasks<1) return true;
     if (ntasks==1 || morpho_threadnumber()<1) return functional_serialmap(ntasks, tasks);
@@ -2200,7 +2199,7 @@ value Hydrogel_gradient(vm *v, int nargs, value *args) {
             info.ref = &ref;
             info.sym = SYMMETRY_ADD;
             functional_runmap(v, &info, functional_mapgradient, &out);
-        }
+        } else morpho_runtimeerror(v, HYDROGEL_PRP);
     }
 
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);

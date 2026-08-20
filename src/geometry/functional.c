@@ -452,10 +452,7 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
     vm *subkernels[ntask];
     if (ntask==1) {
         subkernels[0]=v; /* Serial maps reuse the calling VM */
-    } else if (!vm_subkernels(v, ntask, subkernels)) {
-        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-        return false;
-    }
+    } else if (!vm_subkernels(v, ntask, subkernels)) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
     
     /** Initialize task structures */
     for (int i=0; i<ntask; i++) {
@@ -558,10 +555,7 @@ bool functional_mapintegrandforelement(vm *v, functional_mapinfo *info, value *o
     
     /* How many elements? */
     if (!functional_countelements(v, mesh, g, &n, &s)) return false;
-    if (id<0 || id>=n) {
-        morpho_runtimeerror(v, VM_OUTOFBOUNDS);
-        return false;
-    }
+    if (id<0 || id>=n) MORPHO_FAIL(v, VM_OUTOFBOUNDS);
     
     int vertexid; // Use this if looping over grade 0
     int *vid=(g==0 ? &vertexid : NULL),
@@ -2960,24 +2954,15 @@ static bool functional_preparefespacefield(vm *v, objectfield *field, grade g) {
 
     objectsparse *conn = mesh_getconnectivityelement(field->mesh, 0, disc->grade);
     if (!conn) conn = mesh_addconnectivityelement(field->mesh, 0, disc->grade);
-    if (!conn) {
-        morpho_runtimeerror(v, FUNC_ELNTFND, (unsigned int) disc->grade);
-        return false;
-    }
+    if (!conn) MORPHO_FAILVARGS(v, FUNC_ELNTFND, (unsigned int) disc->grade);
 
     for (grade i=0; i<=disc->grade; i++) {
         objectsparse *vmatrix = mesh_addconnectivityelement(field->mesh, i, 0);
         if (!vmatrix && i>0 && disc->shape[i]>0) {
-            if (!mesh_addgrade(field->mesh, i)) {
-                morpho_runtimeerror(v, FUNC_ELNTFND, (unsigned int) i);
-                return false;
-            }
+            if (!mesh_addgrade(field->mesh, i)) MORPHO_FAILVARGS(v, FUNC_ELNTFND, (unsigned int) i);
             vmatrix = mesh_addconnectivityelement(field->mesh, i, 0);
         }
-        if (!vmatrix && i>0 && disc->shape[i]>0) {
-            morpho_runtimeerror(v, FUNC_ELNTFND, (unsigned int) i);
-            return false;
-        }
+        if (!vmatrix && i>0 && disc->shape[i]>0) MORPHO_FAILVARGS(v, FUNC_ELNTFND, (unsigned int) i);
     }
 
     return true;
@@ -4932,19 +4917,22 @@ struct jumpref_s {
     jumpstrategy strategy;
 };
 
-static bool jump_preparetopology(objectmesh *mesh, jumpref *ref) {
+static bool jump_preparetopology(vm *v, objectmesh *mesh, jumpref *ref) {
     ref->parentgrade=mesh_maxgrade(mesh);
-    if (ref->parentgrade<1) return false;
+    if (ref->parentgrade<1) MORPHO_FAILVARGS(v, FUNC_ELNTFND, (unsigned int) MESH_GRADE_LINE);
 
     ref->interfacegrade=ref->parentgrade-1;
     ref->interfaceparents=mesh_addconnectivityelement(mesh, ref->parentgrade, ref->interfacegrade);
     ref->parentinterfaces=mesh_addconnectivityelement(mesh, ref->interfacegrade, ref->parentgrade);
     ref->parentvertices=mesh_getconnectivityelement(mesh, 0, ref->parentgrade);
 
-    return (ref->interfaceparents!=NULL && ref->parentinterfaces!=NULL && ref->parentvertices!=NULL);
+    if (!ref->parentvertices) MORPHO_FAILVARGS(v, FUNC_ELNTFND, (unsigned int) ref->parentgrade);
+    if (!ref->interfaceparents || !ref->parentinterfaces) MORPHO_FAILVARGS(v, FUNC_ELNTFND, (unsigned int) ref->interfacegrade);
+
+    return true;
 }
 
-static bool jump_preparestrategy(jumpref *ref) {
+static bool jump_preparestrategy(vm *v, jumpref *ref) {
     ref->strategy=JUMP_STRATEGY_CENTROID_MODE;
 
     if (!MORPHO_ISDICTIONARY(ref->integral.method)) return true;
@@ -4954,7 +4942,7 @@ static bool jump_preparestrategy(jumpref *ref) {
     value val=MORPHO_NIL;
 
     if (!dictionary_get(&dict->dict, MORPHO_OBJECT(&strategylabel), &val)) return true;
-    if (!MORPHO_ISSTRING(val)) return false;
+    if (!MORPHO_ISSTRING(val)) MORPHO_FAIL(v, FUNCTIONAL_ARGS);
 
     char *strategy=MORPHO_GETCSTRING(val);
     if (strcmp(strategy, JUMP_STRATEGY_CENTROID)==0) {
@@ -4966,7 +4954,7 @@ static bool jump_preparestrategy(jumpref *ref) {
         return true;
     }
 
-    return false;
+    MORPHO_FAIL(v, FUNCTIONAL_ARGS);
 }
 
 /** Initialize a Jump object.
@@ -4985,7 +4973,7 @@ static value Jump_init(vm *v, int nargs, value *args) {
 /** Prepare a jump reference.
     Shared functional metadata is handled by integral_prepareref; Jump only adds
     codimension-1 topology needed for interior-interface traversal. */
-static bool jump_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, jumpref *ref) {
+static bool jump_prepareref(vm *v, objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, jumpref *ref) {
     ref->parentgrade=0;
     ref->interfacegrade=0;
     ref->interfaceparents=NULL;
@@ -4993,9 +4981,9 @@ static bool jump_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
     ref->parentvertices=NULL;
     ref->strategy=JUMP_STRATEGY_CENTROID_MODE;
 
-    if (!integral_prepareref(self, mesh, g, sel, &ref->integral)) return false;
-    if (!jump_preparetopology(mesh, ref)) return false;
-    if (!jump_preparestrategy(ref)) return false;
+    if (!integral_prepareref(self, mesh, g, sel, &ref->integral)) MORPHO_FAIL(v, INTEGRAL_ARGS);
+    if (!jump_preparetopology(v, mesh, ref)) return false;
+    if (!jump_preparestrategy(v, ref)) return false;
     objectinstance_setproperty(self, functional_gradeproperty, MORPHO_INTEGER(ref->interfacegrade));
     return true;
 }
@@ -5463,13 +5451,13 @@ static value Jump_integrand(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
 
     if (functional_validateargs(v, nargs, args, &info)) {
-        if (jump_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
+        if (jump_prepareref(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
             info.g=ref.interfacegrade;
             info.integrand=jump_scan_integrand;
             info.start=jump_startfn;
             info.ref=&ref;
             functional_runmap(v, &info, functional_mapintegrand, &out);
-        } else morpho_runtimeerror(v, JUMP_UNIMPL);
+        }
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     return out;
@@ -5481,13 +5469,13 @@ static value Jump_total(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
 
     if (functional_validateargs(v, nargs, args, &info)) {
-        if (jump_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
+        if (jump_prepareref(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
             info.g=ref.interfacegrade;
             info.integrand=jump_scan_integrand;
             info.start=jump_startfn;
             info.ref=&ref;
             functional_runmap(v, &info, functional_sumintegrand, &out);
-        } else morpho_runtimeerror(v, JUMP_UNIMPL);
+        }
     }
 
     return out;
@@ -5499,14 +5487,14 @@ static value Jump_gradient(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
 
     if (functional_validateargs(v, nargs, args, &info)) {
-        if (jump_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
+        if (jump_prepareref(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
             info.g=ref.interfacegrade;
             info.integrand=jump_scan_integrand;
             info.start=jump_startfn;
             info.dependencies=jump_dependencies;
             info.ref=&ref;
             functional_runmap(v, &info, functional_mapnumericalgradient, &out);
-        } else morpho_runtimeerror(v, JUMP_UNIMPL);
+        }
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     return out;
@@ -5518,7 +5506,7 @@ static value Jump_fieldgradient(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
 
     if (functional_validateargs(v, nargs, args, &info)) {
-        if (jump_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
+        if (jump_prepareref(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
             info.g=ref.interfacegrade;
             info.integrand=jump_scan_integrand;
             info.start=jump_startfn;
@@ -5527,7 +5515,7 @@ static value Jump_fieldgradient(vm *v, int nargs, value *args) {
             info.freeref=jump_freeref;
             info.ref=&ref;
             functional_runmap(v, &info, jump_mapfieldgradient, &out);
-        } else morpho_runtimeerror(v, JUMP_UNIMPL);
+        }
     }
     if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
     return out;

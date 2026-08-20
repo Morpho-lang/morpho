@@ -127,6 +127,11 @@ typedef struct {
                               { morpho_runtimeerror(v, err, __VA_ARGS__); \
                                 return MORPHO_NIL; }
 
+/** Raise an error and return false */
+#define MORPHO_FAIL(v, err)  { morpho_runtimeerror(v, err); return false; }
+#define MORPHO_FAILVARGS(v, err, ...) \
+                              { morpho_runtimeerror(v, err, __VA_ARGS__); return false; }
+
 /* -------------------------------------------------------
  * Loop functions to enumerate over enumerable objects
  * ------------------------------------------------------- */

@@ -214,3 +214,27 @@ void signature_print(signature *s) {
     }
     printf(")");
 }
+
+/** Print a signature to a varray buffer */
+void signature_printbuffer(signature *s, varray_char *buffer, bool incl_ret) {
+    objectstring *str;
+    if (incl_ret && MORPHO_ISCLASS(s->ret)) { // Print return type
+        str = MORPHO_GETSTRING(MORPHO_GETCLASS(s->ret)->name);
+        varray_charadd(buffer, str->string, (int) str->length);
+        varray_charwrite(buffer, ' ');
+    }
+    varray_charwrite(buffer, '(');
+    for (int i = 0; i < s->types.count; ++i) { // Print arguments
+        value type=s->types.data[i];
+
+        if (s->varg && i==s->types.count-1) varray_charadd(buffer, "...", 3);
+        else if (MORPHO_ISNIL(type)) varray_charwrite(buffer, '_');
+        else if (MORPHO_ISCLASS(type)) {
+            str = MORPHO_GETSTRING(MORPHO_GETCLASS(type)->name);
+            varray_charadd(buffer, str->string, (int) str->length);
+        }
+
+        if (i<s->types.count-1) varray_charadd(buffer, ", ", 2);
+    }
+    varray_charwrite(buffer, ')');
+}

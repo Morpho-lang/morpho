@@ -220,6 +220,7 @@ bool functional_elementgradient_scale(vm *v, objectmesh *mesh, grade g, elementi
 bool functional_elementgradient(vm *v, objectmesh *mesh, grade g, elementid id, int nv, int *vid, objectmatrix *frc);
 
 bool functional_readgrade(objectinstance *self, grade *g);
+void functional_setgrade(objectinstance *self, grade g);
 
 /* -------------------------------------------------------
  * Functional method macros
@@ -227,7 +228,7 @@ bool functional_readgrade(objectinstance *self, grade *g);
 
 /** Initialize a functional */
 #define FUNCTIONAL_INIT(name, grade) value name##_init(vm *v, int nargs, value *args) { \
-    objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), functional_gradeproperty, MORPHO_INTEGER(grade)); \
+    functional_setgrade(MORPHO_GETINSTANCE(MORPHO_SELF(args)), grade); \
     return MORPHO_NIL; \
 }
 

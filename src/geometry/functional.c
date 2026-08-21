@@ -163,6 +163,10 @@ bool functional_readgrade(objectinstance *self, grade *g) {
     return true;
 }
 
+void functional_setgrade(objectinstance *self, grade g) {
+    objectinstance_setproperty(self, functional_gradeproperty, MORPHO_INTEGER(g));
+}
+
 
 /* **********************************************************************
  * Common routines
@@ -1827,7 +1831,7 @@ bool scalarpotential_integrand(vm *v, objectmesh *mesh, elementid id, int nv, in
 /** Evaluate the gradient of the scalar potential */
 bool scalarpotential_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
     double *x;
-    value fn = *(value *) ref;
+    value fn = ((scalarpotentialref *) ref)->fn;
     value args[mesh->dim];
     value ret;
 
@@ -1847,73 +1851,165 @@ bool scalarpotential_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int
     return false;
 }
 
-/** Initialize a scalar potential */
 value ScalarPotential_init(vm *v, int nargs, value *args) {
-    objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), functional_gradeproperty, MORPHO_INTEGER(MESH_GRADE_VERTEX));
-
-    /* First argument is the potential function */
-    if (nargs>0) {
-        if (MORPHO_ISCALLABLE(MORPHO_GETARG(args, 0))) {
-            objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, MORPHO_GETARG(args, 0));
-        } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
-    }
-    /* Second argument is the gradient of the potential function */
-    if (nargs>1) {
-        if (MORPHO_ISCALLABLE(MORPHO_GETARG(args, 1))) {
-            objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_gradfunctionproperty, MORPHO_GETARG(args, 1));
-        } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
-    }
-
+    functional_setgrade(MORPHO_GETINSTANCE(MORPHO_SELF(args)), MESH_GRADE_VERTEX);
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD(ScalarPotential, integrand, MESH_GRADE_VERTEX, scalarpotentialref, scalarpotential_prepareref, functional_mapintegrand, scalarpotential_integrand, NULL, SCALARPOTENTIAL_FNCLLBL, SYMMETRY_NONE)
-
-FUNCTIONAL_METHOD(ScalarPotential, total, MESH_GRADE_VERTEX, scalarpotentialref, scalarpotential_prepareref, functional_sumintegrand, scalarpotential_integrand, NULL, SCALARPOTENTIAL_FNCLLBL, SYMMETRY_NONE)
-
-FUNCTIONAL_METHOD(ScalarPotential, hessian, MESH_GRADE_VERTEX, scalarpotentialref, scalarpotential_prepareref, functional_mapnumericalhessian, scalarpotential_integrand, NULL, SCALARPOTENTIAL_FNCLLBL, SYMMETRY_NONE)
-
-/** Evaluate a gradient */
-value ScalarPotential_gradient(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    value out=MORPHO_NIL;
-
-    if (functional_validateargs(v, nargs, args, &info)) {
-        value fn;
-        // Check if a gradient function is available
-        if (objectinstance_getpropertyinterned(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_gradfunctionproperty, &fn)) {
-            info.g = MESH_GRADE_VERTEX;
-            info.grad = scalarpotential_gradient;
-            info.ref = &fn;
-            if (MORPHO_ISCALLABLE(fn)) {
-                functional_runmap(v, &info, functional_mapgradient, &out);
-            } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
-        } else if (objectinstance_getpropertyinterned(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
-            // Otherwise try to use the regular scalar function
-
-            value fn;
-            if (objectinstance_getpropertyinterned(MORPHO_GETINSTANCE(MORPHO_SELF(args)), scalarpotential_functionproperty, &fn)) {
-                info.g = MESH_GRADE_VERTEX;
-                info.integrand = scalarpotential_integrand;
-                info.ref = &fn;
-                if (MORPHO_ISCALLABLE(fn)) {
-                    functional_runmap(v, &info, functional_mapnumericalgradient, &out);
-                } else morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
-            } else morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, SCALARPOTENTIAL_FUNCTION_PROPERTY);
-
-        } else morpho_runtimeerror(v, VM_OBJECTLACKSPROPERTY, SCALARPOTENTIAL_FUNCTION_PROPERTY);
-    }
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-
-    return out;
+value ScalarPotential_init__fn(vm *v, int nargs, value *args) {
+    objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+    functional_setgrade(self, MESH_GRADE_VERTEX);
+    objectinstance_setproperty(self, scalarpotential_functionproperty, MORPHO_GETARG(args, 0));
+    return MORPHO_NIL;
 }
 
+value ScalarPotential_init__fn_fn(vm *v, int nargs, value *args) {
+    objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+    functional_setgrade(self, MESH_GRADE_VERTEX);
+    objectinstance_setproperty(self, scalarpotential_functionproperty, MORPHO_GETARG(args, 0));
+    objectinstance_setproperty(self, scalarpotential_gradfunctionproperty, MORPHO_GETARG(args, 1));
+    return MORPHO_NIL;
+}
+
+static bool _scalarpotential_bindref(vm *v, objectinstance *self, functional_mapinfo *info, scalarpotentialref *ref) {
+    if (info->g < 0) info->g = MESH_GRADE_VERTEX;
+    if (!scalarpotential_prepareref(self, info->mesh, info->g, info->sel, ref)) {
+        morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
+        return false;
+    }
+    info->ref = ref;
+    info->integrand = scalarpotential_integrand;
+    return true;
+}
+
+static value _scalarpotential_integrand(vm *v, objectinstance *self, functional_mapinfo *info) {
+    scalarpotentialref ref;
+    if (!_scalarpotential_bindref(v, self, info, &ref)) return MORPHO_NIL;
+    return _functional_run(v, info, MESH_GRADE_VERTEX, functional_mapintegrand, true);
+}
+
+value ScalarPotential_integrand__mesh(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL);
+    return _scalarpotential_integrand(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
+}
+
+value ScalarPotential_integrand__mesh_sel(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), MORPHO_GETSELECTION(MORPHO_GETARG(args, 1)), NULL);
+    return _scalarpotential_integrand(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
+}
+
+static value _scalarpotential_integrand_elem(vm *v, objectinstance *self, functional_mapinfo *info) {
+    scalarpotentialref ref;
+    if (!_scalarpotential_bindref(v, self, info, &ref)) return MORPHO_NIL;
+    return _functional_run(v, info, MESH_GRADE_VERTEX, functional_mapintegrandforelement, false);
+}
+
+value ScalarPotential_integrand__mesh_int(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL);
+    info.id = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    return _scalarpotential_integrand_elem(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
+}
+
+value ScalarPotential_integrand__mesh_int_int(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL);
+    info.g = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    info.id = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 2));
+    return _scalarpotential_integrand_elem(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
+}
+
+static value _scalarpotential_total(vm *v, objectinstance *self, functional_mapinfo *info) {
+    scalarpotentialref ref;
+    if (!_scalarpotential_bindref(v, self, info, &ref)) return MORPHO_NIL;
+    return _functional_run(v, info, MESH_GRADE_VERTEX, functional_sumintegrand, false);
+}
+
+value ScalarPotential_total__mesh(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL);
+    return _scalarpotential_total(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
+}
+
+value ScalarPotential_total__mesh_sel(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), MORPHO_GETSELECTION(MORPHO_GETARG(args, 1)), NULL);
+    return _scalarpotential_total(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
+}
+
+static value _scalarpotential_gradient(vm *v, objectinstance *self, functional_mapinfo *info) {
+    scalarpotentialref ref;
+    value fn;
+
+    if (objectinstance_getpropertyinterned(self, scalarpotential_gradfunctionproperty, &fn)) {
+        if (!MORPHO_ISCALLABLE(fn)) {
+            morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
+            return MORPHO_NIL;
+        }
+        ref.fn = fn;
+        info->ref = &ref;
+        info->grad = scalarpotential_gradient;
+        return _functional_run(v, info, MESH_GRADE_VERTEX, functional_mapgradient, true);
+    }
+
+    if (!_scalarpotential_bindref(v, self, info, &ref)) return MORPHO_NIL;
+    return _functional_run(v, info, MESH_GRADE_VERTEX, functional_mapnumericalgradient, true);
+}
+
+value ScalarPotential_gradient__mesh(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL);
+    return _scalarpotential_gradient(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
+}
+
+value ScalarPotential_gradient__mesh_sel(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), MORPHO_GETSELECTION(MORPHO_GETARG(args, 1)), NULL);
+    return _scalarpotential_gradient(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
+}
+
+static value _scalarpotential_hessian(vm *v, objectinstance *self, functional_mapinfo *info) {
+    scalarpotentialref ref;
+    if (!_scalarpotential_bindref(v, self, info, &ref)) return MORPHO_NIL;
+    return _functional_run(v, info, MESH_GRADE_VERTEX, functional_mapnumericalhessian, true);
+}
+
+value ScalarPotential_hessian__mesh(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL);
+    return _scalarpotential_hessian(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
+}
+
+value ScalarPotential_hessian__mesh_sel(vm *v, int nargs, value *args) {
+    functional_mapinfo info;
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), MORPHO_GETSELECTION(MORPHO_GETARG(args, 1)), NULL);
+    return _scalarpotential_hessian(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
+}
+
+#define SP_MAPFLAGS (MORPHO_FN_REENTRANT|FUNCTIONAL_MD_MAPFLAGS)
+#define SP_TOTALFLAGS (MORPHO_FN_REENTRANT|FUNCTIONAL_MD_TOTALFLAGS)
+#define SP_ELEMFLAGS (MORPHO_FN_REENTRANT|FUNCTIONAL_MD_ELEMFLAGS)
+
 MORPHO_BEGINCLASS(ScalarPotential)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, ScalarPotential_init, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, ScalarPotential_integrand, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, ScalarPotential_gradient, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, ScalarPotential_total, MORPHO_FN_REENTRANT|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, ScalarPotential_hessian, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "()", ScalarPotential_init, MORPHO_FN_MUTATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(Callable)", ScalarPotential_init__fn, MORPHO_FN_MUTATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(Callable, Callable)", ScalarPotential_init__fn_fn, MORPHO_FN_MUTATES),
+
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Matrix (Mesh)", ScalarPotential_integrand__mesh, SP_MAPFLAGS),
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Matrix (Mesh, Selection)", ScalarPotential_integrand__mesh_sel, SP_MAPFLAGS),
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Float (Mesh, Int)", ScalarPotential_integrand__mesh_int, SP_ELEMFLAGS),
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Float (Mesh, Int, Int)", ScalarPotential_integrand__mesh_int_int, SP_ELEMFLAGS),
+
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_TOTAL_METHOD, "Float (Mesh)", ScalarPotential_total__mesh, SP_TOTALFLAGS),
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_TOTAL_METHOD, "Float (Mesh, Selection)", ScalarPotential_total__mesh_sel, SP_TOTALFLAGS),
+
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_GRADIENT_METHOD, "Matrix (Mesh)", ScalarPotential_gradient__mesh, SP_MAPFLAGS),
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_GRADIENT_METHOD, "Matrix (Mesh, Selection)", ScalarPotential_gradient__mesh_sel, SP_MAPFLAGS),
+
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Mesh)", ScalarPotential_hessian__mesh, SP_MAPFLAGS),
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Mesh, Selection)", ScalarPotential_hessian__mesh_sel, SP_MAPFLAGS)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------

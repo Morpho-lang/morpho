@@ -1750,7 +1750,9 @@ This warning occurs when `phi` is outside `(0, 1)` in a Hydrogel calculation. Th
 
 This error occurs when a ScalarPotential function is not callable:
 
-    ScalarPotential(0.4) // Causes 'SclrPtFnCllbl'
+    var a = ScalarPotential()
+    a.function = 0.4
+    a.integrand(mesh) // Causes 'SclrPtFnCllbl'
 
 ## IntgrlArgs
 [tagintgrlargs]: # (intgrlargs)

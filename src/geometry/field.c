@@ -678,50 +678,69 @@ value field_constructor(vm *v, int nargs, value *args) {
 }
 
 
-/** Gets the field element with given indices */
-value Field_getindex(vm *v, int nargs, value *args) {
-    objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
-    unsigned int indx[nargs];
+/** Lowest grade that stores data. */
+static bool field_lowestgrade(objectfield *field, grade *g) {
+    grade gg = MESH_GRADE_VERTEX;
+    while (gg<(grade) field->ngrades && field->dof[gg]==0) gg++;
+    if (gg>=(grade) field->ngrades) return false;
+    *g = gg;
+    return true;
+}
+
+static value field_indexget(vm *v, objectfield *f, grade g, elementid el, int indx) {
     value out = MORPHO_NIL;
-    
-    if (array_valuelisttoindices(nargs, args+1, indx)) {
-        grade g = (nargs>1 ? indx[0] : MESH_GRADE_VERTEX);
-        elementid el = (nargs>1 ? indx[1] : indx[0]);
-        int elindx = (nargs>2 ? indx[2] : 0);
-        
-        /* If only one index is specified, increment g to the lowest nonempty grade */
-        if (nargs==1) while (g<f->ngrades && f->dof[g]==0) g++;
-        
-        if (!field_getelement(f, g, el, elindx, &out)) morpho_runtimeerror(v, FIELD_INDICESOUTSIDEBOUNDS);
-    } else morpho_runtimeerror(v, FIELD_INVLDINDICES);
-    
+    if (!field_getelement(f, g, el, indx, &out)) MORPHO_RAISE(v, FIELD_INDICESOUTSIDEBOUNDS);
     return out;
 }
 
-/** Sets the field element with given indices */
-value Field_setindex(vm *v, int nargs, value *args) {
-    objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
-    unsigned int indx[nargs];
-    int nindices = nargs-1;
-    
-    if (array_valuelisttoindices(nindices, args+1, indx)) {
-        grade g = (nindices>1 ? indx[0] : MESH_GRADE_VERTEX);
-        elementid el = (nindices>1 ? indx[1] : indx[0]);
-        int elindx = (nindices>2 ? indx[2] : 0);
-
-        /* If only one index is specified, treat it as a single index */
-        if (nindices==1) {
-            if (!field_setelementwithindex(f, indx[0], MORPHO_GETARG(args, nargs-1))) {
-                morpho_runtimeerror(v, FIELD_INCOMPATIBLEVAL);
-                return MORPHO_NIL;
-            }
-        } else if (!field_setelement(f, g, el, elindx, MORPHO_GETARG(args, nargs-1))) {
-            morpho_runtimeerror(v, FIELD_INCOMPATIBLEVAL);
-            return MORPHO_NIL;
-        }
-    } else morpho_runtimeerror(v, FIELD_INVLDINDICES);
-    
+static value field_indexset(vm *v, objectfield *f, grade g, elementid el, int indx, value val) {
+    if (!field_setelement(f, g, el, indx, val)) MORPHO_RAISE(v, FIELD_INCOMPATIBLEVAL);
     return MORPHO_NIL;
+}
+
+value Field_getindex__int(vm *v, int nargs, value *args) {
+    objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
+    grade g;
+    if (!field_lowestgrade(f, &g)) MORPHO_RAISE(v, FIELD_INDICESOUTSIDEBOUNDS);
+    return field_indexget(v, f, g, MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)), 0);
+}
+
+value Field_getindex__int_int(vm *v, int nargs, value *args) {
+    objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
+    return field_indexget(v, f,
+                          MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+                          MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1)),
+                          0);
+}
+
+value Field_getindex__int_int_int(vm *v, int nargs, value *args) {
+    objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
+    return field_indexget(v, f,
+                          MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+                          MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1)),
+                          MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 2)));
+}
+
+value Field_setindex__int_x(vm *v, int nargs, value *args) {
+    objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
+    grade g;
+    if (!field_lowestgrade(f, &g)) MORPHO_RAISE(v, FIELD_INCOMPATIBLEVAL);
+    return field_indexset(v, f, g, MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)), 0, MORPHO_GETARG(args, 1));
+}
+
+value Field_setindex__int_int_x(vm *v, int nargs, value *args) {
+    objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
+    return field_indexset(v, f, MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+                          MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1)),
+                          0, MORPHO_GETARG(args, 2));
+}
+
+value Field_setindex__int_int_int_x(vm *v, int nargs, value *args) {
+    objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
+    return field_indexset(v, f, MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+                          MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1)),
+                          MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 2)),
+                          MORPHO_GETARG(args, 3));
 }
 
 /** Enumerate protocol */
@@ -1132,8 +1151,12 @@ value Field_unsafelinearize(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Field)
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Field_getindex, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Field_setindex, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "_ (Int)", Field_getindex__int, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "_ (Int, Int)", Field_getindex__int_int, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "_ (Int, Int, Int)", Field_getindex__int_int_int, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, _)", Field_setindex__int_x, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Int, _)", Field_setindex__int_int_x, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Int, Int, _)", Field_setindex__int_int_int_x, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Field_enumerate, MORPHO_FN_PUREFN),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Field_count, MORPHO_FN_PUREFN),
 MORPHO_METHOD(MORPHO_ASSIGN_METHOD, Field_assign, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),

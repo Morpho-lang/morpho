@@ -1,0 +1,24 @@
+// One-index get and set use the lowest nonempty grade
+
+var m = Mesh("square.mesh")
+print m
+// expect: <Mesh: 4 vertices>
+
+var v = Field(m)
+for (i in 0...4) v[i] = i
+print v[0]
+// expect: 0
+print v[3]
+// expect: 3
+
+var f = Field(m, grade=2)
+f[0] = 10
+f[1] = 20
+print f[0]
+// expect: 10
+print f[1]
+// expect: 20
+print f[2, 0]
+// expect: 10
+print f[2, 1]
+// expect: 20

@@ -18,16 +18,9 @@ Fields can then be added and subtracted using the `+` and `-` operators.
 
 To access elements of a `Field`, use index notation:
 
-    print f[grade, element, index]
-
-where
-* `grade` is the grade to select
-* `element` is the element id
-* `index` is the element index
-
-As a shorthand, it's possible to omit the grade and index; these are then both assumed to be `0`:
-
-    print f[2]
+    print f[id] // Prints element id from lowest active grade
+    print f[g, id] // Prints element id on grade `g`
+    print f[g, id, index] // Prints quantity `index` on element `id` on grade `g`
 
 [showsubtopics]: # (subtopics)
 

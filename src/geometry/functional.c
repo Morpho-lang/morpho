@@ -4671,47 +4671,27 @@ bool integral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
     return success;
 }
 
-/** Shared method path for Line/Area/Volume integrals */
-static value integral_domap(vm *v, int nargs, value *args, bool (*mapfn)(vm *, functional_mapinfo *, value *)) {
-    functional_mapinfo info;
-    integralref ref;
-    value out=MORPHO_NIL;
-    
-    if (functional_validateargs(v, nargs, args, &info)) {
-        objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
-        grade g=0;
-        if (!functional_readgrade(self, &g) ||
-            !integral_prepareref(self, info.mesh, g, info.sel, &ref)) {
-            morpho_runtimeerror(v, INTEGRAL_ARGS);
-        } else {
-            info.integrand = integral_integrand;
-            info.start = integral_startfn;
-            info.dependencies = NULL;
-            info.sym = SYMMETRY_NONE;
-            info.g = g;
-            info.ref = &ref;
-            functional_runmap(v, &info, mapfn, &out);
-        }
+/** Shared bindref for Line/Area/Volume integrals. Grade comes from the
+ * instance; startfn prepares any stored Fields' FE spaces. */
+static bool _Integral_bindref(vm *v, objectinstance *self, functional_mapinfo *info, integralref *ref) {
+    grade g=0;
+
+    if (!functional_readgrade(self, &g) ||
+        !integral_prepareref(self, info->mesh, (info->g < 0 ? g : info->g), info->sel, ref)) {
+        morpho_runtimeerror(v, INTEGRAL_ARGS);
+        return false;
     }
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-    return out;
+    if (info->g < 0) info->g = g;
+    info->ref = ref;
+    info->integrand = integral_integrand;
+    info->start = integral_startfn;
+    return true;
 }
 
-static value Integral_integrand(vm *v, int nargs, value *args) {
-    return integral_domap(v, nargs, args, functional_mapintegrand);
-}
-
-static value Integral_total(vm *v, int nargs, value *args) {
-    return integral_domap(v, nargs, args, functional_sumintegrand);
-}
-
-static value Integral_gradient(vm *v, int nargs, value *args) {
-    return integral_domap(v, nargs, args, functional_mapnumericalgradient);
-}
-
-static value Integral_hessian(vm *v, int nargs, value *args) {
-    return integral_domap(v, nargs, args, functional_mapnumericalhessian);
-}
+FUNCTIONAL_MD_REF_INTEGRAND(Integral, integralref, ref.g)
+FUNCTIONAL_MD_REF_TOTAL(Integral, integralref, ref.g)
+FUNCTIONAL_MD_REF_NUMERICALGRADIENT(Integral, integralref, ref.g, NULL, SYMMETRY_NONE)
+FUNCTIONAL_MD_REF_HESSIAN(Integral, integralref, ref.g, NULL, SYMMETRY_NONE)
 
 /** Field gradients for Line/Area/Volume integrals */
 static value Integral_fieldgradient(vm *v, int nargs, value *args) {
@@ -4810,34 +4790,36 @@ value VolumeIntegral_init(vm *v, int nargs, value *args) {
     return integral_initwithgrade(v, nargs, args, MESH_GRADE_VOLUME);
 }
 
-#define INTEGRAL_METHODFLAGS (MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
-#define INTEGRAL_TOTALFLAGS  (MORPHO_FN_REENTRANT|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+#define INTEGRAL_MAPFLAGS  (MORPHO_FN_REENTRANT|FUNCTIONAL_MD_MAPFLAGS)
+#define INTEGRAL_TOTALFLAGS (MORPHO_FN_REENTRANT|FUNCTIONAL_MD_TOTALFLAGS)
+#define INTEGRAL_ELEMFLAGS (MORPHO_FN_REENTRANT|FUNCTIONAL_MD_ELEMFLAGS)
+#define INTEGRAL_INITFLAGS (MORPHO_FN_MUTATES|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_OPTARGS)
 
 MORPHO_BEGINCLASS(LineIntegral)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineIntegral_init, MORPHO_FN_MUTATES|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Integral_integrand, INTEGRAL_METHODFLAGS),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Integral_total, INTEGRAL_TOTALFLAGS),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Integral_gradient, INTEGRAL_METHODFLAGS),
-MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Integral_fieldgradient, INTEGRAL_METHODFLAGS),
-MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Integral_hessian, INTEGRAL_METHODFLAGS)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(...)", LineIntegral_init, INTEGRAL_INITFLAGS),
+FUNCTIONAL_MD_INTEGRAND_METHODS_FLAGS(Integral, INTEGRAL_MAPFLAGS, INTEGRAL_ELEMFLAGS),
+FUNCTIONAL_MD_TOTAL_METHODS_FLAGS(Integral, INTEGRAL_TOTALFLAGS),
+FUNCTIONAL_MD_GRADIENT_METHODS_FLAGS(Integral, INTEGRAL_MAPFLAGS),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Integral_fieldgradient, INTEGRAL_MAPFLAGS),
+FUNCTIONAL_MD_HESSIAN_METHODS_FLAGS(Integral, INTEGRAL_MAPFLAGS)
 MORPHO_ENDCLASS
 
 MORPHO_BEGINCLASS(AreaIntegral)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, AreaIntegral_init, MORPHO_FN_MUTATES|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Integral_integrand, INTEGRAL_METHODFLAGS),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Integral_total, INTEGRAL_TOTALFLAGS),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Integral_gradient, INTEGRAL_METHODFLAGS),
-MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Integral_fieldgradient, INTEGRAL_METHODFLAGS),
-MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Integral_hessian, INTEGRAL_METHODFLAGS)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(...)", AreaIntegral_init, INTEGRAL_INITFLAGS),
+FUNCTIONAL_MD_INTEGRAND_METHODS_FLAGS(Integral, INTEGRAL_MAPFLAGS, INTEGRAL_ELEMFLAGS),
+FUNCTIONAL_MD_TOTAL_METHODS_FLAGS(Integral, INTEGRAL_TOTALFLAGS),
+FUNCTIONAL_MD_GRADIENT_METHODS_FLAGS(Integral, INTEGRAL_MAPFLAGS),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Integral_fieldgradient, INTEGRAL_MAPFLAGS),
+FUNCTIONAL_MD_HESSIAN_METHODS_FLAGS(Integral, INTEGRAL_MAPFLAGS)
 MORPHO_ENDCLASS
 
 MORPHO_BEGINCLASS(VolumeIntegral)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, VolumeIntegral_init, MORPHO_FN_MUTATES|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Integral_integrand, INTEGRAL_METHODFLAGS),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Integral_total, INTEGRAL_TOTALFLAGS),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Integral_gradient, INTEGRAL_METHODFLAGS),
-MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Integral_fieldgradient, INTEGRAL_METHODFLAGS),
-MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, Integral_hessian, INTEGRAL_METHODFLAGS)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(...)", VolumeIntegral_init, INTEGRAL_INITFLAGS),
+FUNCTIONAL_MD_INTEGRAND_METHODS_FLAGS(Integral, INTEGRAL_MAPFLAGS, INTEGRAL_ELEMFLAGS),
+FUNCTIONAL_MD_TOTAL_METHODS_FLAGS(Integral, INTEGRAL_TOTALFLAGS),
+FUNCTIONAL_MD_GRADIENT_METHODS_FLAGS(Integral, INTEGRAL_MAPFLAGS),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Integral_fieldgradient, INTEGRAL_MAPFLAGS),
+FUNCTIONAL_MD_HESSIAN_METHODS_FLAGS(Integral, INTEGRAL_MAPFLAGS)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------

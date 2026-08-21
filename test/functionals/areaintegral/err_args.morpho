@@ -1,0 +1,2 @@
+print AreaIntegral()
+// expect error 'IntgrlArgs'

@@ -1,0 +1,21 @@
+// Shared Integral_* map wrappers on VolumeIntegral
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0, 0, 0])
+mb.addvertex([1, 0, 0])
+mb.addvertex([0, 1, 0])
+mb.addvertex([0, 0, 1])
+mb.addvolume([0, 1, 2, 3])
+var m = mb.build()
+
+var v = VolumeIntegral(fn (x) 1)
+
+print v.grade
+// expect: 3
+
+print abs(v.total(m) - 1/6) < 1e-10
+// expect: true
+
+print v.integrand()
+// expect error 'MltplDsptchFld'

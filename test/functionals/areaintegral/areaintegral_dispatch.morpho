@@ -1,0 +1,14 @@
+// Shared Integral_* map wrappers on AreaIntegral
+import meshtools
+
+var m = AreaMesh(fn (x, y) [x, y, 0], 0..1:0.5, 0..1:0.5)
+var a = AreaIntegral(fn (x) x[0]*x[1])
+
+print a.grade
+// expect: 2
+
+print abs(a.total(m) - 0.25) < 1e-8
+// expect: true
+
+print a.integrand()
+// expect error 'MltplDsptchFld'

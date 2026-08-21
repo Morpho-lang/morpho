@@ -12,14 +12,14 @@ var f = Field(m, fn (x,y,z) x)
 // A line integral with only spatial dependence
 var lc = LineIntegral(fn (x, f) (f*(1-f))^2, f)
 
-var int = lc.integrand(f, s)
+var int = lc.integrand(m, s)
 
 var exp = Matrix([[ 0.000285333, 0.00164533, 0.00350533, 0.00514533, 0.00608533, 0, 0, 0, 0, 0 ]])
 
 print (int-exp).norm() < 1e-8
 // expect: true
 
-print abs(lc.total(f, s) - 0.0166667) < 1e-6
+print abs(lc.total(m, s) - 0.0166667) < 1e-6
 // expect: true
 
 var grad=lc.fieldgradient(f, s).linearize()

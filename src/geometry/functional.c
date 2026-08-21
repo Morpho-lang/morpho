@@ -5376,60 +5376,20 @@ static bool jump_mapfieldgradient(vm *v, functional_mapinfo *info, value *out) {
     return functional_mapjumpnumericalfieldgradient(v, info, ref->parentvertices, ref, out);
 }
 
-static value Jump_integrand(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    jumpref ref;
-    value out=MORPHO_NIL;
-
-    if (functional_validateargs(v, nargs, args, &info)) {
-        if (jump_prepareref(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
-            info.g=ref.interfacegrade;
-            info.integrand=jump_scan_integrand;
-            info.start=jump_startfn;
-            info.ref=&ref;
-            functional_runmap(v, &info, functional_mapintegrand, &out);
-        }
-    }
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-    return out;
+/** Jump bindref: prepare already raises IntgrlArgs / FnctlELNtFnd / FnctlArgs.
+ * Map grade is the interface grade from topology, not the caller's Int. */
+static bool _Jump_bindref(vm *v, objectinstance *self, functional_mapinfo *info, jumpref *ref) {
+    if (!jump_prepareref(v, self, info->mesh, 0, info->sel, ref)) return false;
+    info->g = ref->interfacegrade;
+    info->ref = ref;
+    info->integrand = jump_scan_integrand;
+    info->start = jump_startfn;
+    return true;
 }
 
-static value Jump_total(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    jumpref ref;
-    value out=MORPHO_NIL;
-
-    if (functional_validateargs(v, nargs, args, &info)) {
-        if (jump_prepareref(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
-            info.g=ref.interfacegrade;
-            info.integrand=jump_scan_integrand;
-            info.start=jump_startfn;
-            info.ref=&ref;
-            functional_runmap(v, &info, functional_sumintegrand, &out);
-        }
-    }
-
-    return out;
-}
-
-static value Jump_gradient(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    jumpref ref;
-    value out=MORPHO_NIL;
-
-    if (functional_validateargs(v, nargs, args, &info)) {
-        if (jump_prepareref(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, 0, info.sel, &ref)) {
-            info.g=ref.interfacegrade;
-            info.integrand=jump_scan_integrand;
-            info.start=jump_startfn;
-            info.dependencies=jump_dependencies;
-            info.ref=&ref;
-            functional_runmap(v, &info, functional_mapnumericalgradient, &out);
-        }
-    }
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-    return out;
-}
+FUNCTIONAL_MD_REF_INTEGRAND(Jump, jumpref, ref.interfacegrade)
+FUNCTIONAL_MD_REF_TOTAL(Jump, jumpref, ref.interfacegrade)
+FUNCTIONAL_MD_REF_NUMERICALGRADIENT(Jump, jumpref, ref.interfacegrade, jump_dependencies, SYMMETRY_NONE)
 
 static value Jump_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
@@ -5480,11 +5440,11 @@ static value integral_jumpdnfn(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Jump)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Jump_init, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Jump_integrand, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Jump_total, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Jump_gradient, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Jump_fieldgradient, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(...)", Jump_init, INTEGRAL_INITFLAGS),
+FUNCTIONAL_MD_INTEGRAND_METHODS_FLAGS(Jump, INTEGRAL_MAPFLAGS, INTEGRAL_ELEMFLAGS),
+FUNCTIONAL_MD_TOTAL_METHODS_FLAGS(Jump, INTEGRAL_TOTALFLAGS),
+FUNCTIONAL_MD_GRADIENT_METHODS_FLAGS(Jump, INTEGRAL_MAPFLAGS),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Jump_fieldgradient, INTEGRAL_MAPFLAGS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

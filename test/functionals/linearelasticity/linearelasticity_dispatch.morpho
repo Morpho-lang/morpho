@@ -1,0 +1,19 @@
+// Constructor (Mesh) / (Mesh, Int); grade comes from the instance
+var m = Mesh("stretchsquare.mesh")
+var mref = Mesh("square.mesh")
+
+var e = LinearElasticity(mref)
+e.poissonratio = 0.2
+
+print e.grade
+// expect: 2
+
+print abs(e.integrand(m, 0) - 0.625) < 1e-5
+// expect: true
+
+var e1 = LinearElasticity(mref, 1)
+print e1.grade
+// expect: 1
+
+print LinearElasticity()
+// expect error 'MltplDsptchFld'

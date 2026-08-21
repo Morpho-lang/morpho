@@ -1,0 +1,16 @@
+import meshtools
+
+var m = LineMesh(fn (t) [t, 0, 0], 0..1:0.5)
+var v = m.vertexmatrix()
+v.setcolumn(1, Matrix([0.3, 0, 0]))
+
+var le = EquiElement()
+
+print abs(le.integrand(m, 1) - 0.32) < 1e-10
+// expect: true
+
+print EquiElement(grade=1).grade==1
+// expect: true
+
+print le.integrand()
+// expect error 'MltplDsptchFld'

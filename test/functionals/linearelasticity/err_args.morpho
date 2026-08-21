@@ -1,2 +1,2 @@
 print LinearElasticity()
-// expect error 'FnctlArgs'
+// expect error 'MltplDsptchFld'

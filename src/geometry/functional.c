@@ -1871,75 +1871,11 @@ value ScalarPotential_init__fn_fn(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
-static bool _scalarpotential_bindref(vm *v, objectinstance *self, functional_mapinfo *info, scalarpotentialref *ref) {
-    if (info->g < 0) info->g = MESH_GRADE_VERTEX;
-    if (!scalarpotential_prepareref(self, info->mesh, info->g, info->sel, ref)) {
-        morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
-        return false;
-    }
-    info->ref = ref;
-    info->integrand = scalarpotential_integrand;
-    return true;
-}
+FUNCTIONAL_MD_REF_BIND(ScalarPotential, scalarpotentialref, scalarpotential_prepareref, scalarpotential_integrand, SCALARPOTENTIAL_FNCLLBL)
+FUNCTIONAL_MD_REF_INTEGRAND(ScalarPotential, scalarpotentialref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_TOTAL(ScalarPotential, scalarpotentialref, MESH_GRADE_VERTEX)
 
-static value _scalarpotential_integrand(vm *v, objectinstance *self, functional_mapinfo *info) {
-    scalarpotentialref ref;
-    if (!_scalarpotential_bindref(v, self, info, &ref)) return MORPHO_NIL;
-    return _functional_run(v, info, MESH_GRADE_VERTEX, functional_mapintegrand, true);
-}
-
-value ScalarPotential_integrand__mesh(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL);
-    return _scalarpotential_integrand(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
-}
-
-value ScalarPotential_integrand__mesh_sel(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), MORPHO_GETSELECTION(MORPHO_GETARG(args, 1)), NULL);
-    return _scalarpotential_integrand(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
-}
-
-static value _scalarpotential_integrand_elem(vm *v, objectinstance *self, functional_mapinfo *info) {
-    scalarpotentialref ref;
-    if (!_scalarpotential_bindref(v, self, info, &ref)) return MORPHO_NIL;
-    return _functional_run(v, info, MESH_GRADE_VERTEX, functional_mapintegrandforelement, false);
-}
-
-value ScalarPotential_integrand__mesh_int(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL);
-    info.id = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
-    return _scalarpotential_integrand_elem(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
-}
-
-value ScalarPotential_integrand__mesh_int_int(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL);
-    info.g = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
-    info.id = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 2));
-    return _scalarpotential_integrand_elem(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
-}
-
-static value _scalarpotential_total(vm *v, objectinstance *self, functional_mapinfo *info) {
-    scalarpotentialref ref;
-    if (!_scalarpotential_bindref(v, self, info, &ref)) return MORPHO_NIL;
-    return _functional_run(v, info, MESH_GRADE_VERTEX, functional_sumintegrand, false);
-}
-
-value ScalarPotential_total__mesh(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL);
-    return _scalarpotential_total(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
-}
-
-value ScalarPotential_total__mesh_sel(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), MORPHO_GETSELECTION(MORPHO_GETARG(args, 1)), NULL);
-    return _scalarpotential_total(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
-}
-
-static value _scalarpotential_gradient(vm *v, objectinstance *self, functional_mapinfo *info) {
+static value _ScalarPotential_gradient(vm *v, objectinstance *self, functional_mapinfo *info) {
     scalarpotentialref ref;
     value fn;
 
@@ -1954,39 +1890,12 @@ static value _scalarpotential_gradient(vm *v, objectinstance *self, functional_m
         return _functional_run(v, info, MESH_GRADE_VERTEX, functional_mapgradient, true);
     }
 
-    if (!_scalarpotential_bindref(v, self, info, &ref)) return MORPHO_NIL;
+    if (!_ScalarPotential_bindref(v, self, info, &ref)) return MORPHO_NIL;
     return _functional_run(v, info, MESH_GRADE_VERTEX, functional_mapnumericalgradient, true);
 }
 
-value ScalarPotential_gradient__mesh(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL);
-    return _scalarpotential_gradient(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
-}
-
-value ScalarPotential_gradient__mesh_sel(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), MORPHO_GETSELECTION(MORPHO_GETARG(args, 1)), NULL);
-    return _scalarpotential_gradient(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
-}
-
-static value _scalarpotential_hessian(vm *v, objectinstance *self, functional_mapinfo *info) {
-    scalarpotentialref ref;
-    if (!_scalarpotential_bindref(v, self, info, &ref)) return MORPHO_NIL;
-    return _functional_run(v, info, MESH_GRADE_VERTEX, functional_mapnumericalhessian, true);
-}
-
-value ScalarPotential_hessian__mesh(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), NULL, NULL);
-    return _scalarpotential_hessian(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
-}
-
-value ScalarPotential_hessian__mesh_sel(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 0)), MORPHO_GETSELECTION(MORPHO_GETARG(args, 1)), NULL);
-    return _scalarpotential_hessian(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info);
-}
+FUNCTIONAL_MD_REF_OVERLOADS(ScalarPotential, gradient, _ScalarPotential_gradient)
+FUNCTIONAL_MD_REF_HESSIAN(ScalarPotential, scalarpotentialref, MESH_GRADE_VERTEX, NULL, SYMMETRY_NONE)
 
 #define SP_MAPFLAGS (MORPHO_FN_REENTRANT|FUNCTIONAL_MD_MAPFLAGS)
 #define SP_TOTALFLAGS (MORPHO_FN_REENTRANT|FUNCTIONAL_MD_TOTALFLAGS)
@@ -1997,19 +1906,10 @@ MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "()", ScalarPotential_init, M
 MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(Callable)", ScalarPotential_init__fn, MORPHO_FN_MUTATES),
 MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(Callable, Callable)", ScalarPotential_init__fn_fn, MORPHO_FN_MUTATES),
 
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Matrix (Mesh)", ScalarPotential_integrand__mesh, SP_MAPFLAGS),
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Matrix (Mesh, Selection)", ScalarPotential_integrand__mesh_sel, SP_MAPFLAGS),
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Float (Mesh, Int)", ScalarPotential_integrand__mesh_int, SP_ELEMFLAGS),
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Float (Mesh, Int, Int)", ScalarPotential_integrand__mesh_int_int, SP_ELEMFLAGS),
-
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_TOTAL_METHOD, "Float (Mesh)", ScalarPotential_total__mesh, SP_TOTALFLAGS),
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_TOTAL_METHOD, "Float (Mesh, Selection)", ScalarPotential_total__mesh_sel, SP_TOTALFLAGS),
-
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_GRADIENT_METHOD, "Matrix (Mesh)", ScalarPotential_gradient__mesh, SP_MAPFLAGS),
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_GRADIENT_METHOD, "Matrix (Mesh, Selection)", ScalarPotential_gradient__mesh_sel, SP_MAPFLAGS),
-
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Mesh)", ScalarPotential_hessian__mesh, SP_MAPFLAGS),
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Mesh, Selection)", ScalarPotential_hessian__mesh_sel, SP_MAPFLAGS)
+FUNCTIONAL_MD_INTEGRAND_METHODS_FLAGS(ScalarPotential, SP_MAPFLAGS, SP_ELEMFLAGS),
+FUNCTIONAL_MD_TOTAL_METHODS_FLAGS(ScalarPotential, SP_TOTALFLAGS),
+FUNCTIONAL_MD_GRADIENT_METHODS_FLAGS(ScalarPotential, SP_MAPFLAGS),
+FUNCTIONAL_MD_HESSIAN_METHODS_FLAGS(ScalarPotential, SP_MAPFLAGS)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -2102,88 +2002,46 @@ bool linearelasticity_prepareref(objectinstance *self, linearelasticityref *ref)
     return success;
 }
 
-value LinearElasticity_init(vm *v, int nargs, value *args) {
-    objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
-    /* First argument is the reference mesh */
-    if (nargs>0) {
-        if (MORPHO_ISMESH(MORPHO_GETARG(args, 0))) {
-            objectinstance_setproperty(self, linearelasticity_referenceproperty, MORPHO_GETARG(args, 0));
-            objectmesh *mesh = MORPHO_GETMESH(MORPHO_GETARG(args, 0));
+static void _linearelasticity_initmesh(objectinstance *self, value meshval) {
+    objectinstance_setproperty(self, linearelasticity_referenceproperty, meshval);
+    functional_setgrade(self, mesh_maxgrade(MORPHO_GETMESH(meshval)));
+    objectinstance_setproperty(self, linearelasticity_poissonproperty, MORPHO_FLOAT(0.3));
+}
 
-            objectinstance_setproperty(self, functional_gradeproperty, MORPHO_INTEGER(mesh_maxgrade(mesh)));
-            objectinstance_setproperty(self, linearelasticity_poissonproperty, MORPHO_FLOAT(0.3));
-        } else morpho_runtimeerror(v, FUNCTIONAL_ARGS);
-    } else morpho_runtimeerror(v, FUNCTIONAL_ARGS);
-
-    /* Second (optional) argument is the grade to act on */
-    if (nargs>1) {
-        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 1))) {
-            objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), functional_gradeproperty, MORPHO_GETARG(args, 1));
-        }
-    }
-
+value LinearElasticity_init__mesh(vm *v, int nargs, value *args) {
+    _linearelasticity_initmesh(MORPHO_GETINSTANCE(MORPHO_SELF(args)), MORPHO_GETARG(args, 0));
     return MORPHO_NIL;
 }
 
-/** Integrand function */
-value LinearElasticity_integrand(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    linearelasticityref ref;
-    value out=MORPHO_NIL;
-
-    if (functional_validateargs(v, nargs, args, &info)) {
-        if (linearelasticity_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), &ref)) {
-            info.g = ref.grade;
-            info.integrand = linearelasticity_integrand;
-            info.ref = &ref;
-            functional_runmap(v, &info, functional_mapintegrand, &out);
-        } else morpho_runtimeerror(v, FUNCTIONAL_ARGS);
-    }
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-    return out;
+value LinearElasticity_init__mesh_int(vm *v, int nargs, value *args) {
+    objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+    _linearelasticity_initmesh(self, MORPHO_GETARG(args, 0));
+    functional_setgrade(self, MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1)));
+    return MORPHO_NIL;
 }
 
-/** Total function */
-value LinearElasticity_total(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    linearelasticityref ref;
-    value out=MORPHO_NIL;
-
-    if (functional_validateargs(v, nargs, args, &info)) {
-        if (linearelasticity_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), &ref)) {
-            info.g = ref.grade;
-            info.integrand = linearelasticity_integrand;
-            info.ref = &ref;
-            functional_runmap(v, &info, functional_sumintegrand, &out);
-        } else morpho_runtimeerror(v, FUNCTIONAL_ARGS);
+static bool _LinearElasticity_bindref(vm *v, objectinstance *self, functional_mapinfo *info, linearelasticityref *ref) {
+    if (!linearelasticity_prepareref(self, ref)) {
+        morpho_runtimeerror(v, FUNCTIONAL_ARGS);
+        return false;
     }
-    return out;
+    if (info->g < 0) info->g = ref->grade;
+    info->ref = ref;
+    info->integrand = linearelasticity_integrand;
+    return true;
 }
 
-/** Integrand function */
-value LinearElasticity_gradient(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    linearelasticityref ref;
-    value out=MORPHO_NIL;
-
-    if (functional_validateargs(v, nargs, args, &info)) {
-        if (linearelasticity_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), &ref)) {
-            info.g = ref.grade;
-            info.integrand = linearelasticity_integrand;
-            info.ref = &ref;
-            info.sym = SYMMETRY_ADD;
-            functional_runmap(v, &info, functional_mapnumericalgradient, &out);
-        } else morpho_runtimeerror(v, FUNCTIONAL_ARGS);
-    }
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-    return out;
-}
+FUNCTIONAL_MD_REF_INTEGRAND(LinearElasticity, linearelasticityref, ref.grade)
+FUNCTIONAL_MD_REF_TOTAL(LinearElasticity, linearelasticityref, ref.grade)
+FUNCTIONAL_MD_REF_NUMERICALGRADIENT(LinearElasticity, linearelasticityref, ref.grade, NULL, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(LinearElasticity)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LinearElasticity_init, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LinearElasticity_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LinearElasticity_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LinearElasticity_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(Mesh)", LinearElasticity_init__mesh, MORPHO_FN_MUTATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(Mesh, Int)", LinearElasticity_init__mesh_int, MORPHO_FN_MUTATES),
+
+FUNCTIONAL_MD_INTEGRAND_METHODS(LinearElasticity),
+FUNCTIONAL_MD_TOTAL_METHODS(LinearElasticity),
+FUNCTIONAL_MD_GRADIENT_METHODS(LinearElasticity)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -2332,70 +2190,48 @@ bool hydrogel_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     return true;
 }
 
-/** Evaluate a gradient */
-value Hydrogel_gradient(vm *v, int nargs, value *args) {
-    functional_mapinfo info;
-    value out=MORPHO_NIL;
-    hydrogelref ref;
-    if (functional_validateargs(v, nargs, args, &info)) {
-        if (hydrogel_prepareref(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, -1, info.sel, &ref)) {
-            info.g = ref.grade;
-            info.grad = hydrogel_gradient;
-            info.ref = &ref;
-            info.sym = SYMMETRY_ADD;
-            functional_runmap(v, &info, functional_mapgradient, &out);
-        } else morpho_runtimeerror(v, FUNCTIONAL_ARGS);
-    }
-
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-
-    return out;
-}
-
-
-value Hydrogel_init(vm *v, int nargs, value *args) {
+value Hydrogel_init__mesh(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
-    int nfixed;
+    objectmesh *mesh = MORPHO_GETMESH(MORPHO_GETARG(args, 0));
     value grade=MORPHO_INTEGER(-1);
     value a=MORPHO_NIL, b=MORPHO_NIL, c=MORPHO_NIL, d=MORPHO_NIL, phiref=MORPHO_NIL, phi0=MORPHO_NIL;
 
-    if (builtin_options(v, nargs, args, &nfixed, 7,
-                        hydrogel_aproperty, &a,
-                        hydrogel_bproperty, &b,
-                        hydrogel_cproperty, &c,
-                        hydrogel_dproperty, &d,
-                        hydrogel_phirefproperty, &phiref,
-                        hydrogel_phi0property, &phi0,
-                        functional_gradeproperty, &grade)) {
+    builtin_options(v, nargs, args, NULL, 7,
+                    hydrogel_aproperty, &a,
+                    hydrogel_bproperty, &b,
+                    hydrogel_cproperty, &c,
+                    hydrogel_dproperty, &d,
+                    hydrogel_phirefproperty, &phiref,
+                    hydrogel_phi0property, &phi0,
+                    functional_gradeproperty, &grade);
 
-        objectinstance_setproperty(self, hydrogel_aproperty, a);
-        objectinstance_setproperty(self, hydrogel_bproperty, b);
-        objectinstance_setproperty(self, hydrogel_cproperty, c);
-        objectinstance_setproperty(self, hydrogel_dproperty, d);
-        objectinstance_setproperty(self, hydrogel_phirefproperty, phiref);
-        objectinstance_setproperty(self, hydrogel_phi0property, phi0);
-        objectinstance_setproperty(self, functional_gradeproperty, grade);
+    objectinstance_setproperty(self, hydrogel_aproperty, a);
+    objectinstance_setproperty(self, hydrogel_bproperty, b);
+    objectinstance_setproperty(self, hydrogel_cproperty, c);
+    objectinstance_setproperty(self, hydrogel_dproperty, d);
+    objectinstance_setproperty(self, hydrogel_phirefproperty, phiref);
+    objectinstance_setproperty(self, hydrogel_phi0property, phi0);
+    objectinstance_setproperty(self, linearelasticity_referenceproperty, MORPHO_GETARG(args, 0));
 
-        if (nfixed==1 && MORPHO_ISMESH(MORPHO_GETARG(args, 0))) {
-            objectinstance_setproperty(self, linearelasticity_referenceproperty, MORPHO_GETARG(args, 0));
-            if (MORPHO_ISINTEGER(grade) && MORPHO_GETINTEGERVALUE(grade)<0) {
-                objectinstance_setproperty(self, functional_gradeproperty, MORPHO_INTEGER(mesh_maxgrade(MORPHO_GETMESH(MORPHO_GETARG(args, 0)))));
-            }
-        } else morpho_runtimeerror(v, FUNCTIONAL_ARGS);
-    } else morpho_runtimeerror(v, FUNCTIONAL_ARGS);
-
+    if (MORPHO_ISINTEGER(grade) && MORPHO_GETINTEGERVALUE(grade)>=0) {
+        functional_setgrade(self, MORPHO_GETINTEGERVALUE(grade));
+    } else {
+        functional_setgrade(self, mesh_maxgrade(mesh));
+    }
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD(Hydrogel, integrand, (ref.grade), hydrogelref, hydrogel_prepareref, functional_mapintegrand, hydrogel_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-
-FUNCTIONAL_METHOD(Hydrogel, total, (ref.grade), hydrogelref, hydrogel_prepareref, functional_sumintegrand, hydrogel_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
+FUNCTIONAL_MD_REF_BIND(Hydrogel, hydrogelref, hydrogel_prepareref, hydrogel_integrand, FUNCTIONAL_ARGS)
+FUNCTIONAL_MD_REF_INTEGRAND(Hydrogel, hydrogelref, ref.grade)
+FUNCTIONAL_MD_REF_TOTAL(Hydrogel, hydrogelref, ref.grade)
+FUNCTIONAL_MD_REF_GRADIENT(Hydrogel, hydrogelref, ref.grade, hydrogel_gradient, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(Hydrogel)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Hydrogel_init, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Hydrogel_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Hydrogel_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Hydrogel_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(Mesh)", Hydrogel_init__mesh, MORPHO_FN_MUTATES|MORPHO_FN_OPTARGS),
+
+FUNCTIONAL_MD_INTEGRAND_METHODS(Hydrogel),
+FUNCTIONAL_MD_TOTAL_METHODS(Hydrogel),
+FUNCTIONAL_MD_GRADIENT_METHODS(Hydrogel)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -2534,32 +2370,31 @@ bool equielement_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *v
 
 value EquiElement_init(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
-    int nfixed;
     value grade=MORPHO_INTEGER(-1);
     value weight=MORPHO_NIL;
 
-    if (builtin_options(v, nargs, args, &nfixed, 2, equielement_weightproperty, &weight, functional_gradeproperty, &grade)) {
-        objectinstance_setproperty(self, equielement_weightproperty, weight);
-        objectinstance_setproperty(self, functional_gradeproperty, grade);
-    } else morpho_runtimeerror(v, FUNCTIONAL_ARGS);
+    builtin_options(v, nargs, args, NULL, 2,
+                    equielement_weightproperty, &weight,
+                    functional_gradeproperty, &grade);
 
+    objectinstance_setproperty(self, equielement_weightproperty, weight);
+    objectinstance_setproperty(self, functional_gradeproperty, grade);
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD(EquiElement, integrand, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapintegrand, equielement_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-
-FUNCTIONAL_METHOD(EquiElement, total, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_sumintegrand, equielement_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-
-FUNCTIONAL_METHOD(EquiElement, gradient, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapnumericalgradient, equielement_integrand, equielement_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
-
-FUNCTIONAL_METHOD(EquiElement, hessian, MESH_GRADE_VERTEX, equielementref, equielement_prepareref, functional_mapnumericalhessian, equielement_integrand, equielement_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
+FUNCTIONAL_MD_REF_BIND_FORCEGRADE(EquiElement, equielementref, equielement_prepareref, equielement_integrand, FUNCTIONAL_ARGS, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_INTEGRAND(EquiElement, equielementref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_TOTAL(EquiElement, equielementref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_NUMERICALGRADIENT(EquiElement, equielementref, MESH_GRADE_VERTEX, equielement_dependencies, SYMMETRY_ADD)
+FUNCTIONAL_MD_REF_HESSIAN(EquiElement, equielementref, MESH_GRADE_VERTEX, equielement_dependencies, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(EquiElement)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, EquiElement_init, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, EquiElement_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, EquiElement_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, EquiElement_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, EquiElement_hessian, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "()", EquiElement_init, MORPHO_FN_MUTATES|MORPHO_FN_OPTARGS),
+
+FUNCTIONAL_MD_INTEGRAND_METHODS(EquiElement),
+FUNCTIONAL_MD_TOTAL_METHODS(EquiElement),
+FUNCTIONAL_MD_GRADIENT_METHODS(EquiElement),
+FUNCTIONAL_MD_HESSIAN_METHODS(EquiElement)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

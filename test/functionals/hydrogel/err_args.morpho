@@ -1,2 +1,2 @@
 print Hydrogel()
-// expect error 'FnctlArgs'
+// expect error 'MltplDsptchFld'

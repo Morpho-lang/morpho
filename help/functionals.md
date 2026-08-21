@@ -12,12 +12,12 @@ Many functionals are built in. Additional functionals are available by importing
 
 Functionals provide a number of standard methods:
 
-* `total`(mesh) - returns the value of the integral with a provided mesh, selection and fields
-* `integrand`(mesh) - returns the contribution to the integral from each element
-* `gradient`(mesh) - returns the gradient of the functional with respect to vertex motions.
-* `fieldgradient`(field) - returns the gradient of the functional with respect to components of the field
-
-Each of these may be called with a mesh and a selection. `fieldgradient` is Field-first: `fieldgradient(f)`, `fieldgradient(f, mesh)`, and optionally a selection.
+* `total`(mesh) — value of the integral; also `total`(mesh, selection)
+* `integrand`(mesh) — contribution from each element as a `Matrix`; also `integrand`(mesh, selection)
+* `integrand`(mesh, id) — contribution from a single element as a `Float`; `integrand`(mesh, grade, id) sets the grade explicitly
+* `gradient`(mesh) — derivative with respect to vertex motion; also `gradient`(mesh, selection)
+* `hessian`(mesh) — sparse second derivative with respect to vertex motion, where provided; also `hessian`(mesh, selection)
+* `fieldgradient`(field) — derivative with respect to field values, where provided
 
 [showsubtopics]: # (subtopics)
 
@@ -27,8 +27,7 @@ Each of these may be called with a mesh and a selection. `fieldgradient` is Fiel
 The `total` method returns the value of a functional:
 
     print fnl.total(mesh)
-
-You can also supply optional fields and a selection as appropriate for the functional.
+    print fnl.total(mesh, selection)
 
 ## Integrand
 [tagintegrand]: # (integrand)
@@ -36,13 +35,12 @@ You can also supply optional fields and a selection as appropriate for the funct
 The `integrand` method returns the contribution from each element:
 
     print fnl.integrand(mesh)
+    print fnl.integrand(mesh, selection)
 
-## IntegrandForElement
-[tagintegrandforelement]: # (integrandforelement)
+Evaluate a single element with the functional's default grade, or choose an explicit grade:
 
-Some functionals also provide an `integrandForElement` method that evaluates the integrand for a single element:
-
-    print fnl.integrandForElement(mesh, element)
+    print fnl.integrand(mesh, id)
+    print fnl.integrand(mesh, grade, id)
 
 ## Gradient
 [taggradient]: # (gradient)
@@ -50,6 +48,7 @@ Some functionals also provide an `integrandForElement` method that evaluates the
 The `gradient` method returns the derivative of a functional with respect to vertex motion:
 
     print fnl.gradient(mesh)
+    print fnl.gradient(mesh, selection)
 
 ## Fieldgradient
 [tagfieldgradient]: # (fieldgradient)
@@ -57,6 +56,9 @@ The `gradient` method returns the derivative of a functional with respect to ver
 Functionals that depend on a field may provide a `fieldgradient` method that returns the derivative with respect to field values:
 
     print fnl.fieldgradient(f)
+    print fnl.fieldgradient(f, mesh)
+
+If the functional stores more than one field (for example `NematicElectric` or a `LineIntegral` with several fields), pass the field you want the derivative with respect to.
 
 ## Hessian
 [taghessian]: # (hessian)
@@ -64,6 +66,7 @@ Functionals that depend on a field may provide a `fieldgradient` method that ret
 Some functionals provide a `hessian` method:
 
     print fnl.hessian(mesh)
+    print fnl.hessian(mesh, selection)
 
 For example, a typical workflow for a field-dependent functional is
 
@@ -258,9 +261,9 @@ Here is an example for a 2D disk mesh.
     var interior = whole.difference(bnd)
 
     var gauss = GaussCurvature()
-    print gauss.total(mesh, selection=interior) // expect: 0
+    print gauss.total(mesh, interior) // expect: 0
     gauss.geodesic = true
-    print gauss.total(mesh, selection=bnd) // expect: 2*Pi
+    print gauss.total(mesh, bnd) // expect: 2*Pi
 
 See the `Functionals` entry for general information about functionals.
 
@@ -276,6 +279,7 @@ Initialize with the required field:
 Compute the integral of GradSq(phi):
 
     print le.total(mesh)
+    print le.fieldgradient(phi)
 
 See the `Functionals` entry for general information about functionals.
 
@@ -302,7 +306,13 @@ See the `Functionals` entry for general information about functionals.
 The `NematicElectric` functional measures the integral of a nematic and electric coupling term integral((n.E)^2) where the electric field E may be computed from a scalar potential or supplied as a vector.
 
 Initialize with a director field `nn` and a scalar potential `phi`:
+
     var lne = NematicElectric(nn, phi)
+
+Differentiate with respect to either stored field:
+
+    print lne.fieldgradient(nn)
+    print lne.fieldgradient(phi)
 
 See the `Functionals` entry for general information about functionals.
 
@@ -333,6 +343,8 @@ You can also integrate functions that involve fields:
 where `n` is a vector field. The local interpolated value of this field is passed to your integrand function. More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `LineIntegral`.
 
 The gradient of a field is available within an integrand function using the `gradient()` function.
+
+The field derivative of the integral is `fieldgradient(f)` for a field `f` supplied to the constructor.
 
 See the `Functionals` entry for general information about functionals.
 
@@ -419,8 +431,10 @@ The integrand receives the interface position `x` followed by the interpolated f
 
 Within a `Jump` integrand, the special function `jumpdn(field)` returns the jump in the normal derivative of a supplied field across the current interface.
 
+The field derivative is `fieldgradient(phi)` for a field supplied to the constructor.
+
 `Jump` also accepts the same optional integration settings as the integral functionals. In particular, the `method` dictionary may specify a `strategy` of `"centroid"` or `"quadrature"`:
 
-    var j = Jump(fn (x, phi) jumpdn(phi)^2, phi, method: {"strategy": "quadrature"})
+    var j = Jump(fn (x, phi) jumpdn(phi)^2, phi, method={ "strategy": "quadrature" })
 
 See the `Functionals` entry for general information about functionals.

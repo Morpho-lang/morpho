@@ -1715,12 +1715,10 @@ A functional evaluates a Field on one grade of the mesh (vertices, lines, faces 
 ## FnctlArgs
 [tagfnctlargs]: # (fnctlargs)
 
-This error occurs when invalid arguments are passed to a functional. Methods such as `integrand`, `total` and `gradient` require a mesh:
+This error occurs when a functional constructor or prepare step is given invalid arguments (a missing Field, reference mesh, or option). 
 
     var func = Length()
-    func.integrand() // Causes 'FnctlArgs'
-
-Constructors raise the same error when a required Field, mesh, or option is missing.
+    func.integrand() // Causes 'MltplDsptchFld'
 
 ## VolEnclZero
 [tagvolenclzero]: # (volenclzero)

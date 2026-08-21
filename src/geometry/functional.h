@@ -508,9 +508,10 @@ MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Mesh, Selection)", c
     FUNCTIONAL_MD_REF__MESH_SEL(cls, method, fn)
 
 /* Defines _Cls_bindref: call prepare; on failure raise err; otherwise store
- * ref and integrand on mapinfo. FORCEGRADE also writes info->g (and passes
- * that grade to prepare). BIND uses whatever grade is already on mapinfo. */
-#define FUNCTIONAL_MD_REF_BIND_FORCEGRADE(cls, reftype, prepare, integrandfn, err, grade) \
+ * ref, integrand, and optional startfn on mapinfo. FORCEGRADE also writes
+ * info->g (and passes that grade to prepare). BIND uses whatever grade is
+ * already on mapinfo. START variants set info->start (FE-space prep, etc.). */
+#define FUNCTIONAL_MD_REF_BIND_FORCEGRADE_START(cls, reftype, prepare, integrandfn, err, grade, startfn) \
 static bool _##cls##_bindref(vm *v, objectinstance *self, functional_mapinfo *info, reftype *ref) { \
     if (!prepare(self, info->mesh, grade, info->sel, ref)) { \
         morpho_runtimeerror(v, err); \
@@ -519,8 +520,15 @@ static bool _##cls##_bindref(vm *v, objectinstance *self, functional_mapinfo *in
     info->g = grade; \
     info->ref = ref; \
     info->integrand = integrandfn; \
+    info->start = (startfn); \
     return true; \
 }
+
+#define FUNCTIONAL_MD_REF_BIND_FORCEGRADE(cls, reftype, prepare, integrandfn, err, grade) \
+    FUNCTIONAL_MD_REF_BIND_FORCEGRADE_START(cls, reftype, prepare, integrandfn, err, grade, NULL)
+
+#define FUNCTIONAL_MD_REF_BIND_START(cls, reftype, prepare, integrandfn, err, startfn) \
+    FUNCTIONAL_MD_REF_BIND_FORCEGRADE_START(cls, reftype, prepare, integrandfn, err, info->g, startfn)
 
 #define FUNCTIONAL_MD_REF_BIND(cls, reftype, prepare, integrandfn, err) \
     FUNCTIONAL_MD_REF_BIND_FORCEGRADE(cls, reftype, prepare, integrandfn, err, info->g)

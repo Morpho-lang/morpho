@@ -1,2 +1,2 @@
-print GradSq()
+print NormSq()
 // expect error 'MltplDsptchFld'

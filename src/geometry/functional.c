@@ -2974,6 +2974,10 @@ static bool fieldref_startfn(vm *v, functional_mapinfo *info) {
  * GradSq
  * ---------------------------------------------- */
 
+/* TODO: Support other FEspaces. Today this is vertex P1 (CG1), same kernel as
+ * Nematic / NematicElectric; NormSq is vertex |q|^2. High-order |grad q|^2 is
+ * Integral + grad(). */
+
 bool gradsq_computeperpendicular(unsigned int n, double *s1, double *s2, double *out) {
     double s1s2, s2s2, sout;
 
@@ -3136,33 +3140,27 @@ bool gradsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
     return true;
 }
 
-/** Initialize a GradSq object */
-value GradSq_init(vm *v, int nargs, value *args) {
-    objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+static void _gradsq_initfield(objectinstance *self, value fieldval) {
+    objectinstance_setproperty(self, functional_fieldproperty, fieldval);
+    functional_setgrade(self, mesh_maxgrade(MORPHO_GETFIELD(fieldval)->mesh));
+}
 
-    if (nargs>0 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
-        objectinstance_setproperty(self, functional_fieldproperty, MORPHO_GETARG(args, 0));
-        objectinstance_setproperty(self, functional_gradeproperty, MORPHO_INTEGER(mesh_maxgrade(MORPHO_GETFIELD(MORPHO_GETARG(args, 0))->mesh)));
-    } else {
-        morpho_runtimeerror(v, FUNCTIONAL_ARGS);
-        return MORPHO_FALSE;
-    }
-
-    /* Second (optional) argument is the grade to act on */
-    if (nargs>1) {
-        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 1))) {
-            objectinstance_setproperty(self, functional_gradeproperty, MORPHO_GETARG(args, 1));
-        }
-    }
-
+value GradSq_init__field(vm *v, int nargs, value *args) {
+    _gradsq_initfield(MORPHO_GETINSTANCE(MORPHO_SELF(args)), MORPHO_GETARG(args, 0));
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD_START(GradSq, integrand, (ref.grade), fieldref, gradsq_prepareref, fieldref_startfn, NULL, functional_mapintegrand, gradsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
+value GradSq_init__field_int(vm *v, int nargs, value *args) {
+    objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+    _gradsq_initfield(self, MORPHO_GETARG(args, 0));
+    functional_setgrade(self, MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1)));
+    return MORPHO_NIL;
+}
 
-FUNCTIONAL_METHOD_START(GradSq, total, (ref.grade), fieldref, gradsq_prepareref, fieldref_startfn, NULL, functional_sumintegrand, gradsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
-
-FUNCTIONAL_METHOD_START(GradSq, gradient, (ref.grade), fieldref, gradsq_prepareref, fieldref_startfn, NULL, functional_mapnumericalgradient, gradsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_ADD);
+FUNCTIONAL_MD_REF_BIND_START(GradSq, fieldref, gradsq_prepareref, gradsq_integrand, FUNCTIONAL_ARGS, fieldref_startfn)
+FUNCTIONAL_MD_REF_INTEGRAND(GradSq, fieldref, ref.grade)
+FUNCTIONAL_MD_REF_TOTAL(GradSq, fieldref, ref.grade)
+FUNCTIONAL_MD_REF_NUMERICALGRADIENT(GradSq, fieldref, ref.grade, NULL, SYMMETRY_ADD)
 
 value GradSq_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
@@ -3185,11 +3183,13 @@ value GradSq_fieldgradient(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(GradSq)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, GradSq_init, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, GradSq_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, GradSq_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, GradSq_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, GradSq_fieldgradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(Field)", GradSq_init__field, MORPHO_FN_MUTATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(Field, Int)", GradSq_init__field_int, MORPHO_FN_MUTATES),
+
+FUNCTIONAL_MD_INTEGRAND_METHODS(GradSq),
+FUNCTIONAL_MD_TOTAL_METHODS(GradSq),
+FUNCTIONAL_MD_GRADIENT_METHODS(GradSq),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, GradSq_fieldgradient, MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -3620,17 +3620,17 @@ bool normsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
     return false;
 }
 
-FUNCTIONAL_METHOD_START(NormSq, integrand, MESH_GRADE_VERTEX, fieldref, gradsq_prepareref, fieldref_startfn, NULL, functional_mapintegrand, normsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
-
-FUNCTIONAL_METHOD_START(NormSq, total, MESH_GRADE_VERTEX, fieldref, gradsq_prepareref, fieldref_startfn, NULL, functional_sumintegrand, normsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
-
-FUNCTIONAL_METHOD_START(NormSq, gradient, MESH_GRADE_VERTEX, fieldref, gradsq_prepareref, fieldref_startfn, NULL, functional_mapnumericalgradient, normsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
-
-value NormSq_init(vm *v, int nargs, value *args) {
-    GradSq_init(v, nargs, args);
-    objectinstance_setproperty(MORPHO_GETINSTANCE(MORPHO_SELF(args)), functional_gradeproperty, MORPHO_INTEGER(MESH_GRADE_VERTEX));
+value NormSq_init__field(vm *v, int nargs, value *args) {
+    objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+    _gradsq_initfield(self, MORPHO_GETARG(args, 0));
+    functional_setgrade(self, MESH_GRADE_VERTEX);
     return MORPHO_NIL;
 }
+
+FUNCTIONAL_MD_REF_BIND_FORCEGRADE_START(NormSq, fieldref, gradsq_prepareref, normsq_integrand, FUNCTIONAL_ARGS, MESH_GRADE_VERTEX, fieldref_startfn)
+FUNCTIONAL_MD_REF_INTEGRAND(NormSq, fieldref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_TOTAL(NormSq, fieldref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_NUMERICALGRADIENT(NormSq, fieldref, MESH_GRADE_VERTEX, NULL, SYMMETRY_NONE)
 
 value NormSq_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
@@ -3653,11 +3653,12 @@ value NormSq_fieldgradient(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(NormSq)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, NormSq_init, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, NormSq_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, NormSq_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, NormSq_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, NormSq_fieldgradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(Field)", NormSq_init__field, MORPHO_FN_MUTATES),
+
+FUNCTIONAL_MD_INTEGRAND_METHODS(NormSq),
+FUNCTIONAL_MD_TOTAL_METHODS(NormSq),
+FUNCTIONAL_MD_GRADIENT_METHODS(NormSq),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, NormSq_fieldgradient, MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

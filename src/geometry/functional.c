@@ -2518,19 +2518,18 @@ linecurvsq_integrand_cleanup:
 }
 
 FUNCTIONAL_INIT(LineCurvatureSq, MESH_GRADE_VERTEX)
-FUNCTIONAL_METHOD(LineCurvatureSq, integrand, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapintegrand, linecurvsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-FUNCTIONAL_METHOD(LineCurvatureSq, integrandForElement, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapintegrandforelement, linecurvsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-FUNCTIONAL_METHOD(LineCurvatureSq, total, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_sumintegrand, linecurvsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-FUNCTIONAL_METHOD(LineCurvatureSq, gradient, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapnumericalgradient, linecurvsq_integrand, linecurvsq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
-FUNCTIONAL_METHOD(LineCurvatureSq, hessian, MESH_GRADE_VERTEX, curvatureref, curvature_prepareref, functional_mapnumericalhessian, linecurvsq_integrand, linecurvsq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
+FUNCTIONAL_MD_REF_BIND_FORCEGRADE(LineCurvatureSq, curvatureref, curvature_prepareref, linecurvsq_integrand, FUNCTIONAL_ARGS, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_INTEGRAND(LineCurvatureSq, curvatureref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_TOTAL(LineCurvatureSq, curvatureref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_NUMERICALGRADIENT(LineCurvatureSq, curvatureref, MESH_GRADE_VERTEX, linecurvsq_dependencies, SYMMETRY_ADD)
+FUNCTIONAL_MD_REF_HESSIAN(LineCurvatureSq, curvatureref, MESH_GRADE_VERTEX, linecurvsq_dependencies, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(LineCurvatureSq)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineCurvatureSq_init, MORPHO_FN_MUTATES),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LineCurvatureSq_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_INTEGRANDFORELEMENT_METHOD, LineCurvatureSq_integrandForElement, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineCurvatureSq_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineCurvatureSq_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, LineCurvatureSq_hessian, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "()", LineCurvatureSq_init, MORPHO_FN_MUTATES),
+FUNCTIONAL_MD_INTEGRAND_METHODS(LineCurvatureSq),
+FUNCTIONAL_MD_TOTAL_METHODS(LineCurvatureSq),
+FUNCTIONAL_MD_GRADIENT_METHODS(LineCurvatureSq),
+FUNCTIONAL_MD_HESSIAN_METHODS(LineCurvatureSq)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -2661,17 +2660,18 @@ linecurvsq_torsion_cleanup:
 }
 
 FUNCTIONAL_INIT(LineTorsionSq, MESH_GRADE_LINE)
-FUNCTIONAL_METHOD(LineTorsionSq, integrand, MESH_GRADE_LINE, curvatureref, curvature_prepareref, functional_mapintegrand, linetorsionsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-FUNCTIONAL_METHOD(LineTorsionSq, total, MESH_GRADE_LINE, curvatureref, curvature_prepareref, functional_sumintegrand, linetorsionsq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-FUNCTIONAL_METHOD(LineTorsionSq, gradient, MESH_GRADE_LINE, curvatureref, curvature_prepareref, functional_mapnumericalgradient, linetorsionsq_integrand, linetorsionsq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
-FUNCTIONAL_METHOD(LineTorsionSq, hessian, MESH_GRADE_LINE, curvatureref, curvature_prepareref, functional_mapnumericalhessian, linetorsionsq_integrand, linetorsionsq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
+FUNCTIONAL_MD_REF_BIND_FORCEGRADE(LineTorsionSq, curvatureref, curvature_prepareref, linetorsionsq_integrand, FUNCTIONAL_ARGS, MESH_GRADE_LINE)
+FUNCTIONAL_MD_REF_INTEGRAND(LineTorsionSq, curvatureref, MESH_GRADE_LINE)
+FUNCTIONAL_MD_REF_TOTAL(LineTorsionSq, curvatureref, MESH_GRADE_LINE)
+FUNCTIONAL_MD_REF_NUMERICALGRADIENT(LineTorsionSq, curvatureref, MESH_GRADE_LINE, linetorsionsq_dependencies, SYMMETRY_ADD)
+FUNCTIONAL_MD_REF_HESSIAN(LineTorsionSq, curvatureref, MESH_GRADE_LINE, linetorsionsq_dependencies, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(LineTorsionSq)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, LineTorsionSq_init, MORPHO_FN_MUTATES),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, LineTorsionSq_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, LineTorsionSq_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, LineTorsionSq_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_HESSIAN_METHOD, LineTorsionSq_hessian, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "()", LineTorsionSq_init, MORPHO_FN_MUTATES),
+FUNCTIONAL_MD_INTEGRAND_METHODS(LineTorsionSq),
+FUNCTIONAL_MD_TOTAL_METHODS(LineTorsionSq),
+FUNCTIONAL_MD_GRADIENT_METHODS(LineTorsionSq),
+FUNCTIONAL_MD_HESSIAN_METHODS(LineTorsionSq)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -2824,15 +2824,16 @@ meancurvsq_cleanup:
 }
 
 FUNCTIONAL_INIT(MeanCurvatureSq, MESH_GRADE_VERTEX)
-FUNCTIONAL_METHOD(MeanCurvatureSq, integrand, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_mapintegrand, meancurvaturesq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-FUNCTIONAL_METHOD(MeanCurvatureSq, total, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_sumintegrand, meancurvaturesq_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-FUNCTIONAL_METHOD(MeanCurvatureSq, gradient, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_mapnumericalgradient, meancurvaturesq_integrand, meancurvaturesq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
+FUNCTIONAL_MD_REF_BIND_FORCEGRADE(MeanCurvatureSq, areacurvatureref, areacurvature_prepareref, meancurvaturesq_integrand, FUNCTIONAL_ARGS, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_INTEGRAND(MeanCurvatureSq, areacurvatureref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_TOTAL(MeanCurvatureSq, areacurvatureref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_NUMERICALGRADIENT(MeanCurvatureSq, areacurvatureref, MESH_GRADE_VERTEX, meancurvaturesq_dependencies, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(MeanCurvatureSq)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, MeanCurvatureSq_init, MORPHO_FN_MUTATES),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, MeanCurvatureSq_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, MeanCurvatureSq_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, MeanCurvatureSq_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "()", MeanCurvatureSq_init, MORPHO_FN_MUTATES),
+FUNCTIONAL_MD_INTEGRAND_METHODS(MeanCurvatureSq),
+FUNCTIONAL_MD_TOTAL_METHODS(MeanCurvatureSq),
+FUNCTIONAL_MD_GRADIENT_METHODS(MeanCurvatureSq)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -2895,15 +2896,16 @@ gausscurv_cleanup:
 }
 
 FUNCTIONAL_INIT(GaussCurvature, MESH_GRADE_VERTEX)
-FUNCTIONAL_METHOD(GaussCurvature, integrand, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_mapintegrand, gausscurvature_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-FUNCTIONAL_METHOD(GaussCurvature, total, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_sumintegrand, gausscurvature_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE)
-FUNCTIONAL_METHOD(GaussCurvature, gradient, MESH_GRADE_VERTEX, areacurvatureref, areacurvature_prepareref, functional_mapnumericalgradient, gausscurvature_integrand, meancurvaturesq_dependencies, FUNCTIONAL_ARGS, SYMMETRY_ADD)
+FUNCTIONAL_MD_REF_BIND_FORCEGRADE(GaussCurvature, areacurvatureref, areacurvature_prepareref, gausscurvature_integrand, FUNCTIONAL_ARGS, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_INTEGRAND(GaussCurvature, areacurvatureref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_TOTAL(GaussCurvature, areacurvatureref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_NUMERICALGRADIENT(GaussCurvature, areacurvatureref, MESH_GRADE_VERTEX, meancurvaturesq_dependencies, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(GaussCurvature)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, GaussCurvature_init, MORPHO_FN_MUTATES),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, GaussCurvature_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, GaussCurvature_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, GaussCurvature_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "()", GaussCurvature_init, MORPHO_FN_MUTATES),
+FUNCTIONAL_MD_INTEGRAND_METHODS(GaussCurvature),
+FUNCTIONAL_MD_TOTAL_METHODS(GaussCurvature),
+FUNCTIONAL_MD_GRADIENT_METHODS(GaussCurvature)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

@@ -213,6 +213,7 @@ bool fespace_getnodecoords(fespace *disc, int node, double *lambda) {
 
 /** Constructs a layout matrix that maps element ids (columns) to degree of freedom indices in a field */
 bool fespace_layout(objectfield *field, fespace *disc, objectsparse **out) {
+    *out = NULL;
     objectsparse *conn = mesh_getconnectivityelement(field->mesh, 0, disc->grade);
     if (!conn) conn = mesh_addconnectivityelement(field->mesh, 0, disc->grade);
     elementid nel=mesh_nelements(conn);
@@ -275,33 +276,29 @@ void fespace_hessian(fespace *disc, double *lambda, objectmatrix *hess) {
 }
 
 /* **********************************************************************
- * FunctionSpace class
+ * FiniteElementSpace class
  * ********************************************************************** */
 
 /** Constructs a fespace object */
 value fespace_constructor(vm *v, int nargs, value *args) {
     value grd=MORPHO_INTEGER(1);
-    value out=MORPHO_NIL;
     int nfixed;
-    
-    if (!builtin_options(v, nargs, args, &nfixed, 1, field_gradeoption, &grd))
+
+    if (!builtin_options(v, nargs, args, &nfixed, 1, field_gradeoption, &grd) ||
+        nfixed!=1 || !MORPHO_ISINTEGER(grd)) {
         morpho_runtimeerror(v, FNSPC_ARGS);
-    
-    if (nfixed==1 &&
-        MORPHO_ISSTRING(MORPHO_GETARG(args, 0)) &&
-        MORPHO_ISINTEGER(grd)) {
-        char *label = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)); 
-        
-        fespace *d=fespace_find(label, MORPHO_GETINTEGERVALUE(grd));
-        
-        if (d) {
-            objectfespace *obj=objectfespace_new(d);
-            out = morpho_wrapandbind(v, (object *) obj);
-        } else morpho_runtimeerror(v, FNSPC_NOTFOUND, label, MORPHO_GETINTEGERVALUE(grd));
-        
-    } else morpho_runtimeerror(v, FNSPC_ARGS);
-    
-    return out;
+        return MORPHO_NIL;
+    }
+
+    char *label = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
+    fespace *d=fespace_find(label, MORPHO_GETINTEGERVALUE(grd));
+
+    if (!d) {
+        morpho_runtimeerror(v, FNSPC_NOTFOUND, label, MORPHO_GETINTEGERVALUE(grd));
+        return MORPHO_NIL;
+    }
+
+    return morpho_wrapandbind(v, (object *) objectfespace_new(d));
 }
 
 value FiniteElementSpace_count(vm *v, int nargs, value *args) {
@@ -315,76 +312,73 @@ value FiniteElementSpace_grade(vm *v, int nargs, value *args) {
 }
 
 value FiniteElementSpace_layout(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
     objectfespace *slf = MORPHO_GETFESPACE(MORPHO_SELF(args));
-    if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
-        objectfield *field = MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
-        objectsparse *new;
-        
-        if (fespace_layout(field, slf->fespace, &new)) out=morpho_wrapandbind(v, (object *) new);
-    }
-    return out;
+    objectsparse *new = NULL;
+
+    fespace_layout(MORPHO_GETFIELD(MORPHO_GETARG(args, 0)), slf->fespace, &new);
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 value FiniteElementSpace_nodeelementindex(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
     objectfespace *slf = MORPHO_GETFESPACE(MORPHO_SELF(args));
+    int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    grade g;
+    int sid, indx;
 
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        grade g;
-        int sid, indx;
-
-        if (fespace_nodefieldindex(slf->fespace, i, &g, &sid, &indx)) {
-            value entries[3] = { MORPHO_INTEGER(g), MORPHO_INTEGER(sid), MORPHO_INTEGER(indx) };
-            objecttuple *new = object_newtuple(3, entries);
-            out=morpho_wrapandbind(v, (object *) new);
-        }
+    if (!fespace_nodefieldindex(slf->fespace, i, &g, &sid, &indx)) {
+        morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+        return MORPHO_NIL;
     }
 
-    return out;
+    value entries[3] = { MORPHO_INTEGER(g), MORPHO_INTEGER(sid), MORPHO_INTEGER(indx) };
+    return morpho_wrapandbind(v, (object *) object_newtuple(3, entries));
 }
 
 value FiniteElementSpace_nodecoords(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
     objectfespace *slf = MORPHO_GETFESPACE(MORPHO_SELF(args));
     fespace *disc = slf->fespace;
     int nrows = disc->grade+1;
+    objectmatrix *new = matrix_new(nrows, disc->nnodes, true);
 
-    if (nargs==0) {
-        objectmatrix *new = matrix_new(nrows, disc->nnodes, true);
-        if (!new) return MORPHO_NIL;
-
+    if (new) {
         for (int i=0; i<disc->nnodes; i++) {
             double lambda[nrows];
             if (!fespace_getnodecoords(disc, i, lambda)) {
                 object_free((object *) new);
-                return MORPHO_NIL;
+                new = NULL;
+                break;
             }
             matrix_setcolumnptr(new, i, lambda);
         }
-
-        out=morpho_wrapandbind(v, (object *) new);
-    } else if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        double lambda[nrows];
-
-        if (fespace_getnodecoords(disc, i, lambda)) {
-            objectmatrix *new = matrix_new(nrows, 1, true);
-            if (new) matrix_setcolumnptr(new, 0, lambda);
-            out=morpho_wrapandbind(v, (object *) new);
-        }
     }
 
-    return out;
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value FiniteElementSpace_nodecoords__int(vm *v, int nargs, value *args) {
+    objectfespace *slf = MORPHO_GETFESPACE(MORPHO_SELF(args));
+    fespace *disc = slf->fespace;
+    int nrows = disc->grade+1;
+    int i = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    double lambda[nrows];
+
+    if (!fespace_getnodecoords(disc, i, lambda)) {
+        morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+        return MORPHO_NIL;
+    }
+
+    objectmatrix *new = matrix_new(nrows, 1, true);
+    if (new) matrix_setcolumnptr(new, 0, lambda);
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 MORPHO_BEGINCLASS(FiniteElementSpace)
-MORPHO_METHOD(MORPHO_COUNT_METHOD, FiniteElementSpace_count, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FINITEELEMENTSPACE_GRADE_METHOD, FiniteElementSpace_grade, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FINITEELEMENTSPACE_LAYOUT_METHOD, FiniteElementSpace_layout, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FINITEELEMENTSPACE_NODEELEMENTINDEX_METHOD, FiniteElementSpace_nodeelementindex, BUILTIN_FLAGSEMPTY),
-MORPHO_METHOD(FINITEELEMENTSPACE_NODECOORDS_METHOD, FiniteElementSpace_nodecoords, BUILTIN_FLAGSEMPTY)
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", FiniteElementSpace_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(FINITEELEMENTSPACE_GRADE_METHOD, "Int ()", FiniteElementSpace_grade, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(FINITEELEMENTSPACE_LAYOUT_METHOD, "Sparse (Field)", FiniteElementSpace_layout, MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(FINITEELEMENTSPACE_NODEELEMENTINDEX_METHOD, "Tuple (Int)", FiniteElementSpace_nodeelementindex, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(FINITEELEMENTSPACE_NODECOORDS_METHOD, "Matrix ()", FiniteElementSpace_nodecoords, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(FINITEELEMENTSPACE_NODECOORDS_METHOD, "Matrix (Int)", FiniteElementSpace_nodecoords__int, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -393,15 +387,15 @@ MORPHO_ENDCLASS
 
 void fespace_initialize(void) {
     objectfespacetype=object_addtype(&objectfespacedefn);
-    
-    builtin_addfunction(FINITEELEMENTSPACE_CLASSNAME, fespace_constructor, MORPHO_FN_CONSTRUCTOR|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS);
-    
+
+    morpho_addfunction(FINITEELEMENTSPACE_CLASSNAME, "FiniteElementSpace (String)", fespace_constructor, MORPHO_FN_CONSTRUCTOR|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_OPTARGS, NULL);
+
     objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
     value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
-    
+
     value fespaceclass=builtin_addclass(FINITEELEMENTSPACE_CLASSNAME, MORPHO_GETCLASSDEFINITION(FiniteElementSpace), objclass);
     object_setveneerclass(OBJECT_FESPACE, fespaceclass);
-    
+
     morpho_defineerror(FNSPC_ARGS, ERROR_HALT, FNSPC_ARGS_MSG);
     morpho_defineerror(FNSPC_NOTFOUND, ERROR_HALT, FNSPC_NOTFOUND_MSG);
 }

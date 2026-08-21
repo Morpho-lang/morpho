@@ -93,8 +93,8 @@ value _functional_run(vm *v, functional_mapinfo *info, grade g, functional_mapca
     if (info->g < 0) info->g = g;
     value out=MORPHO_NIL;
     functional_runmap(v, info, mapfn, &out);
-    if (bind && !MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out);
-    return out;
+    if (!bind || !MORPHO_ISOBJECT(out) || !MORPHO_GETOBJECT(out)) return out;
+    return morpho_wrapandbind(v, MORPHO_GETOBJECT(out));
 }
 
 value _functional_integrand(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn) {
@@ -3508,13 +3508,11 @@ value NematicElectric_init__field_field(vm *v, int nargs, value *args) {
     objectlist *new = object_newlist(2, &MORPHO_GETARG(args, 0));
 
     if (new) {
-        value lst = MORPHO_OBJECT(new);
-        objectinstance_setproperty(self, functional_fieldproperty, lst);
-        morpho_bindobjects(v, 1, &lst);
+        objectinstance_setproperty(self, functional_fieldproperty, MORPHO_OBJECT(new));
         functional_setgrade(self, mesh_maxgrade(MORPHO_GETFIELD(MORPHO_GETARG(args, 0))->mesh));
     }
 
-    return MORPHO_NIL;
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 FUNCTIONAL_MD_REF_BIND_START(NematicElectric, nematicelectricref, nematicelectric_prepareref, nematicelectric_integrand, FUNCTIONAL_ARGS, nematicelectric_startfn)
@@ -4652,20 +4650,16 @@ static value integral_init(vm *v, int nargs, value *args) {
 
     if (nfixed>1) {
         /* Remaining arguments should be fields */
-        objectlist *list = object_newlist(nfixed-1, & MORPHO_GETARG(args, 1));
-        if (!list) MORPHO_RAISE(v, ERROR_ALLOCATIONFAILED);
-
         for (unsigned int i=1; i<nfixed; i++) {
             if (!MORPHO_ISFIELD(MORPHO_GETARG(args, i))) {
                 morpho_runtimeerror(v, INTEGRAL_ARGS);
-                object_free((object *) list);
                 return MORPHO_NIL;
             }
         }
 
-        value field = MORPHO_OBJECT(list);
-        objectinstance_setproperty(self, functional_fieldproperty, field);
-        morpho_bindobjects(v, 1, &field);
+        objectlist *list = object_newlist(nfixed-1, & MORPHO_GETARG(args, 1));
+        if (list) objectinstance_setproperty(self, functional_fieldproperty, MORPHO_OBJECT(list));
+        return morpho_wrapandbind(v, (object *) list);
     }
 
     return MORPHO_NIL;

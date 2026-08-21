@@ -1686,9 +1686,9 @@ This error occurs when Field.op cannot construct a Field from the return value o
 ## FnSpcArgs
 [tagfnspcargs]: # (fnspcargs)
 
-This error occurs when a FunctionSpace is created with invalid arguments. It must be initialized with a label and a grade:
+This error occurs when `FiniteElementSpace` is given an invalid `grade` option. The constructor takes a label, with an optional integer grade:
 
-    FunctionSpace("invalid") // Causes 'FnSpcArgs'
+    FiniteElementSpace("CG1", grade="x") // Causes 'FnSpcArgs'
 
 ## FnSpcNtFnd
 [tagfnspcntfnd]: # (fnspcntfnd)

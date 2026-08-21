@@ -33,7 +33,7 @@ typedef unsigned int builtinfunctionflags;
  *   I/O, VM re-entry, thread-local dependence, or multithreaded execution.
  * - Functions that allocate returned objects should generally carry MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS,
  *   because object construction / wrap-and-bind may fail.
- * - MORPHO_FN_MUTATES is reserved for externally observable mutation, not internal caching.
+ * - MORPHO_FN_MUTATES is reserved for observable mutation of the receiver (self), not arguments or caches.
  * - MORPHO_FN_IO includes reads from process, filesystem, or platform state.
  * - MORPHO_FN_NONDETERMINISTIC is reserved for genuinely unstable results such as RNG-like behavior.
  */
@@ -49,7 +49,7 @@ typedef unsigned int builtinfunctionflags;
 #define MORPHO_FN_OPTARGS     (1<<4)    // Function reads VM optional/named arguments
 #define MORPHO_FN_THROWS      (1<<5)    // Function may raise a runtime error
 #define MORPHO_FN_ALLOCATES   (1<<6)    // Function may allocate and return/bind new objects
-#define MORPHO_FN_MUTATES     (1<<7)    // Function may mutate receiver, arguments, or runtime-visible state
+#define MORPHO_FN_MUTATES     (1<<7)    // Function may mutate the receiver (self)
 #define MORPHO_FN_IO          (1<<8)    // Function performs externally observable I/O or system interaction
 #define MORPHO_FN_NONDETERMINISTIC (1<<9) // Function may return different results for the same inputs
 #define MORPHO_FN_THREADLOCAL (1<<10)   // Function depends on or mutates VM thread-local state

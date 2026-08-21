@@ -19,7 +19,7 @@ print lnn.gradient(m)
 // expect: [ 0 0 0 ]
 // expect: [ 0 0 0 ]
 
-var fg = lnn.fieldgradient(m)
+var fg = lnn.fieldgradient(nn)
 
 for (f in fg) print f
 // expect: [ 2 ]

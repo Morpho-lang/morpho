@@ -20,7 +20,7 @@ var value = Matrix([[ 0.192452, 0.192452, -0.3849 ],[ 0.333333, -0.333335, 5.551
 print (grad-value).norm()<1e-5
 // expect: true
 
-var grd=lel.fieldgradient(m, phi)
+var grd=lel.fieldgradient(phi)
 
 print abs(grd[0] - (-0.57735))<5e-6
 print abs(grd[1] - (1.1547))<5e-6

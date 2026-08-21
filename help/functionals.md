@@ -15,9 +15,9 @@ Functionals provide a number of standard methods:
 * `total`(mesh) - returns the value of the integral with a provided mesh, selection and fields
 * `integrand`(mesh) - returns the contribution to the integral from each element
 * `gradient`(mesh) - returns the gradient of the functional with respect to vertex motions.
-* `fieldgradient`(mesh, field) - returns the gradient of the functional with respect to components of the field
+* `fieldgradient`(field) - returns the gradient of the functional with respect to components of the field
 
-Each of these may be called with a mesh, a field and a selection.
+Each of these may be called with a mesh and a selection. `fieldgradient` is Field-first: `fieldgradient(f)`, `fieldgradient(f, mesh)`, and optionally a selection.
 
 [showsubtopics]: # (subtopics)
 
@@ -56,7 +56,7 @@ The `gradient` method returns the derivative of a functional with respect to ver
 
 Functionals that depend on a field may provide a `fieldgradient` method that returns the derivative with respect to field values:
 
-    print fnl.fieldgradient(mesh, f)
+    print fnl.fieldgradient(f)
 
 ## Hessian
 [taghessian]: # (hessian)
@@ -69,7 +69,7 @@ For example, a typical workflow for a field-dependent functional is
 
     var value = fnl.total(mesh)
     var gradx = fnl.gradient(mesh)
-    var gradf = fnl.fieldgradient(mesh, f)
+    var gradf = fnl.fieldgradient(f)
 
 where `value` is the functional value, `gradx` is the derivative with respect to vertex positions and `gradf` is the derivative with respect to field values.
 
@@ -78,7 +78,7 @@ For example, for a field-dependent functional:
     var fnl = GradSq(phi)
     print fnl.total(mesh)
     print fnl.gradient(mesh)
-    print fnl.fieldgradient(mesh, phi)
+    print fnl.fieldgradient(phi)
 
 ## Length
 [taglength]: # (length)

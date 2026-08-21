@@ -51,7 +51,7 @@ fn combinedfieldgradient(f, gradients, prefactors) {
 }
 
 fn checkfunctional(name, func, m, f) {
-    var fg = func.fieldgradient(m, f)
+    var fg = func.fieldgradient(f)
     var num = numericalfieldgradient(func, m, f)
     var err = (fg - num).linearize().norm()
     return err < tol
@@ -59,7 +59,7 @@ fn checkfunctional(name, func, m, f) {
 
 fn checkstage(name, functionals, prefactors, m, f) {
     var gradients = []
-    for (i in 0...functionals.count()) gradients.append(functionals[i].fieldgradient(m, f))
+    for (i in 0...functionals.count()) gradients.append(functionals[i].fieldgradient(f))
 
     var fg = combinedfieldgradient(f, gradients, prefactors)
     var num = numericalstagefieldgradient(functionals, prefactors, m, f)

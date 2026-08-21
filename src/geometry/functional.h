@@ -274,6 +274,24 @@ bool functional_validateargs(vm *v, int nargs, value *args, functional_mapinfo *
     info.g = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1)); \
     info.id = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 2))
 
+/* fieldgradient is Field-first: (Field), (Field, Mesh), (Field, Selection),
+ * (Field, Mesh, Selection). Mesh is taken from the Field when omitted. */
+#define FUNCTIONAL_MD_INFO__FIELD() \
+    functional_mapinfo info; \
+    _functional_mapinfo(&info, NULL, NULL, MORPHO_GETFIELD(MORPHO_GETARG(args, 0)))
+
+#define FUNCTIONAL_MD_INFO__FIELD_MESH() \
+    functional_mapinfo info; \
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 1)), NULL, MORPHO_GETFIELD(MORPHO_GETARG(args, 0)))
+
+#define FUNCTIONAL_MD_INFO__FIELD_SEL() \
+    functional_mapinfo info; \
+    _functional_mapinfo(&info, NULL, MORPHO_GETSELECTION(MORPHO_GETARG(args, 1)), MORPHO_GETFIELD(MORPHO_GETARG(args, 0)))
+
+#define FUNCTIONAL_MD_INFO__FIELD_MESH_SEL() \
+    functional_mapinfo info; \
+    _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 1)), MORPHO_GETSELECTION(MORPHO_GETARG(args, 2)), MORPHO_GETFIELD(MORPHO_GETARG(args, 0)))
+
 /* Constructs a function cls_mthod__suffix with a defined setup macro followed by remaining args */
 #define FUNCTIONAL_MD_WRAP(cls, method, suffix, setup, ...) \
 value cls##_##method##__##suffix(vm *v, int nargs, value *args) { \
@@ -340,6 +358,12 @@ MORPHO_METHOD_SIGNATURE(FUNCTIONAL_GRADIENT_METHOD, "Matrix (Mesh, Selection)", 
 MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Mesh)", cls##_hessian__mesh, flags), \
 MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Mesh, Selection)", cls##_hessian__mesh_sel, flags)
 
+#define FUNCTIONAL_MD_FIELDGRADIENT_METHODS_FLAGS(cls, flags) \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_FIELDGRADIENT_METHOD, "Field (Field)", cls##_fieldgradient__field, flags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_FIELDGRADIENT_METHOD, "Field (Field, Mesh)", cls##_fieldgradient__field_mesh, flags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_FIELDGRADIENT_METHOD, "Field (Field, Selection)", cls##_fieldgradient__field_sel, flags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_FIELDGRADIENT_METHOD, "Field (Field, Mesh, Selection)", cls##_fieldgradient__field_mesh_sel, flags)
+
 #define FUNCTIONAL_MD_INTEGRAND_METHODS(cls) \
     FUNCTIONAL_MD_INTEGRAND_METHODS_FLAGS(cls, FUNCTIONAL_MD_MAPFLAGS, FUNCTIONAL_MD_ELEMFLAGS)
 
@@ -351,6 +375,9 @@ MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Mesh, Selection)", c
 
 #define FUNCTIONAL_MD_HESSIAN_METHODS(cls) \
     FUNCTIONAL_MD_HESSIAN_METHODS_FLAGS(cls, FUNCTIONAL_MD_MAPFLAGS)
+
+#define FUNCTIONAL_MD_FIELDGRADIENT_METHODS(cls) \
+    FUNCTIONAL_MD_FIELDGRADIENT_METHODS_FLAGS(cls, FUNCTIONAL_MD_MAPFLAGS)
 
 /* -------------------------------------------------------
  * Prepare/ref multiple-dispatch macros
@@ -379,10 +406,29 @@ MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Mesh, Selection)", c
 #define FUNCTIONAL_MD_REF__MESH_INT_INT(cls, method, fn) \
     FUNCTIONAL_MD_WRAP(cls, method, mesh_int_int, FUNCTIONAL_MD_INFO__MESH_INT_INT(), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
 
+#define FUNCTIONAL_MD_REF__FIELD(cls, method, fn) \
+    FUNCTIONAL_MD_WRAP(cls, method, field, FUNCTIONAL_MD_INFO__FIELD(), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
+
+#define FUNCTIONAL_MD_REF__FIELD_MESH(cls, method, fn) \
+    FUNCTIONAL_MD_WRAP(cls, method, field_mesh, FUNCTIONAL_MD_INFO__FIELD_MESH(), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
+
+#define FUNCTIONAL_MD_REF__FIELD_SEL(cls, method, fn) \
+    FUNCTIONAL_MD_WRAP(cls, method, field_sel, FUNCTIONAL_MD_INFO__FIELD_SEL(), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
+
+#define FUNCTIONAL_MD_REF__FIELD_MESH_SEL(cls, method, fn) \
+    FUNCTIONAL_MD_WRAP(cls, method, field_mesh_sel, FUNCTIONAL_MD_INFO__FIELD_MESH_SEL(), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
+
 /* Emits cls_method__mesh and cls_method__mesh_sel for a self-taking helper. */
 #define FUNCTIONAL_MD_REF_OVERLOADS(cls, method, fn) \
     FUNCTIONAL_MD_REF__MESH(cls, method, fn) \
     FUNCTIONAL_MD_REF__MESH_SEL(cls, method, fn)
+
+/* Field-first overloads for fieldgradient. */
+#define FUNCTIONAL_MD_REF_FIELD_OVERLOADS(cls, method, fn) \
+    FUNCTIONAL_MD_REF__FIELD(cls, method, fn) \
+    FUNCTIONAL_MD_REF__FIELD_MESH(cls, method, fn) \
+    FUNCTIONAL_MD_REF__FIELD_SEL(cls, method, fn) \
+    FUNCTIONAL_MD_REF__FIELD_MESH_SEL(cls, method, fn)
 
 /* Defines _Cls_bindref: call prepare; on failure raise err; otherwise store
  * ref, integrand, and optional startfn on mapinfo. FORCEGRADE also writes
@@ -427,7 +473,8 @@ static value _##cls##_##method(vm *v, objectinstance *self, functional_mapinfo *
 
 /* Emit prepare/ref Morpho entry points plus the _Cls_* helpers they call.
  * INTEGRAND covers the four signatures; TOTAL mesh/sel; GRADIENT sets
- * info->grad; NUMERICALGRADIENT/HESSIAN set dependencies. */
+ * info->grad; NUMERICALGRADIENT/HESSIAN set dependencies; FIELDGRADIENT
+ * is Field-first and sets cloneref/freeref. */
 #define FUNCTIONAL_MD_REF_INTEGRAND(cls, reftype, grade) \
     FUNCTIONAL_MD_REF_HELPER(cls, integrand, reftype, grade, functional_mapintegrand, true) \
     FUNCTIONAL_MD_REF_HELPER(cls, integrand_elem, reftype, grade, functional_mapintegrandforelement, false) \
@@ -450,6 +497,25 @@ static value _##cls##_##method(vm *v, objectinstance *self, functional_mapinfo *
 #define FUNCTIONAL_MD_REF_HESSIAN(cls, reftype, grade, deps, symbhvr) \
     FUNCTIONAL_MD_REF_RUN(cls, hessian, reftype, grade, functional_mapnumericalhessian, true, NULL, deps, symbhvr) \
     FUNCTIONAL_MD_REF_OVERLOADS(cls, hessian, _##cls##_hessian)
+
+/* fieldgradient sets cloneref/freeref so the numerical map can clone the
+ * target Field. MAP takes a custom mapfn (Jump); the default is numerical.
+ * clonefn/freefn are named so they are not substituted into info->cloneref. */
+#define FUNCTIONAL_MD_REF_FIELDGRADIENT_RUN(cls, reftype, grade, mapfn, clonefn, freefn) \
+static value _##cls##_fieldgradient(vm *v, objectinstance *self, functional_mapinfo *info) { \
+    reftype ref; \
+    if (!_##cls##_bindref(v, self, info, &ref)) return MORPHO_NIL; \
+    info->cloneref = (clonefn); \
+    info->freeref = (freefn); \
+    return _functional_run(v, info, grade, mapfn, true); \
+}
+
+#define FUNCTIONAL_MD_REF_FIELDGRADIENT_MAP(cls, reftype, grade, mapfn, clonefn, freefn) \
+    FUNCTIONAL_MD_REF_FIELDGRADIENT_RUN(cls, reftype, grade, mapfn, clonefn, freefn) \
+    FUNCTIONAL_MD_REF_FIELD_OVERLOADS(cls, fieldgradient, _##cls##_fieldgradient)
+
+#define FUNCTIONAL_MD_REF_FIELDGRADIENT(cls, reftype, grade, clonefn, freefn) \
+    FUNCTIONAL_MD_REF_FIELDGRADIENT_MAP(cls, reftype, grade, functional_mapnumericalfieldgradient, clonefn, freefn)
 
 /* -------------------------------------------------------
  * Compatibility shim

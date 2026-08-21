@@ -26,13 +26,13 @@ fn coupling(x, rho, q) {
 var area = AreaIntegral(coupling, rho, Q, method={})
 var jump = Jump(fn (x, q) jumpdn(q)^2, rho, method={ "strategy": "quadrature" })
 
-var areafg = area.fieldgradient(m, rho)
+var areafg = area.fieldgradient(rho)
 var areanum = numericalfieldgradient(area, m, rho)
 var areaerr = (areafg - areanum).linearize().norm()
 print areaerr < tol
 // expect: true
 
-var jumpfg = jump.fieldgradient(m, rho)
+var jumpfg = jump.fieldgradient(rho)
 var jumpnum = numericalfieldgradient(jump, m, rho)
 var jumperr = (jumpfg - jumpnum).linearize().norm()
 print jumperr < tol

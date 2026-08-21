@@ -39,7 +39,7 @@ print (lel.gradient(m)-expected).norm()<tol
 // expect: true
 
 expected = [ [-6.66663, -3.88891], [5.00007, 0], [0.833325, 4.44448], [0.833325, -0.555556] ]
-var grd=lel.fieldgradient(m, phi)
+var grd=lel.fieldgradient(phi, m)
 for (x,k in grd) print (x-Matrix(expected[k])).norm()<tol
 // expect: true
 // expect: true

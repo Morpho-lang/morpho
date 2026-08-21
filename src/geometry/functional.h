@@ -313,13 +313,22 @@ value cls##_##method##__##suffix(vm *v, int nargs, value *args) { \
 #define FUNCTIONAL_MD__MESH_INT_INT(cls, method, fn, ...) \
     FUNCTIONAL_MD_WRAP(cls, method, mesh_int_int, FUNCTIONAL_MD_INFO__MESH_INT_INT(), fn(v, &info, __VA_ARGS__))
 
-/* Emits cls_method__mesh and cls_method__mesh_sel for one C helper. */
+#define FUNCTIONAL_MD__FIELD(cls, method, fn, ...) \
+    FUNCTIONAL_MD_WRAP(cls, method, field, FUNCTIONAL_MD_INFO__FIELD(), fn(v, &info, __VA_ARGS__))
+
+#define FUNCTIONAL_MD__FIELD_SEL(cls, method, fn, ...) \
+    FUNCTIONAL_MD_WRAP(cls, method, field_sel, FUNCTIONAL_MD_INFO__FIELD_SEL(), fn(v, &info, __VA_ARGS__))
+
+/* Emits Mesh and Field-as-mesh overloads for one C helper. A Field argument
+ * supplies its mesh (_functional_mapinfo). */
 #define FUNCTIONAL_MD_OVERLOADS(cls, method, fn, ...) \
     FUNCTIONAL_MD__MESH(cls, method, fn, __VA_ARGS__) \
-    FUNCTIONAL_MD__MESH_SEL(cls, method, fn, __VA_ARGS__)
+    FUNCTIONAL_MD__MESH_SEL(cls, method, fn, __VA_ARGS__) \
+    FUNCTIONAL_MD__FIELD(cls, method, fn, __VA_ARGS__) \
+    FUNCTIONAL_MD__FIELD_SEL(cls, method, fn, __VA_ARGS__)
 
 /* Emit geometry-only Morpho entry points. INTEGRAND also adds (Mesh, Int) and
- * (Mesh, Int, Int) -> Float; the rest are (Mesh) and (Mesh, Selection) only.
+ * (Mesh, Int, Int) -> Float. Map methods accept Mesh or Field (mesh from Field).
  * Each wrapper calls the matching _functional_* helper with grade and kernel. */
 #define FUNCTIONAL_MD_INTEGRAND(cls, grade, integrandfn) \
     FUNCTIONAL_MD_OVERLOADS(cls, integrand, _functional_integrand, grade, integrandfn) \
@@ -343,20 +352,28 @@ value cls##_##method##__##suffix(vm *v, int nargs, value *args) { \
 #define FUNCTIONAL_MD_INTEGRAND_METHODS_FLAGS(cls, mapflags, elemflags) \
 MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Matrix (Mesh)", cls##_integrand__mesh, mapflags), \
 MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Matrix (Mesh, Selection)", cls##_integrand__mesh_sel, mapflags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Matrix (Field)", cls##_integrand__field, mapflags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Matrix (Field, Selection)", cls##_integrand__field_sel, mapflags), \
 MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Float (Mesh, Int)", cls##_integrand__mesh_int, elemflags), \
 MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Float (Mesh, Int, Int)", cls##_integrand__mesh_int_int, elemflags)
 
 #define FUNCTIONAL_MD_TOTAL_METHODS_FLAGS(cls, flags) \
 MORPHO_METHOD_SIGNATURE(FUNCTIONAL_TOTAL_METHOD, "Float (Mesh)", cls##_total__mesh, flags), \
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_TOTAL_METHOD, "Float (Mesh, Selection)", cls##_total__mesh_sel, flags)
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_TOTAL_METHOD, "Float (Mesh, Selection)", cls##_total__mesh_sel, flags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_TOTAL_METHOD, "Float (Field)", cls##_total__field, flags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_TOTAL_METHOD, "Float (Field, Selection)", cls##_total__field_sel, flags)
 
 #define FUNCTIONAL_MD_GRADIENT_METHODS_FLAGS(cls, flags) \
 MORPHO_METHOD_SIGNATURE(FUNCTIONAL_GRADIENT_METHOD, "Matrix (Mesh)", cls##_gradient__mesh, flags), \
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_GRADIENT_METHOD, "Matrix (Mesh, Selection)", cls##_gradient__mesh_sel, flags)
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_GRADIENT_METHOD, "Matrix (Mesh, Selection)", cls##_gradient__mesh_sel, flags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_GRADIENT_METHOD, "Matrix (Field)", cls##_gradient__field, flags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_GRADIENT_METHOD, "Matrix (Field, Selection)", cls##_gradient__field_sel, flags)
 
 #define FUNCTIONAL_MD_HESSIAN_METHODS_FLAGS(cls, flags) \
 MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Mesh)", cls##_hessian__mesh, flags), \
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Mesh, Selection)", cls##_hessian__mesh_sel, flags)
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Mesh, Selection)", cls##_hessian__mesh_sel, flags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Field)", cls##_hessian__field, flags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_HESSIAN_METHOD, "Sparse (Field, Selection)", cls##_hessian__field_sel, flags)
 
 #define FUNCTIONAL_MD_FIELDGRADIENT_METHODS_FLAGS(cls, flags) \
 MORPHO_METHOD_SIGNATURE(FUNCTIONAL_FIELDGRADIENT_METHOD, "Field (Field)", cls##_fieldgradient__field, flags), \
@@ -418,10 +435,12 @@ MORPHO_METHOD_SIGNATURE(FUNCTIONAL_FIELDGRADIENT_METHOD, "Field (Field, Mesh, Se
 #define FUNCTIONAL_MD_REF__FIELD_MESH_SEL(cls, method, fn) \
     FUNCTIONAL_MD_WRAP(cls, method, field_mesh_sel, FUNCTIONAL_MD_INFO__FIELD_MESH_SEL(), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
 
-/* Emits cls_method__mesh and cls_method__mesh_sel for a self-taking helper. */
+/* Emits Mesh and Field-as-mesh overloads for a self-taking helper. */
 #define FUNCTIONAL_MD_REF_OVERLOADS(cls, method, fn) \
     FUNCTIONAL_MD_REF__MESH(cls, method, fn) \
-    FUNCTIONAL_MD_REF__MESH_SEL(cls, method, fn)
+    FUNCTIONAL_MD_REF__MESH_SEL(cls, method, fn) \
+    FUNCTIONAL_MD_REF__FIELD(cls, method, fn) \
+    FUNCTIONAL_MD_REF__FIELD_SEL(cls, method, fn)
 
 /* Field-first overloads for fieldgradient. */
 #define FUNCTIONAL_MD_REF_FIELD_OVERLOADS(cls, method, fn) \

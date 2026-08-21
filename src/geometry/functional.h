@@ -189,7 +189,6 @@ typedef struct s_functional_mapinfo {
     void *ref; // Reference to pass on
 } functional_mapinfo;
 
-bool functional_validateargs(vm *v, int nargs, value *args, functional_mapinfo *info);
 void functional_symmetryimagelist(objectmesh *mesh, grade g, bool sort, varray_elementid *ids);
 bool functional_symmetrysumforces(objectmesh *mesh, objectmatrix *frc);
 bool functional_inlist(varray_elementid *list, elementid id);
@@ -222,6 +221,17 @@ bool functional_elementgradient(vm *v, objectmesh *mesh, grade g, elementid id, 
 bool functional_readgrade(objectinstance *self, grade *g);
 void functional_setgrade(objectinstance *self, grade g);
 
+/* Helpers used by FUNCTIONAL_MD_* macros. TODO: Make static once shims removed */
+void _functional_mapinfo(functional_mapinfo *info, objectmesh *mesh, objectselection *sel, objectfield *field);
+value _functional_run(vm *v, functional_mapinfo *info, grade g, functional_mapcallback *mapfn, bool bind);
+value _functional_integrand(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn);
+value _functional_integrand_elem(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn);
+value _functional_total(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn);
+value _functional_gradient(vm *v, functional_mapinfo *info, grade g, functional_gradient *fn, symmetrybhvr sym);
+value _functional_numericalgradient(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn, symmetrybhvr sym);
+value _functional_hessian(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn);
+bool functional_validateargs(vm *v, int nargs, value *args, functional_mapinfo *info);
+
 /* -------------------------------------------------------
  * Functional method macros
  * ------------------------------------------------------- */
@@ -232,145 +242,12 @@ void functional_setgrade(objectinstance *self, grade g);
     return MORPHO_NIL; \
 }
 
-/** Evaluate an integrand */
-#define FUNCTIONAL_INTEGRAND(name, grade, integrandfn) \
-    FUNCTIONAL_INTEGRAND_START(name, grade, NULL, NULL, integrandfn)
-
-#define FUNCTIONAL_INTEGRAND_START(name, grade, startfn, endfn, integrandfn) value name##_integrand(vm *v, int nargs, value *args) { \
-    functional_mapinfo info; \
-    value out=MORPHO_NIL; \
-    \
-    if (functional_validateargs(v, nargs, args, &info)) { \
-        info.g = grade; info.start = startfn; info.end = endfn; info.integrand = integrandfn; \
-        functional_runmap(v, &info, functional_mapintegrand, &out); \
-    } \
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
-    return out; \
-}
-
-/** Evaluate an integrand at an element */
-#define FUNCTIONAL_INTEGRANDFORELEMENT(name, grade, integrandfn) \
-    FUNCTIONAL_INTEGRANDFORELEMENT_START(name, grade, NULL, NULL, integrandfn)
-
-#define FUNCTIONAL_INTEGRANDFORELEMENT_START(name, grade, startfn, endfn, integrandfn) value name##_integrandForElement(vm *v, int nargs, value *args) { \
-    functional_mapinfo info; \
-    value out=MORPHO_NIL; \
-    \
-    if (functional_validateargs(v, nargs, args, &info)) { \
-        info.g = grade; info.start = startfn; info.end = endfn; info.integrand = integrandfn; \
-        functional_runmap(v, &info, functional_mapintegrandforelement, &out); \
-    } \
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
-    return out; \
-}
-
-/** Evaluate a gradient */
-#define FUNCTIONAL_GRADIENT(name, grade, gradientfn, symbhvr) \
-    FUNCTIONAL_GRADIENT_START(name, grade, NULL, NULL, gradientfn, symbhvr)
-
-#define FUNCTIONAL_GRADIENT_START(name, grade, startfn, endfn, gradientfn, symbhvr) \
-value name##_gradient(vm *v, int nargs, value *args) { \
-    functional_mapinfo info; \
-    value out=MORPHO_NIL; \
-    \
-    if (functional_validateargs(v, nargs, args, &info)) { \
-        info.g = grade; info.start = startfn; info.end = endfn; info.grad = gradientfn; info.sym = symbhvr; \
-        functional_runmap(v, &info, functional_mapgradient, &out); \
-    } \
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
-    \
-    return out; \
-}
-
-/** Evaluate a gradient */
-#define FUNCTIONAL_NUMERICALGRADIENT(name, grade, integrandfn, symbhvr) \
-    FUNCTIONAL_NUMERICALGRADIENT_START(name, grade, NULL, NULL, integrandfn, symbhvr)
-
-#define FUNCTIONAL_NUMERICALGRADIENT_START(name, grade, startfn, endfn, integrandfn, symbhvr) \
-value name##_gradient(vm *v, int nargs, value *args) { \
-    functional_mapinfo info; \
-    value out=MORPHO_NIL; \
-    \
-    if (functional_validateargs(v, nargs, args, &info)) { \
-        info.g = grade; info.start = startfn; info.end = endfn; info.integrand = integrandfn; info.sym = symbhvr; \
-        functional_runmap(v, &info, functional_mapnumericalgradient, &out); \
-    } \
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
-    \
-    return out; \
-}
-
-/** Total an integrand */
-#define FUNCTIONAL_TOTAL(name, grade, totalfn) \
-    FUNCTIONAL_TOTAL_START(name, grade, NULL, NULL, totalfn)
-
-#define FUNCTIONAL_TOTAL_START(name, grade, startfn, endfn, totalfn) \
-value name##_total(vm *v, int nargs, value *args) { \
-    functional_mapinfo info; \
-    value out=MORPHO_NIL; \
-    \
-    if (functional_validateargs(v, nargs, args, &info)) { \
-        info.g = grade; info.start = startfn; info.end = endfn; info.integrand = totalfn; \
-        functional_runmap(v, &info, functional_sumintegrand, &out); \
-    } \
-    \
-    return out; \
-}
-
-/** Hessian */
-#define FUNCTIONAL_HESSIAN(name, grade, totalfn) \
-    FUNCTIONAL_HESSIAN_START(name, grade, NULL, NULL, totalfn)
-
-#define FUNCTIONAL_HESSIAN_START(name, grade, startfn, endfn, totalfn) \
-value name##_hessian(vm *v, int nargs, value *args) { \
-    functional_mapinfo info; \
-    value out=MORPHO_NIL; \
-    \
-    if (functional_validateargs(v, nargs, args, &info)) { \
-        info.g = grade; info.start = startfn; info.end = endfn; info.integrand = totalfn; \
-        functional_runmap(v, &info, functional_mapnumericalhessian, &out); \
-    } \
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
-    \
-    return out; \
-}
-
-/* Alternative way of defining methods that use a reference */
-#define FUNCTIONAL_METHOD(class, name, grade, reftype, prepare, integrandfn, integrandmapfn, deps, err, symbhvr) \
-    FUNCTIONAL_METHOD_START(class, name, grade, reftype, prepare, NULL, NULL, integrandfn, integrandmapfn, deps, err, symbhvr)
-
-#define FUNCTIONAL_METHOD_START(class, name, grade, reftype, prepare, startfn, endfn, integrandfn, integrandmapfn, deps, err, symbhvr) value class##_##name(vm *v, int nargs, value *args) { \
-    functional_mapinfo info; \
-    reftype ref; \
-    value out=MORPHO_NIL; \
-    \
-    if (functional_validateargs(v, nargs, args, &info)) { \
-        if (prepare(MORPHO_GETINSTANCE(MORPHO_SELF(args)), info.mesh, grade, info.sel, &ref)) { \
-            info.integrand = integrandmapfn; \
-            info.start = startfn; \
-            info.end = endfn; \
-            info.dependencies = deps, \
-            info.sym = symbhvr; \
-            info.g = grade; \
-            info.ref = &ref; \
-            functional_runmap(v, &info, integrandfn, &out); \
-        } else morpho_runtimeerror(v, err); \
-    } \
-    if (!MORPHO_ISNIL(out)) morpho_bindobjects(v, 1, &out); \
-    return out; \
-}
-
 /* -------------------------------------------------------
  * Multiple-dispatch method macros
  *
  * Wrappers only unpack Morpho arguments. Shared C helpers in
  * functional.c (_functional_integrand, _functional_total, ...)
  * apply the default grade and run the map.
- *
- * Mesh / Mesh+Selection; integrand also gets
- * (Mesh, Int) / (Mesh, Int, Int) -> Float.
- * Unmatched calls fall through to MltplDsptchFld (no catch-alls).
- * Keep the sniffing macros above until remaining classes are converted.
  * ------------------------------------------------------- */
 
 /* Builtin-function flags used in class-table signatures: map/hessian allocate
@@ -573,6 +450,65 @@ static value _##cls##_##method(vm *v, objectinstance *self, functional_mapinfo *
 #define FUNCTIONAL_MD_REF_HESSIAN(cls, reftype, grade, deps, symbhvr) \
     FUNCTIONAL_MD_REF_RUN(cls, hessian, reftype, grade, functional_mapnumericalhessian, true, NULL, deps, symbhvr) \
     FUNCTIONAL_MD_REF_OVERLOADS(cls, hessian, _##cls##_hessian)
+
+/* -------------------------------------------------------
+ * Compatibility shim
+ *
+ * TODO: Remove once external modules are updated to
+ * FUNCTIONAL_MD_* / FUNCTIONAL_MD_REF_* and typed class tables.
+ * ------------------------------------------------------- */
+
+#define FUNCTIONAL_SHIM_LEGACY_REF(cls, method) \
+value cls##_##method(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    if (!functional_validateargs(v, nargs, args, &info)) return MORPHO_NIL; \
+    return _##cls##_##method(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info); \
+}
+
+#define FUNCTIONAL_SHIM_LEGACY_GEOM(name, method, fn, ...) \
+value name##_##method(vm *v, int nargs, value *args) { \
+    functional_mapinfo info; \
+    if (!functional_validateargs(v, nargs, args, &info)) return MORPHO_NIL; \
+    return fn(v, &info, __VA_ARGS__); \
+}
+
+#define FUNCTIONAL_INTEGRAND(name, grade, integrandfn) \
+    FUNCTIONAL_MD_INTEGRAND(name, grade, integrandfn) \
+    FUNCTIONAL_SHIM_LEGACY_GEOM(name, integrand, _functional_integrand, grade, integrandfn)
+
+#define FUNCTIONAL_INTEGRANDFORELEMENT(name, grade, integrandfn) \
+    FUNCTIONAL_SHIM_LEGACY_GEOM(name, integrandForElement, _functional_integrand_elem, grade, integrandfn)
+
+#define FUNCTIONAL_TOTAL(name, grade, totalfn) \
+    FUNCTIONAL_MD_TOTAL(name, grade, totalfn) \
+    FUNCTIONAL_SHIM_LEGACY_GEOM(name, total, _functional_total, grade, totalfn)
+
+#define FUNCTIONAL_GRADIENT(name, grade, gradientfn, symbhvr) \
+    FUNCTIONAL_MD_GRADIENT(name, grade, gradientfn, symbhvr) \
+    FUNCTIONAL_SHIM_LEGACY_GEOM(name, gradient, _functional_gradient, grade, gradientfn, symbhvr)
+
+#define FUNCTIONAL_NUMERICALGRADIENT(name, grade, integrandfn, symbhvr) \
+    FUNCTIONAL_MD_NUMERICALGRADIENT(name, grade, integrandfn, symbhvr) \
+    FUNCTIONAL_SHIM_LEGACY_GEOM(name, gradient, _functional_numericalgradient, grade, integrandfn, symbhvr)
+
+#define FUNCTIONAL_HESSIAN(name, grade, totalfn) \
+    FUNCTIONAL_MD_HESSIAN(name, grade, totalfn) \
+    FUNCTIONAL_SHIM_LEGACY_GEOM(name, hessian, _functional_hessian, grade, totalfn)
+
+#define FUNCTIONAL_METHOD(class, name, grade, reftype, prepare, mapfn, kernel, deps, err, symbhvr) \
+    FUNCTIONAL_METHOD_START(class, name, grade, reftype, prepare, NULL, NULL, mapfn, kernel, deps, err, symbhvr)
+
+#define FUNCTIONAL_METHOD_START(class, name, grade, reftype, prepare, startfn, endfn, mapfn, kernel, deps, err, symbhvr) \
+    FUNCTIONAL_SHIM_METHOD__##name(class, grade, reftype, prepare, startfn, mapfn, kernel, deps, err, symbhvr)
+
+#define FUNCTIONAL_SHIM_METHOD__integrand(class, grade, reftype, prepare, startfn, mapfn, kernel, deps, err, symbhvr) \
+    FUNCTIONAL_MD_REF_BIND_START(class, reftype, prepare, kernel, err, startfn) \
+    FUNCTIONAL_MD_REF_INTEGRAND(class, reftype, grade) \
+    FUNCTIONAL_SHIM_LEGACY_REF(class, integrand)
+
+#define FUNCTIONAL_SHIM_METHOD__total(class, grade, reftype, prepare, startfn, mapfn, kernel, deps, err, symbhvr) \
+    FUNCTIONAL_MD_REF_TOTAL(class, reftype, grade) \
+    FUNCTIONAL_SHIM_LEGACY_REF(class, total)
 
 /* -------------------------------------------------------
  * Initialization

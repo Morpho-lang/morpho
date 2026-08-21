@@ -76,7 +76,7 @@ static void functional_clearmapinfo(functional_mapinfo *info) {
 
 /** Fill mapinfo from typed pointers. Unused slots are NULL.
  * If field is set and mesh is NULL, the field's mesh is used. */
-static void _functional_mapinfo(functional_mapinfo *info,
+void _functional_mapinfo(functional_mapinfo *info,
                                objectmesh *mesh,
                                objectselection *sel,
                                objectfield *field) {
@@ -89,7 +89,7 @@ static void _functional_mapinfo(functional_mapinfo *info,
 
 /** Map helpers used by FUNCTIONAL_MD_* wrappers.
  * _functional_run applies the class default grade if info->g is unset. */
-static value _functional_run(vm *v, functional_mapinfo *info, grade g, functional_mapcallback *mapfn, bool bind) {
+value _functional_run(vm *v, functional_mapinfo *info, grade g, functional_mapcallback *mapfn, bool bind) {
     if (info->g < 0) info->g = g;
     value out=MORPHO_NIL;
     functional_runmap(v, info, mapfn, &out);
@@ -97,43 +97,40 @@ static value _functional_run(vm *v, functional_mapinfo *info, grade g, functiona
     return out;
 }
 
-static value _functional_integrand(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn) {
+value _functional_integrand(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn) {
     info->integrand = fn;
     return _functional_run(v, info, g, functional_mapintegrand, true);
 }
 
-static value _functional_integrand_elem(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn) {
+value _functional_integrand_elem(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn) {
     info->integrand = fn;
     return _functional_run(v, info, g, functional_mapintegrandforelement, false);
 }
 
-static value _functional_total(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn) {
+value _functional_total(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn) {
     info->integrand = fn;
     return _functional_run(v, info, g, functional_sumintegrand, false);
 }
 
-static value _functional_gradient(vm *v, functional_mapinfo *info, grade g, functional_gradient *fn, symmetrybhvr sym) {
+value _functional_gradient(vm *v, functional_mapinfo *info, grade g, functional_gradient *fn, symmetrybhvr sym) {
     info->grad = fn;
     info->sym = sym;
     return _functional_run(v, info, g, functional_mapgradient, true);
 }
 
-static value _functional_numericalgradient(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn, symmetrybhvr sym) {
+value _functional_numericalgradient(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn, symmetrybhvr sym) {
     info->integrand = fn;
     info->sym = sym;
     return _functional_run(v, info, g, functional_mapnumericalgradient, true);
 }
 
-static value _functional_hessian(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn) {
+value _functional_hessian(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn) {
     info->integrand = fn;
     return _functional_run(v, info, g, functional_mapnumericalhessian, true);
 }
 
-/** Validates the arguments provided to a functional
- * @param[in] v - vm
- * @param[in] nargs - number of arguments
- * @param[in] args - the arguments
- * @param[out] info - mapinfo block  */
+/** Validates the arguments provided to a functional.
+ * Used by handwritten fieldgradient methods and the FUNCTIONAL_* compatibility shim. */
 bool functional_validateargs(vm *v, int nargs, value *args, functional_mapinfo *info) {
     functional_clearmapinfo(info);
 

@@ -1,2 +1,2 @@
 print NematicElectric()
-// expect error 'FnctlArgs'
+// expect error 'MltplDsptchFld'

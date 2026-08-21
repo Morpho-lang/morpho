@@ -1,0 +1,25 @@
+// Constructor (Field, Field); grade from the director Field's mesh
+import meshtools
+
+var b = MeshBuilder()
+b.addvertex(Matrix([0, 0, 0]))
+b.addvertex(Matrix([1, 0, 0]))
+b.addvertex(Matrix([0, 1, 0]))
+b.addface([0, 1, 2])
+var m = b.build()
+
+var nn = Field(m, Matrix([1/sqrt(2), 1/sqrt(2), 0]))
+var phi = Field(m, 0)
+phi[0, 0] = 0
+phi[0, 1] = 1
+phi[0, 2] = 0
+
+var lne = NematicElectric(nn, phi)
+print lne.grade
+// expect: 2
+
+print abs(lne.integrand(m, 0) - 0.25) < 1e-10
+// expect: true
+
+print NematicElectric()
+// expect error 'MltplDsptchFld'

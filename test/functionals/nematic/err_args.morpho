@@ -1,2 +1,2 @@
 print Nematic()
-// expect error 'FnctlArgs'
+// expect error 'MltplDsptchFld'

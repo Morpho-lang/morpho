@@ -3382,40 +3382,31 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     return true;
 }
 
-/** Initialize a Nematic object */
-value Nematic_init(vm *v, int nargs, value *args) {
+value Nematic_init__field(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
-
-    int nfixed=nargs;
     value ksplay=MORPHO_FLOAT(1.0),
           ktwist=MORPHO_FLOAT(1.0),
           kbend=MORPHO_FLOAT(1.0);
     value pitch=MORPHO_NIL;
 
-    if (builtin_options(v, nargs, args, &nfixed, 4,
-                        nematic_ksplayproperty, &ksplay,
-                        nematic_ktwistproperty, &ktwist,
-                        nematic_kbendproperty, &kbend,
-                        nematic_pitchproperty, &pitch)) {
-        objectinstance_setproperty(self, nematic_ksplayproperty, ksplay);
-        objectinstance_setproperty(self, nematic_ktwistproperty, ktwist);
-        objectinstance_setproperty(self, nematic_kbendproperty, kbend);
-        objectinstance_setproperty(self, nematic_pitchproperty, pitch);
-    } else morpho_runtimeerror(v, FUNCTIONAL_ARGS);
+    builtin_options(v, nargs, args, NULL, 4,
+                    nematic_ksplayproperty, &ksplay,
+                    nematic_ktwistproperty, &ktwist,
+                    nematic_kbendproperty, &kbend,
+                    nematic_pitchproperty, &pitch);
 
-    if (nfixed==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
-        objectinstance_setproperty(self, functional_fieldproperty, MORPHO_GETARG(args, 0));
-        objectinstance_setproperty(self, functional_gradeproperty, MORPHO_INTEGER(mesh_maxgrade(MORPHO_GETFIELD(MORPHO_GETARG(args, 0))->mesh)));
-    } else morpho_runtimeerror(v, FUNCTIONAL_ARGS);
-
+    objectinstance_setproperty(self, nematic_ksplayproperty, ksplay);
+    objectinstance_setproperty(self, nematic_ktwistproperty, ktwist);
+    objectinstance_setproperty(self, nematic_kbendproperty, kbend);
+    objectinstance_setproperty(self, nematic_pitchproperty, pitch);
+    _gradsq_initfield(self, MORPHO_GETARG(args, 0));
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD_START(Nematic, integrand, (ref.grade), nematicref, nematic_prepareref, nematic_startfn, NULL, functional_mapintegrand, nematic_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
-
-FUNCTIONAL_METHOD_START(Nematic, total, (ref.grade), nematicref, nematic_prepareref, nematic_startfn, NULL, functional_sumintegrand, nematic_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
-
-FUNCTIONAL_METHOD_START(Nematic, gradient, (ref.grade), nematicref, nematic_prepareref, nematic_startfn, NULL, functional_mapnumericalgradient, nematic_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_MD_REF_BIND_START(Nematic, nematicref, nematic_prepareref, nematic_integrand, FUNCTIONAL_ARGS, nematic_startfn)
+FUNCTIONAL_MD_REF_INTEGRAND(Nematic, nematicref, ref.grade)
+FUNCTIONAL_MD_REF_TOTAL(Nematic, nematicref, ref.grade)
+FUNCTIONAL_MD_REF_NUMERICALGRADIENT(Nematic, nematicref, ref.grade, NULL, SYMMETRY_NONE)
 
 value Nematic_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
@@ -3437,11 +3428,12 @@ value Nematic_fieldgradient(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(Nematic)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, Nematic_init, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, Nematic_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, Nematic_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, Nematic_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Nematic_fieldgradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(Field)", Nematic_init__field, MORPHO_FN_MUTATES|MORPHO_FN_OPTARGS),
+
+FUNCTIONAL_MD_INTEGRAND_METHODS(Nematic),
+FUNCTIONAL_MD_TOTAL_METHODS(Nematic),
+FUNCTIONAL_MD_GRADIENT_METHODS(Nematic),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, Nematic_fieldgradient, MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------
@@ -3551,29 +3543,24 @@ bool nematicelectric_integrand(vm *v, objectmesh *mesh, elementid id, int nv, in
     return true;
 }
 
-/** Initialize a NematicElectric object */
-value NematicElectric_init(vm *v, int nargs, value *args) {
+value NematicElectric_init__field_field(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
+    objectlist *new = object_newlist(2, &MORPHO_GETARG(args, 0));
 
-    if (nargs==2 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0)) &&
-        MORPHO_ISFIELD(MORPHO_GETARG(args, 1))) {
-        objectlist *new = object_newlist(2, &MORPHO_GETARG(args, 0));
-        if (new) {
-            value lst = MORPHO_OBJECT(new);
-            objectinstance_setproperty(self, functional_fieldproperty, lst);
-            morpho_bindobjects(v, 1, &lst);
-            objectinstance_setproperty(self, functional_gradeproperty, MORPHO_INTEGER(mesh_maxgrade(MORPHO_GETFIELD(MORPHO_GETARG(args, 0))->mesh)));
-        }
-    } else morpho_runtimeerror(v, FUNCTIONAL_ARGS);
+    if (new) {
+        value lst = MORPHO_OBJECT(new);
+        objectinstance_setproperty(self, functional_fieldproperty, lst);
+        morpho_bindobjects(v, 1, &lst);
+        functional_setgrade(self, mesh_maxgrade(MORPHO_GETFIELD(MORPHO_GETARG(args, 0))->mesh));
+    }
 
     return MORPHO_NIL;
 }
 
-FUNCTIONAL_METHOD_START(NematicElectric, integrand, (ref.grade), nematicelectricref, nematicelectric_prepareref, nematicelectric_startfn, NULL, functional_mapintegrand, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
-
-FUNCTIONAL_METHOD_START(NematicElectric, total, (ref.grade), nematicelectricref, nematicelectric_prepareref, nematicelectric_startfn, NULL, functional_sumintegrand, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
-
-FUNCTIONAL_METHOD_START(NematicElectric, gradient, (ref.grade), nematicelectricref, nematicelectric_prepareref, nematicelectric_startfn, NULL, functional_mapnumericalgradient, nematicelectric_integrand, NULL, FUNCTIONAL_ARGS, SYMMETRY_NONE);
+FUNCTIONAL_MD_REF_BIND_START(NematicElectric, nematicelectricref, nematicelectric_prepareref, nematicelectric_integrand, FUNCTIONAL_ARGS, nematicelectric_startfn)
+FUNCTIONAL_MD_REF_INTEGRAND(NematicElectric, nematicelectricref, ref.grade)
+FUNCTIONAL_MD_REF_TOTAL(NematicElectric, nematicelectricref, ref.grade)
+FUNCTIONAL_MD_REF_NUMERICALGRADIENT(NematicElectric, nematicelectricref, ref.grade, NULL, SYMMETRY_NONE)
 
 value NematicElectric_fieldgradient(vm *v, int nargs, value *args) {
     functional_mapinfo info;
@@ -3595,11 +3582,12 @@ value NematicElectric_fieldgradient(vm *v, int nargs, value *args) {
 }
 
 MORPHO_BEGINCLASS(NematicElectric)
-MORPHO_METHOD(MORPHO_INITIALIZER_METHOD, NematicElectric_init, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FUNCTIONAL_INTEGRAND_METHOD, NematicElectric_integrand, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_TOTAL_METHOD, NematicElectric_total, MORPHO_FN_PUREFN|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_GRADIENT_METHOD, NematicElectric_gradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED),
-MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, NematicElectric_fieldgradient, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
+MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(Field, Field)", NematicElectric_init__field_field, MORPHO_FN_MUTATES|MORPHO_FN_ALLOCATES),
+
+FUNCTIONAL_MD_INTEGRAND_METHODS(NematicElectric),
+FUNCTIONAL_MD_TOTAL_METHODS(NematicElectric),
+FUNCTIONAL_MD_GRADIENT_METHODS(NematicElectric),
+MORPHO_METHOD(FUNCTIONAL_FIELDGRADIENT_METHOD, NematicElectric_fieldgradient, MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_MULTITHREADED)
 MORPHO_ENDCLASS
 
 /* ----------------------------------------------

@@ -1,7 +1,7 @@
 /** @file fespace.c
  *  @author T J Atherton
  *
- *  @brief Finite element fespaces
+ *  @brief Finite element fespaces and veneer class
  */
 
 #include "build.h"
@@ -10,7 +10,7 @@
 #include "geometry.h"
 
 /* **********************************************************************
- * Discretization objects
+ * fespace objects
  * ********************************************************************** */
 
 objecttype objectfespacetype;
@@ -42,17 +42,126 @@ objectfespace *objectfespace_new(fespace *disc) {
 }
 
 /* **********************************************************************
- * Discretization definitions
+ * Element definitions
  * ********************************************************************** */
 
 #define LINE_OPCODE 1
 #define AREA_OPCODE 2
+#define VOLUME_OPCODE 3
 #define QUANTITY_OPCODE 255
 
-#define LINE(id, v1, v2)      LINE_OPCODE, id, v1, v2           // Identify a grade 1 subelement given by two vertex indices
-#define AREA(id, v1, v2, v3)  AREA_OPCODE, id, v1, v2, v3       // Identify a grade 2 subelement given by three vertex indices
-#define QUANTITY(grade, id, qno) QUANTITY_OPCODE, grade, id, qno  // Fetch quantity from subelement of grade with id and quantity number
+#define LINE(id, v1, v2)           LINE_OPCODE, id, v1, v2              // Identify a grade 1 subelement given by two vertex indices
+#define AREA(id, v1, v2, v3)       AREA_OPCODE, id, v1, v2, v3          // Identify a grade 2 subelement given by three vertex indices
+#define VOLUME(id, v1, v2, v3, v4) VOLUME_OPCODE, id, v1, v2, v3, v4    // Identify a grade 3 subelement given by four vertex indices
+#define QUANTITY(grade, id, qno)   QUANTITY_OPCODE, grade, id, qno      // Fetch quantity from subelement of grade with id and quantity number
 #define ENDDEFN -1
+
+/* -------------------------------------------------------
+ * CG0 element in 1D
+ * ------------------------------------------------------- */
+
+/*
+ *   0 ----- 1    // One degree of freedom on the line (centroid)
+ */
+
+void cg0_interpolate(double *lambda, double *wts) {
+    wts[0]=1.0;
+}
+
+void cg0_1dgrad(double *lambda, double *grad) {
+    double g[] = { 0, 0 };
+    memcpy(grad, g, sizeof(g));
+}
+
+unsigned int cg0_1dshape[] = { 0, 1 };
+
+double cg0_1dnodes[] = { 0.5 };
+
+eldefninstruction cg0_1ddefn[] = {
+    LINE(0,0,1),
+    QUANTITY(1,0,0),
+    ENDDEFN
+};
+
+fespace cg0_1d = {
+    .name = "CG0",
+    .grade = 1,
+    .shape = cg0_1dshape,
+    .degree = 0,
+    .nnodes = 1,
+    .nsubel = 1,
+    .nodes = cg0_1dnodes,
+    .ifn = cg0_interpolate,
+    .gfn = cg0_1dgrad,
+    .eldefn = cg0_1ddefn,
+    .lower = NULL
+};
+
+/* -------------------------------------------------------
+ * CG0 element in 2D
+ * ------------------------------------------------------- */
+
+void cg0_2dgrad(double *lambda, double *grad) {
+    double g[] = { 0, 0, 0 };
+    memcpy(grad, g, sizeof(g));
+}
+
+unsigned int cg0_2dshape[] = { 0, 0, 1 };
+
+double cg0_2dnodes[] = { 1.0/3.0, 1.0/3.0 };
+
+eldefninstruction cg0_2ddefn[] = {
+    AREA(0,0,1,2),
+    QUANTITY(2,0,0),
+    ENDDEFN
+};
+
+fespace cg0_2d = {
+    .name = "CG0",
+    .grade = 2,
+    .shape = cg0_2dshape,
+    .degree = 0,
+    .nnodes = 1,
+    .nsubel = 1,
+    .nodes = cg0_2dnodes,
+    .ifn = cg0_interpolate,
+    .gfn = cg0_2dgrad,
+    .eldefn = cg0_2ddefn,
+    .lower = NULL
+};
+
+/* -------------------------------------------------------
+ * CG0 element in 3D
+ * ------------------------------------------------------- */
+
+void cg0_3dgrad(double *lambda, double *grad) {
+    double g[] = { 0, 0, 0, 0 };
+    memcpy(grad, g, sizeof(g));
+}
+
+unsigned int cg0_3dshape[] = { 0, 0, 0, 1 };
+
+double cg0_3dnodes[] = { 0.25, 0.25, 0.25 };
+
+eldefninstruction cg0_3ddefn[] = {
+    VOLUME(0,0,1,2,3),
+    QUANTITY(3,0,0),
+    ENDDEFN
+};
+
+fespace cg0_3d = {
+    .name = "CG0",
+    .grade = 3,
+    .shape = cg0_3dshape,
+    .degree = 0,
+    .nnodes = 1,
+    .nsubel = 1,
+    .nodes = cg0_3dnodes,
+    .ifn = cg0_interpolate,
+    .gfn = cg0_3dgrad,
+    .eldefn = cg0_3ddefn,
+    .lower = NULL
+};
 
 /* -------------------------------------------------------
  * CG1 element in 1D
@@ -855,12 +964,15 @@ fespace cg3_3d = {
  * ------------------------------------------------------- */
 
 fespace *fespaces[] = {
+    &cg0_1d,
     &cg1_1d,
     &cg2_1d,
     &cg3_1d,
+    &cg0_2d,
     &cg1_2d,
     &cg2_2d,
     &cg3_2d,
+    &cg0_3d,
     &cg1_3d,
     &cg2_3d,
     &cg3_3d,
@@ -883,7 +995,7 @@ fespace *fespace_find(char *name, grade g) {
 /** Finds a linear fespace for a given grade */
 fespace *fespace_findlinear(grade g) {
     for (int i=0; fespaces[i]!=NULL; i++) {
-        if (fespaces[i]->grade && fespaces[i]->degree==1) return fespaces[i];
+        if (fespaces[i]->grade==g && fespaces[i]->degree==1) return fespaces[i];
     }
     return NULL;
 }
@@ -919,6 +1031,7 @@ bool fespace_nodefieldindex(fespace *disc, int node, grade *g, int *sid, int *in
         switch(op) {
             case LINE_OPCODE:
             case AREA_OPCODE:
+            case VOLUME_OPCODE:
                 FETCH(instr); // local subelement id
                 for (int i=0; i<=op; i++) FETCH(instr); // local vertex ids
                 break;
@@ -965,6 +1078,7 @@ bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids
         switch(op) {
             case LINE_OPCODE: // Find an element defined by n vertices
             case AREA_OPCODE: // TODO: Need to cope with (mis) orientation of these subelements
+            case VOLUME_OPCODE: // P0 ignores orientation
             {
                 sid = FETCH(instr);
                 for (int i=0; i<=op; i++) svids[i] = vids[FETCH(instr)];

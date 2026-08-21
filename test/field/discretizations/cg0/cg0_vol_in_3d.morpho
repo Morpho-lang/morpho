@@ -1,0 +1,29 @@
+// CG0 FunctionSpace in three dimensions
+
+import meshtools
+
+var cube = [ [0,0,0], [1,0,0], [0,1,0], [1,1,0],
+             [0,0,1], [1,0,1], [0,1,1], [1,1,1] ]
+
+var pts = []
+for (x in cube) pts.append(Matrix(x))
+
+var m = DelaunayMesh(pts)
+m.addgrade(1)
+
+var fe = FiniteElementSpace("CG0", grade=3)
+var f = Field(m, fn (x,y,z) 2, finiteelementspace=fe)
+
+print f.shape()
+// expect: [ 0, 0, 0, 1 ]
+
+print abs(VolumeIntegral(fn (x, q) q, f, method={ }).total(m) - 2) < 1e-8
+// expect: true
+
+fn integrand(x, q) {
+    var g = grad(q)
+    return g.norm()^2
+}
+
+print abs(VolumeIntegral(integrand, f, method={ }).total(m)) < 1e-8
+// expect: true

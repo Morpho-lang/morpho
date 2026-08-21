@@ -1,0 +1,25 @@
+// CG0 FiniteElementSpace labels, nodes and missing space
+
+var l = FiniteElementSpace("CG0", grade=1)
+print l.count()
+// expect: 1
+print l.grade()
+// expect: 1
+print (l.nodeCoords(0) - Matrix([0.5, 0.5])).norm() < 1e-12
+// expect: true
+
+var a = FiniteElementSpace("CG0", grade=2)
+print a.count()
+// expect: 1
+print a.grade()
+// expect: 2
+print (a.nodeCoords() - Matrix([1/3, 1/3, 1/3])).norm() < 1e-12
+// expect: true
+
+var v = FiniteElementSpace("CG0", grade=3)
+print v.count()
+// expect: 1
+print v.grade()
+// expect: 3
+print (v.nodeCoords(0) - Matrix([1/4, 1/4, 1/4, 1/4])).norm() < 1e-12
+// expect: true

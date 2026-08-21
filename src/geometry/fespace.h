@@ -1,7 +1,7 @@
 /** @file fespace.h
  *  @author T J Atherton
  *
- *  @brief Finite element fespaces
+ *  @brief Finite element fespaces and veneer class
  */
 
 #ifndef fespace_h
@@ -13,7 +13,7 @@
 #include "geometry.h"
 
 /* -------------------------------------------------------
- * Discretization type definitions
+ * fespace type definitions
  * ------------------------------------------------------- */
 
 /** @brief Interpolation functions are called to assign weights to the nodes given barycentric coordinates */
@@ -38,7 +38,7 @@ typedef void (*hessianfn) (double *, double *);
 /** @brief Element definitions comprise a sequence of instructions to map field degrees of freedom to local nodes */
 typedef int eldefninstruction;
 
-/** @brief Discretization definitions */
+/** @brief fespace definition structure */
 typedef struct sfespace {
     char *name; /**  Name of the fespace */
     grade grade; /** Grade of element this fespace is defined on */
@@ -55,7 +55,7 @@ typedef struct sfespace {
 } fespace;
 
 /* -------------------------------------------------------
- * Discretization object type
+ * fespace object type
  * ------------------------------------------------------- */
 
 extern objecttype objectfespacetype;
@@ -79,7 +79,7 @@ typedef struct {
 #define MORPHO_GETFESPACENAME(val) (MORPHO_ISFESPACE(val) ? FESPACE_NAME(MORPHO_GETFESPACE(val)->fespace) : NULL)
 
 /* -------------------------------------------------------
- * FunctionSpace veneer class
+ * FiniteElementSpace veneer class
  * ------------------------------------------------------- */
 
 #define FINITEELEMENTSPACE_CLASSNAME "FiniteElementSpace"
@@ -90,7 +90,7 @@ typedef struct {
 #define FINITEELEMENTSPACE_NODECOORDS_METHOD "nodeCoords"
 
 /* -------------------------------------------------------
- * Discretization error messages
+ * FiniteElementSpace error messages
  * ------------------------------------------------------- */
 
 #define FNSPC_ARGS                       "FnSpcArgs"
@@ -100,8 +100,10 @@ typedef struct {
 #define FNSPC_NOTFOUND_MSG               "Function space '%s' on grade %i not found."
 
 /* -------------------------------------------------------
- * Discretization interface
+ * fespace interface
  * ------------------------------------------------------- */
+
+objectfespace *objectfespace_new(fespace *disc);
 
 fespace *fespace_find(char *name, grade g);
 fespace *fespace_findlinear(grade g);

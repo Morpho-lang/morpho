@@ -11,6 +11,8 @@ You can create a finite element space directly from its label and grade:
 
     var fs = FiniteElementSpace("CG2", grade=2)
 
+Available labels are `CG0` (piecewise constant: one degree of freedom per element, zero gradient, no trace on lower grades), `CG1`, `CG2` and `CG3` (continuous Lagrange elements). Each label exists on grades 1 (lines), 2 (triangles) and 3 (tetrahedra).
+
 You can also obtain a finite element space from an existing field:
 
     var fs = f.finiteElementSpace()

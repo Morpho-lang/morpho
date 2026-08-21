@@ -1,0 +1,24 @@
+// Gradient of a CG0 field is zero
+
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addvertex([1,1])
+mb.addface([0,1,2])
+mb.addface([1,3,2])
+var m = mb.build()
+m.addgrade(1)
+
+var l = FiniteElementSpace("CG0", grade=2)
+var f = Field(m, fn (x,y) 3 - 4*x + 2*y, finiteelementspace=l)
+
+fn integrand(x, q) {
+    var g = grad(q)
+    return g.norm()^2
+}
+
+print abs(AreaIntegral(integrand, f, method={ }).total(m)) < 1e-10
+// expect: true

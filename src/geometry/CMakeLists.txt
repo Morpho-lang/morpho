@@ -1,6 +1,7 @@
 target_sources(morpho
     PRIVATE
         fespace.c           fespace.h
+        elements.c
         field.c             field.h
         functional.c        functional.h
         geometry.c          geometry.h

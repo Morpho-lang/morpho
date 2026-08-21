@@ -38,6 +38,13 @@ typedef void (*hessianfn) (double *, double *);
 /** @brief Element definitions comprise a sequence of instructions to map field degrees of freedom to local nodes */
 typedef int eldefninstruction;
 
+/** @brief Element definition opcodes. LINE/AREA/VOLUME values match the corresponding mesh grade. */
+#define ELEMENT_LINE_OPCODE     1
+#define ELEMENT_AREA_OPCODE     2
+#define ELEMENT_VOLUME_OPCODE   3
+#define ELEMENT_QUANTITY_OPCODE 255
+#define ELEMENT_ENDDEFN         -1
+
 /** @brief fespace definition structure */
 typedef struct sfespace {
     char *name; /**  Name of the fespace */

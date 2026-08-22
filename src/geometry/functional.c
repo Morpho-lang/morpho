@@ -3617,12 +3617,6 @@ typedef enum {
     JUMP_STRATEGY_QUADRATURE_MODE
 } jumpstrategy;
 
-typedef struct {
-    int nv;
-    int *vid;
-    quantity *quantities;
-} jumpside;
-
 /* ----------------------------------------------
  * Integrand functions
  * ---------------------------------------------- */
@@ -3636,6 +3630,7 @@ typedef struct {
 #define ELREF_HASJACOBIAN  (1u<<4)
 #define ELREF_HASCG        (1u<<5)
 #define ELREF_HASINVJ      (1u<<6)
+#define ELREF_HASINTEG     (1u<<7) /* integrator_init has been called */
 #define ELREF_GEOM         (ELREF_HASTANGENT|ELREF_HASNORMAL|ELREF_HASJACOBIAN|ELREF_HASCG|ELREF_HASINVJ)
 
 typedef struct {
@@ -3764,24 +3759,31 @@ static void integral_releasegeometry(objectintegralelementref *elref) {
 
 static void integral_freegradhess(int nfields, value *qgrad, value *qhess);
 
-/** Frees the element ref and attached data. */
-static void integral_freeelref(objectintegralelementref *elref) {
+/** Release buffers and geometry; does not free the elref object itself. */
+static void integral_clearelref(objectintegralelementref *elref) {
     if (!elref) return;
     
-    integrator_clear(&elref->integ);
+    if (elref->flags & ELREF_HASINTEG) integrator_clear(&elref->integ);
     
     if (elref->quantities) {
         for (int i=0; i<elref->nfields; i++) {
             if (elref->quantities[i].vals) MORPHO_FREE(elref->quantities[i].vals);
         }
         MORPHO_FREE(elref->quantities);
+        elref->quantities=NULL;
     }
-
+    
     if (elref->qgrad && elref->qhess) integral_freegradhess(elref->nfields, elref->qgrad, elref->qhess);
-    if (elref->qgrad) MORPHO_FREE(elref->qgrad);
-    if (elref->qhess) MORPHO_FREE(elref->qhess);
+    if (elref->qgrad) { MORPHO_FREE(elref->qgrad); elref->qgrad=NULL; }
+    if (elref->qhess) { MORPHO_FREE(elref->qhess); elref->qhess=NULL; }
     
     integral_releasegeometry(elref);
+}
+
+/** Frees a heap elref and attached data. */
+static void integral_freeelref(objectintegralelementref *elref) {
+    if (!elref) return;
+    integral_clearelref(elref);
     object_free((object *) elref);
 }
 
@@ -3789,41 +3791,14 @@ static void integral_freeelref(objectintegralelementref *elref) {
  * Jump interface references
  * ---------------------------------------------- */
 
-/** Thread-local interface context for Jump functionals. */
+/** Thread-local interface context for Jump functionals.
+    iface is first so the JUMP object is layout-compatible with an elref. */
 typedef struct {
-    object obj;
-    objectmesh *mesh;      // The current mesh object
-    vm *v;                 // Worker VM for callbacks on this interface
-
-    jumpref *jref;         // Shared Jump reference
-
-    grade g;               // Interface grade
-    elementid id;          // Interface id
-    int nv;                // Number of interface vertices
-    int *vid;              // Interface vertex ids
-    double **vertexposn;   // Interface vertex positions
-    double interfacesize;  // Size/measure of the interface
-
-    elementid plusid;      // Canonical + parent element id
-    elementid minusid;     // Canonical - parent element id
-
-    int plusnv, minusnv;   // Number of vertices in parent elements
-    int *plusvid, *minusvid; // Vertex ids in parent elements
-
-    jumpside qplus;
-    jumpside qminus;
-
-    objectmatrix *normal;  // Canonical interface normal
-
-    double *pluslambda;    // Parent-element barycentric coordinates on + side
-    double *minuslambda;   // Parent-element barycentric coordinates on - side
-    double *posn;          // Current physical position
-    value *qinterpolated;  // Current interpolated quantities passed to the integrand
-
-    value *qplusgrad;      // Per-side cached gradients, later
-    value *qminusgrad;
-    value *qplushess;      // Per-side cached Hessians, later
-    value *qminushess;
+    objectintegralelementref iface; /* Interface: integrator, oriented normal, bind */
+    jumpref *jref;
+    vm *v;
+    objectintegralelementref plus;  /* Parent + : quantities, invj, lambda */
+    objectintegralelementref minus; /* Parent - */
 } objectjumpinterfaceref;
 
 size_t objectjumpinterfaceref_sizefn(object *obj) {
@@ -3848,7 +3823,6 @@ objecttype objectjumpinterfacereftype;
 
 #define MORPHO_ISJUMPINTERFACEREF(val) object_istype(val, OBJECT_JUMPINTERFACEREF)
 #define MORPHO_GETJUMPINTERFACEREF(val) ((objectjumpinterfaceref *) MORPHO_GETOBJECT(val))
-#define MORPHO_STATICJUMPINTERFACEREF(mesh, grade, id, nv, vid) { .obj.type=OBJECT_JUMPINTERFACEREF, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .mesh=mesh, .v=NULL, .g=grade, .id=id, .nv=nv, .vid=vid, .qplus={0}, .qminus={0}, .normal=NULL, .pluslambda=NULL, .minuslambda=NULL, .posn=NULL, .qinterpolated=NULL, .qplusgrad=NULL, .qminusgrad=NULL, .qplushess=NULL, .qminushess=NULL }
 
 int jumpinterfacehandle;
 
@@ -4655,7 +4629,7 @@ static bool integral_taskstart(vm *v, functional_mapinfo *info) {
     
     _integral_initelref(elref);
     integrator_init(&elref->integ);
-    elref->flags |= ELREF_PERSISTENT;
+    elref->flags |= ELREF_PERSISTENT | ELREF_HASINTEG;
     
     if (MORPHO_ISDICTIONARY(iref->method)) {
         if (!integrator_configurewithdictionary(&elref->integ, morpho_geterror(v), info->g, MORPHO_GETDICTIONARY(iref->method))) goto integral_taskstart_cleanup;
@@ -4991,56 +4965,46 @@ static bool jump_fielddependencies(functional_mapinfo *info, elementid id, varra
     return true;
 }
 
-static bool jump_preparejumpside(jumpref *ref, int nv, int *vid, jumpside *trace) {
-    trace->nv=nv;
-    trace->vid=vid;
-    trace->quantities=NULL;
-    if (ref->integral.nfields==0) return true;
-
-    trace->quantities=MORPHO_MALLOC(sizeof(quantity)*ref->integral.nfields);
-    if (!trace->quantities) return false;
-
-    for (int i=0; i<ref->integral.nfields; i++) {
-        trace->quantities[i].nnodes=0;
-        trace->quantities[i].capacity=0;
-        trace->quantities[i].vals=NULL;
-        trace->quantities[i].ifn=NULL;
-        trace->quantities[i].ndof=0;
-    }
-
-    if (!integral_preparequantities(&ref->integral, nv, vid, trace->quantities)) {
-        integral_clearquantities(ref->integral.nfields, trace->quantities);
-        MORPHO_FREE(trace->quantities);
-        trace->quantities=NULL;
-        return false;
-    }
-
+static bool jump_ensuresidequantities(objectintegralelementref *side, int nfields) {
+    if (nfields<=0) return true;
+    if (side->quantities) return true;
+    side->quantities=_integral_zalloc(nfields, sizeof(quantity));
+    if (!side->quantities) return false;
+    side->nfields=nfields;
     return true;
 }
 
-static void jump_clearjumpside(jumpref *ref, jumpside *trace) {
-    if (trace->quantities) {
-        integral_clearquantities(ref->integral.nfields, trace->quantities);
-        MORPHO_FREE(trace->quantities);
-        trace->quantities=NULL;
-    }
+static void jump_bindside(objectintegralelementref *side, objectmesh *mesh, grade g, elementid id, int nv, int *vid, integralref *iref) {
+    double *lam=side->lambda;
+    quantity *q=side->quantities;
+    int nfields=side->nfields;
+    _integral_bindelref(side, mesh, g, id, nv, vid, NULL, iref);
+    side->lambda=lam;
+    side->quantities=q;
+    side->nfields=nfields;
 }
 
-static void jump_clearinterfaceref(objectjumpinterfaceref *iref) {
-    jump_clearjumpside(iref->jref, &iref->qplus);
-    jump_clearjumpside(iref->jref, &iref->qminus);
-    if (iref->pluslambda) {
-        MORPHO_FREE(iref->pluslambda);
-        iref->pluslambda=NULL;
+static bool jump_ensuresidelambda(objectintegralelementref *side, int nv) {
+    if (side->lambda) return true;
+    side->lambda=MORPHO_MALLOC(sizeof(double)*nv);
+    return side->lambda!=NULL;
+}
+
+static void jump_clearinterfaceref(objectjumpinterfaceref *iref, bool persistent) {
+    if (persistent) return;
+    if (iref->plus.quantities) {
+        integral_clearquantities(iref->plus.nfields, iref->plus.quantities);
+        MORPHO_FREE(iref->plus.quantities);
+        iref->plus.quantities=NULL;
     }
-    if (iref->minuslambda) {
-        MORPHO_FREE(iref->minuslambda);
-        iref->minuslambda=NULL;
+    if (iref->minus.quantities) {
+        integral_clearquantities(iref->minus.nfields, iref->minus.quantities);
+        MORPHO_FREE(iref->minus.quantities);
+        iref->minus.quantities=NULL;
     }
-    if (iref->normal) {
-        object_free((object *) iref->normal);
-        iref->normal=NULL;
-    }
+    if (iref->plus.lambda) { MORPHO_FREE(iref->plus.lambda); iref->plus.lambda=NULL; }
+    if (iref->minus.lambda) { MORPHO_FREE(iref->minus.lambda); iref->minus.lambda=NULL; }
+    integral_releasegeometry(&iref->iface);
 }
 
 static void jump_orderparents(int *parents, elementid *plusid, elementid *minusid) {
@@ -5113,18 +5077,18 @@ static bool jump_interpolatequantity(quantity *q, grade g, double *lambda, value
 
 static bool jump_preparepointdata(objectjumpinterfaceref *iref, double *posn, value *qinterp) {
     jumpref *ref=iref->jref;
-    double *xplus[iref->plusnv], *xminus[iref->minusnv];
+    double *xplus[iref->plus.nv], *xminus[iref->minus.nv];
 
-    if (!jump_getinterfacevertexpositions(iref->mesh, iref->plusnv, iref->plusvid, xplus) ||
-        !jump_getinterfacevertexpositions(iref->mesh, iref->minusnv, iref->minusvid, xminus) ||
-        !jump_parentlambda(iref->mesh->dim, ref->parentgrade, xplus, posn, iref->pluslambda) ||
-        !jump_parentlambda(iref->mesh->dim, ref->parentgrade, xminus, posn, iref->minuslambda)) return false;
+    if (!jump_getinterfacevertexpositions(iref->iface.mesh, iref->plus.nv, iref->plus.vid, xplus) ||
+        !jump_getinterfacevertexpositions(iref->iface.mesh, iref->minus.nv, iref->minus.vid, xminus) ||
+        !jump_parentlambda(iref->iface.mesh->dim, ref->parentgrade, xplus, posn, iref->plus.lambda) ||
+        !jump_parentlambda(iref->iface.mesh->dim, ref->parentgrade, xminus, posn, iref->minus.lambda)) return false;
 
-    iref->posn=posn;
-    iref->qinterpolated=qinterp;
+    iref->iface.posn=posn;
+    iref->iface.qinterpolated=qinterp;
 
     for (int i=0; i<ref->integral.nfields; i++) {
-        if (!jump_interpolatequantity(&iref->qplus.quantities[i], ref->parentgrade, iref->pluslambda, &qinterp[i])) return false;
+        if (!jump_interpolatequantity(&iref->plus.quantities[i], ref->parentgrade, iref->plus.lambda, &qinterp[i])) return false;
     }
 
     return true;
@@ -5133,7 +5097,7 @@ static bool jump_preparepointdata(objectjumpinterfaceref *iref, double *posn, va
 static bool jump_callintegrand(objectjumpinterfaceref *iref, double *posn, double *out) {
     jumpref *ref=iref->jref;
     value qinterp[ref->integral.nfields+1], args[ref->integral.nfields+1], outval=MORPHO_NIL;
-    objectmatrix mposn = MORPHO_STATICMATRIX(posn, iref->mesh->dim, 1);
+    objectmatrix mposn = MORPHO_STATICMATRIX(posn, iref->iface.mesh->dim, 1);
 
     if (!jump_preparepointdata(iref, posn, qinterp)) return false;
 
@@ -5146,16 +5110,18 @@ static bool jump_callintegrand(objectjumpinterfaceref *iref, double *posn, doubl
 
 static bool jump_integrandfn(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *ref, double *fout) {
     objectjumpinterfaceref *iref = (objectjumpinterfaceref *) ref;
+    iref->iface.lambda=t;
+    iref->iface.posn=x;
     return jump_callintegrand(iref, x, fout);
 }
 
 static bool jump_evaluatesidegradient(objectjumpinterfaceref *iref, int ifld, bool plus, double *grad) {
     objectfield *fld = MORPHO_GETFIELD(iref->jref->integral.fields[ifld]);
-    jumpside *side = (plus ? &iref->qplus : &iref->qminus);
-    int nv = (plus ? iref->plusnv : iref->minusnv);
-    int *vid = (plus ? iref->plusvid : iref->minusvid);
-    double *lambda = (plus ? iref->pluslambda : iref->minuslambda);
-    int dim = iref->mesh->dim;
+    objectintegralelementref *side = (plus ? &iref->plus : &iref->minus);
+    int nv = side->nv;
+    int *vid = side->vid;
+    double *lambda = side->lambda;
+    int dim = iref->iface.mesh->dim;
     grade g = iref->jref->parentgrade;
 
     if (!MORPHO_ISFESPACE(fld->fnspc) || !MORPHO_ISNIL(fld->prototype)) return false;
@@ -5164,11 +5130,14 @@ static bool jump_evaluatesidegradient(objectjumpinterfaceref *iref, int ifld, bo
     if (!FESPACE_HASGRADIENT(disc)) return false;
 
     double *x[nv];
-    if (!jump_getinterfacevertexpositions(iref->mesh, nv, vid, x)) return false;
+    if (!jump_getinterfacevertexpositions(iref->iface.mesh, nv, vid, x)) return false;
 
-    double invjdata[g*dim];
-    objectmatrix invj = MORPHO_STATICMATRIX(invjdata, g, dim);
-    if (!integral_prepareinvjacobian(dim, g, x, &invj)) return false;
+    side->vertexposn=x;
+    if (!(side->flags & ELREF_HASINVJ)) {
+        if (!integral_ensurematrix(&side->invj, g, dim) ||
+            !integral_prepareinvjacobian(dim, g, x, side->invj)) return false;
+        side->flags |= ELREF_HASINVJ;
+    }
 
     int nnodes = disc->nnodes;
     double gdata[nnodes*g];
@@ -5177,7 +5146,7 @@ static bool jump_evaluatesidegradient(objectjumpinterfaceref *iref, int ifld, bo
     objectmatrix fmat = MORPHO_STATICMATRIX(fdata, nnodes, dim);
 
     fespace_gradient(disc, lambda, &gmat);
-    if (matrix_mul(&gmat, &invj, &fmat)!=LINALGERR_OK) return false;
+    if (matrix_mul(&gmat, side->invj, &fmat)!=LINALGERR_OK) return false;
 
     for (int i=0; i<dim; i++) {
         value sum=MORPHO_FLOAT(0.0);
@@ -5189,27 +5158,27 @@ static bool jump_evaluatesidegradient(objectjumpinterfaceref *iref, int ifld, bo
 }
 
 static bool jump_preparenormal(vm *v, objectjumpinterfaceref *iref) {
-    int dim=iref->mesh->dim;
+    int dim=iref->iface.mesh->dim;
     double pluscentroid[dim], minuscentroid[dim], d[dim];
 
-    if (!jump_getelementcentroid(iref->mesh, iref->plusnv, iref->plusvid, pluscentroid)) return false;
-    if (!jump_getelementcentroid(iref->mesh, iref->minusnv, iref->minusvid, minuscentroid)) return false;
+    if (!jump_getelementcentroid(iref->iface.mesh, iref->plus.nv, iref->plus.vid, pluscentroid)) return false;
+    if (!jump_getelementcentroid(iref->iface.mesh, iref->minus.nv, iref->minus.vid, minuscentroid)) return false;
 
     functional_vecsub(dim, minuscentroid, pluscentroid, d);
 
-    objectmatrix *mnormal = matrix_new(dim, 1, false);
+    objectmatrix *mnormal=integral_ensurematrix(&iref->iface.normal, dim, 1);
     if (!mnormal) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
 
     for (int i=0; i<dim; i++) mnormal->elements[i]=0.0;
 
-    if (iref->g==0) {
+    if (iref->iface.g==0) {
         for (int i=0; i<dim; i++) mnormal->elements[i]=d[i];
-    } else if (iref->g==1) {
+    } else if (iref->iface.g==1) {
         double t[dim], n[dim];
 
-        functional_vecsub(dim, iref->vertexposn[1], iref->vertexposn[0], t);
+        functional_vecsub(dim, iref->iface.vertexposn[1], iref->iface.vertexposn[0], t);
         double tnorm=functional_vecnorm(dim, t);
-        if (tnorm<MORPHO_EPS) { object_free((object *) mnormal); return false; }
+        if (tnorm<MORPHO_EPS) return false;
         functional_vecscale(dim, 1.0/tnorm, t, t);
 
         double dott=functional_vecdot(dim, d, t);
@@ -5226,41 +5195,40 @@ static bool jump_preparenormal(vm *v, objectjumpinterfaceref *iref) {
             nnorm=functional_vecnorm(dim, n);
         }
 
-        if (nnorm<MORPHO_EPS) { object_free((object *) mnormal); return false; }
+        if (nnorm<MORPHO_EPS) return false;
         functional_vecscale(dim, 1.0/nnorm, n, mnormal->elements);
-    } else if (iref->g==2) {
-        if (dim!=3) { object_free((object *) mnormal); return false; }
+    } else if (iref->iface.g==2) {
+        if (dim!=3) return false;
 
         double s0[3], s1[3];
-        functional_vecsub(3, iref->vertexposn[1], iref->vertexposn[0], s0);
-        functional_vecsub(3, iref->vertexposn[2], iref->vertexposn[1], s1);
+        functional_vecsub(3, iref->iface.vertexposn[1], iref->iface.vertexposn[0], s0);
+        functional_vecsub(3, iref->iface.vertexposn[2], iref->iface.vertexposn[1], s1);
         functional_veccross(s0, s1, mnormal->elements);
     } else {
-        object_free((object *) mnormal);
         return false;
     }
 
     double nnorm=functional_vecnorm(dim, mnormal->elements);
-    if (nnorm<MORPHO_EPS) { object_free((object *) mnormal); return false; }
+    if (nnorm<MORPHO_EPS) return false;
 
     if (functional_vecdot(dim, mnormal->elements, d)<0.0) {
         functional_vecscale(dim, -1.0, mnormal->elements, mnormal->elements);
     }
 
     nnorm=functional_vecnorm(dim, mnormal->elements);
-    if (nnorm<MORPHO_EPS) { object_free((object *) mnormal); return false; }
+    if (nnorm<MORPHO_EPS) return false;
     functional_vecscale(dim, 1.0/nnorm, mnormal->elements, mnormal->elements);
 
-    iref->normal=mnormal;
+    iref->iface.flags |= ELREF_HASNORMAL;
     return true;
 }
 
 static bool jump_preparegeometry(vm *v, objectjumpinterfaceref *iref, double **vertexposn) {
-    iref->vertexposn=vertexposn;
-    if (iref->g==0) iref->interfacesize=1.0;
-    else if (!functional_elementsize(v, iref->mesh, iref->g, iref->id, iref->nv, iref->vid, &iref->interfacesize)) return false;
+    iref->iface.vertexposn=vertexposn;
+    if (iref->iface.g==0) iref->iface.elementsize=1.0;
+    else if (!functional_elementsize(v, iref->iface.mesh, iref->iface.g, iref->iface.id, iref->iface.nv, iref->iface.vid, &iref->iface.elementsize)) return false;
 
-    if (iref->g>0 && iref->interfacesize<MORPHO_EPS) return true;
+    if (iref->iface.g>0 && iref->iface.elementsize<MORPHO_EPS) return true;
 
     return jump_preparenormal(v, iref);
 }
@@ -5268,42 +5236,52 @@ static bool jump_preparegeometry(vm *v, objectjumpinterfaceref *iref, double **v
 static bool jump_prepareinterfaceref(vm *v, objectmesh *mesh, jumpref *ref, elementid id, int nv, int *vid, double **vertexposn, int *parents, objectjumpinterfaceref *iref) {
     int plusnv=0, minusnv=0;
     int *plusvid=NULL, *minusvid=NULL;
+    bool persistent=(iref->iface.flags & ELREF_PERSISTENT);
 
-    *iref = (objectjumpinterfaceref) MORPHO_STATICJUMPINTERFACEREF(mesh, ref->interfacegrade, id, nv, vid);
     iref->v=v;
     iref->jref=ref;
 
-    jump_orderparents(parents, &iref->plusid, &iref->minusid);
+    jump_orderparents(parents, &iref->plus.id, &iref->minus.id);
 
-    if (!mesh_getconnectivity(ref->parentvertices, iref->plusid, &plusnv, &plusvid)) return false;
-    if (!mesh_getconnectivity(ref->parentvertices, iref->minusid, &minusnv, &minusvid)) return false;
+    if (!mesh_getconnectivity(ref->parentvertices, iref->plus.id, &plusnv, &plusvid)) return false;
+    if (!mesh_getconnectivity(ref->parentvertices, iref->minus.id, &minusnv, &minusvid)) return false;
 
-    iref->plusnv=plusnv;
-    iref->plusvid=plusvid;
-    iref->minusnv=minusnv;
-    iref->minusvid=minusvid;
-    iref->pluslambda=MORPHO_MALLOC(sizeof(double)*iref->plusnv);
-    iref->minuslambda=MORPHO_MALLOC(sizeof(double)*iref->minusnv);
-    if (!iref->pluslambda || !iref->minuslambda) {
-        jump_clearinterfaceref(iref);
+    _integral_bindelref(&iref->iface, mesh, ref->interfacegrade, id, nv, vid, vertexposn, &ref->integral);
+    jump_bindside(&iref->plus, mesh, ref->parentgrade, iref->plus.id, plusnv, plusvid, &ref->integral);
+    jump_bindside(&iref->minus, mesh, ref->parentgrade, iref->minus.id, minusnv, minusvid, &ref->integral);
+
+    if (!jump_ensuresidelambda(&iref->plus, plusnv) || !jump_ensuresidelambda(&iref->minus, minusnv)) {
+        jump_clearinterfaceref(iref, persistent);
         MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
     }
 
-    if (!jump_preparejumpside(ref, iref->plusnv, iref->plusvid, &iref->qplus)) {
-        jump_clearinterfaceref(iref);
-        return false;
-    }
-    if (!jump_preparejumpside(ref, iref->minusnv, iref->minusvid, &iref->qminus)) {
-        jump_clearinterfaceref(iref);
+    if (!jump_ensuresidequantities(&iref->plus, ref->integral.nfields) ||
+        !jump_ensuresidequantities(&iref->minus, ref->integral.nfields)) {
+        jump_clearinterfaceref(iref, persistent);
         return false;
     }
 
+    if (ref->integral.nfields>0) {
+        if (!integral_preparequantities(&ref->integral, plusnv, plusvid, iref->plus.quantities) ||
+            !integral_preparequantities(&ref->integral, minusnv, minusvid, iref->minus.quantities)) {
+            jump_clearinterfaceref(iref, persistent);
+            return false;
+        }
+    }
+
     if (!jump_preparegeometry(v, iref, vertexposn)) {
-        jump_clearinterfaceref(iref);
+        jump_clearinterfaceref(iref, persistent);
         return false;
     }
 
     return true;
+}
+
+static void jump_initstackref(objectjumpinterfaceref *iref) {
+    memset(iref, 0, sizeof(*iref));
+    object_init((object *) iref, OBJECT_JUMPINTERFACEREF);
+    _integral_initelref(&iref->plus);
+    _integral_initelref(&iref->minus);
 }
 
 /** Basic Jump scan over codimension-1 entities.
@@ -5313,6 +5291,9 @@ static bool jump_scan_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
     jumpref *ref = (jumpref *) r;
     int nparents=0, *parents=NULL;
     double *x[nv];
+    objectjumpinterfaceref stackiref;
+    objectjumpinterfaceref *iref;
+    bool persistent=false;
 
     if (!jump_getadjacentparents(ref, id, &nparents, &parents)) return false;
 
@@ -5321,48 +5302,124 @@ static bool jump_scan_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
 
     if (!jump_getinterfacevertexpositions(mesh, nv, vid, x)) return false;
 
-    objectjumpinterfaceref iref;
-    if (!jump_prepareinterfaceref(v, mesh, ref, id, nv, vid, x, parents, &iref)) return false;
+    iref=jump_getinterfaceref(v);
+    if (iref && (iref->iface.flags & ELREF_PERSISTENT)) {
+        persistent=true;
+    } else {
+        jump_initstackref(&stackiref);
+        iref=&stackiref;
+    }
 
-    if (iref.g>0 && iref.interfacesize<MORPHO_EPS) {
+    if (!jump_prepareinterfaceref(v, mesh, ref, id, nv, vid, x, parents, iref)) return false;
+
+    if (iref->iface.g>0 && iref->iface.elementsize<MORPHO_EPS) {
         *out=0.0;
-        jump_clearinterfaceref(&iref);
+        jump_clearinterfaceref(iref, persistent);
         return true;
     }
 
-    vm_settlvar(v, jumpinterfacehandle, MORPHO_OBJECT(&iref));
+    vm_settlvar(v, jumpinterfacehandle, MORPHO_OBJECT(iref));
 
     if (ref->strategy==JUMP_STRATEGY_CENTROID_MODE || ref->interfacegrade==0) {
         double posn[mesh->dim];
         jump_centroid(mesh->dim, nv, x, posn);
-        if (!jump_callintegrand(&iref, posn, out)) {
-            vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
-            jump_clearinterfaceref(&iref);
+        if (!jump_callintegrand(iref, posn, out)) {
+            if (!persistent) vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
+            jump_clearinterfaceref(iref, persistent);
             return false;
         }
-        *out *= iref.interfacesize;
+        *out *= iref->iface.elementsize;
     } else if (ref->strategy==JUMP_STRATEGY_QUADRATURE_MODE) {
-        double err=0.0;
-        if (!integrate(jump_integrandfn, MORPHO_GETDICTIONARY(ref->integral.method), morpho_geterror(v), mesh->dim, ref->interfacegrade, x, 0, NULL, &iref, out, &err)) {
-            vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
-            jump_clearinterfaceref(&iref);
+        bool success;
+        if (iref->iface.flags & ELREF_CONFIGURED) {
+            success=integrator_integrate(&iref->iface.integ, jump_integrandfn, mesh->dim, x, 0, NULL, iref);
+            if (success) *out = iref->iface.integ.val;
+        } else {
+            double err=0.0;
+            success=integrate(jump_integrandfn, MORPHO_GETDICTIONARY(ref->integral.method), morpho_geterror(v), mesh->dim, ref->interfacegrade, x, 0, NULL, iref, out, &err);
+        }
+        if (!success) {
+            if (!persistent) vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
+            jump_clearinterfaceref(iref, persistent);
             return false;
         }
-        *out *= iref.interfacesize;
+        *out *= iref->iface.elementsize;
     } else {
-        vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
-        jump_clearinterfaceref(&iref);
+        if (!persistent) vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
+        jump_clearinterfaceref(iref, persistent);
         MORPHO_FAIL(v, JUMP_UNIMPL);
     }
 
-    vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
-    jump_clearinterfaceref(&iref);
+    if (!persistent) vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
+    jump_clearinterfaceref(iref, persistent);
     return true;
 }
+
 
 static bool jump_mapfieldgradient(vm *v, functional_mapinfo *info, value *out) {
     jumpref *ref = (jumpref *) info->ref;
     return functional_mapjumpnumericalfieldgradient(v, info, ref->parentvertices, ref, out);
+}
+
+static void jump_freeheapref(objectjumpinterfaceref *iref) {
+    if (!iref) return;
+    if (iref->plus.lambda) MORPHO_FREE(iref->plus.lambda);
+    if (iref->minus.lambda) MORPHO_FREE(iref->minus.lambda);
+    iref->plus.lambda=NULL;
+    iref->minus.lambda=NULL;
+    integral_clearelref(&iref->iface);
+    integral_clearelref(&iref->plus);
+    integral_clearelref(&iref->minus);
+    object_free((object *) iref);
+}
+
+static bool jump_taskstart(vm *v, functional_mapinfo *info) {
+    jumpref *ref=(jumpref *) info->ref;
+    objectjumpinterfaceref *jiref=NULL;
+    
+    if (integral_contextactive(v)) MORPHO_FAIL(v, INTEGRAL_NESTED);
+    
+    jiref=(objectjumpinterfaceref *) object_new(sizeof(objectjumpinterfaceref), OBJECT_JUMPINTERFACEREF);
+    if (!jiref) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
+    
+    memset(jiref, 0, sizeof(*jiref));
+    object_init((object *) jiref, OBJECT_JUMPINTERFACEREF);
+    _integral_initelref(&jiref->plus);
+    _integral_initelref(&jiref->minus);
+    
+    jiref->jref=ref;
+    jiref->v=v;
+    jiref->iface.flags |= ELREF_PERSISTENT | ELREF_HASINTEG;
+    integrator_init(&jiref->iface.integ);
+    
+    if (ref->strategy==JUMP_STRATEGY_QUADRATURE_MODE && ref->interfacegrade>0 &&
+        MORPHO_ISDICTIONARY(ref->integral.method)) {
+        if (!integrator_configurewithdictionary(&jiref->iface.integ, morpho_geterror(v), ref->interfacegrade, MORPHO_GETDICTIONARY(ref->integral.method))) goto jump_taskstart_cleanup;
+        jiref->iface.flags |= ELREF_CONFIGURED;
+    }
+    
+    if (!jump_ensuresidequantities(&jiref->plus, ref->integral.nfields) ||
+        !jump_ensuresidequantities(&jiref->minus, ref->integral.nfields)) goto jump_taskstart_cleanup;
+    
+    int lamn=ref->parentgrade+1;
+    jiref->plus.lambda=MORPHO_MALLOC(sizeof(double)*lamn);
+    jiref->minus.lambda=MORPHO_MALLOC(sizeof(double)*lamn);
+    if (!jiref->plus.lambda || !jiref->minus.lambda) goto jump_taskstart_cleanup;
+    
+    vm_settlvar(v, jumpinterfacehandle, MORPHO_OBJECT(jiref));
+    return true;
+    
+jump_taskstart_cleanup:
+    if (!morpho_checkerror(morpho_geterror(v))) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    jump_freeheapref(jiref);
+    return false;
+}
+
+static void jump_taskend(vm *v, functional_mapinfo *info) {
+    objectjumpinterfaceref *iref=jump_getinterfaceref(v);
+    if (!iref || !(iref->iface.flags & ELREF_PERSISTENT)) return;
+    vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
+    jump_freeheapref(iref);
 }
 
 /** Jump bindref: prepare already raises IntgrlArgs / FnctlELNtFnd / FnctlArgs.
@@ -5374,6 +5431,8 @@ static bool _Jump_bindref(vm *v, objectinstance *self, functional_mapinfo *info,
     info->ref = ref;
     info->integrand = jump_scan_integrand;
     info->start = jump_startfn;
+    info->taskstart = jump_taskstart;
+    info->taskend = jump_taskend;
     return true;
 }
 
@@ -5391,7 +5450,7 @@ static value integral_jumpdnfn(vm *v, int nargs, value *args) {
 
     for (ifld=0; ifld<iref->jref->integral.nfields; ifld++) {
         if (MORPHO_ISFIELD(q) && MORPHO_ISSAME(iref->jref->integral.originalfields[ifld], q)) break;
-        else if (iref->qinterpolated && MORPHO_ISSAME(iref->qinterpolated[ifld], q)) {
+        else if (iref->iface.qinterpolated && MORPHO_ISSAME(iref->iface.qinterpolated[ifld], q)) {
             if (xfld>=0) MORPHO_RAISE(v, INTEGRAL_FLD);
             xfld=ifld;
         }
@@ -5400,12 +5459,12 @@ static value integral_jumpdnfn(vm *v, int nargs, value *args) {
 
     if (ifld>=iref->jref->integral.nfields) MORPHO_RAISE(v, INTEGRAL_FLD);
 
-    double gradplus[iref->mesh->dim], gradminus[iref->mesh->dim];
+    double gradplus[iref->iface.mesh->dim], gradminus[iref->iface.mesh->dim];
     if (!jump_evaluatesidegradient(iref, ifld, true, gradplus) ||
         !jump_evaluatesidegradient(iref, ifld, false, gradminus)) MORPHO_RAISE(v, JUMP_UNIMPL);
 
-    double jp = functional_vecdot(iref->mesh->dim, gradplus, iref->normal->elements);
-    double jm = functional_vecdot(iref->mesh->dim, gradminus, iref->normal->elements);
+    double jp = functional_vecdot(iref->iface.mesh->dim, gradplus, iref->iface.normal->elements);
+    double jm = functional_vecdot(iref->iface.mesh->dim, gradminus, iref->iface.normal->elements);
     return MORPHO_FLOAT(jp-jm);
 }
 

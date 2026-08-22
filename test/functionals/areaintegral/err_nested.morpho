@@ -1,0 +1,7 @@
+import meshtools
+
+var m = AreaMesh(fn (x,y) [x,y,0], 0..1:1, 0..1:1)
+var inner = AreaIntegral(fn (x) 1)
+
+print AreaIntegral(fn (x) inner.total(m)).total(m)
+// expect error 'IntgrlNested'

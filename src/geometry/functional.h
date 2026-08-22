@@ -118,6 +118,9 @@
 #define INTEGRAL_SPCLFN                "IntgrlSpclFn"
 #define INTEGRAL_SPCLFN_MSG            "Special function '%s' can't be called outside of an Integral."
 
+#define INTEGRAL_NESTED                "IntgrlNested"
+#define INTEGRAL_NESTED_MSG            "Nested Integrals are not supported."
+
 #define JUMP_UNIMPL                    "JumpUnimpl"
 #define JUMP_UNIMPL_MSG                "This Jump evaluation is not implemented yet."
 

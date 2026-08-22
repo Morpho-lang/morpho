@@ -1768,6 +1768,13 @@ This error occurs when a special function such as `tangent`, `normal` or `grad` 
 
     tangent() // Causes 'IntgrlSpclFn'
 
+## IntgrlNested
+[tagintgrlnested]: # (intgrlnested)
+
+This error occurs when an Integral or Jump is evaluated from inside another Integral or Jump integrand. Nested evaluation is not supported:
+
+    AreaIntegral(fn (x) LineIntegral(fn (y) 1).total(m)).total(m) // Causes 'IntgrlNested'
+
 ## JumpUnimpl
 [tagjumpunimpl]: # (jumpunimpl)
 

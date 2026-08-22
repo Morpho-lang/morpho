@@ -10,6 +10,7 @@
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "functional.h"
 #include "morpho.h"
@@ -3628,8 +3629,15 @@ typedef struct {
  * ---------------------------------------------- */
 
 /** Integral element references
- @brief used to store information about the current element in thread-local storage. We wrap them in an object so that they can be safely stored in a value.
- Guaranteed to be thread local */
+ @brief Thread-local integral context. */
+#define ELREF_PERSISTENT   (1u<<0) /* Heap elref outlives a single integrand call */
+#define ELREF_CONFIGURED   (1u<<1) /* method={} integrator is ready */
+#define ELREF_HASTANGENT   (1u<<2)
+#define ELREF_HASNORMAL    (1u<<3)
+#define ELREF_HASJACOBIAN  (1u<<4)
+#define ELREF_HASCG        (1u<<5)
+#define ELREF_HASINVJ      (1u<<6)
+#define ELREF_GEOM         (ELREF_HASTANGENT|ELREF_HASNORMAL|ELREF_HASJACOBIAN|ELREF_HASCG|ELREF_HASINVJ)
 
 typedef struct {
     object obj;
@@ -3637,10 +3645,11 @@ typedef struct {
     
     integralref *iref;   // The current integral ref structure
     
-// Information about the element
+// Information about the element reference:
     grade g;             // Current grade
     elementid id;        // Current element
     int nv;              // Number of vertices
+    unsigned flags;
     int *vid;            // Vertex ids
     double **vertexposn; // List of vertex positions
     double elementsize;  // Size of the element
@@ -3655,6 +3664,16 @@ typedef struct {
     value *qgrad;        // Gradients
     value *qhess;        // Hessians
     value *qinterpolated; // List of interpolated quantities (this allows us to identify operators on fields
+    
+// Per-task workspace (heap elref from taskstart)
+    integrator integ;
+    int nfields;
+    
+    objectmatrix *tangent;
+    objectmatrix *normal;
+    objectmatrix *jacobian;
+    objectmatrix *invjacobian;
+    objectmatrix *cgtensor;
 } objectintegralelementref;
 
 size_t objectintegralelementref_sizefn(object *obj) {
@@ -3683,9 +3702,6 @@ objecttype objectintegralelementreftype;
 /** Gets the object as an element ref */
 #define MORPHO_GETINTEGRALELEMENTREF(val) ((objectintegralelementref *) MORPHO_GETOBJECT(val))
 
-/** Static element ref */
-#define MORPHO_STATICINTEGRALELEMENTREF(mesh, grade, id, nv, vid)      { .obj.type=OBJECT_INTEGRALELEMENTREF, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .g=grade, .mesh=mesh, .id=id, .nv=nv, .vid=vid, .qinterpolated=NULL }
-
 int elementhandle;
 
 /** Get the current element ref from thread-local storage in the VM */
@@ -3695,6 +3711,79 @@ objectintegralelementref *integral_getelementref(vm *v) {
     if (MORPHO_ISINTEGRALELEMENTREF(elref)) return MORPHO_GETINTEGRALELEMENTREF(elref);
     
     return NULL;
+}
+
+/** Checks whether an existing matrix is the correct size and allocates if not. */
+static objectmatrix *integral_ensurematrix(objectmatrix **slot, int nrows, int ncols) {
+    if (!*slot || (*slot)->nrows!=nrows || (*slot)->ncols!=ncols) {
+        if (*slot) object_free((object *) *slot);
+        *slot=matrix_new(nrows, ncols, false);
+    }
+    return *slot;
+}
+
+/** Resets the geometry flags and other geometry-related data. */
+static void integral_resetgeometryflags(objectintegralelementref *elref) {
+    elref->flags &= ~ELREF_GEOM;
+    elref->lambda=NULL;
+    elref->posn=NULL;
+    elref->qinterpolated=NULL;
+}
+
+/** Initialize an elref to a cleared state. */
+static void _integral_initelref(objectintegralelementref *elref) {
+    memset(elref, 0, sizeof(objectintegralelementref));
+    object_init((object *) elref, OBJECT_INTEGRALELEMENTREF);
+}
+
+/** Bind an elref to a particular element and reset per-element geometry cache. */
+static void _integral_bindelref(objectintegralelementref *elref, objectmesh *mesh, grade g, elementid id, int nv, int *vid, double **vertexposn, integralref *iref) {
+    elref->mesh=mesh;
+    elref->g=g;
+    elref->id=id;
+    elref->nv=nv;
+    elref->vid=vid;
+    elref->vertexposn=vertexposn;
+    elref->iref=iref;
+    integral_resetgeometryflags(elref);
+}
+
+/** Fill n values with nil. */
+static void _integral_nilvalues(value *p, int n) {
+    for (int i=0; i<n; i++) p[i]=MORPHO_NIL;
+}
+
+static void integral_releasegeometry(objectintegralelementref *elref) {
+    if (elref->invj) { object_free((object *) elref->invj); elref->invj=NULL; }
+    if (elref->tangent) { object_free((object *) elref->tangent); elref->tangent=NULL; }
+    if (elref->normal) { object_free((object *) elref->normal); elref->normal=NULL; }
+    if (elref->jacobian) { object_free((object *) elref->jacobian); elref->jacobian=NULL; }
+    if (elref->invjacobian) { object_free((object *) elref->invjacobian); elref->invjacobian=NULL; }
+    if (elref->cgtensor) { object_free((object *) elref->cgtensor); elref->cgtensor=NULL; }
+    integral_resetgeometryflags(elref);
+}
+
+static void integral_freegradhess(int nfields, value *qgrad, value *qhess);
+
+/** Frees the element ref and attached data. */
+static void integral_freeelref(objectintegralelementref *elref) {
+    if (!elref) return;
+    
+    integrator_clear(&elref->integ);
+    
+    if (elref->quantities) {
+        for (int i=0; i<elref->nfields; i++) {
+            if (elref->quantities[i].vals) MORPHO_FREE(elref->quantities[i].vals);
+        }
+        MORPHO_FREE(elref->quantities);
+    }
+
+    if (elref->qgrad && elref->qhess) integral_freegradhess(elref->nfields, elref->qgrad, elref->qhess);
+    if (elref->qgrad) MORPHO_FREE(elref->qgrad);
+    if (elref->qhess) MORPHO_FREE(elref->qhess);
+    
+    integral_releasegeometry(elref);
+    object_free((object *) elref);
 }
 
 /* ----------------------------------------------
@@ -3772,6 +3861,10 @@ static objectjumpinterfaceref *jump_getinterfaceref(vm *v) {
     return NULL;
 }
 
+static bool integral_contextactive(vm *v) {
+    return integral_getelementref(v) || jump_getinterfaceref(v);
+}
+
 /* ---------
  * Elementid
  * --------- */
@@ -3787,65 +3880,46 @@ static value integral_elementid(vm *v, int nargs, value *args) {
  * Tangent
  * -------- */
 
-int tangenthandle; // TL storage handle for tangent vectors
-
 /** Evaluate the tangent vector */
-void integral_evaluatetangent(vm *v, value *out) {
+static bool integral_evaluatetangent(vm *v) {
     objectintegralelementref *elref = integral_getelementref(v);
-    if (!elref || elref->g!=1) {
-        morpho_runtimeerror(v, INTEGRAL_SPCLFN, TANGENT_FUNCTION);
-        return;
-    }
+    if (!elref || elref->g!=1) MORPHO_FAILVARGS(v, INTEGRAL_SPCLFN, TANGENT_FUNCTION);
     
     int dim = elref->mesh->dim;
-    
-    objectmatrix *mtangent = matrix_new(dim, 1, false);
-    if (!mtangent) {
-        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-        return;
-    }
+    objectmatrix *mtangent=integral_ensurematrix(&elref->tangent, dim, 1);
+    if (!mtangent) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
     
     functional_vecsub(dim, elref->vertexposn[1], elref->vertexposn[0], mtangent->elements);
 
     double tnorm=functional_vecnorm(dim, mtangent->elements);
     if (fabs(tnorm)>MORPHO_EPS) functional_vecscale(dim, 1.0/tnorm, mtangent->elements, mtangent->elements);
     
-    vm_settlvar(v, tangenthandle, MORPHO_OBJECT(mtangent));
-    *out = MORPHO_OBJECT(mtangent);
+    elref->flags |= ELREF_HASTANGENT;
+    return true;
 }
 
 static value integral_tangent(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
+    objectintegralelementref *elref = integral_getelementref(v);
+    if (!elref || elref->g!=1) MORPHO_RAISEVARGS(v, INTEGRAL_SPCLFN, TANGENT_FUNCTION);
     
-    vm_gettlvar(v, tangenthandle, &out);
-    if (MORPHO_ISNIL(out)) integral_evaluatetangent(v, &out);
-    
-    return out;
+    if (!(elref->flags & ELREF_HASTANGENT) && !integral_evaluatetangent(v)) return MORPHO_NIL;
+    return MORPHO_OBJECT(elref->tangent);
 }
 
 /* --------
  * Normal
  * -------- */
 
-int normlhandle; // TL storage handle for normal vectors
-
 /** Evaluates the normal vector */
-void integral_evaluatenormal(vm *v, value *out) {
+static bool integral_evaluatenormal(vm *v) {
     objectintegralelementref *elref = integral_getelementref(v);
     
-    if (!elref || elref->g!=2) {
-        morpho_runtimeerror(v, INTEGRAL_SPCLFN, NORMAL_FUNCTION);
-        return;
-    }
+    if (!elref || elref->g!=2) MORPHO_FAILVARGS(v, INTEGRAL_SPCLFN, NORMAL_FUNCTION);
     
     int dim = elref->mesh->dim;
     double s0[dim], s1[dim];
-    
-    objectmatrix *mnormal = matrix_new(dim, 1, false);
-    if (!mnormal) {
-        morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-        return;
-    }
+    objectmatrix *mnormal=integral_ensurematrix(&elref->normal, dim, 1);
+    if (!mnormal) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
     
     functional_vecsub(dim, elref->vertexposn[1], elref->vertexposn[0], s0);
     functional_vecsub(dim, elref->vertexposn[2], elref->vertexposn[1], s1);
@@ -3854,17 +3928,16 @@ void integral_evaluatenormal(vm *v, value *out) {
     double nnorm=functional_vecnorm(dim, mnormal->elements);
     if (fabs(nnorm)>MORPHO_EPS) functional_vecscale(dim, 1.0/nnorm, mnormal->elements, mnormal->elements);
     
-    vm_settlvar(v, normlhandle, MORPHO_OBJECT(mnormal));
-    *out = MORPHO_OBJECT(mnormal);
+    elref->flags |= ELREF_HASNORMAL;
+    return true;
 }
 
 static value integral_normal(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
-
-    vm_gettlvar(v, normlhandle, &out);
-    if (MORPHO_ISNIL(out)) integral_evaluatenormal(v, &out);
+    objectintegralelementref *elref = integral_getelementref(v);
+    if (!elref || elref->g!=2) MORPHO_RAISEVARGS(v, INTEGRAL_SPCLFN, NORMAL_FUNCTION);
     
-    return out;
+    if (!(elref->flags & ELREF_HASNORMAL) && !integral_evaluatenormal(v)) return MORPHO_NIL;
+    return MORPHO_OBJECT(elref->normal);
 }
 
 /* --------
@@ -3916,7 +3989,16 @@ bool integral_prepareinvjacobian(unsigned int dim, grade g, double **x, objectma
     return success;
 }
 
-/** Allocate suitable storage for the gradient */
+static bool integral_ensureinvj(vm *v, objectintegralelementref *elref) {
+    if (elref->flags & ELREF_HASINVJ) return true;
+    if (!integral_ensurematrix(&elref->invj, elref->g, elref->mesh->dim) ||
+        !integral_prepareinvjacobian(elref->mesh->dim, elref->g, elref->vertexposn, elref->invj)) {
+        MORPHO_FAIL(v, INTEGRAL_DFFEVL);
+    }
+    elref->flags |= ELREF_HASINVJ;
+    return true;
+}
+
 bool integral_gradalloc(int dim, value prototype, value *out) {
     if (MORPHO_ISNIL(prototype)) { // Scalar
         objectmatrix *mgrad=matrix_new(dim, 1, false);
@@ -4056,13 +4138,7 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
     
     // Evaluate gradient. TODO: remove quantities check as we deprecate old integrator.
     if (MORPHO_ISFESPACE(fld->fnspc) && elref->quantities) {
-        if (!elref->invj) {
-            elref->invj=matrix_new(elref->g, elref->mesh->dim, false);
-            
-            if (elref->invj) {
-                integral_prepareinvjacobian(elref->mesh->dim, elref->g, elref->vertexposn, elref->invj);
-            } else MORPHO_FAIL(v, INTEGRAL_DFFEVL);
-        }
+        if (!integral_ensureinvj(v, elref)) return false;
         
         fespace *disc = MORPHO_GETFESPACE(fld->fnspc)->fespace;
         if (!FESPACE_HASGRADIENT(disc)) MORPHO_FAIL(v, INTEGRAL_DFFEVL);
@@ -4140,12 +4216,7 @@ bool integral_evaluatehessian(vm *v, value q, value *out) {
     }
     
     if (MORPHO_ISFESPACE(fld->fnspc) && elref->quantities) {
-        if (!elref->invj) {
-            elref->invj=matrix_new(elref->g, elref->mesh->dim, false);
-            if (elref->invj) {
-                integral_prepareinvjacobian(elref->mesh->dim, elref->g, elref->vertexposn, elref->invj);
-            } else MORPHO_FAIL(v, INTEGRAL_DFFEVL);
-        }
+        if (!integral_ensureinvj(v, elref)) return false;
         
         fespace *disc = MORPHO_GETFESPACE(fld->fnspc)->fespace;
         if (!FESPACE_HASHESSIAN(disc)) MORPHO_FAIL(v, INTEGRAL_DFFEVL);
@@ -4203,20 +4274,15 @@ static value integral_hessfn(vm *v, int nargs, value *args) {
  * Cauchy green strain
  * ------------------- */
 
-int cauchygreenhandle; // TL storage handle for CG tensor
-
 /** Evaluates the cg strain tensor */
-void integral_evaluatecg(vm *v, value *out) {
+static bool integral_evaluatecg(vm *v) {
     objectintegralelementref *elref = integral_getelementref(v);
     
-    if (!elref || !elref->iref->mref) {
-        morpho_runtimeerror(v, INTEGRAL_SPCLFN, CGTENSOR_FUNCTION); return;
-    }
+    if (!elref || !elref->iref->mref) MORPHO_FAILVARGS(v, INTEGRAL_SPCLFN, CGTENSOR_FUNCTION);
     
     int gdim=elref->nv-1; // Dimension of Gram matrix
-    
-    objectmatrix *cg=matrix_new(gdim, gdim, true);
-    if (!cg) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return; }
+    objectmatrix *cg=integral_ensurematrix(&elref->cgtensor, gdim, gdim);
+    if (!cg) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
     
     double gramrefel[gdim*gdim], gramdefel[gdim*gdim], qel[gdim*gdim], rel[gdim*gdim];
     objectmatrix gramref = MORPHO_STATICMATRIX(gramrefel, gdim, gdim); // Gram matrices
@@ -4227,25 +4293,24 @@ void integral_evaluatecg(vm *v, value *out) {
     linearelasticity_calculategram(elref->iref->mref->vert, elref->mesh->dim, elref->nv, elref->vid, &gramref);
     linearelasticity_calculategram(elref->mesh->vert, elref->mesh->dim, elref->nv, elref->vid, &gramdef);
     
-    if (matrix_copy(&gramref, &q)!=LINALGERR_OK) return;
-    if (matrix_inverse(&q)!=LINALGERR_OK) return;
-    if (matrix_mul(&gramdef, &q, &r)!=LINALGERR_OK) return;
+    if (matrix_copy(&gramref, &q)!=LINALGERR_OK) return false;
+    if (matrix_inverse(&q)!=LINALGERR_OK) return false;
+    if (matrix_mul(&gramdef, &q, &r)!=LINALGERR_OK) return false;
 
-    if (matrix_identity(cg)!=LINALGERR_OK) return;
+    if (matrix_identity(cg)!=LINALGERR_OK) return false;
     matrix_scale(cg, -0.5);
     matrix_axpy(0.5, &r, cg);
     
-    vm_settlvar(v, cauchygreenhandle, MORPHO_OBJECT(cg));
-    *out = MORPHO_OBJECT(cg);
+    elref->flags |= ELREF_HASCG;
+    return true;
 }
 
 static value integral_cgfn(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
-
-    vm_gettlvar(v, cauchygreenhandle, &out);
-    if (MORPHO_ISNIL(out)) integral_evaluatecg(v, &out);
+    objectintegralelementref *elref = integral_getelementref(v);
+    if (!elref || !elref->iref->mref) MORPHO_RAISEVARGS(v, INTEGRAL_SPCLFN, CGTENSOR_FUNCTION);
     
-    return out;
+    if (!(elref->flags & ELREF_HASCG) && !integral_evaluatecg(v)) return MORPHO_NIL;
+    return MORPHO_OBJECT(elref->cgtensor);
 }
 
 /* -------------------
@@ -4259,9 +4324,6 @@ static value integral_cgfn(vm *v, int nargs, value *args) {
  * and inverse jacobians.
  */
 
-int jacobianhandle; // TL storage handle for Jacobian
-int invjacobianhandle; // TL storage handle for inverse Jacobian
-
 void _fetchvertices(objectintegralelementref *elref, objectmesh *mesh, int nv, elementid *vid, double **x) {
     // Fetch reference vertices
     for (int j=0; j<nv; j++) matrix_getcolumnptr(elref->iref->mref->vert, vid[j], &x[j]);
@@ -4271,24 +4333,16 @@ void _edgevectors(grade g, int dim, double **x, double *out) {
     for (int i=0; i<g; i++) functional_vecsub(dim, x[i+1], x[0], out + i*dim);
 }
 
-/** Evaluates the jacobian and inverse jacobian; returns either of these as requested */
-void integral_evaluatejacobian(vm *v, value *jac, value *invjac) {
+/** Evaluates the jacobian and inverse jacobian */
+static bool integral_evaluatejacobian(vm *v) {
     objectintegralelementref *elref = integral_getelementref(v);
     
-    if (!elref) {
-        morpho_runtimeerror(v, INTEGRAL_SPCLFN, JACOBIAN_FUNCTION); return;
-    }
+    if (!elref) MORPHO_FAILVARGS(v, INTEGRAL_SPCLFN, JACOBIAN_FUNCTION);
     
     int dim = elref->mesh->dim;     // Dimension of the mesh
-    
-    // Allocate matrices
-    objectmatrix *J=matrix_new(dim, dim, true);
-    objectmatrix *Jinv=matrix_new(dim, dim, true);
-    
-    if (J) vm_settlvar(v, jacobianhandle, MORPHO_OBJECT(J));
-    if (Jinv) vm_settlvar(v, invjacobianhandle, MORPHO_OBJECT(Jinv));
-    
-    if (!J || !Jinv) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return; }
+    objectmatrix *J=integral_ensurematrix(&elref->jacobian, dim, dim);
+    objectmatrix *Jinv=integral_ensurematrix(&elref->invjacobian, dim, dim);
+    if (!J || !Jinv) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
     
     // Now compute them
     grade g = elref->g;             // Grade of the element
@@ -4317,51 +4371,24 @@ void integral_evaluatejacobian(vm *v, value *jac, value *invjac) {
     matrix_copy(J, Jinv);
     matrix_inverse(Jinv); // Compute J^-1
     
-    if (jac) *jac = MORPHO_OBJECT(J);
-    if (invjac) *invjac = MORPHO_OBJECT(Jinv);
+    elref->flags |= ELREF_HASJACOBIAN;
+    return true;
 }
 
 static value integral_jacobian(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
-
-    vm_gettlvar(v, jacobianhandle, &out);
-    if (MORPHO_ISNIL(out)) integral_evaluatejacobian(v, &out, NULL);
+    objectintegralelementref *elref = integral_getelementref(v);
+    if (!elref) MORPHO_RAISEVARGS(v, INTEGRAL_SPCLFN, JACOBIAN_FUNCTION);
     
-    return out;
+    if (!(elref->flags & ELREF_HASJACOBIAN) && !integral_evaluatejacobian(v)) return MORPHO_NIL;
+    return MORPHO_OBJECT(elref->jacobian);
 }
 
 static value integral_invjacobian(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
-
-    vm_gettlvar(v, invjacobianhandle, &out);
-    if (MORPHO_ISNIL(out)) integral_evaluatejacobian(v, NULL, &out);
+    objectintegralelementref *elref = integral_getelementref(v);
+    if (!elref) MORPHO_RAISEVARGS(v, INTEGRAL_SPCLFN, JACOBIAN_FUNCTION);
     
-    return out;
-}
-
-/* ----------------------
- * General initialization
- * ---------------------- */
-
-/** Clears threadlocal storage */
-void integral_cleartlvars(vm *v) {
-    int handles[] = { elementhandle, normlhandle, tangenthandle, cauchygreenhandle, jacobianhandle, invjacobianhandle, -1 };
-    
-    for (int i=0; handles[i]>=0; i++) {
-        vm_settlvar(v, handles[i], MORPHO_NIL);
-    }
-}
-
-void integral_freetlvars(vm *v) {
-    int handles[] = { normlhandle, tangenthandle, cauchygreenhandle,jacobianhandle, invjacobianhandle, -1 };
-    
-    for (int i=0; handles[i]>=0; i++) {
-        value val;
-        vm_gettlvar(v, handles[i], &val);
-        if (MORPHO_ISOBJECT(val)) morpho_freeobject(val);
-    }
-    
-    integral_cleartlvars(v);
+    if (!(elref->flags & ELREF_HASJACOBIAN) && !integral_evaluatejacobian(v)) return MORPHO_NIL;
+    return MORPHO_OBJECT(elref->invjacobian);
 }
 
 /* ----------------------------------------------
@@ -4447,11 +4474,6 @@ void integral_freeref(void *ref) {
     MORPHO_FREE(ref);
 }
 
-/** Clears any data in an element ref */
-void integral_clearelref(objectintegralelementref *elref) {
-    if (elref->invj) object_free((object *) elref->invj);
-}
-
 /** Free cached field gradients and hessians for an element */
 static void integral_freegradhess(int nfields, value *qgrad, value *qhess) {
     for (int i=0; i<nfields; i++) {
@@ -4468,12 +4490,20 @@ static void integral_freegradhess(int nfields, value *qgrad, value *qhess) {
     }
 }
 
-/** Prepares quantity list */
+/** Ensure quantity.vals can hold at least n entries. */
+static bool _integral_ensurequantityvals(quantity *q, int n) {
+    if (q->capacity>=n) return true;
+    value *vals=MORPHO_REALLOC(q->vals, sizeof(value)*n);
+    if (!vals) return false;
+    q->vals=vals;
+    q->capacity=n;
+    return true;
+}
+
+/** Prepares quantity list. Prefers to reuse existing buffers if possible. */
 bool integral_preparequantities(integralref *iref, int nv, int *vid, quantity *quantities) {
-    bool success=true;
     for (int k=0; k<iref->nfields; k++) {
         objectfield *f=MORPHO_GETFIELD(iref->fields[k]);
-        quantities[k].vals=NULL;
         
         if (MORPHO_ISFESPACE(f->fnspc)) {
             fespace *disc=MORPHO_GETFESPACE(f->fnspc)->fespace;
@@ -4487,33 +4517,28 @@ bool integral_preparequantities(integralref *iref, int nv, int *vid, quantity *q
             fieldindx findx[disc->nnodes];
             if (!fespace_doftofieldindx(f, disc, nv, vid, findx)) return false;
             
-            quantities[k].vals=MORPHO_MALLOC(sizeof(value)*disc->nnodes);
-            if (!quantities[k].vals) return false;
+            if (!_integral_ensurequantityvals(&quantities[k], disc->nnodes)) return false;
             for (int i=0; i<disc->nnodes; i++) {
                 int dof;
                 if (!field_getindex(f, findx[i].g, findx[i].id, findx[i].indx, &dof)) return false;
                 if (!field_getelementwithindex(f, dof, &quantities[k].vals[i])) return false;
             }
-            success=true;
         } else {
             quantities[k].nnodes=nv;
             quantities[k].ifn=NULL;
-            quantities[k].vals=MORPHO_MALLOC(sizeof(value)*nv);
-            if (!quantities[k].vals) return false;
+            if (!_integral_ensurequantityvals(&quantities[k], nv)) return false;
             for (unsigned int i=0; i<nv; i++) {
                 if (!field_getelement(f, MESH_GRADE_VERTEX, vid[i], 0, &quantities[k].vals[i])) return false;
             }
-            success=true; 
         }
     }
-    return success;
+    return true;
 }
 
 /** Clears a list of quantities */
 void integral_clearquantities(int nq, quantity *quantities) {
-    for (int k=0; k<nq; k++) {
-        if (quantities[k].vals) MORPHO_FREE(quantities[k].vals);
-    }
+    for (int k=0; k<nq; k++) if (quantities[k].vals) MORPHO_FREE(quantities[k].vals);
+    memset(quantities, 0, sizeof(quantity)*nq);
 }
 
 bool integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *ref, double *fout) {
@@ -4545,42 +4570,52 @@ bool integral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
     integralref iref = *(integralref *) ref;
     grade g = iref.g;
     double *x[nv];
-    bool success;
-    value qgrad[iref.nfields+1], qhess[iref.nfields+1];
-    for (int i=0; i<iref.nfields; i++) { qgrad[i] = MORPHO_NIL; qhess[i] = MORPHO_NIL; }
+    bool success=false;
+    objectintegralelementref stackelref;
+    objectintegralelementref *elref = integral_getelementref(v);
+    bool persistent = (elref && (elref->flags & ELREF_PERSISTENT));
+    value qgrad_local[iref.nfields+1], qhess_local[iref.nfields+1];
+    quantity quantities_local[iref.nfields+1];
+    quantity *quantities=NULL;
+    bool localquantities=false;
     
-    objectintegralelementref elref = MORPHO_STATICINTEGRALELEMENTREF(mesh, g, id, nv, vid);
-    elref.iref = &iref;
-    elref.vertexposn = x;
-    elref.qgrad=qgrad;
-    elref.qhess=qhess;
-    elref.invj=NULL;
+    if (!persistent) {
+        _integral_initelref(&stackelref);
+        elref = &stackelref;
+        _integral_nilvalues(qgrad_local, iref.nfields);
+        _integral_nilvalues(qhess_local, iref.nfields);
+        elref->qgrad=qgrad_local;
+        elref->qhess=qhess_local;
+        vm_settlvar(v, elementhandle, MORPHO_OBJECT(elref));
+    }
+    
+    _integral_bindelref(elref, mesh, g, id, nv, vid, x, &iref);
     
     objectmesh *sizemesh = (iref.weightbyref ? iref.mref : mesh);
-    if (!functional_elementsize(v, sizemesh, g, id, nv, vid, &elref.elementsize)) return false;
+    if (!functional_elementsize(v, sizemesh, g, id, nv, vid, &elref->elementsize)) goto integral_integrand_cleanup;
 
     iref.v=v;
     for (unsigned int i=0; i<nv; i++) {
         mesh_getvertexcoordinatesaslist(mesh, vid[i], &x[i]);
     }
 
-    /* Set up quantities */
-    integral_cleartlvars(v);
-    vm_settlvar(v, elementhandle, MORPHO_OBJECT(&elref));
-
     if (MORPHO_ISDICTIONARY(iref.method)) {
-        double err;
-        quantity quantities[iref.nfields+1];
-        if (!integral_preparequantities(&iref, nv, vid, quantities)) {
-            integral_clearelref(&elref);
-            return false;
+        quantities = elref->quantities ? elref->quantities : quantities_local;
+        if (quantities==quantities_local) {
+            memset(quantities_local, 0, sizeof(quantities_local));
+            elref->quantities=quantities;
+            localquantities=true;
         }
-        elref.quantities=quantities;
         
-        success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), morpho_geterror(v), mesh->dim, g, x, iref.nfields, quantities, &iref, out, &err);
+        if (!integral_preparequantities(&iref, nv, vid, quantities)) goto integral_integrand_cleanup;
         
-        integral_clearquantities(iref.nfields, quantities);
-        integral_clearelref(&elref);
+        if (elref->flags & ELREF_CONFIGURED) {
+            success=integrator_integrate(&elref->integ, integral_integrandfn, mesh->dim, x, iref.nfields, quantities, &iref);
+            if (success) *out = elref->integ.val;
+        } else {
+            double err;
+            success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref.method), morpho_geterror(v), mesh->dim, g, x, iref.nfields, quantities, &iref, out, &err);
+        }
     } else { // Old integrator
         value qstore[nv][iref.nfields+1];
         value *q[nv];
@@ -4594,18 +4629,81 @@ bool integral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
         success=integrate_integrate(integral_integrandfn, mesh->dim, g, x, iref.nfields, q, &iref, out);
     }
     
-    if (success) *out *= elref.elementsize;
+    if (success) *out *= elref->elementsize;
 
-    integral_freetlvars(v);
-    integral_freegradhess(iref.nfields, qgrad, qhess);
+integral_integrand_cleanup:
+    if (!persistent) vm_settlvar(v, elementhandle, MORPHO_NIL);
+    if (localquantities) {
+        elref->quantities=NULL;
+        integral_clearquantities(iref.nfields, quantities);
+    }
+    if (!persistent) {
+        integral_releasegeometry(elref);
+        integral_freegradhess(iref.nfields, elref->qgrad, elref->qhess);
+    }
     
     return success;
+}
+
+static void *_integral_zalloc(int n, size_t size) {
+    size_t bytes=(size_t) n*size;
+    void *p=MORPHO_MALLOC(bytes);
+    if (p) memset(p, 0, bytes);
+    return p;
+}
+
+static bool integral_taskstart(vm *v, functional_mapinfo *info) {
+    integralref *iref=(integralref *) info->ref;
+    objectintegralelementref *elref=NULL;
+    
+    if (integral_contextactive(v)) MORPHO_FAIL(v, INTEGRAL_NESTED);
+    
+    elref=(objectintegralelementref *) object_new(sizeof(objectintegralelementref), OBJECT_INTEGRALELEMENTREF);
+    if (!elref) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
+    
+    _integral_initelref(elref);
+    integrator_init(&elref->integ);
+    elref->flags |= ELREF_PERSISTENT;
+    
+    if (MORPHO_ISDICTIONARY(iref->method)) {
+        if (!integrator_configurewithdictionary(&elref->integ, morpho_geterror(v), info->g, MORPHO_GETDICTIONARY(iref->method))) goto integral_taskstart_cleanup;
+        elref->flags |= ELREF_CONFIGURED;
+    }
+    
+    elref->nfields=iref->nfields;
+    if (iref->nfields>0) {
+        elref->qgrad=_integral_zalloc(iref->nfields, sizeof(value));
+        elref->qhess=_integral_zalloc(iref->nfields, sizeof(value));
+        if (!elref->qgrad || !elref->qhess) goto integral_taskstart_cleanup;
+        
+        if (elref->flags & ELREF_CONFIGURED) {
+            elref->quantities=_integral_zalloc(iref->nfields, sizeof(quantity));
+            if (!elref->quantities) goto integral_taskstart_cleanup;
+        }
+    }
+    
+    vm_settlvar(v, elementhandle, MORPHO_OBJECT(elref));
+    return true;
+
+integral_taskstart_cleanup:
+    if (!morpho_checkerror(morpho_geterror(v))) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+    integral_freeelref(elref);
+    return false;
+}
+
+static void integral_taskend(vm *v, functional_mapinfo *info) {
+    objectintegralelementref *elref=integral_getelementref(v);
+    if (!elref || !(elref->flags & ELREF_PERSISTENT)) return;
+    vm_settlvar(v, elementhandle, MORPHO_NIL);
+    integral_freeelref(elref);
 }
 
 /** Shared bindref for Line/Area/Volume integrals. Grade comes from the
  * instance; startfn prepares any stored Fields' FE spaces. */
 static bool _Integral_bindref(vm *v, objectinstance *self, functional_mapinfo *info, integralref *ref) {
     grade g=0;
+
+    if (integral_contextactive(v)) MORPHO_FAIL(v, INTEGRAL_NESTED);
 
     if (!functional_readgrade(self, &g) ||
         !integral_prepareref(self, info->mesh, (info->g < 0 ? g : info->g), info->sel, ref)) {
@@ -4615,6 +4713,8 @@ static bool _Integral_bindref(vm *v, objectinstance *self, functional_mapinfo *i
     info->ref = ref;
     info->integrand = integral_integrand;
     info->start = integral_startfn;
+    info->taskstart = integral_taskstart;
+    info->taskend = integral_taskend;
     return true;
 }
 
@@ -4910,6 +5010,7 @@ static bool jump_preparejumpside(jumpref *ref, int nv, int *vid, jumpside *trace
 
     for (int i=0; i<ref->integral.nfields; i++) {
         trace->quantities[i].nnodes=0;
+        trace->quantities[i].capacity=0;
         trace->quantities[i].vals=NULL;
         trace->quantities[i].ifn=NULL;
         trace->quantities[i].ndof=0;
@@ -5275,6 +5376,7 @@ static bool jump_mapfieldgradient(vm *v, functional_mapinfo *info, value *out) {
 /** Jump bindref: prepare already raises IntgrlArgs / FnctlELNtFnd / FnctlArgs.
  * Map grade is the interface grade from topology, not the caller's Int. */
 static bool _Jump_bindref(vm *v, objectinstance *self, functional_mapinfo *info, jumpref *ref) {
+    if (integral_contextactive(v)) MORPHO_FAIL(v, INTEGRAL_NESTED);
     if (!jump_prepareref(v, self, info->mesh, 0, info->sel, ref)) return false;
     info->g = ref->interfacegrade;
     info->ref = ref;
@@ -5407,6 +5509,7 @@ void functional_initialize(void) {
     morpho_defineerror(INTEGRAL_FLD, ERROR_HALT, INTEGRAL_FLD_MSG);
     morpho_defineerror(INTEGRAL_SPCLFN, ERROR_HALT, INTEGRAL_SPCLFN_MSG);
     morpho_defineerror(INTEGRAL_DFFEVL, ERROR_HALT, INTEGRAL_DFFEVL_MSG);
+    morpho_defineerror(INTEGRAL_NESTED, ERROR_HALT, INTEGRAL_NESTED_MSG);
     morpho_defineerror(JUMP_UNIMPL, ERROR_HALT, JUMP_UNIMPL_MSG);
     
     functional_poolinitialized = false;
@@ -5415,11 +5518,6 @@ void functional_initialize(void) {
     objectjumpinterfacereftype=object_addtype(&objectjumpinterfacerefdefn);
     elementhandle=vm_addtlvar();
     jumpinterfacehandle=vm_addtlvar();
-    tangenthandle=vm_addtlvar();
-    normlhandle=vm_addtlvar();
-    cauchygreenhandle=vm_addtlvar();
-    jacobianhandle=vm_addtlvar();
-    invjacobianhandle=vm_addtlvar();
     
     morpho_addfinalizefn(functional_finalize);
 }

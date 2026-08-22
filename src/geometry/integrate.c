@@ -2203,10 +2203,8 @@ void integrator_clear(integrator *integrate) {
     varray_doubleclear(&integrate->vertexstack);
 }
 
-/** Cheap restore between calls: keep configuration and varray capacity.
-    Restores the starting quadrature rule so p-refinement on one element
-    does not force a higher-order rule on the next. */
-void integrator_reset(integrator *integrate) {
+/** Restore an integrator to its initial state. */
+static void integrator_reset(integrator *integrate) {
     integrate->worklist.count=0;
     integrate->vertexstack.count=0;
     integrate->elementstack.count=0;

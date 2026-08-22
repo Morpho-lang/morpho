@@ -108,6 +108,7 @@ DECLARE_VARRAY(quadratureworkitem, quadratureworkitem)
 
 typedef struct {
     int nnodes;  /** Number of quantity values per element */
+    int capacity; /** Allocated length of vals */
     value *vals; /** List of quantity values */
     interpolationfn ifn; /** Interpolation function */
     int ndof; /** Number of degrees of freedom (this will be filled out by the integrator) */
@@ -172,10 +173,9 @@ typedef struct {
  * Integrator interface
  * ------------------------------------------------------- */
 
-// Staged interface for repeated integrals: call init, configure, integrate/reset repeatedly, then clear.
+// Interface for repeated integrals: init, configure once, integrate repeatedly, then clear.
 void integrator_init(integrator *integrate);
 void integrator_clear(integrator *integrate);
-void integrator_reset(integrator *integrate);
 bool integrator_configure(integrator *integrate, error *err, bool adapt, int grade, int order, char *name);
 bool integrator_configurewithdictionary(integrator *integrate, error *err, grade g, objectdictionary *dict);
 bool integrator_integrate(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, quantity *quantity, void *ref);

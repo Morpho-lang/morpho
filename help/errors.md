@@ -1617,7 +1617,9 @@ This error occurs when a mesh has no boundary elements:
 ## FldArgs
 [tagfldargs]: # (fldargs)
 
-This error occurs when Field receives invalid optional arguments. It allows `grade` and `finiteelementspace` as optional arguments.
+This error occurs when Field receives invalid optional arguments. It allows `grade` and `finiteelementspace` as optional arguments:
+
+    Field(mesh, foo=1) // Causes 'FldArgs'
 
 ## FldBnds
 [tagfldbnds]: # (fldbnds)
@@ -1672,9 +1674,9 @@ This error occurs when `FiniteElementSpace` is given an invalid `grade` option. 
 ## FnSpcNtFnd
 [tagfnspcntfnd]: # (fnspcntfnd)
 
-This error occurs when a function space cannot be found:
+This error occurs when a function space cannot be found for the requested label and grade:
 
-    FunctionSpace.find("nonexistent", 1) // Causes 'FnSpcNtFnd'
+    FiniteElementSpace("nonexistent", grade=1) // Causes 'FnSpcNtFnd'
 
 ## FnctlELNtFnd
 [tagfnctleltfnd]: # (fnctleltfnd)
@@ -1689,17 +1691,14 @@ Jump raises the same error if parent connectivity for the interface grade is mis
 ## FnctlFESpc
 [tagfnctlfespc]: # (fnctlfespc)
 
-A functional evaluates a Field on one grade of the mesh (vertices, lines, faces or volumes). This error means the Field's finite element space is not defined on that grade and cannot be evaluated on it. Typical cases:
-
-* The functional maps a higher grade than the space (for example `AreaIntegral` of a line-grade `CG0` Field).
-* The space has no trace on a lower grade (`Jump` or `NormSq` of `CG0`).
+This error occurs when a Field's finite element space cannot be used with this functional. For example, integrating a line Field over area elements, or using a piecewise-constant (`CG0`) Field with `Jump` or `NormSq`:
 
     AreaIntegral(fn (x, q) q, Field(m, grade=1)).total(m) // Causes 'FnctlFESpc' on a surface mesh
 
 ## FnctlNoFESpc
 [tagfnctlnofespc]: # (fnctlnofespc)
 
-Line, area and volume integrals, and Jump, require a Field with a finite element space. This error is raised if the Field opted out (`finiteelementspace=nil`, or `grade=` given as a list). Omit that option to use the default `CG1` space, or pass an explicit `FiniteElementSpace`.
+Line, area and volume integrals, and Jump, need a Field with a finite element space. This error is raised if the Field was created without one (`finiteelementspace=nil`). Leave that option off to use the default `CG1` space.
 
     LineIntegral(fn (x, q) q, Field(m, finiteelementspace=nil)).total(m) // Causes 'FnctlNoFESpc'
 

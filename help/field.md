@@ -22,13 +22,13 @@ To access elements of a `Field`, use index notation:
     print f[g, id] // Prints element id on grade `g`
     print f[g, id, index] // Prints quantity `index` on element `id` on grade `g`
 
-Fields are associated with a `FiniteElementSpace` to allow calculus operations, including integration, local derivatives, etc. Unless another `FiniteElementSpace` is specified, the default is piecewise-linear (CG1) with values defined on vertices. 
+Fields are associated with a `FiniteElementSpace` to allow calculus operations, including integration, local derivatives, etc. Unless another `FiniteElementSpace` is specified, the default is piecewise-linear (`CG1`) with values defined on vertices.
 
 Create a `Field` with a specified `FiniteElementSpace`:
 
     var f = Field(mesh, fn (x, y, z) x+y+z, finiteelementspace=FiniteElementSpace("CG2"))
 
-Create a piecewise constant (CG0) `Field` just by specifying a grade:
+Create a piecewise constant (`CG0`) `Field` just by specifying a grade:
 
     var f = Field(mesh, 1, grade=1) // Field is defined on line elements
 
@@ -43,7 +43,7 @@ Create a `Field` with no `FiniteElementSpace` attached, i.e. a raw container:
 
 Returns the Mesh associated with a Field object:
 
-    var f.mesh() 
+    print f.mesh() 
 
 ## Grade
 [taggrade]: # (grade)
@@ -78,8 +78,6 @@ Returns the `FiniteElementSpace` used to discretize the field, or `nil` if the f
 
     var fs = f.finiteElementSpace()
     print fs.grade()
-
-Pass `finiteelementspace=` to the constructor to choose a space; this wins over `grade=`. Pass `finiteelementspace=nil` to opt out.
 
 See also `FiniteElementSpace`.
 

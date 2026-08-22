@@ -11,7 +11,7 @@ You can create a finite element space directly from its label and grade:
 
     var fs = FiniteElementSpace("CG2", grade=2)
 
-Available labels are `CG0` (piecewise constant: one degree of freedom per element, zero gradient, no trace on lower grades), `CG1`, `CG2` and `CG3` (continuous Lagrange elements). Each label exists on grades 1 (lines), 2 (triangles) and 3 (tetrahedra).
+Available labels are `CG0` (piecewise constant: one value per element), `CG1`, `CG2` and `CG3` (continuous Lagrange elements). Each label exists on grades 1 (lines), 2 (triangles) and 3 (tetrahedra).
 
 You can also obtain a finite element space from an existing field:
 
@@ -74,7 +74,7 @@ With an integer argument, it returns the barycentric coordinates for a single no
 
     print fs.nodeCoords(0)
 
-For a grade `g` space, each node coordinate is represented by `g+1` barycentric coordinates.
+For a grade `g` space, each node coordinate is represented by `g+1` barycentric coordinates. For `CG0` the single node is at the element centroid.
 
 For example, to inspect all node coordinates:
 

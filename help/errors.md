@@ -1689,7 +1689,19 @@ Jump raises the same error if parent connectivity for the interface grade is mis
 ## FnctlFESpc
 [tagfnctlfespc]: # (fnctlfespc)
 
-A functional evaluates a Field on one grade of the mesh (vertices, lines, faces or volumes). This error means the Field's finite element space is not defined on that grade and cannot be evaluated on it. This could occur, for example, if you try to evaluate a functional on the boundary of an element where the finite element space is only defined on the interior; some finite element spaces specifically support this, but not all.
+A functional evaluates a Field on one grade of the mesh (vertices, lines, faces or volumes). This error means the Field's finite element space is not defined on that grade and cannot be evaluated on it. Typical cases:
+
+* The functional maps a higher grade than the space (for example `AreaIntegral` of a line-grade `CG0` Field).
+* The space has no trace on a lower grade (`Jump` or `NormSq` of `CG0`).
+
+    AreaIntegral(fn (x, q) q, Field(m, grade=1)).total(m) // Causes 'FnctlFESpc' on a surface mesh
+
+## FnctlNoFESpc
+[tagfnctlnofespc]: # (fnctlnofespc)
+
+Line, area and volume integrals, and Jump, require a Field with a finite element space. This error is raised if the Field opted out (`finiteelementspace=nil`, or `grade=` given as a list). Omit that option to use the default `CG1` space, or pass an explicit `FiniteElementSpace`.
+
+    LineIntegral(fn (x, q) q, Field(m, finiteelementspace=nil)).total(m) // Causes 'FnctlNoFESpc'
 
 ## FnctlArgs
 [tagfnctlargs]: # (fnctlargs)

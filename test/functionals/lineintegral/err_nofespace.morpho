@@ -1,0 +1,7 @@
+import meshtools
+
+var m = LineMesh(fn (t) [t, 0, 0], 0..1:0.5)
+var f = Field(m, fn (x, y, z) x, finiteelementspace=nil)
+
+print LineIntegral(fn (x, q) q, f).total(m)
+// expect error 'FnctlNoFESpc'

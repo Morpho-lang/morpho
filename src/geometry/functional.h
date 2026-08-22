@@ -100,6 +100,9 @@
 #define FUNC_FESPACE                   "FnctlFESpc"
 #define FUNC_FESPACE_MSG               "This Field%s%s cannot be evaluated on grade %u elements."
 
+#define FUNC_NOFESPACE                 "FnctlNoFESpc"
+#define FUNC_NOFESPACE_MSG             "This Field has no finite element space; pass finiteelementspace=... or omit the opt-out."
+
 #define SCALARPOTENTIAL_FNCLLBL        "SclrPtFnCllbl"
 #define SCALARPOTENTIAL_FNCLLBL_MSG    "ScalarPotential function is not callable."
 
@@ -455,10 +458,7 @@ MORPHO_METHOD_SIGNATURE(FUNCTIONAL_FIELDGRADIENT_METHOD, "Field (Field, Mesh, Se
  * already on mapinfo. START variants set info->start (FE-space prep, etc.). */
 #define FUNCTIONAL_MD_REF_BIND_FORCEGRADE_START(cls, reftype, prepare, integrandfn, err, grade, startfn) \
 static bool _##cls##_bindref(vm *v, objectinstance *self, functional_mapinfo *info, reftype *ref) { \
-    if (!prepare(self, info->mesh, grade, info->sel, ref)) { \
-        morpho_runtimeerror(v, err); \
-        return false; \
-    } \
+    if (!prepare(self, info->mesh, grade, info->sel, ref)) MORPHO_FAIL(v, err); \
     info->g = grade; \
     info->ref = ref; \
     info->integrand = integrandfn; \

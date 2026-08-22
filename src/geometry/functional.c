@@ -1879,10 +1879,7 @@ static value _ScalarPotential_gradient(vm *v, objectinstance *self, functional_m
     value fn;
 
     if (objectinstance_getpropertyinterned(self, scalarpotential_gradfunctionproperty, &fn)) {
-        if (!MORPHO_ISCALLABLE(fn)) {
-            morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
-            return MORPHO_NIL;
-        }
+        if (!MORPHO_ISCALLABLE(fn)) MORPHO_RAISE(v, SCALARPOTENTIAL_FNCLLBL);
         ref.fn = fn;
         info->ref = &ref;
         info->grad = scalarpotential_gradient;
@@ -2020,10 +2017,7 @@ value LinearElasticity_init__mesh_int(vm *v, int nargs, value *args) {
 }
 
 static bool _LinearElasticity_bindref(vm *v, objectinstance *self, functional_mapinfo *info, linearelasticityref *ref) {
-    if (!linearelasticity_prepareref(self, ref)) {
-        morpho_runtimeerror(v, FUNCTIONAL_ARGS);
-        return false;
-    }
+    if (!linearelasticity_prepareref(self, ref)) MORPHO_FAIL(v, FUNCTIONAL_ARGS);
     if (info->g < 0) info->g = ref->grade;
     info->ref = ref;
     info->integrand = linearelasticity_integrand;
@@ -2925,16 +2919,19 @@ static void functional_fespaceerror(vm *v, objectfield *field, grade g) {
                         (unsigned int) g);
 }
 
+#define FUNCTIONAL_FESPACE_FAIL(v, field, g) \
+    { functional_fespaceerror(v, field, g); return false; }
+
 static bool functional_preparefespacefield(vm *v, objectfield *field, grade g) {
     if (!field || !MORPHO_ISFESPACE(field->fnspc)) return true;
 
     fespace *disc = MORPHO_GETFESPACE(field->fnspc)->fespace;
-    /* Locate the restriction of the fespace, unless the field is defined on vertices. */
+    /* Refuse a silent raise (AreaIntegral of a line-grade space). */
+    if (g>disc->grade) FUNCTIONAL_FESPACE_FAIL(v, field, g);
+    /* Restrict to a lower grade, unless the field already has vertex dofs (CG1).
+       CG0 has no trace, so Jump/NormSq on a lower grade is FnctlFESpc. */
     if (g<disc->grade && !(g==0 && disc->shape[0]>0)) {
-        if (!fespace_lower(disc, g, &disc)) {
-            functional_fespaceerror(v, field, g);
-            return false;
-        }
+        if (!fespace_lower(disc, g, &disc)) FUNCTIONAL_FESPACE_FAIL(v, field, g);
     }
 
     objectsparse *conn = mesh_getconnectivityelement(field->mesh, 0, disc->grade);
@@ -2955,8 +2952,11 @@ static bool functional_preparefespacefield(vm *v, objectfield *field, grade g) {
 
 static bool functional_preparefieldlist(vm *v, value *fields, int nfields, grade g) {
     for (int i=0; i<nfields; i++) {
-        if (MORPHO_ISFIELD(fields[i]) &&
-            !functional_preparefespacefield(v, MORPHO_GETFIELD(fields[i]), g)) return false;
+        if (!MORPHO_ISFIELD(fields[i])) continue;
+
+        objectfield *field = MORPHO_GETFIELD(fields[i]);
+        if (!MORPHO_ISFESPACE(field->fnspc)) MORPHO_FAIL(v, FUNC_NOFESPACE);
+        if (!functional_preparefespacefield(v, field, g)) return false;
     }
 
     return true;
@@ -4096,10 +4096,8 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
 
 static value integral_gradfn(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
-    if (nargs==1) {
-        integral_evaluategradient(v, MORPHO_GETARG(args, 0), &out);
-    } else morpho_runtimeerror(v, INTEGRAL_FLD);
-    
+    if (nargs!=1) MORPHO_RAISE(v, INTEGRAL_FLD);
+    integral_evaluategradient(v, MORPHO_GETARG(args, 0), &out);
     return out;
 }
 
@@ -4182,10 +4180,8 @@ bool integral_evaluatehessian(vm *v, value q, value *out) {
 
 static value integral_hessfn(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
-    if (nargs==1) {
-        integral_evaluatehessian(v, MORPHO_GETARG(args, 0), &out);
-    } else morpho_runtimeerror(v, INTEGRAL_FLD);
-    
+    if (nargs!=1) MORPHO_RAISE(v, INTEGRAL_FLD);
+    integral_evaluatehessian(v, MORPHO_GETARG(args, 0), &out);
     return out;
 }
 
@@ -4599,8 +4595,7 @@ static bool _Integral_bindref(vm *v, objectinstance *self, functional_mapinfo *i
 
     if (!functional_readgrade(self, &g) ||
         !integral_prepareref(self, info->mesh, (info->g < 0 ? g : info->g), info->sel, ref)) {
-        morpho_runtimeerror(v, INTEGRAL_ARGS);
-        return false;
+        MORPHO_FAIL(v, INTEGRAL_ARGS);
     }
     if (info->g < 0) info->g = g;
     info->ref = ref;
@@ -4630,9 +4625,7 @@ static value integral_init(vm *v, int nargs, value *args) {
                         linearelasticity_weightbyreferenceproperty, &wtbyref)) {
         if (MORPHO_ISDICTIONARY(method)) {
             objectinstance_setproperty(self, functional_methodproperty, method);
-        } else if (!MORPHO_ISNIL(method)) {
-            morpho_runtimeerror(v, INTEGRAL_ARGS);
-        }
+        } else if (!MORPHO_ISNIL(method)) MORPHO_RAISE(v, INTEGRAL_ARGS);
 
         if (MORPHO_ISMESH(mref)) objectinstance_setproperty(self, linearelasticity_referenceproperty, mref);
         if (MORPHO_ISBOOL(wtbyref)) objectinstance_setproperty(self, linearelasticity_weightbyreferenceproperty, wtbyref);
@@ -4651,10 +4644,7 @@ static value integral_init(vm *v, int nargs, value *args) {
     if (nfixed>1) {
         /* Remaining arguments should be fields */
         for (unsigned int i=1; i<nfixed; i++) {
-            if (!MORPHO_ISFIELD(MORPHO_GETARG(args, i))) {
-                morpho_runtimeerror(v, INTEGRAL_ARGS);
-                return MORPHO_NIL;
-            }
+            if (!MORPHO_ISFIELD(MORPHO_GETARG(args, i))) MORPHO_RAISE(v, INTEGRAL_ARGS);
         }
 
         objectlist *list = object_newlist(nfixed-1, & MORPHO_GETARG(args, 1));
@@ -4801,7 +4791,8 @@ static bool jump_prepareref(vm *v, objectinstance *self, objectmesh *mesh, grade
 
 static bool jump_startfn(vm *v, functional_mapinfo *info) {
     jumpref *ref = (jumpref *) info->ref;
-    return functional_preparefieldlist(v, ref->integral.fields, ref->integral.nfields, ref->parentgrade);
+    /* Check the interface grade: Jump needs a trace, which CG0 does not provide. */
+    return functional_preparefieldlist(v, ref->integral.fields, ref->integral.nfields, ref->interfacegrade);
 }
 
 /** Clone a jump reference with a substituted field. */
@@ -5252,10 +5243,9 @@ static bool jump_scan_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
         }
         *out *= iref.interfacesize;
     } else {
-        morpho_runtimeerror(v, JUMP_UNIMPL);
         vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
         jump_clearinterfaceref(&iref);
-        return false;
+        MORPHO_FAIL(v, JUMP_UNIMPL);
     }
 
     vm_settlvar(v, jumpinterfacehandle, MORPHO_NIL);
@@ -5389,6 +5379,7 @@ void functional_initialize(void) {
     morpho_defineerror(VOLUMEENCLOSED_ZERO, ERROR_HALT, VOLUMEENCLOSED_ZERO_MSG);
     morpho_defineerror(FUNC_ELNTFND, ERROR_HALT, FUNC_ELNTFND_MSG);
     morpho_defineerror(FUNC_FESPACE, ERROR_HALT, FUNC_FESPACE_MSG);
+    morpho_defineerror(FUNC_NOFESPACE, ERROR_HALT, FUNC_NOFESPACE_MSG);
 
     morpho_defineerror(SCALARPOTENTIAL_FNCLLBL, ERROR_HALT, SCALARPOTENTIAL_FNCLLBL_MSG);
 

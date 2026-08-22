@@ -1,0 +1,7 @@
+import meshtools
+
+var m = AreaMesh(fn (x, y) [x, y, 0], 0..1:0.5, 0..1:0.5)
+var f = Field(m, grade=1)
+
+print AreaIntegral(fn (x, q) q, f).total(m)
+// expect error 'FnctlFESpc'

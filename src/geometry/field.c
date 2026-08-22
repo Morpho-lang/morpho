@@ -195,11 +195,7 @@ bool field_applyfunctiontovertices(vm *v, objectmesh *mesh, value fn, objectfiel
             //get the vertex coordinates
             if (!morpho_call(v, fn, mesh->dim, coords, &ret)) return false;
 
-            if (!field_setelement(field, MESH_GRADE_VERTEX, i, 0, ret)) {
-                // if we can't set the field value to the ouptut of the function clean up
-                morpho_runtimeerror(v, FIELD_OPRETURN);
-                return false;
-            }
+            if (!field_setelement(field, MESH_GRADE_VERTEX, i, 0, ret)) MORPHO_FAIL(v, FIELD_OPRETURN);
         }
     }
     return true;
@@ -242,10 +238,7 @@ bool field_applyfunctiontoelements(vm *v, objectmesh *mesh, value fn, value fnsp
 
             if (!morpho_call(v, fn, mesh->dim, coords, &ret)) return false;
 
-            if (!field_setelementwithindex(field, indx, ret)) {
-                morpho_runtimeerror(v, FIELD_OPRETURN);
-                return false;
-            }
+            if (!field_setelementwithindex(field, indx, ret)) MORPHO_FAIL(v, FIELD_OPRETURN);
         }
     }
 
@@ -598,10 +591,8 @@ bool field_op(vm *v, value fn, objectfield *f, int nargs, objectfield **args, va
                 if (field_checkprototype(ret)) {
                     if (MORPHO_ISOBJECT(ret)) handle=morpho_retainobjects(v, 1, &ret);
                     fld=object_newfield(f->mesh, ret, f->fnspc, f->dof);
-                    if (!fld) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
-                } else {
-                    morpho_runtimeerror(v, FIELD_OPRETURN); return false;
-                }
+                    if (!fld) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
+                } else MORPHO_FAIL(v, FIELD_OPRETURN);
             }
             
             if (!field_setelementwithindex(fld, i, ret)) return false;

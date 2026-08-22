@@ -4992,19 +4992,11 @@ static bool jump_ensuresidelambda(objectintegralelementref *side, int nv) {
 
 static void jump_clearinterfaceref(objectjumpinterfaceref *iref, bool persistent) {
     if (persistent) return;
-    if (iref->plus.quantities) {
-        integral_clearquantities(iref->plus.nfields, iref->plus.quantities);
-        MORPHO_FREE(iref->plus.quantities);
-        iref->plus.quantities=NULL;
-    }
-    if (iref->minus.quantities) {
-        integral_clearquantities(iref->minus.nfields, iref->minus.quantities);
-        MORPHO_FREE(iref->minus.quantities);
-        iref->minus.quantities=NULL;
-    }
     if (iref->plus.lambda) { MORPHO_FREE(iref->plus.lambda); iref->plus.lambda=NULL; }
     if (iref->minus.lambda) { MORPHO_FREE(iref->minus.lambda); iref->minus.lambda=NULL; }
-    integral_releasegeometry(&iref->iface);
+    integral_clearelref(&iref->iface);
+    integral_clearelref(&iref->plus);
+    integral_clearelref(&iref->minus);
 }
 
 static void jump_orderparents(int *parents, elementid *plusid, elementid *minusid) {
@@ -5363,13 +5355,7 @@ static bool jump_mapfieldgradient(vm *v, functional_mapinfo *info, value *out) {
 
 static void jump_freeheapref(objectjumpinterfaceref *iref) {
     if (!iref) return;
-    if (iref->plus.lambda) MORPHO_FREE(iref->plus.lambda);
-    if (iref->minus.lambda) MORPHO_FREE(iref->minus.lambda);
-    iref->plus.lambda=NULL;
-    iref->minus.lambda=NULL;
-    integral_clearelref(&iref->iface);
-    integral_clearelref(&iref->plus);
-    integral_clearelref(&iref->minus);
+    jump_clearinterfaceref(iref, false);
     object_free((object *) iref);
 }
 

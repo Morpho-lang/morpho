@@ -163,6 +163,12 @@ typedef bool (functional_start) (vm *v, struct s_functional_mapinfo *info);
 /** Optional end function called once after a functional evaluation completes (success or failure) */
 typedef bool (functional_end) (vm *v, struct s_functional_mapinfo *info);
 
+/** Optional per-task start, called once on the task VM before the element loop */
+typedef bool (functional_taskstart) (vm *v, struct s_functional_mapinfo *info);
+
+/** Optional per-task end, called once on the task VM after the element loop (success or failure) */
+typedef void (functional_taskend) (vm *v, struct s_functional_mapinfo *info);
+
 /** Map callback used by functional_runmap */
 typedef bool (functional_mapcallback) (vm *v, struct s_functional_mapinfo *info, value *out);
 
@@ -185,6 +191,8 @@ typedef struct s_functional_mapinfo {
     functional_gradient *grad; // Gradient
     functional_start *start; // Optional preflight hook (once per user call)
     functional_end *end; // Optional postflight hook (once per user call)
+    functional_taskstart *taskstart; // Optional per-task setup (once per map task)
+    functional_taskend *taskend; // Optional per-task teardown (once per map task)
     functional_dependencies *dependencies; // Dependencies
     functional_cloneref *cloneref; // Clone a reference with a given field substituted
     functional_freeref *freeref; // Free a reference

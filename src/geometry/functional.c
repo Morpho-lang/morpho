@@ -67,6 +67,8 @@ static void functional_clearmapinfo(functional_mapinfo *info) {
     info->grad=NULL;
     info->start=NULL;
     info->end=NULL;
+    info->taskstart=NULL;
+    info->taskend=NULL;
     info->dependencies=NULL;
     info->cloneref=NULL;
     info->freeref=NULL;
@@ -319,6 +321,9 @@ typedef struct {
     objectmesh *mesh; /* Mesh in use */
     objectfield *field; /* Field in use */
     objectselection *selection; /* Selection to use if any */
+    functional_mapinfo *mapinfo; /* Parent mapinfo for taskstart/taskend */
+    functional_taskstart *taskstart; /* Optional per-task setup */
+    functional_taskend *taskend; /* Optional per-task teardown */
     void *ref; /* Ref as an opaque pointer */
     
     void *result; /* Result of individual element as an opaque pointer */
@@ -346,6 +351,9 @@ void functionaltask_init(functional_task *task, elementid start, elementid end, 
     task->mesh=(info ? info->mesh : NULL);
     task->field=(info ? info->field : NULL);
     task->selection=(info ? info->sel : NULL);
+    task->mapinfo=info;
+    task->taskstart=(info ? info->taskstart : NULL);
+    task->taskend=(info ? info->taskend : NULL);
     
     task->v=NULL;
     task->usesubkernel=false;
@@ -371,11 +379,15 @@ bool functional_mapfn_elements(void *arg) {
     dictionary *selected=NULL;
     elementid *vid=&task->id; /* Will hold element definition */
     int nv=1; /* Number of vertices per element; default to 1  */
+    bool success=true;
     
     if (task->selection) {
         selected=&task->selection->selected[task->g];
         if (selected->count==0) return true;
     }
+    
+    if (task->taskstart &&
+        !(*task->taskstart) (task->v, task->mapinfo)) return false;
     
     // Loop over required elements
     for (elementid i=task->start; i<task->end; i++) {
@@ -392,19 +404,21 @@ bool functional_mapfn_elements(void *arg) {
         
         // Fetch element definition
         if (task->conn) {
-            if (!sparseccs_getrowindices(&task->conn->ccs, task->id, &nv, &vid)) return false;
+            if (!sparseccs_getrowindices(&task->conn->ccs, task->id, &nv, &vid)) { success=false; break; }
         }
         
         // Perform the map function
-        if (!(*task->mapfn) (task->v, task->mesh, task->id, nv, vid, task->ref, task->result)) return false;
+        if (!(*task->mapfn) (task->v, task->mesh, task->id, nv, vid, task->ref, task->result)) { success=false; break; }
         
         // Perform post-processing if needed
-        if (task->processfn) if (!(*task->processfn) (task)) return false;
+        if (task->processfn) if (!(*task->processfn) (task)) { success=false; break; }
         
         // Temporary objects on worker VMs must not accumulate across elements
         if (task->usesubkernel) vm_cleansubkernel(task->v);
     }
-    return true;
+    
+    if (task->taskend) (*task->taskend) (task->v, task->mapinfo);
+    return success;
 }
 
 /** Execute tasks on the calling thread */

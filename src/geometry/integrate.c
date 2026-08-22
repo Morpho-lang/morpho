@@ -2167,30 +2167,33 @@ DEFINE_VARRAY(quadratureworkitem, quadratureworkitem)
 /** Initialize an integrator structure */
 void integrator_init(integrator *integrate) {
     integrate->integrand=NULL;
+    integrate->ref=NULL;
     
     integrate->dim=0;
+    integrate->x=NULL;
     integrate->nbary=0;
     integrate->nquantity=0;
+    integrate->quantity=NULL;
+    integrate->qval=NULL;
     
     integrate->adapt=true;
-    integrate->rule = NULL;
-    integrate->errrule = NULL;
-    
-    integrate->subdivide = NULL;
+    integrate->rule=NULL;
+    integrate->baserule=NULL;
+    integrate->errrule=NULL;
+    integrate->subdivide=NULL;
     
     varray_quadratureworkiteminit(&integrate->worklist);
     varray_doubleinit(&integrate->vertexstack);
     varray_intinit(&integrate->elementstack);
     
-    integrate->ztol = INTEGRATE_ZEROCHECK;
-    integrate->tol = INTEGRATE_ACCURACYGOAL;
-    integrate->maxiterations = INTEGRATE_MAXITERATIONS;
+    integrate->ztol=INTEGRATE_ZEROCHECK;
+    integrate->tol=INTEGRATE_ACCURACYGOAL;
+    integrate->maxiterations=INTEGRATE_MAXITERATIONS;
     
-    integrate->niterations = 0;
-    integrate->val = 0;
-    integrate->err = 0;
-    
-    integrate->ref = NULL;
+    integrate->niterations=0;
+    integrate->val=0.0;
+    integrate->errest=0.0;
+    integrate->err=NULL;
 }
 
 /** Free data associated with an integrator */
@@ -2198,6 +2201,21 @@ void integrator_clear(integrator *integrate) {
     varray_quadratureworkitemclear(&integrate->worklist);
     varray_intclear(&integrate->elementstack);
     varray_doubleclear(&integrate->vertexstack);
+}
+
+/** Cheap restore between calls: keep configuration and varray capacity.
+    Restores the starting quadrature rule so p-refinement on one element
+    does not force a higher-order rule on the next. */
+void integrator_reset(integrator *integrate) {
+    integrate->worklist.count=0;
+    integrate->vertexstack.count=0;
+    integrate->elementstack.count=0;
+    
+    integrate->niterations=0;
+    integrate->val=0.0;
+    integrate->errest=0.0;
+    
+    integrate->rule=integrate->baserule;
 }
 
 /** Adds a vertex to the integrators vertex stack, returning the id */
@@ -2651,6 +2669,7 @@ bool integrator_matchrulebygrade(int grade, quadraturerule **out) {
  * @returns true if the configuration was successful */
 bool integrator_configure(integrator *integrate, error *err, bool adapt, int grade, int order, char *name) {
     integrate->rule=NULL;
+    integrate->baserule=NULL;
     integrate->errrule=NULL;
     integrate->adapt=adapt;
     integrate->err=err;
@@ -2698,6 +2717,8 @@ bool integrator_configure(integrator *integrate, error *err, bool adapt, int gra
             break;
         }
     }
+    
+    integrate->baserule=integrate->rule;
     
     return true;
 }
@@ -2759,15 +2780,13 @@ bool integrator_configurewithdictionary(integrator *integrate, error *err, grade
 bool integrator_integrate(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, quantity *quantity, void *ref) {
     bool success=false;
     
+    integrator_reset(integrate);
+    
     integrate->integrand=integrand; // Integrand function
     integrate->ref=ref;
     
     integrate->x=x; // Vertices
     integrate->dim=dim;
-    
-    integrate->worklist.count=0;    // Reset these
-    integrate->vertexstack.count=0;
-    integrate->elementstack.count=0;
     
     // Quantities
     value qval[nquantity+1];
@@ -2852,12 +2871,17 @@ bool integrate(integrandfunction *integrand, objectdictionary *method, error *er
     integrator_init(&integrate);
     
     if (method) {
-        if (!integrator_configurewithdictionary(&integrate, err, grade, method)) return false;
-    } else if (!integrator_configure(&integrate, err, true, grade, -1, NULL)) return false;
-    success=integrator_integrate(&integrate, integrand, dim, x, nquantity, quantity, ref);
+        success=integrator_configurewithdictionary(&integrate, err, grade, method);
+    } else {
+        success=integrator_configure(&integrate, err, true, grade, -1, NULL);
+    }
     
-    *out = integrate.val;
-    if (errest) *errest = integrate.errest;
+    if (success) success=integrator_integrate(&integrate, integrand, dim, x, nquantity, quantity, ref);
+    
+    if (success) {
+        *out = integrate.val;
+        if (errest) *errest = integrate.errest;
+    }
     
     integrator_clear(&integrate);
     

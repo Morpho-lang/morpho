@@ -130,7 +130,8 @@ typedef struct {
     quantity *quantity; /** Quantity list */
     value *qval; /** Interpolated quantity values */
     
-    quadraturerule *rule;  /** Quadrature rule to use */
+    quadraturerule *rule;  /** Current starting quadrature rule */
+    quadraturerule *baserule; /** Rule selected at configure; reset restores this */
     quadraturerule *errrule; /** Additional rule for error estimation */
     
     bool adapt; /** Enable adaptive integration */
@@ -171,9 +172,19 @@ typedef struct {
  * Integrator interface
  * ------------------------------------------------------- */
 
-bool integrate_integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out);
+// Staged interface for repeated integrals: call init, configure, integrate/reset repeatedly, then clear.
+void integrator_init(integrator *integrate);
+void integrator_clear(integrator *integrate);
+void integrator_reset(integrator *integrate);
+bool integrator_configure(integrator *integrate, error *err, bool adapt, int grade, int order, char *name);
+bool integrator_configurewithdictionary(integrator *integrate, error *err, grade g, objectdictionary *dict);
+bool integrator_integrate(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, quantity *quantity, void *ref);
 
+// One off integrals
 bool integrate(integrandfunction *integrand, objectdictionary *method, error *err, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, quantity *quantity, void *ref, double *out, double *errest);
+
+// Old interface
+bool integrate_integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out);
 
 void integrate_initialize(void);
 

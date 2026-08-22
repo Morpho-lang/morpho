@@ -10,7 +10,11 @@ print f.finiteElementSpace()
 print f.finiteElementSpace().grade()
 // expect: 2
 print f.shape()
-// expect: [ 1, 0, 0 ]
+// expect: (1, 0, 0)
+print Field(m, grade=f.shape()).shape()
+// expect: (1, 0, 0)
+print isnil(Field(m, grade=f.shape()).finiteElementSpace())
+// expect: true
 
 print Field(m, grade=0).finiteElementSpace()
 // expect: <FunctionSpace CG1>
@@ -21,22 +25,22 @@ print f2.finiteElementSpace()
 print f2.finiteElementSpace().grade()
 // expect: 2
 print f2.shape()
-// expect: [ 0, 0, 1 ]
+// expect: (0, 0, 1)
 
 print isnil(Field(m, grade=[1, 0, 1]).finiteElementSpace())
 // expect: true
 print Field(m, grade=[1, 0, 1]).shape()
-// expect: [ 1, 0, 1 ]
+// expect: (1, 0, 1)
 
 print isnil(Field(m, finiteelementspace=nil).finiteElementSpace())
 // expect: true
 print Field(m, finiteelementspace=nil).shape()
-// expect: [ 1, 0, 0 ]
+// expect: (1, 0, 0)
 
 print isnil(Field(m, grade=2, finiteelementspace=nil).finiteElementSpace())
 // expect: true
 print Field(m, grade=2, finiteelementspace=nil).shape()
-// expect: [ 0, 0, 1 ]
+// expect: (0, 0, 1)
 
 var cg2 = FiniteElementSpace("CG2", grade=2)
 var fcg2 = Field(m, finiteelementspace=cg2)

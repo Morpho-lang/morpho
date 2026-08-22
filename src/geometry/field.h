@@ -83,12 +83,6 @@ extern value field_gradeoption;
 #define FIELD_INDICESOUTSIDEBOUNDS       "FldBnds"
 #define FIELD_INDICESOUTSIDEBOUNDS_MSG   "Field index out of bounds."
 
-#define FIELD_INVLDINDICES               "FldInvldIndx"
-#define FIELD_INVLDINDICES_MSG           "Field indices must be numerical."
-
-#define FIELD_ARITHARGS                  "FldInvldArg"
-#define FIELD_ARITHARGS_MSG              "Field arithmetic methods expect a field or number as their argument."
-
 #define FIELD_INCOMPATIBLEMATRICES       "FldIncmptbl"
 #define FIELD_INCOMPATIBLEMATRICES_MSG   "Fields have incompatible shape."
 
@@ -99,7 +93,7 @@ extern value field_gradeoption;
 #define FIELD_ARGS_MSG                   "Field allows 'grade' and 'finiteelementspace' as optional arguments."
 
 #define FIELD_OP                         "FldOp"
-#define FIELD_OP_MSG                     "Method 'op' requires a callable object as the first argument; all other arguments must be fields of compatible shape."
+#define FIELD_OP_MSG                     "Method 'op' requires fields as arguments after the function."
 
 #define FIELD_OPRETURN                   "FldOpFn"
 #define FIELD_OPRETURN_MSG               "Could not construct a Field from the return value of the function passed to 'op'."

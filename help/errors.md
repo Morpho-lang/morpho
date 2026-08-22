@@ -1627,22 +1627,6 @@ This error occurs when a Field index is out of bounds:
     var f = Field(mesh)
     f[100, 100, 100] // Causes 'FldBnds' if out of bounds
 
-## FldInvldIndx
-[tagfldinvldindx]: # (fldinvldindx)
-
-This error occurs when Field indices are not numerical:
-
-    var f = Field(mesh)
-    f["x", "y", "z"] // Causes 'FldInvldIndx'
-
-## FldInvldArg
-[tagfldinvldarg]: # (fldinvldarg)
-
-This error occurs when Field arithmetic methods receive invalid arguments. They expect a field or number:
-
-    var f = Field(mesh)
-    f + "string" // Causes 'FldInvldArg'
-
 ## FldIncmptbl
 [tagfldincmptbl]: # (fldincmptbl)
 
@@ -1663,10 +1647,12 @@ This error occurs when an assignment value has an incompatible shape with field 
 ## FldOp
 [tagfldop]: # (fldop)
 
-This error occurs when Field.op receives invalid arguments. It requires a callable object as the first argument and fields of compatible shape as other arguments:
+This error occurs when Field.op receives extra arguments that are not Fields:
 
     var f = Field(mesh)
-    f.op("not callable", f) // Causes 'FldOp'
+    f.op(fn (x) x, "not a field") // Causes 'FldOp'
+
+A non-callable first argument raises `MltplDsptchFld` instead.
 
 ## FldOpFn
 [tagfldopfn]: # (fldopfn)

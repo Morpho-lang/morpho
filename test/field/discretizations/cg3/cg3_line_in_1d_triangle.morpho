@@ -27,7 +27,7 @@ print l.layout(f)
 // expect: [ 0 0 1 ]
 
 print f.shape()
-// expect: [ 1, 2 ]
+// expect: (1, 2)
 
 var a = 1/2 + 1/sqrt(2)
 print abs(LineIntegral(fn (x, u) u, f, method={ }).total(m) - a) < 1e-10

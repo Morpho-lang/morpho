@@ -630,6 +630,9 @@ static bool field_doffromgrade(vm *v, value grd, unsigned int ngrades, unsigned 
     } else if (MORPHO_ISLIST(grd)) {
         objectlist *list=MORPHO_GETLIST(grd);
         if (!array_valuelisttoindices(list->val.count, list->val.data, dof)) return false;
+    } else if (MORPHO_ISTUPLE(grd)) {
+        objecttuple *tuple=MORPHO_GETTUPLE(grd);
+        if (!array_valuelisttoindices(tuple->length, tuple->tuple, dof)) return false;
     } else MORPHO_FAIL(v, FIELD_ARGS);
     
     *shape=dof;
@@ -659,7 +662,7 @@ static bool field_layoutfromoptions(vm *v, objectmesh *mesh, value grd, value *f
     } else if (!MORPHO_ISSAME(fs, MORPHO_FALSE)) MORPHO_FAIL(v, FIELD_ARGS); // User provided invalid finiteelementspace option
 
     *fnspc=MORPHO_NIL;
-    if (MORPHO_ISLIST(grd)) return field_doffromgrade(v, grd, ngrades, dof, shape);
+    if (MORPHO_ISLIST(grd) || MORPHO_ISTUPLE(grd)) return field_doffromgrade(v, grd, ngrades, dof, shape);
 
     grade g=0; // Check grade
     if (MORPHO_ISINTEGER(grd)) {
@@ -769,233 +772,155 @@ value Field_setindex__int_int_int_x(vm *v, int nargs, value *args) {
 }
 
 /** Enumerate protocol */
-value Field_enumerate(vm *v, int nargs, value *args) {
+value Field_enumerate__int(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
+    int i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
     value out=MORPHO_NIL;
-    
-    if (nargs==1) {
-        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-            int i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-            
-            if (i<0) out=MORPHO_INTEGER(a->nelements);
-            else if (i<a->nelements) {
-                if (!field_getelementwithindex(a, i, &out)) UNREACHABLE("Could not get field element.");
-            }
-            /* Note no need to bind as we are an object pool */
-        }
+
+    if (i<0) out=MORPHO_INTEGER(a->nelements);
+    else if (i<(int) a->nelements) {
+        if (!field_getelementwithindex(a, i, &out)) UNREACHABLE("Could not get field element.");
     }
-    
+    /* Note no need to bind as we are an object pool */
+
     return out;
 }
-
 
 /** Number of field elements */
 value Field_count(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
-    
     return MORPHO_INTEGER(f->nelements);
 }
 
 /** Field assign */
-value Field_assign(vm *v, int nargs, value *args) {
+value Field_assign__field(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
- 
-    if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
-        objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
-        
-        if (field_compareshape(a, b)) {
-            matrix_copy(&b->data, &a->data);
-        } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
-    } else if (nargs==1 && MORPHO_ISMATRIX(MORPHO_GETARG(args, 0))) {
-        objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
-        
-        if (matrix_copy(b, &a->data)!=LINALGERR_OK) morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
-    } else morpho_runtimeerror(v, FIELD_ARITHARGS);
-    
+    objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
+
+    if (!field_compareshape(a, b)) MORPHO_RAISE(v, FIELD_INCOMPATIBLEMATRICES);
+    matrix_copy(&b->data, &a->data);
+
     return MORPHO_NIL;
+}
+
+value Field_assign__matrix(vm *v, int nargs, value *args) {
+    objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
+    objectmatrix *b=MORPHO_GETMATRIX(MORPHO_GETARG(args, 0));
+
+    if (matrix_copy(b, &a->data)!=LINALGERR_OK) MORPHO_RAISE(v, FIELD_INCOMPATIBLEMATRICES);
+
+    return MORPHO_NIL;
+}
+
+static value _field_binop(vm *v, objectfield *a, objectfield *b, bool (*op) (objectfield *, objectfield *, objectfield *)) {
+    if (!field_compareshape(a, b)) MORPHO_RAISE(v, FIELD_INCOMPATIBLEMATRICES);
+
+    objectfield *new = object_newfield(a->mesh, a->prototype, a->fnspc, a->dof);
+    if (new) op(a, b, new);
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 /** Field add */
-value Field_add(vm *v, int nargs, value *args) {
-    objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
- 
-    if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
-        objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
-        
-        if (field_compareshape(a, b)) {
-            objectfield *new = object_newfield(a->mesh, a->prototype, a->fnspc, a->dof);
-            
-            if (new) {
-                out=MORPHO_OBJECT(new);
-                field_add(a, b, new);
-                morpho_bindobjects(v, 1, &out);
-            }
-        } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
-    } else morpho_runtimeerror(v, FIELD_ARITHARGS);
-    
-    return out;
+value Field_add__field(vm *v, int nargs, value *args) {
+    return _field_binop(v, MORPHO_GETFIELD(MORPHO_SELF(args)),
+                        MORPHO_GETFIELD(MORPHO_GETARG(args, 0)), field_add);
 }
 
-/** Right add */
-value Field_addr(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
- 
-    if (nargs==1 && (MORPHO_ISNIL(MORPHO_GETARG(args, 0)) ||
-                     MORPHO_ISNUMBER(MORPHO_GETARG(args, 0)))) {
-        int i=0;
-        if (MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        if (MORPHO_ISFLOAT(MORPHO_GETARG(args, 0))) i=(fabs(MORPHO_GETFLOATVALUE(MORPHO_GETARG(args, 0)))<MORPHO_EPS ? 0 : 1);
-        
-        if (i==0) {
-            out=MORPHO_SELF(args);
-        } else UNREACHABLE("Right addition to non-zero value.");
-    } else morpho_runtimeerror(v, LINALG_INVLDARGS);
-    
-    return out;
+/** Right add of nil or numeric zero */
+value Field_addr__nil(vm *v, int nargs, value *args) {
+    return MORPHO_SELF(args);
+}
+
+value Field_addr__number(vm *v, int nargs, value *args) {
+    double x;
+    if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &x) || fabs(x)>=MORPHO_EPS) MORPHO_RAISE(v, VM_INVALIDARGS);
+    return MORPHO_SELF(args);
 }
 
 /** Field subtraction */
-value Field_sub(vm *v, int nargs, value *args) {
-    objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
- 
-    if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
-        objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
-        
-        if (field_compareshape(a, b)) {
-            objectfield *new = object_newfield(a->mesh, a->prototype, a->fnspc, a->dof);
-            
-            if (new) {
-                out=MORPHO_OBJECT(new);
-                field_sub(a, b, new);
-                morpho_bindobjects(v, 1, &out);
-            }
-        } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
-    } else morpho_runtimeerror(v, FIELD_ARITHARGS);
-    
-    return out;
+value Field_sub__field(vm *v, int nargs, value *args) {
+    return _field_binop(v, MORPHO_GETFIELD(MORPHO_SELF(args)),
+                        MORPHO_GETFIELD(MORPHO_GETARG(args, 0)), field_sub);
 }
 
-/** Right subtract */
-value Field_subr(vm *v, int nargs, value *args) {
-    objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
- 
-    if (nargs==1 && (MORPHO_ISNIL(MORPHO_GETARG(args, 0)) ||
-                     MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)))) {
-        int i=(MORPHO_ISNIL(MORPHO_GETARG(args, 0)) ? 0 : MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)));
-        
-        if (i==0) {
-            objectfield *new=field_clone(a);
-            if (new) {
-                out=MORPHO_OBJECT(new);
-                matrix_scale(&new->data, -1.0);
-                morpho_bindobjects(v, 1, &out);
-            }
-        } else morpho_runtimeerror(v, VM_INVALIDARGS);
-    } else morpho_runtimeerror(v, VM_INVALIDARGS);
-    
-    return out;
+static value _field_neg(vm *v, objectfield *a) {
+    objectfield *new=field_clone(a);
+    if (new) matrix_scale(&new->data, -1.0);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Right subtract of nil or integer zero */
+value Field_subr__nil(vm *v, int nargs, value *args) {
+    return _field_neg(v, MORPHO_GETFIELD(MORPHO_SELF(args)));
+}
+
+value Field_subr__int(vm *v, int nargs, value *args) {
+    if (MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0))!=0) MORPHO_RAISE(v, VM_INVALIDARGS);
+    return _field_neg(v, MORPHO_GETFIELD(MORPHO_SELF(args)));
 }
 
 /** Field accumulate */
-value Field_acc(vm *v, int nargs, value *args) {
+value Field_acc__number_field(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
- 
-    if (nargs==2 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0)) &&
-        MORPHO_ISFIELD(MORPHO_GETARG(args, 1))) {
-        objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 1));
-        
-        if (field_compareshape(a, b)) {
-            double lambda=1.0;
-            morpho_valuetofloat(MORPHO_GETARG(args, 0), &lambda);
-            field_accumulate(a, lambda, b);
-        } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
-    } else morpho_runtimeerror(v, FIELD_ARITHARGS);
-    
+    objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 1));
+
+    if (!field_compareshape(a, b)) MORPHO_RAISE(v, FIELD_INCOMPATIBLEMATRICES);
+
+    double lambda=1.0;
+    morpho_valuetofloat(MORPHO_GETARG(args, 0), &lambda);
+    field_accumulate(a, lambda, b);
+
     return MORPHO_NIL;
 }
 
 /** Field multiply by a scalar */
-value Field_mul(vm *v, int nargs, value *args) {
+value Field_mul__number(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
- 
-    if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
-        double scale=1.0;
-        if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale)) {
-            objectfield *new = field_clone(a);
-            if (new) {
-                out=MORPHO_OBJECT(new);
-                matrix_scale(&new->data, scale);
-                morpho_bindobjects(v, 1, &out);
-            }
-        }
-    } else morpho_runtimeerror(v, LINALG_INVLDARGS);
-    
-    return out;
+    double scale=1.0;
+    morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale);
+
+    objectfield *new = field_clone(a);
+    if (new) matrix_scale(&new->data, scale);
+    return morpho_wrapandbind(v, (object *) new);
 }
 
-/** Field multiply by a scalar */
-value Field_div(vm *v, int nargs, value *args) {
+/** Field divide by a scalar */
+value Field_div__number(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
- 
-    if (nargs==1 && MORPHO_ISNUMBER(MORPHO_GETARG(args, 0))) {
-        /* Division by a scalar */
-        double scale=1.0;
-        if (morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale)) {
-            if (fabs(scale)<MORPHO_EPS) MORPHO_RAISE(v, VM_DVZR);
-            
-            objectfield *new = field_clone(a);
-            if (new) {
-                out=MORPHO_OBJECT(new);
-                matrix_scale(&new->data, 1.0/scale);
-                morpho_bindobjects(v, 1, &out);
-            }
-        }
-    }
-    
-    return out;
+    double scale=1.0;
+    morpho_valuetofloat(MORPHO_GETARG(args, 0), &scale);
+    if (fabs(scale)<MORPHO_EPS) MORPHO_RAISE(v, VM_DVZR);
+
+    objectfield *new = field_clone(a);
+    if (new) matrix_scale(&new->data, 1.0/scale);
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 /** Frobenius inner product */
-value Field_inner(vm *v, int nargs, value *args) {
+value Field_inner__field(vm *v, int nargs, value *args) {
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
- 
-    if (nargs==1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 0))) {
-        objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
-        
-        double prod=0.0;
-        if (field_inner(a, b, &prod)) {
-            out = MORPHO_FLOAT(prod);
-        } else morpho_runtimeerror(v, FIELD_INCOMPATIBLEMATRICES);
-    } else morpho_runtimeerror(v, FIELD_ARITHARGS);
-    
-    return out;
+    objectfield *b=MORPHO_GETFIELD(MORPHO_GETARG(args, 0));
+
+    double prod=0.0;
+    if (!field_inner(a, b, &prod)) MORPHO_RAISE(v, FIELD_INCOMPATIBLEMATRICES);
+
+    return MORPHO_FLOAT(prod);
 }
 
 /** Generalized operations */
-value Field_op(vm *v, int nargs, value *args) {
+value Field_op__callable(vm *v, int nargs, value *args) {
     objectfield *slf=MORPHO_GETFIELD(MORPHO_SELF(args));
+    int nfields=nargs-1;
+    objectfield *flds[nfields > 0 ? nfields : 1];
     value out=MORPHO_NIL;
-    value fn=MORPHO_NIL;
-    objectfield *flds[nargs];
-    
-    if (nargs>0) fn=MORPHO_GETARG(args, 0);
-    if (morpho_iscallable(fn)) {
-        for (unsigned int i=1; i<nargs; i++) {
-            if (MORPHO_ISFIELD(MORPHO_GETARG(args, i))) flds[i-1]=MORPHO_GETFIELD(MORPHO_GETARG(args, i));
-            else { morpho_runtimeerror(v, FIELD_OP); return MORPHO_NIL; }
-        }
-        
-        if (field_op(v, fn, slf, nargs-1, flds, &out)) {
-            morpho_bindobjects(v, 1, &out);
-        }
-    } else morpho_runtimeerror(v, FIELD_OP);
-    
+
+    for (int i=0; i<nfields; i++) {
+        if (!MORPHO_ISFIELD(MORPHO_GETARG(args, i+1))) MORPHO_RAISE(v, FIELD_OP);
+        flds[i]=MORPHO_GETFIELD(MORPHO_GETARG(args, i+1));
+    }
+
+    if (!field_op(v, MORPHO_GETARG(args, 0), slf, nfields, nfields ? flds : NULL, &out)) return MORPHO_NIL;
+    if (MORPHO_ISOBJECT(out)) return morpho_wrapandbind(v, MORPHO_GETOBJECT(out));
     return out;
 }
 
@@ -1012,136 +937,112 @@ value Field_print(vm *v, int nargs, value *args) {
 
 /** Clones a field */
 value Field_clone(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
     objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
-    objectfield *new=field_clone(a);
-    if (new) {
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    return out;
+    return morpho_wrapandbind(v, (object *) field_clone(a));
 }
 
 /** Get the shape (number of dofs per grade) of a field */
 value Field_shape(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
 
     value shape[f->ngrades];
-    for (unsigned int i=0; i<f->ngrades; i++) {
-        shape[i]=MORPHO_INTEGER(f->dof[i]);
-    }
-    
-    objectlist *new=object_newlist(f->ngrades, shape);
-    if (new) {
-        out = MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    }
-    
-    return out;
+    for (unsigned int i=0; i<f->ngrades; i++) shape[i]=MORPHO_INTEGER(f->dof[i]);
+
+    return morpho_wrapandbind(v, (object *) object_newtuple(f->ngrades, shape));
 }
 
 /** Get the functionspace used by a field */
 value Field_fnspace(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
-    
     return f->fnspc;
 }
 
 /** Get a prototype used by the field */
 value Field_prototype(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
-    
     return f->prototype;
 }
 
 /** Get the mesh associated with a field */
 value Field_mesh(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
-    
     return MORPHO_OBJECT(f->mesh);
 }
 
-static bool field_readlambda(value arg, int nlambda, double *lambda) {
-    if (MORPHO_ISLIST(arg)) {
-        objectlist *list = MORPHO_GETLIST(arg);
-        if (list_length(list)!=(unsigned int) nlambda) return false;
-        for (int i=0; i<nlambda; i++) {
-            value el;
-            if (!list_getelement(list, i, &el)) return false;
-            if (!morpho_valuetofloat(el, &lambda[i])) return false;
-        }
-        return true;
-    } else if (MORPHO_ISMATRIX(arg)) {
-        objectmatrix *mat = MORPHO_GETMATRIX(arg);
-        if (mat->nrows!=(unsigned int) nlambda || mat->ncols!=1) return false;
-        for (int i=0; i<nlambda; i++) lambda[i]=mat->elements[i];
-        return true;
+static bool field_readlambda_list(value arg, int nlambda, double *lambda) {
+    objectlist *list = MORPHO_GETLIST(arg);
+    if (list_length(list)!=(unsigned int) nlambda) return false;
+    for (int i=0; i<nlambda; i++) {
+        value el;
+        if (!list_getelement(list, i, &el)) return false;
+        if (!morpho_valuetofloat(el, &lambda[i])) return false;
     }
-
-    return false;
+    return true;
 }
 
-value Field_evalelement_method(vm *v, int nargs, value *args) {
-    value out = MORPHO_NIL;
-    objectfield *field=MORPHO_GETFIELD(MORPHO_SELF(args));
-    if (!MORPHO_ISFESPACE(field->fnspc)) return out;
+static bool field_readlambda_matrix(value arg, int nlambda, double *lambda) {
+    objectmatrix *mat = MORPHO_GETMATRIX(arg);
+    if (mat->nrows!=(unsigned int) nlambda || mat->ncols!=1) return false;
+    for (int i=0; i<nlambda; i++) lambda[i]=mat->elements[i];
+    return true;
+}
+
+static value _evalelement(vm *v, objectfield *field, elementid el, bool (*readfn) (value, int, double *), value lambdaarg) {
+    if (!MORPHO_ISFESPACE(field->fnspc)) return MORPHO_NIL;
 
     fespace *disc = MORPHO_GETFESPACE(field->fnspc)->fespace;
     int nlambda = disc->grade+1;
+    double lambda[nlambda];
+    value out = MORPHO_NIL;
 
-    if (nargs==2 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        elementid el = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        double lambda[nlambda];
-
-        if (field_readlambda(MORPHO_GETARG(args, 1), nlambda, lambda) &&
-            field_evalelement(field, el, lambda, &out) &&
-            MORPHO_ISOBJECT(out)) {
-            morpho_bindobjects(v, 1, &out);
-        }
+    if (readfn(lambdaarg, nlambda, lambda) &&
+        field_evalelement(field, el, lambda, &out) &&
+        MORPHO_ISOBJECT(out)) {
+        morpho_bindobjects(v, 1, &out);
     }
 
     return out;
 }
 
-value Field_elementdofs_method(vm *v, int nargs, value *args) {
-    value out = MORPHO_NIL;
+value Field_evalelement__int_list(vm *v, int nargs, value *args) {
+    return _evalelement(v, MORPHO_GETFIELD(MORPHO_SELF(args)),
+                        MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+                        field_readlambda_list, MORPHO_GETARG(args, 1));
+}
+
+value Field_evalelement__int_matrix(vm *v, int nargs, value *args) {
+    return _evalelement(v, MORPHO_GETFIELD(MORPHO_SELF(args)),
+                        MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+                        field_readlambda_matrix, MORPHO_GETARG(args, 1));
+}
+
+value Field_elementdofs__int(vm *v, int nargs, value *args) {
     objectfield *field=MORPHO_GETFIELD(MORPHO_SELF(args));
     objectlist *list = NULL;
-    if (!MORPHO_ISFESPACE(field->fnspc)) return out;
+    if (!MORPHO_ISFESPACE(field->fnspc)) return MORPHO_NIL;
 
     fespace *disc = MORPHO_GETFESPACE(field->fnspc)->fespace;
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        elementid el = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        fieldindx findx[disc->nnodes];
-        if (!field_getelementdofs(field, disc, el, findx)) return out;
+    elementid el = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    fieldindx findx[disc->nnodes];
+    if (!field_getelementdofs(field, disc, el, findx)) return MORPHO_NIL;
 
-        list = object_newlist(0, NULL);
-        if (!list) goto field_elementdofs_cleanup;
-        out = MORPHO_OBJECT(list);
+    list = object_newlist(0, NULL);
+    if (!list) goto field_elementdofs_cleanup;
 
-        for (int i=0; i<disc->nnodes; i++) {
-            value entries[3] = {
-                MORPHO_INTEGER(findx[i].g),
-                MORPHO_INTEGER(findx[i].id),
-                MORPHO_INTEGER(findx[i].indx)
-            };
-            objecttuple *tuple = object_newtuple(3, entries);
-            if (!tuple) goto field_elementdofs_cleanup;
-            list_append(list, MORPHO_OBJECT(tuple));
-        }
-
-        /* Temporarily append a self reference so everything can be bound in one go. */
-        list_append(list, MORPHO_OBJECT(list));
-        morpho_bindobjects(v, list->val.count, list->val.data);
-        list->val.count--;
+    for (int i=0; i<disc->nnodes; i++) {
+        value entries[3] = {
+            MORPHO_INTEGER(findx[i].g),
+            MORPHO_INTEGER(findx[i].id),
+            MORPHO_INTEGER(findx[i].indx)
+        };
+        objecttuple *tuple = object_newtuple(3, entries);
+        if (!tuple) goto field_elementdofs_cleanup;
+        list_append(list, MORPHO_OBJECT(tuple));
     }
 
-    return out;
+    return morpho_wrapandbindrecursive(v, (object *) list);
 
 field_elementdofs_cleanup:
-    morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-
     if (list) {
         for (unsigned int i=0; i<list->val.count; i++) {
             value el=list->val.data[i];
@@ -1150,28 +1051,19 @@ field_elementdofs_cleanup:
         object_free((object *) list);
     }
 
-    return MORPHO_NIL;
+    MORPHO_RAISE(v, ERROR_ALLOCATIONFAILED);
 }
 
 /** Get the matrix that stores the Field */
 value Field_linearize(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
-    value out = MORPHO_NIL;
-    
-    objectmatrix *m=matrix_clone(&f->data);
-    if (m) {
-        out = MORPHO_OBJECT(m);
-        morpho_bindobjects(v, 1, &out);
-    }
-    
-    return out;
+    return morpho_wrapandbind(v, (object *) matrix_clone(&f->data));
 }
 
 /** Directly the matrix that stores the Field
  @warning only use when you know what you're doing.  */
 value Field_unsafelinearize(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
-    
     return MORPHO_OBJECT(&f->data);
 }
 
@@ -1182,29 +1074,38 @@ MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "_ (Int, Int, Int)", Field_getin
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, _)", Field_setindex__int_x, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Int, _)", Field_setindex__int_int_x, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Int, Int, _)", Field_setindex__int_int_int_x, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Field_enumerate, MORPHO_FN_PUREFN),
-MORPHO_METHOD(MORPHO_COUNT_METHOD, Field_count, MORPHO_FN_PUREFN),
-MORPHO_METHOD(MORPHO_ASSIGN_METHOD, Field_assign, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_ADD_METHOD, Field_add, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_ADDR_METHOD, Field_addr, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_SUB_METHOD, Field_sub, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_SUBR_METHOD, Field_subr, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_ACC_METHOD, Field_acc, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_MUL_METHOD, Field_mul, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_MULR_METHOD, Field_mul, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_DIV_METHOD, Field_div, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MATRIX_INNER_METHOD, Field_inner, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
-MORPHO_METHOD(FIELD_OP_METHOD, Field_op, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Field_print, MORPHO_FN_IO),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Field_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FIELD_SHAPE_METHOD, Field_shape, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
-MORPHO_METHOD(FIELD_FESPACE_METHOD, Field_fnspace, MORPHO_FN_PUREFN),
-MORPHO_METHOD(FIELD_PROTOTYPE_METHOD, Field_prototype, MORPHO_FN_PUREFN),
-MORPHO_METHOD(FIELD_MESH_METHOD, Field_mesh, MORPHO_FN_PUREFN),
-MORPHO_METHOD(FIELD_EVALELEMENT_METHOD, Field_evalelement_method, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FIELD_ELEMENTDOFS_METHOD, Field_elementdofs_method, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(FIELD_LINEARIZE_METHOD, Field_linearize, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
-MORPHO_METHOD(FIELD__LINEARIZE_METHOD, Field_unsafelinearize, MORPHO_FN_PUREFN)
+MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "_ (Int)", Field_enumerate__int, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Field_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(Field)", Field_assign__field, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(Matrix)", Field_assign__matrix, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Field (Field)", Field_add__field, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Field (Nil)", Field_addr__nil, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Field (Int)", Field_addr__number, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Field (Float)", Field_addr__number, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Field (Field)", Field_sub__field, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "Field (Nil)", Field_subr__nil, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "Field (Int)", Field_subr__int, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(Int, Field)", Field_acc__number_field, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(Float, Field)", Field_acc__number_field, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "Field (Int)", Field_mul__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "Field (Float)", Field_mul__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "Field (Int)", Field_mul__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "Field (Float)", Field_mul__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "Field (Int)", Field_div__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "Field (Float)", Field_div__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MATRIX_INNER_METHOD, "Float (Field)", Field_inner__field, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(FIELD_OP_METHOD, "Field (Callable, ...)", Field_op__callable, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", Field_print, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Field ()", Field_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(FIELD_SHAPE_METHOD, "Tuple ()", Field_shape, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(FIELD_FESPACE_METHOD, "_ ()", Field_fnspace, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(FIELD_PROTOTYPE_METHOD, "_ ()", Field_prototype, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(FIELD_MESH_METHOD, "Mesh ()", Field_mesh, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(FIELD_EVALELEMENT_METHOD, "_ (Int, List)", Field_evalelement__int_list, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(FIELD_EVALELEMENT_METHOD, "_ (Int, Matrix)", Field_evalelement__int_matrix, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(FIELD_ELEMENTDOFS_METHOD, "List (Int)", Field_elementdofs__int, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(FIELD_LINEARIZE_METHOD, "Matrix ()", Field_linearize, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(FIELD__LINEARIZE_METHOD, "Matrix ()", Field_unsafelinearize, MORPHO_FN_PUREFN)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -1232,8 +1133,6 @@ void field_initialize(void) {
     object_setveneerclass(OBJECT_FIELD, fieldclass);
     
     morpho_defineerror(FIELD_INDICESOUTSIDEBOUNDS, ERROR_HALT, FIELD_INDICESOUTSIDEBOUNDS_MSG);
-    morpho_defineerror(FIELD_INVLDINDICES, ERROR_HALT, FIELD_INVLDINDICES_MSG);
-    morpho_defineerror(FIELD_ARITHARGS, ERROR_HALT, FIELD_ARITHARGS_MSG);
     morpho_defineerror(FIELD_INCOMPATIBLEMATRICES, ERROR_HALT, FIELD_INCOMPATIBLEMATRICES_MSG);
     morpho_defineerror(FIELD_INCOMPATIBLEVAL, ERROR_HALT, FIELD_INCOMPATIBLEVAL_MSG);
     morpho_defineerror(FIELD_ARGS, ERROR_HALT, FIELD_ARGS_MSG);

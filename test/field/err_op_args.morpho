@@ -1,0 +1,4 @@
+var m = Mesh("square.mesh")
+var f = Field(m)
+f.op("not callable")
+// expect error 'MltplDsptchFld'

@@ -8,7 +8,7 @@ var l = FiniteElementSpace("CG0", grade=1)
 var f = Field(m, fn (x,y,z) x, finiteelementspace=l)
 
 print f.shape()
-// expect: [ 0, 1 ]
+// expect: (0, 1)
 
 print f.evalElement(0, [1, 0]) == f.evalElement(0, [0.5, 0.5])
 // expect: true

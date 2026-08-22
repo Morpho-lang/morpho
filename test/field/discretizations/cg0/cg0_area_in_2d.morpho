@@ -16,7 +16,7 @@ var l = FiniteElementSpace("CG0", grade=2)
 var f = Field(m, fn (x,y) x, finiteelementspace=l)
 
 print f.shape()
-// expect: [ 0, 0, 1 ]
+// expect: (0, 0, 1)
 
 print f.elementDofs(0)
 // expect: [ (2, 0, 0) ]

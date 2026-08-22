@@ -291,7 +291,7 @@ class VTKExporter is VTK {
             wrongShape = wrongShape or (shp[i]!=0)
         }
         if (wrongShape) {
-            self.err = Error("FieldShapeErr", "Received a field with shape `${shp}`. Fields with shape other than [1,0,0] are not currently supported.")
+            self.err = Error("FieldShapeErr", "Received a field with shape `${shp}`. Fields with shape other than (1, 0, 0) are not currently supported.")
             self.err.throw()
         }
 

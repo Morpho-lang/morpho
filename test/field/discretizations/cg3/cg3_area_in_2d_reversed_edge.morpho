@@ -35,7 +35,7 @@ print l.layout(f)
 // expect: [ 0 1 ]
 
 print f.shape()
-// expect: [ 1, 2, 1 ]
+// expect: (1, 2, 1)
 
 // Shared edge is edge 2; these two values distinguish the edge orientation.
 print abs(f[1,2,0]-8/27) < 1e-10

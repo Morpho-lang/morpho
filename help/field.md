@@ -65,9 +65,9 @@ stores two numbers on the line (grade 1) elements and one number on the facets (
 ## Shape
 [tagshape]: # (shape)
 
-The `shape` method returns a list indicating the number of items stored on each element of a particular grade. This has the same format as the list you supply to the `grade` option of the `Field` constructor. For example,
+The `shape` method returns a tuple indicating the number of items stored on each element of a particular grade. This has the same format as the sequence you supply to the `grade` option of the `Field` constructor. For example,
 
-    [1,0,2]
+    (1, 0, 2)
 
 would indicate one item stored on each vertex and two items stored on each facet.
 

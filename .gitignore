@@ -61,6 +61,7 @@ dkms.conf
 
 FailedTests*.txt
 *.png
+/benchmarks
 *.out
 manual/src/manual.lyx~
 test/vtk/data.case2.vtk

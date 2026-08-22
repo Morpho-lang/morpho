@@ -3634,7 +3634,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     /* -- Compile the parameters -- */
     compiler_functionparameters(c, node->left);
     
-    value signature[function_countpositionalargs(func)];
+    value signature[function_countpositionalargs(func)+1];
     for (int i=0; i<func->nargs; i++) compiler_regtype(c, i+1, &signature[i]);
     if (function_hasvargs(func)) signature[func->nargs]=MORPHO_NIL;
     function_setsignature(func, signature);
@@ -3883,7 +3883,7 @@ static bool compiler_specializemetafunctioncall(compiler *c, syntaxtreenode *nod
     if (metafunction->state!=METAFUNCTION_FROZEN ||
         compiler_metafunctionhasrecursiveimplementation(metafunction)) return false;
 
-    value argtypes[nargs];
+    value argtypes[nargs+1];
     for (int i=0; i<nargs; i++) {
         value type = MORPHO_NIL;
         argtypes[i] = (compiler_regcurrenttype(c, func->dest+i+1, &type) && compiler_typeisexact(type)) ? type : MORPHO_NIL;

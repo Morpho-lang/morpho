@@ -15,9 +15,11 @@
 #include "sparse.h"
 #include "geometry.h"
 #include "fespace.h"
+#include "platform.h"
 
 value field_gradeoption;
 value field_functionspaceoption;
+static MorphoMutex field_poolmutex;
 
 /* **********************************************************************
  * Field objects
@@ -286,14 +288,21 @@ void field_zero(objectfield *f) {
     memset(f->data.elements, 0, sizeof(double)*(f->data.nrows));
 }
 
-/** Adds the object pool. This is a collection of statically allocated objects */
+/** Adds the object pool. This is a collection of statically allocated objects.
+    Serialized so workers indexing a matrix field cannot observe a half-built pool. */
 bool field_addpool(objectfield *f) {
-    unsigned int nel = f->nelements;
-    if (!f->pool && MORPHO_ISMATRIX(f->prototype)) {
+    if (f->pool) return true;
+    if (!MORPHO_ISMATRIX(f->prototype)) return false;
+
+    MorphoMutex_lock(&field_poolmutex);
+    bool success=true;
+    if (!f->pool) {
+        unsigned int nel = f->nelements;
         objectmatrix *prototype=MORPHO_GETMATRIX(f->prototype);
-        f->pool=MORPHO_MALLOC(sizeof(objectmatrix)*nel);
-        if (f->pool) {
-            objectmatrix *m = (objectmatrix *) f->pool;
+        objectmatrix *m = MORPHO_MALLOC(sizeof(objectmatrix)*nel);
+        if (!m) {
+            success=false;
+        } else {
             for (unsigned int i=0; i<nel; i++) {
                 object_init(&m[i].obj, OBJECT_MATRIX);
                 m[i].elements=f->data.elements+i*f->psize;
@@ -302,10 +311,11 @@ bool field_addpool(objectfield *f) {
                 m[i].nvals=prototype->nvals;
                 m[i].nels=m[i].ncols*m[i].nrows*m[i].nvals;
             }
+            f->pool=m;
         }
-        return true;
     }
-    return false;
+    MorphoMutex_unlock(&field_poolmutex);
+    return success;
 }
 
 /** Clones a field */
@@ -1103,7 +1113,14 @@ MORPHO_ENDCLASS
  * Initialization
  * ********************************************************************* */
 
+static void field_finalize(void) {
+    MorphoMutex_clear(&field_poolmutex);
+}
+
 void field_initialize(void) {
+    MorphoMutex_init(&field_poolmutex);
+    morpho_addfinalizefn(field_finalize);
+
     objectfieldtype=object_addtype(&objectfielddefn);
     
     field_gradeoption=builtin_internsymbolascstring(FIELD_GRADEOPTION);

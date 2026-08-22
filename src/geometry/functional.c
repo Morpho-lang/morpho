@@ -518,7 +518,6 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
     
     /* Find any image elements so they can be skipped */
     functional_symmetryimagelist(info->mesh, info->g, true, imageids);
-    if (info->field) field_addpool(info->field);
     
     vm *subkernels[ntask];
     if (ntask==1) {
@@ -4433,13 +4432,6 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
         ref->nfields=list->val.count;
         ref->fields=list->val.data;
         ref->originalfields=list->val.data;
-        
-        for (int i=0; i<ref->nfields; i++) {
-            if (MORPHO_ISFIELD(ref->fields[i])) {
-                objectfield *fld = MORPHO_GETFIELD(ref->fields[i]);
-                field_addpool(fld);
-            }
-        }
     }
     return success;
 }

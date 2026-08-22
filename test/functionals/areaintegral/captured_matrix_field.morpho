@@ -1,0 +1,19 @@
+// Matrix fields captured by the integrand, not passed as Integral arguments.
+// First index creates the object pool; python3 test.py -m exercises that concurrently.
+
+import constants
+import meshtools
+
+var m = AreaMesh(fn (x,y) [x,y,0], 0..1:0.25, 0..1:0.25)
+var I2 = IdentityMatrix(2)
+var F = Field(m, I2, grade=2)
+var G = Field(m, I2, grade=2)
+
+fn captured(x) {
+    var Ct = F[2, elementid()]
+    var Dt = G[2, elementid()]
+    return (Ct * Dt).trace()
+}
+
+print AreaIntegral(captured).total(m)
+// expect: 2

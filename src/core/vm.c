@@ -208,17 +208,15 @@ void vm_bindrecursive(vm *v, value obj) {
     vmstatus old = v->status; // Preserve status
     v->status = VM_BIND; // Enter bind mode
     
-    object *oldobjects = v->objects; // Remember the previous head of the managed list.
-    object *boundary = oldobjects; // Stop at the previous head of the managed list.
+    object *boundary = v->objects; // Stop at the previous head of the managed list.
     
     vm_bindobjectwithoutcollect(v, obj); // Bind first object
 
     do {
         object *head = v->objects;
 
-        // Loop over newly added objects, calling their markfn which causes children to be bound.
+        // Loop over newly added objects, calling their markfn which causes unmanaged children to be bound.
         for (object *current = head; current != boundary; current = current->next) {
-            current->status = OBJECT_ISMARKED; // Ensure newly added objects are retained at least across this gc run.
             objecttypedefn *defn = object_getdefn(current);
             if (defn->markfn) defn->markfn(current, v);
         }
@@ -228,11 +226,13 @@ void vm_bindrecursive(vm *v, value obj) {
 
     v->status=old; // Restore status
 
-    vm_checkgc(v);
-
-    /* Ensure newly added objects are not marked before the next GC. */
-    for (object *current = v->objects; current && current != oldobjects; current = current->next) {
-        if (current->status == OBJECT_ISMARKED) current->status = OBJECT_ISUNMARKED;
+#ifndef MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
+    if (v->bound>v->nextgc)
+#endif
+    {   // Retain root object if we're about to collect
+        int handle = morpho_retainobjects(v, 1, &obj);
+        vm_collectgarbage(v);
+        morpho_releaseobjects(v, handle);
     }
 }
 

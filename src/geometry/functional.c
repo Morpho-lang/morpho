@@ -1027,7 +1027,9 @@ bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value
         
         if (MORPHO_ISFESPACE(tref[i].field->fnspc)) {
             tref[i].disc=MORPHO_GETFESPACE(tref[i].field->fnspc)->fespace;
-            if (info->g<tref[i].disc->grade) {
+            if (info->g==0 && tref[i].disc->shape[0]>0) { // Field defined on vertices so no need to restrict
+                tref[i].disc=NULL;
+            } else if (info->g<tref[i].disc->grade) { // Locate the restriction of the fespace
                 if (!fespace_lower(tref[i].disc, info->g, &tref[i].disc)) {
                     functional_fespaceerror(v, tref[i].field, info->g);
                     goto functional_mapfieldgradient_cleanup;
@@ -2927,10 +2929,8 @@ static bool functional_preparefespacefield(vm *v, objectfield *field, grade g) {
     if (!field || !MORPHO_ISFESPACE(field->fnspc)) return true;
 
     fespace *disc = MORPHO_GETFESPACE(field->fnspc)->fespace;
-    /* Revisit: CG1→vertices is not a missing trace. Honest FnctlFESpc tests
-       wait on CG0 (no boundary restriction) and refusing g > disc->grade
-       (no implicit raise, e.g. AreaIntegral of a line-grade space). */
-    if (g<disc->grade) {
+    /* Locate the restriction of the fespace, unless the field is defined on vertices. */
+    if (g<disc->grade && !(g==0 && disc->shape[0]>0)) {
         if (!fespace_lower(disc, g, &disc)) {
             functional_fespaceerror(v, field, g);
             return false;
@@ -4040,8 +4040,8 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
     
     bool success=false;
     
-    // Evaluate gradient
-    if (MORPHO_ISFESPACE(fld->fnspc)) {
+    // Evaluate gradient. TODO: remove quantities check as we deprecate old integrator.
+    if (MORPHO_ISFESPACE(fld->fnspc) && elref->quantities) {
         if (!elref->invj) {
             elref->invj=matrix_new(elref->g, elref->mesh->dim, false);
             
@@ -4127,7 +4127,7 @@ bool integral_evaluatehessian(vm *v, value q, value *out) {
         if (!integral_hessalloc(dim, fld->prototype, &elref->qhess[ifld])) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
     }
     
-    if (MORPHO_ISFESPACE(fld->fnspc)) {
+    if (MORPHO_ISFESPACE(fld->fnspc) && elref->quantities) {
         if (!elref->invj) {
             elref->invj=matrix_new(elref->g, elref->mesh->dim, false);
             if (elref->invj) {

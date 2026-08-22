@@ -1,0 +1,68 @@
+// Field constructor FE-space defaults
+
+var m = Mesh("square.mesh")
+print m.maxgrade()
+// expect: 2
+
+var f = Field(m)
+print f.finiteElementSpace()
+// expect: <FunctionSpace CG1>
+print f.finiteElementSpace().grade()
+// expect: 2
+print f.shape()
+// expect: [ 1, 0, 0 ]
+
+print Field(m, grade=0).finiteElementSpace()
+// expect: <FunctionSpace CG1>
+
+var f2 = Field(m, grade=2)
+print f2.finiteElementSpace()
+// expect: <FunctionSpace CG0>
+print f2.finiteElementSpace().grade()
+// expect: 2
+print f2.shape()
+// expect: [ 0, 0, 1 ]
+
+print isnil(Field(m, grade=[1, 0, 1]).finiteElementSpace())
+// expect: true
+print Field(m, grade=[1, 0, 1]).shape()
+// expect: [ 1, 0, 1 ]
+
+print isnil(Field(m, finiteelementspace=nil).finiteElementSpace())
+// expect: true
+print Field(m, finiteelementspace=nil).shape()
+// expect: [ 1, 0, 0 ]
+
+print isnil(Field(m, grade=2, finiteelementspace=nil).finiteElementSpace())
+// expect: true
+print Field(m, grade=2, finiteelementspace=nil).shape()
+// expect: [ 0, 0, 1 ]
+
+var cg2 = FiniteElementSpace("CG2", grade=2)
+var fcg2 = Field(m, finiteelementspace=cg2)
+print fcg2.finiteElementSpace()
+// expect: <FunctionSpace CG2>
+print fcg2.finiteElementSpace().grade()
+// expect: 2
+
+// Number prototype fills every live dof, not just vertices
+var ones = Field(m, 1.0, grade=2)
+print ones[0]
+// expect: 1
+print ones[1]
+// expect: 1
+
+// Function on default CG1 still samples vertices
+fn write(fld) { print "[${fld[0]}, ${fld[1]}, ${fld[2]}, ${fld[3]}]" }
+write(Field(m, fn (x, y, z) x))
+// expect: [0, 1, 0, 1]
+
+// Function with grade=N samples that CG0 space (centroids, not vertices)
+var a = Field(m, fn (x, y, z) x, grade=2)
+var b = Field(m, fn (x, y, z) x, finiteelementspace=FiniteElementSpace("CG0", grade=2))
+print abs(a[0] - b[0]) < 1e-12
+// expect: true
+print abs(a[1] - b[1]) < 1e-12
+// expect: true
+print abs(Field(m, fn (x, y, z) 4, grade=2)[0] - 4) < 1e-12
+// expect: true

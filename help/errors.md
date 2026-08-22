@@ -1614,17 +1614,10 @@ This error occurs when a mesh has no boundary elements:
     var m = Mesh()
     m.boundary() // Causes 'SlBnd' if no boundary exists
 
-## FldMshArg
-[tagfldmsharg]: # (fldmsharg)
-
-This error occurs when Field receives invalid arguments. It expects a mesh as its first argument:
-
-    var f = Field("invalid") // Causes 'FldMshArg'
-
 ## FldArgs
 [tagfldargs]: # (fldargs)
 
-This error occurs when Field receives invalid optional arguments. It allows 'grade' as an optional argument.
+This error occurs when Field receives invalid optional arguments. It allows `grade` and `finiteelementspace` as optional arguments.
 
 ## FldBnds
 [tagfldbnds]: # (fldbnds)

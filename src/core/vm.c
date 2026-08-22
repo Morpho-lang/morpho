@@ -229,6 +229,11 @@ void vm_bindrecursive(vm *v, value obj) {
     v->status=old; // Restore status
 
     vm_checkgc(v);
+
+    /* Ensure newly added objects are not marked before the next GC. */
+    for (object *current = v->objects; current && current != oldobjects; current = current->next) {
+        if (current->status == OBJECT_ISMARKED) current->status = OBJECT_ISUNMARKED;
+    }
 }
 
 /** @brief Binds an object to a Virtual Machine.

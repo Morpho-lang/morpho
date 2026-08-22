@@ -115,6 +115,9 @@ objectfespace *objectfespace_new(fespace *disc);
 fespace *fespace_find(char *name, grade g);
 fespace *fespace_findlinear(grade g);
 
+objectfespace *fespace_newfromname(char *name, grade g);
+objectfespace *fespace_newlinear(grade g);
+
 bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids, fieldindx *findx);
 bool fespace_nodefieldindex(fespace *disc, int node, grade *g, int *sid, int *indx);
 

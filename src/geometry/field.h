@@ -96,16 +96,13 @@ extern value field_gradeoption;
 #define FIELD_INCOMPATIBLEVAL_MSG        "Assignment value has incompatible shape with field elements."
 
 #define FIELD_ARGS                       "FldArgs"
-#define FIELD_ARGS_MSG                   "Field allows 'grade' as an optional argument."
+#define FIELD_ARGS_MSG                   "Field allows 'grade' and 'finiteelementspace' as optional arguments."
 
 #define FIELD_OP                         "FldOp"
 #define FIELD_OP_MSG                     "Method 'op' requires a callable object as the first argument; all other arguments must be fields of compatible shape."
 
 #define FIELD_OPRETURN                   "FldOpFn"
 #define FIELD_OPRETURN_MSG               "Could not construct a Field from the return value of the function passed to 'op'."
-
-#define FIELD_MESHARG                    "FldMshArg"
-#define FIELD_MESHARG_MSG                "Field expects a mesh as its first argurment"
 
 objectfield *field_clone(objectfield *f);
 

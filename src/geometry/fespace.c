@@ -64,6 +64,18 @@ fespace *fespace_findlinear(grade g) {
     return NULL;
 }
 
+/** Convenience function to construct an objectfespace based on a name and grade; returns NULL if missing/allocation failed. */
+objectfespace *fespace_newfromname(char *name, grade g) {
+    fespace *disc=fespace_find(name, g);
+    return (disc ? objectfespace_new(disc) : NULL);
+}
+
+/** Convenience function to construct a linear objectfespace; returns NULL if missing/allocation failed. */
+objectfespace *fespace_newlinear(grade g) {
+    fespace *disc=fespace_findlinear(g);
+    return (disc ? objectfespace_new(disc) : NULL);
+}
+
 #define FETCH(instr) (*(instr++))
 
 typedef struct {
@@ -285,20 +297,14 @@ value fespace_constructor(vm *v, int nargs, value *args) {
     int nfixed;
 
     if (!builtin_options(v, nargs, args, &nfixed, 1, field_gradeoption, &grd) ||
-        nfixed!=1 || !MORPHO_ISINTEGER(grd)) {
-        morpho_runtimeerror(v, FNSPC_ARGS);
-        return MORPHO_NIL;
-    }
+        nfixed!=1 || !MORPHO_ISINTEGER(grd)) MORPHO_RAISE(v, FNSPC_ARGS);
 
     char *label = MORPHO_GETCSTRING(MORPHO_GETARG(args, 0));
-    fespace *d=fespace_find(label, MORPHO_GETINTEGERVALUE(grd));
+    int g = MORPHO_GETINTEGERVALUE(grd);
+    objectfespace *obj=fespace_newfromname(label, g);
+    if (!obj && !fespace_find(label, g)) MORPHO_RAISEVARGS(v, FNSPC_NOTFOUND, label, g);
 
-    if (!d) {
-        morpho_runtimeerror(v, FNSPC_NOTFOUND, label, MORPHO_GETINTEGERVALUE(grd));
-        return MORPHO_NIL;
-    }
-
-    return morpho_wrapandbind(v, (object *) objectfespace_new(d));
+    return morpho_wrapandbind(v, (object *) obj);
 }
 
 value FiniteElementSpace_count(vm *v, int nargs, value *args) {

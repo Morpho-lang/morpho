@@ -6,6 +6,10 @@
 # are piped to a file and the output is compared with expectations
 # extracted from the input file.
 # Expectations are coded into comments in the input file as follows:
+#
+#   // expect: VALUE          - match a printed line
+#   // expect error 'TAG'     - match an error with that tag
+#                               (also // expect: Error 'TAG' and optional colons)
 
 # import necessary modules
 import os, glob, sys, subprocess
@@ -44,10 +48,9 @@ def simplify_stacktrace(str):
 def findvalue(str):
     return rx.findall(r'// expect: ?(.*)', str)
 
-# Find an expected error
+# Find an expected error: // expect error 'TAG' (not incidental mentions of "error")
 def finderror(str):
-    #return rx.findall(r'\/\/ expect ?(.*) error', str)
-    return rx.findall(r'.*[E|e]rror[ :].*?(.*)', str)
+    return rx.findall(r'//\s*expect:?\s*[Ee]rror:?\s*\'([A-Za-z0-9]+)\'', str)
 
 # Find an expected error
 def iserror(str):
@@ -73,12 +76,10 @@ def remove(list, remove_list):
 
 # Find what is expected
 def findexpected(str):
-    out = finderror(str) # is it an error?
-    if (out!=[]):
-        out = [simplify_errors(str)] # if so, simplify it
-    else:
-        out = findvalue(str) # or something else?
-    return out
+    tags = finderror(str) # is it an error?
+    if tags:
+        return [err + '[' + tags[0] + ']']
+    return findvalue(str) # or something else?
 
 # Works out what we expect from the input file
 def getexpect(filepath):

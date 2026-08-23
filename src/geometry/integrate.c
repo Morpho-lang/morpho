@@ -9,7 +9,6 @@
 
 #include <limits.h>
 #include <float.h>
-#include <string.h>
 
 #include "integrate.h"
 #include "morpho.h"
@@ -836,6 +835,8 @@ void integrator_init(integrator *integrate) {
     integrate->strategy=NULL;
     integrate->skipcentroid=false;
     integrate->fcentroid=0.0;
+    integrate->errnormmax=true;
+    integrate->rootscale=0.0;
     integrate->subdivide=NULL;
     
     varray_quadratureworkiteminit(&integrate->worklist);
@@ -876,6 +877,7 @@ static void integrator_reset(integrator *integrate) {
     integrate->rule=integrate->baserule;
     integrate->skipcentroid=false;
     integrate->fcentroid=0.0;
+    integrate->rootscale=0.0;
 }
 
 /** Adds a vertex to the integrators vertex stack, returning the id */
@@ -1028,7 +1030,8 @@ void integrator_estimate(integrator *integrate) {
     }
     
     integrate->val = sumval;
-    integrate->errest = sumerr;
+    if (integrate->errnormmax) integrate->errest = (integrate->worklist.count>0) ? integrate->worklist.data[0].err : 0.0;
+    else integrate->errest = sumerr;
 }
 
 /* --------------------------------
@@ -1374,12 +1377,19 @@ void integrator_update(integrator *integrate, quadratureworkitem *work, int nels
  * Integrator configuration
  * -------------------------------- */
 
+/** True if two C strings match as Morpho strings (length-aware). */
+static bool integrator_namesmatch(char *a, char *b) {
+    if (!a || !b) return false;
+    objectstring sa = MORPHO_STATICSTRING(a);
+    objectstring sb = MORPHO_STATICSTRING(b);
+    return MORPHO_ISEQUAL(MORPHO_OBJECT(&sa), MORPHO_OBJECT(&sb));
+}
+
 /** Finds a rule by name */
 bool integrator_matchrulebyname(int grade, char *name, quadraturerule **out) {
     for (int i=0; quadrules[i]!=NULL; i++) {
         if (quadrules[i]->grade!=grade) continue;
-        if (name && quadrules[i]->name &&
-            (strcmp(name, quadrules[i]->name)==0)) { // Match a rule by name
+        if (integrator_namesmatch(name, quadrules[i]->name)) {
             *out = quadrules[i];
             return true;
         }
@@ -1459,13 +1469,15 @@ bool integrator_configure(integrator *integrate, error *err, bool adapt, int gra
     integrate->strategy=NULL;
     integrate->skipcentroid=false;
     integrate->fcentroid=0.0;
+    integrate->errnormmax=true;
+    integrate->rootscale=0.0;
     integrate->adapt=adapt;
     integrate->err=err;
     integrate->nbary=grade+1; // Number of barycentric coordinates
     integrate->vertexstack.count=0;
     integrate->elementstack.count=0;
     
-    if (name && strcmp(name, INTEGRATE_HYBRID2D)==0) { // Named strategies are not quadrature rules; hybrid2d is the 2D default strategy.
+    if (integrator_namesmatch(name, INTEGRATE_HYBRID2D)) { // Named strategies are not quadrature rules; hybrid2d is the 2D default strategy.
         if (grade!=2) {
             error_writewithid(err, INTEGRATE_RLUNAVLB);
             return false;
@@ -1535,6 +1547,10 @@ bool integrator_configurewithdictionary(integrator *integrate, error *err, grade
     objectstring rulelabel = MORPHO_STATICSTRING(INTEGRATE_RULELABEL);
     objectstring degreelabel = MORPHO_STATICSTRING(INTEGRATE_DEGREELABEL);
     objectstring adaptlabel = MORPHO_STATICSTRING(INTEGRATE_ADAPTLABEL);
+    objectstring errnormlabel = MORPHO_STATICSTRING(INTEGRATE_ERRORNORMLABEL);
+    objectstring errnormmaxlabel = MORPHO_STATICSTRING(INTEGRATE_ERRORNORMMAX);
+    objectstring errnormsumlabel = MORPHO_STATICSTRING(INTEGRATE_ERRORNORMSUM);
+    bool errnormmax=true;
     
     if (dictionary_get(&dict->dict, MORPHO_OBJECT(&rulelabel), &val)) {
         if (MORPHO_ISSTRING(val)) {
@@ -1563,7 +1579,24 @@ bool integrator_configurewithdictionary(integrator *integrate, error *err, grade
         }
     }
     
-    return integrator_configure(integrate, err, adapt, g, order, name);
+    if (dictionary_get(&dict->dict, MORPHO_OBJECT(&errnormlabel), &val)) {
+        if (!MORPHO_ISSTRING(val)) {
+            error_writewithid(err, INTEGRATE_MTHDTYP, INTEGRATE_ERRORNORMLABEL, STRING_CLASSNAME);
+            return false;
+        }
+        if (MORPHO_ISEQUAL(val, MORPHO_OBJECT(&errnormmaxlabel))) {
+            errnormmax=true;
+        } else if (MORPHO_ISEQUAL(val, MORPHO_OBJECT(&errnormsumlabel))) {
+            errnormmax=false;
+        } else {
+            error_writewithid(err, INTEGRATE_MTHDTYP, INTEGRATE_ERRORNORMLABEL, INTEGRATE_MTHDERRNRM_STRING);
+            return false;
+        }
+    }
+    
+    if (!integrator_configure(integrate, err, adapt, g, order, name)) return false;
+    integrate->errnormmax=errnormmax;
+    return true;
 }
 
 /* --------------------------------
@@ -1575,6 +1608,18 @@ static bool integrator_rootconverged(integrator *integrate, quadratureworkitem *
     return !integrate->adapt ||
         fabs(work->val)<integrate->ztol ||
         fabs(work->err/work->val)<integrate->tol;
+}
+
+/** True if h-adapt has met the selected error-norm contract. */
+static bool integrator_hconverged(integrator *integrate) {
+    if (integrate->errnormmax) { // Max-norm stop
+        if (integrate->worklist.count<=0) return true;
+        double maxerr=integrate->worklist.data[0].err;
+        if (integrate->rootscale>integrate->ztol) return maxerr<integrate->tol*integrate->rootscale;
+        return maxerr<integrate->tol;
+    }
+    return fabs(integrate->val)<integrate->ztol || // Sum-norm stop
+           fabs(integrate->errest/integrate->val)<integrate->tol;
 }
 
 /** Integrates over a function
@@ -1613,12 +1658,14 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
         return true;
     }
     
+    integrate->rootscale=fabs(work.val);
+    
     integrator_pushworkitem(integrate, &work);
     integrator_estimate(integrate); // Initial estimate
     
     if (integrate->adapt) for (integrate->niterations=0; integrate->niterations<=integrate->maxiterations; integrate->niterations++) {
         // Convergence check
-        if (fabs(integrate->val)<integrate->ztol || fabs(integrate->errest/integrate->val)<integrate->tol) break;
+        if (integrator_hconverged(integrate)) break;
         
         // Get worst interval
         integrator_popworkitem(integrate, &work);

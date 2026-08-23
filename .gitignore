@@ -79,3 +79,4 @@ build-win/*
 /.vs
 /dist
 /vcpkg_installed
+/test/__pycache__

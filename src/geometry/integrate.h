@@ -18,6 +18,9 @@
 #define INTEGRATE_RULELABEL "rule"
 #define INTEGRATE_DEGREELABEL "degree"
 #define INTEGRATE_ADAPTLABEL "adapt"
+#define INTEGRATE_ERRORNORMLABEL "errornorm"
+#define INTEGRATE_ERRORNORMMAX "max"
+#define INTEGRATE_ERRORNORMSUM "sum"
 #define INTEGRATE_HYBRID2D "hybrid2d"
 
 #define INTEGRATE_ACCURACYGOAL 1e-6
@@ -154,6 +157,9 @@ struct integrator_s {
     bool skipcentroid; /** Skip node 0 on the next reference-element evaluation */
     double fcentroid; /** Cached integrand at node 0 */
     
+    bool errnormmax; /** Selects error norm: if set, stops on max e_K < tol |I_root|; otherwise stops on sum e_K / |I| */
+    double rootscale; /** |I| after the last root rule, used by the max-norm stop */
+    
     bool adapt; /** Enable adaptive integration */
     subdivisionrule *subdivide; /** Subdivision rule to use */
     
@@ -187,6 +193,8 @@ struct integrator_s {
 
 #define INTEGRATE_MTHDTYP             "IntgrtrMthdTyp"
 #define INTEGRATE_MTHDTYP_MSG         "Integrator method dictionary option '%s' must be a %s."
+
+#define INTEGRATE_MTHDERRNRM_STRING   "String and either \"max\" or \"sum\""
 
 /* -------------------------------------------------------
  * Integrator interface

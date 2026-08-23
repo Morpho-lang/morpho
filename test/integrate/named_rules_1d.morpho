@@ -1,0 +1,29 @@
+// Test named quadrature rules in dimension 1 against expected degree
+
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0])
+mb.addvertex([1])
+mb.addedge([0,1])
+var m = mb.build()
+
+var rules = [ "midpoint", "simpson",
+              "gauss1", "kronrod3",
+              "gauss2", "kronrod5",
+              "gauss5", "kronrod11",
+              "gauss7", "kronrod15" ]
+
+for (rule in rules) {
+    print abs(LineIntegral(fn (x) x[0], method={ "rule": rule }).total(m) - 1/2) < 1e-12
+}
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true

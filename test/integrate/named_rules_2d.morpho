@@ -1,0 +1,35 @@
+// Test named quadrature rules in dimension 2 against expected degree
+
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+
+var rules = [ "tri0", "tri4", "tri10", "tri20",
+              "cubtri0", "cubtri7", "cubtri19",
+              "cools7", "cools16",
+              "grundmann2d0", "grundmann2d1", "grundmann2d2",
+              "grundmann2d3", "grundmann2d4", "grundmann2d5" ]
+
+for (rule in rules) {
+    print abs(AreaIntegral(fn (x) x[0], method={ "rule": rule }).total(m) - 1/6) < 1e-12
+}
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true

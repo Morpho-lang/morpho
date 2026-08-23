@@ -1,0 +1,30 @@
+// Test named quadrature rules in dimension 3 against expected degree
+
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([0,0,1])
+mb.addvolume([0,1,2,3])
+var m = mb.build()
+
+var rules = [ "keast4", "keast5",
+              "tet5", "tet6",
+              "grundmann3d0", "grundmann3d1", "grundmann3d2",
+              "grundmann3d3", "grundmann3d4", "grundmann3d5" ]
+
+for (rule in rules) {
+    print abs(VolumeIntegral(fn (x) x[0], method={ "rule": rule }).total(m) - 1/24) < 1e-12
+}
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true
+// expect: true

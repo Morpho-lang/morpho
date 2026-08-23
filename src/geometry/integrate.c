@@ -1363,14 +1363,18 @@ void integrator_sharpenerrorestimate(integrator *integrate, quadratureworkitem *
 void integrator_update(integrator *integrate, quadratureworkitem *work, int nels, quadratureworkitem *newitems) {
     double dval=0, derr=0;
     integrate->val-=work->val;
-    integrate->errest-=work->err;
+    if (!integrate->errnormmax) integrate->errest-=work->err;
     for (int k=0; k<nels; k++) {
         dval+=newitems[k].val;
-        derr+=newitems[k].err;
+        if (!integrate->errnormmax) derr+=newitems[k].err;
         integrator_pushworkitem(integrate, &newitems[k]);
     }
     integrate->val+=dval;
-    integrate->errest+=derr;
+    if (integrate->errnormmax) {
+        integrate->errest = (integrate->worklist.count>0) ? integrate->worklist.data[0].err : 0.0;
+    } else {
+        integrate->errest+=derr;
+    }
 }
 
 /* --------------------------------
@@ -1471,6 +1475,7 @@ bool integrator_configure(integrator *integrate, error *err, bool adapt, int gra
     integrate->fcentroid=0.0;
     integrate->errnormmax=true;
     integrate->rootscale=0.0;
+    integrate->tol=INTEGRATE_ACCURACYGOAL;
     integrate->adapt=adapt;
     integrate->err=err;
     integrate->nbary=grade+1; // Number of barycentric coordinates
@@ -1550,7 +1555,9 @@ bool integrator_configurewithdictionary(integrator *integrate, error *err, grade
     objectstring errnormlabel = MORPHO_STATICSTRING(INTEGRATE_ERRORNORMLABEL);
     objectstring errnormmaxlabel = MORPHO_STATICSTRING(INTEGRATE_ERRORNORMMAX);
     objectstring errnormsumlabel = MORPHO_STATICSTRING(INTEGRATE_ERRORNORMSUM);
+    objectstring tollabel = MORPHO_STATICSTRING(INTEGRATE_TOLLABEL);
     bool errnormmax=true;
+    double tol=INTEGRATE_ACCURACYGOAL;
     
     if (dictionary_get(&dict->dict, MORPHO_OBJECT(&rulelabel), &val)) {
         if (MORPHO_ISSTRING(val)) {
@@ -1594,8 +1601,16 @@ bool integrator_configurewithdictionary(integrator *integrate, error *err, grade
         }
     }
     
+    if (dictionary_get(&dict->dict, MORPHO_OBJECT(&tollabel), &val)) {
+        if (!morpho_valuetofloat(val, &tol)) {
+            error_writewithid(err, INTEGRATE_MTHDTYP, INTEGRATE_TOLLABEL, FLOAT_CLASSNAME);
+            return false;
+        }
+    }
+    
     if (!integrator_configure(integrate, err, adapt, g, order, name)) return false;
     integrate->errnormmax=errnormmax;
+    integrate->tol=tol;
     return true;
 }
 

@@ -323,6 +323,33 @@ The `NormSq` functional measures the elementwise L2 norm squared of a field.
 
 See the `Functionals` entry for general information about functionals.
 
+## Quadrature
+[tagquadrature]: # (quadrature)
+
+`LineIntegral`, `AreaIntegral` and `VolumeIntegral` accept an optional `method` dictionary that selects the quadrature rule and the adaptive stopping test:
+
+    AreaIntegral(fn (x) x[0]*x[1], method={ })
+    AreaIntegral(fn (x) x[0]*x[1], method={ "rule": "cubtri7" })
+    AreaIntegral(fn (x) x[0]*x[1], method={ "rule": "tri4", "adapt": false })
+    AreaIntegral(fn (x) x[0]*x[1], method={ "errornorm": "sum" })
+    AreaIntegral(fn (x) x[0]*x[1], method={ "tol": 1e-8 })
+
+The recognized keys are:
+
+* `rule` — a `String` naming a quadrature rule, or `"hybrid2d"` for the default two-dimensional strategy. Unknown names raise `IntgrtrRlNtFnd`.
+* `degree` — an `Int` requesting a rule of at least that degree when `rule` is omitted.
+* `adapt` — a `Bool`. The default is `true`. With `adapt=false`, a named rule is evaluated once and no p- or h-refinement is done.
+* `errornorm` — `"max"` (the default) or `"sum"`. Any other value, or a non-string, raises `IntgrtrMthdTyp`.
+* `tol` — a `Float` (the default is `1e-6`). Integers are accepted. A non-numeric value raises `IntgrtrMthdTyp`.
+
+With `errornorm: "max"`, h-refinement stops when the largest element error is below `tol` times the absolute value of the last root estimate. `"sum"` uses the older, more conservative test on the summed element errors. On a vertex singularity the true global error under `"max"` can sit a little above `tol`; use `"sum"` if you need the tighter bound.
+
+Useful named rules include:
+
+1D: `gauss1`/`kronrod3`, `gauss2`/`kronrod5`, `gauss5`/`kronrod11`, `gauss7`/`kronrod15` with `midpoint`/`simpson` for educational purposes.
+2D: `tri4`, `tri10`, `tri20`, `cubtri7`, `cubtri19` and `cools7`/`cools16`.
+3D: `keast4`, `keast5`, `tet5`, `tet6` and `grundmann3d0`–`grundmann3d5`.
+
 ## LineIntegral
 [taglineintegral]: # (lineintegral)
 
@@ -345,6 +372,8 @@ where `n` is a vector field. The local interpolated value of this field is passe
 The gradient of a field is available within an integrand function using the `gradient()` function.
 
 The field derivative of the integral is `fieldgradient(f)` for a field `f` supplied to the constructor.
+
+An optional `method` dictionary selects the quadrature; see the `quadrature` help entry for further details.
 
 See the `Functionals` entry for general information about functionals.
 
@@ -369,6 +398,8 @@ More than one field can be used; they are passed as arguments to the integrand f
 
 The gradient of a field is available within an integrand function using the `gradient()` function.
 
+An optional `method` dictionary selects the quadrature; see the `quadrature` help entry for further details.
+
 See the `Functionals` entry for general information about functionals.
 
 ## VolumeIntegral
@@ -387,6 +418,8 @@ You can also integrate functions that involve fields:
 More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `VolumeIntegral`.
 
 The gradient of a field is available within an integrand function using the `gradient()` function.
+
+An optional `method` dictionary selects the quadrature; see the `quadrature` help entry for further details.
 
 See the `Functionals` entry for general information about functionals.
 
@@ -433,7 +466,7 @@ Within a `Jump` integrand, the special function `jumpdn(field)` returns the jump
 
 The field derivative is `fieldgradient(phi)` for a field supplied to the constructor.
 
-`Jump` also accepts the same optional integration settings as the integral functionals. In particular, the `method` dictionary may specify a `strategy` of `"centroid"` or `"quadrature"`:
+`Jump` also accepts a `method` dictionary. A `strategy` of `"centroid"` (the default) or `"quadrature"` selects how the interface is sampled. In `"quadrature"` mode the other keys are those documented under `quadrature`:
 
     var j = Jump(fn (x, phi) jumpdn(phi)^2, phi, method={ "strategy": "quadrature" })
 

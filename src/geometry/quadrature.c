@@ -1285,67 +1285,9 @@ subdivisionrule bisection = {
     .alt = NULL
 };
 
-/** Trisection */
-double trisectionpts[] = {
-    0.666666666666666667, 0.333333333333333333,
-    0.333333333333333333, 0.666666666666666667
-};
-
-double trisectionweights[] = {
-    0.333333333333333333, 0.333333333333333333, 0.333333333333333333
-};
-
-int trisectionintervals[] = {
-    0, 2,
-    3, 1,
-    2, 3
-};
-
-subdivisionrule trisection = {
-    .grade = 1,
-    .npts = 2,
-    .pts = trisectionpts,
-    .nels = 3,
-    .newels = trisectionintervals,
-    .weights = trisectionweights,
-    .alt = NULL
-};
-
 /* -------
  *   2D
  * ------- */
-
-/*
- *       2
- *      / \
- *     / | \
- *    /  |  \
- *   0 - 3 - 1
- */
-
-/** Bisection of 2D triangle */
-double tribisectionpts[] = {
-    0.5, 0.5, 0.0
-};
-
-double tribisectionweights[] = {
-    0.5, 0.5
-};
-
-int tribisectiontris[] = {
-    0, 3, 2,
-    3, 1, 2
-};
-
-subdivisionrule trianglebisection = {
-    .grade = 2,
-    .npts = 1,
-    .pts = tribisectionpts,
-    .nels = 2,
-    .newels = tribisectiontris,
-    .weights = tribisectionweights,
-    .alt = NULL
-};
 
 /** Quadrasection of 2D triangle */
 
@@ -1381,7 +1323,7 @@ subdivisionrule trianglequadrasection = {
     .nels = 4,
     .newels = triquadrasectiontris,
     .weights = triquadrasectionweights,
-    .alt = &trianglebisection
+    .alt = NULL
 };
 
 /* -------

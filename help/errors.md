@@ -1798,7 +1798,7 @@ This error occurs when an integrator quadrature rule cannot be found:
 ## IntgrtrRlUnavlb
 [tagintgrtrrlunavlb]: # (intgrtrrlunavlb)
 
-This error occurs when no quadrature rule is available that matches the provided integrator method dictionary:
+This error occurs when no quadrature rule is available that matches the provided integrator method dictionary, including `"hybrid2d"` used outside two dimensions:
 
     var method = {"rule": "invalid", "degree": 100}
     // Causes 'IntgrtrRlUnavlb' if no matching rule
@@ -1806,9 +1806,11 @@ This error occurs when no quadrature rule is available that matches the provided
 ## IntgrtrMthdTyp
 [tagintgrtrmthdtyp]: # (intgrtrmthdtyp)
 
-This error occurs when an integrator method dictionary option has the wrong type:
+This error occurs when an integrator method dictionary option has the wrong type, or when `errornorm` is not `"max"` or `"sum"`:
 
-    var method = {"rule": 123} // Causes 'IntgrtrMthdTyp' if rule must be string
+    var method = {"rule": 123} // Causes 'IntgrtrMthdTyp' since rule must be a String
+    LineIntegral(fn (x) x[0], method={ "errornorm": "l2" }) // Causes 'IntgrtrMthdTyp'
+    LineIntegral(fn (x) x[0], method={ "tol": "tight" }) // Causes 'IntgrtrMthdTyp'
 
 ## DbgSymbl
 [tagdbgsymbl]: # (dbgsymbl)

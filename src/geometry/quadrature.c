@@ -274,6 +274,9 @@ quadraturerule gauss7 = {
  * 2D rules
  * ============================================== */
 
+/* Nested triangle families list the centroid as node 0 so a family switch
+   (Walkington → CUBTRI) can reuse that evaluation. */
+
 /* --------------------------------
  * Triangle
  * -------------------------------- */
@@ -1242,10 +1245,10 @@ quadraturerule *quadrules[] = {
     NULL
 };
 
-// Default rules for each grade
+// Default starting rules for each grade. 
 quadraturerule *defaultquadrule[] = {
     &gauss5,
-    &cubtri7,
+    &tri4,
     &grundmann3d0,
     NULL
 };

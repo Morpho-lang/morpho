@@ -18,6 +18,7 @@
 #define INTEGRATE_RULELABEL "rule"
 #define INTEGRATE_DEGREELABEL "degree"
 #define INTEGRATE_ADAPTLABEL "adapt"
+#define INTEGRATE_HYBRID2D "hybrid2d"
 
 #define INTEGRATE_ACCURACYGOAL 1e-6
 #define INTEGRATE_ZEROCHECK 1e-15
@@ -115,10 +116,23 @@ typedef struct {
 } quantity;
 
 /* ----------------------------------
+ * Integrator type definition
+ * ---------------------------------- */
+
+typedef struct integrator_s integrator;
+
+/* ----------------------------------
+ * Failure strategy functions
+ * ---------------------------------- */
+
+/** Optional on-fail policy. May switch the starting rule; return true to retry. */
+typedef bool (integratorfailurestrategyfn) (integrator *integrate);
+
+/* ----------------------------------
  * Integrator
  * ---------------------------------- */
 
-typedef struct {
+struct integrator_s {
     integrandfunction *integrand; /** Function to integrate */
     void *ref; /** Reference to pass to integrand function */
     
@@ -135,6 +149,10 @@ typedef struct {
     quadraturerule *rule;  /** Current starting quadrature rule */
     quadraturerule *baserule; /** Rule selected at configure; reset restores this */
     quadraturerule *errrule; /** Additional rule for error estimation */
+    integratorfailurestrategyfn *strategy; /** Called if the current rule misses the tolerance; NULL means p-extension then h-adapt */
+    
+    bool skipcentroid; /** Skip node 0 on the next reference-element evaluation */
+    double fcentroid; /** Cached integrand at node 0 */
     
     bool adapt; /** Enable adaptive integration */
     subdivisionrule *subdivide; /** Subdivision rule to use */
@@ -152,7 +170,7 @@ typedef struct {
     double errest; /** Estimated error of the integral */
     
     error *err; /** Error structure to report errors */
-} integrator;
+};
 
 /* -------------------------------------------------------
  * Integrator errors

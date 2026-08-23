@@ -9,6 +9,7 @@
 
 #include <limits.h>
 #include <float.h>
+#include <string.h>
 
 #include "integrate.h"
 #include "morpho.h"
@@ -832,6 +833,9 @@ void integrator_init(integrator *integrate) {
     integrate->rule=NULL;
     integrate->baserule=NULL;
     integrate->errrule=NULL;
+    integrate->strategy=NULL;
+    integrate->skipcentroid=false;
+    integrate->fcentroid=0.0;
     integrate->subdivide=NULL;
     
     varray_quadratureworkiteminit(&integrate->worklist);
@@ -870,6 +874,8 @@ static void integrator_reset(integrator *integrate) {
     integrate->errest=0.0;
     
     integrate->rule=integrate->baserule;
+    integrate->skipcentroid=false;
+    integrate->fcentroid=0.0;
 }
 
 /** Adds a vertex to the integrators vertex stack, returning the id */
@@ -1024,6 +1030,41 @@ void integrator_estimate(integrator *integrate) {
     integrate->val = sumval;
     integrate->errest = sumerr;
 }
+
+/* --------------------------------
+ * On-fail strategies
+ * -------------------------------- */
+
+extern quadraturerule tri4;
+extern quadraturerule cubtri7;
+
+/** If a strategy asked to reuse node 0, fill f[0] and start eval at node 1. */
+static int integrator_centroidimin(integrator *integrate, bool ridentity, double *f) {
+    if (!integrate->skipcentroid || !ridentity) return 0;
+    f[0]=integrate->fcentroid;
+    integrate->skipcentroid=false;
+    return 1;
+}
+
+static void integrator_storecentroid(integrator *integrate, bool ridentity, double f0) {
+    if (ridentity && integrate->strategy) integrate->fcentroid=f0;
+}
+
+/** 2D default: Walkington pretest, then CUBTRI. Both list the centroid as node 0. */
+static bool integrator_strategyhybrid2d(integrator *integrate) {
+    if (integrate->rule!=&tri4) return false;
+    integrate->rule=&cubtri7;
+    integrate->skipcentroid=true;
+    return true;
+}
+
+/** Default on-fail policy by grade. NULL: p-extension, then h-adapt. */
+static integratorfailurestrategyfn *integrator_defaultstrategy[] = {
+    NULL, /* 0 */
+    NULL, /* 1D */
+    integrator_strategyhybrid2d, /* 2D */
+    NULL  /* 3D */
+};
 
 /* --------------------------------
  * Linear interpolation
@@ -1181,7 +1222,9 @@ static bool integrator_applyrule(integrator *integrate, quadraturerule *rule, do
     }
     
     double x[integrate->dim], f[nmax]; // Evaluate function at quadrature points
-    if (!integrator_evalfn(integrate, rule, 0, rule->nnodes, rmat, vmat, x, f, ridentity)) return false;
+    int imin=integrator_centroidimin(integrate, ridentity, f);
+    if (!integrator_evalfn(integrate, rule, imin, rule->nnodes, rmat, vmat, x, f, ridentity)) return false;
+    integrator_storecentroid(integrate, ridentity, f[0]);
     
     double r[np+1];
     double eps[np+1]; eps[0]=0.0;
@@ -1413,21 +1456,34 @@ bool integrator_configure(integrator *integrate, error *err, bool adapt, int gra
     integrate->rule=NULL;
     integrate->baserule=NULL;
     integrate->errrule=NULL;
+    integrate->strategy=NULL;
+    integrate->skipcentroid=false;
+    integrate->fcentroid=0.0;
     integrate->adapt=adapt;
     integrate->err=err;
     integrate->nbary=grade+1; // Number of barycentric coordinates
     integrate->vertexstack.count=0;
     integrate->elementstack.count=0;
     
-    if (name) {
+    if (name && strcmp(name, INTEGRATE_HYBRID2D)==0) { // Named strategies are not quadrature rules; hybrid2d is the 2D default strategy.
+        if (grade!=2) {
+            error_writewithid(err, INTEGRATE_RLUNAVLB);
+            return false;
+        }
+        integrate->rule=&tri4;
+        integrate->strategy=integrator_strategyhybrid2d;
+    } else if (name) {
         if (!integrator_matchrulebyname(grade, name, &integrate->rule)) {
             error_writewithid(err, INTEGRATE_RLNTFND, name);
             return false;
         }
-    } else if (order>=0) {
+    } else if (order>=0) { // Find a rule by order
         integrator_matchrulebyorder(grade, order, INT_MAX, false, &integrate->rule);
-    } else {
+    } else { // Default rule by grade
         integrator_matchrulebygrade(grade, &integrate->rule);
+        if (grade>=0 && grade<(int) (sizeof(integrator_defaultstrategy)/sizeof(integrator_defaultstrategy[0]))) {
+            integrate->strategy=integrator_defaultstrategy[grade];
+        }
     }
     
     // Check we succeeded in finding a rule
@@ -1546,8 +1602,12 @@ bool integrator_integrate(integrator *integrate, integrandfunction *integrand, i
     work.elementid = 0;
     if (!integrator_quadrature_root(integrate, integrate->rule, &work)) return false;
     
-    // Fast path: Check if quadrature on the reference worked; if so report error estimate and return */
-    if (integrator_rootconverged(integrate, &work)) {
+    while (!integrator_rootconverged(integrate, &work)) {
+        if (!integrate->strategy || !integrate->strategy(integrate)) break;
+        if (!integrator_quadrature_root(integrate, integrate->rule, &work)) return false;
+    }
+    
+    if (integrator_rootconverged(integrate, &work)) { 
         integrate->val=work.val;
         integrate->errest=work.err;
         return true;

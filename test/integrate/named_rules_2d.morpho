@@ -1,4 +1,4 @@
-// Test named quadrature rules in dimension 2 against expected degree
+// Test named quadrature rules in dimension 2 on a single element (adapt off)
 
 import meshtools
 
@@ -16,7 +16,7 @@ var rules = [ "tri0", "tri4", "tri10", "tri20",
               "grundmann2d3", "grundmann2d4", "grundmann2d5" ]
 
 for (rule in rules) {
-    print abs(AreaIntegral(fn (x) x[0], method={ "rule": rule }).total(m) - 1/6) < 1e-12
+    print abs(AreaIntegral(fn (x) x[0], method={ "rule": rule, "adapt": false }).total(m) - 1/6) < 1e-12
 }
 // expect: true
 // expect: true

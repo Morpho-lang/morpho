@@ -1,4 +1,4 @@
-// Test named quadrature rules in dimension 1 against expected degree
+// Test named quadrature rules in dimension 1 on a single element (adapt off)
 
 import meshtools
 
@@ -15,7 +15,7 @@ var rules = [ "midpoint", "simpson",
               "gauss7", "kronrod15" ]
 
 for (rule in rules) {
-    print abs(LineIntegral(fn (x) x[0], method={ "rule": rule }).total(m) - 1/2) < 1e-12
+    print abs(LineIntegral(fn (x) x[0], method={ "rule": rule, "adapt": false }).total(m) - 1/2) < 1e-12
 }
 // expect: true
 // expect: true

@@ -129,7 +129,8 @@ typedef struct {
     
     int nquantity; /** Number of quantities to interpolate */
     quantity *quantity; /** Quantity list */
-    value *qval; /** Interpolated quantity values */
+    value *qval; /** Interpolated quantity values stored for reuse */
+    int qvalcapacity; /** Allocated length of qval */
     
     quadraturerule *rule;  /** Current starting quadrature rule */
     quadraturerule *baserule; /** Rule selected at configure; reset restores this */

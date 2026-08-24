@@ -4,6 +4,17 @@
 
 cmake_minimum_required(VERSION 3.13)
 
+# Single-config generators (Unix Makefiles, Ninja) default to an empty
+# CMAKE_BUILD_TYPE, which means no -O3. Multi-config generators (Xcode, VS)
+# ignore CMAKE_BUILD_TYPE; --config selects the variant at build time.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    message(STATUS "CMAKE_BUILD_TYPE unset; defaulting to Release")
+    set(CMAKE_BUILD_TYPE Release CACHE STRING
+        "Build type (Debug, Release, RelWithDebInfo, MinSizeRel)" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+        "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+endif()
+
 project(morpho-libmorpho)
 
 #-------------------------------------------------------------------------------

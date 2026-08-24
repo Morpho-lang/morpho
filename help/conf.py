@@ -21,8 +21,7 @@ copyright = '2020-2024, T J Atherton'
 author = 'T J Atherton'
 
 # The full version, including alpha/beta/rc tags
-release = '0.6.0'
-
+release = '0.6.4'
 
 # -- General configuration ---------------------------------------------------
 

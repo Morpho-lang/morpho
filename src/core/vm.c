@@ -2071,8 +2071,8 @@ DEFINE_VARRAY(vm, struct svm *)
 bool vm_subkernels(vm *v, int nkernels, vm **subkernels) {
     int nk=0;
     
-    /* Check for unused subkernels */
-    for (int i=0; i<v->subkernels.count; i++) {
+    /* Reuse up to nkernels unused subkernels. */
+    for (int i=0; i<v->subkernels.count && nk<nkernels; i++) {
         vm *kernel=v->subkernels.data[i];
         if (!kernel->parent) { // Check whether subkernel is unused
             subkernels[nk]=kernel;

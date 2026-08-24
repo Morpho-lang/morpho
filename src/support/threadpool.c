@@ -39,12 +39,18 @@ MorphoThreadFnReturnType threadpool_worker(void *ref) {
 
         if (pool->stop) break; /* Terminate if asked to do so */
 
-        varray_taskpop(&pool->queue, &t); /* Get the task */
+        /* Thread awoke, but there is no work to do. */
+        if (!varray_taskpop(&pool->queue, &t)) {
+            MorphoMutex_unlock(&pool->lock_mutex);
+            continue;
+        }
         pool->nprocessing++;
         MorphoMutex_unlock(&pool->lock_mutex);
 
         bool ok=true;
         if (t.func) ok=(t.func) (t.arg); /* Perform the assigned task */
+        t.func=NULL; /* Prevent accidental reuse of the task */
+        t.arg=NULL;
 
         MorphoMutex_lock(&pool->lock_mutex);
         if (!ok) pool->failed=true;
@@ -119,7 +125,7 @@ bool threadpool_add_task(threadpool *pool, workfn func, void *arg) {
         pool->failed=true;
     }
 
-    MorphoCond_broadcast(&pool->work_available_cond); /* Signal there is work to be done */
+    MorphoCond_signal(&pool->work_available_cond); // Signal there is work to be done
     MorphoMutex_unlock(&pool->lock_mutex);
     return success;
 }

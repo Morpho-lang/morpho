@@ -718,7 +718,7 @@ static bool functional_addtocolumn(objectmatrix *a, MatrixIdx_t col, double alph
     if (!a || col<0 || col>=a->ncols) return false;
     double *dest=a->elements+a->nvals*col*a->nrows;
     int n=a->nrows*a->nvals;
-    for (int i=0; i<n; i++) functional_accum(&dest[i], alpha*b[i]);
+    for (int i=0; i<n; i++) MorphoAtomic_madddouble(&dest[i], alpha, b[i]);
     return true;
 }
 

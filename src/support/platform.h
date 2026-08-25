@@ -165,8 +165,8 @@ void MorphoCond_wait(MorphoCond *cond, MorphoMutex *mutex);
  * Atomics
  * ------------------------------------------------------- */
 
-/** Add inc to *p. Safe for concurrent callers. *p must be 8-byte aligned. */
 void MorphoAtomic_adddouble(double *p, double inc);
+void MorphoAtomic_madddouble(double *p, double alpha, double x);
 
 /* -------------------------------------------------------
  * Time

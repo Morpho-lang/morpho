@@ -199,11 +199,19 @@ if MT:
     command += " -w4" 
     print("Running tests with 4 threads")
 
+def is_serial_only(filepath):
+    with open(filepath, encoding="utf8") as f:
+        for line in f:
+            if "[CI:Serial]" in line:
+                return True
+    return False
+
 files=glob.glob('**/**.'+ext, recursive=True)
 with open(failedTestsFileName,'w', encoding="utf8") as testLog:
 
     for f in files:
-        # print(f)
+        if MT and is_serial_only(f):
+            continue
         success+=test(f,testLog,CI)
         total+=1
 

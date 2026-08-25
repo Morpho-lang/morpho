@@ -36,6 +36,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <float.h>
+#include <math.h>
 #include "build.h"
 #include "platform.h"
 #include "error.h"
@@ -524,7 +525,9 @@ void MorphoCond_wait(MorphoCond *cond, MorphoMutex *mutex) {
  * Atomics
  * ********************************************************************** */
 
-/** Add inc to *p. Safe for concurrent callers if accessed atomically. *p must be 8-byte aligned. */
+/** @brief: Atomic add: *p <- *p + inc. 
+ * @warning: Only safe for concurrent callers if all use this function. 
+ * @warning: *p must be 8-byte aligned. */
 void MorphoAtomic_adddouble(double *p, double inc) {
 #ifdef _WIN32
     union { double d; uint64_t u; } old, neu;
@@ -541,6 +544,31 @@ void MorphoAtomic_adddouble(double *p, double inc) {
     __atomic_load(p, &old, __ATOMIC_RELAXED);
     do {
         neu=old+inc;
+    } while (!__atomic_compare_exchange(p, &old, &neu, true, __ATOMIC_RELAXED, __ATOMIC_RELAXED));
+#else
+#error "Atomics not supported on this platform."
+#endif
+}
+
+/** @brief: Atomic fused multiply-add: *p <- fma(alpha, x, *p).
+ * @warning: Only safe for concurrent callers if all use this function. 
+ * @warning: *p must be 8-byte aligned. */
+void MorphoAtomic_madddouble(double *p, double alpha, double x) {
+#ifdef _WIN32
+    union { double d; uint64_t u; } old, neu;
+    old.u=(uint64_t) InterlockedCompareExchange64((volatile LONG64 *) p, 0, 0);
+    do {
+        neu.d=fma(alpha, x, old.d);
+        uint64_t prev=(uint64_t) InterlockedCompareExchange64((volatile LONG64 *) p,
+            (LONG64) neu.u, (LONG64) old.u);
+        if (prev==old.u) return;
+        old.u=prev;
+    } while (1);
+#elif defined(__GNUC__) || defined(__clang__)
+    double old, neu;
+    __atomic_load(p, &old, __ATOMIC_RELAXED);
+    do {
+        neu=fma(alpha, x, old);
     } while (!__atomic_compare_exchange(p, &old, &neu, true, __ATOMIC_RELAXED, __ATOMIC_RELAXED));
 #else
 #error "Atomics not supported on this platform."

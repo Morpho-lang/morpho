@@ -520,6 +520,10 @@ void MorphoCond_wait(MorphoCond *cond, MorphoMutex *mutex) {
 #endif
 }
 
+/* **********************************************************************
+ * Atomics
+ * ********************************************************************** */
+
 /** Add inc to *p. Safe for concurrent callers if accessed atomically. *p must be 8-byte aligned. */
 void MorphoAtomic_adddouble(double *p, double inc) {
 #ifdef _WIN32

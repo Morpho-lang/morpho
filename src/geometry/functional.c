@@ -75,6 +75,7 @@ static void functional_clearmapinfo(functional_mapinfo *info) {
     info->freeref=NULL;
     info->ref=NULL;
     info->sym=SYMMETRY_NONE;
+    info->cost=FUNCTIONAL_COST_REGULAR;
 }
 
 /** Fill mapinfo from typed pointers. Unused slots are NULL.
@@ -172,18 +173,25 @@ void functional_setgrade(objectinstance *self, grade g) {
  * Common routines
  * ********************************************************************** */
 
-/** Internal function to count the number of elements */
-static bool functional_countelements(vm *v, objectmesh *mesh, grade g, int *n, objectsparse **s) {
-    /* How many elements? */
+/** Count elements of grade g. Returns false if the mesh has no such grade. */
+static bool functional_countelements(objectmesh *mesh, grade g, int *n, objectsparse **s) {
+    if (s) *s=NULL;
+    *n=0;
     if (g==MESH_GRADE_VERTEX) {
         *n=mesh->vert->ncols;
-    } else {
-        *s=mesh_getconnectivityelement(mesh, 0, g);
-        if (*s) {
-            *n=(*s)->ccs.ncols; // Number of elements
-        } else MORPHO_FAILVARGS(v, FUNC_ELNTFND, g);
+        return true;
     }
+    objectsparse *conn=mesh_getconnectivityelement(mesh, 0, g);
+    if (!conn) return false;
+    if (s) *s=conn;
+    *n=conn->ccs.ncols;
     return true;
+}
+
+/** Count elements, raising FUNC_ELNTFND if the grade is missing. */
+static bool functional_requireelements(vm *v, objectmesh *mesh, grade g, int *n, objectsparse **s) {
+    if (functional_countelements(mesh, g, n, s)) return true;
+    MORPHO_FAILVARGS(v, FUNC_ELNTFND, g);
 }
 
 /** Call the optional start hook once per user-facing map. Also verifies the mesh
@@ -191,7 +199,7 @@ static bool functional_countelements(vm *v, objectmesh *mesh, grade g, int *n, o
 bool functional_startmap(vm *v, functional_mapinfo *info) {
     int n=0;
     objectsparse *s=NULL;
-    if (info->mesh && !functional_countelements(v, info->mesh, info->g, &n, &s)) return false;
+    if (info->mesh && !functional_requireelements(v, info->mesh, info->g, &n, &s)) return false;
     if (!info->start) return true;
     return (*info->start) (v, info);
 }
@@ -453,10 +461,16 @@ bool functional_map(int ntasks, functional_task *tasks) {
     return functional_parallelmap(ntasks, tasks);
 }
 
-/** Number of map tasks: one on the serial path, otherwise the worker count */
-static int functional_ntasks(void) {
+/** Determine the number of tasks to use based on the number of elements and the cost class. */
+static int functional_ntasks(functional_mapinfo *info) {
     int n=morpho_threadnumber();
-    return (n<1 ? 1 : n);
+    if (n<1) return 1;
+    if (!info || info->cost>=FUNCTIONAL_COST_REGULAR) return n;
+    
+    int nel=0;
+    if (!info->mesh || info->g<0 || !functional_countelements(info->mesh, info->g, &nel, NULL) ||
+        nel * info->cost < FUNCTIONAL_FORKWEIGHT * (n-1)) return 1;
+    return n;
 }
 
 /** Calculate bin sizes */
@@ -494,7 +508,7 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
     }
     
     /* Work out the number of elements */
-    if (!functional_countelements(v, info->mesh, info->g, &nel, &conn)) {
+    if (!functional_requireelements(v, info->mesh, info->g, &nel, &conn)) {
         varray_elementidclear(imageids);
         return false;
     }
@@ -583,7 +597,7 @@ bool functional_sumintegrandprocessfn(void *arg) {
 
 /** Sum the integrand, mapping over integrand function */
 bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
-    int ntask=functional_ntasks();
+    int ntask=functional_ntasks(info);
     
     functional_task task[ntask];
     
@@ -635,7 +649,7 @@ bool functional_mapintegrandforelement(vm *v, functional_mapinfo *info, value *o
     int n=0;
     
     /* How many elements? */
-    if (!functional_countelements(v, mesh, g, &n, &s)) return false;
+    if (!functional_requireelements(v, mesh, g, &n, &s)) return false;
     if (id<0 || id>=n) MORPHO_FAIL(v, VM_OUTOFBOUNDS);
     
     int vertexid; // Use this if looping over grade 0
@@ -667,7 +681,7 @@ bool functional_mapintegrandprocessfn(void *arg) {
 /** Map integrand function, storing the results in a matrix */
 bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
-    int ntask=functional_ntasks();
+    int ntask=functional_ntasks(info);
     functional_task task[ntask];
     functional_sumintermediate sums[ntask];
     
@@ -737,7 +751,7 @@ static bool functional_addtoelement(objectmatrix *a, MatrixIdx_t row, MatrixIdx_
 /** Compute the gradient */
 bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
-    int ntask=functional_ntasks();
+    int ntask=functional_ntasks(info);
     functional_task task[ntask];
     
     varray_elementid imageids;
@@ -825,7 +839,7 @@ bool functional_numericalgradientmapfn(vm *v, objectmesh *mesh, elementid id, in
 /** Compute the gradient numerically */
 bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
-    int ntask=functional_ntasks();
+    int ntask=functional_ntasks(info);
     functional_task task[ntask];
     
     varray_elementid imageids;
@@ -1001,7 +1015,7 @@ bool functional_numericalfieldgradientmapfn(vm *v, objectmesh *mesh, elementid i
 /** Compute the field gradient numerically */
 bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
-    int ntask=functional_ntasks();
+    int ntask=functional_ntasks(info);
     functional_task task[ntask];
     
     varray_elementid imageids;
@@ -1176,7 +1190,7 @@ static bool jump_numericalfieldgradientmapfn(vm *v, objectmesh *mesh, elementid 
 
 static bool functional_mapjumpnumericalfieldgradient(vm *v, functional_mapinfo *info, objectsparse *parentvertices, void *baseref, value *out) {
     int success=false;
-    int ntask=functional_ntasks();
+    int ntask=functional_ntasks(info);
     functional_task task[ntask];
 
     varray_elementid imageids;
@@ -1353,7 +1367,7 @@ static int _sparsecmp(const void *a, const void *b) {
 /** Compute the hessian numerically */
 bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
-    int ntask=functional_ntasks();
+    int ntask=functional_ntasks(info);
     functional_task task[ntask];
     
     varray_elementid imageids;
@@ -1562,9 +1576,9 @@ bool length_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, vo
 }
 
 FUNCTIONAL_INIT(Length, MESH_GRADE_LINE)
-FUNCTIONAL_MD_INTEGRAND(Length, MESH_GRADE_LINE, length_integrand)
-FUNCTIONAL_MD_TOTAL(Length, MESH_GRADE_LINE, length_integrand)
-FUNCTIONAL_MD_GRADIENT(Length, MESH_GRADE_LINE, length_gradient, SYMMETRY_ADD)
+FUNCTIONAL_MD_INTEGRAND_COST(Length, MESH_GRADE_LINE, length_integrand, FUNCTIONAL_COST_CHEAPEST)
+FUNCTIONAL_MD_TOTAL_COST(Length, MESH_GRADE_LINE, length_integrand, FUNCTIONAL_COST_CHEAPEST)
+FUNCTIONAL_MD_GRADIENT_COST(Length, MESH_GRADE_LINE, length_gradient, SYMMETRY_ADD, FUNCTIONAL_COST_CHEAP)
 FUNCTIONAL_MD_HESSIAN(Length, MESH_GRADE_LINE, length_integrand)
 
 MORPHO_BEGINCLASS(Length)
@@ -1598,8 +1612,8 @@ bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
 }
 
 FUNCTIONAL_INIT(AreaEnclosed, MESH_GRADE_LINE)
-FUNCTIONAL_MD_INTEGRAND(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
-FUNCTIONAL_MD_TOTAL(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
+FUNCTIONAL_MD_INTEGRAND_COST(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_TOTAL_COST(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, FUNCTIONAL_COST_CHEAP)
 FUNCTIONAL_MD_NUMERICALGRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, SYMMETRY_ADD)
 FUNCTIONAL_MD_HESSIAN(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 
@@ -1664,9 +1678,9 @@ bool area_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void
 }
 
 FUNCTIONAL_INIT(Area, MESH_GRADE_AREA)
-FUNCTIONAL_MD_INTEGRAND(Area, MESH_GRADE_AREA, area_integrand)
-FUNCTIONAL_MD_TOTAL(Area, MESH_GRADE_AREA, area_integrand)
-FUNCTIONAL_MD_GRADIENT(Area, MESH_GRADE_AREA, area_gradient, SYMMETRY_ADD)
+FUNCTIONAL_MD_INTEGRAND_COST(Area, MESH_GRADE_AREA, area_integrand, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_TOTAL_COST(Area, MESH_GRADE_AREA, area_integrand, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_GRADIENT_COST(Area, MESH_GRADE_AREA, area_gradient, SYMMETRY_ADD, FUNCTIONAL_COST_CHEAP)
 FUNCTIONAL_MD_HESSIAN(Area, MESH_GRADE_AREA, area_integrand)
 
 MORPHO_BEGINCLASS(Area)
@@ -1715,9 +1729,9 @@ bool volumeenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int 
 }
 
 FUNCTIONAL_INIT(VolumeEnclosed, MESH_GRADE_AREA)
-FUNCTIONAL_MD_INTEGRAND(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
-FUNCTIONAL_MD_TOTAL(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
-FUNCTIONAL_MD_GRADIENT(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_gradient, SYMMETRY_ADD)
+FUNCTIONAL_MD_INTEGRAND_COST(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_TOTAL_COST(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_GRADIENT_COST(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_gradient, SYMMETRY_ADD, FUNCTIONAL_COST_CHEAP)
 FUNCTIONAL_MD_HESSIAN(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
 
 MORPHO_BEGINCLASS(VolumeEnclosed)
@@ -1783,9 +1797,9 @@ bool volume_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, vo
 }
 
 FUNCTIONAL_INIT(Volume, MESH_GRADE_VOLUME)
-FUNCTIONAL_MD_INTEGRAND(Volume, MESH_GRADE_VOLUME, volume_integrand)
-FUNCTIONAL_MD_TOTAL(Volume, MESH_GRADE_VOLUME, volume_integrand)
-FUNCTIONAL_MD_GRADIENT(Volume, MESH_GRADE_VOLUME, volume_gradient, SYMMETRY_ADD)
+FUNCTIONAL_MD_INTEGRAND_COST(Volume, MESH_GRADE_VOLUME, volume_integrand, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_TOTAL_COST(Volume, MESH_GRADE_VOLUME, volume_integrand, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_GRADIENT_COST(Volume, MESH_GRADE_VOLUME, volume_gradient, SYMMETRY_ADD, FUNCTIONAL_COST_CHEAP)
 FUNCTIONAL_MD_HESSIAN(Volume, MESH_GRADE_VOLUME, volume_integrand)
 
 MORPHO_BEGINCLASS(Volume)
@@ -3559,8 +3573,8 @@ value NormSq_init__field(vm *v, int nargs, value *args) {
 }
 
 FUNCTIONAL_MD_REF_BIND_FORCEGRADE_START(NormSq, fieldref, gradsq_prepareref, normsq_integrand, FUNCTIONAL_ARGS, MESH_GRADE_VERTEX, fieldref_startfn)
-FUNCTIONAL_MD_REF_INTEGRAND(NormSq, fieldref, MESH_GRADE_VERTEX)
-FUNCTIONAL_MD_REF_TOTAL(NormSq, fieldref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_INTEGRAND_COST(NormSq, fieldref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAPEST)
+FUNCTIONAL_MD_REF_TOTAL_COST(NormSq, fieldref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_REF_NUMERICALGRADIENT(NormSq, fieldref, MESH_GRADE_VERTEX, NULL, SYMMETRY_NONE)
 FUNCTIONAL_MD_REF_FIELDGRADIENT(NormSq, fieldref, MESH_GRADE_VERTEX, gradsq_cloneref, NULL)
 
@@ -4913,7 +4927,7 @@ static bool jump_dependencies(functional_mapinfo *info, elementid id, varray_ele
     objectsparse *ifaceverts=NULL;
     int n=0;
 
-    if (!functional_countelements(NULL, info->mesh, ref->interfacegrade, &n, &ifaceverts)) return false;
+    if (!functional_countelements(info->mesh, ref->interfacegrade, &n, &ifaceverts)) return false;
     (void) n;
     if (!ifaceverts) return false;
     if (!sparseccs_getrowindices(&ifaceverts->ccs, id, &interface_nv, &interface_vid)) return false;

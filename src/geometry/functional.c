@@ -465,11 +465,16 @@ bool functional_map(int ntasks, functional_task *tasks) {
 static int functional_ntasks(functional_mapinfo *info) {
     int n=morpho_threadnumber();
     if (n<1) return 1;
-    if (!info || info->cost>=FUNCTIONAL_COST_REGULAR) return n;
     
-    int nel=0;
-    if (!info->mesh || info->g<0 || !functional_countelements(info->mesh, info->g, &nel, NULL) ||
-        nel * info->cost < FUNCTIONAL_FORKWEIGHT * (n-1)) return 1;
+    int nwork=0;
+    if (!info || !info->mesh || info->g<0 ||
+        !functional_countelements(info->mesh, info->g, &nwork, NULL)) return 1;
+    if (info->sel) nwork=selection_count(info->sel, info->g);
+    if (nwork<=1) return 1; /* Mapper does not split a single element */
+    if (info->cost>=FUNCTIONAL_COST_REGULAR) return n;
+    
+    if ((int64_t) nwork * info->cost <
+        (int64_t) FUNCTIONAL_FORKWEIGHT * (n-1)) return 1;
     return n;
 }
 
@@ -1578,7 +1583,7 @@ bool length_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, vo
 FUNCTIONAL_INIT(Length, MESH_GRADE_LINE)
 FUNCTIONAL_MD_INTEGRAND_COST(Length, MESH_GRADE_LINE, length_integrand, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_TOTAL_COST(Length, MESH_GRADE_LINE, length_integrand, FUNCTIONAL_COST_CHEAPEST)
-FUNCTIONAL_MD_GRADIENT_COST(Length, MESH_GRADE_LINE, length_gradient, SYMMETRY_ADD, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_GRADIENT_COST(Length, MESH_GRADE_LINE, length_gradient, SYMMETRY_ADD, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_HESSIAN(Length, MESH_GRADE_LINE, length_integrand)
 
 MORPHO_BEGINCLASS(Length)
@@ -1612,8 +1617,8 @@ bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
 }
 
 FUNCTIONAL_INIT(AreaEnclosed, MESH_GRADE_LINE)
-FUNCTIONAL_MD_INTEGRAND_COST(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, FUNCTIONAL_COST_CHEAP)
-FUNCTIONAL_MD_TOTAL_COST(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_INTEGRAND_COST(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, FUNCTIONAL_COST_CHEAPEST)
+FUNCTIONAL_MD_TOTAL_COST(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_NUMERICALGRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, SYMMETRY_ADD)
 FUNCTIONAL_MD_HESSIAN(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 
@@ -3576,7 +3581,7 @@ FUNCTIONAL_MD_REF_BIND_FORCEGRADE_START(NormSq, fieldref, gradsq_prepareref, nor
 FUNCTIONAL_MD_REF_INTEGRAND_COST(NormSq, fieldref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_REF_TOTAL_COST(NormSq, fieldref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_REF_NUMERICALGRADIENT(NormSq, fieldref, MESH_GRADE_VERTEX, NULL, SYMMETRY_NONE)
-FUNCTIONAL_MD_REF_FIELDGRADIENT(NormSq, fieldref, MESH_GRADE_VERTEX, gradsq_cloneref, NULL)
+FUNCTIONAL_MD_REF_FIELDGRADIENT_COST(NormSq, fieldref, MESH_GRADE_VERTEX, gradsq_cloneref, NULL, FUNCTIONAL_COST_CHEAPEST)
 
 MORPHO_BEGINCLASS(NormSq)
 MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(Field)", NormSq_init__field, MORPHO_FN_MUTATES),

@@ -591,6 +591,20 @@ static value _##cls##_fieldgradient(vm *v, objectinstance *self, functional_mapi
 #define FUNCTIONAL_MD_REF_FIELDGRADIENT(cls, reftype, grade, clonefn, freefn) \
     FUNCTIONAL_MD_REF_FIELDGRADIENT_MAP(cls, reftype, grade, functional_mapnumericalfieldgradient, clonefn, freefn)
 
+#define FUNCTIONAL_MD_REF_FIELDGRADIENT_RUN_COST(cls, reftype, grade, mapfn, clonefn, freefn, wkld) \
+static value _##cls##_fieldgradient(vm *v, objectinstance *self, functional_mapinfo *info) { \
+    reftype ref; \
+    if (!_##cls##_bindref(v, self, info, &ref)) return MORPHO_NIL; \
+    info->cloneref = (clonefn); \
+    info->freeref = (freefn); \
+    info->cost = (wkld); \
+    return _functional_run(v, info, grade, mapfn, true); \
+}
+
+#define FUNCTIONAL_MD_REF_FIELDGRADIENT_COST(cls, reftype, grade, clonefn, freefn, wkld) \
+    FUNCTIONAL_MD_REF_FIELDGRADIENT_RUN_COST(cls, reftype, grade, functional_mapnumericalfieldgradient, clonefn, freefn, wkld) \
+    FUNCTIONAL_MD_REF_FIELD_OVERLOADS(cls, fieldgradient, _##cls##_fieldgradient)
+
 /* -------------------------------------------------------
  * Compatibility shim
  *

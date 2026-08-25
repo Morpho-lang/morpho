@@ -263,6 +263,12 @@ bool selection_isselected(objectselection *sel, grade g, elementid id) {
     }
 }
 
+/** Number of selected elements of grade g */
+unsigned int selection_count(objectselection *sel, grade g) {
+    if (g<0 || (unsigned int) g>=sel->ngrades) return 0;
+    return sel->selected[g].count;
+}
+
 /** Finds the maximum nonempty grade in a selection */
 grade selection_maxgrade(objectselection *sel) {
     switch (sel->mode) {
@@ -510,7 +516,7 @@ value Selection_count(vm *v, int nargs, value *args) {
 
     if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
         grade g = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        out = MORPHO_INTEGER(sel->selected[g].count);
+        out = MORPHO_INTEGER(selection_count(sel, g));
     } else morpho_runtimeerror(v, SELECTION_GRADEARG);
     
     return out;

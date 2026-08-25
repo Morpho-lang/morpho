@@ -74,6 +74,7 @@ objectselection *object_newselection(objectmesh *mesh);
 void selection_clear(objectselection *s);
 
 bool selection_isselected(objectselection *sel, grade g, elementid id);
+unsigned int selection_count(objectselection *sel, grade g);
 void selection_initialize(void);
 
 #endif

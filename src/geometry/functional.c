@@ -440,9 +440,9 @@ bool functional_parallelmap(int ntasks, functional_task *tasks) {
         if (!functional_poolinitialized) return false;
     }
     
-    for (int i=0; i<ntasks; i++) {
-        threadpool_add_task(&functional_pool, functional_mapfn_elements, (void *) &tasks[i]);
-    }
+    void *args[ntasks];
+    for (int i=0; i<ntasks; i++) args[i]=(void *) &tasks[i];
+    threadpool_add_tasks(&functional_pool, ntasks, functional_mapfn_elements, args);
     return threadpool_fence(&functional_pool);
 }
 

@@ -114,18 +114,21 @@ void threadpool_clear(threadpool *pool) {
     varray_MorphoThreadclear(&pool->threads);
 }
 
-/** Adds a task to the threadpool */
-bool threadpool_add_task(threadpool *pool, workfn func, void *arg) {
-    bool success=true;
-    MorphoMutex_lock(&pool->lock_mutex);
+/** Queue n tasks with the same workfn. */
+bool threadpool_add_tasks(threadpool *pool, int n, workfn func, void **args) {
+    if (n<1) return true;
 
-    task t = { .func = func, .arg=arg };
-    if (!varray_taskadd(&pool->queue, &t, 1)) { /* Add the task to the queue */
-        success=false;
-        pool->failed=true;
+    task tasks[n];
+    for (int i=0; i<n; i++) {
+        tasks[i].func=func;
+        tasks[i].arg=args[i];
     }
 
-    MorphoCond_signal(&pool->work_available_cond); // Signal there is work to be done
+    MorphoMutex_lock(&pool->lock_mutex);
+    bool success=varray_taskadd(&pool->queue, tasks, n);
+    if (!success) pool->failed=true;
+    if (n>1) MorphoCond_broadcast(&pool->work_available_cond);
+    else MorphoCond_signal(&pool->work_available_cond);
     MorphoMutex_unlock(&pool->lock_mutex);
     return success;
 }

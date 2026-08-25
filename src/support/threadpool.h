@@ -48,8 +48,7 @@ typedef struct {
 
 bool threadpool_init(threadpool *pool, int nworkers);
 void threadpool_clear(threadpool *pool);
-bool threadpool_add_task(threadpool *pool, workfn func, void *arg);
+bool threadpool_add_tasks(threadpool *pool, int n, workfn func, void **args);
 bool threadpool_fence(threadpool *pool);
-void threadpool_wait(threadpool *pool);
 
 #endif /* threadpool_h */

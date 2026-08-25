@@ -7,7 +7,8 @@
  *  - Complex numbers for platforms that do not fully implement C99
  *  - Navigating the file system
  *  - APIs for opening dynamic libraries
- *  - APIs for using threads 
+ *  - APIs for using threads
+ *  - Atomics
  *  - Functions that involve time */
 
 #define _GNU_SOURCE
@@ -33,6 +34,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include <float.h>
 #include "build.h"
 #include "platform.h"
@@ -515,6 +517,29 @@ void MorphoCond_wait(MorphoCond *cond, MorphoMutex *mutex) {
     SleepConditionVariableCS(cond, mutex, INFINITE);
 #else 
     pthread_cond_wait(cond, mutex);
+#endif
+}
+
+/** Add inc to *p. Safe for concurrent callers if accessed atomically. *p must be 8-byte aligned. */
+void MorphoAtomic_adddouble(double *p, double inc) {
+#ifdef _WIN32
+    union { double d; uint64_t u; } old, neu;
+    old.u=(uint64_t) InterlockedCompareExchange64((volatile LONG64 *) p, 0, 0);
+    do {
+        neu.d=old.d+inc;
+        uint64_t prev=(uint64_t) InterlockedCompareExchange64((volatile LONG64 *) p,
+            (LONG64) neu.u, (LONG64) old.u);
+        if (prev==old.u) return;
+        old.u=prev;
+    } while (1);
+#elif defined(__GNUC__) || defined(__clang__)
+    double old, neu;
+    __atomic_load(p, &old, __ATOMIC_RELAXED);
+    do {
+        neu=old+inc;
+    } while (!__atomic_compare_exchange(p, &old, &neu, true, __ATOMIC_RELAXED, __ATOMIC_RELAXED));
+#else
+#error "Atomics not supported on this platform."
 #endif
 }
 

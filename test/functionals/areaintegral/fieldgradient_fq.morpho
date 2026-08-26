@@ -1,0 +1,39 @@
+// f(q)-only AreaIntegral.fieldgradient vs finite-difference of .total
+
+import meshtools
+import "../numericalderivatives.morpho"
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+m.addgrade(1)
+
+var q = Field(m, fn (x,y) Matrix([x, y]))
+
+fn landau(x, qv) {
+    var qt2 = qv.inner(qv)
+    return qt2 + qt2*qt2
+}
+
+// Root rule only so local ∂f/∂q matches adaptive-off totals
+var bulk = AreaIntegral(landau, q, method={ "adapt": false })
+print (bulk.fieldgradient(q, m) - numericalfieldgradient(bulk, m, q)).linearize().norm() < 1e-5
+// expect: true
+
+fn usesx(x, qv) {
+    return x[0]*qv.inner(qv)
+}
+var sx = AreaIntegral(usesx, q, method={ "adapt": false })
+print (sx.fieldgradient(q, m) - numericalfieldgradient(sx, m, q)).linearize().norm() < 1e-5
+// expect: true
+
+fn usesgrad(x, qv) {
+    var g = grad(qv)
+    return g[0].inner(g[0]) + g[1].inner(g[1])
+}
+var sg = AreaIntegral(usesgrad, q, method={ "adapt": false })
+print (sg.fieldgradient(q, m) - numericalfieldgradient(sg, m, q)).linearize().norm() < 1e-4
+// expect: true

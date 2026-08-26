@@ -43,10 +43,12 @@
  * @param[in] x                 - Coordinates of the point calculated from interpolation
  * @param[in] nquantity - Number of quantities
  * @param[in] quantity - List of quantities evaluated for the point, calculated from interpolation
- * @param[in] ref             - A reference passed by the caller (typically things constant over the domain
- * @returns value of the integrand at the appropriate point with interpolated quantities.
+ * @param[in] ref             - A reference passed by the caller (typically things constant over the domain)
+ * @param[in] nout            - Number of output components (1 for a scalar integrand)
+ * @param[out] fout            - Value of the integrand at the appropriate point with interpolated quantities
+ * @returns true on success
  */
-typedef bool (integrandfunction) (unsigned int dim, double *lambda, double *x, unsigned int nquantity, value *quantity, void *ref, double *fout);
+typedef bool (integrandfunction) (unsigned int dim, double *lambda, double *x, unsigned int nquantity, value *quantity, void *ref, unsigned int nout, double *fout);
 
 /* ----------------------------------
  * Quadrature rules define wts/nodes
@@ -99,10 +101,12 @@ struct subdivisionrule_struct {
 typedef struct {
     double weight; /** Overall element weight */
     int elementid; /** Id of element on the element stack */
-    //value **quantity;
-    double val; /** Value of work item */
-    double lval; /** Value of work item from lower order estimate */
-    double err; /** Error estimate of work item */
+    double val; /** L_inf of the work-item integral (used by the priority queue) */
+    double lval; /** L_inf of the lower-order estimate */
+    double err; /** Error estimate (max component) */
+    double sval; /** Signed scalar integral when nout==1 (avoids the workvals pool) */
+    double slval; /** Signed scalar lower-order estimate when nout==1 */
+    int voff; /** Offset into integrator workvals for val[nout]/lval[nout]; -1 if unused or nout==1 */
 } quadratureworkitem;
 
 DECLARE_VARRAY(quadratureworkitem, quadratureworkitem)
@@ -113,8 +117,9 @@ DECLARE_VARRAY(quadratureworkitem, quadratureworkitem)
 
 typedef struct {
     int nnodes;  /** Number of quantity values per element */
-    int capacity; /** Allocated length of vals */
+    int capacity; /** Allocated length of vals / findx */
     value *vals; /** List of quantity values */
+    fieldindx *findx; /** DOF indices parallel to vals (filled by preparequantities) */
     interpolationfn ifn; /** Interpolation function */
     int ndof; /** Number of degrees of freedom (this will be filled out by the integrator) */
 } quantity;
@@ -156,10 +161,11 @@ struct integrator_s {
     integratorfailurestrategyfn *strategy; /** Called if the current rule misses the tolerance; NULL means p-extension then h-adapt */
     
     bool skipcentroid; /** Skip node 0 on the next reference-element evaluation */
-    double fcentroid; /** Cached integrand at node 0 */
+    double *fcentroid; /** Cached integrand at node 0 (size nout) */
+    unsigned int fcentroidcap;
     
     bool errnormmax; /** Selects error norm: if set, stops on max e_K < tol |I_root|; otherwise stops on sum e_K / |I| */
-    double rootscale; /** |I| after the last root rule, used by the max-norm stop */
+    double rootscale; /** |I| after the last root rule, used by the max-norm stop. For nout>1, |I| means L_inf of the vector integral (norm-relative, not per-component relative accuracy). */
     
     bool adapt; /** Enable adaptive integration */
     subdivisionrule *subdivide; /** Subdivision rule to use */
@@ -167,13 +173,17 @@ struct integrator_s {
     varray_quadratureworkitem worklist; /** Work list */
     varray_double vertexstack; /** Stack of vertices */
     varray_int elementstack; /** Stack of elements */
+    varray_double workvals; /** Pool for per-work-item val[nout]/lval[nout] */
+    
+    unsigned int nout; /** Output dimension for this integrate call (1 = scalar) */
+    double *vout; /** Caller-owned result buffer (size nout) */
     
     double ztol; /** Tolerance for zero detection */
-    double tol; /** Tolerance for relative error */
+    double tol; /** Relative tolerance on the integral (scalar value, or L_inf of the vector) */
     int maxiterations; /** Maximum number of subdivisions to perform */
     
     int niterations; /** Number of iterations performed */
-    double val; /** Estimated value of the integral */
+    double val; /** Estimated value of the integral (scalar, or L_inf of vector) */
     double errest; /** Estimated error of the integral */
     
     error *err; /** Error structure to report errors */
@@ -206,7 +216,7 @@ void integrator_init(integrator *integrate);
 void integrator_clear(integrator *integrate);
 bool integrator_configure(integrator *integrate, error *err, bool adapt, int grade, int order, char *name);
 bool integrator_configurewithdictionary(integrator *integrate, error *err, grade g, objectdictionary *dict);
-bool integrator_integrate(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, quantity *quantity, void *ref);
+bool integrator_integrate(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, quantity *quantity, void *ref, unsigned int nout, double *out);
 
 // One off integrals
 bool integrate(integrandfunction *integrand, objectdictionary *method, error *err, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, quantity *quantity, void *ref, double *out, double *errest);

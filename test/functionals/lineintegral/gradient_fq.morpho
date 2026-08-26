@@ -1,0 +1,23 @@
+// Shape gradient for f(q)-only LineIntegral vs finite-difference of .total
+
+import meshtools
+import "../numericalderivatives.morpho"
+
+var m = LineMesh(fn (t) [t, 0, 0], 0..1:0.5)
+var q = Field(m, fn (x,y,z) x)
+
+fn fq(x, qv) {
+    return qv^2
+}
+
+var ll = LineIntegral(fq, q, method={})
+print (ll.gradient(m) - numericalgradient(ll, m)).norm() < 1e-5
+// expect: true
+
+fn usesx(x, qv) {
+    return x[0]*qv
+}
+
+var sx = LineIntegral(usesx, q, method={})
+print (sx.gradient(m) - numericalgradient(sx, m)).norm() < 1e-5
+// expect: true

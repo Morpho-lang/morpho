@@ -1,0 +1,25 @@
+// weightByReference + f(q) integrand: measure is fixed, so shape gradient is zero.
+
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var mref = mb.build()
+mref.addgrade(1)
+
+var m = mref.clone()
+m.setvertexmatrix(2*m.vertexmatrix())
+
+var q = Field(m, fn (x,y) Matrix([0.1, 0.2]))
+
+fn landau(x, qv) {
+    var qt2 = qv.inner(qv)
+    return qt2 + qt2*qt2
+}
+
+var bulk = AreaIntegral(landau, q, reference=mref, weightByReference=true, method={})
+print bulk.gradient(m).norm() < 1e-12
+// expect: true

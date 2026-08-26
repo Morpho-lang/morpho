@@ -3687,6 +3687,8 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 
     /* Resolve the return type*/
     compiler_resolvereturntype(c);
+
+    func->end=func->entry+ninstructions;
     
     /* Restore the old function */
     compiler_endfunction(c);

@@ -9,6 +9,7 @@
 
 #include "object.h"
 #include "signature.h"
+#include "upvalue.h"
 
 /* -------------------------------------------------------
  * Function objects
@@ -32,7 +33,8 @@ typedef struct sobjectfunction {
     int nopt; // Number of optional parameters
     int varg; // The parameter number of a variadic parameter. TODO: Rationalize
     value name;
-    indx entry;
+    indx entry; /** First instruction index in the function */
+    indx end; /** One past the last instruction index (-1 if unknown) */
     int creg; // Closure register
     bool isrecursive;
     struct sobjectfunction *parent;

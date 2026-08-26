@@ -121,6 +121,9 @@
 #define INTEGRAL_NESTED                "IntgrlNested"
 #define INTEGRAL_NESTED_MSG            "Nested Integrals are not supported."
 
+#define INTEGRAL_FASTPATH              "IntgrlFstPath"
+#define INTEGRAL_FASTPATH_MSG          "Special function '%s' must be called directly from an integrand function."
+
 #define JUMP_UNIMPL                    "JumpUnimpl"
 #define JUMP_UNIMPL_MSG                "This Jump evaluation is not implemented yet."
 

@@ -16,6 +16,7 @@
 #include "morpho.h"
 #include "classes.h"
 #include "common.h"
+#include "optimize.h"
 
 #include "threadpool.h"
 
@@ -3611,6 +3612,7 @@ typedef struct {
     vm *v;
     grade g; // Grade to integrate over
     bool weightbyref; // Use reference mesh for the element
+    bool in_fast_path; // Set during analytic shape-gradient / fieldgradient maps
 } integralref;
 
 static bool integral_startfn(vm *v, functional_mapinfo *info) {
@@ -3846,6 +3848,13 @@ static bool integral_contextactive(vm *v) {
     return integral_getelementref(v) || jump_getinterfaceref(v);
 }
 
+/** Reject integral specials (grad, tangent, ...) during an analytic fast-path map. */
+static bool integral_checkfastpath(vm *v, const char *name) {
+    objectintegralelementref *elref=integral_getelementref(v);
+    if (elref && elref->iref && elref->iref->in_fast_path) MORPHO_FAILVARGS(v, INTEGRAL_FASTPATH, name);
+    return true;
+}
+
 /* ---------
  * Elementid
  * --------- */
@@ -3880,6 +3889,7 @@ static bool integral_evaluatetangent(vm *v) {
 }
 
 static value integral_tangent(vm *v, int nargs, value *args) {
+    if (!integral_checkfastpath(v, TANGENT_FUNCTION)) return MORPHO_NIL;
     objectintegralelementref *elref = integral_getelementref(v);
     if (!elref || elref->g!=1) MORPHO_RAISEVARGS(v, INTEGRAL_SPCLFN, TANGENT_FUNCTION);
     
@@ -3914,6 +3924,7 @@ static bool integral_evaluatenormal(vm *v) {
 }
 
 static value integral_normal(vm *v, int nargs, value *args) {
+    if (!integral_checkfastpath(v, NORMAL_FUNCTION)) return MORPHO_NIL;
     objectintegralelementref *elref = integral_getelementref(v);
     if (!elref || elref->g!=2) MORPHO_RAISEVARGS(v, INTEGRAL_SPCLFN, NORMAL_FUNCTION);
     
@@ -4166,6 +4177,7 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
 }
 
 static value integral_gradfn(vm *v, int nargs, value *args) {
+    if (!integral_checkfastpath(v, GRAD_FUNCTION)) return MORPHO_NIL;
     value out=MORPHO_NIL;
     if (nargs!=1) MORPHO_RAISE(v, INTEGRAL_FLD);
     integral_evaluategradient(v, MORPHO_GETARG(args, 0), &out);
@@ -4245,6 +4257,7 @@ bool integral_evaluatehessian(vm *v, value q, value *out) {
 }
 
 static value integral_hessfn(vm *v, int nargs, value *args) {
+    if (!integral_checkfastpath(v, HESS_FUNCTION)) return MORPHO_NIL;
     value out=MORPHO_NIL;
     if (nargs!=1) MORPHO_RAISE(v, INTEGRAL_FLD);
     integral_evaluatehessian(v, MORPHO_GETARG(args, 0), &out);
@@ -4287,6 +4300,7 @@ static bool integral_evaluatecg(vm *v) {
 }
 
 static value integral_cgfn(vm *v, int nargs, value *args) {
+    if (!integral_checkfastpath(v, CGTENSOR_FUNCTION)) return MORPHO_NIL;
     objectintegralelementref *elref = integral_getelementref(v);
     if (!elref || !elref->iref->mref) MORPHO_RAISEVARGS(v, INTEGRAL_SPCLFN, CGTENSOR_FUNCTION);
     
@@ -4357,6 +4371,7 @@ static bool integral_evaluatejacobian(vm *v) {
 }
 
 static value integral_jacobian(vm *v, int nargs, value *args) {
+    if (!integral_checkfastpath(v, JACOBIAN_FUNCTION)) return MORPHO_NIL;
     objectintegralelementref *elref = integral_getelementref(v);
     if (!elref) MORPHO_RAISEVARGS(v, INTEGRAL_SPCLFN, JACOBIAN_FUNCTION);
     
@@ -4365,8 +4380,9 @@ static value integral_jacobian(vm *v, int nargs, value *args) {
 }
 
 static value integral_invjacobian(vm *v, int nargs, value *args) {
+    if (!integral_checkfastpath(v, INVJACOBIAN_FUNCTION)) return MORPHO_NIL;
     objectintegralelementref *elref = integral_getelementref(v);
-    if (!elref) MORPHO_RAISEVARGS(v, INTEGRAL_SPCLFN, JACOBIAN_FUNCTION);
+    if (!elref) MORPHO_RAISEVARGS(v, INTEGRAL_SPCLFN, INVJACOBIAN_FUNCTION);
     
     if (!(elref->flags & ELREF_HASJACOBIAN) && !integral_evaluatejacobian(v)) return MORPHO_NIL;
     return MORPHO_OBJECT(elref->invjacobian);
@@ -4392,6 +4408,7 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
     ref->mref=NULL;
     ref->g=g;
     ref->weightbyref=false;
+    ref->in_fast_path=false;
 
     if (objectinstance_getpropertyinterned(self, scalarpotential_functionproperty, &func) &&
         MORPHO_ISCALLABLE(func)) {
@@ -4672,6 +4689,29 @@ static void integral_taskend(vm *v, functional_mapinfo *info) {
     integral_freeelref(elref);
 }
 
+/* Analytic f(q) shape gradient assumes geometry dependence enters only through
+ * the position argument x and Integral specials (grad, tangent, ...). Arbitrary
+ * mesh access via globals/upvalues is outside that contract. */
+
+#define INTEGRAND_NSHAPEFNS 8
+static value _shapefns[INTEGRAND_NSHAPEFNS];
+static unsigned int nshape;
+
+/** One-pass shape gradient: I_ref * d(measure)/dx. */
+static bool integral_gradient_fq(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
+    integralref *iref=(integralref *) ref;
+    double E=0.0;
+
+    if (iref->weightbyref) return true;
+    if (!integral_integrand(v, mesh, id, nv, vid, ref, &E)) return false;
+
+    objectintegralelementref *elref=integral_getelementref(v);
+    if (!elref) return false;
+    if (elref->elementsize<=MORPHO_EPS) return true;
+
+    return functional_elementgradient_scale(v, mesh, iref->g, id, nv, vid, frc, E/elref->elementsize);
+}
+
 /** Shared bindref for Line/Area/Volume integrals. Grade comes from the
  * instance; startfn prepares any stored Fields' FE spaces. */
 static bool _Integral_bindref(vm *v, objectinstance *self, functional_mapinfo *info, integralref *ref) {
@@ -4692,9 +4732,23 @@ static bool _Integral_bindref(vm *v, objectinstance *self, functional_mapinfo *i
     return true;
 }
 
+static value _Integral_gradient(vm *v, objectinstance *self, functional_mapinfo *info) {
+    integralref ref;
+    functional_mapcallback *mapfn=functional_mapnumericalgradient;
+
+    if (!_Integral_bindref(v, self, info, &ref)) return MORPHO_NIL;
+    if (!optimize_fnaccessesarg(v, ref.integrand, 0) &&
+        !optimize_fnloadsconstant(v, ref.integrand, nshape, _shapefns)) {
+        ref.in_fast_path=true;
+        info->grad=integral_gradient_fq;
+        mapfn=functional_mapgradient;
+    }
+    return _functional_run(v, info, ref.g, mapfn, true);
+}
+
 FUNCTIONAL_MD_REF_INTEGRAND(Integral, integralref, ref.g)
 FUNCTIONAL_MD_REF_TOTAL(Integral, integralref, ref.g)
-FUNCTIONAL_MD_REF_NUMERICALGRADIENT(Integral, integralref, ref.g, NULL, SYMMETRY_NONE)
+FUNCTIONAL_MD_REF_OVERLOADS(Integral, gradient, _Integral_gradient)
 FUNCTIONAL_MD_REF_HESSIAN(Integral, integralref, ref.g, NULL, SYMMETRY_NONE)
 FUNCTIONAL_MD_REF_FIELDGRADIENT(Integral, integralref, ref.g, integral_cloneref, integral_freeref)
 
@@ -5436,6 +5490,7 @@ FUNCTIONAL_MD_REF_NUMERICALGRADIENT(Jump, jumpref, ref.interfacegrade, jump_depe
 FUNCTIONAL_MD_REF_FIELDGRADIENT_MAP(Jump, jumpref, ref.interfacegrade, jump_mapfieldgradient, jump_cloneref, jump_freeref)
 
 static value integral_jumpdnfn(vm *v, int nargs, value *args) {
+    if (!integral_checkfastpath(v, JUMPDN_FUNCTION)) return MORPHO_NIL;
     objectjumpinterfaceref *iref = jump_getinterfaceref(v);
     if (!iref) MORPHO_RAISEVARGS(v, INTEGRAL_SPCLFN, JUMPDN_FUNCTION);
 
@@ -5527,15 +5582,16 @@ void functional_initialize(void) {
     builtin_addclass(NEMATIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(Nematic), objclass);
     builtin_addclass(NEMATICELECTRIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(NematicElectric), objclass);
 
+    nshape=0;
     builtin_addfunction(ELEMENTID_FUNCTION, integral_elementid, MORPHO_FN_THREADLOCAL | MORPHO_FN_THROWS);
-    builtin_addfunction(TANGENT_FUNCTION, integral_tangent, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
-    builtin_addfunction(NORMAL_FUNCTION, integral_normal, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
-    builtin_addfunction(GRAD_FUNCTION, integral_gradfn, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
-    builtin_addfunction(HESS_FUNCTION, integral_hessfn, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
-    builtin_addfunction(CGTENSOR_FUNCTION, integral_cgfn, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
-    builtin_addfunction(JUMPDN_FUNCTION, integral_jumpdnfn, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
-    builtin_addfunction(JACOBIAN_FUNCTION, integral_jacobian, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
-    builtin_addfunction(INVJACOBIAN_FUNCTION, integral_invjacobian, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
+    _shapefns[nshape++]=builtin_addfunction(GRAD_FUNCTION, integral_gradfn, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
+    _shapefns[nshape++]=builtin_addfunction(HESS_FUNCTION, integral_hessfn, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
+    _shapefns[nshape++]=builtin_addfunction(TANGENT_FUNCTION, integral_tangent, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
+    _shapefns[nshape++]=builtin_addfunction(NORMAL_FUNCTION, integral_normal, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
+    _shapefns[nshape++]=builtin_addfunction(JACOBIAN_FUNCTION, integral_jacobian, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
+    _shapefns[nshape++]=builtin_addfunction(INVJACOBIAN_FUNCTION, integral_invjacobian, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
+    _shapefns[nshape++]=builtin_addfunction(CGTENSOR_FUNCTION, integral_cgfn, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
+    _shapefns[nshape++]=builtin_addfunction(JUMPDN_FUNCTION, integral_jumpdnfn, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
 
     morpho_defineerror(VOLUMEENCLOSED_ZERO, ERROR_HALT, VOLUMEENCLOSED_ZERO_MSG);
     morpho_defineerror(FUNC_ELNTFND, ERROR_HALT, FUNC_ELNTFND_MSG);
@@ -5555,6 +5611,7 @@ void functional_initialize(void) {
     morpho_defineerror(INTEGRAL_SPCLFN, ERROR_HALT, INTEGRAL_SPCLFN_MSG);
     morpho_defineerror(INTEGRAL_DFFEVL, ERROR_HALT, INTEGRAL_DFFEVL_MSG);
     morpho_defineerror(INTEGRAL_NESTED, ERROR_HALT, INTEGRAL_NESTED_MSG);
+    morpho_defineerror(INTEGRAL_FASTPATH, ERROR_HALT, INTEGRAL_FASTPATH_MSG);
     morpho_defineerror(JUMP_UNIMPL, ERROR_HALT, JUMP_UNIMPL_MSG);
     
     functional_poolinitialized = false;

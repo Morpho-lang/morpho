@@ -58,6 +58,7 @@ typedef struct sprogram {
 void program_setentry(program *p, instructionindx entry);
 instructionindx program_getentry(program *p);
 varray_instruction *program_getbytecode(program *p);
+bool program_getinstruction(program *p, instructionindx i, instruction *out);
 objectfunction *program_getglobalfn(program *p);
 void program_bindobject(program *p, object *obj);
 

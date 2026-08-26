@@ -161,6 +161,9 @@ typedef bool (functional_integrand) (vm *v, objectmesh *mesh, elementid id, int 
 /** Gradient function */
 typedef bool (functional_gradient) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc);
 
+/** Field-gradient function */
+typedef bool (functional_fieldgradient) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectfield *grad);
+
 struct s_functional_mapinfo; // Resolve circular typedef dependency
 
 /** Optional start function called once before a functional evaluation begins */
@@ -204,6 +207,7 @@ typedef struct s_functional_mapinfo {
     elementid id; // Element id at which to evaluate the integrand
     functional_integrand *integrand; // Integrand function
     functional_gradient *grad; // Gradient
+    functional_fieldgradient *fieldgrad; // Analytic field gradient
     functional_start *start; // Optional preflight hook (once per user call)
     functional_end *end; // Optional postflight hook (once per user call)
     functional_taskstart *taskstart; // Optional per-task setup (once per map task)
@@ -225,6 +229,7 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapintegrandforelement(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out);
+bool functional_mapfieldgradient(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapnumericalgradient(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapnumericalfieldgradient(vm *v, functional_mapinfo *info, value *out);
 bool functional_mapnumericalhessian(vm *v, functional_mapinfo *info, value *out);
@@ -255,6 +260,7 @@ value _functional_integrand(vm *v, functional_mapinfo *info, grade g, functional
 value _functional_integrand_elem(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn);
 value _functional_total(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn);
 value _functional_gradient(vm *v, functional_mapinfo *info, grade g, functional_gradient *fn, symmetrybhvr sym);
+value _functional_fieldgradient(vm *v, functional_mapinfo *info, grade g, functional_fieldgradient *fn);
 value _functional_numericalgradient(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn, symmetrybhvr sym);
 value _functional_hessian(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn);
 bool functional_validateargs(vm *v, int nargs, value *args, functional_mapinfo *info);
@@ -540,7 +546,8 @@ static value _##cls##_##method(vm *v, objectinstance *self, functional_mapinfo *
 /* Emit prepare/ref Morpho entry points plus the _Cls_* helpers they call.
  * INTEGRAND covers the four signatures; TOTAL mesh/sel; GRADIENT sets
  * info->grad; NUMERICALGRADIENT/HESSIAN set dependencies; FIELDGRADIENT
- * is Field-first and sets cloneref/freeref. */
+ * is Field-first (numerical sets cloneref/freeref; ANALYTICALFIELDGRADIENT
+ * sets info->fieldgrad). */
 #define FUNCTIONAL_MD_REF_INTEGRAND(cls, reftype, grade) \
     FUNCTIONAL_MD_REF_HELPER(cls, integrand, reftype, grade, functional_mapintegrand, true) \
     FUNCTIONAL_MD_REF_HELPER(cls, integrand_elem, reftype, grade, functional_mapintegrandforelement, false) \
@@ -575,9 +582,12 @@ static value _##cls##_##method(vm *v, objectinstance *self, functional_mapinfo *
     FUNCTIONAL_MD_REF_RUN(cls, hessian, reftype, grade, functional_mapnumericalhessian, true, NULL, deps, symbhvr) \
     FUNCTIONAL_MD_REF_OVERLOADS(cls, hessian, _##cls##_hessian)
 
-/* fieldgradient sets cloneref/freeref so the numerical map can clone the
+/* Numerical fieldgradient sets cloneref/freeref so the map can clone the
  * target Field. MAP takes a custom mapfn (Jump); the default is numerical.
- * clonefn/freefn are named so they are not substituted into info->cloneref. */
+ * clonefn/freefn are named so they are not substituted into info->cloneref.
+ * ANALYTICALFIELDGRADIENT maps info->fieldgrad; a NULL kernel (including a
+ * Field argument that is not reftype.field) yields a zero Field. reftype
+ * must have an objectfield *field member. */
 #define FUNCTIONAL_MD_REF_FIELDGRADIENT_RUN(cls, reftype, grade, mapfn, clonefn, freefn) \
 static value _##cls##_fieldgradient(vm *v, objectinstance *self, functional_mapinfo *info) { \
     reftype ref; \
@@ -606,6 +616,29 @@ static value _##cls##_fieldgradient(vm *v, objectinstance *self, functional_mapi
 
 #define FUNCTIONAL_MD_REF_FIELDGRADIENT_COST(cls, reftype, grade, clonefn, freefn, wkld) \
     FUNCTIONAL_MD_REF_FIELDGRADIENT_RUN_COST(cls, reftype, grade, functional_mapnumericalfieldgradient, clonefn, freefn, wkld) \
+    FUNCTIONAL_MD_REF_FIELD_OVERLOADS(cls, fieldgradient, _##cls##_fieldgradient)
+
+#define FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_RUN(cls, reftype, grade, fieldgradfn) \
+static value _##cls##_fieldgradient(vm *v, objectinstance *self, functional_mapinfo *info) { \
+    reftype ref; \
+    if (!_##cls##_bindref(v, self, info, &ref)) return MORPHO_NIL; \
+    return _functional_fieldgradient(v, info, grade, (ref.field==info->field ? (fieldgradfn) : NULL)); \
+}
+
+#define FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT(cls, reftype, grade, fieldgradfn) \
+    FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_RUN(cls, reftype, grade, fieldgradfn) \
+    FUNCTIONAL_MD_REF_FIELD_OVERLOADS(cls, fieldgradient, _##cls##_fieldgradient)
+
+#define FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_RUN_COST(cls, reftype, grade, fieldgradfn, wkld) \
+static value _##cls##_fieldgradient(vm *v, objectinstance *self, functional_mapinfo *info) { \
+    reftype ref; \
+    if (!_##cls##_bindref(v, self, info, &ref)) return MORPHO_NIL; \
+    info->cost = (wkld); \
+    return _functional_fieldgradient(v, info, grade, (ref.field==info->field ? (fieldgradfn) : NULL)); \
+}
+
+#define FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_COST(cls, reftype, grade, fieldgradfn, wkld) \
+    FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_RUN_COST(cls, reftype, grade, fieldgradfn, wkld) \
     FUNCTIONAL_MD_REF_FIELD_OVERLOADS(cls, fieldgradient, _##cls##_fieldgradient)
 
 /* -------------------------------------------------------

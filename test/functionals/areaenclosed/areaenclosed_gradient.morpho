@@ -1,0 +1,16 @@
+import meshtools
+import "../numericalderivatives.morpho"
+
+// Convex loop containing the origin: analytic gradient vs finite difference.
+var m2 = LineMesh(fn (t) [cos(t), sin(t)], -Pi...Pi:Pi/2, closed=true)
+var a = AreaEnclosed()
+
+print abs(a.total(m2)-2) < 1e-12
+// expect: true
+
+print (a.gradient(m2) - numericalgradient(a, m2)).norm() < 1e-6
+// expect: true
+
+var m3 = LineMesh(fn (t) [cos(t), sin(t), 0], 0...2*Pi:Pi/3, closed=true)
+print (a.gradient(m3) - numericalgradient(a, m3)).norm() < 1e-6
+// expect: true

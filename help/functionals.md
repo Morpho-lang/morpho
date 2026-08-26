@@ -113,6 +113,8 @@ Evaluate the area enclosed of a circular loop:
     var larea = AreaEnclosed()
     print larea.total(m)
 
+`AreaEnclosed` sums unsigned triangle areas from the origin to each edge. Oriented meshes are not yet supported, so a non-convex loop may give an incorrect result.
+
 See the `Functionals` entry for general information about functionals.
 
 ## Area

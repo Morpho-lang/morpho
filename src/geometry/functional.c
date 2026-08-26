@@ -67,6 +67,7 @@ static void functional_clearmapinfo(functional_mapinfo *info) {
     info->id=0;
     info->integrand=NULL;
     info->grad=NULL;
+    info->fieldgrad=NULL;
     info->start=NULL;
     info->end=NULL;
     info->taskstart=NULL;
@@ -121,6 +122,11 @@ value _functional_gradient(vm *v, functional_mapinfo *info, grade g, functional_
     info->grad = fn;
     info->sym = sym;
     return _functional_run(v, info, g, functional_mapgradient, true);
+}
+
+value _functional_fieldgradient(vm *v, functional_mapinfo *info, grade g, functional_fieldgradient *fn) {
+    info->fieldgrad = fn;
+    return _functional_run(v, info, g, functional_mapfieldgradient, true);
 }
 
 value _functional_numericalgradient(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn, symmetrybhvr sym) {
@@ -783,6 +789,53 @@ bool functional_mapgradient(vm *v, functional_mapinfo *info, value *out) {
     *out = MORPHO_OBJECT(new);
     
 functional_mapgradient_cleanup:
+    if (!success && new) object_free((object *) new);
+    
+    functional_cleanuptasks(v, ntask, task, &imageids);
+    return success;
+}
+
+/* ----------------------------
+ * Map analytic field gradients
+ * ---------------------------- */
+
+/** Compute an analytic field gradient. A NULL fieldgrad yields a zero Field. */
+bool functional_mapfieldgradient(vm *v, functional_mapinfo *info, value *out) {
+    int success=false;
+    objectfield *new=NULL;
+    
+    if (!info->field) MORPHO_FAIL(v, FUNCTIONAL_ARGS);
+    
+    new=object_newfield(info->mesh, info->field->prototype, info->field->fnspc, info->field->dof);
+    if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
+    field_zero(new);
+    
+    if (!info->fieldgrad) {
+        *out = MORPHO_OBJECT(new);
+        return true;
+    }
+    
+    int ntask=functional_ntasks(info);
+    functional_task task[ntask];
+    varray_elementid imageids;
+    varray_elementidinit(&imageids);
+    
+    if (!functional_preparetasks(v, info, ntask, task, &imageids)) {
+        object_free((object *) new);
+        return false;
+    }
+    
+    for (int i=0; i<ntask; i++) {
+        task[i].mapfn=(functional_mapfn *) info->fieldgrad;
+        task[i].result=(void *) new;
+    }
+    
+    if (!functional_map(ntask, task)) goto functional_mapfieldgradient_analytic_cleanup;
+    
+    success=true;
+    *out = MORPHO_OBJECT(new);
+    
+functional_mapfieldgradient_analytic_cleanup:
     if (!success && new) object_free((object *) new);
     
     functional_cleanuptasks(v, ntask, task, &imageids);
@@ -1617,10 +1670,30 @@ bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
     return true;
 }
 
+/** Analytic gradient of 1/2 |x0 × x1|. */
+bool areaenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
+    if (nv!=2) return true;
+    double *x[2], x0[3]={0,0,0}, x1[3]={0,0,0}, c[3], f0[3], f1[3], nrm;
+    for (int j=0; j<nv; j++) if (matrix_getcolumnptr(mesh->vert, vid[j], &x[j])!=LINALGERR_OK) return false;
+    for (int k=0; k<mesh->dim; k++) { x0[k]=x[0][k]; x1[k]=x[1][k]; }
+
+    functional_veccross(x0, x1, c);
+    nrm=functional_vecnorm(3, c);
+    if (nrm<MORPHO_EPS) return true;
+
+    functional_veccross(x1, c, f0); /* ∂/∂x0 ~ x1 × c */
+    functional_veccross(c, x0, f1); /* ∂/∂x1 ~ c × x0 */
+
+    if (!functional_addtocolumn(frc, vid[0], 0.5/nrm, f0)) return false;
+    if (!functional_addtocolumn(frc, vid[1], 0.5/nrm, f1)) return false;
+
+    return true;
+}
+
 FUNCTIONAL_INIT(AreaEnclosed, MESH_GRADE_LINE)
 FUNCTIONAL_MD_INTEGRAND_COST(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_TOTAL_COST(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, FUNCTIONAL_COST_CHEAPEST)
-FUNCTIONAL_MD_NUMERICALGRADIENT(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand, SYMMETRY_ADD)
+FUNCTIONAL_MD_GRADIENT_COST(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_gradient, SYMMETRY_ADD, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_HESSIAN(AreaEnclosed, MESH_GRADE_LINE, areaenclosed_integrand)
 
 MORPHO_BEGINCLASS(AreaEnclosed)
@@ -3571,6 +3644,19 @@ bool normsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
     return false;
 }
 
+/** Analytic fieldgradient: d/dq |q|^2 = 2q. */
+bool normsq_fieldgradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectfield *grad) {
+    fieldref *eref = ref;
+    unsigned int nentries;
+    double *entries, *gentries;
+
+    if (!field_getelementaslist(eref->field, MESH_GRADE_VERTEX, id, 0, &nentries, &entries)) return false;
+    if (!field_getelementaslist(grad, MESH_GRADE_VERTEX, id, 0, &nentries, &gentries)) return false;
+
+    for (unsigned int i=0; i<nentries; i++) functional_accum(&gentries[i], 2.0*entries[i]);
+    return true;
+}
+
 value NormSq_init__field(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
     _gradsq_initfield(self, MORPHO_GETARG(args, 0));
@@ -3582,7 +3668,7 @@ FUNCTIONAL_MD_REF_BIND_FORCEGRADE_START(NormSq, fieldref, gradsq_prepareref, nor
 FUNCTIONAL_MD_REF_INTEGRAND_COST(NormSq, fieldref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_REF_TOTAL_COST(NormSq, fieldref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_REF_NUMERICALGRADIENT(NormSq, fieldref, MESH_GRADE_VERTEX, NULL, SYMMETRY_NONE)
-FUNCTIONAL_MD_REF_FIELDGRADIENT_COST(NormSq, fieldref, MESH_GRADE_VERTEX, gradsq_cloneref, NULL, FUNCTIONAL_COST_CHEAPEST)
+FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_COST(NormSq, fieldref, MESH_GRADE_VERTEX, normsq_fieldgradient, FUNCTIONAL_COST_CHEAPEST)
 
 MORPHO_BEGINCLASS(NormSq)
 MORPHO_METHOD_SIGNATURE(MORPHO_INITIALIZER_METHOD, "(Field)", NormSq_init__field, MORPHO_FN_MUTATES),

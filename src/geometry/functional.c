@@ -3699,6 +3699,7 @@ typedef struct {
     grade g; // Grade to integrate over
     bool weightbyref; // Use reference mesh for the element
     bool in_fast_path; // Set during analytic shape-gradient / fieldgradient maps
+    bool allow_grad; // Fast path may call grad(); freeze that field's qgrad for local FD
 } integralref;
 
 static bool integral_startfn(vm *v, functional_mapinfo *info) {
@@ -3740,6 +3741,7 @@ typedef struct {
     elementid id;        // Current element
     int nv;              // Number of vertices
     unsigned flags;
+    int freeze_grad;     // ifld whose qgrad is frozen for local FD; -1 none
     int *vid;            // Vertex ids
     double **vertexposn; // List of vertex positions
     double elementsize;  // Size of the element
@@ -3824,6 +3826,7 @@ static void integral_resetgeometryflags(objectintegralelementref *elref) {
 static void _integral_initelref(objectintegralelementref *elref) {
     memset(elref, 0, sizeof(objectintegralelementref));
     object_init((object *) elref, OBJECT_INTEGRALELEMENTREF);
+    elref->freeze_grad=-1;
 }
 
 /** Bind an elref to a particular element and reset per-element geometry cache. */
@@ -3835,6 +3838,7 @@ static void _integral_bindelref(objectintegralelementref *elref, objectmesh *mes
     elref->vid=vid;
     elref->vertexposn=vertexposn;
     elref->iref=iref;
+    elref->freeze_grad=-1;
     integral_resetgeometryflags(elref);
 }
 
@@ -3935,10 +3939,14 @@ static bool integral_contextactive(vm *v) {
     return integral_getelementref(v) || jump_getinterfaceref(v);
 }
 
-/** Reject integral specials (grad, tangent, ...) during an analytic fast-path map. */
+/** Reject integral specials during an analytic fast-path map.
+ * allow_grad lets fieldgradient of f(q,∇q) call grad() (other specials still fail). */
 static bool integral_checkfastpath(vm *v, const char *name) {
     objectintegralelementref *elref=integral_getelementref(v);
-    if (elref && elref->iref && elref->iref->in_fast_path) MORPHO_FAILVARGS(v, INTEGRAL_FASTPATH, name);
+    if (elref && elref->iref && elref->iref->in_fast_path) {
+        if (elref->iref->allow_grad && strcmp(name, GRAD_FUNCTION)==0) return true;
+        MORPHO_FAILVARGS(v, INTEGRAL_FASTPATH, name);
+    }
     return true;
 }
 
@@ -4203,6 +4211,11 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
     
     // Raise an error if we couldn't find it
     if (ifld>=elref->iref->nfields) MORPHO_FAIL(v, INTEGRAL_FLD);
+
+    if (elref->freeze_grad==ifld && MORPHO_ISOBJECT(elref->qgrad[ifld])) {
+        *out=elref->qgrad[ifld];
+        return true;
+    }
     
     // Extract information from the field
     objectfield *fld = MORPHO_GETFIELD(elref->iref->fields[ifld]);
@@ -4496,6 +4509,7 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
     ref->g=g;
     ref->weightbyref=false;
     ref->in_fast_path=false;
+    ref->allow_grad=false;
 
     if (objectinstance_getpropertyinterned(self, scalarpotential_functionproperty, &func) &&
         MORPHO_ISCALLABLE(func)) {
@@ -4826,10 +4840,22 @@ static bool integral_checkfieldonly(vm *v, value integrand) {
            !optimize_fnloadsconstant(v, integrand, nshape, _shapefns);
 }
 
+/** f(q,∇q): no x, and no geometry specials. GRAD is _shapefns[0]. */
+static bool integral_checkfieldandgrad(vm *v, value integrand) {
+    return !optimize_fnaccessesarg(v, integrand, 0) &&
+           !optimize_fnloadsconstant(v, integrand, nshape>0 ? (int) nshape-1 : 0, _shapefns+1);
+}
+
+static bool integral_field_hasgradient(objectfield *field) {
+    if (!field || !MORPHO_ISFESPACE(field->fnspc)) return false;
+    return FESPACE_HASGRADIENT(MORPHO_GETFESPACE(field->fnspc)->fespace);
+}
+
 typedef struct {
     integralref *iref;
     objectfield *field;
     int ifield, ncomp;
+    bool withgrad;
 } integral_fq_mapref;
 
 typedef struct {
@@ -4868,12 +4894,72 @@ restore:
     return false;
 }
 
-/** Vector integrand G_ac = (∂f/∂q_c) N_a. */
+/** Pointers to every entry of a grad() result (Matrix or List of Matrices). */
+static int integral_grad_ptrs(value gval, double **ptrs, int maxn) {
+    int n=0;
+    if (MORPHO_ISMATRIX(gval)) {
+        objectmatrix *m=MORPHO_GETMATRIX(gval);
+        for (unsigned int i=0; i<m->nels && n<maxn; i++) ptrs[n++]=&m->elements[i];
+        return n;
+    }
+    if (MORPHO_ISLIST(gval)) {
+        objectlist *lst=MORPHO_GETLIST(gval);
+        for (unsigned int i=0; i<list_length(lst); i++) {
+            value el;
+            if (!list_getelement(lst, (int) i, &el) || !MORPHO_ISMATRIX(el)) return -1;
+            objectmatrix *m=MORPHO_GETMATRIX(el);
+            for (unsigned int k=0; k<m->nels && n<maxn; k++) ptrs[n++]=&m->elements[k];
+        }
+        return n;
+    }
+    return -1;
+}
+
+/** ∂f/∂(∇q) into dfdg[k*ncomp+c]; qgrad[ifield] must be frozen. */
+static bool integral_fq_dfdgrad(unsigned int dim, double *lambda, double *x, unsigned int nq, value *quantity, integralref *iref, int ifield, int ngrad, double *dfdg) {
+    objectintegralelementref *elref=integral_getelementref(iref->v);
+    double *ptrs[ngrad], f0=0.0, *p=NULL;
+    int i=-1;
+
+    if (!elref || integral_grad_ptrs(elref->qgrad[ifield], ptrs, ngrad)!=ngrad) return false;
+    for (i=0; i<ngrad; i++) {
+        p=ptrs[i]; f0=*p;
+        double eps=functional_fdstepsize(f0, 1), fr, fl;
+        *p=f0+eps;
+        if (!integral_integrandfn(dim, lambda, x, nq, quantity, iref, 1, &fr)) goto restore;
+        *p=f0-eps;
+        if (!integral_integrandfn(dim, lambda, x, nq, quantity, iref, 1, &fl)) goto restore;
+        *p=f0;
+        dfdg[i]=(fr-fl)/(2.0*eps);
+    }
+    return true;
+
+restore:
+    if (i>=0 && p) *p=f0;
+    return false;
+}
+
+/** Physical ∇N_a: out[k*nnodes+a] = ∂N_a/∂x_k. */
+static bool integral_physical_gradNa(vm *v, objectintegralelementref *elref, objectfield *fld, int nnodes, double *out) {
+    if (!elref || !fld || !MORPHO_ISFESPACE(fld->fnspc)) return false;
+    fespace *disc=MORPHO_GETFESPACE(fld->fnspc)->fespace;
+    if (!FESPACE_HASGRADIENT(disc) || disc->nnodes!=nnodes) return false;
+    if (!integral_ensureinvj(v, elref)) return false;
+
+    double gdata[nnodes * elref->g];
+    objectmatrix gmat=MORPHO_STATICMATRIX(gdata, nnodes, elref->g);
+    objectmatrix fmat=MORPHO_STATICMATRIX(out, nnodes, elref->mesh->dim);
+    fespace_gradient(disc, elref->lambda, &gmat);
+    return matrix_mul(&gmat, elref->invj, &fmat)==LINALGERR_OK;
+}
+
+/** Vector integrand G_ac = (∂f/∂q_c) N_a [+ (∂f/∂∇q)_{c k} (∇N_a)_k]. */
 static bool integral_fq_vector_integrand(unsigned int dim, double *lambda, double *x, unsigned int nquantity, value *quantity, void *ref, unsigned int nout, double *fout) {
     integral_fq_local *s=(integral_fq_local *) ref;
     integral_fq_mapref *mref=s->mref;
-    objectintegralelementref *elref=integral_getelementref(mref->iref->v);
-    int nnodes=s->nnodes, ncomp=mref->ncomp, ifield=mref->ifield;
+    vm *v=mref->iref->v;
+    objectintegralelementref *elref=integral_getelementref(v);
+    int nnodes=s->nnodes, ncomp=mref->ncomp, ifield=mref->ifield, ngrad=(int) dim*ncomp;
     double Na[nnodes], dfdq[ncomp];
 
     if (!elref || (unsigned)(nnodes*ncomp)!=nout) return false;
@@ -4882,7 +4968,27 @@ static bool integral_fq_vector_integrand(unsigned int dim, double *lambda, doubl
     elref->lambda=lambda; elref->posn=x; elref->qinterpolated=quantity;
 
     if (!integral_fq_dfdq(dim, lambda, x, nquantity, quantity, mref->iref, &quantity[ifield], ncomp, dfdq)) return false;
-    for (int a=0; a<nnodes; a++) for (int c=0; c<ncomp; c++) fout[a*ncomp+c]=dfdq[c]*Na[a];
+
+    /* Only FD ∇q if this integrand actually called grad() on the target field. */
+    if (!mref->withgrad || !MORPHO_ISOBJECT(elref->qgrad[ifield])) {
+        for (int a=0; a<nnodes; a++) for (int c=0; c<ncomp; c++) fout[a*ncomp+c]=dfdq[c]*Na[a];
+        return true;
+    }
+
+    elref->freeze_grad=ifield;
+    double dfdg[ngrad], gNa[nnodes*(int) dim];
+    bool ok=integral_fq_dfdgrad(dim, lambda, x, nquantity, quantity, mref->iref, ifield, ngrad, dfdg);
+    elref->freeze_grad=-1;
+    if (!ok) return false;
+    if (!integral_physical_gradNa(v, elref, mref->field, nnodes, gNa)) return false;
+
+    for (int a=0; a<nnodes; a++) {
+        for (int c=0; c<ncomp; c++) {
+            double g=dfdq[c]*Na[a];
+            for (unsigned int k=0; k<dim; k++) g+=dfdg[k*ncomp+c]*gNa[k*nnodes+a];
+            fout[a*ncomp+c]=g;
+        }
+    }
     return true;
 }
 
@@ -4911,8 +5017,11 @@ static bool integral_fieldgradient_fq_element(vm *v, objectmesh *mesh, elementid
     unsigned int nout=(unsigned)(nnodes*ncomp);
     double local[nout];
     integral_fq_local s={ .mref=mref, .nnodes=nnodes };
+    bool adapt=elref->integ.adapt;
+    elref->integ.adapt=false; /* G is assembled with the base rule, like FE */
     ok=integrator_integrate(&elref->integ, integral_fq_vector_integrand,
                             mesh->dim, x, iref->nfields, quantities, &s, nout, local);
+    elref->integ.adapt=adapt;
     for (int a=0; ok && a<nnodes; a++) {
         fieldindx *fx=&quantities[ifield].findx[a];
         unsigned int nentries=0; double *gentry=NULL;
@@ -4947,7 +5056,7 @@ static bool integral_mapfieldgradient_fq(vm *v, functional_mapinfo *info, value 
 
     for (int i=0; i<ntask; i++) {
         irefcopies[i]=*iref;
-        mref[i]=(integral_fq_mapref){ .iref=&irefcopies[i], .field=info->field, .ifield=ifield, .ncomp=(int) info->field->psize };
+        mref[i]=(integral_fq_mapref){ .iref=&irefcopies[i], .field=info->field, .ifield=ifield, .ncomp=(int) info->field->psize, .withgrad=iref->allow_grad };
         task[i].ref=&mref[i];
         task[i].mapfn=integral_fieldgradient_fq_element;
         task[i].result=new;
@@ -4998,9 +5107,18 @@ static value _Integral_fieldgradient(vm *v, objectinstance *self, functional_map
     functional_mapcallback *mapfn=functional_mapnumericalfieldgradient;
 
     if (!_Integral_bindref(v, self, info, &ref)) return MORPHO_NIL;
-    if (MORPHO_ISDICTIONARY(ref.method) && integral_checkfieldonly(v, ref.integrand)) {
-        ref.in_fast_path=true;
-        mapfn=integral_mapfieldgradient_fq;
+    if (MORPHO_ISDICTIONARY(ref.method)) {
+        bool fieldonly=integral_checkfieldonly(v, ref.integrand);
+        bool withgrad=!fieldonly && integral_checkfieldandgrad(v, ref.integrand) &&
+                      integral_field_hasgradient(info->field);
+        if (fieldonly || withgrad) {
+            ref.in_fast_path=true;
+            ref.allow_grad=withgrad;
+            mapfn=integral_mapfieldgradient_fq;
+        } else {
+            info->cloneref=integral_cloneref;
+            info->freeref=integral_freeref;
+        }
     } else {
         info->cloneref=integral_cloneref;
         info->freeref=integral_freeref;

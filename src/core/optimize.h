@@ -1,5 +1,8 @@
 /** @file optimize.h
- *  @brief Minimal dependency queries on Morpho callables.
+ *  @brief Conservative dependency queries on Morpho callables.
+ *
+ *  If a callable cannot be inspected, queries report a dependency
+ *  (fnaccessesarg → true; fnloadsconstants → all hit).
  */
 
 #ifndef optimize_h
@@ -8,6 +11,6 @@
 #include "morpho.h"
 
 bool optimize_fnaccessesarg(vm *v, value f, int arg);
-bool optimize_fnloadsconstant(vm *v, value f, int nvals, value *konsts);
+void optimize_fnloadsconstants(vm *v, value f, int nvals, value *konsts, bool *hit);
 
 #endif

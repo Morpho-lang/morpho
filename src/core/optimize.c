@@ -1,5 +1,5 @@
 /** @file optimize.c
- *  @brief Conservative dependency queries on Morpho callables.
+ *  @brief Dependency queries on Morpho callables.
  */
 
 #include "vm.h"
@@ -39,48 +39,57 @@ static bool _regread(instruction bc, int r) {
     }
 }
 
-/** Returns true if the function body reads the value of argument arg. */
+/** Mark every queried constant as loaded. */
+static void _hitall(int nvals, bool *hit) {
+    for (int i=0; i<nvals; i++) hit[i]=true;
+}
+
+/** Returns true if the function body reads argument arg.
+ *  True also when the callable or program cannot be inspected. */
 bool optimize_fnaccessesarg(vm *v, value f, int arg) {
+    if (arg<0) return false;
+
     objectfunction *func=_getfunction(f);
-    if (!func || arg<0 || arg>=func->nargs) return (arg>=0);
+    if (!func || arg>=func->nargs) return true;
 
     program *p=v ? v->current : NULL;
-    if (!p || func->end<=func->entry) return (arg>=0);
+    if (!p) return true;
+    if (func->end<=func->entry) return false;
 
     int r=arg+1;
     for (indx i=func->entry; i<func->end; i++) {
         instruction bc;
-        if (!program_getinstruction(p, i, &bc)) break;
+        if (!program_getinstruction(p, i, &bc)) return true;
         if (_regread(bc, r)) return true;
     }
     return false;
 }
 
-/** Checks if konst is one of the values in vals. */
-static bool _konstmatch(value konst, int nvals, value *vals) {
-    for (int i=0; i<nvals; i++) if (MORPHO_ISSAME(konst, vals[i])) return true;
-    return false;
-}
-
-/** Returns true if the body loads any of the values in konsts. */
-bool optimize_fnloadsconstant(vm *v, value f, int nvals, value *konsts) {
-    if (!konsts || nvals<=0) return false;
+/** Sets hit[i] if the body loads konsts[i]. One bytecode pass.
+ *  If the callable or program cannot be inspected, every hit[i] is true. */
+void optimize_fnloadsconstants(vm *v, value f, int nvals, value *konsts, bool *hit) {
+    if (!hit) return;
+    for (int i=0; i<nvals; i++) hit[i]=false;
+    if (!konsts || nvals<=0) return;
 
     objectfunction *func=_getfunction(f);
-    if (!func) return false;
+    if (!func) { _hitall(nvals, hit); return; }
 
     program *p=v ? v->current : NULL;
-    if (!p || func->end<=func->entry) return false;
+    if (!p) { _hitall(nvals, hit); return; }
+    if (func->end<=func->entry) return;
 
     for (indx i=func->entry; i<func->end; i++) {
         instruction bc;
-        if (!program_getinstruction(p, i, &bc)) break;
-
+        if (!program_getinstruction(p, i, &bc)) { _hitall(nvals, hit); return; }
         if (DECODE_OP(bc)!=OP_LCT) continue;
 
         int k=DECODE_Bx(bc);
         if (k<0 || k>=(int) func->konst.count) continue;
-        if (_konstmatch(func->konst.data[k], nvals, konsts)) return true;
+
+        value konst=func->konst.data[k];
+        for (int j=0; j<nvals; j++) {
+            if (!hit[j] && MORPHO_ISSAME(konst, konsts[j])) hit[j]=true;
+        }
     }
-    return false;
 }

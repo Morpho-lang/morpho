@@ -30,3 +30,11 @@ print (Ediv.fieldgradient(P, m) - numericalfieldgradient(Ediv, m, P)).linearize(
 
 print (Ediv.fieldgradient(phi, m) - numericalfieldgradient(Ediv, m, phi)).linearize().norm() < 1e-4
 // expect: true
+
+fn qt(x, p) {
+    return p.inner(tangent())
+}
+var Et = LineIntegral(qt, P, method={ "adapt": false })
+print (Et.fieldgradient(P, m) - numericalfieldgradient(Et, m, P)).linearize().norm() < 1e-5
+// expect: true
+

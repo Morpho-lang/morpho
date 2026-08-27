@@ -3729,6 +3729,10 @@ enum { // constants that indicate which special functions are used in the integr
     INTEGRAL_USES_JUMPDN   = 1u << 8
 };
 
+/* Local fieldgradient may evaluate these; hess and jumpdn stay out. */
+#define INTEGRAL_FIELDGRAD_ALLOWED (INTEGRAL_USES_GRAD | INTEGRAL_USES_TANGENT | \
+    INTEGRAL_USES_NORMAL | INTEGRAL_USES_JACOBIAN | INTEGRAL_USES_INVJ | INTEGRAL_USES_CG)
+
 #define INTEGRAL_MAXSPECIALS 8
 static value _specialfns[INTEGRAL_MAXSPECIALS];
 static unsigned _specialbits[INTEGRAL_MAXSPECIALS];
@@ -4877,14 +4881,17 @@ static bool integral_checkfieldonly(vm *v, value integrand) {
     return integral_fnuses(v, integrand)==INTEGRAL_USES_NONE;
 }
 
-/** f(q,∇q): no x, and no specials other than grad(). */
-static bool integral_checkfieldandgrad(vm *v, value integrand) {
-    return (integral_fnuses(v, integrand) & ~INTEGRAL_USES_GRAD)==INTEGRAL_USES_NONE;
-}
-
 static bool integral_field_hasgradient(objectfield *field) {
     if (!field || !MORPHO_ISFESPACE(field->fnspc)) return false;
     return FESPACE_HASGRADIENT(MORPHO_GETFESPACE(field->fnspc)->fespace);
+}
+
+/** Local fieldgradient: hess/jumpdn force global FD. Static grad() needs a gradient on the target. */
+static bool integral_checklocalfieldgrad(vm *v, value integrand, objectfield *field) {
+    unsigned uses=integral_fnuses(v, integrand);
+    if (uses & ~(INTEGRAL_USES_X | INTEGRAL_FIELDGRAD_ALLOWED)) return false;
+    if ((uses & INTEGRAL_USES_GRAD) && !integral_field_hasgradient(field)) return false;
+    return true;
 }
 
 typedef struct {
@@ -5108,19 +5115,13 @@ static bool integral_mapfieldgradient(vm *v, functional_mapinfo *info, value *ou
     integralref *iref=(integralref *) info->ref;
     varray_elementid imageids;
     objectfield *new=NULL;
-    unsigned allowed=INTEGRAL_USES_NONE;
+    unsigned allowed=INTEGRAL_FIELDGRAD_ALLOWED;
 
     memset(tref, 0, sizeof(tref));
 
     for (int i=0; i<iref->nfields; i++)
         if (MORPHO_ISFIELD(iref->fields[i]) && MORPHO_GETFIELD(iref->fields[i])==info->field) { ifield=i; break; }
     if (ifield<0) return false;
-
-    if (!integral_checkfieldonly(v, iref->integrand) &&
-        integral_checkfieldandgrad(v, iref->integrand) &&
-        integral_field_hasgradient(info->field)) {
-        allowed=INTEGRAL_USES_GRAD;
-    }
 
     varray_elementidinit(&imageids);
     if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
@@ -5192,11 +5193,9 @@ static value _Integral_fieldgradient(vm *v, objectinstance *self, functional_map
     if (!_Integral_bindref(v, self, info, &ref)) return MORPHO_NIL;
     info->cloneref=integral_cloneref;
     info->freeref=integral_freeref;
-    if (MORPHO_ISDICTIONARY(ref.method)) {
-        bool fieldonly=integral_checkfieldonly(v, ref.integrand);
-        bool withgrad=!fieldonly && integral_checkfieldandgrad(v, ref.integrand) &&
-                      integral_field_hasgradient(info->field);
-        if (fieldonly || withgrad) mapfn=integral_mapfieldgradient;
+    if (MORPHO_ISDICTIONARY(ref.method) &&
+        integral_checklocalfieldgrad(v, ref.integrand, info->field)) {
+        mapfn=integral_mapfieldgradient;
     }
     return _functional_run(v, info, ref.g, mapfn, true);
 }

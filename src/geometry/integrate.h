@@ -185,7 +185,6 @@ struct integrator_s {
     int maxiterations; /** Maximum number of subdivisions to perform */
     
     int niterations; /** Number of iterations performed */
-    unsigned int nevals; /** Integrand node evaluations since the last reset */
     double val; /** Estimated value of the integral (scalar, or L_inf of vector) */
     double errest; /** Estimated error of the integral */
     

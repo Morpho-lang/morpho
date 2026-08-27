@@ -5064,7 +5064,7 @@ static bool integral_fieldgradient_preferlocal(integrator *integ, bool usesgrad,
     if (!integ->acceptedrule) return false;
     unsigned qapply=(unsigned) integ->acceptedrule->nnodes;
     unsigned clocal=qapply*2u*(unsigned) ncomp*(1u+(usesgrad?dim:0u));
-    unsigned cfd=2u*(unsigned) nnodes*(unsigned) ncomp*integ->nevals;
+    unsigned cfd=2u*(unsigned) nnodes*(unsigned) ncomp*qapply;
     return clocal<=cfd;
 }
 

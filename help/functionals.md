@@ -336,7 +336,7 @@ See the `Functionals` entry for general information about functionals.
     AreaIntegral(fn (x) x[0]*x[1], method={ "errornorm": "sum" })
     AreaIntegral(fn (x) x[0]*x[1], method={ "tol": 1e-8 })
 
-The recognized keys are:
+Recognized keys in the `method` dictionary are:
 
 * `rule` — a `String` naming a quadrature rule, or `"hybrid2d"` for the default two-dimensional strategy. Unknown names raise `IntgrtrRlNtFnd`.
 * `degree` — an `Int` requesting a rule of at least that degree when `rule` is omitted.
@@ -344,13 +344,17 @@ The recognized keys are:
 * `errornorm` — `"max"` (the default) or `"sum"`. Any other value, or a non-string, raises `IntgrtrMthdTyp`.
 * `tol` — a `Float` (the default is `1e-6`). Integers are accepted. A non-numeric value raises `IntgrtrMthdTyp`.
 
-With `errornorm: "max"`, h-refinement stops when the largest element error is below `tol` times the absolute value of the last root estimate. `"sum"` uses the older, more conservative test on the summed element errors. On a vertex singularity the true global error under `"max"` can sit a little above `tol`; use `"sum"` if you need the tighter bound.
+With `errornorm: "max"`, h-refinement (dividing elements into smaller pieces) stops when the largest element error is below `tol` times the absolute value of the last root estimate. `"sum"` uses the older, more conservative test on the summed element errors. On a vertex singularity the true global error under `"max"` can sit a little above `tol`; use `"sum"` if you need the tighter bound.
 
-Useful named rules include:
+Useful named quadrature rules include:
 
 1D: `gauss1`/`kronrod3`, `gauss2`/`kronrod5`, `gauss5`/`kronrod11`, `gauss7`/`kronrod15` with `midpoint`/`simpson` for educational purposes.
 2D: `tri4`, `tri10`, `tri20`, `cubtri7`, `cubtri19` and `cools7`/`cools16`.
 3D: `keast4`, `keast5`, `tet5`, `tet6` and `grundmann3d0`–`grundmann3d5`.
+
+Integral functionals attempt to evaluate the integral efficiently, and may use a number of optimizations that typically accelerate performance but can degrade it in pathological cases. An optional `optimize` argument, `true` by default, may be set to `false` as a hint not to use those shortcuts:
+
+    AreaIntegral(fn (x) x[0]*x[1], method={ }, optimize=false)
 
 ## LineIntegral
 [taglineintegral]: # (lineintegral)

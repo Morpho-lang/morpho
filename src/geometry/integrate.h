@@ -158,6 +158,7 @@ struct integrator_s {
     quadraturerule *rule;  /** Current starting quadrature rule */
     quadraturerule *baserule; /** Rule selected at configure; reset restores this */
     quadraturerule *errrule; /** Additional rule for error estimation */
+    quadraturerule *acceptedrule; /** Rule that produced the current integral value (p-ext / strategy) */
     integratorfailurestrategyfn *strategy; /** Called if the current rule misses the tolerance; NULL means p-extension then h-adapt */
     
     bool skipcentroid; /** Skip node 0 on the next reference-element evaluation */
@@ -171,6 +172,7 @@ struct integrator_s {
     subdivisionrule *subdivide; /** Subdivision rule to use */
     
     varray_quadratureworkitem worklist; /** Work list */
+    quadratureworkitem rootwork; /** Root-element result from try; refine starts from this */
     varray_double vertexstack; /** Stack of vertices */
     varray_int elementstack; /** Stack of elements */
     varray_double workvals; /** Pool for per-work-item val[nout]/lval[nout] */
@@ -211,17 +213,31 @@ struct integrator_s {
  * Integrator interface
  * ------------------------------------------------------- */
 
-// Interface for repeated integrals: init, configure once, integrate repeatedly, then clear.
+/* Easy repeated interface: init, configure once, integrate, then clear. */
 void integrator_init(integrator *integrate);
-void integrator_clear(integrator *integrate);
 bool integrator_configure(integrator *integrate, error *err, bool adapt, int grade, int order, char *name);
 bool integrator_configurewithdictionary(integrator *integrate, error *err, grade g, objectdictionary *dict);
 bool integrator_integrate(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, quantity *quantity, void *ref, unsigned int nout, double *out);
+void integrator_clear(integrator *integrate);
 
-// One off integrals
+/* Expert staged replacement for integrator_integrate:
+   1) Call integrator_try to evaluate the integrand on the base element.
+   2) if ACCEPTED: call integrator_apply to evaluate a (potentially different) integrand using that formula.
+   3) if REFINE: call integrator_refine to continue with h-refinement with the same integrand. */
+typedef enum {
+    INTEGRATOR_TRY_ACCEPTED,
+    INTEGRATOR_TRY_REFINE,
+    INTEGRATOR_TRY_FAILED
+} integratortrystatus;
+
+integratortrystatus integrator_try(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, quantity *quantity, void *ref, unsigned int nout, double *out);
+bool integrator_apply(integrator *integrate, integrandfunction *integrand, void *ref, unsigned int nout, double *out);
+bool integrator_refine(integrator *integrate);
+
+/* Easy interface for one-off integrals */
 bool integrate(integrandfunction *integrand, objectdictionary *method, error *err, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, quantity *quantity, void *ref, double *out, double *errest);
 
-// Old interface
+/* Old interface */
 bool integrate_integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out);
 
 void integrate_initialize(void);

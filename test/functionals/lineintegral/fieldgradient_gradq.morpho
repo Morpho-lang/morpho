@@ -24,6 +24,10 @@ var Eg = LineIntegral(gradsqp, P, method={ "adapt": false })
 print (Eg.fieldgradient(P, m) - numericalfieldgradient(Eg, m, P)).linearize().norm() < 1e-4
 // expect: true
 
+var Egd = LineIntegral(gradsqp, P, method={ })
+print (Egd.fieldgradient(P, m) - numericalfieldgradient(Egd, m, P)).linearize().norm() < 1e-4
+// expect: true
+
 var Ediv = LineIntegral(pphicoupling, P, phi, method={ "adapt": false })
 print (Ediv.fieldgradient(P, m) - numericalfieldgradient(Ediv, m, P)).linearize().norm() < 1e-4
 // expect: true

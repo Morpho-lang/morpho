@@ -26,6 +26,10 @@ var bulk = AreaIntegral(sneaky, q, method={ "adapt": false })
 print (bulk.fieldgradient(q, m) - numericalfieldgradient(bulk, m, q)).linearize().norm() < 1e-4
 // expect: true
 
+var bulkd = AreaIntegral(sneaky, q, method={ })
+print (bulkd.fieldgradient(q, m) - numericalfieldgradient(bulkd, m, q)).linearize().norm() < 1e-4
+// expect: true
+
 fn hhelper(qv) {
     var h = hess(qv)
     return h.norm()^2

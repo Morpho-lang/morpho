@@ -90,3 +90,17 @@ fn qn(x, qv) {
 var sn = AreaIntegral(qn, q3, method={ "adapt": false })
 print (sn.fieldgradient(q3, m3) - numericalfieldgradient(sn, m3, q3)).linearize().norm() < 1e-5
 // expect: true
+
+// method={} permits h-adapt; smooth f is accepted at phase 1 so local G still runs
+var bulkd = AreaIntegral(landau, q, method={ })
+print (bulkd.fieldgradient(q, m) - numericalfieldgradient(bulkd, m, q)).linearize().norm() < 1e-5
+// expect: true
+
+var sgd = AreaIntegral(usesgrad, q, method={ })
+print (sgd.fieldgradient(q, m) - numericalfieldgradient(sgd, m, q)).linearize().norm() < 1e-4
+// expect: true
+
+// hess is ineligible: never try; numerical FD with adapt permitted
+var shd = AreaIntegral(useshess, q2, method={ })
+print (shd.fieldgradient(q2, m) - numericalfieldgradient(shd, m, q2)).linearize().norm() < 1e-4
+// expect: true

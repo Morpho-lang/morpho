@@ -4915,6 +4915,14 @@ typedef struct {
     int nnodes;
 } integral_fq_local;
 
+typedef struct {
+    integral_fq_mapref local;
+    functional_numericalfieldgradientref numerical;
+    objectfield *fieldclone;
+    functional_mapinfo *info;
+    bool clone;
+} integral_fieldgradient_taskref;
+
 /* ----------------------------------------------
  * Local derivatives at a quadrature point
  * ---------------------------------------------- */
@@ -5043,9 +5051,10 @@ static bool integral_fq_vector_integrand(unsigned int dim, double *lambda, doubl
     return true;
 }
 
-/** Per-element: integrate G once, then scatter into the output Field. */
+/** Per-element: local G on the accepted (or fixed) formula, or numerical FD if try says refine. */
 static bool integral_fieldgradient_fq_element(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out) {
-    integral_fq_mapref *mref=(integral_fq_mapref *) ref;
+    integral_fieldgradient_taskref *tref=ref;
+    integral_fq_mapref *mref=&tref->local;
     integralref *iref=mref->iref;
     objectfield *grad=(objectfield *) out;
     objectintegralelementref *elref=integral_getelementref(v);
@@ -5055,7 +5064,6 @@ static bool integral_fieldgradient_fq_element(vm *v, objectmesh *mesh, elementid
     int ifield=mref->ifield, ncomp=mref->ncomp;
 
     if (!elref || !(elref->flags & ELREF_CONFIGURED)) return false;
-    if (elref->integ.adapt) UNREACHABLE("Local fieldgradient invoked with h-adapt enabled");
 
     elref->v=v;
     elref->allowed=mref->allowed;
@@ -5071,8 +5079,27 @@ static bool integral_fieldgradient_fq_element(vm *v, objectmesh *mesh, elementid
     unsigned int nout=(unsigned)(nnodes*ncomp);
     double local[nout];
     integral_fq_local s={ .mref=mref, .elref=elref, .nnodes=nnodes };
-    ok=integrator_integrate(&elref->integ, integral_fq_vector_integrand,
-                      mesh->dim, x, iref->nfields, quantities, &s, nout, local);
+
+    if (!elref->integ.adapt) {
+        ok=integrator_integrate(&elref->integ, integral_fq_vector_integrand,
+                          mesh->dim, x, iref->nfields, quantities, &s, nout, local);
+    } else {
+        double fval=0.0;
+        integratortrystatus st=integrator_try(&elref->integ, integral_integrandfn,
+                          mesh->dim, x, iref->nfields, quantities, elref, 1, &fval);
+        if (st==INTEGRATOR_TRY_FAILED) {
+            integral_detachquantities(elref, iref->nfields, quantities, localq);
+            return false;
+        }
+        if (st==INTEGRATOR_TRY_REFINE) {
+            integral_detachquantities(elref, iref->nfields, quantities, localq);
+            if (!tref->numerical.field &&
+                !functional_preparenumericalfieldgradientref(v, tref->info, tref->clone, &tref->numerical, &tref->fieldclone)) return false;
+            return functional_numericalfieldgradientmapfn(v, mesh, id, nv, vid, &tref->numerical, out);
+        }
+        ok=integrator_apply(&elref->integ, integral_fq_vector_integrand, &s, nout, local);
+    }
+
     for (int a=0; ok && a<nnodes; a++) {
         fieldindx *fx=&quantities[ifield].findx[a];
         unsigned int nentries=0; double *gentry=NULL;
@@ -5085,29 +5112,7 @@ static bool integral_fieldgradient_fq_element(vm *v, objectmesh *mesh, elementid
     return ok;
 }
 
-typedef struct {
-    integral_fq_mapref local;
-    functional_numericalfieldgradientref numerical;
-    objectfield *fieldclone;
-    functional_mapinfo *info;
-    bool clone;
-} integral_fieldgradient_taskref;
-
-/** Determine whether to use local or numerical field gradient assembly. */
-static bool integral_fieldgradient_dispatch(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out) {
-    integral_fieldgradient_taskref *tref=ref;
-    objectintegralelementref *elref=integral_getelementref(v);
-
-    if (!elref) return false;
-    if (elref->integ.adapt) {
-        if (!tref->numerical.field &&
-            !functional_preparenumericalfieldgradientref(v, tref->info, tref->clone, &tref->numerical, &tref->fieldclone)) return false;
-        return functional_numericalfieldgradientmapfn(v, mesh, id, nv, vid, &tref->numerical, out);
-    }
-    return integral_fieldgradient_fq_element(v, mesh, id, nv, vid, &tref->local, out);
-}
-
-/** Map fieldgradient with a per-task local/numerical choice from the live integrator. */
+/** Map fieldgradient: local G on the formula try accepted, or numerical FD if that formula is insufficient. */
 static bool integral_mapfieldgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false, ntask=functional_ntasks(info), ifield=-1;
     functional_task task[ntask];
@@ -5134,7 +5139,7 @@ static bool integral_mapfieldgradient(vm *v, functional_mapinfo *info, value *ou
         tref[i].info=info;
         tref[i].clone=(ntask>1);
         task[i].ref=&tref[i];
-        task[i].mapfn=integral_fieldgradient_dispatch;
+        task[i].mapfn=integral_fieldgradient_fq_element;
         task[i].result=new;
     }
     if (!functional_map(ntask, task)) goto cleanup;

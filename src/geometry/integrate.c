@@ -833,6 +833,7 @@ void integrator_init(integrator *integrate) {
     integrate->rule=NULL;
     integrate->baserule=NULL;
     integrate->errrule=NULL;
+    integrate->acceptedrule=NULL;
     integrate->strategy=NULL;
     integrate->skipcentroid=false;
     integrate->fcentroid=NULL;
@@ -874,6 +875,8 @@ void integrator_clear(integrator *integrate) {
     }
     
     integrator_clearquantities(integrate);
+    integrate->nout=0;
+    integrate->vout=NULL;
 }
 
 /** Restore an integrator to its initial state, keeping the identity simplex. */
@@ -888,6 +891,7 @@ static void integrator_reset(integrator *integrate) {
     integrate->errest=0.0;
     
     integrate->rule=integrate->baserule;
+    integrate->acceptedrule=NULL;
     integrate->skipcentroid=false;
     integrate->rootscale=0.0;
 }
@@ -1140,6 +1144,7 @@ bool integrator_configure(integrator *integrate, error *err, bool adapt, int gra
     integrate->rule=NULL;
     integrate->baserule=NULL;
     integrate->errrule=NULL;
+    integrate->acceptedrule=NULL;
     integrate->strategy=NULL;
     integrate->skipcentroid=false;
     integrate->errnormmax=true;
@@ -1510,6 +1515,28 @@ static bool integrator_evalfn(integrator *integrate, quadraturerule *rule, int i
     return true;
 }
 
+/** Evaluate `rule` exactly once (nodes and weights). Sets `acceptedrule`.
+ * `f` must hold at least `rule->nnodes * nout` doubles; callers that p-extend keep a larger buffer so later nodes can be appended. */
+static bool integrator_evaluaterule(integrator *integrate, quadraturerule *rule, double *rmat, double *vmat, bool ridentity, quadratureworkitem *work, double *f) {
+    unsigned int nout=integrate->nout;
+    if (work->voff<0 && !integrator_allocworkvector(integrate, work)) return false;
+    double *wval=integrator_workval(integrate, work);
+    double *wlval=integrator_worklval(integrate, work);
+    double x[integrate->dim], r[nout];
+    int imin=integrator_centroidimin(integrate, ridentity, f);
+    if (!integrator_evalfn(integrate, rule, imin, rule->nnodes, rmat, vmat, x, f, ridentity)) return false;
+    integrator_storecentroid(integrate, ridentity, f);
+    integrator_sumweighted(rule->nnodes, nout, f, rule->weights, r);
+    for (unsigned int c=0; c<nout; c++) {
+        wval[c]=work->weight*r[c];
+        wlval[c]=wval[c];
+    }
+    work->val=integrator_linfinity(nout, wval);
+    work->lval=work->val;
+    integrate->acceptedrule=rule;
+    return true;
+}
+
 /** @brief Integrates a function over an element specified in work, filling out the integral and error estimate if provided
  * @param[in] integrate - the integrator
  * @param[in] rule - the quadrature rule
@@ -1522,33 +1549,21 @@ static bool integrator_applyrule(integrator *integrate, quadraturerule *rule, do
     int nmax=rule->nnodes;
     for (quadraturerule *q=rule->ext; q!=NULL; q=q->ext) nmax=q->nnodes;
 
-    if (work->voff<0 && !integrator_allocworkvector(integrate, work)) return false;
-    double *wval=integrator_workval(integrate, work);
-    double *wlval=integrator_worklval(integrate, work);
-
-    double x[integrate->dim], f[nmax*nout], r[nout], rprev[nout], diff[nout]; // Evaluate function at quadrature points
-    int imin=integrator_centroidimin(integrate, ridentity, f);
-    if (!integrator_evalfn(integrate, rule, imin, rule->nnodes, rmat, vmat, x, f, ridentity)) return false;
-    integrator_storecentroid(integrate, ridentity, f);
-
-    // Obtain estimate
-    integrator_sumweighted(rule->nnodes, nout, f, rule->weights, r);
-    for (unsigned int c=0; c<nout; c++) {
-        wval[c]=work->weight*r[c];
-        wlval[c]=wval[c];
-    }
-    work->val=integrator_linfinity(nout, wval);
-    work->lval=work->val;
+    double x[integrate->dim], f[nmax*nout], r[nout], rprev[nout], diff[nout];
+    if (!integrator_evaluaterule(integrate, rule, rmat, vmat, ridentity, work, f)) return false;
 
     if (!integrate->adapt) {
         work->err=0.0;
         return true;
     }
 
+    double *wval=integrator_workval(integrate, work);
+    double *wlval=integrator_worklval(integrate, work);
+
     // Estimate error
     if (rule->ext!=NULL) {
         int nmin=rule->nnodes;
-        for (unsigned int c=0; c<nout; c++) rprev[c]=r[c];
+        for (unsigned int c=0; c<nout; c++) rprev[c]=wval[c]/work->weight;
 
         // Attempt p-refinement if available
         for (quadraturerule *q=rule->ext; q!=NULL; q=q->ext) {
@@ -1566,6 +1581,7 @@ static bool integrator_applyrule(integrator *integrate, quadraturerule *rule, do
             work->lval=integrator_linfinity(nout, wlval);
             work->val=integrator_linfinity(nout, wval);
             work->err=work->weight*eps;
+            integrate->acceptedrule=q;
             if (rn<integrate->ztol || (rn>0.0 && eps/rn<integrate->tol)) break;
         }
     } else if (integrate->errrule) {
@@ -1738,6 +1754,129 @@ static bool integrator_hconverged(integrator *integrate) {
  * Driver routine
  * -------------------------------- */
 
+static void integrator_end(integrator *integrate) {
+    if (!integrate) return;
+    integrate->nout=1;
+    integrate->vout=NULL;
+}
+
+integratortrystatus integrator_try(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, quantity *quantity, void *ref, unsigned int nout, double *out) {
+    if (!integrate || !integrand || !out || nout==0) return INTEGRATOR_TRY_FAILED;
+
+    integrator_reset(integrate);
+
+    integrate->integrand=integrand;
+    integrate->ref=ref;
+    integrate->x=x;
+    integrate->dim=dim;
+    integrate->nout=nout;
+    integrate->vout=out;
+    for (unsigned int c=0; c<nout; c++) out[c]=0.0;
+
+    if (!integrator_initializequantities(integrate, nquantity, quantity)) {
+        integrator_end(integrate);
+        return INTEGRATOR_TRY_FAILED;
+    }
+
+    quadratureworkitem work={ .weight=1.0, .elementid=0, .voff=-1, .val=0.0, .lval=0.0, .err=0.0 };
+    if (!integrator_quadrature_root(integrate, integrate->rule, &work)) {
+        integrator_end(integrate);
+        return INTEGRATOR_TRY_FAILED;
+    }
+
+    while (!integrator_rootconverged(integrate, &work)) {
+        if (!integrate->strategy || !integrate->strategy(integrate)) break;
+        work.voff=-1;
+        if (!integrator_quadrature_root(integrate, integrate->rule, &work)) {
+            integrator_end(integrate);
+            return INTEGRATOR_TRY_FAILED;
+        }
+    }
+
+    double *wv=integrator_workval(integrate, &work);
+    for (unsigned int c=0; c<nout; c++) out[c]=wv[c];
+    integrate->val=work.val;
+    integrate->errest=work.err;
+    if (nout==1) integrate->val=out[0];
+    integrate->rootwork=work;
+
+    if (integrator_rootconverged(integrate, &work)) return INTEGRATOR_TRY_ACCEPTED;
+    return INTEGRATOR_TRY_REFINE;
+}
+
+bool integrator_refine(integrator *integrate) {
+    if (!integrate || !integrate->vout) return false;
+    if (integrator_rootconverged(integrate, &integrate->rootwork)) return false;
+
+    integrate->rootscale=integrate->rootwork.val;
+    integrator_pushworkitem(integrate, &integrate->rootwork);
+    integrator_estimate(integrate); // Initial estimate
+
+    quadratureworkitem work;
+    if (integrate->adapt) for (integrate->niterations=0; integrate->niterations<=integrate->maxiterations; integrate->niterations++) {
+        // Convergence check
+        if (integrator_hconverged(integrate)) break;
+
+        // Get worst interval
+        integrator_popworkitem(integrate, &work);
+
+        // Subdivide
+        int nels; // Number of elements created
+        quadratureworkitem newitems[integrate->subdivide->nels];
+        if (!integrator_subdivide(integrate, &work, &nels, newitems)) {
+            integrator_end(integrate);
+            return false;
+        }
+        for (int k=0; k<nels; k++) {
+            newitems[k].voff=-1;
+            if (!integrator_quadrature(integrate, integrate->rule, &newitems[k])) {
+                integrator_end(integrate);
+                return false;
+            }
+        }
+
+        // Error estimate
+        integrator_sharpenerrorestimate(integrate, &work, nels, newitems);
+
+        // Add new items to heap and update error estimates
+        integrator_update(integrate, &work, nels, newitems);
+    }
+
+    // Final estimate by Kahan summing heap
+    integrator_estimate(integrate);
+    if (integrate->nout==1) integrate->val=integrate->vout[0];
+    integrator_end(integrate);
+    return true;
+}
+
+bool integrator_apply(integrator *integrate, integrandfunction *integrand, void *ref, unsigned int nout, double *out) {
+    if (!integrate || !integrand || !out || nout==0) return false;
+    if (!integrate->vout || !integrate->acceptedrule || !integrate->x ||
+        !integrator_rootconverged(integrate, &integrate->rootwork)) return false;
+
+    integrate->skipcentroid=false;
+    integrate->integrand=integrand;
+    integrate->ref=ref;
+    integrate->nout=nout;
+    integrate->vout=out;
+    for (unsigned int c=0; c<nout; c++) out[c]=0.0;
+
+    quadratureworkitem work={ .weight=1.0, .elementid=0, .voff=-1, .val=0.0, .lval=0.0, .err=0.0 };
+    double f[integrate->acceptedrule->nnodes*(int) nout];
+    if (!integrator_evaluaterule(integrate, integrate->acceptedrule, NULL, NULL, true, &work, f)) {
+        integrator_end(integrate);
+        return false;
+    }
+
+    double *wv=integrator_workval(integrate, &work);
+    for (unsigned int c=0; c<nout; c++) out[c]=wv[c];
+    integrate->val=work.val;
+    integrate->errest=0.0;
+    if (nout==1) integrate->val=out[0];
+    integrator_end(integrate);
+    return true;
+}
+
 /** Integrates over a function into out[nout].
  * @param[in] integrate     - integrator structure, that has been configured with integrator_configure
  * @param[in] integrand     - function to integrate
@@ -1750,78 +1889,16 @@ static bool integrator_hconverged(integrator *integrate) {
  * @param[out] out                - buffer of length nout receiving the integral
  * @returns True on success */
 bool integrator_integrate(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, quantity *quantity, void *ref, unsigned int nout, double *out) {
+    integratortrystatus status;
     bool success=false;
-    if (!integrate || !integrand || !out || nout==0) return false;
 
-    integrator_reset(integrate);
-    
-    integrate->integrand=integrand; // Integrand function
-    integrate->ref=ref;
-    
-    integrate->x=x; // Vertices
-    integrate->dim=dim;
-    integrate->nout=nout;
-    integrate->vout=out;
-    for (unsigned int c=0; c<nout; c++) out[c]=0.0;
+    status=integrator_try(integrate, integrand, dim, x, nquantity, quantity, ref, nout, out);
+    if (status==INTEGRATOR_TRY_FAILED) return false;
+    if (status==INTEGRATOR_TRY_ACCEPTED) success=true;
+    else success=integrator_refine(integrate);
 
-    if (!integrator_initializequantities(integrate, nquantity, quantity)) goto integrate_cleanup;
-
-    quadratureworkitem work={ .weight=1.0, .elementid=0, .voff=-1, .val=0.0, .lval=0.0, .err=0.0 };
-    if (!integrator_quadrature_root(integrate, integrate->rule, &work)) goto integrate_cleanup;
-
-    while (!integrator_rootconverged(integrate, &work)) {
-        if (!integrate->strategy || !integrate->strategy(integrate)) break;
-        work.voff=-1;
-        if (!integrator_quadrature_root(integrate, integrate->rule, &work)) goto integrate_cleanup;
-    }
-
-    if (integrator_rootconverged(integrate, &work)) {
-        double *wv=integrator_workval(integrate, &work);
-        for (unsigned int c=0; c<nout; c++) out[c]=wv[c];
-        integrate->val=work.val; // L_inf; signed scalar restored at cleanup when nout==1
-        integrate->errest=work.err;
-        success=true;
-        goto integrate_cleanup;
-    }
-
-    integrate->rootscale=work.val;
-    double *wv=integrator_workval(integrate, &work);
-    for (unsigned int c=0; c<nout; c++) out[c]=wv[c];
-
-    integrator_pushworkitem(integrate, &work);
-    integrator_estimate(integrate); // Initial estimate
-
-    if (integrate->adapt) for (integrate->niterations=0; integrate->niterations<=integrate->maxiterations; integrate->niterations++) {
-        // Convergence check
-        if (integrator_hconverged(integrate)) break;
-
-        // Get worst interval
-        integrator_popworkitem(integrate, &work);
-
-        // Subdivide
-        int nels; // Number of elements created
-        quadratureworkitem newitems[integrate->subdivide->nels];
-        if (!integrator_subdivide(integrate, &work, &nels, newitems)) goto integrate_cleanup;
-        for (int k=0; k<nels; k++) {
-            newitems[k].voff=-1;
-            if (!integrator_quadrature(integrate, integrate->rule, &newitems[k])) goto integrate_cleanup;
-        }
-
-        // Error estimate
-        integrator_sharpenerrorestimate(integrate, &work, nels, newitems);
-
-        // Add new items to heap and update error estimates
-        integrator_update(integrate, &work, nels, newitems);
-    }
-
-    // Final estimate by Kahan summing heap
-    integrator_estimate(integrate);
-    success=true;
-
-integrate_cleanup:
-    if (success && nout==1) integrate->val=out[0]; // Signed scalar for API consumers of integrate->val
-    integrate->nout=1;
-    integrate->vout=NULL;
+    if (success && nout==1) integrate->val=out[0];
+    integrator_end(integrate);
     return success;
 }
 

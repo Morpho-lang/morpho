@@ -1,0 +1,30 @@
+// Eligible f(q) that fails phase-1 quadrature: fieldgradient falls back to numerical FD
+
+import meshtools
+import "../numericalderivatives.morpho"
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+m.addgrade(1)
+
+var q = Field(m, fn (x,y) Matrix([x, y]))
+
+var neval = 0
+fn peaked(x, qv) {
+    neval += 1
+    var r2 = (x[0]-0.15)^2 + (x[1]-0.15)^2
+    return exp(-250*r2) * qv.inner(qv)
+}
+
+// Named tri4 has no hybrid2d retry: phase 1 is p-ext only (tri4→tri10→tri20, 19 nodes)
+var E = AreaIntegral(peaked, q, method={ "rule": "tri4", "tol": 1e-10 })
+E.total(m)
+print neval > 19
+// expect: true
+
+print (E.fieldgradient(q, m) - numericalfieldgradient(E, m, q)).linearize().norm() < 1e-4
+// expect: true

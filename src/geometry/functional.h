@@ -46,6 +46,7 @@
 #define CURVATURE_GEODESIC_PROPERTY           "geodesic"
 
 #define INTEGRAL_METHOD_PROPERTY              "method"
+#define INTEGRAL_OPTIMIZE_PROPERTY            "optimize"
 
 #define JUMP_STRATEGY_LABEL                   "strategy"
 #define JUMP_STRATEGY_QUADRATURE              "quadrature"

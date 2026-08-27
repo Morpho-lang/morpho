@@ -96,6 +96,10 @@ var bulkd = AreaIntegral(landau, q, method={ })
 print (bulkd.fieldgradient(q, m) - numericalfieldgradient(bulkd, m, q)).linearize().norm() < 1e-5
 // expect: true
 
+var bulko = AreaIntegral(landau, q, method={ }, optimize=false)
+print (bulko.fieldgradient(q, m) - numericalfieldgradient(bulko, m, q)).linearize().norm() < 1e-5
+// expect: true
+
 var sgd = AreaIntegral(usesgrad, q, method={ })
 print (sgd.fieldgradient(q, m) - numericalfieldgradient(sgd, m, q)).linearize().norm() < 1e-4
 // expect: true

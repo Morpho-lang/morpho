@@ -855,6 +855,7 @@ void integrator_init(integrator *integrate) {
     integrate->maxiterations=INTEGRATE_MAXITERATIONS;
     
     integrate->niterations=0;
+    integrate->nevals=0;
     integrate->val=0.0;
     integrate->errest=0.0;
     integrate->err=NULL;
@@ -887,6 +888,7 @@ static void integrator_reset(integrator *integrate) {
     integrate->elementstack.count=integrate->nbary;
     
     integrate->niterations=0;
+    integrate->nevals=0;
     integrate->val=0.0;
     integrate->errest=0.0;
     
@@ -1511,6 +1513,7 @@ static bool integrator_evalfn(integrator *integrate, quadraturerule *rule, int i
         
         // Evaluate function
         if (!(*integrate->integrand)(integrate->dim, node, x, integrate->nquantity, integrate->qval, integrate->ref, nout, &f[i*nout])) return false;
+        integrate->nevals++;
     }
     return true;
 }

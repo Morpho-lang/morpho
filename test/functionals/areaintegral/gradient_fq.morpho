@@ -22,6 +22,10 @@ var bulk = AreaIntegral(landau, q, method={})
 print (bulk.gradient(m) - numericalgradient(bulk, m)).norm() < 1e-5
 // expect: true
 
+var bulko = AreaIntegral(landau, q, method={}, optimize=false)
+print (bulko.gradient(m) - numericalgradient(bulko, m)).norm() < 1e-5
+// expect: true
+
 var bulkold = AreaIntegral(landau, q)
 print (bulkold.gradient(m) - numericalgradient(bulkold, m)).norm() < 1e-5
 // expect: true

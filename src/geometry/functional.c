@@ -3708,6 +3708,7 @@ typedef struct {
     objectmesh *mref; // Reference mesh
     grade g; // Grade to integrate over
     bool weightbyref; // Use reference mesh for the element
+    bool optimize; // Hint: may use chain-rule derivative shortcuts
 } integralref;
 
 #define INTEGRAL_ALLOW_ALL UINT_MAX
@@ -4543,6 +4544,7 @@ static value integral_invjacobian(vm *v, int nargs, value *args) {
  * ---------------------------------------------- */
 
 value functional_methodproperty;
+value functional_optimizeproperty;
 
 /** Prepares an integral reference */
 bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, integralref *ref) {
@@ -4552,11 +4554,13 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
     value wtbyref=MORPHO_NIL;
     value field=MORPHO_NIL;
     value method=MORPHO_NIL;
+    value optimize=MORPHO_NIL;
     ref->nfields=0;
     ref->method=MORPHO_NIL;
     ref->mref=NULL;
     ref->g=g;
     ref->weightbyref=false;
+    ref->optimize=true;
 
     if (objectinstance_getpropertyinterned(self, scalarpotential_functionproperty, &func) &&
         MORPHO_ISCALLABLE(func)) {
@@ -4572,6 +4576,10 @@ bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, object
     }
     if (objectinstance_getpropertyinterned(self, functional_methodproperty, &method)) {
         ref->method=method;
+    }
+    if (objectinstance_getpropertyinterned(self, functional_optimizeproperty, &optimize) &&
+        MORPHO_ISBOOL(optimize)) {
+        ref->optimize=MORPHO_GETBOOLVALUE(optimize);
     }
     if (objectinstance_getpropertyinterned(self, functional_fieldproperty, &field) &&
         MORPHO_ISLIST(field)) {
@@ -5051,7 +5059,16 @@ static bool integral_fq_vector_integrand(unsigned int dim, double *lambda, doubl
     return true;
 }
 
-/** Per-element: local G on the accepted (or fixed) formula, or numerical FD if try says refine. */
+/** Determine whether the local integrand is no more expensive than numerical FD. */
+static bool integral_fieldgradient_preferlocal(integrator *integ, bool usesgrad, unsigned int dim, int nnodes, int ncomp) {
+    if (!integ->acceptedrule) return false;
+    unsigned qapply=(unsigned) integ->acceptedrule->nnodes;
+    unsigned clocal=qapply*2u*(unsigned) ncomp*(1u+(usesgrad?dim:0u));
+    unsigned cfd=2u*(unsigned) nnodes*(unsigned) ncomp*integ->nevals;
+    return clocal<=cfd;
+}
+
+/** Add this element's fieldgradient into out via the local integrand, or numerical FD of the scalar integral if try refines or FD is cheaper. */
 static bool integral_fieldgradient_fq_element(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out) {
     integral_fieldgradient_taskref *tref=ref;
     integral_fq_mapref *mref=&tref->local;
@@ -5079,25 +5096,31 @@ static bool integral_fieldgradient_fq_element(vm *v, objectmesh *mesh, elementid
     unsigned int nout=(unsigned)(nnodes*ncomp);
     double local[nout];
     integral_fq_local s={ .mref=mref, .elref=elref, .nnodes=nnodes };
+    bool numerical=false;
 
     if (!elref->integ.adapt) {
         ok=integrator_integrate(&elref->integ, integral_fq_vector_integrand,
                           mesh->dim, x, iref->nfields, quantities, &s, nout, local);
     } else {
         double fval=0.0;
+        elref->target_grad_used=false;
         integratortrystatus st=integrator_try(&elref->integ, integral_integrandfn,
                           mesh->dim, x, iref->nfields, quantities, elref, 1, &fval);
         if (st==INTEGRATOR_TRY_FAILED) {
             integral_detachquantities(elref, iref->nfields, quantities, localq);
             return false;
         }
-        if (st==INTEGRATOR_TRY_REFINE) {
-            integral_detachquantities(elref, iref->nfields, quantities, localq);
-            if (!tref->numerical.field &&
-                !functional_preparenumericalfieldgradientref(v, tref->info, tref->clone, &tref->numerical, &tref->fieldclone)) return false;
-            return functional_numericalfieldgradientmapfn(v, mesh, id, nv, vid, &tref->numerical, out);
-        }
-        ok=integrator_apply(&elref->integ, integral_fq_vector_integrand, &s, nout, local);
+        if (st==INTEGRATOR_TRY_ACCEPTED &&
+            integral_fieldgradient_preferlocal(&elref->integ, elref->target_grad_used, mesh->dim, nnodes, ncomp)) {
+            ok=integrator_apply(&elref->integ, integral_fq_vector_integrand, &s, nout, local);
+        } else numerical=true;
+    }
+
+    if (numerical) {
+        integral_detachquantities(elref, iref->nfields, quantities, localq);
+        if (!tref->numerical.field &&
+            !functional_preparenumericalfieldgradientref(v, tref->info, tref->clone, &tref->numerical, &tref->fieldclone)) return false;
+        return functional_numericalfieldgradientmapfn(v, mesh, id, nv, vid, &tref->numerical, out);
     }
 
     for (int a=0; ok && a<nnodes; a++) {
@@ -5112,7 +5135,7 @@ static bool integral_fieldgradient_fq_element(vm *v, objectmesh *mesh, elementid
     return ok;
 }
 
-/** Map fieldgradient: local G on the formula try accepted, or numerical FD if that formula is insufficient. */
+/** Map fieldgradient with the local integrand on an accepted formula, or numerical FD if that formula is insufficient. */
 static bool integral_mapfieldgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false, ntask=functional_ntasks(info), ifield=-1;
     functional_task task[ntask];
@@ -5184,7 +5207,7 @@ static value _Integral_gradient(vm *v, objectinstance *self, functional_mapinfo 
     functional_mapcallback *mapfn=functional_mapnumericalgradient;
 
     if (!_Integral_bindref(v, self, info, &ref)) return MORPHO_NIL;
-    if (integral_checkfieldonly(v, ref.integrand)) {
+    if (ref.optimize && integral_checkfieldonly(v, ref.integrand)) {
         info->grad=integral_gradient_fq;
         mapfn=functional_mapgradient;
     }
@@ -5198,7 +5221,7 @@ static value _Integral_fieldgradient(vm *v, objectinstance *self, functional_map
     if (!_Integral_bindref(v, self, info, &ref)) return MORPHO_NIL;
     info->cloneref=integral_cloneref;
     info->freeref=integral_freeref;
-    if (MORPHO_ISDICTIONARY(ref.method) &&
+    if (ref.optimize && MORPHO_ISDICTIONARY(ref.method) &&
         integral_checklocalfieldgrad(v, ref.integrand, info->field)) {
         mapfn=integral_mapfieldgradient;
     }
@@ -5219,17 +5242,22 @@ static value integral_init(vm *v, int nargs, value *args) {
     value method=MORPHO_NIL;
     value mref=MORPHO_NIL;
     value wtbyref=MORPHO_NIL;
+    value optimize=MORPHO_NIL;
 
-    if (builtin_options(v, nargs, args, &nfixed, 3,
+    if (builtin_options(v, nargs, args, &nfixed, 4,
                         functional_methodproperty, &method,
                         linearelasticity_referenceproperty, &mref,
-                        linearelasticity_weightbyreferenceproperty, &wtbyref)) {
+                        linearelasticity_weightbyreferenceproperty, &wtbyref,
+                        functional_optimizeproperty, &optimize)) {
         if (MORPHO_ISDICTIONARY(method)) {
             objectinstance_setproperty(self, functional_methodproperty, method);
         } else if (!MORPHO_ISNIL(method)) MORPHO_RAISE(v, INTEGRAL_ARGS);
 
         if (MORPHO_ISMESH(mref)) objectinstance_setproperty(self, linearelasticity_referenceproperty, mref);
         if (MORPHO_ISBOOL(wtbyref)) objectinstance_setproperty(self, linearelasticity_weightbyreferenceproperty, wtbyref);
+        if (MORPHO_ISBOOL(optimize)) {
+            objectinstance_setproperty(self, functional_optimizeproperty, optimize);
+        } else if (!MORPHO_ISNIL(optimize)) MORPHO_RAISE(v, INTEGRAL_ARGS);
     } else MORPHO_RAISE(v, INTEGRAL_ARGS);
     
     if (nfixed>0) {
@@ -5365,8 +5393,7 @@ static bool jump_preparestrategy(vm *v, jumpref *ref) {
 }
 
 /** Initialize a Jump object.
-    For now this matches the existing integral optional-argument surface:
-    'method', 'mref' and 'weightbyreference'. */
+    Optional arguments match Integral: 'method', 'mref', 'weightbyreference' and 'optimize'. */
 static value Jump_init(vm *v, int nargs, value *args) {
     value ret = integral_init(v, nargs, args);
     if (nargs>1 && MORPHO_ISFIELD(MORPHO_GETARG(args, 1))) {
@@ -6017,6 +6044,7 @@ void functional_initialize(void) {
     nematic_pitchproperty=builtin_internsymbolascstring(NEMATIC_PITCH_PROPERTY);
     
     functional_methodproperty=builtin_internsymbolascstring(INTEGRAL_METHOD_PROPERTY);
+    functional_optimizeproperty=builtin_internsymbolascstring(INTEGRAL_OPTIMIZE_PROPERTY);
 
     curvature_integrandonlyproperty=builtin_internsymbolascstring(CURVATURE_INTEGRANDONLY_PROPERTY);
     curvature_geodesicproperty=builtin_internsymbolascstring(CURVATURE_GEODESIC_PROPERTY);
